@@ -12,7 +12,8 @@ OpenBox/
 - **结构方案（旧仓对照文）**：`~/ToyOS/ToyKernel/Documents/开发/目录结构-ToyOSNew.md`  
 - **GitHub**：`git@github.com:tanlaoshi/OpenBox.git`（单仓；此后不再拆多仓）  
 - **EDK2**：将来进 `Boot/X64/EDK2/`，**不带**独立 `.git`  
-- **现在**：空骨架。确认清单前不搬代码；**文档不从旧仓迁移，从新写。**
+- **现在**：空骨架。确认清单前不搬代码；**文档不从旧仓迁移，从新写。**  
+- **迁移方式**：逐步、小刀；每刀你 **code review** 通过后再开下一刀。
 
 ## 怎么开始（占位）
 

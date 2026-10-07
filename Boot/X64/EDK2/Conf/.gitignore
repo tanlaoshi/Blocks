@@ -1,0 +1,4 @@
+# 本地生成；模板 target/tools_def/build_rule 要进仓
+BuildEnv.sh
+.AutoGenIdFile.txt
+.cache/

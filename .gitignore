@@ -1,8 +1,13 @@
 # 构建产物（回归两侧 Build）
 Boot/Build/**
-Kernel/Build/**
 !Boot/Build/.gitkeep
+Kernel/Build/**
 !Kernel/Build/.gitkeep
+
+# EDK2 本地生成（工具包源码保留，产物不进仓）
+Boot/X64/EDK2/Build/
+Boot/X64/EDK2/Conf/BuildEnv.sh
+Boot/X64/EDK2/Conf/.cache/
 
 # 本地覆盖
 *.local
@@ -10,6 +15,4 @@ Config.local.txt
 
 # 杂物
 *.o
-*.elf
-*.EFI
 .DS_Store

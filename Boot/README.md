@@ -4,9 +4,11 @@
 
 | 目录 | 内容 |
 | ---- | ---- |
-| `X64/` | 原 ToyBoot 源码 + **`EDK2/` 工具包**（平级） |
-| `Arm64/` | Arm64 引导 |
-| `RiscV/` | RiscV 引导 |
-| `Build/` | 本侧构建产物（建议再按 arch 分） |
+| `X64/` | 原 ToyBoot 源码 + **`EDK2/` 工具包**（平级，无独立 `.git`） |
+| `Arm64/` | Arm64 引导（待迁） |
+| `RiscV/` | RiscV 引导（待迁） |
+| `Build/` | 本侧构建产物（`Build/X64/BOOTX64.EFI`） |
 
-确认清单前不迁入代码。
+```bash
+cd Boot/X64 && ./build.sh
+```

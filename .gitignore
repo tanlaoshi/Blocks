@@ -1,0 +1,15 @@
+# 构建产物（回归两侧 Build）
+Boot/Build/**
+Kernel/Build/**
+!Boot/Build/.gitkeep
+!Kernel/Build/.gitkeep
+
+# 本地覆盖
+*.local
+Config.local.txt
+
+# 杂物
+*.o
+*.elf
+*.EFI
+.DS_Store

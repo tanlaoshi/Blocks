@@ -10,7 +10,8 @@ OpenBox/
 ```
 
 - **结构方案（旧仓对照文）**：`~/ToyOS/ToyKernel/Documents/开发/目录结构-ToyOSNew.md`  
-- **GitHub**：仓名 `OpenBox`（挂 remote 后推送）  
+- **GitHub**：单仓 `OpenBox`（挂 remote 后推送；此后不再拆 Boot/Kernel/Runtime 多仓）  
+- **EDK2**：将来进 `Boot/X64/EDK2/`，**不带**独立 `.git`  
 - **现在**：空骨架。确认清单前不搬代码；**文档不从旧仓迁移，从新写。**
 
 ## 怎么开始（占位）

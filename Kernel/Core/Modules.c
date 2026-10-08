@@ -1,7 +1,7 @@
 /*
  * Modules.c — 开机模块表 + ModulesRun（积木拼表）
  *
- * Full：Serial → Memory → Driver → VirtualMemory → Video → Cpu（K7）
+ * Full：… → Cpu → Scheduler → Console（K8；中间 USB/FS/… 后挂）
  *
  * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
@@ -14,6 +14,8 @@
 #include "ToySerialConfig.h"
 #include "HalVideo.h"
 #include "HalCpu.h"
+#include "Scheduler.h"
+#include "Console.h"
 #include "BootInfo.h"
 
 static void ModLog(const char *Name, const char *Suffix) {
@@ -100,19 +102,12 @@ static int InitializeVirtualMemory(void) {
 }
 
 static int InitializeVideo(void) {
-    UINT32 W = 0;
-    UINT32 H = 0;
-
-    /* 不 ClearScreen：接 Boot 黑底 / 早期自检画面 */
+    /* 不 ClearScreen：接 Boot 黑底 */
     HalVideoInitializeBackbuffer();
-    HalVideoGetSize(&W, &H);
     if (HalVideoBackbufferEnabled()) {
         HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer on\n");
-        if (W > 40 && H > 40) {
-            /* 背缓冲上画青框，Present 后才上屏 */
-            HalVideoFillRect(16, 16, 24, 24, 0x0000FFFFu);
-            HalVideoPresent();
-        }
+        /* Present 一次同步背缓冲；不再画自检色块 */
+        HalVideoPresent();
         HalSerialWriteChannel(TOY_SLOG_GUI, "Video: present ok\n");
     } else {
         HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer skip\n");
@@ -133,6 +128,22 @@ static int InitializeCpu(void) {
     return 0;
 }
 
+static int InitializeScheduler(void) {
+    if (SchedulerInitialize() != 0) {
+        return -1;
+    }
+    HalSerialWriteChannel(TOY_SLOG_MISC, "Scheduler: coop shell ok\n");
+    return 0;
+}
+
+static int InitializeConsole(void) {
+    if (ConsoleInitialize() != 0) {
+        return -1;
+    }
+    HalSerialWriteChannel(TOY_SLOG_MISC, "Console: init ok\n");
+    return 0;
+}
+
 static const MODULE gModulesFull[] = {
     { "Serial", InitializeSerial },
     { "Memory", InitializeMemory },
@@ -140,6 +151,8 @@ static const MODULE gModulesFull[] = {
     { "VirtualMemory", InitializeVirtualMemory },
     { "Video", InitializeVideo },
     { "Cpu", InitializeCpu },
+    { "Scheduler", InitializeScheduler },
+    { "Console", InitializeConsole },
 };
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))

@@ -38,6 +38,8 @@
 | `Core/VirtualMemory.c` | 认领 EarlyIdentity 分页；确认 FB 在窗内 |
 | `Hal/X64/HalVideo.c` | LFB + K6 背缓冲 / Present |
 | `Hal/X64/HalCpu.c` | K7：最小 GDT/IDT（不 sti） |
+| `Core/Scheduler.c` | K8：协作壳（Init only） |
+| `Core/Console.c` | K8：`ToyOS ready` + `Blocks>` 回显 |
 
 ## 编译
 

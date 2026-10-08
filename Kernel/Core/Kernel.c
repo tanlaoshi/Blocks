@@ -17,13 +17,14 @@
  * 【门里当前顺序】
  *   1. BootInfoStore + HalCapabilityObserveFrameBuffer
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
- *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
- *   4. ModulesRunFull（… → VirtualMemory → Video）
- *   5. park
+ *   3. KernelAttachEarly    串口 + 视频配置
+ *   4. ModulesRunFull（… → Cpu → Scheduler → Console）
+ *   5. ConsoleRun（串口提示符）
  *
  * 【积木】本文件是胶水：只编排，不写分配页 / 调度政策。
  */
 #include "BootInfo.h"
+#include "Console.h"
 #include "HalCapability.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
@@ -86,29 +87,6 @@ static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
     HalSerialWriteChannel(TOY_SLOG_BOOT, Line);
 }
 
-/* 右上角色块 + 一行 ASCII：证明 LFB 可写、点阵可画 */
-static void KernelVideoSelfTest(UINT32 Width, UINT32 Height) {
-    const UINT32 Box = 64;
-    UINT32 X;
-    UINT32 Y;
-
-    if (Width < Box + 8 || Height < Box + 8) {
-        return;
-    }
-    X = Width - Box - 8;
-    Y = 8;
-    HalVideoFillRect(X, Y, Box, Box, 0x00FFFF00u); /* 青黄：易看见 */
-    HalSerialWriteChannel(TOY_SLOG_BOOT,
-                          "KernelMain: video self-test (top-right box)\n");
-
-    /* 左上角白字：Font 自检（不进 boot 上滚区） */
-    if (Width >= 80 && Height >= 24) {
-        HalVideoDrawStringAt(8, 8, "Blocks K2", 0x00FFFFFFu);
-        HalSerialWriteChannel(TOY_SLOG_BOOT,
-                              "KernelMain: font self-test (DrawString)\n");
-    }
-}
-
 static void KernelAttachEarly(void) {
     const BOOT_INFO *Info = BootInfoGet();
     VIDEO_CONFIG Video = BootInfoToVideoConfig(Info);
@@ -124,7 +102,6 @@ static void KernelAttachEarly(void) {
     HalVideoGetSize(&Width, &Height);
     if (Info != 0 && Info->FrameBufferSize != 0 && Width != 0 && Height != 0) {
         KernelLogFrameBufferSize(Width, Height);
-        KernelVideoSelfTest(Width, Height);
     }
 }
 
@@ -145,6 +122,7 @@ void KernelMain(const BOOT_INFO *Info) {
         KernelParkForever();
     }
 
-    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules done; park\n");
+    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules done\n");
+    ConsoleRun();
     KernelParkForever();
 }

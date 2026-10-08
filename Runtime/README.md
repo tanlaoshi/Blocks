@@ -26,4 +26,8 @@ cd ~/Blocks/Runtime
 
 依赖：`qemu-system-x86_64`、`/usr/share/OVMF/OVMF_CODE_4M.fd`。
 
-K1 预期串口类似：`handoff:` → `KernelMain: early ok` → `FB WxH` → `video self-test` → `[Mod] Serial` → `modules done; park`。
+串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 黑屏窗口里打字。
+
+K8 预期：`ToyOS ready` → `Blocks>`；在终端输入会回显，回车后再打一行。
+
+旧 K1 日志形如：`handoff:` → `FB WxH` → `video self-test` → `[Mod] …`。

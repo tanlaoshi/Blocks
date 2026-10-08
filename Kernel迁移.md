@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K8** · Scheduler 最小 + Console 串口壳 |
-| 排队 | K9+（见 §2） |
-| 刚收官 | **PR-K7** · Cpu GDT/IDT；`[Mod] Cpu` / `gdt/idt ok` → `park` ✅ |
-| 顺手（不推 ★） | 见 §1.2「文件名去冗余 Kernel 前缀」；已落地 `Modules.c` |
+| **★** | **PR-K9** · FileSystem 最小（识盘） |
+| 排队 | K10+ USB / Network / Gui …（见 §2） |
+| 刚收官 | **PR-K8** · Scheduler + Console；`ToyOS ready` / `Blocks>` ✅ |
+| 顺手（不推 ★） | 去掉开机自检色块；Console 认 `\\r` 为行结束 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -57,18 +57,30 @@
 
 表序：`… → Video → Cpu`。
 
-### K8 规划（★ · 最小子集）
+### K8 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：模块表挂 `Scheduler` + `Console`；单核协作壳；串口有提示符级交互（或先横幅 + 读一行）。
+**一句话**：模块表挂 `Scheduler` + `Console`；单核协作壳；串口提示符 + 回显。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 最小调度循环（可先单任务/协作）；`Console` 串口读写壳；`ToyOS ready` 类横幅 |
+| **做** | `SchedulerInitialize` 壳；`Console` 横幅/`Blocks>`/读行回显；`\\r`/`\\n` 都行结束 |
 | **不做** | 抢占定时器、多核、完整 shell 语法、Gui |
-| **Arm/RiscV** | 同表可编；实现可先薄 |
-| **验收** | `[Mod] Scheduler` → `[Mod] Console`；串口见 ready / 提示符；不再立刻 park（或 park 前可交互） |
+| **验收** | `[Mod] Scheduler` → `ToyOS ready` → `Blocks>`；输入回显 ✅ |
 
-表序：`… → Cpu → … → Scheduler → Console`（中间 USB/FS/… 本刀可先跳过空档）。
+表序：`… → Cpu → Scheduler → Console`（中间 USB/FS/… 后挂）。
+
+### K9 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `FileSystem`；能认出 Root 盘上的 `TOYOS.ID`（或等价卷标）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `InitializeFileSystem`；块设备/ virtio 或 AHCI 最小探盘；串口报 disk/id ok |
+| **不做** | 完整 FAT 应用 API、写文件、Store 包管理 |
+| **Arm/RiscV** | 可先桩或 virtio-blk 另刀 |
+| **验收** | `[Mod] FileSystem`；串口见 `TOYOS.ID` / disk ready → 仍回 `Blocks>` |
+
+表序：在 `Scheduler` 前插入 `FileSystem`（与现网 Full 表对齐时可再调）。
 
 ---
 
@@ -329,3 +341,4 @@ Kernel/
 | 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |
 | 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
 | 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
+| 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |

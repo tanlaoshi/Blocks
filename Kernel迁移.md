@@ -15,7 +15,7 @@
 | **★** | **PR-K8** · Scheduler 最小 + Console 串口壳 |
 | 排队 | K9+（见 §2） |
 | 刚收官 | **PR-K7** · Cpu GDT/IDT；`[Mod] Cpu` / `gdt/idt ok` → `park` ✅ |
-| 顺手（不推 ★） | `KernelMain.c`→`Kernel.c`；`Module.c` 并入 `KernelModules.c`（`Module.h` 保留） |
+| 顺手（不推 ★） | 见 §1.2「文件名去冗余 Kernel 前缀」；已落地 `Modules.c` |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -91,7 +91,10 @@
 3. **三架构可编**：每刀 `./build.sh x64|arm64|riscv` 绿；真实现可先只落主力 Arch，其它保持桩。  
 4. **新 `.c` ≤300 行**；大块按已拆文件拆刀迁。  
 5. **恒等窗 4GiB**（`IdentityMap.h`）：正式 VMM 必须读同一常量。  
-6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。
+6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。  
+7. **文件名去冗余 `Kernel` 前缀**：落点已在 `Kernel/`（或对照源 `CodeC-Core/Kernel/`）时，勿再 `Kernel`+Rest。  
+   - 去：`KernelModules*.c` → `Modules*.c`；`KernelTask.c` → `Task.c`；迁入时同类照办。  
+   - 留：本身就叫这个的（`Kernel.c` / `Kernel.h`）；角色专名 `KernelEntry` / `KernelHandoff`（不是「Kernel+Modules」式冗余）。
 
 ### 1.3 现网 `KernelMain` 形状（对照）
 
@@ -275,17 +278,19 @@ KernelMain
 ```text
 Kernel/
   Core/
-    KernelMain.c
-    KernelModules.c
+    Kernel.c             # 入口函数 KernelMain（文件名本身就是 Kernel，不去前缀）
+    Modules.c            # 表 + ModulesRun（勿再叫 KernelModules）
     BootInfo.c
   Hal/Common/
     HalCapability.c      # 能力旗标（跨 Arch）
     HalVideoStub.c       # 非 X64 薄视频；X64 用 Hal/X64/HalVideo.c
+    HalCpuStub.c
   Include/Core/
-    Module.h
+    Module.h Modules.h Kernel.h
     …
   Hal/<Arch>/HalSerial.c # 已有
-  Hal/<Arch>/…           # K1+ Video/Cpu/…
+  Hal/<Arch>/KernelEntry.S KernelHandoff.c  # 角色专名，保留
+  Hal/<Arch>/…           # Video/Cpu/…
 ```
 
 ---
@@ -323,3 +328,4 @@ Kernel/
 | 2026-10-08 | TG：K6 Video 背缓冲 + BootInfo 分层；★ → K7（含 K7 规划） |
 | 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |
 | 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
+| 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |

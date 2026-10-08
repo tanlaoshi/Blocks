@@ -18,7 +18,7 @@
  *   1. BootInfoStore + HalCapabilityObserveFrameBuffer
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
  *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
- *   4. KernelModulesRunFull（… → VirtualMemory → Video）
+ *   4. ModulesRunFull（… → VirtualMemory → Video）
  *   5. park
  *
  * 【积木】本文件是胶水：只编排，不写分配页 / 调度政策。
@@ -27,7 +27,7 @@
 #include "HalCapability.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
-#include "KernelModules.h"
+#include "Modules.h"
 #include "ToySerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -140,7 +140,7 @@ void KernelMain(const BOOT_INFO *Info) {
 
     KernelAttachEarly();
 
-    if (KernelModulesRunFull() != 0) {
+    if (ModulesRunFull() != 0) {
         HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules failed\n");
         KernelParkForever();
     }

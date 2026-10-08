@@ -88,7 +88,7 @@ build_common_objs() {
     shift
     local -a cflags=("$@")
     local f
-    local -a cores=(BootInfo KernelModules Font PhysicalMemory Device
+    local -a cores=(BootInfo Modules Font PhysicalMemory Device
                     VirtualMemory Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
@@ -126,7 +126,7 @@ x64|X64)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
         "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
-        "$OUT/BootInfo.o" "$OUT/KernelModules.o" \
+        "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Kernel.o"
     ;;
@@ -147,7 +147,7 @@ arm64|Arm64|ARM64)
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
-        "$OUT/BootInfo.o" "$OUT/KernelModules.o" \
+        "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
@@ -173,7 +173,7 @@ riscv|RiscV|RISCV)
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/SmpStub.o" \
         "$OUT/HalSerial.o" \
-        "$OUT/BootInfo.o" "$OUT/KernelModules.o" \
+        "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \

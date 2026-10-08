@@ -1,11 +1,11 @@
 /*
- * KernelModules.c — 开机模块表 + ModulesRun（积木拼表）
+ * Modules.c — 开机模块表 + ModulesRun（积木拼表）
  *
  * Full：Serial → Memory → Driver → VirtualMemory → Video → Cpu（K7）
  *
  * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
-#include "KernelModules.h"
+#include "Modules.h"
 #include "Module.h"
 #include "HalSerial.h"
 #include "PhysicalMemory.h"
@@ -144,6 +144,6 @@ static const MODULE gModulesFull[] = {
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))
 
-int KernelModulesRunFull(void) {
+int ModulesRunFull(void) {
     return ModulesRun(gModulesFull, MODULE_COUNT(gModulesFull));
 }

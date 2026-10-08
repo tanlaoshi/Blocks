@@ -16,7 +16,7 @@
   │
   └─ 合流 → Core/Kernel.c（入口函数仍叫 KernelMain）
               → 早期串口 / 记下帧缓冲配置
-              → KernelModulesRunFull（模块表）
+              → ModulesRunFull（模块表）
               → park
 ```
 

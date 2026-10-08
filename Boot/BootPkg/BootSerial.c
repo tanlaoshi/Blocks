@@ -1,8 +1,7 @@
 /*
- * BootSerial.c — Boot 阶段 COM1 16550
+ * BootSerial.c — Boot 第 1 步：COM1 16550
  *
- * ExitBootServices 前可用；与 Kernel HalSerial 同口同波特率，无 Hal 依赖。
- * 部分 USB 转串口：短 THR 超时会丢字符 → 须等 THR/TEMT。
+ * ExitBootServices 前可用；与 Kernel HalSerial 同口同波特率。
  */
 #include "BootSerial.h"
 #include <Library/PrintLib.h>

@@ -8,15 +8,14 @@
 [Sources]
   Boot.c
   BootSerial.c
-  BootAcpi.c
-  BootJump.c
-  Video/BootVideo.c
-  Video/BootVideoScore.c
-  Video/BootVideoEdid.c
-  Video/BootVideoTheme.c
-  BootKernel.c
-  BootKernelLoad.c
-  BootPci.c
+  BootVideo.c
+  BootVideoScore.c
+  BootVideoEdid.c
+  BootVideoTheme.c
+  BootLoadKernel.c
+  BootFillRsdp.c
+  BootFillXhci.c
+  JumpToKernel.c
 
 [Packages]
   MdePkg/MdePkg.dec

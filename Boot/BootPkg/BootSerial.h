@@ -1,5 +1,5 @@
 /*
- * BootSerial.h — Boot 阶段 COM1 串口
+ * BootSerial.h — Boot 串口 API（BootSerial.c）
  */
 #ifndef TOY_BOOT_SERIAL_H
 #define TOY_BOOT_SERIAL_H

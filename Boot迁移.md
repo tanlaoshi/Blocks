@@ -2,7 +2,7 @@
 
 > **性质**：迁移进度与接棒规格（只写文档，本文件对应刀**不改代码**）。  
 > **位置**：Blocks **仓库根**（`~/Blocks/Boot迁移.md`）。  
-> **工作区**：`~/Blocks` · GitHub 仓名待改（远程暂 `tanlaoshi/OpenBox`）  
+> **工作区**：`~/Blocks` · 仓：`git@github.com:tanlaoshi/Blocks.git`  
 > **对照源**（只读）：旧三仓 / `edk2` 下 ToyBoot、ToyKernel；路径冲突时以 **Blocks 现树** 为准。  
 > **结构拍板**：`ToyKernel/Documents/开发/目录结构-ToyOSNew.md`（Blocks 大目录）；Boot 白话说明见 [`Boot/README.md`](Boot/README.md)。
 
@@ -239,4 +239,6 @@ Kernel/build.sh
 | 2026-10-08 | 钉干净边界：接棒 ✅；彻底干净 = X64 到桌面（迁 KernelMain 以后一直盯） |
 | 2026-10-08 | 后续计划改指 [`Kernel迁移.md`](Kernel迁移.md) |
 | 2026-10-08 | 工作区改名 **Blocks**（原 OpenBox）；GitHub 仓名待网页同步 |
+| 2026-10-08 | GitHub 已改名 `tanlaoshi/Blocks`；本地 `origin` 已同步 |
 | 2026-10-08 | 三架构 `HalSerial`：X64 COM1 / Arm64 PL011 / RiscV 16550；`build.sh` 默认 `TOY_SERIAL=1` |
+| 2026-10-08 | BootPkg 按 `Boot.c` 六步整文件对齐：`BootSerial` / `BootVideo*` / `BootLoadKernel` / `BootFillRsdp` / `BootFillXhci` / `JumpToKernel`；QEMU 冒烟 ✅ |

@@ -1,7 +1,5 @@
 /*
- * BootPci.c — ��PCI 上找 xHCI 基址
- *
- * 从 Boot.c 原样搬家；不改语义。
+ * BootFillXhci.c — Boot 第 5 步：PCI 上找 xHCI 基址
  */
 #include <Protocol/PciIo.h>
 #include <Library/UefiBootServicesTableLib.h>

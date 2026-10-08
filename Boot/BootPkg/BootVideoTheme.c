@@ -1,7 +1,5 @@
 /*
- * BootVideoTheme.c — ��THEME.CFG mode= / TOYOS 卷
- *
- * 从 Boot.c 原样搬家；不改语义。
+ * BootVideoTheme.c — BootVideo 辅助：THEME.CFG 显示偏好
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>
@@ -11,7 +9,7 @@
 
 #include "BootPrivate.h"
 
-/* 从 FAT 小文本读 THEME.CFG 中的 mode=WxH（��重启生效） */
+/* 从 FAT 小文本读 THEME.CFG 中的 mode=WxH（��重启生效） */
 STATIC BOOLEAN ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH) {
     UINT32 W = 0;
     UINT32 H = 0;

@@ -1,7 +1,7 @@
 # Blocks · KernelMain 以后迁移
 
 > **性质**：`KernelMain` 起至「X64 可跑桌面」的排期与 PR 拆分。  
-> **工作区**：`~/Blocks` · GitHub 仓名待改（远程暂 `tanlaoshi/OpenBox`）  
+> **工作区**：`~/Blocks` · 仓：`git@github.com:tanlaoshi/Blocks.git`  
 > **接棒已收口**：见 [`Boot迁移.md`](Boot迁移.md) §1.5（接棒干净 ✅；彻底干净 = X64 到桌面）。  
 > **积木**：见 [`积木原则.md`](积木原则.md)——迁每一层都盯「可替换面 vs 胶水」。  
 > **对照源**（只读）：`~/ToyOS/ToyKernel` / edk2 内 ToyKernel；路径冲突以 Blocks 为准。

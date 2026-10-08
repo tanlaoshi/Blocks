@@ -39,19 +39,18 @@ cd ~/Blocks/Boot && ./build.sh
 
 ## 2. 目录里都有什么？
 
-| 文件 / 目录 | 给初学者的解释 |
-| ----------- | -------------- |
-| `BootPkg/` | UEFI 应用包（真实目录；DSC/INF/源码都在这里） |
-| `BootPkg/Boot.c` | 只有一个入口函数 **`UefiMain`**，按顺序调用别人，像「节目单」 |
-| `BootPkg/BootSerial.c` / `.h` | 串口（COM1）打印，方便在没图形界面时看日志 |
-| `BootPkg/Video/` | GOP：`GetVideoInfo` 选模，`SetVideoMode` 设模式 |
-| `BootPkg/BootKernel*.c` | 从磁盘找到 `Kernel.elf`，检查并加载到内存 |
-| `BootPkg/BootAcpi.c` | 找 ACPI 的 RSDP（电源/硬件信息的入口地址） |
-| `BootPkg/BootPci.c` | 在 PCI 总线上找 USB 控制器（xHCI）地址 |
-| `BootPkg/BootJump.c` | 拿到最终内存图、退出 Boot 服务、跳进内核 |
-| `BootPkg/UefiBootConfig.h` | **交接清单** `UEFI_BOOT_CONFIG` 的字段定义（Boot 和内核都要认） |
-| `EDK2/` | 裁剪工具包（BaseTools + MdePkg + **Conf/**） |
-| `build.sh` | 一键编译；产物 **`Build/BOOTX64.EFI`** |
+| 文件 | 给初学者的解释 |
+| ---- | -------------- |
+| `BootPkg/Boot.c` | 节目单：只按顺序调下面六步 |
+| `BootSerial.c` / `.h` | ① 串口 COM1 |
+| `BootVideo.c`（+ Score/Edid/Theme） | ② GOP 选模 / 设分辨率 |
+| `BootLoadKernel.c` | ③ 读盘装入 `Kernel.elf` |
+| `BootFillRsdp.c` | ④ ACPI RSDP |
+| `BootFillXhci.c` | ⑤ PCI 上找 xHCI |
+| `JumpToKernel.c` | ⑥ ExitBootServices + 跳内核 |
+| `UefiBootConfig.h` | 交接清单 `UEFI_BOOT_CONFIG` |
+| `EDK2/` | 裁剪工具包 |
+| `build.sh` | → `Build/BOOTX64.EFI` |
 
 ---
 
@@ -59,13 +58,12 @@ cd ~/Blocks/Boot && ./build.sh
 
 读 `BootPkg/Boot.c` 时，按这个顺序理解即可：
 
-1. **开串口、打欢迎横幅** → `BootSerialInitialize` / `BootSerialBanner`
-2. **查显示能力 / 选模** → `GetVideoInfo`；**设模式并填帧缓冲** → `SetVideoMode`
-3. **加载内核文件** → `BootLoadKernel`（读盘 + 解析 ELF）
-4. **填 RSDP** → `BootFillRsdp`
-5. **记下 SystemTable**（固件留给运行时用的一张大表指针）
-6. **填 USB 控制器地址** → `BootFillXhci`
-7. **退出固件服务并跳转** → `JumpToKernel`
+1. **BootSerial** → `BootSerialInitialize` / `BootSerialBanner`
+2. **BootVideo** → `GetVideoInfo` / `SetVideoMode`
+3. **BootLoadKernel** → `BootLoadKernel`
+4. **BootFillRsdp** → `BootFillRsdp`（并记下 `SystemTable`）
+5. **BootFillXhci** → `BootFillXhci`
+6. **JumpToKernel** → `JumpToKernel`
 
 某一步失败，通常会在串口打一行 `Boot: … Failed`，然后返回错误。
 

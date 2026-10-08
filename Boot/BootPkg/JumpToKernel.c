@@ -1,5 +1,5 @@
 /*
- * BootJump.c — GetMemoryMap、ExitBootServices、跳转 Kernel
+ * JumpToKernel.c — Boot 第 6 步：GetMemoryMap、ExitBootServices、跳转 Kernel
  */
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>

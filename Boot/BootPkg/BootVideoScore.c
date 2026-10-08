@@ -1,7 +1,5 @@
 /*
- * BootVideoScore.c — ��选模打分 / Settings 排序
- *
- * 从 Boot.c 原样搬家；不改语义。
+ * BootVideoScore.c — BootVideo 辅助：模式打分
  */
 #include <Library/BaseLib.h>
 

@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K3** · X64 `HalSerial` 屏上 boot 字 |
-| 排队 | K4 → K5 → …（见 §2） |
-| 刚收官 | **PR-K2** · `Font` 最小点阵（无 Theme；左上角 `Blocks K2` ✅） |
+| **★** | **PR-K4** · Memory（PMM） |
+| 排队 | K5 → K6 → …（见 §2） |
+| 刚收官 | **PR-K3** · HalSerial 屏上 boot 字（`SCREEN_LOG=1` ✅） |
 
 ---
 
@@ -164,6 +164,35 @@ KernelMain
 
 ---
 
+## 3quater. PR-K3 细则（已收官 ✅）
+
+### 做
+
+- X64 `HalSerialGop.c`：`SCREEN_LOG=1` 时按 `TOY_SCREEN_LOG_*` 上滚到 FB（Y≥80）
+- `KernelMain` 主线走 `TOY_SLOG_BOOT`；`HalSerialGopEnable` 接在 `HalVideoSet` 后
+- `build.sh`：`SCREEN_LOG=0|1`（默认 0）；Arm/RiscV 仍空操作
+
+### 不做
+
+- 完整 Theme / Present / Desktop ring 叠画
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`；`x64 SCREEN_LOG=1`
+- [x] 串口仍见 `KernelMain:` / `park`
+- [x] GUI：`SCREEN_LOG=1` 时屏上有 boot 白字行
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Hal/X64/HalSerialGop.c` | 上滚 / Enable / Mute / Mirror |
+| `Hal/X64/HalSerial.c` | WriteChannel → TryMirror |
+| `Core/KernelMain.c` | BOOT 通道 + GopEnable |
+| `build.sh` | `-DTOY_SCREEN_LOG=` |
+
+---
+
 ## 4. 目录预期（随刀增长）
 
 ```text
@@ -209,3 +238,4 @@ Kernel/
 | 2026-10-08 | Runtime：`Esp`/`RootFs`/`Fw` + `run.sh`；headless 见 FB/self-test/park |
 | 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |
 | 2026-10-08 | TG：K2 Font 8×8 + DrawString；左上角 `Blocks K2` ✅；★ → K3 |
+| 2026-10-08 | TG：K3 HalSerialGop 屏上 boot 字；`SCREEN_LOG=1` ✅；★ → K4 |

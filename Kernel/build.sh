@@ -7,7 +7,8 @@
 #   ./build.sh x64          # 本机 gcc
 #   ./build.sh arm64        # Tools/Extract 里的 aarch64 交叉链
 #   ./build.sh riscv        # 同上 riscv 交叉链
-#   ./build.sh x64 SERIAL=0 # 编译期关掉 UART
+#   ./build.sh x64 SERIAL=0        # 编译期关掉 UART
+#   ./build.sh x64 SCREEN_LOG=1    # boot 日志镜像到帧缓冲
 #
 # 产出：Build/<Arch>/Kernel.elf
 # 原则：凡进 Kernel.elf 的源码都在 Kernel/；顶层 Boot/ 只放独立 EFI（X64）。
@@ -22,12 +23,15 @@ INC_ABI="$SCRIPT_DIR/Include/Abi"
 INC_CORE="$SCRIPT_DIR/Include/Core"
 INC_HAL="$SCRIPT_DIR/Include/Hal"
 
-# Blocks 接棒期默认开串口；SERIAL=0 可关
+# Blocks 接棒期默认开串口；SERIAL=0 可关。SCREEN_LOG 默认关（与现网一致）。
 TOY_SERIAL=1
+TOY_SCREEN_LOG=0
 for Arg in "$@"; do
     case "$Arg" in
         SERIAL=0|serial=0) TOY_SERIAL=0 ;;
         SERIAL=1|serial=1) TOY_SERIAL=1 ;;
+        SCREEN_LOG=0|screen_log=0) TOY_SCREEN_LOG=0 ;;
+        SCREEN_LOG=1|screen_log=1) TOY_SCREEN_LOG=1 ;;
     esac
 done
 
@@ -37,6 +41,7 @@ COMMON_CFLAGS=(
     -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
     -DTOY_BRINGUP=0
     -DTOY_SERIAL="$TOY_SERIAL"
+    -DTOY_SCREEN_LOG="$TOY_SCREEN_LOG"
     -I"$INC_ABI" -I"$INC_CORE" -I"$INC_HAL"
 )
 
@@ -106,12 +111,14 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/PlatformStub.c" -o "$OUT/PlatformStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerial.c" -o "$OUT/HalSerial.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerialGop.c" -o "$OUT/HalSerialGop.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVideo.c" -o "$OUT/HalVideo.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
-        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalVideo.o" \
+        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
+        "$OUT/HalVideo.o" \
         "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
         "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/KernelMain.o"
     ;;
@@ -165,7 +172,7 @@ riscv|RiscV|RISCV)
 esac
 
 echo "=========================================="
-echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (TOY_SERIAL=$TOY_SERIAL)"
+echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (SERIAL=$TOY_SERIAL SCREEN_LOG=$TOY_SCREEN_LOG)"
 echo "CC=$CC"
 ls -lh "$OUT/Kernel.elf"
 echo "=========================================="

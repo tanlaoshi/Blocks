@@ -28,6 +28,7 @@
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "KernelModules.h"
+#include "ToySerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include "EarlyIdentity.h"
@@ -82,7 +83,7 @@ static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
         Line[N++] = '\n';
     }
     Line[N] = 0;
-    HalSerialWrite(Line);
+    HalSerialWriteChannel(TOY_SLOG_BOOT, Line);
 }
 
 /* 右上角色块 + 一行 ASCII：证明 LFB 可写、点阵可画 */
@@ -97,12 +98,14 @@ static void KernelVideoSelfTest(UINT32 Width, UINT32 Height) {
     X = Width - Box - 8;
     Y = 8;
     HalVideoFillRect(X, Y, Box, Box, 0x00FFFF00u); /* 青黄：易看见 */
-    HalSerialWrite("KernelMain: video self-test (top-right box)\n");
+    HalSerialWriteChannel(TOY_SLOG_BOOT,
+                          "KernelMain: video self-test (top-right box)\n");
 
-    /* 左上角白字：K2 Font */
+    /* 左上角白字：Font 自检（不进 boot 上滚区） */
     if (Width >= 80 && Height >= 24) {
         HalVideoDrawStringAt(8, 8, "Blocks K2", 0x00FFFFFFu);
-        HalSerialWrite("KernelMain: font self-test (DrawString)\n");
+        HalSerialWriteChannel(TOY_SLOG_BOOT,
+                              "KernelMain: font self-test (DrawString)\n");
     }
 }
 
@@ -114,7 +117,9 @@ static void KernelAttachEarly(void) {
 
     HalSerialInitialize();
     HalVideoSet(&Video);
-    HalSerialWrite("KernelMain: early ok\n");
+    /* SCREEN_LOG=1 时开始往 FB 上滚（受 TOY_SCREEN_LOG_*） */
+    HalSerialGopEnable();
+    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: early ok\n");
 
     HalVideoGetSize(&Width, &Height);
     if (Info != 0 && Info->FrameBufferSize != 0 && Width != 0 && Height != 0) {
@@ -126,19 +131,19 @@ static void KernelAttachEarly(void) {
 void KernelMain(const BOOT_INFO *Info) {
     BootInfoSet(Info);
 
-#if defined(__x86_64__) || defined(_M_X64)
-    if (EarlyIdentitySetup() == 0) {
-        EarlyIdentityEnable();
-    }
-#endif
+    #if defined(__x86_64__) || defined(_M_X64)
+        if (EarlyIdentitySetup() == 0) {
+            EarlyIdentityEnable();
+        }
+    #endif
 
     KernelAttachEarly();
 
     if (KernelModulesRunFull() != 0) {
-        HalSerialWrite("KernelMain: modules failed\n");
+        HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules failed\n");
         KernelParkForever();
     }
 
-    HalSerialWrite("KernelMain: modules done; park\n");
+    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules done; park\n");
     KernelParkForever();
 }

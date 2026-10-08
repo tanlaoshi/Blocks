@@ -9,11 +9,12 @@
  * 与 Boot/BootPkg/BootSerial 同口同波特率（115200 8N1），方便整段 boot 日志连贯。
  *
  * TOY_SERIAL=0：编译期关掉，不 Probe、不碰端口（见 ToySerialConfig.h）。
- * 屏上滚动 / ring 缓冲相关 API 可为空操作。
+ * SCREEN_LOG=1：WriteChannel 经 HalSerialGop 画到 FB（见 HalSerialGop.c）。
  *
- * 【积木】门面 HalSerial.h；本文件是 X64 后端，可换成别的 UART。
+ * 【积木】门面 HalSerial.h；本文件是 X64 UART 后端。
  */
 #include "HalSerial.h"
+#include "HalSerialGop.h"
 #include "ToySerialConfig.h"
 
 #define COM1 0x3F8u
@@ -163,18 +164,7 @@ int HalSerialPresent(void) {
 void HalSerialRxPump(void) {
 }
 
-void HalSerialGopEnable(void) {
-}
-
 void HalSerialBootFontApply(void) {
-}
-
-void HalSerialGopMirror(int Enable) {
-    (void)Enable;
-}
-
-int HalSerialGopMirroring(void) {
-    return 0;
 }
 
 const char *HalSerialLogText(void) {
@@ -182,13 +172,14 @@ const char *HalSerialLogText(void) {
 }
 
 void HalSerialWriteChannel(int Channel, const char *Text) {
-    if (gShellOwnUart) {
+    if (Text == 0) {
         return;
     }
-    if (!ChannelUartOn(Channel)) {
-        return;
+    if (!gShellOwnUart && ChannelUartOn(Channel)) {
+        UartWriteRaw(Text);
     }
-    UartWriteRaw(Text);
+    /* 屏：与 UART 独立；无 COM1 也可画（受 SCREEN_LOG_*） */
+    HalSerialGopTryMirror(Channel, Text);
 }
 
 void HalSerialShellOwn(void) {
@@ -251,13 +242,6 @@ char HalSerialReadChar(void) {
     }
     return (char)In8(COM1);
 #endif
-}
-
-void HalSerialBootLogRewind(void) {
-}
-
-void HalSerialGopMute(int Mute) {
-    (void)Mute;
 }
 
 void HalSerialBootMarkChannel(int Channel, const char *Text) {

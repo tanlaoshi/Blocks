@@ -33,6 +33,7 @@
 | `Core/` | `KernelMain`、模块表、`BOOT_INFO` 等合流代码 |
 | `Hal/X64/HalVideo.c` | X64 直写帧缓冲（DrawPixel / FillRect） |
 | `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
+| `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
 
 ## 编译
 
@@ -40,4 +41,5 @@
 cd ~/Blocks/Kernel
 ./build.sh x64|arm64|riscv   # → Build/<Arch>/Kernel.elf
 ./build.sh x64 SERIAL=0      # 编译期关掉 UART
+./build.sh x64 SCREEN_LOG=1  # boot 日志画到屏幕（分通道 TOY_SCREEN_LOG_*）
 ```

@@ -45,7 +45,8 @@
 | **链接** | 把多个 `.o` 拼成一颗完整可执行文件（例如 `Kernel.elf`）。 |
 | **DTB** | 「这块板子长什么样」的说明书（设备树），多用于 Arm / RiscV。 |
 | **`BOOT_INFO`** | 我们自己定的一张**交接清单**（内存、屏幕、内核占哪段……）。三种架构最终都要让内核拿到这张清单。 |
-| **`X64_BOOT_CONFIG`** | **仅 X64 Boot** 用的清单（Arm/RiscV 没有），更贴近 UEFI 原始数据；HAL 再翻译成 `BOOT_INFO`。字段 **`EntryAddress`** = 内核入口地址。 |
+| **`X64_BOOT_CONFIG`** | **仅 X64 Boot** 用的清单（Arm/RiscV 没有），更贴近 UEFI 原始数据。字段 **`EntryAddress`** = 内核入口地址。 |
+| **`HalGetBootConfig`** | **仅 X64 HAL**：接收 `X64_BOOT_CONFIG*`，转成 `BOOT_INFO`，再进 `KernelMain`。 |
 | **HAL** | Kernel 里「和硬件打交道」的那一层，不同架构可以不一样。 |
 | **Common** | Kernel 里三种架构**共用**的那一大段逻辑（调度、文件、界面等）。 |
 | **`KernelMain`** | Common 的大门。进这扇门时，约定：**手里已经有 `BOOT_INFO`**。 |
@@ -74,7 +75,7 @@
 | ④ | 谁把「内核文件」读进内存？ | **Boot 自己读**（从磁盘/ESP 找 `Kernel.elf`） | **不用读第二次**——加载器已经把整颗 ELF 放好了 | 同 Arm |
 | ⑤ | 要不要向固件「正式告别」？ | **要**（`ExitBootServices`：之后不能再随便用 UEFI 服务） | 没有这套 UEFI 手续 | 没有 |
 | ⑥ | Boot 递出去的第一份材料是什么？ | **`X64_BOOT_CONFIG`**（UEFI 风格的原始材料包） | 直接组好 **`BOOT_INFO`** | 直接组好 **`BOOT_INFO`** |
-| ⑦ | 下一棒是谁？ | 内核里的 HAL：先接到 `X64_BOOT_CONFIG`，**翻译**成 `BOOT_INFO` | 直接进入 **`KernelMain(清单)`** | 同 Arm（其它 CPU 核走另一条小门，不组清单） |
+| ⑦ | 下一棒是谁？ | 内核 HAL：**`HalGetBootConfig(X64_BOOT_CONFIG*)`** → 转成 `BOOT_INFO` → `KernelMain` | 直接进入 **`KernelMain(清单)`** | 同 Arm（其它 CPU 核走另一条小门，不组清单） |
 | ⑧ | **三种架构在这里汇合** | ↓ | ↓ | ↓ |
 | **统一点** | 操作系统主体开始 | **调用 `KernelMain`，并且已经有一份 `BOOT_INFO`** | 相同 | 相同 |
 
@@ -84,7 +85,7 @@
 【X64】
   固件 → BOOTX64.EFI（Boot 做很多事）
        → 交出 X64_BOOT_CONFIG（含 EntryAddress）
-       → 内核 HAL 翻译成 BOOT_INFO
+       → HalGetBootConfig(…) 转成 BOOT_INFO
        → KernelMain(…)     ←── 统一从这里开始
        → 三种架构共用的 Common
 
@@ -112,7 +113,7 @@
 
 - 上面很多信息的「原材料」形式（例如 UEFI 的内存图还没整理成我们的段表）；
 - 以及 ACPI、SystemTable、USB 控制器地址等 **PC/UEFI 才有的东西**。  
-  这些先交给 HAL，由 HAL 消化后，再形成标准的 `BOOT_INFO`。
+  这些先交给 HAL 的 **`HalGetBootConfig`**，转成标准的 `BOOT_INFO` 后再进 `KernelMain`。
 
 头文件在哪里（给以后改代码的人）：
 
@@ -155,7 +156,7 @@ Boot/
 | Arm/RiscV 的 `BootMain` | Boot 里用 C 填写 `BOOT_INFO` 的函数 |
 | `KernelMain` | 三种架构汇合后的操作系统大门 |
 | `X64_BOOT_CONFIG.EntryAddress` | 内核从哪儿开始执行的**数字地址** |
-| 内核 HAL 入口（X64，名待定/`HalBootHandOff`） | 接收 `X64_BOOT_CONFIG*`，转成 `BOOT_INFO` |
+| **`HalGetBootConfig`**（仅 X64 HAL） | 接收 `X64_BOOT_CONFIG*`，转成 `BOOT_INFO`，再调 `KernelMain` |
 
 更细的「哪个文件、哪个函数、一步步怎么跑」写在各架构自己的 README 里。
 

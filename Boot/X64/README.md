@@ -18,7 +18,7 @@
 4. 跳进内核，并递上一包材料 **`X64_BOOT_CONFIG`**。
 
 注意：X64 **不在 Boot 里**直接填好最终的 `BOOT_INFO`。  
-那包 `X64_BOOT_CONFIG` 会先到内核的 HAL，**翻译**成 `BOOT_INFO`，再进三种架构共用的 `KernelMain`。
+那包 `X64_BOOT_CONFIG` 会先到内核 HAL 的 **`HalGetBootConfig`**，转成 `BOOT_INFO`，再进三种架构共用的 `KernelMain`。
 
 所以你会觉得 X64 的 Boot **文件特别多**——因为 PC 这条路本来就要自己当「加载器」。
 
@@ -71,8 +71,8 @@
        · 记下 ACPI / USB 等信息
   → ExitBootServices（之后不能再随便问固件要服务了）
   → 调用内核入口（函数指针），参数是 &X64_BOOT_CONFIG
-  → 内核 HAL 收到 X64_BOOT_CONFIG
-       · 翻译成 BOOT_INFO
+  → HalGetBootConfig(X64_BOOT_CONFIG*)
+       · 转成 BOOT_INFO
        · 再调用 KernelMain
   → 之后是三种架构共用的操作系统代码
 ```
@@ -83,10 +83,10 @@
 
 | 交什么 | 怎么交 | 谁接 |
 | ------ | ------ | ---- |
-| 结构体 **`X64_BOOT_CONFIG`** | 作为函数参数传给内核入口（指针） | 内核 HAL（现网在 ToyKernel 的 `Startup.c`） |
-| 内核代码本身 | 已经按 ELF 装进内存；结构体里有一个**入口地址数字** | CPU 从该地址开始执行 |
+| 结构体 **`X64_BOOT_CONFIG`** | 作为函数参数传给 **`HalGetBootConfig`** | 内核 HAL（X64；现网仍在 ToyKernel `Startup.c`，迁入后改名落地） |
+| 内核代码本身 | 已经按 ELF 装进内存；**`EntryAddress`** 是入口地址数字 | CPU 从该地址开始执行 |
 
-结构体里的 **`EntryAddress`** 是内核镜像入口的 **64 位地址数字**，不要和内核里的入口函数名混成一个东西。
+**`HalGetBootConfig`**：仅 X64；从 `X64_BOOT_CONFIG` 得到 `BOOT_INFO` 后进入 `KernelMain`。Arm/RiscV 没有这一步。
 
 ---
 
@@ -113,4 +113,4 @@ cd ~/OpenBox/Boot/X64
 | Boot 编出什么 | 独立的 `.efi` | 几个 `.o`，链进内核 |
 | 第一次交出的清单 | `X64_BOOT_CONFIG` | 直接是 `BOOT_INFO` |
 
-**汇合点不变**：大家都要在进入 `KernelMain` 时拥有 `BOOT_INFO`。X64 只是多了「翻译」那一站。
+**汇合点不变**：大家都要在进入 `KernelMain` 时拥有 `BOOT_INFO`。X64 多一站 **`HalGetBootConfig`**。

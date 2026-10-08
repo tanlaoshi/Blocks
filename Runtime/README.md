@@ -22,12 +22,12 @@ cd ~/Blocks/Runtime
 ./run.sh --kill          # 杀残留 QEMU
 ```
 
-看 K1 右上角色块：用 **不要** `--headless` 的 `./run.sh`（本机有 `DISPLAY` 时会出窗）。
+看屏：用 **不要** `--headless` 的 `./run.sh`（本机有 `DISPLAY` 时会出窗）。窗内应见左上角 `ToyOS ready` / `Blocks>`（白字）；交互仍在终端串口。
 
 依赖：`qemu-system-x86_64`、`/usr/share/OVMF/OVMF_CODE_4M.fd`。
 
-串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 黑屏窗口里打字。
+串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K8 预期：`ToyOS ready` → `Blocks>`；在终端输入会回显，回车后再打一行。
+K8+ 预期：串口 `ToyOS ready` → `Blocks>`；GTK 同文案；终端输入回显。
 
-旧 K1 日志形如：`handoff:` → `FB WxH` → `video self-test` → `[Mod] …`。
+可选：`./build.sh x64 SCREEN_LOG=1` 把 boot 日志镜像到屏（Y≥80）。

@@ -4,9 +4,9 @@
  * 【初学者】
  * SCREEN_LOG=1 时，受 TOY_SCREEN_LOG_* 放行的通道会把一行字画到屏上。
  * 用 K2 的 8×8 DrawStringAt；满屏则丢掉最旧行并重绘正文区。
- * 无 Theme、无 Present、无平滑。
+ * 背缓冲开启后画在 back 上，须 Present 才上屏（无 Theme / 无平滑）。
  *
- * 正文从 Y=80 起，躲开左上角 Font 自检与右上角色块。
+ * 正文从 Y=80 起，躲开左上角横幅。
  */
 #include "HalSerial.h"
 #include "HalSerialGop.h"
@@ -80,6 +80,12 @@ static UINT32 VisCap(UINT32 H) {
     return Rows;
 }
 
+static void ScreenCommit(void) {
+    if (HalVideoBackbufferEnabled()) {
+        HalVideoPresent();
+    }
+}
+
 static void RepaintBody(UINT32 W, UINT32 H) {
     UINT32 Bottom;
     UINT32 i;
@@ -96,6 +102,7 @@ static void RepaintBody(UINT32 W, UINT32 H) {
         Y += FONT_CELL_H;
     }
     gBootLogY = Y;
+    ScreenCommit();
 }
 
 static void PushLine(const char *Line) {
@@ -126,6 +133,7 @@ static void PushLine(const char *Line) {
                          0x00FFFFFFu);
     gBootVisN++;
     gBootLogY += FONT_CELL_H;
+    ScreenCommit();
 }
 
 static void MirrorText(const char *Text) {

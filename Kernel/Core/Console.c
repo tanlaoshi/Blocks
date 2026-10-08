@@ -3,9 +3,11 @@
  *
  * 【初学者】
  * 不是完整 Shell：不解析命令表。读到回车就原样打回，证明 RX 通路活着。
+ * 屏上另打一行字（无自检色块）：证明 LFB/背缓冲仍活。
  */
 #include "Console.h"
 #include "HalSerial.h"
+#include "HalVideo.h"
 #include "Scheduler.h"
 #include "ToySerialConfig.h"
 
@@ -16,9 +18,26 @@ static void ConsolePut(const char *Text) {
     HalSerialWriteShell(Text);
 }
 
+/* 左上角白字；背缓冲开着则 Present，否则直写 LFB 已可见 */
+static void ConsolePaintBanner(void) {
+    UINT32 W = 0;
+    UINT32 H = 0;
+
+    HalVideoGetSize(&W, &H);
+    if (W < 96 || H < 40) {
+        return;
+    }
+    HalVideoDrawStringAt(8, 8, "ToyOS ready", 0x00FFFFFFu);
+    HalVideoDrawStringAt(8, 24, "Blocks>", 0x00FFFFFFu);
+    if (HalVideoBackbufferEnabled()) {
+        HalVideoPresent();
+    }
+}
+
 int ConsoleInitialize(void) {
     /* 横幅仍走日志通道；进 Run 再 ShellOwn，独占提示符输入 */
     HalSerialWriteChannel(TOY_SLOG_BOOT, "ToyOS ready\n");
+    ConsolePaintBanner();
     return 0;
 }
 

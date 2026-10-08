@@ -7,7 +7,7 @@
 
 #include "BootPrivate.h"
 
-/* 虚拟机（QEMU/KVM 等）用窗口友好表；真机选模见 GetAndSetVideo（THEME 优先） */
+/* 虚拟机（QEMU/KVM 等）用窗口友好表；真机选模见 GetVideoInfo（THEME 优先） */
 BOOLEAN IsVirtualMachine(VOID) {
     UINT32 Eax;
     UINT32 Ebx;

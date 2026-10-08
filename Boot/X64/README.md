@@ -30,7 +30,7 @@
 | ----------- | -------------- |
 | `Boot.c` | 只有一个入口函数 **`UefiMain`**，按顺序调用别人，像「节目单」 |
 | `BootSerial.c` / `.h` | 串口（COM1）打印，方便在没图形界面时看日志 |
-| `Video/` | 和显卡/分辨率打交道（GOP） |
+| `Video/` | GOP：`GetVideoInfo` 选模，`SetVideoMode` 设模式 |
 | `BootKernel.c` / `BootKernelLoad.c` | 从磁盘找到 `Kernel.elf`，检查并加载到内存 |
 | `BootAcpi.c` | 找 ACPI 的 RSDP（电源/硬件信息的入口地址） |
 | `BootPci.c` | 在 PCI 总线上找 USB 控制器（xHCI）地址 |
@@ -47,7 +47,7 @@
 读 `Boot.c` 时，按这个顺序理解即可：
 
 1. **开串口、打欢迎横幅** → `BootSerialInitialize` / `BootSerialBanner`
-2. **搞定显示** → `GetAndSetVideo`（在 `Video/` 里）
+2. **查显示能力 / 选模** → `GetVideoInfo`；**设模式并填帧缓冲** → `SetVideoMode`
 3. **加载内核文件** → `BootLoadKernel`（读盘 + 解析 ELF）
 4. **填 RSDP** → `BootFillRsdp`
 5. **记下 SystemTable**（固件留给运行时用的一张大表指针）

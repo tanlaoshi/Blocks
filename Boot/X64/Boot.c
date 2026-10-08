@@ -12,9 +12,14 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     BootSerialInitialize();
     BootSerialBanner();
 
-    Status = GetAndSetVideo(ImageHandle, &BootConfig.VideoConfig, &BootConfig);
+    Status = GetVideoInfo(ImageHandle, &BootConfig);
     if (EFI_ERROR(Status)) {
-        BootSerialPrintf("Boot: GetAndSetVideo Failed: %r\n", Status);
+        BootSerialPrintf("Boot: GetVideoInfo Failed: %r\n", Status);
+        return Status;
+    }
+    Status = SetVideoMode(ImageHandle, &BootConfig.VideoConfig, &BootConfig);
+    if (EFI_ERROR(Status)) {
+        BootSerialPrintf("Boot: SetVideoMode Failed: %r\n", Status);
         return Status;
     }
 

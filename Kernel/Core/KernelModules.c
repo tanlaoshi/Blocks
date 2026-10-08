@@ -1,7 +1,7 @@
 /*
  * KernelModules.c — 开机模块表（积木拼表）
  *
- * Full：Serial → Memory → Driver → VirtualMemory（K5）
+ * Full：Serial → Memory → Driver → VirtualMemory → Video（K6）
  */
 #include "KernelModules.h"
 #include "Module.h"
@@ -74,11 +74,33 @@ static int InitializeVirtualMemory(void) {
     return 0;
 }
 
+static int InitializeVideo(void) {
+    UINT32 W = 0;
+    UINT32 H = 0;
+
+    /* 不 ClearScreen：接 Boot 黑底 / 早期自检画面 */
+    HalVideoInitializeBackbuffer();
+    HalVideoGetSize(&W, &H);
+    if (HalVideoBackbufferEnabled()) {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer on\n");
+        if (W > 40 && H > 40) {
+            /* 背缓冲上画青框，Present 后才上屏 */
+            HalVideoFillRect(16, 16, 24, 24, 0x0000FFFFu);
+            HalVideoPresent();
+        }
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: present ok\n");
+    } else {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer skip\n");
+    }
+    return 0;
+}
+
 static const MODULE gModulesFull[] = {
     { "Serial", InitializeSerial },
     { "Memory", InitializeMemory },
     { "Driver", InitializeDriver },
     { "VirtualMemory", InitializeVirtualMemory },
+    { "Video", InitializeVideo },
 };
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))

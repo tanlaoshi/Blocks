@@ -51,3 +51,20 @@ void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     (void)Height;
     (void)Color;
 }
+
+void HalVideoInitializeBackbuffer(void) {
+}
+
+void HalVideoPresent(void) {
+}
+
+void HalVideoPresentFlush(void) {
+}
+
+int HalVideoBackbufferEnabled(void) {
+    return 0;
+}
+
+UINT64 HalVideoBackbufferBase(void) {
+    return 0;
+}

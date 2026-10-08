@@ -14,7 +14,7 @@
 #define BOOT_CONFIG_H
 
 #include "UefiBootConfig.h"
-#include "BootInfo.h"
+#include "BootInfoTypes.h"
 
 typedef UEFI_BOOT_CONFIG BOOT_CONFIG;
 typedef TOY_MEMORY_MAP  MEMORY_MAP;

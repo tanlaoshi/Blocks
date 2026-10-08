@@ -1,7 +1,7 @@
 /* FontGlyph8x8.h — ASCII 0x20..0x7E，每字 8 行×1 字节（MSB=左） */
 #ifndef FONT_GLYPH_8X8_H
 #define FONT_GLYPH_8X8_H
-#include "BootInfo.h"
+#include "BootTypes.h"
 
 #define FONT_CELL_W 8u
 #define FONT_CELL_H 8u

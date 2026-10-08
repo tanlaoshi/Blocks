@@ -37,6 +37,7 @@
 | `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
 | `Core/Device.c` | 设备框架空壳（K5） |
 | `Core/VirtualMemory.c` | 认领 EarlyIdentity 分页；确认 FB 在窗内 |
+| `Hal/X64/HalVideo.c` | LFB + K6 背缓冲 / Present |
 
 ## 编译
 

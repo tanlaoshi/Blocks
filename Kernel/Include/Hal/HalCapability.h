@@ -1,20 +1,17 @@
 /*
  * HalCapability.h — 「这块板子有什么能力？」
  *
- * 【初学者】
- * Common 代码不要写 #ifdef __x86_64__ 来决定走桌面还是串口壳。
- * 应问 Hal：
- *   HalHasFrameBuffer()              — 有没有可用帧缓冲？
- *   HalConsoleOnly()                 — 是否只能串口命令行？
- *   HalPlatformIsVirtSerialConsole() — 是不是 virt 那类平台形状？
- *
- * KernelMain 用这三面旗标选模块表。
- * HalCpuPark()：CPU 停车（省电空转），失败或收尾路径会用到。
- *
- * 【积木】门面稳定；取值逻辑见 HalCapability.c。
+ * 【分层】本文件不依赖 Core/BootInfo 仓储。
+ * KernelMain 在 BootInfoStore 之后调用 HalCapabilityObserveFrameBuffer，
+ * 把「有没有 FB」注入 Hal；之后模块只问 HalHasFrameBuffer() 等。
  */
 #ifndef HAL_CAPABILITY_H
 #define HAL_CAPABILITY_H
+
+#include "BootTypes.h"
+
+/* Core → Hal：注入帧缓冲是否存在（FbSize!=0 视为有屏） */
+void HalCapabilityObserveFrameBuffer(UINT64 FrameBufferSize);
 
 int HalHasFrameBuffer(void);
 int HalConsoleOnly(void);

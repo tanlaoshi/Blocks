@@ -1,28 +1,17 @@
 /*
- * HalVideo.c — X64：直接写线性帧缓冲（最小子集）
+ * HalVideo.c — X64：LFB + 可选背缓冲（K6）
  *
  * 【初学者】
- * Boot 已通过 GOP 设好模式，并把帧缓冲物理址放进 BOOT_INFO。
- * 恒等页表打开后，虚址 == 物理址（落在 4GiB 窗内时），可把
- * FrameBufferBase 当成 UINT32* 数组来写像素。
- *
- * 约定：每像素 32 位，颜色 0x00RRGGBB（与常见 UEFI BGRX 小端一致）。
- * 一行宽度用 PixelsPerScanLine（可能 ≥ 可见宽度，有 padding）。
- *
- * 画字见 Core/Font.c（点阵调 DrawPixel）。本文件不做后缓冲 / Present / 剪裁。
+ * Set 之后可直写 GOP 帧缓冲。InitializeBackbuffer 从 PMM 要一页池，
+ * 之后 Draw* 写背缓冲；Present 整屏拷回 LFB。不强制 Clear（接 Boot 画面）。
  */
 #include "HalVideo.h"
+#include "PhysicalMemory.h"
 
 static VIDEO_CONFIG gVideo;
 static int gVideoValid;
-
-static UINT32 *FrameBuffer(void) {
-    if (!gVideoValid || gVideo.FrameBufferBase == 0 ||
-        gVideo.HorizontalResolution == 0 || gVideo.VerticalResolution == 0) {
-        return 0;
-    }
-    return (UINT32 *)(UINTN)gVideo.FrameBufferBase;
-}
+static UINT32 *gBack;
+static int gBackOn;
 
 static UINT32 Pitch(void) {
     if (gVideo.PixelsPerScanLine != 0) {
@@ -31,9 +20,24 @@ static UINT32 Pitch(void) {
     return gVideo.HorizontalResolution;
 }
 
+static UINT32 *Front(void) {
+    if (!gVideoValid || gVideo.FrameBufferBase == 0) {
+        return 0;
+    }
+    return (UINT32 *)(UINTN)gVideo.FrameBufferBase;
+}
+
+static UINT32 *DrawTarget(void) {
+    if (gBackOn && gBack != 0) {
+        return gBack;
+    }
+    return Front();
+}
+
 void HalVideoSet(const VIDEO_CONFIG *Config) {
     if (Config == 0) {
         gVideoValid = 0;
+        gBackOn = 0;
         return;
     }
     gVideo = *Config;
@@ -57,8 +61,78 @@ UINT64 HalVideoFrameBufferSize(void) {
     return gVideoValid ? gVideo.FrameBufferSize : 0;
 }
 
+int HalVideoBackbufferEnabled(void) {
+    return gBackOn;
+}
+
+void HalVideoInitializeBackbuffer(void) {
+    UINT32 P;
+    UINT64 Bytes;
+    UINT32 Pages;
+    UINT32 *Src;
+    UINT32 *Dst;
+    UINT64 i;
+    UINT64 Count;
+
+    if (!gVideoValid || gBackOn) {
+        return;
+    }
+    P = Pitch();
+    if (P == 0 || gVideo.VerticalResolution == 0) {
+        return;
+    }
+    Bytes = (UINT64)P * (UINT64)gVideo.VerticalResolution * 4ull;
+    Pages = (UINT32)((Bytes + PAGE_SIZE - 1u) / PAGE_SIZE);
+    if (Pages == 0) {
+        return;
+    }
+    gBack = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+    if (gBack == 0) {
+        return;
+    }
+    /* 接 Boot：把当前 LFB 拷进背缓冲，避免 Present 刷成未初始化花屏 */
+    Src = Front();
+    Dst = gBack;
+    Count = Bytes / 4ull;
+    if (Src != 0) {
+        for (i = 0; i < Count; i++) {
+            Dst[i] = Src[i];
+        }
+    }
+    gBackOn = 1;
+}
+
+void HalVideoPresent(void) {
+    UINT32 *Src;
+    UINT32 *Dst;
+    UINT32 P;
+    UINT32 Y;
+    UINT32 X;
+    UINT32 W;
+
+    if (!gBackOn || gBack == 0) {
+        return;
+    }
+    Src = gBack;
+    Dst = Front();
+    if (Dst == 0) {
+        return;
+    }
+    P = Pitch();
+    W = gVideo.HorizontalResolution;
+    for (Y = 0; Y < gVideo.VerticalResolution; Y++) {
+        for (X = 0; X < W; X++) {
+            Dst[Y * P + X] = Src[Y * P + X];
+        }
+    }
+}
+
+void HalVideoPresentFlush(void) {
+    HalVideoPresent();
+}
+
 void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
-    UINT32 *Fb = FrameBuffer();
+    UINT32 *Fb = DrawTarget();
     UINT32 P = Pitch();
 
     if (Fb == 0 || X >= gVideo.HorizontalResolution ||
@@ -70,7 +144,7 @@ void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
 
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
                       UINT32 Color) {
-    UINT32 *Fb = FrameBuffer();
+    UINT32 *Fb = DrawTarget();
     UINT32 P = Pitch();
     UINT32 Row;
     UINT32 Col;
@@ -96,4 +170,8 @@ void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
             Fb[Row * P + Col] = Color;
         }
     }
+}
+
+UINT64 HalVideoBackbufferBase(void) {
+    return gBackOn ? (UINT64)(UINTN)gBack : 0;
 }

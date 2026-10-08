@@ -21,7 +21,7 @@
  * 入口栈已由汇编设好；这里是普通 C，不要再改 rsp。
  */
 #include "BootConfig.h"
-#include "BootInfo.h"
+#include "BootInfoTypes.h"
 #include "IdentityMap.h"
 #include "Kernel.h"
 #include "HalSerial.h"

@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K6** · Video 模块（背缓冲） |
-| 排队 | K7 → K8 → …（见 §2） |
-| 刚收官 | **PR-K5** · Driver 壳 + VMM 认领 EarlyIdentity；`FB pixel after PG ok` ✅ |
-| 顺手（不推 ★） | `HalCapability` / `HalVideoStub`：`Core/` → `Hal/Common/` |
+| **★** | **PR-K7** · Cpu（GDT/IDT 最小） |
+| 排队 | K8 → K9+（见 §2） |
+| 刚收官 | **PR-K6** · Video 背缓冲；`[Mod] Video` / `backbuffer on` / `present ok` ✅ |
+| 顺手（不推 ★） | BootInfo 分层（`BootInfoStore` + Abi types + Observe）；BootPkg 去文件前缀 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -31,7 +31,7 @@
 
 表序：`Serial → Memory → Driver → VirtualMemory`。
 
-### K6 规划（★ · 最小子集）
+### K6 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：模块表挂 `Video`；可选背缓冲 + `Present`；**不**强制全屏 Clear（接 Boot 黑底）。
 
@@ -40,7 +40,22 @@
 | **做** | `InitializeVideo`；X64：`HalVideoInitializeBackbuffer`（PMM 页）+ `Present` 整屏 blit；画点默认进背缓冲 |
 | **不做** | 脏矩形、Theme、缩放、整夹搬现网 Video |
 | **Arm/RiscV** | Init 成功桩 |
-| **验收** | `[Mod] Video`；串口报 backbuffer；Present 后屏上可见自检（不整屏刷黑） |
+| **验收** | `[Mod] Video`；`Video: backbuffer on` / `present ok` → `park` ✅ |
+
+表序：`… → VirtualMemory → Video`。
+
+### K7 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `Cpu`；X64 装最小 GDT + IDT（门可挂）；**不**开定时器中断风暴。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `InitializeCpu`；X64：`lgdt` 内核码/数据段 + `lidt`（异常/IRQ 门指向安全 stub）；串口报 ready |
+| **不做** | LAPIC 定时器、IOAPIC 路由、TSS/用户段、SMP、整夹搬现网 Arch |
+| **Arm/RiscV** | Init 成功桩（本刀不装 GIC/SBI 定时器） |
+| **验收** | `[Mod] Cpu`；`Cpu: gdt/idt ok`（或 arch 桩 ok）→ `park`；串口仍活 |
+
+表序：`… → Video → Cpu`。
 
 ---
 
@@ -292,3 +307,5 @@ Kernel/
 | 2026-10-08 | TG：K4 最小位图 PMM；`[Mod] Memory` / self-test ok ✅；★ → K5 |
 | 2026-10-08 | `HalCapability` / `HalVideoStub` 从 `Core/` 迁入 `Hal/Common/`（Hal 前缀不再混在 Core） |
 | 2026-10-08 | TG：K5 Driver 壳 + VMM 认领 EarlyIdentity；★ → K6（含 K6 规划） |
+| 2026-10-08 | TG：K6 Video 背缓冲 + BootInfo 分层；★ → K7（含 K7 规划） |
+| 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |

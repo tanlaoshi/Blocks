@@ -15,10 +15,10 @@
  *       → KernelMain(Info)   ← 同一扇门
  *
  * 【门里当前顺序】
- *   1. BootInfoSet          保存开机说明书
+ *   1. BootInfoStore + HalCapabilityObserveFrameBuffer
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
  *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
- *   4. KernelModulesRunFull（Serial → Memory → Driver → VirtualMemory）
+ *   4. KernelModulesRunFull（… → VirtualMemory → Video）
  *   5. park
  *
  * 【积木】本文件是胶水：只编排，不写分配页 / 调度政策。
@@ -129,7 +129,8 @@ static void KernelAttachEarly(void) {
 }
 
 void KernelMain(const BOOT_INFO *Info) {
-    BootInfoSet(Info);
+    BootInfoStore(Info);
+    HalCapabilityObserveFrameBuffer(Info != 0 ? Info->FrameBufferSize : 0);
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (EarlyIdentitySetup() == 0) {

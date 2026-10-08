@@ -8,7 +8,8 @@
  * virt 约定：RAM @ 0x80000000；内核载荷常在 0x80200000。
  * 填 BOOT_INFO → 串口横幅 → KernelMain。与 Arm64 同思路，地址不同。
  */
-#include "BootInfo.h"
+#include "BootInfoTypes.h"
+#include "Kernel.h"
 #include "HalSerial.h"
 #include "BoardConfig.h"
 

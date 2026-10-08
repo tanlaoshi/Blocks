@@ -11,7 +11,7 @@
 #ifndef HAL_RAM_FRAME_BUFFER_H
 #define HAL_RAM_FRAME_BUFFER_H
 
-#include "BootInfo.h"
+#include "BootInfoTypes.h"
 
 #define RAM_FRAME_BUFFER_WIDTH  1920u
 #define RAM_FRAME_BUFFER_HEIGHT 1080u

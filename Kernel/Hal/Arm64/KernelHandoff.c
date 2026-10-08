@@ -11,7 +11,8 @@
  *
  * 填完 BOOT_INFO → HalSerial 横幅 → KernelMain(&Info)。
  */
-#include "BootInfo.h"
+#include "BootInfoTypes.h"
+#include "Kernel.h"
 #include "HalSerial.h"
 #include "BoardConfig.h"
 

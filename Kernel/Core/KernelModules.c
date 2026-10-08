@@ -1,7 +1,9 @@
 /*
- * KernelModules.c — 开机模块表（积木拼表）
+ * KernelModules.c — 开机模块表 + ModulesRun（积木拼表）
  *
- * Full：Serial → Memory → Driver → VirtualMemory → Video（K6）
+ * Full：Serial → Memory → Driver → VirtualMemory → Video → Cpu（K7）
+ *
+ * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
 #include "KernelModules.h"
 #include "Module.h"
@@ -11,7 +13,30 @@
 #include "VirtualMemory.h"
 #include "ToySerialConfig.h"
 #include "HalVideo.h"
+#include "HalCpu.h"
 #include "BootInfo.h"
+
+static void ModLog(const char *Name, const char *Suffix) {
+    HalSerialWrite("[Mod] ");
+    HalSerialWrite(Name);
+    HalSerialWrite(Suffix);
+}
+
+int ModulesRun(const MODULE *List, int Count) {
+    int i;
+
+    if (List == 0 || Count <= 0) {
+        return -1;
+    }
+    for (i = 0; i < Count; i++) {
+        ModLog(List[i].Name, "\n");
+        if (List[i].Init == 0 || List[i].Init() != 0) {
+            ModLog(List[i].Name, " Failed\n");
+            return -1;
+        }
+    }
+    return 0;
+}
 
 static int InitializeSerial(void) {
     HalSerialInitialize();
@@ -95,12 +120,26 @@ static int InitializeVideo(void) {
     return 0;
 }
 
+static int InitializeCpu(void) {
+    if (HalCpuInitialize() != 0) {
+        HalSerialWriteChannel(TOY_SLOG_MISC, "Cpu: init failed\n");
+        return -1;
+    }
+#if defined(__x86_64__) || defined(_M_X64)
+    HalSerialWriteChannel(TOY_SLOG_MISC, "Cpu: gdt/idt ok\n");
+#else
+    HalSerialWriteChannel(TOY_SLOG_MISC, "Cpu: stub ok\n");
+#endif
+    return 0;
+}
+
 static const MODULE gModulesFull[] = {
     { "Serial", InitializeSerial },
     { "Memory", InitializeMemory },
     { "Driver", InitializeDriver },
     { "VirtualMemory", InitializeVirtualMemory },
     { "Video", InitializeVideo },
+    { "Cpu", InitializeCpu },
 };
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))

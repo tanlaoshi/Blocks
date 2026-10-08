@@ -6,7 +6,7 @@
  *   { "Memory", InitializePhysicalMemory },
  *   { "Scheduler", InitializeScheduler },
  *   …
- * ModulesRun() 按顺序调用每个 Init。失败就停，避免半初始化难查。
+ * ModulesRun() 按顺序调用每个 Init（实现在 KernelModules.c）。失败就停。
  *
  * 想加子系统？写 Init 函数，往表里插一行即可（顺序即依赖顺序）。
  *

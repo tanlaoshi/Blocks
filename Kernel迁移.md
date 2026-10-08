@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K7** · Cpu（GDT/IDT 最小） |
-| 排队 | K8 → K9+（见 §2） |
-| 刚收官 | **PR-K6** · Video 背缓冲；`[Mod] Video` / `backbuffer on` / `present ok` ✅ |
-| 顺手（不推 ★） | BootInfo 分层（`BootInfoStore` + Abi types + Observe）；BootPkg 去文件前缀 |
+| **★** | **PR-K8** · Scheduler 最小 + Console 串口壳 |
+| 排队 | K9+（见 §2） |
+| 刚收官 | **PR-K7** · Cpu GDT/IDT；`[Mod] Cpu` / `gdt/idt ok` → `park` ✅ |
+| 顺手（不推 ★） | `KernelMain.c`→`Kernel.c`；`Module.c` 并入 `KernelModules.c`（`Module.h` 保留） |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -44,7 +44,7 @@
 
 表序：`… → VirtualMemory → Video`。
 
-### K7 规划（★ · 最小子集）
+### K7 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：模块表挂 `Cpu`；X64 装最小 GDT + IDT（门可挂）；**不**开定时器中断风暴。
 
@@ -53,9 +53,22 @@
 | **做** | `InitializeCpu`；X64：`lgdt` 内核码/数据段 + `lidt`（异常/IRQ 门指向安全 stub）；串口报 ready |
 | **不做** | LAPIC 定时器、IOAPIC 路由、TSS/用户段、SMP、整夹搬现网 Arch |
 | **Arm/RiscV** | Init 成功桩（本刀不装 GIC/SBI 定时器） |
-| **验收** | `[Mod] Cpu`；`Cpu: gdt/idt ok`（或 arch 桩 ok）→ `park`；串口仍活 |
+| **验收** | `[Mod] Cpu`；`Cpu: gdt/idt ok` → `park` ✅ |
 
 表序：`… → Video → Cpu`。
+
+### K8 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `Scheduler` + `Console`；单核协作壳；串口有提示符级交互（或先横幅 + 读一行）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 最小调度循环（可先单任务/协作）；`Console` 串口读写壳；`ToyOS ready` 类横幅 |
+| **不做** | 抢占定时器、多核、完整 shell 语法、Gui |
+| **Arm/RiscV** | 同表可编；实现可先薄 |
+| **验收** | `[Mod] Scheduler` → `[Mod] Console`；串口见 ready / 提示符；不再立刻 park（或 park 前可交互） |
+
+表序：`… → Cpu → … → Scheduler → Console`（中间 USB/FS/… 本刀可先跳过空档）。
 
 ---
 
@@ -309,3 +322,4 @@ Kernel/
 | 2026-10-08 | TG：K5 Driver 壳 + VMM 认领 EarlyIdentity；★ → K6（含 K6 规划） |
 | 2026-10-08 | TG：K6 Video 背缓冲 + BootInfo 分层；★ → K7（含 K7 规划） |
 | 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |
+| 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |

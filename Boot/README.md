@@ -138,10 +138,12 @@
 
 ```text
 Boot/
-  X64/     …源码…   Build/BOOTX64.EFI
-  Arm64/   …源码…   Build/*.o
-  RiscV/   …源码…   Build/*.o
+  X64/     …源码…   EDK2/     Build/BOOTX64.EFI
+  Arm64/   …源码…            Build/*.o
+  RiscV/   …源码…            Build/*.o
 ```
+
+X64 用本目录 `EDK2`。Arm64/RiscV 交叉编译器与 Kernel **共用**，在仓库顶层 [`Tools/Extract/`](../Tools/README.md)。
 
 ---
 

@@ -1,5 +1,10 @@
 /*
- * BootTypes.h — 本架构 Boot 交接用基础类型（不依赖 Kernel/）
+ * BootTypes.h — RiscV Boot 本目录自用的基础整数类型
+ *
+ * 与 Arm64/BootTypes.h、Kernel/Include/Abi/BootTypes.h 保持一致。
+ * Boot 单独可编：不依赖 Kernel/、不拉 OpenSBI 头。
+ *
+ * UINTN = UINT64：riscv64 LP64 下与指针同宽。
  */
 #ifndef BOOT_TYPES_H
 #define BOOT_TYPES_H

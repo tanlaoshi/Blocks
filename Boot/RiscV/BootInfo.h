@@ -1,9 +1,13 @@
 /*
- * BootInfo.h — Boot/RiscV → Kernel 交接 ABI（本架构副本）
+ * BootInfo.h — RiscV Boot → Kernel 的交接清单（本架构副本）
  *
- * BootMain 填好 BOOT_INFO 后调用 KernelMain(Info)。
- * 改布局须同步：另一 arch 的 BootInfo.h、Kernel/Include/Core/BootInfo.h。
- * 本目录 Boot.c 只应 #include "BootInfo.h"。
+ * 流程：Boot.S（BSP）→ BootMain(HartId, DtbPhys) 填表 → KernelMain(Info)
+ *
+ * 布局必须与下列文件一致：
+ *   Boot/Arm64/BootInfo.h
+ *   Kernel/Include/Core/BootInfo.h
+ *
+ * 次 hart 不填 BOOT_INFO：它们在 SecondaryPark 等到 SMP 信号后进 HalApMain。
  */
 #ifndef BOOT_INFO_H
 #define BOOT_INFO_H
@@ -40,7 +44,7 @@ typedef struct {
 
     UINT32          VideoModeCount;
     BOOT_VIDEO_MODE VideoModes[BOOT_VIDEO_MODE_MAX];
-    UINT64          GopProtocol;
+    UINT64          GopProtocol; /* 仅 X64 UEFI；此处为 0 */
 
     UINT64          DtbPhys; /* 0 = 无 */
 } BOOT_INFO;

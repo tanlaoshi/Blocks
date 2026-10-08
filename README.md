@@ -26,7 +26,7 @@ cd Boot/Arm64 && ./build.sh    # → Arm64/Build/*.o → KernelMain(BOOT_INFO*)
 cd Boot/RiscV && ./build.sh
 ```
 
-工具链见 `Tools/README.md`。
+工具链：X64→`Boot/X64/EDK2`；Arm64/RiscV 交叉链（Boot+Kernel 共用）→`Tools/Extract/`（见 `Tools/README.md`）。
 
 ### 尚未迁入
 

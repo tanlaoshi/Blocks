@@ -101,7 +101,7 @@ cd ~/OpenBox/Boot/Arm64
 ./build.sh
 ```
 
-需要本机或 `~/OpenBox/Tools/Extract/` 里有 aarch64 交叉编译器（见仓库 `Tools/README.md`）。
+需要 `OpenBox/Tools/Extract/` 里有 aarch64 xPack（Boot/Kernel 共用，见 [`../../Tools/README.md`](../../Tools/README.md)），或 `PATH` 上有 `aarch64-*-gcc`。
 
 ---
 

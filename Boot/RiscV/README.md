@@ -92,7 +92,7 @@ cd ~/OpenBox/Boot/RiscV
 ./build.sh
 ```
 
-需要 RISC-V 交叉编译器（见仓库 `Tools/README.md`）。
+需要 `OpenBox/Tools/Extract/` 里有 riscv xPack（Boot/Kernel 共用，见 [`../../Tools/README.md`](../../Tools/README.md)），或 `PATH` 上有 `riscv*-gcc`。
 
 ---
 

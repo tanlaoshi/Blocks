@@ -1,5 +1,14 @@
 /*
- * Boot.c — RiscV：组 BOOT_INFO → KernelMain（只依赖本目录 BootInfo.h）
+ * Boot.c — RiscV：填写 BOOT_INFO，再调用 KernelMain（仅 BSP）
+ *
+ * 依赖：只 #include 本目录 BootInfo.h。不引 Kernel/、不链完整 libfdt。
+ *
+ * QEMU virt + OpenSBI 常见布局（回退常量）：
+ *   RAM     @ 0x80000000，默认估 256MiB（优先 DTB）
+ *   Kernel  常加载到 0x80200000（OpenSBI 之后；与链接脚本一致）
+ *
+ * HartId：Boot.S 传入；本文件目前只用于签名对齐，组表不依赖它。
+ * TOY_BRINGUP=1：空转，不进 KernelMain。
  */
 #include "BootInfo.h"
 
@@ -7,7 +16,7 @@ extern char __kernel_end[];
 
 #define RISCV_VIRT_RAM_BASE 0x80000000ULL
 #define RISCV_VIRT_RAM_SIZE (256ULL * 1024ULL * 1024ULL)
-#define RISCV_VIRT_KERNEL_LOAD 0x80200000ULL
+#define RISCV_VIRT_KERNEL_LOAD 0x80200000ULL /* OpenSBI 默认载荷地址 */
 #define FDT_MAGIC 0xd00dfeedu
 
 static void MemZero(void *P, UINTN N) {
@@ -18,12 +27,19 @@ static void MemZero(void *P, UINTN N) {
     }
 }
 
+/* FDT 大端字段 → 主机序（riscv64 小端） */
 static UINT32 Be32(const void *P) {
     const UINT8 *B = (const UINT8 *)P;
     return ((UINT32)B[0] << 24) | ((UINT32)B[1] << 16) |
            ((UINT32)B[2] << 8) | (UINT32)B[3];
 }
 
+/*
+ * DtbMemoryRegion — 与 Arm64/Boot.c 同算法的极简 FDT 扫描
+ *
+ * 只找 memory / memory@* 的 reg，写出一段 (Base, Size)。
+ * 逻辑注释见 Arm64 版；两边应保持行为一致，改一处记得改另一处。
+ */
 static int DtbMemoryRegion(UINT64 DtbPhys, UINT64 *OutBase, UINT64 *OutSize) {
     const UINT8 *Blob;
     UINT32 Total, StructOff, StructSize, StringsOff, Off, End;
@@ -51,7 +67,7 @@ static int DtbMemoryRegion(UINT64 DtbPhys, UINT64 *OutBase, UINT64 *OutSize) {
     while (Off + 4 <= End) {
         UINT32 Token = Be32(Blob + Off);
         Off += 4;
-        if (Token == 1u) {
+        if (Token == 1u) { /* BEGIN_NODE */
             const char *Name = (const char *)(Blob + Off);
             UINT32 Len = 0;
             int IsMem;
@@ -68,10 +84,10 @@ static int DtbMemoryRegion(UINT64 DtbPhys, UINT64 *OutBase, UINT64 *OutSize) {
             while (Off + 4 <= End) {
                 UINT32 T2 = Be32(Blob + Off);
                 Off += 4;
-                if (T2 == 2u) {
+                if (T2 == 2u) { /* END_NODE */
                     break;
                 }
-                if (T2 == 3u) {
+                if (T2 == 3u) { /* PROP */
                     UINT32 PLen = Be32(Blob + Off);
                     UINT32 PName = Be32(Blob + Off + 4);
                     const char *Pstr = (const char *)(Blob + StringsOff + PName);
@@ -100,10 +116,10 @@ static int DtbMemoryRegion(UINT64 DtbPhys, UINT64 *OutBase, UINT64 *OutSize) {
                     }
                     continue;
                 }
-                if (T2 == 4u) {
+                if (T2 == 4u) { /* NOP */
                     continue;
                 }
-                if (T2 == 9u) {
+                if (T2 == 9u) { /* END */
                     break;
                 }
                 return -1;
@@ -153,6 +169,16 @@ void BootMain(UINT64 HartId, UINT64 DtbPhys) {
 
 #else
 
+/*
+ * BootMain — 仅 BSP 调用（见 Boot.S）
+ *
+ * @param HartId   硬件 hart 号（当前组表不用，保留便于以后写进 Info）
+ * @param DtbPhys  OpenSBI 传来的 DTB；无效则回退 RAM 常量且 DtbPhys=0
+ *
+ * 与 Arm64 差别：
+ *   - KernelStart 默认 0x80200000（不是 RAM 基址 0x80000000）；
+ *   - 无「第二处固定 DTB 地址」回试（只信 a1 或放弃）。
+ */
 void BootMain(UINT64 HartId, UINT64 DtbPhys) {
     static BOOT_INFO Info;
     UINT64 KernelStart = RISCV_VIRT_KERNEL_LOAD;
@@ -175,6 +201,7 @@ void BootMain(UINT64 HartId, UINT64 DtbPhys) {
     Info.KernelEnd = KernelEnd;
     Info.DtbPhys = FromDtb ? DtbPhys : 0;
 
+    /* [RamBase, FreeStart) 保留；[FreeStart, RamEnd) 可分配 */
     FreeStart = (KernelEnd + 0xFFFULL) & ~0xFFFULL;
     if (FreeStart < KernelStart) {
         FreeStart = KernelStart;

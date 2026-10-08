@@ -1,10 +1,10 @@
-# OpenBox · Boot 迁移说明
+# Blocks · Boot 迁移说明
 
 > **性质**：迁移进度与接棒规格（只写文档，本文件对应刀**不改代码**）。  
-> **位置**：OpenBox **仓库根**（`~/OpenBox/Boot迁移.md`）。  
-> **工作区**：`~/OpenBox` · 仓：`git@github.com:tanlaoshi/OpenBox.git`  
-> **对照源**（只读）：旧三仓 / `edk2` 下 ToyBoot、ToyKernel；路径冲突时以 **OpenBox 现树** 为准。  
-> **结构拍板**：`ToyKernel/Documents/开发/目录结构-ToyOSNew.md`（OpenBox 大目录）；Boot 白话说明见 [`Boot/README.md`](Boot/README.md)。
+> **位置**：Blocks **仓库根**（`~/Blocks/Boot迁移.md`）。  
+> **工作区**：`~/Blocks` · GitHub 仓名待改（远程暂 `tanlaoshi/OpenBox`）  
+> **对照源**（只读）：旧三仓 / `edk2` 下 ToyBoot、ToyKernel；路径冲突时以 **Blocks 现树** 为准。  
+> **结构拍板**：`ToyKernel/Documents/开发/目录结构-ToyOSNew.md`（Blocks 大目录）；Boot 白话说明见 [`Boot/README.md`](Boot/README.md)。
 
 ---
 
@@ -29,14 +29,15 @@ Boot 的 `JumpToKernel` **不**直接调 `KernelMain`——它只跳到内核入
 | **RiscV** | `Kernel/Hal/RiscV/Build/*.o`（同上） | **Boot**：BSP 上 `KernelHandoff` 直接填 |
 | **X64** | `Boot/Build/BOOTX64.EFI` | **接棒层**（HAL）：`UEFI_BOOT_CONFIG` → `BOOT_INFO`（见 §3） |
 
-**本刀已完成（2026-10-08）**：三架构均可编出 `Kernel/Build/<Arch>/Kernel.elf`，路径停在 **`KernelMain` 桩**（其后模块未迁）。  
+**接棒刀已完成（2026-10-08）**：三架构均可编出 `Kernel/Build/<Arch>/Kernel.elf`。  
+其后骨架见 [`Kernel迁移.md`](Kernel迁移.md) **PR-K0**（已落地）。  
 `cd Kernel && ./build.sh x64|arm64|riscv`。
 
 ---
 
 ## 1. 已完成（Boot 柱）
 
-下列均已在 OpenBox 落地，可编、可对照文档；交叉链本机在 `Tools/Extract/`（不进 git）。
+下列均已在 Blocks 落地，可编、可对照文档；交叉链本机在 `Tools/Extract/`（不进 git）。
 
 ### 1.1 仓库与工具
 
@@ -77,38 +78,52 @@ X64 HAL 接棒已迁入：`Kernel/Hal/X64/KernelHandoff.c`（见 §3）。
 | 项 | 落点 | 备注 |
 | -- | ---- | ---- |
 | `BootInfoSet` / `Get` | `Kernel/Core/BootInfo.c` | ✅ |
-| `KernelMain` **桩** | `Kernel/Core/KernelMain.c` | 保存清单后空转；其后未迁 |
-| X64 `KernelHandoff` | `Kernel/Hal/X64/KernelHandoff.c` | 原 `Startup.c`/`KernelEntry` |
+| `KernelMain` **骨架（K0）** | `Kernel/Core/KernelMain.c` | AttachEarly + Modules[Serial]；其后见 [`Kernel迁移.md`](Kernel迁移.md) |
+| X64 `KernelHandoff` | `Kernel/Hal/X64/KernelHandoff.c` | 原 `Startup.c` 填表逻辑 |
 | Arm64/RiscV 链接 | `Kernel/build.sh` + `Hal/*/link.ld` | 链入 `Kernel/Hal/<Arch>/` |
 | RiscV `SmpStub` | `Kernel/Hal/RiscV/SmpStub.c` | 次核 park 符号 |
-| 完整 Core / Library / Services | — | **未迁**（后续待定） |
+| 完整 Core / Library / Services | — | **未迁**（`KernelMain` 以后） |
+
+### 1.5 干净边界（迁 `KernelMain` 以后时一直盯）
+
+| 层次 | 状态 | 含义 |
+| ---- | ---- | ---- |
+| **接棒干净** | ✅ | 命名/布局/职责：`BootPkg` → `UEFI_BOOT_CONFIG` → `KernelEntry` → `KernelHandoff` → `BOOT_INFO` → `KernelMain`；无软链包名；Boot 不编 Kernel；Core 不认 UEFI 类型 |
+| **彻底干净** | ❌ 尚未 | 整条 **X64：加电 → OVMF → BOOTX64.EFI → Kernel.elf → 模块表 → 可跑桌面/Shell**（对标现网 QEMU split / 真机冒烟） |
+
+**后续迁移硬约束**：每迁一层（Hal / Core / Library / Services / Gui…）都要对照现网，问「这条 X64 开机链会不会断、桌面还会不会起来」——接棒已收口不等于整机已绿。验收最终以 **X64 到桌面** 为准，不只以「能编过 / 进了 KernelMain」为准。
+
+当前接棒侧仍故意留的最小桩（完整 HAL 迁入后替换，不算接棒脏）：
+
+- `Hal/X64/PlatformStub.c`：`HalPlatformSet*` 空吞  
+- `KernelMain` 空转（X64 仅 EarlyIdentity 后 `for(;;)`）  
+- X64 `HalSerial` 尚无 GOP ring/上屏（仅 COM1 TX；与现网完整路径比仍缺一截）
+
+**串口（三架构齐）**：`Hal/<Arch>/HalSerial.c` + `Include/Core/ToySerialConfig.h`；`KernelHandoff` 里 `Initialize` + `handoff: BOOT_INFO ready`。X64 Boot 侧另有 `BootPkg/BootSerial`（EBS 前）。
 
 ---
 
 ## 2. 三架构对照（统一点）
 
 ```text
-X64:    UEFI → BOOTX64.EFI → … → JumpToKernel(UEFI_BOOT_CONFIG*)
-              → [接棒] KernelHandoff / 现网 KernelEntry
-              → 填 BOOT_INFO（+ BootInfoSet）
+X64:    UEFI → BOOTX64.EFI → JumpToKernel(UEFI_BOOT_CONFIG*)
+              → KernelEntry → KernelHandoff → BOOT_INFO
               → KernelMain(Info)          ← 统一点
 
-Arm64:  QEMU -kernel → KernelEntry（Boot.S）→ KernelHandoff
-              → 填 BOOT_INFO
+Arm64:  QEMU -kernel → KernelEntry → KernelHandoff → BOOT_INFO
               → KernelMain(Info)          ← 统一点
 
-RiscV:  OpenSBI → KernelEntry（BSP）→ KernelHandoff
-              → 填 BOOT_INFO
+RiscV:  OpenSBI → KernelEntry（BSP）→ KernelHandoff → BOOT_INFO
               → KernelMain(Info)          ← 统一点
 ```
 
-> 命名：三架构 ELF 入口均为 **`KernelEntry`**（在 `Kernel/Hal/`）；填表函数为 **`KernelHandoff`**。链接脚本 `ENTRY(KernelEntry)`。
+> 命名：三架构 ELF 入口均为 **`KernelEntry`**（`Kernel/Hal/<Arch>/`）；填表函数为 **`KernelHandoff`**；链接脚本一律 `ENTRY(KernelEntry)`。
 
 | 步骤 | X64 | Arm64 / RiscV |
 | ---- | --- | ------------- |
 | 加载内核映像 | Boot 自己读 ELF | 加载器已放好整颗 ELF |
 | Boot 第一份材料 | `UEFI_BOOT_CONFIG` | 无（直接 `BOOT_INFO`） |
-| 填 `BOOT_INFO` | **HAL `KernelHandoff`** | **`KernelHandoff`（Boot/*.c）** |
+| 填 `BOOT_INFO` | **`Hal/X64/KernelHandoff`** | **`Hal/<Arch>/KernelHandoff`** |
 | `KernelMain` | 桩已链上；完整实现后续再迁 | 同左 |
 
 ---
@@ -117,19 +132,19 @@ RiscV:  OpenSBI → KernelEntry（BSP）→ KernelHandoff
 
 ### 3.1 已达成
 
-1. X64：`KernelHandoff(UEFI_BOOT_CONFIG*)` → 填 `BOOT_INFO` → `KernelMain` 桩；`ENTRY(KernelHandoff)`。  
+1. X64：`KernelEntry` → `KernelHandoff(UEFI_BOOT_CONFIG*)` → 填 `BOOT_INFO` → `KernelMain` 桩；`ENTRY(KernelEntry)`。  
 2. Arm64/RiscV：`KernelEntry` → `KernelHandoff` → `KernelMain` 桩；`ENTRY(KernelEntry)`。  
-3. 统一角色名 **`KernelHandoff`**；`KernelMain` 仅为桩（`BootInfoSet` 后空转）。  
+3. 统一角色名 **`KernelHandoff`**；`KernelMain` 仅为桩（`BootInfoSet` + X64 EarlyIdentity 后空转）。  
 4. `Kernel/build.sh` 产出 `Build/{X64,Arm64,RiscV}/Kernel.elf`。
 
 ### 3.2 对照源（只读，迁时代码从这里拷逻辑）
 
-| 现网文件（ToyKernel） | 职责 | OpenBox 拟落点（本刀） |
+| 现网文件（ToyKernel） | 职责 | Blocks 拟落点（本刀） |
 | -------------------- | ---- | --------------------- |
 | `CodeA-HAL/X64/Startup.c` | `KernelEntry` → 早期栈 → `BootInfoFromUefi` → `BootInfoSet` →（现）`KernelMain` | `Kernel/Hal/X64/`（如 `Startup.c` / `KernelHandoff.c`） |
 | `CodeA-HAL/X64/BootConfig.h` | 与 Boot 交接包镜像 | 与 `Boot/UefiBootConfig.h` 同步；Kernel 侧可 `#include` 镜像头或薄包装 |
 | `Include/Core/BootInfo.h` + `BootInfo.c`（`BootInfoSet`） | 清单存储 | 已有头：`Kernel/Include/Core/BootInfo.h`；缺 `.c` 则本刀补最小实现 |
-| `Boot/UefiBootConfig.h` | 权威 `UEFI_BOOT_CONFIG` | **已在 OpenBox**；改布局须双端一起改 |
+| `Boot/UefiBootConfig.h` | 权威 `UEFI_BOOT_CONFIG` | **已在 Blocks**；改布局须双端一起改 |
 
 ### 3.3 本刀必须带走的逻辑要点（勿丢）
 
@@ -149,7 +164,7 @@ RiscV:  OpenSBI → KernelEntry（BSP）→ KernelHandoff
 | 整棵 CodeA–E / Library / Services 迁入 | 超出接棒范围 |
 | 改 Arm64/RiscV Boot 行为 | 本刀只链到 `KernelMain` 桩，不改 Boot 逻辑 |
 | 把 `BOOT_INFO` 组装挪回 `BOOTX64.EFI` | 保持 UEFI Boot 只交 `UEFI_BOOT_CONFIG`；转换仍在 HAL 接棒 |
-| 本刀改路线图 / 搬 ToyKernel Documents | OpenBox 文档新写；旧文档只读对照 |
+| 本刀改路线图 / 搬 ToyKernel Documents | Blocks 文档新写；旧文档只读对照 |
 
 ### 3.5 验收（本刀）
 
@@ -173,7 +188,7 @@ Kernel/build.sh
 
 ## 4. 已拍板的长期内存策略
 
-| 项 | 旧 ToyKernel x86 | OpenBox |
+| 项 | 旧 ToyKernel x86 | Blocks |
 | -- | ---------------- | ------- |
 | 早期恒等 | 512MB | **4GiB**（`Include/Core/IdentityMap.h`） |
 | X64 换栈 | C 里改 `rsp` + `Continue` | **`KernelEntry.S`** 与 Arm 同套路 |
@@ -181,28 +196,27 @@ Kernel/build.sh
 
 仍高于 4GiB 的 Runtime/Loader 页继续 `NoteRuntimeRange`，供以后按需映射。
 
-## 5. 后续计划（待定）
+## 5. 后续计划
 
-以下**不排期**：
+**`KernelMain` 以后**已拆 PR、落文档：见根目录 [`Kernel迁移.md`](Kernel迁移.md)（★ = PR-K0）。
 
-- `KernelMain` 之后：模块表 / 调度 / FS / 桌面 / 完整 HAL（VMM 正式实现须读 `IdentityMap.h`）  
+仍挂在本仓、但不在 Boot 刀内的：
+
 - Runtime（原 ToyImage）迁入与跑盘脚本  
 - 端到端 QEMU / 真机 smoke（Boot EFI + Kernel.elf）  
 - 旧 `~/ToyOS` / edk2 备份退役  
 
-有新拍板时追加本节。
-
 ---
 
-## 5. 相关入口
+## 5.1 相关入口
 
 | 文档 / 目录 | 用途 |
 | ----------- | ---- |
-| [`Boot/README.md`](Boot/README.md) | 三架构白话总览 |
+| [`Kernel迁移.md`](Kernel迁移.md) | KernelMain→桌面 PR 排期 |
 | [`Boot/README.md`](Boot/README.md) | UEFI 路径与 `UEFI_BOOT_CONFIG` |
 | [`Kernel/Hal/Arm64/README.md`](Kernel/Hal/Arm64/README.md) / [`RiscV`](Kernel/Hal/RiscV/README.md) | virt 路径与直接 `BOOT_INFO` |
 | [`Tools/README.md`](Tools/README.md) | 交叉链 |
-| [`Kernel/README.md`](Kernel/README.md) | Kernel↔Boot 边界（随本刀更新实现状态） |
+| [`Kernel/README.md`](Kernel/README.md) | Kernel↔Boot 边界 |
 | 旧仓 `CodeA-HAL/X64/Startup.c` | 接棒逻辑对照源 |
 
 ---
@@ -222,3 +236,7 @@ Kernel/build.sh
 | 2026-10-08 | Arm64/RiscV 入口迁入 **Kernel/Hal/**；顶层 Boot/ 仅 X64 EFI |
 | 2026-10-08 | 取消 `Boot/X64` 子层：UEFI 源码与 EDK2 直接落在 `Boot/` |
 | 2026-10-08 | **BootPkg** 真实包 + `PACKAGES_PATH`；去掉 `EDK2/ToyBoot` 软链；`CONF_PATH=EDK2/Conf`；README 合并为 `Boot/README.md` |
+| 2026-10-08 | 钉干净边界：接棒 ✅；彻底干净 = X64 到桌面（迁 KernelMain 以后一直盯） |
+| 2026-10-08 | 后续计划改指 [`Kernel迁移.md`](Kernel迁移.md) |
+| 2026-10-08 | 工作区改名 **Blocks**（原 OpenBox）；GitHub 仓名待网页同步 |
+| 2026-10-08 | 三架构 `HalSerial`：X64 COM1 / Arm64 PL011 / RiscV 16550；`build.sh` 默认 `TOY_SERIAL=1` |

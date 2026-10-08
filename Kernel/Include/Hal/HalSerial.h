@@ -1,8 +1,15 @@
 /*
- * HalSerial.h — 串口 HAL 门面（Common 经 Hal.h 使用，不直接 include 驱动头）
+ * HalSerial.h — 串口 HAL 门面（Common 只认这一张脸）
  *
- * 串口 TX 受 ToySerialConfig（TOY_SERIAL / 分模块）约束；
- * GOP ring / BootMark 上屏与「有无 COM」策略见 HalSerial.c。
+ * 【初学者】
+ * 上层写 HalSerialWrite("hello\n") 即可，不要 #ifdef 架构。
+ * 真正驱动在：
+ *   Hal/X64/HalSerial.c     → COM1 端口
+ *   Hal/Arm64/HalSerial.c   → PL011 MMIO
+ *   Hal/RiscV/HalSerial.c   → 16550 MMIO
+ *
+ * TX 还受 ToySerialConfig.h 总开关 / 分模块开关约束。
+ * 另有 boot 期「把日志画到屏幕」的 API；当前实现可为空操作。
  */
 #ifndef HAL_SERIAL_H
 #define HAL_SERIAL_H

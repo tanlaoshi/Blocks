@@ -1,5 +1,5 @@
 /*
- * Board.h — QEMU riscv64 virt 板包门面（PR-B2）
+ * Board.h — QEMU riscv64 virt 板包门面
  */
 #ifndef TOY_BOARD_H
 #define TOY_BOARD_H
@@ -8,4 +8,4 @@
 
 const char *BoardName(void);
 
-#endif /* TOY_BOARD_H */
+#endif

@@ -1,5 +1,5 @@
 /*
- * BootPrivate.h — ToyBoot 模块间共享（PR-S-boot-1）
+ * BootPrivate.h — ToyBoot 模块间共享（��
  *
  * BootDbg / 类型别名 / Video 原型。只搬家用，不改 ABI。
  */

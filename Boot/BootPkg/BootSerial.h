@@ -1,7 +1,5 @@
 /*
- * BootSerial.h — ToyBoot COM1（PR-BOOT-log-uart）
- *
- * 命名：Boot 前缀 + Serial + 动词（见开发命名规范 §2.1）。
+ * BootSerial.h — Boot 阶段 COM1 串口
  */
 #ifndef TOY_BOOT_SERIAL_H
 #define TOY_BOOT_SERIAL_H

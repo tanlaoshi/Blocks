@@ -1,13 +1,19 @@
 /*
  * KernelHandoff.c — Arm64：填写 BOOT_INFO，再调用 KernelMain
  *
- * 源码在 Kernel/Hal（链进 Kernel.elf）；不是独立 Boot 镜像。
- * 头文件用 Include/Core/BootInfo.h。不解析完整 libfdt。
+ * 【初学者】
+ * 没有 UEFI。QEMU `-kernel` 把 ELF 装进内存，KernelEntry 把 DTB 物理址
+ * 交给本函数。我们尽量从 DTB 读 memory 节点；失败则退回 virt 约定：
+ *   RAM @ 0x40000000，大小 256MiB。
  *
- * QEMU virt：RAM @ 0x40000000；DTB 常见 x0 或 0x4a000000。
- * TOY_BRINGUP=1：空转冒烟。
+ * 源码在 Kernel/Hal（链进 Kernel.elf），不是独立 Boot 镜像。
+ * 不链接完整 libfdt——下面有一段教学向的极简扫描即可。
+ *
+ * 填完 BOOT_INFO → HalSerial 横幅 → KernelMain(&Info)。
  */
 #include "BootInfo.h"
+#include "HalSerial.h"
+#include "BoardConfig.h"
 
 /* 链接脚本：内核映像末尾（已加载进内存的物理地址） */
 extern char __kernel_end[];
@@ -185,6 +191,10 @@ static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free
  */
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
+    HalSerialInitialize();
+    HalSerialWrite("board: ");
+    HalSerialWrite(TOY_BOARD_NAME);
+    HalSerialWrite(" (bringup)\n");
     for (;;) {
     }
 }
@@ -250,6 +260,8 @@ void KernelHandoff(UINT64 DtbPhys) {
         BootInfoAddRegion(&Info, RamBase, RamSize, 1);
     }
 
+    HalSerialInitialize();
+    HalSerialWrite("handoff: BOOT_INFO ready\n");
     /* 汇合点：此后与 X64（经 HAL 转 BOOT_INFO）走同一套 KernelMain */
     KernelMain(&Info);
     for (;;) {

@@ -27,7 +27,7 @@
 **DTB** = Device Tree Blob，可以想成「这块虚拟板/开发板有哪些设备、内存从哪到哪」的说明书。
 
 - 在 QEMU 里，说明书往往由虚拟机生成，再通过约定方式交给你（有时在某个寄存器，有时在固定物理地址）。
-- Boot 会去读它；读失败也没关系，代码里还有「默认内存大小」的退路。
+- `KernelHandoff` 会去读它；读失败也没关系，代码里还有「默认内存大小」的退路。
 
 真机上 DTB 文件通常跟板子厂商有关，地址也可能不同——那是以后板级配置的事；你在 QEMU 上可以先不操心。
 
@@ -35,10 +35,12 @@
 
 ## 3. 目录里都有什么？
 
-| 文件 | 给初学者的解释 |
-| ---- | -------------- |
+| 文件 / 目录 | 给初学者的解释 |
+| ----------- | -------------- |
 | `KernelEntry.S` | 汇编入口：设栈、清 BSS → `KernelHandoff` |
 | `KernelHandoff.c` | 填 `BOOT_INFO`，调 `KernelMain` |
+| `Hal/` | 本架构私有 HAL 细节（如 `HalPort.h`） |
+| `Board/virt/` | QEMU virt 板地址约定 |
 | 头文件 | `Include/Core/BootInfo.h`（全仓一份） |
 | 编译 | `cd Kernel && ./build.sh arm64` |
 
@@ -48,7 +50,7 @@
 
 | 名字 | 它是什么 |
 | ---- | -------- |
-| **`KernelEntry`**（在 `Boot.S`） | 整颗 ELF 规定的「从这里开始跑」；接着调 `KernelHandoff` |
+| **`KernelEntry`**（在 `KernelEntry.S`） | 整颗 ELF 规定的「从这里开始跑」；接着调 `KernelHandoff` |
 | **`KernelHandoff`** | Boot 阶段的 C 逻辑：组清单 |
 | **`KernelMain`** | 操作系统主体大门；参数是指向 `BOOT_INFO` 的指针 |
 | **`__kernel_end`** | 链接时生成的符号，表示内核镜像在内存里占到哪儿 |
@@ -59,7 +61,7 @@
 
 ```text
 QEMU 启动，并把 Kernel.elf 放进内存
-  → CPU 从 Boot.S 的 KernelEntry 开始执行
+  → CPU 从 KernelEntry.S 的 KernelEntry 开始执行
        · 尽量记住 DTB 在哪
        · 设置栈（C 函数需要栈才能跑）
        · 把 BSS（该清零的全局数据区）清成 0
@@ -89,11 +91,11 @@ QEMU 启动，并把 Kernel.elf 放进内存
 ## 7. 怎么编译？
 
 ```bash
-cd ~/OpenBox/Kernel && ./build.sh arm64
+cd ~/Blocks/Kernel && ./build.sh arm64
 ./build.sh
 ```
 
-需要 `OpenBox/Tools/Extract/（见 Tools/README.md）
+需要 `Blocks/Tools/Extract/（见 Tools/README.md）
 
 ---
 

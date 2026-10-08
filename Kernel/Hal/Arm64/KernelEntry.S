@@ -1,7 +1,7 @@
 /*
- * Boot.S — Arm64 QEMU virt「-kernel」入口
+ * KernelEntry.S — Arm64 QEMU virt「-kernel」入口
  *
- * 谁调用我们？
+ * 【初学者 · 谁调用我们？】
  *   QEMU/加载器把整颗 Kernel.elf 放进内存后，跳到映像入口（链接脚本把
  *   KernelEntry 放在最前）。此时已是 EL1（或约定级别），DTB 指针在 x0。
  *
@@ -10,10 +10,8 @@
  *   2) 架好临时栈 gBootStack，并把 .bss 清零；
  *   3) bl KernelHandoff(x0=DTB)，返回后死循环 wfi（正常不应返回）。
  *
- * 与 X64 的差别：
- *   没有 UEFI、不自己读盘装内核、不 ExitBootServices。
- * 与 RiscV 的差别：
- *   单入口、无 hart 竞选；多核由后续 HAL SMP 路径处理。
+ * 与 X64 的差别：没有 UEFI、不自己读盘、不 ExitBootServices。
+ * 与 RiscV 的差别：单入口、无 hart 竞选；多核由后续 HAL SMP 处理。
  */
     .section .text.boot, "ax"
     .global KernelEntry

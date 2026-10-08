@@ -1,7 +1,8 @@
 /*
- * BoardConfig.h — QEMU riscv64 virt（PR-B2；B3 补齐 RAM / IS_VIRT / REG_SHIFT）
+ * BoardConfig.h — QEMU riscv64「virt」板的地址约定
  *
- * 仅 HAL / Board 包含；禁止 Common / Services 直接 include。
+ * 【初学者】与 Arm64 的 BoardConfig 同角色：UART/RAM/加载址等板相关宏。
+ * 仅 Hal / Board include；Common 走门面或 BOOT_INFO。
  */
 #ifndef TOY_BOARD_CONFIG_H
 #define TOY_BOARD_CONFIG_H
@@ -20,7 +21,7 @@
 #define TOY_BOARD_RAM_BASE         0x80000000ULL
 #define TOY_BOARD_RAM_SIZE         (256ULL * 1024ULL * 1024ULL)
 
-/* virt 默认可有 ramfb；串口子集由运行时 HalHasFrameBuffer 决定 */
+/* virt 默认可有内存帧缓冲；串口子集由运行时 HalHasFrameBuffer 决定 */
 #define TOY_BOARD_HAS_FRAMEBUFFER  1
 #define TOY_BOARD_HAS_BLOCK        1 /* virtio-blk */
 #define TOY_BOARD_HAS_NET          1 /* virtio-net */

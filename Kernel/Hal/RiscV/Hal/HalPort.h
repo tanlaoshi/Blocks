@@ -1,3 +1,8 @@
+/*
+ * HalPort.h — RiscV 中断帧 / 向量号等架构私有细节
+ *
+ * 【初学者】见本目录 README；日常优先 HalSerial / HalCapability。
+ */
 #ifndef HAL_PORT_H
 #define HAL_PORT_H
 
@@ -15,7 +20,7 @@ typedef struct HAL_INTERRUPT_FRAME {
     UINT64 X[32];
     UINT64 Vec;
     UINT64 Err;
-    /* PR-A15：中立名（sepc / sstatus / 用户 sp 由 TrapVec.S 填） */
+    /* ��中立名（sepc / sstatus / 用户 sp 由 TrapVec.S 填） */
     UINT64 InstructionPointer;
     UINT64 Cs;
     UINT64 Rflags;

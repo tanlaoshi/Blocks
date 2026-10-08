@@ -1,14 +1,18 @@
 #!/bin/bash
 #
-# build.sh — 链到 KernelMain 门口（三架构）
+# build.sh — 链出 Kernel.elf（三架构）
 #
-# 用法：./build.sh [x64|arm64|riscv]
+# 【初学者】
+#   cd ~/Blocks/Kernel
+#   ./build.sh x64          # 本机 gcc
+#   ./build.sh arm64        # Tools/Extract 里的 aarch64 交叉链
+#   ./build.sh riscv        # 同上 riscv 交叉链
+#   ./build.sh x64 SERIAL=0 # 编译期关掉 UART
+#
 # 产出：Build/<Arch>/Kernel.elf
+# 原则：凡进 Kernel.elf 的源码都在 Kernel/；顶层 Boot/ 只放独立 EFI（X64）。
 #
-# 原则：凡进 Kernel.elf 的源码都在 Kernel/（含各 Arch 的 KernelEntry/KernelHandoff）。
-#       顶层 Boot/ 只放独立 EFI（X64）。
-#
-set -euo pipefail
+set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENBOX_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ARCH="${1:-x64}"
@@ -18,11 +22,21 @@ INC_ABI="$SCRIPT_DIR/Include/Abi"
 INC_CORE="$SCRIPT_DIR/Include/Core"
 INC_HAL="$SCRIPT_DIR/Include/Hal"
 
+# Blocks 接棒期默认开串口；SERIAL=0 可关
+TOY_SERIAL=1
+for Arg in "$@"; do
+    case "$Arg" in
+        SERIAL=0|serial=0) TOY_SERIAL=0 ;;
+        SERIAL=1|serial=1) TOY_SERIAL=1 ;;
+    esac
+done
+
 COMMON_CFLAGS=(
     -ffreestanding -nostdlib -O2 -Wall -Wextra
     -fno-stack-protector -fno-builtin -fno-pie -fno-pic
     -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
     -DTOY_BRINGUP=0
+    -DTOY_SERIAL="$TOY_SERIAL"
     -I"$INC_ABI" -I"$INC_CORE" -I"$INC_HAL"
 )
 
@@ -66,8 +80,10 @@ build_common_objs() {
     local out="$1"
     shift
     local -a cflags=("$@")
-    "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/BootInfo.c" -o "$out/BootInfo.o"
-    "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/KernelMain.c" -o "$out/KernelMain.o"
+    local f
+    for f in BootInfo Module KernelModules HalCapability HalVideoStub KernelMain; do
+        "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
+    done
 }
 
 case "$ARCH" in
@@ -83,26 +99,33 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/PlatformStub.c" -o "$OUT/PlatformStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerial.c" -o "$OUT/HalSerial.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
-        "$OUT/PlatformStub.o" "$OUT/BootInfo.o" "$OUT/KernelMain.o"
+        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" \
+        "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
+        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
     OUT="$OUT_ROOT/Arm64"
     mkdir -p "$OUT"
     CC="$(pick_arm_cc)"
-    CFLAGS=("${COMMON_CFLAGS[@]}" -mgeneral-regs-only)
+    CFLAGS=("${COMMON_CFLAGS[@]}" -mgeneral-regs-only
+            -I"$SCRIPT_DIR/Hal/Arm64" -I"$SCRIPT_DIR/Hal/Arm64/Board/virt"
+            -I"$SCRIPT_DIR/Hal/Arm64/Hal")
     build_common_objs "$CC" "$OUT" "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/HalSerial.c" -o "$OUT/HalSerial.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
-        "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" \
-        "$OUT/BootInfo.o" "$OUT/KernelMain.o"
+        "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
+        "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
+        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -110,25 +133,30 @@ riscv|RiscV|RISCV)
     mkdir -p "$OUT"
     CC="$(pick_riscv_cc)"
     ARCH_CFLAGS=(-march=rv64imac_zicsr_zifencei -mabi=lp64 -mcmodel=medany)
-    CFLAGS=("${COMMON_CFLAGS[@]}" "${ARCH_CFLAGS[@]}")
+    CFLAGS=("${COMMON_CFLAGS[@]}" "${ARCH_CFLAGS[@]}"
+            -I"$SCRIPT_DIR/Hal/RiscV" -I"$SCRIPT_DIR/Hal/RiscV/Board/virt"
+            -I"$SCRIPT_DIR/Hal/RiscV/Hal")
     build_common_objs "$CC" "$OUT" "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/SmpStub.c" -o "$OUT/SmpStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/HalSerial.c" -o "$OUT/HalSerial.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/SmpStub.o" \
-        "$OUT/BootInfo.o" "$OUT/KernelMain.o"
+        "$OUT/HalSerial.o" \
+        "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
+        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
     ;;
 *)
-    echo "usage: $0 [x64|arm64|riscv]" >&2
+    echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2
     exit 1
     ;;
 esac
 
 echo "=========================================="
-echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (停在 KernelMain 桩)"
+echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (TOY_SERIAL=$TOY_SERIAL)"
 echo "CC=$CC"
 ls -lh "$OUT/Kernel.elf"
 echo "=========================================="

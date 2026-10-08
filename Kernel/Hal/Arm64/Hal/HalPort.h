@@ -1,3 +1,9 @@
+/*
+ * HalPort.h — Arm64 中断帧 / 向量号等架构私有细节
+ *
+ * 【初学者】Common 一般不直接碰本头；见本目录 README。
+ * 日常代码优先用 HalSerial / HalCapability 等公共门面。
+ */
 #ifndef HAL_PORT_H
 #define HAL_PORT_H
 
@@ -15,7 +21,7 @@ typedef struct HAL_INTERRUPT_FRAME {
     UINT64 X[31];
     UINT64 Vec;
     UINT64 Err;
-    /* PR-A15：中立名（ELR_EL1 / SPSR_EL1 / SP_EL0 等由 Vectors.S 填） */
+    /* ��中立名（ELR_EL1 / SPSR_EL1 / SP_EL0 等由 Vectors.S 填） */
     UINT64 InstructionPointer;
     UINT64 Cs;
     UINT64 Rflags;

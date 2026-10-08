@@ -1,5 +1,5 @@
 /*
- * BootVideoScore.c — PR-S-boot-1：选模打分 / Settings 排序
+ * BootVideoScore.c — ��选模打分 / Settings 排序
  *
  * 从 Boot.c 原样搬家；不改语义。
  */

@@ -1,8 +1,8 @@
 /*
- * BootSerial.c — ToyBoot COM1 16550（PR-BOOT-log-uart）
+ * BootSerial.c — Boot 阶段 COM1 16550
  *
- * ExitBootServices 前可用；与 Kernel Serial 同口同波特率，无 Hal 依赖。
- * NUC USB-UART：短 THR 超时会丢字符（尤其 '\\n'）→ 行粘连；等 THR/TEMT。
+ * ExitBootServices 前可用；与 Kernel HalSerial 同口同波特率，无 Hal 依赖。
+ * 部分 USB 转串口：短 THR 超时会丢字符 → 须等 THR/TEMT。
  */
 #include "BootSerial.h"
 #include <Library/PrintLib.h>
@@ -87,7 +87,7 @@ void EFIAPI BootSerialWrite(const char *Text) {
         /*
          * AsciiVSPrint / PrintLib 常把格式里的 '\\n' 先扩成 "\\r\\n"。
          * 若此处再对 '\\n' 补 '\\r' → "\\r\\r\\n"：QEMU 多空行，NUC/CoolTerm 粘行、
-         * ToyKernel 横幅像没换行。裸 '\\n'（横幅 BootSerialWrite）仍在此补 '\\r'。
+         * 否则横幅像没换行。裸 '\\n'（横幅 BootSerialWrite）仍在此补 '\\r'。
          */
         if (*Text == '\r') {
             Text++;

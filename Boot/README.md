@@ -1,11 +1,11 @@
 # Boot —— UEFI 独立引导（X64）
 
-总览：[../README.md](../README.md) · 迁移：[../Boot迁移.md](../Boot迁移.md)
+总览：[../README.md](../README.md)
 
 ```text
 Boot/
   BootPkg/     # UEFI 应用包（DSC/INF/源码）
-  EDK2/        # 裁剪工具包（含 Conf/；不再往里软链包名）
+  EDK2/        # 裁剪工具包（含 Conf/）
   build.sh     # WORKSPACE=Boot，PACKAGES_PATH=Boot:EDK2，CONF_PATH=EDK2/Conf
   Build/       # → BOOTX64.EFI
 ```
@@ -13,7 +13,7 @@ Boot/
 Arm64 / RiscV 入口在 **`Kernel/Hal/<Arch>/`**，不在这里。
 
 ```bash
-cd ~/OpenBox/Boot && ./build.sh
+cd ~/Blocks/Boot && ./build.sh
 ./build.sh DEBUG=1          # 更多 Boot 调试打印
 ```
 

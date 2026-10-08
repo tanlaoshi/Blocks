@@ -58,7 +58,7 @@
 
 ```text
 QEMU 启动 → OpenSBI 先跑
-  → 跳进我们的 KernelEntry（Boot.S）
+  → 跳进我们的 KernelEntry（KernelEntry.S）
        每个核都可能跑到这里
        · 用原子操作抢「我是不是第一个」（BSP）
        · 【老板核】设栈、清 BSS → 调用 KernelHandoff
@@ -88,11 +88,11 @@ QEMU 启动 → OpenSBI 先跑
 ## 7. 怎么编译？
 
 ```bash
-cd ~/OpenBox/Kernel && ./build.sh riscv
+cd ~/Blocks/Kernel && ./build.sh riscv
 ./build.sh
 ```
 
-需要 `OpenBox/Tools/Extract/（见 Tools/README.md）
+需要 `Blocks/Tools/Extract/（见 Tools/README.md）
 
 ---
 

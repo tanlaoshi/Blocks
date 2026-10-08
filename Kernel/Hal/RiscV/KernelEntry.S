@@ -1,20 +1,17 @@
 /*
- * Boot.S — RiscV QEMU virt 入口（OpenSBI / -kernel）
+ * KernelEntry.S — RiscV QEMU virt 入口（OpenSBI / -kernel）
  *
- * 调用约定（SBI / Linux riscv boot）：
+ * 【初学者 · 调用约定】
  *   a0 = hartid（硬件线程号）
  *   a1 = DTB 物理地址
  *
- * 为何比 Arm64 复杂？
+ * 【为何比 Arm64 复杂？】
  *   多核时 OpenSBI 的「Boot HART」经常不是 hart 0（例如 -smp 2 时可能是 hart 1）。
  *   若写成「只有 hartid==0 当 BSP」会选错核甚至死锁。
  *   做法：用原子 amoswap 抢 gBspClaimed——谁先到谁当 BSP；其余进 SecondaryPark。
  *
- * BSP 路径：架栈 → 清 BSS → KernelHandoff(hartid, dtb) →（正常不返回）wfi
- * AP 路径：不清 BSS、不跑 KernelHandoff；轮询 gApGo[hartid]，再按逻辑 CPU 号取栈进 HalApMain
- *
- * 注意：gApGo / gApLogical / gApStackTop / HalApMain 由 Kernel HAL SMP 提供；
- *       纯 Boot 单测若不链那些符号，需另配桩。整颗 Kernel.elf 链接时齐全。
+ * BSP：架栈 → 清 BSS → KernelHandoff(hartid, dtb) →（正常不返回）wfi
+ * AP ：不清 BSS；轮询 gApGo[hartid]，再进 HalApMain（见 SmpStub / 以后真 SMP）
  */
     .section .data
     .align 3
@@ -23,7 +20,7 @@ gBspClaimed:
     .word 0                 /* 0=尚无 BSP；amoswap 写成 1 表示已抢走 */
     .global gBspHartId
 gBspHartId:
-    .dword 0                /* 胜出的硬件 hartid，供调试/SMP 对照 */
+    .dword 0                /* 胜出的硬件 hartid，供调试与 SMP 核对 */
 
     .section .text.boot, "ax"
     .global KernelEntry

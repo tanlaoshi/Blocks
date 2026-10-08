@@ -1,5 +1,5 @@
 /*
- * BootKernel.c — PR-S-boot-2：找盘读 Kernel.elf
+ * BootKernel.c — ��找盘读 Kernel.elf
  *
  * 从 Boot.c 原样搬家；不改语义。
  */

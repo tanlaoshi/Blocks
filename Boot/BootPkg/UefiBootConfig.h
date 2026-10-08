@@ -7,7 +7,7 @@
  * 权威在本目录；Kernel/Hal 侧经 BootConfig.h 引用。
  * 布局 632 字节；改字段须两边一起改并更新 _Static_assert。
  *
- * PR-G-hotres-pc：VideoMode 带 ModeNumber；末尾 GopProtocol 供真机热切。
+ * ��VideoMode 带 ModeNumber；末尾 GopProtocol 供真机热切。
  */
 #ifndef UEFI_BOOT_CONFIG_H
 #define UEFI_BOOT_CONFIG_H
@@ -51,9 +51,9 @@ typedef struct {
     VOID                *SystemTable;
     UINT64               XhciBaseAddress;
     /*
-     * PR-G-modes：ExitBootServices 后内核无法 QueryMode。
+     * ��ExitBootServices 后内核无法 QueryMode。
      * Boot 枚举可用 GOP 模式供 Settings 列表（去重 WxH）。
-     * PR-G-hotres-pc：ModeNumber + GopProtocol 供真机运行时 SetMode。
+     * ��ModeNumber + GopProtocol 供真机运行时 SetMode。
      */
     UINT32               VideoModeCount;
     UINT32               VideoModePad;

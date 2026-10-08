@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Boot/build.sh — UEFI 引导：BootPkg + EDK2（无软链进 EDK2）
+# Boot/build.sh — 编出 BOOTX64.EFI
 #
 # WORKSPACE = Boot/
 # PACKAGES_PATH = Boot/ : Boot/EDK2/
-# 包名 BootPkg/（真实目录，不再 EDK2/ToyBoot -> ..）
+# 应用包：Boot/BootPkg/
 #
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -24,12 +24,12 @@ if [ ! -f "$EDK2_ROOT/edksetup.sh" ] || [ ! -d "$EDK2_ROOT/MdePkg" ] || [ ! -d "
     exit 1
 fi
 
-# 去掉历史软链（若还在）
+# 避免 EDK2 根下误放同名包目录干扰 PACKAGES_PATH
 rm -f "$EDK2_ROOT/ToyBoot" "$EDK2_ROOT/BootPkg"
 
 BOOT_BUILD_DIR="$SCRIPT_DIR/Build"
 mkdir -p "$BOOT_BUILD_DIR"
-# 只用 EDK2/Conf，不在 Boot/ 下另开一份
+# Conf 只使用 EDK2/Conf
 rm -rf "$SCRIPT_DIR/Conf"
 
 export WORKSPACE="$SCRIPT_DIR"

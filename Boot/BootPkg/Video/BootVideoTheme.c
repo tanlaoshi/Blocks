@@ -1,5 +1,5 @@
 /*
- * BootVideoTheme.c — PR-S-boot-1：THEME.CFG mode= / TOYOS 卷
+ * BootVideoTheme.c — ��THEME.CFG mode= / TOYOS 卷
  *
  * 从 Boot.c 原样搬家；不改语义。
  */
@@ -11,7 +11,7 @@
 
 #include "BootPrivate.h"
 
-/* 从 FAT 小文本读 THEME.CFG 中的 mode=WxH（PR-D7，重启生效） */
+/* 从 FAT 小文本读 THEME.CFG 中的 mode=WxH（��重启生效） */
 STATIC BOOLEAN ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH) {
     UINT32 W = 0;
     UINT32 H = 0;

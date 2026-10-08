@@ -1,5 +1,5 @@
 /*
- * BootPci.c — PR-S-boot-3：PCI 上找 xHCI 基址
+ * BootPci.c — ��PCI 上找 xHCI 基址
  *
  * 从 Boot.c 原样搬家；不改语义。
  */

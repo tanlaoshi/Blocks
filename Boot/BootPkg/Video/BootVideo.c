@@ -87,7 +87,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
     }
 
     /*
-     * PR-BOOT-fast-4：无 mode= 时优先沿用固件当前可用模式。
+     * ��无 mode= 时优先沿用固件当前可用模式。
      * 勿为「EDID 原生 / 最高像素」再 SetMode（4K 切模贵）；有 mode= 仍尊重。
      */
     {

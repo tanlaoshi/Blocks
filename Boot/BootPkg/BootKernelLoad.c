@@ -1,5 +1,5 @@
 /*
- * BootKernelLoad.c — PR-S-boot-2：ELF 校验与段装载
+ * BootKernelLoad.c — ��ELF 校验与段装载
  *
  * 从 Boot.c 原样搬家；不改语义。
  */

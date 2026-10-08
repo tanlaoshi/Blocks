@@ -1,11 +1,16 @@
 /*
  * KernelHandoff.c — RiscV：填写 BOOT_INFO，再调用 KernelMain（仅 BSP）
  *
- * 源码在 Kernel/Hal（链进 Kernel.elf）。头文件 Include/Core/BootInfo.h。
- * QEMU virt + OpenSBI：RAM @ 0x80000000；Kernel 常 @ 0x80200000。
- * TOY_BRINGUP=1：空转冒烟。
+ * 【初学者】
+ * OpenSBI / QEMU `-kernel` 把控制权交给 KernelEntry；只有抢到 BSP 的
+ * hart 会进入本函数（参数：hartid + DTB）。次核停在 SecondaryPark。
+ *
+ * virt 约定：RAM @ 0x80000000；内核载荷常在 0x80200000。
+ * 填 BOOT_INFO → 串口横幅 → KernelMain。与 Arm64 同思路，地址不同。
  */
 #include "BootInfo.h"
+#include "HalSerial.h"
+#include "BoardConfig.h"
 
 extern char __kernel_end[];
 
@@ -158,6 +163,10 @@ static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free
 void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
     (void)DtbPhys;
+    HalSerialInitialize();
+    HalSerialWrite("board: ");
+    HalSerialWrite(TOY_BOARD_NAME);
+    HalSerialWrite(" (bringup)\n");
     for (;;) {
     }
 }
@@ -210,6 +219,8 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
         BootInfoAddRegion(&Info, RamBase, RamSize, 1);
     }
 
+    HalSerialInitialize();
+    HalSerialWrite("handoff: BOOT_INFO ready\n");
     KernelMain(&Info);
     for (;;) {
     }

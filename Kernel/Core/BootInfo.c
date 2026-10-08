@@ -1,7 +1,19 @@
 /*
- * BootInfo.c — 全局 BOOT_INFO 快照（KernelHandoff 写入，其后只读）
+ * BootInfo.c — 保存一份全局的开机说明书
  *
- * 本刀只迁到 KernelMain 门口；完整模块表未迁入。
+ * 【初学者 · 读本文件前先看 Include/Core/BootInfo.h】
+ *
+ * 流程：
+ *   1. KernelHandoff 在栈/静态区填好一份 BOOT_INFO
+ *   2. 调用 KernelMain(&Info)
+ *   3. KernelMain 第一件事 BootInfoSet(Info) —— 拷进本文件的 gBootInfo
+ *   4. 之后任何模块用 BootInfoGet() 读，不要再抓住 Handoff 的临时指针
+ *
+ * 为什么要「拷贝」而不是只存指针？
+ *   Handoff 里的对象寿命/位置各 Arch 不同；拷到内核 BSS 最省心。
+ *
+ * 为什么手写字节拷贝、不用 memcpy？
+ *   freestanding 内核常常不链接 libc；自己拷最稳。
  */
 #include "BootInfo.h"
 
@@ -17,7 +29,6 @@ void BootInfoSet(const BOOT_INFO *Info) {
         gBootInfoValid = 0;
         return;
     }
-    /* 不用 memcpy：裸机 freestanding 未必链 libc */
     Dst = (UINT8 *)&gBootInfo;
     Src = (const UINT8 *)Info;
     for (i = 0; i < sizeof(gBootInfo); i++) {
@@ -33,6 +44,10 @@ const BOOT_INFO *BootInfoGet(void) {
     return &gBootInfo;
 }
 
+/*
+ * 只抽出「当前显示模式」几项，给 HalVideoSet 用。
+ * Info 为空时返回全 0：表示「没有屏」，后面画图 API 应安全空操作。
+ */
 VIDEO_CONFIG BootInfoToVideoConfig(const BOOT_INFO *Info) {
     VIDEO_CONFIG V;
 

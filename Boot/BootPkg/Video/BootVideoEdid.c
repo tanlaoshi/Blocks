@@ -1,5 +1,5 @@
 /*
- * BootVideoEdid.c — PR-S-boot-1：EDID 首选分辨率
+ * BootVideoEdid.c — ��EDID 首选分辨率
  *
  * 从 Boot.c 原样搬家；不改语义。
  */

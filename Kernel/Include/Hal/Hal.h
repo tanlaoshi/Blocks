@@ -1,5 +1,14 @@
 /*
- * Include/Hal.h — 硬件抽象层统一接口
+ * Hal.h — 硬件抽象层（HAL）统一门面
+ *
+ * 【初学者】
+ * 「Hal」= Hardware Abstraction Layer。目标：上面的调度 / FS / Gui
+ * 永远不写「这条汇编是 x86 还是 Arm」。一律调 HalXxx()。
+ *
+ * 本头聚合串口、视频、控制台、设备等子门面，体量较大。
+ * 若只需能力旗标，可优先 include HalCapability.h。
+ *
+ * 【积木】门面稳定；各 Arch 在 Hal/<Arch>/ 提供实现。
  */
 #ifndef HAL_H
 #define HAL_H
@@ -21,13 +30,13 @@
 /* 4K 页 PAT 位（bit7）；2M 大页 PAT 在 bit12，勿与 PS 混淆 */
 #define HAL_PAGE_PAT      (1ULL << 7)
 
-/* PR-G-fb-wc：本核 IA32_PAT PA1=WC；非 x86 空实现 */
+/* ��本核 IA32_PAT PA1=WC；非 x86 空实现 */
 void HalPatApplyWc(void);
 
 void HalPlatformMapMmio(void);
 UINT64 HalPlatformXhciFallback(void);
 
-/* Boot 传入的 EFI_SYSTEM_TABLE*；供 Runtime GetTime（PR-G-taskbar-clock） */
+/* Boot 传入的 EFI_SYSTEM_TABLE*；供 Runtime GetTime（�� */
 void HalPlatformSetSystemTable(void *SystemTable);
 void *HalPlatformSystemTable(void);
 void HalPlatformNoteRuntimeRange(UINT64 Phys, UINT64 Size);
@@ -49,7 +58,7 @@ int HalPowerButtonPressed(void);
 
 void HalIrqEnable(void);
 void HalIrqDisable(void);
-/* PR-A5：保存并关中断；Restore 恢复进入时的中断状态（可嵌套调用方自管） */
+/* ��保存并关中断；Restore 恢复进入时的中断状态（可嵌套调用方自管） */
 UINT64 HalIrqSave(void);
 void HalIrqRestore(UINT64 Flags);
 void HalCpuRelax(void); /* 自旋等待提示（x86：pause） */
@@ -66,11 +75,11 @@ void HalTimerStart(void);
 
 void HalInstallUserMode(void);
 void HalSyscallInitialize(void);
-/* 用户任务内核栈顶 → TSS.RSP0 / 等价结构（PR-A1；取代 Common 调 ArchSetRsp0） */
+/* 用户任务内核栈顶 → TSS.RSP0 / 等价结构（��取代 Common 调 ArchSetRsp0） */
 void HalKernelSetStack(UINT64 StackTop);
 
 /*
- * PR-A11：用户虚址布局（Common 不写死 0x40000000）。
+ * ��用户虚址布局（Common 不写死 0x40000000）。
  * x86：代码 0x40000000；Arm/RiscV virt：躲开内核恒等（Arm 核 @0x40000000）→ 4GiB 起。
  */
 UINT64 HalUserCodeVirt(void);
@@ -79,20 +88,20 @@ UINT64 HalUserStackSize(void);
 UINT64 HalUserBrkMax(void);
 UINT64 HalUserSoBase(void);
 UINT64 HalUserVirtEnd(void);
-/* PR-U-mmap：匿名映射区 [MmapBase, MmapEnd)；含于 VirtEnd */
+/* ��匿名映射区 [MmapBase, MmapEnd)；含于 VirtEnd */
 UINT64 HalUserMmapBase(void);
 UINT64 HalUserMmapEnd(void);
 /* 内嵌极小用户映像：进 EL0/U + write/exit（x86 空；virt 冒烟） */
 void HalUserSelfTest(void);
 
 /*
- * PR-A2 / PR-A15：可移植任务帧 / 系统调用 ABI。
+ *  / ��可移植任务帧 / 系统调用 ABI。
  * Common 用这些 API，不直接写 Cs/Ss/Rax 或 GDT 选择子字面量；
  * 指令指针 / 栈指针走 InstructionPointer / StackPointer 中立名。
  */
 void HalFrameSetKernelEntry(HAL_INTERRUPT_FRAME *F, UINT64 Entry, UINT64 StackTop);
 void HalFrameSetUserEntry(HAL_INTERRUPT_FRAME *F, UINT64 Entry, UINT64 UserStackTop);
-/* PR-U-thread-2：用户 TLS 基（x86=FS，Arm64=TPIDR_EL0，RiscV=tp/X4） */
+/* ��用户 TLS 基（x86=FS，Arm64=TPIDR_EL0，RiscV=tp/X4） */
 void HalTlsSetBase(UINT64 UserTlsBase);
 void HalFrameSetTls(HAL_INTERRUPT_FRAME *F, UINT64 UserTlsBase);
 void HalFrameCopy(HAL_INTERRUPT_FRAME *Dst, const HAL_INTERRUPT_FRAME *Src);
@@ -104,7 +113,7 @@ UINT64 HalFrameGetArgument2(const HAL_INTERRUPT_FRAME *F);
 void HalFrameSetReturn(HAL_INTERRUPT_FRAME *F, UINT64 Value);
 void HalFrameSetReturn2(HAL_INTERRUPT_FRAME *F, UINT64 A, UINT64 B);
 /*
- * PR-U-sig：把用户帧改成进入 handler(sig)。
+ * ��把用户帧改成进入 handler(sig)。
  * 返回 1：调用方须把 *OutResumeIp 写入用户地址 *OutPushSp（再 HalFrameSetStackPointer）；
  * 返回 0：链路寄存器已保存返回点（Arm/RiscV），无需压栈；
  * 返回 -1：失败。
@@ -135,7 +144,7 @@ void HalTlbFlush(UINT64 VirtualAddress);
 void HalPageTableLoad(UINT64 Root);
 UINT64 HalPageTableGetCurrent(void);
 void HalPagingEnable(UINT64 RootPhys);
-/* PR-A10：故意触未映射 VA，验收缺页路径（x86 可为空） */
+/* ��故意触未映射 VA，验收缺页路径（x86 可为空） */
 void HalPagingSelfTest(void);
 
 /* 分页：页表结构 */
@@ -146,11 +155,11 @@ void HalPageRootCopy(UINT64 DstRoot, UINT64 SrcRoot);
 /* 将根表槽 Index 换成私有下一级表（x86：PML4→PDPT）；fork 浅拷贝后必须私有化 */
 int HalPagePrivatizeRootSlot(UINT64 Root, UINT32 Index, HalPageAllocateFunction Alloc, void *Ctx);
 /*
- * PR-A3：用户地址空间根表准备（x86：私有化槽 0 / PDPT）。
+ * ��用户地址空间根表准备（x86：私有化槽 0 / PDPT）。
  * Common 不写死根槽号或 PML4[0]。
  */
 int HalPagePrepareUserRoot(UINT64 Root, HalPageAllocateFunction Alloc, void *Ctx);
-/* PR-A3：COW 软件语义（x86 用 PTE 可用位 bit9；其它 arch 自选布局） */
+/* ��COW 软件语义（x86 用 PTE 可用位 bit9；其它 arch 自选布局） */
 int HalPageIsCopyOnWrite(UINT64 Pte);
 UINT64 HalPageMarkCopyOnWrite(UINT64 Flags); /* 置 COW、清 WRITABLE */
 int HalPageMap(UINT64 Root, UINT64 VirtualAddress, UINT64 PhysicalAddress, UINT64 Flags,
@@ -159,7 +168,7 @@ int HalPageUnmapRange(UINT64 Root, UINT64 Start, UINT64 End);
 UINT64 HalPageGetEntry(UINT64 Root, UINT64 Virt);
 UINT64 HalPageGetEntryCurrent(UINT64 Virt);
 
-/* PR-A4：ELF 机器号与重定位分类（Common 不写死 EM_X86_64 / R_X86_64_*） */
+/* ��ELF 机器号与重定位分类（Common 不写死 EM_X86_64 / R_X86_64_*） */
 UINT16 HalElfMachine(void);
 
 typedef enum {
@@ -173,11 +182,11 @@ typedef enum {
 
 HAL_ELF_RELOC_KIND HalElfRelocKind(UINT32 Type);
 
-/* PR-A12：装载可执行页后同步 I-cache（x86 空；Arm/RiscV 必需） */
+/* ��装载可执行页后同步 I-cache（x86 空；Arm/RiscV 必需） */
 void HalSyncICache(void *Addr, UINTN Size);
 
 /*
- * PR-A12：virt 无抢占时，从内核任务协作进入用户帧并在 exit 时返回。
+ * ��virt 无抢占时，从内核任务协作进入用户帧并在 exit 时返回。
  * 实现复用 SelfTestEnter/Return（Arm/RiscV）；x86 不调用。
  */
 void HalUserCoopEnter(UINT64 Ksp, struct HAL_INTERRUPT_FRAME *Frame);
@@ -187,13 +196,13 @@ const char *HalArchName(void);
 const char *HalCpuInfo(void);
 
 /*
- * PR-B1 能力旗标：Common 用能力判断，勿用「非 x86 = virt 串口」。
- * HalHasFrameBuffer — 当前 BOOT_INFO 有可用帧缓冲（亮屏 / 桌面模块前提）
- * HalConsoleOnly    — 命令行靶 / 无 FB：串口模块子集（跳过 video/gui）
+ * 能力旗标：Common 用能力判断，勿用「非 x86 = virt 串口」。
+ * HalHasFrameBuffer — BOOT_INFO 有可用帧缓冲
+ * HalConsoleOnly    — 仅串口命令行（跳过 video/gui 表）
  */
 int HalHasFrameBuffer(void);
 int HalConsoleOnly(void);
-/* PR-V-ap-interactive：1 → shell/gui 钉 BSP（仅 ConsoleOnly / 应急；virt 默认 0） */
+/* 1 → shell/gui 钉在引导核（ConsoleOnly / 应急；virt 默认 0） */
 int HalPinInteractiveToBootstrap(void);
 
 /*
@@ -230,7 +239,7 @@ void HalDebugWriteHex32(UINT32 Value);
 void HalDebugHex64(UINT64 Value);
 
 /*
- * PR-UI-ttf-fpu：内核 FPU/SSE 岛。默认编译仍 -mgeneral-regs-only。
+ * ��内核 FPU/SSE 岛。默认编译仍 -mgeneral-regs-only。
  * 仅 HalFpuBegin…End 之间可跑带 float 的 TU（如日后 TTF 栅格）。
  * 非 x86：Begin 返回 0。IRQ 路径禁止 Begin。
  */

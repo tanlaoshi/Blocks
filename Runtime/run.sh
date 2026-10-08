@@ -97,6 +97,7 @@ exec qemu-system-x86_64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device ide-hd,drive=toyroot,bus=ide.1,bootindex=1 \
+    -device qemu-xhci,id=xhci \
     "${DISPLAY_ARGS[@]}" \
     "${SERIAL_ARGS[@]}" \
     -net none

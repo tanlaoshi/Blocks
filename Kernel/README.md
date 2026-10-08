@@ -41,6 +41,7 @@
 | `Core/Scheduler.c` | K8：协作壳（Init only） |
 | `Core/Console.c` | K8：`ToyOS ready` + `Blocks>` 回显 |
 | `Core/FileSystem.c` | K9：认 Boot 交接的 `TOYOS.ID` |
+| `Core/Usb.c` | K10：认 Boot `XhciBase`，读 CAPLENGTH/HCIVERSION |
 
 ## 编译
 

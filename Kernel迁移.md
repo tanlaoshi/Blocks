@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K10** · USB 最小（探控/枚举壳） |
-| 排队 | K11+ Network / Gui …（见 §2） |
-| 刚收官 | **PR-K9** · FileSystem 识盘；`Fs: TOYOS.ID ready (Boot handoff)` ✅ |
-| 顺手（不推 ★） | Boot `ToyOsIdSeen` 交接；真 AHCI/FAT 后刀 |
+| **★** | **PR-K11** · Network 最小（探网卡） |
+| 排队 | K12+ Gui …（见 §2） |
+| 刚收官 | **PR-K10** · USB；`Usb: xhci ok …` ✅ |
+| 顺手（不推 ★） | QEMU BAR 常在 4GiB 外 → handoff；真 MMIO Map 后刀 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -82,18 +82,33 @@
 
 表序：`… → Cpu → FileSystem → Scheduler → Console`。
 
-### K10 规划（★ · 最小子集）
+### K10 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：模块表挂 `USB`；能探到控制器或枚举壳（键鼠可后刀）。
+**一句话**：模块表挂 `USB`；认 Boot 交出的 xHCI 基址（窗内可再读 CAP/VER）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `InitializeUsb`；读 Boot `XhciBase` 或最小 PCI 探；串口报 controller/ready |
-| **不做** | 完整 XHCI 环/中断风暴、MSC、HID 桌面输入 |
-| **Arm/RiscV** | 可先桩 |
-| **验收** | `[Mod] USB`；串口见 usb/xhci ok 类行 → 仍回 `Blocks>` |
+| **做** | `UsbInitialize`；`BOOT_INFO.XhciBase`；窗内读 CAPLENGTH/HCIVERSION；窗外只报 handoff |
+| **不做** | 完整 XHCI 环/中断风暴、MSC、HID、高址 MMIO Map |
+| **Arm/RiscV** | stub 软成功 |
+| **验收** | `[Mod] USB`；`Usb: xhci ok …` → 仍回 `Blocks>` ✅ |
+| **Runtime** | `run.sh` 加 `-device qemu-xhci`（q35 默认无 xHCI） |
 
-表序：在 `FileSystem` 前插入 `USB`（与现网 Full 表对齐）。
+表序：`… → Cpu → USB → FileSystem → Scheduler → Console`。
+
+### K11 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `Network`；能认出至少一块网卡（PCI 类码或 virtio）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `NetworkInitialize`；X64 最小 PCI 配置空间扫 class `0x02`；串口报 nic ok |
+| **不做** | 驱动收发包、lwIP、DHCP、Socket API |
+| **Arm/RiscV** | stub 软成功 |
+| **验收** | `[Mod] Network`；`Net: … ok` → 仍回 `Blocks>` |
+| **Runtime** | 去掉 `-net none`；挂 `virtio-net-pci`（或等价） |
+
+表序：`… → FileSystem → Network → Scheduler → Console`（Gui 后挂）。
 
 ---
 
@@ -356,3 +371,4 @@ Kernel/
 | 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
 | 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
 | 2026-10-08 | TG：K9 FileSystem（Boot `TOYOS.ID` handoff）；★ → K10（USB） |
+| 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |

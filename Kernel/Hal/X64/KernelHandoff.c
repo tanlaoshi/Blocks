@@ -79,6 +79,7 @@ static void BootInfoFromUefi(BOOT_CONFIG *Cfg, BOOT_INFO *Out, BOOT_CONFIG *CfgP
     Out->VideoModeCount = 0;
     Out->GopProtocol = 0;
     Out->DtbPhys = 0;
+    Out->XhciBase = Cfg->XhciBaseAddress;
     Out->ToyOsIdSeen = Cfg->ToyOsIdSeen ? 1u : 0u;
     {
         UINT32 n;

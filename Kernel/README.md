@@ -35,6 +35,8 @@
 | `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
 | `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
+| `Core/Device.c` | 设备框架空壳（K5） |
+| `Core/VirtualMemory.c` | 认领 EarlyIdentity 分页；确认 FB 在窗内 |
 
 ## 编译
 

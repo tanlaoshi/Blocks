@@ -12,27 +12,35 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K5** · Driver 框架 + VirtualMemory |
-| 排队 | K6 → K7 → …（见 §2） |
-| 刚收官 | **PR-K4** · Memory（PMM）最小位图；`self-test ok` ✅ |
-| 顺手（不推 ★） | `HalCapability` / `HalVideoStub`：`Core/` → `Hal/Common/`（Hal 实现不进 Core） |
+| **★** | **PR-K6** · Video 模块（背缓冲） |
+| 排队 | K7 → K8 → …（见 §2） |
+| 刚收官 | **PR-K5** · Driver 壳 + VMM 认领 EarlyIdentity；`FB pixel after PG ok` ✅ |
+| 顺手（不推 ★） | `HalCapability` / `HalVideoStub`：`Core/` → `Hal/Common/` |
 
-> ★ 只跟功能刀（K0…）走；目录收拾单独入库，**不**把 ★ 改成 K6。
+> ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
-### K5 规划（★ · 最小子集 · **禁止整目录搬家**）
+### K5 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：模块表挂上 `Driver`（空壳）+ `VirtualMemory`（认领已开的 4GiB 恒等分页）；分页后串口/FB 仍活。
+**一句话**：`Driver` 空壳 + `VirtualMemory` 认领 4GiB 恒等分页；禁整目录搬家。
 
 | 项 | 定调 |
 | -- | ---- |
-| **不是** | 把现网 `VirtualMemory/`、`Device*` 整夹拷进 Blocks |
-| **Driver** | `DeviceInitialize` / `Enumerate` 薄壳；不 Probe 真设备（避 VMM 前死循环） |
-| **VMM** | X64：`EarlyIdentity` 已在 `KernelMain` 开 PG；本刀正式模块化认领 + 确认 FB 落在恒等窗；**不**换页表后端、不做用户空间 |
-| **Arm/RiscV** | Init 成功桩（尚无开 MMU 刀）；三架构可编 |
-| **模块化** | Driver/VMM 本刀**不**抽 Ops；PMM 的 `MEMORY_OPS` 等默认实现再稳、或课上第二政策时再开 |
-| **验收** | `[Mod] Driver` → `[Mod] VirtualMemory` → 串口仍见后续 `park`；可选再打一像素证明 FB |
+| **Driver** | `DeviceInitialize` / `Enumerate` 薄壳；不 Probe |
+| **VMM** | 认领 `EarlyIdentity`；确认 FB 在窗内；分页后写一像素 |
+| **验收** | `[Mod] Driver` → `[Mod] VirtualMemory` → `VMM: FB pixel after PG ok` → `park` ✅ |
 
-表序：`Serial → Memory → Driver → VirtualMemory`（与现网 Full 前段一致）。
+表序：`Serial → Memory → Driver → VirtualMemory`。
+
+### K6 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `Video`；可选背缓冲 + `Present`；**不**强制全屏 Clear（接 Boot 黑底）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `InitializeVideo`；X64：`HalVideoInitializeBackbuffer`（PMM 页）+ `Present` 整屏 blit；画点默认进背缓冲 |
+| **不做** | 脏矩形、Theme、缩放、整夹搬现网 Video |
+| **Arm/RiscV** | Init 成功桩 |
+| **验收** | `[Mod] Video`；串口报 backbuffer；Present 后屏上可见自检（不整屏刷黑） |
 
 ---
 
@@ -283,3 +291,4 @@ Kernel/
 | 2026-10-08 | TG：K3 HalSerialGop 屏上 boot 字；`SCREEN_LOG=1` ✅；★ → K4 |
 | 2026-10-08 | TG：K4 最小位图 PMM；`[Mod] Memory` / self-test ok ✅；★ → K5 |
 | 2026-10-08 | `HalCapability` / `HalVideoStub` 从 `Core/` 迁入 `Hal/Common/`（Hal 前缀不再混在 Core） |
+| 2026-10-08 | TG：K5 Driver 壳 + VMM 认领 EarlyIdentity；★ → K6（含 K6 规划） |

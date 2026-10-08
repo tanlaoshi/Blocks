@@ -3,7 +3,7 @@
  *
  * 【初学者】
  * 可以有多张表（串口子集 / virt 桌面 / 全量），由 KernelMain 按能力旗标挑选。
- * 当前 Full：Serial → Memory；Video 等再往表里加。
+ * 当前 Full：Serial → Memory → Driver → VirtualMemory。
  */
 #ifndef KERNEL_MODULES_H
 #define KERNEL_MODULES_H

@@ -18,7 +18,7 @@
  *   1. BootInfoSet          保存开机说明书
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
  *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
- *   4. KernelModulesRunFull 跑模块表（Serial → Memory）
+ *   4. KernelModulesRunFull（Serial → Memory → Driver → VirtualMemory）
  *   5. park
  *
  * 【积木】本文件是胶水：只编排，不写分配页 / 调度政策。
@@ -131,11 +131,11 @@ static void KernelAttachEarly(void) {
 void KernelMain(const BOOT_INFO *Info) {
     BootInfoSet(Info);
 
-    #if defined(__x86_64__) || defined(_M_X64)
-        if (EarlyIdentitySetup() == 0) {
-            EarlyIdentityEnable();
-        }
-    #endif
+#if defined(__x86_64__) || defined(_M_X64)
+    if (EarlyIdentitySetup() == 0) {
+        EarlyIdentityEnable();
+    }
+#endif
 
     KernelAttachEarly();
 

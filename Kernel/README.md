@@ -34,6 +34,7 @@
 | `Hal/X64/HalVideo.c` | X64 直写帧缓冲（DrawPixel / FillRect） |
 | `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
+| `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
 
 ## 编译
 

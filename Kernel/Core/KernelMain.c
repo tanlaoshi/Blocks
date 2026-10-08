@@ -18,7 +18,7 @@
  *   1. BootInfoSet          保存开机说明书
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
  *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
- *   4. KernelModulesRunFull 跑模块表（当前只有 Serial）
+ *   4. KernelModulesRunFull 跑模块表（Serial → Memory）
  *   5. park
  *
  * 【积木】本文件是胶水：只编排，不写分配页 / 调度政策。

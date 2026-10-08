@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K4** · Memory（PMM） |
-| 排队 | K5 → K6 → …（见 §2） |
-| 刚收官 | **PR-K3** · HalSerial 屏上 boot 字（`SCREEN_LOG=1` ✅） |
+| **★** | **PR-K5** · Driver 框架 + VirtualMemory |
+| 排队 | K6 → K7 → …（见 §2） |
+| 刚收官 | **PR-K4** · Memory（PMM）最小位图；`self-test ok` ✅ |
 
 ---
 
@@ -190,6 +190,29 @@ KernelMain
 | `Hal/X64/HalSerial.c` | WriteChannel → TryMirror |
 | `Core/KernelMain.c` | BOOT 通道 + GopEnable |
 | `build.sh` | `-DTOY_SCREEN_LOG=` |
+
+---
+
+## 3quinq. PR-K4 细则（已收官 ✅）
+
+### 做
+
+- `PhysicalMemory*`：恒等窗内最大 Free 区 + 位图 first-fit；抠 Handoff 保留段
+- 模块表挂 `Memory`；Init 内 alloc/写/free 自检
+- **不**抽 `MEMORY_OPS`（默认实现先稳）
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`
+- [x] 串口：`[Mod] Memory` / `PMM: self-test ok` / `park`
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Include/Core/PhysicalMemory.h` | 对外契约 |
+| `Core/PhysicalMemory.c` | 单区位图 PMM |
+| `Core/KernelModules.c` | Serial → Memory + 自检 |
 
 ---
 

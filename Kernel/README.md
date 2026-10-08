@@ -42,6 +42,7 @@
 | `Core/Console.c` | K8：`ToyOS ready` + `Blocks>` 回显 |
 | `Core/FileSystem.c` | K9：认 Boot 交接的 `TOYOS.ID` |
 | `Core/Usb.c` | K10：认 Boot `XhciBase`，读 CAPLENGTH/HCIVERSION |
+| `Core/Network.c` | K11：PCI 扫 Network class（0x02） |
 
 ## 编译
 

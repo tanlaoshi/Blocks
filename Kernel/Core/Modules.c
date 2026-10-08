@@ -1,7 +1,7 @@
 /*
  * Modules.c — 开机模块表 + ModulesRun（积木拼表）
  *
- * Full：… → Cpu → USB → FileSystem → Scheduler → Console（K10）
+ * Full：… → USB → FileSystem → Network → Scheduler → Console（K11）
  *
  * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
@@ -18,6 +18,7 @@
 #include "Console.h"
 #include "Usb.h"
 #include "FileSystem.h"
+#include "Network.h"
 #include "BootInfo.h"
 
 static void ModLog(const char *Name, const char *Suffix) {
@@ -138,6 +139,10 @@ static int InitializeFileSystem(void) {
     return FileSystemInitialize();
 }
 
+static int InitializeNetwork(void) {
+    return NetworkInitialize();
+}
+
 static int InitializeScheduler(void) {
     if (SchedulerInitialize() != 0) {
         return -1;
@@ -163,6 +168,7 @@ static const MODULE gModulesFull[] = {
     { "Cpu", InitializeCpu },
     { "USB", InitializeUsb },
     { "FileSystem", InitializeFileSystem },
+    { "Network", InitializeNetwork },
     { "Scheduler", InitializeScheduler },
     { "Console", InitializeConsole },
 };

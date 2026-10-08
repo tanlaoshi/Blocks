@@ -98,6 +98,7 @@ exec qemu-system-x86_64 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device ide-hd,drive=toyroot,bus=ide.1,bootindex=1 \
     -device qemu-xhci,id=xhci \
+    -device virtio-net-pci,netdev=n0 \
+    -netdev user,id=n0 \
     "${DISPLAY_ARGS[@]}" \
-    "${SERIAL_ARGS[@]}" \
-    -net none
+    "${SERIAL_ARGS[@]}"

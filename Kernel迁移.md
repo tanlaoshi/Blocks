@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K11** · Network 最小（探网卡） |
-| 排队 | K12+ Gui …（见 §2） |
-| 刚收官 | **PR-K10** · USB；`Usb: xhci ok …` ✅ |
-| 顺手（不推 ★） | QEMU BAR 常在 4GiB 外 → handoff；真 MMIO Map 后刀 |
+| **★** | **PR-K12** · Gui 最小（桌面壳） |
+| 排队 | K13+（见 §2；表已齐则可收口/加厚） |
+| 刚收官 | **PR-K11** · Network；`Net: nic ok …` ✅ |
+| 顺手（不推 ★） | Runtime `virtio-net-pci` |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -96,7 +96,7 @@
 
 表序：`… → Cpu → USB → FileSystem → Scheduler → Console`。
 
-### K11 规划（★ · 最小子集）
+### K11 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：模块表挂 `Network`；能认出至少一块网卡（PCI 类码或 virtio）。
 
@@ -105,10 +105,23 @@
 | **做** | `NetworkInitialize`；X64 最小 PCI 配置空间扫 class `0x02`；串口报 nic ok |
 | **不做** | 驱动收发包、lwIP、DHCP、Socket API |
 | **Arm/RiscV** | stub 软成功 |
-| **验收** | `[Mod] Network`；`Net: … ok` → 仍回 `Blocks>` |
-| **Runtime** | 去掉 `-net none`；挂 `virtio-net-pci`（或等价） |
+| **验收** | `[Mod] Network`；`Net: nic ok …` → 仍回 `Blocks>` ✅ |
+| **Runtime** | `virtio-net-pci` + user netdev |
 
 表序：`… → FileSystem → Network → Scheduler → Console`（Gui 后挂）。
+
+### K12 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `Gui`；有 FB 时画最小桌面壳（底色 + 顶栏 + 标题），无完整 Theme/窗管。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `GuiInitialize`；FillRect 背景/顶栏；`DrawString` 标题；背缓冲则 Present |
+| **不做** | Theme/TTF、窗口管理、开始菜单、鼠标光标合成 |
+| **Arm/RiscV** | 无 FB 则 skip 软成功 |
+| **验收** | `[Mod] Gui`；`Gui: desktop ok`；GTK 可见顶栏/标题 → 仍回 `Blocks>` |
+
+表序：`… → Network → Gui → Scheduler → Console`。
 
 ---
 
@@ -372,3 +385,4 @@ Kernel/
 | 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
 | 2026-10-08 | TG：K9 FileSystem（Boot `TOYOS.ID` handoff）；★ → K10（USB） |
 | 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
+| 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |

@@ -28,8 +28,8 @@ cd ~/Blocks/Runtime
 
 串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K10 预期：串口 `[Mod] USB` → `Usb: xhci ok @0x…`（QEMU 常见 `(Boot handoff)`，BAR 在 4GiB 外）→ FileSystem → `Blocks>`。
+K11 预期：`[Mod] Network` → `Net: nic ok bus=… vid=… did=…` → `Blocks>`。
 
-`run.sh` 已加 `-device qemu-xhci`（q35 默认只有 EHCI）。
+`run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 
 可选：`./build.sh x64 SCREEN_LOG=1` 把 boot 日志镜像到屏（Y≥80）。

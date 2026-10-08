@@ -89,7 +89,7 @@ build_common_objs() {
     local -a cflags=("$@")
     local f
     local -a cores=(BootInfo Modules Font PhysicalMemory Device
-                    VirtualMemory Scheduler Console Kernel)
+                    VirtualMemory FileSystem Scheduler Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -128,7 +128,7 @@ x64|X64)
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
-        "$OUT/Device.o" "$OUT/VirtualMemory.o" \
+        "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/FileSystem.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
@@ -152,7 +152,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/FileSystem.o" "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -178,7 +178,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/FileSystem.o" "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)
     echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2

@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K9** · FileSystem 最小（识盘） |
-| 排队 | K10+ USB / Network / Gui …（见 §2） |
-| 刚收官 | **PR-K8** · Scheduler + Console；`ToyOS ready` / `Blocks>` ✅ |
-| 顺手（不推 ★） | 去掉开机自检色块；Console 认 `\\r` 为行结束 |
+| **★** | **PR-K10** · USB 最小（探控/枚举壳） |
+| 排队 | K11+ Network / Gui …（见 §2） |
+| 刚收官 | **PR-K9** · FileSystem 识盘；`Fs: TOYOS.ID ready (Boot handoff)` ✅ |
+| 顺手（不推 ★） | Boot `ToyOsIdSeen` 交接；真 AHCI/FAT 后刀 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。
 
@@ -69,18 +69,31 @@
 
 表序：`… → Cpu → Scheduler → Console`（中间 USB/FS/… 后挂）。
 
-### K9 规划（★ · 最小子集）
+### K9 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：模块表挂 `FileSystem`；能认出 Root 盘上的 `TOYOS.ID`（或等价卷标）。
+**一句话**：模块表挂 `FileSystem`；认系统卷标记 `TOYOS.ID`（本刀吃 Boot handoff）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `InitializeFileSystem`；块设备/ virtio 或 AHCI 最小探盘；串口报 disk/id ok |
-| **不做** | 完整 FAT 应用 API、写文件、Store 包管理 |
-| **Arm/RiscV** | 可先桩或 virtio-blk 另刀 |
-| **验收** | `[Mod] FileSystem`；串口见 `TOYOS.ID` / disk ready → 仍回 `Blocks>` |
+| **做** | Boot 扫卷写 `ToyOsIdSeen`；Handoff→`BOOT_INFO`；`FileSystemInitialize` 串口报 ready |
+| **不做** | 内核侧 AHCI/virtio-blk、完整 FAT API、写文件、Store |
+| **Arm/RiscV** | 无 UEFI 扫卷则 stub 软成功 |
+| **验收** | `[Mod] FileSystem`；`Fs: TOYOS.ID ready (Boot handoff)` → `Blocks>` ✅ |
 
-表序：在 `Scheduler` 前插入 `FileSystem`（与现网 Full 表对齐时可再调）。
+表序：`… → Cpu → FileSystem → Scheduler → Console`。
+
+### K10 规划（★ · 最小子集）
+
+**一句话**：模块表挂 `USB`；能探到控制器或枚举壳（键鼠可后刀）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `InitializeUsb`；读 Boot `XhciBase` 或最小 PCI 探；串口报 controller/ready |
+| **不做** | 完整 XHCI 环/中断风暴、MSC、HID 桌面输入 |
+| **Arm/RiscV** | 可先桩 |
+| **验收** | `[Mod] USB`；串口见 usb/xhci ok 类行 → 仍回 `Blocks>` |
+
+表序：在 `FileSystem` 前插入 `USB`（与现网 Full 表对齐）。
 
 ---
 
@@ -342,3 +355,4 @@ Kernel/
 | 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
 | 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
 | 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
+| 2026-10-08 | TG：K9 FileSystem（Boot `TOYOS.ID` handoff）；★ → K10（USB） |

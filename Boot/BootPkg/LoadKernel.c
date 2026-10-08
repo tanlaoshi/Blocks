@@ -170,6 +170,31 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     return EFI_NOT_FOUND;
 }
 
+STATIC BOOLEAN ScanToyOsIdVolumes(VOID) {
+    EFI_STATUS Status;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    UINTN i;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+    BOOLEAN Seen = FALSE;
+
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                     NULL, &HandleCount, &Handles);
+    if (EFI_ERROR(Status) || Handles == NULL) {
+        return FALSE;
+    }
+    for (i = 0; i < HandleCount; i++) {
+        Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
+                                     (VOID **)&Fs);
+        if (!EFI_ERROR(Status) && FsHasToyOsId(Fs)) {
+            Seen = TRUE;
+            break;
+        }
+    }
+    gBS->FreePool(Handles);
+    return Seen;
+}
+
 EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
     EFI_STATUS Status;
     EFI_PHYSICAL_ADDRESS ElfBuffer = 0;
@@ -188,6 +213,10 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
         return Status;
     }
     BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
+
+    BootConfig->ToyOsIdSeen = ScanToyOsIdVolumes() ? 1u : 0u;
+    BootSerialPrintf(BootConfig->ToyOsIdSeen ? "Boot: TOYOS.ID seen\n"
+                                             : "Boot: TOYOS.ID missing\n");
     return EFI_SUCCESS;
 }
 

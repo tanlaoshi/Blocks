@@ -44,6 +44,8 @@ typedef struct {
     UINT64          GopProtocol;
 
     UINT64 DtbPhys;
+    /* 1 = Boot（或后刀真探盘）见过系统卷标记 TOYOS.ID */
+    UINT32 ToyOsIdSeen;
 } BOOT_INFO;
 
 typedef struct {

@@ -40,6 +40,7 @@
 | `Hal/X64/HalCpu.c` | K7：最小 GDT/IDT（不 sti） |
 | `Core/Scheduler.c` | K8：协作壳（Init only） |
 | `Core/Console.c` | K8：`ToyOS ready` + `Blocks>` 回显 |
+| `Core/FileSystem.c` | K9：认 Boot 交接的 `TOYOS.ID` |
 
 ## 编译
 

@@ -1,7 +1,7 @@
 /*
  * Modules.c — 开机模块表 + ModulesRun（积木拼表）
  *
- * Full：… → Cpu → Scheduler → Console（K8；中间 USB/FS/… 后挂）
+ * Full：… → Cpu → FileSystem → Scheduler → Console（K9）
  *
  * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
@@ -16,6 +16,7 @@
 #include "HalCpu.h"
 #include "Scheduler.h"
 #include "Console.h"
+#include "FileSystem.h"
 #include "BootInfo.h"
 
 static void ModLog(const char *Name, const char *Suffix) {
@@ -128,6 +129,10 @@ static int InitializeCpu(void) {
     return 0;
 }
 
+static int InitializeFileSystem(void) {
+    return FileSystemInitialize();
+}
+
 static int InitializeScheduler(void) {
     if (SchedulerInitialize() != 0) {
         return -1;
@@ -151,6 +156,7 @@ static const MODULE gModulesFull[] = {
     { "VirtualMemory", InitializeVirtualMemory },
     { "Video", InitializeVideo },
     { "Cpu", InitializeCpu },
+    { "FileSystem", InitializeFileSystem },
     { "Scheduler", InitializeScheduler },
     { "Console", InitializeConsole },
 };

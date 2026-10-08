@@ -56,16 +56,19 @@ typedef struct {
      * ��ModeNumber + GopProtocol 供真机运行时 SetMode。
      */
     UINT32               VideoModeCount;
-    UINT32               VideoModePad;
+    UINT32               VideoModePad; /* ?? GOP handoff magic?TOY_BOOT_GOP_HANDOFF_MAGIC */
     TOY_VIDEO_MODE       VideoModes[TOY_VIDEO_MODE_MAX];
     UINT64               GopProtocol;
+    /* K9?Boot ???? TOYOS.ID?1=????? AHCI/FAT ???? */
+    UINT32               ToyOsIdSeen;
+    UINT32               ToyOsIdPad;
 } UEFI_BOOT_CONFIG;
 
 #if defined(__GNUC__)
 _Static_assert(sizeof(TOY_VIDEO_CONFIG) == 32, "TOY_VIDEO_CONFIG size");
 _Static_assert(sizeof(TOY_MEMORY_MAP) == 40, "TOY_MEMORY_MAP size");
 _Static_assert(sizeof(TOY_VIDEO_MODE) == 16, "TOY_VIDEO_MODE size");
-_Static_assert(sizeof(UEFI_BOOT_CONFIG) == 632, "UEFI_BOOT_CONFIG size");
+_Static_assert(sizeof(UEFI_BOOT_CONFIG) == 640, "UEFI_BOOT_CONFIG size");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoConfig) == 0, "VideoConfig off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, MemoryMap) == 32, "MemoryMap off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, EntryAddress) == 72, "EntryAddress off");
@@ -75,6 +78,7 @@ _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, XhciBaseAddress) == 96, "Xhc
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoModeCount) == 104, "VideoModeCount off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoModes) == 112, "VideoModes off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, GopProtocol) == 624, "GopProtocol off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, ToyOsIdSeen) == 632, "ToyOsIdSeen off");
 #endif
 
 #endif

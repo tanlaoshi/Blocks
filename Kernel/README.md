@@ -29,8 +29,8 @@
 | `Include/Hal/` | 公共 HAL 门面（Common 只认这些头） |
 | `Hal/<Arch>/` | 该架构入口、串口、页表等实现 |
 | `Hal/<Arch>/Hal/` | 该架构私有细节（如 `HalPort.h`），见该目录 README |
-| `Hal/Common/` | 多架构共用的 HAL 辅助（设备树、内存帧缓冲等） |
-| `Core/` | `KernelMain`、模块表、`BOOT_INFO` 等合流代码 |
+| `Hal/Common/` | 跨 Arch HAL（`HalCapability`、`HalVideoStub`、DTB/RamFB 头） |
+| `Core/` | 合流：`KernelMain`、模块表、PMM、`BOOT_INFO`（无 `Hal*` 实现） |
 | `Hal/X64/HalVideo.c` | X64 直写帧缓冲（DrawPixel / FillRect） |
 | `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |

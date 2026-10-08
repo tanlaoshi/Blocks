@@ -1,13 +1,9 @@
 /*
- * HalVideoStub.c — 视频 HAL：只记配置、不画画
+ * HalVideoStub.c — Hal/Common：视频 HAL 默认薄实现（只记配置、不画画）
  *
  * 【初学者】
- * 完整 HalVideo 会往帧缓冲写像素、管后缓冲、打字。
- * 当前实现只：
- *   HalVideoSet()            — 记住分辨率 / 帧缓冲地址
- *   HalVideoGetSize() 等     — 供其它代码查询
- *
- * 【积木】门面在 HalVideo.h；本文件是默认薄实现，可换成真画屏后端。
+ * Arm/RiscV 先链本文件；X64 链 Hal/X64/HalVideo.c（真画点）。
+ * 门面仍在 Include/Hal/HalVideo.h。
  */
 #include "HalVideo.h"
 

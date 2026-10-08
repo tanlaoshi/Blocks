@@ -15,6 +15,9 @@
 | **★** | **PR-K5** · Driver 框架 + VirtualMemory |
 | 排队 | K6 → K7 → …（见 §2） |
 | 刚收官 | **PR-K4** · Memory（PMM）最小位图；`self-test ok` ✅ |
+| 顺手（不推 ★） | `HalCapability` / `HalVideoStub`：`Core/` → `Hal/Common/`（Hal 实现不进 Core） |
+
+> ★ 只跟功能刀（K0…）走；目录收拾单独入库，**不**把 ★ 改成 K6。
 
 ---
 
@@ -102,8 +105,8 @@ KernelMain
 | `Core/KernelMain.c` | AttachEarly + RunFull + park |
 | `Core/Module.c` `Include/Core/Module.h` | `ModulesRun` |
 | `Core/KernelModules.c` | Full 表仅 Serial |
-| `Core/HalCapability.c` | FB / ConsoleOnly / VirtSerial / CpuPark |
-| `Core/HalVideoStub.c` | `HalVideoSet` 等薄存储 |
+| `Hal/Common/HalCapability.c` | FB / ConsoleOnly / VirtSerial / CpuPark |
+| `Hal/Common/HalVideoStub.c` | `HalVideoSet` 等薄存储 |
 
 ---
 
@@ -135,7 +138,7 @@ KernelMain
 | 文件 | 作用 |
 | ---- | ---- |
 | `Hal/X64/HalVideo.c` | Set / GetSize / DrawPixel / FillRect（直写 LFB） |
-| `Core/HalVideoStub.c` | 非 X64：Set + 空 Draw/Fill |
+| `Hal/Common/HalVideoStub.c` | 非 X64：Set + 空 Draw/Fill |
 | `Core/KernelMain.c` | 打分辨率 + 右上角自检色块 |
 
 ---
@@ -224,8 +227,9 @@ Kernel/
     KernelMain.c
     KernelModules.c
     BootInfo.c
-    HalCapability.c      # K0：能力旗标
-    HalVideoStub.c       # K0：薄存储；K1 起被真实现替换/加厚
+  Hal/Common/
+    HalCapability.c      # 能力旗标（跨 Arch）
+    HalVideoStub.c       # 非 X64 薄视频；X64 用 Hal/X64/HalVideo.c
   Include/Core/
     Module.h
     …
@@ -262,3 +266,5 @@ Kernel/
 | 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |
 | 2026-10-08 | TG：K2 Font 8×8 + DrawString；左上角 `Blocks K2` ✅；★ → K3 |
 | 2026-10-08 | TG：K3 HalSerialGop 屏上 boot 字；`SCREEN_LOG=1` ✅；★ → K4 |
+| 2026-10-08 | TG：K4 最小位图 PMM；`[Mod] Memory` / self-test ok ✅；★ → K5 |
+| 2026-10-08 | `HalCapability` / `HalVideoStub` 从 `Core/` 迁入 `Hal/Common/`（Hal 前缀不再混在 Core） |

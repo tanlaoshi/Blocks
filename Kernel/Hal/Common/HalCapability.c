@@ -1,5 +1,5 @@
 /*
- * HalCapability.c — 能力旗标与 CPU 停车（三架构合文件）
+ * HalCapability.c — 能力旗标与 CPU 停车（Hal/Common，三架构合文件）
  *
  * 【初学者 · 为什么要旗标？】
  * 同一套 KernelMain 要跑在：

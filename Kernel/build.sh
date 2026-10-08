@@ -88,13 +88,17 @@ build_common_objs() {
     shift
     local -a cflags=("$@")
     local f
-    local -a cores=(BootInfo Module KernelModules HalCapability Font PhysicalMemory KernelMain)
-    if [ "$with_video_stub" = 1 ]; then
-        cores+=(HalVideoStub)
-    fi
+    local -a cores=(BootInfo Module KernelModules Font PhysicalMemory KernelMain)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
+    # Hal 跨 Arch 默认实现放 Hal/Common，不进 Core
+    "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCapability.c" \
+        -o "$out/HalCapability.o"
+    if [ "$with_video_stub" = 1 ]; then
+        "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalVideoStub.c" \
+            -o "$out/HalVideoStub.o"
+    fi
 }
 
 case "$ARCH" in

@@ -43,6 +43,7 @@
 | `Core/FileSystem.c` | K9：认 Boot 交接的 `TOYOS.ID` |
 | `Core/Usb.c` | K10：认 Boot `XhciBase`，读 CAPLENGTH/HCIVERSION |
 | `Core/Network.c` | K11：PCI 扫 Network class（0x02） |
+| `Core/Gui.c` | K12：最小桌面壳（底色/顶栏/标题） |
 
 ## 编译
 

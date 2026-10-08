@@ -12,12 +12,30 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K12** · Gui 最小（桌面壳） |
-| 排队 | K13+（见 §2；表已齐则可收口/加厚） |
-| 刚收官 | **PR-K11** · Network；`Net: nic ok …` ✅ |
-| 顺手（不推 ★） | Runtime `virtio-net-pci` |
+| **★** | **PR-K13** · VMM Map MMIO（高址 BAR） |
+| 排队 | K14…K20（见下方「加厚到桌面」；细则随 ★ 展开） |
+| 刚收官 | **PR-K12** · Gui 桌面壳；`Gui: desktop ok` ✅ |
+| 顺手（不推 ★） | Console 横幅下移避开顶栏 |
 
-> ★ 只跟功能刀（K0…）走；目录收拾单独入库。
+> ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
+> **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
+
+### 加厚到桌面（K13+ 排队 · 一句话）
+
+> 终局仍是 §1.1「QEMU/真机可跑桌面」。下表是固定排队；**JX 只认文首 ★**，细则在对应 Kx 规划节（未轮到可只留一句话）。
+
+| PR | 一句话 | 为何排这里 | 验收（口述） |
+| -- | ------ | ---------- | ------------ |
+| **K13** ★ | VMM：把高址 MMIO（如 xHCI BAR `0x8_xxxx_xxxx`）映进页表 | K10 只能 handoff，读寄存器会挂 | 串口 `VMM: map mmio ok`；再读 xHCI CAP/VER 出真值 |
+| **K14** | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: port N CCS=…`；软成功不卡死 |
+| **K15** | USB HID 键盘（或 QEMU 先 PS/2）最小 | 桌面要键入；串口壳可先吃键 | 按键串口/屏有码；无设备不卡 |
+| **K16** | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)`；读一小文件可选 |
+| **K17** | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
+| **K18** | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
+| **K19** | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
+| **K20** | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
+
+**明确后置（勿插队占 ★）**：完整 Theme/TTF、窗管/开始菜单、lwIP/Socket、Store、SMP、真机多驱动边角——现网对照迁入时再拆刀。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
 
@@ -110,7 +128,7 @@
 
 表序：`… → FileSystem → Network → Scheduler → Console`（Gui 后挂）。
 
-### K12 规划（★ · 最小子集）
+### K12 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：模块表挂 `Gui`；有 FB 时画最小桌面壳（底色 + 顶栏 + 标题），无完整 Theme/窗管。
 
@@ -119,9 +137,22 @@
 | **做** | `GuiInitialize`；FillRect 背景/顶栏；`DrawString` 标题；背缓冲则 Present |
 | **不做** | Theme/TTF、窗口管理、开始菜单、鼠标光标合成 |
 | **Arm/RiscV** | 无 FB 则 skip 软成功 |
-| **验收** | `[Mod] Gui`；`Gui: desktop ok`；GTK 可见顶栏/标题 → 仍回 `Blocks>` |
+| **验收** | `[Mod] Gui`；`Gui: desktop ok`；GTK 可见顶栏/标题 → 仍回 `Blocks>` ✅ |
 
 表序：`… → Network → Gui → Scheduler → Console`。
+
+### K13 规划（★ · 最小子集）
+
+**一句话**：VMM 能把 **4GiB 窗外** 的 MMIO 页映成可访问虚址；用 xHCI BAR 验收。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `VirtualMemoryMapMmio(Phys, Size)→Virt`（或等价）；Usb 经映射读 CAP/VER |
+| **不做** | 完整 xHCI 环、通用 PCI BAR 枚举库、IOMMU |
+| **Arm/RiscV** | 可先桩或同契约空实现 |
+| **验收** | `Usb: xhci ok @… cap=… ver=…`（不再仅 `(Boot handoff)`）→ `Blocks>` |
+
+依赖：K10 已交 `XhciBase`；QEMU BAR 常在 `0x800000000` 外。
 
 ---
 
@@ -178,9 +209,13 @@ KernelMain
 | **K6** | Video 模块（背缓冲） | `InitializeVideo` | 接 Boot 黑底、不强制全屏 Clear |
 | **K7** | Cpu（GDT/IDT/LAPIC 或 arch 等价） | `Hal/X64` 等 | 中断门可挂；定时器可空 |
 | **K8** | Scheduler 最小 + Console 串口壳 | 单核 shell 可交互 | 串口提示符；`ToyOS ready` 类横幅 |
-| **K9+** | USB / FS / Gui / Network … | 按现网表推进 | **X64 到桌面** 分刀验收 |
+| **K9** | FileSystem 识盘（Boot handoff） | `ToyOsIdSeen` | `Fs: TOYOS.ID ready` |
+| **K10** | USB 探控（XhciBase） | handoff / 窗内 CAP | `Usb: xhci ok` |
+| **K11** | Network 探网卡 | PCI class 0x02 | `Net: nic ok` |
+| **K12** | Gui 桌面壳 | 底色+顶栏 | `Gui: desktop ok` |
+| **K13…K20** | 加厚到桌面 | 见文首「加厚到桌面」表 | 分刀验收；终局 §1.1 |
 
-> K1–K3 偏「早期可见」；K4 起正式进模块表肉。可按风险微调顺序，但 **K0 必须先落地**。
+> K1–K3 偏「早期可见」；K4–K12 挂齐模块表薄实现；**K13 起加厚**。可按风险微调，但 **K0 必须先落地**；改排队须改文首表。
 
 ---
 
@@ -386,3 +421,4 @@ Kernel/
 | 2026-10-08 | TG：K9 FileSystem（Boot `TOYOS.ID` handoff）；★ → K10（USB） |
 | 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
 | 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
+| 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |

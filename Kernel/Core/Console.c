@@ -27,8 +27,9 @@ static void ConsolePaintBanner(void) {
     if (W < 96 || H < 40) {
         return;
     }
-    HalVideoDrawStringAt(8, 8, "ToyOS ready", 0x00FFFFFFu);
-    HalVideoDrawStringAt(8, 24, "Blocks>", 0x00FFFFFFu);
+    /* 顶栏留给 Gui（K12）；字画在栏下 */
+    HalVideoDrawStringAt(8, 40, "ToyOS ready", 0x00FFFFFFu);
+    HalVideoDrawStringAt(8, 56, "Blocks>", 0x00FFFFFFu);
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }

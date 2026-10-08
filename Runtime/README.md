@@ -28,7 +28,7 @@ cd ~/Blocks/Runtime
 
 串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K11 预期：`[Mod] Network` → `Net: nic ok bus=… vid=… did=…` → `Blocks>`。
+K12 预期：`[Mod] Gui` → `Gui: desktop ok`；GTK 见深色底 + 顶栏 `Blocks`；串口仍回 `Blocks>`。
 
 `run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 

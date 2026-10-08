@@ -1,7 +1,5 @@
 /*
- * BootPrivate.h ? BootPkg ???????
- *
- * ??????????????????????
+ * BootPrivate.h ? BootPkg ???????? .c ???
  */
 #ifndef TOY_BOOT_PRIVATE_H
 #define TOY_BOOT_PRIVATE_H
@@ -11,7 +9,7 @@
 #include <Protocol/SimpleFileSystem.h>
 
 #include "UefiBootConfig.h"
-#include "BootSerial.h"
+#include "Serial.h"
 
 #ifndef TOY_BOOT_DEBUG
 #define TOY_BOOT_DEBUG 0
@@ -25,7 +23,7 @@
 typedef TOY_VIDEO_CONFIG VIDEO_CONFIG;
 typedef TOY_MEMORY_MAP   MEMORY_MAP;
 
-/* BootVideo?GetVideoInfo / SetVideoMode????BootVideoScore / Edid / Theme? */
+/* Video?GetVideoInfo / SetVideoMode?????? VideoScore / Edid / Theme? */
 BOOLEAN IsVirtualMachine(VOID);
 BOOLEAN IsModeUsable(const EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info);
 EFI_STATUS TryGetEdidPreferred(EFI_HANDLE ImageHandle, EFI_HANDLE GopHandle,
@@ -42,7 +40,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);
 
-/* BootLoadKernel */
+/* LoadKernel */
 BOOLEAN FsHasToyOsId(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
@@ -50,7 +48,7 @@ EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
                               EFI_PHYSICAL_ADDRESS *EntryPoint);
 EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 
-/* BootFillRsdp / BootFillXhci / JumpToKernel */
+/* FillRsdp / FillXhci / JumpToKernel */
 VOID BootFillRsdp(UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase);
 VOID BootFillXhci(UEFI_BOOT_CONFIG *BootConfig);

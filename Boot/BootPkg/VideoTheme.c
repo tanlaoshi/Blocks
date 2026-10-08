@@ -1,5 +1,5 @@
 /*
- * BootVideoTheme.c — BootVideo 辅助：THEME.CFG 显示偏好
+ * VideoTheme.c — Video 辅助：THEME.CFG 显示偏好
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>

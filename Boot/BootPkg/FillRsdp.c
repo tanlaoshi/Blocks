@@ -1,5 +1,5 @@
 /*
- * BootFillRsdp.c — Boot 第 4 步：填 ACPI RSDP 地址
+ * FillRsdp.c — Boot 第 4 步：填 ACPI RSDP 地址
  */
 #include <Guid/Acpi.h>
 #include <Library/UefiLib.h>

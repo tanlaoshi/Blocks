@@ -42,13 +42,14 @@ cd ~/Blocks/Boot && ./build.sh
 | 文件 | 给初学者的解释 |
 | ---- | -------------- |
 | `BootPkg/Boot.c` | 节目单：只按顺序调下面六步 |
-| `BootSerial.c` / `.h` | ① 串口 COM1 |
-| `BootVideo.c`（+ Score/Edid/Theme） | ② GOP 选模 / 设分辨率 |
-| `BootLoadKernel.c` | ③ 读盘装入 `Kernel.elf` |
-| `BootFillRsdp.c` | ④ ACPI RSDP |
-| `BootFillXhci.c` | ⑤ PCI 上找 xHCI |
+| `Serial.c` / `.h` | ① 串口 COM1 |
+| `Video.c`（+ Score/Edid/Theme） | ② GOP 选模 / 设分辨率 |
+| `LoadKernel.c` | ③ 读盘装入 `Kernel.elf` |
+| `FillRsdp.c` | ④ ACPI RSDP |
+| `FillXhci.c` | ⑤ PCI 上找 xHCI |
 | `JumpToKernel.c` | ⑥ ExitBootServices + 跳内核 |
 | `UefiBootConfig.h` | 交接清单 `UEFI_BOOT_CONFIG` |
+| `BootPrivate.h` | 本包内部声明 |
 | `EDK2/` | 裁剪工具包 |
 | `build.sh` | → `Build/BOOTX64.EFI` |
 
@@ -58,11 +59,11 @@ cd ~/Blocks/Boot && ./build.sh
 
 读 `BootPkg/Boot.c` 时，按这个顺序理解即可：
 
-1. **BootSerial** → `BootSerialInitialize` / `BootSerialBanner`
-2. **BootVideo** → `GetVideoInfo` / `SetVideoMode`
-3. **BootLoadKernel** → `BootLoadKernel`
-4. **BootFillRsdp** → `BootFillRsdp`（并记下 `SystemTable`）
-5. **BootFillXhci** → `BootFillXhci`
+1. **Serial** → `BootSerialInitialize` / `BootSerialBanner`
+2. **Video** → `GetVideoInfo` / `SetVideoMode`
+3. **LoadKernel** → `BootLoadKernel`
+4. **FillRsdp** → `BootFillRsdp`（并记下 `SystemTable`）
+5. **FillXhci** → `BootFillXhci`
 6. **JumpToKernel** → `JumpToKernel`
 
 某一步失败，通常会在串口打一行 `Boot: … Failed`，然后返回错误。

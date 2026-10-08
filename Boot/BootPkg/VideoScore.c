@@ -1,5 +1,5 @@
 /*
- * BootVideoScore.c — BootVideo 辅助：模式打分
+ * VideoScore.c — Video 辅助：模式打分
  */
 #include <Library/BaseLib.h>
 

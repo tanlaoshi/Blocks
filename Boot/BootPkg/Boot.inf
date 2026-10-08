@@ -7,14 +7,14 @@
 
 [Sources]
   Boot.c
-  BootSerial.c
-  BootVideo.c
-  BootVideoScore.c
-  BootVideoEdid.c
-  BootVideoTheme.c
-  BootLoadKernel.c
-  BootFillRsdp.c
-  BootFillXhci.c
+  Serial.c
+  Video.c
+  VideoScore.c
+  VideoEdid.c
+  VideoTheme.c
+  LoadKernel.c
+  FillRsdp.c
+  FillXhci.c
   JumpToKernel.c
 
 [Packages]

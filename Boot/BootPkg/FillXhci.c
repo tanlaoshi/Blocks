@@ -1,5 +1,5 @@
 /*
- * BootFillXhci.c — Boot 第 5 步：PCI 上找 xHCI 基址
+ * FillXhci.c — Boot 第 5 步：PCI 上找 xHCI 基址
  */
 #include <Protocol/PciIo.h>
 #include <Library/UefiBootServicesTableLib.h>

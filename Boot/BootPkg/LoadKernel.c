@@ -1,5 +1,5 @@
 /*
- * BootLoadKernel.c — 找盘读 Kernel.elf，校验并装入内存
+ * LoadKernel.c — 找盘读 Kernel.elf，校验并装入内存
  *
  * Boot.c 第三步。含：按卷查找、TOYOS.ID 优先、ELF 段加载。
  */

@@ -1,5 +1,5 @@
 /*
- * BootVideo.c — Boot 第 2 步：GOP 选模（GetVideoInfo）/ 设模（SetVideoMode）
+ * Video.c — Boot 第 2 步：GOP 选模（GetVideoInfo）/ 设模（SetVideoMode）
  */
 #include <Protocol/GraphicsOutput.h>
 #include <Library/UefiBootServicesTableLib.h>

@@ -1,5 +1,5 @@
 /*
- * BootSerial.h — Boot 串口 API（BootSerial.c）
+ * Serial.h — Boot 串口 API（Serial.c）
  */
 #ifndef TOY_BOOT_SERIAL_H
 #define TOY_BOOT_SERIAL_H

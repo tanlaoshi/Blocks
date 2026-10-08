@@ -1,9 +1,9 @@
 /*
- * BootSerial.c — Boot 第 1 步：COM1 16550
+ * Serial.c — Boot 第 1 步：COM1 16550
  *
  * ExitBootServices 前可用；与 Kernel HalSerial 同口同波特率。
  */
-#include "BootSerial.h"
+#include "Serial.h"
 #include <Library/PrintLib.h>
 #include <Library/BaseLib.h>
 

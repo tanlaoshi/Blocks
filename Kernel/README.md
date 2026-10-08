@@ -32,6 +32,7 @@
 | `Hal/Common/` | 多架构共用的 HAL 辅助（设备树、内存帧缓冲等） |
 | `Core/` | `KernelMain`、模块表、`BOOT_INFO` 等合流代码 |
 | `Hal/X64/HalVideo.c` | X64 直写帧缓冲（DrawPixel / FillRect） |
+| `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
 
 ## 编译
 

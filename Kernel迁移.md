@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K2** · `Font` 最小点阵（无 Theme） |
-| 排队 | K3 → K4 → …（见 §2） |
-| 刚收官 | **PR-K1** · `HalVideo` 最小子集（X64 LFB；手测右上角黄块 ✅） |
+| **★** | **PR-K3** · X64 `HalSerial` 屏上 boot 字 |
+| 排队 | K4 → K5 → …（见 §2） |
+| 刚收官 | **PR-K2** · `Font` 最小点阵（无 Theme；左上角 `Blocks K2` ✅） |
 
 ---
 
@@ -140,6 +140,30 @@ KernelMain
 
 ---
 
+## 3ter. PR-K2 细则（已收官 ✅）
+
+### 做
+
+- 内建 8×8 ASCII（`0x20`–`0x7E`）点阵 + `HalVideoDrawCharAt` / `DrawStringAt`
+- `KernelAttachEarly`：有 FB 时左上角打 `Blocks K2`（白字）
+- 无 Theme、无平滑、无 UTF-8
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`
+- [x] 串口：`font self-test (DrawString)` / `modules done; park`
+- [x] 屏上左上角可见 `Blocks K2`
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Include/Core/FontGlyph8x8.h` | 点阵表 |
+| `Core/Font.c` | 栅格化 → `DrawPixel` |
+| `Core/KernelMain.c` | Font 自检一行 |
+
+---
+
 ## 4. 目录预期（随刀增长）
 
 ```text
@@ -184,3 +208,4 @@ Kernel/
 | 2026-10-08 | JX：K1 代码落地（待 QEMU 手测色块） |
 | 2026-10-08 | Runtime：`Esp`/`RootFs`/`Fw` + `run.sh`；headless 见 FB/self-test/park |
 | 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |
+| 2026-10-08 | TG：K2 Font 8×8 + DrawString；左上角 `Blocks K2` ✅；★ → K3 |

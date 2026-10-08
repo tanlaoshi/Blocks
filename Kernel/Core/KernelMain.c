@@ -17,7 +17,7 @@
  * 【门里当前顺序】
  *   1. BootInfoSet          保存开机说明书
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
- *   3. KernelAttachEarly    串口 + 视频配置；有 FB 则打分辨率并画自检色块
+ *   3. KernelAttachEarly    串口 + 视频；有 FB 则色块 + Font 一行 ASCII
  *   4. KernelModulesRunFull 跑模块表（当前只有 Serial）
  *   5. park
  *
@@ -85,7 +85,7 @@ static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
     HalSerialWrite(Line);
 }
 
-/* 右上角 64×64 亮青角色块：证明 LFB 可写 */
+/* 右上角色块 + 一行 ASCII：证明 LFB 可写、点阵可画 */
 static void KernelVideoSelfTest(UINT32 Width, UINT32 Height) {
     const UINT32 Box = 64;
     UINT32 X;
@@ -98,6 +98,12 @@ static void KernelVideoSelfTest(UINT32 Width, UINT32 Height) {
     Y = 8;
     HalVideoFillRect(X, Y, Box, Box, 0x00FFFF00u); /* 青黄：易看见 */
     HalSerialWrite("KernelMain: video self-test (top-right box)\n");
+
+    /* 左上角白字：K2 Font */
+    if (Width >= 80 && Height >= 24) {
+        HalVideoDrawStringAt(8, 8, "Blocks K2", 0x00FFFFFFu);
+        HalSerialWrite("KernelMain: font self-test (DrawString)\n");
+    }
 }
 
 static void KernelAttachEarly(void) {

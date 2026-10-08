@@ -9,7 +9,7 @@
  * 约定：每像素 32 位，颜色 0x00RRGGBB（与常见 UEFI BGRX 小端一致）。
  * 一行宽度用 PixelsPerScanLine（可能 ≥ 可见宽度，有 padding）。
  *
- * 本刀不做：后缓冲、Present、字库、剪裁区。
+ * 画字见 Core/Font.c（点阵调 DrawPixel）。本文件不做后缓冲 / Present / 剪裁。
  */
 #include "HalVideo.h"
 

@@ -83,7 +83,7 @@ build_common_objs() {
     shift
     local -a cflags=("$@")
     local f
-    local -a cores=(BootInfo Module KernelModules HalCapability KernelMain)
+    local -a cores=(BootInfo Module KernelModules HalCapability Font KernelMain)
     if [ "$with_video_stub" = 1 ]; then
         cores+=(HalVideoStub)
     fi
@@ -113,7 +113,7 @@ x64|X64)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
         "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalVideo.o" \
         "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
-        "$OUT/HalCapability.o" "$OUT/KernelMain.o"
+        "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/KernelMain.o"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
@@ -132,7 +132,8 @@ arm64|Arm64|ARM64)
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
+        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/Font.o" \
+        "$OUT/KernelMain.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -154,7 +155,8 @@ riscv|RiscV|RISCV)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/SmpStub.o" \
         "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
+        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/Font.o" \
+        "$OUT/KernelMain.o"
     ;;
 *)
     echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2

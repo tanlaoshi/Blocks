@@ -5,8 +5,9 @@
  * 这是「屏幕」积木的契约：Set 配置、FillRect、DrawString…
  * Common / Gui 只 include 本头，不直接碰 GOP 或内存帧缓冲寄存器。
  *
- * 当前：HalVideoStub.c 实现 Set / GetSize / FrameBuffer*；
- * 画点、清屏等待 Video 实现挂上后再用。
+ * X64：HalVideo.c 直写 LFB（Set/GetSize/DrawPixel/FillRect）。
+ * 画字：Core/Font.c（8×8 ASCII → DrawStringAt）。
+ * Arm/RiscV：HalVideoStub（Set 有、画点空）。
  */
 #ifndef HAL_VIDEO_H
 #define HAL_VIDEO_H

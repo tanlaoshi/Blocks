@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K13** · VMM Map MMIO（高址 BAR） |
-| 排队 | K14…K20（见下方「加厚到桌面」；细则随 ★ 展开） |
-| 刚收官 | **PR-K12** · Gui 桌面壳；`Gui: desktop ok` ✅ |
-| 顺手（不推 ★） | Console 横幅下移避开顶栏 |
+| **★** | **PR-K14** · USB xHCI 复位 + 端口状态 |
+| 排队 | K15…K20（见下方「加厚到桌面」） |
+| 刚收官 | **PR-K13** · Map MMIO；`VMM: map mmio ok` + `Usb: … cap=` ✅ |
+| 顺手（不推 ★） | QEMU HCIVERSION 可为 0，以 CAPLENGTH 为准 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -26,8 +26,8 @@
 
 | PR | 一句话 | 为何排这里 | 验收（口述） |
 | -- | ------ | ---------- | ------------ |
-| **K13** ★ | VMM：把高址 MMIO（如 xHCI BAR `0x8_xxxx_xxxx`）映进页表 | K10 只能 handoff，读寄存器会挂 | 串口 `VMM: map mmio ok`；再读 xHCI CAP/VER 出真值 |
-| **K14** | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: port N CCS=…`；软成功不卡死 |
+| **K13** ✅ | VMM：把高址 MMIO（如 xHCI BAR）映进页表 | K10 只能 handoff，读寄存器会挂 | `VMM: map mmio ok`；`Usb: … cap=` ✅ |
+| **K14** ★ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: port N CCS=…`；软成功不卡死 |
 | **K15** | USB HID 键盘（或 QEMU 先 PS/2）最小 | 桌面要键入；串口壳可先吃键 | 按键串口/屏有码；无设备不卡 |
 | **K16** | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)`；读一小文件可选 |
 | **K17** | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
@@ -141,18 +141,29 @@
 
 表序：`… → Network → Gui → Scheduler → Console`。
 
-### K13 规划（★ · 最小子集）
+### K13 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：VMM 能把 **4GiB 窗外** 的 MMIO 页映成可访问虚址；用 xHCI BAR 验收。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `VirtualMemoryMapMmio(Phys, Size)→Virt`（或等价）；Usb 经映射读 CAP/VER |
-| **不做** | 完整 xHCI 环、通用 PCI BAR 枚举库、IOMMU |
-| **Arm/RiscV** | 可先桩或同契约空实现 |
-| **验收** | `Usb: xhci ok @… cap=… ver=…`（不再仅 `(Boot handoff)`）→ `Blocks>` |
+| **做** | `VirtualMemoryMapMmio`（2MiB 大页、虚=物）；VMM 预映 `XhciBase`；Usb 读 CAP/VER |
+| **不做** | 完整 xHCI 环、通用 PCI BAR 枚举库、IOMMU、UC 属性钉死 |
+| **Arm/RiscV** | MapMmio 失败桩 |
+| **验收** | `VMM: map mmio ok`；`Usb: xhci ok … cap=…` → `Blocks>` ✅ |
 
-依赖：K10 已交 `XhciBase`；QEMU BAR 常在 `0x800000000` 外。
+### K14 规划（★ · 最小子集）
+
+**一句话**：在已映射的 xHCI 上做最小复位，并读出至少一个端口的连接状态（CCS）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 读 HCSPARAMS 端口数；操作空间复位（或文档允许的最小 stop/run）；串口报 `port N CCS=` |
+| **不做** | 设备枚举、HID/MSC、中断环、完整命令环 |
+| **Arm/RiscV** | stub |
+| **验收** | `[Mod] USB` 后见 `Usb: port …`；无设备 CCS=0 也算过 → `Blocks>` |
+
+依赖：K13 MapMmio + CAPLENGTH。
 
 ---
 
@@ -422,3 +433,4 @@ Kernel/
 | 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
 | 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
 | 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
+| 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |

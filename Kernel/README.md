@@ -35,7 +35,7 @@
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
 | `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
 | `Core/Device.c` | 设备框架空壳（K5） |
-| `Core/VirtualMemory.c` | 认领 EarlyIdentity 分页；确认 FB 在窗内 |
+| `Core/VirtualMemory.c` | 认领 EarlyIdentity；K13 `MapMmio` 高址 BAR |
 | `Hal/X64/HalVideo.c` | LFB + K6 背缓冲 / Present |
 | `Hal/X64/HalCpu.c` | K7：最小 GDT/IDT（不 sti） |
 | `Core/Scheduler.c` | K8：协作壳（Init only） |

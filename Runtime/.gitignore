@@ -1,0 +1,6 @@
+# OVMF 可写变量盘（由 .clean 复制）
+Fw/OVMF_VARS.fd
+
+# 同步进来的构建产物（本地生成）
+Esp/X64/EFI/BOOT/BOOTX64.EFI
+RootFs/X64/Kernel.elf

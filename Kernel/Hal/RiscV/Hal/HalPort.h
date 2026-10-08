@@ -20,7 +20,7 @@ typedef struct HAL_INTERRUPT_FRAME {
     UINT64 X[32];
     UINT64 Vec;
     UINT64 Err;
-    /* ��中立名（sepc / sstatus / 用户 sp 由 TrapVec.S 填） */
+    /* PR-A15：中立名（sepc / sstatus / 用户 sp 由 TrapVec.S 填） */
     UINT64 InstructionPointer;
     UINT64 Cs;
     UINT64 Rflags;

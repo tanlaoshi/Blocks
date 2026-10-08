@@ -14,7 +14,7 @@
 #include "BootInfo.h"
 
 void HalVideoSet(const VIDEO_CONFIG *Config);
-/* ��分配并启用后缓冲；Present 提交脏区到 GOP */
+/* PR-G9：分配并启用后缓冲；Present 提交脏区到 GOP */
 void HalVideoInitializeBackbuffer(void);
 void HalVideoPresent(void);
 /* 刷完所有脏区（关窗/主题全屏合成后用） */
@@ -23,7 +23,7 @@ void HalVideoPresentFlush(void);
 void HalVideoMarkDirty(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 拖窗：Rows 极大 → 整脏区一次 blit，减轻左右条带频闪；0=恢复默认 64 */
 void HalVideoSetPresentChunkRows(UINT32 Rows);
-/* ��1=点阵边缘灰度；0=硬 1bpp */
+/* PR-GUI-l2-font：1=点阵边缘灰度；0=硬 1bpp */
 void HalVideoSetGlyphSmooth(int On);
 void HalVideoDrawBeginFront(void);
 void HalVideoDrawEndFront(void);
@@ -35,26 +35,26 @@ void HalVideoGetSize(UINT32 *Width, UINT32 *Height);
 UINT32 HalVideoGetUiScale(void);
 void HalVideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
 int HalVideoSetUiScale(UINT32 Percent);
-/* ��QEMU/Bochs VGA 可热切则 1；真机/无 DISPI 为 0 */
+/* PR-G-hotres：QEMU/Bochs VGA 可热切则 1；真机/无 DISPI 为 0 */
 int HalVideoCanHotSetMode(void);
 /*
- * ��运行中改分辨率（Bochs DISPI）。成功 0。
+ * PR-G-hotres：运行中改分辨率（Bochs DISPI）。成功 0。
  * 调用方先 VirtualMemoryMapRange 覆盖足够大的 LFB。
  */
 int HalVideoSetMode(UINT32 Width, UINT32 Height);
-/* ��Boot 枚举的可用模式数；0 表示未提供（Settings 用内置表） */
+/* PR-G-modes：Boot 枚举的可用模式数；0 表示未提供（Settings 用内置表） */
 UINT32 HalVideoModeCount(void);
 int HalVideoModeGet(UINT32 Index, UINT32 *Width, UINT32 *Height);
 UINT64 HalVideoFrameBufferBase(void);
 UINT64 HalVideoFrameBufferSize(void);
 /* GPU 翻页后切换 CPU gFront 与 FrameBufferBase */
 void HalVideoSetScanout(UINT32 *Va, UINT32 PitchPx, UINT64 Phys, UINT64 Size);
-/* ��boot 一行 FB phys + PWT/PCD(/PAT) + 推导 cache；不改映射。x86 有内容，其它 HAL 空实现 */
+/* PR-G-fb-pte：boot 一行 FB phys + PWT/PCD(/PAT) + 推导 cache；不改映射。x86 有内容，其它 HAL 空实现 */
 void HalVideoLogFbPte(void);
 /* 填入一行（无尾 '\n'）；成功返回长度，无 FB 返回 0 */
 int HalVideoFbPteLine(char *Buf, UINTN Max);
 /*
- * ��PAT 开 WC 后仅重映 LFB（PWT→WC）；MMIO/xHCI 不动。
+ * PR-G-fb-wc：PAT 开 WC 后仅重映 LFB（PWT→WC）；MMIO/xHCI 不动。
  * 映射标志供 Theme 热切等复用。
  */
 void HalVideoEnableFbWc(void);
@@ -69,7 +69,7 @@ void HalVideoCursorOverlayBegin(void);
 void HalVideoCursorOverlayEnd(void);
 UINT32 HalVideoReadPixel(UINT32 X, UINT32 Y);
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color);
-/* ��后缓冲 Src-over-Dst；Alpha=0 空操作，255=不透明 Fill */
+/* PR-GUI-alpha：后缓冲 Src-over-Dst；Alpha=0 空操作，255=不透明 Fill */
 UINT32 HalVideoBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha);
 void HalVideoBlendPixel(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
 void HalVideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
@@ -94,7 +94,7 @@ void HalVideoGetTextCursor(UINT32 *X, UINT32 *Y);
 void HalVideoSetTextCursor(UINT32 X, UINT32 Y);
 void HalVideoClearClip(void);
 
-/* ��焦点客户区按行滚动（Shell 滚轮） */
+/* PR-I2：焦点客户区按行滚动（Shell 滚轮） */
 void HalVideoScrollClipLines(int Delta);
 
 #endif

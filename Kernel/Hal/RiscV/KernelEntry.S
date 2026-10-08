@@ -20,7 +20,7 @@ gBspClaimed:
     .word 0                 /* 0=尚无 BSP；amoswap 写成 1 表示已抢走 */
     .global gBspHartId
 gBspHartId:
-    .dword 0                /* 胜出的硬件 hartid，供调试与 SMP 核对 */
+    .dword 0                /* 胜出的硬件 hartid，供调试/SMP 对照 */
 
     .section .text.boot, "ax"
     .global KernelEntry

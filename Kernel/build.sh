@@ -14,9 +14,9 @@
 #
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-OPENBOX_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BLOCKS_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ARCH="${1:-x64}"
-TOOLS_ROOT="${TOOLS_ROOT:-$OPENBOX_ROOT/Tools/Extract}"
+TOOLS_ROOT="${TOOLS_ROOT:-$BLOCKS_ROOT/Tools/Extract}"
 OUT_ROOT="$SCRIPT_DIR/Build"
 INC_ABI="$SCRIPT_DIR/Include/Abi"
 INC_CORE="$SCRIPT_DIR/Include/Core"
@@ -79,9 +79,15 @@ build_common_objs() {
     shift
     local out="$1"
     shift
+    local with_video_stub="$1"
+    shift
     local -a cflags=("$@")
     local f
-    for f in BootInfo Module KernelModules HalCapability HalVideoStub KernelMain; do
+    local -a cores=(BootInfo Module KernelModules HalCapability KernelMain)
+    if [ "$with_video_stub" = 1 ]; then
+        cores+=(HalVideoStub)
+    fi
+    for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
 }
@@ -93,20 +99,21 @@ x64|X64)
     mkdir -p "$OUT"
     CC="$(pick_x64_cc)"
     CFLAGS=("${COMMON_CFLAGS[@]}" -m64 -mno-red-zone -mgeneral-regs-only
-            -I"$SCRIPT_DIR/Hal/X64" -I"$OPENBOX_ROOT/Boot/BootPkg")
-    build_common_objs "$CC" "$OUT" "${CFLAGS[@]}"
+            -I"$SCRIPT_DIR/Hal/X64" -I"$BLOCKS_ROOT/Boot/BootPkg")
+    build_common_objs "$CC" "$OUT" 0 "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/PlatformStub.c" -o "$OUT/PlatformStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerial.c" -o "$OUT/HalSerial.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVideo.c" -o "$OUT/HalVideo.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
-        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" \
+        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalVideo.o" \
         "$OUT/BootInfo.o" "$OUT/Module.o" "$OUT/KernelModules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/KernelMain.o"
+        "$OUT/HalCapability.o" "$OUT/KernelMain.o"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
@@ -116,7 +123,7 @@ arm64|Arm64|ARM64)
     CFLAGS=("${COMMON_CFLAGS[@]}" -mgeneral-regs-only
             -I"$SCRIPT_DIR/Hal/Arm64" -I"$SCRIPT_DIR/Hal/Arm64/Board/virt"
             -I"$SCRIPT_DIR/Hal/Arm64/Hal")
-    build_common_objs "$CC" "$OUT" "${CFLAGS[@]}"
+    build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/HalSerial.c" -o "$OUT/HalSerial.o"
@@ -136,7 +143,7 @@ riscv|RiscV|RISCV)
     CFLAGS=("${COMMON_CFLAGS[@]}" "${ARCH_CFLAGS[@]}"
             -I"$SCRIPT_DIR/Hal/RiscV" -I"$SCRIPT_DIR/Hal/RiscV/Board/virt"
             -I"$SCRIPT_DIR/Hal/RiscV/Hal")
-    build_common_objs "$CC" "$OUT" "${CFLAGS[@]}"
+    build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/SmpStub.c" -o "$OUT/SmpStub.o"

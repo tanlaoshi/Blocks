@@ -39,3 +39,19 @@ UINT64 HalVideoFrameBufferBase(void) {
 UINT64 HalVideoFrameBufferSize(void) {
     return gVideoValid ? gVideo.FrameBufferSize : 0;
 }
+
+/* Arm64/RiscV 本刀仍为空：有配置但不画像素（真画屏另刀） */
+void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
+    (void)X;
+    (void)Y;
+    (void)Color;
+}
+
+void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
+                      UINT32 Color) {
+    (void)X;
+    (void)Y;
+    (void)Width;
+    (void)Height;
+    (void)Color;
+}

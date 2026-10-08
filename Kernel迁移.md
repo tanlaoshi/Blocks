@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K1** · `HalVideo` 最小可用（吃 `BOOT_INFO` FB） |
-| 排队 | K2 → K3 → …（见 §2） |
-| 刚收官 | **PR-K0** · `KernelMain` 骨架 + 模块表壳（仅 Serial） |
+| **★** | **PR-K2** · `Font` 最小点阵（无 Theme） |
+| 排队 | K3 → K4 → …（见 §2） |
+| 刚收官 | **PR-K1** · `HalVideo` 最小子集（X64 LFB；手测右上角黄块 ✅） |
 
 ---
 
@@ -32,12 +32,12 @@
 
 ### 1.2 迁移原则
 
-1. **积木优先**（[`积木原则.md`](积木原则.md)）：接口稳定、实现可换；SCHED/MEM/FS 等迁入即对齐 Ops 面，避免先耦死再拆。  
-2. **三架构齐头**：每刀尽量 `./build.sh x64|arm64|riscv` 都绿；Arch 专有放 `Hal/<Arch>/`，Common 用能力旗标（`HalHasFrameBuffer` 等）。  
-3. **新 `.c` ≤300 行**；大块按现网已拆文件迁。  
-4. **串口 GOP ring / 上屏**依赖 `HalVideo`+`Font`，**不**在 K0 硬补。  
+1. **最小子集（方便 review）**：每一刀只迁「能验收的最短路径」；宁多一刀，勿塞整文件/整层。单 PR 以可 diff、可口述验收为准。  
+2. **积木优先**（[`积木原则.md`](积木原则.md)）：接口稳定、实现可换；SCHED/MEM/FS 等迁入即对齐 Ops 面。  
+3. **三架构可编**：每刀 `./build.sh x64|arm64|riscv` 绿；真实现可先只落主力 Arch，其它保持桩。  
+4. **新 `.c` ≤300 行**；大块按已拆文件拆刀迁。  
 5. **恒等窗 4GiB**（`IdentityMap.h`）：正式 VMM 必须读同一常量。  
-6. 对照现网模块表顺序（技术手册 §2.1）；可先薄实现再加厚，但须标明「可替换面待补」。
+6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。
 
 ### 1.3 现网 `KernelMain` 形状（对照）
 
@@ -60,9 +60,9 @@ KernelMain
 | PR | 一句话 | 主要落点 | 验收（本刀） |
 | -- | ------ | -------- | ------------ |
 | **K0** ★ | `KernelMain` 骨架 + 模块表壳（仅 Serial） | `Core/KernelMain.c` `KernelModules.*`；能力旗标桩；`HalVideoSet` 薄存储 | 三架构可编；串口见 `KernelMain: …`；停在 park |
-| **K1** | `HalVideo` 最小可用（吃 `BOOT_INFO` FB） | `Hal/<Arch>/` 或共享 + X64 直写 LFB | 有 FB 时能 `FillRect`/`DrawPixel`；串口报分辨率 |
-| **K2** | `Font` 最小点阵 + 可选 Theme 桩 | `Library`/`Fonts` 对照迁 | 能在 FB 上打一行字 |
-| **K3** | X64 `HalSerial` GOP ring/上屏 | `HalSerialGop`/`Write`；接 K1/K2 | `SCREEN_LOG=1` 时屏上滚 boot 字 |
+| **K1** ★ | `HalVideo` 最小子集 | 见 §3bis；**只** X64 LFB：`Set`/`GetSize`/`DrawPixel`/`FillRect`（可加一角色块自检） | 有 FB：屏上可见色块；串口报 `WxH`；Arm/RiscV 仍桩但可编 |
+| **K2** | `Font` 最小点阵（无 Theme） | 内建点阵 + `DrawString` 薄封装 | FB 上能打一行 ASCII |
+| **K3** | X64 `HalSerial` 屏上 boot 字 | ring→FB 上滚（仍无完整 Theme） | `SCREEN_LOG=1` 时屏上有 boot 行 |
 | **K4** | **Memory（PMM）** | `PhysicalMemory*`；模块表挂上 | `[Mod] Memory`；Regions 可分配 |
 | **K5** | Driver 框架 + VirtualMemory | 页表/开分页；沿用 4GiB 窗 | 分页后串口仍活；FB 已映 |
 | **K6** | Video 模块（背缓冲） | `InitializeVideo` | 接 Boot 黑底、不强制全屏 Clear |
@@ -107,6 +107,39 @@ KernelMain
 
 ---
 
+## 3bis. PR-K1 细则（★ 下一刀 · 最小子集）
+
+### 做
+
+- X64：`Hal/X64/HalVideo.c`（或拆极薄两文件）实现  
+  `HalVideoSet` / `GetSize` / `FrameBuffer*` / `DrawPixel` / `FillRect`  
+  （线性 FB、假定 32bpp；无后缓冲、无 Present、无字库）  
+- `KernelAttachEarly`：有 FB 时串口打 `WxH`，可选右上角画一小色块作自检  
+- Arm64/RiscV：继续空操作桩（或仍走 `HalVideoStub`），保证三架构可编  
+
+### 不做（留给 K2+）
+
+- Font / Theme / `DrawString`  
+- 后缓冲、脏矩形、GOP 镜像 / `HalSerialGop*`  
+- `Hal/Common/RamFrameBuffer` 真实现  
+- 模块表挂 `Video`、PMM  
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`（JX 编通）  
+- [x] `Runtime/run.sh --headless`：串口见 `FB 1024x768` / `video self-test` / `park`  
+- [x] 落点：`Hal/X64/HalVideo.c`；Arm/RiscV 仍 `HalVideoStub`  
+
+### 本刀落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Hal/X64/HalVideo.c` | Set / GetSize / DrawPixel / FillRect（直写 LFB） |
+| `Core/HalVideoStub.c` | 非 X64：Set + 空 Draw/Fill |
+| `Core/KernelMain.c` | 打分辨率 + 右上角自检色块 |
+
+---
+
 ## 4. 目录预期（随刀增长）
 
 ```text
@@ -147,3 +180,7 @@ Kernel/
 | 2026-10-08 | 工作区改名 **Blocks**；Kernel 已迁源码补【初学者】注释 |
 | 2026-10-08 | 非迁移文档去掉「从哪迁来」表述；`Ramfb`→`RamFrameBuffer` |
 | 2026-10-08 | TG：K0+三架构 HalSerial+Blocks 命名+`Hal/Common`；★ 仍为 K1 |
+| 2026-10-08 | 原则钉「最小子集」；K1 收窄为 X64 LFB DrawPixel/FillRect |
+| 2026-10-08 | JX：K1 代码落地（待 QEMU 手测色块） |
+| 2026-10-08 | Runtime：`Esp`/`RootFs`/`Fw` + `run.sh`；headless 见 FB/self-test/park |
+| 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |

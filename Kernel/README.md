@@ -1,17 +1,28 @@
 # Kernel
 
-自 `~/ToyOS/ToyKernel` **逐步迁入**。
+凡进 **`Kernel.elf`** 的源码都在本树（含各架构开机入口）。
 
-## 与 Boot 的边界
+顶层 **`Boot/`** 只放独立 EFI（现仅 `Boot` → `BOOTX64.EFI`）。
 
-- Boot 填好 `BOOT_INFO`，调用 **`KernelMain(const BOOT_INFO *Info)`**（声明在 `Boot/Include/BootInfo.h`）。
-- Kernel 经 `Include/Core/BootInfo.h` 引用该 ABI，并提供 `BootInfoSet` / `BootInfoGet`。
-- 勿再把「组 BootInfo」放回 Kernel 早期 C。
+## 编译
 
-## 已有碎片
+```bash
+cd ~/OpenBox/Kernel
+./build.sh x64|arm64|riscv   # → Build/<Arch>/Kernel.elf
+```
 
 ```text
-Kernel/Include/{Abi,Core,Hal}/…
-Kernel/Hal/{Arm64,RiscV,Virt}/…   # 板级头等（后续编 Kernel 用）
-Kernel/Build/
+三架构：
+  KernelEntry → KernelHandoff → KernelMain（桩）
+X64 另有：EarlyIdentity（4GiB 恒等）；EFI 在 Boot
 ```
+
+| 路径 | 说明 |
+| ---- | ---- |
+| `Hal/X64/KernelEntry.S` `KernelHandoff.c` `EarlyIdentity.c` | UEFI 跳入后接棒 |
+| `Hal/Arm64/KernelEntry.S` `KernelHandoff.c` | virt `-kernel` 入口 |
+| `Hal/RiscV/KernelEntry.S` `KernelHandoff.c` `SmpStub.c` | OpenSBI 入口 |
+| `Core/BootInfo.c` `KernelMain.c` | 清单 + 桩 |
+| `Include/Core/IdentityMap.h` | 早期恒等 4GiB |
+
+进度：[`../Boot迁移.md`](../Boot迁移.md)。

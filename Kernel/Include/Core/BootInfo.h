@@ -1,8 +1,8 @@
 /*
  * BootInfo.h — Kernel 侧 BOOT_INFO + Set/Get
  *
- * 结构布局须与 Boot/Arm64/BootInfo.h、Boot/RiscV/BootInfo.h 保持一致。
- * X64：HAL 从 TOY_BOOT_CONFIG 转成此结构后再进 KernelMain。
+ * 结构布局权威在本文件；各 Arch 的 KernelHandoff 共用。
+ * UEFI 路径：HAL 从 UEFI_BOOT_CONFIG 转成此结构后再进 KernelMain。
  */
 #ifndef BOOT_INFO_H
 #define BOOT_INFO_H

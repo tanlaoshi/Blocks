@@ -4,31 +4,35 @@ ToyOS 新工作树（单仓）。现网对照：`~/ToyOS`。
 
 ```text
 OpenBox/
-  Boot/
-    X64/Build/     # BOOTX64.EFI
-    Arm64/Build/   # Boot_asm.o Boot.o
-    RiscV/Build/   # 同上
-  Kernel/Build/
+  Boot/        # 仅独立 EFI → BOOTX64.EFI
+  Kernel/          # 含各 Arch KernelEntry/KernelHandoff → Kernel.elf
   Runtime/
 ```
 
 - **结构拍板**：`~/ToyOS/ToyKernel/Documents/开发/目录结构-ToyOSNew.md`
 - **Boot 细则**：[`Boot/README.md`](Boot/README.md)
+- **Boot / 接棒进度**：[`Boot迁移.md`](Boot迁移.md)（已接到 `KernelMain` 桩）
 - **GitHub**：`git@github.com:tanlaoshi/OpenBox.git`
 
 ## 怎么开始
 
-### Boot（可编）
+### Boot（仅 X64 EFI）
 
 ```bash
-cd Boot/X64 && ./build.sh      # → X64/Build/BOOTX64.EFI
-cd Boot/Arm64 && ./build.sh    # → Arm64/Build/*.o → KernelMain(BOOT_INFO*)
-cd Boot/RiscV && ./build.sh
+cd Boot && ./build.sh      # → Build/BOOTX64.EFI
 ```
 
-工具链：X64→`Boot/X64/EDK2`；Arm64/RiscV 交叉链（Boot+Kernel 共用）→`Tools/Extract/`（见 `Tools/README.md`）。
+Arm64/RiscV 入口在 **`Kernel/Hal/`**（链进 Kernel.elf），不在 `Boot/`。
+
+### Kernel（接到 `KernelMain` 桩）
+
+```bash
+cd Kernel && ./build.sh x64|arm64|riscv   # → Build/<Arch>/Kernel.elf
+```
+
+工具链：X64 EFI→`Boot/EDK2`；交叉链→`Tools/Extract/`。详见 [`Boot迁移.md`](Boot迁移.md)。
 
 ### 尚未迁入
 
-2. Kernel 实现 `KernelMain(const BOOT_INFO *)` 并链各架构 Boot `*.o`
-3. Runtime → QEMU / 刷盘
+- Runtime → QEMU / 刷盘  
+- `KernelMain` 之后的完整内核

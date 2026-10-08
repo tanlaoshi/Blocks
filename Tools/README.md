@@ -14,7 +14,7 @@ Boot / Kernel **共用**的本机构建依赖（与架构无关地放在这里�
 | `Extract/xpack-aarch64-none-elf-gcc-*/` | Arm64：Boot + Kernel 同一套 |
 | `Extract/xpack-riscv-none-elf-gcc-*/` | RiscV：Boot + Kernel 同一套 |
 
-X64 不依赖这里：Boot 用 `Boot/X64/EDK2`，Kernel 多用本机 `gcc`。
+X64 不依赖这里：Boot 用 `Boot/EDK2`，Kernel 多用本机 `gcc`。
 
 `Boot/Arm64/build.sh`、`Boot/RiscV/build.sh`（以及后续 Kernel 构建）默认找：
 
@@ -52,6 +52,6 @@ cp -a /path/to/ToyKernel/Tools/Extract/xpack-riscv-none-elf-gcc-* ~/OpenBox/Tool
 ```bash
 ls Extract/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc
 ls Extract/xpack-riscv-none-elf-gcc-*/bin/riscv-none-elf-gcc
-cd ~/OpenBox/Boot/Arm64 && ./build.sh
-cd ~/OpenBox/Boot/RiscV && ./build.sh
+cd ~/OpenBox/Kernel && ./build.sh arm64
+cd ~/OpenBox/Kernel && ./build.sh riscv
 ```

@@ -19,6 +19,21 @@
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库，**不**把 ★ 改成 K6。
 
+### K5 规划（★ · 最小子集 · **禁止整目录搬家**）
+
+**一句话**：模块表挂上 `Driver`（空壳）+ `VirtualMemory`（认领已开的 4GiB 恒等分页）；分页后串口/FB 仍活。
+
+| 项 | 定调 |
+| -- | ---- |
+| **不是** | 把现网 `VirtualMemory/`、`Device*` 整夹拷进 Blocks |
+| **Driver** | `DeviceInitialize` / `Enumerate` 薄壳；不 Probe 真设备（避 VMM 前死循环） |
+| **VMM** | X64：`EarlyIdentity` 已在 `KernelMain` 开 PG；本刀正式模块化认领 + 确认 FB 落在恒等窗；**不**换页表后端、不做用户空间 |
+| **Arm/RiscV** | Init 成功桩（尚无开 MMU 刀）；三架构可编 |
+| **模块化** | Driver/VMM 本刀**不**抽 Ops；PMM 的 `MEMORY_OPS` 等默认实现再稳、或课上第二政策时再开 |
+| **验收** | `[Mod] Driver` → `[Mod] VirtualMemory` → 串口仍见后续 `park`；可选再打一像素证明 FB |
+
+表序：`Serial → Memory → Driver → VirtualMemory`（与现网 Full 前段一致）。
+
 ---
 
 ## 1. 目标与硬约束

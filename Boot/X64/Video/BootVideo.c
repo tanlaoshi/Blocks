@@ -10,7 +10,7 @@
 #include "BootPrivate.h"
 
 EFI_STATUS GetAndSetVideo(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
-                                 BOOT_CONFIG *BootConfig) {
+                                 X64_BOOT_CONFIG *BootConfig) {
     EFI_STATUS                            Status;
     EFI_GRAPHICS_OUTPUT_PROTOCOL          *Gop = NULL;
     UINTN                                 HandleCount = 0;

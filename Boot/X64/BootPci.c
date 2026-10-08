@@ -82,3 +82,15 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
     gBS->FreePool(HandleBuffer);
     return EFI_NOT_FOUND;
 }
+
+VOID BootFillXhci(X64_BOOT_CONFIG *BootConfig) {
+    BootDbg("[Boot] Calling GetXhciBaseAddress...\n");
+    if (!EFI_ERROR(GetXhciBaseAddress(&BootConfig->XhciBaseAddress))) {
+        BootDbg("[Boot] XHCI Base: 0x%016lx\n", BootConfig->XhciBaseAddress);
+    } else {
+        BootConfig->XhciBaseAddress = 0;
+        BootDbg("[Boot] XHCI not found, setting to 0\n");
+    }
+    BootDbg("[Boot] X64_BOOT_CONFIG.XhciBaseAddress = 0x%016lx\n",
+            BootConfig->XhciBaseAddress);
+}

@@ -1,0 +1,19 @@
+/*
+ * BootTypes.h — Boot↔Kernel 交接用基础类型（Boot 柱自备，不依赖 Kernel/）
+ */
+#ifndef BOOT_TYPES_H
+#define BOOT_TYPES_H
+
+#define NULL ((void *)0)
+
+typedef unsigned long long  UINT64;
+typedef unsigned int        UINT32;
+typedef unsigned short      UINT16;
+typedef unsigned char       UINT8;
+typedef long long           INT64;
+typedef int                 INT32;
+typedef short               INT16;
+typedef signed char         INT8;
+typedef UINT64              UINTN;
+
+#endif

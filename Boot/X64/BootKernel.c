@@ -168,3 +168,24 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     BootSerialPrintf("ToyBoot: Kernel.elf Not Found On Any Volume\n");
     return EFI_NOT_FOUND;
 }
+
+EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, X64_BOOT_CONFIG *BootConfig) {
+    EFI_STATUS Status;
+    EFI_PHYSICAL_ADDRESS ElfBuffer = 0;
+    UINTN ElfSize = 0;
+
+    Status = ReadKernelFile(ImageHandle, &ElfBuffer, &ElfSize);
+    if (EFI_ERROR(Status)) {
+        BootSerialPrintf("Boot: ReadKernelFile Failed: %r\n", Status);
+        return Status;
+    }
+
+    BootSerialPrintf("Boot: Loading Kernel ELF...\n");
+    Status = CheckAndLoadKernel(ElfBuffer, ElfSize, &BootConfig->EntryAddress);
+    if (EFI_ERROR(Status)) {
+        BootSerialPrintf("Boot: CheckAndLoadKernel Failed: %r\n", Status);
+        return Status;
+    }
+    BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
+    return EFI_SUCCESS;
+}

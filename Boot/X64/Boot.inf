@@ -8,6 +8,8 @@
 [Sources]
   Boot.c
   BootSerial.c
+  BootAcpi.c
+  BootJump.c
   Video/BootVideo.c
   Video/BootVideoScore.c
   Video/BootVideoEdid.c
@@ -36,6 +38,7 @@
 [Guids]
   gEfiFileInfoGuid
   gEfiAcpiTableGuid
+  gEfiAcpi10TableGuid
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid

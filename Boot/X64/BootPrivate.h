@@ -22,7 +22,6 @@
 #define BootDbg(...) do { } while (0)
 #endif
 
-typedef TOY_BOOT_CONFIG  BOOT_CONFIG;
 typedef TOY_VIDEO_CONFIG VIDEO_CONFIG;
 typedef TOY_MEMORY_MAP   MEMORY_MAP;
 
@@ -40,11 +39,15 @@ VOID SortVideoModesForSettings(TOY_VIDEO_MODE *Modes, UINT32 Count,
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
 BOOLEAN FsHasToyOsId(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 EFI_STATUS GetAndSetVideo(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
-                          BOOT_CONFIG *BootConfig);
+                          X64_BOOT_CONFIG *BootConfig);
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
 EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
                               EFI_PHYSICAL_ADDRESS *EntryPoint);
+EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, X64_BOOT_CONFIG *BootConfig);
 EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase);
+VOID BootFillXhci(X64_BOOT_CONFIG *BootConfig);
+VOID BootFillRsdp(X64_BOOT_CONFIG *BootConfig);
+EFI_STATUS JumpToKernel(EFI_HANDLE ImageHandle, X64_BOOT_CONFIG *BootConfig);
 
 #endif

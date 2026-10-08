@@ -1,6 +1,10 @@
-# 构建产物（回归两侧 Build）
-Boot/Build/**
-!Boot/Build/.gitkeep
+# 构建产物（Boot 按下沉到各架构；Kernel 仍 Kernel/Build）
+Boot/X64/Build/**
+!Boot/X64/Build/.gitkeep
+Boot/Arm64/Build/**
+!Boot/Arm64/Build/.gitkeep
+Boot/RiscV/Build/**
+!Boot/RiscV/Build/.gitkeep
 Kernel/Build/**
 !Kernel/Build/.gitkeep
 
@@ -8,6 +12,10 @@ Kernel/Build/**
 Boot/X64/EDK2/Build/
 Boot/X64/EDK2/Conf/BuildEnv.sh
 Boot/X64/EDK2/Conf/.cache/
+
+# 交叉工具链解压树（见 Tools/README.md）
+Tools/Extract/
+Tools/Tarballs/
 
 # 本地覆盖
 *.local

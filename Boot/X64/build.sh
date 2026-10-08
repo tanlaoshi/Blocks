@@ -23,9 +23,8 @@ fi
 # 包名 ToyBoot：链到本目录（与 EDK2 平级的源码树）
 ln -sfn .. "$EDK2_ROOT/ToyBoot"
 
-# OpenBox 根（…/OpenBox）与 Boot/Build/X64
-OPENBOX_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BOOT_BUILD_DIR="$OPENBOX_ROOT/Boot/Build/X64"
+# 产物落本架构目录（不与 Arm/RiscV 混用 Boot/Build/）
+BOOT_BUILD_DIR="$SCRIPT_DIR/Build"
 mkdir -p "$BOOT_BUILD_DIR"
 
 cd "$EDK2_ROOT"

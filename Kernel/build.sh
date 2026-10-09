@@ -90,7 +90,7 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatVol FatAlloc FatDir FatFile FatMut ElfLoad
-                    Process Network Theme Font Gui Scheduler ShellCmd ShellSys Console Kernel)
+                    Process Network Theme Font Utf8 Gui Scheduler ShellCmd ShellSys Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -140,7 +140,7 @@ x64|X64)
         "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" "$OUT/HalVirtioNet.o" \
         "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -176,7 +176,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/Theme.o" "$OUT/Font.o" \
+        "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -215,7 +215,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/Theme.o" "$OUT/Font.o" \
+        "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \

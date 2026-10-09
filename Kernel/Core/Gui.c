@@ -92,7 +92,7 @@ int GuiInitialize(void) {
     FontInitialize();
     HalVideoFillRect(0, 0, gFbW, gFbH, ThemeDesktopBackground());
     HalVideoFillRect(0, 0, gFbW, GUI_BAR_H, ThemeTaskbarBackground());
-    FontDrawStringAt(12, 8, "Blocks", ThemeWindowTitleText());
+    FontDrawStringAt(12, 8, "积木", ThemeWindowTitleText()); /* 积木 */
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }

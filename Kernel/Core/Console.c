@@ -32,8 +32,8 @@ static void ConsolePaintBanner(void) {
         return;
     }
     ThemeInitialize();
-    FontDrawStringAt(8, 40, "ToyOS ready", ThemeTextForeground());
-    FontDrawStringAt(8, 56, "Blocks>", ThemeTextForeground());
+    FontDrawStringAt(8, 40, "系统已就绪", ThemeTextForeground()); /* 系统已就绪 */
+    FontDrawStringAt(8, 60, "Blocks>", ThemeTextForeground());
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }

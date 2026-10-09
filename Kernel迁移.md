@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K16** · FileSystem 内核读 `TOYOS.ID` |
-| 排队 | K17…K20（见下方「加厚到桌面」） |
-| 刚收官 | **PR-K15** · PS/2 键入；GTK 窗按键回显 ✅ |
-| 顺手（不推 ★） | HalPs2Kbd 门面；Console 串口+PS/2 双路 |
+| **★** | **PR-K17** · Gui 鼠标光标 + 桌面点击反馈 |
+| 排队 | K18…K20（见下方「加厚到桌面」） |
+| 刚收官 | **PR-K16** · 内核 Block+FAT 读 `TOYOS.ID` ✅ |
+| 顺手（不推 ★） | HalBlock / FatProbe；Root=`virtio-blk` legacy |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -29,8 +29,8 @@
 | **K13** ✅ | VMM：把高址 MMIO（如 xHCI BAR）映进页表 | K10 只能 handoff，读寄存器会挂 | `VMM: map mmio ok`；`Usb: … cap=` ✅ |
 | **K14** ✅ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: reset ok` / `port N CCS=` ✅ |
 | **K15** ✅ | 键入最小（QEMU 先 PS/2；HID 后刀） | 桌面要键入；串口壳可先吃键 | GTK 窗按键进 `Blocks>` ✅ |
-| **K16** ★ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` |
-| **K17** | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
+| **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` ✅ |
+| **K17** ★ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
 | **K18** | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
 | **K19** | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
 | **K20** | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
@@ -174,7 +174,7 @@
 | **Arm/RiscV** | stub；仍只靠串口 |
 | **验收** | 焦点在 GTK 窗时按键有回显；无 PS/2 不卡；串口输入仍可用 ✅ |
 
-### K16 规划（★ · 最小子集）
+### K16 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：内核自己从块设备读 FAT，找到根目录 `TOYOS.ID`（不再只靠 Boot handoff）。
 
@@ -183,10 +183,21 @@
 | **做** | `HalBlock`（QEMU：`virtio-blk` 读扇区）；薄 FAT 探根目录；见 `TOYOS.ID` 打 `Fs: … (kernel)` |
 | **不做** | 完整 VFS、写文件、多卷、Store；AHCI 可后刀 |
 | **Arm/RiscV** | stub / 仍 handoff |
-| **验收** | `Fs: TOYOS.ID ready (kernel)` → `Blocks>` |
-| **Runtime** | Root 盘改挂 `virtio-blk-pci`（vvfat）；ESP 仍可 IDE |
+| **验收** | `Fs: TOYOS.ID ready (kernel)` → `Blocks>` ✅ |
+| **Runtime** | Root=`virtio-blk-pci,disable-modern=on`（vvfat）；ESP 仍 IDE |
 
-依赖：PMM（若需 DMA 缓冲）；MapMmio（若 BAR 在窗外）。
+依赖：PMM（DMA 缓冲）；legacy IO BAR（勿 modern-only）。
+
+### K17 规划（★ · 最小子集）
+
+**一句话**：Gui 画出鼠标光标，并能对桌面/顶栏点击给出反馈（串口或屏）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 最小指针设备（QEMU 先 PS/2 鼠或绝对指针）；光标合成；顶栏点击打日志 |
+| **不做** | 完整窗管、拖拽改大小、USB HID 鼠枚举（可后刀） |
+| **Arm/RiscV** | stub / 无指针则 skip |
+| **验收** | 光标移动；点击顶栏有反馈；`Blocks>` 仍活 |
 
 ---
 

@@ -28,7 +28,7 @@ cd ~/Blocks/Runtime
 
 串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K15 预期：`Input: ps2 kbd ok` → `Blocks>`；**点 GTK 窗**再打字应回显；终端串口输入仍可用。
+K16 预期：`Fs: TOYOS.ID ready (kernel)`（Root=`virtio-blk`+vvfat）；失败才退 Boot handoff。
 
 `run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 

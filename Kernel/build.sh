@@ -89,7 +89,7 @@ build_common_objs() {
     local -a cflags=("$@")
     local f
     local -a cores=(BootInfo Modules Font PhysicalMemory Device
-                    VirtualMemory Usb FileSystem Network Gui
+                    VirtualMemory Usb FileSystem FatProbe Network Gui
                     Scheduler Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
@@ -123,16 +123,18 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalCpuIsr.S" -o "$OUT/HalCpuIsr.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalXhci.c" -o "$OUT/HalXhci.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Kbd.c" -o "$OUT/HalPs2Kbd.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioBlk.c" -o "$OUT/HalVirtioBlk.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
         "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
-        "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" \
+        "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalVirtioBlk.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
-        "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" "$OUT/FileSystem.o" \
+        "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
+        "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
@@ -151,15 +153,18 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/HalXhciStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KbdStub.c" -o "$OUT/HalPs2KbdStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
-        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/Font.o" \
+        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalBlockStub.o" \
+        "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/Network.o" "$OUT/Gui.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
+        "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -179,6 +184,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/HalXhciStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KbdStub.c" -o "$OUT/HalPs2KbdStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -186,9 +192,11 @@ riscv|RiscV|RISCV)
         "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
-        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/Font.o" \
+        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalBlockStub.o" \
+        "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/Network.o" "$OUT/Gui.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
+        "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

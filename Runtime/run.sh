@@ -85,7 +85,7 @@ echo "  Root  RootFs/X64"
 echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "=========================================="
 
-# q35 自带 AHCI：两盘各挂一个口（不要用 ide.0 双 unit，q35 每总线仅 1 单元）
+# ESP=IDE（Boot）；Root=virtio-blk legacy（K16 内核读 FAT）；勿 ide 双 unit
 exec qemu-system-x86_64 \
     -machine q35,accel=kvm:tcg \
     -cpu qemu64 \
@@ -96,7 +96,7 @@ exec qemu-system-x86_64 \
     -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
-    -device ide-hd,drive=toyroot,bus=ide.1,bootindex=1 \
+    -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
     -device qemu-xhci,id=xhci \
     -device virtio-net-pci,netdev=n0 \
     -netdev user,id=n0 \

@@ -371,6 +371,130 @@ static void CmdHello(int Argc, char **Argv) {
     (void)ProcessRunHello();
 }
 
+static int ParsePort(const char *S, UINT32 *Out) {
+    UINT32 V = 0;
+    if (S == 0 || *S == 0) {
+        return -1;
+    }
+    while (*S) {
+        if (*S < '0' || *S > '9') {
+            return -1;
+        }
+        V = V * 10u + (UINT32)(*S - '0');
+        if (V > 65535u) {
+            return -1;
+        }
+        S++;
+    }
+    if (V == 0) {
+        return -1;
+    }
+    *Out = V;
+    return 0;
+}
+
+static void PutIp(UINT32 Ip) {
+    PutU32((Ip >> 24) & 0xFFu);
+    Put(".");
+    PutU32((Ip >> 16) & 0xFFu);
+    Put(".");
+    PutU32((Ip >> 8) & 0xFFu);
+    Put(".");
+    PutU32(Ip & 0xFFu);
+}
+
+static void DrainUdpOnce(void) {
+    NETWORK_UDP_DG Dg;
+    (void)NetworkUdpPoll(50);
+    while (NetworkUdpRecv(&Dg)) {
+        Put("udp: recv from ");
+        PutIp(Dg.SrcIp);
+        Put(":");
+        PutU32(Dg.SrcPort);
+        Put(" len=");
+        PutU32(Dg.Len);
+        Put(" ");
+        {
+            char Tmp[64];
+            UINTN i;
+            UINTN N = Dg.Len;
+            if (N > sizeof(Tmp) - 1u) {
+                N = sizeof(Tmp) - 1u;
+            }
+            for (i = 0; i < N; i++) {
+                Tmp[i] = (char)Dg.Data[i];
+            }
+            Tmp[N] = 0;
+            Put(Tmp);
+        }
+        Put("\n");
+    }
+}
+
+/* udplisten <port> */
+static void CmdUdpListen(int Argc, char **Argv) {
+    UINT32 Port = 0;
+
+    if (Argc < 2 || ParsePort(Argv[1], &Port) != 0) {
+        Put("usage: udplisten <port>\n");
+        return;
+    }
+    if (!NetworkNicReady()) {
+        Put("udp: no nic\n");
+        return;
+    }
+    NetworkUdpBind((UINT16)Port);
+    Put("udp: listening ");
+    PutU32(Port);
+    Put(" (then udpsend / udprecv)\n");
+}
+
+/* udprecv — 短轮询并打印队列 */
+static void CmdUdpRecv(int Argc, char **Argv) {
+    (void)Argc;
+    (void)Argv;
+    if (!NetworkNicReady()) {
+        Put("udp: no nic\n");
+        return;
+    }
+    DrainUdpOnce();
+}
+
+/* udpsend <ip> <port> <text>；发本机 IP 走回环，可立刻 udprecv */
+static void CmdUdpSend(int Argc, char **Argv) {
+    UINT32 Ip;
+    UINT32 Port = 0;
+    UINTN Len = 0;
+
+    if (Argc < 4) {
+        Put("usage: udpsend <ip> <port> <text>\n");
+        return;
+    }
+    if (!NetworkNicReady()) {
+        Put("udp: no nic\n");
+        return;
+    }
+    if (NetworkParseIp(Argv[1], &Ip) != 0) {
+        Put("udp: bad ip\n");
+        return;
+    }
+    if (ParsePort(Argv[2], &Port) != 0) {
+        Put("udp: bad port\n");
+        return;
+    }
+    while (Argv[3][Len]) {
+        Len++;
+    }
+    if (NetworkUdpSend(Ip, (UINT16)Port, Argv[3], Len) != 0) {
+        Put("udp: send fail\n");
+        return;
+    }
+    Put("udp: sent\n");
+    if (Ip == NetworkSelfIp()) {
+        DrainUdpOnce();
+    }
+}
+
 /* ping — ICMP echo；默认 10.0.2.2（QEMU 网关） */
 static void CmdPing(int Argc, char **Argv) {
     const char *Host = "10.0.2.2";
@@ -422,6 +546,9 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("lang", "UI language en|zh", CmdLang);
     ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
     ShellCmdRegister("ping", "ICMP echo (default 10.0.2.2)", CmdPing);
+    ShellCmdRegister("udplisten", "bind UDP port", CmdUdpListen);
+    ShellCmdRegister("udpsend", "send UDP text", CmdUdpSend);
+    ShellCmdRegister("udprecv", "poll/print UDP queue", CmdUdpRecv);
     ShellSysRegister();
     Put("Shell: cmds ok\n");
 }

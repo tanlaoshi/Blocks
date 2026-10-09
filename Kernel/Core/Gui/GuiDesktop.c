@@ -11,6 +11,7 @@
 #include "Locale.h"
 #include "Theme.h"
 #include "ToySerialConfig.h"
+#include "Utf8.h"
 
 #define DBL_TIMER_TICKS 50u
 #define DBL_SOFT_TICKS  400000u
@@ -36,6 +37,31 @@ static void IconGeom(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     GuiLayoutIconSlot(Slot, X, Y, W, H);
 }
 
+/* 标签像素宽（与 FontDrawStringAt 步进一致） */
+static UINT32 LabelPx(const char *Text) {
+    UINT32 Tw = 0;
+
+    if (Text == 0) {
+        return 0;
+    }
+    while (*Text) {
+        UINT32 Cp;
+        UINTN N;
+
+        if (*Text == '\n') {
+            break;
+        }
+        N = Utf8Decode(Text, &Cp);
+        if (N == 0) {
+            Text++;
+            continue;
+        }
+        Tw += (Cp < 0x80u) ? FontCellWidth() : FontCjkCell();
+        Text += N;
+    }
+    return Tw;
+}
+
 static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
     UINT32 X;
     UINT32 Y;
@@ -44,13 +70,27 @@ static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
     UINT32 Tile = GuiLayoutIconTile();
     UINT32 Pad = GuiLayoutPx(12u);
     UINT32 Gap = GuiLayoutPx(6u);
+    const char *Lab;
+    UINT32 Tw;
+    UINT32 FaceL;
+    UINT32 Tx;
 
     IconGeom(Slot, &X, &Y, &W, &H);
     HalVideoFillRect(X + Pad, Y, Tile, Tile, Face);
     HalVideoFillRect(X + Pad + 4u, Y + 4u, Tile - 8u, Tile - 8u,
                      ThemeWindowClient());
-    FontDrawStringAt(X + GuiLayoutPx(8u), Y + Tile + Gap, LocStr(LabelId),
-                     ThemeWindowTitleText());
+    /* 相对色块水平居中（原先 X+8 偏左） */
+    Lab = LocStr(LabelId);
+    Tw = LabelPx(Lab);
+    FaceL = X + Pad;
+    if (Tw <= Tile) {
+        Tx = FaceL + (Tile - Tw) / 2u;
+    } else if (Tw / 2u <= FaceL + Tile / 2u) {
+        Tx = FaceL + Tile / 2u - Tw / 2u;
+    } else {
+        Tx = X;
+    }
+    FontDrawStringAt(Tx, Y + Tile + Gap, Lab, ThemeWindowTitleText());
     (void)W;
     (void)H;
 }

@@ -4,7 +4,7 @@
  * 【初学者】
  * K11：PCI class 0x02 找到网卡。
  * K20：HalNet（legacy virtio-net）发一帧 ARP，短轮询是否收到应答。
- * 不做 lwIP / Socket / DHCP。
+ * K39：NetworkUdpInitialize。不做 lwIP / Socket / DHCP。
  */
 #include "Network.h"
 #include "HalNet.h"
@@ -186,6 +186,7 @@ int NetworkInitialize(void) {
             ((UINT64)Mac[0] << 40) | ((UINT64)Mac[1] << 32) | ((UINT64)Mac[2] << 24) |
                 ((UINT64)Mac[3] << 16) | ((UINT64)Mac[4] << 8) | (UINT64)Mac[5]);
         HalSerialWriteChannel(TOY_SLOG_NET, "\n");
+        NetworkUdpInitialize();
         NetSendArpProbe();
     } else {
         HalSerialWriteChannel(TOY_SLOG_NET, "Net: WARN virtio-net init fail\n");

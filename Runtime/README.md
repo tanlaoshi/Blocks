@@ -32,6 +32,8 @@ K16 预期：`Fs: TOYOS.ID ready (kernel)`（Root=`virtio-blk`+vvfat）；失败
 
 K38：`ping` / `ping 10.0.2.2` → `ping: ok`（QEMU user 网关）；`ping: fail (arp|timeout)` 则查 virtio-net。
 
+K39：`udplisten 40000` → `udpsend 10.0.2.15 40000 hello` → `udp: sent` + `udp: recv from 10.0.2.15:… hello`（本机 IP 回环）；也可再 `udprecv` 轮询。
+
 K17 预期：`Gui: mouse ok` / `Gui: cursor on`；**点 GTK 窗**移动鼠标见光标；点顶栏串口 `Gui: bar click`。
 
 K18 预期：`Scheduler: timer ok`；在 `Blocks>` 空闲时周期性 `Sched: tick …`；键入仍可用。

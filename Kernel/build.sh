@@ -182,7 +182,8 @@ x64|X64)
         LWIP_OBJS+=("$OUT/lwip/ethernet.o")
         "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/LwIp/LwIpNetif.c" -o "$OUT/LwIpNetif.o"
         "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/LwIp/LwIpIcmp.c" -o "$OUT/LwIpIcmp.o"
-        LWIP_OBJS+=("$OUT/LwIpNetif.o" "$OUT/LwIpIcmp.o")
+        "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/LwIp/LwIpSock.c" -o "$OUT/LwIpSock.o"
+        LWIP_OBJS+=("$OUT/LwIpNetif.o" "$OUT/LwIpIcmp.o" "$OUT/LwIpSock.o")
     fi
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,--build-id=none \

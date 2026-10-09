@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K43** · 用户态 `NETLIB` / `NETDEMO` |
+| **★** | **PR-K44** · GPT + 多卷前缀薄 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K42** · DNS / 基础 `NetConfig` ✅ |
+| 刚收官 | **PR-K43** · 用户态 `NETDEMO` ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -102,13 +102,13 @@
 | **K40** ✅ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
 | **K41** ✅ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
 | **K42** ✅ | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
-| **K43** ★ | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
+| **K43** ✅ | 用户态 `NETDEMO` 能跑 | NetDemo / socket | `exec NETDEMO.ELF` 见 `ok` |
 
 #### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K44** | GPT + 多卷前缀薄（`TOYOS:`） | FS2 | `vols`/`ls TOYOS:` |
+| **K44** ★ | GPT + 多卷前缀薄（`BLOCKS:`/`TOYOS:`） | FS2 | `vols`/`ls` 多卷前缀 |
 | **K45** | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
 | **K46** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
 | **K47** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
@@ -134,7 +134,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K43）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K44）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -586,16 +586,27 @@
 | **验收** | `lwip on` → `net` 见 dns=10.0.2.3 → `dns 10.0.2.2` → `dns: … -> 10.0.2.2`；可选主机名 |
 | **落地** | `NetConfig.c`；`NetworkLwip` Apply/DnsLookup；`lwipopts` `LWIP_DNS=1` + `dns.c`；Shell `net`/`dns`；SLIRP ARP 种子 |
 
-### K43 规划（★ · 最小子集）
+### K43 已收官
 
-**一句话**：用户态网络演示 ELF 能 `exec` 跑通（对标现网 NETLIB/NETDEMO 薄）。
+**一句话**：用户态网络演示 ELF 能 `exec` 跑通（对标现网 NETDEMO 薄；NETLIB 后刀）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 最小 socket syscall + `NETDEMO` 或 `NETLIB` 其一能 `exec` 见输出 |
-| **不做** | 完整 libToyNet ABI、DHCP UI、多连接服务器产品化 |
-| **验收** | `lwip on` → `exec NETDEMO.ELF`（或 NETLIB）串口见演示输出 |
-| **对照** | 现网 libToyNet / NetDemo / NetLibDemo |
+| **做** | syscall socket/connect/read/write/close + `NETDEMO.ELF`；`LwIpSock` TCP 客户端 |
+| **不做** | 完整 libToyNet/`NETLIB`、bind/listen/accept、真 ring3 |
+| **验收** | 宿主机 `nc -l -p 8888`；Guest `lwip on` → `exec NETDEMO.ELF` → 串口 `ok` |
+| **落地** | `LwIpSock.c`；`HalSyscall` 3–6；`User/X64/NetDemo.S` → `NETDEMO.ELF` |
+
+### K44 规划（★ · 最小子集）
+
+**一句话**：GPT / 多卷前缀薄（对标现网 FS2）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 卷枚举 + 路径前缀（`BLOCKS:` 或兼容 `TOYOS:`）可 `ls` |
+| **不做** | Store/DB（K46+）、完整 GPT 编辑器 |
+| **验收** | Shell `vols` 或 `ls BLOCKS:` / 等价可见多卷 |
+| **对照** | 现网 FS2 |
 | **落地** | JX 再钉 |
 
 ### K22+ 细则
@@ -929,3 +940,4 @@ Kernel/
 | 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
 | 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |
 | 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
+| 2026-10-10 | TG：K43 ✅ `NETDEMO.ELF` + socket syscall/`LwIpSock`；★ → **K44**（多卷前缀）；TS 推远程 |

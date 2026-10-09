@@ -27,11 +27,9 @@ if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
     printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/BLOCKS.ID"
 fi
 
-# K19：确保 RootFs 有 HELLO.ELF
-if [ ! -f "$RUNTIME/RootFs/X64/HELLO.ELF" ] || [ -x "$BLOCKS/User/X64/build.sh" ]; then
-    if [ -x "$BLOCKS/User/X64/build.sh" ]; then
-        "$BLOCKS/User/X64/build.sh" "$RUNTIME/RootFs/X64/HELLO.ELF"
-    fi
+# K19/K43：HELLO.ELF + NETDEMO.ELF
+if [ -x "$BLOCKS/User/X64/build.sh" ]; then
+    "$BLOCKS/User/X64/build.sh" "$RUNTIME/RootFs/X64"
 fi
 
 if [ ! -f "$RUNTIME/Fw/OVMF_VARS.fd.clean" ]; then

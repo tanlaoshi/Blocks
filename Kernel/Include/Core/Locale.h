@@ -23,6 +23,9 @@ typedef enum {
     MSG_WIN_SETTINGS,      /* 窗标题：Settings / 设置 */
     MSG_ICON_SETTINGS,     /* 桌面图标：Settings / 设置 */
     MSG_SETTINGS_HINT,     /* Settings 提示：点色块改主题 */
+    MSG_WIN_FILES,         /* 窗标题：Files / 文件 */
+    MSG_ICON_FILES,        /* 桌面图标：Files / 文件 */
+    MSG_FILES_HINT,        /* Files 提示：点 ELF 运行 */
     MSG_LANG_USAGE,
     MSG_LANG_NOW,
     MSG_LANG_SET,

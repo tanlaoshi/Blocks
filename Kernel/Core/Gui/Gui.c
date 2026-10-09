@@ -6,6 +6,7 @@
  */
 #include "Gui.h"
 #include "GuiDesktop.h"
+#include "GuiFiles.h"
 #include "GuiSettings.h"
 #include "GuiWin.h"
 #include "BootInfo.h"
@@ -173,7 +174,7 @@ int GuiInitialize(void) {
     ThemeInitialize();
     FontInitialize();
     LocaleInitialize();
-    FontTtfPreheatUtf8("积木系统已就绪命令窗说明设置点色块改主题");
+    FontTtfPreheatUtf8("积木系统已就绪命令窗说明设置点色块改主题文件运行");
     GuiWinSetFb(gFbW, gFbH);
     GuiDesktopSetFb(gFbW, gFbH);
     GuiWinPaintDesktop();
@@ -283,11 +284,15 @@ int GuiPoll(void) {
             gDragging = 0;
             gDragWin = -1;
             if (GuiSettingsClick(gCurX, gCurY)) {
-                /* 改色后整桌重画 */
                 GuiWinPaintDesktop();
                 GuiWinCompose();
                 GuiWinPresentFull();
             }
+        } else if (Hit == GUI_WIN_FILES) {
+            GuiWinFocus(Hit);
+            gDragging = 0;
+            gDragWin = -1;
+            (void)GuiFilesClick(gCurX, gCurY);
         } else if (Hit >= 0) {
             GuiWinFocus(Hit);
             gDragging = 0;

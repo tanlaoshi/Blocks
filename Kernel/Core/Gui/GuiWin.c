@@ -6,6 +6,7 @@
 #include "GuiWin.h"
 #include "GuiWinPaint.h"
 #include "GuiDesktop.h"
+#include "GuiFiles.h"
 #include "Console.h"
 #include "HalPs2.h"
 #include "HalSerial.h"
@@ -97,6 +98,8 @@ void GuiWinLayoutAll(void) {
     gW[GUI_WIN_ABOUT].H = 200u;
     gW[GUI_WIN_SETTINGS].W = 360u;
     gW[GUI_WIN_SETTINGS].H = 220u;
+    gW[GUI_WIN_FILES].W = 380u;
+    gW[GUI_WIN_FILES].H = 260u;
     for (i = 0; i < GUI_WIN_COUNT; i++) {
         if (gW[i].W + 40u > gFbW) {
             gW[i].W = (gFbW > 80u) ? (gFbW - 40u) : gFbW;
@@ -113,6 +116,8 @@ void GuiWinLayoutAll(void) {
     gW[GUI_WIN_ABOUT].Y = gW[GUI_WIN_SHELL].Y + 60u;
     gW[GUI_WIN_SETTINGS].X = 48u;
     gW[GUI_WIN_SETTINGS].Y = GUI_BAR_H + 48u;
+    gW[GUI_WIN_FILES].X = 72u;
+    gW[GUI_WIN_FILES].Y = GUI_BAR_H + 72u;
     if (gW[GUI_WIN_ABOUT].X + gW[GUI_WIN_ABOUT].W > gFbW) {
         gW[GUI_WIN_ABOUT].X = 40u;
     }
@@ -122,15 +127,19 @@ void GuiWinLayoutAll(void) {
     gW[GUI_WIN_SHELL].Title = MSG_WIN_SHELL;
     gW[GUI_WIN_ABOUT].Title = MSG_WIN_ABOUT;
     gW[GUI_WIN_SETTINGS].Title = MSG_WIN_SETTINGS;
+    gW[GUI_WIN_FILES].Title = MSG_WIN_FILES;
     gW[GUI_WIN_SHELL].On = 1;
     gW[GUI_WIN_ABOUT].On = 1;
-    gW[GUI_WIN_SETTINGS].On = 0; /* 双击设置图标再开 */
+    gW[GUI_WIN_SETTINGS].On = 0;
+    gW[GUI_WIN_FILES].On = 0;
     gW[GUI_WIN_SHELL].Focus = 1;
     gW[GUI_WIN_ABOUT].Focus = 0;
     gW[GUI_WIN_SETTINGS].Focus = 0;
+    gW[GUI_WIN_FILES].Focus = 0;
     gZ[0] = (UINT8)GUI_WIN_ABOUT;
     gZ[1] = (UINT8)GUI_WIN_SETTINGS;
-    gZ[2] = (UINT8)GUI_WIN_SHELL;
+    gZ[2] = (UINT8)GUI_WIN_FILES;
+    gZ[3] = (UINT8)GUI_WIN_SHELL;
 }
 
 int GuiWinIsOn(int Id) {
@@ -263,11 +272,20 @@ void GuiWinOpen(int Id) {
     if (Id < 0 || Id >= GUI_WIN_COUNT || gW[Id].On || gFbW == 0) {
         return;
     }
+    if (Id == GUI_WIN_FILES) {
+        GuiFilesRefresh();
+    }
     gW[Id].On = 1;
     GuiWinFocus(Id);
-    HalSerialWriteChannel(TOY_SLOG_GUI, (Id == GUI_WIN_SHELL)
-                                              ? "Gui: shell opened\n"
-                                              : "Gui: about opened\n");
+    if (Id == GUI_WIN_SHELL) {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: shell opened\n");
+    } else if (Id == GUI_WIN_FILES) {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: files opened\n");
+    } else if (Id == GUI_WIN_SETTINGS) {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: settings opened\n");
+    } else {
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: about opened\n");
+    }
 }
 
 void GuiWinOpenMissing(void) {

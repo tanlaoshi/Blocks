@@ -79,6 +79,7 @@ void GuiDesktopPaintIcons(void) {
     }
     PaintOneIcon(0, ThemeWindowTitleBar(), MSG_ICON_SHELL);
     PaintOneIcon(1, 0x00507040u, MSG_ICON_SETTINGS);
+    PaintOneIcon(2, 0x00406080u, MSG_ICON_FILES);
 }
 
 int GuiDesktopHitIcon(INT32 X, INT32 Y) {
@@ -86,16 +87,15 @@ int GuiDesktopHitIcon(INT32 X, INT32 Y) {
     UINT32 Iy;
     UINT32 Iw;
     UINT32 Ih;
+    int Slot;
+    static const int Map[3] = { GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES };
 
-    IconGeom(0, &Ix, &Iy, &Iw, &Ih);
-    if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
-        Y < (INT32)(Iy + Ih)) {
-        return GUI_WIN_SHELL;
-    }
-    IconGeom(1, &Ix, &Iy, &Iw, &Ih);
-    if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
-        Y < (INT32)(Iy + Ih)) {
-        return GUI_WIN_SETTINGS;
+    for (Slot = 0; Slot < 3; Slot++) {
+        IconGeom(Slot, &Ix, &Iy, &Iw, &Ih);
+        if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
+            Y < (INT32)(Iy + Ih)) {
+            return Map[Slot];
+        }
     }
     return -1;
 }
@@ -116,7 +116,8 @@ int GuiDesktopClickIcon(int WinId, INT32 X, INT32 Y) {
     INT32 Dy;
     int IsDbl = 0;
 
-    if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS) {
+    if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS &&
+        WinId != GUI_WIN_FILES) {
         return 0;
     }
     Now = NowTick();

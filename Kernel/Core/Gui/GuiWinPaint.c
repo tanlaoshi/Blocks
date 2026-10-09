@@ -4,6 +4,7 @@
 #include "GuiWinPaint.h"
 #include "Console.h"
 #include "Font.h"
+#include "GuiFiles.h"
 #include "GuiSettings.h"
 #include "GuiWin.h"
 #include "HalVideo.h"
@@ -152,6 +153,8 @@ void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
         ConsolePaintBannerBack();
     } else if (Kind == GUI_WIN_SETTINGS && Ch > 0) {
         GuiSettingsPaintClient(Cx, Cy, Cw, Ch);
+    } else if (Kind == GUI_WIN_FILES && Ch > 0) {
+        GuiFilesPaintClient(Cx, Cy, Cw, Ch);
     } else if (Kind == GUI_WIN_ABOUT && Ch > 0) {
         DrawClippedAt(Cx + 12u, Cy + 16u, Cx + Cw - 4u, Cy + Ch,
                       LocStr(MSG_ABOUT_BODY), ThemeWindowTitleText());

@@ -128,6 +128,7 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Mouse.c" -o "$OUT/HalPs2Mouse.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioBlk.c" -o "$OUT/HalVirtioBlk.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalLapicTimer.c" -o "$OUT/HalLapicTimer.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioNet.c" -o "$OUT/HalVirtioNet.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.c" -o "$OUT/HalSyscall.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.S" -o "$OUT/HalSyscallIsr.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
@@ -137,7 +138,7 @@ x64|X64)
         "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
         "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalPs2Mouse.o" \
-        "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" \
+        "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" "$OUT/HalVirtioNet.o" \
         "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalFont.o" "$OUT/PhysicalMemory.o" \
@@ -166,6 +167,7 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalTimerStub.c" -o "$OUT/HalTimerStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalNetStub.c" -o "$OUT/HalNetStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -174,6 +176,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
+        "$OUT/HalNetStub.o" \
         "$OUT/HalFont.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
@@ -202,6 +205,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalTimerStub.c" -o "$OUT/HalTimerStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalNetStub.c" -o "$OUT/HalNetStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -211,6 +215,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
+        "$OUT/HalNetStub.o" \
         "$OUT/HalFont.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \

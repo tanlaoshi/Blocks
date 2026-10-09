@@ -98,7 +98,7 @@ exec qemu-system-x86_64 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
     -device qemu-xhci,id=xhci \
-    -device virtio-net-pci,netdev=n0 \
+    -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0 \
     "${DISPLAY_ARGS[@]}" \
     "${SERIAL_ARGS[@]}"

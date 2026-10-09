@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K20** · Network virtio-net 最小收发 |
-| 排队 | （K13…K20 加厚表收官后：后置 Theme/窗管/…） |
-| 刚收官 | **PR-K19** · HELLO.ELF ✅ |
-| 顺手（不推 ★） | FatFile/ElfLoad/Process；`调用链.md` |
+| **★** | **后置拆刀** · Theme/窗管/lwIP/Store…（JX 前对范围，不自动开刀） |
+| 排队 | K13…K20 加厚表已收官；现网对照迁入时再拆 |
+| 刚收官 | **PR-K20** · virtio-net 最小收发 ✅ |
+| 顺手（不推 ★） | Console 空闲紧轮 Gui 跟手；`调用链.md` |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。  
@@ -43,7 +43,7 @@
 | **K17** ✅ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 ✅ |
 | **K18** ✅ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 ✅ |
 | **K19** ✅ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` ✅ |
-| **K20** ★ | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
+| **K20** ✅ | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 ✅ |
 
 **明确后置（勿插队占 ★）**：完整 Theme/TTF、窗管/开始菜单、lwIP/Socket、Store、SMP、真机多驱动边角——现网对照迁入时再拆刀。
 
@@ -231,7 +231,7 @@
 | **Arm/RiscV** | stub / skip |
 | **验收** | `Hello from HELLO.ELF` → `User: exit` → `Blocks>` ✅ |
 
-### K20 规划（★ · 最小子集）
+### K20 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：virtio-net 能发出/收到至少一帧（如 ARP 或 echo 一侧），串口打成功日志。
 
@@ -525,3 +525,4 @@ Kernel/
 | 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
 | 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
 | 2026-10-09 | TG：K19 HELLO.ELF + 调用链文档；★ → K20（virtio-net） |
+| 2026-10-09 | TG：K20 legacy virtio-net TX/RX + Console 跟手；★ → 后置拆刀 |

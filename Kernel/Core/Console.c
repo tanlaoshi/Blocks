@@ -69,10 +69,32 @@ static int ConsoleReadLine(char *Buf, int Cap) {
         return -1;
     }
     for (;;) {
-        if (!ConsolePollChar(&C)) {
+        int Have = 0;
+        /*
+         * 无键时：先紧轮 Gui 再 Yield。
+         * PS/2 鼠无 IRQ，若每拍只 poll 一次就 hlt，光标会不跟手。
+         */
+        while (!Have) {
+            UINT32 Spin;
+            if (ConsolePollChar(&C)) {
+                Have = 1;
+                break;
+            }
+            for (Spin = 0; Spin < 2048u; Spin++) {
+                GuiPoll();
+                if (ConsolePollChar(&C)) {
+                    Have = 1;
+                    break;
+                }
+#if defined(__x86_64__) || defined(_M_X64)
+                __asm__ volatile("pause");
+#endif
+            }
+            if (Have) {
+                break;
+            }
             GuiPoll();
             SchedulerYield();
-            continue;
         }
         if (C == '\r' || C == '\n') {
             Buf[N] = 0;

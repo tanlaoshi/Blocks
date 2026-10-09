@@ -28,7 +28,7 @@ cd ~/Blocks/Runtime
 
 串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K14 预期：`Usb: xhci ok` → `Usb: reset ok` → `Usb: ports=…` / `Usb: port N CCS=0|1` → `Blocks>`。
+K15 预期：`Input: ps2 kbd ok` → `Blocks>`；**点 GTK 窗**再打字应回显；终端串口输入仍可用。
 
 `run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 

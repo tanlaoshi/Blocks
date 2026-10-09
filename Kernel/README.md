@@ -43,6 +43,7 @@
 | `Core/FileSystem.c` | K9：认 Boot 交接的 `TOYOS.ID` |
 | `Core/Usb.c` | USB 模块胶水：MapMmio + HalXhci |
 | `Hal/X64/HalXhci.c` | K14：xHCI 复位 + 端口 CCS（门面 `HalXhci.h`） |
+| `Hal/X64/HalPs2Kbd.c` | K15：i8042 键盘 → ASCII（门面 `HalPs2Kbd.h`） |
 | `Core/Network.c` | K11：PCI 扫 Network class（0x02） |
 | `Core/Gui.c` | K12：最小桌面壳（底色/顶栏/标题） |
 

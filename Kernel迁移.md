@@ -63,7 +63,7 @@
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K21** ★ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；`DrawString*` 契约不变 |
+| **K21** ✅ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；契约 `FontDraw*`（开机屏 `HalBootFont`） |
 | **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
 | **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
 | **K24** ★ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
@@ -125,8 +125,8 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | TTF / 设计器 / 声卡 / iGPU | 现网亦非课堂主路径核心则后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（★ 从 K21 起）→ C 真机/SMP/virt。  
-> 每相位收官时改文首 ★，并在修订记录记一笔。
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1：K21–K23 ✅，★ = K24）→ C 真机/SMP/virt。  
+> 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
 
@@ -683,3 +683,4 @@ Kernel/
 | 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
 | 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
 | 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |
+| 2026-10-10 | 补齐 P1 相位表：K21 ✅（此前漏标仍 ★）；口诀与 TG 同步约定 |

@@ -7,6 +7,7 @@
 #include "GuiWinPaint.h"
 #include "GuiDesktop.h"
 #include "GuiFiles.h"
+#include "GuiStart.h"
 #include "Console.h"
 #include "HalPs2.h"
 #include "HalSerial.h"
@@ -43,7 +44,8 @@ static void PaintOne(int Id) {
 static void ClampPos(int Id, INT32 *X, INT32 *Y) {
     INT32 MinY = (INT32)GUI_BAR_H;
     INT32 MaxX = (INT32)gFbW - (INT32)gW[Id].W;
-    INT32 MaxY = (INT32)gFbH - (INT32)gW[Id].H;
+    /* 底栏不可被窗盖住拖入 */
+    INT32 MaxY = (INT32)gFbH - (INT32)GUI_BAR_H - (INT32)gW[Id].H;
 
     if (*X < 0) {
         *X = 0;
@@ -76,11 +78,13 @@ void GuiWinPaintDesktop(void) {
 
 void GuiWinCompose(void) {
     int i;
-    /* 先图标后窗：拖/关擦桌面后图标不会丢 */
+    /* 先图标后窗；底栏与菜单盖在最上 */
     GuiDesktopPaintIcons();
     for (i = 0; i < GUI_WIN_COUNT; i++) {
         PaintOne((int)gZ[i]);
     }
+    GuiStartPaintBar();
+    GuiStartPaintMenu();
 }
 
 void GuiWinPresentFull(void) {
@@ -104,8 +108,11 @@ void GuiWinLayoutAll(void) {
         if (gW[i].W + 40u > gFbW) {
             gW[i].W = (gFbW > 80u) ? (gFbW - 40u) : gFbW;
         }
-        if (gW[i].H + GUI_BAR_H + 40u > gFbH) {
-            gW[i].H = (gFbH > GUI_BAR_H + 40u) ? (gFbH - GUI_BAR_H - 40u) : 120u;
+        /* 顶栏 + 底栏各占 GUI_BAR_H */
+        if (gW[i].H + 2u * GUI_BAR_H + 40u > gFbH) {
+            gW[i].H = (gFbH > 2u * GUI_BAR_H + 40u)
+                          ? (gFbH - 2u * GUI_BAR_H - 40u)
+                          : 120u;
         }
     }
     gW[GUI_WIN_SHELL].X = (gFbW > gW[GUI_WIN_SHELL].W)

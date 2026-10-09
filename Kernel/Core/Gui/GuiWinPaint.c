@@ -6,6 +6,7 @@
 #include "Font.h"
 #include "GuiFiles.h"
 #include "GuiSettings.h"
+#include "GuiStart.h"
 #include "GuiWin.h"
 #include "HalVideo.h"
 #include "Locale.h"
@@ -28,8 +29,11 @@ void GuiWinPaint_CloseBtn(UINT32 WinX, UINT32 WinY, UINT32 WinW,
 
 void GuiWinPaint_Desktop(UINT32 FbW, UINT32 FbH) {
     HalVideoFillRect(0, 0, FbW, FbH, ThemeDesktopBackground());
+    /* 顶栏：仅标题 Blocks（与 K35 前一致） */
     HalVideoFillRect(0, 0, FbW, GUI_BAR_H, ThemeTaskbarBackground());
     FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
+    /* 底栏：开始钮 */
+    GuiStartPaintBar();
 }
 
 void GuiWinPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
@@ -38,6 +42,7 @@ void GuiWinPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
     UINT32 T = (Y > WIN_MOVE_PAD) ? (Y - WIN_MOVE_PAD) : 0;
     UINT32 R = X + W + WIN_MOVE_PAD;
     UINT32 B = Y + H + WIN_MOVE_PAD;
+    UINT32 BotY = (FbH > GUI_BAR_H) ? (FbH - GUI_BAR_H) : 0;
 
     if (R > FbW) {
         R = FbW;
@@ -51,6 +56,9 @@ void GuiWinPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
     if (T < GUI_BAR_H) {
         HalVideoFillRect(0, 0, FbW, GUI_BAR_H, ThemeTaskbarBackground());
         FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
+    }
+    if (B > BotY) {
+        GuiStartPaintBar();
     }
 }
 

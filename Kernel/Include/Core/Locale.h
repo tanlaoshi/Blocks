@@ -26,6 +26,7 @@ typedef enum {
     MSG_WIN_FILES,         /* 窗标题：Files / 文件 */
     MSG_ICON_FILES,        /* 桌面图标：Files / 文件 */
     MSG_FILES_HINT,        /* Files 提示：点 ELF 运行 */
+    MSG_START,             /* 任务栏开始钮：Start / 开始 */
     MSG_LANG_USAGE,
     MSG_LANG_NOW,
     MSG_LANG_SET,

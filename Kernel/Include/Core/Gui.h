@@ -1,5 +1,5 @@
 /*
- * Gui.h — 图形界面（K12/K17/K29 + K30 拖标题/焦点）
+ * Gui.h — 图形界面（K29 单窗 + K30 拖/焦点 + K31 关窗）
  */
 #ifndef GUI_H
 #define GUI_H

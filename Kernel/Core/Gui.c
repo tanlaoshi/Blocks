@@ -1,9 +1,9 @@
 /*
- * Gui.c — 桌面壳 + Shell 单窗 + K30 拖标题/焦点
+ * Gui.c — 桌面壳 + Shell 单窗 + K30 拖/焦点 + K31 关窗
  *
  * 【初学者】
- * 点标题栏按住拖：擦旧窗→移几何→重画客户区字→脏矩形 Present。
- * 点窗内聚焦（标题亮）；点桌面失焦（标题暗）。不关窗（K31）。
+ * 点标题栏按住拖；点 × 关窗并重画桌面；点顶栏再开窗。
+ * 点窗内聚焦；点桌面失焦。
  */
 #include "Gui.h"
 #include "BootInfo.h"
@@ -21,6 +21,8 @@
 
 #define GUI_BAR_H     28u
 #define GUI_TITLE_H   24u
+#define GUI_CLOSE_W   20u
+#define GUI_CLOSE_BG  0x00B33A3Au
 #define GUI_CUR_COLOR 0x00FFFFFFu
 #define GUI_CUR_W     8u
 #define GUI_CUR_H     14u
@@ -55,33 +57,10 @@ static const UINT8 gArrow[GUI_CUR_H] = {
     0xF8, 0xDC, 0x8E, 0x06, 0x03, 0x01
 };
 
-static void CursorPresentBox(INT32 X, INT32 Y, UINT32 W, UINT32 H) {
-    if (X < 0) {
-        if ((UINT32)(-X) >= W) {
-            return;
-        }
-        W -= (UINT32)(-X);
-        X = 0;
-    }
-    if (Y < 0) {
-        if ((UINT32)(-Y) >= H) {
-            return;
-        }
-        H -= (UINT32)(-Y);
-        Y = 0;
-    }
-    if ((UINT32)X >= gFbW || (UINT32)Y >= gFbH || W == 0 || H == 0) {
-        return;
-    }
-    if ((UINT32)X + W > gFbW) {
-        W = gFbW - (UINT32)X;
-    }
-    if ((UINT32)Y + H > gFbH) {
-        H = gFbH - (UINT32)Y;
-    }
-    HalVideoPresentRect((UINT32)X, (UINT32)Y, W, H);
-}
-
+/*
+ * 光标：底图采自背缓冲（快），像素双写背+前缓冲，不 PresentRect。
+ * 每拍 Present 会拖死 Poll → 停鼠半包失步「一停就卡」。
+ */
 void GuiCursorHide(void) {
     UINT32 Row;
     UINT32 Col;
@@ -94,11 +73,12 @@ void GuiCursorHide(void) {
             INT32 Px = gSaveX + (INT32)Col;
             INT32 Py = gSaveY + (INT32)Row;
             if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                HalVideoDrawPixel((UINT32)Px, (UINT32)Py, gUnder[Row][Col]);
+                UINT32 C = gUnder[Row][Col];
+                HalVideoDrawPixel((UINT32)Px, (UINT32)Py, C);
+                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, C);
             }
         }
     }
-    CursorPresentBox(gSaveX, gSaveY, gSaveW, gSaveH);
     gCursorShown = 0;
 }
 
@@ -122,16 +102,19 @@ void GuiCursorShow(void) {
             INT32 Px = gSaveX + (INT32)Col;
             INT32 Py = gSaveY + (INT32)Row;
             if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                gUnder[Row][Col] = HalVideoReadPixel((UINT32)Px, (UINT32)Py);
+                UINT32 Under = HalVideoReadPixel((UINT32)Px, (UINT32)Py);
+                gUnder[Row][Col] = Under;
                 if (Bits & (UINT8)(0x80u >> Col)) {
                     HalVideoDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
+                    HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
+                } else {
+                    HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, Under);
                 }
             } else {
                 gUnder[Row][Col] = 0;
             }
         }
     }
-    CursorPresentBox(gSaveX, gSaveY, gSaveW, gSaveH);
     gCursorShown = 1;
 }
 
@@ -158,6 +141,40 @@ static void CursorClamp(void) {
     }
 }
 
+static void CloseBtnGeom(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+    if (W) {
+        *W = GUI_CLOSE_W;
+    }
+    if (H) {
+        *H = GUI_TITLE_H;
+    }
+    if (X) {
+        *X = gWinX + gWinW - 1u - GUI_CLOSE_W;
+    }
+    if (Y) {
+        *Y = gWinY + 1u;
+    }
+}
+
+static int InCloseBtn(INT32 X, INT32 Y) {
+    UINT32 Bx;
+    UINT32 By;
+    UINT32 Bw;
+    UINT32 Bh;
+
+    if (!gWinOn) {
+        return 0;
+    }
+    CloseBtnGeom(&Bx, &By, &Bw, &Bh);
+    if (X < (INT32)Bx || Y < (INT32)By) {
+        return 0;
+    }
+    if (X >= (INT32)(Bx + Bw) || Y >= (INT32)(By + Bh)) {
+        return 0;
+    }
+    return 1;
+}
+
 static int InTitleBar(INT32 X, INT32 Y) {
     if (!gWinOn) {
         return 0;
@@ -168,7 +185,16 @@ static int InTitleBar(INT32 X, INT32 Y) {
     if (X >= (INT32)(gWinX + gWinW) || Y >= (INT32)(gWinY + 1u + GUI_TITLE_H)) {
         return 0;
     }
+    /* × 区不开始拖 */
+    if (InCloseBtn(X, Y)) {
+        return 0;
+    }
     return 1;
+}
+
+static int InTaskbar(INT32 X, INT32 Y) {
+    (void)X;
+    return Y >= 0 && (UINT32)Y < GUI_BAR_H;
 }
 
 static int InWindow(INT32 X, INT32 Y) {
@@ -199,6 +225,15 @@ static void PaintShellWindow(void) {
     HalVideoFillRect(gWinX + 1u, gWinY + 1u, gWinW - 2u, GUI_TITLE_H, TitleBg);
     FontDrawStringAt(gWinX + 10u, gWinY + 5u, LocStr(MSG_WIN_SHELL),
                      ThemeWindowTitleText());
+    {
+        UINT32 Bx;
+        UINT32 By;
+        UINT32 Bw;
+        UINT32 Bh;
+        CloseBtnGeom(&Bx, &By, &Bw, &Bh);
+        HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BG);
+        FontDrawStringAt(Bx + 6u, By + 4u, "x", ThemeWindowTitleText());
+    }
     Cx = gWinX + 1u;
     Cy = gWinY + 1u + GUI_TITLE_H;
     Cw = gWinW - 2u;
@@ -334,6 +369,8 @@ static void MoveShellWindowTo(INT32 Nx, INT32 Ny, int RefreshText) {
     }
 }
 
+static void LayoutShellWindow(void);
+
 static void SetShellFocus(int On) {
     if (!gWinOn) {
         return;
@@ -345,9 +382,56 @@ static void SetShellFocus(int On) {
     gWinFocus = On;
     CursorHide();
     PaintShellWindow();
+    ConsolePaintBannerBack();
     HalVideoPresentRect(gWinX, gWinY, gWinW, gWinH);
     HalPs2Poll();
-    ConsoleRefreshBanner();
+}
+
+static void PaintDesktopOnly(void) {
+    HalVideoFillRect(0, 0, gFbW, gFbH, ThemeDesktopBackground());
+    HalVideoFillRect(0, 0, gFbW, GUI_BAR_H, ThemeTaskbarBackground());
+    FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
+}
+
+static void CloseShellWindow(void) {
+    UINT32 Ox;
+    UINT32 Oy;
+    UINT32 Ow;
+    UINT32 Oh;
+
+    if (!gWinOn) {
+        return;
+    }
+    Ox = gWinX;
+    Oy = gWinY;
+    Ow = gWinW;
+    Oh = gWinH;
+    gDragging = 0;
+    EraseShellWindow();
+    gWinOn = 0;
+    gWinFocus = 0;
+    PaintDesktopOnly();
+    if (HalVideoBackbufferEnabled()) {
+        HalVideoPresent();
+    } else {
+        HalVideoPresentRect(Ox, Oy, Ow, Oh);
+    }
+    HalPs2Poll();
+    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: shell closed (click taskbar)\n");
+}
+
+static void OpenShellWindow(void) {
+    if (gWinOn || gFbW == 0) {
+        return;
+    }
+    LayoutShellWindow();
+    PaintShellWindow();
+    ConsolePaintBannerBack();
+    if (HalVideoBackbufferEnabled()) {
+        HalVideoPresentRect(gWinX, gWinY, gWinW, gWinH);
+    }
+    HalPs2Poll();
+    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: shell opened\n");
 }
 
 static void LayoutShellWindow(void) {
@@ -459,7 +543,10 @@ void GuiRefreshLabels(void) {
     CursorHide();
     HalVideoFillRect(0, 0, gFbW, GUI_BAR_H, ThemeTaskbarBackground());
     FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
-    PaintShellWindow();
+    if (gWinOn) {
+        PaintShellWindow();
+        ConsolePaintBannerBack();
+    }
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }
@@ -518,20 +605,25 @@ int GuiPoll(void) {
     }
 
     if (SawPress) {
-        if (InTitleBar(gCurX, gCurY)) {
+        if (gWinOn && InCloseBtn(gCurX, gCurY)) {
+            CloseShellWindow();
+        } else if (!gWinOn && InTaskbar(gCurX, gCurY)) {
+            OpenShellWindow();
+        } else if (InTitleBar(gCurX, gCurY)) {
             gDragging = 1;
             gDragOffX = gCurX - (INT32)gWinX;
             gDragOffY = gCurY - (INT32)gWinY;
             SetShellFocus(1);
         } else if (InWindow(gCurX, gCurY)) {
             SetShellFocus(1);
-        } else if ((UINT32)gCurY >= GUI_BAR_H) {
+        } else if (gWinOn && (UINT32)gCurY >= GUI_BAR_H) {
             SetShellFocus(0);
         }
     }
 
     WasDragging = gDragging;
-    if (gDragging && (LastBtn & 0x1u) != 0 && (AccX != 0 || AccY != 0)) {
+    if (gWinOn && gDragging && (LastBtn & 0x1u) != 0 &&
+        (AccX != 0 || AccY != 0)) {
         MoveShellWindowTo(gCurX - gDragOffX, gCurY - gDragOffY, 0);
     }
 

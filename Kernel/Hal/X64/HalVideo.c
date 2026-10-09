@@ -169,7 +169,7 @@ void HalVideoPresentRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height) {
         /* 按行拷：拖窗比逐像素紧循环跟手 */
         __builtin_memcpy(D, S, (UINTN)N * sizeof(UINT32));
         /* 拖窗 Present 中排空 i8042，减轻停鼠半包失步 */
-        if (((Row - Y) & 15u) == 15u) {
+        if (((Row - Y) & 7u) == 7u) {
             HalPs2Poll();
         }
     }

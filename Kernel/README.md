@@ -47,6 +47,8 @@
 | `Hal/X64/HalPs2Mouse.c` | i8042 辅助口相对鼠标 |
 | `Hal/X64/HalLapicTimer.c` | K18：LAPIC 周期 tick（`HalTimer.h`） |
 | `Core/Scheduler.c` | K18：开 timer、Yield=`hlt` |
+| `Core/Process.c` / `ElfLoad.c` / `FatFile.c` | K19：读跑 `HELLO.ELF`（int 0x80） |
+| `User/X64/Hello.S` | 用户程序源；`User/X64/build.sh` → RootFs |
 | `Core/Usb.c` | USB 模块胶水：MapMmio + HalXhci |
 | `Hal/X64/HalXhci.c` | K14：xHCI 复位 + 端口 CCS（门面 `HalXhci.h`） |
 | `Hal/X64/HalPs2Kbd.c` | K15：i8042 键盘 → ASCII（门面 `HalPs2Kbd.h`） |

@@ -27,6 +27,13 @@ if [ ! -f "$RUNTIME/RootFs/X64/TOYOS.ID" ]; then
     printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/TOYOS.ID"
 fi
 
+# K19：确保 RootFs 有 HELLO.ELF
+if [ ! -f "$RUNTIME/RootFs/X64/HELLO.ELF" ] || [ -x "$BLOCKS/User/X64/build.sh" ]; then
+    if [ -x "$BLOCKS/User/X64/build.sh" ]; then
+        "$BLOCKS/User/X64/build.sh" "$RUNTIME/RootFs/X64/HELLO.ELF"
+    fi
+fi
+
 if [ ! -f "$RUNTIME/Fw/OVMF_VARS.fd.clean" ]; then
     if [ -f /usr/share/OVMF/OVMF_VARS_4M.fd ]; then
         cp -f /usr/share/OVMF/OVMF_VARS_4M.fd "$RUNTIME/Fw/OVMF_VARS.fd.clean"

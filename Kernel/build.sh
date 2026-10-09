@@ -89,8 +89,8 @@ build_common_objs() {
     local -a cflags=("$@")
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
-                    VirtualMemory Usb FileSystem FatProbe Network Gui
-                    Scheduler Console Kernel)
+                    VirtualMemory Usb FileSystem FatProbe FatFile ElfLoad
+                    Process Network Gui Scheduler Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -128,6 +128,8 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Mouse.c" -o "$OUT/HalPs2Mouse.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioBlk.c" -o "$OUT/HalVirtioBlk.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalLapicTimer.c" -o "$OUT/HalLapicTimer.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.c" -o "$OUT/HalSyscall.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.S" -o "$OUT/HalSyscallIsr.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -136,10 +138,12 @@ x64|X64)
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
         "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalPs2Mouse.o" \
         "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" \
+        "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalFont.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
-        "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
+        "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
@@ -161,6 +165,7 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalTimerStub.c" -o "$OUT/HalTimerStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -168,10 +173,11 @@ arm64|Arm64|ARM64)
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
-        "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" \
+        "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalFont.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
@@ -195,6 +201,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalTimerStub.c" -o "$OUT/HalTimerStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
         -o "$OUT/Kernel.elf" \
@@ -203,10 +210,11 @@ riscv|RiscV|RISCV)
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
-        "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" \
+        "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalFont.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;

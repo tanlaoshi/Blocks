@@ -12,13 +12,23 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K19** · 用户态加载并跑 `HELLO.ELF` |
-| 排队 | K20（见下方「加厚到桌面」） |
-| 刚收官 | **PR-K18** · Scheduler LAPIC tick ✅ |
-| 顺手（不推 ★） | HalTimer；`Font`→`HalFont`（后拆 Font 积木） |
+| **★** | **PR-K20** · Network virtio-net 最小收发 |
+| 排队 | （K13…K20 加厚表收官后：后置 Theme/窗管/…） |
+| 刚收官 | **PR-K19** · HELLO.ELF ✅ |
+| 顺手（不推 ★） | FatFile/ElfLoad/Process；`调用链.md` |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
-> **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
+> **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。  
+> **★ 只在 TG 推进**（JX 验收过也不改文首 ★，等你发 TG）。
+
+### 协作约定（2026-10-09 起）
+
+| # | 约定 |
+| - | ---- |
+| 1 | **主力 Arch = X64**。Arm64/RiscV 保持可编 + Stub/薄实现即可，不要求与 K13+ 刀刀对齐；落后是预期。 |
+| 2 | **注释**：迁入/加厚代码补【初学者】级说明（为何、跟谁、不做什么）；禁止只留符号名。 |
+| 3 | **调用链总览**：维护 [`调用链.md`](调用链.md)（Boot→KernelMain→模块表→shell）；TG 改主链时同步改它。 |
+| 4 | **驱动加厚**（USB HID/MSC、网卡收发、存储 AHCI 等）：JX 前先和你对一下范围/验收，再动刀。 |
 
 ### 加厚到桌面（K13+ 排队 · 一句话）
 
@@ -32,8 +42,8 @@
 | **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` ✅ |
 | **K17** ✅ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 ✅ |
 | **K18** ✅ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 ✅ |
-| **K19** ★ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
-| **K20** | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
+| **K19** ✅ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` ✅ |
+| **K20** ★ | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
 
 **明确后置（勿插队占 ★）**：完整 Theme/TTF、窗管/开始菜单、lwIP/Socket、Store、SMP、真机多驱动边角——现网对照迁入时再拆刀。
 
@@ -210,16 +220,30 @@
 | **Arm/RiscV** | HalTimerStub / 仍纯协作 |
 | **验收** | `Scheduler: timer ok`；`Blocks>` 后周期性 `Sched: tick` ✅ |
 
-### K19 规划（★ · 最小子集）
+### K19 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：从 RootFs 加载并跑一个用户态 `HELLO.ELF`，退出后回 `Blocks>`。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 最小 ELF 加载 + 用户态入口/返回；串口见 hello |
-| **不做** | 完整 libc、多进程、动态链接 |
+| **做** | FatFile 读 `HELLO.ELF`；ElfLoad；`int 0x80` write/exit（本刀 ring0 call 进入；真 ring3 后刀） |
+| **不做** | 完整 libc、多进程、动态链接、ring3 |
 | **Arm/RiscV** | stub / skip |
-| **验收** | 串口见 hello；进程退出回 `Blocks>` |
+| **验收** | `Hello from HELLO.ELF` → `User: exit` → `Blocks>` ✅ |
+
+### K20 规划（★ · 最小子集）
+
+**一句话**：virtio-net 能发出/收到至少一帧（如 ARP 或 echo 一侧），串口打成功日志。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | legacy virtio-net（与 blk 同类 IO BAR）；最小 TX；可选 RX 一轮；`Net: …` 日志 |
+| **不做** | lwIP、Socket、DHCP 全流程、多队列 |
+| **Arm/RiscV** | stub |
+| **验收** | 一次 TX（或 TX+RX）成功日志；`Blocks>` 仍活 |
+| **Runtime** | 已有 `virtio-net-pci` + user netdev；必要时 `disable-modern=on` |
+
+> **驱动刀**：JX 前先对范围（见文首协作约定 #4）。
 
 ---
 
@@ -499,3 +523,5 @@ Kernel/
 | 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 TOYOS.ID） |
 | 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
 | 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
+| 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
+| 2026-10-09 | TG：K19 HELLO.ELF + 调用链文档；★ → K20（virtio-net） |

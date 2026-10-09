@@ -11,6 +11,9 @@ Blocks/
 ```
 
 - **积木原则**：[`积木原则.md`](积木原则.md)
+- **调用链（Boot→shell）**：[`调用链.md`](调用链.md)
+- **Boot 迁移**：[`Boot迁移.md`](Boot迁移.md)
+- **Kernel 迁移 / ★**：[`Kernel迁移.md`](Kernel迁移.md)
 - **Boot**：[`Boot/README.md`](Boot/README.md)
 - **Kernel**：[`Kernel/README.md`](Kernel/README.md)
 - **Runtime**：[`Runtime/README.md`](Runtime/README.md)

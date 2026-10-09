@@ -10,6 +10,7 @@
 #include "HalPs2Kbd.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
+#include "Process.h"
 #include "Scheduler.h"
 #include "ToySerialConfig.h"
 
@@ -101,16 +102,30 @@ static int ConsoleReadLine(char *Buf, int Cap) {
     }
 }
 
+static int LineEq(const char *A, const char *B) {
+    while (*A && *B && *A == *B) {
+        A++;
+        B++;
+    }
+    return *A == 0 && *B == 0;
+}
+
 void ConsoleRun(void) {
     char Line[LINE_CAP];
 
     HalSerialShellOwn();
+    /* K19：开机跑一次 HELLO.ELF，再进提示符 */
+    (void)ProcessRunHello();
     for (;;) {
         ConsolePut("Blocks> ");
         if (ConsoleReadLine(Line, LINE_CAP) < 0) {
             continue;
         }
         if (Line[0] == 0) {
+            continue;
+        }
+        if (LineEq(Line, "hello")) {
+            (void)ProcessRunHello();
             continue;
         }
         ConsolePut(Line);

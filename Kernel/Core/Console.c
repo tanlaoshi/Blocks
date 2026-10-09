@@ -6,6 +6,7 @@
  * 不是完整 Shell：回车后原样打回。
  */
 #include "Console.h"
+#include "Gui.h"
 #include "HalPs2Kbd.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
@@ -68,6 +69,7 @@ static int ConsoleReadLine(char *Buf, int Cap) {
     }
     for (;;) {
         if (!ConsolePollChar(&C)) {
+            GuiPoll();
             SchedulerYield();
             continue;
         }

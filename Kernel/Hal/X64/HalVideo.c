@@ -142,6 +142,36 @@ void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
     Fb[Y * P + X] = Color;
 }
 
+UINT32 HalVideoReadPixel(UINT32 X, UINT32 Y) {
+    UINT32 *Fb = DrawTarget();
+    UINT32 P = Pitch();
+
+    if (Fb == 0 || X >= gVideo.HorizontalResolution ||
+        Y >= gVideo.VerticalResolution) {
+        return 0;
+    }
+    return Fb[Y * P + X];
+}
+
+/* 背缓冲与前缓冲同 XOR（光标无需整屏 Present） */
+void HalVideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
+    UINT32 P = Pitch();
+    UINT32 *Back;
+    UINT32 *Fr;
+
+    if (X >= gVideo.HorizontalResolution || Y >= gVideo.VerticalResolution) {
+        return;
+    }
+    Back = DrawTarget();
+    if (Back != 0) {
+        Back[Y * P + X] ^= Mask;
+    }
+    Fr = Front();
+    if (Fr != 0 && Fr != Back) {
+        Fr[Y * P + X] ^= Mask;
+    }
+}
+
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
                       UINT32 Color) {
     UINT32 *Fb = DrawTarget();

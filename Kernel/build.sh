@@ -123,6 +123,7 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalCpuIsr.S" -o "$OUT/HalCpuIsr.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalXhci.c" -o "$OUT/HalXhci.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Kbd.c" -o "$OUT/HalPs2Kbd.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Mouse.c" -o "$OUT/HalPs2Mouse.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioBlk.c" -o "$OUT/HalVirtioBlk.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
@@ -130,7 +131,8 @@ x64|X64)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
         "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
-        "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalVirtioBlk.o" \
+        "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalPs2Mouse.o" \
+        "$OUT/HalVirtioBlk.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
@@ -153,6 +155,7 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/HalXhciStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KbdStub.c" -o "$OUT/HalPs2KbdStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
@@ -160,7 +163,8 @@ arm64|Arm64|ARM64)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
-        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalBlockStub.o" \
+        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
+        "$OUT/HalBlockStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \
@@ -184,6 +188,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/HalXhciStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KbdStub.c" -o "$OUT/HalPs2KbdStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/HalBlockStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
@@ -192,7 +197,8 @@ riscv|RiscV|RISCV)
         "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
-        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalBlockStub.o" \
+        "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
+        "$OUT/HalBlockStub.o" \
         "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" \

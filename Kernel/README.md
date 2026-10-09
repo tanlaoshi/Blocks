@@ -43,6 +43,8 @@
 | `Core/FileSystem.c` | K16：virtio-blk+FAT 探 `TOYOS.ID`（失败退 handoff） |
 | `Core/FatProbe.c` | 薄 FAT 根目录扫描 |
 | `Hal/X64/HalVirtioBlk.c` | legacy virtio-blk 读扇区（`HalBlock.h`） |
+| `Core/Gui.c` | K17：XOR 光标 + 顶栏点击日志（`GuiPoll`） |
+| `Hal/X64/HalPs2Mouse.c` | i8042 辅助口相对鼠标 |
 | `Core/Usb.c` | USB 模块胶水：MapMmio + HalXhci |
 | `Hal/X64/HalXhci.c` | K14：xHCI 复位 + 端口 CCS（门面 `HalXhci.h`） |
 | `Hal/X64/HalPs2Kbd.c` | K15：i8042 键盘 → ASCII（门面 `HalPs2Kbd.h`） |

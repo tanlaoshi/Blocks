@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K17** · Gui 鼠标光标 + 桌面点击反馈 |
-| 排队 | K18…K20（见下方「加厚到桌面」） |
-| 刚收官 | **PR-K16** · 内核 Block+FAT 读 `TOYOS.ID` ✅ |
-| 顺手（不推 ★） | HalBlock / FatProbe；Root=`virtio-blk` legacy |
+| **★** | **PR-K18** · Scheduler LAPIC 定时器 + 协作/轻抢占 |
+| 排队 | K19…K20（见下方「加厚到桌面」） |
+| 刚收官 | **PR-K17** · Gui 光标 + 顶栏点击 ✅ |
+| 顺手（不推 ★） | HalPs2Mouse；GuiPoll XOR 光标 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -30,8 +30,8 @@
 | **K14** ✅ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: reset ok` / `port N CCS=` ✅ |
 | **K15** ✅ | 键入最小（QEMU 先 PS/2；HID 后刀） | 桌面要键入；串口壳可先吃键 | GTK 窗按键进 `Blocks>` ✅ |
 | **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` ✅ |
-| **K17** ★ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
-| **K18** | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
+| **K17** ✅ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 ✅ |
+| **K18** ★ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
 | **K19** | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
 | **K20** | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
 
@@ -188,16 +188,27 @@
 
 依赖：PMM（DMA 缓冲）；legacy IO BAR（勿 modern-only）。
 
-### K17 规划（★ · 最小子集）
+### K17 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：Gui 画出鼠标光标，并能对桌面/顶栏点击给出反馈（串口或屏）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 最小指针设备（QEMU 先 PS/2 鼠或绝对指针）；光标合成；顶栏点击打日志 |
+| **做** | `HalPs2Mouse`（i8042 AUX）；XOR 箭头光标；顶栏左键 `Gui: bar click` |
 | **不做** | 完整窗管、拖拽改大小、USB HID 鼠枚举（可后刀） |
 | **Arm/RiscV** | stub / 无指针则 skip |
-| **验收** | 光标移动；点击顶栏有反馈；`Blocks>` 仍活 |
+| **验收** | `Gui: mouse ok` / `cursor on`；GTK 移鼠见光标；点顶栏有日志；`Blocks>` 仍活 ✅ |
+
+### K18 规划（★ · 最小子集）
+
+**一句话**：Scheduler 有节拍（LAPIC 定时器），协作/轻抢占，Console 仍可交互。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | X64 最小 LAPIC timer；周期性 tick（串口或光标闪）；`SchedulerYield` 可被节拍唤醒 |
+| **不做** | 完整多任务/优先级队列、SMP、IOAPIC 全路由 |
+| **Arm/RiscV** | stub / 无 tick 则仍纯协作 |
+| **验收** | 周期性 tick 日志或光标闪；`Blocks>` 仍活 |
 
 ---
 

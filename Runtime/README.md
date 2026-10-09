@@ -30,6 +30,8 @@ cd ~/Blocks/Runtime
 
 K16 预期：`Fs: TOYOS.ID ready (kernel)`（Root=`virtio-blk`+vvfat）；失败才退 Boot handoff。
 
+K17 预期：`Gui: mouse ok` / `Gui: cursor on`；**点 GTK 窗**移动鼠标见光标；点顶栏串口 `Gui: bar click`。
+
 `run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 
 可选：`./build.sh x64 SCREEN_LOG=1` 把 boot 日志镜像到屏（Y≥80）。

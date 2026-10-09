@@ -12,6 +12,7 @@
 #define PS2_STATUS  0x64u
 #define PS2_OBF     (1u << 0)
 #define PS2_IBF     (1u << 1)
+#define PS2_AUX     (1u << 5)
 
 static int gReady;
 static int gShift;
@@ -133,6 +134,9 @@ int HalPs2KbdPollChar(char *Out) {
     St = In8(PS2_STATUS);
     if ((St & PS2_OBF) == 0) {
         return 0;
+    }
+    if ((St & PS2_AUX) != 0) {
+        return 0; /* 鼠标字节留给 HalPs2Mouse */
     }
     Code = In8(PS2_DATA);
     if (Code == 0xE0u) {

@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K42** · DNS / 基础 `NetConfig` |
+| **★** | **PR-K43** · 用户态 `NETLIB` / `NETDEMO` |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K41** · 嵌入 lwIP 最小 + `lwip on` ✅ |
+| 刚收官 | **PR-K42** · DNS / 基础 `NetConfig` ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -101,8 +101,8 @@
 | **K39** ✅ | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
 | **K40** ✅ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
 | **K41** ✅ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
-| **K42** ★ | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
-| **K43** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
+| **K42** ✅ | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
+| **K43** ★ | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
 
 #### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
 
@@ -134,7 +134,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K42）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K43）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -575,16 +575,27 @@
 | **验收** | `lwip on` → `ping` → `ping … (lwIP) …` / `ping: ok` |
 | **落地** | `ThirdParty/lwip`；`Hal/X64/LwIp`（`LwIpNetif`/`LwIpIcmp`）；`NetworkLwip.c`；`LWIP=1` 默认 |
 
-### K42 规划（★ · 最小子集）
+### K42 已收官
 
 **一句话**：DNS 查询 + 基础网配置（对标现网 NetConfig 薄）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `dns` 或等价；NetConfig 最小（地址/DNS）；需 `lwip on` |
-| **不做** | NETLIB/NETDEMO（K43）、完整 DHCP UI |
-| **验收** | 串口可见解析结果或字面量 IP（JX 再钉命令） |
-| **对照** | 现网网配置 / DNS |
+| **做** | Shell `dns`/`net`；`NetConfig`（ip/mask/gw/dns）；`LWIP_DNS` + `dns_gethostbyname` |
+| **不做** | NETLIB/NETDEMO（K43）、完整 DHCP UI、自动开机 `lwip on` |
+| **验收** | `lwip on` → `net` 见 dns=10.0.2.3 → `dns 10.0.2.2` → `dns: … -> 10.0.2.2`；可选主机名 |
+| **落地** | `NetConfig.c`；`NetworkLwip` Apply/DnsLookup；`lwipopts` `LWIP_DNS=1` + `dns.c`；Shell `net`/`dns`；SLIRP ARP 种子 |
+
+### K43 规划（★ · 最小子集）
+
+**一句话**：用户态网络演示 ELF 能 `exec` 跑通（对标现网 NETLIB/NETDEMO 薄）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 最小 socket syscall + `NETDEMO` 或 `NETLIB` 其一能 `exec` 见输出 |
+| **不做** | 完整 libToyNet ABI、DHCP UI、多连接服务器产品化 |
+| **验收** | `lwip on` → `exec NETDEMO.ELF`（或 NETLIB）串口见演示输出 |
+| **对照** | 现网 libToyNet / NetDemo / NetLibDemo |
 | **落地** | JX 再钉 |
 
 ### K22+ 细则
@@ -917,3 +928,4 @@ Kernel/
 | 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |
 | 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
 | 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |
+| 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |

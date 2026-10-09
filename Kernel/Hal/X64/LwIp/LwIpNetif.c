@@ -19,19 +19,31 @@ extern void *memcpy(void *Dst, const void *Src, unsigned long Len);
 static struct netif gNetif;
 static int gNetifUp;
 
-static const UINT8 gQemuGwMac[6] = { 0x52, 0x55, 0x0a, 0x00, 0x02, 0x02 };
-#define QEMU_GW_IP 0x0A000202u
+#define QEMU_SLIRP_NET 0x0A000200u /* 10.0.2.0/24 */
 
-static void SeedGwArp(UINT32 Gw) {
-    ip4_addr_t GwIp;
-    struct eth_addr GwMac;
+void LwIpNetifSeedSlirp(UINT32 HostIp) {
+    ip4_addr_t Ip;
+    struct eth_addr Mac;
+    UINT8 Bytes[6];
 
-    if (Gw != QEMU_GW_IP) {
+    /* SLIRP 主机 MAC = 52:55:0a:00:02:<末八位> */
+    if ((HostIp & 0xFFFFFF00u) != QEMU_SLIRP_NET) {
         return;
     }
-    HostIpToLwIp(Gw, &GwIp);
-    memcpy(GwMac.addr, gQemuGwMac, 6);
-    (void)etharp_add_static_entry(&GwIp, &GwMac);
+    Bytes[0] = 0x52;
+    Bytes[1] = 0x55;
+    Bytes[2] = 0x0a;
+    Bytes[3] = 0x00;
+    Bytes[4] = 0x02;
+    Bytes[5] = (UINT8)(HostIp & 0xFFu);
+    HostIpToLwIp(HostIp, &Ip);
+    memcpy(Mac.addr, Bytes, 6);
+    (void)etharp_add_static_entry(&Ip, &Mac);
+}
+
+static void SeedNeighbours(UINT32 Gw) {
+    LwIpNetifSeedSlirp(Gw);
+    LwIpNetifSeedSlirp(0x0A000203u); /* DNS */
 }
 
 static err_t NetifLinkOutput(struct netif *Netif, struct pbuf *P) {
@@ -83,7 +95,23 @@ int LwIpNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     netif_set_default(&gNetif);
     netif_set_up(&gNetif);
     gNetifUp = 1;
-    SeedGwArp(Gw);
+    SeedNeighbours(Gw);
+    return 0;
+}
+
+int LwIpNetifSetAddr(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
+    ip4_addr_t IpAddr;
+    ip4_addr_t NetMask;
+    ip4_addr_t GwAddr;
+
+    if (!gNetifUp) {
+        return -1;
+    }
+    HostIpToLwIp(Ip, &IpAddr);
+    HostIpToLwIp(Mask, &NetMask);
+    HostIpToLwIp(Gw, &GwAddr);
+    netif_set_addr(&gNetif, &IpAddr, &NetMask, &GwAddr);
+    SeedNeighbours(Gw);
     return 0;
 }
 

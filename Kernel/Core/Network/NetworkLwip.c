@@ -1,12 +1,13 @@
 /*
- * NetworkLwip.c — K41：lwIP 初始化 / 轮询 / ping 门面
+ * NetworkLwip.c — lwIP 初始化 / 轮询 / ping / DNS 门面
  *
  * 【初学者】
- * `lwip on` → lwip_init + netif(10.0.2.15) + 入站改走 LwIpNetifInput。
- * 本会话不可逆回 builtin（对标现网）；要回对照栈：重启 QEMU。
+ * `lwip on` → lwip_init + NetConfig 绑 netif/DNS + 入站 LwIpNetifInput。
+ * 本会话不可逆回 builtin；要回对照栈：重启 QEMU。
  */
 #include "LwIp.h"
 #include "Network.h"
+#include "NetConfig.h"
 #include "HalNet.h"
 #include "HalSerial.h"
 #include "SerialConfig.h"
@@ -17,10 +18,16 @@
 #include "lwip/init.h"
 #include "lwip/timeouts.h"
 #include "lwip/sys.h"
+#include "lwip/dns.h"
+#include "lwip/ip_addr.h"
 #include "LwIpNetif.h"
 #include "LwIpIcmp.h"
+#include "LwIpAddr.h"
 
 static int gLwIpReady;
+static volatile int gDnsDone;
+static volatile err_t gDnsErr;
+static ip_addr_t gDnsAddr;
 
 /* freestanding：lwIP 偶调的 libc 符号 */
 int memcmp(const void *A, const void *B, unsigned long N) {
@@ -123,23 +130,65 @@ u32_t sys_now(void) {
     return (u32_t)(T / 3000000ULL);
 }
 
+static void PushDns(void) {
+    UINT32 DnsHost;
+    ip_addr_t DnsServer;
+    ip4_addr_t Dns4;
+
+    DnsHost = NetConfigGetDns();
+    if (DnsHost == 0) {
+        return;
+    }
+    LwIpNetifSeedSlirp(DnsHost);
+    HostIpToLwIp(DnsHost, &Dns4);
+    ip_addr_copy_from_ip4(DnsServer, Dns4);
+    dns_setserver(0, &DnsServer);
+}
+
+int LwIpApplyConfig(void) {
+    char Buf[16];
+
+    if (!gLwIpReady) {
+        return 0;
+    }
+    if (LwIpNetifSetAddr(NetConfigGetIp(), NetConfigGetMask(),
+                         NetConfigGetGw()) != 0) {
+        return -1;
+    }
+    PushDns();
+    NetConfigFormatIp(NetConfigGetDns(), Buf, (int)sizeof(Buf));
+    HalSerialWriteShell("lwip: cfg dns=");
+    HalSerialWriteShell(Buf);
+    HalSerialWriteShell("\n");
+    return 0;
+}
+
 int LwIpInitialize(void) {
+    char Buf[16];
+
     if (gLwIpReady) {
         return 0;
     }
     if (!HalNetReady()) {
         return -1;
     }
+    NetConfigEnsure();
     /* 清空自研单连接，避免与 lwIP 抢 RX */
     NetworkTcpClose();
     NetworkUdpInitialize();
     lwip_init();
-    if (LwIpNetifAdd(NetworkSelfIp(), 0xFFFFFF00u, NetworkGwIp()) != 0) {
+    if (LwIpNetifAdd(NetConfigGetIp(), NetConfigGetMask(), NetConfigGetGw()) !=
+        0) {
         HalSerialWriteShell("lwip: netif fail\n");
         return -1;
     }
+    PushDns();
     gLwIpReady = 1;
     HalSerialWriteShell("lwip: on (RX → lwIP; reboot for builtin)\n");
+    NetConfigFormatIp(NetConfigGetDns(), Buf, (int)sizeof(Buf));
+    HalSerialWriteShell("lwip: dns=");
+    HalSerialWriteShell(Buf);
+    HalSerialWriteShell("\n");
     return 0;
 }
 
@@ -169,6 +218,58 @@ int LwIpPing(UINT32 DstIp, int TimeoutMs) {
     return LwIpIcmpEcho(DstIp, TimeoutMs);
 }
 
+static void DnsFound(const char *Name, const ip_addr_t *Addr, void *Arg) {
+    (void)Name;
+    (void)Arg;
+    if (Addr != NULL) {
+        ip_addr_copy(gDnsAddr, *Addr);
+        gDnsErr = ERR_OK;
+    } else {
+        gDnsErr = ERR_VAL;
+    }
+    gDnsDone = 1;
+}
+
+int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
+    err_t Err;
+    int Tries;
+    ip_addr_t Addr;
+
+    if (Name == 0 || Name[0] == 0 || OutIp == 0) {
+        return -1;
+    }
+    if (NetworkParseIp(Name, OutIp) == 0) {
+        return 0;
+    }
+    if (!gLwIpReady && LwIpInitialize() != 0) {
+        return -2;
+    }
+    gDnsDone = 0;
+    gDnsErr = ERR_INPROGRESS;
+    ip_addr_set_zero_ip4(&Addr);
+    Err = dns_gethostbyname(Name, &Addr, DnsFound, 0);
+    if (Err == ERR_OK) {
+        *OutIp = LwIpToHostIp(ip_2_ip4(&Addr));
+        return 0;
+    }
+    if (Err != ERR_INPROGRESS) {
+        return -3;
+    }
+    Tries = TimeoutMs > 0 ? TimeoutMs : 5000;
+    while (!gDnsDone && Tries-- > 0) {
+        LwIpService();
+        __asm__ volatile("pause");
+    }
+    if (!gDnsDone) {
+        return -4;
+    }
+    if (gDnsErr != ERR_OK) {
+        return -5;
+    }
+    *OutIp = LwIpToHostIp(ip_2_ip4(&gDnsAddr));
+    return 0;
+}
+
 #else /* !HAVE_LWIP */
 
 int LwIpInitialize(void) {
@@ -181,6 +282,15 @@ void LwIpService(void) {
 }
 int LwIpPing(UINT32 DstIp, int TimeoutMs) {
     (void)DstIp;
+    (void)TimeoutMs;
+    return -1;
+}
+int LwIpApplyConfig(void) {
+    return 0;
+}
+int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
+    (void)Name;
+    (void)OutIp;
     (void)TimeoutMs;
     return -1;
 }
@@ -198,6 +308,15 @@ void LwIpService(void) {
 }
 int LwIpPing(UINT32 DstIp, int TimeoutMs) {
     (void)DstIp;
+    (void)TimeoutMs;
+    return -1;
+}
+int LwIpApplyConfig(void) {
+    return 0;
+}
+int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
+    (void)Name;
+    (void)OutIp;
     (void)TimeoutMs;
     return -1;
 }

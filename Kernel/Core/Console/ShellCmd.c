@@ -11,12 +11,13 @@
 #include "Console.h"
 #include "Theme.h"
 #include "Network.h"
+#include "NetConfig.h"
 #include "LwIp.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
 #define HELP_MAX  40
-#define CMD_MAX   24
+#define CMD_MAX   28
 
 typedef struct {
     char Name[NAME_MAX];
@@ -597,6 +598,111 @@ static void CmdLwip(int Argc, char **Argv) {
     Put("usage: lwip on|status\n");
 }
 
+/* net — 显示/设置 NetConfig（ip|mask|gw|dns） */
+static void CmdNet(int Argc, char **Argv) {
+    UINT32 Ip;
+
+    NetConfigEnsure();
+    if (Argc < 2) {
+        Put("net ip=");
+        PutIp(NetConfigGetIp());
+        Put(" mask=");
+        PutIp(NetConfigGetMask());
+        Put(" gw=");
+        PutIp(NetConfigGetGw());
+        Put(" dns=");
+        PutIp(NetConfigGetDns());
+        Put("\n");
+        return;
+    }
+    if (Argc == 3 && StrEq(Argv[1], "ip")) {
+        if (NetworkParseIp(Argv[2], &Ip) != 0) {
+            Put("net: bad ip\n");
+            return;
+        }
+        if (NetConfigSetIp(Ip) != 0) {
+            Put("net: apply fail\n");
+            return;
+        }
+        Put("net: ip ok\n");
+        return;
+    }
+    if (Argc == 3 && StrEq(Argv[1], "mask")) {
+        if (NetworkParseIp(Argv[2], &Ip) != 0) {
+            Put("net: bad mask\n");
+            return;
+        }
+        if (NetConfigSetMask(Ip) != 0) {
+            Put("net: apply fail\n");
+            return;
+        }
+        Put("net: mask ok\n");
+        return;
+    }
+    if (Argc == 3 && StrEq(Argv[1], "gw")) {
+        if (NetworkParseIp(Argv[2], &Ip) != 0) {
+            Put("net: bad gw\n");
+            return;
+        }
+        if (NetConfigSetGw(Ip) != 0) {
+            Put("net: apply fail\n");
+            return;
+        }
+        Put("net: gw ok\n");
+        return;
+    }
+    if (Argc == 3 && StrEq(Argv[1], "dns")) {
+        if (NetworkParseIp(Argv[2], &Ip) != 0) {
+            Put("net: bad dns\n");
+            return;
+        }
+        if (NetConfigSetDns(Ip) != 0) {
+            Put("net: apply fail\n");
+            return;
+        }
+        Put("net: dns ok\n");
+        return;
+    }
+    Put("usage: net | net ip|mask|gw|dns <a.b.c.d>\n");
+}
+
+/* dns <name|ip> — 字面量或 lwIP A 记录 */
+static void CmdDns(int Argc, char **Argv) {
+    UINT32 Ip;
+    int Rc;
+
+    if (Argc < 2) {
+        Put("usage: dns <name|ip>\n");
+        return;
+    }
+    if (!NetworkNicReady()) {
+        Put("dns: no nic\n");
+        return;
+    }
+    Rc = LwIpDnsLookup(Argv[1], &Ip, 5000);
+    if (Rc == 0) {
+        Put("dns: ");
+        Put(Argv[1]);
+        Put(" -> ");
+        PutIp(Ip);
+        Put("\n");
+        return;
+    }
+    Put("dns: fail ");
+    if (Rc == -2) {
+        Put("(lwip)\n");
+    } else if (Rc == -3) {
+        Put("(query)\n");
+    } else if (Rc == -4) {
+        Put("(timeout)\n");
+    } else if (Rc == -5) {
+        Put("(nxdomain)\n");
+    } else {
+        PutU32((UINT32)(-Rc));
+        Put("\n");
+    }
+}
+
 /* ping — ICMP echo；默认 10.0.2.2（QEMU 网关）；lwip on 后走 lwIP */
 static void CmdPing(int Argc, char **Argv) {
     const char *Host = "10.0.2.2";
@@ -614,8 +720,8 @@ static void CmdPing(int Argc, char **Argv) {
     Put(LwIpActive() ? " (lwIP) ...\n" : " ...\n");
     if (LwIpActive()) {
         UINT32 Ip;
-        if (NetworkParseIp(Host, &Ip) != 0) {
-            Put("ping: fail (bad ip)\n");
+        if (LwIpDnsLookup(Host, &Ip, 5000) != 0) {
+            Put("ping: fail (dns/ip)\n");
             return;
         }
         Rc = LwIpPing(Ip, 3000);
@@ -663,6 +769,8 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
     ShellCmdRegister("ping", "ICMP echo (default 10.0.2.2)", CmdPing);
     ShellCmdRegister("lwip", "lwip on|status", CmdLwip);
+    ShellCmdRegister("net", "show/set ip|mask|gw|dns", CmdNet);
+    ShellCmdRegister("dns", "resolve name or literal IP", CmdDns);
     ShellCmdRegister("udplisten", "bind UDP port", CmdUdpListen);
     ShellCmdRegister("udpsend", "send UDP text", CmdUdpSend);
     ShellCmdRegister("udprecv", "poll/print UDP queue", CmdUdpRecv);

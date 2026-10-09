@@ -1,5 +1,5 @@
 /*
- * lwipopts.h — Blocks K41：NO_SYS / IPv4；DNS/DHCP 后刀
+ * lwipopts.h — Blocks：NO_SYS / IPv4；K42 开 DNS；DHCP 后刀
  */
 #ifndef LWIP_LWIPOPTS_H
 #define LWIP_LWIPOPTS_H
@@ -35,11 +35,13 @@
 #define LWIP_RAW                    1
 #define LWIP_DHCP                   0
 #define LWIP_AUTOIP                 0
-#define LWIP_DNS                    0
+#define LWIP_DNS                    1
 #define LWIP_IGMP                   0
 #define LWIP_STATS                  0
 
-#define MEMP_NUM_SYS_TIMEOUT        16
+#define MEMP_NUM_SYS_TIMEOUT        20
+#define DNS_MAX_SERVERS             2
+#define DNS_TABLE_SIZE              4
 
 #define TCP_MSS                     1460
 #define TCP_SND_BUF                 (4 * 1024)

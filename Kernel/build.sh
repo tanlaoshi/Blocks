@@ -106,7 +106,7 @@ build_common_objs() {
         USB/Usb
         FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
         FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut
-        Network/Network Network/NetworkIp Network/NetworkPing Network/NetworkUdp Network/NetworkTcp Network/NetworkLwip
+        Network/Network Network/NetworkIp Network/NetworkPing Network/NetworkUdp Network/NetworkTcp Network/NetworkLwip Network/NetConfig
         Gui/GuiLayout Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
         Scheduler/Scheduler
         Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
@@ -170,7 +170,7 @@ x64|X64)
     if [ "$HAVE_LWIP" = "1" ]; then
         LWIPDIR="$SCRIPT_DIR/ThirdParty/lwip/src"
         for f in init def inet_chksum ip mem memp netif pbuf raw stats sys \
-                 tcp tcp_in tcp_out timeouts udp \
+                 tcp tcp_in tcp_out timeouts udp dns \
                  ipv4/etharp ipv4/icmp ipv4/ip4 ipv4/ip4_addr; do
             base="$(basename "$f")"
             "$CC" "${CFLAGS[@]}" -Wno-unused-parameter -c "$LWIPDIR/core/${f}.c" \
@@ -203,7 +203,7 @@ x64|X64)
         "$OUT/Cpu.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o" \
         "${LWIP_OBJS[@]}"
     echo "Kernel/X64 LWIP=$HAVE_LWIP"
@@ -246,7 +246,7 @@ arm64|Arm64|ARM64)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -290,7 +290,7 @@ riscv|RiscV|RISCV)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

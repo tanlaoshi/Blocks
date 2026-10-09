@@ -15,7 +15,7 @@
 #define ARG_MAX   8
 #define NAME_MAX  16
 #define HELP_MAX  40
-#define CMD_MAX   20
+#define CMD_MAX   24
 
 typedef struct {
     char Name[NAME_MAX];
@@ -431,6 +431,87 @@ static void DrainUdpOnce(void) {
     }
 }
 
+/* tcplisten <port> — 单连接 echo；hostfwd 见 Runtime/run.sh :15000→:5000 */
+static void CmdTcpListen(int Argc, char **Argv) {
+    UINT32 Port = 0;
+
+    if (Argc < 2 || ParsePort(Argv[1], &Port) != 0) {
+        Put("usage: tcplisten <port>\n");
+        return;
+    }
+    if (!NetworkNicReady()) {
+        Put("tcp: no nic\n");
+        return;
+    }
+    if (NetworkTcpListen((UINT16)Port) != 0) {
+        Put("tcp: listen fail\n");
+        return;
+    }
+    Put("tcp: listening ");
+    PutU32(Port);
+    Put(" (echo; host nc 127.0.0.1:15000 if port=5000)\n");
+}
+
+/* tcpconnect <ip> <port> <text> */
+static void CmdTcpConnect(int Argc, char **Argv) {
+    UINT32 Ip;
+    UINT32 Port = 0;
+    UINTN Len = 0;
+    int Tries;
+
+    if (Argc < 4) {
+        Put("usage: tcpconnect <ip> <port> <text>\n");
+        return;
+    }
+    if (!NetworkNicReady()) {
+        Put("tcp: no nic\n");
+        return;
+    }
+    if (NetworkParseIp(Argv[1], &Ip) != 0) {
+        Put("tcp: bad ip\n");
+        return;
+    }
+    if (ParsePort(Argv[2], &Port) != 0) {
+        Put("tcp: bad port\n");
+        return;
+    }
+    while (Argv[3][Len]) {
+        Len++;
+    }
+    if (NetworkTcpGetState() == NETWORK_TCP_LISTEN) {
+        Put("tcp: closing listen (single slot)\n");
+    }
+    if (NetworkTcpConnect(Ip, (UINT16)Port) != 0) {
+        Put("tcpconnect: syn failed\n");
+        return;
+    }
+    for (Tries = 0; Tries < 4000; Tries++) {
+        NetworkTcpPoll(2);
+        if (NetworkTcpGetState() == NETWORK_TCP_ESTABLISHED) {
+            break;
+        }
+        if (NetworkTcpGetState() == NETWORK_TCP_CLOSED) {
+            Put("tcpconnect: closed\n");
+            return;
+        }
+    }
+    if (NetworkTcpGetState() != NETWORK_TCP_ESTABLISHED) {
+        Put("tcpconnect: timeout\n");
+        NetworkTcpClose();
+        return;
+    }
+    if (NetworkTcpSend(Argv[3], Len) != 0) {
+        Put("tcpconnect: send failed\n");
+        NetworkTcpClose();
+        return;
+    }
+    for (Tries = 0; Tries < 1000; Tries++) {
+        NetworkTcpPoll(2);
+    }
+    NetworkTcpClose();
+    Put("tcpconnect: done\n");
+}
+
 /* udplisten <port> */
 static void CmdUdpListen(int Argc, char **Argv) {
     UINT32 Port = 0;
@@ -549,6 +630,8 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("udplisten", "bind UDP port", CmdUdpListen);
     ShellCmdRegister("udpsend", "send UDP text", CmdUdpSend);
     ShellCmdRegister("udprecv", "poll/print UDP queue", CmdUdpRecv);
+    ShellCmdRegister("tcplisten", "TCP echo listen", CmdTcpListen);
+    ShellCmdRegister("tcpconnect", "TCP connect+send", CmdTcpConnect);
     ShellSysRegister();
     Put("Shell: cmds ok\n");
 }

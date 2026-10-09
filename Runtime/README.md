@@ -34,6 +34,8 @@ K38：`ping` / `ping 10.0.2.2` → `ping: ok`（QEMU user 网关）；`ping: fai
 
 K39：`udplisten 40000` → `udpsend 10.0.2.15 40000 hello` → `udp: sent` + `udp: recv from 10.0.2.15:… hello`（本机 IP 回环）；也可再 `udprecv` 轮询。
 
+K40：串口 `tcplisten 5000`，宿主机另开终端 `printf 'hello-k40\n' | nc -w2 127.0.0.1 15000` → 串口 `tcp: client connected` + `tcp echo: hello-k40`（`run.sh` hostfwd :15000→客 :5000）。`tcpconnect <ip> <port> <text>` 主动连+发。
+
 K17 预期：`Gui: mouse ok` / `Gui: cursor on`；**点 GTK 窗**移动鼠标见光标；点顶栏串口 `Gui: bar click`。
 
 K18 预期：`Scheduler: timer ok`；在 `Blocks>` 空闲时周期性 `Sched: tick …`；键入仍可用。

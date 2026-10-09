@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K40** · TCP 最小（单连接对照） |
+| **★** | **PR-K41** · 嵌入 lwIP 最小 + `lwip on` |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K39** · UDP 收发 + Shell 命令 ✅ |
+| 刚收官 | **PR-K40** · TCP 最小（单连接对照） ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -99,8 +99,8 @@
 | -- | ------ | -------- | ------------ |
 | **K38** ✅ | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
 | **K39** ✅ | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
-| **K40** ★ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
-| **K41** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
+| **K40** ✅ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
+| **K41** ★ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
 | **K42** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
 | **K43** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
 
@@ -134,7 +134,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K40）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K41）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -553,17 +553,28 @@
 | **验收** | headless：`udplisten 40000` → `udpsend 10.0.2.15 40000 hello-k39` → `udp: sent` + `udp: recv … hello-k39`；`ping: ok` 仍通 |
 | **落地** | `NetworkIp.c` / `NetworkUdp.c`；`NetworkPing` 共用 ARP/SendIp；`ShellCmd` 三命令 |
 
-### K40 规划（★ · 最小子集）
+### K40 已收官
 
 **一句话**：TCP 单连接对照（listen 或 connect 一侧可演示）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 极简 TCP（对标现网 Tcp legacy 薄）；Shell 一侧可演示 listen/connect |
-| **不做** | lwIP、完整状态机、多连接、重传完备 |
-| **验收** | 串口可见握手/收发一类日志（JX 再钉命令名） |
-| **对照** | 现网 `CodeD-Services/Tcp` |
-| **落地** | `Network` + `ShellCmd`（轮到 JX 再钉文件名） |
+| **做** | 极简 TCP；Shell `tcplisten`/`tcpconnect`；LISTEN 回显 |
+| **不做** | lwIP、多连接、拥塞控制、完备重传 |
+| **验收** | `tcplisten 5000` + 宿主机 `nc 127.0.0.1 15000` → `tcp: client connected` + `tcp echo: hello-k40`；`ping: ok` |
+| **落地** | `NetworkTcp.c`；`run.sh` `hostfwd=tcp::15000-:5000` |
+
+### K41 规划（★ · 最小子集）
+
+**一句话**：编入 lwIP 最小胶水 + Shell `lwip on` 切换课路径。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 嵌入 lwIP；`lwip on`/`lwip status`；活跃后 `ping` 走 lwIP |
+| **不做** | DNS（K42）、NETLIB/NETDEMO（K43）、自动开机 `lwip on` |
+| **验收** | `lwip on` → `ping` → `ping: ok`（串口可见 lwIP 路径日志） |
+| **对照** | 现网 N-lwip / `CodeA-HAL/X64/LwIp` |
+| **落地** | JX 再钉 ThirdParty/胶水文件名 |
 
 ### K22+ 细则
 
@@ -891,3 +902,5 @@ Kernel/
 | 2026-10-10 | TG：K38 ✅ ICMP `ping`（`NetworkPing`）；★ → **K39**（UDP）；TS 推远程 |
 | 2026-10-10 | JX：K39 ✅ UDP bind/send/recv + 本机回环；`NetworkIp`/`NetworkUdp`；headless `udp: sent`/`udp: recv … hello-k39`；待 TG |
 | 2026-10-10 | TG：K39 ✅ UDP + Shell；顺手图标标签居中；★ → **K40**（TCP 最小） |
+| 2026-10-10 | JX：K40 ✅ 单连接 TCP echo + `tcplisten`/`tcpconnect`；hostfwd :15000；待 TG |
+| 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |

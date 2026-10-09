@@ -123,6 +123,6 @@ exec qemu-system-x86_64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
     -device VGA,edid=on,xres="${TOY_QEMU_XRES}",yres="${TOY_QEMU_YRES}" \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
-    -netdev user,id=n0 \
+    -netdev user,id=n0,hostfwd=tcp::15000-:5000 \
     "${DISPLAY_ARGS[@]}" \
     "${SERIAL_ARGS[@]}"

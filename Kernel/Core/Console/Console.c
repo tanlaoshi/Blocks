@@ -18,6 +18,7 @@
 #include "Font.h"
 #include "Locale.h"
 #include "Theme.h"
+#include "Network.h"
 #include "ToySerialConfig.h"
 
 #define LINE_CAP 120
@@ -112,6 +113,10 @@ static int ConsoleReadLine(char *Buf, int Cap) {
             HalPs2Poll();
 #endif
             (void)GuiPoll();
+            /* K40：LISTEN/连接中收 TCP（hostfwd nc） */
+            if (NetworkTcpGetState() != NETWORK_TCP_CLOSED) {
+                NetworkTcpPoll(0);
+            }
             if (ConsolePollChar(&C)) {
                 Have = 1;
                 break;

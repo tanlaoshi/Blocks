@@ -13,6 +13,18 @@ UINT32 FatRd32(const UINT8 *P) {
            ((UINT32)P[3] << 24);
 }
 
+void FatWr16(UINT8 *P, UINT16 V) {
+    P[0] = (UINT8)(V & 0xFFu);
+    P[1] = (UINT8)((V >> 8) & 0xFFu);
+}
+
+void FatWr32(UINT8 *P, UINT32 V) {
+    P[0] = (UINT8)(V & 0xFFu);
+    P[1] = (UINT8)((V >> 8) & 0xFFu);
+    P[2] = (UINT8)((V >> 16) & 0xFFu);
+    P[3] = (UINT8)((V >> 24) & 0xFFu);
+}
+
 static int LooksLikeBpb(const UINT8 *Sec) {
     UINT16 Bps = FatRd16(Sec + 11);
     UINT8 Spc = Sec[13];
@@ -89,9 +101,11 @@ int FatVolOpen(FAT_VOL *V) {
     RootEnt = FatRd16(Sec + 17);
     FatSz16 = FatRd16(Sec + 22);
     FatSz = FatSz16 ? (UINT32)FatSz16 : FatRd32(Sec + 36);
+    V->Nfats = Nfats ? Nfats : 1;
+    V->FatSz = FatSz;
     V->FatLba = PartLba + Reserved;
     V->RootSecs = ((UINT32)RootEnt * 32u + (FAT_SECTOR - 1u)) / FAT_SECTOR;
-    V->RootLba = V->FatLba + FatSz * (UINT32)Nfats;
+    V->RootLba = V->FatLba + FatSz * (UINT32)V->Nfats;
     V->DataLba = V->RootLba + V->RootSecs;
     V->FatBits = (RootEnt == 0) ? 32u : 16u;
     V->RootClus = (RootEnt == 0) ? FatRd32(Sec + 44) : 0;

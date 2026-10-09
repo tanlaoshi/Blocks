@@ -17,3 +17,10 @@ int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
     (void)Count;
     return -1;
 }
+
+int HalBlockWrite(UINT64 Lba, const void *Buf, UINT32 Count) {
+    (void)Lba;
+    (void)Buf;
+    (void)Count;
+    return -1;
+}

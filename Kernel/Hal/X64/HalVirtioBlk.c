@@ -1,8 +1,8 @@
 /*
- * HalVirtioBlk.c — X64 legacy virtio-blk 读扇区（K16）
+ * HalVirtioBlk.c — X64 legacy virtio-blk 读写扇区（K16 读 / K24 写）
  *
  * 【初学者】
- * PCI 找 1af4:1001 → IO BAR → 按设备 QUEUE_NUM 建 vring → 发 READ。
+ * PCI 找 1af4:1001 → IO BAR → 按设备 QUEUE_NUM 建 vring → READ/WRITE。
  * Runtime 须 disable-modern=on，走 legacy 口。
  */
 #include "HalBlock.h"
@@ -26,6 +26,7 @@
 #define VRING_DESC_F_NEXT   1u
 #define VRING_DESC_F_WRITE  2u
 #define VIRTIO_BLK_T_IN     0u
+#define VIRTIO_BLK_T_OUT    1u
 
 #define SECTOR_SIZE         512u
 #define VRING_ALIGN         4096u
@@ -52,7 +53,6 @@ static UINT16 *gAvailIdx;
 static UINT16 *gAvailRing;
 static UINT16 *gUsedIdx;
 static UINT16 gLastUsed;
-/* DMA 缓冲：Req + Status + 扇区（避免栈地址给设备） */
 static BlkReq *gDmaReq;
 static UINT8 *gDmaStatus;
 static UINT8 *gDmaSec;
@@ -141,7 +141,6 @@ static UINT32 AlignUp(UINT32 V, UINT32 A) {
     return (V + A - 1u) & ~(A - 1u);
 }
 
-/* legacy vring 字节数（align=4096） */
 static UINT32 VringBytes(UINT16 Num) {
     UINT32 Desc = 16u * (UINT32)Num;
     UINT32 Avail = 6u + 2u * (UINT32)Num;
@@ -200,8 +199,7 @@ int HalBlockInit(void) {
     gUsedIdx = (UINT16 *)((UINT8 *)Pages + UsedOff + 2u);
     gLastUsed = 0;
 
-    /* 1 页：Req(16) + Status(1) + 最多 8 扇区 */
-    Dma = HalDmaAllocatePages(1);
+        Dma = HalDmaAllocatePages(1);
     if (Dma == 0) {
         return -1;
     }
@@ -221,12 +219,13 @@ int HalBlockReady(void) {
     return gReady;
 }
 
-int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
+/* DevWritesData：1=读扇区（设备写缓冲），0=写扇区 */
+static int BlkXfer(UINT32 Type, UINT64 Lba, void *Buf, UINT32 Count, int DevWritesData) {
     UINT16 Aidx;
     UINT32 Spin;
     UINT16 Uidx;
     UINT32 Bytes;
-    UINT8 *Dst;
+    UINT8 *P;
     UINT32 i;
 
     if (!gReady || Buf == 0 || Count == 0 || Count > 8 || gDmaSec == 0) {
@@ -234,7 +233,14 @@ int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
     }
 
     Bytes = Count * SECTOR_SIZE;
-    gDmaReq->Type = VIRTIO_BLK_T_IN;
+    P = (UINT8 *)Buf;
+    if (!DevWritesData) {
+        for (i = 0; i < Bytes; i++) {
+            gDmaSec[i] = P[i];
+        }
+    }
+
+    gDmaReq->Type = Type;
     gDmaReq->Reserved = 0;
     gDmaReq->Sector = Lba;
     *gDmaStatus = 0xFF;
@@ -246,7 +252,9 @@ int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
 
     gDesc[1].Addr = (UINT64)(UINTN)gDmaSec;
     gDesc[1].Len = Bytes;
-    gDesc[1].Flags = VRING_DESC_F_NEXT | VRING_DESC_F_WRITE;
+    gDesc[1].Flags = DevWritesData
+                          ? (UINT16)(VRING_DESC_F_NEXT | VRING_DESC_F_WRITE)
+                          : VRING_DESC_F_NEXT;
     gDesc[1].Next = 2;
 
     gDesc[2].Addr = (UINT64)(UINTN)gDmaStatus;
@@ -274,9 +282,18 @@ int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
         return -1;
     }
 
-    Dst = (UINT8 *)Buf;
-    for (i = 0; i < Bytes; i++) {
-        Dst[i] = gDmaSec[i];
+    if (DevWritesData) {
+        for (i = 0; i < Bytes; i++) {
+            P[i] = gDmaSec[i];
+        }
     }
     return 0;
+}
+
+int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
+    return BlkXfer(VIRTIO_BLK_T_IN, Lba, Buf, Count, 1);
+}
+
+int HalBlockWrite(UINT64 Lba, const void *Buf, UINT32 Count) {
+    return BlkXfer(VIRTIO_BLK_T_OUT, Lba, (void *)Buf, Count, 0);
 }

@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K24** · Fat：write / mkdir / rm 最小 |
-| 排队 | **对标现网**主轨 **K21–K52**（分相位，见下）；真机/SMP/virt 全桌面后置 |
-| 刚收官 | **PR-K23** · Fat ls/cat 根目录 ✅ |
+| **★** | **PR-K25** · Shell：mem / ps / exec 薄 |
+| 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
+| 刚收官 | **PR-K24** · Fat write/mkdir/rm ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -54,67 +54,75 @@
 >
 > **刀数口径（口述，可按 JX 前讨论微调）**  
 > - **骨架 A**：K0–K20 ✅（已完）  
-> - **对标现网 B（主轨）**：约 **K21–K52 ≈ 32 刀**，按相位推进  
+> - **对标现网 B（主轨）**：约 **K21–K54 ≈ 34 刀**，按相位推进  
 > - **后置 C**：真机 NUC 边角、x86 SMP 演示、Arm/RiscV virt 全桌面——**不挡** B 收官  
 >
-> 现网 Services/Gui/Shell/Net/Store 体量大；下列按**现网能力面**拆刀，细则轮到再写。驱动刀遵守约定 #4。
+> 现网 Services/Gui/Shell/Net/Store 体量大；下列按**现网能力面**拆刀，细则轮到再写。驱动刀遵守约定 #4。  
+> **汉字**：现网已收官 **UTF-8 + 点阵 CJK + TTF 最小规格**（`PR-UI-ttf-0…subset` / `CJK.TTF` + stb；见 ToyKernel `进展-2026-10.md`）。 Blocks **P1b 对标该能力**（先点阵再 TTF），插在窗管之前，不进后置。
 
-#### 相位 P1 · 主题 / 字 / Shell 面（K21–K25）
+#### 相位 P1 · 主题 / Shell / FS 面（K21–K25）
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
 | **K21** ✅ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；契约 `FontDraw*`（开机屏 `HalBootFont`） |
 | **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
 | **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
-| **K24** ★ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
-| **K25** | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
+| **K24** ✅ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
+| **K25** ★ | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
 
-#### 相位 P2 · 窗管 / 桌面（K26–K34）
-
-| PR | 一句话 | 现网对照 | 验收（口述） |
-| -- | ------ | -------- | ------------ |
-| **K26** | 单窗：标题栏 + 客户区（Shell 窗） | G 族开窗 | 屏上窗内提示符 |
-| **K27** | 拖标题 + 焦点 | GuiDrag/Focus | 能挪窗、点选焦点 |
-| **K28** | 关窗 / 重画桌面 | G6 基线 | 关窗不花屏 |
-| **K29** | 双窗 + 简单 Z 序/合成 | GuiCompose | 两窗重叠可分清 |
-| **K30** | 桌面图标 + 双击开 Shell | Desktop/D4 | 双击开/聚焦 Shell 窗 |
-| **K31** | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
-| **K32** | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
-| **K33** | 开始菜单 / 任务栏最小 | G13 | 钮可开 Shell/Settings/Files |
-| **K34** | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
-
-#### 相位 P3 · 网络对标（K35–K40）
+#### 相位 P1b · 汉字 / 字体（K26–K28）· **提前 · 优先**
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K35** | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
-| **K36** | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
-| **K37** | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
-| **K38** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
-| **K39** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
-| **K40** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
+| **K26** | UTF-8 + 教学 CJK 点阵子集 | I18N1 / `Fonts/cjk*` | 顶栏/桌面标签可显示汉字；ASCII 不回退 |
+| **K27** | TTF 最小光栅（盘上字体→`FontDraw*`） | 现网 `PR-UI-ttf-*` ✅（stb + `CJK.TTF`） | 指定 TTF 渲染若干汉字，观感明显优于点阵 |
+| **K28** | `lang` / UI 字符串表 en\|zh | I18N2 | `lang zh` 后桌面/Shell 标签中文 |
 
-#### 相位 P4 · 存储加厚 / Store / DB（K41–K45）
+#### 相位 P2 · 窗管 / 桌面（K29–K37）
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K41** | GPT + 多卷前缀薄（`TOYOS:`） | FS2 | `vols`/`ls TOYOS:` |
-| **K42** | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
-| **K43** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
-| **K44** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
-| **K45** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
+| **K29** | 单窗：标题栏 + 客户区（Shell 窗） | G 族开窗 | 屏上窗内提示符（可中文） |
+| **K30** | 拖标题 + 焦点 | GuiDrag/Focus | 能挪窗、点选焦点 |
+| **K31** | 关窗 / 重画桌面 | G6 基线 | 关窗不花屏 |
+| **K32** | 双窗 + 简单 Z 序/合成 | GuiCompose | 两窗重叠可分清 |
+| **K33** | 桌面图标 + 双击开 Shell | Desktop/D4 | 双击开/聚焦 Shell 窗 |
+| **K34** | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
+| **K35** | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
+| **K36** | 开始菜单 / 任务栏最小 | G13 | 钮可开 Shell/Settings/Files |
+| **K37** | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
 
-#### 相位 P5 · 用户态 / 输入 / 积木面（K46–K52）
+#### 相位 P3 · 网络对标（K38–K43）
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K46** | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
-| **K47** | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
-| **K48** | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
-| **K49** | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
-| **K50** | I18N：UTF-8 + CJK 子集 / `lang` | I18N1/2 | `lang zh` 标签可读 |
-| **K51** | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
-| **K52** | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell 关键字 |
+| **K38** | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
+| **K39** | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
+| **K40** | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
+| **K41** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
+| **K42** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
+| **K43** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
+
+#### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K44** | GPT + 多卷前缀薄（`TOYOS:`） | FS2 | `vols`/`ls TOYOS:` |
+| **K45** | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
+| **K46** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
+| **K47** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
+| **K48** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
+
+#### 相位 P5 · 用户态 / 输入 / 积木面（K49–K54）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K49** | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
+| **K50** | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
+| **K51** | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
+| **K52** | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
+| **K53** | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
+| **K54** | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell/汉字关键字 |
 
 #### 后置 C（不挡 B 收官）
 
@@ -123,9 +131,9 @@
 | x86 SMP S1～S4 / S-ap | 演示级多核；现网已归档，Blocks 后置 |
 | 真机 NUC（NVMe/AHCI/电源/HID 边角） | 约定 #4，单独开刀 |
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
-| TTF / 设计器 / 声卡 / iGPU | 现网亦非课堂主路径核心则后置 |
+| 更大字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小规格对标现网，已进 P1b**；更大全集与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1：K21–K23 ✅，★ = K24）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1：K21–K24 ✅，★ = K25 → **P1b 汉字/TTF** → 窗管…）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -360,7 +368,7 @@
 | **验收** | `ls` 见 `TOYOS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
 | **落地** | `FatVol`/`FatDir`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `TOYOS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat TOYOS.ID` → `Blocks root volume` |
 
-### K24 规划（★ · 最小子集）
+### K24 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：根目录最小写：`write` / `mkdir` / `rm`（对标现网 FS 读写入口）。
 
@@ -369,6 +377,27 @@
 | **做** | 写小文件；建空目录；删文件/空目录；Shell 命令入口 |
 | **不做** | 多卷、LFN 创建、回收站、权限 |
 | **验收** | `write` 后 `cat` 一致；`mkdir` 后 `ls` 可见；`rm` 后消失；`Blocks>` 仍活 |
+| **落地** | `HalBlockWrite`；`FatAlloc`/`FatMut`；Shell `write`/`mkdir`/`rm`；PTY 冒烟；宿主 vvfat 常延迟见小写名 |
+
+### K25 规划（★ · 最小子集）
+
+**一句话**：Shell 系统类薄命令：`mem` / `ps` / `exec`。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `mem` 报 PMM 空闲；`ps` 最小进程视图；`exec` 跑根目录 ELF（复用 HELLO 路径） |
+| **不做** | 完整进程表、多任务 ps、任意路径解析器 |
+| **验收** | `exec HELLO.ELF` 与开机 hello 一致；`mem`/`ps` 有输出；`Blocks>` 仍活 |
+
+### K26–K28 规划（P1b · 汉字/TTF · 排队）
+
+> 插在 K25 之后、窗管之前。对标现网：点阵 CJK + **已收官的 TTF 最小规格**（非「现网没做」）。
+
+| PR | 一句话 | 不做（本刀） |
+| -- | ------ | ------------ |
+| **K26** | UTF-8 解码 + 教学 CJK 点阵；`FontDraw*` 走码点 | TTF、完整 Unicode |
+| **K27** | 盘上 TTF 最小光栅进 Font 积木（对标现网 stb/`CJK.TTF`）；桌面汉字观感 | 完整 Unicode、字体设计器 |
+| **K28** | `lang en\|zh` + UI 字符串表 | 翻译平台、运行时换字体文件 UI |
 
 ### K22+ 细则
 
@@ -404,7 +433,7 @@
 | 档 | 含义 | 状态 |
 | -- | ---- | ---- |
 | **A 骨架** | 接棒 + 表齐 + K13–K20 | ✅ 已收官 |
-| **B 对标现网** | K21–K52 相位 P1–P5 | ★ 进行中 |
+| **B 对标现网** | K21–K54 相位 P1 / **P1b 汉字·TTF** / P2–P5 | ★ 进行中 |
 | **C 后置** | 真机 / SMP / virt 全桌面 | 不挡 B |
 
 ### 1.2 迁移原则
@@ -684,3 +713,6 @@ Kernel/
 | 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
 | 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |
 | 2026-10-10 | 补齐 P1 相位表：K21 ✅（此前漏标仍 ★）；口诀与 TG 同步约定 |
+| 2026-10-10 | 排期：汉字/TTF 提前为 **P1b（K26–K28）**；窗管起顺延；主轨至 K54；TTF 最小光栅进 B、完整字库仍后置 |
+| 2026-10-10 | 更正：现网 TTF 最小规格已收官（非未做）；K27 对照改为 `PR-UI-ttf-*` |
+| 2026-10-10 | TG：K24 HalBlockWrite + Fat write/mkdir/rm；★ → K25（mem/ps/exec） |

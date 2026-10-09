@@ -1,8 +1,5 @@
 /*
- * ShellCmd.c — 命令表（K22 内置；K23 ls/cat）
- *
- * 【初学者】
- * 空白分词成 Argc/Argv，再按名查表。无管道、无引号转义。
+ * ShellCmd.c — 命令表（K22–K24：help/echo/ls/cat/write/mkdir/rm）
  */
 #include "ShellCmd.h"
 #include "FatFile.h"
@@ -126,7 +123,6 @@ static void CmdClear(int Argc, char **Argv) {
     int i;
     (void)Argc;
     (void)Argv;
-    /* 无 GUI 客户区清屏时：多打空行冲掉串口可视区 */
     for (i = 0; i < 24; i++) {
         Put("\n");
     }
@@ -202,6 +198,55 @@ static void CmdCat(int Argc, char **Argv) {
     }
 }
 
+
+static void CmdWrite(int Argc, char **Argv) {
+    char Body[512];
+    int o = 0;
+    int i, j;
+    if (Argc < 2) {
+        Put("write: need name [text]\n");
+        return;
+    }
+    for (i = 2; i < Argc; i++) {
+        if (i > 2 && o + 1 < (int)sizeof(Body)) {
+            Body[o++] = ' ';
+        }
+        for (j = 0; Argv[i][j] && o + 1 < (int)sizeof(Body); j++) {
+            Body[o++] = Argv[i][j];
+        }
+    }
+    Body[o] = 0;
+    if (FatFileWritePath(Argv[1], Body, (UINT32)o) != 0) {
+        Put("write: fail\n");
+        return;
+    }
+    Put("write: ok\n");
+}
+
+static void CmdMkdir(int Argc, char **Argv) {
+    if (Argc < 2) {
+        Put("mkdir: need name\n");
+        return;
+    }
+    if (FatMkdirPath(Argv[1]) != 0) {
+        Put("mkdir: fail\n");
+        return;
+    }
+    Put("mkdir: ok\n");
+}
+
+static void CmdRm(int Argc, char **Argv) {
+    if (Argc < 2) {
+        Put("rm: need name\n");
+        return;
+    }
+    if (FatRmPath(Argv[1]) != 0) {
+        Put("rm: fail\n");
+        return;
+    }
+    Put("rm: ok\n");
+}
+
 static void CmdHello(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
@@ -216,6 +261,9 @@ void ShellCmdInitialize(void) {
     Register("hello", "run HELLO.ELF", CmdHello);
     Register("ls", "list root dir", CmdLs);
     Register("cat", "print text file", CmdCat);
+    Register("write", "write text file", CmdWrite);
+    Register("mkdir", "make directory", CmdMkdir);
+    Register("rm", "remove file/dir", CmdRm);
     Put("Shell: cmds ok\n");
 }
 

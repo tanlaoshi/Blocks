@@ -1,14 +1,15 @@
 /*
- * GuiWin.h — K32：双窗槽 + Z 序（Gui.c 只做光标/轮询）
+ * GuiWin.h — 窗槽 + Z 序（K32 双窗 · K34 +Settings）
  */
 #ifndef GUI_WIN_H
 #define GUI_WIN_H
 
 #include "BootTypes.h"
 
-#define GUI_WIN_SHELL 0
-#define GUI_WIN_ABOUT 1
-#define GUI_WIN_COUNT 2
+#define GUI_WIN_SHELL    0
+#define GUI_WIN_ABOUT    1
+#define GUI_WIN_SETTINGS 2
+#define GUI_WIN_COUNT    3
 
 void GuiWinSetFb(UINT32 W, UINT32 H);
 void GuiWinLayoutAll(void);

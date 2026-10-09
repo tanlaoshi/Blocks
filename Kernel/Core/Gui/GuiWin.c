@@ -36,7 +36,7 @@ static void PaintOne(int Id) {
         return;
     }
     GuiWinPaint_Frame(gW[Id].X, gW[Id].Y, gW[Id].W, gW[Id].H, gW[Id].Focus,
-                      gW[Id].Title, Id == GUI_WIN_SHELL);
+                      gW[Id].Title, Id);
 }
 
 static void ClampPos(int Id, INT32 *X, INT32 *Y) {
@@ -95,6 +95,8 @@ void GuiWinLayoutAll(void) {
     gW[GUI_WIN_SHELL].H = 300u;
     gW[GUI_WIN_ABOUT].W = 340u;
     gW[GUI_WIN_ABOUT].H = 200u;
+    gW[GUI_WIN_SETTINGS].W = 360u;
+    gW[GUI_WIN_SETTINGS].H = 220u;
     for (i = 0; i < GUI_WIN_COUNT; i++) {
         if (gW[i].W + 40u > gFbW) {
             gW[i].W = (gFbW > 80u) ? (gFbW - 40u) : gFbW;
@@ -109,6 +111,8 @@ void GuiWinLayoutAll(void) {
     gW[GUI_WIN_SHELL].Y = GUI_BAR_H + 24u;
     gW[GUI_WIN_ABOUT].X = gW[GUI_WIN_SHELL].X + 80u;
     gW[GUI_WIN_ABOUT].Y = gW[GUI_WIN_SHELL].Y + 60u;
+    gW[GUI_WIN_SETTINGS].X = 48u;
+    gW[GUI_WIN_SETTINGS].Y = GUI_BAR_H + 48u;
     if (gW[GUI_WIN_ABOUT].X + gW[GUI_WIN_ABOUT].W > gFbW) {
         gW[GUI_WIN_ABOUT].X = 40u;
     }
@@ -117,12 +121,16 @@ void GuiWinLayoutAll(void) {
     }
     gW[GUI_WIN_SHELL].Title = MSG_WIN_SHELL;
     gW[GUI_WIN_ABOUT].Title = MSG_WIN_ABOUT;
+    gW[GUI_WIN_SETTINGS].Title = MSG_WIN_SETTINGS;
     gW[GUI_WIN_SHELL].On = 1;
     gW[GUI_WIN_ABOUT].On = 1;
+    gW[GUI_WIN_SETTINGS].On = 0; /* 双击设置图标再开 */
     gW[GUI_WIN_SHELL].Focus = 1;
     gW[GUI_WIN_ABOUT].Focus = 0;
+    gW[GUI_WIN_SETTINGS].Focus = 0;
     gZ[0] = (UINT8)GUI_WIN_ABOUT;
-    gZ[1] = (UINT8)GUI_WIN_SHELL;
+    gZ[1] = (UINT8)GUI_WIN_SETTINGS;
+    gZ[2] = (UINT8)GUI_WIN_SHELL;
 }
 
 int GuiWinIsOn(int Id) {

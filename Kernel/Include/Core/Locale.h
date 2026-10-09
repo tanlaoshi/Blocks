@@ -19,7 +19,10 @@ typedef enum {
     MSG_WIN_SHELL,         /* 窗标题：Shell / 命令窗 */
     MSG_WIN_ABOUT,         /* 窗标题：About / 说明 */
     MSG_ABOUT_BODY,        /* About 客户区一行说明 */
-    MSG_ICON_SHELL,        /* 桌面图标标签：Shell / 命令 */
+    MSG_ICON_SHELL,        /* 桌面图标：Shell / 命令 */
+    MSG_WIN_SETTINGS,      /* 窗标题：Settings / 设置 */
+    MSG_ICON_SETTINGS,     /* 桌面图标：Settings / 设置 */
+    MSG_SETTINGS_HINT,     /* Settings 提示：点色块改主题 */
     MSG_LANG_USAGE,
     MSG_LANG_NOW,
     MSG_LANG_SET,

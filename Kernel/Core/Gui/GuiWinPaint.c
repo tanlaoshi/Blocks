@@ -4,6 +4,8 @@
 #include "GuiWinPaint.h"
 #include "Console.h"
 #include "Font.h"
+#include "GuiSettings.h"
+#include "GuiWin.h"
 #include "HalVideo.h"
 #include "Locale.h"
 #include "Theme.h"
@@ -119,7 +121,7 @@ static void DrawClippedAt(UINT32 X, UINT32 Y, UINT32 MaxX, UINT32 MaxY,
 }
 
 void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
-                       LOC_MSG Title, int KindShell) {
+                       LOC_MSG Title, int Kind) {
     UINT32 TitleBg;
     UINT32 Bx;
     UINT32 By;
@@ -146,9 +148,11 @@ void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
     if (Ch > 0) {
         HalVideoFillRect(Cx, Cy, Cw, Ch, ThemeWindowClient());
     }
-    if (KindShell) {
+    if (Kind == GUI_WIN_SHELL) {
         ConsolePaintBannerBack();
-    } else if (Ch > 0) {
+    } else if (Kind == GUI_WIN_SETTINGS && Ch > 0) {
+        GuiSettingsPaintClient(Cx, Cy, Cw, Ch);
+    } else if (Kind == GUI_WIN_ABOUT && Ch > 0) {
         DrawClippedAt(Cx + 12u, Cy + 16u, Cx + Cw - 4u, Cy + Ch,
                       LocStr(MSG_ABOUT_BODY), ThemeWindowTitleText());
     }

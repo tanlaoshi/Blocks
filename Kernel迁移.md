@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K34** · Settings 窗皮 + 改色写回 Theme |
+| **★** | **PR-K35** · Files 窗：列目录 / 打开 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K33** · 桌面图标 + 双击开 Shell ✅ |
+| 刚收官 | **PR-K34** · Settings 窗皮 + 改色写回 Theme ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -88,8 +88,8 @@
 | **K31** ✅ | 关窗 / 重画桌面 | G6 基线 | 关窗不花屏 |
 | **K32** ✅ | 双窗 + 简单 Z 序/合成 | GuiCompose | 两窗重叠可分清 |
 | **K33** ✅ | 桌面图标 + 双击开 Shell | Desktop/D4 | 双击开/聚焦 Shell 窗 |
-| **K34** ★ | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
-| **K35** | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
+| **K34** ✅ | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
+| **K35** ★ | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
 | **K36** | 开始菜单 / 任务栏最小 | G13 | 钮可开 Shell/Settings/Files |
 | **K37** | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
 
@@ -134,7 +134,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管…；★ = K34）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管…；★ = K35）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -484,7 +484,7 @@
 | **对照** | 现网 Desktop 图标；Blocks 最少路径 |
 | **落地** | `Gui/GuiDesktop.c`；`GuiWinCompose` 先画图标 |
 
-### K34 规划（★ · 最小子集 · JX 中）
+### K34 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：Settings 窗 + 点色块改 Theme（立即重绘）。
 
@@ -494,7 +494,19 @@
 | **不做** | THEME.CFG 落盘（→K37）、完整分类树、真机多显示器 |
 | **验收** | 改色后桌面/窗标题立即变色 |
 | **对照** | 现网 SettingsUi/D2 薄 |
-| **落地** | `ThemeSet*` + `Gui/GuiSettings.c` + 第三窗槽 |
+| **落地** | `ThemeSet*`；`Gui/GuiSettings.c`；Settings 窗+桌面图标 |
+
+### K35 规划（★ · 最小子集 · JX 中）
+
+**一句话**：Files 窗列根目录；点 `.ELF` 可 exec。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | Files 窗 + 桌面图标；`FatDirListRoot` 列表；点 ELF → `ProcessExecPath` |
+| **不做** | 多级目录浏览、拖放复制、图标缩略图 |
+| **验收** | 窗内见根目录名；点 `HELLO.ELF` 能跑 |
+| **对照** | 现网 FilesUi/FB1 薄 |
+| **落地** | `Gui/GuiFiles.c`；第四窗槽 |
 
 ### K22+ 细则
 
@@ -815,3 +827,4 @@ Kernel/
 | 2026-10-10 | TG：K31 ✅ 关窗不花屏 + 鼠停卡（双写光标/Aux 半包）；★ → **K32**（双窗+Z 序）；JX K32 |
 | 2026-10-10 | TG：K32 ✅ 双窗 Z 序（手测重叠/抬升/拖关通过）；★ → **K33**（桌面图标+双击开 Shell） |
 | 2026-10-10 | TG：K33 ✅ 桌面 Shell 图标双击；Core 按模块表分目录；★ → **K34**（Settings/Theme）；JX K34 |
+| 2026-10-10 | TG：K34 ✅ Settings 改色立即可见；★ → **K35**（Files 列目录/开 ELF）；JX K35 |

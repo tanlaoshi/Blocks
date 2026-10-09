@@ -1,9 +1,8 @@
 /*
- * Theme.h — 主题色板（K21 最小 · 对标现网 D 族入口）
+ * Theme.h — 主题色板（K21 getter · K34 Settings 可写回）
  *
  * 【初学者】
- * 只提供桌面/顶栏/字色 getter；无 THEME.CFG、无 Settings、无壁纸。
- * 名字尽量贴近现网 Theme.h，方便后刀加厚。
+ * 内存色板；THEME.CFG 落盘见 K37。
  */
 #ifndef THEME_H
 #define THEME_H
@@ -15,13 +14,16 @@ void ThemeInitialize(void);
 UINT32 ThemeDesktopBackground(void);
 UINT32 ThemeTaskbarBackground(void);
 UINT32 ThemeWindowTitleText(void);
-/* 屏上横幅 / 普通正文 */
 UINT32 ThemeTextForeground(void);
-/* K29：Shell 窗框 */
 UINT32 ThemeWindowTitleBar(void);
-/* 失焦标题栏（K30） */
 UINT32 ThemeWindowTitleBarDim(void);
 UINT32 ThemeWindowClient(void);
 UINT32 ThemeWindowBorder(void);
 
+/* K34：Settings 写回（立即；不落盘） */
+void ThemeSetDesktopBackground(UINT32 Color);
+void ThemeSetWindowTitleBar(UINT32 Color);
+void ThemeSetTaskbarBackground(UINT32 Color);
+
 #endif
+

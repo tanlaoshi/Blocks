@@ -1,8 +1,5 @@
 /*
- * GuiDesktop.c — K33：桌面 Shell 图标 + 双击开/聚焦（对标 Desktop/D4 薄）
- *
- * 【初学者】
- * 不做拖图标、落盘坐标、多类型图标。Compose 前重画图标，避免拖窗擦花。
+ * GuiDesktop.c — K33 Shell 图标 · K34 Settings 图标（双击开/聚焦）
  */
 #include "GuiDesktop.h"
 #include "Font.h"
@@ -14,14 +11,16 @@
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
-#define GUI_BAR_H     28u
-#define ICON_X        28u
-#define ICON_TILE     40u
-#define ICON_GAP      6u
-#define ICON_LABEL_H  18u
-#define DBL_TIMER_TICKS 50u     /* LAPIC 节拍窗 ≈ 半秒级 */
-#define DBL_SOFT_TICKS  400000u /* 无 timer：GuiPoll 紧环次数 */
-#define DBL_SLOP        12      /* 两次点击允许偏移 */
+#define GUI_BAR_H       28u
+#define ICON_X0         28u
+#define ICON_Y0         (GUI_BAR_H + 20u)
+#define ICON_TILE       40u
+#define ICON_GAP        6u
+#define ICON_LABEL_H    18u
+#define ICON_STRIDE     88u
+#define DBL_TIMER_TICKS 50u
+#define DBL_SOFT_TICKS  400000u
+#define DBL_SLOP        12
 
 static UINT32 gFbW;
 static UINT32 gFbH;
@@ -29,6 +28,7 @@ static UINT32 gSoftTick;
 static UINT32 gLastClickTick;
 static INT32 gLastClickX = -1000;
 static INT32 gLastClickY = -1000;
+static int gLastWin = -1;
 static int gHaveLastClick;
 
 static UINT32 NowTick(void) {
@@ -38,11 +38,27 @@ static UINT32 NowTick(void) {
     return gSoftTick;
 }
 
-static void IconGeom(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
-    *X = ICON_X;
-    *Y = GUI_BAR_H + 20u;
+static void IconGeom(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+    *X = ICON_X0 + (UINT32)Slot * ICON_STRIDE;
+    *Y = ICON_Y0;
     *W = ICON_TILE + 24u;
     *H = ICON_TILE + ICON_GAP + ICON_LABEL_H;
+}
+
+static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
+    UINT32 X;
+    UINT32 Y;
+    UINT32 W;
+    UINT32 H;
+
+    IconGeom(Slot, &X, &Y, &W, &H);
+    HalVideoFillRect(X + 12u, Y, ICON_TILE, ICON_TILE, Face);
+    HalVideoFillRect(X + 12u + 4u, Y + 4u, ICON_TILE - 8u, ICON_TILE - 8u,
+                     ThemeWindowClient());
+    FontDrawStringAt(X + 8u, Y + ICON_TILE + ICON_GAP, LocStr(LabelId),
+                     ThemeWindowTitleText());
+    (void)W;
+    (void)H;
 }
 
 void GuiDesktopSetFb(UINT32 W, UINT32 H) {
@@ -50,6 +66,7 @@ void GuiDesktopSetFb(UINT32 W, UINT32 H) {
     gFbH = H;
     gSoftTick = 0;
     gHaveLastClick = 0;
+    gLastWin = -1;
 }
 
 void GuiDesktopPollTick(void) {
@@ -57,66 +74,53 @@ void GuiDesktopPollTick(void) {
 }
 
 void GuiDesktopPaintIcons(void) {
-    UINT32 X;
-    UINT32 Y;
-    UINT32 W;
-    UINT32 H;
-    UINT32 Tx;
-    UINT32 Ty;
-    const char *Label;
-
-    if (gFbW < 80u || gFbH < 80u) {
+    if (gFbW < 160u || gFbH < 80u) {
         return;
     }
-    IconGeom(&X, &Y, &W, &H);
-    /* 色块当图标面 */
-    HalVideoFillRect(X + 12u, Y, ICON_TILE, ICON_TILE, ThemeWindowTitleBar());
-    HalVideoFillRect(X + 12u + 4u, Y + 4u, ICON_TILE - 8u, ICON_TILE - 8u,
-                     ThemeWindowClient());
-    Label = LocStr(MSG_ICON_SHELL);
-    Tx = X + 8u;
-    Ty = Y + ICON_TILE + ICON_GAP;
-    /* 标签短，落在图标槽宽内 */
-    FontDrawStringAt(Tx, Ty, Label, ThemeWindowTitleText());
-    (void)W;
-    (void)H;
+    PaintOneIcon(0, ThemeWindowTitleBar(), MSG_ICON_SHELL);
+    PaintOneIcon(1, 0x00507040u, MSG_ICON_SETTINGS);
 }
 
-int GuiDesktopHitShell(INT32 X, INT32 Y) {
+int GuiDesktopHitIcon(INT32 X, INT32 Y) {
     UINT32 Ix;
     UINT32 Iy;
     UINT32 Iw;
     UINT32 Ih;
 
-    IconGeom(&Ix, &Iy, &Iw, &Ih);
-    if (X < (INT32)Ix || Y < (INT32)Iy) {
-        return 0;
+    IconGeom(0, &Ix, &Iy, &Iw, &Ih);
+    if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
+        Y < (INT32)(Iy + Ih)) {
+        return GUI_WIN_SHELL;
     }
-    if (X >= (INT32)(Ix + Iw) || Y >= (INT32)(Iy + Ih)) {
-        return 0;
+    IconGeom(1, &Ix, &Iy, &Iw, &Ih);
+    if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
+        Y < (INT32)(Iy + Ih)) {
+        return GUI_WIN_SETTINGS;
     }
-    return 1;
+    return -1;
 }
 
-static void ActivateShell(void) {
-    if (GuiWinIsOn(GUI_WIN_SHELL)) {
-        GuiWinFocus(GUI_WIN_SHELL);
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon focus shell\n");
+static void Activate(int WinId) {
+    if (GuiWinIsOn(WinId)) {
+        GuiWinFocus(WinId);
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon focus\n");
     } else {
-        GuiWinOpen(GUI_WIN_SHELL);
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon open shell\n");
+        GuiWinOpen(WinId);
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon open\n");
     }
 }
 
-int GuiDesktopClickShell(INT32 X, INT32 Y) {
+int GuiDesktopClickIcon(int WinId, INT32 X, INT32 Y) {
     UINT32 Now;
     INT32 Dx;
     INT32 Dy;
-    int IsDbl;
+    int IsDbl = 0;
 
+    if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS) {
+        return 0;
+    }
     Now = NowTick();
-    IsDbl = 0;
-    if (gHaveLastClick) {
+    if (gHaveLastClick && gLastWin == WinId) {
         Dx = X - gLastClickX;
         Dy = Y - gLastClickY;
         if (Dx < 0) {
@@ -137,10 +141,11 @@ int GuiDesktopClickShell(INT32 X, INT32 Y) {
     gLastClickTick = Now;
     gLastClickX = X;
     gLastClickY = Y;
+    gLastWin = WinId;
     gHaveLastClick = 1;
     if (IsDbl) {
         gHaveLastClick = 0;
-        ActivateShell();
+        Activate(WinId);
         return 1;
     }
     return 0;

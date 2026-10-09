@@ -6,6 +6,7 @@
  */
 #include "Gui.h"
 #include "GuiDesktop.h"
+#include "GuiSettings.h"
 #include "GuiWin.h"
 #include "BootInfo.h"
 #include "Console.h"
@@ -172,7 +173,7 @@ int GuiInitialize(void) {
     ThemeInitialize();
     FontInitialize();
     LocaleInitialize();
-    FontTtfPreheatUtf8("积木系统已就绪命令窗说明");
+    FontTtfPreheatUtf8("积木系统已就绪命令窗说明设置点色块改主题");
     GuiWinSetFb(gFbW, gFbH);
     GuiDesktopSetFb(gFbW, gFbH);
     GuiWinPaintDesktop();
@@ -277,19 +278,31 @@ int GuiPoll(void) {
             gDragWin = Hit;
             gDragOffX = gCurX - Wx;
             gDragOffY = gCurY - Wy;
+        } else if (Hit == GUI_WIN_SETTINGS) {
+            GuiWinFocus(Hit);
+            gDragging = 0;
+            gDragWin = -1;
+            if (GuiSettingsClick(gCurX, gCurY)) {
+                /* 改色后整桌重画 */
+                GuiWinPaintDesktop();
+                GuiWinCompose();
+                GuiWinPresentFull();
+            }
         } else if (Hit >= 0) {
             GuiWinFocus(Hit);
             gDragging = 0;
             gDragWin = -1;
-        } else if (GuiDesktopHitShell(gCurX, gCurY)) {
-            /* 双击图标：开或聚焦 Shell；单击只记时 */
-            (void)GuiDesktopClickShell(gCurX, gCurY);
-            gDragging = 0;
-            gDragWin = -1;
-        } else if ((UINT32)gCurY >= GUI_BAR_H) {
-            GuiWinUnfocusAll();
-            gDragging = 0;
-            gDragWin = -1;
+        } else {
+            int Icon = GuiDesktopHitIcon(gCurX, gCurY);
+            if (Icon >= 0) {
+                (void)GuiDesktopClickIcon(Icon, gCurX, gCurY);
+                gDragging = 0;
+                gDragWin = -1;
+            } else if ((UINT32)gCurY >= GUI_BAR_H) {
+                GuiWinUnfocusAll();
+                gDragging = 0;
+                gDragWin = -1;
+            }
         }
     }
 

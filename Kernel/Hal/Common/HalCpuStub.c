@@ -8,3 +8,8 @@
 int HalCpuInitialize(void) {
     return 0;
 }
+
+void HalCpuIdtSet(UINT32 Vec, void *Handler) {
+    (void)Vec;
+    (void)Handler;
+}

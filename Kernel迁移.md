@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K18** · Scheduler LAPIC 定时器 + 协作/轻抢占 |
-| 排队 | K19…K20（见下方「加厚到桌面」） |
-| 刚收官 | **PR-K17** · Gui 光标 + 顶栏点击 ✅ |
-| 顺手（不推 ★） | HalPs2Mouse；GuiPoll XOR 光标 |
+| **★** | **PR-K19** · 用户态加载并跑 `HELLO.ELF` |
+| 排队 | K20（见下方「加厚到桌面」） |
+| 刚收官 | **PR-K18** · Scheduler LAPIC tick ✅ |
+| 顺手（不推 ★） | HalTimer；`Font`→`HalFont`（后拆 Font 积木） |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -31,8 +31,8 @@
 | **K15** ✅ | 键入最小（QEMU 先 PS/2；HID 后刀） | 桌面要键入；串口壳可先吃键 | GTK 窗按键进 `Blocks>` ✅ |
 | **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` ✅ |
 | **K17** ✅ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 ✅ |
-| **K18** ★ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
-| **K19** | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
+| **K18** ✅ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 ✅ |
+| **K19** ★ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` |
 | **K20** | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 |
 
 **明确后置（勿插队占 ★）**：完整 Theme/TTF、窗管/开始菜单、lwIP/Socket、Store、SMP、真机多驱动边角——现网对照迁入时再拆刀。
@@ -199,16 +199,27 @@
 | **Arm/RiscV** | stub / 无指针则 skip |
 | **验收** | `Gui: mouse ok` / `cursor on`；GTK 移鼠见光标；点顶栏有日志；`Blocks>` 仍活 ✅ |
 
-### K18 规划（★ · 最小子集）
+### K18 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：Scheduler 有节拍（LAPIC 定时器），协作/轻抢占，Console 仍可交互。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | X64 最小 LAPIC timer；周期性 tick（串口或光标闪）；`SchedulerYield` 可被节拍唤醒 |
+| **做** | `HalLapicTimer`（向量 0x30、掩 LINT）；`Yield`=`sti;nop;hlt`；`Sched: tick` 经 WriteShell |
 | **不做** | 完整多任务/优先级队列、SMP、IOAPIC 全路由 |
-| **Arm/RiscV** | stub / 无 tick 则仍纯协作 |
-| **验收** | 周期性 tick 日志或光标闪；`Blocks>` 仍活 |
+| **Arm/RiscV** | HalTimerStub / 仍纯协作 |
+| **验收** | `Scheduler: timer ok`；`Blocks>` 后周期性 `Sched: tick` ✅ |
+
+### K19 规划（★ · 最小子集）
+
+**一句话**：从 RootFs 加载并跑一个用户态 `HELLO.ELF`，退出后回 `Blocks>`。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 最小 ELF 加载 + 用户态入口/返回；串口见 hello |
+| **不做** | 完整 libc、多进程、动态链接 |
+| **Arm/RiscV** | stub / skip |
+| **验收** | 串口见 hello；进程退出回 `Blocks>` |
 
 ---
 
@@ -363,8 +374,8 @@ KernelMain
 
 | 文件 | 作用 |
 | ---- | ---- |
-| `Include/Core/FontGlyph8x8.h` | 点阵表 |
-| `Core/Font.c` | 栅格化 → `DrawPixel` |
+| `Include/Hal/FontGlyph8x8.h` | 点阵表（曾在 Include/Core） |
+| `Hal/Common/HalFont.c` | 栅格化 → `DrawPixel`（曾 Core/Font.c；后→Font 积木） |
 | `Core/KernelMain.c` | Font 自检一行 |
 
 ---
@@ -486,3 +497,5 @@ Kernel/
 | 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
 | 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |
 | 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 TOYOS.ID） |
+| 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
+| 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |

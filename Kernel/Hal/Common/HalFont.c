@@ -1,11 +1,12 @@
 /*
- * Font.c — PR-K2：内建 8×8 ASCII 点阵 + HalVideoDrawString*
+ * HalFont.c — HalVideo 画字后端（K2 起；自 Core/Font.c 迁入）
  *
  * 【初学者】
  * 每个可打印字符是 8 行，每行 1 字节；bit7 = 最左像素。
  * 画字 = 按位调 HalVideoDrawPixel（无 Theme、无平滑、无 UTF-8）。
  *
- * 【积木】字库数据在 FontGlyph8x8.h；本文件只做栅格化。
+ * 【落点】先挂 Hal（与 Video 一家）；完整 Theme/TTF 迁入时再拆成 Font 积木，
+ * 契约仍走 HalVideoDrawString*（见 积木原则 / Kernel迁移 修订记录）。
  */
 #include "HalVideo.h"
 #include "FontGlyph8x8.h"

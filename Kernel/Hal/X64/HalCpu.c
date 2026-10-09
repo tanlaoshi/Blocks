@@ -1,12 +1,12 @@
 /*
- * HalCpu.c — X64：最小 GDT + IDT（K7）
+ * HalCpu.c — X64：最小 GDT + IDT（K7；K18 可改门）
  *
  * 【初学者】
  *   GDT：告诉 CPU「内核代码段 / 数据段」在哪（选择子 0x08 / 0x10）
- *   IDT：异常/IRQ 向量表；本刀全部指向 halt stub，且不 sti
+ *   IDT：异常/IRQ 向量表；默认指向 halt stub，且本文件不 sti
  *   PIC：屏蔽 8259，避免残留 IRQ 捣乱
  *
- * 不做：TSS、用户段、LAPIC 定时器、IOAPIC。
+ * LAPIC 定时器见 HalLapicTimer.c（HalCpuIdtSet 挂 0x20）。
  */
 #include "HalCpu.h"
 #include "BootTypes.h"
@@ -102,10 +102,16 @@ static void IdtLoad(void) {
     __asm__ volatile("lidt %0" : : "m"(Ptr) : "memory");
 }
 
+void HalCpuIdtSet(UINT32 Vec, void *Handler) {
+    if (Vec < 256u && Handler != 0) {
+        IdtSetGate(Vec, Handler);
+    }
+}
+
 int HalCpuInitialize(void) {
     GdtLoad();
     PicMaskAll();
     IdtLoad();
-    /* 故意不 sti：本刀只要「门可挂」，不要中断风暴 */
+    /* 不 sti：开中断由 HalTimer / Scheduler 决定 */
     return 0;
 }

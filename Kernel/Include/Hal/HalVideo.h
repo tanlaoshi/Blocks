@@ -6,7 +6,7 @@
  * Common / Gui 只 include 本头，不直接碰 GOP 或内存帧缓冲寄存器。
  *
  * X64：HalVideo.c 直写 LFB（Set/GetSize/DrawPixel/FillRect）。
- * 画字：Core/Font.c（8×8 ASCII → DrawStringAt）。
+ * 画字：Hal/Common/HalFont.c（8×8 ASCII → DrawStringAt；后刀可拆 Font 积木）。
  * Arm/RiscV：HalVideoStub（Set 有、画点空）。
  */
 #ifndef HAL_VIDEO_H

@@ -153,7 +153,7 @@ static int InitializeScheduler(void) {
     if (SchedulerInitialize() != 0) {
         return -1;
     }
-    HalSerialWriteChannel(TOY_SLOG_MISC, "Scheduler: coop shell ok\n");
+    /* 细节日志在 SchedulerInitialize（timer ok / coop） */
     return 0;
 }
 

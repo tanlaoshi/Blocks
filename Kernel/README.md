@@ -31,7 +31,7 @@
 | `Hal/<Arch>/Hal/` | 该架构私有细节（如 `HalPort.h`），见该目录 README |
 | `Hal/Common/` | 跨 Arch HAL（`HalCapability`、`HalVideoStub`、DTB/RamFB 头） |
 | `Core/` | 合流：`KernelMain`、模块表、PMM、`BOOT_INFO`（无 `Hal*` 实现） |
-| `Core/Font.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt` |
+| `Hal/Common/HalFont.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt`（后→Font 积木） |
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
 | `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
 | `Core/Device.c` | 设备框架空壳（K5） |
@@ -45,6 +45,8 @@
 | `Hal/X64/HalVirtioBlk.c` | legacy virtio-blk 读扇区（`HalBlock.h`） |
 | `Core/Gui.c` | K17：XOR 光标 + 顶栏点击日志（`GuiPoll`） |
 | `Hal/X64/HalPs2Mouse.c` | i8042 辅助口相对鼠标 |
+| `Hal/X64/HalLapicTimer.c` | K18：LAPIC 周期 tick（`HalTimer.h`） |
+| `Core/Scheduler.c` | K18：开 timer、Yield=`hlt` |
 | `Core/Usb.c` | USB 模块胶水：MapMmio + HalXhci |
 | `Hal/X64/HalXhci.c` | K14：xHCI 复位 + 端口 CCS（门面 `HalXhci.h`） |
 | `Hal/X64/HalPs2Kbd.c` | K15：i8042 键盘 → ASCII（门面 `HalPs2Kbd.h`） |

@@ -1,24 +1,26 @@
 /*
- * HalPs2Kbd.c — X64 i8042 键盘最小子集（K15）
+ * HalPs2Kbd.c — X64 i8042 键盘（Set1）；字节只由 HalPs2Poll 喂入
  *
  * 【初学者】
- * 状态口 0x64：bit0=有数据可读，bit1=勿写。
- * 数据口 0x60：Set1 通码；高位 1=断码（松开）。
- * US ASCII；左/右 Shift + CapsLock → 大写与符号。
+ * 禁止自己读 0x60 抢 OBF。HalPs2KbdFeed 由统一 Poll 调用（现网 Ps2KbdFeed）。
  */
 #include "HalPs2Kbd.h"
+#include "HalPs2.h"
 
 #define PS2_DATA    0x60u
 #define PS2_STATUS  0x64u
 #define PS2_OBF     (1u << 0)
 #define PS2_IBF     (1u << 1)
-#define PS2_AUX     (1u << 5)
+
+#define KBD_Q_CAP 32u
 
 static int gReady;
 static int gShiftL;
 static int gShiftR;
 static int gCaps;
 static int gE0;
+static char gQ[KBD_Q_CAP];
+static UINT8 gQLen;
 
 static void Out8(UINT16 Port, UINT8 Value) {
     __asm__ volatile("outb %0, %1" : : "a"(Value), "Nd"(Port));
@@ -40,18 +42,28 @@ static void WaitIbClear(void) {
     }
 }
 
-static void FlushOut(void) {
-    UINT32 i;
-    for (i = 0; i < 256u; i++) {
-        if ((In8(PS2_STATUS) & PS2_OBF) == 0) {
-            break;
-        }
-        (void)In8(PS2_DATA);
-    }
-}
-
 static int ShiftOn(void) {
     return gShiftL || gShiftR;
+}
+
+static void KbdQPush(char Ch) {
+    if (gQLen >= KBD_Q_CAP || Ch == 0) {
+        return;
+    }
+    gQ[gQLen++] = Ch;
+}
+
+static int KbdQPop(char *Out) {
+    UINT8 i;
+    if (gQLen == 0 || Out == 0) {
+        return 0;
+    }
+    *Out = gQ[0];
+    gQLen--;
+    for (i = 0; i < gQLen; i++) {
+        gQ[i] = gQ[i + 1u];
+    }
+    return 1;
 }
 
 /* 字母：Shift XOR Caps；其它符号只看 Shift */
@@ -102,7 +114,6 @@ static char Translate(UINT8 Code) {
     if (Code >= 0x02u && Code <= 0x0Du) {
         return Sh ? Row1s[Code - 0x02u] : Row1[Code - 0x02u];
     }
-    /* 字母行：Caps 参与 */
     Up = Sh ^ gCaps;
     if (Code >= 0x10u && Code <= 0x19u) {
         return Up ? Row2s[Code - 0x10u] : Row2[Code - 0x10u];
@@ -125,28 +136,36 @@ static char Translate(UINT8 Code) {
     return 0;
 }
 
+void HalPs2KbdFeed(UINT8 Byte) {
+    char Ch;
+
+    if (!gReady) {
+        return;
+    }
+    if (Byte == 0xE0u) {
+        gE0 = 1;
+        return;
+    }
+    if (gE0) {
+        gE0 = 0;
+        return;
+    }
+    Ch = Translate(Byte);
+    if (Ch != 0) {
+        KbdQPush(Ch);
+    }
+}
+
 int HalPs2KbdInit(void) {
     gReady = 0;
     gShiftL = 0;
     gShiftR = 0;
     gCaps = 0;
     gE0 = 0;
-    FlushOut();
-    WaitIbClear();
-    Out8(PS2_STATUS, 0x20u);
-    {
-        UINT32 i;
-        for (i = 0; i < 100000u; i++) {
-            if (In8(PS2_STATUS) & PS2_OBF) {
-                (void)In8(PS2_DATA);
-                break;
-            }
-            __asm__ volatile("pause");
-        }
-    }
+    gQLen = 0;
+    /* 鼠 Init 可能已开端口；此处只确保键盘口使能，勿大 Flush 吃 Aux */
     WaitIbClear();
     Out8(PS2_STATUS, 0xAEu);
-    FlushOut();
     gReady = 1;
     return 0;
 }
@@ -155,35 +174,16 @@ int HalPs2KbdReady(void) {
     return gReady;
 }
 
-int HalPs2KbdPollChar(char *Out) {
-    UINT8 St;
-    UINT8 Code;
-    char Ch;
+int HalPs2KbdDiscardByte(void) {
+    /* 兼容旧调用：统一走 Poll，不再私读 0x60 */
+    HalPs2Poll();
+    return 0;
+}
 
+int HalPs2KbdPollChar(char *Out) {
     if (!gReady || Out == 0) {
         return 0;
     }
-    St = In8(PS2_STATUS);
-    if ((St & PS2_OBF) == 0) {
-        return 0;
-    }
-    if ((St & PS2_AUX) != 0) {
-        return 0;
-    }
-    Code = In8(PS2_DATA);
-    if (Code == 0xE0u) {
-        gE0 = 1;
-        return 0;
-    }
-    if (gE0) {
-        gE0 = 0;
-        /* 扩展键：右 Ctrl/Alt 等忽略；勿吞普通 Shift */
-        return 0;
-    }
-    Ch = Translate(Code);
-    if (Ch == 0) {
-        return 0;
-    }
-    *Out = Ch;
-    return 1;
+    HalPs2Poll();
+    return KbdQPop(Out);
 }

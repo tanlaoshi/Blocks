@@ -1,15 +1,21 @@
 /*
- * Gui.h — 图形界面（K12 壳 + K17 指针）
- *
- * 桌面底色/顶栏；GuiPoll 驱动光标与顶栏点击反馈。
+ * Gui.h — 图形界面（K12/K17/K29 + K30 拖标题/焦点）
  */
 #ifndef GUI_H
 #define GUI_H
 
+#include "BootTypes.h"
+
 int GuiInitialize(void);
-/* 1 = 已画过桌面壳 */
 int GuiDesktopReady(void);
-/* Console 空闲时调用：吃 PS/2 鼠包、移光标、点顶栏打日志 */
-void GuiPoll(void);
+int GuiShellWindowReady(void);
+int GuiShellClientRect(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
+/* 1 = Shell 窗有焦点 */
+int GuiShellFocused(void);
+void GuiRefreshLabels(void);
+/* Present/重绘前后配对：避免 XOR 光标被脏矩形啃成横线残影 */
+void GuiCursorHide(void);
+void GuiCursorShow(void);
+int GuiPoll(void);
 
 #endif

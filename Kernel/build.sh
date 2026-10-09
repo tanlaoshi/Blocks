@@ -90,7 +90,7 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatVol FatAlloc FatDir FatFile FatMut ElfLoad
-                    Process Network Theme Font Utf8 Gui Scheduler ShellCmd ShellSys Console Kernel)
+                    Process Network Theme Font Utf8 FontTtfLoad FontTtfCache Locale Gui Scheduler ShellCmd ShellSys Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -112,6 +112,13 @@ x64|X64)
     CFLAGS=("${COMMON_CFLAGS[@]}" -m64 -mno-red-zone -mgeneral-regs-only
             -I"$SCRIPT_DIR/Hal/X64" -I"$BLOCKS_ROOT/Boot/BootPkg")
     build_common_objs "$CC" "$OUT" 0 "${CFLAGS[@]}"
+    # K27：允许 SSE 的 TU（其余仍 general-regs-only）
+    CFLAGS_FPU=("${COMMON_CFLAGS[@]}" -m64 -mno-red-zone -msse2 -mfpmath=sse
+                -I"$SCRIPT_DIR/Hal/X64" -I"$BLOCKS_ROOT/Boot/BootPkg"
+                -I"$SCRIPT_DIR/ThirdParty/stb")
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalFpu.c" -o "$OUT/HalFpu.o"
+    "$CC" "${CFLAGS_FPU[@]}" -c "$SCRIPT_DIR/Hal/X64/HalFpuSse.c" -o "$OUT/HalFpuSse.o"
+    "$CC" "${CFLAGS_FPU[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
@@ -139,8 +146,11 @@ x64|X64)
         "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalPs2Mouse.o" \
         "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" "$OUT/HalVirtioNet.o" \
         "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
+        "$OUT/HalFpu.o" "$OUT/HalFpuSse.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" \
+        "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -156,6 +166,8 @@ arm64|Arm64|ARM64)
             -I"$SCRIPT_DIR/Hal/Arm64" -I"$SCRIPT_DIR/Hal/Arm64/Board/virt"
             -I"$SCRIPT_DIR/Hal/Arm64/Hal")
     build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalFpuStub.c" -o "$OUT/HalFpu.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/HalSerial.c" -o "$OUT/HalSerial.o"
@@ -177,6 +189,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/HalFpu.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -193,6 +206,8 @@ riscv|RiscV|RISCV)
             -I"$SCRIPT_DIR/Hal/RiscV" -I"$SCRIPT_DIR/Hal/RiscV/Board/virt"
             -I"$SCRIPT_DIR/Hal/RiscV/Hal")
     build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalFpuStub.c" -o "$OUT/HalFpu.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/SmpStub.c" -o "$OUT/SmpStub.o"
@@ -216,6 +231,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/HalFpu.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \

@@ -9,7 +9,7 @@
 #include "BootTypes.h"
 
 void FontInitialize(void);
-UINT32 FontCellWidth(void);   /* ASCII 步进（16） */
+UINT32 FontCellWidth(void);   /* ASCII 步进（16 = 8×2） */
 UINT32 FontCellHeight(void);  /* 行高（16） */
 UINT32 FontCjkCell(void);     /* CJK 边长（16） */
 

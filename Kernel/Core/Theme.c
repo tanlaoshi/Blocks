@@ -13,6 +13,9 @@ static UINT32 gDesktopBg;
 static UINT32 gTaskbarBg;
 static UINT32 gTitleFg;
 static UINT32 gTextFg;
+static UINT32 gWinTitleBar;
+static UINT32 gWinClient;
+static UINT32 gWinBorder;
 static int gReady;
 
 void ThemeInitialize(void) {
@@ -23,6 +26,9 @@ void ThemeInitialize(void) {
     gTaskbarBg = 0x002A323Cu;
     gTitleFg = 0x00E8EEF4u;
     gTextFg = 0x00FFFFFFu;
+    gWinTitleBar = 0x003D4F5Fu;
+    gWinClient = 0x00101214u;
+    gWinBorder = 0x005A6A78u;
     gReady = 1;
     HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: palette ok\n");
 }
@@ -53,4 +59,33 @@ UINT32 ThemeTextForeground(void) {
         ThemeInitialize();
     }
     return gTextFg;
+}
+
+UINT32 ThemeWindowTitleBar(void) {
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    return gWinTitleBar;
+}
+
+UINT32 ThemeWindowTitleBarDim(void) {
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    /* 失焦：略压暗标题栏 */
+    return 0x002A3540u;
+}
+
+UINT32 ThemeWindowClient(void) {
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    return gWinClient;
+}
+
+UINT32 ThemeWindowBorder(void) {
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    return gWinBorder;
 }

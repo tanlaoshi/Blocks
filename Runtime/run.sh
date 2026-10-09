@@ -85,6 +85,8 @@ echo "  Root  RootFs/X64"
 echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "=========================================="
 
+# 鼠走 PS/2（K17）。勿挂裸 qemu-xhci：现网有 usb-tablet+XHCI-HID；
+# Blocks 尚无 HID，挂 xhci 会让 GTK 指针走 USB，客人 PS/2 半死不活。
 # ESP=IDE（Boot）；Root=virtio-blk legacy（K16 内核读 FAT）；勿 ide 双 unit
 exec qemu-system-x86_64 \
     -machine q35,accel=kvm:tcg \
@@ -97,7 +99,6 @@ exec qemu-system-x86_64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
-    -device qemu-xhci,id=xhci \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0 \
     "${DISPLAY_ARGS[@]}" \

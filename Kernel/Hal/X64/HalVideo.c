@@ -7,6 +7,7 @@
  */
 #include "HalVideo.h"
 #include "HalDma.h"
+#include "HalPs2.h"
 
 #define PAGE_SIZE 4096u
 
@@ -133,6 +134,47 @@ void HalVideoPresentFlush(void) {
     HalVideoPresent();
 }
 
+void HalVideoPresentRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height) {
+    UINT32 *Src;
+    UINT32 *Dst;
+    UINT32 P;
+    UINT32 Row;
+    UINT32 X1;
+    UINT32 Y1;
+
+    if (!gBackOn || gBack == 0 || Width == 0 || Height == 0) {
+        return;
+    }
+    Src = gBack;
+    Dst = Front();
+    if (Dst == 0) {
+        return;
+    }
+    if (X >= gVideo.HorizontalResolution || Y >= gVideo.VerticalResolution) {
+        return;
+    }
+    X1 = X + Width;
+    Y1 = Y + Height;
+    if (X1 > gVideo.HorizontalResolution) {
+        X1 = gVideo.HorizontalResolution;
+    }
+    if (Y1 > gVideo.VerticalResolution) {
+        Y1 = gVideo.VerticalResolution;
+    }
+    P = Pitch();
+    for (Row = Y; Row < Y1; Row++) {
+        UINT32 *S = Src + Row * P + X;
+        UINT32 *D = Dst + Row * P + X;
+        UINT32 N = X1 - X;
+        /* 按行拷：拖窗比逐像素紧循环跟手 */
+        __builtin_memcpy(D, S, (UINTN)N * sizeof(UINT32));
+        /* 拖窗 Present 中排空 i8042，减轻停鼠半包失步 */
+        if (((Row - Y) & 15u) == 15u) {
+            HalPs2Poll();
+        }
+    }
+}
+
 void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 *Fb = DrawTarget();
     UINT32 P = Pitch();
@@ -155,23 +197,43 @@ UINT32 HalVideoReadPixel(UINT32 X, UINT32 Y) {
     return Fb[Y * P + X];
 }
 
-/* 背缓冲与前缓冲同 XOR（光标无需整屏 Present） */
+/*
+ * 光标只 XOR 前缓冲（可见面）。双写背缓冲既慢，也易与 PresentRect 打架。
+ * 调用方在 Present 后需自己重画光标。
+ */
 void HalVideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     UINT32 P = Pitch();
-    UINT32 *Back;
     UINT32 *Fr;
 
     if (X >= gVideo.HorizontalResolution || Y >= gVideo.VerticalResolution) {
         return;
     }
-    Back = DrawTarget();
-    if (Back != 0) {
-        Back[Y * P + X] ^= Mask;
-    }
     Fr = Front();
-    if (Fr != 0 && Fr != Back) {
+    if (Fr != 0) {
         Fr[Y * P + X] ^= Mask;
     }
+}
+
+UINT32 HalVideoFrontReadPixel(UINT32 X, UINT32 Y) {
+    UINT32 *Fr = Front();
+    UINT32 P = Pitch();
+
+    if (Fr == 0 || X >= gVideo.HorizontalResolution ||
+        Y >= gVideo.VerticalResolution) {
+        return 0;
+    }
+    return Fr[Y * P + X];
+}
+
+void HalVideoFrontDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
+    UINT32 *Fr = Front();
+    UINT32 P = Pitch();
+
+    if (Fr == 0 || X >= gVideo.HorizontalResolution ||
+        Y >= gVideo.VerticalResolution) {
+        return;
+    }
+    Fr[Y * P + X] = Color;
 }
 
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,

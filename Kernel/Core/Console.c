@@ -7,13 +7,16 @@
  */
 #include "Console.h"
 #include "Gui.h"
+#include "HalPs2.h"
 #include "HalPs2Kbd.h"
+#include "HalPs2Mouse.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Process.h"
 #include "ShellCmd.h"
 #include "Scheduler.h"
 #include "Font.h"
+#include "Locale.h"
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
@@ -23,20 +26,36 @@ static void ConsolePut(const char *Text) {
     HalSerialWriteShell(Text);
 }
 
-static void ConsolePaintBanner(void) {
-    UINT32 W = 0;
-    UINT32 H = 0;
+void ConsolePaintBannerBack(void) {
+    UINT32 Cx = 0;
+    UINT32 Cy = 0;
+    UINT32 Cw = 0;
+    UINT32 Ch = 0;
+    UINT32 Pad = 8u;
 
-    HalVideoGetSize(&W, &H);
-    if (W < 96 || H < 40) {
+    ThemeInitialize();
+    LocaleInitialize();
+    if (GuiShellClientRect(&Cx, &Cy, &Cw, &Ch) != 0 || Cw < 64u || Ch < 40u) {
         return;
     }
-    ThemeInitialize();
-    FontDrawStringAt(8, 40, "系统已就绪", ThemeTextForeground()); /* 系统已就绪 */
-    FontDrawStringAt(8, 60, "Blocks>", ThemeTextForeground());
-    if (HalVideoBackbufferEnabled()) {
-        HalVideoPresent();
+    HalVideoFillRect(Cx, Cy, Cw, Ch, ThemeWindowClient());
+    FontDrawStringAt(Cx + Pad, Cy + Pad, LocStr(MSG_READY), ThemeTextForeground());
+    FontDrawStringAt(Cx + Pad, Cy + Pad + 20u, "Blocks>", ThemeTextForeground());
+}
+
+void ConsoleRefreshBanner(void) {
+    GuiCursorHide();
+    ConsolePaintBannerBack();
+    {
+        UINT32 Cx = 0;
+        UINT32 Cy = 0;
+        UINT32 Cw = 0;
+        UINT32 Ch = 0;
+        if (GuiShellClientRect(&Cx, &Cy, &Cw, &Ch) == 0 && Cw >= 64u && Ch >= 40u) {
+            HalVideoPresentRect(Cx, Cy, Cw, Ch);
+        }
     }
+    GuiCursorShow();
 }
 
 int ConsoleInitialize(void) {
@@ -47,7 +66,7 @@ int ConsoleInitialize(void) {
         HalSerialWriteChannel(TOY_SLOG_MISC, "Input: ps2 skip (serial only)\n");
     }
     ShellCmdInitialize();
-    ConsolePaintBanner();
+    ConsoleRefreshBanner();
     return 0;
 }
 
@@ -80,25 +99,28 @@ static int ConsoleReadLine(char *Buf, int Cap) {
          * PS/2 鼠无 IRQ，若每拍只 poll 一次就 hlt，光标会不跟手。
          */
         while (!Have) {
-            UINT32 Spin;
             if (ConsolePollChar(&C)) {
                 Have = 1;
                 break;
             }
-            for (Spin = 0; Spin < 2048u; Spin++) {
-                GuiPoll();
-                if (ConsolePollChar(&C)) {
-                    Have = 1;
-                    break;
-                }
+            /*
+             * 鼠无 IRQ：有 PS/2 鼠时禁止 hlt。
+             * 一睡 i8042 就溢、失步 → 移动卡 / 假死。
+             */
 #if defined(__x86_64__) || defined(_M_X64)
-                __asm__ volatile("pause");
+            HalPs2Poll();
 #endif
-            }
-            if (Have) {
+            (void)GuiPoll();
+            if (ConsolePollChar(&C)) {
+                Have = 1;
                 break;
             }
-            GuiPoll();
+#if defined(__x86_64__) || defined(_M_X64)
+            if (HalPs2MouseReady()) {
+                __asm__ volatile("pause");
+                continue;
+            }
+#endif
             SchedulerYield();
         }
         if (C == '\r' || C == '\n') {

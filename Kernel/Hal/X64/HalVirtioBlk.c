@@ -1,8 +1,8 @@
 /*
- * HalVirtioBlk.c — X64 legacy virtio-blk 读写扇区（K16 读 / K24 写）
+ * HalVirtioBlk.c — X64 legacy virtio-blk 读扇区（K16）
  *
  * 【初学者】
- * PCI 找 1af4:1001 → IO BAR → 按设备 QUEUE_NUM 建 vring → READ/WRITE。
+ * PCI 找 1af4:1001 → IO BAR → 按设备 QUEUE_NUM 建 vring → 发 READ。
  * Runtime 须 disable-modern=on，走 legacy 口。
  */
 #include "HalBlock.h"
@@ -53,6 +53,7 @@ static UINT16 *gAvailIdx;
 static UINT16 *gAvailRing;
 static UINT16 *gUsedIdx;
 static UINT16 gLastUsed;
+/* DMA 缓冲：Req + Status + 扇区（避免栈地址给设备） */
 static BlkReq *gDmaReq;
 static UINT8 *gDmaStatus;
 static UINT8 *gDmaSec;
@@ -141,6 +142,7 @@ static UINT32 AlignUp(UINT32 V, UINT32 A) {
     return (V + A - 1u) & ~(A - 1u);
 }
 
+/* legacy vring 字节数（align=4096） */
 static UINT32 VringBytes(UINT16 Num) {
     UINT32 Desc = 16u * (UINT32)Num;
     UINT32 Avail = 6u + 2u * (UINT32)Num;
@@ -199,7 +201,8 @@ int HalBlockInit(void) {
     gUsedIdx = (UINT16 *)((UINT8 *)Pages + UsedOff + 2u);
     gLastUsed = 0;
 
-        Dma = HalDmaAllocatePages(1);
+    /* 1 页：Req(16) + Status(1) + 最多 8 扇区 */
+    Dma = HalDmaAllocatePages(1);
     if (Dma == 0) {
         return -1;
     }

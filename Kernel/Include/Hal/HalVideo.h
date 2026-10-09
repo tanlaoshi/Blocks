@@ -21,10 +21,15 @@ int HalVideoBackbufferEnabled(void);
 UINT64 HalVideoBackbufferBase(void);
 void HalVideoPresent(void);
 void HalVideoPresentFlush(void);
+/* 只拷一块脏矩形（拖窗/光标热路径，避免整屏 Present） */
+void HalVideoPresentRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height);
 
 void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color);
 UINT32 HalVideoReadPixel(UINT32 X, UINT32 Y);
 void HalVideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask);
+/* 光标 save-under：只碰前缓冲（对标现网 CursorOverlay） */
+UINT32 HalVideoFrontReadPixel(UINT32 X, UINT32 Y);
+void HalVideoFrontDrawPixel(UINT32 X, UINT32 Y, UINT32 Color);
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color);
 
 #endif

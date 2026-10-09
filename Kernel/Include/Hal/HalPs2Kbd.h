@@ -13,6 +13,8 @@
 /* 排空缓冲；成功 0（无控制器也 0，Ready=0） */
 int HalPs2KbdInit(void);
 int HalPs2KbdReady(void);
+/* 消化 1 字节键盘数据（含断码/修饰键）；1=读了，0=无。供鼠轮询交错排空 OBF */
+int HalPs2KbdDiscardByte(void);
 /*
  * 若有可打印/控制 ASCII，写入 *Out 并返回 1；
  * 无数据或忽略的扫描码返回 0。

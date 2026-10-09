@@ -7,6 +7,9 @@
 #define CONSOLE_H
 
 int ConsoleInitialize(void);
+void ConsoleRefreshBanner(void);
+/* 只画到背缓冲（拖窗用，Present 由 Gui 统一做） */
+void ConsolePaintBannerBack(void);
 /* 不返回：串口交互循环 */
 void ConsoleRun(void);
 

@@ -6,6 +6,9 @@
 #include "FatFile.h"
 #include "HalSerial.h"
 #include "Process.h"
+#include "Locale.h"
+#include "Gui.h"
+#include "Console.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
@@ -246,6 +249,31 @@ static void CmdRm(int Argc, char **Argv) {
     Put("rm: ok\n");
 }
 
+static void CmdLang(int Argc, char **Argv) {
+    if (Argc < 2) {
+        Put(LocStr(MSG_LANG_USAGE));
+        Put("\n");
+        Put(LocStr(MSG_LANG_NOW));
+        return;
+    }
+    if (StrEq(Argv[1], "en")) {
+        (void)LocaleSet(LOC_LANG_EN);
+        GuiRefreshLabels();
+        ConsoleRefreshBanner();
+        Put(LocStr(MSG_LANG_SET));
+        return;
+    }
+    if (StrEq(Argv[1], "zh")) {
+        (void)LocaleSet(LOC_LANG_ZH);
+        GuiRefreshLabels();
+        ConsoleRefreshBanner();
+        Put(LocStr(MSG_LANG_SET));
+        return;
+    }
+    Put(LocStr(MSG_LANG_USAGE));
+    Put("\n");
+}
+
 static void CmdHello(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
@@ -263,6 +291,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("write", "write text file", CmdWrite);
     ShellCmdRegister("mkdir", "make directory", CmdMkdir);
     ShellCmdRegister("rm", "remove file/dir", CmdRm);
+    ShellCmdRegister("lang", "UI language en|zh", CmdLang);
     ShellSysRegister();
     Put("Shell: cmds ok\n");
 }

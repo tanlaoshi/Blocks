@@ -55,6 +55,18 @@ void HalVideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     (void)Mask;
 }
 
+UINT32 HalVideoFrontReadPixel(UINT32 X, UINT32 Y) {
+    (void)X;
+    (void)Y;
+    return 0;
+}
+
+void HalVideoFrontDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
+    (void)X;
+    (void)Y;
+    (void)Color;
+}
+
 void HalVideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
                       UINT32 Color) {
     (void)X;
@@ -71,6 +83,13 @@ void HalVideoPresent(void) {
 }
 
 void HalVideoPresentFlush(void) {
+}
+
+void HalVideoPresentRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height) {
+    (void)X;
+    (void)Y;
+    (void)Width;
+    (void)Height;
 }
 
 int HalVideoBackbufferEnabled(void) {

@@ -18,7 +18,8 @@
 #include "ToySerialConfig.h"
 
 #define COM1 0x3F8u
-#define SERIAL_WAIT 1000000
+/* 宿主机 stdio 一堵，长等会拖死整机（鼠/GUI 假死）。短等后丢字节。 */
+#define SERIAL_WAIT 2048
 
 static int gSerialOk;
 static int gSerialReady;
@@ -32,14 +33,6 @@ static inline UINT8 In8(UINT16 Port) {
     UINT8 Value;
     __asm__ volatile("inb %1, %0" : "=a"(Value) : "Nd"(Port));
     return Value;
-}
-
-static void WaitBit(UINT8 Mask) {
-    int Timeout = SERIAL_WAIT;
-
-    while (Timeout-- && !(In8(COM1 + 5) & Mask)) {
-        __asm__ volatile("pause");
-    }
 }
 
 static int ProbeCom1(void) {
@@ -79,10 +72,19 @@ static int ChannelUartOn(int Channel) {
 
 static void UartPut(char C) {
 #if TOY_SERIAL
+    int Timeout;
+
     if (!gSerialOk) {
         return;
     }
-    WaitBit(0x20);
+    /* THR 不空：短等；仍满则丢弃（勿堵鼠标热路径） */
+    Timeout = SERIAL_WAIT;
+    while (Timeout-- && !(In8(COM1 + 5) & 0x20u)) {
+        __asm__ volatile("pause");
+    }
+    if (!(In8(COM1 + 5) & 0x20u)) {
+        return;
+    }
     Out8(COM1, (UINT8)C);
 #else
     (void)C;
@@ -100,14 +102,12 @@ static void UartWriteRaw(const char *Text) {
         if (*Text == '\r' && Text[1] == '\n') {
             UartPut('\r');
             UartPut('\n');
-            WaitBit(0x40);
             Text += 2;
             continue;
         }
         if (*Text == '\n') {
             UartPut('\r');
             UartPut('\n');
-            WaitBit(0x40);
             Text++;
             continue;
         }

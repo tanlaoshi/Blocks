@@ -17,5 +17,11 @@ UINT32 ThemeTaskbarBackground(void);
 UINT32 ThemeWindowTitleText(void);
 /* 屏上横幅 / 普通正文 */
 UINT32 ThemeTextForeground(void);
+/* K29：Shell 窗框 */
+UINT32 ThemeWindowTitleBar(void);
+/* 失焦标题栏（K30） */
+UINT32 ThemeWindowTitleBarDim(void);
+UINT32 ThemeWindowClient(void);
+UINT32 ThemeWindowBorder(void);
 
 #endif

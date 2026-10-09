@@ -18,7 +18,9 @@ typedef struct {
 
 int HalPs2MouseInit(void);
 int HalPs2MouseReady(void);
-/* 凑齐一包返回 1；无数据 0 */
+/* 兼容旧名：现为 HalPs2Poll（排空 OBF→队列） */
+void HalPs2MouseDropInput(void);
+/* 从软件队列取一包；先 HalPs2Poll 再调。1=有包，0=空 */
 int HalPs2MousePoll(HAL_MOUSE_PACKET *Out);
 
 #endif

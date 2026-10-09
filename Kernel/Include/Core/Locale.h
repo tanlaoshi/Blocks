@@ -17,6 +17,8 @@ typedef enum {
     MSG_DESKTOP_TITLE = 0, /* 顶栏：Blocks / 积木 */
     MSG_READY,             /* 客户区：System ready / 系统已就绪 */
     MSG_WIN_SHELL,         /* 窗标题：Shell / 命令窗 */
+    MSG_WIN_ABOUT,         /* 窗标题：About / 说明 */
+    MSG_ABOUT_BODY,        /* About 客户区一行说明 */
     MSG_LANG_USAGE,
     MSG_LANG_NOW,
     MSG_LANG_SET,

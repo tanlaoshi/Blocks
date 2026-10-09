@@ -90,7 +90,7 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatVol FatAlloc FatDir FatFile FatMut ElfLoad
-                    Process Network Theme Font Utf8 FontTtfLoad FontTtfCache Locale Gui Scheduler ShellCmd ShellSys Console Kernel)
+                    Process Network Theme Font Utf8 FontTtfLoad FontTtfCache Locale GuiWinPaint GuiWin Gui Scheduler ShellCmd ShellSys Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -154,7 +154,7 @@ x64|X64)
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
@@ -193,7 +193,7 @@ arm64|Arm64|ARM64)
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -235,7 +235,7 @@ riscv|RiscV|RISCV)
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

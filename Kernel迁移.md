@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K14** · USB xHCI 复位 + 端口状态 |
-| 排队 | K15…K20（见下方「加厚到桌面」） |
-| 刚收官 | **PR-K13** · Map MMIO；`VMM: map mmio ok` + `Usb: … cap=` ✅ |
-| 顺手（不推 ★） | 表序改为 `Memory → VirtualMemory → Driver`（PMM-VMM-Driver） |
+| **★** | **PR-K15** · 键入最小（QEMU 先 PS/2） |
+| 排队 | K16…K20（见下方「加厚到桌面」） |
+| 刚收官 | **PR-K14** · xHCI 复位+端口；`Usb: reset ok` / `port N CCS=` ✅ |
+| 顺手（不推 ★） | HalXhci 门面 + X64 后端；Usb 模块只胶水 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -27,8 +27,8 @@
 | PR | 一句话 | 为何排这里 | 验收（口述） |
 | -- | ------ | ---------- | ------------ |
 | **K13** ✅ | VMM：把高址 MMIO（如 xHCI BAR）映进页表 | K10 只能 handoff，读寄存器会挂 | `VMM: map mmio ok`；`Usb: … cap=` ✅ |
-| **K14** ★ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: port N CCS=…`；软成功不卡死 |
-| **K15** | USB HID 键盘（或 QEMU 先 PS/2）最小 | 桌面要键入；串口壳可先吃键 | 按键串口/屏有码；无设备不卡 |
+| **K14** ✅ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: reset ok` / `port N CCS=` ✅ |
+| **K15** ★ | 键入最小（QEMU 先 PS/2；HID 后刀） | 桌面要键入；串口壳可先吃键 | GTK 窗按键进 `Blocks>`；无设备不卡 |
 | **K16** | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)`；读一小文件可选 |
 | **K17** | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 |
 | **K18** | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 |
@@ -152,18 +152,29 @@
 | **Arm/RiscV** | MapMmio 失败桩 |
 | **验收** | `VMM: map mmio ok`；`Usb: xhci ok … cap=…` → `Blocks>` ✅ |
 
-### K14 规划（★ · 最小子集）
+### K14 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：在已映射的 xHCI 上做最小复位，并读出至少一个端口的连接状态（CCS）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 读 HCSPARAMS 端口数；操作空间复位（或文档允许的最小 stop/run）；串口报 `port N CCS=` |
+| **做** | `HalXhci` 门面；HCRST；读 MaxPorts + PORTSC.CCS；Usb 胶水打日志 |
 | **不做** | 设备枚举、HID/MSC、中断环、完整命令环 |
-| **Arm/RiscV** | stub |
-| **验收** | `[Mod] USB` 后见 `Usb: port …`；无设备 CCS=0 也算过 → `Blocks>` |
+| **Arm/RiscV** | HalXhciStub |
+| **验收** | `Usb: reset ok`；`Usb: port N CCS=`；无设备 CCS=0 也算过 → `Blocks>` ✅ |
 
-依赖：K13 MapMmio + CAPLENGTH。
+### K15 规划（★ · 最小子集）
+
+**一句话**：QEMU 下用 **PS/2** 键盘把按键送进 `Blocks>`（USB HID 枚举另刀）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `HalPs2Kbd` 门面（X64 i8042）；Console 读行同时 poll 串口与 PS/2；ASCII 子集 |
+| **不做** | USB HID 枚举、中断驱动键鼠、完整 keymap / 多布局 |
+| **Arm/RiscV** | stub；仍只靠串口 |
+| **验收** | 焦点在 GTK 窗时按键有回显；无 PS/2 不卡；串口输入仍可用 |
+
+依赖：K8 Console；K14 不阻塞本刀（CCS=0 时走 PS/2）。
 
 ---
 
@@ -439,3 +450,4 @@ Kernel/
 | 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
 | 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
 | 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
+| 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |

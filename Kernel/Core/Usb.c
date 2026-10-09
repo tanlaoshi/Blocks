@@ -1,17 +1,20 @@
 /*
- * Usb.c — K10 探控；K13 经 VMM MapMmio 读 CAP/VER
+ * Usb.c — USB 模块胶水（K10/K13/K14）
  *
  * 【初学者】
- * Boot 交 XhciBase。窗内可直接读；窗外须先 VirtualMemoryMapMmio，
- * 再读 CAPLENGTH / HCIVERSION。不建环、不开中断、不枚举。
+ * 模块表只编排：MapMmio → HalXhci 附着/复位 → 报端口 CCS。
+ * 寄存器细节在 Hal/X64/HalXhci.c（门面 HalXhci.h），便于换后端。
  */
 #include "Usb.h"
 #include "BootInfo.h"
 #include "BootTypes.h"
 #include "HalSerial.h"
-#include "IdentityMap.h"
+#include "HalXhci.h"
 #include "ToySerialConfig.h"
 #include "VirtualMemory.h"
+
+#define USB_MMIO_MAP_SIZE  0x10000ull
+#define USB_PORT_LOG_MAX   8u
 
 static UINT64 gXhciBase;
 static UINT64 gXhciVirt;
@@ -30,28 +33,33 @@ UINT64 UsbXhciVirt(void) {
 }
 
 #if defined(__x86_64__) || defined(_M_X64)
-static int ProbeXhciCaps(UINT64 Virt, UINT8 *OutCap, UINT16 *OutVer) {
-    volatile UINT8 *Mmio;
-    UINT8 Cap;
-    UINT16 Ver;
+static void UsbLogPorts(void) {
+    UINT32 N;
+    UINT32 i;
+    UINT32 Show;
 
-    if (Virt == 0 || (Virt & 0xFu) != 0) {
-        return -1;
+    N = HalXhciPortCount();
+    HalSerialWriteChannel(TOY_SLOG_USB, "Usb: ports=");
+    HalSerialWriteChannelHex32(TOY_SLOG_USB, N);
+    HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+
+    Show = N;
+    if (Show > USB_PORT_LOG_MAX) {
+        Show = USB_PORT_LOG_MAX;
     }
-    Mmio = (volatile UINT8 *)(UINTN)Virt;
-    Cap = Mmio[0];
-    Ver = (UINT16)Mmio[2] | ((UINT16)Mmio[3] << 8);
-    /* CAPLENGTH 经验窗；HCIVERSION 在部分 QEMU 上可为 0，勿误杀 */
-    if (Cap < 0x20u || Cap > 0x80u || Ver == 0xFFFFu) {
-        return -1;
+    for (i = 1; i <= Show; i++) {
+        int Ccs = HalXhciPortCcs(i);
+
+        HalSerialWriteChannel(TOY_SLOG_USB, "Usb: port ");
+        HalSerialWriteChannelHex32(TOY_SLOG_USB, i);
+        HalSerialWriteChannel(TOY_SLOG_USB, " CCS=");
+        if (Ccs < 0) {
+            HalSerialWriteChannel(TOY_SLOG_USB, "?\n");
+        } else {
+            HalSerialWriteChannelHex32(TOY_SLOG_USB, (UINT32)Ccs);
+            HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+        }
     }
-    if (OutCap != 0) {
-        *OutCap = Cap;
-    }
-    if (OutVer != 0) {
-        *OutVer = Ver;
-    }
-    return 0;
 }
 #endif
 
@@ -64,8 +72,6 @@ int UsbInitialize(void) {
 
 #if defined(__x86_64__) || defined(_M_X64)
     {
-        UINT8 Cap = 0;
-        UINT16 Ver = 0;
         UINT64 Base = 0;
         UINT64 Virt = 0;
 
@@ -79,7 +85,7 @@ int UsbInitialize(void) {
             return 0;
         }
 
-        if (VirtualMemoryMapMmio(Base, 0x1000ull, &Virt) != 0) {
+        if (VirtualMemoryMapMmio(Base, USB_MMIO_MAP_SIZE, &Virt) != 0) {
             HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN map mmio fail @0x");
             HalSerialWriteChannelHex64(TOY_SLOG_USB, Base);
             HalSerialWriteChannel(TOY_SLOG_USB, "\n");
@@ -87,20 +93,26 @@ int UsbInitialize(void) {
         }
         gXhciVirt = Virt;
 
-        if (ProbeXhciCaps(Virt, &Cap, &Ver) != 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN xhci mmio bad @0x");
+        if (HalXhciAttach(Virt) != 0) {
+            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN xhci attach @0x");
             HalSerialWriteChannelHex64(TOY_SLOG_USB, Virt);
             HalSerialWriteChannel(TOY_SLOG_USB, "\n");
             return 0;
         }
-        gXhciReady = 1;
+
         HalSerialWriteChannel(TOY_SLOG_USB, "Usb: xhci ok @0x");
         HalSerialWriteChannelHex64(TOY_SLOG_USB, Virt);
-        HalSerialWriteChannel(TOY_SLOG_USB, " cap=0x");
-        HalSerialWriteChannelHex32(TOY_SLOG_USB, Cap);
-        HalSerialWriteChannel(TOY_SLOG_USB, " ver=0x");
-        HalSerialWriteChannelHex32(TOY_SLOG_USB, Ver);
         HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+
+        if (HalXhciReset() != 0) {
+            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN reset timeout\n");
+            /* 仍尝试读端口；软成功 */
+        } else {
+            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: reset ok\n");
+        }
+
+        UsbLogPorts();
+        gXhciReady = 1;
         return 0;
     }
 #else

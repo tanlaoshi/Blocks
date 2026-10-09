@@ -1,8 +1,7 @@
 /*
- * Usb.h — USB（K10：探控最小）
+ * Usb.h — USB 模块（胶水）
  *
- * 本刀：认 Boot 交出的 xHCI 基址，读 CAPLENGTH/HCIVERSION。
- * 完整环/枚举/HID/MSC 后刀替换实现。
+ * MapMmio + HalXhci（复位/端口 CCS）。枚举/HID/MSC 后刀。
  */
 #ifndef USB_H
 #define USB_H

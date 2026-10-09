@@ -28,7 +28,7 @@ cd ~/Blocks/Runtime
 
 串口在**启动 QEMU 的那个终端**里（`-serial stdio`），不要往 GTK 窗口里打字。
 
-K13 预期：`VMM: map mmio ok @0x…` → `Usb: xhci ok @0x… cap=0x… ver=0x…`（不再仅 Boot handoff）→ `Blocks>`。
+K14 预期：`Usb: xhci ok` → `Usb: reset ok` → `Usb: ports=…` / `Usb: port N CCS=0|1` → `Blocks>`。
 
 `run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
 

@@ -30,6 +30,7 @@ void SchedulerYield(void) {
     if (!gSchedReady) {
         return;
     }
+#if defined(__x86_64__) || defined(_M_X64)
     if (HalTimerReady()) {
         HalTimerPollLog();
         /* STI 延迟一拍：中间必须再有一条指令，否则 hlt 时 IF 仍 0 */
@@ -37,4 +38,7 @@ void SchedulerYield(void) {
     } else {
         __asm__ volatile("pause");
     }
+#else
+    (void)0;
+#endif
 }

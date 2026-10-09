@@ -31,7 +31,7 @@
 | `Hal/<Arch>/Hal/` | 该架构私有细节（如 `HalPort.h`），见该目录 README |
 | `Hal/Common/` | 跨 Arch HAL（`HalCapability`、`HalVideoStub`、DTB/RamFB 头） |
 | `Core/` | 合流：`KernelMain`、模块表、PMM、`BOOT_INFO`（无 `Hal*` 实现） |
-| `Hal/Common/HalFont.c` | 8×8 ASCII 点阵 → `HalVideoDrawStringAt`（后→Font 积木） |
+| `Core/Font.c` + `Theme.c` | Font 积木实现 `HalVideoDrawString*`；Theme 色板供 Gui |
 | `Hal/X64/HalSerialGop.c` | `SCREEN_LOG=1` 时 boot 日志上滚到 FB |
 | `Core/PhysicalMemory.c` | PMM：BOOT_INFO 自由区上的位图页分配 |
 | `Core/Device.c` | 设备框架空壳（K5） |

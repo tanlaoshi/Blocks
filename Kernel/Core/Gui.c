@@ -2,7 +2,7 @@
  * Gui.c — K12 桌面壳 + K17 光标/顶栏点击
  *
  * 【初学者】
- * 桌面：底色 + 顶栏 + 标题。
+ * 桌面：底色 + 顶栏 + 标题（色来自 Theme）。
  * 指针：PS/2 相对鼠 → XOR 箭头光标；左键点顶栏打串口日志。
  */
 #include "Gui.h"
@@ -10,12 +10,11 @@
 #include "HalPs2Mouse.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
+#include "Font.h"
+#include "Theme.h"
 #include "ToySerialConfig.h"
 
 #define GUI_BAR_H     28u
-#define GUI_BG        0x001A1F24u
-#define GUI_BAR       0x002A323Cu
-#define GUI_TITLE_FG  0x00E8EEF4u
 #define GUI_CUR_XOR   0x00FFFFFFu
 #define GUI_CUR_W     8u
 #define GUI_CUR_H     14u
@@ -89,9 +88,11 @@ int GuiInitialize(void) {
         return 0;
     }
 
-    HalVideoFillRect(0, 0, gFbW, gFbH, GUI_BG);
-    HalVideoFillRect(0, 0, gFbW, GUI_BAR_H, GUI_BAR);
-    HalVideoDrawStringAt(12, 8, "Blocks", GUI_TITLE_FG);
+    ThemeInitialize();
+    FontInitialize();
+    HalVideoFillRect(0, 0, gFbW, gFbH, ThemeDesktopBackground());
+    HalVideoFillRect(0, 0, gFbW, GUI_BAR_H, ThemeTaskbarBackground());
+    HalVideoDrawStringAt(12, 8, "Blocks", ThemeWindowTitleText());
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }

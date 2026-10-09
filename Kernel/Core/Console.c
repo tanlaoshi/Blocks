@@ -12,6 +12,7 @@
 #include "HalVideo.h"
 #include "Process.h"
 #include "Scheduler.h"
+#include "Theme.h"
 #include "ToySerialConfig.h"
 
 #define LINE_CAP 120
@@ -28,8 +29,9 @@ static void ConsolePaintBanner(void) {
     if (W < 96 || H < 40) {
         return;
     }
-    HalVideoDrawStringAt(8, 40, "ToyOS ready", 0x00FFFFFFu);
-    HalVideoDrawStringAt(8, 56, "Blocks>", 0x00FFFFFFu);
+    ThemeInitialize();
+    HalVideoDrawStringAt(8, 40, "ToyOS ready", ThemeTextForeground());
+    HalVideoDrawStringAt(8, 56, "Blocks>", ThemeTextForeground());
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }

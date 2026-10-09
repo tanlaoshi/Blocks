@@ -89,7 +89,7 @@ X64 HAL 接棒已迁入：`Kernel/Hal/X64/KernelHandoff.c`（见 §3）。
 | 层次 | 状态 | 含义 |
 | ---- | ---- | ---- |
 | **接棒干净** | ✅ | 命名/布局/职责：`BootPkg` → `UEFI_BOOT_CONFIG` → `KernelEntry` → `KernelHandoff` → `BOOT_INFO` → `KernelMain`；无软链包名；Boot 不编 Kernel；Core 不认 UEFI 类型 |
-| **彻底干净** | ❌ 尚未 | 整条 **X64：加电 → OVMF → BOOTX64.EFI → Kernel.elf → 模块表 → 可跑桌面/Shell**（对标现网 QEMU split / 真机冒烟） |
+| **彻底干净** | ❌ 尚未 | 整条 X64 对标现网**课堂主路径**（路线图 §1：桌面/Theme/FAT/Shell/lwIP/用户态…）；入口对标 QEMU split / smoke-boot |
 
 **后续迁移硬约束**：每迁一层（Hal / Core / Library / Services / Gui…）都要对照现网，问「这条 X64 开机链会不会断、桌面还会不会起来」——接棒已收口不等于整机已绿。验收最终以 **X64 到桌面** 为准，不只以「能编过 / 进了 KernelMain」为准。
 

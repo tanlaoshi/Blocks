@@ -1,8 +1,8 @@
 # Blocks · KernelMain 以后迁移
 
-> **性质**：`KernelMain` 起至「X64 可跑桌面」的排期与 PR 拆分。  
+> **性质**：`KernelMain` 起至「**对标现网** X64 QEMU 课堂主路径」的排期与 PR 拆分。  
 > **工作区**：`~/Blocks` · 仓：`git@github.com:tanlaoshi/Blocks.git`  
-> **接棒已收口**：见 [`Boot迁移.md`](Boot迁移.md) §1.5（接棒干净 ✅；彻底干净 = X64 到桌面）。  
+> **接棒已收口**：见 [`Boot迁移.md`](Boot迁移.md) §1.5（接棒干净 ✅；彻底干净 = **对标现网** X64 到桌面/Shell）。  
 > **积木**：见 [`积木原则.md`](积木原则.md)——迁每一层都盯「可替换面 vs 胶水」。  
 > **对照源**（只读）：`~/ToyOS/ToyKernel` / edk2 内 ToyKernel；路径冲突以 Blocks 为准。
 
@@ -12,10 +12,10 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **后置拆刀** · Theme/窗管/lwIP/Store…（JX 前对范围，不自动开刀） |
-| 排队 | K13…K20 加厚表已收官；现网对照迁入时再拆 |
-| 刚收官 | **PR-K20** · virtio-net 最小收发 ✅ |
-| 顺手（不推 ★） | Console 空闲紧轮 Gui 跟手；`调用链.md` |
+| **★** | **PR-K22** · Shell 命令表 + help/clear/echo |
+| 排队 | **对标现网**主轨 **K21–K52**（分相位，见下）；真机/SMP/virt 全桌面后置 |
+| 刚收官 | **PR-K21** · Font 积木 + Theme 色板 ✅ |
+| 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。  
@@ -29,10 +29,11 @@
 | 2 | **注释**：迁入/加厚代码补【初学者】级说明（为何、跟谁、不做什么）；禁止只留符号名。 |
 | 3 | **调用链总览**：维护 [`调用链.md`](调用链.md)（Boot→KernelMain→模块表→shell）；TG 改主链时同步改它。 |
 | 4 | **驱动加厚**（USB HID/MSC、网卡收发、存储 AHCI 等）：JX 前先和你对一下范围/验收，再动刀。 |
+| 5 | **终局 = 对标现网**：验收对照现网 ToyKernel `Documents/路线图.md` §1「现在能干什么」**x86 QEMU 课堂主路径**。刀仍「最短可验收」，但**能力面要对上现网**，不是另做更瘦的课感 OS。 |
 
 ### 加厚到桌面（K13+ 排队 · 一句话）
 
-> 终局仍是 §1.1「QEMU/真机可跑桌面」。下表是固定排队；**JX 只认文首 ★**，细则在对应 Kx 规划节（未轮到可只留一句话）。
+> 下表为骨架加厚（已收官）。**终局 = 对标现网**（§1.1 + K21+ 相位表）。**JX 只认文首 ★**。
 
 | PR | 一句话 | 为何排这里 | 验收（口述） |
 | -- | ------ | ---------- | ------------ |
@@ -45,7 +46,87 @@
 | **K19** ✅ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` ✅ |
 | **K20** ✅ | Network：virtio-net 最小收发（如 ARP/ping 一侧） | 表上有网卡但不会说话 | 一次 TX/RX 成功日志；不接 lwIP 全栈 ✅ |
 
-**明确后置（勿插队占 ★）**：完整 Theme/TTF、窗管/开始菜单、lwIP/Socket、Store、SMP、真机多驱动边角——现网对照迁入时再拆刀。
+### 对标现网主轨（K21+ · 分相位）
+
+> **终局定义（钉死）**  
+> Blocks X64 + Runtime split 达到现网课堂主路径同级能力（路线图 §1 表），入口对标 `run-split.sh` / `smoke-boot.sh`。  
+> **不是**「能指点 + ping 就算完」；**也不是**整目录 1:1 粘贴现网（仍按积木/最短刀迁，行为与课表验收对齐）。
+>
+> **刀数口径（口述，可按 JX 前讨论微调）**  
+> - **骨架 A**：K0–K20 ✅（已完）  
+> - **对标现网 B（主轨）**：约 **K21–K52 ≈ 32 刀**，按相位推进  
+> - **后置 C**：真机 NUC 边角、x86 SMP 演示、Arm/RiscV virt 全桌面——**不挡** B 收官  
+>
+> 现网 Services/Gui/Shell/Net/Store 体量大；下列按**现网能力面**拆刀，细则轮到再写。驱动刀遵守约定 #4。
+
+#### 相位 P1 · 主题 / 字 / Shell 面（K21–K25）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K21** ★ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；`DrawString*` 契约不变 |
+| **K22** ★ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
+| **K23** | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
+| **K24** | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
+| **K25** | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
+
+#### 相位 P2 · 窗管 / 桌面（K26–K34）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K26** | 单窗：标题栏 + 客户区（Shell 窗） | G 族开窗 | 屏上窗内提示符 |
+| **K27** | 拖标题 + 焦点 | GuiDrag/Focus | 能挪窗、点选焦点 |
+| **K28** | 关窗 / 重画桌面 | G6 基线 | 关窗不花屏 |
+| **K29** | 双窗 + 简单 Z 序/合成 | GuiCompose | 两窗重叠可分清 |
+| **K30** | 桌面图标 + 双击开 Shell | Desktop/D4 | 双击开/聚焦 Shell 窗 |
+| **K31** | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
+| **K32** | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
+| **K33** | 开始菜单 / 任务栏最小 | G13 | 钮可开 Shell/Settings/Files |
+| **K34** | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
+
+#### 相位 P3 · 网络对标（K35–K40）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K35** | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
+| **K36** | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
+| **K37** | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
+| **K38** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
+| **K39** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
+| **K40** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
+
+#### 相位 P4 · 存储加厚 / Store / DB（K41–K45）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K41** | GPT + 多卷前缀薄（`TOYOS:`） | FS2 | `vols`/`ls TOYOS:` |
+| **K42** | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
+| **K43** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
+| **K44** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
+| **K45** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
+
+#### 相位 P5 · 用户态 / 输入 / 积木面（K46–K52）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K46** | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
+| **K47** | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
+| **K48** | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
+| **K49** | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
+| **K50** | I18N：UTF-8 + CJK 子集 / `lang` | I18N1/2 | `lang zh` 标签可读 |
+| **K51** | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
+| **K52** | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell 关键字 |
+
+#### 后置 C（不挡 B 收官）
+
+| 项 | 说明 |
+| -- | ---- |
+| x86 SMP S1～S4 / S-ap | 演示级多核；现网已归档，Blocks 后置 |
+| 真机 NUC（NVMe/AHCI/电源/HID 边角） | 约定 #4，单独开刀 |
+| Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
+| TTF / 设计器 / 声卡 / iGPU | 现网亦非课堂主路径核心则后置 |
+
+> **进度口诀**：A 骨架 ✅ → B 对标现网（★ 从 K21 起）→ C 真机/SMP/virt。  
+> 每相位收官时改文首 ★，并在修订记录记一笔。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
 
@@ -245,6 +326,33 @@
 
 > **驱动刀**：JX 前先对范围（见文首协作约定 #4）。
 
+### K21 规划（已收官 ✅ · 曾 ★）
+
+**一句话**：Font 积木化 + Theme 色板——对标现网 D 族入口，不一次搬齐 TTF/THEME.CFG。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 画字落点可指认为 Font 积木；Theme 提供桌面/顶栏/字色等；Gui 改用色板；`HalVideoDrawString*` 不变 |
+| **不做** | TTF、完整 Settings、THEME.CFG 写盘（留给 P2） |
+| **Arm/RiscV** | 同编；无 FB 色板空转 |
+| **验收** | 顶栏/桌面色来自 Theme；三架构可编；现有光标/shell 不回退 |
+
+> JX 前若收窄为「只 Theme」或「只拆 Font」，改本表再动刀。
+
+### K22 规划（★ · 最小子集）
+
+**一句话**：可扩展命令表；内置 `help` / `clear` / `echo`；未知命令有提示。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 命令名→处理函数表；`help` 列命令；`clear` 清串口观感（换行/提示）；`echo` 回显参数；保留 `hello` |
+| **不做** | 管道、重定向、完整 ShellCommands* 全家桶 |
+| **验收** | `help` 可见；`echo hi`；未知命令提示；`Blocks>` 仍活 |
+
+### K22+ 细则
+
+轮到该刀再写「做/不做/验收」专节；未轮到以文首相位表一句话为准。大块迁入前对照现网同名文件，**禁止**无验收整夹粘贴。
+
 ---
 
 ## 1. 目标与硬约束
@@ -253,11 +361,30 @@
 
 ```text
 加电 → OVMF → BOOTX64.EFI → Kernel.elf
-  → KernelMain → 模块表 → shell/gui
-  → QEMU split（或真机）可跑桌面 / Shell
+  → KernelMain → 模块表 → GOP 桌面 / Shell
+  → 能力面对标现网课堂主路径（路线图 §1）
 ```
 
-对标现网 `Scripts/run-split.sh` / `smoke-boot.sh`。**不只以「能编过」为准。**
+对标现网 `Scripts/run-split.sh` / `smoke-boot.sh`（Blocks：`Runtime/run.sh`）。**不只以「能编过」为准。**
+
+**现网课堂主路径能力面（B 收官检查清单）**：
+
+| 面 | 要对上的现网行为 |
+| -- | ---------------- |
+| 桌面 | 标题栏/拖动/重叠；图标双击开 Shell、Settings、Files |
+| Theme | 色/点阵字体可改；偏好可落盘（`THEME.CFG`/`TOYOS.DB` 按刀演进） |
+| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `TOYOS.ID` |
+| 网络 | virtio-net；`ping`；lwIP 课路径（builtin 可作对照） |
+| 用户态 | 多只教学 ELF；`exec`；syscall 读写 |
+| 输入 | 键鼠可用（PS/2 可先，HID 对标现网） |
+
+**分档**：
+
+| 档 | 含义 | 状态 |
+| -- | ---- | ---- |
+| **A 骨架** | 接棒 + 表齐 + K13–K20 | ✅ 已收官 |
+| **B 对标现网** | K21–K52 相位 P1–P5 | ★ 进行中 |
+| **C 后置** | 真机 / SMP / virt 全桌面 | 不挡 B |
 
 ### 1.2 迁移原则
 
@@ -308,7 +435,9 @@ KernelMain
 | **K10** | USB 探控（XhciBase） | handoff / 窗内 CAP | `Usb: xhci ok` |
 | **K11** | Network 探网卡 | PCI class 0x02 | `Net: nic ok` |
 | **K12** | Gui 桌面壳 | 底色+顶栏 | `Gui: desktop ok` |
-| **K13…K20** | 加厚到桌面 | 见文首「加厚到桌面」表 | 分刀验收；终局 §1.1 |
+| **K13…K20** ✅ | 加厚骨架 | 见文首「加厚到桌面」表 | 分刀验收 ✅ |
+| **K21…K52** | 对标现网主轨（P1–P5） | 见文首相位表 | 到 §1.1 档 B |
+| **后置 C** | 真机/SMP/virt 桌面 | 文首后置表 | 不挡档 B |
 
 > K1–K3 偏「早期可见」；K4–K12 挂齐模块表薄实现；**K13 起加厚**。可按风险微调，但 **K0 必须先落地**；改排队须改文首表。
 
@@ -526,3 +655,6 @@ Kernel/
 | 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
 | 2026-10-09 | TG：K19 HELLO.ELF + 调用链文档；★ → K20（virtio-net） |
 | 2026-10-09 | TG：K20 legacy virtio-net TX/RX + Console 跟手；★ → 后置拆刀 |
+| 2026-10-09 | 钉 K21–K28 课感桌面主轨 + K29–K34 可选；★ → K21（Font/Theme 最小）；分档 A/B/C |
+| 2026-10-09 | **终局改钉对标现网**：K21–K52 分 P1–P5；课感 B 档废止；约定 #5；★ 仍 K21 |
+| 2026-10-09 | TG：K21 Font+Theme；★ → K22（Shell 命令表） |

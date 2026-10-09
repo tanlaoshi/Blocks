@@ -90,15 +90,13 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatFile ElfLoad
-                    Process Network Gui Scheduler Console Kernel)
+                    Process Network Theme Font Gui Scheduler Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
     # Hal 跨 Arch 默认实现放 Hal/Common，不进 Core
     "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCapability.c" \
         -o "$out/HalCapability.o"
-    "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalFont.c" \
-        -o "$out/HalFont.o"
     if [ "$with_video_stub" = 1 ]; then
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalVideoStub.c" \
             -o "$out/HalVideoStub.o"
@@ -141,7 +139,7 @@ x64|X64)
         "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" "$OUT/HalVirtioNet.o" \
         "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalFont.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -177,7 +175,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/HalFont.o" \
+        "$OUT/Theme.o" "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
@@ -216,7 +214,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/HalFont.o" \
+        "$OUT/Theme.o" "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \

@@ -6,9 +6,10 @@
  * 服务端回显；客户端 connect+send。不做多连接 / 拥塞 / 完备重传（另刀）。
  */
 #include "Network.h"
+#include "LwIp.h"
 #include "HalNet.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 
@@ -90,7 +91,7 @@ static UINT16 TcpCsum(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Seg, UINTN SegLen
 }
 
 static void PutHex16(UINT16 V) {
-    HalSerialWriteChannelHex32(TOY_SLOG_NET, (UINT32)V);
+    HalSerialWriteChannelHex32(SLOG_NET, (UINT32)V);
 }
 
 void NetworkTcpInitialize(void) {
@@ -154,9 +155,9 @@ int NetworkTcpListen(UINT16 Port) {
     NetworkTcpInitialize();
     gLocalPort = Port;
     gState = NETWORK_TCP_LISTEN;
-    HalSerialWriteChannel(TOY_SLOG_NET, "tcp: listen ");
+    HalSerialWriteChannel(SLOG_NET, "tcp: listen ");
     PutHex16(Port);
-    HalSerialWriteChannel(TOY_SLOG_NET, "\n");
+    HalSerialWriteChannel(SLOG_NET, "\n");
     return 0;
 }
 
@@ -227,7 +228,7 @@ static void OnListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort, UINT8 Flags,
     gPeerWnd = (Window != 0) ? Window : 1u;
     gState = NETWORK_TCP_SYN_RCVD;
     if (SendSeg(TCP_FLAG_SYN | TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt) != 0) {
-        HalSerialWriteChannel(TOY_SLOG_NET, "tcp: syn-ack fail\n");
+        HalSerialWriteChannel(SLOG_NET, "tcp: syn-ack fail\n");
         gState = NETWORK_TCP_LISTEN;
         return;
     }
@@ -314,7 +315,7 @@ static void OnEstablished(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort, UINT8 Fl
     }
     gPeerWnd = (Window != 0) ? Window : 1u;
     if (Flags & TCP_FLAG_RST) {
-        HalSerialWriteChannel(TOY_SLOG_NET, "tcp: reset\n");
+        HalSerialWriteChannel(SLOG_NET, "tcp: reset\n");
         NetworkTcpInitialize();
         return;
     }
@@ -345,7 +346,7 @@ static void OnEstablished(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort, UINT8 Fl
                           gSndNxt, gRcvNxt);
             if (!gClientMode) {
                 gSndNxt++;
-                HalSerialWriteChannel(TOY_SLOG_NET, "tcp: closed\n");
+                HalSerialWriteChannel(SLOG_NET, "tcp: closed\n");
                 NetworkTcpInitialize();
             }
         }
@@ -446,6 +447,10 @@ void NetworkTcpPoll(int TimeoutMs) {
     UINT32 Tries;
 
     gPollTicks++;
+    /* lwIP 活跃时 RX 归 NetworkLwip，勿再吃帧 */
+    if (LwIpActive()) {
+        return;
+    }
     Tries = (TimeoutMs > 0) ? (UINT32)(TimeoutMs / 2) : 1u;
     for (Spin = 0; (UINT32)Spin < Tries; Spin++) {
         RxLen = HalNetReceive(Rx, sizeof(Rx));

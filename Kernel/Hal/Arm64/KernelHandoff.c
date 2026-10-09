@@ -184,17 +184,17 @@ static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free
     return 0;
 }
 
-#if TOY_BRINGUP
+#if BRINGUP
 
 /*
  * 极早期 bringup：证明能进 C 即可，不组 BOOT_INFO、不进 KernelMain。
- * 编译：build.sh / Makefile 定义 TOY_BRINGUP=1。
+ * 编译：build.sh / Makefile 定义 BRINGUP=1。
  */
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
     HalSerialInitialize();
     HalSerialWrite("board: ");
-    HalSerialWrite(TOY_BOARD_NAME);
+    HalSerialWrite(BOARD_NAME);
     HalSerialWrite(" (bringup)\n");
     for (;;) {
     }

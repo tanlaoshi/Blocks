@@ -21,7 +21,7 @@
 #include "FontTtf.h"
 #include "Locale.h"
 #include "Theme.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define GUI_CUR_COLOR 0x00FFFFFFu
 #define GUI_CUR_W     8u
@@ -163,7 +163,7 @@ int GuiInitialize(void) {
     gFbH = 0;
     HalVideoGetSize(&gFbW, &gFbH);
     if (Info == 0 || Info->FrameBufferSize == 0 || gFbW < 160 || gFbH < 80) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: skip (no FB)\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: skip (no FB)\n");
         return 0;
     }
 
@@ -183,8 +183,8 @@ int GuiInitialize(void) {
     GuiWinPresentFull();
 
     gDesktopReady = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: desktop ok\n");
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: start menu ready\n");
+    HalSerialWriteChannel(SLOG_GUI, "Gui: desktop ok\n");
+    HalSerialWriteChannel(SLOG_GUI, "Gui: start menu ready\n");
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalPs2MouseInit() == 0 && HalPs2MouseReady()) {
@@ -193,9 +193,9 @@ int GuiInitialize(void) {
         gCursorOn = 1;
         gCursorShown = 0;
         CursorShow();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: mouse ok\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: mouse ok\n");
     } else {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: mouse skip\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: mouse skip\n");
     }
 #endif
     return 0;

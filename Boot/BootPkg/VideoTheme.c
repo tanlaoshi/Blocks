@@ -162,8 +162,8 @@ STATIC EFI_STATUS ReadThemeCfgOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     return EFI_SUCCESS;
 }
 
-/* Settings 写在挂载的 TOYOS 系统盘；ESP/启动盘上的 THEME.CFG 可能是旧的 */
-BOOLEAN FsHasToyOsId(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs) {
+/* Settings 写在挂载的 BLOCKS 系统盘；ESP/启动盘上的 THEME.CFG 可能是旧的 */
+BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs) {
     EFI_STATUS Status;
     EFI_FILE_PROTOCOL *Root = NULL;
     EFI_FILE_PROTOCOL *File = NULL;
@@ -175,9 +175,9 @@ BOOLEAN FsHasToyOsId(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs) {
     if (EFI_ERROR(Status)) {
         return FALSE;
     }
-    Status = Root->Open(Root, &File, L"\\TOYOS.ID", EFI_FILE_MODE_READ, 0);
+    Status = Root->Open(Root, &File, L"\\BLOCKS.ID", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(Status)) {
-        Status = Root->Open(Root, &File, L"\\toyos.id", EFI_FILE_MODE_READ, 0);
+        Status = Root->Open(Root, &File, L"\\TOYOS.ID", EFI_FILE_MODE_READ, 0); /* 旧标兼容 */
     }
     if (!EFI_ERROR(Status) && File != NULL) {
         File->Close(File);
@@ -227,7 +227,7 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
         HandleCount = 0;
     }
 
-    /* Pass0: 带 TOYOS.ID 的卷（Settings 写入处）；Pass1: 其它卷含启动盘 */
+    /* Pass0: 带 BLOCKS.ID 的卷（Settings 写入处）；Pass1: 其它卷含启动盘 */
     for (Pass = 0; Pass < 2; Pass++) {
         for (i = 0; i < HandleCount; i++) {
             Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
@@ -236,10 +236,10 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
                 continue;
             }
             if (Pass == 0) {
-                if (!FsHasToyOsId(Fs)) {
+                if (!FsHasOsMarker(Fs)) {
                     continue;
                 }
-            } else if (FsHasToyOsId(Fs)) {
+            } else if (FsHasOsMarker(Fs)) {
                 continue;
             }
             if (TryParseModeOnFs(Fs, OutW, OutH)) {

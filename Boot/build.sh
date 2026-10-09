@@ -52,7 +52,7 @@ if ! command -v GenFw >/dev/null 2>&1; then
     make -C "$EDK2_ROOT/BaseTools/Source/C" -j"$(nproc 2>/dev/null || echo 2)"
 fi
 
-command build -a X64 -p BootPkg/Boot.dsc -t GCC -D TOY_BOOT_DEBUG="$DEBUG"
+command build -a X64 -p BootPkg/Boot.dsc -t GCC -D BOOT_DEBUG="$DEBUG"
 
 EFI_OUT="$WORKSPACE/Build/BootPkg/DEBUG_GCC/X64/BootPkg.efi"
 if [ ! -f "$EFI_OUT" ]; then
@@ -68,7 +68,7 @@ cp -f "$EFI_OUT" "$BOOT_BUILD_DIR/BOOTX64.EFI"
 cp -f "$EFI_OUT" "$BOOT_BUILD_DIR/BootPkg.efi"
 
 echo "=========================================="
-echo "Boot OK  TOY_BOOT_DEBUG=$DEBUG"
+echo "Boot OK  BOOT_DEBUG=$DEBUG"
 echo "WORKSPACE=$WORKSPACE"
 echo "PACKAGES_PATH=$PACKAGES_PATH"
 echo "Installed: $BOOT_BUILD_DIR/BOOTX64.EFI"

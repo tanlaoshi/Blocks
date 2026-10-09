@@ -7,7 +7,7 @@
 #include "Scheduler.h"
 #include "HalSerial.h"
 #include "HalTimer.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static int gSchedReady;
 
@@ -16,11 +16,11 @@ int SchedulerInitialize(void) {
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalTimerInit() == 0 && HalTimerReady()) {
         HalTimerIrqEnable();
-        HalSerialWriteChannel(TOY_SLOG_MISC, "Scheduler: timer ok\n");
+        HalSerialWriteChannel(SLOG_MISC, "Scheduler: timer ok\n");
         gSchedReady = 1;
         return 0;
     }
-    HalSerialWriteChannel(TOY_SLOG_MISC, "Scheduler: timer skip (coop)\n");
+    HalSerialWriteChannel(SLOG_MISC, "Scheduler: timer skip (coop)\n");
 #endif
     gSchedReady = 1;
     return 0;

@@ -1,14 +1,14 @@
 /*
- * FatProbe.c — K16：在块设备上找根目录 TOYOS.ID
+ * FatProbe.c — K16：在块设备上找根目录 BLOCKS.ID
  *
  * 【初学者】
- * 读 LBA0（或 MBR 第一分区）BPB → 算根目录 → 扫 8.3 名 "TOYOS   ID"。
+ * 读 LBA0（或 MBR 第一分区）BPB → 算根目录 → 扫 8.3 名 "BLOCKS  ID"。
  * FAT16 固定根目录；FAT32 跟 FAT 表簇链（有限步）。
  */
 #include "BootTypes.h"
 #include "HalBlock.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define SECTOR 512u
 
@@ -48,7 +48,7 @@ static int LooksLikeBpb(const UINT8 *Sec) {
     return 0;
 }
 
-/* Dir 扇区里找 TOYOS.ID；找到返回 1 */
+/* Dir 扇区里找 BLOCKS.ID；找到返回 1 */
 static int ScanDirSector(const UINT8 *Sec) {
     UINTN Off;
     for (Off = 0; Off < SECTOR; Off += 32u) {
@@ -64,7 +64,9 @@ static int ScanDirSector(const UINT8 *Sec) {
         if ((Sec[Off + 11] & 0x0Fu) == 0x0Fu) {
             continue; /* LFN */
         }
-        if (MemEq(Sec + Off, "TOYOS   ID ", 11)) {
+        /* BLOCKS.ID；兼容旧 TOYOS.ID */
+        if (MemEq(Sec + Off, "BLOCKS  ID ", 11) ||
+            MemEq(Sec + Off, "TOYOS   ID ", 11)) {
             return 1;
         }
     }
@@ -133,7 +135,7 @@ static int ScanClusterChain(UINT32 DataLba, UINT8 Spc, UINT32 FatLba,
     return -1;
 }
 
-int FatProbeToyOsId(void) {
+int FatProbeOsMarker(void) {
     UINT8 Sec[SECTOR];
     UINT16 Bps;
     UINT8 Spc;
@@ -153,7 +155,7 @@ int FatProbeToyOsId(void) {
         return -1;
     }
     if (HalBlockRead(0, Sec, 1) != 0) {
-        HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat LBA0 read fail\n");
+        HalSerialWriteChannel(SLOG_FS, "Fs: fat LBA0 read fail\n");
         return -1;
     }
 
@@ -173,7 +175,7 @@ int FatProbeToyOsId(void) {
         }
         if (PartLba == 0 || HalBlockRead(PartLba, Sec, 1) != 0 ||
             !LooksLikeBpb(Sec)) {
-            HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat no BPB\n");
+            HalSerialWriteChannel(SLOG_FS, "Fs: fat no BPB\n");
             return -1;
         }
     }
@@ -185,7 +187,7 @@ int FatProbeToyOsId(void) {
     RootEnt = Rd16(Sec + 17);
     FatSz16 = Rd16(Sec + 22);
     if (Bps != SECTOR || Spc == 0 || Nfats == 0) {
-        HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat bad BPB\n");
+        HalSerialWriteChannel(SLOG_FS, "Fs: fat bad BPB\n");
         return -1;
     }
     FatSz = FatSz16 ? (UINT32)FatSz16 : Rd32(Sec + 36);
@@ -197,14 +199,14 @@ int FatProbeToyOsId(void) {
     if (RootEnt != 0) {
         for (i = 0; i < RootSecs && i < 128u; i++) {
             if (HalBlockRead(RootLba + i, Sec, 1) != 0) {
-                HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat root read fail\n");
+                HalSerialWriteChannel(SLOG_FS, "Fs: fat root read fail\n");
                 return -1;
             }
             if (ScanDirSector(Sec)) {
                 return 0;
             }
         }
-        HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat root no TOYOS.ID\n");
+        HalSerialWriteChannel(SLOG_FS, "Fs: fat root no BLOCKS.ID\n");
         return -1;
     }
 
@@ -212,13 +214,13 @@ int FatProbeToyOsId(void) {
     {
         UINT32 RootClus = Rd32(Sec + 44);
         if (RootClus < 2u) {
-            HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat32 bad root clus\n");
+            HalSerialWriteChannel(SLOG_FS, "Fs: fat32 bad root clus\n");
             return -1;
         }
         if (ScanClusterChain(DataLba, Spc, FatLba, 32, RootClus) == 0) {
             return 0;
         }
-        HalSerialWriteChannel(TOY_SLOG_FS, "Fs: fat32 no TOYOS.ID\n");
+        HalSerialWriteChannel(SLOG_FS, "Fs: fat32 no BLOCKS.ID\n");
         return -1;
     }
 }

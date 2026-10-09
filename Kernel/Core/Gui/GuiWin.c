@@ -14,7 +14,7 @@
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Locale.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 typedef struct {
     int On;
@@ -232,7 +232,7 @@ void GuiWinClose(int Id) {
     GuiWinCompose();
     GuiWinPresentFull();
     HalPs2Poll();
-    HalSerialWriteChannel(TOY_SLOG_GUI, (Id == GUI_WIN_SHELL)
+    HalSerialWriteChannel(SLOG_GUI, (Id == GUI_WIN_SHELL)
                                               ? "Gui: shell closed\n"
                                               : "Gui: about closed\n");
 }
@@ -247,13 +247,13 @@ void GuiWinOpen(int Id) {
     gW[Id].On = 1;
     GuiWinFocus(Id);
     if (Id == GUI_WIN_SHELL) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: shell opened\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: shell opened\n");
     } else if (Id == GUI_WIN_FILES) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: files opened\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: files opened\n");
     } else if (Id == GUI_WIN_SETTINGS) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: settings opened\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: settings opened\n");
     } else {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: about opened\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: about opened\n");
     }
 }
 

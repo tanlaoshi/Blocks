@@ -70,7 +70,7 @@ static void BootSerialPutChar(char C) {
 }
 
 void EFIAPI BootSerialBanner(void) {
-    BootSerialWrite("ToyBoot\n");
+    BootSerialWrite("Blocks Boot\n");
     if (BootSerialPresent()) {
         BootSerialWrite("COM1 Serial OK\n");
     } else {

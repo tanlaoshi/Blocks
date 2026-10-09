@@ -9,7 +9,7 @@
 #include "FatFile.h"
 #include "FileSystem.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define CFG_PATH "THEME.CFG"
 #define CFG_MAX  512u
@@ -209,13 +209,13 @@ int ThemeLoadCfg(void) {
     ThemeInitialize();
     gModeW = 0;
     gModeH = 0;
-    if (!FileSystemHasToyOsId()) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: cfg skip (no fs)\n");
+    if (!FileSystemHasOsMarker()) {
+        HalSerialWriteChannel(SLOG_GUI, "Theme: cfg skip (no fs)\n");
         return -1;
     }
     if (FatFileReadPath(CFG_PATH, Buf, sizeof(Buf) - 1u, &Size) < 0 ||
         Size == 0) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: cfg miss\n");
+        HalSerialWriteChannel(SLOG_GUI, "Theme: cfg miss\n");
         return -1;
     }
     Buf[Size] = 0;
@@ -233,7 +233,7 @@ int ThemeLoadCfg(void) {
             Line[L++] = C;
         }
     }
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: cfg loaded\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: cfg loaded\n");
     return 0;
 }
 
@@ -247,8 +247,8 @@ int ThemeSaveCfg(void) {
     UINT32 H;
 
     ThemeInitialize();
-    if (!FileSystemHasToyOsId()) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: save skip (no fs)\n");
+    if (!FileSystemHasOsMarker()) {
+        HalSerialWriteChannel(SLOG_GUI, "Theme: save skip (no fs)\n");
         return -1;
     }
     Pos = Append(Buf, sizeof(Buf), Pos, "# Blocks THEME.CFG\n");
@@ -308,9 +308,9 @@ int ThemeSaveCfg(void) {
         Pos = Append(Buf, sizeof(Buf), Pos, ModeLine);
     }
     if (FatFileWritePath(CFG_PATH, Buf, (UINT32)Pos) != 0) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: save fail\n");
+        HalSerialWriteChannel(SLOG_GUI, "Theme: save fail\n");
         return -1;
     }
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: cfg saved\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: cfg saved\n");
     return 0;
 }

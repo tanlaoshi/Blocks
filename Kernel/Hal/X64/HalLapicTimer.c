@@ -8,7 +8,7 @@
 #include "HalTimer.h"
 #include "HalCpu.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define LAPIC_DEFAULT   0xFEE00000ull
 #define LAPIC_MSR       0x1Bu
@@ -127,7 +127,7 @@ int HalTimerInit(void) {
         __asm__ volatile("pause");
     }
     if (gTicks < Start + 2u) {
-        HalSerialWriteChannel(TOY_SLOG_MISC, "Sched: WARN no lapic irq\n");
+        HalSerialWriteChannel(SLOG_MISC, "Sched: WARN no lapic irq\n");
         LapicW(LAPIC_LVT_TIMER, LVT_MASKED | TIMER_VEC);
         __asm__ volatile("cli" ::: "memory");
         gReady = 0;

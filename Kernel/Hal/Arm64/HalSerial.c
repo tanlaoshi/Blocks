@@ -3,17 +3,17 @@
  *
  * 【初学者】
  * virt 机器把 UART 放在固定 MMIO 基址（见 Board/virt/BoardConfig.h 的
- * TOY_BOARD_UART_BASE）。PL011 是 ARM 常见串口 IP：写 DR 寄存器发字节，
+ * BOARD_UART_BASE）。PL011 是 ARM 常见串口 IP：写 DR 寄存器发字节，
  * 读 FR 看发送 FIFO 是否满（TXFF）。
  *
  * 与 X64 的差别：没有 inb/outb，是「把指针当寄存器」的内存映射 IO。
- * TOY_SERIAL=0：不碰 UART。分模块 quiet 见 ToySerialConfig.h。
+ * SERIAL_ENABLE=0：不碰 UART。分模块 quiet 见 SerialConfig.h。
  */
 #include "HalSerial.h"
 #include "BoardConfig.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
-#define PL011_BASE  ((UINTN)TOY_BOARD_UART_BASE)
+#define PL011_BASE  ((UINTN)BOARD_UART_BASE)
 #define PL011_DR    (*(volatile UINT32 *)(PL011_BASE + 0x00))
 #define PL011_FR    (*(volatile UINT32 *)(PL011_BASE + 0x18))
 #define PL011_FR_TXFF  (1u << 5)
@@ -22,27 +22,27 @@ static int gShellOwnUart;
 static int gSerialReady;
 
 static int ChannelUartOn(int Channel) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT: return TOY_SERIAL_BOOT;
-    case TOY_SLOG_USB:  return TOY_SERIAL_USB;
-    case TOY_SLOG_SMP:  return TOY_SERIAL_SMP;
-    case TOY_SLOG_GUI:  return TOY_SERIAL_GUI;
-    case TOY_SLOG_NET:  return TOY_SERIAL_NET;
-    case TOY_SLOG_FS:   return TOY_SERIAL_FS;
-    case TOY_SLOG_MEM:  return TOY_SERIAL_MEM;
-    case TOY_SLOG_DRV:  return TOY_SERIAL_DRV;
-    case TOY_SLOG_MISC:
-    default:            return TOY_SERIAL_MISC;
+    case SLOG_BOOT: return SERIAL_CH_BOOT;
+    case SLOG_USB:  return SERIAL_CH_USB;
+    case SLOG_SMP:  return SERIAL_CH_SMP;
+    case SLOG_GUI:  return SERIAL_CH_GUI;
+    case SLOG_NET:  return SERIAL_CH_NET;
+    case SLOG_FS:   return SERIAL_CH_FS;
+    case SLOG_MEM:  return SERIAL_CH_MEM;
+    case SLOG_DRV:  return SERIAL_CH_DRV;
+    case SLOG_MISC:
+    default:            return SERIAL_CH_MISC;
     }
 #endif
 }
 
 static void UartPut(char C) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     while (PL011_FR & PL011_FR_TXFF) {
     }
     PL011_DR = (UINT32)(UINT8)C;
@@ -53,7 +53,7 @@ static void UartPut(char C) {
 
 /* \\n → \\r\\n（含 Input/timer 等直呼 HalSerialWrite 的路径）；已有 \\r\\n 不叠 */
 static void UartWriteRaw(const char *Text) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Text;
 #else
     if (Text == 0) {
@@ -78,12 +78,12 @@ static void UartWriteRaw(const char *Text) {
 }
 
 void HalSerialInitialize(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     if (gSerialReady) {
         return;
     }
     gSerialReady = 1;
-    UartWriteRaw("ToyOS Arm64\n");
+    UartWriteRaw("Blocks Arm64\n");
     UartWriteRaw("PL011 Serial OK\n");
 #endif
 }
@@ -95,7 +95,7 @@ void HalSerialEnableRxIrq(void) {
 }
 
 int HalSerialPresent(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     return 1;
 #else
     return 0;
@@ -159,7 +159,7 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
 }
 
 void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MISC, Text);
+    HalSerialWriteChannel(SLOG_MISC, Text);
 }
 
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
@@ -177,7 +177,7 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 }
 
 int HalSerialDataReady(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     return (PL011_FR & (1u << 4)) ? 0 : 1;
@@ -185,7 +185,7 @@ int HalSerialDataReady(void) {
 }
 
 char HalSerialReadChar(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     while (!HalSerialDataReady()) {
@@ -206,7 +206,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
 }
 
 void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {

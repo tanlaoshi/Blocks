@@ -72,18 +72,18 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
     if (TryLoadDisplayPref(ImageHandle, &CfgW, &CfgH)) {
         HasCfgTarget = TRUE;
-        BootDbg("ToyBoot: THEME.CFG Mode %dx%d\n", CfgW, CfgH);
+        BootDbg("Boot: THEME.CFG Mode %dx%d\n", CfgW, CfgH);
     }
 
     if (!InVm) {
         if (!EFI_ERROR(TryGetEdidPreferred(ImageHandle, HandleBuffer[0], &EdidW, &EdidH))) {
             HasEdidTarget = TRUE;
-            BootDbg("ToyBoot: Monitor EDID Preferred %dx%d\n", EdidW, EdidH);
+            BootDbg("Boot: Monitor EDID Preferred %dx%d\n", EdidW, EdidH);
         } else {
-            BootSerialPrintf("ToyBoot: EDID Unavailable, Using Highest GOP Mode\n");
+            BootSerialPrintf("Boot: EDID Unavailable, Using Highest GOP Mode\n");
         }
     } else {
-        BootDbg("ToyBoot: Virtual Machine Detected, Using QEMU-Friendly Mode Table\n");
+        BootDbg("Boot: Virtual Machine Detected, Using QEMU-Friendly Mode Table\n");
     }
 
     /*
@@ -103,7 +103,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
             BestW = CurW;
             BestH = CurH;
             BestScore = 6000000000ULL;
-            BootDbg("ToyBoot: Keep Firmware Mode %dx%d (No mode=)\n", CurW, CurH);
+            BootDbg("Boot: Keep Firmware Mode %dx%d (No mode=)\n", CurW, CurH);
         }
     }
 
@@ -125,7 +125,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
             UINTN  Score;
             UINT32 Mi;
 
-            if (BootConfig != NULL && ModeCount < TOY_VIDEO_MODE_MAX) {
+            if (BootConfig != NULL && ModeCount < UEFI_VIDEO_MODE_MAX) {
                 for (Mi = 0; Mi < ModeCount; Mi++) {
                     if (BootConfig->VideoModes[Mi].Width == W &&
                         BootConfig->VideoModes[Mi].Height == H) {
@@ -173,7 +173,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
         SortVideoModesForSettings(BootConfig->VideoModes, ModeCount,
                                   InVm, HasEdidTarget, EdidW, EdidH);
         BootConfig->VideoModeCount = ModeCount;
-        BootDbg("ToyBoot: %u Unique GOP Modes For Settings", ModeCount);
+        BootDbg("Boot: %u Unique GOP Modes For Settings", ModeCount);
         if (!InVm && HasEdidTarget) {
             BootDbg(" (List: EDID %dx%d First)\n", EdidW, EdidH);
         } else {
@@ -183,19 +183,19 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
     if (HasCfgTarget && !CfgMatched) {
         if (SameAspectRatio(BestW, BestH, CfgW, CfgH)) {
-            BootDbg("ToyBoot: Mode %dx%d Not In GOP; Nearest Same-Aspect %dx%d\n",
+            BootDbg("Boot: Mode %dx%d Not In GOP; Nearest Same-Aspect %dx%d\n",
                   CfgW, CfgH, BestW, BestH);
         } else {
-            BootDbg("ToyBoot: Mode %dx%d Not In GOP; Nearest %dx%d\n",
+            BootDbg("Boot: Mode %dx%d Not In GOP; Nearest %dx%d\n",
                   CfgW, CfgH, BestW, BestH);
         }
     } else if (!HasCfgTarget && HasEdidTarget &&
                (BestW != EdidW || BestH != EdidH)) {
         if (SameAspectRatio(BestW, BestH, EdidW, EdidH)) {
-            BootDbg("ToyBoot: EDID %dx%d Not In GOP; Nearest Same-Aspect %dx%d\n",
+            BootDbg("Boot: EDID %dx%d Not In GOP; Nearest Same-Aspect %dx%d\n",
                   EdidW, EdidH, BestW, BestH);
         } else {
-            BootDbg("ToyBoot: EDID %dx%d Not In GOP; Nearest %dx%d\n",
+            BootDbg("Boot: EDID %dx%d Not In GOP; Nearest %dx%d\n",
                   EdidW, EdidH, BestW, BestH);
         }
     }
@@ -203,7 +203,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
     gBS->FreePool(HandleBuffer);
 
     if (BestScore == 0) {
-        BootDbg("ToyBoot: No Usable GOP Mode Found\n");
+        BootDbg("Boot: No Usable GOP Mode Found\n");
         return EFI_NOT_FOUND;
     }
 
@@ -251,23 +251,23 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
         }
 
         if (CurW == sBestW && CurH == sBestH) {
-            BootSerialPrintf("ToyBoot: Already %dx%d, Skip SetMode\n", sBestW, sBestH);
+            BootSerialPrintf("Boot: Already %dx%d, Skip SetMode\n", sBestW, sBestH);
         } else if (sInVm) {
             /*
              * Guest reboot / QEMU Reset 不会重读宿主 run.sh 的 edid；若此处 SetMode
              * 改分辨率，GTK 跳变会再复位，固件又回到 edid 旧模式 → 无限重启。
              */
-            BootDbg("ToyBoot: Skip SetMode %dx%d -> %dx%d On VM (QEMU+GTK Loop)\n",
+            BootDbg("Boot: Skip SetMode %dx%d -> %dx%d On VM (QEMU+GTK Loop)\n",
                   CurW, CurH, sBestW, sBestH);
             if (sHasCfgTarget) {
-                BootDbg("ToyBoot: THEME.CFG Wants %dx%d But GOP Is %dx%d\n",
+                BootDbg("Boot: THEME.CFG Wants %dx%d But GOP Is %dx%d\n",
                       sCfgW, sCfgH, CurW, CurH);
-                BootDbg("ToyBoot: Quit QEMU Window, Then Runtime/run.sh (EDID From THEME.CFG)\n");
+                BootDbg("Boot: Quit QEMU Window, Then Runtime/run.sh (EDID From THEME.CFG)\n");
             }
         } else {
             Status = Gop->SetMode(Gop, sBestMode);
             if (EFI_ERROR(Status)) {
-                BootSerialPrintf("ToyBoot: SetMode(%d) Failed: %r\n", sBestMode, Status);
+                BootSerialPrintf("Boot: SetMode(%d) Failed: %r\n", sBestMode, Status);
                 return Status;
             }
         }
@@ -282,29 +282,29 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     if (sHasCfgTarget && sCfgMatched &&
         VideoConfig->HorizontalResolution == sCfgW &&
         VideoConfig->VerticalResolution == sCfgH) {
-        BootDbg("ToyBoot: Display %dx%d (THEME.CFG)\n",
+        BootDbg("Boot: Display %dx%d (THEME.CFG)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
     } else if (sHasCfgTarget &&
                (VideoConfig->HorizontalResolution != sCfgW ||
                 VideoConfig->VerticalResolution != sCfgH)) {
         if (sInVm) {
-            BootDbg("ToyBoot: Display %dx%d (GOP; THEME.CFG %dx%d Not Applied — Relaunch QEMU)\n",
+            BootDbg("Boot: Display %dx%d (GOP; THEME.CFG %dx%d Not Applied — Relaunch QEMU)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
                   sCfgW, sCfgH);
         } else {
-            BootDbg("ToyBoot: Display %dx%d (Nearest To THEME.CFG %dx%d)\n",
+            BootDbg("Boot: Display %dx%d (Nearest To THEME.CFG %dx%d)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
                   sCfgW, sCfgH);
         }
     } else if (sInVm) {
-        BootDbg("ToyBoot: Display %dx%d (QEMU/VM)\n",
+        BootDbg("Boot: Display %dx%d (QEMU/VM)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
     } else if (sHasEdidTarget &&
                VideoConfig->HorizontalResolution == sEdidW &&
                VideoConfig->VerticalResolution == sEdidH) {
-        BootDbg("ToyBoot: Display %dx%d (EDID Native)\n", sEdidW, sEdidH);
+        BootDbg("Boot: Display %dx%d (EDID Native)\n", sEdidW, sEdidH);
     } else {
-        BootDbg("ToyBoot: Display %dx%d (Hardware Best Match)\n",
+        BootDbg("Boot: Display %dx%d (Hardware Best Match)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
     }
 
@@ -314,7 +314,7 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     if (BootConfig != NULL) {
         BootConfig->VideoModeCount = sModeCount;
         BootConfig->GopProtocol = (UINT64)(UINTN)Gop;
-        BootConfig->VideoModePad = TOY_BOOT_GOP_HANDOFF_MAGIC;
+        BootConfig->VideoModePad = UEFI_GOP_HANDOFF_MAGIC;
     }
 
     if (Gop->Mode != NULL && Gop->Mode->Info != NULL) {

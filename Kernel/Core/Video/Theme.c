@@ -7,7 +7,7 @@
  */
 #include "Theme.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static UINT32 gDesktopBg;
 static UINT32 gTaskbarBg;
@@ -72,7 +72,7 @@ void ThemeInitialize(void) {
     }
     ApplyInk();
     gReady = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: palette ok (ink)\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: palette ok (ink)\n");
 }
 
 int ThemeApplyNamed(const char *Name) {
@@ -88,7 +88,7 @@ int ThemeApplyNamed(const char *Name) {
         gThemeName[1] = 'n';
         gThemeName[2] = 'k';
         gThemeName[3] = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: ink\n");
+        HalSerialWriteChannel(SLOG_GUI, "Theme: ink\n");
         return 0;
     }
     if (Name[0] == 's' && Name[1] == 'l' && Name[2] == 'a' && Name[3] == 't' &&
@@ -100,7 +100,7 @@ int ThemeApplyNamed(const char *Name) {
         gThemeName[3] = 't';
         gThemeName[4] = 'e';
         gThemeName[5] = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: slate\n");
+        HalSerialWriteChannel(SLOG_GUI, "Theme: slate\n");
         return 0;
     }
     if (Name[0] == 'p' && Name[1] == 'i' && Name[2] == 'n' && Name[3] == 'e' &&
@@ -111,7 +111,7 @@ int ThemeApplyNamed(const char *Name) {
         gThemeName[2] = 'n';
         gThemeName[3] = 'e';
         gThemeName[4] = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: pine\n");
+        HalSerialWriteChannel(SLOG_GUI, "Theme: pine\n");
         return 0;
     }
     /* tech/modern：刻意不提供；青蓝霓虹课感差 */
@@ -172,7 +172,7 @@ void ThemeSetDesktopBackground(UINT32 Color) {
         ThemeInitialize();
     }
     gDesktopBg = Color & 0x00FFFFFFu;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: desktop set\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: desktop set\n");
 }
 
 void ThemeSetWindowTitleBar(UINT32 Color) {
@@ -181,7 +181,7 @@ void ThemeSetWindowTitleBar(UINT32 Color) {
     }
     gWinTitleBar = Color & 0x00FFFFFFu;
     gWinTitleDim = Darken(gWinTitleBar);
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: title set\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: title set\n");
 }
 
 void ThemeSetTaskbarBackground(UINT32 Color) {
@@ -189,7 +189,7 @@ void ThemeSetTaskbarBackground(UINT32 Color) {
         ThemeInitialize();
     }
     gTaskbarBg = Color & 0x00FFFFFFu;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: taskbar set\n");
+    HalSerialWriteChannel(SLOG_GUI, "Theme: taskbar set\n");
 }
 
 UINT32 ThemeWindowClient(void) {

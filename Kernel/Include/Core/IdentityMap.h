@@ -23,7 +23,7 @@
 #include "BootTypes.h"
 
 /* 早期恒等：4GiB = 4096 MiB（用 2MiB 大页铺） */
-#define TOY_IDENTITY_MB    4096u
-#define TOY_IDENTITY_BYTES (4096ull << 20)
+#define IDENTITY_MB    4096u
+#define IDENTITY_BYTES (4096ull << 20)
 
 #endif

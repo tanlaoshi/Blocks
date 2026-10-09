@@ -11,7 +11,7 @@
 #include "HalVideo.h"
 #include "Locale.h"
 #include "Theme.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define MENU_N 3u
 
@@ -141,7 +141,7 @@ int GuiStartHitMenu(INT32 X, INT32 Y) {
 
 int GuiStartToggle(void) {
     gMenuOn = !gMenuOn;
-    HalSerialWriteChannel(TOY_SLOG_GUI, gMenuOn ? "Gui: start open\n"
+    HalSerialWriteChannel(SLOG_GUI, gMenuOn ? "Gui: start open\n"
                                                  : "Gui: start close\n");
     return 1;
 }
@@ -157,6 +157,6 @@ int GuiStartActivate(int WinId) {
     } else {
         GuiWinOpen(WinId);
     }
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: start launch\n");
+    HalSerialWriteChannel(SLOG_GUI, "Gui: start launch\n");
     return 1;
 }

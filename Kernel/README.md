@@ -39,8 +39,8 @@
 | `Hal/X64/HalVideo.c` | LFB + K6 背缓冲 / Present |
 | `Hal/X64/HalCpu.c` | K7：最小 GDT/IDT（不 sti） |
 | `Core/Scheduler.c` | K8：协作壳（Init only） |
-| `Core/Console.c` | K8：`ToyOS ready` + `Blocks>` 回显 |
-| `Core/FileSystem.c` | K16：virtio-blk+FAT 探 `TOYOS.ID`（失败退 handoff） |
+| `Core/Console.c` | K8：`Blocks ready` + `Blocks>` 回显 |
+| `Core/FileSystem.c` | K16：virtio-blk+FAT 探 `BLOCKS.ID`（失败退 handoff） |
 | `Core/FatProbe.c` | 薄 FAT 根目录扫描 |
 | `Hal/X64/HalVirtioBlk.c` | legacy virtio-blk 读扇区（`HalBlock.h`） |
 | `Core/Gui.c` | K17：XOR 光标 + 顶栏点击日志（`GuiPoll`） |
@@ -61,5 +61,5 @@
 cd ~/Blocks/Kernel
 ./build.sh x64|arm64|riscv   # → Build/<Arch>/Kernel.elf
 ./build.sh x64 SERIAL=0      # 编译期关掉 UART
-./build.sh x64 SCREEN_LOG=1  # boot 日志画到屏幕（分通道 TOY_SCREEN_LOG_*）
+./build.sh x64 SCREEN_LOG=1  # boot 日志画到屏幕（分通道 SCREEN_LOG_*）
 ```

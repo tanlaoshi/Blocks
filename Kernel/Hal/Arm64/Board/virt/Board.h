@@ -3,8 +3,8 @@
  *
  * 板名等查询；不进 Common（Common 只认 BOOT_INFO / Hal 门面）。
  */
-#ifndef TOY_BOARD_H
-#define TOY_BOARD_H
+#ifndef BOARD_H
+#define BOARD_H
 
 #include "BoardConfig.h"
 

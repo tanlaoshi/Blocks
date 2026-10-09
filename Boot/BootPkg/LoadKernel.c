@@ -1,7 +1,7 @@
 /*
  * LoadKernel.c — 找盘读 Kernel.elf，校验并装入内存
  *
- * Boot.c 第三步。含：按卷查找、TOYOS.ID 优先、ELF 段加载。
+ * Boot.c 第三步。含：按卷查找、BLOCKS.ID 优先、ELF 段加载。
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>
@@ -17,7 +17,8 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     STATIC CHAR16 *Paths[] = {
         L"\\Kernel.elf",
         L"\\KERNEL.ELF",
-        L"\\EFI\\ToyOS\\Kernel.elf",
+        L"\\EFI\\Blocks\\Kernel.elf",
+        L"\\EFI\\ToyOS\\Kernel.elf", /* 旧路径兼容 */
     };
     EFI_STATUS Status;
     EFI_FILE_PROTOCOL *Root = NULL;
@@ -118,22 +119,22 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     }
 
     /*
-     * 双盘布局：必须先读带 TOYOS.ID 的系统盘（disk1/rootfs），避免启动盘旧
-     * Kernel.elf 抢先加载。Pass0=TOYOS；Pass1=其它非启动卷；Pass2=启动卷兜底。
+     * 双盘布局：必须先读带 BLOCKS.ID 的系统盘（disk1/rootfs），避免启动盘旧
+     * Kernel.elf 抢先加载。Pass0=BLOCKS；Pass1=其它非启动卷；Pass2=启动卷兜底。
      */
     for (Pass = 0; Pass < 3; Pass++) {
         for (i = 0; i < HandleCount; i++) {
             BOOLEAN IsBoot = (Handles[i] == LoadedImage->DeviceHandle);
-            BOOLEAN IsToyOs;
+            BOOLEAN IsOsVol;
 
             Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
                                          (VOID **)&Fs);
             if (EFI_ERROR(Status)) {
                 continue;
             }
-            IsToyOs = FsHasToyOsId(Fs);
+            IsOsVol = FsHasOsMarker(Fs);
             if (Pass == 0) {
-                if (!IsToyOs) {
+                if (!IsOsVol) {
                     continue;
                 }
             } else if (Pass == 1) {
@@ -149,11 +150,11 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
             Status = OpenKernelOnFs(Fs, OutBuffer, OutSize);
             if (!EFI_ERROR(Status)) {
                 if (Pass == 0) {
-                    BootDbg("ToyBoot: Kernel.elf From TOYOS Volume\n");
+                    BootDbg("Boot: Kernel.elf From BLOCKS Volume\n");
                 } else if (Pass == 1) {
-                    BootDbg("ToyBoot: Kernel.elf From Secondary Volume\n");
+                    BootDbg("Boot: Kernel.elf From Secondary Volume\n");
                 } else {
-                    BootDbg("ToyBoot: Kernel.elf From Boot Volume\n");
+                    BootDbg("Boot: Kernel.elf From Boot Volume\n");
                 }
                 if (Handles != NULL) {
                     gBS->FreePool(Handles);
@@ -166,11 +167,11 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     if (Handles != NULL) {
         gBS->FreePool(Handles);
     }
-    BootSerialPrintf("ToyBoot: Kernel.elf Not Found On Any Volume\n");
+    BootSerialPrintf("Boot: Kernel.elf Not Found On Any Volume\n");
     return EFI_NOT_FOUND;
 }
 
-STATIC BOOLEAN ScanToyOsIdVolumes(VOID) {
+STATIC BOOLEAN ScanOsMarkerVolumes(VOID) {
     EFI_STATUS Status;
     UINTN HandleCount = 0;
     EFI_HANDLE *Handles = NULL;
@@ -186,7 +187,7 @@ STATIC BOOLEAN ScanToyOsIdVolumes(VOID) {
     for (i = 0; i < HandleCount; i++) {
         Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
                                      (VOID **)&Fs);
-        if (!EFI_ERROR(Status) && FsHasToyOsId(Fs)) {
+        if (!EFI_ERROR(Status) && FsHasOsMarker(Fs)) {
             Seen = TRUE;
             break;
         }
@@ -214,9 +215,9 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
     }
     BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
 
-    BootConfig->ToyOsIdSeen = ScanToyOsIdVolumes() ? 1u : 0u;
-    BootSerialPrintf(BootConfig->ToyOsIdSeen ? "Boot: TOYOS.ID seen\n"
-                                             : "Boot: TOYOS.ID missing\n");
+    BootConfig->OsIdSeen = ScanOsMarkerVolumes() ? 1u : 0u;
+    BootSerialPrintf(BootConfig->OsIdSeen ? "Boot: BLOCKS.ID seen\n"
+                                             : "Boot: BLOCKS.ID missing\n");
     return EFI_SUCCESS;
 }
 
@@ -262,7 +263,7 @@ EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
 
     Hdr = (ELF_HEADER_64 *)(UINTN)ElfBase;
     if (Hdr->Machine != EM_X86_64) {
-        BootSerialPrintf("ToyBoot: Bad ELF Machine 0x%x\n", Hdr->Machine);
+        BootSerialPrintf("Boot: Bad ELF Machine 0x%x\n", Hdr->Machine);
         return EFI_UNSUPPORTED;
     }
     if (Hdr->PHeadSize < sizeof(PROGRAM_HEADER_64) || Hdr->PHeadCount == 0) {
@@ -285,12 +286,12 @@ EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
             continue;
         }
         if (Ph->Offset >= FileSize || Ph->SizeInFile > FileSize - Ph->Offset) {
-            BootSerialPrintf("ToyBoot: PT_LOAD Out Of File\n");
+            BootSerialPrintf("Boot: PT_LOAD Out Of File\n");
             return EFI_UNSUPPORTED;
         }
         SegEnd = Ph->PAddress + Ph->SizeInMemory;
         if (SegEnd < Ph->PAddress) {
-            BootSerialPrintf("ToyBoot: PT_LOAD Address Wrap\n");
+            BootSerialPrintf("Boot: PT_LOAD Address Wrap\n");
             return EFI_UNSUPPORTED;
         }
         if (Low > Ph->PAddress) {
@@ -310,12 +311,12 @@ EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
 
         /* ceil(Span/4096)；防 Span 过大导致 PageCount 回绕 */
         if (Span > (~(UINT64)0 - 0xFFFULL)) {
-            BootSerialPrintf("ToyBoot: Page Count Wrap\n");
+            BootSerialPrintf("Boot: Page Count Wrap\n");
             return EFI_UNSUPPORTED;
         }
         PageCount = (UINTN)((Span + 0xFFFULL) >> 12);
         if (PageCount == 0 || (UINT64)PageCount != ((Span + 0xFFFULL) >> 12)) {
-            BootSerialPrintf("ToyBoot: Page Count Wrap\n");
+            BootSerialPrintf("Boot: Page Count Wrap\n");
             return EFI_UNSUPPORTED;
         }
     }

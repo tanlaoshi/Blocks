@@ -8,7 +8,7 @@
 #include "Process.h"
 #include "Theme.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define FILES_MAX   24u
 #define LINE_H      20u
@@ -56,7 +56,7 @@ void GuiFilesRefresh(void) {
     gCount = 0;
     if (FatDirListRoot(gEnts, FILES_MAX, &gCount) != 0) {
         gCount = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: files ls fail\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: files ls fail\n");
     }
 }
 
@@ -122,10 +122,10 @@ int GuiFilesClick(INT32 X, INT32 Y) {
         return 0;
     }
     if (!NameIsElf(gEnts[Row].Name)) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: files not elf\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: files not elf\n");
         return 0;
     }
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: files exec\n");
+    HalSerialWriteChannel(SLOG_GUI, "Gui: files exec\n");
     (void)ProcessExecPath(gEnts[Row].Name);
     return 1;
 }

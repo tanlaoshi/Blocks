@@ -8,7 +8,7 @@
 #include "HalSerial.h"
 #include "HalSyscall.h"
 #include "PhysicalMemory.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define ELF_MAX (128u * 1024u)
 

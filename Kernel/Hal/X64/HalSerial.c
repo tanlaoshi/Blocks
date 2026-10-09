@@ -8,14 +8,14 @@
  *
  * 与 Boot/BootPkg/BootSerial 同口同波特率（115200 8N1），方便整段 boot 日志连贯。
  *
- * TOY_SERIAL=0：编译期关掉，不 Probe、不碰端口（见 ToySerialConfig.h）。
+ * SERIAL_ENABLE=0：编译期关掉，不 Probe、不碰端口（见 SerialConfig.h）。
  * SCREEN_LOG=1：WriteChannel 经 HalSerialGop 画到 FB（见 HalSerialGop.c）。
  *
  * 【积木】门面 HalSerial.h；本文件是 X64 UART 后端。
  */
 #include "HalSerial.h"
 #include "HalSerialGop.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define COM1 0x3F8u
 /* 宿主机 stdio 一堵，长等会拖死整机（鼠/GUI 假死）。短等后丢字节。 */
@@ -39,7 +39,7 @@ static int ProbeCom1(void) {
     UINT8 A;
     UINT8 B;
 
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     Out8(COM1 + 7, 0x55);
@@ -51,27 +51,27 @@ static int ProbeCom1(void) {
 }
 
 static int ChannelUartOn(int Channel) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT: return TOY_SERIAL_BOOT;
-    case TOY_SLOG_USB:  return TOY_SERIAL_USB;
-    case TOY_SLOG_SMP:  return TOY_SERIAL_SMP;
-    case TOY_SLOG_GUI:  return TOY_SERIAL_GUI;
-    case TOY_SLOG_NET:  return TOY_SERIAL_NET;
-    case TOY_SLOG_FS:   return TOY_SERIAL_FS;
-    case TOY_SLOG_MEM:  return TOY_SERIAL_MEM;
-    case TOY_SLOG_DRV:  return TOY_SERIAL_DRV;
-    case TOY_SLOG_MISC:
-    default:            return TOY_SERIAL_MISC;
+    case SLOG_BOOT: return SERIAL_CH_BOOT;
+    case SLOG_USB:  return SERIAL_CH_USB;
+    case SLOG_SMP:  return SERIAL_CH_SMP;
+    case SLOG_GUI:  return SERIAL_CH_GUI;
+    case SLOG_NET:  return SERIAL_CH_NET;
+    case SLOG_FS:   return SERIAL_CH_FS;
+    case SLOG_MEM:  return SERIAL_CH_MEM;
+    case SLOG_DRV:  return SERIAL_CH_DRV;
+    case SLOG_MISC:
+    default:            return SERIAL_CH_MISC;
     }
 #endif
 }
 
 static void UartPut(char C) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     int Timeout;
 
     if (!gSerialOk) {
@@ -92,7 +92,7 @@ static void UartPut(char C) {
 }
 
 static void UartWriteRaw(const char *Text) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Text;
 #else
     if (Text == 0) {
@@ -117,7 +117,7 @@ static void UartWriteRaw(const char *Text) {
 }
 
 void HalSerialInitialize(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     gSerialOk = 0;
     gSerialReady = 1;
     return;
@@ -134,7 +134,7 @@ void HalSerialInitialize(void) {
         Out8(COM1 + 3, 0x03); /* 8N1 */
         Out8(COM1 + 2, 0xC7);
         Out8(COM1 + 4, 0x0B);
-        UartWriteRaw("ToyOS X64\n");
+        UartWriteRaw("Blocks X64\n");
         UartWriteRaw("COM1 Serial OK\n");
     } else {
         /* 无 COM1：静默（Boot 阶段可能已报过） */
@@ -144,7 +144,7 @@ void HalSerialInitialize(void) {
 }
 
 void HalSerialRetryIfMissing(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     if (!gSerialOk) {
         gSerialOk = ProbeCom1();
         if (gSerialOk && !gSerialReady) {
@@ -205,7 +205,7 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
 }
 
 void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MISC, Text);
+    HalSerialWriteChannel(SLOG_MISC, Text);
 }
 
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
@@ -223,7 +223,7 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 }
 
 int HalSerialDataReady(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     return gSerialOk && (In8(COM1 + 5) & 0x01) ? 1 : 0;
@@ -231,7 +231,7 @@ int HalSerialDataReady(void) {
 }
 
 char HalSerialReadChar(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     while (!HalSerialDataReady()) {
@@ -246,7 +246,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
 }
 
 void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {

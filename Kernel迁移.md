@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K41** · 嵌入 lwIP 最小 + `lwip on` |
+| **★** | **PR-K42** · DNS / 基础 `NetConfig` |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K40** · TCP 最小（单连接对照） ✅ |
+| 刚收官 | **PR-K41** · 嵌入 lwIP 最小 + `lwip on` ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -41,7 +41,7 @@
 | **K13** ✅ | VMM：把高址 MMIO（如 xHCI BAR）映进页表 | K10 只能 handoff，读寄存器会挂 | `VMM: map mmio ok`；`Usb: … cap=` ✅ |
 | **K14** ✅ | USB：xHCI 复位 + 端口状态（仍不 HID） | 有 MMIO 才能摸控制器 | `Usb: reset ok` / `port N CCS=` ✅ |
 | **K15** ✅ | 键入最小（QEMU 先 PS/2；HID 后刀） | 桌面要键入；串口壳可先吃键 | GTK 窗按键进 `Blocks>` ✅ |
-| **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `TOYOS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: TOYOS.ID ready (kernel)` ✅ |
+| **K16** ✅ | FileSystem：内核侧 Block+FAT 读 `BLOCKS.ID` | 去掉对 Boot 扫卷的依赖 | `Fs: BLOCKS.ID ready (kernel)` ✅ |
 | **K17** ✅ | Gui：鼠标光标 + 桌面点击反馈 | 从「画皮」到可指点 | 光标移动；点击顶栏有串口/屏反馈 ✅ |
 | **K18** ✅ | Scheduler：LAPIC 定时器 + 协作/轻抢占 | 现网桌面要节拍；Console 可 yield | 周期性 tick 日志或光标闪；shell 仍活 ✅ |
 | **K19** ✅ | 用户态：加载并跑一个 `HELLO.ELF` | 到桌面课感；RootFs 已有 ELF | 串口见 hello；进程退出回 `Blocks>` ✅ |
@@ -67,7 +67,7 @@
 | -- | ------ | -------- | ------------ |
 | **K21** ✅ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；契约 `FontDraw*`（开机屏 `HalBootFont`） |
 | **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
-| **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
+| **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `BLOCKS.ID`/`HELLO.ELF`；文本可读 |
 | **K24** ✅ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
 | **K25** ✅ | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
 
@@ -100,8 +100,8 @@
 | **K38** ✅ | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
 | **K39** ✅ | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
 | **K40** ✅ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
-| **K41** ★ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
-| **K42** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
+| **K41** ✅ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
+| **K42** ★ | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
 | **K43** | 用户态 `NETLIB`/`NETDEMO` 能跑 | libToyNet | `exec` 见网络演示输出 |
 
 #### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
@@ -134,7 +134,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K41）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络；★ = K42）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -183,20 +183,20 @@
 | -- | ---- |
 | **做** | `SchedulerInitialize` 壳；`Console` 横幅/`Blocks>`/读行回显；`\\r`/`\\n` 都行结束 |
 | **不做** | 抢占定时器、多核、完整 shell 语法、Gui |
-| **验收** | `[Mod] Scheduler` → `ToyOS ready` → `Blocks>`；输入回显 ✅ |
+| **验收** | `[Mod] Scheduler` → `Blocks ready` → `Blocks>`；输入回显 ✅ |
 
 表序：`… → Cpu → Scheduler → Console`（中间 USB/FS/… 后挂）。
 
 ### K9 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：模块表挂 `FileSystem`；认系统卷标记 `TOYOS.ID`（本刀吃 Boot handoff）。
+**一句话**：模块表挂 `FileSystem`；认系统卷标记 `BLOCKS.ID`（本刀吃 Boot handoff）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | Boot 扫卷写 `ToyOsIdSeen`；Handoff→`BOOT_INFO`；`FileSystemInitialize` 串口报 ready |
+| **做** | Boot 扫卷写 `OsIdSeen`；Handoff→`BOOT_INFO`；`FileSystemInitialize` 串口报 ready |
 | **不做** | 内核侧 AHCI/virtio-blk、完整 FAT API、写文件、Store |
 | **Arm/RiscV** | 无 UEFI 扫卷则 stub 软成功 |
-| **验收** | `[Mod] FileSystem`；`Fs: TOYOS.ID ready (Boot handoff)` → `Blocks>` ✅ |
+| **验收** | `[Mod] FileSystem`；`Fs: BLOCKS.ID ready (Boot handoff)` → `Blocks>` ✅ |
 
 表序：`… → Cpu → FileSystem → Scheduler → Console`。
 
@@ -276,14 +276,14 @@
 
 ### K16 规划（已收官 ✅ · 曾 ★）
 
-**一句话**：内核自己从块设备读 FAT，找到根目录 `TOYOS.ID`（不再只靠 Boot handoff）。
+**一句话**：内核自己从块设备读 FAT，找到根目录 `BLOCKS.ID`（不再只靠 Boot handoff）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `HalBlock`（QEMU：`virtio-blk` 读扇区）；薄 FAT 探根目录；见 `TOYOS.ID` 打 `Fs: … (kernel)` |
+| **做** | `HalBlock`（QEMU：`virtio-blk` 读扇区）；薄 FAT 探根目录；见 `BLOCKS.ID` 打 `Fs: … (kernel)` |
 | **不做** | 完整 VFS、写文件、多卷、Store；AHCI 可后刀 |
 | **Arm/RiscV** | stub / 仍 handoff |
-| **验收** | `Fs: TOYOS.ID ready (kernel)` → `Blocks>` ✅ |
+| **验收** | `Fs: BLOCKS.ID ready (kernel)` → `Blocks>` ✅ |
 | **Runtime** | Root=`virtio-blk-pci,disable-modern=on`（vvfat）；ESP 仍 IDE |
 
 依赖：PMM（DMA 缓冲）；legacy IO BAR（勿 modern-only）。
@@ -366,8 +366,8 @@
 | -- | ---- |
 | **做** | Fat 列根目录；按名读小文件到串口；Shell 命令 `ls`/`cat` |
 | **不做** | 写盘、多卷、LFN 全套、VFS |
-| **验收** | `ls` 见 `TOYOS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
-| **落地** | `FatVol`/`FatDir`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `TOYOS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat TOYOS.ID` → `Blocks root volume` |
+| **验收** | `ls` 见 `BLOCKS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
+| **落地** | `FatVol`/`FatDir`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `BLOCKS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat BLOCKS.ID` → `Blocks root volume` |
 
 ### K24 规划（已收官 ✅ · 曾 ★）
 
@@ -564,17 +564,28 @@
 | **验收** | `tcplisten 5000` + 宿主机 `nc 127.0.0.1 15000` → `tcp: client connected` + `tcp echo: hello-k40`；`ping: ok` |
 | **落地** | `NetworkTcp.c`；`run.sh` `hostfwd=tcp::15000-:5000` |
 
-### K41 规划（★ · 最小子集）
+### K41 已收官
 
 **一句话**：编入 lwIP 最小胶水 + Shell `lwip on` 切换课路径。
 
 | 项 | 定调 |
 | -- | ---- |
 | **做** | 嵌入 lwIP；`lwip on`/`lwip status`；活跃后 `ping` 走 lwIP |
-| **不做** | DNS（K42）、NETLIB/NETDEMO（K43）、自动开机 `lwip on` |
-| **验收** | `lwip on` → `ping` → `ping: ok`（串口可见 lwIP 路径日志） |
-| **对照** | 现网 N-lwip / `CodeA-HAL/X64/LwIp` |
-| **落地** | JX 再钉 ThirdParty/胶水文件名 |
+| **不做** | DNS（K42）、NETLIB/NETDEMO（K43）、自动开机 `lwip on`、热切回 builtin |
+| **验收** | `lwip on` → `ping` → `ping … (lwIP) …` / `ping: ok` |
+| **落地** | `ThirdParty/lwip`；`Hal/X64/LwIp`（`LwIpNetif`/`LwIpIcmp`）；`NetworkLwip.c`；`LWIP=1` 默认 |
+
+### K42 规划（★ · 最小子集）
+
+**一句话**：DNS 查询 + 基础网配置（对标现网 NetConfig 薄）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `dns` 或等价；NetConfig 最小（地址/DNS）；需 `lwip on` |
+| **不做** | NETLIB/NETDEMO（K43）、完整 DHCP UI |
+| **验收** | 串口可见解析结果或字面量 IP（JX 再钉命令） |
+| **对照** | 现网网配置 / DNS |
+| **落地** | JX 再钉 |
 
 ### K22+ 细则
 
@@ -600,7 +611,7 @@
 | -- | ---------------- |
 | 桌面 | 标题栏/拖动/重叠；图标双击开 Shell、Settings、Files |
 | Theme | 色/点阵字体可改；偏好可落盘（`THEME.CFG`/`TOYOS.DB` 按刀演进） |
-| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `TOYOS.ID` |
+| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `BLOCKS.ID` |
 | 网络 | virtio-net；`ping`；lwIP 课路径（builtin 可作对照） |
 | 用户态 | 多只教学 ELF；`exec`；syscall 读写 |
 | 输入 | 键鼠可用（PS/2 可先，HID 对标现网） |
@@ -657,8 +668,8 @@ KernelMain
 | **K5** | Driver 框架 + VirtualMemory | 页表/开分页；沿用 4GiB 窗 | 分页后串口仍活；FB 已映 |
 | **K6** | Video 模块（背缓冲） | `InitializeVideo` | 接 Boot 黑底、不强制全屏 Clear |
 | **K7** | Cpu（GDT/IDT/LAPIC 或 arch 等价） | `Hal/X64` 等 | 中断门可挂；定时器可空 |
-| **K8** | Scheduler 最小 + Console 串口壳 | 单核 shell 可交互 | 串口提示符；`ToyOS ready` 类横幅 |
-| **K9** | FileSystem 识盘（Boot handoff） | `ToyOsIdSeen` | `Fs: TOYOS.ID ready` |
+| **K8** | Scheduler 最小 + Console 串口壳 | 单核 shell 可交互 | 串口提示符；`Blocks ready` 类横幅 |
+| **K9** | FileSystem 识盘（Boot handoff） | `OsIdSeen` | `Fs: BLOCKS.ID ready` |
 | **K10** | USB 探控（XhciBase） | handoff / 窗内 CAP | `Usb: xhci ok` |
 | **K11** | Network 探网卡 | PCI class 0x02 | `Net: nic ok` |
 | **K12** | Gui 桌面壳 | 底色+顶栏 | `Gui: desktop ok` |
@@ -764,8 +775,8 @@ KernelMain
 
 ### 做
 
-- X64 `HalSerialGop.c`：`SCREEN_LOG=1` 时按 `TOY_SCREEN_LOG_*` 上滚到 FB（Y≥80）
-- `KernelMain` 主线走 `TOY_SLOG_BOOT`；`HalSerialGopEnable` 接在 `HalVideoSet` 后
+- X64 `HalSerialGop.c`：`SCREEN_LOG=1` 时按 `SCREEN_LOG_*` 上滚到 FB（Y≥80）
+- `KernelMain` 主线走 `SLOG_BOOT`；`HalSerialGopEnable` 接在 `HalVideoSet` 后
 - `build.sh`：`SCREEN_LOG=0|1`（默认 0）；Arm/RiscV 仍空操作
 
 ### 不做
@@ -785,7 +796,7 @@ KernelMain
 | `Hal/X64/HalSerialGop.c` | 上滚 / Enable / Mute / Mirror |
 | `Hal/X64/HalSerial.c` | WriteChannel → TryMirror |
 | `Core/KernelMain.c` | BOOT 通道 + GopEnable |
-| `build.sh` | `-DTOY_SCREEN_LOG=` |
+| `build.sh` | `-DSCREEN_LOG=` |
 
 ---
 
@@ -869,14 +880,14 @@ Kernel/
 | 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
 | 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
 | 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
-| 2026-10-08 | TG：K9 FileSystem（Boot `TOYOS.ID` handoff）；★ → K10（USB） |
+| 2026-10-08 | TG：K9 FileSystem（Boot `BLOCKS.ID` handoff）；★ → K10（USB） |
 | 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
 | 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
 | 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
 | 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
 | 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
 | 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |
-| 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 TOYOS.ID） |
+| 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 BLOCKS.ID） |
 | 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
 | 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
 | 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
@@ -904,3 +915,5 @@ Kernel/
 | 2026-10-10 | TG：K39 ✅ UDP + Shell；顺手图标标签居中；★ → **K40**（TCP 最小） |
 | 2026-10-10 | JX：K40 ✅ 单连接 TCP echo + `tcplisten`/`tcpconnect`；hostfwd :15000；待 TG |
 | 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |
+| 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
+| 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |

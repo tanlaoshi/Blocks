@@ -1,8 +1,8 @@
 /*
  * Board.h — QEMU riscv64 virt 板包门面
  */
-#ifndef TOY_BOARD_H
-#define TOY_BOARD_H
+#ifndef BOARD_H
+#define BOARD_H
 
 #include "BoardConfig.h"
 

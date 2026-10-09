@@ -6,7 +6,7 @@
 #include "FontTtf.h"
 #include "HalFpu.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 
@@ -104,22 +104,22 @@ int FontTtfInit(void) {
     gInit = 0;
     Blob = FontTtfBlob(&Size);
     if (!Blob || Size < 12u || !HalFpuOk()) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf init skip\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf init skip\n");
         return -1;
     }
     if (!HalFpuBegin()) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf init skip\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf init skip\n");
         return -1;
     }
     gArenaUsed = 0;
     Ok = stbtt_InitFont(&gInfo, Blob, 0);
     HalFpuEnd();
     if (!Ok) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf init fail\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf init fail\n");
         return -1;
     }
     gInit = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf init ok\n");
+    HalSerialWriteChannel(SLOG_GUI, "Font: ttf init ok\n");
     return 0;
 }
 
@@ -183,7 +183,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
 #else
 
 int FontTtfInit(void) {
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf init skip\n");
+    HalSerialWriteChannel(SLOG_GUI, "Font: ttf init skip\n");
     return -1;
 }
 

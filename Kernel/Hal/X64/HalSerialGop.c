@@ -2,7 +2,7 @@
  * HalSerialGop.c — PR-K3：boot 日志镜像到帧缓冲（最小子集）
  *
  * 【初学者】
- * SCREEN_LOG=1 时，受 TOY_SCREEN_LOG_* 放行的通道会把一行字画到屏上。
+ * SCREEN_LOG=1 时，受 SCREEN_LOG_* 放行的通道会把一行字画到屏上。
  * 画字用 HAL 自持 HalBootFont（与 Core/Font 桌面字库分离，无回调穿插）。
  * 背缓冲开启后画在 back 上，须 Present 才上屏。
  *
@@ -12,9 +12,9 @@
 #include "HalSerialGop.h"
 #include "HalBootFont.h"
 #include "HalVideo.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
-#if TOY_SCREEN_LOG
+#if SCREEN_LOG
 
 #define BOOT_LOG_X       8u
 #define BOOT_LOG_BODY_Y  80u
@@ -31,16 +31,16 @@ static UINT32 gBootVisN;
 
 static int ChannelGopOn(int Channel) {
     switch (Channel) {
-    case TOY_SLOG_BOOT: return TOY_SCREEN_LOG_BOOT;
-    case TOY_SLOG_USB:  return TOY_SCREEN_LOG_USB;
-    case TOY_SLOG_SMP:  return TOY_SCREEN_LOG_SMP;
-    case TOY_SLOG_GUI:  return TOY_SCREEN_LOG_GUI;
-    case TOY_SLOG_NET:  return TOY_SCREEN_LOG_NET;
-    case TOY_SLOG_FS:   return TOY_SCREEN_LOG_FS;
-    case TOY_SLOG_MEM:  return TOY_SCREEN_LOG_MEM;
-    case TOY_SLOG_DRV:  return TOY_SCREEN_LOG_DRV;
-    case TOY_SLOG_MISC:
-    default:            return TOY_SCREEN_LOG_MISC;
+    case SLOG_BOOT: return SCREEN_LOG_BOOT;
+    case SLOG_USB:  return SCREEN_LOG_USB;
+    case SLOG_SMP:  return SCREEN_LOG_SMP;
+    case SLOG_GUI:  return SCREEN_LOG_GUI;
+    case SLOG_NET:  return SCREEN_LOG_NET;
+    case SLOG_FS:   return SCREEN_LOG_FS;
+    case SLOG_MEM:  return SCREEN_LOG_MEM;
+    case SLOG_DRV:  return SCREEN_LOG_DRV;
+    case SLOG_MISC:
+    default:            return SCREEN_LOG_MISC;
     }
 }
 
@@ -217,7 +217,7 @@ void HalSerialBootLogRewind(void) {
 }
 
 
-#else /* !TOY_SCREEN_LOG */
+#else /* !SCREEN_LOG */
 
 
 void HalSerialGopTryMirror(int Channel, const char *Text) {

@@ -11,6 +11,7 @@
 #include "Console.h"
 #include "Theme.h"
 #include "Network.h"
+#include "LwIp.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
@@ -576,7 +577,27 @@ static void CmdUdpSend(int Argc, char **Argv) {
     }
 }
 
-/* ping — ICMP echo；默认 10.0.2.2（QEMU 网关） */
+/* lwip on|status */
+static void CmdLwip(int Argc, char **Argv) {
+    if (Argc < 2) {
+        Put("usage: lwip on|status\n");
+        return;
+    }
+    if (StrEq(Argv[1], "on")) {
+        if (LwIpInitialize() != 0) {
+            Put("lwip: init fail\n");
+            return;
+        }
+        return;
+    }
+    if (StrEq(Argv[1], "status")) {
+        Put(LwIpActive() ? "lwip: on\n" : "lwip: off (builtin; run lwip on)\n");
+        return;
+    }
+    Put("usage: lwip on|status\n");
+}
+
+/* ping — ICMP echo；默认 10.0.2.2（QEMU 网关）；lwip on 后走 lwIP */
 static void CmdPing(int Argc, char **Argv) {
     const char *Host = "10.0.2.2";
     int Rc;
@@ -590,7 +611,21 @@ static void CmdPing(int Argc, char **Argv) {
     }
     Put("ping ");
     Put(Host);
-    Put(" ...\n");
+    Put(LwIpActive() ? " (lwIP) ...\n" : " ...\n");
+    if (LwIpActive()) {
+        UINT32 Ip;
+        if (NetworkParseIp(Host, &Ip) != 0) {
+            Put("ping: fail (bad ip)\n");
+            return;
+        }
+        Rc = LwIpPing(Ip, 3000);
+        if (Rc == 0) {
+            Put("ping: ok\n");
+        } else {
+            Put("ping: fail (lwIP timeout)\n");
+        }
+        return;
+    }
     Rc = NetworkPing(Host, 3000);
     if (Rc == 0) {
         Put("ping: ok\n");
@@ -627,6 +662,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("lang", "UI language en|zh", CmdLang);
     ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
     ShellCmdRegister("ping", "ICMP echo (default 10.0.2.2)", CmdPing);
+    ShellCmdRegister("lwip", "lwip on|status", CmdLwip);
     ShellCmdRegister("udplisten", "bind UDP port", CmdUdpListen);
     ShellCmdRegister("udpsend", "send UDP text", CmdUdpSend);
     ShellCmdRegister("udprecv", "poll/print UDP queue", CmdUdpRecv);

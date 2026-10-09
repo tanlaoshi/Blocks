@@ -8,7 +8,7 @@
 #include "Network.h"
 #include "HalNet.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define UDP_HDR_LEN 8u
 #define UDP_RX_QUEUE 8u

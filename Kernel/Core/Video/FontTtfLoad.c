@@ -8,7 +8,7 @@
 #include "FatFile.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define TTF_PATH "CJK.TTF"
 #define TTF_MAX  (2u * 1024u * 1024u)
@@ -54,23 +54,23 @@ int FontTtfLoad(void) {
     gBlob = (UINT8 *)PhysicalMemoryAllocatePages(gPages);
     if (!gBlob) {
         gPages = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf oom\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf oom\n");
         return -1;
     }
     N = FatFileReadPath(TTF_PATH, gBlob, TTF_MAX, &Size);
     if (N < 0 || Size < 12u) {
         TtfFree();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf miss\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf miss\n");
         return -1;
     }
     Mag = Be32(gBlob);
     if (!SfntOk(Mag)) {
         TtfFree();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf not sfnt\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf not sfnt\n");
         return -1;
     }
     gSize = Size;
     gOk = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf sfnt ok\n");
+    HalSerialWriteChannel(SLOG_GUI, "Font: ttf sfnt ok\n");
     return 0;
 }

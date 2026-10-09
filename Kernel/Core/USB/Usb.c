@@ -10,7 +10,7 @@
 #include "BootTypes.h"
 #include "HalSerial.h"
 #include "HalXhci.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 #include "VirtualMemory.h"
 
 #define USB_MMIO_MAP_SIZE  0x10000ull
@@ -39,9 +39,9 @@ static void UsbLogPorts(void) {
     UINT32 Show;
 
     N = HalXhciPortCount();
-    HalSerialWriteChannel(TOY_SLOG_USB, "Usb: ports=");
-    HalSerialWriteChannelHex32(TOY_SLOG_USB, N);
-    HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+    HalSerialWriteChannel(SLOG_USB, "Usb: ports=");
+    HalSerialWriteChannelHex32(SLOG_USB, N);
+    HalSerialWriteChannel(SLOG_USB, "\n");
 
     Show = N;
     if (Show > USB_PORT_LOG_MAX) {
@@ -50,14 +50,14 @@ static void UsbLogPorts(void) {
     for (i = 1; i <= Show; i++) {
         int Ccs = HalXhciPortCcs(i);
 
-        HalSerialWriteChannel(TOY_SLOG_USB, "Usb: port ");
-        HalSerialWriteChannelHex32(TOY_SLOG_USB, i);
-        HalSerialWriteChannel(TOY_SLOG_USB, " CCS=");
+        HalSerialWriteChannel(SLOG_USB, "Usb: port ");
+        HalSerialWriteChannelHex32(SLOG_USB, i);
+        HalSerialWriteChannel(SLOG_USB, " CCS=");
         if (Ccs < 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "?\n");
+            HalSerialWriteChannel(SLOG_USB, "?\n");
         } else {
-            HalSerialWriteChannelHex32(TOY_SLOG_USB, (UINT32)Ccs);
-            HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+            HalSerialWriteChannelHex32(SLOG_USB, (UINT32)Ccs);
+            HalSerialWriteChannel(SLOG_USB, "\n");
         }
     }
 }
@@ -81,34 +81,34 @@ int UsbInitialize(void) {
         gXhciBase = Base;
 
         if (Base == 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN no xhci (handoff)\n");
+            HalSerialWriteChannel(SLOG_USB, "Usb: WARN no xhci (handoff)\n");
             return 0;
         }
 
         if (VirtualMemoryMapMmio(Base, USB_MMIO_MAP_SIZE, &Virt) != 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN map mmio fail @0x");
-            HalSerialWriteChannelHex64(TOY_SLOG_USB, Base);
-            HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+            HalSerialWriteChannel(SLOG_USB, "Usb: WARN map mmio fail @0x");
+            HalSerialWriteChannelHex64(SLOG_USB, Base);
+            HalSerialWriteChannel(SLOG_USB, "\n");
             return 0;
         }
         gXhciVirt = Virt;
 
         if (HalXhciAttach(Virt) != 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN xhci attach @0x");
-            HalSerialWriteChannelHex64(TOY_SLOG_USB, Virt);
-            HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+            HalSerialWriteChannel(SLOG_USB, "Usb: WARN xhci attach @0x");
+            HalSerialWriteChannelHex64(SLOG_USB, Virt);
+            HalSerialWriteChannel(SLOG_USB, "\n");
             return 0;
         }
 
-        HalSerialWriteChannel(TOY_SLOG_USB, "Usb: xhci ok @0x");
-        HalSerialWriteChannelHex64(TOY_SLOG_USB, Virt);
-        HalSerialWriteChannel(TOY_SLOG_USB, "\n");
+        HalSerialWriteChannel(SLOG_USB, "Usb: xhci ok @0x");
+        HalSerialWriteChannelHex64(SLOG_USB, Virt);
+        HalSerialWriteChannel(SLOG_USB, "\n");
 
         if (HalXhciReset() != 0) {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: WARN reset timeout\n");
+            HalSerialWriteChannel(SLOG_USB, "Usb: WARN reset timeout\n");
             /* 仍尝试读端口；软成功 */
         } else {
-            HalSerialWriteChannel(TOY_SLOG_USB, "Usb: reset ok\n");
+            HalSerialWriteChannel(SLOG_USB, "Usb: reset ok\n");
         }
 
         UsbLogPorts();
@@ -117,7 +117,7 @@ int UsbInitialize(void) {
     }
 #else
     (void)Info;
-    HalSerialWriteChannel(TOY_SLOG_USB, "Usb: stub (no xhci probe)\n");
+    HalSerialWriteChannel(SLOG_USB, "Usb: stub (no xhci probe)\n");
     return 0;
 #endif
 }

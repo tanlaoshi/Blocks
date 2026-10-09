@@ -10,7 +10,7 @@
 #include "HalVideo.h"
 #include "Locale.h"
 #include "Theme.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 #include "Utf8.h"
 
 #define DBL_TIMER_TICKS 50u
@@ -137,10 +137,10 @@ int GuiDesktopHitIcon(INT32 X, INT32 Y) {
 static void Activate(int WinId) {
     if (GuiWinIsOn(WinId)) {
         GuiWinFocus(WinId);
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon focus\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: icon focus\n");
     } else {
         GuiWinOpen(WinId);
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon open\n");
+        HalSerialWriteChannel(SLOG_GUI, "Gui: icon open\n");
     }
 }
 

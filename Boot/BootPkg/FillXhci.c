@@ -48,7 +48,7 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
         Subclass = (UINT8)((ClassCode >> 16) & 0xFF);
         ProgIF = (UINT8)((ClassCode >> 8) & 0xFF);
 
-#if TOY_BOOT_DEBUG
+#if BOOT_DEBUG
         BootDbg("[Boot] Device %d: VID=0x%04x, DID=0x%04x, Class=0x%02x, Sub=0x%02x, ProgIF=0x%02x\n",
               i, VendorID & 0xFFFF, (DeviceID >> 16) & 0xFFFF, Class, Subclass, ProgIF);
 #else

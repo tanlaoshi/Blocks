@@ -6,7 +6,7 @@
  * Enable = 写 CR4.PAE、CR3、CR0.PG，真正「打开分页」
  * Root   = 返回页表根物理址（调试 / 以后交接正式 VMM）
  *
- * 窗口大小见 IdentityMap.h（TOY_IDENTITY_BYTES = 4GiB）。
+ * 窗口大小见 IdentityMap.h（IDENTITY_BYTES = 4GiB）。
  * 头文件在 Include/Hal，供 Core 与 Hal/X64 共用；实现仍在 Hal/X64。
  */
 #ifndef EARLY_IDENTITY_H

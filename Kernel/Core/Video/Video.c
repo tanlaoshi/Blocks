@@ -4,17 +4,17 @@
 #include "Video.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 int VideoInitialize(void) {
     /* 不 ClearScreen：接 Boot 黑底 */
     HalVideoInitializeBackbuffer();
     if (HalVideoBackbufferEnabled()) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer on\n");
+        HalSerialWriteChannel(SLOG_GUI, "Video: backbuffer on\n");
         HalVideoPresent();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: present ok\n");
+        HalSerialWriteChannel(SLOG_GUI, "Video: present ok\n");
     } else {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Video: backbuffer skip\n");
+        HalSerialWriteChannel(SLOG_GUI, "Video: backbuffer skip\n");
     }
     return 0;
 }

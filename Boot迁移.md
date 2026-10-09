@@ -99,7 +99,7 @@ X64 HAL 接棒已迁入：`Kernel/Hal/X64/KernelHandoff.c`（见 §3）。
 - `KernelMain` 空转（X64 仅 EarlyIdentity 后 `for(;;)`）  
 - X64 `HalSerial` 尚无 GOP ring/上屏（仅 COM1 TX；与现网完整路径比仍缺一截）
 
-**串口（三架构齐）**：`Hal/<Arch>/HalSerial.c` + `Include/Core/ToySerialConfig.h`；`KernelHandoff` 里 `Initialize` + `handoff: BOOT_INFO ready`。X64 Boot 侧另有 `BootPkg/BootSerial`（EBS 前）。
+**串口（三架构齐）**：`Hal/<Arch>/HalSerial.c` + `Include/Core/SerialConfig.h`；`KernelHandoff` 里 `Initialize` + `handoff: BOOT_INFO ready`。X64 Boot 侧另有 `BootPkg/BootSerial`（EBS 前）。
 
 ---
 
@@ -240,5 +240,5 @@ Kernel/build.sh
 | 2026-10-08 | 后续计划改指 [`Kernel迁移.md`](Kernel迁移.md) |
 | 2026-10-08 | 工作区改名 **Blocks**（原 OpenBox）；GitHub 仓名待网页同步 |
 | 2026-10-08 | GitHub 已改名 `tanlaoshi/Blocks`；本地 `origin` 已同步 |
-| 2026-10-08 | 三架构 `HalSerial`：X64 COM1 / Arm64 PL011 / RiscV 16550；`build.sh` 默认 `TOY_SERIAL=1` |
+| 2026-10-08 | 三架构 `HalSerial`：X64 COM1 / Arm64 PL011 / RiscV 16550；`build.sh` 默认 `SERIAL_ENABLE=1` |
 | 2026-10-08 | BootPkg 按 `Boot.c` 六步整文件对齐：`BootSerial` / `BootVideo*` / `BootLoadKernel` / `BootFillRsdp` / `BootFillXhci` / `JumpToKernel`；QEMU 冒烟 ✅ |

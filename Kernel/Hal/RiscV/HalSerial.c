@@ -5,18 +5,18 @@
  * 芯片仍是「16550 家族」寄存器布局，但挂在内存地址上（不是 x86 端口）。
  * THR=发送保持；LSR.THRE=可以写下一字节。基址 / 寄存器间距见 BoardConfig。
  *
- * TOY_SERIAL=0：不碰 UART。门面与 X64/Arm64 相同：HalSerialWrite()。
+ * SERIAL_ENABLE=0：不碰 UART。门面与 X64/Arm64 相同：HalSerialWrite()。
  */
 #include "HalSerial.h"
 #include "BoardConfig.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
-#ifndef TOY_BOARD_UART_REG_SHIFT
-#define TOY_BOARD_UART_REG_SHIFT 0
+#ifndef BOARD_UART_REG_SHIFT
+#define BOARD_UART_REG_SHIFT 0
 #endif
 
-#define UART_BASE  ((UINTN)TOY_BOARD_UART_BASE)
-#define UART_OFF(N) ((UINTN)(N) << (TOY_BOARD_UART_REG_SHIFT))
+#define UART_BASE  ((UINTN)BOARD_UART_BASE)
+#define UART_OFF(N) ((UINTN)(N) << (BOARD_UART_REG_SHIFT))
 #define UART_THR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(0)))
 #define UART_LSR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(5)))
 #define UART_LSR_THRE  (1u << 5)
@@ -26,27 +26,27 @@ static int gShellOwnUart;
 static int gSerialReady;
 
 static int ChannelUartOn(int Channel) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT: return TOY_SERIAL_BOOT;
-    case TOY_SLOG_USB:  return TOY_SERIAL_USB;
-    case TOY_SLOG_SMP:  return TOY_SERIAL_SMP;
-    case TOY_SLOG_GUI:  return TOY_SERIAL_GUI;
-    case TOY_SLOG_NET:  return TOY_SERIAL_NET;
-    case TOY_SLOG_FS:   return TOY_SERIAL_FS;
-    case TOY_SLOG_MEM:  return TOY_SERIAL_MEM;
-    case TOY_SLOG_DRV:  return TOY_SERIAL_DRV;
-    case TOY_SLOG_MISC:
-    default:            return TOY_SERIAL_MISC;
+    case SLOG_BOOT: return SERIAL_CH_BOOT;
+    case SLOG_USB:  return SERIAL_CH_USB;
+    case SLOG_SMP:  return SERIAL_CH_SMP;
+    case SLOG_GUI:  return SERIAL_CH_GUI;
+    case SLOG_NET:  return SERIAL_CH_NET;
+    case SLOG_FS:   return SERIAL_CH_FS;
+    case SLOG_MEM:  return SERIAL_CH_MEM;
+    case SLOG_DRV:  return SERIAL_CH_DRV;
+    case SLOG_MISC:
+    default:            return SERIAL_CH_MISC;
     }
 #endif
 }
 
 static void UartPut(char C) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     while ((UART_LSR & UART_LSR_THRE) == 0) {
     }
     UART_THR = (UINT8)C;
@@ -57,7 +57,7 @@ static void UartPut(char C) {
 
 /* \\n → \\r\\n（含 Input/timer 等直呼 HalSerialWrite 的路径）；已有 \\r\\n 不叠 */
 static void UartWriteRaw(const char *Text) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Text;
 #else
     if (Text == 0) {
@@ -82,12 +82,12 @@ static void UartWriteRaw(const char *Text) {
 }
 
 void HalSerialInitialize(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     if (gSerialReady) {
         return;
     }
     gSerialReady = 1;
-    UartWriteRaw("ToyOS RiscV\n");
+    UartWriteRaw("Blocks RiscV\n");
     UartWriteRaw("UART16550 Serial OK\n");
 #endif
 }
@@ -99,7 +99,7 @@ void HalSerialEnableRxIrq(void) {
 }
 
 int HalSerialPresent(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     return 1;
 #else
     return 0;
@@ -163,7 +163,7 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
 }
 
 void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MISC, Text);
+    HalSerialWriteChannel(SLOG_MISC, Text);
 }
 
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
@@ -181,7 +181,7 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 }
 
 int HalSerialDataReady(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     return (UART_LSR & UART_LSR_DR) ? 1 : 0;
@@ -189,7 +189,7 @@ int HalSerialDataReady(void) {
 }
 
 char HalSerialReadChar(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     while (!HalSerialDataReady()) {
@@ -210,7 +210,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
 }
 
 void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {

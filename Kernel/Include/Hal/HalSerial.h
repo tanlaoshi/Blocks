@@ -4,7 +4,7 @@
  * 【初学者】
  * 上层写 HalSerialWriteChannel / WriteShell；不要 #ifdef 架构。
  * X64 COM1 / Arm64 PL011 / RiscV 16550。
- * TX 受 ToySerialConfig.h 约束。SCREEN_LOG 时 GopEnable 开屏上滚（HAL 自持字）。
+ * TX 受 SerialConfig.h 约束。SCREEN_LOG 时 GopEnable 开屏上滚（HAL 自持字）。
  */
 #ifndef HAL_SERIAL_H
 #define HAL_SERIAL_H

@@ -1,8 +1,8 @@
 /*
  * BootPrivate.h ? BootPkg ???????? .c ???
  */
-#ifndef TOY_BOOT_PRIVATE_H
-#define TOY_BOOT_PRIVATE_H
+#ifndef BOOT_PRIVATE_H
+#define BOOT_PRIVATE_H
 
 #include <Uefi.h>
 #include <Protocol/GraphicsOutput.h>
@@ -11,17 +11,17 @@
 #include "UefiBootConfig.h"
 #include "Serial.h"
 
-#ifndef TOY_BOOT_DEBUG
-#define TOY_BOOT_DEBUG 0
+#ifndef BOOT_DEBUG
+#define BOOT_DEBUG 0
 #endif
-#if TOY_BOOT_DEBUG
+#if BOOT_DEBUG
 #define BootDbg(...) BootSerialPrintf(__VA_ARGS__)
 #else
 #define BootDbg(...) do { } while (0)
 #endif
 
-typedef TOY_VIDEO_CONFIG VIDEO_CONFIG;
-typedef TOY_MEMORY_MAP   MEMORY_MAP;
+typedef UEFI_VIDEO_CONFIG VIDEO_CONFIG;
+typedef UEFI_MEMORY_MAP   MEMORY_MAP;
 
 /* Video?GetVideoInfo / SetVideoMode?????? VideoScore / Edid / Theme? */
 BOOLEAN IsVirtualMachine(VOID);
@@ -32,7 +32,7 @@ UINTN ScoreModeQemu(UINT32 W, UINT32 H);
 BOOLEAN SameAspectRatio(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH);
 UINTN ScoreModeNative(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH,
                       BOOLEAN HasTarget);
-VOID SortVideoModesForSettings(TOY_VIDEO_MODE *Modes, UINT32 Count,
+VOID SortVideoModesForSettings(UEFI_VIDEO_MODE *Modes, UINT32 Count,
                                BOOLEAN InVm, BOOLEAN HasEdid,
                                UINT32 EdidW, UINT32 EdidH);
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
@@ -41,7 +41,7 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);
 
 /* LoadKernel */
-BOOLEAN FsHasToyOsId(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
+BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
 EFI_STATUS CheckAndLoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,

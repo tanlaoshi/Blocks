@@ -19,7 +19,8 @@
 #include "Locale.h"
 #include "Theme.h"
 #include "Network.h"
-#include "ToySerialConfig.h"
+#include "LwIp.h"
+#include "SerialConfig.h"
 
 #define LINE_CAP 120
 
@@ -60,15 +61,15 @@ void ConsoleRefreshBanner(void) {
 }
 
 int ConsoleInitialize(void) {
-    HalSerialWriteChannel(TOY_SLOG_BOOT, "ToyOS ready\n");
+    HalSerialWriteChannel(SLOG_BOOT, "Blocks ready\n");
     if (HalPs2KbdInit() == 0 && HalPs2KbdReady()) {
-        HalSerialWriteChannel(TOY_SLOG_MISC, "Input: ps2 kbd ok\n");
+        HalSerialWriteChannel(SLOG_MISC, "Input: ps2 kbd ok\n");
     } else {
-        HalSerialWriteChannel(TOY_SLOG_MISC, "Input: ps2 skip (serial only)\n");
+        HalSerialWriteChannel(SLOG_MISC, "Input: ps2 skip (serial only)\n");
     }
     ShellCmdInitialize();
     ConsoleRefreshBanner();
-    HalSerialWriteChannel(TOY_SLOG_MISC, "Console: init ok\n");
+    HalSerialWriteChannel(SLOG_MISC, "Console: init ok\n");
     return 0;
 }
 
@@ -113,8 +114,10 @@ static int ConsoleReadLine(char *Buf, int Cap) {
             HalPs2Poll();
 #endif
             (void)GuiPoll();
-            /* K40：LISTEN/连接中收 TCP（hostfwd nc） */
-            if (NetworkTcpGetState() != NETWORK_TCP_CLOSED) {
+            /* K41：lwIP 活跃时统一 RX；否则 K40 builtin TCP */
+            if (LwIpActive()) {
+                LwIpService();
+            } else if (NetworkTcpGetState() != NETWORK_TCP_CLOSED) {
                 NetworkTcpPoll(0);
             }
             if (ConsolePollChar(&C)) {

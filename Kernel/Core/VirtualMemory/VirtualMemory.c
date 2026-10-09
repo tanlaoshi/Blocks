@@ -14,7 +14,7 @@
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include "EarlyIdentity.h"
@@ -23,7 +23,7 @@
 static int gVmReady;
 
 static void VmLog(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MEM, Text);
+    HalSerialWriteChannel(SLOG_MEM, Text);
 }
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -38,7 +38,7 @@ static void VmLogHex64(UINT64 Value) {
     char Buf[20];
 
     HalSerialFormatHex(Buf, Value, 16);
-    HalSerialWriteChannel(TOY_SLOG_MEM, Buf);
+    HalSerialWriteChannel(SLOG_MEM, Buf);
 }
 
 static int Cr0PagingOn(void) {
@@ -147,10 +147,10 @@ int VirtualMemoryMapIdentity(UINT64 Phys, UINT64 Size) {
     if (Size == 0) {
         return 0;
     }
-    if (Phys >= TOY_IDENTITY_BYTES) {
+    if (Phys >= IDENTITY_BYTES) {
         return -1;
     }
-    if (Size > TOY_IDENTITY_BYTES - Phys) {
+    if (Size > IDENTITY_BYTES - Phys) {
         return -1;
     }
     return 0;
@@ -171,7 +171,7 @@ int VirtualMemoryMapMmio(UINT64 Phys, UINT64 Size, UINT64 *OutVirt) {
     End = Phys + Size;
 
     /* 窗内已恒等，直接返回物理=虚址 */
-    if (End <= TOY_IDENTITY_BYTES) {
+    if (End <= IDENTITY_BYTES) {
         if (OutVirt != 0) {
             *OutVirt = Phys;
         }

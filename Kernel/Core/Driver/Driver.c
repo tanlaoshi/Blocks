@@ -4,11 +4,11 @@
 #include "Driver.h"
 #include "Device.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 int DriverInitialize(void) {
     DeviceInitialize();
     DeviceEnumerateAll();
-    HalSerialWriteChannel(TOY_SLOG_DRV, "Driver: shell ok\n");
+    HalSerialWriteChannel(SLOG_DRV, "Driver: shell ok\n");
     return 0;
 }

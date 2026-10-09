@@ -159,14 +159,14 @@ static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free
     return 0;
 }
 
-#if TOY_BRINGUP
+#if BRINGUP
 
 void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
     (void)DtbPhys;
     HalSerialInitialize();
     HalSerialWrite("board: ");
-    HalSerialWrite(TOY_BOARD_NAME);
+    HalSerialWrite(BOARD_NAME);
     HalSerialWrite(" (bringup)\n");
     for (;;) {
     }

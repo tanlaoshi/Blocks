@@ -13,7 +13,7 @@
 #include "BootInfo.h"
 #include "IdentityMap.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 /* 最多跟踪 128MiB → 32768 页 → 4KiB 位图 */
 #define PMM_MAX_PAGES 32768u
@@ -37,14 +37,14 @@ static void BitClear(UINT32 Index) {
 }
 
 static void PmmLog(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MEM, Text);
+    HalSerialWriteChannel(SLOG_MEM, Text);
 }
 
 static void PmmLogHex64(UINT64 Value) {
     char Buf[20];
 
     HalSerialFormatHex(Buf, Value, 16);
-    HalSerialWriteChannel(TOY_SLOG_MEM, Buf);
+    HalSerialWriteChannel(SLOG_MEM, Buf);
 }
 
 /* Handoff 会另挂 Free=0 保留段；从池里抠掉与之重叠的页 */
@@ -108,11 +108,11 @@ static int PickPool(const BOOT_INFO *Info, UINT64 *OutBase, UINT32 *OutPages) {
             continue;
         }
         /* 只管理恒等窗内，便于 K4 直接解引用 */
-        if (Start >= TOY_IDENTITY_BYTES) {
+        if (Start >= IDENTITY_BYTES) {
             continue;
         }
-        if (End > TOY_IDENTITY_BYTES) {
-            End = TOY_IDENTITY_BYTES;
+        if (End > IDENTITY_BYTES) {
+            End = IDENTITY_BYTES;
         }
         Size = End - Start;
         if (Size > BestSize) {

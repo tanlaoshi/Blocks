@@ -8,7 +8,7 @@
 #include "FatFile.h"
 #include "FileSystem.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define CFG_PATH "LAYOUT.CFG"
 #define CFG_MAX  512u
@@ -356,12 +356,12 @@ int GuiLayoutLoadCfg(void) {
     char Line[80];
     UINTN L = 0;
 
-    if (!FileSystemHasToyOsId()) {
+    if (!FileSystemHasOsMarker()) {
         return -1;
     }
     if (FatFileReadPath(CFG_PATH, Buf, sizeof(Buf) - 1u, &Size) < 0 ||
         Size == 0) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Layout: cfg miss (builtin)\n");
+        HalSerialWriteChannel(SLOG_GUI, "Layout: cfg miss (builtin)\n");
         return -1;
     }
     Buf[Size] = 0;
@@ -379,6 +379,6 @@ int GuiLayoutLoadCfg(void) {
             Line[L++] = C;
         }
     }
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Layout: cfg loaded\n");
+    HalSerialWriteChannel(SLOG_GUI, "Layout: cfg loaded\n");
     return 0;
 }

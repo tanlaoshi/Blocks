@@ -20,7 +20,7 @@ typedef struct {
 int FatDirListRoot(FAT_DIR_ENT *Out, UINT32 Cap, UINT32 *Count);
 
 /*
- * 按路径读根目录文件（如 "TOYOS.ID" / "HELLO.ELF"）。
+ * 按路径读根目录文件（如 "BLOCKS.ID" / "HELLO.ELF"）。
  * 成功返回字节数；失败 -1。
  */
 int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize);

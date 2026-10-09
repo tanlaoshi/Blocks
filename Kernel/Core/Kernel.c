@@ -29,7 +29,7 @@
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Modules.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include "EarlyIdentity.h"
@@ -84,7 +84,7 @@ static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
         Line[N++] = '\n';
     }
     Line[N] = 0;
-    HalSerialWriteChannel(TOY_SLOG_BOOT, Line);
+    HalSerialWriteChannel(SLOG_BOOT, Line);
 }
 
 static void KernelAttachEarly(void) {
@@ -97,7 +97,7 @@ static void KernelAttachEarly(void) {
     HalVideoSet(&Video);
     /* SCREEN_LOG=1：HAL 自持 HalBootFont 上滚（与 Core/Font 无关） */
     HalSerialGopEnable();
-    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: early ok\n");
+    HalSerialWriteChannel(SLOG_BOOT, "KernelMain: early ok\n");
 
     HalVideoGetSize(&Width, &Height);
     if (Info != 0 && Info->FrameBufferSize != 0 && Width != 0 && Height != 0) {
@@ -118,11 +118,11 @@ void KernelMain(const BOOT_INFO *Info) {
     KernelAttachEarly();
 
     if (ModulesRunFull() != 0) {
-        HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules failed\n");
+        HalSerialWriteChannel(SLOG_BOOT, "KernelMain: modules failed\n");
         KernelParkForever();
     }
 
-    HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: modules done\n");
+    HalSerialWriteChannel(SLOG_BOOT, "KernelMain: modules done\n");
     ConsoleRun();
     KernelParkForever();
 }

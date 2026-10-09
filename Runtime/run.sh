@@ -4,7 +4,7 @@
 #
 # 【初学者】
 #   disk0 = Esp/X64/      → BOOTX64.EFI
-#   disk1 = RootFs/X64/   → TOYOS.ID + Kernel.elf（Boot 优先从此盘读核）
+#   disk1 = RootFs/X64/   → BLOCKS.ID + Kernel.elf（Boot 优先从此盘读核）
 #
 # 用法：
 #   ./run.sh                 # 默认同步产物后启动（有显示则 gtk）
@@ -20,8 +20,8 @@ cd "$RUNTIME"
 HEADLESS=0
 DO_SYNC=1
 CLEAN_NVRAM=0
-MEM="${TOY_MEM:-1024M}"
-SMP="${TOY_SMP:-1}"
+MEM="${BLOCKS_MEM:-1024M}"
+SMP="${BLOCKS_SMP:-1}"
 
 for Arg in "$@"; do
     case "$Arg" in
@@ -78,10 +78,10 @@ if [ -z "${DISPLAY:-}" ] && [ "$HEADLESS" = 0 ]; then
 fi
 
 # VGA EDID：固件 GOP 初模；VM 内勿 SetMode（见 Boot Video.c），改分辨率须重起本脚本。
-# 优先 TOY_QEMU_XRES/YRES；否则读 THEME.CFG mode=WxH；缺省/auto → 1440x900（32px 字更宽松）。
-TOY_QEMU_XRES="${TOY_QEMU_XRES:-}"
-TOY_QEMU_YRES="${TOY_QEMU_YRES:-}"
-if [ -z "$TOY_QEMU_XRES" ] || [ -z "$TOY_QEMU_YRES" ]; then
+# 优先 QEMU_XRES/YRES；否则读 THEME.CFG mode=WxH；缺省/auto → 1440x900（32px 字更宽松）。
+QEMU_XRES="${QEMU_XRES:-}"
+QEMU_YRES="${QEMU_YRES:-}"
+if [ -z "$QEMU_XRES" ] || [ -z "$QEMU_YRES" ]; then
     Cfg="RootFs/X64/THEME.CFG"
     Line=""
     if [ -f "$Cfg" ]; then
@@ -90,11 +90,11 @@ if [ -z "$TOY_QEMU_XRES" ] || [ -z "$TOY_QEMU_YRES" ]; then
     W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
     H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"
     if [ -n "$W" ] && [ -n "$H" ]; then
-        TOY_QEMU_XRES="$W"
-        TOY_QEMU_YRES="$H"
+        QEMU_XRES="$W"
+        QEMU_YRES="$H"
     else
-        TOY_QEMU_XRES=1440
-        TOY_QEMU_YRES=900
+        QEMU_XRES=1440
+        QEMU_YRES=900
     fi
 fi
 
@@ -104,7 +104,7 @@ echo "  OVMF  $OVMF_CODE"
 echo "  ESP   Esp/X64"
 echo "  Root  RootFs/X64"
 echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
-echo "  VGA   ${TOY_QEMU_XRES}x${TOY_QEMU_YRES}"
+echo "  VGA   ${QEMU_XRES}x${QEMU_YRES}"
 echo "=========================================="
 
 # 鼠走 PS/2（K17）。勿挂裸 qemu-xhci：现网有 usb-tablet+XHCI-HID；
@@ -121,7 +121,7 @@ exec qemu-system-x86_64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
-    -device VGA,edid=on,xres="${TOY_QEMU_XRES}",yres="${TOY_QEMU_YRES}" \
+    -device VGA,edid=on,xres="${QEMU_XRES}",yres="${QEMU_YRES}" \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0,hostfwd=tcp::15000-:5000 \
     "${DISPLAY_ARGS[@]}" \

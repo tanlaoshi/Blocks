@@ -24,14 +24,18 @@ INC_CORE="$SCRIPT_DIR/Include/Core"
 INC_HAL="$SCRIPT_DIR/Include/Hal"
 
 # Blocks 接棒期默认开串口；SERIAL=0 可关。SCREEN_LOG 默认关（与现网一致）。
-TOY_SERIAL=1
-TOY_SCREEN_LOG=0
+# X64 默认 LWIP=1（K41）；LWIP=0 可关。Arm/RiscV 无端口，编时强制 0。
+SERIAL_ENABLE=1
+SCREEN_LOG=0
+HAVE_LWIP=1
 for Arg in "$@"; do
     case "$Arg" in
-        SERIAL=0|serial=0) TOY_SERIAL=0 ;;
-        SERIAL=1|serial=1) TOY_SERIAL=1 ;;
-        SCREEN_LOG=0|screen_log=0) TOY_SCREEN_LOG=0 ;;
-        SCREEN_LOG=1|screen_log=1) TOY_SCREEN_LOG=1 ;;
+        SERIAL=0|serial=0) SERIAL_ENABLE=0 ;;
+        SERIAL=1|serial=1) SERIAL_ENABLE=1 ;;
+        SCREEN_LOG=0|screen_log=0) SCREEN_LOG=0 ;;
+        SCREEN_LOG=1|screen_log=1) SCREEN_LOG=1 ;;
+        LWIP=0|lwip=0) HAVE_LWIP=0 ;;
+        LWIP=1|lwip=1) HAVE_LWIP=1 ;;
     esac
 done
 
@@ -39,9 +43,9 @@ COMMON_CFLAGS=(
     -ffreestanding -nostdlib -O2 -Wall -Wextra
     -fno-stack-protector -fno-builtin -fno-pie -fno-pic
     -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-    -DTOY_BRINGUP=0
-    -DTOY_SERIAL="$TOY_SERIAL"
-    -DTOY_SCREEN_LOG="$TOY_SCREEN_LOG"
+    -DBRINGUP=0
+    -DSERIAL_ENABLE="$SERIAL_ENABLE"
+    -DSCREEN_LOG="$SCREEN_LOG"
     -I"$INC_ABI" -I"$INC_CORE" -I"$INC_HAL"
 )
 
@@ -102,7 +106,7 @@ build_common_objs() {
         USB/Usb
         FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
         FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut
-        Network/Network Network/NetworkIp Network/NetworkPing Network/NetworkUdp Network/NetworkTcp
+        Network/Network Network/NetworkIp Network/NetworkPing Network/NetworkUdp Network/NetworkTcp Network/NetworkLwip
         Gui/GuiLayout Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
         Scheduler/Scheduler
         Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
@@ -124,10 +128,19 @@ case "$ARCH" in
 x64|X64)
     ARCH=X64
     OUT="$OUT_ROOT/X64"
-    mkdir -p "$OUT"
+    mkdir -p "$OUT" "$OUT/lwip"
     CC="$(pick_x64_cc)"
+    LWIP_CFLAGS=()
+    LWIP_OBJS=()
+    if [ "$HAVE_LWIP" = "1" ]; then
+        LWIP_CFLAGS=(-DHAVE_LWIP=1
+            -I"$SCRIPT_DIR/ThirdParty/lwip/src/include"
+            -I"$SCRIPT_DIR/Hal/X64/LwIp/include"
+            -I"$SCRIPT_DIR/Hal/X64/LwIp")
+    fi
     CFLAGS=("${COMMON_CFLAGS[@]}" -m64 -mno-red-zone -mgeneral-regs-only
-            -I"$SCRIPT_DIR/Hal/X64" -I"$BLOCKS_ROOT/Boot/BootPkg")
+            -I"$SCRIPT_DIR/Hal/X64" -I"$BLOCKS_ROOT/Boot/BootPkg"
+            "${LWIP_CFLAGS[@]}")
     build_common_objs "$CC" "$OUT" 0 "${CFLAGS[@]}"
     # K27：允许 SSE 的 TU（其余仍 general-regs-only）
     CFLAGS_FPU=("${COMMON_CFLAGS[@]}" -m64 -mno-red-zone -msse2 -mfpmath=sse
@@ -154,6 +167,23 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioNet.c" -o "$OUT/HalVirtioNet.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.c" -o "$OUT/HalSyscall.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.S" -o "$OUT/HalSyscallIsr.o"
+    if [ "$HAVE_LWIP" = "1" ]; then
+        LWIPDIR="$SCRIPT_DIR/ThirdParty/lwip/src"
+        for f in init def inet_chksum ip mem memp netif pbuf raw stats sys \
+                 tcp tcp_in tcp_out timeouts udp \
+                 ipv4/etharp ipv4/icmp ipv4/ip4 ipv4/ip4_addr; do
+            base="$(basename "$f")"
+            "$CC" "${CFLAGS[@]}" -Wno-unused-parameter -c "$LWIPDIR/core/${f}.c" \
+                -o "$OUT/lwip/${base}.o"
+            LWIP_OBJS+=("$OUT/lwip/${base}.o")
+        done
+        "$CC" "${CFLAGS[@]}" -Wno-unused-parameter -c "$LWIPDIR/netif/ethernet.c" \
+            -o "$OUT/lwip/ethernet.o"
+        LWIP_OBJS+=("$OUT/lwip/ethernet.o")
+        "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/LwIp/LwIpNetif.c" -o "$OUT/LwIpNetif.o"
+        "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/LwIp/LwIpIcmp.c" -o "$OUT/LwIpIcmp.o"
+        LWIP_OBJS+=("$OUT/LwIpNetif.o" "$OUT/LwIpIcmp.o")
+    fi
     "$CC" -nostdlib -ffreestanding -no-pie \
         -Wl,--build-id=none \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
@@ -173,8 +203,10 @@ x64|X64)
         "$OUT/Cpu.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o" \
+        "${LWIP_OBJS[@]}"
+    echo "Kernel/X64 LWIP=$HAVE_LWIP"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
@@ -214,7 +246,7 @@ arm64|Arm64|ARM64)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -258,7 +290,7 @@ riscv|RiscV|RISCV)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)
@@ -268,7 +300,7 @@ riscv|RiscV|RISCV)
 esac
 
 echo "=========================================="
-echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (SERIAL=$TOY_SERIAL SCREEN_LOG=$TOY_SCREEN_LOG)"
+echo "Kernel/$ARCH OK  → $OUT/Kernel.elf  (SERIAL=$SERIAL_ENABLE SCREEN_LOG=$SCREEN_LOG)"
 echo "CC=$CC"
 ls -lh "$OUT/Kernel.elf"
 echo "=========================================="

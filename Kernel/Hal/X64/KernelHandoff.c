@@ -10,7 +10,7 @@
  *         4) KernelMain(&Info)  —— 之后三架构合流
  *
  * 【什么是 UEFI_BOOT_CONFIG？】
- * ToyBoot 在退出 Boot Services 前打包的结构（权威布局在 Boot/BootPkg）。
+ * Boot 在退出 Boot Services 前打包的结构（权威布局在 Boot/BootPkg）。
  * 里面有 GOP 帧缓冲、GetMemoryMap 结果、可选 xHCI/RSDP 等。
  * Common 内核不直接 include UEFI 头，所以要在这里「翻译」。
  *
@@ -80,13 +80,13 @@ static void BootInfoFromUefi(BOOT_CONFIG *Cfg, BOOT_INFO *Out, BOOT_CONFIG *CfgP
     Out->GopProtocol = 0;
     Out->DtbPhys = 0;
     Out->XhciBase = Cfg->XhciBaseAddress;
-    Out->ToyOsIdSeen = Cfg->ToyOsIdSeen ? 1u : 0u;
+    Out->OsIdSeen = Cfg->OsIdSeen ? 1u : 0u;
     {
         UINT32 n;
         UINT32 N = Cfg->VideoModeCount;
 
-        if (N > BOOT_VIDEO_MODE_MAX) {
-            N = BOOT_VIDEO_MODE_MAX;
+        if (N > UEFI_VIDEO_MODE_MAX) {
+            N = UEFI_VIDEO_MODE_MAX;
         }
         for (n = 0; n < N; n++) {
             Out->VideoModes[n].Width = Cfg->VideoModes[n].Width;
@@ -94,7 +94,7 @@ static void BootInfoFromUefi(BOOT_CONFIG *Cfg, BOOT_INFO *Out, BOOT_CONFIG *CfgP
             Out->VideoModes[n].ModeNumber = Cfg->VideoModes[n].ModeNumber;
         }
         Out->VideoModeCount = N;
-        if (Cfg->VideoModePad == TOY_BOOT_GOP_HANDOFF_MAGIC &&
+        if (Cfg->VideoModePad == UEFI_GOP_HANDOFF_MAGIC &&
             Cfg->GopProtocol != 0) {
             Out->GopProtocol = Cfg->GopProtocol;
         }
@@ -113,7 +113,7 @@ static void BootInfoFromUefi(BOOT_CONFIG *Cfg, BOOT_INFO *Out, BOOT_CONFIG *CfgP
             if (Desc->Attribute & EFI_MEMORY_RUNTIME) {
                 HalPlatformNoteRuntimeRange(Desc->PhysicalStart,
                                             Desc->NumberOfPages << 12);
-            } else if (Desc->PhysicalStart >= TOY_IDENTITY_BYTES &&
+            } else if (Desc->PhysicalStart >= IDENTITY_BYTES &&
                        (Desc->Type == EFI_LOADER_CODE ||
                         Desc->Type == EFI_LOADER_DATA ||
                         Desc->Type == EFI_BOOT_SERVICES_CODE ||

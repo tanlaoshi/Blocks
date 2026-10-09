@@ -4,5 +4,5 @@
 #include "Board.h"
 
 const char *BoardName(void) {
-    return TOY_BOARD_NAME;
+    return BOARD_NAME;
 }

@@ -3,7 +3,7 @@
  */
 #include "Locale.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static LOC_LANG gLang = LOC_LANG_EN;
 static int gReady;
@@ -52,7 +52,7 @@ void LocaleInitialize(void) {
     }
     gLang = LOC_LANG_EN;
     gReady = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Locale: en (lang zh to switch)\n");
+    HalSerialWriteChannel(SLOG_GUI, "Locale: en (lang zh to switch)\n");
 }
 
 LOC_LANG LocaleGet(void) {

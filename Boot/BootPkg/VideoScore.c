@@ -110,7 +110,7 @@ UINTN ScoreModeNative(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH,
 }
 
 /* Settings 选项顺序：EDID 精确 → 同宽高比 → 就近（VM 用 QEMU 友好序） */
-VOID SortVideoModesForSettings(TOY_VIDEO_MODE *Modes, UINT32 Count,
+VOID SortVideoModesForSettings(UEFI_VIDEO_MODE *Modes, UINT32 Count,
                                       BOOLEAN InVm, BOOLEAN HasEdid,
                                       UINT32 EdidW, UINT32 EdidH) {
     UINT32 i;
@@ -123,7 +123,7 @@ VOID SortVideoModesForSettings(TOY_VIDEO_MODE *Modes, UINT32 Count,
         for (j = i + 1; j < Count; j++) {
             UINTN Si;
             UINTN Sj;
-            TOY_VIDEO_MODE Tmp;
+            UEFI_VIDEO_MODE Tmp;
 
             if (InVm) {
                 Si = ScoreModeQemu(Modes[i].Width, Modes[i].Height);

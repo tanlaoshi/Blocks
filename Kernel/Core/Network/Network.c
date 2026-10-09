@@ -9,7 +9,7 @@
 #include "Network.h"
 #include "HalNet.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static int gNicReady;
 static UINT16 gNicVid;
@@ -135,22 +135,22 @@ static void NetSendArpProbe(void) {
     Frame[41] = 2;
 
     if (HalNetTransmit(Frame, sizeof(Frame)) != 0) {
-        HalSerialWriteChannel(TOY_SLOG_NET, "Net: WARN tx fail\n");
+        HalSerialWriteChannel(SLOG_NET, "Net: WARN tx fail\n");
         return;
     }
-    HalSerialWriteChannel(TOY_SLOG_NET, "Net: tx arp ok\n");
+    HalSerialWriteChannel(SLOG_NET, "Net: tx arp ok\n");
 
     for (Spin = 0; Spin < 500000u; Spin++) {
         Rx = HalNetReceive(RxBuf, sizeof(RxBuf));
         if (Rx > 0) {
-            HalSerialWriteChannel(TOY_SLOG_NET, "Net: rx ok len=0x");
-            HalSerialWriteChannelHex32(TOY_SLOG_NET, (UINT32)Rx);
-            HalSerialWriteChannel(TOY_SLOG_NET, "\n");
+            HalSerialWriteChannel(SLOG_NET, "Net: rx ok len=0x");
+            HalSerialWriteChannelHex32(SLOG_NET, (UINT32)Rx);
+            HalSerialWriteChannel(SLOG_NET, "\n");
             return;
         }
         __asm__ volatile("pause");
     }
-    HalSerialWriteChannel(TOY_SLOG_NET, "Net: rx none (tx still ok)\n");
+    HalSerialWriteChannel(SLOG_NET, "Net: rx none (tx still ok)\n");
 }
 #endif
 
@@ -164,37 +164,37 @@ int NetworkInitialize(void) {
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (ScanPciNetwork() != 0) {
-        HalSerialWriteChannel(TOY_SLOG_NET, "Net: WARN no nic (PCI)\n");
+        HalSerialWriteChannel(SLOG_NET, "Net: WARN no nic (PCI)\n");
         return 0;
     }
-    HalSerialWriteChannel(TOY_SLOG_NET, "Net: nic ok bus=0x");
-    HalSerialWriteChannelHex32(TOY_SLOG_NET, gNicBus);
-    HalSerialWriteChannel(TOY_SLOG_NET, " dev=0x");
-    HalSerialWriteChannelHex32(TOY_SLOG_NET, gNicDev);
-    HalSerialWriteChannel(TOY_SLOG_NET, " vid=0x");
-    HalSerialWriteChannelHex32(TOY_SLOG_NET, gNicVid);
-    HalSerialWriteChannel(TOY_SLOG_NET, " did=0x");
-    HalSerialWriteChannelHex32(TOY_SLOG_NET, gNicDid);
-    HalSerialWriteChannel(TOY_SLOG_NET, "\n");
+    HalSerialWriteChannel(SLOG_NET, "Net: nic ok bus=0x");
+    HalSerialWriteChannelHex32(SLOG_NET, gNicBus);
+    HalSerialWriteChannel(SLOG_NET, " dev=0x");
+    HalSerialWriteChannelHex32(SLOG_NET, gNicDev);
+    HalSerialWriteChannel(SLOG_NET, " vid=0x");
+    HalSerialWriteChannelHex32(SLOG_NET, gNicVid);
+    HalSerialWriteChannel(SLOG_NET, " did=0x");
+    HalSerialWriteChannelHex32(SLOG_NET, gNicDid);
+    HalSerialWriteChannel(SLOG_NET, "\n");
 
     if (HalNetInit() == 0 && HalNetReady()) {
         UINT8 Mac[6];
         HalNetGetMac(Mac);
-        HalSerialWriteChannel(TOY_SLOG_NET, "Net: virtio ok mac=");
+        HalSerialWriteChannel(SLOG_NET, "Net: virtio ok mac=");
         HalSerialWriteChannelHex64(
-            TOY_SLOG_NET,
+            SLOG_NET,
             ((UINT64)Mac[0] << 40) | ((UINT64)Mac[1] << 32) | ((UINT64)Mac[2] << 24) |
                 ((UINT64)Mac[3] << 16) | ((UINT64)Mac[4] << 8) | (UINT64)Mac[5]);
-        HalSerialWriteChannel(TOY_SLOG_NET, "\n");
+        HalSerialWriteChannel(SLOG_NET, "\n");
         NetworkUdpInitialize();
         NetworkTcpInitialize();
         NetSendArpProbe();
     } else {
-        HalSerialWriteChannel(TOY_SLOG_NET, "Net: WARN virtio-net init fail\n");
+        HalSerialWriteChannel(SLOG_NET, "Net: WARN virtio-net init fail\n");
     }
     return 0;
 #else
-    HalSerialWriteChannel(TOY_SLOG_NET, "Net: stub (no PCI probe)\n");
+    HalSerialWriteChannel(SLOG_NET, "Net: stub (no PCI probe)\n");
     return 0;
 #endif
 }

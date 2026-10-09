@@ -13,7 +13,7 @@
 #include "HalFpu.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static int gFontReady;
 
@@ -22,19 +22,19 @@ void FontInitialize(void) {
         return;
     }
     gFontReady = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Font: terminus10x18 ok\n");
+    HalSerialWriteChannel(SLOG_GUI, "Font: terminus10x18 ok\n");
     if (FontCjkDiskLoad() != 0) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk fallback 16×1bpp\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: cjk fallback 16×1bpp\n");
     }
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalFpuSelfTest() != 0) {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: fpu skip\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: fpu skip\n");
     } else if (FontTtfLoad() != 0) {
         /* miss */
     } else if (FontTtfInit() != 0) {
         /* skip */
     } else {
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: ttf fallback ready\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: ttf fallback ready\n");
     }
 #endif
 }

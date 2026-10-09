@@ -10,7 +10,7 @@
 #include "FatFile.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define CJK_PATH "CJK32.BIN"
 #define CJK_MAX  (8u * 1024u * 1024u)
@@ -90,19 +90,19 @@ int FontCjkDiskLoad(void) {
     gBlob = (UINT8 *)PhysicalMemoryAllocatePages(gPages);
     if (!gBlob) {
         gPages = 0;
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 oom\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 oom\n");
         return -1;
     }
     N = FatFileReadPath(CJK_PATH, gBlob, CJK_MAX, &Size);
     if (N < 0 || Size < HDR_SIZE) {
         DiskFree();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 miss\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 miss\n");
         return -1;
     }
     if (gBlob[0] != 'C' || gBlob[1] != 'J' || gBlob[2] != '3' ||
         gBlob[3] != '2') {
         DiskFree();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 bad magic\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 bad magic\n");
         return -1;
     }
     gCount = Rd32(gBlob + 4);
@@ -117,19 +117,19 @@ int FontCjkDiskLoad(void) {
              gDim != 28u && gDim != 32u) ||
             gGlyphBytes != Expect) {
             DiskFree();
-            HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 bad hdr\n");
+            HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 bad hdr\n");
             return -1;
         }
     }
     Need = HDR_SIZE + gCount * 4u + gCount * gGlyphBytes;
     if (Size < Need) {
         DiskFree();
-        HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 short\n");
+        HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 short\n");
         return -1;
     }
     gCp = (const UINT32 *)(gBlob + HDR_SIZE);
     gBits = gBlob + HDR_SIZE + gCount * 4u;
     gOk = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Font: cjk32 disk ok\n");
+    HalSerialWriteChannel(SLOG_GUI, "Font: cjk32 disk ok\n");
     return 0;
 }

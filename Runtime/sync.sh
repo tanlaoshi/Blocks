@@ -23,8 +23,8 @@ fi
 cp -f "$BOOT_EFI" "$RUNTIME/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 cp -f "$KERNEL_ELF" "$RUNTIME/RootFs/X64/Kernel.elf"
 
-if [ ! -f "$RUNTIME/RootFs/X64/TOYOS.ID" ]; then
-    printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/TOYOS.ID"
+if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
+    printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/BLOCKS.ID"
 fi
 
 # K19：确保 RootFs 有 HELLO.ELF

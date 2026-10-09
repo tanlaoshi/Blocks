@@ -51,14 +51,14 @@ static UINT64 EarlyPhys(const void *P) {
 }
 
 /*
- * 建立 [0, TOY_IDENTITY_BYTES) 2MiB 大页恒等。
- * 现实现要求 TOY_IDENTITY_MB 为 2048 的倍数且 ≤ 512*2048（单 PDPT 槽覆盖 512GB 理论；
+ * 建立 [0, IDENTITY_BYTES) 2MiB 大页恒等。
+ * 现实现要求 IDENTITY_MB 为 2048 的倍数且 ≤ 512*2048（单 PDPT 槽覆盖 512GB 理论；
  * 此处只填满低 4GiB：4 张 PD）。
  */
 int EarlyIdentitySetup(void) {
     UINT64 *Pml4;
     UINT64 *Pdpt;
-    UINTN Mb = TOY_IDENTITY_MB;
+    UINTN Mb = IDENTITY_MB;
     UINTN HugeTotal;
     UINTN PdCount;
     UINTN PdIndex;

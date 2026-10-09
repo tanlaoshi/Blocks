@@ -46,8 +46,8 @@ typedef struct {
     UINT64 DtbPhys;
     /* Boot PCI 扫到的 xHCI MMIO 基址；0 = 未找到 */
     UINT64 XhciBase;
-    /* 1 = Boot（或后刀真探盘）见过系统卷标记 TOYOS.ID */
-    UINT32 ToyOsIdSeen;
+    /* 1 = Boot（或后刀真探盘）见过系统卷标记 BLOCKS.ID */
+    UINT32 OsIdSeen;
 } BOOT_INFO;
 
 typedef struct {

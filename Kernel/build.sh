@@ -102,7 +102,7 @@ build_common_objs() {
         USB/Usb
         FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
         FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut
-        Network/Network
+        Network/Network Network/NetworkPing
         Gui/GuiLayout Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
         Scheduler/Scheduler
         Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
@@ -173,7 +173,7 @@ x64|X64)
         "$OUT/Cpu.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkPing.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
@@ -214,7 +214,7 @@ arm64|Arm64|ARM64)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkPing.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -258,7 +258,7 @@ riscv|RiscV|RISCV)
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/NetworkPing.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

@@ -10,11 +10,12 @@
 #include "Gui.h"
 #include "Console.h"
 #include "Theme.h"
+#include "Network.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
 #define HELP_MAX  40
-#define CMD_MAX   16
+#define CMD_MAX   20
 
 typedef struct {
     char Name[NAME_MAX];
@@ -370,6 +371,43 @@ static void CmdHello(int Argc, char **Argv) {
     (void)ProcessRunHello();
 }
 
+/* ping — ICMP echo；默认 10.0.2.2（QEMU 网关） */
+static void CmdPing(int Argc, char **Argv) {
+    const char *Host = "10.0.2.2";
+    int Rc;
+
+    if (!NetworkNicReady()) {
+        Put("ping: no nic\n");
+        return;
+    }
+    if (Argc >= 2) {
+        Host = Argv[1];
+    }
+    Put("ping ");
+    Put(Host);
+    Put(" ...\n");
+    Rc = NetworkPing(Host, 3000);
+    if (Rc == 0) {
+        Put("ping: ok\n");
+        return;
+    }
+    Put("ping: fail ");
+    if (Rc == -1) {
+        Put("(net down)\n");
+    } else if (Rc == -2) {
+        Put("(bad ip)\n");
+    } else if (Rc == -3) {
+        Put("(arp)\n");
+    } else if (Rc == -4) {
+        Put("(tx)\n");
+    } else if (Rc == -5) {
+        Put("(timeout)\n");
+    } else {
+        PutU32((UINT32)(-Rc));
+        Put("\n");
+    }
+}
+
 void ShellCmdInitialize(void) {
     gCmdN = 0;
     ShellCmdRegister("help", "list commands", CmdHelp);
@@ -383,6 +421,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("rm", "remove file/dir", CmdRm);
     ShellCmdRegister("lang", "UI language en|zh", CmdLang);
     ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
+    ShellCmdRegister("ping", "ICMP echo (default 10.0.2.2)", CmdPing);
     ShellSysRegister();
     Put("Shell: cmds ok\n");
 }

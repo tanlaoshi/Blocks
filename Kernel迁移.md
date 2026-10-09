@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K38** · ICMP `ping 10.0.2.2`（builtin） |
+| **★** | **PR-K39** · UDP 收发 + Shell 命令 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K37** · `THEME.CFG` / 分辨率偏好 ✅ |
+| 刚收官 | **PR-K38** · ICMP `ping` ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -97,8 +97,8 @@
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K38** ★ | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
-| **K39** | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
+| **K38** ✅ | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
+| **K39** ★ | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
 | **K40** | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
 | **K41** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
 | **K42** | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
@@ -531,17 +531,28 @@
 | **验收** | 改色重启仍在；`mode` 冷起生效；汉字走盘上点阵；布局可 CFG |
 | **落地** | `ThemeCfg` / `FontCjkDisk` / `GuiLayout` / `Runtime/run.sh` edid |
 
-### K38 规划（★ · 最小子集 · JX 中）
+### K38 已收官
 
 **一句话**：Shell `ping` 打通 QEMU 网关 ICMP echo。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | builtin ICMP echo request/reply；默认目标 `10.0.2.2`；串口/Shell 见 RTT 或 ok |
-| **不做** | lwIP、DNS、TCP、多网卡 |
-| **验收** | `ping` / `ping 10.0.2.2` 通；失败有明确日志 |
-| **对照** | 现网 VirtioNet ICMP 薄（非 lwIP `toy_ping`） |
-| **落地** | `HalVirtioNet` / `Network` + `ShellCmd` `ping` |
+| **做** | builtin ICMP echo；默认 `10.0.2.2`；ARP→echo→reply；失败码 arp/tx/timeout |
+| **不做** | lwIP、DNS、TCP、多网卡、RTT 计时展示 |
+| **验收** | `ping` / `ping 10.0.2.2` → `ping: ok` |
+| **落地** | `Network/NetworkPing.c` + `ShellCmd` `ping` |
+
+### K39 规划（★ · 最小子集）
+
+**一句话**：UDP 最小收发 + Shell 命令演示。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 发/收一帧 UDP；Shell `udpsend`/`udplisten`（或等价短名） |
+| **不做** | TCP、lwIP、DNS |
+| **验收** | 本机或 QEMU 侧可见收发日志 |
+| **对照** | 现网 Udp 薄 |
+| **落地** | `Network` + `ShellCmd`（轮到 JX 再钉文件名） |
 
 ### K22+ 细则
 
@@ -866,3 +877,4 @@ Kernel/
 | 2026-10-10 | TG：K35 ✅ Files 窗 ls/点 ELF；★ → **K36**（开始菜单/任务栏）；JX K36 |
 | 2026-10-10 | TG：K36 ✅ 底栏开始菜单（顶栏仅 Blocks；钮宽吃下 Start）；★ → **K37**（THEME.CFG） |
 | 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + GuiLayout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |
+| 2026-10-10 | TG：K38 ✅ ICMP `ping`（`NetworkPing`）；★ → **K39**（UDP）；TS 推远程 |

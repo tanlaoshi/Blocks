@@ -1,7 +1,8 @@
 /*
  * Modules.c — 开机模块表 + ModulesRun（积木拼表）
  *
- * Full：… → Network → Gui → Scheduler → Console（K12）
+ * Full：Serial → Memory → VirtualMemory → Driver → Video → …
+ * （PMM→VMM→Driver；Driver 不夹在 PMM/VMM 之间）
  *
  * ModulesRun 原独立 Module.c；调用方只有本文件，并入以免多一层空转。
  */
@@ -167,8 +168,8 @@ static int InitializeConsole(void) {
 static const MODULE gModulesFull[] = {
     { "Serial", InitializeSerial },
     { "Memory", InitializeMemory },
-    { "Driver", InitializeDriver },
     { "VirtualMemory", InitializeVirtualMemory },
+    { "Driver", InitializeDriver },
     { "Video", InitializeVideo },
     { "Cpu", InitializeCpu },
     { "USB", InitializeUsb },

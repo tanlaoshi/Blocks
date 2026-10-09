@@ -15,7 +15,7 @@
 | **★** | **PR-K14** · USB xHCI 复位 + 端口状态 |
 | 排队 | K15…K20（见下方「加厚到桌面」） |
 | 刚收官 | **PR-K13** · Map MMIO；`VMM: map mmio ok` + `Usb: … cap=` ✅ |
-| 顺手（不推 ★） | QEMU HCIVERSION 可为 0，以 CAPLENGTH 为准 |
+| 顺手（不推 ★） | 表序改为 `Memory → VirtualMemory → Driver`（PMM-VMM-Driver） |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。
@@ -201,9 +201,13 @@ KernelMain
   └─ 起 shell/gui/worker → SchedulerStart
 ```
 
-模块表（Full，日志名）：
+模块表（现网 Full，日志名 · 对照）：
 
 `Serial → Memory → Driver → VirtualMemory → Video → Cpu → SerialEarly → Smp → USB → FileSystem → Network → Gui → Scheduler → Console`
+
+**Blocks 当前表**（与现网差：`Memory → VirtualMemory → Driver`，无 SerialEarly/Smp）：
+
+`Serial → Memory → VirtualMemory → Driver → Video → Cpu → USB → FileSystem → Network → Gui → Scheduler → Console`
 
 ---
 
@@ -434,3 +438,4 @@ Kernel/
 | 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
 | 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
 | 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
+| 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |

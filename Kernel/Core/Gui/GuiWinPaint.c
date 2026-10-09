@@ -7,6 +7,7 @@
 #include "HalVideo.h"
 #include "Locale.h"
 #include "Theme.h"
+#include "Utf8.h"
 
 #define GUI_BAR_H    28u
 #define GUI_TITLE_H  24u
@@ -85,6 +86,38 @@ void GuiWinPaint_PresentMove(UINT32 FbW, UINT32 FbH, UINT32 X0, UINT32 Y0,
     }
 }
 
+/* 客户区内逐字画；超出右/下边界即停，避免拖窗窗外残影 */
+static void DrawClippedAt(UINT32 X, UINT32 Y, UINT32 MaxX, UINT32 MaxY,
+                          const char *Text, UINT32 Color) {
+    UINT32 Cursor = X;
+    UINT32 CellH = FontCellHeight();
+
+    if (Text == 0 || Y + CellH > MaxY) {
+        return;
+    }
+    while (*Text) {
+        UINT32 Cp;
+        UINTN N;
+        UINT32 Gw;
+
+        if (*Text == '\n') {
+            break;
+        }
+        N = Utf8Decode(Text, &Cp);
+        if (N == 0) {
+            Text++;
+            continue;
+        }
+        Gw = (Cp < 0x80u) ? FontCellWidth() : FontCjkCell();
+        if (Cursor + Gw > MaxX) {
+            break;
+        }
+        FontDrawCodepointAt(Cursor, Y, Cp, Color);
+        Cursor += Gw;
+        Text += N;
+    }
+}
+
 void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
                        LOC_MSG Title, int KindShell) {
     UINT32 TitleBg;
@@ -100,8 +133,10 @@ void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
     HalVideoFillRect(X, Y, W, H, ThemeWindowBorder());
     TitleBg = Focus ? ThemeWindowTitleBar() : ThemeWindowTitleBarDim();
     HalVideoFillRect(X + 1u, Y + 1u, W - 2u, GUI_TITLE_H, TitleBg);
-    FontDrawStringAt(X + 10u, Y + 5u, LocStr(Title), ThemeWindowTitleText());
     GuiWinPaint_CloseBtn(X, Y, W, &Bx, &By, &Bw, &Bh);
+    /* 标题止于 × 左缘，勿画进关闭钮/窗外 */
+    DrawClippedAt(X + 10u, Y + 5u, Bx > 4u ? Bx - 4u : X + 10u, Y + GUI_TITLE_H,
+                  LocStr(Title), ThemeWindowTitleText());
     HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BG);
     FontDrawStringAt(Bx + 6u, By + 4u, "x", ThemeWindowTitleText());
     Cx = X + 1u;
@@ -114,7 +149,7 @@ void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
     if (KindShell) {
         ConsolePaintBannerBack();
     } else if (Ch > 0) {
-        FontDrawStringAt(Cx + 12u, Cy + 16u, LocStr(MSG_ABOUT_BODY),
-                         ThemeWindowTitleText());
+        DrawClippedAt(Cx + 12u, Cy + 16u, Cx + Cw - 4u, Cy + Ch,
+                      LocStr(MSG_ABOUT_BODY), ThemeWindowTitleText());
     }
 }

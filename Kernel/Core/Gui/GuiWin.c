@@ -5,6 +5,7 @@
  */
 #include "GuiWin.h"
 #include "GuiWinPaint.h"
+#include "GuiDesktop.h"
 #include "Console.h"
 #include "HalPs2.h"
 #include "HalSerial.h"
@@ -74,6 +75,8 @@ void GuiWinPaintDesktop(void) {
 
 void GuiWinCompose(void) {
     int i;
+    /* 先图标后窗：拖/关擦桌面后图标不会丢 */
+    GuiDesktopPaintIcons();
     for (i = 0; i < GUI_WIN_COUNT; i++) {
         PaintOne((int)gZ[i]);
     }

@@ -13,6 +13,7 @@
 #include "IdentityMap.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
+#include "HalVideo.h"
 #include "ToySerialConfig.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -253,6 +254,19 @@ int VirtualMemoryInitialize(void) {
 #endif
 
     gVmReady = 1;
+    VirtualMemoryEnable();
+
+    /* 分页后仍能写 FB：左上角再画一绿点（原 Modules 表项里的自检） */
+    {
+        UINT32 W = 0;
+        UINT32 H = 0;
+
+        HalVideoGetSize(&W, &H);
+        if (Info != 0 && Info->FrameBufferSize != 0 && W > 16 && H > 16) {
+            HalVideoDrawPixel(12, 12, 0x0000FF00u);
+            VmLog("VMM: FB pixel after PG ok\n");
+        }
+    }
     return 0;
 }
 

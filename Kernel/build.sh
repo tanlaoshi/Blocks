@@ -87,12 +87,29 @@ build_common_objs() {
     local with_video_stub="$1"
     shift
     local -a cflags=("$@")
+    # Core 按模块表分目录；产物名仍用 basename.o（链接行不变）
     local f
-    local -a cores=(BootInfo Modules PhysicalMemory Device
-                    VirtualMemory Usb FileSystem FatProbe FatVol FatAlloc FatDir FatFile FatMut ElfLoad
-                    Process Network Theme Font Utf8 FontTtfLoad FontTtfCache Locale GuiWinPaint GuiWin Gui Scheduler ShellCmd ShellSys Console Kernel)
+    local base
+    local -a cores=(
+        BootInfo Modules Kernel
+        Serial/Serial
+        Memory/Memory Memory/PhysicalMemory
+        VirtualMemory/VirtualMemory
+        Driver/Driver Driver/Device
+        Video/Video Video/Theme Video/Font Video/Utf8 Video/FontTtfLoad
+        Video/FontTtfCache Video/Locale
+        Cpu/Cpu
+        USB/Usb
+        FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
+        FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut
+        Network/Network
+        Gui/GuiDesktop Gui/GuiWinPaint Gui/GuiWin Gui/Gui
+        Scheduler/Scheduler
+        Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
+    )
     for f in "${cores[@]}"; do
-        "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
+        base="$(basename "$f")"
+        "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${base}.o"
     done
     # Hal 跨 Arch 默认实现放 Hal/Common，不进 Core
     "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCapability.c" \
@@ -118,7 +135,7 @@ x64|X64)
                 -I"$SCRIPT_DIR/ThirdParty/stb")
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalFpu.c" -o "$OUT/HalFpu.o"
     "$CC" "${CFLAGS_FPU[@]}" -c "$SCRIPT_DIR/Hal/X64/HalFpuSse.c" -o "$OUT/HalFpuSse.o"
-    "$CC" "${CFLAGS_FPU[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
+    "$CC" "${CFLAGS_FPU[@]}" -c "$SCRIPT_DIR/Core/Video/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
@@ -148,13 +165,14 @@ x64|X64)
         "$OUT/HalSyscall.o" "$OUT/HalSyscallIsr.o" \
         "$OUT/HalFpu.o" "$OUT/HalFpuSse.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/Serial.o" "$OUT/Memory.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/VirtualMemory.o" "$OUT/Driver.o" "$OUT/Device.o" \
+        "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" \
-        "$OUT/PhysicalMemory.o" \
-        "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
+        "$OUT/Cpu.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
@@ -167,7 +185,7 @@ arm64|Arm64|ARM64)
             -I"$SCRIPT_DIR/Hal/Arm64/Hal")
     build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalFpuStub.c" -o "$OUT/HalFpu.o"
-    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/Video/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/HalSerial.c" -o "$OUT/HalSerial.o"
@@ -184,16 +202,17 @@ arm64|Arm64|ARM64)
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
+        "$OUT/Serial.o" "$OUT/Memory.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/VirtualMemory.o" "$OUT/Driver.o" "$OUT/Device.o" \
+        "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
-        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/HalFpu.o" \
-        "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
+        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
+        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -207,7 +226,7 @@ riscv|RiscV|RISCV)
             -I"$SCRIPT_DIR/Hal/RiscV/Hal")
     build_common_objs "$CC" "$OUT" 1 "${CFLAGS[@]}"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalFpuStub.c" -o "$OUT/HalFpu.o"
-    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Core/Video/FontTtfRaster.c" -o "$OUT/FontTtfRaster.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelEntry.S" -o "$OUT/KernelEntry.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/KernelHandoff.c" -o "$OUT/KernelHandoff.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/SmpStub.c" -o "$OUT/SmpStub.o"
@@ -226,16 +245,17 @@ riscv|RiscV|RISCV)
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/SmpStub.o" \
         "$OUT/HalSerial.o" \
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
-        "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
+        "$OUT/Serial.o" "$OUT/Memory.o" "$OUT/PhysicalMemory.o" \
+        "$OUT/VirtualMemory.o" "$OUT/Driver.o" "$OUT/Device.o" \
+        "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/HalVideoStub.o" "$OUT/HalCpuStub.o" \
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
-        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/HalFpu.o" \
-        "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
+        "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
+        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

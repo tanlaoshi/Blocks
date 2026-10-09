@@ -67,6 +67,7 @@ int ConsoleInitialize(void) {
     }
     ShellCmdInitialize();
     ConsoleRefreshBanner();
+    HalSerialWriteChannel(TOY_SLOG_MISC, "Console: init ok\n");
     return 0;
 }
 

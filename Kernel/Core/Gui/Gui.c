@@ -5,6 +5,7 @@
  * 点窗抬升；点 × 关；点顶栏重开已关窗；Shell 焦点才吃键（Console）。
  */
 #include "Gui.h"
+#include "GuiDesktop.h"
 #include "GuiWin.h"
 #include "BootInfo.h"
 #include "Console.h"
@@ -173,6 +174,7 @@ int GuiInitialize(void) {
     LocaleInitialize();
     FontTtfPreheatUtf8("积木系统已就绪命令窗说明");
     GuiWinSetFb(gFbW, gFbH);
+    GuiDesktopSetFb(gFbW, gFbH);
     GuiWinPaintDesktop();
     GuiWinLayoutAll();
     GuiWinCompose();
@@ -180,7 +182,7 @@ int GuiInitialize(void) {
 
     gDesktopReady = 1;
     HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: desktop ok\n");
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: dual win z-order\n");
+    HalSerialWriteChannel(TOY_SLOG_GUI, "Gui: icon shell dblclick\n");
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalPs2MouseInit() == 0 && HalPs2MouseReady()) {
@@ -222,6 +224,7 @@ int GuiPoll(void) {
     if (!gDesktopReady || !gCursorOn) {
         return 0;
     }
+    GuiDesktopPollTick();
     HalPs2Poll();
     while (HalPs2MousePoll(&Pkt)) {
         Got = 1;
@@ -276,6 +279,11 @@ int GuiPoll(void) {
             gDragOffY = gCurY - Wy;
         } else if (Hit >= 0) {
             GuiWinFocus(Hit);
+            gDragging = 0;
+            gDragWin = -1;
+        } else if (GuiDesktopHitShell(gCurX, gCurY)) {
+            /* 双击图标：开或聚焦 Shell；单击只记时 */
+            (void)GuiDesktopClickShell(gCurX, gCurY);
             gDragging = 0;
             gDragWin = -1;
         } else if ((UINT32)gCurY >= GUI_BAR_H) {

@@ -1,12 +1,10 @@
 /*
- * FatFile.c — K19：根目录按 8.3 名读文件
- *
- * 复用 K16 的 BPB/根目录逻辑；把簇链拷进调用方缓冲。
+ * FatFile.c — 按 8.3 / 路径读根目录文件
  */
 #include "FatFile.h"
+#include "FatVol.h"
 #include "HalBlock.h"
 
-#define SECTOR 512u
 #define MAX_FILE (256u * 1024u)
 
 static int MemEq(const UINT8 *A, const char *B, UINTN N) {
@@ -19,179 +17,59 @@ static int MemEq(const UINT8 *A, const char *B, UINTN N) {
     return 1;
 }
 
-static UINT16 Rd16(const UINT8 *P) {
-    return (UINT16)(P[0] | ((UINT16)P[1] << 8));
-}
+typedef struct {
+    const char *Want83;
+    UINT32 Clus;
+    UINT32 Size;
+    int Found;
+} FIND_CTX;
 
-static UINT32 Rd32(const UINT8 *P) {
-    return (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
-           ((UINT32)P[3] << 24);
-}
-
-static int LooksLikeBpb(const UINT8 *Sec) {
-    UINT16 Bps = Rd16(Sec + 11);
-    UINT8 Spc = Sec[13];
-    if (Sec[510] != 0x55u || Sec[511] != 0xAAu || Bps != SECTOR || Spc == 0) {
-        return 0;
-    }
-    return (Sec[0] == 0xEBu || Sec[0] == 0xE9u) ? 1 : 0;
-}
-
-static UINT32 FatNext(UINT32 FatLba, UINT32 Clus, UINT32 FatBits) {
-    UINT8 Sec[SECTOR];
-    UINT32 EntPerSec;
-    UINT32 Lba;
-    UINT32 Off;
-
-    if (FatBits == 32) {
-        EntPerSec = SECTOR / 4u;
-        Lba = FatLba + Clus / EntPerSec;
-        Off = (Clus % EntPerSec) * 4u;
-        if (HalBlockRead(Lba, Sec, 1) != 0) {
-            return 0;
-        }
-        return Rd32(Sec + Off) & 0x0FFFFFFFu;
-    }
-    EntPerSec = SECTOR / 2u;
-    Lba = FatLba + Clus / EntPerSec;
-    Off = (Clus % EntPerSec) * 2u;
-    if (HalBlockRead(Lba, Sec, 1) != 0) {
-        return 0;
-    }
-    return (UINT32)Rd16(Sec + Off);
-}
-
-static int FindInDirSec(const UINT8 *Sec, const char Name83[11], UINT32 *Clus,
-                        UINT32 *Size) {
-    UINTN Off;
-    for (Off = 0; Off < SECTOR; Off += 32u) {
-        if (Sec[Off] == 0x00u) {
-            return 0;
-        }
-        if (Sec[Off] == 0xE5u || (Sec[Off + 11] & 0x08u) != 0 ||
-            (Sec[Off + 11] & 0x0Fu) == 0x0Fu) {
-            continue;
-        }
-        if (MemEq(Sec + Off, Name83, 11)) {
-            *Clus = ((UINT32)Rd16(Sec + Off + 20) << 16) | Rd16(Sec + Off + 26);
-            *Size = Rd32(Sec + Off + 28);
-            return 1;
-        }
+static int OnFind(const UINT8 *Ent, void *Ctx) {
+    FIND_CTX *F = (FIND_CTX *)Ctx;
+    if (MemEq(Ent, F->Want83, 11)) {
+        F->Clus = ((UINT32)FatRd16(Ent + 20) << 16) | FatRd16(Ent + 26);
+        F->Size = FatRd32(Ent + 28);
+        F->Found = 1;
+        return 1;
     }
     return 0;
 }
 
 int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize) {
-    UINT8 Sec[SECTOR];
-    UINT8 Spc;
-    UINT16 Reserved;
-    UINT8 Nfats;
-    UINT16 RootEnt;
-    UINT16 FatSz16;
-    UINT32 FatSz;
-    UINT32 RootSecs;
-    UINT32 FatLba;
-    UINT32 RootLba;
-    UINT32 DataLba;
-    UINT32 PartLba = 0;
-    UINT32 FatBits;
-    UINT32 FileClus = 0;
-    UINT32 FileSize = 0;
-    UINT32 i;
-    UINT32 Got = 0;
+    FAT_VOL V;
+    FIND_CTX F;
+    UINT8 Sec[FAT_SECTOR];
     UINT8 *Dst = (UINT8 *)Buf;
+    UINT32 Got = 0;
     UINT32 Guard;
+    UINT32 i;
 
-    if (!HalBlockReady() || Buf == 0 || Cap == 0 || Name83 == 0) {
+    if (Buf == 0 || Cap == 0 || Name83 == 0) {
         return -1;
     }
-    if (HalBlockRead(0, Sec, 1) != 0) {
+    if (FatVolOpen(&V) != 0) {
         return -1;
     }
-    if (!LooksLikeBpb(Sec)) {
-        if (Sec[510] == 0x55u && Sec[511] == 0xAAu) {
-            for (i = 0; i < 4u; i++) {
-                UINT8 *E = Sec + 446u + i * 16u;
-                UINT8 Type = E[4];
-                UINT32 Lba = Rd32(E + 8);
-                if (Type == 0x0Bu || Type == 0x0Cu || Type == 0x06u ||
-                    Type == 0x0Eu) {
-                    PartLba = Lba;
-                    break;
-                }
-            }
-        }
-        if (PartLba == 0 || HalBlockRead(PartLba, Sec, 1) != 0 ||
-            !LooksLikeBpb(Sec)) {
-            return -1;
-        }
-    }
-
-    Spc = Sec[13];
-    Reserved = Rd16(Sec + 14);
-    Nfats = Sec[16];
-    RootEnt = Rd16(Sec + 17);
-    FatSz16 = Rd16(Sec + 22);
-    FatSz = FatSz16 ? (UINT32)FatSz16 : Rd32(Sec + 36);
-    FatLba = PartLba + Reserved;
-    RootSecs = ((UINT32)RootEnt * 32u + (SECTOR - 1u)) / SECTOR;
-    RootLba = FatLba + FatSz * (UINT32)Nfats;
-    DataLba = RootLba + RootSecs;
-    FatBits = (RootEnt == 0) ? 32u : 16u;
-
-    if (RootEnt != 0) {
-        for (i = 0; i < RootSecs && i < 128u; i++) {
-            if (HalBlockRead(RootLba + i, Sec, 1) != 0) {
-                return -1;
-            }
-            if (FindInDirSec(Sec, Name83, &FileClus, &FileSize)) {
-                break;
-            }
-        }
-    } else {
-        UINT32 RootClus = Rd32(Sec + 44);
-        UINT32 Clus = RootClus;
-        for (Guard = 0; Guard < 64u && Clus >= 2u && FileClus == 0; Guard++) {
-            UINT32 Lba = DataLba + (Clus - 2u) * (UINT32)Spc;
-            UINT8 s;
-            for (s = 0; s < Spc; s++) {
-                if (HalBlockRead(Lba + s, Sec, 1) != 0) {
-                    return -1;
-                }
-                if (FindInDirSec(Sec, Name83, &FileClus, &FileSize)) {
-                    break;
-                }
-            }
-            if (FileClus != 0) {
-                break;
-            }
-            Clus = FatNext(FatLba, Clus, FatBits);
-            if (FatBits == 32) {
-                if (Clus < 2u || Clus >= 0x0FFFFFF8u) {
-                    break;
-                }
-            } else if (Clus < 2u || Clus >= 0xFFF8u) {
-                break;
-            }
-        }
-    }
-
-    if (FileClus < 2u || FileSize == 0) {
+    F.Want83 = Name83;
+    F.Clus = 0;
+    F.Size = 0;
+    F.Found = 0;
+    if (FatVolWalkRoot(&V, OnFind, &F) != 0 || !F.Found || F.Clus < 2u ||
+        F.Size == 0) {
         return -1;
     }
-    if (FileSize > Cap || FileSize > MAX_FILE) {
+    if (F.Size > Cap || F.Size > MAX_FILE) {
         return -1;
     }
-
     {
-        UINT32 Clus = FileClus;
-        for (Guard = 0; Guard < 512u && Clus >= 2u && Got < FileSize; Guard++) {
-            UINT32 Lba = DataLba + (Clus - 2u) * (UINT32)Spc;
+        UINT32 Clus = F.Clus;
+        for (Guard = 0; Guard < 512u && Clus >= 2u && Got < F.Size; Guard++) {
+            UINT32 Lba = V.DataLba + (Clus - 2u) * (UINT32)V.Spc;
             UINT8 s;
-            for (s = 0; s < Spc && Got < FileSize; s++) {
-                UINT32 Chunk = FileSize - Got;
-                if (Chunk > SECTOR) {
-                    Chunk = SECTOR;
+            for (s = 0; s < V.Spc && Got < F.Size; s++) {
+                UINT32 Chunk = F.Size - Got;
+                if (Chunk > FAT_SECTOR) {
+                    Chunk = FAT_SECTOR;
                 }
                 if (HalBlockRead(Lba + s, Sec, 1) != 0) {
                     return -1;
@@ -201,8 +79,8 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
                 }
                 Got += Chunk;
             }
-            Clus = FatNext(FatLba, Clus, FatBits);
-            if (FatBits == 32) {
+            Clus = FatVolNext(&V, Clus);
+            if (V.FatBits == 32) {
                 if (Clus < 2u || Clus >= 0x0FFFFFF8u) {
                     break;
                 }
@@ -211,12 +89,19 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
             }
         }
     }
-
-    if (Got < FileSize) {
+    if (Got < F.Size) {
         return -1;
     }
     if (OutSize) {
-        *OutSize = FileSize;
+        *OutSize = F.Size;
     }
-    return (int)FileSize;
+    return (int)F.Size;
+}
+
+int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize) {
+    char Name83[11];
+    if (FatPathTo83(Path, Name83) != 0) {
+        return -1;
+    }
+    return FatFileRead83(Name83, Buf, Cap, OutSize);
 }

@@ -89,7 +89,7 @@ build_common_objs() {
     local -a cflags=("$@")
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
-                    VirtualMemory Usb FileSystem FatProbe FatFile ElfLoad
+                    VirtualMemory Usb FileSystem FatProbe FatVol FatDir FatFile ElfLoad
                     Process Network Theme Font Gui Scheduler ShellCmd Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
@@ -142,7 +142,7 @@ x64|X64)
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/PhysicalMemory.o" \
         "$OUT/Device.o" "$OUT/VirtualMemory.o" "$OUT/Usb.o" \
-        "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatDir.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
@@ -178,7 +178,7 @@ arm64|Arm64|ARM64)
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatDir.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
@@ -217,7 +217,7 @@ riscv|RiscV|RISCV)
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/Font.o" \
         "$OUT/PhysicalMemory.o" "$OUT/Device.o" "$OUT/VirtualMemory.o" \
-        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
+        "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatDir.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"

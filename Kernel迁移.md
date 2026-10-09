@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K23** · Fat：ls / cat 根目录 |
+| **★** | **PR-K24** · Fat：write / mkdir / rm 最小 |
 | 排队 | **对标现网**主轨 **K21–K52**（分相位，见下）；真机/SMP/virt 全桌面后置 |
-| 刚收官 | **PR-K22** · Shell 命令表 + Font/反债清扫 ✅ |
+| 刚收官 | **PR-K23** · Fat ls/cat 根目录 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -65,8 +65,8 @@
 | -- | ------ | -------- | ------------ |
 | **K21** ★ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；`DrawString*` 契约不变 |
 | **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
-| **K23** ★ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
-| **K24** | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
+| **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
+| **K24** ★ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
 | **K25** | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
 
 #### 相位 P2 · 窗管 / 桌面（K26–K34）
@@ -349,7 +349,7 @@
 | **不做** | 管道、重定向、完整 ShellCommands* 全家桶 |
 | **验收** | `help` 可见；`echo hi`；未知命令提示；`Blocks>` 仍活 |
 
-### K23 规划（★ · 最小子集）
+### K23 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：根目录 `ls` / `cat` 小文本（对标现网 FS 只读入口）。
 
@@ -358,6 +358,17 @@
 | **做** | Fat 列根目录；按名读小文件到串口；Shell 命令 `ls`/`cat` |
 | **不做** | 写盘、多卷、LFN 全套、VFS |
 | **验收** | `ls` 见 `TOYOS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
+| **落地** | `FatVol`/`FatDir`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `TOYOS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat TOYOS.ID` → `Blocks root volume` |
+
+### K24 规划（★ · 最小子集）
+
+**一句话**：根目录最小写：`write` / `mkdir` / `rm`（对标现网 FS 读写入口）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 写小文件；建空目录；删文件/空目录；Shell 命令入口 |
+| **不做** | 多卷、LFN 创建、回收站、权限 |
+| **验收** | `write` 后 `cat` 一致；`mkdir` 后 `ls` 可见；`rm` 后消失；`Blocks>` 仍活 |
 
 ### K22+ 细则
 
@@ -671,3 +682,4 @@ Kernel/
 | 2026-10-09 | TG：K22 ShellCmd + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
 | 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
 | 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
+| 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |

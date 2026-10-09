@@ -3,8 +3,8 @@
  *
  * 【初学者】
  * 状态口 0x64：bit0=有数据可读，bit1=勿写。
- * 数据口 0x60：Set1 通码；高位 1=断码（松开）忽略。
- * 只译一小段 US ASCII，够 Blocks> 打字。
+ * 数据口 0x60：Set1 通码；高位 1=断码（松开）。
+ * US ASCII；左/右 Shift + CapsLock → 大写与符号。
  */
 #include "HalPs2Kbd.h"
 
@@ -15,7 +15,9 @@
 #define PS2_AUX     (1u << 5)
 
 static int gReady;
-static int gShift;
+static int gShiftL;
+static int gShiftR;
+static int gCaps;
 static int gE0;
 
 static void Out8(UINT16 Port, UINT8 Value) {
@@ -48,7 +50,11 @@ static void FlushOut(void) {
     }
 }
 
-/* Set1 通码 → ASCII；0 = 忽略 */
+static int ShiftOn(void) {
+    return gShiftL || gShiftR;
+}
+
+/* 字母：Shift XOR Caps；其它符号只看 Shift */
 static char Translate(UINT8 Code) {
     static const char Row1[] = "1234567890-=";
     static const char Row1s[] = "!@#$%^&*()_+";
@@ -58,17 +64,31 @@ static char Translate(UINT8 Code) {
     static const char Row3s[] = "ASDFGHJKL:\"";
     static const char Row4[] = "zxcvbnm,./";
     static const char Row4s[] = "ZXCVBNM<>?";
+    int Sh = ShiftOn();
+    int Up;
 
-    if (Code == 0x2Au || Code == 0x36u) {
-        gShift = 1;
+    if (Code == 0x2Au) {
+        gShiftL = 1;
         return 0;
     }
-    if (Code == 0xAAu || Code == 0xB6u) {
-        gShift = 0;
+    if (Code == 0xAAu) {
+        gShiftL = 0;
+        return 0;
+    }
+    if (Code == 0x36u) {
+        gShiftR = 1;
+        return 0;
+    }
+    if (Code == 0xB6u) {
+        gShiftR = 0;
+        return 0;
+    }
+    if (Code == 0x3Au) {
+        gCaps ^= 1;
         return 0;
     }
     if ((Code & 0x80u) != 0) {
-        return 0; /* 断码 */
+        return 0;
     }
     if (Code == 0x1Cu) {
         return '\n';
@@ -80,28 +100,40 @@ static char Translate(UINT8 Code) {
         return ' ';
     }
     if (Code >= 0x02u && Code <= 0x0Du) {
-        return gShift ? Row1s[Code - 0x02u] : Row1[Code - 0x02u];
+        return Sh ? Row1s[Code - 0x02u] : Row1[Code - 0x02u];
     }
-    if (Code >= 0x10u && Code <= 0x1Bu) {
-        return gShift ? Row2s[Code - 0x10u] : Row2[Code - 0x10u];
+    /* 字母行：Caps 参与 */
+    Up = Sh ^ gCaps;
+    if (Code >= 0x10u && Code <= 0x19u) {
+        return Up ? Row2s[Code - 0x10u] : Row2[Code - 0x10u];
     }
-    if (Code >= 0x1Eu && Code <= 0x28u) {
-        return gShift ? Row3s[Code - 0x1Eu] : Row3[Code - 0x1Eu];
+    if (Code == 0x1Au || Code == 0x1Bu) {
+        return Sh ? Row2s[Code - 0x10u] : Row2[Code - 0x10u];
     }
-    if (Code >= 0x2Cu && Code <= 0x35u) {
-        return gShift ? Row4s[Code - 0x2Cu] : Row4[Code - 0x2Cu];
+    if (Code >= 0x1Eu && Code <= 0x26u) {
+        return Up ? Row3s[Code - 0x1Eu] : Row3[Code - 0x1Eu];
+    }
+    if (Code >= 0x27u && Code <= 0x28u) {
+        return Sh ? Row3s[Code - 0x1Eu] : Row3[Code - 0x1Eu];
+    }
+    if (Code >= 0x2Cu && Code <= 0x32u) {
+        return Up ? Row4s[Code - 0x2Cu] : Row4[Code - 0x2Cu];
+    }
+    if (Code >= 0x33u && Code <= 0x35u) {
+        return Sh ? Row4s[Code - 0x2Cu] : Row4[Code - 0x2Cu];
     }
     return 0;
 }
 
 int HalPs2KbdInit(void) {
     gReady = 0;
-    gShift = 0;
+    gShiftL = 0;
+    gShiftR = 0;
+    gCaps = 0;
     gE0 = 0;
     FlushOut();
     WaitIbClear();
-    /* 读控制器配置：能读到状态口即视为存在 */
-    Out8(PS2_STATUS, 0x20u); /* read config byte */
+    Out8(PS2_STATUS, 0x20u);
     {
         UINT32 i;
         for (i = 0; i < 100000u; i++) {
@@ -113,7 +145,7 @@ int HalPs2KbdInit(void) {
         }
     }
     WaitIbClear();
-    Out8(PS2_STATUS, 0xAEu); /* enable keyboard interface */
+    Out8(PS2_STATUS, 0xAEu);
     FlushOut();
     gReady = 1;
     return 0;
@@ -136,7 +168,7 @@ int HalPs2KbdPollChar(char *Out) {
         return 0;
     }
     if ((St & PS2_AUX) != 0) {
-        return 0; /* 鼠标字节留给 HalPs2Mouse */
+        return 0;
     }
     Code = In8(PS2_DATA);
     if (Code == 0xE0u) {
@@ -145,7 +177,8 @@ int HalPs2KbdPollChar(char *Out) {
     }
     if (gE0) {
         gE0 = 0;
-        return 0; /* 扩展键本刀忽略 */
+        /* 扩展键：右 Ctrl/Alt 等忽略；勿吞普通 Shift */
+        return 0;
     }
     Ch = Translate(Code);
     if (Ch == 0) {

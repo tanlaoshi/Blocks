@@ -90,7 +90,7 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatVol FatAlloc FatDir FatFile FatMut ElfLoad
-                    Process Network Theme Font Gui Scheduler ShellCmd Console Kernel)
+                    Process Network Theme Font Gui Scheduler ShellCmd ShellSys Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -145,7 +145,7 @@ x64|X64)
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
@@ -181,7 +181,7 @@ arm64|Arm64|ARM64)
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -220,7 +220,7 @@ riscv|RiscV|RISCV)
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)
     echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2

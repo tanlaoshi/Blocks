@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K25** · Shell：mem / ps / exec 薄 |
+| **★** | **PR-K26** · UTF-8 + 教学 CJK 点阵 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K24** · Fat write/mkdir/rm ✅ |
+| 刚收官 | **PR-K25** · Shell mem/ps/exec ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -68,13 +68,13 @@
 | **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
 | **K23** ✅ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
 | **K24** ✅ | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
-| **K25** ★ | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
+| **K25** ✅ | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
 
 #### 相位 P1b · 汉字 / 字体（K26–K28）· **提前 · 优先**
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K26** | UTF-8 + 教学 CJK 点阵子集 | I18N1 / `Fonts/cjk*` | 顶栏/桌面标签可显示汉字；ASCII 不回退 |
+| **K26** ★ | UTF-8 + 教学 CJK 点阵子集 | I18N1 / `Fonts/cjk*` | 顶栏/桌面标签可显示汉字；ASCII 不回退 |
 | **K27** | TTF 最小光栅（盘上字体→`FontDraw*`） | 现网 `PR-UI-ttf-*` ✅（stb + `CJK.TTF`） | 指定 TTF 渲染若干汉字，观感明显优于点阵 |
 | **K28** | `lang` / UI 字符串表 en\|zh | I18N2 | `lang zh` 后桌面/Shell 标签中文 |
 
@@ -133,7 +133,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 更大字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小规格对标现网，已进 P1b**；更大全集与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1：K21–K24 ✅，★ = K25 → **P1b 汉字/TTF** → 窗管…）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1：K21–K25 ✅，★ = K26 → **P1b 汉字/TTF** → 窗管…）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 
 ### K5 规划（已收官 ✅ · 曾 ★）
@@ -379,7 +379,7 @@
 | **验收** | `write` 后 `cat` 一致；`mkdir` 后 `ls` 可见；`rm` 后消失；`Blocks>` 仍活 |
 | **落地** | `HalBlockWrite`；`FatAlloc`/`FatMut`；Shell `write`/`mkdir`/`rm`；PTY 冒烟；宿主 vvfat 常延迟见小写名 |
 
-### K25 规划（★ · 最小子集）
+### K25 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：Shell 系统类薄命令：`mem` / `ps` / `exec`。
 
@@ -388,6 +388,17 @@
 | **做** | `mem` 报 PMM 空闲；`ps` 最小进程视图；`exec` 跑根目录 ELF（复用 HELLO 路径） |
 | **不做** | 完整进程表、多任务 ps、任意路径解析器 |
 | **验收** | `exec HELLO.ELF` 与开机 hello 一致；`mem`/`ps` 有输出；`Blocks>` 仍活 |
+| **落地** | `ShellSys` + `ProcessExecPath`；顺手修 PS/2 Caps/双 Shift 大写 |
+
+### K26 规划（★ · 最小子集）
+
+**一句话**：UTF-8 + 教学 CJK 点阵，桌面/顶栏可显示汉字。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | UTF-8 解码；CJK 点阵子集；`FontDraw*` 走码点；若干 UI 标签中文可读 |
+| **不做** | TTF（K27）、完整 Unicode、`lang` 切换（K28） |
+| **验收** | 顶栏/桌面见汉字；ASCII/`Blocks>` 不回退 |
 
 ### K26–K28 规划（P1b · 汉字/TTF · 排队）
 
@@ -716,3 +727,4 @@ Kernel/
 | 2026-10-10 | 排期：汉字/TTF 提前为 **P1b（K26–K28）**；窗管起顺延；主轨至 K54；TTF 最小光栅进 B、完整字库仍后置 |
 | 2026-10-10 | 更正：现网 TTF 最小规格已收官（非未做）；K27 对照改为 `PR-UI-ttf-*` |
 | 2026-10-10 | TG：K24 HalBlockWrite + Fat write/mkdir/rm；★ → K25（mem/ps/exec） |
+| 2026-10-10 | TG：K25 Shell mem/ps/exec + PS/2 大写；★ → K26（UTF-8/CJK 点阵） |

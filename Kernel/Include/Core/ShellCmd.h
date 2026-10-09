@@ -1,15 +1,14 @@
 /*
- * ShellCmd.h — 串口 Shell 命令表（K22）
- *
- * 【初学者】
- * 对标现网 ConsoleRegisterBuiltins 入口：名 → 帮助串 → 处理函数。
- * 本刀只有 help/clear/echo/hello；后刀往表里加 ls/ping…
+ * ShellCmd.h — 串口 Shell 命令表（K22+）
  */
 #ifndef SHELL_CMD_H
 #define SHELL_CMD_H
 
+typedef void (*SHELL_CMD_FN)(int Argc, char **Argv);
+
 void ShellCmdInitialize(void);
-/* 跑一行；空行直接返回；未知命令打提示 */
 void ShellCmdRunLine(const char *Line);
+/* 往表注册一项；满或参数非法返回 -1 */
+int ShellCmdRegister(const char *Name, const char *Help, SHELL_CMD_FN Fn);
 
 #endif

@@ -1,7 +1,8 @@
 /*
- * ShellCmd.c — 命令表（K22–K24：help/echo/ls/cat/write/mkdir/rm）
+ * ShellCmd.c — 命令表（K22–K25；系统类见 ShellSys）
  */
 #include "ShellCmd.h"
+#include "ShellSys.h"
 #include "FatFile.h"
 #include "HalSerial.h"
 #include "Process.h"
@@ -10,8 +11,6 @@
 #define NAME_MAX  16
 #define HELP_MAX  40
 #define CMD_MAX   16
-
-typedef void (*SHELL_CMD_FN)(int Argc, char **Argv);
 
 typedef struct {
     char Name[NAME_MAX];
@@ -54,7 +53,7 @@ static void StrCopyCap(char *Dst, const char *Src, int Cap) {
     Dst[i] = 0;
 }
 
-static int Register(const char *Name, const char *Help, SHELL_CMD_FN Fn) {
+int ShellCmdRegister(const char *Name, const char *Help, SHELL_CMD_FN Fn) {
     if (gCmdN >= CMD_MAX || Name == 0 || Fn == 0) {
         return -1;
     }
@@ -255,15 +254,16 @@ static void CmdHello(int Argc, char **Argv) {
 
 void ShellCmdInitialize(void) {
     gCmdN = 0;
-    Register("help", "list commands", CmdHelp);
-    Register("clear", "clear screen", CmdClear);
-    Register("echo", "print arguments", CmdEcho);
-    Register("hello", "run HELLO.ELF", CmdHello);
-    Register("ls", "list root dir", CmdLs);
-    Register("cat", "print text file", CmdCat);
-    Register("write", "write text file", CmdWrite);
-    Register("mkdir", "make directory", CmdMkdir);
-    Register("rm", "remove file/dir", CmdRm);
+    ShellCmdRegister("help", "list commands", CmdHelp);
+    ShellCmdRegister("clear", "clear screen", CmdClear);
+    ShellCmdRegister("echo", "print arguments", CmdEcho);
+    ShellCmdRegister("hello", "run HELLO.ELF", CmdHello);
+    ShellCmdRegister("ls", "list root dir", CmdLs);
+    ShellCmdRegister("cat", "print text file", CmdCat);
+    ShellCmdRegister("write", "write text file", CmdWrite);
+    ShellCmdRegister("mkdir", "make directory", CmdMkdir);
+    ShellCmdRegister("rm", "remove file/dir", CmdRm);
+    ShellSysRegister();
     Put("Shell: cmds ok\n");
 }
 

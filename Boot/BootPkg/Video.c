@@ -262,7 +262,7 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
             if (sHasCfgTarget) {
                 BootDbg("ToyBoot: THEME.CFG Wants %dx%d But GOP Is %dx%d\n",
                       sCfgW, sCfgH, CurW, CurH);
-                BootDbg("ToyBoot: Quit QEMU Window, Then ./run-split.sh (EDID From THEME.CFG)\n");
+                BootDbg("ToyBoot: Quit QEMU Window, Then Runtime/run.sh (EDID From THEME.CFG)\n");
             }
         } else {
             Status = Gop->SetMode(Gop, sBestMode);

@@ -1,10 +1,11 @@
 /*
  * GuiStart.c — K36：底栏开始钮 + 三项菜单（Shell/Settings/Files）
  *
- * 【初学者】顶栏仍是 Blocks 标题；开始在底栏左侧；菜单向上弹出。
+ * 【初学者】几何来自 GuiLayout（可 LAYOUT.CFG）；顶栏标题仍由 GuiWinPaint。
  */
 #include "GuiStart.h"
 #include "Font.h"
+#include "GuiLayout.h"
 #include "GuiWin.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
@@ -12,15 +13,7 @@
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
-#define GUI_BAR_H 28u
-#define BTN_X     6u
-/* "Start" = 5×16px；左垫 8 → 钮宽至少 88，留右缘 */
-#define BTN_W     92u
-#define BTN_H     20u
-#define BTN_PAD_Y 4u
-#define MENU_W    140u
-#define MENU_ROW  24u
-#define MENU_N    3u
+#define MENU_N 3u
 
 static UINT32 gFbW;
 static UINT32 gFbH;
@@ -40,14 +33,6 @@ static LOC_MSG ItemLabel(int WinId) {
     return MSG_ICON_SHELL;
 }
 
-static UINT32 BarY(void) {
-    return (gFbH > GUI_BAR_H) ? (gFbH - GUI_BAR_H) : 0;
-}
-
-static UINT32 BtnY(void) {
-    return BarY() + BTN_PAD_Y;
-}
-
 void GuiStartSetFb(UINT32 W, UINT32 H) {
     gFbW = W;
     gFbH = H;
@@ -63,50 +48,61 @@ int GuiStartMenuOpen(void) {
 }
 
 void GuiStartPaintBar(void) {
+    UINT32 BarH;
     UINT32 By;
+    UINT32 Bx;
+    UINT32 BtnY;
+    UINT32 Bw;
+    UINT32 Bh;
 
-    if (gFbW < 80u || gFbH < GUI_BAR_H) {
+    if (gFbW < 80u || gFbH < GuiLayoutBarH()) {
         return;
     }
-    By = BarY();
-    HalVideoFillRect(0, By, gFbW, GUI_BAR_H, ThemeTaskbarBackground());
-    HalVideoFillRect(BTN_X, BtnY(), BTN_W, BTN_H,
+    BarH = GuiLayoutBarH();
+    By = GuiLayoutContentBottom();
+    HalVideoFillRect(0, By, gFbW, BarH, ThemeTaskbarBackground());
+    GuiLayoutStartBtn(&Bx, &BtnY, &Bw, &Bh);
+    HalVideoFillRect(Bx, BtnY, Bw, Bh,
                      gMenuOn ? ThemeWindowTitleBar() : ThemeWindowBorder());
-    FontDrawStringAt(BTN_X + 8u, BtnY() + 3u, LocStr(MSG_START),
-                     ThemeWindowTitleText());
+    FontDrawStringAt(Bx + GuiLayoutPx(8u), BtnY + GuiLayoutPx(3u),
+                     LocStr(MSG_START), ThemeWindowTitleText());
 }
 
 void GuiStartPaintMenu(void) {
     UINT32 Mx;
     UINT32 My;
+    UINT32 Mw;
     UINT32 Mh;
     UINT32 i;
+    UINT32 RowH;
 
-    if (!gMenuOn || gFbW < 80u || gFbH < GUI_BAR_H) {
+    if (!gMenuOn || gFbW < 80u || gFbH < GuiLayoutBarH()) {
         return;
     }
-    Mh = MENU_N * MENU_ROW + 8u;
-    Mx = BTN_X;
-    My = (BarY() > Mh) ? (BarY() - Mh) : 0;
-    HalVideoFillRect(Mx, My, MENU_W, Mh, ThemeWindowBorder());
-    HalVideoFillRect(Mx + 1u, My + 1u, MENU_W - 2u, Mh - 2u, ThemeWindowClient());
+    GuiLayoutStartMenu(&Mx, &My, &Mw, &Mh);
+    RowH = GuiLayoutPx(24u);
+    HalVideoFillRect(Mx, My, Mw, Mh, ThemeWindowBorder());
+    HalVideoFillRect(Mx + 1u, My + 1u, Mw - 2u, Mh - 2u, ThemeWindowClient());
     for (i = 0; i < MENU_N; i++) {
-        FontDrawStringAt(Mx + 12u, My + 6u + i * MENU_ROW,
+        FontDrawStringAt(Mx + GuiLayoutPx(12u), My + GuiLayoutPx(6u) + i * RowH,
                          LocStr(ItemLabel(gItems[i])), ThemeWindowTitleText());
     }
 }
 
 int GuiStartHitButton(INT32 X, INT32 Y) {
-    UINT32 Bx = BTN_X;
-    UINT32 By = BtnY();
+    UINT32 Bx;
+    UINT32 By;
+    UINT32 Bw;
+    UINT32 Bh;
 
-    if (gFbH < GUI_BAR_H) {
+    if (gFbH < GuiLayoutBarH()) {
         return 0;
     }
+    GuiLayoutStartBtn(&Bx, &By, &Bw, &Bh);
     if (X < (INT32)Bx || Y < (INT32)By) {
         return 0;
     }
-    if (X >= (INT32)(Bx + BTN_W) || Y >= (INT32)(By + BTN_H)) {
+    if (X >= (INT32)(Bx + Bw) || Y >= (INT32)(By + Bh)) {
         return 0;
     }
     return 1;
@@ -115,25 +111,28 @@ int GuiStartHitButton(INT32 X, INT32 Y) {
 int GuiStartHitMenu(INT32 X, INT32 Y) {
     UINT32 Mx;
     UINT32 My;
+    UINT32 Mw;
     UINT32 Mh;
     UINT32 Row;
+    UINT32 RowH;
+    UINT32 Pad;
 
-    if (!gMenuOn || gFbH < GUI_BAR_H) {
+    if (!gMenuOn || gFbH < GuiLayoutBarH()) {
         return -1;
     }
-    Mh = MENU_N * MENU_ROW + 8u;
-    Mx = BTN_X;
-    My = (BarY() > Mh) ? (BarY() - Mh) : 0;
+    GuiLayoutStartMenu(&Mx, &My, &Mw, &Mh);
     if (X < (INT32)Mx || Y < (INT32)My) {
         return -1;
     }
-    if (X >= (INT32)(Mx + MENU_W) || Y >= (INT32)(My + Mh)) {
+    if (X >= (INT32)(Mx + Mw) || Y >= (INT32)(My + Mh)) {
         return -1;
     }
-    if (Y < (INT32)(My + 4u)) {
+    Pad = GuiLayoutPx(4u);
+    RowH = GuiLayoutPx(24u);
+    if (Y < (INT32)(My + Pad)) {
         return -2;
     }
-    Row = (UINT32)(Y - (INT32)(My + 4u)) / MENU_ROW;
+    Row = (UINT32)(Y - (INT32)(My + Pad)) / RowH;
     if (Row >= MENU_N) {
         return -2;
     }

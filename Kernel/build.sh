@@ -96,14 +96,14 @@ build_common_objs() {
         Memory/Memory Memory/PhysicalMemory
         VirtualMemory/VirtualMemory
         Driver/Driver Driver/Device
-        Video/Video Video/Theme Video/Font Video/Utf8 Video/FontTtfLoad
+        Video/Video Video/Theme Video/ThemeCfg Video/FontTerminus10x18 Video/FontCjkDisk Video/Font Video/Utf8 Video/FontTtfLoad
         Video/FontTtfCache Video/Locale
         Cpu/Cpu
         USB/Usb
         FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
         FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut
         Network/Network
-        Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
+        Gui/GuiLayout Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
         Scheduler/Scheduler
         Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
     )
@@ -155,6 +155,7 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.c" -o "$OUT/HalSyscall.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSyscall.S" -o "$OUT/HalSyscallIsr.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
+        -Wl,--build-id=none \
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
@@ -167,12 +168,12 @@ x64|X64)
         "$OUT/BootInfo.o" "$OUT/Modules.o" \
         "$OUT/Serial.o" "$OUT/Memory.o" "$OUT/PhysicalMemory.o" \
         "$OUT/VirtualMemory.o" "$OUT/Driver.o" "$OUT/Device.o" \
-        "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" \
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
@@ -198,6 +199,7 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalNetStub.c" -o "$OUT/HalNetStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie \
+        -Wl,--build-id=none \
         -Wl,-T,"$SCRIPT_DIR/Hal/Arm64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/HalSerial.o" \
@@ -208,11 +210,11 @@ arm64|Arm64|ARM64)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
@@ -240,6 +242,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalSyscallStub.c" -o "$OUT/HalSyscallStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalNetStub.c" -o "$OUT/HalNetStub.o"
     "$CC" -nostdlib -ffreestanding -no-pie "${ARCH_CFLAGS[@]}" \
+        -Wl,--build-id=none \
         -Wl,-T,"$SCRIPT_DIR/Hal/RiscV/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/SmpStub.o" \
@@ -251,11 +254,11 @@ riscv|RiscV|RISCV)
         "$OUT/HalXhciStub.o" "$OUT/HalPs2KbdStub.o" "$OUT/HalPs2MouseStub.o" \
         "$OUT/HalBlockStub.o" "$OUT/HalTimerStub.o" "$OUT/HalSyscallStub.o" \
         "$OUT/HalNetStub.o" \
-        "$OUT/Theme.o" "$OUT/Font.o" "$OUT/Utf8.o" \
+        "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
-        "$OUT/Network.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
+        "$OUT/Network.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
         "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)

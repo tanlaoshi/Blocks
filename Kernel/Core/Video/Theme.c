@@ -2,7 +2,8 @@
  * Theme.c — K21 色板 + K34 Settings 写回
  *
  * 【初学者】
- * 出厂色保持课感；Settings 改内存色板，THEME.CFG 落盘另刀。
+ * 默认「墨色」：暖炭桌面 + 米白字，避开现网 tech 青蓝霓虹。
+ * 落盘见 ThemeCfg.c（K37）。
  */
 #include "Theme.h"
 #include "HalSerial.h"
@@ -17,6 +18,7 @@ static UINT32 gWinTitleDim;
 static UINT32 gWinClient;
 static UINT32 gWinBorder;
 static int gReady;
+static char gThemeName[8] = "ink";
 
 static UINT32 Darken(UINT32 C) {
     UINT32 R = (C >> 16) & 0xFFu;
@@ -28,20 +30,99 @@ static UINT32 Darken(UINT32 C) {
     return (R << 16) | (G << 8) | B;
 }
 
+/* 墨色：低饱和暖暗底，字用米白提高可读 */
+static void ApplyInk(void) {
+    gDesktopBg = 0x001C1B1Au;
+    gTaskbarBg = 0x002C2A28u;
+    gTitleFg = 0x00F2EDE6u;
+    gTextFg = 0x00F2EDE6u;
+    gWinTitleBar = 0x004A4540u;
+    gWinTitleDim = Darken(gWinTitleBar);
+    gWinClient = 0x00141210u;
+    gWinBorder = 0x006B6560u;
+}
+
+/* 石板：中性灰，无青光 */
+static void ApplySlate(void) {
+    gDesktopBg = 0x0022262Bu;
+    gTaskbarBg = 0x00303840u;
+    gTitleFg = 0x00EEF1F4u;
+    gTextFg = 0x00EEF1F4u;
+    gWinTitleBar = 0x00485058u;
+    gWinTitleDim = Darken(gWinTitleBar);
+    gWinClient = 0x0016181Cu;
+    gWinBorder = 0x00687078u;
+}
+
+/* 松烟：极低饱和绿灰 */
+static void ApplyPine(void) {
+    gDesktopBg = 0x001A201Cu;
+    gTaskbarBg = 0x00283028u;
+    gTitleFg = 0x00E8F0EAu;
+    gTextFg = 0x00E8F0EAu;
+    gWinTitleBar = 0x003E4A40u;
+    gWinTitleDim = Darken(gWinTitleBar);
+    gWinClient = 0x00121412u;
+    gWinBorder = 0x00586058u;
+}
+
 void ThemeInitialize(void) {
     if (gReady) {
         return;
     }
-    gDesktopBg = 0x001A1F24u;
-    gTaskbarBg = 0x002A323Cu;
-    gTitleFg = 0x00E8EEF4u;
-    gTextFg = 0x00FFFFFFu;
-    gWinTitleBar = 0x003D4F5Fu;
-    gWinTitleDim = Darken(gWinTitleBar);
-    gWinClient = 0x00101214u;
-    gWinBorder = 0x005A6A78u;
+    ApplyInk();
     gReady = 1;
-    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: palette ok\n");
+    HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: palette ok (ink)\n");
+}
+
+int ThemeApplyNamed(const char *Name) {
+    if (Name == 0) {
+        return -1;
+    }
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    if (Name[0] == 'i' && Name[1] == 'n' && Name[2] == 'k' && Name[3] == 0) {
+        ApplyInk();
+        gThemeName[0] = 'i';
+        gThemeName[1] = 'n';
+        gThemeName[2] = 'k';
+        gThemeName[3] = 0;
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: ink\n");
+        return 0;
+    }
+    if (Name[0] == 's' && Name[1] == 'l' && Name[2] == 'a' && Name[3] == 't' &&
+        Name[4] == 'e' && Name[5] == 0) {
+        ApplySlate();
+        gThemeName[0] = 's';
+        gThemeName[1] = 'l';
+        gThemeName[2] = 'a';
+        gThemeName[3] = 't';
+        gThemeName[4] = 'e';
+        gThemeName[5] = 0;
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: slate\n");
+        return 0;
+    }
+    if (Name[0] == 'p' && Name[1] == 'i' && Name[2] == 'n' && Name[3] == 'e' &&
+        Name[4] == 0) {
+        ApplyPine();
+        gThemeName[0] = 'p';
+        gThemeName[1] = 'i';
+        gThemeName[2] = 'n';
+        gThemeName[3] = 'e';
+        gThemeName[4] = 0;
+        HalSerialWriteChannel(TOY_SLOG_GUI, "Theme: pine\n");
+        return 0;
+    }
+    /* tech/modern：刻意不提供；青蓝霓虹课感差 */
+    return -1;
+}
+
+const char *ThemeName(void) {
+    if (!gReady) {
+        ThemeInitialize();
+    }
+    return gThemeName;
 }
 
 UINT32 ThemeDesktopBackground(void) {

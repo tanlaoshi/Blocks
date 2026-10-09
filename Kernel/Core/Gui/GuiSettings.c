@@ -1,5 +1,7 @@
 /*
- * GuiSettings.c — K34：Settings 色板 → ThemeSet*（立即生效，不落盘）
+ * GuiSettings.c — K34/K37：预设色板（墨/石/松）+ 标题石色
+ *
+ * 【初学者】点桌面色块 = 整套 ThemeApplyNamed；点第二行只改标题条。
  */
 #include "GuiSettings.h"
 #include "Font.h"
@@ -11,11 +13,14 @@
 #define GAP 8u
 #define ROW_H (SW + 20u)
 
+/* 桌面行：整套预设预览色（ink / slate / pine / 暖褐） */
 static const UINT32 gDeskPal[4] = {
-    0x001A1F24u, 0x00202840u, 0x00182820u, 0x00302028u
+    0x001C1B1Au, 0x0022262Bu, 0x001A201Cu, 0x00241C18u
 };
+static const char *gDeskName[4] = {"ink", "slate", "pine", 0};
+/* 标题行：暖石 / 烟灰 / 松皮 / 陶土 —— 无青蓝 */
 static const UINT32 gTitlePal[4] = {
-    0x003D4F5Fu, 0x00405080u, 0x00306050u, 0x00604050u
+    0x004A4540u, 0x00485058u, 0x003E4A40u, 0x00584840u
 };
 
 static UINT32 gCx;
@@ -65,7 +70,14 @@ int GuiSettingsClick(INT32 X, INT32 Y) {
         Sy = Y0;
         if (X >= (INT32)Sx && Y >= (INT32)Sy &&
             X < (INT32)(Sx + SW) && Y < (INT32)(Sy + SW)) {
-            ThemeSetDesktopBackground(gDeskPal[i]);
+            if (gDeskName[i] != 0) {
+                (void)ThemeApplyNamed(gDeskName[i]);
+            } else {
+                ThemeSetDesktopBackground(gDeskPal[i]);
+                ThemeSetTaskbarBackground(0x00342824u);
+                ThemeSetWindowTitleBar(0x00584840u);
+            }
+            (void)ThemeSaveCfg();
             return 1;
         }
     }
@@ -76,6 +88,7 @@ int GuiSettingsClick(INT32 X, INT32 Y) {
         if (X >= (INT32)Sx && Y >= (INT32)Sy &&
             X < (INT32)(Sx + SW) && Y < (INT32)(Sy + SW)) {
             ThemeSetWindowTitleBar(gTitlePal[i]);
+            (void)ThemeSaveCfg();
             return 1;
         }
     }

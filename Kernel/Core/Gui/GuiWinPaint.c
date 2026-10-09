@@ -5,6 +5,7 @@
 #include "Console.h"
 #include "Font.h"
 #include "GuiFiles.h"
+#include "GuiLayout.h"
 #include "GuiSettings.h"
 #include "GuiStart.h"
 #include "GuiWin.h"
@@ -13,26 +14,118 @@
 #include "Theme.h"
 #include "Utf8.h"
 
-#define GUI_BAR_H    28u
-#define GUI_TITLE_H  24u
-#define GUI_CLOSE_W  20u
 #define GUI_CLOSE_BG 0x00B33A3Au
 #define WIN_MOVE_PAD 2u
 
 void GuiWinPaint_CloseBtn(UINT32 WinX, UINT32 WinY, UINT32 WinW,
                           UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
-    *W = GUI_CLOSE_W;
-    *H = GUI_TITLE_H - 6u;
-    *X = WinX + WinW - 6u - *W;
-    *Y = WinY + 3u;
+    UINT32 TitleH = GuiLayoutTitleH();
+    /* 钮高随标题栏，宽至少够画几何 × */
+    *H = (TitleH > 8u) ? (TitleH - 6u) : TitleH;
+    *W = *H;
+    if (*W < GuiLayoutCloseW()) {
+        *W = GuiLayoutCloseW();
+    }
+    *X = WinX + WinW - GuiLayoutPx(6u) - *W;
+    *Y = WinY + (TitleH > *H ? (TitleH - *H) / 2u : 0) + 1u;
+}
+
+/* 红钮内居中两段对角线，避免 16px 字母「x」溢出错位 */
+static void PaintCloseX(UINT32 Bx, UINT32 By, UINT32 Bw, UINT32 Bh,
+                        UINT32 Color) {
+    UINT32 Pad;
+    UINT32 X0;
+    UINT32 Y0;
+    UINT32 X1;
+    UINT32 Y1;
+    INT32 Dx;
+    INT32 Dy;
+    INT32 Sx;
+    INT32 Sy;
+    INT32 Err;
+    INT32 E2;
+    INT32 Cx;
+    INT32 Cy;
+
+    Pad = (Bw > 10u && Bh > 10u) ? 4u : 2u;
+    if (Bw <= Pad * 2u + 2u || Bh <= Pad * 2u + 2u) {
+        Pad = 1u;
+    }
+    X0 = Bx + Pad;
+    Y0 = By + Pad;
+    X1 = Bx + Bw - 1u - Pad;
+    Y1 = By + Bh - 1u - Pad;
+
+    Dx = (INT32)X1 - (INT32)X0;
+    Dy = (INT32)Y1 - (INT32)Y0;
+    if (Dx < 0) {
+        Dx = -Dx;
+    }
+    if (Dy < 0) {
+        Dy = -Dy;
+    }
+    Sx = ((INT32)X0 < (INT32)X1) ? 1 : -1;
+    Sy = ((INT32)Y0 < (INT32)Y1) ? 1 : -1;
+    Err = Dx - Dy;
+    Cx = (INT32)X0;
+    Cy = (INT32)Y0;
+    for (;;) {
+        HalVideoDrawPixel((UINT32)Cx, (UINT32)Cy, Color);
+        if (Cx == (INT32)X1 && Cy == (INT32)Y1) {
+            break;
+        }
+        E2 = Err * 2;
+        if (E2 > -Dy) {
+            Err -= Dy;
+            Cx += Sx;
+        }
+        if (E2 < Dx) {
+            Err += Dx;
+            Cy += Sy;
+        }
+    }
+
+    /* 另一对角 */
+    X0 = Bx + Bw - 1u - Pad;
+    Y0 = By + Pad;
+    X1 = Bx + Pad;
+    Y1 = By + Bh - 1u - Pad;
+    Dx = (INT32)X1 - (INT32)X0;
+    Dy = (INT32)Y1 - (INT32)Y0;
+    if (Dx < 0) {
+        Dx = -Dx;
+    }
+    if (Dy < 0) {
+        Dy = -Dy;
+    }
+    Sx = ((INT32)X0 < (INT32)X1) ? 1 : -1;
+    Sy = ((INT32)Y0 < (INT32)Y1) ? 1 : -1;
+    Err = Dx - Dy;
+    Cx = (INT32)X0;
+    Cy = (INT32)Y0;
+    for (;;) {
+        HalVideoDrawPixel((UINT32)Cx, (UINT32)Cy, Color);
+        if (Cx == (INT32)X1 && Cy == (INT32)Y1) {
+            break;
+        }
+        E2 = Err * 2;
+        if (E2 > -Dy) {
+            Err -= Dy;
+            Cx += Sx;
+        }
+        if (E2 < Dx) {
+            Err += Dx;
+            Cy += Sy;
+        }
+    }
 }
 
 void GuiWinPaint_Desktop(UINT32 FbW, UINT32 FbH) {
+    UINT32 BarH = GuiLayoutBarH();
     HalVideoFillRect(0, 0, FbW, FbH, ThemeDesktopBackground());
-    /* 顶栏：仅标题 Blocks（与 K35 前一致） */
-    HalVideoFillRect(0, 0, FbW, GUI_BAR_H, ThemeTaskbarBackground());
-    FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
-    /* 底栏：开始钮 */
+    HalVideoFillRect(0, 0, FbW, BarH, ThemeTaskbarBackground());
+    FontDrawStringAt(GuiLayoutPx(12u), GuiLayoutPx(8u), LocStr(MSG_DESKTOP_TITLE),
+                     ThemeWindowTitleText());
     GuiStartPaintBar();
 }
 
@@ -42,7 +135,8 @@ void GuiWinPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
     UINT32 T = (Y > WIN_MOVE_PAD) ? (Y - WIN_MOVE_PAD) : 0;
     UINT32 R = X + W + WIN_MOVE_PAD;
     UINT32 B = Y + H + WIN_MOVE_PAD;
-    UINT32 BotY = (FbH > GUI_BAR_H) ? (FbH - GUI_BAR_H) : 0;
+    UINT32 BarH = GuiLayoutBarH();
+    UINT32 BotY = GuiLayoutContentBottom();
 
     if (R > FbW) {
         R = FbW;
@@ -53,9 +147,10 @@ void GuiWinPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
     if (R > L && B > T) {
         HalVideoFillRect(L, T, R - L, B - T, ThemeDesktopBackground());
     }
-    if (T < GUI_BAR_H) {
-        HalVideoFillRect(0, 0, FbW, GUI_BAR_H, ThemeTaskbarBackground());
-        FontDrawStringAt(12, 8, LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
+    if (T < BarH) {
+        HalVideoFillRect(0, 0, FbW, BarH, ThemeTaskbarBackground());
+        FontDrawStringAt(GuiLayoutPx(12u), GuiLayoutPx(8u),
+                         LocStr(MSG_DESKTOP_TITLE), ThemeWindowTitleText());
     }
     if (B > BotY) {
         GuiStartPaintBar();
@@ -141,19 +236,21 @@ void GuiWinPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
     UINT32 Cw;
     UINT32 Ch;
 
-    HalVideoFillRect(X, Y, W, H, ThemeWindowBorder());
-    TitleBg = Focus ? ThemeWindowTitleBar() : ThemeWindowTitleBarDim();
-    HalVideoFillRect(X + 1u, Y + 1u, W - 2u, GUI_TITLE_H, TitleBg);
-    GuiWinPaint_CloseBtn(X, Y, W, &Bx, &By, &Bw, &Bh);
-    /* 标题止于 × 左缘，勿画进关闭钮/窗外 */
-    DrawClippedAt(X + 10u, Y + 5u, Bx > 4u ? Bx - 4u : X + 10u, Y + GUI_TITLE_H,
-                  LocStr(Title), ThemeWindowTitleText());
-    HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BG);
-    FontDrawStringAt(Bx + 6u, By + 4u, "x", ThemeWindowTitleText());
-    Cx = X + 1u;
-    Cy = Y + 1u + GUI_TITLE_H;
-    Cw = W - 2u;
-    Ch = (H > GUI_TITLE_H + 2u) ? (H - 2u - GUI_TITLE_H) : 0;
+    {
+        UINT32 TitleH = GuiLayoutTitleH();
+        HalVideoFillRect(X, Y, W, H, ThemeWindowBorder());
+        TitleBg = Focus ? ThemeWindowTitleBar() : ThemeWindowTitleBarDim();
+        HalVideoFillRect(X + 1u, Y + 1u, W - 2u, TitleH, TitleBg);
+        GuiWinPaint_CloseBtn(X, Y, W, &Bx, &By, &Bw, &Bh);
+        DrawClippedAt(X + 10u, Y + 5u, Bx > 4u ? Bx - 4u : X + 10u, Y + TitleH,
+                      LocStr(Title), ThemeWindowTitleText());
+        HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BG);
+        PaintCloseX(Bx, By, Bw, Bh, ThemeWindowTitleText());
+        Cx = X + 1u;
+        Cy = Y + 1u + TitleH;
+        Cw = W - 2u;
+        Ch = (H > TitleH + 2u) ? (H - 2u - TitleH) : 0;
+    }
     if (Ch > 0) {
         HalVideoFillRect(Cx, Cy, Cw, Ch, ThemeWindowClient());
     }

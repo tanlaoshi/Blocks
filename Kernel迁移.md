@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K37** · `THEME.CFG` / 分辨率偏好（Boot 可读） |
+| **★** | **PR-K38** · ICMP `ping 10.0.2.2`（builtin） |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K36** · 开始菜单 / 底栏任务栏 ✅ |
+| 刚收官 | **PR-K37** · `THEME.CFG` / 分辨率偏好 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -91,13 +91,13 @@
 | **K34** ✅ | Settings 窗皮 + 改色写回 Theme | SettingsUi/D2 | 改色立即或重启可见 |
 | **K35** ✅ | Files 窗：列目录 / 打开 | FilesUi/FB1 | 窗内 `ls`；点 ELF 可 exec |
 | **K36** ✅ | 开始菜单 / 任务栏最小 | G13 | 钮可开 Shell/Settings/Files |
-| **K37** ★ | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
+| **K37** ✅ | `THEME.CFG` / 分辨率偏好（Boot 可读） | D7 | 改 mode 文档化；热切可后置 |
 
 #### 相位 P3 · 网络对标（K38–K43）
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K38** | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
+| **K38** ★ | ICMP `ping 10.0.2.2`（builtin） | Net/N 族 | ping 通；串口/Shell 可见 |
 | **K39** | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
 | **K40** | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
 | **K41** | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
@@ -520,17 +520,28 @@
 | **对照** | 现网 G13 薄 |
 | **落地** | `Gui/GuiStart.c`；任务栏重绘 |
 
-### K37 规划（★ · 最小子集）
+### K37 已收官
 
-**一句话**：主题/分辨率偏好可落盘，Boot 侧可读。
+**一句话**：主题/分辨率偏好可落盘，Boot 侧可读；盘上 CJK 点阵 + 布局描述表。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `THEME.CFG`（或等价）写色/mode；文档化改分辨率；内核可读回 |
-| **不做** | 热切分辨率全套、多显示器、完整主题包市场 |
-| **验收** | 改 mode 有文档；偏好重启后仍在（或明确只文档化） |
-| **对照** | 现网 D7 薄 |
-| **落地** | Theme/Fs；Boot 读路径另注 |
+| **做** | `THEME.CFG`：色/`mode`；Settings/`mode` 落盘；Boot `VideoTheme` 读 `mode=`；QEMU VGA edid 跟 CFG（默认 1440×900）；`CJK32.BIN` 盘读 18×18×4bpp；`GuiLayout`+`LAYOUT.CFG` |
+| **不做** | 热切分辨率、多显示器、TOYOS.DB、完整主题包 |
+| **验收** | 改色重启仍在；`mode` 冷起生效；汉字走盘上点阵；布局可 CFG |
+| **落地** | `ThemeCfg` / `FontCjkDisk` / `GuiLayout` / `Runtime/run.sh` edid |
+
+### K38 规划（★ · 最小子集 · JX 中）
+
+**一句话**：Shell `ping` 打通 QEMU 网关 ICMP echo。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | builtin ICMP echo request/reply；默认目标 `10.0.2.2`；串口/Shell 见 RTT 或 ok |
+| **不做** | lwIP、DNS、TCP、多网卡 |
+| **验收** | `ping` / `ping 10.0.2.2` 通；失败有明确日志 |
+| **对照** | 现网 VirtioNet ICMP 薄（非 lwIP `toy_ping`） |
+| **落地** | `HalVirtioNet` / `Network` + `ShellCmd` `ping` |
 
 ### K22+ 细则
 
@@ -854,3 +865,4 @@ Kernel/
 | 2026-10-10 | TG：K34 ✅ Settings 改色立即可见；★ → **K35**（Files 列目录/开 ELF）；JX K35 |
 | 2026-10-10 | TG：K35 ✅ Files 窗 ls/点 ELF；★ → **K36**（开始菜单/任务栏）；JX K36 |
 | 2026-10-10 | TG：K36 ✅ 底栏开始菜单（顶栏仅 Blocks；钮宽吃下 Start）；★ → **K37**（THEME.CFG） |
+| 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + GuiLayout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |

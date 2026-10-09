@@ -1,7 +1,7 @@
 /*
- * FatFile.h — FAT 根目录读（K19 读文件；K23 列举）
+ * FatFile.h — FAT 根目录读写（K19/K23 读；K24 写；K37 THEME.CFG）
  *
- * 块设备须已 HalBlockInit。只读；8.3 名（跳过 LFN）。
+ * 块设备须已 HalBlockInit。根目录 8.3（跳过 LFN）。
  */
 #ifndef FAT_FILE_H
 #define FAT_FILE_H
@@ -27,5 +27,10 @@ int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize);
 
 /* 直接 11 字节 8.3（如 "HELLO   ELF"） */
 int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize);
+
+/* K24：写/建/删根路径；成功 0 */
+int FatFileWritePath(const char *Path, const void *Buf, UINT32 Len);
+int FatMkdirPath(const char *Path);
+int FatRmPath(const char *Path);
 
 #endif

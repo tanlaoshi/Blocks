@@ -11,7 +11,7 @@
 int FontTtfLoad(void);
 const UINT8 *FontTtfBlob(UINT32 *OutSize);
 int FontTtfInit(void);
-int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix16);
+int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix);
 void FontTtfPreheatUtf8(const char *S);
 const UINT8 *FontTtfCacheGet(UINT32 Cp);
 

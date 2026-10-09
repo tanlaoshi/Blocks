@@ -11,7 +11,7 @@
 #include "ToySerialConfig.h"
 
 #define FILES_MAX   24u
-#define LINE_H      18u
+#define LINE_H      20u
 #define PAD_X       12u
 #define PAD_Y       12u
 

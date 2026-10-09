@@ -1,8 +1,7 @@
 /*
- * FontTtfRaster.c — K27：stb 栅格（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — stb 栅格（须 HalFpuBegin；CFLAGS_FPU）
  *
- * 16px 直栅发糊（点阵已是 Noto 烘焙，AA 无优势）。
- * 先 32px 再 2×2 硬阈值落到 16：笔画更利落。
+ * 缺字回退：直接栅到 18x18，与盘上 CJK32 同行高。
  */
 #include "FontTtf.h"
 #include "HalFpu.h"
@@ -39,10 +38,8 @@ size_t strlen(const char *S) {
     return N;
 }
 
-#define TTF_CELL 16
-#define TTF_HI   32
+#define TTF_CELL 18
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
-#define TTF_HIPIX (TTF_HI * TTF_HI)
 #define TTF_ARENA (64u * 1024u)
 
 static unsigned char gArena[TTF_ARENA];
@@ -92,7 +89,10 @@ static float FontTtfCosf(float X) {
 #define STBTT_memcpy(d, s, n) __builtin_memcpy((d), (s), (n))
 #define STBTT_memset(d, v, n) __builtin_memset((d), (v), (n))
 #define STB_TRUETYPE_IMPLEMENTATION
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "stb_truetype.h"
+#pragma GCC diagnostic pop
 
 static stbtt_fontinfo gInfo;
 
@@ -123,29 +123,25 @@ int FontTtfInit(void) {
     return 0;
 }
 
-int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix16) {
+int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
     float Scale;
     int X0, Y0, X1, Y1, Gw, Gh, Ox, Oy, Y, X;
-    UINT8 Hi[TTF_HIPIX];
-    UINT8 Tmp[TTF_HIPIX];
+    UINT8 Tmp[TTF_PIX];
     UINT32 i;
 
-    if (!Pix16 || !gInit || Cp < 128u) {
+    if (!Pix || !gInit || Cp < 128u) {
         return -1;
     }
-    for (i = 0; i < TTF_HIPIX; i++) {
-        Hi[i] = 0;
-        Tmp[i] = 0;
-    }
     for (i = 0; i < TTF_PIX; i++) {
-        Pix16[i] = 0;
+        Pix[i] = 0;
+        Tmp[i] = 0;
     }
     gArenaUsed = 0;
     if (!HalFpuBegin()) {
         return -1;
     }
-    /* CJK 常吃不满 em；略放大再钳进 32 格 */
-    Scale = stbtt_ScaleForPixelHeight(&gInfo, (float)TTF_HI) * 1.40f;
+    /* CJK 常吃不满 em；略放大再钳进 18 格 */
+    Scale = stbtt_ScaleForPixelHeight(&gInfo, (float)TTF_CELL) * 1.32f;
     stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
@@ -153,43 +149,32 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix16) {
         HalFpuEnd();
         return -1;
     }
-    if (Gw > TTF_HI || Gh > TTF_HI) {
-        float FitX = (float)TTF_HI / (float)Gw;
-        float FitY = (float)TTF_HI / (float)Gh;
+    if (Gw > TTF_CELL || Gh > TTF_CELL) {
+        float FitX = (float)TTF_CELL / (float)Gw;
+        float FitY = (float)TTF_CELL / (float)Gh;
         float Fit = (FitX < FitY) ? FitX : FitY;
         Scale *= Fit * 0.98f;
         stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
         Gw = X1 - X0;
         Gh = Y1 - Y0;
-        if (Gw <= 0 || Gh <= 0 || Gw > TTF_HI || Gh > TTF_HI) {
+        if (Gw <= 0 || Gh <= 0 || Gw > TTF_CELL || Gh > TTF_CELL) {
             HalFpuEnd();
             return -1;
         }
     }
-    Ox = (TTF_HI - Gw) / 2;
-    Oy = (TTF_HI - Gh) / 2;
+    Ox = (TTF_CELL - Gw) / 2;
+    Oy = (TTF_CELL - Gh) / 2;
     if (Ox < 0) {
         Ox = 0;
     }
     if (Oy < 0) {
         Oy = 0;
     }
-    stbtt_MakeCodepointBitmap(&gInfo, Tmp, Gw, Gh, TTF_HI, Scale, Scale, (int)Cp);
+    stbtt_MakeCodepointBitmap(&gInfo, Tmp, Gw, Gh, TTF_CELL, Scale, Scale, (int)Cp);
     HalFpuEnd();
     for (Y = 0; Y < Gh; Y++) {
         for (X = 0; X < Gw; X++) {
-            Hi[(Oy + Y) * TTF_HI + (Ox + X)] = Tmp[Y * TTF_HI + X];
-        }
-    }
-    /* 2×2 → 16：覆盖够则实心，去掉 AA 光晕（对标现网 cjk-crisp） */
-    for (Y = 0; Y < TTF_CELL; Y++) {
-        for (X = 0; X < TTF_CELL; X++) {
-            UINT32 Sum =
-                (UINT32)Hi[(Y * 2) * TTF_HI + (X * 2)] +
-                (UINT32)Hi[(Y * 2) * TTF_HI + (X * 2 + 1)] +
-                (UINT32)Hi[(Y * 2 + 1) * TTF_HI + (X * 2)] +
-                (UINT32)Hi[(Y * 2 + 1) * TTF_HI + (X * 2 + 1)];
-            Pix16[Y * TTF_CELL + X] = (Sum >= 380u) ? 255u : 0u;
+            Pix[(Oy + Y) * TTF_CELL + (Ox + X)] = Tmp[Y * TTF_CELL + X];
         }
     }
     return 0;
@@ -202,8 +187,8 @@ int FontTtfInit(void) {
     return -1;
 }
 
-int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix16) {
-    (void)Cp; (void)Pix16;
+int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
+    (void)Cp; (void)Pix;
     return -1;
 }
 

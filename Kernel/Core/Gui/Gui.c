@@ -7,6 +7,7 @@
 #include "Gui.h"
 #include "GuiDesktop.h"
 #include "GuiFiles.h"
+#include "GuiLayout.h"
 #include "GuiSettings.h"
 #include "GuiStart.h"
 #include "GuiWin.h"
@@ -22,7 +23,6 @@
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
-#define GUI_BAR_H     28u
 #define GUI_CUR_COLOR 0x00FFFFFFu
 #define GUI_CUR_W     8u
 #define GUI_CUR_H     14u
@@ -168,6 +168,9 @@ int GuiInitialize(void) {
     }
 
     ThemeInitialize();
+    (void)ThemeLoadCfg(); /* K37：色/mode；无文件则出厂色 */
+    GuiLayoutSetFb(gFbW, gFbH);
+    (void)GuiLayoutLoadCfg(); /* 窗几何描述；无则内建表 */
     FontInitialize();
     LocaleInitialize();
     FontTtfPreheatUtf8("积木系统已就绪命令窗说明设置点色块改主题文件运行开始");
@@ -323,8 +326,8 @@ int GuiPoll(void) {
                     (void)GuiDesktopClickIcon(Icon, gCurX, gCurY);
                     gDragging = 0;
                     gDragWin = -1;
-                } else if ((UINT32)gCurY >= GUI_BAR_H &&
-                           (UINT32)gCurY < gFbH - GUI_BAR_H) {
+                } else if ((UINT32)gCurY >= GuiLayoutContentTop() &&
+                           (UINT32)gCurY < GuiLayoutContentBottom()) {
                     GuiWinUnfocusAll();
                     gDragging = 0;
                     gDragWin = -1;

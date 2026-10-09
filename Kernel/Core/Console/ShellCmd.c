@@ -9,6 +9,7 @@
 #include "Locale.h"
 #include "Gui.h"
 #include "Console.h"
+#include "Theme.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
@@ -249,6 +250,95 @@ static void CmdRm(int Argc, char **Argv) {
     Put("rm: ok\n");
 }
 
+static void PutU32(UINT32 V) {
+    char T[12];
+    int N = 0;
+    int i;
+
+    if (V == 0) {
+        Put("0");
+        return;
+    }
+    while (V != 0 && N < 11) {
+        T[N++] = (char)('0' + (V % 10u));
+        V /= 10u;
+    }
+    for (i = N - 1; i >= 0; i--) {
+        char One[2];
+        One[0] = T[i];
+        One[1] = 0;
+        Put(One);
+    }
+}
+
+/* mode — 查/写分辨率偏好（下次 Boot 生效；见 Boot VideoTheme） */
+static void CmdMode(int Argc, char **Argv) {
+    UINT32 W = 0;
+    UINT32 H = 0;
+    const char *S;
+    UINT32 Ww = 0;
+    UINT32 Hh = 0;
+
+    ThemeGetMode(&W, &H);
+    if (Argc < 2) {
+        Put("mode: ");
+        if (W == 0 || H == 0) {
+            Put("auto");
+        } else {
+            PutU32(W);
+            Put("x");
+            PutU32(H);
+        }
+        Put(" (next boot; ThemeSave keeps it)\n");
+        return;
+    }
+    S = Argv[1];
+    if (StrEq(S, "auto")) {
+        ThemeSetMode(0, 0);
+        if (ThemeSaveCfg() != 0) {
+            Put("mode: save fail\n");
+            return;
+        }
+        Put("mode: auto (saved)\n");
+        return;
+    }
+    while (*S >= '0' && *S <= '9') {
+        Ww = Ww * 10u + (UINT32)(*S - '0');
+        S++;
+        if (Ww > 10000u) {
+            Put("mode: bad (use 1024x768|auto)\n");
+            return;
+        }
+    }
+    if (*S != 'x' && *S != 'X') {
+        Put("mode: bad (use 1024x768|auto)\n");
+        return;
+    }
+    S++;
+    while (*S >= '0' && *S <= '9') {
+        Hh = Hh * 10u + (UINT32)(*S - '0');
+        S++;
+        if (Hh > 10000u) {
+            Put("mode: bad (use 1024x768|auto)\n");
+            return;
+        }
+    }
+    if (*S != 0 || Ww < 640u || Hh < 480u) {
+        Put("mode: bad (min 640x480)\n");
+        return;
+    }
+    ThemeSetMode(Ww, Hh);
+    if (ThemeSaveCfg() != 0) {
+        Put("mode: save fail\n");
+        return;
+    }
+    Put("mode: saved ");
+    PutU32(Ww);
+    Put("x");
+    PutU32(Hh);
+    Put(" (reboot to apply)\n");
+}
+
 static void CmdLang(int Argc, char **Argv) {
     if (Argc < 2) {
         Put(LocStr(MSG_LANG_USAGE));
@@ -292,6 +382,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("mkdir", "make directory", CmdMkdir);
     ShellCmdRegister("rm", "remove file/dir", CmdRm);
     ShellCmdRegister("lang", "UI language en|zh", CmdLang);
+    ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
     ShellSysRegister();
     Put("Shell: cmds ok\n");
 }

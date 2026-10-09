@@ -77,12 +77,34 @@ if [ -z "${DISPLAY:-}" ] && [ "$HEADLESS" = 0 ]; then
     HEADLESS=1
 fi
 
+# VGA EDID：固件 GOP 初模；VM 内勿 SetMode（见 Boot Video.c），改分辨率须重起本脚本。
+# 优先 TOY_QEMU_XRES/YRES；否则读 THEME.CFG mode=WxH；缺省/auto → 1440x900（32px 字更宽松）。
+TOY_QEMU_XRES="${TOY_QEMU_XRES:-}"
+TOY_QEMU_YRES="${TOY_QEMU_YRES:-}"
+if [ -z "$TOY_QEMU_XRES" ] || [ -z "$TOY_QEMU_YRES" ]; then
+    Cfg="RootFs/X64/THEME.CFG"
+    Line=""
+    if [ -f "$Cfg" ]; then
+        Line="$(grep -E '^[[:space:]]*mode=' "$Cfg" | head -1 || true)"
+    fi
+    W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
+    H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"
+    if [ -n "$W" ] && [ -n "$H" ]; then
+        TOY_QEMU_XRES="$W"
+        TOY_QEMU_YRES="$H"
+    else
+        TOY_QEMU_XRES=1440
+        TOY_QEMU_YRES=900
+    fi
+fi
+
 echo "=========================================="
 echo "Blocks Runtime QEMU"
 echo "  OVMF  $OVMF_CODE"
 echo "  ESP   Esp/X64"
 echo "  Root  RootFs/X64"
 echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
+echo "  VGA   ${TOY_QEMU_XRES}x${TOY_QEMU_YRES}"
 echo "=========================================="
 
 # 鼠走 PS/2（K17）。勿挂裸 qemu-xhci：现网有 usb-tablet+XHCI-HID；
@@ -99,6 +121,7 @@ exec qemu-system-x86_64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
+    -device VGA,edid=on,xres="${TOY_QEMU_XRES}",yres="${TOY_QEMU_YRES}" \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0 \
     "${DISPLAY_ARGS[@]}" \

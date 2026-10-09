@@ -5,7 +5,8 @@
 #include "FatVol.h"
 #include "HalBlock.h"
 
-#define MAX_FILE (256u * 1024u)
+/* 允许 CJK32.BIN / CJK.TTF 等盘上字库（~1–2MiB） */
+#define MAX_FILE (8u * 1024u * 1024u) /* CJK32.BIN 32×32≈3.7MiB */
 
 static int MemEq(const UINT8 *A, const char *B, UINTN N) {
     UINTN i;
@@ -63,7 +64,8 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
     }
     {
         UINT32 Clus = F.Clus;
-        for (Guard = 0; Guard < 512u && Clus >= 2u && Got < F.Size; Guard++) {
+        /* 2MiB / 512B ≈ 4096 扇区；簇链步数放宽 */
+        for (Guard = 0; Guard < 16384u && Clus >= 2u && Got < F.Size; Guard++) {
             UINT32 Lba = V.DataLba + (Clus - 2u) * (UINT32)V.Spc;
             UINT8 s;
             for (s = 0; s < V.Spc && Got < F.Size; s++) {

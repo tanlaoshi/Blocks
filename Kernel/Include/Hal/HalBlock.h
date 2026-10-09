@@ -12,5 +12,7 @@ int HalBlockInit(void);
 int HalBlockReady(void);
 /* 读 Count 个扇区到 Buf（须 512*Count 字节）；成功 0 */
 int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count);
+/* 写 Count 个扇区；成功 0（stub 可失败） */
+int HalBlockWrite(UINT64 Lba, const void *Buf, UINT32 Count);
 
 #endif

@@ -7,6 +7,7 @@
 #include "GuiWinPaint.h"
 #include "GuiDesktop.h"
 #include "GuiFiles.h"
+#include "GuiLayout.h"
 #include "GuiStart.h"
 #include "Console.h"
 #include "HalPs2.h"
@@ -14,9 +15,6 @@
 #include "HalVideo.h"
 #include "Locale.h"
 #include "ToySerialConfig.h"
-
-#define GUI_BAR_H   28u
-#define GUI_TITLE_H 24u
 
 typedef struct {
     int On;
@@ -42,10 +40,10 @@ static void PaintOne(int Id) {
 }
 
 static void ClampPos(int Id, INT32 *X, INT32 *Y) {
-    INT32 MinY = (INT32)GUI_BAR_H;
+    INT32 MinY = (INT32)GuiLayoutContentTop();
     INT32 MaxX = (INT32)gFbW - (INT32)gW[Id].W;
     /* 底栏不可被窗盖住拖入 */
-    INT32 MaxY = (INT32)gFbH - (INT32)GUI_BAR_H - (INT32)gW[Id].H;
+    INT32 MaxY = (INT32)GuiLayoutContentBottom() - (INT32)gW[Id].H;
 
     if (*X < 0) {
         *X = 0;
@@ -70,6 +68,7 @@ static void ClampPos(int Id, INT32 *X, INT32 *Y) {
 void GuiWinSetFb(UINT32 W, UINT32 H) {
     gFbW = W;
     gFbH = H;
+    GuiLayoutSetFb(W, H);
 }
 
 void GuiWinPaintDesktop(void) {
@@ -95,54 +94,17 @@ void GuiWinPresentFull(void) {
 
 void GuiWinLayoutAll(void) {
     int i;
+    static const LOC_MSG Titles[GUI_WIN_COUNT] = {
+        MSG_WIN_SHELL, MSG_WIN_ABOUT, MSG_WIN_SETTINGS, MSG_WIN_FILES
+    };
 
-    gW[GUI_WIN_SHELL].W = 520u;
-    gW[GUI_WIN_SHELL].H = 300u;
-    gW[GUI_WIN_ABOUT].W = 340u;
-    gW[GUI_WIN_ABOUT].H = 200u;
-    gW[GUI_WIN_SETTINGS].W = 360u;
-    gW[GUI_WIN_SETTINGS].H = 220u;
-    gW[GUI_WIN_FILES].W = 380u;
-    gW[GUI_WIN_FILES].H = 260u;
     for (i = 0; i < GUI_WIN_COUNT; i++) {
-        if (gW[i].W + 40u > gFbW) {
-            gW[i].W = (gFbW > 80u) ? (gFbW - 40u) : gFbW;
-        }
-        /* 顶栏 + 底栏各占 GUI_BAR_H */
-        if (gW[i].H + 2u * GUI_BAR_H + 40u > gFbH) {
-            gW[i].H = (gFbH > 2u * GUI_BAR_H + 40u)
-                          ? (gFbH - 2u * GUI_BAR_H - 40u)
-                          : 120u;
-        }
+        const GUI_WIN_LAYOUT *D = GuiLayoutWinDesc(i);
+        GuiLayoutResolveWin(i, &gW[i].X, &gW[i].Y, &gW[i].W, &gW[i].H);
+        gW[i].Title = Titles[i];
+        gW[i].On = (D != 0 && D->OpenByDefault) ? 1 : 0;
+        gW[i].Focus = (i == GUI_WIN_SHELL) ? 1 : 0;
     }
-    gW[GUI_WIN_SHELL].X = (gFbW > gW[GUI_WIN_SHELL].W)
-                              ? ((gFbW - gW[GUI_WIN_SHELL].W) / 2u)
-                              : 0;
-    gW[GUI_WIN_SHELL].Y = GUI_BAR_H + 24u;
-    gW[GUI_WIN_ABOUT].X = gW[GUI_WIN_SHELL].X + 80u;
-    gW[GUI_WIN_ABOUT].Y = gW[GUI_WIN_SHELL].Y + 60u;
-    gW[GUI_WIN_SETTINGS].X = 48u;
-    gW[GUI_WIN_SETTINGS].Y = GUI_BAR_H + 48u;
-    gW[GUI_WIN_FILES].X = 72u;
-    gW[GUI_WIN_FILES].Y = GUI_BAR_H + 72u;
-    if (gW[GUI_WIN_ABOUT].X + gW[GUI_WIN_ABOUT].W > gFbW) {
-        gW[GUI_WIN_ABOUT].X = 40u;
-    }
-    if (gW[GUI_WIN_ABOUT].Y + gW[GUI_WIN_ABOUT].H > gFbH) {
-        gW[GUI_WIN_ABOUT].Y = GUI_BAR_H + 40u;
-    }
-    gW[GUI_WIN_SHELL].Title = MSG_WIN_SHELL;
-    gW[GUI_WIN_ABOUT].Title = MSG_WIN_ABOUT;
-    gW[GUI_WIN_SETTINGS].Title = MSG_WIN_SETTINGS;
-    gW[GUI_WIN_FILES].Title = MSG_WIN_FILES;
-    gW[GUI_WIN_SHELL].On = 1;
-    gW[GUI_WIN_ABOUT].On = 1;
-    gW[GUI_WIN_SETTINGS].On = 0;
-    gW[GUI_WIN_FILES].On = 0;
-    gW[GUI_WIN_SHELL].Focus = 1;
-    gW[GUI_WIN_ABOUT].Focus = 0;
-    gW[GUI_WIN_SETTINGS].Focus = 0;
-    gW[GUI_WIN_FILES].Focus = 0;
     gZ[0] = (UINT8)GUI_WIN_ABOUT;
     gZ[1] = (UINT8)GUI_WIN_SETTINGS;
     gZ[2] = (UINT8)GUI_WIN_FILES;
@@ -203,7 +165,7 @@ int GuiWinInTitle(int Id, INT32 X, INT32 Y) {
         return 0;
     }
     if (X >= (INT32)(gW[Id].X + gW[Id].W) ||
-        Y >= (INT32)(gW[Id].Y + 1u + GUI_TITLE_H)) {
+        Y >= (INT32)(gW[Id].Y + 1u + GuiLayoutTitleH())) {
         return 0;
     }
     return !GuiWinInClose(Id, X, Y);
@@ -347,6 +309,7 @@ int GuiWinGetPos(int Id, INT32 *X, INT32 *Y) {
 }
 
 int GuiWinShellClientRect(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+    UINT32 TitleH = GuiLayoutTitleH();
     if (!gW[GUI_WIN_SHELL].On) {
         return -1;
     }
@@ -354,14 +317,14 @@ int GuiWinShellClientRect(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
         *X = gW[GUI_WIN_SHELL].X + 1u;
     }
     if (Y) {
-        *Y = gW[GUI_WIN_SHELL].Y + 1u + GUI_TITLE_H;
+        *Y = gW[GUI_WIN_SHELL].Y + 1u + TitleH;
     }
     if (W) {
         *W = gW[GUI_WIN_SHELL].W - 2u;
     }
     if (H) {
-        *H = (gW[GUI_WIN_SHELL].H > GUI_TITLE_H + 2u)
-                 ? (gW[GUI_WIN_SHELL].H - 2u - GUI_TITLE_H)
+        *H = (gW[GUI_WIN_SHELL].H > TitleH + 2u)
+                 ? (gW[GUI_WIN_SHELL].H - 2u - TitleH)
                  : 0;
     }
     return 0;

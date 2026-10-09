@@ -3,6 +3,7 @@
  */
 #include "GuiDesktop.h"
 #include "Font.h"
+#include "GuiLayout.h"
 #include "GuiWin.h"
 #include "HalSerial.h"
 #include "HalTimer.h"
@@ -11,13 +12,6 @@
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
-#define GUI_BAR_H       28u
-#define ICON_X0         28u
-#define ICON_Y0         (GUI_BAR_H + 20u)
-#define ICON_TILE       40u
-#define ICON_GAP        6u
-#define ICON_LABEL_H    18u
-#define ICON_STRIDE     88u
 #define DBL_TIMER_TICKS 50u
 #define DBL_SOFT_TICKS  400000u
 #define DBL_SLOP        12
@@ -39,10 +33,7 @@ static UINT32 NowTick(void) {
 }
 
 static void IconGeom(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
-    *X = ICON_X0 + (UINT32)Slot * ICON_STRIDE;
-    *Y = ICON_Y0;
-    *W = ICON_TILE + 24u;
-    *H = ICON_TILE + ICON_GAP + ICON_LABEL_H;
+    GuiLayoutIconSlot(Slot, X, Y, W, H);
 }
 
 static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
@@ -50,12 +41,15 @@ static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
     UINT32 Y;
     UINT32 W;
     UINT32 H;
+    UINT32 Tile = GuiLayoutIconTile();
+    UINT32 Pad = GuiLayoutPx(12u);
+    UINT32 Gap = GuiLayoutPx(6u);
 
     IconGeom(Slot, &X, &Y, &W, &H);
-    HalVideoFillRect(X + 12u, Y, ICON_TILE, ICON_TILE, Face);
-    HalVideoFillRect(X + 12u + 4u, Y + 4u, ICON_TILE - 8u, ICON_TILE - 8u,
+    HalVideoFillRect(X + Pad, Y, Tile, Tile, Face);
+    HalVideoFillRect(X + Pad + 4u, Y + 4u, Tile - 8u, Tile - 8u,
                      ThemeWindowClient());
-    FontDrawStringAt(X + 8u, Y + ICON_TILE + ICON_GAP, LocStr(LabelId),
+    FontDrawStringAt(X + GuiLayoutPx(8u), Y + Tile + Gap, LocStr(LabelId),
                      ThemeWindowTitleText());
     (void)W;
     (void)H;

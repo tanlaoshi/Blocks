@@ -36,6 +36,14 @@ K18 预期：`Scheduler: timer ok`；在 `Blocks>` 空闲时周期性 `Sched: ti
 
 K19 预期：开机见 `User: load HELLO.ELF` → `Hello from HELLO.ELF` → `User: exit` → `Blocks>`；也可输入 `hello` 再跑。
 
-`run.sh`：`-device qemu-xhci` + `virtio-net-pci`（user 网）。
+K37：`THEME.CFG`（RootFs 根）。默认 **ink**；Settings：ink/slate/pine。  
+字库：ASCII=Terminus **10×18**；汉字优先盘上 **`CJK32.BIN`**（默认 **18×18×4bpp**，~1.2MiB，对标现网）；缺文件回退内建 16×1bpp；再缺才 TTF。重生成：`python3 Kernel/Tools/gen-cjk32-bin.py`（`--dim 24|32` 可加大）。  
+Shell `mode` 写分辨率；**mode 须冷启动**才被 Boot 消费（VM 内不热切 SetMode）。
+
+默认分辨率 **1440×900**（亦支持 `1280x720` / `1600x900` / `1920x1080`）：`THEME.CFG` 的 `mode=`；`run.sh` 用 VGA edid 对齐（或 `TOY_QEMU_XRES/YRES` 覆盖）。改完须**退出 QEMU 再 `./run.sh`**。
+
+布局：`LAYOUT.CFG`（或内建描述表）定窗 WxH / 栏高；设计稿 1280×720，真屏更小时 **只缩不放**。改窗大小优先改 CFG/描述表，勿在 `GuiWinLayoutAll` 写魔法数。
+
+`run.sh`：VGA edid + `virtio-net-pci`（user 网）；鼠走 PS/2（不挂裸 xhci）。
 
 可选：`./build.sh x64 SCREEN_LOG=1` 把 boot 日志镜像到屏（Y≥80）。

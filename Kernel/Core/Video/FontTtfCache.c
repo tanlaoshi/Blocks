@@ -1,12 +1,12 @@
 /*
- * FontTtfCache.c — K27：16×16×8bpp 小缓存；绘制路径可即时栅格（无 Worker）
+ * FontTtfCache.c — 18×18×8bpp 小缓存；绘制路径可即时栅格（无 Worker）
  */
 #include "FontTtf.h"
 #include "Utf8.h"
 
 #define TTF_CACHE_N 128u
 #define TTF_PROBE   8u
-#define TTF_CELL    16u
+#define TTF_CELL    18u
 #define TTF_PIX     (TTF_CELL * TTF_CELL)
 #define TTF_EMPTY   0
 #define TTF_HIT     1

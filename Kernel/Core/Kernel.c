@@ -95,7 +95,7 @@ static void KernelAttachEarly(void) {
 
     HalSerialInitialize();
     HalVideoSet(&Video);
-    /* SCREEN_LOG=1 时开始往 FB 上滚（受 TOY_SCREEN_LOG_*） */
+    /* SCREEN_LOG=1：HAL 自持 HalBootFont 上滚（与 Core/Font 无关） */
     HalSerialGopEnable();
     HalSerialWriteChannel(TOY_SLOG_BOOT, "KernelMain: early ok\n");
 

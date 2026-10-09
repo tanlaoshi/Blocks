@@ -6,7 +6,7 @@
  * Runtime 须 disable-modern=on，走 legacy 口。
  */
 #include "HalBlock.h"
-#include "PhysicalMemory.h"
+#include "HalDma.h"
 
 #define VIRTIO_VID          0x1AF4u
 #define VIRTIO_BLK_DID      0x1001u
@@ -183,7 +183,7 @@ int HalBlockInit(void) {
 
     Bytes = VringBytes(gQsz);
     PagesN = (Bytes + 4095u) / 4096u;
-    Pages = PhysicalMemoryAllocatePages(PagesN);
+    Pages = HalDmaAllocatePages(PagesN);
     if (Pages == 0) {
         return -1;
     }
@@ -201,7 +201,7 @@ int HalBlockInit(void) {
     gLastUsed = 0;
 
     /* 1 页：Req(16) + Status(1) + 最多 8 扇区 */
-    Dma = PhysicalMemoryAllocatePages(1);
+    Dma = HalDmaAllocatePages(1);
     if (Dma == 0) {
         return -1;
     }

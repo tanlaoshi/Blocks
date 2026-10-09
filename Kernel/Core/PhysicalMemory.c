@@ -250,3 +250,8 @@ UINT64 PhysicalMemoryTotalPages(void) {
 UINT64 PhysicalMemoryFreePageCount(void) {
     return gReady ? gFreeCount : 0;
 }
+
+/* HalDma.h：驱动取页，不直接依赖本头文件名 */
+void *HalDmaAllocatePages(UINT32 Count) {
+    return PhysicalMemoryAllocatePages(Count);
+}

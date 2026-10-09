@@ -13,8 +13,6 @@
 #define LAPIC_DEFAULT   0xFEE00000ull
 #define LAPIC_MSR       0x1Bu
 #define TIMER_VEC       0x30u
-#define LOG_EVERY       32u
-
 #define LAPIC_ID        0x020u
 #define LAPIC_TPR       0x080u
 #define LAPIC_EOI       0x0B0u
@@ -42,7 +40,6 @@ extern void HalCpuIsrTimer(void);
 static volatile UINT32 *gLapic;
 static volatile UINT64 gTicks;
 static int gReady;
-static UINT64 gLastLog;
 
 static UINT64 RdMsr(UINT32 Index) {
     UINT32 Lo, Hi;
@@ -86,7 +83,6 @@ int HalTimerInit(void) {
 
     gReady = 0;
     gTicks = 0;
-    gLastLog = 0;
 
     Msr = RdMsr(LAPIC_MSR);
     if (Msr & MSR_X2APIC) {
@@ -162,21 +158,6 @@ UINT32 HalTimerCurCount(void) {
     return LapicR(LAPIC_CUR_CNT);
 }
 
+/* K18 曾打 Sched: tick；会打断 Shell 输入行，默认关闭。节拍本身仍在跑。 */
 void HalTimerPollLog(void) {
-    UINT64 T;
-    char Hex[12];
-
-    if (!gReady) {
-        return;
-    }
-    T = gTicks;
-    if (T == 0 || (T - gLastLog) < LOG_EVERY) {
-        return;
-    }
-    gLastLog = T;
-    /* ShellOwn 后 Channel 不再上 UART，验收日志走 WriteShell */
-    HalSerialWriteShell("Sched: tick ");
-    HalSerialFormatHex(Hex, T, 8);
-    HalSerialWriteShell(Hex);
-    HalSerialWriteShell("\n");
 }

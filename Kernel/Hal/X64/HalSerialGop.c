@@ -3,16 +3,16 @@
  *
  * 【初学者】
  * SCREEN_LOG=1 时，受 TOY_SCREEN_LOG_* 放行的通道会把一行字画到屏上。
- * 用 K2 的 8×8 DrawStringAt；满屏则丢掉最旧行并重绘正文区。
- * 背缓冲开启后画在 back 上，须 Present 才上屏（无 Theme / 无平滑）。
+ * 画字用 HAL 自持 HalBootFont（与 Core/Font 桌面字库分离，无回调穿插）。
+ * 背缓冲开启后画在 back 上，须 Present 才上屏。
  *
  * 正文从 Y=80 起，躲开左上角横幅。
  */
 #include "HalSerial.h"
 #include "HalSerialGop.h"
+#include "HalBootFont.h"
 #include "HalVideo.h"
 #include "ToySerialConfig.h"
-#include "FontGlyph8x8.h"
 
 #if TOY_SCREEN_LOG
 
@@ -65,12 +65,13 @@ static void CopyLine(char *Dst, const char *Src) {
 static UINT32 VisCap(UINT32 H) {
     UINT32 Bottom;
     UINT32 Rows;
+    UINT32 Cell = HalBootFontCellHeight();
 
-    if (H <= BOOT_LOG_BODY_Y + FONT_CELL_H + BOOT_LOG_MARGIN) {
+    if (H <= BOOT_LOG_BODY_Y + Cell + BOOT_LOG_MARGIN) {
         return 1;
     }
     Bottom = H - BOOT_LOG_MARGIN;
-    Rows = (Bottom - BOOT_LOG_BODY_Y) / FONT_CELL_H;
+    Rows = (Bottom - BOOT_LOG_BODY_Y) / Cell;
     if (Rows == 0) {
         Rows = 1;
     }
@@ -90,6 +91,7 @@ static void RepaintBody(UINT32 W, UINT32 H) {
     UINT32 Bottom;
     UINT32 i;
     UINT32 Y;
+    UINT32 Cell = HalBootFontCellHeight();
 
     Bottom = (H > BOOT_LOG_MARGIN) ? (H - BOOT_LOG_MARGIN) : BOOT_LOG_BODY_Y;
     if (Bottom > BOOT_LOG_BODY_Y) {
@@ -98,8 +100,8 @@ static void RepaintBody(UINT32 W, UINT32 H) {
     }
     Y = BOOT_LOG_BODY_Y;
     for (i = 0; i < gBootVisN; i++) {
-        HalVideoDrawStringAt(BOOT_LOG_X, Y, gBootVis[i], 0x00FFFFFFu);
-        Y += FONT_CELL_H;
+        HalBootFontDrawStringAt(BOOT_LOG_X, Y, gBootVis[i], 0x00FFFFFFu);
+        Y += Cell;
     }
     gBootLogY = Y;
     ScreenCommit();
@@ -129,10 +131,10 @@ static void PushLine(const char *Line) {
         return;
     }
     CopyLine(gBootVis[gBootVisN], Line);
-    HalVideoDrawStringAt(BOOT_LOG_X, gBootLogY, gBootVis[gBootVisN],
-                         0x00FFFFFFu);
+    HalBootFontDrawStringAt(BOOT_LOG_X, gBootLogY, gBootVis[gBootVisN],
+                            0x00FFFFFFu);
     gBootVisN++;
-    gBootLogY += FONT_CELL_H;
+    gBootLogY += HalBootFontCellHeight();
     ScreenCommit();
 }
 
@@ -214,7 +216,9 @@ void HalSerialBootLogRewind(void) {
     }
 }
 
+
 #else /* !TOY_SCREEN_LOG */
+
 
 void HalSerialGopTryMirror(int Channel, const char *Text) {
     (void)Channel;

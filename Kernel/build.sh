@@ -90,7 +90,7 @@ build_common_objs() {
     local f
     local -a cores=(BootInfo Modules PhysicalMemory Device
                     VirtualMemory Usb FileSystem FatProbe FatFile ElfLoad
-                    Process Network Theme Font Gui Scheduler Console Kernel)
+                    Process Network Theme Font Gui Scheduler ShellCmd Console Kernel)
     for f in "${cores[@]}"; do
         "$cc" "${cflags[@]}" -c "$SCRIPT_DIR/Core/${f}.c" -o "$out/${f}.o"
     done
@@ -117,6 +117,7 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/EarlyIdentity.c" -o "$OUT/EarlyIdentity.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/PlatformStub.c" -o "$OUT/PlatformStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerial.c" -o "$OUT/HalSerial.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalBootFont.c" -o "$OUT/HalBootFont.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalSerialGop.c" -o "$OUT/HalSerialGop.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVideo.c" -o "$OUT/HalVideo.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalCpu.c" -o "$OUT/HalCpu.o"
@@ -133,7 +134,7 @@ x64|X64)
         -Wl,-T,"$SCRIPT_DIR/Hal/X64/link.ld" \
         -o "$OUT/Kernel.elf" \
         "$OUT/KernelEntry.o" "$OUT/KernelHandoff.o" "$OUT/EarlyIdentity.o" \
-        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalSerialGop.o" \
+        "$OUT/PlatformStub.o" "$OUT/HalSerial.o" "$OUT/HalBootFont.o" "$OUT/HalSerialGop.o" \
         "$OUT/HalVideo.o" "$OUT/HalCpu.o" "$OUT/HalCpuIsr.o" \
         "$OUT/HalXhci.o" "$OUT/HalPs2Kbd.o" "$OUT/HalPs2Mouse.o" \
         "$OUT/HalVirtioBlk.o" "$OUT/HalLapicTimer.o" "$OUT/HalVirtioNet.o" \
@@ -144,7 +145,7 @@ x64|X64)
         "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 arm64|Arm64|ARM64)
     ARCH=Arm64
@@ -180,7 +181,7 @@ arm64|Arm64|ARM64)
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -219,7 +220,7 @@ riscv|RiscV|RISCV)
         "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatFile.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)
     echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2

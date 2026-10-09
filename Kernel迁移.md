@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K22** · Shell 命令表 + help/clear/echo |
+| **★** | **PR-K23** · Fat：ls / cat 根目录 |
 | 排队 | **对标现网**主轨 **K21–K52**（分相位，见下）；真机/SMP/virt 全桌面后置 |
-| 刚收官 | **PR-K21** · Font 积木 + Theme 色板 ✅ |
+| 刚收官 | **PR-K22** · Shell 命令表 + Font/反债清扫 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -64,8 +64,8 @@
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
 | **K21** ★ | Font 积木 + Theme 色板最小 | D 族 Theme/Font 入口 | 桌面/顶栏色来自 Theme；`DrawString*` 契约不变 |
-| **K22** ★ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
-| **K23** | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
+| **K22** ✅ | Shell 命令表 + `help`/`clear`/`echo` | `ConsoleRegisterBuiltins` | 命令可扩展；未知命令提示 |
+| **K23** ★ | Fat：`ls` / `cat` 根目录 | FS 族只读 | 见 `TOYOS.ID`/`HELLO.ELF`；文本可读 |
 | **K24** | Fat：`write` / `mkdir` / `rm` 最小 | FS 读写 | 写小文件再 `cat` 一致 |
 | **K25** | Shell 系统类：`mem`/`ps`/`exec` 薄 | `ShellCommandsSystem*` | `exec HELLO.ELF` 与开机路径一致 |
 
@@ -332,14 +332,14 @@
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 画字落点可指认为 Font 积木；Theme 提供桌面/顶栏/字色等；Gui 改用色板；`HalVideoDrawString*` 不变 |
+| **做** | 画字落点可指认为 Font 积木；Theme 色板；Gui 改用色板；契约后收为 `FontDrawString*` |
 | **不做** | TTF、完整 Settings、THEME.CFG 写盘（留给 P2） |
 | **Arm/RiscV** | 同编；无 FB 色板空转 |
 | **验收** | 顶栏/桌面色来自 Theme；三架构可编；现有光标/shell 不回退 |
 
 > JX 前若收窄为「只 Theme」或「只拆 Font」，改本表再动刀。
 
-### K22 规划（★ · 最小子集）
+### K22 规划（已收官 ✅ · 曾 ★）
 
 **一句话**：可扩展命令表；内置 `help` / `clear` / `echo`；未知命令有提示。
 
@@ -348,6 +348,16 @@
 | **做** | 命令名→处理函数表；`help` 列命令；`clear` 清串口观感（换行/提示）；`echo` 回显参数；保留 `hello` |
 | **不做** | 管道、重定向、完整 ShellCommands* 全家桶 |
 | **验收** | `help` 可见；`echo hi`；未知命令提示；`Blocks>` 仍活 |
+
+### K23 规划（★ · 最小子集）
+
+**一句话**：根目录 `ls` / `cat` 小文本（对标现网 FS 只读入口）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | Fat 列根目录；按名读小文件到串口；Shell 命令 `ls`/`cat` |
+| **不做** | 写盘、多卷、LFN 全套、VFS |
+| **验收** | `ls` 见 `TOYOS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
 
 ### K22+ 细则
 
@@ -658,3 +668,6 @@ Kernel/
 | 2026-10-09 | 钉 K21–K28 课感桌面主轨 + K29–K34 可选；★ → K21（Font/Theme 最小）；分档 A/B/C |
 | 2026-10-09 | **终局改钉对标现网**：K21–K52 分 P1–P5；课感 B 档废止；约定 #5；★ 仍 K21 |
 | 2026-10-09 | TG：K21 Font+Theme；★ → K22（Shell 命令表） |
+| 2026-10-09 | TG：K22 ShellCmd + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
+| 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
+| 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |

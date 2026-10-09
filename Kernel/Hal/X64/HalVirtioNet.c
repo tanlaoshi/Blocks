@@ -6,7 +6,7 @@
  * 帧前加 10 字节 virtio_net_hdr。Runtime 须 disable-modern=on。
  */
 #include "HalNet.h"
-#include "PhysicalMemory.h"
+#include "HalDma.h"
 
 #define VIRTIO_VID     0x1AF4u
 #define VIRTIO_NET_DID 0x1000u
@@ -170,7 +170,7 @@ static int VqSetup(Vq *Q, UINT16 Sel) {
     Q->Qsz = Qnum;
     Bytes = VringBytes(Q->Qsz);
     PagesN = (Bytes + 4095u) / 4096u;
-    Pages = PhysicalMemoryAllocatePages(PagesN);
+    Pages = HalDmaAllocatePages(PagesN);
     if (Pages == 0) {
         return -1;
     }
@@ -243,7 +243,7 @@ int HalNetInit(void) {
         return -1;
     }
 
-    Dma = PhysicalMemoryAllocatePages(2);
+    Dma = HalDmaAllocatePages(2);
     if (Dma == 0) {
         return -1;
     }

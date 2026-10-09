@@ -164,9 +164,6 @@ int HalSerialPresent(void) {
 void HalSerialRxPump(void) {
 }
 
-void HalSerialBootFontApply(void) {
-}
-
 const char *HalSerialLogText(void) {
     return "";
 }

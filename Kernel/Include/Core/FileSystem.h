@@ -1,7 +1,7 @@
 /*
- * FileSystem.h — 文件系统（K9：识盘最小）
+ * FileSystem.h — 文件系统模块
  *
- * 本刀：认 Boot 交接的 TOYOS.ID 旗标。真 Block+FAT 探盘后刀替换实现。
+ * 内核侧 Block + FatProbe 识 TOYOS.ID；失败可退 Boot handoff 旗标。
  */
 #ifndef FILE_SYSTEM_H
 #define FILE_SYSTEM_H

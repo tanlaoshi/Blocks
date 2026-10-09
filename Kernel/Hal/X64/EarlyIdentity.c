@@ -12,6 +12,7 @@
  *   KernelMain 里：Setup() 成功后再 Enable()。栈必须已在窗内
  *   （KernelEntry.S 换过 gEarlyStack）。
  */
+#include "EarlyIdentity.h"
 #include "IdentityMap.h"
 #include "BootTypes.h"
 

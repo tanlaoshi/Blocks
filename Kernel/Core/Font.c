@@ -1,11 +1,10 @@
 /*
- * Font.c — 画字积木（K21；自 Hal/Common/HalFont.c 收回）
+ * Font.c — 画字积木（8×8 ASCII）
  *
  * 【初学者】
  * 每个可打印字符是 8 行，每行 1 字节；bit7 = 最左像素。
  * 画字 = 按位调 HalVideoDrawPixel（无 TTF、无平滑、无 UTF-8）。
- *
- * 对外契约仍是 HalVideoDrawString*（声明在 HalVideo.h），实现落在本积木。
+ * 契约在 Font.h。桌面/Gui 用；与 HAL 启动屏 HalBootFont 分离。
  */
 #include "Font.h"
 #include "FontGlyph8x8.h"
@@ -31,7 +30,7 @@ UINT32 FontCellHeight(void) {
     return FONT_CELL_H;
 }
 
-void HalVideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
+void FontDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     UINT32 Cp = (UINT32)(UINT8)C;
     UINT32 Row;
     UINT32 Col;
@@ -56,7 +55,7 @@ void HalVideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     }
 }
 
-void HalVideoDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color) {
+void FontDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color) {
     UINT32 Cursor = X;
 
     if (!gFontReady) {
@@ -72,15 +71,15 @@ void HalVideoDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color) {
             Y += FONT_CELL_H;
             continue;
         }
-        HalVideoDrawCharAt(Cursor, Y, Ch, Color);
+        FontDrawCharAt(Cursor, Y, Ch, Color);
         Cursor += FONT_CELL_W;
     }
 }
 
-void HalVideoDrawChar(char C, UINT32 Color) {
-    HalVideoDrawCharAt(0, 0, C, Color);
+void FontDrawChar(char C, UINT32 Color) {
+    FontDrawCharAt(0, 0, C, Color);
 }
 
-void HalVideoDrawString(const char *Text, UINT32 Color) {
-    HalVideoDrawStringAt(0, 0, Text, Color);
+void FontDrawString(const char *Text, UINT32 Color) {
+    FontDrawStringAt(0, 0, Text, Color);
 }

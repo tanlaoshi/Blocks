@@ -3,7 +3,7 @@
  *
  * 【初学者】
  * 读行同时 poll COM1 与 PS/2（GTK 窗按键走 i8042）。
- * 不是完整 Shell：回车后原样打回。
+ * K22：命令表见 ShellCmd（help/clear/echo/hello）。
  */
 #include "Console.h"
 #include "Gui.h"
@@ -11,7 +11,9 @@
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Process.h"
+#include "ShellCmd.h"
 #include "Scheduler.h"
+#include "Font.h"
 #include "Theme.h"
 #include "ToySerialConfig.h"
 
@@ -30,8 +32,8 @@ static void ConsolePaintBanner(void) {
         return;
     }
     ThemeInitialize();
-    HalVideoDrawStringAt(8, 40, "ToyOS ready", ThemeTextForeground());
-    HalVideoDrawStringAt(8, 56, "Blocks>", ThemeTextForeground());
+    FontDrawStringAt(8, 40, "ToyOS ready", ThemeTextForeground());
+    FontDrawStringAt(8, 56, "Blocks>", ThemeTextForeground());
     if (HalVideoBackbufferEnabled()) {
         HalVideoPresent();
     }
@@ -44,6 +46,7 @@ int ConsoleInitialize(void) {
     } else {
         HalSerialWriteChannel(TOY_SLOG_MISC, "Input: ps2 skip (serial only)\n");
     }
+    ShellCmdInitialize();
     ConsolePaintBanner();
     return 0;
 }
@@ -126,13 +129,6 @@ static int ConsoleReadLine(char *Buf, int Cap) {
     }
 }
 
-static int LineEq(const char *A, const char *B) {
-    while (*A && *B && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == 0 && *B == 0;
-}
 
 void ConsoleRun(void) {
     char Line[LINE_CAP];
@@ -148,11 +144,6 @@ void ConsoleRun(void) {
         if (Line[0] == 0) {
             continue;
         }
-        if (LineEq(Line, "hello")) {
-            (void)ProcessRunHello();
-            continue;
-        }
-        ConsolePut(Line);
-        ConsolePut("\n");
+        ShellCmdRunLine(Line);
     }
 }

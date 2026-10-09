@@ -2,7 +2,7 @@
  * Scheduler.c — K8 壳 + K18 LAPIC 节拍
  *
  * 【初学者】
- * 开 HalTimer 后 sti；Yield 里 hlt 睡到下一拍，醒后可打 tick 日志。
+ * 开 HalTimer 后 sti；Yield 里 hlt 睡到下一拍（不再刷 tick 日志）。
  */
 #include "Scheduler.h"
 #include "HalSerial.h"

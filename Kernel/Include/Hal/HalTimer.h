@@ -14,7 +14,7 @@ int HalTimerReady(void);
 UINT64 HalTimerTicks(void);
 /* 开 IF（sti）；无定时器时也可调用 */
 void HalTimerIrqEnable(void);
-/* 空闲路径打周期性 tick 日志（勿在 IRQ 里打串口） */
+/* 空闲路径可打 tick 日志；默认空实现（勿刷屏打断 Shell） */
 void HalTimerPollLog(void);
 /* 调试：当前 LAPIC Current Count（无 timer 则 0） */
 UINT32 HalTimerCurCount(void);

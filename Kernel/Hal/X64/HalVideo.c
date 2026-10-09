@@ -6,7 +6,9 @@
  * 之后 Draw* 写背缓冲；Present 整屏拷回 LFB。不强制 Clear（接 Boot 画面）。
  */
 #include "HalVideo.h"
-#include "PhysicalMemory.h"
+#include "HalDma.h"
+
+#define PAGE_SIZE 4096u
 
 static VIDEO_CONFIG gVideo;
 static int gVideoValid;
@@ -86,7 +88,7 @@ void HalVideoInitializeBackbuffer(void) {
     if (Pages == 0) {
         return;
     }
-    gBack = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+    gBack = (UINT32 *)HalDmaAllocatePages(Pages);
     if (gBack == 0) {
         return;
     }

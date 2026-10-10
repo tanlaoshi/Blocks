@@ -101,7 +101,7 @@ build_common_objs() {
         BootInfo Modules Kernel
         Serial/Serial
         Memory/Memory Memory/PhysicalMemory
-        VirtualMemory/VirtualMemory
+        VirtualMemory/VirtualMemory VirtualMemory/VirtualMemorySpace
         Driver/Driver Driver/Device
         Video/Video Video/Theme Video/ThemeConfiguration Video/FontTerminus10x18 Video/FontCjkDisk Video/Font Video/Utf8 Video/FontTtfLoad
         Video/FontTtfCache Video/Locale
@@ -207,7 +207,7 @@ x64|X64)
         "$OUT/Hal/X64/HalFpu.o" "$OUT/Hal/X64/HalFpuSse.o" \
         "$OUT/Core/BootInfo.o" "$OUT/Core/Modules.o" \
         "$OUT/Core/Serial/Serial.o" "$OUT/Core/Memory/Memory.o" "$OUT/Core/Memory/PhysicalMemory.o" \
-        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
+        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/VirtualMemory/VirtualMemorySpace.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
         "$OUT/Core/Video/Video.o" "$OUT/Hal/Common/HalCapability.o" "$OUT/Core/Video/Theme.o" "$OUT/Core/Video/ThemeConfiguration.o" "$OUT/Core/Video/FontTerminus10x18.o" "$OUT/Core/Video/FontCjkDisk.o" "$OUT/Core/Video/Font.o" "$OUT/Core/Video/Utf8.o" \
         "$OUT/Core/Video/FontTtfLoad.o" "$OUT/Core/Video/FontTtfRaster.o" "$OUT/Core/Video/FontTtfCache.o" "$OUT/Core/Video/Locale.o" \
         "$OUT/Core/Cpu/Cpu.o" "$OUT/Core/USB/Usb.o" \
@@ -248,7 +248,7 @@ arm64|Arm64|ARM64)
         "$OUT/Hal/Arm64/KernelEntry.o" "$OUT/Hal/Arm64/KernelHandoff.o" "$OUT/Hal/Arm64/HalSerial.o" \
         "$OUT/Core/BootInfo.o" "$OUT/Core/Modules.o" \
         "$OUT/Core/Serial/Serial.o" "$OUT/Core/Memory/Memory.o" "$OUT/Core/Memory/PhysicalMemory.o" \
-        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
+        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/VirtualMemory/VirtualMemorySpace.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
         "$OUT/Core/Video/Video.o" "$OUT/Hal/Common/HalCapability.o" "$OUT/Hal/Common/HalVideoStub.o" "$OUT/Hal/Common/HalCpuStub.o" \
         "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
         "$OUT/Hal/Common/HalBlockStub.o" "$OUT/Hal/Common/HalTimerStub.o" "$OUT/Hal/Common/HalSyscallStub.o" \
@@ -293,7 +293,7 @@ riscv|RiscV|RISCV)
         "$OUT/Hal/RiscV/HalSerial.o" \
         "$OUT/Core/BootInfo.o" "$OUT/Core/Modules.o" \
         "$OUT/Core/Serial/Serial.o" "$OUT/Core/Memory/Memory.o" "$OUT/Core/Memory/PhysicalMemory.o" \
-        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
+        "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/VirtualMemory/VirtualMemorySpace.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
         "$OUT/Core/Video/Video.o" "$OUT/Hal/Common/HalCapability.o" "$OUT/Hal/Common/HalVideoStub.o" "$OUT/Hal/Common/HalCpuStub.o" \
         "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
         "$OUT/Hal/Common/HalBlockStub.o" "$OUT/Hal/Common/HalTimerStub.o" "$OUT/Hal/Common/HalSyscallStub.o" \

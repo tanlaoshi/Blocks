@@ -24,9 +24,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K49** · Ring3：独立页表 + `execve` 形 |
+| **★** | **PR-K50** · `fork`/`wait` 或 COW 最小 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K48** · StoreUi / 作业互斥薄 ✅ |
+| 刚收官 | **PR-K49** · Ring3：独立页表 + `execve` 形 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops；注释/绘制设想文 |
 | **待执行**（不占 ★） | 下表 **PR-B-read / name / seq**（出自 [`代码可读性盘点.md`](代码可读性盘点.md)；点名 JX 才动代码） |
 
@@ -72,7 +72,7 @@
 ### 未完成（文首 · GD 后只留这些）
 
 > **已完成**（K0–K45、相位 P1–P3、加厚 K13–K20）专节与全表见文末 [【归档】](#sec-gd)。  
-> 骨架 A ✅ · P1–P3 ✅ · P4 ✅ · P5 进行中（★ = **K49**）· 后置 / 可读性刀待办。
+> 骨架 A ✅ · P1–P3 ✅ · P4 ✅ · P5 进行中（★ = **K50**）· 后置 / 可读性刀待办。
 
 ### 对标现网主轨（K21+ · 分相位）
 
@@ -102,8 +102,8 @@
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K49** ★ | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
-| **K50** | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
+| **K49** ✅ | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
+| **K50** ★ | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
 | **K51** | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
 | **K52** | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
 | **K53** | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
@@ -118,7 +118,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 | ESP 去重 Kernel.elf（可选） | **已是双盘**：Boot **优先从 RootFs/BLOCKS 读** `Kernel.elf`；ESP 放 `BOOTX64.EFI`。`sync` 仍可能往 Esp 拷一份备份——能力已满足；后置可收拢为「核只在 BLOCKS」 |
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储 ✅ → P5；★ = K49）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储 ✅ → P5；★ = K50）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。  
 > **GD**：未完成（P4 余量 / P5 / 后置 / 待执行）留文首；已收官专节**只**迁文末 【归档】（见上 GD 排版）。
 
@@ -149,25 +149,29 @@
 
 `StoreJob` + `StoreUi` 窗 + Shell/窗互斥；Z 序含 Store。细则见文末归档（TG 后迁）。
 
-### K49 规划（★ · 最小子集 · JX）
+### K49 已收官（摘要）
 
-**一句话**：用户 ELF 跑在独立页表（Ring3 形），与内核堆隔离（对标现网 P 族最小）。
+`VirtualMemorySpace` + ELF 私有页 + `ProcessExecPath` 切/还 CR3；`hello` 串口见 `Hello from HELLO.ELF`。
+
+### K50 规划（★ · 最小子集 · JX）
+
+**一句话**：最小 `fork`/`wait`（或页表 COW 克隆），课表演示可跑。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 每进程/每次 `run` 一份用户页表（拷内核映射 + 用户段）；`ProcessRun`/`exec` 形切 CR3；退出还原内核 CR3；`HELLO.ELF` 仍可跑 |
-| **不做** | fork/COW（K50）、完整 POSIX execve argv/env、多进程调度抢占用户态 |
-| **验收** | `run HELLO.ELF`（或 Files 双击）串口见 hello；跑中内核堆不与用户镜像重叠写坏；退出后 Shell/桌面仍可用 |
-| **对照** | 现网 Process/Vmm 用户页表薄切片 |
-| **落地** | `VirtualMemory` 用户表 API + `Process.c` 接棒；X64 先 |
+| **做** | 内核侧 `ProcessFork`：克隆用户 AddressSpace（页表拷贝，本刀可先 eager copy 4K 用户页）；子进程跑短路径或 `FORK.ELF`；`wait` 收尸；Shell `fork` 演示 |
+| **不做** | 完整写时复制 PTE 缺页拆分、多子进程树、信号、抢占式用户态切换 |
+| **验收** | Shell `forkdemo`（或 `run FORK.ELF`）串口见 parent/child；父 `wait` 后回到 Shell |
+| **对照** | 现网 SchedulerFork / FORK.ELF 薄切片 |
+| **落地** | `ProcessFork.c` + SpaceClone；User `FORK.ELF` 或内核内嵌演示 |
 
-### K49 手测（JX 交付）
+### K50 手测（JX 交付）
 
 ```text
-1. cd ~/Blocks/Kernel && ./build.sh x64
+1. cd ~/Blocks/Kernel && ./build.sh x64 && cd ../User && 按需编 FORK
 2. cd ~/Blocks/Runtime && ./sync.sh && ./run.sh
-3. Shell：run HELLO.ELF（或等价命令）→ 串口 hello
-4. 再 ls / store list — 内核仍正常
+3. Shell：forkdemo 或 run FORK.ELF → 见 child/parent 串口
+4. 回 Shell 可再 hello
 ```
 
 
@@ -253,7 +257,7 @@ KernelMain
 | **K0–K12** | 模块表挂齐（薄实现） | ✅ |
 | **K13–K20** | 加厚到桌面 | ✅ |
 | **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
-| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K49 |
+| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K50 |
 | **后置 C** | 真机 / SMP / virt 桌面 | 不挡档 B |
 
 ---
@@ -363,6 +367,7 @@ Kernel/
 | 2026-10-10 | TG：K46 ✅ `BLOCKS.DB`/`dbget`/`dbset`；★ → **K47**（Store 装包） |
 | 2026-10-10 | TG：K47 ✅ Store/`STORE.CAT`/`store list|install`；目录即命名空间（Network/Gui/…）+ 产物镜像源码树；★ → **K48**（StoreUi/Job） |
 | 2026-10-10 | TG：K48 ✅ StoreJob/StoreUi + Z 序修 Store 开窗；★ → **K49**（Ring3 独立页表） |
+| 2026-10-10 | TG：K49 ✅ VirtualMemorySpace + exec 切 CR3；★ → **K50**（fork/wait 最小） |
 
 ---
 

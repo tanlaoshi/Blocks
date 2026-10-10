@@ -1,5 +1,5 @@
 /*
- * Process.c — K19 HELLO；K25 exec 按路径跑根目录 ELF
+ * Process.c — K19 HELLO；K25 exec；K49 独立页表 + 切 CR3（execve 形）
  */
 #include "Process.h"
 #include "ElfLoader.h"
@@ -8,6 +8,7 @@
 #include "HalSerial.h"
 #include "HalSyscall.h"
 #include "PhysicalMemory.h"
+#include "VirtualMemory.h"
 #include "SerialConfig.h"
 
 #define ELF_MAX (128u * 1024u)
@@ -37,6 +38,9 @@ int ProcessExecPath(const char *Path) {
     ELF_IMAGE Img;
     int N;
     int Rc;
+    VIRTUAL_ADDRESS_SPACE *Space;
+    UINT64 KernelRoot;
+    UINT64 UserRoot;
 
     if (Path == 0 || Path[0] == 0) {
         return -1;
@@ -68,15 +72,36 @@ int ProcessExecPath(const char *Path) {
     HalSerialWriteShell("User: load ");
     HalSerialWriteShell(Path);
     HalSerialWriteShell("\n");
-    if (ElfLoaderFromMemory(Buf, Size, &Img) != 0) {
-        HalSerialWriteShell("User: elf load fail\n");
-        PhysicalMemoryFreePages(Buf, Pages);
-        return -1;
-    }
-    PhysicalMemoryFreePages(Buf, Pages);
 
-    SetLast(Path);
-    Rc = HalSyscallRun(Img.Entry, Img.StackTop);
+    Space = VirtualMemorySpaceCreate();
+    if (Space != 0) {
+        if (ElfLoaderFromMemoryToSpace(Buf, Size, Space, &Img) != 0) {
+            HalSerialWriteShell("User: elf space load fail\n");
+            VirtualMemorySpaceDestroy(Space);
+            PhysicalMemoryFreePages(Buf, Pages);
+            return -1;
+        }
+        PhysicalMemoryFreePages(Buf, Pages);
+        KernelRoot = VirtualMemoryKernelRoot();
+        UserRoot = VirtualMemorySpaceRoot(Space);
+        HalSerialWriteShell("User: space cr3 switch\n");
+        VirtualMemoryLoadPageTable(UserRoot);
+        SetLast(Path);
+        Rc = HalSyscallRun(Img.Entry, Img.StackTop);
+        VirtualMemoryLoadPageTable(KernelRoot);
+        VirtualMemorySpaceDestroy(Space);
+    } else {
+        /* 非 X64 或 Create 失败：回落恒等装载 */
+        if (ElfLoaderFromMemory(Buf, Size, &Img) != 0) {
+            HalSerialWriteShell("User: elf load fail\n");
+            PhysicalMemoryFreePages(Buf, Pages);
+            return -1;
+        }
+        PhysicalMemoryFreePages(Buf, Pages);
+        SetLast(Path);
+        Rc = HalSyscallRun(Img.Entry, Img.StackTop);
+    }
+
     if (Rc == 0) {
         HalSerialWriteShell("User: exit\n");
     } else {

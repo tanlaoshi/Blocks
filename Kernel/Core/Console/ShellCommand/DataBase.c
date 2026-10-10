@@ -1,5 +1,5 @@
 /*
- * ShellCommandDataBase.c — K46：dbget / dbset（不堆进 ShellCommand.c）
+ * DataBase.c — K46：dbget / dbset（不堆进 ShellCommand.c）
  *
  * 【初学者】
  * 注册进命令表；实现只调 DataBase*。命令字保持 dbget/dbset（课上手短）。
@@ -72,10 +72,10 @@ static void CommandDataBaseSet(int Argc, char **Argv) {
 }
 
 /*
- * ShellCommandDataBaseRegister — 挂 dbget/dbset
+ * DataBaseRegister — 挂 dbget/dbset
  * 谁调用：ShellCommandInitialize。
  */
-void ShellCommandDataBaseRegister(void) {
+void DataBaseRegister(void) {
     ShellCommandRegister("dbget", "get BLOCKS.DB value", CommandDataBaseGet);
     ShellCommandRegister("dbset", "set BLOCKS.DB key value", CommandDataBaseSet);
 }

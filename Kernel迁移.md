@@ -1,22 +1,47 @@
-# Blocks · KernelMain 以后迁移
+# Blocks · Kernel 迁移
 
-> **性质**：`KernelMain` 起至「**对标现网** X64 QEMU 课堂主路径」的排期与 PR 拆分。  
-> **工作区**：`~/Blocks` · 仓：`git@github.com:tanlaoshi/Blocks.git`  
-> **接棒已收口**：见 [`Boot迁移.md`](Boot迁移.md) §1.5（接棒干净 ✅；彻底干净 = **对标现网** X64 到桌面/Shell）。  
-> **积木**：见 [`积木原则.md`](积木原则.md)——迁每一层都盯「可替换面 vs 胶水」。  
-> **对照源**（只读）：`~/ToyOS/ToyKernel` / edk2 内 ToyKernel；路径冲突以 Blocks 为准。
+> **工作区**：`~/Blocks` · `git@github.com:tanlaoshi/Blocks.git`  
+> **对照源**（只读）：`~/tanlaoshi/edk2/ToyKernel`（路径冲突以 Blocks 为准）  
+> **接棒**：[`Boot迁移.md`](Boot迁移.md) §1.5 已收口。彻底干净 ≠ smoke，见下文「终局」。
 
-### 迁移钉条（钉死 · 2026-10-10）
+---
+
+## 为何迁（钉死）
+
+1. **现网已经跑通**——功能多、路径经你测过无数次。命名、调用链、行为以 **`~/tanlaoshi/edk2/ToyKernel` 源码** 为准，不是凭文档或想象另写一套。  
+2. **迁到 Blocks 的目的**：在重落地时清掉现网实现里的**技术债、偷懒方案、模块化不足、可读性差、分层不清**，以及你还没掌握、但藏在代码里的问题。  
+3. **怎么干**：对着现网对应 `.c/.h` 迁；迁的过程中改掉上述问题；边迁边读，挖出文档没写、你也没看到的坑；**对标行业常规**（分层、驱动分夹、门面、单向依赖）解决。**实现可以略薄**（教学 OS，不复制 Linux），但验收不能假、不能用猜的路径顶替现网已跑通路径。  
+4. **现在没有发布、没有用户**——大改窗口就在现在；固化后再拆就难了。  
+5. Blocks 终局须 **比现网强很多**：能力 **≥** 现网路线图 **§1**（可加码）+ 结构/债明显更好。否则 TOKEN 无意义。  
+6. **禁止**：不看现网瞎猜重写；扫 Documents 充「全树盘点」；原样粘贴偷懒债；扔功能换瘦壳宣布收官。新发现记 [`现网待迁问题盘点.md`](现网待迁问题盘点.md)（路径:行号）。旧债：迁到时用**代码核实仍在**再改。
+
+---
+
+## 迁移钉条
 
 | # | 条文 |
 | - | ---- |
-| 1 | **目的**：大幅度提高**代码可读性**与**模块化**；落地后能力 **≥ 现网**课堂主路径（可加码，如 TTF），不是另做更瘦的课感 OS。 |
-| 2 | **过程**：遵守现网《代码可读性规范》《开发命名规范》（`~/tanlaoshi/edk2/ToyKernel/Documents/开发/`）与本仓 [`代码可读性盘点.md`](代码可读性盘点.md) / [`代码注释规范.md`](代码注释规范.md)——这是可读性的硬保证，不是可选项。 |
-| 3 | **还债**：迁到/改到之处，此前为省事欠下的技术债**一并解决**（分层反依赖、超 300、`*Init`/缩写、缺注释、HAL↔Core 穿插等），禁止「后刀再说」。 |
-| 4 | **分层**：依赖单向——Boot → HAL → Core →（Services 形）→ User；**禁止底层依赖高层**（如 HAL `#include` Core 政策头）。细节见 [`积木原则.md`](积木原则.md) §2.0 / §2.1。 |
-| 5 | **驱动一设备一夹**：迁入/加厚驱动时落 `Hal/<Arch>/Drivers/<Device>/`；现网尚未完全做到（根上仍有遗留 `.c`），Blocks **迁移时补完**，禁止再往 Hal 根堆设备实现。见 [`积木原则.md`](积木原则.md) §2.2；对照现网 `Documents/驱动/驱动开发指南.md` §2。 |
-| 6 | **目录即命名空间**：子目录内文件/函数不叠目录名；与目录同名主文件保留（编制流程）；`Hal*` 层前缀例外。见 [`命名规范盘点-Blocks.md`](命名规范盘点-Blocks.md)；产物 `Build/<Arch>/Core/…` 镜像源码树。 |
+| 1 | **现网是真相源**：行为/主路径/命名先读现网已跑通代码；Blocks 侧改的是债与结构，不是另猜一套「大概能跑」的实现。 |
+| 2 | **终局**：能力 ≥ 现网 §1（可加码）+ 可读/模块化/分层显著优于现网。禁止 smoke / 最短刀 / 相位打勾宣布收官。 |
+| 3 | **迁=还债窗口**：迁到之处一并清（反依赖、超 300、短名、`*Init`、缺注释、Hal 根堆驱动、偷懒方案）；并挖隐藏问题，对标业界常规修。实现可略薄。 |
+| 4 | **规范**：现网《代码可读性规范》《开发命名规范》+ 本仓 [`代码可读性盘点.md`](代码可读性盘点.md) / [`代码注释规范.md`](代码注释规范.md) / [`积木原则.md`](积木原则.md)。命名跟现网全词习惯走，坏名同刀改。 |
+| 5 | **分层单向**：Boot → HAL → Core →（Services 形）→ User；禁止 HAL→Core 政策头。 |
+| 6 | **驱动一设备一夹**：`Hal/<Arch>/Drivers/<Device>/`；迁入时补完现网根遗留，禁止再往 Hal 根堆设备。 |
+| 7 | **目录即命名空间**：夹内不叠目录名；同名主文件保留；`Hal*` 层前缀例外。见 [`命名规范盘点-Blocks.md`](命名规范盘点-Blocks.md)。 |
+| 8 | **字体/课感**：汉字观感必须过关；可点阵主路径，禁止糊弄式 fallback 当「齐」。 |
+| 9 | **文档随时可改**；**无明确 JX 不改代码**（`Kernel/` `Boot/` `User/` `Runtime` 产物等）。 |
+| 10 | **每刀交付必须交代**（见下节）；刀可小，但必须有结构/债价值；命名与可读性**同刀过关**，禁止交完再逼你重构。 |
 
+### 每刀交付（JX 收口必写）
+
+| 项 | 写清楚 |
+| -- | ------ |
+| **迁/动了哪** | 现网哪棵子树 / Blocks 哪几个文件（路径） |
+| **改了什么** | 行为零变还是修了哪类债（拆文件、分层、命名…） |
+| **对标业界** | 例如：按子系统分编译单元、命令表注册模式、单向依赖、一设备一夹 |
+| **比现网好在哪** | 具体一点（现网同债若已更好则写「对齐现网已拆法并补全词命名」） |
+| **如何测试** | 编译命令 + smoke/抽测步骤 |
+| **自查** | `命名 OK / 行数 OK（wc -l）`；有债当场改 |
 
 ---
 
@@ -24,289 +49,153 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-B-read** · Core 超标拆（Shell / Gui / Fat / Tcp） |
-| 排队 | **PR-B-hal** → **PR-B-seq** → 后置 C（真机/SMP/virt） |
-| 刚收官 | **PR-K54** · smoke-boot ✅（**B 对标现网收官**） |
-| 顺手（不推 ★） | `调用链.md`；积木 Ops；注释/绘制设想文 |
-| **债表** | 下表整合自原 PR-B-read/name/seq；**现占 ★**（TG 须推相位星 + 宜 TS 以免远程停旧星） |
+| **★** | **PR-B-read** · 拆超标 Core（Shell ✅ 本刀；余 Gui/Fat/Tcp） |
+| 排队 | **PR-B-hal** → **PR-B-seq** → **现网切片迁入**（读代码清债 + 补 §1）→ 后置真机细项 |
+| 刚收官 | **K54** `smoke-boot`（**仅冒烟**；≠ ≥现网） |
+| 相关文 | [`现网待迁问题盘点.md`](现网待迁问题盘点.md) · [`代码可读性盘点.md`](代码可读性盘点.md) · [`积木原则.md`](积木原则.md) |
 
-> ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
-> **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。  
-> **暗号对齐现网**（ToyKernel `Documents/路线图.md` 〇节）：
->
-> | 暗号 | 含义 | Agent 动作 |
-> | -- | -- | -- |
-> | **JX** | 做文首 ★（或点名的待执行刀） | 实现 + 本地验收；**不** commit/push；**唯有明确 JX（或 TGJX 的后半）才改代码** |
-> | **TG** | 手测通过，入库 | **只 commit、不 push**；★ 推下一刀；相位表/`已收官`/修订记录同步 |
-> | **TGJX** | TG 然后 JX | 先 TG（不含随后 JX 代码）再 JX；**不** push |
-> | **TS** | 推远程 | `git push`；不新开 commit |
-> | **GD** | 文档归档 | 按下方 **GD 排版**；**不**写功能代码、不擅自 TG、**不**改代码 |
->
-> 旧习惯「TG 含 push」已废止——上远程须另说 **TS**（或 **TG TS**）。  
-> **无明确 JX 之前：禁止改 `Kernel/` / `Boot/` / `User/` / `Runtime` 产物等代码**；只允许改文档（及你点名的非代码事务）。
+### 暗号
 
-#### GD 排版（钉死）
+| 暗号 | 含义 | Agent |
+| -- | -- | -- |
+| **JX** | 做文首 ★（或点名刀） | **先读现网对应源** → 迁入/拆分并清债 → 本地验收；**禁止瞎猜另写**；**不** commit/push |
+| **TG** | 入库 | **只 commit**；推 ★ / 债表 / 修订记录；**宜**再 **TS** |
+| **TGJX** | 先 TG 再 JX | 不 push |
+| **TS** | 推远程 | `git push` |
+| **GD** | 归档已完成专节到文末 | 不改代码、不擅自 TG |
 
-执行 **GD** 时正文必须：
+> TG 必须同步：文首 ★、未完成表状态、修订记录；相位星勿停旧刀。远程旧星 = 忘记 TS。
 
-| 区 | 放什么 | 位置 |
-| -- | ------ | ---- |
-| **未完成（前）** | 文首 ★、钉条、暗号；**PR-B-*** 债表 / 后置 C 排队 | 文首与 §0 附近，读者先看见还要做什么 |
-| **进行中规划** | 当前 ★ 的「做/不做/验收」 | 紧接未完成表 |
-| **已完成（文末）** | 凡「已收官」专节、历史刀细则 | **只**进文末 [【归档】](#sec-gd)；正文禁止再挂大段已收官块 |
+### GD 排版
 
-禁止 GD 后仍把 K0–K45 已收官长文放在 P5/后置之前。
-
-### 协作约定（2026-10-09 起）
-
-| # | 约定 |
-| - | ---- |
-| 0 | **无 JX 不改代码**（见上暗号注）。文档/盘点/排期可先动。 |
-| 0b | **JX 交付手测步骤**：每次写完代码，在回复里给出**可照做的手测清单**（环境、命令、期望串口/屏现象、失败时看什么）；写入该刀「验收」或专节亦可。 |
-| 1 | **主力 Arch = X64**。Arm64/RiscV 保持可编 + Stub/薄实现即可，不要求与 K13+ 刀刀对齐；落后是预期。 |
-| 2 | **注释**：迁入/加厚代码补【初学者】级说明（为何、跟谁、不做什么）；禁止只留符号名。 |
-| 3 | **调用链总览**：维护 [`调用链.md`](调用链.md)（Boot→KernelMain→模块表→shell）；TG 改主链时同步改它。 |
-| 4 | **驱动加厚**（USB HID/MSC、网卡收发、存储 AHCI 等）：JX 前先和你对一下范围/验收，再动刀；落地须 **一设备一夹**（文首钉条 #5 / 积木 §2.2）。 |
-| 5 | **终局 ≥ 现网**：对照现网路线图 §1 **x86 QEMU 课堂主路径**；刀仍最短可验收，但能力面**等于或超过**现网（文首钉条 #1）。可读性/命名/还债/分层/驱动分夹见钉条，不得用「先出活」绕过。 |
-
-### 未完成（文首 · GD 后只留这些）
-
-> **已完成**（K0–K45、相位 P1–P3、加厚 K13–K20）专节与全表见文末 [【归档】](#sec-gd)。  
-> 骨架 A ✅ · P1–P3 ✅ · P4 ✅ · P5 ✅（B 收官）· ★ = **PR-B-read**（可读性债）· 后置 C 排队。
-
-### 对标现网主轨（K21+ · 分相位）
-
-> **终局定义（钉死）**  
-> Blocks X64 + Runtime split 达到现网课堂主路径同级能力（路线图 §1 表），入口对标 `run-split.sh` / `smoke-boot.sh`。  
-> **不是**「能指点 + ping 就算完」；**也不是**整目录 1:1 粘贴现网（仍按积木/最短刀迁，行为与课表验收对齐）。
->
-> **刀数口径（口述，可按 JX 前讨论微调）**  
-> - **骨架 A**：K0–K20 ✅（已完）  
-> - **对标现网 B（主轨）**：约 **K21–K54 ≈ 34 刀**，按相位推进  
-> - **后置 C**：真机 NUC 边角、x86 SMP 演示、Arm/RiscV virt 全桌面——**不挡** B 收官  
->
-> 现网 Services/Gui/Shell/Net/Store 体量大；下列按**现网能力面**拆刀，细则轮到再写。驱动刀遵守约定 #4。  
-> **汉字**：现网课路径是 UTF-8 + **点阵 CJK**（不做 TTF）。Blocks **加码**：点阵对齐后立刻上 **TTF 光栅**（看重显示效果），插在窗管之前，不进后置。
-
-#### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
-
-| PR | 一句话 | 现网对照 | 验收（口述） |
-| -- | ------ | -------- | ------------ |
-| **K44** ✅ | GPT + 多卷前缀薄（`BLOCKS:`/`ESP:`） | FS2 | `vols`/`ls` 多卷前缀 |
-| **K45** ✅ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
-| **K46** ✅ | `BLOCKS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
-| **K47** ✅ | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
-| **K48** ✅ | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
-
-#### 相位 P5 · 用户态 / 输入 / 积木面（K49–K54）
-
-| PR | 一句话 | 现网对照 | 验收（口述） |
-| -- | ------ | -------- | ------------ |
-| **K49** ✅ | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
-| **K50** ✅ | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
-| **K51** ✅ | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
-| **K52** ✅ | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
-| **K53** ✅ | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
-| **K54** ✅ | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell/汉字关键字 |
-
-#### 后置 C（不挡 B 收官）
-
-| 项 | 说明 |
-| -- | ---- |
-| x86 SMP S1～S4 / S-ap | 演示级多核；现网已归档，Blocks 后置 |
-| 真机 NUC（NVMe/AHCI/电源/HID 边角） | 约定 #4；**可读性债清完后再开**，不占当前 ★ |
-| Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
-| 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
-| ESP 去重 Kernel.elf（可选） | **已是双盘**：Boot **优先从 RootFs/BLOCKS 读** `Kernel.elf`；ESP 放 `BOOTX64.EFI`。`sync` 仍可能往 Esp 拷一份备份——能力已满足；后置可收拢为「核只在 BLOCKS」 |
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储 ✅ → P5；P5 ✅）→ ★ = **PR-B-read** → … → 后置 C。  
-> 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。  
-> **GD**：未完成（P4 余量 / P5 / 后置 / 待执行）留文首；已收官专节**只**迁文末 【归档】（见上 GD 排版）。
-
-
-### 可读性 / 命名 / 顺序（★ 现轨 · 整合）
-
-> 出自 [`代码可读性盘点.md`](代码可读性盘点.md) §6.2。**未完成**——已部分动手但未收官（见「现状」）。原 8 条收成 **3 刀**；**现占 ★**。  
-> 拆文件零行为优先；Hal 搬家顺带 **一设备一夹**（§2.2）。TG 每刀必须：文首 ★ + 本表状态 + 修订记录；**宜 TS**，避免远程相位星停旧刀。
-
-| 状态 | PR | 合并原项 | 现状（2026-10-10 盘点） | 验收 |
-| ---- | -- | -------- | ---------------------- | ---- |
-| **★** | **PR-B-read** | read-1…4 | `ShellCommand.c` **865**（已有 DataBase/Store/System，主文件仍超标）；`Gui.c` **453**（无 `GuiCursor`）；`FatMutation.c` **366**；`Tcp.c` **503** | 四处均 ≤300；`smoke-boot` + help/ls/ping/write、鼠拖窗、FAT 写、TCP/UDP 旧句 |
-| 排队 | **PR-B-hal** | read-5 + name-1 + name-2 | virtio/ps2 仍在 `Hal/X64/` 根且 >300；`Hal*Init`；`FAT_DIR_ENT` / `gSaveW` 等短名 | 进 `Drivers/<Device>/`；`*Initialize`；全词；编译 + 冒烟 |
-| 排队 | **PR-B-seq** | seq-1 | 未做 | `KernelMain` 顺序表薄搬；开机到桌面/Shell |
-| 后置 | 真机 / SMP / virt | 原后置 C | **不占 ★**；债清后再开 | 约定 #4 对范围 |
-
-咬合：禁止再往超标 `ShellCommand.c` / `Gui.c` 堆逻辑；新驱动第一天进夹且 ≤300。
-
-### PR-B-read 规划（★ · 最小子集 · JX）
-
-**一句话**：把 Core 四处超标文件拆到 ≤300，零行为优先。
-
-| 项 | 定调 |
-| -- | ---- |
-| **做** | Shell 命令按 Fs/Net/Sys 继续外提至主文件≤300；`GuiCursor` + 指针分发；FatMutation 按 Write/Mkdir/Rm/Rename；Tcp/近线按能力拆 |
-| **不做** | 改协议/改 UI 行为；Hal 搬家（→PR-B-hal）；真机 |
-| **验收** | 上述文件 `wc -l`≤300；`./smoke-boot.sh`；抽测 help/ls/write、拖窗、tcp/udp |
-| **对照** | 盘点 §6.2 原 read-1…4 |
-| **落地** | 一刀可只收官其中 1～2 个文件，但 ★ 不离开 PR-B-read 直到四文件都达标 |
-
-### K46 已收官（摘要）
-
-`BLOCKS.DB` + `dbget`/`dbset`；细则与手测见文末 [【归档】](#sec-gd) · K46。
-
-### K48 已收官（摘要）
-
-`StoreJob` + `StoreUi` 窗 + Shell/窗互斥；Z 序含 Store。细则见文末归档（TG 后迁）。
-
-### K49 已收官（摘要）
-
-`VirtualMemorySpace` + ELF 私有页 + `ProcessExecPath` 切/还 CR3；`hello` 串口见 `Hello from HELLO.ELF`。
-
-### K50 已收官（摘要）
-
-`ProcessFork` + `SpaceClone` + `FORK.ELF`：串口 `C`/`P`/`done`；fork 恢复点与 `HalSyscallRun` 返回点分离。
-
-### K51 已收官（摘要）
-
-`SYS_OPEN` + 文件 fd；`Crt0`/`CAT.ELF`/`WRITE.ELF`；`NOTE.TXT` + `BLOCKS.ID` 串口可见。
-
-### K52 已收官（摘要）
-
-`Drivers/UsbHid/` 薄栈；`qemu-xhci`+kbd/tablet；Gui/Console 优先 HID；串口 `UsbHid: kbd/tablet ok`。
-
-### K53 已收官（摘要）
-
-`MemoryOps`/`SchedulerOps` 注册面；默认 `MemoryBitmapOps`/`SchedulerRoundRobinOps`；`PhysicalMemory` 拆位图池（≤300）；串口 `MemoryOps: bitmap ok` / `SchedulerOps: round-robin ok`。
-
-### K54 已收官（摘要）
-
-`Runtime/smoke-boot.sh`：无头断言 `Blocks ready` / `Gui: desktop ok` / `Shell` / `Font: cjk32 disk ok`；失败非零。**B 对标现网（K21–K54）收官**。
-
-### 后置 C（排队 · 不占 ★）
-
-真机 NUC / SMP / virt：等 **PR-B-read → PR-B-hal → PR-B-seq** 收官后再开；JX 前对范围（约定 #4）。
-
+| 区 | 内容 | 位置 |
+| -- | ---- | ---- |
+| **未完成** | 为何迁、钉条、★、三轨未完、当前刀规划 | 文首 |
+| **已完成** | K0–K54 演示轨专节与相位全表 | 仅 [【归档】](#sec-gd) |
 
 ---
 
-## 1. 目标与硬约束
+## 未完成 · 三轨
 
-### 1.1 终局验收（彻底干净）
+> **骨架演示轨**（K0–K54）已进归档——那是「能开机演示」，**不是**终局。  
+> 终局 = 下表三轨都收官（能力齐 + 结构债清 + 未迁大头按质迁完）。
+
+### 轨 A · 现网未迁（大头）
+
+| 要求 | 说明 |
+| -- | ---- |
+| 怎么干 | 按切片打开现网已跑通 `.c/.h`（命名/路径现成），迁入 Blocks；同刀清债、修分层、挖隐藏问题；对标业界常规，实现可略薄。 |
+| 禁止 | **不看现网瞎猜**；原样粘贴偷懒债；HAL→PhysicalMemory 等反依赖；Drivers/Services 根散落再搬；文档扫描冒充 review |
+| 能力 | 迁入块须能支撑 §1；主路径对齐现网已测通行为，不是「另写一版差不多」 |
+| 登记 | [`现网待迁问题盘点.md`](现网待迁问题盘点.md) 只收**读代码新发现**（路径:行号） |
+
+### 轨 B · 能力 ≥ 现网 §1（差缺）
+
+对照现网 `ToyKernel/Documents/路线图.md` §1。**齐**≈课感同级；**薄**=明显矮；**缺**=基本未落地。  
+**禁止**在下表仍有「缺/薄」时写 B/彻底干净收官。
+
+| 面 | 现网 §1（摘要） | Blocks | 状态 |
+| -- | -------------- | ------ | ---- |
+| 桌面 | 标题栏/拖/重叠；图标开 Shell/Settings/Files | 有；合成/手感弱 | **薄** |
+| 主题 | DB+THEME.CFG；色/点阵/分辨率 | 有；边角待齐 | **薄** |
+| 存储 | GPT+FAT（LFN、`.`/`..`、多卷、RES） | 基本有；LFN/RES 等未齐 | **薄** |
+| 文件浏览器 | 进目录、预览、ELF、删/建/改名 | 弱预览/深度 | **薄** |
+| 用户态 | COW fork、pipe/dup/brk/kill、CRT、`.so` | 有 fork/exec/文件；COW/pipe/so 弱或无 | **缺/薄** |
+| 语言 | UTF-8+CJK+lang | CJK/TTF/lang（加码中） | **齐/加码**（观感仍须过关） |
+| 网络 | 默认 lwIP；dns；NETDEMO；DHCP/tray… | virtio；lwIP 非默认；DHCP/tray 缺 | **薄** |
+| SMP | 演示级 AP / S-ap | 基本无 | **缺**（勿默认扔掉；降级须你点头） |
+| 真机 NUC | U 盘、xHCI、键鼠、电源、NVMe/AHCI… | 未做 | **后置**（不挡先齐 QEMU §1） |
+| 输入 | 键鼠可用（HID 对标） | HID+PS/2 双栈缠绕 | **薄**（要门面化） |
+
+### 轨 C · Blocks 已进树结构债（★ 现做）
+
+> 出自 [`代码可读性盘点.md`](代码可读性盘点.md)。**清完 ≠ 能力收官**，仍须继续轨 A/B。
+
+| 状态 | PR | 现状 | 验收 |
+| ---- | -- | ---- | ---- |
+| **★** | **PR-B-read** | Shell ✅ 已拆（最大 **239**）；Gui **453** / FatMutation **366** / Tcp **503** | 四处均 ≤300；`smoke-boot` + 抽测 |
+| 排队 | **PR-B-hal** | Virtio/PS2/xHCI 仍在 Hal 根；`*Init`；短名 | 进 `Drivers/<Device>/`；`*Initialize`；全词 |
+| 排队 | **PR-B-seq** | KernelMain 非顺序表 | 薄顺序表；开机到桌面 |
+
+咬合：禁止往超标文件继续堆；新驱动第一天进夹且 ≤300。
+
+---
+
+## 当前 ★ 规划 · PR-B-read
+
+**一句话**：拆 Core 四处超标到 ≤300，零行为优先。对标现网已拆法，禁止瞎猜另写。
+
+| 项 | 定调 |
+| -- | ---- |
+| **本刀已做** | Shell：进 `Console/ShellCommand/`（目录即命名空间）；主文件 `ShellCommand.c`，子文件 `FileSystem/Theme/Network/NetworkTcp/NetworkUdp/DataBase/Store.c`；Register 去夹名前缀 |
+| **余下** | `GuiCursor`+指针分发；FatMutation 按写/建/删/改名；Tcp 按能力拆 |
+| **不做** | 改协议/UI 行为；Hal 搬家（→PR-B-hal）；冒充 §1 收官 |
+| **验收** | `wc -l`≤300；`./smoke-boot.sh`；抽测 help/ls/write、拖窗、tcp/udp |
+| **自查** | 命名全词、无新缩写；交付附「每刀交付」六项 |
+| **之后** | 四处齐 → ★→PR-B-hal |
+
+### 后置（不占当前 ★）
+
+| 项 | 说明 |
+| -- | ---- |
+| 真机 NUC 细项 | QEMU §1 齐后再开；约定 #4 对范围 |
+| Arm/RiscV 全桌面 | 保持可编；不对齐 B 终局 |
+| 更大字库/设计器/声卡/iGPU | 加码或后置；最小课感字体须先过关 |
+| SMP 细项 | 若 §1 要演示级，排能力轨，勿默认可扔 |
+
+---
+
+## 1. 终局形态（摘要）
 
 ```text
 加电 → OVMF → BOOTX64.EFI → Kernel.elf
   → KernelMain → 模块表 → GOP 桌面 / Shell
-  → 能力面对标现网课堂主路径（路线图 §1）
+  → 能力 ≥ 现网 §1，结构明显强于现网
 ```
 
-对标现网 `Scripts/run-split.sh` / `smoke-boot.sh`（Blocks：`Runtime/run.sh`）。**不只以「能编过」为准。**
-
-**现网课堂主路径能力面（B 收官检查清单）**：
-
-| 面 | 要对上的现网行为 |
-| -- | ---------------- |
-| 桌面 | 标题栏/拖动/重叠；图标双击开 Shell、Settings、Files |
-| Theme | 色/点阵字体可改；偏好可落盘（`THEME.CFG`/`BLOCKS.DB` 按刀演进） |
-| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `BLOCKS.ID` |
-| 网络 | virtio-net；`ping`；lwIP 课路径（builtin 可作对照） |
-| 用户态 | 多只教学 ELF；`exec`；syscall 读写 |
-| 输入 | 键鼠可用（PS/2 可先，HID 对标现网） |
-
-**分档**：
+入口：现网 `run-split` / `smoke-boot` ↔ Blocks `Runtime/run.sh` / `smoke-boot.sh`（冒烟必要非充分）。
 
 | 档 | 含义 | 状态 |
 | -- | ---- | ---- |
-| **A 骨架** | 接棒 + 表齐 + K13–K20 | ✅ 已收官 |
-| **B 对标现网** | K21–K54 相位 P1 / **P1b 汉字·TTF** / P2–P5 | ✅ 已收官；债刀见 PR-B-* |
-| **C 后置** | 真机 / SMP / virt 全桌面 | 排队（★ 在 PR-B-read） |
+| **A** | 接棒 + 模块表 + 加厚到桌面骨架 | ✅ 演示轨 |
+| **B** | 能力 ≥ §1 + 结构债清 + 未迁按质迁完 | **未完** |
+| **C** | 真机 NUC 细项等 | 排队 |
 
-### 1.2 迁移原则
+模块表（Blocks）：`Serial → Memory → VirtualMemory → Driver → Video → Cpu → USB → FileSystem → Network → Gui → Scheduler → Console`  
+（相对现网：无 SerialEarly/Smp；序为 Memory→VMM→Driver。）
 
-> 文首 **迁移钉条**优先；下列为操作细则。
-
-0. **可读 · 模块化 · ≥现网 · 还债 · 单向分层 · 一设备一夹**——见文首钉条；JX/TG 验收含能力**与**结构（命名/行数/注释/依赖方向/驱动目录）。  
-1. **最小子集（方便 review）**：每一刀只迁「能验收的最短路径」；宁多一刀，勿塞整文件/整层。单 PR 以可 diff、可口述验收为准。  
-2. **积木优先**（[`积木原则.md`](积木原则.md)）：接口稳定、实现可换；SCHED/MEM/FS 等迁入即对齐 Ops 面。  
-3. **三架构可编**：每刀 `./build.sh x64|arm64|riscv` 绿；真实现可先只落主力 Arch，其它保持桩。  
-4. **新 `.c` ≤300 行**；大块按已拆文件拆刀迁。存量超标与对策见 [`代码可读性盘点.md`](代码可读性盘点.md)。  
-4b. **新迁/新写强制**遵守可读性+命名（盘点「强制」节）；禁止在超标文件上继续堆逻辑。  
-4c. **注释**：新迁与改到的函数写清「做什么 / 谁调用 / 前后文」——[`代码注释规范.md`](代码注释规范.md)。  
-4d. **绘制库化**（可选后置刀）：像素层「一个 `.h` 就能用」——[`绘制层库化设想.md`](绘制层库化设想.md)。  
-4e. **改到还债**：动某文件时，该文件内已见债（反依赖、超标堆叠、缺注释、违规短名）同刀清掉或拆出，不扩债面。  
-4f. **驱动一设备一夹**：新迁或加厚某设备驱动时，落在 `Hal/<Arch>/Drivers/<Device>/`（或等价一夹），禁止再往 `Hal/X64/` 根目录堆 `HalXxx.c`；现网未分完的夹，迁到时一并收拢。  
-5. **恒等窗 4GiB**（`IdentityMap.h`）：正式 VMM 必须读同一常量。  
-6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。  
-7. **文件名去冗余 `Kernel` 前缀**：落点已在 `Kernel/`（或对照源 `CodeC-Core/Kernel/`）时，勿再 `Kernel`+Rest。  
-   - 去：`KernelModules*.c` → `Modules*.c`；`KernelTask.c` → `Task.c`；迁入时同类照办。  
-   - 留：本身就叫这个的（`Kernel.c` / `Kernel.h`）；角色专名 `KernelEntry` / `KernelHandoff`（不是「Kernel+Modules」式冗余）。
-
-### 1.3 现网 `KernelMain` 形状（对照）
-
-```text
-KernelMain
-  ├─ KernelAttachEarlyVideo()     Serial + HalVideoSet(+ Font/Theme/GopEnable)
-  ├─ KernelModulesRun()           gModulesFull[] / Virt / VirtDesktop
-  ├─ KernelAfterModules()         关 GOP 镜像等
-  └─ 起 shell/gui/worker → SchedulerStart
-```
-
-模块表（现网 Full，日志名 · 对照）：
-
-`Serial → Memory → Driver → VirtualMemory → Video → Cpu → SerialEarly → Smp → USB → FileSystem → Network → Gui → Scheduler → Console`
-
-**Blocks 当前表**（与现网差：`Memory → VirtualMemory → Driver`，无 SerialEarly/Smp）：
-
-`Serial → Memory → VirtualMemory → Driver → Video → Cpu → USB → FileSystem → Network → Gui → Scheduler → Console`
+细则与积木约束见 [`积木原则.md`](积木原则.md)；演示轨历史见文末归档。
 
 ---
 
-## 2. PR 拆分（一步一步）
-
-> **K0–K45 已收官**；细则见文末 [【归档】](#sec-gd)。未完只认文首 ★ / 相位表 / **待执行**。
-
-| PR | 一句话 | 状态 |
-| -- | ------ | ---- |
-| **K0–K12** | 模块表挂齐（薄实现） | ✅ |
-| **K13–K20** | 加厚到桌面 | ✅ |
-| **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
-| **K44–K54** | P4 存储 / P5 用户态·输入 | ✅；★ → PR-B-read |
-| **后置 C** | 真机 / SMP / virt 桌面 | 排队（★ = PR-B-read） |
-
----
-
-## 3. 目录预期（随刀增长）
+## 2. 目录预期（随刀）
 
 ```text
 Kernel/
-  Core/
-    Kernel.c             # 入口函数 KernelMain（文件名本身就是 Kernel，不去前缀）
-    Modules.c            # 表 + ModulesRun（勿再叫 KernelModules）
-    BootInfo.c
-  Hal/Common/
-    HalCapability.c      # 能力旗标（跨 Arch）
-    HalVideoStub.c       # 非 X64 薄视频；X64 用 Hal/X64/HalVideo.c
-    HalCpuStub.c
-  Include/Core/
-    Module.h Modules.h Kernel.h
-    …
-  Hal/<Arch>/HalSerial.c # 已有
-  Hal/<Arch>/KernelEntry.S KernelHandoff.c  # 角色专名，保留
-  Hal/<Arch>/…           # Video/Cpu/…
+  Core/<Module>/     # 目录即命名空间；同名主文件=编排
+  Hal/<Arch>/Drivers/<Device>/   # 一设备一夹（必须）
+  Hal/<Arch>/        # 仅门面薄文件 / Entry / Handoff
+  Hal/Common/        # 跨 Arch 门面与 Stub
+  Include/Core|Hal/
+  ThirdParty/        # 例外区
 ```
 
 ---
 
-## 4. 相关入口
+## 3. 相关入口
 
 | 文档 | 用途 |
 | ---- | ---- |
-| [`Boot迁移.md`](Boot迁移.md) | 接棒边界；干净定义 |
-| [`Kernel/README.md`](Kernel/README.md) | 编译与现状 |
-| 现网 `CodeC-Core/Kernel/Kernel.c` | `KernelMain` 对照 |
-| 现网技术手册 §2.1 | 模块表顺序 |
+| [`现网待迁问题盘点.md`](现网待迁问题盘点.md) | 读代码新发现（路径:行号）；边迁边记 |
+| [`代码可读性盘点.md`](代码可读性盘点.md) | Blocks 已进树超标/命名 |
+| [`积木原则.md`](积木原则.md) | 分层 / Ops / 一设备一夹 |
+| [`Boot迁移.md`](Boot迁移.md) | 接棒边界 |
+| [`调用链.md`](调用链.md) | Boot→Shell 主链 |
+| 现网路线图 §1 | 能力验收底线 |
 
 ---
 
-## 5. 修订记录
+## 4. 修订记录
 
 | 日期 | 说明 |
 | ---- | ---- |
@@ -383,23 +272,32 @@ Kernel/
 | 2026-10-10 | TG：K51 ✅ SYS_OPEN/文件 fd + CAT/WRITE.ELF；★ → **K52**（USB HID） |
 | 2026-10-10 | TG：K52 ✅ UsbHid + qemu tablet/kbd；★ → **K53**（MEMORY/SCHEDULER_OPS） |
 | 2026-10-10 | TG：K53 ✅ MEMORY_OPS/SCHEDULER_OPS + PhysicalMemory 拆位图 + UsbHid 全词/Internal；★ → **K54**（smoke） |
-| 2026-10-10 | TG：K54 ✅ `Runtime/smoke-boot.sh`；**B 收官**；★ → **后置 C · 真机 NUC** |
-| 2026-10-10 | 排期：可读性债**未完**（Shell 865/Gui 453/…）；原 PR-B-* 收成 read/hal/seq 三刀；★ → **PR-B-read**（真机后置排队）；P5 表 K49–K54 全 ✅ |
+| 2026-10-10 | TG：K54 ✅ `Runtime/smoke-boot.sh`；★ 曾误推后置 C / 误标 B 收官 |
+| 2026-10-10 | 排期：可读性债未完；★ → **PR-B-read**；P5 表 K49–K54 演示轨 ✅ |
+| 2026-10-10 | **口径纠错**：钉条 #1 = 落地 **≥ 现网 §1**；K54/smoke **不是** B 收官；文首钉 §1 差缺表；禁止再扔功能当迁移完成 |
+| 2026-10-10 | **动机钉死**：迁 = 因现网可读/模块化/债不满而重落地；未发布窗口大改；Blocks 须**比现网强很多**（能力+结构），否则无意义 |
+| 2026-10-10 | [`现网待迁问题盘点.md`](现网待迁问题盘点.md)：作废文档扫描版；只收读代码新发现（路径:行号）；边迁边读边改 |
+
+
+| 2026-10-10 | **GD**：P4/P5 全表 + K46–K54 已收官摘要迁文末 【归档】；文首只留 ★=PR-B-read / 债表 / 后置 C 排队 |
+| 2026-10-10 | **文首重组织**：按「为何迁 / 未发布窗口 / ≥现网且更强 / 读代码边迁边改 / 不照搬」重排；三轨未完；废除假 B 收官口径 |
+| 2026-10-10 | **原则重申**：现网已跑通=真相源（命名/路径现成）；迁=清债+模块化+可读+分层+挖隐藏问题；对标业界；实现可略薄；**禁止瞎猜另写** |
+| 2026-10-10 | 钉 **每刀交付** 六项；JX：**PR-B-read/Shell** — 对标现网 ShellCommands 分文件，865→多文件均≤239；行为零变；★ 仍 PR-B-read（Gui/Fat/Tcp） |
 
 ---
 
-## 6. 【归档】 <a id="sec-gd"></a>
+## 5. 【归档】 <a id="sec-gd"></a>
 
-> 暗号 **GD**：本节 = **已完成**专节唯一落点。  
-> 文首只留：钉条 / ★ / **未完成**（P4 余量、P5、后置 C、待执行可读性刀）与当前 ★ 规划。  
-> Ctrl+F `### K` 查历史刀；**勿再当 JX**。
+> 暗号 **GD**：本节 = **已完成**专节唯一落点（骨架演示轨 K0–K54 等）。  
+> 文首只留：**未完成**（为何迁、★、三轨未完、当前刀规划）。**禁止**把 K54/smoke 写成 ≥现网收官。  
+> Ctrl+F `### K` 查历史；**勿再当 JX**。
 
 
 ### 已完成相位表（GD · 摘要）
 
 ### 加厚到桌面（K13+ 排队 · 一句话）
 
-> 下表为骨架加厚（已收官）。**终局 = 对标现网**（§1.1 + K21+ 相位表）。**JX 只认文首 ★**。
+> 下表为**骨架加厚**（已收官演示轨）。**真正终局**见文首（能力≥§1 + 结构更强）。**JX 只认文首 ★**。
 
 | PR | 一句话 | 为何排这里 | 验收（口述） |
 | -- | ------ | ---------- | ------------ |
@@ -456,6 +354,63 @@ Kernel/
 | **K41** ✅ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
 | **K42** ✅ | DNS / 基础 `Configuration` | 现网网配置 | `dns` 或等价日志 |
 | **K43** ✅ | 用户态 `NETDEMO` 能跑 | NetDemo / socket | `exec NETDEMO.ELF` 见 `ok` |
+
+
+#### 相位 P4 · 存储加厚 / Store / DB（K44–K48）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K44** ✅ | GPT + 多卷前缀薄（`BLOCKS:`/`ESP:`） | FS2 | `vols`/`ls` 多卷前缀 |
+| **K45** ✅ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
+| **K46** ✅ | `BLOCKS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
+| **K47** ✅ | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
+| **K48** ✅ | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
+
+#### 相位 P5 · 用户态 / 输入 / 积木面（K49–K54）
+
+| PR | 一句话 | 现网对照 | 验收（口述） |
+| -- | ------ | -------- | ------------ |
+| **K49** ✅ | Ring3：独立页表 + `execve` 形 | P 族 | 用户 ELF 与内核堆隔离（最小） |
+| **K50** ✅ | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
+| **K51** ✅ | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
+| **K52** ✅ | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
+| **K53** ✅ | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
+| **K54** ✅ | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell/汉字关键字 |
+
+### K46–K54 已收官（摘要）
+
+### K46 已收官（摘要）
+
+`BLOCKS.DB` + `dbget`/`dbset`；细则与手测见文末 [【归档】](#sec-gd) · K46。
+
+### K48 已收官（摘要）
+
+`StoreJob` + `StoreUi` 窗 + Shell/窗互斥；Z 序含 Store。细则见文末归档（TG 后迁）。
+
+### K49 已收官（摘要）
+
+`VirtualMemorySpace` + ELF 私有页 + `ProcessExecPath` 切/还 CR3；`hello` 串口见 `Hello from HELLO.ELF`。
+
+### K50 已收官（摘要）
+
+`ProcessFork` + `SpaceClone` + `FORK.ELF`：串口 `C`/`P`/`done`；fork 恢复点与 `HalSyscallRun` 返回点分离。
+
+### K51 已收官（摘要）
+
+`SYS_OPEN` + 文件 fd；`Crt0`/`CAT.ELF`/`WRITE.ELF`；`NOTE.TXT` + `BLOCKS.ID` 串口可见。
+
+### K52 已收官（摘要）
+
+`Drivers/UsbHid/` 薄栈；`qemu-xhci`+kbd/tablet；Gui/Console 优先 HID；串口 `UsbHid: kbd/tablet ok`。
+
+### K53 已收官（摘要）
+
+`MemoryOps`/`SchedulerOps` 注册面；默认 `MemoryBitmapOps`/`SchedulerRoundRobinOps`；`PhysicalMemory` 拆位图池（≤300）；串口 `MemoryOps: bitmap ok` / `SchedulerOps: round-robin ok`。
+
+### K54 已收官（摘要）
+
+`Runtime/smoke-boot.sh`：无头断言 `Blocks ready` / `Gui: desktop ok` / `Shell` / `Font: cjk32 disk ok`；失败非零。**仅冒烟**；**不是** ≥现网 / B 能力收官。
+
 
 ### K0–K4 细则（已收官）
 

@@ -1,5 +1,5 @@
 /*
- * ShellCommandStore.c — K47/K48：store list / store install（经 StoreJob）
+ * Store.c — K47/K48：store list / store install（经 StoreJob）
  *
  * 【初学者】
  * Shell 路径：入队后本命令内 Step 完成（串口一次见 ok）。
@@ -117,6 +117,6 @@ static void CommandStore(int Argc, char **Argv) {
     Put("usage: store list | store install <id>\n");
 }
 
-void ShellCommandStoreRegister(void) {
+void StoreRegister(void) {
     ShellCommandRegister("store", "list/install local packages", CommandStore);
 }

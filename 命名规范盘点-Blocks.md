@@ -41,7 +41,8 @@
 | `FileSystem/` | `FileSystem.c` | `Volume` `FatVolume` `FatDirectory` `FatMutation` `FatAllocate` `DataBase` `Store*` … |
 | `Network/` | `Network.c` | `Ip` `Ping` `Udp` `Tcp` `Lwip` `Configuration` |
 | `Gui/` | `Gui.c` | `Layout` `Desktop` `Settings` `Files` `Start` `Window` `WindowPaint` |
-| `Console/` | `Console.c` | `ShellCommand*` `ShellSystem` `ElfLoader` `Process` |
+| `Console/` | `Console.c` | `ShellSystem` `ElfLoader` `Process`；命令见下 `ShellCommand/` |
+| `Console/ShellCommand/` | `ShellCommand.c` | `FileSystem` `Theme` `Network` `NetworkTcp` `NetworkUdp` `DataBase` `Store`（不叠 `ShellCommand`） |
 | 其它 | `Serial` `Memory` `Cpu` `USB` `Scheduler` `Video` `Driver`… | 子文件本就未叠目录名或已写全 |
 
 ---
@@ -52,7 +53,7 @@
 | -- | ---- |
 | Hal `*Init`→`*Initialize` | PR-B-name-1 |
 | 局部 `Buf`/`Len`/… | 改到文件时顺手清 |
-| `ShellCommand.c` 巨石 | PR-B-read-1 |
+| `ShellCommand/` 子文件 Register 与 Core 同名模块并存 | 已用 `FileSystemRegister` 等；若撞链再加区分词（勿叠回夹名） |
 | Hal 一设备一夹 | 钉条 #5；迁驱动时做 |
 
 ---

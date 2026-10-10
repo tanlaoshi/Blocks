@@ -3,24 +3,24 @@
  */
 #include "Internal.h"
 
-int WaitClear(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
+int RegisterWaitClear(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
     UINT32 i;
     for (i = 0; i < Spins; i++) {
-        if ((Rd32(Reg) & Mask) == 0) {
+        if ((Read32(Reg) & Mask) == 0) {
             return 0;
         }
-        Pause();
+        CpuPause();
     }
     return -1;
 }
 
-int WaitSet(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
+int RegisterWaitSet(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
     UINT32 i;
     for (i = 0; i < Spins; i++) {
-        if ((Rd32(Reg) & Mask) == Mask) {
+        if ((Read32(Reg) & Mask) == Mask) {
             return 0;
         }
-        Pause();
+        CpuPause();
     }
     return -1;
 }
@@ -28,27 +28,27 @@ int WaitSet(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
 static int WaitCommand(UINT32 Spins) {
     UINT32 i;
     for (i = 0; i < Spins; i++) {
-        ProcessEvents();
-        if (gCmdDone) {
-            return (gCmdCode == CC_SUCCESS) ? 0 : -1;
+        EventProcess();
+        if (gCommandDone) {
+            return (gCommandCode == CC_SUCCESS) ? 0 : -1;
         }
-        Pause();
+        CpuPause();
     }
     return -1;
 }
 
-int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut) {
-    gCmdDone = 0;
-    gCmdCode = 0;
-    gCmdSlot = 0;
-    Enqueue(gCmdRing, &gCmd, Param, 0, Control | TRB_IOC);
-    RingDoorbell(0, 0);
-    Fence();
+int CommandSubmit(UINT64 Param, UINT32 Control, UINT32 *SlotOut) {
+    gCommandDone = 0;
+    gCommandCode = 0;
+    gCommandSlot = 0;
+    RingEnqueue(gCommandRing, &gCommand, Param, 0, Control | TRB_IOC);
+    DoorbellRing(0, 0);
+    MemoryFence();
     if (WaitCommand(200000u) < 0) {
         return -1;
     }
     if (SlotOut) {
-        *SlotOut = gCmdSlot;
+        *SlotOut = gCommandSlot;
     }
     return 0;
 }

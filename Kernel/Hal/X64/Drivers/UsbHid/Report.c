@@ -73,36 +73,36 @@ static int KeyWasDown(const UINT8 *Prev, UINT8 Usage) {
     return 0;
 }
 
-void ReportKeyboard(const UINT8 *Rep) {
-    int Shift = (Rep[0] & 0x22u) != 0;
+void ReportKeyboard(const UINT8 *Report) {
+    int Shift = (Report[0] & 0x22u) != 0;
     int i;
 
     for (i = 2; i < 8; i++) {
-        UINT8 U = Rep[i];
+        UINT8 U = Report[i];
         char Ch;
-        if (U == 0 || KeyWasDown(gKbd.PrevKeys, U)) {
+        if (U == 0 || KeyWasDown(gKeyboard.PreviousKeys, U)) {
             continue;
         }
         Ch = HidUsageToAscii(U, Shift);
-        if (Ch != 0 && gCharLen < sizeof(gCharQ)) {
-            gCharQ[gCharLen++] = Ch;
+        if (Ch != 0 && gCharLength < sizeof(gCharQueue)) {
+            gCharQueue[gCharLength++] = Ch;
         }
     }
     for (i = 0; i < 8; i++) {
-        gKbd.PrevKeys[i] = Rep[i];
+        gKeyboard.PreviousKeys[i] = Report[i];
     }
 }
 
-void ReportMouse(USB_HID_DEVICE *D, UINT8 XferLen) {
+void ReportMouse(USB_HID_DEVICE *Device, UINT8 TransferLength) {
     HAL_MOUSE_PACKET Pkt;
-    UINT8 *B = D->Report;
+    UINT8 *B = Device->Report;
     UINT8 Next;
 
-    Zero(&Pkt, sizeof(Pkt));
-    if (D->Absolute && D->Proto != 2u) {
+    MemoryZero(&Pkt, sizeof(Pkt));
+    if (Device->Absolute && Device->Protocol != 2u) {
         UINT32 X0 = (UINT32)(B[1] | (B[2] << 8));
         UINT32 Y0 = (UINT32)(B[3] | (B[4] << 8));
-        if (XferLen >= 5u && X0 <= 32767u && Y0 <= 32767u) {
+        if (TransferLength >= 5u && X0 <= 32767u && Y0 <= 32767u) {
             Pkt.Buttons = B[0] & 7u;
             Pkt.Dx = (INT32)X0;
             Pkt.Dy = (INT32)Y0;
@@ -117,10 +117,10 @@ void ReportMouse(USB_HID_DEVICE *D, UINT8 XferLen) {
         Pkt.Absolute = 0;
     }
 
-    Next = (UINT8)((gMouseQw + 1u) % 16u);
-    if (Next == gMouseQr) {
+    Next = (UINT8)((gMouseQueueWrite + 1u) % 16u);
+    if (Next == gMouseQueueRead) {
         return;
     }
-    gMouseQ[gMouseQw] = Pkt;
-    gMouseQw = Next;
+    gMouseQueue[gMouseQueueWrite] = Pkt;
+    gMouseQueueWrite = Next;
 }

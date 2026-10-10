@@ -3,7 +3,7 @@
  */
 #include "Internal.h"
 
-static UINT8 FsInterval(UINT8 BInterval) {
+static UINT8 FullSpeedInterval(UINT8 BInterval) {
     UINT8 Log2 = 0;
     UINT8 V = BInterval ? BInterval : 1u;
     while (V > 1u) {
@@ -13,159 +13,159 @@ static UINT8 FsInterval(UINT8 BInterval) {
     return (UINT8)(Log2 + 3u);
 }
 
-static int ParseHid(UINT8 *Cfg, UINT16 Total, int WantKbd, USB_HID_DEVICE *D) {
-    UINT16 Off = 0;
-    UINT8 Best = 0;
-    UINT8 CurScore = 0;
-    UINT8 CurIface = 0;
-    UINT8 CurProto = 0;
+static int HidParse(UINT8 *Configuration, UINT16 Total, int WantKeyboard, USB_HID_DEVICE *Device) {
+    UINT16 Offset = 0;
+    UINT8 BestScore = 0;
+    UINT8 CurrentScore = 0;
+    UINT8 CurrentInterface = 0;
+    UINT8 CurrentProtocol = 0;
 
-    D->Iface = 0;
-    D->EpAddr = 0;
-    D->Mps = 8;
-    D->Interval = 10;
-    D->Proto = 0xFF;
-    D->Absolute = 0;
+    Device->Interface = 0;
+    Device->EndpointAddress = 0;
+    Device->MaxPacketSize = 8;
+    Device->Interval = 10;
+    Device->Protocol = 0xFF;
+    Device->Absolute = 0;
 
-    while (Off + 2u <= Total) {
-        UINT8 Len = Cfg[Off];
-        UINT8 Type = Cfg[Off + 1u];
-        if (Len < 2u || Off + Len > Total) {
+    while (Offset + 2u <= Total) {
+        UINT8 Length = Configuration[Offset];
+        UINT8 Type = Configuration[Offset + 1u];
+        if (Length < 2u || Offset + Length > Total) {
             break;
         }
-        if (Type == 4u && Len >= 9u) {
-            UINT8 Class = Cfg[Off + 5u];
-            UINT8 Sub = Cfg[Off + 6u];
-            UINT8 Proto = Cfg[Off + 7u];
-            CurScore = 0;
-            CurIface = Cfg[Off + 2u];
-            CurProto = Proto;
-            if (WantKbd) {
-                if (Class == 3u && Sub == 1u && Proto == 1u) {
-                    CurScore = 3;
-                } else if (Class == 3u && Sub == 1u && Proto == 0u) {
-                    CurScore = 2;
+        if (Type == 4u && Length >= 9u) {
+            UINT8 Class = Configuration[Offset + 5u];
+            UINT8 SubClass = Configuration[Offset + 6u];
+            UINT8 Protocol = Configuration[Offset + 7u];
+            CurrentScore = 0;
+            CurrentInterface = Configuration[Offset + 2u];
+            CurrentProtocol = Protocol;
+            if (WantKeyboard) {
+                if (Class == 3u && SubClass == 1u && Protocol == 1u) {
+                    CurrentScore = 3;
+                } else if (Class == 3u && SubClass == 1u && Protocol == 0u) {
+                    CurrentScore = 2;
                 }
-            } else if (Class == 3u && Proto != 1u) {
-                if (Sub == 1u && Proto == 2u) {
-                    CurScore = 3;
-                } else if (Sub == 1u) {
-                    CurScore = 2;
+            } else if (Class == 3u && Protocol != 1u) {
+                if (SubClass == 1u && Protocol == 2u) {
+                    CurrentScore = 3;
+                } else if (SubClass == 1u) {
+                    CurrentScore = 2;
                 } else {
-                    CurScore = 1;
+                    CurrentScore = 1;
                 }
             }
-        } else if (Type == 5u && Len >= 7u && CurScore != 0) {
-            UINT8 Addr = Cfg[Off + 2u];
-            UINT8 Attr = Cfg[Off + 3u];
-            if ((Addr & 0x80u) && ((Attr & 0x03u) == 0x03u) && CurScore > Best) {
-                Best = CurScore;
-                D->Iface = CurIface;
-                D->EpAddr = Addr;
-                D->Mps = (UINT16)(Cfg[Off + 4u] | (Cfg[Off + 5u] << 8));
-                D->Interval = Cfg[Off + 6u];
-                D->Proto = CurProto;
-                if (Best == 3u) {
+        } else if (Type == 5u && Length >= 7u && CurrentScore != 0) {
+            UINT8 Address = Configuration[Offset + 2u];
+            UINT8 Attributes = Configuration[Offset + 3u];
+            if ((Address & 0x80u) && ((Attributes & 0x03u) == 0x03u) && CurrentScore > BestScore) {
+                BestScore = CurrentScore;
+                Device->Interface = CurrentInterface;
+                Device->EndpointAddress = Address;
+                Device->MaxPacketSize = (UINT16)(Configuration[Offset + 4u] | (Configuration[Offset + 5u] << 8));
+                Device->Interval = Configuration[Offset + 6u];
+                Device->Protocol = CurrentProtocol;
+                if (BestScore == 3u) {
                     break;
                 }
             }
         }
-        Off = (UINT16)(Off + Len);
+        Offset = (UINT16)(Offset + Length);
     }
-    if (Best == 0) {
+    if (BestScore == 0) {
         return 0;
     }
-    if (!WantKbd && D->Proto != 2u) {
-        D->Absolute = 1;
+    if (!WantKeyboard && Device->Protocol != 2u) {
+        Device->Absolute = 1;
     }
     return 1;
 }
 
-int Finish(USB_HID_DEVICE *D, int WantKbd) {
+int DeviceConfigure(USB_HID_DEVICE *Device, int WantKeyboard) {
     SETUP_PACKET Setup;
     UINT16 Total;
-    UINT8 ConfigVal;
+    UINT8 ConfigurationValue;
     UINT32 *Slot;
-    UINT32 *Ep;
+    UINT32 *EndpointContext;
     UINT64 Deq;
     UINT8 Interval;
-    UINT16 Mps;
-    UINT8 EpNum;
+    UINT16 MaxPacketSize;
+    UINT8 EndpointNumber;
     UINT8 In;
 
-    gTransferDevice = D;
-    if (GetDesc(0x0100u, 8, gCtrlBuf) < 0 || GetDesc(0x0100u, 18, gCtrlBuf) < 0) {
+    gTransferDevice = Device;
+    if (DescriptorGet(0x0100u, 8, gControlBuffer) < 0 || DescriptorGet(0x0100u, 18, gControlBuffer) < 0) {
         return -1;
     }
-    if (GetDesc(0x0200u, 9, gCtrlBuf) < 0) {
+    if (DescriptorGet(0x0200u, 9, gControlBuffer) < 0) {
         return -1;
     }
-    Total = (UINT16)(gCtrlBuf[2] | (gCtrlBuf[3] << 8));
+    Total = (UINT16)(gControlBuffer[2] | (gControlBuffer[3] << 8));
     if (Total < 9u) {
         Total = 9;
     }
     if (Total > 512u) {
         Total = 512;
     }
-    if (GetDesc(0x0200u, Total, gCtrlBuf) < 0) {
+    if (DescriptorGet(0x0200u, Total, gControlBuffer) < 0) {
         return -1;
     }
-    if (!ParseHid(gCtrlBuf, Total, WantKbd, D)) {
+    if (!HidParse(gControlBuffer, Total, WantKeyboard, Device)) {
         return -1;
     }
-    ConfigVal = gCtrlBuf[5] ? gCtrlBuf[5] : 1u;
+    ConfigurationValue = gControlBuffer[5] ? gControlBuffer[5] : 1u;
     Setup.BmRequestType = 0x00;
     Setup.BRequest = 0x09;
-    Setup.WValue = ConfigVal;
+    Setup.WValue = ConfigurationValue;
     Setup.WIndex = 0;
     Setup.WLength = 0;
-    if (ControlXfer(&Setup, 0) < 0) {
+    if (ControlTransfer(&Setup, 0) < 0) {
         return -1;
     }
-    if (D->Proto == 1u || D->Proto == 2u) {
+    if (Device->Protocol == 1u || Device->Protocol == 2u) {
         Setup.BmRequestType = 0x21;
         Setup.BRequest = 0x0B;
         Setup.WValue = 0;
-        Setup.WIndex = D->Iface;
+        Setup.WIndex = Device->Interface;
         Setup.WLength = 0;
-        (void)ControlXfer(&Setup, 0);
+        (void)ControlTransfer(&Setup, 0);
     }
     Setup.BmRequestType = 0x21;
     Setup.BRequest = 0x0A;
     Setup.WValue = 0;
-    Setup.WIndex = D->Iface;
+    Setup.WIndex = Device->Interface;
     Setup.WLength = 0;
-    (void)ControlXfer(&Setup, 0);
+    (void)ControlTransfer(&Setup, 0);
 
-    EpNum = D->EpAddr & 0x0Fu;
-    In = (D->EpAddr & 0x80u) ? 1u : 0u;
-    D->IntrDci = (UINT32)EpNum * 2u + In;
-    Mps = D->Mps;
-    if (Mps == 0 || Mps > 64u) {
-        Mps = 8;
+    EndpointNumber = Device->EndpointAddress & 0x0Fu;
+    In = (Device->EndpointAddress & 0x80u) ? 1u : 0u;
+    Device->InterruptDeviceContextIndex = (UINT32)EndpointNumber * 2u + In;
+    MaxPacketSize = Device->MaxPacketSize;
+    if (MaxPacketSize == 0 || MaxPacketSize > 64u) {
+        MaxPacketSize = 8;
     }
-    D->Mps = Mps;
+    Device->MaxPacketSize = MaxPacketSize;
 
-    Zero(gInCtx, INCTX_BYTES);
-    *(UINT32 *)(void *)(gInCtx + 4) = (1u << 0) | (1u << D->IntrDci);
-    Slot = (UINT32 *)(void *)InSlot();
-    Slot[0] = (D->IntrDci << 27) | ((UINT32)D->Speed << 20);
-    Slot[1] = (UINT32)D->Port << 16;
-    InitRing(D->IntrRing, &D->Intr, RING_SIZE);
-    Ep = (UINT32 *)(void *)InEp(D->IntrDci);
-    Interval = (D->Speed >= 3u)
-                   ? (UINT8)((D->Interval > 0) ? (D->Interval - 1u) : 0u)
-                   : FsInterval(D->Interval);
-    Ep[0] = (UINT32)Interval << 16;
-    Ep[1] = (3u << 1) | (7u << 3) | ((UINT32)Mps << 16);
-    Deq = Phys(D->IntrRing) | 1ULL;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)Mps | ((UINT32)Mps << 16);
-    if (Command(Phys(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(D->SlotId), 0) < 0) {
+    MemoryZero(gInputContext, INPUT_CONTEXT_BYTES);
+    *(UINT32 *)(void *)(gInputContext + 4) = (1u << 0) | (1u << Device->InterruptDeviceContextIndex);
+    Slot = (UINT32 *)(void *)InputContextSlot();
+    Slot[0] = (Device->InterruptDeviceContextIndex << 27) | ((UINT32)Device->Speed << 20);
+    Slot[1] = (UINT32)Device->Port << 16;
+    RingInitialize(Device->InterruptRing, &Device->Interrupt, TRANSFER_RING_SIZE);
+    EndpointContext = (UINT32 *)(void *)InputContextEndpoint(Device->InterruptDeviceContextIndex);
+    Interval = (Device->Speed >= 3u)
+                   ? (UINT8)((Device->Interval > 0) ? (Device->Interval - 1u) : 0u)
+                   : FullSpeedInterval(Device->Interval);
+    EndpointContext[0] = (UINT32)Interval << 16;
+    EndpointContext[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
+    Deq = PhysicalAddress(Device->InterruptRing) | 1ULL;
+    EndpointContext[2] = (UINT32)Deq;
+    EndpointContext[3] = (UINT32)(Deq >> 32);
+    EndpointContext[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
+    if (CommandSubmit(PhysicalAddress(gInputContext), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(Device->SlotIdentifier), 0) < 0) {
         return -1;
     }
-    QueueInterrupt(D);
+    InterruptQueue(Device);
     return 0;
 }
 

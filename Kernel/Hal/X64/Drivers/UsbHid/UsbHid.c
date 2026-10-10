@@ -3,54 +3,54 @@
  */
 #include "Internal.h"
 
-UINT64 gCap;
-UINT64 gOp;
-UINT64 gDb;
-UINT64 gRt;
-UINT32 gCtxSize;
+UINT64 gCapabilityBase;
+UINT64 gOperationalBase;
+UINT64 gDoorbellBase;
+UINT64 gRuntimeBase;
+UINT32 gContextSize;
 UINT32 gMaxPorts;
 UINT32 gMaxSlots;
 int gDriverReady;
-int gKbdOk;
+int gKeyboardOk;
 int gMouseOk;
 
-UINT64 *gDcbaa;
-TRANSFER_REQUEST_BLOCK *gCmdRing;
-RING_STATE gCmd;
-TRANSFER_REQUEST_BLOCK *gEvtRing;
-UINT32 gEvtDeq;
-UINT32 gEvtCcs;
-UINT8 *gErst;
-UINT8 *gInCtx;
-UINT8 *gCtrlBuf;
+UINT64 *gDeviceContextBaseAddressArray;
+TRANSFER_REQUEST_BLOCK *gCommandRing;
+RING_STATE gCommand;
+TRANSFER_REQUEST_BLOCK *gEventRing;
+UINT32 gEventDequeue;
+UINT32 gEventConsumerCycleState;
+UINT8 *gEventRingSegmentTable;
+UINT8 *gInputContext;
+UINT8 *gControlBuffer;
 
-volatile UINT32 gCmdDone;
-volatile UINT32 gCmdCode;
-volatile UINT32 gCmdSlot;
-volatile UINT32 gXferDone;
-volatile UINT32 gXferCode;
+volatile UINT32 gCommandDone;
+volatile UINT32 gCommandCode;
+volatile UINT32 gCommandSlot;
+volatile UINT32 gTransferDone;
+volatile UINT32 gTransferCode;
 
-USB_HID_DEVICE gKbd;
+USB_HID_DEVICE gKeyboard;
 USB_HID_DEVICE gMouse;
 USB_HID_DEVICE *gTransferDevice;
 
-char gCharQ[32];
-UINT8 gCharLen;
-HAL_MOUSE_PACKET gMouseQ[16];
-UINT8 gMouseQr;
-UINT8 gMouseQw;
+char gCharQueue[32];
+UINT8 gCharLength;
+HAL_MOUSE_PACKET gMouseQueue[16];
+UINT8 gMouseQueueRead;
+UINT8 gMouseQueueWrite;
 
 int HalUsbHidInitialize(void) {
     UINT64 Virt;
 
     gDriverReady = 0;
-    gKbdOk = 0;
+    gKeyboardOk = 0;
     gMouseOk = 0;
-    Zero(&gKbd, sizeof(gKbd));
-    Zero(&gMouse, sizeof(gMouse));
-    gCharLen = 0;
-    gMouseQr = 0;
-    gMouseQw = 0;
+    MemoryZero(&gKeyboard, sizeof(gKeyboard));
+    MemoryZero(&gMouse, sizeof(gMouse));
+    gCharLength = 0;
+    gMouseQueueRead = 0;
+    gMouseQueueWrite = 0;
 
     if (!UsbXhciReady()) {
         HalSerialWriteChannel(SLOG_USB, "UsbHid: skip (no xhci)\n");
@@ -61,7 +61,7 @@ int HalUsbHidInitialize(void) {
         HalSerialWriteChannel(SLOG_USB, "UsbHid: skip (virt=0)\n");
         return 0;
     }
-    gCap = Virt;
+    gCapabilityBase = Virt;
 
     if (ControllerStart() != 0) {
         HalSerialWriteChannel(SLOG_USB, "UsbHid: WARN controller start fail\n");
@@ -69,14 +69,14 @@ int HalUsbHidInitialize(void) {
     }
     HalSerialWriteChannel(SLOG_USB, "UsbHid: controller ok\n");
 
-    if (EnumAndBind() != 0) {
+    if (EnumerateAndBind() != 0) {
         HalSerialWriteChannel(SLOG_USB, "UsbHid: WARN no kbd/tablet\n");
         gDriverReady = 1; /* 控制器在跑；输入回落 PS/2 */
         return 0;
     }
 
     gDriverReady = 1;
-    if (gKbdOk) {
+    if (gKeyboardOk) {
         HalSerialWriteChannel(SLOG_USB, "UsbHid: kbd ok\n");
     }
     if (gMouseOk) {
@@ -86,7 +86,7 @@ int HalUsbHidInitialize(void) {
 }
 
 int HalUsbHidKeyboardReady(void) {
-    return gDriverReady && gKbdOk;
+    return gDriverReady && gKeyboardOk;
 }
 
 int HalUsbHidMouseReady(void) {
@@ -97,7 +97,7 @@ void HalUsbHidService(void) {
     if (!gDriverReady) {
         return;
     }
-    ProcessEvents();
+    EventProcess();
 }
 
 int HalUsbHidPollChar(char *Out) {
@@ -107,13 +107,13 @@ int HalUsbHidPollChar(char *Out) {
         return 0;
     }
     HalUsbHidService();
-    if (gCharLen == 0) {
+    if (gCharLength == 0) {
         return 0;
     }
-    *Out = gCharQ[0];
-    gCharLen--;
-    for (i = 0; i < gCharLen; i++) {
-        gCharQ[i] = gCharQ[i + 1u];
+    *Out = gCharQueue[0];
+    gCharLength--;
+    for (i = 0; i < gCharLength; i++) {
+        gCharQueue[i] = gCharQueue[i + 1u];
     }
     return 1;
 }
@@ -123,10 +123,10 @@ int HalUsbHidPollMouse(HAL_MOUSE_PACKET *Out) {
         return 0;
     }
     HalUsbHidService();
-    if (gMouseQr == gMouseQw) {
+    if (gMouseQueueRead == gMouseQueueWrite) {
         return 0;
     }
-    *Out = gMouseQ[gMouseQr];
-    gMouseQr = (UINT8)((gMouseQr + 1u) % 16u);
+    *Out = gMouseQueue[gMouseQueueRead];
+    gMouseQueueRead = (UINT8)((gMouseQueueRead + 1u) % 16u);
     return 1;
 }

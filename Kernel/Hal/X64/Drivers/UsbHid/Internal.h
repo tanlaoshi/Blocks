@@ -12,11 +12,11 @@
 #include "SerialConfig.h"
 #include "Usb.h"
 
-#define RING_SIZE     32u
-#define EVT_SIZE      64u
-#define DCBAA_SLOTS   16u
-#define CTX_BYTES     2048u
-#define INCTX_BYTES   2112u
+#define TRANSFER_RING_SIZE     32u
+#define EVENT_RING_SIZE      64u
+#define DEVICE_CONTEXT_SLOTS   16u
+#define CONTEXT_BYTES     2048u
+#define INPUT_CONTEXT_BYTES   2112u
 
 #define PORTSC_CCS    (1u << 0)
 #define PORTSC_PED    (1u << 1)
@@ -67,8 +67,8 @@ typedef struct {
 } __attribute__((packed, aligned(16))) TRANSFER_REQUEST_BLOCK;
 
 typedef struct {
-    UINT32 Enq;
-    UINT32 Pcs;
+    UINT32 EnqueueIndex;
+    UINT32 ProducerCycleState;
     UINT32 Size;
 } RING_STATE;
 
@@ -81,87 +81,87 @@ typedef struct {
 } __attribute__((packed)) SETUP_PACKET;
 
 typedef struct {
-    UINT32 SlotId;
+    UINT32 SlotIdentifier;
     UINT32 Port;
     UINT8 Speed;
-    UINT8 Iface;
-    UINT8 EpAddr;
+    UINT8 Interface;
+    UINT8 EndpointAddress;
     UINT8 Interval;
     UINT8 Absolute; /* mouse tablet */
-    UINT8 Proto;
-    UINT16 Mps;
-    UINT32 IntrDci;
-    UINT8 *DevCtx;
-    TRANSFER_REQUEST_BLOCK *Ep0Ring;
-    RING_STATE Ep0;
-    TRANSFER_REQUEST_BLOCK *IntrRing;
-    RING_STATE Intr;
+    UINT8 Protocol;
+    UINT16 MaxPacketSize;
+    UINT32 InterruptDeviceContextIndex;
+    UINT8 *DeviceContext;
+    TRANSFER_REQUEST_BLOCK *EndpointZeroRing;
+    RING_STATE EndpointZero;
+    TRANSFER_REQUEST_BLOCK *InterruptRing;
+    RING_STATE Interrupt;
     UINT8 Report[8];
     UINT8 ReportReady;
-    UINT8 PrevKeys[8];
+    UINT8 PreviousKeys[8];
 } USB_HID_DEVICE;
 
 /* ---- 状态（UsbHid.c） ---- */
-extern UINT64 gCap;
-extern UINT64 gOp;
-extern UINT64 gDb;
-extern UINT64 gRt;
-extern UINT32 gCtxSize;
+extern UINT64 gCapabilityBase;
+extern UINT64 gOperationalBase;
+extern UINT64 gDoorbellBase;
+extern UINT64 gRuntimeBase;
+extern UINT32 gContextSize;
 extern UINT32 gMaxPorts;
 extern UINT32 gMaxSlots;
 extern int gDriverReady;
-extern int gKbdOk;
+extern int gKeyboardOk;
 extern int gMouseOk;
 
-extern UINT64 *gDcbaa;
-extern TRANSFER_REQUEST_BLOCK *gCmdRing;
-extern RING_STATE gCmd;
-extern TRANSFER_REQUEST_BLOCK *gEvtRing;
-extern UINT32 gEvtDeq;
-extern UINT32 gEvtCcs;
-extern UINT8 *gErst;
-extern UINT8 *gInCtx;
-extern UINT8 *gCtrlBuf;
+extern UINT64 *gDeviceContextBaseAddressArray;
+extern TRANSFER_REQUEST_BLOCK *gCommandRing;
+extern RING_STATE gCommand;
+extern TRANSFER_REQUEST_BLOCK *gEventRing;
+extern UINT32 gEventDequeue;
+extern UINT32 gEventConsumerCycleState;
+extern UINT8 *gEventRingSegmentTable;
+extern UINT8 *gInputContext;
+extern UINT8 *gControlBuffer;
 
-extern volatile UINT32 gCmdDone;
-extern volatile UINT32 gCmdCode;
-extern volatile UINT32 gCmdSlot;
-extern volatile UINT32 gXferDone;
-extern volatile UINT32 gXferCode;
+extern volatile UINT32 gCommandDone;
+extern volatile UINT32 gCommandCode;
+extern volatile UINT32 gCommandSlot;
+extern volatile UINT32 gTransferDone;
+extern volatile UINT32 gTransferCode;
 
-extern USB_HID_DEVICE gKbd;
+extern USB_HID_DEVICE gKeyboard;
 extern USB_HID_DEVICE gMouse;
 extern USB_HID_DEVICE *gTransferDevice;
 
-extern char gCharQ[32];
-extern UINT8 gCharLen;
-extern HAL_MOUSE_PACKET gMouseQ[16];
-extern UINT8 gMouseQr;
-extern UINT8 gMouseQw;
+extern char gCharQueue[32];
+extern UINT8 gCharLength;
+extern HAL_MOUSE_PACKET gMouseQueue[16];
+extern UINT8 gMouseQueueRead;
+extern UINT8 gMouseQueueWrite;
 
 /* ---- 工具 ---- */
-static inline void Fence(void) {
+static inline void MemoryFence(void) {
     __asm__ volatile("mfence" ::: "memory");
 }
-static inline void Pause(void) {
+static inline void CpuPause(void) {
     __asm__ volatile("pause");
 }
-static inline UINT64 Phys(const void *P) {
+static inline UINT64 PhysicalAddress(const void *P) {
     return (UINT64)(UINTN)P;
 }
-static inline UINT32 Rd32(UINT64 A) {
+static inline UINT32 Read32(UINT64 A) {
     return *(volatile UINT32 *)(UINTN)A;
 }
-static inline void Wr32(UINT64 A, UINT32 V) {
+static inline void Write32(UINT64 A, UINT32 V) {
     *(volatile UINT32 *)(UINTN)A = V;
 }
-static inline UINT64 Rd64(UINT64 A) {
+static inline UINT64 Read64(UINT64 A) {
     return *(volatile UINT64 *)(UINTN)A;
 }
-static inline void Wr64(UINT64 A, UINT64 V) {
+static inline void Write64(UINT64 A, UINT64 V) {
     *(volatile UINT64 *)(UINTN)A = V;
 }
-static inline void Zero(void *P, UINTN N) {
+static inline void MemoryZero(void *P, UINTN N) {
     UINT8 *B = (UINT8 *)P;
     UINTN i;
     for (i = 0; i < N; i++) {
@@ -171,42 +171,42 @@ static inline void Zero(void *P, UINTN N) {
 static inline UINT32 TransferRequestBlockType(UINT32 C) {
     return (C >> 10) & 0x3Fu;
 }
-static inline UINT64 PortReg(UINT32 Port1) {
-    return gOp + 0x400u + (UINT64)(Port1 - 1u) * 0x10u;
+static inline UINT64 PortRegister(UINT32 Port1) {
+    return gOperationalBase + 0x400u + (UINT64)(Port1 - 1u) * 0x10u;
 }
-static inline UINT32 PortscNeutral(UINT32 V) {
+static inline UINT32 PortStatusControlNeutral(UINT32 V) {
     return (V & PORTSC_RO) | (V & ~PORTSC_CHANGE & ~PORTSC_RO & ~(1u << 1));
 }
 /* Input Control Context 占 1 个 Context Size；其后 Slot、EP1… */
-static inline UINT8 *InSlot(void) {
-    return gInCtx + (UINTN)gCtxSize;
+static inline UINT8 *InputContextSlot(void) {
+    return gInputContext + (UINTN)gContextSize;
 }
-static inline UINT8 *InEp(UINT32 Dci) {
-    return gInCtx + (UINTN)gCtxSize * (1u + (UINTN)Dci);
+static inline UINT8 *InputContextEndpoint(UINT32 DeviceContextIndex) {
+    return gInputContext + (UINTN)gContextSize * (1u + (UINTN)DeviceContextIndex);
 }
 
-int WaitClear(UINT64 Reg, UINT32 Mask, UINT32 Spins);
-int WaitSet(UINT64 Reg, UINT32 Mask, UINT32 Spins);
+int RegisterWaitClear(UINT64 Reg, UINT32 Mask, UINT32 Spins);
+int RegisterWaitSet(UINT64 Reg, UINT32 Mask, UINT32 Spins);
 
 /* Ring / Command / Event / Transfer / Controller / Enum / Report */
-void InitRing(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *St, UINT32 Size);
-void Enqueue(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *St, UINT64 Param, UINT32 Status, UINT32 Control);
-void RingDoorbell(UINT32 Slot, UINT32 Target);
-void DcbaaSet(UINT32 Slot, UINT64 P);
+void RingInitialize(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *State, UINT32 Size);
+void RingEnqueue(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *State, UINT64 Param, UINT32 Status, UINT32 Control);
+void DoorbellRing(UINT32 Slot, UINT32 Target);
+void DeviceContextBaseAddressArraySet(UINT32 Slot, UINT64 P);
 
-int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut);
-void ProcessEvents(void);
+int CommandSubmit(UINT64 Param, UINT32 Control, UINT32 *SlotOut);
+void EventProcess(void);
 
-int ControlXfer(SETUP_PACKET *Setup, void *Data);
-int GetDesc(UINT16 TypeIndex, UINT16 Length, void *Buf);
+int ControlTransfer(SETUP_PACKET *Setup, void *Data);
+int DescriptorGet(UINT16 TypeIndex, UINT16 Length, void *Buffer);
 
 int ControllerStart(void);
-int EnumAndBind(void);
+int EnumerateAndBind(void);
 /* Setup.c：SetConfig + 中断 EP；失败 -1 */
-int Finish(USB_HID_DEVICE *D, int WantKbd);
+int DeviceConfigure(USB_HID_DEVICE *Device, int WantKeyboard);
 
-void ReportKeyboard(const UINT8 *Rep);
-void ReportMouse(USB_HID_DEVICE *D, UINT8 XferLen);
-void QueueInterrupt(USB_HID_DEVICE *D);
+void ReportKeyboard(const UINT8 *Report);
+void ReportMouse(USB_HID_DEVICE *Device, UINT8 TransferLength);
+void InterruptQueue(USB_HID_DEVICE *Device);
 
 #endif

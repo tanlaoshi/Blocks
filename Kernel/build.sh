@@ -113,7 +113,7 @@ build_common_objs() {
         Network/Network Network/Ip Network/Ping Network/Udp Network/Tcp Network/Lwip Network/Configuration
         Gui/Layout Gui/Desktop Gui/Settings Gui/Files Gui/StoreUi Gui/Start Gui/WindowPaint Gui/Window Gui/Gui
         Scheduler/Scheduler
-        Console/ElfLoader Console/Process Console/ProcessFork Console/ShellCommand Console/ShellCommandDataBase Console/ShellCommandStore Console/ShellSystem Console/Console
+        Console/ElfLoader Console/Process Console/ProcessFork Console/SyscallFile Console/ShellCommand Console/ShellCommandDataBase Console/ShellCommandStore Console/ShellSystem Console/Console
     )
     CORE_OBJS=()
     for f in "${cores[@]}"; do
@@ -212,7 +212,7 @@ x64|X64)
         "$OUT/Core/Video/FontTtfLoad.o" "$OUT/Core/Video/FontTtfRaster.o" "$OUT/Core/Video/FontTtfCache.o" "$OUT/Core/Video/Locale.o" \
         "$OUT/Core/Cpu/Cpu.o" "$OUT/Core/USB/Usb.o" \
         "$OUT/Core/FileSystem/FileSystem.o" "$OUT/Core/FileSystem/FatProbe.o" "$OUT/Core/FileSystem/FatVolume.o" "$OUT/Core/FileSystem/FatAllocate.o" "$OUT/Core/FileSystem/FatDirectory.o" "$OUT/Core/FileSystem/FatFile.o" "$OUT/Core/FileSystem/FatMutation.o" "$OUT/Core/FileSystem/Gpt.o" "$OUT/Core/FileSystem/Volume.o" "$OUT/Core/FileSystem/DataBase.o" "$OUT/Core/FileSystem/Store.o" "$OUT/Core/FileSystem/StoreCatalog.o" "$OUT/Core/FileSystem/StoreJob.o" \
-        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" \
+        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" "$OUT/Core/Console/SyscallFile.o" \
         "$OUT/Core/Network/Network.o" "$OUT/Core/Network/Ip.o" "$OUT/Core/Network/Ping.o" "$OUT/Core/Network/Udp.o" "$OUT/Core/Network/Tcp.o" "$OUT/Core/Network/Lwip.o" "$OUT/Core/Network/Configuration.o" "$OUT/Core/Gui/Layout.o" "$OUT/Core/Gui/Desktop.o" "$OUT/Core/Gui/Settings.o" "$OUT/Core/Gui/Files.o" "$OUT/Core/Gui/StoreUi.o" "$OUT/Core/Gui/Start.o" "$OUT/Core/Gui/WindowPaint.o" "$OUT/Core/Gui/Window.o" "$OUT/Core/Gui/Gui.o" \
         "$OUT/Core/Scheduler/Scheduler.o" "$OUT/Core/Console/ShellCommand.o" "$OUT/Core/Console/ShellCommandDataBase.o" "$OUT/Core/Console/ShellCommandStore.o" "$OUT/Core/Console/ShellSystem.o" "$OUT/Core/Console/Console.o" "$OUT/Core/Kernel.o" \
         "${LWIP_OBJS[@]}"
@@ -256,7 +256,7 @@ arm64|Arm64|ARM64)
         "$OUT/Core/Video/Theme.o" "$OUT/Core/Video/ThemeConfiguration.o" "$OUT/Core/Video/FontTerminus10x18.o" "$OUT/Core/Video/FontCjkDisk.o" "$OUT/Core/Video/Font.o" "$OUT/Core/Video/Utf8.o" \
         "$OUT/Core/Video/FontTtfLoad.o" "$OUT/Core/Video/FontTtfRaster.o" "$OUT/Core/Video/FontTtfCache.o" "$OUT/Core/Video/Locale.o" "$OUT/Hal/Common/HalFpu.o" \
         "$OUT/Core/Cpu/Cpu.o" "$OUT/Core/USB/Usb.o" "$OUT/Core/FileSystem/FileSystem.o" "$OUT/Core/FileSystem/FatProbe.o" "$OUT/Core/FileSystem/FatVolume.o" "$OUT/Core/FileSystem/FatAllocate.o" "$OUT/Core/FileSystem/FatDirectory.o" "$OUT/Core/FileSystem/FatFile.o" "$OUT/Core/FileSystem/FatMutation.o" "$OUT/Core/FileSystem/Gpt.o" "$OUT/Core/FileSystem/Volume.o" "$OUT/Core/FileSystem/DataBase.o" "$OUT/Core/FileSystem/Store.o" "$OUT/Core/FileSystem/StoreCatalog.o" "$OUT/Core/FileSystem/StoreJob.o" \
-        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" \
+        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" "$OUT/Core/Console/SyscallFile.o" \
         "$OUT/Core/Network/Network.o" "$OUT/Core/Network/Ip.o" "$OUT/Core/Network/Ping.o" "$OUT/Core/Network/Udp.o" "$OUT/Core/Network/Tcp.o" "$OUT/Core/Network/Lwip.o" "$OUT/Core/Network/Configuration.o" "$OUT/Core/Gui/Layout.o" "$OUT/Core/Gui/Desktop.o" "$OUT/Core/Gui/Settings.o" "$OUT/Core/Gui/Files.o" "$OUT/Core/Gui/StoreUi.o" "$OUT/Core/Gui/Start.o" "$OUT/Core/Gui/WindowPaint.o" "$OUT/Core/Gui/Window.o" "$OUT/Core/Gui/Gui.o" \
         "$OUT/Core/Scheduler/Scheduler.o" "$OUT/Core/Console/ShellCommand.o" "$OUT/Core/Console/ShellCommandDataBase.o" "$OUT/Core/Console/ShellCommandStore.o" "$OUT/Core/Console/ShellSystem.o" "$OUT/Core/Console/Console.o" "$OUT/Core/Kernel.o"
     ;;
@@ -301,7 +301,7 @@ riscv|RiscV|RISCV)
         "$OUT/Core/Video/Theme.o" "$OUT/Core/Video/ThemeConfiguration.o" "$OUT/Core/Video/FontTerminus10x18.o" "$OUT/Core/Video/FontCjkDisk.o" "$OUT/Core/Video/Font.o" "$OUT/Core/Video/Utf8.o" \
         "$OUT/Core/Video/FontTtfLoad.o" "$OUT/Core/Video/FontTtfRaster.o" "$OUT/Core/Video/FontTtfCache.o" "$OUT/Core/Video/Locale.o" "$OUT/Hal/Common/HalFpu.o" \
         "$OUT/Core/Cpu/Cpu.o" "$OUT/Core/USB/Usb.o" "$OUT/Core/FileSystem/FileSystem.o" "$OUT/Core/FileSystem/FatProbe.o" "$OUT/Core/FileSystem/FatVolume.o" "$OUT/Core/FileSystem/FatAllocate.o" "$OUT/Core/FileSystem/FatDirectory.o" "$OUT/Core/FileSystem/FatFile.o" "$OUT/Core/FileSystem/FatMutation.o" "$OUT/Core/FileSystem/Gpt.o" "$OUT/Core/FileSystem/Volume.o" "$OUT/Core/FileSystem/DataBase.o" "$OUT/Core/FileSystem/Store.o" "$OUT/Core/FileSystem/StoreCatalog.o" "$OUT/Core/FileSystem/StoreJob.o" \
-        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" \
+        "$OUT/Core/Console/ElfLoader.o" "$OUT/Core/Console/Process.o" "$OUT/Core/Console/ProcessFork.o" "$OUT/Core/Console/SyscallFile.o" \
         "$OUT/Core/Network/Network.o" "$OUT/Core/Network/Ip.o" "$OUT/Core/Network/Ping.o" "$OUT/Core/Network/Udp.o" "$OUT/Core/Network/Tcp.o" "$OUT/Core/Network/Lwip.o" "$OUT/Core/Network/Configuration.o" "$OUT/Core/Gui/Layout.o" "$OUT/Core/Gui/Desktop.o" "$OUT/Core/Gui/Settings.o" "$OUT/Core/Gui/Files.o" "$OUT/Core/Gui/StoreUi.o" "$OUT/Core/Gui/Start.o" "$OUT/Core/Gui/WindowPaint.o" "$OUT/Core/Gui/Window.o" "$OUT/Core/Gui/Gui.o" \
         "$OUT/Core/Scheduler/Scheduler.o" "$OUT/Core/Console/ShellCommand.o" "$OUT/Core/Console/ShellCommandDataBase.o" "$OUT/Core/Console/ShellCommandStore.o" "$OUT/Core/Console/ShellSystem.o" "$OUT/Core/Console/Console.o" "$OUT/Core/Kernel.o"
     ;;

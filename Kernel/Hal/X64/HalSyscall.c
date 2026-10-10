@@ -2,13 +2,14 @@
  * HalSyscall.c — int 0x80（K19 write/exit；K43 socket/connect/read/close）
  *
  * 本刀用户 ELF 仍在 ring0 经 call 进入；真 ring3 后刀。
- * 号：1 write · 2 exit · 3 read · 4 close · 5 socket · 6 connect · 7 fork · 8 wait
+ * 号：1 write · 2 exit · 3 read · 4 close · 5 socket · 6 connect · 7 fork · 8 wait · 9 open
  * 帧：Regs[0]=rax … [3]=rdx [4]=rsi [5]=rdi
  */
 #include "HalSyscall.h"
 #include "HalCpu.h"
 #include "HalSerial.h"
 #include "ProcessFork.h"
+#include "SyscallFile.h"
 #ifdef HAVE_LWIP
 #include "LwIpSock.h"
 #endif
@@ -22,6 +23,7 @@
 #define SYS_CONNECT 6u
 #define SYS_FORK    7u
 #define SYS_WAIT    8u
+/* SYS_OPEN 见 SyscallFile.h (=9) */
 
 /* 用户 fd：1=stdout；>=3 → sock id = fd-3 */
 #define FD_SOCK_BASE 3
@@ -44,9 +46,9 @@ static void SysWrite(UINT64 *Regs) {
     UINT64 Buf = Regs[4]; /* rsi */
     UINT64 Len = Regs[3]; /* rdx */
     UINT64 i;
+    int N;
 #ifdef HAVE_LWIP
     int Sock;
-    int N;
 #endif
 
     if (Fd == 1) {
@@ -57,6 +59,11 @@ static void SysWrite(UINT64 *Regs) {
             HalSerialWriteShell(One);
         }
         Regs[0] = Len;
+        return;
+    }
+    if (SyscallFileIsFd(Fd)) {
+        N = SyscallFileWrite((int)Fd, (const void *)(UINTN)Buf, (UINTN)Len);
+        Regs[0] = N < 0 ? ~((UINT64)0) : (UINT64)(INT64)N;
         return;
     }
 #ifdef HAVE_LWIP
@@ -74,13 +81,20 @@ static void SysWrite(UINT64 *Regs) {
 }
 
 static void SysRead(UINT64 *Regs) {
-#ifdef HAVE_LWIP
     UINT64 Fd = Regs[5];
     UINT64 Buf = Regs[4];
     UINT64 Len = Regs[3];
-    int Sock;
     int N;
+#ifdef HAVE_LWIP
+    int Sock;
+#endif
 
+    if (SyscallFileIsFd(Fd)) {
+        N = SyscallFileRead((int)Fd, (void *)(UINTN)Buf, (UINTN)Len);
+        Regs[0] = N < 0 ? ~((UINT64)0) : (UINT64)(INT64)N;
+        return;
+    }
+#ifdef HAVE_LWIP
     Sock = FdToSock(Fd);
     if (Sock < 0 || Buf == 0 || Len == 0) {
         Regs[0] = ~((UINT64)0);
@@ -93,16 +107,25 @@ static void SysRead(UINT64 *Regs) {
     }
     Regs[0] = N < 0 ? ~((UINT64)0) : (UINT64)(INT64)N;
 #else
-    (void)Regs;
+    (void)Buf;
+    (void)Len;
     Regs[0] = ~((UINT64)0);
 #endif
 }
 
 static void SysClose(UINT64 *Regs) {
-#ifdef HAVE_LWIP
     UINT64 Fd = Regs[5];
+    int N;
+#ifdef HAVE_LWIP
     int Sock;
+#endif
 
+    if (SyscallFileIsFd(Fd)) {
+        N = SyscallFileClose((int)Fd);
+        Regs[0] = N < 0 ? ~((UINT64)0) : 0;
+        return;
+    }
+#ifdef HAVE_LWIP
     Sock = FdToSock(Fd);
     if (Sock < 0) {
         Regs[0] = ~((UINT64)0);
@@ -110,9 +133,16 @@ static void SysClose(UINT64 *Regs) {
     }
     Regs[0] = LwIpSockClose(Sock) == 0 ? 0 : ~((UINT64)0);
 #else
-    (void)Regs;
+    (void)Fd;
     Regs[0] = ~((UINT64)0);
 #endif
+}
+
+static void SysOpen(UINT64 *Regs) {
+    const char *Path = (const char *)(UINTN)Regs[5]; /* rdi */
+    UINT64 Flags = Regs[4];                         /* rsi */
+    int Fd = SyscallFileOpen(Path, Flags);
+    Regs[0] = Fd < 0 ? ~((UINT64)0) : (UINT64)(UINT32)Fd;
 }
 
 static void SysSocket(UINT64 *Regs) {
@@ -193,6 +223,10 @@ void HalSyscallDispatch(UINT64 *Regs) {
     }
     if (Nr == SYS_WAIT) {
         (void)ProcessWaitSyscall(Regs);
+        return;
+    }
+    if (Nr == SYS_OPEN) {
+        SysOpen(Regs);
         return;
     }
     Regs[0] = ~((UINT64)0);

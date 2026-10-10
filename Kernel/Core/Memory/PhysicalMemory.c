@@ -126,6 +126,14 @@ static int PickPool(const BOOT_INFO *Info, UINT64 *OutBase, UINT32 *OutPages) {
     return 0;
 }
 
+/*
+ * PhysicalMemoryInitialize — 从 BOOT_INFO 建位图池并注册 MEMORY_OPS
+ *
+ * 做什么：挑最大 Free 区、MarkReserved、MemoryOpsRegister(BitmapOps)。
+ * 谁调用：MemoryInitialize。
+ * 前后文：前 — BootInfoSave；后 — PhysicalMemoryAllocatePage。
+ * 返回：0 成功；-1 无池或全保留。
+ */
 int PhysicalMemoryInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
     UINT32 Index;

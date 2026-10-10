@@ -1,5 +1,8 @@
-/* HalBootFontGlyph8x8.h — HAL 启动屏专用点阵（与 Core/Font 字库分离）
- * ASCII 0x20..0x7E，每字 8 行×1 字节（MSB=左）
+/*
+ * HalBootFontGlyph8x8.h — 早期 8×8 ASCII 点阵（SCREEN_LOG / Boot 滚屏）
+ *
+ * 【初学者】
+ * - 仅 HalBootFont.c 使用；与 Core/Font 无关。
  */
 #ifndef HAL_BOOT_FONT_GLYPH_8X8_H
 #define HAL_BOOT_FONT_GLYPH_8X8_H

@@ -147,7 +147,7 @@ static int CollectIoBars(UINT16 *Out, int Max) {
     return N;
 }
 
-static int InitOne(VBLK *D, UINT16 Io) {
+static int InitializeOne(VBLK *D, UINT16 Io) {
     UINT16 Qnum;
     UINT32 Bytes;
     UINT32 PagesN;
@@ -201,7 +201,7 @@ static int InitOne(VBLK *D, UINT16 Io) {
     return 0;
 }
 
-int HalBlockInit(void) {
+int HalBlockInitialize(void) {
     UINT16 Bars[HAL_BLOCK_MAX_DRIVES];
     int Found;
     int i;
@@ -211,7 +211,7 @@ int HalBlockInit(void) {
     Zero(gDev, sizeof(gDev));
     Found = CollectIoBars(Bars, HAL_BLOCK_MAX_DRIVES);
     for (i = 0; i < Found; i++) {
-        if (InitOne(&gDev[gN], Bars[i]) == 0) {
+        if (InitializeOne(&gDev[gN], Bars[i]) == 0) {
             gN++;
         }
     }

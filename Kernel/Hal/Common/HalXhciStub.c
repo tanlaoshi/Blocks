@@ -1,5 +1,9 @@
 /*
- * HalXhciStub.c — 非 X64：xHCI 门面空实现
+ * HalXhciStub.c — 非 X64：无 xHCI MMIO
+ *
+ * 【初学者】
+ * - Hal 占位；Usb.c 见 HalXhciReady==0 则跳过 USB 栈。
+ * - 真实现：Hal/X64/HalXhci.c + Drivers/UsbHid/。
  */
 #include "HalXhci.h"
 

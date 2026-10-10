@@ -17,6 +17,12 @@ static UINT32 gMask = NET_CFG_MASK;
 static UINT32 gGw = NET_CFG_GW_QEMU;
 static UINT32 gDns = NET_CFG_DNS_QEMU;
 
+/*
+ * ConfigurationEnsure — 懒加载 QEMU SLIRP 默认四元组
+ *
+ * 谁调用：ConfigurationGet*；Shell `net`；LwIpInitialize。
+ * 返回：void
+ */
 void ConfigurationEnsure(void) {
     if (gReady) {
         return;
@@ -52,6 +58,12 @@ static int Apply(void) {
     return LwIpApplyConfig();
 }
 
+/*
+ * ConfigurationSetIp — 改本机 IP 并 LwIpApplyConfig（若 lwIP 已 on）
+ *
+ * 谁调用：Shell `net ip <addr>`。
+ * 返回：0 成功；非 0 Apply 失败
+ */
 int ConfigurationSetIp(UINT32 Ip) {
     ConfigurationEnsure();
     gIp = Ip;

@@ -1,7 +1,10 @@
 /*
  * Volume.c — K44：挂载表、默认卷、路径前缀
  *
- * 【初学者】`ls BLOCKS:` = 解析前缀 → 激活卷 → 列根；无前缀用默认卷（BLOCKS）。
+ * 【初学者】
+ * - 分层：Core/FileSystem；GPT 见 Gpt.c
+ * - 对外：VolumeMountAll / VolumeResolve / VolumeOpenActive
+ * - `ls BLOCKS:` = 解析前缀 → 激活卷；无前缀用默认 BLOCKS
  */
 #include "Volume.h"
 #include "Gpt.h"
@@ -9,7 +12,7 @@
 #include "HalSerial.h"
 #include "SerialConfig.h"
 
-static VOLUME gVols[VOLUME_MAX];
+static VOLUME gVolumes[VOLUME_MAX];
 static int gCount;
 static int gActive;
 static int gDefault;
@@ -25,58 +28,58 @@ static int StringsEqual(const char *A, const char *B) {
     return *A == 0 && *B == 0;
 }
 
-static void CopyName(char *Dst, const char *Src, int Cap) {
-    int i;
-    if (Dst == 0 || Cap <= 0) {
+static void CopyName(char *Destination, const char *Source, int Capacity) {
+    int Index;
+    if (Destination == 0 || Capacity <= 0) {
         return;
     }
-    for (i = 0; i + 1 < Cap && Src && Src[i]; i++) {
-        Dst[i] = Src[i];
+    for (Index = 0; Index + 1 < Capacity && Source && Source[Index]; Index++) {
+        Destination[Index] = Source[Index];
     }
-    Dst[i] = 0;
+    Destination[Index] = 0;
 }
 
 typedef struct {
     int HasBlocks;
     int HasToyos;
     int HasEfi;
-} MARK_CTX;
+} MARK_CONTEXT;
 
-static int OnMark(const UINT8 *Ent, void *Ctx) {
-    MARK_CTX *M = (MARK_CTX *)Ctx;
+static int OnMark(const UINT8 *Entry, void *Context) {
+    MARK_CONTEXT *Mark = (MARK_CONTEXT *)Context;
     char Name[13];
-    FatName83ToDisplay(Ent, Name);
+    FatName83ToDisplay(Entry, Name);
     if (StringsEqual(Name, "BLOCKS.ID")) {
-        M->HasBlocks = 1;
+        Mark->HasBlocks = 1;
     }
     if (StringsEqual(Name, "TOYOS.ID")) {
-        M->HasToyos = 1;
+        Mark->HasToyos = 1;
     }
-    if (StringsEqual(Name, "EFI") && (Ent[11] & FAT_ATTR_DIR)) {
-        M->HasEfi = 1;
+    if (StringsEqual(Name, "EFI") && (Entry[11] & FAT_ATTR_DIR)) {
+        Mark->HasEfi = 1;
     }
     return 0;
 }
 
-static void PickName(VOLUME *V, const MARK_CTX *M) {
-    if (M->HasBlocks || M->HasToyos) {
+static void PickName(VOLUME *Volume, const MARK_CONTEXT *Mark) {
+    if (Mark->HasBlocks || Mark->HasToyos) {
         /* 旧盘 TOYOS.ID 也挂名为 BLOCKS，不再提供 TOYOS: 前缀 */
-        CopyName(V->Name, "BLOCKS", VOLUME_NAME_MAX);
-        V->ReadOnly = 0;
-    } else if (V->IsEsp || M->HasEfi) {
-        CopyName(V->Name, "ESP", VOLUME_NAME_MAX);
-        V->ReadOnly = 1;
-        V->IsEsp = 1;
+        CopyName(Volume->Name, "BLOCKS", VOLUME_NAME_MAX);
+        Volume->ReadOnly = 0;
+    } else if (Volume->IsEsp || Mark->HasEfi) {
+        CopyName(Volume->Name, "ESP", VOLUME_NAME_MAX);
+        Volume->ReadOnly = 1;
+        Volume->IsEsp = 1;
     } else {
-        V->Name[0] = V->Letter;
-        V->Name[1] = 0;
+        Volume->Name[0] = Volume->Letter;
+        Volume->Name[1] = 0;
     }
 }
 
-static int AddVol(int Drive, UINT32 PartLba, int IsEsp) {
-    VOLUME *V;
+static int AddVolume(int Drive, UINT32 PartLba, int IsEsp) {
+    VOLUME *Volume;
     FAT_VOLUME Fat;
-    MARK_CTX M;
+    MARK_CONTEXT Mark;
 
     if (gCount >= VOLUME_MAX) {
         return -1;
@@ -87,23 +90,30 @@ static int AddVol(int Drive, UINT32 PartLba, int IsEsp) {
     if (FatVolumeOpenAt(&Fat, PartLba) != 0) {
         return -1;
     }
-    M.HasBlocks = 0;
-    M.HasToyos = 0;
-    M.HasEfi = 0;
-    (void)FatVolumeWalkRoot(&Fat, OnMark, &M);
+    Mark.HasBlocks = 0;
+    Mark.HasToyos = 0;
+    Mark.HasEfi = 0;
+    (void)FatVolumeWalkRoot(&Fat, OnMark, &Mark);
 
-    V = &gVols[gCount];
-    V->Used = 1;
-    V->Drive = Drive;
-    V->PartLba = PartLba;
-    V->IsEsp = IsEsp;
-    V->ReadOnly = IsEsp ? 1 : 0;
-    V->Letter = (char)('A' + gCount);
-    PickName(V, &M);
+    Volume = &gVolumes[gCount];
+    Volume->Used = 1;
+    Volume->Drive = Drive;
+    Volume->PartLba = PartLba;
+    Volume->IsEsp = IsEsp;
+    Volume->ReadOnly = IsEsp ? 1 : 0;
+    Volume->Letter = (char)('A' + gCount);
+    PickName(Volume, &Mark);
     gCount++;
     return 0;
 }
 
+/*
+ * VolumeMountAll — 扫所有驱动器 FAT 分区并建挂载表
+ *
+ * 做什么：GptFindFatParts + AddVolume；默认卷优先 BLOCKS 名。
+ * 谁调用：FileSystemInitialize / VolumeResolve 懒挂载。
+ * 返回：0 至少一卷；非 0 无 FAT
+ */
 int VolumeMountAll(void) {
     int Drives;
     int D;
@@ -113,9 +123,9 @@ int VolumeMountAll(void) {
     gActive = 0;
     gDefault = 0;
     for (i = 0; i < VOLUME_MAX; i++) {
-        gVols[i].Used = 0;
+        gVolumes[i].Used = 0;
     }
-    if (!HalBlockReady() && HalBlockInit() != 0) {
+    if (!HalBlockReady() && HalBlockInitialize() != 0) {
         return -1;
     }
     Drives = HalBlockDriveCount();
@@ -131,12 +141,12 @@ int VolumeMountAll(void) {
             continue;
         }
         for (P = 0; P < Pn && gCount < VOLUME_MAX; P++) {
-            (void)AddVol(D, Parts[P].StartLba, Parts[P].IsEsp);
+            (void)AddVolume(D, Parts[P].StartLba, Parts[P].IsEsp);
         }
     }
     gDefault = 0;
     for (i = 0; i < gCount; i++) {
-        if (StringsEqual(gVols[i].Name, "BLOCKS")) {
+        if (StringsEqual(gVolumes[i].Name, "BLOCKS")) {
             gDefault = i;
             break;
         }
@@ -151,21 +161,22 @@ int VolumeMountAll(void) {
             HalSerialWriteChannel(SLOG_FS, Dig);
         }
         HalSerialWriteChannel(SLOG_FS, " default=");
-        HalSerialWriteChannel(SLOG_FS, gVols[gDefault].Name);
+        HalSerialWriteChannel(SLOG_FS, gVolumes[gDefault].Name);
         HalSerialWriteChannel(SLOG_FS, "\n");
     }
     return gCount > 0 ? 0 : -1;
 }
 
+/* VolumeCount / VolumeGet / VolumeDefaultIndex — 查表；谁调用：Shell `vols`、Files UI */
 int VolumeCount(void) {
     return gCount;
 }
 
 const VOLUME *VolumeGet(int Index) {
-    if (Index < 0 || Index >= gCount || !gVols[Index].Used) {
+    if (Index < 0 || Index >= gCount || !gVolumes[Index].Used) {
         return 0;
     }
-    return &gVols[Index];
+    return &gVolumes[Index];
 }
 
 int VolumeDefaultIndex(void) {
@@ -176,7 +187,7 @@ int VolumeActivate(int Index) {
     if (Index < 0 || Index >= gCount) {
         return -1;
     }
-    if (HalBlockSelect(gVols[Index].Drive) != 0) {
+    if (HalBlockSelect(gVolumes[Index].Drive) != 0) {
         return -1;
     }
     gActive = Index;
@@ -187,10 +198,10 @@ int VolumeOpenActive(FAT_VOLUME *V) {
     if (gCount <= 0 || gActive < 0 || gActive >= gCount) {
         return -1;
     }
-    if (HalBlockSelect(gVols[gActive].Drive) != 0) {
+    if (HalBlockSelect(gVolumes[gActive].Drive) != 0) {
         return -1;
     }
-    return FatVolumeOpenAt(V, gVols[gActive].PartLba);
+    return FatVolumeOpenAt(V, gVolumes[gActive].PartLba);
 }
 
 int VolumeActiveIndex(void) {
@@ -231,6 +242,13 @@ static int MatchPrefix(const char *Path, const char *Name, const char **Rest) {
     return 1;
 }
 
+/*
+ * VolumeResolve — 解析 BLOCKS:/ESP:/A: 前缀并激活卷
+ *
+ * 做什么：MatchPrefix；HalBlockSelect；*OutPath 指向卷内相对路径。
+ * 谁调用：FatFileReadPath / FatPathResolve83 / Shell 路径参数。
+ * 返回：0 成功；非 0 无卷或激活失败
+ */
 int VolumeResolve(const char *Path, const char **OutPath) {
     int i;
     const char *Rest;
@@ -242,7 +260,7 @@ int VolumeResolve(const char *Path, const char **OutPath) {
         return -1;
     }
     for (i = 0; i < gCount; i++) {
-        if (MatchPrefix(Path, gVols[i].Name, &Rest)) {
+        if (MatchPrefix(Path, gVolumes[i].Name, &Rest)) {
             if (VolumeActivate(i) != 0) {
                 return -1;
             }
@@ -252,7 +270,7 @@ int VolumeResolve(const char *Path, const char **OutPath) {
         /* A: / B: */
         {
             char Let[2];
-            Let[0] = gVols[i].Letter;
+            Let[0] = gVolumes[i].Letter;
             Let[1] = 0;
             if (MatchPrefix(Path, Let, &Rest)) {
                 if (VolumeActivate(i) != 0) {

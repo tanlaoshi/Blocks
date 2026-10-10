@@ -1,7 +1,10 @@
 /*
  * Cursor.c — 鼠标光标：前缓冲 save-under + 箭头字形
  *
- * 对标现网 CodeD-Services/GuiCursor/（实现略薄；目录即命名空间不叠 Gui）。
+ * 【初学者】
+ * - 分层：Core/Gui；对标现网 GuiCursor（实现略薄；夹内不叠 Gui）
+ * - 对外：GuiCursorHide / GuiCursorShow（Gui.h）；夹内 Cursor*（GuiPrivate.h）
+ * - 只画 LFB 前缓冲，勿写背缓冲（否则 Present 后尖端「烤进」画面）
  */
 #include "Gui.h"
 #include "GuiPrivate.h"
@@ -33,6 +36,12 @@ static const UINT8 gArrow[CURSOR_HEIGHT] = {
     0xF8, 0xDC, 0x8E, 0x07, 0x03, 0x01, 0x00, 0x00
 };
 
+/*
+ * ArrowSolid — 箭头位图该像素是否实心
+ *
+ * 谁调用：仅 GuiCursorShow（描边与填色）。
+ * 返回：1 实心；0 透明
+ */
 static int ArrowSolid(UINT32 Col, UINT32 Row) {
     if (Row >= CURSOR_HEIGHT || Col >= CURSOR_WIDTH) {
         return 0;
@@ -40,11 +49,22 @@ static int ArrowSolid(UINT32 Col, UINT32 Row) {
     return (gArrow[Row] & (UINT8)(0x80u >> Col)) != 0;
 }
 
+/*
+ * CursorSetFramebuffer — 记录 FB 尺寸供钳位与绝对坐标映射
+ *
+ * 谁调用：GuiInitialize。
+ */
 void CursorSetFramebuffer(UINT32 Width, UINT32 Height) {
     gFbW = Width;
     gFbH = Height;
 }
 
+/*
+ * CursorEnableAt — 打开光标并放到 (X,Y)，立刻 Show
+ *
+ * 谁调用：GuiInitialize（HID/PS2 鼠就绪后）。
+ * 前后文：前 — CursorSetFramebuffer；后 — GuiPoll 移动
+ */
 void CursorEnableAt(INT32 X, INT32 Y) {
     gCurX = X;
     gCurY = Y;
@@ -54,10 +74,20 @@ void CursorEnableAt(INT32 X, INT32 Y) {
     GuiCursorShow();
 }
 
+/*
+ * CursorIsEnabled — 光标是否已启用
+ *
+ * 谁调用：GuiPoll 入口（未启用则不吃鼠包）。
+ */
 int CursorIsEnabled(void) {
     return gCursorOn;
 }
 
+/*
+ * CursorGetPosition — 读出热点坐标
+ *
+ * 谁调用：GuiPoll（点击命中 / 拖窗）。
+ */
 void CursorGetPosition(INT32 *X, INT32 *Y) {
     if (X != 0) {
         *X = gCurX;
@@ -67,18 +97,33 @@ void CursorGetPosition(INT32 *X, INT32 *Y) {
     }
 }
 
+/*
+ * CursorSetPosition — 绝对设置热点并钳位
+ *
+ * 谁调用：预留；当前主路径用 MoveBy / SetFromAbsolute。
+ */
 void CursorSetPosition(INT32 X, INT32 Y) {
     gCurX = X;
     gCurY = Y;
     CursorClamp();
 }
 
+/*
+ * CursorMoveBy — 相对移动（PS/2 增量）
+ *
+ * 谁调用：GuiPoll 累加 Dx/Dy 后。
+ */
 void CursorMoveBy(INT32 DeltaX, INT32 DeltaY) {
     gCurX += DeltaX;
     gCurY += DeltaY;
     CursorClamp();
 }
 
+/*
+ * CursorSetFromAbsolute — HID tablet 0..32767 → 像素
+ *
+ * 谁调用：GuiPoll（Pkt.Absolute）。
+ */
 void CursorSetFromAbsolute(INT32 PacketX, INT32 PacketY) {
     if (gFbW > 1u) {
         gCurX = (INT32)(((INT64)PacketX * (INT64)(gFbW - 1u)) / 32767);
@@ -89,6 +134,11 @@ void CursorSetFromAbsolute(INT32 PacketX, INT32 PacketY) {
     CursorClamp();
 }
 
+/*
+ * CursorClamp — 热点限制在 FB 内
+ *
+ * 谁调用：本文件各移动/Enable 路径。
+ */
 void CursorClamp(void) {
     if (gCurX < 0) {
         gCurX = 0;
@@ -105,8 +155,11 @@ void CursorClamp(void) {
 }
 
 /*
- * 光标只叠前缓冲（LFB）。写背缓冲会在 Present 后把尖端「烤进」画面，
- * Hide 再拿旧 under 盖回去 → 看起来尖偏了、点不中。
+ * GuiCursorHide — 用 save-under 擦掉光标
+ *
+ * 做什么：把先前保存的像素写回前缓冲；不改热点。
+ * 谁调用：GuiPoll 重画前；GuiRefreshLabels；Console 刷屏前后配对 Show。
+ * 前后文：后 — 业务重绘；再 GuiCursorShow。
  */
 void GuiCursorHide(void) {
     UINT32 Row;
@@ -127,6 +180,13 @@ void GuiCursorHide(void) {
     gCursorShown = 0;
 }
 
+/*
+ * GuiCursorShow — 保存 under 并画箭头（黑描边+白芯）
+ *
+ * 做什么：只写前缓冲；热点在箭头尖 (gCurX,gCurY)。
+ * 谁调用：GuiPoll 末尾；GuiInitialize/RefreshLabels；Console 配对。
+ * 返回：void（未 Enable 或无背缓冲则静默跳过）
+ */
 void GuiCursorShow(void) {
     UINT32 Row;
     UINT32 Col;

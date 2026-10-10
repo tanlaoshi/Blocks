@@ -41,10 +41,23 @@ static int SlotIndex(int Fd) {
     return Fd - FD_FILE_BASE;
 }
 
+/*
+ * SyscallFileIsFd — 是否为本模块 fd 区间
+ *
+ * 谁调用：HalSyscallDispatch（read/write/close 前）。
+ * 返回：非 0 是文件 fd
+ */
 int SyscallFileIsFd(UINT64 Fd) {
     return SlotIndex((int)Fd) >= 0;
 }
 
+/*
+ * SyscallFileOpen — 打开 FAT 根文件（4KiB 槽）
+ *
+ * 做什么：只读整文件读入；写模式 close 时 FatFileWritePath。
+ * 谁调用：HalSyscallDispatch（open）。
+ * 返回：fd 或 -1
+ */
 int SyscallFileOpen(const char *Path, UINT64 Flags) {
     int i;
     int Slot = -1;
@@ -84,6 +97,12 @@ int SyscallFileOpen(const char *Path, UINT64 Flags) {
     return FD_FILE_BASE + Slot;
 }
 
+/*
+ * SyscallFileRead — 从已打开只读槽拷贝
+ *
+ * 谁调用：HalSyscallDispatch（read）。
+ * 返回：字节数；0 EOF；-1 错误
+ */
 int SyscallFileRead(int Fd, void *Buf, UINTN Len) {
     int Slot = SlotIndex(Fd);
     UINTN N;
@@ -110,6 +129,12 @@ int SyscallFileRead(int Fd, void *Buf, UINTN Len) {
     return (int)N;
 }
 
+/*
+ * SyscallFileWrite — 追加写槽（上限 FILE_BUF_MAX）
+ *
+ * 谁调用：HalSyscallDispatch（write）。
+ * 返回：写入字节数；-1 错误
+ */
 int SyscallFileWrite(int Fd, const void *Buf, UINTN Len) {
     int Slot = SlotIndex(Fd);
     UINTN N;
@@ -134,6 +159,12 @@ int SyscallFileWrite(int Fd, const void *Buf, UINTN Len) {
     return (int)N;
 }
 
+/*
+ * SyscallFileClose — 释放槽；写模式 flush 到 FAT
+ *
+ * 谁调用：HalSyscallDispatch（close）。
+ * 返回：0 成功；-1 错误
+ */
 int SyscallFileClose(int Fd) {
     int Slot = SlotIndex(Fd);
 

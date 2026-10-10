@@ -1,5 +1,8 @@
 /*
- * Command.c — 命令环提交与等待
+ * Command.c — xHCI 命令环（Enable Slot、Address Device 等）
+ *
+ * 【初学者】
+ * - UsbHid 子模块：无协议重命名；仅文档与清晰局部变量。
  */
 #include "Internal.h"
 

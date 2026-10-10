@@ -1,5 +1,10 @@
 /*
- * FontTtfCache.c — 18×18×8bpp 小缓存；绘制路径可即时栅格（无 Worker）
+ * FontTtfCache.c — TTF 字形 LRU 缓存（K27 子模块）
+ *
+ * 【初学者】
+ * - Core/Video：FontTtfRaster 查缓存 miss 再栅格化。
+ * - 入口：FontTtfCacheGet、FontTtfPreheatUtf8。
+ * - 边界：不读 .ttf 文件；加载在 FontTtfLoad.c。
  */
 #include "FontTtf.h"
 #include "Utf8.h"
@@ -66,6 +71,14 @@ static void FillSlot(UINT32 Cp) {
     }
 }
 
+/*
+ * FontTtfCacheGet — 18×18 灰度栅格（LRU 探测）
+ *
+ * 做什么：命中返回 Pix；miss 调 FontTtfRasterCp 填入槽。
+ * 谁调用：FontDrawCodepointAt（CJK 点阵未覆盖时）。
+ * 前后文：前 — FontTtfInit；兄弟 — FontTtfPreheatUtf8。
+ * 返回：TTF_CELL² 字节 alpha；失败 NULL。
+ */
 const UINT8 *FontTtfCacheGet(UINT32 Cp) {
     TTF_SLOT *S;
     if (Cp < 128u) {
@@ -81,6 +94,13 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp) {
     return (S && S->State == TTF_HIT) ? S->Pix : 0;
 }
 
+/*
+ * FontTtfPreheatUtf8 — 启动前预热常用 UTF-8 串
+ *
+ * 做什么：逐码点 FillSlot；遇 \\n 或非法 UTF-8 停止。
+ * 谁调用：GuiInitialize（固定中文 UI 串）。
+ * 前后文：前 — FontTtfInit；减少首帧 miss 卡顿。
+ */
 void FontTtfPreheatUtf8(const char *S) {
     while (S && *S) {
         UINT32 Cp;

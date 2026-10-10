@@ -1,5 +1,9 @@
 /*
  * PhysicalMemoryPrivate.h — 位图池内部交接（K53 拆文件）
+ *
+ * 【初学者】
+ * - 仅 Memory/ 内 .c 互 include；对外 API 在 PhysicalMemory.h。
+ * - 共享 gPhysicalMemoryBitmap 与 BitGet/Set/Clear 辅助。
  */
 #ifndef PHYSICAL_MEMORY_PRIVATE_H
 #define PHYSICAL_MEMORY_PRIVATE_H

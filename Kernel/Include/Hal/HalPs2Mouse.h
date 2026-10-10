@@ -17,7 +17,7 @@ typedef struct {
     UINT8 Absolute; /* 1：Dx/Dy 为 0..32767 平板坐标（USB tablet） */
 } HAL_MOUSE_PACKET;
 
-int HalPs2MouseInit(void);
+int HalPs2MouseInitialize(void);
 int HalPs2MouseReady(void);
 /* 兼容旧名：现为 HalPs2Poll（排空 OBF→队列） */
 void HalPs2MouseDropInput(void);

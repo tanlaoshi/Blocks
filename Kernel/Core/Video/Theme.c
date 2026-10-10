@@ -1,9 +1,10 @@
 /*
- * Theme.c — K21 色板 + K34 Settings 写回
+ * Theme.c — K21 内存色板（桌面/任务栏/窗口色）
  *
  * 【初学者】
- * 默认「墨色」：暖炭桌面 + 米白字，避开现网 tech 青蓝霓虹。
- * 落盘见 ThemeConfiguration.c（K37）。
+ * - Core/Video：Gui/Console 读 Theme* 上色；Settings/Shell 改色后经 ThemeConfiguration 落盘。
+ * - 入口：ThemeInitialize、ThemeApplyNamed、Theme*Background/ThemeSet*、ThemeName。
+ * - 边界：不读 FAT；mode/GOP 见 ThemeConfiguration.c；不提供 tech 霓虹预设。
  */
 #include "Theme.h"
 #include "HalSerial.h"
@@ -66,6 +67,14 @@ static void ApplyPine(void) {
     gWinBorder = 0x00586058u;
 }
 
+/*
+ * ThemeInitialize — 默认「墨色」色板
+ *
+ * 做什么：ApplyInk，置 gReady；重复调用无操作。
+ * 谁调用：GuiInitialize、ConsoleRefresh、ThemeLoadConfiguration、各 Theme* getter 懒初始化。
+ * 前后文：后 — ThemeDesktopBackground 等读 g*；Settings 可 ThemeApplyNamed 覆盖。
+ * 返回：void。
+ */
 void ThemeInitialize(void) {
     if (gReady) {
         return;
@@ -75,6 +84,14 @@ void ThemeInitialize(void) {
     HalSerialWriteChannel(SLOG_GUI, "Theme: palette ok (ink)\n");
 }
 
+/*
+ * ThemeApplyNamed — 按名切换 ink/slate/pine
+ *
+ * 做什么：匹配预设名并改 gThemeName 与色值；tech/modern 等返回失败。
+ * 谁调用：Settings 桌面色块、ThemeConfiguration ApplyLine（theme= 行）。
+ * 前后文：后 — ThemeSaveConfiguration 可把名写回 THEME.CFG。
+ * 返回：0 成功；-1 未知名。
+ */
 int ThemeApplyNamed(const char *Name) {
     if (Name == 0) {
         return -1;
@@ -118,6 +135,13 @@ int ThemeApplyNamed(const char *Name) {
     return -1;
 }
 
+/*
+ * ThemeName — 当前预设名（如 "ink"）
+ *
+ * 做什么：返回 gThemeName；未就绪则 ThemeInitialize。
+ * 谁调用：ThemeSaveConfiguration 写 theme= 行。
+ * 返回：静态缓冲区指针。
+ */
 const char *ThemeName(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -125,6 +149,12 @@ const char *ThemeName(void) {
     return gThemeName;
 }
 
+/*
+ * ThemeDesktopBackground — 桌面填充色（0xRRGGBB）
+ *
+ * 做什么：读 gDesktopBg；懒 ThemeInitialize。
+ * 谁调用：WindowPaint 清屏、ThemeSaveConfiguration。
+ */
 UINT32 ThemeDesktopBackground(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -132,6 +162,7 @@ UINT32 ThemeDesktopBackground(void) {
     return gDesktopBg;
 }
 
+/* ThemeTaskbarBackground — 任务栏底色；Gui Layout/WindowPaint。 */
 UINT32 ThemeTaskbarBackground(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -139,6 +170,7 @@ UINT32 ThemeTaskbarBackground(void) {
     return gTaskbarBg;
 }
 
+/* ThemeWindowTitleText — 标题栏前景字色；FontDrawStringAt 窗口标题。 */
 UINT32 ThemeWindowTitleText(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -146,6 +178,7 @@ UINT32 ThemeWindowTitleText(void) {
     return gTitleFg;
 }
 
+/* ThemeTextForeground — 正文前景；ConsoleRefresh 等。 */
 UINT32 ThemeTextForeground(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -153,6 +186,7 @@ UINT32 ThemeTextForeground(void) {
     return gTextFg;
 }
 
+/* ThemeWindowTitleBar — 活动窗口标题条底色。 */
 UINT32 ThemeWindowTitleBar(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -160,6 +194,7 @@ UINT32 ThemeWindowTitleBar(void) {
     return gWinTitleBar;
 }
 
+/* ThemeWindowTitleBarDim — 非活动标题条（Darken 自 ThemeWindowTitleBar）。 */
 UINT32 ThemeWindowTitleBarDim(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -167,6 +202,13 @@ UINT32 ThemeWindowTitleBarDim(void) {
     return gWinTitleDim;
 }
 
+/*
+ * ThemeSetDesktopBackground — 改桌面色（0xRRGGBB）
+ *
+ * 做什么：掩码写 gDesktopBg；不自动落盘。
+ * 谁调用：Settings 色块、ThemeConfiguration desktop= 行。
+ * 前后文：后 — ThemeSaveConfiguration、Gui 重绘。
+ */
 void ThemeSetDesktopBackground(UINT32 Color) {
     if (!gReady) {
         ThemeInitialize();
@@ -175,6 +217,11 @@ void ThemeSetDesktopBackground(UINT32 Color) {
     HalSerialWriteChannel(SLOG_GUI, "Theme: desktop set\n");
 }
 
+/*
+ * ThemeSetWindowTitleBar — 改标题条色并重算 Dim
+ *
+ * 谁调用：Settings、ThemeConfiguration title= 行。
+ */
 void ThemeSetWindowTitleBar(UINT32 Color) {
     if (!gReady) {
         ThemeInitialize();
@@ -184,6 +231,11 @@ void ThemeSetWindowTitleBar(UINT32 Color) {
     HalSerialWriteChannel(SLOG_GUI, "Theme: title set\n");
 }
 
+/*
+ * ThemeSetTaskbarBackground — 改任务栏色
+ *
+ * 谁调用：Settings、ThemeConfiguration taskbar= 行。
+ */
 void ThemeSetTaskbarBackground(UINT32 Color) {
     if (!gReady) {
         ThemeInitialize();
@@ -192,6 +244,7 @@ void ThemeSetTaskbarBackground(UINT32 Color) {
     HalSerialWriteChannel(SLOG_GUI, "Theme: taskbar set\n");
 }
 
+/* ThemeWindowClient — 窗口客户区底色；WindowPaint。 */
 UINT32 ThemeWindowClient(void) {
     if (!gReady) {
         ThemeInitialize();
@@ -199,6 +252,7 @@ UINT32 ThemeWindowClient(void) {
     return gWinClient;
 }
 
+/* ThemeWindowBorder — 窗口边框色；WindowPaint。 */
 UINT32 ThemeWindowBorder(void) {
     if (!gReady) {
         ThemeInitialize();

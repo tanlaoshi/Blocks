@@ -117,6 +117,12 @@ static void CommandStore(int Argc, char **Argv) {
     Put("usage: store list | store install <id>\n");
 }
 
+/*
+ * StoreRegister — 注册 store list|install
+ *
+ * 谁调用：ShellCommandInitialize。
+ * 返回：void
+ */
 void StoreRegister(void) {
     ShellCommandRegister("store", "list/install local packages", CommandStore);
 }

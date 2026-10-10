@@ -1,11 +1,24 @@
 /*
  * Memory.c — Memory 模块表项：PhysicalMemory + 自检
+ *
+ * 【初学者】
+ * - Core 层：开机模块表里「Memory」一行，只做 PMM 初始化与一页自检。
+ * - 入口：MemoryInitialize（ModulesRunFull 调用）。
+ * - 边界：不建页表；虚存见 VirtualMemory/。
  */
 #include "Memory.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "SerialConfig.h"
 
+/*
+ * MemoryInitialize — Memory 模块表入口
+ *
+ * 做什么：PhysicalMemoryInitialize + 分配/写/释放一页自检。
+ * 谁调用：ModulesRunFull（Memory 行）。
+ * 前后文：前 — BootInfo 已 Save；后 — VirtualMemoryInitialize。
+ * 返回：0 成功；-1 PMM 或自检失败。
+ */
 int MemoryInitialize(void) {
     void *Page;
     UINT64 FreeBefore;

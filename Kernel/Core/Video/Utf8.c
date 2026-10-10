@@ -1,8 +1,24 @@
 /*
  * Utf8.c — K26：UTF-8 → Unicode 码点（1～4 字节）
+ *
+ * 【初学者】
+ * - Core/Video：Font/Gui 解析 UTF-8 路径与输入。
+ * - 入口：Utf8Decode（返回消耗字节数，0 表示非法/结束）。
+ * - 边界：不做 NFC/NFKC；非法序列返回 0。
  */
 #include "Utf8.h"
 
+/*
+ * Utf8Decode — 从 S 取一个 Unicode 码点
+ *
+ * 做什么：识别 1～4 字节 UTF-8；非法续字节或过长序列返回 0。
+ * 谁调用：FontDrawStringAt、WindowPaint 标题行、FontTtfPreheatUtf8、Desktop 测宽。
+ * 前后文：
+ *   前 — 调用方持有以 NUL 或行尾结束的缓冲区；
+ *   后 — 按返回值推进指针再画字或预热缓存。
+ *   兄弟 — FontDrawCodepointAt（用 OutCp 画）。
+ * 返回：消耗字节数；0 表示 NUL/非法（OutCp 未写）。
+ */
 UINTN Utf8Decode(const char *S, UINT32 *OutCp) {
     UINT8 C0;
     UINT32 Cp;

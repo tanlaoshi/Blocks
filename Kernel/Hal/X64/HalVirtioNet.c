@@ -204,7 +204,7 @@ static void RxPost(void) {
     Out16(gIo + VIRTIO_PCI_Q_NOTIFY, 0);
 }
 
-int HalNetInit(void) {
+int HalNetInitialize(void) {
     UINT16 Io;
     UINT32 HostF;
     UINT32 GuestF;

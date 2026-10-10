@@ -12,6 +12,6 @@ void DesktopPaintIcons(void);
 /* -1=无；否则 GUI_WIN_SHELL / GUI_WIN_SETTINGS */
 int DesktopHitIcon(INT32 X, INT32 Y);
 /* 双击则开/聚焦对应窗，返回 1 */
-int DesktopClickIcon(int WinId, INT32 X, INT32 Y);
+int DesktopClickIcon(int WindowId, INT32 X, INT32 Y);
 
 #endif

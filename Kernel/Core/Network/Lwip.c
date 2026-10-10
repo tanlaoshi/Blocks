@@ -2,8 +2,10 @@
  * Lwip.c — lwIP 初始化 / 轮询 / ping / DNS 门面
  *
  * 【初学者】
- * `lwip on` → lwip_init + Configuration 绑 netif/DNS + 入站 LwIpNetifInput。
- * 本会话不可逆回 builtin；要回对照栈：重启 QEMU。
+ * - `lwip on` → lwip_init + netif/DNS；ConsoleReadLine 调 LwIpService
+ * - 对外：LwIpInitialize、LwIpActive、LwIpService、LwIpPing、LwIpDnsLookup
+ * - 体量 >300 行（含 freestanding libc 桩）；vendor 在 Hal/LwIp
+ * - 切 lwIP 后不可逆回 builtin TCP/UDP RX，需重启 QEMU
  */
 #include "LwIp.h"
 #include "Network.h"
@@ -145,6 +147,12 @@ static void PushDns(void) {
     dns_setserver(0, &DnsServer);
 }
 
+/*
+ * LwIpApplyConfig — lwIP 已 on 时重绑 IP/mask/gw/DNS
+ *
+ * 谁调用：ConfigurationSet*。
+ * 返回：0；未 on 时 0；-1 netif 失败
+ */
 int LwIpApplyConfig(void) {
     char Buf[16];
 
@@ -163,6 +171,12 @@ int LwIpApplyConfig(void) {
     return 0;
 }
 
+/*
+ * LwIpInitialize — lwip_init + netif；关闭 builtin Tcp/Udp RX 竞争
+ *
+ * 谁调用：Shell `lwip on`；LwIpDnsLookup 懒启动。
+ * 返回：0 成功；-1 无网卡或 netif 失败
+ */
 int LwIpInitialize(void) {
     char Buf[16];
 
@@ -196,6 +210,12 @@ int LwIpActive(void) {
     return gLwIpReady;
 }
 
+/*
+ * LwIpService — 收帧入 netif + sys_check_timeouts
+ *
+ * 谁调用：ConsoleReadLine 空闲环；LwIpDnsLookup 等待。
+ * 返回：void
+ */
 void LwIpService(void) {
     UINT8 Rx[1518];
     int RxLen;
@@ -230,6 +250,12 @@ static void DnsFound(const char *Name, const ip_addr_t *Addr, void *Arg) {
     gDnsDone = 1;
 }
 
+/*
+ * LwIpDnsLookup — 字面量 IP 或 lwIP dns_gethostbyname
+ *
+ * 谁调用：Shell `dns` / `ping`（lwIP 路径）。
+ * 返回：0 成功；负值见 Network.c CommandDns 文案
+ */
 int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
     err_t Err;
     int Tries;

@@ -1,8 +1,11 @@
 /*
- * ProcessFork.c — K50：fork 克隆页表；asm 跳进子、exit 跳回父
+ * ProcessFork.c — fork/wait/exit  syscall 协作（K50）
  *
- * gUserDone：3=进子（rax=0）；2=回父（rax=pid）；1=结束 HalSyscallRun
- * 用户恢复点用 gForkUser*；勿覆盖 gSyscallRet*（否则父 exit 会跳回用户死循环）
+ * 【初学者】
+ * - 分层：Core/Console；页表克隆 VirtualMemorySpaceClone
+ * - 对外入口：ProcessForkAttach/Detach、ProcessForkSyscall、ProcessWaitSyscall、ProcessExitSyscall
+ * - gUserDone：3=进子；2=回父；与 HalSyscall.S 约定
+ * - 不做：多子进程、waitpid 全语义
  */
 #include "ProcessFork.h"
 #include "VirtualMemory.h"
@@ -28,6 +31,12 @@ static int gChildExitCode;
 static int gCurrentIsChild;
 static int gForkLive;
 
+/*
+ * ProcessForkAttach — exec 前绑定可 fork 的用户 Space
+ *
+ * 谁调用：ProcessExecPath（切 CR3 前）。
+ * 返回：void
+ */
 void ProcessForkAttach(VIRTUAL_ADDRESS_SPACE *Space) {
     gParentSpace = Space;
     gChildSpace = 0;
@@ -41,6 +50,12 @@ void ProcessForkAttach(VIRTUAL_ADDRESS_SPACE *Space) {
     gForkChildCr3 = 0;
 }
 
+/*
+ * ProcessForkDetach — exec 结束销毁子 Space、清 fork 状态
+ *
+ * 谁调用：ProcessExecPath（恢复内核 CR3 后）。
+ * 返回：void
+ */
 void ProcessForkDetach(void) {
     if (gChildSpace != 0) {
         VirtualMemorySpaceDestroy(gChildSpace);
@@ -53,6 +68,12 @@ void ProcessForkDetach(void) {
     gCurrentIsChild = 0;
 }
 
+/*
+ * ProcessForkSyscall — 用户 fork：克隆页表并安排父子各返回一次
+ *
+ * 谁调用：HalSyscallDispatch（fork 号）。
+ * 返回：1 表示已改写 gUserDone/寄存器；0 拒绝
+ */
 int ProcessForkSyscall(UINT64 *Regs) {
     if (!gForkLive || !gHasParent || gParentSpace == 0 || Regs == 0) {
         if (Regs != 0) {
@@ -83,6 +104,12 @@ int ProcessForkSyscall(UINT64 *Regs) {
     return 1;
 }
 
+/*
+ * ProcessWaitSyscall — 等子 exit 码（单槽）
+ *
+ * 谁调用：HalSyscallDispatch（wait 号）。
+ * 返回：1 已写 Regs[0]；子未退出时 Regs[0]=~0
+ */
 int ProcessWaitSyscall(UINT64 *Regs) {
     if (!gForkLive || Regs == 0) {
         if (Regs != 0) {
@@ -98,6 +125,12 @@ int ProcessWaitSyscall(UINT64 *Regs) {
     return 1;
 }
 
+/*
+ * ProcessExitSyscall — 子进程 exit：切回父 CR3，父 wait 可见退出码
+ *
+ * 谁调用：HalSyscallDispatch（exit 号，子进程上下文）。
+ * 返回：1 子 exit 已拦截；0 普通 shell exit
+ */
 int ProcessExitSyscall(UINT64 *Regs) {
     UINT64 Code;
 

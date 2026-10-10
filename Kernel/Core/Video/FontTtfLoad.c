@@ -2,7 +2,9 @@
  * FontTtfLoad.c — K27：读根目录 CJK.TTF，校验 sfnt
  *
  * 【初学者】
- * 字体放 RootFs，不链进 Kernel.elf。缺文件/坏魔数 → 打日志返回，桌面仍用点阵。
+ * - Core/Video：PMM 驻留 sfnt  blob；栅格见 FontTtfRaster.c。
+ * - 入口：FontTtfLoad、FontTtfBlob。
+ * - 边界：字体在 RootFs，不链进 Kernel.elf；失败时仍用 Terminus/CJK 点阵。
  */
 #include "FontTtf.h"
 #include "FatFile.h"
@@ -37,6 +39,13 @@ static void TtfFree(void) {
     gOk = 0;
 }
 
+/*
+ * FontTtfBlob — 已加载 TTF 字节视图
+ *
+ * 做什么：成功加载后返回 gBlob 与 gSize；否则 NULL。
+ * 谁调用：FontTtfInit（FontTtfRaster.c）。
+ * 返回：只读指针；OutSize 可选。
+ */
 const UINT8 *FontTtfBlob(UINT32 *OutSize) {
     if (OutSize) {
         *OutSize = gSize;
@@ -44,6 +53,14 @@ const UINT8 *FontTtfBlob(UINT32 *OutSize) {
     return gOk ? gBlob : 0;
 }
 
+/*
+ * FontTtfLoad — Fat 读 CJK.TTF 进 PMM
+ *
+ * 做什么：AllocatePages、FatFileReadPath、校验 sfnt 魔数。
+ * 谁调用：FontInitialize（X64）。
+ * 前后文：后 — FontTtfInit → FontTtfCacheGet。
+ * 返回：0 成功；-1 缺失/OOM/非 sfnt。
+ */
 int FontTtfLoad(void) {
     UINT32 Size = 0;
     int N;

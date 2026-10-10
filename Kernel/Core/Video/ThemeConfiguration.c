@@ -2,8 +2,9 @@
  * ThemeConfiguration.c — K37：THEME.CFG 读色/mode、写回 FAT
  *
  * 【初学者】
- * 键值行：desktop= / title= / taskbar=（6 位 hex）；mode=WxH|auto。
- * 颜色立即进内存色板；mode 给下次 Boot（VideoTheme）选 GOP，本刀不热切。
+ * - Core/Video：持久化 Theme.c 色板与 GOP 偏好（mode=）。
+ * - 入口：ThemeLoadConfiguration、ThemeSaveConfiguration、ThemeGetMode、ThemeSetMode。
+ * - 边界：键值 desktop/title/taskbar/theme/mode；不热切 GOP（Boot VideoTheme 读 mode）。
  */
 #include "Theme.h"
 #include "FatFile.h"
@@ -112,6 +113,13 @@ static int ParseMode(const char *S, UINT32 *W, UINT32 *H) {
     return 1;
 }
 
+/*
+ * ApplyLine — 解析一行 THEME.CFG
+ *
+ * 做什么：识别 desktop/title/taskbar/mode/theme= 并调 ThemeSet* / ThemeApplyNamed。
+ * 谁调用：仅 ThemeLoadConfiguration 行循环。
+ * 前后文：兄弟 — ParseHexColor、ParseMode、KeyEq。
+ */
 static void ApplyLine(const char *Line) {
     const char *Val = 0;
     UINT32 C;
@@ -177,6 +185,14 @@ static UINTN Append(char *Buf, UINTN Cap, UINTN Pos, const char *S) {
     return Pos;
 }
 
+/*
+ * ThemeGetMode — 读持久化 GOP 偏好
+ *
+ * 做什么：输出 gModeW/gModeH；0,0 表示 auto。
+ * 谁调用：Shell `theme mode`、ThemeSaveConfiguration。
+ * 前后文：前 — ThemeSetMode 或 cfg 加载；后 — Boot 侧 VideoTheme（非本文件）。
+ * 返回：void（指针可 NULL 侧写忽略）。
+ */
 void ThemeGetMode(UINT32 *W, UINT32 *H) {
     if (W != 0) {
         *W = gModeW;
@@ -186,6 +202,13 @@ void ThemeGetMode(UINT32 *W, UINT32 *H) {
     }
 }
 
+/*
+ * ThemeSetMode — 写 GOP 偏好（内存，落盘靠 Save）
+ *
+ * 做什么：W×H≥640×480 或 auto(0,0)；非法尺寸忽略。
+ * 谁调用：Shell `theme mode`（ShellCommand/Theme.c）。
+ * 前后文：后 — ThemeSaveConfiguration 写 mode= 行。
+ */
 void ThemeSetMode(UINT32 W, UINT32 H) {
     if (W == 0 || H == 0) {
         gModeW = 0;
@@ -199,6 +222,14 @@ void ThemeSetMode(UINT32 W, UINT32 H) {
     gModeH = H;
 }
 
+/*
+ * ThemeLoadConfiguration — 从 FAT 读 THEME.CFG
+ *
+ * 做什么：FatFileReadPath → 逐行 ApplyLine；无 FS/无文件仍返回 -1 但 ThemeInitialize 已跑。
+ * 谁调用：GuiInitialize（K37，失败则用出厂色）。
+ * 前后文：前 — FileSystemHasOsMarker；兄弟 — LayoutConfiguration 读 LAYOUT.CFG。
+ * 返回：0 成功；-1 跳过或缺失。
+ */
 int ThemeLoadConfiguration(void) {
     char Buf[CFG_MAX];
     UINT32 Size = 0;
@@ -237,6 +268,14 @@ int ThemeLoadConfiguration(void) {
     return 0;
 }
 
+/*
+ * ThemeSaveConfiguration — 把当前色板/mode 写 THEME.CFG
+ *
+ * 做什么：拼文本行 FatFileWritePath；含 theme/desktop/title/taskbar/mode。
+ * 谁调用：Settings 改色后、Shell `theme mode`。
+ * 前后文：前 — ThemeSet* / ThemeApplyNamed；后 — 下次 ThemeLoadConfiguration。
+ * 返回：0 成功；-1 无 FS 或写失败。
+ */
 int ThemeSaveConfiguration(void) {
     char Buf[CFG_MAX];
     char Hex[8];

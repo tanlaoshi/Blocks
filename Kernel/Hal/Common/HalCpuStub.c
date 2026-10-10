@@ -1,7 +1,9 @@
 /*
- * HalCpuStub.c — Arm/RiscV：Cpu 模块成功桩（K7）
+ * HalCpuStub.c — 非 X64：最小 CPU 壳
  *
- * X64 链 Hal/X64/HalCpu.c；本文件只保证三架构可编、模块表能过。
+ * 【初学者】
+ * - Hal 占位；CpuInitialize 仍成功，GDT/IDT 在 X64 真实现。
+ * - 真实现：Hal/X64/HalCpu.c。
  */
 #include "HalCpu.h"
 

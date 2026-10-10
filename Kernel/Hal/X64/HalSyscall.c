@@ -1,9 +1,10 @@
 /*
  * HalSyscall.c — int 0x80（K19 write/exit；K43 socket/connect/read/close）
  *
- * 本刀用户 ELF 仍在 ring0 经 call 进入；真 ring3 后刀。
- * 号：1 write · 2 exit · 3 read · 4 close · 5 socket · 6 connect · 7 fork · 8 wait · 9 open
- * 帧：Regs[0]=rax … [3]=rdx [4]=rsi [5]=rdi
+ * 【初学者】
+ * - Hal/X64：用户 ELF 仍 ring0；ProcessFork 装向量 0x80。
+ * - 入口：HalSyscallInitialize；ISR HalSyscallIsr。
+ * - 边界：号表见文件内 SYS_*；不改 ABI 数字。
  */
 #include "HalSyscall.h"
 #include "HalCpu.h"
@@ -232,7 +233,7 @@ void HalSyscallDispatch(UINT64 *Regs) {
     Regs[0] = ~((UINT64)0);
 }
 
-int HalSyscallInit(void) {
+int HalSyscallInitialize(void) {
     gUserDone = 0;
     HalCpuIdtSet(SYSCALL_VEC, (void *)HalSyscallIsr);
     return 0;

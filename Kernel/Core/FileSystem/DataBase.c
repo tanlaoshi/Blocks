@@ -2,8 +2,9 @@
  * DataBase.c — BLOCKS.DB 文本 KV（K46）
  *
  * 【初学者】
- * 内存表 + 整文件重写；格式 key=value（对标现网 DB1 文本形）。
- * 产品名 BLOCKS.DB（不用 TOYOS）。不依赖 Gui/Theme。
+ * - 分层：Core/FileSystem；落盘经 FatFileWritePath
+ * - 对外：DataBaseInitialize / DataBaseGet / DataBaseSet
+ * - 边界：内存表 + 整文件重写 key=value；不依赖 Gui/Theme
  */
 #include "DataBase.h"
 #include "FatFile.h"
@@ -80,7 +81,7 @@ static int FindSlot(const char *Key) {
     return -1;
 }
 
-static int AllocSlot(void) {
+static int AllocateSlot(void) {
     int i;
     for (i = 0; i < DATA_BASE_MAX_RECORDS; i++) {
         if (!gRecords[i].Used) {
@@ -101,7 +102,10 @@ static void ClearAll(void) {
 
 /*
  * ApplyLine — 解析一行 key=value 填入表
- * 谁调用：DataBaseLoad 扫缓冲。
+ *
+ * 做什么：跳过空白与 # 注释；拆 Key/Value 写入 gRecords。
+ * 谁调用：仅 DataBaseLoad。
+ * 返回：void
  */
 static void ApplyLine(const char *Line) {
     char Key[DATA_BASE_KEY_MAX];
@@ -143,7 +147,7 @@ static void ApplyLine(const char *Line) {
     }
     Slot = FindSlot(Key);
     if (Slot < 0) {
-        Slot = AllocSlot();
+        Slot = AllocateSlot();
     }
     if (Slot < 0) {
         return;
@@ -155,8 +159,11 @@ static void ApplyLine(const char *Line) {
 
 /*
  * DataBaseLoad — 从 BLOCKS.DB 装填内存表
- * 谁调用：DataBaseInitialize。无文件则空表仍 OK。
- * 前后文：后 — gReady=1；兄弟 FatFileReadPath
+ *
+ * 做什么：FatFileReadPath 读文件；按行 ApplyLine。
+ * 谁调用：仅 DataBaseInitialize。
+ * 前后文：兄弟 — FatFileReadPath；后 — gReady。
+ * 返回：DATA_BASE_OK / DATA_BASE_NOENT
  */
 static int DataBaseLoad(void) {
     static char Buffer[4096];
@@ -191,7 +198,10 @@ static int DataBaseLoad(void) {
 
 /*
  * DataBaseSave — 整表重写 BLOCKS.DB
- * 谁调用：DataBaseSet 成功路径。
+ *
+ * 做什么：序列化 gRecords；FatDeleteFile 再 FatFileWritePath（vvfat Size 对策）。
+ * 谁调用：DataBaseSet。
+ * 返回：DATA_BASE_OK / DATA_BASE_ERR
  */
 static int DataBaseSave(void) {
     static char Buffer[4096];
@@ -235,19 +245,26 @@ static int DataBaseSave(void) {
      * 读侧按 Size 截断 → cat 只见首行；dbget 走内存仍正常。
      * 对策：先 rm 再 create，强制新目录项带正确 Size。
      */
-    (void)FatRmPath(DATA_BASE_PATH);
+    (void)FatDeleteFile(DATA_BASE_PATH);
     if (FatFileWritePath(DATA_BASE_PATH, Buffer, N) != 0) {
         return DATA_BASE_ERR;
     }
     return DATA_BASE_OK;
 }
 
+/*
+ * DataBaseInitialize — 启动时装 BLOCKS.DB（可空）
+ *
+ * 做什么：DataBaseLoad；置 gReady；打串口一行状态。
+ * 谁调用：FileSystemInitialize；Store/DataBaseGet 懒加载。
+ * 返回：0
+ */
 int DataBaseInitialize(void) {
-    int Rc;
+    int LoadResult;
 
-    Rc = DataBaseLoad();
+    LoadResult = DataBaseLoad();
     gReady = 1;
-    if (Rc == DATA_BASE_OK) {
+    if (LoadResult == DATA_BASE_OK) {
         HalSerialWriteChannel(SLOG_FS, "DataBase: BLOCKS.DB loaded\n");
     } else {
         HalSerialWriteChannel(SLOG_FS, "DataBase: empty (no BLOCKS.DB yet)\n");
@@ -255,6 +272,13 @@ int DataBaseInitialize(void) {
     return 0;
 }
 
+/*
+ * DataBaseGet — 按键读 value
+ *
+ * 做什么：查内存表；Out 以 NUL 结尾。
+ * 谁调用：Shell `dbget`；Theme/Settings 读配置。
+ * 返回：DATA_BASE_OK / NOENT / INVAL
+ */
 int DataBaseGet(const char *Key, char *Out, UINTN OutMax) {
     int Slot;
 
@@ -272,6 +296,14 @@ int DataBaseGet(const char *Key, char *Out, UINTN OutMax) {
     return DATA_BASE_OK;
 }
 
+/*
+ * DataBaseSet — 写键值并整文件落盘
+ *
+ * 做什么：更新表；空 Value 删键；DataBaseSave（先删后写文件）。
+ * 谁调用：Shell `dbset`；Store MarkInstalled；Theme 保存。
+ * 前后文：后 — FatDeleteFile + FatFileWritePath。
+ * 返回：DATA_BASE_* 
+ */
 int DataBaseSet(const char *Key, const char *Value) {
     int Slot;
 
@@ -293,7 +325,7 @@ int DataBaseSet(const char *Key, const char *Value) {
     }
     Slot = FindSlot(Key);
     if (Slot < 0) {
-        Slot = AllocSlot();
+        Slot = AllocateSlot();
     }
     if (Slot < 0) {
         return DATA_BASE_FULL;

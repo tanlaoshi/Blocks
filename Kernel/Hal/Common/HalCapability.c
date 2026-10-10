@@ -1,8 +1,10 @@
 /*
  * HalCapability.c — 能力旗标与 CPU 停车（Hal/Common）
  *
- * 不 include BootInfo、不调用 BootInfoGet。
- * 有无帧缓冲由 KernelMain 经 HalCapabilityObserveFrameBuffer 注入。
+ * 【初学者】
+ * - Hal 层：KernelMain 注入有无帧缓冲；ConsoleOnly 等策略旗。
+ * - 入口：HalCapabilityObserveFrameBuffer / HalHasFrameBuffer / HalCpuPark。
+ * - 边界：不 include BootInfo.c；只收 FrameBufferSize 数值。
  */
 #include "HalCapability.h"
 

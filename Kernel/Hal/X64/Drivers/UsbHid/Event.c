@@ -1,5 +1,8 @@
 /*
- * Event.c — 事件环消化（命令完成 / EP0 / 中断 IN）
+ * Event.c — xHCI 事件环处理（传输完成、命令完成）
+ *
+ * 【初学者】
+ * - UsbHid 子模块：EventRingPoll；更新 gCommandDone / gTransferDone。
  */
 #include "Internal.h"
 

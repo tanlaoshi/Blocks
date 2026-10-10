@@ -2,8 +2,9 @@
  * VirtualMemorySpace.c — K49：用户页表空间（独立 PML4 + 按需克隆中间表）
  *
  * 【初学者】
- * Create：新 PML4，拷贝内核项（先共享下层）。MapPage 时若踩到共享表则克隆。
- * LoadPageTable：写 CR3。Destroy：只释放本空间跟踪的页。
+ * - Core/VirtualMemory：Process/ELF 用户态页表；内核根见 VirtualMemoryKernelRoot。
+ * - 入口：VirtualMemorySpaceCreate/Destroy/MapPage/MapRange/Clone、VirtualMemoryLoadPageTable。
+ * - 边界：仅 X64 实现；非 x64 为桩。不替代 VirtualMemory.c 的 MMIO Map。
  */
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
@@ -81,7 +82,13 @@ static void *SpaceAllocPage(VIRTUAL_ADDRESS_SPACE *Space) {
     return Page;
 }
 
-/* 槽空则新建；已是本空间表则用；共享内核表则克隆 */
+/*
+ * EnsurePrivateTable — Map 前保证页表槽属本 Space
+ *
+ * 做什么：空槽分配页表；已属 Space 则 OK；共享内核表则克隆一页。
+ * 谁调用：仅 VirtualMemorySpaceMapPage。
+ * 返回：0 成功；-1 OOM 或大页槽。
+ */
 static int EnsurePrivateTable(VIRTUAL_ADDRESS_SPACE *Space, UINT64 *Slot) {
     void *Page;
     void *Clone;
@@ -110,6 +117,13 @@ static int EnsurePrivateTable(VIRTUAL_ADDRESS_SPACE *Space, UINT64 *Slot) {
     return 0;
 }
 
+/*
+ * VirtualMemoryKernelRoot — 当前内核 PML4 物理址
+ *
+ * 做什么：EarlyIdentityRoot 或读 CR3，掩 PTE_ADDR。
+ * 谁调用：VirtualMemorySpaceCreate（拷贝内核项）、ProcessExecPath（恢复 CR3）。
+ * 返回：0 表示不可用。
+ */
 UINT64 VirtualMemoryKernelRoot(void) {
     UINT64 Root = EarlyIdentityRoot();
     if (Root == 0) {
@@ -118,6 +132,12 @@ UINT64 VirtualMemoryKernelRoot(void) {
     return Root & PTE_ADDR;
 }
 
+/*
+ * VirtualMemoryLoadPageTable — 切换 CR3
+ *
+ * 做什么：mov Root→cr3；Root=0 忽略。
+ * 谁调用：ProcessExecPath（进用户态/回内核）、ProcessFork 保存 parent CR3 上下文。
+ */
 void VirtualMemoryLoadPageTable(UINT64 Root) {
     if (Root == 0) {
         return;
@@ -125,6 +145,14 @@ void VirtualMemoryLoadPageTable(UINT64 Root) {
     WriteCr3(Root & PTE_ADDR);
 }
 
+/*
+ * VirtualMemorySpaceCreate — 新用户地址空间
+ *
+ * 做什么：分配 VIRTUAL_ADDRESS_SPACE + 用户 PML4，512 项拷贝内核 PML4。
+ * 谁调用：ProcessExecPath、VirtualMemorySpaceClone。
+ * 前后文：后 — ElfLoader MapRange、VirtualMemoryLoadPageTable。
+ * 返回：Space 指针；失败 NULL（已释放部分页）。
+ */
 VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceCreate(void) {
     VIRTUAL_ADDRESS_SPACE *Space;
     UINT64 *KernelPml4;
@@ -163,6 +191,11 @@ VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceCreate(void) {
     return Space;
 }
 
+/*
+ * VirtualMemorySpaceDestroy — 释放空间跟踪的全部页与用户数据页
+ *
+ * 谁调用：ProcessExecPath 失败清理、ProcessFork 丢弃子空间、Clone 失败路径。
+ */
 void VirtualMemorySpaceDestroy(VIRTUAL_ADDRESS_SPACE *Space) {
     int i;
     if (Space == 0) {
@@ -182,10 +215,23 @@ void VirtualMemorySpaceDestroy(VIRTUAL_ADDRESS_SPACE *Space) {
     }
 }
 
+/*
+ * VirtualMemorySpaceRoot — 用户 PML4 物理址（写 CR3 用）
+ *
+ * 谁调用：ProcessExecPath、ProcessFork、ElfLoader 注释链。
+ */
 UINT64 VirtualMemorySpaceRoot(const VIRTUAL_ADDRESS_SPACE *Space) {
     return Space != 0 ? Space->Root : 0;
 }
 
+/*
+ * VirtualMemorySpaceMapPage — 4KiB 映射（按需私有中间表）
+ *
+ * 做什么：Walk PML4→PT；共享内核表则 EnsurePrivateTable 克隆；可拆 2MiB 大页。
+ * 谁调用：VirtualMemorySpaceMapRange、VirtualMemorySpaceClone、ElfLoader。
+ * 前后文：前 — PhysicalMemoryAllocatePage 供用户数据；Flags 含 PTE_U 时登记 UserVirt/Phys。
+ * 返回：0 成功；-1 参数/OOM/大页冲突。
+ */
 int VirtualMemorySpaceMapPage(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
                               UINT64 Phys, UINT64 Flags) {
     UINT64 *Pml4;
@@ -264,6 +310,12 @@ int VirtualMemorySpaceMapPage(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
     return 0;
 }
 
+/*
+ * VirtualMemorySpaceMapRange — 按页步进 MapPage
+ *
+ * 谁调用：ElfLoader 映射 PT_LOAD 与用户栈。
+ * 返回：0 成功；-1 任一页失败。
+ */
 int VirtualMemorySpaceMapRange(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
                                UINT64 Phys, UINTN Bytes, UINT64 Flags) {
     UINT64 V = Virt;
@@ -287,6 +339,13 @@ int VirtualMemorySpaceMapRange(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
     return 0;
 }
 
+/*
+ * VirtualMemorySpaceClone — fork：新空间 + 拷贝已登记用户页内容
+ *
+ * 做什么：Create 后逐 UserVirt 分配页、memcpy、MapPage。
+ * 谁调用：ProcessFork（ProcessFork.c）。
+ * 返回：新 Space；失败 NULL 并 Destroy 部分结果。
+ */
 VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceClone(VIRTUAL_ADDRESS_SPACE *Src) {
     VIRTUAL_ADDRESS_SPACE *Dst;
     int i;
@@ -318,6 +377,8 @@ VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceClone(VIRTUAL_ADDRESS_SPACE *Src) {
 }
 
 #else /* !x64 */
+
+/* 下列 API 在非 X64 为桩：用户 ELF 页表本刀未启用。 */
 
 UINT64 VirtualMemoryKernelRoot(void) {
     return 0;

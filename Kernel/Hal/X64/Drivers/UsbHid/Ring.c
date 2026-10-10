@@ -1,5 +1,8 @@
 /*
- * Ring.c — TRB 环 / DCBAA / 门铃
+ * Ring.c — Command / Event 环生产消费
+ *
+ * 【初学者】
+ * - UsbHid 子模块：Enqueue TRB、处理 Event Ring 回调。
  */
 #include "Internal.h"
 

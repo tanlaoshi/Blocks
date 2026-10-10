@@ -1,7 +1,10 @@
 /*
- * ElfLoader.c — K19：静态 ET_EXEC 最小装载；K49：装进用户 AddressSpace
+ * ElfLoader.c — 静态 ET_EXEC 最小装载（恒等窗 / 用户 AddressSpace）
  *
- * 校验 ELF64 → 拷 PT_LOAD；恒等窗路径写 p_vaddr；Space 路径用私有页+Map。
+ * 【初学者】
+ * - 分层：Core/Console；仅 x86_64 ET_EXEC + PT_LOAD
+ * - 对外入口：ElfLoaderFromMemory、ElfLoaderFromMemoryToSpace
+ * - 不做：动态链接、PIE、完整 phdr 校验
  */
 #include "ElfLoader.h"
 #include "PhysicalMemory.h"
@@ -76,6 +79,13 @@ static int CheckHeader(const Elf64_Ehdr *Eh, UINTN Size) {
     return 0;
 }
 
+/*
+ * ElfLoaderFromMemory — 恒等映射装载（p_vaddr 即内核可写地址）
+ *
+ * 谁调用：ProcessExecPath（无独立页表回落路径）。
+ * 前后文：后 — HalSyscallRun(Out->Entry, Out->StackTop)
+ * 返回：0 成功；非 0 头/段非法或 OOM
+ */
 int ElfLoaderFromMemory(const void *Image, UINTN Size, ELF_IMAGE *Out) {
     const UINT8 *Base = (const UINT8 *)Image;
     const Elf64_Ehdr *Eh;
@@ -122,6 +132,13 @@ int ElfLoaderFromMemory(const void *Image, UINTN Size, ELF_IMAGE *Out) {
     return 0;
 }
 
+/*
+ * ElfLoaderFromMemoryToSpace — PT_LOAD 映射进用户 VirtualAddressSpace
+ *
+ * 谁调用：ProcessExecPath（X64 Space 成功时）。
+ * 前后文：前 — VirtualMemorySpaceCreate；后 — VirtualMemoryLoadPageTable
+ * 返回：0 成功；非 0 校验/Map 失败
+ */
 int ElfLoaderFromMemoryToSpace(const void *Image, UINTN Size,
                                VIRTUAL_ADDRESS_SPACE *Space, ELF_IMAGE *Out) {
     const UINT8 *Base = (const UINT8 *)Image;

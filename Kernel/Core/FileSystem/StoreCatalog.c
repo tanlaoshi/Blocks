@@ -1,5 +1,10 @@
 /*
- * StoreCatalog.c — K47：解析 / 加载 STORE.CAT
+ * StoreCatalog.c — 解析 / 加载 STORE.CAT
+ *
+ * 【初学者】
+ * - 分层：Core/FileSystem
+ * - 对外：StoreLoadCatalog / StoreHostArch
+ * - 无 STORE.CAT 时用内建 demo 一行
  */
 #include "Store.h"
 #include "FatFile.h"
@@ -40,6 +45,13 @@ static void TokenCopy(char *Destination, int Capacity, const char *Start, const 
     }
 }
 
+/*
+ * StoreHostArch — 本机架构字符串（catalog Arch 字段匹配）
+ *
+ * 做什么：编译期选 x86_64 / arm64 / riscv64 / any。
+ * 谁调用：StoreInstall。
+ * 返回：静态字符串
+ */
 const char *StoreHostArch(void) {
 #if defined(__x86_64__) || defined(_M_X64)
     return "x86_64";
@@ -52,13 +64,13 @@ const char *StoreHostArch(void) {
 #endif
 }
 
-static int ParseLine(STORE_ENTRY *E, const char *Line) {
+static int ParseLine(STORE_ENTRY *Entry, const char *Line) {
     const char *P;
     const char *Starts[8];
     const char *Fields[8];
     int N = 0;
     char Ver[16];
-    UINT32 V = 0;
+    UINT32 VersionNumber = 0;
     const char *S;
 
     while (*Line == ' ' || *Line == '\t') {
@@ -83,23 +95,23 @@ static int ParseLine(STORE_ENTRY *E, const char *Line) {
         return -1;
     }
     Fields[6] = P;
-    TokenCopy(E->Id, STORE_ID_MAX, Starts[0], Fields[0]);
-    TokenCopy(E->Type, (int)sizeof(E->Type), Starts[1], Fields[1]);
+    TokenCopy(Entry->Id, STORE_ID_MAX, Starts[0], Fields[0]);
+    TokenCopy(Entry->Type, (int)sizeof(Entry->Type), Starts[1], Fields[1]);
     TokenCopy(Ver, (int)sizeof(Ver), Starts[2], Fields[2]);
     S = Ver;
     while (*S >= '0' && *S <= '9') {
-        V = V * 10u + (UINT32)(*S - '0');
+        VersionNumber = VersionNumber * 10u + (UINT32)(*S - '0');
         S++;
     }
-    E->Version = V;
-    TokenCopy(E->File, STORE_FILE_MAX, Starts[3], Fields[3]);
-    TokenCopy(E->Arch, STORE_ARCH_MAX, Starts[5], Fields[5]);
-    TokenCopy(E->Title, STORE_TITLE_MAX, Starts[6], Fields[6]);
-    if (E->Id[0] == 0 || E->File[0] == 0) {
+    Entry->Version = VersionNumber;
+    TokenCopy(Entry->File, STORE_FILE_MAX, Starts[3], Fields[3]);
+    TokenCopy(Entry->Arch, STORE_ARCH_MAX, Starts[5], Fields[5]);
+    TokenCopy(Entry->Title, STORE_TITLE_MAX, Starts[6], Fields[6]);
+    if (Entry->Id[0] == 0 || Entry->File[0] == 0) {
         return -1;
     }
-    if (E->Type[0] == 0) {
-        StringCopy(E->Type, (int)sizeof(E->Type), "app");
+    if (Entry->Type[0] == 0) {
+        StringCopy(Entry->Type, (int)sizeof(Entry->Type), "app");
     }
     return 0;
 }
@@ -143,6 +155,13 @@ static int LoadBuiltin(STORE_ENTRY *Out, int Max, int *OutCount) {
     return LoadFromBuffer(Builtin, sizeof(Builtin) - 1, Out, Max, OutCount);
 }
 
+/*
+ * StoreLoadCatalog — 读 STORE.CAT 或回退内建清单
+ *
+ * 做什么：FatFileReadPath → ParseLine；失败用 Builtin。
+ * 谁调用：StoreInstall；Shell `store list`。
+ * 返回：STORE_OK / STORE_INVAL / STORE_NOSPC
+ */
 int StoreLoadCatalog(STORE_ENTRY *Out, int Max, int *OutCount) {
     UINT8 *Buffer;
     UINT32 Pages;

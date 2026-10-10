@@ -1,24 +1,10 @@
 /*
  * KernelHandoff.c — X64：把 UEFI 交接块翻译成 BOOT_INFO
  *
- * 【初学者 · 本文件在流水线中的位置】
- *   KernelEntry.S（已换好早期栈）
- *     → KernelHandoff(UEFI_BOOT_CONFIG*)
- *         1) 拷贝交接块到内核 BSS（不要继续用 UEFI 栈上的指针）
- *         2) BootInfoFromUefi：内存图 / 帧缓冲 / 保留区 → BOOT_INFO
- *         3) HalSerialInitialize + 打一行 handoff 日志
- *         4) KernelMain(&Info)  —— 之后三架构合流
- *
- * 【什么是 UEFI_BOOT_CONFIG？】
- * Boot 在退出 Boot Services 前打包的结构（权威布局在 Boot/BootPkg）。
- * 里面有 GOP 帧缓冲、GetMemoryMap 结果、可选 xHCI/RSDP 等。
- * Common 内核不直接 include UEFI 头，所以要在这里「翻译」。
- *
- * 【内存图在干什么？】
- * EFI 描述符类型很多。我们只把 ConventionalMemory 标成 Free=1 给以后 PMM；
- * 内核映像、帧缓冲、交接块本身标成保留。Runtime 页记下来供以后映射。
- *
- * 入口栈已由汇编设好；这里是普通 C，不要再改 rsp。
+ * 【初学者】
+ * - Hal/X64：KernelEntry 之后第一棒 C；译 UEFI_BOOT_CONFIG → BOOT_INFO。
+ * - 入口：KernelHandoff；然后 KernelMain(&Info)。
+ * - 边界：不 include UEFI 头；内存类型数字本地定义。
  */
 #include "BootConfig.h"
 #include "BootInfoTypes.h"

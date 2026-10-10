@@ -1,6 +1,13 @@
+/*
+ * HalNetStub.c — 非 X64：无 virtio-net
+ *
+ * 【初学者】
+ * - Hal 占位；NetworkInitialize 探测 PCI 但 HalNetReady==0。
+ * - 真实现：Hal/X64/HalVirtioNet.c。
+ */
 #include "HalNet.h"
 
-int HalNetInit(void) {
+int HalNetInitialize(void) {
     return -1;
 }
 

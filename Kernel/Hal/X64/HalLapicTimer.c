@@ -75,7 +75,7 @@ void HalTimerIrq(void) {
     TimerArm();
 }
 
-int HalTimerInit(void) {
+int HalTimerInitialize(void) {
     UINT64 Msr;
     UINT64 Base;
     UINT64 Start;

@@ -1,5 +1,8 @@
 /*
- * Setup.c — 配置描述符解析 + SetConfig + 中断 EP
+ * Setup.c — xHCI SET_ADDRESS / SET_CONFIGURATION 等控制传输
+ *
+ * 【初学者】
+ * - UsbHid 子模块：枚举阶段 Configure 设备；配合 Command/Transfer 环。
  */
 #include "Internal.h"
 

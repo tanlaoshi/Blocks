@@ -1,7 +1,10 @@
 /*
- * FileSystem.c — ls/vols/cat/write/mkdir/rm/mv
+ * FileSystem.c — Shell 侧 FAT 根目录命令（ls/vols/cat/write/mkdir/rm/mv）
  *
- * 对标现网 CodeD-Services/ShellCommands/ShellCommandsFs*.c：按子系统分文件注册。
+ * 【初学者】
+ * - 分层：Core/Console/ShellCommand；薄包装，逻辑在 FileSystem/Fat* 与 Volume
+ * - 对外入口：FileSystemRegister（挂命令表）
+ * - 不做：子目录 ls、跨卷 mv（Fat* 层同样限制）
  */
 #include "ShellCommand.h"
 #include "FatFile.h"
@@ -142,24 +145,24 @@ static void CommandWrite(int Argc, char **Argv) {
     Put("write: ok\n");
 }
 
-static void CommandMkdir(int Argc, char **Argv) {
+static void CommandMakeDirectory(int Argc, char **Argv) {
     if (Argc < 2) {
         Put("mkdir: need name\n");
         return;
     }
-    if (FatMkdirPath(Argv[1]) != 0) {
+    if (FatMakeDirectory(Argv[1]) != 0) {
         Put("mkdir: fail\n");
         return;
     }
     Put("mkdir: ok\n");
 }
 
-static void CommandRm(int Argc, char **Argv) {
+static void CommandRemove(int Argc, char **Argv) {
     if (Argc < 2) {
         Put("rm: need name\n");
         return;
     }
-    if (FatRmPath(Argv[1]) != 0) {
+    if (FatDeleteFile(Argv[1]) != 0) {
         Put("rm: fail\n");
         return;
     }
@@ -179,12 +182,22 @@ static void CommandMv(int Argc, char **Argv) {
     Put("mv: ok\n");
 }
 
+/*
+ * FileSystemRegister — 注册 ls/vols/cat/write/mkdir/rm/mv
+ *
+ * 做什么：把本文件各 Command* 挂进全局 Shell 命令表。
+ * 谁调用：ShellCommandInitialize（Console 初始化链）。
+ * 前后文：
+ *   前 — ShellCommandRegister 表已清零
+ *   后 — ThemeRegister / NetworkRegister 等同批 Register
+ * 返回：void（失败仅当 ShellCommandRegister 满表，静默丢命令）
+ */
 void FileSystemRegister(void) {
     ShellCommandRegister("ls", "list root dir [VOL:]", CommandLs);
     ShellCommandRegister("vols", "list mounted volumes", CommandVols);
     ShellCommandRegister("cat", "print text file", CommandCat);
     ShellCommandRegister("write", "write text file", CommandWrite);
-    ShellCommandRegister("mkdir", "make directory", CommandMkdir);
-    ShellCommandRegister("rm", "remove file/dir", CommandRm);
+    ShellCommandRegister("mkdir", "make directory", CommandMakeDirectory);
+    ShellCommandRegister("rm", "remove file/dir", CommandRemove);
     ShellCommandRegister("mv", "rename file/dir", CommandMv);
 }

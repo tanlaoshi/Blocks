@@ -20,6 +20,6 @@ int StartHitMenu(INT32 X, INT32 Y);
 /* 切换菜单；返回 1=需要整桌刷新 */
 int StartToggle(void);
 /* 选中菜单项开窗并关菜单；1=已处理 */
-int StartActivate(int WinId);
+int StartActivate(int WindowId);
 
 #endif

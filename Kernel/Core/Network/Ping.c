@@ -68,6 +68,13 @@ static int MatchEchoReply(const UINT8 *Buf, int Len, UINT32 WantIp, UINT16 WantI
     return (Type == ICMP_ECHO_REP && Id == WantId && Seq == WantSeq) ? 1 : 0;
 }
 
+/*
+ * Ping — builtin ICMP echo（不经 lwIP）
+ *
+ * 做什么：NetworkSendIp(ICMP) + 轮询 HalNetReceive 等 Echo Reply。
+ * 谁调用：ShellCommand Network.c CommandPing（lwip off 时）。
+ * 返回：0 成功；负值见 Shell 错误文案
+ */
 int Ping(const char *Host, int TimeoutMs) {
     UINT32 Target;
     UINT8 Icmp[ICMP_HDR + PING_PAY];

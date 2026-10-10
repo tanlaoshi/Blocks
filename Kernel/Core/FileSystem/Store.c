@@ -108,6 +108,14 @@ static int MarkInstalled(const char *Id, const char *Type, const char *Destinati
     return STORE_OK;
 }
 
+/*
+ * StoreInstall — 按 catalog id 拷贝包文件到根目录 A* 名
+ *
+ * 做什么：LoadCatalog → 读 File → 写 Destination → DataBase si.<id>。
+ * 谁调用：StoreJobStep；将来同步 install 也可直调。
+ * 前后文：前 — StoreLoadCatalog；兄弟 — FatFileReadPath/WritePath。
+ * 返回：STORE_* 
+ */
 int StoreInstall(const char *Id) {
     STORE_ENTRY Tab[STORE_ENTRIES_MAX];
     int Count = 0;

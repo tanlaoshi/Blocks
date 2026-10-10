@@ -1,5 +1,9 @@
 /*
  * Internal.h — UsbHid 内部（K52 · QEMU 根口键鼠）
+ *
+ * 【初学者】
+ * - Hal/X64/Drivers/UsbHid：xHCI TRB/环/枚举共享声明；协议宏勿随意改名。
+ * - 对外：HalUsbHid.h；编排 UsbHid.c。
  */
 #ifndef USB_HID_INTERNAL_H
 #define USB_HID_INTERNAL_H

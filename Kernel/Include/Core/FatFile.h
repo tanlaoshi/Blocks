@@ -1,7 +1,10 @@
 /*
- * FatFile.h — FAT 根目录读写（K19/K23 读；K24 写；K37 THEME.CFG）
+ * FatFile.h — FAT 根目录读写（读 + 写/建/删/改名）
  *
- * 块设备须已 HalBlockInit。根目录 8.3（跳过 LFN）。
+ * 【初学者】
+ * - 分层：Core/FileSystem 对外头；实现分 FatFile/FatDirectory/FatWrite/…
+ * - 写路径：FatFileWritePath / FatMakeDirectory / FatDeleteFile / FatRenamePath
+ * - 块设备须已就绪；根目录 8.3（跳过 LFN）
  */
 #ifndef FAT_FILE_H
 #define FAT_FILE_H
@@ -23,15 +26,15 @@ int FatDirectoryListRoot(FAT_DIR_ENT *Out, UINT32 Cap, UINT32 *Count);
  * 按路径读根目录文件（如 "BLOCKS.ID" / "HELLO.ELF"）。
  * 成功返回字节数；失败 -1。
  */
-int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize);
+int FatFileReadPath(const char *Path, void *Buffer, UINT32 Capacity, UINT32 *OutSize);
 
 /* 直接 11 字节 8.3（如 "HELLO   ELF"） */
-int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize);
+int FatFileRead83(const char Name83[11], void *Buffer, UINT32 Capacity, UINT32 *OutSize);
 
 /* K24：写/建/删根路径；成功 0 */
-int FatFileWritePath(const char *Path, const void *Buf, UINT32 Len);
-int FatMkdirPath(const char *Path);
-int FatRmPath(const char *Path);
+int FatFileWritePath(const char *Path, const void *Buffer, UINT32 Length);
+int FatMakeDirectory(const char *Path);
+int FatDeleteFile(const char *Path);
 /* K45：同卷改名（根路径 / 可带 VOL:）；成功 0 */
 int FatRenamePath(const char *OldPath, const char *NewPath);
 

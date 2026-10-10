@@ -1,5 +1,11 @@
 /*
- * Desktop.c — K33 Shell 图标 · K34 Settings 图标（双击开/聚焦）
+ * Desktop.c — 桌面图标：绘制、命中、双击开窗/聚焦
+ *
+ * 【初学者】
+ * - 分层：Core/Gui；几何来自 LayoutIconSlot
+ * - 对外：DesktopSetFb / DesktopPollTick / DesktopPaintIcons /
+ *         DesktopHitIcon / DesktopClickIcon
+ * - 不做：窗客户区内容（Files/Settings/…）
  */
 #include "Desktop.h"
 #include "Font.h"
@@ -13,9 +19,9 @@
 #include "SerialConfig.h"
 #include "Utf8.h"
 
-#define DBL_TIMER_TICKS 50u
-#define DBL_SOFT_TICKS  400000u
-#define DBL_SLOP        12
+#define DOUBLE_CLICK_TIMER_TICKS 50u
+#define DOUBLE_CLICK_SOFT_TICKS  400000u
+#define DOUBLE_CLICK_SLOP_PIXELS 12
 
 static UINT32 gFbW;
 static UINT32 gFbH;
@@ -23,9 +29,14 @@ static UINT32 gSoftTick;
 static UINT32 gLastClickTick;
 static INT32 gLastClickX = -1000;
 static INT32 gLastClickY = -1000;
-static int gLastWin = -1;
+static int gLastWindowId = -1;
 static int gHaveLastClick;
 
+/*
+ * NowTick — 双击判定用时间基
+ *
+ * 谁调用：仅 DesktopClickIcon。优先硬件定时器，否则软计数。
+ */
 static UINT32 NowTick(void) {
     if (HalTimerReady()) {
         return (UINT32)HalTimerTicks();
@@ -33,35 +44,49 @@ static UINT32 NowTick(void) {
     return gSoftTick;
 }
 
-static void IconGeom(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+/*
+ * IconGeometry — 取第 Slot 个图标矩形
+ *
+ * 谁调用：PaintOneIcon / DesktopHitIcon。
+ */
+static void IconGeometry(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     LayoutIconSlot(Slot, X, Y, W, H);
 }
 
-/* 标签像素宽（与 FontDrawStringAt 步进一致） */
-static UINT32 LabelPx(const char *Text) {
-    UINT32 Tw = 0;
+/*
+ * LabelPixelWidth — 标签像素宽（与 FontDrawStringAt 步进一致）
+ *
+ * 谁调用：仅 PaintOneIcon（居中）。
+ */
+static UINT32 LabelPixelWidth(const char *Text) {
+    UINT32 Width = 0;
 
     if (Text == 0) {
         return 0;
     }
     while (*Text) {
-        UINT32 Cp;
-        UINTN N;
+        UINT32 CodePoint;
+        UINTN Advance;
 
         if (*Text == '\n') {
             break;
         }
-        N = Utf8Decode(Text, &Cp);
-        if (N == 0) {
+        Advance = Utf8Decode(Text, &CodePoint);
+        if (Advance == 0) {
             Text++;
             continue;
         }
-        Tw += (Cp < 0x80u) ? FontCellWidth() : FontCjkCell();
-        Text += N;
+        Width += (CodePoint < 0x80u) ? FontCellWidth() : FontCjkCell();
+        Text += Advance;
     }
-    return Tw;
+    return Width;
 }
 
+/*
+ * PaintOneIcon — 画单个图标色块 + 居中标签
+ *
+ * 谁调用：仅 DesktopPaintIcons。
+ */
 static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
     UINT32 X;
     UINT32 Y;
@@ -71,42 +96,56 @@ static void PaintOneIcon(int Slot, UINT32 Face, LOC_MSG LabelId) {
     UINT32 Pad = LayoutPx(12u);
     UINT32 Gap = LayoutPx(6u);
     const char *Lab;
-    UINT32 Tw;
-    UINT32 FaceL;
-    UINT32 Tx;
+    UINT32 TextWidth;
+    UINT32 FaceLeft;
+    UINT32 TextX;
 
-    IconGeom(Slot, &X, &Y, &W, &H);
+    IconGeometry(Slot, &X, &Y, &W, &H);
     HalVideoFillRect(X + Pad, Y, Tile, Tile, Face);
     HalVideoFillRect(X + Pad + 4u, Y + 4u, Tile - 8u, Tile - 8u,
                      ThemeWindowClient());
-    /* 相对色块水平居中（原先 X+8 偏左） */
     Lab = LocStr(LabelId);
-    Tw = LabelPx(Lab);
-    FaceL = X + Pad;
-    if (Tw <= Tile) {
-        Tx = FaceL + (Tile - Tw) / 2u;
-    } else if (Tw / 2u <= FaceL + Tile / 2u) {
-        Tx = FaceL + Tile / 2u - Tw / 2u;
+    TextWidth = LabelPixelWidth(Lab);
+    FaceLeft = X + Pad;
+    if (TextWidth <= Tile) {
+        TextX = FaceLeft + (Tile - TextWidth) / 2u;
+    } else if (TextWidth / 2u <= FaceLeft + Tile / 2u) {
+        TextX = FaceLeft + Tile / 2u - TextWidth / 2u;
     } else {
-        Tx = X;
+        TextX = X;
     }
-    FontDrawStringAt(Tx, Y + Tile + Gap, Lab, ThemeWindowTitleText());
+    FontDrawStringAt(TextX, Y + Tile + Gap, Lab, ThemeWindowTitleText());
     (void)W;
     (void)H;
 }
 
+/*
+ * DesktopSetFb — 记录分辨率并清双击状态
+ *
+ * 谁调用：GuiInitialize。
+ */
 void DesktopSetFb(UINT32 W, UINT32 H) {
     gFbW = W;
     gFbH = H;
     gSoftTick = 0;
     gHaveLastClick = 0;
-    gLastWin = -1;
+    gLastWindowId = -1;
 }
 
+/*
+ * DesktopPollTick — 无硬件定时器时推进软时钟
+ *
+ * 谁调用：GuiPoll 每帧。
+ */
 void DesktopPollTick(void) {
     gSoftTick++;
 }
 
+/*
+ * DesktopPaintIcons — 画 Shell/Settings/Files/Store 四图标
+ *
+ * 谁调用：Window 桌面绘制路径。
+ */
 void DesktopPaintIcons(void) {
     if (gFbW < 160u || gFbH < 80u) {
         return;
@@ -117,6 +156,12 @@ void DesktopPaintIcons(void) {
     PaintOneIcon(3, 0x00705030u, MSG_ICON_STORE);
 }
 
+/*
+ * DesktopHitIcon — 坐标落在哪个窗图标上
+ *
+ * 谁调用：GuiPoll 桌面空白点击前。
+ * 返回：GUI_WIN_* 或 -1
+ */
 int DesktopHitIcon(INT32 X, INT32 Y) {
     UINT32 Ix;
     UINT32 Iy;
@@ -128,7 +173,7 @@ int DesktopHitIcon(INT32 X, INT32 Y) {
     };
 
     for (Slot = 0; Slot < 4; Slot++) {
-        IconGeom(Slot, &Ix, &Iy, &Iw, &Ih);
+        IconGeometry(Slot, &Ix, &Iy, &Iw, &Ih);
         if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
             Y < (INT32)(Iy + Ih)) {
             return Map[Slot];
@@ -137,28 +182,39 @@ int DesktopHitIcon(INT32 X, INT32 Y) {
     return -1;
 }
 
-static void Activate(int WinId) {
-    if (WindowIsOn(WinId)) {
-        WindowFocus(WinId);
+/*
+ * ActivateWindowFromIcon — 开窗或聚焦
+ *
+ * 谁调用：仅 DesktopClickIcon（双击成功）。
+ */
+static void ActivateWindowFromIcon(int WindowId) {
+    if (WindowIsOn(WindowId)) {
+        WindowFocus(WindowId);
         HalSerialWriteChannel(SLOG_GUI, "Gui: icon focus\n");
     } else {
-        WindowOpen(WinId);
+        WindowOpen(WindowId);
         HalSerialWriteChannel(SLOG_GUI, "Gui: icon open\n");
     }
 }
 
-int DesktopClickIcon(int WinId, INT32 X, INT32 Y) {
+/*
+ * DesktopClickIcon — 图标单击记点 / 双击开窗
+ *
+ * 谁调用：GuiPoll（DesktopHitIcon >= 0 时）。
+ * 返回：1 双击已开窗需重画；0 仅记录单击
+ */
+int DesktopClickIcon(int WindowId, INT32 X, INT32 Y) {
     UINT32 Now;
     INT32 Dx;
     INT32 Dy;
-    int IsDbl = 0;
+    int IsDouble = 0;
 
-    if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS &&
-        WinId != GUI_WIN_FILES && WinId != GUI_WIN_STORE) {
+    if (WindowId != GUI_WIN_SHELL && WindowId != GUI_WIN_SETTINGS &&
+        WindowId != GUI_WIN_FILES && WindowId != GUI_WIN_STORE) {
         return 0;
     }
     Now = NowTick();
-    if (gHaveLastClick && gLastWin == WinId) {
+    if (gHaveLastClick && gLastWindowId == WindowId) {
         Dx = X - gLastClickX;
         Dy = Y - gLastClickY;
         if (Dx < 0) {
@@ -167,23 +223,23 @@ int DesktopClickIcon(int WinId, INT32 X, INT32 Y) {
         if (Dy < 0) {
             Dy = -Dy;
         }
-        if (Dx <= DBL_SLOP && Dy <= DBL_SLOP) {
+        if (Dx <= DOUBLE_CLICK_SLOP_PIXELS && Dy <= DOUBLE_CLICK_SLOP_PIXELS) {
             UINT32 Span = Now - gLastClickTick;
             if (HalTimerReady()) {
-                IsDbl = (Span <= DBL_TIMER_TICKS);
+                IsDouble = (Span <= DOUBLE_CLICK_TIMER_TICKS);
             } else {
-                IsDbl = (Span <= DBL_SOFT_TICKS);
+                IsDouble = (Span <= DOUBLE_CLICK_SOFT_TICKS);
             }
         }
     }
     gLastClickTick = Now;
     gLastClickX = X;
     gLastClickY = Y;
-    gLastWin = WinId;
+    gLastWindowId = WindowId;
     gHaveLastClick = 1;
-    if (IsDbl) {
+    if (IsDouble) {
         gHaveLastClick = 0;
-        Activate(WinId);
+        ActivateWindowFromIcon(WindowId);
         return 1;
     }
     return 0;

@@ -1,7 +1,10 @@
 /*
  * Pointer.c — 鼠轮询、点击分发、拖窗
  *
- * 对标现网 CodeD-Services/GuiPointer/（实现略薄；目录即命名空间不叠 Gui）。
+ * 【初学者】
+ * - 分层：Core/Gui；对标现网 GuiPointer（实现略薄；夹内不叠 Gui）
+ * - 对外入口：GuiPoll；夹内 PointerReset
+ * - 不做：键盘（Console）；合成器细节（Window*）
  */
 #include "Gui.h"
 #include "GuiPrivate.h"
@@ -25,6 +28,11 @@ static INT32 gDragOffY;
 static UINT8 gPrevButtons;
 static UINT32 gDragIdle;
 
+/*
+ * PointerReset — 清拖拽与按键边沿状态
+ *
+ * 谁调用：GuiInitialize。
+ */
 void PointerReset(void) {
     gDragging = 0;
     gDragWin = -1;
@@ -34,11 +42,19 @@ void PointerReset(void) {
     gDragIdle = 0;
 }
 
+/*
+ * GuiPoll — 一帧指针输入：移光标、点按、拖标题栏
+ *
+ * 做什么：推进 StoreJob；抽 HID/PS2 包；分发 Start/窗/图标；拖动 WindowMoveTo。
+ * 谁调用：主循环 / Scheduler 桌面泵（与 Console 键入并列）。
+ * 前后文：前 — GuiInitialize 且 CursorEnable；兄弟 — GuiCursorHide/Show、Window*。
+ * 返回：1 本帧有鼠事件；0 无
+ */
 int GuiPoll(void) {
     HAL_MOUSE_PACKET Pkt;
     INT32 AccX = 0;
     INT32 AccY = 0;
-    UINT8 LastBtn = gPrevButtons;
+    UINT8 LastButtons = gPrevButtons;
     int Got = 0;
     int SawPress = 0;
     int SawRelease = 0;
@@ -71,13 +87,13 @@ int GuiPoll(void) {
             AccX += Pkt.Dx;
             AccY += Pkt.Dy;
         }
-        if ((Pkt.Buttons & 0x1u) != 0 && (LastBtn & 0x1u) == 0) {
+        if ((Pkt.Buttons & 0x1u) != 0 && (LastButtons & 0x1u) == 0) {
             SawPress = 1;
         }
-        if ((Pkt.Buttons & 0x1u) == 0 && (LastBtn & 0x1u) != 0) {
+        if ((Pkt.Buttons & 0x1u) == 0 && (LastButtons & 0x1u) != 0) {
             SawRelease = 1;
         }
-        LastBtn = Pkt.Buttons;
+        LastButtons = Pkt.Buttons;
     }
     if (!Got) {
         if (gDragging) {
@@ -193,7 +209,7 @@ int GuiPoll(void) {
     }
 
     WasDragging = gDragging;
-    if (gDragging && gDragWin >= 0 && (LastBtn & 0x1u) != 0 &&
+    if (gDragging && gDragWin >= 0 && (LastButtons & 0x1u) != 0 &&
         (AccX != 0 || AccY != 0)) {
         WindowMoveTo(gDragWin, CurX - gDragOffX, CurY - gDragOffY, 0);
     }
@@ -207,6 +223,6 @@ int GuiPoll(void) {
     }
 
     GuiCursorShow();
-    gPrevButtons = LastBtn;
+    gPrevButtons = LastButtons;
     return 1;
 }

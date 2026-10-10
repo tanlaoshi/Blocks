@@ -1,7 +1,10 @@
 /*
- * Settings.c — K34/K37：预设色板（墨/石/松）+ 标题石色
+ * Settings.c — 设置窗：桌面预设色板 + 标题条色
  *
- * 【初学者】点桌面色块 = 整套 ThemeApplyNamed；点第二行只改标题条。
+ * 【初学者】
+ * - 分层：Core/Gui
+ * - 对外：SettingsPaintClient / SettingsClick
+ * - 点桌面色块 = ThemeApplyNamed；点第二行只改标题条
  */
 #include "Settings.h"
 #include "Font.h"
@@ -9,71 +12,84 @@
 #include "Theme.h"
 #include "HalVideo.h"
 
-#define SW  28u
-#define GAP 8u
-#define ROW_H (SW + 20u)
+#define SWATCH_SIZE  28u
+#define SWATCH_GAP   8u
+#define ROW_HEIGHT   (SWATCH_SIZE + 20u)
 
-/* 桌面行：整套预设预览色（ink / slate / pine / 暖褐） */
-static const UINT32 gDeskPal[4] = {
+static const UINT32 gDesktopPalette[4] = {
     0x001C1B1Au, 0x0022262Bu, 0x001A201Cu, 0x00241C18u
 };
-static const char *gDeskName[4] = {"ink", "slate", "pine", 0};
-/* 标题行：暖石 / 烟灰 / 松皮 / 陶土 —— 无青蓝 */
-static const UINT32 gTitlePal[4] = {
+static const char *gDesktopPresetName[4] = {"ink", "slate", "pine", 0};
+static const UINT32 gTitlePalette[4] = {
     0x004A4540u, 0x00485058u, 0x003E4A40u, 0x00584840u
 };
 
-static UINT32 gCx;
-static UINT32 gCy;
-static UINT32 gCw;
-static UINT32 gCh;
+static UINT32 gClientX;
+static UINT32 gClientY;
+static UINT32 gClientWidth;
+static UINT32 gClientHeight;
 
-void SettingsPaintClient(UINT32 Cx, UINT32 Cy, UINT32 Cw, UINT32 Ch) {
+/*
+ * SettingsPaintClient — 画提示与两行色块
+ *
+ * 谁调用：Window 客户区绘制（Settings 窗）。
+ */
+void SettingsPaintClient(UINT32 ClientX, UINT32 ClientY, UINT32 ClientWidth,
+                         UINT32 ClientHeight) {
     UINT32 i;
     UINT32 X0;
     UINT32 Y0;
 
-    gCx = Cx;
-    gCy = Cy;
-    gCw = Cw;
-    gCh = Ch;
-    if (Cw < 40u || Ch < 80u) {
+    gClientX = ClientX;
+    gClientY = ClientY;
+    gClientWidth = ClientWidth;
+    gClientHeight = ClientHeight;
+    if (ClientWidth < 40u || ClientHeight < 80u) {
         return;
     }
-    FontDrawStringAt(Cx + 12u, Cy + 10u, LocStr(MSG_SETTINGS_HINT),
+    FontDrawStringAt(ClientX + 12u, ClientY + 10u, LocStr(MSG_SETTINGS_HINT),
                      ThemeWindowTitleText());
-    X0 = Cx + 12u;
-    Y0 = Cy + 36u;
+    X0 = ClientX + 12u;
+    Y0 = ClientY + 36u;
     for (i = 0; i < 4u; i++) {
-        HalVideoFillRect(X0 + i * (SW + GAP), Y0, SW, SW, gDeskPal[i]);
+        HalVideoFillRect(X0 + i * (SWATCH_SIZE + SWATCH_GAP), Y0, SWATCH_SIZE,
+                         SWATCH_SIZE, gDesktopPalette[i]);
     }
-    Y0 += ROW_H;
+    Y0 += ROW_HEIGHT;
     for (i = 0; i < 4u; i++) {
-        HalVideoFillRect(X0 + i * (SW + GAP), Y0, SW, SW, gTitlePal[i]);
+        HalVideoFillRect(X0 + i * (SWATCH_SIZE + SWATCH_GAP), Y0, SWATCH_SIZE,
+                         SWATCH_SIZE, gTitlePalette[i]);
     }
 }
 
+/*
+ * SettingsClick — 点色块改主题并落盘
+ *
+ * 谁调用：GuiPoll（GUI_WIN_SETTINGS）。
+ * 返回：1 已改主题需重画；0 未点中
+ */
 int SettingsClick(INT32 X, INT32 Y) {
     UINT32 i;
     UINT32 X0;
     UINT32 Y0;
-    UINT32 Sx;
-    UINT32 Sy;
+    UINT32 SwatchX;
+    UINT32 SwatchY;
 
-    if (gCw < 40u || gCh < 80u) {
+    if (gClientWidth < 40u || gClientHeight < 80u) {
         return 0;
     }
-    X0 = gCx + 12u;
-    Y0 = gCy + 36u;
+    X0 = gClientX + 12u;
+    Y0 = gClientY + 36u;
     for (i = 0; i < 4u; i++) {
-        Sx = X0 + i * (SW + GAP);
-        Sy = Y0;
-        if (X >= (INT32)Sx && Y >= (INT32)Sy &&
-            X < (INT32)(Sx + SW) && Y < (INT32)(Sy + SW)) {
-            if (gDeskName[i] != 0) {
-                (void)ThemeApplyNamed(gDeskName[i]);
+        SwatchX = X0 + i * (SWATCH_SIZE + SWATCH_GAP);
+        SwatchY = Y0;
+        if (X >= (INT32)SwatchX && Y >= (INT32)SwatchY &&
+            X < (INT32)(SwatchX + SWATCH_SIZE) &&
+            Y < (INT32)(SwatchY + SWATCH_SIZE)) {
+            if (gDesktopPresetName[i] != 0) {
+                (void)ThemeApplyNamed(gDesktopPresetName[i]);
             } else {
-                ThemeSetDesktopBackground(gDeskPal[i]);
+                ThemeSetDesktopBackground(gDesktopPalette[i]);
                 ThemeSetTaskbarBackground(0x00342824u);
                 ThemeSetWindowTitleBar(0x00584840u);
             }
@@ -81,13 +97,14 @@ int SettingsClick(INT32 X, INT32 Y) {
             return 1;
         }
     }
-    Y0 += ROW_H;
+    Y0 += ROW_HEIGHT;
     for (i = 0; i < 4u; i++) {
-        Sx = X0 + i * (SW + GAP);
-        Sy = Y0;
-        if (X >= (INT32)Sx && Y >= (INT32)Sy &&
-            X < (INT32)(Sx + SW) && Y < (INT32)(Sy + SW)) {
-            ThemeSetWindowTitleBar(gTitlePal[i]);
+        SwatchX = X0 + i * (SWATCH_SIZE + SWATCH_GAP);
+        SwatchY = Y0;
+        if (X >= (INT32)SwatchX && Y >= (INT32)SwatchY &&
+            X < (INT32)(SwatchX + SWATCH_SIZE) &&
+            Y < (INT32)(SwatchY + SWATCH_SIZE)) {
+            ThemeSetWindowTitleBar(gTitlePalette[i]);
             (void)ThemeSaveConfiguration();
             return 1;
         }

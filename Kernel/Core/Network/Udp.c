@@ -31,11 +31,23 @@ static void Copy(void *D, const void *S, UINTN N) {
     }
 }
 
+/*
+ * UdpInitialize — 清绑定口与 RX 队列
+ *
+ * 谁调用：NetworkInitialize；LwIpInitialize（切栈前）。
+ * 返回：void
+ */
 void UdpInitialize(void) {
     gBindPort = 0;
     gRxHead = gRxTail = gRxCount = 0;
 }
 
+/*
+ * UdpBind — 绑定本地 UDP 端口（过滤入站 DstPort）
+ *
+ * 谁调用：Shell `udplisten`。
+ * 返回：0
+ */
 int UdpBind(UINT16 Port) {
     gBindPort = Port;
     gRxHead = gRxTail = gRxCount = 0;
@@ -126,6 +138,12 @@ void UdpInputFrame(const UINT8 *Frame, int Len) {
     UdpInput(SrcIp, DstIp, Frame + PayOff, PayLen);
 }
 
+/*
+ * UdpSend — 发 UDP 载荷（本机 IP 走软件回环入队）
+ *
+ * 谁调用：Shell `udpsend`。
+ * 返回：0 成功；-1/-2 失败
+ */
 int UdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len) {
     UINT8 Buf[UDP_HDR_LEN + NETWORK_UDP_PAYLOAD_MAX];
     UINT16 SrcPort;
@@ -164,6 +182,12 @@ int UdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len) {
     return 0;
 }
 
+/*
+ * UdpRecv —  dequeue 一条收包
+ *
+ * 谁调用：Shell udprecv / DrainUdpOnce。
+ * 返回：1 有包；0 空
+ */
 int UdpRecv(NETWORK_UDP_DG *Out) {
     if (Out == 0 || gRxCount == 0) {
         return 0;
@@ -174,6 +198,12 @@ int UdpRecv(NETWORK_UDP_DG *Out) {
     return 1;
 }
 
+/*
+ * UdpPoll — 短轮询网卡并喂 UdpInputFrame
+ *
+ * 谁调用：Shell udprecv；Ping 顺带收包。
+ * 返回：本轮是否收到新 datagram
+ */
 int UdpPoll(int TimeoutMs) {
     UINT8 Rx[1518];
     int Spin;

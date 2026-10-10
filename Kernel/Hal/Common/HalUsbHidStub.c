@@ -1,5 +1,9 @@
 /*
- * HalUsbHidStub.c — 非 X64：HID 门面空实现
+ * HalUsbHidStub.c — 非 X64：无 USB HID
+ *
+ * 【初学者】
+ * - Hal 占位；UsbInitialize 跳过 xHCI 键鼠。
+ * - 真实现：Hal/X64/Drivers/UsbHid/。
  */
 #include "HalUsbHid.h"
 

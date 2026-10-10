@@ -1,5 +1,9 @@
 /*
- * HalPs2KeyboardStub.c — 非 X64：无 i8042
+ * HalPs2KeyboardStub.c — 非 X64：无 PS/2 键盘
+ *
+ * 【初学者】
+ * - Hal 占位；Gui/Console 可探测 HalPs2KeyboardReady==0。
+ * - 真实现：Hal/X64/HalPs2Keyboard.c。
  */
 #include "HalPs2Keyboard.h"
 

@@ -1,5 +1,10 @@
 /*
  * Locale.c — K28：内建 en|zh 表；缺省 en（lang zh 后见中文）
+ *
+ * 【初学者】
+ * - Core/Video：Gui 字符串 MSG_* 多语言；Shell lang 命令改 gLang。
+ * - 入口：LocaleInitialize / LocaleGet / LocaleSet / LocStr。
+ * - 边界：不读磁盘 locale 文件。
  */
 #include "Locale.h"
 #include "HalSerial.h"
@@ -52,6 +57,14 @@ static const char *const gZh[MSG_COUNT] = {
     "lang: set zh\n",
 };
 
+/*
+ * LocaleInitialize — 内建 en/zh 表就绪
+ *
+ * 做什么：gLang=en，打 SLOG_GUI 提示；幂等。
+ * 谁调用：GuiInitialize、ConsoleRefresh、LocStr/LocaleGet 懒初始化。
+ * 前后文：前 — Gui 模块表；后 — LocStr 取 MSG_* 串。
+ * 返回：void。
+ */
 void LocaleInitialize(void) {
     if (gReady) {
         return;
@@ -61,6 +74,14 @@ void LocaleInitialize(void) {
     HalSerialWriteChannel(SLOG_GUI, "Locale: en (lang zh to switch)\n");
 }
 
+/*
+ * LocaleGet — 当前语言枚举
+ *
+ * 做什么：返回 gLang；未初始化则先 LocaleInitialize。
+ * 谁调用：将来 Gui/Shell 读状态；本刀以 LocStr 为主。
+ * 前后文：兄弟 — LocaleSet、LocStr。
+ * 返回：LOC_LANG_EN 或 LOC_LANG_ZH。
+ */
 LOC_LANG LocaleGet(void) {
     if (!gReady) {
         LocaleInitialize();
@@ -68,6 +89,14 @@ LOC_LANG LocaleGet(void) {
     return gLang;
 }
 
+/*
+ * LocaleSet — 切换 en/zh
+ *
+ * 做什么：校验 Lang 后写入 gLang；不刷新已画像素。
+ * 谁调用：Shell `lang`（ShellCommand/Theme.c）。
+ * 前后文：后 — Gui 重绘或 ConsoleRefresh 才见新文案。
+ * 返回：0 成功；-1 非法 Lang。
+ */
 int LocaleSet(LOC_LANG Lang) {
     if (Lang != LOC_LANG_EN && Lang != LOC_LANG_ZH) {
         return -1;
@@ -79,6 +108,14 @@ int LocaleSet(LOC_LANG Lang) {
     return 0;
 }
 
+/*
+ * LocStr — MSG_* 多语言字符串
+ *
+ * 做什么：按 gLang 返回 gEn/gZh 表项；越界返回 ""。
+ * 谁调用：Gui（WindowPaint、Desktop、Settings、Files、Store、Start）、Console、Shell lang 提示。
+ * 前后文：前 — LocaleInitialize；后 — FontDrawStringAt 画到帧缓冲。
+ * 返回：静态只读 C 串指针。
+ */
 const char *LocStr(LOC_MSG Id) {
     if (!gReady) {
         LocaleInitialize();

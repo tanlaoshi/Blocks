@@ -1,7 +1,10 @@
 /*
- * FontTtfRaster.c — stb 栅格（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — stb_truetype 栅格化单字（K27）
  *
- * 缺字回退：直接栅到 18x18，与盘上 CJK32 同行高。
+ * 【初学者】
+ * - Core/Video：FontTtfCache miss 时栅格；须在 HalFpuBegin 内（SSE）。
+ * - 入口：FontTtfInit、FontTtfRasterCp。
+ * - 边界：stb 实现本文件 #include；blob 来自 FontTtfLoad.c。
  */
 #include "FontTtf.h"
 #include "HalFpu.h"
@@ -96,6 +99,14 @@ static float FontTtfCosf(float X) {
 
 static stbtt_fontinfo gInfo;
 
+/*
+ * FontTtfInit — stbtt_InitFont + arena
+ *
+ * 做什么：FontTtfBlob 校验、HalFpuBegin、InitFont。
+ * 谁调用：FontInitialize（FontTtfLoad 成功后）。
+ * 前后文：后 — FontTtfRasterCp / FontTtfCacheGet。
+ * 返回：0 成功；-1 skip/fail。
+ */
 int FontTtfInit(void) {
     const UINT8 *Blob;
     UINT32 Size;
@@ -123,6 +134,13 @@ int FontTtfInit(void) {
     return 0;
 }
 
+/*
+ * FontTtfRasterCp — 单码点栅格进 18×18 Pix
+ *
+ * 做什么：stb 缩放/居中；Cp<128 拒绝；Pix 清零后写 alpha。
+ * 谁调用：FontTtfCache FillSlot。
+ * 返回：0 成功；-1 未 init/FPU/无 glyph。
+ */
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
     float Scale;
     int X0, Y0, X1, Y1, Gw, Gh, Ox, Oy, Y, X;
@@ -182,11 +200,13 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
 
 #else
 
+/* FontTtfInit — 非 X64 桩：TTF 不可用。 */
 int FontTtfInit(void) {
     HalSerialWriteChannel(SLOG_GUI, "Font: ttf init skip\n");
     return -1;
 }
 
+/* FontTtfRasterCp — 非 X64 桩。 */
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix) {
     (void)Cp; (void)Pix;
     return -1;

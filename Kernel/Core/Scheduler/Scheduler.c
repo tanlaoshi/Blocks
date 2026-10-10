@@ -15,7 +15,7 @@ static int gSchedReady;
 static void RoundRobinInit(void) {
     gSchedReady = 0;
 #if defined(__x86_64__) || defined(_M_X64)
-    if (HalTimerInit() == 0 && HalTimerReady()) {
+    if (HalTimerInitialize() == 0 && HalTimerReady()) {
         HalTimerIrqEnable();
         HalSerialWriteChannel(SLOG_MISC, "Scheduler: timer ok\n");
         gSchedReady = 1;
@@ -51,6 +51,13 @@ const SCHEDULER_OPS *SchedulerRoundRobinOps(void) {
     return &Ops;
 }
 
+/*
+ * SchedulerInitialize — Scheduler 模块表入口
+ *
+ * 做什么：注册 RoundRobinOps 并 Init（X64 尝试 HalTimerInitialize）。
+ * 谁调用：ModulesRunFull（Gui 之后 Console 之前）。
+ * 返回：0。
+ */
 int SchedulerInitialize(void) {
     SchedulerOpsRegister(SchedulerRoundRobinOps());
     if (SchedulerOpsGet() != 0 && SchedulerOpsGet()->Init != 0) {
@@ -60,6 +67,12 @@ int SchedulerInitialize(void) {
     return 0;
 }
 
+/*
+ * SchedulerYield — 让出 CPU（协作式 / 等 LAPIC  tick）
+ *
+ * 做什么：调用当前 SCHEDULER_OPS->Yield。
+ * 谁调用：GuiPoll、Shell 等主循环。
+ */
 void SchedulerYield(void) {
     const SCHEDULER_OPS *Ops = SchedulerOpsGet();
     if (Ops == 0 || Ops->Yield == 0) {

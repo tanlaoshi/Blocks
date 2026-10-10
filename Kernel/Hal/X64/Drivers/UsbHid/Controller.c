@@ -1,5 +1,9 @@
 /*
- * Controller.c — TakeLegacy + 建环 + Run（QEMU）
+ * Controller.c — xHCI 控制器复位、环与上下文基址
+ *
+ * 【初学者】
+ * - UsbHid 子模块：UsbHidInitialize 调用；MMIO 经 gOperationalBase 等。
+ * - 边界：寄存器名与位定义见 Internal.h。
  */
 #include "Internal.h"
 

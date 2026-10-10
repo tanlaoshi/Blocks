@@ -1,18 +1,38 @@
 /*
  * FatVolume.c — FAT 卷几何与根目录遍历
+ *
+ * 【初学者】
+ * - 分层：Core/FileSystem；块分配见 FatAllocate.c
+ * - 对外：FatVolumeOpen / FatVolumeWalkRoot / FatPathTo83 / FatRd16 等
+ * - 不做：写目录项、GPT 分区枚举（见 Gpt.c / Volume.c）
  */
 #include "FatVolume.h"
 #include "HalBlock.h"
 
+/*
+ * FatRd16 — 小端读 UINT16
+ *
+ * 做什么：从磁盘原始字节解包。
+ * 谁调用：本目录多数 FAT 模块。
+ * 返回：16 位值
+ */
 UINT16 FatRd16(const UINT8 *P) {
     return (UINT16)(P[0] | ((UINT16)P[1] << 8));
 }
 
+/*
+ * FatRd32 — 小端读 UINT32
+ *
+ * 做什么：从磁盘原始字节解包。
+ * 谁调用：FatFile / FatDirectory / FatWrite 等。
+ * 返回：32 位值
+ */
 UINT32 FatRd32(const UINT8 *P) {
     return (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
            ((UINT32)P[3] << 24);
 }
 
+/* FatWr16 / FatWr32 — 小端写 16/32 位；谁调用：FatAllocate / FatWrite / FatMakeDirectory */
 void FatWr16(UINT8 *P, UINT16 V) {
     P[0] = (UINT8)(V & 0xFFu);
     P[1] = (UINT8)((V >> 8) & 0xFFu);
@@ -34,33 +54,47 @@ static int LooksLikeBpb(const UINT8 *Sec) {
     return (Sec[0] == 0xEBu || Sec[0] == 0xE9u) ? 1 : 0;
 }
 
-UINT32 FatVolumeNext(const FAT_VOLUME *V, UINT32 Clus) {
-    UINT8 Sec[FAT_SECTOR];
-    UINT32 EntPerSec;
-    UINT32 Lba;
-    UINT32 Off;
+/*
+ * FatVolumeNext — 读 FAT 表中 Cluster 的下一簇
+ *
+ * 做什么：按 FatBits 16/32 读表项。
+ * 谁调用：FatFileRead83 / FatVolumeWalkRoot / FatAllocate。
+ * 返回：下一簇；0 表示失败或空闲
+ */
+UINT32 FatVolumeNext(const FAT_VOLUME *Volume, UINT32 Cluster) {
+    UINT8 Sector[FAT_SECTOR];
+    UINT32 EntriesPerSector;
+    UINT32 LogicalBlock;
+    UINT32 Offset;
 
-    if (V == 0) {
+    if (Volume == 0) {
         return 0;
     }
-    if (V->FatBits == 32) {
-        EntPerSec = FAT_SECTOR / 4u;
-        Lba = V->FatLba + Clus / EntPerSec;
-        Off = (Clus % EntPerSec) * 4u;
-        if (HalBlockRead(Lba, Sec, 1) != 0) {
+    if (Volume->FatBits == 32) {
+        EntriesPerSector = FAT_SECTOR / 4u;
+        LogicalBlock = Volume->FatLba + Cluster / EntriesPerSector;
+        Offset = (Cluster % EntriesPerSector) * 4u;
+        if (HalBlockRead(LogicalBlock, Sector, 1) != 0) {
             return 0;
         }
-        return FatRd32(Sec + Off) & 0x0FFFFFFFu;
+        return FatRd32(Sector + Offset) & 0x0FFFFFFFu;
     }
-    EntPerSec = FAT_SECTOR / 2u;
-    Lba = V->FatLba + Clus / EntPerSec;
-    Off = (Clus % EntPerSec) * 2u;
-    if (HalBlockRead(Lba, Sec, 1) != 0) {
+    EntriesPerSector = FAT_SECTOR / 2u;
+    LogicalBlock = Volume->FatLba + Cluster / EntriesPerSector;
+    Offset = (Cluster % EntriesPerSector) * 2u;
+    if (HalBlockRead(LogicalBlock, Sector, 1) != 0) {
         return 0;
     }
-    return (UINT32)FatRd16(Sec + Off);
+    return (UINT32)FatRd16(Sector + Offset);
 }
 
+/*
+ * FatVolumeOpenAt — 从 PartLba 的 BPB 填充 FAT_VOLUME
+ *
+ * 做什么：解析 BPB；算 FatLba/RootLba/DataLba；判 FAT16/32。
+ * 谁调用：VolumeAddVolume / FatVolumeOpen。
+ * 返回：0 成功；非 0 无 BPB 或读失败
+ */
 int FatVolumeOpenAt(FAT_VOLUME *V, UINT32 PartLba) {
     UINT8 Sec[FAT_SECTOR];
     UINT16 Reserved;
@@ -92,6 +126,13 @@ int FatVolumeOpenAt(FAT_VOLUME *V, UINT32 PartLba) {
     return 0;
 }
 
+/*
+ * FatVolumeOpen — 自动选 LBA0 或 MBR 第一 FAT 分区
+ *
+ * 做什么：读 LBA0；非 BPB 则扫 MBR 分区表。
+ * 谁调用：FatActiveVolumeOpen / FatFile / FatProbe 同类路径。
+ * 返回：0 成功；非 0 失败
+ */
 int FatVolumeOpen(FAT_VOLUME *V) {
     UINT8 Sec[FAT_SECTOR];
     UINT32 PartLba = 0;
@@ -124,6 +165,13 @@ int FatVolumeOpen(FAT_VOLUME *V) {
     return FatVolumeOpenAt(V, PartLba);
 }
 
+/*
+ * FatVolumeWalkRoot — 遍历根目录每个有效短名项
+ *
+ * 做什么：FAT16 扫 RootLba 扇区；FAT32 沿 RootClus 链；回调 Fn。
+ * 谁调用：FatDirectoryListRoot / FatFileRead83 / Volume 认 BLOCKS.ID。
+ * 返回：0 完成；非 0 IO 失败
+ */
 int FatVolumeWalkRoot(FAT_VOLUME *V, FAT_DIR_FN Fn, void *Ctx) {
     UINT8 Sec[FAT_SECTOR];
     UINT32 i;
@@ -154,9 +202,9 @@ int FatVolumeWalkRoot(FAT_VOLUME *V, FAT_DIR_FN Fn, void *Ctx) {
         return 0;
     }
     {
-        UINT32 Clus = V->RootClus;
-        for (Guard = 0; Guard < 64u && Clus >= 2u; Guard++) {
-            UINT32 Lba = V->DataLba + (Clus - 2u) * (UINT32)V->Spc;
+        UINT32 Cluster = V->RootClus;
+        for (Guard = 0; Guard < 64u && Cluster >= 2u; Guard++) {
+            UINT32 Lba = V->DataLba + (Cluster - 2u) * (UINT32)V->Spc;
             UINT8 s;
             for (s = 0; s < V->Spc; s++) {
                 UINTN Off;
@@ -176,8 +224,8 @@ int FatVolumeWalkRoot(FAT_VOLUME *V, FAT_DIR_FN Fn, void *Ctx) {
                     }
                 }
             }
-            Clus = FatVolumeNext(V, Clus);
-            if (Clus < 2u || Clus >= 0x0FFFFFF8u) {
+            Cluster = FatVolumeNext(V, Cluster);
+            if (Cluster < 2u || Cluster >= 0x0FFFFFF8u) {
                 break;
             }
         }
@@ -185,6 +233,13 @@ int FatVolumeWalkRoot(FAT_VOLUME *V, FAT_DIR_FN Fn, void *Ctx) {
     return 0;
 }
 
+/*
+ * FatName83ToDisplay — 11 字节 FAT 名 → "NAME.EXT"
+ *
+ * 做什么：去尾空格、插点；最多 12 字符 + NUL。
+ * 谁调用：FatDirectoryListRoot / Volume 标记扫描。
+ * 返回：void（写 Out）
+ */
 void FatName83ToDisplay(const UINT8 *N83, char Out[13]) {
     int i;
     int o = 0;
@@ -200,6 +255,13 @@ void FatName83ToDisplay(const UINT8 *N83, char Out[13]) {
     Out[o] = 0;
 }
 
+/*
+ * FatPathTo83 — 路径最后分量 → 大写 8.3（11 字节）
+ *
+ * 做什么：跳过 '/'；名≤8 扩展≤3；非法返回失败。
+ * 谁调用：FatPathResolve83 / FatFileReadPath / FatRenamePath。
+ * 返回：0 成功；非 0 非法名
+ */
 int FatPathTo83(const char *Path, char Name83[11]) {
     int i;
     int n = 0;

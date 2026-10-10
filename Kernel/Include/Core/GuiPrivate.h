@@ -1,5 +1,9 @@
 /*
- * GuiPrivate.h — Gui 夹内共享（光标↔指针）；对外仍用 Gui.h
+ * GuiPrivate.h — Gui 夹内共享（光标↔指针）
+ *
+ * 【初学者】
+ * - 分层：Core/Gui 内部；对外 API 在 Gui.h（GuiInitialize / GuiPoll / GuiCursor*）
+ * - 本头：Cursor* 状态与 PointerReset；Console 等只应 include Gui.h
  */
 #ifndef GUI_PRIVATE_H
 #define GUI_PRIVATE_H

@@ -1,7 +1,10 @@
 /*
- * Theme.c — mode / lang
+ * Theme.c — Shell：mode / lang
  *
- * 对标现网 ShellCommandsTheme.c：显示与语言命令独立编译单元。
+ * 【初学者】
+ * - 分层：Core/Console/ShellCommand；持久化 ThemeSaveConfiguration
+ * - 对外入口：ThemeRegister
+ * - 不做：即时改分辨率（mode 下回启动生效）
  */
 #include "ShellCommand.h"
 #include "Locale.h"
@@ -138,6 +141,12 @@ static void CommandLang(int Argc, char **Argv) {
     Put("\n");
 }
 
+/*
+ * ThemeRegister — 注册 lang / mode
+ *
+ * 谁调用：ShellCommandInitialize。
+ * 返回：void
+ */
 void ThemeRegister(void) {
     ShellCommandRegister("lang", "UI language en|zh", CommandLang);
     ShellCommandRegister("mode", "display pref WxH|auto", CommandMode);

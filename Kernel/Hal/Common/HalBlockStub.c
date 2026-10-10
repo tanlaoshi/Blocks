@@ -1,9 +1,13 @@
 /*
  * HalBlockStub.c — 非 X64：无块设备
+ *
+ * 【初学者】
+ * - Hal/Common 占位；Core Volume 调用 HalBlock* 得 -1/未就绪。
+ * - 真实现：Hal/X64/HalVirtioBlk.c。
  */
 #include "HalBlock.h"
 
-int HalBlockInit(void) {
+int HalBlockInitialize(void) {
     return -1;
 }
 

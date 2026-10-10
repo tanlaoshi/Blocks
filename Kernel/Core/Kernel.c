@@ -1,6 +1,9 @@
 /*
  * Kernel.c — 三架构合流后的操作系统大门
  *
+ * 【初学者】
+ * Core 编排入口 KernelMain；不实现 PMM/驱动，只调 ModulesRunFull → ConsoleRun。
+ *
  * 【初学者 · 上电走到这里之前】
  *
  *   X64:
@@ -35,13 +38,25 @@
 #include "EarlyIdentity.h"
 #endif
 
+/*
+ * KernelParkForever — 模块失败或 Console 返回后停住
+ *
+ * 做什么：HalCpuPark 死循环；不关机。
+ * 谁调用：仅 KernelMain。
+ */
 static void KernelParkForever(void) {
     for (;;) {
         HalCpuPark();
     }
 }
 
-/* 无 libc：把无符号整数写进 Buf，返回写入长度（不含 '\\0'） */
+/*
+ * KernelFormatUint — 无 libc 十进制写 Buf
+ *
+ * 做什么：写 Value 的 ASCII 数字；Cap 不足截断。
+ * 谁调用：KernelLogFrameBufferSize。
+ * 返回：写入字符数。
+ */
 static int KernelFormatUint(char *Buf, int Cap, UINT32 Value) {
     char Tmp[10];
     int N = 0;
@@ -67,6 +82,11 @@ static int KernelFormatUint(char *Buf, int Cap, UINT32 Value) {
     return N;
 }
 
+/*
+ * KernelLogFrameBufferSize — SLOG_BOOT 打 FB 分辨率
+ *
+ * 谁调用：KernelAttachEarly（BootInfo 带 FrameBufferSize 时）。
+ */
 static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
     char Line[40];
     int N = 0;
@@ -87,6 +107,13 @@ static void KernelLogFrameBufferSize(UINT32 Width, UINT32 Height) {
     HalSerialWriteChannel(SLOG_BOOT, Line);
 }
 
+/*
+ * KernelAttachEarly — 串口 + GOP 早期输出
+ *
+ * 做什么：HalSerialInitialize、HalVideoSet(BootInfo)、可选 SCREEN_LOG 上滚。
+ * 谁调用：KernelMain（ModulesRunFull 之前）。
+ * 前后文：前 — BootInfoSave、EarlyIdentity；后 — ModulesRunFull。
+ */
 static void KernelAttachEarly(void) {
     const BOOT_INFO *Info = BootInfoGet();
     VIDEO_CONFIG Video = BootInfoToVideoConfig(Info);
@@ -105,6 +132,14 @@ static void KernelAttachEarly(void) {
     }
 }
 
+/*
+ * KernelMain — 内核 C 入口（三架构合流）
+ *
+ * 做什么：Save BootInfo →（X64）EarlyIdentity → 早期视频/串口 → ModulesRunFull → ConsoleRun。
+ * 谁调用：Hal KernelHandoff（X64/Arm64/RiscV 各平台 .c）。
+ * 前后文：前 — KernelEntry.S + Handoff；后 — ConsoleRun 内 Shell/Gui 模块已 Init。
+ * 返回：void（正常路径不返回，失败或 Console 结束则 KernelParkForever）。
+ */
 void KernelMain(const BOOT_INFO *Info) {
     BootInfoSave(Info);
     HalCapabilityObserveFrameBuffer(Info != 0 ? Info->FrameBufferSize : 0);

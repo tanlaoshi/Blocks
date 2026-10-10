@@ -1,5 +1,8 @@
 /*
- * Transfer.c — EP0 控制传输 / GET_DESCRIPTOR
+ * Transfer.c — TRB 提交与完成等待
+ *
+ * 【初学者】
+ * - UsbHid 子模块：Bulk/Interrupt 传输；gTransferDone 同步。
  */
 #include "Internal.h"
 

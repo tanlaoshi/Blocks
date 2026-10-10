@@ -1,9 +1,13 @@
 /*
- * HalTimerStub.c — 非 X64：无 LAPIC tick
+ * HalTimerStub.c — 非 X64：无 LAPIC 定时器
+ *
+ * 【初学者】
+ * - Hal 占位；Scheduler 走协作式 pause，不开 HalTimerIrqEnable。
+ * - 真实现：Hal/X64/HalLapicTimer.c。
  */
 #include "HalTimer.h"
 
-int HalTimerInit(void) {
+int HalTimerInitialize(void) {
     return -1;
 }
 

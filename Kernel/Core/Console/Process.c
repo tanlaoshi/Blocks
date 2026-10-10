@@ -1,5 +1,11 @@
 /*
- * Process.c — K19 HELLO；K25 exec；K49 独立页表 + 切 CR3（execve 形）
+ * Process.c — 用户 ELF 装载与 HalSyscallRun（K19/K25/K49）
+ *
+ * 【初学者】
+ * - 分层：Core/Console；装载细节 ElfLoader.c；fork 见 ProcessFork.c
+ * - 对外入口：ProcessExecPath、ProcessRunHello、ProcessLastExecName
+ * - X64：优先 VirtualMemorySpace + CR3 切换；失败回落恒等映射
+ * - 不做：完整进程调度、argv/env（另刀）
  */
 #include "Process.h"
 #include "ElfLoader.h"
@@ -28,12 +34,26 @@ static void SetLast(const char *Path) {
     gLastName[i] = 0;
 }
 
+/*
+ * ProcessLastExecName — 最近一次 exec 路径（供 Shell `ps`）
+ *
+ * 谁调用：ShellSystem CommandPs。
+ * 返回：静态缓冲指针；无 exec 时可能为空串
+ */
 const char *ProcessLastExecName(void) {
     return gLastName;
 }
 
+/*
+ * ProcessExecPath — 从 FAT 根读 ELF 并 syscall 跑进用户态
+ *
+ * 做什么：读盘 → ElfLoader →（可选）独立页表 → HalSyscallRun → 恢复内核 CR3。
+ * 谁调用：Shell `exec` / `hello`；ConsoleRun 开机 HELLO.ELF。
+ * 前后文：前 — HalBlockReady；后 — SetLast；兄弟 ProcessForkAttach
+ * 返回：HalSyscallRun 结果；负值表示装载/初始化失败
+ */
 int ProcessExecPath(const char *Path) {
-    void *Buf;
+    void *ImageBuffer;
     UINT32 Pages;
     UINT32 Size = 0;
     ELF_IMAGE Img;
@@ -50,23 +70,23 @@ int ProcessExecPath(const char *Path) {
         HalSerialWriteShell("User: no block\n");
         return -1;
     }
-    if (HalSyscallInit() != 0) {
+    if (HalSyscallInitialize() != 0) {
         return -1;
     }
 
     Pages = (ELF_MAX + 4095u) / 4096u;
-    Buf = PhysicalMemoryAllocatePages(Pages);
-    if (Buf == 0) {
+    ImageBuffer = PhysicalMemoryAllocatePages(Pages);
+    if (ImageBuffer == 0) {
         HalSerialWriteShell("User: oom\n");
         return -1;
     }
 
-    N = FatFileReadPath(Path, Buf, ELF_MAX, &Size);
+    N = FatFileReadPath(Path, ImageBuffer, ELF_MAX, &Size);
     if (N < 0 || Size == 0) {
         HalSerialWriteShell("User: missing ");
         HalSerialWriteShell(Path);
         HalSerialWriteShell("\n");
-        PhysicalMemoryFreePages(Buf, Pages);
+        PhysicalMemoryFreePages(ImageBuffer, Pages);
         return -1;
     }
 
@@ -76,13 +96,13 @@ int ProcessExecPath(const char *Path) {
 
     Space = VirtualMemorySpaceCreate();
     if (Space != 0) {
-        if (ElfLoaderFromMemoryToSpace(Buf, Size, Space, &Img) != 0) {
+        if (ElfLoaderFromMemoryToSpace(ImageBuffer, Size, Space, &Img) != 0) {
             HalSerialWriteShell("User: elf space load fail\n");
             VirtualMemorySpaceDestroy(Space);
-            PhysicalMemoryFreePages(Buf, Pages);
+            PhysicalMemoryFreePages(ImageBuffer, Pages);
             return -1;
         }
-        PhysicalMemoryFreePages(Buf, Pages);
+        PhysicalMemoryFreePages(ImageBuffer, Pages);
         KernelRoot = VirtualMemoryKernelRoot();
         UserRoot = VirtualMemorySpaceRoot(Space);
         HalSerialWriteShell("User: space cr3 switch\n");
@@ -95,12 +115,12 @@ int ProcessExecPath(const char *Path) {
         VirtualMemorySpaceDestroy(Space);
     } else {
         /* 非 X64 或 Create 失败：回落恒等装载 */
-        if (ElfLoaderFromMemory(Buf, Size, &Img) != 0) {
+        if (ElfLoaderFromMemory(ImageBuffer, Size, &Img) != 0) {
             HalSerialWriteShell("User: elf load fail\n");
-            PhysicalMemoryFreePages(Buf, Pages);
+            PhysicalMemoryFreePages(ImageBuffer, Pages);
             return -1;
         }
-        PhysicalMemoryFreePages(Buf, Pages);
+        PhysicalMemoryFreePages(ImageBuffer, Pages);
         SetLast(Path);
         Rc = HalSyscallRun(Img.Entry, Img.StackTop);
     }
@@ -113,6 +133,12 @@ int ProcessExecPath(const char *Path) {
     return Rc;
 }
 
+/*
+ * ProcessRunHello — 开机跑一次 HELLO.ELF
+ *
+ * 谁调用：ConsoleRun 进入提示符前。
+ * 返回：同 ProcessExecPath
+ */
 int ProcessRunHello(void) {
     return ProcessExecPath("HELLO.ELF");
 }

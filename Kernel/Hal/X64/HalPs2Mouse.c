@@ -301,7 +301,7 @@ static int AuxInitDevice(void) {
     return 1;
 }
 
-int HalPs2MouseInit(void) {
+int HalPs2MouseInitialize(void) {
     UINT8 Cfg;
 
     gReady = 0;

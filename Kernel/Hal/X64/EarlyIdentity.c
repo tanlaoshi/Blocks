@@ -1,16 +1,10 @@
 /*
  * EarlyIdentity.c — X64 早期 4GiB 恒等映射（静态页表池，不依赖 PMM）
  *
- * 【初学者 · 四级页表（4 级、48 位）在干什么？】
- *   虚址 → PML4 → PDPT → PD →（这里用 2MiB 大页）→ 物理页
- * 我们为 [0, 4GiB) 每 2MiB 建一项「P→V 数值相同」的大页 PTE。
- *
- * 页表页从哪来？
- *   有 PMM 后从分配器拿；当前用本文件 BSS 静态池 gEarlyPtPool[]。
- *
- * 何时调用？
- *   KernelMain 里：Setup() 成功后再 Enable()。栈必须已在窗内
- *   （KernelEntry.S 换过 gEarlyStack）。
+ * 【初学者】
+ * - Hal/X64：KernelMain 在 PMM 前 Enable 恒等窗；栈须在窗内。
+ * - 入口：EarlyIdentitySetup / EarlyIdentityEnable。
+ * - 边界：2MiB 大页；池在 gEarlyPtPool[]。
  */
 #include "EarlyIdentity.h"
 #include "IdentityMap.h"

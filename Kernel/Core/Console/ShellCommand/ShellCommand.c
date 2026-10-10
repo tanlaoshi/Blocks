@@ -1,7 +1,10 @@
 /*
- * ShellCommand.c — 命令表核心：注册 / 分词 / 分发；领域命令见同夹子文件（不叠目录名）。
+ * ShellCommand.c — 命令表：注册 / 分词 / 分发
  *
- * 对标现网 Services/ShellCommands 分文件 + 注册汇总；Blocks 按目录即命名空间去前缀。
+ * 【初学者】
+ * - 分层：Core/Console/ShellCommand 主文件；领域命令在同目录 *Register
+ * - 对外入口：ShellCommandRegister、ShellCommandInitialize、ShellCommandRunLine
+ * - 不做：各命令语义（见 FileSystem.c / Network.c 等）
  */
 #include "ShellCommand.h"
 #include "ShellSystem.h"
@@ -54,6 +57,12 @@ static void StringCopy(char *Destination, const char *Source, int Capacity) {
     Destination[i] = 0;
 }
 
+/*
+ * ShellCommandRegister — 追加一条 Shell 命令
+ *
+ * 谁调用：各 *Register（FileSystemRegister、NetworkRegister…）。
+ * 返回：0 成功；-1 表满或参数空
+ */
 int ShellCommandRegister(const char *Name, const char *Help, SHELL_COMMAND_FN Fn) {
     if (gCommandCount >= COMMAND_MAX || Name == 0 || Fn == 0) {
         return -1;
@@ -145,6 +154,13 @@ static void CommandHello(int Argc, char **Argv) {
     (void)ProcessRunHello();
 }
 
+/*
+ * ShellCommandInitialize — 清零表并注册内置 + 各领域命令
+ *
+ * 谁调用：ConsoleInitialize。
+ * 前后文：后 — ConsoleRefreshBanner
+ * 返回：void
+ */
 void ShellCommandInitialize(void) {
     gCommandCount = 0;
     ShellCommandRegister("help", "list commands", CommandHelp);
@@ -162,6 +178,12 @@ void ShellCommandInitialize(void) {
     Put("Shell: cmds ok\n");
 }
 
+/*
+ * ShellCommandRunLine — 分词并 dispatch 第一条 argv[0]
+ *
+ * 谁调用：ConsoleRun 每读一行。
+ * 返回：void（未知命令打印 hint）
+ */
 void ShellCommandRunLine(const char *Line) {
     int Argc;
     int i;

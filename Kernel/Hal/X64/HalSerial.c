@@ -1,17 +1,10 @@
 /*
  * HalSerial.c — X64：COM1 上的 16550 UART（早期接棒日志）
  *
- * 【初学者 · 什么是 COM1？】
- * PC 兼容机上经典串口，IO 端口基址 0x3F8。用 inb/outb 读写寄存器：
- *   +0 数据；+5 状态（bit5=发送保持寄存器空，才能写下一大字节）。
- * QEMU 常把客人 COM1 接到终端，于是 HalSerialWrite("hi\n") 能在宿主机看见。
- *
- * 与 Boot/BootPkg/BootSerial 同口同波特率（115200 8N1），方便整段 boot 日志连贯。
- *
- * SERIAL_ENABLE=0：编译期关掉，不 Probe、不碰端口（见 SerialConfig.h）。
- * SCREEN_LOG=1：WriteChannel 经 HalSerialGop 画到 FB（见 HalSerialGop.c）。
- *
- * 【积木】门面 HalSerial.h；本文件是 X64 UART 后端。
+ * 【初学者】
+ * - Hal/X64：Boot 与 Kernel 共用 COM1 115200；门面 HalSerial.h。
+ * - 入口：HalSerialInitialize / HalSerialWrite / HalSerialWriteChannel。
+ * - 边界：SERIAL_ENABLE=0 编译期关；SCREEN_LOG 走 HalSerialGop。
  */
 #include "HalSerial.h"
 #include "HalSerialGop.h"

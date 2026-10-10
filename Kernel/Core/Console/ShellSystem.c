@@ -1,5 +1,10 @@
 /*
- * ShellSystem.c — K25：mem / ps / exec
+ * ShellSystem.c — Shell 内置：mem / ps / exec
+ *
+ * 【初学者】
+ * - 分层：Core/Console；与 ShellCommand/ 其它 Register 并列
+ * - 对外入口：ShellSystemRegister
+ * - 不做：真实进程表（ps 为课用占位）；ELF 细节见 Process.c / ElfLoader.c
  */
 #include "ShellCommand.h"
 #include "HalSerial.h"
@@ -66,6 +71,14 @@ static void CommandExec(int Argc, char **Argv) {
     (void)ProcessExecPath(Argv[1]);
 }
 
+/*
+ * ShellSystemRegister — 注册 mem / ps / exec
+ *
+ * 做什么：挂三条系统诊断与 exec 命令。
+ * 谁调用：ShellCommandInitialize。
+ * 前后文：后 — DataBaseRegister / StoreRegister
+ * 返回：void
+ */
 void ShellSystemRegister(void) {
     ShellCommandRegister("mem", "show free pages", CommandMem);
     ShellCommandRegister("ps", "list processes", CommandPs);

@@ -1,8 +1,10 @@
 /*
- * Ip.c — K39：共用 ARP / 发 IPv4 载荷（ping/UDP 共用）
+ * Ip.c — ARP 缓存与 IPv4 以太网帧发送（ping/UDP/TCP 共用）
  *
  * 【初学者】
- * 本机固定 10.0.2.15（QEMU user）；出站先 ARP 再封以太网+IP。
+ * - 本机 10.0.2.15（QEMU user）；出站 ARP 解析后封帧
+ * - 对外：NetworkSelfIp、NetworkParseIp、NetworkSendIp、NetworkArp*
+ * - 体量 >300 行，拆文件另刀；static 辅助见 EatArpFrame / ArpLookup
  */
 #include "Network.h"
 #include "HalNet.h"
@@ -87,6 +89,12 @@ static int ParseDec(const char **Pp, UINT32 *Out) {
     return 0;
 }
 
+/*
+ * NetworkParseIp — 解析 a.b.c.d 为 big-endian UINT32
+ *
+ * 谁调用：Shell net/tcp/udp；LwIpDnsLookup 字面量短路。
+ * 返回：0 成功；-1 非法
+ */
 int NetworkParseIp(const char *S, UINT32 *Out) {
     const char *P = S;
     UINT32 A, B, C, D;
@@ -159,6 +167,12 @@ static void EatArpFrame(const UINT8 *Buf, int Len) {
     }
 }
 
+/*
+ * NetworkArpResolve — 查缓存或发 ARP Request 并轮询 Reply
+ *
+ * 谁调用：NetworkSendIp。
+ * 返回：0 得到 MAC；-1 超时/TX 失败
+ */
 int NetworkArpResolve(UINT32 TargetIp, UINT8 Mac[6], int TimeoutMs) {
     UINT8 Frame[ETH_HDR + ARP_PKT];
     UINT8 MyMac[6];
@@ -222,6 +236,12 @@ int NetworkArpResolve(UINT32 TargetIp, UINT8 Mac[6], int TimeoutMs) {
     return -1;
 }
 
+/*
+ * NetworkSendIp — 组 IPv4 帧并经 HalNetTransmit
+ *
+ * 谁调用：Ping、UdpSend、Tcp SendSeg。
+ * 返回：0 成功；负值 ARP/TX 失败
+ */
 int NetworkSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN Len) {
     UINT8 Frame[ETH_HDR + IP_HDR + 1400];
     UINT8 DstMac[6];

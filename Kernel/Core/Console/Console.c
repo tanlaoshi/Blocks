@@ -1,9 +1,11 @@
 /*
- * Console.c — 串口壳 + K15 PS/2 键入
+ * Console.c — 串口壳 + 屏上提示符（读行、分发 Shell）
  *
  * 【初学者】
- * 读行同时 poll COM1 与 PS/2（GTK 窗按键走 i8042）。
- * K22：命令表见 ShellCommand（help/clear/echo/hello）。
+ * - 分层：Core/Console 主文件；命令实现见 ShellCommand/
+ * - 对外入口：ConsoleInitialize、ConsoleRun、ConsoleRefreshBanner
+ * - 读行同时 poll COM1 / USB HID / PS/2；无键时 GuiPoll + 网络 Service + SchedulerYield
+ * - 不做：命令语义（在 ShellCommand*）；用户 ELF 装载见 Process.c
  */
 #include "Console.h"
 #include "Gui.h"
@@ -29,6 +31,14 @@ static void ConsolePut(const char *Text) {
     HalSerialWriteShell(Text);
 }
 
+/*
+ * ConsolePaintBannerBack — 重画 Shell 客户区背景与「Blocks>」提示条
+ *
+ * 做什么：Theme/Locale 就绪后填充 Gui 壳客户区并写就绪文案。
+ * 谁调用：ConsoleRefreshBanner；ConsoleInitialize 经 RefreshBanner。
+ * 前后文：前 — ThemeInitialize / LocaleInitialize；后 — HalVideoPresentRect（Refresh 内）
+ * 返回：void（矩形无效则早退）
+ */
 void ConsolePaintBannerBack(void) {
     UINT32 Cx = 0;
     UINT32 Cy = 0;
@@ -46,6 +56,13 @@ void ConsolePaintBannerBack(void) {
     FontDrawStringAt(Cx + Pad, Cy + Pad + 20u, "Blocks>", ThemeTextForeground());
 }
 
+/*
+ * ConsoleRefreshBanner — 无闪烁刷新 Shell 横幅区
+ *
+ * 做什么：藏光标 → 重画背景 → Present 客户区 → 恢复光标。
+ * 谁调用：ConsoleInitialize；Shell `lang`（Theme.c）；Gui 改语言后。
+ * 返回：void
+ */
 void ConsoleRefreshBanner(void) {
     GuiCursorHide();
     ConsolePaintBannerBack();
@@ -61,6 +78,14 @@ void ConsoleRefreshBanner(void) {
     GuiCursorShow();
 }
 
+/*
+ * ConsoleInitialize — 控制台与 Shell 命令表就绪
+ *
+ * 做什么：日志就绪、探测键盘、ShellCommandInitialize、画横幅。
+ * 谁调用：Modules.c 启动表「Console」项（KernelMain 链）。
+ * 前后文：前 — Network/Gui 等模块；后 — ConsoleRun 或 Gui 壳并存
+ * 返回：0
+ */
 int ConsoleInitialize(void) {
     HalSerialWriteChannel(SLOG_BOOT, "Blocks ready\n");
     if (HalUsbHidKeyboardReady()) {
@@ -94,11 +119,19 @@ static int ConsolePollChar(char *Out) {
     return 0;
 }
 
-static int ConsoleReadLine(char *Buf, int Cap) {
+/*
+ * ConsoleReadLine — 阻塞读一行到 LineBuffer（含退格、过滤控制符）
+ *
+ * 做什么：轮询输入；空闲时 Gui/网络/调度；遇 CR/LF 结束。
+ * 谁调用：仅 ConsoleRun。
+ * 前后文：兄弟 — ConsolePollChar
+ * 返回：字符数；Cap 非法时 -1
+ */
+static int ConsoleReadLine(char *LineBuffer, int Capacity) {
     int N = 0;
     char C;
 
-    if (Buf == 0 || Cap <= 1) {
+    if (LineBuffer == 0 || Capacity <= 1) {
         return -1;
     }
     for (;;) {
@@ -140,7 +173,7 @@ static int ConsoleReadLine(char *Buf, int Cap) {
             SchedulerYield();
         }
         if (C == '\r' || C == '\n') {
-            Buf[N] = 0;
+            LineBuffer[N] = 0;
             ConsolePut("\n");
             return N;
         }
@@ -154,10 +187,10 @@ static int ConsoleReadLine(char *Buf, int Cap) {
         if (C < 0x20 || C > 0x7e) {
             continue;
         }
-        if (N + 1 >= Cap) {
+        if (N + 1 >= Capacity) {
             continue;
         }
-        Buf[N++] = C;
+        LineBuffer[N++] = C;
         {
             char One[2];
             One[0] = C;
@@ -168,6 +201,13 @@ static int ConsoleReadLine(char *Buf, int Cap) {
 }
 
 
+/*
+ * ConsoleRun — 永久 Shell 读行循环
+ *
+ * 做什么：接管串口 Shell；可选先 ProcessRunHello；每行 ShellCommandRunLine。
+ * 谁调用：KernelMain / 启动路径（Gui 与 Shell 二选一或串行）。
+ * 返回：void（不返回）
+ */
 void ConsoleRun(void) {
     char Line[LINE_CAP];
 

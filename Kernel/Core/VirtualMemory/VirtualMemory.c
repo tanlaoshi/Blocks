@@ -156,6 +156,13 @@ int VirtualMemoryMapIdentity(UINT64 Phys, UINT64 Size) {
     return 0;
 }
 
+/*
+ * VirtualMemoryMapMmio — 高址 MMIO 映射进当前 CR3（2MiB 大页）
+ *
+ * 做什么：Phys+Size 超出恒等窗时补页表项；窗内则 OutVirt=Phys。
+ * 谁调用：UsbInitialize（xHCI BAR）；其它 BAR 同理。
+ * 返回：0 成功；-1 参数或建表失败。
+ */
 int VirtualMemoryMapMmio(UINT64 Phys, UINT64 Size, UINT64 *OutVirt) {
 #if defined(__x86_64__) || defined(_M_X64)
     UINT64 End;
@@ -203,6 +210,13 @@ int VirtualMemoryMapMmio(UINT64 Phys, UINT64 Size, UINT64 *OutVirt) {
 #endif
 }
 
+/*
+ * VirtualMemoryInitialize — VirtualMemory 模块表入口
+ *
+ * 做什么：确认 EarlyIdentity 已开分页；可选预映射 BootInfo 里的 xHCI。
+ * 谁调用：ModulesRunFull（Memory 之后）。
+ * 返回：0 成功；-1 CR0.PG 未开。
+ */
 int VirtualMemoryInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
 

@@ -1,7 +1,10 @@
 /*
- * Network.c — net / lwip / dns / ping
+ * Network.c — Shell：net / lwip / dns / ping
  *
- * 对标现网 ShellCommandsNet*.c / NetAddr / NetLwip：网络配置与诊断命令分文件。
+ * 【初学者】
+ * - 分层：Core/Console/ShellCommand；栈在 Core/Network/
+ * - 对外入口：NetworkRegister
+ * - ping：builtin ICMP 或 lwIP 激活后 LwIpPing
  */
 #include "ShellCommand.h"
 #include "Network.h"
@@ -231,6 +234,12 @@ static void CommandPing(int Argc, char **Argv) {
     }
 }
 
+/*
+ * NetworkRegister — 注册 ping / lwip / net / dns
+ *
+ * 谁调用：ShellCommandInitialize。
+ * 返回：void
+ */
 void NetworkRegister(void) {
     ShellCommandRegister("ping", "ICMP echo (default 10.0.2.2)", CommandPing);
     ShellCommandRegister("lwip", "lwip on|status", CommandLwip);

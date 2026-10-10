@@ -65,6 +65,14 @@ static void UsbLogPorts(void) {
 }
 #endif
 
+/*
+ * UsbInitialize — USB 模块表入口
+ *
+ * 做什么：MapMmio xHCI → HalXhci 附着/复位 → HalUsbHidInitialize；打端口日志。
+ * 谁调用：ModulesRunFull（Cpu 之后 FileSystem 之前）。
+ * 前后文：前 — VirtualMemory MapMmio；后 — Gui 可 Poll HID。
+ * 返回：0（无 xHCI 时仍 0，仅 skip）。
+ */
 int UsbInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
 

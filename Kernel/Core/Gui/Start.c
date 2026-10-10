@@ -1,7 +1,11 @@
 /*
- * Start.c — K36：底栏开始钮 + 三项菜单（Shell/Settings/Files）
+ * Start.c — 底栏开始钮 + 弹出菜单（Shell/Settings/Files/Store）
  *
- * 【初学者】几何来自 Layout（可 LAYOUT.CFG）；顶栏标题仍由 WindowPaint。
+ * 【初学者】
+ * - 分层：Core/Gui；几何来自 Layout
+ * - 对外：StartSetFb / StartPaintBar / StartPaintMenu / StartHit* /
+ *         StartToggle / StartActivate / StartCloseMenu / StartMenuOpen
+ * - 顶栏标题仍由 WindowPaint
  */
 #include "Start.h"
 #include "Font.h"
@@ -23,38 +27,63 @@ static const int gItems[MENU_N] = {
     GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES, GUI_WIN_STORE
 };
 
-static LOC_MSG ItemLabel(int WinId) {
-    if (WinId == GUI_WIN_SETTINGS) {
+/*
+ * ItemLabel — 菜单项对应本地化标签
+ *
+ * 谁调用：仅 StartPaintMenu。
+ */
+static LOC_MSG ItemLabel(int WindowId) {
+    if (WindowId == GUI_WIN_SETTINGS) {
         return MSG_ICON_SETTINGS;
     }
-    if (WinId == GUI_WIN_FILES) {
+    if (WindowId == GUI_WIN_FILES) {
         return MSG_ICON_FILES;
     }
-    if (WinId == GUI_WIN_STORE) {
+    if (WindowId == GUI_WIN_STORE) {
         return MSG_ICON_STORE;
     }
     return MSG_ICON_SHELL;
 }
 
+/*
+ * StartSetFb — 记录分辨率并收起菜单
+ *
+ * 谁调用：GuiInitialize。
+ */
 void StartSetFb(UINT32 W, UINT32 H) {
     gFbW = W;
     gFbH = H;
     gMenuOn = 0;
 }
 
+/*
+ * StartCloseMenu — 关闭开始菜单
+ *
+ * 谁调用：GuiPoll（点菜单外）；StartActivate。
+ */
 void StartCloseMenu(void) {
     gMenuOn = 0;
 }
 
+/*
+ * StartMenuOpen — 菜单是否展开
+ *
+ * 谁调用：GuiPoll 分支；StartPaintMenu/HitMenu。
+ */
 int StartMenuOpen(void) {
     return gMenuOn;
 }
 
+/*
+ * StartPaintBar — 画底栏与开始钮
+ *
+ * 谁调用：Window 桌面合成路径。
+ */
 void StartPaintBar(void) {
     UINT32 BarH;
     UINT32 By;
     UINT32 Bx;
-    UINT32 BtnY;
+    UINT32 ButtonY;
     UINT32 Bw;
     UINT32 Bh;
 
@@ -64,13 +93,18 @@ void StartPaintBar(void) {
     BarH = LayoutBarH();
     By = LayoutContentBottom();
     HalVideoFillRect(0, By, gFbW, BarH, ThemeTaskbarBackground());
-    LayoutStartBtn(&Bx, &BtnY, &Bw, &Bh);
-    HalVideoFillRect(Bx, BtnY, Bw, Bh,
+    LayoutStartButton(&Bx, &ButtonY, &Bw, &Bh);
+    HalVideoFillRect(Bx, ButtonY, Bw, Bh,
                      gMenuOn ? ThemeWindowTitleBar() : ThemeWindowBorder());
-    FontDrawStringAt(Bx + LayoutPx(8u), BtnY + LayoutPx(3u),
+    FontDrawStringAt(Bx + LayoutPx(8u), ButtonY + LayoutPx(3u),
                      LocStr(MSG_START), ThemeWindowTitleText());
 }
 
+/*
+ * StartPaintMenu — 画弹出菜单四项
+ *
+ * 谁调用：菜单打开时的桌面绘制。
+ */
 void StartPaintMenu(void) {
     UINT32 Mx;
     UINT32 My;
@@ -92,6 +126,12 @@ void StartPaintMenu(void) {
     }
 }
 
+/*
+ * StartHitButton — 是否点中开始钮
+ *
+ * 谁调用：GuiPoll。
+ * 返回：1 命中；0 否
+ */
 int StartHitButton(INT32 X, INT32 Y) {
     UINT32 Bx;
     UINT32 By;
@@ -101,7 +141,7 @@ int StartHitButton(INT32 X, INT32 Y) {
     if (gFbH < LayoutBarH()) {
         return 0;
     }
-    LayoutStartBtn(&Bx, &By, &Bw, &Bh);
+    LayoutStartButton(&Bx, &By, &Bw, &Bh);
     if (X < (INT32)Bx || Y < (INT32)By) {
         return 0;
     }
@@ -111,6 +151,12 @@ int StartHitButton(INT32 X, INT32 Y) {
     return 1;
 }
 
+/*
+ * StartHitMenu — 菜单内命中哪一项
+ *
+ * 谁调用：GuiPoll（菜单已开）。
+ * 返回：GUI_WIN_*；-1 在菜单外；-2 菜单内空白
+ */
 int StartHitMenu(INT32 X, INT32 Y) {
     UINT32 Mx;
     UINT32 My;
@@ -142,6 +188,12 @@ int StartHitMenu(INT32 X, INT32 Y) {
     return gItems[Row];
 }
 
+/*
+ * StartToggle — 开/关开始菜单
+ *
+ * 谁调用：GuiPoll（点中开始钮）。
+ * 返回：1（总是消费点击）
+ */
 int StartToggle(void) {
     gMenuOn = !gMenuOn;
     HalSerialWriteChannel(SLOG_GUI, gMenuOn ? "Gui: start open\n"
@@ -149,16 +201,22 @@ int StartToggle(void) {
     return 1;
 }
 
-int StartActivate(int WinId) {
-    if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS &&
-        WinId != GUI_WIN_FILES && WinId != GUI_WIN_STORE) {
+/*
+ * StartActivate — 从菜单启动/聚焦窗并关菜单
+ *
+ * 谁调用：GuiPoll（StartHitMenu >= 0）。
+ * 返回：1 已处理；0 WindowId 非法
+ */
+int StartActivate(int WindowId) {
+    if (WindowId != GUI_WIN_SHELL && WindowId != GUI_WIN_SETTINGS &&
+        WindowId != GUI_WIN_FILES && WindowId != GUI_WIN_STORE) {
         return 0;
     }
     gMenuOn = 0;
-    if (WindowIsOn(WinId)) {
-        WindowFocus(WinId);
+    if (WindowIsOn(WindowId)) {
+        WindowFocus(WindowId);
     } else {
-        WindowOpen(WinId);
+        WindowOpen(WindowId);
     }
     HalSerialWriteChannel(SLOG_GUI, "Gui: start launch\n");
     return 1;

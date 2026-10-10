@@ -1,5 +1,8 @@
 /*
- * Report.c — Boot 键盘 / tablet·相对鼠 → 软件队列
+ * Report.c — HID boot 报告解析（键盘扫键、鼠标相对位移）
+ *
+ * 【初学者】
+ * - UsbHid 子模块：入队 gCharQueue / gMouseQueue；Gui Poll 读取。
  */
 #include "Internal.h"
 

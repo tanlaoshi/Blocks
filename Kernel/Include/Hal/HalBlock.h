@@ -10,7 +10,7 @@
 
 #define HAL_BLOCK_MAX_DRIVES 2
 
-int HalBlockInit(void);
+int HalBlockInitialize(void);
 int HalBlockReady(void);
 int HalBlockDriveCount(void);
 /* 选当前盘 0..Count-1；成功 0 */

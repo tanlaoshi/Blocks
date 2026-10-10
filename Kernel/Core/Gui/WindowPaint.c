@@ -1,5 +1,10 @@
 /*
- * WindowPaint.c — K32：桌面/窗绘制与脏 Present（Window 内部）
+ * WindowPaint.c — 桌面底图、窗框、擦除与拖窗脏 Present
+ *
+ * 【初学者】
+ * - 分层：Core/Gui；Window.c 调本文件；勿在此做命中/开闭窗
+ * - 对外：WindowPaint*（WindowPaint.h）
+ * - 客户区委托 Console / Settings / Files / StoreUi
  */
 #include "WindowPaint.h"
 #include "Console.h"
@@ -15,13 +20,19 @@
 #include "Theme.h"
 #include "Utf8.h"
 
-#define GUI_CLOSE_BG 0x00B33A3Au
-#define WIN_MOVE_PAD 2u
+#define GUI_CLOSE_BACKGROUND 0x00B33A3Au
+#define WINDOW_MOVE_PRESENT_PAD 2u
 
-void WindowPaint_CloseBtn(UINT32 WinX, UINT32 WinY, UINT32 WinW,
+/*
+ * WindowPaintCloseButton — 算标题栏右上关闭钮矩形
+ *
+ * 做什么：高随 LayoutTitleH；宽不小于 LayoutCloseW。
+ * 谁调用：WindowPaintFrame；WindowInClose（WindowManage）。
+ * 前后文：兄弟 — PaintCloseX 画叉线。
+ */
+void WindowPaintCloseButton(UINT32 WinX, UINT32 WinY, UINT32 WinW,
                           UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     UINT32 TitleH = LayoutTitleH();
-    /* 钮高随标题栏，宽至少够画几何 × */
     *H = (TitleH > 8u) ? (TitleH - 6u) : TitleH;
     *W = *H;
     if (*W < LayoutCloseW()) {
@@ -31,7 +42,11 @@ void WindowPaint_CloseBtn(UINT32 WinX, UINT32 WinY, UINT32 WinW,
     *Y = WinY + (TitleH > *H ? (TitleH - *H) / 2u : 0) + 1u;
 }
 
-/* 红钮内居中两段对角线，避免 16px 字母「x」溢出错位 */
+/*
+ * PaintCloseX — 关闭钮内两段 Bresenham 对角线
+ *
+ * 谁调用：WindowPaintFrame。
+ */
 static void PaintCloseX(UINT32 Bx, UINT32 By, UINT32 Bw, UINT32 Bh,
                         UINT32 Color) {
     UINT32 Pad;
@@ -86,7 +101,6 @@ static void PaintCloseX(UINT32 Bx, UINT32 By, UINT32 Bw, UINT32 Bh,
         }
     }
 
-    /* 另一对角 */
     X0 = Bx + Bw - 1u - Pad;
     Y0 = By + Pad;
     X1 = Bx + Pad;
@@ -121,7 +135,14 @@ static void PaintCloseX(UINT32 Bx, UINT32 By, UINT32 Bw, UINT32 Bh,
     }
 }
 
-void WindowPaint_Desktop(UINT32 FbW, UINT32 FbH) {
+/*
+ * WindowPaintDesktopFramebuffer — 整屏桌面色 + 顶栏 + 底栏开始条
+ *
+ * 做什么：不画窗；StartPaintBar 补底栏（与 WindowCompose 一致）。
+ * 谁调用：WindowPaintDesktop；GuiRefreshLabels 路径。
+ * 前后文：后 — WindowCompose 叠窗与图标。
+ */
+void WindowPaintDesktopFramebuffer(UINT32 FbW, UINT32 FbH) {
     UINT32 BarH = LayoutBarH();
     HalVideoFillRect(0, 0, FbW, FbH, ThemeDesktopBackground());
     HalVideoFillRect(0, 0, FbW, BarH, ThemeTaskbarBackground());
@@ -130,12 +151,19 @@ void WindowPaint_Desktop(UINT32 FbW, UINT32 FbH) {
     StartPaintBar();
 }
 
-void WindowPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
+/*
+ * WindowPaintErase — 用桌面色填窗旧矩形（含拖影 padding）
+ *
+ * 做什么：若擦到顶栏/底栏区域则局部重画栏与标题字。
+ * 谁调用：WindowClose；WindowMoveTo（WindowManage）。
+ * 前后文：后 — WindowCompose 全帧合成。
+ */
+void WindowPaintErase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
                        UINT32 H) {
-    UINT32 L = (X > WIN_MOVE_PAD) ? (X - WIN_MOVE_PAD) : 0;
-    UINT32 T = (Y > WIN_MOVE_PAD) ? (Y - WIN_MOVE_PAD) : 0;
-    UINT32 R = X + W + WIN_MOVE_PAD;
-    UINT32 B = Y + H + WIN_MOVE_PAD;
+    UINT32 L = (X > WINDOW_MOVE_PRESENT_PAD) ? (X - WINDOW_MOVE_PRESENT_PAD) : 0;
+    UINT32 T = (Y > WINDOW_MOVE_PRESENT_PAD) ? (Y - WINDOW_MOVE_PRESENT_PAD) : 0;
+    UINT32 R = X + W + WINDOW_MOVE_PRESENT_PAD;
+    UINT32 B = Y + H + WINDOW_MOVE_PRESENT_PAD;
     UINT32 BarH = LayoutBarH();
     UINT32 BotY = LayoutContentBottom();
 
@@ -158,7 +186,12 @@ void WindowPaint_Erase(UINT32 FbW, UINT32 FbH, UINT32 X, UINT32 Y, UINT32 W,
     }
 }
 
-void WindowPaint_PresentMove(UINT32 FbW, UINT32 FbH, UINT32 X0, UINT32 Y0,
+/*
+ * WindowPaintPresentMove — 拖窗后 Present 旧+新矩形并集（减全屏 flip）
+ *
+ * 谁调用：WindowMoveTo。
+ */
+void WindowPaintPresentMove(UINT32 FbW, UINT32 FbH, UINT32 X0, UINT32 Y0,
                              UINT32 W0, UINT32 H0, UINT32 X1, UINT32 Y1,
                              UINT32 W1, UINT32 H1) {
     UINT32 L = (X0 < X1) ? X0 : X1;
@@ -170,18 +203,18 @@ void WindowPaint_PresentMove(UINT32 FbW, UINT32 FbH, UINT32 X0, UINT32 Y0,
     UINT32 R = (R0 > R1) ? R0 : R1;
     UINT32 B = (B0 > B1) ? B0 : B1;
 
-    if (L > WIN_MOVE_PAD) {
-        L -= WIN_MOVE_PAD;
+    if (L > WINDOW_MOVE_PRESENT_PAD) {
+        L -= WINDOW_MOVE_PRESENT_PAD;
     } else {
         L = 0;
     }
-    if (T > WIN_MOVE_PAD) {
-        T -= WIN_MOVE_PAD;
+    if (T > WINDOW_MOVE_PRESENT_PAD) {
+        T -= WINDOW_MOVE_PRESENT_PAD;
     } else {
         T = 0;
     }
-    R += WIN_MOVE_PAD;
-    B += WIN_MOVE_PAD;
+    R += WINDOW_MOVE_PRESENT_PAD;
+    B += WINDOW_MOVE_PRESENT_PAD;
     if (R > FbW) {
         R = FbW;
     }
@@ -193,7 +226,11 @@ void WindowPaint_PresentMove(UINT32 FbW, UINT32 FbH, UINT32 X0, UINT32 Y0,
     }
 }
 
-/* 客户区内逐字画；超出右/下边界即停，避免拖窗窗外残影 */
+/*
+ * DrawClippedAt — 客户区 UTF-8 串，右/下越界即停
+ *
+ * 谁调用：WindowPaintFrame（About 文案）。
+ */
 static void DrawClippedAt(UINT32 X, UINT32 Y, UINT32 MaxX, UINT32 MaxY,
                           const char *Text, UINT32 Color) {
     UINT32 Cursor = X;
@@ -225,7 +262,14 @@ static void DrawClippedAt(UINT32 X, UINT32 Y, UINT32 MaxX, UINT32 MaxY,
     }
 }
 
-void WindowPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
+/*
+ * WindowPaintFrame — 边框、标题、关闭钮与各窗客户区
+ *
+ * 做什么：Kind=GUI_WIN_* 时分发 Console/Settings/Files/StoreUi/About。
+ * 谁调用：Window.c PaintOne。
+ * 前后文：前 — LayoutTitleH；兄弟 — WindowPaintCloseButton / PaintCloseX。
+ */
+void WindowPaintFrame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
                        LOC_MSG Title, int Kind) {
     UINT32 TitleBg;
     UINT32 Bx;
@@ -242,10 +286,10 @@ void WindowPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
         HalVideoFillRect(X, Y, W, H, ThemeWindowBorder());
         TitleBg = Focus ? ThemeWindowTitleBar() : ThemeWindowTitleBarDim();
         HalVideoFillRect(X + 1u, Y + 1u, W - 2u, TitleH, TitleBg);
-        WindowPaint_CloseBtn(X, Y, W, &Bx, &By, &Bw, &Bh);
+        WindowPaintCloseButton(X, Y, W, &Bx, &By, &Bw, &Bh);
         DrawClippedAt(X + 10u, Y + 5u, Bx > 4u ? Bx - 4u : X + 10u, Y + TitleH,
                       LocStr(Title), ThemeWindowTitleText());
-        HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BG);
+        HalVideoFillRect(Bx, By, Bw, Bh, GUI_CLOSE_BACKGROUND);
         PaintCloseX(Bx, By, Bw, Bh, ThemeWindowTitleText());
         Cx = X + 1u;
         Cy = Y + 1u + TitleH;

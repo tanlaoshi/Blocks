@@ -1,32 +1,29 @@
 /*
- * Layout.c — 窗/栏/图标几何描述表 + FitScale + LAYOUT.CFG
+ * Layout.c — 窗/栏/图标几何描述表 + 按 FB 等比缩放（只缩不放）
  *
- * 【初学者】改窗大小先改本表或 LAYOUT.CFG，勿在 WindowLayoutAll 里写魔法数。
+ * 【初学者】
+ * - 分层：Core/Gui；LAYOUT.CFG 覆盖见 LayoutConfiguration.c
+ * - 对外：LayoutSetFb / LayoutResolveWindow / LayoutIconSlot / LayoutStart*
+ * - 勿在 WindowPaint 里写死像素；改表或 CFG
  */
 #include "Layout.h"
+#include "LayoutPrivate.h"
 #include "Window.h"
-#include "FatFile.h"
-#include "FileSystem.h"
-#include "HalSerial.h"
-#include "SerialConfig.h"
-
-#define CFG_PATH "LAYOUT.CFG"
-#define CFG_MAX  512u
 
 static UINT32 gFbW;
 static UINT32 gFbH;
-static UINT32 gBarH = 32u;   /* 吃下 Terminus/CJK 18 + 垫 */
-static UINT32 gTitleH = 28u;
+UINT32 gBarH = 32u;   /* 吃下 Terminus/CJK 18 + 垫 */
 static UINT32 gCloseW = 22u;
+UINT32 gTitleH = 28u;
 static UINT32 gIconX0 = 28u;
 static UINT32 gIconY0 = 48u;
-static UINT32 gIconTile = 40u;
+UINT32 gIconTile = 40u;
 static UINT32 gIconGap = 6u;
 static UINT32 gIconLabelH = 18u;
-static UINT32 gIconStride = 88u;
-static UINT32 gStartBtnX = 6u;
-static UINT32 gStartBtnW = 92u;
-static UINT32 gStartBtnH = 22u;
+UINT32 gIconStride = 88u;
+static UINT32 gStartButtonX = 6u;
+static UINT32 gStartButtonWidth = 92u;
+static UINT32 gStartButtonHeight = 22u;
 static UINT32 gStartPadY = 4u;
 static UINT32 gMenuW = 140u;
 static UINT32 gMenuRow = 24u;
@@ -34,9 +31,9 @@ static UINT32 gMenuN = 4u;
 
 /*
  * 内建描述（设计稿 1280×720）。
- * Place：CENTER=水平居中，Y=内容区偏移；XY=内容区左上；SHELL_DELTA=相对 Shell。
+ * Place：CENTER=水平居中；XY=内容区左上；SHELL_DELTA=相对 Shell。
  */
-static GUI_WIN_LAYOUT gWin[GUI_WIN_COUNT] = {
+GUI_WIN_LAYOUT gWin[GUI_WIN_COUNT] = {
     {"shell", 520u, 300u, 280u, 160u, GUI_PLACE_CENTER, 0, 24, 1},
     {"about", 340u, 200u, 200u, 120u, GUI_PLACE_SHELL_DELTA, 80, 60, 1},
     {"settings", 360u, 220u, 240u, 140u, GUI_PLACE_XY, 48, 48, 0},
@@ -44,6 +41,11 @@ static GUI_WIN_LAYOUT gWin[GUI_WIN_COUNT] = {
     {"store", 400u, 260u, 260u, 160u, GUI_PLACE_XY, 96, 56, 0},
 };
 
+/*
+ * FitScalePermille — 设计稿→当前 FB 缩放千分比（上限 1000，下限 400）
+ *
+ * 谁调用：ScaleDesign（本文件内）。
+ */
 static UINT32 FitScalePermille(void) {
     UINT32 Sx;
     UINT32 Sy;
@@ -59,64 +61,129 @@ static UINT32 FitScalePermille(void) {
         S = 1000u; /* 只缩不放 */
     }
     if (S < 400u) {
-        S = 400u; /* 地板，避免钮不可点 */
+        S = 400u; /* 地板，避免控件不可点 */
     }
     return S;
 }
 
+/*
+ * ScaleDesign — 设计像素乘当前缩放
+ *
+ * 谁调用：本文件各 Layout* 出口。
+ */
 static UINT32 ScaleDesign(UINT32 DesignPx) {
     return (UINT32)(((UINT64)DesignPx * (UINT64)FitScalePermille()) / 1000u);
 }
 
+/*
+ * LayoutSetFb — 记录帧缓冲尺寸供缩放与落点
+ *
+ * 做什么：只存 W/H；不读 CFG。
+ * 谁调用：GuiInitialize；WindowSetFb（二次同步）。
+ * 前后文：前 — HalVideoGetSize；后 — LayoutLoadConfiguration / LayoutResolveWindow。
+ */
 void LayoutSetFb(UINT32 W, UINT32 H) {
     gFbW = W;
     gFbH = H;
 }
 
+/*
+ * LayoutFbW — 上次 LayoutSetFb 的宽度
+ *
+ * 谁调用：暂无外部；调试或将来自适应 UI 可用。
+ */
 UINT32 LayoutFbW(void) {
     return gFbW;
 }
 
+/*
+ * LayoutFbH — 上次 LayoutSetFb 的高度
+ *
+ * 谁调用：暂无外部；调试或将来自适应 UI 可用。
+ */
 UINT32 LayoutFbH(void) {
     return gFbH;
 }
 
+/*
+ * LayoutBarH — 顶栏/taskbar 高度（缩放后，最小 20）
+ *
+ * 谁调用：StartPaintBar；WindowPaintDesktopFramebuffer / WindowPaintErase。
+ */
 UINT32 LayoutBarH(void) {
     UINT32 H = ScaleDesign(gBarH);
     return (H < 20u) ? 20u : H;
 }
 
+/*
+ * LayoutTitleH — 窗标题栏高度（缩放后，最小 20）
+ *
+ * 谁调用：WindowInTitle；WindowPaintFrame；WindowShellClientRect。
+ */
 UINT32 LayoutTitleH(void) {
     UINT32 H = ScaleDesign(gTitleH);
     return (H < 20u) ? 20u : H;
 }
 
+/*
+ * LayoutCloseW — 关闭钮最小宽度（缩放后，最小 16）
+ *
+ * 谁调用：WindowPaintCloseButton。
+ */
 UINT32 LayoutCloseW(void) {
     UINT32 W = ScaleDesign(gCloseW);
     return (W < 16u) ? 16u : W;
 }
 
+/*
+ * LayoutContentTop — 可放窗/桌面的 Y 起点（顶栏底边）
+ *
+ * 谁调用：LayoutResolveWindow；Window ClampPos；Pointer 点空白收焦点。
+ */
 UINT32 LayoutContentTop(void) {
     return LayoutBarH();
 }
 
+/*
+ * LayoutContentBottom — 内容区底边 Y（底栏顶边，不含底栏）
+ *
+ * 谁调用：LayoutResolveWindow；LayoutStartButton；StartPaintBar；WindowPaintErase。
+ */
 UINT32 LayoutContentBottom(void) {
     UINT32 Bar = LayoutBarH();
     return (gFbH > Bar) ? (gFbH - Bar) : 0;
 }
 
+/*
+ * LayoutPx — 任意设计像素→屏像素
+ *
+ * 谁调用：Desktop / Start / WindowPaint 排版间距。
+ */
 UINT32 LayoutPx(UINT32 DesignPx) {
     return ScaleDesign(DesignPx);
 }
 
-const GUI_WIN_LAYOUT *LayoutWindowDesc(int WinId) {
-    if (WinId < 0 || WinId >= GUI_WIN_COUNT) {
+/*
+ * LayoutWindowDescription — 窗槽内建描述行（只读表项）
+ *
+ * 谁调用：WindowLayoutAll。
+ * 返回：非法 Id 为 0。
+ */
+const GUI_WIN_LAYOUT *LayoutWindowDescription(int WindowId) {
+    if (WindowId < 0 || WindowId >= GUI_WIN_COUNT) {
         return 0;
     }
-    return &gWin[WinId];
+    return &gWin[WindowId];
 }
 
-void LayoutResolveWindow(int WinId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+/*
+ * LayoutResolveWindow — 按 Place 规则算窗矩形并夹进 FB
+ *
+ * 做什么：缩放 DesignW/H、尊重 MinW/H；SHELL_DELTA 先递归 shell。
+ * 谁调用：WindowLayoutAll。
+ * 前后文：前 — LayoutSetFb + 可选 LayoutLoadConfiguration；后 — Window 存 gWindows[]。
+ */
+void LayoutResolveWindow(int WindowId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     const GUI_WIN_LAYOUT *D;
     UINT32 Ww;
     UINT32 Hh;
@@ -131,7 +198,7 @@ void LayoutResolveWindow(int WinId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) 
     if (X == 0 || Y == 0 || W == 0 || H == 0) {
         return;
     }
-    D = LayoutWindowDesc(WinId);
+    D = LayoutWindowDescription(WindowId);
     if (D == 0) {
         *X = *Y = 0;
         *W = *H = 0;
@@ -163,7 +230,6 @@ void LayoutResolveWindow(int WinId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) 
         *X = ScaleDesign((UINT32)(D->DesignX > 0 ? D->DesignX : 0));
         *Y = Top + ScaleDesign((UINT32)(D->DesignY > 0 ? D->DesignY : 0));
     } else {
-        /* SHELL_DELTA：先解析 shell */
         LayoutResolveWindow(GUI_WIN_SHELL, &Sx, &Sy, &Sw, &Sh);
         *X = Sx + ScaleDesign((UINT32)(D->DesignX > 0 ? D->DesignX : 0));
         *Y = Sy + ScaleDesign((UINT32)(D->DesignY > 0 ? D->DesignY : 0));
@@ -184,11 +250,21 @@ void LayoutResolveWindow(int WinId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) 
     *H = Hh;
 }
 
+/*
+ * LayoutIconTile — 桌面图标色块边长（缩放后，最小 24）
+ *
+ * 谁调用：LayoutIconSlot；DesktopPaintIcons。
+ */
 UINT32 LayoutIconTile(void) {
     UINT32 T = ScaleDesign(gIconTile);
     return (T < 24u) ? 24u : T;
 }
 
+/*
+ * LayoutIconSlot — 第 Slot 个桌面图标外接矩形
+ *
+ * 谁调用：Desktop IconGeometry / DesktopHitIcon。
+ */
 void LayoutIconSlot(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     UINT32 Tile = LayoutIconTile();
     UINT32 Gap = ScaleDesign(gIconGap);
@@ -207,12 +283,17 @@ void LayoutIconSlot(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     *H = Tile + Gap + Lab;
 }
 
-void LayoutStartBtn(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+/*
+ * LayoutStartButton — 底栏「开始」钮矩形
+ *
+ * 谁调用：StartPaintBar / StartHitButton；LayoutStartMenu。
+ */
+void LayoutStartButton(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     UINT32 BarY = LayoutContentBottom();
-    *X = ScaleDesign(gStartBtnX);
+    *X = ScaleDesign(gStartButtonX);
     *Y = BarY + ScaleDesign(gStartPadY);
-    *W = ScaleDesign(gStartBtnW);
-    *H = ScaleDesign(gStartBtnH);
+    *W = ScaleDesign(gStartButtonWidth);
+    *H = ScaleDesign(gStartButtonHeight);
     if (*W < 72u) {
         *W = 72u;
     }
@@ -221,6 +302,11 @@ void LayoutStartBtn(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     }
 }
 
+/*
+ * LayoutStartMenu — 开始弹出菜单外框（贴底栏上方）
+ *
+ * 谁调用：StartPaintMenu / StartHitMenu。
+ */
 void LayoutStartMenu(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     UINT32 Bx;
     UINT32 By;
@@ -228,7 +314,7 @@ void LayoutStartMenu(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     UINT32 Bh;
     UINT32 Mh;
 
-    LayoutStartBtn(&Bx, &By, &Bw, &Bh);
+    LayoutStartButton(&Bx, &By, &Bw, &Bh);
     Mh = gMenuN * ScaleDesign(gMenuRow) + ScaleDesign(8u);
     *X = Bx;
     *W = ScaleDesign(gMenuW);
@@ -236,150 +322,4 @@ void LayoutStartMenu(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     *Y = (LayoutContentBottom() > Mh) ? (LayoutContentBottom() - Mh) : 0;
     (void)By;
     (void)Bh;
-}
-
-static int KeyEq(const char *Line, const char *Key, const char **Val) {
-    UINTN i = 0;
-    while (Key[i] != 0) {
-        if (Line[i] != Key[i]) {
-            return 0;
-        }
-        i++;
-    }
-    if (Line[i] != '=') {
-        return 0;
-    }
-    *Val = Line + i + 1;
-    return 1;
-}
-
-static int ParseU32(const char **S, UINT32 *Out) {
-    UINT32 V = 0;
-    int Dig = 0;
-    const char *P = *S;
-    while (*P >= '0' && *P <= '9') {
-        V = V * 10u + (UINT32)(*P - '0');
-        P++;
-        Dig = 1;
-        if (V > 10000u) {
-            return 0;
-        }
-    }
-    if (!Dig) {
-        return 0;
-    }
-    *S = P;
-    *Out = V;
-    return 1;
-}
-
-static int ParseWxH(const char *S, UINT32 *W, UINT32 *H) {
-    if (!ParseU32(&S, W) || (*S != 'x' && *S != 'X')) {
-        return 0;
-    }
-    S++;
-    if (!ParseU32(&S, H)) {
-        return 0;
-    }
-    return 1;
-}
-
-static void ApplyWinSize(const char *Name, UINT32 W, UINT32 H) {
-    int i;
-    for (i = 0; i < GUI_WIN_COUNT; i++) {
-        const char *N = gWin[i].Name;
-        UINTN k = 0;
-        int Eq = 1;
-        while (Name[k] != 0 || N[k] != 0) {
-            if (Name[k] != N[k]) {
-                Eq = 0;
-                break;
-            }
-            k++;
-        }
-        if (Eq) {
-            gWin[i].DesignW = W;
-            gWin[i].DesignH = H;
-            return;
-        }
-    }
-}
-
-static void ApplyLine(const char *Line) {
-    const char *Val = 0;
-    UINT32 A;
-    UINT32 B;
-
-    while (*Line == ' ' || *Line == '\t') {
-        Line++;
-    }
-    if (*Line == 0 || *Line == '#') {
-        return;
-    }
-    if (KeyEq(Line, "bar_h", &Val) && ParseU32(&Val, &A)) {
-        gBarH = A;
-        return;
-    }
-    if (KeyEq(Line, "title_h", &Val) && ParseU32(&Val, &A)) {
-        gTitleH = A;
-        return;
-    }
-    if (KeyEq(Line, "icon_tile", &Val) && ParseU32(&Val, &A)) {
-        gIconTile = A;
-        return;
-    }
-    if (KeyEq(Line, "icon_stride", &Val) && ParseU32(&Val, &A)) {
-        gIconStride = A;
-        return;
-    }
-    if (KeyEq(Line, "shell", &Val) && ParseWxH(Val, &A, &B)) {
-        ApplyWinSize("shell", A, B);
-        return;
-    }
-    if (KeyEq(Line, "about", &Val) && ParseWxH(Val, &A, &B)) {
-        ApplyWinSize("about", A, B);
-        return;
-    }
-    if (KeyEq(Line, "settings", &Val) && ParseWxH(Val, &A, &B)) {
-        ApplyWinSize("settings", A, B);
-        return;
-    }
-    if (KeyEq(Line, "files", &Val) && ParseWxH(Val, &A, &B)) {
-        ApplyWinSize("files", A, B);
-        return;
-    }
-}
-
-int LayoutLoadConfiguration(void) {
-    char Buf[CFG_MAX];
-    UINT32 Size = 0;
-    UINT32 i;
-    char Line[80];
-    UINTN L = 0;
-
-    if (!FileSystemHasOsMarker()) {
-        return -1;
-    }
-    if (FatFileReadPath(CFG_PATH, Buf, sizeof(Buf) - 1u, &Size) < 0 ||
-        Size == 0) {
-        HalSerialWriteChannel(SLOG_GUI, "Layout: cfg miss (builtin)\n");
-        return -1;
-    }
-    Buf[Size] = 0;
-    for (i = 0; i <= Size; i++) {
-        char C = (i < Size) ? Buf[i] : '\n';
-        if (C == '\n' || C == '\r' || i == Size) {
-            if (L > 0) {
-                Line[L] = 0;
-                ApplyLine(Line);
-                L = 0;
-            }
-            continue;
-        }
-        if (L + 1u < sizeof(Line)) {
-            Line[L++] = C;
-        }
-    }
-    HalSerialWriteChannel(SLOG_GUI, "Layout: cfg loaded\n");
-    return 0;
 }

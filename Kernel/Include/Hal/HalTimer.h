@@ -9,7 +9,7 @@
 #include "BootTypes.h"
 
 /* 装 IDT 向量、开 LAPIC timer；成功 0 */
-int HalTimerInit(void);
+int HalTimerInitialize(void);
 int HalTimerReady(void);
 UINT64 HalTimerTicks(void);
 /* 开 IF（sti）；无定时器时也可调用 */

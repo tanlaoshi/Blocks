@@ -45,16 +45,16 @@ UINT32 LayoutContentBottom(void); /* 底栏顶边 Y（不含底栏） */
 /* 设计像素 → 屏像素（scale≤1） */
 UINT32 LayoutPx(UINT32 DesignPx);
 
-const GUI_WIN_LAYOUT *LayoutWindowDesc(int WinId);
+const GUI_WIN_LAYOUT *LayoutWindowDescription(int WindowId);
 /* 按当前 FB 解析窗矩形到 Out* */
-void LayoutResolveWindow(int WinId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
+void LayoutResolveWindow(int WindowId, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 
 /* 桌面图标槽（设计坐标自适应） */
 void LayoutIconSlot(int Slot, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 UINT32 LayoutIconTile(void);
 
 /* 开始钮 / 菜单（底栏） */
-void LayoutStartBtn(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
+void LayoutStartButton(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 void LayoutStartMenu(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 
 #endif

@@ -1,6 +1,10 @@
 /*
  * FontTerminus10x18.c — Terminus 10×18 ASCII 点阵（摘自 Linux font_ter10x18 / 现网）
  * 许可 GPL-2.0；Blocks 方案 A：对标现网课路径 ASCII。
+ *
+ * 【初学者】
+ * - 纯点阵数据 gFontTerminus10x18；不对每个字模写函数注释。
+ * - 谁用：Font.c Terminus 路径。
  */
 #include "FontTerminus10x18.h"
 

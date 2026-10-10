@@ -1,26 +1,29 @@
 /*
  * Gpt.c — K44：找 FAT 分区起点（对标现网 Gpt 薄子集）
  *
- * 【初学者】先认 LBA0 是否 BPB；否则 MBR；type 0xEE 再扫 GPT 项。
+ * 【初学者】
+ * - 分层：Core/FileSystem；VolumeMountAll 消费本 API
+ * - 对外：GptFindFatParts
+ * - 不做：写分区、非 FAT 文件系统
  */
 #include "Gpt.h"
 #include "HalBlock.h"
 
 #define SECTOR 512u
 
-static UINT8 gSec[SECTOR];
+static UINT8 gSectorBuffer[SECTOR];
 
-static UINT16 Rd16(const UINT8 *P) {
-    return (UINT16)(P[0] | ((UINT16)P[1] << 8));
+static UINT16 ReadUInt16Le(const UINT8 *Pointer) {
+    return (UINT16)(Pointer[0] | ((UINT16)Pointer[1] << 8));
 }
 
-static UINT32 Rd32(const UINT8 *P) {
-    return (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
-           ((UINT32)P[3] << 24);
+static UINT32 ReadUInt32Le(const UINT8 *Pointer) {
+    return (UINT32)Pointer[0] | ((UINT32)Pointer[1] << 8) |
+           ((UINT32)Pointer[2] << 16) | ((UINT32)Pointer[3] << 24);
 }
 
-static UINT64 Rd64(const UINT8 *P) {
-    return (UINT64)Rd32(P) | ((UINT64)Rd32(P + 4) << 32);
+static UINT64 ReadUInt64Le(const UINT8 *Pointer) {
+    return (UINT64)ReadUInt32Le(Pointer) | ((UINT64)ReadUInt32Le(Pointer + 4) << 32);
 }
 
 static int HasBootSig(const UINT8 *S) {
@@ -32,7 +35,7 @@ static int IsFatBpb(const UINT8 *S) {
     if (!HasBootSig(S) || (S[0] != 0xEBu && S[0] != 0xE9u)) {
         return 0;
     }
-    Bps = Rd16(S + 11);
+    Bps = ReadUInt16Le(S + 11);
     if (Bps != SECTOR || S[13] == 0) {
         return 0;
     }
@@ -46,22 +49,23 @@ static int IsFatBpb(const UINT8 *S) {
     return 1;
 }
 
-static int Add(GPT_FAT_PART *Out, int Max, int N, UINT32 Lba, int IsEsp) {
+static int AppendFatPartition(GPT_FAT_PART *Out, int Max, int Count, UINT32 StartLba,
+                              int IsEsp) {
     int i;
-    if (N >= Max) {
-        return N;
+    if (Count >= Max) {
+        return Count;
     }
-    for (i = 0; i < N; i++) {
-        if (Out[i].StartLba == Lba) {
+    for (i = 0; i < Count; i++) {
+        if (Out[i].StartLba == StartLba) {
             if (IsEsp) {
                 Out[i].IsEsp = 1;
             }
-            return N;
+            return Count;
         }
     }
-    Out[N].StartLba = Lba;
-    Out[N].IsEsp = IsEsp ? 1 : 0;
-    return N + 1;
+    Out[Count].StartLba = StartLba;
+    Out[Count].IsEsp = IsEsp ? 1 : 0;
+    return Count + 1;
 }
 
 static int ScanGpt(GPT_FAT_PART *Out, int Max, int N) {
@@ -74,16 +78,16 @@ static int ScanGpt(GPT_FAT_PART *Out, int Max, int N) {
         0x28, 0x73, 0x2A, 0xC1, 0x1F, 0xF8, 0xD2, 0x11,
         0xBA, 0x4B, 0x00, 0xA0, 0xC9, 0x3E, 0xC9, 0x3B};
 
-    if (HalBlockRead(1, gSec, 1) != 0) {
+    if (HalBlockRead(1, gSectorBuffer, 1) != 0) {
         return N;
     }
-    if (gSec[0] != 'E' || gSec[1] != 'F' || gSec[2] != 'I' || gSec[3] != ' ' ||
-        gSec[4] != 'P' || gSec[5] != 'A' || gSec[6] != 'R' || gSec[7] != 'T') {
+    if (gSectorBuffer[0] != 'E' || gSectorBuffer[1] != 'F' || gSectorBuffer[2] != 'I' || gSectorBuffer[3] != ' ' ||
+        gSectorBuffer[4] != 'P' || gSectorBuffer[5] != 'A' || gSectorBuffer[6] != 'R' || gSectorBuffer[7] != 'T') {
         return N;
     }
-    EntLba = (UINT32)Rd64(gSec + 72);
-    EntN = Rd32(gSec + 80);
-    EntSz = Rd32(gSec + 84);
+    EntLba = (UINT32)ReadUInt64Le(gSectorBuffer + 72);
+    EntN = ReadUInt32Le(gSectorBuffer + 80);
+    EntSz = ReadUInt32Le(gSectorBuffer + 84);
     if (EntSz < 128u || EntN == 0 || EntN > 128u) {
         return N;
     }
@@ -94,13 +98,13 @@ static int ScanGpt(GPT_FAT_PART *Out, int Max, int N) {
         int IsEsp = 0;
         int k;
 
-        if (HalBlockRead(Lba, gSec, 1) != 0) {
+        if (HalBlockRead(Lba, gSectorBuffer, 1) != 0) {
             break;
         }
         {
             int Empty = 1;
             for (k = 0; k < 16; k++) {
-                if (gSec[Off + k] != 0) {
+                if (gSectorBuffer[Off + k] != 0) {
                     Empty = 0;
                     break;
                 }
@@ -110,25 +114,32 @@ static int ScanGpt(GPT_FAT_PART *Out, int Max, int N) {
             }
         }
         for (k = 0; k < 16; k++) {
-            if (gSec[Off + k] != EspGuid[k]) {
+            if (gSectorBuffer[Off + k] != EspGuid[k]) {
                 break;
             }
         }
         if (k == 16) {
             IsEsp = 1;
         }
-        First = Rd64(gSec + Off + 32);
+        First = ReadUInt64Le(gSectorBuffer + Off + 32);
         if (First == 0 || First > 0xFFFFFFFFu) {
             continue;
         }
-        if (HalBlockRead((UINT32)First, gSec, 1) != 0 || !IsFatBpb(gSec)) {
+        if (HalBlockRead((UINT32)First, gSectorBuffer, 1) != 0 || !IsFatBpb(gSectorBuffer)) {
             continue;
         }
-        N = Add(Out, Max, N, (UINT32)First, IsEsp);
+        N = AppendFatPartition(Out, Max, N, (UINT32)First, IsEsp);
     }
     return N;
 }
 
+/*
+ * GptFindFatParts — 枚举盘上 FAT 分区起始 LBA
+ *
+ * 做什么：LBA0 BPB / MBR 四项 / GPT 项；去重；标 ESP。
+ * 谁调用：VolumeMountAll。
+ * 返回：0 成功（OutCount 可为 0）；-1 参数或读 LBA0 失败
+ */
 int GptFindFatParts(GPT_FAT_PART *Out, int Max, int *OutCount) {
     int N = 0;
     int i;
@@ -138,20 +149,20 @@ int GptFindFatParts(GPT_FAT_PART *Out, int Max, int *OutCount) {
         return -1;
     }
     *OutCount = 0;
-    if (HalBlockRead(0, gSec, 1) != 0) {
+    if (HalBlockRead(0, gSectorBuffer, 1) != 0) {
         return -1;
     }
-    if (IsFatBpb(gSec)) {
-        *OutCount = Add(Out, Max, 0, 0, 0);
+    if (IsFatBpb(gSectorBuffer)) {
+        *OutCount = AppendFatPartition(Out, Max, 0, 0, 0);
         return 0;
     }
-    if (!HasBootSig(gSec)) {
+    if (!HasBootSig(gSectorBuffer)) {
         return 0;
     }
     for (i = 0; i < 4; i++) {
-        UINT8 *E = gSec + 446 + i * 16;
+        UINT8 *E = gSectorBuffer + 446 + i * 16;
         UINT8 Type = E[4];
-        UINT32 Lba = Rd32(E + 8);
+        UINT32 Lba = ReadUInt32Le(E + 8);
         if (Type == 0) {
             continue;
         }
@@ -161,10 +172,10 @@ int GptFindFatParts(GPT_FAT_PART *Out, int Max, int *OutCount) {
         }
         if (Type == 0x0B || Type == 0x0C || Type == 0x0E || Type == 0x06 ||
             Type == 0xEF) {
-            if (HalBlockRead(Lba, gSec, 1) == 0 && IsFatBpb(gSec)) {
-                N = Add(Out, Max, N, Lba, Type == 0xEF);
+            if (HalBlockRead(Lba, gSectorBuffer, 1) == 0 && IsFatBpb(gSectorBuffer)) {
+                N = AppendFatPartition(Out, Max, N, Lba, Type == 0xEF);
             }
-            if (HalBlockRead(0, gSec, 1) != 0) {
+            if (HalBlockRead(0, gSectorBuffer, 1) != 0) {
                 break;
             }
         }

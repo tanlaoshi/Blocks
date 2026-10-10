@@ -8,7 +8,7 @@
 
 #include "BootTypes.h"
 
-int HalNetInit(void);
+int HalNetInitialize(void);
 int HalNetReady(void);
 void HalNetGetMac(UINT8 Mac[6]);
 /* 发一帧以太网载荷（不含 virtio_net_hdr）；成功 0 */

@@ -1,5 +1,8 @@
 /*
- * Enum.c — 根口复位 / Address / HID 认领 / 中断 EP
+ * Enum.c — 根 hub 端口与 HID 接口探测
+ *
+ * 【初学者】
+ * - UsbHid 子模块：找 boot keyboard / mouse 接口并建 slot。
  */
 #include "Internal.h"
 

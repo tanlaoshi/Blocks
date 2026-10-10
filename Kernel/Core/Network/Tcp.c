@@ -1,9 +1,11 @@
 /*
- * Tcp.c — K40：单连接 TCP（对标现网 Tcp legacy 薄）
+ * Tcp.c — 单连接 builtin TCP（listen/connect/echo）
  *
  * 【初学者】
- * 状态：LISTEN / SYN_SENT / SYN_RCVD / ESTABLISHED。
- * 服务端回显；客户端 connect+send。不做多连接 / 拥塞 / 完备重传（另刀）。
+ * - 状态 LISTEN / SYN_SENT / SYN_RCVD / ESTABLISHED；LwIpActive 时 TcpPoll 不再收帧
+ * - 公开 API：TcpInitialize、TcpListen、TcpConnect、TcpSend、TcpClose、TcpGetState、TcpPoll
+ * - 体量约 503 行（>300），状态机在 static 分函数；整文件拆分另刀
+ * - 不做多连接、完备重传、与 lwIP 并存 RX
  */
 #include "Network.h"
 #include "LwIp.h"
@@ -94,6 +96,12 @@ static void PutHex16(UINT16 V) {
     HalSerialWriteChannelHex32(SLOG_NET, (UINT32)V);
 }
 
+/*
+ * TcpInitialize — 重置单连接状态（Close/Listen/Connect 也会调）
+ *
+ * 谁调用：NetworkInitialize；TcpClose；TcpListen/TcpConnect 入口。
+ * 返回：void
+ */
 void TcpInitialize(void) {
     gState = NETWORK_TCP_CLOSED;
     gLocalPort = 0;
@@ -151,6 +159,12 @@ static int SendSeg(UINT8 Flags, const void *Data, UINTN Len, UINT32 Seq, UINT32 
     return NetworkSendIp(gPeerIp, IP_PROTO_TCP, Buf, TCP_HDR_LEN + Len);
 }
 
+/*
+ * TcpListen — 进入 LISTEN（Shell tcplisten）
+ *
+ * 谁调用：ShellCommand NetworkTcp.c；HalSyscall 路径若启用。
+ * 返回：0
+ */
 int TcpListen(UINT16 Port) {
     TcpInitialize();
     gLocalPort = Port;
@@ -161,6 +175,12 @@ int TcpListen(UINT16 Port) {
     return 0;
 }
 
+/*
+ * TcpClose — 发 FIN 并重置状态
+ *
+ * 谁调用：Shell tcpconnect 结束；LwIpInitialize（释放 builtin 槽）。
+ * 返回：void
+ */
 void TcpClose(void) {
     if (gState == NETWORK_TCP_ESTABLISHED) {
         (void)SendSeg(TCP_FLAG_FIN | TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
@@ -169,6 +189,12 @@ void TcpClose(void) {
     TcpInitialize();
 }
 
+/*
+ * TcpConnect — 客户端 SYN（Shell tcpconnect 第一步）
+ *
+ * 谁调用：ShellCommand NetworkTcp.c。
+ * 返回：0 已发 SYN；-1 TX 失败
+ */
 int TcpConnect(UINT32 DstIp, UINT16 DstPort) {
     TcpInitialize();
     gClientMode = 1;
@@ -186,6 +212,12 @@ int TcpConnect(UINT32 DstIp, UINT16 DstPort) {
     return 0;
 }
 
+/*
+ * TcpSend — ESTABLISHED 下分段发送（简易缓冲）
+ *
+ * 谁调用：Shell tcpconnect；ConsoleReadLine 不直接调。
+ * 返回：0 成功；-1/-2 状态或 TX 失败
+ */
 int TcpSend(const void *Data, UINTN Len) {
     if (gState != NETWORK_TCP_ESTABLISHED || Data == 0 || Len == 0) {
         return -1;
@@ -440,6 +472,12 @@ void TcpInputFrame(const UINT8 *Frame, int Len) {
     TcpInput(SrcIp, DstIp, Frame + PayOff, PayLen);
 }
 
+/*
+ * TcpPoll — 轮询 HalNet RX 并 TcpInputFrame（及 Udp/ARP）
+ *
+ * 谁调用：ConsoleReadLine（Tcp 非 CLOSED）；Shell tcpconnect 等。
+ * 返回：void；LwIpActive 时早退
+ */
 void TcpPoll(int TimeoutMs) {
     UINT8 Rx[1518];
     int Spin;

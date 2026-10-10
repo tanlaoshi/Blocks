@@ -38,7 +38,7 @@
 
 | 目录 | 主文件（保留） | 子文件（去目录前缀 / 写全） |
 | ---- | -------------- | --------------------------- |
-| `FileSystem/` | `FileSystem.c` | `Volume` `FatVolume` `FatDirectory` `FatMutation` `FatAllocate` `DataBase` `Store*` … |
+| `FileSystem/` | `FileSystem.c` | `Volume` `FatVolume` `FatDirectory` `FatSlot` `FatWrite` `FatMakeDirectory` `FatDelete` `FatRename` `FatAllocate` `DataBase` `Store*` … |
 | `Network/` | `Network.c` | `Ip` `Ping` `Udp` `Tcp` `Lwip` `Configuration` |
 | `Gui/` | `Gui.c` | `Layout` `Desktop` `Settings` `Files` `Start` `Window` `WindowPaint` `Cursor` `Pointer` |
 | `Console/` | `Console.c` | `ShellSystem` `ElfLoader` `Process`；命令见下 `ShellCommand/` |

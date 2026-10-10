@@ -1,7 +1,9 @@
 /*
- * NetworkTcp.c — tcplisten / tcpconnect
+ * NetworkTcp.c — Shell：tcplisten / tcpconnect
  *
- * 对标现网 ShellCommandsNetTcp.c。
+ * 【初学者】
+ * - 薄包装 Core/Network/Tcp.c（builtin 单连接；lwIP on 后 TcpPoll 空转）
+ * - 对外入口：NetworkTcpRegister
  */
 #include "ShellCommand.h"
 #include "Network.h"
@@ -134,6 +136,12 @@ static void CommandTcpConnect(int Argc, char **Argv) {
     Put("tcpconnect: done\n");
 }
 
+/*
+ * NetworkTcpRegister — 注册 tcplisten / tcpconnect
+ *
+ * 谁调用：ShellCommandInitialize。
+ * 返回：void
+ */
 void NetworkTcpRegister(void) {
     ShellCommandRegister("tcplisten", "TCP echo listen", CommandTcpListen);
     ShellCommandRegister("tcpconnect", "TCP connect+send", CommandTcpConnect);

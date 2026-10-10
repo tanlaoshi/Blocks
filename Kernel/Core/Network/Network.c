@@ -18,6 +18,12 @@ static UINT8 gNicBus;
 static UINT8 gNicDev;
 static UINT8 gNicFunc;
 
+/*
+ * NetworkNicReady — PCI 是否找到 class 0x02 网卡
+ *
+ * 谁调用：Shell 网络命令；Ping/Tcp/Udp 入口检查。
+ * 返回：非 0 已探测到（未必 virtio 已 HalNetReady）
+ */
 int NetworkNicReady(void) {
     return gNicReady;
 }
@@ -154,6 +160,13 @@ static void NetSendArpProbe(void) {
 }
 #endif
 
+/*
+ * NetworkInitialize — PCI 探卡、HalNet、Udp/Tcp 初始化、ARP 探针
+ *
+ * 做什么：扫 PCI → virtio-net → UdpInitialize/TcpInitialize → 发 ARP。
+ * 谁调用：Modules.c 启动表「Network」项。
+ * 返回：0（无卡亦 0，仅日志 WARN）
+ */
 int NetworkInitialize(void) {
     gNicReady = 0;
     gNicVid = 0;
@@ -177,7 +190,7 @@ int NetworkInitialize(void) {
     HalSerialWriteChannelHex32(SLOG_NET, gNicDid);
     HalSerialWriteChannel(SLOG_NET, "\n");
 
-    if (HalNetInit() == 0 && HalNetReady()) {
+    if (HalNetInitialize() == 0 && HalNetReady()) {
         UINT8 Mac[6];
         HalNetGetMac(Mac);
         HalSerialWriteChannel(SLOG_NET, "Net: virtio ok mac=");

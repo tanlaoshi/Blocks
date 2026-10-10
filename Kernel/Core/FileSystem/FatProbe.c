@@ -1,9 +1,10 @@
 /*
- * FatProbe.c — K16：在块设备上找根目录 BLOCKS.ID
+ * FatProbe.c — 在块设备上找根目录 BLOCKS.ID
  *
  * 【初学者】
- * 读 LBA0（或 MBR 第一分区）BPB → 算根目录 → 扫 8.3 名 "BLOCKS  ID"。
- * FAT16 固定根目录；FAT32 跟 FAT 表簇链（有限步）。
+ * - 分层：Core/FileSystem；Boot 侧也可用同类逻辑
+ * - 对外：FatProbeOsMarker
+ * - 不做：挂卷、写盘；FAT16 固定根 / FAT32 有限步簇链
  */
 #include "BootTypes.h"
 #include "HalBlock.h"
@@ -12,115 +13,111 @@
 
 #define SECTOR 512u
 
-static int MemEq(const UINT8 *A, const char *B, UINTN N) {
-    UINTN i;
-    for (i = 0; i < N; i++) {
-        if (A[i] != (UINT8)B[i]) {
+static int MemoryEqual(const UINT8 *A, const char *B, UINTN N) {
+    UINTN Index;
+    for (Index = 0; Index < N; Index++) {
+        if (A[Index] != (UINT8)B[Index]) {
             return 0;
         }
     }
     return 1;
 }
 
-static UINT16 Rd16(const UINT8 *P) {
-    return (UINT16)(P[0] | ((UINT16)P[1] << 8));
+static UINT16 ReadUInt16Le(const UINT8 *Pointer) {
+    return (UINT16)(Pointer[0] | ((UINT16)Pointer[1] << 8));
 }
 
-static UINT32 Rd32(const UINT8 *P) {
-    return (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
-           ((UINT32)P[3] << 24);
+static UINT32 ReadUInt32Le(const UINT8 *Pointer) {
+    return (UINT32)Pointer[0] | ((UINT32)Pointer[1] << 8) |
+           ((UINT32)Pointer[2] << 16) | ((UINT32)Pointer[3] << 24);
 }
 
-static int LooksLikeBpb(const UINT8 *Sec) {
-    UINT16 Bps = Rd16(Sec + 11);
-    UINT8 Spc = Sec[13];
-    UINT8 Jmp = Sec[0];
-    if (Sec[510] != 0x55u || Sec[511] != 0xAAu) {
+static int LooksLikeBpb(const UINT8 *Sector) {
+    UINT16 BytesPerSector = ReadUInt16Le(Sector + 11);
+    UINT8 SectorsPerCluster = Sector[13];
+    UINT8 Jump = Sector[0];
+    if (Sector[510] != 0x55u || Sector[511] != 0xAAu) {
         return 0;
     }
-    if (Bps != SECTOR || Spc == 0) {
+    if (BytesPerSector != SECTOR || SectorsPerCluster == 0) {
         return 0;
     }
-    /* EB xx 90 或 E9 */
-    if (Jmp == 0xEBu || Jmp == 0xE9u) {
+    if (Jump == 0xEBu || Jump == 0xE9u) {
         return 1;
     }
     return 0;
 }
 
-/* Dir 扇区里找 BLOCKS.ID；找到返回 1 */
-static int ScanDirSector(const UINT8 *Sec) {
-    UINTN Off;
-    for (Off = 0; Off < SECTOR; Off += 32u) {
-        if (Sec[Off] == 0x00u) {
-            return 0; /* 后续空 */
+static int ScanDirSector(const UINT8 *Sector) {
+    UINTN Offset;
+    for (Offset = 0; Offset < SECTOR; Offset += 32u) {
+        if (Sector[Offset] == 0x00u) {
+            return 0;
         }
-        if (Sec[Off] == 0xE5u) {
+        if (Sector[Offset] == 0xE5u) {
             continue;
         }
-        if ((Sec[Off + 11] & 0x08u) != 0) {
-            continue; /* volume label */
+        if ((Sector[Offset + 11] & 0x08u) != 0) {
+            continue;
         }
-        if ((Sec[Off + 11] & 0x0Fu) == 0x0Fu) {
-            continue; /* LFN */
+        if ((Sector[Offset + 11] & 0x0Fu) == 0x0Fu) {
+            continue;
         }
-        /* BLOCKS.ID；兼容旧 TOYOS.ID */
-        if (MemEq(Sec + Off, "BLOCKS  ID ", 11) ||
-            MemEq(Sec + Off, "TOYOS   ID ", 11)) {
+        if (MemoryEqual(Sector + Offset, "BLOCKS  ID ", 11) ||
+            MemoryEqual(Sector + Offset, "TOYOS   ID ", 11)) {
             return 1;
         }
     }
     return 0;
 }
 
-/* 读 FAT 表下一簇；FatBits=16/32；失败返回 0 */
-static UINT32 FatNextCluster(UINT32 FatLba, UINT32 Clus, UINT32 FatBits) {
-    UINT8 Sec[SECTOR];
-    UINT32 EntPerSec;
+static UINT32 FatNextCluster(UINT32 FatLba, UINT32 Cluster, UINT32 FatBits) {
+    UINT8 Sector[SECTOR];
+    UINT32 EntriesPerSector;
     UINT32 Index;
-    UINT32 Lba;
-    UINT32 Off;
+    UINT32 LogicalBlock;
+    UINT32 Offset;
 
     if (FatBits == 32) {
-        EntPerSec = SECTOR / 4u;
-        Index = Clus;
-        Lba = FatLba + Index / EntPerSec;
-        Off = (Index % EntPerSec) * 4u;
-        if (HalBlockRead(Lba, Sec, 1) != 0) {
+        EntriesPerSector = SECTOR / 4u;
+        Index = Cluster;
+        LogicalBlock = FatLba + Index / EntriesPerSector;
+        Offset = (Index % EntriesPerSector) * 4u;
+        if (HalBlockRead(LogicalBlock, Sector, 1) != 0) {
             return 0;
         }
-        return Rd32(Sec + Off) & 0x0FFFFFFFu;
+        return ReadUInt32Le(Sector + Offset) & 0x0FFFFFFFu;
     }
-    EntPerSec = SECTOR / 2u;
-    Index = Clus;
-    Lba = FatLba + Index / EntPerSec;
-    Off = (Index % EntPerSec) * 2u;
-    if (HalBlockRead(Lba, Sec, 1) != 0) {
+    EntriesPerSector = SECTOR / 2u;
+    Index = Cluster;
+    LogicalBlock = FatLba + Index / EntriesPerSector;
+    Offset = (Index % EntriesPerSector) * 2u;
+    if (HalBlockRead(LogicalBlock, Sector, 1) != 0) {
         return 0;
     }
-    return (UINT32)Rd16(Sec + Off);
+    return (UINT32)ReadUInt16Le(Sector + Offset);
 }
 
-static int ScanClusterChain(UINT32 DataLba, UINT8 Spc, UINT32 FatLba,
-                            UINT32 FatBits, UINT32 StartClus) {
-    UINT8 Sec[SECTOR];
-    UINT32 Clus = StartClus;
+static int ScanClusterChain(UINT32 DataLba, UINT8 SectorsPerCluster, UINT32 FatLba,
+                            UINT32 FatBits, UINT32 StartCluster) {
+    UINT8 Sector[SECTOR];
+    UINT32 Cluster = StartCluster;
     UINT32 Guard;
 
-    for (Guard = 0; Guard < 64u && Clus >= 2u; Guard++) {
-        UINT32 Lba = DataLba + (Clus - 2u) * (UINT32)Spc;
-        UINT8 s;
+    for (Guard = 0; Guard < 64u && Cluster >= 2u; Guard++) {
+        UINT32 LogicalBlock = DataLba + (Cluster - 2u) * (UINT32)SectorsPerCluster;
+        UINT8 SectorInCluster;
         UINT32 Next;
 
-        for (s = 0; s < Spc; s++) {
-            if (HalBlockRead(Lba + s, Sec, 1) != 0) {
+        for (SectorInCluster = 0; SectorInCluster < SectorsPerCluster; SectorInCluster++) {
+            if (HalBlockRead(LogicalBlock + SectorInCluster, Sector, 1) != 0) {
                 return -1;
             }
-            if (ScanDirSector(Sec)) {
+            if (ScanDirSector(Sector)) {
                 return 0;
             }
         }
-        Next = FatNextCluster(FatLba, Clus, FatBits);
+        Next = FatNextCluster(FatLba, Cluster, FatBits);
         if (FatBits == 32) {
             if (Next < 2u || Next >= 0x0FFFFFF8u) {
                 break;
@@ -130,79 +127,85 @@ static int ScanClusterChain(UINT32 DataLba, UINT8 Spc, UINT32 FatLba,
                 break;
             }
         }
-        Clus = Next;
+        Cluster = Next;
     }
     return -1;
 }
 
+/*
+ * FatProbeOsMarker — 块设备上是否存在 BLOCKS.ID / TOYOS.ID
+ *
+ * 做什么：解析 BPB/MBR；扫根目录或 FAT32 根簇链。
+ * 谁调用：Boot 装卷前探测（若链接）；诊断路径。
+ * 返回：0 找到；非 0 未找到或 IO 失败
+ */
 int FatProbeOsMarker(void) {
-    UINT8 Sec[SECTOR];
-    UINT16 Bps;
-    UINT8 Spc;
+    UINT8 Sector[SECTOR];
+    UINT16 BytesPerSector;
+    UINT8 SectorsPerCluster;
     UINT16 Reserved;
-    UINT8 Nfats;
-    UINT16 RootEnt;
-    UINT16 FatSz16;
-    UINT32 FatSz;
-    UINT32 RootSecs;
+    UINT8 NumberOfFats;
+    UINT16 RootEntryCount;
+    UINT16 FatSize16;
+    UINT32 FatSize;
+    UINT32 RootSectorCount;
     UINT32 FatLba;
     UINT32 RootLba;
     UINT32 DataLba;
-    UINT32 PartLba = 0;
-    UINT32 i;
+    UINT32 PartitionLba = 0;
+    UINT32 Index;
 
     if (!HalBlockReady()) {
         return -1;
     }
-    if (HalBlockRead(0, Sec, 1) != 0) {
+    if (HalBlockRead(0, Sector, 1) != 0) {
         HalSerialWriteChannel(SLOG_FS, "Fs: fat LBA0 read fail\n");
         return -1;
     }
 
-    if (!LooksLikeBpb(Sec)) {
-        /* 可能是 MBR：试第一个 0x0B/0x0C/0x06 分区 */
-        if (Sec[510] == 0x55u && Sec[511] == 0xAAu) {
-            for (i = 0; i < 4u; i++) {
-                UINT8 *E = Sec + 446u + i * 16u;
-                UINT8 Type = E[4];
-                UINT32 Lba = Rd32(E + 8);
+    if (!LooksLikeBpb(Sector)) {
+        if (Sector[510] == 0x55u && Sector[511] == 0xAAu) {
+            for (Index = 0; Index < 4u; Index++) {
+                UINT8 *Entry = Sector + 446u + Index * 16u;
+                UINT8 Type = Entry[4];
+                UINT32 Lba = ReadUInt32Le(Entry + 8);
                 if (Type == 0x0Bu || Type == 0x0Cu || Type == 0x06u ||
                     Type == 0x0Eu || Type == 0x01u) {
-                    PartLba = Lba;
+                    PartitionLba = Lba;
                     break;
                 }
             }
         }
-        if (PartLba == 0 || HalBlockRead(PartLba, Sec, 1) != 0 ||
-            !LooksLikeBpb(Sec)) {
+        if (PartitionLba == 0 || HalBlockRead(PartitionLba, Sector, 1) != 0 ||
+            !LooksLikeBpb(Sector)) {
             HalSerialWriteChannel(SLOG_FS, "Fs: fat no BPB\n");
             return -1;
         }
     }
 
-    Bps = Rd16(Sec + 11);
-    Spc = Sec[13];
-    Reserved = Rd16(Sec + 14);
-    Nfats = Sec[16];
-    RootEnt = Rd16(Sec + 17);
-    FatSz16 = Rd16(Sec + 22);
-    if (Bps != SECTOR || Spc == 0 || Nfats == 0) {
+    BytesPerSector = ReadUInt16Le(Sector + 11);
+    SectorsPerCluster = Sector[13];
+    Reserved = ReadUInt16Le(Sector + 14);
+    NumberOfFats = Sector[16];
+    RootEntryCount = ReadUInt16Le(Sector + 17);
+    FatSize16 = ReadUInt16Le(Sector + 22);
+    if (BytesPerSector != SECTOR || SectorsPerCluster == 0 || NumberOfFats == 0) {
         HalSerialWriteChannel(SLOG_FS, "Fs: fat bad BPB\n");
         return -1;
     }
-    FatSz = FatSz16 ? (UINT32)FatSz16 : Rd32(Sec + 36);
-    FatLba = PartLba + Reserved;
-    RootSecs = ((UINT32)RootEnt * 32u + (Bps - 1u)) / Bps;
-    RootLba = FatLba + FatSz * (UINT32)Nfats;
-    DataLba = RootLba + RootSecs;
+    FatSize = FatSize16 ? (UINT32)FatSize16 : ReadUInt32Le(Sector + 36);
+    FatLba = PartitionLba + Reserved;
+    RootSectorCount = ((UINT32)RootEntryCount * 32u + (BytesPerSector - 1u)) / BytesPerSector;
+    RootLba = FatLba + FatSize * (UINT32)NumberOfFats;
+    DataLba = RootLba + RootSectorCount;
 
-    if (RootEnt != 0) {
-        for (i = 0; i < RootSecs && i < 128u; i++) {
-            if (HalBlockRead(RootLba + i, Sec, 1) != 0) {
+    if (RootEntryCount != 0) {
+        for (Index = 0; Index < RootSectorCount && Index < 128u; Index++) {
+            if (HalBlockRead(RootLba + Index, Sector, 1) != 0) {
                 HalSerialWriteChannel(SLOG_FS, "Fs: fat root read fail\n");
                 return -1;
             }
-            if (ScanDirSector(Sec)) {
+            if (ScanDirSector(Sector)) {
                 return 0;
             }
         }
@@ -210,14 +213,13 @@ int FatProbeOsMarker(void) {
         return -1;
     }
 
-    /* FAT32 */
     {
-        UINT32 RootClus = Rd32(Sec + 44);
-        if (RootClus < 2u) {
+        UINT32 RootCluster = ReadUInt32Le(Sector + 44);
+        if (RootCluster < 2u) {
             HalSerialWriteChannel(SLOG_FS, "Fs: fat32 bad root clus\n");
             return -1;
         }
-        if (ScanClusterChain(DataLba, Spc, FatLba, 32, RootClus) == 0) {
+        if (ScanClusterChain(DataLba, SectorsPerCluster, FatLba, 32, RootCluster) == 0) {
             return 0;
         }
         HalSerialWriteChannel(SLOG_FS, "Fs: fat32 no BLOCKS.ID\n");

@@ -1,5 +1,10 @@
 /*
  * UsbHid.c — K52 编排：起控制器 → 枚举 → 对外 Poll
+ *
+ * 【初学者】
+ * - Hal USB HID：HalUsbHidInitialize / HalUsbHidPoll；键鼠队列给 Gui。
+ * - 分文件：Controller Setup Enum Transfer Ring Event Report Command。
+ * - 边界：只改注释与清晰缩写；USB 协议符号（TRB/USBCMD 等）保持。
  */
 #include "Internal.h"
 

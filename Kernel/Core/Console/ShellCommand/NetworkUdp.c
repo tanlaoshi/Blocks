@@ -1,7 +1,9 @@
 /*
- * NetworkUdp.c — udplisten / udpsend / udprecv
+ * NetworkUdp.c — Shell：udplisten / udpsend / udprecv
  *
- * 对标现网 ShellCommandsNetUdp.c。
+ * 【初学者】
+ * - 薄包装 Core/Network/Udp.c
+ * - 对外入口：NetworkUdpRegister
  */
 #include "ShellCommand.h"
 #include "Network.h"
@@ -155,6 +157,12 @@ static void CommandUdpSend(int Argc, char **Argv) {
     }
 }
 
+/*
+ * NetworkUdpRegister — 注册 udplisten / udpsend / udprecv
+ *
+ * 谁调用：ShellCommandInitialize。
+ * 返回：void
+ */
 void NetworkUdpRegister(void) {
     ShellCommandRegister("udplisten", "bind UDP port", CommandUdpListen);
     ShellCommandRegister("udpsend", "send UDP text", CommandUdpSend);

@@ -1,8 +1,10 @@
 /*
  * Font.c — 画字积木（Terminus 10×18 + 盘读 CJK 18×18×4bpp）
  *
- * ASCII = Terminus 10×18；汉字 = CJK32.BIN（默认 18×18×4bpp）或内建 CJK16；
- * TTF 仅补缺字。
+ * 【初学者】
+ * - Core/Video：Gui/Console 经 FontDraw* 画 ASCII/CJK/TTF 补缺。
+ * - 入口：FontInitialize；FontDrawStringAt / FontDrawCodepointAt；FontCellWidth/Height。
+ * - 边界：点阵数据在 FontTerminus* / FontCjk*；本文件是调度与 Blit。
  */
 #include "Font.h"
 #include "FontTerminus10x18.h"
@@ -17,6 +19,14 @@
 
 static int gFontReady;
 
+/*
+ * FontInitialize — Terminus + CJK 盘读 +（X64）TTF 链
+ *
+ * 做什么：加载 FontCjkDisk、可选 FontTtfLoad/Init；幂等。
+ * 谁调用：GuiInitialize；FontDraw* 懒初始化。
+ * 前后文：后 — FontDrawCodepointAt 走 Terminus→CJK→TTF→缺字框。
+ * 返回：void。
+ */
 void FontInitialize(void) {
     if (gFontReady) {
         return;
@@ -39,15 +49,30 @@ void FontInitialize(void) {
 #endif
 }
 
+/*
+ * FontCellWidth — ASCII 单元宽（10px）
+ *
+ * 谁调用：FontDrawStringAt、WindowPaint、Desktop 测宽。
+ */
 UINT32 FontCellWidth(void) {
     return FONT_TERM10_W;
 }
 
+/*
+ * FontCellHeight — 行高（Terminus 与 CJK 较大者）
+ *
+ * 谁调用：FontDrawStringAt 换行、Gui 布局。
+ */
 UINT32 FontCellHeight(void) {
     UINT32 Cjk = FontCjkCell();
     return (Cjk > FONT_TERM10_H) ? Cjk : FONT_TERM10_H;
 }
 
+/*
+ * FontCjkCell — CJK 字格边长（盘 18 或内建 16）
+ *
+ * 谁调用：FontDrawCodepointAt 步进、Desktop/WindowPaint。
+ */
 UINT32 FontCjkCell(void) {
     if (FontCjkDiskReady()) {
         return FontCjkDiskDim();
@@ -189,6 +214,13 @@ static void DrawTtfAt(UINT32 X, UINT32 Y, const UINT8 *Pix, UINT32 Color) {
     }
 }
 
+/*
+ * FontDrawCodepointAt — 在 (X,Y) 画一个码点
+ *
+ * 做什么：ASCII→CJK 盘/内建→FontTtfCacheGet→缺字框；不写光标状态。
+ * 谁调用：FontDrawStringAt、WindowPaint 标题行、FontDrawCharAt。
+ * 前后文：兄弟 — HalVideoDrawPixel。
+ */
 void FontDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
     const UINT8 *Bits;
     UINT32 Bytes = 0;
@@ -220,10 +252,18 @@ void FontDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
     DrawMissingBox(X, Y, Color);
 }
 
+/* FontDrawCharAt — 单字节 ASCII；包装 FontDrawCodepointAt。 */
 void FontDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     FontDrawCodepointAt(X, Y, (UINT32)(UINT8)C, Color);
 }
 
+/*
+ * FontDrawStringAt — UTF-8 串左对齐绘制
+ *
+ * 做什么：Utf8Decode 步进；\\n 换行；CJK 用 FontCjkCell 步进宽。
+ * 谁调用：Gui 各窗、ConsoleRefresh。
+ * 前后文：前 — FontInitialize；兄弟 — LocStr 供 Text。
+ */
 void FontDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color) {
     UINT32 Cursor = X;
 
@@ -254,10 +294,12 @@ void FontDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color) {
     }
 }
 
+/* FontDrawChar — (0,0) 画单字符；调试/legacy。 */
 void FontDrawChar(char C, UINT32 Color) {
     FontDrawCharAt(0, 0, C, Color);
 }
 
+/* FontDrawString — (0,0) 画串；包装 FontDrawStringAt。 */
 void FontDrawString(const char *Text, UINT32 Color) {
     FontDrawStringAt(0, 0, Text, Color);
 }

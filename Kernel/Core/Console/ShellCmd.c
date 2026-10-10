@@ -18,7 +18,7 @@
 #define ARG_MAX   8
 #define NAME_MAX  16
 #define HELP_MAX  40
-#define CMD_MAX   28
+#define CMD_MAX   40
 
 typedef struct {
     char Name[NAME_MAX];
@@ -233,16 +233,16 @@ static void CmdCat(int Argc, char **Argv) {
         Put("cat: fail\n");
         return;
     }
+    /* 按目录 Size 输出；勿遇 0 提前停（短 Size/垫零会导致「只见首行」） */
     for (i = 0; i < Size; i++) {
         char One[2];
         UINT8 C = Buf[i];
-        if (C == 0) {
-            break;
-        }
         if (C == '\n' || C == '\r' || (C >= 0x20u && C <= 0x7eu)) {
             One[0] = (char)C;
             One[1] = 0;
             Put(One);
+        } else if (C == 0) {
+            Put(".");
         } else {
             Put(".");
         }
@@ -840,6 +840,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("tcplisten", "TCP echo listen", CmdTcpListen);
     ShellCmdRegister("tcpconnect", "TCP connect+send", CmdTcpConnect);
     ShellSysRegister();
+    ShellCmdDbRegister();
     Put("Shell: cmds ok\n");
 }
 

@@ -1,11 +1,12 @@
 /*
- * FileSystem.c — K9 handoff；K16 Block+FAT；K44 FsVol 多卷
+ * FileSystem.c — K9 handoff；K16 Block+FAT；K44 FsVol 多卷；K46 Db
  *
  * 【初学者】
- * HalBlockInit → FsVolMountAll（GPT/MBR/superfloppy）→ 默认卷有 BLOCKS/TOYOS 即就绪。
+ * HalBlockInit → FsVolMountAll → 默认卷 BLOCKS 就绪 → DbInitialize（BLOCKS.DB）。
  */
 #include "FileSystem.h"
 #include "BootInfo.h"
+#include "Db.h"
 #include "FsVol.h"
 #include "HalBlock.h"
 #include "HalSerial.h"
@@ -30,6 +31,7 @@ int FileSystemInitialize(void) {
             if (Def != 0 && Def->Name[0] == 'B' && Def->Name[1] == 'L') {
                 gHasOsMarker = 1;
                 HalSerialWriteChannel(SLOG_FS, "Fs: BLOCKS.ID ready (kernel)\n");
+                (void)DbInitialize();
                 return 0;
             }
             HalSerialWriteChannel(SLOG_FS, "Fs: WARN mounted, no BLOCKS\n");

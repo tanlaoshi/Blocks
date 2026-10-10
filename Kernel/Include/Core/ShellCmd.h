@@ -10,5 +10,7 @@ void ShellCmdInitialize(void);
 void ShellCmdRunLine(const char *Line);
 /* 往表注册一项；满或参数非法返回 -1 */
 int ShellCmdRegister(const char *Name, const char *Help, SHELL_CMD_FN Fn);
+/* K46：dbget/dbset（实现见 ShellCmdDb.c） */
+void ShellCmdDbRegister(void);
 
 #endif

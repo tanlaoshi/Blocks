@@ -105,11 +105,11 @@ build_common_objs() {
         Cpu/Cpu
         USB/Usb
         FileSystem/FileSystem FileSystem/FatProbe FileSystem/FatVol FileSystem/FatAlloc
-        FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut FileSystem/Gpt FileSystem/FsVol
+        FileSystem/FatDir FileSystem/FatFile FileSystem/FatMut FileSystem/Gpt FileSystem/FsVol FileSystem/Db
         Network/Network Network/NetworkIp Network/NetworkPing Network/NetworkUdp Network/NetworkTcp Network/NetworkLwip Network/NetConfig
         Gui/GuiLayout Gui/GuiDesktop Gui/GuiSettings Gui/GuiFiles Gui/GuiStart Gui/GuiWinPaint Gui/GuiWin Gui/Gui
         Scheduler/Scheduler
-        Console/ElfLoad Console/Process Console/ShellCmd Console/ShellSys Console/Console
+        Console/ElfLoad Console/Process Console/ShellCmd Console/ShellCmdDb Console/ShellSys Console/Console
     )
     for f in "${cores[@]}"; do
         base="$(basename "$f")"
@@ -202,10 +202,10 @@ x64|X64)
         "$OUT/Video.o" "$OUT/HalCapability.o" "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" \
         "$OUT/Cpu.o" "$OUT/Usb.o" \
-        "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" \
+        "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" "$OUT/Db.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o" \
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellCmdDb.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o" \
         "${LWIP_OBJS[@]}"
     echo "Kernel/X64 LWIP=$HAVE_LWIP"
     ;;
@@ -245,10 +245,10 @@ arm64|Arm64|ARM64)
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
-        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" \
+        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" "$OUT/Db.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellCmdDb.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 riscv|RiscV|RISCV)
     ARCH=RiscV
@@ -289,10 +289,10 @@ riscv|RiscV|RISCV)
         "$OUT/HalNetStub.o" \
         "$OUT/Theme.o" "$OUT/ThemeCfg.o" "$OUT/FontTerminus10x18.o" "$OUT/FontCjkDisk.o" "$OUT/Font.o" "$OUT/Utf8.o" \
         "$OUT/FontTtfLoad.o" "$OUT/FontTtfRaster.o" "$OUT/FontTtfCache.o" "$OUT/Locale.o" "$OUT/HalFpu.o" \
-        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" \
+        "$OUT/Cpu.o" "$OUT/Usb.o" "$OUT/FileSystem.o" "$OUT/FatProbe.o" "$OUT/FatVol.o" "$OUT/FatAlloc.o" "$OUT/FatDir.o" "$OUT/FatFile.o" "$OUT/FatMut.o" "$OUT/Gpt.o" "$OUT/FsVol.o" "$OUT/Db.o" \
         "$OUT/ElfLoad.o" "$OUT/Process.o" \
         "$OUT/Network.o" "$OUT/NetworkIp.o" "$OUT/NetworkPing.o" "$OUT/NetworkUdp.o" "$OUT/NetworkTcp.o" "$OUT/NetworkLwip.o" "$OUT/NetConfig.o" "$OUT/GuiLayout.o" "$OUT/GuiDesktop.o" "$OUT/GuiSettings.o" "$OUT/GuiFiles.o" "$OUT/GuiStart.o" "$OUT/GuiWinPaint.o" "$OUT/GuiWin.o" "$OUT/Gui.o" \
-        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
+        "$OUT/Scheduler.o" "$OUT/ShellCmd.o" "$OUT/ShellCmdDb.o" "$OUT/ShellSys.o" "$OUT/Console.o" "$OUT/Kernel.o"
     ;;
 *)
     echo "usage: $0 [x64|arm64|riscv] [SERIAL=0|1]" >&2

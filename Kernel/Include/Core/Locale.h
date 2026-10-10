@@ -1,7 +1,7 @@
 /*
  * Locale.h — K28：UI 字符串表 + lang en|zh（对标现网 I18N2 最小）
  *
- * 不做：落盘 TOYOS.DB、Assets 外置文案、翻译平台。
+ * 不做：落盘 BLOCKS.DB 文案键、Assets 外置文案、翻译平台。
  */
 #ifndef LOCALE_H
 #define LOCALE_H

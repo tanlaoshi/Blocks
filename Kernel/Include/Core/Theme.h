@@ -2,7 +2,7 @@
  * Theme.h — 主题色板（K21 getter · K34 Settings · K37 THEME.CFG）
  *
  * 【初学者】
- * 内存色板；`ThemeLoadCfg`/`ThemeSaveCfg` 读写根目录 THEME.CFG。
+ * 内存色板；`ThemeLoadConfiguration`/`ThemeSaveConfiguration` 读写根目录 THEME.CFG。
  * mode= 仅影响下次 Boot 选 GOP（见 Boot VideoTheme），内核不热切。
  */
 #ifndef THEME_H
@@ -30,12 +30,12 @@ void ThemeSetTaskbarBackground(UINT32 Color);
 int ThemeApplyNamed(const char *Name);
 const char *ThemeName(void);
 
-/* K37：分辨率偏好（0,0=auto）；落盘在 ThemeSaveCfg */
+/* K37：分辨率偏好（0,0=auto）；落盘在 ThemeSaveConfiguration */
 void ThemeGetMode(UINT32 *W, UINT32 *H);
 void ThemeSetMode(UINT32 W, UINT32 H);
 
 /* 读/写 THEME.CFG；无盘或失败返回 -1，缺文件 Load 也 -1（色板保持出厂） */
-int ThemeLoadCfg(void);
-int ThemeSaveCfg(void);
+int ThemeLoadConfiguration(void);
+int ThemeSaveConfiguration(void);
 
 #endif

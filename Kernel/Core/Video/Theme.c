@@ -3,7 +3,7 @@
  *
  * 【初学者】
  * 默认「墨色」：暖炭桌面 + 米白字，避开现网 tech 青蓝霓虹。
- * 落盘见 ThemeCfg.c（K37）。
+ * 落盘见 ThemeConfiguration.c（K37）。
  */
 #include "Theme.h"
 #include "HalSerial.h"

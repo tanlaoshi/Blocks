@@ -3,7 +3,7 @@
  *
  * 【分层】
  *   Abi（本头）     — 结构体契约；Hal / Core 都可 include
- *   Core/BootInfo.c — BootInfoStore / Get（全局仓，仅 Core 与模块用）
+ *   Core/BootInfo.c — BootInfoSave / Get（全局仓，仅 Core 与模块用）
  *   Hal/Handoff     — 填一份 BOOT_INFO，交给 KernelMain；不调用 Store/Get
  */
 #ifndef BOOT_INFO_TYPES_H

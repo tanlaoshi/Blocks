@@ -58,7 +58,7 @@ STATIC BOOLEAN ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH)
     return TRUE;
 }
 
-STATIC BOOLEAN ParseThemeCfgMode(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
+STATIC BOOLEAN ParseThemeConfigurationMode(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
                                  UINT32 *OutH) {
     UINTN i;
     CHAR8 Line[64];
@@ -86,7 +86,7 @@ STATIC BOOLEAN ParseThemeCfgMode(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
     return FALSE;
 }
 
-STATIC EFI_STATUS ReadThemeCfgOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
+STATIC EFI_STATUS ReadThemeConfigurationOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                                    CHAR8 **OutBuf, UINTN *OutSize) {
     STATIC CHAR16 *Paths[] = {
         L"\\THEME.CFG",
@@ -193,10 +193,10 @@ STATIC BOOLEAN TryParseModeOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     CHAR8 *Buf = NULL;
     UINTN Size = 0;
 
-    if (EFI_ERROR(ReadThemeCfgOnFs(Fs, &Buf, &Size))) {
+    if (EFI_ERROR(ReadThemeConfigurationOnFs(Fs, &Buf, &Size))) {
         return FALSE;
     }
-    if (ParseThemeCfgMode(Buf, Size, OutW, OutH)) {
+    if (ParseThemeConfigurationMode(Buf, Size, OutW, OutH)) {
         gBS->FreePool(Buf);
         return TRUE;
     }

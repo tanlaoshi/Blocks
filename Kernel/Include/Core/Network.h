@@ -39,26 +39,26 @@ int NetworkArpResolve(UINT32 TargetIp, UINT8 Mac[6], int TimeoutMs);
 int NetworkSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN Len);
 void NetworkEatArpFromFrame(const UINT8 *Buf, int Len);
 
-int NetworkPing(const char *Host, int TimeoutMs);
+int Ping(const char *Host, int TimeoutMs);
 
-void NetworkUdpInitialize(void);
-int NetworkUdpBind(UINT16 Port);
-UINT16 NetworkUdpBoundPort(void);
-int NetworkUdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len);
-int NetworkUdpRecv(NETWORK_UDP_DG *Out);
-void NetworkUdpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
-void NetworkUdpInputFrame(const UINT8 *Frame, int Len);
+void UdpInitialize(void);
+int UdpBind(UINT16 Port);
+UINT16 UdpBoundPort(void);
+int UdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len);
+int UdpRecv(NETWORK_UDP_DG *Out);
+void UdpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
+void UdpInputFrame(const UINT8 *Frame, int Len);
 /* 短轮询收帧入 UDP 队列；有新报返回 1 */
-int NetworkUdpPoll(int TimeoutMs);
+int UdpPoll(int TimeoutMs);
 
-void NetworkTcpInitialize(void);
-int NetworkTcpListen(UINT16 Port);
-int NetworkTcpConnect(UINT32 DstIp, UINT16 DstPort);
-int NetworkTcpSend(const void *Data, UINTN Len);
-void NetworkTcpClose(void);
-NETWORK_TCP_STATE NetworkTcpGetState(void);
-void NetworkTcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
-void NetworkTcpInputFrame(const UINT8 *Frame, int Len);
-void NetworkTcpPoll(int TimeoutMs);
+void TcpInitialize(void);
+int TcpListen(UINT16 Port);
+int TcpConnect(UINT32 DstIp, UINT16 DstPort);
+int TcpSend(const void *Data, UINTN Len);
+void TcpClose(void);
+NETWORK_TCP_STATE TcpGetState(void);
+void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
+void TcpInputFrame(const UINT8 *Frame, int Len);
+void TcpPoll(int TimeoutMs);
 
 #endif

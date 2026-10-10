@@ -218,7 +218,7 @@ void HalPs2Poll(void) {
             GotAux = 1;
             MouseFeed(B);
         } else {
-            HalPs2KbdFeed(B);
+            HalPs2KeyboardFeed(B);
         }
     }
     /*

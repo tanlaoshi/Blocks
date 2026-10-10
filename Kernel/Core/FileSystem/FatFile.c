@@ -2,8 +2,8 @@
  * FatFile.c — 按 8.3 / 路径读根目录文件
  */
 #include "FatFile.h"
-#include "FatVol.h"
-#include "FsVol.h"
+#include "FatVolume.h"
+#include "Volume.h"
 #include "HalBlock.h"
 
 /* 允许 CJK32.BIN / CJK.TTF 等盘上字库（~1–2MiB） */
@@ -38,7 +38,7 @@ static int OnFind(const UINT8 *Ent, void *Ctx) {
 }
 
 int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize) {
-    FAT_VOL V;
+    FAT_VOLUME V;
     FIND_CTX F;
     UINT8 Sec[FAT_SECTOR];
     UINT8 *Dst = (UINT8 *)Buf;
@@ -49,14 +49,14 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
     if (Buf == 0 || Cap == 0 || Name83 == 0) {
         return -1;
     }
-    if (FsVolOpenActive(&V) != 0 && FatVolOpen(&V) != 0) {
+    if (VolumeOpenActive(&V) != 0 && FatVolumeOpen(&V) != 0) {
         return -1;
     }
     F.Want83 = Name83;
     F.Clus = 0;
     F.Size = 0;
     F.Found = 0;
-    if (FatVolWalkRoot(&V, OnFind, &F) != 0 || !F.Found || F.Clus < 2u ||
+    if (FatVolumeWalkRoot(&V, OnFind, &F) != 0 || !F.Found || F.Clus < 2u ||
         F.Size == 0) {
         return -1;
     }
@@ -82,7 +82,7 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
                 }
                 Got += Chunk;
             }
-            Clus = FatVolNext(&V, Clus);
+            Clus = FatVolumeNext(&V, Clus);
             if (V.FatBits == 32) {
                 if (Clus < 2u || Clus >= 0x0FFFFFF8u) {
                     break;
@@ -108,7 +108,7 @@ int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize) {
     if (Path == 0) {
         return -1;
     }
-    (void)FsVolResolve(Path, &Rel);
+    (void)VolumeResolve(Path, &Rel);
     if (Rel == 0 || Rel[0] == 0) {
         return -1;
     }

@@ -1,7 +1,7 @@
 /*
  * BootInfo.c — 全局开机说明书仓储（Core）
  *
- *   KernelMain → BootInfoStore(Info)  — 整结构拷进 gBootInfo
+ *   KernelMain → BootInfoSave(Info)  — 整结构拷进 gBootInfo
  *   模块       → BootInfoGet()        — 读仓，勿再握 Handoff 临时指针
  */
 #include "BootInfo.h"
@@ -9,7 +9,7 @@
 static BOOT_INFO gBootInfo;
 static int gBootInfoValid;
 
-void BootInfoStore(const BOOT_INFO *Info) {
+void BootInfoSave(const BOOT_INFO *Info) {
     UINT8 *Dst;
     const UINT8 *Src;
     UINTN i;

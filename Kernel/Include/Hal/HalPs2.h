@@ -12,6 +12,6 @@
 
 void HalPs2Poll(void);
 /* 由 HalPs2Poll 调用；把一字节键盘扫描码喂进译码/队列 */
-void HalPs2KbdFeed(UINT8 Byte);
+void HalPs2KeyboardFeed(UINT8 Byte);
 
 #endif

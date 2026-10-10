@@ -17,7 +17,7 @@ typedef struct {
 } FAT_DIR_ENT;
 
 /* 列根目录到 Out[0..Cap)；*Count 实际条数；成功 0 */
-int FatDirListRoot(FAT_DIR_ENT *Out, UINT32 Cap, UINT32 *Count);
+int FatDirectoryListRoot(FAT_DIR_ENT *Out, UINT32 Cap, UINT32 *Count);
 
 /*
  * 按路径读根目录文件（如 "BLOCKS.ID" / "HELLO.ELF"）。

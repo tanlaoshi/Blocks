@@ -2,7 +2,7 @@
  * Process.c — K19 HELLO；K25 exec 按路径跑根目录 ELF
  */
 #include "Process.h"
-#include "ElfLoad.h"
+#include "ElfLoader.h"
 #include "FatFile.h"
 #include "HalBlock.h"
 #include "HalSerial.h"
@@ -68,7 +68,7 @@ int ProcessExecPath(const char *Path) {
     HalSerialWriteShell("User: load ");
     HalSerialWriteShell(Path);
     HalSerialWriteShell("\n");
-    if (ElfLoadFromMemory(Buf, Size, &Img) != 0) {
+    if (ElfLoaderFromMemory(Buf, Size, &Img) != 0) {
         HalSerialWriteShell("User: elf load fail\n");
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;

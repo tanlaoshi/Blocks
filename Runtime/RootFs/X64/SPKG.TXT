@@ -1,0 +1,2 @@
+Blocks Store demo package (K47).
+Install copies this file to ADEMO.TXT and sets si.demo in BLOCKS.DB.

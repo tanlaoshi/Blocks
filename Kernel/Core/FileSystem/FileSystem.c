@@ -1,13 +1,13 @@
 /*
- * FileSystem.c — K9 handoff；K16 Block+FAT；K44 FsVol 多卷；K46 Db
+ * FileSystem.c — K9 handoff；K16 Block+FAT；K44 Volume 多卷；K46 DataBase
  *
  * 【初学者】
- * HalBlockInit → FsVolMountAll → 默认卷 BLOCKS 就绪 → DbInitialize（BLOCKS.DB）。
+ * HalBlockInit → VolumeMountAll → 默认卷 BLOCKS 就绪 → DataBaseInitialize（BLOCKS.DB）。
  */
 #include "FileSystem.h"
 #include "BootInfo.h"
-#include "Db.h"
-#include "FsVol.h"
+#include "DataBase.h"
+#include "Volume.h"
 #include "HalBlock.h"
 #include "HalSerial.h"
 #include "SerialConfig.h"
@@ -20,18 +20,18 @@ int FileSystemHasOsMarker(void) {
 
 int FileSystemInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
-    const FS_VOL *Def;
+    const VOLUME *Def;
 
     gHasOsMarker = 0;
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalBlockInit() == 0 && HalBlockReady()) {
-        if (FsVolMountAll() == 0) {
-            Def = FsVolGet(FsVolDefaultIndex());
+        if (VolumeMountAll() == 0) {
+            Def = VolumeGet(VolumeDefaultIndex());
             if (Def != 0 && Def->Name[0] == 'B' && Def->Name[1] == 'L') {
                 gHasOsMarker = 1;
                 HalSerialWriteChannel(SLOG_FS, "Fs: BLOCKS.ID ready (kernel)\n");
-                (void)DbInitialize();
+                (void)DataBaseInitialize();
                 return 0;
             }
             HalSerialWriteChannel(SLOG_FS, "Fs: WARN mounted, no BLOCKS\n");

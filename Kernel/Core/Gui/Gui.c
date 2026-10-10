@@ -1,16 +1,16 @@
 /*
- * Gui.c — 桌面壳：光标 + 鼠轮询；窗体见 GuiWin（K32 双窗 Z 序）
+ * Gui.c — 桌面壳：光标 + 鼠轮询；窗体见 Window（K32 双窗 Z 序）
  *
  * 【初学者】
  * 点窗抬升；点 × 关；点顶栏重开已关窗；Shell 焦点才吃键（Console）。
  */
 #include "Gui.h"
-#include "GuiDesktop.h"
-#include "GuiFiles.h"
-#include "GuiLayout.h"
-#include "GuiSettings.h"
-#include "GuiStart.h"
-#include "GuiWin.h"
+#include "Desktop.h"
+#include "Files.h"
+#include "Layout.h"
+#include "Settings.h"
+#include "Start.h"
+#include "Window.h"
 #include "BootInfo.h"
 #include "Console.h"
 #include "HalPs2.h"
@@ -186,20 +186,20 @@ static void CursorClamp(void) {
     }
 }
 
-int GuiDesktopReady(void) {
+int DesktopReady(void) {
     return gDesktopReady;
 }
 
 int GuiShellWindowReady(void) {
-    return GuiWinIsOn(GUI_WIN_SHELL);
+    return WindowIsOn(GUI_WIN_SHELL);
 }
 
 int GuiShellFocused(void) {
-    return GuiWinFocused(GUI_WIN_SHELL);
+    return WindowFocused(GUI_WIN_SHELL);
 }
 
 int GuiShellClientRect(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
-    return GuiWinShellClientRect(X, Y, W, H);
+    return WindowShellClientRect(X, Y, W, H);
 }
 
 int GuiInitialize(void) {
@@ -220,19 +220,19 @@ int GuiInitialize(void) {
     }
 
     ThemeInitialize();
-    (void)ThemeLoadCfg(); /* K37：色/mode；无文件则出厂色 */
-    GuiLayoutSetFb(gFbW, gFbH);
-    (void)GuiLayoutLoadCfg(); /* 窗几何描述；无则内建表 */
+    (void)ThemeLoadConfiguration(); /* K37：色/mode；无文件则出厂色 */
+    LayoutSetFb(gFbW, gFbH);
+    (void)LayoutLoadConfiguration(); /* 窗几何描述；无则内建表 */
     FontInitialize();
     LocaleInitialize();
     FontTtfPreheatUtf8("积木系统已就绪命令窗说明设置点色块改主题文件运行开始");
-    GuiWinSetFb(gFbW, gFbH);
-    GuiDesktopSetFb(gFbW, gFbH);
-    GuiStartSetFb(gFbW, gFbH);
-    GuiWinPaintDesktop();
-    GuiWinLayoutAll();
-    GuiWinCompose();
-    GuiWinPresentFull();
+    WindowSetFb(gFbW, gFbH);
+    DesktopSetFb(gFbW, gFbH);
+    StartSetFb(gFbW, gFbH);
+    WindowPaintDesktop();
+    WindowLayoutAll();
+    WindowCompose();
+    WindowPresentFull();
 
     gDesktopReady = 1;
     HalSerialWriteChannel(SLOG_GUI, "Gui: desktop ok\n");
@@ -258,9 +258,9 @@ void GuiRefreshLabels(void) {
         return;
     }
     CursorHide();
-    GuiWinPaintDesktop();
-    GuiWinCompose();
-    GuiWinPresentFull();
+    WindowPaintDesktop();
+    WindowCompose();
+    WindowPresentFull();
     CursorShow();
 }
 
@@ -278,7 +278,7 @@ int GuiPoll(void) {
     if (!gDesktopReady || !gCursorOn) {
         return 0;
     }
-    GuiDesktopPollTick();
+    DesktopPollTick();
     HalPs2Poll();
     while (HalPs2MousePoll(&Pkt)) {
         Got = 1;
@@ -317,18 +317,18 @@ int GuiPoll(void) {
     if (SawPress) {
         int StartHandled = 0;
 
-        if (GuiStartHitButton(gCurX, gCurY)) {
-            (void)GuiStartToggle();
+        if (StartHitButton(gCurX, gCurY)) {
+            (void)StartToggle();
             StartHandled = 1;
-        } else if (GuiStartMenuOpen()) {
-            int M = GuiStartHitMenu(gCurX, gCurY);
+        } else if (StartMenuOpen()) {
+            int M = StartHitMenu(gCurX, gCurY);
             if (M >= 0) {
-                (void)GuiStartActivate(M);
+                (void)StartActivate(M);
                 StartHandled = 1;
             } else if (M == -2) {
                 StartHandled = 1; /* 菜单内空白 */
             } else {
-                GuiStartCloseMenu();
+                StartCloseMenu();
                 StartHandled = 1; /* 先收起；再点一次点下方 */
             }
         }
@@ -336,56 +336,56 @@ int GuiPoll(void) {
         if (StartHandled) {
             gDragging = 0;
             gDragWin = -1;
-            GuiWinPaintDesktop();
-            GuiWinCompose();
-            GuiWinPresentFull();
+            WindowPaintDesktop();
+            WindowCompose();
+            WindowPresentFull();
         } else {
-            Hit = GuiWinHit(gCurX, gCurY);
-            if (Hit >= 0 && GuiWinInClose(Hit, gCurX, gCurY)) {
+            Hit = WindowHit(gCurX, gCurY);
+            if (Hit >= 0 && WindowInClose(Hit, gCurX, gCurY)) {
                 gDragging = 0;
                 gDragWin = -1;
-                GuiWinClose(Hit);
-            } else if (Hit >= 0 && GuiWinInTitle(Hit, gCurX, gCurY)) {
+                WindowClose(Hit);
+            } else if (Hit >= 0 && WindowInTitle(Hit, gCurX, gCurY)) {
                 INT32 Wx = 0;
                 INT32 Wy = 0;
-                GuiWinFocus(Hit);
-                (void)GuiWinGetPos(Hit, &Wx, &Wy);
+                WindowFocus(Hit);
+                (void)WindowGetPos(Hit, &Wx, &Wy);
                 gDragging = 1;
                 gDragWin = Hit;
                 gDragOffX = gCurX - Wx;
                 gDragOffY = gCurY - Wy;
             } else if (Hit == GUI_WIN_SETTINGS) {
-                GuiWinFocus(Hit);
+                WindowFocus(Hit);
                 gDragging = 0;
                 gDragWin = -1;
-                if (GuiSettingsClick(gCurX, gCurY)) {
-                    GuiWinPaintDesktop();
-                    GuiWinCompose();
-                    GuiWinPresentFull();
+                if (SettingsClick(gCurX, gCurY)) {
+                    WindowPaintDesktop();
+                    WindowCompose();
+                    WindowPresentFull();
                 }
             } else if (Hit == GUI_WIN_FILES) {
-                GuiWinFocus(Hit);
+                WindowFocus(Hit);
                 gDragging = 0;
                 gDragWin = -1;
                 /* 与 Settings 相同：点选/New/Del 改状态后必须重画，否则像「没反应」 */
-                if (GuiFilesClick(gCurX, gCurY)) {
-                    GuiWinPaintDesktop();
-                    GuiWinCompose();
-                    GuiWinPresentFull();
+                if (FilesClick(gCurX, gCurY)) {
+                    WindowPaintDesktop();
+                    WindowCompose();
+                    WindowPresentFull();
                 }
             } else if (Hit >= 0) {
-                GuiWinFocus(Hit);
+                WindowFocus(Hit);
                 gDragging = 0;
                 gDragWin = -1;
             } else {
-                int Icon = GuiDesktopHitIcon(gCurX, gCurY);
+                int Icon = DesktopHitIcon(gCurX, gCurY);
                 if (Icon >= 0) {
-                    (void)GuiDesktopClickIcon(Icon, gCurX, gCurY);
+                    (void)DesktopClickIcon(Icon, gCurX, gCurY);
                     gDragging = 0;
                     gDragWin = -1;
-                } else if ((UINT32)gCurY >= GuiLayoutContentTop() &&
-                           (UINT32)gCurY < GuiLayoutContentBottom()) {
-                    GuiWinUnfocusAll();
+                } else if ((UINT32)gCurY >= LayoutContentTop() &&
+                           (UINT32)gCurY < LayoutContentBottom()) {
+                    WindowUnfocusAll();
                     gDragging = 0;
                     gDragWin = -1;
                 }
@@ -396,7 +396,7 @@ int GuiPoll(void) {
     WasDragging = gDragging;
     if (gDragging && gDragWin >= 0 && (LastBtn & 0x1u) != 0 &&
         (AccX != 0 || AccY != 0)) {
-        GuiWinMoveTo(gDragWin, gCurX - gDragOffX, gCurY - gDragOffY, 0);
+        WindowMoveTo(gDragWin, gCurX - gDragOffX, gCurY - gDragOffY, 0);
     }
 
     if (SawRelease) {

@@ -50,7 +50,7 @@ Shell `mode` 写分辨率；**mode 须冷启动**才被 Boot 消费（VM 内不�
 
 默认分辨率 **1440×900**（亦支持 `1280x720` / `1600x900` / `1920x1080`）：`THEME.CFG` 的 `mode=`；`run.sh` 用 VGA edid 对齐（或 `QEMU_XRES/YRES` 覆盖）。改完须**退出 QEMU 再 `./run.sh`**。
 
-布局：`LAYOUT.CFG`（或内建描述表）定窗 WxH / 栏高；设计稿 1280×720，真屏更小时 **只缩不放**。改窗大小优先改 CFG/描述表，勿在 `GuiWinLayoutAll` 写魔法数。
+布局：`LAYOUT.CFG`（或内建描述表）定窗 WxH / 栏高；设计稿 1280×720，真屏更小时 **只缩不放**。改窗大小优先改 CFG/描述表，勿在 `WindowLayoutAll` 写魔法数。
 
 `run.sh`：VGA edid + `virtio-net-pci`（user 网）；鼠走 PS/2（不挂裸 xhci）。
 

@@ -15,7 +15,7 @@
  *       → KernelMain(Info)   ← 同一扇门
  *
  * 【门里当前顺序】
- *   1. BootInfoStore + HalCapabilityObserveFrameBuffer
+ *   1. BootInfoSave + HalCapabilityObserveFrameBuffer
  *   2. （仅 X64）EarlyIdentity  打开 4GiB 恒等页表
  *   3. KernelAttachEarly    串口 + 视频配置
  *   4. ModulesRunFull（… → Cpu → Scheduler → Console）
@@ -106,7 +106,7 @@ static void KernelAttachEarly(void) {
 }
 
 void KernelMain(const BOOT_INFO *Info) {
-    BootInfoStore(Info);
+    BootInfoSave(Info);
     HalCapabilityObserveFrameBuffer(Info != 0 ? Info->FrameBufferSize : 0);
 
 #if defined(__x86_64__) || defined(_M_X64)

@@ -1,7 +1,7 @@
 /*
  * Console.h — 串口控制台壳（K8）
  *
- * Initialize：横幅 + ShellCmd；Run：提示符 + 命令表分发。
+ * Initialize：横幅 + ShellCommand；Run：提示符 + 命令表分发。
  */
 #ifndef CONSOLE_H
 #define CONSOLE_H

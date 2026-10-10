@@ -3,17 +3,17 @@
  *
  * 【初学者】
  * 读行同时 poll COM1 与 PS/2（GTK 窗按键走 i8042）。
- * K22：命令表见 ShellCmd（help/clear/echo/hello）。
+ * K22：命令表见 ShellCommand（help/clear/echo/hello）。
  */
 #include "Console.h"
 #include "Gui.h"
 #include "HalPs2.h"
-#include "HalPs2Kbd.h"
+#include "HalPs2Keyboard.h"
 #include "HalPs2Mouse.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Process.h"
-#include "ShellCmd.h"
+#include "ShellCommand.h"
 #include "Scheduler.h"
 #include "Font.h"
 #include "Locale.h"
@@ -62,12 +62,12 @@ void ConsoleRefreshBanner(void) {
 
 int ConsoleInitialize(void) {
     HalSerialWriteChannel(SLOG_BOOT, "Blocks ready\n");
-    if (HalPs2KbdInit() == 0 && HalPs2KbdReady()) {
+    if (HalPs2KeyboardInitialize() == 0 && HalPs2KeyboardReady()) {
         HalSerialWriteChannel(SLOG_MISC, "Input: ps2 kbd ok\n");
     } else {
         HalSerialWriteChannel(SLOG_MISC, "Input: ps2 skip (serial only)\n");
     }
-    ShellCmdInitialize();
+    ShellCommandInitialize();
     ConsoleRefreshBanner();
     HalSerialWriteChannel(SLOG_MISC, "Console: init ok\n");
     return 0;
@@ -82,7 +82,7 @@ static int ConsolePollChar(char *Out) {
         *Out = HalSerialReadChar();
         return 1;
     }
-    if (HalPs2KbdPollChar(Out)) {
+    if (HalPs2KeyboardPollChar(Out)) {
         return 1;
     }
     return 0;
@@ -117,8 +117,8 @@ static int ConsoleReadLine(char *Buf, int Cap) {
             /* K41：lwIP 活跃时统一 RX；否则 K40 builtin TCP */
             if (LwIpActive()) {
                 LwIpService();
-            } else if (NetworkTcpGetState() != NETWORK_TCP_CLOSED) {
-                NetworkTcpPoll(0);
+            } else if (TcpGetState() != NETWORK_TCP_CLOSED) {
+                TcpPoll(0);
             }
             if (ConsolePollChar(&C)) {
                 Have = 1;
@@ -175,6 +175,6 @@ void ConsoleRun(void) {
         if (Line[0] == 0) {
             continue;
         }
-        ShellCmdRunLine(Line);
+        ShellCommandRunLine(Line);
     }
 }

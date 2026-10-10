@@ -7,7 +7,7 @@
 #include "BootTypes.h"
 
 int GuiInitialize(void);
-int GuiDesktopReady(void);
+int DesktopReady(void);
 int GuiShellWindowReady(void);
 int GuiShellClientRect(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 /* 1 = Shell 窗有焦点 */

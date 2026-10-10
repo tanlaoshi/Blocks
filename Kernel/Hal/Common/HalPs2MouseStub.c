@@ -7,7 +7,7 @@
 void HalPs2Poll(void) {
 }
 
-void HalPs2KbdFeed(UINT8 Byte) {
+void HalPs2KeyboardFeed(UINT8 Byte) {
     (void)Byte;
 }
 

@@ -15,6 +15,7 @@
 | 3 | **还债**：迁到/改到之处，此前为省事欠下的技术债**一并解决**（分层反依赖、超 300、`*Init`/缩写、缺注释、HAL↔Core 穿插等），禁止「后刀再说」。 |
 | 4 | **分层**：依赖单向——Boot → HAL → Core →（Services 形）→ User；**禁止底层依赖高层**（如 HAL `#include` Core 政策头）。细节见 [`积木原则.md`](积木原则.md) §2.0 / §2.1。 |
 | 5 | **驱动一设备一夹**：迁入/加厚驱动时落 `Hal/<Arch>/Drivers/<Device>/`；现网尚未完全做到（根上仍有遗留 `.c`），Blocks **迁移时补完**，禁止再往 Hal 根堆设备实现。见 [`积木原则.md`](积木原则.md) §2.2；对照现网 `Documents/驱动/驱动开发指南.md` §2。 |
+| 6 | **目录即命名空间**：子目录内文件/函数不叠目录名；与目录同名主文件保留（编制流程）；`Hal*` 层前缀例外。见 [`命名规范盘点-Blocks.md`](命名规范盘点-Blocks.md)；产物 `Build/<Arch>/Core/…` 镜像源码树。 |
 
 
 ---
@@ -23,9 +24,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K47** · Store 读清单 + 装一包 |
+| **★** | **PR-K48** · StoreUi / 作业互斥薄 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K46** · `BLOCKS.DB` KV 最小 ✅ |
+| 刚收官 | **PR-K47** · Store 读清单 + 装一包 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops；注释/绘制设想文 |
 | **待执行**（不占 ★） | 下表 **PR-B-read / name / seq**（出自 [`代码可读性盘点.md`](代码可读性盘点.md)；点名 JX 才动代码） |
 
@@ -71,7 +72,7 @@
 ### 未完成（文首 · GD 后只留这些）
 
 > **已完成**（K0–K45、相位 P1–P3、加厚 K13–K20）专节与全表见文末 [【归档】](#sec-gd)。  
-> 骨架 A ✅ · P1–P3 ✅ · P4 进行中（★ = **K47**）· P5 / 后置 / 可读性刀待办。
+> 骨架 A ✅ · P1–P3 ✅ · P4 进行中（★ = **K48**）· P5 / 后置 / 可读性刀待办。
 
 ### 对标现网主轨（K21+ · 分相位）
 
@@ -94,8 +95,8 @@
 | **K44** ✅ | GPT + 多卷前缀薄（`BLOCKS:`/`ESP:`） | FS2 | `vols`/`ls` 多卷前缀 |
 | **K45** ✅ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
 | **K46** ✅ | `BLOCKS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
-| **K47** ★ | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
-| **K48** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
+| **K47** ✅ | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
+| **K48** ★ | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
 
 #### 相位 P5 · 用户态 / 输入 / 积木面（K49–K54）
 
@@ -117,7 +118,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 | ESP 去重 Kernel.elf（可选） | **已是双盘**：Boot **优先从 RootFs/BLOCKS 读** `Kernel.elf`；ESP 放 `BOOTX64.EFI`。`sync` 仍可能往 Esp 拷一份备份——能力已满足；后置可收拢为「核只在 BLOCKS」 |
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K47）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K48）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。  
 > **GD**：未完成（P4 余量 / P5 / 后置 / 待执行）留文首；已收官专节**只**迁文末 【归档】（见上 GD 排版）。
 
@@ -129,36 +130,41 @@
 
 | 状态 | PR | 范围 | 一句话 | 验收 |
 | ---- | -- | ---- | ------ | ---- |
-| 待执行 | **PR-B-read-1** | `ShellCmd.c` | 拆 Fs/Net/SysUi；注册留核心 | `help` + 抽测 ls/ping/write；三架构可编 |
+| 待执行 | **PR-B-read-1** | `ShellCommand.c` | 拆 Fs/Net/SysUi；注册留核心 | `help` + 抽测 ls/ping/write；三架构可编 |
 | 待执行 | **PR-B-read-2** | `Gui.c` | 抽出 `GuiCursor.c` + 指针分发；`GuiPoll` 趋近顺序表 | 鼠点 Files/Settings/拖窗；光标无偏 |
-| 待执行 | **PR-B-read-3** | `FatMut.c` | 按 Write/Mkdir/Rm/Rename 拆 | `write`/`mkdir`/`mv`/`rm` 冒烟 |
-| 待执行 | **PR-B-read-4** | `NetworkTcp.c` + 近线 Ip/Lwip | 按能力拆，不改协议行为 | TCP/UDP/lwip 旧验收句 |
+| 待执行 | **PR-B-read-3** | `FatMutation.c` | 按 Write/Mkdir/Rm/Rename 拆 | `write`/`mkdir`/`mv`/`rm` 冒烟 |
+| 待执行 | **PR-B-read-4** | `Tcp.c` + 近线 Ip/Lwip | 按能力拆，不改协议行为 | TCP/UDP/lwip 旧验收句 |
 | 待执行 | **PR-B-read-5** | Hal virtio / PS2 超标 | Init vs 包处理分文件；并收拢进 `Drivers/<Device>/` | 块设备+鼠+网 bring-up |
 | 待执行 | **PR-B-name-1** | Hal `*Init`→`*Initialize` | 只改名+声明，零行为 | 全量编译 |
 | 待执行 | **PR-B-name-2** | `FAT_DIR_ENT` / `Theme*Cfg` / `gSaveW` 等 | 对齐现网 R 柱全词 | 编译 + 主题/Files 冒烟 |
 | 待执行 | **PR-B-seq-1** | `KernelMain` 顺序表 | 对标现网 PR-K-seq-* 薄搬 | 开机到桌面/Shell |
 
-咬合：K46+ **禁止**再往 `ShellCmd.c` 堆命令（先 read-1 或新建 `ShellCmdDb.c`）；K52 新驱动第一天进夹且 ≤300。细节仍以盘点文为准。
+咬合：K46+ **禁止**再往 `ShellCommand.c` 堆命令（先 read-1 或新建 `ShellCommandDataBase.c`）；K52 新驱动第一天进夹且 ≤300。细节仍以盘点文为准。
 
 ### K46 已收官（摘要）
 
 `BLOCKS.DB` + `dbget`/`dbset`；细则与手测见文末 [【归档】](#sec-gd) · K46。
 
-### K47 规划（★ · 最小子集）
+### K48 规划（★ · 最小子集 · JX）
 
-**一句话**：Store 读清单并装一包（对标现网 Store/S-job 薄）。
+**一句话**：Store 窗薄 UI + 作业互斥（Shell / UI 不同时踩 `StoreInstall`）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | 读盘上清单；装一包到约定位置（Shell 或桌面一侧即可） |
-| **不做** | 完整商店 UI 互斥（K48）、网络商店后端 |
-| **验收** | 装包后可见产物 / 串口 ok |
-| **对照** | 现网 Store / S-job |
-| **落地** | JX 再钉 |
+| **做** | `StoreJob` 忙旗（Begin/End/IsBusy）；`StoreInstall` 经 Job 门；Gui 窗（或桌面入口）list + install；Shell `store` 同门 |
+| **不做** | 现网 WorkerTask 后台步进、网络拉包、Remove/Sync 全套、完整 StoreUi 皮肤 |
+| **验收** | 窗或 Shell 装 `demo` 成功；Busy 时二次 `store install` 拒并提示；装完后 Busy 清 |
+| **对照** | 现网 `StoreJob` / `StoreUi` 薄切片 |
+| **落地** | `StoreJob.c` + `Gui/Store.c`（目录内不叠 Gui 前缀）；接 `Desktop`/`Window` |
 
-### K47+ 细则
+### K48 手测（JX 交付）
 
-轮到该刀再写「做/不做/验收」专节；未轮到以相位表一句话为准。大块迁入前对照现网同名文件，**禁止**无验收整夹粘贴。
+```text
+1. cd ~/Blocks/Kernel && ./build.sh x64
+2. cd ~/Blocks/Runtime && ./sync.sh && ./run.sh
+3. Shell：store install demo → ok；立刻再 store install demo → busy 拒
+4. 或开 Store 窗点 Install → 同效果；ls 见 ADEMO.TXT
+```
 
 
 ---
@@ -243,7 +249,7 @@ KernelMain
 | **K0–K12** | 模块表挂齐（薄实现） | ✅ |
 | **K13–K20** | 加厚到桌面 | ✅ |
 | **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
-| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K47 |
+| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K48 |
 | **后置 C** | 真机 / SMP / virt 桌面 | 不挡档 B |
 
 ---
@@ -312,7 +318,7 @@ Kernel/
 | 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
 | 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
 | 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |
-| 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 BLOCKS.ID） |
+| 2026-10-09 | TG：K15 HalPs2Keyboard + Console 双路输入；★ → K16（内核读 BLOCKS.ID） |
 | 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
 | 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
 | 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
@@ -321,10 +327,10 @@ Kernel/
 | 2026-10-09 | 钉 K21–K28 课感桌面主轨 + K29–K34 可选；★ → K21（Font/Theme 最小）；分档 A/B/C |
 | 2026-10-09 | **终局改钉对标现网**：K21–K52 分 P1–P5；课感 B 档废止；约定 #5；★ 仍 K21 |
 | 2026-10-09 | TG：K21 Font+Theme；★ → K22（Shell 命令表） |
-| 2026-10-09 | TG：K22 ShellCmd + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
+| 2026-10-09 | TG：K22 ShellCommand + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
 | 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
 | 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
-| 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |
+| 2026-10-09 | TG：K23 FatVolume/FatDirectory + Shell ls/cat；★ → K24（write/mkdir/rm） |
 | 2026-10-10 | 补齐 P1 相位表：K21 ✅（此前漏标仍 ★）；口诀与 TG 同步约定 |
 | 2026-10-10 | 排期：汉字/TTF 提前为 **P1b（K26–K28）**；窗管起顺延；主轨至 K54；TTF 最小光栅进 B、完整字库仍后置 |
 | 2026-10-10 | TG 补齐：K24–K30 ✅（P1 写盘/系统令、P1b 汉字·TTF·lang、P2 单窗+拖焦点+鼠手感）；★ → **K31**（关窗/重画桌面）；JX K31；同步 `调用链.md` |
@@ -334,23 +340,24 @@ Kernel/
 | 2026-10-10 | TG：K34 ✅ Settings 改色立即可见；★ → **K35**（Files 列目录/开 ELF）；JX K35 |
 | 2026-10-10 | TG：K35 ✅ Files 窗 ls/点 ELF；★ → **K36**（开始菜单/任务栏）；JX K36 |
 | 2026-10-10 | TG：K36 ✅ 底栏开始菜单（顶栏仅 Blocks；钮宽吃下 Start）；★ → **K37**（THEME.CFG） |
-| 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + GuiLayout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |
-| 2026-10-10 | TG：K38 ✅ ICMP `ping`（`NetworkPing`）；★ → **K39**（UDP）；TS 推远程 |
-| 2026-10-10 | JX：K39 ✅ UDP bind/send/recv + 本机回环；`NetworkIp`/`NetworkUdp`；headless `udp: sent`/`udp: recv … hello-k39`；待 TG |
+| 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + Layout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |
+| 2026-10-10 | TG：K38 ✅ ICMP `ping`（`Ping`）；★ → **K39**（UDP）；TS 推远程 |
+| 2026-10-10 | JX：K39 ✅ UDP bind/send/recv + 本机回环；`Ip`/`Udp`；headless `udp: sent`/`udp: recv … hello-k39`；待 TG |
 | 2026-10-10 | TG：K39 ✅ UDP + Shell；顺手图标标签居中；★ → **K40**（TCP 最小） |
 | 2026-10-10 | JX：K40 ✅ 单连接 TCP echo + `tcplisten`/`tcpconnect`；hostfwd :15000；待 TG |
 | 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |
 | 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
-| 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |
-| 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
+| 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/Configuration） |
+| 2026-10-10 | TG：K42 ✅ DNS/`Configuration` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
 | 2026-10-10 | TG：K43 ✅ `NETDEMO.ELF` + socket syscall/`LwIpSock`；★ → **K44**（多卷前缀）；TS 推远程 |
 | 2026-10-10 | **GD**：K0–K43 已收官专节迁文末 【归档】；暗号表补 TS/GD |
-| 2026-10-10 | TG：K44 ✅ GPT/`FsVol` 多卷前缀 + `vols`；★ → **K45**（Files 删/建/改名） |
+| 2026-10-10 | TG：K44 ✅ GPT/`Volume` 多卷前缀 + `vols`；★ → **K45**（Files 删/建/改名） |
 | 2026-10-10 | TG：K45 ✅ Files New/Del + Shell `mv`/`FatRenamePath`；光标前缓冲；★ → **K46**（DB KV） |
 | 2026-10-10 | 钉**迁移钉条**：可读/模块化/能力≥现网；守命名·可读规范；改到还债；单向分层；驱动一设备一夹 |
 | 2026-10-10 | 约定：无明确 **JX** 不改代码；盘点 PR 入文首 **待执行**；**GD** 排版=未完成在前、已收官只文末；K44/K45 专节迁归档 |
 | 2026-10-10 | **GD**：P1–P3/K13–K20 全表迁归档；文首只留 P4 余量/P5/后置/待执行/K46 规划 |
 | 2026-10-10 | TG：K46 ✅ `BLOCKS.DB`/`dbget`/`dbset`；★ → **K47**（Store 装包） |
+| 2026-10-10 | TG：K47 ✅ Store/`STORE.CAT`/`store list|install`；目录即命名空间（Network/Gui/…）+ 产物镜像源码树；★ → **K48**（StoreUi/Job） |
 
 ---
 
@@ -420,7 +427,7 @@ Kernel/
 | **K39** ✅ | UDP 收发 + Shell 命令 | Udp | `udpsend`/`udplisten` 一类 |
 | **K40** ✅ | TCP 最小（单连接对照） | Tcp legacy | listen/connect 一侧可演示 |
 | **K41** ✅ | 嵌入 lwIP 最小 + `lwip on` | N-lwip | 默认课路径可切 lwIP |
-| **K42** ✅ | DNS / 基础 `NetConfig` | 现网网配置 | `dns` 或等价日志 |
+| **K42** ✅ | DNS / 基础 `Configuration` | 现网网配置 | `dns` 或等价日志 |
 | **K43** ✅ | 用户态 `NETDEMO` 能跑 | NetDemo / socket | `exec NETDEMO.ELF` 见 `ok` |
 
 ### K0–K4 细则（已收官）
@@ -702,7 +709,7 @@ Kernel/
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `HalPs2Kbd` 门面（X64 i8042）；Console 读行同时 poll 串口与 PS/2；ASCII 子集 |
+| **做** | `HalPs2Keyboard` 门面（X64 i8042）；Console 读行同时 poll 串口与 PS/2；ASCII 子集 |
 | **不做** | USB HID 枚举、中断驱动键鼠、完整 keymap / 多布局 |
 | **Arm/RiscV** | stub；仍只靠串口 |
 | **验收** | 焦点在 GTK 窗时按键有回显；无 PS/2 不卡；串口输入仍可用 ✅ |
@@ -749,7 +756,7 @@ Kernel/
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | FatFile 读 `HELLO.ELF`；ElfLoad；`int 0x80` write/exit（本刀 ring0 call 进入；真 ring3 后刀） |
+| **做** | FatFile 读 `HELLO.ELF`；ElfLoader；`int 0x80` write/exit（本刀 ring0 call 进入；真 ring3 后刀） |
 | **不做** | 完整 libc、多进程、动态链接、ring3 |
 | **Arm/RiscV** | stub / skip |
 | **验收** | `Hello from HELLO.ELF` → `User: exit` → `Blocks>` ✅ |
@@ -800,7 +807,7 @@ Kernel/
 | **做** | Fat 列根目录；按名读小文件到串口；Shell 命令 `ls`/`cat` |
 | **不做** | 写盘、多卷、LFN 全套、VFS |
 | **验收** | `ls` 见 `BLOCKS.ID`/`HELLO.ELF`；`cat` 可读文本；`Blocks>` 仍活 |
-| **落地** | `FatVol`/`FatDir`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `BLOCKS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat BLOCKS.ID` → `Blocks root volume` |
+| **落地** | `FatVolume`/`FatDirectory`/`FatFile`；Shell `ls`/`cat`；PTY 冒烟见 `BLOCKS.ID`/`HELLO.ELF`/`KERNEL.ELF`，`cat BLOCKS.ID` → `Blocks root volume` |
 
 ### K24 规划（已收官 ✅ · 曾 ★）
 
@@ -811,7 +818,7 @@ Kernel/
 | **做** | 写小文件；建空目录；删文件/空目录；Shell 命令入口 |
 | **不做** | 多卷、LFN 创建、回收站、权限 |
 | **验收** | `write` 后 `cat` 一致；`mkdir` 后 `ls` 可见；`rm` 后消失；`Blocks>` 仍活 |
-| **落地** | `FatMut` / `HalBlockWrite`；Shell `write`/`mkdir`/`rm` |
+| **落地** | `FatMutation` / `HalBlockWrite`；Shell `write`/`mkdir`/`rm` |
 
 ### K25 规划（已收官 ✅ · 曾 ★）
 
@@ -822,7 +829,7 @@ Kernel/
 | **做** | `mem` 汇报；`ps` 见最近 exec；`exec` 路径跑根目录 ELF |
 | **不做** | 完整进程表、多任务切换 UI |
 | **验收** | `exec HELLO.ELF` 与开机 HELLO 路径一致；`Blocks>` 仍活 |
-| **落地** | `ShellSys.c`；`ProcessExecPath` / `ProcessLastExecName` |
+| **落地** | `ShellSystem.c`；`ProcessExecPath` / `ProcessLastExecName` |
 
 ### K26 规划（已收官 ✅ · 曾 ★）
 
@@ -903,7 +910,7 @@ Kernel/
 | **不做** | 真 alpha、淡入淡出、开始菜单、桌面图标、任意多窗池 |
 | **验收** | 两窗可重叠；点底窗标题/客户区抬到最上；拖/关仍可用 |
 | **对照** | 现网 Raise / Z 序；Blocks 固定 2 槽 |
-| **落地** | `GuiWin.c` / `GuiWinPaint.c` + `Gui.c` 轮询 |
+| **落地** | `Window.c` / `WindowPaint.c` + `Gui.c` 轮询 |
 
 ### K33 规划（已收官 ✅ · 曾 ★）
 
@@ -915,7 +922,7 @@ Kernel/
 | **不做** | 拖图标排版落盘、开始菜单、任意多图标类型全套 |
 | **验收** | 双击图标能开/聚焦命令窗 |
 | **对照** | 现网 Desktop 图标；Blocks 最少路径 |
-| **落地** | `Gui/GuiDesktop.c`；`GuiWinCompose` 先画图标 |
+| **落地** | `Gui/Desktop.c`；`WindowCompose` 先画图标 |
 
 ### K34 规划（已收官 ✅ · 曾 ★）
 
@@ -927,7 +934,7 @@ Kernel/
 | **不做** | THEME.CFG 落盘（→K37）、完整分类树、真机多显示器 |
 | **验收** | 改色后桌面/窗标题立即变色 |
 | **对照** | 现网 SettingsUi/D2 薄 |
-| **落地** | `ThemeSet*`；`Gui/GuiSettings.c`；Settings 窗+桌面图标 |
+| **落地** | `ThemeSet*`；`Gui/Settings.c`；Settings 窗+桌面图标 |
 
 ### K35 规划（已收官 ✅ · 曾 ★）
 
@@ -935,11 +942,11 @@ Kernel/
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | Files 窗 + 桌面图标；`FatDirListRoot` 列表；点 ELF → `ProcessExecPath` |
+| **做** | Files 窗 + 桌面图标；`FatDirectoryListRoot` 列表；点 ELF → `ProcessExecPath` |
 | **不做** | 多级目录浏览、拖放复制、图标缩略图 |
 | **验收** | 窗内见根目录名；点 `HELLO.ELF` 能跑 |
 | **对照** | 现网 FilesUi/FB1 薄 |
-| **落地** | `Gui/GuiFiles.c`；第四窗槽 |
+| **落地** | `Gui/Files.c`；第四窗槽 |
 
 ### K36 规划（已收官 ✅ · 曾 ★）
 
@@ -951,7 +958,7 @@ Kernel/
 | **不做** | 二级 Apps、关机项、时钟、钉住任务栏图标全套 |
 | **验收** | 开始钮可开三窗 |
 | **对照** | 现网 G13 薄 |
-| **落地** | `Gui/GuiStart.c`；任务栏重绘 |
+| **落地** | `Gui/Start.c`；任务栏重绘 |
 
 ### K37 已收官
 
@@ -959,10 +966,10 @@ Kernel/
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `THEME.CFG`：色/`mode`；Settings/`mode` 落盘；Boot `VideoTheme` 读 `mode=`；QEMU VGA edid 跟 CFG（默认 1440×900）；`CJK32.BIN` 盘读 18×18×4bpp；`GuiLayout`+`LAYOUT.CFG` |
+| **做** | `THEME.CFG`：色/`mode`；Settings/`mode` 落盘；Boot `VideoTheme` 读 `mode=`；QEMU VGA edid 跟 CFG（默认 1440×900）；`CJK32.BIN` 盘读 18×18×4bpp；`Layout`+`LAYOUT.CFG` |
 | **不做** | 热切分辨率、多显示器、BLOCKS.DB（K46）、完整主题包 |
 | **验收** | 改色重启仍在；`mode` 冷起生效；汉字走盘上点阵；布局可 CFG |
-| **落地** | `ThemeCfg` / `FontCjkDisk` / `GuiLayout` / `Runtime/run.sh` edid |
+| **落地** | `ThemeConfiguration` / `FontCjkDisk` / `Layout` / `Runtime/run.sh` edid |
 
 ### K38 已收官
 
@@ -973,7 +980,7 @@ Kernel/
 | **做** | builtin ICMP echo；默认 `10.0.2.2`；ARP→echo→reply；失败码 arp/tx/timeout |
 | **不做** | lwIP、DNS、TCP、多网卡、RTT 计时展示 |
 | **验收** | `ping` / `ping 10.0.2.2` → `ping: ok` |
-| **落地** | `Network/NetworkPing.c` + `ShellCmd` `ping` |
+| **落地** | `Network/Ping.c` + `ShellCommand` `ping` |
 
 ### K39 已收官
 
@@ -984,7 +991,7 @@ Kernel/
 | **做** | 发/收一帧 UDP；Shell `udplisten`/`udpsend`/`udprecv`；本机 IP 回环 |
 | **不做** | TCP、lwIP、DNS |
 | **验收** | headless：`udplisten 40000` → `udpsend 10.0.2.15 40000 hello-k39` → `udp: sent` + `udp: recv … hello-k39`；`ping: ok` 仍通 |
-| **落地** | `NetworkIp.c` / `NetworkUdp.c`；`NetworkPing` 共用 ARP/SendIp；`ShellCmd` 三命令 |
+| **落地** | `Ip.c` / `Udp.c`；`Ping` 共用 ARP/SendIp；`ShellCommand` 三命令 |
 
 ### K40 已收官
 
@@ -995,7 +1002,7 @@ Kernel/
 | **做** | 极简 TCP；Shell `tcplisten`/`tcpconnect`；LISTEN 回显 |
 | **不做** | lwIP、多连接、拥塞控制、完备重传 |
 | **验收** | `tcplisten 5000` + 宿主机 `nc 127.0.0.1 15000` → `tcp: client connected` + `tcp echo: hello-k40`；`ping: ok` |
-| **落地** | `NetworkTcp.c`；`run.sh` `hostfwd=tcp::15000-:5000` |
+| **落地** | `Tcp.c`；`run.sh` `hostfwd=tcp::15000-:5000` |
 
 ### K41 已收官
 
@@ -1006,18 +1013,18 @@ Kernel/
 | **做** | 嵌入 lwIP；`lwip on`/`lwip status`；活跃后 `ping` 走 lwIP |
 | **不做** | DNS（K42）、NETLIB/NETDEMO（K43）、自动开机 `lwip on`、热切回 builtin |
 | **验收** | `lwip on` → `ping` → `ping … (lwIP) …` / `ping: ok` |
-| **落地** | `ThirdParty/lwip`；`Hal/X64/LwIp`（`LwIpNetif`/`LwIpIcmp`）；`NetworkLwip.c`；`LWIP=1` 默认 |
+| **落地** | `ThirdParty/lwip`；`Hal/X64/LwIp`（`LwIpNetif`/`LwIpIcmp`）；`Lwip.c`；`LWIP=1` 默认 |
 
 ### K42 已收官
 
-**一句话**：DNS 查询 + 基础网配置（对标现网 NetConfig 薄）。
+**一句话**：DNS 查询 + 基础网配置（对标现网 Configuration 薄）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | Shell `dns`/`net`；`NetConfig`（ip/mask/gw/dns）；`LWIP_DNS` + `dns_gethostbyname` |
+| **做** | Shell `dns`/`net`；`Configuration`（ip/mask/gw/dns）；`LWIP_DNS` + `dns_gethostbyname` |
 | **不做** | NETLIB/NETDEMO（K43）、完整 DHCP UI、自动开机 `lwip on` |
 | **验收** | `lwip on` → `net` 见 dns=10.0.2.3 → `dns 10.0.2.2` → `dns: … -> 10.0.2.2`；可选主机名 |
-| **落地** | `NetConfig.c`；`NetworkLwip` Apply/DnsLookup；`lwipopts` `LWIP_DNS=1` + `dns.c`；Shell `net`/`dns`；SLIRP ARP 种子 |
+| **落地** | `Configuration.c`；`Lwip` Apply/DnsLookup；`lwipopts` `LWIP_DNS=1` + `dns.c`；Shell `net`/`dns`；SLIRP ARP 种子 |
 
 ### K43 已收官
 
@@ -1036,10 +1043,10 @@ Kernel/
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `GptFindFatParts` + `FsVol`；前缀 `BLOCKS:`/`ESP:`/`A:`；Shell `vols`；双 virtio（Root+Esp） |
+| **做** | `GptFindFatParts` + `Volume`；前缀 `BLOCKS:`/`ESP:`/`A:`；Shell `vols`；双 virtio（Root+Esp） |
 | **不做** | Store/DB（K46+）、完整 GPT 编辑器、USB MSC 多盘、`TOYOS:` 路径别名 |
 | **验收** | `vols` 见 BLOCKS+ESP；`ls BLOCKS:` / `ls ESP:` |
-| **落地** | `Gpt.c`/`FsVol.c`；`HalBlock` 多盘；`FatVolOpenAt`；`run.sh` 第二 virtio |
+| **落地** | `Gpt.c`/`Volume.c`；`HalBlock` 多盘；`FatVolumeOpenAt`；`run.sh` 第二 virtio |
 
 ### K45 已收官
 
@@ -1050,7 +1057,7 @@ Kernel/
 | **做** | Shell `mv` + `FatRenamePath`；Files 选中 + New（`mkdir NEW`）/Del；已有 `mkdir`/`rm`/`write` |
 | **不做** | 跨卷 move、递归 `rm -r`、Store/DB、窗内改名/自定名输入框 |
 | **验收** | `write`→`mv`→`ls`→`rm`；Files New/Del 后列表变；点选重画 |
-| **落地** | `FatMut` Rename；Shell `mv`；`GuiFiles` New/Del；光标前缓冲+描边 |
+| **落地** | `FatMutation` Rename；Shell `mv`；`Files` New/Del；光标前缓冲+描边 |
 
 ### K46 已收官
 
@@ -1062,7 +1069,7 @@ Kernel/
 | **不做** | Store 装包、完整 SQL、多库、Theme 批量写库 |
 | **验收** | `dbset`→`dbget`→`cat BLOCKS.DB`；复开仍 loaded |
 | **对照** | 现网 DB1（现网文件曾名 `TOYOS.DB`；Blocks 固定 `BLOCKS.DB`） |
-| **落地** | `Db.c`/`Db.h`；`ShellCmdDb.c`；挂卷后 `DbInitialize`；save=rm+重建防 vvfat Size 旧 |
+| **落地** | `DataBase.c`/`DataBase.h`；`ShellCommandDataBase.c`；挂卷后 `DataBaseInitialize`；save=rm+重建防 vvfat Size 旧 |
 
 #### K46 手测步骤（照做）
 
@@ -1110,7 +1117,7 @@ Kernel/
 8. **失败对照**  
    | 现象 | 常见原因 |
    | ---- | -------- |
-   | `unknown: dbget` | 未编进含 `ShellCmdDb` 的 Kernel，或未 sync 到 Runtime |
+   | `unknown: dbget` | 未编进含 `ShellCommandDataBase` 的 Kernel，或未 sync 到 Runtime |
    | `dbset: fail` | 卷只读 / 根目录满 / 写盘失败 |
    | `dbget: not found` 但刚 set 过 | 键名不一致；或未 `dbset: ok` |
    | 复开丢失 | 旧核未 sync；或读路径把「成功返回长度」判成失败（已修） |

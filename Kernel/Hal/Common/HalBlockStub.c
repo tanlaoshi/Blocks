@@ -11,6 +11,19 @@ int HalBlockReady(void) {
     return 0;
 }
 
+int HalBlockDriveCount(void) {
+    return 0;
+}
+
+int HalBlockSelect(int Drive) {
+    (void)Drive;
+    return -1;
+}
+
+int HalBlockCurrent(void) {
+    return 0;
+}
+
 int HalBlockRead(UINT64 Lba, void *Buf, UINT32 Count) {
     (void)Lba;
     (void)Buf;

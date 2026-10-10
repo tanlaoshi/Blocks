@@ -61,39 +61,19 @@ UINT32 FatVolNext(const FAT_VOL *V, UINT32 Clus) {
     return (UINT32)FatRd16(Sec + Off);
 }
 
-int FatVolOpen(FAT_VOL *V) {
+int FatVolOpenAt(FAT_VOL *V, UINT32 PartLba) {
     UINT8 Sec[FAT_SECTOR];
     UINT16 Reserved;
     UINT8 Nfats;
     UINT16 RootEnt;
     UINT16 FatSz16;
     UINT32 FatSz;
-    UINT32 PartLba = 0;
-    UINT32 i;
 
     if (V == 0 || !HalBlockReady()) {
         return -1;
     }
-    if (HalBlockRead(0, Sec, 1) != 0) {
+    if (HalBlockRead(PartLba, Sec, 1) != 0 || !LooksLikeBpb(Sec)) {
         return -1;
-    }
-    if (!LooksLikeBpb(Sec)) {
-        if (Sec[510] == 0x55u && Sec[511] == 0xAAu) {
-            for (i = 0; i < 4u; i++) {
-                UINT8 *E = Sec + 446u + i * 16u;
-                UINT8 Type = E[4];
-                UINT32 Lba = FatRd32(E + 8);
-                if (Type == 0x0Bu || Type == 0x0Cu || Type == 0x06u ||
-                    Type == 0x0Eu) {
-                    PartLba = Lba;
-                    break;
-                }
-            }
-        }
-        if (PartLba == 0 || HalBlockRead(PartLba, Sec, 1) != 0 ||
-            !LooksLikeBpb(Sec)) {
-            return -1;
-        }
     }
     V->Spc = Sec[13];
     Reserved = FatRd16(Sec + 14);
@@ -110,6 +90,38 @@ int FatVolOpen(FAT_VOL *V) {
     V->FatBits = (RootEnt == 0) ? 32u : 16u;
     V->RootClus = (RootEnt == 0) ? FatRd32(Sec + 44) : 0;
     return 0;
+}
+
+int FatVolOpen(FAT_VOL *V) {
+    UINT8 Sec[FAT_SECTOR];
+    UINT32 PartLba = 0;
+    UINT32 i;
+
+    if (V == 0 || !HalBlockReady()) {
+        return -1;
+    }
+    if (HalBlockRead(0, Sec, 1) != 0) {
+        return -1;
+    }
+    if (LooksLikeBpb(Sec)) {
+        return FatVolOpenAt(V, 0);
+    }
+    if (Sec[510] == 0x55u && Sec[511] == 0xAAu) {
+        for (i = 0; i < 4u; i++) {
+            UINT8 *E = Sec + 446u + i * 16u;
+            UINT8 Type = E[4];
+            UINT32 Lba = FatRd32(E + 8);
+            if (Type == 0x0Bu || Type == 0x0Cu || Type == 0x06u ||
+                Type == 0x0Eu || Type == 0xEFu) {
+                PartLba = Lba;
+                break;
+            }
+        }
+    }
+    if (PartLba == 0) {
+        return -1;
+    }
+    return FatVolOpenAt(V, PartLba);
 }
 
 int FatVolWalkRoot(FAT_VOL *V, FAT_DIR_FN Fn, void *Ctx) {

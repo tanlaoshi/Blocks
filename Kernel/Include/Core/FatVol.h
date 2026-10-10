@@ -24,6 +24,9 @@ typedef struct {
 
 typedef int (*FAT_DIR_FN)(const UINT8 *Ent32, void *Ctx);
 
+/* PartLba=0：整盘 BPB；否则分区起点 */
+int FatVolOpenAt(FAT_VOL *V, UINT32 PartLba);
+/* 兼容：在 LBA0 / 首个 MBR FAT 分区上打开 */
 int FatVolOpen(FAT_VOL *V);
 UINT32 FatVolNext(const FAT_VOL *V, UINT32 Clus);
 int FatVolSetNext(FAT_VOL *V, UINT32 Clus, UINT32 Next);

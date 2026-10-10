@@ -13,6 +13,7 @@
 #include "Network.h"
 #include "NetConfig.h"
 #include "LwIp.h"
+#include "FsVol.h"
 
 #define ARG_MAX   8
 #define NAME_MAX  16
@@ -156,8 +157,22 @@ static void CmdLs(int Argc, char **Argv) {
     FAT_DIR_ENT Ents[64];
     UINT32 N = 0;
     UINT32 i;
-    (void)Argc;
-    (void)Argv;
+    const char *Rel = "";
+
+    if (Argc >= 2) {
+        if (FsVolResolve(Argv[1], &Rel) != 0) {
+            Put("ls: bad vol\n");
+            return;
+        }
+        /* 有卷前缀后的子路径：本刀只列根 */
+        if (Rel != 0 && Rel[0] != 0) {
+            Put("ls: use VOL or VOL: (subdir later)\n");
+            return;
+        }
+    } else if (FsVolResolve("", &Rel) != 0) {
+        Put("ls: fail\n");
+        return;
+    }
     if (FatDirListRoot(Ents, 64, &N) != 0) {
         Put("ls: fail\n");
         return;
@@ -167,6 +182,39 @@ static void CmdLs(int Argc, char **Argv) {
         PutHex32(Ents[i].Size);
         Put("  ");
         Put(Ents[i].Name);
+        Put("\n");
+    }
+}
+
+/* vols — 列出挂载卷 */
+static void CmdVols(int Argc, char **Argv) {
+    int N;
+    int i;
+    (void)Argc;
+    (void)Argv;
+
+    if (FsVolCount() <= 0 && FsVolMountAll() != 0) {
+        Put("vols: none\n");
+        return;
+    }
+    N = FsVolCount();
+    for (i = 0; i < N; i++) {
+        const FS_VOL *V = FsVolGet(i);
+        char Let[3];
+        if (V == 0) {
+            continue;
+        }
+        Let[0] = V->Letter;
+        Let[1] = ':';
+        Let[2] = 0;
+        Put(Let);
+        Put(" ");
+        Put(V->Name);
+        Put(V->ReadOnly ? " ro" : " rw");
+        Put(V->IsEsp ? " esp" : " fat");
+        if (i == FsVolDefaultIndex()) {
+            Put(" *");
+        }
         Put("\n");
     }
 }
@@ -760,7 +808,8 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("clear", "clear screen", CmdClear);
     ShellCmdRegister("echo", "print arguments", CmdEcho);
     ShellCmdRegister("hello", "run HELLO.ELF", CmdHello);
-    ShellCmdRegister("ls", "list root dir", CmdLs);
+    ShellCmdRegister("ls", "list root dir [VOL:]", CmdLs);
+    ShellCmdRegister("vols", "list mounted volumes", CmdVols);
     ShellCmdRegister("cat", "print text file", CmdCat);
     ShellCmdRegister("write", "write text file", CmdWrite);
     ShellCmdRegister("mkdir", "make directory", CmdMkdir);

@@ -12,15 +12,24 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K44** · GPT + 多卷前缀薄 |
+| **★** | **PR-K45** · Files 删/建/改名 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K43** · 用户态 `NETDEMO` ✅ |
+| 刚收官 | **PR-K44** · GPT + 多卷前缀薄 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
 > **K0–K12 = 模块表挂齐（薄实现）**；自 K13 起进入 **加厚到桌面**（见下表），不再只挂空壳。  
-> **暗号对齐现网**（ToyKernel `Documents/路线图.md` 〇节）：  
-> **JX** = 实现文首 ★（本地验收，不 commit/push）；**TG** = 手测通过 → commit（不 push）+ ★ 推下一刀；**TGJX** = 先 TG 再 JX。
+> **暗号对齐现网**（ToyKernel `Documents/路线图.md` 〇节）：
+>
+> | 暗号 | 含义 | Agent 动作 |
+> | -- | -- | -- |
+> | **JX** | 做文首 ★ | 实现 + 本地验收；**不** commit/push |
+> | **TG** | 手测通过，入库 | **只 commit、不 push**；★ 推下一刀；相位表/`已收官`/修订记录同步 |
+> | **TGJX** | TG 然后 JX | 先 TG（不含随后 JX 代码）再 JX；**不** push |
+> | **TS** | 推远程 | `git push`；不新开 commit |
+> | **GD** | 文档归档 | 已收官专节迁文末 【归档】；**不**写功能代码、不擅自 TG |
+>
+> 旧习惯「TG 含 push」已废止——上远程须另说 **TS**（或 **TG TS**）。
 
 ### 协作约定（2026-10-09 起）
 
@@ -108,8 +117,8 @@
 
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
-| **K44** ★ | GPT + 多卷前缀薄（`BLOCKS:`/`TOYOS:`） | FS2 | `vols`/`ls` 多卷前缀 |
-| **K45** | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
+| **K44** ✅ | GPT + 多卷前缀薄（`BLOCKS:`/`ESP:`） | FS2 | `vols`/`ls` 多卷前缀 |
+| **K45** ★ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
 | **K46** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
 | **K47** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
 | **K48** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
@@ -134,8 +143,367 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K44）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K45）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
+> **GD**：已收官专节可整段迁文末 【归档】（文首只留 ★ / 相位表 / 当前刀规划）。
+
+### K44 已收官
+
+**一句话**：GPT / 多卷前缀薄（对标现网 FS2）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | `GptFindFatParts` + `FsVol`；前缀 `BLOCKS:`/`ESP:`/`A:`；Shell `vols`；双 virtio（Root+Esp） |
+| **不做** | Store/DB（K46+）、完整 GPT 编辑器、USB MSC 多盘、`TOYOS:` 路径别名 |
+| **验收** | `vols` 见 BLOCKS+ESP；`ls BLOCKS:` / `ls ESP:` |
+| **落地** | `Gpt.c`/`FsVol.c`；`HalBlock` 多盘；`FatVolOpenAt`；`run.sh` 第二 virtio |
+
+### K45 规划（★ · 最小子集）
+
+**一句话**：Files / Shell 删、建、改名（对标现网 FB2 薄）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | Shell `mv` + `FatRename`；Files 窗可删/建或与 Shell 等价验收 |
+| **不做** | 跨卷 move、递归 `rm -r`、Store/DB |
+| **验收** | `mkdir`/`mv`/`rm` 或 Files 窗操作后 `ls` 一致 |
+| **对照** | 现网 FilesUi/FB2 / `FatRename` |
+| **落地** | JX 再钉 |
+
+### K22+ 细则
+
+轮到该刀再写「做/不做/验收」专节；未轮到以文首相位表一句话为准。大块迁入前对照现网同名文件，**禁止**无验收整夹粘贴。
+
+---
+
+## 1. 目标与硬约束
+
+### 1.1 终局验收（彻底干净）
+
+```text
+加电 → OVMF → BOOTX64.EFI → Kernel.elf
+  → KernelMain → 模块表 → GOP 桌面 / Shell
+  → 能力面对标现网课堂主路径（路线图 §1）
+```
+
+对标现网 `Scripts/run-split.sh` / `smoke-boot.sh`（Blocks：`Runtime/run.sh`）。**不只以「能编过」为准。**
+
+**现网课堂主路径能力面（B 收官检查清单）**：
+
+| 面 | 要对上的现网行为 |
+| -- | ---------------- |
+| 桌面 | 标题栏/拖动/重叠；图标双击开 Shell、Settings、Files |
+| Theme | 色/点阵字体可改；偏好可落盘（`THEME.CFG`/`TOYOS.DB` 按刀演进） |
+| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `BLOCKS.ID` |
+| 网络 | virtio-net；`ping`；lwIP 课路径（builtin 可作对照） |
+| 用户态 | 多只教学 ELF；`exec`；syscall 读写 |
+| 输入 | 键鼠可用（PS/2 可先，HID 对标现网） |
+
+**分档**：
+
+| 档 | 含义 | 状态 |
+| -- | ---- | ---- |
+| **A 骨架** | 接棒 + 表齐 + K13–K20 | ✅ 已收官 |
+| **B 对标现网** | K21–K54 相位 P1 / **P1b 汉字·TTF** / P2–P5 | ★ 进行中 |
+| **C 后置** | 真机 / SMP / virt 全桌面 | 不挡 B |
+
+### 1.2 迁移原则
+
+1. **最小子集（方便 review）**：每一刀只迁「能验收的最短路径」；宁多一刀，勿塞整文件/整层。单 PR 以可 diff、可口述验收为准。  
+2. **积木优先**（[`积木原则.md`](积木原则.md)）：接口稳定、实现可换；SCHED/MEM/FS 等迁入即对齐 Ops 面。  
+3. **三架构可编**：每刀 `./build.sh x64|arm64|riscv` 绿；真实现可先只落主力 Arch，其它保持桩。  
+4. **新 `.c` ≤300 行**；大块按已拆文件拆刀迁。  
+5. **恒等窗 4GiB**（`IdentityMap.h`）：正式 VMM 必须读同一常量。  
+6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。  
+7. **文件名去冗余 `Kernel` 前缀**：落点已在 `Kernel/`（或对照源 `CodeC-Core/Kernel/`）时，勿再 `Kernel`+Rest。  
+   - 去：`KernelModules*.c` → `Modules*.c`；`KernelTask.c` → `Task.c`；迁入时同类照办。  
+   - 留：本身就叫这个的（`Kernel.c` / `Kernel.h`）；角色专名 `KernelEntry` / `KernelHandoff`（不是「Kernel+Modules」式冗余）。
+
+### 1.3 现网 `KernelMain` 形状（对照）
+
+```text
+KernelMain
+  ├─ KernelAttachEarlyVideo()     Serial + HalVideoSet(+ Font/Theme/GopEnable)
+  ├─ KernelModulesRun()           gModulesFull[] / Virt / VirtDesktop
+  ├─ KernelAfterModules()         关 GOP 镜像等
+  └─ 起 shell/gui/worker → SchedulerStart
+```
+
+模块表（现网 Full，日志名 · 对照）：
+
+`Serial → Memory → Driver → VirtualMemory → Video → Cpu → SerialEarly → Smp → USB → FileSystem → Network → Gui → Scheduler → Console`
+
+**Blocks 当前表**（与现网差：`Memory → VirtualMemory → Driver`，无 SerialEarly/Smp）：
+
+`Serial → Memory → VirtualMemory → Driver → Video → Cpu → USB → FileSystem → Network → Gui → Scheduler → Console`
+
+---
+
+## 2. PR 拆分（一步一步）
+
+> **K0–K43 已收官**；细则见文末 [【归档】](#sec-gd)。未完只认文首 ★ / 相位表。
+
+| PR | 一句话 | 状态 |
+| -- | ------ | ---- |
+| **K0–K12** | 模块表挂齐（薄实现） | ✅ |
+| **K13–K20** | 加厚到桌面 | ✅ |
+| **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
+| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K44 |
+| **后置 C** | 真机 / SMP / virt 桌面 | 不挡档 B |
+
+---
+
+## 3. 目录预期（随刀增长）
+
+```text
+Kernel/
+  Core/
+    Kernel.c             # 入口函数 KernelMain（文件名本身就是 Kernel，不去前缀）
+    Modules.c            # 表 + ModulesRun（勿再叫 KernelModules）
+    BootInfo.c
+  Hal/Common/
+    HalCapability.c      # 能力旗标（跨 Arch）
+    HalVideoStub.c       # 非 X64 薄视频；X64 用 Hal/X64/HalVideo.c
+    HalCpuStub.c
+  Include/Core/
+    Module.h Modules.h Kernel.h
+    …
+  Hal/<Arch>/HalSerial.c # 已有
+  Hal/<Arch>/KernelEntry.S KernelHandoff.c  # 角色专名，保留
+  Hal/<Arch>/…           # Video/Cpu/…
+```
+
+---
+
+## 4. 相关入口
+
+| 文档 | 用途 |
+| ---- | ---- |
+| [`Boot迁移.md`](Boot迁移.md) | 接棒边界；干净定义 |
+| [`Kernel/README.md`](Kernel/README.md) | 编译与现状 |
+| 现网 `CodeC-Core/Kernel/Kernel.c` | `KernelMain` 对照 |
+| 现网技术手册 §2.1 | 模块表顺序 |
+
+---
+
+## 5. 修订记录
+
+| 日期 | 说明 |
+| ---- | ---- |
+| 2026-10-08 | 初稿：KernelMain 以后计划 + PR-K0…K9+；★ = K0 |
+| 2026-10-08 | PR-K0 落地；★ → K1 |
+| 2026-10-08 | 挂钩 [`积木原则.md`](积木原则.md)；原则 #1 = 积木优先 |
+| 2026-10-08 | 工作区改名 **Blocks**；Kernel 已迁源码补【初学者】注释 |
+| 2026-10-08 | 非迁移文档去掉「从哪迁来」表述；`Ramfb`→`RamFrameBuffer` |
+| 2026-10-08 | TG：K0+三架构 HalSerial+Blocks 命名+`Hal/Common`；★ 仍为 K1 |
+| 2026-10-08 | 原则钉「最小子集」；K1 收窄为 X64 LFB DrawPixel/FillRect |
+| 2026-10-08 | JX：K1 代码落地（待 QEMU 手测色块） |
+| 2026-10-08 | Runtime：`Esp`/`RootFs`/`Fw` + `run.sh`；headless 见 FB/self-test/park |
+| 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |
+| 2026-10-08 | TG：K2 Font 8×8 + DrawString；左上角 `Blocks K2` ✅；★ → K3 |
+| 2026-10-08 | TG：K3 HalSerialGop 屏上 boot 字；`SCREEN_LOG=1` ✅；★ → K4 |
+| 2026-10-08 | TG：K4 最小位图 PMM；`[Mod] Memory` / self-test ok ✅；★ → K5 |
+| 2026-10-08 | `HalCapability` / `HalVideoStub` 从 `Core/` 迁入 `Hal/Common/`（Hal 前缀不再混在 Core） |
+| 2026-10-08 | TG：K5 Driver 壳 + VMM 认领 EarlyIdentity；★ → K6（含 K6 规划） |
+| 2026-10-08 | TG：K6 Video 背缓冲 + BootInfo 分层；★ → K7（含 K7 规划） |
+| 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |
+| 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
+| 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
+| 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
+| 2026-10-08 | TG：K9 FileSystem（Boot `BLOCKS.ID` handoff）；★ → K10（USB） |
+| 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
+| 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
+| 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
+| 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
+| 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
+| 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |
+| 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 BLOCKS.ID） |
+| 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
+| 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
+| 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
+| 2026-10-09 | TG：K19 HELLO.ELF + 调用链文档；★ → K20（virtio-net） |
+| 2026-10-09 | TG：K20 legacy virtio-net TX/RX + Console 跟手；★ → 后置拆刀 |
+| 2026-10-09 | 钉 K21–K28 课感桌面主轨 + K29–K34 可选；★ → K21（Font/Theme 最小）；分档 A/B/C |
+| 2026-10-09 | **终局改钉对标现网**：K21–K52 分 P1–P5；课感 B 档废止；约定 #5；★ 仍 K21 |
+| 2026-10-09 | TG：K21 Font+Theme；★ → K22（Shell 命令表） |
+| 2026-10-09 | TG：K22 ShellCmd + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
+| 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
+| 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
+| 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |
+| 2026-10-10 | 补齐 P1 相位表：K21 ✅（此前漏标仍 ★）；口诀与 TG 同步约定 |
+| 2026-10-10 | 排期：汉字/TTF 提前为 **P1b（K26–K28）**；窗管起顺延；主轨至 K54；TTF 最小光栅进 B、完整字库仍后置 |
+| 2026-10-10 | TG 补齐：K24–K30 ✅（P1 写盘/系统令、P1b 汉字·TTF·lang、P2 单窗+拖焦点+鼠手感）；★ → **K31**（关窗/重画桌面）；JX K31；同步 `调用链.md` |
+| 2026-10-10 | TG：K31 ✅ 关窗不花屏 + 鼠停卡（双写光标/Aux 半包）；★ → **K32**（双窗+Z 序）；JX K32 |
+| 2026-10-10 | TG：K32 ✅ 双窗 Z 序（手测重叠/抬升/拖关通过）；★ → **K33**（桌面图标+双击开 Shell） |
+| 2026-10-10 | TG：K33 ✅ 桌面 Shell 图标双击；Core 按模块表分目录；★ → **K34**（Settings/Theme）；JX K34 |
+| 2026-10-10 | TG：K34 ✅ Settings 改色立即可见；★ → **K35**（Files 列目录/开 ELF）；JX K35 |
+| 2026-10-10 | TG：K35 ✅ Files 窗 ls/点 ELF；★ → **K36**（开始菜单/任务栏）；JX K36 |
+| 2026-10-10 | TG：K36 ✅ 底栏开始菜单（顶栏仅 Blocks；钮宽吃下 Start）；★ → **K37**（THEME.CFG） |
+| 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + GuiLayout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |
+| 2026-10-10 | TG：K38 ✅ ICMP `ping`（`NetworkPing`）；★ → **K39**（UDP）；TS 推远程 |
+| 2026-10-10 | JX：K39 ✅ UDP bind/send/recv + 本机回环；`NetworkIp`/`NetworkUdp`；headless `udp: sent`/`udp: recv … hello-k39`；待 TG |
+| 2026-10-10 | TG：K39 ✅ UDP + Shell；顺手图标标签居中；★ → **K40**（TCP 最小） |
+| 2026-10-10 | JX：K40 ✅ 单连接 TCP echo + `tcplisten`/`tcpconnect`；hostfwd :15000；待 TG |
+| 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |
+| 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
+| 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |
+| 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
+| 2026-10-10 | TG：K43 ✅ `NETDEMO.ELF` + socket syscall/`LwIpSock`；★ → **K44**（多卷前缀）；TS 推远程 |
+| 2026-10-10 | **GD**：K0–K43 已收官专节迁文末 【归档】；暗号表补 TS/GD |
+
+---
+
+## 6. 【归档】 <a id="sec-gd"></a>
+
+> 暗号 **GD**：已收官正文只放本节。文首禁止再挂同名「已收官」专节标题块。  
+> Ctrl+F `### K` 查历史刀；**勿再当 JX**。
+
+### K0–K4 细则（已收官）
+
+### PR-K0 细则（已收官）
+
+### 3.1 做
+
+- `KernelMain`：`BootInfoSet` →（X64）`EarlyIdentity` → `AttachEarly`（再 Init 串口；`HalVideoSet` 只存配置）→ `KernelModulesRun`（仅 Serial）→ 串口报完成 → park。  
+- `MODULE` / `ModulesRun` / `InitializeSerial` 薄壳。  
+- `HalHasFrameBuffer` / `HalConsoleOnly` / `HalPlatformIsVirtSerialConsole` 最小实现（读 `BootInfo`）。  
+- `HalVideoSet` / `GetSize` / `FrameBuffer*` 薄存储（无画像素）。
+
+### 3.2 不做
+
+- 真画屏、Font、Theme、GOP 镜像  
+- PMM / VMM / 调度 / FS / USB  
+- Runtime / QEMU 脚本
+
+### 3.3 验收清单
+
+- [x] `./build.sh x64|arm64|riscv`  
+- [x] 串口可见 `KernelMain:` / `[Mod] Serial` / `modules done (K0)`（本机编通；QEMU 随 Runtime）  
+- [x] 文档 ★ 指向下一刀 **K1**
+
+### 3.4 本刀落点（已入库）
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Core/KernelMain.c` | AttachEarly + RunFull + park |
+| `Core/Module.c` `Include/Core/Module.h` | `ModulesRun` |
+| `Core/KernelModules.c` | Full 表仅 Serial |
+| `Hal/Common/HalCapability.c` | FB / ConsoleOnly / VirtSerial / CpuPark |
+| `Hal/Common/HalVideoStub.c` | `HalVideoSet` 等薄存储 |
+
+---
+
+### PR-K1 细则（已收官）
+
+### 做
+
+- X64：`Hal/X64/HalVideo.c`（或拆极薄两文件）实现  
+  `HalVideoSet` / `GetSize` / `FrameBuffer*` / `DrawPixel` / `FillRect`  
+  （线性 FB、假定 32bpp；无后缓冲、无 Present、无字库）  
+- `KernelAttachEarly`：有 FB 时串口打 `WxH`，可选右上角画一小色块作自检  
+- Arm64/RiscV：继续空操作桩（或仍走 `HalVideoStub`），保证三架构可编  
+
+### 不做（留给 K2+）
+
+- Font / Theme / `DrawString`  
+- 后缓冲、脏矩形、GOP 镜像 / `HalSerialGop*`  
+- `Hal/Common/RamFrameBuffer` 真实现  
+- 模块表挂 `Video`、PMM  
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`（JX 编通）  
+- [x] `Runtime/run.sh --headless`：串口见 `FB 1024x768` / `video self-test` / `park`  
+- [x] 落点：`Hal/X64/HalVideo.c`；Arm/RiscV 仍 `HalVideoStub`  
+
+### 本刀落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Hal/X64/HalVideo.c` | Set / GetSize / DrawPixel / FillRect（直写 LFB） |
+| `Hal/Common/HalVideoStub.c` | 非 X64：Set + 空 Draw/Fill |
+| `Core/KernelMain.c` | 打分辨率 + 右上角自检色块 |
+
+---
+
+### PR-K2 细则（已收官）
+
+### 做
+
+- 内建 8×8 ASCII（`0x20`–`0x7E`）点阵 + `HalVideoDrawCharAt` / `DrawStringAt`
+- `KernelAttachEarly`：有 FB 时左上角打 `Blocks K2`（白字）
+- 无 Theme、无平滑、无 UTF-8
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`
+- [x] 串口：`font self-test (DrawString)` / `modules done; park`
+- [x] 屏上左上角可见 `Blocks K2`
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Include/Hal/FontGlyph8x8.h` | 点阵表（曾在 Include/Core） |
+| `Hal/Common/HalFont.c` | 栅格化 → `DrawPixel`（曾 Core/Font.c；后→Font 积木） |
+| `Core/KernelMain.c` | Font 自检一行 |
+
+---
+
+### PR-K3 细则（已收官）
+
+### 做
+
+- X64 `HalSerialGop.c`：`SCREEN_LOG=1` 时按 `SCREEN_LOG_*` 上滚到 FB（Y≥80）
+- `KernelMain` 主线走 `SLOG_BOOT`；`HalSerialGopEnable` 接在 `HalVideoSet` 后
+- `build.sh`：`SCREEN_LOG=0|1`（默认 0）；Arm/RiscV 仍空操作
+
+### 不做
+
+- 完整 Theme / Present / Desktop ring 叠画
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`；`x64 SCREEN_LOG=1`
+- [x] 串口仍见 `KernelMain:` / `park`
+- [x] GUI：`SCREEN_LOG=1` 时屏上有 boot 白字行
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Hal/X64/HalSerialGop.c` | 上滚 / Enable / Mute / Mirror |
+| `Hal/X64/HalSerial.c` | WriteChannel → TryMirror |
+| `Core/KernelMain.c` | BOOT 通道 + GopEnable |
+| `build.sh` | `-DSCREEN_LOG=` |
+
+---
+
+### PR-K4 细则（已收官）
+
+### 做
+
+- `PhysicalMemory*`：恒等窗内最大 Free 区 + 位图 first-fit；抠 Handoff 保留段
+- 模块表挂 `Memory`；Init 内 alloc/写/free 自检
+- **不**抽 `MEMORY_OPS`（默认实现先稳）
+
+### 验收
+
+- [x] `./build.sh x64|arm64|riscv`
+- [x] 串口：`[Mod] Memory` / `PMM: self-test ok` / `park`
+
+### 落点
+
+| 文件 | 作用 |
+| ---- | ---- |
+| `Include/Core/PhysicalMemory.h` | 对外契约 |
+| `Core/PhysicalMemory.c` | 单区位图 PMM |
+| `Core/KernelModules.c` | Serial → Memory + 自检 |
+
+---
+
+
+### K5–K43 刀规划 / 已收官
 
 ### K5 规划（已收官 ✅ · 曾 ★）
 
@@ -596,348 +964,4 @@
 | **不做** | 完整 libToyNet/`NETLIB`、bind/listen/accept、真 ring3 |
 | **验收** | 宿主机 `nc -l -p 8888`；Guest `lwip on` → `exec NETDEMO.ELF` → 串口 `ok` |
 | **落地** | `LwIpSock.c`；`HalSyscall` 3–6；`User/X64/NetDemo.S` → `NETDEMO.ELF` |
-
-### K44 规划（★ · 最小子集）
-
-**一句话**：GPT / 多卷前缀薄（对标现网 FS2）。
-
-| 项 | 定调 |
-| -- | ---- |
-| **做** | 卷枚举 + 路径前缀（`BLOCKS:` 或兼容 `TOYOS:`）可 `ls` |
-| **不做** | Store/DB（K46+）、完整 GPT 编辑器 |
-| **验收** | Shell `vols` 或 `ls BLOCKS:` / 等价可见多卷 |
-| **对照** | 现网 FS2 |
-| **落地** | JX 再钉 |
-
-### K22+ 细则
-
-轮到该刀再写「做/不做/验收」专节；未轮到以文首相位表一句话为准。大块迁入前对照现网同名文件，**禁止**无验收整夹粘贴。
-
----
-
-## 1. 目标与硬约束
-
-### 1.1 终局验收（彻底干净）
-
-```text
-加电 → OVMF → BOOTX64.EFI → Kernel.elf
-  → KernelMain → 模块表 → GOP 桌面 / Shell
-  → 能力面对标现网课堂主路径（路线图 §1）
-```
-
-对标现网 `Scripts/run-split.sh` / `smoke-boot.sh`（Blocks：`Runtime/run.sh`）。**不只以「能编过」为准。**
-
-**现网课堂主路径能力面（B 收官检查清单）**：
-
-| 面 | 要对上的现网行为 |
-| -- | ---------------- |
-| 桌面 | 标题栏/拖动/重叠；图标双击开 Shell、Settings、Files |
-| Theme | 色/点阵字体可改；偏好可落盘（`THEME.CFG`/`TOYOS.DB` 按刀演进） |
-| 存储 | FAT 读写；`ls`/`cat`/`write`/`mkdir`；识 `BLOCKS.ID` |
-| 网络 | virtio-net；`ping`；lwIP 课路径（builtin 可作对照） |
-| 用户态 | 多只教学 ELF；`exec`；syscall 读写 |
-| 输入 | 键鼠可用（PS/2 可先，HID 对标现网） |
-
-**分档**：
-
-| 档 | 含义 | 状态 |
-| -- | ---- | ---- |
-| **A 骨架** | 接棒 + 表齐 + K13–K20 | ✅ 已收官 |
-| **B 对标现网** | K21–K54 相位 P1 / **P1b 汉字·TTF** / P2–P5 | ★ 进行中 |
-| **C 后置** | 真机 / SMP / virt 全桌面 | 不挡 B |
-
-### 1.2 迁移原则
-
-1. **最小子集（方便 review）**：每一刀只迁「能验收的最短路径」；宁多一刀，勿塞整文件/整层。单 PR 以可 diff、可口述验收为准。  
-2. **积木优先**（[`积木原则.md`](积木原则.md)）：接口稳定、实现可换；SCHED/MEM/FS 等迁入即对齐 Ops 面。  
-3. **三架构可编**：每刀 `./build.sh x64|arm64|riscv` 绿；真实现可先只落主力 Arch，其它保持桩。  
-4. **新 `.c` ≤300 行**；大块按已拆文件拆刀迁。  
-5. **恒等窗 4GiB**（`IdentityMap.h`）：正式 VMM 必须读同一常量。  
-6. 模块表顺序对照技术手册 §2.1；薄实现须标明「可替换面待补」。  
-7. **文件名去冗余 `Kernel` 前缀**：落点已在 `Kernel/`（或对照源 `CodeC-Core/Kernel/`）时，勿再 `Kernel`+Rest。  
-   - 去：`KernelModules*.c` → `Modules*.c`；`KernelTask.c` → `Task.c`；迁入时同类照办。  
-   - 留：本身就叫这个的（`Kernel.c` / `Kernel.h`）；角色专名 `KernelEntry` / `KernelHandoff`（不是「Kernel+Modules」式冗余）。
-
-### 1.3 现网 `KernelMain` 形状（对照）
-
-```text
-KernelMain
-  ├─ KernelAttachEarlyVideo()     Serial + HalVideoSet(+ Font/Theme/GopEnable)
-  ├─ KernelModulesRun()           gModulesFull[] / Virt / VirtDesktop
-  ├─ KernelAfterModules()         关 GOP 镜像等
-  └─ 起 shell/gui/worker → SchedulerStart
-```
-
-模块表（现网 Full，日志名 · 对照）：
-
-`Serial → Memory → Driver → VirtualMemory → Video → Cpu → SerialEarly → Smp → USB → FileSystem → Network → Gui → Scheduler → Console`
-
-**Blocks 当前表**（与现网差：`Memory → VirtualMemory → Driver`，无 SerialEarly/Smp）：
-
-`Serial → Memory → VirtualMemory → Driver → Video → Cpu → USB → FileSystem → Network → Gui → Scheduler → Console`
-
----
-
-## 2. PR 拆分（一步一步）
-
-| PR | 一句话 | 主要落点 | 验收（本刀） |
-| -- | ------ | -------- | ------------ |
-| **K0** ★ | `KernelMain` 骨架 + 模块表壳（仅 Serial） | `Core/KernelMain.c` `KernelModules.*`；能力旗标桩；`HalVideoSet` 薄存储 | 三架构可编；串口见 `KernelMain: …`；停在 park |
-| **K1** ★ | `HalVideo` 最小子集 | 见 §3bis；**只** X64 LFB：`Set`/`GetSize`/`DrawPixel`/`FillRect`（可加一角色块自检） | 有 FB：屏上可见色块；串口报 `WxH`；Arm/RiscV 仍桩但可编 |
-| **K2** | `Font` 最小点阵（无 Theme） | 内建点阵 + `DrawString` 薄封装 | FB 上能打一行 ASCII |
-| **K3** | X64 `HalSerial` 屏上 boot 字 | ring→FB 上滚（仍无完整 Theme） | `SCREEN_LOG=1` 时屏上有 boot 行 |
-| **K4** | **Memory（PMM）** | `PhysicalMemory*`；模块表挂上 | `[Mod] Memory`；Regions 可分配 |
-| **K5** | Driver 框架 + VirtualMemory | 页表/开分页；沿用 4GiB 窗 | 分页后串口仍活；FB 已映 |
-| **K6** | Video 模块（背缓冲） | `InitializeVideo` | 接 Boot 黑底、不强制全屏 Clear |
-| **K7** | Cpu（GDT/IDT/LAPIC 或 arch 等价） | `Hal/X64` 等 | 中断门可挂；定时器可空 |
-| **K8** | Scheduler 最小 + Console 串口壳 | 单核 shell 可交互 | 串口提示符；`Blocks ready` 类横幅 |
-| **K9** | FileSystem 识盘（Boot handoff） | `OsIdSeen` | `Fs: BLOCKS.ID ready` |
-| **K10** | USB 探控（XhciBase） | handoff / 窗内 CAP | `Usb: xhci ok` |
-| **K11** | Network 探网卡 | PCI class 0x02 | `Net: nic ok` |
-| **K12** | Gui 桌面壳 | 底色+顶栏 | `Gui: desktop ok` |
-| **K13…K20** ✅ | 加厚骨架 | 见文首「加厚到桌面」表 | 分刀验收 ✅ |
-| **K21…K52** | 对标现网主轨（P1–P5） | 见文首相位表 | 到 §1.1 档 B |
-| **后置 C** | 真机/SMP/virt 桌面 | 文首后置表 | 不挡档 B |
-
-> K1–K3 偏「早期可见」；K4–K12 挂齐模块表薄实现；**K13 起加厚**。可按风险微调，但 **K0 必须先落地**；改排队须改文首表。
-
----
-
-## 3. PR-K0 细则（本刀）
-
-### 3.1 做
-
-- `KernelMain`：`BootInfoSet` →（X64）`EarlyIdentity` → `AttachEarly`（再 Init 串口；`HalVideoSet` 只存配置）→ `KernelModulesRun`（仅 Serial）→ 串口报完成 → park。  
-- `MODULE` / `ModulesRun` / `InitializeSerial` 薄壳。  
-- `HalHasFrameBuffer` / `HalConsoleOnly` / `HalPlatformIsVirtSerialConsole` 最小实现（读 `BootInfo`）。  
-- `HalVideoSet` / `GetSize` / `FrameBuffer*` 薄存储（无画像素）。
-
-### 3.2 不做
-
-- 真画屏、Font、Theme、GOP 镜像  
-- PMM / VMM / 调度 / FS / USB  
-- Runtime / QEMU 脚本
-
-### 3.3 验收清单
-
-- [x] `./build.sh x64|arm64|riscv`  
-- [x] 串口可见 `KernelMain:` / `[Mod] Serial` / `modules done (K0)`（本机编通；QEMU 随 Runtime）  
-- [x] 文档 ★ 指向下一刀 **K1**
-
-### 3.4 本刀落点（已入库）
-
-| 文件 | 作用 |
-| ---- | ---- |
-| `Core/KernelMain.c` | AttachEarly + RunFull + park |
-| `Core/Module.c` `Include/Core/Module.h` | `ModulesRun` |
-| `Core/KernelModules.c` | Full 表仅 Serial |
-| `Hal/Common/HalCapability.c` | FB / ConsoleOnly / VirtSerial / CpuPark |
-| `Hal/Common/HalVideoStub.c` | `HalVideoSet` 等薄存储 |
-
----
-
-## 3bis. PR-K1 细则（★ 下一刀 · 最小子集）
-
-### 做
-
-- X64：`Hal/X64/HalVideo.c`（或拆极薄两文件）实现  
-  `HalVideoSet` / `GetSize` / `FrameBuffer*` / `DrawPixel` / `FillRect`  
-  （线性 FB、假定 32bpp；无后缓冲、无 Present、无字库）  
-- `KernelAttachEarly`：有 FB 时串口打 `WxH`，可选右上角画一小色块作自检  
-- Arm64/RiscV：继续空操作桩（或仍走 `HalVideoStub`），保证三架构可编  
-
-### 不做（留给 K2+）
-
-- Font / Theme / `DrawString`  
-- 后缓冲、脏矩形、GOP 镜像 / `HalSerialGop*`  
-- `Hal/Common/RamFrameBuffer` 真实现  
-- 模块表挂 `Video`、PMM  
-
-### 验收
-
-- [x] `./build.sh x64|arm64|riscv`（JX 编通）  
-- [x] `Runtime/run.sh --headless`：串口见 `FB 1024x768` / `video self-test` / `park`  
-- [x] 落点：`Hal/X64/HalVideo.c`；Arm/RiscV 仍 `HalVideoStub`  
-
-### 本刀落点
-
-| 文件 | 作用 |
-| ---- | ---- |
-| `Hal/X64/HalVideo.c` | Set / GetSize / DrawPixel / FillRect（直写 LFB） |
-| `Hal/Common/HalVideoStub.c` | 非 X64：Set + 空 Draw/Fill |
-| `Core/KernelMain.c` | 打分辨率 + 右上角自检色块 |
-
----
-
-## 3ter. PR-K2 细则（已收官 ✅）
-
-### 做
-
-- 内建 8×8 ASCII（`0x20`–`0x7E`）点阵 + `HalVideoDrawCharAt` / `DrawStringAt`
-- `KernelAttachEarly`：有 FB 时左上角打 `Blocks K2`（白字）
-- 无 Theme、无平滑、无 UTF-8
-
-### 验收
-
-- [x] `./build.sh x64|arm64|riscv`
-- [x] 串口：`font self-test (DrawString)` / `modules done; park`
-- [x] 屏上左上角可见 `Blocks K2`
-
-### 落点
-
-| 文件 | 作用 |
-| ---- | ---- |
-| `Include/Hal/FontGlyph8x8.h` | 点阵表（曾在 Include/Core） |
-| `Hal/Common/HalFont.c` | 栅格化 → `DrawPixel`（曾 Core/Font.c；后→Font 积木） |
-| `Core/KernelMain.c` | Font 自检一行 |
-
----
-
-## 3quater. PR-K3 细则（已收官 ✅）
-
-### 做
-
-- X64 `HalSerialGop.c`：`SCREEN_LOG=1` 时按 `SCREEN_LOG_*` 上滚到 FB（Y≥80）
-- `KernelMain` 主线走 `SLOG_BOOT`；`HalSerialGopEnable` 接在 `HalVideoSet` 后
-- `build.sh`：`SCREEN_LOG=0|1`（默认 0）；Arm/RiscV 仍空操作
-
-### 不做
-
-- 完整 Theme / Present / Desktop ring 叠画
-
-### 验收
-
-- [x] `./build.sh x64|arm64|riscv`；`x64 SCREEN_LOG=1`
-- [x] 串口仍见 `KernelMain:` / `park`
-- [x] GUI：`SCREEN_LOG=1` 时屏上有 boot 白字行
-
-### 落点
-
-| 文件 | 作用 |
-| ---- | ---- |
-| `Hal/X64/HalSerialGop.c` | 上滚 / Enable / Mute / Mirror |
-| `Hal/X64/HalSerial.c` | WriteChannel → TryMirror |
-| `Core/KernelMain.c` | BOOT 通道 + GopEnable |
-| `build.sh` | `-DSCREEN_LOG=` |
-
----
-
-## 3quinq. PR-K4 细则（已收官 ✅）
-
-### 做
-
-- `PhysicalMemory*`：恒等窗内最大 Free 区 + 位图 first-fit；抠 Handoff 保留段
-- 模块表挂 `Memory`；Init 内 alloc/写/free 自检
-- **不**抽 `MEMORY_OPS`（默认实现先稳）
-
-### 验收
-
-- [x] `./build.sh x64|arm64|riscv`
-- [x] 串口：`[Mod] Memory` / `PMM: self-test ok` / `park`
-
-### 落点
-
-| 文件 | 作用 |
-| ---- | ---- |
-| `Include/Core/PhysicalMemory.h` | 对外契约 |
-| `Core/PhysicalMemory.c` | 单区位图 PMM |
-| `Core/KernelModules.c` | Serial → Memory + 自检 |
-
----
-
-## 4. 目录预期（随刀增长）
-
-```text
-Kernel/
-  Core/
-    Kernel.c             # 入口函数 KernelMain（文件名本身就是 Kernel，不去前缀）
-    Modules.c            # 表 + ModulesRun（勿再叫 KernelModules）
-    BootInfo.c
-  Hal/Common/
-    HalCapability.c      # 能力旗标（跨 Arch）
-    HalVideoStub.c       # 非 X64 薄视频；X64 用 Hal/X64/HalVideo.c
-    HalCpuStub.c
-  Include/Core/
-    Module.h Modules.h Kernel.h
-    …
-  Hal/<Arch>/HalSerial.c # 已有
-  Hal/<Arch>/KernelEntry.S KernelHandoff.c  # 角色专名，保留
-  Hal/<Arch>/…           # Video/Cpu/…
-```
-
----
-
-## 5. 相关入口
-
-| 文档 | 用途 |
-| ---- | ---- |
-| [`Boot迁移.md`](Boot迁移.md) | 接棒边界；干净定义 |
-| [`Kernel/README.md`](Kernel/README.md) | 编译与现状 |
-| 现网 `CodeC-Core/Kernel/Kernel.c` | `KernelMain` 对照 |
-| 现网技术手册 §2.1 | 模块表顺序 |
-
----
-
-## 6. 修订记录
-
-| 日期 | 说明 |
-| ---- | ---- |
-| 2026-10-08 | 初稿：KernelMain 以后计划 + PR-K0…K9+；★ = K0 |
-| 2026-10-08 | PR-K0 落地；★ → K1 |
-| 2026-10-08 | 挂钩 [`积木原则.md`](积木原则.md)；原则 #1 = 积木优先 |
-| 2026-10-08 | 工作区改名 **Blocks**；Kernel 已迁源码补【初学者】注释 |
-| 2026-10-08 | 非迁移文档去掉「从哪迁来」表述；`Ramfb`→`RamFrameBuffer` |
-| 2026-10-08 | TG：K0+三架构 HalSerial+Blocks 命名+`Hal/Common`；★ 仍为 K1 |
-| 2026-10-08 | 原则钉「最小子集」；K1 收窄为 X64 LFB DrawPixel/FillRect |
-| 2026-10-08 | JX：K1 代码落地（待 QEMU 手测色块） |
-| 2026-10-08 | Runtime：`Esp`/`RootFs`/`Fw` + `run.sh`；headless 见 FB/self-test/park |
-| 2026-10-08 | TG：K1 + Runtime QEMU；手测黄块 ✅；★ → K2 |
-| 2026-10-08 | TG：K2 Font 8×8 + DrawString；左上角 `Blocks K2` ✅；★ → K3 |
-| 2026-10-08 | TG：K3 HalSerialGop 屏上 boot 字；`SCREEN_LOG=1` ✅；★ → K4 |
-| 2026-10-08 | TG：K4 最小位图 PMM；`[Mod] Memory` / self-test ok ✅；★ → K5 |
-| 2026-10-08 | `HalCapability` / `HalVideoStub` 从 `Core/` 迁入 `Hal/Common/`（Hal 前缀不再混在 Core） |
-| 2026-10-08 | TG：K5 Driver 壳 + VMM 认领 EarlyIdentity；★ → K6（含 K6 规划） |
-| 2026-10-08 | TG：K6 Video 背缓冲 + BootInfo 分层；★ → K7（含 K7 规划） |
-| 2026-10-08 | BootPkg：非入口源文件去掉 `Boot` 文件前缀（`Serial`/`Video*`/`LoadKernel`/…） |
-| 2026-10-08 | TG：K7 Cpu GDT/IDT；`KernelMain.c`→`Kernel.c`；`Module.c`→并入 `KernelModules`；★ → K8 |
-| 2026-10-08 | 钉原则 §1.2#7：路径已有 Kernel 则去文件名冗余前缀；`KernelModules`→`Modules` |
-| 2026-10-08 | TG：K8 Scheduler+Console；去开机自检色块；★ → K9（FS 识盘） |
-| 2026-10-08 | TG：K9 FileSystem（Boot `BLOCKS.ID` handoff）；★ → K10（USB） |
-| 2026-10-09 | TG：K10 USB（`XhciBase` handoff / 窗内 CAP）；★ → K11（Network） |
-| 2026-10-09 | TG：K11 Network（PCI class 0x02）；★ → K12（Gui） |
-| 2026-10-09 | TG：K12 Gui 桌面壳；钉 K13…K20「加厚到桌面」排队；★ → K13（Map MMIO） |
-| 2026-10-09 | TG：K13 VMM MapMmio + Usb 读 CAP；★ → K14（xHCI 端口） |
-| 2026-10-09 | 表序：`Memory → VirtualMemory → Driver`（Driver 不再夹在 PMM/VMM 之间） |
-| 2026-10-09 | TG：K14 HalXhci 复位+端口 CCS；★ → K15（PS/2 键入） |
-| 2026-10-09 | TG：K15 HalPs2Kbd + Console 双路输入；★ → K16（内核读 BLOCKS.ID） |
-| 2026-10-09 | 画字落点：`Core/Font.c`→`Hal/Common/HalFont.c`（字库头进 `Include/Hal/`）；**后刀**整套 Theme/TTF 时再拆 **Font 积木**，调用方仍只认 `HalVideoDrawString*` |
-| 2026-10-09 | TG：K18 HalTimer/LAPIC tick + HalFont 落点；★ → K19（HELLO.ELF） |
-| 2026-10-09 | 钉协作：X64 主力 / 注释加厚 / [`调用链.md`](调用链.md) / 驱动先讨论；★ 仅 TG 推进；K19 JX ✅ 待 TG |
-| 2026-10-09 | TG：K19 HELLO.ELF + 调用链文档；★ → K20（virtio-net） |
-| 2026-10-09 | TG：K20 legacy virtio-net TX/RX + Console 跟手；★ → 后置拆刀 |
-| 2026-10-09 | 钉 K21–K28 课感桌面主轨 + K29–K34 可选；★ → K21（Font/Theme 最小）；分档 A/B/C |
-| 2026-10-09 | **终局改钉对标现网**：K21–K52 分 P1–P5；课感 B 档废止；约定 #5；★ 仍 K21 |
-| 2026-10-09 | TG：K21 Font+Theme；★ → K22（Shell 命令表） |
-| 2026-10-09 | TG：K22 ShellCmd + FontDraw/HalBootFont/反债清扫；★ → K23（ls/cat） |
-| 2026-10-09 | 画字契约收干净：`FontDraw*`；`HalVideo.h` 不再声明 DrawString* |
-| 2026-10-09 | 反债清扫：Hal 头只留已实现；HalDma；删现网预抄 Hal.h/Devices/Console；EarlyIdentity 公开头 |
-| 2026-10-09 | TG：K23 FatVol/FatDir + Shell ls/cat；★ → K24（write/mkdir/rm） |
-| 2026-10-10 | 补齐 P1 相位表：K21 ✅（此前漏标仍 ★）；口诀与 TG 同步约定 |
-| 2026-10-10 | 排期：汉字/TTF 提前为 **P1b（K26–K28）**；窗管起顺延；主轨至 K54；TTF 最小光栅进 B、完整字库仍后置 |
-| 2026-10-10 | TG 补齐：K24–K30 ✅（P1 写盘/系统令、P1b 汉字·TTF·lang、P2 单窗+拖焦点+鼠手感）；★ → **K31**（关窗/重画桌面）；JX K31；同步 `调用链.md` |
-| 2026-10-10 | TG：K31 ✅ 关窗不花屏 + 鼠停卡（双写光标/Aux 半包）；★ → **K32**（双窗+Z 序）；JX K32 |
-| 2026-10-10 | TG：K32 ✅ 双窗 Z 序（手测重叠/抬升/拖关通过）；★ → **K33**（桌面图标+双击开 Shell） |
-| 2026-10-10 | TG：K33 ✅ 桌面 Shell 图标双击；Core 按模块表分目录；★ → **K34**（Settings/Theme）；JX K34 |
-| 2026-10-10 | TG：K34 ✅ Settings 改色立即可见；★ → **K35**（Files 列目录/开 ELF）；JX K35 |
-| 2026-10-10 | TG：K35 ✅ Files 窗 ls/点 ELF；★ → **K36**（开始菜单/任务栏）；JX K36 |
-| 2026-10-10 | TG：K36 ✅ 底栏开始菜单（顶栏仅 Blocks；钮宽吃下 Start）；★ → **K37**（THEME.CFG） |
-| 2026-10-10 | TG：K37 ✅ THEME.CFG/mode + 盘读 CJK18 + GuiLayout + QEMU 1440×900；★ → **K38**（ICMP ping）；JX K38 |
-| 2026-10-10 | TG：K38 ✅ ICMP `ping`（`NetworkPing`）；★ → **K39**（UDP）；TS 推远程 |
-| 2026-10-10 | JX：K39 ✅ UDP bind/send/recv + 本机回环；`NetworkIp`/`NetworkUdp`；headless `udp: sent`/`udp: recv … hello-k39`；待 TG |
-| 2026-10-10 | TG：K39 ✅ UDP + Shell；顺手图标标签居中；★ → **K40**（TCP 最小） |
-| 2026-10-10 | JX：K40 ✅ 单连接 TCP echo + `tcplisten`/`tcpconnect`；hostfwd :15000；待 TG |
-| 2026-10-10 | TG：K40 ✅ TCP 最小；★ → **K41**（lwIP + `lwip on`） |
-| 2026-10-10 | JX：K41 ✅ 嵌入 lwIP + `lwip on`/`status`；ping 走 lwIP；待 TG |
-| 2026-10-10 | TG：K41 ✅ lwIP + `lwip on`；去 Toy 前缀；卷标 `BLOCKS.ID`；★ → **K42**（DNS/NetConfig） |
-| 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
-| 2026-10-10 | TG：K43 ✅ `NETDEMO.ELF` + socket syscall/`LwIpSock`；★ → **K44**（多卷前缀）；TS 推远程 |
+| 2026-10-10 | TG：K44 ✅ GPT/`FsVol` 多卷前缀 + `vols`；★ → **K45**（Files 删/建/改名） |

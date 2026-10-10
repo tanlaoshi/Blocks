@@ -1,12 +1,12 @@
 /*
- * FileSystem.c — K9 handoff；K16 内核 Block+FAT 探 BLOCKS.ID
+ * FileSystem.c — K9 handoff；K16 Block+FAT；K44 FsVol 多卷
  *
  * 【初学者】
- * 优先内核读盘（virtio-blk + FatProbe）；失败再退回 Boot 的 OsIdSeen。
+ * HalBlockInit → FsVolMountAll（GPT/MBR/superfloppy）→ 默认卷有 BLOCKS/TOYOS 即就绪。
  */
 #include "FileSystem.h"
 #include "BootInfo.h"
-#include "FatProbe.h"
+#include "FsVol.h"
 #include "HalBlock.h"
 #include "HalSerial.h"
 #include "SerialConfig.h"
@@ -19,17 +19,23 @@ int FileSystemHasOsMarker(void) {
 
 int FileSystemInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
+    const FS_VOL *Def;
 
     gHasOsMarker = 0;
 
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalBlockInit() == 0 && HalBlockReady()) {
-        if (FatProbeOsMarker() == 0) {
-            gHasOsMarker = 1;
-            HalSerialWriteChannel(SLOG_FS, "Fs: BLOCKS.ID ready (kernel)\n");
-            return 0;
+        if (FsVolMountAll() == 0) {
+            Def = FsVolGet(FsVolDefaultIndex());
+            if (Def != 0 && Def->Name[0] == 'B' && Def->Name[1] == 'L') {
+                gHasOsMarker = 1;
+                HalSerialWriteChannel(SLOG_FS, "Fs: BLOCKS.ID ready (kernel)\n");
+                return 0;
+            }
+            HalSerialWriteChannel(SLOG_FS, "Fs: WARN mounted, no BLOCKS\n");
+        } else {
+            HalSerialWriteChannel(SLOG_FS, "Fs: WARN no FAT volume\n");
         }
-        HalSerialWriteChannel(SLOG_FS, "Fs: WARN block ok, BLOCKS.ID miss\n");
     } else {
         HalSerialWriteChannel(SLOG_FS, "Fs: WARN no block (virtio-blk)\n");
     }

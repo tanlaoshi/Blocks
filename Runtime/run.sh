@@ -121,6 +121,8 @@ exec qemu-system-x86_64 \
     -device ide-hd,drive=toyesp,bus=ide.0,bootindex=0 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device virtio-blk-pci,drive=toyroot,disable-modern=on,bootindex=1 \
+    -drive if=none,id=toyespk,format=raw,file=fat:rw:Esp/X64 \
+    -device virtio-blk-pci,drive=toyespk,disable-modern=on \
     -device VGA,edid=on,xres="${QEMU_XRES}",yres="${QEMU_YRES}" \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0,hostfwd=tcp::15000-:5000 \

@@ -3,6 +3,7 @@
  */
 #include "FatFile.h"
 #include "FatVol.h"
+#include "FsVol.h"
 #include "HalBlock.h"
 
 /* 允许 CJK32.BIN / CJK.TTF 等盘上字库（~1–2MiB） */
@@ -48,7 +49,7 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
     if (Buf == 0 || Cap == 0 || Name83 == 0) {
         return -1;
     }
-    if (FatVolOpen(&V) != 0) {
+    if (FsVolOpenActive(&V) != 0 && FatVolOpen(&V) != 0) {
         return -1;
     }
     F.Want83 = Name83;
@@ -102,7 +103,16 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
 
 int FatFileReadPath(const char *Path, void *Buf, UINT32 Cap, UINT32 *OutSize) {
     char Name83[11];
-    if (FatPathTo83(Path, Name83) != 0) {
+    const char *Rel = Path;
+
+    if (Path == 0) {
+        return -1;
+    }
+    (void)FsVolResolve(Path, &Rel);
+    if (Rel == 0 || Rel[0] == 0) {
+        return -1;
+    }
+    if (FatPathTo83(Rel, Name83) != 0) {
         return -1;
     }
     return FatFileRead83(Name83, Buf, Cap, OutSize);

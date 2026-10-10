@@ -3,6 +3,7 @@
  */
 #include "FatFile.h"
 #include "FatVol.h"
+#include "FsVol.h"
 
 typedef struct {
     FAT_DIR_ENT *Out;
@@ -29,7 +30,7 @@ int FatDirListRoot(FAT_DIR_ENT *Out, UINT32 Cap, UINT32 *Count) {
     if (Out == 0 || Cap == 0) {
         return -1;
     }
-    if (FatVolOpen(&V) != 0) {
+    if (FsVolOpenActive(&V) != 0 && FatVolOpen(&V) != 0) {
         return -1;
     }
     Ctx.Out = Out;

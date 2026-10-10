@@ -5,9 +5,35 @@
  */
 #include "FatFile.h"
 #include "FatVol.h"
+#include "FsVol.h"
 #include "HalBlock.h"
 
 #define WRITE_MAX 4096u
+
+static int OpenVol(FAT_VOL *V) {
+    if (FsVolOpenActive(V) == 0) {
+        return 0;
+    }
+    return FatVolOpen(V);
+}
+
+static int VolReadOnly(void) {
+    const FS_VOL *V = FsVolGet(FsVolActiveIndex());
+    return (V != 0 && V->ReadOnly) ? 1 : 0;
+}
+
+static int Resolve83(const char *Path, char Name83[11]) {
+    const char *Rel = Path;
+    if (Path == 0) {
+        return -1;
+    }
+    (void)FsVolResolve(Path, &Rel);
+    if (Rel == 0 || Rel[0] == 0) {
+        return -1;
+    }
+    return FatPathTo83(Rel, Name83);
+}
+
 
 typedef struct {
     const char *Want83;
@@ -154,7 +180,10 @@ int FatFileWritePath(const char *Path, const void *Buf, UINT32 Len) {
     if (Path == 0 || (Buf == 0 && Len > 0) || Len > WRITE_MAX) {
         return -1;
     }
-    if (FatPathTo83(Path, Name83) != 0 || FatVolOpen(&V) != 0) {
+    if (Resolve83(Path, Name83) != 0 || OpenVol(&V) != 0) {
+        return -1;
+    }
+    if (VolReadOnly()) {
         return -1;
     }
     /* vvfat：空文件仍写 1 字节，否则宿主侧常不现 */
@@ -205,7 +234,10 @@ int FatMkdirPath(const char *Path) {
     UINT8 Dir[FAT_SECTOR];
     UINT32 i;
 
-    if (FatPathTo83(Path, Name83) != 0 || FatVolOpen(&V) != 0) {
+    if (Resolve83(Path, Name83) != 0 || OpenVol(&V) != 0) {
+        return -1;
+    }
+    if (VolReadOnly()) {
         return -1;
     }
     if (FindSlot(&V, Name83, &S) != 0) {
@@ -254,7 +286,10 @@ int FatRmPath(const char *Path) {
     SLOT S;
     UINT8 Sec[FAT_SECTOR];
 
-    if (FatPathTo83(Path, Name83) != 0 || FatVolOpen(&V) != 0) {
+    if (Resolve83(Path, Name83) != 0 || OpenVol(&V) != 0) {
+        return -1;
+    }
+    if (VolReadOnly()) {
         return -1;
     }
     if (FindSlot(&V, Name83, &S) != 0 || !S.Have) {

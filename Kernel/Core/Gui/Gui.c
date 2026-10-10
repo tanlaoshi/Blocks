@@ -1,21 +1,15 @@
 /*
- * Gui.c — 桌面壳：光标 + 鼠轮询；窗体见 Window（K32 双窗 Z 序）
+ * Gui.c — 桌面壳编排：初始化 / 标签刷新；光标见 Cursor，输入见 Pointer
  *
- * 【初学者】
- * 点窗抬升；点 × 关；点顶栏重开已关窗；Shell 焦点才吃键（Console）。
+ * 对标现网 Gui 分模块；Blocks 目录即命名空间（夹内不叠 Gui）。
  */
 #include "Gui.h"
+#include "GuiPrivate.h"
 #include "Desktop.h"
-#include "Files.h"
 #include "Layout.h"
-#include "Settings.h"
 #include "Start.h"
-#include "StoreUi.h"
-#include "StoreJob.h"
 #include "Window.h"
 #include "BootInfo.h"
-#include "Console.h"
-#include "HalPs2.h"
 #include "HalPs2Mouse.h"
 #include "HalUsbHid.h"
 #include "HalSerial.h"
@@ -26,168 +20,9 @@
 #include "Theme.h"
 #include "SerialConfig.h"
 
-#define GUI_CUR_COLOR   0x00FFFFFFu
-#define GUI_CUR_OUTLINE 0x00000000u
-#define GUI_CUR_W       11u
-#define GUI_CUR_H       16u
-/* 描边外扩 1px；热点仍在箭头尖 = (gCurX,gCurY) */
-#define GUI_CUR_PAD     1
-#define GUI_CUR_BOX_W   (GUI_CUR_W + 2u * (UINT32)GUI_CUR_PAD)
-#define GUI_CUR_BOX_H   (GUI_CUR_H + 2u * (UINT32)GUI_CUR_PAD)
-
 static int gDesktopReady;
-static int gDragging;
-static int gDragWin;
-static INT32 gDragOffX;
-static INT32 gDragOffY;
-static int gCursorOn;
-static int gCursorShown;
-static INT32 gCurX;
-static INT32 gCurY;
-static UINT8 gPrevButtons;
-static UINT32 gDragIdle;
 static UINT32 gFbW;
 static UINT32 gFbH;
-static UINT32 gUnder[GUI_CUR_BOX_H][GUI_CUR_BOX_W];
-static INT32 gSaveX;
-static INT32 gSaveY;
-static UINT32 gSaveW;
-static UINT32 gSaveH;
-
-/* MSB=左；尖在 (0,0)，与点击坐标一致 */
-static const UINT8 gArrow[GUI_CUR_H] = {
-    0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF,
-    0xF8, 0xDC, 0x8E, 0x07, 0x03, 0x01, 0x00, 0x00
-};
-
-static int ArrowSolid(UINT32 Col, UINT32 Row) {
-    if (Row >= GUI_CUR_H || Col >= GUI_CUR_W) {
-        return 0;
-    }
-    return (gArrow[Row] & (UINT8)(0x80u >> Col)) != 0;
-}
-
-/*
- * 光标只叠前缓冲（LFB）。写背缓冲会在 Present 后把尖端「烤进」画面，
- * Hide 再拿旧 under 盖回去 → 看起来尖偏了、点不中。
- */
-void GuiCursorHide(void) {
-    UINT32 Row;
-    UINT32 Col;
-
-    if (!gCursorShown) {
-        return;
-    }
-    for (Row = 0; Row < gSaveH && Row < GUI_CUR_BOX_H; Row++) {
-        for (Col = 0; Col < gSaveW && Col < GUI_CUR_BOX_W; Col++) {
-            INT32 Px = gSaveX + (INT32)Col;
-            INT32 Py = gSaveY + (INT32)Row;
-            if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, gUnder[Row][Col]);
-            }
-        }
-    }
-    gCursorShown = 0;
-}
-
-void GuiCursorShow(void) {
-    UINT32 Row;
-    UINT32 Col;
-    INT32 Ox;
-    INT32 Oy;
-
-    if (!gCursorOn || gCursorShown || gFbW == 0) {
-        return;
-    }
-    if (!HalVideoBackbufferEnabled()) {
-        return;
-    }
-    Ox = gCurX - GUI_CUR_PAD;
-    Oy = gCurY - GUI_CUR_PAD;
-    gSaveX = Ox;
-    gSaveY = Oy;
-    gSaveW = GUI_CUR_BOX_W;
-    gSaveH = GUI_CUR_BOX_H;
-
-    for (Row = 0; Row < GUI_CUR_BOX_H; Row++) {
-        for (Col = 0; Col < GUI_CUR_BOX_W; Col++) {
-            INT32 Px = Ox + (INT32)Col;
-            INT32 Py = Oy + (INT32)Row;
-            if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                gUnder[Row][Col] = HalVideoFrontReadPixel((UINT32)Px, (UINT32)Py);
-            } else {
-                gUnder[Row][Col] = 0;
-            }
-        }
-    }
-
-    /* 黑描边：实心邻域，尖在亮底也看得见 */
-    for (Row = 0; Row < GUI_CUR_H; Row++) {
-        for (Col = 0; Col < GUI_CUR_W; Col++) {
-            INT32 dRow;
-            INT32 dCol;
-            if (!ArrowSolid(Col, Row)) {
-                continue;
-            }
-            for (dRow = -1; dRow <= 1; dRow++) {
-                for (dCol = -1; dCol <= 1; dCol++) {
-                    INT32 Ac = (INT32)Col + dCol;
-                    INT32 Ar = (INT32)Row + dRow;
-                    INT32 Px;
-                    INT32 Py;
-                    if (Ac >= 0 && Ar >= 0 && ArrowSolid((UINT32)Ac, (UINT32)Ar)) {
-                        continue;
-                    }
-                    Px = gCurX + Ac;
-                    Py = gCurY + Ar;
-                    if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW &&
-                        (UINT32)Py < gFbH) {
-                        HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py,
-                                              GUI_CUR_OUTLINE);
-                    }
-                }
-            }
-        }
-    }
-    for (Row = 0; Row < GUI_CUR_H; Row++) {
-        for (Col = 0; Col < GUI_CUR_W; Col++) {
-            INT32 Px;
-            INT32 Py;
-            if (!ArrowSolid(Col, Row)) {
-                continue;
-            }
-            Px = gCurX + (INT32)Col;
-            Py = gCurY + (INT32)Row;
-            if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
-            }
-        }
-    }
-    gCursorShown = 1;
-}
-
-static void CursorHide(void) {
-    GuiCursorHide();
-}
-
-static void CursorShow(void) {
-    GuiCursorShow();
-}
-
-static void CursorClamp(void) {
-    if (gCurX < 0) {
-        gCurX = 0;
-    }
-    if (gCurY < 0) {
-        gCurY = 0;
-    }
-    if (gFbW > 0 && (UINT32)gCurX >= gFbW) {
-        gCurX = (INT32)(gFbW - 1u);
-    }
-    if (gFbH > 0 && (UINT32)gCurY >= gFbH) {
-        gCurY = (INT32)(gFbH - 1u);
-    }
-}
 
 int DesktopReady(void) {
     return gDesktopReady;
@@ -209,14 +44,11 @@ int GuiInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
 
     gDesktopReady = 0;
-    gDragging = 0;
-    gDragWin = -1;
-    gCursorOn = 0;
-    gCursorShown = 0;
-    gPrevButtons = 0;
+    PointerReset();
     gFbW = 0;
     gFbH = 0;
     HalVideoGetSize(&gFbW, &gFbH);
+    CursorSetFramebuffer(gFbW, gFbH);
     if (Info == 0 || Info->FrameBufferSize == 0 || gFbW < 160 || gFbH < 80) {
         HalSerialWriteChannel(SLOG_GUI, "Gui: skip (no FB)\n");
         return 0;
@@ -244,11 +76,7 @@ int GuiInitialize(void) {
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalUsbHidMouseReady() ||
         (HalPs2MouseInit() == 0 && HalPs2MouseReady())) {
-        gCurX = (INT32)(gFbW / 2u);
-        gCurY = (INT32)(gFbH / 2u);
-        gCursorOn = 1;
-        gCursorShown = 0;
-        CursorShow();
+        CursorEnableAt((INT32)(gFbW / 2u), (INT32)(gFbH / 2u));
         HalSerialWriteChannel(SLOG_GUI,
                               HalUsbHidMouseReady() ? "Gui: mouse ok (hid)\n"
                                                     : "Gui: mouse ok\n");
@@ -263,191 +91,9 @@ void GuiRefreshLabels(void) {
     if (!gDesktopReady || gFbW == 0) {
         return;
     }
-    CursorHide();
+    GuiCursorHide();
     WindowPaintDesktop();
     WindowCompose();
     WindowPresentFull();
-    CursorShow();
-}
-
-int GuiPoll(void) {
-    HAL_MOUSE_PACKET Pkt;
-    INT32 AccX = 0;
-    INT32 AccY = 0;
-    UINT8 LastBtn = gPrevButtons;
-    int Got = 0;
-    int SawPress = 0;
-    int SawRelease = 0;
-    int WasDragging;
-    int Hit;
-
-    /* K48：商店窗入队的装包在此推进（Shell 路径自带 Step） */
-    if (StoreJobStep()) {
-        if (WindowIsOn(GUI_WIN_STORE)) {
-            StoreUiRefresh();
-            WindowPaintDesktop();
-            WindowCompose();
-            WindowPresentFull();
-        }
-    }
-    if (!gDesktopReady || !gCursorOn) {
-        return 0;
-    }
-    DesktopPollTick();
-    HalUsbHidService();
-    HalPs2Poll();
-    while (HalUsbHidPollMouse(&Pkt) ||
-           (!HalUsbHidMouseReady() && HalPs2MousePoll(&Pkt))) {
-        Got = 1;
-        if (Pkt.Absolute) {
-            if (gFbW > 1u) {
-                gCurX = (INT32)(((INT64)Pkt.Dx * (INT64)(gFbW - 1u)) / 32767);
-            }
-            if (gFbH > 1u) {
-                gCurY = (INT32)(((INT64)Pkt.Dy * (INT64)(gFbH - 1u)) / 32767);
-            }
-            CursorClamp();
-        } else {
-            AccX += Pkt.Dx;
-            AccY += Pkt.Dy;
-        }
-        if ((Pkt.Buttons & 0x1u) != 0 && (LastBtn & 0x1u) == 0) {
-            SawPress = 1;
-        }
-        if ((Pkt.Buttons & 0x1u) == 0 && (LastBtn & 0x1u) != 0) {
-            SawRelease = 1;
-        }
-        LastBtn = Pkt.Buttons;
-    }
-    if (!Got) {
-        if (gDragging) {
-            gDragIdle++;
-            if (gDragIdle >= 20000u) {
-                gDragging = 0;
-                gDragWin = -1;
-                gPrevButtons = 0;
-                gDragIdle = 0;
-                ConsoleRefreshBanner();
-            }
-        }
-        return 0;
-    }
-    gDragIdle = 0;
-    CursorHide();
-
-    if (AccX != 0 || AccY != 0) {
-        gCurX += AccX;
-        gCurY += AccY;
-        CursorClamp();
-    }
-
-    if (SawPress) {
-        int StartHandled = 0;
-
-        if (StartHitButton(gCurX, gCurY)) {
-            (void)StartToggle();
-            StartHandled = 1;
-        } else if (StartMenuOpen()) {
-            int M = StartHitMenu(gCurX, gCurY);
-            if (M >= 0) {
-                (void)StartActivate(M);
-                StartHandled = 1;
-            } else if (M == -2) {
-                StartHandled = 1; /* 菜单内空白 */
-            } else {
-                StartCloseMenu();
-                StartHandled = 1; /* 先收起；再点一次点下方 */
-            }
-        }
-
-        if (StartHandled) {
-            gDragging = 0;
-            gDragWin = -1;
-            WindowPaintDesktop();
-            WindowCompose();
-            WindowPresentFull();
-        } else {
-            Hit = WindowHit(gCurX, gCurY);
-            if (Hit >= 0 && WindowInClose(Hit, gCurX, gCurY)) {
-                gDragging = 0;
-                gDragWin = -1;
-                WindowClose(Hit);
-            } else if (Hit >= 0 && WindowInTitle(Hit, gCurX, gCurY)) {
-                INT32 Wx = 0;
-                INT32 Wy = 0;
-                WindowFocus(Hit);
-                (void)WindowGetPos(Hit, &Wx, &Wy);
-                gDragging = 1;
-                gDragWin = Hit;
-                gDragOffX = gCurX - Wx;
-                gDragOffY = gCurY - Wy;
-            } else if (Hit == GUI_WIN_SETTINGS) {
-                WindowFocus(Hit);
-                gDragging = 0;
-                gDragWin = -1;
-                if (SettingsClick(gCurX, gCurY)) {
-                    WindowPaintDesktop();
-                    WindowCompose();
-                    WindowPresentFull();
-                }
-            } else if (Hit == GUI_WIN_FILES) {
-                WindowFocus(Hit);
-                gDragging = 0;
-                gDragWin = -1;
-                /* 与 Settings 相同：点选/New/Del 改状态后必须重画，否则像「没反应」 */
-                if (FilesClick(gCurX, gCurY)) {
-                    WindowPaintDesktop();
-                    WindowCompose();
-                    WindowPresentFull();
-                }
-            } else if (Hit == GUI_WIN_STORE) {
-                WindowFocus(Hit);
-                gDragging = 0;
-                gDragWin = -1;
-                if (StoreUiClick(gCurX, gCurY)) {
-                    WindowPaintDesktop();
-                    WindowCompose();
-                    WindowPresentFull();
-                }
-            } else if (Hit >= 0) {
-                WindowFocus(Hit);
-                gDragging = 0;
-                gDragWin = -1;
-            } else {
-                int Icon = DesktopHitIcon(gCurX, gCurY);
-                if (Icon >= 0) {
-                    if (DesktopClickIcon(Icon, gCurX, gCurY)) {
-                        WindowPaintDesktop();
-                        WindowCompose();
-                        WindowPresentFull();
-                    }
-                    gDragging = 0;
-                    gDragWin = -1;
-                } else if ((UINT32)gCurY >= LayoutContentTop() &&
-                           (UINT32)gCurY < LayoutContentBottom()) {
-                    WindowUnfocusAll();
-                    gDragging = 0;
-                    gDragWin = -1;
-                }
-            }
-        }
-    }
-
-    WasDragging = gDragging;
-    if (gDragging && gDragWin >= 0 && (LastBtn & 0x1u) != 0 &&
-        (AccX != 0 || AccY != 0)) {
-        WindowMoveTo(gDragWin, gCurX - gDragOffX, gCurY - gDragOffY, 0);
-    }
-
-    if (SawRelease) {
-        if (WasDragging && gDragWin == GUI_WIN_SHELL) {
-            ConsoleRefreshBanner();
-        }
-        gDragging = 0;
-        gDragWin = -1;
-    }
-
-    CursorShow();
-    gPrevButtons = LastBtn;
-    return 1;
+    GuiCursorShow();
 }

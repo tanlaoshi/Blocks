@@ -301,3 +301,66 @@ int FatRmPath(const char *Path) {
     Sec[S.EntOff] = 0xE5u;
     return HalBlockWrite(S.EntLba, Sec, 1);
 }
+
+int FatRenamePath(const char *OldPath, const char *NewPath) {
+    FAT_VOL V;
+    char Old83[11];
+    char New83[11];
+    const char *Rold;
+    const char *Rnew;
+    int VolIdx;
+    SLOT Sold;
+    SLOT Snew;
+    UINT8 Ent[32];
+    UINT32 i;
+    int Same;
+
+    if (OldPath == 0 || NewPath == 0) {
+        return -1;
+    }
+    if (FsVolResolve(OldPath, &Rold) != 0 || Rold == 0 || Rold[0] == 0) {
+        return -1;
+    }
+    VolIdx = FsVolActiveIndex();
+    if (FatPathTo83(Rold, Old83) != 0) {
+        return -1;
+    }
+    if (FsVolResolve(NewPath, &Rnew) != 0 || Rnew == 0 || Rnew[0] == 0) {
+        return -1;
+    }
+    if (FsVolActiveIndex() != VolIdx) {
+        return -1; /* 跨卷不做 */
+    }
+    if (FatPathTo83(Rnew, New83) != 0) {
+        return -1;
+    }
+    Same = 1;
+    for (i = 0; i < 11u; i++) {
+        if (Old83[i] != New83[i]) {
+            Same = 0;
+            break;
+        }
+    }
+    if (Same) {
+        return 0;
+    }
+    if (OpenVol(&V) != 0 || VolReadOnly()) {
+        return -1;
+    }
+    if (FindSlot(&V, Old83, &Sold) != 0 || !Sold.Have) {
+        return -1;
+    }
+    if (FindSlot(&V, New83, &Snew) != 0) {
+        return -1;
+    }
+    if (Snew.Have) {
+        return -1;
+    }
+    for (i = 0; i < 32u; i++) {
+        Ent[i] = Sold.Ent[i];
+    }
+    for (i = 0; i < 11u; i++) {
+        Ent[i] = (UINT8)New83[i];
+    }
+    return PutEnt(Sold.EntLba, Sold.EntOff, Ent);
+}

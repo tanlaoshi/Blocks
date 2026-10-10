@@ -12,9 +12,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K45** · Files 删/建/改名 |
+| **★** | **PR-K46** · `TOYOS.DB` KV 最小 |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K44** · GPT + 多卷前缀薄 ✅ |
+| 刚收官 | **PR-K45** · Files 删/建/改名 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops 随刀钉 |
 
 > ★ 只跟功能刀（K0…）走；目录收拾单独入库。  
@@ -118,8 +118,8 @@
 | PR | 一句话 | 现网对照 | 验收（口述） |
 | -- | ------ | -------- | ------------ |
 | **K44** ✅ | GPT + 多卷前缀薄（`BLOCKS:`/`ESP:`） | FS2 | `vols`/`ls` 多卷前缀 |
-| **K45** ★ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
-| **K46** | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
+| **K45** ✅ | Files：删/建/改名 | FB2 | 窗或 Shell 均可 |
+| **K46** ★ | `TOYOS.DB` KV 最小 | DB1 | `dbget`/`dbset` |
 | **K47** | Store 读清单 + 装一包 | Store/S-job 薄 | 桌面或 Shell 装包成功 |
 | **K48** | StoreUi / 作业互斥薄 | PR-S-job | 不与 Shell 装包踩踏 |
 
@@ -143,7 +143,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K45）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储；★ = K46）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。
 > **GD**：已收官专节可整段迁文末 【归档】（文首只留 ★ / 相位表 / 当前刀规划）。
 
@@ -158,16 +158,27 @@
 | **验收** | `vols` 见 BLOCKS+ESP；`ls BLOCKS:` / `ls ESP:` |
 | **落地** | `Gpt.c`/`FsVol.c`；`HalBlock` 多盘；`FatVolOpenAt`；`run.sh` 第二 virtio |
 
-### K45 规划（★ · 最小子集）
+### K45 已收官
 
 **一句话**：Files / Shell 删、建、改名（对标现网 FB2 薄）。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | Shell `mv` + `FatRename`；Files 窗可删/建或与 Shell 等价验收 |
-| **不做** | 跨卷 move、递归 `rm -r`、Store/DB |
-| **验收** | `mkdir`/`mv`/`rm` 或 Files 窗操作后 `ls` 一致 |
-| **对照** | 现网 FilesUi/FB2 / `FatRename` |
+| **做** | Shell `mv` + `FatRenamePath`；Files 选中 + New（`mkdir NEW`）/Del；已有 `mkdir`/`rm`/`write` |
+| **不做** | 跨卷 move、递归 `rm -r`、Store/DB、窗内改名/自定名输入框 |
+| **验收** | `write`→`mv`→`ls`→`rm`；Files New/Del 后列表变；点选重画 |
+| **落地** | `FatMut` Rename；Shell `mv`；`GuiFiles` New/Del；光标前缓冲+描边 |
+
+### K46 规划（★ · 最小子集）
+
+**一句话**：盘上 KV 最小（对标现网 DB1 薄）。
+
+| 项 | 定调 |
+| -- | ---- |
+| **做** | 根卷小库文件 + Shell `dbget`/`dbset`（名随实现对齐） |
+| **不做** | Store 装包、完整 SQL、多库 |
+| **验收** | `dbset` 后复开仍 `dbget` 得同值 |
+| **对照** | 现网 `TOYOS.DB` / DB1 |
 | **落地** | JX 再钉 |
 
 ### K22+ 细则
@@ -248,7 +259,7 @@ KernelMain
 | **K0–K12** | 模块表挂齐（薄实现） | ✅ |
 | **K13–K20** | 加厚到桌面 | ✅ |
 | **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
-| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K44 |
+| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K46 |
 | **后置 C** | 真机 / SMP / virt 桌面 | 不挡档 B |
 
 ---
@@ -350,6 +361,8 @@ Kernel/
 | 2026-10-10 | TG：K42 ✅ DNS/`NetConfig` + Shell `dns`/`net`；★ → **K43**（NETLIB/NETDEMO） |
 | 2026-10-10 | TG：K43 ✅ `NETDEMO.ELF` + socket syscall/`LwIpSock`；★ → **K44**（多卷前缀）；TS 推远程 |
 | 2026-10-10 | **GD**：K0–K43 已收官专节迁文末 【归档】；暗号表补 TS/GD |
+| 2026-10-10 | TG：K44 ✅ GPT/`FsVol` 多卷前缀 + `vols`；★ → **K45**（Files 删/建/改名） |
+| 2026-10-10 | TG：K45 ✅ Files New/Del + Shell `mv`/`FatRenamePath`；光标前缓冲；★ → **K46**（DB KV） |
 
 ---
 
@@ -964,4 +977,3 @@ Kernel/
 | **不做** | 完整 libToyNet/`NETLIB`、bind/listen/accept、真 ring3 |
 | **验收** | 宿主机 `nc -l -p 8888`；Guest `lwip on` → `exec NETDEMO.ELF` → 串口 `ok` |
 | **落地** | `LwIpSock.c`；`HalSyscall` 3–6；`User/X64/NetDemo.S` → `NETDEMO.ELF` |
-| 2026-10-10 | TG：K44 ✅ GPT/`FsVol` 多卷前缀 + `vols`；★ → **K45**（Files 删/建/改名） |

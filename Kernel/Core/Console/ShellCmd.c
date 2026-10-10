@@ -301,6 +301,19 @@ static void CmdRm(int Argc, char **Argv) {
     Put("rm: ok\n");
 }
 
+/* mv — 同卷改名 */
+static void CmdMv(int Argc, char **Argv) {
+    if (Argc < 3) {
+        Put("usage: mv <old> <new>\n");
+        return;
+    }
+    if (FatRenamePath(Argv[1], Argv[2]) != 0) {
+        Put("mv: fail\n");
+        return;
+    }
+    Put("mv: ok\n");
+}
+
 static void PutU32(UINT32 V) {
     char T[12];
     int N = 0;
@@ -814,6 +827,7 @@ void ShellCmdInitialize(void) {
     ShellCmdRegister("write", "write text file", CmdWrite);
     ShellCmdRegister("mkdir", "make directory", CmdMkdir);
     ShellCmdRegister("rm", "remove file/dir", CmdRm);
+    ShellCmdRegister("mv", "rename file/dir", CmdMv);
     ShellCmdRegister("lang", "UI language en|zh", CmdLang);
     ShellCmdRegister("mode", "display pref WxH|auto", CmdMode);
     ShellCmdRegister("ping", "ICMP echo (default 10.0.2.2)", CmdPing);

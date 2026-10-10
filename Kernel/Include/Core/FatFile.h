@@ -32,5 +32,7 @@ int FatFileRead83(const char Name83[11], void *Buf, UINT32 Cap, UINT32 *OutSize)
 int FatFileWritePath(const char *Path, const void *Buf, UINT32 Len);
 int FatMkdirPath(const char *Path);
 int FatRmPath(const char *Path);
+/* K45：同卷改名（根路径 / 可带 VOL:）；成功 0 */
+int FatRenamePath(const char *OldPath, const char *NewPath);
 
 #endif

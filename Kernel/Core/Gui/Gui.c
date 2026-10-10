@@ -23,9 +23,14 @@
 #include "Theme.h"
 #include "SerialConfig.h"
 
-#define GUI_CUR_COLOR 0x00FFFFFFu
-#define GUI_CUR_W     8u
-#define GUI_CUR_H     14u
+#define GUI_CUR_COLOR   0x00FFFFFFu
+#define GUI_CUR_OUTLINE 0x00000000u
+#define GUI_CUR_W       11u
+#define GUI_CUR_H       16u
+/* 描边外扩 1px；热点仍在箭头尖 = (gCurX,gCurY) */
+#define GUI_CUR_PAD     1
+#define GUI_CUR_BOX_W   (GUI_CUR_W + 2u * (UINT32)GUI_CUR_PAD)
+#define GUI_CUR_BOX_H   (GUI_CUR_H + 2u * (UINT32)GUI_CUR_PAD)
 
 static int gDesktopReady;
 static int gDragging;
@@ -40,19 +45,28 @@ static UINT8 gPrevButtons;
 static UINT32 gDragIdle;
 static UINT32 gFbW;
 static UINT32 gFbH;
-static UINT32 gUnder[GUI_CUR_H][GUI_CUR_W];
+static UINT32 gUnder[GUI_CUR_BOX_H][GUI_CUR_BOX_W];
 static INT32 gSaveX;
 static INT32 gSaveY;
 static UINT32 gSaveW;
 static UINT32 gSaveH;
 
+/* MSB=左；尖在 (0,0)，与点击坐标一致 */
 static const UINT8 gArrow[GUI_CUR_H] = {
     0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF,
-    0xF8, 0xDC, 0x8E, 0x06, 0x03, 0x01
+    0xF8, 0xDC, 0x8E, 0x07, 0x03, 0x01, 0x00, 0x00
 };
 
+static int ArrowSolid(UINT32 Col, UINT32 Row) {
+    if (Row >= GUI_CUR_H || Col >= GUI_CUR_W) {
+        return 0;
+    }
+    return (gArrow[Row] & (UINT8)(0x80u >> Col)) != 0;
+}
+
 /*
- * 光标：底图采自背缓冲，像素双写背+前，不 PresentRect（避停鼠半包）。
+ * 光标只叠前缓冲（LFB）。写背缓冲会在 Present 后把尖端「烤进」画面，
+ * Hide 再拿旧 under 盖回去 → 看起来尖偏了、点不中。
  */
 void GuiCursorHide(void) {
     UINT32 Row;
@@ -61,14 +75,12 @@ void GuiCursorHide(void) {
     if (!gCursorShown) {
         return;
     }
-    for (Row = 0; Row < gSaveH && Row < GUI_CUR_H; Row++) {
-        for (Col = 0; Col < gSaveW && Col < GUI_CUR_W; Col++) {
+    for (Row = 0; Row < gSaveH && Row < GUI_CUR_BOX_H; Row++) {
+        for (Col = 0; Col < gSaveW && Col < GUI_CUR_BOX_W; Col++) {
             INT32 Px = gSaveX + (INT32)Col;
             INT32 Py = gSaveY + (INT32)Row;
             if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                UINT32 C = gUnder[Row][Col];
-                HalVideoDrawPixel((UINT32)Px, (UINT32)Py, C);
-                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, C);
+                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, gUnder[Row][Col]);
             }
         }
     }
@@ -78,6 +90,8 @@ void GuiCursorHide(void) {
 void GuiCursorShow(void) {
     UINT32 Row;
     UINT32 Col;
+    INT32 Ox;
+    INT32 Oy;
 
     if (!gCursorOn || gCursorShown || gFbW == 0) {
         return;
@@ -85,26 +99,64 @@ void GuiCursorShow(void) {
     if (!HalVideoBackbufferEnabled()) {
         return;
     }
-    gSaveX = gCurX;
-    gSaveY = gCurY;
-    gSaveW = GUI_CUR_W;
-    gSaveH = GUI_CUR_H;
-    for (Row = 0; Row < GUI_CUR_H; Row++) {
-        UINT8 Bits = gArrow[Row];
-        for (Col = 0; Col < GUI_CUR_W; Col++) {
-            INT32 Px = gSaveX + (INT32)Col;
-            INT32 Py = gSaveY + (INT32)Row;
+    Ox = gCurX - GUI_CUR_PAD;
+    Oy = gCurY - GUI_CUR_PAD;
+    gSaveX = Ox;
+    gSaveY = Oy;
+    gSaveW = GUI_CUR_BOX_W;
+    gSaveH = GUI_CUR_BOX_H;
+
+    for (Row = 0; Row < GUI_CUR_BOX_H; Row++) {
+        for (Col = 0; Col < GUI_CUR_BOX_W; Col++) {
+            INT32 Px = Ox + (INT32)Col;
+            INT32 Py = Oy + (INT32)Row;
             if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
-                UINT32 Under = HalVideoReadPixel((UINT32)Px, (UINT32)Py);
-                gUnder[Row][Col] = Under;
-                if (Bits & (UINT8)(0x80u >> Col)) {
-                    HalVideoDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
-                    HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
-                } else {
-                    HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, Under);
-                }
+                gUnder[Row][Col] = HalVideoFrontReadPixel((UINT32)Px, (UINT32)Py);
             } else {
                 gUnder[Row][Col] = 0;
+            }
+        }
+    }
+
+    /* 黑描边：实心邻域，尖在亮底也看得见 */
+    for (Row = 0; Row < GUI_CUR_H; Row++) {
+        for (Col = 0; Col < GUI_CUR_W; Col++) {
+            INT32 dRow;
+            INT32 dCol;
+            if (!ArrowSolid(Col, Row)) {
+                continue;
+            }
+            for (dRow = -1; dRow <= 1; dRow++) {
+                for (dCol = -1; dCol <= 1; dCol++) {
+                    INT32 Ac = (INT32)Col + dCol;
+                    INT32 Ar = (INT32)Row + dRow;
+                    INT32 Px;
+                    INT32 Py;
+                    if (Ac >= 0 && Ar >= 0 && ArrowSolid((UINT32)Ac, (UINT32)Ar)) {
+                        continue;
+                    }
+                    Px = gCurX + Ac;
+                    Py = gCurY + Ar;
+                    if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW &&
+                        (UINT32)Py < gFbH) {
+                        HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py,
+                                              GUI_CUR_OUTLINE);
+                    }
+                }
+            }
+        }
+    }
+    for (Row = 0; Row < GUI_CUR_H; Row++) {
+        for (Col = 0; Col < GUI_CUR_W; Col++) {
+            INT32 Px;
+            INT32 Py;
+            if (!ArrowSolid(Col, Row)) {
+                continue;
+            }
+            Px = gCurX + (INT32)Col;
+            Py = gCurY + (INT32)Row;
+            if (Px >= 0 && Py >= 0 && (UINT32)Px < gFbW && (UINT32)Py < gFbH) {
+                HalVideoFrontDrawPixel((UINT32)Px, (UINT32)Py, GUI_CUR_COLOR);
             }
         }
     }
@@ -315,7 +367,12 @@ int GuiPoll(void) {
                 GuiWinFocus(Hit);
                 gDragging = 0;
                 gDragWin = -1;
-                (void)GuiFilesClick(gCurX, gCurY);
+                /* 与 Settings 相同：点选/New/Del 改状态后必须重画，否则像「没反应」 */
+                if (GuiFilesClick(gCurX, gCurY)) {
+                    GuiWinPaintDesktop();
+                    GuiWinCompose();
+                    GuiWinPresentFull();
+                }
             } else if (Hit >= 0) {
                 GuiWinFocus(Hit);
                 gDragging = 0;

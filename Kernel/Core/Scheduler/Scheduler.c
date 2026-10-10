@@ -1,32 +1,32 @@
 /*
- * Scheduler.c — K8 壳 + K18 LAPIC 节拍
+ * Scheduler.c — K8 壳 + K18 LAPIC 节拍 + K53 SCHEDULER_OPS
  *
  * 【初学者】
- * 开 HalTimer 后 sti；Yield 里 hlt 睡到下一拍（不再刷 tick 日志）。
+ * 默认政策 SchedulerRoundRobinOps：开 timer 后 Yield 里 hlt 等下一拍。
  */
 #include "Scheduler.h"
+#include "SchedulerOps.h"
 #include "HalSerial.h"
 #include "HalTimer.h"
 #include "SerialConfig.h"
 
 static int gSchedReady;
 
-int SchedulerInitialize(void) {
+static void RoundRobinInit(void) {
     gSchedReady = 0;
 #if defined(__x86_64__) || defined(_M_X64)
     if (HalTimerInit() == 0 && HalTimerReady()) {
         HalTimerIrqEnable();
         HalSerialWriteChannel(SLOG_MISC, "Scheduler: timer ok\n");
         gSchedReady = 1;
-        return 0;
+        return;
     }
     HalSerialWriteChannel(SLOG_MISC, "Scheduler: timer skip (coop)\n");
 #endif
     gSchedReady = 1;
-    return 0;
 }
 
-void SchedulerYield(void) {
+static void RoundRobinYield(void) {
     if (!gSchedReady) {
         return;
     }
@@ -41,4 +41,29 @@ void SchedulerYield(void) {
 #else
     (void)0;
 #endif
+}
+
+const SCHEDULER_OPS *SchedulerRoundRobinOps(void) {
+    static const SCHEDULER_OPS Ops = {
+        RoundRobinInit,
+        RoundRobinYield,
+    };
+    return &Ops;
+}
+
+int SchedulerInitialize(void) {
+    SchedulerOpsRegister(SchedulerRoundRobinOps());
+    if (SchedulerOpsGet() != 0 && SchedulerOpsGet()->Init != 0) {
+        SchedulerOpsGet()->Init();
+    }
+    HalSerialWriteChannel(SLOG_MISC, "SchedulerOps: round-robin ok\n");
+    return 0;
+}
+
+void SchedulerYield(void) {
+    const SCHEDULER_OPS *Ops = SchedulerOpsGet();
+    if (Ops == 0 || Ops->Yield == 0) {
+        return;
+    }
+    Ops->Yield();
 }

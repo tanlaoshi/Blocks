@@ -1,7 +1,7 @@
 /*
  * Report.c — Boot 键盘 / tablet·相对鼠 → 软件队列
  */
-#include "Private.h"
+#include "Internal.h"
 
 static char HidUsageToAscii(UINT8 Usage, int Shift) {
     static const char Letters[] = "abcdefghijklmnopqrstuvwxyz";
@@ -73,7 +73,7 @@ static int KeyWasDown(const UINT8 *Prev, UINT8 Usage) {
     return 0;
 }
 
-void ReportKbdFeed(const UINT8 *Rep) {
+void ReportKeyboard(const UINT8 *Rep) {
     int Shift = (Rep[0] & 0x22u) != 0;
     int i;
 
@@ -93,7 +93,7 @@ void ReportKbdFeed(const UINT8 *Rep) {
     }
 }
 
-void ReportMouseFeed(HidDev *D, UINT8 XferLen) {
+void ReportMouse(USB_HID_DEVICE *D, UINT8 XferLen) {
     HAL_MOUSE_PACKET Pkt;
     UINT8 *B = D->Report;
     UINT8 Next;

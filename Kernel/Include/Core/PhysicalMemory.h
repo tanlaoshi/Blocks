@@ -5,7 +5,7 @@
  * 管的是 4KiB 物理页，不是 malloc 小对象。
  * Initialize 读 BOOT_INFO 的 Regions；Allocate/Free 交还页。
  *
- * 【积木】本刀是默认位图实现；政策面以后可抽 MEMORY_OPS（现网已有范本）。
+ * 【积木】公开 API 经 MEMORY_OPS；默认 MemoryBitmapOps（见 MemoryOps.h）。
  */
 #ifndef PHYSICAL_MEMORY_H
 #define PHYSICAL_MEMORY_H

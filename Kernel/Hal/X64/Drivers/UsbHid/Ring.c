@@ -1,13 +1,13 @@
 /*
  * Ring.c — TRB 环 / DCBAA / 门铃
  */
-#include "Private.h"
+#include "Internal.h"
 
-void InitRing(Trb *Ring, RingState *St, UINT32 Size) {
+void InitRing(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *St, UINT32 Size) {
     if (Size < 2u) {
         Size = RING_SIZE;
     }
-    Zero(Ring, sizeof(Trb) * Size);
+    Zero(Ring, sizeof(TRANSFER_REQUEST_BLOCK) * Size);
     Ring[Size - 1u].Parameter = Phys(&Ring[0]);
     Ring[Size - 1u].Control = TRB_TYPE(TRB_LINK) | TRB_TC | TRB_C;
     St->Enq = 0;
@@ -15,7 +15,7 @@ void InitRing(Trb *Ring, RingState *St, UINT32 Size) {
     St->Size = Size;
 }
 
-void Enqueue(Trb *Ring, RingState *St, UINT64 Param, UINT32 Status, UINT32 Control) {
+void Enqueue(TRANSFER_REQUEST_BLOCK *Ring, RING_STATE *St, UINT64 Param, UINT32 Status, UINT32 Control) {
     UINT32 i = St->Enq;
     UINT32 Size = St->Size ? St->Size : RING_SIZE;
 

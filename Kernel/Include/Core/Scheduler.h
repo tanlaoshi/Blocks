@@ -1,7 +1,7 @@
 /*
- * Scheduler.h — 调度器（K8 壳；K18 节拍）
+ * Scheduler.h — 调度器（K8 壳；K18 节拍；K53 Ops）
  *
- * Initialize 可开 LAPIC timer；Yield 在有 timer 时 hlt 等待下一拍。
+ * Initialize 注册默认 SCHEDULER_OPS；Yield 经 Ops。
  */
 #ifndef SCHEDULER_H
 #define SCHEDULER_H

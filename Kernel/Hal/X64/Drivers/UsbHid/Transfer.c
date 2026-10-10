@@ -1,7 +1,7 @@
 /*
  * Transfer.c — EP0 控制传输 / GET_DESCRIPTOR
  */
-#include "Private.h"
+#include "Internal.h"
 
 static int WaitTransfer(UINT32 Spins) {
     UINT32 i;
@@ -15,20 +15,20 @@ static int WaitTransfer(UINT32 Spins) {
     return -1;
 }
 
-int ControlXfer(SetupPkt *Setup, void *Data) {
-    Trb *Ring;
-    RingState *St;
+int ControlXfer(SETUP_PACKET *Setup, void *Data) {
+    TRANSFER_REQUEST_BLOCK *Ring;
+    RING_STATE *St;
     UINT64 SetupParam = 0;
     UINT8 *Raw;
     UINT32 Trt = 0;
     UINT32 StatusDir;
     int i;
 
-    if (gXferDev == 0 || Setup == 0) {
+    if (gTransferDevice == 0 || Setup == 0) {
         return -1;
     }
-    Ring = gXferDev->Ep0Ring;
-    St = &gXferDev->Ep0;
+    Ring = gTransferDevice->Ep0Ring;
+    St = &gTransferDevice->Ep0;
     Raw = (UINT8 *)Setup;
     for (i = 0; i < 8; i++) {
         SetupParam |= ((UINT64)Raw[i]) << (8 * i);
@@ -46,12 +46,12 @@ int ControlXfer(SetupPkt *Setup, void *Data) {
     }
     StatusDir = (Setup->WLength && (Setup->BmRequestType & 0x80u)) ? 0 : TRB_DIR_IN;
     Enqueue(Ring, St, 0, 0, TRB_TYPE(TRB_STATUS) | TRB_IOC | StatusDir);
-    RingDoorbell(gXferDev->SlotId, 1);
+    RingDoorbell(gTransferDevice->SlotId, 1);
     return WaitTransfer(150000u);
 }
 
 int GetDesc(UINT16 TypeIndex, UINT16 Length, void *Buf) {
-    SetupPkt Setup;
+    SETUP_PACKET Setup;
 
     Setup.BmRequestType = 0x80;
     Setup.BRequest = 0x06;

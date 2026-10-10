@@ -1,7 +1,7 @@
 /*
  * Controller.c — TakeLegacy + 建环 + Run（QEMU）
  */
-#include "Private.h"
+#include "Internal.h"
 
 static void TakeLegacy(void) {
     UINT32 Hcc1 = Rd32(gCap + 0x10u);
@@ -89,17 +89,17 @@ int ControllerStart(void) {
     }
 
     gDcbaa = (UINT64 *)AllocPages(1);
-    gCmdRing = (Trb *)AllocPages(1);
-    gEvtRing = (Trb *)AllocPages(1);
+    gCmdRing = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
+    gEvtRing = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
     gErst = (UINT8 *)AllocPages(1);
     gInCtx = (UINT8 *)AllocPages(1);
     gCtrlBuf = (UINT8 *)AllocPages(1);
     gKbd.DevCtx = (UINT8 *)AllocPages(1);
     gMouse.DevCtx = (UINT8 *)AllocPages(1);
-    gKbd.Ep0Ring = (Trb *)AllocPages(1);
-    gMouse.Ep0Ring = (Trb *)AllocPages(1);
-    gKbd.IntrRing = (Trb *)AllocPages(1);
-    gMouse.IntrRing = (Trb *)AllocPages(1);
+    gKbd.Ep0Ring = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
+    gMouse.Ep0Ring = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
+    gKbd.IntrRing = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
+    gMouse.IntrRing = (TRANSFER_REQUEST_BLOCK *)AllocPages(1);
     if (!gDcbaa || !gCmdRing || !gEvtRing || !gErst || !gInCtx || !gCtrlBuf ||
         !gKbd.DevCtx || !gMouse.DevCtx || !gKbd.Ep0Ring || !gMouse.Ep0Ring ||
         !gKbd.IntrRing || !gMouse.IntrRing) {

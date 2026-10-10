@@ -1,7 +1,7 @@
 /*
  * Command.c — 命令环提交与等待
  */
-#include "Private.h"
+#include "Internal.h"
 
 int WaitClear(UINT64 Reg, UINT32 Mask, UINT32 Spins) {
     UINT32 i;

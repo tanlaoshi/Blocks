@@ -1,7 +1,7 @@
 /*
  * Setup.c — 配置描述符解析 + SetConfig + 中断 EP
  */
-#include "Private.h"
+#include "Internal.h"
 
 static UINT8 FsInterval(UINT8 BInterval) {
     UINT8 Log2 = 0;
@@ -13,7 +13,7 @@ static UINT8 FsInterval(UINT8 BInterval) {
     return (UINT8)(Log2 + 3u);
 }
 
-static int ParseHid(UINT8 *Cfg, UINT16 Total, int WantKbd, HidDev *D) {
+static int ParseHid(UINT8 *Cfg, UINT16 Total, int WantKbd, USB_HID_DEVICE *D) {
     UINT16 Off = 0;
     UINT8 Best = 0;
     UINT8 CurScore = 0;
@@ -81,8 +81,8 @@ static int ParseHid(UINT8 *Cfg, UINT16 Total, int WantKbd, HidDev *D) {
     return 1;
 }
 
-int FinishHid(HidDev *D, int WantKbd) {
-    SetupPkt Setup;
+int Finish(USB_HID_DEVICE *D, int WantKbd) {
+    SETUP_PACKET Setup;
     UINT16 Total;
     UINT8 ConfigVal;
     UINT32 *Slot;
@@ -93,7 +93,7 @@ int FinishHid(HidDev *D, int WantKbd) {
     UINT8 EpNum;
     UINT8 In;
 
-    gXferDev = D;
+    gTransferDevice = D;
     if (GetDesc(0x0100u, 8, gCtrlBuf) < 0 || GetDesc(0x0100u, 18, gCtrlBuf) < 0) {
         return -1;
     }
@@ -165,7 +165,7 @@ int FinishHid(HidDev *D, int WantKbd) {
     if (Command(Phys(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(D->SlotId), 0) < 0) {
         return -1;
     }
-    QueueIntr(D);
+    QueueInterrupt(D);
     return 0;
 }
 

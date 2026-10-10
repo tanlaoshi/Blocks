@@ -24,9 +24,9 @@
 
 | 项 | 值 |
 | -- | -- |
-| **★** | **PR-K53** · `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 |
+| **★** | **PR-K54** · smoke 对标：无头脚本 ≈ `smoke-boot` |
 | 排队 | **对标现网**主轨 **K21–K54**（分相位，见下；**汉字/TTF 提前**）；真机/SMP/virt 后置 |
-| 刚收官 | **PR-K52** · USB HID 键鼠（并或替 PS/2） ✅ |
+| 刚收官 | **PR-K53** · `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 ✅ |
 | 顺手（不推 ★） | `调用链.md`；积木 Ops；注释/绘制设想文 |
 | **待执行**（不占 ★） | 下表 **PR-B-read / name / seq**（出自 [`代码可读性盘点.md`](代码可读性盘点.md)；点名 JX 才动代码） |
 
@@ -72,7 +72,7 @@
 ### 未完成（文首 · GD 后只留这些）
 
 > **已完成**（K0–K45、相位 P1–P3、加厚 K13–K20）专节与全表见文末 [【归档】](#sec-gd)。  
-> 骨架 A ✅ · P1–P3 ✅ · P4 ✅ · P5 进行中（★ = **K53**）· 后置 / 可读性刀待办。
+> 骨架 A ✅ · P1–P3 ✅ · P4 ✅ · P5 进行中（★ = **K54**）· 后置 / 可读性刀待办。
 
 ### 对标现网主轨（K21+ · 分相位）
 
@@ -106,8 +106,8 @@
 | **K50** ✅ | `fork`/`wait` 或 COW 最小 | FORK.ELF | 课表演示可跑 |
 | **K51** ✅ | CRT / `CAT`/`WRITE` 用户程序 | CRT1/2 | 用户态读盘写盘 |
 | **K52** ✅ | USB HID 键鼠（并或替 PS/2） | xHCI HID | GTK/真机键鼠走 HID（JX 前对范围） |
-| **K53** ★ | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
-| **K54** | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell/汉字关键字 |
+| **K53** ✅ | `MEMORY_OPS` / `SCHEDULER_OPS` 钉落 | Modules 积木 | 可切换默认实现不破开机 |
+| **K54** ★ | smoke 对标：无头脚本 ≈ `smoke-boot` | ToyImage 冒烟 | 一键串口断言桌面/Shell/汉字关键字 |
 
 #### 后置 C（不挡 B 收官）
 
@@ -118,7 +118,7 @@
 | Arm64/RiscV virt 全桌面 | 保持可编；全桌面不对齐 B |
 | 完整字库热加载 / 字体设计器 / 声卡 / iGPU | TTF **最小光栅已进 P1b**；更大字库与工具链后置 |
 | ESP 去重 Kernel.elf（可选） | **已是双盘**：Boot **优先从 RootFs/BLOCKS 读** `Kernel.elf`；ESP 放 `BOOTX64.EFI`。`sync` 仍可能往 Esp 拷一份备份——能力已满足；后置可收拢为「核只在 BLOCKS」 |
-> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储 ✅ → P5；★ = K53）→ C 真机/SMP/virt。  
+> **进度口诀**：A 骨架 ✅ → B 对标现网（P1 → **P1b 汉字/TTF** → 窗管… → P3 网络 ✅ → P4 存储 ✅ → P5；★ = K54）→ C 真机/SMP/virt。  
 > 每刀 TG 时同步：文首 ★、相位表标记、专节「已收官」、修订记录；禁止只改文首漏相位表。  
 > **GD**：未完成（P4 余量 / P5 / 后置 / 待执行）留文首；已收官专节**只**迁文末 【归档】（见上 GD 排版）。
 
@@ -163,28 +163,23 @@
 
 ### K52 已收官（摘要）
 
-`Drivers/UsbHid/` 薄栈；`qemu-xhci`+kbd/tablet；Gui/Console 优先 HID；串口 `Hid: kbd/tablet ok`。
+`Drivers/UsbHid/` 薄栈；`qemu-xhci`+kbd/tablet；Gui/Console 优先 HID；串口 `UsbHid: kbd/tablet ok`。
 
-### K53 规划（★ · 最小子集 · JX）
+### K53 已收官（摘要）
 
-**一句话**：钉落 `MEMORY_OPS` / `SCHEDULER_OPS` 注册面，默认实现仍走现有位图/轮转，可换指针不破开机。
+`MemoryOps`/`SchedulerOps` 注册面；默认 `MemoryBitmapOps`/`SchedulerRoundRobinOps`；`PhysicalMemory` 拆位图池（≤300）；串口 `MemoryOps: bitmap ok` / `SchedulerOps: round-robin ok`。
+
+### K54 规划（★ · 最小子集 · JX）
+
+**一句话**：无头脚本对标现网 `smoke-boot`，串口断言桌面/Shell/汉字关键字。
 
 | 项 | 定调 |
 | -- | ---- |
-| **做** | `Include/Core/MemoryOps.h` + `SchedulerOps.h`；`*OpsRegister`/`Get`；默认 `MemoryBitmapOps` / `SchedulerRoundRobinOps` 包一层现有 API；Init 时注册 |
-| **不做** | 第二套分配器/调度器、Host 单测架、`MEMORY=`/`SCHEDULER=` 构建开关、大拆 PhysicalMemory/Scheduler |
-| **验收** | `build.sh x64` + 头测开机；串口见 `MemOps:` / `SchedOps:` 注册 ok；行为与 K52 等同 |
-| **对照** | 现网 `MemoryOps.h` / `SchedulerOps.h`；积木可替换 |
-| **落地** | ≤300 行/文件；公开 API 经 Ops 或薄封装 |
-
-### K53 手测（JX 交付）
-
-```text
-1. cd ~/Blocks/Kernel && ./build.sh x64
-2. cd ~/Blocks/Runtime && ./sync.sh && ./run.sh --headless
-3. 串口：MemOps: bitmap ok；SchedOps: rr ok（或等价）
-4. Blocks ready；Hid/桌面仍正常
-```
+| **做** | Runtime 无头冒烟脚本；断言关键字（Blocks ready / Shell / 汉字相关） |
+| **不做** | 完整 CI 矩阵、截图 diff、多架构强制同脚本 |
+| **验收** | 一键无头跑通；关键字命中；失败非零退出 |
+| **对照** | 现网 ToyImage `smoke-boot` |
+| **落地** | 脚本进 Runtime；不改内核行为 |
 
 
 ---
@@ -269,7 +264,7 @@ KernelMain
 | **K0–K12** | 模块表挂齐（薄实现） | ✅ |
 | **K13–K20** | 加厚到桌面 | ✅ |
 | **K21–K43** | 对标现网 P1–P3（至 NETDEMO） | ✅ |
-| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K53 |
+| **K44–K54** | P4 存储 / P5 用户态·输入（进行中） | 见文首相位表；★ = K54 |
 | **后置 C** | 真机 / SMP / virt 桌面 | 不挡档 B |
 
 ---
@@ -383,6 +378,7 @@ Kernel/
 | 2026-10-10 | TG：K50 ✅ fork/wait + FORK.ELF（C/P/done）；★ → **K51**（CRT/CAT/WRITE） |
 | 2026-10-10 | TG：K51 ✅ SYS_OPEN/文件 fd + CAT/WRITE.ELF；★ → **K52**（USB HID） |
 | 2026-10-10 | TG：K52 ✅ UsbHid + qemu tablet/kbd；★ → **K53**（MEMORY/SCHEDULER_OPS） |
+| 2026-10-10 | TG：K53 ✅ MEMORY_OPS/SCHEDULER_OPS + PhysicalMemory 拆位图 + UsbHid 全词/Internal；★ → **K54**（smoke） |
 
 ---
 

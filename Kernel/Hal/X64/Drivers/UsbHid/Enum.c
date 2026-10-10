@@ -1,7 +1,7 @@
 /*
  * Enum.c — 根口复位 / Address / HID 认领 / 中断 EP
  */
-#include "Private.h"
+#include "Internal.h"
 
 static UINT8 PortSpeed(UINT32 Portsc) {
     return (UINT8)((Portsc >> 10) & 0xFu);
@@ -60,13 +60,13 @@ static int ResetPort(UINT32 Port1, UINT8 *SpeedOut) {
     return 0;
 }
 
-static int AddressDevice(HidDev *D, UINT32 Port1, UINT8 Speed) {
+static int AddressDevice(USB_HID_DEVICE *D, UINT32 Port1, UINT8 Speed) {
     UINT32 Slot = 0;
     UINT32 *SlotCtx;
     UINT32 *Ep0;
     UINT64 Deq;
 
-    gXferDev = D;
+    gTransferDevice = D;
     if (Command(0, TRB_TYPE(TRB_ENABLE_SLOT), &Slot) < 0 || Slot == 0) {
         return -1;
     }
@@ -97,7 +97,7 @@ static int AddressDevice(HidDev *D, UINT32 Port1, UINT8 Speed) {
     return 0;
 }
 
-static void DisableSlot(HidDev *D) {
+static void DisableSlot(USB_HID_DEVICE *D) {
     if (D->SlotId == 0) {
         return;
     }
@@ -107,7 +107,7 @@ static void DisableSlot(HidDev *D) {
     D->IntrDci = 0;
 }
 
-static int TryRole(UINT32 Port1, HidDev *D, int WantKbd) {
+static int TryRole(UINT32 Port1, USB_HID_DEVICE *D, int WantKbd) {
     UINT8 Speed = 0;
     volatile int Delay;
 
@@ -119,7 +119,7 @@ static int TryRole(UINT32 Port1, HidDev *D, int WantKbd) {
     if (AddressDevice(D, Port1, Speed) != 0) {
         return -1;
     }
-    if (FinishHid(D, WantKbd) != 0) {
+    if (Finish(D, WantKbd) != 0) {
         DisableSlot(D);
         return -1;
     }

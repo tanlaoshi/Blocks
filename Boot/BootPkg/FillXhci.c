@@ -13,6 +13,10 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
     EFI_HANDLE *HandleBuffer = NULL;
     UINTN i;
 
+    if (XhciBase == NULL) {
+        return EFI_INVALID_PARAMETER;
+    }
+    *XhciBase = 0;
     BootDbg("[Boot] Looking for XHCI...\n");
 
     Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiPciIoProtocolGuid,
@@ -60,6 +64,8 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
         if (Class == 0x0C && Subclass == 0x03 && ProgIF == 0x30) {
             UINT32 Bar0;
             UINT64 Address;
+            UINT16 Vid = (UINT16)(VendorID & 0xFFFF);
+            UINT16 Did = (UINT16)((DeviceID >> 16) & 0xFFFF);
 
             PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x10, 1, &Bar0);
             Address = Bar0 & 0xFFFFFFF0U;
@@ -69,11 +75,24 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
                 Address |= ((UINT64)Bar1 << 32);
             }
 
-            BootDbg("[Boot] XHCI found! BAR0=0x%08x, Address=0x%016lx\n", Bar0, Address);
+            BootDbg("[Boot] XHCI found! VID=0x%04x DID=0x%04x BAR=0x%016lx\n",
+                    Vid, Did, Address);
+            /*
+             * 优先 QEMU qemu-xhci（1b36:000d）：run.sh 把 kbd/tablet 挂在这颗上。
+             * 否则记下候选，扫完取最后一颗（后加的控制器常带设备）。
+             */
             *XhciBase = Address;
-            gBS->FreePool(HandleBuffer);
-            return EFI_SUCCESS;
+            if (Vid == 0x1B36 && Did == 0x000D) {
+                gBS->FreePool(HandleBuffer);
+                return EFI_SUCCESS;
+            }
         }
+    }
+
+    if (*XhciBase != 0) {
+        BootDbg("[Boot] XHCI using last match @0x%016lx\n", *XhciBase);
+        gBS->FreePool(HandleBuffer);
+        return EFI_SUCCESS;
     }
 
     BootDbg("[Boot] No XHCI Controller found!\n");

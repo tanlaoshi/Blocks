@@ -107,8 +107,7 @@ echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "  VGA   ${QEMU_XRES}x${QEMU_YRES}"
 echo "=========================================="
 
-# 鼠走 PS/2（K17）。勿挂裸 qemu-xhci：现网有 usb-tablet+XHCI-HID；
-# Blocks 尚无 HID，挂 xhci 会让 GTK 指针走 USB，客人 PS/2 半死不活。
+# K52：qemu-xhci + usb-kbd + usb-tablet（GTK 绝对鼠，无需 Ctrl-Alt-G）
 # ESP=IDE（Boot）；Root=virtio-blk legacy（K16 内核读 FAT）；勿 ide 双 unit
 exec qemu-system-x86_64 \
     -machine q35,accel=kvm:tcg \
@@ -126,5 +125,8 @@ exec qemu-system-x86_64 \
     -device VGA,edid=on,xres="${QEMU_XRES}",yres="${QEMU_YRES}" \
     -device virtio-net-pci,netdev=n0,disable-modern=on \
     -netdev user,id=n0,hostfwd=tcp::15000-:5000 \
+    -device qemu-xhci,id=xhci \
+    -device usb-kbd,bus=xhci.0 \
+    -device usb-tablet,bus=xhci.0 \
     "${DISPLAY_ARGS[@]}" \
     "${SERIAL_ARGS[@]}"

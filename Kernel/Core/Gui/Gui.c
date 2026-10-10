@@ -17,6 +17,7 @@
 #include "Console.h"
 #include "HalPs2.h"
 #include "HalPs2Mouse.h"
+#include "HalUsbHid.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Font.h"
@@ -241,13 +242,16 @@ int GuiInitialize(void) {
     HalSerialWriteChannel(SLOG_GUI, "Gui: start menu ready\n");
 
 #if defined(__x86_64__) || defined(_M_X64)
-    if (HalPs2MouseInit() == 0 && HalPs2MouseReady()) {
+    if (HalUsbHidMouseReady() ||
+        (HalPs2MouseInit() == 0 && HalPs2MouseReady())) {
         gCurX = (INT32)(gFbW / 2u);
         gCurY = (INT32)(gFbH / 2u);
         gCursorOn = 1;
         gCursorShown = 0;
         CursorShow();
-        HalSerialWriteChannel(SLOG_GUI, "Gui: mouse ok\n");
+        HalSerialWriteChannel(SLOG_GUI,
+                              HalUsbHidMouseReady() ? "Gui: mouse ok (hid)\n"
+                                                    : "Gui: mouse ok\n");
     } else {
         HalSerialWriteChannel(SLOG_GUI, "Gui: mouse skip\n");
     }
@@ -290,11 +294,23 @@ int GuiPoll(void) {
         return 0;
     }
     DesktopPollTick();
+    HalUsbHidService();
     HalPs2Poll();
-    while (HalPs2MousePoll(&Pkt)) {
+    while (HalUsbHidPollMouse(&Pkt) ||
+           (!HalUsbHidMouseReady() && HalPs2MousePoll(&Pkt))) {
         Got = 1;
-        AccX += Pkt.Dx;
-        AccY += Pkt.Dy;
+        if (Pkt.Absolute) {
+            if (gFbW > 1u) {
+                gCurX = (INT32)(((INT64)Pkt.Dx * (INT64)(gFbW - 1u)) / 32767);
+            }
+            if (gFbH > 1u) {
+                gCurY = (INT32)(((INT64)Pkt.Dy * (INT64)(gFbH - 1u)) / 32767);
+            }
+            CursorClamp();
+        } else {
+            AccX += Pkt.Dx;
+            AccY += Pkt.Dy;
+        }
         if ((Pkt.Buttons & 0x1u) != 0 && (LastBtn & 0x1u) == 0) {
             SawPress = 1;
         }

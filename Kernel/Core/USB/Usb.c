@@ -9,11 +9,13 @@
 #include "BootInfo.h"
 #include "BootTypes.h"
 #include "HalSerial.h"
+#include "HalUsbHid.h"
 #include "HalXhci.h"
 #include "SerialConfig.h"
 #include "VirtualMemory.h"
 
-#define USB_MMIO_MAP_SIZE  0x10000ull
+/* qemu-xhci BAR 常含 Doorbell/Runtime；64KiB 可能不够 */
+#define USB_MMIO_MAP_SIZE  0x100000ull
 #define USB_PORT_LOG_MAX   8u
 
 static UINT64 gXhciBase;
@@ -113,6 +115,7 @@ int UsbInitialize(void) {
 
         UsbLogPorts();
         gXhciReady = 1;
+        (void)HalUsbHidInitialize();
         return 0;
     }
 #else

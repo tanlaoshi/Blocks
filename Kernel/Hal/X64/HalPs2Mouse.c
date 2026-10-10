@@ -161,6 +161,7 @@ static void MousePush(INT32 Dx, INT32 Dy, UINT8 Btn) {
     gQ[gQWr].Dx = Dx;
     gQ[gQWr].Dy = Dy;
     gQ[gQWr].Buttons = Btn;
+    gQ[gQWr].Absolute = 0;
     gQWr = Next;
 }
 

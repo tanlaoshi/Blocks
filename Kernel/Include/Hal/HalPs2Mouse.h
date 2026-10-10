@@ -13,7 +13,8 @@
 typedef struct {
     INT32 Dx;
     INT32 Dy;
-    UINT8 Buttons; /* bit0=左 bit1=右 bit2=中 */
+    UINT8 Buttons;  /* bit0=左 bit1=右 bit2=中 */
+    UINT8 Absolute; /* 1：Dx/Dy 为 0..32767 平板坐标（USB tablet） */
 } HAL_MOUSE_PACKET;
 
 int HalPs2MouseInit(void);

@@ -168,6 +168,11 @@ x64|X64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalCpu.c" -o "$OUT/Hal/X64/HalCpu.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalCpuIsr.S" -o "$OUT/Hal/X64/HalCpuIsr.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalXhci.c" -o "$OUT/Hal/X64/HalXhci.o"
+    mkdir -p "$OUT/Hal/X64/Drivers/UsbHid"
+    for UsbHidSrc in UsbHid Ring Command Event Transfer Controller Enum Setup Report; do
+        "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/Drivers/UsbHid/${UsbHidSrc}.c" \
+            -o "$OUT/Hal/X64/Drivers/UsbHid/${UsbHidSrc}.o"
+    done
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Keyboard.c" -o "$OUT/Hal/X64/HalPs2Keyboard.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalPs2Mouse.c" -o "$OUT/Hal/X64/HalPs2Mouse.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/X64/HalVirtioBlk.c" -o "$OUT/Hal/X64/HalVirtioBlk.o"
@@ -201,7 +206,13 @@ x64|X64)
         "$OUT/Hal/X64/KernelEntry.o" "$OUT/Hal/X64/KernelHandoff.o" "$OUT/Hal/X64/EarlyIdentity.o" \
         "$OUT/Hal/X64/PlatformStub.o" "$OUT/Hal/X64/HalSerial.o" "$OUT/Hal/X64/HalBootFont.o" "$OUT/Hal/X64/HalSerialGop.o" \
         "$OUT/Hal/X64/HalVideo.o" "$OUT/Hal/X64/HalCpu.o" "$OUT/Hal/X64/HalCpuIsr.o" \
-        "$OUT/Hal/X64/HalXhci.o" "$OUT/Hal/X64/HalPs2Keyboard.o" "$OUT/Hal/X64/HalPs2Mouse.o" \
+        "$OUT/Hal/X64/HalXhci.o" \
+        "$OUT/Hal/X64/Drivers/UsbHid/UsbHid.o" "$OUT/Hal/X64/Drivers/UsbHid/Ring.o" \
+        "$OUT/Hal/X64/Drivers/UsbHid/Command.o" "$OUT/Hal/X64/Drivers/UsbHid/Event.o" \
+        "$OUT/Hal/X64/Drivers/UsbHid/Transfer.o" "$OUT/Hal/X64/Drivers/UsbHid/Controller.o" \
+        "$OUT/Hal/X64/Drivers/UsbHid/Enum.o" "$OUT/Hal/X64/Drivers/UsbHid/Setup.o" \
+        "$OUT/Hal/X64/Drivers/UsbHid/Report.o" \
+        "$OUT/Hal/X64/HalPs2Keyboard.o" "$OUT/Hal/X64/HalPs2Mouse.o" \
         "$OUT/Hal/X64/HalVirtioBlk.o" "$OUT/Hal/X64/HalLapicTimer.o" "$OUT/Hal/X64/HalVirtioNet.o" \
         "$OUT/Hal/X64/HalSyscall.o" "$OUT/Hal/X64/HalSyscallIsr.o" \
         "$OUT/Hal/X64/HalFpu.o" "$OUT/Hal/X64/HalFpuSse.o" \
@@ -235,6 +246,7 @@ arm64|Arm64|ARM64)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Arm64/HalSerial.c" -o "$OUT/Hal/Arm64/HalSerial.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/Hal/Common/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/Hal/Common/HalXhciStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalUsbHidStub.c" -o "$OUT/Hal/Common/HalUsbHidStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KeyboardStub.c" -o "$OUT/Hal/Common/HalPs2KeyboardStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/Hal/Common/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/Hal/Common/HalBlockStub.o"
@@ -250,7 +262,7 @@ arm64|Arm64|ARM64)
         "$OUT/Core/Serial/Serial.o" "$OUT/Core/Memory/Memory.o" "$OUT/Core/Memory/PhysicalMemory.o" \
         "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/VirtualMemory/VirtualMemorySpace.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
         "$OUT/Core/Video/Video.o" "$OUT/Hal/Common/HalCapability.o" "$OUT/Hal/Common/HalVideoStub.o" "$OUT/Hal/Common/HalCpuStub.o" \
-        "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
+        "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalUsbHidStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
         "$OUT/Hal/Common/HalBlockStub.o" "$OUT/Hal/Common/HalTimerStub.o" "$OUT/Hal/Common/HalSyscallStub.o" \
         "$OUT/Hal/Common/HalNetStub.o" \
         "$OUT/Core/Video/Theme.o" "$OUT/Core/Video/ThemeConfiguration.o" "$OUT/Core/Video/FontTerminus10x18.o" "$OUT/Core/Video/FontCjkDisk.o" "$OUT/Core/Video/Font.o" "$OUT/Core/Video/Utf8.o" \
@@ -279,6 +291,7 @@ riscv|RiscV|RISCV)
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/RiscV/HalSerial.c" -o "$OUT/Hal/RiscV/HalSerial.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalCpuStub.c" -o "$OUT/Hal/Common/HalCpuStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalXhciStub.c" -o "$OUT/Hal/Common/HalXhciStub.o"
+    "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalUsbHidStub.c" -o "$OUT/Hal/Common/HalUsbHidStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2KeyboardStub.c" -o "$OUT/Hal/Common/HalPs2KeyboardStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalPs2MouseStub.c" -o "$OUT/Hal/Common/HalPs2MouseStub.o"
     "$CC" "${CFLAGS[@]}" -c "$SCRIPT_DIR/Hal/Common/HalBlockStub.c" -o "$OUT/Hal/Common/HalBlockStub.o"
@@ -295,7 +308,7 @@ riscv|RiscV|RISCV)
         "$OUT/Core/Serial/Serial.o" "$OUT/Core/Memory/Memory.o" "$OUT/Core/Memory/PhysicalMemory.o" \
         "$OUT/Core/VirtualMemory/VirtualMemory.o" "$OUT/Core/VirtualMemory/VirtualMemorySpace.o" "$OUT/Core/Driver/Driver.o" "$OUT/Core/Driver/Device.o" \
         "$OUT/Core/Video/Video.o" "$OUT/Hal/Common/HalCapability.o" "$OUT/Hal/Common/HalVideoStub.o" "$OUT/Hal/Common/HalCpuStub.o" \
-        "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
+        "$OUT/Hal/Common/HalXhciStub.o" "$OUT/Hal/Common/HalUsbHidStub.o" "$OUT/Hal/Common/HalPs2KeyboardStub.o" "$OUT/Hal/Common/HalPs2MouseStub.o" \
         "$OUT/Hal/Common/HalBlockStub.o" "$OUT/Hal/Common/HalTimerStub.o" "$OUT/Hal/Common/HalSyscallStub.o" \
         "$OUT/Hal/Common/HalNetStub.o" \
         "$OUT/Core/Video/Theme.o" "$OUT/Core/Video/ThemeConfiguration.o" "$OUT/Core/Video/FontTerminus10x18.o" "$OUT/Core/Video/FontCjkDisk.o" "$OUT/Core/Video/Font.o" "$OUT/Core/Video/Utf8.o" \

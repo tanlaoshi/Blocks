@@ -10,6 +10,7 @@
 #include "HalPs2.h"
 #include "HalPs2Keyboard.h"
 #include "HalPs2Mouse.h"
+#include "HalUsbHid.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "Process.h"
@@ -62,7 +63,9 @@ void ConsoleRefreshBanner(void) {
 
 int ConsoleInitialize(void) {
     HalSerialWriteChannel(SLOG_BOOT, "Blocks ready\n");
-    if (HalPs2KeyboardInitialize() == 0 && HalPs2KeyboardReady()) {
+    if (HalUsbHidKeyboardReady()) {
+        HalSerialWriteChannel(SLOG_MISC, "Input: hid kbd ok\n");
+    } else if (HalPs2KeyboardInitialize() == 0 && HalPs2KeyboardReady()) {
         HalSerialWriteChannel(SLOG_MISC, "Input: ps2 kbd ok\n");
     } else {
         HalSerialWriteChannel(SLOG_MISC, "Input: ps2 skip (serial only)\n");
@@ -80,6 +83,9 @@ static int ConsolePollChar(char *Out) {
     }
     if (HalSerialDataReady()) {
         *Out = HalSerialReadChar();
+        return 1;
+    }
+    if (HalUsbHidPollChar(Out)) {
         return 1;
     }
     if (HalPs2KeyboardPollChar(Out)) {
@@ -111,6 +117,7 @@ static int ConsoleReadLine(char *Buf, int Cap) {
              * 一睡 i8042 就溢、失步 → 移动卡 / 假死。
              */
 #if defined(__x86_64__) || defined(_M_X64)
+            HalUsbHidService();
             HalPs2Poll();
 #endif
             (void)GuiPoll();
@@ -125,7 +132,7 @@ static int ConsoleReadLine(char *Buf, int Cap) {
                 break;
             }
 #if defined(__x86_64__) || defined(_M_X64)
-            if (HalPs2MouseReady()) {
+            if (HalUsbHidMouseReady() || HalPs2MouseReady()) {
                 __asm__ volatile("pause");
                 continue;
             }

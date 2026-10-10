@@ -1,7 +1,7 @@
 /*
  * Usb.h — USB 模块（胶水）
  *
- * MapMmio + HalXhci（复位/端口 CCS）。枚举/HID/MSC 后刀。
+ * MapMmio + HalXhci（复位/端口 CCS）+ HalUsbHid（K52）。
  */
 #ifndef USB_H
 #define USB_H

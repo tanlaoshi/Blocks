@@ -1,0 +1,27 @@
+---
+description: JX/改码后强制自查命名与行数，勿等用户发现
+alwaysApply: true
+---
+
+# 改完必自查（命名 · 行数）
+
+每次 **写完/改完代码**（含 JX 交付前、提 TG 前），**主动自查**，不要等用户挑错。
+
+## 必查项
+
+1. **命名**（对标 `ToyKernel/Documents/开发/开发命名规范.md` + `命名规范盘点-Blocks.md`）
+   - 全词拼写：禁 `Init`/`Cfg`/`Desc`/`Xfer`/`Buf`/`Ptr` 等缩写（硬件寄存器宏如 `PORTSC_*`/`TRB_*` 除外）
+   - 名词在前、动词在后：`RingInitialize` 不是 `InitRing`；`DescriptorGet` 不是 `GetDesc`
+   - `Initialize` 不是 `Init`；目录即命名空间，夹内不叠目录名
+   - 日志前缀跟标识符：`UsbHid:` / `MemoryOps:`，勿短前缀
+
+2. **行数**：单文件 **≤300 行**；新逻辑超标先拆文件再交，禁止在超标文件上继续堆
+
+3. **自查动作**（改完立刻做，写进交付说明）
+   - `wc -l` 扫本次改动文件，标出 >300
+   - 对改动夹 `rg` 典型短名（`Init[A-Z]`、`GetDesc`、`Cfg`、`Xfer`、`AllocPages`、`PortReg`、`InEp` 等）
+   - 有债则 **当场改掉** 再报 JX 完成；不得只报功能 PASS
+
+## 交付句式
+
+JX/改码收口时附一行：`自查：命名 OK / 行数 OK（或已拆 …）`。

@@ -8,6 +8,7 @@ Runtime/
   Fw/OVMF_VARS.fd.clean          # NVRAM 种子
   sync.sh                        # 从 Boot/Kernel Build 拷贝产物
   run.sh                         # 起 QEMU
+  smoke-boot.sh                  # K54 无头冒烟（串口关键字断言）
 ```
 
 ## 用法
@@ -18,6 +19,7 @@ cd ~/Blocks/Kernel && ./build.sh x64
 cd ~/Blocks/Runtime
 ./run.sh                 # 开 GTK 窗口（看屏 + 终端仍有串口）
 ./run.sh --headless      # 无窗口，只看串口
+./smoke-boot.sh          # 无头 + 断言 Blocks ready / 桌面 / Shell / CJK
 ./run.sh --clean-nvram   # 重置 OVMF 变量
 ./run.sh --kill          # 杀残留 QEMU
 ```

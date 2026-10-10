@@ -15,4 +15,9 @@ gcc -nostdlib -ffreestanding -fno-pie -no-pie -static \
     -o "$ROOT/NETDEMO.ELF" "$DIR/NetDemo.S"
 echo "User/X64 OK → $ROOT/NETDEMO.ELF"
 
-ls -la "$ROOT/HELLO.ELF" "$ROOT/NETDEMO.ELF"
+gcc -nostdlib -ffreestanding -fno-pie -no-pie -static \
+    -Wl,-T,"$DIR/hello.ld" -Wl,--build-id=none \
+    -o "$ROOT/FORK.ELF" "$DIR/Fork.S"
+echo "User/X64 OK → $ROOT/FORK.ELF"
+
+ls -la "$ROOT/HELLO.ELF" "$ROOT/NETDEMO.ELF" "$ROOT/FORK.ELF"

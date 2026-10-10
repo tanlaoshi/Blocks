@@ -140,6 +140,7 @@ VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceCreate(void) {
     Space = (VIRTUAL_ADDRESS_SPACE *)Meta;
     /* 结构放在跟踪页 0；Root 另页 */
     Space->PageCount = 0;
+    Space->UserCount = 0;
     if (SpaceTrack(Space, Meta) != 0) {
         PhysicalMemoryFreePage(Meta);
         return 0;
@@ -167,6 +168,13 @@ void VirtualMemorySpaceDestroy(VIRTUAL_ADDRESS_SPACE *Space) {
     if (Space == 0) {
         return;
     }
+    for (i = 0; i < Space->UserCount; i++) {
+        if (Space->UserPhys[i] != 0) {
+            PhysicalMemoryFreePage((void *)(UINTN)Space->UserPhys[i]);
+            Space->UserPhys[i] = 0;
+        }
+    }
+    Space->UserCount = 0;
     for (i = Space->PageCount - 1; i >= 0; i--) {
         if (Space->Pages[i] != 0) {
             PhysicalMemoryFreePage(Space->Pages[i]);
@@ -235,6 +243,24 @@ int VirtualMemorySpaceMapPage(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
         F |= PTE_P;
     }
     Pt[I1] = (Phys & PTE_ADDR) | F;
+    /* 登记用户数据页（Clone 用）；同 Virt 覆盖更新 */
+    if ((F & PTE_U) != 0) {
+        int u;
+        int Slot = -1;
+        for (u = 0; u < Space->UserCount; u++) {
+            if (Space->UserVirt[u] == Virt) {
+                Slot = u;
+                break;
+            }
+        }
+        if (Slot < 0 && Space->UserCount < VM_SPACE_USER_MAX) {
+            Slot = Space->UserCount++;
+            Space->UserVirt[Slot] = Virt;
+        }
+        if (Slot >= 0) {
+            Space->UserPhys[Slot] = Phys & PTE_ADDR;
+        }
+    }
     return 0;
 }
 
@@ -259,6 +285,36 @@ int VirtualMemorySpaceMapRange(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
         Left -= PAGE_SIZE;
     }
     return 0;
+}
+
+VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceClone(VIRTUAL_ADDRESS_SPACE *Src) {
+    VIRTUAL_ADDRESS_SPACE *Dst;
+    int i;
+    UINT64 Flags = PTE_P | PTE_W | PTE_U;
+
+    if (Src == 0) {
+        return 0;
+    }
+    Dst = VirtualMemorySpaceCreate();
+    if (Dst == 0) {
+        return 0;
+    }
+    for (i = 0; i < Src->UserCount; i++) {
+        void *NewPhys = PhysicalMemoryAllocatePage();
+        if (NewPhys == 0) {
+            VirtualMemorySpaceDestroy(Dst);
+            return 0;
+        }
+        CopyPage(NewPhys, (void *)(UINTN)Src->UserPhys[i]);
+        if (VirtualMemorySpaceMapPage(Dst, Src->UserVirt[i],
+                                      (UINT64)(UINTN)NewPhys, Flags) != 0) {
+            PhysicalMemoryFreePage(NewPhys);
+            VirtualMemorySpaceDestroy(Dst);
+            return 0;
+        }
+    }
+    HalSerialWriteChannel(SLOG_MEM, "VMM: space clone ok\n");
+    return Dst;
 }
 
 #else /* !x64 */
@@ -301,6 +357,11 @@ int VirtualMemorySpaceMapRange(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt,
     (void)Bytes;
     (void)Flags;
     return -1;
+}
+
+VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceClone(VIRTUAL_ADDRESS_SPACE *Src) {
+    (void)Src;
+    return 0;
 }
 
 #endif

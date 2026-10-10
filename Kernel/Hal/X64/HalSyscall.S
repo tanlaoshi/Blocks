@@ -2,7 +2,8 @@
  * HalSyscall.S — int 0x80 ISR
  *
  * 寄存器帧（从栈顶）：rax rbx rcx rdx rsi rdi rbp r8..r15
- * exit：丢帧，恢复 gSyscallRetRsp，跳 gSyscallRetRip
+ * exit：丢帧，恢复 gSyscallRetRsp，跳 gSyscallRetRip（HalSyscallRun 尾）
+ * fork：gForkUserRip/Rsp + gFork*Cr3（与 gSyscallRet* 分离）
  */
     .text
     .globl HalSyscallIsr
@@ -28,8 +29,12 @@ HalSyscallIsr:
     cld
     call HalSyscallDispatch
     add  $8, %rsp
-    /* gUserDone？ */
+    /* gUserDone：0=iret；1=结束 Run；2=回父；3=进子 */
     movabs $gUserDone, %rax
+    cmpl   $3, (%rax)
+    je     .LforkChild
+    cmpl   $2, (%rax)
+    je     .LforkParent
     cmpl   $0, (%rax)
     jne    .Lexit
     pop  %rax
@@ -49,8 +54,33 @@ HalSyscallIsr:
     pop  %r15
     iretq
 
+.LforkChild:
+    movabs $gUserDone, %rax
+    movl   $0, (%rax)
+    movabs $gForkChildCr3, %rax
+    mov    (%rax), %rax
+    mov    %rax, %cr3
+    movabs $gForkUserRsp, %rax
+    mov    (%rax), %rsp
+    movabs $gForkResumeRax, %rax
+    mov    (%rax), %rax
+    movabs $gForkUserRip, %r11
+    jmp    *(%r11)
+
+.LforkParent:
+    movabs $gUserDone, %rax
+    movl   $0, (%rax)
+    movabs $gForkParentCr3, %rax
+    mov    (%rax), %rax
+    mov    %rax, %cr3
+    movabs $gForkUserRsp, %rax
+    mov    (%rax), %rsp
+    movabs $gForkResumeRax, %rax
+    mov    (%rax), %rax
+    movabs $gForkUserRip, %r11
+    jmp    *(%r11)
+
 .Lexit:
-    /* 丢掉 push 的 15 个寄存器 + CPU 的 iretq 帧（3 槽） */
     movabs $gSyscallRetRsp, %rax
     mov    (%rax), %rsp
     movabs $gSyscallRetRip, %rax

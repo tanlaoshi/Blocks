@@ -2,12 +2,13 @@
  * HalSyscall.c — int 0x80（K19 write/exit；K43 socket/connect/read/close）
  *
  * 本刀用户 ELF 仍在 ring0 经 call 进入；真 ring3 后刀。
- * 号：1 write · 2 exit · 3 read · 4 close · 5 socket · 6 connect
+ * 号：1 write · 2 exit · 3 read · 4 close · 5 socket · 6 connect · 7 fork · 8 wait
  * 帧：Regs[0]=rax … [3]=rdx [4]=rsi [5]=rdi
  */
 #include "HalSyscall.h"
 #include "HalCpu.h"
 #include "HalSerial.h"
+#include "ProcessFork.h"
 #ifdef HAVE_LWIP
 #include "LwIpSock.h"
 #endif
@@ -19,6 +20,8 @@
 #define SYS_CLOSE   4u
 #define SYS_SOCKET  5u
 #define SYS_CONNECT 6u
+#define SYS_FORK    7u
+#define SYS_WAIT    8u
 
 /* 用户 fd：1=stdout；>=3 → sock id = fd-3 */
 #define FD_SOCK_BASE 3
@@ -162,6 +165,9 @@ void HalSyscallDispatch(UINT64 *Regs) {
         return;
     }
     if (Nr == SYS_EXIT) {
+        if (ProcessExitSyscall(Regs)) {
+            return; /* 子结束 → 恢复父，继续 iretq */
+        }
         gUserDone = 1;
         return;
     }
@@ -179,6 +185,14 @@ void HalSyscallDispatch(UINT64 *Regs) {
     }
     if (Nr == SYS_CONNECT) {
         SysConnect(Regs);
+        return;
+    }
+    if (Nr == SYS_FORK) {
+        (void)ProcessForkSyscall(Regs);
+        return;
+    }
+    if (Nr == SYS_WAIT) {
+        (void)ProcessWaitSyscall(Regs);
         return;
     }
     Regs[0] = ~((UINT64)0);

@@ -8,6 +8,7 @@
 #include "HalSerial.h"
 #include "HalSyscall.h"
 #include "PhysicalMemory.h"
+#include "ProcessFork.h"
 #include "VirtualMemory.h"
 #include "SerialConfig.h"
 
@@ -85,10 +86,12 @@ int ProcessExecPath(const char *Path) {
         KernelRoot = VirtualMemoryKernelRoot();
         UserRoot = VirtualMemorySpaceRoot(Space);
         HalSerialWriteShell("User: space cr3 switch\n");
+        ProcessForkAttach(Space);
         VirtualMemoryLoadPageTable(UserRoot);
         SetLast(Path);
         Rc = HalSyscallRun(Img.Entry, Img.StackTop);
         VirtualMemoryLoadPageTable(KernelRoot);
+        ProcessForkDetach();
         VirtualMemorySpaceDestroy(Space);
     } else {
         /* 非 X64 或 Create 失败：回落恒等装载 */

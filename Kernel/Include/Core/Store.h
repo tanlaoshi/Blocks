@@ -3,7 +3,7 @@
  *
  * 【初学者】
  * 对标现网 Store/S-job 的最小子集：盘上 STORE.CAT 清单 + 把包文件拷到安装名 + BLOCKS.DB 登记。
- * 本刀不做商店 UI / 作业互斥 / 网络拉包（K48+）。
+ * 装包入口请走 StoreJobInstall（K48 互斥）；网络拉包另刀。
  *
  * 【路径】当前 Fat 只认根目录 8.3，故清单叫 STORE.CAT（不是 Store/catalog.txt）。
  */

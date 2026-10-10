@@ -13,14 +13,14 @@
 #include "Theme.h"
 #include "SerialConfig.h"
 
-#define MENU_N 3u
+#define MENU_N 4u
 
 static UINT32 gFbW;
 static UINT32 gFbH;
 static int gMenuOn;
 
 static const int gItems[MENU_N] = {
-    GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES
+    GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES, GUI_WIN_STORE
 };
 
 static LOC_MSG ItemLabel(int WinId) {
@@ -29,6 +29,9 @@ static LOC_MSG ItemLabel(int WinId) {
     }
     if (WinId == GUI_WIN_FILES) {
         return MSG_ICON_FILES;
+    }
+    if (WinId == GUI_WIN_STORE) {
+        return MSG_ICON_STORE;
     }
     return MSG_ICON_SHELL;
 }
@@ -148,7 +151,7 @@ int StartToggle(void) {
 
 int StartActivate(int WinId) {
     if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS &&
-        WinId != GUI_WIN_FILES) {
+        WinId != GUI_WIN_FILES && WinId != GUI_WIN_STORE) {
         return 0;
     }
     gMenuOn = 0;

@@ -114,6 +114,7 @@ void DesktopPaintIcons(void) {
     PaintOneIcon(0, ThemeWindowTitleBar(), MSG_ICON_SHELL);
     PaintOneIcon(1, 0x00507040u, MSG_ICON_SETTINGS);
     PaintOneIcon(2, 0x00406080u, MSG_ICON_FILES);
+    PaintOneIcon(3, 0x00705030u, MSG_ICON_STORE);
 }
 
 int DesktopHitIcon(INT32 X, INT32 Y) {
@@ -122,9 +123,11 @@ int DesktopHitIcon(INT32 X, INT32 Y) {
     UINT32 Iw;
     UINT32 Ih;
     int Slot;
-    static const int Map[3] = { GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES };
+    static const int Map[4] = {
+        GUI_WIN_SHELL, GUI_WIN_SETTINGS, GUI_WIN_FILES, GUI_WIN_STORE
+    };
 
-    for (Slot = 0; Slot < 3; Slot++) {
+    for (Slot = 0; Slot < 4; Slot++) {
         IconGeom(Slot, &Ix, &Iy, &Iw, &Ih);
         if (X >= (INT32)Ix && Y >= (INT32)Iy && X < (INT32)(Ix + Iw) &&
             Y < (INT32)(Iy + Ih)) {
@@ -151,7 +154,7 @@ int DesktopClickIcon(int WinId, INT32 X, INT32 Y) {
     int IsDbl = 0;
 
     if (WinId != GUI_WIN_SHELL && WinId != GUI_WIN_SETTINGS &&
-        WinId != GUI_WIN_FILES) {
+        WinId != GUI_WIN_FILES && WinId != GUI_WIN_STORE) {
         return 0;
     }
     Now = NowTick();

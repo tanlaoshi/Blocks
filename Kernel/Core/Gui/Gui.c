@@ -10,6 +10,8 @@
 #include "Layout.h"
 #include "Settings.h"
 #include "Start.h"
+#include "StoreUi.h"
+#include "StoreJob.h"
 #include "Window.h"
 #include "BootInfo.h"
 #include "Console.h"
@@ -275,6 +277,15 @@ int GuiPoll(void) {
     int WasDragging;
     int Hit;
 
+    /* K48：商店窗入队的装包在此推进（Shell 路径自带 Step） */
+    if (StoreJobStep()) {
+        if (WindowIsOn(GUI_WIN_STORE)) {
+            StoreUiRefresh();
+            WindowPaintDesktop();
+            WindowCompose();
+            WindowPresentFull();
+        }
+    }
     if (!gDesktopReady || !gCursorOn) {
         return 0;
     }
@@ -373,6 +384,15 @@ int GuiPoll(void) {
                     WindowCompose();
                     WindowPresentFull();
                 }
+            } else if (Hit == GUI_WIN_STORE) {
+                WindowFocus(Hit);
+                gDragging = 0;
+                gDragWin = -1;
+                if (StoreUiClick(gCurX, gCurY)) {
+                    WindowPaintDesktop();
+                    WindowCompose();
+                    WindowPresentFull();
+                }
             } else if (Hit >= 0) {
                 WindowFocus(Hit);
                 gDragging = 0;
@@ -380,7 +400,11 @@ int GuiPoll(void) {
             } else {
                 int Icon = DesktopHitIcon(gCurX, gCurY);
                 if (Icon >= 0) {
-                    (void)DesktopClickIcon(Icon, gCurX, gCurY);
+                    if (DesktopClickIcon(Icon, gCurX, gCurY)) {
+                        WindowPaintDesktop();
+                        WindowCompose();
+                        WindowPresentFull();
+                    }
                     gDragging = 0;
                     gDragWin = -1;
                 } else if ((UINT32)gCurY >= LayoutContentTop() &&

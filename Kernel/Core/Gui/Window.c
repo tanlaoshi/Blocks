@@ -9,6 +9,7 @@
 #include "Files.h"
 #include "Layout.h"
 #include "Start.h"
+#include "StoreUi.h"
 #include "Console.h"
 #include "HalPs2.h"
 #include "HalSerial.h"
@@ -95,7 +96,8 @@ void WindowPresentFull(void) {
 void WindowLayoutAll(void) {
     int i;
     static const LOC_MSG Titles[GUI_WIN_COUNT] = {
-        MSG_WIN_SHELL, MSG_WIN_ABOUT, MSG_WIN_SETTINGS, MSG_WIN_FILES
+        MSG_WIN_SHELL, MSG_WIN_ABOUT, MSG_WIN_SETTINGS, MSG_WIN_FILES,
+        MSG_WIN_STORE
     };
 
     for (i = 0; i < GUI_WIN_COUNT; i++) {
@@ -105,10 +107,12 @@ void WindowLayoutAll(void) {
         gW[i].On = (D != 0 && D->OpenByDefault) ? 1 : 0;
         gW[i].Focus = (i == GUI_WIN_SHELL) ? 1 : 0;
     }
+    /* 底→顶；须含全部 GUI_WIN_COUNT（漏槽则该窗 Open 了也不画） */
     gZ[0] = (UINT8)GUI_WIN_ABOUT;
     gZ[1] = (UINT8)GUI_WIN_SETTINGS;
     gZ[2] = (UINT8)GUI_WIN_FILES;
-    gZ[3] = (UINT8)GUI_WIN_SHELL;
+    gZ[3] = (UINT8)GUI_WIN_STORE;
+    gZ[4] = (UINT8)GUI_WIN_SHELL;
 }
 
 int WindowIsOn(int Id) {
@@ -174,19 +178,26 @@ int WindowInTitle(int Id, INT32 X, INT32 Y) {
 void WindowRaise(int Id) {
     int i;
     int j;
+    int Found = -1;
 
     if (Id < 0 || Id >= GUI_WIN_COUNT || !gW[Id].On) {
         return;
     }
     for (i = 0; i < GUI_WIN_COUNT; i++) {
         if ((int)gZ[i] == Id) {
-            for (j = i; j < GUI_WIN_COUNT - 1; j++) {
-                gZ[j] = gZ[j + 1];
-            }
-            gZ[GUI_WIN_COUNT - 1] = (UINT8)Id;
-            return;
+            Found = i;
+            break;
         }
     }
+    if (Found < 0) {
+        /* 未入 Z 表（扩窗漏初始化时）：挤掉重复后放到顶 */
+        gZ[GUI_WIN_COUNT - 1] = (UINT8)Id;
+        return;
+    }
+    for (j = Found; j < GUI_WIN_COUNT - 1; j++) {
+        gZ[j] = gZ[j + 1];
+    }
+    gZ[GUI_WIN_COUNT - 1] = (UINT8)Id;
 }
 
 void WindowFocus(int Id) {
@@ -244,6 +255,9 @@ void WindowOpen(int Id) {
     if (Id == GUI_WIN_FILES) {
         FilesRefresh();
     }
+    if (Id == GUI_WIN_STORE) {
+        StoreUiRefresh();
+    }
     gW[Id].On = 1;
     WindowFocus(Id);
     if (Id == GUI_WIN_SHELL) {
@@ -252,6 +266,8 @@ void WindowOpen(int Id) {
         HalSerialWriteChannel(SLOG_GUI, "Gui: files opened\n");
     } else if (Id == GUI_WIN_SETTINGS) {
         HalSerialWriteChannel(SLOG_GUI, "Gui: settings opened\n");
+    } else if (Id == GUI_WIN_STORE) {
+        HalSerialWriteChannel(SLOG_GUI, "Gui: store opened\n");
     } else {
         HalSerialWriteChannel(SLOG_GUI, "Gui: about opened\n");
     }

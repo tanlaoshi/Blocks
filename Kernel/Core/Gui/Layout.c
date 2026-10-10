@@ -30,7 +30,7 @@ static UINT32 gStartBtnH = 22u;
 static UINT32 gStartPadY = 4u;
 static UINT32 gMenuW = 140u;
 static UINT32 gMenuRow = 24u;
-static UINT32 gMenuN = 3u;
+static UINT32 gMenuN = 4u;
 
 /*
  * 内建描述（设计稿 1280×720）。
@@ -41,6 +41,7 @@ static GUI_WIN_LAYOUT gWin[GUI_WIN_COUNT] = {
     {"about", 340u, 200u, 200u, 120u, GUI_PLACE_SHELL_DELTA, 80, 60, 1},
     {"settings", 360u, 220u, 240u, 140u, GUI_PLACE_XY, 48, 48, 0},
     {"files", 380u, 260u, 240u, 160u, GUI_PLACE_XY, 72, 72, 0},
+    {"store", 400u, 260u, 260u, 160u, GUI_PLACE_XY, 96, 56, 0},
 };
 
 static UINT32 FitScalePermille(void) {

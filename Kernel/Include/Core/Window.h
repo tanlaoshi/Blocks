@@ -10,7 +10,8 @@
 #define GUI_WIN_ABOUT    1
 #define GUI_WIN_SETTINGS 2
 #define GUI_WIN_FILES    3
-#define GUI_WIN_COUNT    4
+#define GUI_WIN_STORE    4
+#define GUI_WIN_COUNT    5
 
 void WindowSetFb(UINT32 W, UINT32 H);
 void WindowLayoutAll(void);

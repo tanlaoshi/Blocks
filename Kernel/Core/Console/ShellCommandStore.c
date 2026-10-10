@@ -1,11 +1,13 @@
 /*
- * ShellCommandStore.c — K47：store list / store install（不堆进 ShellCommand.c）
+ * ShellCommandStore.c — K47/K48：store list / store install（经 StoreJob）
  *
  * 【初学者】
- * 读清单与装包走 Store*；本文件只做参数与串口提示。
+ * Shell 路径：入队后本命令内 Step 完成（串口一次见 ok）。
+ * 若 Store 窗已占忙旗，则 store: busy。
  */
 #include "ShellCommand.h"
 #include "Store.h"
+#include "StoreJob.h"
 #include "HalSerial.h"
 
 static void Put(const char *S) {
@@ -45,11 +47,6 @@ static void PutUnsigned32(UINT32 V) {
     Put(B);
 }
 
-/*
- * CommandStore — store list | store install <id>
- * 谁调用：Shell 行。
- * 前后文：后 — 根目录安装名 + BLOCKS.DB si.*
- */
 static void CommandStore(int Argc, char **Argv) {
     STORE_ENTRY Tab[STORE_ENTRIES_MAX];
     int Count = 0;
@@ -85,7 +82,21 @@ static void CommandStore(int Argc, char **Argv) {
         return;
     }
     if (Argc >= 3 && StringsEqual(Argv[1], "install")) {
-        Error = StoreInstall(Argv[2]);
+        Error = StoreJobInstall(Argv[2]);
+        if (Error == STORE_BUSY) {
+            Put("store: busy\n");
+            return;
+        }
+        if (Error == STORE_INVAL) {
+            Put("store: invalid\n");
+            return;
+        }
+        if (Error != STORE_OK) {
+            Put("store: fail\n");
+            return;
+        }
+        (void)StoreJobStep();
+        Error = StoreJobLastError();
         if (Error == STORE_NOENT) {
             Put("store: not found\n");
             return;

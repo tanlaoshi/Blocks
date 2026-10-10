@@ -7,6 +7,7 @@
 #include "Files.h"
 #include "Layout.h"
 #include "Settings.h"
+#include "StoreUi.h"
 #include "Start.h"
 #include "Window.h"
 #include "HalVideo.h"
@@ -260,6 +261,8 @@ void WindowPaint_Frame(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int Focus,
         SettingsPaintClient(Cx, Cy, Cw, Ch);
     } else if (Kind == GUI_WIN_FILES && Ch > 0) {
         FilesPaintClient(Cx, Cy, Cw, Ch);
+    } else if (Kind == GUI_WIN_STORE && Ch > 0) {
+        StoreUiPaintClient(Cx, Cy, Cw, Ch);
     } else if (Kind == GUI_WIN_ABOUT && Ch > 0) {
         DrawClippedAt(Cx + 12u, Cy + 16u, Cx + Cw - 4u, Cy + Ch,
                       LocStr(MSG_ABOUT_BODY), ThemeWindowTitleText());

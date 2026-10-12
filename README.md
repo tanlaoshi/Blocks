@@ -11,6 +11,7 @@ Blocks/
 ```
 
 - **Boot 细则**：[`Boot/README.md`](Boot/README.md)
+- **换一台电脑**：[`同步.md`](同步.md)（拉分支 `working`，不要拉 `main`）
 - **GitHub**：`git@github.com:tanlaoshi/Blocks.git`
 
 ## 怎么开始

@@ -7,15 +7,15 @@
 结构示意（同心圆）：[Documents/项目/Kernel-rings.png](../Documents/项目/Kernel-rings.png)
 
 ```text
-BringUp/    # 阶段2导演：KernelMain / Modules（HAL 交棒后合流）
-HAL/        # Entry·Handoff·驱动；Init/ 为开机胶水
+BringUp/    # 阶段2：<Arch>/Entry·Handoff + KernelMain/Modules（读启动段只看这里）
+HAL/        # Hal* 门面与驱动；Init/ 为模块表里的硬件胶水
 Library/    # 共用纯库（无 Hal/Core/Services）
 Core/       # 内核机制（调度/进程/PMM/VMM/syscall…）
 Services/   # 人机与会话（与 Core 平级）
 User/       # Ring3 应用与用户态 SDK
 ```
 
-控制流：`Boot` 或固件 → `HAL/<Arch>/KernelEntry` → `KernelHandoff` → **`BringUp/KernelMain`** → `ModulesRun` → …
+控制流：`Boot`/固件 → **`BringUp/<Arch>/KernelEntry` → Handoff → KernelMain`** → `ModulesRun` → …
 
 `Library/` 纯化：`make check-library-pure`。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载→`Services/Fonts/`，Elf→`Core/Elf/`。
 

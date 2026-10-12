@@ -1,7 +1,7 @@
 /*
  * KernelEntry.S — Arm64 QEMU virt -kernel 入口（保留 x0=DTB）
  *
- * 与 X64 合流：换栈/清 BSS → KernelHandoff → KernelMain。
+ * 与 X64 合流：换栈/清 BSS → KernelHandoff → BringUp/KernelMain。
  */
     .section .text.boot, "ax"
     .global KernelEntry

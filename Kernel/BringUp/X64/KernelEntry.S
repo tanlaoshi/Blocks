@@ -1,13 +1,8 @@
 /*
- * KernelEntry.S — X64 内核 ELF 入口（link.ld ENTRY）
+ * KernelEntry.S — BringUp/X64：内核 ELF 入口（HAL/X64/link.ld ENTRY）
  *
- * Blocks Boot（BOOTX64.EFI）ExitBootServices 后跳到这里，递上 UEFI_BOOT_CONFIG*：
- *   - MS x64 ABI：RCX
- *   - SysV：RDI
- * 两种都认。立刻换到 BSS 里的 gEarlyStack（64KiB），离开可能很高的 UEFI 栈
- *（随后 KernelMain 开 4GiB EarlyIdentity）。
- *
- * 然后 call KernelHandoff；若返回则 hlt 死循环。
+ * Boot ExitBootServices 后跳到这里（RCX 或 RDI = UEFI_BOOT_CONFIG*）。
+ * 换到 gEarlyStack → KernelHandoff → BringUp/KernelMain。
  */
     .section .text.boot, "ax"
     .global KernelEntry

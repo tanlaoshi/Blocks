@@ -1,7 +1,7 @@
 /*
  * KernelEntry.S — RiscV QEMU virt 入口（a0=hartid a1=DTB；OpenSBI）
  *
- * 与 X64 合流：竞选 BSP → 换栈/清 BSS → KernelHandoff → KernelMain。
+ * 与 X64 合流：竞选 BSP → 换栈/清 BSS → KernelHandoff → BringUp/KernelMain。
  * Boot HART 常非 0：原子抢 BSP；其余 SecondaryPark / HSM→HalApEntry。
  */
     .section .data

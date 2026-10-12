@@ -131,7 +131,8 @@ INCLUDES_COMMON = -IInclude \
                   -ILibrary/Fonts \
                   -IThirdParty/stb \
                   -IHAL/$(HAL_ARCH) \
-                  -IHAL/$(HAL_ARCH)/Hal
+                  -IHAL/$(HAL_ARCH)/Hal \
+                  -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers \
                   -IHAL/$(HAL_ARCH)/Drivers/XHCI \
@@ -275,9 +276,13 @@ $(DEMO_STAMP): FORCE
 	@echo '$(TOY_DEMO_DRIVER)' > $@.new
 	@if [ ! -f $@ ] || ! cmp -s $@.new $@; then mv $@.new $@; else rm -f $@.new; fi
 
-# BringUp：Boot/HAL 交棒后的统一导演（KernelMain / Modules）；非契约圆
+# BringUp：启动段（Entry/Handoff 分 arch + KernelMain/Modules 合流）；非契约圆
 BRINGUP_SRCS  := $(wildcard BringUp/*.c)
 BRINGUP_OBJS  := $(patsubst BringUp/%.c,$(BUILDDIR)/BringUp/%.o,$(BRINGUP_SRCS))
+BRINGUP_ARCH_SRCS := $(wildcard BringUp/$(HAL_ARCH)/*.c)
+BRINGUP_ARCH_ASM  := $(wildcard BringUp/$(HAL_ARCH)/*.S)
+BRINGUP_ARCH_OBJS := $(patsubst BringUp/$(HAL_ARCH)/%.c,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_SRCS)) \
+                     $(patsubst BringUp/$(HAL_ARCH)/%.S,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_ASM))
 # Core：内核机制；薄 Initialize* 在 HAL/Init 与 Services（见下）
 CORE_SRCS     := $(wildcard Core/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
@@ -547,14 +552,14 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
-# PR-A6：KernelEntry.S + KernelHandoff.c + HalSerial + Hal（Halt），不链 Common
+# PR-A6：BringUp Entry/Handoff + HalSerial + Hal（Halt），不链 Common
 # PR-B2：仍链 Board.o（横幅 BoardName；HalSerial 用 BoardConfig）
-OBJS = $(HALDIR)/KernelEntry.o \
-       $(HALDIR)/KernelHandoff.o \
+OBJS = $(BUILDDIR)/BringUp/$(HAL_ARCH)/KernelEntry.o \
+       $(BUILDDIR)/BringUp/$(HAL_ARCH)/KernelHandoff.o \
        $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/%.c,$(HALDIR)/Hal/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial.c)) \
        $(HALDIR)/Hal/Hal.o \
@@ -665,6 +670,12 @@ endif
 
 $(BUILDDIR)/BringUp/%.o: BringUp/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o: BringUp/$(HAL_ARCH)/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
+$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o: BringUp/$(HAL_ARCH)/%.S | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) $(ASFLAGS_ARCH) -c $< -o $@
 
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@

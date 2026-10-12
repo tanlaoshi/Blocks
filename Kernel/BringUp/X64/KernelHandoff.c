@@ -1,9 +1,8 @@
 /*
- * KernelHandoff.c — X64：UEFI_BOOT_CONFIG → BOOT_INFO → KernelMain
+ * KernelHandoff.c — BringUp/X64：UEFI_BOOT_CONFIG → BOOT_INFO → KernelMain
  *
- * 原 Startup.c 的 C 半截；入口栈切换在 KernelEntry.S。
- * BootInfoSet + KernelMain()；高于 IDENTITY_BYTES 的 Loader/BS 页记账。
- * 交接包在本目录 UefiBootConfig.h，与 Boot/BootPkg/UefiBootConfig.h 内容相同。OsIdSeen 暂不写入 BOOT_INFO。
+ * 入口栈切换在同目录 KernelEntry.S；本文件只译包并交棒 BringUp/KernelMain。
+ * 交接包 UefiBootConfig.h 与 Boot/BootPkg/ 那份内容相同。
  */
 #include "UefiBootConfig.h"
 #include "BootInfo.h"

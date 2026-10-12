@@ -22,7 +22,7 @@
 ./run-virt-arm.sh --headless
 ```
 
-入口：`KernelEntry.S` → `KernelHandoff`；DTB → `BOOT_INFO` → `KernelMain`。
+入口：`BringUp/Arm64/KernelEntry.S` → `KernelHandoff`；DTB → `BOOT_INFO` → `BringUp/KernelMain`。
 
 ---
 

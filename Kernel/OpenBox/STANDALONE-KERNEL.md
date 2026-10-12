@@ -25,7 +25,7 @@ cd /path/to/ToyKernel          # 例如 $TOYOS_ROOT/ToyKernel 或任意拷贝
 | `BOOTX64.EFI` | `$TOYOS_ROOT/ToyBoot` + `$TOYOS_ROOT/EDK2` | BOX-6；加载 Kernel |
 | RootFs / QEMU | `$TOYOS_ROOT/ToyImage` | 把 `Kernel.elf` 放进 `RootFs/X64/` 后 `smoke` |
 
-X64 交接包是两份内容相同的 `UefiBootConfig.h`：`Boot/BootPkg/` 与 `HAL/X64/`。内核编译包含自己这份，不 `#include` Boot 树，才能单独编出 `Kernel.elf`。`BOOT_INFO` 仍是内核自己的、给 `KernelMain` 用的结构。
+X64 交接包是两份内容相同的 `UefiBootConfig.h`：`Boot/BootPkg/` 与 `BringUp/X64/`。内核编译包含自己这份，不 `#include` Boot 树，才能单独编出 `Kernel.elf`。`BOOT_INFO` 仍是内核自己的、给 `KernelMain` 用的结构。
 
 ## 自检（曾用）
 

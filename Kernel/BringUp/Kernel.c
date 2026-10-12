@@ -1,7 +1,7 @@
 /*
  * Kernel.c — BringUp：三架构合流后的统一入口（KernelMain）
  *
- * HAL/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
+ * BringUp/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
  * 选路 → ModulesRun → 拉起 shell/gui/worker → SchedulerStart。
  *
  * 从哪读：KernelMain → Virt / VirtDesktop / Full → KernelMainCommon。

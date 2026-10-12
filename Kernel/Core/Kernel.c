@@ -23,6 +23,8 @@
 #include "Console.h"
 #include "Font.h"
 #include "Theme.h"
+#include "Elf.h"
+#include "LibWrite.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include "EarlyIdentity.h"
@@ -95,11 +97,17 @@ static void KernelLogFrameBufferSize(const BOOT_INFO *Info) {
  * 尽早挂串口和帧缓冲：后面模块 ConsoleWrite 若 Width=0 会空转。
  * 有 FB 则开 GOP 镜像（接 ToyBoot 黑底，禁止再全屏 Clear）。
  */
+static ELF_RELOC_KIND KernelElfRelocKind(UINT32 Type) {
+    return (ELF_RELOC_KIND)HalElfRelocKind(Type);
+}
+
 static void KernelAttachEarlyVideo(void) {
     const BOOT_INFO *Info = BootInfoGet();
     VIDEO_CONFIG Video = BootInfoToVideoConfig(Info);
 
     HalSerialInitialize();
+    LibWriteRegister(HalSerialWrite);
+    ElfArchRegister(HalElfMachine(), KernelElfRelocKind, HalSyncICache, HalUserSoBase());
     HalVideoSet(&Video);
     if (Info && Info->FrameBufferSize != 0) {
         FontInitialize();

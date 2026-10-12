@@ -2,7 +2,6 @@
  * ElfReloc.c — PR-S3-elf-1：RELA / JMPREL 重定位
  */
 #include "ElfPrivate.h"
-#include "Hal.h"
 #include "ToySerialLog.h"
 
 static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
@@ -91,15 +90,15 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
         Dest = R->r_offset + Bias;
 
         {
-            HAL_ELF_RELOC_KIND Kind = HalElfRelocKind(Type);
+            ELF_RELOC_KIND Kind = ElfArchRelocKind(Type);
 
             switch (Kind) {
-            case HAL_ELF_RELOC_RELATIVE:
+            case ELF_RELOC_RELATIVE:
                 Value = Bias + (UINT64)R->r_addend;
                 break;
-            case HAL_ELF_RELOC_JUMP_SLOT:
-            case HAL_ELF_RELOC_GLOB_DAT:
-            case HAL_ELF_RELOC_ABS64:
+            case ELF_RELOC_JUMP_SLOT:
+            case ELF_RELOC_GLOB_DAT:
+            case ELF_RELOC_ABS64:
                 if (!HaveSym) {
                     ToyLogMem("elf: reloc needs symtab\n");
                     return -1;
@@ -120,12 +119,12 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
                         ToyLogMem("\n");
                         return -1;
                     }
-                    if (Kind == HAL_ELF_RELOC_ABS64) {
+                    if (Kind == ELF_RELOC_ABS64) {
                         Value += (UINT64)R->r_addend;
                     }
                 }
                 break;
-            case HAL_ELF_RELOC_COPY:
+            case ELF_RELOC_COPY:
                 ToyLogMem("elf: COPY reloc unsupported\n");
                 return -1;
             default:

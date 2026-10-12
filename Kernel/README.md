@@ -14,6 +14,8 @@ User/       # 原 CodeE-User
 
 `Core/` 内：`Kernel.c` 编织三路；`Modules.c` 开机表（与 Kernel.c 同级）；子目录与模块表对齐（`Serial/`、`Scheduler/`…）；策略在对应夹内（如 `Scheduler/SchedulerRoundRobin.c`、`FileSystem/Fat/`）。
 
+`Library/` 纯化：禁止 `#include Hal*`（`make check-library-pure`）。UI 在 `Services/Ui/`，驱动框架在 `Core/Driver/`，TTF 栅格在 `Services/Fonts/`。
+
 ## 编译
 
 ```bash

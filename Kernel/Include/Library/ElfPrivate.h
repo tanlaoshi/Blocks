@@ -11,6 +11,7 @@
 void ElfZeroMemory(void *Ptr, UINTN Size);
 int ElfStrEq(const char *A, const char *B);
 int ElfHeaderOk(const Elf64_Ehdr *Hdr, UINTN Size, UINT16 WantType);
+ELF_RELOC_KIND ElfArchRelocKind(UINT32 Type);
 UINT64 ElfAlignUp(UINT64 Value, UINT64 Align);
 int ElfMapSegment(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Image,
                   const Elf64_Phdr *Ph, UINT64 Bias);

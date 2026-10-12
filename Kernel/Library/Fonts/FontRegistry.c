@@ -12,7 +12,7 @@
 #include "FileSystem.h"
 #include "Fat.h"
 #include "PhysicalMemory.h"
-#include "HalConsole.h"
+#include "LibWrite.h"
 #include "ToySerialLog.h"
 
 #define FONT_TOYF_MAGIC   0x46594F54u /* 'TOYF' LE */
@@ -293,9 +293,9 @@ int FontLoadAssets(void) {
     if (Slot < FONT_APP_SLOT &&
         TryLoadPath("Assets/Fonts/VGA8X16.FNT", &gRuntime[Slot]) == 0) {
         if (FaceNameRegistered(gRuntime[Slot].Name, &gRuntime[Slot])) {
-            HalConsoleWriteSerial("Font: skip duplicate name ");
-            HalConsoleWriteSerial(gRuntime[Slot].Name);
-            HalConsoleWriteSerial(" (VGA8X16.FNT)\n");
+            LibWrite("Font: skip duplicate name ");
+            LibWrite(gRuntime[Slot].Name);
+            LibWrite(" (VGA8X16.FNT)\n");
             FreeRuntimeSlot(&gRuntime[Slot]);
         } else {
             {
@@ -364,11 +364,11 @@ int FontLoadAssets(void) {
                 continue;
             }
             if (FaceNameRegistered(gRuntime[Slot].Name, &gRuntime[Slot])) {
-                HalConsoleWriteSerial("Font: skip duplicate name ");
-                HalConsoleWriteSerial(gRuntime[Slot].Name);
-                HalConsoleWriteSerial(" (");
-                HalConsoleWriteSerial(Ents[i].Name);
-                HalConsoleWriteSerial(")\n");
+                LibWrite("Font: skip duplicate name ");
+                LibWrite(gRuntime[Slot].Name);
+                LibWrite(" (");
+                LibWrite(Ents[i].Name);
+                LibWrite(")\n");
                 FreeRuntimeSlot(&gRuntime[Slot]);
                 continue;
             }
@@ -388,7 +388,7 @@ int FontLoadAssets(void) {
 
     RebuildFontTable();
     if (!Any) {
-        HalConsoleWriteSerial("Font: using built-in faces (no Assets/Fonts TOYF)\n");
+        LibWrite("Font: using built-in faces (no Assets/Fonts TOYF)\n");
     }
     return Any ? 0 : -1;
 }

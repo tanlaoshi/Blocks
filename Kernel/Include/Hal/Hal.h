@@ -159,7 +159,10 @@ int HalPageUnmapRange(UINT64 Root, UINT64 Start, UINT64 End);
 UINT64 HalPageGetEntry(UINT64 Root, UINT64 Virt);
 UINT64 HalPageGetEntryCurrent(UINT64 Virt);
 
-/* PR-A4：ELF 机器号与重定位分类（Common 不写死 EM_X86_64 / R_X86_64_*） */
+/*
+ * PR-A4：ELF 机器号与重定位分类（供 Core ElfArchRegister；Library 不调此处）。
+ * 枚举值须与 Include/Library/Elf.h 的 ELF_RELOC_* 一致。
+ */
 UINT16 HalElfMachine(void);
 
 typedef enum {

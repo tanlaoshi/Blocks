@@ -1,11 +1,38 @@
 /*
  * Elf.c — PR-S3-elf-1：ELF64 公共帮手（头校验 / PT_LOAD 映射 / 动态段）
  *
- * Load / Reloc / So 见同目录其它文件。
+ * Load / Reloc / So 见同目录其它文件。架构相关经 ElfArchRegister，不 #include Hal。
  */
 #include "ElfPrivate.h"
 #include "PhysicalMemory.h"
-#include "Hal.h"
+
+static UINT16 gElfMachine;
+static ELF_RELOC_KIND_FN gElfRelocKind;
+static ELF_SYNC_ICACHE_FN gElfSyncICache;
+static UINT64 gElfSoBase;
+
+void ElfArchRegister(UINT16 Machine, ELF_RELOC_KIND_FN RelocKind,
+                     ELF_SYNC_ICACHE_FN SyncICache, UINT64 SoBase) {
+    gElfMachine = Machine;
+    gElfRelocKind = RelocKind;
+    gElfSyncICache = SyncICache;
+    gElfSoBase = SoBase;
+}
+
+UINT16 ElfArchMachine(void) {
+    return gElfMachine;
+}
+
+UINT64 ElfUserSoBase(void) {
+    return gElfSoBase;
+}
+
+ELF_RELOC_KIND ElfArchRelocKind(UINT32 Type) {
+    if (!gElfRelocKind) {
+        return ELF_RELOC_UNSUPPORTED;
+    }
+    return gElfRelocKind(Type);
+}
 
 void ElfZeroMemory(void *Ptr, UINTN Size) {
     UINT8 *B = (UINT8 *)Ptr;
@@ -35,7 +62,7 @@ int ElfHeaderOk(const Elf64_Ehdr *Hdr, UINTN Size, UINT16 WantType) {
     if (Hdr->e_ident[4] != ELFCLASS64 || Hdr->e_ident[5] != ELFDATA2LSB) {
         return 0;
     }
-    if (Hdr->e_type != WantType || Hdr->e_machine != HalElfMachine()) {
+    if (Hdr->e_type != WantType || Hdr->e_machine != ElfArchMachine()) {
         return 0;
     }
     if (Hdr->e_phentsize != sizeof(Elf64_Phdr)) {
@@ -88,7 +115,9 @@ int ElfMapSegment(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Image,
             return -1;
         }
         /* Arm/RiscV：可执行映像经 D-cache 写入后须刷 I-cache（PR-A12） */
-        HalSyncICache(Page, PAGE_SIZE);
+        if (gElfSyncICache) {
+            gElfSyncICache(Page, PAGE_SIZE);
+        }
     }
     return 0;
 }

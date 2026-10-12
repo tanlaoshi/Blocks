@@ -9,7 +9,6 @@
 #define ELFDATA2LSB 1
 #define ET_EXEC     2
 #define ET_DYN      3
-/* e_machine / R_* 按 arch：见 HalElfMachine / HalElfRelocKind（PR-A4） */
 #define PT_LOAD     1
 #define PT_DYNAMIC  2
 #define PT_INTERP   3
@@ -40,8 +39,28 @@
 #define ELF_R_SYM(I)  ((I) >> 32)
 #define ELF_R_TYPE(I) ((UINT32)(I))
 
-/* 共享库基址：HalUserSoBase()（x86 仍 0x40080000；virt 见 PR-A11） */
-#define USER_SO_BASE   HalUserSoBase()
+/*
+ * 架构相关：由 Core 在开机时 ElfArchRegister（勿在 Library 内调 Hal*）。
+ * 共享库基址曾用 HalUserSoBase()；现经注册表。
+ */
+typedef enum {
+    ELF_RELOC_UNSUPPORTED = 0,
+    ELF_RELOC_RELATIVE,
+    ELF_RELOC_ABS64,
+    ELF_RELOC_GLOB_DAT,
+    ELF_RELOC_JUMP_SLOT,
+    ELF_RELOC_COPY
+} ELF_RELOC_KIND;
+
+typedef ELF_RELOC_KIND (*ELF_RELOC_KIND_FN)(UINT32 Type);
+typedef void (*ELF_SYNC_ICACHE_FN)(void *Addr, UINTN Size);
+
+void ElfArchRegister(UINT16 Machine, ELF_RELOC_KIND_FN RelocKind,
+                     ELF_SYNC_ICACHE_FN SyncICache, UINT64 SoBase);
+UINT16 ElfArchMachine(void);
+UINT64 ElfUserSoBase(void);
+
+#define USER_SO_BASE   ElfUserSoBase()
 #define USER_SO_STRIDE 0x20000ULL
 #define ELF_MAX_NEEDED 4
 #define ELF_MAX_SO     4

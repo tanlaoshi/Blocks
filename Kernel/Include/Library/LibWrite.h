@@ -1,8 +1,7 @@
 /*
- * LibWrite.h — PR-R4：Library 文本输出槽（不 #include Console）
+ * LibWrite.h — Library 文本输出槽（不 #include Console / Hal）
  *
- * ConsoleInitialize 注册 ConsoleWrite，供 Fat/Res ListDir 等用户可见列举。
- * 未注册时回退 HalDebugWrite（仅串口）。
+ * Serial 或 ConsoleInitialize 注册写函数；未注册则 LibWrite 空操作。
  */
 #ifndef LIB_WRITE_H
 #define LIB_WRITE_H

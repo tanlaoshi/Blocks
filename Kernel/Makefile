@@ -325,10 +325,11 @@ SERVICES_SRCS += $(wildcard Services/LwIp/*.c)
 SERVICES_SRCS += $(wildcard Services/GuiCompose/*.c)
 SERVICES_SRCS += $(wildcard Services/GuiCursor/*.c)
 SERVICES_SRCS += $(wildcard Services/GuiWm/*.c)
+SERVICES_SRCS += $(wildcard Services/Ui/*.c)
+SERVICES_SRCS += $(wildcard Services/Fonts/*.c)
 LIB_SRCS      := $(wildcard Library/*.c)
 LIB_SRCS      += $(wildcard Library/Gpt/*.c)
 LIB_SRCS      += $(wildcard Library/Elf/*.c)
-LIB_SRCS      += $(wildcard Library/UI/*.c)
 FONT_SRCS     := $(wildcard Library/Fonts/*.c)
 DRIVER_SRCS   := $(wildcard HAL/$(HAL_ARCH)/Drivers/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/*.c)
@@ -565,8 +566,10 @@ endif
 # 汇编用同一 TOY_BRINGUP（KernelEntry → KernelHandoff）
 ASFLAGS_ARCH = -DTOY_BRINGUP=$(BRINGUP)
 
-.PHONY: all clean boards kernel-bin runtests runtests-memory runtests-fs scheduler
+.PHONY: all clean boards kernel-bin runtests runtests-memory runtests-fs scheduler check-library-pure
 .DEFAULT_GOAL := all
+
+all: check-library-pure
 
 HOSTCC ?= gcc
 TEST_CFLAGS = -std=c11 -Wall -Wextra -DTOY_SCHED_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
@@ -664,21 +667,29 @@ endif
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
-$(BUILDDIR)/Services/%.o: Services/%.c | $(BUILDDIR)
-	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
-
-$(BUILDDIR)/Library/%.o: Library/%.c | $(BUILDDIR)
-	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
-
-$(BUILDDIR)/Library/Fonts/FontTtfRaster.o: Library/Fonts/FontTtfRaster.c | $(BUILDDIR)
+# 须先于通用 Services/%.o，保证 CFLAGS_FPU
+$(BUILDDIR)/Services/Fonts/FontTtfRaster.o: Services/Fonts/FontTtfRaster.c | $(BUILDDIR)
 ifeq ($(ARCH),x86_64)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -Wno-unused-parameter -c $< -o $@
 else
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 endif
 
+$(BUILDDIR)/Services/%.o: Services/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+$(BUILDDIR)/Library/%.o: Library/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
 $(BUILDDIR)/Library/Fonts/%.o: Library/Fonts/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+# Library 去 Hal 门禁（纯化后勿再引入）
+check-library-pure:
+	@if rg -n '#include[[:space:]]+"Hal|"Hal[A-Z]' Library/ --glob '*.{c,h}' ; then \
+		echo 'error: Library must not reference Hal*' >&2; exit 1; \
+	fi
+	@echo 'Library Hal-pure OK'
 
 $(HALDIR)/Drivers/%.o: HAL/$(HAL_ARCH)/Drivers/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@

@@ -1,5 +1,5 @@
 /*
- * BootTypes.h — Boot↔Kernel 交接用基础类型（Boot 柱自备，不依赖 Kernel/）
+ * BootTypes.h — 架构无关的基础类型（无 UEFI / 平台语义）
  */
 #ifndef BOOT_TYPES_H
 #define BOOT_TYPES_H

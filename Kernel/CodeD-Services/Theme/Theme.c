@@ -1,0 +1,299 @@
+/*
+ * Theme.c — 主题状态、getter/setter、Apply
+ * 热切：ThemeLive.c；解析：ThemeParse.c；CFG/Load：ThemeCfg.c；Save：ThemeSave.c。
+ */
+#include "Theme.h"
+#include "ThemePrivate.h"
+#include "HalVideo.h"
+
+static void SyncFontSmooth(void);
+UINT32 gDesktopBg = COLOR_GRAY; /* 出厂经典纯色灰；Settings 可选 modern/tech */
+UINT32 gShellClientBg = COLOR_LIGHT_GRAY;
+UINT32 gFontId;
+UINT32 gModeW;
+UINT32 gModeH;
+UINT32 gThemeUiScale = 100; /* 50 / 100 / 150 / 200 */
+UINT32 gFadeSteps = 6;      /* PR-GUI-l3-fade；0=关 */
+THEME_EFFECT_LEVEL gEffectLevel = THEME_EFFECT_LOW; /* PR-GUI-effects；课验默认 low */
+int gWallpaper = 0;         /* 经典默认关壁纸；modern 切主题时开 */
+int gThemeId = THEME_PALETTE_DEFAULT;
+int gDesktopGrad = 0;       /* tech 对角渐变；默认关 */
+int gScalePrefSet = 0;      /* DB/CFG 是否写过 scale= */
+int gScaleUserSet = 0;      /* Settings 显式选过缩放 */
+int gWallpaperPrefSet = 0;  /* DB/CFG 是否写过 wallpaper= */
+
+void ThemeInitialize(void) {
+    gFontId = 2; /* Terminus 10x18；ThemeLoad 后再选 Sun */
+    gModeW = 0;
+    gModeH = 0;
+    gThemeUiScale = 100;
+    gFadeSteps = 6;
+    gEffectLevel = THEME_EFFECT_LOW;
+    gDesktopBg = COLOR_GRAY;
+    gShellClientBg = COLOR_LIGHT_GRAY;
+    gWallpaper = 0;
+    gThemeId = THEME_PALETTE_DEFAULT;
+    gDesktopGrad = 0;
+    gScalePrefSet = 0;
+    gScaleUserSet = 0;
+    gWallpaperPrefSet = 0;
+    /* boot GOP 镜像勿套桌面字；进调度前再 FontSetById(ThemeFontId()) */
+    if (HalSerialGopMirroring()) {
+        HalSerialBootFontApply();
+    } else {
+        (void)FontSetById(gFontId);
+    }
+    SyncFontSmooth();
+}
+
+UINT32 ThemeDesktopBackground(void) {
+    return gDesktopBg;
+}
+
+int ThemeWallpaperEnabled(void) {
+    return gWallpaper != 0;
+}
+
+void ThemeSetWallpaper(int Enabled) {
+    gWallpaper = Enabled ? 1 : 0;
+    if (gWallpaper) {
+        gDesktopGrad = 0; /* 壁纸优先于 tech 渐变 */
+    }
+}
+
+int ThemeThemeId(void) {
+    return gThemeId;
+}
+
+void ThemeSetThemeId(int Id) {
+    if (Id != THEME_PALETTE_TECH && Id != THEME_PALETTE_MODERN) {
+        Id = THEME_PALETTE_DEFAULT;
+    }
+    gThemeId = Id;
+    if (Id == THEME_PALETTE_TECH) {
+        ThemeTechApplyDefaults();
+    } else if (Id == THEME_PALETTE_MODERN) {
+        ThemeModernApplyDefaults();
+    } else {
+        gDesktopBg = COLOR_GRAY;
+        gShellClientBg = COLOR_LIGHT_GRAY;
+        gWallpaper = 0;
+        gDesktopGrad = 0;
+    }
+}
+
+int ThemeDesktopGradientEnabled(void) {
+    return (gThemeId == THEME_PALETTE_TECH && gDesktopGrad != 0) ? 1 : 0;
+}
+
+void ThemeSetDesktopGradient(int Enabled) {
+    gDesktopGrad = Enabled ? 1 : 0;
+    if (gDesktopGrad && gThemeId != THEME_PALETTE_TECH) {
+        gDesktopGrad = 0;
+    }
+}
+
+UINT32 ThemeShellClientBackground(void) {
+    return gShellClientBg;
+}
+
+UINT32 ThemeFontId(void) {
+    return gFontId;
+}
+
+UINT32 ThemeClientPadding(void) {
+    return 8u; /* 与 GUI_CLIENT_PAD 对齐 */
+}
+
+UINT8 ThemeTaskbarAlpha(void) {
+    return 200u; /* ~78%：壁纸隐约透出 */
+}
+
+UINT8 ThemeMenuPanelAlpha(void) {
+    /* 不透明：半透会叠进窗备份 → 关菜单后「烙印」 */
+    return 255u;
+}
+
+UINT32 ThemeWindowShadowSize(void) {
+    return 6u; /* 窗外 N 像素 */
+}
+
+UINT8 ThemeWindowShadowMaxAlpha(void) {
+    return 128u; /* 贴边约 50%，外缘收到 0 */
+}
+
+UINT32 ThemeWindowTitleGradientBottom(UINT32 Top) {
+    /* modern：顶底同色；经典/tech：向黑插值约 60% */
+    if (gThemeId == THEME_PALETTE_MODERN) {
+        return Top;
+    }
+    return UiBlendRgb(COLOR_BLACK, Top, 153u);
+}
+
+UINT32 ThemeWindowFadeSteps(void) {
+    return gFadeSteps;
+}
+
+void ThemeSetWindowFadeSteps(UINT32 Steps) {
+    if (Steps > 16u) {
+        Steps = 16u;
+    }
+    gFadeSteps = Steps;
+}
+
+THEME_EFFECT_LEVEL ThemeGetEffectLevel(void) {
+    return gEffectLevel;
+}
+
+void ThemeSetEffectLevel(THEME_EFFECT_LEVEL Level) {
+    if ((int)Level < (int)THEME_EFFECT_MINIMAL ||
+        (int)Level > (int)THEME_EFFECT_HIGH) {
+        Level = THEME_EFFECT_HIGH;
+    }
+    gEffectLevel = Level;
+    SyncFontSmooth();
+}
+
+int ThemeIsShadowEnabled(void) {
+    return (gEffectLevel >= THEME_EFFECT_HIGH) ? 1 : 0;
+}
+
+int ThemeIsFadeEnabled(void) {
+    /* high 才允许淡入；fade=0 仍可单独关掉 */
+    return (gEffectLevel >= THEME_EFFECT_HIGH && gFadeSteps > 0u) ? 1 : 0;
+}
+
+int ThemeIsAlphaEnabled(void) {
+    return (gEffectLevel >= THEME_EFFECT_MEDIUM) ? 1 : 0;
+}
+
+int ThemeIsGradientEnabled(void) {
+    return (gEffectLevel >= THEME_EFFECT_MEDIUM) ? 1 : 0;
+}
+
+int ThemeIsFontSmoothEnabled(void) {
+    return (gEffectLevel >= THEME_EFFECT_MEDIUM) ? 1 : 0;
+}
+
+static void SyncFontSmooth(void) {
+    HalVideoSetGlyphSmooth(ThemeIsFontSmoothEnabled());
+}
+
+const char *ThemeEffectLevelName(THEME_EFFECT_LEVEL Level) {
+    switch (Level) {
+    case THEME_EFFECT_MINIMAL:
+        return "minimal";
+    case THEME_EFFECT_LOW:
+        return "low";
+    case THEME_EFFECT_MEDIUM:
+        return "medium";
+    case THEME_EFFECT_HIGH:
+    default:
+        return "high";
+    }
+}
+
+/* 优先 Sun 8x16，其次 Terminus 10x18；避免默认 16×32 */
+UINT32 ThemeCompactFontId(void) {
+    UINT32 i;
+    const FONT_FACE *F;
+    UINT32 Fallback = 2;
+
+    if (FontCount() == 0) {
+        return 0;
+    }
+    if (Fallback >= FontCount()) {
+        Fallback = FontCount() - 1;
+    }
+    for (i = 0; i < FontCount(); i++) {
+        F = FontGetById(i);
+        if (!F || !F->Name) {
+            continue;
+        }
+        if (F->Width <= 8 && F->Height <= 16) {
+            return i; /* Sun 8x16 等 */
+        }
+    }
+    for (i = 0; i < FontCount(); i++) {
+        F = FontGetById(i);
+        if (!F || !F->Name) {
+            continue;
+        }
+        if (F->Width <= 10 && F->Height <= 18) {
+            return i;
+        }
+    }
+    return Fallback;
+}
+
+UINT32 ThemeDisplayWidth(void) {
+    return gModeW;
+}
+
+UINT32 ThemeDisplayHeight(void) {
+    return gModeH;
+}
+
+int ThemeHasDisplayPref(void) {
+    return gModeW >= 640 && gModeH >= 480;
+}
+
+void ThemeSetDisplayMode(UINT32 Width, UINT32 Height) {
+    gModeW = Width;
+    gModeH = Height;
+}
+
+void ThemeClearDisplayMode(void) {
+    gModeW = 0;
+    gModeH = 0;
+}
+
+UINT32 ThemeUiScale(void) {
+    return NormalizeUiScale(gThemeUiScale);
+}
+
+void ThemeSetUiScale(UINT32 Percent) {
+    gThemeUiScale = NormalizeUiScale(Percent);
+}
+
+void ThemeSetDesktopBackground(UINT32 Color) {
+    gDesktopBg = Color;
+}
+
+void ThemeSetShellClientBackground(UINT32 Color) {
+    gShellClientBg = Color;
+}
+
+int ThemeSetFontId(UINT32 Id) {
+    UINT32 Prev = gFontId;
+
+    if (FontSetById(Id) != 0) {
+        (void)FontSetById(Prev);
+        return -1;
+    }
+    gFontId = Id;
+    return 0;
+}
+
+void ThemeApply(void) {
+    if (gFontId >= FontCount()) {
+        gFontId = FontCurrentId() < FontCount() ? FontCurrentId() : 0;
+    }
+    if (FontSetById(gFontId) != 0) {
+        gFontId = 0;
+        (void)FontSetById(0);
+    }
+    SyncFontSmooth();
+    GuiApplyThemeColors();
+    /* PR-G8：属性已更新 → 一次自下而上合成 → 备份；勿 GuiRedraw+Raise 多遍 */
+    GuiComposeThemeScene();
+    (void)ThemeSave();
+}
+
+/* FontReloadAssets 后：偏好 id 失效则改选紧凑字体（Sun 8x16 / 10x18），勿掉到 16×32 */
+void ThemeClampFontId(void) {
+    if (gFontId >= FontCount() || FontSetById(gFontId) != 0) {
+        gFontId = ThemeCompactFontId();
+        (void)FontSetById(gFontId);
+    }
+}

@@ -1,0 +1,292 @@
+/*
+ * XhciIrq.c — PR-H-xhci-split-8：IRQ / Drain / dual-poll 切换
+ * PR-H-xhci-evt-excl-2：环消费走 gEvtConsumerLock；HID 入队另持 gHidQueueLock
+ */
+#include "XHCI/XhciInternal.h"
+
+/* PR-S-input-irq：xHCI IRQ dest 逻辑核。SMP≥3→CPU2（与 InputTask 同核）；
+ * SMP<3→CPU0（无 InputTask，保持原行为）。序 2 cli 守 drain 期 IF=0，
+ * MSI 不会在持 gEvtConsumerLock 时投递 → 无 ISR/任务死锁。 */
+static UINT8 XhciInputIrqCpu(void) {
+    return (HalCpuCount() > 2) ? 2u : 0u;
+}
+
+/* 清除中断管理器挂起位 */
+void ImClearPending(void) {
+    UINT32 Im = ReadMmio32(gRuntimeBase + 0x20);
+    WriteMmio32(gRuntimeBase + 0x20, Im | 1u);
+}
+
+/* XHCI MSI-X/MSI 中断：事件处理；真机走 RealPc 路径（粘 EINT/CCS） */
+void XhciIrq(void) {
+    int RealPc = !HalCpuIsHypervisor();
+
+    gStatIrq++;
+    /*
+     * 独占窗：并发 ProcessEvents 会弄乱 CCS/ERDP，
+     * EnableSlot 完成事件被吃掉 → done=0 → CA → cmd sick → 鼠假死。
+     */
+    if (XhciEventIsExclusive() || gXhciCmdWaiting) {
+        gStatIrqSkipped++;
+        if (gRuntimeBase != 0) {
+            ImClearPending();
+        }
+        return;
+    }
+    /* 环推进：ProcessEvents* 自带 gEvtConsumerLock；勿同持 gHidQueueLock */
+    if (RealPc) {
+        ProcessEventsRealPc();
+    } else {
+        ProcessEvents();
+    }
+    SpinLockAcquire(&gHidQueueLock);
+    ServiceHidCompletions();
+    SpinLockRelease(&gHidQueueLock);
+    if (gRuntimeBase != 0) {
+        ImClearPending();
+    }
+}
+
+/* 开 USBCMD.INTE + IMAN.IE（真机 Start 故意只置了 RS） */
+void EnableHostInterrupts(void) {
+    UINT32 Cmd;
+
+    if (gOperationalBase != 0) {
+        Cmd = ReadMmio32(gOperationalBase);
+        WriteMmio32(gOperationalBase, Cmd | USBCMD_RS | USBCMD_INTE);
+    }
+    if (gRuntimeBase != 0) {
+        WriteMmio32(gRuntimeBase + 0x20, 3u); /* IE | IP(W1C) */
+    }
+}
+
+/*
+ * 排空事件环。
+ * POLL / DUAL：盲 ProcessEvents×32（backup；真机 dual 时 q=0 也靠这条活）。
+ * IRQ（PR-H-xhci-irq）：减为 ×1 + 门铃轻推；长时间无新 IRQ → FallbackToPoll。
+ */
+void XhciDrainEvents(void) {
+    int i;
+    int RealPc = !HalCpuIsHypervisor();
+    int Passes = 32;
+    static UINT32 sLastIrq;
+    static UINT32 sIrqStall;
+
+    gStatDrain++;
+
+    /* 独占窗：勿与 Drain 并发 ProcessEvents（CCS 竞态） */
+    if (XhciEventIsExclusive() || gXhciCmdWaiting) {
+        sIrqStall = 0;
+        return;
+    }
+
+    /* PR-H-xhci-irq：有 IRQ 证据才维持轻量 Drain；停滞则回 poll */
+    if (gIrqMode == XHCI_IRQ_MODE_IRQ) {
+        if (gStatIrq != sLastIrq) {
+            sLastIrq = gStatIrq;
+            sIrqStall = 0;
+        } else if (++sIrqStall > 200000u) {
+            /*
+             * Drain×1 常清 IP → q 可不涨，但仍在 ProcessEvents。
+             * 环仍前进则复位计数，避免 excl-3 真机误 fallback irq-stall。
+             */
+            static UINT32 sLastEvt;
+            if (gStatEvtRing != sLastEvt) {
+                sLastEvt = gStatEvtRing;
+                sIrqStall = 0;
+            } else {
+                sIrqStall = 0;
+                XhciFallbackToPoll("irq-stall");
+            }
+        } else {
+            Passes = 1; /* 减 poll */
+        }
+    } else if (gIrqMode == XHCI_IRQ_MODE_DUAL) {
+        /*
+         * QEMU 亦永留 dual：exec 用户 ELF 后 qemu-xhci MSI 常停 → irq-stall，
+         * 200000 drain 阈值期间 Passes=1 无备份，鼠标假死。dual 的 Drain×32
+         * 备份足以兜底，且 QEMU 无真机省电诉求。真机本就永留 dual（见上注释）。
+         */
+        (void)gStatIrq;
+    }
+
+    /*
+     * excl-2：每轮先 ProcessEvents*（gEvtConsumerLock），再 HID 入队（gHidQueueLock）。
+     * 两锁不同时持有；禁止持 HID 锁调 ProcessEvents / ControlXfer。
+     */
+    for (i = 0; i < Passes; i++) {
+        if (RealPc) {
+            ProcessEventsRealPc();
+        } else {
+            ProcessEvents();
+        }
+        SpinLockAcquire(&gHidQueueLock);
+        ServiceHidCompletions();
+        SpinLockRelease(&gHidQueueLock);
+    }
+    /* PHOTO：门铃轻推即可，勿走 EP0 兜底 */
+    if (RealPc) {
+        if (gSlotId != 0 && gIntrDci != 0 && (gStatDrain & 0xFu) == 0) {
+            RingDoorbell(gSlotId, gIntrDci);
+        }
+        if (gMouseSlotId != 0 && gMouseIntrDci != 0 && (gStatDrain & 0x7u) == 0) {
+            RingDoorbell(gMouseSlotId, gMouseIntrDci);
+        }
+    }
+    if (gUseIrq && gRuntimeBase != 0) {
+        ImClearPending();
+    }
+    if (RealPc) {
+        XhciPollKbdGetReport();
+    }
+}
+
+/* dual/irq → 切回 poll 备份（关 host IE；不拆 PCI MSI 表亦可，避免半残状态） */
+void XhciFallbackToPoll(const char *Why) {
+    UINT32 Cmd;
+    char Line[72];
+    int n = 0;
+    const char *P = "Boot: XHCI IRQ=POLL (Fallback)";
+    const char *W = Why;
+
+    gUseIrq = 0;
+    gIrqMode = XHCI_IRQ_MODE_POLL;
+    if (gOperationalBase != 0) {
+        Cmd = ReadMmio32(gOperationalBase);
+        WriteMmio32(gOperationalBase, (Cmd | USBCMD_RS) & ~USBCMD_INTE);
+    }
+    if (gRuntimeBase != 0) {
+        WriteMmio32(gRuntimeBase + 0x20, 0); /* clear IE */
+    }
+    while (*P && n + 1 < (int)sizeof(Line)) {
+        Line[n++] = *P++;
+    }
+    if (W && W[0] && n + 2 < (int)sizeof(Line)) {
+        Line[n++] = ' ';
+        while (*W && n + 1 < (int)sizeof(Line)) {
+            Line[n++] = *W++;
+        }
+    }
+    if (n + 1 < (int)sizeof(Line)) {
+        Line[n++] = '\n';
+    }
+    Line[n] = 0;
+    BootLog(Line); /* 真机 PHOTO 可见；勿只用 ToyLogUsb */
+    XhciDrainEvents();
+}
+
+/*
+ * PR-H-xhci-dual：试 MSI-X/MSI + host IE → DUAL。
+ * Drain 在 DUAL 下仍盲排空（XhciDrainEvents 不看 gUseIrq 关排空）。
+ * 失败由调用方 XhciFallbackToPoll。
+ */
+int XhciTryEnterDual(USB_CONTROLLER *Device) {
+    if (gIrqMode == XHCI_IRQ_MODE_DUAL && gUseIrq) {
+        return 1;
+    }
+    if (!Device) {
+        return 0;
+    }
+    if (!PciEnableMsi(Device, VEC_XHCI, XhciInputIrqCpu())) {
+        return 0;
+    }
+    EnableHostInterrupts();
+    /* 先盲排空再开 gUseIrq，避免半开窗口丢完成 */
+    gUseIrq = 0;
+    XhciDrainEvents();
+    gUseIrq = 1;
+    gIrqMode = XHCI_IRQ_MODE_DUAL;
+    BootLog("Boot: XHCI IRQ=MSI (Dual)\n"); /* PHOTO ring 可抄 */
+    return 1;
+}
+
+XHCI_IRQ_MODE XhciIrqMode(void) {
+    return gIrqMode;
+}
+
+/* PHOTO/Shell：mode=poll|dual|irq + t/i/k/m/u/s/c/r/d/q（q=IRQ 进入次数） */
+
+/* Arm 后打一枪：期望的键鼠 slot/DCI，便于对照 s=. */
+
+/*
+ * QEMU：MSI/IOAPIC → DUAL。真机：试 dual；失败 → poll (fallback)，Drain 永不关。
+ */
+int XhciEnableIrq(USB_CONTROLLER *Device) {
+    UINT8 Dest;
+
+    if (gUseGetReport || (gSlotId == 0 && gMouseSlotId == 0)) {
+        DebugWrite("XHCI: no interrupt EP, IRQ unused\n");
+        gUseIrq = 0;
+        gIrqMode = XHCI_IRQ_MODE_POLL;
+        ToyLogUsb("Boot: XHCI IRQ=None\n");
+        return 0;
+    }
+
+    /* PHOTO / show xhci：Arm 后计数清零 */
+    gStatIntrEvt = 0;
+    gStatMouseEvt = 0;
+    gStatKbdPush = 0;
+    gStatMousePush = 0;
+    gStatXferAny = 0;
+    gStatUnmatched = 0;
+    gStatEvtRing = 0;
+    gStatDrain = 0;
+    gStatLastCc = 0;
+    gStatLastSlot = 0;
+    gStatLastEp = 0;
+    gStatIrq = 0;
+    gStatIrqSkipped = 0;
+    gDiagXferLogged = 0;
+    gDiagIntrCcLogged = 0;
+    XhciDiagLogArms();
+
+    /*
+     * 真机 Arm：只 Queue，勿 Sync（Stop+SetDeq 曾弄死 kbd / PHOTO r=0）。
+     */
+    if (gSlotId != 0 && gIntrDci != 0) {
+        QueueIntr();
+    }
+    if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
+        QueueMouseIntr();
+    }
+    /* Queue 产生的 Stopped 勿计入 PHOTO */
+    gStatIntrEvt = 0;
+    gStatMouseEvt = 0;
+    gStatKbdPush = 0;
+    gStatMousePush = 0;
+    gStatXferAny = 0;
+    gStatUnmatched = 0;
+    gStatEvtRing = 0;
+    gStatDrain = 0;
+    gStatLastCc = 0;
+    gStatLastSlot = 0;
+    gStatLastEp = 0;
+
+    if (XhciTryEnterDual(Device)) {
+        XhciDrainEvents();
+        return 1;
+    }
+
+    /* QEMU：再试 INTx→IOAPIC；真机 dual 失败则纯 poll backup */
+    if (HalCpuIsHypervisor()) {
+        Dest = HalCpuApicId(XhciInputIrqCpu());
+        if (PciEnableIoApicIntx(Device, VEC_XHCI, Dest)) {
+            EnableHostInterrupts();
+            gUseIrq = 0;
+            XhciDrainEvents();
+            gUseIrq = 1;
+            gIrqMode = XHCI_IRQ_MODE_DUAL;
+            ToyLogUsb("Boot: XHCI IRQ=IOAPIC (Dual)\n");
+            return 1;
+        }
+    }
+
+    DebugWrite("XHCI: MSI failed; poll drain backup\n");
+    XhciFallbackToPoll("no-msi");
+    return 0;
+}
+
+/* 返回是否武装了设备中断（DUAL/IRQ）；POLL 时仍靠 Drain */
+int XhciUsesIrq(void) {
+    return gUseIrq != 0;
+}

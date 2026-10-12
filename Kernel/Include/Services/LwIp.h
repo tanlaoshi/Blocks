@@ -1,0 +1,53 @@
+/*
+ * LwIp.h — lwIP 门面（默认 LWIP=1 编译；LWIP=0 时无此实现）
+ */
+#ifndef LWIP_SERVICE_H
+#define LWIP_SERVICE_H
+
+#include "BootTypes.h"
+#include "Udp.h"
+
+int  LwIpInitialize(void);
+/* PR-N-nic-addr：lwIP 已开时按 NetConfig 刷新地址/DNS；未开则 0 */
+int  LwIpApplyConfig(void);
+/* PR-N-nic-dhcp：Shell 只 Enqueue；Worker 调 Step（同 store job） */
+int  LwIpDhcpEnqueue(int TimeoutMs);
+/* 已有任务也停掉再要一次；给换网卡用 */
+int  LwIpDhcpRestart(int TimeoutMs);
+int  LwIpDhcpStep(void);     /* 0=仍忙；1=空闲/本拍结束 */
+int  LwIpDhcpJobBusy(void);
+/* 遗留：等同 Enqueue；勿在 Shell 自旋 */
+int  LwIpDhcpStart(int TimeoutMs);
+void LwIpDhcpStop(void);
+int  LwIpDhcpRunning(void);
+void LwIpPoll(void);
+/* NetPoll + lwIP timers，同一把软锁（NO_SYS；Shell/Worker 可并发调用） */
+void LwIpService(void);
+/* SMP：与 LwIpService / HalNetPoll(lwIP) 同一把锁；持锁期间禁止 Halt */
+void LwIpLock(void);
+void LwIpUnlock(void);
+int  LwIpActive(void);
+int  LwIpPing(UINT32 DstIp, int TimeoutMs);
+int  LwIpTcpListen(UINT16 Port);
+int  LwIpTcpListenStop(void);
+UINT16 LwIpTcpListenPort(void);
+int  LwIpUdpBind(UINT16 Port);
+UINT16 LwIpUdpBoundPort(void);
+int  LwIpUdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len);
+int  LwIpUdpRecv(UDP_DATAGRAM *Out);
+int  LwIpTcpConnectSend(UINT32 DstIp, UINT16 DstPort,
+                        const void *Data, UINTN Len, int TimeoutMs);
+
+/* 用户态 socket 后端（持久 TCP）；无 TOY_LWIP 时返回 -1 */
+int  LwIpSocketCreate(void);
+int  LwIpSocketBind(int Sock, UINT32 Ip, UINT16 Port);
+int  LwIpSocketListen(int Sock, int Backlog);
+int  LwIpSocketAccept(int Sock, int TimeoutMs);
+int  LwIpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort);
+int  LwIpSocketSend(int Sock, const void *Data, UINTN Len);
+int  LwIpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs);
+int  LwIpSocketClose(int Sock);
+/* PR-N-dns：字面量或 DNS A；成功 0；失败负 errno */
+int  LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs);
+
+#endif

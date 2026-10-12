@@ -1,0 +1,135 @@
+/*
+ * ConsolePrivate.h — Console / ConsoleScroll / ConsoleCmd 内部
+ * （仅 Services；User 勿 include）
+ *
+ * PR-S-console-split-1：Scroll；PR-S-console-split-2：Cmd（Register/别名/help）。
+ * 命令表现在 Services/Console/（核心 ConsoleCmd.c）。
+ */
+#ifndef CONSOLE_PRIVATE_H
+#define CONSOLE_PRIVATE_H
+
+#include "BootTypes.h"
+#include "Theme.h"
+
+#define SB_LINES 64
+#define SB_COLS  120
+
+#define LINE_MAX 128
+#define ARG_MAX  8
+/* builtins+Shell+FS+Db+lwip 已超 32；满表时 ConsoleRegister 静默失败会丢末尾命令（如 lwip） */
+#define CMD_MAX  48
+#define SUB_MAX  12
+#define ALIAS_MAX 80
+#define USER_ALIAS_MAX 16
+#define USER_ALIAS_NAME 20
+#define USER_ALIAS_WORD 16
+
+typedef struct {
+    const char *Name;
+    const char *Help;
+    void (*Handler)(int Argc, char **Argv);
+} COMMAND_SUB;
+
+typedef struct {
+    const char *Name;
+    const char *Help;
+    void (*Handler)(int Argc, char **Argv); /* 无二级时使用；有二级则为 NULL */
+    COMMAND_SUB Subs[SUB_MAX];
+    int SubCount;
+} COMMAND;
+
+typedef struct {
+    const char *Alias;
+    const char *Level1;
+    const char *Level2; /* NULL = 仅改写一级 */
+} COMMAND_ALIAS;
+
+/* PR-C3 补：用户自定义别名（可覆盖同名内置别名；落盘 al.<name>） */
+typedef struct {
+    char Alias[USER_ALIAS_NAME];
+    char Level1[USER_ALIAS_WORD];
+    char Level2[USER_ALIAS_WORD]; /* [0]==0 表示无二级 */
+} USER_ALIAS;
+
+/* 命令表。定义在 Console/ConsoleCmd.c；别名与内置拆开后同模块可见 */
+extern COMMAND gCommands[CMD_MAX];
+extern int gCommandCount;
+extern COMMAND_ALIAS gAliases[ALIAS_MAX];
+extern int gAliasCount;
+extern USER_ALIAS gUserAliases[USER_ALIAS_MAX];
+extern int gUserAliasCount;
+
+int StrEq(const char *A, const char *B);
+int FindCommandIndex(const char *Name);
+int FindUserAliasIndex(const char *Name);
+void CommandAlias(int Argc, char **Argv);
+void CommandUnalias(int Argc, char **Argv);
+
+/* 输入行态（Console.c）；Cmd 清屏/分发可读改 */
+extern char gLine[LINE_MAX];
+extern int gLen;
+extern int gWaitPrompt;
+extern int gPromptSuspend;
+extern int gAtLineStart;
+
+void ConsoleDrawString(const char *Text, UINT32 Color);
+void ConsoleDrawChar(char C, UINT32 Color);
+void ConsoleRunLine(void);
+/* 本条命令输出归属窗：Begin/End 包住 RunLine；Write 钉发起 Shell */
+void ConsoleCmdOutBegin(void);
+void ConsoleCmdOutEnd(void);
+int ConsoleCmdOutOwner(void);
+/* 提示符。定义在 Console.c；写屏与输入拆开后同模块可见 */
+void Prompt(void);
+
+void ConsoleSbReset(void);
+void ConsoleSbFeed(const char *Text);
+void ConsoleSbFeedChar(char C);
+void ConsoleSbBackspace(void);
+void ConsoleSbPaint(void);
+/* 合成/主题重画：不要求「可输入/未遮挡」，调用方已 GuiSetFocusWindow */
+void ConsoleSbRepaint(void);
+int ConsoleSbHasContent(void);
+void ConsoleSbEnsureLive(void);
+
+/* 每 Shell 窗一份 scrollback（ConsoleSbSlot.c） */
+typedef struct {
+    char Lines[SB_LINES][SB_COLS];
+    char Acc[SB_COLS];
+    int Count;
+    int Next;
+    int ViewOff;
+    int AccLen;
+} CONSOLE_SB_STATE;
+
+void ConsoleSbCapture(CONSOLE_SB_STATE *Out);
+void ConsoleSbApply(const CONSOLE_SB_STATE *In);
+void ConsoleSbWinSave(int Idx);
+void ConsoleSbWinLoad(int Idx);
+void ConsoleSbWinForget(int Idx);
+void ConsoleSbWinFeed(int Idx, const char *Text);
+int ConsoleSbWinHasContent(int Idx);
+/* RaiseWindow 挪槽时 scrollback / Job 窗号一并挪 */
+void ConsoleSbShiftRaise(int Idx, int Top);
+void ConsoleSbBindFocus(void);
+void ConsoleSbFeedLiveIfBound(const char *Text);
+int ConsoleJobPromptPending(void);
+void ConsoleJobShiftRaise(int Idx, int Top);
+/* 视图度量 / 滚动条（ConsoleSbBar.c）；行缓冲读口给 ConsoleSbPaint.c */
+int ConsoleSbLineCount(void);
+int ConsoleSbAccLen(void);
+const char *ConsoleSbAcc(void);
+int ConsoleSbViewOff(void);
+int ConsoleSbMaxOff(int Vis);
+void ConsoleSbSetViewOff(int Next, int MaxOff);
+const char *ConsoleSbLine(int OldestIndex);
+void ConsoleSbPushLine(void);
+void ConsoleSbBarReset(void);
+void ConsoleSbBarReapplyClip(void);
+void ConsoleSbBarPrepare(UINT32 Cx, UINT32 Cy, UINT32 Cw, UINT32 Ch, UINT32 Bg,
+                         UINT32 LineH, int VisRows, int First, int Total);
+void ConsoleSbBarFinishRepaint(UINT32 Cx, UINT32 Cy, UINT32 Cw, UINT32 Ch,
+                               UINT32 Bg);
+void ConsoleSbBarAfterWrite(void);
+
+#endif

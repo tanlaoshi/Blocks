@@ -1,0 +1,288 @@
+/*
+ * unistd.c — open/read/write/close，失败置 errno（PR-CRT2）
+ */
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <toyos/syscall.h>
+
+int open(const char *path, int flags) {
+    long r;
+
+    (void)flags;
+    if (!path || !path[0]) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_open(path);
+    if (r < 0) {
+        errno = ENOENT;
+        return -1;
+    }
+    return (int)r;
+}
+
+ssize_t read(int fd, void *buf, size_t count) {
+    long r;
+
+    if (fd < 0 || !buf) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = (long)toy_read(fd, buf, count);
+    if (r < 0) {
+        int E = (int)(-r);
+        errno = (E >= 1 && E < 256) ? E : EIO;
+        return -1;
+    }
+    return (ssize_t)r;
+}
+
+ssize_t write(int fd, const void *buf, size_t count) {
+    long r;
+
+    if (fd < 0 || (!buf && count > 0)) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = (long)toy_write(fd, buf, count);
+    if (r < 0) {
+        int E = (int)(-r);
+        errno = (E >= 1 && E < 256) ? E : EIO;
+        return -1;
+    }
+    return (ssize_t)r;
+}
+
+int close(int fd) {
+    long r;
+
+    if (fd < 0) {
+        errno = EBADF;
+        return -1;
+    }
+    r = toy_close(fd);
+    if (r < 0) {
+        errno = EBADF;
+        return -1;
+    }
+    return 0;
+}
+
+off_t lseek(int fd, off_t offset, int whence) {
+    long r;
+
+    if (fd < 0 || (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)) {
+        errno = EINVAL;
+        return (off_t)-1;
+    }
+    r = toy_lseek(fd, (long)offset, (long)whence);
+    if (r < 0) {
+        int E = (int)(-r);
+        errno = (E >= 1 && E < 256) ? E : EINVAL;
+        return (off_t)-1;
+    }
+    return (off_t)r;
+}
+
+int execve(const char *path, char *const argv[], char *const envp[]) {
+    long r;
+
+    if (!path || !path[0]) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_execve(path, argv, envp);
+    /* 成功则映像已替换，不会回到这里 */
+    errno = (r < 0) ? ENOENT : EIO;
+    return -1;
+}
+
+int pipe(int pipefd[2]) {
+    long r;
+
+    if (!pipefd) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_pipe(pipefd);
+    if (r < 0) {
+        errno = EMFILE;
+        return -1;
+    }
+    return 0;
+}
+
+int dup(int fd) {
+    long r;
+
+    if (fd < 0) {
+        errno = EBADF;
+        return -1;
+    }
+    r = toy_dup(fd);
+    if (r < 0) {
+        errno = EBADF;
+        return -1;
+    }
+    return (int)r;
+}
+
+pid_t fork(void) {
+    long r = toy_fork();
+    if (r < 0) {
+        errno = EAGAIN;
+        return -1;
+    }
+    return (pid_t)r;
+}
+
+pid_t wait(int *status) {
+    TOY_RET2 r = toy_syscall2(SYS_WAIT, 0, 0, 0);
+    if (r.A < 0) {
+        errno = ECHILD;
+        return -1;
+    }
+    if (status) {
+        *status = ((int)r.B & 0xff) << 8;
+    }
+    return (pid_t)r.A;
+}
+
+void *brk(void *addr) {
+    long r = toy_brk((long)addr);
+    if (r < 0) {
+        errno = ENOMEM;
+        return (void *)(long)-1;
+    }
+    return (void *)r;
+}
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+    long r;
+    long PackedFlags;
+
+    if (addr != 0 || length == 0) {
+        errno = EINVAL;
+        return MAP_FAILED;
+    }
+    if ((prot & (PROT_READ | PROT_WRITE)) == 0) {
+        errno = EINVAL;
+        return MAP_FAILED;
+    }
+    if (flags & MAP_SHARED) {
+        errno = EINVAL;
+        return MAP_FAILED;
+    }
+
+    if (flags & MAP_ANONYMOUS) {
+        PackedFlags = (long)(flags & 0xffff);
+        (void)fd;
+        (void)offset;
+    } else {
+        if ((flags & MAP_PRIVATE) == 0 || fd < 0 || offset != 0) {
+            errno = EINVAL;
+            return MAP_FAILED;
+        }
+        /* ABI：低 16=flags，高 16=fd（syscall 仅 3 参） */
+        PackedFlags = (long)((flags & 0xffff) | (((unsigned)fd & 0xffffu) << 16));
+    }
+
+    r = toy_mmap((long)length, (long)prot, PackedFlags);
+    if (r < 0) {
+        errno = ENOMEM;
+        return MAP_FAILED;
+    }
+    return (void *)r;
+}
+
+int munmap(void *addr, size_t length) {
+    long r;
+
+    if (!addr || length == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_munmap((long)addr, (long)length);
+    if (r < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    return 0;
+}
+
+int kill(pid_t pid, int sig) {
+    long r;
+
+    if (pid <= 0 || (sig != SIGKILL && sig != SIGTERM && sig != SIGINT)) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_kill(pid, sig);
+    if (r < 0) {
+        errno = ESRCH;
+        return -1;
+    }
+    return 0;
+}
+
+int create_window(const char *title, unsigned w, unsigned h) {
+    long r;
+
+    if (!title || w == 0 || h == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_create_window(title, (long)w, (long)h);
+    if (r < 0) {
+        errno = ENOMEM;
+        return -1;
+    }
+    return (int)r;
+}
+
+int damage(int wid, const char *text) {
+    long r;
+
+    if (wid < 0 || !text) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_damage(wid, text);
+    if (r < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    return 0;
+}
+
+int poll_input(int wid) {
+    long r;
+
+    if (wid < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_poll_input(wid);
+    if (r < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    return (int)r;
+}
+
+int ui_button(int wid, int button_id, const char *label) {
+    long r;
+
+    if (wid < 0 || button_id < 0 || button_id > 3 || !label) {
+        errno = EINVAL;
+        return -1;
+    }
+    r = toy_ui_button(wid, button_id, label);
+    if (r < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    return 0;
+}

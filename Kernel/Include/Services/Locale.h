@@ -1,0 +1,176 @@
+/*
+ * Locale.h — UI 字符串与语言切换
+ *
+ * 持久化：TOYOS.DB 键 lang=en|zh（缺省 zh）
+ * 文案：优先 Assets/Locale/{en,zh}.txt（可编辑）；缺省内建 fallback
+ */
+#ifndef LOCALE_H
+#define LOCALE_H
+
+#include "BootTypes.h"
+
+typedef enum {
+    LOC_LANG_EN = 0,
+    LOC_LANG_ZH = 1
+} LOC_LANG;
+
+typedef enum {
+    MSG_APP_SHELL = 0,
+    MSG_APP_SETTINGS,
+    MSG_APP_FILES,
+    MSG_APP_STORE,
+    MSG_APP_DEVICES,
+    MSG_ICON_SHELL,
+    MSG_ICON_SETTINGS,
+    MSG_ICON_FILES,
+    MSG_ICON_STORE,
+    MSG_ICON_DEVICES,
+    MSG_ICON_APPS,
+    MSG_ICON_GAME,
+    MSG_ICON_SNAKE,
+    MSG_ICON_SHUTDOWN,
+    MSG_ICON_REBOOT,
+    MSG_START,
+    MSG_SET_TITLE,
+    MSG_SET_MAIN,
+    MSG_SET_DESKTOP_BG,
+    MSG_SET_SHELL_BG,
+    MSG_SET_FONT,
+    MSG_SET_DISPLAY,
+    MSG_SET_LANGUAGE,
+    MSG_SET_SCALE,
+    MSG_SET_THEME,
+    MSG_SET_THEME_DEFAULT,
+    MSG_SET_THEME_TECH,
+    MSG_SET_THEME_GRAD,
+    MSG_SET_THEME_MODERN,
+    MSG_SET_EFFECTS,
+    MSG_SET_EFFECTS_MINIMAL,
+    MSG_SET_EFFECTS_LOW,
+    MSG_SET_EFFECTS_MEDIUM,
+    MSG_SET_EFFECTS_HIGH,
+    MSG_SET_HINT_MAIN,
+    MSG_SET_HINT_BACK,
+    MSG_SET_SAVED,
+    MSG_SET_SAVED_PC,
+    MSG_SET_PREF_DIFF,
+    MSG_SET_PREF_DIFF_PC,
+    MSG_SET_LANG_EN,
+    MSG_SET_LANG_ZH,
+    MSG_SET_PAGE_DESKTOP,
+    MSG_SET_PAGE_SHELL,
+    MSG_SET_PAGE_FONT,
+    MSG_SET_PAGE_DISPLAY,
+    MSG_SET_PAGE_LANG,
+    MSG_SET_PAGE_SCALE,
+    MSG_SET_PAGE_THEME,
+    MSG_SET_PAGE_EFFECTS,
+    MSG_FILES_VIEW,
+    MSG_FILES_NEW_DIR,
+    MSG_FILES_NEW_FILE,
+    MSG_FILES_RENAME,
+    MSG_FILES_PROMPT_HINT,
+    MSG_FILES_EMPTY,
+    MSG_FILES_EMPTY_HINT,
+    MSG_FILES_STORE_MANAGED,
+    MSG_CON_WELCOME,
+    MSG_CON_READY,
+    MSG_LANG_USAGE,
+    MSG_LANG_NOW,
+    MSG_LANG_SET,
+    MSG_LANG_BAD,
+    MSG_DEV_EMPTY,
+    MSG_DEV_DETAIL,
+    MSG_DEV_SUMMARY,
+    MSG_DEV_ABOUT,
+    MSG_DEV_OS,
+    MSG_DEV_CPU,
+    MSG_DEV_MEMORY,
+    MSG_DEV_DISKS,
+    MSG_DEV_DISPLAY,
+    MSG_DEV_HYPERVISOR,
+    MSG_DEV_PCI_COUNT,
+    MSG_DEV_READY,
+    MSG_APP_TTY,
+    MSG_SET_CLICK_APPLY,
+    MSG_SET_FONT_SAMPLE,
+    MSG_SET_SCALE_HINT1,
+    MSG_SET_SCALE_HINT2,
+    MSG_SET_THEME_HINT,
+    MSG_SET_LIVE_DB,
+    MSG_SET_APPLIED_LIVE,
+    MSG_SET_DISP_QEMU,
+    MSG_SET_DISP_PC,
+    MSG_FILES_VOLUMES,
+    MSG_FILES_PATH,
+    MSG_FILES_HINT1,
+    MSG_FILES_HINT2,
+    MSG_FILES_ESC_BACK,
+    MSG_FILES_PREVIEW,
+    MSG_FILES_NONE,
+    MSG_FILES_DIR,
+    MSG_FILES_ENTER_OPEN,
+    MSG_FILES_ELF,
+    MSG_FILES_ENTER_RUN,
+    MSG_FILES_CANT_READ,
+    MSG_FILES_BINARY,
+    MSG_FILES_HEX,
+    MSG_FILES_DEL_TITLE,
+    MSG_FILES_DEL_HINT,
+    MSG_FILES_DEL_PRE,
+    MSG_STORE_NO_SEL,
+    MSG_STORE_EMPTY,
+    MSG_STORE_ID,
+    MSG_STORE_TYPE,
+    MSG_STORE_ARCH,
+    MSG_STORE_FILE,
+    MSG_STORE_INSTALLED,
+    MSG_STORE_NOT_INST,
+    MSG_STORE_CANCEL,
+    MSG_STORE_INSTALL,
+    MSG_STORE_REMOVE,
+    MSG_STORE_SYNC,
+    MSG_STORE_REPO,
+    MSG_STORE_CAT_ALL,
+    MSG_STORE_CAT_APP,
+    MSG_STORE_CAT_FONT,
+    MSG_STORE_CAT_ASSET,
+    MSG_STORE_CAT_INST,
+    MSG_NET_LINK_NA,
+    MSG_NET_LINK_UP,
+    MSG_NET_LINK_DOWN,
+    MSG_DEV_BOUND,
+    MSG_DEV_FREE,
+    MSG_DEV_ALL,
+    MSG_SET_EFFECTS_HINT,
+    MSG_COLOR_WALLPAPER,
+    MSG_COLOR_DARK_GRAY,
+    MSG_COLOR_BLUE,
+    MSG_COLOR_GREEN,
+    MSG_COLOR_BLACK,
+    MSG_COLOR_GRAY,
+    MSG_COLOR_LIGHT_GRAY,
+    MSG_COLOR_WHITE,
+    MSG_COLOR_CYAN,
+    MSG_COLOR_YELLOW,
+    MSG_SET_DISP_AUTO,
+    MSG_COUNT
+} MSG_ID;
+
+void LocaleInitialize(void);
+/* 重新读 Assets/Locale/en.txt 与 zh.txt（改文件后可 lang reload） */
+void LocaleReload(void);
+LOC_LANG LocaleGet(void);
+/* 成功 0；写盘失败仍切换内存语言并返回非 0 */
+int LocaleSet(LOC_LANG Lang);
+const char *LocStr(MSG_ID Id);
+/* 语言变更后刷新桌面图标与窗标题（调用方负责重绘） */
+void LocaleApplyUi(void);
+/* PR-UI-ttf-3：Worker 每圈最多 1 条 zh 文案；1=仍忙，0=空闲 */
+int LocaleTtfPreheatStep(void);
+/* 开机 / 开 Settings：同步预热全部中文目录（HIT 则跳过） */
+void LocaleTtfPreheatUi(void);
+/* Worker：刷落 LocaleSet 时 batch 的 lang= */
+int LocaleDbFlushStep(void);
+
+#endif

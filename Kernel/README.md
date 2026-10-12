@@ -1,17 +1,35 @@
 # Kernel
 
-自 `~/ToyOS/ToyKernel` **逐步迁入**。
+现网能力核（自 `ToyOS/ToyKernel` 迁入）。Boot 在旁挂 `../Boot`。
 
-## 与 Boot 的边界
+## 已落地
 
-- Boot 填好 `BOOT_INFO`，调用 **`KernelMain(const BOOT_INFO *Info)`**（声明在 `Boot/Include/BootInfo.h`）。
-- Kernel 经 `Include/Core/BootInfo.h` 引用该 ABI，并提供 `BootInfoSet` / `BootInfoGet`。
-- 勿再把「组 BootInfo」放回 Kernel 早期 C。
+| 刀 | 内容 |
+| -- | ---- |
+| PR-K-abi-640 | X64 `BootHandoff` **640** + `OsIdSeen` |
+| PR-K-entry-split | X64 `KernelEntry.S` + `KernelHandoff.c` |
+| PR-K-early-4g | X64 `EarlyIdentity` 4GiB + VMM/PMM 对齐 |
+| PR-K-arch3 | Arm64/RiscV：`Startup*` → `KernelEntry` / `KernelHandoff`（与 X64 同名合流） |
 
-## 已有碎片
+三架构上电合流：
 
 ```text
-Kernel/Include/{Abi,Core,Hal}/…
-Kernel/Hal/{Arm64,RiscV,Virt}/…   # 板级头等（后续编 Kernel 用）
-Kernel/Build/
+Hal/<Arch>/KernelEntry → KernelHandoff → KernelMain
+```
+
+## 编译
+
+```bash
+cd ~/Blocks/Kernel
+./build.sh              # x64 → Build/CodeA-HAL/X64/Kernel.elf
+./build.sh arm64        # → Build/CodeA-HAL/Arm64/Kernel.elf
+./build.sh riscv        # → Build/CodeA-HAL/RiscV/Kernel.elf
+```
+
+交叉链：`../Tools/Extract/xpack-*`。
+
+## 手测（X64 桌面）
+
+```bash
+cd ~/Blocks/Runtime && ./run.sh --headless
 ```

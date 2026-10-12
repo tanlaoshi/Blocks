@@ -1,0 +1,39 @@
+/*
+ * PCIe.h — PCI 配置空间与 USB 控制器扫描
+ *
+ * 通过 0xCF8/0xCFC 访问配置空间（底层走 HalIo）；支持 MSI/MSI-X。
+ */
+#ifndef PCIE_H
+#define PCIE_H
+
+#include "BootTypes.h"
+
+typedef struct {
+    UINT8  Bus;
+    UINT8  Device;
+    UINT8  Function;
+    UINT8  Type;
+    UINT64 BaseAddress;
+    UINT64 Bar[6];
+} USB_CONTROLLER;
+
+char* Uint32ToHex(UINT32 Value);
+char* Uint8ToDecimal(UINT8 Value);
+char* Uint64ToHex(UINT64 Value);
+
+UINT32 PciReadConfig(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Offset);
+void PciWriteConfig(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Offset, UINT32 Value);
+/* PR-DEV-bar-size：探测指定 BAR 槽的尺寸（写 0xFFFFFFFF 读掩码后写回原值）。
+ * 64-bit BAR 由本函数内部探测高 dword 并合成；高槽本身由调用方置 0。 */
+UINT64 PciBarSize(UINT8 Bus, UINT8 Device, UINT8 Function, int Bar);
+/* PR-DEV-mmio-conflict：读 BAR 原值 bit0 判 IO(1)/MMIO(0)；只读不写。 */
+int PciBarIsIo(UINT8 Bus, UINT8 Device, UINT8 Function, int Bar);
+/* PR-DEV-irq-mode：在能力链中查找指定 Cap ID，返回偏移或 0（只读）。
+ * 优先级与 PciEnableMsi 一致：先 MSI-X(0x11) 再 MSI(0x05) 再 INTx。 */
+int PciFindCap(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Id);
+int PciScanUSBControllers(USB_CONTROLLER *Controllers, int MaxControllers);
+int PciEnableMsi(USB_CONTROLLER *Device, UINT8 Vector, UINT8 DestLogicalCpu);
+/* PR-H-ioapic：MSI 失败后清 INTx Disable，经 IOAPIC 投 Vector */
+int PciEnableIoApicIntx(USB_CONTROLLER *Device, UINT8 Vector, UINT8 DestApicId);
+
+#endif

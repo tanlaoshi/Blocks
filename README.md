@@ -1,34 +1,36 @@
-# OpenBox
+# Blocks
 
 ToyOS 新工作树（单仓）。现网对照：`~/ToyOS`。
 
 ```text
-OpenBox/
+Blocks/
   Boot/
-    X64/Build/     # BOOTX64.EFI
-    Arm64/Build/   # Boot_asm.o Boot.o
-    RiscV/Build/   # 同上
   Kernel/Build/
   Runtime/
+  Tools/
 ```
 
-- **结构拍板**：`~/ToyOS/ToyKernel/Documents/开发/目录结构-ToyOSNew.md`
 - **Boot 细则**：[`Boot/README.md`](Boot/README.md)
-- **GitHub**：`git@github.com:tanlaoshi/OpenBox.git`
+- **GitHub**：`git@github.com:tanlaoshi/Blocks.git`
 
 ## 怎么开始
 
-### Boot（可编）
+### Boot
 
 ```bash
-cd Boot/X64 && ./build.sh      # → X64/Build/BOOTX64.EFI
-cd Boot/Arm64 && ./build.sh    # → Arm64/Build/*.o → KernelMain(BOOT_INFO*)
-cd Boot/RiscV && ./build.sh
+cd ~/Blocks/Boot && ./build.sh   # → Boot/Build/BOOTX64.EFI
 ```
 
-工具链见 `Tools/README.md`。
+工具链见 `Tools/`（若有）。
 
-### 尚未迁入
+### Runtime（已迁自 ToyImage）
 
-2. Kernel 实现 `KernelMain(const BOOT_INFO *)` 并链各架构 Boot `*.o`
-3. Runtime → QEMU / 刷盘
+```bash
+cd ~/Blocks/Runtime && ./run.sh --headless   # 需先编好 Boot + Kernel
+```
+
+### Kernel（已迁入 + ABI 640）
+
+```bash
+cd ~/Blocks/Kernel && ./build.sh   # → Build/CodeA-HAL/X64/Kernel.elf
+```

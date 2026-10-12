@@ -1,0 +1,175 @@
+/*
+ * Scheduler.h — 抢占式任务调度器接口
+ */
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
+
+#include "BootTypes.h"
+#include "VirtualMemory.h"
+#include "Hal.h"
+#include "Fat.h"
+
+#define MAX_TASKS 32 /* PR-U-thread-0：方案 A（原 16） */
+#define MAX_FDS   8
+/* 历史：整文件缓冲上限；PR-U-stream-1 起文件 FD 按偏移流式，写上限 = FAT_WRITE_MAX */
+#define FD_MAX_BYTES (64 * 1024)
+
+#define FD_KIND_FILE   0
+#define FD_KIND_SOCKET 1
+#define FD_KIND_PIPE   2
+#define FD_KIND_DIR    3  /* PR-F4：目录快照（Data=FAT_DIRECTORY_ENTRY[]） */
+#define FD_KIND_CONSOLE 4 /* PR-TEST：stdin/stdout/stderr 占位（无 Data；SysWrite 仍按 Fd==1||2 走 console） */
+
+#define PIPE_END_READ  0
+#define PIPE_END_WRITE 1
+
+typedef enum {
+    TASK_UNUSED = 0,
+    TASK_READY,
+    TASK_RUNNING,
+    TASK_BLOCKED,
+    TASK_ZOMBIE,
+} TASK_STATE;
+
+typedef struct {
+    int     Used;
+    int     Kind;   /* FD_KIND_FILE / SOCKET / PIPE */
+    int     SockId; /* SOCKET=lwIP id；PIPE=PIPE_END_READ/WRITE */
+    UINT8  *Data;   /* FILE=未用(流式)；DIR=快照；PIPE=(PIPE*) */
+    UINTN   Size;   /* FILE=逻辑长度；DIR=项数 */
+    UINTN   Pos;    /* FILE=字节偏移；DIR=枚举游标 */
+    UINT32  Pages;
+    char    Path[64];
+    int     Dirty;  /* FILE：流式写穿盘后恒 0 */
+} TASK_FD;
+
+typedef struct TASK {
+    UINT8                  Stack[8192] __attribute__((aligned(16)));
+    HAL_INTERRUPT_FRAME             *Frame;
+    TASK_STATE             State;
+    UINT32                 Id;
+    UINT32                 Ticks;
+    char                   Name[16];
+    UINT64                 PageRoot;   /* 页表根物理地址（x86 曾称 CR3） */
+    int                    IsUser;
+    int                    Started;
+    VIRTUAL_ADDRESS_SPACE         *UserSpace;
+    INT32                  ParentId;   /* -1 = 无父进程 */
+    INT32                  GroupId;    /* PR-U-thread：进程组 = 主线程 Id；内核任务 -1 */
+    INT32                  LeaderId;   /* PR-U-thread：主线程 Id（单线程时 = 本 Id） */
+    int                    IsThread;   /* PR-U-thread：0=主执行流；1=同组额外线程 */
+    UINT64                 TlsBase;    /* PR-U-thread-2：用户 TLS 基（0=未设） */
+    INT32                  JoinerSlot; /* PR-U-thread-3：谁在 join 本任务；-1=无 */
+    INT32                  JoinTid;    /* 阻塞 join 的目标 tid；-1=未 join */
+    INT32                  ExitCode;
+    int                    Waiting;    /* wait() 阻塞中 */
+    UINT64                 SleepWakeTick; /* sleep 截止 HalCpuTicks(0)；0=未睡 */
+    INT32                  PendingKill; /* PR-P4/U-sig：>0 待本核入口处理（终止或 handler） */
+    UINT64                 SigHandlerInt;  /* PR-U-sig：0=DFL 1=IGN 其它=用户 VA */
+    UINT64                 SigHandlerTerm;
+    INT32                  Affinity;   /* -1=任意 CPU；否则逻辑 CpuId */
+    INT32                  OnCpu;      /* 正在跑的逻辑 CPU；未跑为 -1 */
+    INT32                  HomeCpu;    /* 首选运行队列（PR-S4） */
+    INT32                  Priority;   /* PR-S-lock：越大越优先；默认 0；idle 最低 */
+    int                    InRunQueue;     /* 已在某核 READY 队列中 */
+    UINT64                 BrkBase;    /* 映像数据/BSS 末；不可低于此（PR-P3） */
+    UINT64                 Brk;        /* 当前 program break */
+    UINT64                 MmapNext;   /* PR-U-mmap：下一匿名映射 VA */
+    TASK_FD                Fds[MAX_FDS];
+    char                   Cwd[64]; /* 空=卷根；chdir 写入，fork 继承 */
+} TASK;
+
+#define SCHED_PRIORITY_DEFAULT  0
+#define SCHED_PRIORITY_SHELL    8   /* shell / gui：交互偏高 */
+#define SCHED_PRIORITY_IDLE   (-128)
+
+void SchedulerInitialize(void);
+int SchedulerCreate(const char *Name, void (*Entry)(void));
+/* PR-GUI-kerneltask：entry 收 void*；旧 SchedulerCreate 保留 */
+int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx);
+int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoot,
+                    VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase);
+/* PR-U-thread-1/2：同 Leader VAS；Rsp=0 则自动映栈；Arg0/1→首/次参；StartReady=0 仅建槽不跑 */
+int SchedulerCreateThread(TASK *Leader, const char *Name, UINT64 Rip, UINT64 Arg0,
+                          UINT64 Arg1, UINT64 Rsp, int StartReady);
+/* thr-1 调试：映 spin 入口后 CreateThread（自动栈+TLS；不调度，防饿死键鼠） */
+int SchedulerCreateThreadSpin(TASK *Leader);
+/* thr-1：丢掉调试孪生槽（不拆共享 VAS） */
+void SchedulerDropDiagThread(int Slot);
+int SchedulerGroupAliveCount(INT32 GroupId);
+/* thr-2：为任务映 TLS 页（幂等）；主线程 CreateUser/fork 后调用 */
+int SchedulerThreadEnsureTls(TASK *T);
+int SchedulerThreadAllocStack(TASK *Owner, UINT64 *OutTop);
+/* PR-U-thread-3 */
+UINT64 SchedulerThreadCreate(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerThreadExit(HAL_INTERRUPT_FRAME *Frame);
+int SchedulerGroupLiveCount(INT32 GroupId); /* 不含 ZOMBIE */
+void SchedulerSetAffinity(int TaskId, INT32 Cpu);
+/* PR-S-lock：pid=槽位+1（与 kill/ps 一致）；成功 0，失败 -1 */
+int SchedulerSetPriority(INT32 Pid, INT32 Priority);
+UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerWait(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerYield(HAL_INTERRUPT_FRAME *Frame);
+UINT64 SchedulerSleepMs(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms);
+void SchedulerWakeSleepers(void);
+/* PR-P4：rdi=pid rsi=sig；杀内核/idle 失败。非当前任务返回 0；杀自身则切走 */
+UINT64 SchedulerKill(HAL_INTERRUPT_FRAME *Frame);
+/* Shell：pid=槽位+1；默认终止用户任务。成功 0，失败 -1 */
+int SchedulerKillPid(INT32 Pid, INT32 Sig);
+/* PR-U-sig：rdi=sig rsi=handler；返回旧 handler（0=DFL/1=IGN），失败 (UINT64)-1 */
+UINT64 SchedulerSignal(HAL_INTERRUPT_FRAME *Frame);
+void SchedulerStart(void);
+/* AP：等 BSP SchedulerStart 后进入本核 idle（不返回） */
+void SchedulerApStart(void);
+int SchedulerIsOnline(void);
+
+void SchedulerFdCloseAll(TASK *T);
+int SchedulerFdOpen(TASK *T, const char *Path);
+/* PR-F4：打开目录并快照枚举；成功返回 dirfd */
+int SchedulerFdOpenDirectory(TASK *T, const char *Path);
+/* PR-F4：拷贝下一项到 Out；1=有项，0=结束，-1=失败 */
+int SchedulerFdReadDirectory(TASK *T, int Fd, FAT_DIRECTORY_ENTRY *Out);
+int SchedulerFdFileStat(TASK *T, const char *Path, FAT_FILE_STAT *Out);
+int SchedulerFdSocket(TASK *T, int Domain, int Type, int Protocol);
+int SchedulerFdBind(TASK *T, int Fd, UINT32 Ip, UINT16 Port);
+int SchedulerFdListen(TASK *T, int Fd, int Backlog);
+int SchedulerFdAccept(TASK *T, int Fd);
+int SchedulerFdConnect(TASK *T, int Fd, UINT32 Ip, UINT16 Port);
+int SchedulerFdRead(TASK *T, int Fd, void *Buf, UINTN Len);
+/* SockTimeoutMs：仅 socket；0=阻塞，-1=非阻塞，>0≈halt 次数 */
+int SchedulerFdReadTimeout(TASK *T, int Fd, void *Buf, UINTN Len, int SockTimeoutMs);
+int SchedulerFdWrite(TASK *T, int Fd, const void *Buf, UINTN Len);
+INT64 SchedulerFdSeek(TASK *T, int Fd, INT64 Offset, int Whence);
+int SchedulerFdClose(TASK *T, int Fd);
+/* PR-P2：pipefd[0]=读端 pipefd[1]=写端；dup 复制槽位 */
+int SchedulerFdPipe(TASK *T, int PipeFd[2]);
+int SchedulerFdDup(TASK *T, int OldFd);
+
+void SchedulerReapOrphanZombies(void);
+/* 有未退出的用户任务时，串口/键盘 stdin 归用户 read(0)，勿进 shell 行缓冲 */
+int SchedulerLiveUserApps(void);
+
+/* PR-A12：virt 无定时抢占时，协作跑完就绪用户任务（exec HELLO） */
+void SchedulerCoopDrainUsers(void);
+
+/* PR-K-preempt-cs：嵌套禁切；OnTimer 见 count≠0 则不换任务 */
+void SchedulerPreemptDisable(void);
+void SchedulerPreemptEnable(void);
+int  SchedulerPreemptCount(void);
+
+/* PR-K-preempt-breath：长 IO 统一呼吸（drain + 鼠标） */
+void SchedulerIoBreath(void);
+/* PR-K-preempt-needresched：禁切段置位；安全点 CondResched 浅让 */
+void SchedulerSetNeedResched(void);
+int  SchedulerCondResched(void);
+
+TASK *SchedulerCurrent(void);
+int SchedulerTaskCount(void);
+UINT64 SchedulerStealCount(void);
+const TASK *SchedulerTaskByIndex(int Index);
+UINT64 SchedulerTaskRip(const TASK *T);
+
+#endif

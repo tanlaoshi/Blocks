@@ -1,0 +1,39 @@
+/*
+ * Block.h — 块设备读写抽象（与文件系统解耦）
+ *
+ * 后端经 BlockRegisterBackend / ToyDriverBlockAttach（PR-D2）注册；
+ * x86 ATA / AHCI（PR-H1）/ NVMe（PR-H5）、virt Arm/RiscV virtio-blk 经 Driver Block 类挂上。
+ */
+#ifndef BLOCK_H
+#define BLOCK_H
+
+#include "BootTypes.h"
+
+#define BLOCK_SECTOR_SIZE 512
+#define BLOCK_MAX_DRIVES  4  /* PR-FS-inst-1：第三盘作安装目标（AHCI） */
+
+typedef struct {
+    int (*Probe)(UINT32 Drive);
+    int (*ReadSectors)(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer);
+    int (*WriteSectors)(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer);
+    /* 可选：把写缓冲刷到介质；NULL → BlockFlush 成功空操作（PR-F2） */
+    int (*Flush)(UINT32 Drive);
+} BLOCK_BACKEND;
+
+void BlockRegisterBackend(const BLOCK_BACKEND *Backend);
+/* 当前后端指针（Mux 包装 MSC 时读取 Primary；PR-H-msc） */
+const BLOCK_BACKEND *BlockPeekBackend(void);
+
+int BlockSelect(UINT32 Drive);
+UINT32 BlockCurrentDrive(void);
+int BlockInitialize(void);
+/* 是否已挂后端（PR-D2：Driver Bind 之后为真） */
+int BlockBackendReady(void);
+/* PR-FS-inst-1：槽位是否 Probe 成功 */
+int BlockDriveReady(UINT32 Drive);
+int BlockReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
+int BlockWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
+/* PR-F2：落盘；无 Flush 回调时返回 1（成功） */
+int BlockFlush(void);
+
+#endif

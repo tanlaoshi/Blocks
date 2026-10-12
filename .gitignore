@@ -1,19 +1,14 @@
-# 构建产物（Boot 按下沉到各架构；Kernel 仍 Kernel/Build）
-Boot/X64/Build/**
-!Boot/X64/Build/.gitkeep
-Boot/Arm64/Build/**
-!Boot/Arm64/Build/.gitkeep
-Boot/RiscV/Build/**
-!Boot/RiscV/Build/.gitkeep
+# 构建产物
+Boot/Build/**
 Kernel/Build/**
 !Kernel/Build/.gitkeep
 
 # EDK2 本地生成（工具包源码保留，产物不进仓）
-Boot/X64/EDK2/Build/
-Boot/X64/EDK2/Conf/BuildEnv.sh
-Boot/X64/EDK2/Conf/.cache/
+Boot/EDK2/Conf/BuildEnv.sh
+Boot/EDK2/Conf/.AutoGenIdFile.txt
+Boot/EDK2/Conf/.cache/
 
-# 交叉工具链解压树（见 Tools/README.md）
+# 交叉工具链解压树（见 Tools/README.md 与 Tools/.gitignore）
 Tools/Extract/
 Tools/Tarballs/
 

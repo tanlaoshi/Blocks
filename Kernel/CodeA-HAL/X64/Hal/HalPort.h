@@ -1,0 +1,29 @@
+/*
+ * HAL/X86_64/HalPort.h — 对 Common 可见的架构布局（无 Arch* 原型，PR-A5）
+ */
+#ifndef HAL_PORT_H
+#define HAL_PORT_H
+
+#include "BootTypes.h"
+
+#define HAL_VEC_XHCI    0x40
+#define HAL_VEC_TIMER   0x41
+#define HAL_VEC_E1000   0x42 /* PR-H4e-3：e1000/e1000e MSI RX */
+#define HAL_VEC_COM1    0x43 /* COM1 RX → 软环（CoolTerm 粘贴） */
+#define HAL_VEC_SYSCALL 0x80
+
+#define VEC_XHCI    HAL_VEC_XHCI
+#define VEC_TIMER   HAL_VEC_TIMER
+#define VEC_E1000   HAL_VEC_E1000
+#define VEC_COM1    HAL_VEC_COM1
+#define VEC_SYSCALL HAL_VEC_SYSCALL
+
+typedef struct HAL_INTERRUPT_FRAME {
+    UINT64 Rax, Rbx, Rcx, Rdx, Rsi, Rdi, Rbp;
+    UINT64 R8, R9, R10, R11, R12, R13, R14, R15;
+    UINT64 Vector, ErrorCode;
+    /* PR-A15：门面用 arch 中立名；布局仍对应硬件 iret 槽（RIP/CS/RFLAGS/RSP/SS） */
+    UINT64 InstructionPointer, Cs, Rflags, StackPointer, Ss;
+} HAL_INTERRUPT_FRAME;
+
+#endif

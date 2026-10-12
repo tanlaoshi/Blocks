@@ -1,0 +1,148 @@
+/*
+ * Gui.h — 简易窗口管理器与鼠标光标
+ */
+#ifndef GUI_H
+#define GUI_H
+
+#include "BootTypes.h"
+
+typedef struct {
+    UINT32 X;
+    UINT32 Y;
+    UINT8  Buttons; /* bit0=左 bit1=右 bit2=中（PR-I1） */
+    INT8   Wheel;   /* 有符号滚轮；Gui 消费见 I2 */
+} GUI_MOUSE_STATE;
+
+/* PR-D3：窗口种类（桌面图标 / Settings 依赖） */
+typedef enum {
+    GUI_WIN_NONE = 0,
+    GUI_WIN_SHELL,
+    GUI_WIN_SETTINGS,
+    GUI_WIN_FILES,
+    GUI_WIN_STORE, /* PR-G-store-ui */
+    GUI_WIN_DEVICES, /* PR-DEV-6 */
+    GUI_WIN_EDIT,  /* PR-V2：简易文本编辑器 */
+    GUI_WIN_TTY,   /* PR-GUI-tty-win：串口会话窗 */
+    GUI_WIN_USER   /* PR-G14：用户态窗口协议 */
+} GUI_WIN_KIND;
+
+#define GUI_MAX_WINS        6
+#define GUI_TITLE_HEIGHT    40
+#define GUI_CLIENT_PAD 8 /* 与 ThemeClientPadding() 对齐（PR-GUI-l1） */
+#define GUI_INPUT_LINE_MAX  128
+
+/* PR-R2：Console→Gui 单向；Gui 经回调调 Shell 绘制/焦点，避免互 #include */
+typedef struct {
+    void (*FocusSave)(void);
+    void (*FocusLoad)(void);
+    void (*OnShellOpened)(void);
+    void (*PaintShellWindow)(int Idx);
+} GUI_CONSOLE_OPS;
+
+void GuiRegisterConsoleOps(const GUI_CONSOLE_OPS *Ops);
+
+void GuiInitialize(void);
+/* PR-G-hotres：HalVideoSetMode 成功后钳窗/光标并整桌重绘 */
+void GuiOnDisplayResize(void);
+void GuiPointerMove(UINT32 X, UINT32 Y);
+void GuiCursorPaint(void);
+void GuiFrameBufferBegin(void);
+void GuiFrameBufferEnd(void);
+/* 批量输出时推迟 Present（真机 4K 级 GOP 逐行 Present 极卡） */
+void GuiPresentDeferPush(void);
+void GuiPresentDeferPop(void);
+/* Shell 等 Job 时暂停 Defer，否则全局禁 Present → 光标假死（窗装卸仍可动） */
+void GuiPresentDeferPause(void);
+void GuiPresentDeferResume(void);
+/* PR-G-shell-present：下一次 GfxPresent 可合并（打字回显）；ShellTask 轮询末再刷 */
+void GuiPresentShellEchoMark(void);
+/* 拖帧或主题合成中：其它核勿 Present、勿再开一帧 */
+int GuiPresentBlocked(void);
+/* 标题栏拖移或改大小进行中 */
+int GuiDragActive(void);
+void GuiCursorHide(void);
+void GuiCursorShow(void);
+void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
+/* PR-I3：右键按下占位（日志/空钩子）；不弹菜单 */
+void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);
+void GuiOnArrowKey(UINT8 Key);
+void GuiRedraw(void);
+/* PR-G13：清桌面（壁纸/图标/任务栏）并按备份重贴各窗 */
+void GuiRefreshDesktop(void);
+/* PR-D2：按 Theme 刷新已开窗客户区底色（不立即重绘） */
+void GuiApplyThemeColors(void);
+/* PR-G8：桌面+各窗内容自下而上一次合成并备份 */
+void GuiComposeThemeScene(void);
+/* 按当前几何重画整窗（标题栏+客户区底）；不画 Shell 文字 / Settings 菜单 */
+void GuiPaintWindow(int Idx);
+void GuiBackupAllWindows(void);
+/* 点是否落在任一应用窗内（桌面图标绘制避让） */
+int GuiPointInAnyWindow(UINT32 X, UINT32 Y);
+int GuiHandleClick(UINT32 X, UINT32 Y);
+int GuiFocusClient(UINT32 *X, UINT32 *Y, UINT32 *Width, UINT32 *Height, UINT32 *Background);
+void GuiFocusSave(void);
+void GuiFocusApply(void);
+void GuiFocusApplyClip(void);
+void GuiFocusSyncCursor(void);
+void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
+/* 把焦点窗当前帧缓冲整窗抓进备份（Shell/Settings 画完内容后调用） */
+void GuiBackupFocusWindow(void);
+void GuiFocusClearClient(void);
+int GuiShellAcceptsInput(void);
+void GuiFocusHome(void);
+void GuiPollMouse(void);
+/* 长 IO（Store 拷贝）期间：只挪光标、吞按键边沿，避免点按卡死到操作结束 */
+void GuiPollMouseMotion(void);
+/* ThemeSave / 热切期间禁止 ShellTask 抢跑 GuiPollMouse（防 vvfat 重入写） */
+void GuiInputLock(int Locked);
+int GuiInputLocked(void);
+int GuiShellWindowActive(int Idx);
+void GuiSetFocusWindow(int Idx);
+/* 置顶 + 从备份重合成；内容绘制前应调用，避免写穿上层窗 */
+void GuiRaiseToFront(int Idx);
+/* 当前焦点窗下标；无焦点返回 -1 */
+int GuiFocusIndex(void);
+
+/* PR-D3：打开应用窗；成功返回槽位，失败 -1。
+ * Settings/Store 单例（已有则前置）；Shell/Files 可多开。 */
+int GuiOpenShell(void);
+int GuiOpenSettings(void);
+int GuiOpenFiles(void);
+int GuiOpenStore(void);
+int GuiOpenDevices(void);
+/* PR-GUI-tty-win：串口会话窗（单例） */
+int GuiOpenTty(void);
+/* PR-V2：打开/复用 Edit 窗；Path 为 FAT 文本路径；失败 -1 */
+int GuiOpenEdit(const char *Path);
+/* PR-G14：用户窗；成功返回 wid（槽位下标），失败 -1 */
+int GuiOpenUser(const char *Title, UINT32 W, UINT32 H);
+int GuiDamageUser(int Wid, const char *Text);
+/* PR-G-desk-3：客户区相对坐标像素 blit（0x00RRGGBB）；成功 0 */
+int GuiDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+                      const UINT32 *Pixels);
+/* PR-G15：用户窗按钮；ButtonId 0..3；成功 0 */
+int GuiUserAddButton(int Wid, int ButtonId, const char *Label);
+/* 0=无 / 1=关 / 100+id=按钮 / 300+HID=键 / 400+=客户区点 */
+int GuiPollUserInput(int Wid);
+/* 焦点为 GUI_WIN_USER 时由 FeedHid 调用 */
+void GuiUserEnqueueKey(UINT8 HidKey);
+/* 用户进程退出时收掉残留 USER 窗（防槽位占满第二次 exec 失败） */
+void GuiCloseAllUserWindows(void);
+/* exit 拆页表前等待关窗 Closing 结束（NUC SMP） */
+void GuiWaitNoWindowClosing(void);
+/* PR-I18N2：按当前语言刷新窗标题并重绘 chrome */
+void GuiRefreshTitles(void);
+GUI_WIN_KIND GuiFocusKind(void);
+GUI_WIN_KIND GuiWindowKind(int Idx);
+
+/* PR-G2：每窗 Shell 输入行与提示符状态（随 GUI_WINDOW 移动） */
+void GuiConsolePull(char *Line, int *Len, int *WaitPrompt);
+void GuiConsolePush(const char *Line, int Len, int WaitPrompt);
+void GuiConsoleSetWaitPrompt(int Idx, int WaitPrompt);
+int GuiConsoleNeedsPrompt(void);
+void GuiConsoleMarkPrompt(void);
+int GuiConsoleHasDisplay(void);
+/* 焦点不在 Shell 时：标记所有 Shell 下次获焦需补 prompt */
+void GuiShellRequestPrompt(void);
+
+#endif

@@ -1,0 +1,269 @@
+/*
+ * SchedulerRunq.c — 每核 READY 队列 / steal / PickNext（PR-S-sched-split-1）
+ */
+#include "SchedulerPrivate.h"
+#include "SchedulerOps.h"
+#include "Hal.h"
+#include "SpinLock.h"
+#include "ToySerialLog.h"
+
+static SPIN_LOCK gRunQueueLock[HAL_MAX_CPUS];
+static volatile UINT64 gStealCount;
+
+typedef struct {
+    TASK *Slot[MAX_TASKS];
+    int   Count;
+} CPU_RUN_QUEUE;
+
+static CPU_RUN_QUEUE gRunQueue[HAL_MAX_CPUS];
+
+/*
+ * 锁序：多把 gRunQueueLock → 按下标升序。热路径可只持 runq 锁。
+ */
+
+void RunQueueInitialize(void) {
+    UINT32 c;
+    int i;
+    gStealCount = 0;
+    for (c = 0; c < HAL_MAX_CPUS; c++) {
+        SpinLockInitialize(&gRunQueueLock[c]);
+        gRunQueue[c].Count = 0;
+        for (i = 0; i < MAX_TASKS; i++) {
+            gRunQueue[c].Slot[i] = 0;
+        }
+    }
+}
+
+void SchedulerRunQueueView(UINT32 Cpu, TASK ***Slots, int **Count)
+{
+    *Slots = gRunQueue[Cpu].Slot;
+    *Count = &gRunQueue[Cpu].Count;
+}
+
+void RunQueueEnqueue(UINT32 Cpu, TASK *T)
+{
+    if (!T || Cpu >= HAL_MAX_CPUS) {
+        return;
+    }
+    SpinLockAcquire(&gRunQueueLock[Cpu]);
+    SchedulerOpsGet()->Enqueue(Cpu, T);
+    SpinLockRelease(&gRunQueueLock[Cpu]);
+}
+
+static TASK *RunQueueDequeueLocked(UINT32 Cpu) {
+    CPU_RUN_QUEUE *Q;
+    TASK *T;
+    int i;
+    if (Cpu >= HAL_MAX_CPUS) {
+        return 0;
+    }
+    Q = &gRunQueue[Cpu];
+    if (Q->Count <= 0) {
+        return 0;
+    }
+    T = Q->Slot[0];
+    for (i = 1; i < Q->Count; i++) {
+        Q->Slot[i - 1] = Q->Slot[i];
+    }
+    Q->Count--;
+    Q->Slot[Q->Count] = 0;
+    if (T) {
+        T->InRunQueue = 0;
+    }
+    return T;
+}
+
+/* 从队尾偷：与本地队头 dequeue 错开，减冲突 */
+static TASK *RunQueueStealOneLocked(UINT32 Victim) {
+    CPU_RUN_QUEUE *Q;
+    TASK *T;
+    if (Victim >= HAL_MAX_CPUS) {
+        return 0;
+    }
+    Q = &gRunQueue[Victim];
+    if (Q->Count <= 0) {
+        return 0;
+    }
+    T = Q->Slot[Q->Count - 1];
+    Q->Count--;
+    Q->Slot[Q->Count] = 0;
+    if (T) {
+        T->InRunQueue = 0;
+    }
+    return T;
+}
+
+static int RunQueueRemoveFromCpuLocked(UINT32 Cpu, TASK *T) {
+    CPU_RUN_QUEUE *Q;
+    int i, j;
+    if (!T || Cpu >= HAL_MAX_CPUS) {
+        return 0;
+    }
+    Q = &gRunQueue[Cpu];
+    for (i = 0; i < Q->Count; i++) {
+        if (Q->Slot[i] != T) {
+            continue;
+        }
+        for (j = i + 1; j < Q->Count; j++) {
+            Q->Slot[j - 1] = Q->Slot[j];
+        }
+        Q->Count--;
+        Q->Slot[Q->Count] = 0;
+        T->InRunQueue = 0;
+        return 1;
+    }
+    return 0;
+}
+
+void RunQueueRemove(TASK *T) {
+    UINT32 c;
+    if (!T || !T->InRunQueue) {
+        return;
+    }
+    if (T->HomeCpu >= 0 && (UINT32)T->HomeCpu < HAL_MAX_CPUS) {
+        c = (UINT32)T->HomeCpu;
+        SpinLockAcquire(&gRunQueueLock[c]);
+        if (RunQueueRemoveFromCpuLocked(c, T)) {
+            SpinLockRelease(&gRunQueueLock[c]);
+            return;
+        }
+        SpinLockRelease(&gRunQueueLock[c]);
+    }
+    for (c = 0; c < HAL_MAX_CPUS; c++) {
+        SpinLockAcquire(&gRunQueueLock[c]);
+        if (RunQueueRemoveFromCpuLocked(c, T)) {
+            SpinLockRelease(&gRunQueueLock[c]);
+            return;
+        }
+        SpinLockRelease(&gRunQueueLock[c]);
+    }
+    T->InRunQueue = 0;
+}
+
+static int TaskFitsCpu(const TASK *T, UINT32 Cpu) {
+    if (!T || T->State != TASK_READY) {
+        return 0;
+    }
+    if (IsIdleTask(T)) {
+        return 0;
+    }
+    if (T->Affinity >= 0 && (UINT32)T->Affinity != Cpu) {
+        return 0;
+    }
+    return 1;
+}
+
+/* PR-K-preempt-enter-5a：T 必须落在 gTasks[] 槽 */
+static int TaskPtrOk(const TASK *T) {
+    UINTN Base = (UINTN)&gTasks[0];
+    UINTN End = (UINTN)&gTasks[MAX_TASKS];
+    UINTN P = (UINTN)T;
+    UINTN Idx;
+
+    /*
+     * 勿用 Off%sizeof(TASK)：gcc -O2 会把「% + /≥MAX」收成错误范围，
+     * 误杀槽 0 与下标≥16（MAX_TASKS=32 后半表废 → PickNext bad → exec 挂）。
+     * 用下标还原再比指针，语义直观且躲过该优化坑。
+     */
+    if (!T || P < Base || P >= End) {
+        return 0;
+    }
+    Idx = (P - Base) / sizeof(TASK);
+    if (Idx >= (UINTN)MAX_TASKS) {
+        return 0;
+    }
+    return T == &gTasks[Idx];
+}
+
+static void PickNextBadPtr(UINT32 Cpu, const char *Where, const TASK *T) {
+    ToyLogSmp("sched: PickNext bad ");
+    ToyLogSmp(Where);
+    ToyLogSmp(" cpu=");
+    ToyLogSmpHex32(Cpu);
+    ToyLogSmp(" T=");
+    ToyLogSmpHex64((UINT64)(UINTN)T);
+    ToyLogSmp("\n");
+}
+
+TASK *PickNext(UINT32 Cpu) {
+    TASK *Idle;
+    TASK *T;
+    int Cpus;
+    int v;
+    UINT32 Home;
+
+    /*
+     * 5c ❌（NUC）：全程 cli → 拖窗不跟手 + remove 卡死（饿 MSI/xHCI）。
+     * 5d：去掉外层 cli；保留 TaskPtrOk（5a）。
+     * 5k：idle 经槽位取址，不再读易腐 gIdleTask*。
+     */
+    Idle = IdleTaskForCpu(Cpu);
+    if (Idle && !TaskPtrOk(Idle)) {
+        PickNextBadPtr(Cpu, "idle", Idle);
+        if (Cpu < HAL_MAX_CPUS) {
+            gIdleSlot[Cpu] = -1;
+        }
+        Idle = 0;
+    }
+
+    for (;;) {
+        SpinLockAcquire(&gRunQueueLock[Cpu]);
+        T = RunQueueDequeueLocked(Cpu);
+        SpinLockRelease(&gRunQueueLock[Cpu]);
+        if (!T) {
+            break;
+        }
+        if (!TaskPtrOk(T)) {
+            PickNextBadPtr(Cpu, "deq", T);
+            continue;
+        }
+        if (TaskFitsCpu(T, Cpu)) {
+            return T;
+        }
+        Home = SchedulerOpsGet()->PickHome(T);
+        SpinLockAcquire(&gRunQueueLock[Home]);
+        SchedulerOpsGet()->Enqueue(Home, T);
+        SpinLockRelease(&gRunQueueLock[Home]);
+    }
+
+    Cpus = HalCpuCount();
+    if (Cpus < 1) {
+        Cpus = 1;
+    }
+    if (Cpus > HAL_MAX_CPUS) {
+        Cpus = HAL_MAX_CPUS;
+    }
+    for (v = 1; v < Cpus; v++) {
+        UINT32 Vic = (Cpu + (UINT32)v) % (UINT32)Cpus;
+        SpinLockAcquire(&gRunQueueLock[Vic]);
+        T = RunQueueStealOneLocked(Vic);
+        SpinLockRelease(&gRunQueueLock[Vic]);
+        if (!T) {
+            continue;
+        }
+        if (!TaskPtrOk(T)) {
+            PickNextBadPtr(Cpu, "steal", T);
+            continue;
+        }
+        if (TaskFitsCpu(T, Cpu)) {
+            __sync_fetch_and_add(&gStealCount, 1);
+            return T;
+        }
+        Home = SchedulerOpsGet()->PickHome(T);
+        SpinLockAcquire(&gRunQueueLock[Home]);
+        SchedulerOpsGet()->Enqueue(Home, T);
+        SpinLockRelease(&gRunQueueLock[Home]);
+    }
+
+    if (Idle && Idle->State != TASK_UNUSED) {
+        if (Idle->State != TASK_RUNNING && Idle->State != TASK_READY) {
+            Idle->State = TASK_READY;
+        }
+        return Idle;
+    }
+    return CurrentTask();
+}
+
+UINT64 SchedulerStealCount(void) {
+    return gStealCount;
+}

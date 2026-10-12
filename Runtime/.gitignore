@@ -1,0 +1,39 @@
+# Virt FAT 镜像（prepare-virt-rootfs 生成 → RootFs/<Arch>/disk.img）
+RootFs/*/disk.img
+RootFs/*.img
+
+# virt staging（可再生；仅保留 .gitkeep）
+RootFs/Arm64/*
+!RootFs/Arm64/.gitkeep
+RootFs/RiscV/*
+!RootFs/RiscV/.gitkeep
+
+# OVMF 运行时变量盘（Fw/ 下；可用 .clean 种子还原）
+Fw/OVMF_VARS.fd
+OVMF_VARS.fd
+
+# 根目录不再放构建产物
+/*.ELF
+/*.SO
+/Kernel.elf
+/THEME.CFG
+/theme.cfg
+
+# 本机 stash / 临时
+.boot-stash/
+*.log
+*.tmp
+.DS_Store
+
+# 测试残留（Scripts/test-fs.sh 等运行产生；不进库）
+RootFs/X64/TST.TXT
+RootFs/X64/BIG.TXT
+RootFs/X64/TSTDIR/
+RootFs/X64/tstdir/
+# 嵌套目录测试残留
+RootFs/X64/NestA/
+
+# QEMU / 本地运行残留（勿入库）
+NvVars
+qemu-sc.pid
+/long

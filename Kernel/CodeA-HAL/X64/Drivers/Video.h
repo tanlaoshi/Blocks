@@ -1,0 +1,91 @@
+/*
+ * Video.h — GOP 帧缓冲驱动（仅 HAL 内部使用，Common 请用 HalVideo.h）
+ */
+#ifndef VIDEO_H
+#define VIDEO_H
+
+#include "BootInfo.h"
+
+/* 当前屏幕状态（分辨率、帧缓冲地址、文本光标） */
+typedef struct {
+    UINT32 Width;
+    UINT32 Height;
+    UINT32 PixelsPerScanLine;
+    UINT64 FrameBufferBase;
+    UINT64 FrameBufferSize;
+    UINT32 CursorX;
+    UINT32 CursorY;
+} SCREEN_INFO;
+
+void VideoSet(VIDEO_CONFIG *VideoConfig);
+/* PR-G9：启用后缓冲；Buf 为 Width*Height 个 UINT32，Pages 供记录 */
+void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages);
+/* PR-G-hotres：释放后缓冲页（切分辨率前调用） */
+void VideoReleaseBackbuffer(void);
+int VideoBackbufferEnabled(void);
+UINT64 VideoBackbufferBase(void);
+UINT32 VideoBackbufferPages(void);
+/* 脏矩形 blit 到 GOP；无后缓冲时为空操作 */
+void VideoPresent(void);
+/* 循环 Present 直到脏区清空（4K 全屏合成勿半截留下任务栏空洞） */
+void VideoPresentFlush(void);
+void DirtyUnion(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
+/* Rows=0 → 默认 64；拖窗可传极大值整块 blit */
+void VideoSetPresentChunkRows(UINT32 Rows);
+/* PR-G-hotres：Bochs/QEMU VGA DISPI；成功 0，无 Bochs/失败 -1 */
+int VideoBochsSetMode(UINT32 Width, UINT32 Height);
+int VideoBochsAvailable(void);
+/* PR-G-hotres-pc：真机 GOP SetMode（Boot 交接）；QEMU 有 Bochs 时勿用 */
+int VideoGopSetMode(UINT32 Width, UINT32 Height);
+int VideoGopAvailable(void);
+UINT64 VideoFrameBufferBase(void);
+UINT64 VideoFrameBufferSize(void);
+/* GPU 翻页后切换 CPU 所见 scanout（与 PLANE_SURF 一致） */
+void VideoSetScanout(UINT32 *Va, UINT32 PitchPx, UINT64 Phys, UINT64 Size);
+/* 直写 scanout（boot 进度，勿与 Present 混用长路径） */
+/* PR-GUI-l2-font：1=点阵边缘灰度；0=硬 1bpp */
+void VideoSetGlyphSmooth(int On);
+void VideoDrawBeginFront(void);
+void VideoDrawEndFront(void);
+void VideoGetSize(UINT32 *Width, UINT32 *Height);
+/* UI 整体缩放 50/100/150/200；逻辑分辨率见 GetSize，物理见 GetPhysicalSize */
+UINT32 VideoGetUiScale(void);
+void VideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
+int VideoSetUiScale(UINT32 Percent);
+void VideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color);
+/* 忽略文字 clip，供光标等全屏叠层 */
+void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color);
+void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask);
+/* 光标叠层：后续 DrawPixelRaw/WriteRect 记入光标脏区（勿并进内容 AABB） */
+void VideoCursorOverlayBegin(void);
+void VideoCursorOverlayEnd(void);
+UINT32 VideoReadPixel(UINT32 X, UINT32 Y);
+void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color);
+/* PR-GUI-alpha：Src over Dst，Alpha=0..255；写后缓冲 + DirtyUnion */
+UINT32 VideoBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha);
+void VideoBlendPixel(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
+void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
+void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
+                        UINT32 Color, UINT8 Alpha);
+void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
+                   UINT32 Width, UINT32 Height);
+void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out);
+void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT32 *In);
+void VideoClearScreen(UINT32 Color);
+void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color);
+void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color);
+void VideoDrawStringAt(UINT32 X, UINT32 Y, const char *Text, UINT32 Color);
+void VideoDrawChar(char c, UINT32 Color);
+void VideoDrawCodepoint(UINT32 Cp, UINT32 Color);
+void VideoDrawString(const char *Text, UINT32 Color);
+void VideoNewLine(void);
+void VideoEraseLastChar(void);
+void VideoSetClipRegion(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Background);
+void VideoSetClipOrigin(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Background);
+void VideoGetTextCursor(UINT32 *X, UINT32 *Y);
+void VideoSetTextCursor(UINT32 X, UINT32 Y);
+void VideoClearClip(void);
+/* PR-I2：客户区滚轮。Delta>0 内容下移（看上方）；Delta<0 内容上移 */
+void VideoScrollClipLines(int Delta);
+
+#endif

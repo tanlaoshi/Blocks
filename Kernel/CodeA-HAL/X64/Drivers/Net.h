@@ -1,0 +1,59 @@
+/*
+ * Net.h — virtio-net 驱动与 IPv4/ARP/ICMP，并为 UDP/TCP 提供发送入口（PR-D3）
+ */
+#ifndef NET_H
+#define NET_H
+
+#include "BootTypes.h"
+#include "DriverNic.h"
+
+#define NET_IP_DEFAULT  0x0A00020FULL  /* 10.0.2.15 (QEMU user netdev) */
+#define NET_IP_PROTO_ICMP 1
+#define NET_IP_PROTO_TCP  6
+#define NET_IP_PROTO_UDP  17
+
+/* PR-D3：向 Driver 注册描述符（不 Probe） */
+void NetDriverRegister(void);
+int  NetInit(void);
+int  NetReady(void);
+void NetPoll(void);
+
+void NetGetMac(UINT8 Mac[6]);
+UINT32 NetGetIp(void);
+void NetSetIp(UINT32 Ip);
+
+void NetFormatIp(UINT32 Ip, char *Buf, int BufLen);
+int  NetParseIp(const char *Text, UINT32 *Ip);
+
+void NetInfo(void);
+int  NetPing(const char *Host, int TimeoutMs);
+void NetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
+
+/* 发送 IPv4 载荷（已含上层协议头）；自动 ARP */
+int NetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
+UINT16 NetChecksum(const void *Data, UINTN Len);
+
+/* lwIP：发送原始以太网帧；开启后 RX 交给 lwIP */
+int  NetSendEthernet(const UINT8 *Frame, UINTN Len);
+void NetSetLwIpRx(int Enable);
+int  NetLwIpRx(void);
+
+/* PR-H4 / PR-N-nic：L2 回调 / Bind 挂栈 */
+void NetInputFrame(const UINT8 *Pkt, UINTN Len);
+
+/* PR-N-nic-2slot：有线 / 无线槽 */
+typedef enum {
+    NET_NIC_KIND_WIRED = 0,
+    NET_NIC_KIND_WIFI  = 1
+} NET_NIC_KIND;
+
+/* 外置 NIC 挂 L2；默认有线槽。virtio 仍走 Net.c 内置路径 */
+int  NetAttachNic(const NIC_L2 *Nic);
+int  NetAttachNicKind(const NIC_L2 *Nic, NET_NIC_KIND Kind);
+/* 每次主槽切换加一；未挂过为 0 */
+UINT32 NetNicEpoch(void);
+int  NetNicGetLink(int *Up, UINT32 *Mbps, int *FullDuplex);
+/* 当前默认出站：0=有线 1=无线 -1=无 L2 */
+int  NetNicPrimaryKind(void);
+
+#endif

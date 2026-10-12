@@ -1,0 +1,55 @@
+Build/
+# 旧 virt 盘路径（现 → ToyImage/RootFs/{Arm64,RiscV}/disk.img）
+VirtRootFs/
+VirtRootFs.img
+virt-rootfs/
+virt-rootfs.img
+ThirdParty/lwip/
+
+# 遗留根目录产物（旧 Makefile）
+*.o
+*.a
+*.elf
+*.elf~
+*.so
+
+# 临时文件
+*.log
+*.tmp
+*.swp
+*.swo
+
+._*
+.DS_Store
+.AppleDouble
+
+# PR-L1 课外模板产物
+User/Pkg/build/
+User/Pkg/Gui/build/
+User/Pkg/Net/build/
+CodeE-User/Pkg/build/
+CodeE-User/Pkg/Gui/build/
+CodeE-User/Pkg/Net/build/
+CodeE-User/Pkg/UiText/build/
+CodeE-User/Pkg/UiDesigner/build/
+CodeE-User/Pkg/GuiIm/build/
+CodeE-User/Pkg/Batch/build/
+CodeE-User/Pkg/Pages/build/
+CodeE-User/Pkg/Style/build/
+CodeE-User/Pkg/UiText/MyAppUi.h
+CodeE-User/Pkg/UiDesigner/MyAppUi.h
+
+# Build/ 已忽略；SDK 产物现为 Build/ToySDK/ + Build/ToySDK.tar.gz
+# 旧路径遗迹（若本地仍有可删）
+Dist/
+
+# HostChat 宿主产物
+Tools/HostChat/chatd
+
+# xPack 工具链下载/解压（本地符号链接勿入库；CI 自取）
+Tools/Tarballs
+Tools/Extract
+
+# Python 字节码
+__pycache__/
+*.pyc

@@ -1,0 +1,140 @@
+/*
+ * StoreUiPrivate.h — StoreUi 内部共享头（仅 Services/StoreUi 使用）
+ *
+ * 禁止 User 程序、HAL、Core 包含本文件。
+ * 源文件在 Services/StoreUi/（核心 StoreUi.c）。
+ * 对外 API 仍在 StoreUi.h。
+ */
+#ifndef STORE_UI_PRIVATE_H
+#define STORE_UI_PRIVATE_H
+
+#include "StoreUi.h"
+#include "StoreJob.h"
+#include "Store.h"
+#include "Desktop.h"
+#include "Gui.h"
+#include "GuiPrivate.h"
+#include "HalVideo.h"
+#include "Font.h"
+#include "Locale.h"
+#include "Theme.h"
+#include "Debug.h"
+#include "UI.h"
+#include "UiLayout.h"
+#include "UiAction.h"
+
+/* ===== 宏（侧栏/按钮跟 UiLayout） ===== */
+#define STORE_SIDE_W    UI_LAYOUT_SIDE_W
+#define STORE_SIDE_BG   0x00A0A8B0u
+#define STORE_PREV_BG   0x00D8D8E0u
+#define STORE_SB_W      UI_LAYOUT_SB_W
+#define STORE_BTN_H     UI_LAYOUT_BTN_H
+#define STORE_BTN_GAP   UI_LAYOUT_GAP
+#define STORE_BTN_N     4
+#define STORE_REPO_PATH STORE_DIR "/repo.txt"
+#define STORE_MAP_MAX   STORE_ENTRIES_MAX
+
+/* ===== 类型（布局不变） ===== */
+typedef enum {
+    STORE_CAT_ALL = 0,
+    STORE_CAT_APP,
+    STORE_CAT_FONT,
+    STORE_CAT_ASSET,
+    STORE_CAT_INSTALLED,
+    STORE_CAT_COUNT
+} STORE_CAT;
+
+/* ===== 全局（定义在 StoreUi.c） ===== */
+extern int gStoreUiCat; /* 与 SettingsUi 的 gCat 区分 */
+extern int gSel;
+extern int gStoreUiScroll; /* 与 FilesUi 的 gScroll 区分 */
+extern int gFiltCount;
+extern int gMap[STORE_MAP_MAX];
+extern int gInstCache[STORE_ENTRIES_MAX];
+extern int gCatalogN;
+extern char gStoreUiStatus[80]; /* 与 FilesUi 的 gStatus 区分 */
+
+extern UINT32 gStoreUiSideX, gStoreUiSideW, gStoreUiSideRow0, gStoreUiSideLineH;
+extern UINT32 gListX, gStoreUiListTop, gStoreUiListRowW, gStoreUiListLineH;
+extern int gStoreUiListVisible;
+extern UINT32 gStoreUiSbX, gStoreUiSbY, gStoreUiSbW, gStoreUiSbH;
+extern int gStoreUiSbVisible;
+extern UINT32 gStoreUiPrevX, gStoreUiPrevW;
+extern UINT32 gBtnY, gBtnW, gBtnX0;
+extern int gHoverSide;
+extern int gHoverRow;
+extern int gHoverBtn;
+extern int gPressBtn;
+
+extern UI_BUTTON_ACTION gStoreAct[STORE_BTN_N];
+
+/* Console / Store 已有同名符号，这里不能再导出。 */
+static inline int StrEq(const char *A, const char *B) {
+    if (!A || !B) {
+        return 0;
+    }
+    while (*A && *A == *B) {
+        A++;
+        B++;
+    }
+    return *A == 0 && *B == 0;
+}
+
+/* ===== StoreUiModel.c ===== */
+const char *StoreBtnLabel(int I);
+const char *StoreCatLabel(int C);
+int CachedInstalled(int CatalogIdx);
+void StoreSetStatus(const char *S);
+void RebuildFilter(void);
+void Reload(void);
+STORE_ENTRY *SelectedEntry(void);
+void StoreBtnGeom(UINT32 ListX, UINT32 ListW);
+void ClampScroll(void);
+void StoreUiFormatRepo(char *Out, int OutMax); /* "repo: a.b.c.d:port" */
+void StoreUiApplyRepoFile(void);               /* 读 Store/repo.txt → store.repo */
+int  StoreUiWriteRepoFile(void);               /* 当前源写入 repo.txt；0=ok */
+
+/* ===== StoreUi.c ===== */
+void StoreUiActInitialize(void);
+int StoreUiActDispatch(int Btn, int Pressed, int Hit);
+
+/* ===== StoreUiInput.c ===== */
+void StoreUiDoButton(int Btn);
+
+/* ===== StoreUiPaint.c ===== */
+void StorePaintList(void);
+
+/* ===== StoreJobStatus.c ===== */
+void StoreJobStatusWithId(const char *Verb, const char *Id);
+void StoreJobStatusProgress(const char *Verb, const char *Id, int Cur, int Total);
+void StoreJobStatusCopy(const char *Id, UINTN Got, UINTN Size);
+void StoreJobBusyRepaint(void);
+void StoreJobFinishStatus(STORE_JOB_KIND Kind, int Err, int PlanN);
+
+/* ===== StoreJob.c / StoreJobStep.c（作业态共享） ===== */
+typedef enum {
+    JP_IDLE = 0,
+    JP_PLAN,
+    JP_PKG,
+    JP_FONT,
+    JP_RELOAD,
+    JP_FINISH
+} STORE_JOB_PHASE;
+
+extern STORE_JOB_KIND gJobPendingKind;
+extern STORE_JOB_KIND gJobKind;
+extern STORE_JOB_PHASE gJobPhase;
+extern int gJobRunning;
+extern int gJobInStep;
+extern int gJobCancel;
+extern char gJobId[STORE_ID_MAX];
+extern char gJobPlan[STORE_ENTRIES_MAX][STORE_ID_MAX];
+extern int gJobPlanN;
+extern int gJobPlanI;
+extern int gJobErr;
+extern int gJobLastErr;
+extern int gJobBatch;
+
+void JobApplyCancel(void);
+
+#endif

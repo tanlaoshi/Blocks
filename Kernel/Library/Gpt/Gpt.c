@@ -4,7 +4,7 @@
  */
 #include "GptPrivate.h"
 #include "Block.h"
-#include "Debug.h"
+#include "LibWrite.h"
 
 UINT8 gGptSector[SECTOR];
 
@@ -184,22 +184,22 @@ int GptFindAllFat(GPT_FAT_PART *Out, int Max) {
     if (Mbr == 2) {
         Count = 0;
         if (!GptCollectFat(Out, Max, &Count)) {
-            DebugWrite("FS: GPT but no FAT partitions\n");
+            LibWrite("FS: GPT but no FAT partitions\n");
             return 0;
         }
     } else if (Count <= 0) {
-        DebugWrite("FS: no FAT partition found\n");
+        LibWrite("FS: no FAT partition found\n");
         return 0;
     }
     {
         int i;
         for (i = 0; i < Count; i++) {
-            DebugWrite("FS: FAT LBA ");
-            DebugHex32(Out[i].StartLba);
+            LibWrite("FS: FAT LBA ");
+            LibWriteHex32(Out[i].StartLba);
             if (Out[i].IsEsp) {
-                DebugWrite(" (ESP)");
+                LibWrite(" (ESP)");
             }
-            DebugWrite("\n");
+            LibWrite("\n");
         }
     }
     return Count;

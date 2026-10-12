@@ -293,6 +293,7 @@ CORE_SRCS     += $(wildcard Core/TaskFd/*.c)
 CORE_SRCS     += $(wildcard Core/Syscall/*.c)
 CORE_SRCS     += $(wildcard Core/VirtualMemory/*.c)
 CORE_SRCS     += $(filter-out Core/PhysicalMemory/PhysicalMemoryBitmap.c,$(wildcard Core/PhysicalMemory/*.c))
+CORE_SRCS     += $(wildcard Core/Elf/*.c)
 CORE_SRCS     += $(wildcard Core/Device/*.c)
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
@@ -327,9 +328,9 @@ SERVICES_SRCS += $(wildcard Services/GuiCursor/*.c)
 SERVICES_SRCS += $(wildcard Services/GuiWm/*.c)
 SERVICES_SRCS += $(wildcard Services/Ui/*.c)
 SERVICES_SRCS += $(wildcard Services/Fonts/*.c)
+SERVICES_SRCS += $(wildcard Services/Bmp/*.c)
 LIB_SRCS      := $(wildcard Library/*.c)
 LIB_SRCS      += $(wildcard Library/Gpt/*.c)
-LIB_SRCS      += $(wildcard Library/Elf/*.c)
 FONT_SRCS     := $(wildcard Library/Fonts/*.c)
 DRIVER_SRCS   := $(wildcard HAL/$(HAL_ARCH)/Drivers/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/*.c)
@@ -686,10 +687,13 @@ $(BUILDDIR)/Library/Fonts/%.o: Library/Fonts/%.c | $(BUILDDIR)
 
 # Library 去 Hal 门禁（纯化后勿再引入）
 check-library-pure:
-	@if rg -n '#include[[:space:]]+"Hal|"Hal[A-Z]' Library/ --glob '*.{c,h}' ; then \
-		echo 'error: Library must not reference Hal*' >&2; exit 1; \
+	@if rg -n '#include[[:space:]]+"(Hal|PhysicalMemory|VirtualMemory|FileSystem|Device|Debug|ToySerialLog|Scheduler|Process|Console|Theme|Gui)\.h"' Library/ --glob '*.{c,h}' ; then \
+		echo 'error: Library must not depend on Hal/Core/Services modules' >&2; exit 1; \
 	fi
-	@echo 'Library Hal-pure OK'
+	@if rg -n 'Hal[A-Z][A-Za-z]+\(' Library/ --glob '*.{c,h}' ; then \
+		echo 'error: Library must not call Hal*' >&2; exit 1; \
+	fi
+	@echo 'Library pure OK'
 
 $(HALDIR)/Drivers/%.o: HAL/$(HAL_ARCH)/Drivers/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@

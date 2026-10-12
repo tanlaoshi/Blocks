@@ -5,7 +5,7 @@
  * PR-H-msc-1：MSC Probe 恒失败 → 行为与未安装 Mux 前的 Primary 一致。
  */
 #include "BlockMux.h"
-#include "Debug.h"
+#include "LibWrite.h"
 
 #define KIND_NONE 0
 #define KIND_PRIM 1
@@ -101,7 +101,7 @@ int BlockDriveIsMsc(UINT32 Drive) {
 
 void BlockMuxInstallMsc(const BLOCK_BACKEND *Msc) {
     if (!Msc || !Msc->Probe || !Msc->ReadSectors || !Msc->WriteSectors) {
-        DebugWrite("block-mux: bad msc\n");
+        LibWrite("block-mux: bad msc\n");
         return;
     }
     if (!gPrimary) {
@@ -112,7 +112,7 @@ void BlockMuxInstallMsc(const BLOCK_BACKEND *Msc) {
     }
     gMsc = Msc;
     BlockRegisterBackend(&gMuxBackend);
-    DebugWrite("block-mux: msc installed\n");
+    LibWrite("block-mux: msc installed\n");
 }
 
 void BlockMuxRemoveMsc(void) {
@@ -133,5 +133,5 @@ void BlockMuxRemoveMsc(void) {
     } else {
         BlockRegisterBackend(&gMuxBackend);
     }
-    DebugWrite("block-mux: msc removed\n");
+    LibWrite("block-mux: msc removed\n");
 }

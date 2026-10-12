@@ -2,7 +2,7 @@
  * Bmp.h — 未压缩 BMP 解码（PR-G13 壁纸）
  *
  * 仅支持 BI_RGB 24/32 bpp、正高度或负高度（top-down）。
- * 输出 0x00RRGGBB 像素缓冲，由调用方 BmpFree / PhysicalMemoryFreePages。
+ * 输出 0x00RRGGBB 像素缓冲；实现在 Services/Bmp（分配经 PMM）。
  */
 #ifndef BMP_H
 #define BMP_H

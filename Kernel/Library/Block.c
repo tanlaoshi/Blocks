@@ -5,7 +5,7 @@
  * （疑 cli 下 MSC WaitBulk ~500ms 超时）。已撤。
  */
 #include "Block.h"
-#include "Debug.h"
+#include "LibWrite.h"
 
 static const BLOCK_BACKEND *gBackend;
 static UINT32 gDrive;
@@ -40,7 +40,7 @@ int BlockInitialize(void) {
     UINT32 d;
 
     if (!gBackend) {
-        DebugWrite("block: no backend registered\n");
+        LibWrite("block: no backend registered\n");
         return 0;
     }
 
@@ -49,14 +49,14 @@ int BlockInitialize(void) {
         if (gBackend->Probe(d)) {
             gReady[d] = 1;
             n++;
-            DebugWrite("block: drive ");
-            DebugHex32(d);
-            DebugWrite(" ready\n");
+            LibWrite("block: drive ");
+            LibWriteHex32(d);
+            LibWrite(" ready\n");
         }
     }
     gDrive = 0;
     if (n == 0) {
-        DebugWrite("block: no drives\n");
+        LibWrite("block: no drives\n");
         return 0;
     }
     if (!gReady[0]) {

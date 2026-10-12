@@ -3,7 +3,7 @@
  */
 #include "GptPrivate.h"
 #include "Block.h"
-#include "Debug.h"
+#include "LibWrite.h"
 
 /* —— PR-FS-inst-1：写 GPT —— */
 
@@ -100,10 +100,10 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
         EspMib = 256;
     }
     if (TotalSectors < (UINT64)(EspLba + EspMib * 2048ull + 2048ull + 34ull)) {
-        DebugWrite("gpt: disk too small\n");
+        LibWrite("gpt: disk too small\n");
         return 0;
     }
-    DebugWrite("gpt: total="); DebugHex32((UINT32)TotalSectors); DebugWrite("\n");
+    LibWrite("gpt: total="); LibWriteHex32((UINT32)TotalSectors); LibWrite("\n");
     EspSectors = EspMib * 2048u;
     ToyLba = EspLba + EspSectors;
     LastUsable = TotalSectors - 34ull;
@@ -129,7 +129,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     gGptSector[510] = 0x55;
     gGptSector[511] = 0xAA;
     if (!BlockWriteSectors(0, 1, gGptSector)) {
-        DebugWrite("gpt: MBR write fail\n");
+        LibWrite("gpt: MBR write fail\n");
         return 0;
     }
 
@@ -152,13 +152,13 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     EntriesCrc = GptCrc32(Entries, sizeof(Entries));
     for (i = 0; i < 32; i++) {
         if (!BlockWriteSectors((UINT32)(EntriesLba + i), 1, Entries + i * SECTOR)) {
-            DebugWrite("gpt: entries write fail\n");
+            LibWrite("gpt: entries write fail\n");
             return 0;
         }
     }
     for (i = 0; i < 32; i++) {
         if (!BlockWriteSectors((UINT32)(EntriesBackupLba + i), 1, Entries + i * SECTOR)) {
-            DebugWrite("gpt: backup entries fail\n");
+            LibWrite("gpt: backup entries fail\n");
             return 0;
         }
     }
@@ -185,7 +185,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     HdrCrc = GptCrc32(Hdr, 92);
     Write32Le(Hdr + 16, HdrCrc);
     if (!BlockWriteSectors(1, 1, Hdr)) {
-        DebugWrite("gpt: primary hdr fail\n");
+        LibWrite("gpt: primary hdr fail\n");
         return 0;
     }
 
@@ -197,7 +197,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     HdrCrc = GptCrc32(Hdr, 92);
     Write32Le(Hdr + 16, HdrCrc);
     if (!BlockWriteSectors((UINT32)BackupLba, 1, Hdr)) {
-        DebugWrite("gpt: backup hdr fail\n");
+        LibWrite("gpt: backup hdr fail\n");
         return 0;
     }
 
@@ -213,10 +213,10 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     if (OutToySectors) {
         *OutToySectors = ToySectors;
     }
-    DebugWrite("gpt: wrote ESP@");
-    DebugHex32(EspLba);
-    DebugWrite(" TOYOS@");
-    DebugHex32(ToyLba);
-    DebugWrite("\n");
+    LibWrite("gpt: wrote ESP@");
+    LibWriteHex32(EspLba);
+    LibWrite(" TOYOS@");
+    LibWriteHex32(ToyLba);
+    LibWrite("\n");
     return 1;
 }

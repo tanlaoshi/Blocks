@@ -249,7 +249,7 @@ _STAMP_ARCH := $(shell cat $(ARCH_STAMP) 2>/dev/null)
 ifneq ($(_STAMP_ARCH),$(ARCH))
 $(info ARCH: stale '$(_STAMP_ARCH)' → '$(ARCH)'; cleaning $(BUILDDIR)/{CodeA–E,lwip})
 $(shell rm -rf '$(BUILDDIR)/HAL' '$(BUILDDIR)/Library' \
-	'$(BUILDDIR)/Core' '$(BUILDDIR)/Services' '$(BUILDDIR)/User' \
+	'$(BUILDDIR)/Core' '$(BUILDDIR)/BringUp' '$(BUILDDIR)/Services' '$(BUILDDIR)/User' \
 	'$(BUILDDIR)/ThirdParty/lwip' '$(BUILDDIR)/lwip')
 endif
 $(shell mkdir -p '$(BUILDDIR)' && echo '$(ARCH)' > '$(ARCH_STAMP)')
@@ -275,7 +275,10 @@ $(DEMO_STAMP): FORCE
 	@echo '$(TOY_DEMO_DRIVER)' > $@.new
 	@if [ ! -f $@ ] || ! cmp -s $@.new $@; then mv $@.new $@; else rm -f $@.new; fi
 
-# Core：编织 + 真内核夹；薄 Initialize* 在 HAL/Init 与 Services（见下）
+# BringUp：Boot/HAL 交棒后的统一导演（KernelMain / Modules）；非契约圆
+BRINGUP_SRCS  := $(wildcard BringUp/*.c)
+BRINGUP_OBJS  := $(patsubst BringUp/%.c,$(BUILDDIR)/BringUp/%.o,$(BRINGUP_SRCS))
+# Core：内核机制；薄 Initialize* 在 HAL/Init 与 Services（见下）
 CORE_SRCS     := $(wildcard Core/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
 CORE_SRCS     += $(wildcard Core/FileSystem/*.c)
@@ -544,7 +547,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
+OBJS = $(BRINGUP_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -659,6 +662,9 @@ $(TARGET): $(OBJS) | $(HALDIR)
 ifneq ($(ARCH),x86_64)
 	@echo "$(BOARD)" > $(HALDIR)/.toy_board
 endif
+
+$(BUILDDIR)/BringUp/%.o: BringUp/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@

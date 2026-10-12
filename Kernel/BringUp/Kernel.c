@@ -1,16 +1,11 @@
 /*
- * Kernel.c — 内核入口编排（PR-K-seq-1）
+ * Kernel.c — BringUp：三架构合流后的统一入口（KernelMain）
  *
- * 人话：Startup 填好 BOOT_INFO 后走进这里。这里只决定走哪条开机路径，
- *       再按顺序挂串口/屏、跑模块表、拉起 shell/gui/worker。
+ * HAL/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
+ * 选路 → ModulesRun → 拉起 shell/gui/worker → SchedulerStart。
  *
- * 从哪读：KernelMain（文末，只分发）→ KernelMainVirt / VirtDesktop / Full
- *         → KernelMainCommon（桌面常驻任务）。
- *
- * 别改：三路旗标必须 HalConsoleOnly →（HasFrameBuffer 且 Virt 形状）→ Full。
- *       shell/gui/worker 失败即停；input 仅 SMP≥3，失败不停机。
- *
- * 想照着做：Documents/规范/细则备查/可读性.md §2.4 / §2.5
+ * 从哪读：KernelMain → Virt / VirtDesktop / Full → KernelMainCommon。
+ * 别改：HalConsoleOnly →（FB 且 Virt）→ Full；shell/gui/worker 失败即停。
  */
 #include "BootInfo.h"
 #include "ToySerialLog.h"

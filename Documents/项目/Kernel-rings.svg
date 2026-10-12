@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480" role="img" aria-label="Blocks Kernel concentric architecture">
+  <title>Blocks Kernel concentric rings</title>
+  <desc>Outer User; peer ring Services and Core; Library; HAL; hardware center; Boot axis through the middle.</desc>
+
+  <rect width="800" height="480" fill="#f7f7f5"/>
+
+  <ellipse cx="400" cy="248" rx="350" ry="188" fill="#e8e8e4" stroke="#1a1a1a" stroke-width="1.5"/>
+  <ellipse cx="400" cy="248" rx="270" ry="142" fill="#ddd8f0" stroke="#1a1a1a" stroke-width="1.5"/>
+  <ellipse cx="400" cy="248" rx="185" ry="96" fill="#f0f0ec" stroke="#1a1a1a" stroke-width="1.5"/>
+  <ellipse cx="400" cy="248" rx="115" ry="60" fill="#d8e4f0" stroke="#1a1a1a" stroke-width="1.5"/>
+  <ellipse cx="400" cy="248" rx="52" ry="28" fill="#c8c8c4" stroke="#1a1a1a" stroke-width="1.5"/>
+
+  <line x1="400" y1="28" x2="400" y2="452" stroke="#2563eb" stroke-width="2" stroke-dasharray="7 5"/>
+
+  <text x="400" y="22" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="15" font-weight="500" fill="#2563eb">Boot axis: Kernel.c / Modules.c</text>
+  <text x="400" y="46" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="12" fill="#525252">UEFI to HAL Entry to weave</text>
+
+  <text x="400" y="78" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="14" font-weight="500" fill="#1a1a1a">User: Apps / SDK / syscall only</text>
+
+  <text x="248" y="200" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="14" font-weight="500" fill="#5b21b6">Services</text>
+  <text x="248" y="218" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#525252">Gui / Console / FS / Net</text>
+  <text x="552" y="200" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="14" font-weight="500" fill="#5b21b6">Core</text>
+  <text x="552" y="218" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#525252">Sched / Proc / PMM / VMM</text>
+
+  <text x="400" y="168" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="13" font-weight="500" fill="#1a1a1a">Library: pure shared</text>
+  <text x="400" y="184" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#525252">Block / Gpt / Vfs / Fonts</text>
+
+  <text x="400" y="252" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11" font-weight="500" fill="#1a1a1a">Hardware</text>
+
+  <text x="400" y="300" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="13" font-weight="500" fill="#1a1a1a">HAL</text>
+  <text x="400" y="316" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#525252">drivers / Hal* / Init</text>
+
+  <rect x="24" y="424" width="12" height="12" fill="#2563eb"/>
+  <text x="42" y="435" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#1a1a1a">Boot axis (not a layer)</text>
+  <rect x="220" y="424" width="12" height="12" fill="#ddd8f0" stroke="#1a1a1a" stroke-width="0.5"/>
+  <text x="238" y="435" font-family="DejaVu Sans,sans-serif" font-size="11" fill="#1a1a1a">Services || Core (peers)</text>
+</svg>

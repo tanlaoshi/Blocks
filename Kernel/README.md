@@ -2,19 +2,22 @@
 
 现网能力核（自 `ToyOS/ToyKernel` 迁入）。Boot 在旁挂 `../Boot`。
 
-## 顶层（按依赖）
+## 顶层
+
+结构示意（同心圆）：[Documents/项目/Kernel-rings.png](../Documents/项目/Kernel-rings.png)
 
 ```text
-HAL/        # 原 CodeA-HAL
-Library/    # 原 CodeB-Library
-Core/       # 原 CodeC（Core + Modules 策略 + 开机编织）
-Services/   # 原 CodeD-Services
-User/       # 原 CodeE-User
+BringUp/    # 阶段2导演：KernelMain / Modules（HAL 交棒后合流）
+HAL/        # Entry·Handoff·驱动；Init/ 为开机胶水
+Library/    # 共用纯库（无 Hal/Core/Services）
+Core/       # 内核机制（调度/进程/PMM/VMM/syscall…）
+Services/   # 人机与会话（与 Core 平级）
+User/       # Ring3 应用与用户态 SDK
 ```
 
-`Core/`：`Kernel.c` / `Modules.c` 编织；真肉夹（Scheduler/Process/Syscall/…）。开机 `Initialize*`：`HAL/Init/`（Serial/Cpu/Video/Usb/Smp）与 Services（Console/Gui/Net/FS）；策略在 `Scheduler/`、`FileSystem/Fat/` 等。
+控制流：`Boot` 或固件 → `HAL/<Arch>/KernelEntry` → `KernelHandoff` → **`BringUp/KernelMain`** → `ModulesRun` → …
 
-`Library/` 纯库：禁止依赖 Hal/Core/Services（`make check-library-pure`）。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载/TTF→`Services/Fonts/`，Elf→`Core/Elf/`，驱动框架→`Core/Driver/`；`Library/Fonts/` 仅留点阵数据。
+`Library/` 纯化：`make check-library-pure`。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载→`Services/Fonts/`，Elf→`Core/Elf/`。
 
 ## 编译
 

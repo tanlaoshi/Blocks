@@ -1,12 +1,8 @@
 /*
- * 人话：开机后起一个教学用的「慢任务」槽，用来演示进度条（25%→100%），
- *       不是商店卸载那种真后台活。任务管理器 / ps 里会看到它的名字。
+ * KernelTask.c — BringUp：教学慢任务槽（进度条演示）
  *
- * 从哪读：KernelTaskDemoStart → KernelTaskRegister → KernelTaskDemoRun。
- *
- * 别改：槽位最多 4 个；Name 最长 15 字符。Store 装卸不走这张表。
- *
- * 想照着做：暂无短文；对照 KernelMainCommon 里对 KernelTaskDemoStart 的调用。
+ * KernelTaskDemoStart → Register → DemoRun；对照 KernelMainCommon 的调用。
+ * 槽位最多 4；Name ≤15；Store 装卸不走这张表。
  */
 #include "KernelTask.h"
 #include "Scheduler.h"

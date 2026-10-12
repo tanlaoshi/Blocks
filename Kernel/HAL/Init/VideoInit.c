@@ -1,7 +1,7 @@
 /*
- * Video.c — InitializeVideo（开机模块编织）
+ * VideoInit.c — InitializeVideo（开机模块表；Hal 本层）
  *
- * 人话：帧缓冲、字体、主题和核显/声卡探针。无卡则软退。勿全屏 Clear。
+ * 帧缓冲、字体、主题和核显/声卡探针。勿全屏 Clear。
  */
 #include "KernelModulesPrivate.h"
 #include "BootInfo.h"

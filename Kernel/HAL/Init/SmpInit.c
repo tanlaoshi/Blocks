@@ -1,5 +1,5 @@
 /*
- * Smp.c — InitializeSmp（开机模块编织）
+ * SmpInit.c — InitializeSmp（开机模块表；Hal 本层）
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

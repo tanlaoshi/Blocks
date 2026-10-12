@@ -275,18 +275,10 @@ $(DEMO_STAMP): FORCE
 	@echo '$(TOY_DEMO_DRIVER)' > $@.new
 	@if [ ! -f $@ ] || ! cmp -s $@.new $@; then mv $@.new $@; else rm -f $@.new; fi
 
-# Core 层：Kernel.c / Modules.c + 与模块表对齐的夹；策略文件不进 CORE_SRCS（见 SCHED/MEMORY/FS）
+# Core：编织 + 真内核夹；薄 Initialize* 在 HAL/Init 与 Services（见下）
 CORE_SRCS     := $(wildcard Core/*.c)
-CORE_SRCS     += $(wildcard Core/Serial/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
-CORE_SRCS     += $(wildcard Core/Video/*.c)
-CORE_SRCS     += $(wildcard Core/Cpu/*.c)
-CORE_SRCS     += $(wildcard Core/Smp/*.c)
-CORE_SRCS     += $(wildcard Core/USB/*.c)
 CORE_SRCS     += $(wildcard Core/FileSystem/*.c)
-CORE_SRCS     += $(wildcard Core/Network/*.c)
-CORE_SRCS     += $(wildcard Core/Gui/*.c)
-CORE_SRCS     += $(wildcard Core/Console/*.c)
 CORE_SRCS     += $(filter-out Core/Scheduler/SchedulerRoundRobin.c,$(wildcard Core/Scheduler/*.c))
 CORE_SRCS     += $(wildcard Core/Process/*.c)
 CORE_SRCS     += $(wildcard Core/TaskFd/*.c)
@@ -295,6 +287,9 @@ CORE_SRCS     += $(wildcard Core/VirtualMemory/*.c)
 CORE_SRCS     += $(filter-out Core/PhysicalMemory/PhysicalMemoryBitmap.c,$(wildcard Core/PhysicalMemory/*.c))
 CORE_SRCS     += $(wildcard Core/Elf/*.c)
 CORE_SRCS     += $(wildcard Core/Device/*.c)
+# 开机 Init（Hal 侧，架构无关胶水；用 CFLAGS_COMMON）
+HAL_INIT_SRCS := $(wildcard HAL/Init/*.c)
+HAL_INIT_OBJS := $(patsubst HAL/Init/%.c,$(BUILDDIR)/HAL/Init/%.o,$(HAL_INIT_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
 SERVICES_SRCS += $(wildcard Services/Locale/*.c)
@@ -549,7 +544,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
+OBJS = $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -666,6 +661,9 @@ ifneq ($(ARCH),x86_64)
 endif
 
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+$(BUILDDIR)/HAL/Init/%.o: HAL/Init/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU

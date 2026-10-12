@@ -187,3 +187,8 @@ int FileSystemInitialize(void) {
     }
     return 0;
 }
+
+/* 开机模块表入口（原 Core/FileSystem 薄包装已删） */
+int InitializeFileSystem(void) {
+    return FileSystemInitialize();
+}

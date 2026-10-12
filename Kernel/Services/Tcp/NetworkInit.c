@@ -1,5 +1,5 @@
 /*
- * Network.c — InitializeNetwork（开机模块编织）
+ * NetworkInit.c — InitializeNetwork（开机模块表；Services/Tcp 本层）
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

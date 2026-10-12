@@ -1,7 +1,5 @@
 /*
- * GuiInit.c — InitializeGui（开机模块编织）
- *
- * 人话：读主题/字体/语言后开桌面合成。实现仍在 Services/Gui*（阶段 B 再并）。
+ * GuiInit.c — InitializeGui（开机模块表；与 GuiInitialize 同属 Services）
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

@@ -1,7 +1,7 @@
 /*
- * Serial.c — InitializeSerial（开机模块编织）
+ * SerialInit.c — InitializeSerial（开机模块表；Hal 本层）
  *
- * 人话：尽早挂串口收发中断，后面模块才能打日志；并给 Library 挂 LibWrite。
+ * 尽早挂串口；并给 Library 挂 LibWrite。
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

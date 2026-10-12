@@ -1,8 +1,7 @@
 /*
- * Usb.c — InitializeUsb（开机模块编织）
+ * UsbInit.c — InitializeUsb（开机模块表；Hal 本层）
  *
- * 人话：探 USB/PS2 输入。没有键盘也必须继续进桌面。
- * USB-UART 仍在 FS 认盘后再 claim，勿在这里扫口。
+ * 探 USB/PS2 输入；无键盘也继续。USB-UART 仍在 FS 后 claim。
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

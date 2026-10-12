@@ -1,11 +1,7 @@
 /*
- * Cpu.c — InitializeCpu（开机模块编织）
+ * CpuInit.c — InitializeCpu（开机模块表；Hal 本层）
  *
- * 人话：HAL / 定时器 / syscall；IDT 起来后再确认 COM1 收中断，并做 FPU 岛自检。
- * virt 平台顺带挂 virtio 输入。
- *
- * 曾拆成独立「SerialEarly」模块：其实是 Cpu 之后的收尾（再探 COM1 + FPU），
- * 与串口首启无关，故并回此处。
+ * HAL / 定时器 / syscall；其后 COM1 再探 + FPU 岛自检。virt 顺带挂 virtio 输入。
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

@@ -12,7 +12,7 @@ Services/   # 原 CodeD-Services
 User/       # 原 CodeE-User
 ```
 
-`Core/` 内：`Kernel.c` 编织三路；`Modules.c` 开机表（与 Kernel.c 同级）；子目录与模块表对齐（`Serial/`、`Scheduler/`…）；策略在对应夹内（如 `Scheduler/SchedulerRoundRobin.c`、`FileSystem/Fat/`）。
+`Core/`：`Kernel.c` / `Modules.c` 编织；真肉夹（Scheduler/Process/Syscall/…）。开机 `Initialize*`：`HAL/Init/`（Serial/Cpu/Video/Usb/Smp）与 Services（Console/Gui/Net/FS）；策略在 `Scheduler/`、`FileSystem/Fat/` 等。
 
 `Library/` 纯库：禁止依赖 Hal/Core/Services（`make check-library-pure`）。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载/TTF→`Services/Fonts/`，Elf→`Core/Elf/`，驱动框架→`Core/Driver/`；`Library/Fonts/` 仅留点阵数据。
 

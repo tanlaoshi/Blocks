@@ -1,7 +1,7 @@
 /*
- * Driver.c — InitializeDriver（开机模块编织）
+ * DriverInit.c — InitializeDriver（开机模块表；VMM 之后）
  *
- * 人话：枚举设备、注册驱动，并只早 Probe Block 类（勿 ProbeAll）。
+ * 枚举设备、注册驱动，并只 Probe Block（勿 ProbeAll）。
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"
@@ -11,9 +11,8 @@
 
 int InitializeDriver(void) {
     /*
-     * PR-D2：只早 Probe Block（ATA PIO 无需 MMIO）。
-     * 勿 ProbeAll：VMM 前 xHCI/AHCI/NVMe/Net 本会跳过，但 ps2-kbd 会跑 Ps2InitHw；
-     * 真机无经典 8042 时 STATUS 常浮空 0xFF（OBF 永真）→ 排空 while 死循环，屏停 [Mod] driver。
+     * 只 Probe Block：ATA PIO / AHCI / NVMe 在 VMM 后可绑 MMIO。
+     * 勿 ProbeAll：ps2-kbd 会跑 Ps2InitHw；真机无 8042 时 STATUS 浮空 → 死循环。
      * Input / Net 仍由后续 usb / network 模块 Probe。
      */
     DeviceInitialize();

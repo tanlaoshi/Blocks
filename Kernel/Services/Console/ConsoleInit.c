@@ -1,7 +1,5 @@
 /*
- * ConsoleInit.c — InitializeConsole（开机模块编织）
- *
- * 实现仍在 Services/Console（阶段 B 再并）。
+ * ConsoleInit.c — InitializeConsole（开机模块表；Services/Console 本层）
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

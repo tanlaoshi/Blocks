@@ -9,7 +9,6 @@ int InitializePhysicalMemory(void);
 int InitializeVirtualMemory(void);
 int InitializeVideo(void);
 int InitializeCpu(void);
-int InitializeSerialEarly(void);
 int InitializeSmp(void);
 int InitializeUsb(void);
 int InitializeFileSystem(void);

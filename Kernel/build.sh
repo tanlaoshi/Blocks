@@ -127,9 +127,9 @@ case "$ARCH" in
 esac
 
 # virt arm64/riscv 尚无 HAL/*/LwIp/lwipopts.h；默认关 lwIP，避免误编挂掉
-if [ "$LWIP" = "1" ] && [ ! -f "CodeA-HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
+if [ "$LWIP" = "1" ] && [ ! -f "HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
     if [ "$LWIP_SET" = "1" ]; then
-        echo "error: LWIP=1 but CodeA-HAL/$HAL_ARCH/LwIp/include/lwipopts.h missing (no port yet)" >&2
+        echo "error: LWIP=1 but HAL/$HAL_ARCH/LwIp/include/lwipopts.h missing (no port yet)" >&2
         echo "  use: ./build.sh $ARCH LWIP=0" >&2
         exit 1
     fi
@@ -138,8 +138,8 @@ if [ "$LWIP" = "1" ] && [ ! -f "CodeA-HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; 
 fi
 
 echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD TOY_KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
-ELF="$BUILDDIR/CodeA-HAL/$HAL_ARCH/Kernel.elf"
-USER_HELLO="$BUILDDIR/CodeA-HAL/$HAL_ARCH/user/hello.elf"
+ELF="$BUILDDIR/HAL/$HAL_ARCH/Kernel.elf"
+USER_HELLO="$BUILDDIR/HAL/$HAL_ARCH/user/hello.elf"
 
 MAKE=(make)
 if [ "$QUIET" = 1 ]; then

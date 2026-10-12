@@ -155,10 +155,10 @@ toy_virt_ensure_elf() {
     if [ -n "$TOY_VIRT_ELF_ARG" ]; then
         TOY_VIRT_ELF="$TOY_VIRT_ELF_ARG"
     fi
-    # Blocks / 现网：CodeA-HAL/<Arch>/；旧路径 HAL/<Arch>/ 作回退
+    # Blocks / 现网：HAL/<Arch>/；旧路径 HAL/<Arch>/ 作回退
     if [ -z "${TOY_VIRT_ELF:-}" ]; then
-        if [ -f "$TOY_KERNEL_BUILD/CodeA-HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf" ]; then
-            TOY_VIRT_ELF="$TOY_KERNEL_BUILD/CodeA-HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
+        if [ -f "$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf" ]; then
+            TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
         else
             TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
         fi
@@ -168,7 +168,7 @@ toy_virt_ensure_elf() {
         Build/*) TOY_VIRT_ELF="$TOY_KERNEL_BUILD/${TOY_VIRT_ELF#Build/}" ;;
         *) TOY_VIRT_ELF="$TOY_KERNEL/$TOY_VIRT_ELF" ;;
     esac
-    Stamp="$TOY_KERNEL_BUILD/CodeA-HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
+    Stamp="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
     [ -f "$Stamp" ] || Stamp="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
     PrevBoard=""
     if [ -f "$Stamp" ]; then
@@ -183,20 +183,20 @@ toy_virt_ensure_elf() {
         make clean "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" "BUILDDIR=$TOY_KERNEL_BUILD"
     fi
     VirtLwip=1
-    if [ ! -d "CodeA-HAL/${TOY_VIRT_HAL_ARCH}/LwIp" ] && \
+    if [ ! -d "HAL/${TOY_VIRT_HAL_ARCH}/LwIp" ] && \
        [ ! -d "HAL/${TOY_VIRT_HAL_ARCH}/LwIp" ]; then
         VirtLwip=0
     fi
     if [ "$NeedBuild" = "1" ]; then
         echo "building ARCH=$TOY_VIRT_MAKE_ARCH BOARD=$WantBoard LWIP=$VirtLwip ..."
         make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$TOY_KERNEL_BUILD"
-        TOY_VIRT_ELF="$TOY_KERNEL_BUILD/CodeA-HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
+        TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
     fi
     if [ ! -f "$TOY_VIRT_ELF" ]; then
         echo "error: missing $TOY_VIRT_ELF" >&2
         exit 1
     fi
-    HelloElf="$TOY_KERNEL_BUILD/CodeA-HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
+    HelloElf="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
     [ -f "$HelloElf" ] || HelloElf="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
     if [ ! -f "$HelloElf" ]; then
         make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$TOY_KERNEL_BUILD" "$HelloElf"

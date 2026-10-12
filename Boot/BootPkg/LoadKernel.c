@@ -2,7 +2,7 @@
  * LoadKernel.c — 找盘读 Kernel.elf，校验并装入内存
  *
  * Boot.c 第三步。含：按卷查找、BLOCKS.ID 优先。
- * ELF 分成 CheckKernel（只检查）和 LoadKernel（按物理地址装入）。
+ * ELF 分成 CheckKernelFile（只检查）和 LoadKernelFile（按物理地址装入）。
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>
@@ -212,14 +212,14 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
         EFI_PHYSICAL_ADDRESS LoadLow = 0;
         UINTN PageCount = 0;
 
-        Status = CheckKernel(ElfBuffer, ElfSize, &LoadLow, &PageCount);
+        Status = CheckKernelFile(ElfBuffer, ElfSize, &LoadLow, &PageCount);
         if (EFI_ERROR(Status)) {
-            BootSerialPrintf("Boot: CheckKernel Failed: %r\n", Status);
+            BootSerialPrintf("Boot: CheckKernelFile Failed: %r\n", Status);
             return Status;
         }
-        Status = LoadKernel(ElfBuffer, LoadLow, PageCount, &BootConfig->EntryAddress);
+        Status = LoadKernelFile(ElfBuffer, LoadLow, PageCount, &BootConfig->EntryAddress);
         if (EFI_ERROR(Status)) {
-            BootSerialPrintf("Boot: LoadKernel Failed: %r\n", Status);
+            BootSerialPrintf("Boot: LoadKernelFile Failed: %r\n", Status);
             return Status;
         }
     }
@@ -252,10 +252,10 @@ typedef struct {
 
 /*
  * 谁调用：BootLoadKernel，文件已读入内存之后。
- * 只检查，不分配内核页。通过时写出装载下界和页数，交给 LoadKernel。
+ * 只检查，不分配内核页。通过时写出装载下界和页数，交给 LoadKernelFile。
  */
-EFI_STATUS CheckKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
-                       EFI_PHYSICAL_ADDRESS *LoadLow, UINTN *PageCount) {
+EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
+                           EFI_PHYSICAL_ADDRESS *LoadLow, UINTN *PageCount) {
     ELF_HEADER_64 *Hdr;
     PROGRAM_HEADER_64 *PHead;
     EFI_PHYSICAL_ADDRESS Low = 0xFFFFFFFFFFFFFFFFULL;
@@ -264,7 +264,7 @@ EFI_STATUS CheckKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
     UINTN Pages;
     UINT64 PhEnd;
 
-    BootSerialPrintf("Boot: CheckKernel Size=%lu\n", (UINT64)FileSize);
+    BootSerialPrintf("Boot: CheckKernelFile Size=%lu\n", (UINT64)FileSize);
 
     if (LoadLow == NULL || PageCount == NULL) {
         return EFI_INVALID_PARAMETER;
@@ -341,18 +341,18 @@ EFI_STATUS CheckKernel(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
 }
 
 /*
- * 谁调用：BootLoadKernel，且只在 CheckKernel 成功之后。
+ * 谁调用：BootLoadKernel，且只在 CheckKernelFile 成功之后。
  * Kernel.elf 链在固定物理地址（-fno-pie），所以按 LoadLow 申请页，再拷贝 PT_LOAD。
  */
-EFI_STATUS LoadKernel(EFI_PHYSICAL_ADDRESS ElfBase, EFI_PHYSICAL_ADDRESS LoadLow,
-                      UINTN PageCount, EFI_PHYSICAL_ADDRESS *EntryPoint) {
+EFI_STATUS LoadKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, EFI_PHYSICAL_ADDRESS LoadLow,
+                          UINTN PageCount, EFI_PHYSICAL_ADDRESS *EntryPoint) {
     ELF_HEADER_64 *Hdr;
     PROGRAM_HEADER_64 *PHead;
     EFI_PHYSICAL_ADDRESS LoadBase;
     EFI_STATUS Status;
     UINTN i;
 
-    BootSerialPrintf("Boot: LoadKernel\n");
+    BootSerialPrintf("Boot: LoadKernelFile\n");
 
     if (EntryPoint == NULL || PageCount == 0) {
         return EFI_INVALID_PARAMETER;

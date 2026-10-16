@@ -1,5 +1,5 @@
 /*
- * AhciInitialize.c — PCI 查找与端口初始化（PR-S-ahci-1）
+ * AhciInitialize.c — 端口初始化（PR-S-ahci-1）
  */
 #include "Ahci.h"
 #include "AhciPrivate.h"
@@ -40,54 +40,6 @@ static int PortStart(volatile AHCI_PORT *Port) {
     Cmd = MmioRead32(&Port->Cmd);
     MmioWrite32(&Port->Cmd, Cmd | AHCI_PxCMD_ST);
     return 1;
-}
-
-int PciFindAhci(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut) {
-    int B;
-    int D;
-    int F;
-
-    for (B = 0; B < 256; B++) {
-        for (D = 0; D < 32; D++) {
-            for (F = 0; F < 8; F++) {
-                UINT32 VidDid = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x00);
-                UINT32 ClassReg;
-                UINT32 Class;
-                UINT32 Bar5Lo;
-                UINT64 Bar;
-                UINT32 Cmd;
-
-                if ((VidDid & 0xFFFF) == 0xFFFF) {
-                    continue;
-                }
-                ClassReg = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x08);
-                Class = (ClassReg >> 8) & 0xFFFFFFu;
-                if (Class != AHCI_PCI_CLASS) {
-                    continue;
-                }
-
-                Cmd = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04);
-                PciWriteConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04, Cmd | 0x06);
-
-                /* ABAR = BAR5（AHCI 规范为 32-bit MMIO） */
-                Bar5Lo = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x24);
-                if (Bar5Lo & 1u) {
-                    continue; /* I/O BAR，非 MMIO */
-                }
-                Bar = Bar5Lo & 0xFFFFFFF0ULL;
-                if (Bar == 0) {
-                    continue;
-                }
-
-                *Bus = (UINT8)B;
-                *Dev = (UINT8)D;
-                *Fn = (UINT8)F;
-                *BarOut = Bar;
-                return 1;
-            }
-        }
-    }
-    return 0;
 }
 
 int PortInit(volatile AHCI_PORT *Port, AHCI_DRIVE *Drive) {

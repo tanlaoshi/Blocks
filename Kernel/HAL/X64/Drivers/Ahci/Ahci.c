@@ -26,10 +26,19 @@ int AhciReady(void) {
     return gReady;
 }
 
+int AhciAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar) {
+    UINT32 Cmd;
+
+    if (Bar == 0) {
+        return 0;
+    }
+    Cmd = PciReadConfig(Bus, Dev, Fn, 0x04);
+    PciWriteConfig(Bus, Dev, Fn, 0x04, Cmd | 0x06);
+    gHbaPhys = Bar;
+    return 1;
+}
+
 int AhciSetup(void) {
-    UINT8 Bus;
-    UINT8 Dev;
-    UINT8 Fn;
     UINT64 Bar;
     UINT32 Pi;
     UINT32 Cap;
@@ -42,9 +51,10 @@ int AhciSetup(void) {
     if (!VirtualMemoryEnabled()) {
         return 0;
     }
-    if (!PciFindAhci(&Bus, &Dev, &Fn, &Bar)) {
+    if (gHbaPhys == 0) {
         return 0;
     }
+    Bar = gHbaPhys;
 
     /* HBA MMIO：至少覆盖 GHC + 32 ports × 0x80 */
     if (VirtualMemoryMapRange(Bar, Bar, 0x1100, PTE_PRESENT | PTE_WRITABLE) != 0) {

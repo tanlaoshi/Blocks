@@ -17,10 +17,28 @@ static const BLOCK_BACKEND gNvmeBackend = {
     .Flush = 0,
 };
 
-static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+static const DRIVER_MATCH gNvmeMatch[] = {
+    {
+        .Type = DRIVER_MATCH_PCI,
+        .U.Pci = {
+            .Class = 0x01,
+            .Subclass = 0x08,
+            .ProgIf = 0x02,
+            .ClassMask = 0xFF,
+            .SubclassMask = 0xFF,
+            .ProgIfMask = 0xFF,
+        },
+    },
+    { .Type = DRIVER_MATCH_NONE },
+};
 
+static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+    DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
+
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI || Dev->Bar[0] == 0) {
+        return -1;
+    }
     if (NvmeReady()) {
         if (OutPrivate) {
             *OutPrivate = 0;
@@ -28,6 +46,9 @@ static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
         return 0;
     }
     if (!VirtualMemoryEnabled()) {
+        return -1;
+    }
+    if (!NvmeAccept(Dev->PciBus, Dev->PciDev, Dev->PciFn, Dev->Bar[0])) {
         return -1;
     }
     if (!NvmeSetup()) {
@@ -51,7 +72,7 @@ static void NvmeDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gNvmeDriver = {
     .Name = "nvme",
     .Class = TOY_DRIVER_CLASS_BLOCK,
-    .Match = 0,
+    .Match = gNvmeMatch,
     .Probe = NvmeDriverProbe,
     .Bind = NvmeDriverBind,
     .Remove = NvmeDriverRemove,

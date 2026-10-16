@@ -12,7 +12,8 @@ int NvmeProbe(UINT32 Drive);
 int NvmeReadSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer);
 int NvmeWriteSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer);
 
-/* Driver 入口：扫描 PCI NVMe；需 VirtualMemoryEnabled */
+/* Driver 入口：按设备树里的那块 NVMe 初始化；需 VirtualMemoryEnabled */
+int NvmeAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar);
 int NvmeSetup(void);
 int NvmeReady(void);
 

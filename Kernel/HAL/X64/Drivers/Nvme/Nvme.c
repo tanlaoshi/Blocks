@@ -24,65 +24,51 @@ int NvmeReady(void) {
     return gReady;
 }
 
+static UINT8 gPciBus;
+static UINT8 gPciDev;
+static UINT8 gPciFn;
+static UINT64 gBar;
+static int gHavePci;
+
+int NvmeAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar) {
+    if (Bar == 0) {
+        return 0;
+    }
+    gPciBus = Bus;
+    gPciDev = Dev;
+    gPciFn = Fn;
+    gBar = Bar;
+    gHavePci = 1;
+    return 1;
+}
+
 int NvmeSetup(void) {
-    int B;
-    int D;
-    int F;
+    UINT32 Cmd;
+    NVME_CTRL *C;
 
     if (gReady) {
         return 1;
     }
-    if (!VirtualMemoryEnabled()) {
+    if (!VirtualMemoryEnabled() || !gHavePci || gBar == 0) {
         return 0;
     }
+
+    Cmd = PciReadConfig(gPciBus, gPciDev, gPciFn, 0x04);
+    PciWriteConfig(gPciBus, gPciDev, gPciFn, 0x04, Cmd | 0x06);
 
     gCtrlCount = 0;
-    for (B = 0; B < 256 && gCtrlCount < NVME_MAX_CTRL; B++) {
-        for (D = 0; D < 32 && gCtrlCount < NVME_MAX_CTRL; D++) {
-            for (F = 0; F < 8 && gCtrlCount < NVME_MAX_CTRL; F++) {
-                UINT32 VidDid = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x00);
-                UINT32 ClassReg;
-                UINT32 Class;
-                UINT32 Cmd;
-                UINT64 Bar;
-                NVME_CTRL *C;
-
-                if ((VidDid & 0xFFFF) == 0xFFFF) {
-                    continue;
-                }
-                ClassReg = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x08);
-                Class = (ClassReg >> 8) & 0xFFFFFFu;
-                if (Class != NVME_PCI_CLASS) {
-                    continue;
-                }
-
-                Cmd = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04);
-                PciWriteConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04, Cmd | 0x06);
-
-                if (!PciBar0((UINT8)B, (UINT8)D, (UINT8)F, &Bar)) {
-                    continue;
-                }
-
-                C = &gCtrl[gCtrlCount];
-                ZeroMemory(C, sizeof(*C));
-                if (!CtrlInit(C, Bar)) {
-                    DebugWrite("nvme: ctrl init fail\n");
-                    continue;
-                }
-                DebugWrite("nvme: ctrl ");
-                DebugHex32((UINT32)gCtrlCount);
-                DebugWrite(" bar=");
-                DebugHex32((UINT32)Bar);
-                DebugWrite("\n");
-                gCtrlCount++;
-            }
-        }
-    }
-
-    if (gCtrlCount == 0) {
-        DebugWrite("nvme: no controllers\n");
+    C = &gCtrl[0];
+    ZeroMemory(C, sizeof(*C));
+    if (!CtrlInit(C, gBar)) {
+        DebugWrite("nvme: ctrl init fail\n");
         return 0;
     }
+    DebugWrite("nvme: ctrl ");
+    DebugHex32(0);
+    DebugWrite(" bar=");
+    DebugHex32((UINT32)gBar);
+    DebugWrite("\n");
+    gCtrlCount = 1;
 
     gReady = 1;
     ToyLogFs("Boot: NVMe Drives=");

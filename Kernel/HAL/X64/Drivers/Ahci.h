@@ -12,7 +12,8 @@ int AhciProbe(UINT32 Drive);
 int AhciReadSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer);
 int AhciWriteSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer);
 
-/* Driver 入口：扫描 PCI AHCI 并起端口；需 VirtualMemoryEnabled */
+/* Driver 入口：按设备树里的 AHCI 起端口；需 VirtualMemoryEnabled */
+int AhciAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar);
 int AhciSetup(void);
 int AhciReady(void);
 

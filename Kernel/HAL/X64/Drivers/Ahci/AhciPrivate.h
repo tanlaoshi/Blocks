@@ -149,7 +149,6 @@ static inline int WaitClear(volatile UINT32 *Reg, UINT32 Mask, int Timeout) {
     return 0;
 }
 
-int PciFindAhci(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut);
 int PortInit(volatile AHCI_PORT *Port, AHCI_DRIVE *Drive);
 int PortXfer(AHCI_DRIVE *Drive, UINT32 Lba, UINT32 Count, void *Buffer, int Write);
 

@@ -18,10 +18,28 @@ static const BLOCK_BACKEND gAhciBackend = {
     .Flush = 0,
 };
 
-static int AhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+static const DRIVER_MATCH gAhciMatch[] = {
+    {
+        .Type = DRIVER_MATCH_PCI,
+        .U.Pci = {
+            .Class = 0x01,
+            .Subclass = 0x06,
+            .ProgIf = 0x01,
+            .ClassMask = 0xFF,
+            .SubclassMask = 0xFF,
+            .ProgIfMask = 0xFF,
+        },
+    },
+    { .Type = DRIVER_MATCH_NONE },
+};
 
+static int AhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+    DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
+
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI || Dev->Bar[5] == 0) {
+        return -1;
+    }
     if (AhciReady()) {
         if (OutPrivate) {
             *OutPrivate = 0;
@@ -30,6 +48,9 @@ static int AhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     }
     /* HBA BAR 映射必须在 VMM Enable 之后（InitDriver 早 Probe 会跳过） */
     if (!VirtualMemoryEnabled()) {
+        return -1;
+    }
+    if (!AhciAccept(Dev->PciBus, Dev->PciDev, Dev->PciFn, Dev->Bar[5])) {
         return -1;
     }
     if (!AhciSetup()) {
@@ -53,7 +74,7 @@ static void AhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gAhciDriver = {
     .Name = "ahci",
     .Class = TOY_DRIVER_CLASS_BLOCK,
-    .Match = 0,
+    .Match = gAhciMatch,
     .Probe = AhciDriverProbe,
     .Bind = AhciDriverBind,
     .Remove = AhciDriverRemove,

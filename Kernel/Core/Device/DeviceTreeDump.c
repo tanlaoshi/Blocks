@@ -8,26 +8,22 @@
 #include "Device.h"
 #include "Console.h"
 #include "Debug.h"
-
-static char HexDigit(UINT32 V) {
-    V &= 0xFu;
-    return (char)(V < 10 ? ('0' + V) : ('a' + V - 10));
-}
+#include "Text.h"
 
 static void WriteHex2(UINT32 V) {
     char B[3];
-    B[0] = HexDigit(V >> 4);
-    B[1] = HexDigit(V);
+    B[0] = FormatHexadecimalDigit(V >> 4);
+    B[1] = FormatHexadecimalDigit(V);
     B[2] = 0;
     ConsoleWrite(B);
 }
 
 static void WriteHex4(UINT32 V) {
     char B[5];
-    B[0] = HexDigit(V >> 12);
-    B[1] = HexDigit(V >> 8);
-    B[2] = HexDigit(V >> 4);
-    B[3] = HexDigit(V);
+    B[0] = FormatHexadecimalDigit(V >> 12);
+    B[1] = FormatHexadecimalDigit(V >> 8);
+    B[2] = FormatHexadecimalDigit(V >> 4);
+    B[3] = FormatHexadecimalDigit(V);
     B[4] = 0;
     ConsoleWrite(B);
 }

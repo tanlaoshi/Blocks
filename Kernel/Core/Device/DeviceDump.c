@@ -6,6 +6,7 @@
 #include "Device.h"
 #include "Driver.h"
 #include "Console.h"
+#include "Text.h"
 
 typedef struct {
     int Verbose;
@@ -18,16 +19,11 @@ typedef struct {
     char NameKey[32];
 } LIST_OPTS;
 
-static char HexDigit(UINT32 V) {
-    V &= 0xFu;
-    return (char)(V < 10 ? ('0' + V) : ('a' + V - 10));
-}
-
 static void WriteHex2(UINT32 V) {
     char Buf[3];
 
-    Buf[0] = HexDigit(V >> 4);
-    Buf[1] = HexDigit(V);
+    Buf[0] = FormatHexadecimalDigit(V >> 4);
+    Buf[1] = FormatHexadecimalDigit(V);
     Buf[2] = 0;
     ConsoleWrite(Buf);
 }
@@ -35,10 +31,10 @@ static void WriteHex2(UINT32 V) {
 static void WriteHex4(UINT32 V) {
     char Buf[5];
 
-    Buf[0] = HexDigit(V >> 12);
-    Buf[1] = HexDigit(V >> 8);
-    Buf[2] = HexDigit(V >> 4);
-    Buf[3] = HexDigit(V);
+    Buf[0] = FormatHexadecimalDigit(V >> 12);
+    Buf[1] = FormatHexadecimalDigit(V >> 8);
+    Buf[2] = FormatHexadecimalDigit(V >> 4);
+    Buf[3] = FormatHexadecimalDigit(V);
     Buf[4] = 0;
     ConsoleWrite(Buf);
 }

@@ -4,6 +4,7 @@
  * 未注册时丢弃；Core/Serial 或 Console 启动时 LibWriteRegister。
  */
 #include "LibWrite.h"
+#include "Text.h"
 
 static void (*gLibWrite)(const char *Text);
 
@@ -20,7 +21,6 @@ void LibWrite(const char *Text) {
 
 static void LibWriteHexDigits(UINT64 Value, int Digits) {
     char Buf[17];
-    int i;
 
     if (Digits < 1) {
         Digits = 1;
@@ -28,12 +28,7 @@ static void LibWriteHexDigits(UINT64 Value, int Digits) {
     if (Digits > 16) {
         Digits = 16;
     }
-    for (i = Digits - 1; i >= 0; i--) {
-        int Nibble = (int)(Value & 0xFu);
-        Buf[i] = (char)(Nibble < 10 ? '0' + Nibble : 'a' + (Nibble - 10));
-        Value >>= 4;
-    }
-    Buf[Digits] = 0;
+    FormatHexadecimal(Buf, (int)sizeof(Buf), Value, Digits, 0, 0);
     LibWrite(Buf);
 }
 

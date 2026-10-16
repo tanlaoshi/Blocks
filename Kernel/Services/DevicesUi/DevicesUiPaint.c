@@ -2,17 +2,13 @@
  * DevicesUiPaint.c — 三栏：筛选 / 列表 / 详情（PR-DEV-6）
  */
 #include "DevicesUiPrivate.h"
-
-static char HexDigit(UINT32 V) {
-    V &= 0xFu;
-    return (char)(V < 10 ? ('0' + V) : ('a' + V - 10));
-}
+#include "Text.h"
 
 static void PutHex8(char *Dst, UINTN *N, UINTN Max, UINT32 V) {
     int S;
 
     for (S = 7; S >= 0 && *N + 1 < Max; S--) {
-        Dst[(*N)++] = HexDigit(V >> (UINT32)(S * 4));
+        Dst[(*N)++] = FormatHexadecimalDigit(V >> (UINT32)(S * 4));
     }
 }
 

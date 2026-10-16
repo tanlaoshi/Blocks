@@ -2,28 +2,24 @@
  * DevicesUiModel.c — Device 表格式化 / 筛选（PR-DEV-6）
  */
 #include "DevicesUiPrivate.h"
-
-static char HexDigit(UINT32 V) {
-    V &= 0xFu;
-    return (char)(V < 10 ? ('0' + V) : ('a' + V - 10));
-}
+#include "Text.h"
 
 static void PutHex2(char *Dst, UINTN *N, UINTN Max, UINT32 V) {
     if (*N + 2 >= Max) {
         return;
     }
-    Dst[(*N)++] = HexDigit(V >> 4);
-    Dst[(*N)++] = HexDigit(V);
+    Dst[(*N)++] = FormatHexadecimalDigit(V >> 4);
+    Dst[(*N)++] = FormatHexadecimalDigit(V);
 }
 
 static void PutHex4(char *Dst, UINTN *N, UINTN Max, UINT32 V) {
     if (*N + 4 >= Max) {
         return;
     }
-    Dst[(*N)++] = HexDigit(V >> 12);
-    Dst[(*N)++] = HexDigit(V >> 8);
-    Dst[(*N)++] = HexDigit(V >> 4);
-    Dst[(*N)++] = HexDigit(V);
+    Dst[(*N)++] = FormatHexadecimalDigit(V >> 12);
+    Dst[(*N)++] = FormatHexadecimalDigit(V >> 8);
+    Dst[(*N)++] = FormatHexadecimalDigit(V >> 4);
+    Dst[(*N)++] = FormatHexadecimalDigit(V);
 }
 
 void DevicesUiFormatPci(const DEVICE_NODE *Dev, char *Out, UINTN Max) {

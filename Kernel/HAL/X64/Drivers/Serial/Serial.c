@@ -7,6 +7,7 @@
  * 16550 FIFO(~16)；ISR 在字节到达时抽空。禁止在定时器里自旋抢锁。
  */
 #include "Serial.h"
+#include "Text.h"
 #include "Hal.h"
 #include "IoApic.h"
 #include "ToySerialConfig.h"
@@ -258,13 +259,7 @@ void SerialWrite(const char *Text) {
 }
 
 void SerialHexFormat(char *Buf, UINT64 Value, int Digits) {
-    Buf[0] = '0';
-    Buf[1] = 'x';
-    for (int i = 0; i < Digits; i++) {
-        int Digit = (int)((Value >> ((Digits - 1 - i) * 4)) & 0xF);
-        Buf[2 + i] = (Digit < 10) ? (char)('0' + Digit) : (char)('A' + Digit - 10);
-    }
-    Buf[2 + Digits] = '\0';
+    FormatHexadecimal(Buf, 2 + Digits + 1, Value, Digits, 1, 1);
 }
 
 void SerialHex32(UINT32 Value) {

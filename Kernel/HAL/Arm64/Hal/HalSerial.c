@@ -4,6 +4,7 @@
  * TOY_SERIAL=0：不碰 UART；分模块 quiet 见 ToySerialConfig.h。
  */
 #include "HalSerial.h"
+#include "Text.h"
 #include "BoardConfig.h"
 #include "ToySerialConfig.h"
 
@@ -196,15 +197,8 @@ void HalSerialBootMark(const char *Text) {
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {
-    static const char Hex[] = "0123456789abcdef";
-    int i;
-
     if (Buf == 0 || Digits <= 0 || Digits > 16) {
         return;
     }
-    for (i = Digits - 1; i >= 0; i--) {
-        Buf[i] = Hex[Value & 0xFu];
-        Value >>= 4;
-    }
-    Buf[Digits] = 0;
+    FormatHexadecimal(Buf, Digits + 1, Value, Digits, 0, 0);
 }

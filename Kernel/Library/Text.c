@@ -47,3 +47,39 @@ char *Uint64ToHex(UINT64 Value) {
     Buf[18] = '\0';
     return Buf;
 }
+
+void FormatHexadecimal(char *Buffer, int Capacity, UINT64 Value,
+                       int Digits, int Uppercase, int WithPrefix) {
+    int Need;
+    int Pos;
+    int i;
+    const char *Letters;
+
+    if (Digits < 0) {
+        Digits = 0;
+    }
+    Need = Digits + (WithPrefix ? 2 : 0) + 1;
+    if (Buffer == 0 || Capacity < Need) {
+        if (Buffer != 0 && Capacity > 0) {
+            Buffer[0] = 0;
+        }
+        return;
+    }
+    Letters = Uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    Pos = 0;
+    if (WithPrefix) {
+        Buffer[Pos++] = '0';
+        Buffer[Pos++] = 'x';
+    }
+    for (i = Digits - 1; i >= 0; i--) {
+        int Shift = i * 4;
+        int Nibble = (Shift >= 64) ? 0 : (int)((Value >> Shift) & 0xFu);
+        Buffer[Pos++] = Letters[Nibble];
+    }
+    Buffer[Pos] = 0;
+}
+
+char FormatHexadecimalDigit(UINT32 Value) {
+    Value &= 0xFu;
+    return (char)(Value < 10u ? ('0' + Value) : ('a' + Value - 10u));
+}

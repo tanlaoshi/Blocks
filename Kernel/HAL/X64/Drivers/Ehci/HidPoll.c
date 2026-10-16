@@ -1,7 +1,7 @@
 /*
- * EhciHidPoll.c — 报告入队 + dequeue（PR-H-ehci-2）
+ * HidPoll.c — 报告入队 + dequeue（PR-H-ehci-2）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalVideo.h"
 
@@ -21,7 +21,7 @@ static int gMouseAbsX;
 static int gMouseAbsY;
 static int gMouseAbsInit;
 
-void EhciHidResetQueues(void) {
+void HidResetQueues(void) {
     gKbdHead = gKbdTail = 0;
     gMHead = gMTail = 0;
     gMouseAbsInit = 0;
@@ -84,7 +84,7 @@ static void PushMouse(INT8 Dx, INT8 Dy, UINT8 Btn, INT8 Wheel) {
     gMTail = N;
 }
 
-void EhciHidPoll(void) {
+void HidPoll(void) {
     int i;
 
     for (i = 0; i < gEhciCount; i++) {
@@ -99,14 +99,14 @@ void EhciHidPoll(void) {
             continue;
         }
         T = &C->Qtds[4];
-        EhciFlush(T, sizeof(*T));
+        Flush(T, sizeof(*T));
         Tok = T->Token;
         if (Tok & EHCI_QTD_ACTIVE) {
             continue;
         }
         if (Tok & EHCI_QTD_HALTED) {
             gEhciIntrDt = 0;
-            EhciHidArmIntr(C);
+            HidArmIntr(C);
             continue;
         }
         Mps = C->HidMaxPkt;
@@ -119,7 +119,7 @@ void EhciHidPoll(void) {
         }
         Got = (UINT32)Mps - Remain;
         gEhciIntrDt = (UINT8)(gEhciIntrDt ? 0 : 1);
-        EhciFlush(C->ReportBuf, 64);
+        Flush(C->ReportBuf, 64);
         if (Got >= 3) {
             if (C->HidProto == 1) {
                 PushKbd(C->ReportBuf);
@@ -134,11 +134,11 @@ void EhciHidPoll(void) {
                 PushMouse(Dx, Dy, B, Wh);
             }
         }
-        EhciHidArmIntr(C);
+        HidArmIntr(C);
     }
 }
 
-int EhciHidKeyboardDequeue(UINT8 Out[8]) {
+int HidKeyboardDequeue(UINT8 Out[8]) {
     int i;
     if (gKbdHead == gKbdTail || !Out) {
         return 0;
@@ -150,7 +150,7 @@ int EhciHidKeyboardDequeue(UINT8 Out[8]) {
     return 1;
 }
 
-int EhciHidMousePresent(void) {
+int HidMousePresent(void) {
     int i;
     if (!gEhciHidReady) {
         return 0;
@@ -163,7 +163,7 @@ int EhciHidMousePresent(void) {
     return 0;
 }
 
-int EhciHidMouseDequeue(UINT32 *X, UINT32 *Y, UINT8 *Buttons, INT8 *Wheel) {
+int HidMouseDequeue(UINT32 *X, UINT32 *Y, UINT8 *Buttons, INT8 *Wheel) {
     if (gMHead == gMTail || !X || !Y || !Buttons || !Wheel) {
         return 0;
     }

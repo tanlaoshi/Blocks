@@ -1,7 +1,7 @@
 /*
- * EhciBulk.c — 异步 Bulk（PR-H-ehci-3）
+ * Bulk.c — 异步 Bulk（PR-H-ehci-3）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 
@@ -9,7 +9,7 @@
  * PR-H-ehci-3：异步 Bulk（复用 CtrlQH；与周期 HID 并行）。
  * Dt 内外维护 DATA0/1；成功后翻转。
  */
-int EhciBulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
+int BulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
                  UINT8 Speed, UINT8 HubAddr, UINT8 HubPort, int DirIn,
                  void *Buf, UINT32 Len, UINT8 *Dt) {
     EHCI_QTD *Td;
@@ -38,7 +38,7 @@ int EhciBulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
     Td = &C->Qtds[0];
 
     if (!DirIn) {
-        EhciCopyBuf(C->BulkBuf, (const UINT8 *)Buf, Len);
+        CopyBuf(C->BulkBuf, (const UINT8 *)Buf, Len);
     } else {
         for (i = 0; i < Len; i++) {
             C->BulkBuf[i] = 0;
@@ -61,10 +61,10 @@ int EhciBulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
         EpCap = 1u << 30; /* HS Mult=1 */
     }
 
-    EhciPrepQtd(Td, EHCI_LINK_TERMINATE, Pid, Len, *Dt ? 1u : 0u,
-            EhciPtrPhys(C->BulkBuf));
+    PrepQtd(Td, EHCI_LINK_TERMINATE, Pid, Len, *Dt ? 1u : 0u,
+            PtrPhys(C->BulkBuf));
 
-    if (!EhciAsyncOff(C)) {
+    if (!AsyncOff(C)) {
         gEhciLastErr = "bulk ase off";
         return -1;
     }
@@ -77,37 +77,37 @@ int EhciBulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
         C->CtrlQh->Buf[i] = 0;
         C->CtrlQh->BufHi[i] = 0;
     }
-    C->CtrlQh->Next = (UINT32)EhciPtrPhys(Td);
+    C->CtrlQh->Next = (UINT32)PtrPhys(Td);
     C->CtrlQh->Horiz =
-        (UINT32)EhciPtrPhys(C->AsyncHead) | EHCI_LINK_TYPE_QH;
+        (UINT32)PtrPhys(C->AsyncHead) | EHCI_LINK_TYPE_QH;
     C->AsyncHead->Horiz =
-        (UINT32)EhciPtrPhys(C->CtrlQh) | EHCI_LINK_TYPE_QH;
+        (UINT32)PtrPhys(C->CtrlQh) | EHCI_LINK_TYPE_QH;
     C->AsyncHead->Token = EHCI_QTD_HALTED;
     C->AsyncHead->Next = EHCI_LINK_TERMINATE;
-    EhciFlush(Td, sizeof(*Td));
-    EhciFlush(C->BulkBuf, Len);
-    EhciFlush(C->CtrlQh, sizeof(*C->CtrlQh));
-    EhciFlush(C->AsyncHead, sizeof(*C->AsyncHead));
-    EhciFence();
-    if (!EhciAsyncOn(C)) {
+    Flush(Td, sizeof(*Td));
+    Flush(C->BulkBuf, Len);
+    Flush(C->CtrlQh, sizeof(*C->CtrlQh));
+    Flush(C->AsyncHead, sizeof(*C->AsyncHead));
+    Fence();
+    if (!AsyncOn(C)) {
         gEhciLastErr = "bulk ase on";
         return -1;
     }
-    if (!EhciWaitQtd(C, Td)) {
+    if (!WaitQtd(C, Td)) {
         return -1;
     }
-    if (!EhciAsyncOff(C)) {
+    if (!AsyncOff(C)) {
         gEhciLastErr = "bulk ase off2";
         return -1;
     }
     C->CtrlQh->Next = EHCI_LINK_TERMINATE;
     C->CtrlQh->Token = 0;
-    EhciAsyncOn(C);
+    AsyncOn(C);
 
     *Dt = (UINT8)(!(*Dt));
     if (DirIn) {
-        EhciFlush(C->BulkBuf, Len);
-        EhciCopyBuf((UINT8 *)Buf, C->BulkBuf, Len);
+        Flush(C->BulkBuf, Len);
+        CopyBuf((UINT8 *)Buf, C->BulkBuf, Len);
     }
     return 0;
 }

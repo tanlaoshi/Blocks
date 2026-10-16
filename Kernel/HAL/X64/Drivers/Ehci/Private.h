@@ -1,5 +1,5 @@
 /*
- * EhciPrivate.h — EHCI 寄存器 / QH·qTD（PR-H-ehci-1/2）
+ * Private.h — EHCI 寄存器 / QH·qTD（PR-H-ehci-1/2）
  *
  * 对照 EHCI 1.0；不搬 Linux ehci-hcd。
  * qTD/QH 用 64-bit 寻址布局（BufHi），Intel HCCPARAMS.AC 常为 1。
@@ -162,97 +162,97 @@ extern UINT8 gEhciNextAddr;
 extern const char *gEhciLastErr;
 extern char gEhciHubNote[96];
 
-static inline UINT32 EhciR32(volatile UINT8 *Base, UINT32 Off) {
+static inline UINT32 R32(volatile UINT8 *Base, UINT32 Off) {
     return *(volatile UINT32 *)(Base + Off);
 }
 
-static inline void EhciW32(volatile UINT8 *Base, UINT32 Off, UINT32 Val) {
+static inline void W32(volatile UINT8 *Base, UINT32 Off, UINT32 Val) {
     *(volatile UINT32 *)(Base + Off) = Val;
 }
 
-static inline UINT64 EhciPtrPhys(const void *P) {
+static inline UINT64 PtrPhys(const void *P) {
     return (UINT64)(UINTN)P;
 }
 
-static inline void EhciFence(void) {
+static inline void Fence(void) {
     __asm__ __volatile__("mfence" ::: "memory");
 }
 
-void EhciDelay(int Loops);
-void EhciFlush(const void *Ptr, UINTN Size);
+void Delay(int Loops);
+void Flush(const void *Ptr, UINTN Size);
 
-int EhciInitOne(EHCI_CTRL *C, int Index);
-void EhciSurveyCcs(EHCI_CTRL *C);
-int EhciSchedStart(EHCI_CTRL *C);
-void EhciSchedEnablePeriodic(EHCI_CTRL *C);
-int EhciControlXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
+int InitOne(EHCI_CTRL *C, int Index);
+void SurveyCcs(EHCI_CTRL *C);
+int SchedStart(EHCI_CTRL *C);
+void SchedEnablePeriodic(EHCI_CTRL *C);
+int ControlTransfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
                     const USB_SETUP_PACKET *Setup, void *Data);
 /* DirIn=1 Bulk IN；成功 0 */
-int EhciBulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
+int BulkXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 Ep, UINT16 MaxPkt,
                  UINT8 Speed, UINT8 HubAddr, UINT8 HubPort, int DirIn,
                  void *Buf, UINT32 Len, UINT8 *Dt);
-int EhciPortReset(EHCI_CTRL *C, UINT8 Port);
+int PortReset(EHCI_CTRL *C, UINT8 Port);
 
-int EhciEnumGetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
+int EnumGetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
                     UINT16 Len, void *Out);
-int EhciEnumSetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax);
-int EhciEnumSetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg);
-int EhciEnumSetProtocolBoot(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface);
-int EhciEnumSetIdle(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface);
-void EhciEnumMarkHex4(const char *Prefix, UINT32 V);
+int EnumSetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax);
+int EnumSetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg);
+int EnumSetProtocolBoot(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface);
+int EnumSetIdle(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface);
+void EnumMarkHex4(const char *Prefix, UINT32 V);
 
-int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort);
-int EhciEnumHub(EHCI_CTRL *C);
-int EhciEnumHid(EHCI_CTRL *C);
-void EhciHidArmIntr(EHCI_CTRL *C);
+int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort);
+int EnumHub(EHCI_CTRL *C);
+int EnumHid(EHCI_CTRL *C);
+void HidArmIntr(EHCI_CTRL *C);
 extern UINT8 gEhciIntrDt;
-void EhciHidResetQueues(void);
-int EhciHidBringup(void);
-void EhciHidPoll(void);
-int EhciHidKeyboardDequeue(UINT8 Out[8]);
-int EhciHidMousePresent(void);
-int EhciHidMouseDequeue(UINT32 *X, UINT32 *Y, UINT8 *Buttons, INT8 *Wheel);
+void HidResetQueues(void);
+int HidBringup(void);
+void HidPoll(void);
+int HidKeyboardDequeue(UINT8 Out[8]);
+int HidMousePresent(void);
+int HidMouseDequeue(UINT32 *X, UINT32 *Y, UINT8 *Buttons, INT8 *Wheel);
 
 /* PR-H-ehci-3 */
-int EhciMscClaim(void);
-int EhciMscReady(void);
-int EhciMscScan(void);
-int EhciMscCapacity(void);
-UINT32 EhciMscBlockCount(void);
-UINT32 EhciMscBlockSize(void);
-int EhciMscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
-int EhciMscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
-int EhciMscFlush(void);
-int EhciMscRelease(void);
-int EhciMscPresent(void);
+int MscClaim(void);
+int MscReady(void);
+int MscScan(void);
+int MscCapacity(void);
+UINT32 MscBlockCount(void);
+UINT32 MscBlockSize(void);
+int MscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
+int MscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
+int MscFlush(void);
+int MscRelease(void);
+int MscPresent(void);
 
 /* async helpers（control/bulk 共用） */
-void EhciCopyBuf(UINT8 *D, const UINT8 *S, UINT32 N);
-void EhciPrepQtd(EHCI_QTD *T, UINT32 Next, UINT32 Pid, UINT32 Bytes,
+void CopyBuf(UINT8 *D, const UINT8 *S, UINT32 N);
+void PrepQtd(EHCI_QTD *T, UINT32 Next, UINT32 Pid, UINT32 Bytes,
                  UINT32 Dt, UINT64 BufPhys);
-int EhciAsyncOff(EHCI_CTRL *C);
-int EhciAsyncOn(EHCI_CTRL *C);
-int EhciWaitQtd(EHCI_CTRL *C, EHCI_QTD *T);
+int AsyncOff(EHCI_CTRL *C);
+int AsyncOn(EHCI_CTRL *C);
+int WaitQtd(EHCI_CTRL *C, EHCI_QTD *T);
 
 /* MSC 跨文件态 / claim·bot 帮手 */
 extern EHCI_CTRL *gEhciMscCtrl;
 extern int gEhciMscInSense;
 extern UINT32 gEhciMscTag;
 #define EHCI_HUB_STAT_CONNECT (1u << 0)
-void EhciMscZero(UINT8 *P, UINT32 N);
-void EhciMscCopy(UINT8 *D, const UINT8 *S, UINT32 N);
-void EhciMscMarkHex4(const char *Prefix, UINT32 V);
-int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort);
-int EhciMscClaimViaHub(EHCI_CTRL *C);
-int EhciMscEnsureHub(EHCI_CTRL *C, UINT8 Port);
-int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
+void MscZero(UINT8 *P, UINT32 N);
+void MscCopy(UINT8 *D, const UINT8 *S, UINT32 N);
+void MscMarkHex4(const char *Prefix, UINT32 V);
+int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort);
+int MscClaimViaHub(EHCI_CTRL *C);
+int MscEnsureHub(EHCI_CTRL *C, UINT8 Port);
+int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
                int DataIn, void *Data);
-int EhciMscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port,
+int MscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port,
                         UINT16 *Status, UINT16 *Change);
-int EhciMscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat);
-int EhciMscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat);
-int EhciMscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len);
-int EhciMscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut);
+int MscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat);
+int MscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat);
+int MscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len);
+int MscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut);
 
 /* PR-H-ehci-4 FTDI */
 extern EHCI_CTRL *gEhciFtdiCtrl;
@@ -268,19 +268,19 @@ extern UINT8 gEhciFtdiDtIn;
 extern UINT8 gEhciFtdiDtOut;
 extern UINT8 gEhciFtdiEpMax0;
 extern int gEhciFtdiOk;
-int EhciFtdiClaimViaHub(EHCI_CTRL *C);
-void EhciFtdiInvalidate(void);
-int EhciFtdiClaim(void);
-int EhciFtdiReady(void);
-int EhciFtdiWrite(const char *Text);
-void EhciFtdiPollRx(void);
-int EhciFtdiDataReady(void);
-char EhciFtdiReadChar(void);
+int FtdiClaimViaHub(EHCI_CTRL *C);
+void FtdiInvalidate(void);
+int FtdiClaim(void);
+int FtdiReady(void);
+int FtdiWrite(const char *Text);
+void FtdiPollRx(void);
+int FtdiDataReady(void);
+char FtdiReadChar(void);
 
 /* PR-N-wifi-1 */
-int EhciWifiClaimViaHub(EHCI_CTRL *C);
-int EhciWifiClaim(void);
-int EhciWifiReady(void);
-UINT16 EhciWifiPid(void);
+int WifiClaimViaHub(EHCI_CTRL *C);
+int WifiClaim(void);
+int WirelessReady(void);
+UINT16 WifiPid(void);
 
 #endif

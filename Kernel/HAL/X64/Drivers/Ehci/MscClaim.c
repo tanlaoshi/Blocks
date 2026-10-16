@@ -1,7 +1,7 @@
 /*
- * EhciMscClaim.c — Parse Bulk + FinishClaim / hub 子口（PR-H-ehci-3）
+ * MscClaim.c — Parse Bulk + FinishClaim / hub 子口（PR-H-ehci-3）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 
@@ -13,7 +13,7 @@ static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return EhciControlXfer(C, Addr, EpMax, &S, Out);
+    return ControlTransfer(C, Addr, EpMax, &S, Out);
 }
 
 static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
@@ -24,7 +24,7 @@ static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, 0, EpMax, &S, 0);
+    return ControlTransfer(C, 0, EpMax, &S, 0);
 }
 
 static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
@@ -35,7 +35,7 @@ static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, Addr, EpMax, &S, 0);
+    return ControlTransfer(C, Addr, EpMax, &S, 0);
 }
 
 static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
@@ -127,7 +127,7 @@ static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
     return 1;
 }
 
-int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
+int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 Cfg[256];
     UINT8 EpMax = 64;
@@ -157,9 +157,9 @@ int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) 
     if (GetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         return 0;
     }
-    EhciMscMarkHex4("Boot: EHCI MSC vid=", Dev.idVendor);
-    EhciMscMarkHex4(" pid=", Dev.idProduct);
-    EhciMscMarkHex4(" cls=", Dev.bDeviceClass);
+    MscMarkHex4("Boot: EHCI MSC vid=", Dev.idVendor);
+    MscMarkHex4(" pid=", Dev.idProduct);
+    MscMarkHex4(" cls=", Dev.bDeviceClass);
     ToyBootMarkUsb("\n");
 
     if (Dev.bDeviceClass == 0x09u) {
@@ -183,7 +183,7 @@ int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) 
     C->XferSpeed = Speed;
     C->XferHubAddr = HubAddr;
     C->XferHubPort = HubPort;
-    EhciDelay(100000);
+    Delay(100000);
     if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         return 0;
     }
@@ -203,7 +203,7 @@ int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) 
     if (SetConfig(C, Addr, EpMax, CfgVal) != 0) {
         return 0;
     }
-    EhciDelay(200000);
+    Delay(200000);
     {
         USB_SETUP_PACKET S;
         UINT8 Lun = 0;
@@ -215,7 +215,7 @@ int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) 
         C->XferSpeed = Speed;
         C->XferHubAddr = HubAddr;
         C->XferHubPort = HubPort;
-        (void)EhciControlXfer(C, Addr, EpMax, &S, &Lun);
+        (void)ControlTransfer(C, Addr, EpMax, &S, &Lun);
     }
     C->MscAddr = Addr;
     C->MscSpeed = Speed;
@@ -245,12 +245,12 @@ int EhciMscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) 
     return 1;
 }
 
-int EhciMscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
+int MscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 EpMax = 64;
     UINT8 HubAddr;
 
-    if (!EhciPortReset(C, Port)) {
+    if (!PortReset(C, Port)) {
         return 0;
     }
     C->XferSpeed = EHCI_SPEED_HS;
@@ -278,23 +278,23 @@ int EhciMscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
         C->XferSpeed = EHCI_SPEED_HS;
         C->XferHubAddr = 0;
         C->XferHubPort = 0;
-        EhciDelay(100000);
+        Delay(100000);
         if (SetConfig(C, HubAddr, EpMax, 1) != 0) {
             return 0;
         }
         C->HubAddr = HubAddr;
         ToyBootMarkUsb("Boot: EHCI MSC hub ready\n");
-        return EhciMscClaimViaHub(C);
+        return MscClaimViaHub(C);
     }
     /* 根口直连 MSC */
-    if (!EhciMscFinishClaim(C, EHCI_SPEED_HS, 0, 0)) {
+    if (!MscFinishClaim(C, EHCI_SPEED_HS, 0, 0)) {
         return 0;
     }
-    if (EhciMscCapacity() == 0) {
+    if (MscCapacity() == 0) {
         return 1;
     }
     ToyBootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
-    (void)EhciMscRelease();
+    (void)MscRelease();
     return 0;
 }
 

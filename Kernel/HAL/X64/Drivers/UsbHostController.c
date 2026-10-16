@@ -7,7 +7,10 @@
 static const USB_HOST_CONTROLLER_OPERATIONS *gOperations[3];
 
 static const USB_HOST_CONTROLLER_OPERATIONS *Current(void) {
-    return gOperations[USB_HOST_CONTROLLER_XHCI];
+    if (gOperations[USB_HOST_CONTROLLER_XHCI] != 0) {
+        return gOperations[USB_HOST_CONTROLLER_XHCI];
+    }
+    return gOperations[USB_HOST_CONTROLLER_EHCI];
 }
 
 int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {

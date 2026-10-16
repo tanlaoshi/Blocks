@@ -1,7 +1,7 @@
 /*
- * EhciMsc.c — MSC 门面：Ready / Scan / Claim / Release / Present（PR-H-ehci-3）
+ * Msc.c — MSC 门面：Ready / Scan / Claim / Release / Present（PR-H-ehci-3）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "UsbMscHost.h"
 #include "ToySerialLog.h"
 
@@ -9,25 +9,25 @@ EHCI_CTRL *gEhciMscCtrl;
 int gEhciMscInSense;
 UINT32 gEhciMscTag;
 
-int EhciMscReady(void) {
+int MscReady(void) {
     return (gEhciMscCtrl && gEhciMscCtrl->MscOk && gEhciMscCtrl->MscCapacityOk)
                ? 1
                : 0;
 }
 
-UINT32 EhciMscBlockCount(void) {
+UINT32 MscBlockCount(void) {
     return (gEhciMscCtrl && gEhciMscCtrl->MscCapacityOk)
                ? gEhciMscCtrl->MscBlockCount
                : 0;
 }
 
-UINT32 EhciMscBlockSize(void) {
+UINT32 MscBlockSize(void) {
     return (gEhciMscCtrl && gEhciMscCtrl->MscCapacityOk)
                ? gEhciMscCtrl->MscBlockSize
                : 0;
 }
 
-int EhciMscScan(void) {
+int MscScan(void) {
     int i;
     int Found = 0;
 
@@ -40,7 +40,7 @@ int EhciMscScan(void) {
         if (!C->Up || !C->Sched) {
             continue;
         }
-        EhciSurveyCcs(C);
+        SurveyCcs(C);
         for (P = 1; P <= C->NPorts; P++) {
             if (C->CcsMask & (1u << (P - 1))) {
                 Found++;
@@ -61,7 +61,7 @@ int EhciMscScan(void) {
     return Found;
 }
 
-int EhciMscClaim(void) {
+int MscClaim(void) {
     int i;
 
     if (!gEhciReady) {
@@ -80,22 +80,22 @@ int EhciMscClaim(void) {
             continue;
         }
         if (C->HubAddr) {
-            if (EhciMscClaimViaHub(C)) {
+            if (MscClaimViaHub(C)) {
                 return 1;
             }
             continue;
         }
-        EhciSurveyCcs(C);
+        SurveyCcs(C);
         for (P = 1; P <= C->NPorts; P++) {
             if ((C->CcsMask & (1u << (P - 1))) == 0) {
                 continue;
             }
-            if (EhciMscEnsureHub(C, P)) {
+            if (MscEnsureHub(C, P)) {
                 return 1;
             }
         }
         for (P = 1; P <= C->NPorts; P++) {
-            if (EhciMscEnsureHub(C, P)) {
+            if (MscEnsureHub(C, P)) {
                 return 1;
             }
         }
@@ -104,7 +104,7 @@ int EhciMscClaim(void) {
     return 0;
 }
 
-int EhciMscRelease(void) {
+int MscRelease(void) {
     if (gEhciMscCtrl) {
         gEhciMscCtrl->MscOk = 0;
         gEhciMscCtrl->MscCapacityOk = 0;
@@ -117,7 +117,7 @@ int EhciMscRelease(void) {
     return 0;
 }
 
-int EhciMscPresent(void) {
+int MscPresent(void) {
     EHCI_CTRL *C = gEhciMscCtrl;
     UINT16 St;
     UINT16 Ch;
@@ -126,34 +126,34 @@ int EhciMscPresent(void) {
         return 0;
     }
     if (C->MscHubAddr && C->MscHubPort) {
-        if (!EhciMscHubGetStatus(C, C->MscHubAddr, C->MscHubPort, &St, &Ch)) {
+        if (!MscHubGetStatus(C, C->MscHubAddr, C->MscHubPort, &St, &Ch)) {
             return 0;
         }
         return (St & EHCI_HUB_STAT_CONNECT) ? 1 : 0;
     }
     if (C->Up) {
-        EhciSurveyCcs(C);
+        SurveyCcs(C);
         return C->CcsMask ? 1 : 0;
     }
     return 0;
 }
 
-void EhciMscHostOffer(void) {
+void MscHostOffer(void) {
     static const MSC_HOST Host = {
         .Kind = MSC_HOST_EHCI,
         .BringUp = 0,
-        .Ready = EhciMscReady,
-        .Scan = EhciMscScan,
-        .Claim = EhciMscClaim,
-        .Capacity = EhciMscCapacity,
-        .BlockCount = EhciMscBlockCount,
-        .BlockSize = EhciMscBlockSize,
-        .ReadSectors = EhciMscReadSectors,
-        .WriteSectors = EhciMscWriteSectors,
-        .Flush = EhciMscFlush,
-        .Release = EhciMscRelease,
-        .Present = EhciMscPresent,
-        .ControllerReady = EhciReady,
+        .Ready = MscReady,
+        .Scan = MscScan,
+        .Claim = MscClaim,
+        .Capacity = MscCapacity,
+        .BlockCount = MscBlockCount,
+        .BlockSize = MscBlockSize,
+        .ReadSectors = MscReadSectors,
+        .WriteSectors = MscWriteSectors,
+        .Flush = MscFlush,
+        .Release = MscRelease,
+        .Present = MscPresent,
+        .ControllerReady = Ready,
     };
 
     UsbMscHostRegister(&Host);

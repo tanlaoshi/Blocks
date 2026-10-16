@@ -8,20 +8,20 @@
 #include "Ehci.h"
 #include "VirtualMemory.h"
 
-static void EhciInputPoll(void) {
-    if (EhciReady()) {
-        EhciHidPoll();
+static void InputPoll(void) {
+    if (Ready()) {
+        HidPoll();
     }
 }
 
-static int EhciKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
+static int KeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     UINT8 Raw[8];
     int i;
 
-    if (!Report || !EhciHidReady()) {
+    if (!Report || !HidReady()) {
         return 0;
     }
-    if (!EhciHidKeyboardDequeue(Raw)) {
+    if (!HidKeyboardDequeue(Raw)) {
         return 0;
     }
     Report->ModifierKeys = Raw[0];
@@ -32,20 +32,20 @@ static int EhciKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     return 1;
 }
 
-static int EhciMousePresentWrap(void) {
-    return EhciHidMousePresent();
+static int MousePresentWrap(void) {
+    return HidMousePresent();
 }
 
-static int EhciMouseDequeue(HAL_MOUSE_REPORT *Report) {
+static int MouseDequeue(HAL_MOUSE_REPORT *Report) {
     UINT32 X;
     UINT32 Y;
     UINT8 Btn;
     INT8 Wheel;
 
-    if (!Report || !EhciHidMousePresent()) {
+    if (!Report || !HidMousePresent()) {
         return 0;
     }
-    if (!EhciHidMouseDequeue(&X, &Y, &Btn, &Wheel)) {
+    if (!HidMouseDequeue(&X, &Y, &Btn, &Wheel)) {
         return 0;
     }
     Report->Buttons = Btn;
@@ -57,18 +57,18 @@ static int EhciMouseDequeue(HAL_MOUSE_REPORT *Report) {
 }
 
 static const INPUT_BACKEND gEhciInputBackend = {
-    .Poll = EhciInputPoll,
-    .KeyboardDequeue = EhciKeyboardDequeue,
+    .Poll = InputPoll,
+    .KeyboardDequeue = KeyboardDequeue,
     .KeyboardSetLeds = 0,
-    .MousePresent = EhciMousePresentWrap,
-    .MouseDequeue = EhciMouseDequeue,
+    .MousePresent = MousePresentWrap,
+    .MouseDequeue = MouseDequeue,
 };
 
-static int EhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
 
-    if (EhciReady()) {
+    if (Ready()) {
         if (OutPrivate) {
             *OutPrivate = 0;
         }
@@ -77,25 +77,25 @@ static int EhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     if (!VirtualMemoryEnabled()) {
         return -1;
     }
-    if (!EhciSetup()) {
+    if (!Setup()) {
         return -1;
     }
-    (void)EhciHidBringup(); /* 无 HID 仍占 lsdev；mux 空转 */
+    (void)HidBringup(); /* 无 HID 仍占 lsdev；mux 空转 */
     if (OutPrivate) {
         *OutPrivate = 0;
     }
     return 0;
 }
 
-static int EhciDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int DriverBind(TOY_DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    if (!EhciReady()) {
+    if (!Ready()) {
         return -1;
     }
     return ToyDriverInputAttach(&gEhciInputBackend);
 }
 
-static void EhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
@@ -103,9 +103,9 @@ static const TOY_DRIVER gEhciDriver = {
     .Name = "ehci",
     .Class = TOY_DRIVER_CLASS_INPUT,
     .Match = 0,
-    .Probe = EhciDriverProbe,
-    .Bind = EhciDriverBind,
-    .Remove = EhciDriverRemove,
+    .Probe = DriverProbe,
+    .Bind = DriverBind,
+    .Remove = DriverRemove,
 };
 
 void InputEhciRegister(void) {

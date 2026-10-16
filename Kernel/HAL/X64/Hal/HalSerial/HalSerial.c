@@ -183,8 +183,8 @@ int HalSerialDataReady(void) {
     if (XhciFtdiDataReady()) {
         return 1;
     }
-    EhciFtdiPollRx();
-    if (EhciFtdiDataReady()) {
+    FtdiPollRx();
+    if (FtdiDataReady()) {
         return 1;
     }
     XhciCdcPollRx();
@@ -198,8 +198,8 @@ char HalSerialReadChar(void) {
     if (XhciFtdiDataReady()) {
         return XhciFtdiReadChar();
     }
-    if (EhciFtdiDataReady()) {
-        return EhciFtdiReadChar();
+    if (FtdiDataReady()) {
+        return FtdiReadChar();
     }
     if (XhciCdcDataReady()) {
         return XhciCdcReadChar();

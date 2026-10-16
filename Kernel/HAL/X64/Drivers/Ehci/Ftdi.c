@@ -1,9 +1,9 @@
 /*
- * EhciFtdi.c — Claim 入口 + Bulk TX/RX tee（PR-H-ehci-4）
+ * Ftdi.c — Claim 入口 + Bulk TX/RX tee（PR-H-ehci-4）
  *
  * RX：剥 FTDI 2 字节状态前缀 → 字符环；HalSerial 轮询。
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 
 #define FTDI_RX_Q   256
@@ -13,23 +13,23 @@ static UINT32 gRxR;
 static UINT32 gRxW;
 static int gTxBusy;
 
-int EhciFtdiReady(void) {
+int FtdiReady(void) {
     return (gEhciFtdiOk && gEhciFtdiCtrl) ? 1 : 0;
 }
 
 /* MSC hub 扫口会 Reset 子设备；作废以免 tee 打到已死 addr */
-void EhciFtdiInvalidate(void) {
+void FtdiInvalidate(void) {
     gEhciFtdiOk = 0;
     gEhciFtdiCtrl = 0;
 }
 
-int EhciFtdiClaim(void) {
+int FtdiClaim(void) {
     int i;
 
     if (!gEhciReady) {
         return -1;
     }
-    if (EhciFtdiReady()) {
+    if (FtdiReady()) {
         return 1;
     }
     ToyBootMarkUsb("Boot: EHCI FTDI Claim Begin\n");
@@ -39,7 +39,7 @@ int EhciFtdiClaim(void) {
         if (!C->Up || !C->Sched) {
             continue;
         }
-        if (C->HubAddr && EhciFtdiClaimViaHub(C)) {
+        if (C->HubAddr && FtdiClaimViaHub(C)) {
             return 1;
         }
     }
@@ -48,14 +48,14 @@ int EhciFtdiClaim(void) {
 }
 
 /* 0=ok；<0=失败（未认/忙/Bulk）。HalSerial tee 可忽略返回值。 */
-int EhciFtdiWrite(const char *Text) {
+int FtdiWrite(const char *Text) {
     EHCI_CTRL *C = gEhciFtdiCtrl;
     UINT32 Mps;
     UINT32 N;
     UINT8 Buf[64];
     int Sent = 0;
 
-    if (!Text || !EhciFtdiReady() || gTxBusy) {
+    if (!Text || !FtdiReady() || gTxBusy) {
         return -1;
     }
     gTxBusy = 1;
@@ -69,7 +69,7 @@ int EhciFtdiWrite(const char *Text) {
             Buf[N] = (UINT8)Text[N];
             N++;
         }
-        if (EhciBulkXfer(C, gEhciFtdiAddr, gEhciFtdiEpOut, gEhciFtdiMpsOut,
+        if (BulkXfer(C, gEhciFtdiAddr, gEhciFtdiEpOut, gEhciFtdiMpsOut,
                          gEhciFtdiSpeed, gEhciFtdiHubAddr, gEhciFtdiHubPort, 0,
                          Buf, N, &gEhciFtdiDtOut) < 0) {
             gTxBusy = 0;
@@ -82,7 +82,7 @@ int EhciFtdiWrite(const char *Text) {
     return Sent ? 0 : -1;
 }
 
-void EhciFtdiPollRx(void) {
+void FtdiPollRx(void) {
     /*
      * ehci-4 验收：CoolTerm 收 tee（TX）。
      * 同步 Bulk IN 空读会堵在 WaitQtd（NAK 重试），RX 另刀再做短超时/周期 qTD。
@@ -90,11 +90,11 @@ void EhciFtdiPollRx(void) {
     (void)gEhciFtdiCtrl;
 }
 
-int EhciFtdiDataReady(void) {
-    return (EhciFtdiReady() && gRxR != gRxW) ? 1 : 0;
+int FtdiDataReady(void) {
+    return (FtdiReady() && gRxR != gRxW) ? 1 : 0;
 }
 
-char EhciFtdiReadChar(void) {
+char FtdiReadChar(void) {
     char Ch;
 
     if (gRxR == gRxW) {

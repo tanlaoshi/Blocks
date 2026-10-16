@@ -1,9 +1,9 @@
 /*
- * EhciMscBot.c — BOT + capacity + 扇区（PR-H-ehci-3）
+ * MscBot.c — BOT + capacity + 扇区（PR-H-ehci-3）
  *
  * data/csw 失败：ClearHalt + 复位 DT，再读 CSW（BOT 规范）。
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 
 static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
@@ -17,7 +17,7 @@ static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
     C->XferSpeed = C->MscSpeed;
     C->XferHubAddr = C->MscHubAddr;
     C->XferHubPort = C->MscHubPort;
-    return EhciControlXfer(C, C->MscAddr, C->MscEpMax0 ? C->MscEpMax0 : 64, &S,
+    return ControlTransfer(C, C->MscAddr, C->MscEpMax0 ? C->MscEpMax0 : 64, &S,
                            0) == 0;
 }
 
@@ -30,10 +30,10 @@ static void BulkRecover(EHCI_CTRL *C, int DataIn) {
     } else {
         C->MscDtOut = 0;
     }
-    EhciDelay(50000);
+    Delay(50000);
 }
 
-int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
+int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
                int DataIn, void *Data) {
     UINT8 Cbw[32];
     UINT8 Csw[16];
@@ -54,7 +54,7 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     }
 
     gEhciMscTag++;
-    EhciMscZero(Cbw, sizeof(Cbw));
+    MscZero(Cbw, sizeof(Cbw));
     Cbw[0] = 0x55;
     Cbw[1] = 0x53;
     Cbw[2] = 0x42;
@@ -78,7 +78,7 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     C->XferHubAddr = C->MscHubAddr;
     C->XferHubPort = C->MscHubPort;
 
-    if (EhciBulkXfer(C, C->MscAddr, C->MscEpOut, C->MscMpsOut, C->MscSpeed,
+    if (BulkXfer(C, C->MscAddr, C->MscEpOut, C->MscMpsOut, C->MscSpeed,
                      C->MscHubAddr, C->MscHubPort, 0, Cbw, 31,
                      &C->MscDtOut) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC cbw fail ");
@@ -88,7 +88,7 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
         return -1;
     }
     if (DataLen != 0) {
-        DataRc = EhciBulkXfer(C, C->MscAddr, DataIn ? C->MscEpIn : C->MscEpOut,
+        DataRc = BulkXfer(C, C->MscAddr, DataIn ? C->MscEpIn : C->MscEpOut,
                               DataIn ? C->MscMpsIn : C->MscMpsOut, C->MscSpeed,
                               C->MscHubAddr, C->MscHubPort, DataIn, Data,
                               DataLen, DataIn ? &C->MscDtIn : &C->MscDtOut);
@@ -99,8 +99,8 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
             BulkRecover(C, DataIn);
         }
     }
-    EhciMscZero(Csw, sizeof(Csw));
-    if (EhciBulkXfer(C, C->MscAddr, C->MscEpIn, C->MscMpsIn, C->MscSpeed,
+    MscZero(Csw, sizeof(Csw));
+    if (BulkXfer(C, C->MscAddr, C->MscEpIn, C->MscMpsIn, C->MscSpeed,
                      C->MscHubAddr, C->MscHubPort, 1, Csw, 13,
                      &C->MscDtIn) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC csw fail ");
@@ -122,14 +122,14 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
             UINT8 Sense[18];
             UINT8 Scdb[16];
 
-            EhciMscMarkHex4("Boot: EHCI MSC status=", Csw[12]);
+            MscMarkHex4("Boot: EHCI MSC status=", Csw[12]);
             ToyBootMarkUsb("\n");
             gEhciMscInSense = 1;
-            EhciMscZero(Scdb, sizeof(Scdb));
+            MscZero(Scdb, sizeof(Scdb));
             Scdb[0] = 0x03;
             Scdb[4] = 18;
-            EhciMscZero(Sense, sizeof(Sense));
-            (void)EhciMscBot(C, Scdb, 6, 18, 1, Sense);
+            MscZero(Sense, sizeof(Sense));
+            (void)MscBot(C, Scdb, 6, 18, 1, Sense);
             gEhciMscInSense = 0;
         }
         return -1;
@@ -137,7 +137,7 @@ int EhciMscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     return 0;
 }
 
-int EhciMscCapacity(void) {
+int MscCapacity(void) {
     EHCI_CTRL *C = gEhciMscCtrl;
     UINT8 Inquiry[36];
     UINT8 Cap[8];
@@ -152,25 +152,25 @@ int EhciMscCapacity(void) {
     C->MscBlockCount = 0;
     C->MscBlockSize = 0;
 
-    EhciMscZero(Cdb, sizeof(Cdb));
+    MscZero(Cdb, sizeof(Cdb));
     Cdb[0] = 0x12;
     Cdb[4] = 36;
-    EhciMscZero(Inquiry, sizeof(Inquiry));
-    if (EhciMscBot(C, Cdb, 6, 36, 1, Inquiry) < 0) {
+    MscZero(Inquiry, sizeof(Inquiry));
+    if (MscBot(C, Cdb, 6, 36, 1, Inquiry) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC inquiry fail\n");
         return -1;
     }
 
     /* 空读卡器 / 未起转：TUR 清 sense，再 readcap */
-    EhciMscZero(Cdb, sizeof(Cdb));
+    MscZero(Cdb, sizeof(Cdb));
     Cdb[0] = 0x00; /* TEST UNIT READY */
-    (void)EhciMscBot(C, Cdb, 6, 0, 0, 0);
-    EhciDelay(100000);
+    (void)MscBot(C, Cdb, 6, 0, 0, 0);
+    Delay(100000);
 
-    EhciMscZero(Cdb, sizeof(Cdb));
+    MscZero(Cdb, sizeof(Cdb));
     Cdb[0] = 0x25;
-    EhciMscZero(Cap, sizeof(Cap));
-    if (EhciMscBot(C, Cdb, 10, 8, 1, Cap) < 0) {
+    MscZero(Cap, sizeof(Cap));
+    if (MscBot(C, Cdb, 10, 8, 1, Cap) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC readcap fail\n");
         return -1;
     }
@@ -184,8 +184,8 @@ int EhciMscCapacity(void) {
     C->MscBlockCount = LastLba + 1u;
     C->MscBlockSize = Bsz;
     C->MscCapacityOk = 1;
-    EhciMscMarkHex4("Boot: EHCI MSC blocks=", C->MscBlockCount);
-    EhciMscMarkHex4(" bsize=", C->MscBlockSize);
+    MscMarkHex4("Boot: EHCI MSC blocks=", C->MscBlockCount);
+    MscMarkHex4(" bsize=", C->MscBlockSize);
     ToyBootMarkUsb("\n");
     return 0;
 }
@@ -207,7 +207,7 @@ static int XferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
         UINT8 Cdb[16];
         UINT32 Cur = Lba + i;
 
-        EhciMscZero(Cdb, sizeof(Cdb));
+        MscZero(Cdb, sizeof(Cdb));
         Cdb[0] = Write ? 0x2Au : 0x28u;
         Cdb[2] = (UINT8)(Cur >> 24);
         Cdb[3] = (UINT8)(Cur >> 16);
@@ -216,29 +216,29 @@ static int XferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
         Cdb[7] = 0;
         Cdb[8] = 1;
         if (Write) {
-            EhciMscCopy(Bounce, Ptr + (UINTN)i * 512u, 512);
-            if (EhciMscBot(C, Cdb, 10, 512, 0, Bounce) < 0) {
+            MscCopy(Bounce, Ptr + (UINTN)i * 512u, 512);
+            if (MscBot(C, Cdb, 10, 512, 0, Bounce) < 0) {
                 return 0;
             }
         } else {
-            EhciMscZero(Bounce, sizeof(Bounce));
-            if (EhciMscBot(C, Cdb, 10, 512, 1, Bounce) < 0) {
+            MscZero(Bounce, sizeof(Bounce));
+            if (MscBot(C, Cdb, 10, 512, 1, Bounce) < 0) {
                 return 0;
             }
-            EhciMscCopy(Ptr + (UINTN)i * 512u, Bounce, 512);
+            MscCopy(Ptr + (UINTN)i * 512u, Bounce, 512);
         }
     }
     return 1;
 }
 
-int EhciMscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer) {
+int MscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer) {
     return XferSectors(Lba, Count, Buffer, 0);
 }
 
-int EhciMscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
+int MscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
     return XferSectors(Lba, Count, (void *)Buffer, 1);
 }
 
-int EhciMscFlush(void) {
+int MscFlush(void) {
     return 1;
 }

@@ -1,7 +1,7 @@
 /*
- * EhciEnumDevice.c — 单设备 HID 枚举（PR-H-ehci-2）
+ * EnumDevice.c — 单设备 HID 枚举（PR-H-ehci-2）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
@@ -79,7 +79,7 @@ static int ParseHidIface(UINT8 *Cfg, UINT16 Len, UINT8 WantProto, UINT8 *Iface,
 }
 
 /* 在当前 XferSpeed/Hub* 下枚举 addr0 设备为 HID */
-int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
+int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 Cfg[256];
     UINT8 EpMax = 64;
@@ -96,9 +96,9 @@ int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     C->XferHubAddr = HubAddr;
     C->XferHubPort = HubPort;
 
-    if (EhciEnumGetDesc(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
+    if (EnumGetDesc(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
         0) {
-        if (EhciEnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+        if (EnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
             ToyBootMarkUsb("Boot: EHCI getdesc fail ");
             ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
             ToyBootMarkUsb("\n");
@@ -111,14 +111,14 @@ int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
             /* keep */
         }
     }
-    if (EhciEnumGetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    if (EnumGetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         gEhciLastErr = "devdesc";
         return 0;
     }
 
-    EhciEnumMarkHex4("Boot: EHCI dev vid=", Dev.idVendor);
-    EhciEnumMarkHex4(" pid=", Dev.idProduct);
-    EhciEnumMarkHex4(" cls=", Dev.bDeviceClass);
+    EnumMarkHex4("Boot: EHCI dev vid=", Dev.idVendor);
+    EnumMarkHex4(" pid=", Dev.idProduct);
+    EnumMarkHex4(" cls=", Dev.bDeviceClass);
     ToyBootMarkUsb("\n");
 
     if (Dev.bDeviceClass == 0x09u) {
@@ -130,22 +130,22 @@ int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         gEhciNextAddr = 2;
     }
     Addr = gEhciNextAddr++;
-    if (EhciEnumSetAddr(C, Addr, EpMax) != 0) {
+    if (EnumSetAddr(C, Addr, EpMax) != 0) {
         return 0;
     }
     C->XferSpeed = Speed;
     C->XferHubAddr = HubAddr;
     C->XferHubPort = HubPort;
-    EhciDelay(100000);
+    Delay(100000);
 
-    if (EhciEnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
+    if (EnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         return 0;
     }
     CfgLen = (UINT16)(Cfg[2] | ((UINT16)Cfg[3] << 8));
     if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
         CfgLen = 64;
     }
-    if (EhciEnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
+    if (EnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
         return 0;
     }
     if (!ParseHidIface(Cfg, CfgLen, 2, &Iface, &Proto, &Ep, &MaxPkt, &Interval,
@@ -158,11 +158,11 @@ int EhciEnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         ToyBootMarkUsb("Boot: EHCI no hid iface\n");
         return 0;
     }
-    if (EhciEnumSetConfig(C, Addr, EpMax, CfgVal) != 0) {
+    if (EnumSetConfig(C, Addr, EpMax, CfgVal) != 0) {
         return 0;
     }
-    (void)EhciEnumSetProtocolBoot(C, Addr, EpMax, Iface);
-    (void)EhciEnumSetIdle(C, Addr, EpMax, Iface);
+    (void)EnumSetProtocolBoot(C, Addr, EpMax, Iface);
+    (void)EnumSetIdle(C, Addr, EpMax, Iface);
 
     C->DevAddr = Addr;
     C->DevSpeed = Speed;

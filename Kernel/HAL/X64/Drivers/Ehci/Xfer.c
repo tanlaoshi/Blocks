@@ -1,7 +1,7 @@
 /*
- * EhciXfer.c — 异步 control（停 ASE → 挂 qTD → 开 ASE）（PR-H-ehci-2 · 2h）
+ * Xfer.c — 异步 control（停 ASE → 挂 qTD → 开 ASE）（PR-H-ehci-2 · 2h）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"
@@ -9,13 +9,13 @@
 const char *gEhciLastErr = "none";
 static char gTokErr[40];
 
-void EhciDelay(int Loops) {
+void Delay(int Loops) {
     while (Loops-- > 0) {
         HalCpuRelax();
     }
 }
 
-void EhciFlush(const void *Ptr, UINTN Size) {
+void Flush(const void *Ptr, UINTN Size) {
     const UINT8 *P = (const UINT8 *)Ptr;
     UINTN Off;
 
@@ -28,14 +28,14 @@ void EhciFlush(const void *Ptr, UINTN Size) {
     __asm__ volatile("mfence" ::: "memory");
 }
 
-void EhciCopyBuf(UINT8 *D, const UINT8 *S, UINT32 N) {
+void CopyBuf(UINT8 *D, const UINT8 *S, UINT32 N) {
     UINT32 i;
     for (i = 0; i < N; i++) {
         D[i] = S[i];
     }
 }
 
-void EhciPrepQtd(EHCI_QTD *T, UINT32 Next, UINT32 Pid, UINT32 Bytes,
+void PrepQtd(EHCI_QTD *T, UINT32 Next, UINT32 Pid, UINT32 Bytes,
                     UINT32 Dt, UINT64 BufPhys) {
     UINT32 i;
 
@@ -51,15 +51,15 @@ void EhciPrepQtd(EHCI_QTD *T, UINT32 Next, UINT32 Pid, UINT32 Bytes,
     T->BufHi[0] = 0;
 }
 
-int EhciAsyncOff(EHCI_CTRL *C) {
+int AsyncOff(EHCI_CTRL *C) {
     UINT32 Cmd;
     int Spin;
 
-    Cmd = EhciR32(C->Op, EHCI_USBCMD);
-    EhciW32(C->Op, EHCI_USBCMD, Cmd & ~EHCI_CMD_ASE);
+    Cmd = R32(C->Op, EHCI_USBCMD);
+    W32(C->Op, EHCI_USBCMD, Cmd & ~EHCI_CMD_ASE);
     Spin = 800000;
     while (Spin-- > 0) {
-        if ((EhciR32(C->Op, EHCI_USBSTS) & EHCI_STS_ASS) == 0) {
+        if ((R32(C->Op, EHCI_USBSTS) & EHCI_STS_ASS) == 0) {
             return 1;
         }
         HalCpuRelax();
@@ -67,17 +67,17 @@ int EhciAsyncOff(EHCI_CTRL *C) {
     return 0;
 }
 
-int EhciAsyncOn(EHCI_CTRL *C) {
+int AsyncOn(EHCI_CTRL *C) {
     UINT32 Cmd;
     int Spin;
 
     /* 规范：ASE=0 时确保 ASYNCLISTADDR 指向 reclaim 头 */
-    EhciW32(C->Op, EHCI_ASYNCLISTADDR, (UINT32)EhciPtrPhys(C->AsyncHead));
-    Cmd = EhciR32(C->Op, EHCI_USBCMD);
-    EhciW32(C->Op, EHCI_USBCMD, Cmd | EHCI_CMD_ASE);
+    W32(C->Op, EHCI_ASYNCLISTADDR, (UINT32)PtrPhys(C->AsyncHead));
+    Cmd = R32(C->Op, EHCI_USBCMD);
+    W32(C->Op, EHCI_USBCMD, Cmd | EHCI_CMD_ASE);
     Spin = 800000;
     while (Spin-- > 0) {
-        if (EhciR32(C->Op, EHCI_USBSTS) & EHCI_STS_ASS) {
+        if (R32(C->Op, EHCI_USBSTS) & EHCI_STS_ASS) {
             return 1;
         }
         HalCpuRelax();
@@ -86,7 +86,7 @@ int EhciAsyncOn(EHCI_CTRL *C) {
 }
 
 static UINT32 ReadTok(EHCI_QTD *T) {
-    EhciFence();
+    Fence();
     return *(volatile UINT32 *)&T->Token;
 }
 
@@ -112,7 +112,7 @@ static void SetTokErr(EHCI_CTRL *C, UINT32 Tok) {
     while (*P && n < 36) {
         gTokErr[n++] = *P++;
     }
-    St = EhciR32(C->Op, EHCI_USBSTS);
+    St = R32(C->Op, EHCI_USBSTS);
     HalSerialFormatHex(Hex, St, 4);
     gTokErr[n++] = Hex[2];
     gTokErr[n++] = Hex[3];
@@ -122,7 +122,7 @@ static void SetTokErr(EHCI_CTRL *C, UINT32 Tok) {
     gEhciLastErr = gTokErr;
 }
 
-int EhciWaitQtd(EHCI_CTRL *C, EHCI_QTD *T) {
+int WaitQtd(EHCI_CTRL *C, EHCI_QTD *T) {
     int Spin = 8000000;
 
     while (Spin-- > 0) {
@@ -135,9 +135,9 @@ int EhciWaitQtd(EHCI_CTRL *C, EHCI_QTD *T) {
             return 1;
         }
         {
-            UINT32 St = EhciR32(C->Op, EHCI_USBSTS);
+            UINT32 St = R32(C->Op, EHCI_USBSTS);
             if (St & (EHCI_STS_USBINT | EHCI_STS_USBERR)) {
-                EhciW32(C->Op, EHCI_USBSTS,
+                W32(C->Op, EHCI_USBSTS,
                         St & (EHCI_STS_USBINT | EHCI_STS_USBERR));
             }
         }
@@ -147,7 +147,7 @@ int EhciWaitQtd(EHCI_CTRL *C, EHCI_QTD *T) {
     return 0;
 }
 
-int EhciControlXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
+int ControlTransfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
                     const USB_SETUP_PACKET *Setup, void *Data) {
     EHCI_QTD *SetupTd;
     EHCI_QTD *DataTd;
@@ -174,7 +174,7 @@ int EhciControlXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
     DataTd = &C->Qtds[1];
     StatusTd = &C->Qtds[2];
 
-    EhciCopyBuf(C->SetupBuf, (const UINT8 *)Setup, 8);
+    CopyBuf(C->SetupBuf, (const UINT8 *)Setup, 8);
 
     /* DTC + RL + Addr + MaxPkt；Speed 在 13:12；FS/LS control 置 C */
     {
@@ -195,21 +195,21 @@ int EhciControlXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
         StatusPid = (DataPid == EHCI_QTD_PID_IN) ? EHCI_QTD_PID_OUT
                                                  : EHCI_QTD_PID_IN;
         if ((Setup->bmRequestType & 0x80u) == 0) {
-            EhciCopyBuf(C->CtrlBuf, (const UINT8 *)Data, Len);
+            CopyBuf(C->CtrlBuf, (const UINT8 *)Data, Len);
         }
-        EhciPrepQtd(SetupTd, (UINT32)EhciPtrPhys(DataTd), EHCI_QTD_PID_SETUP, 8, 0,
-                EhciPtrPhys(C->SetupBuf));
-        EhciPrepQtd(DataTd, (UINT32)EhciPtrPhys(StatusTd), DataPid, Len, 1,
-                EhciPtrPhys(C->CtrlBuf));
-        EhciPrepQtd(StatusTd, EHCI_LINK_TERMINATE, StatusPid, 0, 1, 0);
+        PrepQtd(SetupTd, (UINT32)PtrPhys(DataTd), EHCI_QTD_PID_SETUP, 8, 0,
+                PtrPhys(C->SetupBuf));
+        PrepQtd(DataTd, (UINT32)PtrPhys(StatusTd), DataPid, Len, 1,
+                PtrPhys(C->CtrlBuf));
+        PrepQtd(StatusTd, EHCI_LINK_TERMINATE, StatusPid, 0, 1, 0);
     } else {
         StatusPid = EHCI_QTD_PID_IN;
-        EhciPrepQtd(SetupTd, (UINT32)EhciPtrPhys(StatusTd), EHCI_QTD_PID_SETUP, 8, 0,
-                EhciPtrPhys(C->SetupBuf));
-        EhciPrepQtd(StatusTd, EHCI_LINK_TERMINATE, StatusPid, 0, 1, 0);
+        PrepQtd(SetupTd, (UINT32)PtrPhys(StatusTd), EHCI_QTD_PID_SETUP, 8, 0,
+                PtrPhys(C->SetupBuf));
+        PrepQtd(StatusTd, EHCI_LINK_TERMINATE, StatusPid, 0, 1, 0);
     }
 
-    if (!EhciAsyncOff(C)) {
+    if (!AsyncOff(C)) {
         gEhciLastErr = "ase off";
         return -1;
     }
@@ -231,41 +231,41 @@ int EhciControlXfer(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax,
             C->CtrlQh->BufHi[i] = 0;
         }
     }
-    C->CtrlQh->Next = (UINT32)EhciPtrPhys(SetupTd);
+    C->CtrlQh->Next = (UINT32)PtrPhys(SetupTd);
     C->CtrlQh->Horiz =
-        (UINT32)EhciPtrPhys(C->AsyncHead) | EHCI_LINK_TYPE_QH;
+        (UINT32)PtrPhys(C->AsyncHead) | EHCI_LINK_TYPE_QH;
     C->AsyncHead->Horiz =
-        (UINT32)EhciPtrPhys(C->CtrlQh) | EHCI_LINK_TYPE_QH;
+        (UINT32)PtrPhys(C->CtrlQh) | EHCI_LINK_TYPE_QH;
     C->AsyncHead->Token = EHCI_QTD_HALTED;
     C->AsyncHead->Next = EHCI_LINK_TERMINATE;
-    EhciFence();
-    if (!EhciAsyncOn(C)) {
+    Fence();
+    if (!AsyncOn(C)) {
         gEhciLastErr = "ase on";
         return -1;
     }
 
-    if (!EhciWaitQtd(C, SetupTd)) {
+    if (!WaitQtd(C, SetupTd)) {
         return -1;
     }
     if (Len && Data) {
-        if (!EhciWaitQtd(C, DataTd)) {
+        if (!WaitQtd(C, DataTd)) {
             return -1;
         }
     }
-    if (!EhciWaitQtd(C, StatusTd)) {
+    if (!WaitQtd(C, StatusTd)) {
         return -1;
     }
 
-    if (!EhciAsyncOff(C)) {
+    if (!AsyncOff(C)) {
         gEhciLastErr = "ase off2";
         return -1;
     }
     C->CtrlQh->Next = EHCI_LINK_TERMINATE;
     C->CtrlQh->Token = 0;
-    EhciAsyncOn(C);
+    AsyncOn(C);
 
     if (Len && Data && (Setup->bmRequestType & 0x80u)) {
-        EhciCopyBuf((UINT8 *)Data, C->CtrlBuf, Len);
+        CopyBuf((UINT8 *)Data, C->CtrlBuf, Len);
     }
     return 0;
 }

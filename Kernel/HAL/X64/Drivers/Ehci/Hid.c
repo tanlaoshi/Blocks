@@ -1,7 +1,7 @@
 /*
- * EhciHid.c — Bringup + 武装中断 IN（PR-H-ehci-2）
+ * Hid.c — Bringup + 武装中断 IN（PR-H-ehci-2）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
@@ -11,7 +11,7 @@ int gEhciHidReady;
 UINT8 gEhciNextAddr = 2;
 UINT8 gEhciIntrDt;
 
-void EhciHidArmIntr(EHCI_CTRL *C) {
+void HidArmIntr(EHCI_CTRL *C) {
     EHCI_QTD *T = &C->Qtds[4];
     UINT32 EpChar;
     UINT32 EpCap;
@@ -52,17 +52,17 @@ void EhciHidArmIntr(EHCI_CTRL *C) {
     T->AltNext = EHCI_LINK_TERMINATE;
     T->Token = EHCI_QTD_ACTIVE | (3u << 10) | (EHCI_QTD_PID_IN << 8) |
                ((UINT32)Mps << 16) | (gEhciIntrDt ? EHCI_QTD_DT : 0);
-    T->Buf[0] = (UINT32)EhciPtrPhys(C->ReportBuf);
+    T->Buf[0] = (UINT32)PtrPhys(C->ReportBuf);
     T->Buf[1] = T->Buf[2] = T->Buf[3] = T->Buf[4] = 0;
     T->BufHi[0] = T->BufHi[1] = T->BufHi[2] = T->BufHi[3] = T->BufHi[4] = 0;
-    EhciFlush(T, sizeof(*T));
-    EhciFlush(C->ReportBuf, 64);
-    C->IntrQh->Next = (UINT32)EhciPtrPhys(T);
-    EhciFlush(C->IntrQh, sizeof(*C->IntrQh));
-    EhciSchedEnablePeriodic(C);
+    Flush(T, sizeof(*T));
+    Flush(C->ReportBuf, 64);
+    C->IntrQh->Next = (UINT32)PtrPhys(T);
+    Flush(C->IntrQh, sizeof(*C->IntrQh));
+    SchedEnablePeriodic(C);
 }
 
-int EhciHidBringup(void) {
+int HidBringup(void) {
     int i;
     int Ok = 0;
     UINT32 OrMask = 0;
@@ -73,15 +73,15 @@ int EhciHidBringup(void) {
     gEhciNextAddr = 2;
     gEhciHubNote[0] = 0;
     gEhciIntrDt = 0;
-    EhciHidResetQueues();
+    HidResetQueues();
 
     /* 插拔/上电晚到：再扫一轮 CCS */
-    EhciDelay(300000);
+    Delay(300000);
     for (i = 0; i < gEhciCount; i++) {
         if (!gEhci[i].Up) {
             continue;
         }
-        EhciSurveyCcs(&gEhci[i]);
+        SurveyCcs(&gEhci[i]);
         OrMask |= gEhci[i].CcsMask;
         gEhci[i].HidOk = 0;
     }
@@ -113,11 +113,11 @@ int EhciHidBringup(void) {
         ToyBootMarkUsb("Boot: EHCI");
         ToyBootMarkUsb(Tag);
         ToyBootMarkUsb(" enum\n");
-        if (!EhciSchedStart(&gEhci[i])) {
+        if (!SchedStart(&gEhci[i])) {
             continue;
         }
-        if (EhciEnumHid(&gEhci[i])) {
-            EhciHidArmIntr(&gEhci[i]);
+        if (EnumHid(&gEhci[i])) {
+            HidArmIntr(&gEhci[i]);
             if (!gHidCtrl) {
                 gHidCtrl = &gEhci[i];
             }
@@ -139,11 +139,11 @@ int EhciHidBringup(void) {
         }
         ToyBootMarkUsb("Boot: tip=try other USB3 jack; ehci hid\n");
     }
-    EhciDelay(20000000);
+    Delay(20000000);
     return Ok;
 }
 
-int EhciHidReady(void) {
+int HidReady(void) {
     return gEhciHidReady;
 }
 

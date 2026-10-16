@@ -1,12 +1,12 @@
 /*
- * EhciEnum.c — 根口 / 设备枚举 boot HID（PR-H-ehci-2 · 2j）
+ * Enum.c — 根口 / 设备枚举 boot HID（PR-H-ehci-2 · 2j）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 
-int EhciEnumGetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
+int EnumGetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
                    UINT16 Len, void *Out) {
     USB_SETUP_PACKET S;
 
@@ -15,10 +15,10 @@ int EhciEnumGetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return EhciControlXfer(C, Addr, EpMax, &S, Out);
+    return ControlTransfer(C, Addr, EpMax, &S, Out);
 }
 
-int EhciEnumSetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
+int EnumSetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -26,10 +26,10 @@ int EhciEnumSetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, 0, EpMax, &S, 0);
+    return ControlTransfer(C, 0, EpMax, &S, 0);
 }
 
-int EhciEnumSetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
+int EnumSetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -37,10 +37,10 @@ int EhciEnumSetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, Addr, EpMax, &S, 0);
+    return ControlTransfer(C, Addr, EpMax, &S, 0);
 }
 
-int EhciEnumSetProtocolBoot(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) {
+int EnumSetProtocolBoot(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x21;
@@ -48,10 +48,10 @@ int EhciEnumSetProtocolBoot(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) 
     S.wValue = 0;
     S.wIndex = Iface;
     S.wLength = 0;
-    return EhciControlXfer(C, Addr, EpMax, &S, 0);
+    return ControlTransfer(C, Addr, EpMax, &S, 0);
 }
 
-int EhciEnumSetIdle(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) {
+int EnumSetIdle(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x21;
@@ -59,10 +59,10 @@ int EhciEnumSetIdle(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Iface) {
     S.wValue = 0;
     S.wIndex = Iface;
     S.wLength = 0;
-    return EhciControlXfer(C, Addr, EpMax, &S, 0);
+    return ControlTransfer(C, Addr, EpMax, &S, 0);
 }
 
-void EhciEnumMarkHex4(const char *Prefix, UINT32 V) {
+void EnumMarkHex4(const char *Prefix, UINT32 V) {
     char Hex[12];
     char Dig[5];
 
@@ -80,7 +80,7 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 EpMax = 64;
 
-    if (!EhciPortReset(C, Port)) {
+    if (!PortReset(C, Port)) {
         return 0;
     }
 
@@ -88,8 +88,8 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
 
-    if (EhciEnumGetDesc(C, 0, 64, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
-        if (EhciEnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+    if (EnumGetDesc(C, 0, 64, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+        if (EnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
             ToyBootMarkUsb("Boot: EHCI getdesc fail\n");
             return 0;
         }
@@ -97,7 +97,7 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
     } else {
         EpMax = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 64;
     }
-    if (EhciEnumGetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    if (EnumGetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         gEhciLastErr = "devdesc";
         return 0;
     }
@@ -109,9 +109,9 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
         Line[2] = 0;
         ToyBootMarkUsb("Boot: EHCI ");
         ToyBootMarkUsb(Line);
-        EhciEnumMarkHex4(" vid=", Dev.idVendor);
-        EhciEnumMarkHex4(" pid=", Dev.idProduct);
-        EhciEnumMarkHex4(" cls=", Dev.bDeviceClass);
+        EnumMarkHex4(" vid=", Dev.idVendor);
+        EnumMarkHex4(" pid=", Dev.idProduct);
+        EnumMarkHex4(" cls=", Dev.bDeviceClass);
         ToyBootMarkUsb("\n");
     }
 
@@ -124,20 +124,20 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
             gEhciNextAddr = 2;
         }
         HubAddr = gEhciNextAddr++;
-        if (EhciEnumSetAddr(C, HubAddr, HubEp) != 0) {
+        if (EnumSetAddr(C, HubAddr, HubEp) != 0) {
             return 0;
         }
         C->XferSpeed = EHCI_SPEED_HS;
         C->XferHubAddr = 0;
         C->XferHubPort = 0;
-        EhciDelay(100000);
-        if (EhciEnumSetConfig(C, HubAddr, HubEp, 1) != 0) {
+        Delay(100000);
+        if (EnumSetConfig(C, HubAddr, HubEp, 1) != 0) {
             gEhciLastErr = "hub cfg";
             return 0;
         }
         C->HubAddr = HubAddr;
         ToyBootMarkUsb("Boot: EHCI hub walk\n");
-        return EhciEnumHub(C);
+        return EnumHub(C);
     }
 
     /* 根口直接 HID（少见） */
@@ -145,10 +145,10 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
     /* 设备已在 addr0 读过 desc；再走完整 EnumDevice 会重复 getdesc——直接用 EnumDevice */
-    return EhciEnumDevice(C, EHCI_SPEED_HS, 0, 0);
+    return EnumDevice(C, EHCI_SPEED_HS, 0, 0);
 }
 
-int EhciEnumHid(EHCI_CTRL *C) {
+int EnumHid(EHCI_CTRL *C) {
     UINT8 P;
     int AnyCcs = 0;
     const char *Saved = 0;
@@ -156,7 +156,7 @@ int EhciEnumHid(EHCI_CTRL *C) {
     if (!C || !C->Sched) {
         return 0;
     }
-    EhciSurveyCcs(C);
+    SurveyCcs(C);
     for (P = 1; P <= C->NPorts; P++) {
         if ((C->CcsMask & (1u << (P - 1))) == 0) {
             continue;

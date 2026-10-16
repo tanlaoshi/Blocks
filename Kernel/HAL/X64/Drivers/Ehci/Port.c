@@ -1,45 +1,45 @@
 /*
- * EhciPort.c — 根口复位（PR-H-ehci-2）
+ * Port.c — 根口复位（PR-H-ehci-2）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 
-int EhciPortReset(EHCI_CTRL *C, UINT8 Port) {
+int PortReset(EHCI_CTRL *C, UINT8 Port) {
     UINT32 Ps;
     int Spin;
 
     if (!C || Port == 0 || Port > C->NPorts) {
         return 0;
     }
-    Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+    Ps = R32(C->Op, EHCI_PORTSC(Port));
     if (Ps & EHCI_PORT_OWNER) {
         gEhciLastErr = "port companion";
         return 0;
     }
 
-    Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+    Ps = R32(C->Op, EHCI_PORTSC(Port));
     Ps &= ~(EHCI_PORT_CSC | EHCI_PORT_PEDC | EHCI_PORT_OCC);
     Ps |= EHCI_PORT_PP | EHCI_PORT_PR;
-    EhciW32(C->Op, EHCI_PORTSC(Port), Ps);
-    EhciDelay(1000000);
+    W32(C->Op, EHCI_PORTSC(Port), Ps);
+    Delay(1000000);
 
-    Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+    Ps = R32(C->Op, EHCI_PORTSC(Port));
     Ps &= ~(EHCI_PORT_PR | EHCI_PORT_CSC | EHCI_PORT_PEDC | EHCI_PORT_OCC);
     Ps |= EHCI_PORT_PP;
-    EhciW32(C->Op, EHCI_PORTSC(Port), Ps);
+    W32(C->Op, EHCI_PORTSC(Port), Ps);
 
     Spin = 1000000;
     while (Spin-- > 0) {
-        Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+        Ps = R32(C->Op, EHCI_PORTSC(Port));
         if ((Ps & EHCI_PORT_PR) == 0) {
             break;
         }
         HalCpuRelax();
     }
-    EhciDelay(1000000);
+    Delay(1000000);
 
-    Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+    Ps = R32(C->Op, EHCI_PORTSC(Port));
     if (Ps & EHCI_PORT_OWNER) {
         gEhciLastErr = "port companion";
         ToyBootMarkUsb("Boot: EHCI port → companion (FS; need UHCI)\n");
@@ -49,22 +49,22 @@ int EhciPortReset(EHCI_CTRL *C, UINT8 Port) {
         /* 再 PR 一次（ehci hid 热重试常要） */
         Ps &= ~(EHCI_PORT_CSC | EHCI_PORT_PEDC | EHCI_PORT_OCC);
         Ps |= EHCI_PORT_PP | EHCI_PORT_PR;
-        EhciW32(C->Op, EHCI_PORTSC(Port), Ps);
-        EhciDelay(1000000);
-        Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+        W32(C->Op, EHCI_PORTSC(Port), Ps);
+        Delay(1000000);
+        Ps = R32(C->Op, EHCI_PORTSC(Port));
         Ps &= ~(EHCI_PORT_PR | EHCI_PORT_CSC | EHCI_PORT_PEDC | EHCI_PORT_OCC);
         Ps |= EHCI_PORT_PP;
-        EhciW32(C->Op, EHCI_PORTSC(Port), Ps);
+        W32(C->Op, EHCI_PORTSC(Port), Ps);
         Spin = 1000000;
         while (Spin-- > 0) {
-            Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+            Ps = R32(C->Op, EHCI_PORTSC(Port));
             if ((Ps & EHCI_PORT_PR) == 0) {
                 break;
             }
             HalCpuRelax();
         }
-        EhciDelay(1000000);
-        Ps = EhciR32(C->Op, EHCI_PORTSC(Port));
+        Delay(1000000);
+        Ps = R32(C->Op, EHCI_PORTSC(Port));
     }
     if ((Ps & EHCI_PORT_PED) == 0) {
         gEhciLastErr = "port no PED";

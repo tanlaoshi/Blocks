@@ -1,7 +1,7 @@
 /*
- * EhciMscHub.c — MSC 用 hub 控制（PR-H-ehci-3）
+ * MscHub.c — MSC 用 hub 控制（PR-H-ehci-3）
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
@@ -16,21 +16,21 @@
 #define HUB_STAT_LOW_SPEED         (1u << 9)
 #define HUB_STAT_HIGH_SPEED        (1u << 10)
 
-void EhciMscZero(UINT8 *P, UINT32 N) {
+void MscZero(UINT8 *P, UINT32 N) {
     UINT32 i;
     for (i = 0; i < N; i++) {
         P[i] = 0;
     }
 }
 
-void EhciMscCopy(UINT8 *D, const UINT8 *S, UINT32 N) {
+void MscCopy(UINT8 *D, const UINT8 *S, UINT32 N) {
     UINT32 i;
     for (i = 0; i < N; i++) {
         D[i] = S[i];
     }
 }
 
-void EhciMscMarkHex4(const char *Prefix, UINT32 V) {
+void MscMarkHex4(const char *Prefix, UINT32 V) {
     char Hex[12];
     char Dig[5];
 
@@ -44,7 +44,7 @@ void EhciMscMarkHex4(const char *Prefix, UINT32 V) {
     ToyBootMarkUsb(Dig);
 }
 
-int EhciMscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
+int MscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
                         UINT16 *Change) {
     USB_SETUP_PACKET S;
     UINT8 Buf[4];
@@ -57,7 +57,7 @@ int EhciMscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
-    if (EhciControlXfer(C, HubAddr, 64, &S, Buf) != 0) {
+    if (ControlTransfer(C, HubAddr, 64, &S, Buf) != 0) {
         return 0;
     }
     *Status = (UINT16)(Buf[0] | ((UINT16)Buf[1] << 8));
@@ -65,7 +65,7 @@ int EhciMscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
     return 1;
 }
 
-int EhciMscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+int MscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x23;
@@ -76,10 +76,10 @@ int EhciMscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
-    return EhciControlXfer(C, HubAddr, 64, &S, 0) == 0;
+    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-int EhciMscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+int MscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x23;
@@ -90,10 +90,10 @@ int EhciMscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
-    return EhciControlXfer(C, HubAddr, 64, &S, 0) == 0;
+    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-int EhciMscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
+int MscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0xA0;
@@ -104,7 +104,7 @@ int EhciMscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
-    return EhciControlXfer(C, HubAddr, 64, &S, Out) == 0;
+    return ControlTransfer(C, HubAddr, 64, &S, Out) == 0;
 }
 
 static UINT8 PortSpeed(UINT16 St) {
@@ -117,17 +117,17 @@ static UINT8 PortSpeed(UINT16 St) {
     return EHCI_SPEED_FS;
 }
 
-int EhciMscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut) {
+int MscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut) {
     UINT16 St;
     UINT16 Ch;
     int Spin;
 
-    if (!EhciMscHubSetFeat(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
+    if (!MscHubSetFeat(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
         return 0;
     }
     Spin = 1000000;
     while (Spin-- > 0) {
-        if (!EhciMscHubGetStatus(C, HubAddr, Port, &St, &Ch)) {
+        if (!MscHubGetStatus(C, HubAddr, Port, &St, &Ch)) {
             return 0;
         }
         if ((St & (1u << 4)) == 0) {
@@ -135,15 +135,15 @@ int EhciMscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut
         }
         HalCpuRelax();
     }
-    (void)EhciMscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
-    (void)EhciMscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
-    EhciDelay(500000);
-    if (!EhciMscHubGetStatus(C, HubAddr, Port, &St, &Ch)) {
+    (void)MscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
+    (void)MscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
+    Delay(500000);
+    if (!MscHubGetStatus(C, HubAddr, Port, &St, &Ch)) {
         return 0;
     }
     if ((St & HUB_STAT_ENABLE) == 0) {
-        EhciDelay(500000);
-        if (!EhciMscHubGetStatus(C, HubAddr, Port, &St, &Ch) ||
+        Delay(500000);
+        if (!MscHubGetStatus(C, HubAddr, Port, &St, &Ch) ||
             (St & HUB_STAT_ENABLE) == 0) {
             gEhciLastErr = "msc hub !EN";
             return 0;
@@ -161,16 +161,16 @@ static int TryHubPortMsc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     if (C->HidOk && C->HubAddr == HubAddr && C->HubPort == P) {
         return 0; /* 鼠口留给 HID */
     }
-    if (!EhciMscHubGetStatus(C, HubAddr, P, &St, &Ch)) {
+    if (!MscHubGetStatus(C, HubAddr, P, &St, &Ch)) {
         return 0;
     }
     if (Ch & HUB_STAT_CONNECT) {
-        (void)EhciMscHubClearFeat(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
+        (void)MscHubClearFeat(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
     }
-    if (!EhciMscHubResetPort(C, HubAddr, P, &Sp)) {
+    if (!MscHubResetPort(C, HubAddr, P, &Sp)) {
         return 0;
     }
     {
@@ -180,19 +180,19 @@ static int TryHubPortMsc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
         ToyBootMarkUsb(SpName);
         ToyBootMarkUsb("\n");
     }
-    if (!EhciMscFinishClaim(C, Sp, HubAddr, P)) {
+    if (!MscFinishClaim(C, Sp, HubAddr, P)) {
         return 0;
     }
     /* 空读卡器等：claim 后 capacity 失败则卸掉，继续扫下一口 */
-    if (EhciMscCapacity() == 0) {
+    if (MscCapacity() == 0) {
         return 1;
     }
     ToyBootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
-    (void)EhciMscRelease();
+    (void)MscRelease();
     return 0;
 }
 
-int EhciMscClaimViaHub(EHCI_CTRL *C) {
+int MscClaimViaHub(EHCI_CTRL *C) {
     UINT8 HubAddr = C->HubAddr;
     UINT8 Desc[16];
     UINT8 NPorts = 4;
@@ -203,21 +203,21 @@ int EhciMscClaimViaHub(EHCI_CTRL *C) {
         return 0;
     }
     /* 扫口会 Reset 子设备；作废先前 EHCI FTDI claim（ehci-4） */
-    EhciFtdiInvalidate();
-    if (EhciMscHubGetDesc(C, HubAddr, Desc, 9)) {
+    FtdiInvalidate();
+    if (MscHubGetDesc(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 4;
         if (NPorts > 14) {
             NPorts = 14;
         }
     }
     for (P = 1; P <= NPorts; P++) {
-        (void)EhciMscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)MscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
-    EhciDelay(800000);
+    Delay(800000);
 
     for (Pass = 0; Pass < 2; Pass++) {
         if (Pass == 1) {
-            EhciDelay(800000);
+            Delay(800000);
         }
         for (P = 1; P <= NPorts; P++) {
             if (TryHubPortMsc(C, HubAddr, P)) {

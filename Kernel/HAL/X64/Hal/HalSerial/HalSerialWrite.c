@@ -124,7 +124,7 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     SpinLockRelease(&gSerialLock);
     if (!gShellOwnUart) {
         XhciFtdiWrite(Text);
-        EhciFtdiWrite(Text);
+        FtdiWrite(Text);
         XhciCdcWrite(Text);
     }
 }
@@ -175,7 +175,7 @@ void HalSerialWriteShell(const char *Text) {
     }
     SpinLockRelease(&gSerialLock);
     XhciFtdiWrite(Text);
-    EhciFtdiWrite(Text);
+    FtdiWrite(Text);
     XhciCdcWrite(Text);
 }
 
@@ -219,7 +219,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
     SpinLockRelease(&gSerialLock);
     if (!gShellOwnUart) {
         XhciFtdiWrite(Text);
-        EhciFtdiWrite(Text);
+        FtdiWrite(Text);
         XhciCdcWrite(Text);
     }
 }

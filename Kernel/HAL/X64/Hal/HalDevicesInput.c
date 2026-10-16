@@ -40,19 +40,19 @@ void HalInputDiagFormat(char *Buf, int Max) {
 }
 
 void HalEhciDiagFormat(char *Buf, int Max) {
-    EhciDiagFormat(Buf, Max);
+    DiagFormat(Buf, Max);
 }
 
 int HalEhciHidRetry(void) {
-    return EhciHidBringup() ? 0 : -1;
+    return HidBringup() ? 0 : -1;
 }
 
 /* 1=Bulk 已发出；0=未认；-1=Bulk 失败（见 ehci err=） */
 int HalEhciFtdiPing(void) {
-    if (!EhciFtdiReady()) {
+    if (!FtdiReady()) {
         return 0;
     }
-    if (EhciFtdiWrite("\r\n*** FTDI 115200 ***\r\n") < 0) {
+    if (FtdiWrite("\r\n*** FTDI 115200 ***\r\n") < 0) {
         return -1;
     }
     return 1;

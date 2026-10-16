@@ -1,9 +1,9 @@
 /*
- * EhciFtdiClaim.c — EHCI 上认 FT232（PR-H-ehci-4）
+ * FtdiClaim.c — EHCI 上认 FT232（PR-H-ehci-4）
  *
  * 扫 RMH 子口；VID 0403 / PID 6001·6014·6015；SetConfig + 115200。
  */
-#include "EhciPrivate.h"
+#include "Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 
@@ -49,7 +49,7 @@ static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return EhciControlXfer(C, Addr, EpMax, &S, Out);
+    return ControlTransfer(C, Addr, EpMax, &S, Out);
 }
 
 static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
@@ -60,7 +60,7 @@ static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, 0, EpMax, &S, 0);
+    return ControlTransfer(C, 0, EpMax, &S, 0);
 }
 
 static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
@@ -71,7 +71,7 @@ static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return EhciControlXfer(C, Addr, EpMax, &S, 0);
+    return ControlTransfer(C, Addr, EpMax, &S, 0);
 }
 
 static int FtdiVendor(EHCI_CTRL *C, UINT8 Req, UINT16 Value, UINT16 Index) {
@@ -85,7 +85,7 @@ static int FtdiVendor(EHCI_CTRL *C, UINT8 Req, UINT16 Value, UINT16 Index) {
     C->XferSpeed = gEhciFtdiSpeed;
     C->XferHubAddr = gEhciFtdiHubAddr;
     C->XferHubPort = gEhciFtdiHubPort;
-    return EhciControlXfer(C, gEhciFtdiAddr, gEhciFtdiEpMax0 ? gEhciFtdiEpMax0 : 8,
+    return ControlTransfer(C, gEhciFtdiAddr, gEhciFtdiEpMax0 ? gEhciFtdiEpMax0 : 8,
                            &S, 0);
 }
 
@@ -177,7 +177,7 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     C->XferSpeed = Speed;
     C->XferHubAddr = HubAddr;
     C->XferHubPort = HubPort;
-    EhciDelay(100000);
+    Delay(100000);
     if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         ToyBootMarkUsb("Boot: EHCI FTDI Cfg9 Fail\n");
         return 0;
@@ -226,7 +226,7 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     {
         char Probe[] = "ftdi-tx\r\n";
         gEhciFtdiDtOut = 0;
-        if (EhciBulkXfer(C, gEhciFtdiAddr, gEhciFtdiEpOut, gEhciFtdiMpsOut,
+        if (BulkXfer(C, gEhciFtdiAddr, gEhciFtdiEpOut, gEhciFtdiMpsOut,
                          gEhciFtdiSpeed, gEhciFtdiHubAddr, gEhciFtdiHubPort, 0,
                          Probe, 8, &gEhciFtdiDtOut) < 0) {
             ToyBootMarkUsb("Boot: EHCI FTDI Tx Fail ");
@@ -252,16 +252,16 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     if (C->MscOk && C->MscHubAddr == HubAddr && C->MscHubPort == P) {
         return 0;
     }
-    if (!EhciMscHubGetStatus(C, HubAddr, P, &St, &Ch)) {
+    if (!MscHubGetStatus(C, HubAddr, P, &St, &Ch)) {
         return 0;
     }
     if (Ch & HUB_STAT_CONNECT) {
-        (void)EhciMscHubClearFeat(C, HubAddr, P, 16u); /* C_PORT_CONNECTION */
+        (void)MscHubClearFeat(C, HubAddr, P, 16u); /* C_PORT_CONNECTION */
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
     }
-    if (!EhciMscHubResetPort(C, HubAddr, P, &Sp)) {
+    if (!MscHubResetPort(C, HubAddr, P, &Sp)) {
         ToyBootMarkUsb("Boot: EHCI FTDI Hub Reset Fail\n");
         return 0;
     }
@@ -271,7 +271,7 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     return FinishFtdi(C, Sp, HubAddr, P);
 }
 
-int EhciFtdiClaimViaHub(EHCI_CTRL *C) {
+int FtdiClaimViaHub(EHCI_CTRL *C) {
     UINT8 HubAddr = C->HubAddr;
     UINT8 Desc[16];
     UINT8 NPorts = 6;
@@ -280,16 +280,16 @@ int EhciFtdiClaimViaHub(EHCI_CTRL *C) {
     if (!HubAddr) {
         return 0;
     }
-    if (EhciMscHubGetDesc(C, HubAddr, Desc, 9)) {
+    if (MscHubGetDesc(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 6;
         if (NPorts > 14) {
             NPorts = 14;
         }
     }
     for (P = 1; P <= NPorts; P++) {
-        (void)EhciMscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)MscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
-    EhciDelay(500000);
+    Delay(500000);
     for (P = 1; P <= NPorts; P++) {
         if (TryHubPort(C, HubAddr, P)) {
             return 1;

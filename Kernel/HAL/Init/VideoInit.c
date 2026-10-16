@@ -8,6 +8,7 @@
 #include "Hal.h"
 #include "Font.h"
 #include "Theme.h"
+#include "Gfx.h"
 
 static void IgpuAudioProbe(void) {
     HalIgpuMmioInitialize();
@@ -29,6 +30,8 @@ int InitializeVideo(void) {
     HalVideoSet(&Video);
     HalVideoEnableFbWc();
     HalVideoInitializeBackbuffer();
+    GfxSetPixel(HalVideoDrawPixel);
+    GfxSetFillRect(HalVideoFillRect);
     HalSerialGopEnable();
     HalVideoLogFbPte();
     IgpuAudioProbe();

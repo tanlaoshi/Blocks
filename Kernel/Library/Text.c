@@ -83,3 +83,27 @@ char FormatHexadecimalDigit(UINT32 Value) {
     Value &= 0xFu;
     return (char)(Value < 10u ? ('0' + Value) : ('a' + Value - 10u));
 }
+
+void FormatDottedDecimal(UINT32 Value, char *Buffer, int Capacity) {
+    int Pos;
+    int Part;
+
+    if (Capacity < 16) {
+        if (Buffer != 0 && Capacity > 0) {
+            Buffer[0] = 0;
+        }
+        return;
+    }
+    Pos = 0;
+    for (Part = 0; Part < 4; Part++) {
+        UINT8 Octet = (UINT8)((Value >> ((3 - Part) * 8)) & 0xFFu);
+        char *Digits = Uint8ToDecimal(Octet);
+        while (*Digits != 0) {
+            Buffer[Pos++] = *Digits++;
+        }
+        if (Part < 3) {
+            Buffer[Pos++] = '.';
+        }
+    }
+    Buffer[Pos] = 0;
+}

@@ -18,35 +18,10 @@
 #include "Text.h"
 
 void NetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
-    UINT8 B[4];
-    int Pos = 0;
-    int P;
-
     if (BufLen < 16) {
         return;
     }
-    B[0] = (UINT8)((Ip >> 24) & 0xFF);
-    B[1] = (UINT8)((Ip >> 16) & 0xFF);
-    B[2] = (UINT8)((Ip >> 8) & 0xFF);
-    B[3] = (UINT8)(Ip & 0xFF);
-    for (P = 0; P < 4; P++) {
-        UINT8 V = B[P];
-        if (V >= 100) {
-            Buf[Pos++] = '0' + V / 100;
-            V %= 100;
-            Buf[Pos++] = '0' + V / 10;
-            Buf[Pos++] = '0' + V % 10;
-        } else if (V >= 10) {
-            Buf[Pos++] = '0' + V / 10;
-            Buf[Pos++] = '0' + V % 10;
-        } else {
-            Buf[Pos++] = '0' + V;
-        }
-        if (P < 3) {
-            Buf[Pos++] = '.';
-        }
-    }
-    Buf[Pos] = 0;
+    FormatDottedDecimal(Ip, Buf, BufLen);
 }
 
 int NetParseIp(const char *Text, UINT32 *Ip) {

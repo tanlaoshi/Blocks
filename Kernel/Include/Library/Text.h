@@ -21,4 +21,7 @@ void FormatHexadecimal(char *Buffer, int Capacity, UINT64 Value,
 /* 低 4 位，小写一个字符 */
 char FormatHexadecimalDigit(UINT32 Value);
 
+/* 高字节在前，每段无前导零，点连接。放不下则当 Capacity > 0 且 Buffer 非空时写成空串。 */
+void FormatDottedDecimal(UINT32 Value, char *Buffer, int Capacity);
+
 #endif

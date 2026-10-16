@@ -12,40 +12,16 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "ToySerialLog.h"
+#include "Text.h"
 #ifdef TOY_LWIP
 #include "toy_netif.h"
 #endif
 
 void VirtioNetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
-    UINT8 B[4];
-    int Pos = 0;
-    int P;
-
     if (!Buf || BufLen < 16) {
         return;
     }
-    B[0] = (UINT8)((Ip >> 24) & 0xFF);
-    B[1] = (UINT8)((Ip >> 16) & 0xFF);
-    B[2] = (UINT8)((Ip >> 8) & 0xFF);
-    B[3] = (UINT8)(Ip & 0xFF);
-    for (P = 0; P < 4; P++) {
-        UINT8 V = B[P];
-        if (V >= 100) {
-            Buf[Pos++] = (char)('0' + V / 100);
-            V = (UINT8)(V % 100);
-            Buf[Pos++] = (char)('0' + V / 10);
-            Buf[Pos++] = (char)('0' + V % 10);
-        } else if (V >= 10) {
-            Buf[Pos++] = (char)('0' + V / 10);
-            Buf[Pos++] = (char)('0' + V % 10);
-        } else {
-            Buf[Pos++] = (char)('0' + V);
-        }
-        if (P < 3) {
-            Buf[Pos++] = '.';
-        }
-    }
-    Buf[Pos] = 0;
+    FormatDottedDecimal(Ip, Buf, BufLen);
 }
 
 int VirtioNetParseIp(const char *Text, UINT32 *Ip) {

@@ -42,6 +42,13 @@ typedef struct DRIVER_MATCH {
             UINT16 Device;
             UINT16 VendorMask;
             UINT16 DeviceMask;
+            /* 掩码 0：不比较该字段（旧表零初始化即此）。0xFF：整字节比较，值可以是 0。 */
+            UINT8 Class;
+            UINT8 Subclass;
+            UINT8 ProgIf;
+            UINT8 ClassMask;
+            UINT8 SubclassMask;
+            UINT8 ProgIfMask;
         } Pci;
         struct {
             char Compatible[64];

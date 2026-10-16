@@ -35,41 +35,23 @@ UINT8 HdaPciFn(void) {
     return gHdaFn;
 }
 
-/*
- * Vendor 8086 + Class 04 (Multimedia) + Subclass 03 (HD Audio).
- * 不依赖 DID 白名单；串口打出实 DID 供 audio-1+ 钉表。
- */
-static DEVICE_NODE *FindIntelHda(void) {
-    int Idx;
-
-    for (Idx = 0; Idx < DeviceCount(); Idx++) {
-        DEVICE_NODE *Dev = DeviceGet(Idx);
-
-        if (!Dev || Dev->Bound || Dev->Bus != DEVICE_BUS_PCI) {
-            continue;
-        }
-        if (Dev->Vendor != 0x8086u) {
-            continue;
-        }
-        if (Dev->Class != 0x04u || Dev->Subclass != 0x03u) {
-            continue;
-        }
-        return Dev;
-    }
-    return 0;
-}
+/* 8086 + Class 04 Subclass 03。不钉设备号。 */
+static const DRIVER_MATCH gHdaMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = 0x8086, .VendorMask = 0xFFFF,
+                 .Class = 0x04, .Subclass = 0x03,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
 
 static int HdaProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    DEVICE_NODE *Dev;
+    DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
-    (void)BusCtx;
     if (OutPrivate) {
         *OutPrivate = 0;
     }
-
-    Dev = FindIntelHda();
-    if (!Dev) {
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
         ToyLogBoot("Boot: hda skip (no Intel HDA)\n");
         return -1;
     }
@@ -112,7 +94,7 @@ static void HdaRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gHdaDriver = {
     .Name = "hda",
     .Class = TOY_DRIVER_CLASS_AUDIO,
-    .Match = 0,
+    .Match = gHdaMatch,
     .Probe = HdaProbe,
     .Bind = HdaBind,
     .Remove = HdaRemove,

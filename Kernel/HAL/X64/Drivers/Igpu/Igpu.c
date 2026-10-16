@@ -36,44 +36,29 @@ UINT8 IgpuPciFn(void) {
 }
 
 /*
- * 自扫设备表：Vendor 8086 + Class 03（Display）。
- * 不依赖 DID 白名单——NUC7 8650U 常见 0x5917，其它 Gen9 也认，串口打出实 DID。
+ * 8086 + Class 03。Subclass 00 是 VGA，80 是其它显示控制器。
+ * 不钉设备号。
  */
-static DEVICE_NODE *FindIntelDisplay(void) {
-    int Idx;
-
-    for (Idx = 0; Idx < DeviceCount(); Idx++) {
-        DEVICE_NODE *Dev = DeviceGet(Idx);
-
-        if (!Dev || Dev->Bound || Dev->Bus != DEVICE_BUS_PCI) {
-            continue;
-        }
-        if (Dev->Vendor != 0x8086u) {
-            continue;
-        }
-        if (Dev->Class != 0x03u) {
-            continue;
-        }
-        /* 0x00 VGA；0x80 Other display controller（部分固件） */
-        if (Dev->Subclass != 0x00u && Dev->Subclass != 0x80u) {
-            continue;
-        }
-        return Dev;
-    }
-    return 0;
-}
+static const DRIVER_MATCH gIgpuMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = 0x8086, .VendorMask = 0xFFFF,
+                 .Class = 0x03, .Subclass = 0x00,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF } },
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = 0x8086, .VendorMask = 0xFFFF,
+                 .Class = 0x03, .Subclass = 0x80,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
 
 static int IgpuProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    DEVICE_NODE *Dev;
+    DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
-    (void)BusCtx;
     if (OutPrivate) {
         *OutPrivate = 0;
     }
-
-    Dev = FindIntelDisplay();
-    if (!Dev) {
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
         ToyLogBoot("Boot: igpu skip (no Intel display)\n");
         return -1;
     }
@@ -116,7 +101,7 @@ static void IgpuRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gIgpuDriver = {
     .Name = "igpu",
     .Class = TOY_DRIVER_CLASS_DISPLAY,
-    .Match = 0, /* 自扫 Class 03；见 FindIntelDisplay */
+    .Match = gIgpuMatch,
     .Probe = IgpuProbe,
     .Bind = IgpuBind,
     .Remove = IgpuRemove,

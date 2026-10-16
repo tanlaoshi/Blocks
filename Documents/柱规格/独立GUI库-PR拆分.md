@@ -55,7 +55,7 @@ GfxSetFillRect(HalVideoFillRect);   /* 可选 */
 
 ## 明确不做（本柱）
 
-- 不把按钮、列表、滚动条、换行文字放进对外库。它们要 Theme 色和 Font 度量，属于 Blocks 的 `Services/Ui`。
+- 不把半透明放进对外库。`UiFillRectangleAlpha` 与 `UiBlendRgb` 留在 `Services/Ui`，继续调 `HalVideoBlend*`。
 - 不把窗口管理、桌面、文件窗搬进库。
 - 不在本柱做 TTF / 点阵字库对外发布（字模许可另议）。
 - 不改成单文件 header-only（可以后做；本柱先可独立编译的 `.c` + `.h`）。
@@ -67,7 +67,7 @@ GfxSetFillRect(HalVideoFillRect);   /* 可选 */
 | --- | --- | --- | --- | --- |
 | 1 | **PR-GFX-contract** | 新增 `Include/Library/Gfx.h`（或等价名）：画点/可选 FillRect 注册 + 几何 API 声明。`Library/Gfx/Gfx.c` 骨架：注册槽 + 未注册时空操作；把 `UI.c` 里线/矩形/圆/圆角/三角的算法搬进来，内部只调注册的画点（FillRect 优先走可选加速）。`UI.c` 改为薄包装调用 `Gfx*`，或 `#define UiDrawLine GfxDrawLine` 一类，保持现有调用方零改 | `UIDraw.c`、`UILayout.c`、Theme、Font、窗口 | `build.sh` + `smoke-boot.sh`。桌面边框/按钮轮廓与搬前视觉一致。`Library/Gfx` 无 `HalVideo` / `Theme` / `Font` 字符串 |
 | 2 | **PR-GFX-wire** | 在 Video 初始化路径（现有 `VideoInit` / 等价处）调用 `GfxSetPixel(HalVideoDrawPixel)` 与可选 `GfxSetFillRect(HalVideoFillRect)`。确认开机早期若有人调几何、尚未注册，不写坏内存 | 控件绘制逻辑 | `build.sh` + `smoke-boot.sh`。串口无新增 panic |
-| 3 | **PR-GFX-alpha** | `UiFillRectangleAlpha` / `UiBlendRgb`：若仍绑 `HalVideoBlend*`，改为可选第三钩子 `GfxSetBlend*`，或本柱声明 alpha 仍属 Blocks 胶水、几何库不含半透明。刀里二选一写死，默认：**半透明留在 Services，不进对外库** | 桌面半透明特效观感 | `build.sh`；半透明路径不回归或明确标为未进库 |
+| 3 | **PR-GFX-alpha** | 已定：半透明不进 `Library/Gfx`。`UiFillRectangleAlpha` / `UiBlendRgb` 留在 `Services/Ui`，继续调 `HalVideoBlend*` | 桌面半透明特效观感 | `build.sh`；半透明路径不回归 |
 | 4 | **PR-GFX-headers** | `UI.h` 拆成：对外可拷的 `Gfx.h`（几何）+ Blocks 专用 `UiWidgets.h`（按钮/列表/滚动条，仍在 `Include/Services` 或 `Include/Library`）。调用几何的文件改 include；控件文件改 include widgets 头 | 控件实现体 | `build.sh`。grep：`Services/Ui/UI.c` 若已空则可删或只留兼容转发 |
 | 5 | **PR-GFX-readme** | `Library/Gfx/README.md`：如何注册画点、最小示例、与 Blocks 的关系、许可（待你定）。`Kernel/README.md` 或 `同步.md` 旁挂一句「几何库在 Library/Gfx」 | 算法 | 文档可照着在另一个空工程里只链 Gfx.c + 假画点编过 |
 

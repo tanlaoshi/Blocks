@@ -18,6 +18,7 @@ void UiFillRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Col
     GfxFillRectangle(X, Y, Width, Height, Color);
 }
 
+/* 半透明留在 Services，不进 Library/Gfx。 */
 UINT32 UiBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha) {
     return HalVideoBlendRgb(Dst, Src, Alpha);
 }

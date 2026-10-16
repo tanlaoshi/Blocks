@@ -143,6 +143,7 @@ INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers/Msc \
                   -IHAL/$(HAL_ARCH)/Drivers/Net \
                   -IHAL/$(HAL_ARCH)/Drivers/Iwl \
+                  -IHAL/$(HAL_ARCH)/Drivers/Iwl/Hw \
                   -IHAL/$(HAL_ARCH)/Drivers/Serial
 
 # PR-B2：非 x86 必须选中 Board 包（默认 virt）；Common 不 -I 板目录
@@ -346,6 +347,7 @@ DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Rtl/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Wifi/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*/*/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ehci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Uhci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ps2/*.c)

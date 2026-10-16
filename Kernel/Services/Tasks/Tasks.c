@@ -188,7 +188,7 @@ void WorkerTask(void) {
  * 其专核上只有 InputTask+idle，sti 不外溢到 shell/gui 协作态（CPU1 仍 IF=0）。
  *
  * 并发安全：XchiDrainEvents 已 gEvtConsumerLock/gHidQueueLock 串行 + 命令期
- * XhciEventIsExclusive 早退 → 与 shell/gui 的 yield-path drain 并发安全（序 1 已证）。
+ * EventIsExclusive 早退 → 与 shell/gui 的 yield-path drain 并发安全（序 1 已证）。
  */
 void InputTask(void) {
     for (;;) {

@@ -143,11 +143,11 @@ int HalUsbUartClaim(void) {
             return 1;
         }
     }
-    return XhciCdcClaim();
+    return CdcClaim();
 }
 
 int HalUsbUartReady(void) {
-    return (XhciFtdiReady() || FtdiReady() || XhciCdcReady()) ? 1 : 0;
+    return (XhciFtdiReady() || FtdiReady() || CdcReady()) ? 1 : 0;
 }
 
 /* PR-N-wifi-1：USB 8188EU；先 xHCI 再 EHCI；无棒 0 */

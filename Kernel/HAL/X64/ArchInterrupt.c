@@ -229,7 +229,7 @@ UINT64 InterruptDispatch(HAL_INTERRUPT_FRAME *F) {
     }
     if (F->Vector == VEC_XHCI) {
         gArchIrqCount++;
-        XhciIrq();
+        Irq();
         LapicEoi();
         return 0;
     }

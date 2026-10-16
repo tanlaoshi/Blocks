@@ -1,6 +1,6 @@
 # UsbHostController 与现有符号
 
-公共口在 `Include/Driver/UsbHostController.h`。键盘、鼠标仍走原来的函数。U 盘的 CBW、数据和 CSW 走 `BulkOn`，扇区命令仍留在两边的 BOT 里。
+公共口在 `Include/Driver/UsbHostController.h`。键盘灯走 `Control`，键盘中断重新入队走 `InterruptQueue`。鼠标仍走原来的函数。U 盘的 CBW、数据和 CSW 走 `BulkOn`，扇区命令仍留在两边的 BOT 里。
 
 | 公共口 | xHCI 现在 | EHCI 现在 |
 | --- | --- | --- |

@@ -11,7 +11,6 @@
 #include "Debug.h"
 #include "VirtualMemory.h"
 #include "InputXhciPrivate.h"
-#include "XHCI/XhciInternal.h"
 
 /* x86：MMIO 须 PCD|PWT，否则真机写 PORTSC/RS 易假死 */
 #ifndef PTE_PWT
@@ -48,11 +47,11 @@ static void MapXhciBar(UINT64 Base) {
         Db = Start + (UINT64)((*(volatile UINT32 *)(UINTN)(Start + 0x14)) & ~0x3u);
         Rt = Start + (UINT64)((*(volatile UINT32 *)(UINTN)(Start + 0x18)) & ~0x1Fu);
         Need = Op + 0x800; /* 端口寄存器区 */
-        if (Db + XHCI_PAGE_SIZE > Need) {
-            Need = Db + XHCI_PAGE_SIZE;
+        if (Db + 0x1000u > Need) {
+            Need = Db + 0x1000u;
         }
-        if (Rt + XHCI_PAGE_SIZE > Need) {
-            Need = Rt + XHCI_PAGE_SIZE;
+        if (Rt + 0x1000u > Need) {
+            Need = Rt + 0x1000u;
         }
         /* 上限 16MiB，防止异常偏移拖死 */
         if (Need > Start + 0x1000000ULL) {
@@ -66,20 +65,20 @@ static void MapXhciBar(UINT64 Base) {
     }
 }
 
-static void XhciInputPoll(void) {
+static void InputPoll(void) {
     /* 控制器已起就盲 Drain；勿等 MousePresent（曾因 deferred 鼠标导致 PHOTO d=1） */
     if (gXhciReady) {
-        XhciDrainEvents();
+        DrainEvents();
     }
 }
 
-static int XhciKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
+static int KeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     USB_KEYBOARD_REPORT Raw;
 
     if (!Report || !gXhciReady) {
         return 0;
     }
-    if (!XhciDequeueKeyboard(&Raw)) {
+    if (!DequeueKeyboard(&Raw)) {
         return 0;
     }
     Report->ModifierKeys = Raw.ModifierKeys;
@@ -90,24 +89,24 @@ static int XhciKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     return 1;
 }
 
-static int XhciInputSetLeds(UINT8 Leds) {
+static int InputSetLeds(UINT8 Leds) {
     if (!gXhciReady) {
         return -1;
     }
-    return XhciKeyboardSetLeds(Leds);
+    return KeyboardSetLeds(Leds);
 }
 
-static int XhciMousePresentWrap(void) {
-    return gXhciReady ? XhciMousePresent() : 0;
+static int MousePresentWrap(void) {
+    return gXhciReady ? MousePresent() : 0;
 }
 
-static int XhciMouseDequeue(HAL_MOUSE_REPORT *Report) {
+static int MouseDequeue(HAL_MOUSE_REPORT *Report) {
     USB_MOUSE_REPORT Raw;
 
     if (!Report || !gXhciReady) {
         return 0;
     }
-    if (!XhciDequeueMouse(&Raw)) {
+    if (!DequeueMouse(&Raw)) {
         return 0;
     }
     Report->X = Raw.X;
@@ -119,11 +118,11 @@ static int XhciMouseDequeue(HAL_MOUSE_REPORT *Report) {
 }
 
 static const INPUT_BACKEND gXhciInputBackend = {
-    .Poll = XhciInputPoll,
-    .KeyboardDequeue = XhciKeyboardDequeue,
-    .KeyboardSetLeds = XhciInputSetLeds,
-    .MousePresent = XhciMousePresentWrap,
-    .MouseDequeue = XhciMouseDequeue,
+    .Poll = InputPoll,
+    .KeyboardDequeue = KeyboardDequeue,
+    .KeyboardSetLeds = InputSetLeds,
+    .MousePresent = MousePresentWrap,
+    .MouseDequeue = MouseDequeue,
 };
 
 int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
@@ -153,7 +152,7 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
         }
         return 0;
     }
-    if (!XhciInit(Base)) {
+    if (!Init(Base)) {
         if (RealPc) {
             HalSerialGopMute(0);
         }
@@ -163,21 +162,21 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
      * 课堂：立刻开 MSI。真机：枚举阶段保持 IE=0，PHOTO 后再 InputXhciArmIrq，
      * 避免中断风暴把 boot 日志冲掉。
      */
-    if (Dev && !RealPc && (XhciHidKeyboardReady() || XhciMousePresent())) {
-        (void)XhciEnableIrq(Dev);
-        if (!XhciUsesIrq()) {
+    if (Dev && !RealPc && (HidKeyboardReady() || MousePresent())) {
+        (void)EnableIrq(Dev);
+        if (!UsesIrq()) {
             DebugWrite("XHCI: bound without IRQ (poll)\n");
         }
     }
     return 1;
 }
 
-static int XhciDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int DriverBind(TOY_DRIVER_INSTANCE *Inst) {
     (void)Inst;
     return ToyDriverInputAttach(&gXhciInputBackend);
 }
 
-static void XhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gXhciReady = 0;
 }
@@ -186,9 +185,9 @@ static const TOY_DRIVER gXhciInputDriver = {
     .Name = "xhci-hid",
     .Class = TOY_DRIVER_CLASS_INPUT,
     .Match = 0,
-    .Probe = XhciDriverProbe,
-    .Bind = XhciDriverBind,
-    .Remove = XhciDriverRemove,
+    .Probe = DriverProbe,
+    .Bind = DriverBind,
+    .Remove = DriverRemove,
 };
 
 void InputXhciRegister(void) {
@@ -205,14 +204,14 @@ void InputXhciArmIrq(void) {
     if (!gXhciReady) {
         return;
     }
-    if (!(XhciHidKeyboardReady() || XhciMousePresent())) {
+    if (!(HidKeyboardReady() || MousePresent())) {
         return;
     }
-    if (XhciUsesIrq()) {
+    if (UsesIrq()) {
         return;
     }
-    (void)XhciEnableIrq(&gXhciDev);
-    if (!XhciUsesIrq() && HalCpuIsHypervisor()) {
+    (void)EnableIrq(&gXhciDev);
+    if (!UsesIrq() && HalCpuIsHypervisor()) {
         ToyLogUsb("Boot: XHCI arm fallback poll\n");
     }
 }

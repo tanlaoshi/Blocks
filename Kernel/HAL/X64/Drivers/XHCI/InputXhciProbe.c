@@ -10,7 +10,7 @@
 #include "VirtualMemory.h"
 #include "InputXhciPrivate.h"
 
-int XhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     USB_CONTROLLER Controllers[8];
     int Count;
     int i;
@@ -129,9 +129,9 @@ int XhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
             if (RealPc) {
                 ToyLogUsb("Boot: XHCI init returned\n");
             }
-            if (XhciHidKeyboardReady() || XhciMousePresent()) {
+            if (HidKeyboardReady() || MousePresent()) {
                 gXhciReady = 1;
-                if (!XhciHidKeyboardReady() && XhciMousePresent()) {
+                if (!HidKeyboardReady() && MousePresent()) {
                     ToyLogUsb("Boot: XHCI-HID Mouse-Only Bind\n");
                 }
                 if (OutPrivate) {
@@ -144,7 +144,7 @@ int XhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
              * QEMU/单控制器：保持旧行为，立刻让出给 PS/2。
              */
             if (RealPc && XhciIdx + 1 < XhciN) {
-                XhciAbandonNoHid();
+                AbandonNoHid();
                 XhciIdx++;
                 continue;
             }
@@ -173,7 +173,7 @@ int XhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
             gXhciDev.Bar[0] = Fallback;
             gXhciDev.Type = 0x30;
             if (TryXhciAt(Fallback, &gXhciDev) &&
-                (XhciHidKeyboardReady() || XhciMousePresent())) {
+                (HidKeyboardReady() || MousePresent())) {
                 gXhciReady = 1;
                 ToyLogUsb("Boot: XHCI-HID Keyboard\n");
                 if (OutPrivate) {

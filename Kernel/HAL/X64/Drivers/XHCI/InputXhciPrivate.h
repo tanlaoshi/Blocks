@@ -11,6 +11,6 @@ extern USB_CONTROLLER gXhciDev;
 extern int gXhciReady;
 
 int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev);
-int XhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate);
+int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate);
 
 #endif

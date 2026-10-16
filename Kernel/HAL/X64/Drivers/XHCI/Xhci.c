@@ -3,7 +3,7 @@
  *
  * 由单体 Drivers/XHCI.c 剩余部分迁入；子模块见 Drivers/XHCI/ 下各 .c。
  */
-#include "XHCI/XhciInternal.h"
+#include "XHCI/Internal.h"
 
 UINT64 gCapabilityBase;
 UINT64 gOperationalBase;
@@ -33,7 +33,7 @@ volatile UINT32 gGetReportBusy;
 UINT8  gGetReportFails;
 UINT8  gXferFast; /* GET_REPORT 用短超时，避免拖死鼠标 */
 UINT8  gUseIrq;
-/* 真机默认 POLL；DUAL 见 XhciTryEnterDual（EnableIrq / Arm） */
+/* 真机默认 POLL；DUAL 见 TryEnterDual（EnableIrq / Arm） */
 XHCI_IRQ_MODE gIrqMode = XHCI_IRQ_MODE_POLL;
 /* 键盘 Slot 的路由/TT，Configure Endpoint 必须带回，否则 hub 子设备 cfg 失败 */
 UINT32 gKbdRoute;
@@ -109,7 +109,7 @@ volatile UINT32 gStatEvtRing;   /* 事件环弹出次数（含命令完成） */
 volatile UINT32 gStatLastSlot;
 volatile UINT32 gStatLastEp;
 volatile UINT32 gStatUnmatched; /* Transfer 且未匹配键鼠 DCI */
-volatile UINT32 gStatIrq;       /* PR-H-xhci-stat：XhciIrq 进入次数 */
+volatile UINT32 gStatIrq;       /* PR-H-xhci-stat：Irq 进入次数 */
 volatile UINT32 gStatIrqSkipped; /* excl-1：独占窗内 IRQ 跳过环推进 */
 
 
@@ -202,28 +202,32 @@ UINT8 *InEp(UINT32 Dci) {
     return gInCtx + gCtxSize * (Dci + 1);
 }
 
-void XhciUsbHostControllerOffer(void);
-void XhciUsbHostControllerRetract(void);
+void UsbHostControllerOffer(void);
+void UsbHostControllerRetract(void);
 
 /* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（BSS 勿迁出本文件） */
-int XhciInit(UINT64 BaseAddress) {
-    if (!XhciInitHw(BaseAddress)) {
+int Init(UINT64 BaseAddress) {
+    if (!InitHw(BaseAddress)) {
         return 0;
     }
-    XhciUsbHostControllerOffer();
-    return XhciEnumAndBind();
+    UsbHostControllerOffer();
+    return EnumAndBind();
 }
 
-int XhciHidKeyboardReady(void) {
+int HidKeyboardReady(void) {
     return gSlotId != 0;
+}
+
+UINT8 KeyboardInterface(void) {
+    return gKbdIface;
 }
 
 /*
  * 刀：笔记本可能有多颗 xHCI；第一颗 8 口全 RxDetect/无 CCS 时放弃，
- * 清 gXhciStarted 才能对下一 BAR 再跑 XhciInit。NUC/工控有 HID 不会走到这里。
+ * 清 gXhciStarted 才能对下一 BAR 再跑 Init。NUC/工控有 HID 不会走到这里。
  */
-void XhciAbandonNoHid(void) {
-    XhciUsbHostControllerRetract();
+void AbandonNoHid(void) {
+    UsbHostControllerRetract();
     HaltControllerQuiet();
     gSlotId = 0;
     gMouseSlotId = 0;

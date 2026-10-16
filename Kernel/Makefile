@@ -132,6 +132,14 @@ INCLUDES_COMMON = -IInclude \
                   -IThirdParty/stb \
                   -IHAL/$(HAL_ARCH) \
                   -IHAL/$(HAL_ARCH)/Hal \
+                  -IHAL/$(HAL_ARCH)/Arch \
+                  -IHAL/$(HAL_ARCH)/PageTable \
+                  -IHAL/$(HAL_ARCH)/PCIe \
+                  -IHAL/$(HAL_ARCH)/IoApic \
+                  -IHAL/$(HAL_ARCH)/DeviceEnum \
+                  -IHAL/$(HAL_ARCH)/SmpBoot \
+                  -IHAL/$(HAL_ARCH)/Platform \
+                  -IHAL/$(HAL_ARCH)/AcpiMadt \
                   -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers \
@@ -363,11 +371,20 @@ DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Hda/*.c)
 XHCI_SPLIT_SRCS := $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/*.c)
 DRIVER_SRCS   += $(XHCI_SPLIT_SRCS)
 ARCH_SRCS     := $(wildcard HAL/$(HAL_ARCH)/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Arch/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PageTable/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PCIe/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/IoApic/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/DeviceEnum/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Platform/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Hal/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/AcpiMadt/*.c)
 ARCH_ASM_ALL  := $(wildcard HAL/$(HAL_ARCH)/*.S)
-ARCH_ASM      := $(filter-out HAL/$(HAL_ARCH)/SmpTrampoline.S,$(ARCH_ASM_ALL))
+ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/Arch/*.S)
+ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.S)
+ARCH_ASM      := $(filter-out HAL/$(HAL_ARCH)/SmpBoot/SmpTrampoline.S,$(ARCH_ASM_ALL))
 
 CORE_OBJS     := $(patsubst Core/%.c,$(BUILDDIR)/Core/%.o,$(CORE_SRCS))
 SERVICES_OBJS := $(patsubst Services/%.c,$(BUILDDIR)/Services/%.o,$(SERVICES_SRCS))
@@ -754,9 +771,9 @@ $(HALDIR)/%.o: HAL/$(HAL_ARCH)/%.S | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(ARCH),x86_64)
-$(HALDIR)/SmpTramp.bin: HAL/X64/SmpTrampoline.S HAL/X64/SmpTrampoline.ld | $(HALDIR)
-	$(CC) -c HAL/X64/SmpTrampoline.S -o $(HALDIR)/SmpTrampoline_low.o
-	$(LD) -z noexecstack -T HAL/X64/SmpTrampoline.ld -o $(HALDIR)/SmpTrampoline_low.elf \
+$(HALDIR)/SmpTramp.bin: HAL/X64/SmpBoot/SmpTrampoline.S HAL/X64/SmpBoot/SmpTrampoline.ld | $(HALDIR)
+	$(CC) -c HAL/X64/SmpBoot/SmpTrampoline.S -o $(HALDIR)/SmpTrampoline_low.o
+	$(LD) -z noexecstack -T HAL/X64/SmpBoot/SmpTrampoline.ld -o $(HALDIR)/SmpTrampoline_low.elf \
 		$(HALDIR)/SmpTrampoline_low.o
 	objcopy -O binary $(HALDIR)/SmpTrampoline_low.elf $@
 

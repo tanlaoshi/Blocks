@@ -17,7 +17,7 @@ User/       # Ring3 应用与用户态 SDK
 
 控制流：`Boot`/固件 → **`BringUp/<Arch>/KernelEntry` → Handoff → KernelMain`** → `ModulesRun` → …
 
-`Library/` 纯化：`make check-library-pure`。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载→`Services/Fonts/`，Elf→`Core/Elf/`。
+`Library/` 纯化：`make check-library-pure`。几何库在 `Library/Gfx`。UI→`Services/Ui/`，Bmp→`Services/Bmp/`，字库加载→`Services/Fonts/`，Elf→`Core/Elf/`。
 
 ## 编译
 

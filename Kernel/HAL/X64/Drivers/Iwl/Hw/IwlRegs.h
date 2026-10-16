@@ -349,8 +349,5 @@
 #define IWL_FIRST_TB_SIZE             20u
 #define IWL_FIRST_TB_ALIGN            64u
 #define IWL_BAR_MAP_BYTES             0x10000u
-#define IWL_FW_SEC_MAX                16
-#define IWL_SSID_MAX                  32
-#define IWL_PSK_MAX                   63
 
 #endif

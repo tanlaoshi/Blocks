@@ -116,7 +116,10 @@
 ### 5.1 布局规则（写死）
 
 1. **新设备**：必须 `HAL/<Arch>/Drivers/<DeviceName>/`，禁止新增根级业务 `.c`。
-2. **类驱动 vs 控制器**：HID/MSC 等若强绑定某宿主控制器，**优先并入该控制器目录**（例：`InputXhci*` → `XHCI/`），避免再建平行 `Input/` 大杂院。
+2. **类驱动 vs 控制器**（USB）：
+   - **过渡**：还要包含 `XHCI/Internal.h` 的键盘、鼠标文件可以留在 `XHCI/` 或 `Ehci/`。不要为了换文件夹再开一个平行的 `Input/`。
+   - **目标**：类驱动只依赖 `Include/Driver/UsbHostController.h`（`Control`、`InterruptQueue`、`Bulk`）。目录按类分，例如 `UsbHid/`、已有的 `Msc/`，不按 xHCI / EHCI 各放一套。
+   - **现在**：键盘灯走 `Control`；`InterruptQueue` 管道为空是键盘，非空是鼠标；U 盘批量走 `Bulk` / `BulkOn`。源文件仍在控制器目录里，搬家是可选刀，还没做。
 3. **Net L2 胶水**：`NetE1000.c` 等迁入对应设备目录（如 `E1000/NetGlue.c` 或保留原名）；`Drivers/Net/Net.c` 等**协议核**可留在 `Net/`（规格刀 `drv-netglue` 列清单）。
 4. **Virt**：MMIO 继续 `HAL/Virt/`；X64 PCI virtio-net 胶水跟 X64 设备目录，**不**并进 Virt。
 5. **头文件**：设备私头进设备目录；公开 `Include/` 门面不搬（除非已是私头误放根）。

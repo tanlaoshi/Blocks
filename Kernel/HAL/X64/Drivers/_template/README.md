@@ -1,7 +1,7 @@
 # ToyOS 驱动模板
 
 > **PR-MOD-drv-norm**：新设备必须落在 `Drivers/<DeviceName>/`，禁止新增 `Drivers/` 根级业务 `.c`。  
-> 规格：[`Documents/待做/模块化与App课堂闭环.md`](../../../../Documents/待做/模块化与App课堂闭环.md) §5.1。  
+> 规格：[`Documents/过程/柱归档/模块化与App课堂闭环.md`](../../../../Documents/过程/柱归档/模块化与App课堂闭环.md) §5.1。  
 > 指南：[`Documents/驱动/驱动开发指南.md`](../../../../Documents/驱动/驱动开发指南.md)。
 
 ## 写一个 ToyOS 驱动（5 步）
@@ -39,7 +39,7 @@
 ### Input（键盘鼠标）
 
 `Bind` 中：`ToyDriverInputAttach(&gMyBackend)`  
-强绑某 USB/PS2 宿主时：**代码放进该控制器目录**（如 `XHCI/`、`Ps2/`），勿平行再建 `Input/`。
+PS/2 放 `Ps2/`。USB 键鼠的目标目录是 `UsbHid/`，只包含 `UsbHostController.h`。还要包含 `XHCI/Internal.h` 的文件可暂留 `XHCI/` 或 `Ehci/`，不要平行再建 `Input/`。
 
 ### Block（硬盘）
 

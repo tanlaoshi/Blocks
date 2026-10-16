@@ -2,20 +2,13 @@
 
 > 状态：待看。还没改代码。
 >
-> 前置：[驱动边界清理-PR拆分.md](驱动边界清理-PR拆分.md) 已把 Wifi/MSC 收成主机表，去掉错误 `#include`。本柱更进一步：立一层 **USB 主机控制器公共口**，让 HID / MSC / 串口类代码不再 `#include "XHCI/XhciInternal.h"`。
+> 前置：[驱动边界清理-PR拆分.md](驱动边界清理-PR拆分.md) 已把 Wifi/MSC 收成主机表，去掉错误 `#include`。本柱更进一步：立一层 **USB 主机控制器公共口**，让 HID / MSC / 串口类代码不再 `#include "XHCI/Internal.h"`（原 `XhciInternal.h`）。
 >
 > 对标 Linux：`xhci-hcd` / `ehci-hcd` + `usbcore` 管道；类驱动（`usbhid`、`usb-storage`）只走 URB，不碰 HC 私头。
 
 ## 与 §5.1 的关系
 
-[模块化与App课堂闭环.md](../过程/柱归档/模块化与App课堂闭环.md) §5.1 现写：强绑定宿主的 HID **优先留在控制器目录**。那是过渡规矩（私头耦太死，先别硬搬）。
-
-本柱完成后，把 §5.1 改成：
-
-- **过渡**：仍强绑 `XhciInternal` 的文件可暂留控制器目录。
-- **目标**：类驱动只依赖本柱的 `UsbHostController`（名可微调）口；目录按类分（`UsbHid/`、`UsbMsc/`…），不按宿主分。
-
-未立口之前，**禁止**只把 `XhciKeyboard*.c` 挪到平行 `Input/`——那只是换文件夹。
+[模块化与App课堂闭环.md](../过程/柱归档/模块化与App课堂闭环.md) §5.1 已写成过渡加目标：还包含 `XHCI/Internal.h` 的键鼠文件可留在控制器目录；目标是只依赖 `UsbHostController.h`，目录按类分（`UsbHid/`、`Msc/`）。不要把键盘鼠标只是挪进平行的 `Input/`。
 
 ## 读完应有的样子
 
@@ -80,8 +73,8 @@ PR-USB-hc-contract
 | 已做（边界清理） | 本柱 |
 | --- | --- |
 | `UsbWifiHost` / `MSC_HOST` 去掉总头互指 | 传输提交也走公共 Ops，不只 Claim 表 |
-| 类代码仍可 `#include XhciInternal` | 类代码禁止 HC 私头 |
-| §5.1 未改 | §5.1 改为过渡 + 目标 |
+| 类代码当时仍可包含控制器私头 | 键鼠提交已走公共口；不少文件仍包含 `XHCI/Internal.h` |
+| §5.1 当时未改 | §5.1 已改成过渡加目标，见[模块化文](../过程/柱归档/模块化与App课堂闭环.md) |
 
 ## 做完仍然在的
 

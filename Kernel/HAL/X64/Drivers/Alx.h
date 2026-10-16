@@ -8,6 +8,7 @@
 
 #include "BootTypes.h"
 
+int AlxAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did);
 int AlxSetup(void);
 int AlxReady(void);
 void AlxGetMac(UINT8 Mac[6]);

@@ -19,76 +19,24 @@ UINT32 gAlxRxCtrl;
 UINT32 gAlxLinkMbps;
 int gAlxLinkFull;
 
-static const UINT16 gAlxIds[] = {
-    ALX_DID_AR8161,
-    ALX_DID_AR8162,
-    ALX_DID_AR8171,
-    ALX_DID_AR8172,
-    0
-};
+static UINT8 gPciBus;
+static UINT8 gPciDev;
+static UINT8 gPciFn;
+static UINT64 gClaimBar;
+static UINT16 gClaimDid;
+static int gHavePci;
 
-int AlxPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut,
-               UINT16 *DidOut, UINT8 *RevOut) {
-    int B;
-    int D;
-    int F;
-    int I;
-
-    for (B = 0; B < 256; B++) {
-        for (D = 0; D < 32; D++) {
-            for (F = 0; F < 8; F++) {
-                UINT32 VidDid = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x00);
-                UINT16 Vid = (UINT16)(VidDid & 0xFFFF);
-                UINT16 Did = (UINT16)(VidDid >> 16);
-                UINT32 Lo;
-                UINT32 Hi;
-                UINT64 Bar;
-                UINT32 Cmd;
-                UINT32 RevCls;
-
-                if (Vid != ALX_VENDOR) {
-                    continue;
-                }
-                for (I = 0; gAlxIds[I] != 0; I++) {
-                    if (Did == gAlxIds[I]) {
-                        break;
-                    }
-                }
-                if (gAlxIds[I] == 0) {
-                    continue;
-                }
-
-                Cmd = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04);
-                PciWriteConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04, Cmd | 0x06);
-
-                Lo = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x10);
-                if (Lo & 1u) {
-                    continue;
-                }
-                Bar = Lo & 0xFFFFFFF0ULL;
-                if (((Lo >> 1) & 3u) == 2u) {
-                    Hi = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x14);
-                    Bar |= ((UINT64)Hi) << 32;
-                }
-                if (Bar == 0) {
-                    continue;
-                }
-                RevCls = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x08);
-                *Bus = (UINT8)B;
-                *Dev = (UINT8)D;
-                *Fn = (UINT8)F;
-                *BarOut = Bar;
-                if (DidOut) {
-                    *DidOut = Did;
-                }
-                if (RevOut) {
-                    *RevOut = (UINT8)(RevCls & 0xFFu);
-                }
-                return 1;
-            }
-        }
+int AlxAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did) {
+    if (Bar == 0) {
+        return 0;
     }
-    return 0;
+    gPciBus = Bus;
+    gPciDev = Dev;
+    gPciFn = Fn;
+    gClaimBar = Bar;
+    gClaimDid = Did;
+    gHavePci = 1;
+    return 1;
 }
 
 static int MacValid(const UINT8 Mac[6]) {
@@ -200,24 +148,24 @@ static void LogMac(const UINT8 Mac[6]) {
 }
 
 int AlxSetup(void) {
-    UINT8 Bus;
-    UINT8 Dev;
-    UINT8 Fn;
     UINT64 Bar;
-    UINT16 Did = 0;
-    UINT8 Rev = 0;
+    UINT16 Did;
+    UINT8 Rev;
+    UINT32 Cmd;
     UINT8 Mac[6];
     int i;
 
     if (gAlxReady) {
         return 1;
     }
-    if (!VirtualMemoryEnabled()) {
+    if (!VirtualMemoryEnabled() || !gHavePci || gClaimBar == 0) {
         return 0;
     }
-    if (!AlxPciFind(&Bus, &Dev, &Fn, &Bar, &Did, &Rev)) {
-        return 0;
-    }
+    Cmd = PciReadConfig(gPciBus, gPciDev, gPciFn, 0x04);
+    PciWriteConfig(gPciBus, gPciDev, gPciFn, 0x04, Cmd | 0x06);
+    Bar = gClaimBar;
+    Did = gClaimDid;
+    Rev = (UINT8)(PciReadConfig(gPciBus, gPciDev, gPciFn, 0x08) & 0xFFu);
     if (VirtualMemoryMapRange(Bar, Bar, ALX_BAR_MAP_BYTES,
                               PTE_PRESENT | PTE_WRITABLE) != 0) {
         ToyLogDrv("Boot: Alx Map BAR Fail\n");

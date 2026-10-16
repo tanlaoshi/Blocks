@@ -8,6 +8,7 @@
 
 #include "BootTypes.h"
 
+int RtlAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did);
 int RtlSetup(void);
 int RtlReady(void);
 void RtlGetMac(UINT8 Mac[6]);

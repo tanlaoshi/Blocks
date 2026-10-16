@@ -11,56 +11,6 @@
 #define PTE_PCD HAL_PAGE_PCD
 #endif
 
-int IwlPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut, UINT16 *DidOut) {
-    int B;
-    int D;
-    int F;
-
-    for (B = 0; B < 256; B++) {
-        for (D = 0; D < 32; D++) {
-            for (F = 0; F < 8; F++) {
-                UINT32 VidDid = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x00);
-                UINT16 Vid = (UINT16)(VidDid & 0xFFFF);
-                UINT16 Did = (UINT16)(VidDid >> 16);
-                UINT32 Lo;
-                UINT32 Hi;
-                UINT64 Bar;
-                UINT32 Cmd;
-
-                if (Vid != IWL_VENDOR || Did != IWL_DID_8265) {
-                    continue;
-                }
-                Cmd = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04);
-                PciWriteConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04, Cmd | 0x06);
-
-                Lo = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x10);
-                if (Lo & 1u) {
-                    continue;
-                }
-                Bar = Lo & 0xFFFFFFF0ULL;
-                if (((Lo >> 1) & 3u) == 2u) {
-                    Hi = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x14);
-                    Bar |= ((UINT64)Hi) << 32;
-                }
-                if (Bar == 0) {
-                    continue;
-                }
-                *Bus = (UINT8)B;
-                *Dev = (UINT8)D;
-                *Fn = (UINT8)F;
-                if (BarOut) {
-                    *BarOut = Bar;
-                }
-                if (DidOut) {
-                    *DidOut = Did;
-                }
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
 int IwlMapBar(UINT64 Bar) {
     UINT64 Sz;
     UINTN MapBytes;

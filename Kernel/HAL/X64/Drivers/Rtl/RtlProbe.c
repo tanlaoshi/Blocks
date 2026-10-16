@@ -15,73 +15,24 @@ UINT16 gRtlDid;
 UINT8 gRtlMac[6];
 int gRtlReady;
 
-static const UINT16 gRtlIds[] = {
-    RTL_DID_8168,
-    RTL_DID_8161,
-    RTL_DID_8162,
-    RTL_DID_8167,
-    RTL_DID_8169,
-    RTL_DID_8136,
-    0
-};
+static UINT8 gPciBus;
+static UINT8 gPciDev;
+static UINT8 gPciFn;
+static UINT64 gClaimBar;
+static UINT16 gClaimDid;
+static int gHavePci;
 
-int RtlPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut,
-               UINT16 *DidOut) {
-    int B;
-    int D;
-    int F;
-    int I;
-
-    for (B = 0; B < 256; B++) {
-        for (D = 0; D < 32; D++) {
-            for (F = 0; F < 8; F++) {
-                UINT32 VidDid = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x00);
-                UINT16 Vid = (UINT16)(VidDid & 0xFFFF);
-                UINT16 Did = (UINT16)(VidDid >> 16);
-                UINT32 Lo;
-                UINT32 Hi;
-                UINT64 Bar;
-                UINT32 Cmd;
-
-                if (Vid != RTL_VENDOR) {
-                    continue;
-                }
-                for (I = 0; gRtlIds[I] != 0; I++) {
-                    if (Did == gRtlIds[I]) {
-                        break;
-                    }
-                }
-                if (gRtlIds[I] == 0) {
-                    continue;
-                }
-
-                Cmd = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04);
-                PciWriteConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x04, Cmd | 0x06);
-
-                Lo = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x10);
-                if (Lo & 1u) {
-                    continue; /* 只要 MMIO BAR */
-                }
-                Bar = Lo & 0xFFFFFFF0ULL;
-                if (((Lo >> 1) & 3u) == 2u) {
-                    Hi = PciReadConfig((UINT8)B, (UINT8)D, (UINT8)F, 0x14);
-                    Bar |= ((UINT64)Hi) << 32;
-                }
-                if (Bar == 0) {
-                    continue;
-                }
-                *Bus = (UINT8)B;
-                *Dev = (UINT8)D;
-                *Fn = (UINT8)F;
-                *BarOut = Bar;
-                if (DidOut) {
-                    *DidOut = Did;
-                }
-                return 1;
-            }
-        }
+int RtlAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did) {
+    if (Bar == 0) {
+        return 0;
     }
-    return 0;
+    gPciBus = Bus;
+    gPciDev = Dev;
+    gPciFn = Fn;
+    gClaimBar = Bar;
+    gClaimDid = Did;
+    gHavePci = 1;
+    return 1;
 }
 
 static int MacValid(const UINT8 Mac[6]) {
@@ -139,23 +90,22 @@ static void LogMac(const UINT8 Mac[6]) {
 }
 
 int RtlSetup(void) {
-    UINT8 Bus;
-    UINT8 Dev;
-    UINT8 Fn;
     UINT64 Bar;
-    UINT16 Did = 0;
+    UINT16 Did;
+    UINT32 Cmd;
     UINT8 Mac[6];
     int i;
 
     if (gRtlReady) {
         return 1;
     }
-    if (!VirtualMemoryEnabled()) {
+    if (!VirtualMemoryEnabled() || !gHavePci || gClaimBar == 0) {
         return 0;
     }
-    if (!RtlPciFind(&Bus, &Dev, &Fn, &Bar, &Did)) {
-        return 0;
-    }
+    Cmd = PciReadConfig(gPciBus, gPciDev, gPciFn, 0x04);
+    PciWriteConfig(gPciBus, gPciDev, gPciFn, 0x04, Cmd | 0x06);
+    Bar = gClaimBar;
+    Did = gClaimDid;
     if (VirtualMemoryMapRange(Bar, Bar, RTL_BAR_MAP_BYTES,
                               PTE_PRESENT | PTE_WRITABLE) != 0) {
         ToyLogDrv("Boot: R8169 Map BAR Fail\n");

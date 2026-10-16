@@ -169,12 +169,28 @@ int IwlBgStep(void) {
     return 1;
 }
 
+static UINT8 gPendBus;
+static UINT8 gPendDev;
+static UINT8 gPendFn;
+static UINT16 gPendDid;
+static UINT64 gPendBar;
+static int gPend;
+
+int IwlAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did) {
+    if (Bar == 0) {
+        return 0;
+    }
+    gPendBus = Bus;
+    gPendDev = Dev;
+    gPendFn = Fn;
+    gPendDid = Did;
+    gPendBar = Bar;
+    gPend = 1;
+    return 1;
+}
+
 int IwlSetup(void) {
-    UINT8 Bus;
-    UINT8 Dev;
-    UINT8 Fn;
-    UINT16 Did = 0;
-    UINT64 Bar = 0;
+    UINT64 Bar;
 
     if (gIwlReady) {
         return 1;
@@ -186,13 +202,14 @@ int IwlSetup(void) {
     if (!gIwlBootClaimAllowed) {
         return 0;
     }
-    if (!IwlPciFind(&Bus, &Dev, &Fn, &Bar, &Did)) {
+    if (!gPend || gPendBar == 0) {
         return 0;
     }
-    gIwlBus = Bus;
-    gIwlDev = Dev;
-    gIwlFn = Fn;
-    gIwlDid = Did;
+    gIwlBus = gPendBus;
+    gIwlDev = gPendDev;
+    gIwlFn = gPendFn;
+    gIwlDid = gPendDid;
+    Bar = gPendBar;
     /* FW 大文件延到 IwlBgStep，Claim 只认 PCI+映 BAR */
     if (Bar && IwlMapBar(Bar)) {
         IwlMakeLocalMac();

@@ -82,7 +82,6 @@ void IwlNicUnlock(void);
 UINT32 IwlPrphR(UINT32 Addr);
 void IwlPrphW(UINT32 Addr, UINT32 Val);
 
-int IwlPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut, UINT16 *DidOut);
 int IwlMapBar(UINT64 Bar);
 void IwlPciPathPrep(void);
 int IwlHwStart(void);

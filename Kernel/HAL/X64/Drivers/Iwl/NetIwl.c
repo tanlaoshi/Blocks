@@ -7,6 +7,13 @@
 #include "Net.h"
 #include "VirtualMemory.h"
 
+static const DRIVER_MATCH gIwlMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = IWL_VENDOR, .Device = IWL_DID_8265,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
+
 static int IwlNicSendFrame(const UINT8 *Frame, UINTN FrameLen) {
     return IwlSendFrame(Frame, FrameLen);
 }
@@ -31,9 +38,15 @@ static const NIC_L2 gIwlNicL2 = {
 };
 
 static int IwlDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+    const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI || Dev->Bar[0] == 0) {
+        return -1;
+    }
+    if (!IwlAccept(Dev->PciBus, Dev->PciDev, Dev->PciFn, Dev->Bar[0], Dev->Device)) {
+        return -1;
+    }
     if (!VirtualMemoryEnabled()) {
         return -1;
     }
@@ -70,7 +83,7 @@ static void IwlDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gIwlDriver = {
     .Name = "iwl8265",
     .Class = TOY_DRIVER_CLASS_NET,
-    .Match = 0,
+    .Match = gIwlMatch,
     .Probe = IwlDriverProbe,
     .Bind = IwlDriverBind,
     .Remove = IwlDriverRemove,

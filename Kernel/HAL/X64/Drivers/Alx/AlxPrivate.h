@@ -273,8 +273,6 @@ static inline void AlxCopy(void *Dst, const void *Src, UINTN Len) {
     }
 }
 
-int AlxPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut,
-               UINT16 *DidOut, UINT8 *RevOut);
 int AlxReadMac(UINT8 Mac[6]);
 int AlxLoadPermMac(UINT8 Mac[6]);
 

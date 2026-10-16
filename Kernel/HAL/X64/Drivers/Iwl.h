@@ -9,6 +9,7 @@
 #define IWL_VENDOR     0x8086u
 #define IWL_DID_8265   0x24FDu
 
+int IwlAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did);
 int IwlSetup(void);
 /* PR-BOOT-fast-3：允许开机 Claim（Worker 调用；FS/Net 早 Probe 勿进） */
 void IwlAllowBootClaim(void);

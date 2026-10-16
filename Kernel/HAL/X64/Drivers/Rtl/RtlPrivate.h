@@ -122,8 +122,6 @@ static inline void RtlCopy(void *Dst, const void *Src, UINTN Len) {
     }
 }
 
-int RtlPciFind(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut,
-               UINT16 *DidOut);
 int RtlReadMac(UINT8 Mac[6]);
 
 void RtlStallMs(UINT32 Ms);

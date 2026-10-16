@@ -21,7 +21,7 @@
 | ---- | ---- | ---- |
 | **Video / 画点 GUI 库** | 要从 `Services/Ui` 抽出可对外的几何库，接 `GfxSetPixel`；改的是 UI 与 Library，不是驱动依赖。本柱在 `PR-DRV-sched` 里只删 `VideoPresent.c` 对 `Scheduler.h` 的包含 | [独立GUI库-PR拆分.md](独立GUI库-PR拆分.md) |
 | **Match 自动匹配** | 框架已能按表过滤；要迁的是真驱动的 Probe。行为面大，不塞进依赖清理 | [Match表驱动-PR拆分.md](Match表驱动-PR拆分.md) |
-| **XHCI 键盘搬出目录** | §5.1 过渡期要求 HID 暂留控制器目录；未立总线口就搬家只是换文件夹 | [USB总线窄口-PR拆分.md](USB总线窄口-PR拆分.md)（先 UsbHc，后可选搬 `UsbHid/`） |
+| **XHCI 键盘搬出目录** | §5.1 过渡期要求 HID 暂留控制器目录；未立总线口就搬家只是换文件夹 | [USB总线窄口-PR拆分.md](USB总线窄口-PR拆分.md)（先 UsbHostController，后可选搬 `UsbHid/`） |
 | **Iwl 扫/关联/EAPOL** | 本柱只把算法进 `Crypto/`；协议仍在 Iwl 内 | 目录内分层：[Iwl目录Hw-Mac-PR拆分.md](Iwl目录Hw-Mac-PR拆分.md)。全核 `WifiMac` 另立，不在这两柱 |
 
 ## 本柱仍不做

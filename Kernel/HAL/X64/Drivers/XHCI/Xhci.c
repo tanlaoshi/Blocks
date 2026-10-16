@@ -202,11 +202,15 @@ UINT8 *InEp(UINT32 Dci) {
     return gInCtx + gCtxSize * (Dci + 1);
 }
 
+void XhciUsbHostControllerOffer(void);
+void XhciUsbHostControllerRetract(void);
+
 /* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（BSS 勿迁出本文件） */
 int XhciInit(UINT64 BaseAddress) {
     if (!XhciInitHw(BaseAddress)) {
         return 0;
     }
+    XhciUsbHostControllerOffer();
     return XhciEnumAndBind();
 }
 
@@ -219,6 +223,7 @@ int XhciHidKeyboardReady(void) {
  * 清 gXhciStarted 才能对下一 BAR 再跑 XhciInit。NUC/工控有 HID 不会走到这里。
  */
 void XhciAbandonNoHid(void) {
+    XhciUsbHostControllerRetract();
     HaltControllerQuiet();
     gSlotId = 0;
     gMouseSlotId = 0;

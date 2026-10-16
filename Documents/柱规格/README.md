@@ -10,7 +10,7 @@
 | [网卡扩展-高通Realtek无线.md](网卡扩展-高通Realtek无线.md) | alx/r8169/iwl 扩展范围 |
 | [驱动边界清理-PR拆分.md](驱动边界清理-PR拆分.md) | 驱动向上依赖与互相包含，八刀（已落地） |
 | [独立GUI库-PR拆分.md](独立GUI库-PR拆分.md) | 只接画点的几何库，五刀 |
-| [USB总线窄口-PR拆分.md](USB总线窄口-PR拆分.md) | UsbHc 公共口，再谈 HID 搬家，八刀 |
+| [USB总线窄口-PR拆分.md](USB总线窄口-PR拆分.md) | UsbHostController 公共口，再谈 HID 搬家，八刀 |
 | [Iwl目录Hw-Mac-PR拆分.md](Iwl目录Hw-Mac-PR拆分.md) | Intel 无线驱动内拆 Hw/Mac，五刀 |
 | [Match表驱动-PR拆分.md](Match表驱动-PR拆分.md) | 真 PCI 驱动填 Match，七刀 |
 

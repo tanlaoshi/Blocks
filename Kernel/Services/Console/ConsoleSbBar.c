@@ -8,7 +8,7 @@
 #include "HalVideo.h"
 #include "Gui.h"
 #include "Font.h"
-#include "UI.h"
+#include "UiWidgets.h"
 
 #define CONSOLE_SB_W 12u
 

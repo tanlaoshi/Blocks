@@ -19,7 +19,7 @@
 #include "Locale.h"
 #include "Theme.h"
 #include "Debug.h"
-#include "UI.h"
+#include "UiWidgets.h"
 #include "UiLayout.h"
 #include "UiAction.h"
 

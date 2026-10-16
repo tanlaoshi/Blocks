@@ -3,7 +3,7 @@
  * 核心：GuiUser.c
  */
 #include "GuiPrivate.h"
-#include "UI.h"
+#include "UiWidgets.h"
 #include "HalVideo.h"
 #include "Hal.h"
 #include "Debug.h"

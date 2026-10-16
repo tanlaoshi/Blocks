@@ -1,7 +1,7 @@
 /*
  * UIDraw.c — PR-S3-ui-1：按钮 / 进度条
  */
-#include "UI.h"
+#include "UiWidgets.h"
 #include "HalVideo.h"
 #include "Font.h"
 #include "Theme.h"

@@ -1,7 +1,7 @@
 /*
  * UITextWrap.c — UTF-8 按像素宽软换行绘制 / 单行截断
  */
-#include "UI.h"
+#include "UiWidgets.h"
 #include "HalVideo.h"
 #include "Font.h"
 

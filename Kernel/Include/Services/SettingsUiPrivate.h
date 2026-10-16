@@ -11,7 +11,7 @@
 #include "Gui.h"
 #include "Theme.h"
 #include "Font.h"
-#include "UI.h"
+#include "UiWidgets.h"
 #include "UiLayout.h"
 #include "Hal.h"
 #include "HalConsole.h"

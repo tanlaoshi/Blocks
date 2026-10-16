@@ -13,7 +13,7 @@
 #include "Font.h"
 #include "Locale.h"
 #include "Theme.h"
-#include "UI.h"
+#include "UiWidgets.h"
 #include "UiLayout.h"
 
 #define DEVUI_ROW_H     28u /* 与 UiLayoutRowH 下限对齐；点击命中用 */

@@ -21,10 +21,19 @@ static void ResurveyAll(void) {
     gUhciCcsOr = OrMask;
 }
 
+static USB_CONTROLLER gClaim;
+static int gHaveClaim;
+
+int UhciClaim(const USB_CONTROLLER *Pci) {
+    if (!Pci || Pci->BaseAddress == 0) {
+        return 0;
+    }
+    gClaim = *Pci;
+    gHaveClaim = 1;
+    return 1;
+}
+
 int UhciSetup(void) {
-    USB_CONTROLLER List[8];
-    int Count;
-    int i;
     int Ok = 0;
     int FoundPci = 0;
     UINT32 OrMask = 0;
@@ -33,24 +42,23 @@ int UhciSetup(void) {
     if (gUhciReady) {
         return 1;
     }
+    if (!gHaveClaim) {
+        return 0;
+    }
 
-    Count = PciScanUSBControllers(List, 8);
     gUhciCount = 0;
-    for (i = 0; i < Count && gUhciCount < UHCI_MAX_CTRL; i++) {
-        if (List[i].Type != UHCI_PROG_IF) {
-            continue;
-        }
+    if (gClaim.Type == UHCI_PROG_IF && gUhciCount < UHCI_MAX_CTRL) {
         FoundPci = 1;
-        gUhci[gUhciCount].Pci = List[i];
-        gUhci[gUhciCount].Up = 0;
-        gUhci[gUhciCount].CcsMask = 0;
-        gUhci[gUhciCount].IoBase = 0;
-        gUhci[gUhciCount].FrameList = 0;
-        if (UhciInitOne(&gUhci[gUhciCount], gUhciCount)) {
-            OrMask |= gUhci[gUhciCount].CcsMask;
+        gUhci[0].Pci = gClaim;
+        gUhci[0].Up = 0;
+        gUhci[0].CcsMask = 0;
+        gUhci[0].IoBase = 0;
+        gUhci[0].FrameList = 0;
+        if (UhciInitOne(&gUhci[0], 0)) {
+            OrMask |= gUhci[0].CcsMask;
             Ok = 1;
         }
-        gUhciCount++;
+        gUhciCount = 1;
     }
 
     if (!FoundPci) {

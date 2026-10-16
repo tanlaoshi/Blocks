@@ -181,10 +181,17 @@ static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
     gXhciReady = 0;
 }
 
+static const DRIVER_MATCH gXhciMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Class = 0x0C, .Subclass = 0x03, .ProgIf = 0x30,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF, .ProgIfMask = 0xFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
+
 static const TOY_DRIVER gXhciInputDriver = {
     .Name = "xhci-hid",
     .Class = TOY_DRIVER_CLASS_INPUT,
-    .Match = 0,
+    .Match = gXhciMatch,
     .Probe = DriverProbe,
     .Bind = DriverBind,
     .Remove = DriverRemove,

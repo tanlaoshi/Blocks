@@ -64,10 +64,21 @@ static const INPUT_BACKEND gEhciInputBackend = {
     .MouseDequeue = MouseDequeue,
 };
 
-static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+static const DRIVER_MATCH gEhciMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Class = 0x0C, .Subclass = 0x03, .ProgIf = 0x20,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF, .ProgIfMask = 0xFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
 
+static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+    const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
+    USB_CONTROLLER One;
+
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
+        return -1;
+    }
     if (Ready()) {
         if (OutPrivate) {
             *OutPrivate = 0;
@@ -75,6 +86,9 @@ static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) 
         return 0;
     }
     if (!VirtualMemoryEnabled()) {
+        return -1;
+    }
+    if (!PciUsbAt(Dev->PciBus, Dev->PciDev, Dev->PciFn, &One) || !EhciClaim(&One)) {
         return -1;
     }
     if (!Setup()) {
@@ -102,7 +116,7 @@ static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gEhciDriver = {
     .Name = "ehci",
     .Class = TOY_DRIVER_CLASS_INPUT,
-    .Match = 0,
+    .Match = gEhciMatch,
     .Probe = DriverProbe,
     .Bind = DriverBind,
     .Remove = DriverRemove,

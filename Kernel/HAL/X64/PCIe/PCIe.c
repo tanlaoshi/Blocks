@@ -69,6 +69,72 @@ char* Uint64ToHex(UINT64 Value) {
     return Buf;
 }
 
+int PciUsbAt(UINT8 Bus, UINT8 Dev, UINT8 Fn, USB_CONTROLLER *Out) {
+    UINT32 VendorDevice;
+    UINT32 ClassCode;
+    UINT32 Command;
+    UINT32 RawBar[6];
+    UINT8 Class;
+    UINT8 Subclass;
+    UINT8 ProgIF;
+    int B;
+
+    if (!Out) {
+        return 0;
+    }
+    VendorDevice = PciReadConfig(Bus, Dev, Fn, 0x00);
+    if ((VendorDevice & 0xFFFFu) == 0xFFFFu) {
+        return 0;
+    }
+    ClassCode = PciReadConfig(Bus, Dev, Fn, 0x08);
+    Class = (UINT8)((ClassCode >> 24) & 0xFFu);
+    Subclass = (UINT8)((ClassCode >> 16) & 0xFFu);
+    ProgIF = (UINT8)((ClassCode >> 8) & 0xFFu);
+    if (Class != 0x0Cu || Subclass != 0x03u) {
+        return 0;
+    }
+
+    Command = PciReadConfig(Bus, Dev, Fn, 0x04);
+    PciWriteConfig(Bus, Dev, Fn, 0x04, Command | 0x07u);
+
+    for (B = 0; B < 6; B++) {
+        RawBar[B] = PciReadConfig(Bus, Dev, Fn, (UINT8)(0x10 + B * 4));
+        Out->Bar[B] = 0;
+    }
+    Out->Bus = Bus;
+    Out->Device = Dev;
+    Out->Function = Fn;
+    Out->Type = ProgIF;
+    Out->BaseAddress = 0;
+
+    if (ProgIF == 0x00u) {
+        for (B = 0; B < 6; B++) {
+            if (RawBar[B] & 1u) {
+                Out->Bar[B] = (UINT64)(RawBar[B] & 0xFFFCu);
+                Out->BaseAddress = Out->Bar[B];
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    for (B = 0; B < 6; ) {
+        if (RawBar[B] & 1u) {
+            B++;
+            continue;
+        }
+        if ((RawBar[B] & 6u) == 4u && B + 1 < 6) {
+            Out->Bar[B] = ((UINT64)RawBar[B + 1] << 32) | (RawBar[B] & 0xFFFFFFF0u);
+            B += 2;
+        } else {
+            Out->Bar[B] = (UINT64)(RawBar[B] & 0xFFFFFFF0u);
+            B++;
+        }
+    }
+    Out->BaseAddress = Out->Bar[0];
+    return Out->BaseAddress != 0;
+}
+
 /* 扫描 PCI 总线，将 USB 控制器填入 Controllers 数组，返回找到的数量 */
 int PciScanUSBControllers(USB_CONTROLLER *Controllers, int MaxControllers) {
     int Count = 0;

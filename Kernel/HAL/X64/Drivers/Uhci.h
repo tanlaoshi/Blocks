@@ -5,7 +5,9 @@
 #define UHCI_H
 
 #include "BootTypes.h"
+#include "PCIe.h"
 
+int UhciClaim(const USB_CONTROLLER *Pci);
 int UhciSetup(void);
 int UhciReady(void);
 UINT32 UhciCcsMask(void);

@@ -3,16 +3,31 @@
  */
 #include "Driver.h"
 #include "Uhci.h"
+#include "PCIe.h"
+
+static const DRIVER_MATCH gUhciMatch[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Class = 0x0C, .Subclass = 0x03, .ProgIf = 0x00,
+                 .ClassMask = 0xFF, .SubclassMask = 0xFF, .ProgIfMask = 0xFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
 
 static int UhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+    const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
+    USB_CONTROLLER One;
 
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
+        return -1;
+    }
     if (UhciReady()) {
         if (OutPrivate) {
             *OutPrivate = 0;
         }
         return 0;
+    }
+    if (!PciUsbAt(Dev->PciBus, Dev->PciDev, Dev->PciFn, &One) || !UhciClaim(&One)) {
+        return -1;
     }
     if (!UhciSetup()) {
         return -1;
@@ -35,7 +50,7 @@ static void UhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gUhciDriver = {
     .Name = "uhci",
     .Class = TOY_DRIVER_CLASS_INPUT,
-    .Match = 0,
+    .Match = gUhciMatch,
     .Probe = UhciDriverProbe,
     .Bind = UhciDriverBind,
     .Remove = UhciDriverRemove,

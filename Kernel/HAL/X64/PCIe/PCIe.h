@@ -32,6 +32,8 @@ int PciBarIsIo(UINT8 Bus, UINT8 Device, UINT8 Function, int Bar);
  * 优先级与 PciEnableMsi 一致：先 MSI-X(0x11) 再 MSI(0x05) 再 INTx。 */
 int PciFindCap(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Id);
 int PciScanUSBControllers(USB_CONTROLLER *Controllers, int MaxControllers);
+/* 只填这一个 PCI 功能：开 IO/Memory/BusMaster，再按 ProgIF 取 BAR。 */
+int PciUsbAt(UINT8 Bus, UINT8 Dev, UINT8 Fn, USB_CONTROLLER *Out);
 int PciEnableMsi(USB_CONTROLLER *Device, UINT8 Vector, UINT8 DestLogicalCpu);
 /* PR-H-ioapic：MSI 失败后清 INTx Disable，经 IOAPIC 投 Vector */
 int PciEnableIoApicIntx(USB_CONTROLLER *Device, UINT8 Vector, UINT8 DestApicId);

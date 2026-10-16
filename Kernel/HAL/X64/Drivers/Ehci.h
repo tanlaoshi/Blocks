@@ -5,7 +5,9 @@
 #define EHCI_H
 
 #include "BootTypes.h"
+#include "PCIe.h"
 
+int EhciClaim(const USB_CONTROLLER *Pci);
 int Setup(void);
 int Ready(void);
 UINT32 CcsMask(void);

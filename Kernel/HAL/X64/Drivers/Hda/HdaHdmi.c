@@ -3,7 +3,7 @@
  * NUC7：Ubuntu DP-2 → pin6/cvt2；无 sense/connlist 时强制该路径。
  */
 #include "Hda.h"
-#include "Igpu.h"
+#include "IgpuAudPin.h"
 #include "ToySerialLog.h"
 
 #define AC_VERB_SET_POWER_STATE    0x705u
@@ -78,20 +78,20 @@ int HdaHdmiDisplayAudioEnable(void) {
     UINT32 Eld, Cfg, I;
     UINT32 Offs[3];
 
-    if (!IgpuMmioOk()) {
+    if (!IgpuAudPinOk()) {
         ToyLogBoot("Boot: hda aud skip (no igpu)\n");
         return 0;
     }
-    (void)IgpuForcewakeGet();
-    IgpuMmioWrite32(AUD_PIN_BUF_CTL,
-                    IgpuMmioRead32(AUD_PIN_BUF_CTL) | AUD_PIN_BUF_ENABLE);
-    IgpuMmioWrite32(HSW_AUD_CHICKENBIT,
-                    IgpuMmioRead32(HSW_AUD_CHICKENBIT) | SKL_AUD_CODEC_WAKE);
-    Eld = IgpuMmioRead32(HSW_AUD_PIN_ELD_CP_VLD);
+    (void)IgpuAudForcewake();
+    IgpuAudWrite32(AUD_PIN_BUF_CTL,
+                   IgpuAudRead32(AUD_PIN_BUF_CTL) | AUD_PIN_BUF_ENABLE);
+    IgpuAudWrite32(HSW_AUD_CHICKENBIT,
+                   IgpuAudRead32(HSW_AUD_CHICKENBIT) | SKL_AUD_CODEC_WAKE);
+    Eld = IgpuAudRead32(HSW_AUD_PIN_ELD_CP_VLD);
     /* transcoder A/B/C：AUDIO_OUTPUT_ENABLE */
     Eld |= (1u << 2) | (1u << 6) | (1u << 10);
-    IgpuMmioWrite32(HSW_AUD_PIN_ELD_CP_VLD, Eld);
-    Eld = IgpuMmioRead32(HSW_AUD_PIN_ELD_CP_VLD);
+    IgpuAudWrite32(HSW_AUD_PIN_ELD_CP_VLD, Eld);
+    Eld = IgpuAudRead32(HSW_AUD_PIN_ELD_CP_VLD);
     ToyLogBoot("Boot: hda aud eld=");
     ToyLogBootHex32(Eld);
     ToyLogBoot("\n");
@@ -100,13 +100,13 @@ int HdaHdmiDisplayAudioEnable(void) {
     Offs[1] = HSW_AUD_CFG_B;
     Offs[2] = HSW_AUD_CFG_C;
     for (I = 0; I < 3u; I++) {
-        Cfg = IgpuMmioRead32(Offs[I]);
+        Cfg = IgpuAudRead32(Offs[I]);
         if (Cfg == 0xFFFFFFFFu) {
             continue;
         }
         Cfg &= ~AUD_CONFIG_N_PROG_ENABLE;
         Cfg |= AUD_CONFIG_N_VALUE_INDEX;
-        IgpuMmioWrite32(Offs[I], Cfg);
+        IgpuAudWrite32(Offs[I], Cfg);
     }
     StallUs(2000);
     return 1;

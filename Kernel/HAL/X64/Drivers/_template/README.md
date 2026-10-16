@@ -80,7 +80,7 @@
 | 文件 | 处置 |
 | ---- | ---- |
 | `DemoDriver.c` | **保持根扁平**（课堂开关用）；或旁置 `_template/` 旁说明——**本刀不搬** |
-| `Serial.c` | 目标独立 `Serial/`（`drv-block`/`misc` 前不强迫）；新串口逻辑勿再堆根 |
+| `Serial/` | COM1 驱动已在 `Drivers/Serial/`（PR-DRV-serial）；USB 转串口仍在 `XHCI/`、`Ehci/` |
 
 ## 进阶
 

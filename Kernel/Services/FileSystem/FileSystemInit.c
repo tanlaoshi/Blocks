@@ -11,6 +11,7 @@
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalDevices.h"
+#include "HalDriverFile.h"
 #include "CoreOps.h"
 
 int FileSystemRemountVolumes(void) {
@@ -81,6 +82,8 @@ int FileSystemInitialize(void) {
         DebugWrite("FS: VfsRegister(res) failed\n");
         return 0;
     }
+    /* 驱动固件/配置经 HalDriverFileRead，不直接 #include FileSystem.h */
+    HalDriverFileReadRegister(FileSystemReadFile);
 
     /*
      * PR-H-msc-7b：Live 默认 FS 前 auto（claim→Mux），再一次 MountAllVolumes。

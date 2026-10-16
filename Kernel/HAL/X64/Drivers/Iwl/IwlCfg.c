@@ -2,8 +2,7 @@
  * IwlCfg.c — 读 FW/WIFI.CFG（SSID= / PSK=）；永不日志 PSK
  */
 #include "IwlPrivate.h"
-#include "FileSystem.h"
-#include "Fat.h"
+#include "HalDriverFile.h"
 
 char gIwlSsid[IWL_SSID_MAX + 1];
 char gIwlPsk[IWL_PSK_MAX + 1];
@@ -63,8 +62,8 @@ int IwlCfgLoad(void) {
     for (i = 0; i < sizeof(Buf); i++) {
         Buf[i] = 0;
     }
-    Err = FileSystemReadFile(IWL_CFG_PATH, Buf, sizeof(Buf) - 1, &Sz);
-    if (Err != FAT_OK || Sz == 0) {
+    Err = HalDriverFileRead(IWL_CFG_PATH, Buf, sizeof(Buf) - 1, &Sz);
+    if (Err != 0 || Sz == 0) {
         return 0;
     }
     Buf[Sz] = 0;

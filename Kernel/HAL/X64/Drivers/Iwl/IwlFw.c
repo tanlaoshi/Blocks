@@ -2,8 +2,7 @@
  * IwlFw.c — 读盘 / TLV / INIT→RT 编排（PR-N-wifi-2）
  */
 #include "IwlPrivate.h"
-#include "FileSystem.h"
-#include "Fat.h"
+#include "HalDriverFile.h"
 #include "PhysicalMemory.h"
 #include "ToySerialLog.h"
 
@@ -34,8 +33,8 @@ static int IwlFwReadBlob(void) {
 
     gIwlFwOk = 0;
     gIwlFwSize = 0;
-    Err = FileSystemReadFile(IWL_FW_PATH, Probe, sizeof(Probe), &Sz);
-    if (Err != FAT_OK || Sz == 0) {
+    Err = HalDriverFileRead(IWL_FW_PATH, Probe, sizeof(Probe), &Sz);
+    if (Err != 0 || Sz == 0) {
         ToyLogDrv("Boot: iwl8265 fw miss (FW/IWL8265.UCODE)\n");
         return 0;
     }
@@ -46,8 +45,8 @@ static int IwlFwReadBlob(void) {
         return 0;
     }
     IwlZero(Mem, Pages * PAGE_SIZE);
-    Err = FileSystemReadFile(IWL_FW_PATH, Mem, Pages * PAGE_SIZE, &Got);
-    if (Err != FAT_OK || Got < 128) {
+    Err = HalDriverFileRead(IWL_FW_PATH, Mem, Pages * PAGE_SIZE, &Got);
+    if (Err != 0 || Got < 128) {
         ToyLogDrv("Boot: iwl8265 fw read fail\n");
         return 0;
     }

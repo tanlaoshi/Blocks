@@ -6,7 +6,7 @@
 #include "IwlPrivate.h"
 #include "Hal.h"
 #include "PCIe.h"
-#include "Scheduler.h"
+#include "HalDriverSched.h"
 
 volatile UINT8 *gIwlBar;
 UINT64 gIwlBarPhys;
@@ -63,7 +63,7 @@ void IwlStallMs(UINT32 Ms) {
     for (i = 0; i < Ms; i++) {
         IwlStallUs(1000);
         /* 刀 #117：每 ms 呼吸，WiFi 后台关联时桌面键鼠仍能动 */
-        SchedulerIoBreath();
+        HalDriverIoBreath();
     }
 }
 

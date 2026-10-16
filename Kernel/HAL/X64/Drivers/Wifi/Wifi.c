@@ -4,8 +4,6 @@
  * 先 xHCI、再 EHCI；无棒软失败。不挂 Net。
  */
 #include "WifiPrivate.h"
-#include "XHCI.h"
-#include "Ehci.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 
@@ -58,20 +56,23 @@ void WifiLogBound(void) {
 }
 
 int WifiSetup(void) {
-    int Rc;
+    UINTN i;
+    int Rc = 0;
 
     if (gWifiReady) {
         return 1;
     }
-    Rc = XhciWifiClaim();
-    if (Rc == 1) {
-        gWifiHost = WIFI_HOST_XHCI;
-        gWifiPid = XhciWifiPid();
-    } else if (EhciReady()) {
-        Rc = EhciWifiClaim();
+    for (i = 0; i < UsbWifiHostCount(); i++) {
+        const USB_WIFI_HOST *H = UsbWifiHostGet(i);
+
+        if (!H) {
+            continue;
+        }
+        Rc = H->Claim();
         if (Rc == 1) {
-            gWifiHost = WIFI_HOST_EHCI;
-            gWifiPid = EhciWifiPid();
+            gWifiHost = H->HostKind;
+            gWifiPid = H->Pid();
+            break;
         }
     }
     if (Rc != 1) {

@@ -2,6 +2,7 @@
  * EhciMsc.c — MSC 门面：Ready / Scan / Claim / Release / Present（PR-H-ehci-3）
  */
 #include "EhciPrivate.h"
+#include "UsbMscHost.h"
 #include "ToySerialLog.h"
 
 EHCI_CTRL *gEhciMscCtrl;
@@ -135,4 +136,25 @@ int EhciMscPresent(void) {
         return C->CcsMask ? 1 : 0;
     }
     return 0;
+}
+
+void EhciMscHostOffer(void) {
+    static const MSC_HOST Host = {
+        .Kind = MSC_HOST_EHCI,
+        .BringUp = 0,
+        .Ready = EhciMscReady,
+        .Scan = EhciMscScan,
+        .Claim = EhciMscClaim,
+        .Capacity = EhciMscCapacity,
+        .BlockCount = EhciMscBlockCount,
+        .BlockSize = EhciMscBlockSize,
+        .ReadSectors = EhciMscReadSectors,
+        .WriteSectors = EhciMscWriteSectors,
+        .Flush = EhciMscFlush,
+        .Release = EhciMscRelease,
+        .Present = EhciMscPresent,
+        .ControllerReady = EhciReady,
+    };
+
+    UsbMscHostRegister(&Host);
 }

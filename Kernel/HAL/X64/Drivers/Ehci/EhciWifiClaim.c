@@ -4,7 +4,8 @@
  * 扫 RMH 子口；VID 0BDA + PID 白名单；SetConfig；记 Bulk EP。
  */
 #include "EhciPrivate.h"
-#include "Wifi.h"
+#include "WifiIds.h"
+#include "UsbWifiHost.h"
 #include "ToySerialLog.h"
 
 #define HUB_FEAT_PORT_POWER 8u
@@ -258,4 +259,14 @@ int EhciWifiClaim(void) {
         }
     }
     return 0;
+}
+
+void EhciWifiHostOffer(void) {
+    static const USB_WIFI_HOST Host = {
+        .HostKind = WIFI_HOST_EHCI,
+        .Claim = EhciWifiClaim,
+        .Pid = EhciWifiPid,
+    };
+
+    UsbWifiHostRegister(&Host);
 }

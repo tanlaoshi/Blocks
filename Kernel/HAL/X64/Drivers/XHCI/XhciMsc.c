@@ -6,6 +6,7 @@
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环地址；勿迁出）。
  */
 #include "XHCI/XhciInternal.h"
+#include "UsbMscHost.h"
 
 /*
  * PR-H-msc-2/4：Bulk 环 Init；claim 后 Ready=1（仍无 SCSI）。
@@ -149,4 +150,25 @@ int XhciMscPresent(void) {
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
     return (Ps & PORTSC_CCS) ? 1 : 0;
+}
+
+void XhciMscHostOffer(void) {
+    static const MSC_HOST Host = {
+        .Kind = MSC_HOST_XHCI,
+        .BringUp = XhciMscBringUp,
+        .Ready = XhciMscReady,
+        .Scan = XhciMscScanPorts,
+        .Claim = XhciMscClaimPorts,
+        .Capacity = XhciMscCapacity,
+        .BlockCount = XhciMscBlockCount,
+        .BlockSize = XhciMscBlockSize,
+        .ReadSectors = XhciMscReadSectors,
+        .WriteSectors = XhciMscWriteSectors,
+        .Flush = XhciMscFlush,
+        .Release = XhciMscRelease,
+        .Present = XhciMscPresent,
+        .ControllerReady = 0,
+    };
+
+    UsbMscHostRegister(&Host);
 }

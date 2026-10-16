@@ -192,3 +192,20 @@ int IgpuMmioInit(void) {
     ToyLogBoot("\n");
     return 1;
 }
+
+/* PR-DRV-hda-pin：HDA 只经 IgpuAudPin.h，不 include Igpu.h */
+int IgpuAudPinOk(void) {
+    return IgpuMmioOk();
+}
+
+int IgpuAudForcewake(void) {
+    return IgpuForcewakeGet();
+}
+
+UINT32 IgpuAudRead32(UINT32 Off) {
+    return IgpuMmioRead32(Off);
+}
+
+void IgpuAudWrite32(UINT32 Off, UINT32 Val) {
+    IgpuMmioWrite32(Off, Val);
+}

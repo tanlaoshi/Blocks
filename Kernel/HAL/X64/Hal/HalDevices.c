@@ -29,10 +29,14 @@ void AtaDriverRegister(void);
 void AhciDriverRegister(void);
 void NvmeDriverRegister(void);
 void MscDriverRegister(void); /* PR-H-msc：空壳注册；认盘在后续 PR */
+void XhciMscHostOffer(void);
+void EhciMscHostOffer(void);
 void E1000DriverRegister(void);
 void AlxDriverRegister(void); /* PR-N-alx-2：AR8161 L2；无卡/无链路不挡 */
 void RtlDriverRegister(void); /* PR-N-rtl-1：r8169 Probe/MAC；无卡不挡 */
 void WifiDriverRegister(void); /* USB 8188EU 骨架；无棒不挡 */
+void XhciWifiHostOffer(void);
+void EhciWifiHostOffer(void);
 void IwlDriverRegister(void);  /* PR-N-wifi-1：iwl8265；FS 后 Claim */
 void IgpuDriverRegister(void); /* PR-G-igpu-0：Intel display 认卡 */
 void HdaDriverRegister(void);  /* PR-G-audio-0：Intel HDA 认卡 */
@@ -43,6 +47,8 @@ void HalDriverRegister(void) {
     AhciDriverRegister();
     AtaDriverRegister();
     NvmeDriverRegister();
+    XhciMscHostOffer();  /* PR-DRV-msc-host：先挂主机表 */
+    EhciMscHostOffer();
     MscDriverRegister(); /* PR-H-msc-1：Bind 不改 Block 后端 */
     InputXhciRegister(); /* 先 USB HID（xHCI） */
     InputEhciRegister(); /* PR-H-ehci-1：EHCI CCS；HID→ehci-2 */
@@ -52,6 +58,8 @@ void HalDriverRegister(void) {
     E1000DriverRegister(); /* PR-H4：无卡 Probe 失败；有卡时可覆盖 virtio */
     AlxDriverRegister();   /* PR-N-alx-2：Bind → NetAttachNic */
     RtlDriverRegister();   /* PR-N-rtl-1：lsdev=r8169；rtl-2 再挂 L2 */
+    XhciWifiHostOffer();   /* PR-DRV-wifi-claim：先挂认领表再注册 Wifi 驱动 */
+    EhciWifiHostOffer();
     WifiDriverRegister();  /* USB 8188EU 软失败骨架 */
     IwlDriverRegister();   /* PR-N-wifi-1：NUC 8265；HalIwlClaim 后再绑 */
     IgpuDriverRegister();  /* PR-G-igpu-0：NUC UHD；QEMU 无卡软退 */

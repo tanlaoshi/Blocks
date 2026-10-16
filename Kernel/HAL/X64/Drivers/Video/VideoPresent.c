@@ -4,7 +4,7 @@
  * 条带 blit 见 VideoPresentRect.c。
  */
 #include "VideoPrivate.h"
-#include "Scheduler.h"
+#include "HalDriverSched.h"
 
 /* 单次 Present 条带行数：cli 下 memcpy 过久会饿死 xHCI poll/MSI */
 void DirtyUnionInto(int *Dirty, UINT32 *Dx0, UINT32 *Dy0, UINT32 *Dx1,
@@ -92,7 +92,7 @@ void VideoPresent(void) {
         return;
     }
     /* PR-K-preempt-cs：条带 cli 岛禁切（条间仍可 Restore IF） */
-    SchedulerPreemptDisable();
+    HalDriverPreemptDisable();
     /*
      * 内容与光标分矩形 Present，避免 AABB 并成近全屏。
      * 大块按行条带 cli，条间开中断（G7：禁止长 cli 饿死 USB）。
@@ -126,7 +126,7 @@ void VideoPresent(void) {
             PresentRectRows(X0, Y0, X1, Y1, FbBytes, &gDirty, &gDx0, &gDy0,
                             &gDx1, &gDy1, &Partial);
             if (Partial) {
-                SchedulerPreemptEnable();
+                HalDriverPreemptEnable();
                 return;
             }
         }
@@ -149,7 +149,7 @@ void VideoPresent(void) {
                             &gCx1, &gCy1, &Partial);
         }
     }
-    SchedulerPreemptEnable();
+    HalDriverPreemptEnable();
 }
 
 void VideoPresentFlush(void) {

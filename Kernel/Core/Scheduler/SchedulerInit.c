@@ -5,8 +5,11 @@
  */
 #include "KernelModulesPrivate.h"
 #include "Scheduler.h"
+#include "HalDriverSched.h"
 
 int InitializeScheduler(void) {
     SchedulerInitialize();
+    HalDriverSchedRegister(SchedulerIoBreath, SchedulerPreemptDisable,
+                           SchedulerPreemptEnable);
     return 0;
 }

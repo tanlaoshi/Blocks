@@ -5,10 +5,7 @@
 #define WIFI_PRIVATE_H
 
 #include "Wifi.h"
-
-#define WIFI_HOST_NONE  0
-#define WIFI_HOST_XHCI  1
-#define WIFI_HOST_EHCI  2
+#include "UsbWifiHost.h"
 
 #define WIFI_FW_PATH_A  "FW/RTL8188EU.BIN"
 #define WIFI_FW_PATH_B  "rtl8188eu.bin"

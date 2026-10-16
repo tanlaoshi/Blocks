@@ -4,7 +4,8 @@
  * VID 0BDA + PID 白名单；SetConfig；记 Bulk EP 供 wifi-2。不灌固件。
  */
 #include "XHCI/XhciInternal.h"
-#include "Wifi.h"
+#include "WifiIds.h"
+#include "UsbWifiHost.h"
 
 #define WIFI_CFG_MAX 512
 
@@ -245,4 +246,14 @@ armed:
         QueueMouseIntr();
     }
     return 1;
+}
+
+void XhciWifiHostOffer(void) {
+    static const USB_WIFI_HOST Host = {
+        .HostKind = WIFI_HOST_XHCI,
+        .Claim = XhciWifiClaim,
+        .Pid = XhciWifiPid,
+    };
+
+    UsbWifiHostRegister(&Host);
 }

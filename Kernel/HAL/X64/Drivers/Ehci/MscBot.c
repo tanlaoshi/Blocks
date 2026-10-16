@@ -4,6 +4,7 @@
  * data/csw 失败：ClearHalt + 复位 DT，再读 CSW（BOT 规范）。
  */
 #include "Private.h"
+#include "UsbHostController.h"
 #include "ToySerialLog.h"
 
 static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
@@ -78,9 +79,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     C->XferHubAddr = C->MscHubAddr;
     C->XferHubPort = C->MscHubPort;
 
-    if (BulkXfer(C, C->MscAddr, C->MscEpOut, C->MscMpsOut, C->MscSpeed,
-                     C->MscHubAddr, C->MscHubPort, 0, Cbw, 31,
-                     &C->MscDtOut) < 0) {
+    if (BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Cbw, 31, 1) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC cbw fail ");
         ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
         ToyBootMarkUsb("\n");
@@ -88,10 +87,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
         return -1;
     }
     if (DataLen != 0) {
-        DataRc = BulkXfer(C, C->MscAddr, DataIn ? C->MscEpIn : C->MscEpOut,
-                              DataIn ? C->MscMpsIn : C->MscMpsOut, C->MscSpeed,
-                              C->MscHubAddr, C->MscHubPort, DataIn, Data,
-                              DataLen, DataIn ? &C->MscDtIn : &C->MscDtOut);
+        DataRc = BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Data, DataLen, DataIn ? 0 : 1);
         if (DataRc < 0) {
             ToyBootMarkUsb("Boot: EHCI MSC data fail ");
             ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
@@ -100,9 +96,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
         }
     }
     MscZero(Csw, sizeof(Csw));
-    if (BulkXfer(C, C->MscAddr, C->MscEpIn, C->MscMpsIn, C->MscSpeed,
-                     C->MscHubAddr, C->MscHubPort, 1, Csw, 13,
-                     &C->MscDtIn) < 0) {
+    if (BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Csw, 13, 0) < 0) {
         ToyBootMarkUsb("Boot: EHCI MSC csw fail ");
         ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
         ToyBootMarkUsb("\n");

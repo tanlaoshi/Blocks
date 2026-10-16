@@ -85,6 +85,9 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
         Fail=0
         # 现网桌面关键字较松：有 Gui 桌面或 Files/Shell 窗路径即可
         require 'Boot: Desktop Ready|Gui: desktop ready|Gui: desktop ok' 'desktop' || Fail=1
+        if [ "${TOY_USB_MSC:-0}" = 1 ]; then
+            require 'Boot: MSC Auto Mux OK' 'msc auto mux' || Fail=1
+        fi
         if [ "$Fail" != 0 ]; then
             echo "smoke: FAIL — ready but desktop/shell checks failed" >&2
             log_text | tail -n 50 >&2 || true

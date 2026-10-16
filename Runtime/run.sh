@@ -105,6 +105,18 @@ echo "  ESP   Esp/X64"
 echo "  Root  RootFs/X64"
 echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "  VGA   ${QEMU_XRES}x${QEMU_YRES}"
+MSC_ARGS=()
+if [ "${TOY_USB_MSC:-0}" = 1 ]; then
+    if [ ! -f Msc/TOYOS.ID ]; then
+        echo "error: TOY_USB_MSC=1 needs Msc/TOYOS.ID" >&2
+        exit 1
+    fi
+    echo "  MSC   Msc/ (usb-storage)"
+    MSC_ARGS=(
+        -drive if=none,id=toymsc,format=raw,file=fat:rw:Msc
+        -device usb-storage,drive=toymsc,bus=xhci.0
+    )
+fi
 echo "=========================================="
 
 # 双盘均走 AHCI：现网 x86 块驱动认 AHCI，不认 virtio-blk（旧 run-split 同款）。
@@ -128,5 +140,6 @@ exec qemu-system-x86_64 \
     -device qemu-xhci,id=xhci \
     -device usb-kbd,bus=xhci.0 \
     -device usb-tablet,bus=xhci.0 \
+    "${MSC_ARGS[@]}" \
     "${DISPLAY_ARGS[@]}" \
     "${SERIAL_ARGS[@]}"

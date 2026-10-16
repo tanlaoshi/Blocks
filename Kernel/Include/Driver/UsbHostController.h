@@ -36,5 +36,6 @@ int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol);
 int Control(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, UINT32 Len);
 int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Context));
 int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
+int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 
 #endif /* USB_HOST_CONTROLLER_H */

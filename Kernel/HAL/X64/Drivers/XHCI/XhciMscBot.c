@@ -3,6 +3,7 @@
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
 #include "XHCI/XhciInternal.h"
+#include "UsbHostController.h"
 
 static int gMscInSense;  /* REQUEST SENSE 重入保护 */
 
@@ -63,7 +64,7 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
         Cbw[15 + i] = CbwCb[i];
     }
 
-    if (XhciBulkXfer(0, Cbw, 31) < 0) {
+    if (BulkOn(USB_HOST_CONTROLLER_XHCI, 0, Cbw, 31, 1) < 0) {
         static UINT32 sCbwFailLogged;
 
         if (sCbwFailLogged < 2) {
@@ -73,13 +74,13 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
         goto Out;
     }
     if (DataLen != 0) {
-        if (XhciBulkXfer(DataIn ? 1 : 0, Data, DataLen) < 0) {
+        if (BulkOn(USB_HOST_CONTROLLER_XHCI, 0, Data, DataLen, DataIn ? 0 : 1) < 0) {
             BootLog("Boot: MSC bot data fail\n");
             goto Out;
         }
     }
     ZeroMemory(Csw, sizeof(Csw));
-    if (XhciBulkXfer(1, Csw, 13) < 0) {
+    if (BulkOn(USB_HOST_CONTROLLER_XHCI, 0, Csw, 13, 0) < 0) {
         BootLog("Boot: MSC bot csw fail\n");
         goto Out;
     }

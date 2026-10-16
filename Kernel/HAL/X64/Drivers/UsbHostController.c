@@ -62,3 +62,16 @@ int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     }
     return Operations->Bulk(Pipe, Buf, Len, Out);
 }
+
+int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
+    const USB_HOST_CONTROLLER_OPERATIONS *Operations;
+
+    if (Kind != USB_HOST_CONTROLLER_XHCI && Kind != USB_HOST_CONTROLLER_EHCI) {
+        return -1;
+    }
+    Operations = gOperations[Kind];
+    if (Operations == 0 || Operations->Bulk == 0) {
+        return -1;
+    }
+    return Operations->Bulk(Pipe, Buf, Len, Out);
+}

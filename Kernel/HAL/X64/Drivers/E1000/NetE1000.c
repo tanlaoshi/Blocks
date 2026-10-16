@@ -7,9 +7,29 @@
 #include "Driver.h"
 #include "DriverNic.h"
 #include "E1000.h"
+#include "E1000Private.h"
 #include "Net.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
+
+static const DRIVER_MATCH gE1000Match[] = {
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = E1000_VENDOR, .Device = E1000_DID_82540EM,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = E1000_VENDOR, .Device = 0x100F,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = E1000_VENDOR, .Device = E1000_DID_82574L,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = E1000_VENDOR, .Device = 0x10F5,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_PCI,
+      .U.Pci = { .Vendor = E1000_VENDOR, .Device = E1000_DID_I219_LM,
+                 .VendorMask = 0xFFFF, .DeviceMask = 0xFFFF } },
+    { .Type = DRIVER_MATCH_NONE }
+};
 
 static char gE1000DriverName[8] = "e1000";
 
@@ -47,9 +67,12 @@ static const NIC_L2 gE1000NicL2 = {
 };
 
 static int E1000DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
-    (void)Self;
-    (void)BusCtx;
+    const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
+    (void)Self;
+    if (!Dev || Dev->Bus != DEVICE_BUS_PCI || Dev->Bar[0] == 0) {
+        return -1;
+    }
     if (E1000Ready()) {
         RefreshDriverName();
         if (OutPrivate) {
@@ -60,6 +83,11 @@ static int E1000DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriv
     if (!VirtualMemoryEnabled()) {
         return -1;
     }
+    gPciDid = Dev->Device;
+    gPciBus = Dev->PciBus;
+    gPciDev = Dev->PciDev;
+    gPciFn = Dev->PciFn;
+    gBarPhys = Dev->Bar[0];
     if (!E1000Setup()) {
         return -1;
     }
@@ -94,7 +122,7 @@ static void E1000DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
 static const TOY_DRIVER gE1000Driver = {
     .Name = gE1000DriverName,
     .Class = TOY_DRIVER_CLASS_NET,
-    .Match = 0,
+    .Match = gE1000Match,
     .Probe = E1000DriverProbe,
     .Bind = E1000DriverBind,
     .Remove = E1000DriverRemove,

@@ -166,7 +166,6 @@ static inline void CopyMemory(void *Dst, const void *Src, UINTN Len) {
     }
 }
 
-int PciFindE1000(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut, UINT16 *DidOut);
 void ReadMac(void);
 void E1000ApplyI219TxDctl(void); /* PR-N-i219-tx：已试 ❌ */
 void E1000ApplyI219Tarc(void);   /* PR-N-i219-tx2：已试 ❌ */

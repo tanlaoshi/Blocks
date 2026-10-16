@@ -8,13 +8,11 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
+#include "PCIe.h"
 
 int E1000Setup(void) {
-    UINT8 Bus;
-    UINT8 Dev;
-    UINT8 Fn;
     UINT64 Bar;
-    UINT16 Did = 0;
+    UINT32 Cmd;
     UINT8 *Mem;
     UINT64 Phys;
     UINT32 i;
@@ -32,13 +30,12 @@ int E1000Setup(void) {
     if (!VirtualMemoryEnabled()) {
         return 0;
     }
-    if (!PciFindE1000(&Bus, &Dev, &Fn, &Bar, &Did)) {
+    if (gBarPhys == 0) {
         return 0;
     }
-    gPciDid = Did;
-    gPciBus = Bus;
-    gPciDev = Dev;
-    gPciFn = Fn;
+    Cmd = PciReadConfig(gPciBus, gPciDev, gPciFn, 0x04);
+    PciWriteConfig(gPciBus, gPciDev, gPciFn, 0x04, Cmd | 0x06);
+    Bar = gBarPhys;
 
     if (VirtualMemoryMapRange(Bar, Bar, 0x20000, PTE_PRESENT | PTE_WRITABLE) != 0) {
         DebugWrite("e1000: map BAR failed\n");

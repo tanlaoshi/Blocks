@@ -28,7 +28,9 @@ void ServiceHidCompletions(void) {
             gStatMousePush++;
         }
         if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-            QueueMouseIntr();
+            USB_PIPE Pipe;
+
+            (void)InterruptQueue(&Pipe, 0, 0, 0);
         }
     }
 }

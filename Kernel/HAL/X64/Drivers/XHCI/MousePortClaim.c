@@ -2,6 +2,9 @@
  * MousePortClaim.c — 根口 Address / hub / 类过滤（PR-F-xhci-4）
  */
 #include "XHCI/Internal.h"
+#include "UsbHostController.h"
+
+static USB_PIPE gMousePipe;
 
 /*
  * -1 = 已 Address，继续 SetupHid；
@@ -172,7 +175,7 @@ int InitMouseFinishEp(UINT32 Port1, UINT8 Speed) {
         return 0;
     }
     ZeroMemory(gMouseBuf, sizeof(gMouseBuf));
-    QueueMouseIntr();
+    (void)InterruptQueue(&gMousePipe, 0, 0, 0);
     DebugWrite("XHCI: mouse ready\n");
     if (gMouseAbsolute) {
         BootLog("Boot: XHCI-HID Mouse (Abs)\n");

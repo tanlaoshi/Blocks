@@ -4,6 +4,9 @@
  * 从 Mouse.c 原样搬家；不改语义。无 static 提升；鼠标全局仍在 Xhci.c。
  */
 #include "XHCI/Internal.h"
+#include "UsbHostController.h"
+
+static USB_PIPE gMousePipe;
 
 /*
  * 真机常见：USB 键鼠复合设备（同一 slot 上键盘 Proto=1 + 鼠标 Proto=2）。
@@ -155,7 +158,7 @@ int InitMouseOnKeyboardSlot(void) {
             }
             QueueIntr();
         }
-        QueueMouseIntr();
+        (void)InterruptQueue(&gMousePipe, 0, 0, 0);
         BootLog("Boot: XHCI composite kbd rearm\n");
     }
     {

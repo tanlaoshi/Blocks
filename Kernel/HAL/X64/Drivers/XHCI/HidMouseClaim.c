@@ -3,6 +3,9 @@
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
 #include "XHCI/Internal.h"
+#include "UsbHostController.h"
+
+static USB_PIPE gMousePipe;
 
 /*
  * 在首次 ConfigEP 前：从当前配置描述符认领复合鼠标 iface（SetInterface/Protocol/Idle）。
@@ -169,7 +172,7 @@ int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
         return 0;
     }
     ZeroMemory(gMouseBuf, sizeof(gMouseBuf));
-    QueueMouseIntr();
+    (void)InterruptQueue(&gMousePipe, 0, 0, 0);
     BootLogHexV("Boot: XHCI mouse claim score=", gMouseParseScore, 2);
     BootLog("Boot: XHCI-HID Mouse (Claim After Skip-Kbd)\n");
     return 1;

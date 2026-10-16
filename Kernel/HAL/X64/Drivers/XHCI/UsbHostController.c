@@ -17,11 +17,20 @@ static int HostControllerControl(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, U
 
 static int HostControllerInterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len,
                                             void (*Done)(void *Context)) {
-    (void)Pipe;
     (void)Buf;
     (void)Len;
     (void)Done;
-    if (!gXhciStarted || gSlotId == 0 || gIntrDci == 0) {
+    if (!gXhciStarted) {
+        return -1;
+    }
+    if (Pipe != 0) {
+        if (gMouseSlotId == 0 || gMouseIntrDci == 0) {
+            return -1;
+        }
+        QueueMouseIntr();
+        return 0;
+    }
+    if (gSlotId == 0 || gIntrDci == 0) {
         return -1;
     }
     QueueIntr();

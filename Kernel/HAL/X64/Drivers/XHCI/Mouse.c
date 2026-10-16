@@ -4,6 +4,9 @@
  * 从 Mouse.c 原样搬家；不改语义。无 static 提升；鼠标全局仍在 Xhci.c。
  */
 #include "XHCI/Internal.h"
+#include "UsbHostController.h"
+
+static USB_PIPE gMousePipe;
 
 /* 真机 PHOTO 后再绑鼠标，避免复合/hub 扫描踩键盘 EP */
 void InitMouseDeferred(void) {
@@ -34,10 +37,10 @@ void InitMouseDeferred(void) {
         (void)EnumHubChildrenForMouse();
     }
     if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-        QueueMouseIntr();
+        (void)InterruptQueue(&gMousePipe, 0, 0, 0);
     }
     if (gSlotId != 0 && gIntrDci != 0) {
-        QueueIntr();
+        (void)InterruptQueue(0, 0, 0, 0);
     }
     if (gMouseSlotId != 0) {
         ToyLogUsb("Boot: XHCI mouse deferred ok\n");

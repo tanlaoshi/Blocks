@@ -4,6 +4,8 @@
 #include "XHCI/Internal.h"
 #include "UsbHostController.h"
 
+static USB_PIPE gMousePipe;
+
 /* 1 = 本口已作键盘；0 = 继续下一口 */
 int EnumTryRootPort(UINT32 P) {
     UINT8 Speed = 0;
@@ -139,7 +141,7 @@ int EnumTryRootPort(UINT32 P) {
             }
             ZeroMemory(gReportBuf, 8);
             (void)InterruptQueue(0, 0, 0, 0);
-            QueueMouseIntr();
+            (void)InterruptQueue(&gMousePipe, 0, 0, 0);
             BootLog("Boot: XHCI-HID Mouse (Composite)\n");
         } else {
             if (!ConfigureIntr(EpAddr, Mps, Interval, Speed, 0, 0, 0)) {

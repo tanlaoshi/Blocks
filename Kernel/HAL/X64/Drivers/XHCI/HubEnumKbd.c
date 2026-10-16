@@ -6,6 +6,8 @@
 #include "XHCI/Internal.h"
 #include "UsbHostController.h"
 
+static USB_PIPE gMousePipe;
+
 int TryConfigureKeyboardSlot(UINT8 Speed) {
     UINT8 EpAddr = 0, Interval = 10;
     UINT16 Mps = 8;
@@ -77,7 +79,7 @@ int TryConfigureKeyboardSlot(UINT8 Speed) {
             }
             ZeroMemory(gReportBuf, 8);
             (void)InterruptQueue(0, 0, 0, 0);
-            QueueMouseIntr();
+            (void)InterruptQueue(&gMousePipe, 0, 0, 0);
             BootLog("Boot: XHCI-HID Mouse (Composite)\n");
         } else {
             if (!ConfigureIntr(EpAddr, Mps, Interval, Speed, 0, 0, 0)) {

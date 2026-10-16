@@ -15,6 +15,7 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "DriverNic.h"
+#include "Text.h"
 
 void NetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
     UINT8 B[4];

@@ -17,10 +17,6 @@ typedef struct {
     UINT64 Bar[6];
 } USB_CONTROLLER;
 
-char* Uint32ToHex(UINT32 Value);
-char* Uint8ToDecimal(UINT8 Value);
-char* Uint64ToHex(UINT64 Value);
-
 UINT32 PciReadConfig(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Offset);
 void PciWriteConfig(UINT8 Bus, UINT8 Device, UINT8 Function, UINT8 Offset, UINT32 Value);
 /* PR-DEV-bar-size：探测指定 BAR 槽的尺寸（写 0xFFFFFFFF 读掩码后写回原值）。

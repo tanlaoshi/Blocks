@@ -6,7 +6,7 @@
 #include "Hal.h"
 #include "DriverInput.h"
 #include "DriverNet.h"
-#include "InputXhci.h"
+#include "UsbHid/InputXhci.h"
 #include "InputPs2.h"
 #include "InputEhci.h"
 #include "InputUhci.h"

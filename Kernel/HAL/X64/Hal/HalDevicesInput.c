@@ -3,7 +3,7 @@
  */
 #include "Hal.h"
 #include "DriverInput.h"
-#include "InputXhci.h"
+#include "UsbHid/InputXhci.h"
 #include "InputPs2.h"
 #include "Ehci.h"
 #include "Uhci.h"

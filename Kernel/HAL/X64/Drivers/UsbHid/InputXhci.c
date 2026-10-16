@@ -10,7 +10,7 @@
 #include "XHCI.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
-#include "InputXhciPrivate.h"
+#include "UsbHid/InputXhciPrivate.h"
 
 /* x86：MMIO 须 PCD|PWT，否则真机写 PORTSC/RS 易假死 */
 #ifndef PTE_PWT

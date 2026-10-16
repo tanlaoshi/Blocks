@@ -8,7 +8,7 @@
 #include "XHCI.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
-#include "InputXhciPrivate.h"
+#include "UsbHid/InputXhciPrivate.h"
 
 int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     USB_CONTROLLER Controllers[8];

@@ -6,7 +6,6 @@
 
 #include "TtyUi.h"
 #include "Gui.h"
-#include "GuiPrivate.h"
 #include "Hal.h"
 #include "HalVideo.h"
 #include "HalSerial.h"

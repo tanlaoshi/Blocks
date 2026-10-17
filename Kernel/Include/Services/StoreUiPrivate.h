@@ -13,7 +13,6 @@
 #include "Store.h"
 #include "Desktop.h"
 #include "Gui.h"
-#include "GuiPrivate.h"
 #include "HalVideo.h"
 #include "Font.h"
 #include "Locale.h"

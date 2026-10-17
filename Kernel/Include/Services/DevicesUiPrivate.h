@@ -8,7 +8,6 @@
 #include "Device.h"
 #include "Driver.h"
 #include "Gui.h"
-#include "GuiPrivate.h"
 #include "HalVideo.h"
 #include "Font.h"
 #include "Locale.h"

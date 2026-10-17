@@ -1,5 +1,5 @@
 /*
- * ConsoleInit.c — InitializeConsole（开机模块表；Services/Console 本层）
+ * Initialize.c — InitializeConsole（开机模块表；Services/Console 本层）
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"

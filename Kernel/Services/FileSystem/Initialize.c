@@ -1,5 +1,5 @@
 /*
- * FileSystemInit.c — 重挂与启动（PR-S-filesystem-1）
+ * Initialize.c — 重挂与启动（PR-S-filesystem-1）
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

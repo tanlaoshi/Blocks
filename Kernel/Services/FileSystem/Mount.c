@@ -1,6 +1,6 @@
 /*
- * FileSystemMount.c — 扫描并挂上各卷（编排；PR-F-fs-1）
- * 单卷：FileSystemMountVol.c；默认卷：FileSystemMountPick.c
+ * Mount.c — 扫描并挂上各卷（编排；PR-F-fs-1）
+ * 单卷：MountVolume.c；默认卷：MountPick.c
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

@@ -1,6 +1,6 @@
 /*
  * FileSystem.c — 卷激活与路径解析（PR-S-filesystem-1）
- * 路径操作：FileSystemOps.c；挂卷：FileSystemMount.c；初始化：FileSystemInit.c
+ * 路径操作：Operations.c；挂卷：Mount.c；初始化：Initialize.c
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

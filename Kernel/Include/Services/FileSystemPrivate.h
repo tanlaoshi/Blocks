@@ -31,7 +31,7 @@ extern const FS_OPS *gActiveOps;
 int MountAllVolumes(void);
 int FileSystemPathBlocked(const char *Path);
 
-/* PR-F-fs-1：单卷 / 默认卷（FileSystemMountVol.c / MountPick.c） */
+/* PR-F-fs-1：单卷 / 默认卷（MountVolume.c / MountPick.c） */
 void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol);
 void FsMountAddResVolume(void);
 void FsMountPickDefault(int ToyVol, UINT8 *Tmp, UINTN TmpSz);

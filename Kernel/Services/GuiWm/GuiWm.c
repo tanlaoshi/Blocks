@@ -190,6 +190,15 @@ void GuiInitialize(void) {
         Ops.AddButton = GuiUserAddButton;
         WindowOpsRegister(&Ops);
     }
+    {
+        DESKTOP_OPS Desk;
+
+        Desk.PollMouseMotion = GuiPollMouseMotion;
+        Desk.CloseAllUserWindows = GuiCloseAllUserWindows;
+        Desk.WaitNoWindowClosing = GuiWaitNoWindowClosing;
+        Desk.ComposeThemeScene = GuiComposeThemeScene;
+        DesktopOpsRegister(&Desk);
+    }
     GuiRedraw();
     /* 桌面已铺满：停 GOP 叠字 boot log，避免「gui ready / ToyOS ready」留在壁纸上 */
     HalSerialGopMute(1);

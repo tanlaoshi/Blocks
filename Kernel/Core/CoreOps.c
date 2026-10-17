@@ -7,6 +7,7 @@
 static WINDOW_OPS gWindowOps;
 static VFS_SERVICE_OPS gVfsServiceOps;
 static CONSOLE_IO_OPS gConsoleIo;
+static DESKTOP_OPS gDesktopOps;
 
 void WindowOpsRegister(const WINDOW_OPS *Ops) {
     if (!Ops) {
@@ -160,5 +161,40 @@ int ConsoleIoReadChar(char *Out) {
 void ConsoleIoShowPrompt(void) {
     if (gConsoleIo.ShowPrompt) {
         gConsoleIo.ShowPrompt();
+    }
+}
+
+void DesktopOpsRegister(const DESKTOP_OPS *Ops) {
+    if (!Ops) {
+        gDesktopOps.PollMouseMotion = 0;
+        gDesktopOps.CloseAllUserWindows = 0;
+        gDesktopOps.WaitNoWindowClosing = 0;
+        gDesktopOps.ComposeThemeScene = 0;
+        return;
+    }
+    gDesktopOps = *Ops;
+}
+
+void DesktopPollMouseMotion(void) {
+    if (gDesktopOps.PollMouseMotion) {
+        gDesktopOps.PollMouseMotion();
+    }
+}
+
+void DesktopCloseAllUserWindows(void) {
+    if (gDesktopOps.CloseAllUserWindows) {
+        gDesktopOps.CloseAllUserWindows();
+    }
+}
+
+void DesktopWaitNoWindowClosing(void) {
+    if (gDesktopOps.WaitNoWindowClosing) {
+        gDesktopOps.WaitNoWindowClosing();
+    }
+}
+
+void DesktopComposeThemeScene(void) {
+    if (gDesktopOps.ComposeThemeScene) {
+        gDesktopOps.ComposeThemeScene();
     }
 }

@@ -13,7 +13,6 @@
 #include "Debug.h"
 #include "PhysicalMemory.h"
 #include "Fat.h"
-#include "Gui.h"
 
 #define ELF_MAX_SIZE (512 * 1024)
 
@@ -55,9 +54,9 @@ void ProcessStopAllUsers(void) {
     SpinLockRelease(&gSchedulerLock);
 
     VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
-    GuiWaitNoWindowClosing();
-    GuiCloseAllUserWindows();
-    GuiWaitNoWindowClosing();
+    DesktopWaitNoWindowClosing();
+    DesktopCloseAllUserWindows();
+    DesktopWaitNoWindowClosing();
     for (I = 0; I < N; I++) {
         SchedulerDestroyDetached(Spaces[I]);
     }

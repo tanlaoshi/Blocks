@@ -10,7 +10,7 @@
 
 | 刀号 | 在哪一节 |
 | --- | --- |
-| 1–18 | 「刀」 |
+| 1–18，插刀如 4A | 「刀」。插在两刀之间用 4A、4B，不把后面的号码往后挪 |
 | 19–42 | 「远期」 |
 | 43–48 | 「汉字与语言」 |
 | 49–50 | 「适合放进 Library 的」 |
@@ -102,6 +102,7 @@
 | 2 | **PR-STRUCT-include** | 驱动私有头改带目录的名字，例如 `Ehci/Private.h`。去掉「每个驱动目录各一条 `-I`、谁在前面谁赢」的搜法。保留 `-I .../Drivers`。现在 EHCI 有 19 处 `#include "Private.h"`，XHCI 已经写成 `XHCI/Internal.h` | 函数体 | 三架构 `build.sh`。不存在靠 include 顺序选中另一个目录的同名头 |
 | 3 | **PR-STRUCT-log** | `Core/` 里 16 个包含 `Console.h` 的文件不再调用 `ConsoleWrite`。调度和系统调用的诊断走已经存在的串口日志。`lsdev` 的排版留在 Core，写出函数由调用方传入；Shell 命令传入 `ConsoleWrite` | 提示符、桌面控制台绘制 | 三架构 `build.sh`。`lsdev` 文本与现在一致。Core 不再包含 `Console.h` |
 | 4 | **PR-STRUCT-breath** | `SchedulerIoBreath`、`SchedulerWait`、`ProcessLoad` 不再包含 `Gui.h`，也不再直接 `GuiPollMouseMotion` / `GuiCloseAllUserWindows` / `GuiComposeThemeScene`。Gui 在初始化时登记这几个回调；没登记则呼吸只做让出 CPU | 鼠标跟手的时序、关窗的条件 | `build.sh` + `smoke-boot.sh`。长 IO 时指针仍跟着动 |
+| 4A | **PR-STRUCT-names** | 只改名字，不改行为。`Services/GuiWm/` 改成 `Services/GuiWindowManager/`，主文件 `GuiWm.c` 改成 `GuiWindowManager.c`。`GuiInit.c`、`GuiHit.c` 留在该目录，函数名不动。`Makefile` 里的目录通配跟着改。`Iwl/IwlPrivate.h` 改成 `Iwl/Private.h`。`XHCI/Internal.h` 改成 `XHCI/Private.h`，包含路径一起改。`Serial/Serial.h` 与 `Ehci/Private.h` 已经符合命名规范 §5，不动。其余仍带目录名的 `*Private.h` 不在这一刀批量改 | 函数体、窗口行为 | 三架构 `build.sh`。公开函数名与改名前相同 |
 | 5 | **PR-STRUCT-font-syscall** | `Core/Syscall/SyscallProc.c` 不再包含 `Theme.h`。换字系统调用调 `Library` 的 `FontSetById`，或调 Theme 登记的一个函数。Core 不认识主题 | 字号、主题配色 | 三架构 `build.sh`。系统调用换字之后桌面用的仍是同一套字 |
 | 6 | **PR-STRUCT-fs-hooks** | `Services/FileSystem/` 不再包含 `ShellCommands.h` 和 `Store.h`。Shell 初始化时自己登记文件命令。商店用一个「这条路径能不能直接改」的回调挂到文件系统上，没挂则路径不拦截 | 卷的挂载顺序、只读标志 | 三架构 `build.sh`。商店托管文件仍不能被普通删除改掉 |
 | 7 | **PR-STRUCT-fat** | `Core/FileSystem/Fat/*.c` 移到 `Library/Fat/`。这些文件只包含 `Fat.h`、`FatPrivate.h`、`Block.h`。头已经在 `Include/Library/`。`Makefile` 按 `Library/Gpt` 的方式收 `Library/Fat/*.c`。`Core/FileSystem/Student/` 的内存桩留在 Core，符号不变 | 目录项布局、读写返回码 | 三架构 `build.sh`。现有文件读写测试仍过 |
@@ -402,7 +403,7 @@ QEMU 冒烟是另外几份脚本，不在默认构建里。`Runtime/smoke-boot.s
 
 - 1440 个「函数名带文件名」是旧代码的常态，例如 `HalInitialize`、`SchedulerInitialize`。新代码按规范写。不单开一柱把它们改短。
 - 387 个辅助文件的重复前缀，碰到那个目录时再去掉。`XHCI/`、`Ehci/` 的辅助文件已经不带控制器前缀。不按目录拆 71 刀。
-- 刀 2 之后，包含路径上还有三种头文件名字：`Ehci/Private.h`、`Iwl/IwlPrivate.h`、`Serial/Serial.h`。前两种是辅助头，后一种是主文件。统一成：主文件 `目录/目录.h`，辅助头 `目录/Private.h`（`XHCI/Internal.h` 用同一个词）。见命名规范 §5。本柱不单开刀。
+- 刀 2 之后，包含路径上还有三种头文件名字：`Ehci/Private.h`、`Iwl/IwlPrivate.h`、`Serial/Serial.h`。前两种是辅助头，后一种是主文件。统一成：主文件 `目录/目录.h`，辅助头 `目录/Private.h`（`XHCI/Internal.h` 用同一个词）。见命名规范 §5。这是 4A，只改已经点名的这几个文件。后面的刀号不顺延。
 - 用户态包装 `toy_syscall`、`toy_write` 这一族留小写。它们是给用户程序看的调用面，改成 PascalCase 会换掉教学接口。
 - 全局单词 `Register`、`Control`、`Bulk` 在 `UsbHostController.c`，`Init` 在 `Xhci.c`。前三个是刀 41。`Init` 收到同一张操作表时一起改，不另编号。
 - 五处 `static Zero` 和一处 `static Copy` 仍按前面的说法，碰到文件时改成 `memset` / `memcpy`，不单开刀。

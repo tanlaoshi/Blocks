@@ -57,4 +57,18 @@ void ConsoleIoWriteLen(const char *Data, UINTN Len);
 int ConsoleIoReadChar(char *Out);
 void ConsoleIoShowPrompt(void);
 
+/* 长 IO 呼吸和用户进程退出时的桌面动作。Gui 初始化时登记；没登记则这些调用什么都不做。 */
+typedef struct {
+    void (*PollMouseMotion)(void);
+    void (*CloseAllUserWindows)(void);
+    void (*WaitNoWindowClosing)(void);
+    void (*ComposeThemeScene)(void);
+} DESKTOP_OPS;
+
+void DesktopOpsRegister(const DESKTOP_OPS *Ops);
+void DesktopPollMouseMotion(void);
+void DesktopCloseAllUserWindows(void);
+void DesktopWaitNoWindowClosing(void);
+void DesktopComposeThemeScene(void);
+
 #endif

@@ -6,7 +6,7 @@
  */
 #include "Scheduler.h"
 #include "Hal.h"
-#include "Gui.h"
+#include "CoreOps.h"
 
 void SchedulerIoBreath(void) {
     UINT64 Flags;
@@ -18,7 +18,7 @@ void SchedulerIoBreath(void) {
     SchedulerPreemptDisable();
     Flags = HalIrqSave();
     HalInputPoll();
-    GuiPollMouseMotion();
+    DesktopPollMouseMotion();
     HalIrqRestore(Flags);
     SchedulerPreemptEnable();
     SchedulerSetNeedResched();

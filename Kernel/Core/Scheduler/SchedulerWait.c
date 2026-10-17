@@ -9,7 +9,6 @@
 #include "Hal.h"
 #include "ToySerialLog.h"
 #include "CoreOps.h"
-#include "Gui.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
 #include "ProcessPrivate.h"
@@ -105,17 +104,17 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
         SpinLockRelease(&gSchedulerLock);
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
-        GuiWaitNoWindowClosing();
+        DesktopWaitNoWindowClosing();
         if (LastUser) {
-            GuiCloseAllUserWindows();
-            GuiWaitNoWindowClosing();
+            DesktopCloseAllUserWindows();
+            DesktopWaitNoWindowClosing();
             ProcessRestoreAppFont();
         }
     }
     SchedulerDestroyDetached(Detached);
     Detached = 0;
     /* USER 轻量关窗后补一次全桌合成，恢复任务栏/残影（此时页表已拆完） */
-    GuiComposeThemeScene();
+    DesktopComposeThemeScene();
     SpinLockAcquire(&gSchedulerLock);
 
     if (gCoopDrain) {

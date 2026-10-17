@@ -1,5 +1,5 @@
 /*
- * FontTtfCache.c — PR-UI-ttf-1/2/3：18×18×8bpp 定长缓存
+ * FontTtfCache.c — 32×32×8bpp 定长缓存
  *
  * 绘制路径只 Lookup（不栅格）。栅格仅 Preheat / Want 泵（Worker / 开窗短 burst）。
  */
@@ -7,7 +7,7 @@
 
 #define TTF_CACHE_N 1024u
 #define TTF_PROBE   8u
-#define TTF_CELL    18u
+#define TTF_CELL    32u
 #define TTF_PIX     (TTF_CELL * TTF_CELL)
 #define TTF_EMPTY   0
 #define TTF_HIT     1

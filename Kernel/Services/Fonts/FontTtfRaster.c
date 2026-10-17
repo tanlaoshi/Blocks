@@ -1,5 +1,5 @@
 /*
- * FontTtfRaster.c — PR-UI-ttf-1：18px stb 栅格（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — 汉字按 32px 栅格画一次（须 HalFpuBegin；CFLAGS_FPU）
  */
 #include "Font.h"
 #include "Hal.h"
@@ -9,7 +9,7 @@
 
 #include <stddef.h>
 
-#define TTF_CELL 18
+#define TTF_CELL 32
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
 #define TTF_ARENA (64u * 1024u)
 
@@ -120,10 +120,9 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         return -1;
     }
     /*
-     * CJK 字面常吃不满 em 框，ScaleForPixelHeight(18) 目测比 Terminus 小约 30%。
-     * 先放大再钳进 18 格，与点阵 gen 视觉量级对齐。
+     * 按 32 像素画一次。字面超出格子时再按格子收一档，不再从放大的结果缩回 18。
      */
-    Scale = stbtt_ScaleForPixelHeight(&gInfo, (float)TTF_CELL) * 1.32f;
+    Scale = stbtt_ScaleForPixelHeight(&gInfo, (float)TTF_CELL);
     stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
@@ -136,7 +135,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         float FitY = (float)TTF_CELL / (float)Gh;
         float Fit = (FitX < FitY) ? FitX : FitY;
 
-        Scale *= Fit * 0.98f;
+        Scale *= Fit;
         stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1,
                                     &Y1);
         Gw = X1 - X0;

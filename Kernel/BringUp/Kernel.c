@@ -21,10 +21,6 @@
 #include "Elf.h"
 #include "LibWrite.h"
 
-#if defined(__x86_64__) || defined(_M_X64)
-#include "EarlyIdentity.h"
-#endif
-
 static void KernelMainVirt(void);
 static void KernelMainVirtDesktop(void);
 static void KernelMainFull(void);
@@ -157,13 +153,6 @@ static void KernelMainFull(void) {
 }
 
 void KernelMain(void) {
-#if defined(__x86_64__) || defined(_M_X64)
-    /* PMM/VMM 前开 4GiB 恒等；栈已在 KernelEntry 换到窗内 */
-    if (EarlyIdentitySetup() == 0) {
-        EarlyIdentityEnable();
-    }
-#endif
-
     if (HalConsoleOnly()) {
         KernelMainVirt();
         return;

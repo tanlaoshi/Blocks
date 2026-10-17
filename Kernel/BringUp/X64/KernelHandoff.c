@@ -1,7 +1,7 @@
 /*
  * KernelHandoff.c — BringUp/X64：UEFI_BOOT_CONFIG → BOOT_INFO → KernelMain
  *
- * 入口栈切换在同目录 KernelEntry.S；本文件只译包并交棒 BringUp/KernelMain。
+ * 入口栈切换在同目录 KernelEntry.S；本文件译包、开早期恒等，再交棒 KernelMain。
  * 交接包 UefiBootConfig.h 与 Boot/BootPkg/ 那份内容相同。
  */
 #include "UefiBootConfig.h"
@@ -9,6 +9,7 @@
 #include "IdentityMap.h"
 #include "Kernel.h"
 #include "HalSerial.h"
+#include "EarlyIdentity.h"
 
 extern char __kernel_end[];
 extern void HalPlatformSetXhciFallback(UINT64 Address);
@@ -134,6 +135,10 @@ void KernelHandoff(UEFI_BOOT_CONFIG *BootConfig) {
     BootInfoFromUefi(&CfgCopy, &Info, &CfgCopy);
     BootInfoSet(&Info);
     HalSerialInitialize();
+    /* PMM/VMM 前开 4GiB 恒等；栈已在 KernelEntry 换到窗内 */
+    if (EarlyIdentitySetup() == 0) {
+        EarlyIdentityEnable();
+    }
     KernelMain();
     for (;;) {
     }

@@ -3,6 +3,7 @@
  * T=锤、O=足球、Y=弹弓；旁衬 ToyOS。不做动画引擎。
  */
 #include "Desktop.h"
+#include "UI.h"
 #include "Hal.h"
 #include "HalVideo.h"
 #include "Font.h"
@@ -19,7 +20,7 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     if (W == 0 || H == 0) {
         return;
     }
-    HalVideoFillRect(X, Y, W, H, C);
+    UiFillRectangle(X, Y, W, H, C);
 }
 
 /* 简易实心圆（粗像素） */

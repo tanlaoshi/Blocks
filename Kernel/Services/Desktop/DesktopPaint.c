@@ -23,12 +23,12 @@ void FillRectFree(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 Color) {
                 RunStart = Col;
                 InRun = 1;
             } else if (!Free && InRun) {
-                HalVideoFillRect(X + RunStart, Y + Row, Col - RunStart, 1, Color);
+                UiFillRectangle(X + RunStart, Y + Row, Col - RunStart, 1, Color);
                 InRun = 0;
             }
         }
         if (InRun) {
-            HalVideoFillRect(X + RunStart, Y + Row, W - RunStart, 1, Color);
+            UiFillRectangle(X + RunStart, Y + Row, W - RunStart, 1, Color);
         }
     }
 }

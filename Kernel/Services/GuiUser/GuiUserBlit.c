@@ -56,7 +56,7 @@ void PaintUserClient(int Idx) {
     if (WindowOccludedByOther(Idx)) {
         FillRectOccluded(Idx, ClientX, ClientY, ClientW, ClientH, W->Background);
     } else {
-        HalVideoFillRect(ClientX, ClientY, ClientW, ClientH, W->Background);
+        UiFillRectangle(ClientX, ClientY, ClientW, ClientH, W->Background);
     }
     if (W->ClientText[0] != 0) {
         UINT32 Ty;

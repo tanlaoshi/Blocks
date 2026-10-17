@@ -59,12 +59,12 @@ void FillRectOccluded(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                 RunStart = Col;
                 InRun = 1;
             } else if (Occ && InRun) {
-                HalVideoFillRect(X + RunStart, Py, Col - RunStart, 1, Color);
+                UiFillRectangle(X + RunStart, Py, Col - RunStart, 1, Color);
                 InRun = 0;
             }
         }
         if (InRun) {
-            HalVideoFillRect(X + RunStart, Py, W - RunStart, 1, Color);
+            UiFillRectangle(X + RunStart, Py, W - RunStart, 1, Color);
         }
     }
 }
@@ -85,12 +85,12 @@ void DrawHLineOccluded(int Idx, UINT32 X0, UINT32 X1, UINT32 Y,
             RunStart = X;
             InRun = 1;
         } else if (Occ && InRun) {
-            HalVideoFillRect(RunStart, Y, X - RunStart, 1, Color);
+            UiFillRectangle(RunStart, Y, X - RunStart, 1, Color);
             InRun = 0;
         }
     }
     if (InRun) {
-        HalVideoFillRect(RunStart, Y, X1 - RunStart + 1, 1, Color);
+        UiFillRectangle(RunStart, Y, X1 - RunStart + 1, 1, Color);
     }
 }
 
@@ -111,12 +111,12 @@ void DrawVLineOccluded(int Idx, UINT32 X, UINT32 Y0, UINT32 Y1,
             RunStart = Y;
             InRun = 1;
         } else if (Occ && InRun) {
-            HalVideoFillRect(X, RunStart, 1, Y - RunStart, Color);
+            UiFillRectangle(X, RunStart, 1, Y - RunStart, Color);
             InRun = 0;
         }
     }
     if (InRun) {
-        HalVideoFillRect(X, RunStart, 1, Y1 - RunStart + 1, Color);
+        UiFillRectangle(X, RunStart, 1, Y1 - RunStart + 1, Color);
     }
 }
 
@@ -246,7 +246,7 @@ void DrawWindowChromeAt(int Idx) {
         if (Occlude) {
             FillRectOccluded(Idx, W->X, W->Y + Row, W->Width, 1, Color);
         } else {
-            HalVideoFillRect(W->X, W->Y + Row, W->Width, 1, Color);
+            UiFillRectangle(W->X, W->Y + Row, W->Width, 1, Color);
         }
     }
     if (Occlude) {
@@ -259,10 +259,10 @@ void DrawWindowChromeAt(int Idx) {
         DrawTitleStringOccluded(Idx, W);
         DrawCloseButton(Idx, W);
     } else {
-        HalVideoFillRect(W->X, W->Y, W->Width, 1, Border);
-        HalVideoFillRect(W->X, W->Y + W->Height - 1, W->Width, 1, Border);
-        HalVideoFillRect(W->X, W->Y, 1, W->Height, Border);
-        HalVideoFillRect(W->X + W->Width - 1, W->Y, 1, W->Height, Border);
+        UiFillRectangle(W->X, W->Y, W->Width, 1, Border);
+        UiFillRectangle(W->X, W->Y + W->Height - 1, W->Width, 1, Border);
+        UiFillRectangle(W->X, W->Y, 1, W->Height, Border);
+        UiFillRectangle(W->X + W->Width - 1, W->Y, 1, W->Height, Border);
         if (W->Title != 0 && W->Title[0] != 0) {
             HalVideoDrawStringAt(W->X + 8, W->Y + 4, W->Title, ThemeWindowTitleText());
         }

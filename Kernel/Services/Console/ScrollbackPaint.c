@@ -45,7 +45,7 @@ void ConsoleSbRepaint(void) {
      * 安静清客户区：勿走 GuiFocusClearClient（内含 GfxPresent），
      * 否则滚轮每格 Present 极慢。
      */
-    HalVideoFillRect(Cx, Cy, Cw, Ch, Bg);
+    UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
     GuiFocusHome();
 
     End = Count - ViewOff;

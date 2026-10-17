@@ -195,15 +195,15 @@ void DrawWindowAtEx(int Idx, int Occlude) {
      * 否则重叠区不画 → 标题镂空、客户区换色不全。
      */
     for (Row = 0; Row < Th; Row++) {
-        HalVideoFillRect(W->X, W->Y + Row, W->Width, 1,
+        UiFillRectangle(W->X, W->Y + Row, W->Width, 1,
                          TitleBarColorAtRow(Idx, Row, Th));
     }
-    HalVideoFillRect(W->X, W->Y, W->Width, 1, Border);
-    HalVideoFillRect(W->X, W->Y + W->Height - 1, W->Width, 1, Border);
-    HalVideoFillRect(W->X, W->Y, 1, W->Height, Border);
-    HalVideoFillRect(W->X + W->Width - 1, W->Y, 1, W->Height, Border);
+    UiFillRectangle(W->X, W->Y, W->Width, 1, Border);
+    UiFillRectangle(W->X, W->Y + W->Height - 1, W->Width, 1, Border);
+    UiFillRectangle(W->X, W->Y, 1, W->Height, Border);
+    UiFillRectangle(W->X + W->Width - 1, W->Y, 1, W->Height, Border);
     if (W->Width > 2 && W->Height > TITLE_HEIGHT + 1) {
-        HalVideoFillRect(W->X + 1, W->Y + TITLE_HEIGHT, W->Width - 2,
+        UiFillRectangle(W->X + 1, W->Y + TITLE_HEIGHT, W->Width - 2,
                          W->Height - TITLE_HEIGHT - 1, W->Background);
     }
     if (W->Title != 0 && W->Title[0] != 0) {
@@ -221,12 +221,12 @@ void DrawWindowAtEx(int Idx, int Occlude) {
         UINT32 Edge = ThemeWindowBorderFocus();
 
         CloseButtonRect(W, &Bx, &By, &Bw, &Bh);
-        HalVideoFillRect(Bx, By, Bw, Bh, ThemeCloseButton());
+        UiFillRectangle(Bx, By, Bw, Bh, ThemeCloseButton());
         if (Bw >= 2 && Bh >= 2) {
-            HalVideoFillRect(Bx, By, Bw, 1, Edge);
-            HalVideoFillRect(Bx, By + Bh - 1, Bw, 1, Edge);
-            HalVideoFillRect(Bx, By, 1, Bh, Edge);
-            HalVideoFillRect(Bx + Bw - 1, By, 1, Bh, Edge);
+            UiFillRectangle(Bx, By, Bw, 1, Edge);
+            UiFillRectangle(Bx, By + Bh - 1, Bw, 1, Edge);
+            UiFillRectangle(Bx, By, 1, Bh, Edge);
+            UiFillRectangle(Bx + Bw - 1, By, 1, Bh, Edge);
         }
         Pad = 7;
         if (Bw > Pad * 2 + 2 && Bh > Pad * 2 + 2) {

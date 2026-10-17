@@ -5,6 +5,7 @@
  * 从 GuiFocus.c 单体迁出；只搬家、不改逻辑。
  */
 #include "GuiPrivate.h"
+#include "UI.h"
 #include "HalVideo.h"
 #include "Hal.h"
 #include "Font.h"
@@ -166,7 +167,7 @@ void GuiFocusClearClient(void) {
      * 整块清客户区。主题合成靠 gGuiWindowManager.DeferPresent + 上层后画，勿 FillRectOccluded，
      * 否则重叠区不换色，抬窗后备份镂空。
      */
-    HalVideoFillRect(X, Y, W, H, Bg);
+    UiFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipOrigin(X, Y, W, H, Bg);
     Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     Win->TermX = 0;

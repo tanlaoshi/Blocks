@@ -3,7 +3,6 @@
  */
 #include "SyscallPrivate.h"
 #include "Scheduler.h"
-#include "Console.h"
 #include "VirtualMemory.h"
 #include "Fat.h"
 #include "Socket.h"

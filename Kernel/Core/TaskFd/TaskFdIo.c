@@ -10,7 +10,7 @@
 #include "LwIp.h"
 #include "Socket.h"
 #include "Errno.h"
-#include "Console.h"
+#include "CoreOps.h"
 #include "HalConsole.h"
 
 int SchedulerFdRead(TASK *T, int Fd, void *Buf, UINTN Len) {
@@ -34,7 +34,11 @@ int SchedulerFdReadTimeout(TASK *T, int Fd, void *Buf, UINTN Len,
             return -1;
         }
         for (i = 0; i < Len; i++) {
-            char C = ConsoleStdinGetChar();
+            char C;
+
+            if (ConsoleIoReadChar(&C) < 0) {
+                return -1;
+            }
             /* 串口终端常发 CR；统一成 LF，与 shell SerialIsEnter 一致 */
             if (C == '\r') {
                 C = '\n';

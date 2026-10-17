@@ -9,6 +9,7 @@
 #include "Locale.h"
 #include "SettingsUi.h"
 #include "LibWrite.h"
+#include "CoreOps.h"
 
 /* 将控制台输出限制在当前焦点窗口客户区内（不重置光标） */
 void ConsoleFocusSave(void) {
@@ -96,6 +97,14 @@ void ConsoleInitialize(void) {
     Ops.PaintShellWindow = ConsolePaintShellWindow;
     GuiRegisterConsoleOps(&Ops);
     LibWriteRegister(ConsoleWrite);
+    {
+        CONSOLE_IO_OPS Io;
+
+        Io.WriteLen = ConsoleWriteLen;
+        Io.ReadChar = ConsoleStdinGetChar;
+        Io.ShowPrompt = ConsoleShowPrompt;
+        ConsoleIoRegister(&Io);
+    }
 
     gLen = 0;
     gWaitPrompt = 0;

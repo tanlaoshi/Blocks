@@ -7,7 +7,6 @@
 #include "TaskFd.h"
 #include "Syscall.h"
 #include "Hal.h"
-#include "Console.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
@@ -107,7 +106,7 @@ void SchedulerStart(void) {
     }
     for (c = 0; c < Cpus; c++) {
         if (CreateIdleForCpu((UINT32)c) < 0) {
-            ConsoleWrite("sched: idle create failed\n");
+            ToyLogMisc("sched: idle create failed\n");
             for (;;) {
                 HalCpuPark();
             }
@@ -190,7 +189,7 @@ void SchedulerStart(void) {
         First = IdleTaskForCpu(0);
     }
     if (!First) {
-        ConsoleWrite("sched: no tasks\n");
+        ToyLogMisc("sched: no tasks\n");
         for (;;) {
             HalCpuPark();
         }

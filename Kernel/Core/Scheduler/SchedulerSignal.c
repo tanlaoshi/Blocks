@@ -7,12 +7,12 @@
 #include "TaskFd.h"
 #include "Syscall.h"
 #include "Hal.h"
-#include "Console.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "SpinLock.h"
 #include "ToySerialLog.h"
+#include "CoreOps.h"
 
 TASK *FindRunnable(UINT32 Cpu) {
     return SchedulerOpsGet()->PickNext(Cpu);
@@ -184,7 +184,7 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
             if (!Next) {
                 SpinLockRelease(&gSchedulerLock);
                 SchedulerDestroyDetached(Detached);
-                ConsoleWrite("sched: no runnable after pending kill\n");
+                ToyLogMisc("sched: no runnable after pending kill\n");
                 for (;;) {
                     HalCpuPark();
                 }
@@ -194,7 +194,7 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
             SpinLockRelease(&gSchedulerLock);
             SchedulerDestroyDetached(Detached);
             if (ShowPrompt) {
-                ConsoleShowPrompt();
+                ConsoleIoShowPrompt();
             }
             return Ret;
         } else {

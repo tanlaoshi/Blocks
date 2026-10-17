@@ -45,4 +45,16 @@ int VfsServiceFileStat(const char *Path, FAT_FILE_STAT *Out);
 int VfsServiceReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
 int VfsServiceWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
 
+/* 标准输出按长度写、标准输入取一字。控制台启动时登记；没登记则写出走串口，读入失败。 */
+typedef struct {
+    void (*WriteLen)(const char *Data, UINTN Len);
+    char (*ReadChar)(void);
+    void (*ShowPrompt)(void);
+} CONSOLE_IO_OPS;
+
+void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops);
+void ConsoleIoWriteLen(const char *Data, UINTN Len);
+int ConsoleIoReadChar(char *Out);
+void ConsoleIoShowPrompt(void);
+
 #endif

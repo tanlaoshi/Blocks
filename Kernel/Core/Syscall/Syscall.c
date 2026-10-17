@@ -11,7 +11,7 @@
 #include "Syscall.h"
 #include "SyscallPrivate.h"
 #include "Hal.h"
-#include "Console.h"
+#include "ToySerialLog.h"
 #include "Scheduler.h"
 #include "Process.h"
 #include "Errno.h"
@@ -215,11 +215,11 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
         /* 开课前冻结：未知号 → -ENOSYS；日志限次，避免每 tick 刷屏 */
         if (UnknownLogs < 8) {
             UnknownLogs++;
-            ConsoleWrite("syscall: unknown ");
-            ConsoleWriteHex64(HalFrameSyscallNum(Frame));
-            ConsoleWrite("\n");
+            ToyLogMisc("syscall: unknown ");
+            ToyLogMiscHex64(HalFrameSyscallNum(Frame));
+            ToyLogMisc("\n");
             if (UnknownLogs == 8) {
-                ConsoleWrite("syscall: unknown (further suppressed)\n");
+                ToyLogMisc("syscall: unknown (further suppressed)\n");
             }
         }
         HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_ENOSYS));

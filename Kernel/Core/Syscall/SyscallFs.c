@@ -3,7 +3,7 @@
  */
 #include "SyscallPrivate.h"
 #include "Scheduler.h"
-#include "Console.h"
+#include "CoreOps.h"
 #include "VirtualMemory.h"
 #include "Fat.h"
 #include "Socket.h"
@@ -47,7 +47,7 @@ int SysWrite(int Fd, UINT64 UserBuf, UINTN Len) {
             if (VirtualMemoryCopyFromUser(Buf, UserBuf + Done, Chunk) < 0) {
                 return Done > 0 ? (int)Done : -1;
             }
-            ConsoleWriteLen(Buf, Chunk);
+            ConsoleIoWriteLen(Buf, Chunk);
             Done += Chunk;
         }
         return (int)Len;

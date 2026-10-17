@@ -2,9 +2,11 @@
  * CoreOps.c — PR-R4：WindowOps / VfsServiceOps 注册与薄分发
  */
 #include "CoreOps.h"
+#include "ToySerialLog.h"
 
 static WINDOW_OPS gWindowOps;
 static VFS_SERVICE_OPS gVfsServiceOps;
+static CONSOLE_IO_OPS gConsoleIo;
 
 void WindowOpsRegister(const WINDOW_OPS *Ops) {
     if (!Ops) {
@@ -107,4 +109,56 @@ int VfsServiceWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
         return FAT_ERR_INVAL;
     }
     return gVfsServiceOps.WriteFileAt(Path, Offset, Buffer, Len, OutN);
+}
+
+void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops) {
+    if (!Ops) {
+        gConsoleIo.WriteLen = 0;
+        gConsoleIo.ReadChar = 0;
+        gConsoleIo.ShowPrompt = 0;
+        return;
+    }
+    gConsoleIo = *Ops;
+}
+
+void ConsoleIoWriteLen(const char *Data, UINTN Len) {
+    char Buf[128];
+    UINTN Off;
+
+    if (!Data || Len == 0) {
+        return;
+    }
+    if (gConsoleIo.WriteLen) {
+        gConsoleIo.WriteLen(Data, Len);
+        return;
+    }
+    Off = 0;
+    while (Off < Len) {
+        UINTN N = Len - Off;
+        UINTN i;
+
+        if (N > sizeof(Buf) - 1) {
+            N = sizeof(Buf) - 1;
+        }
+        for (i = 0; i < N; i++) {
+            Buf[i] = Data[Off + i];
+        }
+        Buf[N] = 0;
+        ToyLogMisc(Buf);
+        Off += N;
+    }
+}
+
+int ConsoleIoReadChar(char *Out) {
+    if (!Out || !gConsoleIo.ReadChar) {
+        return -1;
+    }
+    *Out = gConsoleIo.ReadChar();
+    return 0;
+}
+
+void ConsoleIoShowPrompt(void) {
+    if (gConsoleIo.ShowPrompt) {
+        gConsoleIo.ShowPrompt();
+    }
 }

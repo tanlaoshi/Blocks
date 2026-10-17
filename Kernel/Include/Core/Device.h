@@ -91,11 +91,11 @@ void DeviceTreeSelfTest(void);
 void DeviceBindDriver(DEVICE_NODE *Dev, const struct TOY_DRIVER *Drv,
                       struct TOY_DRIVER_INSTANCE *Inst);
 void DeviceUnbind(DEVICE_NODE *Dev);
-void DeviceListDump(void);
-/* PR-DEV-lsdev：解析 -v / -b / -u / -c。0=已打印，-1=用法错误 */
-int DeviceListDumpArgs(int Argc, char **Argv);
+void DeviceListDump(void (*Write)(const char *Text));
+/* PR-DEV-lsdev：解析 -v / -b / -u / -c。0=已打印，-1=用法错误。Write 由调用方传入。 */
+int DeviceListDumpArgs(int Argc, char **Argv, void (*Write)(const char *Text));
 /* PR-DEV-tree-lsdev：lsdev -t 树状打印（根=Parent==NULL，缩进 2 空格×深度，深度≥16 停）。 */
-void DeviceListDumpTree(int Verbose);
+void DeviceListDumpTree(int Verbose, void (*Write)(const char *Text));
 /* PR-DEV-mmio-conflict：登记一段 MMIO 区间；与已有区间重叠则 DebugWrite 并返回 -1。
  * Size==0 或 Base==0 不登记。表满返回 -1。平台无关（Core 不读配置空间）。 */
 int DeviceRegisterMmio(DEVICE_NODE *Dev, UINT64 Base, UINT64 Size);

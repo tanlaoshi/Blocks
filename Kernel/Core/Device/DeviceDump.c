@@ -5,8 +5,23 @@
  */
 #include "Device.h"
 #include "Driver.h"
-#include "Console.h"
 #include "Text.h"
+#include "HalSerial.h"
+
+static void (*gWrite)(const char *Text);
+
+static void WriteOut(const char *Text) {
+    if (gWrite != 0 && Text != 0) {
+        gWrite(Text);
+    }
+}
+
+static void WriteHex64(UINT64 Value) {
+    char Buf[20];
+
+    HalSerialFormatHex(Buf, Value, 16);
+    WriteOut(Buf);
+}
 
 typedef struct {
     int Verbose;
@@ -25,7 +40,7 @@ static void WriteHex2(UINT32 V) {
     Buf[0] = FormatHexadecimalDigit(V >> 4);
     Buf[1] = FormatHexadecimalDigit(V);
     Buf[2] = 0;
-    ConsoleWrite(Buf);
+    WriteOut(Buf);
 }
 
 static void WriteHex4(UINT32 V) {
@@ -36,21 +51,21 @@ static void WriteHex4(UINT32 V) {
     Buf[2] = FormatHexadecimalDigit(V >> 4);
     Buf[3] = FormatHexadecimalDigit(V);
     Buf[4] = 0;
-    ConsoleWrite(Buf);
+    WriteOut(Buf);
 }
 
 static void WriteDec(UINT32 V) {
     char Buf[12];
     int N = 0, i;
 
-    if (V == 0) { ConsoleWrite("0"); return; }
+    if (V == 0) { WriteOut("0"); return; }
     while (V > 0 && N < 11) {
         Buf[N++] = (char)('0' + (V % 10));
         V /= 10;
     }
     for (i = N - 1; i >= 0; i--) {
         char One[2];
-        One[0] = Buf[i]; One[1] = 0; ConsoleWrite(One);
+        One[0] = Buf[i]; One[1] = 0; WriteOut(One);
     }
 }
 
@@ -137,24 +152,24 @@ static int Want(const DEVICE_NODE *Dev, const LIST_OPTS *Opt) {
 }
 
 static void WriteVerbose(const DEVICE_NODE *Dev) {
-    ConsoleWrite("      ");
+    WriteOut("      ");
     WriteHex4(Dev->Vendor);
-    ConsoleWrite(":");
+    WriteOut(":");
     WriteHex4(Dev->Device);
-    ConsoleWrite("  class=");
+    WriteOut("  class=");
     WriteHex2(Dev->Class);
-    ConsoleWrite("/");
+    WriteOut("/");
     WriteHex2(Dev->Subclass);
-    ConsoleWrite("/");
+    WriteOut("/");
     WriteHex2(Dev->ProgIf);
-    ConsoleWrite("  BAR0=");
-    ConsoleWriteHex64(Dev->Bar[0]);
-    ConsoleWrite("/");
-    ConsoleWriteHex64(Dev->BarSize[0]);
-    ConsoleWrite("  IRQ=");
+    WriteOut("  BAR0=");
+    WriteHex64(Dev->Bar[0]);
+    WriteOut("/");
+    WriteHex64(Dev->BarSize[0]);
+    WriteOut("  IRQ=");
     WriteHex2(Dev->Irq);
-    ConsoleWrite(Dev->IrqMode == 2 ? " mode=msix" : Dev->IrqMode == 1 ? " mode=msi" : " mode=intx");
-    ConsoleWrite("\n");
+    WriteOut(Dev->IrqMode == 2 ? " mode=msix" : Dev->IrqMode == 1 ? " mode=msi" : " mode=intx");
+    WriteOut("\n");
 }
 
 static void Dump(const LIST_OPTS *Opt) {
@@ -165,7 +180,7 @@ static void Dump(const LIST_OPTS *Opt) {
 
     DeviceSyncBound();
     N = DeviceCount();
-    ConsoleWrite("=== Devices ===\n");
+    WriteOut("=== Devices ===\n");
     for (i = 0; i < N; i++) {
         DEVICE_NODE *Dev = DeviceGet(i);
         const char *Title;
@@ -175,50 +190,51 @@ static void Dump(const LIST_OPTS *Opt) {
         if (!Dev || !Want(Dev, Opt)) {
             continue;
         }
-        ConsoleWrite("  [");
+        WriteOut("  [");
         WriteHex2(Dev->PciBus);
-        ConsoleWrite(":");
+        WriteOut(":");
         WriteHex2(Dev->PciDev);
-        ConsoleWrite(".");
+        WriteOut(".");
         WriteHex2(Dev->PciFn & 0x7u);
-        ConsoleWrite("] ");
+        WriteOut("] ");
         Title = TitleOf(Dev);
-        ConsoleWrite(Title);
+        WriteOut(Title);
         Len = 0;
         while (Title[Len]) {
             Len++;
         }
         for (Pad = Len; Pad < 36; Pad++) {
-            ConsoleWrite(" ");
+            WriteOut(" ");
         }
         if (Dev->Bound && Dev->Driver && Dev->Driver->Name) {
-            ConsoleWrite(" (bound, ");
-            ConsoleWrite(Dev->Driver->Name);
-            ConsoleWrite(")");
+            WriteOut(" (bound, ");
+            WriteOut(Dev->Driver->Name);
+            WriteOut(")");
             Bound++;
         } else {
-            ConsoleWrite(" (unbound)");
+            WriteOut(" (unbound)");
         }
-        ConsoleWrite("\n");
+        WriteOut("\n");
         if (Opt->Verbose) {
             WriteVerbose(Dev);
         }
         Total++;
     }
     if (Total == 0) {
-        ConsoleWrite("  (none)\n");
+        WriteOut("  (none)\n");
     }
-    ConsoleWrite("=== Totals ===\n");
-    ConsoleWrite("  Total: ");
+    WriteOut("=== Totals ===\n");
+    WriteOut("  Total: ");
     WriteDec((UINT32)Total);
-    ConsoleWrite("  Bound: ");
+    WriteOut("  Bound: ");
     WriteDec((UINT32)Bound);
-    ConsoleWrite("\n");
+    WriteOut("\n");
 }
 
-void DeviceListDump(void) {
+void DeviceListDump(void (*Write)(const char *Text)) {
     LIST_OPTS Opt;
 
+    gWrite = Write;
     Opt.Verbose = 0;
     Opt.BoundOnly = 0;
     Opt.UnboundOnly = 0;
@@ -230,10 +246,11 @@ void DeviceListDump(void) {
     Dump(&Opt);
 }
 
-int DeviceListDumpArgs(int Argc, char **Argv) {
+int DeviceListDumpArgs(int Argc, char **Argv, void (*Write)(const char *Text)) {
     LIST_OPTS Opt;
     int i;
 
+    gWrite = Write;
     Opt.Verbose = 0;
     Opt.BoundOnly = 0;
     Opt.UnboundOnly = 0;
@@ -269,7 +286,7 @@ int DeviceListDumpArgs(int Argc, char **Argv) {
             const char *Key;
 
             if (i + 1 >= Argc || !Argv[i + 1]) {
-                ConsoleWrite("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
+                WriteOut("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
                 return -1;
             }
             Key = Argv[++i];
@@ -278,15 +295,15 @@ int DeviceListDumpArgs(int Argc, char **Argv) {
             Opt.ClassOk = ParseClassByte(Key, &Opt.Class);
             continue;
         }
-        ConsoleWrite("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
+        WriteOut("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
         return -1;
     }
     if (Opt.BoundOnly && Opt.UnboundOnly) {
-        ConsoleWrite("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
+        WriteOut("usage: list devices [-v] [-t] [-b|-u] [-c class]\n");
         return -1;
     }
     if (Opt.TreeMode) {
-        DeviceListDumpTree(Opt.Verbose);
+        DeviceListDumpTree(Opt.Verbose, Write);
         return 0;
     }
     Dump(&Opt);

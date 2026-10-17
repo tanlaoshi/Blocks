@@ -3,7 +3,6 @@
  */
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
-#include "Console.h"
 #include "Hal.h"
 #include "Debug.h"
 /*

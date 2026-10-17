@@ -8,7 +8,7 @@
 #include "Scheduler.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
-#include "Console.h"
+#include "ToySerialLog.h"
 #include "Debug.h"
 #include "PhysicalMemory.h"
 #include "Fat.h"
@@ -129,7 +129,7 @@ int ProcessExec(const char *Path) {
     char Dummy[1][EXEC_ARG_LEN];
 
     if (!Path || !Path[0]) {
-        ConsoleWrite("exec: empty path\n");
+        ToyLogMisc("exec: empty path\n");
         return -1;
     }
     if (ProcessLoadPath(Path, &Space, &Info) != 0) {
@@ -138,7 +138,7 @@ int ProcessExec(const char *Path) {
     /* CRT _start 读 (%rsp)=argc；须把 rsp 落到已映射栈页内（与 execve 一致） */
     if (ProcessSetupArgvStack(Space, Info.StackTop, Dummy, 0, &NewRsp) != 0) {
         VirtualMemorySpaceDestroy(Space);
-        ConsoleWrite("exec: argv stack failed\n");
+        ToyLogMisc("exec: argv stack failed\n");
         return -1;
     }
     VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
@@ -213,7 +213,7 @@ int ProcessExecve(HAL_INTERRUPT_FRAME *Frame, const char *Path, UINT64 UserArgv,
     if (ProcessSetupArgvStack(NewSpace, Info.StackTop, ArgBuf, Argc, &NewRsp) != 0) {
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         VirtualMemorySpaceDestroy(NewSpace);
-        ConsoleWrite("execve: argv stack failed\n");
+        ToyLogMisc("execve: argv stack failed\n");
         return -1;
     }
 
@@ -253,13 +253,13 @@ int ProcessExecve(HAL_INTERRUPT_FRAME *Frame, const char *Path, UINT64 UserArgv,
 int ProcessRunDemo(void) {
     UINTN Size = (UINTN)(_binary_User_hello_elf_end - _binary_User_hello_elf_start);
     if (Size == 0) {
-        ConsoleWrite("user: no embedded hello.elf\n");
+        ToyLogMisc("user: no embedded hello.elf\n");
         return -1;
     }
 
     VIRTUAL_ADDRESS_SPACE *Space = VirtualMemorySpaceCreate();
     if (!Space) {
-        ConsoleWrite("user: address space failed\n");
+        ToyLogMisc("user: address space failed\n");
         return -1;
     }
 

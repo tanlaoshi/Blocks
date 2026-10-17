@@ -124,7 +124,7 @@ static void CommandLsdev(int Argc, char **Argv) {
     UINTN i;
     UINTN Bound = 0;
 
-    if (DeviceListDumpArgs(Argc, Argv) != 0) {
+    if (DeviceListDumpArgs(Argc, Argv, ConsoleWrite) != 0) {
         return;
     }
 

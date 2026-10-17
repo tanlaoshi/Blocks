@@ -6,16 +6,31 @@
  * 否则 Name + [bus:dev.fn]。-v 时每节点后追加 VID:DID/class/BAR0/IRQ 行。
  */
 #include "Device.h"
-#include "Console.h"
 #include "Debug.h"
 #include "Text.h"
+#include "HalSerial.h"
+
+static void (*gWrite)(const char *Text);
+
+static void WriteOut(const char *Text) {
+    if (gWrite != 0 && Text != 0) {
+        gWrite(Text);
+    }
+}
+
+static void WriteHex64(UINT64 Value) {
+    char Buf[20];
+
+    HalSerialFormatHex(Buf, Value, 16);
+    WriteOut(Buf);
+}
 
 static void WriteHex2(UINT32 V) {
     char B[3];
     B[0] = FormatHexadecimalDigit(V >> 4);
     B[1] = FormatHexadecimalDigit(V);
     B[2] = 0;
-    ConsoleWrite(B);
+    WriteOut(B);
 }
 
 static void WriteHex4(UINT32 V) {
@@ -25,7 +40,7 @@ static void WriteHex4(UINT32 V) {
     B[2] = FormatHexadecimalDigit(V >> 4);
     B[3] = FormatHexadecimalDigit(V);
     B[4] = 0;
-    ConsoleWrite(B);
+    WriteOut(B);
 }
 
 static const char *TitleOf(const DEVICE_NODE *Dev) {
@@ -42,36 +57,36 @@ static void PrintNode(DEVICE_NODE *Dev, int Depth, int Verbose) {
     int i;
 
     for (i = 0; i < Depth * 2; i++) {
-        ConsoleWrite(" ");
+        WriteOut(" ");
     }
-    ConsoleWrite("[");
+    WriteOut("[");
     WriteHex2(Dev->PciBus);
-    ConsoleWrite(":");
+    WriteOut(":");
     WriteHex2(Dev->PciDev);
-    ConsoleWrite(".");
+    WriteOut(".");
     WriteHex2(Dev->PciFn & 0x7u);
-    ConsoleWrite("] ");
-    ConsoleWrite(TitleOf(Dev));
-    ConsoleWrite("\n");
+    WriteOut("] ");
+    WriteOut(TitleOf(Dev));
+    WriteOut("\n");
     if (Verbose) {
-        ConsoleWrite("      ");
+        WriteOut("      ");
         WriteHex4(Dev->Vendor);
-        ConsoleWrite(":");
+        WriteOut(":");
         WriteHex4(Dev->Device);
-        ConsoleWrite("  class=");
+        WriteOut("  class=");
         WriteHex2(Dev->Class);
-        ConsoleWrite("/");
+        WriteOut("/");
         WriteHex2(Dev->Subclass);
-        ConsoleWrite("/");
+        WriteOut("/");
         WriteHex2(Dev->ProgIf);
-        ConsoleWrite("  BAR0=");
-        ConsoleWriteHex64(Dev->Bar[0]);
-        ConsoleWrite("/");
-        ConsoleWriteHex64(Dev->BarSize[0]);
-        ConsoleWrite("  IRQ=");
+        WriteOut("  BAR0=");
+        WriteHex64(Dev->Bar[0]);
+        WriteOut("/");
+        WriteHex64(Dev->BarSize[0]);
+        WriteOut("  IRQ=");
         WriteHex2(Dev->Irq);
-        ConsoleWrite(Dev->IrqMode == 2 ? " mode=msix" : Dev->IrqMode == 1 ? " mode=msi" : " mode=intx");
-        ConsoleWrite("\n");
+        WriteOut(Dev->IrqMode == 2 ? " mode=msix" : Dev->IrqMode == 1 ? " mode=msi" : " mode=intx");
+        WriteOut("\n");
     }
 }
 
@@ -91,11 +106,14 @@ static void PrintSubtree(DEVICE_NODE *Parent, int Depth, int Verbose) {
     }
 }
 
-void DeviceListDumpTree(int Verbose) {
+void DeviceListDumpTree(int Verbose, void (*Write)(const char *Text)) {
     int i;
-    int N = DeviceCount();
+    int N;
 
-    ConsoleWrite("=== Devices (tree) ===\n");
+    gWrite = Write;
+    N = DeviceCount();
+
+    WriteOut("=== Devices (tree) ===\n");
     for (i = 0; i < N; i++) {
         DEVICE_NODE *Dev = DeviceGet(i);
 

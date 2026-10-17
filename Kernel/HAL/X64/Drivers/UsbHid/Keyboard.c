@@ -1,5 +1,5 @@
 /*
- * Keyboard.c — 键盘灯。报告入队在 HidIntrKbd.c。
+ * Keyboard.c — 键盘灯。报告入队在 HidInterruptKeyboard.c。
  * 只走主机控制器公共口，不包含 xHCI 私头。
  */
 #include "UsbHostController.h"

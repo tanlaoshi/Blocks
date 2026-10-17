@@ -1,5 +1,5 @@
 /*
- * FatFsOps.c — FAT 作为 VFS 第一后端（PR-F1 / PR-F2）
+ * Operations.c — FAT 作为 VFS 第一后端（PR-F1 / PR-F2）
  */
 #include "Vfs.h"
 #include "Fat.h"

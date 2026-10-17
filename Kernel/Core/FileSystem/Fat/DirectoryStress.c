@@ -1,5 +1,5 @@
 /*
- * FatDirStress.c — 大目录回归（PR-S-fatdir-1）
+ * DirectoryStress.c — 大目录回归（PR-S-fatdir-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

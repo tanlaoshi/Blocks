@@ -1,5 +1,5 @@
 /*
- * FatFileRead.c — 偏移读（PR-S-fatfile-1）
+ * FileRead.c — 偏移读（PR-S-fatfile-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

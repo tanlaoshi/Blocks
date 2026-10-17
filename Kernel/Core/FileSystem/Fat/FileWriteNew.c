@@ -1,5 +1,5 @@
 /*
- * FatFileWriteNew.c — 分配新簇链并建/改目录项（PR-F-fat-1）
+ * FileWriteNew.c — 分配新簇链并建/改目录项（PR-F-fat-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

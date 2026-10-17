@@ -1,6 +1,6 @@
 /*
- * FatPath.c — 路径解析（PR-S-fatpath-1）
- * 名称匹配：FatPathName.c
+ * Path.c — 路径解析（PR-S-fatpath-1）
+ * 名称匹配：PathName.c
  */
 #include "Fat.h"
 #include "FatPrivate.h"

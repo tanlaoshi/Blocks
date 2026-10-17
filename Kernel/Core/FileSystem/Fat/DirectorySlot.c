@@ -1,5 +1,5 @@
 /*
- * FatDirSlot.c — 空闲槽、扩目录、建项（PR-S-fatdir-1）
+ * DirectorySlot.c — 空闲槽、扩目录、建项（PR-S-fatdir-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

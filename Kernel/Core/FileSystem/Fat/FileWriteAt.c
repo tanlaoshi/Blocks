@@ -1,5 +1,5 @@
 /*
- * FatFileWriteAt.c — 偏移写（PR-S-fatfile-1）
+ * FileWriteAt.c — 偏移写（PR-S-fatfile-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

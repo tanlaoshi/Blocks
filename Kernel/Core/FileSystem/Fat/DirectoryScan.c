@@ -1,5 +1,5 @@
 /*
- * FatDirScan.c — 目录缓冲扫描与项读写（PR-S-fatdir-1）
+ * DirectoryScan.c — 目录缓冲扫描与项读写（PR-S-fatdir-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

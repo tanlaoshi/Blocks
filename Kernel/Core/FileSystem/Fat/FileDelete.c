@@ -1,5 +1,5 @@
 /*
- * FatFileDelete.c — 删除与改名（PR-S-fatfile-1）
+ * FileDelete.c — 删除与改名（PR-S-fatfile-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

@@ -1,5 +1,5 @@
 /*
- * FatPathName.c — 8.3 / LFN 名称匹配（PR-S-fatpath-1）
+ * PathName.c — 8.3 / LFN 名称匹配（PR-S-fatpath-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

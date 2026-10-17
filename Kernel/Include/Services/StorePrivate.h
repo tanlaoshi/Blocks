@@ -34,7 +34,7 @@ int ResolveEntryDepends(const char *Id, char *OutDepends, int OutMax);
 int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max);
 int LookupPackageKind(const char *Id);
 
-/* FatPath.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
+/* Path.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
 static inline int StrEqIgnoreCase(const char *A, const char *B) {
     if (!A || !B) {
         return 0;

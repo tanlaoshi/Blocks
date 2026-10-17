@@ -1,5 +1,5 @@
 /*
- * FatFormat.c — PR-FS-inst-1：简易 FAT32 格式化
+ * Format.c — PR-FS-inst-1：简易 FAT32 格式化
  */
 #include "Fat.h"
 #include "FatPrivate.h"

@@ -1,5 +1,5 @@
 /*
- * FatFileWriteExist.c — 旧簇链就地覆写（PR-F-fat-1）
+ * FileWriteExist.c — 旧簇链就地覆写（PR-F-fat-1）
  */
 #include "Fat.h"
 #include "FatPrivate.h"

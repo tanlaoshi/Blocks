@@ -1,7 +1,7 @@
 /*
- * FatPrivate.h — FAT 实现内部共享（PR-R3 拆分 Fat.c）
+ * FatPrivate.h — FAT 实现内部共享
  *
- * 仅 Core/FileSystem/Fat/ 使用；公开 API 仍见 Fat.h。
+ * 主文件是 Fat.c（FatInitialize）。仅 Core/FileSystem/Fat/ 使用；公开 API 仍见 Fat.h。
  */
 #ifndef FAT_PRIVATE_H
 #define FAT_PRIVATE_H
@@ -44,7 +44,7 @@ typedef struct {
     int    Valid;
 } FAT_LFN_ACC;
 
-/* 卷几何与扇区/簇缓冲（定义于 FatIo.c） */
+/* 卷几何与扇区/簇缓冲（定义于 InputOutput.c） */
 extern UINT8 gSector[SECTOR];
 extern UINT8 gCluster[SECTOR * 128];
 extern UINT32 gStartLba;
@@ -61,12 +61,12 @@ extern UINT32 gDataStart;
 extern UINT32 gFatType;
 extern UINT32 gMaxCluster;
 
-/* 目录枚举输出（定义于 FatDir.c） */
+/* 目录枚举输出（定义于 Directory.c） */
 extern FAT_DIRECTORY_ENTRY *gListOut;
 extern int gListMax;
 extern int gListCount;
 
-/* —— FatIo.c —— */
+/* —— InputOutput.c —— */
 FAT_DIR_CTX FatRootCtx(void);
 UINT16 Read16(const UINT8 *P);
 UINT32 Read32(const UINT8 *P);
@@ -84,7 +84,7 @@ UINT32 EocValue(void);
 int FatFreeChain(UINT32 Cluster);
 UINT32 FatAllocCluster(void);
 
-/* —— FatPath.c —— */
+/* —— Path.c —— */
 char ToUpper(char C);
 int StrEqIgnoreCase(const char *A, const char *B);
 int CompIsDot(const char *N);
@@ -108,7 +108,7 @@ int LookupInDir(FAT_DIR_CTX Dir, const char *Name,
 int ResolvePathAsDir(const char *Path, FAT_DIR_CTX *OutDir);
 int ResolvePathParentLeaf(const char *Path, FAT_DIR_CTX *OutParent, char *Leaf);
 
-/* —— FatDir.c —— */
+/* —— Directory.c —— */
 void PrintEntryNamed(const char *Name, UINT8 Attr);
 int ScanDirBuffer(UINT8 *Buf, UINT32 Bytes, const char *Name,
                   UINT32 *OutCluster, UINT32 *OutSize, int ListOnly,
@@ -138,14 +138,14 @@ UINT32 ParentClusterForDotDot(FAT_DIR_CTX Parent);
 int DirCreateEntry(FAT_DIR_CTX Parent, const char *Leaf, UINT8 Attr,
                    UINT32 Cluster, UINT32 Size);
 
-/* —— FatFile.c —— */
+/* —— File.c —— */
 void FatIoBreath(void);
 int SeekFileOffset(UINT32 First, UINTN Offset, UINT32 *OutCl, UINT32 *OutOff);
 int ReadFileClusters(UINT32 Cluster, UINT32 Size, void *Buffer, UINTN MaxSize,
                      UINTN *OutSize);
 int DirUnlinkKeepClusters(FAT_DIR_CTX Parent, const char *Leaf);
 
-/* —— FatFileWrite*.c（PR-F-fat-1） —— */
+/* —— FileWrite*.c（PR-F-fat-1） —— */
 int FatWriteStoreChunk(UINT32 Cl, const UINT8 *Src, UINT32 Off, UINT32 Chunk, UINT32 Cb);
 int FatWriteExist(FAT_DIR_CTX Parent, int Index, UINT32 OldCluster,
                   const UINT8 *Src, UINTN Size, UINT32 NeedClusters, UINT32 Cb);

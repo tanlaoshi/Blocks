@@ -36,7 +36,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol);
 void FsMountAddResVolume(void);
 void FsMountPickDefault(int ToyVol, UINT8 *Tmp, UINTN TmpSz);
 
-/* FatPath.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
+/* Path.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
 static inline int StrEqIgnoreCase(const char *A, const char *B) {
     while (*A && *B) {
         char Ca = *A;

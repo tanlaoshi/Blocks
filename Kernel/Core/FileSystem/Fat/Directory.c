@@ -1,6 +1,6 @@
 /*
- * FatDir.c — 目录枚举、mkdir/rmdir（PR-S-fatdir-1）
- * 扫描：FatDirScan.c；名字：FatDirName.c；建项：FatDirSlot.c；压测：FatDirStress.c
+ * Directory.c — 目录枚举、mkdir/rmdir（PR-S-fatdir-1）
+ * 扫描：DirectoryScan.c；名字：DirectoryName.c；建项：DirectorySlot.c；压测：DirectoryStress.c
  */
 #include "Fat.h"
 #include "FatPrivate.h"

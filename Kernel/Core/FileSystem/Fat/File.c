@@ -1,6 +1,6 @@
 /*
- * FatFile.c — 整文件读、同步、IO 喘息（PR-S-fatfile-1）
- * 偏移读：FatFileRead.c；写：FatFileWrite.c；删改名：FatFileDelete.c
+ * File.c — 整文件读、同步、IO 喘息（PR-S-fatfile-1）
+ * 偏移读：FileRead.c；写：FileWrite.c；删改名：FileDelete.c
  */
 #include "Fat.h"
 #include "FatPrivate.h"

@@ -1,6 +1,6 @@
 /*
- * FatFileWrite.c — 整文件写编排（PR-F-fat-1）
- * 就地覆写：FatFileWriteExist.c；新链：FatFileWriteNew.c
+ * FileWrite.c — 整文件写编排（PR-F-fat-1）
+ * 就地覆写：FileWriteExist.c；新链：FileWriteNew.c
  */
 #include "Fat.h"
 #include "FatPrivate.h"

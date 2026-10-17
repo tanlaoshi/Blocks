@@ -3,7 +3,7 @@
  *
  * 由单体 Drivers/XHCI.c 剩余部分迁入；子模块见 Drivers/XHCI/ 下各 .c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 UINT64 gCapabilityBase;
 UINT64 gOperationalBase;

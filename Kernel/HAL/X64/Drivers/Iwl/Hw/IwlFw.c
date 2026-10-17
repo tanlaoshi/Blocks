@@ -1,7 +1,7 @@
 /*
  * IwlFw.c — 读盘 / TLV / INIT→RT 编排（PR-N-wifi-2）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalDriverFile.h"
 #include "PhysicalMemory.h"
 #include "ToySerialLog.h"

@@ -2,7 +2,7 @@
  * Transfer.c — PR-H-xhci-core-split-4：WaitTransfer / ServiceHidCompletions
  * PR-H-xhci-evt-excl-1：Wait 全程独占（门铃由 ControlXfer 同窗敲）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 /* 枚举期 Wait* 也会进 ProcessEvents；必须顺带再投递中断 IN，否则 TRB 耗尽后永久无完成 */

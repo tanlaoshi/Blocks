@@ -3,7 +3,7 @@
  *
  * 从单体 XHCI.c 原样搬家；Format/LogArms 见 DiagFormat.c。不改语义。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 
 /* PR-H-xhci-split-2：诊断相关全局（定义在本文件） */

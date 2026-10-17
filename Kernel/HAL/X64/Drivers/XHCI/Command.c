@@ -3,7 +3,7 @@
  * PR-H-xhci-evt-excl-1：门铃与等待同属独占窗
  * PR-H-xhci-evt-excl-4：Recover 全程独占；sick 前再 Recover 清挂起 TRB
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* 等待命令环完成事件（调用方须已 EnterExclusive，或由此函数自管） */
 int WaitCommand(int Timeout) {

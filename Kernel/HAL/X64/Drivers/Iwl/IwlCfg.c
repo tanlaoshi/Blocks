@@ -1,7 +1,7 @@
 /*
  * IwlCfg.c — 读 FW/WIFI.CFG（SSID= / PSK=）；永不日志 PSK
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalDriverFile.h"
 
 char gIwlSsid[IWL_SSID_MAX + 1];

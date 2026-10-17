@@ -1,7 +1,7 @@
 /*
  * IwlProbe.c — PCI 8086:24fd + BAR0 Map（PR-N-wifi-2）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "PCIe.h"
 #include "VirtualMemory.h"
 #include "HalSerial.h"

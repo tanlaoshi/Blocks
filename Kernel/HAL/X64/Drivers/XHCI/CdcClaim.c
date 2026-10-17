@@ -1,7 +1,7 @@
 /*
  * CdcClaim.c — PR-H-usb-uart-cdc-1：CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 UINT32 gCdcSlot;
 UINT32 gCdcPort;

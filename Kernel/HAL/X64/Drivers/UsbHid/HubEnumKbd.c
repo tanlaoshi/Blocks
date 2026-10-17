@@ -3,7 +3,7 @@
  *
  * 从 Hub.c 原样搬家；不改语义。Hub 口帮手去掉 static，声明在 Internal.h。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;

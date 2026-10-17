@@ -1,7 +1,7 @@
 /*
  * MscClaimParse.c — MSC 配置描述符解析（PR-S3-xhcimscclaim-1）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* 配置描述符中找 MSC Bulk IN/OUT（偏好 BOT；允许 UASP；兜底任一对 Bulk） */
 int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,

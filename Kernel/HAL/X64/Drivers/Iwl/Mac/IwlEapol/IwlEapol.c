@@ -3,7 +3,7 @@
  *
  * 刀 #85：先收 msg1 再 PBKDF2。GTK 解包略。永不串口打印 PSK。
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalSerial.h"
 
 int IwlEapolRun(void) {

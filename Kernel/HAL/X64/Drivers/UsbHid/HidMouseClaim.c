@@ -2,7 +2,7 @@
  * HidMouseClaim.c — PR-S-xhcihid-1：复合设备鼠标认领
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;

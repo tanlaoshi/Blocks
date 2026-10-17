@@ -3,7 +3,7 @@
  * HID 与 MSC 仍走原来的函数，本文件没有新调用方。
  */
 #include "UsbHostController.h"
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 static int HostControllerControl(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, UINT32 Len) {
     (void)Pipe;

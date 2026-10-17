@@ -3,7 +3,7 @@
  *
  * 配置描述符解析见 MscClaimParse.c。MSC 全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* ConfigEP：Bulk IN + Bulk OUT（EP Type 6/2）；带回 Route/TT */
 static int ConfigureMscBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,

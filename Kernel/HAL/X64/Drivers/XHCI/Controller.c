@@ -3,7 +3,7 @@
  *
  * 从 Xhci.c 原样搬家；不改语义。不抽 Init。控制器相关全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* 释放 USB 传统支持（BIOS 移交） */
 void TakeLegacy(void) {

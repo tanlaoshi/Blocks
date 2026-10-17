@@ -3,7 +3,7 @@
  *
  * Prep/Map/Start/Survey 见 InitHwPrep.c。BSS 仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 int InitHw(UINT64 BaseAddress) {
     int RealPc = !HalCpuIsHypervisor();

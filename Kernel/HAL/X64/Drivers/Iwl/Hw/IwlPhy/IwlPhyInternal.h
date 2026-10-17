@@ -3,7 +3,7 @@
  */
 #ifndef IWL_PHY_INTERNAL_H
 #define IWL_PHY_INTERNAL_H
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 
 #define IWL_PHY_CFG_MAX     512u
 #define IWL_PHY_NCH_MAX     2048u

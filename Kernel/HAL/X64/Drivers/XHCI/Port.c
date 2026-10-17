@@ -3,7 +3,7 @@
  *
  * 从单体 XHCI.c 原样搬家；不改语义。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 UINT32 PortReg(UINT32 Port1) {
     return 0x400 + (Port1 - 1) * 0x10;

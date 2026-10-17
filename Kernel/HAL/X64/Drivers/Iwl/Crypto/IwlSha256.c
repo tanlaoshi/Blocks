@@ -1,7 +1,7 @@
 /*
  * IwlSha256.c — SHA-256 与 802.11 KDF（描述符版本 3 的 PTK）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 
 static UINT32 Rotr(UINT32 X, UINTN N)
 {

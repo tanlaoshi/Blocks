@@ -3,7 +3,7 @@
  * Force/Address/Hub 帮手在 MscClaimPort.c。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /*
  * PR-H-msc-4：单口 claim — Address（可 Force PR）+ SetConfig + Bulk IN/OUT。

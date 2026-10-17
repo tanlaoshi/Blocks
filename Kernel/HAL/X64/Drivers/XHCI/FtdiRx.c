@@ -1,7 +1,7 @@
 /*
  * FtdiRx.c — PR-H-usb-uart-ftdi-2：Bulk IN + 剥 2 字节状态 → 字符环
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 #define FTDI_RX_Q   256
 #define FTDI_STATUS 2

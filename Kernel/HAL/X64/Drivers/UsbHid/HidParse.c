@@ -2,7 +2,7 @@
  * HidParse.c — PR-S-xhcihid-1：配置描述符解析（键/鼠）
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
                        UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval) {

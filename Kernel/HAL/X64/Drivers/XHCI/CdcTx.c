@@ -1,7 +1,7 @@
 /*
  * CdcTx.c — PR-H-usb-uart-cdc-1：CDC Bulk OUT TX + ConfigEP + 事件匹配
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 extern UINT32 gCdcBulkOutDci;
 extern UINT16 gCdcBulkOutMps;

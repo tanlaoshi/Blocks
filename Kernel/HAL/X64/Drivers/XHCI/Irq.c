@@ -2,7 +2,7 @@
  * Irq.c — PR-H-xhci-split-8：IRQ / Drain / dual-poll 切换
  * PR-H-xhci-evt-excl-2：环消费走 gEvtConsumerLock；HID 入队另持 gHidQueueLock
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* PR-S-input-irq：xHCI IRQ dest 逻辑核。SMP≥3→CPU2（与 InputTask 同核）；
  * SMP<3→CPU0（无 InputTask，保持原行为）。序 2 cli 守 drain 期 IF=0，

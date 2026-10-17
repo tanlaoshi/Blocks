@@ -1,7 +1,7 @@
 /*
  * FtdiClaim.c — PR-H-usb-uart-ftdi-1：FT232 认领（VID/PID + Bulk OUT + 115200）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 #define FTDI_VID           0x0403u
 #define FTDI_PID_FT232R    0x6001u

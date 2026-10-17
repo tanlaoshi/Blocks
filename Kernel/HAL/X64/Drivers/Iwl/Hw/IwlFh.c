@@ -2,7 +2,7 @@
  * IwlFh.c — FH 服务通道灌固件（PR-N-wifi-2）
  * 8000 secured 必须 FH DMA；scratch=PMM；桥 BM 见 IwlPciPathPrep。
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "PhysicalMemory.h"
 
 #define IWL_WFPM_GP2           0xA030B4u

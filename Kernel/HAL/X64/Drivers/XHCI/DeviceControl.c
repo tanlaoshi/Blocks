@@ -3,7 +3,7 @@
  *
  * 从 Device.c 原样搬家；不改语义。无 static 提升。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 int ControlXfer(USB_SETUP_PACKET *Setup, void *Data) {
     XHCI_TRB *Ring;

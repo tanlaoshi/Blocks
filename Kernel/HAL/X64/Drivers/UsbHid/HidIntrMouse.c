@@ -2,7 +2,7 @@
  * HidIntrMouse.c — PR-S-xhcihid-1：鼠标中断端点配置 / 入队
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
                               UINT8 Speed) {

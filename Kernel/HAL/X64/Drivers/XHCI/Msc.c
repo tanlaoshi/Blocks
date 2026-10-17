@@ -5,7 +5,7 @@
  * 根口编排→MscClaimPorts。事件环 Bulk 完成仍在 Xhci.c。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环地址；勿迁出）。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbMscHost.h"
 
 /*

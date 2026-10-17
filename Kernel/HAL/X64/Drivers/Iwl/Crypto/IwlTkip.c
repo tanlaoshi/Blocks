@@ -1,5 +1,5 @@
 /* IwlTkip.c — TKIP 组播 RX（PR-N-wifi-tkip）；对齐 IEEE / lib80211_crypt_tkip */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 
 static const UINT16 gSbox[256] = {
     0xC6A5, 0xF884, 0xEE99, 0xF68D, 0xFF0D, 0xD6BD, 0xDEB1, 0x9154,

@@ -1,7 +1,7 @@
 /*
  * FtdiTx.c — PR-H-usb-uart：FT232 Bulk OUT TX + 事件匹配（IN/OUT）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 extern UINT32 gFtdiBulkOutDci;
 extern UINT16 gFtdiBulkOutMps;

@@ -1,7 +1,7 @@
 /*
  * InitHwPrep.c — RealPc DMAR/TE + CAP/环快照（PR-F-xhci-2）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 void InitHwRealPcDmar(void) {
     /*

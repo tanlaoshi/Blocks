@@ -1,7 +1,7 @@
 /*
  * IwlSend.c — 以太网→802.11 发送（PR-S-iwl-split-2，自 Iwl.c 搬家）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalSerial.h"
 
 int IwlSendFrame(const UINT8 *Frame, UINTN FrameLen) {

@@ -2,7 +2,7 @@
  * HidGetReport.c — PR-S-xhcihid-1：GET_REPORT / 键盘 EP0 兜底
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* HID GET_REPORT(Input)：复合设备键盘中断 IN 不完成时的 EP0 兜底 */
 int HidGetInputReport(UINT8 Iface, void *Data, UINT16 Length) {

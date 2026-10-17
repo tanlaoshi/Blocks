@@ -3,7 +3,7 @@
  *
  * VID 0BDA + PID 白名单；SetConfig；记 Bulk EP 供 wifi-2。不灌固件。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "WifiIds.h"
 #include "UsbWifiHost.h"
 

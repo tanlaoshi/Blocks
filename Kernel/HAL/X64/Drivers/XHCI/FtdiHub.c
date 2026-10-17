@@ -1,7 +1,7 @@
 /*
  * FtdiHub.c — PR-H-usb-uart-ftdi-1：已有 HID hub 时扫子口认 FT232
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 extern UINT32 gFtdiRoute;
 extern UINT8 gFtdiHubSlot;

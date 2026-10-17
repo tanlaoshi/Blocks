@@ -4,7 +4,7 @@
  * 从 Xhci.c 原样搬家；不改语义。环缓冲全局仍在 Xhci.c（勿迁 BSS）。
  * ProcessEvents* 已在 Event.c，本文件不搬。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 void DcbaaSet(UINT32 Slot, UINT64 Phys) {
     if (!gDcbaaLive || Slot > gDcbaaMaxSlot) {

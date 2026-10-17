@@ -3,7 +3,7 @@
  *
  * WPA2-PSK: IwlPbkdf2Sha1(passphrase, ssid, ssidlen, 4096, pmk, 32)
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 
 static void MemXor(UINT8 *Dst, const UINT8 *Src, UINTN Len)
 {

@@ -1,5 +1,5 @@
 /*
- * Internal.h — PR-H-xhci-split-1：xHCI 内部共享（宏/类型/extern/共享声明）
+ * Private.h — PR-H-xhci-split-1：xHCI 内部共享（宏/类型/extern/共享声明）
  *
  * 对外仍用 Drivers/XHCI.h。本头供 Drivers/XHCI/ 下各 .c 共用。
  * split-8：单体 Drivers/XHCI.c 已删；全局定义主要在 Xhci.c（MSC→Msc、事件→Event；勿迁 BSS）。

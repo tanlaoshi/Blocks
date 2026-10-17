@@ -1,7 +1,7 @@
 /*
  * MousePortClaim.c — 根口 Address / hub / 类过滤（PR-F-xhci-4）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;

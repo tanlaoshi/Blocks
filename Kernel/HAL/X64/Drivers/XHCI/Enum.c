@@ -3,7 +3,7 @@
  *
  * 单口试探 / 绑鼠见 EnumPort.c。BSS 仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 int EnumAndBind(void) {
     int RealPc = !HalCpuIsHypervisor();

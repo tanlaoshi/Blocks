@@ -4,7 +4,7 @@
  * 注意：0xFFC 等空洞读 A5A5 是正常「未实现」，不能当页界判据。
  * 对照：h=HBUS(0x444) 应活；f=FH@0x1000 / c=TCSR 若死 = FH 门控。
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalSerial.h"
 
 #define IWL_FH_MEM_LO   0x1000u

@@ -3,7 +3,7 @@
  * 从 MscClaimPorts 嵌套块原样抽出；不改语义。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /*
  * Force PR 直到 PED+CCS（真机）；QEMU 且已 PED 则直过。

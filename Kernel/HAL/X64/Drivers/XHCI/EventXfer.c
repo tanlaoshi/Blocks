@@ -1,7 +1,7 @@
 /*
  * EventXfer.c — Transfer Event 分发（PR-F-xhci-3）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 void EventHandleTransfer(XHCI_TRB *Evt) {
     UINT32 Code = (Evt->Status >> 24) & 0xFF;

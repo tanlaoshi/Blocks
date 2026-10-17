@@ -1,7 +1,7 @@
 /*
  * EnumPort.c — 根口试键盘 / 绑鼠标（PR-F-xhci-1）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;

@@ -1,7 +1,7 @@
 /*
  * IwlLog.c — iwl 黄字（PR-S-iwl-split-2，自 Iwl.c 搬家）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"
 

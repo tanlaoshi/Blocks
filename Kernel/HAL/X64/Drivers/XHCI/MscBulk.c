@@ -2,7 +2,7 @@
  * MscBulk.c — PR-S-xhcimsc-1：从 Msc.c 原样搬家；不改语义。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 static int WaitBulk(void) {
     int Own = 0;

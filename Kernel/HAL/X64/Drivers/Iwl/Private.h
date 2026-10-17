@@ -1,5 +1,5 @@
 /*
- * IwlPrivate.h — 薄转发。原有 .c 仍包含本文件，一次看见共享状态、Hw、Mac。
+ * Private.h — 薄转发。原有 .c 仍包含本文件，一次看见共享状态、Hw、Mac。
  * 密码学声明留在这里：Crypto 既不是 Hw 也不是 Mac。
  */
 #ifndef IWL_PRIVATE_H

@@ -3,7 +3,7 @@
  *
  * 从 Mouse.c 原样搬家；不改语义。无 static 提升；鼠标全局仍在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;

@@ -3,7 +3,7 @@
  *
  * 从 Xhci.c 原样搬家；不改语义。全局仍定义在 Xhci.c。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* 读 MMIO 32 位 */
 UINT32 ReadMmio32(UINT64 Addr) {

@@ -3,7 +3,7 @@
  *
  * 从 Diag.c 原样搬家；不改语义。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 
 void XhciDiagFormat(char *Buf, int Max) {

@@ -1,7 +1,7 @@
 /*
  * CdcRx.c — PR-H-usb-uart-cdc-2：CDC Bulk IN → 字符环（无状态前缀）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 #define CDC_RX_Q 256
 

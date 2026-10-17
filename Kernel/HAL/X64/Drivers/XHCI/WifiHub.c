@@ -1,7 +1,7 @@
 /*
  * WifiHub.c — 已有 HID hub 时扫子口认 8188EU（PR-N-wifi-1）
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 extern UINT32 gWifiRoute;
 extern UINT8 gWifiHubSlot;

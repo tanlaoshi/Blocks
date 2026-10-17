@@ -1,7 +1,7 @@
 /*
  * Iwl.c — Setup / 状态 / 后台起站（PR-S-iwl-split-2）
  */
-#include "Iwl/IwlPrivate.h"
+#include "Iwl/Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"

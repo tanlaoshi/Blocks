@@ -6,7 +6,7 @@
  *
  * DMA/环全局仍在 Xhci.c（勿迁 BSS）。
  */
-#include "XHCI/Internal.h"
+#include "XHCI/Private.h"
 
 /* 嵌套深度：Command Enter + Wait* Enter 可叠一层 */
 static volatile int gEvtExclusiveDepth;

@@ -1,5 +1,5 @@
 /*
- * GuiWm.c — 窗口全局态 / Init / 标题刷新（PR-S-guiwm-split-2）
+ * GuiWindowManager.c — 窗口全局态 / Init / 标题刷新（PR-S-guiwm-split-2）
  *
  * 开窗见 GuiOpen.c；点击与鼠标见 GuiPointer.c；命中见 GuiHit.c。
  */

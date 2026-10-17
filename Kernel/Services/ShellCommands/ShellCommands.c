@@ -5,11 +5,12 @@
 #include "ShellPrivate.h"
 
 void ShellCommandsRegisterVirtMin(void) {
+    ShellCommandsRegisterFs();
     ShellCommandsSystemRegisterVirtMin();
 }
 
 void ShellCommandsRegister(void) {
-    /* 目录类二级在 ShellCommandsRegisterFs（FileSystem.c） */
+    ShellCommandsRegisterFs();
     ShellCommandsSystemRegister();
     ShellCommandsThemeRegister();
     ShellCommandsUsbRegister();

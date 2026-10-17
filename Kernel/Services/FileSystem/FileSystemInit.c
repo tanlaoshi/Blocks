@@ -2,8 +2,6 @@
  * FileSystemInit.c — 重挂与启动（PR-S-filesystem-1）
  */
 #include "FileSystemPrivate.h"
-#include "Store.h"
-#include "ShellCommands.h"
 #include "Block.h"
 #include "Gpt.h"
 #include "Vfs.h"
@@ -183,7 +181,6 @@ int FileSystemInitialize(void) {
     Svc.ReadFileAt = FileSystemReadFileAt;
     Svc.WriteFileAt = FileSystemWriteFileAt;
     VfsServiceOpsRegister(&Svc);
-    ShellCommandsRegisterFs();
     DebugWrite("FS ready (ls, cat, write, wrbig, dirstress, rm, mkdir, rmdir, mv, vols, filestat, filesync)\n");
     if (!AnyVolumeHasToyId()) {
         HalConsoleWriteSerial("Fs: WARN no TOYOS.ID on any volume\n");

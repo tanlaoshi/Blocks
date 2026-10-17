@@ -5,9 +5,11 @@
 #include "Hal.h"
 #include "Console.h"
 #include "ShellCommands.h"
+#include "Store.h"
 #include "Locale.h"
 
 int InitializeConsole(void) {
+    StoreRegisterPathGuard();
     LocaleInitialize();
     ConsoleRegisterBuiltins();
     if (HalConsoleOnly()) {

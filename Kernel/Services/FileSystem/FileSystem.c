@@ -3,8 +3,6 @@
  * 路径操作：FileSystemOps.c；挂卷：FileSystemMount.c；初始化：FileSystemInit.c
  */
 #include "FileSystemPrivate.h"
-#include "Store.h"
-#include "ShellCommands.h"
 #include "Block.h"
 #include "Gpt.h"
 #include "Vfs.h"
@@ -170,4 +168,17 @@ int FileSystemVolBackend(int Idx, const char **OutName) {
         *OutName = Ops->Name ? Ops->Name : "?";
     }
     return 0;
+}
+
+static int (*gPathBlocked)(const char *Path);
+
+void FileSystemRegisterPathGuard(int (*Blocked)(const char *Path)) {
+    gPathBlocked = Blocked;
+}
+
+int FileSystemPathBlocked(const char *Path) {
+    if (!gPathBlocked) {
+        return 0;
+    }
+    return gPathBlocked(Path);
 }

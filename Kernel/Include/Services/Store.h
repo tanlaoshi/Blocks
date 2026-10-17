@@ -114,6 +114,8 @@ void StoreClearAppDesktopKeys(const char *Id);
 int StoreUnregister(const char *Id);
 /* FileSystem 删/改名前查询：1=允许绕过托管保护（Store 内部） */
 int StorePayloadBypassActive(void);
+/* 把「这条路径能不能直接改」挂到文件系统上 */
+void StoreRegisterPathGuard(void);
 
 /* 当前本机 arch 标签（如 x86_64） */
 const char *StoreHostArch(void);

@@ -15,6 +15,9 @@
 
 int FileSystemInitialize(void);
 
+/* 1 = 这条路径现在不能直接改。没登记则不拦截。 */
+void FileSystemRegisterPathGuard(int (*Blocked)(const char *Path));
+
 /* PR-H-msc-6：Block 后端变更后重扫卷（不清 VfsRegister）；成功 1 */
 int FileSystemRemountVolumes(void);
 

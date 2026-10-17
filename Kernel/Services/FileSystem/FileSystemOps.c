@@ -2,8 +2,6 @@
  * FileSystemOps.c — 路径上的读写与目录操作（PR-S-filesystem-1）
  */
 #include "FileSystemPrivate.h"
-#include "Store.h"
-#include "ShellCommands.h"
 #include "Block.h"
 #include "Gpt.h"
 #include "Vfs.h"
@@ -108,7 +106,7 @@ int FileSystemDeleteFile(const char *Path) {
     const char *Rel;
     int Err;
 
-    if (!StorePayloadBypassActive() && StoreIsManagedPayload(Path)) {
+    if (FileSystemPathBlocked(Path)) {
         return FAT_ERR_STORE;
     }
     Err = FileSystemPreparePath(Path, &Rel, 1);
@@ -146,8 +144,7 @@ int FileSystemRename(const char *OldPath, const char *NewPath) {
     if (!OldPath || !NewPath) {
         return FAT_ERR_INVAL;
     }
-    if (!StorePayloadBypassActive() &&
-        (StoreIsManagedPayload(OldPath) || StoreIsManagedPayload(NewPath))) {
+    if (FileSystemPathBlocked(OldPath) || FileSystemPathBlocked(NewPath)) {
         return FAT_ERR_STORE;
     }
     Err = FileSystemResolve(OldPath, &OldVol, &OldRel);

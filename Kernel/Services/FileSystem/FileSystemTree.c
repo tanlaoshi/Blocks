@@ -5,7 +5,6 @@
  * RemoveTree：先清子项再 rmdir；文件路径则 DeleteFile。
  */
 #include "FileSystemPrivate.h"
-#include "Store.h"
 #include "Fat.h"
 
 #define FS_TREE_PATH_MAX 192
@@ -217,7 +216,7 @@ int FileSystemRemoveTree(const char *Path) {
     if (!Path || !Path[0]) {
         return FAT_ERR_INVAL;
     }
-    if (!StorePayloadBypassActive() && StoreIsManagedPayload(Path)) {
+    if (FileSystemPathBlocked(Path)) {
         return FAT_ERR_STORE;
     }
     return RemoveTreeRec(Path, 0);

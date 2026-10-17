@@ -14,6 +14,14 @@ int StorePayloadBypassActive(void) {
     return gStorePayloadBypass > 0;
 }
 
+static int PathChangeBlocked(const char *Path) {
+    return !StorePayloadBypassActive() && StoreIsManagedPayload(Path);
+}
+
+void StoreRegisterPathGuard(void) {
+    FileSystemRegisterPathGuard(PathChangeBlocked);
+}
+
 int StoreDeleteManagedFile(const char *Path) {
     int Err;
 

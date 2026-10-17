@@ -2,7 +2,7 @@
  * IwlDataRx.c — 数据面组以太网 / NetInput（PR-F-iwl-4）
  * 解密见 IwlDataRxDec.c
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 #include "Net.h"
 

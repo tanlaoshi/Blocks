@@ -1,7 +1,7 @@
 /*
  * Enum.c — 根口 / 设备枚举 boot HID（PR-H-ehci-2 · 2j）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"

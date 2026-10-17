@@ -8,7 +8,7 @@
  * Encrypt writes MIC at Frame[HdrLen+BodyLen]; does not insert CCMP hdr —
  * caller writes PN/KeyID into the 8-byte CCMP header separately.
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 static void MemClr(UINT8 *P, UINTN N)
 {

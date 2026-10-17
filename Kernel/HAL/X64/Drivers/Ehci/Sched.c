@@ -3,7 +3,7 @@
  *
  * 假说：单 H-bit 工作 QH + 32B qTD 在 Intel 64-bit 寻址下 HC 不执行（tok Active+Cerr=3）。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
 #include "ToySerialLog.h"

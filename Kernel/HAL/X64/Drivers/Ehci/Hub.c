@@ -4,7 +4,7 @@
  * 2k 后 hub+1 已是蓝牙 13D3:3362（split 通了）；鼠应在另一 RMH / 未亮 CCS 的口。
  * 本刀：每口打 st=；双遍扫描；加长上电。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"

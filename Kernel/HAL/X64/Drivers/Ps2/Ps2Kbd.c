@@ -1,7 +1,7 @@
 /*
  * Ps2Kbd.c — Scan Code Set 2 → HID 报告（PR-H-ps2-aux）
  */
-#include "Ps2Private.h"
+#include "Ps2/Ps2Private.h"
 
 static UINT8 gExt;
 static UINT8 gBreak;

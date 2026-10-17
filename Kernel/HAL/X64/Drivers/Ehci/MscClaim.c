@@ -1,7 +1,7 @@
 /*
  * MscClaim.c — Parse Bulk + FinishClaim / hub 子口（PR-H-ehci-3）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 

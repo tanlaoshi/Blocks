@@ -3,7 +3,7 @@
  *
  * RX：剥 FTDI 2 字节状态前缀 → 字符环；HalSerial 轮询。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 
 #define FTDI_RX_Q   256

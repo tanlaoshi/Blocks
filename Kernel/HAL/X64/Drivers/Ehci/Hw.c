@@ -1,7 +1,7 @@
 /*
  * Hw.c — 单控制器 handoff / 复位 / CCS（PR-H-ehci-1）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"

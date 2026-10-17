@@ -1,7 +1,7 @@
 /*
  * IwlEapolHand.c — WPA2-PSK 四次握手辅助（PR-S-iwl-split-1，自 IwlEapol.c 搬家）
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 
 int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *Replay,

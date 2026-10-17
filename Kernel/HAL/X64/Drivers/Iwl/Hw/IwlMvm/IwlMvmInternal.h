@@ -3,7 +3,7 @@
  */
 #ifndef IWL_MVM_INTERNAL_H
 #define IWL_MVM_INTERNAL_H
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 void IwlMvmZero(void *P, UINTN N);
 void IwlMvmCopy(void *D, const void *S, UINTN N);
 void IwlMvmPut16(UINT8 *P, UINT16 V);

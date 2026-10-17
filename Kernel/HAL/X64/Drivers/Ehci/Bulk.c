@@ -1,7 +1,7 @@
 /*
  * Bulk.c — 异步 Bulk（PR-H-ehci-3）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 

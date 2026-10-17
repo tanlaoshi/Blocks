@@ -4,7 +4,7 @@
 #ifndef IWL_MAC_PRIVATE_H
 #define IWL_MAC_PRIVATE_H
 
-#include "IwlState.h"
+#include "Iwl/IwlState.h"
 
 typedef struct {
     UINT8 Bssid[6];

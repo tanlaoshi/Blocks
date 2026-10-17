@@ -4,7 +4,7 @@
 #include "Hal.h"
 #include "DriverInput.h"
 #include "UsbHid/InputXhci.h"
-#include "InputPs2.h"
+#include "Ps2/InputPs2.h"
 #include "Ehci.h"
 #include "Uhci.h"
 #include "XHCI.h"

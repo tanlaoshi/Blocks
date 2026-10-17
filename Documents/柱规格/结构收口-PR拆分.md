@@ -402,6 +402,7 @@ QEMU 冒烟是另外几份脚本，不在默认构建里。`Runtime/smoke-boot.s
 
 - 1440 个「函数名带文件名」是旧代码的常态，例如 `HalInitialize`、`SchedulerInitialize`。新代码按规范写。不单开一柱把它们改短。
 - 387 个辅助文件的重复前缀，碰到那个目录时再去掉。`XHCI/`、`Ehci/` 的辅助文件已经不带控制器前缀。不按目录拆 71 刀。
+- 刀 2 之后，包含路径上还有三种头文件名字：`Ehci/Private.h`、`Iwl/IwlPrivate.h`、`Serial/Serial.h`。前两种是辅助头，后一种是主文件。统一成：主文件 `目录/目录.h`，辅助头 `目录/Private.h`（`XHCI/Internal.h` 用同一个词）。见命名规范 §5。本柱不单开刀。
 - 用户态包装 `toy_syscall`、`toy_write` 这一族留小写。它们是给用户程序看的调用面，改成 PascalCase 会换掉教学接口。
 - 全局单词 `Register`、`Control`、`Bulk` 在 `UsbHostController.c`，`Init` 在 `Xhci.c`。前三个是刀 41。`Init` 收到同一张操作表时一起改，不另编号。
 - 五处 `static Zero` 和一处 `static Copy` 仍按前面的说法，碰到文件时改成 `memset` / `memcpy`，不单开刀。

@@ -1,7 +1,7 @@
 /*
  * Xfer.c — 异步 control（停 ASE → 挂 qTD → 开 ASE）（PR-H-ehci-2 · 2h）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"

@@ -3,7 +3,7 @@
  */
 #ifndef IWL_RX_INTERNAL_H
 #define IWL_RX_INTERNAL_H
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 #define IWL_MPDU_HOLD_N   24u
 #define IWL_MPDU_HOLD_MAX 512u

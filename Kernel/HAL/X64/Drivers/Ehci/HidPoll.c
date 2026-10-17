@@ -1,7 +1,7 @@
 /*
  * HidPoll.c — 报告入队 + dequeue（PR-H-ehci-2）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "Hal.h"
 #include "HalVideo.h"
 

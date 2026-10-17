@@ -3,7 +3,7 @@
  *
  * 扫 RMH 子口；VID 0BDA + PID 白名单；SetConfig；记 Bulk EP。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "WifiIds.h"
 #include "UsbWifiHost.h"
 #include "ToySerialLog.h"

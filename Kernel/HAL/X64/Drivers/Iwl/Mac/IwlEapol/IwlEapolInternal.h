@@ -4,7 +4,7 @@
 #ifndef IWL_EAPOL_INTERNAL_H
 #define IWL_EAPOL_INTERNAL_H
 
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 typedef struct {
     UINT32 RxMpdu;

@@ -142,17 +142,7 @@ INCLUDES_COMMON = -IInclude \
                   -IHAL/$(HAL_ARCH)/AcpiMadt \
                   -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
-                  -IHAL/$(HAL_ARCH)/Drivers \
-                  -IHAL/$(HAL_ARCH)/Drivers/XHCI \
-                  -IHAL/$(HAL_ARCH)/Drivers/Ehci \
-                  -IHAL/$(HAL_ARCH)/Drivers/Uhci \
-                  -IHAL/$(HAL_ARCH)/Drivers/Ps2 \
-                  -IHAL/$(HAL_ARCH)/Drivers/Ata \
-                  -IHAL/$(HAL_ARCH)/Drivers/Msc \
-                  -IHAL/$(HAL_ARCH)/Drivers/Net \
-                  -IHAL/$(HAL_ARCH)/Drivers/Iwl \
-                  -IHAL/$(HAL_ARCH)/Drivers/Iwl/Hw \
-                  -IHAL/$(HAL_ARCH)/Drivers/Serial
+                  -IHAL/$(HAL_ARCH)/Drivers
 
 # PR-B2：非 x86 必须选中 Board 包（默认 virt）；Common 不 -I 板目录
 ifeq ($(ARCH),x86_64)

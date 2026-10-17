@@ -4,7 +4,7 @@
  * Init / Scan / Claim / Capacity / Mount（Mux）。
  * 后端：注册表顺序优先 xHCI；无设备再试 EHCI。
  */
-#include "UsbMsc.h"
+#include "Msc/UsbMsc.h"
 #include "UsbMscHost.h"
 #include "Block.h"
 #include "BlockMux.h"

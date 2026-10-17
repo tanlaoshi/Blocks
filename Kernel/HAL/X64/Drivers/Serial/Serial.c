@@ -6,7 +6,7 @@
  * RX：IRQ4 → 软环（SPSC）。CoolTerm 整行突发时仅靠 Shell 轮询会冲掉
  * 16550 FIFO(~16)；ISR 在字节到达时抽空。禁止在定时器里自旋抢锁。
  */
-#include "Serial.h"
+#include "Serial/Serial.h"
 #include "Text.h"
 #include "Hal.h"
 #include "IoApic.h"

@@ -1,7 +1,7 @@
 /*
  * UhciProbe.c — 扫 PCI UHCI 并起控制器（PR-H-uhci-1）
  */
-#include "UhciPrivate.h"
+#include "Uhci/UhciPrivate.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"

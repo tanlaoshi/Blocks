@@ -1,7 +1,7 @@
 /*
  * IwlEapolIo.c — WPA2-PSK 四次握手辅助（PR-S-iwl-split-1，自 IwlEapol.c 搬家）
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 
 int gIwlTxRsp;

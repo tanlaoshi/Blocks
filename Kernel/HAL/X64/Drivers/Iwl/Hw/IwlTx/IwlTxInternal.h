@@ -4,7 +4,7 @@
 #ifndef IWL_TX_INTERNAL_H
 #define IWL_TX_INTERNAL_H
 
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 #define IWL_AUX_SLOTS  16u
 #define IWL_AUX_SLOT   512u

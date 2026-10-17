@@ -1,7 +1,7 @@
 /*
  * Ata.c — ATA PIO 模式磁盘读写（Primary Master/Slave，经 HalIo）
  */
-#include "Ata.h"
+#include "Ata/Ata.h"
 #include "Debug.h"
 #include "Hal.h"
 

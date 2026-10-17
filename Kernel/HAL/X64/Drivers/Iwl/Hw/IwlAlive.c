@@ -1,7 +1,7 @@
 /*
  * IwlAlive.c — 等 ALIVE；解析 scd_base_ptr；排空 RX
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 #include "ToySerialLog.h"
 

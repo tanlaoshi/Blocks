@@ -15,7 +15,7 @@
 #include "HalSerialPrivate.h"
 #include "HalVideo.h"
 #include "Hal.h"
-#include "Serial.h"
+#include "Serial/Serial.h"
 #include "Font.h"
 #include "ToySerialConfig.h"
 #include "XHCI.h"

@@ -1,7 +1,7 @@
 /*
  * Ps2AuxDiag.c — Shell 诊断 / retry（PR-H-ps2-aux）
  */
-#include "Ps2Private.h"
+#include "Ps2/Ps2Private.h"
 #include "HalSerial.h"
 
 int Ps2AuxRetry(void) {

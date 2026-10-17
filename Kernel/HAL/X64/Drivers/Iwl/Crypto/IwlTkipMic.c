@@ -1,5 +1,5 @@
 /* IwlTkipMic.c — Michael MIC（PR-N-wifi-tkip） */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 static UINT32 Rotl32(UINT32 V, int N) {
     return (V << N) | (V >> (32 - N));

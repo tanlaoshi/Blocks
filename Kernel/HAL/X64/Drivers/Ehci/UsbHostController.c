@@ -3,7 +3,7 @@
  * 键鼠和 U 盘仍直接调原来的函数。
  */
 #include "UsbHostController.h"
-#include "Private.h"
+#include "Ehci/Private.h"
 
 static EHCI_CTRL *Running(void) {
     int i;

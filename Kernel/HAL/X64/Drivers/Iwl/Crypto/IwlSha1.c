@@ -1,7 +1,7 @@
 /*
  * IwlSha1.c — SHA-1 and HMAC-SHA1 (teaching-minimal, no libc)
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 static UINT32 Rol(UINT32 X, UINTN N)
 {

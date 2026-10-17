@@ -3,7 +3,7 @@
  */
 #ifndef IWL_ASSOC_INTERNAL_H
 #define IWL_ASSOC_INTERNAL_H
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 void IwlAssocCopyN(UINT8 *D, const UINT8 *S, UINTN N);
 void IwlBuildMgmt(UINT8 *Out, UINTN *OutLen, UINT8 Subtype,
                   const UINT8 *Pay, UINTN PayLen);

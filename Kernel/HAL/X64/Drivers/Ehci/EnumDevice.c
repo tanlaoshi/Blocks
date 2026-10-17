@@ -1,7 +1,7 @@
 /*
  * EnumDevice.c — 单设备 HID 枚举（PR-H-ehci-2）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"

@@ -3,7 +3,7 @@
  *
  * data/csw 失败：ClearHalt + 复位 DT，再读 CSW（BOT 规范）。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "UsbHostController.h"
 #include "ToySerialLog.h"
 

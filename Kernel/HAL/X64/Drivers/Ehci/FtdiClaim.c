@@ -3,7 +3,7 @@
  *
  * 扫 RMH 子口；VID 0403 / PID 6001·6014·6015；SetConfig + 115200。
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 

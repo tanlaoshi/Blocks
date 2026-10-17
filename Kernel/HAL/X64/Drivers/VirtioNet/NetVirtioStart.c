@@ -1,7 +1,7 @@
 /*
  * NetVirtioStart.c — PCI 能力与启动（PR-S-virtionet-1）
  */
-#include "NetPrivate.h"
+#include "Net/NetPrivate.h"
 #include "PCIe.h"
 #include "VirtualMemory.h"
 #include "Debug.h"

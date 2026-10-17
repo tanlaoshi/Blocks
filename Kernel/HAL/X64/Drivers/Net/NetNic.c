@@ -4,7 +4,7 @@
  * 胖 NET_BACKEND 仍由 Net.c 提供；外置 NIC 只挂 NIC_L2。
  * 槽 0=有线、1=无线；出站/MAC/链路跟当前主槽；Poll 扫两槽。
  */
-#include "NetPrivate.h"
+#include "Net/NetPrivate.h"
 #include "Net.h"
 #include "DriverNic.h"
 #include "Debug.h"

@@ -1,7 +1,7 @@
 /*
  * IwlPoll.c — RX 轮询与链路查询（PR-S-iwl-split-2，自 Iwl.c 搬家）
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 #include "Net.h"
 

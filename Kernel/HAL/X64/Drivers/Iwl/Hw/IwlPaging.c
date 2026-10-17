@@ -4,7 +4,7 @@
  * 8265 TLV_PAGING=159744；PAGING_SEP 后 CSS(4K)+镜像。UMAC 依赖此 DRAM。
  * 对照 Linux iwlwifi/fw/paging.c、OpenBSD iwm_send_paging_cmd。
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "PhysicalMemory.h"
 
 typedef struct {

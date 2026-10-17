@@ -1,7 +1,7 @@
 /*
  * UhciHw.c — 单控制器复位 / 帧表 / CCS（PR-H-uhci-1）
  */
-#include "UhciPrivate.h"
+#include "Uhci/UhciPrivate.h"
 #include "PhysicalMemory.h"
 #include "ToySerialLog.h"
 #include "HalSerial.h"

@@ -1,7 +1,7 @@
 /*
  * NetAddr.c — IP 文本与查询（PR-S-net-1）
  */
-#include "NetPrivate.h"
+#include "Net/NetPrivate.h"
 #include "Udp.h"
 #include "Tcp.h"
 #ifdef TOY_LWIP
@@ -9,7 +9,7 @@
 #endif
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
-#include "Serial.h"
+#include "Serial/Serial.h"
 #include "Debug.h"
 #include "Hal.h"
 #include "Driver.h"

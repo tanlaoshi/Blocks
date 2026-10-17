@@ -4,7 +4,7 @@
 #include "Arch.h"
 #include "ArchPrivate.h"
 #include "Hal.h"
-#include "Serial.h"
+#include "Serial/Serial.h"
 #include "Debug.h"
 #include "XHCI.h"
 #include "E1000.h"

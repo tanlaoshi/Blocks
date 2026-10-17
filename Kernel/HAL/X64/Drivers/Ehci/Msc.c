@@ -1,7 +1,7 @@
 /*
  * Msc.c — MSC 门面：Ready / Scan / Claim / Release / Present（PR-H-ehci-3）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "UsbMscHost.h"
 #include "ToySerialLog.h"
 

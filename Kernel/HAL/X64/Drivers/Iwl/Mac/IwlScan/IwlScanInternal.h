@@ -3,7 +3,7 @@
  */
 #ifndef IWL_SCAN_INTERNAL_H
 #define IWL_SCAN_INTERNAL_H
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 #define IWL_SCAN_REQ_MAX 2048
 #define IWL_SCAN_REQ_UMAC_SIZE_V7 48

@@ -1,7 +1,7 @@
 /*
  * Ps2Aux.c — Aux 流模式 3B 包 → 屏幕像素（PR-H-ps2-aux）
  */
-#include "Ps2Private.h"
+#include "Ps2/Ps2Private.h"
 #include "Hal.h"
 #include "HalVideo.h"
 #include "HalSerial.h"

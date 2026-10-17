@@ -1,7 +1,7 @@
 /*
  * Port.c — 根口复位（PR-H-ehci-2）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 

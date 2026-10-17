@@ -2,7 +2,7 @@
  * IwlMac.c — 刀 #133/#134：WFMP 网卡地址。
  * 读到后先黄字；扫描完成再写入 gIwlMac。
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 
 #define IWL_WFMP_MAC_ADDR_0 0xA03080u

@@ -1,7 +1,7 @@
 /*
  * Hid.c — Bringup + 武装中断 IN（PR-H-ehci-2）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"

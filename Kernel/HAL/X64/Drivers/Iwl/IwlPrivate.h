@@ -5,7 +5,7 @@
 #ifndef IWL_PRIVATE_H
 #define IWL_PRIVATE_H
 
-#include "IwlState.h"
+#include "Iwl/IwlState.h"
 #include "Hw/IwlHwPrivate.h"
 #include "Mac/IwlMacPrivate.h"
 

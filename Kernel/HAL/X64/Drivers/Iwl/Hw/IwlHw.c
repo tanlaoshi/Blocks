@@ -3,7 +3,7 @@
  *
  * prepare 对照 Linux iwl_pcie_set_hw_ready / prepare_card_hw（只读）。
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "Hal.h"
 #include "PCIe.h"
 #include "HalDriverSched.h"

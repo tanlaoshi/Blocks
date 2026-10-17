@@ -4,8 +4,8 @@
 #ifndef IWL_HW_PRIVATE_H
 #define IWL_HW_PRIVATE_H
 
-#include "IwlState.h"
-#include "IwlRegs.h"
+#include "Iwl/IwlState.h"
+#include "Iwl/Hw/IwlRegs.h"
 
 typedef struct {
     const UINT8 *Data;

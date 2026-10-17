@@ -1,7 +1,7 @@
 /*
  * MscHub.c — MSC 用 hub 控制（PR-H-ehci-3）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"

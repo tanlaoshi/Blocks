@@ -1,7 +1,7 @@
 /*
  * IwlWrap.c — AES-128 解密与 RFC 3394 拆包（WPA2 组密钥）
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 
 static UINT8 Xtime(UINT8 X)
 {

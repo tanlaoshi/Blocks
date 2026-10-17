@@ -1,7 +1,7 @@
 /*
  * Probe.c — 扫 PCI EHCI 并起控制器（PR-H-ehci-1）
  */
-#include "Private.h"
+#include "Ehci/Private.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"

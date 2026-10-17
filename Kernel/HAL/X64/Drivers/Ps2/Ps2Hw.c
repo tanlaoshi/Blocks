@@ -1,7 +1,7 @@
 /*
  * Ps2Hw.c — i8042 端口 / CCB / 键盘+Aux 上电（PR-H-ps2-aux）
  */
-#include "Ps2Private.h"
+#include "Ps2/Ps2Private.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 

@@ -1,7 +1,7 @@
 /*
  * IwlDataRxDec.c — 数据面 CCMP / TKIP / 固件已解（PR-F-iwl-4 + wifi-tkip）
  */
-#include "IwlPrivate.h"
+#include "Iwl/IwlPrivate.h"
 #include "HalSerial.h"
 
 /* KeyID≠0 优先 GTK；KeyID=0 优先 PTK；CCMP 可试 GtkAlt */

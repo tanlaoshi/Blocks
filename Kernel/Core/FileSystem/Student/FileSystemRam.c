@@ -5,7 +5,7 @@
  * 编进内核：make FS=ram（提供 FatFsOps 别名，挂载路径不用改）。
  * Host：./Scripts/runtests.sh fs
  */
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 
 #define RAM_MAX_FILES 8
 #define RAM_NAME_MAX  32

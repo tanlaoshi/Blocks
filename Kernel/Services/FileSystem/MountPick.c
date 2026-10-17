@@ -3,7 +3,7 @@
  * 核心：Mount.c
  */
 #include "FileSystemPrivate.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "ToySerialLog.h"
 
 static void RenameEspIfLetterOnly(int i) {
@@ -70,9 +70,9 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
             PrefVol = i;
         }
         if (MarkerVol < 0 && FileSystemActivate(i) == FAT_OK) {
-            if (VfsReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
-                VfsReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
-                VfsReadFile("TOYOS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
+            if (VirtualFileSystemReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
+                VirtualFileSystemReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
+                VirtualFileSystemReadFile("TOYOS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
                 MarkerVol = i;
             }
         }

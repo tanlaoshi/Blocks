@@ -7,7 +7,7 @@
 #define FAT_PRIVATE_H
 
 #include "Fat.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "LibWrite.h"
 
 #define SECTOR 512

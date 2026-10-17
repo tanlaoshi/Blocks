@@ -1,11 +1,11 @@
 /*
- * Vfs.h — VFS 面 FsOps（PR-F1；PR-F2 FileStat/FileSync；PR-F3 多后端）
+ * VirtualFileSystem.h — 虚拟文件系统的后端表（PR-F1；PR-F2 FileStat/FileSync；PR-F3 多后端）
  *
  * 卷前缀 / 只读策略仍在 FileSystem；本头是「已激活卷」上的可插拔后端。
  * FAT 为第一个后端；RES 为可选只读资源卷第二后端。Common 业务走 Fs*。
  */
-#ifndef VFS_H
-#define VFS_H
+#ifndef VIRTUAL_FILE_SYSTEM_H
+#define VIRTUAL_FILE_SYSTEM_H
 
 #include "BootTypes.h"
 #include "Fat.h"
@@ -27,33 +27,33 @@ typedef struct FS_OPS {
     int (*FileSync)(void);
     /* PR-F3：1 = 无 Block（合成卷）；0/缺省 = 需 BlockSelect + StartLba */
     int Synthetic;
-    /* PR-U-stream-1：可为 NULL → Vfs*At 返回 INVAL */
+    /* PR-U-stream-1：可为 NULL → VirtualFileSystem*At 返回 INVAL */
     int (*ReadFileAt)(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
     int (*WriteFileAt)(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
 } FS_OPS;
 
-#define VFS_MAX_BACKENDS 4
+#define VIRTUAL_FILE_SYSTEM_MAX_BACKENDS 4
 
 /* 注册后端（可多次；首次亦为当前后端）。成功 0，满表 -1 */
-int VfsRegister(const FS_OPS *Ops);
+int VirtualFileSystemRegister(const FS_OPS *Ops);
 /* 切换当前后端（Activate 时按卷选择） */
-int VfsSelect(const FS_OPS *Ops);
-const FS_OPS *VfsOps(void);
+int VirtualFileSystemSelect(const FS_OPS *Ops);
+const FS_OPS *VirtualFileSystemOps(void);
 
 /* 直接经表调用（已 Activate 的相对路径）；无后端 → FAT_ERR_IO */
-int VfsMount(UINT32 StartLba);
-int VfsListDir(const char *Path);
-int VfsListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount);
-int VfsReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize);
-int VfsWriteFile(const char *Path, const void *Buffer, UINTN Size);
-int VfsDeleteFile(const char *Path);
-int VfsMkdir(const char *Path);
-int VfsRmdir(const char *Path);
-int VfsRename(const char *OldPath, const char *NewPath);
-int VfsFileStat(const char *Path, FAT_FILE_STAT *Out);
-int VfsFileSync(void);
-int VfsReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
-int VfsWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
+int VirtualFileSystemMount(UINT32 StartLba);
+int VirtualFileSystemListDir(const char *Path);
+int VirtualFileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount);
+int VirtualFileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize);
+int VirtualFileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size);
+int VirtualFileSystemDeleteFile(const char *Path);
+int VirtualFileSystemMkdir(const char *Path);
+int VirtualFileSystemRmdir(const char *Path);
+int VirtualFileSystemRename(const char *OldPath, const char *NewPath);
+int VirtualFileSystemFileStat(const char *Path, FAT_FILE_STAT *Out);
+int VirtualFileSystemFileSync(void);
+int VirtualFileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
+int VirtualFileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
 
 /* FAT 后端（Library/Fat）；FS=ram 时由 FileSystem/Student 提供同名 FatFsOps */
 const FS_OPS *FatFsOps(void);

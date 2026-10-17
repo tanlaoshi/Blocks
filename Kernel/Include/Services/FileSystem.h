@@ -18,7 +18,7 @@ int FileSystemInitialize(void);
 /* 1 = 这条路径现在不能直接改。没登记则不拦截。 */
 void FileSystemRegisterPathGuard(int (*Blocked)(const char *Path));
 
-/* PR-H-msc-6：Block 后端变更后重扫卷（不清 VfsRegister）；成功 1 */
+/* PR-H-msc-6：Block 后端变更后重扫卷（不清 VirtualFileSystemRegister）；成功 1 */
 int FileSystemRemountVolumes(void);
 
 /* 卷数；下标 0..Count-1 */
@@ -36,7 +36,7 @@ int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel);
 /* 切换 Block + FatInitialize 到指定卷；成功 FAT_OK */
 int FileSystemActivate(int VolIdx);
 
-/* 带前缀的路径操作（内部 Resolve+Activate+Vfs*；写操作拒只读卷） */
+/* 带前缀的路径操作（内部 Resolve+Activate+VirtualFileSystem*；写操作拒只读卷） */
 int FileSystemListDirectory(const char *Path);
 /* PR-FB1：结构化目录枚举（供文件浏览器） */
 int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount);

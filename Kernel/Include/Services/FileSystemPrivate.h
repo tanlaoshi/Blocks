@@ -7,7 +7,7 @@
 #define FILE_SYSTEM_PRIVATE_H
 
 #include "FileSystem.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Gpt.h"
 
 typedef struct {

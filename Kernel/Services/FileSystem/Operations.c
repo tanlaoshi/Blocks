@@ -4,7 +4,7 @@
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
@@ -41,7 +41,7 @@ int FileSystemListDirectory(const char *Path) {
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VfsListDir(Rel && Rel[0] ? Rel : 0);
+    return VirtualFileSystemListDir(Rel && Rel[0] ? Rel : 0);
 }
 
 int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
@@ -53,7 +53,7 @@ int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, i
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VfsListEntries(Rel && Rel[0] ? Rel : 0, Out, Max, OutCount);
+    return VirtualFileSystemListEntries(Rel && Rel[0] ? Rel : 0, Out, Max, OutCount);
 }
 
 int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
@@ -67,7 +67,7 @@ int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *Out
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsReadFile(Rel, Buffer, MaxSize, OutSize);
+    return VirtualFileSystemReadFile(Rel, Buffer, MaxSize, OutSize);
 }
 
 int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
@@ -76,7 +76,7 @@ int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsWriteFile(Rel, Buffer, Size);
+    return VirtualFileSystemWriteFile(Rel, Buffer, Size);
 }
 
 int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
@@ -90,7 +90,7 @@ int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsReadFileAt(Rel, Offset, Buffer, Len, OutN);
+    return VirtualFileSystemReadFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
 int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
@@ -99,7 +99,7 @@ int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsWriteFileAt(Rel, Offset, Buffer, Len, OutN);
+    return VirtualFileSystemWriteFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
 int FileSystemDeleteFile(const char *Path) {
@@ -113,7 +113,7 @@ int FileSystemDeleteFile(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsDeleteFile(Rel);
+    return VirtualFileSystemDeleteFile(Rel);
 }
 
 int FileSystemMakeDirectory(const char *Path) {
@@ -122,7 +122,7 @@ int FileSystemMakeDirectory(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsMkdir(Rel);
+    return VirtualFileSystemMkdir(Rel);
 }
 
 int FileSystemRemoveDirectory(const char *Path) {
@@ -131,7 +131,7 @@ int FileSystemRemoveDirectory(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsRmdir(Rel);
+    return VirtualFileSystemRmdir(Rel);
 }
 
 int FileSystemRename(const char *OldPath, const char *NewPath) {
@@ -167,7 +167,7 @@ int FileSystemRename(const char *OldPath, const char *NewPath) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VfsRename(OldRel, NewRel);
+    return VirtualFileSystemRename(OldRel, NewRel);
 }
 
 int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
@@ -179,7 +179,7 @@ int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VfsFileStat(Rel && Rel[0] ? Rel : 0, Out);
+    return VirtualFileSystemFileStat(Rel && Rel[0] ? Rel : 0, Out);
 }
 
 int FileSystemFileSync(const char *Path) {
@@ -189,7 +189,7 @@ int FileSystemFileSync(const char *Path) {
         return Err;
     }
     (void)Rel;
-    return VfsFileSync();
+    return VirtualFileSystemFileSync();
 }
 
 int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew) {
@@ -204,7 +204,7 @@ int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *Ou
     if (Err != FAT_OK) {
         return Err;
     }
-    Ops = VfsOps();
+    Ops = VirtualFileSystemOps();
     if (!Ops || Ops->Synthetic) {
         return FAT_ERR_ROFS;
     }

@@ -5,7 +5,7 @@
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
@@ -32,7 +32,7 @@ int FileSystemActivate(int VolIdx) {
         gActiveLba == gVols[VolIdx].StartLba) {
         return FAT_OK;
     }
-    if (VfsSelect(Ops) != 0) {
+    if (VirtualFileSystemSelect(Ops) != 0) {
         return FAT_ERR_IO;
     }
     if (!Ops->Synthetic) {
@@ -42,7 +42,7 @@ int FileSystemActivate(int VolIdx) {
             return FAT_ERR_IO;
         }
     }
-    if (VfsMount(gVols[VolIdx].StartLba) != FAT_OK) {
+    if (VirtualFileSystemMount(gVols[VolIdx].StartLba) != FAT_OK) {
         gActiveVol = -1;
         gActiveOps = 0;
         return FAT_ERR_IO;

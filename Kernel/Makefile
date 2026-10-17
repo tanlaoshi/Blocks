@@ -632,7 +632,7 @@ runtests-memory:
 
 runtests-fs:
 	@mkdir -p $(BUILDDIR)/Tests
-	$(HOSTCC) $(FS_TEST_CFLAGS) -c Library/Vfs.c -o $(BUILDDIR)/Tests/fs_vfs.o
+	$(HOSTCC) $(FS_TEST_CFLAGS) -c Library/VirtualFileSystem.c -o $(BUILDDIR)/Tests/fs_vfs.o
 	$(HOSTCC) $(FS_TEST_CFLAGS) -c $(FS_TEST_POLICY) -o $(BUILDDIR)/Tests/fs_policy.o
 	$(HOSTCC) $(FS_TEST_CFLAGS) -c Tools/Tests/TestFs.c -o $(BUILDDIR)/Tests/fs_test.o
 	$(HOSTCC) -o $(BUILDDIR)/Tests/TestFs $(BUILDDIR)/Tests/fs_vfs.o $(BUILDDIR)/Tests/fs_policy.o $(BUILDDIR)/Tests/fs_test.o

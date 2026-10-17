@@ -4,7 +4,7 @@
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
 #include "Hal.h"
@@ -72,12 +72,12 @@ int FileSystemInitialize(void) {
     int MuxOk = 0;
     int HasToy = 0;
 
-    if (VfsRegister(FatFsOps()) != 0) {
-        DebugWrite("FS: VfsRegister(fat) failed\n");
+    if (VirtualFileSystemRegister(FatFsOps()) != 0) {
+        DebugWrite("FS: VirtualFileSystemRegister(fat) failed\n");
         return 0;
     }
-    if (VfsRegister(ResFsOps()) != 0) {
-        DebugWrite("FS: VfsRegister(res) failed\n");
+    if (VirtualFileSystemRegister(ResFsOps()) != 0) {
+        DebugWrite("FS: VirtualFileSystemRegister(res) failed\n");
         return 0;
     }
     /* 驱动固件/配置经 HalDriverFileRead，不直接 #include FileSystem.h */

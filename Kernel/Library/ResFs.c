@@ -5,7 +5,7 @@
  * 桌面图标/壁纸改从 TOYOS:Assets 读取；本卷仅教学小文本，不内嵌 BMP。
  * ListDir 经 LibWrite（PR-R4；gConsole.Initialize 注册 gConsole.Write）。
  */
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Fat.h"
 #include "LibWrite.h"
 

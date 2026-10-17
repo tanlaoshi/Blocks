@@ -1,13 +1,13 @@
 /*
- * Vfs.c — FsOps 注册与分发（PR-F1；PR-F3 多后端）
+ * VirtualFileSystem.c — FsOps 注册与分发（PR-F1；PR-F3 多后端）
  */
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 
 static const FS_OPS *gOps;
-static const FS_OPS *gBackends[VFS_MAX_BACKENDS];
+static const FS_OPS *gBackends[VIRTUAL_FILE_SYSTEM_MAX_BACKENDS];
 static int gBackendCount;
 
-int VfsRegister(const FS_OPS *Ops) {
+int VirtualFileSystemRegister(const FS_OPS *Ops) {
     int i;
 
     if (!Ops || !Ops->Mount || !Ops->ReadFile || !Ops->WriteFile) {
@@ -21,7 +21,7 @@ int VfsRegister(const FS_OPS *Ops) {
             return 0;
         }
     }
-    if (gBackendCount >= VFS_MAX_BACKENDS) {
+    if (gBackendCount >= VIRTUAL_FILE_SYSTEM_MAX_BACKENDS) {
         return -1;
     }
     gBackends[gBackendCount++] = Ops;
@@ -31,7 +31,7 @@ int VfsRegister(const FS_OPS *Ops) {
     return 0;
 }
 
-int VfsSelect(const FS_OPS *Ops) {
+int VirtualFileSystemSelect(const FS_OPS *Ops) {
     int i;
 
     if (!Ops) {
@@ -48,7 +48,7 @@ int VfsSelect(const FS_OPS *Ops) {
     return 0;
 }
 
-const FS_OPS *VfsOps(void) {
+const FS_OPS *VirtualFileSystemOps(void) {
     return gOps;
 }
 
@@ -56,91 +56,91 @@ static int NoBackend(void) {
     return FAT_ERR_IO;
 }
 
-int VfsMount(UINT32 StartLba) {
+int VirtualFileSystemMount(UINT32 StartLba) {
     if (!gOps || !gOps->Mount) {
         return NoBackend();
     }
     return gOps->Mount(StartLba);
 }
 
-int VfsListDir(const char *Path) {
+int VirtualFileSystemListDir(const char *Path) {
     if (!gOps || !gOps->ListDir) {
         return NoBackend();
     }
     return gOps->ListDir(Path);
 }
 
-int VfsListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
+int VirtualFileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
     if (!gOps || !gOps->ListEntries) {
         return NoBackend();
     }
     return gOps->ListEntries(Path, Out, Max, OutCount);
 }
 
-int VfsReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
+int VirtualFileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
     if (!gOps || !gOps->ReadFile) {
         return NoBackend();
     }
     return gOps->ReadFile(Path, Buffer, MaxSize, OutSize);
 }
 
-int VfsWriteFile(const char *Path, const void *Buffer, UINTN Size) {
+int VirtualFileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
     if (!gOps || !gOps->WriteFile) {
         return NoBackend();
     }
     return gOps->WriteFile(Path, Buffer, Size);
 }
 
-int VfsDeleteFile(const char *Path) {
+int VirtualFileSystemDeleteFile(const char *Path) {
     if (!gOps || !gOps->DeleteFile) {
         return NoBackend();
     }
     return gOps->DeleteFile(Path);
 }
 
-int VfsMkdir(const char *Path) {
+int VirtualFileSystemMkdir(const char *Path) {
     if (!gOps || !gOps->Mkdir) {
         return NoBackend();
     }
     return gOps->Mkdir(Path);
 }
 
-int VfsRmdir(const char *Path) {
+int VirtualFileSystemRmdir(const char *Path) {
     if (!gOps || !gOps->Rmdir) {
         return NoBackend();
     }
     return gOps->Rmdir(Path);
 }
 
-int VfsRename(const char *OldPath, const char *NewPath) {
+int VirtualFileSystemRename(const char *OldPath, const char *NewPath) {
     if (!gOps || !gOps->Rename) {
         return NoBackend();
     }
     return gOps->Rename(OldPath, NewPath);
 }
 
-int VfsFileStat(const char *Path, FAT_FILE_STAT *Out) {
+int VirtualFileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
     if (!gOps || !gOps->FileStat) {
         return NoBackend();
     }
     return gOps->FileStat(Path, Out);
 }
 
-int VfsFileSync(void) {
+int VirtualFileSystemFileSync(void) {
     if (!gOps || !gOps->FileSync) {
         return NoBackend();
     }
     return gOps->FileSync();
 }
 
-int VfsReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
+int VirtualFileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
     if (!gOps || !gOps->ReadFileAt) {
         return FAT_ERR_INVAL;
     }
     return gOps->ReadFileAt(Path, Offset, Buffer, Len, OutN);
 }
 
-int VfsWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
+int VirtualFileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
     if (!gOps || !gOps->WriteFileAt) {
         return FAT_ERR_INVAL;
     }

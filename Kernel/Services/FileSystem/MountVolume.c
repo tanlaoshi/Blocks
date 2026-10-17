@@ -6,7 +6,7 @@
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
-#include "Vfs.h"
+#include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
 
@@ -107,13 +107,13 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     IsEsp = Part->IsEsp;
     Start = Part->StartLba;
 
-    if (VfsSelect(FatFsOps()) != 0) {
+    if (VirtualFileSystemSelect(FatFsOps()) != 0) {
         return;
     }
-    if (!BlockSelect(Drive) || VfsMount(Start) != FAT_OK) {
+    if (!BlockSelect(Drive) || VirtualFileSystemMount(Start) != FAT_OK) {
         return;
     }
-    if (VfsReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
+    if (VirtualFileSystemReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
         HasId = 1;
     }
 
@@ -173,7 +173,7 @@ void FsMountAddResVolume(void) {
     V->HasToyId = 0;
     V->Ops = ResFsOps();
     CopyName(V->Name, FS_VOL_NAME_MAX, "RES");
-    if (VfsSelect(V->Ops) == 0 && VfsMount(0) == FAT_OK) {
+    if (VirtualFileSystemSelect(V->Ops) == 0 && VirtualFileSystemMount(0) == FAT_OK) {
         gVolCount++;
         gActiveVol = Idx;
         gActiveOps = V->Ops;

@@ -1,5 +1,5 @@
 /*
- * FontTtfRaster.c — 汉字按 32px 栅格画一次（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — 汉字按两倍行高画，再收成实心点（须 HalFpuBegin；CFLAGS_FPU）
  */
 #include "Font.h"
 #include "Hal.h"
@@ -10,7 +10,9 @@
 #include <stddef.h>
 
 #define TTF_CELL 32
+#define TTF_HI   (TTF_CELL * 2)
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
+#define TTF_HI_PIX (TTF_HI * TTF_HI)
 #define TTF_ARENA (64u * 1024u)
 
 static unsigned char gArena[TTF_ARENA];
@@ -96,6 +98,12 @@ int FontTtfInit(void) {
 
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     float Scale;
+    int InkX0;
+    int InkY0;
+    int InkX1;
+    int InkY1;
+    int InkW;
+    int InkH;
     int X0;
     int Y0;
     int X1;
@@ -105,7 +113,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     int Ox;
     int Oy;
     int Y;
-    UINT8 Tmp[TTF_PIX];
+    UINT8 Hi[TTF_HI_PIX];
     UINT32 i;
 
     if (!Pix18 || !gInit || Cp < 128u) {
@@ -113,16 +121,28 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     }
     for (i = 0; i < TTF_PIX; i++) {
         Pix18[i] = 0;
-        Tmp[i] = 0;
+    }
+    for (i = 0; i < TTF_HI_PIX; i++) {
+        Hi[i] = 0;
     }
     gArenaUsed = 0;
     if (!HalFpuBegin()) {
         return -1;
     }
     /*
-     * 按 32 像素画一次。字面超出格子时再按格子收一档，不再从放大的结果缩回 18。
+     * 按字身缩放到两倍行高，不按整格字框。屏幕上每个点看背后四格，够深就涂实。
      */
-    Scale = stbtt_ScaleForPixelHeight(&gInfo, (float)TTF_CELL);
+    if (!stbtt_GetCodepointBox(&gInfo, (int)Cp, &InkX0, &InkY0, &InkX1, &InkY1)) {
+        HalFpuEnd();
+        return -1;
+    }
+    InkW = InkX1 - InkX0;
+    InkH = InkY1 - InkY0;
+    if (InkW <= 0 || InkH <= 0) {
+        HalFpuEnd();
+        return -1;
+    }
+    Scale = (float)TTF_HI / (float)((InkW > InkH) ? InkW : InkH);
     stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
@@ -130,9 +150,9 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         HalFpuEnd();
         return -1;
     }
-    if (Gw > TTF_CELL || Gh > TTF_CELL) {
-        float FitX = (float)TTF_CELL / (float)Gw;
-        float FitY = (float)TTF_CELL / (float)Gh;
+    if (Gw > TTF_HI || Gh > TTF_HI) {
+        float FitX = (float)TTF_HI / (float)Gw;
+        float FitY = (float)TTF_HI / (float)Gh;
         float Fit = (FitX < FitY) ? FitX : FitY;
 
         Scale *= Fit;
@@ -140,25 +160,35 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
                                     &Y1);
         Gw = X1 - X0;
         Gh = Y1 - Y0;
-        if (Gw <= 0 || Gh <= 0 || Gw > TTF_CELL || Gh > TTF_CELL) {
+        if (Gw <= 0 || Gh <= 0 || Gw > TTF_HI || Gh > TTF_HI) {
             HalFpuEnd();
             return -1;
         }
     }
-    Ox = (TTF_CELL - Gw) / 2;
-    Oy = (TTF_CELL - Gh) / 2;
+    Ox = (TTF_HI - Gw) / 2;
+    Oy = (TTF_HI - Gh) / 2;
     if (Ox < 0) {
         Ox = 0;
     }
     if (Oy < 0) {
         Oy = 0;
     }
-    stbtt_MakeCodepointBitmap(&gInfo, Tmp, Gw, Gh, TTF_CELL, Scale, Scale, (int)Cp);
+    stbtt_MakeCodepointBitmap(&gInfo, Hi + Oy * TTF_HI + Ox, Gw, Gh, TTF_HI,
+                              Scale, Scale, (int)Cp);
     HalFpuEnd();
-    for (Y = 0; Y < Gh; Y++) {
+    for (Y = 0; Y < TTF_CELL; Y++) {
         int X;
-        for (X = 0; X < Gw; X++) {
-            Pix18[(Oy + Y) * TTF_CELL + (Ox + X)] = Tmp[Y * TTF_CELL + X];
+
+        for (X = 0; X < TTF_CELL; X++) {
+            int Hy = Y * 2;
+            int Hx = X * 2;
+            UINT32 Sum;
+
+            Sum = Hi[Hy * TTF_HI + Hx];
+            Sum += Hi[Hy * TTF_HI + Hx + 1];
+            Sum += Hi[(Hy + 1) * TTF_HI + Hx];
+            Sum += Hi[(Hy + 1) * TTF_HI + Hx + 1];
+            Pix18[Y * TTF_CELL + X] = (Sum >= 256u) ? 255u : 0;
         }
     }
     return 0;

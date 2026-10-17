@@ -4,6 +4,7 @@
  */
 #include "XHCI/Private.h"
 #include "UsbHostController.h"
+#include "Msc/Private.h"
 
 static int gMscInSense;  /* REQUEST SENSE 重入保护 */
 
@@ -16,7 +17,6 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
     UINT8 Cbw[32] __attribute__((aligned(64)));
     UINT8 Csw[16] __attribute__((aligned(64)));
     static UINT32 Tag;
-    UINT32 i;
     int Locked = 0;
     int Rc = -1;
 
@@ -44,25 +44,7 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
     }
 
     Tag++;
-    ZeroMemory(Cbw, sizeof(Cbw));
-    Cbw[0] = 0x55;
-    Cbw[1] = 0x53;
-    Cbw[2] = 0x42;
-    Cbw[3] = 0x43; /* USBC */
-    Cbw[4] = (UINT8)(Tag);
-    Cbw[5] = (UINT8)(Tag >> 8);
-    Cbw[6] = (UINT8)(Tag >> 16);
-    Cbw[7] = (UINT8)(Tag >> 24);
-    Cbw[8] = (UINT8)(DataLen);
-    Cbw[9] = (UINT8)(DataLen >> 8);
-    Cbw[10] = (UINT8)(DataLen >> 16);
-    Cbw[11] = (UINT8)(DataLen >> 24);
-    Cbw[12] = DataIn ? 0x80u : 0x00u;
-    Cbw[13] = 0; /* LUN */
-    Cbw[14] = CbLen;
-    for (i = 0; i < CbLen; i++) {
-        Cbw[15 + i] = CbwCb[i];
-    }
+    CommandFill(Cbw, Tag, CbwCb, CbLen, DataLen, DataIn);
 
     if (BulkOn(USB_HOST_CONTROLLER_XHCI, 0, Cbw, 31, 1) < 0) {
         static UINT32 sCbwFailLogged;
@@ -85,7 +67,7 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
         goto Out;
     }
     /* USBS */
-    if (Csw[0] != 0x55 || Csw[1] != 0x53 || Csw[2] != 0x42 || Csw[3] != 0x53) {
+    if (!StatusSignature(Csw)) {
         BootLog("Boot: MSC bot csw sig\n");
         goto Out;
     }

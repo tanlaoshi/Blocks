@@ -6,6 +6,7 @@
 #include "Ehci/Private.h"
 #include "UsbHostController.h"
 #include "ToySerialLog.h"
+#include "Msc/Private.h"
 
 static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
     USB_SETUP_PACKET S;
@@ -38,7 +39,6 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
                int DataIn, void *Data) {
     UINT8 Cbw[32];
     UINT8 Csw[16];
-    UINT32 i;
     int DataRc = 0;
 
     if (!C || !C->MscOk) {
@@ -55,25 +55,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     }
 
     gEhciMscTag++;
-    MscZero(Cbw, sizeof(Cbw));
-    Cbw[0] = 0x55;
-    Cbw[1] = 0x53;
-    Cbw[2] = 0x42;
-    Cbw[3] = 0x43;
-    Cbw[4] = (UINT8)(gEhciMscTag);
-    Cbw[5] = (UINT8)(gEhciMscTag >> 8);
-    Cbw[6] = (UINT8)(gEhciMscTag >> 16);
-    Cbw[7] = (UINT8)(gEhciMscTag >> 24);
-    Cbw[8] = (UINT8)(DataLen);
-    Cbw[9] = (UINT8)(DataLen >> 8);
-    Cbw[10] = (UINT8)(DataLen >> 16);
-    Cbw[11] = (UINT8)(DataLen >> 24);
-    Cbw[12] = DataIn ? 0x80u : 0x00u;
-    Cbw[13] = 0;
-    Cbw[14] = CbLen;
-    for (i = 0; i < CbLen; i++) {
-        Cbw[15 + i] = CbwCb[i];
-    }
+    CommandFill(Cbw, gEhciMscTag, CbwCb, CbLen, DataLen, DataIn);
 
     C->XferSpeed = C->MscSpeed;
     C->XferHubAddr = C->MscHubAddr;
@@ -106,8 +88,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     if (DataRc < 0) {
         return -1;
     }
-    if (Csw[0] != 0x55 || Csw[1] != 0x53 || Csw[2] != 0x42 ||
-        Csw[3] != 0x53) {
+    if (!StatusSignature(Csw)) {
         ToyBootMarkUsb("Boot: EHCI MSC csw sig\n");
         return -1;
     }

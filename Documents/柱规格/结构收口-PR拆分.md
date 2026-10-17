@@ -118,6 +118,7 @@
 | 10 | **PR-STRUCT-hub** | 对照 `XHCI/Hub.c` 与 `Ehci/Hub.c`。只抽出两边请求字节相同的标准 Hub 请求。队列、门铃、调度留下。若对照后相同部分不到一个小文件，就停，不硬抽 | 把两个主机控制器并成一个 | `build.sh`。抽出的请求与搬之前逐字节相同 |
 | 11 | **PR-STRUCT-ip** | `HAL/X64/Drivers/Net/NetRx.c` 与 `HAL/Virt/VirtioNet/VirtioNetRx.c` 里从以太网头拆到 ICMP/UDP/TCP 的那段收成一个函数，两处收包都调它。MMIO 与 PCI virtio 仍是两份驱动 | 删教学 TCP、改 lwIP 的套接字、改 IP 地址 | 三架构 `build.sh`。分发条件与现在两个文件一致，包括「目的地址不是本机就丢」 |
 | 11A | **PR-STRUCT-cjk-size** | NUC 实机切中文后笔画发虚（2026-10-18）。原因是 `FontTtfRaster.c` 把汉字先放大再钳进 18×18 灰格。这一刀让汉字按更大的像素栅格画，不再钳回 18。英文仍走原来的点阵。缺字回落、同一行里汉字和 ASCII 各走各的宽度，留给后面的 CJK 刀 | 英文点阵、语言字符串、哪些码点有字 | 三架构 `build.sh`。NUC 上 `lang zh` 笔画比现在的 18 格清楚 |
+| 11B | **PR-STRUCT-xhci-files** | `XHCI/` 里控制器和插上的设备平铺在一起。这一刀只搬文件：U 盘 `Msc.c`、`MscBot.c`、`MscBulk.c`、`MscClaim.c`、`MscClaimParse.c`、`MscClaimPort.c`、`MscClaimPorts.c`、`HubEnumMsc.c` 进 `XHCI/Msc/`；FTDI 四个文件进 `XHCI/Serial/Ftdi/`，CDC 三个文件进 `XHCI/Serial/Cdc/`；`HidInterruptKeyboard.c`、`HidInterruptMouse.c` 进 `XHCI/Hid/`。控制器、`Device*`、`Hub.c`、`Enum*`、`Wifi*` 留在 `XHCI/` 根。`Makefile` 为新子目录补通配。U 盘全局变量仍留在 `Xhci.c`（BSS 顺序影响键盘 DMA 环） | 认领条件、传输、把 xHCI 和 EHCI 并成一个、USB 无线网卡 | 三架构 `build.sh`。只搬文件，函数体与搬之前相同 |
 | 12 | **PR-STRUCT-gui-state** | `Include/Services/GuiPrivate.h` 里大约 58 个 `extern` 收成窗口管理器拥有的一块状态。拖动、光标、焦点通过这一个对象访问。绘制公式不改 | 应用窗口不再看见这块状态（下一刀） | `build.sh` + `smoke-boot.sh`。拖动、缩放、光标跟现在一样 |
 | 13 | **PR-STRUCT-gui-apps** | `TtyUiPrivate.h`、`DevicesUiPrivate.h`、`StoreUiPrivate.h` 不再包含 `GuiPrivate.h`。这些窗口只包含 `Gui.h`，需要的窗口矩形通过公开函数拿 | 窗口外观 | `build.sh` + `smoke-boot.sh` |
 | 14 | **PR-STRUCT-hal** | 把 `Hal.h` 里的平台、RTC、xHCI 回退地址、PAT、端口、页表、中断按现有 `.c` 拆成多个头。`Hal.h` 仍然包含它们，所以这一刀调用点可以不改 | 删掉 `Hal.h`、改函数语义 | 三架构 `build.sh`。`Hal.h` 的声明集合与拆之前相同 |
@@ -146,6 +147,7 @@ PR-STRUCT-early
   → PR-STRUCT-hub
   → PR-STRUCT-ip
   → PR-STRUCT-cjk-size
+  → PR-STRUCT-xhci-files
   → PR-STRUCT-gui-state
   → PR-STRUCT-gui-apps
   → PR-STRUCT-hal

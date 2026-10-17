@@ -2,8 +2,7 @@
  * NetRx.c — 收包与轮询（PR-S-net-1）
  */
 #include "Net/NetPrivate.h"
-#include "Udp.h"
-#include "Tcp.h"
+#include "Net/IpInput.h"
 #ifdef TOY_LWIP
 #include "toy_netif.h"
 #endif
@@ -15,51 +14,6 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "DriverNic.h"
-
-static void HandleIpPacket(const UINT8 *Pkt, UINTN Len) {
-    const ETH_HDR *Eth;
-    const IP_HDR *Ip;
-    UINTN IpLen;
-    UINTN IpHdrLen;
-
-    gRxFrames++;
-    if (Len < ETH_HDR_LEN) {
-        return;
-    }
-    Eth = (const ETH_HDR *)Pkt;
-    if (ByteSwap16(Eth->EtherType) == ETH_TYPE_ARP) {
-        if (Len >= ETH_HDR_LEN + sizeof(ARP_PKT)) {
-            HandleArp((const ARP_PKT *)(Pkt + ETH_HDR_LEN));
-        }
-        return;
-    }
-    if (ByteSwap16(Eth->EtherType) != ETH_TYPE_IP || Len < ETH_HDR_LEN + IP_HDR_LEN) {
-        return;
-    }
-    Ip = (const IP_HDR *)(Pkt + ETH_HDR_LEN);
-    IpHdrLen = (Ip->VerIhl & 0x0F) * 4;
-    if (IpHdrLen < IP_HDR_LEN || Len < ETH_HDR_LEN + IpHdrLen) {
-        return;
-    }
-    IpLen = ByteSwap16(Ip->TotalLen);
-    if (IpLen < IpHdrLen || ETH_HDR_LEN + IpLen > Len) {
-        return;
-    }
-    if (ByteSwap32(Ip->Dst) != gIp) {
-        return;
-    }
-    ArpLearn(ByteSwap32(Ip->Src), Eth->Src);
-    if (Ip->Proto == IP_PROTO_ICMP) {
-        HandleIcmp(Ip, Pkt + ETH_HDR_LEN + IpHdrLen,
-                   IpLen - IpHdrLen);
-    } else if (Ip->Proto == IP_PROTO_UDP) {
-        UdpInput(ByteSwap32(Ip->Src), ByteSwap32(Ip->Dst),
-                 Pkt + ETH_HDR_LEN + IpHdrLen, IpLen - IpHdrLen);
-    } else if (Ip->Proto == IP_PROTO_TCP) {
-        TcpInput(ByteSwap32(Ip->Src), ByteSwap32(Ip->Dst),
-                 Pkt + ETH_HDR_LEN + IpHdrLen, IpLen - IpHdrLen);
-    }
-}
 
 static void NetProcessRx(void) {
     UINT16 Head;
@@ -85,12 +39,12 @@ static void NetProcessRx(void) {
             UINTN PktLen = Len - VIRTIO_NET_HDR_LEN;
 #ifdef TOY_LWIP
             if (gLwIpRx) {
-                /* lwip on: all IP RX to lwIP; builtin HandleIpPacket idle */
+                /* lwip on: all IP RX to lwIP; builtin IpInput idle */
                 ToyNetifInput(Pkt, PktLen);
             } else
 #endif
             {
-                HandleIpPacket(Pkt, PktLen);
+                IpInput(Pkt, PktLen);
             }
         }
         VirtQueueFreeDescriptor(&gRxQ, Head);
@@ -112,7 +66,7 @@ void NetInputFrame(const UINT8 *Pkt, UINTN Len) {
         return;
     }
 #endif
-    HandleIpPacket(Pkt, Len);
+    IpInput(Pkt, Len);
 }
 
 void NetPoll(void) {

@@ -499,6 +499,7 @@ VIRT_OBJS := $(patsubst HAL/Virt/%.c,$(HALDIR)/Virt/%.o,$(VIRT_SRCS))
 VIRT_VIDEO_SRCS := $(wildcard HAL/X64/Drivers/Video/*.c)
 VIRT_VIDEO_OBJS := $(patsubst HAL/X64/Drivers/Video/%.c,$(HALDIR)/Drivers/Video/%.o,$(VIRT_VIDEO_SRCS))
 EXTRA_OBJS += $(VIRT_OBJS) $(VIRT_VIDEO_OBJS)
+EXTRA_OBJS += $(HALDIR)/Drivers/Net/IpInput.o
 ifeq ($(ARCH),riscv)
 # RiscV virt MMIO 窗与 Arm 不同；Arm 用 VirtioMmio.c 内默认值
 CFLAGS_HAL += -DVIRTIO_MMIO_BASE0=0x10001000ULL \
@@ -739,6 +740,9 @@ $(HALDIR)/Drivers/Video/%.o: HAL/X64/Drivers/Video/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 $(HALDIR)/Virt/%.o: HAL/Virt/%.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
+$(HALDIR)/Drivers/Net/IpInput.o: HAL/X64/Drivers/Net/IpInput.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 # PR-B2：HAL/<Arch>/Board/<board>/*.c

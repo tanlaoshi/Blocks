@@ -1,5 +1,5 @@
 /*
- * ConsoleLogFile.c — PR-K-uart-shell：运行时日志落盘 RUNTIME.LOG
+ * LogFile.c — PR-K-uart-shell：运行时日志落盘 RUNTIME.LOG
  *
  * ShellOwn 后 ToyLog 只进缓冲；Worker 脏时刷盘；Shell log / log save 可拉。
  */

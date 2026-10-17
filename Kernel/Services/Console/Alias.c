@@ -1,6 +1,6 @@
 /*
- * ConsoleAlias.c — 用户别名与 alias / unalias
- * 核心：ConsoleCmd.c
+ * Alias.c — 用户别名与 alias / unalias
+ * 核心：Command.c
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

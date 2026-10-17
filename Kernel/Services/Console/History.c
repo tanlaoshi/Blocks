@@ -1,5 +1,5 @@
 /*
- * ConsoleHist.c — Shell ↑↓ 命令历史（PR-BOX-1）
+ * History.c — Shell ↑↓ 命令历史（PR-BOX-1）
  * 环形 ≥32；不持久化；无 Ctrl-R。
  */
 #include "Console.h"

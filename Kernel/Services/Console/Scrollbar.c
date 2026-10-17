@@ -1,6 +1,6 @@
 /*
- * ConsoleSbBar.c — Shell 客户区滚动条（PR-GUI-shell-sb）
- * 核心：ConsoleScroll.c；点选/绘制仿 FilesUi。
+ * Scrollbar.c — Shell 客户区滚动条（PR-GUI-shell-sb）
+ * 核心：Scroll.c；点选/绘制仿 FilesUi。
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

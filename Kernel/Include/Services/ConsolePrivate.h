@@ -3,7 +3,7 @@
  * （仅 Services；User 勿 include）
  *
  * PR-S-console-split-1：Scroll；PR-S-console-split-2：Cmd（Register/别名/help）。
- * 命令表现在 Services/Console/（核心 ConsoleCmd.c）。
+ * 命令表现在 Services/Console/（核心 Command.c）。
  */
 #ifndef CONSOLE_PRIVATE_H
 #define CONSOLE_PRIVATE_H
@@ -51,7 +51,7 @@ typedef struct {
     char Level2[USER_ALIAS_WORD]; /* [0]==0 表示无二级 */
 } USER_ALIAS;
 
-/* 命令表。定义在 Console/ConsoleCmd.c；别名与内置拆开后同模块可见 */
+/* 命令表。定义在 Console/Command.c；别名与内置拆开后同模块可见 */
 extern COMMAND gCommands[CMD_MAX];
 extern int gCommandCount;
 extern COMMAND_ALIAS gAliases[ALIAS_MAX];
@@ -92,7 +92,7 @@ void ConsoleSbRepaint(void);
 int ConsoleSbHasContent(void);
 void ConsoleSbEnsureLive(void);
 
-/* 每 Shell 窗一份 scrollback（ConsoleSbSlot.c） */
+/* 每 Shell 窗一份 scrollback（ScrollbackSlot.c） */
 typedef struct {
     char Lines[SB_LINES][SB_COLS];
     char Acc[SB_COLS];
@@ -115,7 +115,7 @@ void ConsoleSbBindFocus(void);
 void ConsoleSbFeedLiveIfBound(const char *Text);
 int ConsoleJobPromptPending(void);
 void ConsoleJobShiftRaise(int Idx, int Top);
-/* 视图度量 / 滚动条（ConsoleSbBar.c）；行缓冲读口给 ConsoleSbPaint.c */
+/* 视图度量 / 滚动条（Scrollbar.c）；行缓冲读口给 ScrollbackPaint.c */
 int ConsoleSbLineCount(void);
 int ConsoleSbAccLen(void);
 const char *ConsoleSbAcc(void);

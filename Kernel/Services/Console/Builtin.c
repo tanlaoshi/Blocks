@@ -1,6 +1,6 @@
 /*
- * ConsoleBuiltin.c — help / clear / echo 与内置注册
- * 核心：ConsoleCmd.c
+ * Builtin.c — help / clear / echo 与内置注册
+ * 核心：Command.c
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

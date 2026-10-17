@@ -1,5 +1,5 @@
 /*
- * ConsoleWrite.c — 串口与屏幕输出
+ * Write.c — 串口与屏幕输出
  * 核心：Console.c
  */
 #include "Console.h"

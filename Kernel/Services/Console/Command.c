@@ -1,6 +1,6 @@
 /*
- * ConsoleCmd.c — 命令表 / Register / 分发
- * 核心文件。别名：ConsoleAlias.c；内置：ConsoleBuiltin.c。
+ * Command.c — 命令表 / Register / 分发
+ * 核心文件。别名：Alias.c；内置：Builtin.c。
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

@@ -1,7 +1,7 @@
 /*
  * Console.c — Shell 提示符与 Job 输出（PR-S3-console-2）
  *
- * 焦点 / 开窗重画见 ConsoleFocus.c。
+ * 焦点 / 开窗重画见 Focus.c。
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

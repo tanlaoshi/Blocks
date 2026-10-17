@@ -1,5 +1,5 @@
 /*
- * ConsoleInput.c — 按键、回车（串口壳见 ConsoleSerial.c）
+ * Input.c — 按键、回车（串口壳见 Serial.c）
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

@@ -1,7 +1,7 @@
 /*
- * ConsoleScroll.c — Shell 行缓冲 / 历史 / 滚轮（PR-S3-consolescroll-1）
+ * Scroll.c — Shell 行缓冲 / 历史 / 滚轮（PR-S3-consolescroll-1）
  *
- * 重画见 ConsoleSbPaint.c。不改语义。
+ * 重画见 ScrollbackPaint.c。不改语义。
  */
 #include "Console.h"
 #include "ConsolePrivate.h"

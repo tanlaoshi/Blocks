@@ -7,7 +7,7 @@ static const FS_OPS *gOps;
 static const FS_OPS *gBackends[VIRTUAL_FILE_SYSTEM_MAX_BACKENDS];
 static int gBackendCount;
 
-int VirtualFileSystemRegister(const FS_OPS *Ops) {
+static int Register(const FS_OPS *Ops) {
     int i;
 
     if (!Ops || !Ops->Mount || !Ops->ReadFile || !Ops->WriteFile) {
@@ -31,7 +31,7 @@ int VirtualFileSystemRegister(const FS_OPS *Ops) {
     return 0;
 }
 
-int VirtualFileSystemSelect(const FS_OPS *Ops) {
+static int Select(const FS_OPS *Ops) {
     int i;
 
     if (!Ops) {
@@ -48,7 +48,7 @@ int VirtualFileSystemSelect(const FS_OPS *Ops) {
     return 0;
 }
 
-const FS_OPS *VirtualFileSystemOps(void) {
+static const FS_OPS *Ops(void) {
     return gOps;
 }
 
@@ -56,93 +56,112 @@ static int NoBackend(void) {
     return FAT_ERR_IO;
 }
 
-int VirtualFileSystemMount(UINT32 StartLba) {
+static int Mount(UINT32 StartLba) {
     if (!gOps || !gOps->Mount) {
         return NoBackend();
     }
     return gOps->Mount(StartLba);
 }
 
-int VirtualFileSystemListDir(const char *Path) {
+static int ListDir(const char *Path) {
     if (!gOps || !gOps->ListDir) {
         return NoBackend();
     }
     return gOps->ListDir(Path);
 }
 
-int VirtualFileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
+static int ListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
     if (!gOps || !gOps->ListEntries) {
         return NoBackend();
     }
     return gOps->ListEntries(Path, Out, Max, OutCount);
 }
 
-int VirtualFileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
+static int ReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
     if (!gOps || !gOps->ReadFile) {
         return NoBackend();
     }
     return gOps->ReadFile(Path, Buffer, MaxSize, OutSize);
 }
 
-int VirtualFileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
+static int WriteFile(const char *Path, const void *Buffer, UINTN Size) {
     if (!gOps || !gOps->WriteFile) {
         return NoBackend();
     }
     return gOps->WriteFile(Path, Buffer, Size);
 }
 
-int VirtualFileSystemDeleteFile(const char *Path) {
+static int DeleteFile(const char *Path) {
     if (!gOps || !gOps->DeleteFile) {
         return NoBackend();
     }
     return gOps->DeleteFile(Path);
 }
 
-int VirtualFileSystemMkdir(const char *Path) {
+static int Mkdir(const char *Path) {
     if (!gOps || !gOps->Mkdir) {
         return NoBackend();
     }
     return gOps->Mkdir(Path);
 }
 
-int VirtualFileSystemRmdir(const char *Path) {
+static int Rmdir(const char *Path) {
     if (!gOps || !gOps->Rmdir) {
         return NoBackend();
     }
     return gOps->Rmdir(Path);
 }
 
-int VirtualFileSystemRename(const char *OldPath, const char *NewPath) {
+static int Rename(const char *OldPath, const char *NewPath) {
     if (!gOps || !gOps->Rename) {
         return NoBackend();
     }
     return gOps->Rename(OldPath, NewPath);
 }
 
-int VirtualFileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
+static int FileStat(const char *Path, FAT_FILE_STAT *Out) {
     if (!gOps || !gOps->FileStat) {
         return NoBackend();
     }
     return gOps->FileStat(Path, Out);
 }
 
-int VirtualFileSystemFileSync(void) {
+static int FileSync(void) {
     if (!gOps || !gOps->FileSync) {
         return NoBackend();
     }
     return gOps->FileSync();
 }
 
-int VirtualFileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
+static int ReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
     if (!gOps || !gOps->ReadFileAt) {
         return FAT_ERR_INVAL;
     }
     return gOps->ReadFileAt(Path, Offset, Buffer, Len, OutN);
 }
 
-int VirtualFileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
+static int WriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
     if (!gOps || !gOps->WriteFileAt) {
         return FAT_ERR_INVAL;
     }
     return gOps->WriteFileAt(Path, Offset, Buffer, Len, OutN);
 }
+
+VIRTUAL_FILE_SYSTEM_OPS gVirtualFileSystem = {
+    .Register = Register,
+    .Select = Select,
+    .Ops = Ops,
+    .Mount = Mount,
+    .ListDir = ListDir,
+    .ListEntries = ListEntries,
+    .ReadFile = ReadFile,
+    .WriteFile = WriteFile,
+    .DeleteFile = DeleteFile,
+    .Mkdir = Mkdir,
+    .Rmdir = Rmdir,
+    .Rename = Rename,
+    .FileStat = FileStat,
+    .FileSync = FileSync,
+    .ReadFileAt = ReadFileAt,
+    .WriteFileAt = WriteFileAt,
+};

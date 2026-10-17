@@ -72,12 +72,12 @@ int FileSystemInitialize(void) {
     int MuxOk = 0;
     int HasToy = 0;
 
-    if (VirtualFileSystemRegister(FatFsOps()) != 0) {
-        DebugWrite("FS: VirtualFileSystemRegister(fat) failed\n");
+    if (gVirtualFileSystem.Register(FatFsOps()) != 0) {
+        DebugWrite("FS: gVirtualFileSystem.Register(fat) failed\n");
         return 0;
     }
-    if (VirtualFileSystemRegister(ResFsOps()) != 0) {
-        DebugWrite("FS: VirtualFileSystemRegister(res) failed\n");
+    if (gVirtualFileSystem.Register(ResFsOps()) != 0) {
+        DebugWrite("FS: gVirtualFileSystem.Register(res) failed\n");
         return 0;
     }
     /* 驱动固件/配置经 HalDriverFileRead，不直接 #include FileSystem.h */

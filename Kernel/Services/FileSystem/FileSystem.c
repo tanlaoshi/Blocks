@@ -32,7 +32,7 @@ int FileSystemActivate(int VolIdx) {
         gActiveLba == gVols[VolIdx].StartLba) {
         return FAT_OK;
     }
-    if (VirtualFileSystemSelect(Ops) != 0) {
+    if (gVirtualFileSystem.Select(Ops) != 0) {
         return FAT_ERR_IO;
     }
     if (!Ops->Synthetic) {
@@ -42,7 +42,7 @@ int FileSystemActivate(int VolIdx) {
             return FAT_ERR_IO;
         }
     }
-    if (VirtualFileSystemMount(gVols[VolIdx].StartLba) != FAT_OK) {
+    if (gVirtualFileSystem.Mount(gVols[VolIdx].StartLba) != FAT_OK) {
         gActiveVol = -1;
         gActiveOps = 0;
         return FAT_ERR_IO;

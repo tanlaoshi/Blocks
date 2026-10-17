@@ -41,7 +41,7 @@ int FileSystemListDirectory(const char *Path) {
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VirtualFileSystemListDir(Rel && Rel[0] ? Rel : 0);
+    return gVirtualFileSystem.ListDir(Rel && Rel[0] ? Rel : 0);
 }
 
 int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
@@ -53,7 +53,7 @@ int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, i
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VirtualFileSystemListEntries(Rel && Rel[0] ? Rel : 0, Out, Max, OutCount);
+    return gVirtualFileSystem.ListEntries(Rel && Rel[0] ? Rel : 0, Out, Max, OutCount);
 }
 
 int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
@@ -67,7 +67,7 @@ int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *Out
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemReadFile(Rel, Buffer, MaxSize, OutSize);
+    return gVirtualFileSystem.ReadFile(Rel, Buffer, MaxSize, OutSize);
 }
 
 int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
@@ -76,7 +76,7 @@ int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemWriteFile(Rel, Buffer, Size);
+    return gVirtualFileSystem.WriteFile(Rel, Buffer, Size);
 }
 
 int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
@@ -90,7 +90,7 @@ int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemReadFileAt(Rel, Offset, Buffer, Len, OutN);
+    return gVirtualFileSystem.ReadFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
 int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
@@ -99,7 +99,7 @@ int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemWriteFileAt(Rel, Offset, Buffer, Len, OutN);
+    return gVirtualFileSystem.WriteFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
 int FileSystemDeleteFile(const char *Path) {
@@ -113,7 +113,7 @@ int FileSystemDeleteFile(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemDeleteFile(Rel);
+    return gVirtualFileSystem.DeleteFile(Rel);
 }
 
 int FileSystemMakeDirectory(const char *Path) {
@@ -122,7 +122,7 @@ int FileSystemMakeDirectory(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemMkdir(Rel);
+    return gVirtualFileSystem.Mkdir(Rel);
 }
 
 int FileSystemRemoveDirectory(const char *Path) {
@@ -131,7 +131,7 @@ int FileSystemRemoveDirectory(const char *Path) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemRmdir(Rel);
+    return gVirtualFileSystem.Rmdir(Rel);
 }
 
 int FileSystemRename(const char *OldPath, const char *NewPath) {
@@ -167,7 +167,7 @@ int FileSystemRename(const char *OldPath, const char *NewPath) {
     if (Err != FAT_OK) {
         return Err;
     }
-    return VirtualFileSystemRename(OldRel, NewRel);
+    return gVirtualFileSystem.Rename(OldRel, NewRel);
 }
 
 int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
@@ -179,7 +179,7 @@ int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
     if (!Path || Path[0] == 0) {
         Rel = 0;
     }
-    return VirtualFileSystemFileStat(Rel && Rel[0] ? Rel : 0, Out);
+    return gVirtualFileSystem.FileStat(Rel && Rel[0] ? Rel : 0, Out);
 }
 
 int FileSystemFileSync(const char *Path) {
@@ -189,7 +189,7 @@ int FileSystemFileSync(const char *Path) {
         return Err;
     }
     (void)Rel;
-    return VirtualFileSystemFileSync();
+    return gVirtualFileSystem.FileSync();
 }
 
 int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew) {
@@ -204,7 +204,7 @@ int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *Ou
     if (Err != FAT_OK) {
         return Err;
     }
-    Ops = VirtualFileSystemOps();
+    Ops = gVirtualFileSystem.Ops();
     if (!Ops || Ops->Synthetic) {
         return FAT_ERR_ROFS;
     }

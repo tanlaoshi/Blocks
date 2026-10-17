@@ -107,13 +107,13 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     IsEsp = Part->IsEsp;
     Start = Part->StartLba;
 
-    if (VirtualFileSystemSelect(FatFsOps()) != 0) {
+    if (gVirtualFileSystem.Select(FatFsOps()) != 0) {
         return;
     }
-    if (!BlockSelect(Drive) || VirtualFileSystemMount(Start) != FAT_OK) {
+    if (!BlockSelect(Drive) || gVirtualFileSystem.Mount(Start) != FAT_OK) {
         return;
     }
-    if (VirtualFileSystemReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
+    if (gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
         HasId = 1;
     }
 
@@ -173,7 +173,7 @@ void FsMountAddResVolume(void) {
     V->HasToyId = 0;
     V->Ops = ResFsOps();
     CopyName(V->Name, FS_VOL_NAME_MAX, "RES");
-    if (VirtualFileSystemSelect(V->Ops) == 0 && VirtualFileSystemMount(0) == FAT_OK) {
+    if (gVirtualFileSystem.Select(V->Ops) == 0 && gVirtualFileSystem.Mount(0) == FAT_OK) {
         gVolCount++;
         gActiveVol = Idx;
         gActiveOps = V->Ops;

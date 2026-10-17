@@ -18,7 +18,7 @@ int FileSystemInitialize(void);
 /* 1 = 这条路径现在不能直接改。没登记则不拦截。 */
 void FileSystemRegisterPathGuard(int (*Blocked)(const char *Path));
 
-/* PR-H-msc-6：Block 后端变更后重扫卷（不清 VirtualFileSystemRegister）；成功 1 */
+/* PR-H-msc-6：Block 后端变更后重扫卷（不清 gVirtualFileSystem.Register）；成功 1 */
 int FileSystemRemountVolumes(void);
 
 /* 卷数；下标 0..Count-1 */

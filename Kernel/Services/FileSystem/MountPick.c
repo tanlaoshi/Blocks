@@ -70,9 +70,9 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
             PrefVol = i;
         }
         if (MarkerVol < 0 && FileSystemActivate(i) == FAT_OK) {
-            if (VirtualFileSystemReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
-                VirtualFileSystemReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
-                VirtualFileSystemReadFile("TOYOS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
+            if (gVirtualFileSystem.ReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
+                gVirtualFileSystem.ReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
+                gVirtualFileSystem.ReadFile("TOYOS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
                 MarkerVol = i;
             }
         }

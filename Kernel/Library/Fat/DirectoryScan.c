@@ -4,7 +4,6 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 #include "Block.h"
-#include "LibWrite.h"
 
 void PrintEntryNamed(const char *Name, UINT8 Attr) {
     if (Attr & FAT_ATTR_DIR) {

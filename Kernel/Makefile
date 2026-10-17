@@ -332,9 +332,13 @@ SERVICES_SRCS += $(wildcard Services/GuiWindowManager/*.c)
 SERVICES_SRCS += $(wildcard Services/Ui/*.c)
 SERVICES_SRCS += $(wildcard Services/Fonts/*.c)
 SERVICES_SRCS += $(wildcard Services/Bmp/*.c)
+FS ?= fat
 LIB_SRCS      := $(wildcard Library/*.c)
 LIB_SRCS      += $(wildcard Library/Gpt/*.c)
 LIB_SRCS      += $(wildcard Library/Gfx/*.c)
+ifeq ($(FS),fat)
+LIB_SRCS      += $(wildcard Library/Fat/*.c)
+endif
 FONT_SRCS     := $(wildcard Library/Fonts/*.c)
 DRIVER_SRCS   := $(wildcard HAL/$(HAL_ARCH)/Drivers/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/*.c)
@@ -553,9 +557,8 @@ $(error Unknown MEMORY: $(MEMORY))
 endif
 MEMORY_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(MEMORY_SRCS))
 
-FS ?= fat
 ifeq ($(FS),fat)
-FS_SRCS := $(wildcard Core/FileSystem/Fat/*.c)
+FS_SRCS :=
 else ifeq ($(FS),ram)
 FS_SRCS := Core/FileSystem/Student/FileSystemRam.c \
            Core/FileSystem/Student/FileSystemRamCompat.c

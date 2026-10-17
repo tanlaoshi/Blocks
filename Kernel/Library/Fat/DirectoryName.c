@@ -4,7 +4,6 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 #include "Block.h"
-#include "LibWrite.h"
 
 int NameIsDot(const UINT8 *E) {
     return E[0] == '.' && (E[1] == ' ' || (E[1] == '.' && E[2] == ' '));

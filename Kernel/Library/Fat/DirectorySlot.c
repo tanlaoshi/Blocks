@@ -4,7 +4,6 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 #include "Block.h"
-#include "LibWrite.h"
 
 /*
  * 摘掉 SFN 前的 LFN 链。同扇区内的多项在内存里一并标 0xE5 再写回一次，

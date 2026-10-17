@@ -4,7 +4,6 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 #include "Block.h"
-#include "Debug.h"
 
 static void ZeroBuf(UINT8 *P, UINTN N) {
     UINTN i;
@@ -170,10 +169,5 @@ int FatFormatFat32(UINT32 StartLba, UINT32 SectorCount, const char *Label) {
         return FAT_ERR_IO;
     }
 
-    DebugWrite("fat: format FAT32 @");
-    DebugHex32(StartLba);
-    DebugWrite(" sectors=");
-    DebugHex32(SectorCount);
-    DebugWrite("\n");
     return FAT_OK;
 }

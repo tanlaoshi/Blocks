@@ -4,7 +4,6 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 #include "Block.h"
-#include "LibWrite.h"
 
 /*
  * PR-F3：大目录回归。

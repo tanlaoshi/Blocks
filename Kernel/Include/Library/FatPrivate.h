@@ -1,12 +1,14 @@
 /*
  * FatPrivate.h — FAT 实现内部共享
  *
- * 主文件是 Fat.c（FatInitialize）。仅 Core/FileSystem/Fat/ 使用；公开 API 仍见 Fat.h。
+ * 主文件是 Fat.c（FatInitialize）。仅 Library/Fat/ 使用；公开 API 仍见 Fat.h。
  */
 #ifndef FAT_PRIVATE_H
 #define FAT_PRIVATE_H
 
 #include "Fat.h"
+#include "Vfs.h"
+#include "LibWrite.h"
 
 #define SECTOR 512
 #define FAT32_EOC 0x0FFFFFF8u

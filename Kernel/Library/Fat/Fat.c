@@ -4,7 +4,6 @@
  */
 #include "Fat.h"
 #include "FatPrivate.h"
-#include "Debug.h"
 
 int FatInitialize(UINT32 StartLba) {
     UINT32 TotSec;
@@ -40,9 +39,6 @@ int FatInitialize(UINT32 StartLba) {
         if (gMaxCluster < 3) {
             gMaxCluster = FAT_U16_MASK;
         }
-        DebugWrite("FAT32 root cluster ");
-        DebugHex32(gRootCluster);
-        DebugWrite("\n");
         return FAT_OK;
     }
 
@@ -60,8 +56,5 @@ int FatInitialize(UINT32 StartLba) {
         }
     }
     gFatType = 16;
-    DebugWrite("FAT16 root LBA ");
-    DebugHex32(gRootLba);
-    DebugWrite("\n");
     return FAT_OK;
 }

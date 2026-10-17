@@ -55,7 +55,7 @@ int VfsFileSync(void);
 int VfsReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
 int VfsWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
 
-/* FAT 后端（Core/FileSystem/Fat）；FS=ram 时由 FileSystem/Student 提供同名 FatFsOps */
+/* FAT 后端（Library/Fat）；FS=ram 时由 FileSystem/Student 提供同名 FatFsOps */
 const FS_OPS *FatFsOps(void);
 const FS_OPS *ResFsOps(void);
 const FS_OPS *RamFsOps(void);

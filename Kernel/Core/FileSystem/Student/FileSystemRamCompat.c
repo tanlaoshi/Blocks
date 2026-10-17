@@ -1,6 +1,6 @@
 /*
  * FileSystemRamCompat.c — FS=ram 时顶替仍被框架引用的 Fat* 符号。
- * 真 FAT 实现在 Core/FileSystem/Fat/；本文件只让内核链得过。
+ * 真 FAT 实现在 Library/Fat/；本文件只让内核链得过。
  */
 #include "Fat.h"
 

@@ -110,6 +110,7 @@
 | 6C | **PR-STRUCT-ops** | 短名统一用登记，不靠加前缀。做法写在命名规范 §6。一个模块对外一张操作表，初始化时填上。实现函数改成 `static`，短名只在本文件。只在本文件里用的函数直接 `static`，不必进表。这一刀只做 `Console/`：`Console.h` 里现在那一排全局函数收成这一张表，调用点改走表。提示符、写出内容和命令登记不变。FileSystem、Gui、Iwl、XHCI 不在这一刀 | 用户敲的命令 | 三架构 `build.sh`。全局符号里不再新增 `Write`、`Initialize`。屏幕上的 Shell 与改前一致 |
 | 6D | **PR-STRUCT-fat-names** | 只改文件名，并补回主文件。原来的 `Fat.c` 在拆分时去掉了（`FatPrivate.h` 写着 PR-R3 拆分 `Fat.c`），目录里没有和文件夹同名的文件。这一刀新建 `Fat/Fat.c`，把 `FatInitialize` 从 `FatIo.c` 挪进去。其余去掉 `Fat` 前缀，缩写写全：`FatDir.c` → `Directory.c`，`FatDirName.c` → `DirectoryName.c`，`FatDirScan.c` → `DirectoryScan.c`，`FatDirSlot.c` → `DirectorySlot.c`，`FatDirStress.c` → `DirectoryStress.c`，`FatFile.c` → `File.c`，`FatFileDelete.c` → `FileDelete.c`，`FatFileRead.c` → `FileRead.c`，`FatFileWrite.c` → `FileWrite.c`，`FatFileWriteAt.c` → `FileWriteAt.c`，`FatFileWriteExist.c` → `FileWriteExist.c`，`FatFileWriteNew.c` → `FileWriteNew.c`，`FatFormat.c` → `Format.c`，`FatFsOps.c` → `Operations.c`，`FatIo.c` → `InputOutput.c`，`FatPath.c` → `Path.c`，`FatPathName.c` → `PathName.c`。函数名不动 | 函数体、目录项布局、读写返回码 | 三架构 `build.sh`。公开函数名与改名前相同。`Fat/` 里有 `Fat.c` |
 | 7 | **PR-STRUCT-fat** | `Core/FileSystem/Fat/*.c` 移到 `Library/Fat/`。这些文件只包含 `Fat.h`、`FatPrivate.h`、`Block.h`。头已经在 `Include/Library/`。`Makefile` 按 `Library/Gpt` 的方式收 `Library/Fat/*.c`。`Core/FileSystem/Student/` 的内存桩留在 Core，符号不变 | 目录项布局、读写返回码 | 三架构 `build.sh`。现有文件读写测试仍过 |
+| 7A | **PR-STRUCT-vfs-names** | `Vfs` 是 Virtual File System 的缩写，写成完整单词。`Include/Library/Vfs.h` → `VirtualFileSystem.h`，`Library/Vfs.c` → `VirtualFileSystem.c`。头里的 `VfsRegister`、`VfsSelect`、`VfsOps`、`VfsMount`、`VfsListDir`、`VfsListEntries`、`VfsReadFile`、`VfsWriteFile`、`VfsDeleteFile`、`VfsMkdir`、`VfsRmdir`、`VfsRename`、`VfsFileStat`、`VfsFileSync`、`VfsReadFileAt`、`VfsWriteFileAt` 以及 `VFS_MAX_BACKENDS` 同样把 `Vfs` 换成 `VirtualFileSystem`，调用点一起改。`FS_OPS` 的字段、`FatFsOps`、`ResFsOps`、`RamFsOps` 不动。`CoreOps.h` 里的 `VfsService*` 是另一层，不在这一刀 | 后端表上的读写行为 | 三架构 `build.sh`。公开的后端函数与改名前一一对应 |
 | 8 | **PR-STRUCT-hid** | `UsbHid/` 不再包含 `XHCI/Internal.h`（现有 11 个 `.c`）或 `XHCI.h`（`Keyboard.c` 仍包含它，和文件头注释不符）。键鼠只通过 `UsbHostController.h` 和本目录自己的头拿状态。缺的字段补到公共口或 `UsbHid` 私头，不把 xHCI 环结构留在键盘文件里 | 报告格式、灯的 SET_REPORT、中断队列约定 | `build.sh` + `smoke-boot.sh`。QEMU 仍出现键盘和绝对鼠标 |
 | 9 | **PR-STRUCT-bot** | CBW、数据、CSW 的公共部分收成一份，xHCI 与 EHCI 都调它，底下走已经存在的 `BulkOn` / `Control`。xHCI 的互斥和 EHCI 的 Clear Halt 留在各自文件 | 扇区命令、sense 的时机、锁的范围 | `build.sh`。QEMU 默认盘是 AHCI，本刀不靠 U 盘冒烟证明容量；用一份与现在字节相同的 CBW/CSW 对照 |
 | 10 | **PR-STRUCT-hub** | 对照 `XHCI/Hub.c` 与 `Ehci/Hub.c`。只抽出两边请求字节相同的标准 Hub 请求。队列、门铃、调度留下。若对照后相同部分不到一个小文件，就停，不硬抽 | 把两个主机控制器并成一个 | `build.sh`。抽出的请求与搬之前逐字节相同 |
@@ -134,6 +135,7 @@ PR-STRUCT-early
   → PR-STRUCT-ops
   → PR-STRUCT-fat-names
   → PR-STRUCT-fat
+  → PR-STRUCT-vfs-names
   → PR-STRUCT-hid
   → PR-STRUCT-bot
   → PR-STRUCT-hub

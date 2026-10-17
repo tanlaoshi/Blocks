@@ -21,7 +21,7 @@ static volatile UINT32 gCdcBulkDone;
 static volatile UINT32 gCdcBulkCode;
 static int gCdcTxBusy;
 
-int CdcConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
+static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
                       UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
     UINT8 InNum = EpIn & 0x0F;
     UINT8 OutNum = EpOut & 0x0F;
@@ -84,9 +84,7 @@ int CdcConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     return 1;
 }
 
-int CdcOnInComplete(UINT32 Code, UINT32 Remain);
-
-int CdcMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
                           UINT32 Remain) {
     UINT64 OutLo;
     UINT64 OutHi;
@@ -108,12 +106,12 @@ int CdcMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
     }
     if ((gCdcBulkInDci != 0 && Ep == gCdcBulkInDci) ||
         (TrbPtr >= InLo && TrbPtr < InHi)) {
-        return CdcOnInComplete(Code, Remain);
+        return gCdc.OnComplete ? gCdc.OnComplete(Code, Remain) : 0;
     }
     return 0;
 }
 
-static int WaitCdcBulk(void) {
+static int WaitBulk(void) {
     int Own = 0;
     int Result = -1;
     UINT64 T0 = ReadTsc();
@@ -147,7 +145,7 @@ static int WaitCdcBulk(void) {
     return Result;
 }
 
-void CdcWrite(const char *Text) {
+static void Write(const char *Text) {
     UINT32 Mps;
     UINT32 N;
 
@@ -178,11 +176,17 @@ void CdcWrite(const char *Text) {
                 TRB_TYPE(TRB_NORMAL) | TRB_IOC);
         FlushDma(gCdcBulkOutRing, sizeof(gCdcBulkOutRing));
         RingDoorbell(gCdcSlot, gCdcBulkOutDci);
-        if (WaitCdcBulk() < 0) {
+        if (WaitBulk() < 0) {
             EventLeaveExclusive();
             break;
         }
         EventLeaveExclusive();
     }
     gCdcTxBusy = 0;
+}
+
+void CdcFillTransmit(void) {
+    gCdc.ConfigureBulk = ConfigureBulk;
+    gCdc.MatchTransfer = MatchTransfer;
+    gCdcUart.Write = Write;
 }

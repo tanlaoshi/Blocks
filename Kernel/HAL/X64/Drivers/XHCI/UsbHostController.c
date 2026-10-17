@@ -42,7 +42,7 @@ static int HostControllerBulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     if (!gXhciStarted) {
         return -1;
     }
-    return XhciBulkXfer(Out ? 0 : 1, Buf, Len);
+    return BulkTransfer(Out ? 0 : 1, Buf, Len);
 }
 
 static const USB_HOST_CONTROLLER_OPERATIONS gXhciHostControllerOperations = {

@@ -31,11 +31,11 @@ static void RxPush(char C) {
     gCdcRxW = Next;
 }
 
-int CdcDataReady(void) {
+static int DataReady(void) {
     return (gCdcClaimed && gCdcRxR != gCdcRxW) ? 1 : 0;
 }
 
-char CdcReadChar(void) {
+static char ReadChar(void) {
     char C;
 
     if (gCdcRxR == gCdcRxW) {
@@ -46,7 +46,7 @@ char CdcReadChar(void) {
     return C;
 }
 
-int CdcOnInComplete(UINT32 Code, UINT32 Remain) {
+static int OnComplete(UINT32 Code, UINT32 Remain) {
     gCdcInCode = Code;
     gCdcInRemain = Remain;
     gCdcInDone = 1;
@@ -96,7 +96,7 @@ static void DrainInCompletion(void) {
     }
 }
 
-void CdcPollRx(void) {
+static void PollReceive(void) {
     int Own = 0;
 
     if (!gCdcClaimed || gCdcSlot == 0 || gCdcBulkInDci == 0) {
@@ -128,7 +128,7 @@ void CdcPollRx(void) {
     gCdcRxBusy = 0;
 }
 
-void CdcRxArm(void) {
+static void Arm(void) {
     gCdcRxR = 0;
     gCdcRxW = 0;
     gCdcInArmed = 0;
@@ -136,4 +136,12 @@ void CdcRxArm(void) {
     if (gCdcClaimed && gCdcBulkInDci != 0) {
         QueueBulkIn();
     }
+}
+
+void CdcFillReceive(void) {
+    gCdc.ArmReceive = Arm;
+    gCdc.OnComplete = OnComplete;
+    gCdcUart.PollReceive = PollReceive;
+    gCdcUart.DataReady = DataReady;
+    gCdcUart.ReadChar = ReadChar;
 }

@@ -1,6 +1,6 @@
 /*
  * MscClaimPort.c — PR-S-xhcimsc-1：单口 Force / Address / 根口 hub。
- * 从 MscClaimPorts 嵌套块原样抽出；不改语义。
+ * 从 ClaimPorts 嵌套块原样抽出；不改语义。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
 #include "XHCI/Private.h"
@@ -10,7 +10,7 @@
  * 成功 1 并写 *Force；失败 0。
  * PR-BOOT-fast-2：收紧 Attempt/空转上限（仍软退 continue）；慢盘靠 hub 再扫。
  */
-int MscClaimForceUntilPed(UINT32 P, int *Force) {
+int ForceUntilPed(UINT32 P, int *Force) {
     UINT32 Ps;
     int Ready = 0;
     UINT32 QuietSave;
@@ -86,7 +86,7 @@ int MscClaimForceUntilPed(UINT32 P, int *Force) {
  * AddressDeviceOnPort + QEMU/真机 Force 重试。
  * 成功 1；失败续扫 0；cmd sick 中止 -1。写出 *Speed。
  */
-int MscClaimAddressPort(UINT32 P, int Force, UINT8 *Speed) {
+int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
     int AddrOk;
     UINT32 QuietSave;
     UINT32 Ps;
@@ -169,7 +169,7 @@ int MscClaimAddressPort(UINT32 P, int Force, UINT8 *Speed) {
  * 根口 hub 分支。成功认领 MSC：*Ok=1 且返回 1（goto done）。
  * 非 hub：返回 -1（继续 FinishClaim）。其它：返回 0（continue）。
  */
-int MscClaimTryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
+int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
     int Hubish = IsHubDeviceDesc() || (gCtrlBuf[4] == 0x09);
 
     if (!Hubish && gCtrlBuf[4] == 0) {
@@ -209,7 +209,7 @@ int MscClaimTryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
          * 正是外接第二 hub（U 盘所在）→ none + 长时间 Stall 像卡死。
          */
         if (HubBefore != 0 && Was != 0 && Was != HubBefore) {
-            if (ProbeSecondHubForMsc(Was, P, Speed)) {
+            if (ProbeSecondHub(Was, P, Speed)) {
                 *Ok = 1;
                 return 1;
             }
@@ -219,14 +219,14 @@ int MscClaimTryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
             if (!HalCpuIsHypervisor()) {
                 StallMs(80); /* PR-BOOT-fast-2：原 150 */
             }
-            if (EnumHubChildrenForMsc()) {
+            if (EnumerateHubChildren()) {
                 *Ok = 1;
                 return 1;
             }
             /* 空 hub：再扫一轮后再决定是否释放（U 盘上电慢） */
             if (!HalCpuIsHypervisor()) {
                 StallMs(150); /* 原 300；Enum 内仍有 Pass 再扫 */
-                if (EnumHubChildrenForMsc()) {
+                if (EnumerateHubChildren()) {
                     *Ok = 1;
                     return 1;
                 }

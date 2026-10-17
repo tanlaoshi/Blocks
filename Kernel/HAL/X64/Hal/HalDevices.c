@@ -29,7 +29,7 @@ void AtaDriverRegister(void);
 void AhciDriverRegister(void);
 void NvmeDriverRegister(void);
 void MscDriverRegister(void); /* PR-H-msc：空壳注册；认盘在后续 PR */
-void XhciMscHostOffer(void);
+void HostOffer(void);
 void MscHostOffer(void);
 void E1000DriverRegister(void);
 void AlxDriverRegister(void); /* PR-N-alx-2：AR8161 L2；无卡/无链路不挡 */
@@ -47,7 +47,7 @@ void HalDriverRegister(void) {
     AhciDriverRegister();
     AtaDriverRegister();
     NvmeDriverRegister();
-    XhciMscHostOffer();  /* PR-DRV-msc-host：先挂主机表 */
+    HostOffer();  /* PR-DRV-msc-host：先挂主机表 */
     MscHostOffer();
     MscDriverRegister(); /* PR-H-msc-1：Bind 不改 Block 后端 */
     InputXhciRegister(); /* 先 USB HID（xHCI） */
@@ -133,7 +133,8 @@ int HalUsbUartClaim(void) {
     int Rc;
 
     /* FTDI：先 xHCI，再 EHCI（N56VZ 棒在 RMH）；已认则 CDC 互斥跳过 */
-    Rc = XhciFtdiClaim();
+    FtdiPublish();
+    Rc = gFtdiUart.Claim ? gFtdiUart.Claim() : 0;
     if (Rc == 1) {
         return 1;
     }
@@ -143,11 +144,13 @@ int HalUsbUartClaim(void) {
             return 1;
         }
     }
-    return CdcClaim();
+    CdcPublish();
+    return gCdcUart.Claim ? gCdcUart.Claim() : 0;
 }
 
 int HalUsbUartReady(void) {
-    return (XhciFtdiReady() || FtdiReady() || CdcReady()) ? 1 : 0;
+    return ((gFtdiUart.Ready && gFtdiUart.Ready()) || FtdiReady() ||
+            (gCdcUart.Ready && gCdcUart.Ready())) ? 1 : 0;
 }
 
 /* PR-N-wifi-1：USB 8188EU；先 xHCI 再 EHCI；无棒 0 */

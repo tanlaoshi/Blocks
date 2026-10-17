@@ -41,11 +41,11 @@ static void RxPush(char C) {
     gFtdiRxW = Next;
 }
 
-int XhciFtdiDataReady(void) {
+static int DataReady(void) {
     return (gFtdiClaimed && gFtdiRxR != gFtdiRxW) ? 1 : 0;
 }
 
-char XhciFtdiReadChar(void) {
+static char ReadChar(void) {
     char C;
 
     if (gFtdiRxR == gFtdiRxW) {
@@ -56,7 +56,7 @@ char XhciFtdiReadChar(void) {
     return C;
 }
 
-int FtdiOnInComplete(UINT32 Code, UINT32 Remain) {
+static int OnComplete(UINT32 Code, UINT32 Remain) {
     gFtdiInCode = Code;
     gFtdiInRemain = Remain;
     gFtdiInDone = 1;
@@ -66,7 +66,7 @@ int FtdiOnInComplete(UINT32 Code, UINT32 Remain) {
 /*
  * ConfigEP：Bulk IN + OUT（ftdi-1 OUT + ftdi-2 IN 一次配齐）。
  */
-int FtdiConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
+static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
                        UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
     UINT8 InNum = EpIn & 0x0F;
     UINT8 OutNum = EpOut & 0x0F;
@@ -176,7 +176,7 @@ static void DrainInCompletion(void) {
     }
 }
 
-void XhciFtdiPollRx(void) {
+static void PollReceive(void) {
     int Own = 0;
 
     if (!gFtdiClaimed || gFtdiSlot == 0 || gFtdiBulkInDci == 0) {
@@ -208,7 +208,7 @@ void XhciFtdiPollRx(void) {
     gFtdiRxBusy = 0;
 }
 
-void FtdiRxArm(void) {
+static void Arm(void) {
     gFtdiRxR = 0;
     gFtdiRxW = 0;
     gFtdiInArmed = 0;
@@ -216,4 +216,13 @@ void FtdiRxArm(void) {
     if (gFtdiClaimed && gFtdiBulkInDci != 0) {
         QueueBulkIn();
     }
+}
+
+void FtdiFillReceive(void) {
+    gFtdi.ConfigureBulk = ConfigureBulk;
+    gFtdi.ArmReceive = Arm;
+    gFtdi.OnComplete = OnComplete;
+    gFtdiUart.PollReceive = PollReceive;
+    gFtdiUart.DataReady = DataReady;
+    gFtdiUart.ReadChar = ReadChar;
 }

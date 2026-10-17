@@ -1,5 +1,5 @@
 /*
- * FtdiClaim.c — PR-H-usb-uart-ftdi-1：FT232 认领（VID/PID + Bulk OUT + 115200）
+ * Ftdi.c — FT232 认领（VID/PID + Bulk OUT + 115200）
  */
 #include "XHCI/Private.h"
 
@@ -29,12 +29,12 @@ XHCI_TRB gFtdiBulkOutRing[RING_SIZE] __attribute__((aligned(64)));
 RING_STATE gFtdiBulkOut;
 static UINT8 gFtdiCfgBuf[512] __attribute__((aligned(64)));
 
-void FtdiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut) {
+static void EndpointZeroRing(XHCI_TRB **RingOut, RING_STATE **StOut) {
     *RingOut = gFtdiEp0Ring;
     *StOut = &gFtdiEp0;
 }
 
-int XhciFtdiReady(void) {
+static int Ready(void) {
     return (gFtdiClaimed && gFtdiSlot != 0) ? 1 : 0;
 }
 
@@ -42,7 +42,7 @@ static int IsFtdiPid(UINT16 Pid) {
     return Pid == FTDI_PID_FT232R || Pid == FTDI_PID_FT232H || Pid == FTDI_PID_FT231X;
 }
 
-static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
+static int ParseEndpoints(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
                          UINT8 *EpOut, UINT16 *MpsOut) {
     UINT16 Off = 0;
     UINT8 CurIface = 0xFF;
@@ -97,7 +97,7 @@ static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
     return 1;
 }
 
-static int FtdiVendor(UINT8 Req, UINT16 Value, UINT16 Index) {
+static int Vendor(UINT8 Req, UINT16 Value, UINT16 Index) {
     USB_SETUP_PACKET Setup;
 
     Setup.bmRequestType = 0x40;
@@ -108,21 +108,21 @@ static int FtdiVendor(UINT8 Req, UINT16 Value, UINT16 Index) {
     return ControlXfer(&Setup, 0);
 }
 
-static int FtdiSetLine115200(void) {
-    if (FtdiVendor(FTDI_REQ_RESET, 0, 0) < 0) {
+static int SetLine(void) {
+    if (Vendor(FTDI_REQ_RESET, 0, 0) < 0) {
         return -1;
     }
-    if (FtdiVendor(FTDI_REQ_SET_BAUD, FTDI_BAUD_115200, 0) < 0) {
+    if (Vendor(FTDI_REQ_SET_BAUD, FTDI_BAUD_115200, 0) < 0) {
         return -1;
     }
-    if (FtdiVendor(FTDI_REQ_SET_DATA, 8, 0) < 0) {
+    if (Vendor(FTDI_REQ_SET_DATA, 8, 0) < 0) {
         return -1;
     }
-    (void)FtdiVendor(FTDI_REQ_SET_FLOW, 0, 0);
+    (void)Vendor(FTDI_REQ_SET_FLOW, 0, 0);
     return 0;
 }
 
-int FtdiFinishClaim(UINT32 RootPort, UINT8 Speed) {
+static int Finish(UINT32 RootPort, UINT8 Speed) {
     UINT8 EpIn = 0;
     UINT8 EpOut = 0;
     UINT16 MpsIn = 64;
@@ -158,22 +158,22 @@ int FtdiFinishClaim(UINT32 RootPort, UINT8 Speed) {
     if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gFtdiCfgBuf) < 0) {
         goto fail;
     }
-    if (!ParseFtdiBulk(gFtdiCfgBuf, Total, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseEndpoints(gFtdiCfgBuf, Total, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
         goto fail;
     }
     if (SetConfig(ConfigVal) < 0) {
         goto fail;
     }
-    if (!FtdiConfigBulk(gFtdiSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
+    if (!gFtdi.ConfigureBulk(gFtdiSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
         goto fail;
     }
-    if (FtdiSetLine115200() < 0) {
+    if (SetLine() < 0) {
         BootLog("Boot: USB-UART Baud Fail\n");
         goto fail;
     }
     gFtdiPort = RootPort;
     gFtdiClaimed = 1;
-    FtdiRxArm();
+    gFtdi.ArmReceive();
     /* QEMU 默认 BootLog 会滤非 milestone；COM1+棒上都要看得见 */
     ToyLogBoot("Boot: USB-UART FTDI\n");
     ToyBootMarkUsb("Boot: USB-UART FTDI\n");
@@ -187,7 +187,7 @@ fail:
     return 0;
 }
 
-static int FtdiAddressRoot(UINT32 P, UINT8 *Speed) {
+static int AddressRoot(UINT32 P, UINT8 *Speed) {
     UINT32 Ps;
     int Force = 0;
 
@@ -200,7 +200,7 @@ static int FtdiAddressRoot(UINT32 P, UINT8 *Speed) {
         if (!(Ps & PORTSC_CCS) || !(Ps & PORTSC_PED)) {
             return 0;
         }
-    } else if (!MscClaimForceUntilPed(P, &Force)) {
+    } else if (!ForceUntilPed(P, &Force)) {
         return 0;
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));
@@ -225,11 +225,11 @@ static int FtdiAddressRoot(UINT32 P, UINT8 *Speed) {
     return 1;
 }
 
-int FtdiTryHubChildren(void); /* FtdiHub.c */
-
-int XhciFtdiClaim(void) {
+static int Claim(void) {
     UINT32 P;
     UINT8 Speed;
+
+    FtdiPublish();
 
     if (!gXhciStarted || gOperationalBase == 0 || gMaxPorts == 0) {
         return -1;
@@ -237,7 +237,7 @@ int XhciFtdiClaim(void) {
     if (gFtdiClaimed && gFtdiSlot != 0) {
         return 1;
     }
-    if (gHubSlotId != 0 && FtdiTryHubChildren()) {
+    if (gHubSlotId != 0 && gFtdi.TryHubChildren && gFtdi.TryHubChildren()) {
         goto armed;
     }
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
@@ -258,10 +258,10 @@ int XhciFtdiClaim(void) {
         if (gMscClaimed && gMscPort == P) {
             continue;
         }
-        if (!FtdiAddressRoot(P, &Speed)) {
+        if (!AddressRoot(P, &Speed)) {
             continue;
         }
-        if (FtdiFinishClaim(P, Speed)) {
+        if (Finish(P, Speed)) {
             goto armed;
         }
     }
@@ -275,4 +275,17 @@ armed:
         QueueMouseIntr();
     }
     return 1;
+}
+
+SERIAL_OPS gFtdi;
+USB_UART_OPS gFtdiUart;
+
+void FtdiPublish(void) {
+    FtdiFillHub();
+    FtdiFillReceive();
+    FtdiFillTransmit();
+    gFtdi.EndpointZeroRing = EndpointZeroRing;
+    gFtdi.FinishClaim = Finish;
+    gFtdiUart.Claim = Claim;
+    gFtdiUart.Ready = Ready;
 }

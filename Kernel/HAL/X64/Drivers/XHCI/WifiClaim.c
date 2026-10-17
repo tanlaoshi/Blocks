@@ -161,7 +161,7 @@ static int WifiAddressRoot(UINT32 P, UINT8 *Speed) {
         if (!(Ps & PORTSC_CCS) || !(Ps & PORTSC_PED)) {
             return 0;
         }
-    } else if (!MscClaimForceUntilPed(P, &Force)) {
+    } else if (!ForceUntilPed(P, &Force)) {
         return 0;
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));

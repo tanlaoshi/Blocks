@@ -103,50 +103,20 @@ int UsesIrq(void);
 int KeyboardSetLeds(UINT8 Leds);
 UINT8 KeyboardInterface(void);
 
-/*
- * PR-H-msc-2：Bulk/MSC API 壳。仅静态环 + 恒失败入口；
- * 不扫口、不 Reset、不 Address；不碰 Drain 键鼠热路径。
- * PR-H-msc-3：MscScanPorts — 非键鼠口 PORTSC 清点（无 Address；class 见 claim）。
- * PR-H-msc-4：MscClaimPorts — 单口 SetConfig + Bulk；不 SCSI。
- * PR-H-msc-5：XhciMscCapacity — BOT INQUIRY + READ CAPACITY(10)。
- */
-int MscBringUp(void); /* claim 后 0，否则 -1（仍会 Init Bulk 环） */
-int XhciMscReady(void);   /* claim 后 1 */
-/* DirIn=1 Bulk IN；已 claim 才可传 */
-int XhciBulkXfer(int DirIn, void *Buf, UINT32 Len);
-/* 返回打到 class 的口数；HC 未起 -1 */
-int MscScanPorts(void);
-/* 返回 1 已 claim；0 无 MSC；-1 HC 未起 */
-int MscClaimPorts(void);
-/* gMscScanSlot 已 Address：读配置 / SetConfig / Bulk；供根口与 hub 子口共用 */
-int XhciMscFinishClaim(UINT32 RootPort, UINT8 Speed);
-/* PR-H-msc-5：INQUIRY + READ CAPACITY；成功 0 */
-int XhciMscCapacity(void);
-UINT32 XhciMscBlockCount(void);
-UINT32 XhciMscBlockSize(void);
-/* PR-H-msc-6：BOT READ(10)/WRITE(10)；成功 1 / 失败 0（同 Block） */
-int XhciMscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
-int XhciMscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
-int XhciMscFlush(void);
+/* 串口：短名在表上。实现在 Serial/Ftdi、Serial/Cdc 里是 static。 */
+typedef struct {
+    int (*Claim)(void);
+    int (*Ready)(void);
+    void (*Write)(const char *Text);
+    void (*PollReceive)(void);
+    int (*DataReady)(void);
+    char (*ReadChar)(void);
+} USB_UART_OPS;
 
-/* PR-H-msc-hot：卸 slot + 清容量；已非 claim 亦 0 */
-int XhciMscRelease(void);
-/* 1=盘仍在（根口 CCS / hub 子口 CONNECTION）；0=已拔或未 claim */
-int XhciMscPresent(void);
-
-/* PR-H-usb-uart：FT232 / CDC-ACM 认领 + TX/RX tee */
-int XhciFtdiClaim(void);  /* 1 ok；0 无棒；-1 无 HC */
-int XhciFtdiReady(void);
-void XhciFtdiWrite(const char *Text);
-void XhciFtdiPollRx(void);
-int XhciFtdiDataReady(void);
-char XhciFtdiReadChar(void);
-int CdcClaim(void);
-int CdcReady(void);
-void CdcWrite(const char *Text);
-void CdcPollRx(void);
-int CdcDataReady(void);
-char CdcReadChar(void);
+extern USB_UART_OPS gFtdiUart;
+extern USB_UART_OPS gCdcUart;
+void FtdiPublish(void);
+void CdcPublish(void);
 
 /* PR-N-wifi-1：RTL8188EU USB */
 int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */

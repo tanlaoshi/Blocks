@@ -54,7 +54,7 @@ static int WaitBulk(void) {
  * PR-H-msc-5：Bulk 普通传输。DirIn=1 → Bulk IN 环；0 → Bulk OUT。
  * 成功 0；失败 -1。短包算成功（CSW/INQUIRY 常见）。
  */
-int XhciBulkXfer(int DirIn, void *Buf, UINT32 Len) {
+int BulkTransfer(int DirIn, void *Buf, UINT32 Len) {
     XHCI_TRB *Ring;
     RING_STATE *St;
     UINT32 Dci;

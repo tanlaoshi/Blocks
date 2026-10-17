@@ -1,5 +1,5 @@
 /*
- * CdcClaim.c — PR-H-usb-uart-cdc-1：CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A）
+ * Cdc.c — CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A）
  */
 #include "XHCI/Private.h"
 
@@ -25,17 +25,17 @@ RING_STATE gCdcBulkIn;
 static UINT8 gCdcCfgBuf[512] __attribute__((aligned(64)));
 static UINT8 gCdcLineCoding[7] __attribute__((aligned(64)));
 
-void CdcEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut) {
+static void EndpointZeroRing(XHCI_TRB **RingOut, RING_STATE **StOut) {
     *RingOut = gCdcEp0Ring;
     *StOut = &gCdcEp0;
 }
 
-int CdcReady(void) {
+static int Ready(void) {
     return (gCdcClaimed && gCdcSlot != 0) ? 1 : 0;
 }
 
 /* Comm iface + Data Bulk IN/OUT；不对则 0 */
-static int ParseCdcAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
+static int ParseAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
                        UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut) {
     UINT16 Off = 0;
     UINT8 CurIface = 0xFF;
@@ -109,7 +109,7 @@ static int ParseCdcAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
     return 1;
 }
 
-static int CdcSetLine115200(UINT8 CommIface) {
+static int SetLine(UINT8 CommIface) {
     USB_SETUP_PACKET Setup;
 
     /* dwDTERate=115200 LE, 1 stop, no parity, 8 bits */
@@ -135,10 +135,7 @@ static int CdcSetLine115200(UINT8 CommIface) {
     return 0;
 }
 
-int CdcConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                      UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut);
-
-int CdcFinishClaim(UINT32 RootPort, UINT8 Speed) {
+static int Finish(UINT32 RootPort, UINT8 Speed) {
     UINT8 EpIn = 0;
     UINT8 EpOut = 0;
     UINT8 Comm = 0;
@@ -168,17 +165,17 @@ int CdcFinishClaim(UINT32 RootPort, UINT8 Speed) {
     if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gCdcCfgBuf) < 0) {
         goto fail;
     }
-    if (!ParseCdcAcm(gCdcCfgBuf, Total, &Comm, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseAcm(gCdcCfgBuf, Total, &Comm, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
         goto fail;
     }
     if (SetConfig(ConfigVal) < 0) {
         goto fail;
     }
     gCdcCommIface = Comm;
-    if (!CdcConfigBulk(gCdcSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
+    if (!gCdc.ConfigureBulk(gCdcSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
         goto fail;
     }
-    if (CdcSetLine115200(Comm) < 0) {
+    if (SetLine(Comm) < 0) {
         BootLog("Boot: USB-UART CDC Line Fail\n");
         goto fail;
     }
@@ -190,7 +187,7 @@ int CdcFinishClaim(UINT32 RootPort, UINT8 Speed) {
     }
     gCdcPort = RootPort;
     gCdcClaimed = 1;
-    CdcRxArm();
+    gCdc.ArmReceive();
     /* COM1 + CDC 双路；BootMark 保证 QEMU 非 verbose 也看得见 */
     ToyLogBoot("Boot: USB-UART CDC\n");
     ToyBootMarkUsb("Boot: USB-UART CDC\n");
@@ -203,8 +200,7 @@ fail:
     }
     return 0;
 }
-
-static int CdcAddressRoot(UINT32 P, UINT8 *Speed) {
+static int AddressRoot(UINT32 P, UINT8 *Speed) {
     UINT32 Ps;
     int Force = 0;
 
@@ -213,7 +209,7 @@ static int CdcAddressRoot(UINT32 P, UINT8 *Speed) {
         if (!(Ps & PORTSC_CCS) || !(Ps & PORTSC_PED)) {
             return 0;
         }
-    } else if (!MscClaimForceUntilPed(P, &Force)) {
+    } else if (!ForceUntilPed(P, &Force)) {
         return 0;
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));
@@ -238,12 +234,11 @@ static int CdcAddressRoot(UINT32 P, UINT8 *Speed) {
     return 1;
 }
 
-/*
- * 已有 FTDI 则跳过（互斥）。返回 1 认领；0 无棒；-1 无 HC。
- */
-int CdcClaim(void) {
+static int Claim(void) {
     UINT32 P;
     UINT8 Speed;
+
+    CdcPublish();
 
     if (!gXhciStarted || gOperationalBase == 0 || gMaxPorts == 0) {
         return -1;
@@ -276,10 +271,10 @@ int CdcClaim(void) {
         if (gFtdiClaimed && gFtdiPort == P) {
             continue;
         }
-        if (!CdcAddressRoot(P, &Speed)) {
+        if (!AddressRoot(P, &Speed)) {
             continue;
         }
-        if (CdcFinishClaim(P, Speed)) {
+        if (Finish(P, Speed)) {
             if (gSlotId != 0 && gIntrDci != 0) {
                 QueueIntr();
             }
@@ -290,4 +285,16 @@ int CdcClaim(void) {
         }
     }
     return 0;
+}
+
+SERIAL_OPS gCdc;
+USB_UART_OPS gCdcUart;
+
+void CdcPublish(void) {
+    CdcFillReceive();
+    CdcFillTransmit();
+    gCdc.EndpointZeroRing = EndpointZeroRing;
+    gCdc.FinishClaim = Finish;
+    gCdcUart.Claim = Claim;
+    gCdcUart.Ready = Ready;
 }

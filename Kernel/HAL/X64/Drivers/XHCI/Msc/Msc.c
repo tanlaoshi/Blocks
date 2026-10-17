@@ -2,7 +2,7 @@
  * Msc.c — PR-S-xhcimsc-1：MSC 核心（BringUp / Ready / Scan / 容量查询入口）
  *
  * Bulk→MscBulk；BOT/扇区→XhciMscBot；配置认领→XhciMscClaim；
- * 根口编排→MscClaimPorts。事件环 Bulk 完成仍在 Xhci.c。
+ * 根口编排→ClaimPorts。事件环 Bulk 完成仍在 Xhci.c。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环地址；勿迁出）。
  */
 #include "XHCI/Private.h"
@@ -11,7 +11,7 @@
 /*
  * PR-H-msc-2/4：Bulk 环 Init；claim 后 Ready=1（仍无 SCSI）。
  */
-int MscBringUp(void) {
+int BringUp(void) {
     if (!gMscBulkRingsInited) {
         InitRing(gBulkInRing, &gBulkIn, RING_SIZE);
         InitRing(gBulkOutRing, &gBulkOut, RING_SIZE);
@@ -22,15 +22,15 @@ int MscBringUp(void) {
     return gMscClaimed ? 0 : -1;
 }
 
-int XhciMscReady(void) {
+static int Ready(void) {
     return gMscClaimed ? 1 : 0;
 }
 
-UINT32 XhciMscBlockCount(void) {
+static UINT32 BlockCount(void) {
     return gMscCapacityOk ? gMscBlockCount : 0;
 }
 
-UINT32 XhciMscBlockSize(void) {
+static UINT32 BlockSize(void) {
     return gMscCapacityOk ? gMscBlockSize : 0;
 }
 
@@ -39,7 +39,7 @@ UINT32 XhciMscBlockSize(void) {
  * NUC：未 Force PR 的 PED 口（如 0x11）Address 命令超时 → 命令环 sick →
  * MSI irq-stall → 鼠标假死。class/VID 留给 msc claim（可 Force PR）。
  */
-int MscScanPorts(void) {
+static int ScanPorts(void) {
     UINT32 P;
     int Found = 0;
 
@@ -93,7 +93,7 @@ int MscScanPorts(void) {
 /*
  * PR-H-msc-hot：DisableSlot 清 gMsc*（见 Device.c）。
  */
-int XhciMscRelease(void) {
+static int Release(void) {
     if (gMscScanSlot != 0) {
         DisableSlot(gMscScanSlot);
     } else {
@@ -116,7 +116,7 @@ int XhciMscRelease(void) {
  * 根口：PORTSC.CCS。hub 子设备：HubGetPortStatus(CONNECTION)
  *（仅当 gMscHubSlot==当前 HID hub，第二 hub 场景 Shell 手动 release）。
  */
-int XhciMscPresent(void) {
+static int Present(void) {
     UINT32 Ps;
     UINT32 St;
 
@@ -152,21 +152,21 @@ int XhciMscPresent(void) {
     return (Ps & PORTSC_CCS) ? 1 : 0;
 }
 
-void XhciMscHostOffer(void) {
+void HostOffer(void) {
     static const MSC_HOST Host = {
         .Kind = MSC_HOST_XHCI,
-        .BringUp = MscBringUp,
-        .Ready = XhciMscReady,
-        .Scan = MscScanPorts,
-        .Claim = MscClaimPorts,
-        .Capacity = XhciMscCapacity,
-        .BlockCount = XhciMscBlockCount,
-        .BlockSize = XhciMscBlockSize,
-        .ReadSectors = XhciMscReadSectors,
-        .WriteSectors = XhciMscWriteSectors,
-        .Flush = XhciMscFlush,
-        .Release = XhciMscRelease,
-        .Present = XhciMscPresent,
+        .BringUp = BringUp,
+        .Ready = Ready,
+        .Scan = ScanPorts,
+        .Claim = ClaimPorts,
+        .Capacity = Capacity,
+        .BlockCount = BlockCount,
+        .BlockSize = BlockSize,
+        .ReadSectors = ReadSectors,
+        .WriteSectors = WriteSectors,
+        .Flush = Synchronize,
+        .Release = Release,
+        .Present = Present,
         .ControllerReady = 0,
     };
 

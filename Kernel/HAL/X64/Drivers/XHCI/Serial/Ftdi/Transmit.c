@@ -15,9 +15,7 @@ static volatile UINT32 gFtdiBulkDone;
 static volatile UINT32 gFtdiBulkCode;
 static int gFtdiTxBusy;
 
-int FtdiOnInComplete(UINT32 Code, UINT32 Remain);
-
-int FtdiMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
                            UINT32 Remain) {
     UINT64 OutLo;
     UINT64 OutHi;
@@ -40,12 +38,12 @@ int FtdiMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
     }
     if ((gFtdiBulkInDci != 0 && Ep == gFtdiBulkInDci) ||
         (TrbPtr >= InLo && TrbPtr < InHi)) {
-        return FtdiOnInComplete(Code, Remain);
+        return gFtdi.OnComplete ? gFtdi.OnComplete(Code, Remain) : 0;
     }
     return 0;
 }
 
-static int WaitFtdiBulk(void) {
+static int WaitBulk(void) {
     int Own = 0;
     int Result = -1;
     UINT64 T0 = ReadTsc();
@@ -79,7 +77,7 @@ static int WaitFtdiBulk(void) {
     return Result;
 }
 
-void XhciFtdiWrite(const char *Text) {
+static void Write(const char *Text) {
     UINT32 Mps;
     UINT32 N;
 
@@ -110,11 +108,16 @@ void XhciFtdiWrite(const char *Text) {
                 TRB_TYPE(TRB_NORMAL) | TRB_IOC);
         FlushDma(gFtdiBulkOutRing, sizeof(gFtdiBulkOutRing));
         RingDoorbell(gFtdiSlot, gFtdiBulkOutDci);
-        if (WaitFtdiBulk() < 0) {
+        if (WaitBulk() < 0) {
             EventLeaveExclusive();
             break;
         }
         EventLeaveExclusive();
     }
     gFtdiTxBusy = 0;
+}
+
+void FtdiFillTransmit(void) {
+    gFtdi.MatchTransfer = MatchTransfer;
+    gFtdiUart.Write = Write;
 }

@@ -6,7 +6,7 @@
 #include "XHCI/Private.h"
 
 /* ConfigEP：Bulk IN + Bulk OUT（EP Type 6/2）；带回 Route/TT */
-static int ConfigureMscBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
+static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
                             UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
     UINT8 InNum = EpIn & 0x0F;
     UINT8 OutNum = EpOut & 0x0F;
@@ -35,7 +35,7 @@ static int ConfigureMscBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     }
 
     if (!gMscBulkRingsInited) {
-        (void)MscBringUp();
+        (void)BringUp();
     }
     InitRing(gBulkInRing, &gBulkIn, RING_SIZE);
     InitRing(gBulkOutRing, &gBulkOut, RING_SIZE);
@@ -77,7 +77,7 @@ static int ConfigureMscBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
  * gMscScanSlot 已 Address：取配置、Parse Bulk、SetConfig、ConfigEP。
  * 成功置 gMscClaimed；失败 Disable slot。
  */
-int XhciMscFinishClaim(UINT32 RootPort, UINT8 Speed) {
+int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     UINT8 EpIn = 0;
     UINT8 EpOut = 0;
     UINT8 Iface = 0;
@@ -148,9 +148,9 @@ int XhciMscFinishClaim(UINT32 RootPort, UINT8 Speed) {
         goto fail;
     }
 
-    if (!ParseMscBulk(gMscCfgBuf, Total, &Iface, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseBulk(gMscCfgBuf, Total, &Iface, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
         BootLogHex("Boot: MSC claim no bulk port=", RootPort, 2);
-        LogMscCfgIfaces(gMscCfgBuf, Total);
+        LogConfigInterfaces(gMscCfgBuf, Total);
         goto fail;
     }
 
@@ -159,7 +159,7 @@ int XhciMscFinishClaim(UINT32 RootPort, UINT8 Speed) {
         goto fail;
     }
 
-    if (!ConfigureMscBulk(gMscScanSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
+    if (!ConfigureBulk(gMscScanSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
         goto fail;
     }
 

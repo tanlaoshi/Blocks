@@ -452,51 +452,49 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot);
 int TryHubOnRootPort(UINT32 RootPort, UINT8 Speed);
 int EnumHubChildrenForKeyboard(void);
 int EnumHubChildrenForMouse(void);
-int EnumHubChildrenForMsc(void);
+int EnumerateHubChildren(void);
 /*
  * 已有 HID hub 时：外接第二颗根口 hub（带 U 盘）勿 ClaimHubOnRootPort
  * （其会 DisableSlot 掉 ExistingSlot）。临时切 gHub* 扫子口 MSC，成功则
  * 保留第二 hub slot 作 gMscHubSlot 父；失败则 Disable 第二 hub 并恢复 HID hub。
  */
-int ProbeSecondHubForMsc(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed);
-int XhciMscFinishClaim(UINT32 RootPort, UINT8 Speed);
-int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
+int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed);
+int BringUp(void);
+int BulkTransfer(int DirIn, void *Buf, UINT32 Len);
+int ClaimPorts(void);
+int FinishClaim(UINT32 RootPort, UINT8 Speed);
+int Capacity(void);
+int ReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
+int WriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
+int Synchronize(void);
+int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
                  UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut);
-void LogMscCfgIfaces(UINT8 *Cfg, UINT16 Total);
-int MscClaimForceUntilPed(UINT32 P, int *Force);
-int MscClaimAddressPort(UINT32 P, int Force, UINT8 *Speed);
-int MscClaimTryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok);
+void LogConfigInterfaces(UINT8 *Cfg, UINT16 Total);
+int ForceUntilPed(UINT32 P, int *Force);
+int AddressPort(UINT32 P, int Force, UINT8 *Speed);
+int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok);
 
-/* PR-H-usb-uart-ftdi-1/2 */
-int XhciFtdiClaim(void);
-int XhciFtdiReady(void);
-void XhciFtdiWrite(const char *Text);
-void FtdiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
-int FtdiMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
-                           UINT32 Remain);
-int FtdiFinishClaim(UINT32 RootPort, UINT8 Speed);
-int FtdiTryHubChildren(void);
-int FtdiConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                       UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut);
-void FtdiRxArm(void);
-void XhciFtdiPollRx(void);
-int XhciFtdiDataReady(void);
-char XhciFtdiReadChar(void);
+/* 串口内部入口。对外六件事在 gFtdiUart / gCdcUart。 */
+typedef struct {
+    void (*EndpointZeroRing)(XHCI_TRB **RingOut, RING_STATE **StateOut);
+    int (*MatchTransfer)(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+                         UINT32 Remain);
+    int (*FinishClaim)(UINT32 RootPort, UINT8 Speed);
+    int (*TryHubChildren)(void);
+    int (*ConfigureBulk)(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
+                         UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut);
+    void (*ArmReceive)(void);
+    int (*OnComplete)(UINT32 Code, UINT32 Remain);
+} SERIAL_OPS;
 
-/* PR-H-usb-uart-cdc-1/2 */
-int CdcClaim(void);
-int CdcReady(void);
-void CdcWrite(const char *Text);
-void CdcEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
-int CdcMatchXferEvent(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
-                          UINT32 Remain);
-int CdcFinishClaim(UINT32 RootPort, UINT8 Speed);
-int CdcConfigBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                       UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut);
-void CdcRxArm(void);
-void CdcPollRx(void);
-int CdcDataReady(void);
-char CdcReadChar(void);
+extern SERIAL_OPS gFtdi;
+extern SERIAL_OPS gCdc;
+
+void FtdiFillHub(void);
+void FtdiFillReceive(void);
+void FtdiFillTransmit(void);
+void CdcFillReceive(void);
+void CdcFillTransmit(void);
 
 /* PR-N-wifi-1 */
 int XhciWifiClaim(void);

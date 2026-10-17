@@ -4,7 +4,7 @@
 #include "XHCI/Private.h"
 
 /* 配置描述符中找 MSC Bulk IN/OUT（偏好 BOT；允许 UASP；兜底任一对 Bulk） */
-int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
+int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
                  UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut) {
     UINT16 Off = 0;
     UINT8 CurIface = 0xFF;
@@ -106,7 +106,7 @@ int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
     return 1;
 }
 
-void LogMscCfgIfaces(UINT8 *Cfg, UINT16 Total) {
+void LogConfigInterfaces(UINT8 *Cfg, UINT16 Total) {
     UINT16 Off = 0;
     int N = 0;
 

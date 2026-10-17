@@ -7,11 +7,11 @@
 
 /*
  * PR-H-msc-4：hub 子口找 MSC（Bulk）；跳过已占用键/鼠子口。
- * Address → XhciMscFinishClaim（SetConfig+Bulk，无 SCSI）。
+ * Address → FinishClaim（SetConfig+Bulk，无 SCSI）。
  * 真机：先统一上电再扫，空口略等（U 盘上电慢 → 误判 hub empty）。
  * PR-BOOT-fast-2：Pass/空口等待收紧；仍保留一轮 rescan + 软退。
  */
-int EnumHubChildrenForMsc(void) {
+int EnumerateHubChildren(void) {
     UINT8 Port;
     UINT8 MaxP = gHubNumPorts;
     int Pass;
@@ -135,7 +135,7 @@ int EnumHubChildrenForMsc(void) {
             if (gMscScanSlot <= DCBAA_SLOTS) {
                 gSlotEp0UsesKbdRing[gMscScanSlot] = 0;
             }
-            if (XhciMscFinishClaim(gHubRootPort, Speed)) {
+            if (FinishClaim(gHubRootPort, Speed)) {
                 BootLog("Boot: MSC claim via hub\n");
                 return 1;
             }
@@ -152,7 +152,7 @@ int EnumHubChildrenForMsc(void) {
  * HID 已占用 gHubSlotId 时，外接第二 hub（ExistingSlot）带 U 盘：
  * 勿走 ClaimHubOnRootPort（会 DisableSlot 第二 hub）。临时切 gHub* 扫 MSC。
  */
-int ProbeSecondHubForMsc(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
+int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
     UINT32 SavedSlot = gHubSlotId;
     UINT32 SavedRoot = gHubRootPort;
     UINT8 SavedPorts = gHubNumPorts;
@@ -164,7 +164,7 @@ int ProbeSecondHubForMsc(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
     int Ok;
 
     if (HubSlot == 0 || HubSlot == gHubSlotId) {
-        return EnumHubChildrenForMsc();
+        return EnumerateHubChildren();
     }
 
     BootLogHex("Boot: MSC claim 2nd hub slot=", HubSlot, 2);
@@ -196,7 +196,7 @@ int ProbeSecondHubForMsc(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
         BootLog("Boot: MSC claim 2nd hub eval skip\n");
     }
 
-    Ok = EnumHubChildrenForMsc();
+    Ok = EnumerateHubChildren();
     gMscProbeHubSlot = 0;
 
     if (Ok) {

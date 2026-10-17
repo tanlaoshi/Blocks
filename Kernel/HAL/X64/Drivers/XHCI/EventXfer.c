@@ -37,12 +37,14 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
         gBulkDone = 1;
         Matched = 1;
     }
-    if (!Matched && FtdiMatchXferEvent(EvtSlot, Ep, TrbPtr, Code,
-                                           Evt->Status & 0xFFFFFFu)) {
+    if (!Matched && gFtdi.MatchTransfer &&
+        gFtdi.MatchTransfer(EvtSlot, Ep, TrbPtr, Code,
+                            Evt->Status & 0xFFFFFFu)) {
         Matched = 1;
     }
-    if (!Matched && CdcMatchXferEvent(EvtSlot, Ep, TrbPtr, Code,
-                                           Evt->Status & 0xFFFFFFu)) {
+    if (!Matched && gCdc.MatchTransfer &&
+        gCdc.MatchTransfer(EvtSlot, Ep, TrbPtr, Code,
+                           Evt->Status & 0xFFFFFFu)) {
         Matched = 1;
     }
     if (!Matched) {

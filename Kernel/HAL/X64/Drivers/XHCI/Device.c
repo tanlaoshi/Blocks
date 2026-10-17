@@ -32,9 +32,13 @@ void Ep0RingForSlot(UINT32 SlotId, XHCI_TRB **RingOut, RING_STATE **StOut) {
         *RingOut = gMscScanEp0Ring;
         *StOut = &gMscScanEp0;
     } else if (SlotId != 0 && SlotId == gFtdiSlot) {
-        FtdiEp0Ring(RingOut, StOut);
+        if (gFtdi.EndpointZeroRing) {
+            gFtdi.EndpointZeroRing(RingOut, StOut);
+        }
     } else if (SlotId != 0 && SlotId == gCdcSlot) {
-        CdcEp0Ring(RingOut, StOut);
+        if (gCdc.EndpointZeroRing) {
+            gCdc.EndpointZeroRing(RingOut, StOut);
+        }
     } else if (SlotId != 0 && SlotId == gWifiSlot) {
         WifiEp0Ring(RingOut, StOut);
     } else if (SlotId != 0 && SlotId <= DCBAA_SLOTS && gSlotEp0UsesKbdRing[SlotId]) {
@@ -61,9 +65,13 @@ void Ep0RingForSlotOut(UINT32 *SlotOut, XHCI_TRB **RingOut, RING_STATE **StOut) 
         *RingOut = gMscScanEp0Ring;
         *StOut = &gMscScanEp0;
     } else if (SlotOut == &gFtdiSlot) {
-        FtdiEp0Ring(RingOut, StOut);
+        if (gFtdi.EndpointZeroRing) {
+            gFtdi.EndpointZeroRing(RingOut, StOut);
+        }
     } else if (SlotOut == &gCdcSlot) {
-        CdcEp0Ring(RingOut, StOut);
+        if (gCdc.EndpointZeroRing) {
+            gCdc.EndpointZeroRing(RingOut, StOut);
+        }
     } else if (SlotOut == &gWifiSlot) {
         WifiEp0Ring(RingOut, StOut);
     } else {

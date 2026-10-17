@@ -207,6 +207,8 @@ void UsbHostControllerRetract(void);
 
 /* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（BSS 勿迁出本文件） */
 int Init(UINT64 BaseAddress) {
+    FtdiPublish();
+    CdcPublish();
     if (!InitHw(BaseAddress)) {
         return 0;
     }

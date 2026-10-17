@@ -179,30 +179,34 @@ void HalSerialGopMute(int Mute) {
 }
 
 int HalSerialDataReady(void) {
-    XhciFtdiPollRx();
-    if (XhciFtdiDataReady()) {
+    if (gFtdiUart.PollReceive) {
+        gFtdiUart.PollReceive();
+    }
+    if (gFtdiUart.DataReady && gFtdiUart.DataReady()) {
         return 1;
     }
     FtdiPollRx();
     if (FtdiDataReady()) {
         return 1;
     }
-    CdcPollRx();
-    if (CdcDataReady()) {
+    if (gCdcUart.PollReceive) {
+        gCdcUart.PollReceive();
+    }
+    if (gCdcUart.DataReady && gCdcUart.DataReady()) {
         return 1;
     }
     return SerialDataReady();
 }
 
 char HalSerialReadChar(void) {
-    if (XhciFtdiDataReady()) {
-        return XhciFtdiReadChar();
+    if (gFtdiUart.DataReady && gFtdiUart.DataReady()) {
+        return gFtdiUart.ReadChar();
     }
     if (FtdiDataReady()) {
         return FtdiReadChar();
     }
-    if (CdcDataReady()) {
-        return CdcReadChar();
+    if (gCdcUart.DataReady && gCdcUart.DataReady()) {
+        return gCdcUart.ReadChar();
     }
     return SerialReadChar();
 }

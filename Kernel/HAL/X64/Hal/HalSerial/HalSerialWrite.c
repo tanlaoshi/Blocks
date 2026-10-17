@@ -123,9 +123,13 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     }
     SpinLockRelease(&gSerialLock);
     if (!gShellOwnUart) {
-        XhciFtdiWrite(Text);
+        if (gFtdiUart.Write) {
+            gFtdiUart.Write(Text);
+        }
         FtdiWrite(Text);
-        CdcWrite(Text);
+        if (gCdcUart.Write) {
+            gCdcUart.Write(Text);
+        }
     }
 }
 
@@ -174,9 +178,13 @@ void HalSerialWriteShell(const char *Text) {
         SerialWrite(Text);
     }
     SpinLockRelease(&gSerialLock);
-    XhciFtdiWrite(Text);
+    if (gFtdiUart.Write) {
+        gFtdiUart.Write(Text);
+    }
     FtdiWrite(Text);
-    CdcWrite(Text);
+    if (gCdcUart.Write) {
+        gCdcUart.Write(Text);
+    }
 }
 
 void HalSerialWrite(const char *Text) {
@@ -218,9 +226,13 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
     }
     SpinLockRelease(&gSerialLock);
     if (!gShellOwnUart) {
-        XhciFtdiWrite(Text);
+        if (gFtdiUart.Write) {
+            gFtdiUart.Write(Text);
+        }
         FtdiWrite(Text);
-        CdcWrite(Text);
+        if (gCdcUart.Write) {
+            gCdcUart.Write(Text);
+        }
     }
 }
 

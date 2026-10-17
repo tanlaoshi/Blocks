@@ -1,5 +1,5 @@
 /*
- * FtdiHub.c — PR-H-usb-uart-ftdi-1：已有 HID hub 时扫子口认 FT232
+ * Hub.c — 已有 HID hub 时扫子口认 FT232
  */
 #include "XHCI/Private.h"
 
@@ -8,9 +8,7 @@ extern UINT8 gFtdiHubSlot;
 extern UINT8 gFtdiTtPort;
 extern UINT8 gFtdiDevCtx[2048];
 
-int FtdiFinishClaim(UINT32 RootPort, UINT8 Speed);
-
-int FtdiTryHubChildren(void) {
+static int TryHubChildren(void) {
     UINT8 Port;
     UINT8 MaxP = gHubNumPorts;
     UINT32 St;
@@ -82,9 +80,13 @@ int FtdiTryHubChildren(void) {
         if (gFtdiSlot <= DCBAA_SLOTS) {
             gSlotEp0UsesKbdRing[gFtdiSlot] = 0;
         }
-        if (FtdiFinishClaim(gHubRootPort, Speed)) {
+        if (gFtdi.FinishClaim && gFtdi.FinishClaim(gHubRootPort, Speed)) {
             return 1;
         }
     }
     return 0;
+}
+
+void FtdiFillHub(void) {
+    gFtdi.TryHubChildren = TryHubChildren;
 }

@@ -1,5 +1,5 @@
 /*
- * MscClaimPorts.c — PR-S-xhcimsc-1：根口/hub claim 编排。
+ * ClaimPorts.c — PR-S-xhcimsc-1：根口/hub claim 编排。
  * Force/Address/Hub 帮手在 MscClaimPort.c。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
@@ -10,7 +10,7 @@
  * 优先扫已有 hub 子口（键鼠经 hub 时 U 盘常在同 hub）；再扫其它根口。
  * 不 SCSI、不挂 FAT、不碰键鼠口。成功则保留 slot；Ready=1。
  */
-int MscClaimPorts(void) {
+int ClaimPorts(void) {
     UINT32 P;
     int Ok = 0;
 
@@ -43,7 +43,7 @@ int MscClaimPorts(void) {
             QueueMouseIntr();
         }
     }
-    (void)MscBringUp();
+    (void)BringUp();
 
     if (gMscScanSlot != 0) {
         DisableSlot(gMscScanSlot);
@@ -59,7 +59,7 @@ int MscClaimPorts(void) {
     gMscBlockSize = 0;
 
     /* 键盘/鼠已走 hub：先扫子口找 MSC（与 U 盘同 hub 时） */
-    if (gHubSlotId != 0 && EnumHubChildrenForMsc()) {
+    if (gHubSlotId != 0 && EnumerateHubChildren()) {
         Ok = 1;
         goto done;
     }
@@ -81,7 +81,7 @@ int MscClaimPorts(void) {
             continue;
         }
         if (gHubSlotId != 0 && P == gHubRootPort) {
-            continue; /* 子口已在上面 EnumHubChildrenForMsc 试过 */
+            continue; /* 子口已在上面 EnumerateHubChildren 试过 */
         }
         if (gFtdiClaimed && gFtdiPort == P) {
             continue;
@@ -95,12 +95,12 @@ int MscClaimPorts(void) {
          * 82978dd「PED 直 Address」在台式常 cc=0x04，再 Force 易 Why=not PED 丢 U 盘。
          * QEMU（hypervisor）仍可 PED 直试（msc-8）；失败再 Force。
          */
-        if (!MscClaimForceUntilPed(P, &Force)) {
+        if (!ForceUntilPed(P, &Force)) {
             continue;
         }
 
         {
-            int Arc = MscClaimAddressPort(P, Force, &Speed);
+            int Arc = AddressPort(P, Force, &Speed);
 
             if (Arc < 0) {
                 break;
@@ -123,7 +123,7 @@ int MscClaimPorts(void) {
          * 根口 hub：device class 9，或 class 0 但配置含 hub iface（真机常见）。
          * 认领后扫子口 MSC；本刀新认领且无 MSC 则释放，以便试下一根口 hub。
          */
-        HubRc = MscClaimTryHubOnRoot(P, Speed, &Ok);
+        HubRc = TryHubOnRoot(P, Speed, &Ok);
         if (HubRc == 1) {
             goto done;
         }
@@ -132,7 +132,7 @@ int MscClaimPorts(void) {
         }
 
         /* FinishClaim 会再 GetDeviceDesc；描述已在 gCtrlBuf，直接走配置 */
-        if (XhciMscFinishClaim(P, Speed)) {
+        if (FinishClaim(P, Speed)) {
             Ok = 1;
             goto done;
         }

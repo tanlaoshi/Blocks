@@ -12,7 +12,7 @@ static int gMscInSense;  /* REQUEST SENSE 重入保护 */
  * BOT：CBW → [DATA] → CSW。DataIn=1 时数据走 Bulk IN。
  * 成功 0；失败 -1。CSW≠0 时发 REQUEST SENSE 清粘滞 sense（不少棒必须）。
  */
-static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
+static int Bot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
                   void *Data) {
     UINT8 Cbw[32] __attribute__((aligned(64)));
     UINT8 Csw[16] __attribute__((aligned(64)));
@@ -82,7 +82,7 @@ static int MscBot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
             Scdb[0] = 0x03; /* REQUEST SENSE */
             Scdb[4] = 18;
             ZeroMemory(Sense, sizeof(Sense));
-            if (MscBot(Scdb, 6, 18, 1, Sense) == 0) {
+            if (Bot(Scdb, 6, 18, 1, Sense) == 0) {
                 BootLogHex("Boot: MSC sense key=", Sense[2] & 0x0Fu, 2);
                 BootLogHex("Boot: MSC sense asc=", Sense[12], 2);
                 BootLogHex("Boot: MSC sense ascq=", Sense[13], 2);
@@ -103,7 +103,7 @@ Out:
  * PR-H-msc-5：INQUIRY + READ CAPACITY(10)。不读分区、不挂 FAT。
  * 成功 0 并填 gMscBlockCount/Size；失败 -1。
  */
-int XhciMscCapacity(void) {
+int Capacity(void) {
     UINT8 Inquiry[36] __attribute__((aligned(64)));
     UINT8 Cap[8] __attribute__((aligned(64)));
     UINT8 Cdb[16];
@@ -123,7 +123,7 @@ int XhciMscCapacity(void) {
     Cdb[0] = 0x12; /* INQUIRY */
     Cdb[4] = 36;
     ZeroMemory(Inquiry, sizeof(Inquiry));
-    if (MscBot(Cdb, 6, 36, 1, Inquiry) < 0) {
+    if (Bot(Cdb, 6, 36, 1, Inquiry) < 0) {
         BootLog("Boot: MSC inquiry fail\n");
         return -1;
     }
@@ -165,7 +165,7 @@ int XhciMscCapacity(void) {
             ZeroMemory(Cdb, sizeof(Cdb));
             Cdb[0] = 0x25; /* READ CAPACITY(10) */
             ZeroMemory(Cap, sizeof(Cap));
-            if (MscBot(Cdb, 10, 8, 1, Cap) >= 0) {
+            if (Bot(Cdb, 10, 8, 1, Cap) >= 0) {
                 CapOk = 1;
                 break;
             }
@@ -195,7 +195,7 @@ int XhciMscCapacity(void) {
  * PR-H-msc-6：逐扇区 BOT READ(10)/WRITE(10)。
  * 仅支持逻辑块 512；bounce 对齐。勿带 FUA/SYNC：不少棒 CSW=1 且会搞丢写缓存。
  */
-static int MscXferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     UINT8 Bounce[512] __attribute__((aligned(64)));
     UINT8 *Ptr = (UINT8 *)Buffer;
     UINT32 i;
@@ -221,12 +221,12 @@ static int MscXferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
         Cdb[8] = 1;
         if (Write) {
             CopyMemory(Bounce, Ptr + (UINTN)i * 512u, 512);
-            if (MscBot(Cdb, 10, 512, 0, Bounce) < 0) {
+            if (Bot(Cdb, 10, 512, 0, Bounce) < 0) {
                 return 0;
             }
         } else {
             ZeroMemory(Bounce, sizeof(Bounce));
-            if (MscBot(Cdb, 10, 512, 1, Bounce) < 0) {
+            if (Bot(Cdb, 10, 512, 1, Bounce) < 0) {
                 return 0;
             }
             CopyMemory(Ptr + (UINTN)i * 512u, Bounce, 512);
@@ -235,12 +235,12 @@ static int MscXferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     return 1;
 }
 
-int XhciMscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer) {
-    return MscXferSectors(Lba, Count, Buffer, 0);
+int ReadSectors(UINT32 Lba, UINT32 Count, void *Buffer) {
+    return TransferSectors(Lba, Count, Buffer, 0);
 }
 
-int XhciMscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
-    return MscXferSectors(Lba, Count, (void *)Buffer, 1);
+int WriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
+    return TransferSectors(Lba, Count, (void *)Buffer, 1);
 }
 
 /*
@@ -248,6 +248,6 @@ int XhciMscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
  * 表现为目录项「写成功」但读回旧内容 → store remove file remains。
  * Flush 改为空操作；依赖 WRITE(10) 本身落盘。
  */
-int XhciMscFlush(void) {
+int Synchronize(void) {
     return 1;
 }

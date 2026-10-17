@@ -13,13 +13,13 @@
 #include "Desktop.h"
 
 UINT32 TitleBarColor(int Idx) {
-    if (!gWindows[Idx].Active) {
+    if (!gGuiWindowManager.Windows[Idx].Active) {
         return ThemeWindowTitleIdle();
     }
-    if (Idx == gFocusWin) {
+    if (Idx == gGuiWindowManager.FocusWin) {
         return ThemeWindowTitleFocus();
     }
-    if (Idx == gHoverWin) {
+    if (Idx == gGuiWindowManager.HoverWin) {
         return ThemeWindowTitleHover();
     }
     return ThemeWindowTitleIdle();
@@ -44,13 +44,13 @@ UINT32 TitleBarColorAtRow(int Idx, UINT32 Row, UINT32 TitleH) {
 }
 
 UINT32 WindowBorderColor(int Idx) {
-    if (!gWindows[Idx].Active) {
+    if (!gGuiWindowManager.Windows[Idx].Active) {
         return ThemeWindowBorderIdle();
     }
-    if (Idx == gFocusWin) {
+    if (Idx == gGuiWindowManager.FocusWin) {
         return ThemeWindowBorderFocus();
     }
-    if (Idx == gHoverWin) {
+    if (Idx == gGuiWindowManager.HoverWin) {
         return ThemeWindowBorderHover();
     }
     return ThemeWindowBorderIdle();
@@ -62,7 +62,7 @@ int TopWindowAt(UINT32 X, UINT32 Y) {
     int Top = -1;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (PointInWindow(&gWindows[i], X, Y)) {
+        if (PointInWindow(&gGuiWindowManager.Windows[i], X, Y)) {
             Top = i;
         }
     }
@@ -78,25 +78,25 @@ void GuiHoverUpdate(UINT32 X, UINT32 Y) {
      * 若仍按命中窗重画 chrome，会从菜单「镂」出标题栏/边框方块烙印。
      */
     if (DesktopStartMenuIsOpen()) {
-        gHoverWin = -1;
+        gGuiWindowManager.HoverWin = -1;
         return;
     }
 
     Next = TopWindowAt(X, Y);
-    Prev = gHoverWin;
+    Prev = gGuiWindowManager.HoverWin;
 
     if (Next == Prev) {
         return;
     }
-    gHoverWin = Next;
+    gGuiWindowManager.HoverWin = Next;
     /* 焦点窗标题已是 Focus 色，悬停进出不必重画它的 chrome */
-    if ((Prev >= 0 && Prev != gFocusWin && Prev < MAX_WINS && gWindows[Prev].Active) ||
-        (Next >= 0 && Next != gFocusWin && Next < MAX_WINS && gWindows[Next].Active)) {
+    if ((Prev >= 0 && Prev != gGuiWindowManager.FocusWin && Prev < MAX_WINS && gGuiWindowManager.Windows[Prev].Active) ||
+        (Next >= 0 && Next != gGuiWindowManager.FocusWin && Next < MAX_WINS && gGuiWindowManager.Windows[Next].Active)) {
         GuiFrameBufferBegin();
-        if (Prev >= 0 && Prev < MAX_WINS && Prev != gFocusWin && gWindows[Prev].Active) {
+        if (Prev >= 0 && Prev < MAX_WINS && Prev != gGuiWindowManager.FocusWin && gGuiWindowManager.Windows[Prev].Active) {
             DrawWindowChromeAt(Prev);
         }
-        if (Next >= 0 && Next < MAX_WINS && Next != gFocusWin && gWindows[Next].Active) {
+        if (Next >= 0 && Next < MAX_WINS && Next != gGuiWindowManager.FocusWin && gGuiWindowManager.Windows[Next].Active) {
             DrawWindowChromeAt(Next);
         }
         GuiFrameBufferEnd();
@@ -115,14 +115,14 @@ void SyncWindowVisualsEx(int ClearDesktop) {
     ComposeBeginEraseCursor();
     HalVideoClearClip();
     if (ClearDesktop) {
-        DesktopFillRect(0, 0, gScreenWidth, gScreenHeight);
+        DesktopFillRect(0, 0, gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight);
         DesktopDraw();
     }
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (gWinBackupValid[i] && gWinBackup[i] != 0) {
+        if (gGuiWindowManager.WinBackupValid[i] && gGuiWindowManager.WinBackup[i] != 0) {
             PaintWindowFromBackup(i);
         } else if (!ClearDesktop && WindowOccludedByOther(i)) {
             /*
@@ -136,7 +136,7 @@ void SyncWindowVisualsEx(int ClearDesktop) {
         }
     }
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active) {
+        if (gGuiWindowManager.Windows[i].Active) {
             DrawWindowShadowAt(i);
         }
     }
@@ -155,7 +155,7 @@ void SyncWindowVisuals(void) {
 }
 
 void DrawWindowAtEx(int Idx, int Occlude) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
     UINT32 Border;
     UINT32 Th;
     UINT32 Row;
@@ -281,11 +281,11 @@ int WindowOccludedByOther(int Idx) {
     int j;
 
     for (j = Idx + 1; j < MAX_WINS; j++) {
-        if (!gWindows[j].Active) {
+        if (!gGuiWindowManager.Windows[j].Active) {
             continue;
         }
-        if (RectIntersects(gWindows[Idx].X, gWindows[Idx].Y, gWindows[Idx].Width, gWindows[Idx].Height,
-                           gWindows[j].X, gWindows[j].Y, gWindows[j].Width, gWindows[j].Height)) {
+        if (RectIntersects(gGuiWindowManager.Windows[Idx].X, gGuiWindowManager.Windows[Idx].Y, gGuiWindowManager.Windows[Idx].Width, gGuiWindowManager.Windows[Idx].Height,
+                           gGuiWindowManager.Windows[j].X, gGuiWindowManager.Windows[j].Y, gGuiWindowManager.Windows[j].Width, gGuiWindowManager.Windows[j].Height)) {
             return 1;
         }
     }

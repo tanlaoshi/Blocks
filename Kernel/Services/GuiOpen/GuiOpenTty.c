@@ -26,33 +26,33 @@ int GuiOpenTty(void) {
     }
     W = 720;
     H = 480;
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
     X = Margin + 24;
     Y = Margin + 48;
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_TTY;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeShellClientBackground();
-    gWindows[Idx].Title = LocStr(MSG_APP_TTY);
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_TTY;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeShellClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_TTY);
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     TtyUiOpen();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open tty idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }

@@ -12,7 +12,7 @@ void CursorMetrics(int *Half, int *Thick) {
     UINT32 HalfU;
     int T;
 
-    H = gScreenHeight != 0 ? gScreenHeight : CURSOR_REF_H;
+    H = gGuiWindowManager.ScreenHeight != 0 ? gGuiWindowManager.ScreenHeight : CURSOR_REF_H;
     HalfU = (CURSOR_HALF_BASE * H + CURSOR_REF_H / 2u) / CURSOR_REF_H;
     if (HalfU < 4u) {
         HalfU = 4u;
@@ -35,7 +35,7 @@ static void PutCursorPx(int Px, int Py, UINT32 Color) {
     if (Px < 0 || Py < 0) {
         return;
     }
-    if ((UINT32)Px >= gScreenWidth || (UINT32)Py >= gScreenHeight) {
+    if ((UINT32)Px >= gGuiWindowManager.ScreenWidth || (UINT32)Py >= gGuiWindowManager.ScreenHeight) {
         return;
     }
     HalVideoDrawPixelRaw((UINT32)Px, (UINT32)Py, Color);
@@ -235,11 +235,11 @@ static void DrawCursorArrow(UINT32 X, UINT32 Y) {
 }
 
 void DrawCursorGlyph(UINT32 X, UINT32 Y) {
-    if (gCursorKind == CURSOR_KIND_RESIZE_E) {
+    if (gGuiWindowManager.CursorKind == CURSOR_KIND_RESIZE_E) {
         DrawCursorAxis(X, Y, 0);
-    } else if (gCursorKind == CURSOR_KIND_RESIZE_S) {
+    } else if (gGuiWindowManager.CursorKind == CURSOR_KIND_RESIZE_S) {
         DrawCursorAxis(X, Y, 1);
-    } else if (gCursorKind == CURSOR_KIND_RESIZE_SE) {
+    } else if (gGuiWindowManager.CursorKind == CURSOR_KIND_RESIZE_SE) {
         DrawCursorAxis(X, Y, 2);
     } else {
         DrawCursorArrow(X, Y);

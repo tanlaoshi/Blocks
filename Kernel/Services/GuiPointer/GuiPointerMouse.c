@@ -18,49 +18,49 @@
 void GuiOnDisplayResize(void) {
     int i;
 
-    HalVideoGetSize(&gScreenWidth, &gScreenHeight);
-    if (gScreenWidth == 0) {
-        gScreenWidth = 1024;
+    HalVideoGetSize(&gGuiWindowManager.ScreenWidth, &gGuiWindowManager.ScreenHeight);
+    if (gGuiWindowManager.ScreenWidth == 0) {
+        gGuiWindowManager.ScreenWidth = 1024;
     }
-    if (gScreenHeight == 0) {
-        gScreenHeight = 768;
+    if (gGuiWindowManager.ScreenHeight == 0) {
+        gGuiWindowManager.ScreenHeight = 768;
     }
-    if (gCursorX >= gScreenWidth) {
-        gCursorX = gScreenWidth / 2;
+    if (gGuiWindowManager.CursorX >= gGuiWindowManager.ScreenWidth) {
+        gGuiWindowManager.CursorX = gGuiWindowManager.ScreenWidth / 2;
     }
-    if (gCursorY >= gScreenHeight) {
-        gCursorY = gScreenHeight / 2;
+    if (gGuiWindowManager.CursorY >= gGuiWindowManager.ScreenHeight) {
+        gGuiWindowManager.CursorY = gGuiWindowManager.ScreenHeight / 2;
     }
     /*
      * 相对 USB 鼠把像素累加在驱动 Abs 里；只改 gCursor* 不同步 →
      * 下一帧仍按旧大坐标入队，Gui 钳到 Sw-1 → 十字钉在右缘，要挪很久才进桌面。
      * 平板 Absolute 路径不读 Abs，排空队列仍无害。
      */
-    HalInputMouseHandoffDesktop(gCursorX, gCursorY);
-    gCursorVisible = 0;
-    gDragWin = -1;
-    gResizeWin = -1;
-    gResizeEdge = RESIZE_EDGE_NONE;
+    HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    gGuiWindowManager.CursorVisible = 0;
+    gGuiWindowManager.DragWin = -1;
+    gGuiWindowManager.ResizeWin = -1;
+    gGuiWindowManager.ResizeEdge = RESIZE_EDGE_NONE;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        gWinBackupValid[i] = 0;
-        if (gWindows[i].Width > gScreenWidth) {
-            gWindows[i].Width = gScreenWidth;
+        gGuiWindowManager.WinBackupValid[i] = 0;
+        if (gGuiWindowManager.Windows[i].Width > gGuiWindowManager.ScreenWidth) {
+            gGuiWindowManager.Windows[i].Width = gGuiWindowManager.ScreenWidth;
         }
-        if (gWindows[i].Height > gScreenHeight) {
-            gWindows[i].Height = gScreenHeight;
+        if (gGuiWindowManager.Windows[i].Height > gGuiWindowManager.ScreenHeight) {
+            gGuiWindowManager.Windows[i].Height = gGuiWindowManager.ScreenHeight;
         }
-        if (gWindows[i].X + gWindows[i].Width > gScreenWidth) {
-            gWindows[i].X = (gScreenWidth > gWindows[i].Width)
-                              ? (gScreenWidth - gWindows[i].Width)
+        if (gGuiWindowManager.Windows[i].X + gGuiWindowManager.Windows[i].Width > gGuiWindowManager.ScreenWidth) {
+            gGuiWindowManager.Windows[i].X = (gGuiWindowManager.ScreenWidth > gGuiWindowManager.Windows[i].Width)
+                              ? (gGuiWindowManager.ScreenWidth - gGuiWindowManager.Windows[i].Width)
                               : 0;
         }
-        if (gWindows[i].Y + gWindows[i].Height > gScreenHeight) {
-            gWindows[i].Y = (gScreenHeight > gWindows[i].Height)
-                              ? (gScreenHeight - gWindows[i].Height)
+        if (gGuiWindowManager.Windows[i].Y + gGuiWindowManager.Windows[i].Height > gGuiWindowManager.ScreenHeight) {
+            gGuiWindowManager.Windows[i].Y = (gGuiWindowManager.ScreenHeight > gGuiWindowManager.Windows[i].Height)
+                              ? (gGuiWindowManager.ScreenHeight - gGuiWindowManager.Windows[i].Height)
                               : 0;
         }
     }
@@ -73,30 +73,30 @@ void GuiOnDisplayResize(void) {
      */
     GuiComposeThemeScene();
     DebugWrite("Gui: display resize ");
-    DebugHex32(gScreenWidth);
+    DebugHex32(gGuiWindowManager.ScreenWidth);
     DebugWrite("x");
-    DebugHex32(gScreenHeight);
+    DebugHex32(gGuiWindowManager.ScreenHeight);
     DebugWrite("\n");
 }
 
 
 void GuiOnArrowKey(UINT8 Key) {
-    UINT32 X = gCursorX;
-    UINT32 Y = gCursorY;
+    UINT32 X = gGuiWindowManager.CursorX;
+    UINT32 Y = gGuiWindowManager.CursorY;
     UINT32 Step = 8;
 
     if (Key == 0x50 && X >= Step) {
         X -= Step;
-    } else if (Key == 0x4F && X + Step < gScreenWidth) {
+    } else if (Key == 0x4F && X + Step < gGuiWindowManager.ScreenWidth) {
         X += Step;
     } else if (Key == 0x52 && Y >= Step) {
         Y -= Step;
-    } else if (Key == 0x51 && Y + Step < gScreenHeight) {
+    } else if (Key == 0x51 && Y + Step < gGuiWindowManager.ScreenHeight) {
         Y += Step;
     } else if (Key == 0x28) {
         GUI_MOUSE_STATE M;
-        M.X = gCursorX;
-        M.Y = gCursorY;
+        M.X = gGuiWindowManager.CursorX;
+        M.Y = gGuiWindowManager.CursorY;
         M.Buttons = 1;
         M.Wheel = 0;
         GuiOnMouse(&M);
@@ -120,37 +120,37 @@ void GuiRightClickPlaceholder(UINT32 X, UINT32 Y) {
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
     /* 合成进行中只跟踪坐标/钮，避免嵌套 Move/Capture 采到半成品 FB。
      * 若光标仍画在旧位置，先擦掉，否则 Compose 期间移动会留下十字印。 */
-    if (gComposeBusy) {
+    if (gGuiWindowManager.ComposeBusy) {
         /*
-         * 合成中只跟踪坐标/钮。禁止清 gCursorVisible：
+         * 合成中只跟踪坐标/钮。禁止清 gGuiWindowManager.CursorVisible：
          * ComposeBegin 后、CursorRestore 前若 AP 清掉 Visible，Restore 空操作，
-         * 十字留在后缓冲 → 末尾 ReadRect 把字形采进 gUnder → 镂空方块。
+         * 十字留在后缓冲 → 末尾 ReadRect 把字形采进 gGuiWindowManager.Under → 镂空方块。
          */
-        gCursorX = Mouse->X;
-        gCursorY = Mouse->Y;
-        gCursorBtn = Mouse->Buttons;
-        gMousePrevBtn = Mouse->Buttons;
+        gGuiWindowManager.CursorX = Mouse->X;
+        gGuiWindowManager.CursorY = Mouse->Y;
+        gGuiWindowManager.CursorBtn = Mouse->Buttons;
+        gGuiWindowManager.MousePrevBtn = Mouse->Buttons;
         return;
     }
 
-    gCursorBtn = Mouse->Buttons;
+    gGuiWindowManager.CursorBtn = Mouse->Buttons;
 
-    if ((Mouse->Buttons & 1) && !(gMousePrevBtn & 1)) {
+    if ((Mouse->Buttons & 1) && !(gGuiWindowManager.MousePrevBtn & 1)) {
         GuiHandleClick(Mouse->X, Mouse->Y);
-    } else if ((Mouse->Buttons & 1) && gResizeWin >= 0) {
+    } else if ((Mouse->Buttons & 1) && gGuiWindowManager.ResizeWin >= 0) {
         GuiResizeUpdate(Mouse->X, Mouse->Y);
-    } else if ((Mouse->Buttons & 1) && gDragWin >= 0) {
+    } else if ((Mouse->Buttons & 1) && gGuiWindowManager.DragWin >= 0) {
         /* PR-G10 L2：与 GuiPollMouse 统一，按住拖动时持续更新 */
         GuiDragUpdate(Mouse->X, Mouse->Y);
     } else if ((Mouse->Buttons & 1) && DesktopIconDragActive()) {
-        if (gCursorVisible) {
+        if (gGuiWindowManager.CursorVisible) {
             GfxIrqEnter();
             CursorRestore();
             GfxIrqLeave();
         }
         DesktopIconDragUpdate(Mouse->X, Mouse->Y);
     }
-    if (!(Mouse->Buttons & 1) && (gMousePrevBtn & 1)) {
+    if (!(Mouse->Buttons & 1) && (gGuiWindowManager.MousePrevBtn & 1)) {
         int WasIconDrag = DesktopIconDragActive();
 
         GuiResizeEnd();
@@ -164,7 +164,7 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
         }
     }
     /* PR-I3：右键按下边沿 → 占位回调（bit1） */
-    if ((Mouse->Buttons & 2) && !(gMousePrevBtn & 2)) {
+    if ((Mouse->Buttons & 2) && !(gGuiWindowManager.MousePrevBtn & 2)) {
         GuiRightClickPlaceholder(Mouse->X, Mouse->Y);
     }
 
@@ -179,5 +179,5 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
             gConsole.OnWheel(Mouse->Wheel);
         }
     }
-    gMousePrevBtn = Mouse->Buttons;
+    gGuiWindowManager.MousePrevBtn = Mouse->Buttons;
 }

@@ -19,11 +19,11 @@ void GuiRefreshDesktop(void) {
 
     if (Open) {
         /* 弹出开始菜单：其它窗失焦；禁止半透/chrome 镂进菜单 */
-        if (gFocusWin >= 0) {
+        if (gGuiWindowManager.FocusWin >= 0) {
             GuiFocusSave();
-            gFocusWin = -1;
+            gGuiWindowManager.FocusWin = -1;
         }
-        gHoverWin = -1;
+        gGuiWindowManager.HoverWin = -1;
     }
 
     if (Open || HadCover) {

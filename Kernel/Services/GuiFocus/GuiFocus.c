@@ -13,10 +13,10 @@ int GuiFocusClient(UINT32 *X, UINT32 *Y, UINT32 *Width, UINT32 *Height, UINT32 *
     const GUI_WINDOW *Win;
     UINT32 Pad = GUI_CLIENT_PAD;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return 0;
     }
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     /* 与 DrawWindowAt 一致：1px 白边内侧再加 GUI_CLIENT_PAD 文本边距 */
     if (X) {
         *X = Win->X + 1 + Pad;
@@ -51,11 +51,11 @@ void GuiFocusSave(void) {
     UINT32 Ay;
     GUI_WINDOW *Win;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
     GuiConsoleOpsFocusSave();
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     if (!GuiFocusClient(&Cx, &Cy, &W, &H, &Bg)) {
         return;
     }
@@ -92,7 +92,7 @@ void GuiFocusApplyClip(void) {
         return;
     }
     HalVideoSetClipRegion(X, Y, W, H, Bg);
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     if (!Win->TermSet) {
         HalVideoSetTextCursor(X, Y);
         Win->TermX = 0;
@@ -129,13 +129,13 @@ void GuiFocusSyncCursor(void) {
     UINT32 Ay;
     GUI_WINDOW *Win;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
     if (!GuiFocusClient(&Cx, &Cy, &W, &H, &Bg)) {
         return;
     }
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     HalVideoGetTextCursor(&Ax, &Ay);
     Win->TermX = (Ax >= Cx) ? (Ax - Cx) : 0;
     Win->TermY = (Ay >= Cy) ? (Ay - Cy) : 0;
@@ -163,12 +163,12 @@ void GuiFocusClearClient(void) {
     GfxIrqEnter();
     CursorRestore();
     /*
-     * 整块清客户区。主题合成靠 gDeferPresent + 上层后画，勿 FillRectOccluded，
+     * 整块清客户区。主题合成靠 gGuiWindowManager.DeferPresent + 上层后画，勿 FillRectOccluded，
      * 否则重叠区不换色，抬窗后备份镂空。
      */
     HalVideoFillRect(X, Y, W, H, Bg);
     HalVideoSetClipOrigin(X, Y, W, H, Bg);
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     Win->TermX = 0;
     Win->TermY = 0;
     Win->TermSet = 1;
@@ -179,14 +179,14 @@ void GuiFocusClearClient(void) {
 }
 
 void GuiSetFocusWindow(int Idx) {
-    if (Idx >= 0 && Idx < MAX_WINS && gWindows[Idx].Active) {
-        gFocusWin = Idx;
+    if (Idx >= 0 && Idx < MAX_WINS && gGuiWindowManager.Windows[Idx].Active) {
+        gGuiWindowManager.FocusWin = Idx;
     }
 }
 
 
 int GuiFocusIndex(void) {
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 
@@ -203,8 +203,8 @@ void GuiFocusHome(void) {
         return;
     }
     HalVideoSetClipOrigin(X, Y, W, H, Bg);
-    if (gFocusWin >= 0 && gFocusWin < MAX_WINS) {
-        Win = &gWindows[gFocusWin];
+    if (gGuiWindowManager.FocusWin >= 0 && gGuiWindowManager.FocusWin < MAX_WINS) {
+        Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
         Win->TermX = 0;
         Win->TermY = 0;
         Win->TermSet = 1;

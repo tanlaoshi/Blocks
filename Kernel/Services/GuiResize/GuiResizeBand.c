@@ -49,8 +49,8 @@ static void ClampResizeSize(const GUI_WINDOW *W, UINT32 *OutW, UINT32 *OutH) {
     if (Nh < MinH) {
         Nh = MinH;
     }
-    MaxW = (W->X < gScreenWidth) ? (gScreenWidth - W->X) : MinW;
-    MaxH = (W->Y < gScreenHeight) ? (gScreenHeight - W->Y) : MinH;
+    MaxW = (W->X < gGuiWindowManager.ScreenWidth) ? (gGuiWindowManager.ScreenWidth - W->X) : MinW;
+    MaxH = (W->Y < gGuiWindowManager.ScreenHeight) ? (gGuiWindowManager.ScreenHeight - W->Y) : MinH;
     if (Nw > MaxW) {
         Nw = MaxW;
     }
@@ -68,23 +68,23 @@ static void ClampResizeSize(const GUI_WINDOW *W, UINT32 *OutW, UINT32 *OutH) {
 }
 
 void EraseResizeBand(int Idx, UINT32 Bw, UINT32 Bh) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
 
-    if (!gResizeBandOn || Bw == 0 || Bh == 0) {
+    if (!gGuiWindowManager.ResizeBandOn || Bw == 0 || Bh == 0) {
         return;
     }
     GuiClearIconDragFootprint(W->X, W->Y, Bw, Bh);
-    if (gWinBackupValid[Idx] && gWinBackup[Idx] != 0) {
+    if (gGuiWindowManager.WinBackupValid[Idx] && gGuiWindowManager.WinBackup[Idx] != 0) {
         PaintWindowFromBackup(Idx);
         DrawWindowShadowAt(Idx);
     } else {
         DrawWindowAt(Idx);
     }
-    gResizeBandOn = 0;
+    gGuiWindowManager.ResizeBandOn = 0;
 }
 
 void DrawResizeBand(int Idx, UINT32 Bw, UINT32 Bh) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
 
     if (Bw < 4 || Bh < 4) {
         return;
@@ -93,9 +93,9 @@ void DrawResizeBand(int Idx, UINT32 Bw, UINT32 Bh) {
     if (Bw > 6 && Bh > 6) {
         UiDrawRectangle(W->X + 1, W->Y + 1, Bw - 2, Bh - 2, COLOR_YELLOW);
     }
-    gResizeBandW = Bw;
-    gResizeBandH = Bh;
-    gResizeBandOn = 1;
+    gGuiWindowManager.ResizeBandW = Bw;
+    gGuiWindowManager.ResizeBandH = Bh;
+    gGuiWindowManager.ResizeBandOn = 1;
 }
 
 void ComputeResizeSize(int Idx, int Edge, UINT32 X, UINT32 Y,
@@ -109,20 +109,20 @@ void ComputeResizeSize(int Idx, int Edge, UINT32 X, UINT32 Y,
     UINT32 Nh;
 
     if (Idx < 0 || Idx >= MAX_WINS) {
-        *OutW = gResizeOrigW;
-        *OutH = gResizeOrigH;
+        *OutW = gGuiWindowManager.ResizeOrigW;
+        *OutH = gGuiWindowManager.ResizeOrigH;
         return;
     }
-    W = &gWindows[Idx];
-    Dw = (INT32)X - gResizeAnchorX;
-    Dh = (INT32)Y - gResizeAnchorY;
-    Tw = (INT32)gResizeOrigW;
-    Th = (INT32)gResizeOrigH;
+    W = &gGuiWindowManager.Windows[Idx];
+    Dw = (INT32)X - gGuiWindowManager.ResizeAnchorX;
+    Dh = (INT32)Y - gGuiWindowManager.ResizeAnchorY;
+    Tw = (INT32)gGuiWindowManager.ResizeOrigW;
+    Th = (INT32)gGuiWindowManager.ResizeOrigH;
     if (Edge == RESIZE_EDGE_SE || Edge == RESIZE_EDGE_E) {
-        Tw = (INT32)gResizeOrigW + Dw;
+        Tw = (INT32)gGuiWindowManager.ResizeOrigW + Dw;
     }
     if (Edge == RESIZE_EDGE_SE || Edge == RESIZE_EDGE_S) {
-        Th = (INT32)gResizeOrigH + Dh;
+        Th = (INT32)gGuiWindowManager.ResizeOrigH + Dh;
     }
     /* 向左/上拖过最小时 INT 变负；若直接转 UINT32 会下溢成「撑满屏」 */
     if (Tw < (INT32)RESIZE_MIN_W) {
@@ -139,7 +139,7 @@ void ComputeResizeSize(int Idx, int Edge, UINT32 X, UINT32 Y,
 }
 
 void RepaintAfterResize(int Idx) {
-    GUI_WIN_KIND Kind = gWindows[Idx].Kind;
+    GUI_WIN_KIND Kind = gGuiWindowManager.Windows[Idx].Kind;
 
     if (Kind == GUI_WIN_SETTINGS) {
         SettingsUiRepaint();

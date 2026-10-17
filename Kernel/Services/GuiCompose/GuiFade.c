@@ -26,32 +26,32 @@ static void FadeFrameDelay(void) {
  * 勿把本窗 Active 清零：淡出期间其它核上的 poll_input 会误得 -1（GUIDEMO poll fail）。
  */
 static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh) {
-    const GUI_WINDOW *Win = &gWindows[Idx];
+    const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];
     int i;
 
     HalVideoClearClip();
     DesktopFillRect(Win->X, Win->Y, Rw, Rh);
     DesktopDrawRect(Win->X, Win->Y, Rw, Rh);
     for (i = 0; i < MAX_WINS; i++) {
-        if (i == Idx || !gWindows[i].Active) {
+        if (i == Idx || !gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (!RectIntersects(gWindows[i].X, gWindows[i].Y, gWindows[i].Width,
-                            gWindows[i].Height, Win->X, Win->Y, Rw, Rh)) {
+        if (!RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width,
+                            gGuiWindowManager.Windows[i].Height, Win->X, Win->Y, Rw, Rh)) {
             continue;
         }
-        if (gWinBackupValid[i] && gWinBackup[i] != 0) {
+        if (gGuiWindowManager.WinBackupValid[i] && gGuiWindowManager.WinBackup[i] != 0) {
             PaintWindowFromBackup(i);
         } else {
             DrawWindowAtEx(i, WindowOccludedByOther(i) ? 1 : 0);
         }
     }
     for (i = 0; i < MAX_WINS; i++) {
-        if (i == Idx || !gWindows[i].Active) {
+        if (i == Idx || !gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (!RectIntersects(gWindows[i].X, gWindows[i].Y, gWindows[i].Width,
-                            gWindows[i].Height, Win->X, Win->Y, Rw, Rh)) {
+        if (!RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width,
+                            gGuiWindowManager.Windows[i].Height, Win->X, Win->Y, Rw, Rh)) {
             continue;
         }
         DrawWindowShadowAt(i);
@@ -102,27 +102,27 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     if (!ThemeIsFadeEnabled() || Steps == 0 || Idx < 0 || Idx >= MAX_WINS) {
         return;
     }
-    Win = &gWindows[Idx];
+    Win = &gGuiWindowManager.Windows[Idx];
     if (!Win->Active || Win->Width == 0 || Win->Height == 0) {
         return;
     }
-    if (!gWinBackupValid[Idx] || gWinBackup[Idx] == 0) {
+    if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0) {
         BackupWindowAt(Idx);
-        if (!gWinBackupValid[Idx] || gWinBackup[Idx] == 0) {
+        if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0) {
             return;
         }
     }
 
-    Rw = gWinBackupW[Idx];
-    Rh = gWinBackupH[Idx];
+    Rw = gGuiWindowManager.WinBackupW[Idx];
+    Rh = gGuiWindowManager.WinBackupH[Idx];
     if (Rw == 0 || Rh == 0) {
         return;
     }
-    if (Win->X + Rw > gScreenWidth) {
-        Rw = gScreenWidth - Win->X;
+    if (Win->X + Rw > gGuiWindowManager.ScreenWidth) {
+        Rw = gGuiWindowManager.ScreenWidth - Win->X;
     }
-    if (Win->Y + Rh > gScreenHeight) {
-        Rh = gScreenHeight - Win->Y;
+    if (Win->Y + Rh > gGuiWindowManager.ScreenHeight) {
+        Rh = gGuiWindowManager.ScreenHeight - Win->Y;
     }
     if (Rw == 0 || Rh == 0) {
         return;
@@ -149,7 +149,7 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     if (FadeIn) {
         for (Step = 1; Step <= Steps; Step++) {
             Alpha = (UINT8)((Step * 255u) / Steps);
-            BlendFrame(Frame, Under, gWinBackup[Idx], Npix, Alpha);
+            BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
             HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
             GfxIrqEnter();
             HalVideoPresent();
@@ -158,13 +158,13 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
                 FadeFrameDelay();
             }
         }
-        HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, gWinBackup[Idx]);
+        HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, gGuiWindowManager.WinBackup[Idx]);
         DrawWindowChromeAt(Idx);
         DrawWindowShadowAt(Idx);
     } else {
         for (Step = Steps; Step >= 1; Step--) {
             Alpha = (UINT8)((Step * 255u) / Steps);
-            BlendFrame(Frame, Under, gWinBackup[Idx], Npix, Alpha);
+            BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
             HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
             GfxIrqEnter();
             HalVideoPresent();

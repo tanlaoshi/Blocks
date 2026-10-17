@@ -21,11 +21,11 @@ void GuiDragFrameLeave(void) {
 }
 
 int GuiPresentBlocked(void) {
-    return gDragFrame != 0 || gComposeBusy != 0;
+    return gDragFrame != 0 || gGuiWindowManager.ComposeBusy != 0;
 }
 
 int GuiDragActive(void) {
-    return gDragWin >= 0 || gResizeWin >= 0;
+    return gGuiWindowManager.DragWin >= 0 || gGuiWindowManager.ResizeWin >= 0;
 }
 
 void GuiDragFrameAccount(void) {
@@ -71,7 +71,7 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY) {
     if (DragIdx < 0 || DragIdx >= MAX_WINS) {
         return;
     }
-    Drag = &gWindows[DragIdx];
+    Drag = &gGuiWindowManager.Windows[DragIdx];
     Nx = Drag->X;
     Ny = Drag->Y;
     Ww = Drag->Width;
@@ -94,7 +94,7 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY) {
     }
 
     /* Copy/擦条偶发踩窗边：用备份重贴保证客户区干净 */
-    if (gWinBackupValid[DragIdx] && gWinBackup[DragIdx] != 0) {
+    if (gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
         PaintWindowFromBackup(DragIdx);
     }
     DrawWindowShadowAt(DragIdx);
@@ -110,15 +110,15 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY) {
         UINT32 Ub = (OldY + Wh > Ny + Wh) ? (OldY + Wh) : (Ny + Wh);
         UINT32 Shadow = ThemeWindowShadowSize();
 
-        if (Ur + Shadow < gScreenWidth) {
+        if (Ur + Shadow < gGuiWindowManager.ScreenWidth) {
             Ur += Shadow;
         } else {
-            Ur = gScreenWidth;
+            Ur = gGuiWindowManager.ScreenWidth;
         }
-        if (Ub + Shadow < gScreenHeight) {
+        if (Ub + Shadow < gGuiWindowManager.ScreenHeight) {
             Ub += Shadow;
         } else {
-            Ub = gScreenHeight;
+            Ub = gGuiWindowManager.ScreenHeight;
         }
         if (Ur > Ux && Ub > Uy) {
             HalVideoMarkDirty(Ux, Uy, Ur - Ux, Ub - Uy);

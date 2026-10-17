@@ -32,7 +32,7 @@ void PaintUserClient(int Idx) {
     if (Idx < 0 || Idx >= MAX_WINS) {
         return;
     }
-    W = &gWindows[Idx];
+    W = &gGuiWindowManager.Windows[Idx];
     if (!W->Active || W->Kind != GUI_WIN_USER) {
         return;
     }
@@ -127,7 +127,7 @@ int GuiDamageUser(int Wid, const char *Text) {
     if (Idx < 0 || !Text) {
         return -1;
     }
-    CopyTitleBuf(gWindows[Idx].ClientText, sizeof(gWindows[Idx].ClientText),
+    CopyTitleBuf(gGuiWindowManager.Windows[Idx].ClientText, sizeof(gGuiWindowManager.Windows[Idx].ClientText),
                  Text);
     RepaintUserWindow(Idx);
     return 0;
@@ -168,7 +168,7 @@ int GuiDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
     if (Idx < 0) {
         return -1;
     }
-    Win = &gWindows[Idx];
+    Win = &gGuiWindowManager.Windows[Idx];
     if (Win->Width <= 2 + GUI_CLIENT_PAD * 2 ||
         Win->Height <= TITLE_HEIGHT + 1 + GUI_CLIENT_PAD * 2) {
         return -1;

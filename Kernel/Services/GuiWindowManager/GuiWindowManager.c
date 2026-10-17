@@ -21,80 +21,33 @@
 #include "CoreOps.h"
 #include "HalDevices.h"
 
-GUI_WINDOW gWindows[MAX_WINS];
-UINT32 gScreenWidth;
-UINT32 gScreenHeight;
-UINT32 gCursorX;
-UINT32 gCursorY;
-UINT8  gCursorBtn;
-int    gCursorKind;
-int    gFocusWin;
-int    gHoverWin = -1;
-
-UINT32 gSaveX;
-UINT32 gSaveY;
-UINT32 gSaveWidth;
-UINT32 gSaveHeight;
-UINT32 gUnder[CURSOR_BOX * CURSOR_BOX];
-int    gCursorVisible;
-
-int    gDragWin = -1;
-INT32  gDragOffX;
-INT32  gDragOffY;
-int    gDragArmed;
-GUI_WINDOW gWinSwap;
-
-int      gDragHasBackup;
-int      gWinBackupValid[MAX_WINS];
-UINT32   gWinBackupW[MAX_WINS];
-UINT32   gWinBackupH[MAX_WINS];
-UINT32   gWinBackupPages[MAX_WINS];
-UINT32  *gWinBackup[MAX_WINS];
-UINT32   gDragRowBuf[DRAG_ROW_MAX];
-UINT32  *gDragDirty;
-UINT32   gDragDirtyPages;
-UINT32   gDragDirtyCap;
-
-UINT32  *gScreenSnap;
-UINT32   gScreenSnapPages;
-int      gScreenSnapValid;
-UINT32  *gUnderDrag;
-UINT32   gUnderDragPages;
-int      gUnderDragValid;
-UINT32   gDragStartX;
-UINT32   gDragStartY;
-UINT32   gDragStartW;
-UINT32   gDragStartH;
-
-int    gGfxLockDepth;
-UINT64 gGfxIrqFlags;
-volatile int gComposeBusy;
-int    gDeferPresent;
-int    gShellEchoCoalesce; /* PR-G-shell-present：打字回显合并 Present */
-
-GUI_CONSOLE_OPS gGuiConsoleOps;
+GUI_WINDOW_MANAGER gGuiWindowManager = {
+    .HoverWin = -1,
+    .DragWin = -1,
+    .ResizeWin = -1,
+};
 
 void GuiRegisterConsoleOps(const GUI_CONSOLE_OPS *Ops) {
     if (!Ops) {
-        gGuiConsoleOps.FocusSave = 0;
-        gGuiConsoleOps.FocusLoad = 0;
-        gGuiConsoleOps.OnShellOpened = 0;
-        gGuiConsoleOps.PaintShellWindow = 0;
+        gGuiWindowManager.ConsoleOps.FocusSave = 0;
+        gGuiWindowManager.ConsoleOps.FocusLoad = 0;
+        gGuiWindowManager.ConsoleOps.OnShellOpened = 0;
+        gGuiWindowManager.ConsoleOps.PaintShellWindow = 0;
         return;
     }
-    gGuiConsoleOps = *Ops;
+    gGuiWindowManager.ConsoleOps = *Ops;
 }
 
 GUI_WIN_KIND GuiWindowKind(int Idx) {
-    if (Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return GUI_WIN_NONE;
     }
-    return gWindows[Idx].Kind;
+    return gGuiWindowManager.Windows[Idx].Kind;
 }
 
 
 GUI_WIN_KIND GuiFocusKind(void) {
-    return GuiWindowKind(gFocusWin);
+    return GuiWindowKind(gGuiWindowManager.FocusWin);
 }
 
 
@@ -102,23 +55,23 @@ void GuiRefreshTitles(void) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (gWindows[i].Kind == GUI_WIN_SHELL) {
-            gWindows[i].Title = LocStr(MSG_APP_SHELL);
-        } else if (gWindows[i].Kind == GUI_WIN_SETTINGS) {
-            gWindows[i].Title = LocStr(MSG_APP_SETTINGS);
-        } else if (gWindows[i].Kind == GUI_WIN_STORE) {
-            gWindows[i].Title = LocStr(MSG_APP_STORE);
-        } else if (gWindows[i].Kind == GUI_WIN_DEVICES) {
-            gWindows[i].Title = LocStr(MSG_APP_DEVICES);
-        } else if (gWindows[i].Kind == GUI_WIN_FILES) {
-            gWindows[i].Title = LocStr(MSG_APP_FILES);
-        } else if (gWindows[i].Kind == GUI_WIN_EDIT) {
-            gWindows[i].Title = "Edit";
-        } else if (gWindows[i].Kind == GUI_WIN_TTY) {
-            gWindows[i].Title = LocStr(MSG_APP_TTY);
+        if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_SHELL);
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_SETTINGS);
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_STORE) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_STORE);
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_DEVICES) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_DEVICES);
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_FILES);
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
+            gGuiWindowManager.Windows[i].Title = "Edit";
+        } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_TTY);
         }
     }
     SyncWindowVisualsEx(1);
@@ -139,38 +92,38 @@ void GuiRefreshTitles(void) {
 
 
 void GuiInitialize(void) {
-    HalVideoGetSize(&gScreenWidth, &gScreenHeight);
-    if (gScreenWidth == 0) {
-        gScreenWidth = 1024;
-        gScreenHeight = 768;
+    HalVideoGetSize(&gGuiWindowManager.ScreenWidth, &gGuiWindowManager.ScreenHeight);
+    if (gGuiWindowManager.ScreenWidth == 0) {
+        gGuiWindowManager.ScreenWidth = 1024;
+        gGuiWindowManager.ScreenHeight = 768;
     }
-    gCursorX = gScreenWidth / 2;
-    gCursorY = gScreenHeight / 2;
+    gGuiWindowManager.CursorX = gGuiWindowManager.ScreenWidth / 2;
+    gGuiWindowManager.CursorY = gGuiWindowManager.ScreenHeight / 2;
     /*
      * 相对 USB 鼠把像素累加在驱动 Abs；PHOTO/ThemeLoad 期 HalInputPoll
      * 会把 Abs 推到右下。只画居中十字不同步 → 首动 dequeue 仍是旧 Abs → 飞角。
      */
-    HalInputMouseHandoffDesktop(gCursorX, gCursorY);
-    gFocusWin = -1;
-    gCursorVisible = 0;
-    gCursorKind = CURSOR_KIND_ARROW;
-    gDragWin = -1;
-    gResizeWin = -1;
-    gResizeEdge = RESIZE_EDGE_NONE;
+    HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    gGuiWindowManager.FocusWin = -1;
+    gGuiWindowManager.CursorVisible = 0;
+    gGuiWindowManager.CursorKind = CURSOR_KIND_ARROW;
+    gGuiWindowManager.DragWin = -1;
+    gGuiWindowManager.ResizeWin = -1;
+    gGuiWindowManager.ResizeEdge = RESIZE_EDGE_NONE;
 
     {
         int i;
 
         for (i = 0; i < MAX_WINS; i++) {
-            gWindows[i].Active = 0;
-            gWindows[i].Kind = GUI_WIN_NONE;
-            gWindows[i].TermSet = 0;
-            gWindows[i].InputLen = 0;
-            gWindows[i].WaitPrompt = 0;
-            gWindows[i].PromptShown = 0;
-            gWindows[i].InputLine[0] = 0;
-            gWindows[i].Title = "";
-            gWindows[i].Background = ThemeShellClientBackground();
+            gGuiWindowManager.Windows[i].Active = 0;
+            gGuiWindowManager.Windows[i].Kind = GUI_WIN_NONE;
+            gGuiWindowManager.Windows[i].TermSet = 0;
+            gGuiWindowManager.Windows[i].InputLen = 0;
+            gGuiWindowManager.Windows[i].WaitPrompt = 0;
+            gGuiWindowManager.Windows[i].PromptShown = 0;
+            gGuiWindowManager.Windows[i].InputLine[0] = 0;
+            gGuiWindowManager.Windows[i].Title = "";
+            gGuiWindowManager.Windows[i].Background = ThemeShellClientBackground();
         }
     }
 
@@ -204,6 +157,6 @@ void GuiInitialize(void) {
     HalSerialGopMute(1);
     /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();
-    HalInputMouseHandoffDesktop(gCursorX, gCursorY);
+    HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     DebugWrite("Gui: desktop ready\n");
 }

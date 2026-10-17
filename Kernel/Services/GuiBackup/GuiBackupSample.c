@@ -13,7 +13,7 @@
 
 /* 与 DrawWindowAt 布局一致；仅作无备份时的回退 */
 UINT32 AnalyticWindowPixel(int Idx, UINT32 Px, UINT32 Py) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
     UINT32 Lx;
     UINT32 Ly;
 
@@ -41,17 +41,17 @@ UINT32 AnalyticWindowPixel(int Idx, UINT32 Px, UINT32 Py) {
 }
 
 UINT32 SampleWindowBackupPixel(int Idx, UINT32 Px, UINT32 Py) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
     UINT32 Bw;
     UINT32 Bh;
     UINT32 Lx;
     UINT32 Ly;
 
-    if (!gWinBackupValid[Idx] || gWinBackup[Idx] == 0 || !W->Active) {
+    if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0 || !W->Active) {
         return DesktopBgAt(Px, Py);
     }
-    Bw = gWinBackupW[Idx];
-    Bh = gWinBackupH[Idx];
+    Bw = gGuiWindowManager.WinBackupW[Idx];
+    Bh = gGuiWindowManager.WinBackupH[Idx];
     if (Px < W->X || Py < W->Y) {
         return DesktopBgAt(Px, Py);
     }
@@ -60,18 +60,18 @@ UINT32 SampleWindowBackupPixel(int Idx, UINT32 Px, UINT32 Py) {
     if (Lx >= Bw || Ly >= Bh) {
         return DesktopBgAt(Px, Py);
     }
-    return gWinBackup[Idx][Ly * Bw + Lx];
+    return gGuiWindowManager.WinBackup[Idx][Ly * Bw + Lx];
 }
 
 
 int WindowBackupCoversPixel(int Idx, UINT32 Px, UINT32 Py) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
 
-    if (!gWinBackupValid[Idx] || !W->Active) {
+    if (!gGuiWindowManager.WinBackupValid[Idx] || !W->Active) {
         return 0;
     }
     return Px >= W->X && Py >= W->Y &&
-           Px < W->X + gWinBackupW[Idx] && Py < W->Y + gWinBackupH[Idx];
+           Px < W->X + gGuiWindowManager.WinBackupW[Idx] && Py < W->Y + gGuiWindowManager.WinBackupH[Idx];
 }
 
 
@@ -84,7 +84,7 @@ int PixelCoveredByHigherWindow(int Idx, UINT32 Px, UINT32 Py) {
     UINT32 N = ThemeWindowShadowSize();
 
     for (j = Idx + 1; j < MAX_WINS; j++) {
-        const GUI_WINDOW *W = &gWindows[j];
+        const GUI_WINDOW *W = &gGuiWindowManager.Windows[j];
         UINT32 X1;
         UINT32 Y1;
 
@@ -114,17 +114,17 @@ int WindowOccludedByOtherOrShadow(int Idx) {
     if (WindowOccludedByOther(Idx)) {
         return 1;
     }
-    if (N == 0 || Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (N == 0 || Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return 0;
     }
     for (j = Idx + 1; j < MAX_WINS; j++) {
-        if (!gWindows[j].Active) {
+        if (!gGuiWindowManager.Windows[j].Active) {
             continue;
         }
-        if (RectIntersects(gWindows[Idx].X, gWindows[Idx].Y,
-                           gWindows[Idx].Width, gWindows[Idx].Height,
-                           gWindows[j].X, gWindows[j].Y,
-                           gWindows[j].Width + N, gWindows[j].Height + N)) {
+        if (RectIntersects(gGuiWindowManager.Windows[Idx].X, gGuiWindowManager.Windows[Idx].Y,
+                           gGuiWindowManager.Windows[Idx].Width, gGuiWindowManager.Windows[Idx].Height,
+                           gGuiWindowManager.Windows[j].X, gGuiWindowManager.Windows[j].Y,
+                           gGuiWindowManager.Windows[j].Width + N, gGuiWindowManager.Windows[j].Height + N)) {
             return 1;
         }
     }
@@ -145,16 +145,16 @@ void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     UINT32 Dst;
     int Idx;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
-    Idx = gFocusWin;
-    if (!gWinBackupValid[Idx] || gWinBackup[Idx] == 0) {
+    Idx = gGuiWindowManager.FocusWin;
+    if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0) {
         return;
     }
-    Win = &gWindows[Idx];
-    Bw = gWinBackupW[Idx];
-    Bh = gWinBackupH[Idx];
+    Win = &gGuiWindowManager.Windows[Idx];
+    Bw = gGuiWindowManager.WinBackupW[Idx];
+    Bh = gGuiWindowManager.WinBackupH[Idx];
     if (Bw == 0 || Bh == 0) {
         return;
     }
@@ -174,7 +174,7 @@ void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
             Bx = Px - Win->X;
             By = Py - Win->Y;
             Dst = By * Bw + Bx;
-            gWinBackup[Idx][Dst] = HalVideoReadPixel(Px, Py);
+            gGuiWindowManager.WinBackup[Idx][Dst] = HalVideoReadPixel(Px, Py);
         }
     }
 }

@@ -37,13 +37,13 @@ static UINT32 ShadowUnderPixel(int ShadowIdx, UINT32 Px, UINT32 Py) {
     UINT32 Icon;
 
     for (i = ShadowIdx - 1; i >= 0; i--) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (Px >= gWindows[i].X && Py >= gWindows[i].Y &&
-            Px < gWindows[i].X + gWindows[i].Width &&
-            Py < gWindows[i].Y + gWindows[i].Height) {
-            if (gWinBackupValid[i] && gWinBackup[i] != 0) {
+        if (Px >= gGuiWindowManager.Windows[i].X && Py >= gGuiWindowManager.Windows[i].Y &&
+            Px < gGuiWindowManager.Windows[i].X + gGuiWindowManager.Windows[i].Width &&
+            Py < gGuiWindowManager.Windows[i].Y + gGuiWindowManager.Windows[i].Height) {
+            if (gGuiWindowManager.WinBackupValid[i] && gGuiWindowManager.WinBackup[i] != 0) {
                 return SampleWindowBackupPixel(i, Px, Py);
             }
             return AnalyticWindowPixel(i, Px, Py);
@@ -60,11 +60,11 @@ static void BlendShadowSpan(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT8 Alpha,
     UINT32 Col;
     UINT32 Px;
 
-    if (W == 0 || Y >= gScreenHeight || X >= gScreenWidth) {
+    if (W == 0 || Y >= gGuiWindowManager.ScreenHeight || X >= gGuiWindowManager.ScreenWidth) {
         return;
     }
-    if (X + W > gScreenWidth) {
-        W = gScreenWidth - X;
+    if (X + W > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth - X;
     }
     for (Col = 0; Col < W; Col++) {
         Px = X + Col;
@@ -89,7 +89,7 @@ void DrawWindowShadowAt(int Idx) {
     if (Idx < 0 || Idx >= MAX_WINS) {
         return;
     }
-    W = &gWindows[Idx];
+    W = &gGuiWindowManager.Windows[Idx];
     if (!W->Active || W->Width == 0 || W->Height == 0) {
         return;
     }

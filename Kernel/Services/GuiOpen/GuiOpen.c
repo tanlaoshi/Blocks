@@ -18,7 +18,7 @@ void OpenChromeDefer(int Idx) {
     HalVideoClearClip();
     DrawWindowAt(Idx);
     ComposeEnd();
-    gFocusWin = Idx;
+    gGuiWindowManager.FocusWin = Idx;
     RaiseWindow(Idx);
     SyncWindowVisuals();
 }
@@ -26,8 +26,8 @@ void OpenChromeDefer(int Idx) {
 void OpenFadeIn(int Idx) {
     BackupWindowAt(Idx);
     GuiFocusApply();
-    BackupWindowAt(gFocusWin);
-    GuiAnimateWindowFade(gFocusWin, 1);
+    BackupWindowAt(gGuiWindowManager.FocusWin);
+    GuiAnimateWindowFade(gGuiWindowManager.FocusWin, 1);
     GuiPresentDeferPop();
 }
 
@@ -42,21 +42,21 @@ int FocusExistingKind(GUI_WIN_KIND Kind, void (*Repaint)(void),
     (void)LogTag;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && gWindows[i].Kind == Kind) {
-            gFocusWin = i;
+        if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == Kind) {
+            gGuiWindowManager.FocusWin = i;
             RaiseWindow(i);
             SyncWindowVisuals();
             if (Repaint) {
                 Repaint();
             }
             GuiFocusApply();
-            BackupWindowAt(gFocusWin);
+            BackupWindowAt(gGuiWindowManager.FocusWin);
             DebugWrite("Gui: focus existing ");
             DebugWrite(LogTag);
             DebugWrite(" idx=");
-            DebugHex32((UINT32)gFocusWin);
+            DebugHex32((UINT32)gGuiWindowManager.FocusWin);
             DebugWrite("\n");
-            return gFocusWin;
+            return gGuiWindowManager.FocusWin;
         }
     }
     return -1;
@@ -67,7 +67,7 @@ int AllocWindowSlot(void) {
 
     for (i = 0; i < MAX_WINS; i++) {
         /* Closing 时槽仍被关窗路径占用，勿复用 */
-        if (!gWindows[i].Active && !gWindows[i].Closing) {
+        if (!gGuiWindowManager.Windows[i].Active && !gGuiWindowManager.Windows[i].Closing) {
             return i;
         }
     }
@@ -81,8 +81,8 @@ void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY,
     UINT32 W;
     UINT32 H;
 
-    W = gScreenWidth > Margin * 2 + 200 ? gScreenWidth - Margin * 2 : gScreenWidth - 32;
-    H = gScreenHeight > Margin * 2 + 120 ? gScreenHeight - Margin * 2 : gScreenHeight - 32;
+    W = gGuiWindowManager.ScreenWidth > Margin * 2 + 200 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth - 32;
+    H = gGuiWindowManager.ScreenHeight > Margin * 2 + 120 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight - 32;
     /* 默认桌面 1280×720：960×600 约 ~85 列×~28 行（8×16），ps 等长行不易裁切 */
     if (W > 960) {
         W = 960;
@@ -92,10 +92,10 @@ void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY,
     }
     *OutX = Margin + Cascade;
     *OutY = Margin + Cascade;
-    if (*OutX + W > gScreenWidth) {
+    if (*OutX + W > gGuiWindowManager.ScreenWidth) {
         *OutX = Margin;
     }
-    if (*OutY + H > gScreenHeight) {
+    if (*OutY + H > gGuiWindowManager.ScreenHeight) {
         *OutY = Margin;
     }
     *OutW = W;

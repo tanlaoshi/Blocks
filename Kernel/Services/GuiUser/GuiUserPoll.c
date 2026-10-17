@@ -17,28 +17,28 @@ int GuiPollUserInput(int Wid) {
      * RaiseWindow 会搬槽位，用户态持有的 wid 可能过期。
      * 优先读解析后的 USER 槽；再扫整表兜底。
      */
-    if (Prefer >= 0 && gWindows[Prefer].ClosePending) {
-        gWindows[Prefer].ClosePending = 0;
+    if (Prefer >= 0 && gGuiWindowManager.Windows[Prefer].ClosePending) {
+        gGuiWindowManager.Windows[Prefer].ClosePending = 0;
         return 1;
     }
     for (I = 0; I < MAX_WINS; I++) {
-        if (gWindows[I].Kind == GUI_WIN_USER && gWindows[I].ClosePending) {
-            gWindows[I].ClosePending = 0;
+        if (gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER && gGuiWindowManager.Windows[I].ClosePending) {
+            gGuiWindowManager.Windows[I].ClosePending = 0;
             return 1;
         }
     }
-    if (Prefer >= 0 && gWindows[Prefer].UserButtonClick >= 0 &&
-        gWindows[Prefer].UserButtonClick < 4) {
-        Id = gWindows[Prefer].UserButtonClick;
-        gWindows[Prefer].UserButtonClick = -1;
+    if (Prefer >= 0 && gGuiWindowManager.Windows[Prefer].UserButtonClick >= 0 &&
+        gGuiWindowManager.Windows[Prefer].UserButtonClick < 4) {
+        Id = gGuiWindowManager.Windows[Prefer].UserButtonClick;
+        gGuiWindowManager.Windows[Prefer].UserButtonClick = -1;
         return 100 + Id;
     }
     for (I = 0; I < MAX_WINS; I++) {
-        if (gWindows[I].Kind == GUI_WIN_USER &&
-            gWindows[I].UserButtonClick >= 0 &&
-            gWindows[I].UserButtonClick < 4) {
-            Id = gWindows[I].UserButtonClick;
-            gWindows[I].UserButtonClick = -1;
+        if (gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER &&
+            gGuiWindowManager.Windows[I].UserButtonClick >= 0 &&
+            gGuiWindowManager.Windows[I].UserButtonClick < 4) {
+            Id = gGuiWindowManager.Windows[I].UserButtonClick;
+            gGuiWindowManager.Windows[I].UserButtonClick = -1;
             return 100 + Id;
         }
     }
@@ -47,14 +47,14 @@ int GuiPollUserInput(int Wid) {
         return KeyEv;
     }
     for (I = 0; I < MAX_WINS; I++) {
-        if (gWindows[I].Active && gWindows[I].Kind == GUI_WIN_USER &&
-            gWindows[I].UserClientClick) {
+        if (gGuiWindowManager.Windows[I].Active && gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER &&
+            gGuiWindowManager.Windows[I].UserClientClick) {
             UINT32 Cx;
             UINT32 Cy;
 
-            Cx = gWindows[I].UserClickX;
-            Cy = gWindows[I].UserClickY;
-            gWindows[I].UserClientClick = 0;
+            Cx = gGuiWindowManager.Windows[I].UserClickX;
+            Cy = gGuiWindowManager.Windows[I].UserClickY;
+            gGuiWindowManager.Windows[I].UserClientClick = 0;
             if (Cx > 1023u) {
                 Cx = 1023u;
             }
@@ -66,7 +66,7 @@ int GuiPollUserInput(int Wid) {
         }
     }
     for (I = 0; I < MAX_WINS; I++) {
-        if (gWindows[I].Active && gWindows[I].Kind == GUI_WIN_USER) {
+        if (gGuiWindowManager.Windows[I].Active && gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER) {
             return 0;
         }
     }

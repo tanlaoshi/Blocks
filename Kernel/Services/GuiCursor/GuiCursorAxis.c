@@ -9,7 +9,7 @@ static void PutCursorPx(int Px, int Py, UINT32 Color) {
     if (Px < 0 || Py < 0) {
         return;
     }
-    if ((UINT32)Px >= gScreenWidth || (UINT32)Py >= gScreenHeight) {
+    if ((UINT32)Px >= gGuiWindowManager.ScreenWidth || (UINT32)Py >= gGuiWindowManager.ScreenHeight) {
         return;
     }
     HalVideoDrawPixelRaw((UINT32)Px, (UINT32)Py, Color);

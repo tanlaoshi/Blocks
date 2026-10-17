@@ -10,7 +10,7 @@
 void GuiConsolePull(char *Line, int *Len, int *WaitPrompt) {
     GUI_WINDOW *Win;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         if (Len) {
             *Len = 0;
         }
@@ -22,7 +22,7 @@ void GuiConsolePull(char *Line, int *Len, int *WaitPrompt) {
         }
         return;
     }
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     if (Line) {
         int i;
         for (i = 0; i < Win->InputLen && i < GUI_INPUT_LINE_MAX - 1; i++) {
@@ -43,10 +43,10 @@ void GuiConsolePush(const char *Line, int Len, int WaitPrompt) {
     GUI_WINDOW *Win;
     int i;
 
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
-    Win = &gWindows[gFocusWin];
+    Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     if (Len >= GUI_INPUT_LINE_MAX) {
         Len = GUI_INPUT_LINE_MAX - 1;
     }
@@ -59,26 +59,26 @@ void GuiConsolePush(const char *Line, int Len, int WaitPrompt) {
 }
 
 void GuiConsoleSetWaitPrompt(int Idx, int WaitPrompt) {
-    if (Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return;
     }
-    gWindows[Idx].WaitPrompt = WaitPrompt;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = WaitPrompt;
 }
 
 
 int GuiConsoleNeedsPrompt(void) {
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return 0;
     }
-    return !gWindows[gFocusWin].PromptShown;
+    return !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].PromptShown;
 }
 
 
 void GuiConsoleMarkPrompt(void) {
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
-    gWindows[gFocusWin].PromptShown = 1;
+    gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].PromptShown = 1;
 }
 
 
@@ -86,29 +86,29 @@ void GuiShellRequestPrompt(void) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && gWindows[i].Kind == GUI_WIN_SHELL) {
-            gWindows[i].PromptShown = 0;
+        if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
+            gGuiWindowManager.Windows[i].PromptShown = 0;
         }
     }
 }
 
 
 int GuiConsoleHasDisplay(void) {
-    if (gFocusWin < 0 || gFocusWin >= MAX_WINS || !gWindows[gFocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return 0;
     }
-    return gWindows[gFocusWin].TermSet;
+    return gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].TermSet;
 }
 
 int GuiShellAcceptsInput(void) {
-    return gFocusWin >= 0 && gFocusWin < MAX_WINS &&
-           gWindows[gFocusWin].Active &&
-           gWindows[gFocusWin].Kind == GUI_WIN_SHELL &&
-           !WindowOccludedByOther(gFocusWin);
+    return gGuiWindowManager.FocusWin >= 0 && gGuiWindowManager.FocusWin < MAX_WINS &&
+           gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active &&
+           gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Kind == GUI_WIN_SHELL &&
+           !WindowOccludedByOther(gGuiWindowManager.FocusWin);
 }
 
 
 int GuiShellWindowActive(int Idx) {
-    return Idx >= 0 && Idx < MAX_WINS && gWindows[Idx].Active &&
-           gWindows[Idx].Kind == GUI_WIN_SHELL;
+    return Idx >= 0 && Idx < MAX_WINS && gGuiWindowManager.Windows[Idx].Active &&
+           gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_SHELL;
 }

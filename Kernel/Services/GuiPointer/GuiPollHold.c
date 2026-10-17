@@ -68,7 +68,7 @@ void GuiPollHoldApply(UINT32 *LastX, UINT32 *LastY, UINT8 *LastBtn,
     *LastY = Y;
     *NeedMove = 1;
     *Any = 1;
-    gCursorBtn = Btn;
+    gGuiWindowManager.CursorBtn = Btn;
     if ((Btn & 1) && !(Prev & 1)) {
         GuiHandleClick(X, Y);
     }
@@ -87,13 +87,13 @@ void GuiPollHoldApply(UINT32 *LastX, UINT32 *LastY, UINT8 *LastBtn,
             }
             GuiPresentDeferPause();
             DesktopIconDragEnd();
-            if (gCursorVisible) {
-                UINT32 Sx = gSaveX;
-                UINT32 Sy = gSaveY;
-                UINT32 SbW = gSaveWidth;
-                UINT32 SbH = gSaveHeight;
+            if (gGuiWindowManager.CursorVisible) {
+                UINT32 Sx = gGuiWindowManager.SaveX;
+                UINT32 Sy = gGuiWindowManager.SaveY;
+                UINT32 SbW = gGuiWindowManager.SaveWidth;
+                UINT32 SbH = gGuiWindowManager.SaveHeight;
 
-                gCursorVisible = 0;
+                gGuiWindowManager.CursorVisible = 0;
                 if (SbW != 0 && SbH != 0) {
                     ClearIconFootprint(Sx, Sy, SbW, SbH);
                 }

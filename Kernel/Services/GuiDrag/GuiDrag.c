@@ -22,30 +22,30 @@
 void ResetDragState(void) {
     /*
      * 只清拖动合成用的 snap/under/dirty。
-     * 绝不能清 gWinBackupValid：单击标题栏也会进 GuiDragEnd，若无重叠会走这里，
+     * 绝不能清 gGuiWindowManager.WinBackupValid：单击标题栏也会进 GuiDragEnd，若无重叠会走这里，
      * 清掉后备份后 SyncWindowVisuals 只能 DrawWindowAt，Settings/Shell 文字全没。
      */
-    if (gScreenSnap != 0) {
-        PhysicalMemoryFreePages(gScreenSnap, gScreenSnapPages);
-        gScreenSnap = 0;
-        gScreenSnapPages = 0;
+    if (gGuiWindowManager.ScreenSnap != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.ScreenSnap, gGuiWindowManager.ScreenSnapPages);
+        gGuiWindowManager.ScreenSnap = 0;
+        gGuiWindowManager.ScreenSnapPages = 0;
     }
-    if (gUnderDrag != 0) {
-        PhysicalMemoryFreePages(gUnderDrag, gUnderDragPages);
-        gUnderDrag = 0;
-        gUnderDragPages = 0;
+    if (gGuiWindowManager.UnderDrag != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.UnderDrag, gGuiWindowManager.UnderDragPages);
+        gGuiWindowManager.UnderDrag = 0;
+        gGuiWindowManager.UnderDragPages = 0;
     }
-    if (gDragDirty != 0) {
-        PhysicalMemoryFreePages(gDragDirty, gDragDirtyPages);
-        gDragDirty = 0;
-        gDragDirtyPages = 0;
-        gDragDirtyCap = 0;
+    if (gGuiWindowManager.DragDirty != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.DragDirty, gGuiWindowManager.DragDirtyPages);
+        gGuiWindowManager.DragDirty = 0;
+        gGuiWindowManager.DragDirtyPages = 0;
+        gGuiWindowManager.DragDirtyCap = 0;
     }
-    gScreenSnapValid = 0;
-    gUnderDragValid = 0;
-    gDragStartW = 0;
-    gDragStartH = 0;
-    gDragHasBackup = 0;
+    gGuiWindowManager.ScreenSnapValid = 0;
+    gGuiWindowManager.UnderDragValid = 0;
+    gGuiWindowManager.DragStartW = 0;
+    gGuiWindowManager.DragStartH = 0;
+    gGuiWindowManager.DragHasBackup = 0;
 }
 
 int AnyWindowsOverlap(void) {
@@ -53,15 +53,15 @@ int AnyWindowsOverlap(void) {
     int j;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
         for (j = i + 1; j < MAX_WINS; j++) {
-            if (!gWindows[j].Active) {
+            if (!gGuiWindowManager.Windows[j].Active) {
                 continue;
             }
-            if (RectIntersects(gWindows[i].X, gWindows[i].Y, gWindows[i].Width, gWindows[i].Height,
-                               gWindows[j].X, gWindows[j].Y, gWindows[j].Width, gWindows[j].Height)) {
+            if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width, gGuiWindowManager.Windows[i].Height,
+                               gGuiWindowManager.Windows[j].X, gGuiWindowManager.Windows[j].Y, gGuiWindowManager.Windows[j].Width, gGuiWindowManager.Windows[j].Height)) {
                 return 1;
             }
         }
@@ -76,12 +76,12 @@ void GuiDragUpdate(UINT32 X, UINT32 Y) {
     INT32 Dy;
     GUI_WINDOW *W;
 
-    if (gDragWin < 0 || gDragWin >= MAX_WINS || !gWindows[gDragWin].Active) {
+    if (gGuiWindowManager.DragWin < 0 || gGuiWindowManager.DragWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.DragWin].Active) {
         return;
     }
-    W = &gWindows[gDragWin];
-    Nx = (INT32)X - gDragOffX;
-    Ny = (INT32)Y - gDragOffY;
+    W = &gGuiWindowManager.Windows[gGuiWindowManager.DragWin];
+    Nx = (INT32)X - gGuiWindowManager.DragOffX;
+    Ny = (INT32)Y - gGuiWindowManager.DragOffY;
     ClampWindowPos(W, &Nx, &Ny);
 
     Dx = Nx - (INT32)W->X;
@@ -100,16 +100,16 @@ void GuiDragUpdate(UINT32 X, UINT32 Y) {
     }
     /* 持 gDragFrame 期间勿被抢：否则同核 Shell 自旋等锁会饿死本任务 */
     SchedulerPreemptDisable();
-    if (gDragArmed) {
-        StartDragBackups(gDragWin);
-        gDragArmed = 0;
-        if (gDragWin < 0 || !gDragHasBackup) {
+    if (gGuiWindowManager.DragArmed) {
+        StartDragBackups(gGuiWindowManager.DragWin);
+        gGuiWindowManager.DragArmed = 0;
+        if (gGuiWindowManager.DragWin < 0 || !gGuiWindowManager.DragHasBackup) {
             SchedulerPreemptEnable();
             GuiDragFrameLeave();
             return;
         }
     }
-    MoveWindowTo(gDragWin, (UINT32)Nx, (UINT32)Ny);
+    MoveWindowTo(gGuiWindowManager.DragWin, (UINT32)Nx, (UINT32)Ny);
     SchedulerPreemptEnable();
     GuiDragFrameLeave();
 }
@@ -127,22 +127,22 @@ void GuiDragEnd(void) {
             (void)SchedulerCondResched();
         }
     }
-    DragIdx = gDragWin;
-    DidDrag = gDragHasBackup;
-    gDragWin = -1;
-    gDragArmed = 0;
+    DragIdx = gGuiWindowManager.DragWin;
+    DidDrag = gGuiWindowManager.DragHasBackup;
+    gGuiWindowManager.DragWin = -1;
+    gGuiWindowManager.DragArmed = 0;
     Top = DragIdx;
     /* 与 GuiDragUpdate 一致：-1 哨兵 + 上界，避免 -Warray-bounds */
-    if (DragIdx >= 0 && DragIdx < MAX_WINS && gWindows[DragIdx].Active) {
+    if (DragIdx >= 0 && DragIdx < MAX_WINS && gGuiWindowManager.Windows[DragIdx].Active) {
         if (DidDrag) {
-            INT32 Nx = (INT32)gCursorX - gDragOffX;
-            INT32 Ny = (INT32)gCursorY - gDragOffY;
+            INT32 Nx = (INT32)gGuiWindowManager.CursorX - gGuiWindowManager.DragOffX;
+            INT32 Ny = (INT32)gGuiWindowManager.CursorY - gGuiWindowManager.DragOffY;
 
-            ClampWindowPos(&gWindows[DragIdx], &Nx, &Ny);
+            ClampWindowPos(&gGuiWindowManager.Windows[DragIdx], &Nx, &Ny);
             MoveWindowTo(DragIdx, (UINT32)Nx, (UINT32)Ny);
             RaiseWindow(DragIdx);
-            /* Raise 可能搬槽：后续重画/备份必须用 gFocusWin（同 GuiRaiseToFront） */
-            Top = gFocusWin;
+            /* Raise 可能搬槽：后续重画/备份必须用 gGuiWindowManager.FocusWin（同 GuiRaiseToFront） */
+            Top = gGuiWindowManager.FocusWin;
             /*
              * 残影：拖动路径上旧 chrome 落在「当前窗矩形之外」，只贴窗擦不掉。
              * 先铺桌面再按备份贴回，清轨迹；空色块若已烙进备份则随后 Settings/Shell 重画补。
@@ -154,25 +154,25 @@ void GuiDragEnd(void) {
              * 被挡像素不吸入上层；移走后下次 Sync/ClearOld 用备份重贴即无烙印。
              */
         }
-        if (Top < 0 || Top >= MAX_WINS || !gWindows[Top].Active) {
+        if (Top < 0 || Top >= MAX_WINS || !gGuiWindowManager.Windows[Top].Active) {
             Top = -1;
         }
-        if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_SETTINGS) {
+        if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_SETTINGS) {
             SettingsUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_STORE) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_STORE) {
             StoreUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_DEVICES) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_DEVICES) {
             DevicesUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_FILES) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_FILES) {
             FilesUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_EDIT) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_EDIT) {
             EditUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_TTY) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_TTY) {
             TtyUiRepaint();
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_USER) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_USER) {
             PaintUserClient(Top);
-        } else if (Top >= 0 && gWindows[Top].Kind == GUI_WIN_SHELL &&
-                   !gWinBackupValid[Top]) {
+        } else if (Top >= 0 && gGuiWindowManager.Windows[Top].Kind == GUI_WIN_SHELL &&
+                   !gGuiWindowManager.WinBackupValid[Top]) {
             GuiConsoleOpsOnShellOpened();
         }
         /* 清桌面合成后：无备份的 Shell 客户区是空壳，补画控制台 */
@@ -180,17 +180,17 @@ void GuiDragEnd(void) {
             int i;
 
             for (i = 0; i < MAX_WINS; i++) {
-                if (gWindows[i].Active && gWindows[i].Kind == GUI_WIN_SHELL &&
-                    !gWinBackupValid[i]) {
-                    int Prev = gFocusWin;
+                if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL &&
+                    !gGuiWindowManager.WinBackupValid[i]) {
+                    int Prev = gGuiWindowManager.FocusWin;
 
-                    gFocusWin = i;
+                    gGuiWindowManager.FocusWin = i;
                     GuiConsoleOpsOnShellOpened();
-                    gFocusWin = Prev;
+                    gGuiWindowManager.FocusWin = Prev;
                 }
             }
         }
-        if (Top >= 0 && gWindows[Top].Active) {
+        if (Top >= 0 && gGuiWindowManager.Windows[Top].Active) {
             BackupWindowAt(Top);
         }
     }

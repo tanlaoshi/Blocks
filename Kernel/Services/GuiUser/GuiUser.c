@@ -37,12 +37,12 @@ int ResolveUserWindowIndex(int Wid) {
     int Found = -1;
     int N = 0;
 
-    if (Wid >= 0 && Wid < MAX_WINS && gWindows[Wid].Active &&
-        gWindows[Wid].Kind == GUI_WIN_USER) {
+    if (Wid >= 0 && Wid < MAX_WINS && gGuiWindowManager.Windows[Wid].Active &&
+        gGuiWindowManager.Windows[Wid].Kind == GUI_WIN_USER) {
         return Wid;
     }
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && gWindows[i].Kind == GUI_WIN_USER) {
+        if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
             Found = i;
             N++;
         }
@@ -50,10 +50,10 @@ int ResolveUserWindowIndex(int Wid) {
     if (N == 1) {
         return Found;
     }
-    if (gFocusWin >= 0 && gFocusWin < MAX_WINS &&
-        gWindows[gFocusWin].Active &&
-        gWindows[gFocusWin].Kind == GUI_WIN_USER) {
-        return gFocusWin;
+    if (gGuiWindowManager.FocusWin >= 0 && gGuiWindowManager.FocusWin < MAX_WINS &&
+        gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active &&
+        gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Kind == GUI_WIN_USER) {
+        return gGuiWindowManager.FocusWin;
     }
     return Found;
 }
@@ -67,9 +67,9 @@ int UserWindowIndexAfterRaise(int Wid) {
         return -1;
     }
     RaiseWindow(Idx);
-    if (gFocusWin >= 0 && gFocusWin < MAX_WINS &&
-        gWindows[gFocusWin].Active && gWindows[gFocusWin].Kind == GUI_WIN_USER) {
-        return gFocusWin;
+    if (gGuiWindowManager.FocusWin >= 0 && gGuiWindowManager.FocusWin < MAX_WINS &&
+        gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active && gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Kind == GUI_WIN_USER) {
+        return gGuiWindowManager.FocusWin;
     }
     return -1;
 }
@@ -87,12 +87,12 @@ void RepaintUserWindow(int Wid) {
         return;
     }
     /* 丢弃可能含透视的旧备份，Sync 时走 DrawWindowAt */
-    gWinBackupValid[Idx] = 0;
+    gGuiWindowManager.WinBackupValid[Idx] = 0;
     ComposeBeginEraseCursor();
     HalVideoClearClip();
     SyncWindowVisualsEx(0);
     /*
-     * Sync 末尾已 CursorPaint，gUnder 是重画前的按钮像素。
+     * Sync 末尾已 CursorPaint，gGuiWindowManager.Under 是重画前的按钮像素。
      * 若不先 Restore，后面的 CursorPaint 会把旧底盖回新按钮 → 轮廓/文字被擦。
      */
     GfxIrqEnter();
@@ -108,9 +108,9 @@ void RepaintUserWindow(int Wid) {
     GfxIrqLeave();
     HalVideoPresentFlush();
     ComposeEnd();
-    gWindows[Idx].UserButtonClick = -1;
-    gWindows[Idx].UserClientClick = 0;
-    gWindows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
+    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
+    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
     GuiInputLock(0);
 }
 
@@ -133,7 +133,7 @@ int UserButtonHit(int Idx, UINT32 X, UINT32 Y) {
     if (Idx < 0 || Idx >= MAX_WINS) {
         return -1;
     }
-    W = &gWindows[Idx];
+    W = &gGuiWindowManager.Windows[Idx];
     if (!W->Active || W->Kind != GUI_WIN_USER) {
         return -1;
     }
@@ -217,54 +217,54 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     if (H < 100) {
         H = 100;
     }
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
-    X = (gScreenWidth > W) ? (gScreenWidth - W) / 2 : 0;
-    Y = (gScreenHeight > H + 40) ? (gScreenHeight - H) / 3 : Margin;
+    X = (gGuiWindowManager.ScreenWidth > W) ? (gGuiWindowManager.ScreenWidth - W) / 2 : 0;
+    Y = (gGuiWindowManager.ScreenHeight > H + 40) ? (gGuiWindowManager.ScreenHeight - H) / 3 : Margin;
 
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].FixedSize = TitleIsFixedUser(Title);
-    gWindows[Idx].Kind = GUI_WIN_USER;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeSettingsClientBackground();
-    CopyTitleBuf(gWindows[Idx].TitleBuf, sizeof(gWindows[Idx].TitleBuf), Title);
-    gWindows[Idx].Title = gWindows[Idx].TitleBuf;
-    gWindows[Idx].ClientText[0] = 0;
-    gWindows[Idx].ClosePending = 0;
-    gWindows[Idx].Closing = 0;
-    gWindows[Idx].UserButtonClick = -1;
-    gWindows[Idx].UserClientClick = 0;
-    gWindows[Idx].UserClickX = 0;
-    gWindows[Idx].UserClickY = 0;
-    gWindows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].FixedSize = TitleIsFixedUser(Title);
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_USER;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    CopyTitleBuf(gGuiWindowManager.Windows[Idx].TitleBuf, sizeof(gGuiWindowManager.Windows[Idx].TitleBuf), Title);
+    gGuiWindowManager.Windows[Idx].Title = gGuiWindowManager.Windows[Idx].TitleBuf;
+    gGuiWindowManager.Windows[Idx].ClientText[0] = 0;
+    gGuiWindowManager.Windows[Idx].ClosePending = 0;
+    gGuiWindowManager.Windows[Idx].Closing = 0;
+    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
+    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
+    gGuiWindowManager.Windows[Idx].UserClickX = 0;
+    gGuiWindowManager.Windows[Idx].UserClickY = 0;
+    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
     {
         int Bi;
         for (Bi = 0; Bi < 4; Bi++) {
-            gWindows[Idx].UserButtonUsed[Bi] = 0;
-            gWindows[Idx].UserButtonLabel[Bi][0] = 0;
+            gGuiWindowManager.Windows[Idx].UserButtonUsed[Bi] = 0;
+            gGuiWindowManager.Windows[Idx].UserButtonLabel[Bi][0] = 0;
         }
     }
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     ComposeBeginEraseCursor();
     HalVideoClearClip();
     DrawWindowAtEx(Idx, 0);
     ComposeEnd();
-    gFocusWin = Idx;
+    gGuiWindowManager.FocusWin = Idx;
     RaiseWindow(Idx);
-    Idx = gFocusWin;
-    gWinBackupValid[Idx] = 0;
+    Idx = gGuiWindowManager.FocusWin;
+    gGuiWindowManager.WinBackupValid[Idx] = 0;
     ComposeBeginEraseCursor();
     SyncWindowVisualsEx(0);
     GfxIrqEnter();
@@ -280,9 +280,9 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     HalVideoPresentFlush();
     ComposeEnd();
     DebugWrite("Gui: open user idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 int GuiUserAddButton(int Wid, int ButtonId, const char *Label) {
@@ -292,9 +292,9 @@ int GuiUserAddButton(int Wid, int ButtonId, const char *Label) {
     if (Idx < 0 || ButtonId < 0 || ButtonId >= 4 || !Label) {
         return -1;
     }
-    gWindows[Idx].UserButtonUsed[ButtonId] = 1;
-    CopyTitleBuf(gWindows[Idx].UserButtonLabel[ButtonId],
-                 sizeof(gWindows[Idx].UserButtonLabel[ButtonId]), Label);
+    gGuiWindowManager.Windows[Idx].UserButtonUsed[ButtonId] = 1;
+    CopyTitleBuf(gGuiWindowManager.Windows[Idx].UserButtonLabel[ButtonId],
+                 sizeof(gGuiWindowManager.Windows[Idx].UserButtonLabel[ButtonId]), Label);
     RepaintUserWindow(Idx);
     return 0;
 }

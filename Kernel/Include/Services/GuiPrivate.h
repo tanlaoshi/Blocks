@@ -22,7 +22,7 @@
 #define GUI_USER_KEY_HID_MAX 99
 /*
  * 光标随分辨率缩放（基准 1080p：臂长 6、线宽 1px）。
- * 2160p ≈ 2×；gUnder 按上限预留（含黑描边外扩 1px）。
+ * 2160p ≈ 2×；gGuiWindowManager.Under 按上限预留（含黑描边外扩 1px）。
  */
 #define CURSOR_HALF_BASE 6
 #define CURSOR_REF_H     1080u
@@ -79,89 +79,88 @@ typedef struct {
     UINT8    UserKeyCount;
 } GUI_WINDOW;
 
-/* 共享状态（定义见各 .c） */
-extern GUI_WINDOW gWindows[MAX_WINS];
-extern UINT32 gScreenWidth;
-extern UINT32 gScreenHeight;
-extern UINT32 gCursorX;
-extern UINT32 gCursorY;
-extern UINT8  gCursorBtn;
-extern int    gCursorKind; /* CURSOR_KIND_* */
-extern int    gFocusWin;
-extern int    gHoverWin; /* PR-GUI-l1：指针下最顶层窗（-1=无） */
+/* 窗口、光标、拖动、焦点。定义在 GuiWindowManager.c。 */
+typedef struct {
+    GUI_WINDOW Windows[MAX_WINS];
+    UINT32 ScreenWidth;
+    UINT32 ScreenHeight;
+    UINT32 CursorX;
+    UINT32 CursorY;
+    UINT8  CursorBtn;
+    int    CursorKind;
+    int    FocusWin;
+    int    HoverWin;
+    UINT32 SaveX;
+    UINT32 SaveY;
+    UINT32 SaveWidth;
+    UINT32 SaveHeight;
+    UINT32 Under[CURSOR_BOX * CURSOR_BOX];
+    int    CursorVisible;
+    int    DragWin;
+    INT32  DragOffX;
+    INT32  DragOffY;
+    int    DragArmed;
+    int    ResizeWin;
+    int    ResizeArmed;
+    int    ResizeEdge;
+    UINT32 ResizeOrigW;
+    UINT32 ResizeOrigH;
+    INT32  ResizeAnchorX;
+    INT32  ResizeAnchorY;
+    int    ResizeBandOn;
+    UINT32 ResizeBandW;
+    UINT32 ResizeBandH;
+    GUI_WINDOW WinSwap;
+    int      DragHasBackup;
+    int      WinBackupValid[MAX_WINS];
+    UINT32   WinBackupW[MAX_WINS];
+    UINT32   WinBackupH[MAX_WINS];
+    UINT32   WinBackupPages[MAX_WINS];
+    UINT32  *WinBackup[MAX_WINS];
+    UINT32   DragRowBuf[DRAG_ROW_MAX];
+    UINT32  *DragDirty;
+    UINT32   DragDirtyPages;
+    UINT32   DragDirtyCap;
+    UINT32  *ScreenSnap;
+    UINT32   ScreenSnapPages;
+    int      ScreenSnapValid;
+    UINT32  *UnderDrag;
+    UINT32   UnderDragPages;
+    int      UnderDragValid;
+    UINT32   DragStartX;
+    UINT32   DragStartY;
+    UINT32   DragStartW;
+    UINT32   DragStartH;
+    int    GfxLockDepth;
+    UINT64 GfxIrqFlags;
+    volatile int ComposeBusy;
+    int    DeferPresent;
+    int    ShellEchoCoalesce;
+    GUI_CONSOLE_OPS ConsoleOps;
+    int    InputLocked;
+    UINT8  MousePrevBtn;
+} GUI_WINDOW_MANAGER;
 
-extern UINT32 gSaveX;
-extern UINT32 gSaveY;
-extern UINT32 gSaveWidth;
-extern UINT32 gSaveHeight;
-extern UINT32 gUnder[CURSOR_BOX * CURSOR_BOX];
-extern int    gCursorVisible;
-
-extern int    gDragWin;
-extern INT32  gDragOffX;
-extern INT32  gDragOffY;
-extern int    gDragArmed;
-
-extern int    gResizeWin;
-extern int    gResizeArmed;
-extern int    gResizeEdge; /* RESIZE_EDGE_*；拖动中锁定 */
-extern UINT32 gResizeOrigW;
-extern UINT32 gResizeOrigH;
-extern INT32  gResizeAnchorX;
-extern INT32  gResizeAnchorY;
-extern int    gResizeBandOn;
-extern UINT32 gResizeBandW;
-extern UINT32 gResizeBandH;
-extern GUI_WINDOW gWinSwap;
-
-extern int      gDragHasBackup;
-extern int      gWinBackupValid[MAX_WINS];
-extern UINT32   gWinBackupW[MAX_WINS];
-extern UINT32   gWinBackupH[MAX_WINS];
-extern UINT32   gWinBackupPages[MAX_WINS];
-extern UINT32  *gWinBackup[MAX_WINS];
-extern UINT32   gDragRowBuf[DRAG_ROW_MAX];
-extern UINT32  *gDragDirty;
-extern UINT32   gDragDirtyPages;
-extern UINT32   gDragDirtyCap;
-
-extern UINT32  *gScreenSnap;
-extern UINT32   gScreenSnapPages;
-extern int      gScreenSnapValid;
-extern UINT32  *gUnderDrag;
-extern UINT32   gUnderDragPages;
-extern int      gUnderDragValid;
-extern UINT32   gDragStartX;
-extern UINT32   gDragStartY;
-extern UINT32   gDragStartW;
-extern UINT32   gDragStartH;
-
-extern int    gGfxLockDepth;
-extern UINT64 gGfxIrqFlags;
-extern volatile int gComposeBusy;
-extern int    gDeferPresent;
-extern int    gShellEchoCoalesce;
-
-extern GUI_CONSOLE_OPS gGuiConsoleOps;
+extern GUI_WINDOW_MANAGER gGuiWindowManager;
 
 static inline void GuiConsoleOpsFocusSave(void) {
-    if (gGuiConsoleOps.FocusSave) {
-        gGuiConsoleOps.FocusSave();
+    if (gGuiWindowManager.ConsoleOps.FocusSave) {
+        gGuiWindowManager.ConsoleOps.FocusSave();
     }
 }
 static inline void GuiConsoleOpsFocusLoad(void) {
-    if (gGuiConsoleOps.FocusLoad) {
-        gGuiConsoleOps.FocusLoad();
+    if (gGuiWindowManager.ConsoleOps.FocusLoad) {
+        gGuiWindowManager.ConsoleOps.FocusLoad();
     }
 }
 static inline void GuiConsoleOpsOnShellOpened(void) {
-    if (gGuiConsoleOps.OnShellOpened) {
-        gGuiConsoleOps.OnShellOpened();
+    if (gGuiWindowManager.ConsoleOps.OnShellOpened) {
+        gGuiWindowManager.ConsoleOps.OnShellOpened();
     }
 }
 static inline void GuiConsoleOpsPaintShellWindow(int Idx) {
-    if (gGuiConsoleOps.PaintShellWindow) {
-        gGuiConsoleOps.PaintShellWindow(Idx);
+    if (gGuiWindowManager.ConsoleOps.PaintShellWindow) {
+        gGuiWindowManager.ConsoleOps.PaintShellWindow(Idx);
     }
 }
 
@@ -223,9 +222,7 @@ void DrawCursorAt(UINT32 X, UINT32 Y);
 void CursorRestore(void);
 void CursorPaint(void);
 void CursorMove(UINT32 X, UINT32 Y);
-/* 指针边沿基准。定义在 GuiPointer.c；拆出鼠标边沿后同模块可见 */
-extern int gInputLocked;
-extern UINT8 gMousePrevBtn;
+/* 指针边沿基准。和窗口状态放在一起。 */
 
 /* Drag */
 void ResetDragState(void);

@@ -17,15 +17,12 @@
 #include "ToySerialLog.h"
 #include "Scheduler.h"
 
-int gInputLocked;
-UINT8 gMousePrevBtn;
-
 void GuiInputLock(int Locked) {
     HAL_MOUSE_REPORT Raw;
-    UINT8 LastBtn = gMousePrevBtn;
+    UINT8 LastBtn = gGuiWindowManager.MousePrevBtn;
 
     if (Locked) {
-        gInputLocked = 1;
+        gGuiWindowManager.InputLocked = 1;
         return;
     }
     /* 解锁前排空：热切期间堆积的边沿会在新分辨率下误点其它档 */
@@ -34,13 +31,13 @@ void GuiInputLock(int Locked) {
             LastBtn = Raw.Buttons;
         }
     }
-    gMousePrevBtn = LastBtn;
-    gCursorBtn = LastBtn;
-    gInputLocked = 0;
+    gGuiWindowManager.MousePrevBtn = LastBtn;
+    gGuiWindowManager.CursorBtn = LastBtn;
+    gGuiWindowManager.InputLocked = 0;
 }
 
 int GuiInputLocked(void) {
-    return gInputLocked;
+    return gGuiWindowManager.InputLocked;
 }
 
 /* 从 XHCI 鼠标队列取报告并交给 GuiOnMouse（单一边沿/拖动逻辑） */
@@ -62,17 +59,17 @@ void GuiPollMouse(void) {
 
     HalVideoGetSize(&Sw, &Sh);
     if (Sw == 0) {
-        Sw = gScreenWidth ? gScreenWidth : 1024;
+        Sw = gGuiWindowManager.ScreenWidth ? gGuiWindowManager.ScreenWidth : 1024;
     }
     if (Sh == 0) {
-        Sh = gScreenHeight ? gScreenHeight : 768;
+        Sh = gGuiWindowManager.ScreenHeight ? gGuiWindowManager.ScreenHeight : 768;
     }
 
     /* PR-S-input-drain：drain 由 YieldForPollInput（稳态）+ StoreIoBreath（长 IO）负责；此处只 dequeue */
-    if (gInputLocked) {
+    if (gGuiWindowManager.InputLocked) {
         while (HalMouseDequeue(&Raw)) {
-            gMousePrevBtn = Raw.Buttons;
-            gCursorBtn = Raw.Buttons;
+            gGuiWindowManager.MousePrevBtn = Raw.Buttons;
+            gGuiWindowManager.CursorBtn = Raw.Buttons;
         }
         return;
     }
@@ -87,9 +84,9 @@ void GuiPollMouse(void) {
      * 真机：队列里常积几十份报告。逐条 CursorMove+Present → 光标极卡。
      * Defer Present，并合并位移；按键边沿/滚轮仍按每份报告处理。
      */
-    LastX = gCursorX;
-    LastY = gCursorY;
-    LastBtn = gMousePrevBtn;
+    LastX = gGuiWindowManager.CursorX;
+    LastY = gGuiWindowManager.CursorY;
+    LastBtn = gGuiWindowManager.MousePrevBtn;
     WheelSum = 0;
     Any = 0;
     NeedMove = 0;
@@ -117,7 +114,7 @@ void GuiPollMouse(void) {
         LastY = Y;
         NeedMove = 1;
         Any = 1;
-        gCursorBtn = Raw.Buttons;
+        gGuiWindowManager.CursorBtn = Raw.Buttons;
         if (Raw.Wheel != 0) {
             WheelSum = (INT8)(WheelSum + Raw.Wheel);
         }
@@ -144,15 +141,15 @@ void GuiPollMouse(void) {
                 DesktopIconDragEnd();
                 /*
                  * End 已擦落点并画在吸附格。若仍 Visible，CursorPaint→Restore
-                 * 会把拖动末帧 gUnder（旧落点图标）吐回 → 仅松手残影。
+                 * 会把拖动末帧 gGuiWindowManager.Under（旧落点图标）吐回 → 仅松手残影。
                  */
-                if (gCursorVisible) {
-                    UINT32 Sx = gSaveX;
-                    UINT32 Sy = gSaveY;
-                    UINT32 SbW = gSaveWidth;
-                    UINT32 SbH = gSaveHeight;
+                if (gGuiWindowManager.CursorVisible) {
+                    UINT32 Sx = gGuiWindowManager.SaveX;
+                    UINT32 Sy = gGuiWindowManager.SaveY;
+                    UINT32 SbW = gGuiWindowManager.SaveWidth;
+                    UINT32 SbH = gGuiWindowManager.SaveHeight;
 
-                    gCursorVisible = 0;
+                    gGuiWindowManager.CursorVisible = 0;
                     if (SbW != 0 && SbH != 0) {
                         ClearIconFootprint(Sx, Sy, SbW, SbH);
                     }
@@ -169,7 +166,7 @@ void GuiPollMouse(void) {
             GuiRightClickPlaceholder(X, Y);
         }
         /* Settings/Store：仅按键边沿逐包；位移悬停合并到队尾 GuiPointerMove */
-        if (gDragWin < 0 && gResizeWin < 0 && ((Raw.Buttons ^ LastBtn) & 1u)) {
+        if (gGuiWindowManager.DragWin < 0 && gGuiWindowManager.ResizeWin < 0 && ((Raw.Buttons ^ LastBtn) & 1u)) {
             if (GuiFocusKind() == GUI_WIN_SETTINGS) {
                 SettingsUiOnPointer(X, Y, Raw.Buttons);
             } else if (GuiFocusKind() == GUI_WIN_STORE) {
@@ -181,35 +178,35 @@ void GuiPollMouse(void) {
         LastBtn = Raw.Buttons;
     }
     if (NeedMove) {
-        if ((LastBtn & 1) && gResizeWin >= 0) {
-            gCursorX = LastX;
-            gCursorY = LastY;
+        if ((LastBtn & 1) && gGuiWindowManager.ResizeWin >= 0) {
+            gGuiWindowManager.CursorX = LastX;
+            gGuiWindowManager.CursorY = LastY;
             GuiResizeUpdate(LastX, LastY);
-        } else if ((LastBtn & 1) && gDragWin >= 0) {
-            gCursorX = LastX;
-            gCursorY = LastY;
+        } else if ((LastBtn & 1) && gGuiWindowManager.DragWin >= 0) {
+            gGuiWindowManager.CursorX = LastX;
+            gGuiWindowManager.CursorY = LastY;
             GuiDragUpdate(LastX, LastY);
         } else if ((LastBtn & 1) && DesktopIconDragActive()) {
             /*
              * 占 gDragFrame：Shell 核勿半帧 Present。
-             * 禁止 CursorRestore：gUnder 常是「旧位置图标」，Overlay 写回后
+             * 禁止 CursorRestore：gGuiWindowManager.Under 常是「旧位置图标」，Overlay 写回后
              * 只进光标脏区 → 松手前一路图标残影。改为丢弃 under，壁纸清光标盒。
              */
             if (GuiDragFrameTry()) {
-                UINT32 Sx = gSaveX;
-                UINT32 Sy = gSaveY;
-                UINT32 SbW = gSaveWidth;
-                UINT32 SbH = gSaveHeight;
+                UINT32 Sx = gGuiWindowManager.SaveX;
+                UINT32 Sy = gGuiWindowManager.SaveY;
+                UINT32 SbW = gGuiWindowManager.SaveWidth;
+                UINT32 SbH = gGuiWindowManager.SaveHeight;
 
                 GuiPresentDeferPause();
-                if (gCursorVisible) {
-                    gCursorVisible = 0;
+                if (gGuiWindowManager.CursorVisible) {
+                    gGuiWindowManager.CursorVisible = 0;
                     if (SbW != 0 && SbH != 0) {
                         ClearIconFootprint(Sx, Sy, SbW, SbH);
                     }
                 }
-                gCursorX = LastX;
-                gCursorY = LastY;
+                gGuiWindowManager.CursorX = LastX;
+                gGuiWindowManager.CursorY = LastY;
                 DesktopIconDragUpdate(LastX, LastY);
                 GfxIrqEnter();
                 CursorPaint();
@@ -234,8 +231,8 @@ void GuiPollMouse(void) {
         }
     }
     if (Any) {
-        gMousePrevBtn = LastBtn;
-        gCursorBtn = LastBtn;
+        gGuiWindowManager.MousePrevBtn = LastBtn;
+        gGuiWindowManager.CursorBtn = LastBtn;
     }
     GuiPresentDeferPop();
     DesktopTickClock();

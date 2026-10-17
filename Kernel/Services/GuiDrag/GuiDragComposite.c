@@ -25,13 +25,13 @@ UINT32 TopmostBelowDragPixel(UINT32 Px, UINT32 Py, int DragIdx) {
     UINT32 IconColor;
 
     for (i = DragIdx - 1; i >= 0; i--) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (Px >= gWindows[i].X && Py >= gWindows[i].Y &&
-            Px < gWindows[i].X + gWindows[i].Width &&
-            Py < gWindows[i].Y + gWindows[i].Height) {
-            if (gWinBackupValid[i] && gWinBackup[i] != 0) {
+        if (Px >= gGuiWindowManager.Windows[i].X && Py >= gGuiWindowManager.Windows[i].Y &&
+            Px < gGuiWindowManager.Windows[i].X + gGuiWindowManager.Windows[i].Width &&
+            Py < gGuiWindowManager.Windows[i].Y + gGuiWindowManager.Windows[i].Height) {
+            if (gGuiWindowManager.WinBackupValid[i] && gGuiWindowManager.WinBackup[i] != 0) {
                 return SampleWindowBackupPixel(i, Px, Py);
             }
             return AnalyticWindowPixel(i, Px, Py);
@@ -49,34 +49,34 @@ UINT32 CompositeDragPixel(UINT32 Px, UINT32 Py, int DragIdx,
     int i;
 
     if (Px >= Nx && Px < Nx + Nw && Py >= Ny && Py < Ny + Nh &&
-        gWinBackupValid[DragIdx] && gWinBackup[DragIdx] != 0) {
-        UINT32 Bw = gWinBackupW[DragIdx];
-        UINT32 Bh = gWinBackupH[DragIdx];
+        gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
+        UINT32 Bw = gGuiWindowManager.WinBackupW[DragIdx];
+        UINT32 Bh = gGuiWindowManager.WinBackupH[DragIdx];
         UINT32 Lx = Px - Nx;
         UINT32 Ly = Py - Ny;
 
         if (Lx < Bw && Ly < Bh) {
-            return gWinBackup[DragIdx][Ly * Bw + Lx];
+            return gGuiWindowManager.WinBackup[DragIdx][Ly * Bw + Lx];
         }
     }
 
     /* 起始 footprint：用 under-drag，勿用含拖动窗本体的 screen snap */
-    if (gUnderDragValid &&
-        Px >= gDragStartX && Px < gDragStartX + gDragStartW &&
-        Py >= gDragStartY && Py < gDragStartY + gDragStartH) {
-        UINT32 Ux = Px - gDragStartX;
-        UINT32 Uy = Py - gDragStartY;
+    if (gGuiWindowManager.UnderDragValid &&
+        Px >= gGuiWindowManager.DragStartX && Px < gGuiWindowManager.DragStartX + gGuiWindowManager.DragStartW &&
+        Py >= gGuiWindowManager.DragStartY && Py < gGuiWindowManager.DragStartY + gGuiWindowManager.DragStartH) {
+        UINT32 Ux = Px - gGuiWindowManager.DragStartX;
+        UINT32 Uy = Py - gGuiWindowManager.DragStartY;
 
-        return gUnderDrag[Uy * gDragStartW + Ux];
+        return gGuiWindowManager.UnderDrag[Uy * gGuiWindowManager.DragStartW + Ux];
     }
 
     /* 拖动前全屏快照是露出区域的权威来源（被挡窗备份在重叠区是脏的） */
-    if (gScreenSnapValid && Px < gScreenWidth && Py < gScreenHeight) {
-        return gScreenSnap[Py * gScreenWidth + Px];
+    if (gGuiWindowManager.ScreenSnapValid && Px < gGuiWindowManager.ScreenWidth && Py < gGuiWindowManager.ScreenHeight) {
+        return gGuiWindowManager.ScreenSnap[Py * gGuiWindowManager.ScreenWidth + Px];
     }
 
     for (i = MAX_WINS - 1; i >= 0; i--) {
-        if (i == DragIdx || !gWindows[i].Active) {
+        if (i == DragIdx || !gGuiWindowManager.Windows[i].Active) {
             continue;
         }
         if (WindowBackupCoversPixel(i, Px, Py)) {
@@ -90,7 +90,7 @@ UINT32 CompositeDragPixel(UINT32 Px, UINT32 Py, int DragIdx,
 /* 旧/新 footprint 并集一次扫描线写出，避免先清灰再全窗重贴的两步闪屏 */
 void CompositeDragDirtyRegion(int DragIdx, UINT32 OldX, UINT32 OldY,
                                      UINT32 Ww, UINT32 Wh) {
-    const GUI_WINDOW *Drag = &gWindows[DragIdx];
+    const GUI_WINDOW *Drag = &gGuiWindowManager.Windows[DragIdx];
     UINT32 Nx = Drag->X;
     UINT32 Ny = Drag->Y;
     UINT32 DuX;
@@ -138,12 +138,12 @@ void CompositeDragDirtyRegion(int DragIdx, UINT32 OldX, UINT32 OldY,
             for (Col = 0; Col < DuW; Col++) {
                 UINT32 Px = DuX + Col;
 
-                gDragDirty[Row * DuW + Col] =
+                gGuiWindowManager.DragDirty[Row * DuW + Col] =
                     CompositeDragPixel(Px, Py, DragIdx, Nx, Ny, Ww, Wh);
             }
         }
         /* Present：短临界区写后缓冲再提交到 GOP（PR-G9） */
-        HalVideoWriteRect(DuX, DuY, DuW, DuH, gDragDirty);
+        HalVideoWriteRect(DuX, DuY, DuW, DuH, gGuiWindowManager.DragDirty);
         GuiDragFrameAccount();
         HalVideoPresent();
         return;
@@ -165,10 +165,10 @@ void CompositeDragDirtyRegion(int DragIdx, UINT32 OldX, UINT32 OldY,
                 for (Col = 0; Col < ChunkW; Col++) {
                     UINT32 Px = DuX + Col0 + Col;
 
-                    gDragRowBuf[Col] =
+                    gGuiWindowManager.DragRowBuf[Col] =
                         CompositeDragPixel(Px, Py, DragIdx, Nx, Ny, Ww, Wh);
                 }
-                HalVideoWriteRect(DuX + Col0, Py, ChunkW, 1, gDragRowBuf);
+                HalVideoWriteRect(DuX + Col0, Py, ChunkW, 1, gGuiWindowManager.DragRowBuf);
             }
         }
         GuiDragFrameAccount();
@@ -183,12 +183,12 @@ void RestoreWindowsInFootprint(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
     UINT32 N = ThemeWindowShadowSize();
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active || i == SkipIdx) {
+        if (!gGuiWindowManager.Windows[i].Active || i == SkipIdx) {
             continue;
         }
         /* 含影扩边：足迹只擦到邻窗阴影时也要贴回本体，否则影被桌面清掉后不补 */
-        if (RectIntersects(gWindows[i].X, gWindows[i].Y,
-                           gWindows[i].Width + N, gWindows[i].Height + N,
+        if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y,
+                           gGuiWindowManager.Windows[i].Width + N, gGuiWindowManager.Windows[i].Height + N,
                            Fx, Fy, Fw, Fh)) {
             PaintWindowFromBackup(i);
         }
@@ -207,11 +207,11 @@ void ClearOldDragFootprint(UINT32 Ox, UINT32 Oy, UINT32 Ww, UINT32 Wh,
     DesktopDrawRect(Ox, Oy, Ww, Wh);
     /* 相交他窗阴影（含影扩边相交；被拖窗阴影由调用方在贴窗后画） */
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active || i == DragIdx) {
+        if (!gGuiWindowManager.Windows[i].Active || i == DragIdx) {
             continue;
         }
-        if (RectIntersects(gWindows[i].X, gWindows[i].Y,
-                           gWindows[i].Width + N, gWindows[i].Height + N,
+        if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y,
+                           gGuiWindowManager.Windows[i].Width + N, gGuiWindowManager.Windows[i].Height + N,
                            Ox, Oy, Ww, Wh)) {
             DrawWindowShadowAt(i);
         }
@@ -234,11 +234,11 @@ void GuiClearIconDragFootprint(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     RestoreWindowsInFootprint(X, Y, W, H, -1);
     DesktopDrawRect(X, Y, W, H);
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        if (RectIntersects(gWindows[i].X, gWindows[i].Y,
-                           gWindows[i].Width + N, gWindows[i].Height + N,
+        if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y,
+                           gGuiWindowManager.Windows[i].Width + N, gGuiWindowManager.Windows[i].Height + N,
                            X, Y, W, H)) {
             DrawWindowShadowAt(i);
         }
@@ -251,12 +251,12 @@ void PaintAllWindowsDraw(int DragIdx) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active || i == DragIdx) {
+        if (!gGuiWindowManager.Windows[i].Active || i == DragIdx) {
             continue;
         }
         DrawWindowAt(i);
     }
-    if (DragIdx >= 0 && DragIdx < MAX_WINS && gWindows[DragIdx].Active) {
+    if (DragIdx >= 0 && DragIdx < MAX_WINS && gGuiWindowManager.Windows[DragIdx].Active) {
         DrawWindowAt(DragIdx);
     }
 }
@@ -264,7 +264,7 @@ void PaintAllWindowsDraw(int DragIdx) {
 
 /* 拖动一帧：擦旧足迹 + 贴窗备份 + Present（不用全屏 snap 合成，避残影/OOM） */
 void RedrawDragFrame(int DragIdx, UINT32 OldX, UINT32 OldY) {
-    const GUI_WINDOW *Drag = &gWindows[DragIdx];
+    const GUI_WINDOW *Drag = &gGuiWindowManager.Windows[DragIdx];
     UINT32 Ww = Drag->Width;
     UINT32 Wh = Drag->Height;
     UINT32 Fx = OldX;
@@ -276,7 +276,7 @@ void RedrawDragFrame(int DragIdx, UINT32 OldX, UINT32 OldY) {
     ExpandRectByWindowShadow(&Fx, &Fy, &Fw, &Fh);
     ClipRectToScreen(&Fx, &Fy, &Fw, &Fh);
     ClearOldDragFootprint(Fx, Fy, Fw, Fh, DragIdx);
-    if (gWinBackupValid[DragIdx] && gWinBackup[DragIdx] != 0) {
+    if (gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
         PaintWindowFromBackup(DragIdx);
         DrawWindowShadowAt(DragIdx);
     } else {

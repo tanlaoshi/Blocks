@@ -17,7 +17,7 @@ int AllActiveWindowsHaveValidBackup(void) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && !gWinBackupValid[i]) {
+        if (gGuiWindowManager.Windows[i].Active && !gGuiWindowManager.WinBackupValid[i]) {
             return 0;
         }
     }
@@ -35,31 +35,31 @@ UINT32 BackupPageCount(UINT32 Ww, UINT32 Wh) {
 int EnsureWindowBackupBuf(int Idx) {
     UINT32 Pages;
 
-    if (Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return 0;
     }
-    if (gWindows[Idx].Width == 0 || gWindows[Idx].Height == 0) {
+    if (gGuiWindowManager.Windows[Idx].Width == 0 || gGuiWindowManager.Windows[Idx].Height == 0) {
         return 0;
     }
-    Pages = BackupPageCount(gWindows[Idx].Width, gWindows[Idx].Height);
+    Pages = BackupPageCount(gGuiWindowManager.Windows[Idx].Width, gGuiWindowManager.Windows[Idx].Height);
     if (Pages == 0) {
         return 0;
     }
-    if (gWinBackup[Idx] != 0 && gWinBackupPages[Idx] == Pages) {
+    if (gGuiWindowManager.WinBackup[Idx] != 0 && gGuiWindowManager.WinBackupPages[Idx] == Pages) {
         return 1;
     }
-    if (gWinBackup[Idx] != 0) {
-        PhysicalMemoryFreePages(gWinBackup[Idx], gWinBackupPages[Idx]);
-        gWinBackup[Idx] = 0;
-        gWinBackupPages[Idx] = 0;
+    if (gGuiWindowManager.WinBackup[Idx] != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.WinBackup[Idx], gGuiWindowManager.WinBackupPages[Idx]);
+        gGuiWindowManager.WinBackup[Idx] = 0;
+        gGuiWindowManager.WinBackupPages[Idx] = 0;
     }
     /* 换新页后内容未定义，必须清 Valid，禁止未填充就 WriteRect */
-    gWinBackupValid[Idx] = 0;
-    gWinBackup[Idx] = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
-    if (gWinBackup[Idx] == 0) {
+    gGuiWindowManager.WinBackupValid[Idx] = 0;
+    gGuiWindowManager.WinBackup[Idx] = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+    if (gGuiWindowManager.WinBackup[Idx] == 0) {
         return 0;
     }
-    gWinBackupPages[Idx] = Pages;
+    gGuiWindowManager.WinBackupPages[Idx] = Pages;
     return 1;
 }
 
@@ -68,7 +68,7 @@ void PreallocWindowBackups(void) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active) {
+        if (gGuiWindowManager.Windows[i].Active) {
             EnsureWindowBackupBuf(i);
         }
     }
@@ -80,7 +80,7 @@ void PreallocWindowBackups(void) {
  * 否则 Occluded 路径会跳过重叠区，备份镂空，透视桌面/抬窗花屏。
  */
 void BackupWindowAtEx(int Idx, int ForceFull) {
-    const GUI_WINDOW *Win = &gWindows[Idx];
+    const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];
     UINT32 Rw;
     UINT32 Rh;
     UINT32 Bw;
@@ -98,27 +98,27 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
     }
     Rw = Win->Width;
     Rh = Win->Height;
-    if (Win->X + Rw > gScreenWidth) {
-        Rw = gScreenWidth - Win->X;
+    if (Win->X + Rw > gGuiWindowManager.ScreenWidth) {
+        Rw = gGuiWindowManager.ScreenWidth - Win->X;
     }
-    if (Win->Y + Rh > gScreenHeight) {
-        Rh = gScreenHeight - Win->Y;
+    if (Win->Y + Rh > gGuiWindowManager.ScreenHeight) {
+        Rh = gGuiWindowManager.ScreenHeight - Win->Y;
     }
     if (Rw == 0 || Rh == 0) {
         return;
     }
 
-    HadValid = gWinBackupValid[Idx];
-    OldBuf = gWinBackup[Idx];
+    HadValid = gGuiWindowManager.WinBackupValid[Idx];
+    OldBuf = gGuiWindowManager.WinBackup[Idx];
     if (!EnsureWindowBackupBuf(Idx)) {
-        gWinBackupValid[Idx] = 0;
+        gGuiWindowManager.WinBackupValid[Idx] = 0;
         return;
     }
-    if (gWinBackup[Idx] != OldBuf) {
+    if (gGuiWindowManager.WinBackup[Idx] != OldBuf) {
         HadValid = 0;
     }
 
-    WasVisible = gCursorVisible;
+    WasVisible = gGuiWindowManager.CursorVisible;
     ComposeBegin();
     GfxIrqEnter();
     CursorRestore();
@@ -129,11 +129,11 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
      * 非 ForceFull 且被挡（含上层阴影扫过）：只更新可见像素，被挡处保留旧备份。
      */
     if (!ForceFull && WindowOccludedByOtherOrShadow(Idx)) {
-        UINT32 OldBw = gWinBackupW[Idx];
-        UINT32 OldBh = gWinBackupH[Idx];
+        UINT32 OldBw = gGuiWindowManager.WinBackupW[Idx];
+        UINT32 OldBh = gGuiWindowManager.WinBackupH[Idx];
 
         if (!HadValid) {
-            gWinBackupValid[Idx] = 0;
+            gGuiWindowManager.WinBackupValid[Idx] = 0;
             if (WasVisible) {
                 GfxIrqEnter();
                 CursorPaint();
@@ -147,10 +147,10 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
             for (Col = 0; Col < Rw; Col++) {
                 UINT32 Px = Win->X + Col;
                 UINT32 Py = Win->Y + Row;
-                UINT32 *Dst = &gWinBackup[Idx][Row * Bw + Col];
+                UINT32 *Dst = &gGuiWindowManager.WinBackup[Idx][Row * Bw + Col];
 
                 if (PixelCoveredByHigherWindow(Idx, Px, Py)) {
-                    if (OldBuf != gWinBackup[Idx] && Col < OldBw && Row < OldBh) {
+                    if (OldBuf != gGuiWindowManager.WinBackup[Idx] && Col < OldBw && Row < OldBh) {
                         *Dst = OldBuf[Row * OldBw + Col];
                     }
                     continue;
@@ -158,9 +158,9 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
                 *Dst = HalVideoReadPixel(Px, Py);
             }
         }
-        gWinBackupW[Idx] = Rw;
-        gWinBackupH[Idx] = Rh;
-        gWinBackupValid[Idx] = 1;
+        gGuiWindowManager.WinBackupW[Idx] = Rw;
+        gGuiWindowManager.WinBackupH[Idx] = Rh;
+        gGuiWindowManager.WinBackupValid[Idx] = 1;
         if (WasVisible) {
             GfxIrqEnter();
             CursorPaint();
@@ -170,10 +170,10 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
         return;
     }
 
-    HalVideoReadRect(Win->X, Win->Y, Rw, Rh, gWinBackup[Idx]);
-    gWinBackupW[Idx] = Rw;
-    gWinBackupH[Idx] = Rh;
-    gWinBackupValid[Idx] = 1;
+    HalVideoReadRect(Win->X, Win->Y, Rw, Rh, gGuiWindowManager.WinBackup[Idx]);
+    gGuiWindowManager.WinBackupW[Idx] = Rw;
+    gGuiWindowManager.WinBackupH[Idx] = Rh;
+    gGuiWindowManager.WinBackupValid[Idx] = 1;
     if (WasVisible) {
         GfxIrqEnter();
         CursorPaint();
@@ -189,14 +189,14 @@ void BackupWindowAt(int Idx) {
 
 
 void PaintWindowFromBackup(int Idx) {
-    const GUI_WINDOW *Win = &gWindows[Idx];
+    const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];
 
     if (!Win->Active) {
         return;
     }
-    if (gWinBackupValid[Idx] && gWinBackup[Idx] != 0) {
-        HalVideoWriteRect(Win->X, Win->Y, gWinBackupW[Idx], gWinBackupH[Idx],
-                       gWinBackup[Idx]);
+    if (gGuiWindowManager.WinBackupValid[Idx] && gGuiWindowManager.WinBackup[Idx] != 0) {
+        HalVideoWriteRect(Win->X, Win->Y, gGuiWindowManager.WinBackupW[Idx], gGuiWindowManager.WinBackupH[Idx],
+                       gGuiWindowManager.WinBackup[Idx]);
         DrawWindowChromeAt(Idx);
         /* 阴影由 SyncWindowVisualsEx 第二遍统一画，避免先画影再被下层 WriteRect 打乱 */
         return;
@@ -206,25 +206,25 @@ void PaintWindowFromBackup(int Idx) {
 
 
 void ShiftWinBackupsUp(int From, int To) {
-    UINT32 *Buf = gWinBackup[From];
-    UINT32 Bw = gWinBackupW[From];
-    UINT32 Bh = gWinBackupH[From];
-    UINT32 Bp = gWinBackupPages[From];
-    int Bv = gWinBackupValid[From];
+    UINT32 *Buf = gGuiWindowManager.WinBackup[From];
+    UINT32 Bw = gGuiWindowManager.WinBackupW[From];
+    UINT32 Bh = gGuiWindowManager.WinBackupH[From];
+    UINT32 Bp = gGuiWindowManager.WinBackupPages[From];
+    int Bv = gGuiWindowManager.WinBackupValid[From];
     int J;
 
     for (J = From; J < To; J++) {
-        gWinBackup[J] = gWinBackup[J + 1];
-        gWinBackupW[J] = gWinBackupW[J + 1];
-        gWinBackupH[J] = gWinBackupH[J + 1];
-        gWinBackupPages[J] = gWinBackupPages[J + 1];
-        gWinBackupValid[J] = gWinBackupValid[J + 1];
+        gGuiWindowManager.WinBackup[J] = gGuiWindowManager.WinBackup[J + 1];
+        gGuiWindowManager.WinBackupW[J] = gGuiWindowManager.WinBackupW[J + 1];
+        gGuiWindowManager.WinBackupH[J] = gGuiWindowManager.WinBackupH[J + 1];
+        gGuiWindowManager.WinBackupPages[J] = gGuiWindowManager.WinBackupPages[J + 1];
+        gGuiWindowManager.WinBackupValid[J] = gGuiWindowManager.WinBackupValid[J + 1];
     }
-    gWinBackup[To] = Buf;
-    gWinBackupW[To] = Bw;
-    gWinBackupH[To] = Bh;
-    gWinBackupPages[To] = Bp;
-    gWinBackupValid[To] = Bv;
+    gGuiWindowManager.WinBackup[To] = Buf;
+    gGuiWindowManager.WinBackupW[To] = Bw;
+    gGuiWindowManager.WinBackupH[To] = Bh;
+    gGuiWindowManager.WinBackupPages[To] = Bp;
+    gGuiWindowManager.WinBackupValid[To] = Bv;
 }
 
 
@@ -238,26 +238,26 @@ int RectIntersects(UINT32 Ax, UINT32 Ay, UINT32 Aw, UINT32 Ah,
 
 
 void ClipRectToScreen(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
-    if (*W == 0 || *H == 0 || gScreenWidth == 0 || gScreenHeight == 0) {
+    if (*W == 0 || *H == 0 || gGuiWindowManager.ScreenWidth == 0 || gGuiWindowManager.ScreenHeight == 0) {
         *W = 0;
         return;
     }
-    if (*X >= gScreenWidth || *Y >= gScreenHeight) {
+    if (*X >= gGuiWindowManager.ScreenWidth || *Y >= gGuiWindowManager.ScreenHeight) {
         *W = 0;
         *H = 0;
         return;
     }
-    if (*X + *W > gScreenWidth) {
-        *W = gScreenWidth - *X;
+    if (*X + *W > gGuiWindowManager.ScreenWidth) {
+        *W = gGuiWindowManager.ScreenWidth - *X;
     }
-    if (*Y + *H > gScreenHeight) {
-        *H = gScreenHeight - *Y;
+    if (*Y + *H > gGuiWindowManager.ScreenHeight) {
+        *H = gGuiWindowManager.ScreenHeight - *Y;
     }
 }
 
 void GuiBackupFocusWindow(void) {
-    if (gFocusWin >= 0 && gFocusWin < MAX_WINS && gWindows[gFocusWin].Active) {
-        BackupWindowAt(gFocusWin);
+    if (gGuiWindowManager.FocusWin >= 0 && gGuiWindowManager.FocusWin < MAX_WINS && gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
+        BackupWindowAt(gGuiWindowManager.FocusWin);
     }
 }
 

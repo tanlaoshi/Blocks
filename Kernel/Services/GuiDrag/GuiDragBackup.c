@@ -27,25 +27,25 @@ int EnsureDragDirtyBuf(UINT32 Ww, UINT32 Hh) {
     if (Need > 0xFFFFFFFFu / sizeof(UINT32)) {
         return 0;
     }
-    if (gDragDirty != 0 && gDragDirtyCap >= (UINT32)Need) {
+    if (gGuiWindowManager.DragDirty != 0 && gGuiWindowManager.DragDirtyCap >= (UINT32)Need) {
         return 1;
     }
     Pages = BackupPageCount(Ww, Hh);
     if (Pages == 0) {
         return 0;
     }
-    if (gDragDirty != 0) {
-        PhysicalMemoryFreePages(gDragDirty, gDragDirtyPages);
-        gDragDirty = 0;
-        gDragDirtyPages = 0;
-        gDragDirtyCap = 0;
+    if (gGuiWindowManager.DragDirty != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.DragDirty, gGuiWindowManager.DragDirtyPages);
+        gGuiWindowManager.DragDirty = 0;
+        gGuiWindowManager.DragDirtyPages = 0;
+        gGuiWindowManager.DragDirtyCap = 0;
     }
-    gDragDirty = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
-    if (gDragDirty == 0) {
+    gGuiWindowManager.DragDirty = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+    if (gGuiWindowManager.DragDirty == 0) {
         return 0;
     }
-    gDragDirtyPages = Pages;
-    gDragDirtyCap = (UINT32)(((UINT64)Pages * PAGE_SIZE) / sizeof(UINT32));
+    gGuiWindowManager.DragDirtyPages = Pages;
+    gGuiWindowManager.DragDirtyCap = (UINT32)(((UINT64)Pages * PAGE_SIZE) / sizeof(UINT32));
     return 1;
 }
 
@@ -56,20 +56,20 @@ int EnsureUnderDragBuf(UINT32 Ww, UINT32 Wh) {
     if (Pages == 0) {
         return 0;
     }
-    if (gUnderDrag != 0 && gUnderDragPages == Pages) {
+    if (gGuiWindowManager.UnderDrag != 0 && gGuiWindowManager.UnderDragPages == Pages) {
         return 1;
     }
-    if (gUnderDrag != 0) {
-        PhysicalMemoryFreePages(gUnderDrag, gUnderDragPages);
-        gUnderDrag = 0;
-        gUnderDragPages = 0;
+    if (gGuiWindowManager.UnderDrag != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.UnderDrag, gGuiWindowManager.UnderDragPages);
+        gGuiWindowManager.UnderDrag = 0;
+        gGuiWindowManager.UnderDragPages = 0;
     }
-    gUnderDragValid = 0;
-    gUnderDrag = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
-    if (gUnderDrag == 0) {
+    gGuiWindowManager.UnderDragValid = 0;
+    gGuiWindowManager.UnderDrag = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+    if (gGuiWindowManager.UnderDrag == 0) {
         return 0;
     }
-    gUnderDragPages = Pages;
+    gGuiWindowManager.UnderDragPages = Pages;
     return 1;
 }
 
@@ -78,44 +78,44 @@ void CaptureDragRestoreData(int DragIdx) {
     UINT32 Pages;
     int i;
 
-    gScreenSnapValid = 0;
-    gUnderDragValid = 0;
-    if (DragIdx < 0 || DragIdx >= MAX_WINS || !gWindows[DragIdx].Active) {
+    gGuiWindowManager.ScreenSnapValid = 0;
+    gGuiWindowManager.UnderDragValid = 0;
+    if (DragIdx < 0 || DragIdx >= MAX_WINS || !gGuiWindowManager.Windows[DragIdx].Active) {
         return;
     }
-    if (gScreenWidth == 0 || gScreenHeight == 0) {
-        return;
-    }
-
-    gDragStartX = gWindows[DragIdx].X;
-    gDragStartY = gWindows[DragIdx].Y;
-    gDragStartW = gWindows[DragIdx].Width;
-    gDragStartH = gWindows[DragIdx].Height;
-    if (gDragStartW == 0 || gDragStartH == 0) {
+    if (gGuiWindowManager.ScreenWidth == 0 || gGuiWindowManager.ScreenHeight == 0) {
         return;
     }
 
-    Pages = BackupPageCount(gScreenWidth, gScreenHeight);
-    if (gScreenSnap != 0 && gScreenSnapPages != Pages) {
-        PhysicalMemoryFreePages(gScreenSnap, gScreenSnapPages);
-        gScreenSnap = 0;
-        gScreenSnapPages = 0;
+    gGuiWindowManager.DragStartX = gGuiWindowManager.Windows[DragIdx].X;
+    gGuiWindowManager.DragStartY = gGuiWindowManager.Windows[DragIdx].Y;
+    gGuiWindowManager.DragStartW = gGuiWindowManager.Windows[DragIdx].Width;
+    gGuiWindowManager.DragStartH = gGuiWindowManager.Windows[DragIdx].Height;
+    if (gGuiWindowManager.DragStartW == 0 || gGuiWindowManager.DragStartH == 0) {
+        return;
     }
-    if (gScreenSnap == 0) {
-        gScreenSnap = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
-        if (gScreenSnap == 0) {
+
+    Pages = BackupPageCount(gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight);
+    if (gGuiWindowManager.ScreenSnap != 0 && gGuiWindowManager.ScreenSnapPages != Pages) {
+        PhysicalMemoryFreePages(gGuiWindowManager.ScreenSnap, gGuiWindowManager.ScreenSnapPages);
+        gGuiWindowManager.ScreenSnap = 0;
+        gGuiWindowManager.ScreenSnapPages = 0;
+    }
+    if (gGuiWindowManager.ScreenSnap == 0) {
+        gGuiWindowManager.ScreenSnap = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
+        if (gGuiWindowManager.ScreenSnap == 0) {
             DebugWrite("Gui: drag snap OOM — cancel\n");
-            gScreenSnapValid = 0;
+            gGuiWindowManager.ScreenSnapValid = 0;
             return;
         }
-        gScreenSnapPages = Pages;
+        gGuiWindowManager.ScreenSnapPages = Pages;
     }
     /* 含被拖窗的全屏快照：非起始 footprint 露底时用 */
-    HalVideoReadRect(0, 0, gScreenWidth, gScreenHeight, gScreenSnap);
-    gScreenSnapValid = 1;
-    EnsureDragDirtyBuf(gScreenWidth, gScreenHeight);
+    HalVideoReadRect(0, 0, gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight, gGuiWindowManager.ScreenSnap);
+    gGuiWindowManager.ScreenSnapValid = 1;
+    EnsureDragDirtyBuf(gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight);
 
-    if (!EnsureUnderDragBuf(gDragStartW, gDragStartH)) {
+    if (!EnsureUnderDragBuf(gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH)) {
         return;
     }
 
@@ -124,27 +124,27 @@ void CaptureDragRestoreData(int DragIdx) {
      * 再读入 under-drag，最后恢复 Active 并贴回被拖窗。
      */
     HalVideoClearClip();
-    gWindows[DragIdx].Active = 0;
-    DesktopFillRect(gDragStartX, gDragStartY, gDragStartW, gDragStartH);
-    DesktopDrawRect(gDragStartX, gDragStartY, gDragStartW, gDragStartH);
+    gGuiWindowManager.Windows[DragIdx].Active = 0;
+    DesktopFillRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH);
+    DesktopDrawRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH);
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active || i == DragIdx) {
+        if (!gGuiWindowManager.Windows[i].Active || i == DragIdx) {
             continue;
         }
-        if (RectIntersects(gWindows[i].X, gWindows[i].Y, gWindows[i].Width, gWindows[i].Height,
-                           gDragStartX, gDragStartY, gDragStartW, gDragStartH)) {
+        if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width, gGuiWindowManager.Windows[i].Height,
+                           gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH)) {
             /* 必须贴备份（含客户区文字），禁止 DrawWindowAt 空壳 */
             PaintWindowFromBackup(i);
         }
     }
-    HalVideoReadRect(gDragStartX, gDragStartY, gDragStartW, gDragStartH, gUnderDrag);
-    gUnderDragValid = 1;
-    gWindows[DragIdx].Active = 1;
+    HalVideoReadRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH, gGuiWindowManager.UnderDrag);
+    gGuiWindowManager.UnderDragValid = 1;
+    gGuiWindowManager.Windows[DragIdx].Active = 1;
 
     /* 贴回被拖窗（备份应在 Begin/Start 里已抓好） */
-    if (gWinBackupValid[DragIdx] && gWinBackup[DragIdx] != 0) {
-        HalVideoWriteRect(gDragStartX, gDragStartY, gWinBackupW[DragIdx],
-                          gWinBackupH[DragIdx], gWinBackup[DragIdx]);
+    if (gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
+        HalVideoWriteRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.WinBackupW[DragIdx],
+                          gGuiWindowManager.WinBackupH[DragIdx], gGuiWindowManager.WinBackup[DragIdx]);
         DrawWindowChromeAt(DragIdx);
     } else {
         DrawWindowAt(DragIdx);
@@ -163,7 +163,7 @@ void BeginDragBackups(int DragIdx) {
      * （见 44b1633；bbfa299 回潮后再现）。
      */
     ResetDragState();
-    if (DragIdx < 0 || DragIdx >= MAX_WINS || !gWindows[DragIdx].Active) {
+    if (DragIdx < 0 || DragIdx >= MAX_WINS || !gGuiWindowManager.Windows[DragIdx].Active) {
         return;
     }
     if (!EnsureWindowBackupBuf(DragIdx)) {
@@ -172,22 +172,22 @@ void BeginDragBackups(int DragIdx) {
     }
     HalVideoClearClip();
     for (i = 0; i < MAX_WINS; i++) {
-        if (!gWindows[i].Active) {
+        if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
         EnsureWindowBackupBuf(i);
         /*
          * ForceFull 只对「帧缓冲上可见」的窗：已被上层盖住时整窗 ReadRect
-         * 会把前景烙进 gWinBackup，ClearOld 露底时出现拖动烙印。
+         * 会把前景烙进 gGuiWindowManager.WinBackup，ClearOld 露底时出现拖动烙印。
          * 遮挡窗走非 ForceFull，重叠像素保留先前干净备份。
          */
         BackupWindowAtEx(i, !WindowOccludedByOtherOrShadow(i));
     }
-    if (!gWinBackupValid[DragIdx]) {
+    if (!gGuiWindowManager.WinBackupValid[DragIdx]) {
         DebugWrite("Gui: drag backup invalid\n");
         return;
     }
-    gDragHasBackup = 1;
+    gGuiWindowManager.DragHasBackup = 1;
 }
 
 
@@ -200,10 +200,10 @@ void StartDragBackups(int DragIdx) {
     GfxIrqLeave();
     GuiFocusSave();
     BeginDragBackups(DragIdx);
-    if (!gDragHasBackup || !gWinBackupValid[DragIdx]) {
+    if (!gGuiWindowManager.DragHasBackup || !gGuiWindowManager.WinBackupValid[DragIdx]) {
         DebugWrite("Gui: drag aborted (no backup)\n");
         ResetDragState();
-        gDragWin = -1;
+        gGuiWindowManager.DragWin = -1;
         ComposeEnd();
         return;
     }

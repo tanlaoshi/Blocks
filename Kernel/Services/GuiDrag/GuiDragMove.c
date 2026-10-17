@@ -10,8 +10,8 @@
 
 /* 窗口必须完整留在屏内 */
 void ClampWindowPos(const GUI_WINDOW *W, INT32 *X, INT32 *Y) {
-    INT32 MaxX = (INT32)gScreenWidth - (INT32)W->Width;
-    INT32 MaxY = (INT32)gScreenHeight - (INT32)W->Height;
+    INT32 MaxX = (INT32)gGuiWindowManager.ScreenWidth - (INT32)W->Width;
+    INT32 MaxY = (INT32)gGuiWindowManager.ScreenHeight - (INT32)W->Height;
 
     if (MaxX < 0) {
         MaxX = 0;
@@ -43,7 +43,7 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
     if (Idx < 0 || Idx >= MAX_WINS) {
         return;
     }
-    W = &gWindows[Idx];
+    W = &gGuiWindowManager.Windows[Idx];
     if (!W->Active) {
         return;
     }
@@ -54,26 +54,26 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
     if (NewX == Ox && NewY == Oy) {
         return;
     }
-    if (NewX + Ww > gScreenWidth || NewY + Wh > gScreenHeight) {
+    if (NewX + Ww > gGuiWindowManager.ScreenWidth || NewY + Wh > gGuiWindowManager.ScreenHeight) {
         return;
     }
 
     /* G7：合成开中断；仅光标 erase/paint 与 Present 进 GfxIrq */
     ComposeBegin();
     GfxIrqEnter();
-    if (gCursorVisible) {
+    if (gGuiWindowManager.CursorVisible) {
         CursorRestore();
         /* 拖窗中勿在此 Present：会多刷一帧旧画面，加重两侧闪 */
-        if (gDragWin < 0) {
+        if (gGuiWindowManager.DragWin < 0) {
             HalVideoPresent();
         }
     }
     GfxIrqLeave();
-    if (gDragHasBackup) {
+    if (gGuiWindowManager.DragHasBackup) {
         W->X = NewX;
         W->Y = NewY;
         RedrawDragFrameSlide(Idx, Ox, Oy);
-    } else if (gDragWin >= 0) {
+    } else if (gGuiWindowManager.DragWin >= 0) {
         UINT32 Fx = Ox;
         UINT32 Fy = Oy;
         UINT32 Fw = Ww;
@@ -85,7 +85,7 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
         ExpandRectByWindowShadow(&Fx, &Fy, &Fw, &Fh);
         ClipRectToScreen(&Fx, &Fy, &Fw, &Fh);
         ClearOldDragFootprint(Fx, Fy, Fw, Fh, Idx);
-        if (gWinBackupValid[Idx]) {
+        if (gGuiWindowManager.WinBackupValid[Idx]) {
             PaintWindowFromBackup(Idx);
             DrawWindowShadowAt(Idx);
         } else {
@@ -109,7 +109,7 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
         DrawWindowChromeAt(Idx);
         DrawWindowShadowAt(Idx);
     }
-    if (gDragWin < 0) {
+    if (gGuiWindowManager.DragWin < 0) {
         GfxIrqEnter();
         CursorPaint();
         HalVideoPresent();

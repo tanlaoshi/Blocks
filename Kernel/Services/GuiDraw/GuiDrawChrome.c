@@ -24,11 +24,11 @@ int PixelOccludedByAbove(int Idx, UINT32 X, UINT32 Y) {
     int j;
 
     for (j = Idx + 1; j < MAX_WINS; j++) {
-        if (!gWindows[j].Active) {
+        if (!gGuiWindowManager.Windows[j].Active) {
             continue;
         }
-        if (X >= gWindows[j].X && X < gWindows[j].X + gWindows[j].Width &&
-            Y >= gWindows[j].Y && Y < gWindows[j].Y + gWindows[j].Height) {
+        if (X >= gGuiWindowManager.Windows[j].X && X < gGuiWindowManager.Windows[j].X + gGuiWindowManager.Windows[j].Width &&
+            Y >= gGuiWindowManager.Windows[j].Y && Y < gGuiWindowManager.Windows[j].Y + gGuiWindowManager.Windows[j].Height) {
             return 1;
         }
     }
@@ -75,7 +75,7 @@ void DrawHLineOccluded(int Idx, UINT32 X0, UINT32 X1, UINT32 Y,
     UINT32 RunStart = 0;
     int InRun = 0;
 
-    if (X1 < X0 || Y >= gScreenHeight) {
+    if (X1 < X0 || Y >= gGuiWindowManager.ScreenHeight) {
         return;
     }
     for (X = X0; X <= X1; X++) {
@@ -101,7 +101,7 @@ void DrawVLineOccluded(int Idx, UINT32 X, UINT32 Y0, UINT32 Y1,
     UINT32 RunStart = 0;
     int InRun = 0;
 
-    if (Y1 < Y0 || X >= gScreenWidth) {
+    if (Y1 < Y0 || X >= gGuiWindowManager.ScreenWidth) {
         return;
     }
     for (Y = Y0; Y <= Y1; Y++) {
@@ -165,7 +165,7 @@ void RefreshOtherChrome(int SkipIdx) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && i != SkipIdx) {
+        if (gGuiWindowManager.Windows[i].Active && i != SkipIdx) {
             DrawWindowChromeAt(i);
         }
     }
@@ -207,7 +207,7 @@ void DrawTitleStringOccluded(int Idx, const GUI_WINDOW *W) {
 
 /* 仅重绘标题栏与边框，保留客户区已有文字；不画到上层窗口上 */
 void DrawWindowChromeAt(int Idx) {
-    const GUI_WINDOW *W = &gWindows[Idx];
+    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
     UINT32 Border;
     UINT32 Th;
     UINT32 Row;
@@ -228,8 +228,8 @@ void DrawWindowChromeAt(int Idx) {
      * 标题重画会使光标 save-under 失效；若光标仍显示在标题上，
      * 先擦掉再画，结束时重采，否则点击会留下光标方框。
      */
-    CursorWas = gCursorVisible;
-    CursorOnTitle = CursorWas && PointInTitle(W, gCursorX, gCursorY);
+    CursorWas = gGuiWindowManager.CursorVisible;
+    CursorOnTitle = CursorWas && PointInTitle(W, gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     if (CursorOnTitle) {
         GfxIrqEnter();
         CursorRestore();

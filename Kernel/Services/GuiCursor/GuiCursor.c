@@ -32,7 +32,7 @@ void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
     if (HalVideoGetUiScale() != 100u) {
         ExtPad = 2u;
     }
-    if (gCursorKind == CURSOR_KIND_ARROW) {
+    if (gGuiWindowManager.CursorKind == CURSOR_KIND_ARROW) {
         /*
          * 尖在热点；头约 1.5H、尾再约 0.5H。多留边防拖尾。
          */
@@ -43,7 +43,7 @@ void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
     } else {
         /* resize：热点居中 */
         L = R = T = B = Half + Thick + CURSOR_OUTLINE + (int)ExtPad;
-        if (gCursorKind == CURSOR_KIND_RESIZE_SE) {
+        if (gGuiWindowManager.CursorKind == CURSOR_KIND_RESIZE_SE) {
             L = R = T = B = Half + Thick + CURSOR_OUTLINE + 2 + (int)ExtPad;
         }
     }
@@ -57,11 +57,11 @@ void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
     if (Y0 < 0) {
         Y0 = 0;
     }
-    if (X1 > (INT32)gScreenWidth) {
-        X1 = (INT32)gScreenWidth;
+    if (X1 > (INT32)gGuiWindowManager.ScreenWidth) {
+        X1 = (INT32)gGuiWindowManager.ScreenWidth;
     }
-    if (Y1 > (INT32)gScreenHeight) {
-        Y1 = (INT32)gScreenHeight;
+    if (Y1 > (INT32)gGuiWindowManager.ScreenHeight) {
+        Y1 = (INT32)gGuiWindowManager.ScreenHeight;
     }
     *Sx = (UINT32)X0;
     *Sy = (UINT32)Y0;
@@ -74,97 +74,97 @@ void DrawCursorAt(UINT32 X, UINT32 Y) {
 }
 
 void CursorRestore(void) {
-    if (!gCursorVisible) {
+    if (!gGuiWindowManager.CursorVisible) {
         return;
     }
-    if (gSaveWidth > 0 && gSaveHeight > 0 &&
-        gSaveWidth <= (UINT32)CURSOR_BOX && gSaveHeight <= (UINT32)CURSOR_BOX) {
+    if (gGuiWindowManager.SaveWidth > 0 && gGuiWindowManager.SaveHeight > 0 &&
+        gGuiWindowManager.SaveWidth <= (UINT32)CURSOR_BOX && gGuiWindowManager.SaveHeight <= (UINT32)CURSOR_BOX) {
         HalVideoCursorOverlayBegin();
-        HalVideoWriteRect(gSaveX, gSaveY, gSaveWidth, gSaveHeight, gUnder);
+        HalVideoWriteRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY, gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight, gGuiWindowManager.Under);
         HalVideoCursorOverlayEnd();
     }
-    gCursorVisible = 0;
+    gGuiWindowManager.CursorVisible = 0;
 }
 
 void CursorPaint(void) {
-    gCursorKind = GuiResizeCursorKindAt(gCursorX, gCursorY);
-    if (gCursorVisible) {
+    gGuiWindowManager.CursorKind = GuiResizeCursorKindAt(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    if (gGuiWindowManager.CursorVisible) {
         CursorRestore();
     }
-    CursorBox(gCursorX, gCursorY, &gSaveX, &gSaveY, &gSaveWidth, &gSaveHeight);
-    if (gSaveWidth == 0 || gSaveHeight == 0 ||
-        gSaveWidth > (UINT32)CURSOR_BOX || gSaveHeight > (UINT32)CURSOR_BOX) {
+    CursorBox(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY, &gGuiWindowManager.SaveX, &gGuiWindowManager.SaveY, &gGuiWindowManager.SaveWidth, &gGuiWindowManager.SaveHeight);
+    if (gGuiWindowManager.SaveWidth == 0 || gGuiWindowManager.SaveHeight == 0 ||
+        gGuiWindowManager.SaveWidth > (UINT32)CURSOR_BOX || gGuiWindowManager.SaveHeight > (UINT32)CURSOR_BOX) {
         return;
     }
     HalVideoCursorOverlayBegin();
-    HalVideoReadRect(gSaveX, gSaveY, gSaveWidth, gSaveHeight, gUnder);
-    DrawCursorGlyph(gCursorX, gCursorY);
+    HalVideoReadRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY, gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight, gGuiWindowManager.Under);
+    DrawCursorGlyph(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     HalVideoCursorOverlayEnd();
-    gCursorVisible = 1;
+    gGuiWindowManager.CursorVisible = 1;
 }
 
 void CursorMove(UINT32 X, UINT32 Y) {
     int OldKind;
     int NewKind;
 
-    if (X >= gScreenWidth) {
-        X = gScreenWidth > 0 ? gScreenWidth - 1 : 0;
+    if (X >= gGuiWindowManager.ScreenWidth) {
+        X = gGuiWindowManager.ScreenWidth > 0 ? gGuiWindowManager.ScreenWidth - 1 : 0;
     }
-    if (Y >= gScreenHeight) {
-        Y = gScreenHeight > 0 ? gScreenHeight - 1 : 0;
+    if (Y >= gGuiWindowManager.ScreenHeight) {
+        Y = gGuiWindowManager.ScreenHeight > 0 ? gGuiWindowManager.ScreenHeight - 1 : 0;
     }
-    OldKind = gCursorKind;
+    OldKind = gGuiWindowManager.CursorKind;
     NewKind = GuiResizeCursorKindAt(X, Y);
-    if (X == gCursorX && Y == gCursorY && OldKind == NewKind) {
+    if (X == gGuiWindowManager.CursorX && Y == gGuiWindowManager.CursorY && OldKind == NewKind) {
         return;
     }
 
-    if (gDragWin >= 0 || DesktopIconDragActive()) {
-        if (gCursorVisible) {
+    if (gGuiWindowManager.DragWin >= 0 || DesktopIconDragActive()) {
+        if (gGuiWindowManager.CursorVisible) {
             GfxIrqEnter();
             CursorRestore();
             GfxPresent();
             GfxIrqLeave();
         }
-        gCursorX = X;
-        gCursorY = Y;
-        gCursorKind = NewKind;
+        gGuiWindowManager.CursorX = X;
+        gGuiWindowManager.CursorY = Y;
+        gGuiWindowManager.CursorKind = NewKind;
         return;
     }
 
     GfxIrqEnter();
     CursorRestore();
-    gCursorX = X;
-    gCursorY = Y;
-    gCursorKind = NewKind;
+    gGuiWindowManager.CursorX = X;
+    gGuiWindowManager.CursorY = Y;
+    gGuiWindowManager.CursorKind = NewKind;
     CursorPaint();
     GfxPresent();
     GfxIrqLeave();
 }
 
 void GuiPointerMove(UINT32 X, UINT32 Y) {
-    if (!(gDragWin >= 0 && (gCursorBtn & 1)) &&
-        !(gResizeWin >= 0 && (gCursorBtn & 1)) &&
-        !(DesktopIconDragActive() && (gCursorBtn & 1))) {
+    if (!(gGuiWindowManager.DragWin >= 0 && (gGuiWindowManager.CursorBtn & 1)) &&
+        !(gGuiWindowManager.ResizeWin >= 0 && (gGuiWindowManager.CursorBtn & 1)) &&
+        !(DesktopIconDragActive() && (gGuiWindowManager.CursorBtn & 1))) {
         GuiHoverUpdate(X, Y);
     }
     CursorMove(X, Y);
-    if (gResizeWin >= 0 && (gCursorBtn & 1)) {
+    if (gGuiWindowManager.ResizeWin >= 0 && (gGuiWindowManager.CursorBtn & 1)) {
         GuiResizeUpdate(X, Y);
-    } else if (gDragWin >= 0 && (gCursorBtn & 1)) {
+    } else if (gGuiWindowManager.DragWin >= 0 && (gGuiWindowManager.CursorBtn & 1)) {
         GuiDragUpdate(X, Y);
-    } else if (DesktopIconDragActive() && (gCursorBtn & 1)) {
+    } else if (DesktopIconDragActive() && (gGuiWindowManager.CursorBtn & 1)) {
         DesktopIconDragUpdate(X, Y);
     } else if (GuiFocusKind() == GUI_WIN_FILES) {
         FilesUiOnHover(X, Y);
     } else if (GuiFocusKind() == GUI_WIN_SETTINGS) {
-        SettingsUiOnPointer(X, Y, gCursorBtn);
+        SettingsUiOnPointer(X, Y, gGuiWindowManager.CursorBtn);
     } else if (GuiFocusKind() == GUI_WIN_STORE) {
         if (!StoreUiIsBusy()) {
-            StoreUiOnPointer(X, Y, gCursorBtn);
+            StoreUiOnPointer(X, Y, gGuiWindowManager.CursorBtn);
         }
     } else if (GuiFocusKind() == GUI_WIN_EDIT) {
-        EditUiOnPointer(X, Y, gCursorBtn);
+        EditUiOnPointer(X, Y, gGuiWindowManager.CursorBtn);
     }
 }
 
@@ -181,7 +181,7 @@ void GuiFrameBufferEnd(void) {
      * 否则 help 等会一行一帧 Present，真机极卡。
      * DeferPop 时统一 Present。
      */
-    if (!gDeferPresent) {
+    if (!gGuiWindowManager.DeferPresent) {
         HalVideoPresentFlush();
     }
     ComposeEnd();

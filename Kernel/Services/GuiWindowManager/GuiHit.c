@@ -49,7 +49,7 @@ int PointInAnyActiveWindow(UINT32 X, UINT32 Y) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && PointInWindow(&gWindows[i], X, Y)) {
+        if (gGuiWindowManager.Windows[i].Active && PointInWindow(&gGuiWindowManager.Windows[i], X, Y)) {
             return 1;
         }
     }
@@ -61,7 +61,7 @@ int PointOnAnyClose(UINT32 X, UINT32 Y) {
     int i;
 
     for (i = 0; i < MAX_WINS; i++) {
-        if (gWindows[i].Active && PointInClose(&gWindows[i], X, Y)) {
+        if (gGuiWindowManager.Windows[i].Active && PointInClose(&gGuiWindowManager.Windows[i], X, Y)) {
             return 1;
         }
     }
@@ -80,35 +80,35 @@ void RaiseWindow(int Idx) {
     int HasBackup = 0;
 
     for (J = Idx + 1; J < MAX_WINS; J++) {
-        if (gWindows[J].Active) {
+        if (gGuiWindowManager.Windows[J].Active) {
             Top = J;
         }
     }
     if (Top == Idx) {
-        gFocusWin = Idx;
+        gGuiWindowManager.FocusWin = Idx;
         return;
     }
-    gHoverWin = -1; /* Raise 挪槽后悬停下标失效，下轮 PointerMove 重算 */
+    gGuiWindowManager.HoverWin = -1; /* Raise 挪槽后悬停下标失效，下轮 PointerMove 重算 */
     for (J = 0; J < MAX_WINS; J++) {
-        if (gWinBackupValid[J] || gWinBackup[J] != 0) {
+        if (gGuiWindowManager.WinBackupValid[J] || gGuiWindowManager.WinBackup[J] != 0) {
             HasBackup = 1;
             break;
         }
     }
     {
-        WinCopy(&gWinSwap, &gWindows[Idx]);
+        WinCopy(&gGuiWindowManager.WinSwap, &gGuiWindowManager.Windows[Idx]);
         for (J = Idx; J < Top; J++) {
-            WinCopy(&gWindows[J], &gWindows[J + 1]);
+            WinCopy(&gGuiWindowManager.Windows[J], &gGuiWindowManager.Windows[J + 1]);
         }
-        WinCopy(&gWindows[Top], &gWinSwap);
+        WinCopy(&gGuiWindowManager.Windows[Top], &gGuiWindowManager.WinSwap);
         /* 窗口与备份必须一起挪，否则会把别的窗备份贴到错误位置（花屏） */
-        if (HasBackup || gDragHasBackup) {
+        if (HasBackup || gGuiWindowManager.DragHasBackup) {
             ShiftWinBackupsUp(Idx, Top);
         }
         /* Shell scrollback / dhcp Job 窗号随槽位挪，否则多 Shell 内容串台 */
         gConsole.SbShiftRaise(Idx, Top);
         gConsole.JobShiftRaise(Idx, Top);
-        gFocusWin = Top;
+        gGuiWindowManager.FocusWin = Top;
     }
 }
 
@@ -117,38 +117,38 @@ void RaiseWindow(int Idx) {
 void GuiRaiseToFront(int Idx) {
     int Top;
 
-    if (Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return;
     }
     RaiseWindow(Idx);
-    Top = gFocusWin; /* Raise 后窗已挪槽，勿再用旧 Idx */
+    Top = gGuiWindowManager.FocusWin; /* Raise 后窗已挪槽，勿再用旧 Idx */
     /* ClearDesktop：QEMU 上 Sync(0) 易留透视/脏影；真机亦更干净 */
     SyncWindowVisualsEx(1);
     GuiFocusApply();
     /* 顶层无有效备份时补内容，再抓一份干净备份 */
-    if (Top < 0 || Top >= MAX_WINS || !gWindows[Top].Active) {
+    if (Top < 0 || Top >= MAX_WINS || !gGuiWindowManager.Windows[Top].Active) {
         return;
     }
-    if (gWindows[Top].Kind == GUI_WIN_SETTINGS) {
+    if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_SETTINGS) {
         SettingsUiRepaint();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_STORE) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_STORE) {
         StoreUiRepaint();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_DEVICES) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_DEVICES) {
         DevicesUiRepaint();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_FILES) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_FILES) {
         FilesUiRepaint();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_EDIT) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_EDIT) {
         EditUiRepaint();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_TTY) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_TTY) {
         TtyUiPaintFocused();
         BackupWindowAt(Top);
-    } else if (gWindows[Top].Kind == GUI_WIN_USER && !gWindows[Top].FixedSize &&
-               !gWinBackupValid[Top]) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_USER && !gGuiWindowManager.Windows[Top].FixedSize &&
+               !gGuiWindowManager.WinBackupValid[Top]) {
         /* Sync 已画过光标；无备份时才 Fill 客户区。
          * 有备份则与 FixedSize 一样贴备份（ToyGfx 复选等在里面），Fill 会抹掉。 */
         GfxIrqEnter();
@@ -161,7 +161,7 @@ void GuiRaiseToFront(int Idx) {
         CursorPaint();
         GfxIrqLeave();
         HalVideoPresentFlush();
-    } else if (gWindows[Top].Kind == GUI_WIN_SHELL && !gWinBackupValid[Top]) {
+    } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_SHELL && !gGuiWindowManager.WinBackupValid[Top]) {
         /* 欢迎语级恢复；完整历史需备份一直有效 */
         GuiConsoleOpsOnShellOpened();
         BackupWindowAt(Top);

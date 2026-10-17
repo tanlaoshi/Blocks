@@ -11,7 +11,7 @@ int GuiHandleClick(UINT32 X, UINT32 Y) {
 
     /* 关闭钮可能被其它窗口挡住；先扫一遍所有窗口的 × 区域 */
     for (i = MAX_WINS - 1; i >= 0; i--) {
-        if (gWindows[i].Active && PointInClose(&gWindows[i], X, Y)) {
+        if (gGuiWindowManager.Windows[i].Active && PointInClose(&gGuiWindowManager.Windows[i], X, Y)) {
             CloseWindow(i);
             return 1;
         }

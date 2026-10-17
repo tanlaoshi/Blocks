@@ -27,29 +27,29 @@ int GuiOpenShell(void) {
         return -1;
     }
     PlaceNewWindow(Idx, &X, &Y, &W, &H);
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_SHELL;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeShellClientBackground();
-    gWindows[Idx].Title = LocStr(MSG_APP_SHELL);
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_SHELL;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeShellClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_SHELL);
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
     /* 先标已 prompt，避免 FocusApply→FocusLoad 抢画；下方 OnShellOpened 再画欢迎语 */
-    gWindows[Idx].PromptShown = 1;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 1;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     GuiFocusSave();
     GuiConsoleOpsOnShellOpened();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open shell idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 
@@ -73,35 +73,35 @@ int GuiOpenSettings(void) {
     /* 三分栏：与 Files 同量级，靠右 */
     W = 800;
     H = 560;
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
-    X = (gScreenWidth > W + Margin) ? (gScreenWidth - W - Margin) : Margin;
+    X = (gGuiWindowManager.ScreenWidth > W + Margin) ? (gGuiWindowManager.ScreenWidth - W - Margin) : Margin;
     Y = Margin;
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_SETTINGS;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeSettingsClientBackground();
-    gWindows[Idx].Title = LocStr(MSG_APP_SETTINGS);
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_SETTINGS;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_SETTINGS);
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     SettingsUiOpen();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open settings idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 
@@ -124,35 +124,35 @@ int GuiOpenStore(void) {
     }
     W = 920;
     H = 600;
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
     X = Margin;
     Y = Margin + 24;
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_STORE;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeSettingsClientBackground();
-    gWindows[Idx].Title = LocStr(MSG_APP_STORE);
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_STORE;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_STORE);
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     StoreUiOpen();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open store idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 
@@ -170,35 +170,35 @@ int GuiOpenFiles(void) {
     }
     W = 800;
     H = 560;
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
     X = Margin;
-    Y = (gScreenHeight > H + Margin) ? (gScreenHeight - H - Margin) : Margin;
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_FILES;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeSettingsClientBackground();
-    gWindows[Idx].Title = LocStr(MSG_APP_FILES);
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    Y = (gGuiWindowManager.ScreenHeight > H + Margin) ? (gGuiWindowManager.ScreenHeight - H - Margin) : Margin;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_FILES;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_FILES);
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     FilesUiOpen();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open files idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }
 
 
@@ -223,8 +223,8 @@ int GuiOpenEdit(const char *Path) {
         EditUiRepaint();
         BackupWindowAt(Existing);
         GuiFocusApply();
-        BackupWindowAt(gFocusWin);
-        return gFocusWin;
+        BackupWindowAt(gGuiWindowManager.FocusWin);
+        return gGuiWindowManager.FocusWin;
     }
 
     Idx = AllocWindowSlot();
@@ -233,34 +233,34 @@ int GuiOpenEdit(const char *Path) {
     }
     W = 800;
     H = 520;
-    if (W + Margin * 2 > gScreenWidth) {
-        W = gScreenWidth > Margin * 2 ? gScreenWidth - Margin * 2 : gScreenWidth / 2;
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
     }
-    if (H + Margin * 2 > gScreenHeight) {
-        H = gScreenHeight > Margin * 2 ? gScreenHeight - Margin * 2 : gScreenHeight / 2;
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
     }
     X = Margin + 24;
     Y = Margin;
-    gWindows[Idx].Active = 1;
-    gWindows[Idx].Kind = GUI_WIN_EDIT;
-    gWindows[Idx].X = X;
-    gWindows[Idx].Y = Y;
-    gWindows[Idx].Width = W;
-    gWindows[Idx].Height = H;
-    gWindows[Idx].Background = ThemeSettingsClientBackground();
-    gWindows[Idx].Title = "Edit";
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].Active = 1;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_EDIT;
+    gGuiWindowManager.Windows[Idx].X = X;
+    gGuiWindowManager.Windows[Idx].Y = Y;
+    gGuiWindowManager.Windows[Idx].Width = W;
+    gGuiWindowManager.Windows[Idx].Height = H;
+    gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    gGuiWindowManager.Windows[Idx].Title = "Edit";
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
     OpenChromeDefer(Idx);
     EditUiOpen(Path);
     EditUiRepaint();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open edit idx=");
-    DebugHex32((UINT32)gFocusWin);
+    DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");
-    return gFocusWin;
+    return gGuiWindowManager.FocusWin;
 }

@@ -29,85 +29,85 @@ void CloseWindow(int Idx) {
     int SavedFocus;
     int WasUser;
 
-    if (Idx < 0 || Idx >= MAX_WINS || !gWindows[Idx].Active) {
+    if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return;
     }
-    if (gWindows[Idx].Closing) {
+    if (gGuiWindowManager.Windows[Idx].Closing) {
         return;
     }
-    gWindows[Idx].Closing = 1;
-    WasUser = (gWindows[Idx].Kind == GUI_WIN_USER);
-    if (gWindows[Idx].Kind == GUI_WIN_SHELL) {
+    gGuiWindowManager.Windows[Idx].Closing = 1;
+    WasUser = (gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_USER);
+    if (gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_SHELL) {
         gConsole.SbWinForget(Idx);
     }
-    if (gWindows[Idx].Kind == GUI_WIN_TTY) {
+    if (gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_TTY) {
         TtyUiClose();
     }
-    X = gWindows[Idx].X;
-    Y = gWindows[Idx].Y;
-    Ww = gWindows[Idx].Width;
-    Wh = gWindows[Idx].Height;
+    X = gGuiWindowManager.Windows[Idx].X;
+    Y = gGuiWindowManager.Windows[Idx].Y;
+    Ww = gGuiWindowManager.Windows[Idx].Width;
+    Wh = gGuiWindowManager.Windows[Idx].Height;
 
     /*
      * USER 关窗不做淡出（真机淡出易与 exit 竞态 → 二次 exec #PF）。
      * 其它窗仍可淡出；淡出 under 只铺本窗矩形（GuiFade）。
      */
     if (!WasUser && ThemeWindowFadeSteps() != 0) {
-        if (!gWinBackupValid[Idx]) {
+        if (!gGuiWindowManager.WinBackupValid[Idx]) {
             BackupWindowAt(Idx);
         }
         GuiAnimateWindowFade(Idx, 0);
     }
 
     if (WasUser) {
-        gWindows[Idx].ClosePending = 1;
+        gGuiWindowManager.Windows[Idx].ClosePending = 1;
     }
-    gWindows[Idx].Active = 0;
-    gWindows[Idx].FixedSize = 0;
-    gWindows[Idx].Kind = GUI_WIN_NONE;
-    gWindows[Idx].TermSet = 0;
-    gWindows[Idx].InputLen = 0;
-    gWindows[Idx].WaitPrompt = 0;
-    gWindows[Idx].PromptShown = 0;
-    gWindows[Idx].InputLine[0] = 0;
-    gWindows[Idx].UserButtonClick = -1;
-    gWindows[Idx].UserClientClick = 0;
-    gWindows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.Windows[Idx].Active = 0;
+    gGuiWindowManager.Windows[Idx].FixedSize = 0;
+    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_NONE;
+    gGuiWindowManager.Windows[Idx].TermSet = 0;
+    gGuiWindowManager.Windows[Idx].InputLen = 0;
+    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
+    gGuiWindowManager.Windows[Idx].PromptShown = 0;
+    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
+    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
+    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
+    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
     {
         int Bi;
         for (Bi = 0; Bi < 4; Bi++) {
-            gWindows[Idx].UserButtonUsed[Bi] = 0;
-            gWindows[Idx].UserButtonLabel[Bi][0] = 0;
+            gGuiWindowManager.Windows[Idx].UserButtonUsed[Bi] = 0;
+            gGuiWindowManager.Windows[Idx].UserButtonLabel[Bi][0] = 0;
         }
     }
-    gWinBackupValid[Idx] = 0;
-    if (gWinBackup[Idx] != 0) {
-        PhysicalMemoryFreePages(gWinBackup[Idx], gWinBackupPages[Idx]);
-        gWinBackup[Idx] = 0;
-        gWinBackupPages[Idx] = 0;
-        gWinBackupW[Idx] = 0;
-        gWinBackupH[Idx] = 0;
+    gGuiWindowManager.WinBackupValid[Idx] = 0;
+    if (gGuiWindowManager.WinBackup[Idx] != 0) {
+        PhysicalMemoryFreePages(gGuiWindowManager.WinBackup[Idx], gGuiWindowManager.WinBackupPages[Idx]);
+        gGuiWindowManager.WinBackup[Idx] = 0;
+        gGuiWindowManager.WinBackupPages[Idx] = 0;
+        gGuiWindowManager.WinBackupW[Idx] = 0;
+        gGuiWindowManager.WinBackupH[Idx] = 0;
     }
-    if (gDragWin == Idx) {
-        gDragWin = -1;
+    if (gGuiWindowManager.DragWin == Idx) {
+        gGuiWindowManager.DragWin = -1;
     }
-    if (gResizeWin == Idx) {
-        gResizeWin = -1;
+    if (gGuiWindowManager.ResizeWin == Idx) {
+        gGuiWindowManager.ResizeWin = -1;
     }
-    if (gHoverWin == Idx) {
-        gHoverWin = -1;
+    if (gGuiWindowManager.HoverWin == Idx) {
+        gGuiWindowManager.HoverWin = -1;
     }
-    if (gFocusWin == Idx) {
-        gFocusWin = -1;
+    if (gGuiWindowManager.FocusWin == Idx) {
+        gGuiWindowManager.FocusWin = -1;
         for (i = MAX_WINS - 1; i >= 0; i--) {
-            if (gWindows[i].Active) {
-                gFocusWin = i;
+            if (gGuiWindowManager.Windows[i].Active) {
+                gGuiWindowManager.FocusWin = i;
                 break;
             }
         }
     }
 
-    SavedFocus = gFocusWin;
+    SavedFocus = gGuiWindowManager.FocusWin;
 
     if (WasUser) {
         UINT32 BarY;
@@ -124,42 +124,42 @@ void CloseWindow(int Idx) {
         DesktopFillRect(X, Y, Ww, Wh);
         DesktopDrawRect(X, Y, Ww, Wh);
         for (i = 0; i < MAX_WINS; i++) {
-            if (!gWindows[i].Active) {
+            if (!gGuiWindowManager.Windows[i].Active) {
                 continue;
             }
-            if (!RectIntersects(gWindows[i].X, gWindows[i].Y, gWindows[i].Width,
-                                gWindows[i].Height, X, Y, Ww, Wh)) {
+            if (!RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width,
+                                gGuiWindowManager.Windows[i].Height, X, Y, Ww, Wh)) {
                 continue;
             }
-            gWinBackupValid[i] = 0;
+            gGuiWindowManager.WinBackupValid[i] = 0;
             DrawWindowAtEx(i, 0);
-            if (gWindows[i].Kind == GUI_WIN_SHELL) {
+            if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
                 GuiConsoleOpsPaintShellWindow(i);
-            } else if (gWindows[i].Kind == GUI_WIN_SETTINGS) {
-                gFocusWin = i;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
+                gGuiWindowManager.FocusWin = i;
                 SettingsUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_STORE) {
-                gFocusWin = i;
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_STORE) {
+                gGuiWindowManager.FocusWin = i;
                 StoreUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_DEVICES) {
-                gFocusWin = i;
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_DEVICES) {
+                gGuiWindowManager.FocusWin = i;
                 DevicesUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_FILES) {
-                gFocusWin = i;
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
+                gGuiWindowManager.FocusWin = i;
                 FilesUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_EDIT) {
-                gFocusWin = i;
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
+                gGuiWindowManager.FocusWin = i;
                 EditUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_TTY) {
-                gFocusWin = i;
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
+                gGuiWindowManager.FocusWin = i;
                 TtyUiRepaint();
-                gFocusWin = SavedFocus;
-            } else if (gWindows[i].Kind == GUI_WIN_USER) {
+                gGuiWindowManager.FocusWin = SavedFocus;
+            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
                 PaintUserClient(i);
             }
             BackupWindowAtEx(i, 1);
@@ -173,7 +173,7 @@ void CloseWindow(int Idx) {
         HalVideoClearClip();
         DesktopFillRect(0, BarY, Sw, TASKBAR_H);
         DrawTaskbarRaw();
-        gFocusWin = SavedFocus;
+        gGuiWindowManager.FocusWin = SavedFocus;
         GfxIrqEnter();
         CursorPaint();
         GfxIrqLeave();
@@ -181,16 +181,16 @@ void CloseWindow(int Idx) {
         ComposeEnd();
     } else {
         for (i = 0; i < MAX_WINS; i++) {
-            if (gWindows[i].Active) {
-                gWinBackupValid[i] = 0;
+            if (gGuiWindowManager.Windows[i].Active) {
+                gGuiWindowManager.WinBackupValid[i] = 0;
             }
         }
         GuiComposeThemeScene();
-        gFocusWin = SavedFocus;
+        gGuiWindowManager.FocusWin = SavedFocus;
     }
 
     GuiFocusApply();
-    gWindows[Idx].Closing = 0;
+    gGuiWindowManager.Windows[Idx].Closing = 0;
     DebugWrite("Gui: closed (clip)\n");
 }
 
@@ -198,10 +198,10 @@ void GuiCloseAllUserWindows(void) {
     int i;
 
     for (i = MAX_WINS - 1; i >= 0; i--) {
-        if (gWindows[i].Closing) {
+        if (gGuiWindowManager.Windows[i].Closing) {
             continue;
         }
-        if (gWindows[i].Active && gWindows[i].Kind == GUI_WIN_USER) {
+        if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
             CloseWindow(i);
         }
     }
@@ -219,7 +219,7 @@ void GuiWaitNoWindowClosing(void) {
         int Busy = 0;
 
         for (i = 0; i < MAX_WINS; i++) {
-            if (gWindows[i].Closing) {
+            if (gGuiWindowManager.Windows[i].Closing) {
                 Busy = 1;
                 break;
             }

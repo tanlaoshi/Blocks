@@ -24,8 +24,8 @@ int GuiResizeEdgeAt(const GUI_WINDOW *W, UINT32 X, UINT32 Y) {
      * USER 底栏按钮与南/东南热区重叠（Bh=36、RESIZE_HOT=16）。
      * 按钮上须保持箭头并可点，勿抢成 RESIZE_S（竖线）/改大小。
      */
-    Idx = (int)(W - gWindows);
-    if (Idx >= 0 && Idx < MAX_WINS && W == &gWindows[Idx] &&
+    Idx = (int)(W - gGuiWindowManager.Windows);
+    if (Idx >= 0 && Idx < MAX_WINS && W == &gGuiWindowManager.Windows[Idx] &&
         W->Kind == GUI_WIN_USER && UserButtonHit(Idx, X, Y) >= 0) {
         return RESIZE_EDGE_NONE;
     }
@@ -53,8 +53,8 @@ int GuiResizeCursorKindAt(UINT32 X, UINT32 Y) {
     int Edge;
     int Top;
 
-    if (gResizeWin >= 0) {
-        Edge = gResizeEdge;
+    if (gGuiWindowManager.ResizeWin >= 0) {
+        Edge = gGuiWindowManager.ResizeEdge;
     } else {
         if (DesktopStartMenuIsOpen()) {
             return CURSOR_KIND_ARROW;
@@ -63,7 +63,7 @@ int GuiResizeCursorKindAt(UINT32 X, UINT32 Y) {
         if (Top < 0) {
             return CURSOR_KIND_ARROW;
         }
-        Edge = GuiResizeEdgeAt(&gWindows[Top], X, Y);
+        Edge = GuiResizeEdgeAt(&gGuiWindowManager.Windows[Top], X, Y);
     }
     if (Edge == RESIZE_EDGE_SE) {
         return CURSOR_KIND_RESIZE_SE;

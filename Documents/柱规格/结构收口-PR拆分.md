@@ -117,6 +117,7 @@
 | 9 | **PR-STRUCT-bot** | CBW、数据、CSW 的公共部分收成一份，xHCI 与 EHCI 都调它，底下走已经存在的 `BulkOn` / `Control`。xHCI 的互斥和 EHCI 的 Clear Halt 留在各自文件 | 扇区命令、sense 的时机、锁的范围 | `build.sh`。QEMU 默认盘是 AHCI，本刀不靠 U 盘冒烟证明容量；用一份与现在字节相同的 CBW/CSW 对照 |
 | 10 | **PR-STRUCT-hub** | 对照 `XHCI/Hub.c` 与 `Ehci/Hub.c`。只抽出两边请求字节相同的标准 Hub 请求。队列、门铃、调度留下。若对照后相同部分不到一个小文件，就停，不硬抽 | 把两个主机控制器并成一个 | `build.sh`。抽出的请求与搬之前逐字节相同 |
 | 11 | **PR-STRUCT-ip** | `HAL/X64/Drivers/Net/NetRx.c` 与 `HAL/Virt/VirtioNet/VirtioNetRx.c` 里从以太网头拆到 ICMP/UDP/TCP 的那段收成一个函数，两处收包都调它。MMIO 与 PCI virtio 仍是两份驱动 | 删教学 TCP、改 lwIP 的套接字、改 IP 地址 | 三架构 `build.sh`。分发条件与现在两个文件一致，包括「目的地址不是本机就丢」 |
+| 11A | **PR-STRUCT-cjk-size** | NUC 实机切中文后笔画发虚（2026-10-18）。原因是 `FontTtfRaster.c` 把汉字先放大再钳进 18×18 灰格。这一刀让汉字按更大的像素栅格画，不再钳回 18。英文仍走原来的点阵。缺字回落、同一行里汉字和 ASCII 各走各的宽度，留给后面的 CJK 刀 | 英文点阵、语言字符串、哪些码点有字 | 三架构 `build.sh`。NUC 上 `lang zh` 笔画比现在的 18 格清楚 |
 | 12 | **PR-STRUCT-gui-state** | `Include/Services/GuiPrivate.h` 里大约 58 个 `extern` 收成窗口管理器拥有的一块状态。拖动、光标、焦点通过这一个对象访问。绘制公式不改 | 应用窗口不再看见这块状态（下一刀） | `build.sh` + `smoke-boot.sh`。拖动、缩放、光标跟现在一样 |
 | 13 | **PR-STRUCT-gui-apps** | `TtyUiPrivate.h`、`DevicesUiPrivate.h`、`StoreUiPrivate.h` 不再包含 `GuiPrivate.h`。这些窗口只包含 `Gui.h`，需要的窗口矩形通过公开函数拿 | 窗口外观 | `build.sh` + `smoke-boot.sh` |
 | 14 | **PR-STRUCT-hal** | 把 `Hal.h` 里的平台、RTC、xHCI 回退地址、PAT、端口、页表、中断按现有 `.c` 拆成多个头。`Hal.h` 仍然包含它们，所以这一刀调用点可以不改 | 删掉 `Hal.h`、改函数语义 | 三架构 `build.sh`。`Hal.h` 的声明集合与拆之前相同 |
@@ -144,6 +145,7 @@ PR-STRUCT-early
   → PR-STRUCT-bot
   → PR-STRUCT-hub
   → PR-STRUCT-ip
+  → PR-STRUCT-cjk-size
   → PR-STRUCT-gui-state
   → PR-STRUCT-gui-apps
   → PR-STRUCT-hal

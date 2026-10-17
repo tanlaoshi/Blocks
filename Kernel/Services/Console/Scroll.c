@@ -182,7 +182,7 @@ int ConsoleSbHasContent(void) {
     return (gSbCount > 0 || gAccLen > 0) ? 1 : 0;
 }
 
-void ConsoleOnWheel(INT8 Wheel) {
+static void OnWheel(INT8 Wheel) {
     UINT32 Cx;
     UINT32 Cy;
     UINT32 Cw;
@@ -209,4 +209,8 @@ void ConsoleOnWheel(INT8 Wheel) {
     /* 正滚轮 = 看更早的行 → 增大 gViewOff */
     MaxOff = ConsoleSbMaxOff(Vis);
     ConsoleSbSetViewOff(gViewOff + (int)Wheel, MaxOff);
+}
+
+void ConsolePublishScroll(CONSOLE_OPS *Ops) {
+    Ops->OnWheel = OnWheel;
 }

@@ -13,13 +13,13 @@ static void CommandRunuser(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
     if (ProcessRunDemo() == 0) {
-        ConsoleWaitPrompt();
+        gConsole.WaitPrompt();
     }
 }
 
 static void CommandExec(int Argc, char **Argv) {
     if (Argc < 2) {
-        ConsoleWrite("usage: exec <file>\n");
+        gConsole.Write("usage: exec <file>\n");
         return;
     }
     /*
@@ -27,11 +27,11 @@ static void CommandExec(int Argc, char **Argv) {
      * virt 协作排空：exec 返回时进程已结束，立刻 ShowPrompt 还原。
      */
     if (!HalPlatformIsVirtSerialConsole()) {
-        ConsoleWaitPrompt();
+        gConsole.WaitPrompt();
     }
     if (ProcessExec(Argv[1]) != 0) {
         if (!HalPlatformIsVirtSerialConsole()) {
-            ConsoleShowPrompt();
+            gConsole.ShowPrompt();
         }
         return;
     }
@@ -49,49 +49,49 @@ static void CommandPs(int Argc, char **Argv) {
         if (!T) {
             continue;
         }
-        ConsoleWrite("  pid=");
-        ConsoleWriteHex32((UINT32)(i + 1));
-        ConsoleWrite(" ");
-        ConsoleWrite(T->Name);
+        gConsole.Write("  pid=");
+        gConsole.WriteHex32((UINT32)(i + 1));
+        gConsole.Write(" ");
+        gConsole.Write(T->Name);
         if (T->IsUser) {
-            ConsoleWrite(" user");
+            gConsole.Write(" user");
         } else {
-            ConsoleWrite(" kern");
+            gConsole.Write(" kern");
         }
         if (T->State == TASK_ZOMBIE) {
-            ConsoleWrite(" zombie");
+            gConsole.Write(" zombie");
         } else if (T->State == TASK_BLOCKED) {
-            ConsoleWrite(" blocked");
+            gConsole.Write(" blocked");
         }
-        ConsoleWrite(" root=");
-        ConsoleWriteHex64(T->PageRoot);
-        ConsoleWrite(" rip=");
-        ConsoleWriteHex64(SchedulerTaskRip(T));
-        ConsoleWrite(" ticks=");
-        ConsoleWriteHex32(T->Ticks);
-        ConsoleWrite(" cpu=");
-        ConsoleWriteHex32((UINT32)T->OnCpu);
-        ConsoleWrite(" home=");
-        ConsoleWriteHex32((UINT32)T->HomeCpu);
-        ConsoleWrite(" prio=");
+        gConsole.Write(" root=");
+        gConsole.WriteHex64(T->PageRoot);
+        gConsole.Write(" rip=");
+        gConsole.WriteHex64(SchedulerTaskRip(T));
+        gConsole.Write(" ticks=");
+        gConsole.WriteHex32(T->Ticks);
+        gConsole.Write(" cpu=");
+        gConsole.WriteHex32((UINT32)T->OnCpu);
+        gConsole.Write(" home=");
+        gConsole.WriteHex32((UINT32)T->HomeCpu);
+        gConsole.Write(" prio=");
         if (T->Priority < 0) {
-            ConsoleWrite("-");
-            ConsoleWriteHex32((UINT32)(-T->Priority));
+            gConsole.Write("-");
+            gConsole.WriteHex32((UINT32)(-T->Priority));
         } else {
-            ConsoleWriteHex32((UINT32)T->Priority);
+            gConsole.WriteHex32((UINT32)T->Priority);
         }
         if (SchedulerCurrent() == T) {
-            ConsoleWrite(" *");
+            gConsole.Write(" *");
         }
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
-    ConsoleWrite("cpu ticks=");
-    ConsoleWriteHex64(HalCpuTicks(0));
-    ConsoleWrite(" worker loops=");
-    ConsoleWriteHex32(WorkerLoopCount());
-    ConsoleWrite(" steals=");
-    ConsoleWriteHex64(SchedulerStealCount());
-    ConsoleWrite("\n");
+    gConsole.Write("cpu ticks=");
+    gConsole.WriteHex64(HalCpuTicks(0));
+    gConsole.Write(" worker loops=");
+    gConsole.WriteHex32(WorkerLoopCount());
+    gConsole.Write(" steals=");
+    gConsole.WriteHex64(SchedulerStealCount());
+    gConsole.Write("\n");
 }
 
 static int ParseDecInt(const char *S, INT32 *Out) {
@@ -123,32 +123,32 @@ static void CommandSetPriority(int Argc, char **Argv) {
     INT32 Priority = 0;
 
     if (Argc < 3) {
-        ConsoleWrite("usage: set priority <pid> <prio>\n");
-        ConsoleWrite("  prio: -128..127 (higher runs sooner; shell/gui default 8)\n");
+        gConsole.Write("usage: set priority <pid> <prio>\n");
+        gConsole.Write("  prio: -128..127 (higher runs sooner; shell/gui default 8)\n");
         return;
     }
     if (ParseDecInt(Argv[1], &Pid) != 0 || Pid <= 0) {
-        ConsoleWrite("set priority: bad pid\n");
+        gConsole.Write("set priority: bad pid\n");
         return;
     }
     if (ParseDecInt(Argv[2], &Priority) != 0) {
-        ConsoleWrite("set priority: bad prio\n");
+        gConsole.Write("set priority: bad prio\n");
         return;
     }
     if (SchedulerSetPriority(Pid, Priority) != 0) {
-        ConsoleWrite("set priority: fail\n");
+        gConsole.Write("set priority: fail\n");
         return;
     }
-    ConsoleWrite("set priority: pid=");
-    ConsoleWriteHex32((UINT32)Pid);
-    ConsoleWrite(" prio=");
+    gConsole.Write("set priority: pid=");
+    gConsole.WriteHex32((UINT32)Pid);
+    gConsole.Write(" prio=");
     if (Priority < 0) {
-        ConsoleWrite("-");
-        ConsoleWriteHex32((UINT32)(-Priority));
+        gConsole.Write("-");
+        gConsole.WriteHex32((UINT32)(-Priority));
     } else {
-        ConsoleWriteHex32((UINT32)Priority);
+        gConsole.WriteHex32((UINT32)Priority);
     }
-    ConsoleWrite("\n");
+    gConsole.Write("\n");
 }
 
 /* PR-P4：kill <pid> [sig]；pid 与 ps / fork 一致（槽位+1）；默认 SIGTERM */
@@ -157,47 +157,47 @@ static void CommandKill(int Argc, char **Argv) {
     INT32 Sig = SIGTERM;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: kill <pid> [sig]\n");
-        ConsoleWrite("  sig: 2=INT 9=KILL 15=TERM (default)\n");
+        gConsole.Write("usage: kill <pid> [sig]\n");
+        gConsole.Write("  sig: 2=INT 9=KILL 15=TERM (default)\n");
         return;
     }
     if (ParseDecInt(Argv[1], &Pid) != 0 || Pid <= 0) {
-        ConsoleWrite("kill: bad pid\n");
+        gConsole.Write("kill: bad pid\n");
         return;
     }
     if (Argc >= 3) {
         if (ParseDecInt(Argv[2], &Sig) != 0) {
-            ConsoleWrite("kill: bad sig\n");
+            gConsole.Write("kill: bad sig\n");
             return;
         }
     }
     if (SchedulerKillPid(Pid, Sig) != 0) {
-        ConsoleWrite("kill: failed (user only; INT/KILL/TERM)\n");
+        gConsole.Write("kill: failed (user only; INT/KILL/TERM)\n");
         return;
     }
-    ConsoleWrite("kill: ok\n");
+    gConsole.Write("kill: ok\n");
 }
 
 void ShellCommandsSystemProcRegisterVirtMin(void) {
-    ConsoleRegister2("list", "tasks", "list tasks", CommandPs);
-    ConsoleRegisterAliasLine("ps", "list", "tasks");
-    ConsoleRegister("execute", "load ELF (TOYOS:FILE)", CommandExec);
-    ConsoleRegisterAlias("execute", "exec");
-    ConsoleRegister("kill", "signal user task (PR-P4)", CommandKill);
+    gConsole.Register2("list", "tasks", "list tasks", CommandPs);
+    gConsole.RegisterAliasLine("ps", "list", "tasks");
+    gConsole.Register("execute", "load ELF (TOYOS:FILE)", CommandExec);
+    gConsole.RegisterAlias("execute", "exec");
+    gConsole.Register("kill", "signal user task (PR-P4)", CommandKill);
 }
 
 void ShellCommandsSystemProcRegister(void) {
-    ConsoleRegister2("list", "tasks", "list tasks", CommandPs);
-    ConsoleRegisterAliasLine("ps", "list", "tasks");
-    ConsoleRegisterAliasLine("tasks", "list", "tasks");
+    gConsole.Register2("list", "tasks", "list tasks", CommandPs);
+    gConsole.RegisterAliasLine("ps", "list", "tasks");
+    gConsole.RegisterAliasLine("tasks", "list", "tasks");
 
-    ConsoleRegister2("run", "user", "run embedded hello ELF", CommandRunuser);
-    ConsoleRegisterAliasLine("runuser", "run", "user");
+    gConsole.Register2("run", "user", "run embedded hello ELF", CommandRunuser);
+    gConsole.RegisterAliasLine("runuser", "run", "user");
 
-    ConsoleRegister2("set", "priority", "set priority <pid> <prio>", CommandSetPriority);
-    ConsoleRegisterAliasLine("nice", "set", "priority");
+    gConsole.Register2("set", "priority", "set priority <pid> <prio>", CommandSetPriority);
+    gConsole.RegisterAliasLine("nice", "set", "priority");
 
-    ConsoleRegister("execute", "load ELF (TOYOS:FILE / A:FILE)", CommandExec);
-    ConsoleRegisterAlias("execute", "exec");
-    ConsoleRegister("kill", "signal user task (PR-P4)", CommandKill);
+    gConsole.Register("execute", "load ELF (TOYOS:FILE / A:FILE)", CommandExec);
+    gConsole.RegisterAlias("execute", "exec");
+    gConsole.Register("kill", "signal user task (PR-P4)", CommandKill);
 }

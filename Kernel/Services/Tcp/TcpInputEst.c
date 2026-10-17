@@ -49,7 +49,7 @@ static int TcpInputData(UINT32 Seq, const UINT8 *Data, UINTN DataLen) {
         /* 回显：直接发送（不经 snd_buf，避免与 snd_una 序号错位） */
         if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, Data, DataLen,
                            gSndNxt, gRcvNxt) != 0) {
-            ConsoleWrite("tcp: echo send failed\n");
+            gConsole.Write("tcp: echo send failed\n");
             DebugWrite("tcp: echo send failed\n");
             return 0;
         }
@@ -75,7 +75,7 @@ static int TcpInputData(UINT32 Seq, const UINT8 *Data, UINTN DataLen) {
             }
             Buf[Pos++] = '\n';
             Buf[Pos] = 0;
-            ConsoleNotify(Buf);
+            gConsole.Notify(Buf);
         }
     }
     return 1;

@@ -40,20 +40,20 @@ int FindCommandIndex(const char *Name) {
 static void PrintLevel1Usage(const COMMAND *Cmd) {
     int s;
 
-    ConsoleWrite("usage: ");
-    ConsoleWrite(Cmd->Name);
-    ConsoleWrite(" <");
+    gConsole.Write("usage: ");
+    gConsole.Write(Cmd->Name);
+    gConsole.Write(" <");
     for (s = 0; s < Cmd->SubCount; s++) {
         if (s > 0) {
-            ConsoleWrite("|");
+            gConsole.Write("|");
         }
-        ConsoleWrite(Cmd->Subs[s].Name);
+        gConsole.Write(Cmd->Subs[s].Name);
     }
-    ConsoleWrite("> ...\n");
+    gConsole.Write("> ...\n");
 }
 
 /* 注册一条仅一级的 Shell 命令（名称、帮助、处理函数） */
-void ConsoleRegister(const char *Name, const char *Help,
+static void Register(const char *Name, const char *Help,
                      void (*Handler)(int Argc, char **Argv)) {
     int Idx;
 
@@ -81,7 +81,7 @@ void ConsoleRegister(const char *Name, const char *Help,
 }
 
 /* 注册一级+二级；同一一级可多次调用追加二级 */
-void ConsoleRegister2(const char *Level1, const char *Level2, const char *Help,
+static void Register2(const char *Level1, const char *Level2, const char *Help,
                       void (*Handler)(int Argc, char **Argv)) {
     int Idx;
     int s;
@@ -128,7 +128,7 @@ void ConsoleRegister2(const char *Level1, const char *Level2, const char *Help,
     gCommands[Idx].SubCount++;
 }
 
-void ConsoleRegisterAlias(const char *CanonicalLevel1, const char *Alias) {
+static void RegisterAlias(const char *CanonicalLevel1, const char *Alias) {
     if (CanonicalLevel1 == 0 || Alias == 0) {
         return;
     }
@@ -142,7 +142,7 @@ void ConsoleRegisterAlias(const char *CanonicalLevel1, const char *Alias) {
     gAliasCount++;
 }
 
-void ConsoleRegisterAliasLine(const char *Alias, const char *Level1,
+static void RegisterAliasLine(const char *Alias, const char *Level1,
                               const char *Level2) {
     if (Alias == 0 || Level1 == 0 || Level2 == 0) {
         return;
@@ -215,7 +215,7 @@ void ConsoleRunLine(void) {
     WorkArgc = 0;
     if (UaPtr != 0 && UaPtr->Level2[0] != 0) {
         if (Argc + 1 > ARG_MAX) {
-            ConsoleWrite("too many args\n");
+            gConsole.Write("too many args\n");
             return;
         }
         Work[WorkArgc++] = (char *)UaPtr->Level1;
@@ -225,7 +225,7 @@ void ConsoleRunLine(void) {
         }
     } else if (Al != 0 && Al->Level2 != 0) {
         if (Argc + 1 > ARG_MAX) {
-            ConsoleWrite("too many args\n");
+            gConsole.Write("too many args\n");
             return;
         }
         Work[WorkArgc++] = (char *)Al->Level1;
@@ -247,9 +247,9 @@ void ConsoleRunLine(void) {
 
     Idx = FindCommandIndex(Work[0]);
     if (Idx < 0) {
-        ConsoleWrite("unknown: ");
-        ConsoleWrite(Work[0]);
-        ConsoleWrite("  (help)\n");
+        gConsole.Write("unknown: ");
+        gConsole.Write(Work[0]);
+        gConsole.Write("  (help)\n");
         return;
     }
 
@@ -280,7 +280,14 @@ void ConsoleRunLine(void) {
         gCommands[Idx].Handler(WorkArgc, Work);
         return;
     }
-    ConsoleWrite("unknown: ");
-    ConsoleWrite(Work[0]);
-    ConsoleWrite("  (help)\n");
+    gConsole.Write("unknown: ");
+    gConsole.Write(Work[0]);
+    gConsole.Write("  (help)\n");
+}
+
+void ConsolePublishCommand(CONSOLE_OPS *Ops) {
+    Ops->Register = Register;
+    Ops->Register2 = Register2;
+    Ops->RegisterAlias = RegisterAlias;
+    Ops->RegisterAliasLine = RegisterAliasLine;
 }

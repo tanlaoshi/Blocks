@@ -10,10 +10,10 @@
 #include "Console.h"
 
 void ShellFatReport(const char *Cmd, int Err) {
-    ConsoleWrite(Cmd);
-    ConsoleWrite(": ");
-    ConsoleWrite(FatStrError(Err));
-    ConsoleWrite("\n");
+    gConsole.Write(Cmd);
+    gConsole.Write(": ");
+    gConsole.Write(FatStrError(Err));
+    gConsole.Write("\n");
 }
 
 static void CommandLs(int Argc, char **Argv) {
@@ -30,7 +30,7 @@ static void CommandCat(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: cat <file>\n");
+        gConsole.Write("usage: cat <file>\n");
         return;
     }
     Err = FileSystemReadFile(Argv[1], Buf, sizeof(Buf) - 1, &Size);
@@ -39,9 +39,9 @@ static void CommandCat(int Argc, char **Argv) {
         return;
     }
     Buf[Size] = 0;
-    ConsoleWrite((const char *)Buf);
+    gConsole.Write((const char *)Buf);
     if (Size > 0 && Buf[Size - 1] != '\n') {
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
 }
 
@@ -53,7 +53,7 @@ static void CommandWrite(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 3) {
-        ConsoleWrite("usage: write <file> <text...>\n");
+        gConsole.Write("usage: write <file> <text...>\n");
         return;
     }
     for (a = 2; a < Argc; a++) {
@@ -78,16 +78,16 @@ static void CommandWrite(int Argc, char **Argv) {
         ShellFatReport("write", Err);
         return;
     }
-    ConsoleWrite("write: ok ");
-    ConsoleWriteHex32((UINT32)Len);
-    ConsoleWrite(" bytes\n");
+    gConsole.Write("write: ok ");
+    gConsole.WriteHex32((UINT32)Len);
+    gConsole.Write(" bytes\n");
 }
 
 static void CommandRm(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: rm <file>\n");
+        gConsole.Write("usage: rm <file>\n");
         return;
     }
     Err = FileSystemDeleteFile(Argv[1]);
@@ -95,14 +95,14 @@ static void CommandRm(int Argc, char **Argv) {
         ShellFatReport("rm", Err);
         return;
     }
-    ConsoleWrite("rm: ok\n");
+    gConsole.Write("rm: ok\n");
 }
 
 static void CommandMkdir(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: mkdir <dir>\n");
+        gConsole.Write("usage: mkdir <dir>\n");
         return;
     }
     /* PR-S-bundle-fs：mkdir 走 MakePath，支持 Apps/id/Assets 多级 */
@@ -111,14 +111,14 @@ static void CommandMkdir(int Argc, char **Argv) {
         ShellFatReport("mkdir", Err);
         return;
     }
-    ConsoleWrite("mkdir: ok\n");
+    gConsole.Write("mkdir: ok\n");
 }
 
 static void CommandRmdir(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: rmdir <dir> | rmdir -r <dir>\n");
+        gConsole.Write("usage: rmdir <dir> | rmdir -r <dir>\n");
         return;
     }
     if (Argc >= 3 && Argv[1][0] == '-' && Argv[1][1] == 'r' && Argv[1][2] == 0) {
@@ -130,14 +130,14 @@ static void CommandRmdir(int Argc, char **Argv) {
         ShellFatReport("rmdir", Err);
         return;
     }
-    ConsoleWrite("rmdir: ok\n");
+    gConsole.Write("rmdir: ok\n");
 }
 
 static void CommandMv(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 3) {
-        ConsoleWrite("usage: mv <old> <new>\n");
+        gConsole.Write("usage: mv <old> <new>\n");
         return;
     }
     Err = FileSystemRename(Argv[1], Argv[2]);
@@ -145,35 +145,35 @@ static void CommandMv(int Argc, char **Argv) {
         ShellFatReport("mv", Err);
         return;
     }
-    ConsoleWrite("mv: ok\n");
+    gConsole.Write("mv: ok\n");
 }
 
 void ShellCommandsRegisterFs(void) {
     /* list：默认列目录；二级 tasks/devices 已由 ShellCommandsRegister 挂上 */
-    ConsoleRegister("list", "list directory (TOYOS: / A: / RES:)", CommandLs);
-    ConsoleRegisterAlias("list", "ls");
-    ConsoleRegisterAlias("list", "dir");
+    gConsole.Register("list", "list directory (TOYOS: / A: / RES:)", CommandLs);
+    gConsole.RegisterAlias("list", "ls");
+    gConsole.RegisterAlias("list", "dir");
 
-    ConsoleRegister("print", "print file", CommandCat);
-    ConsoleRegisterAlias("print", "cat");
-    ConsoleRegisterAlias("print", "type");
+    gConsole.Register("print", "print file", CommandCat);
+    gConsole.RegisterAlias("print", "cat");
+    gConsole.RegisterAlias("print", "type");
 
-    ConsoleRegister("write", "write file text", CommandWrite);
+    gConsole.Register("write", "write file text", CommandWrite);
 
-    ConsoleRegister2("make", "directory", "create directory", CommandMkdir);
-    ConsoleRegisterAliasLine("mkdir", "make", "directory");
-    ConsoleRegisterAliasLine("md", "make", "directory");
+    gConsole.Register2("make", "directory", "create directory", CommandMkdir);
+    gConsole.RegisterAliasLine("mkdir", "make", "directory");
+    gConsole.RegisterAliasLine("md", "make", "directory");
 
-    ConsoleRegister("remove", "remove file or empty dir", CommandRm);
-    ConsoleRegister2("remove", "directory", "remove empty directory", CommandRmdir);
-    ConsoleRegisterAlias("remove", "rm");
-    ConsoleRegisterAlias("remove", "del");
-    ConsoleRegisterAliasLine("rmdir", "remove", "directory");
-    ConsoleRegisterAliasLine("rd", "remove", "directory");
+    gConsole.Register("remove", "remove file or empty dir", CommandRm);
+    gConsole.Register2("remove", "directory", "remove empty directory", CommandRmdir);
+    gConsole.RegisterAlias("remove", "rm");
+    gConsole.RegisterAlias("remove", "del");
+    gConsole.RegisterAliasLine("rmdir", "remove", "directory");
+    gConsole.RegisterAliasLine("rd", "remove", "directory");
 
-    ConsoleRegister("move", "rename/move file or dir", CommandMv);
-    ConsoleRegisterAlias("move", "mv");
-    ConsoleRegisterAlias("move", "rename");
+    gConsole.Register("move", "rename/move file or dir", CommandMv);
+    gConsole.RegisterAlias("move", "mv");
+    gConsole.RegisterAlias("move", "rename");
 
     ShellCommandsFsExtraRegister();
     ShellCommandsInstallRegister();

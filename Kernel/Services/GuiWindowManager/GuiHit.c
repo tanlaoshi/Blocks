@@ -106,8 +106,8 @@ void RaiseWindow(int Idx) {
             ShiftWinBackupsUp(Idx, Top);
         }
         /* Shell scrollback / dhcp Job 窗号随槽位挪，否则多 Shell 内容串台 */
-        ConsoleSbShiftRaise(Idx, Top);
-        ConsoleJobShiftRaise(Idx, Top);
+        gConsole.SbShiftRaise(Idx, Top);
+        gConsole.JobShiftRaise(Idx, Top);
         gFocusWin = Top;
     }
 }

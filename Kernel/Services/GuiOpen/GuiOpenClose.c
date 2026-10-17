@@ -38,7 +38,7 @@ void CloseWindow(int Idx) {
     gWindows[Idx].Closing = 1;
     WasUser = (gWindows[Idx].Kind == GUI_WIN_USER);
     if (gWindows[Idx].Kind == GUI_WIN_SHELL) {
-        ConsoleSbWinForget(Idx);
+        gConsole.SbWinForget(Idx);
     }
     if (gWindows[Idx].Kind == GUI_WIN_TTY) {
         TtyUiClose();
@@ -166,7 +166,7 @@ void CloseWindow(int Idx) {
         }
         TaskbarGeom(&BarY, &Sw, &Sh);
         /*
-         * Shell ConsoleWrite 常留下客户区 clip。DesktopFillRect 走 WriteRect
+         * Shell gConsole.Write 常留下客户区 clip。DesktopFillRect 走 WriteRect
          *（无视 clip）先擦掉整条栏，而 DrawTaskbarRaw 的 Fill/Alpha 受 clip
          * → 栏没了（与 DesktopTickClock 同坑，见 Desktop.c）。
          */

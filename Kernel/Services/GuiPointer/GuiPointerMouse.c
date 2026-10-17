@@ -176,7 +176,7 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
         if (GuiFocusKind() == GUI_WIN_FILES) {
             FilesUiOnWheel(Mouse->Wheel);
         } else if (GuiFocusKind() == GUI_WIN_SHELL) {
-            ConsoleOnWheel(Mouse->Wheel);
+            gConsole.OnWheel(Mouse->Wheel);
         }
     }
     gMousePrevBtn = Mouse->Buttons;

@@ -98,20 +98,20 @@ static int UserAliasSet(const char *Alias, const char *Level1,
     const char *L2 = Level2;
 
     if (Alias == 0 || Alias[0] == 0 || Level1 == 0 || Level1[0] == 0) {
-        ConsoleWrite("alias: bad name\n");
+        gConsole.Write("alias: bad name\n");
         return -1;
     }
     if (L2 != 0 && L2[0] == 0) {
         L2 = 0;
     }
     if (!AliasTargetOk(Level1, L2)) {
-        ConsoleWrite("alias: unknown target\n");
+        gConsole.Write("alias: unknown target\n");
         return -1;
     }
     Idx = FindUserAliasIndex(Alias);
     if (Idx < 0) {
         if (gUserAliasCount >= USER_ALIAS_MAX) {
-            ConsoleWrite("alias: table full\n");
+            gConsole.Write("alias: table full\n");
             return -1;
         }
         Idx = gUserAliasCount++;
@@ -124,7 +124,7 @@ static int UserAliasSet(const char *Alias, const char *Level1,
         gUserAliases[Idx].Level2[0] = 0;
     }
     if (UserAliasPersist(Alias, Level1, L2, 0) != DB_OK) {
-        ConsoleWrite("alias: set (memory only; db save failed)\n");
+        gConsole.Write("alias: set (memory only; db save failed)\n");
     }
     return 0;
 }
@@ -135,7 +135,7 @@ static int UserAliasRemove(const char *Alias) {
 
     Idx = FindUserAliasIndex(Alias);
     if (Idx < 0) {
-        ConsoleWrite("alias: not found\n");
+        gConsole.Write("alias: not found\n");
         return -1;
     }
     (void)UserAliasPersist(Alias, 0, 0, 1);
@@ -192,7 +192,7 @@ static int UserAliasLoadCb(const char *Key, const char *Value, void *Ctx) {
     return 0;
 }
 
-void ConsoleUserAliasLoad(void) {
+static void UserAliasLoad(void) {
     gUserAliasCount = 0;
     (void)DbForEach(UserAliasLoadCb, 0);
 }
@@ -208,20 +208,20 @@ void CommandAlias(int Argc, char **Argv) {
 
     if (Argc < 2) {
         if (gUserAliasCount == 0) {
-            ConsoleWrite("alias: (none)  usage: alias <name> <cmd> [sub]\n");
-            ConsoleWrite("  or alias name=cmd [sub]; unalias <name>\n");
+            gConsole.Write("alias: (none)  usage: alias <name> <cmd> [sub]\n");
+            gConsole.Write("  or alias name=cmd [sub]; unalias <name>\n");
             return;
         }
         for (i = 0; i < gUserAliasCount; i++) {
-            ConsoleWrite("  ");
-            ConsoleWrite(gUserAliases[i].Alias);
-            ConsoleWrite("=");
-            ConsoleWrite(gUserAliases[i].Level1);
+            gConsole.Write("  ");
+            gConsole.Write(gUserAliases[i].Alias);
+            gConsole.Write("=");
+            gConsole.Write(gUserAliases[i].Level1);
             if (gUserAliases[i].Level2[0]) {
-                ConsoleWrite(" ");
-                ConsoleWrite(gUserAliases[i].Level2);
+                gConsole.Write(" ");
+                gConsole.Write(gUserAliases[i].Level2);
             }
-            ConsoleWrite("\n");
+            gConsole.Write("\n");
         }
         return;
     }
@@ -255,20 +255,20 @@ void CommandAlias(int Argc, char **Argv) {
             CopyWord(L2, USER_ALIAS_WORD, Argv[2]);
         }
         if (L1[0] == 0) {
-            ConsoleWrite("usage: alias name=cmd [sub]\n");
+            gConsole.Write("usage: alias name=cmd [sub]\n");
             return;
         }
         if (UserAliasSet(Name, L1, L2[0] ? L2 : 0) == 0) {
-            ConsoleWrite("alias: set ");
-            ConsoleWrite(Name);
-            ConsoleWrite("\n");
+            gConsole.Write("alias: set ");
+            gConsole.Write(Name);
+            gConsole.Write("\n");
         }
         return;
     }
 
     /* alias name l1 [l2] */
     if (Argc < 3) {
-        ConsoleWrite("usage: alias <name> <cmd> [sub]\n");
+        gConsole.Write("usage: alias <name> <cmd> [sub]\n");
         return;
     }
     CopyWord(Name, USER_ALIAS_NAME, Argv[1]);
@@ -278,20 +278,24 @@ void CommandAlias(int Argc, char **Argv) {
         CopyWord(L2, USER_ALIAS_WORD, Argv[3]);
     }
     if (UserAliasSet(Name, L1, L2[0] ? L2 : 0) == 0) {
-        ConsoleWrite("alias: set ");
-        ConsoleWrite(Name);
-        ConsoleWrite("\n");
+        gConsole.Write("alias: set ");
+        gConsole.Write(Name);
+        gConsole.Write("\n");
     }
 }
 
 void CommandUnalias(int Argc, char **Argv) {
     if (Argc < 2) {
-        ConsoleWrite("usage: unalias <name>\n");
+        gConsole.Write("usage: unalias <name>\n");
         return;
     }
     if (UserAliasRemove(Argv[1]) == 0) {
-        ConsoleWrite("alias: removed ");
-        ConsoleWrite(Argv[1]);
-        ConsoleWrite("\n");
+        gConsole.Write("alias: removed ");
+        gConsole.Write(Argv[1]);
+        gConsole.Write("\n");
     }
+}
+
+void ConsolePublishAlias(CONSOLE_OPS *Ops) {
+    Ops->UserAliasLoad = UserAliasLoad;
 }

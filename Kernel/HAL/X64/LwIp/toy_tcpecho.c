@@ -126,7 +126,7 @@ static void EchoLogData(struct pbuf *P) {
     }
     Buf[Pos++] = '\n';
     Buf[Pos] = 0;
-    ConsoleNotify(Buf);
+    gConsole.Notify(Buf);
 }
 
 static err_t EchoRecv(void *Arg, struct tcp_pcb *Tpcb, struct pbuf *P, err_t Err) {
@@ -191,7 +191,7 @@ static err_t EchoAccept(void *Arg, struct tcp_pcb *NewPcb, err_t Err) {
     tcp_err(NewPcb, EchoError);
     tcp_poll(NewPcb, EchoPoll, 0);
     tcp_sent(NewPcb, EchoSent);
-    ConsoleNotify("lwip: client connected\n");
+    gConsole.Notify("lwip: client connected\n");
     return ERR_OK;
 }
 

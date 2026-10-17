@@ -9,6 +9,7 @@
 #define CONSOLE_PRIVATE_H
 
 #include "BootTypes.h"
+#include "Console.h"
 #include "Theme.h"
 
 #define SB_LINES 64
@@ -16,7 +17,7 @@
 
 #define LINE_MAX 128
 #define ARG_MAX  8
-/* builtins+Shell+FS+Db+lwip 已超 32；满表时 ConsoleRegister 静默失败会丢末尾命令（如 lwip） */
+/* builtins+Shell+FS+Db+lwip 已超 32；满表时 gConsole.Register 静默失败会丢末尾命令（如 lwip） */
 #define CMD_MAX  48
 #define SUB_MAX  12
 #define ALIAS_MAX 80
@@ -106,15 +107,25 @@ void ConsoleSbCapture(CONSOLE_SB_STATE *Out);
 void ConsoleSbApply(const CONSOLE_SB_STATE *In);
 void ConsoleSbWinSave(int Idx);
 void ConsoleSbWinLoad(int Idx);
-void ConsoleSbWinForget(int Idx);
 void ConsoleSbWinFeed(int Idx, const char *Text);
 int ConsoleSbWinHasContent(int Idx);
-/* RaiseWindow 挪槽时 scrollback / Job 窗号一并挪 */
-void ConsoleSbShiftRaise(int Idx, int Top);
 void ConsoleSbBindFocus(void);
 void ConsoleSbFeedLiveIfBound(const char *Text);
-int ConsoleJobPromptPending(void);
-void ConsoleJobShiftRaise(int Idx, int Top);
+
+/* 各文件把自己的 static 实现填进 gConsole。InitializeConsole 开头调用。 */
+void ConsolePublishWrite(CONSOLE_OPS *Ops);
+void ConsolePublishInput(CONSOLE_OPS *Ops);
+void ConsolePublishHistory(CONSOLE_OPS *Ops);
+void ConsolePublishSerial(CONSOLE_OPS *Ops);
+void ConsolePublishCommand(CONSOLE_OPS *Ops);
+void ConsolePublishBuiltin(CONSOLE_OPS *Ops);
+void ConsolePublishAlias(CONSOLE_OPS *Ops);
+void ConsolePublishFocus(CONSOLE_OPS *Ops);
+void ConsolePublishShell(CONSOLE_OPS *Ops);
+void ConsolePublishScroll(CONSOLE_OPS *Ops);
+void ConsolePublishScrollbar(CONSOLE_OPS *Ops);
+void ConsolePublishScrollback(CONSOLE_OPS *Ops);
+void ConsolePublishLog(CONSOLE_OPS *Ops);
 /* 视图度量 / 滚动条（Scrollbar.c）；行缓冲读口给 ScrollbackPaint.c */
 int ConsoleSbLineCount(void);
 int ConsoleSbAccLen(void);

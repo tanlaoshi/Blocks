@@ -38,19 +38,19 @@ static void CommandStore(int Argc, char **Argv) {
     if (StoreWordEq(Sub, "repo")) {
         if (Argc >= 3) {
             if (StoreRepoSet(Argv[2]) != 0) {
-                ConsoleWrite("store repo: bad ip:port\n");
+                gConsole.Write("store repo: bad ip:port\n");
                 return;
             }
-            ConsoleWrite("store: repo set\n");
+            gConsole.Write("store: repo set\n");
             return;
         }
         StoreRepoGet(&Ip, &Port);
         HalNetFormatIp(Ip, IpBuf, (int)sizeof(IpBuf));
-        ConsoleWrite("store repo ");
-        ConsoleWrite(IpBuf);
-        ConsoleWrite(":");
-        ConsoleWriteHex32(Port);
-        ConsoleWrite("\n");
+        gConsole.Write("store repo ");
+        gConsole.Write(IpBuf);
+        gConsole.Write(":");
+        gConsole.WriteHex32(Port);
+        gConsole.Write("\n");
         return;
     }
 
@@ -59,10 +59,10 @@ static void CommandStore(int Argc, char **Argv) {
             int Err;
 
             if (StoreJobShellBegin() != 0) {
-                ConsoleWrite("store: busy (Cancel in Store UI, or store job)\n");
+                gConsole.Write("store: busy (Cancel in Store UI, or store job)\n");
                 return;
             }
-            ConsoleWrite("store: syncing catalog...\n");
+            gConsole.Write("store: syncing catalog...\n");
             Err = StoreSyncCatalog();
             StoreJobShellEnd();
             ShellStoreNetDone("sync", Err);
@@ -77,19 +77,19 @@ static void CommandStore(int Argc, char **Argv) {
 
     if (StoreWordEq(Sub, "fetch")) {
         if (Argc < 3) {
-            ConsoleWrite("usage: store fetch <id>\n");
+            gConsole.Write("usage: store fetch <id>\n");
             return;
         }
         if (LwIpActive()) {
             int Err;
 
             if (StoreJobShellBegin() != 0) {
-                ConsoleWrite("store: busy (Cancel in Store UI, or store job)\n");
+                gConsole.Write("store: busy (Cancel in Store UI, or store job)\n");
                 return;
             }
-            ConsoleWrite("store: fetching ");
-            ConsoleWrite(Argv[2]);
-            ConsoleWrite("...\n");
+            gConsole.Write("store: fetching ");
+            gConsole.Write(Argv[2]);
+            gConsole.Write("...\n");
             Err = StoreFetchId(Argv[2]);
             StoreJobShellEnd();
             ShellStoreNetDone("fetch", Err);
@@ -105,10 +105,10 @@ static void CommandStore(int Argc, char **Argv) {
     if (StoreWordEq(Sub, "install") || StoreWordEq(Sub, "combo")) {
         if (Argc < 3) {
             if (StoreWordEq(Sub, "combo")) {
-                ConsoleWrite("usage: store combo <id>\n");
-                ConsoleWrite("hint: e.g. store combo guidemo  (demopack+sun8 then app)\n");
+                gConsole.Write("usage: store combo <id>\n");
+                gConsole.Write("hint: e.g. store combo guidemo  (demopack+sun8 then app)\n");
             } else {
-                ConsoleWrite("usage: store install <id>\n");
+                gConsole.Write("usage: store install <id>\n");
             }
             return;
         }
@@ -124,35 +124,35 @@ static void CommandStore(int Argc, char **Argv) {
         int N = 0;
         Err = StoreListInstalled(Inst, STORE_INSTALLED_MAX, &N);
         if (Err != FAT_OK) {
-            ConsoleWrite("store installed: ");
-            ConsoleWrite(FatStrError(Err));
-            ConsoleWrite("\n");
+            gConsole.Write("store installed: ");
+            gConsole.Write(FatStrError(Err));
+            gConsole.Write("\n");
             return;
         }
-        ConsoleWrite("store installed:\n");
+        gConsole.Write("store installed:\n");
         if (N == 0) {
-            ConsoleWrite("  (none)\n");
+            gConsole.Write("  (none)\n");
             return;
         }
         for (i = 0; i < N; i++) {
             char Dep[64];
-            ConsoleWrite("  ");
-            ConsoleWrite(Inst[i].Id);
-            ConsoleWrite("  ");
-            ConsoleWrite(Inst[i].Type);
-            ConsoleWrite("  ");
-            ConsoleWrite(Inst[i].File);
-            ConsoleWrite("  dep=");
+            gConsole.Write("  ");
+            gConsole.Write(Inst[i].Id);
+            gConsole.Write("  ");
+            gConsole.Write(Inst[i].Type);
+            gConsole.Write("  ");
+            gConsole.Write(Inst[i].File);
+            gConsole.Write("  dep=");
             (void)StoreGetDepends(Inst[i].Id, Dep, (int)sizeof(Dep));
-            ConsoleWrite(Dep);
-            ConsoleWrite("\n");
+            gConsole.Write(Dep);
+            gConsole.Write("\n");
         }
         return;
     }
 
     if (StoreWordEq(Sub, "remove") || StoreWordEq(Sub, "uncombo")) {
         if (Argc < 3) {
-            ConsoleWrite(StoreWordEq(Sub, "uncombo")
+            gConsole.Write(StoreWordEq(Sub, "uncombo")
                              ? "usage: store uncombo <id>\n"
                              : "usage: store remove <id>\n");
             return;
@@ -173,5 +173,5 @@ static void CommandStore(int Argc, char **Argv) {
 }
 
 void ShellCommandsFsUiStoreRegister(void) {
-    ConsoleRegister("store", "store list|install|remove|combo|uncombo|installed|…", CommandStore);
+    gConsole.Register("store", "store list|install|remove|combo|uncombo|installed|…", CommandStore);
 }

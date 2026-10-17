@@ -58,10 +58,10 @@ static void HistReplaceLine(const char *Text, int FromSerial) {
     gReplacing = 1;
     if (!FromSerial && GuiShellAcceptsInput()) {
         while (gLen > 0) {
-            ConsoleOnBackspaceEx(0);
+            gConsole.OnBackspaceEx(0);
         }
         for (i = 0; Src[i] != 0; i++) {
-            ConsoleOnCharEx(Src[i], 0);
+            gConsole.OnCharEx(Src[i], 0);
         }
     } else {
         /* 串口：先 IgnoreRx 再 TX，挡 pty local-echo */
@@ -97,7 +97,7 @@ static void HistReplaceLine(const char *Text, int FromSerial) {
     gReplacing = 0;
 }
 
-void ConsoleHistOnEdit(void) {
+static void HistOnEdit(void) {
     if (gReplacing || gIgnoreRx) {
         return;
     }
@@ -106,19 +106,19 @@ void ConsoleHistOnEdit(void) {
     gAnsi = 0;
 }
 
-int ConsoleHistIsBusy(void) {
+static int HistIsBusy(void) {
     return gReplacing;
 }
 
-int ConsoleHistIgnoreRx(void) {
+static int HistIgnoreRx(void) {
     return gIgnoreRx;
 }
 
-void ConsoleHistClearIgnoreRx(void) {
+static void HistClearIgnoreRx(void) {
     gIgnoreRx = 0;
 }
 
-void ConsoleHistApplyNavToLine(void) {
+static void HistApplyNavToLine(void) {
     int i;
     int P;
 
@@ -143,11 +143,11 @@ void ConsoleHistApplyNavToLine(void) {
     }
 }
 
-void ConsoleHistPushLine(void) {
+static void HistPushLine(void) {
     int P;
     int i;
 
-    /* 调用方须先 ConsoleHistApplyNavToLine */
+    /* 调用方须先 gConsole.HistApplyNavToLine */
     gAnsi = 0;
     gDraftLen = 0;
     if (gLen <= 0) {
@@ -169,11 +169,11 @@ void ConsoleHistPushLine(void) {
     }
 }
 
-void ConsoleOnHistArrow(int Down, int FromSerial) {
+static void OnHistArrow(int Down, int FromSerial) {
     int P;
     int i;
 
-    if (ConsoleStdinUserHold()) {
+    if (gConsole.StdinUserHold()) {
         return;
     }
     if (!HalConsoleOnly() && !GuiShellAcceptsInput() && !FromSerial) {
@@ -216,7 +216,7 @@ void ConsoleOnHistArrow(int Down, int FromSerial) {
     HistReplaceLine(gHist[P], FromSerial);
 }
 
-int ConsoleHistFeedAnsi(char C, int FromSerial) {
+static int HistFeedAnsi(char C, int FromSerial) {
     if (gAnsi == 0) {
         if (C == 0x1B) {
             gAnsi = 1;
@@ -234,20 +234,32 @@ int ConsoleHistFeedAnsi(char C, int FromSerial) {
     }
     gAnsi = 0;
     if (C == 'A') {
-        ConsoleOnHistArrow(0, FromSerial);
+        gConsole.OnHistArrow(0, FromSerial);
         return 1;
     }
     if (C == 'B') {
-        ConsoleOnHistArrow(1, FromSerial);
+        gConsole.OnHistArrow(1, FromSerial);
         return 1;
     }
     return 1;
 }
 
-void ConsoleOnHistHid(UINT8 Key, int FromSerial) {
+static void OnHistHid(UINT8 Key, int FromSerial) {
     if (Key == HID_KEY_UP) {
-        ConsoleOnHistArrow(0, FromSerial);
+        gConsole.OnHistArrow(0, FromSerial);
     } else if (Key == HID_KEY_DOWN) {
-        ConsoleOnHistArrow(1, FromSerial);
+        gConsole.OnHistArrow(1, FromSerial);
     }
+}
+
+void ConsolePublishHistory(CONSOLE_OPS *Ops) {
+    Ops->OnHistArrow = OnHistArrow;
+    Ops->OnHistHid = OnHistHid;
+    Ops->HistFeedAnsi = HistFeedAnsi;
+    Ops->HistPushLine = HistPushLine;
+    Ops->HistApplyNavToLine = HistApplyNavToLine;
+    Ops->HistOnEdit = HistOnEdit;
+    Ops->HistIsBusy = HistIsBusy;
+    Ops->HistIgnoreRx = HistIgnoreRx;
+    Ops->HistClearIgnoreRx = HistClearIgnoreRx;
 }

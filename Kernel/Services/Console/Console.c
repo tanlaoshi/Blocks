@@ -32,17 +32,17 @@ static int gStdinR;
 static int gStdinW;
 static int gStdinN;
 
-int ConsoleStdinUserHold(void) {
+static int StdinUserHold(void) {
     return gWaitPrompt > 0 || SchedulerLiveUserApps();
 }
 
-void ConsoleStdinFlush(void) {
+static void StdinFlush(void) {
     gStdinR = 0;
     gStdinW = 0;
     gStdinN = 0;
 }
 
-void ConsoleStdinPut(char C) {
+static void StdinPut(char C) {
     if (gStdinN >= STDIN_Q_CAP) {
         return;
     }
@@ -54,7 +54,7 @@ void ConsoleStdinPut(char C) {
     gStdinN++;
 }
 
-char ConsoleStdinGetChar(void) {
+static char StdinGetChar(void) {
     for (;;) {
         if (gStdinN > 0) {
             char C = gStdinQ[gStdinR];
@@ -72,7 +72,7 @@ char ConsoleStdinGetChar(void) {
     }
 }
 
-void ConsoleAnnounceBootReady(void) {
+static void AnnounceBootReady(void) {
     if (gBootReadyAnnounced) {
         return;
     }
@@ -88,7 +88,7 @@ void Prompt(void) {
     gLen = 0;
     /* 仅当不在行首时换行：开窗欢迎语后已有 \\n，再打会空一行像「提示语不对」 */
     if (!gAtLineStart) {
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
     HalConsoleWriteSerial("toyos> ");
     gAtLineStart = 0;
@@ -100,34 +100,34 @@ void Prompt(void) {
     }
 }
 
-void ConsoleWaitPrompt(void) {
+static void WaitPrompt(void) {
     gWaitPrompt++;
 }
 
-void ConsoleShowPrompt(void) {
+static void ShowPrompt(void) {
     if (gWaitPrompt > 0) {
         gWaitPrompt--;
     }
     if (gWaitPrompt == 0) {
-        ConsoleStdinFlush();
+        gConsole.StdinFlush();
         Prompt();
     }
 }
 
-void ConsoleNotify(const char *Text) {
-    if (!ConsolePromptSuspended()) {
-        ConsoleWrite("\n");
+static void Notify(const char *Text) {
+    if (!gConsole.PromptSuspended()) {
+        gConsole.Write("\n");
     }
     if (Text != 0) {
-        ConsoleWrite(Text);
+        gConsole.Write(Text);
     }
 }
 
-void ConsoleSuspendPrompt(void) {
+static void SuspendPrompt(void) {
     gPromptSuspend++;
 }
 
-void ConsoleResumePrompt(void) {
+static void ResumePrompt(void) {
     if (gPromptSuspend > 0) {
         gPromptSuspend--;
     }
@@ -136,11 +136,11 @@ void ConsoleResumePrompt(void) {
     }
 }
 
-int ConsolePromptSuspended(void) {
+static int PromptSuspended(void) {
     return gPromptSuspend > 0;
 }
 
-void ConsoleJobHoldPrompt(void) {
+static void JobHoldPrompt(void) {
     if (HalConsoleOnly()) {
         gJobPromptWin = -1;
     } else if (GuiFocusKind() == GUI_WIN_SHELL) {
@@ -149,10 +149,10 @@ void ConsoleJobHoldPrompt(void) {
         gJobPromptWin = -1;
     }
     gJobSkipAfterCommand = 0;
-    ConsoleWaitPrompt();
+    gConsole.WaitPrompt();
 }
 
-int ConsoleJobConsumeSkipAfterCommand(void) {
+static int JobConsumeSkipAfterCommand(void) {
     if (!gJobSkipAfterCommand) {
         return 0;
     }
@@ -160,11 +160,11 @@ int ConsoleJobConsumeSkipAfterCommand(void) {
     return 1;
 }
 
-int ConsoleJobPromptPending(void) {
+static int JobPromptPending(void) {
     return (gJobPromptWin != -2) ? 1 : 0;
 }
 
-void ConsoleJobShiftRaise(int Idx, int Top) {
+static void JobShiftRaise(int Idx, int Top) {
     if (gJobPromptWin == Idx) {
         gJobPromptWin = Top;
     } else if (gJobPromptWin > Idx && gJobPromptWin <= Top) {
@@ -195,7 +195,7 @@ int ConsoleCmdOutOwner(void) {
     return gCmdOutWin;
 }
 
-void ConsoleWriteToJobShell(const char *Text) {
+static void WriteToJobShell(const char *Text) {
     int Owner = gJobPromptWin;
     int Cur;
 
@@ -228,7 +228,7 @@ void ConsoleWriteToJobShell(const char *Text) {
     ConsoleSbWinFeed(Owner, Text);
 }
 
-void ConsoleJobReleasePrompt(void) {
+static void JobReleasePrompt(void) {
     int Owner = gJobPromptWin;
     int Cur;
 
@@ -237,7 +237,7 @@ void ConsoleJobReleasePrompt(void) {
     }
     gJobPromptWin = -2;
     if (HalConsoleOnly() || Owner < 0) {
-        ConsoleShowPrompt();
+        gConsole.ShowPrompt();
         gJobSkipAfterCommand = 1;
         return;
     }
@@ -250,7 +250,7 @@ void ConsoleJobReleasePrompt(void) {
     }
     Cur = GuiFocusIndex();
     if (Cur == Owner) {
-        ConsoleShowPrompt();
+        gConsole.ShowPrompt();
         GuiConsolePush(gLine, gLen, gWaitPrompt);
         gJobSkipAfterCommand = 1;
         return;
@@ -262,4 +262,26 @@ void ConsoleJobReleasePrompt(void) {
         gWaitPrompt--;
     }
     gJobSkipAfterCommand = 1;
+}
+
+CONSOLE_OPS gConsole;
+
+void ConsolePublishShell(CONSOLE_OPS *Ops) {
+    Ops->WriteToJobShell = WriteToJobShell;
+    Ops->WaitPrompt = WaitPrompt;
+    Ops->ShowPrompt = ShowPrompt;
+    Ops->StdinUserHold = StdinUserHold;
+    Ops->StdinPut = StdinPut;
+    Ops->StdinGetChar = StdinGetChar;
+    Ops->StdinFlush = StdinFlush;
+    Ops->SuspendPrompt = SuspendPrompt;
+    Ops->ResumePrompt = ResumePrompt;
+    Ops->PromptSuspended = PromptSuspended;
+    Ops->Notify = Notify;
+    Ops->JobHoldPrompt = JobHoldPrompt;
+    Ops->JobReleasePrompt = JobReleasePrompt;
+    Ops->JobPromptPending = JobPromptPending;
+    Ops->JobConsumeSkipAfterCommand = JobConsumeSkipAfterCommand;
+    Ops->JobShiftRaise = JobShiftRaise;
+    Ops->AnnounceBootReady = AnnounceBootReady;
 }

@@ -92,7 +92,7 @@ void ConsoleSbWinLoad(int Idx) {
     }
 }
 
-void ConsoleSbWinForget(int Idx) {
+static void SbWinForget(int Idx) {
     if (Idx < 0 || Idx >= GUI_MAX_WINS) {
         return;
     }
@@ -151,7 +151,7 @@ void ConsoleSbWinFeed(int Idx, const char *Text) {
  * 与 RaiseWindow 相同：把 Idx 捅到 Top，中间槽前移。
  * 须在 WinCopy 之后调用，并修正 gLiveWin。
  */
-void ConsoleSbShiftRaise(int Idx, int Top) {
+static void SbShiftRaise(int Idx, int Top) {
     int TmpUsed;
     int J;
 
@@ -177,4 +177,9 @@ void ConsoleSbShiftRaise(int Idx, int Top) {
     } else if (gLiveWin > Idx && gLiveWin <= Top) {
         gLiveWin--;
     }
+}
+
+void ConsolePublishScrollback(CONSOLE_OPS *Ops) {
+    Ops->SbWinForget = SbWinForget;
+    Ops->SbShiftRaise = SbShiftRaise;
 }

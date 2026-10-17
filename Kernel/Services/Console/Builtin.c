@@ -27,13 +27,13 @@ static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
                 }
             }
             if (First) {
-                ConsoleWrite(" (");
+                gConsole.Write(" (");
                 First = 0;
             } else {
-                ConsoleWrite(", ");
+                gConsole.Write(", ");
             }
-            ConsoleWrite(gUserAliases[i].Alias);
-            ConsoleWrite("*");
+            gConsole.Write(gUserAliases[i].Alias);
+            gConsole.Write("*");
         }
     }
     for (i = 0; i < gAliasCount; i++) {
@@ -50,15 +50,15 @@ static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
             }
         }
         if (First) {
-            ConsoleWrite(" (");
+            gConsole.Write(" (");
             First = 0;
         } else {
-            ConsoleWrite(", ");
+            gConsole.Write(", ");
         }
-        ConsoleWrite(gAliases[i].Alias);
+        gConsole.Write(gAliases[i].Alias);
     }
     if (!First) {
-        ConsoleWrite(")");
+        gConsole.Write(")");
     }
 }
 
@@ -68,33 +68,33 @@ static void CommandHelp(int Argc, char **Argv) {
 
     (void)Argc;
     (void)Argv;
-    ConsoleWrite("commands:\n");
+    gConsole.Write("commands:\n");
     for (i = 0; i < gCommandCount; i++) {
-        ConsoleWrite("  ");
-        ConsoleWrite(gCommands[i].Name);
+        gConsole.Write("  ");
+        gConsole.Write(gCommands[i].Name);
         if (gCommands[i].SubCount > 0) {
-            ConsoleWrite("  ");
-            ConsoleWrite(gCommands[i].Help[0] ? gCommands[i].Help : "(family)");
+            gConsole.Write("  ");
+            gConsole.Write(gCommands[i].Help[0] ? gCommands[i].Help : "(family)");
             HelpWriteAliasesFor(gCommands[i].Name, 0);
-            ConsoleWrite("\n");
+            gConsole.Write("\n");
             for (s = 0; s < gCommands[i].SubCount; s++) {
-                ConsoleWrite("    ");
-                ConsoleWrite(gCommands[i].Subs[s].Name);
-                ConsoleWrite("  ");
-                ConsoleWrite(gCommands[i].Subs[s].Help);
+                gConsole.Write("    ");
+                gConsole.Write(gCommands[i].Subs[s].Name);
+                gConsole.Write("  ");
+                gConsole.Write(gCommands[i].Subs[s].Help);
                 HelpWriteAliasesFor(gCommands[i].Name, gCommands[i].Subs[s].Name);
-                ConsoleWrite("\n");
+                gConsole.Write("\n");
             }
         } else {
-            ConsoleWrite("  ");
-            ConsoleWrite(gCommands[i].Help);
+            gConsole.Write("  ");
+            gConsole.Write(gCommands[i].Help);
             HelpWriteAliasesFor(gCommands[i].Name, 0);
-            ConsoleWrite("\n");
+            gConsole.Write("\n");
         }
     }
 }
 
-/* 内置命令：清屏（仅当前焦点窗客户区；提示符由 ConsoleOnEnter 统一显示） */
+/* 内置命令：清屏（仅当前焦点窗客户区；提示符由 gConsole.OnEnter 统一显示） */
 static void CommandClear(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
@@ -108,19 +108,23 @@ static void CommandClear(int Argc, char **Argv) {
 static void CommandEcho(int Argc, char **Argv) {
     for (int i = 1; i < Argc; i++) {
         if (i > 1) {
-            ConsoleWrite(" ");
+            gConsole.Write(" ");
         }
-        ConsoleWrite(Argv[i]);
+        gConsole.Write(Argv[i]);
     }
-    ConsoleWrite("\n");
+    gConsole.Write("\n");
 }
 
-void ConsoleRegisterBuiltins(void) {
-    ConsoleRegister("help", "list commands", CommandHelp);
-    ConsoleRegisterAlias("help", "?");
-    ConsoleRegister("clear", "clear screen", CommandClear);
-    ConsoleRegisterAlias("clear", "cls");
-    ConsoleRegister("echo", "print arguments", CommandEcho);
-    ConsoleRegister("alias", "alias [name[=]cmd [sub]] (user; TOYOS.DB)", CommandAlias);
-    ConsoleRegister("unalias", "remove user alias", CommandUnalias);
+static void RegisterBuiltins(void) {
+    gConsole.Register("help", "list commands", CommandHelp);
+    gConsole.RegisterAlias("help", "?");
+    gConsole.Register("clear", "clear screen", CommandClear);
+    gConsole.RegisterAlias("clear", "cls");
+    gConsole.Register("echo", "print arguments", CommandEcho);
+    gConsole.Register("alias", "alias [name[=]cmd [sub]] (user; TOYOS.DB)", CommandAlias);
+    gConsole.Register("unalias", "remove user alias", CommandUnalias);
+}
+
+void ConsolePublishBuiltin(CONSOLE_OPS *Ops) {
+    Ops->RegisterBuiltins = RegisterBuiltins;
 }

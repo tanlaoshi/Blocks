@@ -24,10 +24,10 @@ static void CommandSetEffects(int Argc, char **Argv) {
     THEME_EFFECT_LEVEL Level;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: set effects minimal|low|medium|high\n");
-        ConsoleWrite("  now=");
-        ConsoleWrite(ThemeEffectLevelName(ThemeGetEffectLevel()));
-        ConsoleWrite("\n");
+        gConsole.Write("usage: set effects minimal|low|medium|high\n");
+        gConsole.Write("  now=");
+        gConsole.Write(ThemeEffectLevelName(ThemeGetEffectLevel()));
+        gConsole.Write("\n");
         return;
     }
     if (EffectsNameEq(Argv[1], "minimal")) {
@@ -39,17 +39,17 @@ static void CommandSetEffects(int Argc, char **Argv) {
     } else if (EffectsNameEq(Argv[1], "high")) {
         Level = THEME_EFFECT_HIGH;
     } else {
-        ConsoleWrite("set effects: bad level\n");
+        gConsole.Write("set effects: bad level\n");
         return;
     }
     ThemeSetEffectLevel(Level);
     ThemeApply();
-    ConsoleWrite("set effects: ");
-    ConsoleWrite(ThemeEffectLevelName(Level));
-    ConsoleWrite("\n");
+    gConsole.Write("set effects: ");
+    gConsole.Write(ThemeEffectLevelName(Level));
+    gConsole.Write("\n");
 }
 
 void ShellCommandsThemeRegister(void) {
-    ConsoleRegister2("set", "effects", "set effects minimal|low|medium|high",
+    gConsole.Register2("set", "effects", "set effects minimal|low|medium|high",
                      CommandSetEffects);
 }

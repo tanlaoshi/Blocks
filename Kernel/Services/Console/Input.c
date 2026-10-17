@@ -44,12 +44,12 @@ static int ConsoleEnsureShell(int FromSerial) {
 }
 
 /* 处理可打印字符输入；FromSerial=1 时只回显串口，不往非 Shell 窗上画 */
-void ConsoleOnCharEx(char C, int FromSerial) {
+static void OnCharEx(char C, int FromSerial) {
     int Ensured;
 
-    if (ConsoleStdinUserHold()) {
+    if (gConsole.StdinUserHold()) {
         /* 误入 shell 行缓冲：改送用户 stdin（串口路径本不应到此） */
-        ConsoleStdinPut(C);
+        gConsole.StdinPut(C);
         return;
     }
     Ensured = ConsoleEnsureShell(FromSerial);
@@ -66,7 +66,7 @@ void ConsoleOnCharEx(char C, int FromSerial) {
     if (gLen >= LINE_MAX - 1) {
         return;
     }
-    ConsoleHistOnEdit();
+    gConsole.HistOnEdit();
     if (!FromSerial || GuiShellAcceptsInput()) {
         ConsoleSbBindFocus();
         ConsoleSbEnsureLive();
@@ -81,19 +81,19 @@ void ConsoleOnCharEx(char C, int FromSerial) {
     }
 }
 
-void ConsoleOnChar(char C) {
-    ConsoleOnCharEx(C, 0);
+static void OnChar(char C) {
+    gConsole.OnCharEx(C, 0);
 }
 
 /* 处理退格键 */
-void ConsoleOnBackspaceEx(int FromSerial) {
+static void OnBackspaceEx(int FromSerial) {
     if (!HalConsoleOnly() && !GuiShellAcceptsInput() && !FromSerial) {
         return;
     }
     if (gLen <= 0) {
         return;
     }
-    ConsoleHistOnEdit();
+    gConsole.HistOnEdit();
     if (!FromSerial || GuiShellAcceptsInput()) {
         ConsoleSbEnsureLive();
     }
@@ -119,29 +119,29 @@ void ConsoleOnBackspaceEx(int FromSerial) {
     HalConsoleBackspaceSerial();
 }
 
-void ConsoleOnBackspace(void) {
-    ConsoleOnBackspaceEx(0);
+static void OnBackspace(void) {
+    gConsole.OnBackspaceEx(0);
 }
 
-void ConsoleDiscardInput(void) {
+static void DiscardInput(void) {
     gLen = 0;
 }
 
-void ConsoleCancelInput(void) {
+static void CancelInput(void) {
     if (!HalConsoleOnly() && !GuiShellAcceptsInput()) {
         return;
     }
     while (gLen > 0) {
-        ConsoleOnBackspace();
+        gConsole.OnBackspace();
     }
-    ConsoleWrite("^C\n");
-    if (gWaitPrompt == 0 && !ConsolePromptSuspended()) {
+    gConsole.Write("^C\n");
+    if (gWaitPrompt == 0 && !gConsole.PromptSuspended()) {
         Prompt();
     }
 }
 
 /* 强制结束 listen 等对提示符的挂起（可叠多层） */
-void ConsoleForceResumePrompt(void) {
+static void ForceResumePrompt(void) {
     gPromptSuspend = 0;
     if (gWaitPrompt == 0) {
         Prompt();
@@ -150,10 +150,10 @@ void ConsoleForceResumePrompt(void) {
 
 /* 命令可能把焦点切走（settings）；提示符只能画在 Shell 上 */
 static void ConsolePromptAfterCommand(int FromSerial) {
-    if (ConsoleJobConsumeSkipAfterCommand()) {
+    if (gConsole.JobConsumeSkipAfterCommand()) {
         return;
     }
-    if (gWaitPrompt != 0 || ConsolePromptSuspended() || ConsoleJobPromptPending()) {
+    if (gWaitPrompt != 0 || gConsole.PromptSuspended() || gConsole.JobPromptPending()) {
         return;
     }
     if (HalConsoleOnly() || GuiShellAcceptsInput() || FromSerial) {
@@ -165,11 +165,11 @@ static void ConsolePromptAfterCommand(int FromSerial) {
 }
 
 /* 处理回车：执行命令并重新显示提示符 */
-void ConsoleOnEnterEx(int FromSerial) {
+static void OnEnterEx(int FromSerial) {
     int Ensured;
 
     /* 用户 ELF 占 stdin：误入勿当 shell 命令（chat> HI → unknown） */
-    if (ConsoleStdinUserHold()) {
+    if (gConsole.StdinUserHold()) {
         gLen = 0;
         return;
     }
@@ -182,14 +182,14 @@ void ConsoleOnEnterEx(int FromSerial) {
         return;
     }
     /* listen 挂起时：空回车忽略并防旧命令残留 */
-    if (ConsolePromptSuspended() && gLen == 0) {
+    if (gConsole.PromptSuspended() && gLen == 0) {
         return;
     }
-    ConsoleWrite("\n");
+    gConsole.Write("\n");
     /* 整命令 Present 合并：见 PR-G-shell-present */
     GuiPresentDeferPush();
-    ConsoleHistApplyNavToLine();
-    ConsoleHistPushLine();
+    gConsole.HistApplyNavToLine();
+    gConsole.HistPushLine();
     ConsoleCmdOutBegin();
     ConsoleRunLine();
     ConsoleCmdOutEnd();
@@ -198,6 +198,18 @@ void ConsoleOnEnterEx(int FromSerial) {
     ConsolePromptAfterCommand(FromSerial);
 }
 
-void ConsoleOnEnter(void) {
-    ConsoleOnEnterEx(0);
+static void OnEnter(void) {
+    gConsole.OnEnterEx(0);
+}
+
+void ConsolePublishInput(CONSOLE_OPS *Ops) {
+    Ops->OnChar = OnChar;
+    Ops->OnCharEx = OnCharEx;
+    Ops->OnEnter = OnEnter;
+    Ops->OnEnterEx = OnEnterEx;
+    Ops->OnBackspace = OnBackspace;
+    Ops->OnBackspaceEx = OnBackspaceEx;
+    Ops->CancelInput = CancelInput;
+    Ops->DiscardInput = DiscardInput;
+    Ops->ForceResumePrompt = ForceResumePrompt;
 }

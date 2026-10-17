@@ -13,7 +13,7 @@
 
 static char gSnap[RT_SNAP];
 
-int ConsoleRuntimeLogFlush(void) {
+static int RuntimeLogFlush(void) {
     UINTN N;
     int Err;
 
@@ -33,7 +33,7 @@ int ConsoleRuntimeLogFlush(void) {
     return 0;
 }
 
-void ConsoleRuntimeLogShow(void) {
+static void RuntimeLogShow(void) {
     UINTN N;
     UINTN i;
     char Chunk[129];
@@ -41,7 +41,7 @@ void ConsoleRuntimeLogShow(void) {
 
     N = HalSerialRuntimeSnapshot(gSnap, RT_SNAP);
     if (N == 0) {
-        ConsoleWrite("(runtime log empty — post-ready ToyLog only)\n");
+        gConsole.Write("(runtime log empty — post-ready ToyLog only)\n");
         return;
     }
     i = 0;
@@ -51,14 +51,14 @@ void ConsoleRuntimeLogShow(void) {
             Chunk[C++] = gSnap[i++];
         }
         Chunk[C] = 0;
-        ConsoleWrite(Chunk);
+        gConsole.Write(Chunk);
     }
     if (N > 0 && gSnap[N - 1] != '\n') {
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
 }
 
-int ConsoleRuntimeLogSave(const char *Path) {
+static int RuntimeLogSave(const char *Path) {
     UINTN N;
     int Err;
 
@@ -72,4 +72,10 @@ int ConsoleRuntimeLogSave(const char *Path) {
     }
     HalSerialRuntimeMarkSaved();
     return 0;
+}
+
+void ConsolePublishLog(CONSOLE_OPS *Ops) {
+    Ops->RuntimeLogFlush = RuntimeLogFlush;
+    Ops->RuntimeLogShow = RuntimeLogShow;
+    Ops->RuntimeLogSave = RuntimeLogSave;
 }

@@ -120,7 +120,7 @@ static void GuiClickDispatchKind(UINT32 X, UINT32 Y) {
                 GuiConsoleOpsOnShellOpened();
             }
         } else {
-            ConsoleOnClick(X, Y);
+            gConsole.OnClick(X, Y);
             if (!gWinBackupValid[gFocusWin]) {
                 GuiConsoleOpsOnShellOpened();
             }

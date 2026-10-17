@@ -10,23 +10,23 @@ static void PrintDotted(UINT32 Ip) {
     char Buf[16];
 
     if (Ip == 0) {
-        ConsoleWrite("unset");
+        gConsole.Write("unset");
         return;
     }
     HalNetFormatIp(Ip, Buf, (int)sizeof(Buf));
-    ConsoleWrite(Buf);
+    gConsole.Write(Buf);
 }
 
 static void PrintConfig(void) {
-    ConsoleWrite("ip   ");
+    gConsole.Write("ip   ");
     PrintDotted(NetConfigGetIp());
-    ConsoleWrite("\nmask ");
+    gConsole.Write("\nmask ");
     PrintDotted(NetConfigGetMask());
-    ConsoleWrite("\ngw   ");
+    gConsole.Write("\ngw   ");
     PrintDotted(NetConfigGetGw());
-    ConsoleWrite("\ndns  ");
+    gConsole.Write("\ndns  ");
     PrintDotted(NetConfigGetDns());
-    ConsoleWrite("\n");
+    gConsole.Write("\n");
 }
 
 /* Argv[0]=config|ip|gw|dns；其余为点分地址 */
@@ -43,12 +43,12 @@ static void CommandNetConfig(int Argc, char **Argv) {
     }
     Key = Argv[1];
     if (Argc < 3) {
-        ConsoleWrite("usage: net config [ip|gw|dns|mask] <addr>\n");
+        gConsole.Write("usage: net config [ip|gw|dns|mask] <addr>\n");
         return;
     }
     Val = Argv[2];
     if (HalNetParseIp(Val, &Ip) != 0) {
-        ConsoleWrite("bad addr\n");
+        gConsole.Write("bad addr\n");
         return;
     }
     if (Key[0] == 'i') {
@@ -60,11 +60,11 @@ static void CommandNetConfig(int Argc, char **Argv) {
     } else if (Key[0] == 'm') {
         Rc = NetConfigSetMask(Ip);
     } else {
-        ConsoleWrite("usage: net config [ip|gw|dns|mask] <addr>\n");
+        gConsole.Write("usage: net config [ip|gw|dns|mask] <addr>\n");
         return;
     }
     if (Rc != 0) {
-        ConsoleWrite("net config: apply failed\n");
+        gConsole.Write("net config: apply failed\n");
         return;
     }
     PrintConfig();
@@ -77,12 +77,12 @@ static void CommandSetAddr(int Argc, char **Argv) {
     int Rc;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: set ip|gw|dns <addr>\n");
+        gConsole.Write("usage: set ip|gw|dns <addr>\n");
         return;
     }
     Key = Argv[0];
     if (HalNetParseIp(Argv[1], &Ip) != 0) {
-        ConsoleWrite("bad addr\n");
+        gConsole.Write("bad addr\n");
         return;
     }
     if (Key[0] == 'i') {
@@ -92,11 +92,11 @@ static void CommandSetAddr(int Argc, char **Argv) {
     } else if (Key[0] == 'd') {
         Rc = NetConfigSetDns(Ip);
     } else {
-        ConsoleWrite("usage: set ip|gw|dns <addr>\n");
+        gConsole.Write("usage: set ip|gw|dns <addr>\n");
         return;
     }
     if (Rc != 0) {
-        ConsoleWrite("set: apply failed\n");
+        gConsole.Write("set: apply failed\n");
         return;
     }
     PrintConfig();
@@ -106,16 +106,16 @@ static void CommandSetAddr(int Argc, char **Argv) {
 static void CommandNetNote(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
-    HalNetDumpNicNote(ConsoleWrite);
+    HalNetDumpNicNote(gConsole.Write);
 }
 
 void ShellCommandsNetAddrRegister(void) {
-    ConsoleRegister2("net", "config", "show/set ip gw dns mask", CommandNetConfig);
-    ConsoleRegister2("net", "note", "e1000/I219 field note (read-only)", CommandNetNote);
-    ConsoleRegister2("set", "ip", "set IPv4 address", CommandSetAddr);
-    ConsoleRegister2("set", "gw", "set default gateway", CommandSetAddr);
-    ConsoleRegister2("set", "dns", "set DNS server", CommandSetAddr);
-    ConsoleRegisterAliasLine("setip", "set", "ip");
-    ConsoleRegisterAliasLine("setgw", "set", "gw");
-    ConsoleRegisterAliasLine("setdns", "set", "dns");
+    gConsole.Register2("net", "config", "show/set ip gw dns mask", CommandNetConfig);
+    gConsole.Register2("net", "note", "e1000/I219 field note (read-only)", CommandNetNote);
+    gConsole.Register2("set", "ip", "set IPv4 address", CommandSetAddr);
+    gConsole.Register2("set", "gw", "set default gateway", CommandSetAddr);
+    gConsole.Register2("set", "dns", "set DNS server", CommandSetAddr);
+    gConsole.RegisterAliasLine("setip", "set", "ip");
+    gConsole.RegisterAliasLine("setgw", "set", "gw");
+    gConsole.RegisterAliasLine("setdns", "set", "dns");
 }

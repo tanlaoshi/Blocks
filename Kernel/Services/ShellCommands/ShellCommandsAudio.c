@@ -108,39 +108,39 @@ static void CommandPlay(int Argc, char **Argv) {
     int Err;
 
     if (!HalAudioProbe()) {
-        ConsoleWrite("play: no audio\n");
+        gConsole.Write("play: no audio\n");
         return;
     }
     if (Argc < 2) {
         HalAudioBeep();
-        ConsoleWrite("play: beep\n");
+        gConsole.Write("play: beep\n");
         return;
     }
     if (gPlayBuf == 0) {
         gPlayBuf = (UINT8 *)PhysicalMemoryAllocatePages(PLAY_MAX_PAGES);
         if (!gPlayBuf) {
-            ConsoleWrite("play: oom\n");
+            gConsole.Write("play: oom\n");
             return;
         }
     }
     Got = 0;
     Err = FileSystemReadFile(Argv[1], gPlayBuf, PLAY_MAX_BYTES, &Got);
     if (Err != FAT_OK || Got < 12u) {
-        ConsoleWrite("play: read fail\n");
+        gConsole.Write("play: read fail\n");
         return;
     }
     if (!ParseWav(gPlayBuf, Got, &Pcm, &Bytes, &Ch)) {
-        ConsoleWrite("play: need WAV PCM 48k/16/1-2ch\n");
+        gConsole.Write("play: need WAV PCM 48k/16/1-2ch\n");
         return;
     }
     if (!PlayPcmChunks(Pcm, Bytes / (Ch * 2u), Ch)) {
-        ConsoleWrite("play: pcm fail\n");
+        gConsole.Write("play: pcm fail\n");
         return;
     }
-    ConsoleWrite("play: ok\n");
+    gConsole.Write("play: ok\n");
 }
 
 void ShellCommandsAudioRegister(void) {
-    ConsoleRegister("play", "play [WAV] (no arg=beep; 48k/16 PCM)", CommandPlay);
-    ConsoleRegisterAlias("play", "beep");
+    gConsole.Register("play", "play [WAV] (no arg=beep; 48k/16 PCM)", CommandPlay);
+    gConsole.RegisterAlias("play", "beep");
 }

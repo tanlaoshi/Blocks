@@ -114,66 +114,66 @@ void StoreJobBusyRepaint(void) {
 
 void StoreJobFinishStatus(STORE_JOB_KIND Kind, int Err, int PlanN) {
     /* Worker 异步结束：完成行回发起 Shell；无 Hold 时 WriteToJobShell≈串口+焦点 */
-    if (!ConsolePromptSuspended()) {
-        ConsoleWriteToJobShell("\n");
+    if (!gConsole.PromptSuspended()) {
+        gConsole.WriteToJobShell("\n");
     }
     if (Err == STORE_JOB_ERR_CANCEL) {
         StoreSetStatus("cancelled");
-        ConsoleWriteToJobShell("store job: cancelled\n");
-        if (!ConsolePromptSuspended() && !StoreJobShellPumping()) {
-            ConsoleJobReleasePrompt();
+        gConsole.WriteToJobShell("store job: cancelled\n");
+        if (!gConsole.PromptSuspended() && !StoreJobShellPumping()) {
+            gConsole.JobReleasePrompt();
         }
         return;
     }
     if (Err == FAT_OK && Kind == STORE_JOB_INSTALL && PlanN == 0) {
         StoreSetStatus("already installed");
-        ConsoleWriteToJobShell("store job: already installed\n");
-        if (!ConsolePromptSuspended() && !StoreJobShellPumping()) {
-            ConsoleJobReleasePrompt();
+        gConsole.WriteToJobShell("store job: already installed\n");
+        if (!gConsole.PromptSuspended() && !StoreJobShellPumping()) {
+            gConsole.JobReleasePrompt();
         }
         return;
     }
     if (Err == FAT_OK) {
         if (Kind == STORE_JOB_INSTALL) {
             StoreSetStatus("installed");
-            ConsoleWriteToJobShell("store job: installed\n");
+            gConsole.WriteToJobShell("store job: installed\n");
         } else if (Kind == STORE_JOB_REMOVE) {
             StoreSetStatus("removed");
-            ConsoleWriteToJobShell("store job: removed\n");
+            gConsole.WriteToJobShell("store job: removed\n");
         } else if (Kind == STORE_JOB_FETCH) {
             StoreSetStatus("fetched");
-            ConsoleWriteToJobShell("store job: fetched\n");
-            ConsoleWriteToJobShell("hint: store install <id>\n");
+            gConsole.WriteToJobShell("store job: fetched\n");
+            gConsole.WriteToJobShell("hint: store install <id>\n");
         } else {
             StoreSetStatus("sync ok");
-            ConsoleWriteToJobShell("store job: sync ok\n");
+            gConsole.WriteToJobShell("store job: sync ok\n");
         }
     } else if (Kind == STORE_JOB_INSTALL) {
         StoreSetStatus("install fail");
-        ConsoleWriteToJobShell("store job: install fail\n");
+        gConsole.WriteToJobShell("store job: install fail\n");
     } else if (Kind == STORE_JOB_REMOVE) {
         StoreSetStatus("remove fail");
-        ConsoleWriteToJobShell("store job: remove fail\n");
+        gConsole.WriteToJobShell("store job: remove fail\n");
         if (Err == FAT_ERR_INVAL) {
-            ConsoleWriteToJobShell("hint: still required by dependents; remove app first\n");
+            gConsole.WriteToJobShell("hint: still required by dependents; remove app first\n");
         }
     } else if (Kind == STORE_JOB_FETCH) {
         StoreSetStatus("fetch fail");
-        ConsoleWriteToJobShell("store job: fetch fail\n");
+        gConsole.WriteToJobShell("store job: fetch fail\n");
         if (Err == -41 || Err == -2) {
-            ConsoleWriteToJobShell("hint: HTTP not 200\n");
+            gConsole.WriteToJobShell("hint: HTTP not 200\n");
         } else if (Err == -42 || Err == -3) {
-            ConsoleWriteToJobShell("hint: hash mismatch\n");
+            gConsole.WriteToJobShell("hint: hash mismatch\n");
         } else if (Err == -40) {
-            ConsoleWriteToJobShell("hint: net/tcp fail\n");
+            gConsole.WriteToJobShell("hint: net/tcp fail\n");
         } else if (Err == -43) {
-            ConsoleWriteToJobShell("hint: out of memory\n");
+            gConsole.WriteToJobShell("hint: out of memory\n");
         }
     } else {
         StoreSetStatus("sync fail (need repo)");
-        ConsoleWriteToJobShell("store job: sync fail\n");
+        gConsole.WriteToJobShell("store job: sync fail\n");
     }
-    if (!ConsolePromptSuspended() && !StoreJobShellPumping()) {
-        ConsoleJobReleasePrompt();
+    if (!gConsole.PromptSuspended() && !StoreJobShellPumping()) {
+        gConsole.JobReleasePrompt();
     }
 }

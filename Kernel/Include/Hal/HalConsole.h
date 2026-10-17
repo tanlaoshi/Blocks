@@ -10,7 +10,7 @@
  * HalSerialWrite — 调试、网络等模块裸串口，不经 Shell/GUI
  * HalDebugWrite  — 调试日志 -> HalSerialWrite
  *
- * Services/Console.c：HalConsoleWriteSerial + GUI 协调后 HalConsoleDraw*（见 ConsoleWrite）
+ * Services/Console.c：HalConsoleWriteSerial + GUI 协调后 HalConsoleDraw*（见 gConsole.Write）
  */
 #ifndef HAL_CONSOLE_H
 #define HAL_CONSOLE_H

@@ -11,52 +11,52 @@
 static void CommandUdpListen(int Argc, char **Argv) {
     UINT32 Port = 0;
     if (Argc < 2) {
-        ConsoleWrite("usage: udplisten <port>\n");
+        gConsole.Write("usage: udplisten <port>\n");
         return;
     }
     for (const char *P = Argv[1]; *P; P++) {
         if (*P < '0' || *P > '9') {
-            ConsoleWrite("bad port\n");
+            gConsole.Write("bad port\n");
             return;
         }
         Port = Port * 10 + (UINT32)(*P - '0');
     }
     if (Port == 0 || Port > 65535) {
-        ConsoleWrite("bad port\n");
+        gConsole.Write("bad port\n");
         return;
     }
 #ifdef TOY_LWIP
     if (LwIpActive()) {
         if (LwIpUdpBind((UINT16)Port) != 0) {
-            ConsoleWrite("udplisten: failed\n");
+            gConsole.Write("udplisten: failed\n");
             return;
         }
-        ConsoleWrite("lwip: udp listening ");
-        ConsoleWriteHex32(Port);
-        ConsoleWrite("\n");
+        gConsole.Write("lwip: udp listening ");
+        gConsole.WriteHex32(Port);
+        gConsole.Write("\n");
         return;
     }
 #endif
     UdpBind((UINT16)Port);
-    ConsoleWrite("udp: listening ");
-    ConsoleWriteHex32(Port);
-    ConsoleWrite("\n");
+    gConsole.Write("udp: listening ");
+    gConsole.WriteHex32(Port);
+    gConsole.Write("\n");
 }
 
 static void CommandUdpSend(int Argc, char **Argv) {
     UINT32 Ip;
     UINT32 Port = 0;
     if (Argc < 4) {
-        ConsoleWrite("usage: udpsend <ip> <port> <text>\n");
+        gConsole.Write("usage: udpsend <ip> <port> <text>\n");
         return;
     }
     if (HalNetParseIp(Argv[1], &Ip) != 0) {
-        ConsoleWrite("bad ip\n");
+        gConsole.Write("bad ip\n");
         return;
     }
     for (const char *P = Argv[2]; *P; P++) {
         if (*P < '0' || *P > '9') {
-            ConsoleWrite("bad port\n");
+            gConsole.Write("bad port\n");
             return;
         }
         Port = Port * 10 + (UINT32)(*P - '0');
@@ -69,24 +69,24 @@ static void CommandUdpSend(int Argc, char **Argv) {
 #ifdef TOY_LWIP
         if (LwIpActive()) {
             if (LwIpUdpSend(Ip, (UINT16)Port, Argv[3], Len) != 0) {
-                ConsoleWrite("udpsend failed\n");
+                gConsole.Write("udpsend failed\n");
             } else {
-                ConsoleWrite("udp: sent\n");
+                gConsole.Write("udp: sent\n");
             }
             return;
         }
 #endif
         if (UdpSend(Ip, (UINT16)Port, Argv[3], Len) != 0) {
-            ConsoleWrite("udpsend failed\n");
+            gConsole.Write("udpsend failed\n");
         } else {
-            ConsoleWrite("udp: sent\n");
+            gConsole.Write("udp: sent\n");
         }
     }
 }
 
 void ShellCommandsNetUdpRegister(void) {
-    ConsoleRegister2("udp", "listen", "bind UDP port", CommandUdpListen);
-    ConsoleRegister2("udp", "send", "send UDP datagram", CommandUdpSend);
-    ConsoleRegisterAliasLine("udplisten", "udp", "listen");
-    ConsoleRegisterAliasLine("udpsend", "udp", "send");
+    gConsole.Register2("udp", "listen", "bind UDP port", CommandUdpListen);
+    gConsole.Register2("udp", "send", "send UDP datagram", CommandUdpSend);
+    gConsole.RegisterAliasLine("udplisten", "udp", "listen");
+    gConsole.RegisterAliasLine("udpsend", "udp", "send");
 }

@@ -16,16 +16,16 @@ static void CommandInfo(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
     if (!Info) {
-        ConsoleWrite("video (no boot info)\n");
+        gConsole.Write("video (no boot info)\n");
         return;
     }
-    ConsoleWrite("video ");
-    ConsoleWriteHex32(Info->HorizontalResolution);
-    ConsoleWrite(" x ");
-    ConsoleWriteHex32(Info->VerticalResolution);
-    ConsoleWrite(" fb=");
-    ConsoleWriteHex64(Info->FrameBufferBase);
-    ConsoleWrite("\n");
+    gConsole.Write("video ");
+    gConsole.WriteHex32(Info->HorizontalResolution);
+    gConsole.Write(" x ");
+    gConsole.WriteHex32(Info->VerticalResolution);
+    gConsole.Write(" fb=");
+    gConsole.WriteHex64(Info->FrameBufferBase);
+    gConsole.Write("\n");
 }
 
 static void CommandMemory(int Argc, char **Argv) {
@@ -35,22 +35,22 @@ static void CommandMemory(int Argc, char **Argv) {
 
     (void)Argc;
     (void)Argv;
-    ConsoleWrite("physical memory\n  free  ");
-    ConsoleWriteHex64(PhysicalMemoryFreePageCount() << PAGE_SHIFT);
-    ConsoleWrite(" bytes (");
-    ConsoleWriteHex32((UINT32)PhysicalMemoryFreePageCount());
-    ConsoleWrite(" pages)\n  total ");
-    ConsoleWriteHex64(PhysicalMemoryTotalPages() << PAGE_SHIFT);
-    ConsoleWrite(" bytes tracked\n");
+    gConsole.Write("physical memory\n  free  ");
+    gConsole.WriteHex64(PhysicalMemoryFreePageCount() << PAGE_SHIFT);
+    gConsole.Write(" bytes (");
+    gConsole.WriteHex32((UINT32)PhysicalMemoryFreePageCount());
+    gConsole.Write(" pages)\n  total ");
+    gConsole.WriteHex64(PhysicalMemoryTotalPages() << PAGE_SHIFT);
+    gConsole.Write(" bytes tracked\n");
     if (Info) {
         for (i = 0; i < Info->RegionCount; i++) {
             RegionBytes += Info->Regions[i].Size;
         }
-        ConsoleWrite("  boot  ");
-        ConsoleWriteHex64(RegionBytes);
-        ConsoleWrite(" bytes in ");
-        ConsoleWriteHex32(Info->RegionCount);
-        ConsoleWrite(" region(s)\n");
+        gConsole.Write("  boot  ");
+        gConsole.WriteHex64(RegionBytes);
+        gConsole.Write(" bytes in ");
+        gConsole.WriteHex32(Info->RegionCount);
+        gConsole.Write(" region(s)\n");
     }
 }
 
@@ -60,7 +60,7 @@ static void CommandMemtest(int Argc, char **Argv) {
     UINT64 Before = PhysicalMemoryFreePageCount();
     void *Page = PhysicalMemoryAllocatePage();
     if (Page == 0) {
-        ConsoleWrite("memtest: alloc failed\n");
+        gConsole.Write("memtest: alloc failed\n");
         return;
     }
     UINT8 *Bytes = (UINT8 *)Page;
@@ -69,28 +69,28 @@ static void CommandMemtest(int Argc, char **Argv) {
     }
     for (int i = 0; i < (int)PAGE_SIZE; i++) {
         if (Bytes[i] != (UINT8)i) {
-            ConsoleWrite("memtest: verify failed at ");
-            ConsoleWriteHex32((UINT32)i);
-            ConsoleWrite("\n");
+            gConsole.Write("memtest: verify failed at ");
+            gConsole.WriteHex32((UINT32)i);
+            gConsole.Write("\n");
             PhysicalMemoryFreePage(Page);
             return;
         }
     }
-    ConsoleWrite("memtest: page ");
-    ConsoleWriteHex64((UINT64)(UINTN)Page);
-    ConsoleWrite(" ok, freeing\n");
+    gConsole.Write("memtest: page ");
+    gConsole.WriteHex64((UINT64)(UINTN)Page);
+    gConsole.Write(" ok, freeing\n");
     PhysicalMemoryFreePage(Page);
-    ConsoleWrite("memtest: free pages ");
-    ConsoleWriteHex32((UINT32)Before);
-    ConsoleWrite(" -> ");
-    ConsoleWriteHex32((UINT32)PhysicalMemoryFreePageCount());
-    ConsoleWrite("\n");
+    gConsole.Write("memtest: free pages ");
+    gConsole.WriteHex32((UINT32)Before);
+    gConsole.Write(" -> ");
+    gConsole.WriteHex32((UINT32)PhysicalMemoryFreePageCount());
+    gConsole.Write("\n");
 }
 
 static void CommandReboot(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
-    ConsoleWrite("rebooting...\n");
+    gConsole.Write("rebooting...\n");
     HalConsoleWriteSerial("shell: reboot\n");
     HalCpuReboot();
 }
@@ -98,7 +98,7 @@ static void CommandReboot(int Argc, char **Argv) {
 static void CommandHalt(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
-    ConsoleWrite("halt\n");
+    gConsole.Write("halt\n");
     HalCpuPark();
 }
 
@@ -124,7 +124,7 @@ static void CommandLsdev(int Argc, char **Argv) {
     UINTN i;
     UINTN Bound = 0;
 
-    if (DeviceListDumpArgs(Argc, Argv, ConsoleWrite) != 0) {
+    if (DeviceListDumpArgs(Argc, Argv, gConsole.Write) != 0) {
         return;
     }
 
@@ -135,11 +135,11 @@ static void CommandLsdev(int Argc, char **Argv) {
         }
         Bound++;
     }
-    ConsoleWrite("\n=== Bound Drivers (");
-    ConsoleWriteHex32((UINT32)Bound);
-    ConsoleWrite(") ===\n");
+    gConsole.Write("\n=== Bound Drivers (");
+    gConsole.WriteHex32((UINT32)Bound);
+    gConsole.Write(") ===\n");
     if (Bound == 0) {
-        ConsoleWrite("  (none)\n");
+        gConsole.Write("  (none)\n");
         return;
     }
     for (i = 0; i < ToyDriverInstanceCount(); i++) {
@@ -147,10 +147,10 @@ static void CommandLsdev(int Argc, char **Argv) {
         if (!Inst || !Inst->Bound || !Inst->Driver || !Inst->Driver->Name) {
             continue;
         }
-        ConsoleWrite("  ");
-        ConsoleWrite(Inst->Driver->Name);
-        ConsoleWrite("  ");
-        ConsoleWrite(DriverClassName(Inst->Driver->Class));
+        gConsole.Write("  ");
+        gConsole.Write(Inst->Driver->Name);
+        gConsole.Write("  ");
+        gConsole.Write(DriverClassName(Inst->Driver->Class));
         /* PR-H4e-2：net + e1000* 时附链路 */
         if (Inst->Driver->Class == TOY_DRIVER_CLASS_NET) {
             int Up = 0;
@@ -158,21 +158,21 @@ static void CommandLsdev(int Argc, char **Argv) {
             int Fd = 0;
 
             if (HalNetGetLinkInfo(&Up, &Mbps, &Fd)) {
-                ConsoleWrite("  link=");
-                ConsoleWrite(Up ? "up" : "down");
+                gConsole.Write("  link=");
+                gConsole.Write(Up ? "up" : "down");
                 if (Up) {
                     if (Mbps == 1000u) {
-                        ConsoleWrite(" 1000");
+                        gConsole.Write(" 1000");
                     } else if (Mbps == 100u) {
-                        ConsoleWrite(" 100");
+                        gConsole.Write(" 100");
                     } else if (Mbps == 10u) {
-                        ConsoleWrite(" 10");
+                        gConsole.Write(" 10");
                     }
-                    ConsoleWrite(Fd ? "/FD" : "/HD");
+                    gConsole.Write(Fd ? "/FD" : "/HD");
                 }
             }
         }
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
 }
 
@@ -181,53 +181,53 @@ static void CommandLog(int Argc, char **Argv) {
     if (Argc >= 2 && Argv[1][0] == 's' && Argv[1][1] == 'a' && Argv[1][2] == 'v' &&
         Argv[1][3] == 'e' && Argv[1][4] == 0) {
         const char *Path = (Argc >= 3) ? Argv[2] : "RUNTIME.LOG";
-        if (ConsoleRuntimeLogSave(Path) != 0) {
-            ConsoleWrite("log: save failed\n");
+        if (gConsole.RuntimeLogSave(Path) != 0) {
+            gConsole.Write("log: save failed\n");
             return;
         }
-        ConsoleWrite("log: saved ");
-        ConsoleWrite(Path);
-        ConsoleWrite("\n");
+        gConsole.Write("log: saved ");
+        gConsole.Write(Path);
+        gConsole.Write("\n");
         return;
     }
     if (Argc >= 2) {
-        ConsoleWrite("usage: log | log save [path]\n");
+        gConsole.Write("usage: log | log save [path]\n");
         return;
     }
-    (void)ConsoleRuntimeLogFlush();
-    ConsoleRuntimeLogShow();
+    (void)gConsole.RuntimeLogFlush();
+    gConsole.RuntimeLogShow();
 }
 
 void ShellCommandsSystemRegisterVirtMin(void) {
     ShellCommandsSystemProcRegisterVirtMin();
-    ConsoleRegister2("show", "memory", "physical memory stats", CommandMemory);
-    ConsoleRegisterAliasLine("mem", "show", "memory");
-    ConsoleRegister2("list", "devices", "list devices + bound drivers", CommandLsdev);
-    ConsoleRegisterAliasLine("lsdev", "list", "devices");
-    ConsoleRegister("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
-    ConsoleRegister("halt", "stop CPU", CommandHalt);
-    ConsoleRegisterAlias("halt", "exit");
-    ConsoleRegisterAlias("halt", "quit");
+    gConsole.Register2("show", "memory", "physical memory stats", CommandMemory);
+    gConsole.RegisterAliasLine("mem", "show", "memory");
+    gConsole.Register2("list", "devices", "list devices + bound drivers", CommandLsdev);
+    gConsole.RegisterAliasLine("lsdev", "list", "devices");
+    gConsole.Register("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
+    gConsole.Register("halt", "stop CPU", CommandHalt);
+    gConsole.RegisterAlias("halt", "exit");
+    gConsole.RegisterAlias("halt", "quit");
 }
 
 void ShellCommandsSystemRegister(void) {
     ShellCommandsSystemProcRegister();
 
-    ConsoleRegister2("list", "devices", "list devices + bound drivers", CommandLsdev);
-    ConsoleRegisterAliasLine("lsdev", "list", "devices");
+    gConsole.Register2("list", "devices", "list devices + bound drivers", CommandLsdev);
+    gConsole.RegisterAliasLine("lsdev", "list", "devices");
 
-    ConsoleRegister2("show", "memory", "physical memory stats", CommandMemory);
-    ConsoleRegister2("show", "info", "boot framebuffer info", CommandInfo);
-    ConsoleRegisterAliasLine("mem", "show", "memory");
-    ConsoleRegisterAliasLine("memory", "show", "memory");
-    ConsoleRegisterAliasLine("info", "show", "info");
+    gConsole.Register2("show", "memory", "physical memory stats", CommandMemory);
+    gConsole.Register2("show", "info", "boot framebuffer info", CommandInfo);
+    gConsole.RegisterAliasLine("mem", "show", "memory");
+    gConsole.RegisterAliasLine("memory", "show", "memory");
+    gConsole.RegisterAliasLine("info", "show", "info");
 
-    ConsoleRegister2("test", "memory", "alloc/verify/free one page", CommandMemtest);
-    ConsoleRegisterAliasLine("memtest", "test", "memory");
+    gConsole.Register2("test", "memory", "alloc/verify/free one page", CommandMemtest);
+    gConsole.RegisterAliasLine("memtest", "test", "memory");
 
-    ConsoleRegister("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
-    ConsoleRegister("reboot", "reset CPU (QEMU display: quit+./run-split.sh)", CommandReboot);
-    ConsoleRegister("halt", "stop CPU", CommandHalt);
-    ConsoleRegisterAlias("halt", "exit");
-    ConsoleRegisterAlias("halt", "quit");
+    gConsole.Register("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
+    gConsole.Register("reboot", "reset CPU (QEMU display: quit+./run-split.sh)", CommandReboot);
+    gConsole.Register("halt", "stop CPU", CommandHalt);
+    gConsole.RegisterAlias("halt", "exit");
+    gConsole.RegisterAlias("halt", "quit");
 }

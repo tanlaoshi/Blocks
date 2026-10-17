@@ -171,7 +171,7 @@ void ConsoleSbBarAfterWrite(void) {
     ConsoleSbBarApplyTextClip(Cx, Cy, Cw, Ch, Bg);
 }
 
-void ConsoleOnClick(UINT32 X, UINT32 Y) {
+static void OnClick(UINT32 X, UINT32 Y) {
     int NextFirst;
     int Vis;
     int MaxOff;
@@ -215,4 +215,8 @@ void ConsoleOnClick(UINT32 X, UINT32 Y) {
         End = ConsoleSbLineCount();
     }
     ConsoleSbSetViewOff(ConsoleSbLineCount() - End, MaxOff);
+}
+
+void ConsolePublishScrollbar(CONSOLE_OPS *Ops) {
+    Ops->OnClick = OnClick;
 }

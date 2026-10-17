@@ -16,7 +16,7 @@ static void InstallWriteDec(UINT32 V) {
     char Tmp[12];
 
     if (V == 0) {
-        ConsoleWrite("0");
+        gConsole.Write("0");
         return;
     }
     while (V > 0 && i < (int)sizeof(Tmp)) {
@@ -28,13 +28,13 @@ static void InstallWriteDec(UINT32 V) {
         Buf[j++] = Tmp[--i];
     }
     Buf[j] = 0;
-    ConsoleWrite(Buf);
+    gConsole.Write(Buf);
 }
 
 static void InstallPrintDisk(UINT32 Drive, int Ready) {
-    ConsoleWrite("  drive ");
+    gConsole.Write("  drive ");
     InstallWriteDec(Drive);
-    ConsoleWrite(Ready ? " ready\n" : " empty\n");
+    gConsole.Write(Ready ? " ready\n" : " empty\n");
 }
 
 static int ParseU32(const char *S, UINT32 *Out) {
@@ -93,19 +93,19 @@ static void CommandInstall(int Argc, char **Argv) {
     int v;
 
     if (Argc >= 2 && Argv[1][0] == 'd') {
-        ConsoleWrite("install disks:\n");
+        gConsole.Write("install disks:\n");
         InstallListDisks(InstallPrintDisk);
-        ConsoleWrite("hint: need blank raw disk (TOY_DISK=ahci TOY_INSTALL_DISK=1 → drive 2)\n");
+        gConsole.Write("hint: need blank raw disk (TOY_DISK=ahci TOY_INSTALL_DISK=1 → drive 2)\n");
         return;
     }
     if (Argc < 2) {
-        ConsoleWrite("usage: install disks\n");
-        ConsoleWrite("       install <drive> [--yes] [--mib N] [--force]\n");
-        ConsoleWrite("  drive: decimal 2 or hex 0x2. Wipes disk. Smoke: AHCI drive 2.\n");
+        gConsole.Write("usage: install disks\n");
+        gConsole.Write("       install <drive> [--yes] [--mib N] [--force]\n");
+        gConsole.Write("  drive: decimal 2 or hex 0x2. Wipes disk. Smoke: AHCI drive 2.\n");
         return;
     }
     if (!ParseU32(Argv[1], &Drive)) {
-        ConsoleWrite("install: bad drive (use 2 or 0x2)\n");
+        gConsole.Write("install: bad drive (use 2 or 0x2)\n");
         return;
     }
     for (i = 2; i < Argc; i++) {
@@ -116,7 +116,7 @@ static void CommandInstall(int Argc, char **Argv) {
         } else if (Argv[i][0] == '-' && Argv[i][1] == '-' && Argv[i][2] == 'm') {
             if (i + 1 < Argc) {
                 if (!ParseU32(Argv[i + 1], &Mib)) {
-                    ConsoleWrite("install: bad --mib\n");
+                    gConsole.Write("install: bad --mib\n");
                     return;
                 }
                 i++;
@@ -124,9 +124,9 @@ static void CommandInstall(int Argc, char **Argv) {
         }
     }
     if (!BlockDriveReady(Drive)) {
-        ConsoleWrite("install: drive ");
+        gConsole.Write("install: drive ");
         InstallWriteDec(Drive);
-        ConsoleWrite(" empty — start with TOY_DISK=ahci TOY_INSTALL_DISK=1\n");
+        gConsole.Write(" empty — start with TOY_DISK=ahci TOY_INSTALL_DISK=1\n");
         return;
     }
     /* 拒绝误装到当前已挂载的 ESP/TOYOS（vvfat），除非 --force */
@@ -140,25 +140,25 @@ static void CommandInstall(int Argc, char **Argv) {
             continue;
         }
         if (Dr == Drive && !Force) {
-            ConsoleWrite("install: drive ");
+            gConsole.Write("install: drive ");
             InstallWriteDec(Drive);
-            ConsoleWrite(" hosts volume ");
-            ConsoleWrite(Name);
-            ConsoleWrite(" — refuse (use blank install disk, or --force)\n");
+            gConsole.Write(" hosts volume ");
+            gConsole.Write(Name);
+            gConsole.Write(" — refuse (use blank install disk, or --force)\n");
             return;
         }
     }
     if (Mib < 512) {
-        ConsoleWrite("install: --mib need >=512\n");
+        gConsole.Write("install: --mib need >=512\n");
         return;
     }
     Sectors = (UINT64)Mib * 2048ull;
     Rc = InstallToDrive(Drive, Sectors, 256, Yes);
     if (Rc != 0) {
-        ConsoleWrite("install: failed\n");
+        gConsole.Write("install: failed\n");
     }
 }
 
 void ShellCommandsInstallRegister(void) {
-    ConsoleRegister("install", "install GPT+ESP+TOYOS to Block (PR-FS-inst-1)", CommandInstall);
+    gConsole.Register("install", "install GPT+ESP+TOYOS to Block (PR-FS-inst-1)", CommandInstall);
 }

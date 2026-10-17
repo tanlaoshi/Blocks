@@ -16,62 +16,62 @@ void ShellOnInterrupt(void) {
 #ifdef TOY_LWIP
     if (LwIpActive()) {
         if (LwIpTcpListenStop() == 0) {
-            ConsoleWrite("lwip: echo server stopped\n");
-            ConsoleDiscardInput();
-            ConsoleForceResumePrompt();
+            gConsole.Write("lwip: echo server stopped\n");
+            gConsole.DiscardInput();
+            gConsole.ForceResumePrompt();
             return;
         }
     }
 #endif
     if (TcpGetState() == TCP_LISTEN) {
         TcpListenStop();
-        ConsoleWrite("tcp: echo server stopped\n");
-        ConsoleDiscardInput();
-        ConsoleForceResumePrompt();
+        gConsole.Write("tcp: echo server stopped\n");
+        gConsole.DiscardInput();
+        gConsole.ForceResumePrompt();
         return;
     }
     /* 挂起中但已非 LISTEN（曾叠层 Suspend）：仍恢复提示符 */
-    if (ConsolePromptSuspended()) {
-        ConsoleWrite("tcp: echo server stopped\n");
-        ConsoleDiscardInput();
-        ConsoleForceResumePrompt();
+    if (gConsole.PromptSuspended()) {
+        gConsole.Write("tcp: echo server stopped\n");
+        gConsole.DiscardInput();
+        gConsole.ForceResumePrompt();
         return;
     }
-    ConsoleCancelInput();
+    gConsole.CancelInput();
 }
 
 static void CommandTcpListen(int Argc, char **Argv) {
     UINT32 Port = 0;
     if (Argc < 2) {
-        ConsoleWrite("usage: tcp listen <port>|stop\n");
+        gConsole.Write("usage: tcp listen <port>|stop\n");
         return;
     }
     if (ArgIsStop(Argv[1])) {
 #ifdef TOY_LWIP
         if (LwIpActive()) {
             if (LwIpTcpListenStop() != 0) {
-                ConsoleWrite("tcplisten: not listening\n");
+                gConsole.Write("tcplisten: not listening\n");
                 return;
             }
-        ConsoleWrite("lwip: echo server stopped\n");
-            ConsoleDiscardInput();
-            ConsoleForceResumePrompt();
+        gConsole.Write("lwip: echo server stopped\n");
+            gConsole.DiscardInput();
+            gConsole.ForceResumePrompt();
             return;
         }
 #endif
     if (TcpGetState() != TCP_LISTEN) {
-            ConsoleWrite("tcplisten: not listening\n");
+            gConsole.Write("tcplisten: not listening\n");
             return;
         }
         TcpListenStop();
-        ConsoleWrite("tcp: echo server stopped\n");
-        ConsoleDiscardInput();
-        ConsoleForceResumePrompt();
+        gConsole.Write("tcp: echo server stopped\n");
+        gConsole.DiscardInput();
+        gConsole.ForceResumePrompt();
         return;
     }
     for (const char *P = Argv[1]; *P; P++) {
         if (*P < '0' || *P > '9') {
-            ConsoleWrite("bad port\n");
+            gConsole.Write("bad port\n");
             return;
         }
         Port = Port * 10 + (UINT32)(*P - '0');
@@ -79,25 +79,25 @@ static void CommandTcpListen(int Argc, char **Argv) {
 #ifdef TOY_LWIP
     if (LwIpActive()) {
         if (LwIpTcpListen((UINT16)Port) != 0) {
-            ConsoleWrite("tcplisten: failed\n");
+            gConsole.Write("tcplisten: failed\n");
             return;
         }
-        if (!ConsolePromptSuspended()) {
-            ConsoleSuspendPrompt();
+        if (!gConsole.PromptSuspended()) {
+            gConsole.SuspendPrompt();
         }
-        ConsoleWrite("lwip: echo server on ");
-        ConsoleWriteHex32(Port);
-        ConsoleWrite("\n");
+        gConsole.Write("lwip: echo server on ");
+        gConsole.WriteHex32(Port);
+        gConsole.Write("\n");
         return;
     }
 #endif
     TcpListen((UINT16)Port);
-    if (!ConsolePromptSuspended()) {
-        ConsoleSuspendPrompt();
+    if (!gConsole.PromptSuspended()) {
+        gConsole.SuspendPrompt();
     }
-    ConsoleWrite("tcp: echo server on ");
-    ConsoleWriteHex32(Port);
-    ConsoleWrite("\n");
+    gConsole.Write("tcp: echo server on ");
+    gConsole.WriteHex32(Port);
+    gConsole.Write("\n");
 }
 
 static void CommandTcpStatus(int Argc, char **Argv) {
@@ -111,36 +111,36 @@ static void CommandTcpStatus(int Argc, char **Argv) {
     (void)Argv;
 #ifdef TOY_LWIP
     if (LwIpActive()) {
-        ConsoleWrite("tcpstatus: lwIP active (builtin idle)\n");
-        ConsoleWrite("  tcp listen=");
-        ConsoleWriteHex32(LwIpTcpListenPort());
-        ConsoleWrite(" udp bind=");
-        ConsoleWriteHex32(LwIpUdpBoundPort());
-        ConsoleWrite("\n");
+        gConsole.Write("tcpstatus: lwIP active (builtin idle)\n");
+        gConsole.Write("  tcp listen=");
+        gConsole.WriteHex32(LwIpTcpListenPort());
+        gConsole.Write(" udp bind=");
+        gConsole.WriteHex32(LwIpUdpBoundPort());
+        gConsole.Write("\n");
         return;
     }
 #endif
     TcpGetWindowStats(&Una, &Nxt, &BufLen, &PeerWnd, &Retrans);
-    ConsoleWrite("tcp state=");
-    ConsoleWriteHex32((UINT32)TcpGetState());
-    ConsoleWrite(" local=");
-    ConsoleWriteHex32(TcpLocalPort());
-    ConsoleWrite(" peer=");
+    gConsole.Write("tcp state=");
+    gConsole.WriteHex32((UINT32)TcpGetState());
+    gConsole.Write(" local=");
+    gConsole.WriteHex32(TcpLocalPort());
+    gConsole.Write(" peer=");
     HalNetFormatIp(TcpPeerIp(), IpBuf, sizeof(IpBuf));
-    ConsoleWrite(IpBuf);
-    ConsoleWrite(":");
-    ConsoleWriteHex32(TcpPeerPort());
-    ConsoleWrite("\n  snd_una=");
-    ConsoleWriteHex32(Una);
-    ConsoleWrite(" snd_nxt=");
-    ConsoleWriteHex32(Nxt);
-    ConsoleWrite(" buf=");
-    ConsoleWriteHex32(BufLen);
-    ConsoleWrite(" peer_wnd=");
-    ConsoleWriteHex32(PeerWnd);
-    ConsoleWrite(" retrans=");
-    ConsoleWriteHex32(Retrans);
-    ConsoleWrite("\n");
+    gConsole.Write(IpBuf);
+    gConsole.Write(":");
+    gConsole.WriteHex32(TcpPeerPort());
+    gConsole.Write("\n  snd_una=");
+    gConsole.WriteHex32(Una);
+    gConsole.Write(" snd_nxt=");
+    gConsole.WriteHex32(Nxt);
+    gConsole.Write(" buf=");
+    gConsole.WriteHex32(BufLen);
+    gConsole.Write(" peer_wnd=");
+    gConsole.WriteHex32(PeerWnd);
+    gConsole.Write(" retrans=");
+    gConsole.WriteHex32(Retrans);
+    gConsole.Write("\n");
 }
 
 static void CommandTcpConnect(int Argc, char **Argv) {
@@ -148,7 +148,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
     UINT32 Port = 0;
     UINTN TextLen;
     if (Argc < 4) {
-        ConsoleWrite("usage: tcp connect <ip> <port> <text>\n");
+        gConsole.Write("usage: tcp connect <ip> <port> <text>\n");
         return;
     }
 #ifdef TOY_LWIP
@@ -157,22 +157,22 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         int Ret;
 
         if (!HalNetReady()) {
-            ConsoleWrite("Net: not available\n");
+            gConsole.Write("Net: not available\n");
             return;
         }
         if (HalNetParseIp(Argv[1], &Ip) != 0) {
-            ConsoleWrite("bad ip\n");
+            gConsole.Write("bad ip\n");
             return;
         }
         for (const char *P = Argv[2]; *P; P++) {
             if (*P < '0' || *P > '9') {
-                ConsoleWrite("bad port\n");
+                gConsole.Write("bad port\n");
                 return;
             }
             Port = Port * 10 + (UINT32)(*P - '0');
         }
         if (Port == 0 || Port > 65535) {
-            ConsoleWrite("bad port\n");
+            gConsole.Write("bad port\n");
             return;
         }
         TextLen = 0;
@@ -181,44 +181,44 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         }
         Ret = LwIpTcpConnectSend(Ip, (UINT16)Port, Argv[3], TextLen, 3000);
         if (Ret == 0) {
-            ConsoleWrite("tcpconnect: done\n");
+            gConsole.Write("tcpconnect: done\n");
         } else if (Ret == -2) {
-            ConsoleWrite("tcpconnect: timeout\n");
+            gConsole.Write("tcpconnect: timeout\n");
         } else if (Ret == -3) {
-            ConsoleWrite("tcpconnect: send failed\n");
+            gConsole.Write("tcpconnect: send failed\n");
         } else {
-            ConsoleWrite("tcpconnect: syn failed\n");
-            ConsoleWrite("hint: on host run nc -l ");
-            ConsoleWriteHex32(Port);
-            ConsoleWrite(" first\n");
+            gConsole.Write("tcpconnect: syn failed\n");
+            gConsole.Write("hint: on host run nc -l ");
+            gConsole.WriteHex32(Port);
+            gConsole.Write(" first\n");
         }
         return;
     }
 #endif
     if (TcpGetState() == TCP_LISTEN) {
-        ConsoleWrite("tcpconnect: closes tcplisten (single TCP slot)\n");
+        gConsole.Write("tcpconnect: closes tcplisten (single TCP slot)\n");
     }
     if (!HalNetReady()) {
-        ConsoleWrite("Net: not available\n");
+        gConsole.Write("Net: not available\n");
         return;
     }
     if (HalNetParseIp(Argv[1], &Ip) != 0) {
-        ConsoleWrite("bad ip\n");
+        gConsole.Write("bad ip\n");
         return;
     }
     for (const char *P = Argv[2]; *P; P++) {
         if (*P < '0' || *P > '9') {
-            ConsoleWrite("bad port\n");
+            gConsole.Write("bad port\n");
             return;
         }
         Port = Port * 10 + (UINT32)(*P - '0');
     }
     if (Port == 0 || Port > 65535) {
-        ConsoleWrite("bad port\n");
+        gConsole.Write("bad port\n");
         return;
     }
     if (TcpConnect(Ip, (UINT16)Port) != 0) {
-        ConsoleWrite("tcpconnect: syn failed\n");
+        gConsole.Write("tcpconnect: syn failed\n");
         return;
     }
     {
@@ -229,7 +229,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         }
     }
     if (TcpGetState() != TCP_ESTABLISHED) {
-        ConsoleWrite("tcpconnect: timeout\n");
+        gConsole.Write("tcpconnect: timeout\n");
         return;
     }
     TextLen = 0;
@@ -237,7 +237,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         TextLen++;
     }
     if (TcpSend(Argv[3], TextLen) != 0) {
-        ConsoleWrite("tcpconnect: send failed\n");
+        gConsole.Write("tcpconnect: send failed\n");
         return;
     }
     {
@@ -247,14 +247,14 @@ static void CommandTcpConnect(int Argc, char **Argv) {
             TcpPoll();
         }
     }
-    ConsoleWrite("tcpconnect: done\n");
+    gConsole.Write("tcpconnect: done\n");
 }
 
 void ShellCommandsNetTcpRegister(void) {
-    ConsoleRegister2("tcp", "listen", "TCP echo server", CommandTcpListen);
-    ConsoleRegister2("tcp", "connect", "TCP connect and send", CommandTcpConnect);
-    ConsoleRegister2("tcp", "status", "TCP connection status", CommandTcpStatus);
-    ConsoleRegisterAliasLine("tcplisten", "tcp", "listen");
-    ConsoleRegisterAliasLine("tcpconnect", "tcp", "connect");
-    ConsoleRegisterAliasLine("tcpstatus", "tcp", "status");
+    gConsole.Register2("tcp", "listen", "TCP echo server", CommandTcpListen);
+    gConsole.Register2("tcp", "connect", "TCP connect and send", CommandTcpConnect);
+    gConsole.Register2("tcp", "status", "TCP connection status", CommandTcpStatus);
+    gConsole.RegisterAliasLine("tcplisten", "tcp", "listen");
+    gConsole.RegisterAliasLine("tcpconnect", "tcp", "connect");
+    gConsole.RegisterAliasLine("tcpstatus", "tcp", "status");
 }

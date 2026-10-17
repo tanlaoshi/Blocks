@@ -59,8 +59,8 @@ void ShellTask(void) {
                  * exec 中：勿喂 shell，泄进 stdin 环供 read(0)；
                  * 若直接跳过不抽 RX，CoolTerm 粘贴同样会丢字。
                  */
-                if (ConsoleStdinUserHold()) {
-                    ConsoleStdinPut(C);
+                if (gConsole.StdinUserHold()) {
+                    gConsole.StdinPut(C);
                     continue;
                 }
                 if (SettingsUiIsFocused()) {
@@ -114,7 +114,7 @@ void ShellTask(void) {
                     TtyUiOnRxChar(C);
                     continue;
                 }
-                ConsoleSerialFeedChar(C, &gSerialSkipLf);
+                gConsole.SerialFeedChar(C, &gSerialSkipLf);
             }
         }
         /*
@@ -156,18 +156,18 @@ void ShellTask(void) {
                 char IpBuf[20];
                 UINTN i;
                 HalNetFormatIp(Dg.SrcIp, IpBuf, sizeof(IpBuf));
-                ConsoleWrite("udp from ");
-                ConsoleWrite(IpBuf);
-                ConsoleWrite(":");
-                ConsoleWriteHex32(Dg.SrcPort);
-                ConsoleWrite(" ");
+                gConsole.Write("udp from ");
+                gConsole.Write(IpBuf);
+                gConsole.Write(":");
+                gConsole.WriteHex32(Dg.SrcPort);
+                gConsole.Write(" ");
                 for (i = 0; i < Dg.Len; i++) {
                     char C = (char)Dg.Data[i];
                     if (C >= 32 && C <= 126) {
-                        ConsoleOnChar(C);
+                        gConsole.OnChar(C);
                     }
                 }
-                ConsoleWrite("\n");
+                gConsole.Write("\n");
             }
         }
         YieldForPollInput();

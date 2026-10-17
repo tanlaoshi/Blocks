@@ -120,7 +120,7 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
     if (gCoopDrain) {
         SpinLockRelease(&gSchedulerLock);
         /*
-         * PR-V-ap-interactive：CoopDrain 在 shell 的 ConsoleOnEnter 内同步跑完；
+         * PR-V-ap-interactive：CoopDrain 在 shell 的 gConsole.OnEnter 内同步跑完；
          * 此处勿 ShowPrompt，否则与末尾 ConsolePromptAfterCommand 叠成双「toyos>」。
          * x86 异步收尸仍走下方 ShowPrompt。
          */

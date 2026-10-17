@@ -23,7 +23,7 @@ void TcpInputListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
     }
     gState = TCP_SYN_RECEIVED;
     if (TcpSendSegment(TCP_FLAG_SYN | TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt) != 0) {
-        ConsoleWrite("tcp: syn-ack failed\n");
+        gConsole.Write("tcp: syn-ack failed\n");
         gState = TCP_LISTEN;
         return;
     }
@@ -65,7 +65,7 @@ int TcpInputSynRcvd(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
         gPeerWnd = 1;
     }
     gState = TCP_ESTABLISHED;
-    ConsoleNotify("tcp: client connected\n");
+    gConsole.Notify("tcp: client connected\n");
     DebugWrite("tcp: established (echo)\n");
     return 1;
 }

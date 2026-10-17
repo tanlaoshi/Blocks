@@ -12,7 +12,7 @@
 #include "CoreOps.h"
 
 /* 将控制台输出限制在当前焦点窗口客户区内（不重置光标） */
-void ConsoleFocusSave(void) {
+static void FocusSave(void) {
     int Idx = GuiFocusIndex();
 
     if (Idx >= 0 && GuiShellWindowActive(Idx)) {
@@ -21,15 +21,15 @@ void ConsoleFocusSave(void) {
     GuiConsolePush(gLine, gLen, gWaitPrompt);
 }
 
-void ConsoleFocusLoad(void) {
+static void FocusLoad(void) {
     int Idx = GuiFocusIndex();
-    int Hold = ConsoleStdinUserHold();
+    int Hold = gConsole.StdinUserHold();
 
     /*
      * ↑↓ 回填期间勿 Pull：EnsureShell/Raise 会 FocusLoad，
      * 否则窗槽旧行盖住 gLine，串口已回显与缓冲分叉（BOX-1）。
      */
-    if (!ConsoleHistIsBusy() && !ConsoleHistIgnoreRx()) {
+    if (!gConsole.HistIsBusy() && !gConsole.HistIgnoreRx()) {
         GuiConsolePull(gLine, &gLen, &gWaitPrompt);
     }
     /*
@@ -54,8 +54,8 @@ void ConsoleFocusLoad(void) {
              * 勿再打欢迎语（否则接在已有 toyos> 后面）。
              */
             if (!ConsoleSbHasContent()) {
-                ConsoleWrite(LocStr(MSG_CON_WELCOME));
-                ConsoleWrite("\n");
+                gConsole.Write(LocStr(MSG_CON_WELCOME));
+                gConsole.Write("\n");
                 Prompt();
             } else {
                 ConsoleSbRepaint();
@@ -74,8 +74,8 @@ void ConsoleFocusLoad(void) {
     if (GuiConsoleNeedsPrompt()) {
         if (!ConsoleSbHasContent()) {
             GuiFocusHome();
-            ConsoleWrite(LocStr(MSG_CON_WELCOME));
-            ConsoleWrite("\n");
+            gConsole.Write(LocStr(MSG_CON_WELCOME));
+            gConsole.Write("\n");
             Prompt();
         }
         GuiConsoleMarkPrompt();
@@ -83,26 +83,26 @@ void ConsoleFocusLoad(void) {
     }
 }
 
-void ConsoleBindFocus(void) {
+static void BindFocus(void) {
     GuiFocusApply();
 }
 
-/* 初始化：无 Shell 时仅串口就绪文案；开窗 / ConsoleSerialRun 再画欢迎语与 toyos> */
-void ConsoleInitialize(void) {
+/* 初始化：无 Shell 时仅串口就绪文案；开窗 / gConsole.SerialRun 再画欢迎语与 toyos> */
+static void Initialize(void) {
     GUI_CONSOLE_OPS Ops;
 
-    Ops.FocusSave = ConsoleFocusSave;
-    Ops.FocusLoad = ConsoleFocusLoad;
-    Ops.OnShellOpened = ConsoleOnShellOpened;
-    Ops.PaintShellWindow = ConsolePaintShellWindow;
+    Ops.FocusSave = gConsole.FocusSave;
+    Ops.FocusLoad = gConsole.FocusLoad;
+    Ops.OnShellOpened = gConsole.OnShellOpened;
+    Ops.PaintShellWindow = gConsole.PaintShellWindow;
     GuiRegisterConsoleOps(&Ops);
-    LibWriteRegister(ConsoleWrite);
+    LibWriteRegister(gConsole.Write);
     {
         CONSOLE_IO_OPS Io;
 
-        Io.WriteLen = ConsoleWriteLen;
-        Io.ReadChar = ConsoleStdinGetChar;
-        Io.ShowPrompt = ConsoleShowPrompt;
+        Io.WriteLen = gConsole.WriteLen;
+        Io.ReadChar = gConsole.StdinGetChar;
+        Io.ShowPrompt = gConsole.ShowPrompt;
         ConsoleIoRegister(&Io);
     }
 
@@ -112,11 +112,11 @@ void ConsoleInitialize(void) {
     /*
      * 勿在此打 ready / toyos>：iwl 在 Worker 里 Claim+BgPump，会插到提示符后面。
      * 桌面：Worker 在 iwl 后台、首轮 DHCP、以及之后一小段 iwl 黄字静默后再 Announce。
-     * ConsoleOnly：ConsoleSerialRun 里 Announce。
+     * ConsoleOnly：gConsole.SerialRun 里 Announce。
      */
 }
 
-void ConsoleOnShellOpened(void) {
+static void OnShellOpened(void) {
     int Idx;
 
     /*
@@ -128,11 +128,11 @@ void ConsoleOnShellOpened(void) {
         return;
     }
     /* 新窗槽为空 → 欢迎语；已有槽（主题重画）→ 重绘本窗历史 */
-    ConsolePaintShellWindow(Idx);
+    gConsole.PaintShellWindow(Idx);
 }
 
 /* PR-G8：主题合成时按窗下标画 Shell，不要求当前可输入/未遮挡 */
-void ConsolePaintShellWindow(int Idx) {
+static void PaintShellWindow(int Idx) {
     int Saved;
 
     if (!GuiShellWindowActive(Idx)) {
@@ -169,8 +169,8 @@ void ConsolePaintShellWindow(int Idx) {
     ConsoleSbReset();
     GuiFocusClearClient();
     GuiFocusHome();
-    ConsoleWrite(LocStr(MSG_CON_WELCOME));
-    ConsoleWrite("\n");
+    gConsole.Write(LocStr(MSG_CON_WELCOME));
+    gConsole.Write("\n");
     Prompt();
     GuiConsoleMarkPrompt();
     ConsoleSbWinSave(Idx);
@@ -185,7 +185,7 @@ void ConsolePaintShellWindow(int Idx) {
     }
 }
 
-void ConsoleRepaintShellWindows(void) {
+static void RepaintShellWindows(void) {
     int Saved;
     int i;
     GUI_WIN_KIND SavedKind;
@@ -199,16 +199,26 @@ void ConsoleRepaintShellWindows(void) {
         }
         /* 置顶后再画，避免欢迎语/prompt 写穿上层 Settings */
         GuiRaiseToFront(i);
-        ConsoleOnShellOpened();
+        gConsole.OnShellOpened();
     }
 
     if (Saved >= 0 && GuiWindowKind(Saved) != GUI_WIN_NONE) {
         GuiRaiseToFront(Saved);
         if (SavedKind == GUI_WIN_SHELL) {
-            ConsoleFocusLoad();
+            gConsole.FocusLoad();
         } else if (SavedKind == GUI_WIN_SETTINGS) {
             SettingsUiRefresh();
         }
     }
     HalVideoClearClip();
+}
+
+void ConsolePublishFocus(CONSOLE_OPS *Ops) {
+    Ops->Initialize = Initialize;
+    Ops->BindFocus = BindFocus;
+    Ops->OnShellOpened = OnShellOpened;
+    Ops->PaintShellWindow = PaintShellWindow;
+    Ops->RepaintShellWindows = RepaintShellWindows;
+    Ops->FocusSave = FocusSave;
+    Ops->FocusLoad = FocusLoad;
 }

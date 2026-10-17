@@ -8,12 +8,12 @@
 
 #ifdef TOY_LWIP
 static void ShellLwIpPrintStatus(void) {
-    ConsoleWrite("lwip: on (RX unified; ping/tcp/udp via lwIP)\n");
-    ConsoleWrite("  tcp listen=");
-    ConsoleWriteHex32(LwIpTcpListenPort());
-    ConsoleWrite(" udp bind=");
-    ConsoleWriteHex32(LwIpUdpBoundPort());
-    ConsoleWrite(LwIpDhcpRunning() ? " dhcp=on\n" : " dhcp=off\n");
+    gConsole.Write("lwip: on (RX unified; ping/tcp/udp via lwIP)\n");
+    gConsole.Write("  tcp listen=");
+    gConsole.WriteHex32(LwIpTcpListenPort());
+    gConsole.Write(" udp bind=");
+    gConsole.WriteHex32(LwIpUdpBoundPort());
+    gConsole.Write(LwIpDhcpRunning() ? " dhcp=on\n" : " dhcp=off\n");
 }
 
 static void CommandLwIpDhcp(int Argc, char **Argv) {
@@ -22,27 +22,27 @@ static void CommandLwIpDhcp(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
     if (!HalNetReady()) {
-        ConsoleWrite("lwip dhcp: net not available\n");
+        gConsole.Write("lwip dhcp: net not available\n");
         return;
     }
     if (LwIpDhcpJobBusy()) {
-        ConsoleWrite("lwip dhcp: busy\n");
+        gConsole.Write("lwip dhcp: busy\n");
         return;
     }
     /* 先 Hold：防 Worker 抢在 PromptAfterCommand 前打完并再出一次 toyos> */
-    ConsoleJobHoldPrompt();
+    gConsole.JobHoldPrompt();
     Rc = LwIpDhcpEnqueue(12000);
     if (Rc == -1) {
-        ConsoleWrite("lwip dhcp: busy\n");
-        ConsoleJobReleasePrompt();
+        gConsole.Write("lwip dhcp: busy\n");
+        gConsole.JobReleasePrompt();
         return;
     }
     if (Rc != 0) {
-        ConsoleWrite("lwip dhcp: start fail\n");
-        ConsoleJobReleasePrompt();
+        gConsole.Write("lwip dhcp: start fail\n");
+        gConsole.JobReleasePrompt();
         return;
     }
-    ConsoleWrite("lwip dhcp: queued\n");
+    gConsole.Write("lwip dhcp: queued\n");
 }
 
 static void CommandLwIp(int Argc, char **Argv) {
@@ -58,16 +58,16 @@ static void CommandLwIp(int Argc, char **Argv) {
     } else if (Argc >= 2) {
         Word = Argv[1];
     } else {
-        ConsoleWrite("usage: lwip on|status|dhcp\n");
+        gConsole.Write("usage: lwip on|status|dhcp\n");
         return;
     }
     if (Word[0] == 'o' && Word[1] == 'n' && Word[2] == 0) {
         if (LwIpActive()) {
-            ConsoleWrite("lwip: already on\n");
+            gConsole.Write("lwip: already on\n");
             return;
         }
         if (LwIpInitialize() != 0) {
-            ConsoleWrite("lwip: init failed\n");
+            gConsole.Write("lwip: init failed\n");
             return;
         }
         ShellLwIpPrintStatus();
@@ -79,21 +79,21 @@ static void CommandLwIp(int Argc, char **Argv) {
     }
     if (Word[0] == 's') {
         if (!LwIpActive()) {
-            ConsoleWrite("lwip: off (builtin stack; run lwip on)\n");
+            gConsole.Write("lwip: off (builtin stack; run lwip on)\n");
             return;
         }
         ShellLwIpPrintStatus();
         return;
     }
-    ConsoleWrite("usage: lwip on|status|dhcp\n");
+    gConsole.Write("usage: lwip on|status|dhcp\n");
 }
 #endif
 
 void ShellCommandsNetLwipRegister(void) {
 #ifdef TOY_LWIP
-    ConsoleRegister2("lwip", "on", "enable lwIP stack", CommandLwIp);
-    ConsoleRegister2("lwip", "status", "lwIP status", CommandLwIp);
-    ConsoleRegister2("lwip", "dhcp", "DHCP; wait IP then prompt", CommandLwIpDhcp);
-    ConsoleRegister2("net", "dhcp", "DHCP; wait IP then prompt", CommandLwIpDhcp);
+    gConsole.Register2("lwip", "on", "enable lwIP stack", CommandLwIp);
+    gConsole.Register2("lwip", "status", "lwIP status", CommandLwIp);
+    gConsole.Register2("lwip", "dhcp", "DHCP; wait IP then prompt", CommandLwIpDhcp);
+    gConsole.Register2("net", "dhcp", "DHCP; wait IP then prompt", CommandLwIpDhcp);
 #endif
 }

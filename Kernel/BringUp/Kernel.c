@@ -47,12 +47,12 @@ static void KernelTrySpawnInput(void) {
 /* 单核直跑串口壳；多核进调度让 AP idle。 */
 static void KernelMainVirtEnterShell(void) {
     if (HalCpuCount() > 1) {
-        KernelSpawnOrPark("shell", ConsoleSerialRun);
+        KernelSpawnOrPark("shell", gConsole.SerialRun);
         SchedulerStart();
         return;
     }
     HalTimerStart();
-    ConsoleSerialRun();
+    gConsole.SerialRun();
 }
 
 static void KernelParkForever(void) {
@@ -85,7 +85,7 @@ static void KernelLogFrameBufferSize(const BOOT_INFO *Info) {
 }
 
 /*
- * 尽早挂串口和帧缓冲：后面模块 ConsoleWrite 若 Width=0 会空转。
+ * 尽早挂串口和帧缓冲：后面模块 gConsole.Write 若 Width=0 会空转。
  * 有 FB 则开 GOP 镜像（接 ToyBoot 黑底，禁止再全屏 Clear）。
  */
 static ELF_RELOC_KIND KernelElfRelocKind(UINT32 Type) {

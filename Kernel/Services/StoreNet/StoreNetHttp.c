@@ -271,8 +271,8 @@ ParseHttp:
             }
             Msg[n++] = '\n';
             Msg[n] = 0;
-            /* Worker 异步：ConsoleNotify 先换行离开 toyos>，勿用裸串口插在提示符后 */
-            ConsoleNotify(Msg);
+            /* Worker 异步：gConsole.Notify 先换行离开 toyos>，勿用裸串口插在提示符后 */
+            gConsole.Notify(Msg);
             PhysicalMemoryFreePages(Resp, Pages);
             return STORE_ERR_NET;
         }

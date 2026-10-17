@@ -10,46 +10,46 @@
 #include "HalDevices.h"
 
 int ShellStoreJob(STORE_JOB_KIND Kind, const char *Id) {
-    ConsoleJobHoldPrompt();
+    gConsole.JobHoldPrompt();
     if (StoreJobShellRun(Kind, Id) != 0) {
-        ConsoleWrite("store: busy (Cancel in Store UI, or store job)\n");
-        ConsoleJobReleasePrompt();
+        gConsole.Write("store: busy (Cancel in Store UI, or store job)\n");
+        gConsole.JobReleasePrompt();
         return -1;
     }
     return 0;
 }
 
 void ShellStoreQueued(const char *Verb, const char *Id) {
-    ConsoleWrite("store: queued ");
+    gConsole.Write("store: queued ");
     if (Verb && Verb[0]) {
-        ConsoleWrite(Verb);
-        ConsoleWrite(" ");
+        gConsole.Write(Verb);
+        gConsole.Write(" ");
     }
     if (Id && Id[0]) {
-        ConsoleWrite(Id);
+        gConsole.Write(Id);
     }
-    ConsoleWrite("\n");
-    ConsoleWrite("hint: worker runs it; open another shell if needed\n");
+    gConsole.Write("\n");
+    gConsole.Write("hint: worker runs it; open another shell if needed\n");
 }
 
 void ShellStoreNetDone(const char *Verb, int Err) {
     if (Err == 0) {
-        ConsoleWrite("store: ");
-        ConsoleWrite(Verb);
-        ConsoleWrite(" ok\n");
+        gConsole.Write("store: ");
+        gConsole.Write(Verb);
+        gConsole.Write(" ok\n");
         return;
     }
-    ConsoleWrite("store: ");
-    ConsoleWrite(Verb);
-    ConsoleWrite(" fail\n");
+    gConsole.Write("store: ");
+    gConsole.Write(Verb);
+    gConsole.Write(" fail\n");
     if (Err == -41) {
-        ConsoleWrite("hint: HTTP not 200\n");
+        gConsole.Write("hint: HTTP not 200\n");
     } else if (Err == -42) {
-        ConsoleWrite("hint: hash mismatch\n");
+        gConsole.Write("hint: hash mismatch\n");
     } else if (Err == -40) {
-        ConsoleWrite("hint: net/tcp fail\n");
+        gConsole.Write("hint: net/tcp fail\n");
     } else if (Err == -43) {
-        ConsoleWrite("hint: out of memory\n");
+        gConsole.Write("hint: out of memory\n");
     }
 }
 
@@ -68,24 +68,24 @@ void ShellStoreJobStatus(void) {
 
     if (StoreJobUiIsBusy()) {
         StoreJobGetStatus(Buf, (int)sizeof(Buf));
-        ConsoleWrite("store job: busy");
+        gConsole.Write("store job: busy");
         if (Buf[0]) {
-            ConsoleWrite("  ");
-            ConsoleWrite(Buf);
+            gConsole.Write("  ");
+            gConsole.Write(Buf);
         }
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
         return;
     }
     Err = StoreJobLastError();
-    ConsoleWrite("store job: idle  last=");
+    gConsole.Write("store job: idle  last=");
     if (Err == FAT_OK || Err == 0) {
-        ConsoleWrite("ok");
+        gConsole.Write("ok");
     } else if (Err == STORE_JOB_ERR_CANCEL) {
-        ConsoleWrite("cancelled");
+        gConsole.Write("cancelled");
     } else {
-        ConsoleWrite(FatStrError(Err));
+        gConsole.Write(FatStrError(Err));
     }
-    ConsoleWrite("\n");
+    gConsole.Write("\n");
 }
 
 int StoreWordEq(const char *A, const char *B) {
@@ -103,9 +103,9 @@ int StoreWordEq(const char *A, const char *B) {
 }
 
 void StorePrintUsage(void) {
-    ConsoleWrite(
+    gConsole.Write(
         "usage: store <list|install|remove|combo|uncombo|installed|sync|fetch|repo|job> ...\n");
-    ConsoleWrite(
+    gConsole.Write(
         "  aliases: (none)→list, status→list, rm→remove, list-installed→installed\n");
 }
 
@@ -118,14 +118,14 @@ void StoreCmdListCatalog(void) {
     Tab = StoreScratchTab();
     Err = StoreLoadCatalog(Tab, STORE_ENTRIES_MAX, &Count);
     if (Err < 0) {
-        ConsoleWrite("store: catalog ");
-        ConsoleWrite(FatStrError(Err));
-        ConsoleWrite("\n");
+        gConsole.Write("store: catalog ");
+        gConsole.Write(FatStrError(Err));
+        gConsole.Write("\n");
         return;
     }
-    ConsoleWrite("store (");
-    ConsoleWrite(StoreHostArch());
-    ConsoleWrite(")  *=[本|网] id …\n");
+    gConsole.Write("store (");
+    gConsole.Write(StoreHostArch());
+    gConsole.Write(")  *=[本|网] id …\n");
     for (i = 0; i < Count; i++) {
         char Dep[64];
         int On = StoreIsInstalled(Tab[i].Id);
@@ -142,17 +142,17 @@ void StoreCmdListCatalog(void) {
             Dep[0] = '-';
             Dep[1] = 0;
         }
-        ConsoleWrite(On ? "* " : "  ");
-        ConsoleWrite(Tab[i].Origin == STORE_SRC_NET ? "[网] " : "[本] ");
-        ConsoleWrite(Tab[i].Id);
-        ConsoleWrite("  ");
-        ConsoleWrite(Tab[i].Type);
-        ConsoleWrite("  dep=");
-        ConsoleWrite(Dep);
-        ConsoleWrite("  ");
-        ConsoleWrite(Tab[i].File);
-        ConsoleWrite("  ");
-        ConsoleWrite(Tab[i].Title);
-        ConsoleWrite("\n");
+        gConsole.Write(On ? "* " : "  ");
+        gConsole.Write(Tab[i].Origin == STORE_SRC_NET ? "[网] " : "[本] ");
+        gConsole.Write(Tab[i].Id);
+        gConsole.Write("  ");
+        gConsole.Write(Tab[i].Type);
+        gConsole.Write("  dep=");
+        gConsole.Write(Dep);
+        gConsole.Write("  ");
+        gConsole.Write(Tab[i].File);
+        gConsole.Write("  ");
+        gConsole.Write(Tab[i].Title);
+        gConsole.Write("\n");
     }
 }

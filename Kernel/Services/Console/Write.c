@@ -87,7 +87,7 @@ void ConsoleDrawChar(char C, UINT32 Color) {
 }
 
 /* 同时输出到串口与屏幕（帧缓冲未就绪时只写串口） */
-void ConsoleWrite(const char *Text) {
+static void Write(const char *Text) {
     const char *P;
     int Owner;
 
@@ -167,7 +167,7 @@ void ConsoleWrite(const char *Text) {
 }
 
 /* 按长度输出（SYS_WRITE 用；UTF-8 按码点画，不因中间的 NUL 截断） */
-void ConsoleWriteLen(const char *Data, UINTN Len) {
+static void WriteLen(const char *Data, UINTN Len) {
     UINTN i;
 
     if (Data == 0 || Len == 0) {
@@ -181,7 +181,7 @@ void ConsoleWriteLen(const char *Data, UINTN Len) {
         UINTN k;
 
         if (Data[i] == '\n') {
-            ConsoleWrite("\n");
+            gConsole.Write("\n");
             i++;
             continue;
         }
@@ -206,21 +206,28 @@ void ConsoleWriteLen(const char *Data, UINTN Len) {
             Tmp[k] = Data[i + k];
         }
         Tmp[k] = 0;
-        ConsoleWrite(Tmp);
+        gConsole.Write(Tmp);
         i += N;
     }
 }
 
 /* 输出 32 位十六进制 */
-void ConsoleWriteHex32(UINT32 Value) {
+static void WriteHex32(UINT32 Value) {
     char Buf[12];
     HalSerialFormatHex(Buf, Value, 8);
-    ConsoleWrite(Buf);
+    gConsole.Write(Buf);
 }
 
 /* 输出 64 位十六进制 */
-void ConsoleWriteHex64(UINT64 Value) {
+static void WriteHex64(UINT64 Value) {
     char Buf[20];
     HalSerialFormatHex(Buf, Value, 16);
-    ConsoleWrite(Buf);
+    gConsole.Write(Buf);
+}
+
+void ConsolePublishWrite(CONSOLE_OPS *Ops) {
+    Ops->Write = Write;
+    Ops->WriteLen = WriteLen;
+    Ops->WriteHex32 = WriteHex32;
+    Ops->WriteHex64 = WriteHex64;
 }

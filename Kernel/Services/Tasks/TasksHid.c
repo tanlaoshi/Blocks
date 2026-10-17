@@ -203,13 +203,13 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
         }
 
         /* exec 中 CHAT 等：键盘进 stdin 环，勿进 shell（否则 HI→unknown / HELP→真 help） */
-        if (ConsoleStdinUserHold()) {
+        if (gConsole.StdinUserHold()) {
             if (Key == HID_KEY_ENTER) {
-                ConsoleStdinPut('\n');
+                gConsole.StdinPut('\n');
                 continue;
             }
             if (Key == HID_KEY_BACKSPACE) {
-                ConsoleStdinPut('\b');
+                gConsole.StdinPut('\b');
                 continue;
             }
             if (Key == HID_KEY_CAPSLOCK) {
@@ -225,21 +225,21 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
             {
                 char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
                 if (C != 0) {
-                    ConsoleStdinPut(C);
+                    gConsole.StdinPut(C);
                 }
             }
             continue;
         }
 
         if (Key == HID_KEY_ENTER) {
-            /* ConsoleOnEnter → EnsureShell：空桌面时开 Shell */
-            ConsoleOnEnter();
+            /* gConsole.OnEnter → EnsureShell：空桌面时开 Shell */
+            gConsole.OnEnter();
             continue;
         }
         if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
             /* Shell 焦点：↑↓ 历史；其它窗仍挪光标 */
             if (GuiShellAcceptsInput()) {
-                ConsoleOnHistHid(Key, 0);
+                gConsole.OnHistHid(Key, 0);
             } else {
                 GuiOnArrowKey(Key);
             }
@@ -251,7 +251,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
         }
         if (Key == HID_KEY_BACKSPACE) {
             if (GuiShellAcceptsInput()) {
-                ConsoleOnBackspace();
+                gConsole.OnBackspace();
             }
             continue;
         }
@@ -268,7 +268,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
 
         char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
         if (C != 0) {
-            ConsoleOnChar(C);
+            gConsole.OnChar(C);
         }
     }
 }

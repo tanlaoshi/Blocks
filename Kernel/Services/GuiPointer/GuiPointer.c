@@ -230,7 +230,7 @@ void GuiPollMouse(void) {
         if (GuiFocusKind() == GUI_WIN_FILES) {
             FilesUiOnWheel(M.Wheel);
         } else if (GuiFocusKind() == GUI_WIN_SHELL) {
-            ConsoleOnWheel(M.Wheel);
+            gConsole.OnWheel(M.Wheel);
         }
     }
     if (Any) {

@@ -23,11 +23,11 @@ static int ParseDecInt(const char *S, INT32 *Out) {
 }
 
 static void WriteSpinErr(int Err) {
-    ConsoleWrite("test thread: fail err=");
-    ConsoleWriteHex32((UINT32)Err);
-    ConsoleWrite(" (1=arg 2=busy 3=nomem 4=nova 5=map 6=create)\n");
+    gConsole.Write("test thread: fail err=");
+    gConsole.WriteHex32((UINT32)Err);
+    gConsole.Write(" (1=arg 2=busy 3=nomem 4=nova 5=map 6=create)\n");
     if (Err == 2) {
-        ConsoleWrite("  hint: TOY_SMP=1 + SNAKE；串口敲命令（0 非法会变成双核）\n");
+        gConsole.Write("  hint: TOY_SMP=1 + SNAKE；串口敲命令（0 非法会变成双核）\n");
     }
 }
 
@@ -41,17 +41,17 @@ static void CommandTestThread(int Argc, char **Argv) {
     UINT64 LeaderTls;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: test thread <pid>\n");
-        ConsoleWrite("  TOY_SMP=1；ps 十进制 pid；SNAKE 挂住后测\n");
+        gConsole.Write("usage: test thread <pid>\n");
+        gConsole.Write("  TOY_SMP=1；ps 十进制 pid；SNAKE 挂住后测\n");
         return;
     }
     if (ParseDecInt(Argv[1], &Pid) != 0 || Pid <= 0 || Pid > MAX_TASKS) {
-        ConsoleWrite("test thread: bad pid\n");
+        gConsole.Write("test thread: bad pid\n");
         return;
     }
     T = SchedulerTaskByIndex(Pid - 1);
     if (!T || !T->IsUser || T->State == TASK_UNUSED) {
-        ConsoleWrite("test thread: not a live user task\n");
+        gConsole.Write("test thread: not a live user task\n");
         return;
     }
     Leader = (TASK *)(UINTN)T;
@@ -74,35 +74,35 @@ static void CommandTestThread(int Argc, char **Argv) {
         if (U->PageRoot != Leader->PageRoot || U->UserSpace != Leader->UserSpace) {
             Same = 0;
         }
-        ConsoleWrite("  tid=");
-        ConsoleWriteHex32((UINT32)U->Id);
-        ConsoleWrite(" thr=");
-        ConsoleWriteHex32((UINT32)U->IsThread);
-        ConsoleWrite(" tls=");
-        ConsoleWriteHex64(U->TlsBase);
-        ConsoleWrite(" root=");
-        ConsoleWriteHex64(U->PageRoot);
-        ConsoleWrite("\n");
+        gConsole.Write("  tid=");
+        gConsole.WriteHex32((UINT32)U->Id);
+        gConsole.Write(" thr=");
+        gConsole.WriteHex32((UINT32)U->IsThread);
+        gConsole.Write(" tls=");
+        gConsole.WriteHex64(U->TlsBase);
+        gConsole.Write(" root=");
+        gConsole.WriteHex64(U->PageRoot);
+        gConsole.Write("\n");
     }
-    ConsoleWrite("test thread: twin slot=");
-    ConsoleWriteHex32((UINT32)Slot);
+    gConsole.Write("test thread: twin slot=");
+    gConsole.WriteHex32((UINT32)Slot);
     if (Same) {
-        ConsoleWrite(" same-CR3 ok");
+        gConsole.Write(" same-CR3 ok");
     } else {
-        ConsoleWrite(" CR3 mismatch");
+        gConsole.Write(" CR3 mismatch");
     }
     {
         const TASK *Twin = SchedulerTaskByIndex(Slot);
         if (LeaderTls != 0 && Twin && Twin->TlsBase != 0 && LeaderTls != Twin->TlsBase) {
-            ConsoleWrite(" tls-distinct ok");
+            gConsole.Write(" tls-distinct ok");
         } else {
-            ConsoleWrite(" tls-check fail");
+            gConsole.Write(" tls-check fail");
         }
     }
-    ConsoleWrite(" (parked)\n");
+    gConsole.Write(" (parked)\n");
     SchedulerDropDiagThread(Slot);
 }
 
 void ShellCommandsThreadRegister(void) {
-    ConsoleRegister2("test", "thread", "spawn shared-VAS spin twin", CommandTestThread);
+    gConsole.Register2("test", "thread", "spawn shared-VAS spin twin", CommandTestThread);
 }

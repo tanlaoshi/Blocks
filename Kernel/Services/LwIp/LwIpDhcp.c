@@ -1,7 +1,7 @@
 /*
  * LwIpDhcp.c — DHCP 客户端（PR-N-nic-dhcp / 前后端分离）
  *
- * Shell：Enqueue + ConsoleJobHoldPrompt（本窗等 IP，可开另一 Shell）。
+ * Shell：Enqueue + gConsole.JobHoldPrompt（本窗等 IP，可开另一 Shell）。
  * WorkerTask：LwIpDhcpStep；完成行 WriteToJobShell + ReleasePrompt。
  */
 #include "LwIp.h"
@@ -118,15 +118,15 @@ static void FinishPrint(int Ok) {
             Msg[N++] = '\n';
         }
         Msg[N] = 0;
-        ConsoleWriteToJobShell(Msg);
+        gConsole.WriteToJobShell(Msg);
         DebugWrite("lwip: dhcp ok ip=");
         DebugWrite(IpBuf);
         DebugWrite("\n");
     } else {
-        ConsoleWriteToJobShell("lwip dhcp: no offer\n");
+        gConsole.WriteToJobShell("lwip dhcp: no offer\n");
         DebugWrite("lwip: dhcp timeout\n");
     }
-    ConsoleJobReleasePrompt();
+    gConsole.JobReleasePrompt();
 }
 
 int LwIpDhcpRestart(int TimeoutMs) {

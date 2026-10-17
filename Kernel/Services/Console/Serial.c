@@ -7,10 +7,10 @@
 #include "HIDKeyboard.h"
 #include "ShellCommands.h"
 
-void ConsoleSerialFeedChar(char C, int *SkipLf) {
+static void SerialFeedChar(char C, int *SkipLf) {
     int Skip;
 
-    if (ConsoleStdinUserHold()) {
+    if (gConsole.StdinUserHold()) {
         /* 仍回显：CoolTerm 常关 Local Echo；Hold 时静默像死机 */
         if (C >= 32 && C <= 126) {
             HalConsolePutChar(C);
@@ -19,31 +19,31 @@ void ConsoleSerialFeedChar(char C, int *SkipLf) {
         } else if (C == '\b' || C == 127) {
             HalConsoleBackspaceSerial();
         }
-        ConsoleStdinPut(C);
+        gConsole.StdinPut(C);
         return;
     }
     Skip = (SkipLf != 0) ? *SkipLf : 0;
-    if (ConsoleHistIgnoreRx()) {
+    if (gConsole.HistIgnoreRx()) {
         if (C == '\r') {
             if (SkipLf) {
                 *SkipLf = 1;
             }
-            ConsoleOnEnterEx(1);
-            ConsoleHistClearIgnoreRx();
+            gConsole.OnEnterEx(1);
+            gConsole.HistClearIgnoreRx();
         } else if (C == '\n') {
             if (Skip) {
                 if (SkipLf) {
                     *SkipLf = 0;
                 }
             } else {
-                ConsoleOnEnterEx(1);
-                ConsoleHistClearIgnoreRx();
+                gConsole.OnEnterEx(1);
+                gConsole.HistClearIgnoreRx();
             }
         } else if (C == 3) {
-            ConsoleHistClearIgnoreRx();
+            gConsole.HistClearIgnoreRx();
             ShellOnInterrupt();
         } else {
-            (void)ConsoleHistFeedAnsi(C, 1);
+            (void)gConsole.HistFeedAnsi(C, 1);
         }
         return;
     }
@@ -51,7 +51,7 @@ void ConsoleSerialFeedChar(char C, int *SkipLf) {
         if (SkipLf) {
             *SkipLf = 1;
         }
-        ConsoleOnEnterEx(1);
+        gConsole.OnEnterEx(1);
         return;
     }
     if (C == '\n') {
@@ -60,7 +60,7 @@ void ConsoleSerialFeedChar(char C, int *SkipLf) {
                 *SkipLf = 0;
             }
         } else {
-            ConsoleOnEnterEx(1);
+            gConsole.OnEnterEx(1);
         }
         return;
     }
@@ -68,16 +68,16 @@ void ConsoleSerialFeedChar(char C, int *SkipLf) {
         *SkipLf = 0;
     }
     if (C == '\b' || C == 127) {
-        ConsoleOnBackspaceEx(1);
+        gConsole.OnBackspaceEx(1);
     } else if (C == 3) {
         ShellOnInterrupt();
-    } else if (!ConsoleHistFeedAnsi(C, 1) && C >= 32 && C <= 126) {
-        ConsoleOnCharEx(C, 1);
+    } else if (!gConsole.HistFeedAnsi(C, 1) && C >= 32 && C <= 126) {
+        gConsole.OnCharEx(C, 1);
     }
 }
 
 /* PR-A9/V3：virt 串口 + virtio-input 键盘 */
-void ConsoleSerialRun(void) {
+static void SerialRun(void) {
     static HAL_KEYBOARD_REPORT Prev;
     HAL_KEYBOARD_REPORT Report;
     static int SkipLf;
@@ -88,7 +88,7 @@ void ConsoleSerialRun(void) {
     } else {
         HalConsoleWriteSerial("serial shell (help/mem/ps/halt)\n");
     }
-    ConsoleAnnounceBootReady();
+    gConsole.AnnounceBootReady();
     for (;;) {
         HalCpuHalt();
         HalInputPoll();
@@ -97,7 +97,7 @@ void ConsoleSerialRun(void) {
             while (HalSerialDataReady() && n < 256) {
                 char C = HalSerialReadChar();
                 n++;
-                ConsoleSerialFeedChar(C, &SkipLf);
+                gConsole.SerialFeedChar(C, &SkipLf);
             }
         }
         while (HalKeyboardDequeue(&Report)) {
@@ -119,18 +119,18 @@ void ConsoleSerialRun(void) {
                     continue;
                 }
                 if (Key == 0x28) {
-                    ConsoleOnEnter();
+                    gConsole.OnEnter();
                 } else if (Key == 0x2A) {
-                    ConsoleOnBackspace();
+                    gConsole.OnBackspace();
                 } else if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
-                    ConsoleOnHistHid(Key, 0);
+                    gConsole.OnHistHid(Key, 0);
                 } else if (Key == HID_KEY_C &&
                            (Report.ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL)) != 0) {
                     ShellOnInterrupt();
                 } else {
                     char C = HIDKeyCodeToASCII(Key, Report.ModifierKeys);
                     if (C) {
-                        ConsoleOnChar(C);
+                        gConsole.OnChar(C);
                     }
                 }
             }
@@ -138,4 +138,9 @@ void ConsoleSerialRun(void) {
         }
         HalCpuRelax();
     }
+}
+
+void ConsolePublishSerial(CONSOLE_OPS *Ops) {
+    Ops->SerialFeedChar = SerialFeedChar;
+    Ops->SerialRun = SerialRun;
 }

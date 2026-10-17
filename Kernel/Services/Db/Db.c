@@ -151,20 +151,20 @@ static void CommandDbGet(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: dbget <key>\n");
+        gConsole.Write("usage: dbget <key>\n");
         return;
     }
     Err = DbGet(Argv[1], Val, sizeof(Val));
     if (Err == DB_NOENT) {
-        ConsoleWrite("dbget: not found\n");
+        gConsole.Write("dbget: not found\n");
         return;
     }
     if (Err != DB_OK) {
-        ConsoleWrite("dbget: error\n");
+        gConsole.Write("dbget: error\n");
         return;
     }
-    ConsoleWrite(Val);
-    ConsoleWrite("\n");
+    gConsole.Write(Val);
+    gConsole.Write("\n");
 }
 
 static void CommandDbSet(int Argc, char **Argv) {
@@ -175,7 +175,7 @@ static void CommandDbSet(int Argc, char **Argv) {
     int Err;
 
     if (Argc < 3) {
-        ConsoleWrite("usage: dbset <key> <value...>\n");
+        gConsole.Write("usage: dbset <key> <value...>\n");
         return;
     }
     for (a = 2; a < Argc; a++) {
@@ -194,26 +194,26 @@ static void CommandDbSet(int Argc, char **Argv) {
     Val[Len] = 0;
     Err = DbSet(Argv[1], Val);
     if (Err == DB_FULL) {
-        ConsoleWrite("dbset: full\n");
+        gConsole.Write("dbset: full\n");
         return;
     }
     if (Err == DB_INVAL) {
-        ConsoleWrite("dbset: invalid key\n");
+        gConsole.Write("dbset: invalid key\n");
         return;
     }
     if (Err != DB_OK) {
-        ConsoleWrite("dbset: save failed\n");
+        gConsole.Write("dbset: save failed\n");
         return;
     }
-    ConsoleWrite("dbset: ok\n");
+    gConsole.Write("dbset: ok\n");
 }
 
 static int ListCb(const char *Key, const char *Value, void *Ctx) {
     (void)Ctx;
-    ConsoleWrite(Key);
-    ConsoleWrite("=");
-    ConsoleWrite(Value);
-    ConsoleWrite("\n");
+    gConsole.Write(Key);
+    gConsole.Write("=");
+    gConsole.Write(Value);
+    gConsole.Write("\n");
     return 0;
 }
 
@@ -221,7 +221,7 @@ static void CommandDbList(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
     if (DbCount() == 0) {
-        ConsoleWrite("dblist: (empty)\n");
+        gConsole.Write("dblist: (empty)\n");
         return;
     }
     (void)DbForEach(ListCb, 0);
@@ -239,12 +239,12 @@ int DbInitialize(void) {
         ImportThemeCfgIfEmpty();
     }
     gReady = 1;
-    ConsoleRegister2("database", "get", "get KV from TOYOS.DB", CommandDbGet);
-    ConsoleRegister2("database", "set", "set KV in TOYOS.DB", CommandDbSet);
-    ConsoleRegister2("database", "list", "list TOYOS.DB", CommandDbList);
-    ConsoleRegisterAliasLine("dbget", "database", "get");
-    ConsoleRegisterAliasLine("dbset", "database", "set");
-    ConsoleRegisterAliasLine("dblist", "database", "list");
+    gConsole.Register2("database", "get", "get KV from TOYOS.DB", CommandDbGet);
+    gConsole.Register2("database", "set", "set KV in TOYOS.DB", CommandDbSet);
+    gConsole.Register2("database", "list", "list TOYOS.DB", CommandDbList);
+    gConsole.RegisterAliasLine("dbget", "database", "get");
+    gConsole.RegisterAliasLine("dbset", "database", "set");
+    gConsole.RegisterAliasLine("dblist", "database", "list");
     DebugWrite("db: ready records=");
     DebugHex32((UINT32)DbCount());
     DebugWrite("\n");

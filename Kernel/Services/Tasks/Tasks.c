@@ -170,8 +170,8 @@ void WorkerTask(void) {
             }
         }
 #endif
-        ConsoleAnnounceBootReady();
-        (void)ConsoleRuntimeLogFlush(); /* ready 后 ToyLog → RUNTIME.LOG */
+        gConsole.AnnounceBootReady();
+        (void)gConsole.RuntimeLogFlush(); /* ready 后 ToyLog → RUNTIME.LOG */
         HalCpuHalt();
         (void)SchedulerCondResched();
     }

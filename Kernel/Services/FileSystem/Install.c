@@ -100,24 +100,24 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     static const char DefaultId[] = "ToyOS root volume\n";
 
     if (Drive >= BLOCK_MAX_DRIVES || !BlockDriveReady(Drive)) {
-        ConsoleWrite("install: drive not ready\n");
+        gConsole.Write("install: drive not ready\n");
         return -1;
     }
     if (EspMib == 0) {
         EspMib = 256;
     }
     if (TotalSectors < 512ull * 2048ull) {
-        ConsoleWrite("install: need >=512MiB (--mib)\n");
+        gConsole.Write("install: need >=512MiB (--mib)\n");
         return -1;
     }
     if (!Yes) {
-        ConsoleWrite("install: dry-run drive=");
-        ConsoleWriteHex32(Drive);
-        ConsoleWrite(" sectors=");
-        ConsoleWriteHex32((UINT32)TotalSectors);
-        ConsoleWrite(" esp=");
-        ConsoleWriteHex32(EspMib);
-        ConsoleWrite("MiB (pass --yes to wipe)\n");
+        gConsole.Write("install: dry-run drive=");
+        gConsole.WriteHex32(Drive);
+        gConsole.Write(" sectors=");
+        gConsole.WriteHex32((UINT32)TotalSectors);
+        gConsole.Write(" esp=");
+        gConsole.WriteHex32(EspMib);
+        gConsole.Write("MiB (pass --yes to wipe)\n");
         return 0;
     }
 
@@ -127,7 +127,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         BootPages = LoadFile("EFI/BOOT/BOOTX64.EFI", &Boot, &BootSz, 8);
     }
     if (BootPages < 0) {
-        ConsoleWrite("install: missing BOOTX64.EFI\n");
+        gConsole.Write("install: missing BOOTX64.EFI\n");
         return -1;
     }
     KernPages = LoadFile("Kernel.elf", &Kern, &KernSz, (INSTALL_COPY_MAX / 4096u));
@@ -135,7 +135,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         KernPages = LoadFile("TOYOS:Kernel.elf", &Kern, &KernSz, (INSTALL_COPY_MAX / 4096u));
     }
     if (KernPages < 0) {
-        ConsoleWrite("install: missing Kernel.elf\n");
+        gConsole.Write("install: missing Kernel.elf\n");
         goto fail;
     }
     ThemePages = LoadFile("THEME.CFG", &Theme, &ThemeSz, 1);
@@ -154,46 +154,46 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
 
     SavedDrive = BlockCurrentDrive();
     if (!BlockSelect(Drive)) {
-        ConsoleWrite("install: BlockSelect fail\n");
+        gConsole.Write("install: BlockSelect fail\n");
         goto fail;
     }
 
-    ConsoleWrite("install: writing GPT...\n");
+    gConsole.Write("install: writing GPT...\n");
     if (!GptWriteToyLayout(TotalSectors, EspMib, &EspLba, &EspSec, &ToyLba, &ToySec)) {
-        ConsoleWrite("install: GPT fail\n");
+        gConsole.Write("install: GPT fail\n");
         goto fail_sel;
     }
 
-    ConsoleWrite("install: format ESP...\n");
+    gConsole.Write("install: format ESP...\n");
     Err = FatFormatFat32(EspLba, EspSec, "ESP");
     if (Err != FAT_OK) {
-        ConsoleWrite("install: ESP format fail\n");
+        gConsole.Write("install: ESP format fail\n");
         goto fail_sel;
     }
-    ConsoleWrite("install: format TOYOS...\n");
+    gConsole.Write("install: format TOYOS...\n");
     Err = FatFormatFat32(ToyLba, ToySec, "TOYOS");
     if (Err != FAT_OK) {
-        ConsoleWrite("install: TOYOS format fail\n");
+        gConsole.Write("install: TOYOS format fail\n");
         goto fail_sel;
     }
 
     if (EnsureDir(EspLba, "EFI") != FAT_OK || EnsureDir(EspLba, "EFI/BOOT") != FAT_OK) {
-        ConsoleWrite("install: mkdir EFI/BOOT fail\n");
+        gConsole.Write("install: mkdir EFI/BOOT fail\n");
         goto fail_sel;
     }
     Err = WritePartFile(EspLba, "EFI/BOOT/BOOTX64.EFI", Boot, BootSz);
     if (Err != FAT_OK) {
-        ConsoleWrite("install: write BOOTX64 fail\n");
+        gConsole.Write("install: write BOOTX64 fail\n");
         goto fail_sel;
     }
     Err = WritePartFile(ToyLba, "TOYOS.ID", Id, IdSz);
     if (Err != FAT_OK) {
-        ConsoleWrite("install: write TOYOS.ID fail\n");
+        gConsole.Write("install: write TOYOS.ID fail\n");
         goto fail_sel;
     }
     Err = WritePartFile(ToyLba, "Kernel.elf", Kern, KernSz);
     if (Err != FAT_OK) {
-        ConsoleWrite("install: write Kernel.elf fail\n");
+        gConsole.Write("install: write Kernel.elf fail\n");
         goto fail_sel;
     }
     if (Theme && ThemeSz > 0) {
@@ -204,13 +204,13 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     (void)BlockSelect(SavedDrive);
     (void)FileSystemRemountVolumes();
 
-    ConsoleWrite("install: ok drive=");
-    ConsoleWriteHex32(Drive);
-    ConsoleWrite(" ESP@");
-    ConsoleWriteHex32(EspLba);
-    ConsoleWrite(" TOYOS@");
-    ConsoleWriteHex32(ToyLba);
-    ConsoleWrite("\n");
+    gConsole.Write("install: ok drive=");
+    gConsole.WriteHex32(Drive);
+    gConsole.Write(" ESP@");
+    gConsole.WriteHex32(EspLba);
+    gConsole.Write(" TOYOS@");
+    gConsole.WriteHex32(ToyLba);
+    gConsole.Write("\n");
 
     if (BootPages > 0) {
         PhysicalMemoryFreePages(Boot, (UINT32)BootPages);

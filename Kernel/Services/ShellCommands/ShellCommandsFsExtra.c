@@ -20,20 +20,20 @@ static void CommandWrbig(int Argc, char **Argv) {
     int Ok = 1;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: wrbig <file> [size_kb]\n");
+        gConsole.Write("usage: wrbig <file> [size_kb]\n");
         return;
     }
     if (Argc >= 3) {
         SizeKb = 0;
         for (const char *P = Argv[2]; *P; P++) {
             if (*P < '0' || *P > '9') {
-                ConsoleWrite("wrbig: bad size_kb\n");
+                gConsole.Write("wrbig: bad size_kb\n");
                 return;
             }
             SizeKb = SizeKb * 10u + (UINT32)(*P - '0');
         }
         if (SizeKb == 0) {
-            ConsoleWrite("wrbig: size_kb must be > 0\n");
+            gConsole.Write("wrbig: size_kb must be > 0\n");
             return;
         }
     }
@@ -45,7 +45,7 @@ static void CommandWrbig(int Argc, char **Argv) {
     Pages = (UINT32)((Size + PAGE_SIZE - 1) / PAGE_SIZE);
     Buf = (UINT8 *)PhysicalMemoryAllocatePages(Pages);
     if (!Buf) {
-        ConsoleWrite("wrbig: alloc failed\n");
+        gConsole.Write("wrbig: alloc failed\n");
         return;
     }
     for (i = 0; i < Size; i++) {
@@ -67,19 +67,19 @@ static void CommandWrbig(int Argc, char **Argv) {
         return;
     }
     if (OutSize != Size) {
-        ConsoleWrite("wrbig: fail size want=");
-        ConsoleWriteHex32((UINT32)Size);
-        ConsoleWrite(" got=");
-        ConsoleWriteHex32((UINT32)OutSize);
-        ConsoleWrite("\n");
+        gConsole.Write("wrbig: fail size want=");
+        gConsole.WriteHex32((UINT32)Size);
+        gConsole.Write(" got=");
+        gConsole.WriteHex32((UINT32)OutSize);
+        gConsole.Write("\n");
         Ok = 0;
     } else {
         for (i = 0; i < Size; i++) {
             UINT8 Expect = (UINT8)((i * 131u + 17u) & 0xFFu);
             if (Buf[i] != Expect) {
-                ConsoleWrite("wrbig: fail pattern at ");
-                ConsoleWriteHex32((UINT32)i);
-                ConsoleWrite("\n");
+                gConsole.Write("wrbig: fail pattern at ");
+                gConsole.WriteHex32((UINT32)i);
+                gConsole.Write("\n");
                 Ok = 0;
                 break;
             }
@@ -87,9 +87,9 @@ static void CommandWrbig(int Argc, char **Argv) {
     }
     PhysicalMemoryFreePages(Buf, Pages);
     if (Ok) {
-        ConsoleWrite("wrbig: ok ");
-        ConsoleWriteHex32((UINT32)Size);
-        ConsoleWrite(" bytes\n");
+        gConsole.Write("wrbig: ok ");
+        gConsole.WriteHex32((UINT32)Size);
+        gConsole.Write(" bytes\n");
     }
 }
 
@@ -101,7 +101,7 @@ static void CommandVols(int Argc, char **Argv) {
 
     Count = FileSystemVolCount();
     if (Count <= 0) {
-        ConsoleWrite("vols: none\n");
+        gConsole.Write("vols: none\n");
         return;
     }
     for (i = 0; i < Count; i++) {
@@ -114,26 +114,26 @@ static void CommandVols(int Argc, char **Argv) {
         if (FileSystemVolInfo(i, Name, sizeof(Name), &Drive, &StartLba, &ReadOnly) != 0) {
             continue;
         }
-        ConsoleWrite(i == FileSystemDefaultVol() ? "* " : "  ");
+        gConsole.Write(i == FileSystemDefaultVol() ? "* " : "  ");
         Let[0] = (char)('A' + i);
         Let[1] = ':';
         Let[2] = 0;
-        ConsoleWrite(Let);
-        ConsoleWrite(" ");
-        ConsoleWrite(Name);
-        ConsoleWrite(":");
-        ConsoleWrite(" drive=");
-        ConsoleWriteHex32(Drive);
-        ConsoleWrite(" lba=");
-        ConsoleWriteHex32(StartLba);
+        gConsole.Write(Let);
+        gConsole.Write(" ");
+        gConsole.Write(Name);
+        gConsole.Write(":");
+        gConsole.Write(" drive=");
+        gConsole.WriteHex32(Drive);
+        gConsole.Write(" lba=");
+        gConsole.WriteHex32(StartLba);
         if (ReadOnly) {
-            ConsoleWrite(" ro");
+            gConsole.Write(" ro");
         }
         {
             const char *Backend = 0;
             if (FileSystemVolBackend(i, &Backend) == 0 && Backend) {
-                ConsoleWrite(" ");
-                ConsoleWrite(Backend);
+                gConsole.Write(" ");
+                gConsole.Write(Backend);
             }
         }
         {
@@ -154,10 +154,10 @@ static void CommandVols(int Argc, char **Argv) {
                 T++;
             }
             if (IsToy && *N == 0) {
-                ConsoleWrite(" toyos");
+                gConsole.Write(" toyos");
             }
         }
-        ConsoleWrite("\n");
+        gConsole.Write("\n");
     }
 }
 
@@ -168,7 +168,7 @@ static void CommandFileStat(int Argc, char **Argv) {
     const char *Path;
 
     if (Argc < 2) {
-        ConsoleWrite("usage: filestat <path>\n");
+        gConsole.Write("usage: filestat <path>\n");
         return;
     }
     Path = Argv[1];
@@ -177,23 +177,23 @@ static void CommandFileStat(int Argc, char **Argv) {
         ShellFatReport("filestat", Err);
         return;
     }
-    ConsoleWrite(Path);
-    ConsoleWrite(": ");
+    gConsole.Write(Path);
+    gConsole.Write(": ");
     if (St.Attr & FAT_ATTR_DIR) {
-        ConsoleWrite("dir");
+        gConsole.Write("dir");
     } else {
-        ConsoleWrite("file");
+        gConsole.Write("file");
     }
     if (St.Attr & FAT_ATTR_RO) {
-        ConsoleWrite(" ro");
+        gConsole.Write(" ro");
     }
-    ConsoleWrite(" size=");
-    ConsoleWriteHex32(St.Size);
-    ConsoleWrite(" cluster=");
-    ConsoleWriteHex32(St.Cluster);
-    ConsoleWrite(" attr=");
-    ConsoleWriteHex32((UINT32)St.Attr);
-    ConsoleWrite("\n");
+    gConsole.Write(" size=");
+    gConsole.WriteHex32(St.Size);
+    gConsole.Write(" cluster=");
+    gConsole.WriteHex32(St.Cluster);
+    gConsole.Write(" attr=");
+    gConsole.WriteHex32((UINT32)St.Attr);
+    gConsole.Write("\n");
 }
 
 /* PR-F2：落盘同步（全称 filesync） */
@@ -204,7 +204,7 @@ static void CommandFileSync(int Argc, char **Argv) {
         ShellFatReport("filesync", Err);
         return;
     }
-    ConsoleWrite("filesync: ok\n");
+    gConsole.Write("filesync: ok\n");
 }
 
 /* PR-F3：大目录簇扩展回归 */
@@ -230,13 +230,13 @@ static void CommandDirStress(int Argc, char **Argv) {
             for (i = 0; Argv[2][i]; i++) {
                 char C = Argv[2][i];
                 if (C < '0' || C > '9') {
-                    ConsoleWrite("usage: dirstress [dir] [count|grow]\n");
+                    gConsole.Write("usage: dirstress [dir] [count|grow]\n");
                     return;
                 }
                 MaxFiles = MaxFiles * 10 + (C - '0');
             }
             if (MaxFiles <= 0) {
-                ConsoleWrite("dirstress: count must be > 0\n");
+                gConsole.Write("dirstress: count must be > 0\n");
                 return;
             }
         }
@@ -247,35 +247,35 @@ static void CommandDirStress(int Argc, char **Argv) {
     Err = FileSystemDirStress(Dir, MaxFiles, &Created, &Grew);
     if (Err != FAT_OK) {
         ShellFatReport("dirstress", Err);
-        ConsoleWrite("dirstress: created=");
-        ConsoleWriteHex32((UINT32)Created);
-        ConsoleWrite(" grew=");
-        ConsoleWrite(Grew ? "yes" : "no");
-        ConsoleWrite("\n");
+        gConsole.Write("dirstress: created=");
+        gConsole.WriteHex32((UINT32)Created);
+        gConsole.Write(" grew=");
+        gConsole.Write(Grew ? "yes" : "no");
+        gConsole.Write("\n");
         return;
     }
-    ConsoleWrite("dirstress: ok created=");
-    ConsoleWriteHex32((UINT32)Created);
-    ConsoleWrite(" grew=");
-    ConsoleWrite(Grew ? "yes" : "no");
-    ConsoleWrite("\n");
+    gConsole.Write("dirstress: ok created=");
+    gConsole.WriteHex32((UINT32)Created);
+    gConsole.Write(" grew=");
+    gConsole.Write(Grew ? "yes" : "no");
+    gConsole.Write("\n");
 }
 
 void ShellCommandsFsExtraRegister(void) {
-    ConsoleRegister2("list", "volumes", "list mounted volumes", CommandVols);
-    ConsoleRegisterAliasLine("vols", "list", "volumes");
-    ConsoleRegisterAliasLine("volumes", "list", "volumes");
+    gConsole.Register2("list", "volumes", "list mounted volumes", CommandVols);
+    gConsole.RegisterAliasLine("vols", "list", "volumes");
+    gConsole.RegisterAliasLine("volumes", "list", "volumes");
 
-    ConsoleRegister2("write", "big", "write+verify large file", CommandWrbig);
-    ConsoleRegisterAliasLine("wrbig", "write", "big");
+    gConsole.Register2("write", "big", "write+verify large file", CommandWrbig);
+    gConsole.RegisterAliasLine("wrbig", "write", "big");
 
-    ConsoleRegister2("show", "file", "file/dir status", CommandFileStat);
-    ConsoleRegisterAliasLine("filestat", "show", "file");
-    ConsoleRegisterAliasLine("stat", "show", "file");
+    gConsole.Register2("show", "file", "file/dir status", CommandFileStat);
+    gConsole.RegisterAliasLine("filestat", "show", "file");
+    gConsole.RegisterAliasLine("stat", "show", "file");
 
-    ConsoleRegister2("sync", "file", "flush volume to disk", CommandFileSync);
-    ConsoleRegisterAliasLine("filesync", "sync", "file");
+    gConsole.Register2("sync", "file", "flush volume to disk", CommandFileSync);
+    gConsole.RegisterAliasLine("filesync", "sync", "file");
 
-    ConsoleRegister2("stress", "directory", "grow subdir clusters", CommandDirStress);
-    ConsoleRegisterAliasLine("dirstress", "stress", "directory");
+    gConsole.Register2("stress", "directory", "grow subdir clusters", CommandDirStress);
+    gConsole.RegisterAliasLine("dirstress", "stress", "directory");
 }

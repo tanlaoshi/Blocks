@@ -131,6 +131,8 @@ PR-STRUCT-early
   → PR-STRUCT-breath
   → PR-STRUCT-font-syscall
   → PR-STRUCT-fs-hooks
+  → PR-STRUCT-ops
+  → PR-STRUCT-fat-names
   → PR-STRUCT-fat
   → PR-STRUCT-hid
   → PR-STRUCT-bot

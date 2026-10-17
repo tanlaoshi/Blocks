@@ -2,8 +2,8 @@
  * Console.h — 交互式 Shell 接口
  *
  * 双通道输出：串口 + 帧缓冲文字。命令通过 gConsole.Register 动态注册。
- * 表在 InitializeConsole 开头填上。填表之前不要调用。
- * 填表之后即可写出，不必再等 Shell 自己的 Initialize。
+ * 表在开机模块之前填好（桌面加载数据库时就会登记命令）。
+ * InitializeConsole 会再填一次。填表之后即可写出，不必再等 Shell 自己的 Initialize。
  */
 #ifndef CONSOLE_H
 #define CONSOLE_H
@@ -111,5 +111,8 @@ typedef struct {
 } CONSOLE_OPS;
 
 extern CONSOLE_OPS gConsole;
+
+/* 把各文件里的函数填进表。可重复调用。 */
+void ConsolePublishAll(void);
 
 #endif

@@ -5,7 +5,7 @@
 #include "Hal.h"
 #include "ToySerialLog.h"
 #include "PCIe.h"
-#include "XHCI.h"
+#include "UsbHid/Private.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
 #include "UsbHid/InputXhciPrivate.h"

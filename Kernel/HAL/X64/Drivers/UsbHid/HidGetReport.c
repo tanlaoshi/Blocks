@@ -2,11 +2,11 @@
  * HidGetReport.c — PR-S-xhcihid-1：GET_REPORT / 键盘 EP0 兜底
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
  */
-#include "XHCI/Private.h"
+#include "UsbHid/Private.h"
 
 /* HID GET_REPORT(Input)：复合设备键盘中断 IN 不完成时的 EP0 兜底 */
 int HidGetInputReport(UINT8 Iface, void *Data, UINT16 Length) {
-    USB_SETUP_PACKET Setup = {
+    USB_SETUP Setup = {
         .bmRequestType = 0xA1,
         .bRequest = 0x01,
         .wValue = USB_HID_REPORT_IN,

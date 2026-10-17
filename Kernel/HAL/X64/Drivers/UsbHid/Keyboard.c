@@ -3,7 +3,7 @@
  * 只走主机控制器公共口，不包含 xHCI 私头。
  */
 #include "UsbHostController.h"
-#include "XHCI.h"
+#include "UsbHid/Private.h"
 
 int KeyboardSetLeds(UINT8 Leds) {
     USB_SETUP Setup;

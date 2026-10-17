@@ -186,6 +186,11 @@ int SyncIntrDequeue(UINT32 Slot, UINT32 Dci, XHCI_TRB *Ring, RING_STATE *St,
     return 0;
 }
 
+/* 复合鼠标配完后重排键盘中断。环留在本文件，调用方不传 TRB。 */
+int SyncKeyboardIntr(void) {
+    return SyncIntrDequeue(gSlotId, gIntrDci, gIntrRing, &gIntr, sizeof(gIntrRing));
+}
+
 /* 提交中断 IN：长度用首次 ConfigureIntr 的 MPS（勿超过 8） */
 void QueueIntr(void) {
     UINT32 Len = gKbdMps;

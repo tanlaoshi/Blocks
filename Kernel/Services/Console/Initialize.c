@@ -9,7 +9,7 @@
 #include "Store.h"
 #include "Locale.h"
 
-int InitializeConsole(void) {
+void ConsolePublishAll(void) {
     ConsolePublishWrite(&gConsole);
     ConsolePublishInput(&gConsole);
     ConsolePublishHistory(&gConsole);
@@ -23,6 +23,10 @@ int InitializeConsole(void) {
     ConsolePublishScrollbar(&gConsole);
     ConsolePublishScrollback(&gConsole);
     ConsolePublishLog(&gConsole);
+}
+
+int InitializeConsole(void) {
+    ConsolePublishAll();
     StoreRegisterPathGuard();
     LocaleInitialize();
     gConsole.RegisterBuiltins();

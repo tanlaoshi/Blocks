@@ -3,7 +3,7 @@
  *
  * Claim / FinishEp 见 MousePortClaim.c。鼠标全局仍在 Xhci.c。
  */
-#include "XHCI/Private.h"
+#include "UsbHid/Private.h"
 
 int InitMouseOnPort(UINT32 Port1) {
     UINT8 Speed = 0;

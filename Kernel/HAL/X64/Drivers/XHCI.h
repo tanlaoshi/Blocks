@@ -44,13 +44,18 @@ typedef struct {
 } __attribute__((packed)) USB_DEVICE_DESCRIPTOR;
 
 /* HID 键盘 8 字节引导协议报告 */
+#ifndef USB_KEYBOARD_REPORT_DEFINED
+#define USB_KEYBOARD_REPORT_DEFINED
 typedef struct {
     UINT8  ModifierKeys;
     UINT8  Reserved;
     UINT8  KeyCode[6];
 } __attribute__((packed)) USB_KEYBOARD_REPORT;
+#endif
 
 /* USB 鼠标/平板报告；Absolute=1 时 X/Y 为 HID 0..32767 */
+#ifndef USB_MOUSE_REPORT_DEFINED
+#define USB_MOUSE_REPORT_DEFINED
 typedef struct {
     UINT32 X;
     UINT32 Y;
@@ -58,6 +63,7 @@ typedef struct {
     INT8   Wheel;
     UINT8  Absolute;
 } USB_MOUSE_REPORT;
+#endif
 
 /*
  * 真机输入模式（PR-H-xhci-base → dual → irq）

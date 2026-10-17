@@ -14,6 +14,7 @@
 #include "HalDevices.h"
 #include "ToySerialLog.h"
 #include "Debug.h"
+#include "Console.h"
 
 static int gVirtDesktop;
 
@@ -100,6 +101,9 @@ static void ModProgressMark(int Step) {
 /* 按顺序初始化所有模块；失败时打印模块名并返回 -1 */
 int ModulesRun(const MODULE *List, int Count) {
     int i;
+
+    /* 桌面在控制台模块之前就会登记命令、写提示。表必须先有函数。 */
+    ConsolePublishAll();
 
     for (i = 0; i < Count; i++) {
         /* 真机无 COM1 时也要走 HalSerial→GOP，才能看见卡在哪个模块 */

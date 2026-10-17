@@ -3,7 +3,7 @@
  *
  * 从 Mouse.c 原样搬家；不改语义。无 static 提升；鼠标全局仍在 Xhci.c。
  */
-#include "XHCI/Private.h"
+#include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
 static USB_PIPE gMousePipe;
@@ -151,7 +151,7 @@ int InitMouseOnKeyboardSlot(void) {
          * Arm 同样勿再 Sync（PHOTO 上 Sync 后 k 仍 0）。
          */
         if (MouseCfg >= 2 && gSlotId != 0 && gIntrDci != 0) {
-            if (SyncIntrDequeue(gSlotId, gIntrDci, gIntrRing, &gIntr, sizeof(gIntrRing)) == 0) {
+            if (SyncKeyboardIntr() == 0) {
                 BootLog("Boot: XHCI sync kbd after mouse\n");
             } else {
                 BootLog("Boot: XHCI sync kbd after mouse fail\n");

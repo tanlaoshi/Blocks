@@ -113,6 +113,7 @@
 | 7A | **PR-STRUCT-vfs-names** | `Vfs` 是 Virtual File System 的缩写，写成完整单词。`Include/Library/Vfs.h` → `VirtualFileSystem.h`，`Library/Vfs.c` → `VirtualFileSystem.c`。头里的 `VfsRegister`、`VfsSelect`、`VfsOps`、`VfsMount`、`VfsListDir`、`VfsListEntries`、`VfsReadFile`、`VfsWriteFile`、`VfsDeleteFile`、`VfsMkdir`、`VfsRmdir`、`VfsRename`、`VfsFileStat`、`VfsFileSync`、`VfsReadFileAt`、`VfsWriteFileAt` 以及 `VFS_MAX_BACKENDS` 同样把 `Vfs` 换成 `VirtualFileSystem`，调用点一起改。`FS_OPS` 的字段、`FatFsOps`、`ResFsOps`、`RamFsOps` 不动。`CoreOps.h` 里的 `VfsService*` 是另一层，不在这一刀 | 后端表上的读写行为 | 三架构 `build.sh`。公开的后端函数与改名前一一对应 |
 | 7B | **PR-STRUCT-vfs-ops** | `VirtualFileSystem.h` 里那一排全局函数（`Register`、`Select`、`Ops`、`Mount`、`ListDir`、`ListEntries`、`ReadFile`、`WriteFile`、`DeleteFile`、`Mkdir`、`Rmdir`、`Rename`、`FileStat`、`FileSync`、`ReadFileAt`、`WriteFileAt`）收成一张模块表。实现改成 `static`，短名只在 `VirtualFileSystem.c`。这些函数都在这一个文件里，表在本文件填好。调用点改走表。`FS_OPS` 仍是后端插件表，字段不动。`FatFsOps`、`ResFsOps`、`RamFsOps`、`VfsService*` 不动。没有后端时仍返回 `FAT_ERR_IO` | 选中的后端、读写结果 | 三架构 `build.sh`。全局符号里不再新增 `Mount`、`ReadFile`。分发和改前一致 |
 | 8 | **PR-STRUCT-hid** | `UsbHid/` 不再包含 `XHCI/Internal.h`（现有 11 个 `.c`）或 `XHCI.h`（`Keyboard.c` 仍包含它，和文件头注释不符）。键鼠只通过 `UsbHostController.h` 和本目录自己的头拿状态。缺的字段补到公共口或 `UsbHid` 私头，不把 xHCI 环结构留在键盘文件里 | 报告格式、灯的 SET_REPORT、中断队列约定 | `build.sh` + `smoke-boot.sh`。QEMU 仍出现键盘和绝对鼠标 |
+| 8A | **PR-STRUCT-hid-names** | 只改文件名，不改函数名。`Hid` 是 USB 类的正式名字，留下。`XHCI/HidIntrKbd.c` → `XHCI/HidInterruptKeyboard.c`，`XHCI/HidIntrMouse.c` → `XHCI/HidInterruptMouse.c`。`Intr` 是 Interrupt，`Kbd` 是 Keyboard。文件头里点到旧文件名的注释跟着改。`Makefile` 用目录通配，不用改。`HubEnumKbd.c` 和其他仍带缩写的文件不在这一刀 | 函数体、报告格式、中断队列约定 | 三架构 `build.sh`。公开函数名与改名前相同 |
 | 9 | **PR-STRUCT-bot** | CBW、数据、CSW 的公共部分收成一份，xHCI 与 EHCI 都调它，底下走已经存在的 `BulkOn` / `Control`。xHCI 的互斥和 EHCI 的 Clear Halt 留在各自文件 | 扇区命令、sense 的时机、锁的范围 | `build.sh`。QEMU 默认盘是 AHCI，本刀不靠 U 盘冒烟证明容量；用一份与现在字节相同的 CBW/CSW 对照 |
 | 10 | **PR-STRUCT-hub** | 对照 `XHCI/Hub.c` 与 `Ehci/Hub.c`。只抽出两边请求字节相同的标准 Hub 请求。队列、门铃、调度留下。若对照后相同部分不到一个小文件，就停，不硬抽 | 把两个主机控制器并成一个 | `build.sh`。抽出的请求与搬之前逐字节相同 |
 | 11 | **PR-STRUCT-ip** | `HAL/X64/Drivers/Net/NetRx.c` 与 `HAL/Virt/VirtioNet/VirtioNetRx.c` 里从以太网头拆到 ICMP/UDP/TCP 的那段收成一个函数，两处收包都调它。MMIO 与 PCI virtio 仍是两份驱动 | 删教学 TCP、改 lwIP 的套接字、改 IP 地址 | 三架构 `build.sh`。分发条件与现在两个文件一致，包括「目的地址不是本机就丢」 |
@@ -139,6 +140,7 @@ PR-STRUCT-early
   → PR-STRUCT-vfs-names
   → PR-STRUCT-vfs-ops
   → PR-STRUCT-hid
+  → PR-STRUCT-hid-names
   → PR-STRUCT-bot
   → PR-STRUCT-hub
   → PR-STRUCT-ip

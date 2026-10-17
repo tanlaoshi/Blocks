@@ -5,7 +5,7 @@
 #define INPUT_XHCI_PRIVATE_H
 
 #include "Driver.h"
-#include "XHCI.h"
+#include "UsbHid/Private.h"
 
 extern USB_CONTROLLER gXhciDev;
 extern int gXhciReady;

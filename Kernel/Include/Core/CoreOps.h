@@ -71,4 +71,8 @@ void DesktopCloseAllUserWindows(void);
 void DesktopWaitNoWindowClosing(void);
 void DesktopComposeThemeScene(void);
 
+/* 换字。Theme 初始化时登记；没登记则只改 Library 里的当前字。 */
+void FontChoiceRegister(int (*Set)(UINT32 Id));
+int FontChoiceSet(UINT32 Id);
+
 #endif

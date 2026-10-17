@@ -9,7 +9,6 @@
 #include "PhysicalMemory.h"
 #include "Tasks.h"
 #include "Hal.h"
-#include "Theme.h"
 #include "Font.h"
 
 /* 与 User/include/toyos/task.h 同步；改布局须升 VER */
@@ -311,8 +310,9 @@ int SysScreenSize(UINT64 UserW, UINT64 UserH) {
     return 0;
 }
 
-/* PR-UID-font：公开换字 API（薄封装 ThemeSetFontId）。注意：改的是全局当前字，
- * 影响桌面/Shell；退出前不自动恢复。per-app 私有字仍走 PKG font=（ProcessAppFont）。
+/* 公开换字。Theme 已登记时仍走它，好让主题记住的字号和当前字一致。
+ * 改的是全局当前字，影响桌面/Shell；退出前不自动恢复。
+ * per-app 私有字仍走 PKG font=（ProcessAppFont）。
  */
 int SysSetFontId(UINT32 Id) {
     TASK *T = SchedulerCurrent();
@@ -320,7 +320,7 @@ int SysSetFontId(UINT32 Id) {
     if (!T || !T->IsUser) {
         return -1;
     }
-    return ThemeSetFontId(Id);
+    return FontChoiceSet(Id);
 }
 
 int SysFontCount(void) {

@@ -4,6 +4,7 @@
  */
 #include "Theme.h"
 #include "ThemePrivate.h"
+#include "CoreOps.h"
 #include "HalVideo.h"
 
 static void SyncFontSmooth(void);
@@ -23,6 +24,7 @@ int gScaleUserSet = 0;      /* Settings 显式选过缩放 */
 int gWallpaperPrefSet = 0;  /* DB/CFG 是否写过 wallpaper= */
 
 void ThemeInitialize(void) {
+    FontChoiceRegister(ThemeSetFontId);
     gFontId = 2; /* Terminus 10x18；ThemeLoad 后再选 Sun */
     gModeW = 0;
     gModeH = 0;

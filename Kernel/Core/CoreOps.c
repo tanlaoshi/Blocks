@@ -2,12 +2,14 @@
  * CoreOps.c — PR-R4：WindowOps / VfsServiceOps 注册与薄分发
  */
 #include "CoreOps.h"
+#include "Font.h"
 #include "ToySerialLog.h"
 
 static WINDOW_OPS gWindowOps;
 static VFS_SERVICE_OPS gVfsServiceOps;
 static CONSOLE_IO_OPS gConsoleIo;
 static DESKTOP_OPS gDesktopOps;
+static int (*gSetFontId)(UINT32 Id);
 
 void WindowOpsRegister(const WINDOW_OPS *Ops) {
     if (!Ops) {
@@ -197,4 +199,15 @@ void DesktopComposeThemeScene(void) {
     if (gDesktopOps.ComposeThemeScene) {
         gDesktopOps.ComposeThemeScene();
     }
+}
+
+void FontChoiceRegister(int (*Set)(UINT32 Id)) {
+    gSetFontId = Set;
+}
+
+int FontChoiceSet(UINT32 Id) {
+    if (gSetFontId) {
+        return gSetFontId(Id);
+    }
+    return FontSetById(Id);
 }

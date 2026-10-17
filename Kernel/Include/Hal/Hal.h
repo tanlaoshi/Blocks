@@ -10,33 +10,11 @@
 #include "HalVideo.h"
 #include "HalConsole.h"
 #include "HalDevices.h"
-
-/* 页表权限（架构无关语义，x86 位布局见 PageTable.c） */
-#define HAL_PAGE_PRESENT  (1ULL << 0)
-#define HAL_PAGE_WRITABLE (1ULL << 1)
-#define HAL_PAGE_USER     (1ULL << 2)
-/* x86 PTE 缓存属性位；其它 arch Map 时可忽略 */
-#define HAL_PAGE_PWT      (1ULL << 3)
-#define HAL_PAGE_PCD      (1ULL << 4)
-/* 4K 页 PAT 位（bit7）；2M 大页 PAT 在 bit12，勿与 PS 混淆 */
-#define HAL_PAGE_PAT      (1ULL << 7)
-
-/* PR-G-fb-wc：本核 IA32_PAT PA1=WC；非 x86 空实现 */
-void HalPatApplyWc(void);
-
-void HalPlatformMapMmio(void);
-UINT64 HalPlatformXhciFallback(void);
-
-/* Boot 传入的 EFI_SYSTEM_TABLE*；供 Runtime GetTime（PR-G-taskbar-clock） */
-void HalPlatformSetSystemTable(void *SystemTable);
-void *HalPlatformSystemTable(void);
-void HalPlatformNoteRuntimeRange(UINT64 Phys, UINT64 Size);
-int HalPlatformRuntimeRangeCount(void);
-/* 成功 0；无 Runtime / GetTime 失败返回非 0（失败时勿再调以免踩缺页） */
-int HalRtcGetTime(UINT16 *Year, UINT8 *Month, UINT8 *Day,
-                  UINT8 *Hour, UINT8 *Minute, UINT8 *Second);
-
-typedef void *(*HalPageAllocateFunction)(void *Ctx);
+#include "HalPageTable.h"
+#include "HalPat.h"
+#include "HalPlatform.h"
+#include "HalXhciFallback.h"
+#include "HalRtc.h"
 
 int HalInitialize(void);
 
@@ -47,17 +25,8 @@ void HalCpuShutdown(void);
 /* 真机：ACPI 电源键短按（需 AcpiPowerInit）；1=应关机 */
 int HalPowerButtonPressed(void);
 
-void HalIrqEnable(void);
-void HalIrqDisable(void);
-/* PR-A5：保存并关中断；Restore 恢复进入时的中断状态（可嵌套调用方自管） */
-UINT64 HalIrqSave(void);
-void HalIrqRestore(UINT64 Flags);
+#include "HalIrq.h"
 void HalCpuRelax(void); /* 自旋等待提示（x86：pause） */
-/* Type：架构相关门描述（x86 为 IDT type；其它架构可忽略） */
-void HalIrqVectorSet(UINT32 Vector, void *Handler, UINT8 Type);
-void HalIrqRegister(UINT32 Vector, void (*Handler)(void));
-void HalIrqUnregister(UINT32 Vector);
-void HalIrqEoi(UINT32 Vector);
 
 void HalTimerInitialize(void);
 void HalTimerSetInterval(UINT32 Milliseconds);
@@ -122,42 +91,7 @@ UINT64 HalInterruptDispatch(struct HAL_INTERRUPT_FRAME *Frame);
 void HalSchedulerEnter(struct HAL_INTERRUPT_FRAME *Frame);
 void HalUserEnter(struct HAL_INTERRUPT_FRAME *Frame);
 
-/* 端口 / 早期 I/O（x86 为 in/out；其它架构可为空操作或 MMIO 映射） */
-UINT8  HalIoRead8(UINT16 Port);
-UINT16 HalIoRead16(UINT16 Port);
-UINT32 HalIoRead32(UINT16 Port);
-void   HalIoWrite8(UINT16 Port, UINT8 Value);
-void   HalIoWrite16(UINT16 Port, UINT16 Value);
-void   HalIoWrite32(UINT16 Port, UINT32 Value);
-
-/* 分页：CPU 当前页表根（x86 为 CR3；其它架构为等价寄存器） */
-void HalTlbFlush(UINT64 VirtualAddress);
-void HalPageTableLoad(UINT64 Root);
-UINT64 HalPageTableGetCurrent(void);
-void HalPagingEnable(UINT64 RootPhys);
-/* PR-A10：故意触未映射 VA，验收缺页路径（x86 可为空） */
-void HalPagingSelfTest(void);
-
-/* 分页：页表结构 */
-int HalPageKernelSetup(UINTN IdentityMegabytes);
-UINT64 HalPageKernelRoot(void);
-UINT64 HalPageRootCreate(HalPageAllocateFunction Alloc, void *Ctx);
-void HalPageRootCopy(UINT64 DstRoot, UINT64 SrcRoot);
-/* 将根表槽 Index 换成私有下一级表（x86：PML4→PDPT）；fork 浅拷贝后必须私有化 */
-int HalPagePrivatizeRootSlot(UINT64 Root, UINT32 Index, HalPageAllocateFunction Alloc, void *Ctx);
-/*
- * PR-A3：用户地址空间根表准备（x86：私有化槽 0 / PDPT）。
- * Common 不写死根槽号或 PML4[0]。
- */
-int HalPagePrepareUserRoot(UINT64 Root, HalPageAllocateFunction Alloc, void *Ctx);
-/* PR-A3：COW 软件语义（x86 用 PTE 可用位 bit9；其它 arch 自选布局） */
-int HalPageIsCopyOnWrite(UINT64 Pte);
-UINT64 HalPageMarkCopyOnWrite(UINT64 Flags); /* 置 COW、清 WRITABLE */
-int HalPageMap(UINT64 Root, UINT64 VirtualAddress, UINT64 PhysicalAddress, UINT64 Flags,
-               HalPageAllocateFunction Alloc, void *Ctx);
-int HalPageUnmapRange(UINT64 Root, UINT64 Start, UINT64 End);
-UINT64 HalPageGetEntry(UINT64 Root, UINT64 Virt);
-UINT64 HalPageGetEntryCurrent(UINT64 Virt);
+#include "HalIo.h"
 
 /*
  * PR-A4：ELF 机器号与重定位分类（供 Core ElfArchRegister；Library 不调此处）。
@@ -199,12 +133,6 @@ int HalConsoleOnly(void);
 /* PR-V-ap-interactive：1 → shell/gui 钉 BSP（仅 ConsoleOnly / 应急；virt 默认 0） */
 int HalPinInteractiveToBootstrap(void);
 
-/*
- * virt 平台形状（协作调度、virt 桌面模块表 vs x86 全表）。
- * 串口子集请用 HalConsoleOnly，不要把本函数当「所有非 x86」。
- */
-int HalPlatformIsVirtSerialConsole(void);
-void HalVirtPlatformIdleLoop(void);
 /* 轮询时钟（virt 无 IRQ 时由 IdleLoop 调用；x86 可为空） */
 void HalTimerPoll(void);
 /* CPUID.1 ECX.31：QEMU/KVM 等为 1，裸机多为 0 */

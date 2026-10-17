@@ -8,6 +8,15 @@
 #include "ToySerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
+#include "Hub/Private.h"
+
+static void CopySetup(USB_SETUP_PACKET *Dst, const USB_SETUP *Src) {
+    Dst->bmRequestType = Src->bmRequestType;
+    Dst->bRequest = Src->bRequest;
+    Dst->wValue = Src->wValue;
+    Dst->wIndex = Src->wIndex;
+    Dst->wLength = Src->wLength;
+}
 
 #define HUB_FEAT_PORT_RESET        4u
 #define HUB_FEAT_PORT_POWER        8u
@@ -25,13 +34,11 @@ char gEhciHubNote[96];
 static int HubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
                         UINT16 *Change) {
     USB_SETUP_PACKET S;
+    USB_SETUP Filled;
     UINT8 Buf[4];
 
-    S.bmRequestType = 0xA3;
-    S.bRequest = 0x00;
-    S.wValue = 0;
-    S.wIndex = Port;
-    S.wLength = 4;
+    PortStatusSetup(&Filled, Port);
+    CopySetup(&S, &Filled);
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
@@ -45,12 +52,10 @@ static int HubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
 
 static int HubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     USB_SETUP_PACKET S;
+    USB_SETUP Filled;
 
-    S.bmRequestType = 0x23;
-    S.bRequest = 0x03;
-    S.wValue = Feat;
-    S.wIndex = Port;
-    S.wLength = 0;
+    PortFeatureSetup(&Filled, Port, Feat, 1);
+    CopySetup(&S, &Filled);
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
@@ -59,12 +64,10 @@ static int HubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
 
 static int HubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
     USB_SETUP_PACKET S;
+    USB_SETUP Filled;
 
-    S.bmRequestType = 0x23;
-    S.bRequest = 0x01;
-    S.wValue = Feat;
-    S.wIndex = Port;
-    S.wLength = 0;
+    PortFeatureSetup(&Filled, Port, Feat, 0);
+    CopySetup(&S, &Filled);
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;
@@ -73,12 +76,10 @@ static int HubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
 
 static int HubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     USB_SETUP_PACKET S;
+    USB_SETUP Filled;
 
-    S.bmRequestType = 0xA0;
-    S.bRequest = 0x06;
-    S.wValue = USB_WVALUE_DT_HUB;
-    S.wIndex = 0;
-    S.wLength = Len;
+    DescriptorSetup(&Filled, Len);
+    CopySetup(&S, &Filled);
     C->XferSpeed = EHCI_SPEED_HS;
     C->XferHubAddr = 0;
     C->XferHubPort = 0;

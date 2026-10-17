@@ -4,6 +4,12 @@
  * 从 Hub.c 原样搬家；不改语义。Hub 口帮手去掉 static，声明在 Internal.h。
  */
 #include "XHCI/Private.h"
+#include "Hub/Private.h"
+
+static int HubCtrlSetup(const USB_SETUP *Setup, void *Data) {
+    return HubCtrl(Setup->bmRequestType, Setup->bRequest, Setup->wValue,
+                   Setup->wIndex, Setup->wLength, Data);
+}
 
 int HubCtrl(UINT8 BmReq, UINT8 Req, UINT16 Value, UINT16 Index,
                    UINT16 Len, void *Data) {
@@ -32,14 +38,19 @@ int FinishHubSetup(UINT8 *OutNumPorts) {
     }
     ZeroMemory(HubDesc, sizeof(HubDesc));
     gHubTtt = 0;
-    if (HubCtrl(0xA0, 0x06, USB_WVALUE_DT_HUB, 0, sizeof(HubDesc), HubDesc) == 0 &&
-        HubDesc[2] != 0) {
-        Nports = HubDesc[2];
-        if (Nports > 15) {
-            Nports = 15;
+    {
+        USB_SETUP Setup;
+
+        DescriptorSetup(&Setup, sizeof(HubDesc));
+        if (HubCtrlSetup(&Setup, HubDesc) == 0 &&
+            HubDesc[2] != 0) {
+            Nports = HubDesc[2];
+            if (Nports > 15) {
+                Nports = 15;
+            }
+            /* USB2 Hub Desc：wHubCharacteristics bit5-6 = TT Think Time */
+            gHubTtt = (UINT8)((HubDesc[3] >> 5) & 3u);
         }
-        /* USB2 Hub Desc：wHubCharacteristics bit5-6 = TT Think Time */
-        gHubTtt = (UINT8)((HubDesc[3] >> 5) & 3u);
     }
     if (OutNumPorts) {
         *OutNumPorts = Nports;
@@ -51,7 +62,10 @@ int FinishHubSetup(UINT8 *OutNumPorts) {
 
 int HubGetPortStatus(UINT8 Port, UINT32 *OutSt) {
     UINT8 Buf[4];
-    if (HubCtrl(0xA3, 0x00, 0, Port, 4, Buf) < 0) {
+    USB_SETUP Setup;
+
+    PortStatusSetup(&Setup, Port);
+    if (HubCtrlSetup(&Setup, Buf) < 0) {
         return -1;
     }
     *OutSt = (UINT32)Buf[0] | ((UINT32)Buf[1] << 8) |
@@ -60,11 +74,17 @@ int HubGetPortStatus(UINT8 Port, UINT32 *OutSt) {
 }
 
 int HubSetPortFeat(UINT8 Port, UINT16 Feat) {
-    return HubCtrl(0x23, 0x03, Feat, Port, 0, 0);
+    USB_SETUP Setup;
+
+    PortFeatureSetup(&Setup, Port, Feat, 1);
+    return HubCtrlSetup(&Setup, 0);
 }
 
 int HubClearPortFeat(UINT8 Port, UINT16 Feat) {
-    return HubCtrl(0x23, 0x01, Feat, Port, 0, 0);
+    USB_SETUP Setup;
+
+    PortFeatureSetup(&Setup, Port, Feat, 0);
+    return HubCtrlSetup(&Setup, 0);
 }
 
 /* hub 口速度：USB2 wPortStatus bits 10..9 → xHCI Port Speed 编码近似 */

@@ -3,7 +3,6 @@
  */
 #include "Tcp.h"
 #include "Private.h"
-#include "Console.h"
 #include "Debug.h"
 
 void Listen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
@@ -23,7 +22,7 @@ void Listen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
     }
     gTcp.State = TCP_SYN_RECEIVED;
     if (SegmentSend(TCP_FLAG_SYN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt) != 0) {
-        gConsole.Write("tcp: syn-ack failed\n");
+        Note("tcp: syn-ack failed\n");
         gTcp.State = TCP_LISTEN;
         return;
     }
@@ -65,7 +64,7 @@ int SynchronizeReceived(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
         gTcp.PeerWnd = 1;
     }
     gTcp.State = TCP_ESTABLISHED;
-    gConsole.Notify("tcp: client connected\n");
+    Note("tcp: client connected\n");
     DebugWrite("tcp: established (echo)\n");
     return 1;
 }

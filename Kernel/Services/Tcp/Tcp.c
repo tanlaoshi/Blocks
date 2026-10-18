@@ -13,6 +13,18 @@
 /* 一条教学连接。主动连接收包不回显；RcvTotal 在排空缓冲后仍保留。 */
 TCP_CONNECTION gTcp;
 
+static void (*gNote)(const char *Text);
+
+void TcpNoteRegister(void (*Write)(const char *Text)) {
+    gNote = Write;
+}
+
+void Note(const char *Text) {
+    if (gNote != 0 && Text != 0) {
+        gNote(Text);
+    }
+}
+
 void TcpInitialize(void) {
     gTcp.State = TCP_CLOSED;
     gTcp.LocalPort = 0;

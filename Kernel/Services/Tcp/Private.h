@@ -57,6 +57,8 @@ typedef struct {
 
 extern TCP_CONNECTION gTcp;
 
+void Note(const char *Text);
+
 static inline UINT16 HostToNet16(UINT16 V) {
     return (UINT16)((V >> 8) | (V << 8));
 }

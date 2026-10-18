@@ -3,7 +3,6 @@
  */
 #include "Tcp.h"
 #include "Private.h"
-#include "Console.h"
 #include "Debug.h"
 
 /* 返回 1 继续处理 FIN；0 提前结束整段（乱序空洞 / 截断 / echo 失败）。 */
@@ -49,7 +48,7 @@ static int InputData(UINT32 Seq, const UINT8 *Data, UINTN DataLen) {
         /* 回显：直接发送（不经 snd_buf，避免与 snd_una 序号错位） */
         if (SegmentSend(TCP_FLAG_ACK | TCP_FLAG_PSH, Data, DataLen,
                            gTcp.SndNxt, gTcp.RcvNxt) != 0) {
-            gConsole.Write("tcp: echo send failed\n");
+            Note("tcp: echo send failed\n");
             DebugWrite("tcp: echo send failed\n");
             return 0;
         }
@@ -75,7 +74,7 @@ static int InputData(UINT32 Seq, const UINT8 *Data, UINTN DataLen) {
             }
             Buf[Pos++] = '\n';
             Buf[Pos] = 0;
-            gConsole.Notify(Buf);
+            Note(Buf);
         }
     }
     return 1;

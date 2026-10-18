@@ -250,7 +250,14 @@ static void CommandTcpConnect(int Argc, char **Argv) {
     gConsole.Write("tcpconnect: done\n");
 }
 
+static void Note(const char *Text) {
+    if (gConsole.Write != 0) {
+        gConsole.Write(Text);
+    }
+}
+
 void ShellCommandsNetTcpRegister(void) {
+    TcpNoteRegister(Note);
     gConsole.Register2("tcp", "listen", "TCP echo server", CommandTcpListen);
     gConsole.Register2("tcp", "connect", "TCP connect and send", CommandTcpConnect);
     gConsole.Register2("tcp", "status", "TCP connection status", CommandTcpStatus);

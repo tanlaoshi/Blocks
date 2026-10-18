@@ -39,5 +39,7 @@ void TcpWindowStatsGet(UINT32 *SndUna, UINT32 *SndNxt, UINT32 *BufLen,
 
 void TcpSegmentInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
 void TcpPoll(void);
+/* Shell 登记之后，入站失败句走这条路径。没登记则不写。 */
+void TcpNoteRegister(void (*Write)(const char *Text));
 
 #endif

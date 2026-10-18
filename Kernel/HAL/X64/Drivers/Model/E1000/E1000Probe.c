@@ -8,6 +8,7 @@
 #include "PCIe.h"
 #include "Debug.h"
 #include "Hal.h"
+#include "HalIrq.h"
 #include "HalPort.h"
 #include "ToySerialLog.h"
 
@@ -77,6 +78,7 @@ int TryEnableMsiRx(void) {
     MmioW32(E1000_REG_IMC, 0xFFFFFFFFu);
     (void)MmioR32(E1000_REG_ICR);
 
+    HalIrqNotifyRegister(VEC_E1000, E1000Irq);
     if (!PciEnableMsi(&Dev, VEC_E1000, 0)) {
         DebugWrite("e1000: MSI failed; stay poll\n");
         return 0;

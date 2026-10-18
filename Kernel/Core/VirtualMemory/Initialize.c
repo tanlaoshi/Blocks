@@ -1,7 +1,7 @@
 /*
- * Initialize.c — InitializeVirtualMemory（开机模块编织）
+ * Initialize.c — InitializeVirtualMemory（开机模块表）
  *
- * 人话：建页表、映射帧缓冲与 MMIO，再开分页。实现仍在 Core/VirtualMemory（阶段 B 再并）。
+ * 建页表，映上帧缓冲和设备寄存器，再打开分页。
  */
 #include "KernelModulesPrivate.h"
 #include "BootInfo.h"
@@ -10,11 +10,14 @@
 #include "VirtualMemory.h"
 
 static int MapIdentity(UINT64 Phys, UINT64 Size) {
+    UINT64 Start;
+    UINT64 End;
+
     if (Size == 0) {
         return 0;
     }
-    UINT64 Start = Phys & ~(UINT64)(PAGE_SIZE - 1);
-    UINT64 End = Phys + Size;
+    Start = Phys & ~(UINT64)(PAGE_SIZE - 1);
+    End = Phys + Size;
     while (Start < End) {
         if (VirtualMemoryMapPage(Start, Start, PTE_PRESENT | PTE_WRITABLE) != 0) {
             return -1;
@@ -26,14 +29,15 @@ static int MapIdentity(UINT64 Phys, UINT64 Size) {
 
 int InitializeVirtualMemory(void) {
     const BOOT_INFO *Info = BootInfoGet();
+    UINT64 FbBytes;
+    UINT64 Layout;
 
     if (VirtualMemoryInitialize() != 0) {
         return -1;
     }
     if (Info && Info->FrameBufferBase != 0) {
-        UINT64 FbBytes = Info->FrameBufferSize;
-        UINT64 Layout = 0;
-
+        FbBytes = Info->FrameBufferSize;
+        Layout = 0;
         if (Info->PixelsPerScanLine != 0 && Info->VerticalResolution != 0) {
             Layout = (UINT64)Info->PixelsPerScanLine *
                      (UINT64)Info->VerticalResolution * 4ull;

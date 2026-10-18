@@ -27,6 +27,7 @@ typedef struct {
 } PMM_SEGMENT;
 
 void PmmSegmentInit(const BOOT_INFO *Info);
+void PmmPhysLockInit(void);
 PMM_SEGMENT *PmmSegment(UINT32 Index);
 /* 框架：Phys → 段 + 页下标；政策可调用，勿再加锁 */
 PMM_SEGMENT *PmmLookup(UINT64 Phys, UINT32 *Idx);

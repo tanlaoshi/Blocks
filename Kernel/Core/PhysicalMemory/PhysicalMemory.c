@@ -1,7 +1,7 @@
 /*
- * PhysicalMemory.c — 物理页分配器入口（开机模块表名 "Memory"）。
+ * PhysicalMemory.c — InitializePhysicalMemory（开机模块表）
  *
- * 位图/课设策略同夹；曾单独有 Core/Memory/ 只包一层 Init，已并回。
+ * 按开机信息划段，登记位图分配，再打出空闲页数。
  */
 #include "KernelModulesPrivate.h"
 #include "PhysicalMemory.h"
@@ -10,15 +10,11 @@
 #include "BootInfo.h"
 #include "Debug.h"
 
-void PmmPhysLockInit(void);
-
-int InitializePhysicalMemory(void)
-{
+int InitializePhysicalMemory(void) {
     return PhysicalMemoryInitialize();
 }
 
-int PhysicalMemoryInitialize(void)
-{
+int PhysicalMemoryInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
     const MEMORY_OPS *Ops;
 

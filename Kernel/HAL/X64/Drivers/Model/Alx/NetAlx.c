@@ -1,7 +1,7 @@
 /*
  * NetAlx.c — alx 经 Driver Net 类注册（PR-N-alx-2）
  *
- * Probe 认 PCI 1969:1091…；Bind → NetAttachNic(NIC_L2)。
+ * Probe 认 PCI 1969:1091…；Bind → NetAttachNicKind。
  */
 #include "Driver.h"
 #include "DriverBoot.h"

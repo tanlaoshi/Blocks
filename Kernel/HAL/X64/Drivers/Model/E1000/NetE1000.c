@@ -1,7 +1,7 @@
 /*
  * NetE1000.c — e1000 / e1000e 经 Driver Net 类注册（PR-H4 / PR-N-nic-e1000）
  *
- * Probe 只认 PCI e1000*；Bind → NetAttachNic(NIC_L2)。
+ * Probe 只认 PCI e1000*；Bind → NetAttachNicKind。
  * 无卡 → Probe 失败，不挡桌面。lsdev 名随芯片：e1000 / e1000e。
  */
 #include "Driver.h"

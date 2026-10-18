@@ -1,7 +1,7 @@
 /*
  * Net.c — r8169 经 Driver Net 类注册（PR-N-rtl-2）
  *
- * Probe 认 PCI 10EC:8168…；Bind → NetAttachNic(NIC_L2)。
+ * Probe 认 PCI 10EC:8168…；Bind → NetAttachNicKind。
  */
 #include "Driver.h"
 #include "DriverBoot.h"

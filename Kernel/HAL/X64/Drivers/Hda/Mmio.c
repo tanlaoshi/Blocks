@@ -1,5 +1,5 @@
 /*
- * Mmio.c — PR-G-audio-1：BAR0 UC 映入 + 只读控制器指纹（不写 MMIO）
+ * Mmio.c — PR-G-audio-1：BAR0 UC 映入。指纹只读；HdaMmioWrite* 会写寄存器。
  *
  * 须在 VirtualMemory 启用后调用（Video 模块末）。失败软退。
  */

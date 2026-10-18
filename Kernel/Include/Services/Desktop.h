@@ -1,7 +1,7 @@
 /*
  * Desktop.h — 桌面图标、任务栏与壁纸（PR-D4 / PR-G13）
  *
- * PR-R2：Desktop 不 #include Gui/Console；只发 DESKTOP_ACTION，由 Gui 开窗。
+ * 开窗仍发 DESKTOP_ACTION。Desktop.c 包含 Gui.h，只为藏光标。
  */
 #ifndef DESKTOP_H
 #define DESKTOP_H

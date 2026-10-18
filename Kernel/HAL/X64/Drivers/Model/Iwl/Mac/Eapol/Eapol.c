@@ -1,7 +1,7 @@
 /*
  * Eapol.c — WPA2-PSK 四次握手入口（PR-N-wifi-2；PR-S-iwl-split-1 瘦身）
  *
- * 刀 #85：先收 msg1 再 PBKDF2。GTK 解包略。永不串口打印 PSK。
+ * 刀 #85：先收 msg1 再 PBKDF2。收尾调用 IwlInstallGtk。永不串口打印 PSK。
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"

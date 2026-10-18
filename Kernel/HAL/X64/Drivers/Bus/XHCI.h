@@ -1,7 +1,7 @@
 /*
  * XHCI.h — USB 3.0 xHCI 主机控制器驱动接口
  *
- * 初始化控制器、枚举 USB 键盘、通过 MSI-X 中断接收 HID 报告。
+ * 初始化控制器、枚举 USB 键盘。开机默认轮询事件环收 HID；MSI-X 不是默认。
  */
 #ifndef XHCI_H
 #define XHCI_H

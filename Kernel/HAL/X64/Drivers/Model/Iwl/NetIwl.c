@@ -1,5 +1,5 @@
 /*
- * NetIwl.c — iwl8265 Bind → NetAttachNic（PR-N-wifi-2；需 WPA2 关联）
+ * NetIwl.c — iwl8265 Bind → NetAttachNicKind（PR-N-wifi-2；需 WPA2 关联）
  */
 #include "Driver.h"
 #include "DriverBoot.h"

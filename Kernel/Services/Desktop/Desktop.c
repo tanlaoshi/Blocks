@@ -65,7 +65,7 @@ UINT32  gWallScreenH;
 UINT32  gWallScreenPages;
 int     gDesktopBusy; /* 防 DesktopInitialize / OnDisplayResize 重入 */
 
-/* PR-R2：由 Gui 注册，Desktop 不 include Gui.h */
+/* 占位回调由 Gui 注册。本文件包含 Gui.h，只为藏光标。 */
 int (*gPointOccupied)(UINT32 X, UINT32 Y);
 void (*gRequestRefresh)(void);
 void (*gClearIconFootprint)(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);

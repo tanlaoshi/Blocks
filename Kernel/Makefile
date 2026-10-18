@@ -598,10 +598,10 @@ endif
 # 汇编用同一 TOY_BRINGUP（KernelEntry → KernelHandoff）
 ASFLAGS_ARCH = -DTOY_BRINGUP=$(BRINGUP)
 
-.PHONY: all clean boards kernel-bin runtests runtests-memory runtests-fs scheduler check-library-pure check-syscall
+.PHONY: all clean boards kernel-bin runtests runtests-memory runtests-fs scheduler check-library-pure check-syscall check-elf
 .DEFAULT_GOAL := all
 
-all: check-library-pure check-syscall
+all: check-library-pure check-syscall check-elf
 
 HOSTCC ?= gcc
 TEST_CFLAGS = -std=c11 -Wall -Wextra -DTOY_SCHED_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
@@ -740,6 +740,9 @@ check-library-pure:
 
 check-syscall:
 	@python3 Tools/CheckSyscall.py
+
+check-elf:
+	@python3 Tools/CheckElf.py
 
 $(HALDIR)/Drivers/%.o: HAL/$(HAL_ARCH)/Drivers/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@

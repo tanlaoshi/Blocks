@@ -37,6 +37,14 @@ typedef struct {
 
 static IDT_GATE gIdt[256] __attribute__((aligned(16)));
 volatile UINT32 gArchIrqCount;
+static void (*gIrqNotify[256])(void);
+
+void ArchIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
+    if (Vector >= 256) {
+        return;
+    }
+    gIrqNotify[Vector] = Handler;
+}
 
 /* 写 I/O 端口（字节） */
 static inline void Outb(UINT16 Port, UINT8 Value) {
@@ -83,6 +91,9 @@ void ArchIdtLoad(void) {
     IdtSet(VEC_E1000, (void *)Isr66);
     IdtSet(VEC_COM1, (void *)Isr67);
     IdtSet(255, (void *)Isr255);
+    ArchIrqNotifyRegister(VEC_XHCI, Irq);
+    ArchIrqNotifyRegister(VEC_E1000, E1000Irq);
+    ArchIrqNotifyRegister(VEC_COM1, SerialIrq);
     ArchIdtLidt();
 }
 
@@ -227,19 +238,13 @@ UINT64 InterruptDispatch(HAL_INTERRUPT_FRAME *F) {
     if (F->Vector < 32) {
         ExceptionHalt(F);
     }
-    if (F->Vector == VEC_XHCI) {
-        gArchIrqCount++;
-        Irq();
-        LapicEoi();
-        return 0;
-    }
-    if (F->Vector == VEC_E1000) {
-        E1000Irq();
-        LapicEoi();
-        return 0;
-    }
-    if (F->Vector == VEC_COM1) {
-        SerialIrq();
+    if (F->Vector == VEC_XHCI || F->Vector == VEC_E1000 || F->Vector == VEC_COM1) {
+        if (F->Vector == VEC_XHCI) {
+            gArchIrqCount++;
+        }
+        if (F->Vector < 256 && gIrqNotify[F->Vector] != 0) {
+            gIrqNotify[F->Vector]();
+        }
         LapicEoi();
         return 0;
     }

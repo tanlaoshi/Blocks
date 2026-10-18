@@ -74,6 +74,9 @@ void HalIrqVectorSet(UINT32 Vector, void *Handler, UINT8 Type) {
 void HalIrqRegister(UINT32 Vector, void (*Handler)(void)) {
     (void)Vector; (void)Handler;
 }
+void HalIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
+    (void)Vector; (void)Handler;
+}
 void HalIrqUnregister(UINT32 Vector) { (void)Vector; }
 void HalIrqEoi(UINT32 Vector) {
     HalGicEoi(Vector);

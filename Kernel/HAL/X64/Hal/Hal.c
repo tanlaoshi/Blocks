@@ -124,6 +124,10 @@ void HalIrqRegister(UINT32 Vector, void (*Handler)(void)) {
     ArchIdtSetGate(Vector, Handler, 0x8E);
 }
 
+void HalIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
+    ArchIrqNotifyRegister(Vector, Handler);
+}
+
 void HalIrqUnregister(UINT32 Vector) {
     ArchIdtSetGate(Vector, (void *)0, 0);
     (void)Vector;

@@ -18,6 +18,7 @@ void ArchSyscallMsrInit(UINT32 LogicalCpu); /* SYSCALL/SYSRET MSR（与 int 0x80
 void ArchSti(void);
 void ArchCli(void);
 void LapicEoi(void);
+void ArchIrqNotifyRegister(UINT32 Vector, void (*Handler)(void));
 void TimerStart(void);
 UINT64 InterruptDispatch(HAL_INTERRUPT_FRAME *Frame);
 void SchedulerEnter(HAL_INTERRUPT_FRAME *Frame);

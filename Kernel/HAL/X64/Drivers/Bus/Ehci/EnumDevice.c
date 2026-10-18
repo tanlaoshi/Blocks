@@ -78,6 +78,37 @@ static int ParseHidIface(UINT8 *Cfg, UINT16 Len, UINT8 WantProto, UINT8 *Iface,
     return Found;
 }
 
+/* 地址已发给设备，但配置或 HID 失败。复位后设备回到地址 0，号可以再用。 */
+static int ReleaseAccepted(EHCI_CTRL *C, UINT8 HubAddr, UINT8 HubPort) {
+    C->HidOk = 0;
+    if (HubAddr == 0) {
+        UINT8 P;
+        int Ok = 0;
+
+        for (P = 1; P <= C->NPorts && P < 32; P++) {
+            if ((C->CcsMask & (1u << (P - 1))) == 0) {
+                continue;
+            }
+            if (PortReset(C, P)) {
+                Ok = 1;
+            }
+        }
+        return Ok;
+    }
+    {
+        UINT8 Speed = 0;
+
+        return MscHubResetPort(C, HubAddr, HubPort, &Speed);
+    }
+}
+
+static int FailAfterAddr(EHCI_CTRL *C, UINT8 Addr, UINT8 HubAddr, UINT8 HubPort) {
+    if (!ReleaseAccepted(C, HubAddr, HubPort)) {
+        gEhciNextAddr = (UINT8)(Addr + 1u);
+    }
+    return 0;
+}
+
 /* 在当前 XferSpeed/Hub* 下枚举 addr0 设备为 HID */
 int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
@@ -129,7 +160,7 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (gEhciNextAddr < 2 || gEhciNextAddr > 127) {
         gEhciNextAddr = 2;
     }
-    Addr = gEhciNextAddr++;
+    Addr = gEhciNextAddr;
     if (EnumSetAddr(C, Addr, EpMax) != 0) {
         return 0;
     }
@@ -139,14 +170,14 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     Delay(100000);
 
     if (EnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
-        return 0;
+        return FailAfterAddr(C, Addr, HubAddr, HubPort);
     }
     CfgLen = (UINT16)(Cfg[2] | ((UINT16)Cfg[3] << 8));
     if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
         CfgLen = 64;
     }
     if (EnumGetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
-        return 0;
+        return FailAfterAddr(C, Addr, HubAddr, HubPort);
     }
     if (!ParseHidIface(Cfg, CfgLen, 2, &Iface, &Proto, &Ep, &MaxPkt, &Interval,
                        &CfgVal) &&
@@ -156,13 +187,15 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
                        &CfgVal)) {
         gEhciLastErr = "no hid iface";
         ToyBootMarkUsb("Boot: EHCI no hid iface\n");
-        return 0;
+        return FailAfterAddr(C, Addr, HubAddr, HubPort);
     }
     if (EnumSetConfig(C, Addr, EpMax, CfgVal) != 0) {
-        return 0;
+        return FailAfterAddr(C, Addr, HubAddr, HubPort);
     }
     (void)EnumSetProtocolBoot(C, Addr, EpMax, Iface);
     (void)EnumSetIdle(C, Addr, EpMax, Iface);
+
+    gEhciNextAddr = (UINT8)(Addr + 1u);
 
     C->DevAddr = Addr;
     C->DevSpeed = Speed;

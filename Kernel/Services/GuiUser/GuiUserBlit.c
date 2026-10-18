@@ -89,7 +89,7 @@ void PaintUserClient(int Idx) {
     }
     Count = 0;
     for (Bi = 0; Bi < 4; Bi++) {
-        if (W->UserButtonUsed[Bi]) {
+        if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
             Count++;
         }
     }
@@ -109,11 +109,11 @@ void PaintUserClient(int Idx) {
     HalVideoSetClipOrigin(Cx, Cy, Cw, Ch, W->Background);
     Slot = 0;
     for (Bi = 0; Bi < 4; Bi++) {
-        if (!W->UserButtonUsed[Bi]) {
+        if (!gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
             continue;
         }
         UiDrawButton(Bx + Slot * (Bw + Gap), By, Bw, Bh,
-                     W->UserButtonLabel[Bi], ThemeText(), ThemeControlFace());
+                     gGuiWindowManager.UserSlot[Idx].UserButtonLabel[Bi], ThemeText(), ThemeControlFace());
         Slot++;
     }
     HalVideoClearClip();
@@ -180,7 +180,7 @@ int GuiDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
     MaxH = Ch;
     Count = 0;
     for (Bi = 0; Bi < 4; Bi++) {
-        if (Win->UserButtonUsed[Bi]) {
+        if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
             Count++;
         }
     }

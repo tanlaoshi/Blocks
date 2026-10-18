@@ -14,17 +14,17 @@ void GuiUserEnqueueKey(UINT8 HidKey) {
         gGuiWindowManager.Windows[Idx].Kind != GUI_WIN_USER) {
         return;
     }
-    if (gGuiWindowManager.Windows[Idx].UserKeyCount >= GUI_USER_KEY_Q) {
+    if (gGuiWindowManager.UserSlot[Idx].UserKeyCount >= GUI_USER_KEY_Q) {
         /* 满则丢最旧，保最新（游戏/连打更要新键） */
         {
             int I;
             for (I = 1; I < GUI_USER_KEY_Q; I++) {
-                gGuiWindowManager.Windows[Idx].UserKeyQ[I - 1] = gGuiWindowManager.Windows[Idx].UserKeyQ[I];
+                gGuiWindowManager.UserSlot[Idx].UserKeyQ[I - 1] = gGuiWindowManager.UserSlot[Idx].UserKeyQ[I];
             }
-            gGuiWindowManager.Windows[Idx].UserKeyCount = GUI_USER_KEY_Q - 1;
+            gGuiWindowManager.UserSlot[Idx].UserKeyCount = GUI_USER_KEY_Q - 1;
         }
     }
-    gGuiWindowManager.Windows[Idx].UserKeyQ[gGuiWindowManager.Windows[Idx].UserKeyCount++] = HidKey;
+    gGuiWindowManager.UserSlot[Idx].UserKeyQ[gGuiWindowManager.UserSlot[Idx].UserKeyCount++] = HidKey;
 }
 
 int GuiUserDequeueKeyEvent(void) {
@@ -35,17 +35,17 @@ int GuiUserDequeueKeyEvent(void) {
         if (!gGuiWindowManager.Windows[I].Active || gGuiWindowManager.Windows[I].Kind != GUI_WIN_USER) {
             continue;
         }
-        if (gGuiWindowManager.Windows[I].UserKeyCount == 0) {
+        if (gGuiWindowManager.UserSlot[I].UserKeyCount == 0) {
             continue;
         }
-        Hid = gGuiWindowManager.Windows[I].UserKeyQ[0];
+        Hid = gGuiWindowManager.UserSlot[I].UserKeyQ[0];
         {
             int J;
-            for (J = 1; J < gGuiWindowManager.Windows[I].UserKeyCount; J++) {
-                gGuiWindowManager.Windows[I].UserKeyQ[J - 1] = gGuiWindowManager.Windows[I].UserKeyQ[J];
+            for (J = 1; J < gGuiWindowManager.UserSlot[I].UserKeyCount; J++) {
+                gGuiWindowManager.UserSlot[I].UserKeyQ[J - 1] = gGuiWindowManager.UserSlot[I].UserKeyQ[J];
             }
         }
-        gGuiWindowManager.Windows[I].UserKeyCount--;
+        gGuiWindowManager.UserSlot[I].UserKeyCount--;
         return GUI_USER_KEY_BASE + (int)Hid;
     }
     return -1;

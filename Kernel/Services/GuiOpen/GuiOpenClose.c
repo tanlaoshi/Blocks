@@ -70,14 +70,14 @@ void CloseWindow(int Idx) {
     gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
     gGuiWindowManager.Windows[Idx].PromptShown = 0;
     gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
-    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
-    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
-    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.UserSlot[Idx].UserButtonClick = -1;
+    gGuiWindowManager.UserSlot[Idx].UserClientClick = 0;
+    gGuiWindowManager.UserSlot[Idx].UserKeyCount = 0;
     {
         int Bi;
         for (Bi = 0; Bi < 4; Bi++) {
-            gGuiWindowManager.Windows[Idx].UserButtonUsed[Bi] = 0;
-            gGuiWindowManager.Windows[Idx].UserButtonLabel[Bi][0] = 0;
+            gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi] = 0;
+            gGuiWindowManager.UserSlot[Idx].UserButtonLabel[Bi][0] = 0;
         }
     }
     gGuiWindowManager.WinBackupValid[Idx] = 0;

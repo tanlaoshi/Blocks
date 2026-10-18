@@ -101,6 +101,13 @@ void RaiseWindow(int Idx) {
             WinCopy(&gGuiWindowManager.Windows[J], &gGuiWindowManager.Windows[J + 1]);
         }
         WinCopy(&gGuiWindowManager.Windows[Top], &gGuiWindowManager.WinSwap);
+        {
+            GUI_USER_SLOT UserSwap = gGuiWindowManager.UserSlot[Idx];
+            for (J = Idx; J < Top; J++) {
+                gGuiWindowManager.UserSlot[J] = gGuiWindowManager.UserSlot[J + 1];
+            }
+            gGuiWindowManager.UserSlot[Top] = UserSwap;
+        }
         /* 窗口与备份必须一起挪，否则会把别的窗备份贴到错误位置（花屏） */
         if (HasBackup || gGuiWindowManager.DragHasBackup) {
             ShiftWinBackupsUp(Idx, Top);

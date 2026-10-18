@@ -68,20 +68,24 @@ typedef struct {
     char     ClientText[128];
     int      ClosePending;
     volatile int Closing; /* CloseWindow 重入保护（exit 收窗 vs 点击关窗）；SMP 可见 */
+} GUI_WINDOW;
+
+/* 用户窗按钮、点击、键队列。与 Windows[] 同一个下标。拖动和终端行留在 GUI_WINDOW。 */
+typedef struct {
     int      UserButtonUsed[4];
     char     UserButtonLabel[4][24];
     int      UserButtonClick;
     int      UserClientClick;
     UINT32   UserClickX;
     UINT32   UserClickY;
-    /* 键盘入窗：焦点 USER 窗 HID 按下边沿队列（ShellTask → Poll） */
     UINT8    UserKeyQ[GUI_USER_KEY_Q];
     UINT8    UserKeyCount;
-} GUI_WINDOW;
+} GUI_USER_SLOT;
 
 /* 窗口、光标、拖动、焦点。定义在 GuiWindowManager.c。 */
 typedef struct {
     GUI_WINDOW Windows[MAX_WINS];
+    GUI_USER_SLOT UserSlot[MAX_WINS];
     UINT32 ScreenWidth;
     UINT32 ScreenHeight;
     UINT32 CursorX;

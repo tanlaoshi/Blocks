@@ -108,9 +108,9 @@ void RepaintUserWindow(int Wid) {
     GfxIrqLeave();
     HalVideoPresentFlush();
     ComposeEnd();
-    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
-    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
-    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.UserSlot[Idx].UserButtonClick = -1;
+    gGuiWindowManager.UserSlot[Idx].UserClientClick = 0;
+    gGuiWindowManager.UserSlot[Idx].UserKeyCount = 0;
     GuiInputLock(0);
 }
 
@@ -146,7 +146,7 @@ int UserButtonHit(int Idx, UINT32 X, UINT32 Y) {
     }
     Count = 0;
     for (Bi = 0; Bi < 4; Bi++) {
-        if (W->UserButtonUsed[Bi]) {
+        if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
             Count++;
         }
     }
@@ -168,7 +168,7 @@ int UserButtonHit(int Idx, UINT32 X, UINT32 Y) {
         UINT32 Left;
         UINT32 Right;
 
-        if (!W->UserButtonUsed[Bi]) {
+        if (!gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
             continue;
         }
         Left = Bx + Slot * (Bw + Gap);
@@ -239,16 +239,16 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     gGuiWindowManager.Windows[Idx].ClientText[0] = 0;
     gGuiWindowManager.Windows[Idx].ClosePending = 0;
     gGuiWindowManager.Windows[Idx].Closing = 0;
-    gGuiWindowManager.Windows[Idx].UserButtonClick = -1;
-    gGuiWindowManager.Windows[Idx].UserClientClick = 0;
-    gGuiWindowManager.Windows[Idx].UserClickX = 0;
-    gGuiWindowManager.Windows[Idx].UserClickY = 0;
-    gGuiWindowManager.Windows[Idx].UserKeyCount = 0;
+    gGuiWindowManager.UserSlot[Idx].UserButtonClick = -1;
+    gGuiWindowManager.UserSlot[Idx].UserClientClick = 0;
+    gGuiWindowManager.UserSlot[Idx].UserClickX = 0;
+    gGuiWindowManager.UserSlot[Idx].UserClickY = 0;
+    gGuiWindowManager.UserSlot[Idx].UserKeyCount = 0;
     {
         int Bi;
         for (Bi = 0; Bi < 4; Bi++) {
-            gGuiWindowManager.Windows[Idx].UserButtonUsed[Bi] = 0;
-            gGuiWindowManager.Windows[Idx].UserButtonLabel[Bi][0] = 0;
+            gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi] = 0;
+            gGuiWindowManager.UserSlot[Idx].UserButtonLabel[Bi][0] = 0;
         }
     }
     gGuiWindowManager.Windows[Idx].TermSet = 0;
@@ -292,9 +292,9 @@ int GuiUserAddButton(int Wid, int ButtonId, const char *Label) {
     if (Idx < 0 || ButtonId < 0 || ButtonId >= 4 || !Label) {
         return -1;
     }
-    gGuiWindowManager.Windows[Idx].UserButtonUsed[ButtonId] = 1;
-    CopyTitleBuf(gGuiWindowManager.Windows[Idx].UserButtonLabel[ButtonId],
-                 sizeof(gGuiWindowManager.Windows[Idx].UserButtonLabel[ButtonId]), Label);
+    gGuiWindowManager.UserSlot[Idx].UserButtonUsed[ButtonId] = 1;
+    CopyTitleBuf(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId],
+                 sizeof(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId]), Label);
     RepaintUserWindow(Idx);
     return 0;
 }

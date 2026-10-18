@@ -9,17 +9,15 @@
 #include "CoreOps.h"
 
 void SchedulerIoBreath(void) {
-    UINT64 Flags;
-
     /*
      * 长 IO 在 Worker 上跑时 GuiTask 可自由 Poll；此处仍 drain + 光标位移，
      * 并置 NeedResched，让 CondResched 浅让出拍给 Gui（装卸期鼠标跟手）。
+     * 排空键鼠会进 USB 事件环，挪光标会画界面。这两步放到开中断之后。
+     * 抢占仍关掉，避免这一拍切进 Gui 再重入。
      */
     SchedulerPreemptDisable();
-    Flags = HalIrqSave();
     HalInputPoll();
     DesktopPollMouseMotion();
-    HalIrqRestore(Flags);
     SchedulerPreemptEnable();
     SchedulerSetNeedResched();
     (void)SchedulerCondResched();

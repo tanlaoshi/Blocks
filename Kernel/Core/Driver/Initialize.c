@@ -20,6 +20,7 @@ int InitializeDriver(void) {
     ToyLogBoot("Boot: Device Enumerate Done\n");
     HalDriverRegister();
     ToyLogBoot("Boot: Driver Register OK\n");
+    (void)DisplayHardwareInitialize();
     (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_BLOCK);
     ToyLogBoot("Boot: Driver Block Probe Done\n");
     return 0;

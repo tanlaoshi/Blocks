@@ -166,8 +166,8 @@ UINT64 HalIwlLogTsc(void) {
     return IwlLogTsc();
 }
 
-void HalIgpuMmioInitialize(void) {
-    (void)IgpuMmioInit();
+int HalIgpuMmioInitialize(void) {
+    return IgpuMmioInit();
 }
 
 void HalHdaMmioInitialize(void) {

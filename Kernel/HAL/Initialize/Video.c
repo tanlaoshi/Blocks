@@ -10,8 +10,9 @@
 #include "Theme.h"
 #include "Gfx.h"
 
-static void IgpuAudioProbe(void) {
-    HalIgpuMmioInitialize();
+int DisplayHardwareInitialize(void) {
+    int Found = HalIgpuMmioInitialize();
+
     HalHdaMmioInitialize();
     HalHdaCodecInitialize();
     HalIgpuForcewakeInitialize();
@@ -19,6 +20,7 @@ static void IgpuAudioProbe(void) {
     HalIgpuGttInitialize();
     HalIgpuBlitInitialize();
     HalIgpuPresentPrepare();
+    return Found;
 }
 
 int InitializeVideo(void) {
@@ -34,6 +36,6 @@ int InitializeVideo(void) {
     GfxSetFillRect(HalVideoFillRect);
     HalSerialGopEnable();
     HalVideoLogFbPte();
-    IgpuAudioProbe();
+    (void)DisplayHardwareInitialize();
     return 0;
 }

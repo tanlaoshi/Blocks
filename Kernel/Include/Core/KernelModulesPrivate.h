@@ -8,6 +8,7 @@ int InitializeSerial(void);
 int InitializePhysicalMemory(void);
 int InitializeVirtualMemory(void);
 int InitializeVideo(void);
+int DisplayHardwareInitialize(void);
 int InitializeCpu(void);
 int InitializeSmp(void);
 int InitializeUsb(void);

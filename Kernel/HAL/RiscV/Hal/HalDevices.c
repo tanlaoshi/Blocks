@@ -140,7 +140,8 @@ UINT64 HalIwlLogTsc(void) {
     return 0;
 }
 
-void HalIgpuMmioInitialize(void) {
+int HalIgpuMmioInitialize(void) {
+    return 0;
 }
 
 void HalHdaMmioInitialize(void) {

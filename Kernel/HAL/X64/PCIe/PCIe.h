@@ -8,7 +8,7 @@
 
 #include "BootTypes.h"
 
-typedef struct {
+typedef struct USB_CONTROLLER {
     UINT8  Bus;
     UINT8  Device;
     UINT8  Function;

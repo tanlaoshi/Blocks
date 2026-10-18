@@ -7,7 +7,8 @@
 #define XHCI_H
 
 #include "BootTypes.h"
-#include "PCIe.h"
+
+struct USB_CONTROLLER;
 
 /* USB 控制传输 SETUP 阶段数据包 */
 typedef struct {
@@ -81,9 +82,9 @@ int Init(UINT64 BaseAddress);
 int HidKeyboardReady(void); /* 已 Address+Configure 键盘 */
 /* 真机多 xHCI：当前控制器无 HID 时停 RS 并清 started，便于试下一颗 BAR */
 void AbandonNoHid(void);
-int EnableIrq(USB_CONTROLLER *Device);
+int EnableIrq(struct USB_CONTROLLER *Device);
 /* PR-H-xhci-dual：试进 DUAL（MSI-X/MSI + Drain backup）；失败则 FallbackToPoll */
-int TryEnterDual(USB_CONTROLLER *Device);
+int TryEnterDual(struct USB_CONTROLLER *Device);
 /* PR-H-xhci-irq：仅当 gStatIrq 已证明投递后，Drain 内懒升为轻量 IRQ 模式 */
 /* 真机：PHOTO 后再枚举鼠标，避免踩键盘 IN */
 void InitMouseDeferred(void);

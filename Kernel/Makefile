@@ -285,7 +285,7 @@ BRINGUP_ARCH_SRCS := $(wildcard BringUp/$(HAL_ARCH)/*.c)
 BRINGUP_ARCH_ASM  := $(wildcard BringUp/$(HAL_ARCH)/*.S)
 BRINGUP_ARCH_OBJS := $(patsubst BringUp/$(HAL_ARCH)/%.c,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_SRCS)) \
                      $(patsubst BringUp/$(HAL_ARCH)/%.S,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_ASM))
-# Core：内核机制；薄 Initialize* 在 HAL/Init 与 Services（见下）
+# Core：内核机制；薄 Initialize* 在 HAL/Initialize 与 Services（见下）
 CORE_SRCS     := $(wildcard Core/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
 CORE_SRCS     += $(wildcard Core/FileSystem/*.c)
@@ -298,8 +298,8 @@ CORE_SRCS     += $(filter-out Core/PhysicalMemory/Bitmap.c,$(wildcard Core/Physi
 CORE_SRCS     += $(wildcard Core/Elf/*.c)
 CORE_SRCS     += $(wildcard Core/Device/*.c)
 # 开机 Init（Hal 侧，架构无关胶水；用 CFLAGS_COMMON）
-HAL_INIT_SRCS := $(wildcard HAL/Init/*.c)
-HAL_INIT_OBJS := $(patsubst HAL/Init/%.c,$(BUILDDIR)/HAL/Init/%.o,$(HAL_INIT_SRCS))
+HAL_INIT_SRCS := $(wildcard HAL/Initialize/*.c)
+HAL_INIT_OBJS := $(patsubst HAL/Initialize/%.c,$(BUILDDIR)/HAL/Initialize/%.o,$(HAL_INIT_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
 SERVICES_SRCS += $(wildcard Services/Locale/*.c)
@@ -708,7 +708,7 @@ $(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o: BringUp/$(HAL_ARCH)/%.S | $(BUILDDIR)
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
-$(BUILDDIR)/HAL/Init/%.o: HAL/Init/%.c | $(BUILDDIR)
+$(BUILDDIR)/HAL/Initialize/%.o: HAL/Initialize/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU

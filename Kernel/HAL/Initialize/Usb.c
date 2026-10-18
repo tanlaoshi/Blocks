@@ -1,5 +1,5 @@
 /*
- * UsbInit.c — InitializeUsb（开机模块表；Hal 本层）
+ * Usb.c — InitializeUsb（开机模块表；Hal 本层）
  *
  * 探 USB/PS2 输入；无键盘也继续。USB-UART 仍在 FS 后 claim。
  */

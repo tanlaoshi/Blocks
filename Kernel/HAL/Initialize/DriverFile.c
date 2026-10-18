@@ -1,5 +1,5 @@
 /*
- * DriverFileInit.c — HalDriverFileRead 槽实现
+ * DriverFile.c — HalDriverFileRead 槽实现
  */
 #include "HalDriverFile.h"
 

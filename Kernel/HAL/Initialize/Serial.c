@@ -1,5 +1,5 @@
 /*
- * SerialInit.c — InitializeSerial（开机模块表；Hal 本层）
+ * Serial.c — InitializeSerial（开机模块表；Hal 本层）
  *
  * 尽早挂串口；并给 Library 挂 LibWrite。
  */

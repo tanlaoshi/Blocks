@@ -1,5 +1,5 @@
 /*
- * DriverSchedInit.c — HalDriverSched 槽实现
+ * DriverSched.c — HalDriverSched 槽实现
  */
 #include "HalDriverSched.h"
 

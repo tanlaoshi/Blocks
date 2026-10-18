@@ -1,5 +1,5 @@
 /*
- * VideoInit.c — InitializeVideo（开机模块表；Hal 本层）
+ * Video.c — InitializeVideo（开机模块表；Hal 本层）
  *
  * 帧缓冲、字体、主题和核显/声卡探针。勿全屏 Clear。
  */

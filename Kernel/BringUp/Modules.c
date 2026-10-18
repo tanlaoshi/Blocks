@@ -4,7 +4,7 @@
  * 人话：串口子集 / virt 桌面 / x86 全量 各走自己的顺序表。
  * 从哪读：下方三张 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
  * 别改：各表条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
- * Initialize*：Hal 侧在 HAL/Init/；Console/Gui/Net/FS 在 Services；PhysicalMemory/Driver/VMM/Scheduler 在 Core。
+ * Initialize*：Hal 侧在 HAL/Initialize/；Console/Gui/Net/FS 在 Services；PhysicalMemory/Driver/VMM/Scheduler 在 Core。
  * 选路见 BringUp/Kernel.c。
  */
 #include "KernelModules.h"

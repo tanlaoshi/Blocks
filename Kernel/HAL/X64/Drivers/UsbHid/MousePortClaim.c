@@ -4,8 +4,6 @@
 #include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
-static USB_PIPE gMousePipe;
-
 /*
  * -1 = 已 Address，继续 SetupHid；
  * ≥0 = 已结束（0 失败 / 1 成功，含 hub 子口）。
@@ -175,7 +173,14 @@ int InitMouseFinishEp(UINT32 Port1, UINT8 Speed) {
         return 0;
     }
     ZeroMemory(gMouseBuf, sizeof(gMouseBuf));
-    (void)InterruptQueue(&gMousePipe, 0, 0, 0);
+    {
+        UINT8 Addr = gMouseDevCtx[12];
+        if (Addr == 0 && gMouseSlotId != 0) {
+            Addr = (UINT8)gMouseSlotId;
+        }
+        UsbDeviceNote(Addr, gCtrlBuf, Total);
+    }
+    (void)InterruptByClass(3, 0, 0);
     DebugWrite("XHCI: mouse ready\n");
     if (gMouseAbsolute) {
         BootLog("Boot: XHCI-HID Mouse (Abs)\n");
@@ -183,6 +188,5 @@ int InitMouseFinishEp(UINT32 Port1, UINT8 Speed) {
         BootLog("Boot: XHCI-HID Mouse\n");
     }
     (void)Port1;
-    UsbDeviceNote(gMouseDevCtx[12], gCtrlBuf, Total);
     return 1;
 }

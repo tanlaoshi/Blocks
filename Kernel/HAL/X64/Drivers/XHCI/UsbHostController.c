@@ -20,21 +20,27 @@ static int HostControllerInterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len,
     (void)Buf;
     (void)Len;
     (void)Done;
-    if (!gXhciStarted) {
+    if (Pipe == 0 || Pipe->HostControllerPrivate == 0 || !gXhciStarted) {
         return -1;
     }
-    if (Pipe != 0) {
-        if (gMouseSlotId == 0 || gMouseIntrDci == 0) {
-            return -1;
+    {
+        USB_INTERFACE *Iface = Pipe->HostControllerPrivate;
+        if (Iface->Class == 3 && Iface->Protocol == 1) {
+            if (gSlotId == 0 || gIntrDci == 0) {
+                return -1;
+            }
+            QueueIntr();
+            return 0;
         }
-        QueueMouseIntr();
-        return 0;
+        if (Iface->Class == 3) {
+            if (gMouseSlotId == 0 || gMouseIntrDci == 0) {
+                return -1;
+            }
+            QueueMouseIntr();
+            return 0;
+        }
     }
-    if (gSlotId == 0 || gIntrDci == 0) {
-        return -1;
-    }
-    QueueIntr();
-    return 0;
+    return -1;
 }
 
 static int HostControllerBulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {

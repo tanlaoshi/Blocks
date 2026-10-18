@@ -6,8 +6,6 @@
 #include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
-static USB_PIPE gMousePipe;
-
 /*
  * 真机常见：USB 键鼠复合设备（同一 slot 上键盘 Proto=1 + 鼠标 Proto=2）。
  * 旧逻辑只扫「其它根口」，同口第二接口永远绑不上 → arms mouse=00/00。
@@ -158,7 +156,7 @@ int InitMouseOnKeyboardSlot(void) {
             }
             QueueIntr();
         }
-        (void)InterruptQueue(&gMousePipe, 0, 0, 0);
+        (void)InterruptByClass(3, 0, 0);
         BootLog("Boot: XHCI composite kbd rearm\n");
     }
     {

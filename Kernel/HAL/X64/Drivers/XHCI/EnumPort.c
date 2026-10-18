@@ -4,8 +4,6 @@
 #include "XHCI/Private.h"
 #include "UsbHostController.h"
 
-static USB_PIPE gMousePipe;
-
 /* 1 = 本口已作键盘；0 = 继续下一口 */
 int EnumTryRootPort(UINT32 P) {
     UINT8 Speed = 0;
@@ -115,6 +113,13 @@ int EnumTryRootPort(UINT32 P) {
     (void)SetProtocolBoot(gKbdIface);
     SetIdle(gKbdIface);
     {
+        UINT8 Addr = gDevCtx[12];
+        if (Addr == 0 && gSlotId != 0) {
+            Addr = (UINT8)gSlotId;
+        }
+        UsbDeviceNote(Addr, gCtrlBuf, Total);
+    }
+    {
         UINT8 MEp = 0, MIv = 10;
         UINT16 MMps = 8;
         int WantMouse;
@@ -128,7 +133,7 @@ int EnumTryRootPort(UINT32 P) {
                 return 0;
             }
             ZeroMemory(gReportBuf, 8);
-            (void)InterruptQueue(0, 0, 0, 0);
+            (void)InterruptByClass(3, 1, 1);
             BootLog("Boot: XHCI kbd-only then bind mouse ports\n");
             BootLog("Boot: XHCI kbd-fix=v8\n");
         } else if (WantMouse) {
@@ -140,8 +145,8 @@ int EnumTryRootPort(UINT32 P) {
                 return 0;
             }
             ZeroMemory(gReportBuf, 8);
-            (void)InterruptQueue(0, 0, 0, 0);
-            (void)InterruptQueue(&gMousePipe, 0, 0, 0);
+            (void)InterruptByClass(3, 1, 1);
+            (void)InterruptByClass(3, 0, 0);
             BootLog("Boot: XHCI-HID Mouse (Composite)\n");
         } else {
             if (!ConfigureIntr(EpAddr, Mps, Interval, Speed, 0, 0, 0)) {
@@ -149,11 +154,10 @@ int EnumTryRootPort(UINT32 P) {
                 return 0;
             }
             ZeroMemory(gReportBuf, 8);
-            (void)InterruptQueue(0, 0, 0, 0);
+            (void)InterruptByClass(3, 1, 1);
         }
     }
     gUseGetReport = 0;
-    UsbDeviceNote(gDevCtx[12], gCtrlBuf, Total);
     return 1;
 }
 

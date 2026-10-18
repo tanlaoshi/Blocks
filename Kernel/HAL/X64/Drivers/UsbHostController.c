@@ -5,6 +5,11 @@
 #include "UsbHostController.h"
 
 static const USB_HOST_CONTROLLER_OPERATIONS *gOperations[3];
+static USB_DEVICE gUsbDevice[USB_DEVICE_MAX];
+static USB_INTERFACE gKeyboardFallback = { .Class = 3, .Protocol = 1 };
+static USB_INTERFACE gMouseFallback = { .Class = 3, .Protocol = 2 };
+static USB_PIPE gKeyboardPipe;
+static USB_PIPE gMousePipe;
 
 static const USB_HOST_CONTROLLER_OPERATIONS *Current(void) {
     if (gOperations[USB_HOST_CONTROLLER_XHCI] != 0) {
@@ -28,10 +33,40 @@ void Unregister(UINT8 Kind) {
 }
 
 int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol) {
-    (void)Pipe;
-    (void)Class;
-    (void)Subclass;
-    (void)Protocol;
+    int DevIndex;
+    int IfaceIndex;
+
+    if (Pipe == 0) {
+        return -1;
+    }
+    for (DevIndex = 0; DevIndex < USB_DEVICE_MAX; DevIndex++) {
+        USB_DEVICE *Dev = &gUsbDevice[DevIndex];
+        if (Dev->Address == 0) {
+            continue;
+        }
+        for (IfaceIndex = 0; IfaceIndex < Dev->InterfaceCount; IfaceIndex++) {
+            USB_INTERFACE *Iface = &Dev->Interface[IfaceIndex];
+            if (Iface->Class != Class) {
+                continue;
+            }
+            /* 3,0,0：鼠标或 tablet，跳过 boot 键盘 */
+            if (Class == 3 && Subclass == 0 && Protocol == 0) {
+                if (Iface->Protocol == 1) {
+                    continue;
+                }
+            } else {
+                if (Subclass != 0xFF && Iface->Subclass != Subclass) {
+                    continue;
+                }
+                if (Protocol != 0xFF && Iface->Protocol != Protocol) {
+                    continue;
+                }
+            }
+            Pipe->HostControllerPrivate = Iface;
+            Pipe->DoneContext = 0;
+            return 0;
+        }
+    }
     return -1;
 }
 
@@ -52,6 +87,16 @@ int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Con
         return -1;
     }
     return Operations->InterruptQueue(Pipe, Buf, Len, Done);
+}
+
+int InterruptByClass(UINT8 Class, UINT8 Subclass, UINT8 Protocol) {
+    USB_PIPE *Pipe = (Protocol == 1) ? &gKeyboardPipe : &gMousePipe;
+
+    if (ClaimInterface(Pipe, Class, Subclass, Protocol) != 0) {
+        Pipe->HostControllerPrivate = (Protocol == 1) ? &gKeyboardFallback : &gMouseFallback;
+        Pipe->DoneContext = 0;
+    }
+    return InterruptQueue(Pipe, 0, 0, 0);
 }
 
 int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
@@ -75,8 +120,6 @@ int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     }
     return Operations->Bulk(Pipe, Buf, Len, Out);
 }
-
-static USB_DEVICE gUsbDevice[USB_DEVICE_MAX];
 
 void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total) {
     USB_DEVICE *Dev;
@@ -113,6 +156,8 @@ void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total) {
             }
             Iface = &Dev->Interface[Dev->InterfaceCount];
             Iface->Class = Config[Off + 5];
+            Iface->Subclass = Config[Off + 6];
+            Iface->Protocol = Config[Off + 7];
             Iface->EndpointCount = 0;
             Dev->InterfaceCount++;
         } else if (Type == 5 && Len >= 7 && Dev->InterfaceCount > 0) {

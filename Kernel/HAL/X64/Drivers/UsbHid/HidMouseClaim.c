@@ -5,8 +5,6 @@
 #include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
-static USB_PIPE gMousePipe;
-
 /*
  * 在首次 ConfigEP 前：从当前配置描述符认领复合鼠标 iface（SetInterface/Protocol/Idle）。
  * 成功则写出 EP 参数供 ConfigureIntr 一次 Add。
@@ -172,7 +170,7 @@ int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
         return 0;
     }
     ZeroMemory(gMouseBuf, sizeof(gMouseBuf));
-    (void)InterruptQueue(&gMousePipe, 0, 0, 0);
+    (void)InterruptByClass(3, 0, 0);
     BootLogHexV("Boot: XHCI mouse claim score=", gMouseParseScore, 2);
     BootLog("Boot: XHCI-HID Mouse (Claim After Skip-Kbd)\n");
     return 1;

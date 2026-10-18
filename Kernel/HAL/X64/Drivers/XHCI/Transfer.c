@@ -16,7 +16,7 @@ void ServiceHidCompletions(void) {
             gStatKbdPush++;
         }
         if (gSlotId != 0 && gIntrDci != 0) {
-            (void)InterruptQueue(0, 0, 0, 0);
+            (void)InterruptByClass(3, 1, 1);
         }
     }
     if (gMouseIntrDone) {
@@ -28,9 +28,7 @@ void ServiceHidCompletions(void) {
             gStatMousePush++;
         }
         if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-            USB_PIPE Pipe;
-
-            (void)InterruptQueue(&Pipe, 0, 0, 0);
+            (void)InterruptByClass(3, 0, 0);
         }
     }
 }

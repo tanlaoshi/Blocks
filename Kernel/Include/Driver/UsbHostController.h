@@ -34,12 +34,13 @@ int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations);
 void Unregister(UINT8 Kind);
 int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol);
 int Control(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, UINT32 Len);
-/* Pipe 为空是键盘中断，非空是鼠标中断。 */
+/* 管道由 ClaimInterface 填好。Class 3、Protocol 1 是键盘，其余 HID 是鼠标。 */
 int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Context));
+int InterruptByClass(UINT8 Class, UINT8 Subclass, UINT8 Protocol);
 int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 
-/* 枚举记录。键盘槽和报告缓冲仍在原处，这张表还不参与认领。 */
+/* 枚举记录。认领按接口类在这张表里找。 */
 #define USB_DEVICE_MAX    8
 #define USB_INTERFACE_MAX 4
 #define USB_ENDPOINT_MAX  6
@@ -52,6 +53,8 @@ typedef struct {
 
 typedef struct {
     UINT8 Class;
+    UINT8 Subclass;
+    UINT8 Protocol;
     UINT8 EndpointCount;
     USB_ENDPOINT Endpoint[USB_ENDPOINT_MAX];
 } USB_INTERFACE;

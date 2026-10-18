@@ -6,8 +6,6 @@
 #include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
-static USB_PIPE gMousePipe;
-
 /* hub 子口找独立鼠标（根口 composite 弱 HID 被跳过时） */
 int EnumHubChildrenForMouse(void) {
     UINT8 Port;
@@ -143,7 +141,7 @@ int EnumHubChildrenForMouse(void) {
                 BootLogHex("Boot: XHCI mouse epst=", EpOut[0] & 7u, 1);
             }
             ZeroMemory(gMouseBuf, sizeof(gMouseBuf));
-            (void)InterruptQueue(&gMousePipe, 0, 0, 0);
+            (void)InterruptByClass(3, 0, 0);
             BootLog("Boot: XHCI-HID Mouse Via Hub\n");
             return 1;
         }

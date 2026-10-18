@@ -141,6 +141,12 @@ int SchedStart(EHCI_CTRL *C) {
         HalCpuRelax();
     }
     if (Spin <= 0) {
+        /* Run 和 ASE 已经写过。停跑，这只控制器不再算已调度。 */
+        Cmd = R32(C->Op, EHCI_USBCMD);
+        Cmd &= ~(EHCI_CMD_RS | EHCI_CMD_ASE | EHCI_CMD_PSE);
+        W32(C->Op, EHCI_USBCMD, Cmd);
+        C->Sched = 0;
+        C->Up = 0;
         ToyBootMarkUsb("Boot: EHCI ASE timeout\n");
         return 0;
     }
@@ -163,8 +169,10 @@ void SchedEnablePeriodic(EHCI_CTRL *C) {
     Spin = 200000;
     while (Spin-- > 0) {
         if (R32(C->Op, EHCI_USBSTS) & EHCI_STS_PSS) {
-            break;
+            return;
         }
         HalCpuRelax();
     }
+    Cmd = R32(C->Op, EHCI_USBCMD);
+    W32(C->Op, EHCI_USBCMD, Cmd & ~EHCI_CMD_PSE);
 }

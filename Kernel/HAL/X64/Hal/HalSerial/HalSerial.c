@@ -60,6 +60,7 @@ void HalSerialBootFontApply(void) {
 }
 
 void RingAppend(const char *Text) {
+    HalSerialBootCapture(Text);
     while (Text && *Text) {
         if (gRingLen + 1 >= GOP_RING) {
             UINTN Keep = GOP_RING / 2;

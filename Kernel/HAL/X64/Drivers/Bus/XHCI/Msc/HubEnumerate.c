@@ -78,6 +78,9 @@ int EnumerateHubChildren(void) {
                 BootLogHex("Boot: MSC claim hub skip mouse port=", Port, 2);
                 continue;
             }
+            if (gFtdiClaimed && gFtdiHubSlot != 0 && gFtdiTtPort == Port) {
+                continue;
+            }
             BootLogHex("Boot: MSC claim hub port=", Port, 2);
             BootLogHex("Boot: MSC claim hub st=", St, 4);
             if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {

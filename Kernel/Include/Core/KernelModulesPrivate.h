@@ -12,6 +12,7 @@ int DisplayHardwareInitialize(void);
 int InitializeCpu(void);
 int InitializeSmp(void);
 int InitializeUsb(void);
+int InitializeUsbUart(void);
 int InitializeFileSystem(void);
 int InitializeGui(void);
 int InitializeNetwork(void);

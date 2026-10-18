@@ -1,7 +1,8 @@
 /*
  * Usb.c — InitializeUsb（开机模块表；Hal 本层）
  *
- * 探 USB/PS2 输入；无键盘也继续。USB-UART 仍在 FS 后 claim。
+ * 探 USB/PS2 输入；无键盘也继续。
+ * USB 转串口在挂盘扫口之后认。板载 COM1 在不在都认，两路可以同时用。
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"
@@ -51,5 +52,20 @@ int InitializeUsb(void) {
         HandoffMouse();
         DrainHid();
     }
+    return 0;
+}
+
+int InitializeUsbUart(void) {
+    static int Done;
+
+    if (Done) {
+        return 0;
+    }
+    Done = 1;
+    if (HalUsbUartClaim() != 1) {
+        HalSerialBootMarkForce("Boot: USB-UART None\n");
+        return 0;
+    }
+    HalSerialReplayUsb();
     return 0;
 }

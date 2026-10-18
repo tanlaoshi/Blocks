@@ -13,6 +13,8 @@ extern UINT16 gFtdiBulkOutMps;
 extern UINT32 gFtdiRoute;
 extern UINT8 gFtdiHubSlot;
 extern UINT8 gFtdiTtPort;
+extern UINT8 gFtdiSpeed;
+int FtdiFinishAddressed(UINT32 RootPort, UINT8 Speed);
 extern UINT8 gFtdiDevCtx[2048];
 extern XHCI_TRB gFtdiBulkOutRing[RING_SIZE];
 extern RING_STATE gFtdiBulkOut;

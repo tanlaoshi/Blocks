@@ -37,6 +37,7 @@ static inline UINT32 BootLogBodyY(UINT32 LineH) {
     return BOOT_LOG_TITLE_Y + LineH + 8;
 }
 
+void HalSerialBootCapture(const char *Text);
 void RingAppend(const char *Text);
 void GopBannerOnce(void);
 void GopWrite(const char *Text);

@@ -22,6 +22,41 @@ static int gShellOwnUart;
 static char gRtLog[RT_LOG_MAX];
 static UINTN gRtLen;
 static int gRtDirty;
+/* 从第一条日志起保留，USB 转串口就绪后整段补发。64KB 盖住一次开机。 */
+#define BOOT_CAPTURE_MAX (64u * 1024u)
+static char gBootCapture[BOOT_CAPTURE_MAX];
+static UINTN gBootCaptureLen;
+static int gUsbReplayDone;
+
+void HalSerialBootCapture(const char *Text) {
+    if (!Text) {
+        return;
+    }
+    while (*Text) {
+        if (gBootCaptureLen + 1u >= BOOT_CAPTURE_MAX) {
+            UINTN Keep = (BOOT_CAPTURE_MAX / 4u) * 3u;
+            UINTN i;
+            for (i = 0; i < Keep; i++) {
+                gBootCapture[i] = gBootCapture[gBootCaptureLen - Keep + i];
+            }
+            gBootCaptureLen = Keep;
+        }
+        gBootCapture[gBootCaptureLen++] = *Text++;
+    }
+}
+
+static void TeeUsb(const char *Text) {
+    if (!gUsbReplayDone || gShellOwnUart || !Text) {
+        return;
+    }
+    if (gFtdiUart.Write) {
+        gFtdiUart.Write(Text);
+    }
+    FtdiWrite(Text);
+    if (gCdcUart.Write) {
+        gCdcUart.Write(Text);
+    }
+}
 
 static void RtAppend(const char *Text) {
     if (!gShellOwnUart || !Text) {
@@ -122,15 +157,7 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
         GopMirrorLine(Text);
     }
     SpinLockRelease(&gSerialLock);
-    if (!gShellOwnUart) {
-        if (gFtdiUart.Write) {
-            gFtdiUart.Write(Text);
-        }
-        FtdiWrite(Text);
-        if (gCdcUart.Write) {
-            gCdcUart.Write(Text);
-        }
-    }
+    TeeUsb(Text);
 }
 
 void HalSerialShellOwn(void) {
@@ -166,6 +193,33 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
     }
     SpinLockRelease(&gSerialLock);
     return N;
+}
+
+void HalSerialReplayUsb(void) {
+    char Chunk[128];
+    UINTN Off = 0;
+
+    for (;;) {
+        UINTN N = 0;
+
+        SpinLockAcquire(&gSerialLock);
+        while (Off < gBootCaptureLen && N + 1u < sizeof(Chunk)) {
+            Chunk[N++] = gBootCapture[Off++];
+        }
+        SpinLockRelease(&gSerialLock);
+        if (N == 0) {
+            break;
+        }
+        Chunk[N] = 0;
+        if (gFtdiUart.Write) {
+            gFtdiUart.Write(Chunk);
+        }
+        FtdiWrite(Chunk);
+        if (gCdcUart.Write) {
+            gCdcUart.Write(Chunk);
+        }
+    }
+    gUsbReplayDone = 1;
 }
 
 void HalSerialWriteShell(const char *Text) {
@@ -225,17 +279,26 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
         GopWrite(Text);
     }
     SpinLockRelease(&gSerialLock);
-    if (!gShellOwnUart) {
-        if (gFtdiUart.Write) {
-            gFtdiUart.Write(Text);
-        }
-        FtdiWrite(Text);
-        if (gCdcUart.Write) {
-            gCdcUart.Write(Text);
-        }
-    }
+    TeeUsb(Text);
 }
 
 void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+}
+
+/* 屏幕通道全关时仍画这行。只给 FTDI / USB-UART 用。 */
+void HalSerialBootMarkForce(const char *Text) {
+    if (!Text) {
+        return;
+    }
+    SpinLockAcquire(&gSerialLock);
+    RingAppend(Text);
+    RtAppend(Text);
+    if (!gShellOwnUart && SerialPresent() && ChannelUartOn(TOY_SLOG_USB)) {
+        SerialWrite(Text);
+    }
+    if (gGopMirror && gVideoUp) {
+        GopWrite(Text);
+    }
+    SpinLockRelease(&gSerialLock);
 }

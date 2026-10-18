@@ -20,7 +20,7 @@ int InitializeCpu(void) {
 
     /*
      * IDT/LAPIC 已就绪：再探一次 COM1（首启 Serial 可能尚无中断），开 RX IRQ。
-     * 勿在此扫 USB-UART（等 USB/FileSystem）。
+     * 勿在此扫 USB-UART（挂盘之后再认，板载 COM1 不影响）。
      */
     ToyLogBoot("Boot: COM1 after Cpu\n");
     HalSerialRetryIfMissing();

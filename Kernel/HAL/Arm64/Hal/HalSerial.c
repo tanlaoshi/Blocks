@@ -145,6 +145,13 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
     return 0;
 }
 
+void HalSerialReplayUsb(void) {
+}
+
+void HalSerialBootMarkForce(const char *Text) {
+    (void)Text;
+}
+
 void HalSerialWrite(const char *Text) {
     HalSerialWriteChannel(TOY_SLOG_MISC, Text);
 }

@@ -223,9 +223,14 @@ extern UINT8 gMscCfgBuf[1024];
 /* PR-H-usb-uart-ftdi-1：独立 slot（定义在 FtdiClaim.c / Rx.c） */
 extern UINT32 gFtdiSlot;
 extern UINT32 gFtdiPort;
+extern UINT32 gFtdiRoute;
+extern UINT8 gFtdiHubSlot;
+extern UINT8 gFtdiTtPort;
 extern int gFtdiClaimed;
 extern UINT32 gFtdiBulkInDci;
 extern UINT32 gFtdiBulkOutDci;
+void FtdiKeepForUart(UINT32 Slot, UINT32 RootPort, UINT8 Speed,
+                     UINT32 Route, UINT8 HubSlot, UINT8 TtPort);
 
 /* PR-H-usb-uart-cdc-1 */
 extern UINT32 gCdcSlot;

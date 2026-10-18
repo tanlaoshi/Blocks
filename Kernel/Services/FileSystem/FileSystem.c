@@ -10,8 +10,8 @@
 #include "ToySerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
-#include "HalSerial.h"
 #include "HalConsole.h"
+#include "KernelModulesPrivate.h"
 #include "HalDriverFile.h"
 
 FS_VOLUME gVols[FS_MAX_VOLUMES];
@@ -276,6 +276,7 @@ int FileSystemInitialize(void) {
             if (!MountAllVolumes()) {
                 DebugWrite("FS: mount after msc auto failed\n");
                 if (!HaveVols) {
+                    (void)InitializeUsbUart();
                     return 0;
                 }
             } else {
@@ -299,15 +300,8 @@ int FileSystemInitialize(void) {
         }
     }
 
-    /*
-     * USB-UART：有 COM1 则跳过扫口（NUC），避免 Force 其它根口干扰已认 MSC hub。
-     * 无 COM1（N56 棒）才 claim；MSC 已认后也不再 Force（见 Ftdi/Cdc AddressRoot）。
-     */
-    if (HalSerialPresent()) {
-        ToyLogBoot("Boot: USB-UART Skip (COM1)\n");
-    } else {
-        (void)HalUsbUartClaim();
-    }
+    /* 两次 U 盘扫描都结束再认。扫盘中途配好会被下一轮复位冲掉，棒上就没有字节。 */
+    (void)InitializeUsbUart();
 
     /*
      * PR-BOOT-fast-3：勿在此 HalIwlClaim / Probe NET。

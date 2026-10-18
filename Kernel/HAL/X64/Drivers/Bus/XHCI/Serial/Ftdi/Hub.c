@@ -3,6 +3,18 @@
  */
 #include "XHCI/Serial/Ftdi/Private.h"
 
+void FtdiKeepForUart(UINT32 Slot, UINT32 RootPort, UINT8 Speed,
+                     UINT32 Route, UINT8 HubSlot, UINT8 TtPort) {
+    gFtdiSlot = Slot;
+    gFtdiPort = RootPort;
+    gFtdiSpeed = Speed;
+    gFtdiRoute = Route;
+    gFtdiHubSlot = HubSlot;
+    gFtdiTtPort = TtPort;
+    gFtdiClaimed = 0;
+    (void)FtdiFinishAddressed(RootPort, Speed);
+}
+
 static int TryHubChildren(void) {
     UINT8 Port;
     UINT8 MaxP = gHubNumPorts;

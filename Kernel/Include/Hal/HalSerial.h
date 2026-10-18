@@ -31,6 +31,8 @@ void HalSerialWriteShell(const char *Text);
 int HalSerialRuntimeDirty(void);
 void HalSerialRuntimeMarkSaved(void);
 UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max);
+/* 认上 USB 转串口后，把已经积下的运行日志补发出去。 */
+void HalSerialReplayUsb(void);
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value);
 void HalSerialWriteChannelHex64(int Channel, UINT64 Value);
 /* 常驻 ring，供 Desktop 叠画 */
@@ -45,6 +47,8 @@ void HalSerialGopMirror(int Enable);
 /* 1 = boot 期仍在往 GOP 上滚（ThemeLoad 勿中途换字） */
 int HalSerialGopMirroring(void);
 void HalSerialBootMark(const char *Text);
+/* 不看屏幕通道开关，开机时直接画到画面上。 */
+void HalSerialBootMarkForce(const char *Text);
 void HalSerialBootMarkChannel(int Channel, const char *Text);
 int HalSerialDataReady(void);
 char HalSerialReadChar(void);

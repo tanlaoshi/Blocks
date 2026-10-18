@@ -2,22 +2,26 @@
  * Ftdi.c — FT232 认领（VID/PID + Bulk OUT + 115200）
  */
 #include "XHCI/Serial/Ftdi/Private.h"
+#include "HalSerial.h"
 
 #define FTDI_VID           0x0403u
 #define FTDI_PID_FT232R    0x6001u
 #define FTDI_PID_FT232H    0x6014u
 #define FTDI_PID_FT231X    0x6015u
 #define FTDI_REQ_RESET     0x00u
+#define FTDI_REQ_MODEM     0x01u
 #define FTDI_REQ_SET_FLOW  0x02u
 #define FTDI_REQ_SET_BAUD  0x03u
 #define FTDI_REQ_SET_DATA  0x04u
 #define FTDI_BAUD_115200   0x001Au
+#define FTDI_MODEM_DTR_RTS 0x0303u
 
 UINT32 gFtdiSlot;
 UINT32 gFtdiPort;
 UINT32 gFtdiRoute;
 UINT8 gFtdiHubSlot;
 UINT8 gFtdiTtPort;
+UINT8 gFtdiSpeed;
 UINT32 gFtdiBulkOutDci;
 UINT16 gFtdiBulkOutMps;
 int gFtdiClaimed;
@@ -119,10 +123,12 @@ static int SetLine(void) {
         return -1;
     }
     (void)Vendor(FTDI_REQ_SET_FLOW, 0, 0);
+    /* 不拉 DTR/RTS 时，不少转接线 TX 灯亮但 CoolTerm 收不到字节。 */
+    (void)Vendor(FTDI_REQ_MODEM, FTDI_MODEM_DTR_RTS, 0);
     return 0;
 }
 
-static int Finish(UINT32 RootPort, UINT8 Speed) {
+int FtdiFinishAddressed(UINT32 RootPort, UINT8 Speed) {
     UINT8 EpIn = 0;
     UINT8 EpOut = 0;
     UINT16 MpsIn = 64;
@@ -174,9 +180,7 @@ static int Finish(UINT32 RootPort, UINT8 Speed) {
     gFtdiPort = RootPort;
     gFtdiClaimed = 1;
     gFtdi.ArmReceive();
-    /* QEMU 默认 BootLog 会滤非 milestone；COM1+棒上都要看得见 */
-    ToyLogBoot("Boot: USB-UART FTDI\n");
-    ToyBootMarkUsb("Boot: USB-UART FTDI\n");
+    HalSerialBootMarkForce("Boot: USB-UART FTDI\n");
     return 1;
 
 fail:
@@ -234,9 +238,8 @@ static int Claim(void) {
     if (!gXhciStarted || gOperationalBase == 0 || gMaxPorts == 0) {
         return -1;
     }
-    if (gFtdiClaimed && gFtdiSlot != 0) {
-        return 1;
-    }
+    /* 扫盘中途配过的端点可能已失效。这里清掉，重新 Address。 */
+    gFtdiClaimed = 0;
     if (gHubSlotId != 0 && gFtdi.TryHubChildren && gFtdi.TryHubChildren()) {
         goto armed;
     }
@@ -261,7 +264,7 @@ static int Claim(void) {
         if (!AddressRoot(P, &Speed)) {
             continue;
         }
-        if (Finish(P, Speed)) {
+        if (FtdiFinishAddressed(P, Speed)) {
             goto armed;
         }
     }
@@ -285,7 +288,7 @@ void FtdiPublish(void) {
     FtdiFillReceive();
     FtdiFillTransmit();
     gFtdi.EndpointZeroRing = EndpointZeroRing;
-    gFtdi.FinishClaim = Finish;
+    gFtdi.FinishClaim = FtdiFinishAddressed;
     gFtdiUart.Claim = Claim;
     gFtdiUart.Ready = Ready;
 }

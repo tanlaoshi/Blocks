@@ -103,7 +103,10 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
         /* 勿把 FT232 当 MSC（厂商 Bulk）；留给 usb-uart */
         if (Vid == 0x0403u) {
             BootLog("Boot: MSC claim skip FTDI\n");
-            goto fail;
+            FtdiKeepForUart(gMscScanSlot, RootPort, Speed, gMscRoute,
+                            gMscHubSlot, gMscTtPort);
+            gMscScanSlot = 0;
+            return 0;
         }
     }
     if (DevClass == 0x09) {

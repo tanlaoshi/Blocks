@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "PhysicalMemory.h"
 
-#include "PageTablePrivate.h"
+#include "Private.h"
 
 UINT64 gKernelRoot;
 

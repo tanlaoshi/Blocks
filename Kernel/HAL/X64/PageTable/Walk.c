@@ -1,5 +1,5 @@
 /*
- * PageTableWalk.c — HAL/X64 页表遍历与辅助（PR-S3-pagetable-1）
+ * Walk.c — HAL/X64 页表遍历与辅助（PR-S3-pagetable-1）
  */
 /*
  * HAL/x86_64/PageTable.c — x86-64 四级页表与 CPU 分页操作
@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "PhysicalMemory.h"
 
-#include "PageTablePrivate.h"
+#include "Private.h"
 
 static UINT64 Rdmsr(UINT32 Msr) {
     UINT32 Lo;

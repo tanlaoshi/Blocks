@@ -390,7 +390,7 @@ ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Acpi/*.c)
 ARCH_ASM_ALL  := $(wildcard HAL/$(HAL_ARCH)/*.S)
 ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/Architecture/*.S)
 ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.S)
-ARCH_ASM      := $(filter-out HAL/$(HAL_ARCH)/SmpBoot/SmpTrampoline.S,$(ARCH_ASM_ALL))
+ARCH_ASM      := $(filter-out HAL/$(HAL_ARCH)/SmpBoot/Trampoline.S,$(ARCH_ASM_ALL))
 
 CORE_OBJS     := $(patsubst Core/%.c,$(BUILDDIR)/Core/%.o,$(CORE_SRCS))
 SERVICES_OBJS := $(patsubst Services/%.c,$(BUILDDIR)/Services/%.o,$(SERVICES_SRCS))
@@ -786,9 +786,9 @@ $(HALDIR)/%.o: HAL/$(HAL_ARCH)/%.S | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(ARCH),x86_64)
-$(HALDIR)/SmpTramp.bin: HAL/X64/SmpBoot/SmpTrampoline.S HAL/X64/SmpBoot/SmpTrampoline.ld | $(HALDIR)
-	$(CC) -c HAL/X64/SmpBoot/SmpTrampoline.S -o $(HALDIR)/SmpTrampoline_low.o
-	$(LD) -z noexecstack -T HAL/X64/SmpBoot/SmpTrampoline.ld -o $(HALDIR)/SmpTrampoline_low.elf \
+$(HALDIR)/SmpTramp.bin: HAL/X64/SmpBoot/Trampoline.S HAL/X64/SmpBoot/Trampoline.ld | $(HALDIR)
+	$(CC) -c HAL/X64/SmpBoot/Trampoline.S -o $(HALDIR)/SmpTrampoline_low.o
+	$(LD) -z noexecstack -T HAL/X64/SmpBoot/Trampoline.ld -o $(HALDIR)/SmpTrampoline_low.elf \
 		$(HALDIR)/SmpTrampoline_low.o
 	objcopy -O binary $(HALDIR)/SmpTrampoline_low.elf $@
 

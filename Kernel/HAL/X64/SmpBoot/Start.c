@@ -1,7 +1,7 @@
 /*
- * SmpBootStart.c — INIT/SIPI 跳板与 StartOneAp（PR-S3-smpboot-1）
+ * Start.c — INIT/SIPI 跳板与 StartOneAp（PR-S3-smpboot-1）
  */
-#include "SmpBootPrivate.h"
+#include "Private.h"
 
 static inline UINT32 LapicRead(UINT32 Off) {
     return *(volatile UINT32 *)(UINTN)(LAPIC_BASE + Off);

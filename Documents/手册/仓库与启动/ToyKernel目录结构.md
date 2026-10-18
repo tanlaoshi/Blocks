@@ -802,20 +802,20 @@ ToyKernel/
 | `HAL/X64/IoApic.c` | PR-H-ioapic：I/O APIC 初始化与中断路由 |
 | `HAL/X64/IoApic.h` | PR-H-ioapic：真机 I/O APIC 初始化与 GSI 路由（HAL/X64 内部） |
 | `HAL/X64/NOTES-UEFI-PC.md` | x86 UEFI PC / 笔记本目标机（PR-H0） |
-| `HAL/X64/PCIe.c` | PCI 配置空间与 USB 控制器枚举（PR-S3-pcie-1） |
-| `HAL/X64/PCIe.h` | PCI 配置空间与 USB 控制器扫描 |
-| `HAL/X64/PCIeBar.c` | PCI BAR 大小探测（PR-DEV-bar-size · 阶段 4 第 1 刀） |
-| `HAL/X64/PCIeMsi.c` | PCI MSI/MSI-X 与 IOAPIC INTx（PR-S3-pcie-1） |
-| `HAL/X64/PageTable.c` | HAL/X64 页表 Hal* API（PR-S3-pagetable-1） |
-| `HAL/X64/PageTablePrivate.h` | HAL/X64 PageTableWalk / PageTable 内部交接（PR-S3-pagetable-1） |
-| `HAL/X64/PageTableWalk.c` | HAL/X64 页表遍历与辅助（PR-S3-pagetable-1） |
+| `HAL/X64/PCIe/PCIe.c` | PCI 配置空间与 USB 控制器枚举（PR-S3-pcie-1） |
+| `HAL/X64/PCIe/PCIe.h` | PCI 配置空间与 USB 控制器扫描 |
+| `HAL/X64/PCIe/Bar.c` | PCI BAR 大小探测（PR-DEV-bar-size · 阶段 4 第 1 刀） |
+| `HAL/X64/PCIe/Msi.c` | PCI MSI/MSI-X 与 IOAPIC INTx（PR-S3-pcie-1） |
+| `HAL/X64/PageTable/PageTable.c` | HAL/X64 页表 Hal* API（PR-S3-pagetable-1） |
+| `HAL/X64/PageTable/Private.h` | PageTable / Walk 内部交接（PR-S3-pagetable-1） |
+| `HAL/X64/PageTable/Walk.c` | HAL/X64 页表遍历与辅助（PR-S3-pagetable-1） |
 | `HAL/X64/Platform.c` | x86-64 固定 MMIO 映射与 Boot 传入的设备地址 |
 | `HAL/X64/Platform.h` | x86-64 平台 MMIO / 设备兜底（Common 经 Hal.h 间接使用） |
-| `HAL/X64/SmpBoot.c` | MADT + AP 拉起 / CPU Id·ticks（PR-S3-smpboot-1） |
-| `HAL/X64/SmpBootPrivate.h` | SmpBoot / SmpBootStart 内部交接（PR-S3-smpboot-1） |
-| `HAL/X64/SmpBootStart.c` | INIT/SIPI 跳板与 StartOneAp（PR-S3-smpboot-1） |
-| `HAL/X64/SmpTrampoline.S` | AP 实模式 → 长模式（链接地址 0x8000，由 BSP 拷贝） |
-| `HAL/X64/SmpTrampoline.ld` | SmpTrampoline.ld — AP 启动桩链接到物理 0x8000（再由 BSP 拷贝） |
+| `HAL/X64/SmpBoot/SmpBoot.c` | MADT + AP 拉起 / CPU Id·ticks（PR-S3-smpboot-1） |
+| `HAL/X64/SmpBoot/Private.h` | SmpBoot / Start 内部交接（PR-S3-smpboot-1） |
+| `HAL/X64/SmpBoot/Start.c` | INIT/SIPI 跳板与 StartOneAp（PR-S3-smpboot-1） |
+| `HAL/X64/SmpBoot/Trampoline.S` | AP 实模式 → 长模式（链接地址 0x8000，由 BSP 拷贝） |
+| `HAL/X64/SmpBoot/Trampoline.ld` | AP 启动桩链接到物理 0x8000（再由 BSP 拷贝） |
 | `HAL/X64/Startup.c` | x86-64 UEFI 入口：BOOT_CONFIG → BOOT_INFO → KernelMain |
 | `HAL/X64/SyscallEntry.S` | SYSCALL/SYSRET 快速路径（与 int 0x80 / Isr128 解耦） |
 | `HAL/X64/link.ld` | link.ld — 内核链接脚本 |

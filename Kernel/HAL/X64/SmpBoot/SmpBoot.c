@@ -7,7 +7,7 @@
 #include "HalPort.h"
 #include "Architecture.h"
 #include "Scheduler.h"
-#include "SmpBootPrivate.h"
+#include "Private.h"
 
 UINT8 gApicIds[HAL_MAX_CPUS];
 int gCpuCount = 1;

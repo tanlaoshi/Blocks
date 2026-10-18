@@ -1,5 +1,5 @@
 /*
- * PCIeBar.c — PCI BAR 大小探测（PR-DEV-bar-size · 阶段 4 第 1 刀）
+ * Bar.c — PCI BAR 大小探测（PR-DEV-bar-size · 阶段 4 第 1 刀）
  *
  * 标准方法：向 BAR 槽写 0xFFFFFFFF，读回掩码算 size，立即写回原值。
  * 只短暂写 BAR 槽（0x10+），绝不写 Command（0x04）。

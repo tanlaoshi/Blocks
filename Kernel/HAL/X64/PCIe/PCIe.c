@@ -1,7 +1,7 @@
 /*
  * PCIe.c — PCI 配置空间与 USB 控制器枚举（PR-S3-pcie-1）
  *
- * MSI/MSI-X / IOAPIC INTx 见 PCIeMsi.c。
+ * MSI/MSI-X / IOAPIC INTx 见 Msi.c。
  */
 #include "PCIe.h"
 #include "Text.h"

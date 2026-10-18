@@ -1,5 +1,5 @@
 /*
- * PageTablePrivate.h — HAL/X64 PageTableWalk / PageTable 内部交接（PR-S3-pagetable-1）
+ * Private.h — PageTable / Walk 内部交接（PR-S3-pagetable-1）
  */
 #ifndef PAGE_TABLE_PRIVATE_H
 #define PAGE_TABLE_PRIVATE_H

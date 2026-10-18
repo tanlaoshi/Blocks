@@ -1,5 +1,5 @@
 /*
- * PCIeMsi.c — PCI MSI/MSI-X 与 IOAPIC INTx（PR-S3-pcie-1）
+ * Msi.c — PCI MSI/MSI-X 与 IOAPIC INTx（PR-S3-pcie-1）
  */
 #include "PCIe.h"
 #include "Debug.h"

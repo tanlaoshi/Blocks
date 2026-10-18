@@ -1,5 +1,5 @@
 /*
- * SmpBootPrivate.h — SmpBoot / SmpBootStart 内部交接（PR-S3-smpboot-1）
+ * Private.h — SmpBoot / Start 内部交接（PR-S3-smpboot-1）
  */
 #ifndef SMP_BOOT_PRIVATE_H
 #define SMP_BOOT_PRIVATE_H

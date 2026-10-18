@@ -37,6 +37,7 @@ UINT64 HalPageMarkCopyOnWrite(UINT64 Flags); /* 置 COW、清 WRITABLE */
 int HalPageMap(UINT64 Root, UINT64 VirtualAddress, UINT64 PhysicalAddress, UINT64 Flags,
                HalPageAllocateFunction Alloc, void *Ctx);
 int HalPageUnmapRange(UINT64 Root, UINT64 Start, UINT64 End);
+void HalPageClear(UINT64 Root, UINT64 Virt);
 UINT64 HalPageGetEntry(UINT64 Root, UINT64 Virt);
 UINT64 HalPageGetEntryCurrent(UINT64 Virt);
 

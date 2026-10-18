@@ -82,6 +82,31 @@ int IsBlock(UINT64 Desc) {
     return (Desc & DESC_VALID) && !(Desc & DESC_TABLE);
 }
 
+extern void VirtualMemoryForgetPage(void *Ctx, void *Page);
+
+static int TableEmpty(const UINT64 *Table) {
+    int i;
+
+    for (i = 0; i < 512; i++) {
+        if (Table[i] & DESC_VALID) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void DropNewTable(UINT64 *Parent, UINT64 Index, UINT64 *Table,
+                         HalPageAllocateFunction Alloc, void *Ctx) {
+    if (!Table || !TableEmpty(Table)) {
+        return;
+    }
+    Parent[Index] = 0;
+    if (Alloc) {
+        VirtualMemoryForgetPage(Ctx, Table);
+    }
+    PhysicalMemoryFreePage(Table);
+}
+
 UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
                         HalPageAllocateFunction Alloc, void *Ctx) {
     UINT64 i0 = (Virt >> 39) & 0x1FF;
@@ -89,9 +114,11 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
     UINT64 i2 = (Virt >> 21) & 0x1FF;
     UINT64 i3 = (Virt >> 12) & 0x1FF;
     UINT64 TableFlags = DESC_VALID | DESC_TABLE | AF_BIT | ATTR_NORMAL | SH_INNER | AP_EL1_RW;
-    UINT64 *L1;
-    UINT64 *L2;
+    UINT64 *L1 = 0;
+    UINT64 *L2 = 0;
     UINT64 *L3;
+    int MadeL1 = 0;
+    int MadeL2 = 0;
 
     (void)User;
 
@@ -107,9 +134,13 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
             PageZero(L1, PAGE_SIZE);
         }
         L0[i0] = PagePhys(L1) | TableFlags;
+        MadeL1 = 1;
     }
     L1 = (UINT64 *)(UINTN)(L0[i0] & 0x0000FFFFFFFFF000ULL);
     if (IsBlock(L1[i1])) {
+        if (MadeL1) {
+            DropNewTable(L0, i0, L1, Alloc, Ctx);
+        }
         return 0;
     }
 
@@ -119,15 +150,25 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
         }
         L2 = Alloc ? (UINT64 *)Alloc(Ctx) : (UINT64 *)PageAllocTable();
         if (!L2) {
+            if (MadeL1) {
+                DropNewTable(L0, i0, L1, Alloc, Ctx);
+            }
             return 0;
         }
         if (!Alloc) {
             PageZero(L2, PAGE_SIZE);
         }
         L1[i1] = PagePhys(L2) | TableFlags;
+        MadeL2 = 1;
     }
     L2 = (UINT64 *)(UINTN)(L1[i1] & 0x0000FFFFFFFFF000ULL);
     if (IsBlock(L2[i2])) {
+        if (MadeL2) {
+            DropNewTable(L1, i1, L2, Alloc, Ctx);
+        }
+        if (MadeL1) {
+            DropNewTable(L0, i0, L1, Alloc, Ctx);
+        }
         return 0;
     }
 
@@ -137,6 +178,12 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
         }
         L3 = Alloc ? (UINT64 *)Alloc(Ctx) : (UINT64 *)PageAllocTable();
         if (!L3) {
+            if (MadeL2) {
+                DropNewTable(L1, i1, L2, Alloc, Ctx);
+            }
+            if (MadeL1) {
+                DropNewTable(L0, i0, L1, Alloc, Ctx);
+            }
             return 0;
         }
         if (!Alloc) {

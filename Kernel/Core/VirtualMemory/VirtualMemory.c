@@ -28,13 +28,39 @@ void *VirtualMemorySpaceAllocateAndTrack(VIRTUAL_ADDRESS_SPACE *Space) {
     return Page;
 }
 
+void VirtualMemoryForgetPage(void *Ctx, void *Page) {
+    VIRTUAL_ADDRESS_SPACE *Space = (VIRTUAL_ADDRESS_SPACE *)Ctx;
+    int i;
+
+    if (!Space || !Page || Space->PageCount <= 0 ||
+        Space->PageCount > VM_SPACE_MAX_PAGES) {
+        return;
+    }
+    for (i = 0; i < Space->PageCount; i++) {
+        if (Space->Pages[i] != Page) {
+            continue;
+        }
+        Space->PageCount--;
+        Space->Pages[i] = Space->Pages[Space->PageCount];
+        Space->Pages[Space->PageCount] = 0;
+        return;
+    }
+}
+
 int VirtualMemoryMapPage(UINT64 Virt, UINT64 Phys, UINT64 Flags) {
     return HalPageMap(HalPageKernelRoot(), Virt, Phys, Flags, 0, 0);
 }
 
 int VirtualMemoryMapRange(UINT64 Virt, UINT64 Phys, UINTN Bytes, UINT64 Flags) {
-    for (UINTN Off = 0; Off < Bytes; Off += PAGE_SIZE) {
+    UINTN Off;
+
+    for (Off = 0; Off < Bytes; Off += PAGE_SIZE) {
         if (VirtualMemoryMapPage(Virt + Off, Phys + Off, Flags) != 0) {
+            UINTN Done;
+
+            for (Done = 0; Done < Off; Done += PAGE_SIZE) {
+                HalPageClear(HalPageKernelRoot(), Virt + Done);
+            }
             return -1;
         }
     }

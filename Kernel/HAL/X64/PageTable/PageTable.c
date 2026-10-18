@@ -244,6 +244,16 @@ int HalPageUnmapRange(UINT64 Root, UINT64 Start, UINT64 End) {
     return 0;
 }
 
+void HalPageClear(UINT64 Root, UINT64 Virt) {
+    UINT64 *Pte = PageLookup(Root, Virt);
+
+    if (!Pte) {
+        return;
+    }
+    *Pte = 0;
+    HalTlbFlush(Virt);
+}
+
 UINT64 HalPageGetEntry(UINT64 Root, UINT64 Virt) {
     UINT64 *Pte = PageLookup(Root, Virt);
     if (!Pte) {

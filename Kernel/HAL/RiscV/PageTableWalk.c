@@ -77,14 +77,40 @@ int IsLeaf(UINT64 Pte) {
     return (Pte & PTE_V) && (Pte & (PTE_R | PTE_W | PTE_X));
 }
 
+extern void VirtualMemoryForgetPage(void *Ctx, void *Page);
+
+static int TableEmpty(const UINT64 *Table) {
+    int i;
+
+    for (i = 0; i < 512; i++) {
+        if (Table[i] & PTE_V) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void DropNewTable(UINT64 *Parent, UINT64 Index, UINT64 *Table,
+                         HalPageAllocateFunction Alloc, void *Ctx) {
+    if (!Table || !TableEmpty(Table)) {
+        return;
+    }
+    Parent[Index] = 0;
+    if (Alloc) {
+        VirtualMemoryForgetPage(Ctx, Table);
+    }
+    PhysicalMemoryFreePage(Table);
+}
+
 /* Sv39：3 级 VPN[2:0] */
 UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
                         HalPageAllocateFunction Alloc, void *Ctx) {
     UINT64 i2 = (Virt >> 30) & 0x1FF;
     UINT64 i1 = (Virt >> 21) & 0x1FF;
     UINT64 i0 = (Virt >> 12) & 0x1FF;
-    UINT64 *L1;
+    UINT64 *L1 = 0;
     UINT64 *L0;
+    int MadeL1 = 0;
 
     if (!(L2[i2] & PTE_V)) {
         if (!Create) {
@@ -98,6 +124,7 @@ UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
             PageZero(L1, PAGE_SIZE);
         }
         L2[i2] = PTE_V | ((PagePhys(L1) >> 12) << PTE_PPN_SHIFT);
+        MadeL1 = 1;
     } else if (IsLeaf(L2[i2])) {
         return 0;
     }
@@ -109,6 +136,9 @@ UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
         }
         L0 = Alloc ? (UINT64 *)Alloc(Ctx) : (UINT64 *)PageAllocTable();
         if (!L0) {
+            if (MadeL1) {
+                DropNewTable(L2, i2, L1, Alloc, Ctx);
+            }
             return 0;
         }
         if (!Alloc) {
@@ -116,6 +146,9 @@ UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
         }
         L1[i1] = PTE_V | ((PagePhys(L0) >> 12) << PTE_PPN_SHIFT);
     } else if (IsLeaf(L1[i1])) {
+        if (MadeL1) {
+            DropNewTable(L2, i2, L1, Alloc, Ctx);
+        }
         return 0;
     }
     L0 = (UINT64 *)(UINTN)(((L1[i1] >> PTE_PPN_SHIFT) << 12));

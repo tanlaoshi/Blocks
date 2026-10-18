@@ -46,6 +46,7 @@ void VirtualMemorySpaceDestroy(VIRTUAL_ADDRESS_SPACE *Space);
 UINT64 VirtualMemorySpaceRoot(const VIRTUAL_ADDRESS_SPACE *Space);
 int VirtualMemorySpaceMapPage(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Virt, UINT64 Phys, UINT64 Flags);
 void *VirtualMemorySpaceAllocateAndTrack(VIRTUAL_ADDRESS_SPACE *Space);
+void VirtualMemoryForgetPage(void *Ctx, void *Page);
 
 int VirtualMemoryUserAccessOk(UINT64 Virt, UINTN Len);
 int VirtualMemoryCopyFromUser(void *Dst, UINT64 UserSrc, UINTN Len);

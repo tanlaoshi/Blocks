@@ -45,6 +45,8 @@ void DesktopSetClearIconFootprint(void (*Fn)(UINT32 X, UINT32 Y, UINT32 W,
 void ClearIconFootprint(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 在桌面背景上画图标+任务栏（GuiRedraw / 关窗露底后调用） */
 void DesktopDraw(void);
+/* 只画和矩形相交的图标、以及相交时的任务栏 */
+void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 开始菜单弹出层（开着时叠画在窗上；点菜单外则收起，再按窗聚焦） */
 void DesktopDrawStartMenu(void);
 /* PR-N-nic-tray：网络简况弹层（叠在窗上） */

@@ -170,6 +170,7 @@ void GfxIrqLeave(void);
 void ComposeBegin(void);
 void ComposeEnd(void);
 void ComposeBeginEraseCursor(void);
+void GuiComposeDamage(void);
 void GfxPresent(void);
 UINT32 TitleBarColor(int Idx);
 UINT32 TitleBarColorAtRow(int Idx, UINT32 Row, UINT32 TitleH);

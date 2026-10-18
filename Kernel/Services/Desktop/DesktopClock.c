@@ -27,6 +27,46 @@ void DesktopTickClock(void) {
 
     /* Worker 已加载图标则只刷新；勿在 Gui 路径读盘（与 iwl IoBreath 重入） */
     if (DesktopIconsConsumeNeedRefresh()) {
+        int i;
+        int Any = 0;
+        UINT32 X0 = 0;
+        UINT32 Y0 = 0;
+        UINT32 X1 = 0;
+        UINT32 Y1 = 0;
+
+        for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
+            UINT32 R;
+            UINT32 B;
+
+            if (!gIcons[i].Present) {
+                continue;
+            }
+            R = gIcons[i].X + DESKTOP_ICON_SIZE;
+            B = gIcons[i].Y + DESKTOP_ICON_SIZE + DESKTOP_LABEL_PAD + 64u;
+            if (!Any) {
+                X0 = gIcons[i].X;
+                Y0 = gIcons[i].Y;
+                X1 = R;
+                Y1 = B;
+                Any = 1;
+            } else {
+                if (gIcons[i].X < X0) {
+                    X0 = gIcons[i].X;
+                }
+                if (gIcons[i].Y < Y0) {
+                    Y0 = gIcons[i].Y;
+                }
+                if (R > X1) {
+                    X1 = R;
+                }
+                if (B > Y1) {
+                    Y1 = B;
+                }
+            }
+        }
+        if (Any && X1 > X0 && Y1 > Y0) {
+            GuiMarkDamage(X0, Y0, X1 - X0, Y1 - Y0);
+        }
         RequestRefresh();
     }
 

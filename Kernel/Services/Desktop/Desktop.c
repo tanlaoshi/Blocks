@@ -117,6 +117,33 @@ void DesktopDraw(void) {
     /* 开始菜单不在此画：须叠在窗之上，见 DesktopDrawStartMenu */
 }
 
+void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
+    int i;
+    UINT32 BarY;
+    UINT32 Sw;
+    UINT32 Sh;
+
+    if (W == 0 || H == 0) {
+        return;
+    }
+    for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
+        UINT32 Iw = DESKTOP_ICON_SIZE;
+        UINT32 Ih = DESKTOP_ICON_SIZE + DESKTOP_LABEL_PAD + 64u;
+
+        if (!gIcons[i].Present) {
+            continue;
+        }
+        if (gIcons[i].X < X + W && X < gIcons[i].X + Iw &&
+            gIcons[i].Y < Y + H && Y < gIcons[i].Y + Ih) {
+            DrawOneIconRaw(&gIcons[i], i == gDeskSelected);
+        }
+    }
+    TaskbarGeom(&BarY, &Sw, &Sh);
+    if (BarY < Y + H && Y < Sh && X < Sw && 0 < X + W) {
+        DrawTaskbarRaw();
+    }
+}
+
 void DesktopDrawStartMenu(void) {
     if (gMenuOpen) {
         DrawStartMenuRaw();

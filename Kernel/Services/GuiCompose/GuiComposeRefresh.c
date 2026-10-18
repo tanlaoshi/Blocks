@@ -46,5 +46,5 @@ void GuiRefreshDesktop(void) {
         return;
     }
 
-    GuiComposeThemeScene();
+    GuiComposeDamage();
 }

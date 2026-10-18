@@ -73,6 +73,8 @@ void GuiRefreshDesktop(void);
 void GuiApplyThemeColors(void);
 /* PR-G8：桌面+各窗内容自下而上一次合成并备份 */
 void GuiComposeThemeScene(void);
+/* 记下要重画的屏幕矩形。下一次桌面刷新只合成这块，不再整屏。 */
+void GuiMarkDamage(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 按当前几何重画整窗（标题栏+客户区底）；不画 Shell 文字 / Settings 菜单 */
 void GuiPaintWindow(int Idx);
 void GuiBackupAllWindows(void);

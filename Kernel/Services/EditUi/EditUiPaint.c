@@ -36,7 +36,7 @@ static void Paint(void) {
         return;
     }
     GuiFrameBufferBegin();
-    HalVideoFillRect(X, Y, W, H, Bg);
+    UiFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = FontAdvanceY();
@@ -110,7 +110,7 @@ static void Paint(void) {
         }
 
         if (AtCursor && Col < MaxCols) {
-            HalVideoFillRect(X + 8 + (UINT32)Col * Ax, CurY, Ax, LineH, ThemeTextMuted());
+            UiFillRectangle(X + 8 + (UINT32)Col * Ax, CurY, Ax, LineH, ThemeTextMuted());
         }
 
         if (i >= gEditLen) {

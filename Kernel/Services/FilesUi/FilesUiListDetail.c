@@ -27,8 +27,8 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
     Pw = gPrevW;
 
     gPrevX = Px;
-    HalVideoFillRect(Px, Y, 2, H, ThemePanelSeparator());
-    HalVideoFillRect(Px + 2, Y, Pw > 2 ? Pw - 2 : Pw, H, ThemePanelDetailBackground());
+    UiFillRectangle(Px, Y, 2, H, ThemePanelSeparator());
+    UiFillRectangle(Px + 2, Y, Pw > 2 ? Pw - 2 : Pw, H, ThemePanelDetailBackground());
     DrawLine(Px + 10, Py, LocStr(MSG_FILES_PREVIEW), ThemeText());
     DrawLine(Px + 10, Py + LineH, gViewTitle[0] ? gViewTitle : LocStr(MSG_FILES_NONE),
              ThemeTextMuted());

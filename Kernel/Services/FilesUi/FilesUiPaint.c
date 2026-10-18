@@ -33,7 +33,7 @@ void PaintOverlay(const char *Line1, const char *Line2, const char *Line3) {
     BoxY = Y + (H - BoxH) / 2;
 
     GuiFrameBufferBegin();
-    HalVideoFillRect(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
+    UiFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
     /* PR-G11：确认/输入框边框走 UiDrawRectangle */
     UiDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
     if (BoxW > 4 && BoxH > 4) {
@@ -83,7 +83,7 @@ void PaintView(void) {
         return;
     }
     GuiFrameBufferBegin();
-    HalVideoFillRect(X, Y, W, H, Bg);
+    UiFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = FontAdvanceY();

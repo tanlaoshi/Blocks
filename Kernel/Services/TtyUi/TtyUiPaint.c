@@ -2,6 +2,7 @@
  * TtyUiPaint.c — 会话缓冲绘制
  */
 #include "TtyUiPrivate.h"
+#include "UI.h"
 
 static void DrawLine(UINT32 X, UINT32 Y, const char *S, UINT32 Fg) {
     if (S) {
@@ -35,7 +36,7 @@ void TtyPaint(void) {
         return;
     }
     GuiFrameBufferBegin();
-    HalVideoFillRect(X, Y, W, H, Bg);
+    UiFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = FontAdvanceY();

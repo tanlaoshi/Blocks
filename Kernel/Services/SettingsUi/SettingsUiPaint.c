@@ -48,9 +48,9 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     Pad = UI_LAYOUT_PAD;
     Gap = UI_LAYOUT_GAP;
     MaxTextW = W > Pad * 2u ? W - Pad * 2u : W;
-    HalVideoFillRect(X, Y, W, H, ThemePanelDetailBackground());
+    UiFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
     if (W > UI_LAYOUT_SEP_W) {
-        HalVideoFillRect(X, Y, UI_LAYOUT_SEP_W, H, ThemePanelSeparator());
+        UiFillRectangle(X, Y, UI_LAYOUT_SEP_W, H, ThemePanelSeparator());
     }
 
     ItemLabel(gItemSel, Item, (int)sizeof(Item));
@@ -196,7 +196,7 @@ static void PaintSideRow(int i, UINT32 Cx, UINT32 Pad, UINT32 RowW) {
         return;
     }
     Y = gSetSideRow0 + (UINT32)i * gSetSideLineH;
-    HalVideoFillRect(Cx + Pad, Y, RowW, gSetSideLineH, ThemePanelSideBackground());
+    UiFillRectangle(Cx + Pad, Y, RowW, gSetSideLineH, ThemePanelSideBackground());
     UiDrawListRow(Cx + Pad, Y, RowW, gSetSideLineH,
                   CatLabel((SETTINGS_CAT)i),
                   i == (int)gCat,
@@ -218,7 +218,7 @@ static void PaintListRow(int Idx, UINT32 ListX, UINT32 Pad, UINT32 Bg) {
         return;
     }
     RowY = gSetListTop + (UINT32)Vis * gSetListLineH;
-    HalVideoFillRect(ListX + Pad, RowY, gSetListRowW, gSetListLineH, Bg);
+    UiFillRectangle(ListX + Pad, RowY, gSetListRowW, gSetListLineH, Bg);
     FormatListRow(Idx, Row, (int)sizeof(Row));
     Sel = (Idx == gItemSel);
     Hov = (gSetHoverKind == 1 && gSetHoverIdx == Idx);
@@ -283,7 +283,7 @@ void PaintMenu(void) {
 
     HitClear();
     GuiFrameBufferBegin();
-    HalVideoFillRect(Cx, Cy, Cw, Ch, Bg);
+    UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, Bg);
 
     LineH = UiLayoutRowH();
@@ -300,9 +300,9 @@ void PaintMenu(void) {
         gSetSideLineH = LineH;
         gSetSideRow0 = TitleY + LineH + UI_LAYOUT_GAP;
         RowW = SideW > Pad * 2u ? SideW - Pad * 2u : SideW;
-        HalVideoFillRect(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
+        UiFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
         if (SideW > UI_LAYOUT_SEP_W) {
-            HalVideoFillRect(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
+            UiFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
         HalVideoDrawStringAt(Cx + Pad, TitleY, LocStr(MSG_SET_TITLE), ThemeText());

@@ -264,9 +264,9 @@ void DevicesUiPaintSummary(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     }
     DevicesUiFillSummary(&S);
 
-    HalVideoFillRect(X, Y, W, H, ThemePanelDetailBackground());
+    UiFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
     if (W > 3) {
-        HalVideoFillRect(X, Y, 3, H, ThemePanelSeparator());
+        UiFillRectangle(X, Y, 3, H, ThemePanelSeparator());
     }
 
     LineH = FontAdvanceY();

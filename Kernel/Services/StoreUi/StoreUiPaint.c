@@ -63,9 +63,9 @@ static void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     if (LineH < 14) {
         LineH = 14;
     }
-    HalVideoFillRect(X, Y, W, H, ThemePanelDetailBackground());
+    UiFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
     if (W > 3) {
-        HalVideoFillRect(X, Y, 3, H, ThemePanelSeparator());
+        UiFillRectangle(X, Y, 3, H, ThemePanelSeparator());
     }
     Ty = Y + 8;
     MaxY = Y + H - 4;
@@ -126,7 +126,7 @@ void StorePaintList(void) {
         return;
     }
     GuiFrameBufferBegin();
-    HalVideoFillRect(Cx, Cy, Cw, Ch, Bg);
+    UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, Bg);
 
     LineH = UiLayoutRowH();
@@ -142,9 +142,9 @@ void StorePaintList(void) {
         gStoreUiSideLineH = LineH;
         gStoreUiSideRow0 = TitleY + LineH + UI_LAYOUT_GAP;
         RowW = SideW > Pad * 2u ? SideW - Pad * 2u : SideW;
-        HalVideoFillRect(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
+        UiFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
         if (SideW > UI_LAYOUT_SEP_W) {
-            HalVideoFillRect(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
+            UiFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
         HalVideoDrawStringAt(Cx + Pad, TitleY, LocStr(MSG_APP_STORE), ThemeText());

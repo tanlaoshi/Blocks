@@ -64,6 +64,7 @@ extern UINT8 gKbdIface;
 extern UINT8 gKbdParseScore;
 extern UINT8 gKbdEpAddr;
 extern UINT16 gKbdMps;
+extern UINT8 gKbdEpInterval;
 extern UINT8 gKbdPollReport;
 extern UINT32 gKbdRoute;
 extern UINT8 gKbdHubSlot;

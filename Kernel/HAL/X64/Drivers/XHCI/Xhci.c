@@ -17,32 +17,12 @@ int gXhciDmar = -2; /* -2未查 -1坏 0无 1有 */
 int gXhciTe = -2;   /* -2未做 -1失败 0无DRHD 1本关 2已关 */
 UINT32 gPort1;
 UINT8  gSpeed;
-UINT32 gSlotId;
 UINT32 gXferSlot;
-UINT32 gIntrDci;
 UINT16 gEp0Mps;
-UINT8  gKbdIface;
-UINT8  gKbdParseScore; /* ParseConfig：3=boot键 2=3/1/0 1=其它HID */
-UINT8  gKbdEpAddr; /* 配置描述符 bEndpointAddress，匹配事件用 */
-UINT16 gKbdMps;    /* ConfigureIntr 记下的 MPS；composite 重建用 */
-UINT8  gKbdEpInterval; /* 已换算进 EP 上下文的 Interval 字段 */
-UINT8  gUseGetReport;
-UINT8  gKbdPollReport; /* 真机复合键鼠：键中断 IN 常 k=0，改 EP0 GET_REPORT */
-UINT8  gKbdReportPrev[8];
-volatile UINT32 gGetReportBusy;
-UINT8  gGetReportFails;
 UINT8  gXferFast; /* GET_REPORT 用短超时，避免拖死鼠标 */
 UINT8  gUseIrq;
 /* 真机默认 POLL；DUAL 见 TryEnterDual（EnableIrq / Arm） */
 XHCI_IRQ_MODE gIrqMode = XHCI_IRQ_MODE_POLL;
-/* 键盘 Slot 的路由/TT，Configure Endpoint 必须带回，否则 hub 子设备 cfg 失败 */
-UINT32 gKbdRoute;
-UINT8  gKbdHubSlot;
-UINT8  gKbdTtPort;
-
-USB_KEYBOARD_REPORT gKbdQ[KBD_Q];
-volatile UINT32 gKeyboardWriteIndex;
-volatile UINT32 gKeyboardReadIndex;
 
 UINT32 gMouseSlotId;
 UINT32 gMousePort;
@@ -170,7 +150,6 @@ UINT8  gDevCtx[2048] __attribute__((aligned(64)));
 UINT8  gHubDevCtx[2048] __attribute__((aligned(64))); /* PR-H-hub */
 UINT8  gInCtx[2048] __attribute__((aligned(64)));
 UINT8  gCtrlBuf[256] __attribute__((aligned(64)));
-UINT8  gReportBuf[8] __attribute__((aligned(64)));
 UINT8  gErst[16] __attribute__((aligned(64)));
 
 UINT32 gHubSlotId;
@@ -205,7 +184,7 @@ UINT8 *InEp(UINT32 Dci) {
 void UsbHostControllerOffer(void);
 void UsbHostControllerRetract(void);
 
-/* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（BSS 勿迁出本文件） */
+/* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（环、门铃、端口留在本文件） */
 int Init(UINT64 BaseAddress) {
     FtdiPublish();
     CdcPublish();

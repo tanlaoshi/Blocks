@@ -18,6 +18,7 @@ extern char __driver_boot_start[];
 extern char __driver_boot_end[];
 
 void HalDriverRegister(void) {
+    /* 块设备按 Order 登记：先 AHCI，再 ATA，再 NVMe。后登记者 Probe 时可覆盖后端。 */
     const DRIVER_BOOT *Start = (const DRIVER_BOOT *)__driver_boot_start;
     const DRIVER_BOOT *End = (const DRIVER_BOOT *)__driver_boot_end;
     const DRIVER_BOOT *Item[32];

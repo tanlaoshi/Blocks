@@ -4,6 +4,7 @@
  * 由单体 Drivers/XHCI.c 剩余部分迁入；子模块见 Drivers/XHCI/ 下各 .c。
  */
 #include "XHCI/Private.h"
+#include "UsbHostController.h"
 
 UINT64 gCapabilityBase;
 UINT64 gOperationalBase;
@@ -185,7 +186,7 @@ void UsbHostControllerOffer(void);
 void UsbHostControllerRetract(void);
 
 /* 完整 xHCI 初始化：硬件起机 → 枚举键盘 → 绑鼠标（环、门铃、端口留在本文件） */
-int Init(UINT64 BaseAddress) {
+static int Start(UINT64 BaseAddress) {
     FtdiPublish();
     CdcPublish();
     if (!InitHw(BaseAddress)) {
@@ -193,6 +194,10 @@ int Init(UINT64 BaseAddress) {
     }
     UsbHostControllerOffer();
     return EnumAndBind();
+}
+
+void PublishControllerInit(void) {
+    gXhciOperations.Init = Start;
 }
 
 int HidKeyboardReady(void) {

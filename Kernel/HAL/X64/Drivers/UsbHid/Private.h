@@ -205,7 +205,7 @@ int KeyboardSetLeds(UINT8 Leds);
 int HidKeyboardReady(void);
 UINT8 KeyboardInterface(void);
 
-int Init(UINT64 BaseAddress);
+void PublishControllerInit(void);
 int EnableIrq(USB_CONTROLLER *Device);
 
 #endif

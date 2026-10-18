@@ -7,6 +7,7 @@
 #include "DriverInput.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
+#include "UsbHostController.h"
 #include "UsbHid/Private.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
@@ -152,7 +153,8 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
         }
         return 0;
     }
-    if (!Init(Base)) {
+    PublishControllerInit();
+    if (gXhciOperations.Init == 0 || !gXhciOperations.Init(Base)) {
         if (RealPc) {
             HalSerialGopMute(0);
         }

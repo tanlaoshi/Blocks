@@ -17,5 +17,11 @@ int KeyboardSetLeds(UINT8 Leds) {
     Setup.wValue = USB_WVALUE_DT_CONFIG;
     Setup.wIndex = KeyboardInterface();
     Setup.wLength = 1;
-    return Control(0, &Setup, &LedByte, 1);
+    {
+        const USB_HOST_CONTROLLER_OPERATIONS *Ops = HostOperations();
+        if (Ops == 0 || Ops->Control == 0) {
+            return -1;
+        }
+        return Ops->Control(0, &Setup, &LedByte, 1);
+    }
 }

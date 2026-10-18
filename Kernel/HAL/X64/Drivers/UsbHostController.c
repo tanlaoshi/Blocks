@@ -27,7 +27,7 @@ static const USB_HOST_CONTROLLER_OPERATIONS *Current(void) {
     return gOperations[USB_HOST_CONTROLLER_UHCI];
 }
 
-int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
+static int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
     if (!KnownKind(Kind) || Operations == 0) {
         return -1;
     }
@@ -35,10 +35,22 @@ int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
     return 0;
 }
 
-void Unregister(UINT8 Kind) {
+static void Unregister(UINT8 Kind) {
     if (KnownKind(Kind)) {
         gOperations[Kind] = 0;
     }
+}
+
+int Attach(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
+    return Register(Kind, Operations);
+}
+
+void Detach(UINT8 Kind) {
+    Unregister(Kind);
+}
+
+const USB_HOST_CONTROLLER_OPERATIONS *HostOperations(void) {
+    return Current();
 }
 
 int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol) {
@@ -79,17 +91,7 @@ int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol) 
     return -1;
 }
 
-int Control(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, UINT32 Len) {
-    const USB_HOST_CONTROLLER_OPERATIONS *Operations = Current();
-
-    (void)Len;
-    if (Operations == 0 || Operations->Control == 0) {
-        return -1;
-    }
-    return Operations->Control(Pipe, Setup, Data, Len);
-}
-
-int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Context)) {
+static int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Context)) {
     const USB_HOST_CONTROLLER_OPERATIONS *Operations = Current();
 
     if (Operations == 0 || Operations->InterruptQueue == 0) {
@@ -106,15 +108,6 @@ int InterruptByClass(UINT8 Class, UINT8 Subclass, UINT8 Protocol) {
         Pipe->DoneContext = 0;
     }
     return InterruptQueue(Pipe, 0, 0, 0);
-}
-
-int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
-    const USB_HOST_CONTROLLER_OPERATIONS *Operations = Current();
-
-    if (Operations == 0 || Operations->Bulk == 0) {
-        return -1;
-    }
-    return Operations->Bulk(Pipe, Buf, Len, Out);
 }
 
 int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {

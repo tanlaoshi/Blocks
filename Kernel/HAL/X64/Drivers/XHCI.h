@@ -78,7 +78,6 @@ typedef enum {
     XHCI_IRQ_MODE_IRQ = 2
 } XHCI_IRQ_MODE;
 
-int Init(UINT64 BaseAddress);
 int HidKeyboardReady(void); /* 已 Address+Configure 键盘 */
 /* 真机多 xHCI：当前控制器无 HID 时停 RS 并清 started，便于试下一颗 BAR */
 void AbandonNoHid(void);

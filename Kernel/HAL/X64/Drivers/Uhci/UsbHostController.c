@@ -7,5 +7,5 @@
 static const USB_HOST_CONTROLLER_OPERATIONS gOperations = { 0 };
 
 void UhciHostControllerOffer(void) {
-    Register(USB_HOST_CONTROLLER_UHCI, &gOperations);
+    Attach(USB_HOST_CONTROLLER_UHCI, &gOperations);
 }

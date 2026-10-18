@@ -51,16 +51,17 @@ static int HostControllerBulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     return BulkTransfer(Out ? 0 : 1, Buf, Len);
 }
 
-static const USB_HOST_CONTROLLER_OPERATIONS gXhciHostControllerOperations = {
+USB_HOST_CONTROLLER_OPERATIONS gXhciOperations = {
+    .Init = 0,
     .Control = HostControllerControl,
     .InterruptQueue = HostControllerInterruptQueue,
     .Bulk = HostControllerBulk,
 };
 
 void UsbHostControllerOffer(void) {
-    Register(USB_HOST_CONTROLLER_XHCI, &gXhciHostControllerOperations);
+    Attach(USB_HOST_CONTROLLER_XHCI, &gXhciOperations);
 }
 
 void UsbHostControllerRetract(void) {
-    Unregister(USB_HOST_CONTROLLER_XHCI);
+    Detach(USB_HOST_CONTROLLER_XHCI);
 }

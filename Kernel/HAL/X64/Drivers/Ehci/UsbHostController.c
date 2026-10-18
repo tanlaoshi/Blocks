@@ -87,5 +87,5 @@ static const USB_HOST_CONTROLLER_OPERATIONS gOperations = {
 };
 
 void Offer(void) {
-    Register(USB_HOST_CONTROLLER_EHCI, &gOperations);
+    Attach(USB_HOST_CONTROLLER_EHCI, &gOperations);
 }

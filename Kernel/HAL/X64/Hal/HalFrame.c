@@ -133,11 +133,10 @@ int HalFrameSignalSetup(HAL_INTERRUPT_FRAME *F, UINT64 Handler, UINT64 Sig,
     if (!F || Handler < 2 || !OutResumeIp || !OutPushSp) {
         return -1;
     }
+    (void)Sig;
     OldIp = F->InstructionPointer;
     Sp = F->StackPointer;
     NewSp = (Sp & ~0xFULL) - 8;
-    F->InstructionPointer = Handler;
-    F->Rdi = Sig;
     *OutResumeIp = OldIp;
     *OutPushSp = NewSp;
     return 1;

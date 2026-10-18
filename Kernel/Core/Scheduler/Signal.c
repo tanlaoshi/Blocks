@@ -73,6 +73,8 @@ int DeliverToHandlerFrame(TASK *T, HAL_INTERRUPT_FRAME *F, UINT64 Handler,
             VirtualMemoryLoadPageTable(SavedRoot);
         }
         HalFrameSetStackPointer(F, PushSp);
+        HalFrameSetInstructionPointer(F, Handler);
+        HalFrameSetArgument0(F, (UINT64)(UINT32)Sig);
     }
     return 0;
 }
@@ -166,15 +168,16 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
     if (Cur->IsUser && Cur->PendingKill > 0) {
         INT32 Sig = Cur->PendingKill;
         UINT64 Handler;
-        Cur->PendingKill = 0;
         SpinLockAcquire(&gSchedulerLock);
         Handler = SignalHandlerGet(Cur, Sig);
         if (Sig != SIGKILL && Handler == SIG_HANDLER_IGN) {
+            Cur->PendingKill = 0;
             SpinLockRelease(&gSchedulerLock);
         } else if (Sig != SIGKILL && Handler > SIG_HANDLER_IGN) {
             if (DeliverToHandlerFrame(Cur, Frame, Handler, Sig) != 0) {
                 SpinLockRelease(&gSchedulerLock);
             } else {
+                Cur->PendingKill = 0;
                 Cur->Frame = Frame;
                 SpinLockRelease(&gSchedulerLock);
                 return 0;

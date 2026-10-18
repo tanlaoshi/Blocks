@@ -6,6 +6,7 @@
  * 关闭：编译加 -DTOY_DEMO_DRIVER=0（见 HalDevices.c）。
  */
 #include "Driver.h"
+#include "DriverBoot.h"
 #include "Device.h"
 #include "Hal.h"
 #include "Debug.h"
@@ -67,3 +68,7 @@ static const TOY_DRIVER gDemoDriver = {
 void DemoDriverRegister(void) {
     (void)ToyDriverRegister(&gDemoDriver);
 }
+
+#if TOY_DEMO_DRIVER
+DRIVER_BOOT(DRIVER_BOOT_DEMO, DemoDriverRegister);
+#endif

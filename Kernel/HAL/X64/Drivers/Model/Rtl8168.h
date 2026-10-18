@@ -1,0 +1,20 @@
+/*
+ * Rtl8168.h — Realtek RTL8168/8111 一类（r8169）对外 API（PR-N-rtl-2）
+ *
+ * Probe/MAC + TX/RX + NIC_L2；Bind → NetAttachNic。
+ */
+#ifndef RTL_H
+#define RTL_H
+
+#include "BootTypes.h"
+
+int RtlAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar, UINT16 Did);
+int RtlSetup(void);
+int RtlReady(void);
+void RtlGetMac(UINT8 Mac[6]);
+UINT16 RtlPciDid(void);
+int RtlSendFrame(const UINT8 *Frame, UINTN Len);
+void RtlPoll(void);
+int RtlGetLink(int *UpOut, UINT32 *MbpsOut, int *FullDuplexOut);
+
+#endif

@@ -142,7 +142,9 @@ INCLUDES_COMMON = -IInclude \
                   -IHAL/$(HAL_ARCH)/AcpiMadt \
                   -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
-                  -IHAL/$(HAL_ARCH)/Drivers
+                  -IHAL/$(HAL_ARCH)/Drivers \
+                  -IHAL/$(HAL_ARCH)/Drivers/Bus \
+                  -IHAL/$(HAL_ARCH)/Drivers/Model
 
 # PR-B2：非 x86 必须选中 Board 包（默认 virt）；Common 不 -I 板目录
 ifeq ($(ARCH),x86_64)
@@ -342,34 +344,37 @@ LIB_SRCS      += $(wildcard Library/Fat/*.c)
 endif
 FONT_SRCS     := $(wildcard Library/Fonts/*.c)
 DRIVER_SRCS   := $(wildcard HAL/$(HAL_ARCH)/Drivers/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Net/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/VirtioNet/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/E1000/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Alx/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Rtl/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Wifi/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Iwl/*/*/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ehci/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Uhci/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Network/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/VirtioNet/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/E1000/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Alx/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Rtl8168/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Rtl8188eu/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Iwl/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Iwl/*/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Iwl/*/*/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Ehci/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Ehci/Wifi/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Uhci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ps2/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Nvme/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ahci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ata/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Msc/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Hub/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Hub/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/UsbHid/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Serial/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Igpu/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Igpu/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Hda/*.c)
 # PR-H-xhci-split-8：Drivers/XHCI/*.c（Core/Port/Device/Hid/Hub/Mouse/Irq/Diag）；已删单体 Drivers/XHCI.c
-XHCI_SPLIT_SRCS := $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/*.c)
-XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/Msc/*.c)
-XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/Hid/*.c)
-XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/Serial/Ftdi/*.c)
-XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/XHCI/Serial/Cdc/*.c)
+XHCI_SPLIT_SRCS := $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/*.c)
+XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Msc/*.c)
+XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Hid/*.c)
+XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Serial/Ftdi/*.c)
+XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Serial/Cdc/*.c)
+XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Wifi/*.c)
 DRIVER_SRCS   += $(XHCI_SPLIT_SRCS)
 ARCH_SRCS     := $(wildcard HAL/$(HAL_ARCH)/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Arch/*.c)
@@ -504,7 +509,7 @@ VIRT_OBJS := $(patsubst HAL/Virt/%.c,$(HALDIR)/Virt/%.o,$(VIRT_SRCS))
 VIRT_VIDEO_SRCS := $(wildcard HAL/X64/Drivers/Video/*.c)
 VIRT_VIDEO_OBJS := $(patsubst HAL/X64/Drivers/Video/%.c,$(HALDIR)/Drivers/Video/%.o,$(VIRT_VIDEO_SRCS))
 EXTRA_OBJS += $(VIRT_OBJS) $(VIRT_VIDEO_OBJS)
-EXTRA_OBJS += $(HALDIR)/Drivers/Net/IpInput.o
+EXTRA_OBJS += $(HALDIR)/Drivers/Network/IpInput.o
 ifeq ($(ARCH),riscv)
 # RiscV virt MMIO 窗与 Arm 不同；Arm 用 VirtioMmio.c 内默认值
 CFLAGS_HAL += -DVIRTIO_MMIO_BASE0=0x10001000ULL \
@@ -747,7 +752,7 @@ $(HALDIR)/Drivers/Video/%.o: HAL/X64/Drivers/Video/%.c | $(HALDIR)
 $(HALDIR)/Virt/%.o: HAL/Virt/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
-$(HALDIR)/Drivers/Net/IpInput.o: HAL/X64/Drivers/Net/IpInput.c | $(HALDIR)
+$(HALDIR)/Drivers/Network/IpInput.o: HAL/X64/Drivers/Network/IpInput.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 # PR-B2：HAL/<Arch>/Board/<board>/*.c

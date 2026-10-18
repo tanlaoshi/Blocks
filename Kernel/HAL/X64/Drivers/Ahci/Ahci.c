@@ -6,7 +6,7 @@
  */
 
 #include "Ahci.h"
-#include "AhciPrivate.h"
+#include "Private.h"
 #include "Block.h"
 #include "PCIe.h"
 #include "PhysicalMemory.h"

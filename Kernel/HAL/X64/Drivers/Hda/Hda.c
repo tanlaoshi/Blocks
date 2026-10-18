@@ -4,6 +4,7 @@
  * 只认卡 + lsdev；不映 BAR、不碰 CORB。无卡软退不挡桌面。
  */
 #include "Hda.h"
+#include "DriverBoot.h"
 #include "Driver.h"
 #include "Device.h"
 #include "ToySerialLog.h"
@@ -107,3 +108,5 @@ void HdaDriverRegister(void) {
     }
     (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_AUDIO);
 }
+
+DRIVER_BOOT(DRIVER_BOOT_HDA, HdaDriverRegister);

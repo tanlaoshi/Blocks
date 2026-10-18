@@ -22,6 +22,9 @@ SECTIONS
     } :text
 
     .rodata : {
+        __driver_boot_start = .;
+        KEEP(*(.toy.driver.boot))
+        __driver_boot_end = .;
         *(.rodata*)
     } :text
 

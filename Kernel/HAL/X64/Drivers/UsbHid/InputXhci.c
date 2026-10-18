@@ -4,6 +4,7 @@
  * Probe 普查见 InputXhciProbe.c。
  */
 #include "Driver.h"
+#include "DriverBoot.h"
 #include "DriverInput.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
@@ -224,3 +225,5 @@ void InputXhciArmIrq(void) {
         ToyLogUsb("Boot: XHCI arm fallback poll\n");
     }
 }
+
+DRIVER_BOOT(DRIVER_BOOT_INPUT_XHCI, InputXhciRegister);

@@ -1,5 +1,5 @@
 /*
- * WifiIds.h — RTL8188EU VID/PID（控制器认棒用，不拉 Wifi 总头）
+ * WifiIds.h — RTL8188EU VID/PID（控制器认棒用，不拉 Rtl8188eu.h）
  */
 #ifndef WIFI_IDS_H
 #define WIFI_IDS_H

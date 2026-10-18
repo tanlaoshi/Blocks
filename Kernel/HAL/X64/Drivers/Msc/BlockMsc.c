@@ -5,6 +5,7 @@
  * PR-H-msc-6：`msc mount` → BlockMscInstall → BlockMuxInstallMsc。
  */
 #include "Block.h"
+#include "DriverBoot.h"
 #include "BlockMux.h"
 #include "Driver.h"
 #include "DriverBlock.h"
@@ -81,3 +82,5 @@ static const TOY_DRIVER gMscDriver = {
 void MscDriverRegister(void) {
     (void)ToyDriverRegister(&gMscDriver);
 }
+
+DRIVER_BOOT(DRIVER_BOOT_MSC, MscDriverRegister);

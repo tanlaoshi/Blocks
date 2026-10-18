@@ -7,7 +7,7 @@
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "Hal.h"
-#include "Net/IpInput.h"
+#include "Network/IpInput.h"
 #include "Driver.h"
 #include "DriverNet.h"
 #include "ToySerialLog.h"

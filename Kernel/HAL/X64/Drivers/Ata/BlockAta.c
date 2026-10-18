@@ -2,6 +2,7 @@
  * BlockAta.c — x86 ATA PIO 块设备（PR-D2：经 Driver Block 类注册）
  */
 #include "Block.h"
+#include "DriverBoot.h"
 #include "Driver.h"
 #include "DriverBlock.h"
 #include "Ata/Ata.h"
@@ -62,3 +63,5 @@ int HalBlockInitialize(void) {
     }
     return BlockInitialize();
 }
+
+DRIVER_BOOT(DRIVER_BOOT_ATA, AtaDriverRegister);

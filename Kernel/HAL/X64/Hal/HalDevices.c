@@ -4,69 +4,46 @@
  * Common 只见 Hal*；Input/Net 门面见 HalDevicesInput.c / HalDevicesNet.c。
  */
 #include "Hal.h"
-#include "DriverInput.h"
-#include "DriverNet.h"
+#include "DriverBoot.h"
 #include "UsbHid/InputXhci.h"
-#include "Ps2/InputPs2.h"
-#include "Ehci/InputEhci.h"
-#include "Uhci/InputUhci.h"
 #include "Msc/UsbMsc.h"
-#include "Net.h"
 #include "Ehci.h"
 #include "XHCI.h"
-#include "Wifi.h"
+#include "Rtl8188eu.h"
 #include "Iwl.h"
 #include "Igpu.h"
 #include "Hda.h"
-#include "Driver.h"
 
-#ifndef TOY_DEMO_DRIVER
-#define TOY_DEMO_DRIVER 1
-#endif
-
-/* BlockAta / BlockAhci（H1）/ BlockNvme（H5） */
-void AtaDriverRegister(void);
-void AhciDriverRegister(void);
-void NvmeDriverRegister(void);
-void MscDriverRegister(void); /* PR-H-msc：空壳注册；认盘在后续 PR */
-void HostOffer(void);
-void MscHostOffer(void);
-void E1000DriverRegister(void);
-void AlxDriverRegister(void); /* PR-N-alx-2：AR8161 L2；无卡/无链路不挡 */
-void RtlDriverRegister(void); /* PR-N-rtl-1：r8169 Probe/MAC；无卡不挡 */
-void WifiDriverRegister(void); /* USB 8188EU 骨架；无棒不挡 */
-void XhciWifiHostOffer(void);
-void WifiHostOffer(void);
-void IwlDriverRegister(void);  /* PR-N-wifi-1：iwl8265；FS 后 Claim */
-void IgpuDriverRegister(void); /* PR-G-igpu-0：Intel display 认卡 */
-void HdaDriverRegister(void);  /* PR-G-audio-0：Intel HDA 认卡 */
-void DemoDriverRegister(void); /* PR-D-tpl-2 */
+extern char __driver_boot_start[];
+extern char __driver_boot_end[];
 
 void HalDriverRegister(void) {
-    /* 后注册者在 HalBlockInitialize 再 Probe 时可覆盖后端：NVMe > AHCI > ATA */
-    AhciDriverRegister();
-    AtaDriverRegister();
-    NvmeDriverRegister();
-    HostOffer();  /* PR-DRV-msc-host：先挂主机表 */
-    MscHostOffer();
-    MscDriverRegister(); /* PR-H-msc-1：Bind 不改 Block 后端 */
-    InputXhciRegister(); /* 先 USB HID（xHCI） */
-    InputEhciRegister(); /* PR-H-ehci-1：EHCI CCS；HID→ehci-2 */
-    InputUhciRegister(); /* PR-H-uhci-1：UHCI CCS 骨架 */
-    InputPs2Register();  /* 后 PS/2：PR-H-input-mux 与 USB 可并存 */
-    NetDriverRegister();
-    E1000DriverRegister(); /* PR-H4：无卡 Probe 失败；有卡时可覆盖 virtio */
-    AlxDriverRegister();   /* PR-N-alx-2：Bind → NetAttachNic */
-    RtlDriverRegister();   /* PR-N-rtl-1：lsdev=r8169；rtl-2 再挂 L2 */
-    XhciWifiHostOffer();   /* PR-DRV-wifi-claim：先挂认领表再注册 Wifi 驱动 */
-    WifiHostOffer();
-    WifiDriverRegister();  /* USB 8188EU 软失败骨架 */
-    IwlDriverRegister();   /* PR-N-wifi-1：NUC 8265；HalIwlClaim 后再绑 */
-    IgpuDriverRegister();  /* PR-G-igpu-0：NUC UHD；QEMU 无卡软退 */
-    HdaDriverRegister();   /* PR-G-audio-0：NUC/QEMU HDA；无卡软退 */
-#if TOY_DEMO_DRIVER
-    DemoDriverRegister(); /* PR-D-tpl-2：课堂 Demo；-DTOY_DEMO_DRIVER=0 可关 */
-#endif
+    const DRIVER_BOOT *Start = (const DRIVER_BOOT *)__driver_boot_start;
+    const DRIVER_BOOT *End = (const DRIVER_BOOT *)__driver_boot_end;
+    const DRIVER_BOOT *Item[32];
+    const DRIVER_BOOT *P;
+    int N = 0;
+    int i;
+    int j;
+
+    for (P = Start; P < End && N < 32; P++) {
+        Item[N++] = P;
+    }
+    for (i = 1; i < N; i++) {
+        const DRIVER_BOOT *Key = Item[i];
+
+        j = i;
+        while (j > 0 && Item[j - 1]->Order > Key->Order) {
+            Item[j] = Item[j - 1];
+            j--;
+        }
+        Item[j] = Key;
+    }
+    for (i = 0; i < N; i++) {
+        if (Item[i]->Call != 0) {
+            Item[i]->Call();
+        }
+    }
 }
 
 int HalUsbInitialize(void) {

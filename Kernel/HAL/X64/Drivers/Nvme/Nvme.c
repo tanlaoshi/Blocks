@@ -6,7 +6,7 @@
  */
 
 #include "Nvme.h"
-#include "NvmePrivate.h"
+#include "Private.h"
 #include "Block.h"
 #include "PCIe.h"
 #include "PhysicalMemory.h"

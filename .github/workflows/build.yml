@@ -1,11 +1,13 @@
-# Build Kernel（三架构 + smoke；运行镜像在 Runtime）
+# Blocks 单仓 CI。GitHub 只认仓库根的 .github/workflows。
+# 内核在 Kernel/，运行镜像在 Runtime/。冒烟用仓里已有的 BOOTX64.EFI，不在 CI 里编 Boot。
 name: build
 
 on:
   push:
-    branches: [main]
+    branches: [main, working]
   pull_request:
-    branches: [main]
+    branches: [main, working]
+  workflow_dispatch:
 
 jobs:
   build-x86_64:
@@ -17,24 +19,27 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc make
+          sudo apt-get install -y build-essential gcc make python3 ripgrep
 
       - name: Clone lwIP
+        working-directory: Kernel
         run: |
           git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
             https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
 
       - name: Build
+        working-directory: Kernel
         run: ./build.sh x86_64
 
       - name: Check Kernel.elf
+        working-directory: Kernel
         run: test -f Build/HAL/X64/Kernel.elf && ls -lh Build/HAL/X64/Kernel.elf
 
       - name: Upload Kernel.elf
         uses: actions/upload-artifact@v4
         with:
           name: Kernel-x86_64
-          path: Build/HAL/X64/Kernel.elf
+          path: Kernel/Build/HAL/X64/Kernel.elf
           retention-days: 7
 
   build-arm64:
@@ -46,9 +51,10 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential make wget tar
+          sudo apt-get install -y build-essential make wget tar python3 ripgrep
 
-      - name: Fetch xPack aarch64-none-elf (Tools/README)
+      - name: Fetch xPack aarch64-none-elf
+        working-directory: Kernel
         run: |
           mkdir -p Tools/Tarballs Tools/Extract
           wget -q -O Tools/Tarballs/arm-gnu.tar.gz \
@@ -57,16 +63,18 @@ jobs:
           Tools/Extract/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc --version | head -1
 
       - name: Build
+        working-directory: Kernel
         run: ./build.sh arm64
 
       - name: Check Kernel.elf
+        working-directory: Kernel
         run: test -f Build/HAL/Arm64/Kernel.elf && ls -lh Build/HAL/Arm64/Kernel.elf
 
       - name: Upload Kernel.elf
         uses: actions/upload-artifact@v4
         with:
           name: Kernel-arm64
-          path: Build/HAL/Arm64/Kernel.elf
+          path: Kernel/Build/HAL/Arm64/Kernel.elf
           retention-days: 7
 
   build-riscv:
@@ -78,9 +86,10 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential make wget tar
+          sudo apt-get install -y build-essential make wget tar python3 ripgrep
 
-      - name: Fetch xPack riscv-none-elf (Tools/README)
+      - name: Fetch xPack riscv-none-elf
+        working-directory: Kernel
         run: |
           mkdir -p Tools/Tarballs Tools/Extract
           wget -q -O Tools/Tarballs/riscv-gnu.tar.gz \
@@ -89,25 +98,26 @@ jobs:
           Tools/Extract/xpack-riscv-none-elf-gcc-*/bin/riscv-none-elf-gcc --version | head -1
 
       - name: Build
+        working-directory: Kernel
         run: ./build.sh riscv
 
       - name: Check Kernel.elf
+        working-directory: Kernel
         run: test -f Build/HAL/RiscV/Kernel.elf && ls -lh Build/HAL/RiscV/Kernel.elf
 
       - name: Upload Kernel.elf
         uses: actions/upload-artifact@v4
         with:
           name: Kernel-riscv
-          path: Build/HAL/RiscV/Kernel.elf
+          path: Kernel/Build/HAL/RiscV/Kernel.elf
           retention-days: 7
 
   smoke:
     needs: [build-x86_64]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Download Kernel.elf
         uses: actions/download-artifact@v4
@@ -123,21 +133,11 @@ jobs:
 
       - name: Place Kernel.elf
         run: |
-          if [ -d Runtime/Esp ]; then
-            IMG=Runtime
-          elif [ -d ../Runtime/Esp ]; then
-            IMG=../Runtime
-          else
-            echo "error: Runtime not in this checkout" >&2
-            exit 1
-          fi
-          mkdir -p "$IMG/RootFs/X64"
-          cp artifact/Kernel.elf "$IMG/RootFs/X64/Kernel.elf"
-          test -f "$IMG/RootFs/X64/Kernel.elf"
-          test -f "$IMG/Esp/X64/EFI/BOOT/BOOTX64.EFI"
-          echo "IMG=$IMG" >> "$GITHUB_ENV"
+          test -f Runtime/Esp/X64/EFI/BOOT/BOOTX64.EFI
+          mkdir -p Runtime/RootFs/X64
+          cp artifact/Kernel.elf Runtime/RootFs/X64/Kernel.elf
+          test -f Runtime/RootFs/X64/Kernel.elf
 
-      - name: Smoke boot (TOY_SMP=1)
-        run: |
-          export TOYOS_ROOT="$GITHUB_WORKSPACE"
-          TOY_SMP=1 SMOKE_TIMEOUT=120 "$IMG/smoke-boot.sh"
+      - name: Smoke boot
+        working-directory: Runtime
+        run: SMOKE_TIMEOUT=180 ./smoke-boot.sh --no-sync

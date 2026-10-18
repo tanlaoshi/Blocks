@@ -1,4 +1,4 @@
-# Release ToyKernel (PR-CI-3：tag v* → 三架构包 + GitHub Release)
+# tag v* 时编三架构内核并挂到 GitHub Release。工作目录在 Kernel/。
 name: release
 
 on:
@@ -19,14 +19,16 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc make wget tar
+          sudo apt-get install -y build-essential gcc make wget tar python3 ripgrep
 
       - name: Clone lwIP
+        working-directory: Kernel
         run: |
           git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
             https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
 
       - name: Fetch xPack toolchains (arm64 + riscv)
+        working-directory: Kernel
         run: |
           mkdir -p Tools/Tarballs Tools/Extract
           wget -q -O Tools/Tarballs/arm-gnu.tar.gz \
@@ -37,29 +39,31 @@ jobs:
           tar -xzf Tools/Tarballs/riscv-gnu.tar.gz -C Tools/Extract
 
       - name: Build x86_64
+        working-directory: Kernel
         run: |
           rm -rf Build
           ./build.sh x86_64
           test -f Build/HAL/X64/Kernel.elf
-          cp Build/HAL/X64/Kernel.elf Kernel-x86_64.elf
+          cp Build/HAL/X64/Kernel.elf "$GITHUB_WORKSPACE/Kernel-x86_64.elf"
 
       - name: Build arm64
+        working-directory: Kernel
         run: |
           rm -rf Build
           ./build.sh arm64
           test -f Build/HAL/Arm64/Kernel.elf
-          cp Build/HAL/Arm64/Kernel.elf Kernel-arm64.elf
+          cp Build/HAL/Arm64/Kernel.elf "$GITHUB_WORKSPACE/Kernel-arm64.elf"
 
       - name: Build riscv
+        working-directory: Kernel
         run: |
           rm -rf Build
           ./build.sh riscv
           test -f Build/HAL/RiscV/Kernel.elf
-          cp Build/HAL/RiscV/Kernel.elf Kernel-riscv.elf
+          cp Build/HAL/RiscV/Kernel.elf "$GITHUB_WORKSPACE/Kernel-riscv.elf"
 
       - name: Pack docs
-        run: |
-          tar -czf ToyKernel-Documents.tar.gz README.md Documents
+        run: tar -czf Blocks-Documents.tar.gz README.md Documents
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -68,7 +72,7 @@ jobs:
             Kernel-x86_64.elf
             Kernel-arm64.elf
             Kernel-riscv.elf
-            ToyKernel-Documents.tar.gz
+            Blocks-Documents.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

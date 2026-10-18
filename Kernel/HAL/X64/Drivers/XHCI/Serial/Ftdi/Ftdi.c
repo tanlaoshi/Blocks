@@ -1,7 +1,7 @@
 /*
  * Ftdi.c — FT232 认领（VID/PID + Bulk OUT + 115200）
  */
-#include "XHCI/Private.h"
+#include "XHCI/Serial/Ftdi/Private.h"
 
 #define FTDI_VID           0x0403u
 #define FTDI_PID_FT232R    0x6001u

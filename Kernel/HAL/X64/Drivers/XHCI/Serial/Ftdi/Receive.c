@@ -1,19 +1,10 @@
 /*
  * FtdiRx.c — PR-H-usb-uart-ftdi-2：Bulk IN + 剥 2 字节状态 → 字符环
  */
-#include "XHCI/Private.h"
+#include "XHCI/Serial/Ftdi/Private.h"
 
 #define FTDI_RX_Q   256
 #define FTDI_STATUS 2
-
-extern UINT32 gFtdiBulkOutDci;
-extern UINT16 gFtdiBulkOutMps;
-extern XHCI_TRB gFtdiBulkOutRing[RING_SIZE];
-extern RING_STATE gFtdiBulkOut;
-extern UINT8 gFtdiDevCtx[2048];
-extern UINT32 gFtdiRoute;
-extern UINT8 gFtdiHubSlot;
-extern UINT8 gFtdiTtPort;
 
 UINT32 gFtdiBulkInDci;
 UINT16 gFtdiBulkInMps;

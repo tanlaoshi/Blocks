@@ -1,12 +1,7 @@
 /*
  * Hub.c — 已有 HID hub 时扫子口认 FT232
  */
-#include "XHCI/Private.h"
-
-extern UINT32 gFtdiRoute;
-extern UINT8 gFtdiHubSlot;
-extern UINT8 gFtdiTtPort;
-extern UINT8 gFtdiDevCtx[2048];
+#include "XHCI/Serial/Ftdi/Private.h"
 
 static int TryHubChildren(void) {
     UINT8 Port;

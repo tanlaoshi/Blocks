@@ -1,14 +1,7 @@
 /*
  * FtdiTx.c — PR-H-usb-uart：FT232 Bulk OUT TX + 事件匹配（IN/OUT）
  */
-#include "XHCI/Private.h"
-
-extern UINT32 gFtdiBulkOutDci;
-extern UINT16 gFtdiBulkOutMps;
-extern UINT32 gFtdiBulkInDci;
-extern XHCI_TRB gFtdiBulkOutRing[RING_SIZE];
-extern RING_STATE gFtdiBulkOut;
-extern XHCI_TRB gFtdiBulkInRing[RING_SIZE];
+#include "XHCI/Serial/Ftdi/Private.h"
 
 static UINT8 gFtdiTxBuf[64] __attribute__((aligned(64)));
 static volatile UINT32 gFtdiBulkDone;

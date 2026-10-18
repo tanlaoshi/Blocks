@@ -6,7 +6,6 @@
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Debug.h"
-#include "XHCI.h"
 #include "E1000.h"
 #include "Scheduler.h"
 #include "Syscall.h"
@@ -91,7 +90,6 @@ void ArchIdtLoad(void) {
     IdtSet(VEC_E1000, (void *)Isr66);
     IdtSet(VEC_COM1, (void *)Isr67);
     IdtSet(255, (void *)Isr255);
-    ArchIrqNotifyRegister(VEC_XHCI, Irq);
     ArchIrqNotifyRegister(VEC_E1000, E1000Irq);
     ArchIrqNotifyRegister(VEC_COM1, SerialIrq);
     ArchIdtLidt();

@@ -3,6 +3,7 @@
  * PR-H-xhci-evt-excl-2：环消费走 gEvtConsumerLock；HID 入队另持 gHidQueueLock
  */
 #include "XHCI/Private.h"
+#include "HalIrq.h"
 #include "PCIe.h"
 
 /* PR-S-input-irq：xHCI IRQ dest 逻辑核。SMP≥3→CPU2（与 InputTask 同核）；
@@ -266,6 +267,8 @@ int EnableIrq(USB_CONTROLLER *Device) {
     gStatLastCc = 0;
     gStatLastSlot = 0;
     gStatLastEp = 0;
+
+    HalIrqNotifyRegister(VEC_XHCI, Irq);
 
     if (TryEnterDual(Device)) {
         DrainEvents();

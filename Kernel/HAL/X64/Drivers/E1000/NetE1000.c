@@ -126,6 +126,7 @@ static const TOY_DRIVER gE1000Driver = {
     .Probe = E1000DriverProbe,
     .Bind = E1000DriverBind,
     .Remove = E1000DriverRemove,
+    .MaxInstances = 2,
 };
 
 void E1000DriverRegister(void) {

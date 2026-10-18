@@ -71,6 +71,8 @@ typedef struct TOY_DRIVER {
     int (*Probe)(const struct TOY_DRIVER *Self, void *BusCtx, void **OutPrivate);
     int (*Bind)(TOY_DRIVER_INSTANCE *Inst);
     void (*Remove)(TOY_DRIVER_INSTANCE *Inst);
+    /* 0 或 1：只要一个实例。大于 1 时同一张匹配表可以绑多台设备。 */
+    int MaxInstances;
 } TOY_DRIVER;
 
 struct TOY_DRIVER_INSTANCE {
@@ -82,7 +84,7 @@ struct TOY_DRIVER_INSTANCE {
 int ToyDriverRegister(const TOY_DRIVER *Driver);
 /* 对已注册驱动调用 Probe；成功则 Bind 并记入实例表 */
 int ToyDriverProbeAll(void);
-/* PR-D2：只 Probe 指定类；已有该驱动实例则跳过 */
+/* PR-D2：只 Probe 指定类；已达该驱动的实例上限则跳过 */
 int ToyDriverProbeClass(TOY_DRIVER_CLASS Class);
 void ToyDriverRemoveAll(void);
 

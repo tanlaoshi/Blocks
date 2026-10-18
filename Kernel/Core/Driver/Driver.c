@@ -28,14 +28,23 @@ int ToyDriverProbeAll(void) {
     return ToyDriverProbeClass(TOY_DRIVER_CLASS_NONE);
 }
 
-static int DriverAlreadyBound(const TOY_DRIVER *D) {
+static int InstanceLimit(const TOY_DRIVER *D) {
+    if (D->MaxInstances > 1) {
+        return D->MaxInstances;
+    }
+    return 1;
+}
+
+static int BoundCount(const TOY_DRIVER *D) {
     UINTN i;
+    int Count = 0;
+
     for (i = 0; i < gInstanceCount; i++) {
         if (gInstances[i].Driver == D && gInstances[i].Bound) {
-            return 1;
+            Count++;
         }
     }
-    return 0;
+    return Count;
 }
 
 /*
@@ -46,7 +55,7 @@ static int DriverAlreadyBound(const TOY_DRIVER *D) {
  *   Match==NULL → 旧路径 Probe(Self, 0, …)（驱动自扫 PCI/DTB）。
  *   Match!=NULL → 遍历未绑定设备，DriverMatchesDevice 命中则
  *                 Probe(Self, (void *)Dev, …)，成功必须 DeviceBindDriver。
- *                 一驱动一实例：命中即 break。
+ *                 MaxInstances 为 0 或 1 时命中即停。大于 1 时继续下一台，直到够数。
  */
 static TOY_DRIVER_INSTANCE *DriverAdoptInstance(const TOY_DRIVER *D, void *Private) {
     TOY_DRIVER_INSTANCE *Inst;
@@ -91,7 +100,7 @@ int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
         if (Class != TOY_DRIVER_CLASS_NONE && D->Class != Class) {
             continue;
         }
-        if (DriverAlreadyBound(D)) {
+        if (BoundCount(D) >= InstanceLimit(D)) {
             continue;
         }
         if (D->Match == NULL) {
@@ -119,7 +128,9 @@ int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
                     DeviceBindDriver(Dev, D, Inst);
                     Bound++;
                 }
-                break; /* 一驱动一实例 */
+                if (InstanceLimit(D) == 1 || BoundCount(D) >= InstanceLimit(D)) {
+                    break;
+                }
             }
         }
     }

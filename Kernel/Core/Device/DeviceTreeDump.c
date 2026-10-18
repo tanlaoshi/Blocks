@@ -27,19 +27,15 @@ static void WriteHex64(UINT64 Value) {
 
 static void WriteHex2(UINT32 V) {
     char B[3];
-    B[0] = FormatHexadecimalDigit(V >> 4);
-    B[1] = FormatHexadecimalDigit(V);
-    B[2] = 0;
+
+    FormatHexadecimal(B, (int)sizeof(B), V, 2, 0, 0);
     WriteOut(B);
 }
 
 static void WriteHex4(UINT32 V) {
     char B[5];
-    B[0] = FormatHexadecimalDigit(V >> 12);
-    B[1] = FormatHexadecimalDigit(V >> 8);
-    B[2] = FormatHexadecimalDigit(V >> 4);
-    B[3] = FormatHexadecimalDigit(V);
-    B[4] = 0;
+
+    FormatHexadecimal(B, (int)sizeof(B), V, 4, 0, 0);
     WriteOut(B);
 }
 

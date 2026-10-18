@@ -38,20 +38,14 @@ typedef struct {
 static void WriteHex2(UINT32 V) {
     char Buf[3];
 
-    Buf[0] = FormatHexadecimalDigit(V >> 4);
-    Buf[1] = FormatHexadecimalDigit(V);
-    Buf[2] = 0;
+    FormatHexadecimal(Buf, (int)sizeof(Buf), V, 2, 0, 0);
     WriteOut(Buf);
 }
 
 static void WriteHex4(UINT32 V) {
     char Buf[5];
 
-    Buf[0] = FormatHexadecimalDigit(V >> 12);
-    Buf[1] = FormatHexadecimalDigit(V >> 8);
-    Buf[2] = FormatHexadecimalDigit(V >> 4);
-    Buf[3] = FormatHexadecimalDigit(V);
-    Buf[4] = 0;
+    FormatHexadecimal(Buf, (int)sizeof(Buf), V, 4, 0, 0);
     WriteOut(Buf);
 }
 

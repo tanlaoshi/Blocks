@@ -11,6 +11,7 @@
 #include "Dtb.h"
 #include "Ramfb.h"
 #include "Board.h"
+#include "Text.h"
 
 extern char __kernel_end[];
 
@@ -44,14 +45,9 @@ static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free
 }
 
 static void HexU64(UINT64 V) {
-    static const char Hex[] = "0123456789abcdef";
     char Buf[17];
-    int i;
-    for (i = 15; i >= 0; i--) {
-        Buf[i] = Hex[V & 0xf];
-        V >>= 4;
-    }
-    Buf[16] = 0;
+
+    FormatHexadecimal(Buf, (int)sizeof(Buf), V, 16, 0, 0);
     HalSerialWrite(Buf);
 }
 

@@ -76,7 +76,7 @@ const UINT8 *FontGlyph(char C);
  * 汉字等宽字形见 FontCjk32Lookup / FontGlyphCp。
  */
 UINTN Utf8Decode(const char *S, UINT32 *OutCp);
-/* ASCII→Terminus；汉字→CJK（默认 16×16×4bpp）；OutW/OutH 未乘 Scale */
+/* ASCII→Terminus；汉字先 TTF 缓存，再 TOYF 文件字，再点阵 */
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 最近一次 FontGlyphCp 的位深（ASCII=1，TTF=8，cjk32=4） */
 UINT32 FontGlyphCpBpp(void);

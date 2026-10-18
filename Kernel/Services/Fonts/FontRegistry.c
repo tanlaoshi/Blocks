@@ -551,6 +551,34 @@ UINTN Utf8Decode(const char *S, UINT32 *OutCp) {
     return Need;
 }
 
+/* 已加载的 TOYF 运行时槽。没有该码点则返回 0，调用方回落点阵。 */
+static const UINT8 *FileGlyph(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
+    UINT32 i;
+
+    for (i = 0; i < FONT_RUNTIME_MAX; i++) {
+        const FONT_FACE *Face;
+        UINT32 Index;
+
+        if (!gRuntime[i].Used || gRuntime[i].Face.Glyphs == 0) {
+            continue;
+        }
+        Face = &gRuntime[i].Face;
+        if (Face->BytesPerGlyph == 0 || Cp < Face->FirstChar ||
+            Cp >= Face->FirstChar + Face->GlyphCount) {
+            continue;
+        }
+        Index = Cp - Face->FirstChar;
+        if (OutW) {
+            *OutW = Face->Width;
+        }
+        if (OutH) {
+            *OutH = Face->Height;
+        }
+        return Face->Glyphs + Index * Face->BytesPerGlyph;
+    }
+    return 0;
+}
+
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const FONT_FACE *F;
     const UINT8 *G;
@@ -570,10 +598,15 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         gGlyphCpBpp = 1;
         return G;
     }
-    /* PR-UI-ttf-2：TTF 缓存优先；失败仍走 cjk32 */
+    /* TTF 缓存优先。没有则试文件字，再回落链进内核的点阵。 */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 8;
+        return G;
+    }
+    G = FileGlyph(Cp, OutW, OutH);
+    if (G) {
+        gGlyphCpBpp = 1;
         return G;
     }
     G = FontCjk32Lookup(Cp, OutW, OutH);

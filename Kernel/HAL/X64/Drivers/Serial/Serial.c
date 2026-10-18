@@ -9,6 +9,7 @@
 #include "Serial/Serial.h"
 #include "Text.h"
 #include "Hal.h"
+#include "HalIrq.h"
 #include "IoApic.h"
 #include "ToySerialConfig.h"
 
@@ -139,6 +140,7 @@ void SerialEnableRxIrq(void) {
         return;
     }
     SerialRxDrainHw(); /* 清残留，避免一开 IER 就风暴 */
+    HalIrqNotifyRegister(VEC_COM1, SerialIrq);
     HalIoWrite8(COM1 + 1, 0x01); /* ERBFI：收到数据可中断 */
     gSerialIrqOn = 1;
 #endif

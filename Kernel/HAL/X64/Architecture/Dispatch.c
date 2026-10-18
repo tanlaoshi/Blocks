@@ -4,7 +4,6 @@
 #include "Architecture.h"
 #include "Private.h"
 #include "Hal.h"
-#include "Serial/Serial.h"
 #include "Debug.h"
 #include "Scheduler.h"
 #include "Syscall.h"
@@ -17,6 +16,9 @@ extern void Isr65(void);
 extern void Isr66(void);
 extern void Isr67(void);
 extern void Isr255(void);
+void SerialClaimException(void);
+void SerialWrite(const char *Text);
+void SerialHexFormat(char *Buf, UINT64 Value, int Digits);
 
 typedef struct {
     UINT16 Limit;
@@ -89,7 +91,6 @@ void ArchIdtLoad(void) {
     IdtSet(VEC_E1000, (void *)Isr66);
     IdtSet(VEC_COM1, (void *)Isr67);
     IdtSet(255, (void *)Isr255);
-    ArchIrqNotifyRegister(VEC_COM1, SerialIrq);
     ArchIdtLidt();
 }
 

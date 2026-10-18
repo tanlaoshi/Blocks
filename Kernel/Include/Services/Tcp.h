@@ -1,8 +1,9 @@
 /*
- * Tcp.h — 自研单连接 TCP（legacy）
+ * Tcp.h — 单连接演示栈
  *
- * 教学对照栈：未 lwip on 时由 Shell 使用。默认已编入 lwIP；lwip on 后走 lwIP，
- * 本模块停用。不再扩展多连接/拥塞控制；策略见 ThirdParty/README.md。
+ * 和 lwIP 并存。lwIP 打开时收包仍走 gLwIpRx，本栈不收包。
+ * 未打开时由 Shell 的 tcp listen / tcp connect 使用。
+ * 不再扩展多连接或拥塞控制。
  */
 #ifndef TCP_H
 #define TCP_H

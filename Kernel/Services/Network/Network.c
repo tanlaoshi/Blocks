@@ -1,5 +1,5 @@
 /*
- * NetworkInit.c — InitializeNetwork（开机模块表；Services/Tcp 本层）
+ * Network.c — 开机模块表里的 Network。先网卡，再 UDP，再教学 TCP。
  */
 #include "KernelModulesPrivate.h"
 #include "HalDevices.h"

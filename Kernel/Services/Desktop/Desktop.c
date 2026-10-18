@@ -9,7 +9,7 @@
  *       开始菜单里 Apps 列表认已装清单 + 盘上 ELF，勿只扫半边。
  *       DesktopInitialize 与 OnDisplayResize 勿重入（gDesktopBusy）。
  *
- * 想照着做：暂无短文；绘制细节在 DesktopPaint.c，点击在 GuiClickDesktop。
+ * 想照着做：暂无短文；绘制细节在 Paint.c，点击在 GuiClickDesktop。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show：时钟重绘任务栏勿穿光标 */

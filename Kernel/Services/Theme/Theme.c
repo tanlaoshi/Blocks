@@ -1,6 +1,6 @@
 /*
  * Theme.c — 主题状态、getter/setter、Apply
- * 热切：ThemeLive.c；解析：ThemeParse.c；CFG/Load：ThemeCfg.c；Save：ThemeSave.c。
+ * 热切：Live.c；解析：Parse.c；CFG/Load：Config.c；Save：Save.c。
  */
 #include "Theme.h"
 #include "ThemePrivate.h"

@@ -37,13 +37,13 @@ extern int gScalePrefSet;    /* 1=DB/CFG 已有 scale= */
 extern int gScaleUserSet;    /* 1=用户在 Settings 选过缩放（scalesrc=user） */
 extern int gWallpaperPrefSet; /* 1=DB/CFG 已有 wallpaper= */
 
-/* ThemeTech.c */
+/* Tech.c */
 void ThemeTechApplyDefaults(void);
 void ThemeTechApplyColors(void);
 int ThemeTechParseName(const char *Val, int *OutId);
 const char *ThemeTechName(int Id);
 
-/* ThemeModern.c — PR-UI-palette */
+/* Modern.c — PR-UI-palette */
 void ThemeModernApplyDefaults(void);
 void ThemeModernApplyColors(void);
 UINT32 ThemeModernSettingsClientBackground(void);
@@ -114,7 +114,7 @@ static inline UINT32 NormalizeUiScale(UINT32 Percent) {
 /* Theme.c */
 UINT32 ThemeCompactFontId(void);
 
-/* ThemeParse.c */
+/* Parse.c */
 int IsSpace(char C);
 int HexVal(char C);
 int ParseHexU32(const char *S, UINT32 *Out);
@@ -124,7 +124,7 @@ const char *ValueAfterKey(const char *Line, const char *Key);
 void ApplyLine(const char *Line);
 int ApplyDbKey(const char *Key);
 
-/* ThemeSave.c / ThemeCfg.c / ThemeSaveFmt.c */
+/* Save.c / Config.c / SaveFormat.c */
 void PutHex6(char *Dst, UINT32 Color);
 void PutDec(char *Dst, UINT32 V, UINTN *Len);
 int ThemeLoadFromCfg(void);

@@ -10,6 +10,7 @@
 #define TOY_GFX_H
 
 #include <unistd.h>
+#include "GfxDamage.h"
 
 #define TOY_GFX_ABI_VERSION_MAJOR 1
 #define TOY_GFX_ABI_VERSION_MINOR 3
@@ -26,14 +27,6 @@
 
 /* 系统共享字库根（TOYOS 卷相对路径；应用勿拼私有路径） */
 #define TOY_GFX_SYSTEM_FONT_ROOT "Assets/Fonts"
-
-typedef struct {
-    unsigned X;
-    unsigned Y;
-    unsigned W;
-    unsigned H;
-    const unsigned *Pixels; /* W*H × 0x00RRGGBB，行优先 */
-} TOY_GFX_DAMAGE_RECT;
 
 /*
  * ToyGfxInitialize — 声明使用系统字体约定（PR-S-bundle-font）

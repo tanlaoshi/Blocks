@@ -7,7 +7,7 @@
  * U2：侧栏按已挂载卷列出（TOYOS 置顶）；跨盘标 drive
  * 开窗一次填满客户区后再淡入（勿空框 Present）
  * U3：右栏再分 列表 | 预览；空态/焦点行与 G12 一致
- * PR-S-filesui-split-1：Paint* → FilesUiPaint.c；本文件为全局宿主。
+ * PR-S-filesui-split-1：Paint* → Paint.c；本文件为全局宿主。
  */
 #include "FilesUiPrivate.h"
 

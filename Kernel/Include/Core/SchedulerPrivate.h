@@ -44,14 +44,14 @@ UINT64 SchedulerResumeFrame(TASK *T);
 /* PR-K-preempt-needresched：OnTimer 置位；CondResched 见 Scheduler.h */
 void SchedulerSetNeedResched(void);
 
-/* 定义在 SchedulerRunq.c */
+/* 定义在 Runq.c */
 void RunQueueInitialize(void);
 void RunQueueEnqueue(UINT32 Cpu, TASK *T);
 void RunQueueRemove(TASK *T);
 TASK *PickNext(UINT32 Cpu);
 void SchedulerRunQueueView(UINT32 Cpu, TASK ***Slots, int **Count);
 
-/* 定义在 SchedulerTerminate.c（thr-3 自 Wait 拆出） */
+/* 定义在 Terminate.c（thr-3 自 Wait 拆出） */
 int TerminateUserLocked(TASK *Exiting, INT32 Code, int *ShowPrompt,
                         VIRTUAL_ADDRESS_SPACE **OutSpace);
 void SchedulerDestroyDetached(VIRTUAL_ADDRESS_SPACE *Space);

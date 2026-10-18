@@ -137,7 +137,7 @@ int ReloadList(void);
 int IsMostlyText(const char *Buf, UINTN Len);
 void UpdatePreview(void);
 
-/* ===== Paint（FilesUiPaint.c / FilesUiList*.c） ===== */
+/* ===== Paint（Paint.c / FilesUiList*.c） ===== */
 void PaintOverlay(const char *Line1, const char *Line2, const char *Line3);
 void PaintList(void);
 void PaintListDrawSide(UINT32 X, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 SideW);

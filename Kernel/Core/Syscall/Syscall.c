@@ -6,7 +6,7 @@
  *   - 快速：syscall → SyscallEntry → SyscallDispatch → sysretq
  * 号与 ABI（rax / rdi,rsi,rdx）两条路径共用。
  * 向量/MSR 安装在 HalSyscallInitialize（PR-A1），本文件只做分发。
- * 实现：SyscallFs.c / SyscallProc.c（PR-S-syscall-split-1）。
+ * 实现：FileSystem.c / Process.c（PR-S-syscall-split-1）。
  */
 #include "Syscall.h"
 #include "SyscallPrivate.h"

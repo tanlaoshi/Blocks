@@ -1,6 +1,6 @@
 /*
  * EditUi.c — 简易编辑器核心（缓冲、开关、保存）
- * 绘制：EditUiPaint.c；按键：EditUiInput.c。
+ * 绘制：Paint.c；按键：Input.c。
  */
 #include "EditUiPrivate.h"
 

@@ -2,7 +2,7 @@
  * DesktopPrivate.h — Desktop 内部共享头（仅 Services 下 *.c 使用）
  *
  * 禁止 User 程序、HAL、Core 包含本文件。
- * PR-S-desktop-split-1：与 DesktopWallpaper.c 一并引入。
+ * PR-S-desktop-split-1：与 Wallpaper.c 一并引入。
  * 源文件在 Services/Desktop/（核心 Desktop.c）。
  */
 #ifndef DESKTOP_PRIVATE_H

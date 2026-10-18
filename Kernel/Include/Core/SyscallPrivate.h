@@ -17,7 +17,7 @@ int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen);
 /* 路径：最多 PATH_MAX_LEN 字节，按页一次拷入；越界与现在一样返回 -1。缓冲至少 PATH_MAX_LEN+1 */
 int CopyUserPath(char *Dst, UINT64 UserSrc);
 
-/* SyscallFs.c / SyscallFsSocket.c */
+/* FileSystem.c / Socket.c */
 int SysWrite(int Fd, UINT64 UserBuf, UINTN Len);
 int SysOpen(UINT64 UserPath);
 int SysRead(int Fd, UINT64 UserBuf, UINTN Len);
@@ -44,7 +44,7 @@ int SysGetTid(void);
 int SysGetPpid(void);
 int SysTaskSnap(UINT64 UserOut, UINTN Cap);
 
-/* SyscallProc.c */
+/* Process.c */
 int SysExecve(HAL_INTERRUPT_FRAME *Frame, UINT64 UserPath, UINT64 UserArgv,
               UINT64 UserEnvp);
 int SysCreateWindow(UINT64 UserTitle, UINT32 W, UINT32 H);

@@ -289,12 +289,12 @@ BRINGUP_ARCH_OBJS := $(patsubst BringUp/$(HAL_ARCH)/%.c,$(BUILDDIR)/BringUp/$(HA
 CORE_SRCS     := $(wildcard Core/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
 CORE_SRCS     += $(wildcard Core/FileSystem/*.c)
-CORE_SRCS     += $(filter-out Core/Scheduler/SchedulerRoundRobin.c,$(wildcard Core/Scheduler/*.c))
+CORE_SRCS     += $(filter-out Core/Scheduler/RoundRobin.c,$(wildcard Core/Scheduler/*.c))
 CORE_SRCS     += $(wildcard Core/Process/*.c)
 CORE_SRCS     += $(wildcard Core/TaskFd/*.c)
 CORE_SRCS     += $(wildcard Core/Syscall/*.c)
 CORE_SRCS     += $(wildcard Core/VirtualMemory/*.c)
-CORE_SRCS     += $(filter-out Core/PhysicalMemory/PhysicalMemoryBitmap.c,$(wildcard Core/PhysicalMemory/*.c))
+CORE_SRCS     += $(filter-out Core/PhysicalMemory/Bitmap.c,$(wildcard Core/PhysicalMemory/*.c))
 CORE_SRCS     += $(wildcard Core/Elf/*.c)
 CORE_SRCS     += $(wildcard Core/Device/*.c)
 # 开机 Init（Hal 侧，架构无关胶水；用 CFLAGS_COMMON）
@@ -549,9 +549,9 @@ endif
 
 SCHEDULER ?= round-robin
 ifeq ($(SCHEDULER),round-robin)
-SCHED_SRCS := Core/Scheduler/SchedulerRoundRobin.c
+SCHED_SRCS := Core/Scheduler/RoundRobin.c
 else ifeq ($(SCHEDULER),priority)
-SCHED_SRCS := Core/Scheduler/Student/SchedulerPriority.c
+SCHED_SRCS := Core/Scheduler/Student/Priority.c
 CFLAGS_COMMON += -DTOY_SCHED_PRIORITY
 else
 $(error unknown SCHEDULER=$(SCHEDULER))
@@ -560,9 +560,9 @@ SCHED_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(SCHED_SRCS))
 
 MEMORY ?= bitmap
 ifeq ($(MEMORY),bitmap)
-MEMORY_SRCS := Core/PhysicalMemory/PhysicalMemoryBitmap.c
+MEMORY_SRCS := Core/PhysicalMemory/Bitmap.c
 else ifeq ($(MEMORY),bestfit)
-MEMORY_SRCS := Core/PhysicalMemory/Student/PhysicalMemoryBestFit.c
+MEMORY_SRCS := Core/PhysicalMemory/Student/BestFit.c
 CFLAGS_COMMON += -DTOY_MEM_BESTFIT
 else
 $(error Unknown MEMORY: $(MEMORY))
@@ -627,7 +627,7 @@ scheduler: runtests
 runtests:
 	@mkdir -p $(BUILDDIR)/Tests
 	$(HOSTCC) $(TEST_CFLAGS) -c $(SCHED_SRCS) -o $(BUILDDIR)/Tests/policy.o
-	$(HOSTCC) $(TEST_CFLAGS) -c Core/Scheduler/SchedulerOps.c -o $(BUILDDIR)/Tests/ops.o
+	$(HOSTCC) $(TEST_CFLAGS) -c Core/Scheduler/Operations.c -o $(BUILDDIR)/Tests/ops.o
 	$(HOSTCC) $(TEST_CFLAGS) -c Tools/Tests/Stub/SchedulerStub.c -o $(BUILDDIR)/Tests/stub.o
 	$(HOSTCC) $(TEST_CFLAGS) -c Tools/Tests/TestScheduler.c -o $(BUILDDIR)/Tests/test.o
 	$(HOSTCC) -o $(BUILDDIR)/Tests/TestScheduler $(BUILDDIR)/Tests/policy.o $(BUILDDIR)/Tests/ops.o $(BUILDDIR)/Tests/stub.o $(BUILDDIR)/Tests/test.o
@@ -636,7 +636,7 @@ runtests:
 runtests-memory:
 	@mkdir -p $(BUILDDIR)/Tests
 	$(HOSTCC) $(MEM_TEST_CFLAGS) -c $(MEMORY_SRCS) -o $(BUILDDIR)/Tests/mem_policy.o
-	$(HOSTCC) $(MEM_TEST_CFLAGS) -c Core/PhysicalMemory/PhysicalMemoryOps.c -o $(BUILDDIR)/Tests/mem_ops.o
+	$(HOSTCC) $(MEM_TEST_CFLAGS) -c Core/PhysicalMemory/Operations.c -o $(BUILDDIR)/Tests/mem_ops.o
 	$(HOSTCC) $(MEM_TEST_CFLAGS) -c Tools/Tests/Stub/MemoryStub.c -o $(BUILDDIR)/Tests/mem_stub.o
 	$(HOSTCC) $(MEM_TEST_CFLAGS) -c Tools/Tests/TestMemory.c -o $(BUILDDIR)/Tests/mem_test.o
 	$(HOSTCC) -o $(BUILDDIR)/Tests/TestMemory $(BUILDDIR)/Tests/mem_policy.o $(BUILDDIR)/Tests/mem_ops.o $(BUILDDIR)/Tests/mem_stub.o $(BUILDDIR)/Tests/mem_test.o

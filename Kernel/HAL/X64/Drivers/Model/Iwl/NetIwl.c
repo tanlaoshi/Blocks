@@ -5,6 +5,7 @@
 #include "DriverBoot.h"
 #include "DriverNic.h"
 #include "Iwl.h"
+#include "HalDevices.h"
 #include "Network.h"
 #include "VirtualMemory.h"
 
@@ -90,7 +91,20 @@ static const TOY_DRIVER gIwlDriver = {
     .Remove = IwlDriverRemove,
 };
 
+static int IwlFaceClaim(void) {
+    IwlAllowBootClaim();
+    return IwlSetup() ? 1 : 0;
+}
+
 void IwlDriverRegister(void) {
+    static const HAL_IWL_OPS Ops = {
+        .Claim = IwlFaceClaim,
+        .Ready = IwlReady,
+        .Associated = IwlAssociated,
+        .BgBusy = IwlNetBgBusy,
+    };
+
+    HalIwlSetOps(&Ops);
     (void)ToyDriverRegister(&gIwlDriver);
 }
 

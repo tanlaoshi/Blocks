@@ -68,7 +68,15 @@ int HalUsbUartReady(void);
 /* PR-N-wifi-1：USB RTL8188EU；非 x86 空操作 */
 int HalWifiClaim(void);
 int HalWifiReady(void);
-/* PR-N-wifi-1：NUC iwl8265；非 x86 空操作 */
+/* PR-N-wifi-1：NUC iwl8265；非 x86 空操作。没登记时这四个返回 0 */
+typedef struct {
+    int (*Claim)(void);
+    int (*Ready)(void);
+    int (*Associated)(void);
+    int (*BgBusy)(void);
+} HAL_IWL_OPS;
+
+void HalIwlSetOps(const HAL_IWL_OPS *Ops);
 int HalIwlClaim(void);
 int HalIwlReady(void);
 /* iwl 已关联+WPA2；托盘 Wi‑Fi 图标用此，勿用 Ready（仅 Probe） */

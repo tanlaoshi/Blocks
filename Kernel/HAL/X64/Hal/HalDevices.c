@@ -141,21 +141,41 @@ int HalWifiReady(void) {
 }
 
 /* PR-N-wifi-1 / PR-BOOT-fast-3：放行后 PCI+BAR；FW/关联仍走 Worker BgPump；无卡 0 */
+static HAL_IWL_OPS gIwlOps;
+
+void HalIwlSetOps(const HAL_IWL_OPS *Ops) {
+    if (Ops == 0) {
+        return;
+    }
+    gIwlOps = *Ops;
+}
+
 int HalIwlClaim(void) {
-    IwlAllowBootClaim();
-    return IwlSetup() ? 1 : 0;
+    if (gIwlOps.Claim == 0) {
+        return 0;
+    }
+    return gIwlOps.Claim();
 }
 
 int HalIwlReady(void) {
-    return IwlReady();
+    if (gIwlOps.Ready == 0) {
+        return 0;
+    }
+    return gIwlOps.Ready();
 }
 
 int HalIwlAssociated(void) {
-    return IwlAssociated();
+    if (gIwlOps.Associated == 0) {
+        return 0;
+    }
+    return gIwlOps.Associated();
 }
 
 int HalIwlBgBusy(void) {
-    return IwlNetBgBusy();
+    if (gIwlOps.BgBusy == 0) {
+        return 0;
+    }
+    return gIwlOps.BgBusy();
 }
 
 void HalIwlBgPump(void) {

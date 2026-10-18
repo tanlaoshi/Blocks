@@ -39,12 +39,6 @@ static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     if (!Dev || Dev->Bus != DEVICE_BUS_PCI || Dev->Bar[0] == 0) {
         return -1;
     }
-    if (NvmeReady()) {
-        if (OutPrivate) {
-            *OutPrivate = 0;
-        }
-        return 0;
-    }
     if (!VirtualMemoryEnabled()) {
         return -1;
     }
@@ -76,6 +70,7 @@ static const TOY_DRIVER gNvmeDriver = {
     .Probe = NvmeDriverProbe,
     .Bind = NvmeDriverBind,
     .Remove = NvmeDriverRemove,
+    .MaxInstances = 2,
 };
 
 void NvmeDriverRegister(void) {

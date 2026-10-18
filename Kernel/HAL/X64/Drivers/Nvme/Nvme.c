@@ -45,30 +45,40 @@ int NvmeAccept(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 Bar) {
 int NvmeSetup(void) {
     UINT32 Cmd;
     NVME_CTRL *C;
+    int Index;
 
-    if (gReady) {
-        return 1;
-    }
     if (!VirtualMemoryEnabled() || !gHavePci || gBar == 0) {
+        return 0;
+    }
+    for (Index = 0; Index < gCtrlCount; Index++) {
+        if (gCtrl[Index].BarPhys == gBar) {
+            return gCtrl[Index].Ready ? 1 : 0;
+        }
+    }
+    if (gCtrlCount >= 2) {
         return 0;
     }
 
     Cmd = PciReadConfig(gPciBus, gPciDev, gPciFn, 0x04);
     PciWriteConfig(gPciBus, gPciDev, gPciFn, 0x04, Cmd | 0x06);
 
-    gCtrlCount = 0;
-    C = &gCtrl[0];
+    Index = gCtrlCount;
+    C = &gCtrl[Index];
     ZeroMemory(C, sizeof(*C));
     if (!CtrlInit(C, gBar)) {
         DebugWrite("nvme: ctrl init fail\n");
         return 0;
     }
     DebugWrite("nvme: ctrl ");
-    DebugHex32(0);
+    DebugHex32((UINT32)Index);
     DebugWrite(" bar=");
     DebugHex32((UINT32)gBar);
     DebugWrite("\n");
-    gCtrlCount = 1;
+    gCtrlCount = Index + 1;
+
+    if (Index != 0) {
+        return 1;
+    }
 
     gReady = 1;
     ToyLogFs("Boot: NVMe Drives=");

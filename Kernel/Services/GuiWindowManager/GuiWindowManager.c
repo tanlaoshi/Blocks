@@ -1,5 +1,5 @@
 /*
- * GuiWindowManager.c — 窗口全局态 / Init / 标题刷新（PR-S-guiwm-split-2）
+ * GuiWindowManager.c — 窗口全局态、开机和标题刷新（PR-S-guiwm-split-2）
  *
  * 开窗见 GuiOpen.c；点击与鼠标见 GuiPointer.c；命中见 GuiHit.c。
  */
@@ -20,6 +20,9 @@
 #include "Locale.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
+#include "KernelModulesPrivate.h"
+#include "Font.h"
+#include "Db.h"
 
 GUI_WINDOW_MANAGER gGuiWindowManager = {
     .HoverWin = -1,
@@ -161,4 +164,39 @@ void GuiInitialize(void) {
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     DebugWrite("Gui: desktop ready\n");
+}
+
+static void PollInput(void) {
+    if (!HalCpuIsHypervisor()) {
+        HalInputPoll();
+    }
+}
+
+static void DrainMouse(void) {
+    HAL_MOUSE_REPORT Mouse;
+
+    if (HalCpuIsHypervisor()) {
+        return;
+    }
+    HalInputPoll();
+    while (HalMouseDequeue(&Mouse)) {
+    }
+}
+
+int InitializeGui(void) {
+    PollInput();
+    (void)DbInitialize();
+    (void)FontLoadAssets();
+    (void)FontTtfLoad();
+    (void)FontTtfInit();
+    PollInput();
+    (void)ThemeLoad();
+    LocaleInitialize();
+    PollInput();
+    if (ThemeUiScale() != 100) {
+        (void)HalVideoSetUiScale(ThemeUiScale());
+    }
+    GuiInitialize();
+    DrainMouse();
+    return 0;
 }

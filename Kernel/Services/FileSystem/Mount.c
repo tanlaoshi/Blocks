@@ -7,6 +7,8 @@
 #include "BlockMux.h"
 #include "Gpt.h"
 #include "ToySerialLog.h"
+#include "Debug.h"
+#include "HalDevices.h"
 
 /*
  * 扫描所有 Block 盘，挂上每个盘上的全部 FAT 分区；
@@ -61,5 +63,24 @@ int MountAllVolumes(void) {
     ToyLogFs(" volume(s), default=");
     ToyLogFs(gVols[gDefaultVol].Name);
     ToyLogFs("\n");
+    return 1;
+}
+
+int FileSystemRemountVolumes(void) {
+    /*
+     * 勿再 HalBlockInitialize()/ProbeClass：会重绑 AHCI 冲掉已装的 BlockMux。
+     * 后端已在时只 BlockInitialize 重 Probe（Mux 会挂上 MSC 盘号）。
+     */
+    if (!BlockBackendReady()) {
+        if (HalBlockInitialize() <= 0) {
+            DebugWrite("FS: remount no block backend\n");
+        }
+    } else if (BlockInitialize() <= 0) {
+        DebugWrite("FS: remount BlockInitialize found 0 drives\n");
+    }
+    if (!MountAllVolumes()) {
+        DebugWrite("FS: remount no volumes\n");
+        return 0;
+    }
     return 1;
 }

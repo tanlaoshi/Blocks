@@ -1,8 +1,9 @@
 /*
  * Scheduler.c — 任务槽 / 当前任务 / 切换（PR-S3-sched-2）
  *
- * 创建见 SchedulerCreate.c；信号 / fork / 启动分见 Signal / User / Boot。
+ * 创建见 Create.c；信号 / fork / 启动分见 Signal / User / Boot。
  */
+#include "KernelModulesPrivate.h"
 #include "Scheduler.h"
 #include "SchedulerOps.h"
 #include "SchedulerPrivate.h"
@@ -14,6 +15,7 @@
 #include "PhysicalMemory.h"
 #include "SpinLock.h"
 #include "ToySerialLog.h"
+#include "HalDriverSched.h"
 
 #define SCHED_TAG_KERNEL_FIRST 1ULL
 #define SCHED_TAG_USER_FIRST   2ULL
@@ -237,4 +239,11 @@ void ActivateTask(TASK *T) {
     if (T->PageRoot != 0) {
         VirtualMemoryLoadPageTable(T->PageRoot);
     }
+}
+
+int InitializeScheduler(void) {
+    SchedulerInitialize();
+    HalDriverSchedRegister(SchedulerIoBreath, SchedulerPreemptDisable,
+                           SchedulerPreemptEnable);
+    return 0;
 }

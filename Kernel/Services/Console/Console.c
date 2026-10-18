@@ -11,6 +11,9 @@
 #include "Font.h"
 #include "Scheduler.h"
 #include "Locale.h"
+#include "KernelModulesPrivate.h"
+#include "ShellCommands.h"
+#include "Store.h"
 
 char gLine[LINE_MAX];
 int gLen;
@@ -284,4 +287,35 @@ void ConsolePublishShell(CONSOLE_OPS *Ops) {
     Ops->JobConsumeSkipAfterCommand = JobConsumeSkipAfterCommand;
     Ops->JobShiftRaise = JobShiftRaise;
     Ops->AnnounceBootReady = AnnounceBootReady;
+}
+
+void ConsolePublishAll(void) {
+    ConsolePublishWrite(&gConsole);
+    ConsolePublishInput(&gConsole);
+    ConsolePublishHistory(&gConsole);
+    ConsolePublishSerial(&gConsole);
+    ConsolePublishCommand(&gConsole);
+    ConsolePublishBuiltin(&gConsole);
+    ConsolePublishAlias(&gConsole);
+    ConsolePublishFocus(&gConsole);
+    ConsolePublishShell(&gConsole);
+    ConsolePublishScroll(&gConsole);
+    ConsolePublishScrollbar(&gConsole);
+    ConsolePublishScrollback(&gConsole);
+    ConsolePublishLog(&gConsole);
+}
+
+int InitializeConsole(void) {
+    ConsolePublishAll();
+    StoreRegisterPathGuard();
+    LocaleInitialize();
+    gConsole.RegisterBuiltins();
+    if (HalConsoleOnly()) {
+        ShellCommandsRegisterVirtMin();
+    } else {
+        ShellCommandsRegister();
+    }
+    gConsole.UserAliasLoad();
+    gConsole.Initialize();
+    return 0;
 }

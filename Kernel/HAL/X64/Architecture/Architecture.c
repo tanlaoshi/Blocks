@@ -1,10 +1,10 @@
 /*
- * Arch.c — x86-64 GDT/TSS/SYSCALL 与 ArchInit（PR-S3-arch-1）
+ * Architecture.c — x86-64 GDT/TSS/SYSCALL 与 ArchInit（PR-S3-arch-1）
  *
- * 中断 IDT/PIC/LAPIC/分发见 ArchInterrupt.c。
+ * 中断 IDT/PIC/LAPIC/分发见 Dispatch.c。
  */
-#include "Arch.h"
-#include "ArchPrivate.h"
+#include "Architecture.h"
+#include "Private.h"
 #include "Hal.h"
 #include "Debug.h"
 #include "BootTypes.h"

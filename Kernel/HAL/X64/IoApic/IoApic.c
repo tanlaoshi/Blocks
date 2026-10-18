@@ -4,7 +4,7 @@
  * 8259 已全掩；设备经 IOAPIC → LAPIC。MSI 仍优先；本文件供 INTx 回退。
  */
 #include "IoApic.h"
-#include "AcpiMadt.h"
+#include "Acpi.h"
 #include "Hal.h"
 #include "Platform.h"
 #include "VirtualMemory.h"

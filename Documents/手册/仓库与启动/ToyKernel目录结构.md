@@ -781,18 +781,18 @@ ToyKernel/
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `HAL/X64/AcpiMadt.h` | 解析 ACPI MADT，收集 Local APIC ID |
-| `HAL/X64/AcpiMadt/AcpiMadt.c` | MADT 枚举与表探测（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtDmar.c` | DMAR DRHD 关 TE（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtPower.c` | FACP 电源初始化（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtPrivate.h` | 表头、映射与电源态（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtReset.c` | 软关机与复位（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtSleep.c` | FACP/_S5_ 与 PM1 帮手（PR-S-acpimadt-1） |
-| `HAL/X64/AcpiMadt/AcpiMadtTable.c` | RSDP/XSDT 查找与映射（PR-S-acpimadt-1） |
-| `HAL/X64/Arch.c` | x86-64 GDT/TSS/SYSCALL 与 ArchInit（PR-S3-arch-1） |
-| `HAL/X64/Arch.h` | x86-64 架构相关接口（仅 HAL 内部；Common 经 Hal* 访问） |
-| `HAL/X64/ArchInterrupt.c` | x86-64 IDT / PIC / LAPIC / 中断分发（PR-S3-arch-1） |
-| `HAL/X64/ArchPrivate.h` | x86 Arch.c / ArchInterrupt.c 内部交接（PR-S3-arch-1） |
+| `HAL/X64/Acpi/Acpi.h` | ACPI 表：MADT、FACP、DMAR |
+| `HAL/X64/Acpi/Acpi.c` | MADT 枚举与表探测（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Dmar.c` | DMAR DRHD 关 TE（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Power.c` | FACP 电源初始化（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Private.h` | 表头、映射与电源态（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Reset.c` | 软关机与复位（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Sleep.c` | FACP/_S5_ 与 PM1 帮手（PR-S-acpimadt-1） |
+| `HAL/X64/Acpi/Table.c` | RSDP/XSDT 查找与映射（PR-S-acpimadt-1） |
+| `HAL/X64/Architecture/Architecture.c` | x86-64 GDT/TSS/SYSCALL 与 ArchInit（PR-S3-arch-1） |
+| `HAL/X64/Architecture/Architecture.h` | x86-64 架构相关接口（仅 HAL 内部；Common 经 Hal* 访问） |
+| `HAL/X64/Architecture/Dispatch.c` | x86-64 IDT / PIC / LAPIC / 中断分发（PR-S3-arch-1） |
+| `HAL/X64/Architecture/Private.h` | Architecture.c / Dispatch.c 内部交接（PR-S3-arch-1） |
 | `HAL/X64/BootConfig.h` | x86 UEFI 引导参数（ToyBoot ↔ HAL/X86_64/Startup） |
 | `HAL/X64/BootHandoff.h` | ToyBoot <-> Kernel handoff ABI (PR-R1) |
 | `HAL/X64/DeviceEnum.c` | x86-64 设备枚举：只读扫 PCI（PR-DEV-2） |

@@ -132,14 +132,14 @@ INCLUDES_COMMON = -IInclude \
                   -IThirdParty/stb \
                   -IHAL/$(HAL_ARCH) \
                   -IHAL/$(HAL_ARCH)/Hal \
-                  -IHAL/$(HAL_ARCH)/Arch \
+                  -IHAL/$(HAL_ARCH)/Architecture \
                   -IHAL/$(HAL_ARCH)/PageTable \
                   -IHAL/$(HAL_ARCH)/PCIe \
                   -IHAL/$(HAL_ARCH)/IoApic \
                   -IHAL/$(HAL_ARCH)/DeviceEnum \
                   -IHAL/$(HAL_ARCH)/SmpBoot \
                   -IHAL/$(HAL_ARCH)/Platform \
-                  -IHAL/$(HAL_ARCH)/AcpiMadt \
+                  -IHAL/$(HAL_ARCH)/Acpi \
                   -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers \
@@ -377,7 +377,7 @@ XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Serial/Cdc/*.c)
 XHCI_SPLIT_SRCS += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/Wifi/*.c)
 DRIVER_SRCS   += $(XHCI_SPLIT_SRCS)
 ARCH_SRCS     := $(wildcard HAL/$(HAL_ARCH)/*.c)
-ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Arch/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Architecture/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PageTable/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PCIe/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/IoApic/*.c)
@@ -386,9 +386,9 @@ ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Platform/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Hal/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)
-ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/AcpiMadt/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Acpi/*.c)
 ARCH_ASM_ALL  := $(wildcard HAL/$(HAL_ARCH)/*.S)
-ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/Arch/*.S)
+ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/Architecture/*.S)
 ARCH_ASM_ALL  += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.S)
 ARCH_ASM      := $(filter-out HAL/$(HAL_ARCH)/SmpBoot/SmpTrampoline.S,$(ARCH_ASM_ALL))
 

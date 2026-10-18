@@ -1,8 +1,8 @@
 /*
- * AcpiMadtTable.c — RSDP/XSDT 查找与映射（PR-S-acpimadt-1）
+ * Table.c — RSDP/XSDT 查找与映射（PR-S-acpimadt-1）
  */
-#include "AcpiMadt.h"
-#include "AcpiMadtPrivate.h"
+#include "Acpi.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"

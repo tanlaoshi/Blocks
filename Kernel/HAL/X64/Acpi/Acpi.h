@@ -1,8 +1,8 @@
 /*
- * AcpiMadt.h — 解析 ACPI MADT，收集 Local APIC ID
+ * Acpi.h — ACPI 表：MADT、FACP、DMAR
  */
-#ifndef ACPI_MADT_H
-#define ACPI_MADT_H
+#ifndef ACPI_H
+#define ACPI_H
 
 #include "BootTypes.h"
 

@@ -4,9 +4,9 @@
  * 中断帧见 HalFrame.c；平台元信息见 HalPlat.c（同构切块供 arm/riscv）。
  */
 #include "Hal.h"
-#include "Arch.h"
+#include "Architecture.h"
 #include "Debug.h"
-#include "AcpiMadt.h"
+#include "Acpi.h"
 
 int HalInitialize(void) {
     return ArchInit();

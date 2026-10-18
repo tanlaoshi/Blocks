@@ -6,7 +6,7 @@
 
 #include "Hal.h"
 #include "ToySerialLog.h"
-#include "Arch.h"
+#include "Architecture.h"
 
 #define SmpLog(Text)      ToyLogSmp(Text)
 #define SmpLogHex32(V)    ToyLogSmpHex32(V)

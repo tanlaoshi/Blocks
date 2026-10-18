@@ -1,11 +1,11 @@
 /*
- * Arch.h — x86-64 架构相关接口（仅 HAL 内部；Common 经 Hal* 访问）
+ * Architecture.h — x86-64 架构相关接口（仅 HAL 内部；Common 经 Hal* 访问）
  *
  * 中断向量：VEC_XHCI=0x40，VEC_TIMER=0x41，VEC_E1000=0x42（PR-H4e-3 MSI RX）。
- * 中断桩在 Interrupt.S；C 侧逻辑在 Arch.c / ArchInterrupt.c；IOAPIC 见 IoApic.c（PR-H-ioapic）。
+ * 中断桩在 Interrupt.S；C 侧逻辑在 Architecture.c / Dispatch.c；IOAPIC 见 IoApic.c（PR-H-ioapic）。
  */
-#ifndef ARCH_H
-#define ARCH_H
+#ifndef ARCHITECTURE_H
+#define ARCHITECTURE_H
 
 #include "HalPort.h"
 

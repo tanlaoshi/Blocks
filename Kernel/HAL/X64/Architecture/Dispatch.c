@@ -1,8 +1,8 @@
 /*
- * ArchInterrupt.c — x86-64 IDT / PIC / LAPIC / 中断分发（PR-S3-arch-1）
+ * Dispatch.c — x86-64 IDT / PIC / LAPIC / 中断分发（PR-S3-arch-1）
  */
-#include "Arch.h"
-#include "ArchPrivate.h"
+#include "Architecture.h"
+#include "Private.h"
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Debug.h"

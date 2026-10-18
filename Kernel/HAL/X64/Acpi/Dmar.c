@@ -1,8 +1,8 @@
 /*
- * AcpiMadtDmar.c — DMAR DRHD 关 TE（PR-S-acpimadt-1）
+ * Dmar.c — DMAR DRHD 关 TE（PR-S-acpimadt-1）
  */
-#include "AcpiMadt.h"
-#include "AcpiMadtPrivate.h"
+#include "Acpi.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"

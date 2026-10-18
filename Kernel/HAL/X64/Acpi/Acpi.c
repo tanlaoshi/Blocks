@@ -1,10 +1,10 @@
 /*
- * AcpiMadt.c — MADT 枚举与表探测（PR-S-acpimadt-1）
+ * Acpi.c — MADT 枚举与表探测（PR-S-acpimadt-1）
  *
  * UEFI 真机：ACPI 表常在早期 identity 窗外，读前必须 MapRange。
  */
-#include "AcpiMadt.h"
-#include "AcpiMadtPrivate.h"
+#include "Acpi.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"

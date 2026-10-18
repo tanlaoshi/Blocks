@@ -12,7 +12,7 @@
 #include "Hal.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
-#include "AcpiMadt.h"
+#include "Acpi.h"
 #include "Platform.h"
 #include "SpinLock.h"
 #include "VirtualMemory.h"

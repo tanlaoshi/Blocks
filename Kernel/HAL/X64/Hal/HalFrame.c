@@ -2,7 +2,7 @@
  * HalFrame.c — PR-S3-hal-x64-1：中断帧 / TLS / 用户进入
  */
 #include "Hal.h"
-#include "Arch.h"
+#include "Architecture.h"
 
 static void FrameZero(HAL_INTERRUPT_FRAME *F) {
     UINTN j;

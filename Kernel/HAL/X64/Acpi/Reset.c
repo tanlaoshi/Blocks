@@ -1,8 +1,8 @@
 /*
- * AcpiMadtReset.c — 软关机与复位（PR-S-acpimadt-1）
+ * Reset.c — 软关机与复位（PR-S-acpimadt-1）
  */
-#include "AcpiMadt.h"
-#include "AcpiMadtPrivate.h"
+#include "Acpi.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"

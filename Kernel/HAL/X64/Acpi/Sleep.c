@@ -1,8 +1,8 @@
 /*
- * AcpiMadtSleep.c — FACP/_S5_ 与 PM1 帮手（PR-S-acpimadt-1）
+ * Sleep.c — FACP/_S5_ 与 PM1 帮手（PR-S-acpimadt-1）
  */
-#include "AcpiMadt.h"
-#include "AcpiMadtPrivate.h"
+#include "Acpi.h"
+#include "Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"

@@ -1,11 +1,11 @@
 /*
  * SmpBoot.c — MADT + AP 拉起 / CPU Id·ticks（PR-S3-smpboot-1）
  */
-#include "AcpiMadt.h"
+#include "Acpi.h"
 #include "Hal.h"
 #include "Platform.h"
 #include "HalPort.h"
-#include "Arch.h"
+#include "Architecture.h"
 #include "Scheduler.h"
 #include "SmpBootPrivate.h"
 

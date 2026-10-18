@@ -1,10 +1,10 @@
 /*
- * AcpiMadtPrivate.h — 表头、映射与电源态（PR-S-acpimadt-1）
+ * Private.h — 表头、映射与电源态（PR-S-acpimadt-1）
  */
-#ifndef ACPI_MADT_PRIVATE_H
-#define ACPI_MADT_PRIVATE_H
+#ifndef ACPI_PRIVATE_H
+#define ACPI_PRIVATE_H
 
-#include "AcpiMadt.h"
+#include "Acpi.h"
 #include "Hal.h"
 #include "VirtualMemory.h"
 

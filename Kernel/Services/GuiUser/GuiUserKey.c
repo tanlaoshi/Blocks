@@ -9,7 +9,7 @@ void GuiUserEnqueueKey(UINT8 HidKey) {
     if (HidKey == 0 || HidKey > GUI_USER_KEY_HID_MAX) {
         return;
     }
-    Idx = gGuiWindowManager.FocusWin;
+    Idx = GuiInputOwner();
     if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active ||
         gGuiWindowManager.Windows[Idx].Kind != GUI_WIN_USER) {
         return;

@@ -25,6 +25,8 @@ GUI_WINDOW_MANAGER gGuiWindowManager = {
     .HoverWin = -1,
     .DragWin = -1,
     .ResizeWin = -1,
+    .InputOwner = -1,
+    .InputButton = -1,
 };
 
 void GuiRegisterConsoleOps(const GUI_CONSOLE_OPS *Ops) {

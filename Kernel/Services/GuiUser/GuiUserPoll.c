@@ -27,43 +27,34 @@ int GuiPollUserInput(int Wid) {
             return 1;
         }
     }
-    if (Prefer >= 0 && gGuiWindowManager.Windows[Prefer].UserButtonClick >= 0 &&
-        gGuiWindowManager.Windows[Prefer].UserButtonClick < 4) {
-        Id = gGuiWindowManager.Windows[Prefer].UserButtonClick;
-        gGuiWindowManager.Windows[Prefer].UserButtonClick = -1;
+    if (gGuiWindowManager.InputButton >= 0 && gGuiWindowManager.InputButton < 4 &&
+        gGuiWindowManager.InputOwner >= 0 &&
+        gGuiWindowManager.InputOwner < MAX_WINS &&
+        gGuiWindowManager.Windows[gGuiWindowManager.InputOwner].Kind == GUI_WIN_USER) {
+        Id = gGuiWindowManager.InputButton;
+        gGuiWindowManager.InputButton = -1;
         return 100 + Id;
-    }
-    for (I = 0; I < MAX_WINS; I++) {
-        if (gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER &&
-            gGuiWindowManager.Windows[I].UserButtonClick >= 0 &&
-            gGuiWindowManager.Windows[I].UserButtonClick < 4) {
-            Id = gGuiWindowManager.Windows[I].UserButtonClick;
-            gGuiWindowManager.Windows[I].UserButtonClick = -1;
-            return 100 + Id;
-        }
     }
     KeyEv = GuiUserDequeueKeyEvent();
     if (KeyEv >= 0) {
         return KeyEv;
     }
-    for (I = 0; I < MAX_WINS; I++) {
-        if (gGuiWindowManager.Windows[I].Active && gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER &&
-            gGuiWindowManager.Windows[I].UserClientClick) {
-            UINT32 Cx;
-            UINT32 Cy;
+    if (gGuiWindowManager.InputClient &&
+        gGuiWindowManager.InputOwner >= 0 &&
+        gGuiWindowManager.InputOwner < MAX_WINS &&
+        gGuiWindowManager.Windows[gGuiWindowManager.InputOwner].Active &&
+        gGuiWindowManager.Windows[gGuiWindowManager.InputOwner].Kind == GUI_WIN_USER) {
+        UINT32 Cx = gGuiWindowManager.InputClickX;
+        UINT32 Cy = gGuiWindowManager.InputClickY;
 
-            Cx = gGuiWindowManager.Windows[I].UserClickX;
-            Cy = gGuiWindowManager.Windows[I].UserClickY;
-            gGuiWindowManager.Windows[I].UserClientClick = 0;
-            if (Cx > 1023u) {
-                Cx = 1023u;
-            }
-            if (Cy > 1023u) {
-                Cy = 1023u;
-            }
-            /* 400 + x + (y << 10)；不占用 0 / 1 / 100+id / 300+HID */
-            return 400 + (int)Cx + ((int)Cy << 10);
+        gGuiWindowManager.InputClient = 0;
+        if (Cx > 1023u) {
+            Cx = 1023u;
         }
+        if (Cy > 1023u) {
+            Cy = 1023u;
+        }
+        return 400 + (int)Cx + ((int)Cy << 10);
     }
     for (I = 0; I < MAX_WINS; I++) {
         if (gGuiWindowManager.Windows[I].Active && gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER) {

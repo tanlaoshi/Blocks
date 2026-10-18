@@ -90,6 +90,12 @@ typedef struct {
     int    CursorKind;
     int    FocusWin;
     int    HoverWin;
+    /* 指针和键盘的当前拥有者：拖动中是 DragWin，否则是 FocusWin。点击只记在这里。 */
+    int    InputOwner;
+    int    InputButton;
+    int    InputClient;
+    UINT32 InputClickX;
+    UINT32 InputClickY;
     UINT32 SaveX;
     UINT32 SaveY;
     UINT32 SaveWidth;
@@ -169,6 +175,7 @@ void GfxIrqEnter(void);
 void GfxIrqLeave(void);
 void ComposeBegin(void);
 void ComposeEnd(void);
+int GuiInputOwner(void);
 void ComposeBeginEraseCursor(void);
 void GuiComposeDamage(void);
 void GfxPresent(void);

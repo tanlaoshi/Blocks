@@ -14,6 +14,13 @@
 #include "TtyUi.h"
 #include "Console.h"
 
+int GuiInputOwner(void) {
+    if (gGuiWindowManager.DragWin >= 0) {
+        return gGuiWindowManager.DragWin;
+    }
+    return gGuiWindowManager.FocusWin;
+}
+
 int GuiClickTryUserClient(UINT32 X, UINT32 Y) {
     int i;
     int Hit;
@@ -32,11 +39,12 @@ int GuiClickTryUserClient(UINT32 X, UINT32 Y) {
             }
             Hit = UserButtonHit(i, X, Y);
             if (Hit >= 0) {
-                gGuiWindowManager.Windows[i].UserButtonClick = Hit;
                 GuiFocusSave();
                 RaiseWindow(i);
-                /* 轻量置顶：勿 Sync 整桌（避免闪烁/吞事件） */
                 GuiFocusApply();
+                gGuiWindowManager.InputOwner = gGuiWindowManager.FocusWin;
+                gGuiWindowManager.InputButton = Hit;
+                gGuiWindowManager.InputClient = 0;
                 return 1;
             }
             /* 客户区：记下点击。已在最前时勿 GuiRaiseToFront：
@@ -45,13 +53,18 @@ int GuiClickTryUserClient(UINT32 X, UINT32 Y) {
                 UINT32 Cx = gGuiWindowManager.Windows[i].X + 1 + GUI_CLIENT_PAD;
                 UINT32 Cy = gGuiWindowManager.Windows[i].Y + TITLE_HEIGHT + GUI_CLIENT_PAD;
                 if (X >= Cx && Y >= Cy) {
-                    gGuiWindowManager.Windows[i].UserClientClick = 1;
-                    gGuiWindowManager.Windows[i].UserClickX = X - Cx;
-                    gGuiWindowManager.Windows[i].UserClickY = Y - Cy;
+                    UINT32 RelX = X - Cx;
+                    UINT32 RelY = Y - Cy;
+
                     if (i != gGuiWindowManager.FocusWin) {
                         GuiFocusSave();
                         GuiRaiseToFront(i);
                     }
+                    gGuiWindowManager.InputOwner = gGuiWindowManager.FocusWin;
+                    gGuiWindowManager.InputClient = 1;
+                    gGuiWindowManager.InputClickX = RelX;
+                    gGuiWindowManager.InputClickY = RelY;
+                    gGuiWindowManager.InputButton = -1;
                     return 1;
                 }
             }

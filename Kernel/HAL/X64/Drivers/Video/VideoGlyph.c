@@ -223,6 +223,70 @@ void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
                0, Color);
 }
 
+/* 字形比行高还高时，整字收到这一行，不再只裁掉下半截。 */
+static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
+                             UINT32 SrcW, UINT32 SrcH, UINT32 DstW, UINT32 DstH,
+                             UINT32 Bpp, UINT32 Color) {
+    UINT32 Row;
+    UINT32 Col;
+    UINT32 Bpr4;
+    UINT32 Bpr1;
+
+    if (!Glyph || SrcW == 0 || SrcH == 0 || DstW == 0 || DstH == 0) {
+        return;
+    }
+    Bpr4 = (SrcW + 1u) / 2u;
+    Bpr1 = (SrcW + 7u) / 8u;
+    for (Row = 0; Row < DstH; Row++) {
+        UINT32 Sy0 = (Row * SrcH) / DstH;
+        UINT32 Sy1 = ((Row + 1u) * SrcH) / DstH;
+        UINT32 Sy;
+
+        if (Sy1 <= Sy0) {
+            Sy1 = Sy0 + 1u;
+        }
+        if (Sy1 > SrcH) {
+            Sy1 = SrcH;
+        }
+        for (Col = 0; Col < DstW; Col++) {
+            UINT32 Sx0 = (Col * SrcW) / DstW;
+            UINT32 Sx1 = ((Col + 1u) * SrcW) / DstW;
+            UINT32 Sx;
+            UINT8 Alpha = 0;
+
+            if (Sx1 <= Sx0) {
+                Sx1 = Sx0 + 1u;
+            }
+            if (Sx1 > SrcW) {
+                Sx1 = SrcW;
+            }
+            for (Sy = Sy0; Sy < Sy1 && Alpha < 255u; Sy++) {
+                for (Sx = Sx0; Sx < Sx1; Sx++) {
+                    UINT8 Sample;
+
+                    if (Bpp == 8u) {
+                        Sample = GlyphCrispAlpha8(Glyph[Sy * SrcW + Sx]);
+                    } else if (Bpp == 4u) {
+                        Sample = GlyphCrispAlpha4(
+                            GlyphNibble4(Glyph, Bpr4, SrcW, SrcH, Sx, Sy));
+                    } else {
+                        Sample = GlyphBit(Glyph, Bpr1, SrcW, SrcH, (INT32)Sx,
+                                          (INT32)Sy)
+                                     ? 255u
+                                     : 0u;
+                    }
+                    if (Sample > Alpha) {
+                        Alpha = Sample;
+                    }
+                }
+            }
+            if (Alpha != 0u) {
+                PaintBlock(X + Col, Y + Row, 1u, 1u, Color, Alpha);
+            }
+        }
+    }
+}
+
 /* 点阵：1bpp 或 4bpp（CJK gray）；BytesPerRow 随 bpp */
 static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
                               UINT32 Width, UINT32 Height, UINT32 Color,
@@ -246,17 +310,16 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
         ScaleY = 1;
     }
     CellH = FontCellH();
-    DrawnH = Height * ScaleY;
+    FontGlyphBox(Width, Height, &ScaleX, &DrawnH);
     OffY = 0;
+    if (DrawnH < Height * ScaleY && Height > 0) {
+        PaintGlyphFitted(X, Y, Glyph, Width, Height, ScaleX, DrawnH, Bpp, Color);
+        return;
+    }
+    ScaleX = ScaleY;
+    DrawnH = Height * ScaleY;
     if (CellH > DrawnH) {
         OffY = (CellH - DrawnH) / 2;
-    } else if (DrawnH > CellH && Height > 0) {
-        Height = CellH / ScaleY;
-        if (Height == 0) {
-            Height = 1;
-        }
-        DrawnH = Height * ScaleY;
-        OffY = 0;
     }
     if (Bpp == 8) {
         PaintGlyph8(X, Y, Glyph, Width, Height, Width, ScaleX, ScaleY, OffY, Color);
@@ -271,40 +334,22 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
     PaintGlyph(X, Y, Glyph, Width, Height, Bpr, ScaleX, ScaleY, OffY, Color);
 }
 
-/* PR-UI-cjk：缺字空心框（边长 = FontCjkDim） */
+/* PR-UI-cjk：缺字空心框，边长跟当前行里的汉字一样 */
 static void VideoDrawMissingGlyphBox(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 Native = FontCjkDim();
-    UINT32 Scale = FontGlyphStretch(Native);
     UINT32 W;
     UINT32 H;
     UINT32 OffY;
-    UINT32 DrawnH;
     UINT32 CellH;
     UINT32 Col;
     UINT32 Row;
     UINT32 Dy;
 
-    if (Scale < 1) {
-        Scale = 1;
-    }
-    W = Native * Scale;
-    H = Native * Scale;
+    FontGlyphBox(Native, Native, &W, &H);
     CellH = FontCellH();
-    DrawnH = H;
     OffY = 0;
-    if (CellH > DrawnH) {
-        OffY = (CellH - DrawnH) / 2;
-    }
-    if (DrawnH > CellH) {
-        H = CellH;
-        DrawnH = CellH;
-        OffY = 0;
-        if (W > FontAdvanceX() * 2u) {
-            W = FontAdvanceX() * 2u;
-            if (W < 12) {
-                W = 12;
-            }
-        }
+    if (CellH > H) {
+        OffY = (CellH - H) / 2;
     }
     for (Col = 0; Col < W; Col++) {
         VideoDrawPixel(X + Col, Y + OffY, Color);

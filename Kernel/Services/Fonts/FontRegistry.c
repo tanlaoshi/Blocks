@@ -598,10 +598,36 @@ UINT32 FontGlyphStretch(UINT32 GlyphH) {
     return FaceScale;
 }
 
+void FontGlyphBox(UINT32 GlyphW, UINT32 GlyphH, UINT32 *OutW, UINT32 *OutH) {
+    UINT32 Scale = FontGlyphStretch(GlyphH);
+    UINT32 W;
+    UINT32 H;
+    UINT32 CellH;
+
+    if (Scale < 1u) {
+        Scale = 1u;
+    }
+    W = GlyphW * Scale;
+    H = GlyphH * Scale;
+    CellH = FontCellH();
+    if (H > CellH && H > 0u) {
+        W = (UINT32)(((UINT64)W * (UINT64)CellH) / (UINT64)H);
+        if (W == 0u) {
+            W = 1u;
+        }
+        H = CellH;
+    }
+    if (OutW) {
+        *OutW = W;
+    }
+    if (OutH) {
+        *OutH = H;
+    }
+}
+
 UINT32 FontCodepointAdvance(UINT32 Cp) {
     UINT32 W;
     UINT32 H;
-    UINT32 Scale;
 
     if (Cp < 128) {
         return FontAdvanceX();
@@ -610,8 +636,7 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
         W = FontCjkDim();
         H = W;
     }
-    Scale = FontGlyphStretch(H);
-    W = W * Scale;
+    FontGlyphBox(W, H, &W, &H);
     if (W < FontAdvanceX()) {
         W = FontAdvanceX();
     }

@@ -88,6 +88,8 @@ UINT32 FontCjkBitsPerPixel(void);
 UINT32 FontCjkDim(void);
 /* 仅 Face->Scale；不再为凑行高整数拉高字形 */
 UINT32 FontGlyphStretch(UINT32 GlyphH);
+/* 乘上字号后，高于当前行则宽高一起收到行高 */
+void FontGlyphBox(UINT32 GlyphW, UINT32 GlyphH, UINT32 *OutW, UINT32 *OutH);
 /* UTF-8 字符串像素宽（含汉字前进） */
 UINT32 FontCodepointAdvance(UINT32 Cp);
 UINT32 FontStringWidth(const char *S);

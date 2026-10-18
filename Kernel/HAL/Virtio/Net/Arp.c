@@ -1,9 +1,9 @@
 /*
- * VirtioNetArp.c — ARP/ICMP 与帧发送（PR-S-virtionet-virt-1）
+ * Arp.c — ARP/ICMP 与帧发送（PR-S-virtionet-virt-1）
  */
-#include "VirtioNet.h"
-#include "VirtioNetPrivate.h"
-#include "VirtioMmio.h"
+#include "Net.h"
+#include "Private.h"
+#include "Virtio/Virtio.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "Hal.h"
@@ -13,7 +13,7 @@
 #include "DriverNet.h"
 #include "ToySerialLog.h"
 #ifdef TOY_LWIP
-#include "toy_netif.h"
+#include "Netif.h"
 #endif
 
 static int ArpLookup(UINT32 Ip, UINT8 Mac[6]) {

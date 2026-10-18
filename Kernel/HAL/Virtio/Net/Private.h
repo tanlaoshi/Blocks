@@ -1,11 +1,11 @@
 /*
- * VirtioNetPrivate.h — MMIO virtio-net 状态（PR-S-virtionet-virt-1）
+ * Private.h — MMIO virtio-net 状态（PR-S-virtionet-virt-1）
  */
 #ifndef VIRTIO_NET_PRIVATE_H
 #define VIRTIO_NET_PRIVATE_H
 
-#include "VirtioNet.h"
-#include "VirtioMmio.h"
+#include "Net.h"
+#include "Virtio/Virtio.h"
 #include "Driver.h"
 #include "DriverNet.h"
 #include "Hal.h"

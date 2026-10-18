@@ -1,5 +1,5 @@
 /*
- * toy_socket.h — lwIP 持久 TCP socket（用户态 SYS_SOCKET 后端）
+ * TcpSocket.h — lwIP 持久 TCP socket（用户态 SYS_SOCKET 后端）
  */
 #ifndef TOY_SOCKET_H
 #define TOY_SOCKET_H

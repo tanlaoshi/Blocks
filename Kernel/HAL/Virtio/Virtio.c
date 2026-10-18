@@ -1,7 +1,7 @@
 /*
- * VirtioMmio.c — virtio-mmio（legacy v1 + modern v2）（PR-V3/V4）
+ * Virtio.c — virtio-mmio（legacy v1 + modern v2）（PR-V3/V4）
  */
-#include "VirtioMmio.h"
+#include "Virtio.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 

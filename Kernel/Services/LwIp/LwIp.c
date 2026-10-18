@@ -17,7 +17,7 @@
 #include "lwip/init.h"
 #include "lwip/timeouts.h"
 #include "lwip/sys.h"
-#include "toy_ping.h"
+#include "Ping.h"
 #include "HalDevices.h"
 #include "DriverNet.h"
 

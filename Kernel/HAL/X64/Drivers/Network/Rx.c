@@ -4,7 +4,7 @@
 #include "Network/Private.h"
 #include "Network/IpInput.h"
 #ifdef TOY_LWIP
-#include "toy_netif.h"
+#include "Netif.h"
 #endif
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"

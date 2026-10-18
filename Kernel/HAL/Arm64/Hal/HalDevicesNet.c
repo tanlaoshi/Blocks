@@ -3,7 +3,7 @@
  */
 #include "Hal.h"
 #include "DriverNet.h"
-#include "VirtioNet.h"
+#include "Virtio/Net/Net.h"
 
 int HalNetInitialize(void) {
     return VirtioNetInit();

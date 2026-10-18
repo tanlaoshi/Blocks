@@ -1,12 +1,12 @@
 /*
- * toy_tcpclient.c — lwIP 主动 TCP 连接并发送（NO_SYS raw API）
+ * TcpClient.c — lwIP 主动 TCP 连接并发送（NO_SYS raw API）
  */
 #include "lwip/opt.h"
 
 #if LWIP_TCP
 
-#include "toy_tcpclient.h"
-#include "toy_ip.h"
+#include "TcpClient.h"
+#include "Ip.h"
 #include "LwIp.h"
 #include "Hal.h"
 #include "lwip/tcp.h"

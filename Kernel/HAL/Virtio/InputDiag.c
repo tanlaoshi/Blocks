@@ -1,5 +1,5 @@
 /*
- * VirtioInputDiag.c — PR-V-input-diag：virtio-input 只读计数（不改发送/解析）
+ * InputDiag.c — PR-V-input-diag：virtio-input 只读计数（不改发送/解析）
  *
  * 假说分桶（Shell `show input` / 串口 `Input:`）：
  *   A p=0              → HalInputPoll 未跑（常见：交互任务钉 AP 永 WFI）
@@ -7,7 +7,7 @@
  *   C ke/te>0 且 push 涨、dq=0 → 上层未 dequeue
  *   D dq 涨仍无 UI     → Gui/坐标（交下一刀）
  */
-#include "VirtioInputDiag.h"
+#include "InputDiag.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 

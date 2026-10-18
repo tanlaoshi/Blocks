@@ -1,5 +1,5 @@
 /*
- * VirtioInputDiag.h — PR-V-input-diag：virtio-input 只读计数
+ * InputDiag.h — PR-V-input-diag：virtio-input 只读计数
  */
 #ifndef HAL_VIRTIO_INPUT_DIAG_H
 #define HAL_VIRTIO_INPUT_DIAG_H

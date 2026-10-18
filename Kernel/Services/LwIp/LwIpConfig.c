@@ -11,8 +11,8 @@
 
 #include "lwip/dns.h"
 #include "lwip/ip_addr.h"
-#include "toy_netif.h"
-#include "toy_ip.h"
+#include "Netif.h"
+#include "Ip.h"
 
 void LwIpConfigPushDns(void) {
     UINT32 DnsHost;

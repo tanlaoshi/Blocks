@@ -5,7 +5,7 @@
 #include "Udp.h"
 #include "Tcp.h"
 #ifdef TOY_LWIP
-#include "toy_netif.h"
+#include "Netif.h"
 #endif
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"

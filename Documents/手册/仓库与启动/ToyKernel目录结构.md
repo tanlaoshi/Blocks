@@ -848,19 +848,19 @@ ToyKernel/
 | `HAL/X64/LwIp/include/arch/cc.h` | GCC freestanding types for lwIP |
 | `HAL/X64/LwIp/include/arch/sys_arch.h` | NO_SYS: no OS primitives required |
 | `HAL/X64/LwIp/include/lwipopts.h` | ToyOS lwIP (NO_SYS raw API, IPv4 only) |
-| `HAL/X64/LwIp/toy_ip.h` | （见文件名 / 同目录 README） |
-| `HAL/X64/LwIp/toy_netif.c` | virtio-net 以太网 netif（linkoutput → NetSendEthernet） |
-| `HAL/X64/LwIp/toy_netif.h` | 已 Add 后改地址；成功 0 */ |
-| `HAL/X64/LwIp/toy_ping.c` | lwIP 单次 ICMP echo（NO_SYS raw API） |
-| `HAL/X64/LwIp/toy_ping.h` | （见文件名 / 同目录 README） |
-| `HAL/X64/LwIp/toy_socket.c` | lwIP 持久 TCP socket（NO_SYS raw API） |
-| `HAL/X64/LwIp/toy_socket.h` | lwIP 持久 TCP socket（用户态 SYS_SOCKET 后端） |
-| `HAL/X64/LwIp/toy_tcpclient.c` | lwIP 主动 TCP 连接并发送（NO_SYS raw API） |
-| `HAL/X64/LwIp/toy_tcpclient.h` | 0 ok; -1 connect err; -2 timeout; -3 send err */ |
-| `HAL/X64/LwIp/toy_tcpecho.c` | lwIP TCP echo（改编自 contrib/apps/tcpecho_raw） |
-| `HAL/X64/LwIp/toy_tcpecho.h` | （见文件名 / 同目录 README） |
-| `HAL/X64/LwIp/toy_udp.c` | lwIP UDP bind / send / recv queue（NO_SYS raw API） |
-| `HAL/X64/LwIp/toy_udp.h` | （见文件名 / 同目录 README） |
+| `HAL/X64/LwIp/Ip.h` | 主机序与 lwIP ip4 互转 |
+| `HAL/X64/LwIp/Netif.c` | virtio-net 以太网 netif（linkoutput → NetSendEthernet） |
+| `HAL/X64/LwIp/Netif.h` | 已 Add 后改地址；成功 0 */ |
+| `HAL/X64/LwIp/Ping.c` | lwIP 单次 ICMP echo（NO_SYS raw API） |
+| `HAL/X64/LwIp/Ping.h` | ToyPing |
+| `HAL/X64/LwIp/TcpSocket.c` | lwIP 持久 TCP socket（NO_SYS raw API） |
+| `HAL/X64/LwIp/TcpSocket.h` | lwIP 持久 TCP socket（用户态 SYS_SOCKET 后端） |
+| `HAL/X64/LwIp/TcpClient.c` | lwIP 主动 TCP 连接并发送（NO_SYS raw API） |
+| `HAL/X64/LwIp/TcpClient.h` | 0 ok; -1 connect err; -2 timeout; -3 send err */ |
+| `HAL/X64/LwIp/TcpEcho.c` | lwIP TCP echo（改编自 contrib/apps/tcpecho_raw） |
+| `HAL/X64/LwIp/TcpEcho.h` | LwIpTcpListen |
+| `HAL/X64/LwIp/UdpQueue.c` | lwIP UDP bind / send / recv queue（NO_SYS raw API） |
+| `HAL/X64/LwIp/UdpQueue.h` | LwIpUdpBind / Send / Recv |
 
 ## 10. `HAL/X64/Drivers/` — x86 设备驱动（一设备一夹）
 
@@ -1202,43 +1202,43 @@ ToyKernel/
 | `HAL/X64/Drivers/XHCI/XhciWifiClaim.c` | xHCI 上认 RTL8188EU（PR-N-wifi-1） |
 | `HAL/X64/Drivers/XHCI/XhciWifiHub.c` | 已有 HID hub 时扫子口认 8188EU（PR-N-wifi-1） |
 
-## 11. `HAL/Virt/` — Arm/RiscV 共享 virtio / ramfb / DTB
+## 11. `HAL/Virtio/` — Arm/RiscV 共享 virtio / ramfb / DTB
 
-### (Virt 根)
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `HAL/Virt/Dtb.c` | FDT memory 节点 reg（PR-S3-dtb-1） |
-| `HAL/Virt/Dtb.h` | 最小 FDT 解析（HAL 内；Common 不碰 DTB，PR-V1） |
-| `HAL/Virt/DtbPrivate.h` | Dtb / DtbProbe 内部交接（PR-S3-dtb-1） |
-| `HAL/Virt/DtbProbe.c` | FDT fw-cfg 基址与 cpu@ 计数（PR-S3-dtb-1） |
-| `HAL/Virt/HalVideo.c` | 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout） |
-| `HAL/Virt/HelloBlob.c` | PR-A7：无嵌入 User/hello.elf；满足 ProcessRunDemo 链接符号 */ |
-| `HAL/Virt/README.md` | HAL/Virt — Arm64 / RiscV 共享 virt 实现（PR-R5） |
-| `HAL/Virt/Ramfb.c` | QEMU fw_cfg MMIO + etc/ramfb（PR-V2） |
-| `HAL/Virt/Ramfb.h` | QEMU ramfb via fw_cfg（PR-V2；HAL 内，非 GOP/UEFI） |
-| `HAL/Virt/VirtioBlock.c` | virtio-blk MMIO（PR-V4；PR-D2 经 Driver Block 类） |
-| `HAL/Virt/VirtioBlock.h` | virtio-blk-device（PR-V4 / PR-D2） |
-| `HAL/Virt/VirtioInput.c` | virtio-input MMIO 驱动注册与轮询（PR-S3-virtioinput-1） |
-| `HAL/Virt/VirtioInput.h` | virtio-keyboard / tablet（PR-V3 / PR-D3） |
-| `HAL/Virt/VirtioInputDiag.c` | PR-V-input-diag：virtio-input 只读计数（不改发送/解析） |
-| `HAL/Virt/VirtioInputDiag.h` | PR-V-input-diag：virtio-input 只读计数 |
-| `HAL/Virt/VirtioInputEv.c` | evdev 解码 / 队列 / ring drain（PR-S3-virtioinput-1） |
-| `HAL/Virt/VirtioInputPrivate.h` | VirtioInput / VirtioInputEv 内部交接（PR-S3-virtioinput-1） |
-| `HAL/Virt/VirtioMmio.c` | virtio-mmio（legacy v1 + modern v2）（PR-V3/V4） |
-| `HAL/Virt/VirtioMmio.h` | QEMU virt virtio-mmio（modern v2）公共层（PR-V3/V4） |
-| `HAL/Virt/VirtioNet.h` | virtio-net-device MMIO（PR-N9 / PR-D3） |
-
-### VirtioNet
+### (Virtio 根)
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `HAL/Virt/VirtioNet/VirtioNet.c` | virtio-net MMIO 探测与驱动注册（PR-S-virtionet-virt-1） |
-| `HAL/Virt/VirtioNet/VirtioNetAddr.c` | IP 文本格式（PR-S-virtionet-virt-1） |
-| `HAL/Virt/VirtioNet/VirtioNetArp.c` | ARP/ICMP 与帧发送（PR-S-virtionet-virt-1） |
-| `HAL/Virt/VirtioNet/VirtioNetPrivate.h` | MMIO virtio-net 状态（PR-S-virtionet-virt-1） |
-| `HAL/Virt/VirtioNet/VirtioNetProtocol.c` | SendIp / Ping（PR-S-virtionet-virt-1） |
-| `HAL/Virt/VirtioNet/VirtioNetRx.c` | 接收环与入站分发（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Dtb.c` | FDT memory 节点 reg（PR-S3-dtb-1） |
+| `HAL/Virtio/Dtb.h` | 最小 FDT 解析（HAL 内；Common 不碰 DTB，PR-V1） |
+| `HAL/Virtio/DtbPrivate.h` | Dtb / DtbProbe 内部交接（PR-S3-dtb-1） |
+| `HAL/Virtio/DtbProbe.c` | FDT fw-cfg 基址与 cpu@ 计数（PR-S3-dtb-1） |
+| `HAL/Virtio/HalVideo.c` | 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout） |
+| `HAL/Virtio/HelloBlob.c` | PR-A7：无嵌入 User/hello.elf；满足 ProcessRunDemo 链接符号 */ |
+| `HAL/Virtio/README.md` | HAL/Virtio — Arm64 / RiscV 共享 virt 实现（PR-R5） |
+| `HAL/Virtio/Ramfb.c` | QEMU fw_cfg MMIO + etc/ramfb（PR-V2） |
+| `HAL/Virtio/Ramfb.h` | QEMU ramfb via fw_cfg（PR-V2；HAL 内，非 GOP/UEFI） |
+| `HAL/Virtio/BlockDevice.c` | virtio-blk MMIO（PR-V4；PR-D2 经 Driver Block 类） |
+| `HAL/Virtio/BlockDevice.h` | virtio-blk-device（PR-V4 / PR-D2） |
+| `HAL/Virtio/Input.c` | virtio-input MMIO 驱动注册与轮询（PR-S3-virtioinput-1） |
+| `HAL/Virtio/Input.h` | virtio-keyboard / tablet（PR-V3 / PR-D3） |
+| `HAL/Virtio/InputDiag.c` | PR-V-input-diag：virtio-input 只读计数（不改发送/解析） |
+| `HAL/Virtio/InputDiag.h` | PR-V-input-diag：virtio-input 只读计数 |
+| `HAL/Virtio/InputEvent.c` | evdev 解码 / 队列 / ring drain（PR-S3-virtioinput-1） |
+| `HAL/Virtio/InputPrivate.h` | VirtioInput / VirtioInputEv 内部交接（PR-S3-virtioinput-1） |
+| `HAL/Virtio/Virtio.c` | virtio-mmio（legacy v1 + modern v2）（PR-V3/V4） |
+| `HAL/Virtio/Virtio.h` | QEMU virt virtio-mmio（modern v2）公共层（PR-V3/V4） |
+
+### Net
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `HAL/Virtio/Net/Net.c` | virtio-net MMIO 探测与驱动注册（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Net/Net.h` | virtio-net-device MMIO（PR-N9 / PR-D3） |
+| `HAL/Virtio/Net/Address.c` | IP 文本格式（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Net/Arp.c` | ARP/ICMP 与帧发送（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Net/Private.h` | MMIO virtio-net 状态（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Net/Protocol.c` | SendIp / Ping（PR-S-virtionet-virt-1） |
+| `HAL/Virtio/Net/Receive.c` | 接收环与入站分发（PR-S-virtionet-virt-1） |
 
 ## 12. `HAL/Arm64/` — AArch64 HAL + Board/virt
 

@@ -1,6 +1,6 @@
 # Board：`virt`（QEMU riscv64 virt）
 
-> 课堂默认板包（**PR-B2**）。共享 virtio/ramfb/DTB 在 [`HAL/Virt/`](../../../Virt/)，不在本目录。  
+> 课堂默认板包（**PR-B2**）。共享 virtio/ramfb/DTB 在 [`HAL/Virtio/`](../../../Virtio/)，不在本目录。  
 > 约定总览：[`HAL/Board/README.md`](../../../Board/README.md)。
 
 | 项 | 填写 |

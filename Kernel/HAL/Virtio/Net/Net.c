@@ -1,13 +1,13 @@
 /*
- * VirtioNet.c — virtio-net MMIO 探测与驱动注册（PR-S-virtionet-virt-1）
+ * Net.c — virtio-net MMIO 探测与驱动注册（PR-S-virtionet-virt-1）
  *
  * QEMU：-device virtio-net-device,netdev=n0 -netdev user,id=n0
  * 默认 IP 10.0.2.15；网关 10.0.2.2。ARP/ICMP 留在本 Arch HAL。
  * PR-D3：经 Driver Net 类注册，HalDevices 只见 HalNet*。
  */
-#include "VirtioNet.h"
-#include "VirtioNetPrivate.h"
-#include "VirtioMmio.h"
+#include "Net.h"
+#include "Private.h"
+#include "Virtio/Virtio.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "Hal.h"
@@ -17,7 +17,7 @@
 #include "DriverNet.h"
 #include "ToySerialLog.h"
 #ifdef TOY_LWIP
-#include "toy_netif.h"
+#include "Netif.h"
 #endif
 
 VIRTIO_MMIO_DEV gRx;

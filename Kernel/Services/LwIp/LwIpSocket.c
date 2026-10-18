@@ -10,8 +10,8 @@
 
 #include "lwip/dns.h"
 #include "lwip/ip_addr.h"
-#include "toy_socket.h"
-#include "toy_ip.h"
+#include "TcpSocket.h"
+#include "Ip.h"
 #include "Errno.h"
 #include "HalDevices.h"
 #include "HalIrq.h"

@@ -8,13 +8,13 @@
 #include "BoardConfig.h"
 #include "Driver.h"
 #if TOY_BOARD_HAS_BLOCK
-#include "VirtioBlock.h"
+#include "Virtio/BlockDevice.h"
 #endif
 #if TOY_BOARD_HAS_FRAMEBUFFER
-#include "VirtioInput.h"
+#include "Virtio/Input.h"
 #endif
 #if TOY_BOARD_HAS_NET
-#include "VirtioNet.h"
+#include "Virtio/Net/Net.h"
 #endif
 
 void HalDriverRegister(void) {

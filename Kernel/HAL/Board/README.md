@@ -21,7 +21,7 @@ HAL/
 │           ├── BoardConfig.h  # 建议：地址 / 能力勾选
 │           ├── Board.c        # 可选：填 BOOT_INFO 辅助、兼容表
 │           └── NOTES.md       # 可选：真机踩坑
-├── Virt/                      # QEMU virt 共享（非 Board 包；见 HAL/Virt/README.md）
+├── Virtio/                    # QEMU virt 共享（非 Board 包；见 HAL/Virtio/README.md）
 └── X64/                       # x86 UEFI 课堂 / 真机桌面 → 1.3c，不进 B 系列
 ```
 

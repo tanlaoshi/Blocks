@@ -2,7 +2,7 @@
  * Smp.c — PR-A14：QEMU virt aarch64 PSCI CPU_ON + 每核 idle
  */
 #include "Hal.h"
-#include "Dtb.h"
+#include "Virtio/Dtb.h"
 #include "Scheduler.h"
 #include "ToySerialLog.h"
 

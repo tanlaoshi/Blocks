@@ -1,5 +1,5 @@
 /*
- * VirtioNet.h — virtio-net-device MMIO（PR-N9 / PR-D3）
+ * Net.h — virtio-net-device MMIO（PR-N9 / PR-D3）
  */
 #ifndef HAL_VIRTIO_NET_H
 #define HAL_VIRTIO_NET_H

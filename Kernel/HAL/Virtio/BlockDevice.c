@@ -1,8 +1,8 @@
 /*
- * VirtioBlock.c — virtio-blk MMIO（PR-V4；PR-D2 经 Driver Block 类）
+ * BlockDevice.c — virtio-blk MMIO（PR-V4；PR-D2 经 Driver Block 类）
  */
-#include "VirtioBlock.h"
-#include "VirtioMmio.h"
+#include "BlockDevice.h"
+#include "Virtio.h"
 #include "HalSerial.h"
 #include "PhysicalMemory.h"
 #include "Driver.h"

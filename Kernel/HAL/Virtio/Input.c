@@ -1,11 +1,11 @@
 /*
- * VirtioInput.c — virtio-input MMIO 驱动注册与轮询（PR-S3-virtioinput-1）
+ * Input.c — virtio-input MMIO 驱动注册与轮询（PR-S3-virtioinput-1）
  *
- * 事件解码见 VirtioInputEv.c。
+ * 事件解码见 InputEvent.c。
  */
-#include "VirtioInput.h"
-#include "VirtioInputDiag.h"
-#include "VirtioMmio.h"
+#include "Input.h"
+#include "InputDiag.h"
+#include "Virtio.h"
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "PhysicalMemory.h"
@@ -14,7 +14,7 @@
 #include "DriverInput.h"
 #include "HalDevices.h"
 #include "ToySerialLog.h"
-#include "VirtioInputPrivate.h"
+#include "InputPrivate.h"
 
 VIRTIO_MMIO_DEV gKbd;
 VIRTIO_MMIO_DEV gTab;

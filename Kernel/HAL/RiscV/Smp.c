@@ -5,7 +5,7 @@
  * 或 KernelEntry SecondaryPark soft-release 拉起。
  */
 #include "Hal.h"
-#include "Dtb.h"
+#include "Virtio/Dtb.h"
 #include "Scheduler.h"
 #include "ToySerialLog.h"
 

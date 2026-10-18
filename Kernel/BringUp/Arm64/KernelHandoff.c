@@ -8,8 +8,8 @@
 #include "Hal.h"
 #include "BootInfo.h"
 #include "Kernel.h"
-#include "Dtb.h"
-#include "Ramfb.h"
+#include "Virtio/Dtb.h"
+#include "Virtio/Ramfb.h"
 #include "Board.h"
 #include "Text.h"
 

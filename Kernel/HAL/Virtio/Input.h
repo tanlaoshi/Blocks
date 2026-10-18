@@ -1,5 +1,5 @@
 /*
- * VirtioInput.h — virtio-keyboard / tablet（PR-V3 / PR-D3）
+ * Input.h — virtio-keyboard / tablet（PR-V3 / PR-D3）
  */
 #ifndef HAL_VIRTIO_INPUT_H
 #define HAL_VIRTIO_INPUT_H

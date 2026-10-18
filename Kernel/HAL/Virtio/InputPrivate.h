@@ -1,10 +1,10 @@
 /*
- * VirtioInputPrivate.h — VirtioInput / VirtioInputEv 内部交接（PR-S3-virtioinput-1）
+ * InputPrivate.h — Input / InputEvent 内部交接（PR-S3-virtioinput-1）
  */
 #ifndef VIRTIO_INPUT_PRIVATE_H
 #define VIRTIO_INPUT_PRIVATE_H
 
-#include "VirtioMmio.h"
+#include "Virtio.h"
 #include "DriverInput.h"
 #include "HalDevices.h"
 

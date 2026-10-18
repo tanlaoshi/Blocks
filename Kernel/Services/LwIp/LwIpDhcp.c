@@ -16,8 +16,8 @@
 #include "lwip/dns.h"
 #include "lwip/netif.h"
 #include "lwip/ip4_addr.h"
-#include "toy_netif.h"
-#include "toy_ip.h"
+#include "Netif.h"
+#include "Ip.h"
 
 typedef enum {
     DHCP_JOB_IDLE = 0,

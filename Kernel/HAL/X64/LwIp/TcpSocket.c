@@ -1,13 +1,13 @@
 /*
- * toy_socket.c — lwIP 持久 TCP socket（NO_SYS raw API）
+ * TcpSocket.c — lwIP 持久 TCP socket（NO_SYS raw API）
  * 支持 connect 客户端与 bind/listen/accept 服务端。
  */
 #include "lwip/opt.h"
 
 #if LWIP_TCP
 
-#include "toy_socket.h"
-#include "toy_ip.h"
+#include "TcpSocket.h"
+#include "Ip.h"
 #include "Hal.h"
 #include "LwIp.h"
 #include "Errno.h"
@@ -563,7 +563,7 @@ int ToySocketClose(int Sock) {
 
 #else
 
-#include "toy_socket.h"
+#include "TcpSocket.h"
 #include "ToySerialLog.h"
 
 int ToySocketCreate(void) {

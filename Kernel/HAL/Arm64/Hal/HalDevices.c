@@ -5,9 +5,9 @@
  */
 #include "Hal.h"
 #include "Driver.h"
-#include "VirtioBlock.h"
-#include "VirtioInput.h"
-#include "VirtioNet.h"
+#include "Virtio/BlockDevice.h"
+#include "Virtio/Input.h"
+#include "Virtio/Net/Net.h"
 
 void HalDriverRegister(void) {
     VirtioBlockRegister();

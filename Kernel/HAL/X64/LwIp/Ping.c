@@ -1,12 +1,12 @@
 /*
- * toy_ping.c — lwIP 单次 ICMP echo（NO_SYS raw API）
+ * Ping.c — lwIP 单次 ICMP echo（NO_SYS raw API）
  */
 #include "lwip/opt.h"
 
 #if LWIP_RAW && LWIP_ICMP
 
-#include "toy_ping.h"
-#include "toy_ip.h"
+#include "Ping.h"
+#include "Ip.h"
 #include "LwIp.h"
 #include "Hal.h"
 #include "Scheduler.h"

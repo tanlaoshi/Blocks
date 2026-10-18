@@ -1,11 +1,11 @@
 /*
- * toy_tcpecho.c — lwIP TCP echo（改编自 contrib/apps/tcpecho_raw）
+ * TcpEcho.c — lwIP TCP echo（改编自 contrib/apps/tcpecho_raw）
  */
 #include "lwip/opt.h"
 
 #if LWIP_TCP
 
-#include "toy_tcpecho.h"
+#include "TcpEcho.h"
 #include "Console.h"
 #include "lwip/tcp.h"
 #include "lwip/mem.h"

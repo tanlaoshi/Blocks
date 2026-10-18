@@ -1,5 +1,5 @@
 /*
- * HAL/Virt/HalVideo.c — 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout）
+ * HAL/Virtio/HalVideo.c — 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout）
  */
 #include "HalVideo.h"
 #include "Video.h"

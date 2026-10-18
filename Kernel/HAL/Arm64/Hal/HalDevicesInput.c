@@ -3,7 +3,7 @@
  */
 #include "Hal.h"
 #include "DriverInput.h"
-#include "VirtioInputDiag.h"
+#include "Virtio/InputDiag.h"
 
 void HalInputArmIrq(void) {
 }

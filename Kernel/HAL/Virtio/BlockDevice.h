@@ -1,5 +1,5 @@
 /*
- * VirtioBlock.h — virtio-blk-device（PR-V4 / PR-D2）
+ * BlockDevice.h — virtio-blk-device（PR-V4 / PR-D2）
  */
 #ifndef HAL_VIRTIO_BLOCK_H
 #define HAL_VIRTIO_BLOCK_H

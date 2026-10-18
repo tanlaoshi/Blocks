@@ -1,5 +1,5 @@
 /*
- * toy_netif.c — virtio-net 以太网 netif（linkoutput → NetSendEthernet）
+ * Netif.c — virtio-net 以太网 netif（linkoutput → NetSendEthernet）
  */
 #include "lwip/opt.h"
 #include "lwip/def.h"
@@ -8,7 +8,7 @@
 #include "lwip/netif.h"
 #include "lwip/etharp.h"
 #include "netif/ethernet.h"
-#include "toy_ip.h"
+#include "Ip.h"
 #include "Network.h"
 #include "Hal.h"
 #include "HalConsole.h"

@@ -218,12 +218,12 @@ LWIPCORE = \
 	$(LWIPDIR)/core/ipv4/dhcp.c \
 	$(LWIPDIR)/netif/ethernet.c
 LWIPOBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(LWIPCORE))
-LWIP_PORT_SRCS = HAL/$(HAL_ARCH)/LwIp/toy_netif.c \
-                 HAL/$(HAL_ARCH)/LwIp/toy_ping.c \
-                 HAL/$(HAL_ARCH)/LwIp/toy_tcpecho.c \
-                 HAL/$(HAL_ARCH)/LwIp/toy_udp.c \
-                 HAL/$(HAL_ARCH)/LwIp/toy_tcpclient.c \
-                 HAL/$(HAL_ARCH)/LwIp/toy_socket.c
+LWIP_PORT_SRCS = HAL/$(HAL_ARCH)/LwIp/Netif.c \
+                 HAL/$(HAL_ARCH)/LwIp/Ping.c \
+                 HAL/$(HAL_ARCH)/LwIp/TcpEcho.c \
+                 HAL/$(HAL_ARCH)/LwIp/UdpQueue.c \
+                 HAL/$(HAL_ARCH)/LwIp/TcpClient.c \
+                 HAL/$(HAL_ARCH)/LwIp/TcpSocket.c
 LWIP_PORT_OBJS = $(patsubst HAL/$(HAL_ARCH)/LwIp/%.c,$(HALDIR)/LwIp/%.o,$(LWIP_PORT_SRCS))
 endif
 
@@ -501,17 +501,17 @@ EXTRA_OBJS =
 BOARD_SRCS := $(wildcard $(BOARD_DIR)/*.c)
 BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
-# PR-R5：Arm/RiscV 共享 virtio/ramfb/DTB/HalVideo（HAL/Virt）；复用 x86 Video 绘制
-INCLUDES_HAL += -IHAL/X64/Drivers -IHAL/Virt
-VIRT_SRCS := $(wildcard HAL/Virt/*.c)
-VIRT_SRCS += $(wildcard HAL/Virt/VirtioNet/*.c)
-VIRT_OBJS := $(patsubst HAL/Virt/%.c,$(HALDIR)/Virt/%.o,$(VIRT_SRCS))
+# PR-R5：Arm/RiscV 共享 virtio/ramfb/DTB/HalVideo（HAL/Virtio）；复用 x86 Video 绘制
+INCLUDES_HAL += -IHAL/X64/Drivers -IHAL
+VIRT_SRCS := $(wildcard HAL/Virtio/*.c)
+VIRT_SRCS += $(wildcard HAL/Virtio/Net/*.c)
+VIRT_OBJS := $(patsubst HAL/Virtio/%.c,$(HALDIR)/Virtio/%.o,$(VIRT_SRCS))
 VIRT_VIDEO_SRCS := $(wildcard HAL/X64/Drivers/Video/*.c)
 VIRT_VIDEO_OBJS := $(patsubst HAL/X64/Drivers/Video/%.c,$(HALDIR)/Drivers/Video/%.o,$(VIRT_VIDEO_SRCS))
 EXTRA_OBJS += $(VIRT_OBJS) $(VIRT_VIDEO_OBJS)
 EXTRA_OBJS += $(HALDIR)/Drivers/Network/IpInput.o
 ifeq ($(ARCH),riscv)
-# RiscV virt MMIO 窗与 Arm 不同；Arm 用 VirtioMmio.c 内默认值
+# RiscV virt MMIO 窗与 Arm 不同；Arm 用 Virtio.c 内默认值
 CFLAGS_HAL += -DVIRTIO_MMIO_BASE0=0x10001000ULL \
               -DVIRTIO_MMIO_STRIDE=0x1000u \
               -DVIRTIO_MMIO_COUNT=8u
@@ -755,7 +755,7 @@ ifneq ($(ARCH),x86_64)
 $(HALDIR)/Drivers/Video/%.o: HAL/X64/Drivers/Video/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
-$(HALDIR)/Virt/%.o: HAL/Virt/%.c | $(HALDIR)
+$(HALDIR)/Virtio/%.o: HAL/Virtio/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 $(HALDIR)/Drivers/Network/IpInput.o: HAL/X64/Drivers/Network/IpInput.c | $(HALDIR)

@@ -20,7 +20,7 @@ git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
 
 PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `FontTtfRaster.c` 在 FPU 岛内包含。
 
-移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`toy_netif.c`、`toy_ping.c`、`toy_tcpecho.c`、`toy_udp.c`、`toy_tcpclient.c`、`toy_socket.c`）。
+移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`Netif.c`、`Ping.c`、`TcpEcho.c`、`UdpQueue.c`、`TcpClient.c`、`TcpSocket.c`）。
 
 ---
 

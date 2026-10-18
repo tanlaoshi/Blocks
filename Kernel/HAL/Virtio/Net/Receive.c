@@ -1,9 +1,9 @@
 /*
- * VirtioNetRx.c — 接收环与入站分发（PR-S-virtionet-virt-1）
+ * Receive.c — 接收环与入站分发（PR-S-virtionet-virt-1）
  */
-#include "VirtioNet.h"
-#include "VirtioNetPrivate.h"
-#include "VirtioMmio.h"
+#include "Net.h"
+#include "Private.h"
+#include "Virtio/Virtio.h"
 #include "PhysicalMemory.h"
 #include "HalSerial.h"
 #include "Hal.h"
@@ -12,7 +12,7 @@
 #include "DriverNet.h"
 #include "ToySerialLog.h"
 #ifdef TOY_LWIP
-#include "toy_netif.h"
+#include "Netif.h"
 #endif
 
 void RxRefillOne(UINT16 DescId, UINT8 *Buf) {

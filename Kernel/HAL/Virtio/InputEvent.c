@@ -1,8 +1,8 @@
 /*
- * VirtioInputEv.c — evdev 解码 / 队列 / ring drain（PR-S3-virtioinput-1）
+ * InputEvent.c — evdev 解码 / 队列 / ring drain（PR-S3-virtioinput-1）
  */
-#include "VirtioInputPrivate.h"
-#include "VirtioInputDiag.h"
+#include "InputPrivate.h"
+#include "InputDiag.h"
 #include "HalVideo.h"
 
 UINT8 LinuxKeyToHid(UINT16 Code) {

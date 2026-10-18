@@ -1,8 +1,8 @@
 /*
- * VirtioMmio.h — QEMU virt virtio-mmio（modern v2）公共层（PR-V3/V4）
+ * Virtio.h — QEMU virt virtio-mmio（modern v2）公共层（PR-V3/V4）
  */
-#ifndef HAL_VIRTIO_MMIO_H
-#define HAL_VIRTIO_MMIO_H
+#ifndef HAL_VIRTIO_H
+#define HAL_VIRTIO_H
 
 #include "BootTypes.h"
 

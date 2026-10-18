@@ -163,8 +163,8 @@ int ProcessExec(const char *Path) {
  * 替换当前用户任务映像。成功：改写 Frame，不返回用户态旧点；
  * 失败：返回 -1（Frame 原样，可写 rax=-1）。
  */
-int ProcessExecve(HAL_INTERRUPT_FRAME *Frame, const char *Path, UINT64 UserArgv,
-                  UINT64 UserEnvp) {
+int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
+                  UINT64 UserArgv, UINT64 UserEnvp) {
     TASK *T;
     VIRTUAL_ADDRESS_SPACE *OldSpace;
     VIRTUAL_ADDRESS_SPACE *NewSpace;

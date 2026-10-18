@@ -14,18 +14,30 @@ LOC_LANG gLang = LOC_LANG_ZH; /* 默认汉语；切英文便宜 */
 char gEn[MSG_COUNT][LOCALE_STR_MAX];
 char gZh[MSG_COUNT][LOCALE_STR_MAX];
 
-/* 代码、当前文案、内建回落。en 在前，和 LOC_LANG_EN / LOC_LANG_ZH 的序号一致。 */
+/* 代码、当前文案、内建回落。en、zh 在前，和 LOC_LANG_EN / LOC_LANG_ZH 的序号一致。 */
+#define LOCALE_EXTRA_MAX 4
+#define LOCALE_CODE_MAX  8
+
 typedef struct {
     const char *Code;
     char (*Live)[LOCALE_STR_MAX];
     const char *const *Builtin;
 } LOCALE_ENTRY;
 
-static LOCALE_ENTRY gLocale[] = {
-    { "en", gEn, gEnFallback },
-    { "zh", gZh, gZhFallback },
-};
-#define LOCALE_COUNT ((int)(sizeof(gLocale) / sizeof(gLocale[0])))
+static char gExtra[LOCALE_EXTRA_MAX][MSG_COUNT][LOCALE_STR_MAX];
+static char gExtraCode[LOCALE_EXTRA_MAX][LOCALE_CODE_MAX];
+static LOCALE_ENTRY gLocale[2 + LOCALE_EXTRA_MAX];
+static int gLocaleCount;
+
+void LocaleRegistryReset(void) {
+    gLocale[0].Code = "en";
+    gLocale[0].Live = gEn;
+    gLocale[0].Builtin = gEnFallback;
+    gLocale[1].Code = "zh";
+    gLocale[1].Live = gZh;
+    gLocale[1].Builtin = gZhFallback;
+    gLocaleCount = 2;
+}
 
 static int CodeEqual(const char *Code, const char *Value) {
     UINTN i;
@@ -44,12 +56,67 @@ static int CodeEqual(const char *Code, const char *Value) {
 static int FindCode(const char *Code) {
     int i;
 
-    for (i = 0; i < LOCALE_COUNT; i++) {
+    for (i = 0; i < gLocaleCount; i++) {
         if (CodeEqual(gLocale[i].Code, Code)) {
             return i;
         }
     }
     return -1;
+}
+
+int LocaleOffer(const char *Code) {
+    int Found;
+    int Extra;
+    int n;
+    int i;
+    char c;
+
+    Found = FindCode(Code);
+    if (Found >= 0) {
+        return Found;
+    }
+    if (Code == 0 || gLocaleCount >= 2 + LOCALE_EXTRA_MAX) {
+        return -1;
+    }
+    n = 0;
+    while (Code[n] != 0) {
+        c = Code[n];
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
+            return -1;
+        }
+        if (n + 1 >= LOCALE_CODE_MAX) {
+            return -1;
+        }
+        n++;
+    }
+    if (n == 0) {
+        return -1;
+    }
+    Extra = gLocaleCount - 2;
+    for (i = 0; i <= n; i++) {
+        gExtraCode[Extra][i] = Code[i];
+    }
+    for (i = 0; i < (int)MSG_COUNT; i++) {
+        gExtra[Extra][i][0] = 0;
+    }
+    gLocale[gLocaleCount].Code = gExtraCode[Extra];
+    gLocale[gLocaleCount].Live = gExtra[Extra];
+    gLocale[gLocaleCount].Builtin = 0;
+    gLocaleCount++;
+    return gLocaleCount - 1;
+}
+
+void LocaleDropLast(int Index) {
+    if (Index >= 2 && Index == gLocaleCount - 1) {
+        gLocaleCount--;
+    }
+}
+
+char (*LocaleLive(int Index))[LOCALE_STR_MAX] {
+    if (Index < 0 || Index >= gLocaleCount) {
+        return 0;
+    }
+    return gLocale[Index].Live;
 }
 
 /* Worker 补预热（开机已同步扫过 gZh；此处用于 reload / 晚到 Want） */
@@ -106,13 +173,41 @@ void LocaleInitialize(void) {
 }
 
 void LocaleReload(void) {
+    char Prev[LOCALE_CODE_MAX];
+    const char *Code = LocaleCode();
+    int i;
+    int Found;
+
+    for (i = 0; i + 1 < LOCALE_CODE_MAX && Code[i] != 0; i++) {
+        Prev[i] = Code[i];
+    }
+    Prev[i] = 0;
     LocaleLoadCatalogs();
+    Found = FindCode(Prev);
+    gLang = (Found >= 0) ? (LOC_LANG)Found : LOC_LANG_ZH;
     LocaleTtfPreheatUi();
     LocaleApplyUi();
 }
 
 LOC_LANG LocaleGet(void) {
     return gLang;
+}
+
+const char *LocaleCode(void) {
+    if ((int)gLang < 0 || (int)gLang >= gLocaleCount) {
+        return "zh";
+    }
+    return gLocale[gLang].Code;
+}
+
+int LocaleSetCode(const char *Code) {
+    int Found = FindCode(Code);
+
+    if (Found < 0) {
+        return -1;
+    }
+    (void)LocaleSet((LOC_LANG)Found);
+    return 0;
 }
 
 static int gLangDbFlushWant;
@@ -129,7 +224,7 @@ int LocaleDbFlushStep(void) {
 int LocaleSet(LOC_LANG Lang) {
     int Rc;
 
-    if ((int)Lang < 0 || (int)Lang >= LOCALE_COUNT) {
+    if ((int)Lang < 0 || (int)Lang >= gLocaleCount) {
         return -1;
     }
     gLang = Lang;

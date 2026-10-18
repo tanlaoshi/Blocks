@@ -161,8 +161,12 @@ void LocaleInitialize(void);
 /* 重新读 Assets/Locale/en.txt 与 zh.txt（改文件后可 lang reload） */
 void LocaleReload(void);
 LOC_LANG LocaleGet(void);
+/* 当前语言代码，如 en、zh，或 Assets/Locale 里多出来的文件名 */
+const char *LocaleCode(void);
 /* 成功 0；写盘失败仍切换内存语言并返回非 0 */
 int LocaleSet(LOC_LANG Lang);
+/* 只接受表里有的代码。没有对应文件的代码不在表里。成功 0 */
+int LocaleSetCode(const char *Code);
 const char *LocStr(MSG_ID Id);
 /* 语言变更后刷新桌面图标与窗标题（调用方负责重绘） */
 void LocaleApplyUi(void);

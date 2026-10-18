@@ -135,17 +135,102 @@ static int LoadCatalogFile(const char *Path, char (*Table)[LOCALE_STR_MAX]) {
     return 0;
 }
 
-void LocaleLoadCatalogs(void) {
-    int EnOk;
-    int ZhOk;
+static int CodeFromName(const char *Name, char *Code, int CodeMax) {
+    int n;
+    int i;
+    char c;
 
+    n = 0;
+    while (Name[n] != 0) {
+        n++;
+    }
+    if (n < 5 || Name[n - 4] != '.') {
+        return -1;
+    }
+    if (!((Name[n - 3] == 't' || Name[n - 3] == 'T') &&
+          (Name[n - 2] == 'x' || Name[n - 2] == 'X') &&
+          (Name[n - 1] == 't' || Name[n - 1] == 'T'))) {
+        return -1;
+    }
+    if (n - 4 <= 0 || n - 4 >= CodeMax) {
+        return -1;
+    }
+    for (i = 0; i < n - 4; i++) {
+        c = Name[i];
+        if (c >= 'A' && c <= 'Z') {
+            c = (char)(c - 'A' + 'a');
+        }
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
+            return -1;
+        }
+        Code[i] = c;
+    }
+    Code[i] = 0;
+    return 0;
+}
+
+void LocaleLoadCatalogs(void) {
+    FAT_DIRECTORY_ENTRY Ents[FAT_LIST_MAX];
+    int Count;
+    int i;
+    int FromFile;
+
+    LocaleRegistryReset();
     ResetToFallback();
-    EnOk = LoadCatalogFile("Assets/Locale/en.txt", gEn);
-    ZhOk = LoadCatalogFile("Assets/Locale/zh.txt", gZh);
-    if (EnOk == 0 || ZhOk == 0) {
-        DebugWrite("locale: catalog ");
-        DebugWrite(EnOk == 0 ? "en " : "");
-        DebugWrite(ZhOk == 0 ? "zh " : "");
+    Count = 0;
+    FromFile = 0;
+    if (FileSystemListEntries("Assets/Locale", Ents, FAT_LIST_MAX, &Count) != FAT_OK) {
+        DebugWrite("locale: using built-in strings (no Assets/Locale)\n");
+        return;
+    }
+    for (i = 0; i < Count; i++) {
+        char Code[8];
+        char Path[40];
+        int Index;
+        int p;
+        const char *Prefix = "Assets/Locale/";
+
+        if (Ents[i].Attr & FAT_ATTR_DIR) {
+            continue;
+        }
+        if (CodeFromName(Ents[i].Name, Code, (int)sizeof(Code)) != 0) {
+            continue;
+        }
+        Index = LocaleOffer(Code);
+        if (Index < 0 || LocaleLive(Index) == 0) {
+            continue;
+        }
+        p = 0;
+        while (Prefix[p] != 0 && p + 1 < (int)sizeof(Path)) {
+            Path[p] = Prefix[p];
+            p++;
+        }
+        {
+            int c = 0;
+            while (Code[c] != 0 && p + 1 < (int)sizeof(Path)) {
+                Path[p++] = Code[c++];
+            }
+        }
+        if (p + 4 >= (int)sizeof(Path)) {
+            continue;
+        }
+        Path[p++] = '.';
+        Path[p++] = 't';
+        Path[p++] = 'x';
+        Path[p++] = 't';
+        Path[p] = 0;
+        if (LoadCatalogFile(Path, LocaleLive(Index)) != 0) {
+            LocaleDropLast(Index);
+            continue;
+        }
+        if (!FromFile) {
+            DebugWrite("locale: catalog ");
+        }
+        DebugWrite(Code);
+        DebugWrite(" ");
+        FromFile = 1;
+    }
+    if (FromFile) {
         DebugWrite("from Assets/Locale\n");
     } else {
         DebugWrite("locale: using built-in strings (no Assets/Locale)\n");

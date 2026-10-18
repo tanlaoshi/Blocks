@@ -150,7 +150,8 @@ static void CommandLang(int Argc, char **Argv) {
     if (Argc < 2) {
         gConsole.Write(LocStr(MSG_LANG_USAGE));
         gConsole.Write(LocStr(MSG_LANG_NOW));
-        gConsole.Write(LocaleGet() == LOC_LANG_ZH ? "zh\n" : "en\n");
+        gConsole.Write(LocaleCode());
+        gConsole.Write("\n");
         return;
     }
     if (Argv[1][0] == 'r' && Argv[1][1] == 'e' && Argv[1][2] == 'l' &&
@@ -160,17 +161,11 @@ static void CommandLang(int Argc, char **Argv) {
         gConsole.Write("locale reloaded\n");
         return;
     }
-    if (Argv[1][0] == 'z' && Argv[1][1] == 'h') {
-        (void)LocaleSet(LOC_LANG_ZH);
-        gConsole.Write(LocStr(MSG_LANG_SET));
+    if (LocaleSetCode(Argv[1]) != 0) {
+        gConsole.Write(LocStr(MSG_LANG_BAD));
         return;
     }
-    if (Argv[1][0] == 'e' && Argv[1][1] == 'n') {
-        (void)LocaleSet(LOC_LANG_EN);
-        gConsole.Write(LocStr(MSG_LANG_SET));
-        return;
-    }
-    gConsole.Write(LocStr(MSG_LANG_BAD));
+    gConsole.Write(LocStr(MSG_LANG_SET));
 }
 
 void ShellCommandsFsUiRegister(void) {

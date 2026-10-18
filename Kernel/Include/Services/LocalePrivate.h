@@ -18,6 +18,11 @@ extern const char *const gMsgKeys[MSG_COUNT];
 extern const char *const gEnFallback[MSG_COUNT];
 extern const char *const gZhFallback[MSG_COUNT];
 
+void LocaleRegistryReset(void);
+/* 已有代码返回下标。新代码在还有空位时追加，文案先清空（缺键走英文）。失败 -1 */
+int LocaleOffer(const char *Code);
+void LocaleDropLast(int Index);
+char (*LocaleLive(int Index))[LOCALE_STR_MAX];
 void LocaleLoadCatalogs(void);
 
 #endif

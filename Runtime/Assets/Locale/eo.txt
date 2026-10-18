@@ -1,0 +1,3 @@
+# Trial language. Missing keys stay English. Switch with: lang eo
+MSG_ICON_SHELL=Sxelo
+MSG_START=Starto

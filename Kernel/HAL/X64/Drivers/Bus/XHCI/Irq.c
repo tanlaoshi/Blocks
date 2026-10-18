@@ -73,9 +73,17 @@ void DrainEvents(void) {
 
     gStatDrain++;
 
-    /* 独占窗：勿与 Drain 并发 ProcessEvents（CCS 竞态） */
+    /*
+     * 独占窗仍取事件环，把 ERDP 推进去。键鼠报告留着，等窗口结束后再交给窗口。
+     * 环消费有锁，不会和窗内的等待同时改 dequeue。
+     */
     if (EventIsExclusive() || gXhciCmdWaiting) {
         sIrqStall = 0;
+        if (RealPc) {
+            ProcessEventsRealPc();
+        } else {
+            ProcessEvents();
+        }
         return;
     }
 

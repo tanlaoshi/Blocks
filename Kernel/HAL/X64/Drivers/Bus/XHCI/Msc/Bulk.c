@@ -50,6 +50,30 @@ static int WaitBulk(void) {
     return Result;
 }
 
+/* 门铃之后失败：复位这只批量端点，取环从头对齐。不改 gMscClaimed。 */
+static void ResetBulkEndpoint(UINT32 Dci, XHCI_TRB *Ring, RING_STATE *St) {
+    UINT32 EpField;
+    UINT64 Deq;
+    UINT32 QuietSave;
+
+    if (gMscScanSlot == 0 || Dci == 0 || Ring == 0 || St == 0) {
+        return;
+    }
+    EpField = (Dci & 0x1Fu) << 16;
+    QuietSave = gDiagQuiet;
+    gDiagQuiet = 1;
+    (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    ProcessEvents();
+    (void)Command(0, TRB_TYPE(TRB_RESET_EP) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    ProcessEvents();
+    InitRing(Ring, St, RING_SIZE);
+    FlushDma(Ring, RING_SIZE * sizeof(XHCI_TRB));
+    Deq = PointerToPhysical(Ring) | 1u;
+    (void)Command(Deq, TRB_TYPE(TRB_SET_TR_DEQ) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    ProcessEvents();
+    gDiagQuiet = QuietSave;
+}
+
 /*
  * PR-H-msc-5：Bulk 普通传输。DirIn=1 → Bulk IN 环；0 → Bulk OUT。
  * 成功 0；失败 -1。短包算成功（CSW/INQUIRY 常见）。
@@ -90,6 +114,7 @@ int BulkTransfer(int DirIn, void *Buf, UINT32 Len) {
     FlushDma(Ring, sizeof(XHCI_TRB) * (St->Size ? St->Size : RING_SIZE));
     RingDoorbell(gMscScanSlot, Dci);
     if (WaitBulk() < 0) {
+        ResetBulkEndpoint(Dci, Ring, St);
         EventLeaveExclusive();
         /* 限日志；勿 fail-fast 永死，否则壁纸/图标全丢成纯色桌面 */
         if (sBulkFailLogged < 2) {

@@ -4,6 +4,7 @@
  * RX：剥 FTDI 2 字节状态前缀 → 字符环；HalSerial 轮询。
  */
 #include "Ehci/Private.h"
+#include "XHCI.h"
 #include "ToySerialLog.h"
 
 #define FTDI_RX_Q   256
@@ -15,6 +16,13 @@ static int gTxBusy;
 
 int FtdiReady(void) {
     return (gEhciFtdiOk && gEhciFtdiCtrl) ? 1 : 0;
+}
+
+USB_UART_OPS gFtdiEhci;
+
+void FtdiEhciPublish(void) {
+    gFtdiEhci.Claim = FtdiClaim;
+    gFtdiEhci.Ready = FtdiReady;
 }
 
 /* MSC hub 扫口会 Reset 子设备；作废以免 tee 打到已死 addr */

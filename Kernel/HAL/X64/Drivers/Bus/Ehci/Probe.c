@@ -75,6 +75,7 @@ int Setup(void) {
     }
 
     /* 有 PCI EHCI 即 Ready（Init 失败也占 lsdev，Shell `ehci` 可查） */
+    FtdiEhciPublish();
     gEhciCcsOr = OrMask;
     gEhciReady = 1;
     {

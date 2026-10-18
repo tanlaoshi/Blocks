@@ -34,7 +34,8 @@ int MscFlush(void);
 int MscRelease(void);
 int MscPresent(void);
 
-/* PR-H-ehci-4：FT232 tee */
+/* PR-H-ehci-4：FT232 tee。认领和就绪走 gFtdiEhci，由 Setup 发布 */
+void FtdiEhciPublish(void);
 int FtdiClaim(void);
 void FtdiInvalidate(void);
 int FtdiReady(void);

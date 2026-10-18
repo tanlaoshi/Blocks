@@ -115,6 +115,7 @@ typedef struct {
 
 extern USB_UART_OPS gFtdiUart;
 extern USB_UART_OPS gCdcUart;
+extern USB_UART_OPS gFtdiEhci;
 void FtdiPublish(void);
 void CdcPublish(void);
 

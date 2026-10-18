@@ -109,24 +109,23 @@ int HalUsbMscHot(void) {
 int HalUsbUartClaim(void) {
     int Rc;
 
-    /* FTDI：先 xHCI，再 EHCI（N56VZ 棒在 RMH）；已认则 CDC 互斥跳过 */
-    FtdiPublish();
+    /* FTDI：先 xHCI，已认则跳过；否则 EHCI 就绪时再认已发布的 FTDI；再 CDC */
     Rc = gFtdiUart.Claim ? gFtdiUart.Claim() : 0;
     if (Rc == 1) {
         return 1;
     }
-    if (Ready()) {
-        Rc = FtdiClaim();
+    if (Ready() && gFtdiEhci.Claim) {
+        Rc = gFtdiEhci.Claim();
         if (Rc == 1) {
             return 1;
         }
     }
-    CdcPublish();
     return gCdcUart.Claim ? gCdcUart.Claim() : 0;
 }
 
 int HalUsbUartReady(void) {
-    return ((gFtdiUart.Ready && gFtdiUart.Ready()) || FtdiReady() ||
+    return ((gFtdiUart.Ready && gFtdiUart.Ready()) ||
+            (gFtdiEhci.Ready && gFtdiEhci.Ready()) ||
             (gCdcUart.Ready && gCdcUart.Ready())) ? 1 : 0;
 }
 

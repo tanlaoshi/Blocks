@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 int open(const char *path, int flags) {
     long r;

@@ -16,7 +16,7 @@
 #include <sched.h>
 #include <signal.h>
 #include <ToyUi.h>
-#include <toyos/task.h>
+#include <ToyOS/task.h>
 
 static TOY_TASK_SNAP gSnap;
 static int gIndex;

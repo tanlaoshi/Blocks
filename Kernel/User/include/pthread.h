@@ -6,7 +6,7 @@
 #define PTHREAD_H
 
 #include <stddef.h>
-#include <toyos/thread.h>
+#include <ToyOS/thread.h>
 
 typedef long pthread_t;
 typedef struct {

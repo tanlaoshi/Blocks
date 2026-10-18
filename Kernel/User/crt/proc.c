@@ -3,7 +3,7 @@
  * unistd.c 已 288 行，故单列。
  */
 #include <unistd.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 pid_t getpid(void) {
     return (pid_t)toy_syscall(SYS_GETPID, 0, 0, 0);

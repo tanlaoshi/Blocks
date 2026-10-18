@@ -5,7 +5,7 @@
  */
 #include <errno.h>
 #include <sys/socket.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 uint16_t htons(uint16_t Host) {
     return (uint16_t)((Host << 8) | (Host >> 8));

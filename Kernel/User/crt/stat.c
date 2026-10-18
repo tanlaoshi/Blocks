@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 static void FillFromToy(struct stat *St, const TOY_FILE_STAT *T) {
     St->st_mode = (T->Attr & TOY_ATTR_DIR) ? S_IFDIR : S_IFREG;

@@ -4,9 +4,9 @@
 #include <ToyUi.h>
 #include <string.h>
 #include <unistd.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
-#include "ToyUiPrivate.h"
+#include "Private.h"
 
 static TOY_UI_WIN s_Wins[TOY_UI_WIN_MAX];
 

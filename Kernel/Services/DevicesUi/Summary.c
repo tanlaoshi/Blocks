@@ -6,7 +6,7 @@
  * 不 include HAL 私有头。十进制格式化自备，不拉巨型 printf。
  */
 #include "DevicesUiPrivate.h"
-#include "ToyOsVersion.h"
+#include "ToyOSVersion.h"
 #include "Hal.h"
 #include "PhysicalMemory.h"
 #include "Block.h"

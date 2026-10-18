@@ -141,7 +141,7 @@ ToyKernel/
 | `Include/Abi/Errno.h` | 错误码数值（与 `User/include/errno.h` 对齐） |
 | `Include/Abi/Socket.h` | socket 常数（简化 ABI） |
 | `Include/Abi/SyscallABI.h` | 系统调用号段权威（SDK 打包进 ToySDK） |
-| `Include/Abi/ToyOsVersion.h` | 版本字符串 |
+| `Include/Abi/ToyOSVersion.h` | 版本字符串 |
 
 ### Hal/ — 硬件门面
 
@@ -1347,41 +1347,41 @@ ToyKernel/
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `User/Apps/BlitDemo.c` | PR-G-desk-3：ToyGfxDamageRect 像素 blit 演示 |
-| `User/Apps/BrkDemo.c` | PR-P3：malloc 超过旧 BSS 8KiB 上限仍成功 |
+| `User/Apps/Demos/BlitDemo.c` | PR-G-desk-3：ToyGfxDamageRect 像素 blit 演示 |
+| `User/Apps/Demos/BrkDemo.c` | PR-P3：malloc 超过旧 BSS 8KiB 上限仍成功 |
 | `User/Apps/Cat.c` | CRT2：open/read/write/close 读 TOYOS.ID（CAT.ELF） |
-| `User/Apps/CatFile.S` | 旧 int 0x80 对照；CRT 版见 Cat.c（CAT.ELF） */ |
-| `User/Apps/Count.S` | 打印 0-9 每行一个数字，验证第二个 ELF 程序 */ |
-| `User/Apps/CwdDemo.c` | getcwd / chdir / wait 退出码 |
-| `User/Apps/DirDemo.c` | PR-F4：OpenDirectory / ReadDirectory / FileStat 冒烟 |
-| `User/Apps/DynDemo.S` | 动态链接演示：调用 LIBTOY.SO 中的 toy_hello */ |
-| `User/Apps/EnosysDemo.c` | 开课前：未知 syscall 须返回 -ENOSYS（38） |
-| `User/Apps/ExecDemo.c` | PR-P1：用户态 execve 再加载 HELLO.ELF |
-| `User/Apps/Fork.S` | fork + 阻塞 wait：父打印 P，子打印 C，父 wait 后再 done */ |
-| `User/Apps/GuiDemo.c` | 链 libToyUi/libToyGfx（课堂对照：Documents/技术手册.md） |
+| `User/Apps/Assembly/CatFile.S` | 旧 int 0x80 对照；CRT 版见 Cat.c（CAT.ELF） */ |
+| `User/Apps/Assembly/Count.S` | 打印 0-9 每行一个数字，验证第二个 ELF 程序 */ |
+| `User/Apps/Demos/WorkingDirectoryDemo.c` | getcwd / chdir / wait 退出码 |
+| `User/Apps/Demos/DirDemo.c` | PR-F4：OpenDirectory / ReadDirectory / FileStat 冒烟 |
+| `User/Apps/Assembly/DynamicDemo.S` | 动态链接演示：调用 LIBTOY.SO 中的 toy_hello */ |
+| `User/Apps/Demos/EnosysDemo.c` | 开课前：未知 syscall 须返回 -ENOSYS（38） |
+| `User/Apps/Demos/ExecDemo.c` | PR-P1：用户态 execve 再加载 HELLO.ELF |
+| `User/Apps/Assembly/Fork.S` | fork + 阻塞 wait：父打印 P，子打印 C，父 wait 后再 done */ |
+| `User/Apps/Demos/GuiDemo.c` | 链 libToyUi/libToyGfx（课堂对照：Documents/技术手册.md） |
 | `User/Apps/Hello.c` | CRT：C + printf/malloc（HELLO.ELF） |
-| `User/Apps/HelloInt80.S` | 旧版 Ring3：int 0x80 write + exit（教学对照；CRT 见 Hello.c） */ |
-| `User/Apps/KillDemo.c` | PR-P4：fork 后父进程 kill(SIGTERM)，再 wait 收尸 |
-| `User/Apps/LibToy.S` | 共享库：导出 toy_hello，打印 from.so */ |
-| `User/Apps/LibcDemo.c` | PR-L2：atoi / qsort / snprintf / signal 冒烟 |
-| `User/Apps/MmapDemo.c` | PR-U-mmap 匿名 + PR-U-mmap2 文件私有映射 |
-| `User/Apps/NetDemo.S` | socket/connect/write/read/close via syscalls (needs LWIP=1) */ |
-| `User/Apps/NetLibDemo.c` | PR-L4：用 libToyNet 重写 NETDEMO 客户端路径 |
-| `User/Apps/NetServer.S` | bind/listen/accept echo once (needs LWIP=1, hostfwd :9000) |
-| `User/Apps/PipeDemo.c` | PR-P2：pipe + fork；子写父读 |
-| `User/Apps/PthreadSmoke.c` | thr-4：pthread_create/join + 自旋 mutex 冒烟 |
-| `User/Apps/SigDemo.c` | PR-U-sig：子进程安装 SIGTERM handler，父 kill 后 handler 运行并退出 |
-| `User/Apps/SleepDemo.c` | sleep / clock_ms 稳节拍冒烟 |
+| `User/Apps/Assembly/HelloInt80.S` | 旧版 Ring3：int 0x80 write + exit（教学对照；CRT 见 Hello.c） */ |
+| `User/Apps/Demos/KillDemo.c` | PR-P4：fork 后父进程 kill(SIGTERM)，再 wait 收尸 |
+| `User/Apps/Assembly/LibToy.S` | 共享库：导出 toy_hello，打印 from.so */ |
+| `User/Apps/Demos/LibcDemo.c` | PR-L2：atoi / qsort / snprintf / signal 冒烟 |
+| `User/Apps/Demos/MmapDemo.c` | PR-U-mmap 匿名 + PR-U-mmap2 文件私有映射 |
+| `User/Apps/Assembly/NetDemo.S` | socket/connect/write/read/close via syscalls (needs LWIP=1) */ |
+| `User/Apps/Demos/NetLibDemo.c` | PR-L4：用 libToyNet 重写 NETDEMO 客户端路径 |
+| `User/Apps/Assembly/NetServer.S` | bind/listen/accept echo once (needs LWIP=1, hostfwd :9000) |
+| `User/Apps/Demos/PipeDemo.c` | PR-P2：pipe + fork；子写父读 |
+| `User/Apps/Demos/PthreadSmoke.c` | thr-4：pthread_create/join + 自旋 mutex 冒烟 |
+| `User/Apps/Demos/SignalDemo.c` | PR-U-sig：子进程安装 SIGTERM handler，父 kill 后 handler 运行并退出 |
+| `User/Apps/Demos/SleepDemo.c` | sleep / clock_ms 稳节拍冒烟 |
 | `User/Apps/Snake.c` | 教学贪吃蛇（方向键或 WASD；节拍用 msleep） |
-| `User/Apps/SockDemo.c` | 刀 C：POSIX connect(sockaddr) 冒烟（同 NETLIB 路径） |
-| `User/Apps/SysFork.S` | fork + wait 走 syscall（对照 FORK.ELF 的 int 0x80） */ |
-| `User/Apps/SysHello.S` | Ring 3：用 syscall/sysret 路径 write + exit（对照 HELLO.ELF 的 int 0x80） */ |
+| `User/Apps/Demos/SocketDemo.c` | 刀 C：POSIX connect(sockaddr) 冒烟（同 NETLIB 路径） |
+| `User/Apps/Assembly/SyscallFork.S` | fork + wait 走 syscall（对照 FORK.ELF 的 int 0x80） */ |
+| `User/Apps/Assembly/SyscallHello.S` | Ring 3：用 syscall/sysret 路径 write + exit（对照 HELLO.ELF 的 int 0x80） */ |
 | `User/Apps/TaskMgr.c` | 任务管理器（课堂范例 GUI App） |
-| `User/Apps/ThreadDemo.c` | thr-5：§0.1 三条故事 + 多线程 fork 失败 / 单线程 fork 回归 |
-| `User/Apps/ThreadSmoke.c` | thr-3：create / join / gettid 冒烟 |
-| `User/Apps/WaitNoHang.S` | fork + WNOHANG：父轮询 wait/yield，子退出后再 done */ |
-| `User/Apps/WinDemo.c` | PR-G14：create_window / damage / poll_input 用户窗演示 |
-| `User/Apps/WriteFile.S` | 旧 int 0x80 对照；CRT 版见 WriteFile.c（WRITE.ELF） */ |
+| `User/Apps/Demos/ThreadDemo.c` | thr-5：§0.1 三条故事 + 多线程 fork 失败 / 单线程 fork 回归 |
+| `User/Apps/Demos/ThreadSmoke.c` | thr-3：create / join / gettid 冒烟 |
+| `User/Apps/Assembly/WaitNoHang.S` | fork + WNOHANG：父轮询 wait/yield，子退出后再 done */ |
+| `User/Apps/Demos/WindowDemo.c` | PR-G14：create_window / damage / poll_input 用户窗演示 |
+| `User/Apps/Assembly/WriteFile.S` | 旧 int 0x80 对照；CRT 版见 WriteFile.c（WRITE.ELF） */ |
 | `User/Apps/WriteFile.c` | CRT2：写 USERNOTE.TXT（WRITE.ELF） |
 
 ### crt
@@ -1416,10 +1416,10 @@ ToyKernel/
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `User/include/FsUtil.h` | 用户态路径 / 目录 / 多卷薄封装（libFsUtil，PR-A-fsutil） |
+| `User/include/VolumePath.h` | 用户态卷路径 / 列目录（libVolumePath） |
 | `User/include/ToyGfx.h` | 用户态绘图薄库（libToyGfx） |
 | `User/include/ToyNet.h` | 用户态 libToyNet（PR-L4 / 网络双轨 C1 / 刀 C） |
-| `User/include/ToySyscall.h` | 兼容入口（PR-L1） |
+| `User/include/ToyOS/syscall.h` | 兼容入口（PR-L1） |
 | `User/include/ToyUi.h` | 用户态控件薄库（libToyUi） |
 | `User/include/ctype.h` | 最小字符分类（PR-L2） |
 | `User/include/dirent.h` | 目录 / 文件状态（PR-F4 + PR-U-abi-dual 刀 B） |
@@ -1437,7 +1437,7 @@ ToyKernel/
 | `User/include/sys/socket.h` | 第 1 轨 POSIX 套接字声明（PR-U-abi-dual 刀 C） |
 | `User/include/sys/stat.h` | 教学最小 stat / fstat（PR-U-stat） |
 | `User/include/sys/types.h` | 用户态基础类型（PR-L1 + 刀 C socklen） |
-| `User/include/toyos.h` | 用户态 CRT 伞头（PR-L1） |
+| `User/include/ToyOS.h` | 用户态 CRT 伞头（PR-L1） |
 | `User/include/toyos/syscall.h` | 系统调用号与薄封装（PR-L1；原 toy_syscall.h） |
 | `User/include/toyos/task.h` | 任务快照（SYS_TASK_SNAP；与 Shell `ps` 同源字段） |
 | `User/include/toyos/thread.h` | PR-U-thread：入口桩 + create/join/exit/gettid |
@@ -1448,25 +1448,25 @@ ToyKernel/
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `User/Library/FsUtil/FsUtil.c` | libFsUtil（PR-A-fsutil） |
+| `User/Library/VolumePath/VolumePath.c` | 用户态卷路径 / 列目录（libVolumePath） |
 | `User/Library/ToyGfx/ToyGfx.c` | libToyGfx |
 | `User/Library/ToyNet/ToyNet.c` | libToyNet（PR-L4 / PR-N-dns / PR-A-net-dns） |
 | `User/Library/ToyUi/ToyUi.c` | libToyUi 核心：窗 / 标签 / 底栏按钮 / Poll（PR-S-toyui-1） |
-| `User/Library/ToyUi/ToyUiPrivate.h` | PR-S-toyui-1：libToyUi 模块内共享 |
-| `User/Library/ToyUi/ToyUiWidgets.c` | PR-S-toyui-1：复选框 / 列表 / 输入框 |
+| `User/Library/ToyUi/Private.h` | PR-S-toyui-1：libToyUi 模块内共享 |
+| `User/Library/ToyUi/Widgets.c` | PR-S-toyui-1：复选框 / 列表 / 输入框 |
 
 ### Pkg
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `User/Pkg/Gui/Makefile` | （见文件名 / 同目录 README） |
-| `User/Pkg/Gui/main.c` | Pkg/Gui — 第一个 GUI 程序模板（PR-L3） |
-| `User/Pkg/Makefile` | （见文件名 / 同目录 README） |
-| `User/Pkg/Net/Makefile` | （见文件名 / 同目录 README） |
-| `User/Pkg/Net/main.c` | Pkg/Net — libToyNet 课外模板（PR-L4） |
-| `User/Pkg/README.md` | 用户程序模板（PR-L1） |
-| `User/Pkg/ToyUser.mk` | ToyUser.mk — 课外 / 模板共用规则（PR-L1） |
-| `User/Pkg/main.c` | 课外用户程序模板示例（PR-L1） |
+| `User/Package/Gui/Makefile` | （见文件名 / 同目录 README） |
+| `User/Package/Gui/main.c` | Pkg/Gui — 第一个 GUI 程序模板（PR-L3） |
+| `User/Package/Makefile` | （见文件名 / 同目录 README） |
+| `User/Package/Net/Makefile` | （见文件名 / 同目录 README） |
+| `User/Package/Net/main.c` | Pkg/Net — libToyNet 课外模板（PR-L4） |
+| `User/Package/README.md` | 用户程序模板（PR-L1） |
+| `User/Package/ToyUser.mk` | ToyUser.mk — 课外 / 模板共用规则（PR-L1） |
+| `User/Package/main.c` | 课外用户程序模板示例（PR-L1） |
 
 ### user-arm64.ld
 

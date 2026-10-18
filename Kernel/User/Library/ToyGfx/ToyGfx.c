@@ -2,7 +2,7 @@
  * ToyGfx.c — libToyGfx
  */
 #include <ToyGfx.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 #define TOY_GFX_TILE 64u
 

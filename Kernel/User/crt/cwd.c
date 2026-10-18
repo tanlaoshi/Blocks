@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <unistd.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 char *getcwd(char *buf, size_t size) {
     if (!buf || size < 2) {

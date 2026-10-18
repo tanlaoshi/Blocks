@@ -1,7 +1,7 @@
 /* User/crt/crt0_aarch64.S — PR-A12：_start → main → exit(SVC)
  * 号段重排后 SYS_EXIT=50（勿再写死 0）
  */
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 	.section .text
 	.global _start
 	.extern main

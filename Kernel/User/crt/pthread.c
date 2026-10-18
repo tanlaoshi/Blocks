@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
-#include <toyos/thread.h>
+#include <ToyOS/thread.h>
 
 int pthread_create(pthread_t *Thread, const pthread_attr_t *Attr,
                    void *(*Start)(void *), void *Arg) {

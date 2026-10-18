@@ -2,7 +2,7 @@
  * sleep.c — sleep / usleep / msleep / clock_ms（SYS_SLEEP / SYS_CLOCK_MS）
  */
 #include <unistd.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 unsigned long clock_ms(void) {
     return (unsigned long)toy_clock_ms();

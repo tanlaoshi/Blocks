@@ -5,7 +5,7 @@
 #define SIGNAL_H
 
 #include <sys/types.h>
-#include <toyos/syscall.h>
+#include <ToyOS/syscall.h>
 
 typedef void (*sighandler_t)(int);
 

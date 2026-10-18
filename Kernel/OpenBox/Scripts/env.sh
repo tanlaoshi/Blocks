@@ -4,7 +4,8 @@
 #   source ~/Blocks/Kernel/OpenBox/Scripts/env.sh
 #   build                 # Kernel
 #   boot                  # Boot → BOOTX64.EFI
-#   sync / run / smoke    # Runtime
+#   sync                  # 本机 Runtime
+#   sync usb              # 已挂载的 ESP + TOYOS U 盘
 #   run-virt-arm|riscv    # QEMU virt -kernel
 #
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
@@ -42,7 +43,14 @@ boot() {
 }
 
 sync() {
-    (cd "$BLOCKS_RUNTIME" && ./sync.sh "$@")
+    case "${1:-}" in
+        usb|nuc|kernel)
+            bash "$BLOCKS_SCRIPTS/sync.sh" "$@"
+            ;;
+        *)
+            (cd "$BLOCKS_RUNTIME" && ./sync.sh "$@")
+            ;;
+    esac
 }
 
 run() {
@@ -66,5 +74,5 @@ run-virt-riscv() {
 }
 
 echo "BLOCKS_ROOT=$BLOCKS_ROOT"
-echo "短名: build boot sync run smoke|smoke-boot run-virt-arm run-virt-riscv"
+echo "短名: build boot sync|sync usb run smoke|smoke-boot run-virt-arm run-virt-riscv"
 unset _BlocksEnvDir _BlocksRootCand

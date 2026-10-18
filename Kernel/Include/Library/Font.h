@@ -43,6 +43,8 @@ const UINT8 *FontTtfBlob(UINT32 *OutSize);
 int FontTtfInit(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
+/* 不在点阵里：x86 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
+int FontTtfCachePending(UINT32 Cp);
 /* PR-UI-ttf-3：仅 Worker / 开窗短 burst；绘制路径 FontTtfCacheGet 只 Lookup */
 void FontTtfPreheatUtf8(const char *S);
 /* Worker：泵绘制路径排队的缺字；1=仍有排队 */
@@ -78,6 +80,8 @@ const UINT8 *FontGlyph(char C);
 UINTN Utf8Decode(const char *S, UINT32 *OutCp);
 /* ASCII→Terminus；汉字先 TTF 缓存，再 TOYF 文件字，再点阵 */
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
+/* 上一次 FontGlyphCp 返回空，是因为 x86 还在等 TTF，这一帧先不画框。 */
+int FontGlyphCpDeferred(void);
 /* 最近一次 FontGlyphCp 的位深（ASCII=1，TTF=8，cjk32=4） */
 UINT32 FontGlyphCpBpp(void);
 const UINT8 *FontCjk32Lookup(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);

@@ -377,6 +377,9 @@ void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
     }
     G = FontGlyphCp(Cp, &W, &H);
     if (!G) {
+        if (FontGlyphCpDeferred()) {
+            return;
+        }
         VideoDrawMissingGlyphBox(X, Y, Color);
         return;
     }

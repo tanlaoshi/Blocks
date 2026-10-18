@@ -97,6 +97,24 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     return 0;
 }
 
+int FontTtfCachePending(UINT32 Cp) {
+    UINT32 w;
+
+    if (Cp < 128u || SlotLookup(Cp) != 0) {
+        return 0;
+    }
+    for (w = 0; w < gWantN; w++) {
+        if (gWant[w] == Cp) {
+            return 1;
+        }
+    }
+    if (gWantN >= TTF_WANT_N) {
+        return 0;
+    }
+    gWant[gWantN++] = Cp;
+    return 1;
+}
+
 static void FillSlot(UINT32 Cp) {
     TTF_SLOT *Slot;
 

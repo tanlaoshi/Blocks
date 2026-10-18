@@ -579,10 +579,17 @@ static const UINT8 *FileGlyph(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     return 0;
 }
 
+static int gGlyphDefer;
+
+int FontGlyphCpDeferred(void) {
+    return gGlyphDefer;
+}
+
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const FONT_FACE *F;
     const UINT8 *G;
 
+    gGlyphDefer = 0;
     if (Cp >= 32 && Cp < 127) {
         F = FontGetCurrent();
         G = FontGlyph((char)Cp);
@@ -611,7 +618,16 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     }
     G = FontCjk32Lookup(Cp, OutW, OutH);
     gGlyphCpBpp = G ? FontCjkBitsPerPixel() : 0;
-    return G;
+    if (G) {
+        return G;
+    }
+#if defined(__x86_64__)
+    /* GB2312 没有这字：等 TTF。队列满了就让调用方画缺字框。 */
+    if (FontTtfCachePending(Cp)) {
+        gGlyphDefer = 1;
+    }
+#endif
+    return 0;
 }
 
 UINT32 FontGlyphCpBpp(void) {

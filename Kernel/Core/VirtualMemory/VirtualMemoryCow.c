@@ -3,7 +3,7 @@
  */
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
-#include "Hal.h"
+#include "HalPageTable.h"
 #include "Debug.h"
 /*
  * COW fork：共享用户物理页；原可写页双方去掉 W、打上 COW（HalPageMarkCopyOnWrite）。

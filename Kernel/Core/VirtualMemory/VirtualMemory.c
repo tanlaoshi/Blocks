@@ -3,7 +3,7 @@
  */
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
-#include "Hal.h"
+#include "HalPageTable.h"
 #include "Debug.h"
 #include "IdentityMap.h"
 

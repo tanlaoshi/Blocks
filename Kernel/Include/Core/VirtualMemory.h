@@ -5,7 +5,8 @@
 #define VIRTUAL_MEMORY_H
 
 #include "BootTypes.h"
-#include "Hal.h"
+#include "HalPageTable.h"
+#include "Hal.h" /* 用户虚址 HalUser* 仍在总头 */
 
 #define PTE_PRESENT  HAL_PAGE_PRESENT
 #define PTE_WRITABLE HAL_PAGE_WRITABLE

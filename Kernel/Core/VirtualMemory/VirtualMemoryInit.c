@@ -5,7 +5,7 @@
  */
 #include "KernelModulesPrivate.h"
 #include "BootInfo.h"
-#include "Hal.h"
+#include "HalPlatform.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
 

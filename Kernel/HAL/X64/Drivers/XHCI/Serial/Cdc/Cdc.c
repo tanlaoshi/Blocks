@@ -1,8 +1,6 @@
-/*
- * Cdc.c — CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A）
- */
+/* Cdc.c — CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A） */
 #include "XHCI/Private.h"
-
+#include "XHCI/Serial/Cdc/Private.h"
 UINT32 gCdcSlot;
 UINT32 gCdcPort;
 UINT32 gCdcRoute;

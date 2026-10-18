@@ -1,14 +1,9 @@
 /*
  * CdcRx.c — PR-H-usb-uart-cdc-2：CDC Bulk IN → 字符环（无状态前缀）
  */
-#include "XHCI/Private.h"
+#include "XHCI/Serial/Cdc/Private.h"
 
 #define CDC_RX_Q 256
-
-extern UINT32 gCdcBulkInDci;
-extern UINT16 gCdcBulkInMps;
-extern XHCI_TRB gCdcBulkInRing[RING_SIZE];
-extern RING_STATE gCdcBulkIn;
 
 static UINT8 gCdcRxDma[64] __attribute__((aligned(64)));
 static char gCdcRxQ[CDC_RX_Q];

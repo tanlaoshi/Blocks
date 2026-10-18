@@ -1,20 +1,7 @@
 /*
  * CdcTx.c — PR-H-usb-uart-cdc-1：CDC Bulk OUT TX + ConfigEP + 事件匹配
  */
-#include "XHCI/Private.h"
-
-extern UINT32 gCdcBulkOutDci;
-extern UINT16 gCdcBulkOutMps;
-extern UINT32 gCdcBulkInDci;
-extern UINT16 gCdcBulkInMps;
-extern UINT32 gCdcRoute;
-extern UINT8 gCdcHubSlot;
-extern UINT8 gCdcTtPort;
-extern UINT8 gCdcDevCtx[2048];
-extern XHCI_TRB gCdcBulkOutRing[RING_SIZE];
-extern RING_STATE gCdcBulkOut;
-extern XHCI_TRB gCdcBulkInRing[RING_SIZE];
-extern RING_STATE gCdcBulkIn;
+#include "XHCI/Serial/Cdc/Private.h"
 
 static UINT8 gCdcTxBuf[64] __attribute__((aligned(64)));
 static volatile UINT32 gCdcBulkDone;

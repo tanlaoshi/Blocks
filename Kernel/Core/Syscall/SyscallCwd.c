@@ -91,7 +91,7 @@ int SysChdir(UINT64 UserPath) {
     if (!T || !T->IsUser) {
         return -1;
     }
-    if (CopyUserCString(Path, UserPath, PATH_MAX_LEN) != 0 || Path[0] == 0) {
+    if (CopyUserPath(Path, UserPath) != 0 || Path[0] == 0) {
         return -1;
     }
     if (Path[0] == '.' && Path[1] == 0) {

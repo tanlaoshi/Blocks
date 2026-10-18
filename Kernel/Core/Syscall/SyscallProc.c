@@ -50,25 +50,16 @@ _Static_assert(sizeof(TASK_SNAP) <= 1024, "TASK_SNAP too large");
 int SysExecve(HAL_INTERRUPT_FRAME *Frame, UINT64 UserPath, UINT64 UserArgv,
                      UINT64 UserEnvp) {
     char Path[PATH_MAX_LEN + 1];
-    UINTN i;
     TASK *T = SchedulerCurrent();
 
     if (!T || !T->IsUser || !Frame) {
         return -1;
     }
     VirtualMemoryLoadPageTable(T->PageRoot);
-    for (i = 0; i < PATH_MAX_LEN; i++) {
-        char C;
-        if (VirtualMemoryCopyFromUser(&C, UserPath + i, 1) < 0) {
-            VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
-            return -1;
-        }
-        Path[i] = C;
-        if (C == 0) {
-            break;
-        }
+    if (CopyUserPath(Path, UserPath) != 0) {
+        VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
+        return -1;
     }
-    Path[PATH_MAX_LEN] = 0;
     VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
     if (Path[0] == 0) {
         return -1;

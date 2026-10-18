@@ -10,6 +10,7 @@
 #include "LwIp.h"
 #include "Errno.h"
 #include "BootTypes.h"
+#include "PhysicalMemory.h"
 
 _Static_assert(sizeof(TOY_NET_DNS_QUERY) == 132, "TOY_NET_DNS_QUERY layout");
 
@@ -30,6 +31,34 @@ int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen) {
         }
     }
     Dst[MaxLen - 1] = 0;
+    return 0;
+}
+
+int CopyUserPath(char *Dst, UINT64 UserSrc) {
+    UINTN Got = 0;
+
+    if (!Dst) {
+        return -1;
+    }
+    while (Got < PATH_MAX_LEN) {
+        UINTN PageLeft = PAGE_SIZE - (UINTN)((UserSrc + Got) & (PAGE_SIZE - 1));
+        UINTN Chunk = PATH_MAX_LEN - Got;
+        UINTN i;
+
+        if (Chunk > PageLeft) {
+            Chunk = PageLeft;
+        }
+        if (VirtualMemoryCopyFromUser(Dst + Got, UserSrc + Got, Chunk) < 0) {
+            return -1;
+        }
+        for (i = 0; i < Chunk; i++) {
+            if (Dst[Got + i] == 0) {
+                return 0;
+            }
+        }
+        Got += Chunk;
+    }
+    Dst[PATH_MAX_LEN] = 0;
     return 0;
 }
 
@@ -81,23 +110,11 @@ int SysWrite(int Fd, UINT64 UserBuf, UINTN Len) {
 int SysOpen(UINT64 UserPath) {
     char Path[PATH_MAX_LEN + 1];
     TASK *T = SchedulerCurrent();
-    UINTN i;
 
     if (!T || !T->IsUser) {
         return -1;
     }
-    for (i = 0; i < PATH_MAX_LEN; i++) {
-        char C;
-        if (VirtualMemoryCopyFromUser(&C, UserPath + i, 1) < 0) {
-            return -1;
-        }
-        Path[i] = C;
-        if (C == 0) {
-            break;
-        }
-    }
-    Path[PATH_MAX_LEN] = 0;
-    if (Path[0] == 0) {
+    if (CopyUserPath(Path, UserPath) != 0 || Path[0] == 0) {
         return -1;
     }
     if (CwdResolve(T, Path, (int)sizeof(Path)) != 0) {
@@ -161,22 +178,13 @@ int SysFileStat(UINT64 UserPath, UINT64 UserOut) {
     char Path[PATH_MAX_LEN + 1];
     FAT_FILE_STAT St;
     TASK *T = SchedulerCurrent();
-    UINTN i;
 
     if (!T || !T->IsUser || UserOut == 0) {
         return -1;
     }
-    for (i = 0; i < PATH_MAX_LEN; i++) {
-        char C;
-        if (VirtualMemoryCopyFromUser(&C, UserPath + i, 1) < 0) {
-            return -1;
-        }
-        Path[i] = C;
-        if (C == 0) {
-            break;
-        }
+    if (CopyUserPath(Path, UserPath) != 0) {
+        return -1;
     }
-    Path[PATH_MAX_LEN] = 0;
     if (CwdResolve(T, Path, (int)sizeof(Path)) != 0) {
         return -1;
     }
@@ -215,7 +223,6 @@ int SysFstat(int Fd, UINT64 UserOut) {
 int SysOpenDirectory(UINT64 UserPath) {
     char Path[PATH_MAX_LEN + 1];
     TASK *T = SchedulerCurrent();
-    UINTN i;
 
     if (!T || !T->IsUser) {
         return -1;
@@ -223,18 +230,8 @@ int SysOpenDirectory(UINT64 UserPath) {
     /* 空路径 = 默认卷根 */
     if (UserPath == 0) {
         Path[0] = 0;
-    } else {
-        for (i = 0; i < PATH_MAX_LEN; i++) {
-            char C;
-            if (VirtualMemoryCopyFromUser(&C, UserPath + i, 1) < 0) {
-                return -1;
-            }
-            Path[i] = C;
-            if (C == 0) {
-                break;
-            }
-        }
-        Path[PATH_MAX_LEN] = 0;
+    } else if (CopyUserPath(Path, UserPath) != 0) {
+        return -1;
     }
     if (Path[0] && CwdResolve(T, Path, (int)sizeof(Path)) != 0) {
         return -1;

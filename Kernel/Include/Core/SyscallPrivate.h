@@ -14,6 +14,8 @@
 #define WIN_STR_MAX  127
 
 int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen);
+/* 路径：最多 PATH_MAX_LEN 字节，按页一次拷入；越界与现在一样返回 -1。缓冲至少 PATH_MAX_LEN+1 */
+int CopyUserPath(char *Dst, UINT64 UserSrc);
 
 /* SyscallFs.c / SyscallFsSocket.c */
 int SysWrite(int Fd, UINT64 UserBuf, UINTN Len);

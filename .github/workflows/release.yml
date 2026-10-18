@@ -24,8 +24,11 @@ jobs:
       - name: Clone lwIP
         working-directory: Kernel
         run: |
-          git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
-            https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
+          if [ ! -f ThirdParty/lwip/src/include/lwip/init.h ]; then
+            rm -rf ThirdParty/lwip
+            git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
+              https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
+          fi
 
       - name: Fetch xPack toolchains (arm64 + riscv)
         working-directory: Kernel

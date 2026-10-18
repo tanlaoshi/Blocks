@@ -169,7 +169,9 @@ void ApplyItem(int Idx) {
         ApplyDisplayChoice(Idx);
         return;
     case SETTINGS_CAT_LANGUAGE:
-        (void)LocaleSet(Idx == 0 ? LOC_LANG_EN : LOC_LANG_ZH);
+        if (Idx >= 0 && Idx < LocaleCount()) {
+            (void)LocaleSet((LOC_LANG)Idx);
+        }
         break;
     case SETTINGS_CAT_SCALE:
         ApplyScaleChoice(Idx);

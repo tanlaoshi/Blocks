@@ -200,6 +200,24 @@ const char *LocaleCode(void) {
     return gLocale[gLang].Code;
 }
 
+int LocaleCount(void) {
+    return gLocaleCount;
+}
+
+const char *LocaleCodeAt(int Index) {
+    if (Index < 0 || Index >= gLocaleCount || gLocale[Index].Code == 0) {
+        return "";
+    }
+    return gLocale[Index].Code;
+}
+
+int LocaleIndex(void) {
+    if ((int)gLang < 0 || (int)gLang >= gLocaleCount) {
+        return 0;
+    }
+    return (int)gLang;
+}
+
 int LocaleSetCode(const char *Code) {
     int Found = FindCode(Code);
 

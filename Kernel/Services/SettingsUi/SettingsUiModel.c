@@ -69,7 +69,7 @@ int ItemCount(void) {
     case SETTINGS_CAT_SHELL:    return SHELL_COLOR_COUNT;
     case SETTINGS_CAT_FONT:     return (int)FontCount();
     case SETTINGS_CAT_DISPLAY:  return 1 + ModeCount();
-    case SETTINGS_CAT_LANGUAGE: return 2;
+    case SETTINGS_CAT_LANGUAGE: return LocaleCount();
     case SETTINGS_CAT_SCALE:    return SCALE_COUNT;
     case SETTINGS_CAT_THEME:    return THEME_CHOICE_COUNT;
     case SETTINGS_CAT_EFFECTS:  return EFFECTS_CHOICE_COUNT;
@@ -123,10 +123,33 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
             CopyStr(Out, OutMax, gModes[Idx - 1].Label);
         }
         break;
-    case SETTINGS_CAT_LANGUAGE:
-        CopyStr(Out, OutMax,
-                (Idx == 0) ? LocStr(MSG_SET_LANG_EN) : LocStr(MSG_SET_LANG_ZH));
+    case SETTINGS_CAT_LANGUAGE: {
+        const char *Code = LocaleCodeAt(Idx);
+        int p = 0;
+        int c = 0;
+        int n = Idx + 1;
+
+        if (OutMax < 2) {
+            break;
+        }
+        if (n >= 10 && p < OutMax - 1) {
+            Out[p++] = (char)('0' + (n / 10) % 10);
+        }
+        if (p < OutMax - 1) {
+            Out[p++] = (char)('0' + (n % 10));
+        }
+        if (p < OutMax - 1) {
+            Out[p++] = '.';
+        }
+        if (p < OutMax - 1) {
+            Out[p++] = ' ';
+        }
+        while (Code[c] != 0 && p < OutMax - 1) {
+            Out[p++] = Code[c++];
+        }
+        Out[p] = 0;
         break;
+    }
     case SETTINGS_CAT_SCALE:
         Sc = gScales[Idx];
         P = 0;
@@ -207,7 +230,7 @@ int CurrentItemIndex(void) {
         }
         return 0;
     case SETTINGS_CAT_LANGUAGE:
-        return (LocaleGet() == LOC_LANG_ZH) ? 1 : 0;
+        return LocaleIndex();
     case SETTINGS_CAT_SCALE:
         Cur = ThemeUiScale();
         for (i = 0; i < SCALE_COUNT; i++) {

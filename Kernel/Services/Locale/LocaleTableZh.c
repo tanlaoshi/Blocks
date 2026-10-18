@@ -143,4 +143,6 @@ const char *const gZhFallback[MSG_COUNT] = {
     "青",
     "黄",
     "自动",
+    "是",
+    "否",
 };

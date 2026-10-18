@@ -143,4 +143,6 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_COLOR_CYAN",
     "MSG_COLOR_YELLOW",
     "MSG_SET_DISP_AUTO",
+    "MSG_DEV_YES",
+    "MSG_DEV_NO",
 };

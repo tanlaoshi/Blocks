@@ -143,4 +143,6 @@ const char *const gEnFallback[MSG_COUNT] = {
     "Cyan",
     "Yellow",
     "Auto",
+    "Yes",
+    "No",
 };

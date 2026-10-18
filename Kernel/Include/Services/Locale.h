@@ -154,6 +154,8 @@ typedef enum {
     MSG_COLOR_CYAN,
     MSG_COLOR_YELLOW,
     MSG_SET_DISP_AUTO,
+    MSG_DEV_YES,
+    MSG_DEV_NO,
     MSG_COUNT
 } MSG_ID;
 
@@ -163,6 +165,9 @@ void LocaleReload(void);
 LOC_LANG LocaleGet(void);
 /* 当前语言代码，如 en、zh，或 Assets/Locale 里多出来的文件名 */
 const char *LocaleCode(void);
+int LocaleCount(void);
+const char *LocaleCodeAt(int Index);
+int LocaleIndex(void);
 /* 成功 0；写盘失败仍切换内存语言并返回非 0 */
 int LocaleSet(LOC_LANG Lang);
 /* 只接受表里有的代码。没有对应文件的代码不在表里。成功 0 */

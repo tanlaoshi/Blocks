@@ -230,10 +230,8 @@ static void SumComposeMem(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
 
 static void SumComposeHyper(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
-    int Zh = (LocaleGet() == LOC_LANG_ZH);
-
     BufInit(&B, Out, Max);
-    BufStr(&B, S->Hypervisor ? (Zh ? "是" : "Yes") : (Zh ? "否" : "No"));
+    BufStr(&B, S->Hypervisor ? LocStr(MSG_DEV_YES) : LocStr(MSG_DEV_NO));
     BufFin(&B);
 }
 

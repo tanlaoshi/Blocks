@@ -146,9 +146,44 @@ static void CommandFont(int Argc, char **Argv) {
     }
 }
 
+static int AppendText(char *Out, int Max, int Pos, const char *Text) {
+    int i;
+
+    if (Text == 0) {
+        return Pos;
+    }
+    for (i = 0; Text[i] != 0 && Pos + 1 < Max; i++) {
+        Out[Pos++] = Text[i];
+    }
+    Out[Pos] = 0;
+    return Pos;
+}
+
+static void WriteLangList(char *Out, int Max, const char *Prefix, const char *Suffix) {
+    int Pos = 0;
+    int i;
+
+    Pos = AppendText(Out, Max, Pos, Prefix);
+    for (i = 0; i < LocaleCount(); i++) {
+        if (i > 0) {
+            Pos = AppendText(Out, Max, Pos, "|");
+        }
+        Pos = AppendText(Out, Max, Pos, LocaleCodeAt(i));
+    }
+    if (LocaleCount() > 0) {
+        Pos = AppendText(Out, Max, Pos, "|");
+    }
+    (void)AppendText(Out, Max, Pos, Suffix);
+}
+
+static char gLangHelp[96];
+
 static void CommandLang(int Argc, char **Argv) {
+    char Line[128];
+
     if (Argc < 2) {
-        gConsole.Write(LocStr(MSG_LANG_USAGE));
+        WriteLangList(Line, (int)sizeof(Line), "usage: lang ", "reload\n");
+        gConsole.Write(Line);
         gConsole.Write(LocStr(MSG_LANG_NOW));
         gConsole.Write(LocaleCode());
         gConsole.Write("\n");
@@ -162,7 +197,8 @@ static void CommandLang(int Argc, char **Argv) {
         return;
     }
     if (LocaleSetCode(Argv[1]) != 0) {
-        gConsole.Write(LocStr(MSG_LANG_BAD));
+        WriteLangList(Line, (int)sizeof(Line), "lang: bad value (use ", "reload)\n");
+        gConsole.Write(Line);
         return;
     }
     gConsole.Write(LocStr(MSG_LANG_SET));
@@ -172,7 +208,8 @@ void ShellCommandsFsUiRegister(void) {
     gConsole.Register2("test", "glyph", "UTF-8 Chinese glyph test", CommandZh);
     gConsole.RegisterAliasLine("zh", "test", "glyph");
 
-    gConsole.Register2("set", "language", "set language en|zh|reload", CommandLang);
+    WriteLangList(gLangHelp, (int)sizeof(gLangHelp), "set language ", "reload");
+    gConsole.Register2("set", "language", gLangHelp, CommandLang);
     gConsole.RegisterAliasLine("lang", "set", "language");
     gConsole.RegisterAliasLine("language", "set", "language");
 

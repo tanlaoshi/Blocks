@@ -166,17 +166,17 @@ fi
 
 echo "Build successful: $ELF (BOARD=$BOARD DEBUG=$DEBUG LWIP=$LWIP BRINGUP=$BRINGUP)"
 
-# CI 只 checkout ToyKernel，无 ../ToyImage；有则同步到 RootFs/$HAL
+# CI 只 checkout 内核，无 ../Runtime；有则同步到 RootFs/$HAL
 # PR-LAN-store-src：卷根仅 ROOTFS-ELF 白名单；商店在 Store/（废 Assets/Store + StoreCache）
-if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../ToyImage/RootFs/X64 ]; then
-    DEST=../ToyImage/RootFs/X64
-    IMAGE_STORE=../ToyImage/Store
+if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 ]; then
+    DEST=../Runtime/RootFs/X64
+    IMAGE_STORE=../Runtime/Store
     USER_OUT="$BUILDDIR/User"
     cp -f "$ELF" "$DEST/Kernel.elf"
     # Image 种子：Assets → Guest Assets/
-    if [ -d ../ToyImage/Assets ]; then
+    if [ -d ../Runtime/Assets ]; then
         mkdir -p "$DEST/Assets"
-        cp -a ../ToyImage/Assets/. "$DEST/Assets/"
+        cp -a ../Runtime/Assets/. "$DEST/Assets/"
         rm -rf "$DEST/Assets/Store"
     fi
 
@@ -224,7 +224,7 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../ToyImage/RootFs/X64
     PackStore snake "$USER_OUT/snake.elf" SNAKE.ELF
     PackStore windemo "$USER_OUT/windemo.elf" WINDEMO.ELF
     PackStore blitdemo "$USER_OUT/blitdemo.elf" BLITDEMO.ELF
-    # CHAT-4：chat 只入 ToyImage/Store（供 export-store-lan），不进 Guest DEST。
+    # CHAT-4：chat 只入 Runtime/Store（供 export-store-lan），不进 Guest DEST。
     mkdir -p "$IMAGE_STORE/packages/chat"
     cp -f "$USER_OUT/chat.elf" "$IMAGE_STORE/packages/chat/CHAT.ELF"
     if [ -f "$IMAGE_STORE/catalog.txt" ]; then
@@ -253,19 +253,18 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../ToyImage/RootFs/X64
 
     echo "Synced Kernel + root whitelist + Store/packages + Apps/<id> -> $DEST/"
 elif [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ]; then
-    echo "note: no ../ToyImage/RootFs/X64 (CI) — skip demo ELF copy"
+    echo "note: no ../Runtime/RootFs/X64 (CI) — skip demo ELF copy"
 else
-    echo "Non-x86 / bringup ELF (not copied to ToyImage root): $ELF"
+    echo "Non-x86 / bringup ELF (not copied to Runtime root): $ELF"
     if [ "$BRINGUP" = "0" ] && [ -f "$USER_HELLO" ]; then
         case "$ARCH" in
             arm64) HAL_DIR=Arm64 ;;
             riscv) HAL_DIR=RiscV ;;
             *) HAL_DIR= ;;
         esac
-        if [ -n "$HAL_DIR" ]; then
-            mkdir -p "../ToyImage/RootFs/$HAL_DIR"
-            cp -f "$USER_HELLO" "../ToyImage/RootFs/$HAL_DIR/HELLO.ELF"
-            echo "Copied $USER_HELLO -> ../ToyImage/RootFs/$HAL_DIR/HELLO.ELF"
+        if [ -n "$HAL_DIR" ] && [ -d "../Runtime/RootFs/$HAL_DIR" ]; then
+            cp -f "$USER_HELLO" "../Runtime/RootFs/$HAL_DIR/HELLO.ELF"
+            echo "Copied $USER_HELLO -> ../Runtime/RootFs/$HAL_DIR/HELLO.ELF"
         fi
     fi
 fi

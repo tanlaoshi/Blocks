@@ -65,7 +65,7 @@ proc find_image_root {} {
         return [file dirname $cand]
     }
     foreach up {. .. ../.. ../../..} {
-        set t [file normalize [file join [pwd] $up ToyImage]]
+        set t [file normalize [file join [pwd] $up Runtime]]
         if {[file exists [file join $t RootFs X64 TOYOS.ID]]} { return $t }
         set t2 [file normalize [file join [pwd] $up]]
         if {[file exists [file join $t2 RootFs X64 TOYOS.ID]]} { return $t2 }
@@ -74,7 +74,7 @@ proc find_image_root {} {
 }
 set image_root [find_image_root]
 if {$image_root eq ""} {
-    send_user "error: ToyImage not found (need RootFs/X64/TOYOS.ID)\n"
+    send_user "error: Runtime not found (need RootFs/X64/TOYOS.ID)\n"
     exit 2
 }
 set run_split [file normalize [file join $image_root .. Scripts lib run-split.sh]]

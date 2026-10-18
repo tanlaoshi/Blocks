@@ -9,7 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(toyos_resolve_root "$0")"
 toyos_load_config "$ROOT"
 LIB="$(toyos_scripts_lib "$0")"
-IMG="$ROOT/ToyImage"
+IMG="$(toyos_image_root "$0")"
 
 SUITE="${1:-smoke}"
 shift || true

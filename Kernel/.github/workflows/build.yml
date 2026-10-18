@@ -1,4 +1,4 @@
-# Build ToyKernel（三架构 + smoke；适配并列 ToyKernel+ToyImage / OpenBox Scripts）
+# Build Kernel（三架构 + smoke；运行镜像在 Runtime）
 name: build
 
 on:
@@ -106,17 +106,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      # 并列布局：薄入口可落到 ToyKernel/OpenBox/Scripts/lib
-      - name: Checkout ToyKernel
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: ToyKernel
-
-      - name: Checkout ToyImage
-        uses: actions/checkout@v4
-        with:
-          repository: tanlaoshi/ToyImage
-          path: ToyImage
 
       - name: Download Kernel.elf
         uses: actions/download-artifact@v4
@@ -132,12 +123,21 @@ jobs:
 
       - name: Place Kernel.elf
         run: |
-          mkdir -p ToyImage/RootFs/X64
-          cp artifact/Kernel.elf ToyImage/RootFs/X64/Kernel.elf
-          test -f ToyImage/RootFs/X64/Kernel.elf
-          test -f ToyImage/Esp/X64/EFI/BOOT/BOOTX64.EFI
+          if [ -d Runtime/Esp ]; then
+            IMG=Runtime
+          elif [ -d ../Runtime/Esp ]; then
+            IMG=../Runtime
+          else
+            echo "error: Runtime not in this checkout" >&2
+            exit 1
+          fi
+          mkdir -p "$IMG/RootFs/X64"
+          cp artifact/Kernel.elf "$IMG/RootFs/X64/Kernel.elf"
+          test -f "$IMG/RootFs/X64/Kernel.elf"
+          test -f "$IMG/Esp/X64/EFI/BOOT/BOOTX64.EFI"
+          echo "IMG=$IMG" >> "$GITHUB_ENV"
 
       - name: Smoke boot (TOY_SMP=1)
         run: |
           export TOYOS_ROOT="$GITHUB_WORKSPACE"
-          TOY_SMP=1 SMOKE_TIMEOUT=120 ./ToyKernel/OpenBox/Scripts/smoke-boot.sh
+          TOY_SMP=1 SMOKE_TIMEOUT=120 "$IMG/smoke-boot.sh"

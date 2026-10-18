@@ -1,12 +1,12 @@
 /*
- * TcpInputSyn.c — LISTEN / SYN_SENT / SYN_RECEIVED（PR-F-tcp-1）
+ * InputSynchronize.c — LISTEN / SYN_SENT / SYN_RECEIVED（PR-F-tcp-1）
  */
 #include "Tcp.h"
-#include "TcpPrivate.h"
+#include "Private.h"
 #include "Console.h"
 #include "Debug.h"
 
-void TcpInputListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
+void Listen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
                     UINT8 Flags, UINT32 Seq, UINT16 Window) {
     if (DstPort != gTcp.LocalPort || (Flags & TCP_FLAG_SYN) == 0) {
         return;
@@ -22,7 +22,7 @@ void TcpInputListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
         gTcp.PeerWnd = 1;
     }
     gTcp.State = TCP_SYN_RECEIVED;
-    if (TcpSendSegment(TCP_FLAG_SYN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt) != 0) {
+    if (SegmentSend(TCP_FLAG_SYN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt) != 0) {
         gConsole.Write("tcp: syn-ack failed\n");
         gTcp.State = TCP_LISTEN;
         return;
@@ -30,7 +30,7 @@ void TcpInputListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
     gTcp.SndNxt++;
 }
 
-void TcpInputSynSent(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
+void SynchronizeSent(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
                      UINT32 Seq, UINT32 Ack, UINT16 Window) {
     if (SrcIp != gTcp.PeerIp || SrcPort != gTcp.PeerPort) {
         return;
@@ -44,14 +44,14 @@ void TcpInputSynSent(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
         if (gTcp.PeerWnd == 0) {
             gTcp.PeerWnd = 1;
         }
-        TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+        SegmentSend(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
         gTcp.State = TCP_ESTABLISHED;
         DebugWrite("tcp: connected\n");
-        TcpFlushSend();
+        BufferFlush();
     }
 }
 
-int TcpInputSynRcvd(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
+int SynchronizeReceived(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
                     UINT32 Ack, UINT16 Window) {
     if (SrcIp != gTcp.PeerIp || SrcPort != gTcp.PeerPort) {
         return 0;

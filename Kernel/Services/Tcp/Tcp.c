@@ -6,7 +6,7 @@
  */
 
 #include "Tcp.h"
-#include "TcpPrivate.h"
+#include "Private.h"
 #include "Console.h"
 #include "Debug.h"
 
@@ -58,34 +58,34 @@ int TcpConnect(UINT32 DstIp, UINT16 DstPort) {
     gTcp.SndUna = gTcp.Iss;
     gTcp.SndNxt = gTcp.Iss;
     gTcp.State = TCP_SYN_SENT;
-    if (TcpSendSegment(TCP_FLAG_SYN, 0, 0, gTcp.SndNxt, 0) != 0) {
+    if (SegmentSend(TCP_FLAG_SYN, 0, 0, gTcp.SndNxt, 0) != 0) {
         gTcp.State = TCP_CLOSED;
         return -1;
     }
     /* SYN 占一序号，便于超时重传 */
     gTcp.SndNxt = gTcp.Iss + 1;
-    TcpArmRetrans();
+    RetransmitArm();
     return 0;
 }
 
 int TcpSend(const void *Data, UINTN Len) {
-    if (TcpQueueBytes(Data, Len) != 0) {
+    if (BytesQueue(Data, Len) != 0) {
         return -1;
     }
-    TcpFlushSend();
+    BufferFlush();
     return 0;
 }
 
 void TcpClose(void) {
     if (gTcp.State == TCP_ESTABLISHED) {
-        TcpFlushSend();
-        TcpSendSegment(TCP_FLAG_FIN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+        BufferFlush();
+        SegmentSend(TCP_FLAG_FIN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
         gTcp.SndNxt++;
     }
     gTcp.State = TCP_CLOSED;
 }
 
-TCP_STATE TcpGetState(void) {
+TCP_STATE TcpStateGet(void) {
     return gTcp.State;
 }
 
@@ -101,7 +101,7 @@ UINT16 TcpPeerPort(void) {
     return gTcp.PeerPort;
 }
 
-void TcpGetWindowStats(UINT32 *SndUna, UINT32 *SndNxt, UINT32 *BufLen,
+void TcpWindowStatsGet(UINT32 *SndUna, UINT32 *SndNxt, UINT32 *BufLen,
                        UINT16 *PeerWnd, UINT8 *Retrans) {
     if (SndUna) {
         *SndUna = gTcp.SndUna;
@@ -146,7 +146,7 @@ int TcpRecv(void *Buf, UINTN Max, UINTN *OutLen) {
     gTcp.RcvBufLen -= N;
     /* 排空后通告窗口，否则对端停在 win=0 */
     if (N > 0 && gTcp.ClientMode && gTcp.State == TCP_ESTABLISHED) {
-        TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+        SegmentSend(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
     }
     if (OutLen) {
         *OutLen = N;
@@ -158,14 +158,14 @@ int TcpPeerClosed(void) {
     return gTcp.PeerClosed;
 }
 
-int TcpSendAck(void) {
+int TcpAckSend(void) {
     if (gTcp.State != TCP_ESTABLISHED && !gTcp.PeerClosed) {
         return -1;
     }
     if (gTcp.State == TCP_CLOSED) {
         return -1;
     }
-    return TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+    return SegmentSend(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
 }
 
 void TcpPoll(void) {
@@ -176,9 +176,9 @@ void TcpPoll(void) {
                 gTcp.State = TCP_CLOSED;
                 return;
             }
-            if (TcpSendSegment(TCP_FLAG_SYN, 0, 0, gTcp.Iss, 0) == 0) {
+            if (SegmentSend(TCP_FLAG_SYN, 0, 0, gTcp.Iss, 0) == 0) {
                 gTcp.RetransCount++;
-                TcpArmRetrans();
+                RetransmitArm();
             }
         }
         return;
@@ -187,7 +187,7 @@ void TcpPoll(void) {
         return;
     }
     if (gTcp.SndUna < gTcp.SndNxt && gTcp.PollTicks >= gTcp.RtoDeadline) {
-        TcpRetransmit();
+        Retransmit();
     }
-    TcpFlushSend();
+    BufferFlush();
 }

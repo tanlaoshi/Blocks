@@ -23,7 +23,7 @@ void TcpListenStop(void);
 int  TcpConnect(UINT32 DstIp, UINT16 DstPort);
 int  TcpSend(const void *Data, UINTN Len);
 void TcpClose(void);
-TCP_STATE TcpGetState(void);
+TCP_STATE TcpStateGet(void);
 UINT16 TcpLocalPort(void);
 UINT32 TcpPeerIp(void);
 UINT16 TcpPeerPort(void);
@@ -32,12 +32,12 @@ UINT16 TcpPeerPort(void);
 int TcpRecv(void *Buf, UINTN Max, UINTN *OutLen);
 int TcpPeerClosed(void);
 /* 发纯 ACK（窗口更新 / 催促对端重传） */
-int TcpSendAck(void);
+int TcpAckSend(void);
 
-void TcpGetWindowStats(UINT32 *SndUna, UINT32 *SndNxt, UINT32 *BufLen,
+void TcpWindowStatsGet(UINT32 *SndUna, UINT32 *SndNxt, UINT32 *BufLen,
                        UINT16 *PeerWnd, UINT8 *Retrans);
 
-void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
+void TcpSegmentInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len);
 void TcpPoll(void);
 
 #endif

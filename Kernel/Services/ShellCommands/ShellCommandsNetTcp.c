@@ -23,7 +23,7 @@ void ShellOnInterrupt(void) {
         }
     }
 #endif
-    if (TcpGetState() == TCP_LISTEN) {
+    if (TcpStateGet() == TCP_LISTEN) {
         TcpListenStop();
         gConsole.Write("tcp: echo server stopped\n");
         gConsole.DiscardInput();
@@ -59,7 +59,7 @@ static void CommandTcpListen(int Argc, char **Argv) {
             return;
         }
 #endif
-    if (TcpGetState() != TCP_LISTEN) {
+    if (TcpStateGet() != TCP_LISTEN) {
             gConsole.Write("tcplisten: not listening\n");
             return;
         }
@@ -120,9 +120,9 @@ static void CommandTcpStatus(int Argc, char **Argv) {
         return;
     }
 #endif
-    TcpGetWindowStats(&Una, &Nxt, &BufLen, &PeerWnd, &Retrans);
+    TcpWindowStatsGet(&Una, &Nxt, &BufLen, &PeerWnd, &Retrans);
     gConsole.Write("tcp state=");
-    gConsole.WriteHex32((UINT32)TcpGetState());
+    gConsole.WriteHex32((UINT32)TcpStateGet());
     gConsole.Write(" local=");
     gConsole.WriteHex32(TcpLocalPort());
     gConsole.Write(" peer=");
@@ -195,7 +195,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         return;
     }
 #endif
-    if (TcpGetState() == TCP_LISTEN) {
+    if (TcpStateGet() == TCP_LISTEN) {
         gConsole.Write("tcpconnect: closes tcplisten (single TCP slot)\n");
     }
     if (!HalNetReady()) {
@@ -223,12 +223,12 @@ static void CommandTcpConnect(int Argc, char **Argv) {
     }
     {
         int Tries = 3000;
-        while (Tries-- > 0 && TcpGetState() == TCP_SYN_SENT) {
+        while (Tries-- > 0 && TcpStateGet() == TCP_SYN_SENT) {
             HalNetPoll();
             TcpPoll();
         }
     }
-    if (TcpGetState() != TCP_ESTABLISHED) {
+    if (TcpStateGet() != TCP_ESTABLISHED) {
         gConsole.Write("tcpconnect: timeout\n");
         return;
     }
@@ -242,7 +242,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
     }
     {
         int Tries = 3000;
-        while (Tries-- > 0 && TcpGetState() == TCP_ESTABLISHED) {
+        while (Tries-- > 0 && TcpStateGet() == TCP_ESTABLISHED) {
             HalNetPoll();
             TcpPoll();
         }

@@ -1,6 +1,6 @@
 /*
  * IpInput.c — 从以太网头拆到 ICMP、UDP、TCP。
- * 目的地址不是本机就丢。教学 TCP 仍走 TcpInput。
+ * 目的地址不是本机就丢。教学 TCP 仍走 TcpSegmentInput。
  */
 #include "Net/NetPrivate.h"
 #include "Udp.h"
@@ -46,7 +46,7 @@ void IpInput(const UINT8 *Pkt, UINTN Len) {
         UdpInput(ByteSwap32(Ip->Src), ByteSwap32(Ip->Dst),
                  Pkt + ETH_HDR_LEN + IpHdrLen, IpLen - IpHdrLen);
     } else if (Ip->Proto == IP_PROTO_TCP) {
-        TcpInput(ByteSwap32(Ip->Src), ByteSwap32(Ip->Dst),
+        TcpSegmentInput(ByteSwap32(Ip->Src), ByteSwap32(Ip->Dst),
                  Pkt + ETH_HDR_LEN + IpHdrLen, IpLen - IpHdrLen);
     }
 }

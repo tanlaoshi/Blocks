@@ -1,5 +1,5 @@
 /*
- * TcpPrivate.h — 单连接 TCP 状态（PR-S-tcp-1）
+ * Private.h — 单连接 TCP 状态（PR-S-tcp-1）
  */
 #ifndef TCP_PRIVATE_H
 #define TCP_PRIVATE_H
@@ -84,21 +84,21 @@ static inline void BufCopy(void *Dst, const void *Src, UINTN Len) {
     }
 }
 
-int TcpSendSegment(UINT8 Flags, const void *Data, UINTN Len, UINT32 Seq, UINT32 Ack);
-void TcpArmRetrans(void);
-void TcpFlushSend(void);
-int TcpQueueBytes(const void *Data, UINTN Len);
-void TcpProcessAck(UINT32 Ack);
-void TcpRetransmit(void);
+int SegmentSend(UINT8 Flags, const void *Data, UINTN Len, UINT32 Seq, UINT32 Ack);
+void RetransmitArm(void);
+void BufferFlush(void);
+int BytesQueue(const void *Data, UINTN Len);
+void AckProcess(UINT32 Ack);
+void Retransmit(void);
 
-/* —— TcpInput*.c（PR-F-tcp-1） —— */
-void TcpInputListen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
+/* —— InputSynchronize.c / InputEstablished.c（PR-F-tcp-1） —— */
+void Listen(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
                     UINT8 Flags, UINT32 Seq, UINT16 Window);
-void TcpInputSynSent(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
+void SynchronizeSent(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
                      UINT32 Seq, UINT32 Ack, UINT16 Window);
-int TcpInputSynRcvd(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
+int SynchronizeReceived(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
                     UINT32 Ack, UINT16 Window);
-void TcpInputEstablished(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,
+void Established(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,
                          UINT8 Flags, UINT32 Seq, UINT32 Ack, UINT16 Window,
                          const UINT8 *Data, UINTN DataLen);
 

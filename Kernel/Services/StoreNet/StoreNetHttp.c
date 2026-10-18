@@ -32,10 +32,10 @@ static int WaitEstablished(int Tries) {
         if ((++N & 0x3FF) == 0) {
             HttpBreath();
         }
-        if (TcpGetState() == TCP_ESTABLISHED) {
+        if (TcpStateGet() == TCP_ESTABLISHED) {
             return 0;
         }
-        if (TcpGetState() != TCP_SYN_SENT) {
+        if (TcpStateGet() != TCP_SYN_SENT) {
             return STORE_ERR_NET;
         }
     }
@@ -88,7 +88,7 @@ int HttpGet(UINT32 Ip, UINT16 Port, const char *Path,
         goto ParseHttp;
     }
 
-    if (TcpGetState() != TCP_CLOSED) {
+    if (TcpStateGet() != TCP_CLOSED) {
         TcpClose();
     }
     if (TcpConnect(Ip, Port) != 0) {
@@ -152,7 +152,7 @@ int HttpGet(UINT32 Ip, UINT16 Port, const char *Path,
             } else {
                 Idle++;
                 if (Idle > 0 && (Idle % STORE_HTTP_IDLE_ACK) == 0) {
-                    (void)TcpSendAck(); /* 催促对端重传缺失段 */
+                    (void)TcpAckSend(); /* 催促对端重传缺失段 */
                     HttpBreath();
                 }
             }

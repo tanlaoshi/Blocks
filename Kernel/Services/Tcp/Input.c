@@ -1,11 +1,11 @@
 /*
- * TcpInput.c — 入站段编排（PR-F-tcp-1）
- * 握手：TcpInputSyn.c；已建立：TcpInputEst.c
+ * Input.c — 入站段编排（PR-F-tcp-1）
+ * 握手：InputSynchronize.c；已建立：InputEstablished.c
  */
 #include "Tcp.h"
-#include "TcpPrivate.h"
+#include "Private.h"
 
-void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
+void TcpSegmentInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
     const TCP_HDR *Hdr;
     UINT16 DstPort;
     UINT16 SrcPort;
@@ -36,17 +36,17 @@ void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
     Window = NetToHost16(Hdr->Window);
 
     if (gTcp.State == TCP_LISTEN) {
-        TcpInputListen(SrcIp, SrcPort, DstPort, Flags, Seq, Window);
+        Listen(SrcIp, SrcPort, DstPort, Flags, Seq, Window);
         return;
     }
 
     if (gTcp.State == TCP_SYN_SENT) {
-        TcpInputSynSent(SrcIp, SrcPort, Flags, Seq, Ack, Window);
+        SynchronizeSent(SrcIp, SrcPort, Flags, Seq, Ack, Window);
         return;
     }
 
     if (gTcp.State == TCP_SYN_RECEIVED) {
-        if (!TcpInputSynRcvd(SrcIp, SrcPort, Flags, Ack, Window)) {
+        if (!SynchronizeReceived(SrcIp, SrcPort, Flags, Ack, Window)) {
             return;
         }
         /* 可能与本包同段的 PSH 数据：落到下方 ESTABLISHED 处理 */
@@ -54,5 +54,5 @@ void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
         return;
     }
 
-    TcpInputEstablished(DstPort, SrcIp, SrcPort, Flags, Seq, Ack, Window, Data, DataLen);
+    Established(DstPort, SrcIp, SrcPort, Flags, Seq, Ack, Window, Data, DataLen);
 }

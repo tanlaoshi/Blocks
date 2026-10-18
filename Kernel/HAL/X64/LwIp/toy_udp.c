@@ -98,7 +98,8 @@ static struct udp_pcb *UdpGetSendPcb(void) {
         if (gSendPcb == NULL) {
             return NULL;
         }
-        if (udp_bind(gSendPcb, IP_ANY_TYPE, 40000) != ERR_OK) {
+        /* 还没有监听块：端口传 0，由 lwIP 选临时端口 */
+        if (udp_bind(gSendPcb, IP_ANY_TYPE, 0) != ERR_OK) {
             udp_remove(gSendPcb);
             gSendPcb = NULL;
             return NULL;

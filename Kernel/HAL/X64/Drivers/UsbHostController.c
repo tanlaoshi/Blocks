@@ -1,6 +1,6 @@
 /*
  * UsbHostController.c — 把公共调用转到已注册的主机控制器。
- * 当前只认 xHCI。EHCI 作为后备是下一刀。
+ * 有 xHCI 用 xHCI，否则用 EHCI。
  */
 #include "UsbHostController.h"
 

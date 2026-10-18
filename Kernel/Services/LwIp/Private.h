@@ -1,5 +1,5 @@
 /*
- * LwIpPrivate.h — LwIp*.c 内部（PR-N-nic-addr）
+ * Private.h — LwIp 目录内部（PR-N-nic-addr）
  */
 #ifndef LWIP_PRIVATE_H
 #define LWIP_PRIVATE_H

@@ -18,7 +18,7 @@ git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
 
 未检出源码时默认 `LWIP=1` 会编译失败；用 `LWIP=0` 可先编通内核。
 
-PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `FontTtfRaster.c` 在 FPU 岛内包含。
+PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `Services/Fonts/TrueTypeRaster.c` 在 FPU 岛内包含。
 
 移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`Netif.c`、`Ping.c`、`TcpEcho.c`、`UdpQueue.c`、`TcpClient.c`、`TcpSocket.c`）。
 

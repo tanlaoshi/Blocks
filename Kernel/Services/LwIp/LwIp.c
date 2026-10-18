@@ -9,7 +9,7 @@
 #include "Tcp.h"
 #include "Udp.h"
 #include "NetConfig.h"
-#include "LwIpPrivate.h"
+#include "Private.h"
 #include "Scheduler.h"
 
 #ifdef TOY_LWIP

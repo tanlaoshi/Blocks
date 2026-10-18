@@ -82,7 +82,7 @@ int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
         if (Err != FAT_OK || Size < 54) {
             continue;
         }
-        if (BmpDecode(Buf, Size, Out) != 0) {
+        if (BmpImageDecode(Buf, Size, Out) != 0) {
             DebugWrite(Tag);
             DebugWrite(": decode failed ");
             DebugWrite(TryPath);

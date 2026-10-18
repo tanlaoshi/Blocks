@@ -5,6 +5,45 @@
 
 #define DEFAULT_APP_ICON "Assets/Icons/bmp48/HOME.BMP"
 
+int BmpImageDecode(const void *Data, UINTN Size, BMP_IMAGE *Out) {
+    UINT32 W;
+    UINT32 H;
+    UINT32 PixBytes;
+    UINT32 PixPages;
+    UINT32 *Dst;
+
+    if (!Out) {
+        return -1;
+    }
+    PixBytes = BmpPixelBytes(Data, Size, &W, &H);
+    PixPages = (PixBytes + 4095u) / 4096u;
+    Dst = PixBytes ? (UINT32 *)PhysicalMemoryAllocatePages(PixPages) : 0;
+    if (!Dst || BmpDecode(Data, Size, Dst) != 0) {
+        if (Dst) {
+            PhysicalMemoryFreePages(Dst, PixPages);
+        }
+        return -1;
+    }
+    Out->Pixels = Dst;
+    Out->Width = W;
+    Out->Height = H;
+    Out->Pages = PixPages;
+    return 0;
+}
+
+void BmpFree(BMP_IMAGE *Img) {
+    if (!Img) {
+        return;
+    }
+    if (Img->Pixels && Img->Pages) {
+        PhysicalMemoryFreePages(Img->Pixels, Img->Pages);
+    }
+    Img->Pixels = 0;
+    Img->Width = 0;
+    Img->Height = 0;
+    Img->Pages = 0;
+}
+
 static void ClearAppSlots(void) {
     int i;
 

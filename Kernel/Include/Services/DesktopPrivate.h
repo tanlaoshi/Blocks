@@ -202,6 +202,8 @@ void DesktopNetTraySetOpen(int Open);
 
 int PathHasVolPrefix(const char *Path);
 int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax, const char *Tag);
+int BmpImageDecode(const void *Data, UINTN Size, BMP_IMAGE *Out);
+void BmpFree(BMP_IMAGE *Img);
 void LoadDesktopIcons(void);
 void DesktopIconsResetDeferred(void);
 /* PR-S-bundle-desktop：扫已装 app desktop=yes 填动态槽 */

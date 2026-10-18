@@ -393,7 +393,7 @@ ToyKernel/
 | ---- | ---- |
 | `Library/Block.c` | 块设备抽象（后端由 HAL 注册） |
 | `Library/BlockMux.c` | Primary + MSC 双后端（PR-H-msc） |
-| `Library/Bmp.c` | BI_RGB BMP → RGB888（PR-G13） |
+| `Library/Bmp/Bmp.c` | BI_RGB BMP → RGB888（PR-G13） |
 | `Library/CString.c` | freestanding 字符串/内存例程（供 lwIP 等使用） |
 | `Library/Driver.c` | 驱动注册表与 Probe/Bind/Remove 生命周期（PR-D1） |
 | `Library/DriverBlock.c` | Block 类适配层（PR-D2） |
@@ -465,8 +465,8 @@ ToyKernel/
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/Db/Db.c` | TOYOS.DB 文本 KV（PR-DB1） |
-| `Services/Db/DbFile.c` | TOYOS.DB 读盘 / 写盘（PR-S-db-1） |
+| `Services/Database/Database.c` | TOYOS.DB 文本 KV（PR-DB1） |
+| `Services/Database/File.c` | TOYOS.DB 读盘 / 写盘（PR-S-db-1） |
 
 ### Desktop
 
@@ -476,7 +476,7 @@ ToyKernel/
 | `Services/Desktop/DesktopAppIcons.c` | PR-S-bundle-desktop：desktop=yes 动态桌面图标 |
 | `Services/Desktop/DesktopClick.c` | 图标点选（PR-S3-desktopclick-1） |
 | `Services/Desktop/DesktopClock.c` | 任务栏时钟 / MSC 热拔节流（PR-S3-desktop-1） |
-| `Services/Desktop/DesktopGeom.c` | 图标 / 任务栏 / 菜单几何 |
+| `Services/Desktop/Geometry.c` | 图标 / 任务栏 / 菜单几何 |
 | `Services/Desktop/DesktopIconDrag.c` | 桌面图标拖放 |
 | `Services/Desktop/DesktopIconLayout.c` | 图标坐标读写与摆放（PR-S3-deskiconlayout-1） |
 | `Services/Desktop/DesktopIconMove.c` | 图标拖移擦旧画新（PR-S3-deskiconlayout-1） |
@@ -521,7 +521,7 @@ ToyKernel/
 | `Services/FilesUi/FilesUiListDetail.c` | PaintList 右栏预览（PR-F-filesui-1） |
 | `Services/FilesUi/FilesUiListRows.c` | PaintList 路径头 + 文件行（PR-F-filesui-1） |
 | `Services/FilesUi/FilesUiListSide.c` | PaintList 左栏卷列表（PR-F-filesui-1） |
-| `Services/FilesUi/FilesUiNav.c` | Files 路径/卷侧栏/预览 |
+| `Services/FilesUi/Navigation.c` | Files 路径/卷侧栏/预览 |
 | `Services/FilesUi/FilesUiPaint.c` | Files 绘制（PR-S-filesui-split-1） |
 | `Services/FilesUi/FilesUiPreview.c` | 跳转、重载列表与预览 |
 
@@ -538,117 +538,117 @@ ToyKernel/
 | `Services/FileSystem/FileSystemTree.c` | PR-S-bundle-fs：递归建路径 / 删树 |
 | `Services/FileSystem/Install.c` | PR-FS-inst-1：Guest 安装器骨架 |
 
-### GuiBackup
+### Gui/Backup
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiBackup/GuiBackup.c` | 窗备份缓冲（核心） |
-| `Services/GuiBackup/GuiBackupSample.c` | 备份像素采样与上层覆盖判断 |
+| `Services/Gui/Backup/Backup.c` | 窗备份缓冲（核心） |
+| `Services/Gui/Backup/Sample.c` | 备份像素采样与上层覆盖判断 |
 
-### GuiCompose
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `Services/GuiCompose/GuiCompose.c` | Present / 主题场景编排（PR-S-compose-split-1） |
-| `Services/GuiCompose/GuiComposeRefresh.c` | GuiRefreshDesktop（开始菜单局部刷新） |
-| `Services/GuiCompose/GuiFade.c` | PR-GUI-l3-fade：开关窗淡入淡出中间帧 |
-
-### GuiCursor
+### Gui/Compose
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiCursor/GuiCursor.c` | 鼠标光标：save-under + 移动/显隐 |
-| `Services/GuiCursor/GuiCursorAxis.c` | resize 光标：↔ / ↕ / 对角双向箭头 |
-| `Services/GuiCursor/GuiCursorShape.c` | 光标字形：指针箭头 / ↔ / ↕ / 对角 resize |
+| `Services/Gui/Compose/Compose.c` | Present / 主题场景编排（PR-S-compose-split-1） |
+| `Services/Gui/Compose/Refresh.c` | GuiRefreshDesktop（开始菜单局部刷新） |
+| `Services/Gui/Compose/Fade.c` | PR-GUI-l3-fade：开关窗淡入淡出中间帧 |
 
-### GuiDrag
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `Services/GuiDrag/GuiDrag.c` | 标题栏拖动生命周期（PR-S3-guidrag-1） |
-| `Services/GuiDrag/GuiDragBackup.c` | 拖动备份缓冲与起始抓屏 |
-| `Services/GuiDrag/GuiDragComposite.c` | 拖动脏区合成与脚印 |
-| `Services/GuiDrag/GuiDragMove.c` | 窗位夹紧与拖移重画（PR-S3-guidrag-1） |
-| `Services/GuiDrag/GuiDragSlide.c` | CopyRect 平移 + 只擦露出条（减左右拖频闪） |
-
-### GuiDraw
+### Gui/Cursor
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiDraw/GuiDraw.c` | 窗绘制入口（核心） |
-| `Services/GuiDraw/GuiDrawChrome.c` | 标题栏、边框、关闭钮与遮挡画线 |
-| `Services/GuiDraw/GuiDrawShadow.c` | 窗口右下阴影 |
+| `Services/Gui/Cursor/Cursor.c` | 鼠标光标：save-under + 移动/显隐 |
+| `Services/Gui/Cursor/Axis.c` | resize 光标：↔ / ↕ / 对角双向箭头 |
+| `Services/Gui/Cursor/Shape.c` | 光标字形：指针箭头 / ↔ / ↕ / 对角 resize |
 
-### GuiFocus
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `Services/GuiFocus/GuiFocus.c` | 焦点窗裁剪与光标（核心） |
-| `Services/GuiFocus/GuiFocusConsole.c` | Shell 输入行与是否接受输入 |
-
-### GuiOpen
+### Gui/Drag
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiOpen/GuiOpen.c` | 开窗辅助 / 槽位（PR-S3-guiopen-1） |
-| `Services/GuiOpen/GuiOpenApps.c` | Shell / Settings / Store / Files / Edit 开窗 |
-| `Services/GuiOpen/GuiOpenClose.c` | 关窗与 Closing 等待（PR-S3-guiopen-1） |
-| `Services/GuiOpen/GuiOpenDevices.c` | 设备管理器开窗（PR-DEV-6） |
-| `Services/GuiOpen/GuiOpenTty.c` | 串口会话窗开窗（PR-GUI-tty-win） |
+| `Services/Gui/Drag/Drag.c` | 标题栏拖动生命周期（PR-S3-guidrag-1） |
+| `Services/Gui/Drag/Backup.c` | 拖动备份缓冲与起始抓屏 |
+| `Services/Gui/Drag/Composite.c` | 拖动脏区合成与脚印 |
+| `Services/Gui/Drag/Move.c` | 窗位夹紧与拖移重画（PR-S3-guidrag-1） |
+| `Services/Gui/Drag/Slide.c` | CopyRect 平移 + 只擦露出条（减左右拖频闪） |
 
-### GuiPointer
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `Services/GuiPointer/GuiClick.c` | 按下命中编排（PR-F-guiclick-1） |
-| `Services/GuiPointer/GuiClickDesktop.c` | 桌面/菜单/托盘点击与 DESKTOP_ACTION（PR-F-guiclick-1） |
-| `Services/GuiPointer/GuiClickFocus.c` | USER 命中与置顶后按窗种类分发（PR-F-guiclick-1） |
-| `Services/GuiPointer/GuiPointer.c` | 鼠标队列轮询与输入锁（PR-S3-guipointer-1） |
-| `Services/GuiPointer/GuiPointerMotion.c` | Store 长 IO 期间仅挪光标（PR-S3-guipointer-1） |
-| `Services/GuiPointer/GuiPointerMouse.c` | 分辨率钳窗、方向键、右键与按键边沿 |
-| `Services/GuiPointer/GuiPollHold.c` | 拖帧进行中排空鼠标，帧后再补边沿 |
-
-### GuiResize
+### Gui/Draw
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiResize/GuiResize.c` | 右/底边与右下角拖拽改大小生命周期（PR-S3-guiresize-1） |
-| `Services/GuiResize/GuiResizeBand.c` | 线框预览与尺寸计算（PR-S3-guiresize-1） |
-| `Services/GuiResize/GuiResizeHit.c` | 改大小热区命中与光标外形（PR-S3-guiresize-1） |
+| `Services/Gui/Draw/Draw.c` | 窗绘制入口（核心） |
+| `Services/Gui/Draw/Chrome.c` | 标题栏、边框、关闭钮与遮挡画线 |
+| `Services/Gui/Draw/Shadow.c` | 窗口右下阴影 |
 
-### GuiUser
-
-| 文件 | 用途 |
-| ---- | ---- |
-| `Services/GuiUser/GuiUser.c` | 用户态窗口协议（核心） |
-| `Services/GuiUser/GuiUserBlit.c` | 客户区文字、按钮绘制与像素 blit |
-| `Services/GuiUser/GuiUserKey.c` | 用户窗键盘入队（焦点路由） |
-| `Services/GuiUser/GuiUserPoll.c` | GuiPollUserInput（关 / 按钮 / 键 / 客户区点） |
-
-### GuiWm
+### Gui/Focus
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/GuiWm/GuiHit.c` | 命中测试 / 叠放 Raise（PR-S-guiwm-split-1） |
-| `Services/GuiWm/GuiWm.c` | 窗口全局态 / Init / 标题刷新（PR-S-guiwm-split-2） |
+| `Services/Gui/Focus/Focus.c` | 焦点窗裁剪与光标（核心） |
+| `Services/Gui/Focus/Console.c` | Shell 输入行与是否接受输入 |
+
+### Gui/Open
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `Services/Gui/Open/Open.c` | 开窗辅助 / 槽位（PR-S3-guiopen-1） |
+| `Services/Gui/Open/Apps.c` | Shell / Settings / Store / Files / Edit 开窗 |
+| `Services/Gui/Open/Close.c` | 关窗与 Closing 等待（PR-S3-guiopen-1） |
+| `Services/Gui/Open/Devices.c` | 设备管理器开窗（PR-DEV-6） |
+| `Services/Gui/Open/Terminal.c` | 串口会话窗开窗（PR-GUI-tty-win） |
+
+### Gui/Pointer
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `Services/Gui/Pointer/Click.c` | 按下命中编排（PR-F-guiclick-1） |
+| `Services/Gui/Pointer/ClickDesktop.c` | 桌面/菜单/托盘点击与 DESKTOP_ACTION（PR-F-guiclick-1） |
+| `Services/Gui/Pointer/ClickFocus.c` | USER 命中与置顶后按窗种类分发（PR-F-guiclick-1） |
+| `Services/Gui/Pointer/Pointer.c` | 鼠标队列轮询与输入锁（PR-S3-guipointer-1） |
+| `Services/Gui/Pointer/Motion.c` | Store 长 IO 期间仅挪光标（PR-S3-guipointer-1） |
+| `Services/Gui/Pointer/Mouse.c` | 分辨率钳窗、方向键、右键与按键边沿 |
+| `Services/Gui/Pointer/PollHold.c` | 拖帧进行中排空鼠标，帧后再补边沿 |
+
+### Gui/Resize
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `Services/Gui/Resize/Resize.c` | 右/底边与右下角拖拽改大小生命周期（PR-S3-guiresize-1） |
+| `Services/Gui/Resize/Band.c` | 线框预览与尺寸计算（PR-S3-guiresize-1） |
+| `Services/Gui/Resize/Hit.c` | 改大小热区命中与光标外形（PR-S3-guiresize-1） |
+
+### Gui/User
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `Services/Gui/User/User.c` | 用户态窗口协议（核心） |
+| `Services/Gui/User/Blit.c` | 客户区文字、按钮绘制与像素 blit |
+| `Services/Gui/User/Key.c` | 用户窗键盘入队（焦点路由） |
+| `Services/Gui/User/Poll.c` | GuiPollUserInput（关 / 按钮 / 键 / 客户区点） |
+
+### Gui/WindowManager
+
+| 文件 | 用途 |
+| ---- | ---- |
+| `Services/Gui/WindowManager/Hit.c` | 命中测试 / 叠放 Raise（PR-S-guiwm-split-1） |
+| `Services/Gui/WindowManager/WindowManager.c` | 窗口全局态 / Init / 标题刷新（PR-S-guiwm-split-2） |
 
 ### Locale
 
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/Locale/Locale.c` | PR-S3-locale-1：语言状态与对外 API |
-| `Services/Locale/LocaleParse.c` | PR-S3-locale-1：catalog 文本解析与装载 |
-| `Services/Locale/LocaleTable.c` | PR-S3-locale-1：MSG 键名与 en/zh 内建 fallback |
+| `Services/Locale/Parse.c` | PR-S3-locale-1：catalog 文本解析与装载 |
+| `Services/Locale/Table.c` | PR-S3-locale-1：MSG 键名与 en/zh 内建 fallback |
 
 ### LwIp
 
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/LwIp/LwIp.c` | lwIP 初始化与轮询（NO_SYS）（PR-S3-lwip-1） |
-| `Services/LwIp/LwIpConfig.c` | 从 NetConfig 绑 netif / DNS（PR-N-nic-addr） |
-| `Services/LwIp/LwIpDhcp.c` | DHCP 客户端（PR-N-nic-dhcp / 前后端分离） |
-| `Services/LwIp/LwIpPrivate.h` | LwIp*.c 内部（PR-N-nic-addr） |
-| `Services/LwIp/LwIpSocket.c` | lwIP socket / DNS 胶水（PR-S3-lwip-1） |
+| `Services/LwIp/Config.c` | 从 NetConfig 绑 netif / DNS（PR-N-nic-addr） |
+| `Services/LwIp/Dhcp.c` | DHCP 客户端（PR-N-nic-dhcp / 前后端分离） |
+| `Services/LwIp/Private.h` | LwIp*.c 内部（PR-N-nic-addr） |
+| `Services/LwIp/Socket.c` | lwIP socket / DNS 胶水（PR-S3-lwip-1） |
 | `Services/LwIp/NetConfig.c` | 静态地址配置（PR-N-nic-addr） |
 | `Services/LwIp/README.md` | LwIp/ — 网络服务簇（lwIP + 地址配置 + legacy UDP） |
 | `Services/LwIp/Udp.c` | 极简 UDP |
@@ -658,59 +658,59 @@ ToyKernel/
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/SettingsUi/SettingsUi.c` | Settings 三分栏核心（全局、命中、开窗） |
-| `Services/SettingsUi/SettingsUiApply.c` | 点选条目后写 Theme |
-| `Services/SettingsUi/SettingsUiInput.c` | 键鼠与 Esc |
-| `Services/SettingsUi/SettingsUiModel.c` | 分类/条目文案与显示模式表 |
-| `Services/SettingsUi/SettingsUiPaint.c` | 三分栏绘制 |
+| `Services/SettingsUi/Apply.c` | 点选条目后写 Theme |
+| `Services/SettingsUi/Input.c` | 键鼠与 Esc |
+| `Services/SettingsUi/Model.c` | 分类/条目文案与显示模式表 |
+| `Services/SettingsUi/Paint.c` | 三分栏绘制 |
 
 ### ShellCommands
 
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/ShellCommands/ShellCommands.c` | PR-S-shell-split-3：注册汇总（命令体见 ShellCommands*.c） |
-| `Services/ShellCommands/ShellCommandsAudio.c` | PR-G-audio-5：play [path]；无参=蜂鸣；WAV=PCM 48k/16 |
-| `Services/ShellCommands/ShellCommandsFs.c` | PR-S3-shellfs-1：ls/cat/write/rm/mkdir/rmdir/mv + 注册汇总 |
-| `Services/ShellCommands/ShellCommandsFsExtra.c` | PR-S3-shellfs-1：wrbig / vols / filestat / filesync / dirstress |
-| `Services/ShellCommands/ShellCommandsFsUi.c` | PR-S3-shellfsui-1：开窗 / font / lang + 注册汇总 |
-| `Services/ShellCommands/ShellCommandsFsUiStore.c` | PR-S3-shellfsui-1：CommandStore + 注册 |
-| `Services/ShellCommands/ShellCommandsFsUiStoreJob.c` | PR-S3-shellfsui-1：store Job/列表帮手 |
-| `Services/ShellCommands/ShellCommandsInstall.c` | install 命令（PR-S-shellfs-split-1） |
-| `Services/ShellCommands/ShellCommandsNet.c` | PR-S3-shellnet-1：net / ping / dns + 注册汇总 |
-| `Services/ShellCommands/ShellCommandsNetAddr.c` | net config / set ip\|gw\|dns（PR-N-nic-addr） |
-| `Services/ShellCommands/ShellCommandsNetLwip.c` | PR-S3-shellnet-1：lwip on\|status\|dhcp（从 Net.c 搬家） |
-| `Services/ShellCommands/ShellCommandsNetTcp.c` | PR-S3-shellnet-1：tcp + ShellOnInterrupt（从 Net.c 搬家） |
-| `Services/ShellCommands/ShellCommandsNetUdp.c` | PR-S3-shellnet-1：udp listen / send（从 Net.c 搬家） |
-| `Services/ShellCommands/ShellCommandsSystem.c` | PR-S3-shellsys-1：info/mem/reboot/halt/lsdev + 注册汇总 |
-| `Services/ShellCommands/ShellCommandsSystemProc.c` | PR-S3-shellsys-1：exec / ps / kill / set priority / runuser |
-| `Services/ShellCommands/ShellCommandsTheme.c` | set effects（PR-GUI-effects） |
-| `Services/ShellCommands/ShellCommandsThread.c` | PR-U-thread：test thread（栈+TLS+同 CR3） |
-| `Services/ShellCommands/ShellCommandsUsb.c` | PR-S-shell-split-1：xhci / msc Shell 命令 |
+| `Services/ShellCommands/Audio.c` | PR-G-audio-5：play [path]；无参=蜂鸣；WAV=PCM 48k/16 |
+| `Services/ShellCommands/FileSystem.c` | PR-S3-shellfs-1：ls/cat/write/rm/mkdir/rmdir/mv + 注册汇总 |
+| `Services/ShellCommands/FileSystemExtra.c` | PR-S3-shellfs-1：wrbig / vols / filestat / filesync / dirstress |
+| `Services/ShellCommands/FileSystemUi.c` | PR-S3-shellfsui-1：开窗 / font / lang + 注册汇总 |
+| `Services/ShellCommands/FileSystemUiStore.c` | PR-S3-shellfsui-1：CommandStore + 注册 |
+| `Services/ShellCommands/FileSystemUiStoreJob.c` | PR-S3-shellfsui-1：store Job/列表帮手 |
+| `Services/ShellCommands/Install.c` | install 命令（PR-S-shellfs-split-1） |
+| `Services/ShellCommands/Net.c` | PR-S3-shellnet-1：net / ping / dns + 注册汇总 |
+| `Services/ShellCommands/NetAddress.c` | net config / set ip\|gw\|dns（PR-N-nic-addr） |
+| `Services/ShellCommands/NetLwIp.c` | PR-S3-shellnet-1：lwip on\|status\|dhcp（从 Net.c 搬家） |
+| `Services/ShellCommands/NetTcp.c` | PR-S3-shellnet-1：tcp + ShellOnInterrupt（从 Net.c 搬家） |
+| `Services/ShellCommands/NetUdp.c` | PR-S3-shellnet-1：udp listen / send（从 Net.c 搬家） |
+| `Services/ShellCommands/System.c` | PR-S3-shellsys-1：info/mem/reboot/halt/lsdev + 注册汇总 |
+| `Services/ShellCommands/SystemProcess.c` | PR-S3-shellsys-1：exec / ps / kill / set priority / runuser |
+| `Services/ShellCommands/Theme.c` | set effects（PR-GUI-effects） |
+| `Services/ShellCommands/Thread.c` | PR-U-thread：test thread（栈+TLS+同 CR3） |
+| `Services/ShellCommands/Usb.c` | PR-S-shell-split-1：xhci / msc Shell 命令 |
 
 ### Store
 
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/Store/Store.c` | PR-S1：离线 catalog 安装；PR-S3：font/asset → Assets/ |
-| `Services/Store/StoreCatalog.c` | catalog 解析与加载 |
-| `Services/Store/StoreCombo.c` | 按依赖顺序装卸多包 |
-| `Services/Store/StoreDb.c` | ToyDB 清单键与包类型查询 |
-| `Services/Store/StoreDepends.c` | PKG 依赖解析与已装检查 |
-| `Services/Store/StoreInstall.c` | 单包安装与登记 |
-| `Services/Store/StoreInstallBundle.c` | PR-S-bundle-install：app → Apps/<id>/ |
-| `Services/Store/StoreInstallCopy.c` | 可切片拷贝（PR-S-job-chunk） |
-| `Services/Store/StoreManaged.c` | 托管载荷判定与内部删除 |
-| `Services/Store/StorePkgMeta.c` | PR-S-bundle-desktop：读 Apps/<id>/PKG.TXT 桌面相关键 |
-| `Services/Store/StoreQuery.c` | 已装清单与依赖查询 |
-| `Services/Store/StoreRemove.c` | 卸装已装包 |
+| `Services/Store/Catalog.c` | catalog 解析与加载 |
+| `Services/Store/Combo.c` | 按依赖顺序装卸多包 |
+| `Services/Store/Database.c` | ToyDB 清单键与包类型查询 |
+| `Services/Store/Depends.c` | PKG 依赖解析与已装检查 |
+| `Services/Store/Install.c` | 单包安装与登记 |
+| `Services/Store/InstallBundle.c` | PR-S-bundle-install：app → Apps/<id>/ |
+| `Services/Store/InstallCopy.c` | 可切片拷贝（PR-S-job-chunk） |
+| `Services/Store/Managed.c` | 托管载荷判定与内部删除 |
+| `Services/Store/PackageMetadata.c` | PR-S-bundle-desktop：读 Apps/<id>/PKG.TXT 桌面相关键 |
+| `Services/Store/Query.c` | 已装清单与依赖查询 |
+| `Services/Store/Remove.c` | 卸装已装包 |
 
 ### StoreNet
 
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/StoreNet/StoreNet.c` | 仓库地址与 fetch/sync |
-| `Services/StoreNet/StoreNetHttp.c` | HTTP/1.0 GET（内建 TCP） |
-| `Services/StoreNet/StoreNetHttpLwip.c` | HTTP/1.0 GET via lwIP socket（lwip on 后必走此路） |
-| `Services/StoreNet/StoreNetParse.c` | 响应正文与 FNV-1a-32 |
+| `Services/StoreNet/Http.c` | HTTP/1.0 GET（内建 TCP） |
+| `Services/StoreNet/HttpLwIp.c` | HTTP/1.0 GET via lwIP socket（lwip on 后必走此路） |
+| `Services/StoreNet/Parse.c` | 响应正文与 FNV-1a-32 |
 
 ### StoreUi
 
@@ -730,8 +730,8 @@ ToyKernel/
 | 文件 | 用途 |
 | ---- | ---- |
 | `Services/Tasks/Tasks.c` | GUI / Worker / 输入专核（PR-S-tasks-1） |
-| `Services/Tasks/TasksHid.c` | HID 报告送进控制台（PR-S-tasks-1） |
-| `Services/Tasks/TasksShell.c` | Shell 任务（PR-S-tasks-1） |
+| `Services/Tasks/Hid.c` | HID 报告送进控制台（PR-S-tasks-1） |
+| `Services/Tasks/Shell.c` | Shell 任务（PR-S-tasks-1） |
 
 ### Tcp
 
@@ -759,12 +759,12 @@ ToyKernel/
 | `Services/Theme/ThemeTech.c` | PR-GUI-tech-1：tech 色板 + chrome getter 分支 |
 | `Services/Theme/ThemeTechUi.c` | PR-GUI-tech-2：文字 / 图标 / 菜单 / 面板 / 滚动条 getter |
 
-### TtyUi
+### TerminalUi
 
 | 文件 | 用途 |
 | ---- | ---- |
-| `Services/TtyUi/TtyUi.c` | 串口会话缓冲 / 键入 TX |
-| `Services/TtyUi/TtyUiPaint.c` | 会话缓冲绘制 |
+| `Services/TerminalUi/TerminalUi.c` | 串口会话缓冲 / 键入 TX |
+| `Services/TerminalUi/Paint.c` | 会话缓冲绘制 |
 
 ## 8. `HAL/Board/` — 板包约定与模板
 

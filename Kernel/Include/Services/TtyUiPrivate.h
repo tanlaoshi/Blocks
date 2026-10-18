@@ -1,5 +1,5 @@
 /*
- * TtyUiPrivate.h — TtyUi 内部（仅 Services/TtyUi 下 .c）
+ * TtyUiPrivate.h — TerminalUi 内部（仅 Services/TerminalUi 下 .c）
  */
 #ifndef TTY_UI_PRIVATE_H
 #define TTY_UI_PRIVATE_H

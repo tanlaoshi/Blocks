@@ -7,7 +7,6 @@
 
 #include "Tcp.h"
 #include "TcpPrivate.h"
-#include "Hal.h"
 #include "Console.h"
 #include "Debug.h"
 

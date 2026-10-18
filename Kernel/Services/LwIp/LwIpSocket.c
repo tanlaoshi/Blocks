@@ -4,7 +4,6 @@
  * 从 LwIp.c 原样搬家；不改语义。核心 init/poll 见 LwIp.c。
  */
 #include "LwIp.h"
-#include "Hal.h"
 #include "Scheduler.h"
 
 #ifdef TOY_LWIP
@@ -15,6 +14,7 @@
 #include "toy_ip.h"
 #include "Errno.h"
 #include "HalDevices.h"
+#include "HalIrq.h"
 
 static volatile int gDnsDone;
 static volatile err_t gDnsErr;

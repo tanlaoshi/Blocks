@@ -6,7 +6,6 @@
  */
 #include "LwIp.h"
 #include "NetConfig.h"
-#include "Hal.h"
 #include "HalDevices.h"
 #include "Console.h"
 #include "Debug.h"

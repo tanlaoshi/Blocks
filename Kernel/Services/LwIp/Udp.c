@@ -2,7 +2,7 @@
  * Udp.c — 极简 UDP
  */
 #include "Udp.h"
-#include "Hal.h"
+#include "HalDevices.h"
 
 #define UDP_HDR_LEN 8
 #define UDP_RX_QUEUE 8

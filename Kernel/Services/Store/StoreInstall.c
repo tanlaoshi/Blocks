@@ -7,7 +7,6 @@
 #include "FileSystem.h"
 #include "Fat.h"
 #include "HalConsole.h"
-#include "Hal.h"
 #include "Db.h"
 
 #define PUMP_IDLE    0

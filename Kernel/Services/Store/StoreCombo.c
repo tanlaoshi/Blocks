@@ -7,7 +7,6 @@
 #include "StorePrivate.h"
 #include "Fat.h"
 #include "HalConsole.h"
-#include "Hal.h"
 
 /* 字体/资源包/库：可被多 app 引用，uncombo 只卸叶子 app，不级联卸这些 */
 static int PackageIsSharedDep(int Kind) {

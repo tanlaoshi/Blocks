@@ -7,8 +7,9 @@
 #include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
-#include "Hal.h"
 #include "HalDevices.h"
+#include "HalSerial.h"
+#include "HalConsole.h"
 #include "HalDriverFile.h"
 #include "CoreOps.h"
 

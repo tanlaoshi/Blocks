@@ -9,7 +9,6 @@
 #include "FileSystem.h"
 #include "Fat.h"
 #include "HalConsole.h"
-#include "Hal.h"
 #include "Db.h"
 
 static int StoreUnlinkPayload(const char *Dir, const char *Want);

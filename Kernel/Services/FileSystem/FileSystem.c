@@ -8,7 +8,6 @@
 #include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
-#include "Hal.h"
 #include "CoreOps.h"
 
 FS_VOLUME gVols[FS_MAX_VOLUMES];

@@ -16,7 +16,6 @@
 #include "StorePrivate.h"
 #include "FileSystem.h"
 #include "Fat.h"
-#include "Hal.h"
 #include "Gui.h"
 #include "Font.h"
 #include "Theme.h"

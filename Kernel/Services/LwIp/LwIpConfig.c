@@ -3,7 +3,7 @@
  */
 #include "LwIp.h"
 #include "NetConfig.h"
-#include "Hal.h"
+#include "HalIrq.h"
 #include "HalDevices.h"
 #include "Debug.h"
 

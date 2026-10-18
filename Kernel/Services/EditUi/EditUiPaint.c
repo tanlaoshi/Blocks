@@ -49,7 +49,7 @@ static void Paint(void) {
     }
 
     Head[0] = 0;
-    CopyStr(Head, sizeof(Head), gPath[0] ? gPath : "(no path)");
+    StringCopy(Head, sizeof(Head), gPath[0] ? gPath : "(no path)");
     DrawLine(X + 8, Y + 6, Head, ThemeText());
     DrawLine(X + 8, Y + 6 + LineH,
              gEditDirty ? "* dirty   Esc=hint  Ctrl+S=save" : "  clean   Esc=hint  Ctrl+S=save",

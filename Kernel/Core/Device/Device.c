@@ -4,6 +4,7 @@
  * 不 include Hal.h；HalDeviceEnumerate 仅前向声明，定义在各 Arch DeviceEnum.c。
  */
 #include "Device.h"
+#include "CString.h"
 #include "Driver.h"
 #include "PciNames.h"
 
@@ -30,32 +31,7 @@ static void ZeroNode(DEVICE_NODE *N) {
     }
 }
 
-static void CopyStr(char *Dst, UINTN Max, const char *Src) {
-    UINTN i;
 
-    if (!Dst || Max == 0) {
-        return;
-    }
-    if (!Src) {
-        Dst[0] = 0;
-        return;
-    }
-    for (i = 0; i + 1 < Max && Src[i]; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
-
-static int StrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == *B;
-}
 
 void DeviceInitialize(void) {
     int i;
@@ -78,13 +54,13 @@ int DeviceAdd(const DEVICE_NODE *Dev) {
     }
     Slot = &gDevices[gDeviceCount];
     ZeroNode(Slot);
-    CopyStr(Slot->Name, sizeof(Slot->Name), Dev->Name);
-    CopyStr(Slot->FriendlyName, sizeof(Slot->FriendlyName), Dev->FriendlyName);
+    StringCopy(Slot->Name, sizeof(Slot->Name), Dev->Name);
+    StringCopy(Slot->FriendlyName, sizeof(Slot->FriendlyName), Dev->FriendlyName);
     Slot->Bus = Dev->Bus;
     Slot->State = Dev->State;
     Slot->Vendor = Dev->Vendor;
     Slot->Device = Dev->Device;
-    CopyStr(Slot->Compatible, sizeof(Slot->Compatible), Dev->Compatible);
+    StringCopy(Slot->Compatible, sizeof(Slot->Compatible), Dev->Compatible);
     Slot->Class = Dev->Class;
     Slot->Subclass = Dev->Subclass;
     Slot->ProgIf = Dev->ProgIf;
@@ -106,7 +82,7 @@ int DeviceAdd(const DEVICE_NODE *Dev) {
         const char *Fn = PciGetDeviceName(Slot->Vendor, Slot->Device);
 
         if (Fn) {
-            CopyStr(Slot->FriendlyName, sizeof(Slot->FriendlyName), Fn);
+            StringCopy(Slot->FriendlyName, sizeof(Slot->FriendlyName), Fn);
         }
     }
     gDeviceCount++;
@@ -131,7 +107,7 @@ DEVICE_NODE *DeviceFindByName(const char *Name) {
         return 0;
     }
     for (i = 0; i < gDeviceCount; i++) {
-        if (StrEq(gDevices[i].Name, Name)) {
+        if (StringEqual(gDevices[i].Name, Name)) {
             return &gDevices[i];
         }
     }
@@ -156,7 +132,7 @@ DEVICE_NODE *DeviceFindByCompatible(const char *Compatible) {
         return 0;
     }
     for (i = 0; i < gDeviceCount; i++) {
-        if (StrEq(gDevices[i].Compatible, Compatible)) {
+        if (StringEqual(gDevices[i].Compatible, Compatible)) {
             return &gDevices[i];
         }
     }
@@ -209,18 +185,18 @@ static int InstanceClaims(const TOY_DRIVER *Drv, const DEVICE_NODE *Node) {
         return 0;
     }
     Name = Drv->Name;
-    if (StrEq(Name, Node->Name)) {
+    if (StringEqual(Name, Node->Name)) {
         return 1;
     }
-    if (StrEq(Node->Name, "xhci") && StartsWith(Name, "xhci")) {
+    if (StringEqual(Node->Name, "xhci") && StartsWith(Name, "xhci")) {
         return 1;
     }
-    if (StrEq(Node->Name, "net") &&
+    if (StringEqual(Node->Name, "net") &&
         (StartsWith(Name, "e1000") || StartsWith(Name, "virtio-net"))) {
         return 1;
     }
-    if (StrEq(Node->Name, "storage") &&
-        (StrEq(Name, "virtio-blk") || StrEq(Name, "ata-pio"))) {
+    if (StringEqual(Node->Name, "storage") &&
+        (StringEqual(Name, "virtio-blk") || StringEqual(Name, "ata-pio"))) {
         return 1;
     }
     return 0;

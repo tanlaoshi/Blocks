@@ -3,6 +3,7 @@
  */
 #include "Dtb.h"
 #include "DtbPrivate.h"
+#include "CString.h"
 
 static int NameIsFwCfg(const char *Name) {
     /* "fw-cfg" 或 "fw-cfg@..." */
@@ -109,13 +110,13 @@ int DtbFwCfgBase(UINT64 DtbPhys, UINT64 *OutBase) {
             Val = Blob + Off;
             Off = DtbAlign4(Off + PropLen);
 
-            if (Depth == 1 && !InFwCfg && DtbStrEq(PName, "#address-cells") &&
+            if (Depth == 1 && !InFwCfg && StringEqual(PName, "#address-cells") &&
                 PropLen >= 4) {
                 AddrCells = DtbBe32(Val);
-            } else if (Depth == 1 && !InFwCfg && DtbStrEq(PName, "#size-cells") &&
+            } else if (Depth == 1 && !InFwCfg && StringEqual(PName, "#size-cells") &&
                        PropLen >= 4) {
                 SizeCells = DtbBe32(Val);
-            } else if (InFwCfg && DtbStrEq(PName, "reg") && !Have) {
+            } else if (InFwCfg && StringEqual(PName, "reg") && !Have) {
                 UINT32 Need = (AddrCells + SizeCells) * 4u;
                 UINT64 B = 0;
                 UINT64 Sz = 0;

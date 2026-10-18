@@ -6,7 +6,7 @@
 #include "Fat.h"
 
 void GotoPath(const char *Path) {
-    CopyStr(gCwd, sizeof(gCwd), Path ? Path : "");
+    StringCopy(gCwd, sizeof(gCwd), Path ? Path : "");
     gMode = FILES_MODE_LIST;
     SetStatus("");
     (void)ReloadList();
@@ -62,7 +62,7 @@ int ReloadListEx(int WantPlaces, int WantPreview) {
         gPrevKind = PREV_EMPTY;
         if (gCount > 0 && gSelected >= 0 && gSelected < gCount) {
             FAT_DIRECTORY_ENTRY *E = &gEnts[gSelected];
-            CopyStr(gViewTitle, sizeof(gViewTitle), E->Name);
+            StringCopy(gViewTitle, sizeof(gViewTitle), E->Name);
             if (E->Attr & FAT_ATTR_DIR) {
                 gPrevKind = PREV_DIR;
             } else if (EndsWithElf(E->Name)) {
@@ -108,7 +108,7 @@ void UpdatePreview(void) {
         return;
     }
     E = &gEnts[gSelected];
-    CopyStr(gViewTitle, sizeof(gViewTitle), E->Name);
+    StringCopy(gViewTitle, sizeof(gViewTitle), E->Name);
 
     if (E->Attr & FAT_ATTR_DIR) {
         gPrevKind = PREV_DIR;

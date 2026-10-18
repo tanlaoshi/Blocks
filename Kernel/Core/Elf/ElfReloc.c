@@ -2,6 +2,7 @@
  * ElfReloc.c — PR-S3-elf-1：RELA / JMPREL 重定位
  */
 #include "ElfPrivate.h"
+#include "CString.h"
 #include "ToySerialLog.h"
 
 static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
@@ -33,7 +34,7 @@ static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
                 continue;
             }
             SymName = So->DynStr + Sym->st_name;
-            if (ElfStrEq(SymName, Name)) {
+            if (StringEqual(SymName, Name)) {
                 return So->Base + Sym->st_value;
             }
         }

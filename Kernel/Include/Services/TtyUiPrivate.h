@@ -5,6 +5,7 @@
 #define TTY_UI_PRIVATE_H
 
 #include "TtyUi.h"
+#include "CString.h"
 #include "Gui.h"
 #include "Hal.h"
 #include "HalVideo.h"

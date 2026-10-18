@@ -86,8 +86,8 @@ int StoreInstallCopyBegin(const char *Src, const char *Dst, int Check) {
     if (!sCopy.Buf) {
         return FAT_ERR_NOSPC;
     }
-    CopyStr(sCopy.Src, (int)sizeof(sCopy.Src), Src);
-    CopyStr(sCopy.Dst, (int)sizeof(sCopy.Dst), Dst);
+    StringCopy(sCopy.Src, (int)sizeof(sCopy.Src), Src);
+    StringCopy(sCopy.Dst, (int)sizeof(sCopy.Dst), Dst);
     sCopy.Check = Check;
     sCopy.Pages = Pages;
     sCopy.Size = St.Size;

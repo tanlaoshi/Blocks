@@ -14,7 +14,7 @@ int gBatch;
 int FindSlot(const char *Key) {
     int i;
     for (i = 0; i < DB_MAX_RECORDS; i++) {
-        if (gRecs[i].Used && StrEq(gRecs[i].Key, Key)) {
+        if (gRecs[i].Used && StringEqual(gRecs[i].Key, Key)) {
             return i;
         }
     }
@@ -50,7 +50,7 @@ int DbGet(const char *Key, char *Out, UINTN OutMax) {
     if (Slot < 0) {
         return DB_NOENT;
     }
-    CopyStr(Out, (int)OutMax, gRecs[Slot].Val);
+    StringCopy(Out, (int)OutMax, gRecs[Slot].Val);
     return DB_OK;
 }
 
@@ -79,8 +79,8 @@ int DbSet(const char *Key, const char *Value) {
         return DB_FULL;
     }
     gRecs[Slot].Used = 1;
-    CopyStr(gRecs[Slot].Key, DB_KEY_MAX, Key);
-    CopyStr(gRecs[Slot].Val, DB_VAL_MAX, Value);
+    StringCopy(gRecs[Slot].Key, DB_KEY_MAX, Key);
+    StringCopy(gRecs[Slot].Val, DB_VAL_MAX, Value);
     gDbDirty = 1;
     if (gBatch) {
         return DB_OK;

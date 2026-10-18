@@ -5,6 +5,7 @@
  * 槽位最多 4；Name ≤15；Store 装卸不走这张表。
  */
 #include "KernelTask.h"
+#include "CString.h"
 #include "Scheduler.h"
 #include "Hal.h"
 #include "Debug.h"
@@ -21,18 +22,6 @@ typedef struct {
 
 static KERNEL_TASK_SLOT gSlots[KERNEL_TASK_SLOTS];
 
-static void CopyName(char *Dst, const char *Src) {
-    int i = 0;
-    if (!Src) {
-        Dst[0] = 0;
-        return;
-    }
-    while (Src[i] && i < 15) {
-        Dst[i] = Src[i];
-        i++;
-    }
-    Dst[i] = 0;
-}
 
 int KernelTaskRegister(const char *Name, void (*Fn)(void *), void *Ctx) {
     int i;
@@ -49,7 +38,7 @@ int KernelTaskRegister(const char *Name, void (*Fn)(void *), void *Ctx) {
     if (i >= KERNEL_TASK_SLOTS) {
         return -1;
     }
-    CopyName(gSlots[i].Name, Name);
+    StringCopy(gSlots[i].Name, 16, Name);
     gSlots[i].State = KERNEL_TASK_RUN;
     gSlots[i].Progress = 0;
     gSlots[i].Message[0] = 0;

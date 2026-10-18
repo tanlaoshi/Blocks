@@ -114,7 +114,7 @@ static void EnrichLabelFromCatalog(const STORE_ENTRY *Tab, int Count,
         if (Tab[i].Type[0] == 'a' &&
             MenuNameEqIgnoreCase(Tab[i].File, File) &&
             Tab[i].Title[0]) {
-            MenuCopyStr(Label, Max, Tab[i].Title);
+            StringCopy(Label, Max, Tab[i].Title);
             return;
         }
     }
@@ -123,7 +123,7 @@ static void EnrichLabelFromCatalog(const STORE_ENTRY *Tab, int Count,
 static void BuildAppsPath(char *Path, int PathMax, const char *File) {
     int P = 0;
 
-    MenuCopyStr(Path, PathMax, STORE_APPS_DIR);
+    StringCopy(Path, PathMax, STORE_APPS_DIR);
     while (Path[P]) {
         P++;
     }
@@ -131,7 +131,7 @@ static void BuildAppsPath(char *Path, int PathMax, const char *File) {
         Path[P++] = '/';
         Path[P] = 0;
     }
-    MenuCopyStr(Path + P, PathMax - P, File);
+    StringCopy(Path + P, PathMax - P, File);
 }
 
 static void AddApp(DESKTOP_ACTION Act, const char *Label, const char *Path,
@@ -145,8 +145,8 @@ static void AddApp(DESKTOP_ACTION Act, const char *Label, const char *Path,
     R->Action = Act;
     R->Enabled = Enabled ? 1 : 0;
     R->IconSrc = IconSrc;
-    MenuCopyStr(R->Label, sizeof(R->Label), Label ? Label : "");
-    MenuCopyStr(R->Path, sizeof(R->Path), Path ? Path : "");
+    StringCopy(R->Label, sizeof(R->Label), Label ? Label : "");
+    StringCopy(R->Path, sizeof(R->Path), Path ? Path : "");
 }
 
 /*
@@ -205,7 +205,7 @@ void FillStartMenuAppRows(int AppCap) {
                 }
                 LabelFromElf(In->File, Label, sizeof(Label));
                 if (HavePkg && Meta.Title[0]) {
-                    MenuCopyStr(Label, sizeof(Label), Meta.Title);
+                    StringCopy(Label, sizeof(Label), Meta.Title);
                 } else {
                     EnrichLabelFromCatalog(CatTab, CatN, In->File, Label,
                                            sizeof(Label));
@@ -219,13 +219,13 @@ void FillStartMenuAppRows(int AppCap) {
             }
             LabelFromElf(In->File, Label, sizeof(Label));
             if (HavePkg && Meta.Title[0]) {
-                MenuCopyStr(Label, sizeof(Label), Meta.Title);
+                StringCopy(Label, sizeof(Label), Meta.Title);
             } else {
                 EnrichLabelFromCatalog(CatTab, CatN, In->File, Label,
                                        sizeof(Label));
             }
             if (!Label[0]) {
-                MenuCopyStr(Label, sizeof(Label), In->Id);
+                StringCopy(Label, sizeof(Label), In->Id);
             }
             /* 缺文件：灰显 */
             AddApp(DESKTOP_ACTION_EXEC, Label, Path, 0, IconSrc);

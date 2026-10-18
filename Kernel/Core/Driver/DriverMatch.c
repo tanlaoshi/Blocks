@@ -6,16 +6,9 @@
  * 规格见 Documents/待做/设备管理器驱动匹配.md。
  */
 #include "Driver.h"
+#include "CString.h"
 #include "Device.h"
 
-static int StrEq(const char *A, const char *B) {
-    while (*A && *B) {
-        if (*A != *B) return 0;
-        A++;
-        B++;
-    }
-    return *A == 0 && *B == 0;
-}
 
 /* 掩码 0 表示不比较。Class 三项与 VID/DID 同一规则。 */
 static int ByteOk(UINT8 Have, UINT8 Want, UINT8 Mask) {
@@ -54,7 +47,7 @@ int DriverMatchesDevice(const TOY_DRIVER *Drv, const DEVICE_NODE *Dev) {
             return 1;
         } else if (M->Type == DRIVER_MATCH_DTB) {
             if (Dev->Bus != DEVICE_BUS_DTB) continue;
-            if (StrEq(Dev->Compatible, M->U.Dtb.Compatible)) return 1;
+            if (StringEqual(Dev->Compatible, M->U.Dtb.Compatible)) return 1;
         } else if (M->Type == DRIVER_MATCH_FIXED) {
             if (Dev->Bus != DEVICE_BUS_FIXED) continue;
             if (Dev->Bar[0] == M->U.Fixed.Base) return 1;

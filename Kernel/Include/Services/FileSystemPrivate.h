@@ -7,6 +7,7 @@
 #define FILE_SYSTEM_PRIVATE_H
 
 #include "FileSystem.h"
+#include "CString.h"
 #include "VirtualFileSystem.h"
 #include "Gpt.h"
 
@@ -56,15 +57,5 @@ static inline int StrEqIgnoreCase(const char *A, const char *B) {
     return *A == 0 && *B == 0;
 }
 
-static inline void CopyName(char *Dst, int Max, const char *Src) {
-    int i;
-    if (Max <= 0) {
-        return;
-    }
-    for (i = 0; Src[i] && i < Max - 1; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
 #endif

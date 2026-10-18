@@ -27,7 +27,6 @@ typedef struct {
 } FDT_HEADER;
 
 UINT32 DtbBe32(const void *P);
-int DtbStrEq(const char *A, const char *B);
 UINT32 DtbAlign4(UINT32 Off);
 
 #endif

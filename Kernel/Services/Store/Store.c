@@ -141,11 +141,11 @@ void NormalizeDepends(char *Dep) {
 int ArchOk(const char *Arch) {
     const char *Host;
 
-    if (!Arch || Arch[0] == 0 || StrEq(Arch, "any")) {
+    if (!Arch || Arch[0] == 0 || StringEqual(Arch, "any")) {
         return 1;
     }
     Host = StoreHostArch();
-    return StrEq(Arch, Host);
+    return StringEqual(Arch, Host);
 }
 
 static int EnsureDir(const char *Path) {
@@ -177,16 +177,16 @@ int EnsurePacksDir(void) {
 }
 
 int EntryKind(const char *Type) {
-    if (StrEq(Type, "font")) {
+    if (StringEqual(Type, "font")) {
         return STORE_KIND_FONT;
     }
-    if (StrEq(Type, "asset")) {
+    if (StringEqual(Type, "asset")) {
         return STORE_KIND_ASSET;
     }
-    if (StrEq(Type, "lib") || StrEq(Type, "library")) {
+    if (StringEqual(Type, "lib") || StringEqual(Type, "library")) {
         return STORE_KIND_LIB;
     }
-    if (StrEq(Type, "app") || Type[0] == 0) {
+    if (StringEqual(Type, "app") || Type[0] == 0) {
         return STORE_KIND_APP;
     }
     return -1;

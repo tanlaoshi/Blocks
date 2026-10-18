@@ -38,16 +38,16 @@ static int ResolveInstallSrc(const char *Id, const char *File, char *Out, int Ou
     JoinPath(Pkg, (int)sizeof(Pkg), STORE_PACKAGES_DIR, Id);
     JoinPath(Src, (int)sizeof(Src), Pkg, File);
     if (FileSystemFileStat(Src, &St) == FAT_OK && !(St.Attr & FAT_ATTR_DIR)) {
-        CopyStr(Out, OutMax, Src);
+        StringCopy(Out, OutMax, Src);
         return FAT_OK;
     }
     JoinPath(Src, (int)sizeof(Src), STORE_DIR, File);
     if (FileSystemFileStat(Src, &St) == FAT_OK && !(St.Attr & FAT_ATTR_DIR)) {
-        CopyStr(Out, OutMax, Src);
+        StringCopy(Out, OutMax, Src);
         return FAT_OK;
     }
     if (FileSystemFileStat(File, &St) == FAT_OK && !(St.Attr & FAT_ATTR_DIR)) {
-        CopyStr(Out, OutMax, File);
+        StringCopy(Out, OutMax, File);
         return FAT_OK;
     }
     return FAT_ERR_NOENT;
@@ -101,7 +101,7 @@ int StoreInstallPump(const char *Id) {
             return Err;
         }
         for (i = 0; i < Count; i++) {
-            if (!StrEq(Tab[i].Id, Id)) {
+            if (!StringEqual(Tab[i].Id, Id)) {
                 continue;
             }
             sPump.Kind = EntryKind(Tab[i].Type);
@@ -113,10 +113,10 @@ int StoreInstallPump(const char *Id) {
                 HalConsoleWriteSerial("store: arch mismatch\n");
                 return FAT_ERR_INVAL;
             }
-            CopyStr(sPump.Id, STORE_ID_MAX, Tab[i].Id);
-            CopyStr(sPump.Type, (int)sizeof(sPump.Type), Tab[i].Type);
-            CopyStr(sPump.File, STORE_FILE_MAX, Tab[i].File);
-            CopyStr(sPump.DepBuf, (int)sizeof(sPump.DepBuf), Tab[i].Depends);
+            StringCopy(sPump.Id, STORE_ID_MAX, Tab[i].Id);
+            StringCopy(sPump.Type, (int)sizeof(sPump.Type), Tab[i].Type);
+            StringCopy(sPump.File, STORE_FILE_MAX, Tab[i].File);
+            StringCopy(sPump.DepBuf, (int)sizeof(sPump.DepBuf), Tab[i].Depends);
             if (LoadPkgDepends(Tab[i].Id, sPump.DepBuf, (int)sizeof(sPump.DepBuf))) {
                 /* PKG 覆盖 */
             }
@@ -272,10 +272,10 @@ int StoreAdoptInstalled(const char *Id) {
         return Err;
     }
     for (i = 0; i < Count; i++) {
-        if (!StrEq(Tab[i].Id, Id)) {
+        if (!StringEqual(Tab[i].Id, Id)) {
             continue;
         }
-        CopyStr(DepBuf, (int)sizeof(DepBuf), Tab[i].Depends);
+        StringCopy(DepBuf, (int)sizeof(DepBuf), Tab[i].Depends);
         if (LoadPkgDepends(Tab[i].Id, DepBuf, (int)sizeof(DepBuf))) {
             /* PKG 覆盖 */
         }

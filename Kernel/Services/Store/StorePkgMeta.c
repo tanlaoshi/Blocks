@@ -33,13 +33,13 @@ static void ApplyPkgLine(STORE_APP_DESKTOP_META *Out, const char *Key,
     } else if (StrEqIgnoreCase(Key, "taskbar")) {
         Out->TaskbarYes = IsYesToken(Val);
     } else if (StrEqIgnoreCase(Key, "title") && Val) {
-        CopyStr(Out->Title, (int)sizeof(Out->Title), Val);
+        StringCopy(Out->Title, (int)sizeof(Out->Title), Val);
     } else if (StrEqIgnoreCase(Key, "icon") && Val) {
-        CopyStr(Out->IconRel, (int)sizeof(Out->IconRel), Val);
+        StringCopy(Out->IconRel, (int)sizeof(Out->IconRel), Val);
     } else if (StrEqIgnoreCase(Key, "font") && Val) {
-        CopyStr(Out->FontRel, (int)sizeof(Out->FontRel), Val);
+        StringCopy(Out->FontRel, (int)sizeof(Out->FontRel), Val);
     } else if (StrEqIgnoreCase(Key, "category") && Val) {
-        CopyStr(Out->Category, (int)sizeof(Out->Category), Val);
+        StringCopy(Out->Category, (int)sizeof(Out->Category), Val);
         Out->CategoryGame = StrEqIgnoreCase(Val, "game") ? 1 : 0;
     }
 }

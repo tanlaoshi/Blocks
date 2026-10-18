@@ -9,20 +9,9 @@ int gTtyScroll;
 char gTtyStatus[TTY_STATUS_MAX];
 int gTtyOpen;
 
-static void CopyStr(char *Dst, UINTN Max, const char *Src) {
-    UINTN i;
-
-    if (!Dst || Max == 0) {
-        return;
-    }
-    for (i = 0; Src && Src[i] && i + 1 < Max; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
 void TtySetStatus(const char *S) {
-    CopyStr(gTtyStatus, sizeof(gTtyStatus), S ? S : "");
+    StringCopy(gTtyStatus, sizeof(gTtyStatus), S ? S : "");
 }
 
 void TtySerialOut(const char *S) {

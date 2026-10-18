@@ -7,6 +7,7 @@
 #define DB_PRIVATE_H
 
 #include "Db.h"
+#include "CString.h"
 
 typedef struct {
     char Key[DB_KEY_MAX];
@@ -40,27 +41,7 @@ static inline int KeyOk(const char *K) {
     return K[N] == 0;
 }
 
-static inline void CopyStr(char *Dst, int Max, const char *Src) {
-    int i;
-    if (Max <= 0) {
-        return;
-    }
-    for (i = 0; Src && Src[i] && i < Max - 1; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
-static inline int StrEq(const char *A, const char *B) {
-    while (*A && *B) {
-        if (*A != *B) {
-            return 0;
-        }
-        A++;
-        B++;
-    }
-    return *A == 0 && *B == 0;
-}
 
 int FindSlot(const char *Key);
 int AllocSlot(void);

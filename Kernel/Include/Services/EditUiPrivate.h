@@ -9,6 +9,7 @@
 #define EDIT_UI_PRIVATE_H
 
 #include "EditUi.h"
+#include "CString.h"
 #include "Gui.h"
 #include "FileSystem.h"
 #include "Fat.h"
@@ -34,24 +35,6 @@ extern char gEditStatus[EDIT_STATUS_MAX]; /* 与 FilesUi 的 gStatus 区分 */
 
 /* PR-GUI-migrate-edit：Save 走 UI_BUTTON_ACTION（SYNC） */
 extern UI_BUTTON_ACTION gEditSave;
-
-/* FilesUi 的 CopyStr 已是全局，签名虽同也不能再导出。 */
-static inline void CopyStr(char *Dst, int Max, const char *Src) {
-    int i = 0;
-
-    if (Max <= 0) {
-        return;
-    }
-    if (!Src) {
-        Dst[0] = 0;
-        return;
-    }
-    while (Src[i] && i < Max - 1) {
-        Dst[i] = Src[i];
-        i++;
-    }
-    Dst[i] = 0;
-}
 
 /* ===== EditUi.c ===== */
 void EditSetStatus(const char *S);

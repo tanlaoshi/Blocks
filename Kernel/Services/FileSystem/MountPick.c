@@ -27,7 +27,7 @@ static void RenameEspIfLetterOnly(int i) {
         }
     }
     if (EspN == 0) {
-        CopyName(gVols[i].Name, FS_VOL_NAME_MAX, "ESP");
+        StringCopy(gVols[i].Name, FS_VOL_NAME_MAX, "ESP");
     } else {
         gVols[i].Name[0] = 'E';
         gVols[i].Name[1] = 'S';
@@ -79,7 +79,7 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
     }
     if (MarkerVol >= 0) {
         gDefaultVol = MarkerVol;
-        CopyName(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "TOYOS");
+        StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "TOYOS");
         ToyLogFs("Fs: Named TOYOS by marker (No TOYOS.ID)\n");
     } else if (PrefVol >= 0) {
         gDefaultVol = PrefVol;

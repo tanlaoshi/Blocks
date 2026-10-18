@@ -77,21 +77,6 @@ int ItemCount(void) {
     }
 }
 
-static void CopyStr(char *Dst, int DstMax, const char *S) {
-    int j;
-
-    if (DstMax <= 0) {
-        return;
-    }
-    if (!S) {
-        Dst[0] = 0;
-        return;
-    }
-    for (j = 0; S[j] && j < DstMax - 1; j++) {
-        Dst[j] = S[j];
-    }
-    Dst[j] = 0;
-}
 
 void ItemLabel(int Idx, char *Out, int OutMax) {
     const FONT_FACE *Face;
@@ -107,20 +92,20 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
     }
     switch (gCat) {
     case SETTINGS_CAT_DESKTOP:
-        CopyStr(Out, OutMax, LocStr(gDesktopColors[Idx].Msg));
+        StringCopy(Out, OutMax, LocStr(gDesktopColors[Idx].Msg));
         break;
     case SETTINGS_CAT_SHELL:
-        CopyStr(Out, OutMax, LocStr(gShellColors[Idx].Msg));
+        StringCopy(Out, OutMax, LocStr(gShellColors[Idx].Msg));
         break;
     case SETTINGS_CAT_FONT:
         Face = FontGetById((UINT32)Idx);
-        CopyStr(Out, OutMax, (Face && Face->Name) ? Face->Name : "?");
+        StringCopy(Out, OutMax, (Face && Face->Name) ? Face->Name : "?");
         break;
     case SETTINGS_CAT_DISPLAY:
         if (Idx == 0) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_DISP_AUTO));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_DISP_AUTO));
         } else {
-            CopyStr(Out, OutMax, gModes[Idx - 1].Label);
+            StringCopy(Out, OutMax, gModes[Idx - 1].Label);
         }
         break;
     case SETTINGS_CAT_LANGUAGE: {
@@ -163,22 +148,22 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
         break;
     case SETTINGS_CAT_THEME:
         if (Idx == 0) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_THEME_DEFAULT));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_DEFAULT));
         } else if (Idx == 1) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_THEME_MODERN));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_MODERN));
         } else {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_THEME_TECH));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_TECH));
         }
         break;
     case SETTINGS_CAT_EFFECTS:
         if (Idx == 0) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_EFFECTS_MINIMAL));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_MINIMAL));
         } else if (Idx == 1) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_EFFECTS_LOW));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_LOW));
         } else if (Idx == 2) {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_EFFECTS_MEDIUM));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_MEDIUM));
         } else {
-            CopyStr(Out, OutMax, LocStr(MSG_SET_EFFECTS_HIGH));
+            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_HIGH));
         }
         break;
     default:

@@ -53,8 +53,8 @@ static void ApplyLine(const char *Line) {
         return;
     }
     gRecs[Slot].Used = 1;
-    CopyStr(gRecs[Slot].Key, DB_KEY_MAX, Key);
-    CopyStr(gRecs[Slot].Val, DB_VAL_MAX, Val);
+    StringCopy(gRecs[Slot].Key, DB_KEY_MAX, Key);
+    StringCopy(gRecs[Slot].Val, DB_VAL_MAX, Val);
 }
 
 int DbLoad(void) {

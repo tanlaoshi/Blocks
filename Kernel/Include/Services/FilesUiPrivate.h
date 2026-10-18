@@ -9,6 +9,7 @@
 #define FILES_UI_PRIVATE_H
 
 #include "FilesUi.h"
+#include "CString.h"
 #include "Gui.h"
 #include "FileSystem.h"
 #include "Process.h"
@@ -117,7 +118,6 @@ UINT64 FilesClock(void);
 int FocusFilesWindow(void);
 int FilesUiStrEqIgnoreCase(const char *A, const char *B);
 int EndsWithElf(const char *Name);
-void CopyStr(char *Dst, int Max, const char *Src);
 void SetStatus(const char *S);
 int NameOk(const char *N);
 int JoinPath(char *Out, int Max, const char *Dir, const char *Name);

@@ -133,12 +133,10 @@ void SchedulerInitialize(void) {
 }
 
 void CopyName(TASK *T, const char *Name) {
-    int n = 0;
-    while (Name[n] && n < 15) {
-        T->Name[n] = Name[n];
-        n++;
+    if (T == 0) {
+        return;
     }
-    T->Name[n] = 0;
+    StringCopy(T->Name, 16, Name);
 }
 
 void IdleTask(void) {

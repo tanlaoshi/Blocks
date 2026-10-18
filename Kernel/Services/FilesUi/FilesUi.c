@@ -110,19 +110,9 @@ int EndsWithElf(const char *Name) {
     return FilesUiStrEqIgnoreCase(Name + N - 4, ".elf");
 }
 
-void CopyStr(char *Dst, int Max, const char *Src) {
-    int i;
-    if (Max <= 0) {
-        return;
-    }
-    for (i = 0; Src && Src[i] && i < Max - 1; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
 void SetStatus(const char *S) {
-    CopyStr(gStatus, sizeof(gStatus), S ? S : "");
+    StringCopy(gStatus, sizeof(gStatus), S ? S : "");
 }
 
 int NameOk(const char *N) {
@@ -216,10 +206,10 @@ void FilesUiOpen(void) {
         }
     }
     if (ToyPlace >= 0) {
-        CopyStr(gCwd, sizeof(gCwd), gPlaces[ToyPlace].Path);
+        StringCopy(gCwd, sizeof(gCwd), gPlaces[ToyPlace].Path);
         SetStatus("");
     } else if (gPlaceCount > 0 && gPlaces[0].Path) {
-        CopyStr(gCwd, sizeof(gCwd), gPlaces[0].Path);
+        StringCopy(gCwd, sizeof(gCwd), gPlaces[0].Path);
         SetStatus("No TOYOS volume (vols / msc mount)");
     } else {
         SetStatus("No volumes mounted");

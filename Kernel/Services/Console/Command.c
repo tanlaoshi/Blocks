@@ -16,21 +16,11 @@ int gAliasCount;
 USER_ALIAS gUserAliases[USER_ALIAS_MAX];
 int gUserAliasCount;
 
-int StrEq(const char *A, const char *B) {
-    while (*A && *B) {
-        if (*A != *B) {
-            return 0;
-        }
-        A++;
-        B++;
-    }
-    return *A == *B;
-}
 int FindCommandIndex(const char *Name) {
     int i;
 
     for (i = 0; i < gCommandCount; i++) {
-        if (StrEq(gCommands[i].Name, Name)) {
+        if (StringEqual(gCommands[i].Name, Name)) {
             return i;
         }
     }
@@ -107,7 +97,7 @@ static void Register2(const char *Level1, const char *Level2, const char *Help,
     /* 可保留已有 L1 Handler 作默认（如 list 列目录 + list tasks） */
 
     for (s = 0; s < gCommands[Idx].SubCount; s++) {
-        if (StrEq(gCommands[Idx].Subs[s].Name, Level2)) {
+        if (StringEqual(gCommands[Idx].Subs[s].Name, Level2)) {
             gCommands[Idx].Subs[s].Help = Help ? Help : "";
             gCommands[Idx].Subs[s].Handler = Handler;
             return;
@@ -205,7 +195,7 @@ void ConsoleRunLine(void) {
         UaPtr = &gUserAliases[Ua];
     } else {
         for (a = 0; a < gAliasCount; a++) {
-            if (StrEq(Argv[0], gAliases[a].Alias)) {
+            if (StringEqual(Argv[0], gAliases[a].Alias)) {
                 Al = &gAliases[a];
                 break;
             }
@@ -256,7 +246,7 @@ void ConsoleRunLine(void) {
     if (gCommands[Idx].SubCount > 0) {
         if (WorkArgc >= 2) {
             for (s = 0; s < gCommands[Idx].SubCount; s++) {
-                if (StrEq(Work[1], gCommands[Idx].Subs[s].Name)) {
+                if (StringEqual(Work[1], gCommands[Idx].Subs[s].Name)) {
                     gCommands[Idx].Subs[s].Handler(WorkArgc - 1, &Work[1]);
                     return;
                 }

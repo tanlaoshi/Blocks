@@ -20,7 +20,7 @@ static int PlanHasId(char Out[][STORE_ID_MAX], int N, const char *Id) {
     int i;
 
     for (i = 0; i < N; i++) {
-        if (StrEq(Out[i], Id)) {
+        if (StringEqual(Out[i], Id)) {
             return 1;
         }
     }
@@ -103,7 +103,7 @@ static int PlanInstallRec(const char *Id, int Depth,
     if (*OutN >= Max) {
         return FAT_ERR_INVAL;
     }
-    CopyStr(Out[*OutN], STORE_ID_MAX, Id);
+    StringCopy(Out[*OutN], STORE_ID_MAX, Id);
     (*OutN)++;
     return FAT_OK;
 }
@@ -166,12 +166,12 @@ int StoreComboPlanRemove(const char *Id, char OutIds[][STORE_ID_MAX], int Max,
         }
         Tok[n] = 0;
         if (Tok[0]) {
-            CopyStr(Deps[DepN], STORE_ID_MAX, Tok);
+            StringCopy(Deps[DepN], STORE_ID_MAX, Tok);
             DepN++;
         }
     }
 
-    CopyStr(OutIds[0], STORE_ID_MAX, Id);
+    StringCopy(OutIds[0], STORE_ID_MAX, Id);
     *OutN = 1;
 
     for (i = DepN - 1; i >= 0 && *OutN < Max; i--) {
@@ -188,7 +188,7 @@ int StoreComboPlanRemove(const char *Id, char OutIds[][STORE_ID_MAX], int Max,
             continue;
         }
         /* Users 在卸叶子后才准；Job/Combo 逐步 StoreRemove，仍被引用则跳过 */
-        CopyStr(OutIds[*OutN], STORE_ID_MAX, Deps[i]);
+        StringCopy(OutIds[*OutN], STORE_ID_MAX, Deps[i]);
         (*OutN)++;
     }
     return FAT_OK;

@@ -166,7 +166,7 @@ static int FindId(STORE_ENTRY *Tab, int N, const char *Id) {
     int i;
 
     for (i = 0; i < N; i++) {
-        if (StrEq(Tab[i].Id, Id)) {
+        if (StringEqual(Tab[i].Id, Id)) {
             return i;
         }
     }

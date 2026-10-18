@@ -9,6 +9,7 @@
 #define CONSOLE_PRIVATE_H
 
 #include "BootTypes.h"
+#include "CString.h"
 #include "Console.h"
 #include "Theme.h"
 
@@ -60,7 +61,6 @@ extern int gAliasCount;
 extern USER_ALIAS gUserAliases[USER_ALIAS_MAX];
 extern int gUserAliasCount;
 
-int StrEq(const char *A, const char *B);
 int FindCommandIndex(const char *Name);
 int FindUserAliasIndex(const char *Name);
 void CommandAlias(int Argc, char **Argv);

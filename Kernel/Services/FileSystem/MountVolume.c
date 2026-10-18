@@ -24,7 +24,7 @@ static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
         }
     }
     if (EspN == 0) {
-        CopyName(V->Name, FS_VOL_NAME_MAX, "ESP");
+        StringCopy(V->Name, FS_VOL_NAME_MAX, "ESP");
     } else {
         V->Name[0] = 'E';
         V->Name[1] = 'S';
@@ -47,17 +47,17 @@ static void NameToyIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *ToyVol) {
     if (*ToyVol < 0) {
         Take = 1;
     } else if (!Msc && BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
-        CopyName(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
+        StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
         ToyLogFs("Fs: Prefer Internal TOYOS Over USB\n");
     } else if (Msc && !BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
-        CopyName(V->Name, FS_VOL_NAME_MAX, "USB");
+        StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
         ToyLogFs("Fs: USB TOYOS Kept As USB:\n");
     } else {
         Take = 1;
     }
     if (Take) {
-        CopyName(V->Name, FS_VOL_NAME_MAX, "TOYOS");
+        StringCopy(V->Name, FS_VOL_NAME_MAX, "TOYOS");
         *ToyVol = Idx;
     }
 }
@@ -172,7 +172,7 @@ void FsMountAddResVolume(void) {
     V->ReadOnly = 1;
     V->HasToyId = 0;
     V->Ops = ResFsOps();
-    CopyName(V->Name, FS_VOL_NAME_MAX, "RES");
+    StringCopy(V->Name, FS_VOL_NAME_MAX, "RES");
     if (gVirtualFileSystem.Select(V->Ops) == 0 && gVirtualFileSystem.Mount(0) == FAT_OK) {
         gVolCount++;
         gActiveVol = Idx;

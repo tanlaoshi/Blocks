@@ -34,10 +34,10 @@ static void BuildIconPath(char *Out, int Max, const char *Id,
     }
     Out[0] = 0;
     if (!IconRel || !IconRel[0]) {
-        MenuCopyStr(Out, Max, DEFAULT_APP_ICON);
+        StringCopy(Out, Max, DEFAULT_APP_ICON);
         return;
     }
-    MenuCopyStr(Out, Max, STORE_APPS_DIR);
+    StringCopy(Out, Max, STORE_APPS_DIR);
     while (Out[P]) {
         P++;
     }
@@ -45,7 +45,7 @@ static void BuildIconPath(char *Out, int Max, const char *Id,
         Out[P++] = '/';
         Out[P] = 0;
     }
-    MenuCopyStr(Out + P, Max - P, Id ? Id : "");
+    StringCopy(Out + P, Max - P, Id ? Id : "");
     while (Out[P]) {
         P++;
     }
@@ -53,7 +53,7 @@ static void BuildIconPath(char *Out, int Max, const char *Id,
         Out[P++] = '/';
         Out[P] = 0;
     }
-    MenuCopyStr(Out + P, Max - P, IconRel);
+    StringCopy(Out + P, Max - P, IconRel);
 }
 
 void DesktopLoadAppIcons(void) {
@@ -91,15 +91,15 @@ void DesktopLoadAppIcons(void) {
         }
 
         Icon = &gIcons[Slot];
-        MenuCopyStr(Icon->AppId, (int)sizeof(Icon->AppId), Inst[i].Id);
+        StringCopy(Icon->AppId, (int)sizeof(Icon->AppId), Inst[i].Id);
         if (Meta.Title[0]) {
-            MenuCopyStr(Icon->LabelBuf, (int)sizeof(Icon->LabelBuf), Meta.Title);
+            StringCopy(Icon->LabelBuf, (int)sizeof(Icon->LabelBuf), Meta.Title);
         } else {
-            MenuCopyStr(Icon->LabelBuf, (int)sizeof(Icon->LabelBuf), Inst[i].Id);
+            StringCopy(Icon->LabelBuf, (int)sizeof(Icon->LabelBuf), Inst[i].Id);
         }
         BuildIconPath(Icon->BmpPathBuf, (int)sizeof(Icon->BmpPathBuf),
                       Inst[i].Id, Meta.IconRel);
-        MenuCopyStr(Icon->ExecPathBuf, (int)sizeof(Icon->ExecPathBuf), Exec);
+        StringCopy(Icon->ExecPathBuf, (int)sizeof(Icon->ExecPathBuf), Exec);
 
         Icon->Label = Icon->LabelBuf;
         Icon->BmpPath = Icon->BmpPathBuf;

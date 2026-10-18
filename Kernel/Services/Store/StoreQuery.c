@@ -175,7 +175,7 @@ int StoreIsInstalled(const char *Id) {
         return 0;
     }
     for (i = 0; i < Count; i++) {
-        if (!StrEq(Tab[i].Id, Id)) {
+        if (!StringEqual(Tab[i].Id, Id)) {
             continue;
         }
         Kind = EntryKind(Tab[i].Type);

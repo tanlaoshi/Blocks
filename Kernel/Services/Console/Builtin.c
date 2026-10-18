@@ -15,14 +15,14 @@ static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
 
     for (i = 0; i < gUserAliasCount; i++) {
         if (gUserAliases[i].Alias[0] != 0 &&
-            StrEq(gUserAliases[i].Level1, Level1)) {
+            StringEqual(gUserAliases[i].Level1, Level1)) {
             if (Level2 == 0) {
                 if (gUserAliases[i].Level2[0] != 0) {
                     continue;
                 }
             } else {
                 if (gUserAliases[i].Level2[0] == 0 ||
-                    !StrEq(gUserAliases[i].Level2, Level2)) {
+                    !StringEqual(gUserAliases[i].Level2, Level2)) {
                     continue;
                 }
             }
@@ -37,7 +37,7 @@ static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
         }
     }
     for (i = 0; i < gAliasCount; i++) {
-        if (!StrEq(gAliases[i].Level1, Level1)) {
+        if (!StringEqual(gAliases[i].Level1, Level1)) {
             continue;
         }
         if (Level2 == 0) {
@@ -45,7 +45,7 @@ static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
                 continue;
             }
         } else {
-            if (gAliases[i].Level2 == 0 || !StrEq(gAliases[i].Level2, Level2)) {
+            if (gAliases[i].Level2 == 0 || !StringEqual(gAliases[i].Level2, Level2)) {
                 continue;
             }
         }

@@ -76,13 +76,13 @@ void FillStartMenuGameRows(void) {
         Gr->Enabled = 1;
         Gr->IconSrc = IconSrcForGameId(In->Id);
         if (HavePkg && Meta.Title[0]) {
-            MenuCopyStr(Gr->Label, sizeof(Gr->Label), Meta.Title);
+            StringCopy(Gr->Label, sizeof(Gr->Label), Meta.Title);
         } else if (MenuNameEqIgnoreCase(In->Id, "snake")) {
             L = LocStr(MSG_ICON_SNAKE);
-            MenuCopyStr(Gr->Label, sizeof(Gr->Label), L ? L : "Snake");
+            StringCopy(Gr->Label, sizeof(Gr->Label), L ? L : "Snake");
         } else {
-            MenuCopyStr(Gr->Label, sizeof(Gr->Label), In->Id);
+            StringCopy(Gr->Label, sizeof(Gr->Label), In->Id);
         }
-        MenuCopyStr(Gr->Path, sizeof(Gr->Path), Path);
+        StringCopy(Gr->Path, sizeof(Gr->Path), Path);
     }
 }

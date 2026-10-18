@@ -89,7 +89,7 @@ int StoreAppBundleReady(const char *Id) {
         return 0;
     }
     for (i = 0; i < Count; i++) {
-        if (!StrEq(Tab[i].Id, Id)) {
+        if (!StringEqual(Tab[i].Id, Id)) {
             continue;
         }
         if (EntryKind(Tab[i].Type) != STORE_KIND_APP) {
@@ -115,7 +115,7 @@ int StoreResolveAppPath(const char *Id, const char *File, char *Out, int OutMax)
     if (Id && Id[0]) {
         StoreAppElfPath(Path, (int)sizeof(Path), Id, File);
         if (FileSystemFileStat(Path, &St) == FAT_OK && !(St.Attr & FAT_ATTR_DIR)) {
-            CopyStr(Out, OutMax, Path);
+            StringCopy(Out, OutMax, Path);
             return FAT_OK;
         }
     }

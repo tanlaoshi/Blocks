@@ -4,6 +4,7 @@
  * -v 追加 VID:DID / class / BAR0 / IRQ；-b / -u / -c 过滤；文末 Totals。
  */
 #include "Device.h"
+#include "CString.h"
 #include "Driver.h"
 #include "Text.h"
 #include "HalSerial.h"
@@ -69,16 +70,6 @@ static void WriteDec(UINT32 V) {
     }
 }
 
-static int StrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == *B;
-}
 
 static const char *TitleOf(const DEVICE_NODE *Dev) {
     if (Dev->FriendlyName[0]) return Dev->FriendlyName;
@@ -141,7 +132,7 @@ static int Want(const DEVICE_NODE *Dev, const LIST_OPTS *Opt) {
         if (Opt->ClassOk && Dev->Class == Opt->Class) {
             Ok = 1;
         }
-        if (Opt->NameKey[0] && StrEq(Dev->Name, Opt->NameKey)) {
+        if (Opt->NameKey[0] && StringEqual(Dev->Name, Opt->NameKey)) {
             Ok = 1;
         }
         if (!Ok) {
@@ -263,26 +254,26 @@ int DeviceListDumpArgs(int Argc, char **Argv, void (*Write)(const char *Text)) {
     for (i = 0; i < Argc; i++) {
         const char *A = Argv[i];
 
-        if (!A || StrEq(A, "devices")) {
+        if (!A || StringEqual(A, "devices")) {
             continue;
         }
-        if (StrEq(A, "-v")) {
+        if (StringEqual(A, "-v")) {
             Opt.Verbose = 1;
             continue;
         }
-        if (StrEq(A, "-t")) {
+        if (StringEqual(A, "-t")) {
             Opt.TreeMode = 1;
             continue;
         }
-        if (StrEq(A, "-b")) {
+        if (StringEqual(A, "-b")) {
             Opt.BoundOnly = 1;
             continue;
         }
-        if (StrEq(A, "-u")) {
+        if (StringEqual(A, "-u")) {
             Opt.UnboundOnly = 1;
             continue;
         }
-        if (StrEq(A, "-c")) {
+        if (StringEqual(A, "-c")) {
             const char *Key;
 
             if (i + 1 >= Argc || !Argv[i + 1]) {

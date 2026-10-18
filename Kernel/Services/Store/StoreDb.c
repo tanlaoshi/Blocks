@@ -52,7 +52,7 @@ int LookupPackageKind(const char *Id) {
         return -1;
     }
     for (i = 0; i < Count; i++) {
-        if (StrEq(Tab[i].Id, Id)) {
+        if (StringEqual(Tab[i].Id, Id)) {
             return EntryKind(Tab[i].Type);
         }
     }

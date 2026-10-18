@@ -92,12 +92,12 @@ void PaintView(void) {
     }
 
     Title[0] = 0;
-    CopyStr(Title, sizeof(Title), LocStr(MSG_FILES_VIEW));
+    StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_VIEW));
     ti = 0;
     while (Title[ti]) {
         ti++;
     }
-    CopyStr(Title + ti, (int)sizeof(Title) - ti, gViewTitle);
+    StringCopy(Title + ti, (int)sizeof(Title) - ti, gViewTitle);
     DrawLine(X + 8, Y + 8, Title, ThemeText());
     DrawLine(X + 8, Y + 8 + LineH, LocStr(MSG_FILES_ESC_BACK), ThemeTextMuted());
 
@@ -151,18 +151,18 @@ void PaintConfirm(void) {
     if (gSelected >= 0 && gSelected < gCount) {
         Name = gEnts[gSelected].Name;
     }
-    CopyStr(Line2, sizeof(Line2), LocStr(MSG_FILES_DEL_PRE));
+    StringCopy(Line2, sizeof(Line2), LocStr(MSG_FILES_DEL_PRE));
     {
         int n = 0;
         while (Line2[n]) {
             n++;
         }
-        CopyStr(Line2 + n, (int)sizeof(Line2) - n, Name);
+        StringCopy(Line2 + n, (int)sizeof(Line2) - n, Name);
         n = 0;
         while (Line2[n]) {
             n++;
         }
-        CopyStr(Line2 + n, (int)sizeof(Line2) - n, " ?");
+        StringCopy(Line2 + n, (int)sizeof(Line2) - n, " ?");
     }
     PaintList();
     PaintOverlay(LocStr(MSG_FILES_DEL_TITLE), Line2, LocStr(MSG_FILES_DEL_HINT));
@@ -174,11 +174,11 @@ void PaintPrompt(void) {
     int i;
 
     if (gPromptKind == FILES_PROMPT_MKDIR) {
-        CopyStr(Title, sizeof(Title), LocStr(MSG_FILES_NEW_DIR));
+        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_NEW_DIR));
     } else if (gPromptKind == FILES_PROMPT_NEWFILE) {
-        CopyStr(Title, sizeof(Title), LocStr(MSG_FILES_NEW_FILE));
+        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_NEW_FILE));
     } else {
-        CopyStr(Title, sizeof(Title), LocStr(MSG_FILES_RENAME));
+        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_RENAME));
     }
     Line2[0] = '>';
     Line2[1] = ' ';

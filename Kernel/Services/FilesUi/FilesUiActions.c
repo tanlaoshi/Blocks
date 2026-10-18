@@ -25,7 +25,7 @@ void OpenSelected(void) {
             if (!JoinPath(Path, sizeof(Path), gCwd, E->Name)) {
                 return;
             }
-            CopyStr(gCwd, sizeof(gCwd), Path);
+            StringCopy(gCwd, sizeof(gCwd), Path);
         }
         gMode = FILES_MODE_LIST;
         SetStatus("");
@@ -52,7 +52,7 @@ void OpenSelected(void) {
         return;
     }
     gView[gViewLen] = 0;
-    CopyStr(gViewTitle, sizeof(gViewTitle), E->Name);
+    StringCopy(gViewTitle, sizeof(gViewTitle), E->Name);
     if (IsMostlyText(gView, gViewLen)) {
         if (GuiOpenEdit(Path) < 0) {
             SetStatus("edit: no free window");

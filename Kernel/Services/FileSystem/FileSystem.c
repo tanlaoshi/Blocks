@@ -142,7 +142,7 @@ int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
         return -1;
     }
     if (Name && NameMax > 0) {
-        CopyName(Name, NameMax, gVols[Idx].Name);
+        StringCopy(Name, NameMax, gVols[Idx].Name);
     }
     if (Drive) {
         *Drive = gVols[Idx].Drive;

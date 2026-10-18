@@ -7,6 +7,7 @@
 #define STORE_PRIVATE_H
 
 #include "Store.h"
+#include "CString.h"
 
 #define STORE_KIND_APP     0
 #define STORE_KIND_FONT    1
@@ -81,36 +82,6 @@ int StoreInstallBundlePrepare(const char *Id, const char *File, char *DstElf,
                               int DstMax);
 int StoreInstallBundleExtras(const char *Id);
 int StoreRemoveAppPayload(const char *Id, const char *File);
-
-/* Console 里已有同名全局，这里不能再导出。 */
-static inline int StrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == 0 && *B == 0;
-}
-
-/* 与 FilesUi 的同名函数签名不同，不能做成全局符号。 */
-static inline void CopyStr(char *Dst, int DstMax, const char *Src) {
-    int i = 0;
-
-    if (!Dst || DstMax <= 0) {
-        return;
-    }
-    if (!Src) {
-        Dst[0] = 0;
-        return;
-    }
-    while (Src[i] && i + 1 < DstMax) {
-        Dst[i] = Src[i];
-        i++;
-    }
-    Dst[i] = 0;
-}
 
 static inline void JoinPath(char *Dst, int DstMax, const char *A, const char *B) {
     int i = 0;

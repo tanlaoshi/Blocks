@@ -94,7 +94,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 }
                 if (Act == DESKTOP_ACTION_EXEC && OutExecPath &&
                     ExecPathMax > 0) {
-                    MenuCopyStr(OutExecPath, (int)ExecPathMax, R->Path);
+                    StringCopy(OutExecPath, (int)ExecPathMax, R->Path);
                 }
                 return 1;
             }
@@ -125,7 +125,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 }
                 if (Act == DESKTOP_ACTION_EXEC && OutExecPath &&
                     ExecPathMax > 0) {
-                    MenuCopyStr(OutExecPath, (int)ExecPathMax, R->Path);
+                    StringCopy(OutExecPath, (int)ExecPathMax, R->Path);
                 }
                 return 1;
             }
@@ -183,7 +183,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 }
                 if (Act == DESKTOP_ACTION_EXEC && OutExecPath &&
                     ExecPathMax > 0) {
-                    MenuCopyStr(OutExecPath, (int)ExecPathMax, R->Path);
+                    StringCopy(OutExecPath, (int)ExecPathMax, R->Path);
                 }
                 return 1;
             }

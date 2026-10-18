@@ -75,11 +75,11 @@ static int EntryMatches(const STORE_ENTRY *E, int Cat, int CatalogIdx) {
     case STORE_CAT_ALL:
         return 1;
     case STORE_CAT_APP:
-        return StrEq(E->Type, "app");
+        return StringEqual(E->Type, "app");
     case STORE_CAT_FONT:
-        return StrEq(E->Type, "font");
+        return StringEqual(E->Type, "font");
     case STORE_CAT_ASSET:
-        return StrEq(E->Type, "asset");
+        return StringEqual(E->Type, "asset");
     case STORE_CAT_INSTALLED:
         return CachedInstalled(CatalogIdx);
     default:
@@ -111,7 +111,7 @@ void RebuildFilter(void) {
     gSel = 0;
     if (KeepId[0]) {
         for (i = 0; i < gFiltCount; i++) {
-            if (StrEq(Tab[gMap[i]].Id, KeepId)) {
+            if (StringEqual(Tab[gMap[i]].Id, KeepId)) {
                 gSel = i;
                 break;
             }

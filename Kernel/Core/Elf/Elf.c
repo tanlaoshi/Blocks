@@ -41,17 +41,6 @@ void ElfZeroMemory(void *Ptr, UINTN Size) {
     }
 }
 
-int ElfStrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == *B;
-}
-
 int ElfHeaderOk(const Elf64_Ehdr *Hdr, UINTN Size, UINT16 WantType) {
     if (Size < sizeof(Elf64_Ehdr)) {
         return 0;

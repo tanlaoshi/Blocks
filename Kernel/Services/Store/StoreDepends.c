@@ -48,9 +48,9 @@ int LoadPkgDepends(const char *Id, char *Out, int OutMax) {
             }
             if (L[0] == 'd' && L[1] == 'e' && L[2] == 'p' && L[3] == 'e' &&
                 L[4] == 'n' && L[5] == 'd' && L[6] == 's' && L[7] == '=') {
-                CopyStr(Tmp, (int)sizeof(Tmp), L + 8);
+                StringCopy(Tmp, (int)sizeof(Tmp), L + 8);
                 NormalizeDepends(Tmp);
-                CopyStr(Out, OutMax, Tmp);
+                StringCopy(Out, OutMax, Tmp);
                 Buf[i] = (UINT8)Saved;
                 return 1;
             }
@@ -136,7 +136,7 @@ static int DependsHasId(const char *Depends, const char *Id) {
             P++;
         }
         Tok[n] = 0;
-        if (Tok[0] && StrEq(Tok, Id)) {
+        if (Tok[0] && StringEqual(Tok, Id)) {
             return 1;
         }
     }
@@ -159,10 +159,10 @@ int ResolveEntryDepends(const char *Id, char *OutDepends, int OutMax) {
         return Err;
     }
     for (i = 0; i < Count; i++) {
-        if (!StrEq(Tab[i].Id, Id)) {
+        if (!StringEqual(Tab[i].Id, Id)) {
             continue;
         }
-        CopyStr(OutDepends, OutMax, Tab[i].Depends);
+        StringCopy(OutDepends, OutMax, Tab[i].Depends);
         if (LoadPkgDepends(Tab[i].Id, OutDepends, OutMax)) {
             /* PKG 覆盖 */
         }
@@ -191,7 +191,7 @@ int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max) {
         return 0;
     }
     for (i = 0; i < Count && OutN < Max; i++) {
-        if (StrEq(Tab[i].Id, Id)) {
+        if (StringEqual(Tab[i].Id, Id)) {
             continue;
         }
         if (!StoreIsInstalled(Tab[i].Id)) {
@@ -199,7 +199,7 @@ int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max) {
         }
         /* 勿信 sd.="-"（镜像/旧 Adopt）：以 catalog+PKG 为反向依赖真源 */
         Dep[0] = 0;
-        CopyStr(Dep, (int)sizeof(Dep), Tab[i].Depends);
+        StringCopy(Dep, (int)sizeof(Dep), Tab[i].Depends);
         if (LoadPkgDepends(Tab[i].Id, Dep, (int)sizeof(Dep))) {
             /* PKG 覆盖 */
         }
@@ -209,7 +209,7 @@ int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max) {
             NormalizeDepends(Dep);
         }
         if (DependsHasId(Dep, Id)) {
-            CopyStr(OutIds[OutN], STORE_ID_MAX, Tab[i].Id);
+            StringCopy(OutIds[OutN], STORE_ID_MAX, Tab[i].Id);
             OutN++;
         }
     }

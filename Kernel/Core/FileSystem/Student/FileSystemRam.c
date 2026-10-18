@@ -6,6 +6,7 @@
  * Host：./Scripts/runtests.sh fs
  */
 #include "VirtualFileSystem.h"
+#include "CString.h"
 
 #define RAM_MAX_FILES 8
 #define RAM_NAME_MAX  32
@@ -65,12 +66,7 @@ static int NameEq(const char *A, const char *B)
 
 static void CopyName(char *Dst, const char *Src)
 {
-    int i;
-
-    for (i = 0; Src[i] && i < RAM_NAME_MAX - 1; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
+    StringCopy(Dst, RAM_NAME_MAX, Src);
 }
 
 static const char *Leaf(const char *Path)

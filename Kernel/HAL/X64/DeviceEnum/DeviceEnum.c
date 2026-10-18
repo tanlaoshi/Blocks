@@ -4,6 +4,7 @@
  * 禁止批量写 Command；BAR 对齐 PciScanUSBControllers 的 64-bit 逻辑。
  */
 #include "Device.h"
+#include "CString.h"
 #include "PCIe.h"
 #include "PciNames.h"
 #include "Hal.h"
@@ -70,21 +71,6 @@ static void ZeroBytes(void *Ptr, UINTN Bytes) {
     }
 }
 
-static void CopyName(char *Dst, UINTN Max, const char *Src) {
-    UINTN i;
-
-    if (!Dst || Max == 0) {
-        return;
-    }
-    if (!Src) {
-        Dst[0] = 0;
-        return;
-    }
-    for (i = 0; i + 1 < Max && Src[i]; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
 static void FillBars(UINT8 Bus, UINT8 Dev, UINT8 Func, UINT64 OutBar[6]) {
     UINT32 RawBar[6];
@@ -199,7 +185,7 @@ void HalDeviceEnumerate(void) {
                 }
 
                 Name = PciClassName(Class, Subclass, ProgIf);
-                CopyName(Node.Name, sizeof(Node.Name), Name);
+                StringCopy(Node.Name, sizeof(Node.Name), Name);
                 /* PR-DEV-enum：类码入库；友好名 设备表 → 类名 → 短键。不写 Command、不探 BAR size */
                 Node.Class = Class;
                 Node.Subclass = Subclass;
@@ -211,7 +197,7 @@ void HalDeviceEnumerate(void) {
                 if (!Friendly) {
                     Friendly = Name;
                 }
-                CopyName(Node.FriendlyName, sizeof(Node.FriendlyName), Friendly);
+                StringCopy(Node.FriendlyName, sizeof(Node.FriendlyName), Friendly);
 
                 if (DeviceAdd(&Node) >= 0) {
                     Added++;

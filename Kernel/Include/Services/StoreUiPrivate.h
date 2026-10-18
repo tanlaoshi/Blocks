@@ -9,6 +9,7 @@
 #define STORE_UI_PRIVATE_H
 
 #include "StoreUi.h"
+#include "CString.h"
 #include "StoreJob.h"
 #include "Store.h"
 #include "Desktop.h"
@@ -66,18 +67,6 @@ extern int gHoverBtn;
 extern int gPressBtn;
 
 extern UI_BUTTON_ACTION gStoreAct[STORE_BTN_N];
-
-/* Console / Store 已有同名符号，这里不能再导出。 */
-static inline int StrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == 0 && *B == 0;
-}
 
 /* ===== StoreUiModel.c ===== */
 const char *StoreBtnLabel(int I);

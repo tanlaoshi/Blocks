@@ -9,6 +9,7 @@
 #define DESKTOP_PRIVATE_H
 
 #include "Desktop.h"
+#include "CString.h"
 #include "UI.h"
 #include "UiLayout.h"
 #include "Hal.h"
@@ -163,7 +164,6 @@ void SelectIcon(int Hit, UINT32 X, UINT32 Y, UINT64 Now);
 int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                        char *OutExecPath, UINTN ExecPathMax);
 
-void MenuCopyStr(char *Dst, int Max, const char *Src);
 int MenuNameEqIgnoreCase(const char *A, const char *B);
 void RebuildStartMenu(void);
 void FillStartMenuAppRows(int AppCap);

@@ -35,7 +35,7 @@ static void EditSaveInit(void) {
 }
 
 void EditSetStatus(const char *S) {
-    CopyStr(gEditStatus, sizeof(gEditStatus), S ? S : "");
+    StringCopy(gEditStatus, sizeof(gEditStatus), S ? S : "");
 }
 
 UINTN LineStartOf(UINTN Pos) {
@@ -145,7 +145,7 @@ void EditUiOpen(const char *Path) {
         EditSetStatus("bad path");
         return;
     }
-    CopyStr(gPath, sizeof(gPath), Path);
+    StringCopy(gPath, sizeof(gPath), Path);
     Err = FileSystemReadFile(gPath, gBuf, sizeof(gBuf) - 1, &N);
     if (Err == FAT_OK) {
         gEditLen = N;

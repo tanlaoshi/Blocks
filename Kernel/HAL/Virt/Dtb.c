@@ -5,22 +5,12 @@
  */
 #include "Dtb.h"
 #include "DtbPrivate.h"
+#include "CString.h"
 
 UINT32 DtbBe32(const void *P) {
     const UINT8 *B = (const UINT8 *)P;
     return ((UINT32)B[0] << 24) | ((UINT32)B[1] << 16) |
            ((UINT32)B[2] << 8) | (UINT32)B[3];
-}
-
-int DtbStrEq(const char *A, const char *B) {
-    if (!A || !B) {
-        return 0;
-    }
-    while (*A && *A == *B) {
-        A++;
-        B++;
-    }
-    return *A == *B;
 }
 
 UINT32 DtbAlign4(UINT32 Off) {
@@ -138,13 +128,13 @@ int DtbMemoryRegion(UINT64 DtbPhys, UINT64 *OutBase, UINT64 *OutSize) {
             Off = DtbAlign4(Off + PropLen);
 
             /* 根节点上的 #address-cells / #size-cells（Depth==1） */
-            if (Depth == 1 && !InMemory && DtbStrEq(PName, "#address-cells") &&
+            if (Depth == 1 && !InMemory && StringEqual(PName, "#address-cells") &&
                 PropLen >= 4) {
                 AddrCells = DtbBe32(Val);
-            } else if (Depth == 1 && !InMemory && DtbStrEq(PName, "#size-cells") &&
+            } else if (Depth == 1 && !InMemory && StringEqual(PName, "#size-cells") &&
                        PropLen >= 4) {
                 SizeCells = DtbBe32(Val);
-            } else if (InMemory && DtbStrEq(PName, "reg") && !HaveMem) {
+            } else if (InMemory && StringEqual(PName, "reg") && !HaveMem) {
                 UINT32 Need = (AddrCells + SizeCells) * 4u;
                 UINT64 Base = 0;
                 UINT64 Size = 0;

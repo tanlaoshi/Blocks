@@ -17,15 +17,15 @@ void PaintListDrawHeader(UINT32 Cx, UINT32 Y, UINT32 LineH, UINT32 Cw) {
     Pad = UI_LAYOUT_PAD;
     ListW = Cw > gPrevW ? Cw - gPrevW : Cw;
     PathShow[0] = 0;
-    CopyStr(PathShow, sizeof(PathShow), LocStr(MSG_FILES_PATH));
+    StringCopy(PathShow, sizeof(PathShow), LocStr(MSG_FILES_PATH));
     n = 0;
     while (PathShow[n]) {
         n++;
     }
     if (gCwd[0]) {
-        CopyStr(PathShow + n, (int)sizeof(PathShow) - n, gCwd);
+        StringCopy(PathShow + n, (int)sizeof(PathShow) - n, gCwd);
     } else {
-        CopyStr(PathShow + n, (int)sizeof(PathShow) - n, "/");
+        StringCopy(PathShow + n, (int)sizeof(PathShow) - n, "/");
     }
     (void)ListW;
     DrawLine(Cx + Pad, Y + Pad, PathShow, ThemeText());

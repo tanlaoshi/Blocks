@@ -89,7 +89,7 @@ int DesktopHandleClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
         }
         if (gIcons[Hit].Action == DESKTOP_ACTION_EXEC &&
             gIcons[Hit].ExecPath && OutExecPath && ExecPathMax > 0) {
-            MenuCopyStr(OutExecPath, (int)ExecPathMax, gIcons[Hit].ExecPath);
+            StringCopy(OutExecPath, (int)ExecPathMax, gIcons[Hit].ExecPath);
         }
         gDeskSelected = -1;
         return 1;

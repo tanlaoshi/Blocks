@@ -8,6 +8,7 @@
 #define SETTINGS_UI_PRIVATE_H
 
 #include "SettingsUi.h"
+#include "CString.h"
 #include "Gui.h"
 #include "Theme.h"
 #include "Font.h"

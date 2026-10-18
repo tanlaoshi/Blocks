@@ -3,17 +3,6 @@
  */
 #include "DesktopPrivate.h"
 
-void MenuCopyStr(char *Dst, int Max, const char *Src) {
-    int i;
-
-    if (!Dst || Max <= 0) {
-        return;
-    }
-    for (i = 0; Src && Src[i] && i < Max - 1; i++) {
-        Dst[i] = Src[i];
-    }
-    Dst[i] = 0;
-}
 
 int MenuNameEqIgnoreCase(const char *A, const char *B) {
     char Ca;
@@ -71,8 +60,8 @@ static void MenuAddRow(DESKTOP_ACTION Act, const char *Label, const char *Path,
     R->Action = Act;
     R->Enabled = Enabled ? 1 : 0;
     R->IconSrc = IconSrc;
-    MenuCopyStr(R->Label, sizeof(R->Label), Label ? Label : "");
-    MenuCopyStr(R->Path, sizeof(R->Path), Path ? Path : "");
+    StringCopy(R->Label, sizeof(R->Label), Label ? Label : "");
+    StringCopy(R->Path, sizeof(R->Path), Path ? Path : "");
 }
 
 /* 打开开始菜单时重建：系统项含 Apps/Game；Apps 二级见 FillStartMenuAppRows */

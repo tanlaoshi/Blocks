@@ -8,6 +8,7 @@
 #define SCHEDULER_PRIVATE_H
 
 #include "Scheduler.h"
+#include "CString.h"
 #include "SpinLock.h"
 
 /* 定义在 Scheduler.c */

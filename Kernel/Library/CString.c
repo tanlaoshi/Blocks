@@ -1,7 +1,7 @@
 /*
  * CString.c — freestanding 字符串/内存例程（供 lwIP 等使用）
  */
-#include "BootTypes.h"
+#include "CString.h"
 
 void *memcpy(void *Dst, const void *Src, UINTN Len) {
     UINT8 *D = (UINT8 *)Dst;
@@ -164,4 +164,31 @@ unsigned short **__ctype_b_loc(void) {
         Init = 1;
     }
     return &Ptr;
+}
+
+int StringEqual(const char *A, const char *B) {
+    if (A == 0 || B == 0) {
+        return 0;
+    }
+    while (*A != 0 && *A == *B) {
+        A++;
+        B++;
+    }
+    return *A == *B;
+}
+
+void StringCopy(char *Dst, UINTN Max, const char *Src) {
+    UINTN i;
+
+    if (Dst == 0 || Max == 0) {
+        return;
+    }
+    if (Src == 0) {
+        Dst[0] = 0;
+        return;
+    }
+    for (i = 0; i + 1 < Max && Src[i] != 0; i++) {
+        Dst[i] = Src[i];
+    }
+    Dst[i] = 0;
 }

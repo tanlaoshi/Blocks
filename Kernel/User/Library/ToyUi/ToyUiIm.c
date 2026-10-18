@@ -6,6 +6,7 @@
  * 应用每帧末须 sched_yield（勿只在 Idle 时让出）。
  */
 #include <ToyUiIm.h>
+#include <string.h>
 
 #define TOY_UI_IM_CHK_X  16u
 #define TOY_UI_IM_CHK_Y0 28u
@@ -29,17 +30,10 @@ typedef struct {
 static TOY_UI_IM s_Im;
 
 static int StrEq(const char *A, const char *B) {
-    unsigned I;
-
     if (!A || !B) {
         return A == B;
     }
-    for (I = 0; A[I] || B[I]; I++) {
-        if (A[I] != B[I]) {
-            return 0;
-        }
-    }
-    return 1;
+    return strcmp(A, B) == 0;
 }
 
 static void CopyLab(char *Dst, const char *Src) {

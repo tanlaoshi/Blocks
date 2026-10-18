@@ -75,3 +75,56 @@ int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     }
     return Operations->Bulk(Pipe, Buf, Len, Out);
 }
+
+static USB_DEVICE gUsbDevice[USB_DEVICE_MAX];
+
+void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total) {
+    USB_DEVICE *Dev;
+    UINT16 Off;
+    int i;
+
+    if (Address == 0 || Config == 0 || Total < 9) {
+        return;
+    }
+    Dev = 0;
+    for (i = 0; i < USB_DEVICE_MAX; i++) {
+        if (gUsbDevice[i].Address == Address || gUsbDevice[i].Address == 0) {
+            Dev = &gUsbDevice[i];
+            break;
+        }
+    }
+    if (Dev == 0) {
+        return;
+    }
+    Dev->Address = Address;
+    Dev->InterfaceCount = 0;
+    Off = 0;
+    while (Off + 2 <= Total) {
+        UINT8 Len = Config[Off];
+        UINT8 Type = Config[Off + 1];
+        USB_INTERFACE *Iface;
+
+        if (Len < 2 || (UINT16)(Off + Len) > Total) {
+            break;
+        }
+        if (Type == 4 && Len >= 9) {
+            if (Dev->InterfaceCount >= USB_INTERFACE_MAX) {
+                break;
+            }
+            Iface = &Dev->Interface[Dev->InterfaceCount];
+            Iface->Class = Config[Off + 5];
+            Iface->EndpointCount = 0;
+            Dev->InterfaceCount++;
+        } else if (Type == 5 && Len >= 7 && Dev->InterfaceCount > 0) {
+            Iface = &Dev->Interface[Dev->InterfaceCount - 1];
+            if (Iface->EndpointCount < USB_ENDPOINT_MAX) {
+                USB_ENDPOINT *Ep = &Iface->Endpoint[Iface->EndpointCount];
+                Ep->Address = Config[Off + 2];
+                Ep->Attributes = Config[Off + 3];
+                Ep->MaxPacket = (UINT16)(Config[Off + 4] | (Config[Off + 5] << 8));
+                Iface->EndpointCount++;
+            }
+        }
+        Off = (UINT16)(Off + Len);
+    }
+}

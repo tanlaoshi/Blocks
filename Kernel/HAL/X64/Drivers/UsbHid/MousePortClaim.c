@@ -183,5 +183,6 @@ int InitMouseFinishEp(UINT32 Port1, UINT8 Speed) {
         BootLog("Boot: XHCI-HID Mouse\n");
     }
     (void)Port1;
+    UsbDeviceNote(gMouseDevCtx[12], gCtrlBuf, Total);
     return 1;
 }

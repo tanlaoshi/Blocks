@@ -39,4 +39,29 @@ int InterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(void *Con
 int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 
+/* 枚举记录。键盘槽和报告缓冲仍在原处，这张表还不参与认领。 */
+#define USB_DEVICE_MAX    8
+#define USB_INTERFACE_MAX 4
+#define USB_ENDPOINT_MAX  6
+
+typedef struct {
+    UINT8  Address;
+    UINT8  Attributes;
+    UINT16 MaxPacket;
+} USB_ENDPOINT;
+
+typedef struct {
+    UINT8 Class;
+    UINT8 EndpointCount;
+    USB_ENDPOINT Endpoint[USB_ENDPOINT_MAX];
+} USB_INTERFACE;
+
+typedef struct {
+    UINT8 Address;
+    UINT8 InterfaceCount;
+    USB_INTERFACE Interface[USB_INTERFACE_MAX];
+} USB_DEVICE;
+
+void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total);
+
 #endif /* USB_HOST_CONTROLLER_H */

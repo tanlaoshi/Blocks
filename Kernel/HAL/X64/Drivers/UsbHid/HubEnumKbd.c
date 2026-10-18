@@ -90,6 +90,7 @@ int TryConfigureKeyboardSlot(UINT8 Speed) {
         }
     }
     gUseGetReport = 0;
+    UsbDeviceNote(gDevCtx[12], gCtrlBuf, Total);
     return 1;
 }
 

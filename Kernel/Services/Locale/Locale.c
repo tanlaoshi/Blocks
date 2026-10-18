@@ -119,15 +119,23 @@ char (*LocaleLive(int Index))[LOCALE_STR_MAX] {
     return gLocale[Index].Live;
 }
 
-/* Worker 补预热（开机已同步扫过 gZh；此处用于 reload / 晚到 Want） */
+/* Worker 补预热当前语言。开机同步扫过一遍；切语言后再排队。 */
 static UINT32 gTtfPreheatIdx;
 static int gTtfPreheatWant;
 
+static char (*CurrentStrings(void))[LOCALE_STR_MAX] {
+    if ((int)gLang < 0 || (int)gLang >= gLocaleCount) {
+        return gZh;
+    }
+    return gLocale[gLang].Live;
+}
+
 void LocaleTtfPreheatUi(void) {
     UINT32 i;
+    char (*Strings)[LOCALE_STR_MAX] = CurrentStrings();
 
     for (i = 0; i < (UINT32)MSG_COUNT; i++) {
-        FontTtfPreheatUtf8(gLocale[LOC_LANG_ZH].Live[i]);
+        FontTtfPreheatUtf8(Strings[i]);
     }
 }
 
@@ -144,7 +152,7 @@ int LocaleTtfPreheatStep(void) {
         gTtfPreheatWant = 0;
         return 0;
     }
-    FontTtfPreheatUtf8(gLocale[LOC_LANG_ZH].Live[gTtfPreheatIdx]);
+    FontTtfPreheatUtf8(CurrentStrings()[gTtfPreheatIdx]);
     gTtfPreheatIdx++;
     if (gTtfPreheatIdx >= (UINT32)MSG_COUNT) {
         gTtfPreheatWant = 0;
@@ -250,9 +258,8 @@ int LocaleSet(LOC_LANG Lang) {
     DbBeginBatch();
     Rc = DbSet("lang", gLocale[Lang].Code);
     gLangDbFlushWant = 1;
-    if (CodeEqual(gLocale[Lang].Code, "zh")) {
-        LocaleTtfPreheatRequest(); /* Worker 再扫一遍；点击路径不 sync 栅格 */
-    }
+    /* 切到哪种语言，就排队那种语言里的非 ASCII。点击路径不在这里同步栅格。 */
+    LocaleTtfPreheatRequest();
     LocaleApplyUi();
     return Rc == DB_OK ? 0 : -1;
 }

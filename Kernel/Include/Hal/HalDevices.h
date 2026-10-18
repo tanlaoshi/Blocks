@@ -65,7 +65,13 @@ int HalUsbMscHot(void);
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */
 int HalUsbUartClaim(void);
 int HalUsbUartReady(void);
-/* PR-N-wifi-1：USB RTL8188EU；非 x86 空操作 */
+/* PR-N-wifi-1：USB RTL8188EU；非 x86 空操作。没登记时返回 0 */
+typedef struct {
+    int (*Claim)(void);
+    int (*Ready)(void);
+} HAL_WIFI_OPS;
+
+void HalWifiSetOps(const HAL_WIFI_OPS *Ops);
 int HalWifiClaim(void);
 int HalWifiReady(void);
 /* PR-N-wifi-1：NUC iwl8265；非 x86 空操作。没登记时这四个返回 0 */

@@ -9,7 +9,6 @@
 #include "Msc/UsbMsc.h"
 #include "Ehci.h"
 #include "XHCI.h"
-#include "Rtl8188eu.h"
 #include "Iwl.h"
 #include "Igpu.h"
 #include "Hda.h"
@@ -132,12 +131,27 @@ int HalUsbUartReady(void) {
 }
 
 /* PR-N-wifi-1：USB 8188EU；先 xHCI 再 EHCI；无棒 0 */
+static HAL_WIFI_OPS gWifiOps;
+
+void HalWifiSetOps(const HAL_WIFI_OPS *Ops) {
+    if (Ops == 0) {
+        return;
+    }
+    gWifiOps = *Ops;
+}
+
 int HalWifiClaim(void) {
-    return WifiSetup() ? 1 : 0;
+    if (gWifiOps.Claim == 0) {
+        return 0;
+    }
+    return gWifiOps.Claim();
 }
 
 int HalWifiReady(void) {
-    return WifiReady();
+    if (gWifiOps.Ready == 0) {
+        return 0;
+    }
+    return gWifiOps.Ready();
 }
 
 /* PR-N-wifi-1 / PR-BOOT-fast-3：放行后 PCI+BAR；FW/关联仍走 Worker BgPump；无卡 0 */

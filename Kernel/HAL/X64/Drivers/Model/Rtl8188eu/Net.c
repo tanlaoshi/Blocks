@@ -6,6 +6,7 @@
 #include "Driver.h"
 #include "DriverBoot.h"
 #include "Rtl8188eu.h"
+#include "HalDevices.h"
 
 static int WifiDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
@@ -48,7 +49,17 @@ static const TOY_DRIVER gWifiDriver = {
     .Remove = WifiDriverRemove,
 };
 
+static int WifiFaceClaim(void) {
+    return WifiSetup() ? 1 : 0;
+}
+
 void WifiDriverRegister(void) {
+    static const HAL_WIFI_OPS Ops = {
+        .Claim = WifiFaceClaim,
+        .Ready = WifiReady,
+    };
+
+    HalWifiSetOps(&Ops);
     (void)ToyDriverRegister(&gWifiDriver);
 }
 

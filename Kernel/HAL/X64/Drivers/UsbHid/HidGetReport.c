@@ -66,11 +66,9 @@ void PollKbdGetReport(void) {
             gReportBuf[i] = Buf[i];
         }
         FlushDma(gReportBuf, sizeof(gReportBuf));
-        SpinLockAcquire(&gHidQueueLock);
         KbdPush();
         gStatKbdPush++;
         gStatIntrEvt++;
-        SpinLockRelease(&gHidQueueLock);
     }
     gGetReportBusy = 0;
 }

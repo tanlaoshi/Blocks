@@ -207,11 +207,15 @@ void QueueIntr(void) {
 }
 
 void KbdPush(void) {
-    UINT32 Next = (gKeyboardWriteIndex + 1) % KBD_Q;
+    UINT32 Next;
     UINT8 *Dst;
     int i;
 
+    /* 与 DequeueKeyboard 同一把锁。队满丢掉这份新报告，不盖住还没读的旧键。 */
+    SpinLockAcquire(&gHidQueueLock);
+    Next = (gKeyboardWriteIndex + 1) % KBD_Q;
     if (Next == gKeyboardReadIndex) {
+        SpinLockRelease(&gHidQueueLock);
         return;
     }
     Dst = (UINT8 *)&gKbdQ[gKeyboardWriteIndex];
@@ -219,6 +223,7 @@ void KbdPush(void) {
         Dst[i] = gReportBuf[i];
     }
     gKeyboardWriteIndex = Next;
+    SpinLockRelease(&gHidQueueLock);
 }
 
 int DequeueKeyboard(USB_KEYBOARD_REPORT *Report) {

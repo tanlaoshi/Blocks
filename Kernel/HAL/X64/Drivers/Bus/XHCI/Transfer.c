@@ -24,7 +24,9 @@ void ServiceHidCompletions(void) {
         if (gMouseReportReady) {
             gMouseReportReady = 0;
             FlushDma(gMouseBuf, sizeof(gMouseBuf));
+            SpinLockAcquire(&gHidQueueLock);
             MousePush();
+            SpinLockRelease(&gHidQueueLock);
             gStatMousePush++;
         }
         if (gMouseSlotId != 0 && gMouseIntrDci != 0) {

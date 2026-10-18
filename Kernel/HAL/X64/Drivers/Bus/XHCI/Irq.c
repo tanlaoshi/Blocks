@@ -34,15 +34,13 @@ void Irq(void) {
         }
         return;
     }
-    /* 环推进：ProcessEvents* 自带 gEvtConsumerLock；勿同持 gHidQueueLock */
+    /* 环推进自带 gEvtConsumerLock。KbdPush 自己拿 gHidQueueLock，这里不要再套一层。 */
     if (RealPc) {
         ProcessEventsRealPc();
     } else {
         ProcessEvents();
     }
-    SpinLockAcquire(&gHidQueueLock);
     ServiceHidCompletions();
-    SpinLockRelease(&gHidQueueLock);
     if (gRuntimeBase != 0) {
         ImClearPending();
     }
@@ -112,8 +110,8 @@ void DrainEvents(void) {
     }
 
     /*
-     * excl-2：每轮先 ProcessEvents*（gEvtConsumerLock），再 HID 入队（gHidQueueLock）。
-     * 两锁不同时持有；禁止持 HID 锁调 ProcessEvents / ControlXfer。
+     * excl-2：每轮先 ProcessEvents*（gEvtConsumerLock），再 ServiceHidCompletions。
+     * KbdPush 自己拿 gHidQueueLock。两锁不同时持有；禁止持 HID 锁调 ProcessEvents / ControlXfer。
      */
     for (i = 0; i < Passes; i++) {
         if (RealPc) {
@@ -121,9 +119,7 @@ void DrainEvents(void) {
         } else {
             ProcessEvents();
         }
-        SpinLockAcquire(&gHidQueueLock);
         ServiceHidCompletions();
-        SpinLockRelease(&gHidQueueLock);
     }
     /* PHOTO：门铃轻推即可，勿走 EP0 兜底 */
     if (RealPc) {

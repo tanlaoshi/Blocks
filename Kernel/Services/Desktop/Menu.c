@@ -64,45 +64,49 @@ static void MenuAddRow(DESKTOP_ACTION Act, const char *Label, const char *Path,
     StringCopy(R->Path, sizeof(R->Path), Path ? Path : "");
 }
 
+typedef struct {
+    DESKTOP_ACTION Action;
+    MSG_ID Msg;
+    const char *Fallback;
+    int IconSrc;
+    int Enabled;
+} MENU_SYS_ROW;
+
+/* 顺序即开始菜单从上到下。Apps/Game 的二级不在这张表里。 */
+static const MENU_SYS_ROW gMenuSysRows[] = {
+    { DESKTOP_ACTION_SHELL, MSG_ICON_SHELL, "Shell", 0, 1 },
+    { DESKTOP_ACTION_SETTINGS, MSG_ICON_SETTINGS, "Settings", 1, 1 },
+    { DESKTOP_ACTION_FILES, MSG_ICON_FILES, "Files", 2, 1 },
+    { DESKTOP_ACTION_STORE, MSG_ICON_STORE, "Store", 3, 1 },
+    { DESKTOP_ACTION_DEVICES, MSG_ICON_DEVICES, "Devices", 4, 1 },
+    { DESKTOP_ACTION_APPS, MSG_ICON_APPS, "Apps", 3, 1 },
+    { DESKTOP_ACTION_GAME, MSG_ICON_GAME, "Game", 3, 1 },
+    { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
+    { DESKTOP_ACTION_REBOOT, MSG_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT, 1 },
+};
+
 /* 打开开始菜单时重建：系统项含 Apps/Game；Apps 二级见 FillStartMenuAppRows */
 void RebuildStartMenu(void) {
+    int i;
     const char *L;
 
     gMenuCount = 0;
     gMenuAppCount = 0;
     gMenuGameCount = 0;
 
-    L = LocStr(MSG_ICON_SHELL);
-    MenuAddRow(DESKTOP_ACTION_SHELL, L ? L : "Shell", 0, 1, 0);
-    L = LocStr(MSG_ICON_SETTINGS);
-    MenuAddRow(DESKTOP_ACTION_SETTINGS, L ? L : "Settings", 0, 1, 1);
-    L = LocStr(MSG_ICON_FILES);
-    MenuAddRow(DESKTOP_ACTION_FILES, L ? L : "Files", 0, 1, 2);
-    L = LocStr(MSG_ICON_STORE);
-    MenuAddRow(DESKTOP_ACTION_STORE, L ? L : "Store", 0, 1, 3);
-    L = LocStr(MSG_ICON_DEVICES);
-    MenuAddRow(DESKTOP_ACTION_DEVICES, L ? L : "Devices", 0, 1, 4);
-    L = LocStr(MSG_ICON_APPS);
-    MenuAddRow(DESKTOP_ACTION_APPS, L ? L : "Apps", 0, 1, 3);
-    L = LocStr(MSG_ICON_GAME);
-    MenuAddRow(DESKTOP_ACTION_GAME, L ? L : "Game", 0, 1, 3); /* Store 图标；无系统 Snake 槽 */
-    FillStartMenuGameRows();
+    for (i = 0; i < (int)(sizeof(gMenuSysRows) / sizeof(gMenuSysRows[0])); i++) {
+        const MENU_SYS_ROW *Row = &gMenuSysRows[i];
 
-    FillStartMenuAppRows(MenuMaxAppSlots());
-
-    /* 应用组 / 电源组之间不再插空行：Game 与 Shutdown 直接相邻，
-       行边框（ThemeMenuSep）即视觉分隔，避免菜单出现无文字无图标的空行。 */
-
-    L = LocStr(MSG_ICON_SHUTDOWN);
-    MenuAddRow(DESKTOP_ACTION_SHUTDOWN, L ? L : "Shutdown", 0, 1,
-               MENU_ICON_SRC_POWER);
-    L = LocStr(MSG_ICON_REBOOT);
-    MenuAddRow(DESKTOP_ACTION_REBOOT, L ? L : "Reboot", 0, 1,
-               MENU_ICON_SRC_REBOOT);
+        L = LocStr(Row->Msg);
+        MenuAddRow(Row->Action, L ? L : Row->Fallback, 0, Row->Enabled, Row->IconSrc);
+        if (Row->Action == DESKTOP_ACTION_GAME) {
+            /* Game 行用 Store 图标。二级紧跟在 Game 行之后，再列 Apps。 */
+            FillStartMenuGameRows();
+            FillStartMenuAppRows(MenuMaxAppSlots());
+        }
+    }
     /* 开机/Worker：先 TTF 栅进缓存，再测宽+绘制路径（裁到空区） */
     {
-        int i;
-
         HalVideoSetClipRegion(0, 0, 0, 0, 0);
         for (i = 0; i < gMenuCount; i++) {
             if (gMenuRows[i].Label[0]) {

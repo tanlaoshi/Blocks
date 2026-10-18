@@ -670,9 +670,7 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
         H = W;
     }
     FontGlyphBox(W, H, &W, &H);
-    if (W < FontAdvanceX()) {
-        W = FontAdvanceX();
-    }
+    /* 汉字和缺字框按自己的绘制宽度前进，不抬到拉丁字母的格子。 */
     return W;
 }
 

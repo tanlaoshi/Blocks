@@ -112,6 +112,9 @@ static void BestFitFreePagesLocked(void *Page, UINT32 Count)
             DebugWrite("pmm: free unused page\n");
             continue;
         }
+        if (Seg->RefCount[i] == PMM_REF_RESERVED) {
+            return;
+        }
         if (Seg->RefCount[i] > 1) {
             Seg->RefCount[i]--;
             continue;

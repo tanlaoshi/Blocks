@@ -18,6 +18,9 @@
  */
 #define PMM_DIRECT_BYTES (4ull << 30)
 
+/* 保留页的引用计数。释放见到它就返回，不改位图、不改计数。 */
+#define PMM_REF_RESERVED 0x8000u
+
 typedef struct {
     UINT64  BasePhys;
     UINT32  PageCount;

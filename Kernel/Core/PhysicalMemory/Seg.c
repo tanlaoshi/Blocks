@@ -128,6 +128,9 @@ static void PaintRange(UINT64 Start, UINT64 End, int MarkUsed)
                         S->FreePages--;
                     }
                 }
+                if (S->RefCount != 0) {
+                    S->RefCount[Idx] = PMM_REF_RESERVED;
+                }
             } else if (!WasFree) {
                 S->Bitmap[Idx / 8] &= (UINT8)~Mask;
                 S->FreePages++;

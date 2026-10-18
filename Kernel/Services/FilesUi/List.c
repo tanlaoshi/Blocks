@@ -5,6 +5,11 @@
  * 核心：FilesUi.c
  */
 #include "FilesUiPrivate.h"
+#include "Desktop.h"
+
+void FilesMenuRegister(void) {
+    DesktopMenuRegister(DESKTOP_ACTION_FILES, MSG_ICON_FILES, "Files", 2, 1);
+}
 
 void PaintList(void) {
     UINT32 X;

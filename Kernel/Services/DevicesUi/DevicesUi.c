@@ -3,6 +3,11 @@
  */
 #include "DevicesUiPrivate.h"
 #include "Debug.h"
+#include "Desktop.h"
+
+void DevicesMenuRegister(void) {
+    DesktopMenuRegister(DESKTOP_ACTION_DEVICES, MSG_ICON_DEVICES, "Devices", 4, 1);
+}
 
 int gDevUiSel;
 int gDevUiScroll;

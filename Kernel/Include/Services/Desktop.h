@@ -22,6 +22,15 @@ typedef enum {
     DESKTOP_ACTION_GAME  /* 开始菜单 Game 一级；二级 flyout（贪吃蛇） */
 } DESKTOP_ACTION;
 
+/* 开始菜单前五行由各程序登记。重复的动作忽略。 */
+void DesktopMenuRegister(DESKTOP_ACTION Action, int Msg, const char *Fallback,
+                         int IconSrc, int Enabled);
+void ShellMenuRegister(void);
+void SettingsMenuRegister(void);
+void FilesMenuRegister(void);
+void StoreMenuRegister(void);
+void DevicesMenuRegister(void);
+
 /* Store 装卸后：若开始菜单开着则重建（含 Apps 二级） */
 void DesktopNotifyAppsChanged(void);
 

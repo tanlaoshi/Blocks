@@ -8,6 +8,12 @@
 #include "Hal.h"
 #include "Db.h"
 #include "ShellCommands.h"
+#include "Desktop.h"
+#include "Locale.h"
+
+void ShellMenuRegister(void) {
+    DesktopMenuRegister(DESKTOP_ACTION_SHELL, MSG_ICON_SHELL, "Shell", 0, 1);
+}
 
 static void HelpWriteAliasesFor(const char *Level1, const char *Level2) {
     int First = 1;

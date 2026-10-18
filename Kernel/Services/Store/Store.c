@@ -14,6 +14,8 @@
  */
 #include "Store.h"
 #include "StorePrivate.h"
+#include "Desktop.h"
+#include "Locale.h"
 #include "FileSystem.h"
 #include "Fat.h"
 #include "Gui.h"
@@ -31,6 +33,10 @@ int gNeedFontReload;
  * 长 IO 呼吸：薄包装 → SchedulerIoBreath（PR-K-preempt-breath）。
  * FatSetIoBreath(StoreIoBreath) 仍有效；勿删本符号。
  */
+void StoreMenuRegister(void) {
+    DesktopMenuRegister(DESKTOP_ACTION_STORE, MSG_ICON_STORE, "Store", 3, 1);
+}
+
 void StoreIoBreath(void) {
     SchedulerIoBreath();
 }

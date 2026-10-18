@@ -72,18 +72,38 @@ typedef struct {
     int Enabled;
 } MENU_SYS_ROW;
 
-/* 顺序即开始菜单从上到下。Apps/Game 的二级不在这张表里。 */
+#define MENU_REG_MAX 8
+
+static MENU_SYS_ROW gMenuReg[MENU_REG_MAX];
+static int gMenuRegCount;
+
+/* Apps、Game、关机、重启仍留在桌面。前五行看登记顺序。 */
 static const MENU_SYS_ROW gMenuSysRows[] = {
-    { DESKTOP_ACTION_SHELL, MSG_ICON_SHELL, "Shell", 0, 1 },
-    { DESKTOP_ACTION_SETTINGS, MSG_ICON_SETTINGS, "Settings", 1, 1 },
-    { DESKTOP_ACTION_FILES, MSG_ICON_FILES, "Files", 2, 1 },
-    { DESKTOP_ACTION_STORE, MSG_ICON_STORE, "Store", 3, 1 },
-    { DESKTOP_ACTION_DEVICES, MSG_ICON_DEVICES, "Devices", 4, 1 },
     { DESKTOP_ACTION_APPS, MSG_ICON_APPS, "Apps", 3, 1 },
     { DESKTOP_ACTION_GAME, MSG_ICON_GAME, "Game", 3, 1 },
     { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
     { DESKTOP_ACTION_REBOOT, MSG_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT, 1 },
 };
+
+void DesktopMenuRegister(DESKTOP_ACTION Action, int Msg, const char *Fallback,
+                         int IconSrc, int Enabled) {
+    int i;
+
+    if (!Fallback || gMenuRegCount >= MENU_REG_MAX) {
+        return;
+    }
+    for (i = 0; i < gMenuRegCount; i++) {
+        if (gMenuReg[i].Action == Action) {
+            return;
+        }
+    }
+    gMenuReg[gMenuRegCount].Action = Action;
+    gMenuReg[gMenuRegCount].Msg = (MSG_ID)Msg;
+    gMenuReg[gMenuRegCount].Fallback = Fallback;
+    gMenuReg[gMenuRegCount].IconSrc = IconSrc;
+    gMenuReg[gMenuRegCount].Enabled = Enabled ? 1 : 0;
+    gMenuRegCount++;
+}
 
 /* 打开开始菜单时重建：系统项含 Apps/Game；Apps 二级见 FillStartMenuAppRows */
 void RebuildStartMenu(void) {
@@ -94,6 +114,12 @@ void RebuildStartMenu(void) {
     gMenuAppCount = 0;
     gMenuGameCount = 0;
 
+    for (i = 0; i < gMenuRegCount; i++) {
+        const MENU_SYS_ROW *Row = &gMenuReg[i];
+
+        L = LocStr(Row->Msg);
+        MenuAddRow(Row->Action, L ? L : Row->Fallback, 0, Row->Enabled, Row->IconSrc);
+    }
     for (i = 0; i < (int)(sizeof(gMenuSysRows) / sizeof(gMenuSysRows[0])); i++) {
         const MENU_SYS_ROW *Row = &gMenuSysRows[i];
 

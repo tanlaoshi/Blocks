@@ -194,6 +194,13 @@ void DesktopInitialize(void) {
     }
     gDesktopBusy = 1;
 
+    /* 第 9 刀的前五行：外壳、设置、文件、商店、设备。没登记就不出现。 */
+    ShellMenuRegister();
+    SettingsMenuRegister();
+    FilesMenuRegister();
+    StoreMenuRegister();
+    DevicesMenuRegister();
+
     /* 先占位+布局，BMP/动态图标/菜单扫盘放后面 Ensure，开机别卡死 */
     DesktopIconsResetDeferred();
     PlaceDesktopIcons();

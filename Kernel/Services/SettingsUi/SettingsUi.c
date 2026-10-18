@@ -4,6 +4,11 @@
  * 绘制：SettingsUiPaint.c；输入：SettingsUiInput.c。
  */
 #include "SettingsUiPrivate.h"
+#include "Desktop.h"
+
+void SettingsMenuRegister(void) {
+    DesktopMenuRegister(DESKTOP_ACTION_SETTINGS, MSG_ICON_SETTINGS, "Settings", 1, 1);
+}
 
 SETTINGS_CAT gCat = SETTINGS_CAT_DESKTOP;
 int gItemSel;

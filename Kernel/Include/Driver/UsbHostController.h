@@ -10,6 +10,7 @@
 #define USB_HOST_CONTROLLER_NONE 0
 #define USB_HOST_CONTROLLER_XHCI 1
 #define USB_HOST_CONTROLLER_EHCI 2
+#define USB_HOST_CONTROLLER_UHCI 3
 
 typedef struct {
     UINT8 bmRequestType;

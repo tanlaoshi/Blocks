@@ -4,6 +4,9 @@
 #include "Driver.h"
 #include "Uhci.h"
 #include "PCIe.h"
+#include "UsbHostController.h"
+
+void UhciHostControllerOffer(void);
 
 static const DRIVER_MATCH gUhciMatch[] = {
     { .Type = DRIVER_MATCH_PCI,
@@ -32,6 +35,7 @@ static int UhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     if (!UhciSetup()) {
         return -1;
     }
+    UhciHostControllerOffer();
     if (OutPrivate) {
         *OutPrivate = 0;
     }

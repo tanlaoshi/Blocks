@@ -1,25 +1,34 @@
 /*
  * UsbHostController.c — 把公共调用转到已注册的主机控制器。
- * 有 xHCI 用 xHCI，否则用 EHCI。
+ * 优先级：有 xHCI 用 xHCI，否则 EHCI，再否则 UHCI。
  */
 #include "UsbHostController.h"
 
-static const USB_HOST_CONTROLLER_OPERATIONS *gOperations[3];
+static const USB_HOST_CONTROLLER_OPERATIONS *gOperations[4];
 static USB_DEVICE gUsbDevice[USB_DEVICE_MAX];
 static USB_INTERFACE gKeyboardFallback = { .Class = 3, .Protocol = 1 };
 static USB_INTERFACE gMouseFallback = { .Class = 3, .Protocol = 2 };
 static USB_PIPE gKeyboardPipe;
 static USB_PIPE gMousePipe;
 
+static int KnownKind(UINT8 Kind) {
+    return Kind == USB_HOST_CONTROLLER_XHCI ||
+           Kind == USB_HOST_CONTROLLER_EHCI ||
+           Kind == USB_HOST_CONTROLLER_UHCI;
+}
+
 static const USB_HOST_CONTROLLER_OPERATIONS *Current(void) {
     if (gOperations[USB_HOST_CONTROLLER_XHCI] != 0) {
         return gOperations[USB_HOST_CONTROLLER_XHCI];
     }
-    return gOperations[USB_HOST_CONTROLLER_EHCI];
+    if (gOperations[USB_HOST_CONTROLLER_EHCI] != 0) {
+        return gOperations[USB_HOST_CONTROLLER_EHCI];
+    }
+    return gOperations[USB_HOST_CONTROLLER_UHCI];
 }
 
 int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
-    if ((Kind != USB_HOST_CONTROLLER_XHCI && Kind != USB_HOST_CONTROLLER_EHCI) || Operations == 0) {
+    if (!KnownKind(Kind) || Operations == 0) {
         return -1;
     }
     gOperations[Kind] = Operations;
@@ -27,7 +36,7 @@ int Register(UINT8 Kind, const USB_HOST_CONTROLLER_OPERATIONS *Operations) {
 }
 
 void Unregister(UINT8 Kind) {
-    if (Kind == USB_HOST_CONTROLLER_XHCI || Kind == USB_HOST_CONTROLLER_EHCI) {
+    if (KnownKind(Kind)) {
         gOperations[Kind] = 0;
     }
 }
@@ -111,7 +120,7 @@ int Bulk(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
 int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     const USB_HOST_CONTROLLER_OPERATIONS *Operations;
 
-    if (Kind != USB_HOST_CONTROLLER_XHCI && Kind != USB_HOST_CONTROLLER_EHCI) {
+    if (!KnownKind(Kind)) {
         return -1;
     }
     Operations = gOperations[Kind];

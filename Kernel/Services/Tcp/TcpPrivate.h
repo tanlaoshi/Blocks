@@ -33,25 +33,29 @@ typedef struct {
     UINT16 Urgent;
 } __attribute__((packed)) TCP_HDR;
 
-extern TCP_STATE gState;
-extern UINT16 gLocalPort;
-extern UINT16 gPeerPort;
-extern UINT32 gPeerIp;
-extern UINT16 gIss;
-extern UINT32 gSndUna;
-extern UINT32 gSndNxt;
-extern UINT8 gSndBuf[TCP_SND_BUF];
-extern UINT32 gSndBufLen;
-extern UINT16 gPeerWnd;
-extern UINT32 gRcvNxt;
-extern UINT32 gPollTicks;
-extern UINT32 gRtoDeadline;
-extern UINT8 gRetransCount;
-extern int gClientMode;
-extern UINT8 gRcvBuf[TCP_RCV_BUF];
-extern UINT32 gRcvBufLen;
-extern UINT32 gRcvTotal;
-extern int gPeerClosed;
+typedef struct {
+    TCP_STATE State;
+    UINT16 LocalPort;
+    UINT16 PeerPort;
+    UINT32 PeerIp;
+    UINT16 Iss;
+    UINT32 SndUna;
+    UINT32 SndNxt;
+    UINT8  SndBuf[TCP_SND_BUF];
+    UINT32 SndBufLen;
+    UINT16 PeerWnd;
+    UINT32 RcvNxt;
+    UINT32 PollTicks;
+    UINT32 RtoDeadline;
+    UINT8  RetransCount;
+    int    ClientMode;
+    UINT8  RcvBuf[TCP_RCV_BUF];
+    UINT32 RcvBufLen;
+    UINT32 RcvTotal;
+    int    PeerClosed;
+} TCP_CONNECTION;
+
+extern TCP_CONNECTION gTcp;
 
 static inline UINT16 HostToNet16(UINT16 V) {
     return (UINT16)((V >> 8) | (V << 8));

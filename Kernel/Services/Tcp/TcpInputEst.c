@@ -11,50 +11,50 @@ static int TcpInputData(UINT32 Seq, const UINT8 *Data, UINTN DataLen) {
     if (DataLen == 0) {
         return 1;
     }
-    if (gClientMode && Seq != gRcvNxt && gRcvTotal == 0) {
-        /* 仅在尚未接受过任何字节时对齐首段；勿用 gRcvBufLen==0（TcpRecv 排空后会误跳空洞） */
-        gRcvNxt = Seq;
+    if (gTcp.ClientMode && Seq != gTcp.RcvNxt && gTcp.RcvTotal == 0) {
+        /* 仅在尚未接受过任何字节时对齐首段；勿用 gTcp.RcvBufLen==0（TcpRecv 排空后会误跳空洞） */
+        gTcp.RcvNxt = Seq;
     }
-    if (Seq != gRcvNxt) {
-        if (Seq + (UINT32)DataLen <= gRcvNxt) {
-            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
+    if (Seq != gTcp.RcvNxt) {
+        if (Seq + (UINT32)DataLen <= gTcp.RcvNxt) {
+            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
         } else {
-            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
+            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
             return 0;
         }
-    } else if (gClientMode) {
-        UINT32 Space = TCP_RCV_BUF - gRcvBufLen;
+    } else if (gTcp.ClientMode) {
+        UINT32 Space = TCP_RCV_BUF - gTcp.RcvBufLen;
         UINT32 Copy = (UINT32)DataLen;
         UINT32 i;
 
         if (Space == 0) {
-            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
+            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
         } else {
             if (Copy > Space) {
                 Copy = Space;
             }
             for (i = 0; i < Copy; i++) {
-                gRcvBuf[gRcvBufLen + i] = Data[i];
+                gTcp.RcvBuf[gTcp.RcvBufLen + i] = Data[i];
             }
-            gRcvBufLen += Copy;
-            gRcvTotal += Copy;
-            gRcvNxt = Seq + Copy;
-            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
+            gTcp.RcvBufLen += Copy;
+            gTcp.RcvTotal += Copy;
+            gTcp.RcvNxt = Seq + Copy;
+            TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
             if (Copy < (UINT32)DataLen) {
                 return 0;
             }
         }
     } else {
-        gRcvNxt = Seq + (UINT32)DataLen;
+        gTcp.RcvNxt = Seq + (UINT32)DataLen;
         /* 回显：直接发送（不经 snd_buf，避免与 snd_una 序号错位） */
         if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, Data, DataLen,
-                           gSndNxt, gRcvNxt) != 0) {
+                           gTcp.SndNxt, gTcp.RcvNxt) != 0) {
             gConsole.Write("tcp: echo send failed\n");
             DebugWrite("tcp: echo send failed\n");
             return 0;
         }
-        gSndNxt += (UINT32)DataLen;
-        if (gSndUna < gSndNxt) {
+        gTcp.SndNxt += (UINT32)DataLen;
+        if (gTcp.SndUna < gTcp.SndNxt) {
             TcpArmRetrans();
         }
         {
@@ -86,38 +86,38 @@ static void TcpInputFin(UINT8 Flags, UINT32 Seq, UINTN DataLen) {
         return;
     }
     /*
-     * FIN 序号必须紧接已收数据。过早 FIN（乱序）不得推进 gRcvNxt，
+     * FIN 序号必须紧接已收数据。过早 FIN（乱序）不得推进 gTcp.RcvNxt，
      * 否则后续段会被当成“对得上”而跳过 HTTP 头（S2：got=0 / head=.ELF）。
      */
-    if (Seq + (UINT32)DataLen == gRcvNxt) {
-        gRcvNxt++;
-        gPeerClosed = 1;
-        TcpSendSegment(TCP_FLAG_ACK | (gClientMode ? 0 : TCP_FLAG_FIN), 0, 0,
-                       gSndNxt, gRcvNxt);
-        if (!gClientMode) {
-            gSndNxt++;
-            gState = TCP_CLOSED;
+    if (Seq + (UINT32)DataLen == gTcp.RcvNxt) {
+        gTcp.RcvNxt++;
+        gTcp.PeerClosed = 1;
+        TcpSendSegment(TCP_FLAG_ACK | (gTcp.ClientMode ? 0 : TCP_FLAG_FIN), 0, 0,
+                       gTcp.SndNxt, gTcp.RcvNxt);
+        if (!gTcp.ClientMode) {
+            gTcp.SndNxt++;
+            gTcp.State = TCP_CLOSED;
             DebugWrite("tcp: closed\n");
         }
     } else {
-        TcpSendSegment(TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
+        TcpSendSegment(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
     }
 }
 
 void TcpInputEstablished(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,
                          UINT8 Flags, UINT32 Seq, UINT32 Ack, UINT16 Window,
                          const UINT8 *Data, UINTN DataLen) {
-    if (SrcIp != gPeerIp || SrcPort != gPeerPort || DstPort != gLocalPort) {
+    if (SrcIp != gTcp.PeerIp || SrcPort != gTcp.PeerPort || DstPort != gTcp.LocalPort) {
         return;
     }
 
-    gPeerWnd = Window;
-    if (gPeerWnd == 0) {
-        gPeerWnd = 1;
+    gTcp.PeerWnd = Window;
+    if (gTcp.PeerWnd == 0) {
+        gTcp.PeerWnd = 1;
     }
 
     if (Flags & TCP_FLAG_RST) {
-        gState = TCP_CLOSED;
+        gTcp.State = TCP_CLOSED;
         DebugWrite("tcp: reset\n");
         return;
     }

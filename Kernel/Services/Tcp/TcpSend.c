@@ -10,14 +10,14 @@
 static void TcpBufConsume(UINT32 Bytes) {
     UINT32 i;
 
-    if (Bytes >= gSndBufLen) {
-        gSndBufLen = 0;
+    if (Bytes >= gTcp.SndBufLen) {
+        gTcp.SndBufLen = 0;
         return;
     }
-    for (i = 0; i < gSndBufLen - Bytes; i++) {
-        gSndBuf[i] = gSndBuf[Bytes + i];
+    for (i = 0; i < gTcp.SndBufLen - Bytes; i++) {
+        gTcp.SndBuf[i] = gTcp.SndBuf[Bytes + i];
     }
-    gSndBufLen -= Bytes;
+    gTcp.SndBufLen -= Bytes;
 }
 
 static UINT16 TcpChecksum(UINT32 SrcIp, UINT32 DstIp, const UINT8 *TcpSeg, UINTN TcpLen) {
@@ -48,10 +48,10 @@ static UINT16 TcpChecksum(UINT32 SrcIp, UINT32 DstIp, const UINT8 *TcpSeg, UINTN
 static UINT16 TcpAdvertiseWindow(void) {
     UINT32 Space;
 
-    if (!gClientMode) {
+    if (!gTcp.ClientMode) {
         return TCP_ADV_WND;
     }
-    Space = TCP_RCV_BUF - gRcvBufLen;
+    Space = TCP_RCV_BUF - gTcp.RcvBufLen;
     if (Space > TCP_CLIENT_ADV_MAX) {
         Space = TCP_CLIENT_ADV_MAX;
     }
@@ -73,8 +73,8 @@ int TcpSendSegment(UINT8 Flags, const void *Data, UINTN Len, UINT32 Seq, UINT32 
         return -1;
     }
     Hdr = (TCP_HDR *)Buf;
-    Hdr->SrcPort = HostToNet16(gLocalPort);
-    Hdr->DstPort = HostToNet16(gPeerPort);
+    Hdr->SrcPort = HostToNet16(gTcp.LocalPort);
+    Hdr->DstPort = HostToNet16(gTcp.PeerPort);
     Hdr->Seq = HostToNet32(Seq);
     Hdr->Ack = HostToNet32(Ack);
     Hdr->DataOff = (TCP_HDR_LEN / 4) << 4;
@@ -85,27 +85,27 @@ int TcpSendSegment(UINT8 Flags, const void *Data, UINTN Len, UINT32 Seq, UINT32 
     for (i = 0; i < Len; i++) {
         Buf[TCP_HDR_LEN + i] = ((const UINT8 *)Data)[i];
     }
-    Hdr->Checksum = TcpChecksum(HalNetGetIpAddress(), gPeerIp, Buf, TCP_HDR_LEN + Len);
-    return HalNetSendIp(gPeerIp, HAL_IP_PROTO_TCP, Buf, TCP_HDR_LEN + Len);
+    Hdr->Checksum = TcpChecksum(HalNetGetIpAddress(), gTcp.PeerIp, Buf, TCP_HDR_LEN + Len);
+    return HalNetSendIp(gTcp.PeerIp, HAL_IP_PROTO_TCP, Buf, TCP_HDR_LEN + Len);
 }
 
 void TcpArmRetrans(void) {
-    gRtoDeadline = gPollTicks + TCP_RTO_POLLS;
+    gTcp.RtoDeadline = gTcp.PollTicks + TCP_RTO_POLLS;
 }
 
 void TcpFlushSend(void) {
     UINT32 Flight;
     UINT32 WinLeft;
 
-    while (gState == TCP_ESTABLISHED && gSndNxt < gSndUna + gSndBufLen) {
-        Flight = gSndNxt - gSndUna;
-        if (Flight >= gPeerWnd) {
+    while (gTcp.State == TCP_ESTABLISHED && gTcp.SndNxt < gTcp.SndUna + gTcp.SndBufLen) {
+        Flight = gTcp.SndNxt - gTcp.SndUna;
+        if (Flight >= gTcp.PeerWnd) {
             break;
         }
-        WinLeft = gPeerWnd - Flight;
+        WinLeft = gTcp.PeerWnd - Flight;
         {
-            UINT32 Off = gSndNxt - gSndUna;
-            UINT32 Unsent = gSndUna + gSndBufLen - gSndNxt;
+            UINT32 Off = gTcp.SndNxt - gTcp.SndUna;
+            UINT32 Unsent = gTcp.SndUna + gTcp.SndBufLen - gTcp.SndNxt;
             UINTN Chunk = TCP_MSS;
 
             if (Chunk > Unsent) {
@@ -117,12 +117,12 @@ void TcpFlushSend(void) {
             if (Chunk == 0) {
                 break;
             }
-            if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, gSndBuf + Off, Chunk,
-                               gSndNxt, gRcvNxt) != 0) {
+            if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, gTcp.SndBuf + Off, Chunk,
+                               gTcp.SndNxt, gTcp.RcvNxt) != 0) {
                 break;
             }
-            gSndNxt += (UINT32)Chunk;
-            if (gSndUna < gSndNxt) {
+            gTcp.SndNxt += (UINT32)Chunk;
+            if (gTcp.SndUna < gTcp.SndNxt) {
                 TcpArmRetrans();
             }
         }
@@ -130,35 +130,35 @@ void TcpFlushSend(void) {
 }
 
 int TcpQueueBytes(const void *Data, UINTN Len) {
-    if (gState != TCP_ESTABLISHED || Data == 0 || Len == 0) {
+    if (gTcp.State != TCP_ESTABLISHED || Data == 0 || Len == 0) {
         return -1;
     }
-    if (gSndBufLen + Len > TCP_SND_BUF) {
+    if (gTcp.SndBufLen + Len > TCP_SND_BUF) {
         return -1;
     }
-    BufCopy(gSndBuf + gSndBufLen, Data, Len);
-    gSndBufLen += (UINT32)Len;
+    BufCopy(gTcp.SndBuf + gTcp.SndBufLen, Data, Len);
+    gTcp.SndBufLen += (UINT32)Len;
     return 0;
 }
 
 void TcpProcessAck(UINT32 Ack) {
     UINT32 Acked;
 
-    if (Ack <= gSndUna) {
+    if (Ack <= gTcp.SndUna) {
         return;
     }
-    Acked = Ack - gSndUna;
-    if (Acked > gSndBufLen) {
-        Acked = gSndBufLen;
+    Acked = Ack - gTcp.SndUna;
+    if (Acked > gTcp.SndBufLen) {
+        Acked = gTcp.SndBufLen;
     }
     TcpBufConsume(Acked);
-    gSndUna = Ack;
-    if (gSndNxt < gSndUna) {
-        gSndNxt = gSndUna;
+    gTcp.SndUna = Ack;
+    if (gTcp.SndNxt < gTcp.SndUna) {
+        gTcp.SndNxt = gTcp.SndUna;
     }
-    if (gSndBufLen == 0) {
-        gRetransCount = 0;
-    } else if (gSndUna < gSndNxt) {
+    if (gTcp.SndBufLen == 0) {
+        gTcp.RetransCount = 0;
+    } else if (gTcp.SndUna < gTcp.SndNxt) {
         TcpArmRetrans();
     }
     TcpFlushSend();
@@ -168,16 +168,16 @@ void TcpRetransmit(void) {
     UINTN Chunk;
     UINT32 Unacked;
 
-    if (gState != TCP_ESTABLISHED || gSndNxt <= gSndUna) {
+    if (gTcp.State != TCP_ESTABLISHED || gTcp.SndNxt <= gTcp.SndUna) {
         return;
     }
     /* 仅重传 snd_buf 中由 TcpSend 入队的数据；回显为即时发送不在缓冲内 */
-    if (gSndBufLen == 0) {
-        gSndUna = gSndNxt;
-        gRetransCount = 0;
+    if (gTcp.SndBufLen == 0) {
+        gTcp.SndUna = gTcp.SndNxt;
+        gTcp.RetransCount = 0;
         return;
     }
-    Unacked = gSndNxt - gSndUna;
+    Unacked = gTcp.SndNxt - gTcp.SndUna;
     Chunk = TCP_MSS;
     if (Chunk > Unacked) {
         Chunk = Unacked;
@@ -185,15 +185,15 @@ void TcpRetransmit(void) {
     if (Chunk == 0) {
         return;
     }
-    if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, gSndBuf, Chunk, gSndUna, gRcvNxt) != 0) {
+    if (TcpSendSegment(TCP_FLAG_ACK | TCP_FLAG_PSH, gTcp.SndBuf, Chunk, gTcp.SndUna, gTcp.RcvNxt) != 0) {
         return;
     }
-    gRetransCount++;
-    if (gRetransCount >= TCP_MAX_RETRANS) {
+    gTcp.RetransCount++;
+    if (gTcp.RetransCount >= TCP_MAX_RETRANS) {
         DebugWrite("tcp: retrans limit\n");
-        TcpSendSegment(TCP_FLAG_RST | TCP_FLAG_ACK, 0, 0, gSndNxt, gRcvNxt);
-        gState = TCP_CLOSED;
+        TcpSendSegment(TCP_FLAG_RST | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+        gTcp.State = TCP_CLOSED;
         return;
     }
-    gRtoDeadline = gPollTicks + TCP_RTO_POLLS * (1U << (gRetransCount - 1));
+    gTcp.RtoDeadline = gTcp.PollTicks + TCP_RTO_POLLS * (1U << (gTcp.RetransCount - 1));
 }

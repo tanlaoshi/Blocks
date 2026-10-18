@@ -35,22 +35,22 @@ void TcpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
     DataLen = Len - HdrLen;
     Window = NetToHost16(Hdr->Window);
 
-    if (gState == TCP_LISTEN) {
+    if (gTcp.State == TCP_LISTEN) {
         TcpInputListen(SrcIp, SrcPort, DstPort, Flags, Seq, Window);
         return;
     }
 
-    if (gState == TCP_SYN_SENT) {
+    if (gTcp.State == TCP_SYN_SENT) {
         TcpInputSynSent(SrcIp, SrcPort, Flags, Seq, Ack, Window);
         return;
     }
 
-    if (gState == TCP_SYN_RECEIVED) {
+    if (gTcp.State == TCP_SYN_RECEIVED) {
         if (!TcpInputSynRcvd(SrcIp, SrcPort, Flags, Ack, Window)) {
             return;
         }
         /* 可能与本包同段的 PSH 数据：落到下方 ESTABLISHED 处理 */
-    } else if (gState != TCP_ESTABLISHED) {
+    } else if (gTcp.State != TCP_ESTABLISHED) {
         return;
     }
 

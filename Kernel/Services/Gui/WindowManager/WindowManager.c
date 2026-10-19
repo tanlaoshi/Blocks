@@ -188,6 +188,7 @@ static void DrainMouse(void) {
 int InitializeGui(void) {
     PollInput();
     /* Logo 已在 Video 后缓冲就绪时画出；这里继续读字体主题，仍盖在 Logo 下 */
+    DesktopBootLogoSet(96);
     (void)DbInitialize();
     (void)FontLoadAssets();
     (void)FontTtfLoad();
@@ -199,6 +200,7 @@ int InitializeGui(void) {
     if (ThemeUiScale() != 100) {
         (void)HalVideoSetUiScale(ThemeUiScale());
     }
+    DesktopBootLogoSet(100);
     DesktopBootLogoFinish();
     GuiInitialize();
     DrainMouse();

@@ -76,10 +76,28 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
         }
 
         {
-            UINTN ReadSize = (UINTN)FileInfo->FileSize;
-            Status = File->Read(File, &ReadSize, (VOID *)(UINTN)*OutBuffer);
+            UINTN Total = (UINTN)FileInfo->FileSize;
+            UINTN Got = 0;
+            UINT8 *Dst = (UINT8 *)(UINTN)*OutBuffer;
+
+            Status = EFI_SUCCESS;
+            while (Got < Total) {
+                UINTN Chunk = Total - Got;
+
+                if (Chunk > (256 * 1024)) {
+                    Chunk = 256 * 1024;
+                }
+                Status = File->Read(File, &Chunk, Dst + Got);
+                if (EFI_ERROR(Status) || Chunk == 0) {
+                    break;
+                }
+                Got += Chunk;
+                if (Total != 0) {
+                    BootLogoProgress(Got * 40 / Total);
+                }
+            }
             if (!EFI_ERROR(Status) && OutSize != NULL) {
-                *OutSize = ReadSize;
+                *OutSize = Got;
             }
         }
     }

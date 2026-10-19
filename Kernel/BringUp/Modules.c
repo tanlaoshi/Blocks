@@ -16,6 +16,7 @@
 #include "ToySerialLog.h"
 #include "Debug.h"
 #include "Console.h"
+#include "Desktop.h"
 
 static int gVirtDesktop;
 
@@ -94,9 +95,32 @@ static void ModLog(const char *Name, const char *Suffix) {
     ToyLogBoot(Suffix);
 }
 
-/* 真机 bring-up：进度走统一 boot log，不再画左上角色块 */
-static void ModProgressMark(int Step) {
-    (void)Step;
+/* 引导读盘时 T 落到 40。这里按做完的模块继续下落。 */
+static UINT32 ModLogoPct(const char *Name) {
+    if (Name[0] == 'D' && Name[1] == 'r') {
+        return 55;
+    }
+    if (Name[0] == 'C' && Name[1] == 'p') {
+        return 62;
+    }
+    if (Name[0] == 'S' && Name[1] == 'm') {
+        return 70;
+    }
+    if (Name[0] == 'U') {
+        return 84;
+    }
+    if (Name[0] == 'F') {
+        return 94;
+    }
+    return 0;
+}
+
+static void ModProgressMark(const char *Name) {
+    UINT32 Pct = ModLogoPct(Name);
+
+    if (Pct != 0) {
+        DesktopBootLogoSet(Pct);
+    }
 }
 
 /* 按顺序初始化所有模块；失败时打印模块名并返回 -1 */
@@ -111,7 +135,7 @@ int ModulesRun(const MODULE *List, int Count) {
         ModLog(List[i].Name, "\n");
         if (List[i].Init == 0 || List[i].Init() != 0) {
             ModLog(List[i].Name, " Failed\n");
-            ModProgressMark(7); /* 白条 = 失败停 */
+            ModProgressMark(List[i].Name);
             return -1;
         }
         /*
@@ -121,6 +145,7 @@ int ModulesRun(const MODULE *List, int Count) {
         if (!HalCpuIsHypervisor()) {
             HalInputPoll();
         }
+        ModProgressMark(List[i].Name);
     }
     return 0;
 }

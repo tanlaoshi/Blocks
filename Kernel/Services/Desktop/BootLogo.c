@@ -1,6 +1,7 @@
 /*
- * BootLogo.c — PR-BOX-2：启动占位 Logo → 清屏 → 再进 DesktopInitialize
- * T=锤、O=足球、Y=弹弓；旁衬 ToyOS。不做动画引擎。
+ * BootLogo.c — 启动 Logo → 清屏 → 再进 DesktopInitialize。
+ * T 向下四格、凹口向上五格。一开始 T 悬在上面，读盘落到 40，
+ * 进桌面前竖条填进凹口，合成三行、每行三块。凹形不动。格子尺寸两边相同。
  *
  * Video 后缓冲就绪即 Show，盖住核显 / USB / 挂盘 / 读字体。
  * Finish 时若屏上停得不够久，再补到大约一秒，避免一闪而过。
@@ -16,15 +17,22 @@
 #define LOGO_BG     0x00101828u
 #define LOGO_FG     0x00E8EEF4u
 #define LOGO_ACCENT 0x00F0A030u
-#define LOGO_BALL   0x00C87830u
-#define LOGO_WOOD   0x008B5A2Bu
-#define LOGO_STEEL  0x00A0A8B0u
+#define LOGO_TEAL   0x002EC4B6u
+#define LOGO_TEXT_SCALE 3u
+#define LOGO_CELL   48u
+#define LOGO_GAP    8u
+#define LOGO_OPEN   112u
 /* 至少约 1 秒（按 ~3GHz 估），读盘已久则 Finish 几乎不再空等 */
 #define LOGO_MIN_MS 1000u
 #define LOGO_TSC_PER_MS 3000000ull
 
 static int gLogoUp;
 static UINT64 gLogoTsc;
+static UINT32 gPct;
+static UINT32 gAx;
+static UINT32 gAy;
+static UINT32 gMarkW;
+static UINT32 gMarkH;
 
 static UINT64 LogoTsc(void) {
 #if defined(__x86_64__)
@@ -48,46 +56,92 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     UiFillRectangle(X, Y, W, H, C);
 }
 
-static void Disk(UINT32 Cx, UINT32 Cy, UINT32 R, UINT32 C) {
-    UINT32 Y;
-    UINT32 X;
-    UINT32 R2 = R * R;
+static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {
+    UINT32 Step = LOGO_CELL + LOGO_GAP;
 
-    for (Y = 0; Y <= 2 * R; Y++) {
-        for (X = 0; X <= 2 * R; X++) {
-            INT32 Dx = (INT32)X - (INT32)R;
-            INT32 Dy = (INT32)Y - (INT32)R;
-            if ((UINT32)(Dx * Dx + Dy * Dy) <= R2) {
-                HalVideoDrawPixel(Cx + X - R, Cy + Y - R, C);
+    Fill(X + Col * Step, Y + Row * Step, LOGO_CELL, LOGO_CELL, C);
+}
+
+/* Shift 是 T 还悬在凹形上方的距离。0 时竖条落进凹口。 */
+static void DrawBlocks(UINT32 X, UINT32 Y, UINT32 Shift) {
+    UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
+    UINT32 Yu = Y;
+
+    Cell(X, Yt, 0, 0, LOGO_ACCENT);
+    Cell(X, Yt, 1, 0, LOGO_ACCENT);
+    Cell(X, Yt, 2, 0, LOGO_ACCENT);
+    Cell(X, Yt, 1, 1, LOGO_ACCENT);
+    /* 凹口在第二行正中，留给 T 的竖条。 */
+    Cell(X, Yu, 0, 1, LOGO_TEAL);
+    Cell(X, Yu, 2, 1, LOGO_TEAL);
+    Cell(X, Yu, 0, 2, LOGO_TEAL);
+    Cell(X, Yu, 1, 2, LOGO_TEAL);
+    Cell(X, Yu, 2, 2, LOGO_TEAL);
+}
+
+static void PaintPieces(UINT32 Pct) {
+    UINT32 Shift;
+    UINT32 BandY;
+
+    if (Pct > 100) {
+        Pct = 100;
+    }
+    Shift = (100 - Pct) * LOGO_OPEN / 100;
+    BandY = (gAy > LOGO_OPEN) ? (gAy - LOGO_OPEN) : 0;
+    Fill(gAx, BandY, gMarkW, gMarkH + LOGO_OPEN, LOGO_BG);
+    DrawBlocks(gAx, gAy, Shift);
+    gPct = Pct;
+}
+
+/* 内建字是 10×18，标题按 3 倍点阵画，大约 54 像素高。 */
+static UINT32 TitleWidth(const char *S) {
+    const FONT_FACE *F = FontGetCurrent();
+    UINT32 N = 0;
+
+    if (F == 0) {
+        return FontStringWidth(S);
+    }
+    while (S[N] != 0) {
+        N++;
+    }
+    if (N == 0) {
+        return 0;
+    }
+    return N * (F->Width + F->CharSpacing) * LOGO_TEXT_SCALE - F->CharSpacing * LOGO_TEXT_SCALE;
+}
+
+static void DrawTitle(UINT32 X, UINT32 Y, const char *S, UINT32 Color) {
+    const FONT_FACE *F = FontGetCurrent();
+    UINT32 Step;
+    UINT32 i;
+
+    if (F == 0 || F->BytesPerRow == 0) {
+        HalVideoDrawStringAt(X, Y, S, Color);
+        return;
+    }
+    Step = (F->Width + F->CharSpacing) * LOGO_TEXT_SCALE;
+    for (i = 0; S[i] != 0; i++) {
+        const UINT8 *Glyph = FontGlyph(S[i]);
+        UINT32 Row;
+        UINT32 Col;
+
+        if (Glyph == 0) {
+            continue;
+        }
+        for (Row = 0; Row < F->Height; Row++) {
+            for (Col = 0; Col < F->Width; Col++) {
+                UINT8 Byte = Glyph[Row * F->BytesPerRow + (Col / 8u)];
+                UINT32 Bit = 7u - (Col % 8u);
+
+                if ((Byte & (1u << Bit)) == 0) {
+                    continue;
+                }
+                Fill(X + i * Step + Col * LOGO_TEXT_SCALE,
+                     Y + Row * LOGO_TEXT_SCALE,
+                     LOGO_TEXT_SCALE, LOGO_TEXT_SCALE, Color);
             }
         }
     }
-}
-
-static void DrawHammer(UINT32 X, UINT32 Y) {
-    Fill(X + 28, Y + 8, 12, 56, LOGO_WOOD);
-    Fill(X + 8, Y + 4, 52, 18, LOGO_STEEL);
-    Fill(X + 4, Y + 8, 8, 10, LOGO_STEEL);
-    Fill(X + 56, Y + 8, 8, 10, LOGO_STEEL);
-}
-
-static void DrawFootball(UINT32 X, UINT32 Y) {
-    UINT32 Cx = X + 32;
-    UINT32 Cy = Y + 36;
-    Disk(Cx, Cy, 28, LOGO_BALL);
-    Fill(Cx - 3, Cy - 22, 6, 44, LOGO_FG);
-    Fill(Cx - 10, Cy - 4, 8, 4, LOGO_FG);
-    Fill(Cx + 2, Cy - 4, 8, 4, LOGO_FG);
-    Fill(Cx - 10, Cy + 8, 8, 4, LOGO_FG);
-    Fill(Cx + 2, Cy + 8, 8, 4, LOGO_FG);
-}
-
-static void DrawSlingshot(UINT32 X, UINT32 Y) {
-    Fill(X + 28, Y + 40, 10, 28, LOGO_WOOD);
-    Fill(X + 8, Y + 8, 10, 40, LOGO_WOOD);
-    Fill(X + 48, Y + 8, 10, 40, LOGO_WOOD);
-    Fill(X + 14, Y + 6, 38, 6, LOGO_ACCENT);
-    Fill(X + 18, Y + 20, 30, 4, LOGO_ACCENT);
 }
 
 static void LogoHoldUntilMin(void) {
@@ -106,14 +160,11 @@ static void LogoHoldUntilMin(void) {
 void DesktopBootLogoShow(void) {
     UINT32 W;
     UINT32 H;
-    UINT32 BaseX;
-    UINT32 BaseY;
-    UINT32 Gap = 24;
-    UINT32 Icon = 64;
-    UINT32 RowW;
+    UINT32 MarkW;
+    UINT32 MarkH;
     UINT32 TextW;
     UINT32 TextX;
-    const char *Title = "ToyOS";
+    const char *Title = "Blocks";
 
     if (gLogoUp) {
         return;
@@ -125,30 +176,47 @@ void DesktopBootLogoShow(void) {
 
     HalVideoClearScreen(LOGO_BG);
 
-    RowW = Icon * 3 + Gap * 2;
-    BaseX = (W > RowW) ? (W - RowW) / 2 : 0;
-    BaseY = (H / 2) - 48;
-    DrawHammer(BaseX, BaseY);
-    DrawFootball(BaseX + Icon + Gap, BaseY);
-    DrawSlingshot(BaseX + 2 * (Icon + Gap), BaseY);
+    MarkW = LOGO_CELL * 3 + LOGO_GAP * 2;
+    MarkH = LOGO_CELL * 3 + LOGO_GAP * 2;
+    gMarkW = MarkW;
+    gMarkH = MarkH;
+    gAx = (W > MarkW) ? (W - MarkW) / 2 : 0;
+    {
+        UINT32 Span = MarkH + LOGO_OPEN + 20 + 54;
 
-    TextW = FontStringWidth(Title);
-    TextX = (RowW > TextW) ? (BaseX + (RowW - TextW) / 2) : BaseX;
-    HalVideoDrawStringAt(TextX, BaseY + Icon + 16, Title, LOGO_FG);
+        gAy = (H > Span) ? ((H - Span) / 2 + LOGO_OPEN) : LOGO_OPEN;
+    }
+    TextW = TitleWidth(Title);
+    TextX = (W > TextW) ? (W - TextW) / 2 : 0;
+    DrawTitle(TextX, gAy + MarkH + 20, Title, LOGO_FG);
+    /* 引导读盘时 T 已落到 40，这里接上，避免弹回顶部。 */
+    PaintPieces(40);
     HalVideoPresentFlush();
     ToyLogBoot("Boot: Logo\n");
     gLogoTsc = LogoTsc();
     gLogoUp = 1;
 }
 
+void DesktopBootLogoSet(UINT32 Pct) {
+    if (!gLogoUp || Pct <= gPct) {
+        return;
+    }
+    PaintPieces(Pct);
+    HalVideoPresentFlush();
+}
+
 void DesktopBootLogoFinish(void) {
     if (!gLogoUp) {
         DesktopBootLogoShow();
     }
+    DesktopBootLogoSet(100);
+    /* 合成后的九格再停大约一秒，然后进桌面。 */
+    gLogoTsc = LogoTsc();
     LogoHoldUntilMin();
     HalVideoClearScreen(0x00000000u);
     HalVideoPresentFlush();
     ToyLogBoot("Boot: Logo Cleared\n");
     gLogoUp = 0;
     gLogoTsc = 0;
+    gPct = 0;
 }

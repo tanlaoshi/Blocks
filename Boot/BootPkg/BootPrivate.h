@@ -40,6 +40,9 @@ VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);
+VOID BootShowLogo(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop);
+/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。读盘用到 40。 */
+VOID BootLogoProgress(UINTN Pct);
 
 /* LoadKernel（Read / Check / Load 统一 *KernelFile） */
 BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);

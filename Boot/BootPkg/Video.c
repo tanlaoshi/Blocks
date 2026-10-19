@@ -338,6 +338,7 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
         Black.Reserved = 0;
         (void)Gop->Blt(Gop, &Black, EfiBltVideoFill, 0, 0, 0, 0, W, H, 0);
         BootSerialPrintf("Boot: GOP Cleared %ux%u\n", (UINT32)W, (UINT32)H);
+        BootShowLogo(Gop);
     }
 
     BootSerialPrintf("Boot: SetVideoMode Done\n");

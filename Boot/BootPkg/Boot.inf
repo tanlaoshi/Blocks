@@ -9,6 +9,7 @@
   Boot.c
   Serial.c
   Video.c
+  BootLogo.c
   VideoScore.c
   VideoEdid.c
   VideoTheme.c

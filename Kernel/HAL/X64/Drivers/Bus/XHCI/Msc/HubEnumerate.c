@@ -72,13 +72,15 @@ int EnumerateHubChildren(void) {
                 continue;
             }
             if (!(St & HUB_PORT_CONNECTION)) {
-                /* 晚到的 CCS：少等几拍再判 empty */
-                for (Wait = 0; Wait < 5 && !(St & HUB_PORT_CONNECTION); Wait++) {
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(25); /* 原 8×40 */
-                    }
-                    if (HubGetPortStatus(Port, &St) < 0) {
-                        break;
+                /* 只在第一遍等晚到的设备。第二遍空口不再空等。 */
+                if (Pass == 0) {
+                    for (Wait = 0; Wait < 2 && !(St & HUB_PORT_CONNECTION); Wait++) {
+                        if (!HalCpuIsHypervisor()) {
+                            StallMs(10);
+                        }
+                        if (HubGetPortStatus(Port, &St) < 0) {
+                            break;
+                        }
                     }
                 }
                 if (!(St & HUB_PORT_CONNECTION)) {

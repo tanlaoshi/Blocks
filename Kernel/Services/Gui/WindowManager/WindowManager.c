@@ -137,7 +137,6 @@ void GuiInitialize(void) {
     DesktopSetPointOccupied(GuiPointInAnyWindow);
     DesktopSetRequestRefresh(GuiRefreshDesktop);
     DesktopSetClearIconFootprint(GuiClearIconDragFootprint);
-    DesktopBootLogoShow();
     DesktopInitialize();
     {
         WINDOW_OPS Ops;
@@ -188,6 +187,7 @@ static void DrainMouse(void) {
 
 int InitializeGui(void) {
     PollInput();
+    /* Logo 已在 Video 后缓冲就绪时画出；这里继续读字体主题，仍盖在 Logo 下 */
     (void)DbInitialize();
     (void)FontLoadAssets();
     (void)FontTtfLoad();
@@ -199,6 +199,7 @@ int InitializeGui(void) {
     if (ThemeUiScale() != 100) {
         (void)HalVideoSetUiScale(ThemeUiScale());
     }
+    DesktopBootLogoFinish();
     GuiInitialize();
     DrainMouse();
     return 0;

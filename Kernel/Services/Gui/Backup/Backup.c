@@ -204,6 +204,55 @@ void PaintWindowFromBackup(int Idx) {
     DrawWindowAt(Idx);
 }
 
+void PaintWindowFromBackupClipped(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
+    const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];
+    UINT32 Bw;
+    UINT32 Bh;
+    UINT32 Ix;
+    UINT32 Iy;
+    UINT32 Iw;
+    UINT32 Ih;
+    UINT32 Right;
+    UINT32 Bottom;
+    UINT32 Row;
+
+    if (!Win->Active || W == 0 || H == 0) {
+        return;
+    }
+    if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0) {
+        DrawWindowAt(Idx);
+        return;
+    }
+    Bw = gGuiWindowManager.WinBackupW[Idx];
+    Bh = gGuiWindowManager.WinBackupH[Idx];
+    if (Bw == 0 || Bh == 0) {
+        return;
+    }
+    Ix = Win->X > X ? Win->X : X;
+    Iy = Win->Y > Y ? Win->Y : Y;
+    Right = Win->X + Bw;
+    if (X + W < Right) {
+        Right = X + W;
+    }
+    Bottom = Win->Y + Bh;
+    if (Y + H < Bottom) {
+        Bottom = Y + H;
+    }
+    if (Right <= Ix || Bottom <= Iy) {
+        return;
+    }
+    Iw = Right - Ix;
+    Ih = Bottom - Iy;
+    for (Row = 0; Row < Ih; Row++) {
+        UINT32 Ly = (Iy + Row) - Win->Y;
+        const UINT32 *Src = &gGuiWindowManager.WinBackup[Idx][Ly * Bw + (Ix - Win->X)];
+
+        HalVideoWriteRect(Ix, Iy + Row, Iw, 1, Src);
+    }
+    /* 标题/边框按遮挡重画：不会写到更高 z 的像素上 */
+    DrawWindowChromeAt(Idx);
+}
+
 
 void ShiftWinBackupsUp(int From, int To) {
     UINT32 *Buf = gGuiWindowManager.WinBackup[From];

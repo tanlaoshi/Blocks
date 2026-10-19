@@ -198,7 +198,8 @@ static int TitleEq(const char *Title, const char *Name) {
 }
 
 static int TitleIsFixedUser(const char *Title) {
-    return TitleEq(Title, "Snake") || TitleEq(Title, "TaskMgr");
+    return TitleEq(Title, "Snake") || TitleEq(Title, "Task Manager") ||
+           TitleEq(Title, "任务管理器");
 }
 
 int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {

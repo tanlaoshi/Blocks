@@ -17,6 +17,8 @@
 #define IGPU_ROP_SRC_COPY    (0xCCu << 16)
 #define IGPU_BLIT_MIN_PX     64u /* 细露出条也走 BCS */
 #define IGPU_MAP_MAX_PAGES   8192u
+/* 光标补两页。窗口大脏区必须翻页，否则会改到正在扫描的那一页。 */
+#define IGPU_LIVE_PATCH_MAX  160u
 
 static int gBackMapped;
 static UINT64 gBackGtt;
@@ -140,9 +142,6 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
     UINT64 Phys;
     UINTN Bytes;
     UINT64 DstGtt;
-    UINT32 ScrW;
-    UINT32 ScrH;
-    UINT64 Shown;
 
     if (!Back || BackPitchPx == 0 || FrontPitchPx == 0 || BackH == 0) {
         return 0;
@@ -164,26 +163,20 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
     PitchB = BackPitchPx * 4u;
     FrontPitchB = FrontPitchPx * 4u;
     FlushBackRect(Back, BackPitchPx, X0, Y0, X1, Y1);
-    HalVideoGetSize(&ScrW, &ScrH);
     /*
-     * 小脏区（光标）写两页。只写当前页时，下一次整屏翻页会把旧光标翻出来，
-     * 或者把新光标留在已经藏起来的那一页上，看起来像光标消失。
+     * 翻页还没发生时，显示器仍停在固件清黑的那一页。
+     * 只把画面拷进备用页不会亮屏，必须先整页翻过去。
+     * 翻过之后：光标补两页；窗口拖动再翻页，不改正在扫描的那一页。
      */
-    if (IgpuScanoutLive()) {
-        if (ScrW == 0 || ScrH == 0 ||
-            (UINT64)W * 2ull < (UINT64)ScrW ||
-            (UINT64)H * 2ull < (UINT64)ScrH) {
-            if (IgpuScanoutBlitRect(gBackGtt, BackPitchPx, X0, Y0, W, H)) {
-                return 1;
-            }
-            Shown = IgpuScanoutShownGtt();
-            if (IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
-                                gBackGtt, Shown)) {
-                return 1;
-            }
+    if (!IgpuScanoutLive()) {
+        if (IgpuScanoutOk() && IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
+            return 1;
         }
-    }
-    if (IgpuScanoutOk() && IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
+    } else if (W <= IGPU_LIVE_PATCH_MAX && H <= IGPU_LIVE_PATCH_MAX) {
+        if (IgpuScanoutBlitRect(gBackGtt, BackPitchPx, X0, Y0, W, H)) {
+            return 1;
+        }
+    } else if (IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
         return 1;
     }
     return IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,

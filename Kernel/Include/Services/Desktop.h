@@ -35,8 +35,9 @@ void DevicesMenuRegister(void);
 void DesktopNotifyAppsChanged(void);
 
 void DesktopInitialize(void);
-/* PR-BOX-2：启动占位 Logo → 清屏（GuiInitialize 在 DesktopInitialize 前调用） */
+/* PR-BOX-2：先画出 Logo；读完字体/主题后再 Finish 清屏 */
 void DesktopBootLogoShow(void);
+void DesktopBootLogoFinish(void);
 /* PR-BOOT-fast-1：Worker 补齐 BMP/菜单；Gui 只 Consume 后刷新（勿在 Gui 路径读盘） */
 void DesktopEnsureIconsLoaded(void);
 /* 切语言后 Worker 重建开始菜单；点开始时若仍脏则同步补建 */

@@ -48,7 +48,7 @@ int ForceUntilPed(UINT32 P, int *Force) {
                 if ((Ps & PORTSC_CCS) && !(Ps & PORTSC_PED)) {
                     int W;
                     /* PRC 已到但 PED 慢：再等一会，勿立刻放弃 */
-                    for (W = 0; W < 30; W++) {
+                    for (W = 0; W < 8; W++) {
                         StallMs(15);
                         Ps = ReadMmio32(gOperationalBase + PortReg(P));
                         if ((Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
@@ -59,6 +59,10 @@ int ForceUntilPed(UINT32 P, int *Force) {
                         if (!(Ps & PORTSC_CCS)) {
                             break;
                         }
+                    }
+                    /* 口还插着但复位失败：再 Force 只会把超时再等一遍 */
+                    if (!Ready) {
+                        break;
                     }
                 }
                 continue;
@@ -219,17 +223,10 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
             if (!HalCpuIsHypervisor()) {
                 StallMs(80); /* PR-BOOT-fast-2：原 150 */
             }
+            /* Enumerate 内部已有第二遍。外面再整轮扫会把空口等待再乘一遍。 */
             if (EnumerateHubChildren()) {
                 *Ok = 1;
                 return 1;
-            }
-            /* 空 hub：再扫一轮后再决定是否释放（U 盘上电慢） */
-            if (!HalCpuIsHypervisor()) {
-                StallMs(150); /* 原 300；Enum 内仍有 Pass 再扫 */
-                if (EnumerateHubChildren()) {
-                    *Ok = 1;
-                    return 1;
-                }
             }
             /* HID 未占用此 hub：无 MSC 则放掉，试其它根口 */
             if (HubBefore == 0 && gHubSlotId != 0 && gHubRootPort == P) {

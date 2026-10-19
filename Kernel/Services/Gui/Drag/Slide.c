@@ -46,6 +46,31 @@ void GuiDragFrameLog(void) {
  * 露出条勿 ExpandRectByWindowShadow：影向右下扩，会吃进已 CopyRect 的新窗左边 → 花块。
  * 旧影由随后 DrawWindowShadowAt / 桌面擦条覆盖。
  */
+/* 底边阴影在窗体之下。水平移动时清掉旧影，不会吃进已经 CopyRect 的新窗。 */
+static void ClearOldBottomShadow(UINT32 OldX, UINT32 OldY, UINT32 Nx, UINT32 Ny,
+                                 UINT32 Ww, UINT32 Wh, int DragIdx) {
+    UINT32 N;
+    UINT32 X;
+    UINT32 Right;
+    UINT32 Y;
+
+    if (!ThemeIsShadowEnabled()) {
+        return;
+    }
+    N = ThemeWindowShadowSize();
+    if (N == 0) {
+        return;
+    }
+    X = (OldX < Nx) ? OldX : Nx;
+    Right = (OldX + Ww > Nx + Ww) ? (OldX + Ww) : (Nx + Ww);
+    Right += N;
+    Y = (OldY + Wh > Ny + Wh) ? (OldY + Wh) : (Ny + Wh);
+    if (Right <= X) {
+        return;
+    }
+    ClearOldDragFootprint(X, Y, Right - X, N, DragIdx);
+}
+
 static void ClearExposedStrip(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, int DragIdx) {
     UINT32 Fx = X;
     UINT32 Fy = Y;
@@ -92,12 +117,14 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY) {
     } else if (Dy < 0) {
         ClearExposedStrip(OldX, Ny + Wh, Ww, (UINT32)(-Dy), DragIdx);
     }
+    ClearOldBottomShadow(OldX, OldY, Nx, Ny, Ww, Wh, DragIdx);
 
-    /* Copy/擦条偶发踩窗边：用备份重贴保证客户区干净 */
+    /* Copy/擦条偶发踩窗边：用备份重贴保证客户区干净。
+     * 拖动中不画本窗阴影：底边阴影按像素画，翻页时左下角右下角会一小块一小块补上。
+     * 松手后 SyncWindowVisuals 再画。 */
     if (gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
         PaintWindowFromBackup(DragIdx);
     }
-    DrawWindowShadowAt(DragIdx);
 
     /*
      * igpu-5：旧∪新（含右下影）并成一块脏区再 Present。
@@ -123,10 +150,10 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY) {
         if (Ur > Ux && Ub > Uy) {
             HalVideoMarkDirty(Ux, Uy, Ur - Ux, Ub - Uy);
         }
-        /* 整块 Present：GPU 翻页或 CPU 一次性 memcpy，避免 64 行条带 */
+        /* 整块 Present：GPU 双页 blit / 翻页；CPU 抬高条带。Flush 把 Partial 续完。 */
         HalVideoSetPresentChunkRows(16384u);
     }
     GuiDragFrameAccount();
-    HalVideoPresent();
+    HalVideoPresentFlush();
     HalVideoSetPresentChunkRows(0);
 }

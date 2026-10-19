@@ -190,7 +190,8 @@ void RestoreWindowsInFootprint(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
         if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y,
                            gGuiWindowManager.Windows[i].Width + N, gGuiWindowManager.Windows[i].Height + N,
                            Fx, Fy, Fw, Fh)) {
-            PaintWindowFromBackup(i);
+            /* 只贴脚印相交区。整窗 WriteRect 会盖住已 CopyRect 到新位的被拖窗，按钮像穿透。 */
+            PaintWindowFromBackupClipped(i, Fx, Fy, Fw, Fh);
         }
     }
 }

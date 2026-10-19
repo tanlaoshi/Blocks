@@ -60,7 +60,7 @@ static void CopyPathName(char *Dst, int Max, const char *Path) {
     Dst[i] = 0;
 }
 
-/* 任务名：去掉路径和 .ELF，英文按 PascalCase。全大写的 Demo/Mgr 拆开。 */
+/* 任务名：去掉路径和 .ELF，英文按 PascalCase。全大写的 Demo 拆开；Mgr 写成 Manager。 */
 static void StyleTaskName(char *Name) {
     int N = 0;
     int Dot = -1;
@@ -68,6 +68,7 @@ static void StyleTaskName(char *Name) {
     int Lower = 0;
     int Upper = 0;
     int Tail = 0;
+    int ExpandMgr = 0;
 
     while (Name[N]) {
         if (Name[N] == '.') {
@@ -107,6 +108,8 @@ static void StyleTaskName(char *Name) {
             Name[N - 1] == 'O') {
             Tail = N - 4;
         } else if (N >= 4 && Name[N - 3] == 'M' && Name[N - 2] == 'G' && Name[N - 1] == 'R') {
+            /* TASKMGR → TaskManager（15 字内写全） */
+            ExpandMgr = 1;
             Tail = N - 3;
         }
         for (i = 0; i < N; i++) {
@@ -116,6 +119,17 @@ static void StyleTaskName(char *Name) {
         }
         if (Name[0] >= 'a' && Name[0] <= 'z') {
             Name[0] = (char)(Name[0] - 'a' + 'A');
+        }
+        if (ExpandMgr && Tail > 0 && Tail + 8 < 16) {
+            Name[Tail] = 'M';
+            Name[Tail + 1] = 'a';
+            Name[Tail + 2] = 'n';
+            Name[Tail + 3] = 'a';
+            Name[Tail + 4] = 'g';
+            Name[Tail + 5] = 'e';
+            Name[Tail + 6] = 'r';
+            Name[Tail + 7] = 0;
+            return;
         }
         if (Tail > 0 && Name[Tail] >= 'a' && Name[Tail] <= 'z') {
             Name[Tail] = (char)(Name[Tail] - 'a' + 'A');

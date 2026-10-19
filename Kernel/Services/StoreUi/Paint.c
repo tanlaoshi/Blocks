@@ -158,8 +158,13 @@ static void StoreWidenList(UINT32 *Cw) {
     if (Win->Width + Add > MaxW) {
         Add = MaxW - Win->Width;
     }
+    if (Add == 0) {
+        return;
+    }
     Win->Width += Add;
     *Cw += Add;
+    /* 加宽后旧备份尺寸不够，整窗作废，避免拖动时右侧透出后窗按钮 */
+    gGuiWindowManager.WinBackupValid[Idx] = 0;
 }
 
 static void StoreDrawField(UINT32 X, UINT32 Y, UINT32 MaxW, const char *Text, UINT32 Fg) {
@@ -347,7 +352,13 @@ void StorePaintList(void) {
         gStoreUiPrevW = 0;
     }
 
-    GuiBackupSyncRect(Cx, Cy, Cw, Ch);
+    if (gGuiWindowManager.FocusWin >= 0 &&
+        gGuiWindowManager.FocusWin < MAX_WINS &&
+        !gGuiWindowManager.WinBackupValid[gGuiWindowManager.FocusWin]) {
+        BackupWindowAtEx(gGuiWindowManager.FocusWin, 1);
+    } else {
+        GuiBackupSyncRect(Cx, Cy, Cw, Ch);
+    }
     HalVideoClearClip();
     GuiFrameBufferEnd();
 }

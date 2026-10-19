@@ -9,6 +9,7 @@
 #include "Font.h"
 #include "Theme.h"
 #include "Gfx.h"
+#include "Desktop.h"
 
 int DisplayHardwareInitialize(void) {
     int Found = HalIgpuMmioInitialize();
@@ -36,6 +37,11 @@ int InitializeVideo(void) {
     GfxSetFillRect(HalVideoFillRect);
     HalSerialGopEnable();
     HalVideoLogFbPte();
+    /*
+     * 后缓冲一好就出 Logo，盖住后面核显探针、USB、挂盘、读字体的黑屏。
+     * 进桌面前再 Finish。
+     */
+    DesktopBootLogoShow();
     (void)DisplayHardwareInitialize();
     return 0;
 }

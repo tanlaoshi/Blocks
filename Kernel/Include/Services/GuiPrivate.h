@@ -217,6 +217,8 @@ void BackupWindowAtEx(int Idx, int ForceFull);
 void BackupWindowAt(int Idx);
 UINT32 AnalyticWindowPixel(int Idx, UINT32 Px, UINT32 Py);
 void PaintWindowFromBackup(int Idx);
+/* 只贴备份与矩形相交的部分；擦拖动脚印时用，避免整窗 WriteRect 盖住上层 */
+void PaintWindowFromBackupClipped(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void ShiftWinBackupsUp(int From, int To);
 /* PR-GUI-l3-fade：FadeIn=1 开窗，0 关窗；ThemeWindowFadeSteps()==0 则空操作 */
 void GuiAnimateWindowFade(int Idx, int FadeIn);

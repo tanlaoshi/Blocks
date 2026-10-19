@@ -267,6 +267,11 @@ int FileSystemInitialize(void) {
         HalUsbMscAutoSet(1);
         ToyLogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
     }
+    /* 系统卷已经在（NVMe / 已挂上的盘）。再扫 Hub 和失败根口会在 Logo 前空等数秒。 */
+    if (Auto && HasToy) {
+        Auto = 0;
+        ToyLogBoot("Boot: MSC skip (BLOCKS already)\n");
+    }
 
     if (Auto) {
         if (HalUsbMscAutoBeforeFs() == 0) {

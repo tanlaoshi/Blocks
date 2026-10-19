@@ -14,8 +14,8 @@
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00101828u
-#define LOGO_ACCENT 0x00F0A030u
-#define LOGO_TEAL   0x002EC4B6u
+#define LOGO_ACCENT 0x00C07820u
+#define LOGO_TEAL   0x001E9A8Eu
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
 #define LOGO_OPEN   112u

@@ -27,17 +27,72 @@ static void ClockAnchor(UINT32 *ClockXOut) {
     *ClockXOut = (Sw > ClockW + 12u) ? (Sw - ClockW - 12u) : 0;
 }
 
+static UINT32 PopupWidth(UINT32 Sw) {
+    char Line[40];
+    UINT32 W;
+    UINT32 Lw;
+    const char *Kind;
+
+    Kind = "No network";
+    W = FontStringWidth(Kind);
+    Lw = FontStringWidth("Wi-Fi");
+    if (Lw > W) {
+        W = Lw;
+    }
+    Lw = FontStringWidth("Wired");
+    if (Lw > W) {
+        W = Lw;
+    }
+    DesktopNetTrayMakePrefixed(Line, (int)sizeof(Line), "ip  ", 0xFFFFFFFFu);
+    Lw = FontStringWidth(Line);
+    if (Lw > W) {
+        W = Lw;
+    }
+    DesktopNetTrayMakePrefixed(Line, (int)sizeof(Line), "gw  ", 0xFFFFFFFFu);
+    Lw = FontStringWidth(Line);
+    if (Lw > W) {
+        W = Lw;
+    }
+    DesktopNetTrayMakePrefixed(Line, (int)sizeof(Line), "dns ", 0xFFFFFFFFu);
+    Lw = FontStringWidth(Line);
+    if (Lw > W) {
+        W = Lw;
+    }
+    Lw = FontStringWidth(LocStr(MSG_NET_LINK_UP));
+    if (Lw > W) {
+        W = Lw;
+    }
+    Lw = FontStringWidth(LocStr(MSG_NET_LINK_DOWN));
+    if (Lw > W) {
+        W = Lw;
+    }
+    Lw = FontStringWidth(LocStr(MSG_NET_LINK_NA));
+    if (Lw > W) {
+        W = Lw;
+    }
+    W += NET_POP_PAD * 2u;
+    if (W < NET_POP_W) {
+        W = NET_POP_W;
+    }
+    if (Sw > 8u && W + 8u > Sw) {
+        W = Sw - 8u;
+    }
+    return W;
+}
+
 static void PopupGeom(UINT32 *Px, UINT32 *Py, UINT32 *Pw, UINT32 *Ph) {
     UINT32 Sw;
     UINT32 Sh;
     UINT32 BarY;
     UINT32 H;
+    UINT32 W;
 
     TaskbarGeom(&BarY, &Sw, &Sh);
     H = NET_POP_PAD * 2u + (UINT32)NET_POP_LINES * FontCellH();
-    *Pw = NET_POP_W;
+    W = PopupWidth(Sw);
+    *Pw = W;
     *Ph = H;
-    *Px = (Sw > NET_POP_W + 8u) ? (Sw - NET_POP_W - 8u) : 0;
+    *Px = (Sw > W + 8u) ? (Sw - W - 8u) : 0;
     *Py = (BarY > H + 4u) ? (BarY - H - 4u) : 0;
 }
 

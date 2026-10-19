@@ -442,14 +442,27 @@ static UINT32 ScaleOf(const FONT_FACE *F) {
     return F->Scale ? F->Scale : 1u;
 }
 
-/* Sun 8×16 画进和 Terminus 一样的 10 宽，否则换过去整字偏小。 */
+/*
+ * Sun 8×16 的步进对齐 Terminus 的 10 宽。高度拉到汉字后不再横向取样，
+ * 否则 1 会比 9、2 粗。只在两侧各留 1 像素，字距稍松。
+ */
 static UINT32 FaceDrawW(const FONT_FACE *F) {
     UINT32 S = ScaleOf(F);
+    UINT32 Base;
+    UINT32 NatH;
+    UINT32 CellH;
 
     if (F->Width > 0u && F->Width <= 8u && F->Height > 0u && F->Height <= 16u) {
-        return 10u * S;
+        Base = 10u * S;
+    } else {
+        Base = F->Width * S;
     }
-    return F->Width * S;
+    NatH = F->Height * S;
+    CellH = FontTtfPixel();
+    if (NatH == 0u || CellH <= NatH) {
+        return Base;
+    }
+    return Base + 2u;
 }
 
 UINT32 FontCellW(void) {

@@ -51,16 +51,16 @@ static void PaintPieces(UINTN Pct) {
     Yu = sAy;
     Fill(sGop, sAx, (sAy > OPEN_MAX) ? (sAy - OPEN_MAX) : 0,
          sMarkW, sMarkH + OPEN_MAX, 0x10, 0x18, 0x28);
-    Fill(sGop, X, Yt, CELL, CELL, 0xF0, 0xA0, 0x30);
-    Fill(sGop, X + STEP, Yt, CELL, CELL, 0xF0, 0xA0, 0x30);
-    Fill(sGop, X + 2 * STEP, Yt, CELL, CELL, 0xF0, 0xA0, 0x30);
-    Fill(sGop, X + STEP, Yt + STEP, CELL, CELL, 0xF0, 0xA0, 0x30);
+    Fill(sGop, X, Yt, CELL, CELL, 0xC0, 0x78, 0x20);
+    Fill(sGop, X + STEP, Yt, CELL, CELL, 0xC0, 0x78, 0x20);
+    Fill(sGop, X + 2 * STEP, Yt, CELL, CELL, 0xC0, 0x78, 0x20);
+    Fill(sGop, X + STEP, Yt + STEP, CELL, CELL, 0xC0, 0x78, 0x20);
     /* 凹口在第二行正中。T 的竖条落下后占住这个空位，九格排满。 */
-    Fill(sGop, X, Yu + STEP, CELL, CELL, 0x2E, 0xC4, 0xB6);
-    Fill(sGop, X + 2 * STEP, Yu + STEP, CELL, CELL, 0x2E, 0xC4, 0xB6);
-    Fill(sGop, X, Yu + 2 * STEP, CELL, CELL, 0x2E, 0xC4, 0xB6);
-    Fill(sGop, X + STEP, Yu + 2 * STEP, CELL, CELL, 0x2E, 0xC4, 0xB6);
-    Fill(sGop, X + 2 * STEP, Yu + 2 * STEP, CELL, CELL, 0x2E, 0xC4, 0xB6);
+    Fill(sGop, X, Yu + STEP, CELL, CELL, 0x1E, 0x9A, 0x8E);
+    Fill(sGop, X + 2 * STEP, Yu + STEP, CELL, CELL, 0x1E, 0x9A, 0x8E);
+    Fill(sGop, X, Yu + 2 * STEP, CELL, CELL, 0x1E, 0x9A, 0x8E);
+    Fill(sGop, X + STEP, Yu + 2 * STEP, CELL, CELL, 0x1E, 0x9A, 0x8E);
+    Fill(sGop, X + 2 * STEP, Yu + 2 * STEP, CELL, CELL, 0x1E, 0x9A, 0x8E);
     sPct = Pct;
 }
 

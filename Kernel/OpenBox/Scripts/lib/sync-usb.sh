@@ -8,7 +8,7 @@
 # 用法：
 #   ./sync-usb.sh                 # 全量：RootFs/X64 → TOYOS；ESP 已挂载才更新 BOOTX64.EFI
 #   ./sync-usb.sh --build         # 先编 Kernel + Boot，再 prepare-rootfs，再全量同步
-#   ./sync-usb.sh --kernel-only   # 只更新 TOYOS/Kernel.elf + FW/（快迭代；含 iwl 固件）
+#   ./sync-usb.sh --kernel-only   # TOYOS/Kernel.elf + FW/ + Assets/Icons/bmp48
 #   TOY_ESP_MNT=/mnt/esp TOY_TOYOS_MNT=/mnt/toy ./sync-usb.sh
 #
 # 兼容旧单分区：若只有 TOYOS、没有 ESP，则把 EFI 也写进 TOYOS（单 FAT 布局）。
@@ -216,6 +216,17 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   cp -f "$SRC" "$TOY_MNT/Kernel.elf"
   sync_toyos_fw "$TOY_MNT"
+  # 图标不在内核里。快同步也带上 bmp48，否则 GAME.BMP 等要等全量镜像。
+  if [[ -d "$ROOT/RootFs/X64/Assets/Icons/bmp48" ]]; then
+    mkdir -p "$TOY_MNT/Assets/Icons/bmp48"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -rltD --no-owner --no-group --no-perms \
+        "$ROOT/RootFs/X64/Assets/Icons/bmp48/" "$TOY_MNT/Assets/Icons/bmp48/"
+    else
+      cp -f "$ROOT/RootFs/X64/Assets/Icons/bmp48/"*.BMP "$TOY_MNT/Assets/Icons/bmp48/"
+    fi
+    echo "Assets/Icons/bmp48 -> $TOY_MNT/Assets/Icons/bmp48"
+  fi
   if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
     printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
     echo "note: wrote $TOY_MNT/BLOCKS.ID (UEFI Boot 靠它认系统盘)"

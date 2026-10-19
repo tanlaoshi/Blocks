@@ -66,15 +66,15 @@ static void DrawStartMark(UINT32 X, UINT32 Y, UINT32 S) {
     }
     Ox = X + (S > Span ? (S - Span) / 2u : 0);
     Oy = Y + (S > Span ? (S - Span) / 2u : 0);
-    UiFillRectangle(Ox, Oy, Cell, Cell, 0x00F0A030u);
-    UiFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00F0A030u);
-    UiFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00F0A030u);
-    UiFillRectangle(Ox, Oy + Step, Cell, Cell, 0x002EC4B6u);
-    UiFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00F0A030u);
-    UiFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x002EC4B6u);
-    UiFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
-    UiFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
-    UiFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
+    UiFillRectangle(Ox, Oy, Cell, Cell, 0x00C07820u);
+    UiFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00C07820u);
+    UiFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00C07820u);
+    UiFillRectangle(Ox, Oy + Step, Cell, Cell, 0x001E9A8Eu);
+    UiFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00C07820u);
+    UiFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x001E9A8Eu);
+    UiFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    UiFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    UiFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
 }
 
 /* 任务栏控件（边框/开始钮/时钟）；底色由调用方 Fill / BlendFill */

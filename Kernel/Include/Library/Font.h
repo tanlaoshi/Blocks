@@ -39,7 +39,7 @@ int FontReloadAssets(void);
 int FontTtfLoad(void);
 const UINT8 *FontTtfBlob(UINT32 *OutSize);
 int FontTtfInit(void);
-/* 汉字和英文的绘制高度。至少 24，不超过缓存的 32。英文只加高，不拉宽。 */
+/* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
 UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);

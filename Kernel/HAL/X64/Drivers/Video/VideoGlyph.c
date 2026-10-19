@@ -211,11 +211,11 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 }
 
 /*
- * 保留字库给出的灰度。以前把 190 以上收成实心：黑字边缘变成黑块，
- * 灰字因为颜色本身浅，看起来反而更顺。
+ * 淡灰是笔画外面的一圈。留着的话，外壳、文件、设置这种笔画少的字会比商店粗一像素。
+ * 盖掉这圈，粗细就跟商店靠齐。实心笔画仍用字库自己的灰度。
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (N < 16u) {
+    if (N < 128u) {
         return 0;
     }
     return N;
@@ -255,10 +255,6 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     }
 }
 
-static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
-                             UINT32 SrcW, UINT32 SrcH, UINT32 DstW, UINT32 DstH,
-                             UINT32 Bpp, UINT32 Color);
-
 void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     const FONT_FACE *F;
     const UINT8 *Glyph;
@@ -278,13 +274,18 @@ void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     NatH = F->Height * Scale;
     Dw = FontCellW();
     Dh = FontCellH();
-    if (Dw == NatW && Dh == NatH) {
-        PaintGlyph(X, Y, Glyph, F->Width, F->Height, F->BytesPerRow, Scale, Scale,
-                   0, Color);
-        return;
+    /*
+     * 18 行拉成 24 行时，有的横笔画会被画两遍，1 会显得比 9、2 粗。
+     * 按字模原样画，在行里居中。笔画粗细就是字库里的样子。
+     */
+    if (Dw > NatW) {
+        X += (Dw - NatW) / 2u;
     }
-    /* 和汉字同一高度。10×18 收到 24 不是整数倍，按目标格子取样。 */
-    PaintGlyphFitted(X, Y, Glyph, F->Width, F->Height, Dw, Dh, 1u, Color);
+    if (Dh > NatH) {
+        Y += (Dh - NatH) / 2u;
+    }
+    PaintGlyph(X, Y, Glyph, F->Width, F->Height, F->BytesPerRow, Scale, Scale,
+               0, Color);
 }
 
 /* 字形比行高还高时，整字收到这一行，不再只裁掉下半截。 */

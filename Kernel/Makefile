@@ -305,7 +305,7 @@ HAL_INIT_SRCS := $(wildcard HAL/Initialize/*.c)
 HAL_INIT_OBJS := $(patsubst HAL/Initialize/%.c,$(BUILDDIR)/HAL/Initialize/%.o,$(HAL_INIT_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
-SERVICES_SRCS += $(wildcard Services/Locale/*.c)
+SERVICES_SRCS += $(wildcard Services/Look/Locale/*.c)
 SERVICES_SRCS += $(wildcard Services/Gui/Drag/*.c)
 SERVICES_SRCS += $(wildcard Services/Gui/Draw/*.c)
 SERVICES_SRCS += $(wildcard Services/Gui/Pointer/*.c)
@@ -319,7 +319,7 @@ SERVICES_SRCS += $(wildcard Services/Desktop/*.c)
 SERVICES_SRCS += $(wildcard Services/Apps/FilesUi/*.c)
 SERVICES_SRCS += $(wildcard Services/Store/Catalog/*.c)
 SERVICES_SRCS += $(wildcard Services/Apps/SettingsUi/*.c)
-SERVICES_SRCS += $(wildcard Services/Theme/*.c)
+SERVICES_SRCS += $(wildcard Services/Look/Theme/*.c)
 SERVICES_SRCS += $(wildcard Services/Store/Ui/*.c)
 SERVICES_SRCS += $(wildcard Services/Apps/DevicesUi/*.c)
 SERVICES_SRCS += $(wildcard Services/Apps/EditUi/*.c)
@@ -336,7 +336,7 @@ SERVICES_SRCS += $(wildcard Services/Gui/Compose/*.c)
 SERVICES_SRCS += $(wildcard Services/Gui/Cursor/*.c)
 SERVICES_SRCS += $(wildcard Services/Gui/WindowManager/*.c)
 SERVICES_SRCS += $(wildcard Services/Ui/*.c)
-SERVICES_SRCS += $(wildcard Services/Fonts/*.c)
+SERVICES_SRCS += $(wildcard Services/Look/Fonts/*.c)
 FS ?= fat
 LIB_SRCS      := $(wildcard Library/*.c)
 LIB_SRCS      += $(wildcard Library/Block/*.c)
@@ -717,7 +717,7 @@ $(BUILDDIR)/HAL/Initialize/%.o: HAL/Initialize/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU
-$(BUILDDIR)/Services/Fonts/TrueTypeRaster.o: Services/Fonts/TrueTypeRaster.c | $(BUILDDIR)
+$(BUILDDIR)/Services/Look/Fonts/TrueTypeRaster.o: Services/Look/Fonts/TrueTypeRaster.c | $(BUILDDIR)
 ifeq ($(ARCH),x86_64)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -Wno-unused-parameter -c $< -o $@
 else

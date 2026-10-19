@@ -30,12 +30,11 @@ if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
     printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/BLOCKS.ID"
 fi
 
-# TTF：缺则从旁挂种子 / 卷根补进 Assets/Fonts（核侧路径）
+# TTF：缺则从种子补进 Assets/Fonts（内核只读这个路径）
 mkdir -p "$RUNTIME/RootFs/X64/Assets/Fonts"
 if [ ! -f "$RUNTIME/RootFs/X64/Assets/Fonts/CJK.TTF" ]; then
     for Cjk in \
         "$RUNTIME/Assets/Fonts/CJK.TTF" \
-        "$RUNTIME/RootFs/X64/CJK.TTF" \
         "$BLOCKS/Kernel/Tools/Fonts/CJK.TTF"
     do
         if [ -f "$Cjk" ]; then

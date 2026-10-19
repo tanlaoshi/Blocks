@@ -115,7 +115,27 @@ static int ProcessLoadNeeded(VIRTUAL_ADDRESS_SPACE *Space, const void *MainImage
             return -1;
         }
         Size = 0;
-        if (VfsServiceReadFile(Needed[i], Buf, ELF_MAX_SIZE, &Size) != FAT_OK || Size < 64) {
+        if (VfsServiceReadFile(Needed[i], Buf, ELF_MAX_SIZE, &Size) != FAT_OK) {
+            char SoPath[24];
+            const char *Pre = "Class/";
+            int A = 0;
+            int B = 0;
+
+            while (Pre[A] != 0 && A + 1 < (int)sizeof(SoPath)) {
+                SoPath[A] = Pre[A];
+                A++;
+            }
+            while (Needed[i][B] != 0 && A + 1 < (int)sizeof(SoPath)) {
+                SoPath[A++] = Needed[i][B++];
+            }
+            SoPath[A] = 0;
+            Size = 0;
+            if (Needed[i][B] != 0 ||
+                VfsServiceReadFile(SoPath, Buf, ELF_MAX_SIZE, &Size) != FAT_OK) {
+                Size = 0;
+            }
+        }
+        if (Size < 64) {
             ToyLogMisc("exec: missing shared lib: ");
             ToyLogMisc(Needed[i]);
             ToyLogMisc("\n");

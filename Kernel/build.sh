@@ -184,21 +184,27 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         rm -rf "$DEST/Assets/Store"
     fi
 
-    # 根白名单（Store/ROOTFS-ELF.md）
-    cp -f "$USER_OUT/hello.elf" "$DEST/HELLO.ELF"
-    cp -f "$USER_OUT/count.elf" "$DEST/COUNT.ELF"
-    cp -f "$USER_OUT/fork.elf" "$DEST/FORK.ELF"
-    cp -f "$USER_OUT/waitnh.elf" "$DEST/WAITNH.ELF"
-    cp -f "$USER_OUT/libtoy.so" "$DEST/LIBTOY.SO"
-    cp -f "$USER_OUT/dyndemo.elf" "$DEST/DYNDEMO.ELF"
-    cp -f "$USER_OUT/syshello.elf" "$DEST/SYSHELLO.ELF"
-    cp -f "$USER_OUT/sysfork.elf" "$DEST/SYSFORK.ELF"
-    cp -f "$USER_OUT/execdemo.elf" "$DEST/EXECDEMO.ELF"
-    cp -f "$USER_OUT/pipedemo.elf" "$DEST/PIPEDEMO.ELF"
-    cp -f "$USER_OUT/threadsmoke.elf" "$DEST/THREADSMOKE.ELF"
-    cp -f "$USER_OUT/pthreadsmoke.elf" "$DEST/PTHREADSMOKE.ELF"
-    cp -f "$USER_OUT/threaddemo.elf" "$DEST/THREADDEMO.ELF"
-    cp -f "$USER_OUT/enosysdemo.elf" "$DEST/ENOSYS.ELF"
+    # 上课 ELF 放 Class/，卷根只留内核和配置。exec 裸文件名会再到 Class/ 找。
+    mkdir -p "$DEST/Class"
+    cp -f "$USER_OUT/hello.elf" "$DEST/Class/HELLO.ELF"
+    cp -f "$USER_OUT/count.elf" "$DEST/Class/COUNT.ELF"
+    cp -f "$USER_OUT/fork.elf" "$DEST/Class/FORK.ELF"
+    cp -f "$USER_OUT/waitnh.elf" "$DEST/Class/WAITNH.ELF"
+    cp -f "$USER_OUT/libtoy.so" "$DEST/Class/LIBTOY.SO"
+    cp -f "$USER_OUT/dyndemo.elf" "$DEST/Class/DYNDEMO.ELF"
+    cp -f "$USER_OUT/syshello.elf" "$DEST/Class/SYSHELLO.ELF"
+    cp -f "$USER_OUT/sysfork.elf" "$DEST/Class/SYSFORK.ELF"
+    cp -f "$USER_OUT/execdemo.elf" "$DEST/Class/EXECDEMO.ELF"
+    cp -f "$USER_OUT/pipedemo.elf" "$DEST/Class/PIPEDEMO.ELF"
+    cp -f "$USER_OUT/threadsmoke.elf" "$DEST/Class/THREADSMOKE.ELF"
+    cp -f "$USER_OUT/pthreadsmoke.elf" "$DEST/Class/PTHREADSMOKE.ELF"
+    cp -f "$USER_OUT/threaddemo.elf" "$DEST/Class/THREADDEMO.ELF"
+    cp -f "$USER_OUT/enosysdemo.elf" "$DEST/Class/ENOSYS.ELF"
+    rm -f "$DEST/HELLO.ELF" "$DEST/COUNT.ELF" "$DEST/FORK.ELF" "$DEST/WAITNH.ELF" \
+        "$DEST/LIBTOY.SO" "$DEST/DYNDEMO.ELF" "$DEST/SYSHELLO.ELF" "$DEST/SYSFORK.ELF" \
+        "$DEST/EXECDEMO.ELF" "$DEST/PIPEDEMO.ELF" "$DEST/THREADSMOKE.ELF" \
+        "$DEST/PTHREADSMOKE.ELF" "$DEST/THREADDEMO.ELF" "$DEST/ENOSYS.ELF" \
+        "$DEST/MYAPP.ELF"
 
     # 课堂预装目录包（非扁平）；仍禁止 Apps/*.ELF。Snake 不预装，须 store install。
     mkdir -p "$DEST/Apps/hello" "$DEST/Apps/guidemo" "$DEST/Apps/taskmgr"

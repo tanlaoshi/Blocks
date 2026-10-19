@@ -9,10 +9,10 @@ int main(int argc, char **argv) {
 
     (void)argc;
     (void)argv;
-    printf("execdemo: calling execve HELLO.ELF\n");
-    Av[0] = "HELLO.ELF";
+    printf("execdemo: calling execve Class/HELLO.ELF\n");
+    Av[0] = "Class/HELLO.ELF";
     Av[1] = 0;
-    execve("HELLO.ELF", Av, 0);
+    execve("Class/HELLO.ELF", Av, 0);
     printf("execdemo: execve failed\n");
     return 1;
 }

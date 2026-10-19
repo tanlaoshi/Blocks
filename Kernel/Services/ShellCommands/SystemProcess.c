@@ -3,11 +3,60 @@
  */
 #include "ShellPrivate.h"
 #include "Console.h"
+#include "Fat.h"
+#include "FileSystem.h"
 #include "Hal.h"
 #include "Process.h"
 #include "Scheduler.h"
 #include "Syscall.h"
 #include "Tasks.h"
+
+/* 卷根没有这个文件时，上课程序在 Class/。路径里已有目录则不动。 */
+static int PathHasDir(const char *S) {
+    const char *P;
+
+    if (!S) {
+        return 1;
+    }
+    for (P = S; *P; P++) {
+        if (*P == '/' || *P == '\\' || *P == ':') {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int FileThere(const char *Path) {
+    UINT8 Byte;
+    UINTN N = 0;
+
+    return FileSystemReadFile(Path, &Byte, 1, &N) == FAT_OK;
+}
+
+static const char *ClassExecPath(const char *Name, char *Alt, int AltMax) {
+    const char *Pre = "Class/";
+    int I = 0;
+    int J = 0;
+
+    if (!Name || PathHasDir(Name) || FileThere(Name)) {
+        return Name;
+    }
+    while (Pre[I] && I + 1 < AltMax) {
+        Alt[I] = Pre[I];
+        I++;
+    }
+    while (Name[J] && I + 1 < AltMax) {
+        Alt[I++] = Name[J++];
+    }
+    if (Name[J] != 0) {
+        return Name;
+    }
+    Alt[I] = 0;
+    if (!FileThere(Alt)) {
+        return Name;
+    }
+    return Alt;
+}
 
 static void CommandRunuser(int Argc, char **Argv) {
     (void)Argc;
@@ -29,11 +78,16 @@ static void CommandExec(int Argc, char **Argv) {
     if (!HalPlatformIsVirtSerialConsole()) {
         gConsole.WaitPrompt();
     }
-    if (ProcessExec(Argv[1]) != 0) {
-        if (!HalPlatformIsVirtSerialConsole()) {
-            gConsole.ShowPrompt();
+    {
+        char Alt[40];
+        const char *Path = ClassExecPath(Argv[1], Alt, (int)sizeof(Alt));
+
+        if (ProcessExec(Path) != 0) {
+            if (!HalPlatformIsVirtSerialConsole()) {
+                gConsole.ShowPrompt();
+            }
+            return;
         }
-        return;
     }
     if (HalPlatformIsVirtSerialConsole()) {
         return;

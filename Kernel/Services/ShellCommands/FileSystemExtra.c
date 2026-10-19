@@ -139,7 +139,7 @@ static void CommandVols(int Argc, char **Argv) {
         {
             const char *N = Name;
             int IsToy = 1;
-            const char *T = "TOYOS";
+            const char *T = "BLOCKS";
             while (*T) {
                 char Ca = *N;
                 char Cb = *T;

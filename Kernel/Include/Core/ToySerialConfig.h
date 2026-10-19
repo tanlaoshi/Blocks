@@ -9,6 +9,10 @@
  *   0 → boot GOP 不上字（ring 仍收；Mute/Mirror API 仍在）
  *   1 → 各模块 SCREEN_LOG_* 上滚
  *
+ * 落盘总开关 TOY_FILE_LOG：
+ *   0 → 不写 BOOT.LOG
+ *   1 → 挂卷后和桌面起来后各写一次（默认开，无串口也能留日志）
+ *
  * 分模块（仅对应总开=1 时有效；0=该模块 quiet）：
  *   BOOT USB SMP GUI NET FS MEM DRV MISC
  *
@@ -18,6 +22,7 @@
  *   ./build.sh                       # 默认 SCREEN_LOG=0（boot GOP 不上字）
  *   ./build.sh SCREEN_LOG=1          # 打开屏上滚动；再按模块 SCREEN_LOG_*=1
  *   ./build.sh SCREEN_LOG=1 SCREEN_LOG_SMP=1
+ *   ./build.sh FILE_LOG=0            # 不写 BOOT.LOG
  *   NO_COM1=1 仍可用，等价于 SERIAL=0（兼容旧课堂开关）
  *
  * 说明：SERIAL=0 只关 UART；SCREEN_LOG 默认 0（省 4K blit）；UART 仍可由 SERIAL 控制。
@@ -184,5 +189,10 @@
 #define TOY_SLOG_DRV  7
 #define TOY_SLOG_MISC 8
 #define TOY_SLOG_COUNT 9
+
+/* 落盘。与串口、屏幕独立。无串口的单机默认开。 */
+#ifndef TOY_FILE_LOG
+#define TOY_FILE_LOG 1
+#endif
 
 #endif

@@ -17,7 +17,7 @@
 #define FS_UTIL_ABI_VERSION_STRING "1.0.0"
 
 #define TOY_FS_PATH_MAX 127
-#define TOY_FS_VOL_TOYOS "TOYOS"
+#define TOY_FS_VOL_TOYOS "BLOCKS"
 #define TOY_FS_VOL_ESP   "ESP"
 #define TOY_FS_VOL_RES   "RES"
 

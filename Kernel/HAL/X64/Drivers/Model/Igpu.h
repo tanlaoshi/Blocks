@@ -73,6 +73,9 @@ int IgpuScanoutLive(void); /* 1=已改 PLANE_SURF 到翻页缓冲 */
 int IgpuScanoutInit(void);
 void IgpuScanoutInvalidate(void);
 int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx);
+/* 脏矩形写到两页 scanout。只写正在显示的那页时，翻页会露出旧光标或把新光标留在背后。 */
+int IgpuScanoutBlitRect(UINT64 SrcGtt, UINT32 SrcPitchPx, UINT32 X, UINT32 Y,
+                        UINT32 W, UINT32 H);
 UINT64 IgpuScanoutShownGtt(void);
 
 #endif

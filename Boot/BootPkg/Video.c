@@ -146,6 +146,16 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
                 CfgMatched = TRUE;
             } else if (HasCfgTarget) {
                 Score = ScoreModeNative(W, H, CfgW, CfgH, TRUE);
+                /*
+                 * 请求的宽高比不在 GOP 里时，跟显示器的宽高比。
+                 * 否则 1280x800 会就近落到 1280x1024，再被 1080p 屏拉扁。
+                 */
+                if (HasEdidTarget &&
+                    !SameAspectRatio(W, H, CfgW, CfgH) &&
+                    SameAspectRatio(W, H, EdidW, EdidH) &&
+                    Score < 1500000000ULL) {
+                    Score = 1500000000ULL + ((UINTN)W * (UINTN)H) / 10000ULL;
+                }
             } else if (BestScore >= 6000000000ULL) {
                 Score = 0;
             } else if (InVm) {

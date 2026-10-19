@@ -195,6 +195,25 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
     return N;
 }
 
+UINTN HalSerialBootSnapshot(char *Dst, UINTN Max) {
+    UINTN N;
+    UINTN i;
+
+    if (!Dst || Max == 0) {
+        return 0;
+    }
+    SpinLockAcquire(&gSerialLock);
+    N = gBootCaptureLen;
+    if (N > Max) {
+        N = Max;
+    }
+    for (i = 0; i < N; i++) {
+        Dst[i] = gBootCapture[i];
+    }
+    SpinLockRelease(&gSerialLock);
+    return N;
+}
+
 void HalSerialReplayUsb(void) {
     char Chunk[128];
     UINTN Off = 0;

@@ -60,19 +60,20 @@ int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
         } else if (PathHasVolPrefix(Path)) {
             break;
         } else {
-            /* 默认卷可能是 ESP；再显式试 TOYOS: */
-            ToyPath[0] = 'T';
-            ToyPath[1] = 'O';
-            ToyPath[2] = 'Y';
-            ToyPath[3] = 'O';
-            ToyPath[4] = 'S';
-            ToyPath[5] = ':';
+            /* 默认卷可能是 ESP；再显式试 BLOCKS: */
+            ToyPath[0] = 'B';
+            ToyPath[1] = 'L';
+            ToyPath[2] = 'O';
+            ToyPath[3] = 'C';
+            ToyPath[4] = 'K';
+            ToyPath[5] = 'S';
+            ToyPath[6] = ':';
             {
                 int i;
-                for (i = 0; Path[i] && i < (int)sizeof(ToyPath) - 7; i++) {
-                    ToyPath[6 + i] = Path[i];
+                for (i = 0; Path[i] && i < (int)sizeof(ToyPath) - 8; i++) {
+                    ToyPath[7 + i] = Path[i];
                 }
-                ToyPath[6 + i] = 0;
+                ToyPath[7 + i] = 0;
             }
             TryPath = ToyPath;
         }

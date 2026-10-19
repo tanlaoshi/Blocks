@@ -23,19 +23,17 @@ typedef struct FONT_FACE {
     UINT32      FirstChar;      /* 通常 32 */
 } FONT_FACE;
 
-/* Terminus 16×32（Library/Fonts/terminus16x32.c） */
-extern const FONT_FACE gFontFaceTerminus16x32;
-/* 同字形 Scale=2（PR-D5） */
-extern const FONT_FACE gFontFaceTerminusX2;
-/* Terminus 10×18 独立点阵（PR-T2；Library/Fonts/terminus10x18.c） */
+/* Terminus 10×18 独立点阵（Library/Fonts/terminus10x18.c） */
 extern const FONT_FACE gFontFaceTerminus10x18;
 
 void FontInitialize(void);
 /*
- * PR-T3：FS 就绪后从 Assets/Fonts TOYF 追加运行时字面；缺文件回退内建。
- * 成功加载至少一包返回 0，否则 -1（仍可用内建）。
+ * FS 就绪后扫描 Assets/Fonts 下的 FNT。有文件就只用这些；一个都没有才留内建。
+ * 成功加载至少一包返回 0，否则 -1。
  */
 int FontLoadAssets(void);
+/* 按字面名字找 id（大小写不敏感）。没有返回 -1。 */
+int FontIdByName(const char *Name);
 int FontReloadAssets(void);
 /* PR-UI-ttf-0：读 CJK.TTF 校验 sfnt；不绘制。缺文件返回 -1 */
 int FontTtfLoad(void);

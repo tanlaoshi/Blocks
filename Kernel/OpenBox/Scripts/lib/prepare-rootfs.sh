@@ -44,7 +44,7 @@ if [ ! -f "$ROOT/THEME.CFG" ]; then
     cat > "$ROOT/THEME.CFG" <<'EOF'
 desktop=808080
 shell=c0c0c0
-font=2
+font=Terminus 10x18
 scale=100
 fade=6
 wallpaper=0
@@ -54,7 +54,7 @@ theme.effects=low
 EOF
     if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared THEME.CFG -> $ROOT/ (no mode=, solid grey)"; fi
 fi
-chmod u+rw "$ROOT/THEME.CFG" "$ROOT/TOYOS.DB" 2>/dev/null || true
+chmod u+rw "$ROOT/THEME.CFG" "$ROOT/BLOCKS.DB" 2>/dev/null || true
 if [ -f "$ROOT/THEME.CFG" ] && [ ! -w "$ROOT/THEME.CFG" ]; then
     echo "warning: $ROOT/THEME.CFG not writable by $(id -un) — Settings resolution will not persist" >&2
 fi
@@ -109,7 +109,7 @@ if [ -f "$ROOT/GUIDEMO.ELF" ]; then
     cp -f "$ROOT/GUIDEMO.ELF" "$ROOT/Apps/guidemo/GUIDEMO.ELF"
 fi
 
-printf "ToyOS root volume\n" > "$ROOT/TOYOS.ID"
+printf "Blocks root volume\n" > "$ROOT/BLOCKS.ID"
 if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then
     echo "Prepared $ROOT (TOYOS system disk):"
     ls -lh "$ROOT"

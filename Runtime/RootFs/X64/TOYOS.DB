@@ -1,21 +1,17 @@
 # TOYOS.DB
 desktop=404040
 shell=c0c0c0
-font=2
-mode=800x600
-si.demopack=asset|INFO.TXT
-ic0=29,125
-ic1=30,356
-ic2=36,232
-ic3=36,33
+font=Terminus 10x18
+mode=1280x800
 scale=100
-lang=en
 fade=6
 wallpaper=1
 theme=default
+deskgrad=0
+theme.effects=low
 si.hello=app|HELLO.ELF
 sd.hello=-
 si.guidemo=app|GUIDEMO.ELF
+sd.guidemo=demopack,sun8
 si.taskmgr=app|TASKMGR.ELF
-deskgrad=0
-theme.effects=low
+sd.taskmgr=-

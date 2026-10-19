@@ -3,17 +3,17 @@
 #
 # 布局：
 #   LABEL=ToyOS（nvme 数据分区）→ Kernel.elf / RootFs / FW/ …
-#   /boot/efi/EFI/toyos/BOOTX64.EFI ← 仅 --boot 时更新（grub chainloader）
+#   /boot/efi/EFI/Blocks/BOOTX64.EFI ← 仅 --boot 时更新（grub chainloader）
 #
 # U 盘双分区仍用 Scripts/sync-usb.sh（备选）。
 #
 # 用法：
 #   ./sync-nuc.sh                 # RootFs → ToyOS（不动 Boot）
 #   ./sync-nuc.sh --kernel-only   # 只更新 Kernel.elf + FW/
-#   ./sync-nuc.sh --boot          # 另写 EFI/toyos/BOOTX64.EFI（需可写 ESP）
+#   ./sync-nuc.sh --boot          # 另写 EFI/Blocks/BOOTX64.EFI（需可写 ESP）
 #   ./sync-nuc.sh --build         # 先编 Kernel（+ Boot 若 --boot），再 prepare-rootfs，再同步
 #   TOY_TOYOS_MNT=/mnt/toy ./sync-nuc.sh
-#   TOY_ESP_BOOT_DIR=/boot/efi/EFI/toyos ./sync-nuc.sh --boot
+#   TOY_ESP_BOOT_DIR=/boot/efi/EFI/Blocks ./sync-nuc.sh --boot
 #
 # WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG：保留在 ToyOS 上，不同步覆盖。
 set -euo pipefail
@@ -25,7 +25,7 @@ ROOT="$(toyos_image_root "$0")"
 DO_BUILD=0
 KERNEL_ONLY=0
 DO_BOOT=0
-ESP_BOOT_DIR="${TOY_ESP_BOOT_DIR:-/boot/efi/EFI/toyos}"
+ESP_BOOT_DIR="${TOY_ESP_BOOT_DIR:-/boot/efi/EFI/Blocks}"
 
 sync_toyos_fw() {
   local Dest="$1"
@@ -87,7 +87,7 @@ find_label_dev() {
 
 find_toyos_dev() {
   local D Lab
-  for Lab in ToyOS TOYOS; do
+  for Lab in BLOCKS ToyOS TOYOS; do
     D="$(find_label_dev "$Lab")"
     if [[ -n "$D" ]]; then
       printf '%s\n' "$D"
@@ -179,7 +179,9 @@ if [[ -z "$TOY_MNT" ]]; then
   fi
 fi
 if [[ -z "$TOY_MNT" ]]; then
-  for d in /media/*/ToyOS /media/*/TOYOS \
+  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS \
+           /run/media/"${USER:-tank}"/BLOCKS \
+           /media/*/ToyOS /media/*/TOYOS \
            /media/"${USER:-tank}"/ToyOS /media/"${USER:-tank}"/TOYOS \
            /run/media/"${USER:-tank}"/ToyOS /run/media/"${USER:-tank}"/TOYOS; do
     if [[ -d "$d" ]]; then TOY_MNT="$d"; break; fi
@@ -195,7 +197,7 @@ if [[ -z "$TOY_MNT" ]]; then
 fi
 if [[ -z "$TOY_MNT" ]]; then
   echo "error: ToyOS volume not found/mounted." >&2
-  echo "  Expected LABEL=ToyOS on SSD. USB 备选: $SCRIPT_DIR/sync-usb.sh" >&2
+  echo "  Expected LABEL=BLOCKS on SSD. USB 备选: $SCRIPT_DIR/sync-usb.sh" >&2
   exit 1
 fi
 if [[ ! -d "$TOY_MNT" || ! -w "$TOY_MNT" ]]; then
@@ -217,8 +219,8 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   cp -f "$SRC" "$TOY_MNT/Kernel.elf"
   sync_toyos_fw "$TOY_MNT"
-  if [[ ! -f "$TOY_MNT/TOYOS.ID" ]]; then
-    printf "ToyOS root volume\n" > "$TOY_MNT/TOYOS.ID"
+  if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
+    printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
   fi
   if [[ "$DO_BOOT" -eq 1 ]]; then
     if [[ "$DO_BUILD" -eq 1 && -x "$ROOT/../ToyBoot/build.sh" ]]; then
@@ -230,7 +232,7 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   echo "=== nuc kernel-only ==="
   echo "ToyOS -> $TOY_MNT"
   echo "src   -> $SRC"
-  ls -l --time-style=long-iso "$SRC" "$TOY_MNT/Kernel.elf" "$TOY_MNT/TOYOS.ID"
+  ls -l --time-style=long-iso "$SRC" "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID"
   ls -l --time-style=long-iso "$TOY_MNT/FW/IWL8265.UCODE" 2>/dev/null || true
   ls -l --time-style=long-iso "$TOY_MNT/FW/WIFI.CFG" 2>/dev/null || true
   md5sum "$SRC" "$TOY_MNT/Kernel.elf"
@@ -275,14 +277,14 @@ else
 fi
 sync_toyos_fw "$TOY_MNT"
 
-# 双分区：Boot 只在 /boot/efi/EFI/toyos；清掉误写到 ToyOS 的 EFI/
+# 双分区：Boot 只在 /boot/efi/EFI/Blocks；清掉误写到数据分区的 EFI/
 if [[ -d "$TOY_MNT/EFI" ]]; then
-  echo "note: removing stale $TOY_MNT/EFI (NUC Boot is on ESP EFI/toyos only)"
+  echo "note: removing stale $TOY_MNT/EFI (NUC Boot is on ESP EFI/Blocks only)"
   rm -rf "$TOY_MNT/EFI"
 fi
 
-if [[ ! -f "$TOY_MNT/TOYOS.ID" ]]; then
-  printf "ToyOS root volume\n" > "$TOY_MNT/TOYOS.ID"
+if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
+  printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
 fi
 
 sync
@@ -290,5 +292,5 @@ echo
 echo "=== nuc sync done ==="
 [[ "$DO_BOOT" -eq 1 ]] && echo "Boot : $ESP_BOOT_DIR/BOOTX64.EFI"
 echo "Kernel : $(stat -c%s "$TOY_MNT/Kernel.elf") bytes @ $TOY_MNT"
-ls -lh "$TOY_MNT/Kernel.elf" "$TOY_MNT/TOYOS.ID" 2>/dev/null || true
+ls -lh "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID" 2>/dev/null || true
 echo "日常只跑本脚本；U 盘备选 sync-usb.sh。ToyBoot 有改动再加 --boot。"

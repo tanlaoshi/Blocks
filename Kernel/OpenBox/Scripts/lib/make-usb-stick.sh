@@ -3,7 +3,7 @@
 #
 # 布局（与家里一致）：
 #   p1 ESP   256MiB  FAT32  LABEL=ESP   → EFI/BOOT/BOOTX64.EFI
-#   p2 TOYOS 剩余    FAT32  LABEL=TOYOS → Kernel.elf / TOYOS.ID / Assets / *.ELF
+#   p2 BLOCKS 剩余   FAT32  LABEL=BLOCKS → Kernel.elf / BLOCKS.ID / Assets / *.ELF
 #
 # 用法：
 #   ./make-usb-stick.sh                  # 自动找唯一 USB 盘，仅打印将做什么
@@ -123,7 +123,7 @@ done < <(lsblk -ln -o MOUNTPOINT "$DEVICE" | awk 'NF')
 # GPT + 两分区
 sgdisk --zap-all "$DEVICE"
 sgdisk -n "1:1MiB:+${ESP_MIB}MiB" -t 1:EF00 -c 1:"ESP" "$DEVICE"
-sgdisk -n "2:0:0" -t 2:0700 -c 2:"TOYOS" "$DEVICE"
+sgdisk -n "2:0:0" -t 2:0700 -c 2:"BLOCKS" "$DEVICE"
 sgdisk -p "$DEVICE"
 partprobe "$DEVICE" 2>/dev/null || true
 sleep 1
@@ -142,7 +142,7 @@ if [[ ! -b "$P1" || ! -b "$P2" ]]; then
 fi
 
 mkfs.vfat -F 32 -n ESP "$P1"
-mkfs.vfat -F 32 -n TOYOS "$P2"
+mkfs.vfat -F 32 -n BLOCKS "$P2"
 
 echo "formatted:"
 lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DEVICE"

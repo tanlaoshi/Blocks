@@ -181,7 +181,7 @@ static void CommandKill(int Argc, char **Argv) {
 void ShellCommandsSystemProcRegisterVirtMin(void) {
     gConsole.Register2("list", "tasks", "list tasks", CommandPs);
     gConsole.RegisterAliasLine("ps", "list", "tasks");
-    gConsole.Register("execute", "load ELF (TOYOS:FILE)", CommandExec);
+    gConsole.Register("execute", "load ELF (BLOCKS:FILE)", CommandExec);
     gConsole.RegisterAlias("execute", "exec");
     gConsole.Register("kill", "signal user task (PR-P4)", CommandKill);
 }
@@ -197,7 +197,7 @@ void ShellCommandsSystemProcRegister(void) {
     gConsole.Register2("set", "priority", "set priority <pid> <prio>", CommandSetPriority);
     gConsole.RegisterAliasLine("nice", "set", "priority");
 
-    gConsole.Register("execute", "load ELF (TOYOS:FILE / A:FILE)", CommandExec);
+    gConsole.Register("execute", "load ELF (BLOCKS:FILE / A:FILE)", CommandExec);
     gConsole.RegisterAlias("execute", "exec");
     gConsole.Register("kill", "signal user task (PR-P4)", CommandKill);
 }

@@ -107,17 +107,8 @@ int ThemeLoad(void) {
         if (gFontId >= FontCount() || FontCurrentId() != gFontId) {
             ThemeClampFontId();
         }
-        if (gFontId == 0) {
-            gFontId = ThemeCompactFontId();
-            (void)FontSetById(gFontId);
-        }
-    } else {
-        if (gFontId >= FontCount()) {
-            gFontId = ThemeCompactFontId();
-        }
-        if (gFontId == 0) {
-            gFontId = ThemeCompactFontId();
-        }
+    } else if (gFontId >= FontCount()) {
+        gFontId = ThemeCompactFontId();
     }
     gThemeUiScale = NormalizeUiScale(gThemeUiScale);
     /*

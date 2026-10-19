@@ -46,6 +46,6 @@ _start:
 
     .section .rodata
 path:
-    .asciz "TOYOS.ID"
+    .asciz "BLOCKS.ID"
 err:
     .ascii "err\n"

@@ -16,8 +16,8 @@ int HalSerialPresent(void);
 /* video 就绪后：允许 boot 期把 ring 刷到 GOP（与 COM1 无关） */
 void HalSerialGopEnable(void);
 /*
- * boot 上滚字号：按分辨率挑内建 Terminus（4K→x2，使一屏行数少、可测上滚）。
- * ThemeInitialize / FontInitialize 后若仍在镜像期须再调，避免缩回 10x18。
+ * boot 上滚字号：内建 Terminus 10x18。
+ * ThemeInitialize / FontInitialize 后若仍在镜像期须再调。
  */
 void HalSerialBootFontApply(void);
 /* 未标通道：走 MISC（兼容旧调用） */
@@ -31,6 +31,8 @@ void HalSerialWriteShell(const char *Text);
 int HalSerialRuntimeDirty(void);
 void HalSerialRuntimeMarkSaved(void);
 UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max);
+/* 从第一条开机日志起的副本。返回字节数。 */
+UINTN HalSerialBootSnapshot(char *Dst, UINTN Max);
 /* 认上 USB 转串口后，把已经积下的运行日志补发出去。 */
 void HalSerialReplayUsb(void);
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value);

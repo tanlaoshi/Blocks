@@ -167,6 +167,26 @@ static int GptCollectFat(GPT_FAT_PART *Out, int Max, int *InOutCount) {
     return *InOutCount > 0 ? 1 : 0;
 }
 
+int GptCurrentDiskGuid(UINT8 Out[16]) {
+    int i;
+
+    if (!Out) {
+        return 0;
+    }
+    if (!BlockReadSectors(1, 1, gGptSector)) {
+        return 0;
+    }
+    if (gGptSector[0] != 'E' || gGptSector[1] != 'F' || gGptSector[2] != 'I' ||
+        gGptSector[3] != ' ' || gGptSector[4] != 'P' || gGptSector[5] != 'A' ||
+        gGptSector[6] != 'R' || gGptSector[7] != 'T') {
+        return 0;
+    }
+    for (i = 0; i < 16; i++) {
+        Out[i] = gGptSector[56 + i];
+    }
+    return 1;
+}
+
 int GptFindAllFat(GPT_FAT_PART *Out, int Max) {
     int Count = 0;
     int Mbr;

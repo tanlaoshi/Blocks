@@ -2,6 +2,10 @@
  * VideoTheme.c — Video 辅助：THEME.CFG 显示偏好
  */
 #include <Guid/FileInfo.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/DevicePathLib.h>
+#include <Protocol/BlockIo.h>
+#include <Protocol/DevicePath.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -188,6 +192,127 @@ BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs) {
     return FALSE;
 }
 
+STATIC BOOLEAN DevicePathPrefix(EFI_DEVICE_PATH_PROTOCOL *Prefix,
+                                EFI_DEVICE_PATH_PROTOCOL *Full) {
+    while (Prefix != NULL && !IsDevicePathEnd(Prefix)) {
+        UINTN N;
+
+        if (Full == NULL || IsDevicePathEnd(Full)) {
+            return FALSE;
+        }
+        N = DevicePathNodeLength(Prefix);
+        if (N < 4 || DevicePathNodeLength(Full) != N) {
+            return FALSE;
+        }
+        if (CompareMem(Prefix, Full, N) != 0) {
+            return FALSE;
+        }
+        Prefix = NextDevicePathNode(Prefix);
+        Full = NextDevicePathNode(Full);
+    }
+    return TRUE;
+}
+
+/* 分区句柄路径在硬盘节点处分叉；节点之前相同就是同一块物理盘。 */
+STATIC BOOLEAN SamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B) {
+    EFI_DEVICE_PATH_PROTOCOL *Pa;
+    EFI_DEVICE_PATH_PROTOCOL *Pb;
+
+    Pa = DevicePathFromHandle(A);
+    Pb = DevicePathFromHandle(B);
+    if (Pa == NULL || Pb == NULL) {
+        return FALSE;
+    }
+    while (!IsDevicePathEnd(Pa) && !IsDevicePathEnd(Pb)) {
+        UINTN N;
+        BOOLEAN PaPart;
+        BOOLEAN PbPart;
+
+        PaPart = (DevicePathType(Pa) == MEDIA_DEVICE_PATH &&
+                  (DevicePathSubType(Pa) == MEDIA_HARDDRIVE_DP ||
+                   DevicePathSubType(Pa) == MEDIA_CDROM_DP ||
+                   DevicePathSubType(Pa) == MEDIA_FILEPATH_DP));
+        PbPart = (DevicePathType(Pb) == MEDIA_DEVICE_PATH &&
+                  (DevicePathSubType(Pb) == MEDIA_HARDDRIVE_DP ||
+                   DevicePathSubType(Pb) == MEDIA_CDROM_DP ||
+                   DevicePathSubType(Pb) == MEDIA_FILEPATH_DP));
+        if (PaPart || PbPart) {
+            return TRUE;
+        }
+        N = DevicePathNodeLength(Pa);
+        if (N < 4 || DevicePathNodeLength(Pb) != N || CompareMem(Pa, Pb, N) != 0) {
+            return FALSE;
+        }
+        Pa = NextDevicePathNode(Pa);
+        Pb = NextDevicePathNode(Pb);
+    }
+    return TRUE;
+}
+
+VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
+    EFI_STATUS Status;
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
+    EFI_DEVICE_PATH_PROTOCOL *VolPath;
+    EFI_HANDLE *Handles = NULL;
+    UINTN Count = 0;
+    UINTN i;
+
+    if (BootConfig == NULL) {
+        return;
+    }
+    BootConfig->OsIdPad = 0;
+    Status = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid,
+                                 (VOID **)&LoadedImage);
+    if (EFI_ERROR(Status) || LoadedImage == NULL) {
+        return;
+    }
+    VolPath = DevicePathFromHandle(LoadedImage->DeviceHandle);
+    if (VolPath == NULL) {
+        return;
+    }
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiBlockIoProtocolGuid,
+                                     NULL, &Count, &Handles);
+    if (EFI_ERROR(Status) || Handles == NULL) {
+        return;
+    }
+    for (i = 0; i < Count; i++) {
+        EFI_BLOCK_IO_PROTOCOL *Bio = NULL;
+        EFI_DEVICE_PATH_PROTOCOL *DiskPath;
+        UINT8 *Sector = NULL;
+        UINT32 Block;
+
+        Status = gBS->HandleProtocol(Handles[i], &gEfiBlockIoProtocolGuid, (VOID **)&Bio);
+        if (EFI_ERROR(Status) || Bio == NULL || Bio->Media == NULL ||
+            Bio->Media->LogicalPartition) {
+            continue;
+        }
+        DiskPath = DevicePathFromHandle(Handles[i]);
+        if (DiskPath == NULL || !DevicePathPrefix(DiskPath, VolPath)) {
+            continue;
+        }
+        Block = Bio->Media->BlockSize;
+        if (Block < 512 || Block > 8192) {
+            continue;
+        }
+        Status = gBS->AllocatePool(EfiLoaderData, Block, (VOID **)&Sector);
+        if (EFI_ERROR(Status) || Sector == NULL) {
+            continue;
+        }
+        Status = Bio->ReadBlocks(Bio, Bio->Media->MediaId, 1, Block, Sector);
+        if (!EFI_ERROR(Status) &&
+            Sector[0] == 'E' && Sector[1] == 'F' && Sector[2] == 'I' &&
+            Sector[3] == ' ' && Sector[4] == 'P' && Sector[5] == 'A' &&
+            Sector[6] == 'R' && Sector[7] == 'T') {
+            CopyMem(BootConfig->BootDiskGuid, Sector + 56, 16);
+            BootConfig->OsIdPad = UEFI_BOOT_DISK_GUID_MAGIC;
+            gBS->FreePool(Sector);
+            break;
+        }
+        gBS->FreePool(Sector);
+    }
+    gBS->FreePool(Handles);
+}
+
 STATIC BOOLEAN TryParseModeOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                                 UINT32 *OutW, UINT32 *OutH) {
     CHAR8 *Buf = NULL;
@@ -227,16 +352,27 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
         HandleCount = 0;
     }
 
-    /* Pass0: 带 BLOCKS.ID 的卷（Settings 写入处）；Pass1: 其它卷含启动盘 */
-    for (Pass = 0; Pass < 2; Pass++) {
+    /*
+     * Pass0: 和本 EFI 同一块盘上的 BLOCKS（U 盘启动读 U 盘，本机启动读本机）。
+     * Pass1: 其它盘上的 BLOCKS（QEMU 的系统盘不在 ESP 那块盘上）。
+     * Pass2: 其余卷。
+     */
+    for (Pass = 0; Pass < 3; Pass++) {
         for (i = 0; i < HandleCount; i++) {
+            BOOLEAN SameDisk;
+
             Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
                                          (VOID **)&Fs);
             if (EFI_ERROR(Status)) {
                 continue;
             }
+            SameDisk = SamePhysicalDisk(LoadedImage->DeviceHandle, Handles[i]);
             if (Pass == 0) {
-                if (!FsHasOsMarker(Fs)) {
+                if (!FsHasOsMarker(Fs) || !SameDisk) {
+                    continue;
+                }
+            } else if (Pass == 1) {
+                if (!FsHasOsMarker(Fs) || SameDisk) {
                     continue;
                 }
             } else if (FsHasOsMarker(Fs)) {

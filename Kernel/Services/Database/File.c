@@ -66,7 +66,9 @@ int DbLoad(void) {
 
     ClearAll();
     if (FileSystemReadFile(DB_PATH, Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
-        return DB_NOENT;
+        if (FileSystemReadFile("TOYOS.DB", Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
+            return DB_NOENT;
+        }
     }
     Buf[Size] = 0;
     L = 0;

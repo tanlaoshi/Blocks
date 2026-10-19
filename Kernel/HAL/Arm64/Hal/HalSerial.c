@@ -145,6 +145,12 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
     return 0;
 }
 
+UINTN HalSerialBootSnapshot(char *Dst, UINTN Max) {
+    (void)Dst;
+    (void)Max;
+    return 0;
+}
+
 void HalSerialReplayUsb(void) {
 }
 

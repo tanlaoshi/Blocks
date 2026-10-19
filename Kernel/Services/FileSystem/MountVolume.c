@@ -6,9 +6,48 @@
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
+#include "BootInfo.h"
 #include "VirtualFileSystem.h"
 #include "Debug.h"
 #include "ToySerialLog.h"
+
+#define BOOT_GUID_CACHE 16
+static UINT8 sDriveGuid[BOOT_GUID_CACHE][16];
+static UINT8 sDriveGuidOk[BOOT_GUID_CACHE];
+
+static int GuidEq16(const UINT8 *A, const UINT8 *B) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (A[i] != B[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* 当前已选中的盘是否就是加载 EFI 的那块。-1 = 旧 Boot，未交代。 */
+static int CacheBootDiskMatch(UINT32 Drive) {
+    const BOOT_INFO *Info = BootInfoGet();
+
+    if (!Info || !Info->BootDiskGuidOk) {
+        return -1;
+    }
+    if (Drive >= BOOT_GUID_CACHE) {
+        return 0;
+    }
+    if (sDriveGuidOk[Drive] == 0) {
+        if (!GptCurrentDiskGuid(sDriveGuid[Drive])) {
+            sDriveGuidOk[Drive] = 2;
+            return 0;
+        }
+        sDriveGuidOk[Drive] = 1;
+    }
+    if (sDriveGuidOk[Drive] != 1) {
+        return 0;
+    }
+    return GuidEq16(sDriveGuid[Drive], Info->BootDiskGuid);
+}
 
 static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
     int EspN = 0;
@@ -38,26 +77,42 @@ static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
 static void NameToyIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *ToyVol) {
     int Msc = BlockDriveIsMsc(Drive);
     int Take = 0;
+    int NewMatch;
+    int OldMatch = 0;
 
     V->HasToyId = 1;
     /*
-     * 多份 TOYOS.ID：默认卷跟内置盘（NVMe/AHCI），Store 装卸不落 U 盘。
-     * 仅 U 盘有标记时仍名 TOYOS。U 盘那份改名 USB:。
+     * 多份 BLOCKS.ID：默认卷跟加载 EFI 的那块盘，分辨率和设置写回同一处。
+     * 旧 Boot 没有 Disk GUID 时，仍跟内置盘。另一份改名 USB:。
      */
+    NewMatch = CacheBootDiskMatch(Drive);
+    if (*ToyVol >= 0 && gVols[*ToyVol].Drive < BOOT_GUID_CACHE &&
+        sDriveGuidOk[gVols[*ToyVol].Drive] == 1) {
+        const BOOT_INFO *Info = BootInfoGet();
+        OldMatch = Info && Info->BootDiskGuidOk &&
+                   GuidEq16(sDriveGuid[gVols[*ToyVol].Drive], Info->BootDiskGuid);
+    }
     if (*ToyVol < 0) {
         Take = 1;
-    } else if (!Msc && BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
+    } else if (NewMatch == 1 && !OldMatch) {
         StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
-        ToyLogFs("Fs: Prefer Internal TOYOS Over USB\n");
-    } else if (Msc && !BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
+        ToyLogFs("Fs: Prefer Boot Disk BLOCKS\n");
+    } else if (NewMatch == 0 && OldMatch) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
-        ToyLogFs("Fs: USB TOYOS Kept As USB:\n");
+        ToyLogFs("Fs: Other BLOCKS Kept As USB:\n");
+    } else if (NewMatch < 0 && !Msc && BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
+        StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
+        Take = 1;
+        ToyLogFs("Fs: Prefer Internal BLOCKS Over USB\n");
+    } else if (NewMatch < 0 && Msc && !BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
+        StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
+        ToyLogFs("Fs: USB BLOCKS Kept As USB:\n");
     } else {
         Take = 1;
     }
     if (Take) {
-        StringCopy(V->Name, FS_VOL_NAME_MAX, "TOYOS");
+        StringCopy(V->Name, FS_VOL_NAME_MAX, "BLOCKS");
         *ToyVol = Idx;
     }
 }
@@ -83,11 +138,11 @@ static int PickVolSlot(int HasId) {
             if (gVols[j].Ops && gVols[j].Ops->Synthetic) {
                 continue;
             }
-            ToyLogFs("Fs: Displace Vol For TOYOS.ID\n");
+            ToyLogFs("Fs: Displace Vol For BLOCKS.ID\n");
             return j;
         }
     }
-    ToyLogFs("Fs: Skip TOYOS (No Slot To Displace)\n");
+    ToyLogFs("Fs: Skip BLOCKS (No Slot To Displace)\n");
     return -1;
 }
 
@@ -113,7 +168,8 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     if (!BlockSelect(Drive) || gVirtualFileSystem.Mount(Start) != FAT_OK) {
         return;
     }
-    if (gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
+    if (gVirtualFileSystem.ReadFile("BLOCKS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
         HasId = 1;
     }
 

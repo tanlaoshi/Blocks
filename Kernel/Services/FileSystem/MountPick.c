@@ -72,6 +72,7 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
         if (MarkerVol < 0 && FileSystemActivate(i) == FAT_OK) {
             if (gVirtualFileSystem.ReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
                 gVirtualFileSystem.ReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
+                gVirtualFileSystem.ReadFile("BLOCKS.DB", Tmp, TmpSz, &Sz) == FAT_OK ||
                 gVirtualFileSystem.ReadFile("TOYOS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
                 MarkerVol = i;
             }
@@ -79,8 +80,8 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
     }
     if (MarkerVol >= 0) {
         gDefaultVol = MarkerVol;
-        StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "TOYOS");
-        ToyLogFs("Fs: Named TOYOS by marker (No TOYOS.ID)\n");
+        StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "BLOCKS");
+        ToyLogFs("Fs: Named BLOCKS by marker (No BLOCKS.ID)\n");
     } else if (PrefVol >= 0) {
         gDefaultVol = PrefVol;
     } else {
@@ -90,7 +91,7 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
         gVols[gDefaultVol].Name[0] == 'E' && gVols[gDefaultVol].Name[1] == 'S' &&
         gVols[gDefaultVol].Name[2] == 'P') {
         ToyLogFs(
-            "Fs: Default=ESP (No TOYOS.ID; Put Rootfs On A FAT With TOYOS.ID)\n");
+            "Fs: Default=ESP (No BLOCKS.ID; Put Rootfs On A FAT With BLOCKS.ID)\n");
     }
 }
 

@@ -19,8 +19,8 @@
 #define FONT_TOYF_VERSION 1u
 #define FONT_TOYF_HDR     32u
 #define FONT_FILE_MAX     (64u * 1024u)
-/* 系统 TOYF 占 0..FONT_APP_SLOT-1；末槽专供应用私有字（PR-S-app-font） */
-#define FONT_RUNTIME_MAX  4u
+/* 系统字占 0..FONT_APP_SLOT-1，来自 Assets/Fonts/*.FNT；末槽专供应用私有字 */
+#define FONT_RUNTIME_MAX  8u
 #define FONT_APP_SLOT     (FONT_RUNTIME_MAX - 1u)
 #define FONT_NAME_MAX     16u
 #define FONT_TABLE_MAX    8u
@@ -78,11 +78,6 @@ static int FaceNameRegistered(const char *Name, const FONT_RUNTIME_SLOT *Candida
     if (!Name || Name[0] == 0) {
         return 0;
     }
-    if (NameEqCi(Name, gFontFaceTerminus16x32.Name) ||
-        NameEqCi(Name, gFontFaceTerminusX2.Name) ||
-        NameEqCi(Name, gFontFaceTerminus10x18.Name)) {
-        return 1;
-    }
     for (i = 0; i < FONT_RUNTIME_MAX; i++) {
         if (!gRuntime[i].Used || &gRuntime[i] == Candidate) {
             continue;
@@ -94,17 +89,25 @@ static int FaceNameRegistered(const char *Name, const FONT_RUNTIME_SLOT *Candida
     return 0;
 }
 
-static int BasenameEqCi(const char *A, const char *B) {
-    return NameEqCi(A, B);
+static int SystemFontLoaded(void) {
+    UINT32 i;
+
+    for (i = 0; i < FONT_APP_SLOT; i++) {
+        if (gRuntime[i].Used) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static void RebuildFontTable(void) {
     UINT32 i;
 
     gFontCount = 0;
-    gFonts[gFontCount++] = &gFontFaceTerminus16x32;
-    gFonts[gFontCount++] = &gFontFaceTerminusX2;
-    gFonts[gFontCount++] = &gFontFaceTerminus10x18;
+    /* 目录里有字就只用那些。没有文件时才留内建，开机和空盘还能画字。 */
+    if (!SystemFontLoaded() && gFontCount < FONT_TABLE_MAX) {
+        gFonts[gFontCount++] = &gFontFaceTerminus10x18;
+    }
     for (i = 0; i < FONT_RUNTIME_MAX; i++) {
         if (gRuntime[i].Used && gFontCount < FONT_TABLE_MAX) {
             gFonts[gFontCount++] = &gRuntime[i].Face;
@@ -277,9 +280,7 @@ void FontInitialize(void) {
 int FontLoadAssets(void) {
     static FAT_DIRECTORY_ENTRY Ents[FAT_LIST_MAX];
     static char Path[96];
-    static char LoadedBase[FONT_RUNTIME_MAX][FAT_ENT_NAME_MAX];
     UINT32 Slot;
-    UINT32 BaseCount;
     int Count = 0;
     int i;
     int Any = 0;
@@ -287,38 +288,11 @@ int FontLoadAssets(void) {
 
     ClearRuntime();
     Slot = 0;
-    BaseCount = 0;
-
-    /* 稳定优先：样本路径（勿占 FONT_APP_SLOT） */
-    if (Slot < FONT_APP_SLOT &&
-        TryLoadPath("Assets/Fonts/VGA8X16.FNT", &gRuntime[Slot]) == 0) {
-        if (FaceNameRegistered(gRuntime[Slot].Name, &gRuntime[Slot])) {
-            LibWrite("Font: skip duplicate name ");
-            LibWrite(gRuntime[Slot].Name);
-            LibWrite(" (VGA8X16.FNT)\n");
-            FreeRuntimeSlot(&gRuntime[Slot]);
-        } else {
-            {
-                const char *B = "VGA8X16.FNT";
-                int bi = 0;
-                while (*B && bi + 1 < (int)sizeof(LoadedBase[0])) {
-                    LoadedBase[BaseCount][bi++] = *B++;
-                }
-                LoadedBase[BaseCount][bi] = 0;
-                BaseCount++;
-            }
-            Slot++;
-            Any = 1;
-        }
-    }
-
     Err = FileSystemListEntries("Assets/Fonts", Ents, FAT_LIST_MAX, &Count);
     if (Err == FAT_OK) {
         for (i = 0; i < Count && Slot < FONT_APP_SLOT; i++) {
             int n;
             int j;
-            int SkipBase;
-            UINT32 k;
 
             if (Ents[i].Attr & FAT_ATTR_DIR) {
                 continue;
@@ -330,22 +304,10 @@ int FontLoadAssets(void) {
             if (n < 5) {
                 continue;
             }
-            /* *.FNT / *.fnt */
-            if (!((Ents[i].Name[n - 4] == '.' &&
-                   (Ents[i].Name[n - 3] == 'F' || Ents[i].Name[n - 3] == 'f') &&
-                   (Ents[i].Name[n - 2] == 'N' || Ents[i].Name[n - 2] == 'n') &&
-                   (Ents[i].Name[n - 1] == 'T' || Ents[i].Name[n - 1] == 't')))) {
-                continue;
-            }
-            /* 跳过已加载基名（含优先路径 VGA8X16.FNT） */
-            SkipBase = 0;
-            for (k = 0; k < BaseCount; k++) {
-                if (BasenameEqCi(Ents[i].Name, LoadedBase[k])) {
-                    SkipBase = 1;
-                    break;
-                }
-            }
-            if (SkipBase) {
+            if (!(Ents[i].Name[n - 4] == '.' &&
+                  (Ents[i].Name[n - 3] == 'F' || Ents[i].Name[n - 3] == 'f') &&
+                  (Ents[i].Name[n - 2] == 'N' || Ents[i].Name[n - 2] == 'n') &&
+                  (Ents[i].Name[n - 1] == 'T' || Ents[i].Name[n - 1] == 't'))) {
                 continue;
             }
             {
@@ -372,15 +334,6 @@ int FontLoadAssets(void) {
                 FreeRuntimeSlot(&gRuntime[Slot]);
                 continue;
             }
-            if (BaseCount < FONT_RUNTIME_MAX) {
-                j = 0;
-                while (Ents[i].Name[j] && j + 1 < (int)sizeof(LoadedBase[0])) {
-                    LoadedBase[BaseCount][j] = Ents[i].Name[j];
-                    j++;
-                }
-                LoadedBase[BaseCount][j] = 0;
-                BaseCount++;
-            }
             Slot++;
             Any = 1;
         }
@@ -388,19 +341,32 @@ int FontLoadAssets(void) {
 
     RebuildFontTable();
     if (!Any) {
-        LibWrite("Font: using built-in faces (no Assets/Fonts TOYF)\n");
+        LibWrite("Font: no Assets/Fonts/*.FNT, using built-in\n");
     }
     return Any ? 0 : -1;
+}
+
+int FontIdByName(const char *Name) {
+    UINT32 i;
+
+    if (!Name || Name[0] == 0) {
+        return -1;
+    }
+    for (i = 0; i < gFontCount; i++) {
+        if (gFonts[i] && NameEqCi(Name, gFonts[i]->Name)) {
+            return (int)i;
+        }
+    }
+    return -1;
 }
 
 int FontReloadAssets(void) {
     UINT32 Cur = gCurrentId;
 
     (void)FontLoadAssets();
-    /* 原 id 若是已卸 runtime：勿强行掉到 0（16×32）；ThemeClampFontId 会选紧凑字 */
+    /* 原 id 若是已卸 runtime：回到内建 Terminus 10x18 */
     if (FontSetById(Cur) != 0 && FontCount() > 0) {
-        UINT32 Fallback = FontCount() > 2 ? 2 : (FontCount() - 1);
-        (void)FontSetById(Fallback);
+        (void)FontSetById(0);
     }
     return 0;
 }
@@ -459,7 +425,7 @@ const FONT_FACE *FontGetById(UINT32 Id) {
 const FONT_FACE *FontGetCurrent(void) {
     const FONT_FACE *F = FontGetById(gCurrentId);
     if (F == 0) {
-        return &gFontFaceTerminus16x32;
+        return &gFontFaceTerminus10x18;
     }
     return F;
 }

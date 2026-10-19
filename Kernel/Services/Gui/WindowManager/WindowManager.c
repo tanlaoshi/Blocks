@@ -23,6 +23,7 @@
 #include "KernelModulesPrivate.h"
 #include "Font.h"
 #include "Db.h"
+#include "LogFile.h"
 
 GUI_WINDOW_MANAGER gGuiWindowManager = {
     .HoverWin = -1,
@@ -163,6 +164,8 @@ void GuiInitialize(void) {
     /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    HalSerialBootMark("Boot: save BOOT.LOG\n");
+    BootLogFlush();
     DebugWrite("Gui: desktop ready\n");
 }
 

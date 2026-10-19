@@ -196,7 +196,7 @@ static void CommandMsc(int Argc, char **Argv) {
             }
             gConsole.Write(Name[0] ? Name : "?");
         }
-        gConsole.Write(" (try: vols | ls TOYOS:; HID untouched)\n");
+        gConsole.Write(" (try: vols | ls BLOCKS:; HID untouched)\n");
         return;
     }
 

@@ -33,6 +33,7 @@ export BUILDDIR
 #   ./build.sh SERIAL=0              # 总开关：不 Init UART、无串口 TX
 #   ./build.sh SERIAL_USB=0          # 仅 USB/xHCI 串口 quiet
 #   ./build.sh SCREEN_LOG=1          # 打开 boot GOP 上滚（默认关，省 4K blit）
+#   ./build.sh FILE_LOG=0            # 不写 BOOT.LOG（默认写）
 #   ./build.sh SCREEN_LOG_SMP=1      # 屏上也打 SMP（需先 SCREEN_LOG=1）
 #   ./build.sh NO_COM1=1             # 兼容旧名，等价 SERIAL=0
 #   ./build.sh arm64        # PR-A7：完整 Common → KernelMain（默认 BRINGUP=0；无 LwIp 端口时自动 LWIP=0）
@@ -59,6 +60,7 @@ SERIAL_MEM=1
 SERIAL_DRV=1
 SERIAL_MISC=1
 SCREEN_LOG=0
+FILE_LOG=1
 # 下列为 SCREEN_LOG=1 时的课堂默认；总关时 Makefile/脚本会强制清零
 SCREEN_LOG_BOOT=1
 SCREEN_LOG_USB=1
@@ -93,6 +95,8 @@ for Arg in "$@"; do
         SERIAL_MISC=*) SERIAL_MISC="${Arg#SERIAL_MISC=}" ;;
         SCREEN_LOG=1|screen_log=1) SCREEN_LOG=1 ;;
         SCREEN_LOG=0|screen_log=0) SCREEN_LOG=0 ;;
+        FILE_LOG=1|file_log=1) FILE_LOG=1 ;;
+        FILE_LOG=0|file_log=0) FILE_LOG=0 ;;
         SCREEN_LOG_BOOT=*) SCREEN_LOG_BOOT="${Arg#SCREEN_LOG_BOOT=}" ;;
         SCREEN_LOG_USB=*) SCREEN_LOG_USB="${Arg#SCREEN_LOG_USB=}" ;;
         SCREEN_LOG_SMP=*) SCREEN_LOG_SMP="${Arg#SCREEN_LOG_SMP=}" ;;
@@ -137,7 +141,7 @@ if [ "$LWIP" = "1" ] && [ ! -f "HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
     LWIP=0
 fi
 
-echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD TOY_KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
+echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD TOY_KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG FILE_LOG=$FILE_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
 ELF="$BUILDDIR/HAL/$HAL_ARCH/Kernel.elf"
 USER_HELLO="$BUILDDIR/HAL/$HAL_ARCH/user/hello.elf"
 
@@ -151,7 +155,7 @@ fi
     SERIAL_BOOT="$SERIAL_BOOT" SERIAL_USB="$SERIAL_USB" SERIAL_SMP="$SERIAL_SMP" \
     SERIAL_GUI="$SERIAL_GUI" SERIAL_NET="$SERIAL_NET" SERIAL_FS="$SERIAL_FS" \
     SERIAL_MEM="$SERIAL_MEM" SERIAL_DRV="$SERIAL_DRV" SERIAL_MISC="$SERIAL_MISC" \
-    SCREEN_LOG="$SCREEN_LOG" \
+    SCREEN_LOG="$SCREEN_LOG" FILE_LOG="$FILE_LOG" \
     SCREEN_LOG_BOOT="$SCREEN_LOG_BOOT" SCREEN_LOG_USB="$SCREEN_LOG_USB" \
     SCREEN_LOG_SMP="$SCREEN_LOG_SMP" SCREEN_LOG_GUI="$SCREEN_LOG_GUI" \
     SCREEN_LOG_NET="$SCREEN_LOG_NET" SCREEN_LOG_FS="$SCREEN_LOG_FS" \

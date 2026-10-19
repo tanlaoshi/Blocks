@@ -37,6 +37,11 @@ void GuiOnDisplayResize(void) {
      * 平板 Absolute 路径不读 Abs，排空队列仍无害。
      */
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    /* 先擦掉再清 Visible。只清标志的话，旧十字留在桌面上，要点一下才被盖住。 */
+    if (gGuiWindowManager.CursorVisible) {
+        CursorRestore();
+        HalVideoPresent();
+    }
     gGuiWindowManager.CursorVisible = 0;
     gGuiWindowManager.DragWin = -1;
     gGuiWindowManager.ResizeWin = -1;

@@ -147,7 +147,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     PutGuid(Entries + 128 + 16, ToyPartGuid);
     Write64(Entries + 128 + 32, ToyLba);
     Write64(Entries + 128 + 40, (UINT64)ToyLba + ToySectors - 1ull);
-    PutUtf16Name(Entries + 128 + 56, "TOYOS");
+    PutUtf16Name(Entries + 128 + 56, "BLOCKS");
 
     EntriesCrc = GptCrc32(Entries, sizeof(Entries));
     for (i = 0; i < 32; i++) {

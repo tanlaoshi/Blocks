@@ -100,12 +100,12 @@ int ChatLoadPeer(unsigned *OutIp, unsigned short *OutPort) {
     const char *Key = "chat.peer=";
     size_t KeyLen = 10;
 
-    Fd = open("TOYOS.DB", O_RDONLY);
+    Fd = open("BLOCKS.DB", O_RDONLY);
     if (Fd < 0) {
-        Fd = open("/TOYOS.DB", O_RDONLY);
+        Fd = open("/BLOCKS.DB", O_RDONLY);
     }
     if (Fd < 0) {
-        printf("chat: no TOYOS.DB (dbset chat.peer <ip>)\n");
+        printf("chat: no BLOCKS.DB (dbset chat.peer <ip>)\n");
         return -1;
     }
     while (ReadFileLine(Fd, Line, sizeof(Line)) > 0) {

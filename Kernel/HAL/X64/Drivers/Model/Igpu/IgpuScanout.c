@@ -150,6 +150,36 @@ void IgpuScanoutInvalidate(void) {
     gScanOk = 0;
 }
 
+int IgpuScanoutBlitRect(UINT64 SrcGtt, UINT32 SrcPitchPx, UINT32 X, UINT32 Y,
+                        UINT32 W, UINT32 H) {
+    UINT32 PitchB;
+    int i;
+
+    if (!gScanOk || !IgpuPresentCopyOk() || SrcGtt == 0 || SrcPitchPx == 0) {
+        return 0;
+    }
+    if (W == 0 || H == 0 || X >= gWidth || Y >= gHeight) {
+        return 0;
+    }
+    if (X + W > gWidth) {
+        W = gWidth - X;
+    }
+    if (Y + H > gHeight) {
+        H = gHeight - Y;
+    }
+    if (!IgpuForcewakeGet()) {
+        return 0;
+    }
+    PitchB = SrcPitchPx * 4u;
+    for (i = 0; i < 2; i++) {
+        if (!IgpuSrcCopyRect(X, Y, X, Y, W, H, PitchB, gPitchPx * 4u, SrcGtt,
+                             gGtt[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx) {
     int Hidden;
     UINT32 PitchB;

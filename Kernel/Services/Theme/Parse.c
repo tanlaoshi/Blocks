@@ -167,8 +167,26 @@ void ApplyLine(const char *Line) {
     }
     Val = ValueAfterKey(Line, "font");
     if (Val) {
-        if (ParseHexU32(Val, &V) == 0) {
+        int Digits = 1;
+        const char *P = Val;
+
+        if (*P == 0) {
+            return;
+        }
+        while (*P) {
+            if (*P < '0' || *P > '9') {
+                Digits = 0;
+                break;
+            }
+            P++;
+        }
+        if (Digits && ParseDecU32(Val, &V, 0) == 0) {
             (void)ThemeSetFontId(V);
+        } else {
+            int Id = FontIdByName(Val);
+            if (Id >= 0) {
+                (void)ThemeSetFontId((UINT32)Id);
+            }
         }
         return;
     }

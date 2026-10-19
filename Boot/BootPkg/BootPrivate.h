@@ -36,6 +36,7 @@ VOID SortVideoModesForSettings(UEFI_VIDEO_MODE *Modes, UINT32 Count,
                                BOOLEAN InVm, BOOLEAN HasEdid,
                                UINT32 EdidW, UINT32 EdidH);
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
+VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);

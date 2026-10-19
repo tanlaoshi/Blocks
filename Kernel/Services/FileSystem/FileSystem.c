@@ -13,6 +13,7 @@
 #include "HalConsole.h"
 #include "KernelModulesPrivate.h"
 #include "HalDriverFile.h"
+#include "LogFile.h"
 
 FS_VOLUME gVols[FS_MAX_VOLUMES];
 int gVolCount;
@@ -254,7 +255,7 @@ int FileSystemInitialize(void) {
                 ToyLogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
             } else {
                 ToyLogBoot(
-                    "Boot: MSC Auto Keep (No TOYOS.ID; Ignore MSC=0)\n");
+                    "Boot: MSC Auto Keep (No BLOCKS.ID; Ignore MSC=0)\n");
             }
         }
     } else {
@@ -264,7 +265,7 @@ int FileSystemInitialize(void) {
     if (!HasToy && !Auto) {
         Auto = 1;
         HalUsbMscAutoSet(1);
-        ToyLogBoot("Boot: MSC Auto Force (Need TOYOS)\n");
+        ToyLogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
     }
 
     if (Auto) {
@@ -289,7 +290,7 @@ int FileSystemInitialize(void) {
              * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
              * 仍失败则软退：有 ESP/RES 可进桌面（WARN no TOYOS.ID）。
              */
-            ToyLogBoot("Boot: MSC Auto Retry (No TOYOS)\n");
+            ToyLogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
             if (HalUsbMscAutoBeforeFs() == 0) {
                 MuxOk = 1;
                 if (BlockInitialize() > 0 && MountAllVolumes()) {
@@ -332,8 +333,9 @@ int FileSystemInitialize(void) {
     VfsServiceOpsRegister(&Svc);
     DebugWrite("FS ready (ls, cat, write, wrbig, dirstress, rm, mkdir, rmdir, mv, vols, filestat, filesync)\n");
     if (!AnyVolumeHasToyId()) {
-        HalConsoleWriteSerial("Fs: WARN no TOYOS.ID on any volume\n");
+        HalConsoleWriteSerial("Fs: WARN no BLOCKS.ID on any volume\n");
     }
+    BootLogFlush();
     return 0;
 }
 

@@ -25,7 +25,7 @@ int gWallpaperPrefSet = 0;  /* DB/CFG 是否写过 wallpaper= */
 
 void ThemeInitialize(void) {
     FontChoiceRegister(ThemeSetFontId);
-    gFontId = 2; /* Terminus 10x18；ThemeLoad 后再选 Sun */
+    gFontId = 0; /* Terminus 10x18 */
     gModeW = 0;
     gModeH = 0;
     gThemeUiScale = 100;
@@ -195,11 +195,11 @@ const char *ThemeEffectLevelName(THEME_EFFECT_LEVEL Level) {
     }
 }
 
-/* 优先 Sun 8x16，其次 Terminus 10x18；避免默认 16×32 */
+/* 优先 Sun 8x16，其次 Terminus 10x18 */
 UINT32 ThemeCompactFontId(void) {
     UINT32 i;
     const FONT_FACE *F;
-    UINT32 Fallback = 2;
+    UINT32 Fallback = 0;
 
     if (FontCount() == 0) {
         return 0;
@@ -292,7 +292,7 @@ void ThemeApply(void) {
     (void)ThemeSave();
 }
 
-/* FontReloadAssets 后：偏好 id 失效则改选紧凑字体（Sun 8x16 / 10x18），勿掉到 16×32 */
+/* FontReloadAssets 后：偏好 id 失效则改选紧凑字体（Sun 8x16 / 10x18） */
 void ThemeClampFontId(void) {
     if (gFontId >= FontCount() || FontSetById(gFontId) != 0) {
         gFontId = ThemeCompactFontId();

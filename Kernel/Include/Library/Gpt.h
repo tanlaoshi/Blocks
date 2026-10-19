@@ -30,6 +30,9 @@ int GptFindFatStartEx(UINT32 *OutLba, int *OutIsEsp);
  */
 int GptFindAllFat(GPT_FAT_PART *Out, int Max);
 
+/* 当前 Block 盘的 GPT Disk GUID（LBA1+56）。成功非 0。 */
+int GptCurrentDiskGuid(UINT8 Out[16]);
+
 /*
  * PR-FS-inst-1：在当前 Block 盘写入 protective MBR + GPT（ESP + TOYOS）。
  * EspMib：ESP 大小（MiB），建议 256；TotalSectors：整盘扇区数。

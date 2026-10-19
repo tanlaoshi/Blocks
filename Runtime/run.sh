@@ -107,8 +107,8 @@ echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "  VGA   ${QEMU_XRES}x${QEMU_YRES}"
 MSC_ARGS=()
 if [ "${TOY_USB_MSC:-0}" = 1 ]; then
-    if [ ! -f Msc/TOYOS.ID ]; then
-        echo "error: TOY_USB_MSC=1 needs Msc/TOYOS.ID" >&2
+    if [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/TOYOS.ID ]; then
+        echo "error: TOY_USB_MSC=1 needs Msc/BLOCKS.ID" >&2
         exit 1
     fi
     echo "  MSC   Msc/ (usb-storage)"

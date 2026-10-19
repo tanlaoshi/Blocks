@@ -29,8 +29,8 @@ mkdir -p "$ROOT"
 # 种子优先 X64 系统盘（共享演示/THEME），缺则本仓 Assets
 IMG_ROOT="RootFs/X64"
 if [ -d "$IMG_ROOT" ]; then
-    for F in TOYOS.ID THEME.CFG HELLO.ELF CAT.ELF WRITE.ELF \
-             SYSHELLO.ELF EXECDEMO.ELF PIPEDEMO.ELF BRKDEMO.ELF KILLDEMO.ELF WINDEMO.ELF GUIDEMO.ELF TOYOS.DB; do
+    for F in BLOCKS.ID THEME.CFG HELLO.ELF CAT.ELF WRITE.ELF \
+             SYSHELLO.ELF EXECDEMO.ELF PIPEDEMO.ELF BRKDEMO.ELF KILLDEMO.ELF WINDEMO.ELF GUIDEMO.ELF BLOCKS.DB; do
         if [ -f "$IMG_ROOT/$F" ]; then
             cp -f "$IMG_ROOT/$F" "$ROOT/$F"
         fi
@@ -98,8 +98,8 @@ elif [ -f "$ROOT/HELLO.ELF" ] && [ -n "$ARCH" ]; then
     : # already staged by build.sh
 fi
 
-if [ ! -f "$ROOT/TOYOS.ID" ]; then
-    printf "ToyOS root volume\n" > "$ROOT/TOYOS.ID"
+if [ ! -f "$ROOT/BLOCKS.ID" ]; then
+    printf "Blocks root volume\n" > "$ROOT/BLOCKS.ID"
 fi
 if [ ! -f "$ROOT/THEME.CFG" ]; then
     cat > "$ROOT/THEME.CFG" <<'EOF'
@@ -120,7 +120,7 @@ size = 16 * 1024 * 1024
 with open(img, "wb") as f:
     f.truncate(size)
 subprocess.check_call(
-    ["mkfs.fat", "-F", "16", "-n", "TOYOS", str(img)],
+    ["mkfs.fat", "-F", "16", "-n", "BLOCKS", str(img)],
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )

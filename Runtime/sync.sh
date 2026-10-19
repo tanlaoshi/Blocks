@@ -29,12 +29,8 @@ fi
 cp -f "$BOOT_EFI" "$RUNTIME/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 cp -f "$KERNEL_ELF" "$RUNTIME/RootFs/X64/Kernel.elf"
 
-# 双标：Boot 优先 BLOCKS.ID；现网核卷名 TOYOS
 if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
     printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/BLOCKS.ID"
-fi
-if [ ! -f "$RUNTIME/RootFs/X64/TOYOS.ID" ]; then
-    cp -f "$RUNTIME/RootFs/X64/BLOCKS.ID" "$RUNTIME/RootFs/X64/TOYOS.ID"
 fi
 
 # TTF：缺则从旁挂种子 / 卷根补进 Assets/Fonts（核侧路径）

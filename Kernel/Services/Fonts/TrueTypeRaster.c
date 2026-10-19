@@ -50,8 +50,27 @@ static float FontTtfCosf(float X) {
     return 1.0f;
 }
 
-#define STBTT_ifloor(x) ((int)(x))
-#define STBTT_iceil(x)  ((int)((x) + 0.999999f))
+/* 字形上沿是负坐标。(int) 朝零截断会把顶上将近一行丢掉。 */
+static int FontTtfIfloor(float X) {
+    int I = (int)X;
+
+    if ((float)I > X) {
+        I--;
+    }
+    return I;
+}
+
+static int FontTtfIceil(float X) {
+    int I = (int)X;
+
+    if ((float)I < X) {
+        I++;
+    }
+    return I;
+}
+
+#define STBTT_ifloor(x) FontTtfIfloor(x)
+#define STBTT_iceil(x)  FontTtfIceil(x)
 #define STBTT_sqrt(x)   FontTtfSqrtf(x)
 #define STBTT_fabs(x)   ((x) < 0 ? -(x) : (x))
 #define STBTT_pow(x, y) FontTtfPowf((x), (y))
@@ -98,12 +117,10 @@ int FontTtfInit(void) {
 
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     float Scale;
-    int InkX0;
-    int InkY0;
-    int InkX1;
-    int InkY1;
-    int InkW;
-    int InkH;
+    int Ascent;
+    int Descent;
+    int LineGap;
+    int BaseY;
     int X0;
     int Y0;
     int X1;
@@ -130,19 +147,14 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         return -1;
     }
     /*
-     * 按字身缩放到两倍行高，不按整格字框。屏幕上每个点看背后四格，够深就涂实。
+     * 行高仍是这一格。比例用字模方框，不再把每个字的墨迹拉满格子。
+     * 基线对齐，左右放在格中间。超出格子才缩小。
      */
-    if (!stbtt_GetCodepointBox(&gInfo, (int)Cp, &InkX0, &InkY0, &InkX1, &InkY1)) {
-        HalFpuEnd();
-        return -1;
-    }
-    InkW = InkX1 - InkX0;
-    InkH = InkY1 - InkY0;
-    if (InkW <= 0 || InkH <= 0) {
-        HalFpuEnd();
-        return -1;
-    }
-    Scale = (float)TTF_HI / (float)((InkW > InkH) ? InkW : InkH);
+    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)TTF_HI);
+    stbtt_GetFontVMetrics(&gInfo, &Ascent, &Descent, &LineGap);
+    (void)Descent;
+    (void)LineGap;
+    BaseY = (int)((float)Ascent * Scale);
     stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
@@ -164,14 +176,25 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
             HalFpuEnd();
             return -1;
         }
+        BaseY = (int)((float)Ascent * Scale);
     }
     Ox = (TTF_HI - Gw) / 2;
-    Oy = (TTF_HI - Gh) / 2;
+    Oy = BaseY + Y0;
     if (Ox < 0) {
         Ox = 0;
     }
     if (Oy < 0) {
         Oy = 0;
+    }
+    if (Ox + Gw > TTF_HI) {
+        Gw = TTF_HI - Ox;
+    }
+    if (Oy + Gh > TTF_HI) {
+        Gh = TTF_HI - Oy;
+    }
+    if (Gw <= 0 || Gh <= 0) {
+        HalFpuEnd();
+        return -1;
     }
     stbtt_MakeCodepointBitmap(&gInfo, Hi + Oy * TTF_HI + Ox, Gw, Gh, TTF_HI,
                               Scale, Scale, (int)Cp);
@@ -188,7 +211,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
             Sum += Hi[Hy * TTF_HI + Hx + 1];
             Sum += Hi[(Hy + 1) * TTF_HI + Hx];
             Sum += Hi[(Hy + 1) * TTF_HI + Hx + 1];
-            Pix18[Y * TTF_CELL + X] = (Sum >= 256u) ? 255u : 0;
+            Pix18[Y * TTF_CELL + X] = (UINT8)(Sum / 4u);
         }
     }
     return 0;

@@ -132,7 +132,7 @@ int ThemeOverlayModeFromCfg(void);
 
 /* PR-F-theme-1：ThemeSave 拆分 */
 typedef struct THEME_SAVE_VALS {
-    char FontVal[8];
+    char FontVal[16];
     char ModeVal[24];
     char ScaleVal[8];
     char FadeVal[8];

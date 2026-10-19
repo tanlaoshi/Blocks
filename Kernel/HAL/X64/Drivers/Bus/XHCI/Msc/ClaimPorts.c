@@ -10,6 +10,21 @@
  * 优先扫已有 hub 子口（键鼠经 hub 时 U 盘常在同 hub）；再扫其它根口。
  * 不 SCSI、不挂 FAT、不碰键鼠口。成功则保留 slot；Ready=1。
  */
+/* 根口鼠标被扫盘复位后，槽号仍在会挡住补绑。 */
+static void NoteMouseRootDropped(void) {
+    UINT32 Ps;
+
+    if (gMouseSlotId == 0 || gMousePort == 0 || gMouseHubSlot != 0) {
+        return;
+    }
+    Ps = ReadMmio32(gOperationalBase + PortReg(gMousePort));
+    if ((Ps & PORTSC_CCS) && (Ps & PORTSC_PED)) {
+        return;
+    }
+    BootLog("Boot: MSC root dropped mouse\n");
+    DisableSlot(gMouseSlotId);
+}
+
 int ClaimPorts(void) {
     UINT32 P;
     int Ok = 0;
@@ -159,6 +174,7 @@ done:
             ServiceHidCompletions();
         }
     }
+    NoteMouseRootDropped();
     if (gSlotId != 0 && gIntrDci != 0) {
         QueueIntr();
     }

@@ -1,5 +1,5 @@
 /*
- * UefiBootConfig.h — 交接包的两份副本，内容必须相同（UEFI_BOOT_CONFIG，640 字节）
+ * UefiBootConfig.h — 交接包的两份副本，内容必须相同（UEFI_BOOT_CONFIG，656 字节）
  *
  *   Boot/BootPkg/UefiBootConfig.h
  *   Kernel/HAL/X64/UefiBootConfig.h
@@ -63,14 +63,18 @@ typedef struct {
     UINT64               GopProtocol;
     /* K9：Boot 见过 BLOCKS.ID 则为 1 */
     UINT32               OsIdSeen;
+    /* UEFI_BOOT_DISK_GUID_MAGIC：BootDiskGuid 是加载本 EFI 的那块盘 */
     UINT32               OsIdPad;
+    UINT8                BootDiskGuid[16];
 } UEFI_BOOT_CONFIG;
+
+#define UEFI_BOOT_DISK_GUID_MAGIC 0x314B5344u
 
 #if defined(__GNUC__)
 _Static_assert(sizeof(UEFI_VIDEO_CONFIG) == 32, "UEFI_VIDEO_CONFIG size");
 _Static_assert(sizeof(UEFI_MEMORY_MAP) == 40, "UEFI_MEMORY_MAP size");
 _Static_assert(sizeof(UEFI_VIDEO_MODE) == 16, "UEFI_VIDEO_MODE size");
-_Static_assert(sizeof(UEFI_BOOT_CONFIG) == 640, "UEFI_BOOT_CONFIG size");
+_Static_assert(sizeof(UEFI_BOOT_CONFIG) == 656, "UEFI_BOOT_CONFIG size");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoConfig) == 0, "VideoConfig off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, MemoryMap) == 32, "MemoryMap off");
 _Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, EntryAddress) == 72, "EntryAddress off");

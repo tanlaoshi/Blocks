@@ -62,21 +62,21 @@ log_file -noappend $LOG
 
 proc find_image_root {} {
     set cand [pwd]
-    if {[file exists [file join $cand RootFs X64 TOYOS.ID]]} { return $cand }
-    if {[file exists [file join $cand TOYOS.ID]] && [file exists [file join $cand Kernel.elf]]} {
+    if {[file exists [file join $cand RootFs X64 BLOCKS.ID]]} { return $cand }
+    if {[file exists [file join $cand BLOCKS.ID]] && [file exists [file join $cand Kernel.elf]]} {
         return [file dirname $cand]
     }
     foreach up {. .. ../.. ../../..} {
         set t [file normalize [file join [pwd] $up Runtime]]
-        if {[file exists [file join $t RootFs X64 TOYOS.ID]]} { return $t }
+        if {[file exists [file join $t RootFs X64 BLOCKS.ID]]} { return $t }
         set t2 [file normalize [file join [pwd] $up]]
-        if {[file exists [file join $t2 RootFs X64 TOYOS.ID]]} { return $t2 }
+        if {[file exists [file join $t2 RootFs X64 BLOCKS.ID]]} { return $t2 }
     }
     return ""
 }
 set image_root [find_image_root]
 if {$image_root eq ""} {
-    send_user "error: Runtime not found (need RootFs/X64/TOYOS.ID)\n"
+    send_user "error: Runtime not found (need RootFs/X64/BLOCKS.ID)\n"
     exit 2
 }
 set run_split [file normalize [file join $image_root .. Scripts lib run-split.sh]]

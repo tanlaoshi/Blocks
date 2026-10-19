@@ -39,6 +39,9 @@ typedef struct {
     BOOT_VIDEO_MODE VideoModes[BOOT_VIDEO_MODE_MAX];
     /* PR-G-hotres-pc：EFI GOP*；0=无交接 / 旧 Boot */
     UINT64          GopProtocol;
+    /* 加载 BOOTX64.EFI 的 GPT Disk GUID；BootDiskGuidOk=0 表示旧 Boot */
+    UINT8           BootDiskGuid[16];
+    UINT32          BootDiskGuidOk;
 } BOOT_INFO;
 
 typedef struct {

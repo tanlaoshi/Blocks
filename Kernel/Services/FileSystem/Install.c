@@ -97,7 +97,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     int IdPages = 0;
     int Err;
     UINT32 SavedDrive;
-    static const char DefaultId[] = "ToyOS root volume\n";
+    static const char DefaultId[] = "Blocks root volume\n";
 
     if (Drive >= BLOCK_MAX_DRIVES || !BlockDriveReady(Drive)) {
         gConsole.Write("install: drive not ready\n");
@@ -132,7 +132,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     }
     KernPages = LoadFile("Kernel.elf", &Kern, &KernSz, (INSTALL_COPY_MAX / 4096u));
     if (KernPages < 0) {
-        KernPages = LoadFile("TOYOS:Kernel.elf", &Kern, &KernSz, (INSTALL_COPY_MAX / 4096u));
+        KernPages = LoadFile("BLOCKS:Kernel.elf", &Kern, &KernSz, (INSTALL_COPY_MAX / 4096u));
     }
     if (KernPages < 0) {
         gConsole.Write("install: missing Kernel.elf\n");
@@ -140,11 +140,14 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     }
     ThemePages = LoadFile("THEME.CFG", &Theme, &ThemeSz, 1);
     if (ThemePages < 0) {
-        ThemePages = LoadFile("TOYOS:THEME.CFG", &Theme, &ThemeSz, 1);
+        ThemePages = LoadFile("BLOCKS:THEME.CFG", &Theme, &ThemeSz, 1);
     }
-    IdPages = LoadFile("TOYOS.ID", &Id, &IdSz, 1);
+    IdPages = LoadFile("BLOCKS.ID", &Id, &IdSz, 1);
     if (IdPages < 0) {
-        IdPages = LoadFile("TOYOS:TOYOS.ID", &Id, &IdSz, 1);
+        IdPages = LoadFile("BLOCKS:BLOCKS.ID", &Id, &IdSz, 1);
+    }
+    if (IdPages < 0) {
+        IdPages = LoadFile("TOYOS.ID", &Id, &IdSz, 1);
     }
     if (IdPages < 0) {
         Id = (UINT8 *)(UINTN)DefaultId;
@@ -170,10 +173,10 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         gConsole.Write("install: ESP format fail\n");
         goto fail_sel;
     }
-    gConsole.Write("install: format TOYOS...\n");
-    Err = FatFormatFat32(ToyLba, ToySec, "TOYOS");
+    gConsole.Write("install: format BLOCKS...\n");
+    Err = FatFormatFat32(ToyLba, ToySec, "BLOCKS");
     if (Err != FAT_OK) {
-        gConsole.Write("install: TOYOS format fail\n");
+        gConsole.Write("install: BLOCKS format fail\n");
         goto fail_sel;
     }
 
@@ -186,9 +189,9 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         gConsole.Write("install: write BOOTX64 fail\n");
         goto fail_sel;
     }
-    Err = WritePartFile(ToyLba, "TOYOS.ID", Id, IdSz);
+    Err = WritePartFile(ToyLba, "BLOCKS.ID", Id, IdSz);
     if (Err != FAT_OK) {
-        gConsole.Write("install: write TOYOS.ID fail\n");
+        gConsole.Write("install: write BLOCKS.ID fail\n");
         goto fail_sel;
     }
     Err = WritePartFile(ToyLba, "Kernel.elf", Kern, KernSz);
@@ -208,7 +211,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     gConsole.WriteHex32(Drive);
     gConsole.Write(" ESP@");
     gConsole.WriteHex32(EspLba);
-    gConsole.Write(" TOYOS@");
+    gConsole.Write(" BLOCKS@");
     gConsole.WriteHex32(ToyLba);
     gConsole.Write("\n");
 

@@ -11,6 +11,24 @@
  * 真机：先统一上电再扫，空口略等（U 盘上电慢 → 误判 hub empty）。
  * PR-BOOT-fast-2：Pass/空口等待收紧；仍保留一轮 rescan + 软退。
  */
+/* 扫盘复位了鼠标口但槽号还在时，清掉槽，桌面初始化才会补绑。 */
+static void NoteMouseHubDropped(void) {
+    UINT32 St = 0;
+
+    if (gMouseSlotId == 0 || gMouseTtPort == 0) {
+        return;
+    }
+    if (gMouseHubSlot != 0 && gMouseHubSlot != (UINT8)gHubSlotId) {
+        return;
+    }
+    if (HubGetPortStatus(gMouseTtPort, &St) == 0 &&
+        (St & HUB_PORT_CONNECTION) && (St & HUB_PORT_ENABLE)) {
+        return;
+    }
+    BootLog("Boot: MSC hub dropped mouse\n");
+    DisableSlot(gMouseSlotId);
+}
+
 int EnumerateHubChildren(void) {
     UINT8 Port;
     UINT8 MaxP = gHubNumPorts;
@@ -78,6 +96,11 @@ int EnumerateHubChildren(void) {
                 BootLogHex("Boot: MSC claim hub skip mouse port=", Port, 2);
                 continue;
             }
+            if (gMouseSlotId != 0 && gMouseTtPort == Port &&
+                (gMouseHubSlot == 0 || gMouseHubSlot == (UINT8)gHubSlotId)) {
+                BootLogHex("Boot: MSC claim hub skip mouse tt=", Port, 2);
+                continue;
+            }
             if (gFtdiClaimed && gFtdiHubSlot != 0 && gFtdiTtPort == Port) {
                 continue;
             }
@@ -140,6 +163,7 @@ int EnumerateHubChildren(void) {
             }
             if (FinishClaim(gHubRootPort, Speed)) {
                 BootLog("Boot: MSC claim via hub\n");
+                NoteMouseHubDropped();
                 return 1;
             }
             if (gMscScanSlot != 0) {
@@ -148,6 +172,7 @@ int EnumerateHubChildren(void) {
             }
         }
     }
+    NoteMouseHubDropped();
     return 0;
 }
 

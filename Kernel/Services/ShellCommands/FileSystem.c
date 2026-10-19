@@ -150,7 +150,7 @@ static void CommandMv(int Argc, char **Argv) {
 
 void ShellCommandsRegisterFs(void) {
     /* list：默认列目录；二级 tasks/devices 已由 ShellCommandsRegister 挂上 */
-    gConsole.Register("list", "list directory (TOYOS: / A: / RES:)", CommandLs);
+    gConsole.Register("list", "list directory (BLOCKS: / A: / RES:)", CommandLs);
     gConsole.RegisterAlias("list", "ls");
     gConsole.RegisterAlias("list", "dir");
 

@@ -39,9 +39,12 @@ static void AppendDriveTag(char *Label, int Max, UINT32 Drive) {
 }
 
 static int NameIsToy(const char *Name) {
-    return Name && Name[0] == 'T' && Name[1] == 'O' && Name[2] == 'Y' &&
-           (Name[3] == 'O' || Name[3] == 'o') &&
-           (Name[4] == 'S' || Name[4] == 's') && Name[5] == 0;
+    return Name && (Name[0] == 'B' || Name[0] == 'b') &&
+           (Name[1] == 'L' || Name[1] == 'l') &&
+           (Name[2] == 'O' || Name[2] == 'o') &&
+           (Name[3] == 'C' || Name[3] == 'c') &&
+           (Name[4] == 'K' || Name[4] == 'k') &&
+           (Name[5] == 'S' || Name[5] == 's') && Name[6] == 0;
 }
 
 static int NameIsRes(const char *Name) {

@@ -12,7 +12,7 @@ int main(void) {
     int fd;
     ssize_t n;
 
-    fd = open("TOYOS.ID", O_RDONLY);
+    fd = open("BLOCKS.ID", O_RDONLY);
     if (fd < 0) {
         printf("cat: open failed errno=%d\n", errno);
         return 1;

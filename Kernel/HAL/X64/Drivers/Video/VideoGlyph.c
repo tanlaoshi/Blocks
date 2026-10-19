@@ -52,6 +52,44 @@ static UINT8 EdgeAlpha(const UINT8 *Glyph, UINT32 Bpr, UINT32 Width, UINT32 Heig
     return 48;
 }
 
+/* 覆盖度在线性光下混合。黑字若在 sRGB 里直接乘，边缘会糊成深灰块。 */
+static UINT32 IsqrtU(UINT32 N) {
+    UINT32 X;
+    UINT32 Y;
+
+    if (N == 0) {
+        return 0;
+    }
+    X = N;
+    Y = (X + 1u) / 2u;
+    while (Y < X) {
+        X = Y;
+        Y = (X + N / X) / 2u;
+    }
+    return X;
+}
+
+static UINT32 GammaBlend(UINT32 Dst, UINT32 Src, UINT8 Alpha) {
+    UINT32 Inv = 255u - (UINT32)Alpha;
+    UINT32 Out = 0;
+    int Shift;
+
+    for (Shift = 16; Shift >= 0; Shift -= 8) {
+        UINT32 S = (Src >> Shift) & 0xFFu;
+        UINT32 D = (Dst >> Shift) & 0xFFu;
+        UINT32 Sl = (S * S) / 255u;
+        UINT32 Dl = (D * D) / 255u;
+        UINT32 L = (Sl * (UINT32)Alpha + Dl * Inv) / 255u;
+        UINT32 C = IsqrtU(L * 255u);
+
+        if (C > 255u) {
+            C = 255u;
+        }
+        Out |= C << Shift;
+    }
+    return Out;
+}
+
 static void PaintBlock(UINT32 X, UINT32 Y, UINT32 ScaleX, UINT32 ScaleY,
                        UINT32 Color, UINT8 Alpha) {
     UINT32 Sy;
@@ -62,7 +100,15 @@ static void PaintBlock(UINT32 X, UINT32 Y, UINT32 ScaleX, UINT32 ScaleY,
             if (Alpha == 255) {
                 VideoDrawPixel(X + Sx, Y + Sy, Color);
             } else {
-                VideoBlendPixel(X + Sx, Y + Sy, Color, Alpha);
+                UINT32 Px = X + Sx;
+                UINT32 Py = Y + Sy;
+                UINT32 Dst;
+
+                if (Px >= gScreen.Width || Py >= gScreen.Height) {
+                    continue;
+                }
+                Dst = VideoReadPixel(Px, Py);
+                VideoDrawPixel(Px, Py, GammaBlend(Dst, Color, Alpha));
             }
         }
     }
@@ -163,15 +209,15 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     }
 }
 
-/* stb 8bpp：再软一档（接近初版 40/200） */
+/*
+ * 保留字库给出的灰度。以前把 190 以上收成实心：黑字边缘变成黑块，
+ * 灰字因为颜色本身浅，看起来反而更顺。
+ */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (N < 52u) {
+    if (N < 16u) {
         return 0;
     }
-    if (N >= 190u) {
-        return 255;
-    }
-    return (UINT8)(N);
+    return N;
 }
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */

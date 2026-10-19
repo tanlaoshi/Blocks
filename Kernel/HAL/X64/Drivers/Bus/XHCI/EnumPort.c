@@ -90,6 +90,14 @@ int EnumTryRootPort(UINT32 P) {
     }
     HaveIntr = ParseConfig(gCtrlBuf, Total, Speed, &gKbdIface, &EpAddr, &Mps, &Interval);
     if (!HaveIntr) {
+        /*
+         * 标准 USB 鼠标是 3/1/2，键盘解析不计分，旧逻辑会打上 gPortNoHid。
+         * 鼠标轮不再碰这些口，直插后口的鼠标就永远 mouse=00。
+         * slot 已 Address，直接认领；再 Reset 会得到 addr cc=0x04。
+         */
+        if (ClaimAddressedSlotAsMouse(P, Speed, Total, ConfigVal)) {
+            return 0;
+        }
         EnumWhy("Boot: Why=no hid ep\n");
         gPortNoHid |= (1u << P);
         gPortNeedForcePr |= (1u << P);

@@ -78,6 +78,14 @@ static void BootInfoFromUefi(UEFI_BOOT_CONFIG *Cfg, BOOT_INFO *Out, UEFI_BOOT_CO
             Out->GopProtocol = Cfg->GopProtocol;
         }
     }
+    Out->BootDiskGuidOk = 0;
+    if (Cfg->OsIdPad == UEFI_BOOT_DISK_GUID_MAGIC) {
+        UINT32 b;
+        for (b = 0; b < 16; b++) {
+            Out->BootDiskGuid[b] = Cfg->BootDiskGuid[b];
+        }
+        Out->BootDiskGuidOk = 1;
+    }
 
     HalPlatformSetXhciFallback(Cfg->XhciBaseAddress);
     HalPlatformSetRsdp(Cfg->RsdpAddress);

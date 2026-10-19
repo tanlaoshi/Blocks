@@ -43,10 +43,17 @@ void ThemeSaveFillVals(THEME_SAVE_VALS *V) {
         return;
     }
     V->FontVal[0] = 0;
-    if (gFontId >= 10) {
-        V->FontVal[N++] = (char)('0' + (gFontId / 10) % 10);
+    {
+        const FONT_FACE *Face = FontGetById(gFontId);
+        const char *Name = (Face && Face->Name) ? Face->Name : 0;
+
+        if (Name) {
+            while (Name[N] && N + 1 < sizeof(V->FontVal)) {
+                V->FontVal[N] = Name[N];
+                N++;
+            }
+        }
     }
-    V->FontVal[N++] = (char)('0' + (gFontId % 10));
     V->FontVal[N] = 0;
 
     V->ModeVal[0] = 0;

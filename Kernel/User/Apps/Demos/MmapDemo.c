@@ -40,14 +40,14 @@ static int TestFile(void) {
     char *P;
     int I;
 
-    Fd = open("TOYOS.ID", O_RDONLY);
+    Fd = open("BLOCKS.ID", O_RDONLY);
     if (Fd < 0) {
-        printf("mmapdemo: open TOYOS.ID fail\n");
+        printf("mmapdemo: open BLOCKS.ID fail\n");
         return 1;
     }
     N = read(Fd, Expect, sizeof(Expect) - 1);
     if (N <= 0) {
-        printf("mmapdemo: read TOYOS.ID fail\n");
+        printf("mmapdemo: read BLOCKS.ID fail\n");
         close(Fd);
         return 1;
     }
@@ -55,7 +55,7 @@ static int TestFile(void) {
     /* 读过后 Pos 前进；映射仍从文件缓冲起点拷贝（教学语义） */
     close(Fd);
 
-    Fd = open("TOYOS.ID", O_RDONLY);
+    Fd = open("BLOCKS.ID", O_RDONLY);
     if (Fd < 0) {
         printf("mmapdemo: reopen fail\n");
         return 1;

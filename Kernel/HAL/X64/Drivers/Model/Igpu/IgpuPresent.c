@@ -165,12 +165,18 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
     FrontPitchB = FrontPitchPx * 4u;
     FlushBackRect(Back, BackPitchPx, X0, Y0, X1, Y1);
     HalVideoGetSize(&ScrW, &ScrH);
-    /* 已翻页后：小脏区直写当前 scanout，避免 Settings 悬停整屏 flip 闪左右栏 */
+    /*
+     * 小脏区（光标）写两页。只写当前页时，下一次整屏翻页会把旧光标翻出来，
+     * 或者把新光标留在已经藏起来的那一页上，看起来像光标消失。
+     */
     if (IgpuScanoutLive()) {
-        Shown = IgpuScanoutShownGtt();
         if (ScrW == 0 || ScrH == 0 ||
             (UINT64)W * 2ull < (UINT64)ScrW ||
             (UINT64)H * 2ull < (UINT64)ScrH) {
+            if (IgpuScanoutBlitRect(gBackGtt, BackPitchPx, X0, Y0, W, H)) {
+                return 1;
+            }
+            Shown = IgpuScanoutShownGtt();
             if (IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
                                 gBackGtt, Shown)) {
                 return 1;

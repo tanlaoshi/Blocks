@@ -13,7 +13,6 @@
 
 #include "HalSerial.h"
 #include "HalSerialPrivate.h"
-#include "HalVideo.h"
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Font.h"
@@ -40,23 +39,7 @@ char gBootVis[BOOT_VIS_MAX][BOOT_LOG_LINE_MAX];
 UINT32 gBootVisN;
 
 void HalSerialBootFontApply(void) {
-    UINT32 W;
-    UINT32 H;
-    UINT32 Id;
-
-    HalVideoGetSize(&W, &H);
-    (void)W;
-    if (H >= 2160u) {
-        Id = 1u; /* Terminus x2：LineH≈72 → 4K 约 30 行 */
-    } else if (H >= 1440u) {
-        Id = 0u; /* 16x32：LineH≈36 */
-    } else {
-        Id = 2u; /* 10x18：与 Theme 默认一致 */
-    }
-    if (Id >= FontCount()) {
-        Id = 0u;
-    }
-    (void)FontSetById(Id);
+    (void)FontSetById(0); /* 内建只剩 Terminus 10x18 */
 }
 
 void RingAppend(const char *Text) {

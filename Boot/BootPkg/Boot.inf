@@ -45,3 +45,4 @@
   gEfiSimpleFileSystemProtocolGuid
   gEfiLoadedImageProtocolGuid
   gEfiPciIoProtocolGuid
+  gEfiBlockIoProtocolGuid

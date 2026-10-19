@@ -19,6 +19,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     BootSerialInitialize();
     BootSerialBanner();
 
+    BootFillDiskGuid(ImageHandle, &BootConfig);
     Status = GetVideoInfo(ImageHandle, &BootConfig);
     if (EFI_ERROR(Status)) {
         BootSerialPrintf("Boot: GetVideoInfo Failed: %r\n", Status);

@@ -71,7 +71,7 @@ static int StoreUnlinkPayload(const char *Dir, const char *Want) {
         (void)FileSystemFileSync("");
         if (Err == FAT_ERR_NOENT) {
             int n = 0;
-            const char *Pre = "TOYOS:";
+            const char *Pre = "BLOCKS:";
             while (Pre[n]) {
                 Prefixed[n] = Pre[n];
                 n++;

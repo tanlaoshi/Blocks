@@ -2,7 +2,7 @@
  * SettingsUiPrivate.h — SettingsUi 内部共享头（仅 Services/SettingsUi 使用）
  *
  * 禁止 User 程序、HAL、Core 包含本文件。
- * 源文件在 Services/SettingsUi/（核心 SettingsUi.c）。
+ * 源文件在 Services/Apps/SettingsUi/（核心 SettingsUi.c）。
  */
 #ifndef SETTINGS_UI_PRIVATE_H
 #define SETTINGS_UI_PRIVATE_H

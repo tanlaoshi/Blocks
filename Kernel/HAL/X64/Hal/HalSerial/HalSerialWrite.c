@@ -26,7 +26,7 @@ static int gRtDirty;
 #define BOOT_CAPTURE_MAX (64u * 1024u)
 static char gBootCapture[BOOT_CAPTURE_MAX];
 static UINTN gBootCaptureLen;
-static int gUsbReplayDone;
+static int gUsbReplayDone = 1;
 
 void HalSerialBootCapture(const char *Text) {
     if (!Text) {
@@ -286,7 +286,7 @@ void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
 }
 
-/* 屏幕通道全关时仍画这行。只给 FTDI / USB-UART 用。 */
+/* 串口里程碑。屏幕总开关关掉时不往 GOP 画。 */
 void HalSerialBootMarkForce(const char *Text) {
     if (!Text) {
         return;
@@ -297,8 +297,6 @@ void HalSerialBootMarkForce(const char *Text) {
     if (!gShellOwnUart && SerialPresent() && ChannelUartOn(TOY_SLOG_USB)) {
         SerialWrite(Text);
     }
-    if (gGopMirror && gVideoUp) {
-        GopWrite(Text);
-    }
     SpinLockRelease(&gSerialLock);
+    TeeUsb(Text);
 }

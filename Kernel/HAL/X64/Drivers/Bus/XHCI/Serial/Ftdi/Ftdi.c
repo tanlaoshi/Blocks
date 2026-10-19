@@ -238,8 +238,9 @@ static int Claim(void) {
     if (!gXhciStarted || gOperationalBase == 0 || gMaxPorts == 0) {
         return -1;
     }
-    /* 扫盘中途配过的端点可能已失效。这里清掉，重新 Address。 */
-    gFtdiClaimed = 0;
+    if (gFtdiClaimed && gFtdiSlot != 0) {
+        return 1;
+    }
     if (gHubSlotId != 0 && gFtdi.TryHubChildren && gFtdi.TryHubChildren()) {
         goto armed;
     }

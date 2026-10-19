@@ -66,6 +66,5 @@ int InitializeUsbUart(void) {
         HalSerialBootMarkForce("Boot: USB-UART None\n");
         return 0;
     }
-    HalSerialReplayUsb();
     return 0;
 }

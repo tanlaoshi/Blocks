@@ -156,28 +156,12 @@ void BootLog(const char *Text) {
     const char *P;
     int Milestone = 0;
     int Fail = 0;
-    int FtdiLine = 0;
 
     if (!Text) {
         return;
     }
-    for (P = Text; P[3] != 0; P++) {
-        if (P[0] == 'F' && P[1] == 'T' && P[2] == 'D' && P[3] == 'I') {
-            FtdiLine = 1;
-            break;
-        }
-        if (P[0] == 'U' && P[1] == 'S' && P[2] == 'B' && P[3] == '-') {
-            FtdiLine = 1;
-            break;
-        }
-    }
     if (!HalCpuIsHypervisor()) {
-        /* 真机屏幕只留 FTDI / USB-UART，其余仍进环。 */
-        if (FtdiLine) {
-            HalSerialBootMarkForce(Text);
-        } else {
-            ToyLogUsb(Text);
-        }
+        ToyLogUsb(Text);
         return;
     }
     /* QEMU：默认只留 keyboard / mouse / irq=；步进需 XHCI_DIAG_VERBOSE=1 */

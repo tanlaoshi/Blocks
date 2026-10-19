@@ -6,8 +6,8 @@
 #   TOYOS → RootFs/X64/（Kernel.elf、TOYOS.ID、THEME、Assets、FW/、*.ELF…）
 #
 # 用法：
-#   ./sync-usb.sh                 # 自动找 LABEL=ESP 与 LABEL=TOYOS
-#   ./sync-usb.sh --build         # 先编 Kernel + Boot，再 prepare-rootfs，再同步
+#   ./sync-usb.sh                 # 全量：RootFs/X64 → TOYOS；ESP 已挂载才更新 BOOTX64.EFI
+#   ./sync-usb.sh --build         # 先编 Kernel + Boot，再 prepare-rootfs，再全量同步
 #   ./sync-usb.sh --kernel-only   # 只更新 TOYOS/Kernel.elf + FW/（快迭代；含 iwl 固件）
 #   TOY_ESP_MNT=/mnt/esp TOY_TOYOS_MNT=/mnt/toy ./sync-usb.sh
 #
@@ -234,6 +234,7 @@ if [[ ! -d "$TOY_MNT" || ! -w "$TOY_MNT" ]]; then
 fi
 
 SINGLE_FAT=0
+SKIP_ESP=0
 ESP_DEV="$(find_label_dev ESP)"
 if [[ -z "$ESP_DEV" ]]; then
   ESP_DEV="$(find_label_dev EFI)"
@@ -245,23 +246,22 @@ if [[ -z "$ESP_MNT" && -d /mnt/toyos-esp/EFI/BOOT ]]; then
 fi
 if [[ -z "$ESP_MNT" ]]; then
   if [[ -n "$ESP_DEV" ]]; then
-    echo "error: USB has ESP/EFI partition ($ESP_DEV) but it is not mounted." >&2
-    echo "  UEFI boots from ESP — writing Boot only into TOYOS will NOT take effect." >&2
-    echo "  Fix: sudo mount $ESP_DEV /mnt/toyos-esp && TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
-    exit 1
+    echo "warning: USB ESP/EFI ($ESP_DEV) is not mounted — bootloader unchanged." >&2
+    echo "  TOYOS still gets a full RootFs sync." >&2
+    echo "  To update BOOTX64.EFI: sudo mount $ESP_DEV /mnt/toyos-esp && TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
+    SKIP_ESP=1
+  elif lsblk -n -o NAME,MOUNTPOINT 2>/dev/null | grep -q toyos-esp; then
+    echo "warning: dual-partition USB but ESP mount not resolved — bootloader unchanged." >&2
+    echo "  TOYOS still gets a full RootFs sync. Or: TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
+    SKIP_ESP=1
+  else
+    SINGLE_FAT=1
+    ESP_MNT="$TOY_MNT"
+    echo "note: no ESP partition — writing EFI into TOYOS (single-FAT layout)"
   fi
-  # 同盘另一分区已挂成 TOYOS 时，勿把 TOYOS 当成 single-FAT ESP
-  if lsblk -n -o NAME,MOUNTPOINT 2>/dev/null | grep -q toyos-esp; then
-    echo "error: looks like dual-partition USB but ESP mount not resolved." >&2
-    echo "  Mount ESP and re-run, or: TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
-    exit 1
-  fi
-  SINGLE_FAT=1
-  ESP_MNT="$TOY_MNT"
-  echo "note: no ESP partition — writing EFI into TOYOS (single-FAT layout)"
 elif [[ ! -w "$ESP_MNT" ]]; then
-  echo "error: ESP mount not writable: $ESP_MNT" >&2
-  exit 1
+  echo "warning: ESP not writable ($ESP_MNT) — bootloader unchanged, TOYOS still full-synced." >&2
+  SKIP_ESP=1
 fi
 
 echo "ESP   -> $ESP_MNT"
@@ -282,19 +282,21 @@ echo "== prepare-rootfs =="
 "$SCRIPT_DIR/prepare-rootfs.sh"
 
 BOOT_EFI="$ROOT/Esp/X64/EFI/BOOT/BOOTX64.EFI"
-if [[ ! -f "$BOOT_EFI" ]]; then
+if [[ "$SKIP_ESP" -eq 0 && ! -f "$BOOT_EFI" ]]; then
   echo "error: missing $BOOT_EFI — build ToyBoot" >&2
   exit 1
 fi
 
-echo "== sync ESP (Boot) =="
-mkdir -p "$ESP_MNT/EFI/BOOT"
-cp -f "$BOOT_EFI" "$ESP_MNT/EFI/BOOT/BOOTX64.EFI"
-# 可选：若仓库有 startup.nsh 等可在此追加
-sync
+if [[ "$SKIP_ESP" -eq 0 && "$SINGLE_FAT" -eq 0 ]]; then
+  echo "== sync ESP (Boot) =="
+  mkdir -p "$ESP_MNT/EFI/BOOT"
+  cp -f "$BOOT_EFI" "$ESP_MNT/EFI/BOOT/BOOTX64.EFI"
+  sync
+fi
 
-echo "== sync TOYOS (RootFs/X64) =="
+echo "== sync TOYOS (full RootFs/X64) =="
 # FAT 无 Unix owner/mode；勿用纯 -a（会 chown 失败 → exit 23）
+# 整卷镜像。WIFI*.CFG 留在 U 盘上，不覆盖、不删除。
 if command -v rsync >/dev/null 2>&1; then
   rsync -rltD --delete \
     --no-owner --no-group --no-perms \
@@ -306,8 +308,8 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'FW/WIFI_C.CFG' \
     "$ROOT/RootFs/X64/" "$TOY_MNT/"
 else
-  # 粗同步：先拷文件，不 --delete（避免误删用户在 U 盘上的笔记）
-  cp -a "$ROOT/RootFs/X64/." "$TOY_MNT/"
+  echo "error: rsync is required for a full TOYOS mirror" >&2
+  exit 1
 fi
 # 显式再扫一眼 FW/（rsync 已含；WIFI*.CFG 在 U 盘侧保留）
 sync_toyos_fw "$TOY_MNT"
@@ -316,12 +318,10 @@ if [[ "$SINGLE_FAT" -eq 1 ]]; then
   # 仅单分区盘：启动与系统同卷，EFI 只能放 TOYOS
   mkdir -p "$TOY_MNT/EFI/BOOT"
   cp -f "$BOOT_EFI" "$TOY_MNT/EFI/BOOT/BOOTX64.EFI"
-else
-  # 双分区：EFI 只在 ESP；清掉 TOYOS 上误放的 EFI（旧兜底遗留，UEFI 不读它）
-  if [[ -d "$TOY_MNT/EFI" ]]; then
-    echo "note: removing stale $TOY_MNT/EFI (Boot lives on ESP only)"
-    rm -rf "$TOY_MNT/EFI"
-  fi
+elif [[ "$SKIP_ESP" -eq 0 && -d "$TOY_MNT/EFI" ]]; then
+  # 双分区且这次写过 ESP：清掉 TOYOS 上误放的 EFI（UEFI 不读它）
+  echo "note: removing stale $TOY_MNT/EFI (Boot lives on ESP only)"
+  rm -rf "$TOY_MNT/EFI"
 fi
 
 # 确保识别文件存在
@@ -331,9 +331,15 @@ fi
 
 sync
 echo
-echo "=== sync done ==="
-echo "ESP BOOTX64.EFI : $(stat -c%s "$ESP_MNT/EFI/BOOT/BOOTX64.EFI") bytes"
+echo "=== sync done (full RootFs) ==="
+if [[ "$SKIP_ESP" -eq 0 ]]; then
+  echo "ESP BOOTX64.EFI : $(stat -c%s "$ESP_MNT/EFI/BOOT/BOOTX64.EFI") bytes"
+else
+  echo "ESP BOOTX64.EFI : unchanged (ESP not mounted)"
+fi
 echo "TOYOS Kernel    : $(stat -c%s "$TOY_MNT/Kernel.elf") bytes"
+ls -lh "$TOY_MNT/Assets/Fonts/CJK.TTF" 2>/dev/null || \
+  echo "warning: TOYOS missing Assets/Fonts/CJK.TTF (Boot: ttf miss)"
 ls -lh "$TOY_MNT/Kernel.elf" "$TOY_MNT/TOYOS.ID" "$TOY_MNT/THEME.CFG" 2>/dev/null || true
 ls -lh "$TOY_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
   echo "warning: TOYOS missing FW/IWL8265.UCODE (iwl fw=miss)"

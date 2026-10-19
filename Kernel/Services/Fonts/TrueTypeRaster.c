@@ -1,18 +1,38 @@
 /*
- * FontTtfRaster.c — 汉字按两倍行高画，再收成实心点（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — 汉字按当前行高直接栅格（须 HalFpuBegin；CFLAGS_FPU）
+ *
+ * 按行高的 4/3 直接栅格，上沿对齐像素边界，绘制时不再缩小。
+ * 缩回行高时上横会整段落进同一输出行，看起来比下面的横细一像素。
  */
 #include "Font.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
+
+UINT32 FontTtfPixel(void) {
+    const FONT_FACE *F = FontGetCurrent();
+    UINT32 H = 24u;
+
+    /* 界面字高至少 24。换更矮的英文字体时，汉字不再跟着变小。 */
+    if (F != 0 && F->Height != 0u) {
+        UINT32 S = F->Scale ? F->Scale : 1u;
+        UINT32 Nat = F->Height * S;
+
+        if (Nat > H) {
+            H = Nat;
+        }
+    }
+    if (H > 32u) {
+        H = 32u;
+    }
+    return H;
+}
 
 #if defined(__x86_64__)
 
 #include <stddef.h>
 
 #define TTF_CELL 32
-#define TTF_HI   (TTF_CELL * 2)
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
-#define TTF_HI_PIX (TTF_HI * TTF_HI)
 #define TTF_ARENA (64u * 1024u)
 
 static unsigned char gArena[TTF_ARENA];
@@ -115,12 +135,35 @@ int FontTtfInit(void) {
     return 0;
 }
 
+/* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */
+static float FontTtfTopShift(int Glyph, float Scale) {
+    int X0;
+    int Y0;
+    int X1;
+    int Y1;
+    float Top;
+    int TopI;
+    float Shift;
+
+    if (!stbtt_GetGlyphBox(&gInfo, Glyph, &X0, &Y0, &X1, &Y1)) {
+        return 0.0f;
+    }
+    (void)X0;
+    (void)X1;
+    (void)Y0;
+    Top = -(float)Y1 * Scale;
+    TopI = FontTtfIfloor(Top);
+    Shift = -(Top - (float)TopI);
+    if (Shift > -0.001f) {
+        Shift = 0.0f;
+    }
+    return Shift;
+}
+
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     float Scale;
-    int Ascent;
-    int Descent;
-    int LineGap;
-    int BaseY;
+    float Shift;
+    int Glyph;
     int X0;
     int Y0;
     int X1;
@@ -129,98 +172,72 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     int Gh;
     int Ox;
     int Oy;
-    int Y;
-    UINT8 Hi[TTF_HI_PIX];
+    UINT32 Side;
     UINT32 i;
 
     if (!Pix18 || !gInit || Cp < 128u) {
         return -1;
     }
+    Side = FontTtfPixel();
     for (i = 0; i < TTF_PIX; i++) {
         Pix18[i] = 0;
-    }
-    for (i = 0; i < TTF_HI_PIX; i++) {
-        Hi[i] = 0;
     }
     gArenaUsed = 0;
     if (!HalFpuBegin()) {
         return -1;
     }
     /*
-     * 行高仍是这一格。比例用字模方框，不再把每个字的墨迹拉满格子。
-     * 基线对齐，左右放在格中间。超出格子才缩小。
+     * 按放大后的边长画进格子。比例仍是字模方框。
+     * 上沿对齐到像素边界，左右、上下都放在格中间。超出格子才缩小。
      */
-    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)TTF_HI);
-    stbtt_GetFontVMetrics(&gInfo, &Ascent, &Descent, &LineGap);
-    (void)Descent;
-    (void)LineGap;
-    BaseY = (int)((float)Ascent * Scale);
-    stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1, &Y1);
+    Glyph = stbtt_FindGlyphIndex(&gInfo, (int)Cp);
+    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)Side);
+    Shift = FontTtfTopShift(Glyph, Scale);
+    stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f, Shift,
+                                        &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
     if (Gw <= 0 || Gh <= 0) {
         HalFpuEnd();
         return -1;
     }
-    if (Gw > TTF_HI || Gh > TTF_HI) {
-        float FitX = (float)TTF_HI / (float)Gw;
-        float FitY = (float)TTF_HI / (float)Gh;
+    if (Gw > (int)Side || Gh > (int)Side) {
+        float FitX = (float)Side / (float)Gw;
+        float FitY = (float)Side / (float)Gh;
         float Fit = (FitX < FitY) ? FitX : FitY;
 
         Scale *= Fit;
-        stbtt_GetCodepointBitmapBox(&gInfo, (int)Cp, Scale, Scale, &X0, &Y0, &X1,
-                                    &Y1);
+        Shift = FontTtfTopShift(Glyph, Scale);
+        stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f,
+                                            Shift, &X0, &Y0, &X1, &Y1);
         Gw = X1 - X0;
         Gh = Y1 - Y0;
-        if (Gw <= 0 || Gh <= 0 || Gw > TTF_HI || Gh > TTF_HI) {
+        if (Gw <= 0 || Gh <= 0 || Gw > (int)Side || Gh > (int)Side) {
             HalFpuEnd();
             return -1;
         }
-        BaseY = (int)((float)Ascent * Scale);
     }
-    Ox = (TTF_HI - Gw) / 2;
-    Oy = BaseY + Y0;
+    Ox = ((int)Side - Gw) / 2;
+    Oy = ((int)Side - Gh) / 2;
     if (Ox < 0) {
         Ox = 0;
     }
     if (Oy < 0) {
         Oy = 0;
     }
-    /*
-     * 两倍点收成一格时按偶数行配对。上横若从奇数行起，会和上面的空行对半，
-     * 看起来像被削掉一像素。上移一行，上沿落在偶数行。
-     */
-    if (Oy > 0 && (Oy & 1)) {
-        Oy--;
+    if (Ox + Gw > (int)Side) {
+        Gw = (int)Side - Ox;
     }
-    if (Ox + Gw > TTF_HI) {
-        Gw = TTF_HI - Ox;
-    }
-    if (Oy + Gh > TTF_HI) {
-        Gh = TTF_HI - Oy;
+    if (Oy + Gh > (int)Side) {
+        Gh = (int)Side - Oy;
     }
     if (Gw <= 0 || Gh <= 0) {
         HalFpuEnd();
         return -1;
     }
-    stbtt_MakeCodepointBitmap(&gInfo, Hi + Oy * TTF_HI + Ox, Gw, Gh, TTF_HI,
-                              Scale, Scale, (int)Cp);
+    stbtt_MakeCodepointBitmapSubpixel(&gInfo, Pix18 + Oy * (int)Side + Ox, Gw, Gh,
+                                      (int)Side, Scale, Scale, 0.0f, Shift, (int)Cp);
     HalFpuEnd();
-    for (Y = 0; Y < TTF_CELL; Y++) {
-        int X;
-
-        for (X = 0; X < TTF_CELL; X++) {
-            int Hy = Y * 2;
-            int Hx = X * 2;
-            UINT32 Sum;
-
-            Sum = Hi[Hy * TTF_HI + Hx];
-            Sum += Hi[Hy * TTF_HI + Hx + 1];
-            Sum += Hi[(Hy + 1) * TTF_HI + Hx];
-            Sum += Hi[(Hy + 1) * TTF_HI + Hx + 1];
-            Pix18[Y * TTF_CELL + X] = (UINT8)(Sum / 4u);
-        }
-    }
     return 0;
 }
 

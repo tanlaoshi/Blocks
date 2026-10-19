@@ -2,7 +2,7 @@
  * Install.c — PR-FS-inst-1：Guest 安装器骨架
  *
  * 布局对齐 ToyImage/make-usb-stick.sh：GPT | ESP 256MiB | TOYOS 剩余。
- * 最小文件：ESP:EFI/BOOT/BOOTX64.EFI；TOYOS:Kernel.elf、TOYOS.ID、THEME.CFG。
+ * 最小文件：ESP:EFI/BOOT/BOOTX64.EFI；BLOCKS:Kernel.elf、BLOCKS.ID、THEME.CFG。
  */
 #include "Install.h"
 #include "Block.h"
@@ -145,9 +145,6 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     IdPages = LoadFile("BLOCKS.ID", &Id, &IdSz, 1);
     if (IdPages < 0) {
         IdPages = LoadFile("BLOCKS:BLOCKS.ID", &Id, &IdSz, 1);
-    }
-    if (IdPages < 0) {
-        IdPages = LoadFile("TOYOS.ID", &Id, &IdSz, 1);
     }
     if (IdPages < 0) {
         Id = (UINT8 *)(UINTN)DefaultId;

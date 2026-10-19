@@ -16,6 +16,7 @@
 
 typedef struct {
     UINT32 Cp;
+    UINT32 Side;
     int State;
     UINT8 Pix[TTF_PIX];
 } TTF_SLOT;
@@ -23,6 +24,7 @@ typedef struct {
 static TTF_SLOT gSlot[TTF_CACHE_N];
 static UINT32 gWant[TTF_WANT_N];
 static UINT32 gWantN;
+static UINT32 gPaintGen;
 
 static TTF_SLOT *SlotLookup(UINT32 Cp) {
     UINT32 i0 = Cp % TTF_CACHE_N;
@@ -85,11 +87,15 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         if (S->State == TTF_MISS) {
             return 0;
         }
+        if (S->Side != FontTtfPixel()) {
+            WantPush(Cp);
+            return 0;
+        }
         if (OutW) {
-            *OutW = TTF_CELL;
+            *OutW = S->Side;
         }
         if (OutH) {
-            *OutH = TTF_CELL;
+            *OutH = S->Side;
         }
         return S->Pix;
     }
@@ -122,16 +128,31 @@ static void FillSlot(UINT32 Cp) {
         return;
     }
     Slot = SlotAlloc(Cp);
-    if (Slot->State != TTF_EMPTY && Slot->Cp == Cp) {
+    if (Slot->State != TTF_EMPTY && Slot->Cp == Cp && Slot->Side == FontTtfPixel()) {
         return;
     }
     if (FontTtfRasterCp(Cp, Slot->Pix) != 0) {
         Slot->Cp = Cp;
+        Slot->Side = FontTtfPixel();
         Slot->State = TTF_MISS;
     } else {
         Slot->Cp = Cp;
+        Slot->Side = FontTtfPixel();
         Slot->State = TTF_HIT;
+        /* 屏上可能还是点阵。Gui 看到代数变了再合成一次。 */
+        gPaintGen++;
     }
+}
+
+int FontTtfTakePaint(void) {
+    static UINT32 Seen;
+    UINT32 Gen = gPaintGen;
+
+    if (Gen == Seen) {
+        return 0;
+    }
+    Seen = Gen;
+    return 1;
 }
 
 void FontTtfPreheatUtf8(const char *S) {

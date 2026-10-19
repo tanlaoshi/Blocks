@@ -12,7 +12,7 @@
 
 /*
  * 扫描所有 Block 盘，挂上每个盘上的全部 FAT 分区；
- * 含 TOYOS.ID 的另名 TOYOS（默认）；GPT ESP 只读且可名 ESP。
+ * 含 BLOCKS.ID 的命名为 BLOCKS（默认）；GPT ESP 只读且可名 ESP。
  */
 int MountAllVolumes(void) {
     UINT32 d;

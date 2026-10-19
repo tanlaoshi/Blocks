@@ -7,6 +7,12 @@
 #include "HalConsole.h"
 #include "Theme.h"
 
+static const char *gLoadedName = DB_PATH;
+
+const char *DbLoadedName(void) {
+    return gLoadedName;
+}
+
 static void ApplyLine(const char *Line) {
     char Key[DB_KEY_MAX];
     char Val[DB_VAL_MAX];
@@ -65,8 +71,11 @@ int DbLoad(void) {
     UINTN L;
 
     ClearAll();
+    gLoadedName = DB_PATH;
     if (FileSystemReadFile(DB_PATH, Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
+        gLoadedName = "TOYOS.DB";
         if (FileSystemReadFile("TOYOS.DB", Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
+            gLoadedName = DB_PATH;
             return DB_NOENT;
         }
     }

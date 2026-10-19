@@ -224,23 +224,8 @@ void BlitBmpScaledRaw(UINT32 X, UINT32 Y, UINT32 Dw, UINT32 Dh,
 /* BlitBmpScaledFree reserved if taskbar occlusion needs per-pixel later */
 
 void BlitIconFaceRaw(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
-    UINT32 W;
-    UINT32 H;
-    UINT32 Row;
-
     if (Icon->BmpReady && Icon->Bmp.Pixels) {
-        W = Icon->Bmp.Width;
-        H = Icon->Bmp.Height;
-        if (W > DESKTOP_ICON_SIZE) {
-            W = DESKTOP_ICON_SIZE;
-        }
-        if (H > DESKTOP_ICON_SIZE) {
-            H = DESKTOP_ICON_SIZE;
-        }
-        for (Row = 0; Row < H; Row++) {
-            HalVideoWriteRect(X, Y + Row, W, 1,
-                              &Icon->Bmp.Pixels[Row * Icon->Bmp.Width]);
-        }
+        BlitBmpScaledRaw(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, &Icon->Bmp);
         return;
     }
     UiFillRectangle(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, Icon->IconColor);
@@ -255,33 +240,36 @@ void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
     int InRun;
 
     if (Icon->BmpReady && Icon->Bmp.Pixels) {
-        W = Icon->Bmp.Width;
-        H = Icon->Bmp.Height;
-        if (W > DESKTOP_ICON_SIZE) {
-            W = DESKTOP_ICON_SIZE;
+        UINT32 Line[64];
+
+        W = DESKTOP_ICON_SIZE;
+        H = DESKTOP_ICON_SIZE;
+        if (W > 64u) {
+            W = 64u;
         }
-        if (H > DESKTOP_ICON_SIZE) {
-            H = DESKTOP_ICON_SIZE;
+        if (H > 64u) {
+            H = 64u;
         }
         for (Row = 0; Row < H; Row++) {
             InRun = 0;
             RunStart = 0;
             for (Col = 0; Col < W; Col++) {
-                int Free = !PointOccupied(X + Col, Y + Row);
-                if (Free && !InRun) {
-                    RunStart = Col;
-                    InRun = 1;
-                } else if (!Free && InRun) {
-                    HalVideoWriteRect(X + RunStart, Y + Row, Col - RunStart, 1,
-                                      &Icon->Bmp.Pixels[Row * Icon->Bmp.Width +
-                                                        RunStart]);
-                    InRun = 0;
+                Line[Col] = BmpSampleScaled(&Icon->Bmp, Col, Row, W, H);
+                {
+                    int Free = !PointOccupied(X + Col, Y + Row);
+                    if (Free && !InRun) {
+                        RunStart = Col;
+                        InRun = 1;
+                    } else if (!Free && InRun) {
+                        HalVideoWriteRect(X + RunStart, Y + Row, Col - RunStart, 1,
+                                          &Line[RunStart]);
+                        InRun = 0;
+                    }
                 }
             }
             if (InRun) {
                 HalVideoWriteRect(X + RunStart, Y + Row, W - RunStart, 1,
-                                  &Icon->Bmp.Pixels[Row * Icon->Bmp.Width +
-                                                    RunStart]);
+                                  &Line[RunStart]);
             }
         }
         return;

@@ -9,11 +9,8 @@ RUNTIME="$(cd "$(dirname "$0")" && pwd)"
 BLOCKS="$(cd "$RUNTIME/.." && pwd)"
 
 BOOT_EFI="${BOOT_EFI:-$BLOCKS/Boot/Build/BOOTX64.EFI}"
-# 现网 Makefile：Build/CodeA-HAL/X64/Kernel.elf
-KERNEL_ELF="${KERNEL_ELF:-$BLOCKS/Kernel/Build/CodeA-HAL/X64/Kernel.elf}"
-if [ ! -f "$KERNEL_ELF" ] && [ -f "$BLOCKS/Kernel/Build/HAL/X64/Kernel.elf" ]; then
-    KERNEL_ELF="$BLOCKS/Kernel/Build/HAL/X64/Kernel.elf"
-fi
+# 只认 ./build.sh 的产物。CodeA-HAL 是旧目录，QEMU 再去拷它就会一直测旧核。
+KERNEL_ELF="${KERNEL_ELF:-$BLOCKS/Kernel/Build/HAL/X64/Kernel.elf}"
 
 mkdir -p "$RUNTIME/Esp/X64/EFI/BOOT" "$RUNTIME/RootFs/X64" "$RUNTIME/Fw"
 
@@ -59,4 +56,4 @@ fi
 
 echo "sync OK:"
 echo "  Esp  ← $BOOT_EFI"
-echo "  Root ← $KERNEL_ELF"
+echo "  Root ← $KERNEL_ELF ($(stat -c%s "$KERNEL_ELF") bytes)"

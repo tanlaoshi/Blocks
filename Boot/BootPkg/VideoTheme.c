@@ -180,9 +180,6 @@ BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs) {
         return FALSE;
     }
     Status = Root->Open(Root, &File, L"\\BLOCKS.ID", EFI_FILE_MODE_READ, 0);
-    if (EFI_ERROR(Status)) {
-        Status = Root->Open(Root, &File, L"\\TOYOS.ID", EFI_FILE_MODE_READ, 0); /* 旧标兼容 */
-    }
     if (!EFI_ERROR(Status) && File != NULL) {
         File->Close(File);
         Root->Close(Root);

@@ -442,26 +442,38 @@ static UINT32 ScaleOf(const FONT_FACE *F) {
     return F->Scale ? F->Scale : 1u;
 }
 
+/* Sun 8×16 画进和 Terminus 一样的 10 宽，否则换过去整字偏小。 */
+static UINT32 FaceDrawW(const FONT_FACE *F) {
+    UINT32 S = ScaleOf(F);
+
+    if (F->Width > 0u && F->Width <= 8u && F->Height > 0u && F->Height <= 16u) {
+        return 10u * S;
+    }
+    return F->Width * S;
+}
+
 UINT32 FontCellW(void) {
     const FONT_FACE *F = FontGetCurrent();
-    return F->Width * ScaleOf(F);
+
+    return FaceDrawW(F);
 }
 
 UINT32 FontCellH(void) {
-    const FONT_FACE *F = FontGetCurrent();
-    return F->Height * ScaleOf(F);
+    return FontTtfPixel();
 }
 
 UINT32 FontAdvanceX(void) {
     const FONT_FACE *F = FontGetCurrent();
     UINT32 S = ScaleOf(F);
-    return F->Width * S + F->CharSpacing * S;
+
+    return FaceDrawW(F) + F->CharSpacing * S;
 }
 
 UINT32 FontAdvanceY(void) {
     const FONT_FACE *F = FontGetCurrent();
     UINT32 S = ScaleOf(F);
-    return F->Height * S + F->LineSpacing * S;
+
+    return FontTtfPixel() + F->LineSpacing * S;
 }
 
 const UINT8 *FontGlyph(char C) {
@@ -625,7 +637,14 @@ void FontGlyphBox(UINT32 GlyphW, UINT32 GlyphH, UINT32 *OutW, UINT32 *OutH) {
     W = GlyphW * Scale;
     H = GlyphH * Scale;
     CellH = FontCellH();
-    if (H > CellH && H > 0u) {
+    /* 点阵 18×18 先顶上时，放到和 TTF 一样大，换上真字不再跳一档。 */
+    if (GlyphW == GlyphH && GlyphH == FontCjkDim() && GlyphH > 0u &&
+        GlyphH < FontTtfPixel()) {
+        W = FontTtfPixel();
+        H = FontTtfPixel();
+    }
+    /* 汉字按 FontTtfPixel 原样画。缩回拉丁行高会把上横收成一行。 */
+    if (H > CellH && H > 0u && !(W == FontTtfPixel() && H == FontTtfPixel())) {
         W = (UINT32)(((UINT64)W * (UINT64)CellH) / (UINT64)H);
         if (W == 0u) {
             W = 1u;

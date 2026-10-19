@@ -33,6 +33,8 @@ int DbCount(void);
 int DbForEach(int (*Cb)(const char *Key, const char *Value, void *Ctx), void *Ctx);
 
 int DbLoad(void);
+/* 最近一次成功读入的文件名；还没读过则是 BLOCKS.DB。 */
+const char *DbLoadedName(void);
 int DbSave(void);
 /* ThemeSave 等：多次 DbSet 合并为一次写盘，减轻 QEMU vvfat 压力 */
 void DbBeginBatch(void);

@@ -122,7 +122,7 @@ static int PickVolSlot(int HasId) {
         return gVolCount;
     }
     /*
-     * 卷表满：仍须留下 TOYOS.ID。挤掉最后一个非 TOYOS、非 RES 槽；
+     * 卷表满：仍须留下 BLOCKS.ID。挤掉最后一个非系统卷、非 RES 槽；
      * 否则 NVMe 上多个 ESP/OEM FAT 会先占满，USB 系统卷永远挂不上。
      */
     if (!HasId) {
@@ -168,8 +168,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     if (!BlockSelect(Drive) || gVirtualFileSystem.Mount(Start) != FAT_OK) {
         return;
     }
-    if (gVirtualFileSystem.ReadFile("BLOCKS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK ||
-        gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
+    if (gVirtualFileSystem.ReadFile("BLOCKS.ID", Tmp, sizeof(Tmp), &Sz) == FAT_OK) {
         HasId = 1;
     }
 

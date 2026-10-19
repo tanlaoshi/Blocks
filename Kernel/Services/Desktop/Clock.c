@@ -70,6 +70,18 @@ void DesktopTickClock(void) {
         RequestRefresh();
     }
 
+    /* 点阵已画上、TTF 随后进缓存：再合成一次，否则补位会一直留在屏上。 */
+    if (FontTtfTakePaint()) {
+        UINT32 Sw = 0;
+        UINT32 Sh = 0;
+
+        HalVideoGetSize(&Sw, &Sh);
+        if (Sw > 0 && Sh > 0) {
+            GuiMarkDamage(0, 0, Sw, Sh);
+            RequestRefresh();
+        }
+    }
+
     Now = HalCpuTicks(0);
     Tps = HalTicksPerSec();
     if (Tps == 0) {

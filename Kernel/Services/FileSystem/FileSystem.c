@@ -241,8 +241,8 @@ int FileSystemInitialize(void) {
 
     /*
      * PR-H-msc-7b：Live 默认 FS 前 auto（claim→Mux），再一次 MountAllVolumes。
-     * 主盘已有 TOYOS 且 MSC.OFF / msc=0 → 可关 auto。
-     * 主盘只有 ESP、尚无 TOYOS.ID 时不得关 auto（NUC Live：否则永远读不到 U 盘 TOYOS）。
+     * 主盘已有 BLOCKS 且 MSC.OFF / msc=0 → 可关 auto。
+     * 主盘只有 ESP、尚无 BLOCKS.ID 时不得关 auto（NUC Live：否则永远读不到 U 盘系统卷）。
      */
     Auto = HalUsbMscAutoEnabled();
     if (HalBlockInitialize() > 0 && MountAllVolumes()) {
@@ -288,7 +288,7 @@ int FileSystemInitialize(void) {
             /*
              * Live U 盘上电慢：首轮 claim 空 → 只见 NVMe ESP。
              * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
-             * 仍失败则软退：有 ESP/RES 可进桌面（WARN no TOYOS.ID）。
+             * 仍失败则软退：有 ESP/RES 可进桌面（WARN no BLOCKS.ID）。
              */
             ToyLogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
             if (HalUsbMscAutoBeforeFs() == 0) {

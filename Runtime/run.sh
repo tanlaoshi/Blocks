@@ -85,7 +85,8 @@ if [ -z "$QEMU_XRES" ] || [ -z "$QEMU_YRES" ]; then
     Cfg="RootFs/X64/THEME.CFG"
     Line=""
     if [ -f "$Cfg" ]; then
-        Line="$(grep -E '^[[:space:]]*mode=' "$Cfg" | head -1 || true)"
+        # 末尾可能有空字节，不用 -a 时 grep 会当成二进制，mode= 读不出来，只能落到 1440x900。
+        Line="$(grep -aE '^[[:space:]]*mode=' "$Cfg" | head -1 || true)"
     fi
     W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
     H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"

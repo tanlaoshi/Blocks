@@ -39,6 +39,8 @@ int FontReloadAssets(void);
 int FontTtfLoad(void);
 const UINT8 *FontTtfBlob(UINT32 *OutSize);
 int FontTtfInit(void);
+/* 汉字和英文的绘制高度。至少 24，不超过缓存的 32。英文只加高，不拉宽。 */
+UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 不在点阵里：x86 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
@@ -49,6 +51,8 @@ void FontTtfPreheatUtf8(const char *S);
 int FontTtfWantStep(void);
 /* 开窗前/Worker：一次抽干最多 Max 个 Want（0→32） */
 UINT32 FontTtfWantDrain(UINT32 Max);
+/* 自上次调用以来有新的 TTF 字形进缓存则 1。给界面把点阵补位换成真字。 */
+int FontTtfTakePaint(void);
 /*
  * PR-S-app-font：按路径加载 TOYF 到专用应用槽（覆盖上次私有字）。
  * 成功返回字体 id（≥0）；失败 -1。不改当前选中 id。

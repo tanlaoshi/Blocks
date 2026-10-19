@@ -2,6 +2,7 @@
  * Config.c — 读 THEME.CFG 与 ThemeLoad
  * 核心：Theme.c
  */
+#include "Db.h"
 #include "Theme.h"
 #include "ThemePrivate.h"
 
@@ -92,10 +93,12 @@ int ThemeLoad(void) {
         ToyLogGui("Theme: Loaded THEME.CFG\n");
     } else {
         ModeFromCfg = (ThemeOverlayModeFromCfg() == 0);
+        ToyLogGui("Theme: Loaded ");
+        ToyLogGui(DbLoadedName());
         if (ModeFromCfg) {
-            ToyLogGui("Theme: Loaded TOYOS.DB (mode from THEME.CFG)\n");
+            ToyLogGui(" (mode from THEME.CFG)\n");
         } else {
-            ToyLogGui("Theme: Loaded TOYOS.DB\n");
+            ToyLogGui("\n");
         }
     }
     /*

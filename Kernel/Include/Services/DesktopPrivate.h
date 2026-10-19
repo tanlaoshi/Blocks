@@ -29,7 +29,7 @@
 #define DESKTOP_SYS_ICON_COUNT 5 /* Shell/Settings/Files/Store/Devices；Snake 只经 Store */
 #define DESKTOP_APP_ICON_MAX   8
 #define DESKTOP_ICON_COUNT     (DESKTOP_SYS_ICON_COUNT + DESKTOP_APP_ICON_MAX)
-#define DESKTOP_ICON_SIZE     48
+#define DESKTOP_ICON_SIZE     64
 #define DESKTOP_ICON_GAP      UI_LAYOUT_ICON_GAP
 #define DESKTOP_ORIGIN_X      36
 #define DESKTOP_ORIGIN_Y      36
@@ -39,14 +39,14 @@
 #define DESKTOP_DBLCLICK_MAX  2000000ULL
 #define DESKTOP_DRAG_THRESH   12u
 
-#define TASKBAR_H             32u
-#define START_BTN_PAD_X       8u
-#define START_BTN_MIN_W       56u
-#define START_ICON_SZ         20u
-#define MENU_W                200u
+#define TASKBAR_H             40u
+#define START_BTN_PAD_X       10u
+#define START_BTN_MIN_W       72u
+#define START_ICON_SZ         28u
+#define MENU_W                240u
 /* 行高跟令牌下限；绘制侧可用 UiLayoutRowH() 再抬 */
-#define MENU_ITEM_H           28u
-#define MENU_ICON_SZ          18u
+#define MENU_ITEM_H           36u
+#define MENU_ICON_SZ          24u
 #define MENU_FIXED_TOP        7 /* Shell/Settings/Files/Store/Devices/Apps/Game */
 #define MENU_GAME_MAX         4
 #define MENU_SEP_ROWS         0 /* 应用组与电源组之间不再留空行（Game 与 Shutdown 相邻） */

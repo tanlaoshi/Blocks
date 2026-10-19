@@ -254,10 +254,18 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     }
 }
 
+static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
+                             UINT32 SrcW, UINT32 SrcH, UINT32 DstW, UINT32 DstH,
+                             UINT32 Bpp, UINT32 Color);
+
 void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     const FONT_FACE *F;
     const UINT8 *Glyph;
     UINT32 Scale;
+    UINT32 NatW;
+    UINT32 NatH;
+    UINT32 Dw;
+    UINT32 Dh;
 
     F = FontGetCurrent();
     Glyph = FontGlyph(C);
@@ -265,8 +273,17 @@ void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
         return;
     }
     Scale = F->Scale ? F->Scale : 1u;
-    PaintGlyph(X, Y, Glyph, F->Width, F->Height, F->BytesPerRow, Scale, Scale,
-               0, Color);
+    NatW = F->Width * Scale;
+    NatH = F->Height * Scale;
+    Dw = FontCellW();
+    Dh = FontCellH();
+    if (Dw == NatW && Dh == NatH) {
+        PaintGlyph(X, Y, Glyph, F->Width, F->Height, F->BytesPerRow, Scale, Scale,
+                   0, Color);
+        return;
+    }
+    /* 和汉字同一高度。10×18 收到 24 不是整数倍，按目标格子取样。 */
+    PaintGlyphFitted(X, Y, Glyph, F->Width, F->Height, Dw, Dh, 1u, Color);
 }
 
 /* 字形比行高还高时，整字收到这一行，不再只裁掉下半截。 */
@@ -342,6 +359,8 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
     UINT32 CellH;
     UINT32 OffY;
     UINT32 DrawnH;
+    UINT32 BoxW;
+    UINT32 BoxH;
     UINT32 Bpr;
 
     if (!Glyph || Width == 0 || Height == 0) {
@@ -356,15 +375,23 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
         ScaleY = 1;
     }
     CellH = FontCellH();
-    FontGlyphBox(Width, Height, &ScaleX, &DrawnH);
+    FontGlyphBox(Width, Height, &BoxW, &BoxH);
     OffY = 0;
-    if (DrawnH < Height * ScaleY && Height > 0) {
-        PaintGlyphFitted(X, Y, Glyph, Width, Height, ScaleX, DrawnH, Bpp, Color);
+    if (BoxH != Height * ScaleY || BoxW != Width * ScaleX) {
+        PaintGlyphFitted(X, Y, Glyph, Width, Height, BoxW, BoxH, Bpp, Color);
         return;
     }
     ScaleX = ScaleY;
     DrawnH = Height * ScaleY;
-    if (CellH > DrawnH) {
+    if (DrawnH > CellH) {
+        UINT32 Up = (DrawnH - CellH) / 2u;
+
+        if (Y > Up) {
+            Y -= Up;
+        } else {
+            Y = 0;
+        }
+    } else if (CellH > DrawnH) {
         OffY = (CellH - DrawnH) / 2;
     }
     if (Bpp == 8) {

@@ -88,18 +88,22 @@ void ApplyDisplayChoice(int Index) {
         HalConsoleWriteSerial("settings: apply ");
         HalConsoleWriteSerial(Dim);
         HalConsoleWriteSerial("\n");
-        if (ThemeApplyDisplayLive(W, H) == 0) {
-            Live = 1;
-            HalConsoleWriteSerial("settings: display applied live\n");
-            DebugWrite("settings: display applied live\n");
-        }
     }
 
+    /* 先落盘。QEMU 的 vvfat 在热切之后再写盘会断言退出，模式也存不住。 */
     if (ThemeSave() == 0) {
         Saved = 1;
     } else {
         HalConsoleWriteSerial("settings: display save failed\n");
         DebugWrite("settings: display save failed\n");
+    }
+
+    if (Index >= 1 && W != 0 && H != 0 && !HalCpuIsHypervisor()) {
+        if (ThemeApplyDisplayLive(W, H) == 0) {
+            Live = 1;
+            HalConsoleWriteSerial("settings: display applied live\n");
+            DebugWrite("settings: display applied live\n");
+        }
     }
 
     if (Live) {
@@ -109,8 +113,8 @@ void ApplyDisplayChoice(int Index) {
     } else if (Saved) {
         gDisplayHint = 1;
         if (HalCpuIsHypervisor()) {
-            HalConsoleWriteSerial(
-                "settings: display saved; quit QEMU window, then ./run-split.sh (edid)\n");
+        HalConsoleWriteSerial(
+            "settings: display saved; quit QEMU, then run (EDID follows THEME.CFG)\n");
             DebugWrite("settings: display pref saved (relaunch QEMU on VM)\n");
         } else {
             HalConsoleWriteSerial(

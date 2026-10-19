@@ -23,14 +23,7 @@ static int InstIsGame(const STORE_INSTALLED *In, const STORE_APP_DESKTOP_META *M
     if (!In) {
         return 0;
     }
-    if (HavePkg && Meta && Meta->CategoryGame) {
-        return 1;
-    }
-    /* 已装旧包未写 category= 时：仅 snake id 兜底（仍须盘上有包） */
-    if (MenuNameEqIgnoreCase(In->Id, "snake")) {
-        return 1;
-    }
-    return 0;
+    return (HavePkg && Meta && Meta->CategoryGame) ? 1 : 0;
 }
 
 /*
@@ -51,7 +44,6 @@ void FillStartMenuGameRows(void) {
         MENU_ROW *Gr;
         char Path[MENU_PATH_MAX];
         int HavePkg;
-        const char *L;
 
         if (!(In->Type[0] == 'a' && In->Type[1] == 'p' &&
               In->Type[2] == 'p' && In->Type[3] == 0)) {
@@ -77,9 +69,6 @@ void FillStartMenuGameRows(void) {
         Gr->IconSrc = IconSrcForGameId(In->Id);
         if (HavePkg && Meta.Title[0]) {
             StringCopy(Gr->Label, sizeof(Gr->Label), Meta.Title);
-        } else if (MenuNameEqIgnoreCase(In->Id, "snake")) {
-            L = LocStr(MSG_ICON_SNAKE);
-            StringCopy(Gr->Label, sizeof(Gr->Label), L ? L : "Snake");
         } else {
             StringCopy(Gr->Label, sizeof(Gr->Label), In->Id);
         }

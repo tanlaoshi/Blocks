@@ -8,3 +8,4 @@ title=Snake
 desktop=yes
 taskbar=yes
 window=yes
+category=game

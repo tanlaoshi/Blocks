@@ -1,7 +1,8 @@
 #!/bin/bash
 # 双盘 QEMU（唯一推荐入口）— PR-Q1
 #   disk0 = Esp/X64/     → ESP/Boot（EFI/BOOT/BOOTX64.EFI）
-#   disk1 = RootFs/X64/  → TOYOS 系统盘（Kernel.elf、THEME.CFG、用户 ELF）
+#   disk1 = RootFs/X64.img（由 RootFs/X64 打成的 FAT32）→ 系统盘
+#   不用 fat:rw。改缩放会写 THEME.CFG，vvfat 会在 array_get 处把 QEMU 打掉。
 #
 # 常用：
 #   ./Scripts/run-split.sh
@@ -35,7 +36,14 @@ toy_qemu_setup_ovmf
 toy_qemu_prepare_smp
 
 toy_qemu_stash_boot_payloads
-trap 'toy_qemu_restore_boot_payloads' EXIT
+ROOT_IMG="RootFs/X64.img"
+python3 "$SCRIPT_DIR/pack-fat32.py" pack RootFs/X64 "$ROOT_IMG"
+pull_root_back() {
+    python3 "$SCRIPT_DIR/pack-fat32.py" pull "$ROOT_IMG" RootFs/X64 \
+        THEME.CFG BLOCKS.DB BOOT.LOG || true
+    toy_qemu_restore_boot_payloads
+}
+trap pull_root_back EXIT
 
 DISPLAY_ARGS=(-display gtk,zoom-to-fit=off)
 if [ "${TOY_HEADLESS:-0}" = 1 ]; then
@@ -97,7 +105,7 @@ case "${TOY_DISK:-ide}" in
             -device ich9-ahci,id=ahci
             -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64
             -device ide-hd,drive=toyesp,bus=ahci.0,bootindex=0
-            -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64
+            -drive if=none,id=toyroot,format=raw,file=RootFs/X64.img
             -device ide-hd,drive=toyroot,bus=ahci.1,bootindex=1
         )
         ;;
@@ -106,7 +114,7 @@ case "${TOY_DISK:-ide}" in
         DISK_ARGS=(
             -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64
             -device nvme,serial=toyesp,drive=toyesp,logical_block_size=512,physical_block_size=512,bootindex=0
-            -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64
+            -drive if=none,id=toyroot,format=raw,file=RootFs/X64.img
             -device nvme,serial=toyroot,drive=toyroot,logical_block_size=512,physical_block_size=512,bootindex=1
         )
         ;;
@@ -114,7 +122,7 @@ case "${TOY_DISK:-ide}" in
         DISK_ARGS=(
             -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64
             -device ide-hd,drive=toyesp,bus=ide.0,unit=0,bootindex=0
-            -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64
+            -drive if=none,id=toyroot,format=raw,file=RootFs/X64.img
             -device ide-hd,drive=toyroot,bus=ide.0,unit=1,bootindex=1
         )
         ;;

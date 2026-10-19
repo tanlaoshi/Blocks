@@ -155,4 +155,10 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_EDIT_BUF_FULL",
     "MSG_EDIT_DIRTY_ESC",
     "MSG_EDIT_ESC",
+    "MSG_STORE_COL_MARK",
+    "MSG_STORE_COL_SRC",
+    "MSG_STORE_COL_ID",
+    "MSG_STORE_COL_NAME",
+    "MSG_STORE_SRC_LOCAL",
+    "MSG_STORE_SRC_NET",
 };

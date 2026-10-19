@@ -3,6 +3,7 @@
  * 核心：StoreUi.c
  */
 #include "StoreUiPrivate.h"
+#include "GuiPrivate.h"
 
 static void DrawButtons(void) {
     int i;
@@ -105,6 +106,77 @@ static void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
                          Inst ? ThemeTextAccent() : ThemeTextMuted());
 }
 
+static UINT32 StoreColAdv(void) {
+    UINT32 Adv = FontAdvanceX();
+    return (Adv < 8u) ? 8u : Adv;
+}
+
+/* 四列：已装、来源、编号、名称。宽度随字号变。 */
+static void StoreColumns(UINT32 *Src, UINT32 *Id, UINT32 *Name, UINT32 *Need) {
+    UINT32 Adv = StoreColAdv();
+
+    *Src = Adv * 6u;
+    *Id = *Src + Adv * 8u;
+    *Name = *Id + Adv * 12u;
+    *Need = *Name + Adv * 14u + UI_LAYOUT_PAD * 2u + STORE_SB_W + UI_LAYOUT_GAP;
+}
+
+static void StoreWidenList(UINT32 *Cw) {
+    UINT32 SideW;
+    UINT32 ListW;
+    UINT32 DetailW;
+    UINT32 Src;
+    UINT32 Id;
+    UINT32 Name;
+    UINT32 Need;
+    UINT32 Add;
+    UINT32 MaxW;
+    int Idx;
+    GUI_WINDOW *Win;
+
+    UiLayoutTriple(*Cw, &SideW, &ListW, &DetailW);
+    StoreColumns(&Src, &Id, &Name, &Need);
+    if (ListW >= Need) {
+        return;
+    }
+    Idx = gGuiWindowManager.FocusWin;
+    if (Idx < 0 || Idx >= MAX_WINS) {
+        return;
+    }
+    Win = &gGuiWindowManager.Windows[Idx];
+    if (Win->Kind != GUI_WIN_STORE) {
+        return;
+    }
+    Add = Need - ListW;
+    MaxW = gGuiWindowManager.ScreenWidth;
+    if (MaxW > 8u) {
+        MaxW -= 8u;
+    }
+    if (Win->Width >= MaxW) {
+        return;
+    }
+    if (Win->Width + Add > MaxW) {
+        Add = MaxW - Win->Width;
+    }
+    Win->Width += Add;
+    *Cw += Add;
+}
+
+static void StoreDrawField(UINT32 X, UINT32 Y, UINT32 MaxW, const char *Text, UINT32 Fg) {
+    char Buf[40];
+    int i;
+
+    if (!Text || MaxW < 4u) {
+        return;
+    }
+    for (i = 0; Text[i] && i < (int)sizeof(Buf) - 1; i++) {
+        Buf[i] = Text[i];
+    }
+    Buf[i] = 0;
+    UiFitTextUtf8(Buf, MaxW);
+    HalVideoDrawStringAt(X, Y, Buf, Fg);
+}
+
 void StorePaintList(void) {
     UINT32 Cx, Cy, Cw, Ch, Bg;
     UINT32 LineH;
@@ -120,10 +192,21 @@ void StorePaintList(void) {
     UINT32 TitleY;
     int i;
     STORE_ENTRY *Tab = StoreScratchTab();
-    char Row[72];
+    UINT32 ColSrc;
+    UINT32 ColId;
+    UINT32 ColName;
+    UINT32 ColNeed;
+    UINT32 TextY;
+    UINT32 HeaderY;
+    UINT32 OldW;
 
     if (!GuiFocusClient(&Cx, &Cy, &Cw, &Ch, &Bg)) {
         return;
+    }
+    OldW = Cw;
+    StoreWidenList(&Cw);
+    if (Cw != OldW && gGuiWindowManager.FocusWin >= 0) {
+        DrawWindowChromeAt(gGuiWindowManager.FocusWin);
     }
     GuiFrameBufferBegin();
     UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
@@ -160,7 +243,8 @@ void StorePaintList(void) {
         FootH = STORE_BTN_H + Pad;
     }
     ListBottom = Cy + Ch - FootH;
-    gStoreUiListTop = TitleY + LineH + UI_LAYOUT_GAP;
+    HeaderY = TitleY + LineH + UI_LAYOUT_GAP;
+    gStoreUiListTop = HeaderY + LineH;
     gStoreUiListLineH = LineH;
     gStoreUiListVisible = 1;
     if (ListBottom > gStoreUiListTop + LineH) {
@@ -187,41 +271,47 @@ void StorePaintList(void) {
     }
 
     HalVideoDrawStringAt(ContentX + Pad, TitleY, StoreCatLabel(gStoreUiCat), ThemeText());
+    StoreColumns(&ColSrc, &ColId, &ColName, &ColNeed);
+    TextY = HeaderY + (LineH > FontCellH() ? (LineH - FontCellH()) / 2u : 0);
+    StoreDrawField(ContentX + Pad, TextY, ColSrc > 4u ? ColSrc - 4u : ColSrc,
+                   LocStr(MSG_STORE_COL_MARK), ThemeTextMuted());
+    StoreDrawField(ContentX + Pad + ColSrc, TextY,
+                   (ColId > ColSrc + 4u) ? ColId - ColSrc - 4u : 0,
+                   LocStr(MSG_STORE_COL_SRC), ThemeTextMuted());
+    StoreDrawField(ContentX + Pad + ColId, TextY,
+                   (ColName > ColId + 4u) ? ColName - ColId - 4u : 0,
+                   LocStr(MSG_STORE_COL_ID), ThemeTextMuted());
+    StoreDrawField(ContentX + Pad + ColName, TextY,
+                   (gStoreUiListRowW > ColName + 4u) ? gStoreUiListRowW - ColName : 0,
+                   LocStr(MSG_STORE_COL_NAME), ThemeTextMuted());
+    if (gStoreUiListRowW > 0) {
+        UiFillRectangle(ContentX + Pad, HeaderY + LineH - 1u, gStoreUiListRowW, 1u,
+                        ThemePanelSeparator());
+    }
 
     RowY = gStoreUiListTop;
     for (i = 0; i < gStoreUiListVisible && gStoreUiScroll + i < gFiltCount; i++) {
         int Fi = gStoreUiScroll + i;
         int Ci = gMap[Fi];
         int Inst = CachedInstalled(Ci);
-        int k = 0;
-        const char *P;
+        UINT32 Fg;
+        const char *Src;
 
-        Row[k++] = Inst ? '*' : ' ';
-        Row[k++] = ' ';
-        Row[k++] = '[';
-        if (Tab[Ci].Origin == STORE_SRC_NET) {
-            Row[k++] = 'N';
-            Row[k++] = 'e';
-            Row[k++] = 't';
-        } else {
-            Row[k++] = 'L';
-            Row[k++] = 'o';
-            Row[k++] = 'c';
-        }
-        Row[k++] = ']';
-        Row[k++] = ' ';
-        P = Tab[Ci].Id;
-        while (*P && k < 28) {
-            Row[k++] = *P++;
-        }
-        Row[k++] = ' ';
-        P = Tab[Ci].Title;
-        while (*P && k < 70) {
-            Row[k++] = *P++;
-        }
-        Row[k] = 0;
-        UiDrawListRow(ContentX + Pad, RowY, gStoreUiListRowW, LineH, Row,
+        UiDrawListRow(ContentX + Pad, RowY, gStoreUiListRowW, LineH, "",
                       Fi == gSel, Fi == gHoverRow);
+        Fg = (Fi == gSel) ? ThemeTextOnAccent() : ThemeText();
+        TextY = RowY + (LineH > FontCellH() ? (LineH - FontCellH()) / 2u : 0);
+        Src = (Tab[Ci].Origin == STORE_SRC_NET) ? LocStr(MSG_STORE_SRC_NET)
+                                                : LocStr(MSG_STORE_SRC_LOCAL);
+        StoreDrawField(ContentX + Pad, TextY, ColSrc > 4u ? ColSrc - 4u : ColSrc,
+                       Inst ? "*" : "", Fg);
+        StoreDrawField(ContentX + Pad + ColSrc, TextY,
+                       (ColId > ColSrc + 4u) ? ColId - ColSrc - 4u : 0, Src, Fg);
+        StoreDrawField(ContentX + Pad + ColId, TextY,
+                       (ColName > ColId + 4u) ? ColName - ColId - 4u : 0, Tab[Ci].Id, Fg);
+        StoreDrawField(ContentX + Pad + ColName, TextY,
+                       (gStoreUiListRowW > ColName + 4u) ? gStoreUiListRowW - ColName : 0,
+                       Tab[Ci].Title, Fg);
         RowY += LineH;
     }
     if (gStoreUiSbVisible && gStoreUiSbH > 0) {

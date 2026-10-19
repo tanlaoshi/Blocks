@@ -14,6 +14,7 @@
 #include "StoreUi.h"
 #include "EditUi.h"
 #include "Locale.h"
+#include "UiLayout.h"
 
 int GuiOpenShell(void) {
     int Idx;
@@ -113,6 +114,9 @@ int GuiOpenStore(void) {
     UINT32 H;
     UINT32 Margin = 40;
 
+    UINT32 Adv;
+    UINT32 ListNeed;
+
     Idx = FocusExistingKind(GUI_WIN_STORE, StoreUiRepaint, "store");
     if (Idx >= 0) {
         return Idx;
@@ -122,7 +126,16 @@ int GuiOpenStore(void) {
     if (Idx < 0) {
         return -1;
     }
-    W = 920;
+    Adv = FontAdvanceX();
+    if (Adv < 8u) {
+        Adv = 8u;
+    }
+    /* 与 StorePaintList 四列同宽：已装/来源/编号/名称放不下就加宽。 */
+    ListNeed = Adv * 40u + UI_LAYOUT_PAD * 2u + 16u + UI_LAYOUT_GAP;
+    W = UI_LAYOUT_SIDE_W + UI_LAYOUT_DETAIL_MIN_W + ListNeed + 2u + GUI_CLIENT_PAD * 2u;
+    if (W < 960u) {
+        W = 960u;
+    }
     H = 600;
     if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
         W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;

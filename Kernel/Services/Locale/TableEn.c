@@ -155,4 +155,10 @@ const char *const gEnFallback[MSG_COUNT] = {
     "buffer full (2KiB)",
     "dirty: Ctrl+S or close to discard",
     "close via title X",
+    "Inst",
+    "Source",
+    "Id",
+    "Name",
+    "Local",
+    "Net",
 };

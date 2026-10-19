@@ -36,7 +36,7 @@ void TtyPaint(void) {
         return;
     }
     GuiFrameBufferBegin();
-    UiFillRectangle(X, Y, W, H, Bg);
+    GfxFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = FontAdvanceY();

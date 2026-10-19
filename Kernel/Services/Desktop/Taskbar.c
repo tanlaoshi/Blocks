@@ -66,15 +66,15 @@ static void DrawStartMark(UINT32 X, UINT32 Y, UINT32 S) {
     }
     Ox = X + (S > Span ? (S - Span) / 2u : 0);
     Oy = Y + (S > Span ? (S - Span) / 2u : 0);
-    UiFillRectangle(Ox, Oy, Cell, Cell, 0x00C07820u);
-    UiFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00C07820u);
-    UiFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00C07820u);
-    UiFillRectangle(Ox, Oy + Step, Cell, Cell, 0x001E9A8Eu);
-    UiFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00C07820u);
-    UiFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x001E9A8Eu);
-    UiFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
-    UiFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
-    UiFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    GfxFillRectangle(Ox, Oy, Cell, Cell, 0x00C07820u);
+    GfxFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00C07820u);
+    GfxFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00C07820u);
+    GfxFillRectangle(Ox, Oy + Step, Cell, Cell, 0x001E9A8Eu);
+    GfxFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00C07820u);
+    GfxFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x001E9A8Eu);
+    GfxFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    GfxFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    GfxFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
 }
 
 /* 任务栏控件（边框/开始钮/时钟）；底色由调用方 Fill / BlendFill */
@@ -102,10 +102,10 @@ static void DrawTaskbarControls(void) {
     StartBtnGeom(&Bx, &By, &Bw, &Bh);
     Start = LocStr(MSG_START);
 
-    UiDrawRectangle(0, BarY, Sw, TASKBAR_H, ThemeWindowBorderIdle());
-    UiFillRectangle(Bx, By, Bw, Bh,
+    GfxDrawRectangle(0, BarY, Sw, TASKBAR_H, ThemeWindowBorderIdle());
+    GfxFillRectangle(Bx, By, Bw, Bh,
                     gMenuOpen ? ThemeTaskbarButtonActive() : ThemeTaskbarButton());
-    UiDrawRectangle(Bx, By, Bw, Bh, ThemeWindowBorderFocus());
+    GfxDrawRectangle(Bx, By, Bw, Bh, ThemeWindowBorderFocus());
 
     Ix = Bx + START_BTN_PAD_X;
     Iy = By + (Bh > START_ICON_SZ ? (Bh - START_ICON_SZ) / 2 : 0);
@@ -151,9 +151,9 @@ void DrawTaskbarRaw(void) {
     TaskbarGeom(&BarY, &Sw, &Sh);
     Alpha = ThemeIsAlphaEnabled() ? ThemeTaskbarAlpha() : 255u;
     if (Alpha == 255u) {
-        UiFillRectangle(0, BarY, Sw, TASKBAR_H, ThemeTaskbarBackground());
+        GfxFillRectangle(0, BarY, Sw, TASKBAR_H, ThemeTaskbarBackground());
     } else {
-        UiFillRectangleAlpha(0, BarY, Sw, TASKBAR_H, ThemeTaskbarBackground(),
+        HalVideoBlendFillRect(0, BarY, Sw, TASKBAR_H, ThemeTaskbarBackground(),
                              Alpha);
     }
     DrawTaskbarControls();
@@ -164,8 +164,8 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
     int i;
     int N = Count > 0 ? Count : 1;
 
-    UiFillRectangle(Fx, Fy, Fw, Fh, ThemeControlFace());
-    UiDrawRectangle(Fx, Fy, Fw, Fh, ThemeMenuBorder());
+    GfxFillRectangle(Fx, Fy, Fw, Fh, ThemeControlFace());
+    GfxDrawRectangle(Fx, Fy, Fw, Fh, ThemeMenuBorder());
     for (i = 0; i < N; i++) {
         MENU_ROW *R;
         UINT32 Iy = Fy + (UINT32)i * MENU_ITEM_H;
@@ -176,7 +176,7 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
         const char *Lab;
         int UseIcon = (IconIdx >= 0 && IconIdx < DESKTOP_ICON_COUNT);
 
-        UiDrawRectangle(Fx, Iy, Fw, MENU_ITEM_H, ThemeMenuSep());
+        GfxDrawRectangle(Fx, Iy, Fw, MENU_ITEM_H, ThemeMenuSep());
         if (Count <= 0) {
             const char *Empty = LocStr(MSG_MENU_EMPTY);
 
@@ -203,14 +203,14 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gGameBmp);
             TextX = IconX + MENU_ICON_SZ + 6u;
         } else if (IconIdx == MENU_ICON_SRC_GAME) {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
             TextX = IconX + MENU_ICON_SZ + 6u;
         } else if (UseIcon && gIcons[IconIdx].BmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                              &gIcons[IconIdx].Bmp);
             TextX = IconX + MENU_ICON_SZ + 6u;
         } else if (UseIcon) {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             gIcons[IconIdx].IconColor);
             TextX = IconX + MENU_ICON_SZ + 6u;
         }
@@ -237,8 +237,8 @@ void DrawStartMenuRaw(void) {
     }
     MenuGeom(&Mx, &My, &Mw, &Mh);
     /* 实心面板：勿半透叠窗，否则备份/刷新易留烙印 */
-    UiFillRectangle(Mx, My, Mw, Mh, ThemeControlFace());
-    UiDrawRectangle(Mx, My, Mw, Mh, ThemeMenuBorder());
+    GfxFillRectangle(Mx, My, Mw, Mh, ThemeControlFace());
+    GfxDrawRectangle(Mx, My, Mw, Mh, ThemeMenuBorder());
     for (i = 0; i < gMenuCount; i++) {
         MENU_ROW *R = &gMenuRows[i];
         UINT32 Iy = My + (UINT32)i * MENU_ITEM_H;
@@ -249,12 +249,12 @@ void DrawStartMenuRaw(void) {
 
         if (R->Action == DESKTOP_ACTION_NONE || R->IconSrc == MENU_ICON_SRC_SEP) {
             /* 应用 / 电源分组线 */
-            UiFillRectangle(Mx + 8, Iy + MENU_ITEM_H / 2u, Mw > 16u ? Mw - 16u : Mw, 1u,
+            GfxFillRectangle(Mx + 8, Iy + MENU_ITEM_H / 2u, Mw > 16u ? Mw - 16u : Mw, 1u,
                             ThemeMenuSep());
             continue;
         }
 
-        UiDrawRectangle(Mx, Iy, Mw, MENU_ITEM_H, ThemeMenuSep());
+        GfxDrawRectangle(Mx, Iy, Mw, MENU_ITEM_H, ThemeMenuSep());
         IconX = Mx + 6;
         IconY = Iy + (MENU_ITEM_H > MENU_ICON_SZ ? (MENU_ITEM_H - MENU_ICON_SZ) / 2 : 0);
         TextX = Mx + 10;

@@ -129,7 +129,7 @@ UINT32 ThemeWindowTitleGradientBottom(UINT32 Top) {
     if (gThemeId == THEME_PALETTE_MODERN) {
         return Top;
     }
-    return UiBlendRgb(COLOR_BLACK, Top, 153u);
+    return HalVideoBlendRgb(COLOR_BLACK, Top, 153u);
 }
 
 UINT32 ThemeWindowFadeSteps(void) {

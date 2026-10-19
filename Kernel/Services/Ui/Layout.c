@@ -22,12 +22,12 @@ void UiDrawListRow(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char *
         Text = "";
     }
     if (Selected) {
-        UiFillRectangle(X, Y, Width, Height, ThemeControlAccent());
-        UiDrawRectangle(X, Y, Width, Height, ThemeControlBorder());
+        GfxFillRectangle(X, Y, Width, Height, ThemeControlAccent());
+        GfxDrawRectangle(X, Y, Width, Height, ThemeControlBorder());
         Fg = ThemeTextOnAccent();
     } else if (Hovered) {
-        UiFillRectangle(X, Y, Width, Height, ThemeControlFace());
-        UiDrawRectangle(X, Y, Width, Height, ThemeWindowTitleIdle());
+        GfxFillRectangle(X, Y, Width, Height, ThemeControlFace());
+        GfxDrawRectangle(X, Y, Width, Height, ThemeWindowTitleIdle());
         Fg = ThemeText();
     }
     if (Width > Pad * 2 && Height > 2) {
@@ -100,14 +100,14 @@ void UiDrawScrollBar(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     if (Width == 0 || Height == 0) {
         return;
     }
-    UiFillRectangle(X, Y, Width, Height, ThemeScrollTrack());
-    UiDrawRectangle(X, Y, Width, Height, ThemeScrollBorder());
+    GfxFillRectangle(X, Y, Width, Height, ThemeScrollTrack());
+    GfxDrawRectangle(X, Y, Width, Height, ThemeScrollBorder());
     if (Total <= Visible || Total <= 0) {
         return;
     }
     UiScrollThumb(X, Y, Width, Height, First, Visible, Total, &ThumbY, &ThumbH);
     if (Width > 4 && ThumbH > 2) {
-        UiFillRectangle(X + 2, ThumbY, Width > 4 ? Width - 4 : Width, ThumbH, ThemeScrollThumb());
+        GfxFillRectangle(X + 2, ThumbY, Width > 4 ? Width - 4 : Width, ThumbH, ThemeScrollThumb());
     }
 }
 

@@ -50,7 +50,7 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     if (W == 0 || H == 0) {
         return;
     }
-    UiFillRectangle(X, Y, W, H, C);
+    GfxFillRectangle(X, Y, W, H, C);
 }
 
 static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {

@@ -1,7 +1,7 @@
 /*
  * Gfx.h — 线、矩形、圆、圆角、三角。只通过注册的画点落笔。
  *
- * 半透明不在本库。UiFillRectangleAlpha / UiBlendRgb 留在 Services/Ui。
+ * 半透明不在本库，调用 HalVideoBlendFillRect / HalVideoBlendRgb。
  */
 #ifndef GFX_H
 #define GFX_H

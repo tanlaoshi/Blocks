@@ -95,7 +95,7 @@ void PaintUserClient(int Idx) {
     if (WindowOccludedByOther(Idx)) {
         FillRectOccluded(Idx, ClientX, ClientY, ClientW, ClientH, W->Background);
     } else {
-        UiFillRectangle(ClientX, ClientY, ClientW, ClientH, W->Background);
+        GfxFillRectangle(ClientX, ClientY, ClientW, ClientH, W->Background);
     }
     Count = 0;
     for (Bi = 0; Bi < 4; Bi++) {

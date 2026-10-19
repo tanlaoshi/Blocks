@@ -27,21 +27,21 @@ void UiDrawButtonEx(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char 
     /* 默认外框用控件边，悬停/按下才换成强调色（相对白 Focus 边更易辨认） */
     BorderOuter = ThemeControlBorder();
     if (Pressed) {
-        Face = UiBlendRgb(BgColor, COLOR_BLACK, 96u);
+        Face = HalVideoBlendRgb(BgColor, COLOR_BLACK, 96u);
         BorderOuter = ThemeControlAccent();
         BorderInner = ThemeControlAccent();
         Ox = 1;
         Oy = 1;
     } else if (Hovered) {
         /* Src=白盖在 Face 上：明显提亮 + 蓝框 */
-        Face = UiBlendRgb(BgColor, COLOR_WHITE, 160u);
+        Face = HalVideoBlendRgb(BgColor, COLOR_WHITE, 160u);
         BorderOuter = ThemeControlAccent();
         BorderInner = ThemeControlAccent();
     }
-    UiFillRoundRectangle(X, Y, Width, Height, 5, Face);
-    UiDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
+    GfxFillRoundRectangle(X, Y, Width, Height, 5, Face);
+    GfxDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
     if (Width > 2 && Height > 2) {
-        UiDrawRoundRectangle(X + 1, Y + 1, Width - 2, Height - 2, 5, BorderInner);
+        GfxDrawRoundRectangle(X + 1, Y + 1, Width - 2, Height - 2, 5, BorderInner);
     }
 
     while (Text[TextLen]) {
@@ -84,8 +84,8 @@ void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const
     if (!Text) {
         Text = "";
     }
-    UiFillRoundRectangle(X, Y, Width, Height, 5, Face);
-    UiDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
+    GfxFillRoundRectangle(X, Y, Width, Height, 5, Face);
+    GfxDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
     while (Text[TextLen]) {
         TextLen++;
     }
@@ -108,8 +108,8 @@ void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const
 
 /* 绘制水平进度条 */
 void UiDrawProgressBar(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Progress, UINT32 MaxProgress, UINT32 Color, UINT32 BgColor) {
-    UiFillRoundRectangle(X, Y, Width, Height, 3, BgColor);
-    UiDrawRoundRectangle(X, Y, Width, Height, 3, ThemeScrollBorder());
+    GfxFillRoundRectangle(X, Y, Width, Height, 3, BgColor);
+    GfxDrawRoundRectangle(X, Y, Width, Height, 3, ThemeScrollBorder());
 
     if (MaxProgress == 0) {
         return;
@@ -117,7 +117,7 @@ void UiDrawProgressBar(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 P
     {
         UINT32 FillWidth = (Progress * (Width - 4)) / MaxProgress;
         if (FillWidth > 0) {
-            UiFillRoundRectangle(X + 2, Y + 2, FillWidth, Height - 4, 2, Color);
+            GfxFillRoundRectangle(X + 2, Y + 2, FillWidth, Height - 4, 2, Color);
         }
     }
 }

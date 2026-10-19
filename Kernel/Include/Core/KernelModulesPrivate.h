@@ -4,15 +4,14 @@
 #ifndef KERNEL_MODULES_PRIVATE_H
 #define KERNEL_MODULES_PRIVATE_H
 
-int InitializeSerial(void);
+int SerialModuleInitialize(void);
 int InitializePhysicalMemory(void);
 int InitializeVirtualMemory(void);
-int InitializeVideo(void);
+int VideoInitialize(void);
 int DisplayHardwareInitialize(void);
-int InitializeCpu(void);
-int InitializeSmp(void);
-int InitializeUsb(void);
-int InitializeUsbUart(void);
+int CpuInitialize(void);
+int UsbInitialize(void);
+int UsbUartInitialize(void);
 int InitializeFileSystem(void);
 int InitializeGui(void);
 int InitializeNetwork(void);

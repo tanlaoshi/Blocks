@@ -13,7 +13,7 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
         if (gPowerBmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gPowerBmp);
         } else {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             ThemeIconFallbackPower());
         }
         return 1;
@@ -22,7 +22,7 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
         if (gGameBmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gGameBmp);
         } else {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
         }
         return 1;
     }
@@ -30,7 +30,7 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
         if (gRebootBmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gRebootBmp);
         } else {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             ThemeIconFallbackReboot());
         }
         return 1;
@@ -40,7 +40,7 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                              &gIcons[R->IconSrc].Bmp);
         } else {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             gIcons[R->IconSrc].IconColor);
         }
         return 1;
@@ -51,7 +51,7 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                              &gIcons[3].Bmp);
         } else {
-            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+            GfxFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             gIcons[3].IconColor);
         }
         return 1;

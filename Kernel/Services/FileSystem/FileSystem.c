@@ -282,7 +282,7 @@ int FileSystemInitialize(void) {
             if (!MountAllVolumes()) {
                 DebugWrite("FS: mount after msc auto failed\n");
                 if (!HaveVols) {
-                    (void)InitializeUsbUart();
+                    (void)UsbUartInitialize();
                     return 0;
                 }
             } else {
@@ -307,7 +307,7 @@ int FileSystemInitialize(void) {
     }
 
     /* 两次 U 盘扫描都结束再认。扫盘中途配好会被下一轮复位冲掉，棒上就没有字节。 */
-    (void)InitializeUsbUart();
+    (void)UsbUartInitialize();
 
     /*
      * PR-BOOT-fast-3：勿在此 HalIwlClaim / Probe NET。

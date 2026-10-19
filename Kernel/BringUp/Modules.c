@@ -4,7 +4,8 @@
  * 人话：串口子集 / virt 桌面 / x86 全量 各走自己的顺序表。
  * 从哪读：下方三张 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
  * 别改：各表条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
- * Initialize*：串口、处理器、多核、USB、画面在 HAL/Initialize/。
+ * 串口、处理器、USB、画面的开机函数在 HAL/Initialize/，名词在前。
+ * 多核直接调 HalSmpStartApplicationProcessors。
  * 调度、控制台、文件系统、窗口管理器、虚拟内存、驱动的开机函数在各自主文件里。
  * 选路见 BringUp/Kernel.c。
  */
@@ -24,14 +25,14 @@ static int gVirtDesktop;
 
 /* x86 全量：usb 在 FS 前；Video 紧跟 VMM；Driver 在 Video 后（Block 可绑 MMIO） */
 static const MODULE gModulesFull[] = {
-    { "Serial",          InitializeSerial },
+    { "Serial",          SerialModuleInitialize },
     { "PhysicalMemory",  InitializePhysicalMemory },
     { "VirtualMemory",   InitializeVirtualMemory },
-    { "Video",           InitializeVideo },
+    { "Video",           VideoInitialize },
     { "Driver",          InitializeDriver },
-    { "Cpu",             InitializeCpu },
-    { "Smp",             InitializeSmp },
-    { "USB",             InitializeUsb },
+    { "Cpu",             CpuInitialize },
+    { "Smp",             HalSmpStartApplicationProcessors },
+    { "USB",             UsbInitialize },
     { "FileSystem",      InitializeFileSystem },
     { "Gui",             InitializeGui },
     { "Network",         InitializeNetwork },
@@ -41,12 +42,12 @@ static const MODULE gModulesFull[] = {
 
 /* 串口子集。仍挂 FileSystem：virt --serial 有 virtio-blk，供 exec HELLO.ELF */
 static const MODULE gModulesVirt[] = {
-    { "Serial",          InitializeSerial },
+    { "Serial",          SerialModuleInitialize },
     { "PhysicalMemory",  InitializePhysicalMemory },
     { "VirtualMemory",   InitializeVirtualMemory },
     { "Driver",          InitializeDriver },
-    { "Cpu",             InitializeCpu },
-    { "Smp",             InitializeSmp },
+    { "Cpu",             CpuInitialize },
+    { "Smp",             HalSmpStartApplicationProcessors },
     { "FileSystem",      InitializeFileSystem },
     { "Scheduler",       InitializeScheduler },
     { "Console",         InitializeConsole },
@@ -54,13 +55,13 @@ static const MODULE gModulesVirt[] = {
 
 /* virt 桌面（输入在后续路径；挂 net） */
 static const MODULE gModulesVirtDesktop[] = {
-    { "Serial",          InitializeSerial },
+    { "Serial",          SerialModuleInitialize },
     { "PhysicalMemory",  InitializePhysicalMemory },
     { "VirtualMemory",   InitializeVirtualMemory },
-    { "Video",           InitializeVideo },
+    { "Video",           VideoInitialize },
     { "Driver",          InitializeDriver },
-    { "Cpu",             InitializeCpu },
-    { "Smp",             InitializeSmp },
+    { "Cpu",             CpuInitialize },
+    { "Smp",             HalSmpStartApplicationProcessors },
     { "FileSystem",      InitializeFileSystem },
     { "Gui",             InitializeGui },
     { "Network",         InitializeNetwork },

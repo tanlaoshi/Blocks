@@ -167,7 +167,7 @@ void GuiFocusClearClient(void) {
      * 整块清客户区。主题合成靠 gGuiWindowManager.DeferPresent + 上层后画，勿 FillRectOccluded，
      * 否则重叠区不换色，抬窗后备份镂空。
      */
-    UiFillRectangle(X, Y, W, H, Bg);
+    GfxFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipOrigin(X, Y, W, H, Bg);
     Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     Win->TermX = 0;

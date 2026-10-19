@@ -230,7 +230,7 @@ void BlitIconFaceRaw(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
         BlitBmpScaledRaw(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, &Icon->Bmp);
         return;
     }
-    UiFillRectangle(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, Icon->IconColor);
+    GfxFillRectangle(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, Icon->IconColor);
 }
 
 void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {

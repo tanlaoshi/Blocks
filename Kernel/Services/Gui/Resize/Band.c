@@ -89,9 +89,9 @@ void DrawResizeBand(int Idx, UINT32 Bw, UINT32 Bh) {
     if (Bw < 4 || Bh < 4) {
         return;
     }
-    UiDrawRectangle(W->X, W->Y, Bw, Bh, COLOR_WHITE);
+    GfxDrawRectangle(W->X, W->Y, Bw, Bh, COLOR_WHITE);
     if (Bw > 6 && Bh > 6) {
-        UiDrawRectangle(W->X + 1, W->Y + 1, Bw - 2, Bh - 2, COLOR_YELLOW);
+        GfxDrawRectangle(W->X + 1, W->Y + 1, Bw - 2, Bh - 2, COLOR_YELLOW);
     }
     gGuiWindowManager.ResizeBandW = Bw;
     gGuiWindowManager.ResizeBandH = Bh;

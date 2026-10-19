@@ -1,5 +1,5 @@
 /*
- * Cpu.c — InitializeCpu（开机模块表；Hal 本层）
+ * Cpu.c — CpuInitialize（开机模块表；Hal 本层）
  *
  * HAL / 定时器 / syscall；其后 COM1 再探 + FPU 岛自检。virt 顺带挂 virtio 输入。
  */
@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "ToySerialLog.h"
 
-int InitializeCpu(void) {
+int CpuInitialize(void) {
     if (HalInitialize() != 0) {
         return -1;
     }

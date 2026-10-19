@@ -152,6 +152,7 @@ void GuiComposeDamage(void) {
 
     HalVideoClearClip();
     DesktopDrawStartMenu();
+    DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
     gGuiWindowManager.FocusWin = SavedFocus;
     if (SavedFocus >= 0 && SavedFocus < MAX_WINS &&

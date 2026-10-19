@@ -61,6 +61,15 @@ void DesktopDraw(void);
 void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 开始菜单弹出层（开着时叠画在窗上；点菜单外则收起，再按窗聚焦） */
 void DesktopDrawStartMenu(void);
+/* 桌面右键：设置、关机、重启。点在窗口上不弹出。 */
+void DesktopContextMenuOpen(UINT32 X, UINT32 Y);
+void DesktopContextMenuClose(void);
+void DesktopContextMenuReset(void);
+int DesktopContextMenuIsOpen(void);
+void DesktopDrawContextMenu(void);
+int DesktopContextMenuHandleClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction);
+int DesktopContextMenuCoverGet(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
+void DesktopContextMenuCoverClear(void);
 /* PR-N-nic-tray：网络简况弹层（叠在窗上） */
 void DesktopDrawNetTrayPopup(void);
 int DesktopStartMenuIsOpen(void);

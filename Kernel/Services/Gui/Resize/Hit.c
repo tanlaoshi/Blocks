@@ -56,7 +56,7 @@ int GuiResizeCursorKindAt(UINT32 X, UINT32 Y) {
     if (gGuiWindowManager.ResizeWin >= 0) {
         Edge = gGuiWindowManager.ResizeEdge;
     } else {
-        if (DesktopStartMenuIsOpen()) {
+        if (DesktopStartMenuIsOpen() || DesktopContextMenuIsOpen()) {
             return CURSOR_KIND_ARROW;
         }
         Top = TopWindowAt(X, Y);

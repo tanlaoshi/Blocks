@@ -206,6 +206,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
             gMenuAppsOpen = 0;
             gMenuGameOpen = 0;
             DesktopNetTrayClose();
+            DesktopContextMenuClose();
             /* 切语言脏标记 / 空表：此处才允许同步扫盘（点开始可接受一顿） */
             DesktopEnsureMenuRebuilt();
             if (gMenuCount <= 0) {

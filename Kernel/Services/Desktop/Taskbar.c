@@ -40,6 +40,43 @@ static void FillRectFreeAlpha(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
     }
 }
 
+/* 开始钮：开机九宫格合上的样子。格 6、缝 1，比 8/2 更紧。 */
+static void DrawStartMark(UINT32 X, UINT32 Y, UINT32 S) {
+    UINT32 Cell = 6;
+    UINT32 Gap = 1;
+    UINT32 Step;
+    UINT32 Span;
+    UINT32 Ox;
+    UINT32 Oy;
+
+    if (S < 14u) {
+        Cell = 2;
+        Gap = 1;
+    }
+    Step = Cell + Gap;
+    Span = Cell * 3u + Gap * 2u;
+    if (Span > S) {
+        Cell = S / 3u;
+        if (Cell < 1u) {
+            Cell = 1u;
+        }
+        Gap = 0;
+        Step = Cell;
+        Span = Cell * 3u;
+    }
+    Ox = X + (S > Span ? (S - Span) / 2u : 0);
+    Oy = Y + (S > Span ? (S - Span) / 2u : 0);
+    UiFillRectangle(Ox, Oy, Cell, Cell, 0x00F0A030u);
+    UiFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00F0A030u);
+    UiFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00F0A030u);
+    UiFillRectangle(Ox, Oy + Step, Cell, Cell, 0x002EC4B6u);
+    UiFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00F0A030u);
+    UiFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x002EC4B6u);
+    UiFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
+    UiFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
+    UiFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x002EC4B6u);
+}
+
 /* 任务栏控件（边框/开始钮/时钟）；底色由调用方 Fill / BlendFill */
 static void DrawTaskbarControls(void) {
     UINT32 Sw;
@@ -72,11 +109,7 @@ static void DrawTaskbarControls(void) {
 
     Ix = Bx + START_BTN_PAD_X;
     Iy = By + (Bh > START_ICON_SZ ? (Bh - START_ICON_SZ) / 2 : 0);
-    if (gStartBmpReady) {
-        BlitBmpScaledRaw(Ix, Iy, START_ICON_SZ, START_ICON_SZ, &gStartBmp);
-    } else {
-        UiFillRectangle(Ix, Iy, START_ICON_SZ, START_ICON_SZ, ThemeTaskbarButtonActive());
-    }
+    DrawStartMark(Ix, Iy, START_ICON_SZ);
     Tx = Ix + START_ICON_SZ + 6u;
     Ty = BarY + (TASKBAR_H > FontCellH() ? (TASKBAR_H - FontCellH()) / 2 : 0);
     HalVideoDrawStringAt(Tx, Ty, Start ? Start : "Start",
@@ -145,11 +178,14 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
 
         UiDrawRectangle(Fx, Iy, Fw, MENU_ITEM_H, ThemeMenuSep());
         if (Count <= 0) {
+            const char *Empty = LocStr(MSG_MENU_EMPTY);
+
             HalVideoDrawStringAt(Fx + 10u,
                                  Iy + (MENU_ITEM_H > FontCellH()
                                            ? (MENU_ITEM_H - FontCellH()) / 2
                                            : 0),
-                                 "(empty)", ThemeControlBorder());
+                                 (Empty && Empty[0]) ? Empty : "Empty",
+                                 ThemeControlBorder());
             break;
         }
         R = &Rows[i];
@@ -158,7 +194,18 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
         IconX = Fx + 6;
         IconY = Iy + (MENU_ITEM_H > MENU_ICON_SZ ? (MENU_ITEM_H - MENU_ICON_SZ) / 2 : 0);
         TextX = Fx + 10;
-        if (UseIcon && gIcons[IconIdx].BmpReady) {
+        if (R->IconSrc >= 0 && R->IconSrc < DESKTOP_ICON_COUNT &&
+            gIcons[R->IconSrc].BmpReady) {
+            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+                             &gIcons[R->IconSrc].Bmp);
+            TextX = IconX + MENU_ICON_SZ + 6u;
+        } else if (IconIdx == MENU_ICON_SRC_GAME && gGameBmpReady) {
+            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gGameBmp);
+            TextX = IconX + MENU_ICON_SZ + 6u;
+        } else if (IconIdx == MENU_ICON_SRC_GAME) {
+            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
+            TextX = IconX + MENU_ICON_SZ + 6u;
+        } else if (UseIcon && gIcons[IconIdx].BmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                              &gIcons[IconIdx].Bmp);
             TextX = IconX + MENU_ICON_SZ + 6u;
@@ -248,7 +295,8 @@ void DrawStartMenuRaw(void) {
         UINT32 Fh;
 
         GameFlyoutGeom(&Fx, &Fy, &Fw, &Fh);
-        DrawFlyoutBox(Fx, Fy, Fw, Fh, gMenuGameRows, gMenuGameCount, 3);
+        DrawFlyoutBox(Fx, Fy, Fw, Fh, gMenuGameRows, gMenuGameCount,
+                      MENU_ICON_SRC_GAME);
     }
 
     DesktopMenuCoverUpdate();

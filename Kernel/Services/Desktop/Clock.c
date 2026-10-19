@@ -130,6 +130,9 @@ void DesktopTickClock(void) {
         if (gMenuOpen) {
             DrawStartMenuRaw();
         }
+        if (DesktopContextMenuIsOpen()) {
+            DesktopDrawContextMenu();
+        }
         if (DesktopNetTrayIsOpen()) {
             DesktopNetTrayDrawPopup();
         }

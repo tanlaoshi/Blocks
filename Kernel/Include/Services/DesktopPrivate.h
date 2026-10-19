@@ -29,7 +29,7 @@
 #define DESKTOP_SYS_ICON_COUNT 5 /* Shell/Settings/Files/Store/Devices；Snake 只经 Store */
 #define DESKTOP_APP_ICON_MAX   8
 #define DESKTOP_ICON_COUNT     (DESKTOP_SYS_ICON_COUNT + DESKTOP_APP_ICON_MAX)
-#define DESKTOP_ICON_SIZE     64
+#define DESKTOP_ICON_SIZE     48 /* 与 bmp48 同大，1:1 绘制，不再放大到 64 */
 #define DESKTOP_ICON_GAP      UI_LAYOUT_ICON_GAP
 #define DESKTOP_ORIGIN_X      36
 #define DESKTOP_ORIGIN_Y      36
@@ -42,7 +42,7 @@
 #define TASKBAR_H             40u
 #define START_BTN_PAD_X       10u
 #define START_BTN_MIN_W       72u
-#define START_ICON_SZ         28u
+#define START_ICON_SZ         20u /* 九宫格：格 6、缝 1 */
 #define MENU_W                240u
 /* 行高跟令牌下限；绘制侧可用 UiLayoutRowH() 再抬 */
 #define MENU_ITEM_H           36u
@@ -59,6 +59,7 @@
 #define MENU_ICON_SRC_POWER   (-2)
 #define MENU_ICON_SRC_REBOOT  (-3)
 #define MENU_ICON_SRC_SEP     (-4)
+#define MENU_ICON_SRC_GAME    (-5)
 #define WALL_FILE_MAX         (512u * 1024u)
 #define ICON_FILE_MAX         (16u * 1024u)
 
@@ -122,6 +123,8 @@ extern BMP_IMAGE gPowerBmp;
 extern int gPowerBmpReady;
 extern BMP_IMAGE gRebootBmp;
 extern int gRebootBmpReady;
+extern BMP_IMAGE gGameBmp;
+extern int gGameBmpReady;
 
 extern int gMenuOpen;
 extern UINT32 gMenuCoverX;
@@ -177,6 +180,8 @@ void DrawOneIconRaw(const DESKTOP_ICON *Icon, int Selected);
 void DrawOneIconOccluded(const DESKTOP_ICON *Icon, int Selected);
 void DrawTaskbarRaw(void);
 void DrawStartMenuRaw(void);
+int DesktopContextMenuSample(UINT32 X, UINT32 Y, UINT32 *Out);
+void DesktopContextMenuDrawIfHit(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void DrawTaskbarOccluded(void);
 void DesktopMenuCoverUpdate(void);
 int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY);

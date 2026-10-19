@@ -313,6 +313,7 @@ void GuiUserEnqueueKey(UINT8 HidKey);
 int GuiUserDequeueKeyEvent(void);
 
 /* PR-F-guiclick-1：GuiClick*.c */
+int GuiClickTryContextMenu(UINT32 X, UINT32 Y);
 int GuiClickTryDesktopBar(UINT32 X, UINT32 Y);
 int GuiClickTryDesktopMiss(UINT32 X, UINT32 Y);
 int GuiClickTryUserClient(UINT32 X, UINT32 Y);

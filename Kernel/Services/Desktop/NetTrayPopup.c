@@ -3,7 +3,7 @@
 #include "HalDevices.h"
 #include "NetConfig.h"
 
-#define NET_ICON      16u
+#define NET_ICON      26u
 #define NET_POP_PAD   8u
 #define NET_POP_W     200u
 #define NET_POP_LINES 5

@@ -172,6 +172,7 @@ typedef enum {
     MSG_STORE_COL_NAME,
     MSG_STORE_SRC_LOCAL,
     MSG_STORE_SRC_NET,
+    MSG_MENU_EMPTY,
     MSG_COUNT
 } MSG_ID;
 

@@ -10,15 +10,12 @@
 #include "UI.h"
 #include "Hal.h"
 #include "HalVideo.h"
-#include "Font.h"
 #include "ToySerialLog.h"
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00101828u
-#define LOGO_FG     0x00E8EEF4u
 #define LOGO_ACCENT 0x00F0A030u
 #define LOGO_TEAL   0x002EC4B6u
-#define LOGO_TEXT_SCALE 3u
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
 #define LOGO_OPEN   112u
@@ -93,57 +90,6 @@ static void PaintPieces(UINT32 Pct) {
     gPct = Pct;
 }
 
-/* 内建字是 10×18，标题按 3 倍点阵画，大约 54 像素高。 */
-static UINT32 TitleWidth(const char *S) {
-    const FONT_FACE *F = FontGetCurrent();
-    UINT32 N = 0;
-
-    if (F == 0) {
-        return FontStringWidth(S);
-    }
-    while (S[N] != 0) {
-        N++;
-    }
-    if (N == 0) {
-        return 0;
-    }
-    return N * (F->Width + F->CharSpacing) * LOGO_TEXT_SCALE - F->CharSpacing * LOGO_TEXT_SCALE;
-}
-
-static void DrawTitle(UINT32 X, UINT32 Y, const char *S, UINT32 Color) {
-    const FONT_FACE *F = FontGetCurrent();
-    UINT32 Step;
-    UINT32 i;
-
-    if (F == 0 || F->BytesPerRow == 0) {
-        HalVideoDrawStringAt(X, Y, S, Color);
-        return;
-    }
-    Step = (F->Width + F->CharSpacing) * LOGO_TEXT_SCALE;
-    for (i = 0; S[i] != 0; i++) {
-        const UINT8 *Glyph = FontGlyph(S[i]);
-        UINT32 Row;
-        UINT32 Col;
-
-        if (Glyph == 0) {
-            continue;
-        }
-        for (Row = 0; Row < F->Height; Row++) {
-            for (Col = 0; Col < F->Width; Col++) {
-                UINT8 Byte = Glyph[Row * F->BytesPerRow + (Col / 8u)];
-                UINT32 Bit = 7u - (Col % 8u);
-
-                if ((Byte & (1u << Bit)) == 0) {
-                    continue;
-                }
-                Fill(X + i * Step + Col * LOGO_TEXT_SCALE,
-                     Y + Row * LOGO_TEXT_SCALE,
-                     LOGO_TEXT_SCALE, LOGO_TEXT_SCALE, Color);
-            }
-        }
-    }
-}
-
 static void LogoHoldUntilMin(void) {
     UINT64 Need = (UINT64)LOGO_MIN_MS * LOGO_TSC_PER_MS;
     UINT64 Start = gLogoTsc;
@@ -162,9 +108,6 @@ void DesktopBootLogoShow(void) {
     UINT32 H;
     UINT32 MarkW;
     UINT32 MarkH;
-    UINT32 TextW;
-    UINT32 TextX;
-    const char *Title = "Blocks";
 
     if (gLogoUp) {
         return;
@@ -181,14 +124,8 @@ void DesktopBootLogoShow(void) {
     gMarkW = MarkW;
     gMarkH = MarkH;
     gAx = (W > MarkW) ? (W - MarkW) / 2 : 0;
-    {
-        UINT32 Span = MarkH + LOGO_OPEN + 20 + 54;
-
-        gAy = (H > Span) ? ((H - Span) / 2 + LOGO_OPEN) : LOGO_OPEN;
-    }
-    TextW = TitleWidth(Title);
-    TextX = (W > TextW) ? (W - TextW) / 2 : 0;
-    DrawTitle(TextX, gAy + MarkH + 20, Title, LOGO_FG);
+    /* 与引导相同：合成后的九格居中，T 从上方落下。 */
+    gAy = (H > MarkH) ? (H - MarkH) / 2 : 0;
     /* 引导读盘时 T 已落到 40，这里接上，避免弹回顶部。 */
     PaintPieces(40);
     HalVideoPresentFlush();

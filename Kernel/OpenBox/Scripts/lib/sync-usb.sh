@@ -36,6 +36,9 @@ sync_toyos_fw() {
       --exclude 'WIFI.CFG' \
       --exclude 'WIFI_H.CFG' \
       --exclude 'WIFI_C.CFG' \
+      --filter 'protect WIFI.CFG' \
+      --filter 'protect WIFI_H.CFG' \
+      --filter 'protect WIFI_C.CFG' \
       --no-owner --no-group --no-perms \
       "$SrcFw/" "$Dest/FW/"
   else
@@ -46,9 +49,7 @@ sync_toyos_fw() {
       local base
       base="$(basename "$f")"
       if [[ "$base" == "WIFI.CFG" || "$base" == "WIFI_H.CFG" || "$base" == "WIFI_C.CFG" ]]; then
-        if [[ -f "$Dest/FW/$base" ]]; then
-          continue
-        fi
+        continue
       fi
       cp -f "$f" "$Dest/FW/"
     done
@@ -313,6 +314,9 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'FW/WIFI.CFG' \
     --exclude 'FW/WIFI_H.CFG' \
     --exclude 'FW/WIFI_C.CFG' \
+    --filter 'protect FW/WIFI.CFG' \
+    --filter 'protect FW/WIFI_H.CFG' \
+    --filter 'protect FW/WIFI_C.CFG' \
     "$ROOT/RootFs/X64/" "$TOY_MNT/"
 else
   echo "error: rsync is required for a full TOYOS mirror" >&2

@@ -9,6 +9,9 @@
 int GuiHandleClick(UINT32 X, UINT32 Y) {
     int i;
 
+    if (GuiClickTryContextMenu(X, Y)) {
+        return 1;
+    }
     /* 关闭钮可能被其它窗口挡住；先扫一遍所有窗口的 × 区域 */
     for (i = MAX_WINS - 1; i >= 0; i--) {
         if (gGuiWindowManager.Windows[i].Active && PointInClose(&gGuiWindowManager.Windows[i], X, Y)) {

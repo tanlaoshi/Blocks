@@ -40,6 +40,9 @@ sync_toyos_fw() {
       --exclude 'WIFI.CFG' \
       --exclude 'WIFI_H.CFG' \
       --exclude 'WIFI_C.CFG' \
+      --filter 'protect WIFI.CFG' \
+      --filter 'protect WIFI_H.CFG' \
+      --filter 'protect WIFI_C.CFG' \
       --no-owner --no-group --no-perms \
       "$SrcFw/" "$Dest/FW/"
   else
@@ -48,7 +51,7 @@ sync_toyos_fw() {
       [[ -e "$f" ]] || continue
       base="$(basename "$f")"
       if [[ "$base" == "WIFI.CFG" || "$base" == "WIFI_H.CFG" || "$base" == "WIFI_C.CFG" ]]; then
-        [[ -f "$Dest/FW/$base" ]] && continue
+        continue
       fi
       cp -f "$f" "$Dest/FW/"
     done
@@ -271,9 +274,13 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'FW/WIFI.CFG' \
     --exclude 'FW/WIFI_H.CFG' \
     --exclude 'FW/WIFI_C.CFG' \
+    --filter 'protect FW/WIFI.CFG' \
+    --filter 'protect FW/WIFI_H.CFG' \
+    --filter 'protect FW/WIFI_C.CFG' \
     "$ROOT/RootFs/X64/" "$TOY_MNT/"
 else
-  cp -a "$ROOT/RootFs/X64/." "$TOY_MNT/"
+  echo "error: 需要 rsync。没有它时整盘拷贝会盖掉盘上已写好的 FW/WIFI.CFG" >&2
+  exit 1
 fi
 sync_toyos_fw "$TOY_MNT"
 

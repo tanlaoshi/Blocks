@@ -4,7 +4,7 @@
 #include "NetConfig.h"
 
 #define NET_TRAY_GAP 12u
-#define NET_ICON     16u
+#define NET_ICON     26u
 
 static int gNetTrayOpen;
 static NET_TRAY_KIND gNetKindCache = NET_TRAY_NONE;
@@ -102,22 +102,33 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     }
 }
 
+/* 小电脑比上一版大约小 5%，屏幕边框各边多 1 像素。通网绿，不通红。 */
+static void DrawIconPc(UINT32 X, UINT32 Y, UINT32 Screen) {
+    Fill(X + 2, Y + 1, 23, 17, 0x005A5A5Au);
+    Fill(X + 3, Y + 2, 21, 2, 0x00C8C8C8u);
+    Fill(X + 5, Y + 5, 17, 10, Screen);
+    Fill(X + 5, Y + 5, 17, 2, Screen == 0x0024D024u ? 0x0066F066u : 0x00FF6060u);
+    Fill(X + 10, Y + 18, 6, 3, 0x00707070u);
+    Fill(X + 6, Y + 21, 15, 3, 0x00888888u);
+}
+
 static void DrawIconNone(UINT32 X, UINT32 Y, UINT32 Fg) {
-    Fill(X + 2, Y + 2, 12, 3, Fg);
-    Fill(X + 2, Y + 11, 12, 3, Fg);
-    Fill(X + 6, Y + 2, 4, 12, Fg);
+    (void)Fg;
+    DrawIconPc(X, Y, 0x00D02020u);
 }
 static void DrawIconWired(UINT32 X, UINT32 Y, UINT32 Fg) {
-    Fill(X + 5, Y + 1, 6, 9, Fg);
-    Fill(X + 3, Y + 9, 10, 4, Fg);
-    Fill(X + 1, Y + 13, 4, 2, Fg);
-    Fill(X + 11, Y + 13, 4, 2, Fg);
+    (void)Fg;
+    DrawIconPc(X, Y, 0x0024D024u);
 }
+/* 四格信号，比上一版大约小 10%。从左到右越来越高，通着就四格都亮。 */
 static void DrawIconWifi(UINT32 X, UINT32 Y, UINT32 Fg) {
-    Fill(X + 6, Y + 12, 4, 3, Fg);
-    Fill(X + 4, Y + 8, 8, 3, Fg);
-    Fill(X + 2, Y + 4, 12, 3, Fg);
-    Fill(X + 0, Y + 1, 16, 2, Fg);
+    static const UINT32 BarH[4] = { 7, 12, 16, 21 };
+    UINT32 i;
+    UINT32 Bottom = Y + 22;
+
+    for (i = 0; i < 4; i++) {
+        Fill(X + 2 + i * 6, Bottom - BarH[i], 4, BarH[i], Fg);
+    }
 }
 
 void DesktopNetTrayClose(void) {
@@ -174,7 +185,12 @@ void DesktopNetTrayDraw(UINT32 ClockX, UINT32 TextY) {
     gIpCache = Addr;
 
     DesktopNetTrayGeom(ClockX, &X, &W);
-    IconY = TextY + (FontCellH() > NET_ICON ? (FontCellH() - NET_ICON) / 2 : 0);
+    if (NET_ICON > FontCellH()) {
+        IconY = (TextY > (NET_ICON - FontCellH()) / 2)
+            ? (TextY - (NET_ICON - FontCellH()) / 2) : 0;
+    } else {
+        IconY = TextY + (FontCellH() - NET_ICON) / 2;
+    }
     if (Kind == NET_TRAY_WIRED) {
         DrawIconWired(X, IconY, Fg);
     } else if (Kind == NET_TRAY_WIFI) {

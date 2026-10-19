@@ -161,4 +161,5 @@ const char *const gZhFallback[MSG_COUNT] = {
     "名称",
     "本地",
     "网络",
+    "空",
 };

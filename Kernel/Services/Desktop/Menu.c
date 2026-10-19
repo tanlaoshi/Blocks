@@ -77,12 +77,12 @@ typedef struct {
 static MENU_SYS_ROW gMenuReg[MENU_REG_MAX];
 static int gMenuRegCount;
 
-/* Apps、Game、关机、重启仍留在桌面。前五行看登记顺序。 */
+/* Apps、Game、重启、关机仍留在桌面。顺序看这张表。 */
 static const MENU_SYS_ROW gMenuSysRows[] = {
     { DESKTOP_ACTION_APPS, MSG_ICON_APPS, "Apps", 3, 1 },
-    { DESKTOP_ACTION_GAME, MSG_ICON_GAME, "Game", 3, 1 },
-    { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
+    { DESKTOP_ACTION_GAME, MSG_ICON_GAME, "Game", MENU_ICON_SRC_GAME, 1 },
     { DESKTOP_ACTION_REBOOT, MSG_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT, 1 },
+    { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
 };
 
 void DesktopMenuRegister(DESKTOP_ACTION Action, int Msg, const char *Fallback,
@@ -126,7 +126,7 @@ void RebuildStartMenu(void) {
         L = LocStr(Row->Msg);
         MenuAddRow(Row->Action, L ? L : Row->Fallback, 0, Row->Enabled, Row->IconSrc);
         if (Row->Action == DESKTOP_ACTION_GAME) {
-            /* Game 行用 Store 图标。二级紧跟在 Game 行之后，再列 Apps。 */
+            /* Game 行用 GAME.BMP。二级紧跟在 Game 行之后，再列 Apps。 */
             FillStartMenuGameRows();
             FillStartMenuAppRows(MenuMaxAppSlots());
         }

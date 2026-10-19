@@ -13,7 +13,6 @@
 #include "EditUi.h"
 #include "Console.h"
 #include "Process.h"
-#include "ToySerialLog.h"
 
 void GuiOnDisplayResize(void) {
     int i;
@@ -115,11 +114,13 @@ void GuiOnArrowKey(UINT8 Key) {
 }
 
 
-/* PR-I3：右键占位 — 仅串口记一笔；不弹菜单、不派发点击（菜单另刀） */
+/* 右键：窗口上只收起；桌面、图标、任务栏弹出设置/关机/重启 */
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y) {
-    (void)X;
-    (void)Y;
-    ToyLogGui("Gui: right-click\n");
+    if (GuiPointInAnyWindow(X, Y)) {
+        DesktopContextMenuClose();
+        return;
+    }
+    DesktopContextMenuOpen(X, Y);
 }
 
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
@@ -168,7 +169,7 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
             GfxIrqLeave();
         }
     }
-    /* PR-I3：右键按下边沿 → 占位回调（bit1） */
+    /* 右键按下边沿 */
     if ((Mouse->Buttons & 2) && !(gGuiWindowManager.MousePrevBtn & 2)) {
         GuiRightClickPlaceholder(Mouse->X, Mouse->Y);
     }

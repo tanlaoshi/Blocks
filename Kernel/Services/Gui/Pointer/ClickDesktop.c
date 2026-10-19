@@ -38,6 +38,18 @@ static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
     }
 }
 
+int GuiClickTryContextMenu(UINT32 X, UINT32 Y) {
+    DESKTOP_ACTION Act = DESKTOP_ACTION_NONE;
+
+    if (!DesktopContextMenuHandleClick(X, Y, &Act)) {
+        return 0;
+    }
+    if (Act != DESKTOP_ACTION_NONE) {
+        GuiClickRunDesktopAction(Act, 0);
+    }
+    return 1;
+}
+
 int GuiClickTryDesktopBar(UINT32 X, UINT32 Y) {
     DESKTOP_ACTION Act = DESKTOP_ACTION_NONE;
     char ExecPath[96];

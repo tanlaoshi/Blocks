@@ -141,6 +141,7 @@ void SyncWindowVisualsEx(int ClearDesktop) {
         }
     }
     DesktopDrawStartMenu();
+    DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
     GfxIrqEnter();
     CursorPaint();

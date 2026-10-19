@@ -50,6 +50,7 @@ void DesktopDrawRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
             }
         }
     }
+    DesktopContextMenuDrawIfHit(X, Y, W, H);
 }
 
 int DesktopSamplePixel(UINT32 X, UINT32 Y, UINT32 *Out) {
@@ -72,6 +73,9 @@ int DesktopSamplePixel(UINT32 X, UINT32 Y, UINT32 *Out) {
 
     if (!Out) {
         return 0;
+    }
+    if (DesktopContextMenuSample(X, Y, Out)) {
+        return 1;
     }
     CellH = FontCellH();
     Face = FontGetCurrent();

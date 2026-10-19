@@ -18,6 +18,14 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
         }
         return 1;
     }
+    if (R->Action == DESKTOP_ACTION_GAME || R->IconSrc == MENU_ICON_SRC_GAME) {
+        if (gGameBmpReady) {
+            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gGameBmp);
+        } else {
+            UiFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
+        }
+        return 1;
+    }
     if (R->Action == DESKTOP_ACTION_REBOOT) {
         if (gRebootBmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gRebootBmp);

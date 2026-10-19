@@ -132,13 +132,9 @@ static void StoreWidenList(UINT32 *Cw) {
     UINT32 Add;
     UINT32 MaxW;
     int Idx;
+    int Grown;
     GUI_WINDOW *Win;
 
-    UiLayoutTriple(*Cw, &SideW, &ListW, &DetailW);
-    StoreColumns(&Src, &Id, &Name, &Need);
-    if (ListW >= Need) {
-        return;
-    }
     Idx = gGuiWindowManager.FocusWin;
     if (Idx < 0 || Idx >= MAX_WINS) {
         return;
@@ -147,24 +143,36 @@ static void StoreWidenList(UINT32 *Cw) {
     if (Win->Kind != GUI_WIN_STORE) {
         return;
     }
-    Add = Need - ListW;
     MaxW = gGuiWindowManager.ScreenWidth;
     if (MaxW > 8u) {
         MaxW -= 8u;
     }
-    if (Win->Width >= MaxW) {
-        return;
+    StoreColumns(&Src, &Id, &Name, &Need);
+    /*
+     * 详情栏按客户区三分之一长。只补「缺口」一次，多出来的宽度会再被详情吃掉，
+     * 列表仍短一截。连补几次，直到列表放下四列或碰到屏幕边。
+     */
+    Grown = 0;
+    for (;;) {
+        UiLayoutTriple(*Cw, &SideW, &ListW, &DetailW);
+        if (ListW >= Need || Win->Width >= MaxW) {
+            break;
+        }
+        Add = Need - ListW;
+        if (Win->Width + Add > MaxW) {
+            Add = MaxW - Win->Width;
+        }
+        if (Add == 0) {
+            break;
+        }
+        Win->Width += Add;
+        *Cw += Add;
+        Grown = 1;
     }
-    if (Win->Width + Add > MaxW) {
-        Add = MaxW - Win->Width;
-    }
-    if (Add == 0) {
-        return;
-    }
-    Win->Width += Add;
-    *Cw += Add;
     /* 加宽后旧备份尺寸不够，整窗作废，避免拖动时右侧透出后窗按钮 */
-    gGuiWindowManager.WinBackupValid[Idx] = 0;
+    if (Grown) {
+        gGuiWindowManager.WinBackupValid[Idx] = 0;
+    }
 }
 
 static void StoreDrawField(UINT32 X, UINT32 Y, UINT32 MaxW, const char *Text, UINT32 Fg) {
@@ -210,10 +218,21 @@ void StorePaintList(void) {
     }
     OldW = Cw;
     StoreWidenList(&Cw);
-    if (Cw != OldW && gGuiWindowManager.FocusWin >= 0) {
+    GuiFrameBufferBegin();
+    /*
+     * 加宽只改了 Win->Width。标题和客户区会重画，右边 GUI_CLIENT_PAD
+     * 那一圈原先靠开窗时铺的底板，这里不补就会露出桌面。
+     */
+    if (Cw != OldW && gGuiWindowManager.FocusWin >= 0 &&
+        gGuiWindowManager.FocusWin < MAX_WINS) {
+        GUI_WINDOW *Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
+
+        if (Win->Width > 2 && Win->Height > TITLE_HEIGHT + 1) {
+            UiFillRectangle(Win->X + 1, Win->Y + TITLE_HEIGHT, Win->Width - 2,
+                            Win->Height - TITLE_HEIGHT - 1, Win->Background);
+        }
         DrawWindowChromeAt(gGuiWindowManager.FocusWin);
     }
-    GuiFrameBufferBegin();
     UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, Bg);
 

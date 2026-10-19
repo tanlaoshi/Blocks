@@ -161,4 +161,5 @@ const char *const gEnFallback[MSG_COUNT] = {
     "Name",
     "Local",
     "Net",
+    "Empty",
 };

@@ -47,6 +47,8 @@ BMP_IMAGE gPowerBmp;
 int gPowerBmpReady;
 BMP_IMAGE gRebootBmp;
 int gRebootBmpReady;
+BMP_IMAGE gGameBmp;
+int gGameBmpReady;
 int gMenuOpen;
 UINT32 gMenuCoverX;
 UINT32 gMenuCoverY;
@@ -246,6 +248,7 @@ void DesktopOnDisplayResize(void) {
     gMenuOpen = 0;
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
+    DesktopContextMenuReset();
     gIconDragIdx = -1;
     gIconDragMoved = 0;
     FreeWallScreen();

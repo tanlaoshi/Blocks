@@ -134,6 +134,8 @@ void LoadDesktopIcons(void) {
                                  ICON_FILE_MAX, "desktop: power");
     gRebootBmpReady = LoadBmpPath("Assets/Icons/bmp48/REBOOT.BMP", &gRebootBmp,
                                   ICON_FILE_MAX, "desktop: reboot");
+    gGameBmpReady = LoadBmpPath("Assets/Icons/bmp48/GAME.BMP", &gGameBmp,
+                                ICON_FILE_MAX, "desktop: game");
 }
 
 void DesktopIconsResetDeferred(void) {

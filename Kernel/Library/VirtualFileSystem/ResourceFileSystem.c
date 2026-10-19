@@ -1,5 +1,5 @@
 /*
- * ResFs.c — 只读「资源卷」第二 VFS 后端（PR-F3）
+ * ResourceFileSystem.c — 只读资源卷，虚拟文件系统的第二套后端（PR-F3）
  *
  * 无 Block：内核内嵌只读文件表。挂载名 RES:；写/删/建目录一律 ROFS。
  * 桌面图标/壁纸改从 TOYOS:Assets 读取；本卷仅教学小文本，不内嵌 BMP。
@@ -253,7 +253,7 @@ static int ResWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
     return FAT_ERR_ROFS;
 }
 
-static const FS_OPS gResFsOps = {
+static const FS_OPS gResourceFileSystemOps = {
     .Name = "res",
     .Mount = ResMount,
     .ListDir = ResListDir,
@@ -271,6 +271,6 @@ static const FS_OPS gResFsOps = {
     .WriteFileAt = ResWriteFileAt,
 };
 
-const FS_OPS *ResFsOps(void) {
-    return &gResFsOps;
+const FS_OPS *ResourceFileSystemOps(void) {
+    return &gResourceFileSystemOps;
 }

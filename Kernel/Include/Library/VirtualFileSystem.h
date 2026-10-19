@@ -63,7 +63,7 @@ extern VIRTUAL_FILE_SYSTEM_OPS gVirtualFileSystem;
 
 /* FAT 后端（Library/Fat）；FS=ram 时由 FileSystem/Student 提供同名 FatFsOps */
 const FS_OPS *FatFsOps(void);
-const FS_OPS *ResFsOps(void);
+const FS_OPS *ResourceFileSystemOps(void);
 const FS_OPS *RamFsOps(void);
 
 #endif

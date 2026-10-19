@@ -216,7 +216,7 @@ void FsMountAddResVolume(void) {
     FS_VOLUME *V;
     int Idx;
 
-    if (gVolCount >= FS_MAX_VOLUMES || !ResFsOps()) {
+    if (gVolCount >= FS_MAX_VOLUMES || !ResourceFileSystemOps()) {
         return;
     }
     V = &gVols[gVolCount];
@@ -226,7 +226,7 @@ void FsMountAddResVolume(void) {
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = 1;
     V->HasToyId = 0;
-    V->Ops = ResFsOps();
+    V->Ops = ResourceFileSystemOps();
     StringCopy(V->Name, FS_VOL_NAME_MAX, "RES");
     if (gVirtualFileSystem.Select(V->Ops) == 0 && gVirtualFileSystem.Mount(0) == FAT_OK) {
         gVolCount++;

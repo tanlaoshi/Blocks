@@ -1,5 +1,5 @@
 /*
- * BlockMux.c — Primary + MSC 双后端（PR-H-msc）
+ * Mux.c — Primary + MSC 双后端（PR-H-msc）
  *
  * DriveN 先试 Primary->Probe(N)；空位再挂 MSC（仅一次）。
  * PR-H-msc-1：MSC Probe 恒失败 → 行为与未安装 Mux 前的 Primary 一致。

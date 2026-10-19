@@ -232,7 +232,7 @@ int FileSystemInitialize(void) {
         DebugWrite("FS: gVirtualFileSystem.Register(fat) failed\n");
         return 0;
     }
-    if (gVirtualFileSystem.Register(ResFsOps()) != 0) {
+    if (gVirtualFileSystem.Register(ResourceFileSystemOps()) != 0) {
         DebugWrite("FS: gVirtualFileSystem.Register(res) failed\n");
         return 0;
     }

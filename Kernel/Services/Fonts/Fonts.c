@@ -19,7 +19,7 @@
 #define FONT_TOYF_VERSION 1u
 #define FONT_TOYF_HDR     32u
 #define FONT_FILE_MAX     (64u * 1024u)
-/* 系统字占 0..FONT_APP_SLOT-1，来自 Assets/Fonts/*.FNT；末槽专供应用私有字 */
+/* 系统字占 0..FONT_APP_SLOT-1，来自 Assets/Fonts 下的 FNT；末槽专供应用私有字 */
 #define FONT_RUNTIME_MAX  8u
 #define FONT_APP_SLOT     (FONT_RUNTIME_MAX - 1u)
 #define FONT_NAME_MAX     16u

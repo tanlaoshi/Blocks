@@ -186,6 +186,13 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     if (Oy < 0) {
         Oy = 0;
     }
+    /*
+     * 两倍点收成一格时按偶数行配对。上横若从奇数行起，会和上面的空行对半，
+     * 看起来像被削掉一像素。上移一行，上沿落在偶数行。
+     */
+    if (Oy > 0 && (Oy & 1)) {
+        Oy--;
+    }
     if (Ox + Gw > TTF_HI) {
         Gw = TTF_HI - Ox;
     }

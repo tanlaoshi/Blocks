@@ -1,6 +1,6 @@
 /*
  * StoreNetParse.c — 响应正文与 FNV-1a-32
- * 核心：StoreNet.c
+ * 核心：Net.c
  */
 #include "StoreNetPrivate.h"
 

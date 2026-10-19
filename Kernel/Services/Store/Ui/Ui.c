@@ -1,6 +1,6 @@
 /*
- * StoreUi.c — 商店三分栏核心（全局、开窗）
- * 过滤：StoreUiModel.c；绘制：StoreUiPaint.c；输入：StoreUiInput.c。
+ * Ui.c — 商店三分栏核心（全局、开窗）
+ * 过滤：Model.c；绘制：Paint.c；输入：Input.c。
  */
 #include "StoreUiPrivate.h"
 

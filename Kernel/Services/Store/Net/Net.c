@@ -1,6 +1,6 @@
 /*
- * StoreNet.c — 仓库地址与 sync（目录）/ fetch（兼容→install）
- * HTTP：StoreNetHttp.c；解析与哈希：StoreNetParse.c。
+ * Net.c — 仓库地址与 sync（目录）/ fetch（兼容→install）
+ * HTTP：Http.c；解析与哈希：Parse.c。
  */
 #include "StoreNetPrivate.h"
 

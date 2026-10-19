@@ -1,6 +1,6 @@
 /*
  * StoreUiModel.c — 分类过滤、已装缓存、选中项、仓库源文件
- * 核心：StoreUi.c
+ * 核心：Ui.c
  */
 #include "StoreUiPrivate.h"
 #include "FileSystem.h"

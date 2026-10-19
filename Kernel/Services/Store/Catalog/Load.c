@@ -1,5 +1,5 @@
 /*
- * StoreCatalog.c — catalog 解析与加载（本地 Store/ + 远程 remote.cat 合并）
+ * Load.c — catalog 解析与加载（本地 Store/ + 远程 remote.cat 合并）
  */
 #include "Store.h"
 #include "StorePrivate.h"

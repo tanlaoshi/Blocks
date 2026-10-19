@@ -1,6 +1,6 @@
 /*
  * StoreUiInput.c — 点击、悬停、装卸队列
- * 核心：StoreUi.c
+ * 核心：Ui.c
  */
 #include "StoreUiPrivate.h"
 

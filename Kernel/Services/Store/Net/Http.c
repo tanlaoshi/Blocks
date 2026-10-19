@@ -1,7 +1,7 @@
 /*
  * StoreNetHttp.c — HTTP/1.0 GET（内建 TCP）
  * 成功 0；正文在堆页内，调用方 FreePages。
- * 核心：StoreNet.c
+ * 核心：Net.c
  */
 #include "StoreNetPrivate.h"
 #include "Scheduler.h"

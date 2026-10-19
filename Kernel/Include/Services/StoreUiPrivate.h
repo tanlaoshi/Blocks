@@ -1,8 +1,8 @@
 /*
- * StoreUiPrivate.h — StoreUi 内部共享头（仅 Services/StoreUi 使用）
+ * StoreUiPrivate.h — StoreUi 内部共享头（仅 Services/Store/Ui 使用）
  *
  * 禁止 User 程序、HAL、Core 包含本文件。
- * 源文件在 Services/StoreUi/（核心 StoreUi.c）。
+ * 源文件在 Services/Store/Ui/（核心 Ui.c）。
  * 对外 API 仍在 StoreUi.h。
  */
 #ifndef STORE_UI_PRIVATE_H
@@ -44,7 +44,7 @@ typedef enum {
     STORE_CAT_COUNT
 } STORE_CAT;
 
-/* ===== 全局（定义在 StoreUi.c） ===== */
+/* ===== 全局（定义在 Ui.c） ===== */
 extern int gStoreUiCat; /* 与 SettingsUi 的 gCat 区分 */
 extern int gSel;
 extern int gStoreUiScroll; /* 与 FilesUi 的 gScroll 区分 */
@@ -82,7 +82,7 @@ void StoreUiFormatRepo(char *Out, int OutMax); /* "repo: a.b.c.d:port" */
 void StoreUiApplyRepoFile(void);               /* 读 Store/repo.txt → store.repo */
 int  StoreUiWriteRepoFile(void);               /* 当前源写入 repo.txt；0=ok */
 
-/* ===== StoreUi.c ===== */
+/* ===== Ui.c ===== */
 void StoreUiActInitialize(void);
 int StoreUiActDispatch(int Btn, int Pressed, int Hit);
 

@@ -1,6 +1,6 @@
 /*
  * StoreUiPaint.c — 左栏 / 列表 / 详情 / 底栏按钮
- * 核心：StoreUi.c
+ * 核心：Ui.c
  */
 #include "StoreUiPrivate.h"
 #include "GuiPrivate.h"
@@ -64,9 +64,9 @@ static void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     if (LineH < 14) {
         LineH = 14;
     }
-    UiFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
+    GfxFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
     if (W > 3) {
-        UiFillRectangle(X, Y, 3, H, ThemePanelSeparator());
+        GfxFillRectangle(X, Y, 3, H, ThemePanelSeparator());
     }
     Ty = Y + 8;
     MaxY = Y + H - 4;
@@ -228,12 +228,12 @@ void StorePaintList(void) {
         GUI_WINDOW *Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
 
         if (Win->Width > 2 && Win->Height > TITLE_HEIGHT + 1) {
-            UiFillRectangle(Win->X + 1, Win->Y + TITLE_HEIGHT, Win->Width - 2,
+            GfxFillRectangle(Win->X + 1, Win->Y + TITLE_HEIGHT, Win->Width - 2,
                             Win->Height - TITLE_HEIGHT - 1, Win->Background);
         }
         DrawWindowChromeAt(gGuiWindowManager.FocusWin);
     }
-    UiFillRectangle(Cx, Cy, Cw, Ch, Bg);
+    GfxFillRectangle(Cx, Cy, Cw, Ch, Bg);
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, Bg);
 
     LineH = UiLayoutRowH();
@@ -249,9 +249,9 @@ void StorePaintList(void) {
         gStoreUiSideLineH = LineH;
         gStoreUiSideRow0 = TitleY + LineH + UI_LAYOUT_GAP;
         RowW = SideW > Pad * 2u ? SideW - Pad * 2u : SideW;
-        UiFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
+        GfxFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
         if (SideW > UI_LAYOUT_SEP_W) {
-            UiFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
+            GfxFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
         HalVideoDrawStringAt(Cx + Pad, TitleY, LocStr(MSG_APP_STORE), ThemeText());
@@ -309,7 +309,7 @@ void StorePaintList(void) {
                    (gStoreUiListRowW > ColName + 4u) ? gStoreUiListRowW - ColName : 0,
                    LocStr(MSG_STORE_COL_NAME), ThemeTextMuted());
     if (gStoreUiListRowW > 0) {
-        UiFillRectangle(ContentX + Pad, HeaderY + LineH - 1u, gStoreUiListRowW, 1u,
+        GfxFillRectangle(ContentX + Pad, HeaderY + LineH - 1u, gStoreUiListRowW, 1u,
                         ThemePanelSeparator());
     }
 

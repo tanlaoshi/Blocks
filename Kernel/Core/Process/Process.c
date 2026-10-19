@@ -145,7 +145,10 @@ int ProcessExec(const char *Path) {
     Info.StackTop = NewRsp;
     HalInstallUserMode();
     /* 单用户 GUI：先停旧任务，避免 Raise 挪槽导致 wid 串台 */
-    ProcessStopAllUsers();
+    /* 只有会开窗的程序才清掉已有用户进程。Hello 只打一行字，不应关掉 GUI Demo。 */
+    if (ProcessAppTakesWindow(Path)) {
+        ProcessStopAllUsers();
+    }
     SchedulerReapOrphanZombies();
     ProcessApplyAppFont(Path);
     if (ProcessStartElf(Space, &Info, Path) != 0) {

@@ -71,6 +71,19 @@ void ProcessRestoreAppFont(void) {
     DebugWrite("process: app font restored\n");
 }
 
+int ProcessAppTakesWindow(const char *Path) {
+    STORE_APP_DESKTOP_META Meta;
+    char Id[STORE_ID_MAX];
+
+    if (!Path || ExtractAppsId(Path, Id, (int)sizeof(Id)) != 0) {
+        return 0;
+    }
+    if (StoreReadAppDesktopMeta(Id, &Meta) != FAT_OK) {
+        return 0;
+    }
+    return Meta.WindowYes ? 1 : 0;
+}
+
 void ProcessApplyAppFont(const char *Path) {
     STORE_APP_DESKTOP_META Meta;
     char Id[STORE_ID_MAX];

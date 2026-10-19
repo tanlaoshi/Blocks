@@ -65,7 +65,7 @@ typedef struct {
     int      WaitPrompt;
     int      PromptShown;
     char     TitleBuf[64];
-    char     ClientText[128];
+    char     ClientText[1024]; /* 多行列表，如任务管理器 */
     int      ClosePending;
     volatile int Closing; /* CloseWindow 重入保护（exit 收窗 vs 点击关窗）；SMP 可见 */
 } GUI_WINDOW;
@@ -189,6 +189,8 @@ UINT32 WindowBorderColor(int Idx);
 int TopWindowAt(UINT32 X, UINT32 Y);
 void GuiHoverUpdate(UINT32 X, UINT32 Y);
 void CloseButtonRect(const GUI_WINDOW *W, UINT32 *Bx, UINT32 *By, UINT32 *Bw, UINT32 *Bh);
+/* 标题文字在标题栏里垂直居中。 */
+UINT32 TitleTextY(const GUI_WINDOW *W);
 void DrawCloseButton(int Idx, const GUI_WINDOW *W);
 int PixelOccludedByAbove(int Idx, UINT32 X, UINT32 Y);
 void FillRectOccluded(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 Color);

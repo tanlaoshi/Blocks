@@ -15,5 +15,7 @@ void ProcessStopAllUsers(void);
 /* PR-S-app-font：Apps/<id>/ + PKG font= → 挂/卸私有字 */
 void ProcessApplyAppFont(const char *Path);
 void ProcessRestoreAppFont(void);
+/* PKG window=yes 才占用户窗。Hello 这类控制台程序不要关掉已经开着的窗。 */
+int ProcessAppTakesWindow(const char *Path);
 
 #endif

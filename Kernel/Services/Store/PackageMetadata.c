@@ -30,6 +30,8 @@ static void ApplyPkgLine(STORE_APP_DESKTOP_META *Out, const char *Key,
     }
     if (StrEqIgnoreCase(Key, "desktop")) {
         Out->DesktopYes = IsYesToken(Val);
+    } else if (StrEqIgnoreCase(Key, "window")) {
+        Out->WindowYes = IsYesToken(Val);
     } else if (StrEqIgnoreCase(Key, "taskbar")) {
         Out->TaskbarYes = IsYesToken(Val);
     } else if (StrEqIgnoreCase(Key, "title") && Val) {
@@ -104,6 +106,7 @@ int StoreReadAppDesktopMeta(const char *Id, STORE_APP_DESKTOP_META *Out) {
     }
     Out->DesktopYes = 0;
     Out->TaskbarYes = 0;
+    Out->WindowYes = 0;
     Out->CategoryGame = 0;
     Out->Title[0] = 0;
     Out->IconRel[0] = 0;

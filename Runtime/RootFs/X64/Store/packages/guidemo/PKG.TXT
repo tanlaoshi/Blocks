@@ -8,5 +8,5 @@ title=GUI Demo
 depends=demopack,sun8
 desktop=yes
 taskbar=yes
+window=yes
 icon=Assets/icon.bmp
-font=Assets/APP.FNT

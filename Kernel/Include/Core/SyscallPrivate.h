@@ -11,7 +11,7 @@
 #define COPY_BUF_MAX 256
 /* 与 TASK_FD.Path[64] 对齐，便于 CRT 打开子路径 */
 #define PATH_MAX_LEN 63
-#define WIN_STR_MAX  127
+#define WIN_STR_MAX  1023 /* 与 GUI_WINDOW.ClientText 一致，任务列表要整段送进内核 */
 
 int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen);
 /* 路径：最多 PATH_MAX_LEN 字节，按页一次拷入；越界与现在一样返回 -1。缓冲至少 PATH_MAX_LEN+1 */

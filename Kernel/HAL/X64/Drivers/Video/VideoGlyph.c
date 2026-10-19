@@ -136,7 +136,8 @@ static void PaintGlyph(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
             UINT8 Alpha;
 
             if (GlyphBit(Glyph, Bpr, Width, Height, (INT32)Col, (INT32)Row)) {
-                PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, 255);
+                /* 与放大路径同一系数。gamma 混合下 3/4 会发灰，15/16 只比实心略浅。 */
+                PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, 239);
                 continue;
             }
             if (!gGlyphSmooth) {
@@ -316,6 +317,8 @@ static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
             UINT32 Sx1 = ((Col + 1u) * SrcW) / DstW;
             UINT32 Sx;
             UINT8 Alpha = 0;
+            UINT32 Sum = 0;
+            UINT32 Samples = 0;
 
             if (Sx1 <= Sx0) {
                 Sx1 = Sx0 + 1u;
@@ -323,7 +326,7 @@ static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
             if (Sx1 > SrcW) {
                 Sx1 = SrcW;
             }
-            for (Sy = Sy0; Sy < Sy1 && Alpha < 255u; Sy++) {
+            for (Sy = Sy0; Sy < Sy1 && (Bpp == 1u || Alpha < 255u); Sy++) {
                 for (Sx = Sx0; Sx < Sx1; Sx++) {
                     UINT8 Sample;
 
@@ -338,10 +341,18 @@ static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
                                      ? 255u
                                      : 0u;
                     }
-                    if (Sample > Alpha) {
+                    if (Bpp == 1u) {
+                        Sum += Sample;
+                        Samples++;
+                    } else if (Sample > Alpha) {
                         Alpha = Sample;
                     }
                 }
+            }
+            if (Bpp == 1u) {
+                /* 点阵实心比汉字灰度深。按格子平均后再收到 15/16，避免发灰。 */
+                Alpha = Samples ? (UINT8)(Sum / Samples) : 0;
+                Alpha = (UINT8)((Alpha * 15u) / 16u);
             }
             if (Alpha != 0u) {
                 PaintBlock(X + Col, Y + Row, 1u, 1u, Color, Alpha);

@@ -48,6 +48,7 @@ typedef struct STORE_INSTALLED {
 typedef struct STORE_APP_DESKTOP_META {
     int DesktopYes;
     int TaskbarYes;
+    int WindowYes; /* window=yes：会占一扇用户窗，启动前关掉已有用户程序 */
     int CategoryGame; /* category=game → 开始菜单 Game，不进 Apps */
     char Title[STORE_TITLE_MAX];
     char IconRel[STORE_ICON_REL_MAX];

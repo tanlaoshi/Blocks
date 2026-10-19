@@ -25,7 +25,7 @@ static void EditSaveInit(void) {
     gEditSave.Button.Y = 0;
     gEditSave.Button.W = 72;
     gEditSave.Button.H = 24;
-    gEditSave.Button.Text = "Save";
+    gEditSave.Button.Text = LocStr(MSG_EDIT_SAVE);
     gEditSave.Button.Enabled = 0;
     gEditSave.Button.Visible = 0;
     gEditSave.Button.m_State = UI_BUTTON_STATE_NORMAL;
@@ -80,7 +80,7 @@ int InsertChar(char C) {
     UINTN i;
 
     if (gEditLen + 1 >= EDIT_BUF_MAX) {
-        EditSetStatus("buffer full (2KiB)");
+        EditSetStatus(LocStr(MSG_EDIT_BUF_FULL));
         return 0;
     }
     for (i = gEditLen; i > gCursor; i--) {
@@ -91,7 +91,7 @@ int InsertChar(char C) {
     gCursor++;
     gBuf[gEditLen] = 0;
     gEditDirty = 1;
-    EditSetStatus("modified");
+    EditSetStatus(LocStr(MSG_EDIT_MODIFIED));
     return 1;
 }
 
@@ -107,14 +107,14 @@ void DeleteAt(UINTN Pos) {
     gEditLen--;
     gBuf[gEditLen] = 0;
     gEditDirty = 1;
-    EditSetStatus("modified");
+    EditSetStatus(LocStr(MSG_EDIT_MODIFIED));
 }
 
 void EditUiSave(void) {
     int Err;
 
     if (gPath[0] == 0) {
-        EditSetStatus("no path");
+        EditSetStatus(LocStr(MSG_EDIT_NO_PATH));
         EditUiRepaint();
         return;
     }
@@ -123,7 +123,7 @@ void EditUiSave(void) {
         EditSetStatus(FatStrError(Err));
     } else {
         gEditDirty = 0;
-        EditSetStatus("saved");
+        EditSetStatus(LocStr(MSG_EDIT_SAVED));
     }
     EditUiRepaint();
 }
@@ -142,7 +142,7 @@ void EditUiOpen(const char *Path) {
     EditSetStatus("");
 
     if (!Path || !Path[0]) {
-        EditSetStatus("bad path");
+        EditSetStatus(LocStr(MSG_EDIT_BAD_PATH));
         return;
     }
     StringCopy(gPath, sizeof(gPath), Path);
@@ -150,12 +150,12 @@ void EditUiOpen(const char *Path) {
     if (Err == FAT_OK) {
         gEditLen = N;
         gBuf[gEditLen] = 0;
-        EditSetStatus("ready  Ctrl+S save");
+        EditSetStatus(LocStr(MSG_EDIT_READY));
     } else if (Err == FAT_ERR_NOENT) {
         gEditLen = 0;
         gBuf[0] = 0;
         gEditDirty = 1;
-        EditSetStatus("new file  Ctrl+S create");
+        EditSetStatus(LocStr(MSG_EDIT_NEW));
     } else {
         EditSetStatus(FatStrError(Err));
     }

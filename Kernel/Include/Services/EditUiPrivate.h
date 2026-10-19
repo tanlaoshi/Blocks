@@ -18,6 +18,7 @@
 #include "UiAction.h"
 #include "Hal.h"
 #include "Theme.h"
+#include "Locale.h"
 
 /* ===== 宏（从 EditUi.c 搬入；值不变） ===== */
 #define EDIT_PATH_MAX   96

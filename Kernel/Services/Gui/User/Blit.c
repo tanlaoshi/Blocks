@@ -10,6 +10,45 @@
 #include "Theme.h"
 #include "Font.h"
 
+/* 制表符分列。任务管理器的表头和每一行共用这些起点，列才对得齐。 */
+static const UINT32 kClientColX[5] = { 0u, 28u, 108u, 320u, 440u };
+
+static void DrawClientLine(UINT32 X, UINT32 Y, UINT32 Cw, const char *Line, UINT32 Color) {
+    const char *P;
+    int Col;
+    int AnyTab;
+
+    AnyTab = 0;
+    for (P = Line; *P; P++) {
+        if (*P == '\t') {
+            AnyTab = 1;
+            break;
+        }
+    }
+    if (!AnyTab) {
+        HalVideoDrawStringAt(X, Y, Line, Color);
+        return;
+    }
+    P = Line;
+    Col = 0;
+    while (*P && Col < 5) {
+        char Field[64];
+        int N = 0;
+
+        while (*P && *P != '\t' && N + 1 < (int)sizeof(Field)) {
+            Field[N++] = *P++;
+        }
+        Field[N] = 0;
+        if (*P == '\t') {
+            P++;
+        }
+        if (Field[0] != 0 && kClientColX[Col] < Cw) {
+            HalVideoDrawStringAt(X + kClientColX[Col], Y, Field, Color);
+        }
+        Col++;
+    }
+}
+
 void PaintUserClient(int Idx) {
     GUI_WINDOW *W;
     UINT32 Cx;
@@ -58,20 +97,31 @@ void PaintUserClient(int Idx) {
     } else {
         UiFillRectangle(ClientX, ClientY, ClientW, ClientH, W->Background);
     }
+    Count = 0;
+    for (Bi = 0; Bi < 4; Bi++) {
+        if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
+            Count++;
+        }
+    }
     if (W->ClientText[0] != 0) {
         UINT32 Ty;
+        UINT32 TextBottom;
         const char *P;
         char Line[128];
         int Li;
 
         /*
          * 支持 '\\n' 多行（TaskMgr 等长文案）；单行仍走原路径语义。
-         * 行高按当前系统字 FontAdvanceY。
+         * 行高按当前系统字 FontAdvanceY。有底栏按钮时，字停在按钮上方。
          */
+        TextBottom = Cy + Ch;
+        if (Count > 0 && Ch >= 48u) {
+            TextBottom = Cy + Ch - 36u - 8u;
+        }
         HalVideoSetClipOrigin(Cx, Cy, Cw, Ch, W->Background);
         Ty = Cy;
         P = W->ClientText;
-        while (*P && Ty + FontAdvanceY() <= Cy + Ch) {
+        while (*P && Ty + FontAdvanceY() <= TextBottom) {
             Li = 0;
             while (*P && *P != '\n' && Li + 1 < (int)sizeof(Line)) {
                 Line[Li++] = *P++;
@@ -81,17 +131,11 @@ void PaintUserClient(int Idx) {
                 P++;
             }
             if (Line[0] != 0) {
-                HalVideoDrawStringAt(Cx, Ty, Line, ThemeText());
+                DrawClientLine(Cx, Ty, Cw, Line, ThemeText());
             }
             Ty += FontAdvanceY();
         }
         HalVideoClearClip();
-    }
-    Count = 0;
-    for (Bi = 0; Bi < 4; Bi++) {
-        if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
-            Count++;
-        }
     }
     if (Count == 0 || Ch < 48) {
         return;

@@ -1,17 +1,9 @@
 /*
- * 人话：这里是「任务管理器」窗口程序。列出内核里正在跑的任务。
- *       打开：开始菜单 → Apps → Task Manager（也可桌面图标）。
- *       或商店里安装 taskmgr 后再从 Apps 进。
- *
- * 从哪读：main（文件末尾）→ Refresh 拉一张快照 → Paint 画当前这一行。
- *
- * 别改：toy_task_snap / TOY_TASK_SNAP 的字段含义（与 Shell 命令 ps 同一份）。
- *       按钮编号 0/1/2 与 ToyUiAddButton 的添加顺序绑死。
- *       Pid 是槽位+1，和 kill 命令用的号码一样，不是 getpid() 的裸任务 Id。
- *
- * 想照着做：Documents/开发/如何写一个任务管理器App.md
+ * 任务管理器。文字跟系统语言：读 BLOCKS.DB 的 lang=（缺省汉语，与内核一致）。
+ * 列表里用上下键或「下一项」移动选择。刷新 / 下一项 / 结束三个按钮保留。
  */
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sched.h>
 #include <signal.h>
@@ -21,55 +13,100 @@
 static TOY_TASK_SNAP gSnap;
 static int gIndex;
 static int gWid = -1;
+static int gZh = 1;
+
+static const char *Tr(const char *En, const char *Zh) {
+    return gZh ? Zh : En;
+}
+
+static void LoadLang(void) {
+    FILE *F;
+    char Buf[512];
+    size_t N;
+    char *P;
+
+    gZh = 1;
+    F = fopen("BLOCKS.DB", "r");
+    if (!F) {
+        return;
+    }
+    N = fread(Buf, 1, sizeof(Buf) - 1, F);
+    fclose(F);
+    Buf[N] = 0;
+    P = Buf;
+    while (*P) {
+        if (P[0] == 'l' && P[1] == 'a' && P[2] == 'n' && P[3] == 'g' && P[4] == '=') {
+            gZh = (P[5] == 'z' && P[6] == 'h');
+            return;
+        }
+        while (*P && *P != '\n') {
+            P++;
+        }
+        if (*P == '\n') {
+            P++;
+        }
+    }
+}
 
 static const char *StateWord(uint32_t Flags) {
     if (Flags & TOY_TASK_F_ZOMBIE) {
-        return "zombie";
+        return Tr("zombie", "僵尸");
     }
     if (Flags & TOY_TASK_F_BLOCKED) {
-        return "blocked";
+        return Tr("blocked", "阻塞");
     }
     if (Flags & TOY_TASK_F_CURRENT) {
-        return "run*";
+        return Tr("running", "运行");
     }
-    return "ready";
+    return Tr("ready", "就绪");
+}
+
+static const char *KindWord(uint32_t Flags) {
+    if (Flags & TOY_TASK_F_USER) {
+        return Tr("User", "用户");
+    }
+    return Tr("Kernel", "内核");
 }
 
 static void Paint(void) {
-    char Line[120];
-    const TOY_TASK_ENTRY *E;
-    unsigned long Ms;
+    char Page[1024];
+    int Used;
+    unsigned i;
 
     if (gWid < 0) {
         return;
     }
-    Ms = clock_ms();
     if (gSnap.Count == 0) {
-        snprintf(Line, sizeof(Line), "no tasks\nfree=%upg t=%lums",
-                 (unsigned)gSnap.FreePages, Ms);
-        ToyUiSetLabel(gWid, Line);
+        snprintf(Page, sizeof(Page), "%s", Tr("no tasks", "没有任务"));
+        ToyUiSetLabel(gWid, Page);
         return;
     }
-    if (gIndex < 0) {
+    if (gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
         gIndex = 0;
     }
-    if ((unsigned)gIndex >= gSnap.Count) {
-        gIndex = 0;
+    Used = snprintf(Page, sizeof(Page), "\t%s\t%s\t%s\t%s\n",
+                    Tr("pid", "编号"), Tr("name", "名称"),
+                    Tr("kind", "类型"), Tr("state", "状态"));
+    if (Used < 0 || Used >= (int)sizeof(Page)) {
+        Used = 0;
     }
-    E = &gSnap.Tasks[gIndex];
-    /* List 控件只画色块、不写字，所以用标签两行显示当前任务。
-     * 内核客户区认 '\\n' 换行；一行太长会被裁掉。 */
-    snprintf(Line, sizeof(Line),
-             "%d/%u pid=%d %s %s %s\nt=%u cpu=%d prio=%d free=%u t=%lums",
-             gIndex + 1, (unsigned)gSnap.Count, (int)E->Pid, E->Name,
-             (E->Flags & TOY_TASK_F_USER) ? "user" : "kern", StateWord(E->Flags),
-             (unsigned)E->Ticks, (int)E->OnCpu, (int)E->Priority,
-             (unsigned)gSnap.FreePages, Ms);
-    ToyUiSetLabel(gWid, Line);
+    for (i = 0; i < gSnap.Count && Used < (int)sizeof(Page) - 1; i++) {
+        const TOY_TASK_ENTRY *E = &gSnap.Tasks[i];
+        int N;
+
+        N = snprintf(Page + Used, sizeof(Page) - (size_t)Used,
+                     "%c\t%d\t%s\t%s\t%s\n",
+                     (int)i == gIndex ? '>' : ' ', (int)E->Pid, E->Name,
+                     KindWord(E->Flags), StateWord(E->Flags));
+        if (N < 0 || Used + N >= (int)sizeof(Page)) {
+            break;
+        }
+        Used += N;
+    }
+    ToyUiSetLabel(gWid, Page);
 }
 
 static int Refresh(void) {
-    /* 与 Shell `ps` 同一份快照；Magic/Version 对不上说明内核 ABI 对不上。 */
     if (toy_task_snap(&gSnap) != 0) {
         return -1;
     }
@@ -78,32 +115,45 @@ static int Refresh(void) {
     }
     if (gSnap.Count == 0) {
         gIndex = 0;
-    } else if ((unsigned)gIndex >= gSnap.Count) {
+    } else if (gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
         gIndex = (int)gSnap.Count - 1;
     }
     Paint();
     return 0;
 }
 
+static void Move(int Delta) {
+    if (gSnap.Count == 0) {
+        return;
+    }
+    gIndex += Delta;
+    while (gIndex < 0) {
+        gIndex += (int)gSnap.Count;
+    }
+    while ((unsigned)gIndex >= gSnap.Count) {
+        gIndex -= (int)gSnap.Count;
+    }
+    Paint();
+}
+
 static void KillCurrent(void) {
     const TOY_TASK_ENTRY *E;
 
     if (gSnap.Count == 0 || gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
-        ToyUiSetLabel(gWid, "nothing to kill");
+        ToyUiSetLabel(gWid, Tr("nothing to end", "没有可结束的任务"));
         return;
     }
-    /* 只杀用户态任务；内核任务和自己都不能杀。Pid 见文件头。 */
     E = &gSnap.Tasks[gIndex];
     if (!(E->Flags & TOY_TASK_F_USER)) {
-        ToyUiSetLabel(gWid, "refuse: kernel task");
+        ToyUiSetLabel(gWid, Tr("refuse: kernel task", "不能结束内核任务"));
         return;
     }
     if (E->Pid == gSnap.SelfPid) {
-        ToyUiSetLabel(gWid, "refuse: self");
+        ToyUiSetLabel(gWid, Tr("refuse: self", "不能结束自己"));
         return;
     }
     if (kill((pid_t)E->Pid, SIGKILL) != 0) {
-        ToyUiSetLabel(gWid, "kill failed");
+        ToyUiSetLabel(gWid, Tr("end failed", "结束失败"));
         return;
     }
     Refresh();
@@ -112,14 +162,9 @@ static void KillCurrent(void) {
 static void DrainClicks(void) {
     int Ev;
 
-    /* AddButton 时可能已经排队点击，先抽空，免得一开窗就误触发 Refresh/Next/Kill。 */
-
     for (;;) {
         Ev = ToyUiPoll(gWid);
-        if (Ev <= 0) {
-            break;
-        }
-        if (Ev == TOY_UI_EVENT_CLOSE) {
+        if (Ev <= 0 || Ev == TOY_UI_EVENT_CLOSE) {
             break;
         }
     }
@@ -128,26 +173,23 @@ static void DrainClicks(void) {
 int main(void) {
     int Ev;
 
-    gWid = ToyUiCreateWindow("TaskMgr", 520, 200);
+    LoadLang();
+    gWid = ToyUiCreateWindow(Tr("Task Manager", "任务管理器"), 720, 600);
     if (gWid < 0) {
         printf("taskmgr: create fail\n");
         return 1;
     }
-    /* 0=Refresh 1=Next 2=Kill；ToyUi 按添加顺序编号，对调这里会点错按钮。 */
-    if (ToyUiAddButton(gWid, 0, "Refresh") != 0 ||
-        ToyUiAddButton(gWid, 1, "Next") != 0 ||
-        ToyUiAddButton(gWid, 2, "Kill") != 0) {
+    if (ToyUiAddButton(gWid, 0, Tr("Refresh", "刷新")) != 0 ||
+        ToyUiAddButton(gWid, 1, Tr("Next", "下一项")) != 0 ||
+        ToyUiAddButton(gWid, 2, Tr("Kill", "结束")) != 0) {
         printf("taskmgr: button fail\n");
         return 1;
     }
     DrainClicks();
     gIndex = 0;
     if (Refresh() != 0) {
-        printf("taskmgr: snap fail\n");
-        ToyUiSetLabel(gWid, "snap syscall failed");
+        ToyUiSetLabel(gWid, Tr("snapshot failed", "读取任务失败"));
     }
-    printf("taskmgr: wid=%d self=%d count=%u\n", gWid, (int)gSnap.SelfPid,
-           (unsigned)gSnap.Count);
 
     for (;;) {
         Ev = ToyUiPoll(gWid);
@@ -156,19 +198,23 @@ int main(void) {
         }
         if (Ev == TOY_UI_BUTTON_EVENT(0)) {
             if (Refresh() != 0) {
-                ToyUiSetLabel(gWid, "refresh fail");
+                ToyUiSetLabel(gWid, Tr("refresh failed", "刷新失败"));
             }
         } else if (Ev == TOY_UI_BUTTON_EVENT(1)) {
-            if (gSnap.Count > 0) {
-                gIndex = (gIndex + 1) % (int)gSnap.Count;
-                Paint();
-            }
+            Move(1);
         } else if (Ev == TOY_UI_BUTTON_EVENT(2)) {
             KillCurrent();
+        } else if (TOY_UI_IS_KEY(Ev)) {
+            int Hid = TOY_UI_KEY_CODE(Ev);
+
+            if (Hid == 0x52) {
+                Move(-1);
+            } else if (Hid == 0x51) {
+                Move(1);
+            }
         } else {
             sched_yield();
         }
     }
-    printf("taskmgr: closed\n");
     return 0;
 }

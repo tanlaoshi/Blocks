@@ -59,7 +59,7 @@ static void Paint(void) {
     gEditSave.Button.H = LineH + 8;
     gEditSave.Button.X = X + W - gEditSave.Button.W - 12;
     gEditSave.Button.Y = Y + 4;
-    gEditSave.Button.Text = "Save";
+    gEditSave.Button.Text = LocStr(MSG_EDIT_SAVE);
     gEditSave.Button.Enabled = (gPath[0] != 0);
     if (gEditSave.Button.X > X + 8) {
         gEditSave.Button.Visible = 1;

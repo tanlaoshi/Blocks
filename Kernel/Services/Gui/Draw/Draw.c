@@ -207,7 +207,7 @@ void DrawWindowAtEx(int Idx, int Occlude) {
                          W->Height - TITLE_HEIGHT - 1, W->Background);
     }
     if (W->Title != 0 && W->Title[0] != 0) {
-        HalVideoDrawStringAt(W->X + 8, W->Y + 4, W->Title, ThemeWindowTitleText());
+        HalVideoDrawStringAt(W->X + 8, TitleTextY(W), W->Title, ThemeWindowTitleText());
     }
     /* 关闭钮也整块画，勿 Occlude（否则未聚焦 Shell 的 × 可能缺块） */
     {

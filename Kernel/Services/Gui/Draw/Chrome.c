@@ -18,6 +18,18 @@ void CloseButtonRect(const GUI_WINDOW *W, UINT32 *Bx, UINT32 *By,
     *By = W->Y + (TITLE_HEIGHT - *Bh) / 2;
 }
 
+UINT32 TitleTextY(const GUI_WINDOW *W) {
+    UINT32 H = FontCellH();
+
+    if (!W) {
+        return 0;
+    }
+    if (H >= TITLE_HEIGHT) {
+        return W->Y;
+    }
+    return W->Y + (TITLE_HEIGHT - H) / 2u;
+}
+
 
 /* 更高 z（数组下标更大）的窗口是否盖住该像素 */
 int PixelOccludedByAbove(int Idx, UINT32 X, UINT32 Y) {
@@ -181,7 +193,7 @@ void DrawTitleStringOccluded(int Idx, const GUI_WINDOW *W) {
     }
     S = W->Title;
     X = W->X + 8;
-    Y = W->Y + 4;
+    Y = TitleTextY(W);
     while (*S) {
         UINT32 Cp;
         UINTN N;
@@ -264,7 +276,7 @@ void DrawWindowChromeAt(int Idx) {
         UiFillRectangle(W->X, W->Y, 1, W->Height, Border);
         UiFillRectangle(W->X + W->Width - 1, W->Y, 1, W->Height, Border);
         if (W->Title != 0 && W->Title[0] != 0) {
-            HalVideoDrawStringAt(W->X + 8, W->Y + 4, W->Title, ThemeWindowTitleText());
+            HalVideoDrawStringAt(W->X + 8, TitleTextY(W), W->Title, ThemeWindowTitleText());
         }
         DrawCloseButton(Idx, W);
     }

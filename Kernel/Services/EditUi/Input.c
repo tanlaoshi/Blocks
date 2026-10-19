@@ -60,7 +60,7 @@ void EditUiOnEscape(void) {
     if (!EditUiIsFocused()) {
         return;
     }
-    EditSetStatus(gEditDirty ? "dirty: Ctrl+S or close to discard" : "close via title X");
+    EditSetStatus(gEditDirty ? LocStr(MSG_EDIT_DIRTY_ESC) : LocStr(MSG_EDIT_ESC));
     EditUiRepaint();
 }
 

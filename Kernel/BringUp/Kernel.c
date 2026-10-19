@@ -39,7 +39,7 @@ static void KernelTrySpawnInput(void) {
     if (HalCpuCount() <= 2) {
         return;
     }
-    if (SchedulerCreate("input", InputTask) < 0) {
+    if (SchedulerCreate("Input", InputTask) < 0) {
         ToyLogBoot("kernel: SchedulerCreate failed\n");
     }
 }
@@ -47,7 +47,7 @@ static void KernelTrySpawnInput(void) {
 /* 单核直跑串口壳；多核进调度让 AP idle。 */
 static void KernelMainVirtEnterShell(void) {
     if (HalCpuCount() > 1) {
-        KernelSpawnOrPark("shell", gConsole.SerialRun);
+        KernelSpawnOrPark("Shell", gConsole.SerialRun);
         SchedulerStart();
         return;
     }
@@ -130,9 +130,9 @@ static void KernelMainVirt(void) {
 
 /* 桌面常驻：只顺序 Create / 演示任务 / 可选 input / Start。 */
 static void KernelMainCommon(void) {
-    KernelSpawnOrPark("shell", ShellTask);
-    KernelSpawnOrPark("gui", GuiTask);
-    KernelSpawnOrPark("worker", WorkerTask);
+    KernelSpawnOrPark("Shell", ShellTask);
+    KernelSpawnOrPark("Gui", GuiTask);
+    KernelSpawnOrPark("Worker", WorkerTask);
     KernelTaskDemoStart();
     KernelTrySpawnInput();
     SchedulerStart();

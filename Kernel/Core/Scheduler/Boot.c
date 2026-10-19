@@ -13,11 +13,29 @@
 #include "SpinLock.h"
 #include "ToySerialLog.h"
 
+static int NameStarts(const char *Name, char A, char B) {
+    char C0;
+    char C1;
+
+    if (!Name) {
+        return 0;
+    }
+    C0 = Name[0];
+    C1 = Name[1];
+    if (C0 >= 'A' && C0 <= 'Z') {
+        C0 = (char)(C0 - 'A' + 'a');
+    }
+    if (C1 >= 'A' && C1 <= 'Z') {
+        C1 = (char)(C1 - 'A' + 'a');
+    }
+    return C0 == A && C1 == B;
+}
+
 static int CreateIdleForCpu(UINT32 Cpu) {
     char Name[12];
     int Id;
 
-    Name[0] = 'i';
+    Name[0] = 'I';
     Name[1] = 'd';
     Name[2] = 'l';
     Name[3] = 'e';
@@ -132,7 +150,7 @@ void SchedulerStart(void) {
             if (gTasks[i].State == TASK_UNUSED) {
                 continue;
             }
-            if (gTasks[i].Name[0] == 'i' && gTasks[i].Name[1] == 'n') {
+            if (NameStarts(gTasks[i].Name, 'i', 'n')) {
                 /* input：钉专核，默认优先级（>idle -0x80，独占该核 drain） */
                 SchedulerOpsGet()->Remove(&gTasks[i]);
                 gTasks[i].Affinity = (INT32)InputCpu;
@@ -141,8 +159,8 @@ void SchedulerStart(void) {
                 RunQueueEnqueue(InputCpu, &gTasks[i]);
                 continue;
             }
-            if ((gTasks[i].Name[0] == 's' && gTasks[i].Name[1] == 'h') ||
-                (gTasks[i].Name[0] == 'g' && gTasks[i].Name[1] == 'u')) {
+            if (NameStarts(gTasks[i].Name, 's', 'h') ||
+                NameStarts(gTasks[i].Name, 'g', 'u')) {
                 SchedulerOpsGet()->Remove(&gTasks[i]);
                 gTasks[i].Affinity = (INT32)InteractiveCpu;
                 gTasks[i].HomeCpu = (INT32)InteractiveCpu;
@@ -151,7 +169,7 @@ void SchedulerStart(void) {
                 continue;
             }
             /* worker：钉 BSP（≠ shell/gui 的 AP），后台 Job 与 INTERFACE 分核 */
-            if (gTasks[i].Name[0] == 'w' && gTasks[i].Name[1] == 'o') {
+            if (NameStarts(gTasks[i].Name, 'w', 'o')) {
                 SchedulerOpsGet()->Remove(&gTasks[i]);
                 gTasks[i].Affinity = 0;
                 gTasks[i].HomeCpu = 0;

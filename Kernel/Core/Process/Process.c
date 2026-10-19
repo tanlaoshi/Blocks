@@ -60,6 +60,73 @@ static void CopyPathName(char *Dst, int Max, const char *Path) {
     Dst[i] = 0;
 }
 
+/* 任务名：去掉路径和 .ELF，英文按 PascalCase。全大写的 Demo/Mgr 拆开。 */
+static void StyleTaskName(char *Name) {
+    int N = 0;
+    int Dot = -1;
+    int i;
+    int Lower = 0;
+    int Upper = 0;
+    int Tail = 0;
+
+    while (Name[N]) {
+        if (Name[N] == '.') {
+            Dot = N;
+        }
+        N++;
+    }
+    if (Dot > 0 && N - Dot == 4) {
+        char A = Name[Dot + 1];
+        char B = Name[Dot + 2];
+        char C = Name[Dot + 3];
+
+        if (A >= 'A' && A <= 'Z') {
+            A = (char)(A - 'A' + 'a');
+        }
+        if (B >= 'A' && B <= 'Z') {
+            B = (char)(B - 'A' + 'a');
+        }
+        if (C >= 'A' && C <= 'Z') {
+            C = (char)(C - 'A' + 'a');
+        }
+        if (A == 'e' && B == 'l' && C == 'f') {
+            Name[Dot] = 0;
+            N = Dot;
+        }
+    }
+    for (i = 0; i < N; i++) {
+        if (Name[i] >= 'a' && Name[i] <= 'z') {
+            Lower = 1;
+        }
+        if (Name[i] >= 'A' && Name[i] <= 'Z') {
+            Upper = 1;
+        }
+    }
+    if (Upper && !Lower) {
+        if (N >= 5 && Name[N - 4] == 'D' && Name[N - 3] == 'E' && Name[N - 2] == 'M' &&
+            Name[N - 1] == 'O') {
+            Tail = N - 4;
+        } else if (N >= 4 && Name[N - 3] == 'M' && Name[N - 2] == 'G' && Name[N - 1] == 'R') {
+            Tail = N - 3;
+        }
+        for (i = 0; i < N; i++) {
+            if (Name[i] >= 'A' && Name[i] <= 'Z') {
+                Name[i] = (char)(Name[i] - 'A' + 'a');
+            }
+        }
+        if (Name[0] >= 'a' && Name[0] <= 'z') {
+            Name[0] = (char)(Name[0] - 'a' + 'A');
+        }
+        if (Tail > 0 && Name[Tail] >= 'a' && Name[Tail] <= 'z') {
+            Name[Tail] = (char)(Name[Tail] - 'a' + 'A');
+        }
+        return;
+    }
+    if (Name[0] >= 'a' && Name[0] <= 'z') {
+        Name[0] = (char)(Name[0] - 'a' + 'A');
+    }
+}
+
 /*
  * 在新用户栈顶构造：argc | argv[] | NULL | envp NULL | 字符串区
  * 返回新 rsp（指向 argc；16 字节对齐，供 AAPCS64 / SysV CRT）
@@ -151,9 +218,15 @@ int ProcessExec(const char *Path) {
     }
     SchedulerReapOrphanZombies();
     ProcessApplyAppFont(Path);
-    if (ProcessStartElf(Space, &Info, Path) != 0) {
-        ProcessRestoreAppFont();
-        return -1;
+    {
+        char Name[16];
+
+        CopyPathName(Name, (int)sizeof(Name), Path);
+        StyleTaskName(Name);
+        if (ProcessStartElf(Space, &Info, Name) != 0) {
+            ProcessRestoreAppFont();
+            return -1;
+        }
     }
     /* PR-A12 / B1：virt 平台形状无定时抢占 → 协作排空用户任务 */
     if (HalPlatformIsVirtSerialConsole()) {
@@ -224,6 +297,7 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
     T->UserSpace = NewSpace;
     T->PageRoot = VirtualMemorySpaceRoot(NewSpace);
     CopyPathName(Name, (int)sizeof(Name), Path);
+    StyleTaskName(Name);
     for (i = 0; i < 15 && Name[i]; i++) {
         T->Name[i] = Name[i];
     }

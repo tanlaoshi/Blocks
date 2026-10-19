@@ -1,5 +1,5 @@
 /*
- * ShellPrivate.h — Shell 命令分文件内部（仅 Services/ShellCommands；User 勿 include）
+ * ShellPrivate.h — Shell 命令分文件内部（仅 Services/Shell/Commands；User 勿 include）
  *
  * PR-S-shell-split：分文件命令注册入口。
  */
@@ -23,7 +23,7 @@ void ShellCommandsFsUiRegister(void);
 void ShellCommandsFsUiStoreRegister(void);
 void ShellCommandsFsExtraRegister(void);
 void ShellFatReport(const char *Cmd, int Err);
-/* FsUi store 内部分文件共用（仅 ShellCommands） */
+/* FsUi store 内部分文件共用（仅 Services/Shell/Commands） */
 int ShellStoreJob(STORE_JOB_KIND Kind, const char *Id);
 void ShellStoreQueued(const char *Verb, const char *Id);
 void ShellStoreNetDone(const char *Verb, int Err);

@@ -1,5 +1,5 @@
 /*
- * ShellCommands.c — PR-S-shell-split-3：注册汇总（命令体见 ShellCommands*.c）
+ * Commands.c — 内建命令注册汇总（命令体在同目录其它文件）
  */
 #include "ShellCommands.h"
 #include "ShellPrivate.h"

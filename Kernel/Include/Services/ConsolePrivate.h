@@ -3,7 +3,7 @@
  * （仅 Services；User 勿 include）
  *
  * PR-S-console-split-1：Scroll；PR-S-console-split-2：Cmd（Register/别名/help）。
- * 命令表现在 Services/Console/（核心 Command.c）。
+ * 命令表现在 Services/Shell/Console/（核心 Command.c）。
  */
 #ifndef CONSOLE_PRIVATE_H
 #define CONSOLE_PRIVATE_H

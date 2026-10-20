@@ -1,8 +1,12 @@
 /*
  * Mux.c — Primary + MSC 双后端（PR-H-msc）
  *
- * DriveN 先试 Primary->Probe(N)；空位再挂 MSC（仅一次）。
- * PR-H-msc-1：MSC Probe 恒失败 → 行为与未安装 Mux 前的 Primary 一致。
+ * 装盘序（Probe 时）：
+ *   1. Drive==0 时清 gKind / gMscPlaced
+ *   2. 该号先 Primary->Probe(N)
+ *   3. 空号且尚未放置 → MSC->Probe(0) 占一个盘号（仅一次）
+ * InstallMsc：记下 Primary，Register Mux 后端；Remove 反向。
+ * MSC Probe 恒失败 → 与未装 Mux 时 Primary 行为一致。
  */
 #include "BlockMux.h"
 #include "LibWrite.h"

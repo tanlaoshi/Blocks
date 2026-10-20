@@ -1,6 +1,10 @@
 /*
  * Mount.c — 扫描并挂上各卷（编排；PR-F-fs-1）
  * 单卷：MountVolume.c；默认卷：MountPick.c
+ *
+ * MountAllVolumes：按 Drive 0..N → GptFindAllFat → FsMountOneFatPart
+ * （多 BLOCKS.ID → NameBlocksIdVol / BootDiskGuid）→ RES → FsMountPickDefault。
+ * Remount：只 BlockInitialize 重 Probe，勿 HalBlockInitialize（会冲掉 Mux）。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

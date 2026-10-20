@@ -66,13 +66,13 @@ static void Write32Le(UINT8 *P, UINT32 V) {
     P[3] = (UINT8)((V >> 24) & 0xFF);
 }
 
-int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
+int GptWriteBlocksLayout(UINT64 TotalSectors, UINT32 EspMib,
                       UINT32 *OutEspLba, UINT32 *OutEspSectors,
-                      UINT32 *OutToyLba, UINT32 *OutToySectors) {
+                      UINT32 *OutBlocksLba, UINT32 *OutBlocksSectors) {
     UINT32 EspLba = 2048; /* 1MiB */
     UINT32 EspSectors;
-    UINT32 ToyLba;
-    UINT32 ToySectors;
+    UINT32 BlocksLba;
+    UINT32 BlocksSectors;
     UINT64 FirstUsable = 34;
     UINT64 LastUsable;
     UINT64 BackupLba;
@@ -91,7 +91,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
         0xAA, 0xBB, 0xCC, 0xDD, 0x01, 0x02, 0x03, 0x04,
         0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
     };
-    static const UINT8 ToyPartGuid[16] = {
+    static const UINT8 BlocksPartGuid[16] = {
         0xDE, 0xAD, 0xBE, 0xEF, 0x10, 0x20, 0x30, 0x40,
         0x50, 0x60, 0x70, 0x80, 0x90, 0xA0, 0xB0, 0xC0
     };
@@ -105,12 +105,12 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     }
     LibWrite("gpt: total="); LibWriteHex32((UINT32)TotalSectors); LibWrite("\n");
     EspSectors = EspMib * 2048u;
-    ToyLba = EspLba + EspSectors;
+    BlocksLba = EspLba + EspSectors;
     LastUsable = TotalSectors - 34ull;
-    if ((UINT64)ToyLba >= LastUsable) {
+    if ((UINT64)BlocksLba >= LastUsable) {
         return 0;
     }
-    ToySectors = (UINT32)(LastUsable - (UINT64)ToyLba + 1ull);
+    BlocksSectors = (UINT32)(LastUsable - (UINT64)BlocksLba + 1ull);
     BackupLba = TotalSectors - 1ull;
     EntriesBackupLba = TotalSectors - 33ull;
 
@@ -144,9 +144,9 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     PutUtf16Name(Entries + 56, "ESP");
 
     PutGuid(Entries + 128, BASIC_DATA);
-    PutGuid(Entries + 128 + 16, ToyPartGuid);
-    Write64(Entries + 128 + 32, ToyLba);
-    Write64(Entries + 128 + 40, (UINT64)ToyLba + ToySectors - 1ull);
+    PutGuid(Entries + 128 + 16, BlocksPartGuid);
+    Write64(Entries + 128 + 32, BlocksLba);
+    Write64(Entries + 128 + 40, (UINT64)BlocksLba + BlocksSectors - 1ull);
     PutUtf16Name(Entries + 128 + 56, "BLOCKS");
 
     EntriesCrc = GptCrc32(Entries, sizeof(Entries));
@@ -207,16 +207,16 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     if (OutEspSectors) {
         *OutEspSectors = EspSectors;
     }
-    if (OutToyLba) {
-        *OutToyLba = ToyLba;
+    if (OutBlocksLba) {
+        *OutBlocksLba = BlocksLba;
     }
-    if (OutToySectors) {
-        *OutToySectors = ToySectors;
+    if (OutBlocksSectors) {
+        *OutBlocksSectors = BlocksSectors;
     }
     LibWrite("gpt: wrote ESP@");
     LibWriteHex32(EspLba);
     LibWrite(" BLOCKS@");
-    LibWriteHex32(ToyLba);
+    LibWriteHex32(BlocksLba);
     LibWrite("\n");
     return 1;
 }

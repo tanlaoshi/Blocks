@@ -1,7 +1,7 @@
 /*
  * Install.c — PR-FS-inst-1：Guest 安装器骨架
  *
- * 布局对齐 ToyImage/make-usb-stick.sh：GPT | ESP 256MiB | TOYOS 剩余。
+ * 布局对齐 make-usb-stick.sh：GPT | ESP 256MiB | BLOCKS 剩余。
  * 最小文件：ESP:EFI/BOOT/BOOTX64.EFI；BLOCKS:Kernel.elf、BLOCKS.ID、THEME.CFG。
  */
 #include "Install.h"
@@ -81,8 +81,8 @@ int InstallListDisks(void (*PrintLine)(UINT32 Drive, int Ready)) {
 int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     UINT32 EspLba = 0;
     UINT32 EspSec = 0;
-    UINT32 ToyLba = 0;
-    UINT32 ToySec = 0;
+    UINT32 BlocksLba = 0;
+    UINT32 BlocksSec = 0;
     UINT8 *Boot = 0;
     UINT8 *Kern = 0;
     UINT8 *Theme = 0;
@@ -159,7 +159,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     }
 
     gConsole.Write("install: writing GPT...\n");
-    if (!GptWriteToyLayout(TotalSectors, EspMib, &EspLba, &EspSec, &ToyLba, &ToySec)) {
+    if (!GptWriteBlocksLayout(TotalSectors, EspMib, &EspLba, &EspSec, &BlocksLba, &BlocksSec)) {
         gConsole.Write("install: GPT fail\n");
         goto fail_sel;
     }
@@ -171,7 +171,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         goto fail_sel;
     }
     gConsole.Write("install: format BLOCKS...\n");
-    Err = FatFormatFat32(ToyLba, ToySec, "BLOCKS");
+    Err = FatFormatFat32(BlocksLba, BlocksSec, "BLOCKS");
     if (Err != FAT_OK) {
         gConsole.Write("install: BLOCKS format fail\n");
         goto fail_sel;
@@ -186,18 +186,18 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
         gConsole.Write("install: write BOOTX64 fail\n");
         goto fail_sel;
     }
-    Err = WritePartFile(ToyLba, "BLOCKS.ID", Id, IdSz);
+    Err = WritePartFile(BlocksLba, "BLOCKS.ID", Id, IdSz);
     if (Err != FAT_OK) {
         gConsole.Write("install: write BLOCKS.ID fail\n");
         goto fail_sel;
     }
-    Err = WritePartFile(ToyLba, "Kernel.elf", Kern, KernSz);
+    Err = WritePartFile(BlocksLba, "Kernel.elf", Kern, KernSz);
     if (Err != FAT_OK) {
         gConsole.Write("install: write Kernel.elf fail\n");
         goto fail_sel;
     }
     if (Theme && ThemeSz > 0) {
-        (void)WritePartFile(ToyLba, "THEME.CFG", Theme, ThemeSz);
+        (void)WritePartFile(BlocksLba, "THEME.CFG", Theme, ThemeSz);
     }
 
     (void)BlockFlush();
@@ -209,7 +209,7 @@ int InstallToDrive(UINT32 Drive, UINT64 TotalSectors, UINT32 EspMib, int Yes) {
     gConsole.Write(" ESP@");
     gConsole.WriteHex32(EspLba);
     gConsole.Write(" BLOCKS@");
-    gConsole.WriteHex32(ToyLba);
+    gConsole.WriteHex32(BlocksLba);
     gConsole.Write("\n");
 
     if (BootPages > 0) {

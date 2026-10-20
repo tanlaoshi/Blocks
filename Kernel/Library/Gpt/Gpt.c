@@ -101,7 +101,7 @@ static int GuidEq(const UINT8 *A, const UINT8 *B) {
 
 /*
  * 枚举 GPT：EFI System + Microsoft Basic Data；
- * 其它 GUID 若首扇区像 FAT 也收录（避免类型标错漏挂 TOYOS）。
+ * 其它 GUID 若首扇区像 FAT 也收录（避免类型标错漏挂 BLOCKS）。
  */
 static int GptCollectFat(GPT_FAT_PART *Out, int Max, int *InOutCount) {
     if (!BlockReadSectors(1, 1, gGptSector)) {
@@ -241,7 +241,7 @@ int GptFindFatStartEx(UINT32 *OutLba, int *OutIsEsp) {
     if (N <= 0) {
         return 0;
     }
-    /* 兼容旧语义：优先非 ESP（TOYOS/数据卷），否则 ESP */
+    /* 兼容旧语义：优先非 ESP（BLOCKS/数据卷），否则 ESP */
     for (i = 0; i < N; i++) {
         if (!Parts[i].IsEsp) {
             Prefer = i;

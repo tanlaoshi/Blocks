@@ -79,9 +79,21 @@ void GuiTask(void) {
 }
 
 /*
- * StoreJob / DHCP 后台泵：窗/Shell 只 Enqueue；本任务 Step。
- * 勿再在 GuiPollMouse→StoreUiPump 里 Step，否则 Gui 被 StoreRemove 堵住，装卸期鼠标必卡。
- * DesktopWorkerTick 置圈首：Store/iwl continue 不饿死热拔/钟采样。
+ * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
+ *   0 DesktopWorkerTick     — MSC/钟采样（圈首；下表 continue 不饿死）
+ *   1 DesktopEnsureIconsLoaded
+ *   2 DesktopEnsureMenuRebuilt
+ *   3 StoreUiEnsureOpenLoad
+ *   4 LocaleDbFlushStep
+ *   5 LocaleTtfPreheatStep  — 可 breath；不 continue
+ *   6 FontTtfWantDrain      — 同上
+ *   7 HalIwlClaim（一次）
+ *   8 StoreJobStep          — busy → continue（挡网/ready）
+ *   9 HalIwlBgPump          — busy → continue
+ *  10 DHCP restart / Step   — busy → continue
+ *  11 真机 iwl 静默窗       — 未静默 → continue
+ *  12 AnnounceBootReady → halt
+ * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
     for (;;) {

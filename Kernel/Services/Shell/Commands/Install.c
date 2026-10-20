@@ -129,7 +129,7 @@ static void CommandInstall(int Argc, char **Argv) {
         gConsole.Write(" empty — start with DISK=ahci INSTALL_DISK=1\n");
         return;
     }
-    /* 拒绝误装到当前已挂载的 ESP/TOYOS（vvfat），除非 --force */
+    /* 拒绝误装到当前已挂载的 ESP/BLOCKS（vvfat），除非 --force */
     VolN = FileSystemVolCount();
     for (v = 0; v < VolN; v++) {
         char Name[16];
@@ -160,5 +160,5 @@ static void CommandInstall(int Argc, char **Argv) {
 }
 
 void ShellCommandsInstallRegister(void) {
-    gConsole.Register("install", "install GPT+ESP+TOYOS to Block (PR-FS-inst-1)", CommandInstall);
+    gConsole.Register("install", "install GPT+ESP+BLOCKS to Block (PR-FS-inst-1)", CommandInstall);
 }

@@ -2,7 +2,13 @@
  * Install.c — PR-FS-inst-1：Guest 安装器骨架
  *
  * 布局对齐 make-usb-stick.sh：GPT | ESP 256MiB | BLOCKS 剩余。
- * 最小文件：ESP:EFI/BOOT/BOOTX64.EFI；BLOCKS:Kernel.elf、BLOCKS.ID、THEME.CFG。
+ * 写出：ESP → EFI/BOOT/BOOTX64.EFI；BLOCKS → Kernel.elf、BLOCKS.ID、THEME.CFG。
+ *
+ * 读源（先当前默认卷，失败再带卷前缀）：
+ *   Boot  → ESP:EFI/BOOT/BOOTX64.EFI → EFI/BOOT/BOOTX64.EFI
+ *   Kernel→ Kernel.elf → BLOCKS:Kernel.elf
+ *   Theme → THEME.CFG → BLOCKS:THEME.CFG
+ *   Id    → BLOCKS.ID → BLOCKS:BLOCKS.ID（皆无则内置 DefaultId）
  */
 #include "Install.h"
 #include "Block.h"

@@ -2,10 +2,19 @@
  * Kernel.c — BringUp：三架构合流后的统一入口（KernelMain）
  *
  * BringUp/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
- * 选路 → ModulesRun → 拉起 shell/gui/worker → SchedulerStart。
  *
- * 从哪读：KernelMain → Virt / VirtDesktop / Full → KernelMainCommon。
- * 别改：HalConsoleOnly →（FB 且 Virt）→ Full；shell/gui/worker 失败即停。
+ * 三条路（勿改判定顺序）：
+ *   1. HalConsoleOnly()
+ *        → 模块表 Virt（串口子集）→ 单核直跑串口壳 / 多核 Shell+SchedulerStart
+ *   2. HalHasFrameBuffer() && HalPlatformIsVirtSerialConsole()
+ *        → 模块表 VirtDesktop（有 Video/Gui/Net，无 USB）→ Common
+ *   3. 否则（真机 x86 等）
+ *        → 模块表 Full（USB 在 FileSystem 前）→ Common
+ *
+ * Common：Shell / Gui / Worker / Demo / 可选 Input → SchedulerStart。
+ * shell/gui/worker 创建失败即停；Input 失败只打日志。
+ *
+ * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
  */
 #include "BootInfo.h"
 #include "ToySerialLog.h"
@@ -21,10 +30,8 @@
 #include "Elf.h"
 #include "LibWrite.h"
 
-static void KernelMainVirt(void);
-static void KernelMainVirtDesktop(void);
-static void KernelMainFull(void);
 static void KernelMainCommon(void);
+static void KernelMainVirtEnterShell(void);
 static void KernelParkForever(void);
 
 static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
@@ -120,12 +127,12 @@ static void KernelRunOrPark(int (*RunModules)(void)) {
     }
 }
 
-/* 串口子集。 */
-static void KernelMainVirt(void) {
+/* Attach → 模块表 → After → Finish（Virt 进串口壳，桌面进 Common） */
+static void KernelRunPath(int (*RunModules)(void), void (*Finish)(void)) {
     KernelAttachEarlyVideo();
-    KernelRunOrPark(KernelModulesRunVirt);
+    KernelRunOrPark(RunModules);
     KernelAfterModules();
-    KernelMainVirtEnterShell();
+    Finish();
 }
 
 /* 桌面常驻：只顺序 Create / 演示任务 / 可选 input / Start。 */
@@ -138,28 +145,14 @@ static void KernelMainCommon(void) {
     SchedulerStart();
 }
 
-static void KernelMainVirtDesktop(void) {
-    KernelAttachEarlyVideo();
-    KernelRunOrPark(KernelModulesRunVirtDesktop);
-    KernelAfterModules();
-    KernelMainCommon();
-}
-
-static void KernelMainFull(void) {
-    KernelAttachEarlyVideo();
-    KernelRunOrPark(KernelModulesRunFull);
-    KernelAfterModules();
-    KernelMainCommon();
-}
-
 void KernelMain(void) {
     if (HalConsoleOnly()) {
-        KernelMainVirt();
+        KernelRunPath(KernelModulesRunVirt, KernelMainVirtEnterShell);
         return;
     }
     if (HalHasFrameBuffer() && HalPlatformIsVirtSerialConsole()) {
-        KernelMainVirtDesktop();
+        KernelRunPath(KernelModulesRunVirtDesktop, KernelMainCommon);
         return;
     }
-    KernelMainFull();
+    KernelRunPath(KernelModulesRunFull, KernelMainCommon);
 }

@@ -1,13 +1,16 @@
 /*
  * Modules.c — 模块表 + ModulesRun（按表顺序调 Init）
  *
- * 人话：串口子集 / virt 桌面 / x86 全量 各走自己的顺序表。
- * 从哪读：下方三张 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
+ * 三张表对应 KernelMain 三条路（选路见 BringUp/Kernel.c 文件头）：
+ *   Virt          ← HalConsoleOnly
+ *   VirtDesktop   ← FB 且 HalPlatformIsVirtSerialConsole
+ *   Full          ← 否则（真机；USB 在 FileSystem 前）
+ *
+ * 从哪读：下方 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
  * 别改：各表条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
  * 串口、处理器、USB、画面的开机函数在 HAL/Initialize/，名词在前。
  * 多核直接调 HalSmpStartApplicationProcessors。
  * 调度、控制台、文件系统、窗口管理器、虚拟内存、驱动的开机函数在各自主文件里。
- * 选路见 BringUp/Kernel.c。
  */
 #include "KernelModules.h"
 #include "KernelModulesPrivate.h"

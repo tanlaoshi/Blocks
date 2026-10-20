@@ -29,17 +29,17 @@ static int gVirtDesktop;
 /* 三表共用片段；只拼表，不改相对顺序 */
 #define MODULE_HEAD                                                                \
     { "Serial",          SerialModuleInitialize },                                 \
-    { "PhysicalMemory",  InitializePhysicalMemory },                               \
-    { "VirtualMemory",   InitializeVirtualMemory }
+    { "PhysicalMemory",  PhysicalMemoryInitialize },                               \
+    { "VirtualMemory",   VirtualMemoryInitialize }
 
 #define MODULE_CPU_STACK                                                           \
-    { "Driver",          InitializeDriver },                                       \
+    { "Driver",          DriverInitialize },                                       \
     { "Cpu",             CpuInitialize },                                          \
     { "Smp",             HalSmpStartApplicationProcessors }
 
 #define MODULE_TAIL                                                                \
-    { "Scheduler",       InitializeScheduler },                                    \
-    { "Console",         InitializeConsole }
+    { "Scheduler",       SchedulerInitialize },                                    \
+    { "Console",         ConsoleInitialize }
 
 /* x86 全量：usb 在 FS 前；Video 紧跟 VMM；Driver 在 Video 后（Block 可绑 MMIO） */
 static const MODULE gModulesFull[] = {
@@ -47,9 +47,9 @@ static const MODULE gModulesFull[] = {
     { "Video",           VideoInitialize },
     MODULE_CPU_STACK,
     { "USB",             UsbInitialize },
-    { "FileSystem",      InitializeFileSystem },
-    { "Gui",             InitializeGui },
-    { "Network",         InitializeNetwork },
+    { "FileSystem",      FileSystemInitialize },
+    { "Gui",             GuiInitialize },
+    { "Network",         NetworkInitialize },
     MODULE_TAIL,
 };
 
@@ -57,7 +57,7 @@ static const MODULE gModulesFull[] = {
 static const MODULE gModulesVirt[] = {
     MODULE_HEAD,
     MODULE_CPU_STACK,
-    { "FileSystem",      InitializeFileSystem },
+    { "FileSystem",      FileSystemInitialize },
     MODULE_TAIL,
 };
 
@@ -66,9 +66,9 @@ static const MODULE gModulesVirtDesktop[] = {
     MODULE_HEAD,
     { "Video",           VideoInitialize },
     MODULE_CPU_STACK,
-    { "FileSystem",      InitializeFileSystem },
-    { "Gui",             InitializeGui },
-    { "Network",         InitializeNetwork },
+    { "FileSystem",      FileSystemInitialize },
+    { "Gui",             GuiInitialize },
+    { "Network",         NetworkInitialize },
     MODULE_TAIL,
 };
 

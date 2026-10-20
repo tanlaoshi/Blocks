@@ -83,7 +83,7 @@ typedef struct TASK {
 #define SCHED_PRIORITY_SHELL    8   /* shell / gui：交互偏高 */
 #define SCHED_PRIORITY_IDLE   (-128)
 
-void SchedulerInitialize(void);
+int SchedulerInitialize(void);
 int SchedulerCreate(const char *Name, void (*Entry)(void));
 /* PR-GUI-kerneltask：entry 收 void*；旧 SchedulerCreate 保留 */
 int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx);

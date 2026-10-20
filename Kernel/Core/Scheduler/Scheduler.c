@@ -81,7 +81,7 @@ INT32 TaskSlot(const TASK *T) {
 
 /* FD/管道/套接字：见 TaskFd.c（PR-R3） */
 
-void SchedulerInitialize(void) {
+int SchedulerInitialize(void) {
     int c;
 
     SpinLockInitialize(&gSchedulerLock);
@@ -132,6 +132,9 @@ void SchedulerInitialize(void) {
         TaskClearFds(&gTasks[i]);
     }
     gTaskCount = 0;
+    HalDriverSchedRegister(SchedulerIoBreath, SchedulerPreemptDisable,
+                           SchedulerPreemptEnable);
+    return 0;
 }
 
 void CopyName(TASK *T, const char *Name) {
@@ -241,9 +244,3 @@ void ActivateTask(TASK *T) {
     }
 }
 
-int InitializeScheduler(void) {
-    SchedulerInitialize();
-    HalDriverSchedRegister(SchedulerIoBreath, SchedulerPreemptDisable,
-                           SchedulerPreemptEnable);
-    return 0;
-}

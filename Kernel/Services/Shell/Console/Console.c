@@ -305,7 +305,7 @@ void ConsolePublishAll(void) {
     ConsolePublishLog(&gConsole);
 }
 
-int InitializeConsole(void) {
+int ConsoleInitialize(void) {
     ConsolePublishAll();
     StoreRegisterPathGuard();
     LocaleInitialize();

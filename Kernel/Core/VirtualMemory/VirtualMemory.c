@@ -1,5 +1,5 @@
 /*
- * VirtualMemory.c — 虚拟内存（开机入口 InitializeVirtualMemory，以及地址空间）
+ * VirtualMemory.c — 虚拟内存（开机入口 VirtualMemoryInitialize，以及地址空间）
  *
  * 开机：建页表，映上帧缓冲和设备寄存器，再打开分页。
  */
@@ -247,19 +247,6 @@ int VirtualMemoryCopyToSpace(VIRTUAL_ADDRESS_SPACE *Space, UINT64 UserDst, const
     return (int)Len;
 }
 
-int VirtualMemoryInitialize(void) {
-    if (HalPageKernelSetup(IDENTITY_MB) != 0) {
-        return -1;
-    }
-
-    DebugWrite("VMM: identity map 0-");
-    DebugHex32(IDENTITY_MB);
-    DebugWrite("MB (2M pages), PML4=");
-    DebugHex64(HalPageKernelRoot());
-    DebugWrite("\n");
-    return 0;
-}
-
 static int gVirtualMemoryEnabled;
 
 void VirtualMemoryEnable(void) {
@@ -294,14 +281,21 @@ static int MapIdentity(UINT64 Phys, UINT64 Size) {
     return 0;
 }
 
-int InitializeVirtualMemory(void) {
+int VirtualMemoryInitialize(void) {
     const BOOT_INFO *Info = BootInfoGet();
     UINT64 FbBytes;
     UINT64 Layout;
 
-    if (VirtualMemoryInitialize() != 0) {
+    if (HalPageKernelSetup(IDENTITY_MB) != 0) {
         return -1;
     }
+
+    DebugWrite("VMM: identity map 0-");
+    DebugHex32(IDENTITY_MB);
+    DebugWrite("MB (2M pages), PML4=");
+    DebugHex64(HalPageKernelRoot());
+    DebugWrite("\n");
+
     if (Info && Info->FrameBufferBase != 0) {
         FbBytes = Info->FrameBufferSize;
         Layout = 0;

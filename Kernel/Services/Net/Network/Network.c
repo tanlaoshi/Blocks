@@ -6,7 +6,7 @@
 #include "Udp.h"
 #include "Tcp.h"
 
-int InitializeNetwork(void) {
+int NetworkInitialize(void) {
     if (HalNetInitialize() != 0) {
         return -1;
     }

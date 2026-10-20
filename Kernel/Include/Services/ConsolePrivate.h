@@ -112,7 +112,7 @@ int ConsoleSbWinHasContent(int Idx);
 void ConsoleSbBindFocus(void);
 void ConsoleSbFeedLiveIfBound(const char *Text);
 
-/* 各文件把自己的 static 实现填进 gConsole。InitializeConsole 开头调用。 */
+/* 各文件把自己的 static 实现填进 gConsole。ConsoleInitialize 开头调用。 */
 void ConsolePublishWrite(CONSOLE_OPS *Ops);
 void ConsolePublishInput(CONSOLE_OPS *Ops);
 void ConsolePublishHistory(CONSOLE_OPS *Ops);

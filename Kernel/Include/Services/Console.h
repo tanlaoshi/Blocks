@@ -3,7 +3,7 @@
  *
  * 双通道输出：串口 + 帧缓冲文字。命令通过 gConsole.Register 动态注册。
  * 表在开机模块之前填好（桌面加载数据库时就会登记命令）。
- * InitializeConsole 会再填一次。填表之后即可写出，不必再等 Shell 自己的 Initialize。
+ * ConsoleInitialize 会再填一次。填表之后即可写出，不必再等 Shell 自己的 Initialize。
  */
 #ifndef CONSOLE_H
 #define CONSOLE_H

@@ -1,5 +1,5 @@
 /*
- * Driver.c — 驱动注册表（开机入口 InitializeDriver，以及 Probe/Bind/Remove）
+ * Driver.c — 驱动注册表（开机入口 DriverInitialize，以及 Probe/Bind/Remove）
  *
  * 开机：枚举设备、注册驱动，并只 Probe Block（勿 ProbeAll）。
  */
@@ -189,7 +189,7 @@ const DRIVER_INSTANCE *DriverInstanceGet(UINTN Index) {
     return &gInstances[Index];
 }
 
-int InitializeDriver(void) {
+int DriverInitialize(void) {
     /*
      * 只 Probe Block：ATA PIO / AHCI / NVMe 在 VMM 后可绑 MMIO。
      * 勿 ProbeAll：ps2-kbd 会跑 Ps2InitHw；真机无 8042 时 STATUS 浮空 → 死循环。

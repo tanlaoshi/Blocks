@@ -3,7 +3,7 @@
  *
  * 偏好键 desktop/shell/font/wallpaper/theme：BLOCKS.DB + THEME.CFG。
  * 分辨率 mode= 只认 BLOCKS.DB（Boot / QEMU edid / Settings）；CFG 不再写 mode。
- * ThemeLoad 在 GuiInitialize 前；ThemeApply 末尾 ThemeSave。
+ * ThemeLoad 在 GuiDesktopInitialize 前；ThemeApply 末尾 ThemeSave。
  * PR-G-hotres：QEMU 上 ThemeApplyDisplayLive 可运行时切分辨率（Bochs DISPI）。
  * PR-G-hotres-pc：真机可经 Boot 交接 GOP SetMode；失败仍 D7 写盘+重启。
  */

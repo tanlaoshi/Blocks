@@ -1,6 +1,7 @@
 /*
- * GuiWindowManager.c — 窗口全局态、开机和标题刷新（PR-S-guiwm-split-2）
+ * WindowManager.c — 窗口全局态、开机和标题刷新（PR-S-guiwm-split-2）
  *
+ * 模块表入口 GuiInitialize：Db/字体/Theme/Logo → GuiDesktopInitialize。
  * 开窗见 GuiOpen.c；点击与鼠标见 GuiPointer.c；命中见 GuiHit.c。
  */
 #include "GuiPrivate.h"
@@ -97,7 +98,7 @@ void GuiRefreshTitles(void) {
 }
 
 
-void GuiInitialize(void) {
+void GuiDesktopInitialize(void) {
     HalVideoGetSize(&gGuiWindowManager.ScreenWidth, &gGuiWindowManager.ScreenHeight);
     if (gGuiWindowManager.ScreenWidth == 0) {
         gGuiWindowManager.ScreenWidth = 1024;
@@ -185,7 +186,7 @@ static void DrainMouse(void) {
     }
 }
 
-int InitializeGui(void) {
+int GuiInitialize(void) {
     PollInput();
     /* Logo 已在 Video 后缓冲就绪时画出；这里继续读字体主题，仍盖在 Logo 下 */
     DesktopBootLogoSet(96);
@@ -202,7 +203,7 @@ int InitializeGui(void) {
     }
     DesktopBootLogoSet(100);
     DesktopBootLogoFinish();
-    GuiInitialize();
+    GuiDesktopInitialize();
     DrainMouse();
     return 0;
 }

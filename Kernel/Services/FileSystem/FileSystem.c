@@ -368,6 +368,3 @@ int FileSystemInitialize(void) {
     return 0;
 }
 
-int InitializeFileSystem(void) {
-    return FileSystemInitialize();
-}

@@ -5,7 +5,7 @@
  */
 #include "Ehci/Private.h"
 #include "XHCI.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define FTDI_RX_Q   256
 
@@ -40,7 +40,7 @@ int FtdiClaim(void) {
     if (FtdiReady()) {
         return 1;
     }
-    ToyBootMarkUsb("Boot: EHCI FTDI Claim Begin\n");
+    BootMarkUsb("Boot: EHCI FTDI Claim Begin\n");
     for (i = 0; i < gEhciCount; i++) {
         EHCI_CTRL *C = &gEhci[i];
 
@@ -51,7 +51,7 @@ int FtdiClaim(void) {
             return 1;
         }
     }
-    ToyBootMarkUsb("Boot: EHCI FTDI None\n");
+    BootMarkUsb("Boot: EHCI FTDI None\n");
     return 0;
 }
 

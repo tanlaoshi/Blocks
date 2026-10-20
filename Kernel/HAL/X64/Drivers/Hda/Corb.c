@@ -4,7 +4,7 @@
 #include "Hda.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 #ifndef PTE_PWT
@@ -95,12 +95,12 @@ static int ControllerReset(void) {
     HdaMmioWrite32(HDA_REG_INTCTL, 0);
     HdaMmioWrite32(HDA_REG_GCTL, HdaMmioRead32(HDA_REG_GCTL) & ~HDA_GCTL_CRST);
     if (!WaitGctl(0, 10000u)) {
-        ToyLogBoot("Boot: hda reset enter fail\n");
+        LogBoot("Boot: hda reset enter fail\n");
         return 0;
     }
     HdaMmioWrite32(HDA_REG_GCTL, HdaMmioRead32(HDA_REG_GCTL) | HDA_GCTL_CRST);
     if (!WaitGctl(1, 10000u)) {
-        ToyLogBoot("Boot: hda reset leave fail\n");
+        LogBoot("Boot: hda reset leave fail\n");
         return 0;
     }
     /* 开 wake，等模拟+HDMI 都进 STATESTS（勿写清） */
@@ -115,9 +115,9 @@ static int ControllerReset(void) {
         Prev = Sts;
         StallUs(100);
     }
-    ToyLogBoot("Boot: hda statests=");
-    ToyLogBootHex32((UINT32)Sts);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda statests=");
+    LogBootHex32((UINT32)Sts);
+    LogBoot("\n");
     return 1;
 }
 
@@ -205,24 +205,24 @@ int HdaCorbInit(void) {
         gCorbEntries = Entries;
     }
     if (Entries < 2u) {
-        ToyLogBoot("Boot: hda corb size bad\n");
+        LogBoot("Boot: hda corb size bad\n");
         return 0;
     }
 
     Dma = (UINT8 *)PhysicalMemoryAllocatePages(1);
     if (!Dma) {
-        ToyLogBoot("Boot: hda corb dma fail\n");
+        LogBoot("Boot: hda corb dma fail\n");
         return 0;
     }
     Phys = (UINT64)(UINTN)Dma;
     if (Phys > 0xFFFFFFFFu) {
-        ToyLogBoot("Boot: hda corb dma >4G\n");
+        LogBoot("Boot: hda corb dma >4G\n");
         return 0;
     }
     Zero(Dma, PAGE_SIZE);
     if (VirtualMemoryMapRange(Phys, Phys, PAGE_SIZE,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) != 0) {
-        ToyLogBoot("Boot: hda corb map fail\n");
+        LogBoot("Boot: hda corb map fail\n");
         return 0;
     }
 
@@ -235,7 +235,7 @@ int HdaCorbInit(void) {
     HdaMmioWrite32(HDA_REG_RIRBUBASE, 0);
 
     if (!ResetCorbRp()) {
-        ToyLogBoot("Boot: hda corb rp fail\n");
+        LogBoot("Boot: hda corb rp fail\n");
         return 0;
     }
     HdaMmioWrite16(HDA_REG_CORBWP, 0);
@@ -250,9 +250,9 @@ int HdaCorbInit(void) {
     HdaMmioWrite8(HDA_REG_CORBCTL, HDA_CORCTL_RUN);
 
     gHdaCorbOk = 1;
-    ToyLogBoot("Boot: hda corb ok entries=");
-    ToyLogBootHex32((UINT32)gCorbEntries);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda corb ok entries=");
+    LogBootHex32((UINT32)gCorbEntries);
+    LogBoot("\n");
     return 1;
 }
 
@@ -272,7 +272,7 @@ int HdaCorbVerb(UINT8 Cad, UINT8 Nid, UINT32 VerbPayload, UINT32 *RespOut) {
     Next = (UINT16)((Wp + 1u) % gCorbEntries);
     Rp = HdaMmioRead16(HDA_REG_CORBRP) & 0xFFu;
     if (Next == Rp) {
-        ToyLogBoot("Boot: hda corb full\n");
+        LogBoot("Boot: hda corb full\n");
         return 0;
     }
     gCorb[Next] = Verb;
@@ -291,6 +291,6 @@ int HdaCorbVerb(UINT8 Cad, UINT8 Nid, UINT32 VerbPayload, UINT32 *RespOut) {
         }
         StallUs(20);
     }
-    ToyLogBoot("Boot: hda verb timeout\n");
+    LogBoot("Boot: hda verb timeout\n");
     return 0;
 }

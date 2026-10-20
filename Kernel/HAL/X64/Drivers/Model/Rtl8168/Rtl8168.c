@@ -6,7 +6,7 @@
 #include "PhysicalMemory.h"
 #include "Network/Network.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static RTL_DESC *gTxDesc;
 static RTL_DESC *gRxDesc;
@@ -63,7 +63,7 @@ int RtlBringUp(void) {
     gRtlLinkFull = 1;
 
     if (!RtlHwReset()) {
-        ToyLogNet("Boot: R8169 Reset Fail\n");
+        LogNet("Boot: R8169 Reset Fail\n");
         return 0;
     }
     RtlHwSetMac(gRtlMac);
@@ -72,7 +72,7 @@ int RtlBringUp(void) {
     Pages = 2u + ((RTL_RING_COUNT * RTL_BUF_SIZE * 2u + PAGE_SIZE - 1u) / PAGE_SIZE);
     Mem = (UINT8 *)PhysicalMemoryAllocatePages(Pages);
     if (!Mem) {
-        ToyLogNet("Boot: R8169 Ring OOM\n");
+        LogNet("Boot: R8169 Ring OOM\n");
         return 0;
     }
     RtlZero(Mem, (UINTN)Pages * PAGE_SIZE);
@@ -86,13 +86,13 @@ int RtlBringUp(void) {
     RtlHwConfigure(gRingPhys, gRingPhys + PAGE_SIZE);
 
     if (!RtlHwLinkUp(&Mbps, &Full)) {
-        ToyLogNet("Boot: R8169 Link Timeout\n");
+        LogNet("Boot: R8169 Link Timeout\n");
         return 0;
     }
     gRtlLinkMbps = Mbps;
     gRtlLinkFull = Full;
     RtlHwStart();
-    ToyLogNet("Boot: R8169 Link Up\n");
+    LogNet("Boot: R8169 Link Up\n");
     return 1;
 }
 

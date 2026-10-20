@@ -7,7 +7,7 @@
 #include "SchedulerOps.h"
 #include "Syscall.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "CoreOps.h"
 #include "Debug.h"
 #include "VirtualMemory.h"
@@ -132,7 +132,7 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
     Next = SchedulerOpsGet()->PickNext(Cpu);
     if (!Next) {
         SpinLockRelease(&gSchedulerLock);
-        ToyLogMisc("sched: no runnable task after exit\n");
+        LogMisc("sched: no runnable task after exit\n");
         for (;;) {
             HalCpuPark();
         }
@@ -207,7 +207,7 @@ UINT64 SchedulerWait(HAL_INTERRUPT_FRAME *Frame) {
     Next = SchedulerOpsGet()->PickNext(Cpu);
     if (!Next) {
         SpinLockRelease(&gSchedulerLock);
-        ToyLogMisc("sched: wait with no runnable task\n");
+        LogMisc("sched: wait with no runnable task\n");
         for (;;) {
             HalCpuPark();
         }

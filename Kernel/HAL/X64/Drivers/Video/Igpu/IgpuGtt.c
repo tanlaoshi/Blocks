@@ -5,7 +5,7 @@
  */
 #include "Igpu.h"
 #include "HalVideo.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IGPU_REG_PLANE_SURF_A  0x7019Cu
 #define IGPU_REG_PLANE_SURF_B  0x7119Cu
@@ -87,27 +87,27 @@ int IgpuGttInit(void) {
     gIgpuFbPhys = Fb;
     Surf = PickSurf(&Ctl);
     if (Surf == 0xFFFFFFFFu) {
-        ToyLogBoot("Boot: igpu gtt soft (no plane) ctl=");
-        ToyLogBootHex32(Ctl);
-        ToyLogBoot("\n");
+        LogBoot("Boot: igpu gtt soft (no plane) ctl=");
+        LogBootHex32(Ctl);
+        LogBoot("\n");
         return 0;
     }
     gIgpuSurf = Surf;
 
     gIgpuGttOk = 1;
-    ToyLogBoot("Boot: igpu gtt ok surf=");
-    ToyLogBootHex32(Surf);
-    ToyLogBoot(" ctl=");
-    ToyLogBootHex32(Ctl);
-    ToyLogBoot(" fb=");
-    ToyLogBootHex32((UINT32)Fb);
+    LogBoot("Boot: igpu gtt ok surf=");
+    LogBootHex32(Surf);
+    LogBoot(" ctl=");
+    LogBootHex32(Ctl);
+    LogBoot(" fb=");
+    LogBootHex32((UINT32)Fb);
     if (Fb > 0xFFFFFFFFu) {
-        ToyLogBoot(":");
-        ToyLogBootHex32((UINT32)(Fb >> 32));
+        LogBoot(":");
+        LogBootHex32((UINT32)(Fb >> 32));
     }
     if (Surf == 0) {
-        ToyLogBoot(" (gtt0)");
+        LogBoot(" (gtt0)");
     }
-    ToyLogBoot("\n");
+    LogBoot("\n");
     return 1;
 }

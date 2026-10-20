@@ -6,7 +6,7 @@
 #include "Gpt.h"
 #include "VirtualFileSystem.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "CoreOps.h"
 
 static int FileSystemPreparePath(const char *Path, const char **RelOut, int NeedWrite) {

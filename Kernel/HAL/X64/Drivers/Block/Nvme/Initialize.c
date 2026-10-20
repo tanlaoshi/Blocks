@@ -10,7 +10,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int WaitCsts(NVME_CTRL *C, UINT32 Mask, UINT32 Want, int Loops) {
     while (Loops-- > 0) {

@@ -9,7 +9,7 @@
 #include "SchedulerPrivate.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 #include "PhysicalMemory.h"
 #include "Fat.h"
@@ -80,7 +80,7 @@ int ProcessStartElf(VIRTUAL_ADDRESS_SPACE *Space, const ELF_LOAD_RESULT *Info,
     DebugWrite("\n");
     if (SchedulerCreateUser(Name, Info->Entry, Info->StackTop,
                         VirtualMemorySpaceRoot(Space), Space, Info->BrkBase) < 0) {
-        ToyLogMisc("process: no task slot\n");
+        LogMisc("process: no task slot\n");
         return -1;
     }
     return 0;
@@ -98,7 +98,7 @@ static int ProcessLoadNeeded(VIRTUAL_ADDRESS_SPACE *Space, const void *MainImage
     *SoCount = 0;
     N = ElfCollectNeeded(MainImage, MainSize, Needed, ELF_MAX_NEEDED);
     if (N < 0) {
-        ToyLogMisc("exec: parse DT_NEEDED failed\n");
+        LogMisc("exec: parse DT_NEEDED failed\n");
         return -1;
     }
     if (N == 0) {
@@ -111,7 +111,7 @@ static int ProcessLoadNeeded(VIRTUAL_ADDRESS_SPACE *Space, const void *MainImage
 
         Buf = PhysicalMemoryAllocatePages(Pages);
         if (!Buf) {
-            ToyLogMisc("exec: alloc so buffer failed\n");
+            LogMisc("exec: alloc so buffer failed\n");
             return -1;
         }
         Size = 0;
@@ -136,21 +136,21 @@ static int ProcessLoadNeeded(VIRTUAL_ADDRESS_SPACE *Space, const void *MainImage
             }
         }
         if (Size < 64) {
-            ToyLogMisc("exec: missing shared lib: ");
-            ToyLogMisc(Needed[i]);
-            ToyLogMisc("\n");
+            LogMisc("exec: missing shared lib: ");
+            LogMisc(Needed[i]);
+            LogMisc("\n");
             PhysicalMemoryFreePages(Buf, Pages);
             return -1;
         }
         if (Size >= ELF_MAX_SIZE) {
-            ToyLogMisc("exec: shared lib too large\n");
+            LogMisc("exec: shared lib too large\n");
             PhysicalMemoryFreePages(Buf, Pages);
             return -1;
         }
         if (ElfLoadShared(Space, Buf, Size, Base, &Sos[*SoCount]) != 0) {
-            ToyLogMisc("exec: load shared failed: ");
-            ToyLogMisc(Needed[i]);
-            ToyLogMisc("\n");
+            LogMisc("exec: load shared failed: ");
+            LogMisc(Needed[i]);
+            LogMisc("\n");
             PhysicalMemoryFreePages(Buf, Pages);
             return -1;
         }
@@ -197,37 +197,37 @@ int ProcessLoadPath(const char *Path, VIRTUAL_ADDRESS_SPACE **OutSpace,
     Pages = (ELF_MAX_SIZE + PAGE_SIZE - 1) / PAGE_SIZE;
     Buf = PhysicalMemoryAllocatePages(Pages);
     if (!Buf) {
-        ToyLogMisc("exec: alloc buffer failed\n");
+        LogMisc("exec: alloc buffer failed\n");
         return -1;
     }
 
     if (VfsServiceReadFile(Path, Buf, ELF_MAX_SIZE, &Size) != FAT_OK) {
-        ToyLogMisc("exec: file not found: ");
-        ToyLogMisc(Path);
-        ToyLogMisc("\n");
+        LogMisc("exec: file not found: ");
+        LogMisc(Path);
+        LogMisc("\n");
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;
     }
     if (Size < 64) {
-        ToyLogMisc("exec: file too small\n");
+        LogMisc("exec: file too small\n");
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;
     }
     if (Size >= ELF_MAX_SIZE) {
-        ToyLogMisc("exec: file too large (max 512K)\n");
+        LogMisc("exec: file too large (max 512K)\n");
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;
     }
 
     Space = VirtualMemorySpaceCreate();
     if (!Space) {
-        ToyLogMisc("exec: address space failed\n");
+        LogMisc("exec: address space failed\n");
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;
     }
 
     if (ElfLoadFromMemory(Space, Buf, Size, OutInfo) != 0) {
-        ToyLogMisc("exec: elf load failed\n");
+        LogMisc("exec: elf load failed\n");
         VirtualMemorySpaceDestroy(Space);
         PhysicalMemoryFreePages(Buf, Pages);
         return -1;
@@ -252,7 +252,7 @@ int ProcessLoadPath(const char *Path, VIRTUAL_ADDRESS_SPACE **OutSpace,
 
     if (SoCount > 0) {
         if (ElfRelocateProgram(Space, Buf, Size, Sos, SoCount) != 0) {
-            ToyLogMisc("exec: relocate failed\n");
+            LogMisc("exec: relocate failed\n");
             ProcessFreeSos(Sos, SoCount);
             VirtualMemorySpaceDestroy(Space);
             PhysicalMemoryFreePages(Buf, Pages);

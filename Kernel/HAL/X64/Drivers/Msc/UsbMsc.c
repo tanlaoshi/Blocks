@@ -8,7 +8,7 @@
 #include "UsbMscHost.h"
 #include "Block.h"
 #include "BlockMux.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 
 void BlockMscInstall(void); /* BlockMsc.c */
@@ -259,7 +259,7 @@ int UsbMscAutoBeforeFs(void) {
 
     Claim = UsbMscClaim();
     if (Claim < 0) {
-        ToyLogBoot("Boot: MSC Auto No HC\n");
+        LogBoot("Boot: MSC Auto No HC\n");
         return -1;
     }
     if (Claim == 0) {
@@ -268,10 +268,10 @@ int UsbMscAutoBeforeFs(void) {
 
     Rc = UsbMscMount();
     if (Rc != 0) {
-        ToyLogBoot("Boot: MSC Auto Mux Fail\n");
+        LogBoot("Boot: MSC Auto Mux Fail\n");
         return Rc;
     }
-    ToyLogBoot("Boot: MSC Auto Mux OK\n");
+    LogBoot("Boot: MSC Auto Mux OK\n");
     return 0;
 }
 

@@ -1,7 +1,7 @@
 /*
  * HalSerial.h — 串口 HAL 门面（Common 经 Hal.h 使用，不直接 include 驱动头）
  *
- * 串口 TX 受 ToySerialConfig（TOY_SERIAL / 分模块）约束；
+ * 串口 TX 受 SerialConfig（SERIAL_ENABLE / 分模块）约束；
  * GOP ring / BootMark 上屏与「有无 COM」策略见 HalSerial.c。
  */
 #ifndef HAL_SERIAL_H
@@ -27,7 +27,7 @@ void HalSerialWriteChannel(int Channel, const char *Text);
 void HalSerialShellOwn(void);
 int HalSerialShellOwned(void);
 void HalSerialWriteShell(const char *Text);
-/* 运行时日志（ShellOwn 后 ToyLog*）：缓冲 + Shell log / log save */
+/* 运行时日志（ShellOwn 后 Log*）：缓冲 + Shell log / log save */
 int HalSerialRuntimeDirty(void);
 void HalSerialRuntimeMarkSaved(void);
 UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max);

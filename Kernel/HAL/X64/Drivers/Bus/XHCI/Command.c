@@ -30,7 +30,7 @@ int WaitCommand(int Timeout) {
             }
             if ((ReadTsc() - T0) >= Mid) {
                 Mid = Need + 1; /* 只刷一次 */
-                ToyBootMarkUsb("Boot: XHCI cmd wait2\n");
+                BootMarkUsb("Boot: XHCI cmd wait2\n");
             }
             __asm__ volatile ("pause");
         }
@@ -67,7 +67,7 @@ void RecoverCommandRing(void) {
     UINT32 Pcs;
     int Own = 0;
 
-    ToyBootMarkUsb("Boot: XHCI cmd recover\n");
+    BootMarkUsb("Boot: XHCI cmd recover\n");
     BootLog("Boot: XHCI command timeout, recovering...\n");
 
     if (!EventIsExclusive()) {
@@ -125,7 +125,7 @@ void RecoverCommandRing(void) {
     gCmdDone = 0;
     gCmdCode = 0;
     /* 勿把未完成的命令完成误当成下一笔 */
-    ToyBootMarkUsb("Boot: XHCI cmd ring recovered\n");
+    BootMarkUsb("Boot: XHCI cmd ring recovered\n");
 
     if (Own) {
         EventLeaveExclusive();

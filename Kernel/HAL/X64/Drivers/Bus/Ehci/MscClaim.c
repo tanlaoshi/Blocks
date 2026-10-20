@@ -2,7 +2,7 @@
  * MscClaim.c — Parse Bulk + FinishClaim / hub 子口（PR-H-ehci-3）
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
@@ -147,7 +147,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (GetDesc(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
         0) {
         if (GetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
-            ToyBootMarkUsb("Boot: EHCI MSC getdesc fail\n");
+            BootMarkUsb("Boot: EHCI MSC getdesc fail\n");
             return 0;
         }
         EpMax = 8;
@@ -160,7 +160,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     MscMarkHex4("Boot: EHCI MSC vid=", Dev.idVendor);
     MscMarkHex4(" pid=", Dev.idProduct);
     MscMarkHex4(" cls=", Dev.bDeviceClass);
-    ToyBootMarkUsb("\n");
+    BootMarkUsb("\n");
 
     if (Dev.bDeviceClass == 0x09u) {
         gEhciLastErr = "msc nested hub";
@@ -170,7 +170,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (Dev.idVendor == 0x0403u &&
         (Dev.idProduct == 0x6001u || Dev.idProduct == 0x6014u ||
          Dev.idProduct == 0x6015u)) {
-        ToyBootMarkUsb("Boot: EHCI MSC Skip FTDI\n");
+        BootMarkUsb("Boot: EHCI MSC Skip FTDI\n");
         return 0;
     }
     if (gEhciNextAddr < 2 || gEhciNextAddr > 127) {
@@ -197,7 +197,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (!ParseMscBulk(Cfg, CfgLen, &Iface, &EpIn, &MpsIn, &EpOut, &MpsOut,
                       &CfgVal)) {
         gEhciLastErr = "no msc iface";
-        ToyBootMarkUsb("Boot: EHCI no msc iface\n");
+        BootMarkUsb("Boot: EHCI no msc iface\n");
         return 0;
     }
     if (SetConfig(C, Addr, EpMax, CfgVal) != 0) {
@@ -241,7 +241,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     C->MscBlockSize = 0;
     gEhciMscCtrl = C;
     gEhciLastErr = "msc ok";
-    ToyBootMarkUsb("Boot: EHCI MSC claimed\n");
+    BootMarkUsb("Boot: EHCI MSC claimed\n");
     return 1;
 }
 
@@ -283,7 +283,7 @@ int MscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
             return 0;
         }
         C->HubAddr = HubAddr;
-        ToyBootMarkUsb("Boot: EHCI MSC hub ready\n");
+        BootMarkUsb("Boot: EHCI MSC hub ready\n");
         return MscClaimViaHub(C);
     }
     /* 根口直连 MSC */
@@ -293,7 +293,7 @@ int MscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
     if (MscCapacity() == 0) {
         return 1;
     }
-    ToyBootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
+    BootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
     (void)MscRelease();
     return 0;
 }

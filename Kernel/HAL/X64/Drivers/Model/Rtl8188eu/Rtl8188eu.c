@@ -4,7 +4,7 @@
  * 先 xHCI、再 EHCI；无棒软失败。不挂 Net。
  */
 #include "Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 int gWifiReady;
@@ -51,8 +51,8 @@ void WifiLogBound(void) {
     }
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyLogBoot(Line);
-    ToyBootMarkUsb(Line);
+    LogBoot(Line);
+    BootMarkUsb(Line);
 }
 
 int WifiSetup(void) {

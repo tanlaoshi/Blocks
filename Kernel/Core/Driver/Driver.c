@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "Driver.h"
 #include "Device.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 
 static const TOY_DRIVER *gDrivers[TOY_DRIVER_MAX_DRIVERS];
@@ -21,7 +21,7 @@ int ToyDriverRegister(const TOY_DRIVER *Driver) {
         return -1;
     }
     if (gDriverCount >= TOY_DRIVER_MAX_DRIVERS) {
-        ToyLogDrv("driver: register full\n");
+        LogDrv("driver: register full\n");
         return -1;
     }
     gDrivers[gDriverCount++] = Driver;
@@ -65,7 +65,7 @@ static TOY_DRIVER_INSTANCE *DriverAdoptInstance(const TOY_DRIVER *D, void *Priva
     TOY_DRIVER_INSTANCE *Inst;
 
     if (gInstanceCount >= TOY_DRIVER_MAX_INSTANCES) {
-        ToyLogDrv("driver: instance full\n");
+        LogDrv("driver: instance full\n");
         if (D->Remove) {
             TOY_DRIVER_INSTANCE Tmp;
             Tmp.Driver = D;
@@ -139,13 +139,13 @@ int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
         }
     }
 #if TOY_KERNEL_DEBUG
-    ToyLogDrv("driver: registered=");
-    ToyLogDrvHex32((UINT32)gDriverCount);
-    ToyLogDrv(" bound=");
-    ToyLogDrvHex32((UINT32)gInstanceCount);
-    ToyLogDrv(" (+");
-    ToyLogDrvHex32((UINT32)Bound);
-    ToyLogDrv(")\n");
+    LogDrv("driver: registered=");
+    LogDrvHex32((UINT32)gDriverCount);
+    LogDrv(" bound=");
+    LogDrvHex32((UINT32)gInstanceCount);
+    LogDrv(" (+");
+    LogDrvHex32((UINT32)Bound);
+    LogDrv(")\n");
 #else
     (void)Bound;
 #endif
@@ -197,11 +197,11 @@ int InitializeDriver(void) {
      */
     DeviceInitialize();
     DeviceEnumerateAll();
-    ToyLogBoot("Boot: Device Enumerate Done\n");
+    LogBoot("Boot: Device Enumerate Done\n");
     HalDriverRegister();
-    ToyLogBoot("Boot: Driver Register OK\n");
+    LogBoot("Boot: Driver Register OK\n");
     (void)DisplayHardwareInitialize();
     (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_BLOCK);
-    ToyLogBoot("Boot: Driver Block Probe Done\n");
+    LogBoot("Boot: Driver Block Probe Done\n");
     return 0;
 }

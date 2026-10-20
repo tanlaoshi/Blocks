@@ -2,7 +2,7 @@
  * So.c — PR-S3-elf-1：DT_NEEDED / ET_DYN 共享库装载
  */
 #include "ElfPrivate.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static void ElfCopyShortName(char *Dst, const char *Src, UINTN Max) {
     UINTN i;
@@ -163,7 +163,7 @@ int ElfLoadShared(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
         return -1;
     }
     if (!ElfHeaderOk(Hdr, Size, ET_DYN)) {
-        ToyLogMem("elf: shared not ET_DYN\n");
+        LogMem("elf: shared not ET_DYN\n");
         return -1;
     }
     if (ElfPhdrs(Bytes, Size, Hdr, &Ph, &Pn) != 0) {
@@ -174,7 +174,7 @@ int ElfLoadShared(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
             continue;
         }
         if (ElfMapSegment(Space, Bytes, &Ph[i], Base) != 0) {
-            ToyLogMem("elf: map shared segment failed\n");
+            LogMem("elf: map shared segment failed\n");
             return -1;
         }
     }
@@ -183,7 +183,7 @@ int ElfLoadShared(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
     Info->Image = Bytes;
     Info->Size = Size;
     if (ElfFillSoSyms(Info, Ph, Pn) != 0) {
-        ToyLogMem("elf: shared dynsym failed\n");
+        LogMem("elf: shared dynsym failed\n");
         return -1;
     }
     return 0;

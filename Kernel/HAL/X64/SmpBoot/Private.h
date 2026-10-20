@@ -5,12 +5,12 @@
 #define SMP_BOOT_PRIVATE_H
 
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Architecture.h"
 
-#define SmpLog(Text)      ToyLogSmp(Text)
-#define SmpLogHex32(V)    ToyLogSmpHex32(V)
-#define SmpLogHex64(V)    ToyLogSmpHex64(V)
+#define SmpLog(Text)      LogSmp(Text)
+#define SmpLogHex32(V)    LogSmpHex32(V)
+#define SmpLogHex64(V)    LogSmpHex64(V)
 
 #define LAPIC_BASE       0xFEE00000ULL
 #define LAPIC_ID         0x20

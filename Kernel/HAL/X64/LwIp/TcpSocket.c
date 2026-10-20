@@ -11,7 +11,7 @@
 #include "Hal.h"
 #include "LwIp.h"
 #include "Errno.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "lwip/tcp.h"
 #include "lwip/pbuf.h"
 
@@ -367,14 +367,14 @@ int ToySocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
         HalCpuHalt(); /* 等定时器/网卡；无 halt 会把 TimeoutMs 当空转次数瞬间耗尽 */
     }
     if (S->Phase != 1) {
-        ToyLogNet("sock: connect fail phase=");
-        ToyLogNetHex32((UINT32)S->Phase);
-        ToyLogNet(" err=");
-        ToyLogNetHex32((UINT32)(INT32)S->Err);
+        LogNet("sock: connect fail phase=");
+        LogNetHex32((UINT32)S->Phase);
+        LogNet(" err=");
+        LogNetHex32((UINT32)(INT32)S->Err);
         if ((INT32)S->Err == -14) {
-            ToyLogNet(" (RST: host nc -l -p PORT first?)\n");
+            LogNet(" (RST: host nc -l -p PORT first?)\n");
         } else {
-            ToyLogNet("\n");
+            LogNet("\n");
         }
         Neg = (S->Phase == 0 && S->Err == ERR_OK)
                   ? -TOY_ETIMEDOUT
@@ -564,7 +564,7 @@ int ToySocketClose(int Sock) {
 #else
 
 #include "TcpSocket.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int ToySocketCreate(void) {
     return -1;

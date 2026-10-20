@@ -1,10 +1,10 @@
 /*
- * Debug.h — 内核调试输出开关（TOY_KERNEL_DEBUG）与串口总开关（TOY_SERIAL）正交
+ * Debug.h — 内核调试输出开关（TOY_KERNEL_DEBUG）与串口总开关（SERIAL_ENABLE）正交
  *
  * 编译：make DEBUG=1 或 ./build.sh DEBUG=1 → -DTOY_KERNEL_DEBUG=1
  * 默认 TOY_KERNEL_DEBUG=0：DebugWrite/DebugHex* 编译为空操作。
  * 打开时实现在 Core/Debug.c，由那里再进串口。
- * 串口总开关 / 分模块：见 ToySerialConfig.h（SERIAL=0 / SERIAL_USB=0 …）。
+ * 串口总开关 / 分模块：见 SerialConfig.h（SERIAL=0 / SERIAL_USB=0 …）。
  * Shell 命令输出请继续用 gConsole.Write（不受此开关影响）。
  */
 #ifndef TOY_KERNEL_DEBUG_H

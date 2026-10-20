@@ -7,7 +7,7 @@
  *   Full          ← 否则（真机；USB 在 FileSystem 前）
  *
  * 从哪读：下方 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
- * 别改：各表条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
+ * 别改：各表展开后的条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
  * 串口、处理器、USB、画面的开机函数在 HAL/Initialize/，名词在前。
  * 多核直接调 HalSmpStartApplicationProcessors。
  * 调度、控制台、文件系统、窗口管理器、虚拟内存、驱动的开机函数在各自主文件里。
@@ -17,7 +17,7 @@
 #include "Module.h"
 #include "Hal.h"
 #include "HalDevices.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 #include "Console.h"
 #include "Desktop.h"
@@ -26,50 +26,50 @@ static int gVirtDesktop;
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))
 
+/* 三表共用片段；只拼表，不改相对顺序 */
+#define MODULE_HEAD                                                                \
+    { "Serial",          SerialModuleInitialize },                                 \
+    { "PhysicalMemory",  InitializePhysicalMemory },                               \
+    { "VirtualMemory",   InitializeVirtualMemory }
+
+#define MODULE_CPU_STACK                                                           \
+    { "Driver",          InitializeDriver },                                       \
+    { "Cpu",             CpuInitialize },                                          \
+    { "Smp",             HalSmpStartApplicationProcessors }
+
+#define MODULE_TAIL                                                                \
+    { "Scheduler",       InitializeScheduler },                                    \
+    { "Console",         InitializeConsole }
+
 /* x86 全量：usb 在 FS 前；Video 紧跟 VMM；Driver 在 Video 后（Block 可绑 MMIO） */
 static const MODULE gModulesFull[] = {
-    { "Serial",          SerialModuleInitialize },
-    { "PhysicalMemory",  InitializePhysicalMemory },
-    { "VirtualMemory",   InitializeVirtualMemory },
+    MODULE_HEAD,
     { "Video",           VideoInitialize },
-    { "Driver",          InitializeDriver },
-    { "Cpu",             CpuInitialize },
-    { "Smp",             HalSmpStartApplicationProcessors },
+    MODULE_CPU_STACK,
     { "USB",             UsbInitialize },
     { "FileSystem",      InitializeFileSystem },
     { "Gui",             InitializeGui },
     { "Network",         InitializeNetwork },
-    { "Scheduler",       InitializeScheduler },
-    { "Console",         InitializeConsole },
+    MODULE_TAIL,
 };
 
 /* 串口子集。仍挂 FileSystem：virt --serial 有 virtio-blk，供 exec HELLO.ELF */
 static const MODULE gModulesVirt[] = {
-    { "Serial",          SerialModuleInitialize },
-    { "PhysicalMemory",  InitializePhysicalMemory },
-    { "VirtualMemory",   InitializeVirtualMemory },
-    { "Driver",          InitializeDriver },
-    { "Cpu",             CpuInitialize },
-    { "Smp",             HalSmpStartApplicationProcessors },
+    MODULE_HEAD,
+    MODULE_CPU_STACK,
     { "FileSystem",      InitializeFileSystem },
-    { "Scheduler",       InitializeScheduler },
-    { "Console",         InitializeConsole },
+    MODULE_TAIL,
 };
 
 /* virt 桌面（输入在后续路径；挂 net） */
 static const MODULE gModulesVirtDesktop[] = {
-    { "Serial",          SerialModuleInitialize },
-    { "PhysicalMemory",  InitializePhysicalMemory },
-    { "VirtualMemory",   InitializeVirtualMemory },
+    MODULE_HEAD,
     { "Video",           VideoInitialize },
-    { "Driver",          InitializeDriver },
-    { "Cpu",             CpuInitialize },
-    { "Smp",             HalSmpStartApplicationProcessors },
+    MODULE_CPU_STACK,
     { "FileSystem",      InitializeFileSystem },
     { "Gui",             InitializeGui },
     { "Network",         InitializeNetwork },
-    { "Scheduler",       InitializeScheduler },
-    { "Console",         InitializeConsole },
+    MODULE_TAIL,
 };
 
 int KernelModulesVirtDesktop(void) {
@@ -94,9 +94,9 @@ int KernelModulesRunFull(void) {
 /* ---- ModulesRun ---- */
 
 static void ModLog(const char *Name, const char *Suffix) {
-    ToyLogBoot("Boot: Mod ");
-    ToyLogBoot(Name);
-    ToyLogBoot(Suffix);
+    LogBoot("Boot: Mod ");
+    LogBoot(Name);
+    LogBoot(Suffix);
 }
 
 /* 引导读盘时 T 落到 40。这里按做完的模块继续下落。 */
@@ -129,12 +129,10 @@ static void ModProgressMark(const char *Name) {
 
 /* 按顺序初始化所有模块；失败时打印模块名并返回 -1 */
 int ModulesRun(const MODULE *List, int Count) {
-    int i;
-
     /* 桌面在控制台模块之前就会登记命令、写提示。表必须先有函数。 */
     ConsolePublishAll();
 
-    for (i = 0; i < Count; i++) {
+    for (int i = 0; i < Count; i++) {
         /* 真机无 COM1 时也要走 HalSerial→GOP，才能看见卡在哪个模块 */
         ModLog(List[i].Name, "\n");
         if (List[i].Init == 0 || List[i].Init() != 0) {

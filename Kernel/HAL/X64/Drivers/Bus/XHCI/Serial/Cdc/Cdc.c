@@ -187,8 +187,8 @@ static int Finish(UINT32 RootPort, UINT8 Speed) {
     gCdcClaimed = 1;
     gCdc.ArmReceive();
     /* COM1 + CDC 双路；BootMark 保证 QEMU 非 verbose 也看得见 */
-    ToyLogBoot("Boot: USB-UART CDC\n");
-    ToyBootMarkUsb("Boot: USB-UART CDC\n");
+    LogBoot("Boot: USB-UART CDC\n");
+    BootMarkUsb("Boot: USB-UART CDC\n");
     return 1;
 
 fail:

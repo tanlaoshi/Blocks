@@ -7,7 +7,7 @@
 #include "DriverBoot.h"
 #include "DriverInput.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "UsbHostController.h"
 #include "UsbHid/Private.h"
 #include "Debug.h"
@@ -136,11 +136,11 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
     /* 真机：Map 前 mute，避免 try BAR= 的 Present 卡死进不了 Init */
     if (RealPc) {
         HalSerialGopMute(1);
-        ToyBootMarkUsb("Boot: XHCI-B10 map\n");
+        BootMarkUsb("Boot: XHCI-B10 map\n");
     }
     MapXhciBar(Base);
     if (RealPc) {
-        ToyBootMarkUsb("Boot: XHCI-B10 mapped\n");
+        BootMarkUsb("Boot: XHCI-B10 mapped\n");
     } else {
         DebugWrite("XHCI: try BAR ");
         DebugHex64(Base);
@@ -148,7 +148,7 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
     }
     /* 拒绝明显非 MMIO 的 BAR（运行时误探曾出现 0x193A50） */
     if (Base < 0x100000ULL) {
-        ToyLogUsb("Boot: XHCI skip low BAR\n");
+        LogUsb("Boot: XHCI skip low BAR\n");
         if (RealPc) {
             HalSerialGopMute(0);
         }
@@ -222,7 +222,7 @@ void InputXhciArmIrq(void) {
     }
     (void)EnableIrq(&gXhciDev);
     if (!UsesIrq() && HalCpuIsHypervisor()) {
-        ToyLogUsb("Boot: XHCI arm fallback poll\n");
+        LogUsb("Boot: XHCI arm fallback poll\n");
     }
 }
 

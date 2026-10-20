@@ -7,7 +7,7 @@
 #include "DriverBoot.h"
 #include "Rtl8188eu/WifiIds.h"
 #include "Rtl8188eu/UsbWifiHost.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define HUB_FEAT_PORT_POWER 8u
 #define HUB_STAT_CONNECT    (1u << 0)

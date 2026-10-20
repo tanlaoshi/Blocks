@@ -1,14 +1,14 @@
 /*
  * LogFile.c — PR-K-uart-shell：运行时日志落盘 RUNTIME.LOG
  *
- * ShellOwn 后 ToyLog 只进缓冲；Worker 脏时刷盘；Shell log / log save 可拉。
+ * ShellOwn 后 Log 只进缓冲；Worker 脏时刷盘；Shell log / log save 可拉。
  */
 #include "Console.h"
 #include "LogFile.h"
 #include "HalSerial.h"
 #include "FileSystem.h"
 #include "Fat.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define RT_PATH "RUNTIME.LOG"
 #define RT_SNAP 16384u
@@ -43,7 +43,7 @@ static void RuntimeLogShow(void) {
 
     N = HalSerialRuntimeSnapshot(gSnap, RT_SNAP);
     if (N == 0) {
-        gConsole.Write("(runtime log empty — post-ready ToyLog only)\n");
+        gConsole.Write("(runtime log empty — post-ready Log only)\n");
         return;
     }
     i = 0;
@@ -76,13 +76,13 @@ static int RuntimeLogSave(const char *Path) {
     return 0;
 }
 
-#if TOY_FILE_LOG
+#if FILE_LOG
 #define BOOT_LOG_MAX (64u * 1024u)
 static char gBootSnap[BOOT_LOG_MAX];
 #endif
 
 void BootLogFlush(void) {
-#if !TOY_FILE_LOG
+#if !FILE_LOG
     return;
 #else
     static const char *Paths[] = { "BOOT.LOG", "USB:BOOT.LOG", "BLOCKS:BOOT.LOG" };

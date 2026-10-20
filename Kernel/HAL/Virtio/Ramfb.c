@@ -8,7 +8,7 @@
  */
 #include "Ramfb.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define FW_CFG_SIGNATURE 0x0000u
 #define FW_CFG_FILE_DIR  0x0019u
@@ -184,16 +184,16 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
     FwCfgSelect(FwCfgBase, FW_CFG_SIGNATURE);
     FwCfgReadBytes(FwCfgBase, Sig, 4);
     if (Sig[0] != 'Q' || Sig[1] != 'E' || Sig[2] != 'M' || Sig[3] != 'U') {
-        ToyLogDrv("Boot: FW_CFG Signature Missing\n");
+        LogDrv("Boot: FW_CFG Signature Missing\n");
         return -1;
     }
 
     if (FwCfgFindFile(FwCfgBase, "etc/ramfb", &Sel, &FileSize) != 0) {
-        ToyLogDrv("Boot: etc/RamFB missing (need -device ramfb)\n");
+        LogDrv("Boot: etc/RamFB missing (need -device ramfb)\n");
         return -1;
     }
     if (FileSize != (UINT32)sizeof(Cfg)) {
-        ToyLogDrv("Boot: etc/RamFB size mismatch\n");
+        LogDrv("Boot: etc/RamFB size mismatch\n");
         return -1;
     }
 
@@ -202,7 +202,7 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
     FbBase = (*FreeStart + 0xFFFULL) & ~0xFFFULL;
     FbEnd = FbBase + ((FbBytes + 0xFFFULL) & ~0xFFFULL);
     if (FbEnd > RamEnd || FbEnd < FbBase) {
-        ToyLogDrv("Boot: RamFB OOM\n");
+        LogDrv("Boot: RamFB OOM\n");
         return -1;
     }
 
@@ -220,7 +220,7 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
     StoreBe32(&Cfg.Stride, Stride);
 
     if (FwCfgDmaWrite(FwCfgBase, Sel, &Cfg, (UINT32)sizeof(Cfg)) != 0) {
-        ToyLogDrv("Boot: RamFB fw_cfg DMA write failed\n");
+        LogDrv("Boot: RamFB fw_cfg DMA write failed\n");
         return -1;
     }
 
@@ -231,7 +231,7 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
     Info->PixelsPerScanLine = W;
     *FreeStart = FbEnd;
 
-    ToyLogDrv("Boot: RamFB ");
+    LogDrv("Boot: RamFB ");
     {
         char Buf[32];
         UINT32 n = W;
@@ -264,9 +264,9 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
             }
         }
         Buf[p] = 0;
-        ToyLogDrv(Buf);
+        LogDrv(Buf);
     }
-    ToyLogDrv(" @");
+    LogDrv(" @");
     {
         static const char Hex[] = "0123456789abcdef";
         char Buf[17];
@@ -277,8 +277,8 @@ int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
             V >>= 4;
         }
         Buf[16] = 0;
-        ToyLogDrv(Buf);
+        LogDrv(Buf);
     }
-    ToyLogDrv("\n");
+    LogDrv("\n");
     return 0;
 }

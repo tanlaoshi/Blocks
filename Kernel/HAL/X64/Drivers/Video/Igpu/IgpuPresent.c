@@ -6,7 +6,7 @@
 #include "Igpu.h"
 #include "Hal.h"
 #include "HalVideo.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "IgpuBlitPrivate.h"
 
 #define IGPU_BACK_GTT_OFF    0x04000000ull
@@ -42,7 +42,7 @@ void IgpuNotePresentSkipScale(void) {
         return;
     }
     gScaleSkipLogged = 1;
-    ToyLogBoot("Boot: igpu present skip (scale)\n");
+    LogBoot("Boot: igpu present skip (scale)\n");
 }
 
 void IgpuBackInvalidate(void) {
@@ -69,13 +69,13 @@ int IgpuBackMap(UINT64 PhysBase, UINTN Bytes) {
     }
     Pages = (Bytes + 4095u) / 4096u;
     if (Pages == 0 || Pages > IGPU_MAP_MAX_PAGES) {
-        ToyLogBoot("Boot: igpu back soft (pages)\n");
+        LogBoot("Boot: igpu back soft (pages)\n");
         return 0;
     }
     for (i = 0; i < Pages; i++) {
         if (!IgpuGsmMapQuiet(IGPU_BACK_GTT_OFF + (UINT64)i * 4096ull,
                              PhysBase + (UINT64)i * 4096ull)) {
-            ToyLogBoot("Boot: igpu back soft (pte)\n");
+            LogBoot("Boot: igpu back soft (pte)\n");
             gBackMapped = 0;
             return 0;
         }

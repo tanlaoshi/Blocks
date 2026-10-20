@@ -11,7 +11,7 @@
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "SpinLock.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int NameStarts(const char *Name, char A, char B) {
     char C0;
@@ -71,7 +71,7 @@ void SchedulerApStart(void) {
     Idle = IdleTaskForCpu(Cpu);
     if (!Idle) {
         SpinLockRelease(&gSchedulerLock);
-        ToyLogSmp("Scheduler: AP has no idle\n");
+        LogSmp("Boot: Scheduler AP Has No Idle\n");
         for (;;) {
             HalCpuPark();
         }
@@ -91,7 +91,7 @@ void SchedulerApStart(void) {
         HalFrameSetKernelEntry(Frame, (UINT64)(UINTN)IdleTask,
                                (UINT64)(UINTN)Top);
         Idle->Frame = Frame;
-        ToyLogSmp("Scheduler: AP repaired idle frame\n");
+        LogSmp("Boot: Scheduler AP Repaired Idle Frame\n");
     }
     ActivateTask(Idle);
     Idle->Started = 1;
@@ -99,9 +99,9 @@ void SchedulerApStart(void) {
     /* 8 AP 并发写 COM1 会把欢迎语打成乱码；只留一条样例给冒烟。
      * 与 Worker 上 iwl bg=* 交错属正常：SchedulerStart 后 AP 与 Worker 并行。 */
     if (Cpu == 1) {
-        ToyLogSmp("Scheduler: AP entered idle cpu=");
-        ToyLogSmpHex32(Cpu);
-        ToyLogSmp("\n");
+        LogSmp("Boot: Scheduler AP Entered Idle Cpu=");
+        LogSmpHex32(Cpu);
+        LogSmp("\n");
     }
     HalSchedulerEnter(Frame);
     for (;;) {
@@ -124,7 +124,7 @@ void SchedulerStart(void) {
     }
     for (c = 0; c < Cpus; c++) {
         if (CreateIdleForCpu((UINT32)c) < 0) {
-            ToyLogMisc("sched: idle create failed\n");
+            LogMisc("Boot: Scheduler Idle Create Failed\n");
             for (;;) {
                 HalCpuPark();
             }
@@ -207,7 +207,7 @@ void SchedulerStart(void) {
         First = IdleTaskForCpu(0);
     }
     if (!First) {
-        ToyLogMisc("sched: no tasks\n");
+        LogMisc("Boot: Scheduler No Tasks\n");
         for (;;) {
             HalCpuPark();
         }
@@ -223,7 +223,7 @@ void SchedulerStart(void) {
 
         SpinLockRelease(&gSchedulerLock);
         HalTimerStart();
-        DebugWrite("sched: online, entering tasks\n");
+        DebugWrite("Boot: Scheduler Online\n");
         /*
          * PR-V-input-fix：Start 前 cli；First 若是 shell（virt 钉 BSP）则从不
          * HalCpuHalt 开中断 → 无 tick、OnTimer 不转、Poll 侧也饿（见 show input t0=0）。

@@ -10,7 +10,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int PortXfer(AHCI_DRIVE *Drive, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     volatile AHCI_PORT *Port;

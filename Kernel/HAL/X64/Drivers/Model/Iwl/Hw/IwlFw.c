@@ -4,7 +4,7 @@
 #include "Iwl/Private.h"
 #include "HalDriverFile.h"
 #include "PhysicalMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 UINT8 *gIwlFwBlob;
 UINTN gIwlFwBlobSize;
@@ -35,19 +35,19 @@ static int IwlFwReadBlob(void) {
     gIwlFwSize = 0;
     Err = HalDriverFileRead(IWL_FW_PATH, Probe, sizeof(Probe), &Sz);
     if (Err != 0 || Sz == 0) {
-        ToyLogDrv("Boot: iwl8265 fw miss (FW/IWL8265.UCODE)\n");
+        LogDrv("Boot: iwl8265 fw miss (FW/IWL8265.UCODE)\n");
         return 0;
     }
     Pages = (2500u * 1024u + PAGE_SIZE - 1) / PAGE_SIZE;
     Mem = PhysicalMemoryAllocatePages((UINT32)Pages);
     if (!Mem) {
-        ToyLogDrv("Boot: iwl8265 fw oom\n");
+        LogDrv("Boot: iwl8265 fw oom\n");
         return 0;
     }
     IwlZero(Mem, Pages * PAGE_SIZE);
     Err = HalDriverFileRead(IWL_FW_PATH, Mem, Pages * PAGE_SIZE, &Got);
     if (Err != 0 || Got < 128) {
-        ToyLogDrv("Boot: iwl8265 fw read fail\n");
+        LogDrv("Boot: iwl8265 fw read fail\n");
         return 0;
     }
     gIwlFwBlob = (UINT8 *)Mem;
@@ -87,7 +87,7 @@ static int IwlFwParseTlv(void) {
     Magic = gIwlFwBlob[4] | ((UINT32)gIwlFwBlob[5] << 8)
           | ((UINT32)gIwlFwBlob[6] << 16) | ((UINT32)gIwlFwBlob[7] << 24);
     if (Magic != IWL_TLV_MAGIC) {
-        ToyLogDrv("Boot: iwl8265 fw magic bad\n");
+        LogDrv("Boot: iwl8265 fw magic bad\n");
         return 0;
     }
     Off = 88;

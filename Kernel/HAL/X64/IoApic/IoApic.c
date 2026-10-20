@@ -8,7 +8,7 @@
 #include "Hal.h"
 #include "Platform.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IOAPIC_DEFAULT_PHYS 0xFEC00000ULL
 #define IOAPIC_REGSEL       0x00
@@ -107,15 +107,15 @@ int IoApicInit(void) {
     }
 
     gReady = 1;
-    ToyLogSmp("Boot: IOAPIC Base=");
-    ToyLogSmpHex64(Phys);
-    ToyLogSmp(" maxredir=");
-    ToyLogSmpHex32(gMaxRedir);
-    ToyLogSmp(" gsi0=");
-    ToyLogSmpHex32(GsiBase);
-    ToyLogSmp(" iso=");
-    ToyLogSmpHex32((UINT32)gIsoCount);
-    ToyLogSmp("\n");
+    LogSmp("Boot: IOAPIC Base=");
+    LogSmpHex64(Phys);
+    LogSmp(" maxredir=");
+    LogSmpHex32(gMaxRedir);
+    LogSmp(" gsi0=");
+    LogSmpHex32(GsiBase);
+    LogSmp(" iso=");
+    LogSmpHex32((UINT32)gIsoCount);
+    LogSmp("\n");
     return 0;
 }
 
@@ -164,14 +164,14 @@ int IoApicRouteGsi(UINT32 Gsi, UINT8 Vector, UINT8 DestApicId,
     Hi = ((UINT32)DestApicId) << 24;
     WriteRte(Index, Lo, Hi);
 
-    ToyLogSmp("Boot: IOAPIC Route GSI=");
-    ToyLogSmpHex32(Gsi);
-    ToyLogSmp(" vec=");
-    ToyLogSmpHex32(Vector);
-    ToyLogSmp(" dest=");
-    ToyLogSmpHex32(DestApicId);
-    ToyLogSmp(Level ? " level" : " edge");
-    ToyLogSmp(ActiveLow ? " low\n" : " high\n");
+    LogSmp("Boot: IOAPIC Route GSI=");
+    LogSmpHex32(Gsi);
+    LogSmp(" vec=");
+    LogSmpHex32(Vector);
+    LogSmp(" dest=");
+    LogSmpHex32(DestApicId);
+    LogSmp(Level ? " level" : " edge");
+    LogSmp(ActiveLow ? " low\n" : " high\n");
     return 0;
 }
 
@@ -214,7 +214,7 @@ int IoApicRoutePciIntx(USB_CONTROLLER *Device, UINT8 Vector, UINT8 DestApicId) {
     Dw = PciReadConfig(Device->Bus, Device->Device, Device->Function, 0x3C);
     Line = (UINT8)(Dw & 0xFFu);
     if (Line == 0 || Line == 0xFF || Line > 23) {
-        ToyLogSmp("Boot: IOAPIC PCI INTx: No Line\n");
+        LogSmp("Boot: IOAPIC PCI INTx: No Line\n");
         return -1;
     }
 

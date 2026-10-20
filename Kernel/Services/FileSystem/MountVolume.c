@@ -9,7 +9,7 @@
 #include "BootInfo.h"
 #include "VirtualFileSystem.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define BOOT_GUID_CACHE 16
 static UINT8 sDriveGuid[BOOT_GUID_CACHE][16];
@@ -97,17 +97,17 @@ static void NameToyIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *ToyVol) {
     } else if (NewMatch == 1 && !OldMatch) {
         StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
-        ToyLogFs("Fs: Prefer Boot Disk BLOCKS\n");
+        LogFs("Fs: Prefer Boot Disk BLOCKS\n");
     } else if (NewMatch == 0 && OldMatch) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
-        ToyLogFs("Fs: Other BLOCKS Kept As USB:\n");
+        LogFs("Fs: Other BLOCKS Kept As USB:\n");
     } else if (NewMatch < 0 && !Msc && BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
         StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
-        ToyLogFs("Fs: Prefer Internal BLOCKS Over USB\n");
+        LogFs("Fs: Prefer Internal BLOCKS Over USB\n");
     } else if (NewMatch < 0 && Msc && !BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
-        ToyLogFs("Fs: USB BLOCKS Kept As USB:\n");
+        LogFs("Fs: USB BLOCKS Kept As USB:\n");
     } else {
         Take = 1;
     }
@@ -126,7 +126,7 @@ static int PickVolSlot(int HasId) {
      * 否则 NVMe 上多个 ESP/OEM FAT 会先占满，USB 系统卷永远挂不上。
      */
     if (!HasId) {
-        ToyLogFs("Fs: Skip Fat (Table Full)\n");
+        LogFs("Fs: Skip Fat (Table Full)\n");
         return -1;
     }
     {
@@ -138,11 +138,11 @@ static int PickVolSlot(int HasId) {
             if (gVols[j].Ops && gVols[j].Ops->Synthetic) {
                 continue;
             }
-            ToyLogFs("Fs: Displace Vol For BLOCKS.ID\n");
+            LogFs("Fs: Displace Vol For BLOCKS.ID\n");
             return j;
         }
     }
-    ToyLogFs("Fs: Skip BLOCKS (No Slot To Displace)\n");
+    LogFs("Fs: Skip BLOCKS (No Slot To Displace)\n");
     return -1;
 }
 
@@ -235,6 +235,6 @@ void FsMountAddResVolume(void) {
         gActiveDrive = V->Drive;
         gActiveLba = 0;
         DebugWrite("Fs: vol RES (resfs)\n");
-        ToyLogFs("Fs: RES Volume RES:\n");
+        LogFs("Fs: RES Volume RES:\n");
     }
 }

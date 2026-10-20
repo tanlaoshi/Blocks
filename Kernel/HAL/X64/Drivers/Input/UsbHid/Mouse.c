@@ -14,7 +14,7 @@ void InitMouseDeferred(void) {
     if (gMouseSlotId != 0) {
         return;
     }
-    ToyLogUsb("Boot: XHCI mouse deferred start\n");
+    LogUsb("Boot: XHCI mouse deferred start\n");
     if (gHubSlotId != 0) {
         (void)EnumHubChildrenForMouse();
     }
@@ -41,9 +41,9 @@ void InitMouseDeferred(void) {
         (void)InterruptByClass(3, 1, 1);
     }
     if (gMouseSlotId != 0) {
-        ToyLogUsb("Boot: XHCI mouse deferred ok\n");
+        LogUsb("Boot: XHCI mouse deferred ok\n");
     } else {
-        ToyLogUsb("Boot: XHCI mouse deferred none\n");
+        LogUsb("Boot: XHCI mouse deferred none\n");
     }
 }
 
@@ -198,7 +198,7 @@ void MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
         gMouseAbsY = MaxY;
     }
     SpinLockRelease(&gHidQueueLock);
-    ToyLogUsb("Boot: XHCI mouse handoff desktop\n");
+    LogUsb("Boot: XHCI mouse handoff desktop\n");
 }
 
 int DequeueMouse(USB_MOUSE_REPORT *Report) {

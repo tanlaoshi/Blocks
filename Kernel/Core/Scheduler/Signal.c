@@ -11,7 +11,7 @@
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "SpinLock.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "CoreOps.h"
 
 TASK *FindRunnable(UINT32 Cpu) {
@@ -187,7 +187,7 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
             if (!Next) {
                 SpinLockRelease(&gSchedulerLock);
                 SchedulerDestroyDetached(Detached);
-                ToyLogMisc("sched: no runnable after pending kill\n");
+                LogMisc("sched: no runnable after pending kill\n");
                 for (;;) {
                     HalCpuPark();
                 }

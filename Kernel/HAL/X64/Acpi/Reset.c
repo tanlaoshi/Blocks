@@ -6,7 +6,7 @@
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "VirtualMemory.h"
 #include "Debug.h"
 

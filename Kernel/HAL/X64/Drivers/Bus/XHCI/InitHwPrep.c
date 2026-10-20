@@ -9,7 +9,7 @@ void InitHwRealPcDmar(void) {
      * 真机：一进 Init 就 mute，ports/探针全走 BootMark（直写帧缓冲）。
      */
     HalSerialGopMute(1);
-    ToyBootMarkUsb("Boot: XHCI-HHID Enter\n");
+    BootMarkUsb("Boot: XHCI-HHID Enter\n");
     gXhciDmar = -2;
     gXhciTe = -2;
     {
@@ -17,7 +17,7 @@ void InitHwRealPcDmar(void) {
         int Dmar;
         int Te;
         if (Rsdp == 0) {
-            ToyBootMarkUsb("Boot: XHCI RSDP=0\n");
+            BootMarkUsb("Boot: XHCI RSDP=0\n");
         } else {
             BootMarkV("Boot: XHCI RSDP ok\n");
             Dmar = AcpiTablePresent(Rsdp, "DMAR");
@@ -34,13 +34,13 @@ void InitHwRealPcDmar(void) {
                 } else if (Te == 0) {
                     BootMarkV("Boot: XHCI TE no DRHD\n");
                 } else {
-                    ToyBootMarkUsb("Boot: XHCI TE off fail\n");
+                    BootMarkUsb("Boot: XHCI TE off fail\n");
                 }
             } else if (Dmar == 0) {
                 BootMarkV("Boot: XHCI DMAR=no\n");
                 gXhciTe = -2;
             } else {
-                ToyBootMarkUsb("Boot: XHCI DMAR=bad\n");
+                BootMarkUsb("Boot: XHCI DMAR=bad\n");
             }
         }
     }
@@ -58,13 +58,13 @@ int InitHwMapCap(UINT64 BaseAddress, int RealPc, char *B) {
             "CAP!=F.. len>=20", Cap, 8);
     if (Cap == 0xFFFFFFFFu || CapLength < 0x20 || CapLength == 0xFF) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: XHCI bad CAP\n");
+            BootMarkUsb("Boot: XHCI bad CAP\n");
             HalSerialGopMute(0);
         } else {
-            ToyLogUsb("Boot: XHCI bad CAP=");
+            LogUsb("Boot: XHCI bad CAP=");
             HalSerialFormatHex(B, Cap, 8);
-            ToyLogUsb(B);
-            ToyLogUsb("\n");
+            LogUsb(B);
+            LogUsb("\n");
         }
         return 0;
     }
@@ -93,7 +93,7 @@ int InitHwMapCap(UINT64 BaseAddress, int RealPc, char *B) {
         gFwErdpSave = ReadMmio64(gRuntimeBase + 0x38);
         if (gFwErstbaSave != 0) {
             if (MapXhciDma(gFwErstbaSave, XHCI_PAGE_SIZE) != 0) {
-                ToyBootMarkUsb("Boot: XHCI map ERST fail\n");
+                BootMarkUsb("Boot: XHCI map ERST fail\n");
             } else {
                 Erst = (UINT8 *)(UINTN)gFwErstbaSave;
                 gFwEvtSave = *(UINT64 *)(void *)Erst;
@@ -122,15 +122,15 @@ int InitHwStartCtrl(UINT32 MaxSlots, int RealPc) {
     if (RealPc) {
         BootMarkV("Boot: XHCI-HHID Halt\n");
         if (!HaltOnly()) {
-            ToyBootMarkUsb("Boot: XHCI halt fail\n");
+            BootMarkUsb("Boot: XHCI halt fail\n");
             HalSerialGopMute(0);
-            ToyLogUsb("Boot: XHCI halt fail, desktop\n");
+            LogUsb("Boot: XHCI halt fail, desktop\n");
             return 0;
         }
         if (!StartController(MaxSlots)) {
-            ToyBootMarkUsb("Boot: XHCI start fail\n");
+            BootMarkUsb("Boot: XHCI start fail\n");
             HalSerialGopMute(0);
-            ToyLogUsb("Boot: XHCI start fail, desktop\n");
+            LogUsb("Boot: XHCI start fail, desktop\n");
             HaltControllerQuiet();
             return 0;
         }

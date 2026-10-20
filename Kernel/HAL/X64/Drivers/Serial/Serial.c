@@ -1,7 +1,7 @@
 /*
  * Serial.c — COM1 串口驱动（经 HalIo；PR-H3：探测存在性）
  *
- * TOY_SERIAL=0：不 Probe、不碰端口，一切 TX/RX 空操作。
+ * SERIAL_ENABLE=0：不 Probe、不碰端口，一切 TX/RX 空操作。
  *
  * RX：IRQ4 → 软环（SPSC）。CoolTerm 整行突发时仅靠 Shell 轮询会冲掉
  * 16550 FIFO(~16)；ISR 在字节到达时抽空。禁止在定时器里自旋抢锁。
@@ -11,7 +11,7 @@
 #include "Hal.h"
 #include "HalIrq.h"
 #include "IoApic.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #define COM1 0x3F8
 
@@ -81,7 +81,7 @@ static int ProbeCom1(void) {
     UINT8 A;
     UINT8 B;
 
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #endif
     /* Scratch 寄存器（offset 7）：无 16550 时常读回 0xFF */
@@ -93,7 +93,7 @@ static int ProbeCom1(void) {
 }
 
 void SerialInitialize(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     gSerialOk = 0;
     gSerialInited = 1;
     return;
@@ -126,7 +126,7 @@ void SerialInitialize(void) {
  * 失败则保持 poll（SerialRxPump）。
  */
 void SerialEnableRxIrq(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return;
 #else
     if (!gSerialOk || gSerialIrqOn) {
@@ -147,7 +147,7 @@ void SerialEnableRxIrq(void) {
 }
 
 void SerialRetryIfMissing(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return;
 #else
     if (gSerialOk) {
@@ -159,7 +159,7 @@ void SerialRetryIfMissing(void) {
 }
 
 int SerialPresent(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     return gSerialOk;

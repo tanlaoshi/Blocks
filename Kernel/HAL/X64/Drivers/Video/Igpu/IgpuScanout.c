@@ -10,7 +10,7 @@
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
 #include "BootInfo.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IGPU_FLIP0_GTT       0x0A000000ull
 #define IGPU_REG_PIPE_FRMC_A 0x70040u /* PIPEA FRMCOUNT（Gen9 族） */
@@ -125,18 +125,18 @@ int IgpuScanoutInit(void) {
     gOrigPitch = gPitchPx;
 
     if (!AllocOne(0, IGPU_FLIP0_GTT)) {
-        ToyLogBoot("Boot: igpu scanout soft (oom0)\n");
+        LogBoot("Boot: igpu scanout soft (oom0)\n");
         return 0;
     }
     if (!AllocOne(1, IGPU_FLIP0_GTT + ((gBytes + 0x1FFFFFull) & ~0x1FFFFFull))) {
-        ToyLogBoot("Boot: igpu scanout soft (oom1)\n");
+        LogBoot("Boot: igpu scanout soft (oom1)\n");
         return 0;
     }
 
     gShown = 0;
     gScanLive = 0;
     gScanOk = 1;
-    ToyLogBoot("Boot: igpu scanout flip ready\n");
+    LogBoot("Boot: igpu scanout flip ready\n");
     return 1;
 }
 

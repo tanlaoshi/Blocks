@@ -17,7 +17,7 @@
  * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
  */
 #include "BootInfo.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "Scheduler.h"
@@ -36,7 +36,7 @@ static void KernelParkForever(void);
 
 static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
     if (SchedulerCreate(Name, Entry) < 0) {
-        ToyLogBoot("Boot: SchedulerCreate Failed\n");
+        LogBoot("Boot: SchedulerCreate Failed\n");
         KernelParkForever();
     }
 }
@@ -47,7 +47,7 @@ static void KernelTrySpawnInput(void) {
         return;
     }
     if (SchedulerCreate("Input", InputTask) < 0) {
-        ToyLogBoot("Boot: SchedulerCreate Failed\n");
+        LogBoot("Boot: SchedulerCreate Failed\n");
     }
 }
 
@@ -88,7 +88,7 @@ static void KernelLogFrameBufferSize(const BOOT_INFO *Info) {
     KernelAppendDecimal4(Line, &N, Info->VerticalResolution);
     Line[N++] = '\n';
     Line[N] = 0;
-    ToyLogBoot(Line);
+    LogBoot(Line);
 }
 
 /*
@@ -111,7 +111,7 @@ static void KernelAttachEarlyVideo(void) {
         FontInitialize();
         ThemeInitialize();
         HalSerialGopEnable();
-        ToyLogBoot("Boot: KernelMain Live\n");
+        LogBoot("Boot: KernelMain Live\n");
         KernelLogFrameBufferSize(Info);
     }
 }

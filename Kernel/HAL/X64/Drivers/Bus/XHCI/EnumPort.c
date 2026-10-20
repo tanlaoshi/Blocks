@@ -30,7 +30,7 @@ int EnumTryRootPort(UINT32 P) {
 
     BootMarkV("Boot: XHCI address...\n");
     if (!AddressDevice(P, Speed)) {
-        ToyBootMarkUsb("Boot: XHCI addr fail\n");
+        BootMarkUsb("Boot: XHCI addr fail\n");
         gPortNeedForcePr |= (1u << P);
         DisableSlot(gSlotId);
         return 0;
@@ -39,7 +39,7 @@ int EnumTryRootPort(UINT32 P) {
 
     BootMarkV("Boot: XHCI get desc\n");
     if (GetDeviceDesc() < 0) {
-        ToyBootMarkUsb("Boot: XHCI desc fail\n");
+        BootMarkUsb("Boot: XHCI desc fail\n");
         gPortNeedForcePr |= (1u << P);
         DisableSlot(gSlotId);
         return 0;

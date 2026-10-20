@@ -14,7 +14,7 @@
 #include "EditUi.h"
 #include "Console.h"
 #include "Process.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Scheduler.h"
 
 void GuiInputLock(int Locked) {

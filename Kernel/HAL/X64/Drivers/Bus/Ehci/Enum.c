@@ -2,7 +2,7 @@
  * Enum.c — 根口 / 设备枚举 boot HID（PR-H-ehci-2 · 2j）
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 
@@ -66,14 +66,14 @@ void EnumMarkHex4(const char *Prefix, UINT32 V) {
     char Hex[12];
     char Dig[5];
 
-    ToyBootMarkUsb(Prefix);
+    BootMarkUsb(Prefix);
     HalSerialFormatHex(Hex, V, 4);
     Dig[0] = Hex[2];
     Dig[1] = Hex[3];
     Dig[2] = Hex[4];
     Dig[3] = Hex[5];
     Dig[4] = 0;
-    ToyBootMarkUsb(Dig);
+    BootMarkUsb(Dig);
 }
 
 static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
@@ -90,7 +90,7 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
 
     if (EnumGetDesc(C, 0, 64, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
         if (EnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
-            ToyBootMarkUsb("Boot: EHCI getdesc fail\n");
+            BootMarkUsb("Boot: EHCI getdesc fail\n");
             return 0;
         }
         EpMax = 8;
@@ -107,12 +107,12 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
         Line[0] = 'p';
         Line[1] = (char)('0' + (Port % 10));
         Line[2] = 0;
-        ToyBootMarkUsb("Boot: EHCI ");
-        ToyBootMarkUsb(Line);
+        BootMarkUsb("Boot: EHCI ");
+        BootMarkUsb(Line);
         EnumMarkHex4(" vid=", Dev.idVendor);
         EnumMarkHex4(" pid=", Dev.idProduct);
         EnumMarkHex4(" cls=", Dev.bDeviceClass);
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("\n");
     }
 
     if (Dev.bDeviceClass == 0x09u) {
@@ -136,7 +136,7 @@ static int EnumRootPort(EHCI_CTRL *C, UINT8 Port) {
             return 0;
         }
         C->HubAddr = HubAddr;
-        ToyBootMarkUsb("Boot: EHCI hub walk\n");
+        BootMarkUsb("Boot: EHCI hub walk\n");
         return EnumHub(C);
     }
 

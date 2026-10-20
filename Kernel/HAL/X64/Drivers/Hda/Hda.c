@@ -7,7 +7,7 @@
 #include "DriverBoot.h"
 #include "Driver.h"
 #include "Device.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int gHdaProbed;
 static UINT16 gHdaDid;
@@ -53,7 +53,7 @@ static int HdaProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
         *OutPrivate = 0;
     }
     if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
-        ToyLogBoot("Boot: hda skip (no Intel HDA)\n");
+        LogBoot("Boot: hda skip (no Intel HDA)\n");
         return -1;
     }
 
@@ -64,15 +64,15 @@ static int HdaProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     gHdaFn = Dev->PciFn;
     gHdaProbed = 1;
 
-    ToyLogBoot("Boot: hda probe did=");
-    ToyLogBootHex32((UINT32)gHdaDid);
-    ToyLogBoot(" @");
-    ToyLogBootHex32((UINT32)gHdaBus);
-    ToyLogBoot(":");
-    ToyLogBootHex32((UINT32)gHdaDev);
-    ToyLogBoot(".");
-    ToyLogBootHex32((UINT32)gHdaFn);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda probe did=");
+    LogBootHex32((UINT32)gHdaDid);
+    LogBoot(" @");
+    LogBootHex32((UINT32)gHdaBus);
+    LogBoot(":");
+    LogBootHex32((UINT32)gHdaDev);
+    LogBoot(".");
+    LogBootHex32((UINT32)gHdaFn);
+    LogBoot("\n");
     return 0;
 }
 
@@ -81,7 +81,7 @@ static int HdaBind(TOY_DRIVER_INSTANCE *Inst) {
         return -1;
     }
     DeviceBindDriver(gHdaNode, Inst->Driver, Inst);
-    ToyLogBoot("Boot: hda bound\n");
+    LogBoot("Boot: hda bound\n");
     return 0;
 }
 
@@ -103,7 +103,7 @@ static const TOY_DRIVER gHdaDriver = {
 
 void HdaDriverRegister(void) {
     if (ToyDriverRegister(&gHdaDriver) != 0) {
-        ToyLogBoot("Boot: hda register fail\n");
+        LogBoot("Boot: hda register fail\n");
         return;
     }
     (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_AUDIO);

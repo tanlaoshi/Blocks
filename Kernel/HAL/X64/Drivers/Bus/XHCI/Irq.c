@@ -177,7 +177,7 @@ void FallbackToPoll(const char *Why) {
         Line[n++] = '\n';
     }
     Line[n] = 0;
-    BootLog(Line); /* 真机 PHOTO 可见；勿只用 ToyLogUsb */
+    BootLog(Line); /* 真机 PHOTO 可见；勿只用 LogUsb */
     DrainEvents();
 }
 
@@ -224,7 +224,7 @@ int EnableIrq(USB_CONTROLLER *Device) {
         DebugWrite("XHCI: no interrupt EP, IRQ unused\n");
         gUseIrq = 0;
         gIrqMode = XHCI_IRQ_MODE_POLL;
-        ToyLogUsb("Boot: XHCI IRQ=None\n");
+        LogUsb("Boot: XHCI IRQ=None\n");
         return 0;
     }
 
@@ -284,7 +284,7 @@ int EnableIrq(USB_CONTROLLER *Device) {
             DrainEvents();
             gUseIrq = 1;
             gIrqMode = XHCI_IRQ_MODE_DUAL;
-            ToyLogUsb("Boot: XHCI IRQ=IOAPIC (Dual)\n");
+            LogUsb("Boot: XHCI IRQ=IOAPIC (Dual)\n");
             return 1;
         }
     }

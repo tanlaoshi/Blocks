@@ -5,7 +5,7 @@
  */
 #include "KernelModulesPrivate.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int CpuInitialize(void) {
     if (HalInitialize() != 0) {
@@ -22,20 +22,20 @@ int CpuInitialize(void) {
      * IDT/LAPIC 已就绪：再探一次 COM1（首启 Serial 可能尚无中断），开 RX IRQ。
      * 勿在此扫 USB-UART（挂盘之后再认，板载 COM1 不影响）。
      */
-    ToyLogBoot("Boot: COM1 after Cpu\n");
+    LogBoot("Boot: COM1 after Cpu\n");
     HalSerialRetryIfMissing();
     HalSerialEnableRxIrq();
     if (HalSerialPresent()) {
-        ToyLogBoot("Boot: COM1 Ready\n");
+        LogBoot("Boot: COM1 Ready\n");
     } else {
-        ToyLogBoot("Boot: COM1 Miss\n");
+        LogBoot("Boot: COM1 Miss\n");
     }
 
     /* TTF/SSE 岛：须在 BSP、拉 AP 前做一次（原挂在 SerialEarly 名下，名实不符） */
     if (HalFpuSelfTest() == 0) {
-        ToyLogBoot("Boot: fpu island ok\n");
+        LogBoot("Boot: fpu island ok\n");
     } else {
-        ToyLogBoot("Boot: fpu island skip\n");
+        LogBoot("Boot: fpu island skip\n");
     }
     return 0;
 }

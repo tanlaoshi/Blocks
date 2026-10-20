@@ -23,7 +23,7 @@
 #include "Store.h"
 #include "PhysicalMemory.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 /* ===== 宏（PR-UI-layout-desk：间距跟 UiLayout） ===== */
 #define DESKTOP_SYS_ICON_COUNT 5 /* Shell/Settings/Files/Store/Devices；Snake 只经 Store */

@@ -3,7 +3,7 @@
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static UINT64 gIwlLogTsc;
 
@@ -66,7 +66,7 @@ void IwlLogBound(void) {
     Line[n++] = '\n';
     Line[n] = 0;
     IwlLogStamp();
-    ToyLogBoot(Line);
+    LogBoot(Line);
 }
 
 /* 安静默认：成功路径只留 IwlLogBound；异常 + 手测关键黄字仍出；VERBOSE=1 全开 */
@@ -111,7 +111,7 @@ static void IwlLogEmit(const char *Tag) {
     Line[n++] = '\n';
     Line[n] = 0;
     IwlLogStamp();
-    ToyLogBoot(Line);
+    LogBoot(Line);
 }
 
 void IwlLogStage(const char *Tag) {

@@ -13,17 +13,17 @@ int InitHw(UINT64 BaseAddress) {
 
     if (gXhciStarted) {
         if (HidKeyboardReady() || MousePresent()) {
-            ToyLogUsb("Boot: XHCI init skipped (already up)\n");
+            LogUsb("Boot: XHCI init skipped (already up)\n");
             return 1;
         }
         /* 控制器曾起但无 HID：勿假成功，否则 Probe/fallback 会挡住 PS/2 */
-        ToyLogUsb("Boot: XHCI already up, no HID\n");
+        LogUsb("Boot: XHCI already up, no HID\n");
         return 0;
     }
 
     /* 运行时误调 / 损坏指针：QEMU 曾见 BAR=0x193A50 → Cap=0 后异常 */
     if (BaseAddress < 0x100000ULL || (BaseAddress & 0xFULL) != 0) {
-        ToyLogUsb("Boot: XHCI reject BAR\n");
+        LogUsb("Boot: XHCI reject BAR\n");
         return 0;
     }
 
@@ -40,10 +40,10 @@ int InitHw(UINT64 BaseAddress) {
 
     if (BaseAddress == 0) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: XHCI null BAR\n");
+            BootMarkUsb("Boot: XHCI null BAR\n");
             HalSerialGopMute(0);
         } else {
-            ToyLogUsb("Boot: XHCI null BAR\n");
+            LogUsb("Boot: XHCI null BAR\n");
         }
         return 0;
     }
@@ -75,11 +75,11 @@ int InitHw(UINT64 BaseAddress) {
             Msg[N++] = B[1];
             Msg[N++] = '\n';
             Msg[N] = 0;
-            ToyBootMarkUsb(Msg);
+            BootMarkUsb(Msg);
         } else {
-            ToyLogUsb("Boot: XHCI ports=");
-            ToyLogUsb(B);
-            ToyLogUsb("\n");
+            LogUsb("Boot: XHCI ports=");
+            LogUsb(B);
+            LogUsb("\n");
         }
     }
 

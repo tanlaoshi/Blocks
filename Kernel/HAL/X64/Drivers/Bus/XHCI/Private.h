@@ -11,7 +11,7 @@
 #include "XHCI.h"
 #include "Hal.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Acpi.h"
 #include "Platform.h"
 #include "SpinLock.h"

@@ -9,7 +9,7 @@
 #include "PCIe.h"
 #include "Hal.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "SpinLock.h"
 #include "UsbHostController.h"
 

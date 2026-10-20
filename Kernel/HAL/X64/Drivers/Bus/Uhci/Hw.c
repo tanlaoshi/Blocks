@@ -3,7 +3,7 @@
  */
 #include "Uhci/Private.h"
 #include "PhysicalMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "HalSerial.h"
 
 UHCI_CTRL gUhci[UHCI_MAX_CTRL];
@@ -73,7 +73,7 @@ static void LogCtrl(UHCI_CTRL *C, int Index) {
     Line[n++] = Hex[5];
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyBootMarkUsb(Line);
+    BootMarkUsb(Line);
 }
 
 int UhciInitOne(UHCI_CTRL *C, int Index) {
@@ -100,13 +100,13 @@ int UhciInitOne(UHCI_CTRL *C, int Index) {
         HalCpuRelax();
     }
     if (UhciR16(C->IoBase, UHCI_USBCMD) & UHCI_CMD_HCRESET) {
-        ToyBootMarkUsb("Boot: UHCI Reset Timeout\n");
+        BootMarkUsb("Boot: UHCI Reset Timeout\n");
         return 0;
     }
 
     Fl = (UINT32 *)PhysicalMemoryAllocatePages(1);
     if (!Fl) {
-        ToyBootMarkUsb("Boot: UHCI FrameList Alloc Fail\n");
+        BootMarkUsb("Boot: UHCI FrameList Alloc Fail\n");
         return 0;
     }
     for (i = 0; i < UHCI_FRAME_ENTRIES; i++) {

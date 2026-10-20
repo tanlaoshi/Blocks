@@ -17,7 +17,7 @@
 #include "Hal.h"
 #include "HalConsole.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "VirtualMemory.h"
 #include "BootInfo.h"
 

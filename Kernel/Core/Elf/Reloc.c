@@ -3,7 +3,7 @@
  */
 #include "ElfPrivate.h"
 #include "CString.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
                               const char *Name) {
@@ -60,7 +60,7 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
     if (ElfVaToFileOff(Ph, Pn, RelaVa, Bias, &RelaOff, Size) != 0) {
         /* EXEC 的 JMPREL 是绝对 VA，Bias=0 */
         if (Bias != 0 || ElfVaToFileOff(Ph, Pn, RelaVa, 0, &RelaOff, Size) != 0) {
-            ToyLogMem("elf: rela va translate failed\n");
+            LogMem("elf: rela va translate failed\n");
             return -1;
         }
     }
@@ -101,7 +101,7 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
             case ELF_RELOC_GLOB_DAT:
             case ELF_RELOC_ABS64:
                 if (!HaveSym) {
-                    ToyLogMem("elf: reloc needs symtab\n");
+                    LogMem("elf: reloc needs symtab\n");
                     return -1;
                 }
                 {
@@ -115,9 +115,9 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
                     Name = (const char *)(Bytes + StrOff + Sym->st_name);
                     Value = ElfLookupSymbol(Sos, SoCount, Name);
                     if (Value == 0) {
-                        ToyLogMem("elf: unresolved ");
-                        ToyLogMem(Name);
-                        ToyLogMem("\n");
+                        LogMem("elf: unresolved ");
+                        LogMem(Name);
+                        LogMem("\n");
                         return -1;
                     }
                     if (Kind == ELF_RELOC_ABS64) {
@@ -126,16 +126,16 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
                 }
                 break;
             case ELF_RELOC_COPY:
-                ToyLogMem("elf: COPY reloc unsupported\n");
+                LogMem("elf: COPY reloc unsupported\n");
                 return -1;
             default:
-                ToyLogMem("elf: unsupported reloc\n");
+                LogMem("elf: unsupported reloc\n");
                 return -1;
             }
         }
 
         if (VirtualMemoryCopyToSpace(Space, Dest, &Value, sizeof(Value)) < 0) {
-            ToyLogMem("elf: reloc write failed\n");
+            LogMem("elf: reloc write failed\n");
             return -1;
         }
     }

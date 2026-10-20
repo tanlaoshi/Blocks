@@ -7,7 +7,7 @@
 #include "E1000Private.h"
 #include "Hal.h"
 #include "Network/Network.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 volatile UINT8 *gBar;
 UINT64 gBarPhys;
@@ -84,7 +84,7 @@ void E1000FlushI219Rings(void) {
      * PR-N-i219-tx5：勿恢复 Fext（MULR fix 常驻）。
      */
     (void)Fext;
-    ToyLogNet(GotDd ? "Boot: I219 Flush OK\n" : "Boot: I219 Flush NoDD\n");
+    LogNet(GotDd ? "Boot: I219 Flush OK\n" : "Boot: I219 Flush NoDD\n");
 }
 
 int E1000Ready(void) {

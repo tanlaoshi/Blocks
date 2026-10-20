@@ -4,7 +4,7 @@
 #include "Iwl/Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "VirtualMemory.h"
 #include "Network/Network.h"
 

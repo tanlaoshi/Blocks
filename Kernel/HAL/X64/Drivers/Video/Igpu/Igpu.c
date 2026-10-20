@@ -7,7 +7,7 @@
 #include "DriverBoot.h"
 #include "Driver.h"
 #include "Device.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int gIgpuProbed;
 static UINT16 gIgpuDid;
@@ -60,7 +60,7 @@ static int IgpuProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
         *OutPrivate = 0;
     }
     if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
-        ToyLogBoot("Boot: igpu skip (no Intel display)\n");
+        LogBoot("Boot: igpu skip (no Intel display)\n");
         return -1;
     }
 
@@ -71,15 +71,15 @@ static int IgpuProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     gIgpuFn = Dev->PciFn;
     gIgpuProbed = 1;
 
-    ToyLogBoot("Boot: igpu probe did=");
-    ToyLogBootHex32((UINT32)gIgpuDid);
-    ToyLogBoot(" @");
-    ToyLogBootHex32((UINT32)gIgpuBus);
-    ToyLogBoot(":");
-    ToyLogBootHex32((UINT32)gIgpuDev);
-    ToyLogBoot(".");
-    ToyLogBootHex32((UINT32)gIgpuFn);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu probe did=");
+    LogBootHex32((UINT32)gIgpuDid);
+    LogBoot(" @");
+    LogBootHex32((UINT32)gIgpuBus);
+    LogBoot(":");
+    LogBootHex32((UINT32)gIgpuDev);
+    LogBoot(".");
+    LogBootHex32((UINT32)gIgpuFn);
+    LogBoot("\n");
     return 0;
 }
 
@@ -88,7 +88,7 @@ static int IgpuBind(TOY_DRIVER_INSTANCE *Inst) {
         return -1;
     }
     DeviceBindDriver(gIgpuNode, Inst->Driver, Inst);
-    ToyLogBoot("Boot: igpu bound\n");
+    LogBoot("Boot: igpu bound\n");
     return 0;
 }
 
@@ -110,7 +110,7 @@ static const TOY_DRIVER gIgpuDriver = {
 
 void IgpuDriverRegister(void) {
     if (ToyDriverRegister(&gIgpuDriver) != 0) {
-        ToyLogBoot("Boot: igpu register fail\n");
+        LogBoot("Boot: igpu register fail\n");
         return;
     }
     (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_DISPLAY);

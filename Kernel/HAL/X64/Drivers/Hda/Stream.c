@@ -5,7 +5,7 @@
 #include "Hda.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #ifndef PTE_PWT
 #define PTE_PWT HAL_PAGE_PWT
@@ -250,11 +250,11 @@ int HdaStreamInit(void) {
     gPin = 0;
     gCvt = 0;
     if (gCad == 0xFFu || Afg == 0) {
-        ToyLogBoot("Boot: hda stream no path\n");
+        LogBoot("Boot: hda stream no path\n");
         return 0;
     }
     if (!HdaHdmiPickPath(gCad, &gPin, &gCvt)) {
-        ToyLogBoot("Boot: hda stream no pin/cvt\n");
+        LogBoot("Boot: hda stream no pin/cvt\n");
         return 0;
     }
     (void)HdaHdmiDisplayAudioEnable();
@@ -266,18 +266,18 @@ int HdaStreamInit(void) {
     }
     gDma = (UINT8 *)PhysicalMemoryAllocatePages(1u + HDA_PCM_PAGES);
     if (!gDma) {
-        ToyLogBoot("Boot: hda stream dma fail\n");
+        LogBoot("Boot: hda stream dma fail\n");
         return 0;
     }
     gPhys = (UINT64)(UINTN)gDma;
     if (gPhys > 0xFFFFFFFFu) {
-        ToyLogBoot("Boot: hda stream dma >4G\n");
+        LogBoot("Boot: hda stream dma >4G\n");
         return 0;
     }
     Zero(gDma, (1u + HDA_PCM_PAGES) * PAGE_SIZE);
     if (VirtualMemoryMapRange(gPhys, gPhys, (1u + HDA_PCM_PAGES) * PAGE_SIZE,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) != 0) {
-        ToyLogBoot("Boot: hda stream map fail\n");
+        LogBoot("Boot: hda stream map fail\n");
         return 0;
     }
     gHdaStreamOk = 1;
@@ -286,10 +286,10 @@ int HdaStreamInit(void) {
         gHdaStreamOk = 0;
         return 0;
     }
-    ToyLogBoot("Boot: hda stream ok tag=");
-    ToyLogBootHex32(HDA_STREAM_TAG);
-    ToyLogBoot(" sd=");
-    ToyLogBootHex32(gSdBase);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda stream ok tag=");
+    LogBootHex32(HDA_STREAM_TAG);
+    LogBoot(" sd=");
+    LogBootHex32(gSdBase);
+    LogBoot("\n");
     return 1;
 }

@@ -8,7 +8,7 @@
 extern void HalCpuHalt(void);
 
 /*
- * \\n → \\r\\n。整段（或满缓冲块）一次 HalSerialWrite，与 ToyLogBoot 整行同锁粒度，
+ * \\n → \\r\\n。整段（或满缓冲块）一次 HalSerialWrite，与 LogBoot 整行同锁粒度，
  * 避免逐字符加锁时被「Boot: iwl…」插成 lwipBoot: 。
  */
 static void SerialWriteCooked(const char *Text) {

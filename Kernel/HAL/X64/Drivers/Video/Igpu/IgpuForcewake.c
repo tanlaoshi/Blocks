@@ -5,7 +5,7 @@
  * 先等 ACK 清再置位；失败软退，不挡桌面。持有 wake 不 Put（bringup）。
  */
 #include "Igpu.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IGPU_FW_KERNEL           1u
 #define IGPU_FW_FALLBACK         (1u << 15)
@@ -46,9 +46,9 @@ static int DomainGet(UINT32 FwReg, UINT32 AckReg, const char *Name) {
     }
     /* i915：先等旧 ACK 清（未醒时应为 0） */
     if (!WaitAckEq(AckReg, IGPU_FW_KERNEL, 0)) {
-        ToyLogBoot("Boot: igpu fw ");
-        ToyLogBoot(Name);
-        ToyLogBoot(" clr to\n");
+        LogBoot("Boot: igpu fw ");
+        LogBoot(Name);
+        LogBoot(" clr to\n");
         return 0;
     }
     IgpuMmioWrite32(FwReg, IGPU_FW_ENABLE(IGPU_FW_KERNEL));
@@ -63,9 +63,9 @@ static int DomainGet(UINT32 FwReg, UINT32 AckReg, const char *Name) {
         return 1;
     }
     IgpuMmioWrite32(FwReg, IGPU_FW_DISABLE(IGPU_FW_FALLBACK));
-    ToyLogBoot("Boot: igpu fw ");
-    ToyLogBoot(Name);
-    ToyLogBoot(" ack to\n");
+    LogBoot("Boot: igpu fw ");
+    LogBoot(Name);
+    LogBoot(" ack to\n");
     return 0;
 }
 
@@ -101,13 +101,13 @@ int IgpuForcewakeInit(void) {
         return 0;
     }
     if (!IgpuForcewakeGet()) {
-        ToyLogBoot("Boot: igpu fw soft (ack)\n");
+        LogBoot("Boot: igpu fw soft (ack)\n");
         return 0;
     }
 
     Ts = IgpuMmioRead32(IGPU_REG_TIMESTAMP);
-    ToyLogBoot("Boot: igpu fw ok ts=");
-    ToyLogBootHex32(Ts);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu fw ok ts=");
+    LogBootHex32(Ts);
+    LogBoot("\n");
     return 1;
 }

@@ -8,11 +8,11 @@
 #include "Hal.h"
 #include "HalSerial.h"
 #include "PCIe.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "VirtualMemory.h"
 #include "Debug.h"
 
-#define SmpLog(Text) ToyLogSmp(Text)
+#define SmpLog(Text) LogSmp(Text)
 
 int AcpiMadtParse(UINT64 RsdpPhys, UINT8 *ApicIds, int MaxCpus, int *OutCount,
                   UINT8 *OutBspApicId) {

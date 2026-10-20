@@ -2,7 +2,7 @@
  * MscHub.c — MSC 用 hub 控制（PR-H-ehci-3）
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 
@@ -34,14 +34,14 @@ void MscMarkHex4(const char *Prefix, UINT32 V) {
     char Hex[12];
     char Dig[5];
 
-    ToyBootMarkUsb(Prefix);
+    BootMarkUsb(Prefix);
     HalSerialFormatHex(Hex, V, 4);
     Dig[0] = Hex[2];
     Dig[1] = Hex[3];
     Dig[2] = Hex[4];
     Dig[3] = Hex[5];
     Dig[4] = 0;
-    ToyBootMarkUsb(Dig);
+    BootMarkUsb(Dig);
 }
 
 int MscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
@@ -176,9 +176,9 @@ static int TryHubPortMsc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     {
         const char *SpName =
             Sp == EHCI_SPEED_HS ? "HS" : (Sp == EHCI_SPEED_LS ? "LS" : "FS");
-        ToyBootMarkUsb("Boot: EHCI MSC hub spd=");
-        ToyBootMarkUsb(SpName);
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI MSC hub spd=");
+        BootMarkUsb(SpName);
+        BootMarkUsb("\n");
     }
     if (!MscFinishClaim(C, Sp, HubAddr, P)) {
         return 0;
@@ -187,7 +187,7 @@ static int TryHubPortMsc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     if (MscCapacity() == 0) {
         return 1;
     }
-    ToyBootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
+    BootMarkUsb("Boot: EHCI MSC drop (no capacity)\n");
     (void)MscRelease();
     return 0;
 }

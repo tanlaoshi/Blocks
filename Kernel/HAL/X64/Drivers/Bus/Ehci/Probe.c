@@ -5,7 +5,7 @@
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 
 static void ResurveyAll(void) {
@@ -67,7 +67,7 @@ int Setup(void) {
     if (!FoundPci) {
         /* QEMU 无 EHCI：静默；真机打里程碑便于 PHOTO */
         if (RealPc) {
-            ToyBootMarkUsb("Boot: EHCI none (no ProgIF 20)\n");
+            BootMarkUsb("Boot: EHCI none (no ProgIF 20)\n");
         } else {
             DebugWrite("EHCI: none\n");
         }
@@ -80,7 +80,7 @@ int Setup(void) {
     gEhciReady = 1;
     {
         char Hex[12];
-        ToyBootMarkUsb("Boot: EHCI CCS ports=");
+        BootMarkUsb("Boot: EHCI CCS ports=");
         HalSerialFormatHex(Hex, OrMask, 4);
         /* 跳过 "0x" */
         {
@@ -90,9 +90,9 @@ int Setup(void) {
             Dig[2] = Hex[4];
             Dig[3] = Hex[5];
             Dig[4] = 0;
-            ToyBootMarkUsb(Dig);
+            BootMarkUsb(Dig);
         }
-        ToyBootMarkUsb(Ok ? " up=1\n" : " up=0\n");
+        BootMarkUsb(Ok ? " up=1\n" : " up=0\n");
     }
     Offer();
     return 1;

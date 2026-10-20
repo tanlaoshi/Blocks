@@ -3,7 +3,7 @@
  */
 #include "Ps2/Private.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int gPs2Ready;
 int gPs2AuxReady;
@@ -176,7 +176,7 @@ int Ps2InitHw(void) {
 
     Ps2CtrlCmd(0xAA);
     if (!Ps2DataRead(&Ack) || Ack != 0x55) {
-        ToyBootMarkUsb("Boot: PS2-KBD SelfTest Fail\n");
+        BootMarkUsb("Boot: PS2-KBD SelfTest Fail\n");
         return 0;
     }
 
@@ -185,9 +185,9 @@ int Ps2InitHw(void) {
     Ps2CtrlCmd(0xA8);
     if (Ps2AuxInitDevice()) {
         gPs2AuxReady = 1;
-        ToyBootMarkUsb("Boot: PS2-AUX Mouse (Stream)\n");
+        BootMarkUsb("Boot: PS2-AUX Mouse (Stream)\n");
     } else {
-        ToyBootMarkUsb("Boot: PS2-AUX None (Ps2 / Ps2 Retry)\n");
+        BootMarkUsb("Boot: PS2-AUX None (Ps2 / Ps2 Retry)\n");
     }
 
     Ps2CtrlCmd(0xAE);
@@ -195,9 +195,9 @@ int Ps2InitHw(void) {
         return 0;
     }
     if (Ps2StatusLooksDead(HalIoRead8(PS2_STATUS))) {
-        ToyBootMarkUsb("Boot: PS2-KBD Died After Init\n");
+        BootMarkUsb("Boot: PS2-KBD Died After Init\n");
         return 0;
     }
-    ToyBootMarkUsb("Boot: PS2-KBD Keyboard (Set2)\n");
+    BootMarkUsb("Boot: PS2-KBD Keyboard (Set2)\n");
     return 1;
 }

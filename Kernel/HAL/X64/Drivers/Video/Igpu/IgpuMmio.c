@@ -6,7 +6,7 @@
 #include "Igpu.h"
 #include "PCIe.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 #ifndef PTE_PWT
@@ -127,7 +127,7 @@ int IgpuMmioInit(void) {
         return 0;
     }
     if (!VirtualMemoryEnabled()) {
-        ToyLogBoot("Boot: igpu mmio defer (no VMM)\n");
+        LogBoot("Boot: igpu mmio defer (no VMM)\n");
         return 0;
     }
 
@@ -135,7 +135,7 @@ int IgpuMmioInit(void) {
     Dev = IgpuPciDev();
     Fn = IgpuPciFn();
     if (!ReadBar0(Bus, Dev, Fn, &Bar)) {
-        ToyLogBoot("Boot: igpu mmio no BAR0\n");
+        LogBoot("Boot: igpu mmio no BAR0\n");
         return 0;
     }
 
@@ -153,18 +153,18 @@ int IgpuMmioInit(void) {
         MapBytes = (UINTN)Sz;
     }
     if (MapBytes < (8u * 1024u * 1024u)) {
-        ToyLogBoot("Boot: igpu mmio BAR<8MiB (need GSM)\n");
+        LogBoot("Boot: igpu mmio BAR<8MiB (need GSM)\n");
         return 0;
     }
 
     /* 量 size 后重读 BAR（PciBarSize 应已恢复原值） */
     if (!ReadBar0(Bus, Dev, Fn, &Bar) || Bar == 0) {
-        ToyLogBoot("Boot: igpu mmio BAR lost after size\n");
+        LogBoot("Boot: igpu mmio BAR lost after size\n");
         return 0;
     }
     if (VirtualMemoryMapRange(Bar, Bar, MapBytes,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) != 0) {
-        ToyLogBoot("Boot: igpu mmio map fail\n");
+        LogBoot("Boot: igpu mmio map fail\n");
         return 0;
     }
 
@@ -175,7 +175,7 @@ int IgpuMmioInit(void) {
     Word0 = MmioR32(0);
     Ts = MmioR32(IGPU_REG_TIMESTAMP);
     if (Word0 == 0xFFFFFFFFu && Ts == 0xFFFFFFFFu) {
-        ToyLogBoot("Boot: igpu mmio read FFs — disable\n");
+        LogBoot("Boot: igpu mmio read FFs — disable\n");
         gIgpuMmio = 0;
         gIgpuBarPhys = 0;
         gIgpuMapBytes = 0;
@@ -183,13 +183,13 @@ int IgpuMmioInit(void) {
     }
 
     gIgpuMmioOk = 1;
-    ToyLogBoot("Boot: igpu mmio bar=");
-    ToyLogBootHex32((UINT32)Bar);
-    ToyLogBoot(" sz=");
-    ToyLogBootHex32((UINT32)MapBytes);
-    ToyLogBoot(" ts=");
-    ToyLogBootHex32(Ts);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu mmio bar=");
+    LogBootHex32((UINT32)Bar);
+    LogBoot(" sz=");
+    LogBootHex32((UINT32)MapBytes);
+    LogBoot(" ts=");
+    LogBootHex32(Ts);
+    LogBoot("\n");
     return 1;
 }
 

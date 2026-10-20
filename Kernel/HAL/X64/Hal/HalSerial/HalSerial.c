@@ -16,7 +16,7 @@
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Font.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 #include "XHCI.h"
 #include "Ehci.h"
 
@@ -83,10 +83,10 @@ void HalSerialInitialize(void) {
         gBootLogY = BootLogBodyY(BootLogLineH());
     }
     if (!SerialPresent()) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
         RingAppend("Boot: No COM1; On-Screen Log Only\n");
 #else
-        RingAppend("Boot: Serial Disabled (TOY_SERIAL=0)\n");
+        RingAppend("Boot: Serial Disabled (SERIAL_ENABLE=0)\n");
 #endif
     } else {
         /* ASCII only — NUC terminals often mangled UTF-8 */
@@ -129,7 +129,7 @@ void HalSerialGopEnable(void) {
     gBootVisN = 0;
     gBootLogY = BootLogBodyY(BootLogLineH());
     gLineLen = 0;
-#if TOY_SCREEN_LOG
+#if SCREEN_LOG
     /*
      * 勿把整段 ring 一次性刷屏。只起横幅；其后受 SCREEN_LOG_* 上滚。
      */

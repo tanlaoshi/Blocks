@@ -6,7 +6,7 @@
 #include "Ehci/Private.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 #ifndef PTE_PWT
@@ -45,13 +45,13 @@ int SchedStart(EHCI_CTRL *C) {
 
     Mem = (UINT8 *)PhysicalMemoryAllocatePages(EHCI_DMA_PAGES);
     if (!Mem) {
-        ToyBootMarkUsb("Boot: EHCI DMA fail\n");
+        BootMarkUsb("Boot: EHCI DMA fail\n");
         return 0;
     }
     Phys = (UINT64)(UINTN)Mem;
     if (Phys > 0xFFFFFFFFu ||
         Phys + EHCI_DMA_PAGES * PAGE_SIZE > 0x100000000ull) {
-        ToyBootMarkUsb("Boot: EHCI DMA >4G\n");
+        BootMarkUsb("Boot: EHCI DMA >4G\n");
         return 0;
     }
     Zero(Mem, EHCI_DMA_PAGES * PAGE_SIZE);
@@ -59,7 +59,7 @@ int SchedStart(EHCI_CTRL *C) {
     if (VirtualMemoryMapRange(Phys, Phys, EHCI_DMA_PAGES * PAGE_SIZE,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) !=
         0) {
-        ToyBootMarkUsb("Boot: EHCI DMA UC map fail\n");
+        BootMarkUsb("Boot: EHCI DMA UC map fail\n");
         return 0;
     }
     C->Dma = Mem;
@@ -122,7 +122,7 @@ int SchedStart(EHCI_CTRL *C) {
     W32(C->Op, EHCI_FRINDEX, 0);
 
     if (EHCI_HCC_64ADDR(Hcc)) {
-        ToyBootMarkUsb("Boot: EHCI HCC 64-addr\n");
+        BootMarkUsb("Boot: EHCI HCC 64-addr\n");
     }
 
     Cmd = R32(C->Op, EHCI_USBCMD);
@@ -147,7 +147,7 @@ int SchedStart(EHCI_CTRL *C) {
         W32(C->Op, EHCI_USBCMD, Cmd);
         C->Sched = 0;
         C->Up = 0;
-        ToyBootMarkUsb("Boot: EHCI ASE timeout\n");
+        BootMarkUsb("Boot: EHCI ASE timeout\n");
         return 0;
     }
     C->Sched = 1;

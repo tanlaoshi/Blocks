@@ -180,7 +180,7 @@ int SyncIntrDequeue(UINT32 Slot, UINT32 Dci, XHCI_TRB *Ring, RING_STATE *St,
     FlushDma(Ring, RingBytes);
     Deq = PointerToPhysical(&Ring[St->Enq]) | (St->Pcs & 1u);
     if (Command(Deq, TRB_TYPE(TRB_SET_TR_DEQ) | TRB_SLOT(Slot) | EpField, 0) < 0) {
-        ToyLogUsb("Boot: XHCI sync deq fail\n");
+        LogUsb("Boot: XHCI sync deq fail\n");
         return -1;
     }
     return 0;

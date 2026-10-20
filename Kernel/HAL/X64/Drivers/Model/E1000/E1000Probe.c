@@ -10,7 +10,7 @@
 #include "Hal.h"
 #include "HalIrq.h"
 #include "HalPort.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 /*
  * PR-N-i219-tx：I219 写 TXDCTL。NUC 2026-09-22：仍 TDT↑ TDH=0 / last_rc=-3 → 假说失败，保留无害。

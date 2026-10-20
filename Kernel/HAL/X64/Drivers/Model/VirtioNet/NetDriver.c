@@ -12,7 +12,7 @@
 #include "VirtualMemory.h"
 #include "Serial/Serial.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "Driver.h"
 #include "DriverNet.h"
@@ -39,15 +39,15 @@ static int NetDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     }
     gLwIpRx = 0;
     if (!VirtioFindNet(&Bus, &Dev, &Fn, &Bar)) {
-        ToyLogNet("Net: virtio-net not found\n");
+        LogNet("Net: virtio-net not found\n");
         return -1;
     }
     if (VirtioNetStart(Bus, Dev, Fn, Bar) != 0) {
-        ToyLogNet("Net: virtio init failed\n");
+        LogNet("Net: virtio init failed\n");
         return -1;
     }
     gNetOk = 1;
-    ToyLogNet("Net: virtio-net up\n");
+    LogNet("Net: virtio-net up\n");
     if (OutPrivate) {
         *OutPrivate = 0;
     }

@@ -14,7 +14,7 @@
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "SpinLock.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "HalDriverSched.h"
 
 #define SCHED_TAG_KERNEL_FIRST 1ULL
@@ -203,11 +203,11 @@ UINT64 SchedulerResumeFrame(TASK *T) {
         UINT64 Ip = HalFrameGetInstructionPointer(T->Frame);
 
         if (Ip == 0) {
-            ToyLogSmp("sched: bad StackPointer no ip\n");
+            LogSmp("sched: bad StackPointer no ip\n");
             return 0;
         }
         HalFrameSetKernelEntry(T->Frame, Ip, (UINT64)(UINTN)Top);
-        ToyLogSmp("sched: repaired StackPointer\n");
+        LogSmp("sched: repaired StackPointer\n");
     }
     T->Started = 1;
     if (T->IsUser) {

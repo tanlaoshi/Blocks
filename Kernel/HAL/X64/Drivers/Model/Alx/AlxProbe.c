@@ -7,7 +7,7 @@
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 volatile UINT8 *gAlxBar;
 UINT64 gAlxBarPhys;
@@ -144,7 +144,7 @@ static void LogMac(const UINT8 Mac[6]) {
     }
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyLogDrv(Line);
+    LogDrv(Line);
 }
 
 int AlxSetup(void) {
@@ -168,7 +168,7 @@ int AlxSetup(void) {
     Rev = (UINT8)(PciReadConfig(gPciBus, gPciDev, gPciFn, 0x08) & 0xFFu);
     if (VirtualMemoryMapRange(Bar, Bar, ALX_BAR_MAP_BYTES,
                               PTE_PRESENT | PTE_WRITABLE) != 0) {
-        ToyLogDrv("Boot: Alx Map BAR Fail\n");
+        LogDrv("Boot: Alx Map BAR Fail\n");
         return 0;
     }
     gAlxBarPhys = Bar;
@@ -177,7 +177,7 @@ int AlxSetup(void) {
     gAlxRev = Rev;
 
     if (!AlxLoadPermMac(Mac)) {
-        ToyLogDrv("Boot: Alx MAC Unavailable\n");
+        LogDrv("Boot: Alx MAC Unavailable\n");
         gAlxBar = 0;
         return 0;
     }
@@ -187,13 +187,13 @@ int AlxSetup(void) {
     LogMac(Mac);
 
     if (!AlxBringUp()) {
-        ToyLogNet("Boot: Alx BringUp Fail\n");
+        LogNet("Boot: Alx BringUp Fail\n");
         gAlxBar = 0;
         gAlxDid = 0;
         return 0;
     }
     gAlxReady = 1;
-    ToyLogNet("Boot: Alx Ready Poll\n");
+    LogNet("Boot: Alx Ready Poll\n");
     return 1;
 }
 

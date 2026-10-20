@@ -4,7 +4,7 @@
 #include "Ehci/Private.h"
 #include "DriverBoot.h"
 #include "Msc/UsbMscHost.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 EHCI_CTRL *gEhciMscCtrl;
 int gEhciMscInSense;
@@ -51,13 +51,13 @@ int MscScan(void) {
             Found++;
         }
     }
-    ToyBootMarkUsb("Boot: EHCI MSC scan n=");
+    BootMarkUsb("Boot: EHCI MSC scan n=");
     {
         char Dig[3];
         Dig[0] = (char)('0' + (Found % 10));
         Dig[1] = 0;
-        ToyBootMarkUsb(Dig);
-        ToyBootMarkUsb("\n");
+        BootMarkUsb(Dig);
+        BootMarkUsb("\n");
     }
     return Found;
 }
@@ -72,7 +72,7 @@ int MscClaim(void) {
         return 1;
     }
 
-    ToyBootMarkUsb("Boot: EHCI MSC claim begin\n");
+    BootMarkUsb("Boot: EHCI MSC claim begin\n");
     for (i = 0; i < gEhciCount; i++) {
         EHCI_CTRL *C = &gEhci[i];
         UINT8 P;
@@ -101,7 +101,7 @@ int MscClaim(void) {
             }
         }
     }
-    ToyBootMarkUsb("Boot: EHCI MSC claim none\n");
+    BootMarkUsb("Boot: EHCI MSC claim none\n");
     return 0;
 }
 
@@ -114,7 +114,7 @@ int MscRelease(void) {
         gEhciMscCtrl->MscAddr = 0;
     }
     gEhciMscCtrl = 0;
-    ToyBootMarkUsb("Boot: EHCI MSC release\n");
+    BootMarkUsb("Boot: EHCI MSC release\n");
     return 0;
 }
 

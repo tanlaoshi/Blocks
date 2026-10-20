@@ -6,7 +6,7 @@
 #include "FileSystem.h"
 #include "Fat.h"
 #include "PhysicalMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define TTF_PATH "Assets/Fonts/CJK.TTF"
 #define TTF_MAX  (8u * 1024u * 1024u)
@@ -66,11 +66,11 @@ int FontTtfLoad(void) {
     Got = 0;
     Err = FileSystemFileStat(TTF_PATH, &St);
     if (Err != FAT_OK || (St.Attr & FAT_ATTR_DIR) || St.Size < 12u) {
-        ToyLogBoot("Boot: ttf miss\n");
+        LogBoot("Boot: ttf miss\n");
         return -1;
     }
     if (St.Size > TTF_MAX) {
-        ToyLogBoot("Boot: ttf too big\n");
+        LogBoot("Boot: ttf too big\n");
         return -1;
     }
     gPages = (St.Size + 4095u) / 4096u;
@@ -80,30 +80,30 @@ int FontTtfLoad(void) {
     gBlob = (UINT8 *)PhysicalMemoryAllocatePages(gPages);
     if (!gBlob) {
         gPages = 0;
-        ToyLogBoot("Boot: ttf oom\n");
+        LogBoot("Boot: ttf oom\n");
         return -1;
     }
     Err = FileSystemReadFile(TTF_PATH, gBlob, St.Size, &Got);
     if (Err != FAT_OK || Got < 12) {
         TtfFree();
-        ToyLogBoot("Boot: ttf miss\n");
+        LogBoot("Boot: ttf miss\n");
         return -1;
     }
     Mag = Be32(gBlob);
     if (!SfntOk(Mag)) {
         TtfFree();
-        ToyLogBoot("Boot: ttf not sfnt mag=");
-        ToyLogBootHex32(Mag);
-        ToyLogBoot("\n");
+        LogBoot("Boot: ttf not sfnt mag=");
+        LogBootHex32(Mag);
+        LogBoot("\n");
         return -1;
     }
     gSize = (UINT32)Got;
     gOk = 1;
     Tables = Be16(gBlob + 4);
-    ToyLogBoot("Boot: ttf sfnt ok bytes=");
-    ToyLogBootHex32(gSize);
-    ToyLogBoot(" tables=");
-    ToyLogBootHex32((UINT32)Tables);
-    ToyLogBoot("\n");
+    LogBoot("Boot: ttf sfnt ok bytes=");
+    LogBootHex32(gSize);
+    LogBoot(" tables=");
+    LogBootHex32((UINT32)Tables);
+    LogBoot("\n");
     return 0;
 }

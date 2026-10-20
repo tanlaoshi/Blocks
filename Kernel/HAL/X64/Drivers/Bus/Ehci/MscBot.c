@@ -5,7 +5,7 @@
  */
 #include "Ehci/Private.h"
 #include "UsbHostController.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Msc/Private.h"
 
 static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
@@ -62,26 +62,26 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     C->XferHubPort = C->MscHubPort;
 
     if (BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Cbw, 31, 1) < 0) {
-        ToyBootMarkUsb("Boot: EHCI MSC cbw fail ");
-        ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI MSC cbw fail ");
+        BootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
+        BootMarkUsb("\n");
         BulkRecover(C, 0);
         return -1;
     }
     if (DataLen != 0) {
         DataRc = BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Data, DataLen, DataIn ? 0 : 1);
         if (DataRc < 0) {
-            ToyBootMarkUsb("Boot: EHCI MSC data fail ");
-            ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
-            ToyBootMarkUsb("\n");
+            BootMarkUsb("Boot: EHCI MSC data fail ");
+            BootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
+            BootMarkUsb("\n");
             BulkRecover(C, DataIn);
         }
     }
     MscZero(Csw, sizeof(Csw));
     if (BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Csw, 13, 0) < 0) {
-        ToyBootMarkUsb("Boot: EHCI MSC csw fail ");
-        ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI MSC csw fail ");
+        BootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
+        BootMarkUsb("\n");
         BulkRecover(C, 1);
         return -1;
     }
@@ -89,7 +89,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
         return -1;
     }
     if (!StatusSignature(Csw)) {
-        ToyBootMarkUsb("Boot: EHCI MSC csw sig\n");
+        BootMarkUsb("Boot: EHCI MSC csw sig\n");
         return -1;
     }
     if (Csw[12] != 0) {
@@ -98,7 +98,7 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
             UINT8 Scdb[16];
 
             MscMarkHex4("Boot: EHCI MSC status=", Csw[12]);
-            ToyBootMarkUsb("\n");
+            BootMarkUsb("\n");
             gEhciMscInSense = 1;
             MscZero(Scdb, sizeof(Scdb));
             Scdb[0] = 0x03;
@@ -132,7 +132,7 @@ int MscCapacity(void) {
     Cdb[4] = 36;
     MscZero(Inquiry, sizeof(Inquiry));
     if (MscBot(C, Cdb, 6, 36, 1, Inquiry) < 0) {
-        ToyBootMarkUsb("Boot: EHCI MSC inquiry fail\n");
+        BootMarkUsb("Boot: EHCI MSC inquiry fail\n");
         return -1;
     }
 
@@ -146,7 +146,7 @@ int MscCapacity(void) {
     Cdb[0] = 0x25;
     MscZero(Cap, sizeof(Cap));
     if (MscBot(C, Cdb, 10, 8, 1, Cap) < 0) {
-        ToyBootMarkUsb("Boot: EHCI MSC readcap fail\n");
+        BootMarkUsb("Boot: EHCI MSC readcap fail\n");
         return -1;
     }
     LastLba = ((UINT32)Cap[0] << 24) | ((UINT32)Cap[1] << 16) |
@@ -161,7 +161,7 @@ int MscCapacity(void) {
     C->MscCapacityOk = 1;
     MscMarkHex4("Boot: EHCI MSC blocks=", C->MscBlockCount);
     MscMarkHex4(" bsize=", C->MscBlockSize);
-    ToyBootMarkUsb("\n");
+    BootMarkUsb("\n");
     return 0;
 }
 

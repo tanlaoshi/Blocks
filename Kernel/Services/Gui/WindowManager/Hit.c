@@ -13,7 +13,7 @@
 #include "DevicesUi.h"
 #include "EditUi.h"
 #include "TtyUi.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Console.h"
 
 void WinCopy(GUI_WINDOW *Dst, const GUI_WINDOW *Src) {

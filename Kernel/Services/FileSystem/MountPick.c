@@ -4,7 +4,7 @@
  */
 #include "FileSystemPrivate.h"
 #include "VirtualFileSystem.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static void RenameEspIfLetterOnly(int i) {
     int NeedEspName = 0;
@@ -80,7 +80,7 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
     if (MarkerVol >= 0) {
         gDefaultVol = MarkerVol;
         StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "BLOCKS");
-        ToyLogFs("Fs: Named BLOCKS by marker (No BLOCKS.ID)\n");
+        LogFs("Fs: Named BLOCKS by marker (No BLOCKS.ID)\n");
     } else if (PrefVol >= 0) {
         gDefaultVol = PrefVol;
     } else {
@@ -89,7 +89,7 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
     if (gDefaultVol >= 0 && gDefaultVol < gVolCount &&
         gVols[gDefaultVol].Name[0] == 'E' && gVols[gDefaultVol].Name[1] == 'S' &&
         gVols[gDefaultVol].Name[2] == 'P') {
-        ToyLogFs(
+        LogFs(
             "Fs: Default=ESP (No BLOCKS.ID; Put Rootfs On A FAT With BLOCKS.ID)\n");
     }
 }

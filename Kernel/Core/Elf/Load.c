@@ -3,7 +3,7 @@
  */
 #include "ElfPrivate.h"
 #include "PhysicalMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static void ReleaseUserRange(VIRTUAL_ADDRESS_SPACE *Space, UINT64 Start, UINT64 End) {
     UINT64 Virt;
@@ -49,11 +49,11 @@ int ElfLoadFromMemory(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Siz
     UINT64 BrkBase = USER_CODE_VIRT;
 
     if (!ElfHeaderOk(Hdr, Size, ET_EXEC)) {
-        ToyLogMem("elf: bad header\n");
+        LogMem("elf: bad header\n");
         return -1;
     }
     if (ElfPhdrs(Bytes, Size, Hdr, &Phdrs, &Pn) != 0) {
-        ToyLogMem("elf: phdr out of range\n");
+        LogMem("elf: phdr out of range\n");
         return -1;
     }
 
@@ -66,7 +66,7 @@ int ElfLoadFromMemory(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Siz
         if (ElfMapSegment(Space, Bytes, &Phdrs[i], 0) != 0) {
             UINT16 j;
 
-            ToyLogMem("elf: map segment failed\n");
+            LogMem("elf: map segment failed\n");
             for (j = 0; j <= i; j++) {
                 if (Phdrs[j].p_type == PT_LOAD) {
                     ReleaseLoad(Space, &Phdrs[j], 0);
@@ -83,7 +83,7 @@ int ElfLoadFromMemory(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Siz
     if (ElfMapStack(Space) != 0) {
         UINT16 j;
 
-        ToyLogMem("elf: map stack failed\n");
+        LogMem("elf: map stack failed\n");
         for (j = 0; j < Pn; j++) {
             if (Phdrs[j].p_type == PT_LOAD) {
                 ReleaseLoad(Space, &Phdrs[j], 0);

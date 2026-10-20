@@ -5,7 +5,7 @@
  * 禁止改 GTT 偏移 0（固件 scanout）。
  */
 #include "Igpu.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IGPU_GSM_OFF           (8u * 1024u * 1024u)
 #define IGPU_GEN8_PTE_PRESENT  1ull
@@ -92,7 +92,7 @@ int IgpuGsmInit(void) {
     }
     Map = IgpuMmioMapBytes();
     if (Map < IGPU_GSM_OFF + 0x1000u) {
-        ToyLogBoot("Boot: igpu gsm soft (map)\n");
+        LogBoot("Boot: igpu gsm soft (map)\n");
         return 0;
     }
 
@@ -101,10 +101,10 @@ int IgpuGsmInit(void) {
     gIgpuGsmOk = 1;
 
     Pte0 = IgpuGsmPteRead(0);
-    ToyLogBoot("Boot: igpu gsm ok pte0=");
-    ToyLogBootHex32((UINT32)(Pte0 >> 32));
-    ToyLogBoot(":");
-    ToyLogBootHex32((UINT32)Pte0);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu gsm ok pte0=");
+    LogBootHex32((UINT32)(Pte0 >> 32));
+    LogBoot(":");
+    LogBootHex32((UINT32)Pte0);
+    LogBoot("\n");
     return 1;
 }

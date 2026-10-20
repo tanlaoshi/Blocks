@@ -1,12 +1,12 @@
 /*
  * HalSerial.c — RISC-V UART16550 / DW-APB（基址与间距见 BoardConfig.h）
  *
- * TOY_SERIAL=0：不碰 UART；分模块 quiet 见 ToySerialConfig.h。
+ * SERIAL_ENABLE=0：不碰 UART；分模块 quiet 见 SerialConfig.h。
  */
 #include "HalSerial.h"
 #include "Text.h"
 #include "BoardConfig.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 #ifndef TOY_BOARD_UART_REG_SHIFT
 #define TOY_BOARD_UART_REG_SHIFT 0
@@ -22,27 +22,27 @@
 static int gShellOwnUart;
 
 static int ChannelUartOn(int Channel) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT: return TOY_SERIAL_BOOT;
-    case TOY_SLOG_USB:  return TOY_SERIAL_USB;
-    case TOY_SLOG_SMP:  return TOY_SERIAL_SMP;
-    case TOY_SLOG_GUI:  return TOY_SERIAL_GUI;
-    case TOY_SLOG_NET:  return TOY_SERIAL_NET;
-    case TOY_SLOG_FS:   return TOY_SERIAL_FS;
-    case TOY_SLOG_MEM:  return TOY_SERIAL_MEM;
-    case TOY_SLOG_DRV:  return TOY_SERIAL_DRV;
-    case TOY_SLOG_MISC:
-    default:            return TOY_SERIAL_MISC;
+    case SLOG_BOOT: return SERIAL_BOOT;
+    case SLOG_USB:  return SERIAL_USB;
+    case SLOG_SMP:  return SERIAL_SMP;
+    case SLOG_GUI:  return SERIAL_GUI;
+    case SLOG_NET:  return SERIAL_NET;
+    case SLOG_FS:   return SERIAL_FS;
+    case SLOG_MEM:  return SERIAL_MEM;
+    case SLOG_DRV:  return SERIAL_DRV;
+    case SLOG_MISC:
+    default:            return SERIAL_MISC;
     }
 #endif
 }
 
 static void UartPut(char C) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     while ((UART_LSR & UART_LSR_THRE) == 0) {
     }
     UART_THR = (UINT8)C;
@@ -53,7 +53,7 @@ static void UartPut(char C) {
 
 /* \\n → \\r\\n（含 Input/timer 等直呼 HalSerialWrite 的路径）；已有 \\r\\n 不叠 */
 static void UartWriteRaw(const char *Text) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Text;
 #else
     if (Text == 0) {
@@ -87,7 +87,7 @@ void HalSerialEnableRxIrq(void) {
 }
 
 int HalSerialPresent(void) {
-#if TOY_SERIAL
+#if SERIAL_ENABLE
     return 1;
 #else
     return 0;
@@ -164,7 +164,7 @@ void HalSerialBootMarkForce(const char *Text) {
 }
 
 void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MISC, Text);
+    HalSerialWriteChannel(SLOG_MISC, Text);
 }
 
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
@@ -182,7 +182,7 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 }
 
 int HalSerialDataReady(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     return (UART_LSR & UART_LSR_DR) ? 1 : 0;
@@ -190,7 +190,7 @@ int HalSerialDataReady(void) {
 }
 
 char HalSerialReadChar(void) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     return 0;
 #else
     while (!HalSerialDataReady()) {
@@ -211,7 +211,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
 }
 
 void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {

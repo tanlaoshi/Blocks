@@ -14,7 +14,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 volatile AHCI_GHC *gHba;
 UINT64 gHbaPhys;
@@ -114,15 +114,15 @@ int AhciSetup(void) {
     }
 
     gReady = 1;
-    ToyLogFs("Boot: AHCI Drives=");
+    LogFs("Boot: AHCI Drives=");
     {
         static const char Hex[] = "0123456789abcdef";
         char B[2];
         B[0] = Hex[gDriveCount & 0xf];
         B[1] = 0;
-        ToyLogFs(B);
+        LogFs(B);
     }
-    ToyLogFs("\n");
+    LogFs("\n");
     DebugWrite("ahci: hba=");
     DebugHex32((UINT32)gHbaPhys);
     DebugWrite("\n");

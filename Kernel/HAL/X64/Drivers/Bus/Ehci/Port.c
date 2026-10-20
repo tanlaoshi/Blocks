@@ -3,7 +3,7 @@
  */
 #include "Ehci/Private.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int PortReset(EHCI_CTRL *C, UINT8 Port) {
     UINT32 Ps;
@@ -42,7 +42,7 @@ int PortReset(EHCI_CTRL *C, UINT8 Port) {
     Ps = R32(C->Op, EHCI_PORTSC(Port));
     if (Ps & EHCI_PORT_OWNER) {
         gEhciLastErr = "port companion";
-        ToyBootMarkUsb("Boot: EHCI port → companion (FS; need UHCI)\n");
+        BootMarkUsb("Boot: EHCI port → companion (FS; need UHCI)\n");
         return 0;
     }
     if ((Ps & EHCI_PORT_PED) == 0) {

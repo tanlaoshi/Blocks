@@ -2,7 +2,7 @@
  * Codec.c — PR-G-audio-2：枚举 codec/输出 pin。本课 NUC 无耳机孔=HDMI 主路径。
  */
 #include "Hda.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define HDA_REG_STATESTS           0x0Eu
 #define AC_VERB_GET_PARAM          0xF00u
@@ -187,18 +187,18 @@ static int ProbeCad(UINT8 Cad, HDA_CODEC_PROBE *Out) {
     }
     Out->Vendor = Vend;
     Out->Afg = Afg;
-    ToyLogBoot("Boot: hda codec a=");
-    ToyLogBootHex32((UINT32)Cad);
-    ToyLogBoot(" vend=");
-    ToyLogBootHex32(Vend);
-    ToyLogBoot(" afg=");
-    ToyLogBootHex32((UINT32)Afg);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda codec a=");
+    LogBootHex32((UINT32)Cad);
+    LogBoot(" vend=");
+    LogBootHex32(Vend);
+    LogBoot(" afg=");
+    LogBootHex32((UINT32)Afg);
+    LogBoot("\n");
     if ((Vend >> 16) == 0x8086u && ((Vend >> 8) & 0xFFu) == 0x28u) {
         (void)HdaHdmiEnableAllPins(Cad, Afg);
     }
     if (!ScanAfgWidgets(Cad, Afg, Out)) {
-        ToyLogBoot("Boot: hda codec no out pin\n");
+        LogBoot("Boot: hda codec no out pin\n");
         return 0;
     }
     Out->Ok = 1;
@@ -240,11 +240,11 @@ int HdaCodecInit(void) {
     }
 
     Sts = HdaMmioRead16(HDA_REG_STATESTS) & 0x7FFFu;
-    ToyLogBoot("Boot: hda enum sts=");
-    ToyLogBootHex32((UINT32)Sts);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda enum sts=");
+    LogBootHex32((UINT32)Sts);
+    LogBoot("\n");
     if (Sts == 0) {
-        ToyLogBoot("Boot: hda codec none (STATESTS=0)\n");
+        LogBoot("Boot: hda codec none (STATESTS=0)\n");
         return 0;
     }
     HdaMmioWrite16(HDA_REG_STATESTS, Sts);
@@ -274,7 +274,7 @@ int HdaCodecInit(void) {
         }
     }
     if (!Best.Ok || BestScore < 0) {
-        ToyLogBoot("Boot: hda codec enum fail\n");
+        LogBoot("Boot: hda codec enum fail\n");
         return 0;
     }
 
@@ -284,17 +284,17 @@ int HdaCodecInit(void) {
     gOutPins = (UINT8)(Best.AnalogPins + Best.DigPins);
     gFirstOutNid = Best.FirstOutNid;
     gHdaCodecOk = 1;
-    ToyLogBoot("Boot: hda pin nid=");
-    ToyLogBootHex32((UINT32)Best.FirstOutNid);
-    ToyLogBoot(" cfg=");
-    ToyLogBootHex32(Best.FirstCfg);
-    ToyLogBoot("\n");
-    ToyLogBoot("Boot: hda codec pins=");
-    ToyLogBootHex32((UINT32)gOutPins);
-    ToyLogBoot(" outnid=");
-    ToyLogBootHex32((UINT32)gFirstOutNid);
-    ToyLogBoot(" pick=a=");
-    ToyLogBootHex32((UINT32)gCodecCad);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda pin nid=");
+    LogBootHex32((UINT32)Best.FirstOutNid);
+    LogBoot(" cfg=");
+    LogBootHex32(Best.FirstCfg);
+    LogBoot("\n");
+    LogBoot("Boot: hda codec pins=");
+    LogBootHex32((UINT32)gOutPins);
+    LogBoot(" outnid=");
+    LogBootHex32((UINT32)gFirstOutNid);
+    LogBoot(" pick=a=");
+    LogBootHex32((UINT32)gCodecCad);
+    LogBoot("\n");
     return 1;
 }

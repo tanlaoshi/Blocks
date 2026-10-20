@@ -2,7 +2,7 @@
  * Hid.c — Bringup + 武装中断 IN（PR-H-ehci-2）
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 
@@ -88,7 +88,7 @@ int HidBringup(void) {
     gEhciCcsOr = OrMask;
     {
         char Hex[12];
-        ToyBootMarkUsb("Boot: EHCI HID CCS=");
+        BootMarkUsb("Boot: EHCI HID CCS=");
         HalSerialFormatHex(Hex, OrMask, 4);
         {
             char Dig[5];
@@ -97,9 +97,9 @@ int HidBringup(void) {
             Dig[2] = Hex[4];
             Dig[3] = Hex[5];
             Dig[4] = 0;
-            ToyBootMarkUsb(Dig);
+            BootMarkUsb(Dig);
         }
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("\n");
     }
 
     for (i = 0; i < gEhciCount; i++) {
@@ -110,9 +110,9 @@ int HidBringup(void) {
         Tag[0] = '#';
         Tag[1] = (char)('0' + (i % 10));
         Tag[2] = 0;
-        ToyBootMarkUsb("Boot: EHCI");
-        ToyBootMarkUsb(Tag);
-        ToyBootMarkUsb(" enum\n");
+        BootMarkUsb("Boot: EHCI");
+        BootMarkUsb(Tag);
+        BootMarkUsb(" enum\n");
         if (!SchedStart(&gEhci[i])) {
             continue;
         }
@@ -127,17 +127,17 @@ int HidBringup(void) {
     }
     gEhciHidReady = Ok;
     if (Ok) {
-        ToyBootMarkUsb("Boot: EHCI-HID ready (PHOTO 2s)\n");
+        BootMarkUsb("Boot: EHCI-HID ready (PHOTO 2s)\n");
     } else {
-        ToyBootMarkUsb("Boot: EHCI-HID none — ");
-        ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI-HID none — ");
+        BootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
+        BootMarkUsb("\n");
         if (gEhciHubNote[0]) {
-            ToyBootMarkUsb("Boot: EHCI note=");
-            ToyBootMarkUsb(gEhciHubNote);
-            ToyBootMarkUsb("\n");
+            BootMarkUsb("Boot: EHCI note=");
+            BootMarkUsb(gEhciHubNote);
+            BootMarkUsb("\n");
         }
-        ToyBootMarkUsb("Boot: tip=try other USB3 jack; ehci hid\n");
+        BootMarkUsb("Boot: tip=try other USB3 jack; ehci hid\n");
     }
     Delay(20000000);
     return Ok;

@@ -6,7 +6,7 @@
  */
 #include "Font.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 UINT32 FontTtfPixel(void) {
     const FONT_FACE *F = FontGetCurrent();
@@ -116,22 +116,22 @@ int FontTtfInit(void) {
     gInit = 0;
     Blob = FontTtfBlob(&Size);
     if (!Blob || Size < 12u || !HalFpuOk()) {
-        ToyLogBoot("Boot: ttf init skip\n");
+        LogBoot("Boot: ttf init skip\n");
         return -1;
     }
     if (!HalFpuBegin()) {
-        ToyLogBoot("Boot: ttf init skip\n");
+        LogBoot("Boot: ttf init skip\n");
         return -1;
     }
     gArenaUsed = 0;
     Ok = stbtt_InitFont(&gInfo, Blob, 0);
     HalFpuEnd();
     if (!Ok) {
-        ToyLogBoot("Boot: ttf init fail\n");
+        LogBoot("Boot: ttf init fail\n");
         return -1;
     }
     gInit = 1;
-    ToyLogBoot("Boot: ttf init ok\n");
+    LogBoot("Boot: ttf init ok\n");
     return 0;
 }
 
@@ -244,7 +244,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
 #else
 
 int FontTtfInit(void) {
-    ToyLogBoot("Boot: ttf init skip\n");
+    LogBoot("Boot: ttf init skip\n");
     return -1;
 }
 

@@ -10,7 +10,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int PortStop(volatile AHCI_PORT *Port) {
     UINT32 Cmd = MmioRead32(&Port->Cmd);

@@ -6,7 +6,7 @@
 #include "AlxPrivate.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int MdioIdle(void) {
     int i;
@@ -154,25 +154,25 @@ static void LogPhyDump(void) {
     (void)AlxMdioRead(MII_BMCR, &Bmcr);
     (void)AlxMdioRead(MII_BMSR, &Bmsr);
     (void)AlxMdioRead(ALX_MII_GIGA_PSSR, &Giga);
-    ToyLogNet("Boot: Alx PHY Bmcr=");
+    LogNet("Boot: Alx PHY Bmcr=");
     HalSerialFormatHex(Hex, Bmcr, 4);
-    ToyLogNet(Hex + 2);
-    ToyLogNet(" Bmsr=");
+    LogNet(Hex + 2);
+    LogNet(" Bmsr=");
     HalSerialFormatHex(Hex, Bmsr, 4);
-    ToyLogNet(Hex + 2);
-    ToyLogNet(" Pssr=");
+    LogNet(Hex + 2);
+    LogNet(" Pssr=");
     HalSerialFormatHex(Hex, Giga, 4);
-    ToyLogNet(Hex + 2);
-    ToyLogNet("\n");
+    LogNet(Hex + 2);
+    LogNet("\n");
 }
 
 int AlxWaitLink(UINT32 *MbpsOut, int *FullOut) {
     int Rc;
 
     /* PHY+MAC 复位后：先 BMCR AN，再等（约 4s） */
-    ToyLogNet("Boot: Alx AN Restart\n");
+    LogNet("Boot: Alx AN Restart\n");
     if (!AlxEnsureAutoneg()) {
-        ToyLogNet("Boot: Alx AN Fail\n");
+        LogNet("Boot: Alx AN Fail\n");
         LogPhyDump();
         return 0;
     }
@@ -183,7 +183,7 @@ int AlxWaitLink(UINT32 *MbpsOut, int *FullOut) {
         return 1;
     }
     if (Rc < 0) {
-        ToyLogNet("Boot: Alx MDIO Fail\n");
+        LogNet("Boot: Alx MDIO Fail\n");
     }
     LogPhyDump();
     return 0;

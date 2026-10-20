@@ -18,7 +18,7 @@
 #include "LwIp.h"
 #include "Debug.h"
 #include "ShellCommands.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 /* CoolTerm 常发 CR+LF：两次 Enter → 双 toyos>；吞掉紧跟 CR 的 LF */
 static int gSerialSkipLf;
@@ -141,7 +141,7 @@ void ShellTask(void) {
         TcpPoll();
 #endif
         if (HalPowerButtonPressed()) {
-            ToyLogBoot("Boot: Power Button -> Shutdown\n");
+            LogBoot("Boot: Power Button -> Shutdown\n");
             HalCpuShutdown();
         }
         {

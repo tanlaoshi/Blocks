@@ -59,7 +59,7 @@ void BootLogHexV(const char *Prefix, UINT64 Value, int Digits) {
 
 void BootMarkV(const char *Text) {
     if (DiagVerbose()) {
-        ToyBootMarkUsb(Text);
+        BootMarkUsb(Text);
     }
 }
 
@@ -161,12 +161,12 @@ void BootLog(const char *Text) {
         return;
     }
     if (!HalCpuIsHypervisor()) {
-        ToyLogUsb(Text);
+        LogUsb(Text);
         return;
     }
     /* QEMU：默认只留 keyboard / mouse / irq=；步进需 XHCI_DIAG_VERBOSE=1 */
     if (DiagVerbose()) {
-        ToyLogUsb(Text);
+        LogUsb(Text);
         return;
     }
     for (P = Text; *P; P++) {
@@ -192,6 +192,6 @@ void BootLog(const char *Text) {
         }
     }
     if (Milestone || Fail) {
-        ToyLogUsb(Text);
+        LogUsb(Text);
     }
 }

@@ -14,7 +14,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 NVME_CTRL gCtrl[NVME_MAX_CTRL];
 int gCtrlCount;
@@ -81,15 +81,15 @@ int NvmeSetup(void) {
     }
 
     gReady = 1;
-    ToyLogFs("Boot: NVMe Drives=");
+    LogFs("Boot: NVMe Drives=");
     {
         static const char Hex[] = "0123456789abcdef";
         char Buf[2];
         Buf[0] = Hex[gCtrlCount & 0xf];
         Buf[1] = 0;
-        ToyLogFs(Buf);
+        LogFs(Buf);
     }
-    ToyLogFs("\n");
+    LogFs("\n");
     return 1;
 }
 

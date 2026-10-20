@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Font.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 
 static UINT32 BootLogCellW(void) {
     UINT32 Cell = FontAdvanceX();
@@ -131,7 +131,7 @@ static void BootLogPushVisible(UINT32 W, UINT32 H, UINT32 LineH) {
 }
 
 void GopBannerOnce(void) {
-#if !TOY_SCREEN_LOG
+#if !SCREEN_LOG
     /* SCREEN_LOG=0：不画黄字横幅，也不 Present */
     gGopBanner = 1;
     return;

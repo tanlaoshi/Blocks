@@ -3,7 +3,7 @@
  */
 #include "Ehci/Private.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 /*
  * PR-H-ehci-3：异步 Bulk（复用 CtrlQH；与周期 HID 并行）。

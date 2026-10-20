@@ -5,7 +5,7 @@
 #define IGPU_BLIT_PRIVATE_H
 
 #include "Igpu.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define IGPU_BLT_RING_BASE   0x22000u
 #define IGPU_RING_TAIL       (IGPU_BLT_RING_BASE + 0x30u)

@@ -15,17 +15,17 @@
 #endif
 
 static void LogBcsFault(void) {
-    ToyLogBoot("Boot: igpu bcs ipehr=");
-    ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_IPEHR));
-    ToyLogBoot(" ipeir=");
-    ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_IPEIR));
-    ToyLogBoot(" eir=");
-    ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_EIR));
-    ToyLogBoot(" head=");
-    ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_HEAD));
-    ToyLogBoot(" tail=");
-    ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_TAIL));
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu bcs ipehr=");
+    LogBootHex32(IgpuMmioRead32(IGPU_RING_IPEHR));
+    LogBoot(" ipeir=");
+    LogBootHex32(IgpuMmioRead32(IGPU_RING_IPEIR));
+    LogBoot(" eir=");
+    LogBootHex32(IgpuMmioRead32(IGPU_RING_EIR));
+    LogBoot(" head=");
+    LogBootHex32(IgpuMmioRead32(IGPU_RING_HEAD));
+    LogBoot(" tail=");
+    LogBootHex32(IgpuMmioRead32(IGPU_RING_TAIL));
+    LogBoot("\n");
 }
 
 /*
@@ -46,13 +46,13 @@ int SubmitMemTest(void) {
 
     Page = PhysicalMemoryAllocatePage();
     if (!Page) {
-        ToyLogBoot("Boot: igpu mem soft (oom)\n");
+        LogBoot("Boot: igpu mem soft (oom)\n");
         return 0;
     }
     Phys = (UINT64)(UINTN)Page;
     FlagsUc = PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD;
     if (VirtualMemoryMapRange(Phys, Phys, PAGE_SIZE, FlagsUc) != 0) {
-        ToyLogBoot("Boot: igpu mem soft (uc)\n");
+        LogBoot("Boot: igpu mem soft (uc)\n");
         return 0;
     }
     Pix = (volatile UINT32 *)(UINTN)Phys;
@@ -62,17 +62,17 @@ int SubmitMemTest(void) {
     __asm__ volatile ("mfence" ::: "memory");
 
     if (!IgpuGsmMap(IGPU_SCRATCH_GTT_OFF, Phys)) {
-        ToyLogBoot("Boot: igpu mem soft (pte)\n");
+        LogBoot("Boot: igpu mem soft (pte)\n");
         return 0;
     }
     Pte = IgpuGsmPteRead(IGPU_SCRATCH_GTT_OFF);
-    ToyLogBoot("Boot: igpu mem pte=");
-    ToyLogBootHex32((UINT32)(Pte >> 32));
-    ToyLogBoot(":");
-    ToyLogBootHex32((UINT32)Pte);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu mem pte=");
+    LogBootHex32((UINT32)(Pte >> 32));
+    LogBoot(":");
+    LogBootHex32((UINT32)Pte);
+    LogBoot("\n");
     if ((Pte & ~0xFFFull) != (Phys & ~0xFFFull) || (Pte & 1ull) == 0) {
-        ToyLogBoot("Boot: igpu mem soft (pte mismatch)\n");
+        LogBoot("Boot: igpu mem soft (pte mismatch)\n");
         return 0;
     }
 
@@ -82,30 +82,30 @@ int SubmitMemTest(void) {
     Words[2] = 0;
     Words[3] = Want;
     if (!EmitDwords(Words, 4)) {
-        ToyLogBoot("Boot: igpu mem soft (store to)\n");
+        LogBoot("Boot: igpu mem soft (store to)\n");
         return 0;
     }
     Sample = Pix[0];
-    ToyLogBoot("Boot: igpu mem store=");
-    ToyLogBootHex32(Sample);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu mem store=");
+    LogBootHex32(Sample);
+    LogBoot("\n");
     if (Sample != Want) {
-        ToyLogBoot("Boot: igpu mem soft (store miss)\n");
+        LogBoot("Boot: igpu mem soft (store miss)\n");
         return 0;
     }
 
     {
         UINT32 Mode = IgpuMmioRead32(IGPU_RING_MODE);
-        ToyLogBoot("Boot: igpu bcs mode=");
-        ToyLogBootHex32(Mode);
-        ToyLogBoot("\n");
+        LogBoot("Boot: igpu bcs mode=");
+        LogBootHex32(Mode);
+        LogBoot("\n");
         if ((Mode & IGPU_GFX_PPGTT_EN) != 0) {
             IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GFX_PPGTT_EN));
         }
     }
 
     if (!IgpuForcewakeGet()) {
-        ToyLogBoot("Boot: igpu mem soft (fw)\n");
+        LogBoot("Boot: igpu mem soft (fw)\n");
         return 0;
     }
 
@@ -125,7 +125,7 @@ int SubmitMemTest(void) {
     Words[7] = IGPU_MI_NOOP;
     if (!EmitDwords(Words, 7)) {
         LogBcsFault();
-        ToyLogBoot("Boot: igpu mem soft (blt to)\n");
+        LogBoot("Boot: igpu mem soft (blt to)\n");
         return 0;
     }
 
@@ -135,33 +135,33 @@ int SubmitMemTest(void) {
     Words[3] = IGPU_FENCE_MAGIC;
     if (!EmitDwords(Words, 4)) {
         LogBcsFault();
-        ToyLogBoot("Boot: igpu mem soft (fence to)\n");
+        LogBoot("Boot: igpu mem soft (fence to)\n");
         return 0;
     }
 
     Fence = Pix[1];
     Sample = Pix[0];
-    ToyLogBoot("Boot: igpu mem fence=");
-    ToyLogBootHex32(Fence);
-    ToyLogBoot(" blt=");
-    ToyLogBootHex32(Sample);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu mem fence=");
+    LogBootHex32(Fence);
+    LogBoot(" blt=");
+    LogBootHex32(Sample);
+    LogBoot("\n");
     if (Fence != IGPU_FENCE_MAGIC) {
         LogBcsFault();
-        ToyLogBoot("Boot: igpu mem soft (fence miss)\n");
+        LogBoot("Boot: igpu mem soft (fence miss)\n");
         return 0;
     }
     if (Sample != Want) {
         LogBcsFault();
-        ToyLogBoot("Boot: igpu mem soft (blt miss)\n");
+        LogBoot("Boot: igpu mem soft (blt miss)\n");
         return 0;
     }
     if (Pix[IGPU_MEM_W - 1u] != Want
         || Pix[(IGPU_MEM_H - 1u) * (IGPU_MEM_PITCH / 4u)] != Want) {
-        ToyLogBoot("Boot: igpu mem soft (corner)\n");
+        LogBoot("Boot: igpu mem soft (corner)\n");
         return 0;
     }
-    ToyLogBoot("Boot: igpu blit mem ok\n");
+    LogBoot("Boot: igpu blit mem ok\n");
     return 1;
 }
 
@@ -193,17 +193,17 @@ int IgpuBlitColorTest(void) {
     UINT32 Want;
 
     if (!gIgpuRingOk) {
-        ToyLogBoot("Boot: igpu color soft (no ring)\n");
+        LogBoot("Boot: igpu color soft (no ring)\n");
         return 0;
     }
     if (!IgpuForcewakeGet()) {
-        ToyLogBoot("Boot: igpu color soft (fw)\n");
+        LogBoot("Boot: igpu color soft (fw)\n");
         return 0;
     }
 
     Info = BootInfoGet();
     if (!Info || Info->PixelsPerScanLine == 0) {
-        ToyLogBoot("Boot: igpu color soft (pitch)\n");
+        LogBoot("Boot: igpu color soft (pitch)\n");
         return 0;
     }
     PitchPx = Info->PixelsPerScanLine;
@@ -214,7 +214,7 @@ int IgpuBlitColorTest(void) {
     X1 = (X2 > IGPU_TEST_W) ? (X2 - IGPU_TEST_W) : 0;
     Y2 = Y1 + IGPU_TEST_H;
     if (X2 > Info->HorizontalResolution || Y2 > Info->VerticalResolution) {
-        ToyLogBoot("Boot: igpu color soft (clip)\n");
+        LogBoot("Boot: igpu color soft (clip)\n");
         return 0;
     }
 
@@ -227,31 +227,31 @@ int IgpuBlitColorTest(void) {
     Words[6] = IGPU_TEST_COLOR;
 
     if (!EmitDwords(Words, 7)) {
-        ToyLogBoot("Boot: igpu color soft (to) head=");
-        ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_HEAD));
-        ToyLogBoot(" tail=");
-        ToyLogBootHex32(IgpuMmioRead32(IGPU_RING_TAIL));
-        ToyLogBoot("\n");
+        LogBoot("Boot: igpu color soft (to) head=");
+        LogBootHex32(IgpuMmioRead32(IGPU_RING_HEAD));
+        LogBoot(" tail=");
+        LogBootHex32(IgpuMmioRead32(IGPU_RING_TAIL));
+        LogBoot("\n");
         return 0;
     }
 
     IgpuStallUs(500); /* 给 display 扫完 */
     Pixel = ReadFrontPixel(X1 + 8u, Y1 + 8u, PitchPx);
     Want = IGPU_TEST_COLOR & 0x00FFFFFFu;
-    ToyLogBoot("Boot: igpu color at ");
-    ToyLogBootHex32(X1);
-    ToyLogBoot(",");
-    ToyLogBootHex32(Y1);
-    ToyLogBoot(" pix=");
-    ToyLogBootHex32(Pixel);
-    ToyLogBoot("\n");
+    LogBoot("Boot: igpu color at ");
+    LogBootHex32(X1);
+    LogBoot(",");
+    LogBootHex32(Y1);
+    LogBoot(" pix=");
+    LogBootHex32(Pixel);
+    LogBoot("\n");
     if ((Pixel & 0x00FFFFFFu) != Want) {
-        ToyLogBoot("Boot: igpu color soft (want=");
-        ToyLogBootHex32(Want);
-        ToyLogBoot(")\n");
+        LogBoot("Boot: igpu color soft (want=");
+        LogBootHex32(Want);
+        LogBoot(")\n");
         return 0;
     }
     gIgpuBlitOk = 1;
-    ToyLogBoot("Boot: igpu blit color ok\n");
+    LogBoot("Boot: igpu blit color ok\n");
     return 1;
 }

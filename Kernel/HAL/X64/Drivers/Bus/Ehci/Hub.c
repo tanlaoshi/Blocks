@@ -5,7 +5,7 @@
  * 本刀：每口打 st=；双遍扫描；加长上电。
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "Hub/Private.h"
@@ -100,14 +100,14 @@ static void MarkHex4(const char *Prefix, UINT32 V) {
     char Hex[12];
     char Dig[5];
 
-    ToyBootMarkUsb(Prefix);
+    BootMarkUsb(Prefix);
     HalSerialFormatHex(Hex, V, 4);
     Dig[0] = Hex[2];
     Dig[1] = Hex[3];
     Dig[2] = Hex[4];
     Dig[3] = Hex[5];
     Dig[4] = 0;
-    ToyBootMarkUsb(Dig);
+    BootMarkUsb(Dig);
 }
 
 static int HubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut) {
@@ -157,11 +157,11 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     }
     Dig[0] = (char)('0' + (P % 10));
     Dig[1] = 0;
-    ToyBootMarkUsb("Boot: EHCI hub+");
-    ToyBootMarkUsb(Dig);
+    BootMarkUsb("Boot: EHCI hub+");
+    BootMarkUsb(Dig);
     MarkHex4(" st=", St);
     MarkHex4(" ch=", Ch);
-    ToyBootMarkUsb("\n");
+    BootMarkUsb("\n");
 
     if (Ch & HUB_STAT_CONNECT) {
         (void)HubClearFeat(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
@@ -175,9 +175,9 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     {
         const char *SpName =
             Sp == EHCI_SPEED_HS ? "HS" : (Sp == EHCI_SPEED_LS ? "LS" : "FS");
-        ToyBootMarkUsb("Boot: EHCI hub spd=");
-        ToyBootMarkUsb(SpName);
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI hub spd=");
+        BootMarkUsb(SpName);
+        BootMarkUsb("\n");
     }
     return EnumDevice(C, Sp, HubAddr, P);
 }
@@ -210,9 +210,9 @@ int EnumHub(EHCI_CTRL *C) {
         char Dig[3];
         Dig[0] = (char)('0' + (NPorts % 10));
         Dig[1] = 0;
-        ToyBootMarkUsb("Boot: EHCI hub ports=");
-        ToyBootMarkUsb(Dig);
-        ToyBootMarkUsb("\n");
+        BootMarkUsb("Boot: EHCI hub ports=");
+        BootMarkUsb(Dig);
+        BootMarkUsb("\n");
     }
 
     /* note: aN:p… */
@@ -230,7 +230,7 @@ int EnumHub(EHCI_CTRL *C) {
 
     for (Pass = 0; Pass < 2; Pass++) {
         if (Pass == 1) {
-            ToyBootMarkUsb("Boot: EHCI hub pass2\n");
+            BootMarkUsb("Boot: EHCI hub pass2\n");
             Delay(1000000);
         }
         for (P = 1; P <= NPorts; P++) {
@@ -247,10 +247,10 @@ int EnumHub(EHCI_CTRL *C) {
                 char Dig[3];
                 Dig[0] = (char)('0' + (P % 10));
                 Dig[1] = 0;
-                ToyBootMarkUsb("Boot: EHCI hub+");
-                ToyBootMarkUsb(Dig);
+                BootMarkUsb("Boot: EHCI hub+");
+                BootMarkUsb(Dig);
                 MarkHex4(" st=", St);
-                ToyBootMarkUsb("\n");
+                BootMarkUsb("\n");
                 continue;
             }
             if ((St & HUB_STAT_CONNECT) == 0) {
@@ -266,9 +266,9 @@ int EnumHub(EHCI_CTRL *C) {
                 return 1;
             }
             if (gEhciLastErr && gEhciLastErr[0] == 't') {
-                ToyBootMarkUsb("Boot: EHCI ");
-                ToyBootMarkUsb(gEhciLastErr);
-                ToyBootMarkUsb("\n");
+                BootMarkUsb("Boot: EHCI ");
+                BootMarkUsb(gEhciLastErr);
+                BootMarkUsb("\n");
             }
         }
     }
@@ -279,6 +279,6 @@ int EnumHub(EHCI_CTRL *C) {
     if (!(gEhciLastErr && gEhciLastErr[0] == 't')) {
         gEhciLastErr = "hub no hid";
     }
-    ToyBootMarkUsb("Boot: EHCI hub no hid\n");
+    BootMarkUsb("Boot: EHCI hub no hid\n");
     return 0;
 }

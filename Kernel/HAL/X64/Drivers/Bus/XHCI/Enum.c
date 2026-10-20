@@ -14,12 +14,12 @@ int EnumAndBind(void) {
     gPortNeedForcePr = 0;
     for (int Wait = 0; Wait < PassMax && Port1 == 0; Wait++) {
         if (DiagVerbose()) {
-            ToyLogUsb("Boot: XHCI enum pass=");
+            LogUsb("Boot: XHCI enum pass=");
             {
                 char B[12];
                 HalSerialFormatHex(B, (UINT64)(UINT32)(Wait + 1), 2);
-                ToyLogUsb(B);
-                ToyLogUsb("\n");
+                LogUsb(B);
+                LogUsb("\n");
             }
         }
         for (UINT32 P = 1; P <= gMaxPorts && P <= 32; P++) {
@@ -42,7 +42,7 @@ int EnumAndBind(void) {
         if (RealPc) {
             HalSerialGopMute(0); /* 放弃 xHCI：允许后续 boot 黄字 */
         }
-        ToyLogUsb("Boot: XHCI up but no HID keyboard\n");
+        LogUsb("Boot: XHCI up but no HID keyboard\n");
         BootLog("Boot: XHCI up but no HID keyboard\n");
         if (gEnumWhy) {
             BootLog(gEnumWhy);

@@ -3,7 +3,7 @@
  */
 #include "CoreOps.h"
 #include "Font.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static WINDOW_OPS gWindowOps;
 static VFS_SERVICE_OPS gVfsServiceOps;
@@ -147,7 +147,7 @@ void ConsoleIoWriteLen(const char *Data, UINTN Len) {
             Buf[i] = Data[Off + i];
         }
         Buf[N] = 0;
-        ToyLogMisc(Buf);
+        LogMisc(Buf);
         Off += N;
     }
 }

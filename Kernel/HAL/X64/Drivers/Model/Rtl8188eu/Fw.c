@@ -5,7 +5,7 @@
  */
 #include "Private.h"
 #include "HalDriverFile.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 int WifiFwTryLoad(void) {
     UINT8 Probe[4];
@@ -19,10 +19,10 @@ int WifiFwTryLoad(void) {
         Err = HalDriverFileRead(WIFI_FW_PATH_B, Probe, sizeof(Probe), &Sz);
     }
     if (Err != 0 || Sz == 0) {
-        ToyLogDrv("Boot: rtl8188eu fw miss (FW/RTL8188EU.BIN)\n");
+        LogDrv("Boot: rtl8188eu fw miss (FW/RTL8188EU.BIN)\n");
         return 0;
     }
     gWifiFwOk = 1;
-    ToyLogDrv("Boot: rtl8188eu fw present\n");
+    LogDrv("Boot: rtl8188eu fw present\n");
     return 1;
 }

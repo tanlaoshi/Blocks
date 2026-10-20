@@ -7,7 +7,7 @@
 #include "Gpt.h"
 #include "VirtualFileSystem.h"
 #include "Debug.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
 #include "HalConsole.h"
@@ -252,9 +252,9 @@ int FileSystemInitialize(void) {
             if (HasToy) {
                 Auto = 0;
                 HalUsbMscAutoSet(0);
-                ToyLogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
+                LogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
             } else {
-                ToyLogBoot(
+                LogBoot(
                     "Boot: MSC Auto Keep (No BLOCKS.ID; Ignore MSC=0)\n");
             }
         }
@@ -265,12 +265,12 @@ int FileSystemInitialize(void) {
     if (!HasToy && !Auto) {
         Auto = 1;
         HalUsbMscAutoSet(1);
-        ToyLogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
+        LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
     }
     /* 系统卷已经在（NVMe / 已挂上的盘）。再扫 Hub 和失败根口会在 Logo 前空等数秒。 */
     if (Auto && HasToy) {
         Auto = 0;
-        ToyLogBoot("Boot: MSC skip (BLOCKS already)\n");
+        LogBoot("Boot: MSC skip (BLOCKS already)\n");
     }
 
     if (Auto) {
@@ -295,7 +295,7 @@ int FileSystemInitialize(void) {
              * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
              * 仍失败则软退：有 ESP/RES 可进桌面（WARN no BLOCKS.ID）。
              */
-            ToyLogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
+            LogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
             if (HalUsbMscAutoBeforeFs() == 0) {
                 MuxOk = 1;
                 if (BlockInitialize() > 0 && MountAllVolumes()) {

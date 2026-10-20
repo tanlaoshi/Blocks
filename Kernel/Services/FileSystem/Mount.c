@@ -6,7 +6,7 @@
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 #include "HalDevices.h"
 
@@ -53,16 +53,16 @@ int MountAllVolumes(void) {
         return 0;
     }
 
-    ToyLogFs("Fs: Mounted ");
+    LogFs("Fs: Mounted ");
     {
         char Msg[8];
         Msg[0] = (char)('0' + (gVolCount > 9 ? 9 : gVolCount));
         Msg[1] = 0;
-        ToyLogFs(Msg);
+        LogFs(Msg);
     }
-    ToyLogFs(" volume(s), default=");
-    ToyLogFs(gVols[gDefaultVol].Name);
-    ToyLogFs("\n");
+    LogFs(" volume(s), default=");
+    LogFs(gVols[gDefaultVol].Name);
+    LogFs("\n");
     return 1;
 }
 

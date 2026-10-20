@@ -7,7 +7,7 @@
 #include "Hal.h"
 #include "Serial/Serial.h"
 #include "Font.h"
-#include "ToySerialConfig.h"
+#include "SerialConfig.h"
 #include "SpinLock.h"
 #include "XHCI.h"
 #include "Ehci.h"
@@ -77,59 +77,59 @@ static void RtAppend(const char *Text) {
 }
 
 static int ChannelGopOn(int Channel) {
-#if !TOY_SCREEN_LOG
+#if !SCREEN_LOG
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT:
-        return TOY_SCREEN_LOG_BOOT;
-    case TOY_SLOG_USB:
-        return TOY_SCREEN_LOG_USB;
-    case TOY_SLOG_SMP:
-        return TOY_SCREEN_LOG_SMP;
-    case TOY_SLOG_GUI:
-        return TOY_SCREEN_LOG_GUI;
-    case TOY_SLOG_NET:
-        return TOY_SCREEN_LOG_NET;
-    case TOY_SLOG_FS:
-        return TOY_SCREEN_LOG_FS;
-    case TOY_SLOG_MEM:
-        return TOY_SCREEN_LOG_MEM;
-    case TOY_SLOG_DRV:
-        return TOY_SCREEN_LOG_DRV;
-    case TOY_SLOG_MISC:
+    case SLOG_BOOT:
+        return SCREEN_LOG_BOOT;
+    case SLOG_USB:
+        return SCREEN_LOG_USB;
+    case SLOG_SMP:
+        return SCREEN_LOG_SMP;
+    case SLOG_GUI:
+        return SCREEN_LOG_GUI;
+    case SLOG_NET:
+        return SCREEN_LOG_NET;
+    case SLOG_FS:
+        return SCREEN_LOG_FS;
+    case SLOG_MEM:
+        return SCREEN_LOG_MEM;
+    case SLOG_DRV:
+        return SCREEN_LOG_DRV;
+    case SLOG_MISC:
     default:
-        return TOY_SCREEN_LOG_MISC;
+        return SCREEN_LOG_MISC;
     }
 #endif
 }
 
 static int ChannelUartOn(int Channel) {
-#if !TOY_SERIAL
+#if !SERIAL_ENABLE
     (void)Channel;
     return 0;
 #else
     switch (Channel) {
-    case TOY_SLOG_BOOT:
-        return TOY_SERIAL_BOOT;
-    case TOY_SLOG_USB:
-        return TOY_SERIAL_USB;
-    case TOY_SLOG_SMP:
-        return TOY_SERIAL_SMP;
-    case TOY_SLOG_GUI:
-        return TOY_SERIAL_GUI;
-    case TOY_SLOG_NET:
-        return TOY_SERIAL_NET;
-    case TOY_SLOG_FS:
-        return TOY_SERIAL_FS;
-    case TOY_SLOG_MEM:
-        return TOY_SERIAL_MEM;
-    case TOY_SLOG_DRV:
-        return TOY_SERIAL_DRV;
-    case TOY_SLOG_MISC:
+    case SLOG_BOOT:
+        return SERIAL_BOOT;
+    case SLOG_USB:
+        return SERIAL_USB;
+    case SLOG_SMP:
+        return SERIAL_SMP;
+    case SLOG_GUI:
+        return SERIAL_GUI;
+    case SLOG_NET:
+        return SERIAL_NET;
+    case SLOG_FS:
+        return SERIAL_FS;
+    case SLOG_MEM:
+        return SERIAL_MEM;
+    case SLOG_DRV:
+        return SERIAL_DRV;
+    case SLOG_MISC:
     default:
-        return TOY_SERIAL_MISC;
+        return SERIAL_MISC;
     }
 #endif
 }
@@ -152,7 +152,7 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     if (!gShellOwnUart && SerialPresent() && ChannelUartOn(Channel)) {
         SerialWrite(Text);
     }
-    /* 屏：受 TOY_SCREEN_LOG_* + Mirror/Mute（有无 COM1 都可画） */
+    /* 屏：受 SCREEN_LOG_* + Mirror/Mute（有无 COM1 都可画） */
     if (ChannelGopOn(Channel)) {
         GopMirrorLine(Text);
     }
@@ -261,7 +261,7 @@ void HalSerialWriteShell(const char *Text) {
 }
 
 void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(TOY_SLOG_MISC, Text);
+    HalSerialWriteChannel(SLOG_MISC, Text);
 }
 
 void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
@@ -279,7 +279,7 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 }
 
 /*
- * 真机 boot 进度：ring 始终；UART 受 TOY_SERIAL_*；屏受 TOY_SCREEN_LOG_*。
+ * 真机 boot 进度：ring 始终；UART 受 SERIAL_*；屏受 SCREEN_LOG_*。
  * USB BootMark：Mute 期间也上屏（front only）。
  */
 void HalSerialBootMarkChannel(int Channel, const char *Text) {
@@ -294,7 +294,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
         SerialWrite(Text);
     }
     if (ChannelGopOn(Channel) && gGopMirror && gVideoUp) {
-        /* 绕过 gGopMute：里程碑必须看得见；细日志走 ToyLog* → GopMirrorLine 仍受 Mute */
+        /* 绕过 gGopMute：里程碑必须看得见；细日志走 Log* → GopMirrorLine 仍受 Mute */
         GopWrite(Text);
     }
     SpinLockRelease(&gSerialLock);
@@ -302,7 +302,7 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
 }
 
 void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(TOY_SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 /* 串口里程碑。屏幕总开关关掉时不往 GOP 画。 */
@@ -313,7 +313,7 @@ void HalSerialBootMarkForce(const char *Text) {
     SpinLockAcquire(&gSerialLock);
     RingAppend(Text);
     RtAppend(Text);
-    if (!gShellOwnUart && SerialPresent() && ChannelUartOn(TOY_SLOG_USB)) {
+    if (!gShellOwnUart && SerialPresent() && ChannelUartOn(SLOG_USB)) {
         SerialWrite(Text);
     }
     SpinLockRelease(&gSerialLock);

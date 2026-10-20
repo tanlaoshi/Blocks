@@ -5,7 +5,7 @@
 #include "SchedulerOps.h"
 #include "Hal.h"
 #include "SpinLock.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static SPIN_LOCK gRunQueueLock[HAL_MAX_CPUS];
 static volatile UINT64 gStealCount;
@@ -176,13 +176,13 @@ static int TaskPtrOk(const TASK *T) {
 }
 
 static void PickNextBadPtr(UINT32 Cpu, const char *Where, const TASK *T) {
-    ToyLogSmp("sched: PickNext bad ");
-    ToyLogSmp(Where);
-    ToyLogSmp(" cpu=");
-    ToyLogSmpHex32(Cpu);
-    ToyLogSmp(" T=");
-    ToyLogSmpHex64((UINT64)(UINTN)T);
-    ToyLogSmp("\n");
+    LogSmp("sched: PickNext bad ");
+    LogSmp(Where);
+    LogSmp(" cpu=");
+    LogSmpHex32(Cpu);
+    LogSmp(" T=");
+    LogSmpHex64((UINT64)(UINTN)T);
+    LogSmp("\n");
 }
 
 TASK *PickNext(UINT32 Cpu) {

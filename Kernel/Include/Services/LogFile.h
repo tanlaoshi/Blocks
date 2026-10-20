@@ -1,7 +1,7 @@
 /*
  * LogFile.h — 日志落盘（Console/LogFile.c）
  *
- * 开机缓冲写 BOOT.LOG。总开关 TOY_FILE_LOG，见 ToySerialConfig.h。
+ * 开机缓冲写 BOOT.LOG。总开关 FILE_LOG，见 SerialConfig.h。
  * 关着时 BootLogFlush 是空函数，不写盘。
  */
 #ifndef LOG_FILE_H

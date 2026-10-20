@@ -4,7 +4,7 @@
  */
 #include "Hda.h"
 #include "IgpuAudPin.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #define AC_VERB_SET_POWER_STATE    0x705u
 #define AC_VERB_GET_PIN_SENSE      0xF09u
@@ -68,9 +68,9 @@ int HdaHdmiEnableAllPins(UINT8 Cad, UINT8 Afg) {
     StallUs(1000);
     V2 = 0;
     (void)HdaCorbVerb(Cad, INTEL_VENDOR_NID, (INTEL_GET_VENDOR_VERB << 8) | 0, &V2);
-    ToyLogBoot("Boot: hda intel pins vend=");
-    ToyLogBootHex32(V2);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda intel pins vend=");
+    LogBootHex32(V2);
+    LogBoot("\n");
     return 1;
 }
 
@@ -79,7 +79,7 @@ int HdaHdmiDisplayAudioEnable(void) {
     UINT32 Offs[3];
 
     if (!IgpuAudPinOk()) {
-        ToyLogBoot("Boot: hda aud skip (no igpu)\n");
+        LogBoot("Boot: hda aud skip (no igpu)\n");
         return 0;
     }
     (void)IgpuAudForcewake();
@@ -92,9 +92,9 @@ int HdaHdmiDisplayAudioEnable(void) {
     Eld |= (1u << 2) | (1u << 6) | (1u << 10);
     IgpuAudWrite32(HSW_AUD_PIN_ELD_CP_VLD, Eld);
     Eld = IgpuAudRead32(HSW_AUD_PIN_ELD_CP_VLD);
-    ToyLogBoot("Boot: hda aud eld=");
-    ToyLogBootHex32(Eld);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda aud eld=");
+    LogBootHex32(Eld);
+    LogBoot("\n");
     /* DP：让 HW 算 Maud/Naud */
     Offs[0] = HSW_AUD_CFG_A;
     Offs[1] = HSW_AUD_CFG_B;
@@ -148,13 +148,13 @@ int HdaHdmiPickPath(UINT8 Cad, UINT8 *PinOut, UINT8 *CvtOut) {
         (void)HdaCorbVerb(Cad, Pin, (AC_VERB_GET_PIN_SENSE << 8) | 0, &Sense);
         (void)HdaCorbVerb(Cad, Pin, (AC_VERB_GET_PARAM << 8) | AC_PAR_CONNLIST_LEN,
                           &Len);
-        ToyLogBoot("Boot: hda pin=");
-        ToyLogBootHex32((UINT32)Pin);
-        ToyLogBoot(" sense=");
-        ToyLogBootHex32(Sense);
-        ToyLogBoot(" cl=");
-        ToyLogBootHex32(Len);
-        ToyLogBoot("\n");
+        LogBoot("Boot: hda pin=");
+        LogBootHex32((UINT32)Pin);
+        LogBoot(" sense=");
+        LogBootHex32(Sense);
+        LogBoot(" cl=");
+        LogBootHex32(Len);
+        LogBoot("\n");
         if (!PinCvt(Cad, Pin, &Cvt, &Mux)) {
             continue;
         }
@@ -180,16 +180,16 @@ int HdaHdmiPickPath(UINT8 Cad, UINT8 *PinOut, UINT8 *CvtOut) {
         BestPin = 0x06u;
         BestCvt = 0x02u;
         BestMux = 0;
-        ToyLogBoot("Boot: hda pick force pin=6 cvt=2\n");
+        LogBoot("Boot: hda pick force pin=6 cvt=2\n");
     }
     (void)Verb12(Cad, BestPin, AC_VERB_SET_CONNECT_SEL, BestMux);
     *PinOut = BestPin;
     *CvtOut = BestCvt;
-    ToyLogBoot("Boot: hda pick pin=");
-    ToyLogBootHex32((UINT32)BestPin);
-    ToyLogBoot(" cvt=");
-    ToyLogBootHex32((UINT32)BestCvt);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda pick pin=");
+    LogBootHex32((UINT32)BestPin);
+    LogBoot(" cvt=");
+    LogBootHex32((UINT32)BestCvt);
+    LogBoot("\n");
     return 1;
 }
 
@@ -214,6 +214,6 @@ int HdaHdmiInfoframe(UINT8 Cad, UINT8 Pin) {
     }
     (void)Verb12(Cad, Pin, AC_VERB_SET_HDMI_DIP_INDEX, 0);
     (void)Verb12(Cad, Pin, AC_VERB_SET_HDMI_DIP_XMIT, AC_DIPXMIT_BEST);
-    ToyLogBoot("Boot: hda infoframe dp\n");
+    LogBoot("Boot: hda infoframe dp\n");
     return 1;
 }

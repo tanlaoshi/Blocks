@@ -3,7 +3,7 @@
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 UINT32 gIwlSchedBase;
 
@@ -33,7 +33,7 @@ static void IwlDumpSbCpu(void) {
     IwlAppend(Line, &n, 90, Hex + 2);
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyLogBoot(Line);
+    LogBoot(Line);
 }
 
 /* ALIVE payload：v1/v2/v3 的 scd_base_ptr 都在 offset 40 */

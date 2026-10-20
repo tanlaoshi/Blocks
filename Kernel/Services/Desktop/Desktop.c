@@ -222,7 +222,7 @@ void DesktopInitialize(void) {
     gIconDragIdx = -1;
     gIconDragMoved = 0;
     LoadWallpaper();
-    ToyLogGui("Boot: Desktop Ready\n");
+    LogGui("Boot: Desktop Ready\n");
     HalAudioBeep();
     DebugWrite("desktop: solid ready (icons deferred)\n");
 #if TOY_KERNEL_DEBUG

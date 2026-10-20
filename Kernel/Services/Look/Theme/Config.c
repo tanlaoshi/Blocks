@@ -112,14 +112,14 @@ int ThemeLoad(void) {
                 (void)DbSet("mode", Vals.ModeVal);
             }
         }
-        ToyLogGui("Theme: Loaded THEME.CFG\n");
+        LogGui("Theme: Loaded THEME.CFG\n");
     } else {
         if (ModeFromDb == 0) {
             (void)ThemeMigrateModeFromCfg();
         }
-        ToyLogGui("Theme: Loaded ");
-        ToyLogGui(DbLoadedName());
-        ToyLogGui("\n");
+        LogGui("Theme: Loaded ");
+        LogGui(DbLoadedName());
+        LogGui("\n");
     }
     /*
      * PR-K-log-cont：boot GOP 仍上滚时勿 FontSetById——Gui 加载 Sun 8x16 会中途换字。

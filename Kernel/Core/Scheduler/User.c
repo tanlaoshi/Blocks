@@ -8,7 +8,7 @@
 #include "SchedulerPrivate.h"
 #include "Syscall.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "CoreOps.h"
 #include "VirtualMemory.h"
 #include "SpinLock.h"
@@ -60,7 +60,7 @@ UINT64 SchedulerKill(HAL_INTERRUPT_FRAME *Frame) {
         SpinLockRelease(&gSchedulerLock);
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         SchedulerDestroyDetached(Detached);
-        ToyLogMisc("sched: no runnable after self-kill\n");
+        LogMisc("sched: no runnable after self-kill\n");
         for (;;) {
             HalCpuPark();
         }

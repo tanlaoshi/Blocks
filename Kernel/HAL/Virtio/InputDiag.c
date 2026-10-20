@@ -9,7 +9,7 @@
  */
 #include "InputDiag.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static int gKeyboardOn;
 static int gTabletOn;
@@ -136,7 +136,7 @@ void VirtioInputDiagOnTimer(void) {
     }
     gTickSamples++;
     VirtioInputDiagFormat(Buf, (int)sizeof(Buf));
-    ToyLogDrv("Input: ");
-    ToyLogDrv(Buf);
-    ToyLogDrv("\n");
+    LogDrv("Input: ");
+    LogDrv(Buf);
+    LogDrv("\n");
 }

@@ -6,7 +6,7 @@
 #include "Hda.h"
 #include "PCIe.h"
 #include "VirtualMemory.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 
 #ifndef PTE_PWT
@@ -155,7 +155,7 @@ int HdaMmioInit(void) {
         return 0;
     }
     if (!VirtualMemoryEnabled()) {
-        ToyLogBoot("Boot: hda mmio defer (no VMM)\n");
+        LogBoot("Boot: hda mmio defer (no VMM)\n");
         return 0;
     }
 
@@ -163,7 +163,7 @@ int HdaMmioInit(void) {
     Dev = HdaPciDev();
     Fn = HdaPciFn();
     if (!ReadBar0(Bus, Dev, Fn, &Bar)) {
-        ToyLogBoot("Boot: hda mmio no BAR0\n");
+        LogBoot("Boot: hda mmio no BAR0\n");
         return 0;
     }
 
@@ -181,17 +181,17 @@ int HdaMmioInit(void) {
         MapBytes = (UINTN)Sz;
     }
     if (MapBytes < HDA_MMIO_MIN) {
-        ToyLogBoot("Boot: hda mmio BAR too small\n");
+        LogBoot("Boot: hda mmio BAR too small\n");
         return 0;
     }
 
     if (!ReadBar0(Bus, Dev, Fn, &Bar) || Bar == 0) {
-        ToyLogBoot("Boot: hda mmio BAR lost after size\n");
+        LogBoot("Boot: hda mmio BAR lost after size\n");
         return 0;
     }
     if (VirtualMemoryMapRange(Bar, Bar, MapBytes,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) != 0) {
-        ToyLogBoot("Boot: hda mmio map fail\n");
+        LogBoot("Boot: hda mmio map fail\n");
         return 0;
     }
 
@@ -206,7 +206,7 @@ int HdaMmioInit(void) {
     Inpay = MmioR16(HDA_REG_INPAY);
 
     if (Gcap == 0xFFFFu && Vmaj == 0xFFu && Vmin == 0xFFu) {
-        ToyLogBoot("Boot: hda mmio read FFs — disable\n");
+        LogBoot("Boot: hda mmio read FFs — disable\n");
         gHdaMmio = 0;
         gHdaBarPhys = 0;
         gHdaMapBytes = 0;
@@ -214,20 +214,20 @@ int HdaMmioInit(void) {
     }
 
     gHdaMmioOk = 1;
-    ToyLogBoot("Boot: hda mmio bar=");
-    ToyLogBootHex32((UINT32)Bar);
-    ToyLogBoot(" sz=");
-    ToyLogBootHex32((UINT32)MapBytes);
-    ToyLogBoot(" gcap=");
-    ToyLogBootHex32((UINT32)Gcap);
-    ToyLogBoot(" v=");
-    ToyLogBootHex32((UINT32)Vmaj);
-    ToyLogBoot(".");
-    ToyLogBootHex32((UINT32)Vmin);
-    ToyLogBoot(" outpay=");
-    ToyLogBootHex32((UINT32)Outpay);
-    ToyLogBoot(" inpay=");
-    ToyLogBootHex32((UINT32)Inpay);
-    ToyLogBoot("\n");
+    LogBoot("Boot: hda mmio bar=");
+    LogBootHex32((UINT32)Bar);
+    LogBoot(" sz=");
+    LogBootHex32((UINT32)MapBytes);
+    LogBoot(" gcap=");
+    LogBootHex32((UINT32)Gcap);
+    LogBoot(" v=");
+    LogBootHex32((UINT32)Vmaj);
+    LogBoot(".");
+    LogBootHex32((UINT32)Vmin);
+    LogBoot(" outpay=");
+    LogBootHex32((UINT32)Outpay);
+    LogBoot(" inpay=");
+    LogBootHex32((UINT32)Inpay);
+    LogBoot("\n");
     return 1;
 }

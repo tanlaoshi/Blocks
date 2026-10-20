@@ -98,7 +98,7 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
                 Line[N++] = (char)('0' + (Code % 10));
                 Line[N++] = '\n';
                 Line[N] = 0;
-                ToyLogUsb(Line);
+                LogUsb(Line);
                 gDiagIntrCcLogged++;
             }
         }
@@ -141,7 +141,7 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
                 Line[N++] = (char)('0' + (Code % 10));
                 Line[N++] = '\n';
                 Line[N] = 0;
-                ToyLogUsb(Line);
+                LogUsb(Line);
                 gDiagIntrCcLogged++;
             }
         }
@@ -169,7 +169,7 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
             Line[N++] = (char)('0' + (Code % 10));
             Line[N++] = '\n';
             Line[N] = 0;
-            ToyLogUsb(Line);
+            LogUsb(Line);
             gDiagXferLogged++;
         }
     }

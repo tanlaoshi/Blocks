@@ -4,7 +4,7 @@
 #include "Uhci/Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Debug.h"
 
 static void ResurveyAll(void) {
@@ -63,7 +63,7 @@ int UhciSetup(void) {
 
     if (!FoundPci) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: UHCI None (No ProgIF 00)\n");
+            BootMarkUsb("Boot: UHCI None (No ProgIF 00)\n");
         } else {
             DebugWrite("UHCI: none\n");
         }
@@ -75,15 +75,15 @@ int UhciSetup(void) {
     {
         char Hex[12];
         char Dig[5];
-        ToyBootMarkUsb("Boot: UHCI CCS Ports=");
+        BootMarkUsb("Boot: UHCI CCS Ports=");
         HalSerialFormatHex(Hex, OrMask, 4);
         Dig[0] = Hex[2];
         Dig[1] = Hex[3];
         Dig[2] = Hex[4];
         Dig[3] = Hex[5];
         Dig[4] = 0;
-        ToyBootMarkUsb(Dig);
-        ToyBootMarkUsb(Ok ? " Up=1\n" : " Up=0\n");
+        BootMarkUsb(Dig);
+        BootMarkUsb(Ok ? " Up=1\n" : " Up=0\n");
     }
     return 1;
 }

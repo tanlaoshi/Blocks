@@ -7,7 +7,7 @@
 #include "KernelModulesPrivate.h"
 #include "Hal.h"
 #include "DriverInput.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static void HandoffMouse(void) {
     UINT32 CenterX = 512;
@@ -40,12 +40,12 @@ static void DrainHid(void) {
 }
 
 int UsbInitialize(void) {
-    ToyLogBoot("Boot: Input Probe (USB Then PS/2)\n");
+    LogBoot("Boot: Input Probe (USB Then PS/2)\n");
     (void)HalUsbInitialize();
     if (ToyDriverInputReady()) {
-        ToyLogBoot("Boot: Input Backend Ready\n");
+        LogBoot("Boot: Input Backend Ready\n");
     } else {
-        ToyLogBoot("Boot: Input NONE (Continue)\n");
+        LogBoot("Boot: Input NONE (Continue)\n");
     }
     if (!HalCpuIsHypervisor()) {
         HalInputArmIrq();

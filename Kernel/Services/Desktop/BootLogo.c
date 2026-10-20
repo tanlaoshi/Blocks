@@ -10,7 +10,7 @@
 #include "UI.h"
 #include "Hal.h"
 #include "HalVideo.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00101828u
@@ -129,7 +129,7 @@ void DesktopBootLogoShow(void) {
     /* 引导读盘时 T 已落到 40，这里接上，避免弹回顶部。 */
     PaintPieces(40);
     HalVideoPresentFlush();
-    ToyLogBoot("Boot: Logo\n");
+    LogBoot("Boot: Logo\n");
     gLogoTsc = LogoTsc();
     gLogoUp = 1;
 }
@@ -152,7 +152,7 @@ void DesktopBootLogoFinish(void) {
     LogoHoldUntilMin();
     HalVideoClearScreen(0x00000000u);
     HalVideoPresentFlush();
-    ToyLogBoot("Boot: Logo Cleared\n");
+    LogBoot("Boot: Logo Cleared\n");
     gLogoUp = 0;
     gLogoTsc = 0;
     gPct = 0;

@@ -4,7 +4,7 @@
 #include "Ehci/Private.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 const char *gEhciLastErr = "none";
 static char gTokErr[40];

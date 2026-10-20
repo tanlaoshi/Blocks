@@ -18,7 +18,7 @@
 #include "LwIp.h"
 #include "Debug.h"
 #include "ShellCommands.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 void TasksPumpKeyboard(void) {
     static HAL_KEYBOARD_REPORT Prev;

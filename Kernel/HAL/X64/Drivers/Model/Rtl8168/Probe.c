@@ -7,7 +7,7 @@
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 volatile UINT8 *gRtlBar;
 UINT64 gRtlBarPhys;
@@ -86,7 +86,7 @@ static void LogMac(const UINT8 Mac[6]) {
     }
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyLogDrv(Line);
+    LogDrv(Line);
 }
 
 int RtlSetup(void) {
@@ -108,7 +108,7 @@ int RtlSetup(void) {
     Did = gClaimDid;
     if (VirtualMemoryMapRange(Bar, Bar, RTL_BAR_MAP_BYTES,
                               PTE_PRESENT | PTE_WRITABLE) != 0) {
-        ToyLogDrv("Boot: R8169 Map BAR Fail\n");
+        LogDrv("Boot: R8169 Map BAR Fail\n");
         return 0;
     }
     gRtlBarPhys = Bar;
@@ -116,7 +116,7 @@ int RtlSetup(void) {
     gRtlDid = Did;
 
     if (!RtlReadMac(Mac)) {
-        ToyLogDrv("Boot: R8169 MAC Unavailable\n");
+        LogDrv("Boot: R8169 MAC Unavailable\n");
         gRtlBar = 0;
         return 0;
     }
@@ -126,13 +126,13 @@ int RtlSetup(void) {
     LogMac(Mac);
 
     if (!RtlBringUp()) {
-        ToyLogNet("Boot: R8169 BringUp Fail\n");
+        LogNet("Boot: R8169 BringUp Fail\n");
         gRtlBar = 0;
         gRtlDid = 0;
         return 0;
     }
     gRtlReady = 1;
-    ToyLogNet("Boot: R8169 Ready Poll\n");
+    LogNet("Boot: R8169 Ready Poll\n");
     return 1;
 }
 

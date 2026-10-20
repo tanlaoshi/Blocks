@@ -20,7 +20,7 @@
 #include "LwIp.h"
 #include "Debug.h"
 #include "ShellCommands.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Scheduler.h"
 #include "StoreJob.h"
 #include "StoreUi.h"
@@ -50,7 +50,7 @@ void YieldForPollInput(void) {
     if (!HalCpuIsHypervisor()) {
         UINT32 i;
         if (HalPowerButtonPressed()) {
-            ToyLogBoot("Boot: Power Button -> Shutdown\n");
+            LogBoot("Boot: Power Button -> Shutdown\n");
             HalCpuShutdown();
         }
         /* 真机 poll-USB：勿 hlt 等 tick，否则光标锁 ~10ms+ */
@@ -130,7 +130,7 @@ void WorkerTask(void) {
             if (Ep != 0 && Ep != DhcpEpoch) {
                 if (LwIpDhcpRestart(12000) == 0) {
                     DhcpEpoch = Ep;
-                    ToyLogNet("Net: dhcp queued\n");
+                    LogNet("Net: dhcp queued\n");
                 }
             }
         }
@@ -171,7 +171,7 @@ void WorkerTask(void) {
         }
 #endif
         gConsole.AnnounceBootReady();
-        (void)gConsole.RuntimeLogFlush(); /* ready 后 ToyLog → RUNTIME.LOG */
+        (void)gConsole.RuntimeLogFlush(); /* ready 后 Log → RUNTIME.LOG */
         HalCpuHalt();
         (void)SchedulerCondResched();
     }

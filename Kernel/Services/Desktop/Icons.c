@@ -178,7 +178,7 @@ void DesktopEnsureIconsLoaded(void) {
     sDesktopIconsReady = 1;
     sDesktopIconsNeedRefresh = 1;
     gDesktopBusy = 0;
-    ToyLogGui("Boot: Desktop Icons Loaded\n");
+    LogGui("Boot: Desktop Icons Loaded\n");
     DebugWrite("desktop: deferred icons+menu loaded (worker)\n");
     /* 不在此 RequestRefresh：Worker 上全量 Compose@4K 易打穿栈；交 Gui TickClock */
 }

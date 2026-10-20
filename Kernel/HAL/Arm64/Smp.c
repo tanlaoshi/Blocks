@@ -4,11 +4,11 @@
 #include "Hal.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
-#define SmpLog(Text)   ToyLogSmp(Text)
-#define SmpLogHex32(V) ToyLogSmpHex32(V)
-#define SmpLogHex64(V) ToyLogSmpHex64(V)
+#define SmpLog(Text)   LogSmp(Text)
+#define SmpLogHex32(V) LogSmpHex32(V)
+#define SmpLogHex64(V) LogSmpHex64(V)
 
 #define PSCI_CPU_ON_64     0xC4000003ULL
 #define SMP_READY_MAGIC    0x534D5052u /* 'SMPR' */

@@ -7,7 +7,7 @@
 #include "Network/Network.h"
 #include "Hal.h"
 #include "HalConsole.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static ALX_TPD *gTpd;
 static ALX_RFD *gRfd;
@@ -91,7 +91,7 @@ int AlxBringUp(void) {
     AlxClearWol();
     AlxResetPhy();
     if (!AlxResetMac()) {
-        ToyLogNet("Boot: Alx Reset Fail\n");
+        LogNet("Boot: Alx Reset Fail\n");
         return 0;
     }
     /* MAC 复位会清 STAD：写回永久址 */
@@ -101,7 +101,7 @@ int AlxBringUp(void) {
     Pages = 1u + 1u + 6u + 6u;
     Mem = (UINT8 *)PhysicalMemoryAllocatePages(Pages);
     if (!Mem) {
-        ToyLogNet("Boot: Alx Ring OOM\n");
+        LogNet("Boot: Alx Ring OOM\n");
         return 0;
     }
     AlxZero(Mem, (UINTN)Pages * PAGE_SIZE);
@@ -116,14 +116,14 @@ int AlxBringUp(void) {
     AlxConfigureBasic();
 
     if (!AlxWaitLink(&Mbps, &Full)) {
-        ToyLogNet("Boot: Alx Link Timeout\n");
+        LogNet("Boot: Alx Link Timeout\n");
         return 0;
     }
     gAlxLinkMbps = Mbps;
     gAlxLinkFull = Full;
     AlxStartMac();
     AlxMmioW32(ALX_ISR, ~ALX_ISR_DIS);
-    ToyLogNet("Boot: Alx Link Up\n");
+    LogNet("Boot: Alx Link Up\n");
     return 1;
 }
 

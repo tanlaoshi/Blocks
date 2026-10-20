@@ -2,7 +2,7 @@
  * EnumDevice.c — 单设备 HID 枚举（PR-H-ehci-2）
  */
 #include "Ehci/Private.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
 
@@ -130,9 +130,9 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (EnumGetDesc(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
         0) {
         if (EnumGetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
-            ToyBootMarkUsb("Boot: EHCI getdesc fail ");
-            ToyBootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
-            ToyBootMarkUsb("\n");
+            BootMarkUsb("Boot: EHCI getdesc fail ");
+            BootMarkUsb(gEhciLastErr ? gEhciLastErr : "?");
+            BootMarkUsb("\n");
             return 0;
         }
         EpMax = 8;
@@ -150,7 +150,7 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     EnumMarkHex4("Boot: EHCI dev vid=", Dev.idVendor);
     EnumMarkHex4(" pid=", Dev.idProduct);
     EnumMarkHex4(" cls=", Dev.bDeviceClass);
-    ToyBootMarkUsb("\n");
+    BootMarkUsb("\n");
 
     if (Dev.bDeviceClass == 0x09u) {
         gEhciLastErr = "nested hub";
@@ -186,7 +186,7 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         !ParseHidIface(Cfg, CfgLen, 0, &Iface, &Proto, &Ep, &MaxPkt, &Interval,
                        &CfgVal)) {
         gEhciLastErr = "no hid iface";
-        ToyBootMarkUsb("Boot: EHCI no hid iface\n");
+        BootMarkUsb("Boot: EHCI no hid iface\n");
         return FailAfterAddr(C, Addr, HubAddr, HubPort);
     }
     if (EnumSetConfig(C, Addr, EpMax, CfgVal) != 0) {
@@ -208,7 +208,7 @@ int EnumDevice(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     C->HidInterval = Interval ? Interval : 10;
     C->HidOk = 1;
     gEhciLastErr = "ok";
-    ToyBootMarkUsb(C->HidProto == 1 ? "Boot: EHCI HID kbd\n"
+    BootMarkUsb(C->HidProto == 1 ? "Boot: EHCI HID kbd\n"
                                     : "Boot: EHCI HID mouse\n");
     return 1;
 }

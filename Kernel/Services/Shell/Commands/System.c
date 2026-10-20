@@ -176,7 +176,7 @@ static void CommandLsdev(int Argc, char **Argv) {
     }
 }
 
-/* PR-K-uart-shell：ready 后 ToyLog 不进 COM1；log / log save 拉 RUNTIME.LOG */
+/* PR-K-uart-shell：ready 后 Log 不进 COM1；log / log save 拉 RUNTIME.LOG */
 static void CommandLog(int Argc, char **Argv) {
     if (Argc >= 2 && Argv[1][0] == 's' && Argv[1][1] == 'a' && Argv[1][2] == 'v' &&
         Argv[1][3] == 'e' && Argv[1][4] == 0) {

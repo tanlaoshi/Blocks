@@ -13,7 +13,7 @@
 #include "Driver.h"
 #include "DriverInput.h"
 #include "HalDevices.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "InputPrivate.h"
 
 VIRTIO_MMIO_DEV gKbd;
@@ -184,7 +184,7 @@ static int VirtioInputDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **O
         if (VirtioMmioSetupQueue(&gKbd, S.KbdBase, VIRTIO_DEV_INPUT, 8, 0) == 0) {
             RefillQueue(&gKbd, gKbdEvBuf, gKbd.QueueSize);
             gKbdOn = 1;
-            ToyLogDrv("Boot: VirtIO-Input Keyboard\n");
+            LogDrv("Boot: VirtIO-Input Keyboard\n");
         }
     }
     if (S.TabBase) {
@@ -193,7 +193,7 @@ static int VirtioInputDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **O
             ReadAbsInfo(S.TabBase, ABS_Y, &gAbsMinY, &gAbsMaxY);
             RefillQueue(&gTab, gTabEvBuf, gTab.QueueSize);
             gTabOn = 1;
-            ToyLogDrv("Boot: VirtIO-Input Tablet\n");
+            LogDrv("Boot: VirtIO-Input Tablet\n");
         }
     }
     if (!(gKbdOn || gTabOn)) {

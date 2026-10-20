@@ -3,7 +3,7 @@
  */
 #include "Driver.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "PCIe.h"
 #include "UsbHid/Private.h"
 #include "Debug.h"
@@ -26,13 +26,13 @@ static int TryFallback(void **OutPrivate) {
     if (TryXhciAt(Fallback, &gXhciDev) &&
         (HidKeyboardReady() || MousePresent())) {
         gXhciReady = 1;
-        ToyLogUsb("Boot: XHCI-HID Keyboard\n");
+        LogUsb("Boot: XHCI-HID Keyboard\n");
         if (OutPrivate) {
             *OutPrivate = 0;
         }
         return 0;
     }
-    ToyLogUsb("Boot: XHCI fallback BAR failed / no HID\n");
+    LogUsb("Boot: XHCI fallback BAR failed / no HID\n");
     return -1;
 }
 
@@ -70,16 +70,16 @@ int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
         if (HidKeyboardReady() || MousePresent()) {
             gXhciReady = 1;
             if (!HidKeyboardReady() && MousePresent()) {
-                ToyLogUsb("Boot: XHCI-HID Mouse-Only Bind\n");
+                LogUsb("Boot: XHCI-HID Mouse-Only Bind\n");
             }
             if (OutPrivate) {
                 *OutPrivate = 0;
             }
             return 0;
         }
-        ToyLogUsb("Boot: XHCI up (no HID), try PS/2\n");
+        LogUsb("Boot: XHCI up (no HID), try PS/2\n");
         return TryFallback(OutPrivate);
     }
-    ToyLogUsb("Boot: XHCI init failed at BAR\n");
+    LogUsb("Boot: XHCI init failed at BAR\n");
     return TryFallback(OutPrivate);
 }

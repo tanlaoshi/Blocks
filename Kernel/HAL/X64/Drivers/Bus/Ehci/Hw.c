@@ -5,7 +5,7 @@
 #include "VirtualMemory.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 #ifndef PTE_PWT
 #define PTE_PWT HAL_PAGE_PWT
@@ -59,7 +59,7 @@ static void TakeLegacyPci(EHCI_CTRL *C) {
         }
         HalCpuRelax();
     }
-    ToyBootMarkUsb("Boot: EHCI LEGSUP BIOS stuck\n");
+    BootMarkUsb("Boot: EHCI LEGSUP BIOS stuck\n");
 }
 
 void SurveyCcs(EHCI_CTRL *C) {
@@ -128,7 +128,7 @@ static void LogCtrl(EHCI_CTRL *C, int Index) {
     Line[n++] = Hex[5];
     Line[n++] = '\n';
     Line[n] = 0;
-    ToyBootMarkUsb(Line);
+    BootMarkUsb(Line);
 }
 
 int InitOne(EHCI_CTRL *C, int Index) {
@@ -142,14 +142,14 @@ int InitOne(EHCI_CTRL *C, int Index) {
     /* 低 4 位已由 PciScan 清；拒绝对 0 / 过低 */
     if (Bar == 0 || Bar < 0x1000ULL) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: EHCI reject BAR\n");
+            BootMarkUsb("Boot: EHCI reject BAR\n");
         }
         return 0;
     }
     if (VirtualMemoryMapRange(Bar, Bar, EHCI_BAR_MAP,
                               PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD) != 0) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: EHCI map fail\n");
+            BootMarkUsb("Boot: EHCI map fail\n");
         }
         return 0;
     }
@@ -157,7 +157,7 @@ int InitOne(EHCI_CTRL *C, int Index) {
     CapLen = (UINT8)(R32(C->Cap, EHCI_CAPLENGTH) & 0xFFu);
     if (CapLen < 0x10 || CapLen == 0xFF) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: EHCI bad CapLen\n");
+            BootMarkUsb("Boot: EHCI bad CapLen\n");
         }
         return 0;
     }
@@ -180,7 +180,7 @@ int InitOne(EHCI_CTRL *C, int Index) {
     W32(C->Op, EHCI_USBCMD, EHCI_CMD_HCRESET);
     if (!WaitClearOp(C, EHCI_USBCMD, EHCI_CMD_HCRESET, 400000)) {
         if (RealPc) {
-            ToyBootMarkUsb("Boot: EHCI reset timeout (CCS anyway)\n");
+            BootMarkUsb("Boot: EHCI reset timeout (CCS anyway)\n");
         }
     }
 

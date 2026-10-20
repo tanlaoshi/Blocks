@@ -11,7 +11,7 @@
 #include "Tcp.h"
 #include "Driver.h"
 #include "DriverNet.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #ifdef TOY_LWIP
 #include "Netif.h"
 #endif

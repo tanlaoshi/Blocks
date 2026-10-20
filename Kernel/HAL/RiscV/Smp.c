@@ -7,11 +7,11 @@
 #include "Hal.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
-#define SmpLog(Text)   ToyLogSmp(Text)
-#define SmpLogHex32(V) ToyLogSmpHex32(V)
-#define SmpLogHex64(V) ToyLogSmpHex64(V)
+#define SmpLog(Text)   LogSmp(Text)
+#define SmpLogHex32(V) LogSmpHex32(V)
+#define SmpLogHex64(V) LogSmpHex64(V)
 
 #define SBI_EXT_HSM            0x48534DULL
 #define SBI_EXT_HSM_HART_START 0

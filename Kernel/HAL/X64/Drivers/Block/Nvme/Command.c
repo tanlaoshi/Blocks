@@ -10,7 +10,7 @@
 #include "Debug.h"
 #include "Hal.h"
 #include "HalSerial.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 
 static void DbWrite(NVME_CTRL *C, UINT32 Qid, int Completion, UINT16 Val) {
     UINT32 Off = 0x1000u + ((2u * Qid + (Completion ? 1u : 0u)) * (4u << C->Dstrd));

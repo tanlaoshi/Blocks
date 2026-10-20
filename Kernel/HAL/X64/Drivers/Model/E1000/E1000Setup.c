@@ -7,7 +7,7 @@
 #include "VirtualMemory.h"
 #include "Debug.h"
 #include "Hal.h"
-#include "ToySerialLog.h"
+#include "SerialLog.h"
 #include "PCIe.h"
 
 int E1000Setup(void) {
@@ -120,7 +120,7 @@ int E1000Setup(void) {
 
     LinkOk = WaitLinkUp();
     if (!LinkOk) {
-        ToyLogNet("Boot: E1000 Link Timeout\n");
+        LogNet("Boot: E1000 Link Timeout\n");
         DebugWrite("e1000: STATUS.LU timeout (soft-up for static IP)\n");
         /* 仍 gE1000Ready：NUC 静态 IP / 稍后插线；勿清 BAR，避免二次 Probe 再 Flush */
     }
@@ -133,16 +133,16 @@ int E1000Setup(void) {
      */
     if (gPciDid != E1000_DID_I219_LM && TryEnableMsiRx()) {
         if (gPciDid == E1000_DID_82574L) {
-            ToyLogNet("Boot: E1000E IRQ=MSI\n");
+            LogNet("Boot: E1000E IRQ=MSI\n");
         } else {
-            ToyLogNet("Boot: E1000 IRQ=MSI\n");
+            LogNet("Boot: E1000 IRQ=MSI\n");
         }
     } else if (gPciDid == E1000_DID_I219_LM) {
-        ToyLogNet("Boot: I219 IRQ=Poll\n");
+        LogNet("Boot: I219 IRQ=Poll\n");
     } else if (gPciDid == E1000_DID_82574L) {
-        ToyLogNet("Boot: E1000E\n");
+        LogNet("Boot: E1000E\n");
     } else {
-        ToyLogNet("Boot: E1000\n");
+        LogNet("Boot: E1000\n");
     }
     DebugWrite("e1000: did=");
     DebugHex32((UINT32)gPciDid);

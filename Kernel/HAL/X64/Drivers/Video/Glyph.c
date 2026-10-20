@@ -1,8 +1,8 @@
 /*
- * VideoGlyph.c — 字符与点阵（PR-S-video-1）
+ * Glyph.c — 字符与点阵（PR-S-video-1）
  * PR-GUI-l2-font：1bpp 邻接覆盖做灰度边，不换字形格式。
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 static int gGlyphSmooth;
 

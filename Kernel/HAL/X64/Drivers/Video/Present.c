@@ -1,9 +1,9 @@
 /*
- * VideoPresent.c — 脏矩形 / 光标叠层 / Present 编排（PR-S3-videopresent-1）
+ * Present.c — 脏矩形 / 光标叠层 / Present 编排（PR-S3-videopresent-1）
  *
- * 条带 blit 见 VideoPresentRect.c。
+ * 条带 blit 见 PresentRect.c。
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 #include "HalDriverSched.h"
 
 /* 单次 Present 条带行数：cli 下 memcpy 过久会饿死 xHCI poll/MSI */

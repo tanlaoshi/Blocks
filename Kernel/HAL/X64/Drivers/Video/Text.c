@@ -1,7 +1,7 @@
 /*
- * VideoText.c — 滚动与光标文本（PR-S-video-1）
+ * Text.c — 滚动与光标文本（PR-S-video-1）
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 void VideoClearScreen(UINT32 Color) {
     if (!gFront && !gBack) {

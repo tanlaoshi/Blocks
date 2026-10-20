@@ -1,10 +1,10 @@
 /*
- * VideoScale.c — UI 缩放 / 逻辑分辨率 / VideoSet（PR-H-video-split-1）
+ * Scale.c — UI 缩放 / 逻辑分辨率 / VideoSet（PR-H-video-split-1）
  *
  * 从 Video.c 迁出；只搬家、不改逻辑。
  * VideoSet 与 ApplyLogicalFromPhys 同文件（初始化即算逻辑分辨率）。
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 UINT32 NormalizeUiScale(UINT32 Percent) {
     if (Percent <= 75) {

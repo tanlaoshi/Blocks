@@ -1,7 +1,7 @@
 /*
- * VideoBlit.c — 矩形拷贝（PR-S-video-1）
+ * Blit.c — 矩形拷贝（PR-S-video-1）
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 #include "HalDevices.h"
 
 extern void *memcpy(void *Dst, const void *Src, UINTN Len);

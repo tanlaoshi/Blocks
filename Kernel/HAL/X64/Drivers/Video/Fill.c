@@ -1,7 +1,7 @@
 /*
- * VideoFill.c — 矩形填充（PR-S-video-1）
+ * Fill.c — 矩形填充（PR-S-video-1）
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color) {
     UINT32 *Fb;

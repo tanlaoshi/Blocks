@@ -1,9 +1,9 @@
 /*
- * VideoBochs.c — Bochs/QEMU VBE DISPI 热切（PR-H-video-split-1）
+ * Bochs.c — Bochs/QEMU VBE DISPI 热切（PR-H-video-split-1）
  *
  * 从 Video.c 迁出；只搬家、不改逻辑。
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 static void BochsWrite(UINT16 Index, UINT16 Value) {
     HalIoWrite16(VBE_DISPI_IOPORT_INDEX, Index);

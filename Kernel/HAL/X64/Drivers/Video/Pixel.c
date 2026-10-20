@@ -1,7 +1,7 @@
 /*
- * VideoPixel.c — 像素读写与混合（PR-S-video-1）
+ * Pixel.c — 像素读写与混合（PR-S-video-1）
  */
-#include "VideoPrivate.h"
+#include "Private.h"
 
 void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 *Fb;

@@ -1,8 +1,8 @@
 /*
- * VideoPrivate.h — Video 驱动内部共享头（仅 HAL/X64/Drivers/Video*.c）
+ * Private.h — Video 驱动内部共享头（仅 HAL/X64/Drivers/Video/）
  *
  * 禁止 Common / User 包含；对外用 Video.h / HalVideo.h。
- * PR-H-video-split-1：与 VideoBochs.c / VideoScale.c 一并引入。
+ * PR-H-video-split-1：与 Bochs.c / Scale.c 一并引入。
  */
 #ifndef VIDEO_PRIVATE_H
 #define VIDEO_PRIVATE_H
@@ -88,11 +88,11 @@ static inline UINT32 CodepointAdvance(UINT32 Cp) {
     return FontCodepointAdvance(Cp);
 }
 
-/* Scale / 逻辑分辨率（VideoScale.c） */
+/* Scale / 逻辑分辨率（Scale.c） */
 UINT32 NormalizeUiScale(UINT32 Percent);
 void ApplyLogicalFromPhys(void);
 
-/* Dirty / Present（VideoPresent*.c；Draw* 经 DirtyUnion 记账） */
+/* Dirty / Present（Present*.c；Draw* 经 DirtyUnion 记账） */
 void DirtyUnionInto(int *Dirty, UINT32 *Dx0, UINT32 *Dy0, UINT32 *Dx1,
                     UINT32 *Dy1, UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void DirtyUnion(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);

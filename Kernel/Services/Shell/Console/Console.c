@@ -79,6 +79,7 @@ static char StdinGetChar(void) {
     }
 }
 
+/* 桌面：Worker 末档调用；SerialRun 亦可。once。契约见 Tasks/Shell.c 头。 */
 static void AnnounceBootReady(void) {
     if (gBootReadyAnnounced) {
         return;

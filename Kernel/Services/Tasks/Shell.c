@@ -1,11 +1,19 @@
 /*
- * Shell.c — ShellTask 环（PR-S-tasks-1）
+ * Shell.c — ShellTask 环（runtime-e-shell）
  *
- * 交互核：HID dequeue → 串口 RX（Present 前）→ Present
- *   → LwIp|Net/Tcp → UDP 回显 → YieldForPollInput
- * 不调 GuiPollMouse（单一主人 GuiTask，见 runtime-a-poll）。
- * ready/blocks> 由 Worker Announce，此处勿抢先 Prompt。
- * 四环总表：路线图新 runtime-4；Gui/Worker/Input 见 Tasks.c。
+ * ready / blocks>（谁打、谁勿抢）：
+ *   Worker 泵到末档 AnnounceBootReady（一次）→ ready 文案 + blocks> + ShellOwn
+ *   ShellTask 启动勿 Prompt（否则夹在 iwl/dhcp 黄字中间）
+ *   SerialRun（ConsoleOnly/virt）也可 Announce；同 once 门闩
+ *
+ * 一圈序：
+ *   1 HID dequeue（只取键；稳态 drain 在 YieldForPollInput）
+ *   2 串口 RX — 必须在 Present 前（16550 FIFO@115200≈1.4ms 满；后抽粘贴截断）
+ *     分流：StdinUserHold / Settings·Files·Edit·Tty 焦点 → 不进 shell 行
+ *   3 HalVideoPresent（!GuiPresentBlocked）
+ *   4 LwIp|Net/Tcp → UDP 回显
+ *   5 YieldForPollInput
+ * 不调 GuiPollMouse（runtime-a-poll）。四环 runtime-4；Worker 序 runtime-d-worker。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -33,10 +41,7 @@ void ShellTask(void) {
     HAL_KEYBOARD_REPORT Report = {0};
     HAL_KEYBOARD_REPORT Previous = {0};
     DebugWrite("shell task running (preemptive)\n");
-    /*
-     * 串口 ready/blocks> 由 Worker 在 iwl + 首轮 DHCP 结束后 Announce。
-     * 此处勿 Prompt：否则夹在 Boot: iwl8265 / dhcp 中间。
-     */
+    /* ready/blocks>：见文件头；此处勿 Prompt */
     for (;;) {
         /*
          * 真机 xHCI 为 poll（无 MSI）：必须先 Drain/取键再 hlt。

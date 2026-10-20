@@ -84,7 +84,7 @@ PS/2 放 `Ps2/`。USB 键鼠的目标目录是 `UsbHid/`，只包含 `UsbHostCon
 
 ## 进阶
 
-- 简单参考：`HAL/X64/Drivers/Ps2/Ps2.c`
+- 简单参考：`HAL/X64/Drivers/Input/Ps2/Ps2.c`
 - 复杂参考：`HAL/X64/Drivers/XHCI/`（已一夹）
 - 网卡 L2：`HAL/X64/Drivers/E1000/` + `Include/DriverNic.h`
 - 网卡骨架：同目录 `TemplateNetL2.c`（注释草稿，不链入）

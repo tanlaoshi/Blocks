@@ -146,6 +146,7 @@ INCLUDES_COMMON = -IInclude \
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers \
                   -IHAL/$(HAL_ARCH)/Drivers/Bus \
+                  -IHAL/$(HAL_ARCH)/Drivers/Input \
                   -IHAL/$(HAL_ARCH)/Drivers/Model
 
 # PR-B2：非 x86 必须选中 Board 包（默认 virt）；Common 不 -I 板目录
@@ -363,13 +364,13 @@ DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Iwl/*/*/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Ehci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Ehci/Wifi/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Uhci/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ps2/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Input/Ps2/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Nvme/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ahci/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Ata/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Msc/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Hub/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/UsbHid/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Input/UsbHid/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Serial/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/Igpu/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Hda/*.c)
@@ -507,7 +508,7 @@ BOARD_SRCS := $(wildcard $(BOARD_DIR)/*.c)
 BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
 # PR-R5：Arm/RiscV 共享 virtio/ramfb/DTB/HalVideo（HAL/Virtio）；复用 x86 Video 绘制
-INCLUDES_HAL += -IHAL/X64/Drivers -IHAL
+INCLUDES_HAL += -IHAL/X64/Drivers -IHAL/X64/Drivers/Input -IHAL
 VIRT_SRCS := $(wildcard HAL/Virtio/*.c)
 VIRT_SRCS += $(wildcard HAL/Virtio/Net/*.c)
 VIRT_OBJS := $(patsubst HAL/Virtio/%.c,$(HALDIR)/Virtio/%.o,$(VIRT_SRCS))

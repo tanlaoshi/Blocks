@@ -3,7 +3,16 @@
  *
  * 从 Click.c 原样搬家；不改语义。
  */
+/*
+ * gui-g4-mark：改菜单态后 RequestRefresh 前 Mark 菜单∪栏。
+ * 开着菜单时 Refresh 仍走覆盖快路径；关后无 cover 时 Mark 防整屏 ThemeScene。
+ */
 #include "DesktopPrivate.h"
+
+static void MarkMenuRefresh(void) {
+    DesktopMarkMenuArea();
+    DesktopMarkTaskbar();
+}
 
 int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                        char *OutExecPath, UINTN ExecPathMax) {
@@ -53,6 +62,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
          * 再点开始钮：只收起，勿先关再 toggle 打开。
          */
         if (OnStart) {
+            MarkMenuRefresh();
             gMenuOpen = 0;
             gMenuAppsOpen = 0;
             gMenuGameOpen = 0;
@@ -79,6 +89,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 MENU_ROW *R = &gMenuGameRows[Item];
                 DESKTOP_ACTION Act = R->Action;
 
+                MarkMenuRefresh();
                 gMenuOpen = 0;
                 gMenuAppsOpen = 0;
                 gMenuGameOpen = 0;
@@ -107,6 +118,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 MENU_ROW *R = &gMenuAppRows[Item];
                 DESKTOP_ACTION Act = R->Action;
 
+                MarkMenuRefresh();
                 gMenuOpen = 0;
                 gMenuAppsOpen = 0;
                 gMenuGameOpen = 0;
@@ -149,6 +161,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 if (Act == DESKTOP_ACTION_APPS) {
                     gMenuAppsOpen = !gMenuAppsOpen;
                     gMenuGameOpen = 0;
+                    MarkMenuRefresh();
                     RequestRefresh();
                     if (OutAction) {
                         *OutAction = DESKTOP_ACTION_NONE;
@@ -158,6 +171,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                 if (Act == DESKTOP_ACTION_GAME) {
                     gMenuGameOpen = !gMenuGameOpen;
                     gMenuAppsOpen = 0;
+                    MarkMenuRefresh();
                     RequestRefresh();
                     if (OutAction) {
                         *OutAction = DESKTOP_ACTION_NONE;
@@ -165,6 +179,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
                     return 1;
                 }
 
+                MarkMenuRefresh();
                 gMenuOpen = 0;
                 gMenuAppsOpen = 0;
                 gMenuGameOpen = 0;
@@ -190,6 +205,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
         }
 
         /* 点在菜单外：关菜单；点到窗则由 Gui 继续 Raise */
+        MarkMenuRefresh();
         gMenuOpen = 0;
         gMenuAppsOpen = 0;
         gMenuGameOpen = 0;
@@ -212,6 +228,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
             if (gMenuCount <= 0) {
                 RebuildStartMenu();
             }
+            MarkMenuRefresh();
             RequestRefresh();
             return 1;
         }

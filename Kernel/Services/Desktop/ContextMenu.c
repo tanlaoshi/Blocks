@@ -68,6 +68,7 @@ void DesktopContextMenuClose(void) {
     if (!gCtxOpen) {
         return;
     }
+    DesktopMarkContextMenuArea();
     gCtxOpen = 0;
     RequestRefresh();
 }
@@ -79,6 +80,7 @@ void DesktopContextMenuOpen(UINT32 X, UINT32 Y) {
     DesktopNetTrayClose();
     CtxPlace(X, Y);
     gCtxOpen = 1;
+    DesktopMarkTaskbar();
     RequestRefresh();
 }
 
@@ -164,6 +166,8 @@ int DesktopContextMenuHandleClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction)
         return 0;
     }
     CtxGeom(&Mx, &My, &Mw, &Mh);
+    DesktopMarkContextMenuArea();
+    DesktopMarkRect(Mx, My, Mw, Mh);
     gCtxOpen = 0;
     RequestRefresh();
     if (X < Mx || Y < My || X >= Mx + Mw || Y >= My + Mh) {

@@ -1,10 +1,10 @@
 /*
- * Refresh.c — GuiRefreshDesktop（gui-g0-map）
+ * Refresh.c — GuiRefreshDesktop（gui-g0-map + gui-g4-mark）
  *
  * Desktop RequestRefresh 钩子（WindowManager 挂上）。
- *   开始菜单 / 右键 / 覆盖区开或刚关 → 只画菜单层 + PresentFlush（快路径）
+ *   开始菜单 / 右键 / 网托开着 / 覆盖区刚关 → 只画菜单层 + PresentFlush（快路径）
  *   否则 → GuiComposeDamage（有 Mark 则脏矩形，无则整屏 ThemeScene）
- * 谁调 RequestRefresh / Mark：见 Damage.c 头 gui-g2-mark。
+ * 谁调 RequestRefresh / Mark：见 Damage.c 头；栏/托盘 Mark 见 Desktop/Mark.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
@@ -24,9 +24,11 @@ void GuiRefreshDesktop(void) {
     UINT32 Ch;
     int HadCtx;
     int CtxOpen;
+    int TrayOpen;
 
     Open = DesktopStartMenuIsOpen();
     CtxOpen = DesktopContextMenuIsOpen();
+    TrayOpen = DesktopNetTrayIsOpen();
     HadCover = DesktopMenuCoverGet(&Ox, &Oy, &Ow, &Oh);
     HadCtx = DesktopContextMenuCoverGet(&Cx, &Cy, &Cw, &Ch);
 
@@ -39,7 +41,7 @@ void GuiRefreshDesktop(void) {
         gGuiWindowManager.HoverWin = -1;
     }
 
-    if (Open || CtxOpen || HadCover || HadCtx) {
+    if (Open || CtxOpen || TrayOpen || HadCover || HadCtx) {
         ComposeBeginEraseCursor();
         HalVideoClearClip();
         if (HadCover && Ow > 0 && Oh > 0) {

@@ -136,6 +136,8 @@ void DesktopNetTrayClose(void) {
     if (!gNetTrayOpen) {
         return;
     }
+    DesktopMarkNetTrayPopup();
+    DesktopMarkTaskbar();
     gNetTrayOpen = 0;
     RequestRefresh();
 }

@@ -96,6 +96,16 @@ static void PopupGeom(UINT32 *Px, UINT32 *Py, UINT32 *Pw, UINT32 *Ph) {
     *Py = (BarY > H + 4u) ? (BarY - H - 4u) : 0;
 }
 
+void DesktopMarkNetTrayPopup(void) {
+    UINT32 Px;
+    UINT32 Py;
+    UINT32 Pw;
+    UINT32 Ph;
+
+    PopupGeom(&Px, &Py, &Pw, &Ph);
+    DesktopMarkRect(Px, Py, Pw, Ph);
+}
+
 void DesktopNetTrayDrawPopup(void) {
     UINT32 Px, Py, Pw, Ph, Ty;
     char Line[40];
@@ -168,6 +178,8 @@ int DesktopNetTrayHandleClick(UINT32 X, UINT32 Y) {
         if (X >= Px && X < Px + Pw && Y >= Py && Y < Py + Ph) {
             return 1;
         }
+        DesktopMarkNetTrayPopup();
+        DesktopMarkTaskbar();
         DesktopNetTraySetOpen(0);
         RequestRefresh();
         if (Y >= BarY && Y < Sh) {
@@ -183,6 +195,8 @@ int DesktopNetTrayHandleClick(UINT32 X, UINT32 Y) {
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
     DesktopNetTraySetOpen(1);
+    DesktopMarkNetTrayPopup();
+    DesktopMarkTaskbar();
     RequestRefresh();
     return 1;
 }

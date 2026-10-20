@@ -21,13 +21,35 @@ int GuiResizeEdgeAt(const GUI_WINDOW *W, UINT32 X, UINT32 Y) {
         return RESIZE_EDGE_NONE;
     }
     /*
-     * USER 底栏按钮与南/东南热区重叠（Bh=36、RESIZE_HOT=16）。
-     * 按钮上须保持箭头并可点，勿抢成 RESIZE_S（竖线）/改大小。
+     * USER 底栏：按钮矩形 + 其下垫/边框仍落在 RESIZE_HOT(16) 内。
+     * 只排除 UserButtonHit 时，点在钮缝/钮下会抢成 RESIZE_S → 拖一下窗「向下延伸」
+     *（GuiDemo 来回点 OK/Cancel 即现）。整条底栏带禁南向改大小。
      */
     Idx = (int)(W - gGuiWindowManager.Windows);
     if (Idx >= 0 && Idx < MAX_WINS && W == &gGuiWindowManager.Windows[Idx] &&
-        W->Kind == GUI_WIN_USER && UserButtonHit(Idx, X, Y) >= 0) {
-        return RESIZE_EDGE_NONE;
+        W->Kind == GUI_WIN_USER) {
+        int Bi;
+        int HasBtn = 0;
+
+        for (Bi = 0; Bi < 4; Bi++) {
+            if (gGuiWindowManager.UserSlot[Idx].UserButtonUsed[Bi]) {
+                HasBtn = 1;
+                break;
+            }
+        }
+        if (HasBtn) {
+            UINT32 BarTop;
+            UINT32 Ch;
+
+            Ch = W->Height - TITLE_HEIGHT - 1 - GUI_CLIENT_PAD * 2;
+            if (Ch >= 48) {
+                /* 与 UserButtonHit：By = Cy+Ch-Bh-4，带延伸到窗底 */
+                BarTop = W->Y + TITLE_HEIGHT + GUI_CLIENT_PAD + Ch - 36u - 4u;
+                if (Y >= BarTop) {
+                    return RESIZE_EDGE_NONE;
+                }
+            }
+        }
     }
     Rx = W->X + W->Width - RESIZE_HOT;
     Ry = W->Y + W->Height - RESIZE_HOT;

@@ -158,6 +158,12 @@ void StartBtnGeom(UINT32 *OutX, UINT32 *OutY, UINT32 *OutW, UINT32 *OutH);
 void MenuGeom(UINT32 *Mx, UINT32 *My, UINT32 *Mw, UINT32 *Mh);
 int PointOccupied(UINT32 X, UINT32 Y);
 void RequestRefresh(void);
+/* gui-g4-mark：Refresh 前并 Gui 层 AABB（见 Desktop/Mark.c） */
+void DesktopMarkRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
+void DesktopMarkTaskbar(void);
+void DesktopMarkMenuArea(void);
+void DesktopMarkContextMenuArea(void);
+void DesktopMarkNetTrayPopup(void);
 void ClearIconFootprint(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void ClampIconPos(UINT32 *X, UINT32 *Y);
 void SnapIconToGrid(UINT32 *X, UINT32 *Y);

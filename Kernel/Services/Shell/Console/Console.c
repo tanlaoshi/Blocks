@@ -131,6 +131,14 @@ void Prompt(void) {
 }
 
 static void WaitPrompt(void) {
+    /*
+     * 桌面 EXEC 常在「blocks> 」上占 stdin；先离开提示符行一次。
+     * 勿在 Write 里对用户逐字补 \\n（printf 每字节一次 → 一字一行）。
+     * shell OnEnter 已换行时 gAtLineStart=1，此处跳过。
+     */
+    if (!gAtLineStart) {
+        gConsole.Write("\n");
+    }
     gWaitPrompt++;
 }
 

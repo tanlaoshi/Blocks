@@ -1,5 +1,5 @@
 /*
- * Damage.c — Gui 合成脏矩形（gui-g0-map + gui-g2-mark）
+ * Damage.c — Gui 合成脏矩形（gui-g0-map + gui-g2-mark + gui-g4-mark）
  *
  * GuiMarkDamage：并一个屏幕 AABB（仅 Gui 层；≠ HAL DirtyUnion）。
  * GuiComposeDamage：
@@ -8,13 +8,16 @@
  *   有矩形 → 擦→DesktopDrawInRect→命中窗→菜单/托盘→光标
  *            → PresentFlush（ComposeBusy 内）→ ComposeEnd
  *
- * 调用面清单（G2；扩 Mark 见 G4，勿盲改）：
- *   GuiMarkDamage — 仅 Desktop/Clock.c（图标 bbox；TTF 时 0,0,Sw,Sh）
+ * 调用面清单：
+ *   GuiMarkDamage —
+ *     Clock.c（图标 bbox；TTF 时 0,0,Sw,Sh）
+ *     Desktop/Mark.c（栏 / 开始菜单 cover / 右键 cover）
+ *     NetTrayPopup DesktopMarkNetTrayPopup
  *   RequestRefresh → GuiRefreshDesktop — TaskbarClick、ContextMenu、NetTray*、
- *     DismissStartMenu、Clock；有菜单覆盖→快路径，否则本函数（常无 Mark→整屏）
+ *     DismissStartMenu、Clock；菜单/右键/网托开或覆盖刚关→快路径，
+ *     否则本函数（G4：上述开关先 Mark，关托盘勿整屏）
  *   直 ThemeScene — Mouse 改分辨率、Theme、Catalog、Close 非 USER（故意全屏）
  *   轻量自画 — Close USER（禁 4K ThemeScene；契约 Close.c 头 gui-g3-close）
- * G4 候选优先：TaskbarClick / 菜单开关（先 Mark 栏或菜单 AABB 再 Refresh）。
  * 总图 Compose.c；菜单快路径 Refresh.c。
  */
 #include "GuiPrivate.h"

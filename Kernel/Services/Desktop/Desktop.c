@@ -164,6 +164,8 @@ void DesktopDismissStartMenu(void) {
     if (!gMenuOpen && !gMenuAppsOpen && !gMenuGameOpen) {
         return;
     }
+    DesktopMarkMenuArea();
+    DesktopMarkTaskbar();
     gMenuOpen = 0;
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;

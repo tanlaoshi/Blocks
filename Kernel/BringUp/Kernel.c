@@ -3,21 +3,15 @@
  *
  * BringUp/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
  *
- * 三条路（勿改判定顺序）：
+ * 三条路（勿改判定顺序；ConsoleOnly 与钉核见 input-f3-console）：
  *   1. HalConsoleOnly()
- *        → 模块表 Virt（串口子集）→ 单核直跑串口壳 / 多核 Shell+SchedulerStart
+ *        → Virt 表 → VirtEnterShell：只 Shell（不 Create Gui/Worker/Input）
  *   2. HalHasFrameBuffer() && HalPlatformIsVirtSerialConsole()
- *        → 模块表 VirtDesktop（有 Video/Gui/Net，无 USB）→ Common
- *   3. 否则（真机 x86 等）
- *        → 模块表 Full（USB 在 FileSystem 前）→ Common
+ *        → VirtDesktop → Common（可按 HAL_INPUT_CPU_MIN Create Input）
+ *   3. 否则 → Full → Common
  *
  * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
- *
- * 任务拉起（不在模块表；Initialize 已在表内 Scheduler 项做完）：
- *   Common：Create Shell/Gui/Worker（失败 Park）→ KernelTaskDemoStart（Tasks 层）
- *            → 可选 Input → SchedulerStart
- *   Virt 多核：Create Shell → SchedulerStart；单核直跑 SerialRun（不 Start）
- * SchedulerStart 步骤见 Core/Scheduler/Boot.c。
+ * Common：Shell/Gui/Worker → Demo → 可选 Input → SchedulerStart（Boot.c）。
  */
 #include "BootInfo.h"
 #include "SerialLog.h"
@@ -45,12 +39,11 @@ static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
 }
 
 /*
- * 逻辑 CPU≥3 才 Create Input（要 0/1/2 三槽，非「板子必须三核」）。
- * 门闩：Count<=2 等同他处 <3（input-f1-gates；改阈值 F2 五处同改）。
- * Start 再钉 CPU2。drain：Tasks.c Yield 头；钉核 sched-pin-doc。失败只打日志。
+ * Count≥HAL_INPUT_CPU_MIN 才 Create Input@CPU2（input-f2-threshold）。
+ * Start 再钉核。drain：Tasks.c Yield 头；钉核 sched-pin-doc。失败只打日志。
  */
 static void KernelTrySpawnInput(void) {
-    if (HalCpuCount() <= 2) {
+    if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
         return;
     }
     if (SchedulerCreate("Input", InputTask) < 0) {

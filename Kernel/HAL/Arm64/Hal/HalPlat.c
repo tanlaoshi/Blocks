@@ -10,13 +10,17 @@ int HalHasFrameBuffer(void) {
     return (Info != 0 && Info->FrameBufferSize != 0) ? 1 : 0;
 }
 
+/*
+ * input-f3-console（arm64）：
+ *   ConsoleOnly = !FB → KernelMainVirt（只 Shell；不 Create Input/Gui）
+ *   Pin = 0（解钉）；若改 1，Boot 将 Interactive/Input 全钉 0（盖过 F2 门槛）
+ * 有 FB 时走 VirtDesktop + KernelMainCommon（可按 MIN Create Input@CPU2）。
+ */
 int HalConsoleOnly(void) {
-    /* 无 FB → 串口命令行靶（virt --headless / 未来 Duo S 等板包） */
     return HalHasFrameBuffer() ? 0 : 1;
 }
 
 int HalPinInteractiveToBootstrap(void) {
-    /* PR-V-ap-interactive：解钉；AP OnTimer 切 shell/gui（input-fix 已铺路） */
     return 0;
 }
 

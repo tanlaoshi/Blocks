@@ -125,12 +125,13 @@ const char *HalCpuInfo(void);
 
 /*
  * PR-B1 能力旗标：Common 用能力判断，勿用「非 x86 = virt 串口」。
- * HalHasFrameBuffer — 当前 BOOT_INFO 有可用帧缓冲（亮屏 / 桌面模块前提）
- * HalConsoleOnly    — 命令行靶 / 无 FB：串口模块子集（跳过 video/gui）
+ * HalHasFrameBuffer — BOOT_INFO 有可用帧缓冲（亮屏 / 桌面模块前提）
+ * HalConsoleOnly    — 串口命令行靶：Virt 模块表、不 Create Gui/Worker/Input
+ * HalPinInteractiveToBootstrap — 1→Shell/Gui/Input 全钉 BSP（盖过 HAL_INPUT_CPU_MIN）
+ * 二者与 Input 门槛分域见 input-f3-console（Boot.c / HalPlat.c 头）；勿跟 F2 门槛缠改。
  */
 int HalHasFrameBuffer(void);
 int HalConsoleOnly(void);
-/* PR-V-ap-interactive：1 → shell/gui 钉 BSP（仅 ConsoleOnly / 应急；virt 默认 0） */
 int HalPinInteractiveToBootstrap(void);
 
 /* 轮询时钟（virt 无 IRQ 时由 IdleLoop 调用；x86 可为空） */
@@ -140,6 +141,13 @@ int HalCpuIsHypervisor(void);
 
 /* SMP：Common 只依赖这些门面；x86=MADT/SIPI，virt Arm/RiscV=PSCI/HSM（A14） */
 #define HAL_MAX_CPUS 8
+/*
+ * Input 专核门槛（input-f2-threshold）：HalCpuCount()≥此值才 Create Input@CPU2。
+ * 五门闩同此常数：KernelTrySpawnInput / YieldForPollInput / TasksPumpKeyboard /
+ * XHCI InputIrqCpu / SchedulerStart 钉核。改数只改这里（原散落 <3/<=2/>2）。
+ * 4=对齐 1/2/4 核产品：三核及以下 Yield/Hid 自 drain；≥4 才分出 Input 槽。
+ */
+#define HAL_INPUT_CPU_MIN 4
 
 int HalCpuCount(void);
 UINT32 HalCpuGetId(void);          /* 逻辑 CPU：0=BSP，1..N-1=AP */

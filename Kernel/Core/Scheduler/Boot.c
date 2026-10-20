@@ -5,16 +5,24 @@
  * BringUp 先 Create 任务，再进本文件 SchedulerStart：
  *   每核 idle → 按名钉核 → Online → TimerStart → Enter（不返回）
  *
- * 钉核策略（只记现状；改策略另刀；全程表见路线图新 sched-pin-doc）：
- *   默认桌面（非 ConsoleOnly）：
- *     CPU0 BSP — idle0 + Worker（UP 时 Worker 优先级提到 SHELL，免饿死）
- *     CPU1     — Shell + Gui（SHELL）；SMP≥2
- *     CPU2     — Input（DEFAULT）；仅 SMP≥3 且 Kernel 已 Create
- *   ConsoleOnly 或 HalPinInteractiveToBootstrap：交互/Input 全钉 BSP
- *     （virt 定时器在 BSP 时钉 AP → 永 WFI）— F3；盖过 Cpus>2
- *   Start：Cpus>2 → InputCpu=2（input-f1-gates 五门闩之一；改阈值见 F2）
- *   Start 时 BSP 只切入 Affinity 0/未钉；AP 任务由各核调度接。
- * 任务谁 Create：BringUp/Kernel.c（Count<=2 不 Create）。
+ * 钉核策略（只记现状；全程表路线图新 sched-pin-doc）：
+ *   默认桌面：
+ *     CPU0 — Worker；CPU1 — Shell+Gui（≥2）；CPU2 — Input（≥HAL_INPUT_CPU_MIN）
+ *   Start 钉核用 HAL_INPUT_CPU_MIN（F2）；任务谁 Create：Kernel.c。
+ *
+ * ── ConsoleOnly / Pin vs Input 门槛（input-f3-console；勿与 F2 缠改）──
+ *
+ * HalConsoleOnly（选路，KernelMain）：
+ *   真 → Virt 模块表 + KernelMainVirtEnterShell：只 Create Shell
+ *        （不 Create Gui/Worker/Input；门槛 MIN 无对象）
+ *   假 → Common：Shell/Gui/Worker + 可选 Input
+ *
+ * HalPinInteractiveToBootstrap（钉核例外，本文件 Start）：
+ *   与 ConsoleOnly 任一为真 → InteractiveCpu=InputCpu=0（盖过 MIN→CPU2）
+ *   用途：定时器只在 BSP 时，交互钉 AP 会永 WFI
+ *   现三架构均返回 0；活的串口子集主要靠 ConsoleOnly（arm/riscv 无 FB）
+ *
+ * x64：ConsoleOnly/Pin 恒 0 → 课堂桌面永不进上述例外。
  */
 #include "Scheduler.h"
 #include "SchedulerOps.h"
@@ -149,7 +157,7 @@ void SchedulerStart(void) {
     /* 钉核：表与例外见文件头 / 路线图新 sched-pin-doc（此处只执行，不改策略）。 */
     {
         UINT32 InteractiveCpu = (Cpus > 1) ? 1u : 0u;
-        UINT32 InputCpu = (Cpus > 2) ? 2u : InteractiveCpu;
+        UINT32 InputCpu = (Cpus >= HAL_INPUT_CPU_MIN) ? 2u : InteractiveCpu;
 
         if (HalConsoleOnly() || HalPinInteractiveToBootstrap()) {
             InteractiveCpu = 0;

@@ -11,13 +11,16 @@ int HalHasFrameBuffer(void) {
     return (Info != 0 && Info->FrameBufferSize != 0) ? 1 : 0;
 }
 
+/*
+ * input-f3-console（riscv）：同 arm64 —
+ *   ConsoleOnly=!FB → 只 Shell；Pin=0；有 FB 可按 MIN 分 Input。
+ * VirtSerialConsole 另看 BOARD_IS_VIRT（模块表 VirtDesktop vs Full）。
+ */
 int HalConsoleOnly(void) {
-    /* 无 FB → 串口命令行靶（virt --headless / 未来 Duo S 等板包） */
     return HalHasFrameBuffer() ? 0 : 1;
 }
 
 int HalPinInteractiveToBootstrap(void) {
-    /* PR-V-ap-interactive：解钉；AP OnTimer 切 shell/gui（input-fix 已铺路） */
     return 0;
 }
 

@@ -1,8 +1,8 @@
 /*
- * Hid.c — HID 报告送进控制台（input-f1-gates）
+ * Hid.c — HID 报告送进控制台（input-f2-threshold）
  *
- * TasksPumpKeyboard：Count<3 → HalInputPoll（与 YieldForPollInput 同门闩）；
- * ≥3 只 dequeue（InputTask@CPU2 独占 poll）。清单主表 Tasks.c 头。
+ * TasksPumpKeyboard：Count < HAL_INPUT_CPU_MIN → HalInputPoll（与 Yield 同门闩）；
+ * ≥ MIN 只 dequeue（InputTask@CPU2 独占 poll）。清单 Tasks.c 头。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -28,10 +28,10 @@ void TasksPumpKeyboard(void) {
     HAL_KEYBOARD_REPORT Report;
 
     /*
-     * SMP≥3：HalInputPoll 归 InputTask；此处只 dequeue，与 ShellTask 同队列。
+     * Count≥HAL_INPUT_CPU_MIN：HalInputPoll 归 InputTask；此处只 dequeue。
      * 用户态 sleep 钉 BSP 且不抢占时，Shell 同核转不到 → 须在 poll 路径自抽。
      */
-    if (HalCpuCount() < 3) {
+    if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
         HalInputPoll();
     }
     while (HalKeyboardDequeue(&Report)) {

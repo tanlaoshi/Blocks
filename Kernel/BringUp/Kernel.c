@@ -11,10 +11,12 @@
  *   3. 否则（真机 x86 等）
  *        → 模块表 Full（USB 在 FileSystem 前）→ Common
  *
- * Common：Shell / Gui / Worker / Demo / 可选 Input → SchedulerStart。
- * shell/gui/worker 创建失败即停；Input 失败只打日志。
- *
  * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
+ *
+ * 任务拉起（不在模块表；Initialize 已在表内 Scheduler 项做完）：
+ *   Common：Create Shell/Gui/Worker（失败 Park）→ Demo → 可选 Input → SchedulerStart
+ *   Virt 多核：Create Shell → SchedulerStart；单核直跑 SerialRun（不 Start）
+ * SchedulerStart 步骤见 Core/Scheduler/Boot.c。
  */
 #include "BootInfo.h"
 #include "SerialLog.h"

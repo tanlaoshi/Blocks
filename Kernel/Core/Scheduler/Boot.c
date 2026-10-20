@@ -2,7 +2,10 @@
  * Boot.c — idle、AP 与 SchedulerStart（PR-S-sched-1）
  *
  * 非模块表入口。模块表只调 SchedulerInitialize（Scheduler.c）；
- * 本文件在 BringUp 拉起 Shell/Gui/Worker 等之后才 SchedulerStart。
+ * BringUp 先 Create 任务，再进本文件 SchedulerStart：
+ *   每核 idle → 按名钉核（shell/gui / input / worker）→ Online
+ *   → TimerStart → HalSchedulerEnter（不返回）
+ * 钉核策略见函数内注释；改策略另刀。任务谁 Create 见 BringUp/Kernel.c。
  */
 #include "Scheduler.h"
 #include "SchedulerOps.h"

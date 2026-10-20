@@ -13,6 +13,7 @@
 #define FS_MAX_VOLUMES 8 /* NUC：NVMe 多 FAT + Live USB ESP/BLOCKS；4 易挤掉系统卷 */
 #define FS_VOL_NAME_MAX 8
 
+/* 0 成功；-1 注册失败或最终仍无卷（模块表会停机） */
 int FileSystemInitialize(void);
 
 /* 1 = 这条路径现在不能直接改。没登记则不拦截。 */

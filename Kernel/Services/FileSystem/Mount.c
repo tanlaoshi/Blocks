@@ -7,7 +7,6 @@
 #include "BlockMux.h"
 #include "Gpt.h"
 #include "SerialLog.h"
-#include "Debug.h"
 #include "HalDevices.h"
 
 /*
@@ -73,13 +72,13 @@ int FileSystemRemountVolumes(void) {
      */
     if (!BlockBackendReady()) {
         if (HalBlockInitialize() <= 0) {
-            DebugWrite("FS: remount no block backend\n");
+            LogFs("Fs: Remount No Block Backend\n");
         }
     } else if (BlockInitialize() <= 0) {
-        DebugWrite("FS: remount BlockInitialize found 0 drives\n");
+        LogFs("Fs: Remount BlockInitialize Found 0 Drives\n");
     }
     if (!MountAllVolumes()) {
-        DebugWrite("FS: remount no volumes\n");
+        LogFs("Fs: Remount No Volumes\n");
         return 0;
     }
     return 1;

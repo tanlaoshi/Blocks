@@ -14,17 +14,15 @@
  *   - 已有 BLOCKS → 跳过 USB 扫（省 Logo 前空等）
  *
  * 多份 BLOCKS.ID：默认名 BLOCKS 跟 BootDiskGuid（加载 EFI 的盘）；另一份 USB:。
- * 模块表：本函数失败也常 return 0（软成功，仅 WARN），见文件末。
+ * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
 #include "VirtualFileSystem.h"
-#include "Debug.h"
 #include "SerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
-#include "HalConsole.h"
 #include "KernelModulesPrivate.h"
 #include "HalDriverFile.h"
 #include "LogFile.h"
@@ -243,12 +241,12 @@ int FileSystemInitialize(void) {
     int HasBlocks = 0;
 
     if (gVirtualFileSystem.Register(FatFsOps()) != 0) {
-        DebugWrite("FS: gVirtualFileSystem.Register(fat) failed\n");
-        return 0;
+        LogFs("Fs: Register Fat Failed\n");
+        return -1;
     }
     if (gVirtualFileSystem.Register(ResourceFileSystemOps()) != 0) {
-        DebugWrite("FS: gVirtualFileSystem.Register(res) failed\n");
-        return 0;
+        LogFs("Fs: Register Res Failed\n");
+        return -1;
     }
     /* 驱动固件/配置经 HalDriverFileRead，不直接 #include FileSystem.h */
     HalDriverFileReadRegister(FileSystemReadFile);
@@ -273,7 +271,7 @@ int FileSystemInitialize(void) {
             }
         }
     } else {
-        DebugWrite("FS: no primary volumes yet (Live USB path ok)\n");
+        LogFs("Fs: No Primary Volumes Yet (Live USB Path Ok)\n");
     }
 
     if (!HasBlocks && !Auto) {
@@ -291,13 +289,13 @@ int FileSystemInitialize(void) {
         if (HalUsbMscAutoBeforeFs() == 0) {
             MuxOk = 1;
             if (BlockInitialize() <= 0) {
-                DebugWrite("FS: BlockInitialize after msc auto failed\n");
+                LogFs("Fs: BlockInitialize After Msc Auto Failed\n");
             }
             if (!MountAllVolumes()) {
-                DebugWrite("FS: mount after msc auto failed\n");
+                LogFs("Fs: Mount After Msc Auto Failed\n");
                 if (!HaveVols) {
                     (void)UsbUartInitialize();
-                    return 0;
+                    return -1;
                 }
             } else {
                 HaveVols = 1;
@@ -307,7 +305,7 @@ int FileSystemInitialize(void) {
             /*
              * Live U 盘上电慢：首轮 claim 空 → 只见 NVMe ESP。
              * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
-             * 仍失败则软退：有 ESP/RES 可进桌面（WARN no BLOCKS.ID）。
+             * 仍无卷则下面 return -1；有 ESP/RES 可进桌面（WARN no BLOCKS.ID）。
              */
             LogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
             if (HalUsbMscAutoBeforeFs() == 0) {
@@ -332,15 +330,16 @@ int FileSystemInitialize(void) {
 
     if (!HaveVols && !MuxOk) {
         if (HalBlockInitialize() <= 0) {
-            DebugWrite("FS: no block device (RES-only possible)\n");
+            LogFs("Fs: No Block Device (Try RES Only)\n");
         }
         if (!MountAllVolumes()) {
-            DebugWrite("FS: no volumes mounted\n");
-            return 0;
+            LogFs("Fs: No Volumes Mounted\n");
+            return -1;
         }
+        HaveVols = 1;
     } else if (!HaveVols) {
-        DebugWrite("FS: no volumes mounted\n");
-        return 0;
+        LogFs("Fs: No Volumes Mounted\n");
+        return -1;
     }
 
     Svc.ReadFile = FileSystemReadFile;
@@ -350,9 +349,9 @@ int FileSystemInitialize(void) {
     Svc.ReadFileAt = FileSystemReadFileAt;
     Svc.WriteFileAt = FileSystemWriteFileAt;
     VfsServiceOpsRegister(&Svc);
-    DebugWrite("FS ready (ls, cat, write, wrbig, dirstress, rm, mkdir, rmdir, mv, vols, filestat, filesync)\n");
+    LogFs("Fs: Ready\n");
     if (!AnyVolumeHasBlocksId()) {
-        HalConsoleWriteSerial("Fs: WARN no BLOCKS.ID on any volume\n");
+        LogFs("Fs: WARN No BLOCKS.ID On Any Volume\n");
     }
     BootLogFlush();
     return 0;

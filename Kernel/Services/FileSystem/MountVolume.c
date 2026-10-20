@@ -8,7 +8,6 @@
 #include "Gpt.h"
 #include "BootInfo.h"
 #include "VirtualFileSystem.h"
-#include "Debug.h"
 #include "SerialLog.h"
 
 #define BOOT_GUID_CACHE 16
@@ -201,15 +200,15 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     gActiveDrive = Drive;
     gActiveLba = Start;
 
-    DebugWrite("Fs: vol ");
-    DebugWrite(V->Name);
-    DebugWrite(" letter=");
-    DebugHex32((UINT32)(UINT8)V->Letter);
-    DebugWrite(" drive=");
-    DebugHex32(Drive);
-    DebugWrite(" lba=");
-    DebugHex32(Start);
-    DebugWrite("\n");
+    LogFs("Fs: Vol ");
+    LogFs(V->Name);
+    LogFs(" Letter=");
+    LogFsHex32((UINT32)(UINT8)V->Letter);
+    LogFs(" Drive=");
+    LogFsHex32(Drive);
+    LogFs(" Lba=");
+    LogFsHex32(Start);
+    LogFs("\n");
 }
 
 void FsMountAddResVolume(void) {
@@ -234,7 +233,6 @@ void FsMountAddResVolume(void) {
         gActiveOps = V->Ops;
         gActiveDrive = V->Drive;
         gActiveLba = 0;
-        DebugWrite("Fs: vol RES (resfs)\n");
-        LogFs("Fs: RES Volume RES:\n");
+        LogFs("Fs: Vol RES (Resfs)\n");
     }
 }

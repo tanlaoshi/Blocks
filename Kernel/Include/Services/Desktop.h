@@ -106,7 +106,8 @@ int DesktopIconDragActive(void);
 void DesktopIconDragUpdate(UINT32 X, UINT32 Y);
 void DesktopIconDragEnd(void);
 void DesktopRefreshLabels(void);
-/* PR-G-taskbar-clock：分钟变化时重绘右下角时间 */
+/* runtime-c-tick：Worker 采样 MSC/钟；Gui 画栏/图标/TTF */
+void DesktopWorkerTick(void);
 void DesktopTickClock(void);
 
 #endif

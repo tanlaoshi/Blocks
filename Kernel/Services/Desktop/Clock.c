@@ -1,12 +1,19 @@
 /*
- * Clock.c — 任务栏时钟 / MSC 热拔节流（PR-S3-desktop-1）
+ * Clock.c — 任务栏钟 / MSC 热拔（runtime-c-tick）
  *
- * 从 Desktop.c 原样搬家；不改语义。
+ * 拆两路（改 Worker；Present 仍 Gui）：
+ *   DesktopWorkerTick — Worker 圈首：~2Hz MSC 热拔 + 钟/网托采样→置栏脏
+ *   DesktopTickClock  — GuiPollMouse 末：图标/TTF 补画 + 栏 Present
+ *
+ * 勿在 Worker 上 RequestRefresh/全量 Compose（4K 易打穿栈，见 Icons.c）。
+ * 热拔走 Worker：与鼠标帧解耦；拖窗时 Gui 早退也不漏拍 MSC。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
 
-void DesktopTickClock(void) {
+static volatile int sClockBarNeedPaint;
+
+void DesktopWorkerTick(void) {
     static UINT64 LastCheckTick;
     UINT64 Now;
     UINT32 Tps;
@@ -15,12 +22,45 @@ void DesktopTickClock(void) {
     int Ok;
     int NeedPaint;
 
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    if (LastCheckTick != 0 && (Now - LastCheckTick) < (UINT64)(Tps / 2u)) {
+        return;
+    }
+    LastCheckTick = Now;
+
+    /* PR-H-msc-hot：~2Hz 拔出探测（仅 CCS/hub；不 Address） */
+    if (HalUsbMscHotPoll() == 1) {
+        (void)FileSystemRemountVolumes();
+        DebugWrite("desktop: msc hot remount after unplug\n");
+    }
+
+    NeedPaint = 0;
+    Ok = (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) ? 1 : 0;
+    if (Ok) {
+        if (!(gClockValid && Hour == gClockHour && Minute == gClockMinute)) {
+            NeedPaint = 1;
+        }
+    }
+    /* 瞬时读失败：保留上次 HH:MM；网托变仍要刷栏 */
+    if (DesktopNetTrayLabelChanged()) {
+        NeedPaint = 1;
+    }
+    if (NeedPaint) {
+        sClockBarNeedPaint = 1;
+    }
+}
+
+void DesktopTickClock(void) {
+    int NeedPaint;
+
     /*
-     * 墙钟节流（勿用 Poll 计数）：Gui+Shell 双路径轮询时 Skip=45 几乎每帧
-     * 撞 CMOS。UIP 约 1Hz；旧逻辑读失败还 NeedPaint→整条任务栏 Present，
-     * 鼠标滑动时体感「约 1 秒顿一次」（全系统顿挫，非仅光标采样）。
+     * 拖窗/改大小时不读 CMOS、不重画任务栏，避免这一拍把鼠标卡住。
+     * MSC 已在 WorkerTick，拖窗期仍拍。
      */
-    /* 拖窗/改大小时不读 CMOS、不重画任务栏，避免这一拍把鼠标卡住 */
     if (GuiDragActive() || DesktopIconDragActive()) {
         return;
     }
@@ -82,32 +122,9 @@ void DesktopTickClock(void) {
         }
     }
 
-    Now = HalCpuTicks(0);
-    Tps = HalTicksPerSec();
-    if (Tps == 0) {
-        Tps = 250;
-    }
-    if (LastCheckTick != 0 && (Now - LastCheckTick) < (UINT64)(Tps / 2u)) {
-        return;
-    }
-    LastCheckTick = Now;
-
-    /* PR-H-msc-hot：~2Hz 拔出探测（仅 CCS/hub；不 Address） */
-    if (HalUsbMscHotPoll() == 1) {
-        (void)FileSystemRemountVolumes();
-        DebugWrite("desktop: msc hot remount after unplug\n");
-    }
-
-    NeedPaint = 0;
-    Ok = (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) ? 1 : 0;
-    if (Ok) {
-        if (!(gClockValid && Hour == gClockHour && Minute == gClockMinute)) {
-            NeedPaint = 1;
-        }
-    }
-    /* 瞬时读失败：保留上次 HH:MM，勿刷 --:-- / 勿整栏 Present */
-    if (DesktopNetTrayLabelChanged()) {
-        NeedPaint = 1;
+    NeedPaint = sClockBarNeedPaint;
+    if (NeedPaint) {
+        sClockBarNeedPaint = 0;
     }
     if (!NeedPaint) {
         return;

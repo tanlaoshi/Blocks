@@ -3,10 +3,10 @@
  *
  * SchedulerStart 后（Shell 见 Shell.c）：
  *   GuiTask    — 唯一 GuiPollMouse（Pointer.c）→ YieldForPollInput
- *   WorkerTask — 扫盘/Store/iwl/DHCP → AnnounceBootReady → Halt
+ *   WorkerTask — DesktopWorkerTick（MSC/钟采样）→ 扫盘/Store/iwl/DHCP → ready
  *   InputTask  — 逻辑 CPU≥3：cli+HalInputPoll / sti+pause（深栈勿被抢）
  * Shell 不泵鼠标（runtime-a-poll）。YieldForPollInput：不足 3 核稳态 drain。
- * 全表 runtime-4；Gui 主环 gui-loop；钉核 sched-pin-doc。
+ * 全表 runtime-4；Gui 主环 gui-loop；钉核 sched-pin-doc；钟归属 runtime-c-tick。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -81,13 +81,15 @@ void GuiTask(void) {
 /*
  * StoreJob / DHCP 后台泵：窗/Shell 只 Enqueue；本任务 Step。
  * 勿再在 GuiPollMouse→StoreUiPump 里 Step，否则 Gui 被 StoreRemove 堵住，装卸期鼠标必卡。
+ * DesktopWorkerTick 置圈首：Store/iwl continue 不饿死热拔/钟采样。
  */
 void WorkerTask(void) {
     for (;;) {
         gWorkerCount++;
+        DesktopWorkerTick();
         /*
          * PR-BOOT-fast-1：图标/菜单扫盘必须在 Worker、且先于 iwl。
-         * 若放 Gui TickClock：iwl 的 IoBreath→CondResched→Gui 再读盘会重入 FAT，
+         * 若放 Gui 路径读盘：iwl 的 IoBreath→CondResched→Gui 再读盘会重入 FAT，
          * 真机曾见 #GP@IsrCommon iretq（rsp=0）。
          */
         DesktopEnsureIconsLoaded();

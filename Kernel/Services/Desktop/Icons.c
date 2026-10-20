@@ -180,7 +180,7 @@ void DesktopEnsureIconsLoaded(void) {
     gDesktopBusy = 0;
     LogGui("Boot: Desktop Icons Loaded\n");
     DebugWrite("desktop: deferred icons+menu loaded (worker)\n");
-    /* 不在此 RequestRefresh：Worker 上全量 Compose@4K 易打穿栈；交 Gui TickClock */
+    /* 不在此 RequestRefresh：Worker 上全量 Compose@4K 易打穿栈；交 Gui DesktopTickClock */
 }
 
 UINT32 BmpSampleScaled(const BMP_IMAGE *Img, UINT32 Dx, UINT32 Dy,

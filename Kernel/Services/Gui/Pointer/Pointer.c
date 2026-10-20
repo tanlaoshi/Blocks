@@ -9,7 +9,8 @@
  *   滚轮 — WheelSum 累加，出队后一次派发
  *   PresentBlocked — HoldDrain 只留末包，不合成
  *   Defer — Push…Pop 包住 dequeue；拖图标内 Pause/Flush/Resume
- * 然后 DesktopTickClock → StoreUiPump（装卸 Step 在 Worker）。
+ * 然后 DesktopTickClock（栏/图标/TTF 画）→ StoreUiPump。
+ * MSC 热拔与钟采样在 Worker：DesktopWorkerTick（runtime-c-tick）。
  * 长 IO 挪光标见 Motion.c；点击见 Click。
  */
 #include "GuiPrivate.h"

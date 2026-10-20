@@ -1,8 +1,8 @@
 /*
  * HalRtc.c — PR-G-taskbar-clock：墙钟（CMOS 0x70/71）
  *
- * 禁止 UEFI Runtime GetTime：真机进桌面后 GuiPollMouse→DesktopTickClock
- * 每帧调用；GetTime 挂起则键鼠/电源键全死（PHOTO 期 k/m 仍正常）。
+ * 禁止 UEFI Runtime GetTime：真机进桌面后 DesktopWorkerTick ~2Hz 采样；
+ * 若走 Runtime GetTime 挂起则键鼠/电源键全死（PHOTO 期 k/m 仍正常）。
  *
  * QEMU/真机 CMOS 多按 UTC 存（Linux 默认）；课堂统一按 CST(+8) 显示。
  * 与是否联网无关，不依赖 NTP。

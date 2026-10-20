@@ -7,7 +7,7 @@ Runtime/
   Esp/X64/EFI/BOOT/BOOTX64.EFI   # Blocks Boot（disk0）
   RootFs/X64/Kernel.elf          # 现网能力核（disk1）
   RootFs/X64/BLOCKS.ID           # Boot 认卷
-  RootFs/X64/TOYOS.ID            # 核内卷名兼容
+  RootFs/X64/TOYOS.ID            # 旧卷标兼容（认卷以 BLOCKS.ID 为准）
   Assets/ Store/ Fw/ …           # 原 ToyImage 资源
   sync.sh / run.sh / smoke-boot.sh
 ```
@@ -16,12 +16,12 @@ Runtime/
 
 ```bash
 cd ~/Blocks/Boot && ./build.sh
-cd ~/Blocks/Kernel && ./build.sh          # → Build/CodeA-HAL/X64/Kernel.elf
+cd ~/Blocks/Kernel && ./build.sh          # → Build/…/Kernel.elf → RootFs
 cd ~/Blocks/Runtime
 ./run.sh                 # 同步产物后起 QEMU（双盘 AHCI：Esp + RootFs）
-./smoke-boot.sh          # 断言 ToyOS 就绪 + Desktop Ready
+./smoke-boot.sh          # 断言 Blocks ready + Desktop Ready
 ```
 
-串口在启动 QEMU 的终端（`-serial stdio`）。提示符现网为 `toyos>`。
+串口在启动 QEMU 的终端（`-serial stdio`）。提示符现网为 `blocks>`。
 
 字体：`RootFs/X64/Assets/Fonts/CJK.TTF`（缺则 `ttf miss`）。图标等同目录下 `Assets/Icons/`。

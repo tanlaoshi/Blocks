@@ -1,0 +1,211 @@
+/*
+ * LoadKernelRead.c — 按卷找 Kernel.elf 并读入内存
+ */
+#include <Guid/FileInfo.h>
+#include <Protocol/LoadedImage.h>
+#include <Protocol/SimpleFileSystem.h>
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/MemoryAllocationLib.h>
+
+#include "BootPrivate.h"
+
+STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
+                                 EFI_PHYSICAL_ADDRESS *OutBuffer, UINTN *OutSize) {
+    STATIC CHAR16 *Paths[] = {
+        L"\\Kernel.elf",
+        L"\\KERNEL.ELF",
+        L"\\EFI\\Blocks\\Kernel.elf",
+    };
+    EFI_STATUS Status;
+    EFI_FILE_PROTOCOL *Root = NULL;
+    EFI_FILE_PROTOCOL *File = NULL;
+    EFI_FILE_INFO *FileInfo = NULL;
+    UINTN InfoSize;
+    UINTN p;
+
+    if (OutSize != NULL) {
+        *OutSize = 0;
+    }
+
+    Status = Fs->OpenVolume(Fs, &Root);
+    if (EFI_ERROR(Status)) {
+        return Status;
+    }
+
+    for (p = 0; p < sizeof(Paths) / sizeof(Paths[0]); p++) {
+        Status = Root->Open(Root, &File, Paths[p], EFI_FILE_MODE_READ, 0);
+        if (!EFI_ERROR(Status)) {
+            break;
+        }
+        File = NULL;
+    }
+    if (File == NULL) {
+        Root->Close(Root);
+        return EFI_NOT_FOUND;
+    }
+
+    InfoSize = sizeof(EFI_FILE_INFO) + 128;
+    Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&FileInfo);
+    if (EFI_ERROR(Status)) {
+        File->Close(File);
+        Root->Close(Root);
+        return Status;
+    }
+
+    Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, FileInfo);
+    if (EFI_ERROR(Status)) {
+        gBS->FreePool(FileInfo);
+        File->Close(File);
+        Root->Close(Root);
+        return Status;
+    }
+
+    {
+        UINTN FilePageSize = ((UINTN)FileInfo->FileSize >> 12) + 1;
+        Status = gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, FilePageSize, OutBuffer);
+        if (EFI_ERROR(Status)) {
+            gBS->FreePool(FileInfo);
+            File->Close(File);
+            Root->Close(Root);
+            return Status;
+        }
+
+        {
+            UINTN Total = (UINTN)FileInfo->FileSize;
+            UINTN Got = 0;
+            UINT8 *Dst = (UINT8 *)(UINTN)*OutBuffer;
+
+            Status = EFI_SUCCESS;
+            while (Got < Total) {
+                UINTN Chunk = Total - Got;
+
+                if (Chunk > (256 * 1024)) {
+                    Chunk = 256 * 1024;
+                }
+                Status = File->Read(File, &Chunk, Dst + Got);
+                if (EFI_ERROR(Status) || Chunk == 0) {
+                    break;
+                }
+                Got += Chunk;
+                if (Total != 0) {
+                    BootLogoProgress(Got * 40 / Total);
+                }
+            }
+            if (!EFI_ERROR(Status) && OutSize != NULL) {
+                *OutSize = Got;
+            }
+        }
+    }
+
+    gBS->FreePool(FileInfo);
+    File->Close(File);
+    Root->Close(Root);
+    return Status;
+}
+
+EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
+                                 UINTN *OutSize) {
+    EFI_STATUS Status;
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    UINTN i;
+    UINTN Pass;
+
+    BootSerialPrintf("Boot: ReadKernelFile\n");
+
+    if (OutSize != NULL) {
+        *OutSize = 0;
+    }
+
+    Status = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid,
+                                 (VOID **)&LoadedImage);
+    if (EFI_ERROR(Status)) {
+        return Status;
+    }
+
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                     NULL, &HandleCount, &Handles);
+    if (EFI_ERROR(Status)) {
+        Handles = NULL;
+        HandleCount = 0;
+    }
+
+    /*
+     * 双盘布局：必须先读带 BLOCKS.ID 的系统盘（disk1/rootfs），避免启动盘旧
+     * Kernel.elf 抢先加载。Pass0=BLOCKS；Pass1=其它非启动卷；Pass2=启动卷兜底。
+     */
+    for (Pass = 0; Pass < 3; Pass++) {
+        for (i = 0; i < HandleCount; i++) {
+            BOOLEAN IsBoot = (Handles[i] == LoadedImage->DeviceHandle);
+            BOOLEAN IsOsVol;
+
+            Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
+                                         (VOID **)&Fs);
+            if (EFI_ERROR(Status)) {
+                continue;
+            }
+            IsOsVol = FsHasOsMarker(Fs);
+            if (Pass == 0) {
+                if (!IsOsVol) {
+                    continue;
+                }
+            } else if (Pass == 1) {
+                if (IsBoot) {
+                    continue;
+                }
+            } else {
+                if (!IsBoot) {
+                    continue;
+                }
+            }
+
+            Status = OpenKernelOnFs(Fs, OutBuffer, OutSize);
+            if (!EFI_ERROR(Status)) {
+                if (Pass == 0) {
+                    BootDbg("Boot: Kernel.elf From BLOCKS Volume\n");
+                } else if (Pass == 1) {
+                    BootDbg("Boot: Kernel.elf From Secondary Volume\n");
+                } else {
+                    BootDbg("Boot: Kernel.elf From Boot Volume\n");
+                }
+                if (Handles != NULL) {
+                    gBS->FreePool(Handles);
+                }
+                return EFI_SUCCESS;
+            }
+        }
+    }
+
+    if (Handles != NULL) {
+        gBS->FreePool(Handles);
+    }
+    BootSerialPrintf("Boot: Kernel.elf Not Found On Any Volume\n");
+    return EFI_NOT_FOUND;
+}
+
+BOOLEAN BootScanOsMarkerVolumes(VOID) {
+    EFI_STATUS Status;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    UINTN i;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+    BOOLEAN Seen = FALSE;
+
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                     NULL, &HandleCount, &Handles);
+    if (EFI_ERROR(Status) || Handles == NULL) {
+        return FALSE;
+    }
+    for (i = 0; i < HandleCount; i++) {
+        Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
+                                     (VOID **)&Fs);
+        if (!EFI_ERROR(Status) && FsHasOsMarker(Fs)) {
+            Seen = TRUE;
+            break;
+        }
+    }
+    gBS->FreePool(Handles);
+    return Seen;
+}

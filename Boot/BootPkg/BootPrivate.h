@@ -48,9 +48,10 @@ BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);
 VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 
-/* LoadKernel（Read / Check / Load 统一 *KernelFile） */
+/* LoadKernel：Read / Elf / 编排 */
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
+BOOLEAN BootScanOsMarkerVolumes(VOID);
 EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
                            EFI_PHYSICAL_ADDRESS *LoadLow, UINTN *PageCount);
 EFI_STATUS LoadKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, EFI_PHYSICAL_ADDRESS LoadLow,

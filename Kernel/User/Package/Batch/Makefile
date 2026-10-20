@@ -7,6 +7,6 @@ PROG      ?= BATCH
 SRCS      ?= main.c
 
 EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a \
-             $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a
+             $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a
 
 include ../BlocksUser.mk

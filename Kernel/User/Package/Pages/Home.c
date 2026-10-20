@@ -1,7 +1,7 @@
 /*
  * Home.c — 首页（策略 A 1000–1099；导航 9000 独立）
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include "Ids.h"
 #include "Home.h"
 

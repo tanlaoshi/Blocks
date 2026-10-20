@@ -52,6 +52,8 @@ typedef struct TASK {
     char                   Name[16];
     UINT64                 PageRoot;   /* 页表根物理地址（x86 曾称 CR3） */
     int                    IsUser;
+    /* 占窗 GUI / 已 CreateWindow：stdout→LogMisc，勿打进 blocks>（开窗前 printf 亦然） */
+    int                    StdoutSerialOnly;
     int                    Started;
     VIRTUAL_ADDRESS_SPACE         *UserSpace;
     INT32                  ParentId;   /* -1 = 无父进程 */
@@ -88,7 +90,8 @@ int SchedulerCreate(const char *Name, void (*Entry)(void));
 /* PR-GUI-kerneltask：entry 收 void*；旧 SchedulerCreate 保留 */
 int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx);
 int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoot,
-                    VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase);
+                    VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase,
+                    int StdoutSerialOnly);
 /* PR-U-thread-1/2：同 Leader VAS；Rsp=0 则自动映栈；Arg0/1→首/次参；StartReady=0 仅建槽不跑 */
 int SchedulerCreateThread(TASK *Leader, const char *Name, UINT64 Rip, UINT64 Arg0,
                           UINT64 Arg1, UINT64 Rsp, int StartReady);

@@ -13,6 +13,9 @@
 #include "HIDKeyboard.h"
 #include "LibWrite.h"
 #include "ShellCommands.h"
+#include "Scheduler.h"
+#include "SerialLog.h"
+#include "HalSerial.h"
 
 void ConsoleDrawString(const char *Text, UINT32 Color) {
     UINT32 X0;
@@ -75,6 +78,7 @@ void ConsoleDrawChar(char C, UINT32 Color) {
     UINT32 X;
     UINT32 Y;
 
+    ConsoleOutLock();
     GuiFrameBufferBegin();
     GuiFocusApplyClip();
     HalConsoleGetTextCursor(&X, &Y);
@@ -84,14 +88,37 @@ void ConsoleDrawChar(char C, UINT32 Color) {
     /* PR-G-shell-present：打字回显合并 Present（ShellTask 轮询末刷） */
     GuiPresentShellEchoMark();
     GuiFrameBufferEnd();
+    ConsoleOutUnlock();
 }
 
 /* 同时输出到串口与屏幕（帧缓冲未就绪时只写串口） */
 static void Write(const char *Text) {
     const char *P;
     int Owner;
+    TASK *T;
 
     if (Text == 0) {
+        return;
+    }
+    ConsoleOutLock();
+    /*
+     * 开过 USER 窗的进程：stdout 当运行时日志，勿占 Shell/COM1/blocks>。
+     * ready（ShellOwn）后 → ring + RUNTIME.LOG（与 Log* 同路）；此前罕见仍 WriteShell。
+     * Hello 等无窗进程仍走下方 Shell 路径。
+     * LogMisc 勿改 gAtLineStart：否则「closed ok\\n」让下一行 Prompt 以为已在行首，
+     * 与已有 blocks> 粘成「blocks> blocks>」。
+     */
+    T = SchedulerCurrent();
+    if (T && T->IsUser && T->StdoutSerialOnly) {
+        if (HalSerialShellOwned()) {
+            LogMisc(Text);
+        } else {
+            for (P = Text; *P; P++) {
+                gAtLineStart = (*P == '\n');
+            }
+            HalConsoleWriteSerial(Text);
+        }
+        ConsoleOutUnlock();
         return;
     }
     for (P = Text; *P; P++) {
@@ -99,6 +126,7 @@ static void Write(const char *Text) {
     }
     if (!HalConsoleVideoReady()) {
         HalConsoleWriteSerial(Text);
+        ConsoleOutUnlock();
         return;
     }
     /*
@@ -122,6 +150,7 @@ static void Write(const char *Text) {
         } else {
             ConsoleSbWinFeed(Owner, Text);
         }
+        ConsoleOutUnlock();
         return;
     }
     /*
@@ -134,6 +163,7 @@ static void Write(const char *Text) {
          * 旧逻辑「只走串口」会把 snake: 打进宿主 blocks>，看起来像占住终端。
          */
         if (GuiFocusKind() == GUI_WIN_USER) {
+            ConsoleOutUnlock();
             return;
         }
         HalConsoleWriteSerial(Text);
@@ -156,6 +186,7 @@ static void Write(const char *Text) {
                 ConsoleSbFeedLiveIfBound(Text);
             }
         }
+        ConsoleOutUnlock();
         return;
     }
     HalConsoleWriteSerial(Text);
@@ -164,6 +195,7 @@ static void Write(const char *Text) {
     ConsoleSbFeed(Text);
     ConsoleDrawString(Text, ThemeShellText());
     ConsoleSbBarAfterWrite();
+    ConsoleOutUnlock();
 }
 
 /* 按长度输出（SYS_WRITE 用；UTF-8 按码点画，不因中间的 NUL 截断） */
@@ -172,6 +204,31 @@ static void WriteLen(const char *Data, UINTN Len) {
 
     if (Data == 0 || Len == 0) {
         return;
+    }
+    /*
+     * 整段持锁：逐码点 Write 时勿让 Prompt 插队（见 Console.c Prompt）。
+     * Write 自身也加锁 → 此处不锁，改由外层包住会嵌套死锁；故 WriteLen
+     * 直接调 gConsole.Write 前依赖 Write 内锁。逐字间隙仍会被 Prompt 插入。
+     * 用一次「合并写」：先拼到栈缓冲再单次 Write。
+     */
+    if (Len < 256) {
+        char Tmp[256];
+        UINTN n;
+
+        for (n = 0; n < Len; n++) {
+            Tmp[n] = Data[n];
+        }
+        Tmp[Len] = 0;
+        /* 含中间 NUL 时仍走下方逐码点（罕见） */
+        for (n = 0; n < Len; n++) {
+            if (Tmp[n] == 0 && n + 1 < Len) {
+                break;
+            }
+        }
+        if (n >= Len) {
+            gConsole.Write(Tmp);
+            return;
+        }
     }
     i = 0;
     while (i < Len) {

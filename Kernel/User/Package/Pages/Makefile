@@ -6,7 +6,7 @@ BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= PAGES
 SRCS      ?= main.c Route.c Home.c Settings.c About.c
 
-EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a \
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a \
              $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
 include ../BlocksUser.mk

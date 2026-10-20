@@ -1,11 +1,11 @@
 /*
  * UiIm.c — 立即模式薄封装：Poll / Label / Button / Check
- * PR-UI-im-0/1；≤300 行；不改 ToyUi.h
+ * PR-UI-im-0/1；≤300 行；不改 Ui.h
  *
  * Title/Label 仅在变化时 SetLabel（避免每帧 damage 闪屏）；
  * 应用每帧末须 sched_yield（勿只在 Idle 时让出）。
  */
-#include <ToyUiImmediate.h>
+#include <UiImmediate.h>
 #include <string.h>
 
 #define UI_IM_CHK_X  16u

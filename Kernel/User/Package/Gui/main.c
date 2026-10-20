@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sched.h>
-#include <ToyUi.h>
+#include <Ui.h>
 #include <Blocks/syscall.h>
 
 int main(void) {

@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sched.h>
 #include <Graphics.h>
-#include <ToyUi.h>
+#include <Ui.h>
 #include <Blocks/syscall.h>
 
 #define BLIT_W 48u

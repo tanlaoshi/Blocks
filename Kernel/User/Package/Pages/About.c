@@ -9,7 +9,7 @@
  *   - 分发表的「事件列」（gAboutMap[]）  ← 设计器按 ID 生成
  *   - 动作桩声明 + 空实现（OnAboutXxx）  ← 设计器生成空壳，学生填 TODO
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include "Ids.h"
 #include "About.h"
 

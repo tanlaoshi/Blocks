@@ -10,19 +10,20 @@
 void GuiConsolePull(char *Line, int *Len, int *WaitPrompt) {
     GUI_WINDOW *Win;
 
-    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
-        if (Len) {
-            *Len = 0;
-        }
-        if (WaitPrompt) {
-            *WaitPrompt = 0;
-        }
-        if (Line) {
-            Line[0] = 0;
-        }
+    /*
+     * 只从 SHELL 槽同步输入行 / WaitPrompt。
+     * 开 USER 窗末尾 GuiFocusApply→FocusLoad 若 Pull 到 USER（槽内 WaitPrompt=0），
+     * 会抹掉桌面/exec 已占的 gWaitPrompt，关窗后再 ShowPrompt 行为漂移。
+     * 焦点无效或非 Shell：不动调用方缓冲（勿清 WaitPrompt）。
+     */
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS ||
+        !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
     Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
+    if (Win->Kind != GUI_WIN_SHELL) {
+        return;
+    }
     if (Line) {
         int i;
         for (i = 0; i < Win->InputLen && i < GUI_INPUT_LINE_MAX - 1; i++) {
@@ -43,10 +44,14 @@ void GuiConsolePush(const char *Line, int Len, int WaitPrompt) {
     GUI_WINDOW *Win;
     int i;
 
-    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
+    if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS ||
+        !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
         return;
     }
     Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
+    if (Win->Kind != GUI_WIN_SHELL) {
+        return;
+    }
     if (Len >= GUI_INPUT_LINE_MAX) {
         Len = GUI_INPUT_LINE_MAX - 1;
     }

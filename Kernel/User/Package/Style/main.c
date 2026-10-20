@@ -4,8 +4,8 @@
  */
 #include <stdio.h>
 #include <sched.h>
-#include <ToyUi.h>
-#include <ToyUiStyle.h>
+#include <Ui.h>
+#include <UiStyle.h>
 
 static int On;
 static int UseDark;

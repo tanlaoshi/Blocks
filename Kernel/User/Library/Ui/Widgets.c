@@ -1,11 +1,11 @@
 /*
  * UiWidgets.c — PR-S-toyui-1：复选框 / 列表 / 输入框
  *
- * 从 ToyUi.c 原样搬家；不改语义。
+ * 从 Ui.c 原样搬家；不改语义。
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include <Graphics.h>
-#include <ToyUiStyle.h>
+#include <UiStyle.h>
 
 #include "Private.h"
 

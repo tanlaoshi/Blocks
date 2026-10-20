@@ -29,7 +29,7 @@ make PROG=HELLO2 SRCS=main.c
 课外独立目录：复制 `User/Package/`，保留或改 `main.c`，构建时指定树根：
 
 ```bash
-make TOYKERNEL=/path/to/ToyKernel
+make BLOCKS_KERNEL=/path/to/ToyKernel
 ```
 
 ## 头文件
@@ -51,8 +51,8 @@ make TOYKERNEL=/path/to/ToyKernel
 GUI 程序可追加（或直接用 `User/Package/Gui/`）：
 
 ```make
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/ToyGfx/libToyGfx.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a \
+             $(BLOCKS_KERNEL)/User/Library/ToyGfx/libToyGfx.a
 ```
 
 教程：[`Documents/技术手册.md`](../../Documents/技术手册.md#tm-iv-gui)（GUI）· [`应用开发指南`](../../Documents/开发/应用开发指南.md)。  

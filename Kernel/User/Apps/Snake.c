@@ -2,7 +2,7 @@
  * Snake.c — 教学贪吃蛇（方向键或 WASD；节拍用 msleep）
  * Shell：exec SNAKE.ELF
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include <stdio.h>
 #include <unistd.h>
 

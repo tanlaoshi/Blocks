@@ -119,7 +119,8 @@ int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx) {
 }
 
 int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoot,
-                    VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase) {
+                    VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase,
+                    int StdoutSerialOnly) {
     TASK *Cur;
 
     SpinLockAcquire(&gSchedulerLock);
@@ -137,6 +138,7 @@ int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoo
         gTasks[i].Ticks = 0;
         gTasks[i].PageRoot = PageRoot;
         gTasks[i].IsUser = 1;
+        gTasks[i].StdoutSerialOnly = StdoutSerialOnly ? 1 : 0;
         gTasks[i].Started = 0;
         gTasks[i].UserSpace = Space;
         gTasks[i].ParentId = Cur ? TaskSlot(Cur) : -1;

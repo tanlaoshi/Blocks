@@ -13,7 +13,7 @@
  *   RequestRefresh → GuiRefreshDesktop — TaskbarClick、ContextMenu、NetTray*、
  *     DismissStartMenu、Clock；有菜单覆盖→快路径，否则本函数（常无 Mark→整屏）
  *   直 ThemeScene — Mouse 改分辨率、Theme、Catalog、Close 非 USER（故意全屏）
- *   轻量自画 — Close USER（禁 4K ThemeScene；钉死见 G3）
+ *   轻量自画 — Close USER（禁 4K ThemeScene；契约 Close.c 头 gui-g3-close）
  * G4 候选优先：TaskbarClick / 菜单开关（先 Mark 栏或菜单 AABB 再 Refresh）。
  * 总图 Compose.c；菜单快路径 Refresh.c。
  */

@@ -1,7 +1,7 @@
 /*
- * ToyUi.c — libToyUi 核心：窗 / 标签 / 底栏按钮 / Poll（PR-S-toyui-1）
+ * Ui.c — libUi 核心：窗 / 标签 / 底栏按钮 / Poll（PR-S-toyui-1）
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include <string.h>
 #include <unistd.h>
 #include <Blocks/syscall.h>

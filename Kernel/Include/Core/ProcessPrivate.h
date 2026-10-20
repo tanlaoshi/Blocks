@@ -8,7 +8,7 @@
 #include "VirtualMemory.h"
 
 int ProcessStartElf(VIRTUAL_ADDRESS_SPACE *Space, const ELF_LOAD_RESULT *Info,
-                    const char *Name);
+                    const char *Name, int StdoutSerialOnly);
 int ProcessLoadPath(const char *Path, VIRTUAL_ADDRESS_SPACE **OutSpace,
                     ELF_LOAD_RESULT *OutInfo);
 void ProcessStopAllUsers(void);

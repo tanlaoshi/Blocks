@@ -82,6 +82,9 @@ void ConsoleCmdOutEnd(void);
 int ConsoleCmdOutOwner(void);
 /* 提示符。定义在 Console.c；写屏与输入拆开后同模块可见 */
 void Prompt(void);
+/* SMP：串口/提示符/逐字 Write 互斥，避免 H\\nello+blocks> 交错 */
+void ConsoleOutLock(void);
+void ConsoleOutUnlock(void);
 
 void ConsoleSbReset(void);
 void ConsoleSbFeed(const char *Text);

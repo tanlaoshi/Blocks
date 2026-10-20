@@ -2,7 +2,7 @@
  * UiActions — 动作桩；装载见 UiLayout.c
  * ID 须与 MyApp.uitxt → MyAppUi.h 一致（改 uitxt 后同步本文件）
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include "MyAppUi.h"
 
 void OnIdHello(int Wid) {

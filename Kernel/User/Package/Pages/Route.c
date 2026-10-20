@@ -3,7 +3,7 @@
  * PR-UI-page-1：物理槽 0..3 → 逻辑 ID；导航优先于页面 Dispatch。
  * PR-UI-page-2：加 PageAbout（3 页互通导航）。
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include "Ids.h"
 #include "Home.h"
 #include "Settings.h"

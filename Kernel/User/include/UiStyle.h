@@ -1,7 +1,7 @@
 /*
  * UiStyle.h — 用户态样式表（PR-UI-style-0）
  *
- * 纯数据结构；自绘控件读表。不改 ToyUi.h / Graphics.h ABI。
+ * 纯数据结构；自绘控件读表。不改 Ui.h / Graphics.h ABI。
  * 内核 Theme 仍管窗口边框/桌面；本表只管控件客户区外观。
  */
 #ifndef UI_STYLE_H

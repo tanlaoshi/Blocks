@@ -18,6 +18,6 @@ python3 ../../../Tools/UiLayout/uitxt2h.py MyApp.uitxt | head
 
 ## 注意
 
-- 不改 `ToyUi.h` ABI；`ToyUiLoadWindow` 只在本模板  
-- 按钮物理 id 现为 0..3；checkbox/textbox 上限见 `ToyUi.h`  
+- 不改 `Ui.h` ABI；`UiLoadWindow` 只在本模板  
+- 按钮物理 id 现为 0..3；checkbox/textbox 上限见 `Ui.h`  
 - 树路径：`User/Package/`（旧文档或写 `User/Package/`）

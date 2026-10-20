@@ -46,7 +46,15 @@ int SysCreateWindow(UINT64 UserTitle, UINT32 W, UINT32 H) {
     if (CopyUserCString(Title, UserTitle, sizeof(Title)) < 0 || Title[0] == 0) {
         return -1;
     }
-    return WindowOpenUser(Title, W, H);
+    {
+        int Wid = WindowOpenUser(Title, W, H);
+
+        if (Wid >= 0) {
+            /* 无 PKG window= 的课堂 ELF 也在此钉死；关窗后 printf 仍属本进程 */
+            T->StdoutSerialOnly = 1;
+        }
+        return Wid;
+    }
 }
 
 int SysDamage(int Wid, UINT64 UserText) {

@@ -67,7 +67,7 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);
 void GuiOnArrowKey(UINT8 Key);
 void GuiRedraw(void);
-/* 桌面刷新入口（菜单快路径 / Damage）；管线见 Compose/*.c 头 gui-g0-map */
+/* 桌面刷新入口（菜单快路径 / Damage）；管线见 Compose 下 .c 头 gui-g0-map */
 void GuiRefreshDesktop(void);
 /* PR-D2：按 Theme 刷新已开窗客户区底色（不立即重绘） */
 void GuiApplyThemeColors(void);

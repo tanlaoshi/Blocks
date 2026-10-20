@@ -108,6 +108,7 @@ int SchedulerInitialize(void) {
         gTasks[i].Name[0] = 0;
         gTasks[i].PageRoot = 0;
         gTasks[i].IsUser = 0;
+        gTasks[i].StdoutSerialOnly = 0;
         gTasks[i].Started = 0;
         gTasks[i].UserSpace = 0;
         gTasks[i].ParentId = -1;

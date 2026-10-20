@@ -182,6 +182,8 @@ void ComposeEnd(void);
 int GuiInputOwner(void);
 void ComposeBeginEraseCursor(void);
 void GuiComposeDamage(void);
+/* Close.c：USER 轻量关窗中；ThemeScene 见则 halt（gui-g3-close） */
+int GuiCloseUserLightActive(void);
 void GraphicsPresent(void);
 UINT32 TitleBarColor(int Idx);
 UINT32 TitleBarColorAtRow(int Idx, UINT32 Row, UINT32 TitleH);

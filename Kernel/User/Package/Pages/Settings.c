@@ -1,7 +1,7 @@
 /*
  * Settings.c — 设置页（策略 A 1100–1199；导航 9000 独立）
  */
-#include <ToyUi.h>
+#include <Ui.h>
 #include "Ids.h"
 #include "Settings.h"
 

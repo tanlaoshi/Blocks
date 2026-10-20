@@ -1,10 +1,10 @@
 /*
- * UiPrivate.h — PR-S-toyui-1：libToyUi 模块内共享
+ * UiPrivate.h — PR-S-toyui-1：libUi 模块内共享
  */
 #ifndef UI_PRIVATE_H
 #define UI_PRIVATE_H
 
-#include <ToyUi.h>
+#include <Ui.h>
 
 #define UI_WIN_MAX 6
 #define UI_CLICK_PACK_BASE 400

@@ -237,7 +237,7 @@ int ProcessExec(const char *Path) {
 
         CopyPathName(Name, (int)sizeof(Name), Path);
         StyleTaskName(Name);
-        if (ProcessStartElf(Space, &Info, Name) != 0) {
+        if (ProcessStartElf(Space, &Info, Name, ProcessAppTakesWindow(Path)) != 0) {
             ProcessRestoreAppFont();
             return -1;
         }
@@ -323,6 +323,8 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
     T->SigHandlerInt = 0;
     T->SigHandlerTerm = 0;
     T->PendingKill = 0;
+    /* 占窗 GUI：开窗前 printf 亦勿进 blocks>；控制台 ELF 清回 0 */
+    T->StdoutSerialOnly = ProcessAppTakesWindow(Path) ? 1 : 0;
     /* 保留 Fds / ParentId / Id；映像已换 */
     HalFrameSetUserEntry(Frame, Info.Entry, NewRsp);
     T->Frame = Frame;
@@ -361,5 +363,5 @@ int ProcessRunDemo(void) {
     }
 
     HalInstallUserMode();
-    return ProcessStartElf(Space, &Info, "hello");
+    return ProcessStartElf(Space, &Info, "hello", 0);
 }

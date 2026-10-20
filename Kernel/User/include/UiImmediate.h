@@ -1,5 +1,5 @@
 /*
- * UiIm.h — 立即模式薄封装（不改 ToyUi.h ABI）
+ * UiIm.h — 立即模式薄封装（不改 Ui.h ABI）
  *
  * 用法（每帧）：
  *   UiImBegin(Wid, 0);
@@ -13,7 +13,7 @@
 #ifndef UI_IM_H
 #define UI_IM_H
 
-#include <ToyUi.h>
+#include <Ui.h>
 
 #define UI_IM_BTN_MAX (UI_BUTTON_ID_MAX - UI_BUTTON_ID_MIN + 1)
 #define UI_IM_CHK_MAX (UI_CHECK_ID_MAX + 1)

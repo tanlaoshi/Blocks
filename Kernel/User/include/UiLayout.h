@@ -1,10 +1,10 @@
 /*
- * UiLayout.h — 编译期布局表 + LoadWindow（不改 ToyUi.h ABI）
+ * UiLayout.h — 编译期布局表 + LoadWindow（不改 Ui.h ABI）
  */
 #ifndef UI_LAYOUT_H
 #define UI_LAYOUT_H
 
-#include "ToyUi.h"
+#include "Ui.h"
 
 typedef enum {
     UI_WIDGET_LABEL,

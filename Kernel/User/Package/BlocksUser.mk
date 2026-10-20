@@ -6,7 +6,7 @@
 #   SRCS   — .c 源列表（默认 main.c）
 # 可选：
 #   BLOCKS_KERNEL — 默认本 mk 所在目录的 ../..
-#   EXTRA_LIBS — 额外 .a（如 libToyUi.a）
+#   EXTRA_LIBS — 额外 .a（如 libUi.a）
 #   EXTRA_OBJS — 额外 .o
 #   UITXT / UIH — .uitxt → 编译期头（Tools/UiLayout/uitxt2h.py）
 

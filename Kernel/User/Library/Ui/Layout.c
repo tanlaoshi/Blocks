@@ -1,10 +1,10 @@
 /*
  * UiLayout.c — 用户态布局装载（编译进 Guest ELF，不进内核镜像）
  *
- * 人话：给 .uitxt 生成的控件表装窗；和 ToyUi 同属 User/Library。
+ * 人话：给 .uitxt 生成的控件表装窗；和 Ui 同属 User/Library。
  * 只由 Pkg EXTRA_OBJS 链进应用，不进 Kernel.elf。
  */
-#include "ToyUiLayout.h"
+#include "UiLayout.h"
 #include "Blocks/syscall.h"
 
 int UiScreenWidth(void) {

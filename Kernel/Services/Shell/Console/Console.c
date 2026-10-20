@@ -14,6 +14,7 @@
 #include "Gui.h"
 #include "Font.h"
 #include "Scheduler.h"
+#include "SpinLock.h"
 #include "Locale.h"
 #include "KernelModulesPrivate.h"
 #include "ShellCommands.h"
@@ -24,6 +25,7 @@ int gLen;
 int gWaitPrompt;
 int gPromptSuspend;
 int gAtLineStart = 1;
+static SPIN_LOCK gConsoleOutLock;
 /* -2=无 Job；-1=串口壳；>=0=发起 Shell 窗下标 */
 static int gJobPromptWin = -2;
 /* Worker 在 RunLine 内已 Release 并打过 blocks> 时，阻止 PromptAfterCommand 再打一次 */
@@ -92,11 +94,30 @@ static void AnnounceBootReady(void) {
     HalSerialShellOwn();
 }
 
+void ConsoleOutLock(void) {
+    SpinLockAcquire(&gConsoleOutLock);
+}
+
+void ConsoleOutUnlock(void) {
+    SpinLockRelease(&gConsoleOutLock);
+}
+
 void Prompt(void) {
+    /*
+     * 整段在 OutLock 内：SMP 上勿把 \\n 与 blocks> 拆开，否则用户逐字 Write
+     * 会插成「H\\nello」+「blocks>」粘在一起。
+     */
+    ConsoleOutLock();
     gLen = 0;
     /* 仅当不在行首时换行：开窗欢迎语后已有 \\n，再打会空一行像「提示语不对」 */
     if (!gAtLineStart) {
-        gConsole.Write("\n");
+        HalConsoleWriteSerial("\n");
+        if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
+            ConsoleSbBindFocus();
+            ConsoleSbEnsureLive();
+            ConsoleSbFeed("\n");
+            ConsoleDrawString("\n", ThemeShellText());
+        }
     }
     HalConsoleWriteSerial("blocks> ");
     gAtLineStart = 0;
@@ -106,6 +127,7 @@ void Prompt(void) {
         ConsoleSbFeed("blocks> ");
         ConsoleDrawString("blocks> ", ThemeShellPrompt());
     }
+    ConsoleOutUnlock();
 }
 
 static void WaitPrompt(void) {

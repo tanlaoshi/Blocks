@@ -1,7 +1,14 @@
 /*
- * GuiOpenClose.c — 关窗与 Closing 等待（PR-S3-guiopen-1）
+ * Close.c — 关窗与 Closing 等待（gui-g3-close）
  *
- * 从 GuiOpen.c 原样搬家；不改语义。
+ * CloseWindow 合成分叉（WasUser 在槽清空前取样）：
+ *   USER — 轻量：擦本窗 → 相交窗重画 → 清 clip 画任务栏 → PresentFlush（Busy 内）
+ *          禁止 GuiComposeThemeScene（4K 全屏会拖死 GuiWaitNoWindowClosing
+ *          → Destroy 抢页 → #PF）。完整合成在 SchedulerExitUser Destroy 之后。
+ *   非 USER — 全窗 BackupValid 清零 → GuiComposeThemeScene（故意全屏）
+ * GuiWaitNoWindowClosing：自旋至 Closing 清零；禁止超时强拆页表。
+ * 断言：USER 轻量期间 GuiCloseUserLightActive=1；ThemeScene 入口见则 halt。
+ * 调用面四档见 Damage.c（gui-g2-mark）。开窗辅助 Open.c。
  */
 #include "GuiPrivate.h"
 #include "UI.h"
@@ -19,6 +26,12 @@
 #include "Desktop.h"
 #include "DesktopPrivate.h"
 #include "Console.h"
+
+static int gCloseUserLight;
+
+int GuiCloseUserLightActive(void) {
+    return gCloseUserLight;
+}
 
 void CloseWindow(int Idx) {
     UINT32 X;
@@ -114,11 +127,8 @@ void CloseWindow(int Idx) {
         UINT32 Sw;
         UINT32 Sh;
 
-        /*
-         * USER 轻量关窗：只擦本窗 + 相交窗重画 + 任务栏置顶。
-         * 禁止在此走 4K 全屏 Compose（exit 等待会超时 → Destroy 抢页 → #PF）。
-         * 完整合成在 SchedulerExitUser Destroy 之后。
-         */
+        /* USER 轻量：契约见文件头（禁 ThemeScene；旗标供 ThemeScene 断言） */
+        gCloseUserLight = 1;
         ComposeBeginEraseCursor();
         HalVideoClearClip();
         DesktopFillRect(X, Y, Ww, Wh);
@@ -179,6 +189,7 @@ void CloseWindow(int Idx) {
         GraphicsIrqLeave();
         HalVideoPresentFlush();
         ComposeEnd();
+        gCloseUserLight = 0;
     } else {
         for (i = 0; i < MAX_WINS; i++) {
             if (gGuiWindowManager.Windows[i].Active) {

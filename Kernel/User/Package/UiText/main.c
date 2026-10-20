@@ -3,8 +3,8 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <ToyUi.h>
-#include <ToyUiLayout.h>
+#include <Ui.h>
+#include <UiLayout.h>
 #include <Blocks/syscall.h>
 #include "MyAppUi.h"
 

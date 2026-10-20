@@ -33,6 +33,7 @@
 #include "EditUi.h"
 #include "TtyUi.h"
 #include "Scheduler.h"
+#include "SerialLog.h"
 
 void GraphicsIrqEnter(void) {
     if (gGuiWindowManager.GraphicsLockDepth++ == 0) {
@@ -189,6 +190,14 @@ void GuiApplyThemeColors(void) {
 void GuiComposeThemeScene(void) {
     int i;
     int SavedFocus = gGuiWindowManager.FocusWin;
+
+    /* gui-g3-close：USER 轻量关窗不得进此（Close.c 置 GuiCloseUserLightActive） */
+    if (GuiCloseUserLightActive()) {
+        LogGui("Gui: BUG ThemeScene during USER light close\n");
+        for (;;) {
+            HalCpuHalt();
+        }
+    }
 
     gGuiWindowManager.DeferPresent = 1;
     ComposeBeginEraseCursor();

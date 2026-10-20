@@ -4,7 +4,7 @@
  */
 #include <stdio.h>
 #include <sched.h>
-#include <ToyUi.h>
+#include <Ui.h>
 #include <GraphicsBatch.h>
 
 static void Draw(int Wid) {

@@ -83,6 +83,7 @@ UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame) {
     gTasks[Child].Ticks = 0;
     gTasks[Child].PageRoot = VirtualMemorySpaceRoot(ChildSpace);
     gTasks[Child].IsUser = 1;
+    gTasks[Child].StdoutSerialOnly = Parent->StdoutSerialOnly;
     /* 帧从父 syscall 拷来：首次调度须走普通恢复，禁止 USER_FIRST/UserEnter */
     gTasks[Child].Started = 1;
     gTasks[Child].UserSpace = ChildSpace;

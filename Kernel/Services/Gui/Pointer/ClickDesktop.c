@@ -26,10 +26,22 @@ static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
             DebugWrite("desktop: exec ");
             DebugWrite(ExecPath);
             DebugWrite("\n");
-            (void)ProcessExec(ExecPath);
-            /* 用户 ELF 往串口打字会冲掉 blocks>；补一行提示，宿主仍可敲 */
-            gConsole.Write("\n");
-            gConsole.ShowPrompt();
+            /*
+             * 与 shell exec 同契约：x64 异步起进程 → WaitPrompt，exit 再 ShowPrompt。
+             * 旧逻辑 Exec 返回后立刻 ShowPrompt，关窗 exit 再打一次 → 双 blocks>；
+             * 且 LogMisc 的 \\n 曾把 gAtLineStart 置 1，第二次会粘成「blocks> blocks>」。
+             */
+            if (!HalPlatformIsVirtSerialConsole()) {
+                gConsole.WaitPrompt();
+            }
+            if (ProcessExec(ExecPath) != 0) {
+                if (!HalPlatformIsVirtSerialConsole()) {
+                    gConsole.ShowPrompt();
+                }
+            } else if (HalPlatformIsVirtSerialConsole()) {
+                /* CoopDrain 内 exit 跳过 ShowPrompt，此处补一次 */
+                gConsole.ShowPrompt();
+            }
         }
     } else if (Act == DESKTOP_ACTION_SHUTDOWN) {
         HalCpuShutdown();

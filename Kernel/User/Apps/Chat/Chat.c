@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <ToyNet.h>
-#include <ToyUi.h>
+#include <Ui.h>
 
 #define CHAT_LOG_MAX  4
 #define CHAT_LOG_COLS 28
@@ -24,7 +24,7 @@ static int gDraftN;
 static char gRx[CHAT_LINE_MAX + 4];
 static int gRxN;
 
-/* USB HID → ASCII（无 Shift；与 ToyUi 子集对齐） */
+/* USB HID → ASCII（无 Shift；与 Ui 子集对齐） */
 static char HidAscii(int Hid) {
     if (Hid >= 0x04 && Hid <= 0x1D) {
         return (char)('a' + (Hid - 0x04));

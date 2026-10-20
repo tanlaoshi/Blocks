@@ -1,12 +1,12 @@
 /*
- * GuiDemo.c — 链 libToyUi/libGraphics（课堂对照：Documents/技术手册.md）
+ * GuiDemo.c — 链 libUi/libGraphics（课堂对照：Documents/技术手册.md）
  * Shell：exec GUIDEMO.ELF
  * 键盘入窗：焦点在本窗时按键 → UiPoll 返回 UI_KEY_EVENT(hid)
  */
 #include <stdio.h>
 #include <unistd.h>
 #include <sched.h>
-#include <ToyUi.h>
+#include <Ui.h>
 #include <Blocks/syscall.h>
 
 int main(void) {
@@ -39,8 +39,8 @@ int main(void) {
             return 0;
         }
     }
-    /* 日志只走串口：焦点在 USER 时 printf 不再画进本窗 */
-    printf("guidemo: wid=%d (ToyUi %s / Graphics %s)\n", WindowId,
+    /* 开窗后 stdout → RUNTIME.LOG（ready 后），不进 blocks>/Shell 串口 */
+    printf("guidemo: wid=%d (Ui %s / Graphics %s)\n", WindowId,
            UI_ABI_VERSION_STRING, GRAPHICS_ABI_VERSION_STRING);
     for (;;) {
         Event = UiPoll(WindowId);

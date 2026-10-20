@@ -233,6 +233,7 @@ int SchedulerCreateThread(TASK *Leader, const char *Name, UINT64 Rip, UINT64 Arg
     gTasks[Slot].Ticks = 0;
     gTasks[Slot].PageRoot = Leader->PageRoot;
     gTasks[Slot].IsUser = 1;
+    gTasks[Slot].StdoutSerialOnly = Leader->StdoutSerialOnly;
     gTasks[Slot].Started = 0;
     gTasks[Slot].UserSpace = Leader->UserSpace;
     gTasks[Slot].ParentId = LeaderId; /* 组内挂靠主线程；勿当进程 wait 子 */

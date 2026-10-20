@@ -3,8 +3,8 @@
  */
 #include <stdio.h>
 #include <sched.h>
-#include <ToyUi.h>
-#include <ToyUiImmediate.h>
+#include <Ui.h>
+#include <UiImmediate.h>
 
 int main(void) {
     int Wid;

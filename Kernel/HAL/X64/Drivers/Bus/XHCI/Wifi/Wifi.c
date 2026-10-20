@@ -5,8 +5,8 @@
  */
 #include "XHCI/Wifi/Private.h"
 #include "DriverBoot.h"
-#include "WifiIds.h"
-#include "UsbWifiHost.h"
+#include "Rtl8188eu/WifiIds.h"
+#include "Rtl8188eu/UsbWifiHost.h"
 
 #define WIFI_CFG_MAX 512
 

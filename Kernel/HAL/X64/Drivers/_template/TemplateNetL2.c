@@ -13,7 +13,7 @@
  *
  * #include "Driver.h"
  * #include "DriverNic.h"
- * #include "Network.h"
+ * #include "Network/Network.h"
  *
  * static int TemplateNetSendFrame(const UINT8 *Frame, UINTN FrameLen);
  * static void TemplateNetPoll(void);

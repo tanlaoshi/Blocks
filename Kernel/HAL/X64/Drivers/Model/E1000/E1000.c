@@ -6,7 +6,7 @@
 #include "E1000.h"
 #include "E1000Private.h"
 #include "Hal.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "ToySerialLog.h"
 
 volatile UINT8 *gBar;

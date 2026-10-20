@@ -2,7 +2,7 @@
  * HalVideoFb.c — PR-S3-halvideo-1：FB WC 映射与 PTE 诊断
  */
 #include "HalVideo.h"
-#include "Video.h"
+#include "Video/Video.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "VirtualMemory.h"

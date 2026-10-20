@@ -8,7 +8,7 @@
 #include "DriverNic.h"
 #include "Alx.h"
 #include "AlxPrivate.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "VirtualMemory.h"
 
 static const DRIVER_MATCH gAlxMatch[] = {

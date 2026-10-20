@@ -8,7 +8,7 @@
 #include "DriverNic.h"
 #include "Rtl8168.h"
 #include "Private.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "VirtualMemory.h"
 
 static const DRIVER_MATCH gRtlMatch[] = {

@@ -9,7 +9,7 @@
 #include "lwip/etharp.h"
 #include "netif/ethernet.h"
 #include "Ip.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "Hal.h"
 #include "HalConsole.h"
 

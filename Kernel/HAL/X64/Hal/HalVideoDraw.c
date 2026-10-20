@@ -2,7 +2,7 @@
  * HalVideoDraw.c — PR-S3-halvideo-1：像素 / 矩形 / 文字 / 裁剪
  */
 #include "HalVideo.h"
-#include "Video.h"
+#include "Video/Video.h"
 
 void HalVideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color) {
     VideoDrawPixel(X, Y, Color);

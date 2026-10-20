@@ -2,7 +2,7 @@
  * HAL/Virtio/HalVideo.c — 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout）
  */
 #include "HalVideo.h"
-#include "Video.h"
+#include "Video/Video.h"
 #include "PhysicalMemory.h"
 #include "Hal.h"
 

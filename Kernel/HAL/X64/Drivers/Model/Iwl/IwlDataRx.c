@@ -4,7 +4,7 @@
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"
-#include "Network.h"
+#include "Network/Network.h"
 
 void IwlRxDataToNet(UINT8 *Frame, UINTN FLen, UINT32 St) {
     UINT16 Fc;

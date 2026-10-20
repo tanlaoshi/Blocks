@@ -4,7 +4,7 @@
 #include "Rtl8168.h"
 #include "Private.h"
 #include "PhysicalMemory.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "Hal.h"
 #include "ToySerialLog.h"
 

@@ -11,7 +11,7 @@
 #include "XHCI.h"
 #include "Iwl.h"
 #include "Igpu.h"
-#include "Hda.h"
+#include "Hda/Hda.h"
 
 extern char __driver_boot_start[];
 extern char __driver_boot_end[];

@@ -3,7 +3,7 @@
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"
-#include "Network.h"
+#include "Network/Network.h"
 
 void IwlLogDataTx(const IWL_RX_PKT *Pkt, UINTN Len) {
     char Line[16];

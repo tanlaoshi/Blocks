@@ -6,7 +6,7 @@
 #include "HalSerial.h"
 #include "ToySerialLog.h"
 #include "VirtualMemory.h"
-#include "Network.h"
+#include "Network/Network.h"
 
 int gIwlReady;
 int gIwlFwOk;

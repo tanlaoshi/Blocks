@@ -4,7 +4,7 @@
 #include "Alx.h"
 #include "AlxPrivate.h"
 #include "PhysicalMemory.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "Hal.h"
 #include "HalConsole.h"
 #include "ToySerialLog.h"

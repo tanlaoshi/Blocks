@@ -3,7 +3,7 @@
  */
 #include "Hal.h"
 #include "DriverNet.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "E1000.h"
 #include "LwIp.h"
 

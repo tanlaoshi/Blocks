@@ -9,7 +9,7 @@
 #include "DriverNic.h"
 #include "E1000.h"
 #include "E1000Private.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
 

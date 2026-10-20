@@ -3,7 +3,7 @@
  */
 #include "Ehci/Private.h"
 #include "DriverBoot.h"
-#include "UsbMscHost.h"
+#include "Msc/UsbMscHost.h"
 #include "ToySerialLog.h"
 
 EHCI_CTRL *gEhciMscCtrl;

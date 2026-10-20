@@ -4,7 +4,7 @@
  * FB WC 见 HalVideoFb.c；像素/文字绘制见 HalVideoDraw.c。
  */
 #include "HalVideo.h"
-#include "Video.h"
+#include "Video/Video.h"
 #include "PhysicalMemory.h"
 #include "HalDevices.h"
 #include "BootInfo.h"

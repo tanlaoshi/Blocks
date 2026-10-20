@@ -7,7 +7,7 @@
  */
 #include "XHCI/Private.h"
 #include "DriverBoot.h"
-#include "UsbMscHost.h"
+#include "Msc/UsbMscHost.h"
 
 /*
  * PR-H-msc-2/4：Bulk 环 Init；claim 后 Ready=1（仍无 SCSI）。

@@ -5,8 +5,8 @@
  */
 #include "Ehci/Private.h"
 #include "DriverBoot.h"
-#include "WifiIds.h"
-#include "UsbWifiHost.h"
+#include "Rtl8188eu/WifiIds.h"
+#include "Rtl8188eu/UsbWifiHost.h"
 #include "ToySerialLog.h"
 
 #define HUB_FEAT_PORT_POWER 8u

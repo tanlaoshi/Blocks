@@ -6,7 +6,7 @@
 #ifndef WIFI_H
 #define WIFI_H
 
-#include "WifiIds.h"
+#include "Rtl8188eu/WifiIds.h"
 int WifiSetup(void);
 int WifiReady(void);
 void WifiGetMac(UINT8 Mac[6]);

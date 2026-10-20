@@ -6,7 +6,7 @@
 #include "DriverNic.h"
 #include "Iwl.h"
 #include "HalDevices.h"
-#include "Network.h"
+#include "Network/Network.h"
 #include "VirtualMemory.h"
 
 static const DRIVER_MATCH gIwlMatch[] = {

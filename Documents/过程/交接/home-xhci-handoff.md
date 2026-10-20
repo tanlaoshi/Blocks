@@ -13,21 +13,21 @@
 ## 同步命令（家里）
 
 ```bash
-cd ~/…/ToyKernel
+cd ~/…/Kernel
 git fetch origin
 git checkout home/xhci-pr1-5-bundle
 git pull --ff-only origin home/xhci-pr1-5-bundle
 
-cd ~/…/ToyImage
+cd ~/…/Runtime
 git pull --ff-only origin master
 
-cd ../ToyKernel && ./build.sh
-cd ../ToyImage
+cd ../Kernel && ./build.sh
+cd ../Runtime
 # 需要时：udisksctl mount -b /dev/sdX1
 ./sync-usb.sh --kernel-only
 ```
 
-公司侧最近推送示例：`ToyKernel` `0cb2355`；`ToyImage` `fc9bef8`（`sync-usb.sh`）。
+公司侧最近推送示例：`Kernel` `0cb2355`；`Runtime` `fc9bef8`（`sync-usb.sh`）。
 
 ## 真机已证实
 
@@ -59,16 +59,16 @@ cd ../ToyImage
 
 勿把公司机 `~/.cursor/plans/*.plan.md` 当唯一真相（不进 Git）。以本目录文档为准。
 
-| `fs: mounted N volume(s), default=ESP` 且 `ls` 见 `EFI` | 只挂到了 ESP；或 Block 后端是机器 NVMe（无 USB MSC），看不到 U 盘 TOYOS 分区。看 `vols`：应有 `TOYOS` 才对 |
+| `fs: mounted N volume(s), default=ESP` 且 `ls` 见 `EFI` | 只挂到了 ESP；或 Block 后端是机器 NVMe（无 USB MSC），看不到 U 盘 BLOCKS 分区。看 `vols`：应有 `BLOCKS` 才对 |
 
 ## 家侧 2026-09-09 晚
 
 打字/电源 OK。三刀：
 1. **Present 批处理**：`RunLine` 期间 `GuiPresentDefer*`，避免 help 真机逐行刷 GOP。
-2. **多 FAT 挂载**：`GptFindAllFat` 同盘挂 ESP+TOYOS；有 `TOYOS.ID` 作默认。
-3. **CoolTerm CR+LF**：串口吞 CR 后的 LF，避免双 `toyos>`。
+2. **多 FAT 挂载**：`GptFindAllFat` 同盘挂 ESP+BLOCKS；有 `BLOCKS.ID` 作默认。
+3. **CoolTerm CR+LF**：串口吞 CR 后的 LF，避免双 `blocks>`。
 
-若仍 `default=ESP`：串口有 `boot: nvme drives=` 而无第二盘时，运行时 Block 看不到 U 盘（尚无 USB MSC）——数据须在 NVMe 的 TOYOS 分区，或后续做 MSC。
+若仍 `default=ESP`：串口有 `boot: nvme drives=` 而无第二盘时，运行时 Block 看不到 U 盘（尚无 USB MSC）——数据须在 NVMe 的 BLOCKS 分区，或后续做 MSC。
 
 **QEMU 鼠标**：曾对 `usb-tablet`(Proto=0) 误发 `SET_PROTOCOL` → Stall → 无 `xhci-hid mouse`。现仅 Proto=1/2 发 SET_PROTOCOL；tablet 走 `mouse (abs)`。
 

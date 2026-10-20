@@ -43,7 +43,7 @@
 |--------------|------|
 | `k=0 m>0`，`s=05.03`，`!kbdIN=0` | 全程像只有「鼠口」在吐；常是 **假键盘 slot** 或真键未绑 |
 | `k>0 m=0` + `skip mouse+extraHID` + Address/Reset fail | v7：拒认 G102 为键后，鼠口 **Disable+重 Address 失败** |
-| 无 `build=kbd-v8` | **仍在跑旧 Kernel**（先核对 TOYOS 上 md5） |
+| 无 `build=kbd-v8` | **仍在跑旧 Kernel**（先核对 BLOCKS 上 md5） |
 
 **好相（收官）**：`build=kbd-v8`；`claim after skip-kbd`（或独立口 `xhci-hid mouse`）；**键鼠不同 slot**；`k>0` 且 `m>0`。
 
@@ -51,12 +51,12 @@
 
 | 谁 | 看见什么 |
 |----|----------|
-| UEFI Boot | 扫 U 盘 ESP + TOYOS；靠 **`TOYOS.ID`** 选系统盘加载 `Kernel.elf` |
+| UEFI Boot | 扫 U 盘 ESP + BLOCKS；靠 **`BLOCKS.ID`** 选系统盘加载 `Kernel.elf` |
 | 内核 `vols` | 只见 **Block 已挂盘**（NUC 常为 NVMe）；**尚无 USB MSC** |
-| PHOTO `fs: default=ESP (no TOYOS.ID)` | 内核 FAT 里没找到带 `TOYOS.ID` 的卷（常见：机内 NVMe ESP）≠ Boot 没从 U 盘加载 |
+| PHOTO `fs: default=ESP (no BLOCKS.ID)` | 内核 FAT 里没找到带 `BLOCKS.ID` 的卷（常见：机内 NVMe ESP）≠ Boot 没从 U 盘加载 |
 
-- **Kernel.elf 只写 TOYOS**，不要写 ESP。  
-- `./sync-usb.sh --kernel-only`：只更新 TOYOS；对一下时间与 md5。
+- **Kernel.elf 只写 BLOCKS**，不要写 ESP。  
+- `./sync-usb.sh --kernel-only`：只更新 BLOCKS；对一下时间与 md5。
 
 ---
 
@@ -68,7 +68,7 @@
 | 驱动曾 | 各绑各的 | 弱 HID→假键盘 + 同设备鼠→composite | v7 拒假键；v8 claim 为鼠 |
 | 中断 | MSI 可用 | **poll Drain** | 同左（`irq=poll`） |
 
-Linux：`xhci_hcd` + `usbhid` 按 interface 提 URB。ToyOS 是最小栈；假键盘是 **quirk + 评分** 先挡住，再靠分口枚举。
+Linux：`xhci_hcd` + `usbhid` 按 interface 提 URB。Blocks 是最小栈；假键盘是 **quirk + 评分** 先挡住，再靠分口枚举。
 
 ---
 
@@ -119,7 +119,7 @@ Linux：`xhci_hcd` + `usbhid` 按 interface 提 URB。ToyOS 是最小栈；假�
 
 ```text
 刷机后有无 build=kbd-v8？
- └─ 无 → sync TOYOS/Kernel.elf（勿写 ESP）
+ └─ 无 → sync BLOCKS/Kernel.elf（勿写 ESP）
 
 PHOTO / 桌面
  ├─ k=0 m>0，且无 skip mouse+extraHID
@@ -136,12 +136,12 @@ PHOTO / 桌面
 
 ## 5. 和 Linux 的对照
 
-| Linux | ToyOS（收官后） | 仍可做 |
+| Linux | Blocks（收官后） | 仍可做 |
 |-------|-----------------|--------|
 | 每 iface 独立 Interrupt URB | 分口两 slot；真机不复合加鼠 | dual/IRQ 可选 |
 | 慎改已 Running EP | claim 鼠保留 Address 时 EP0 | 少 Stop 邻居 |
 | quirk 表 | reject 弱键 + claim 鼠 | 保持例外标注 |
-| MSC 块设备 | 无 → `vols` 不见 U 盘 TOYOS | H-msc 暂缓 |
+| MSC 块设备 | 无 → `vols` 不见 U 盘 BLOCKS | H-msc 暂缓 |
 
 ---
 
@@ -155,7 +155,7 @@ PHOTO / 桌面
 | 独立口鼠 | `InitMouseOnPort`（claim 失败时的 ForcePR 回退） |
 | PHOTO | `XhciDiagFormat` → `HalSerialGopPhotoHold` |
 | 刷机戳 | `boot: xhci build=kbd-v8` |
-| 合入 | ToyKernel `fef65a1`；排障对照文档见文首 |
+| 合入 | Kernel `fef65a1`；排障对照文档见文首 |
 
 ---
 

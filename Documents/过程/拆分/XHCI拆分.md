@@ -495,7 +495,7 @@ Drivers/XHCI/XhciDiag.c
 ## 七、编译验证
 
 ```bash
-cd ToyKernel
+cd Kernel
 ./build.sh
 ```
 

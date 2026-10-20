@@ -1,4 +1,4 @@
-# ToyOS 模块化与 App 课堂闭环
+# Blocks 模块化与 App 课堂闭环
 
 > **状态**：**✅ GD**（2026-10-01；文首归档 → [`路线图 #sec-gd-list`](../../项目/路线图.md#sec-gd-list)）。  
 > **定位**：目录/文件结构模块化 + 驱动一设备一目录 + App「开发→打包→安装」课堂叙事。  
@@ -160,14 +160,14 @@
 
 ### 6.2 正统路径（C）编号步骤（供指南抄入）
 
-1. 开发：`ToyKernel/User/Pkg`（或 SDK）编出 `MYAPP.ELF`。
+1. 开发：`Kernel/User/Pkg`（或 SDK）编出 `MYAPP.ELF`。
 2. 建包目录：`Assets/Store/packages/<id>/`  
    - `PKG.TXT`（`id=` `type=app` `file=` `title=`；可选 `desktop=`/`taskbar=`/`icon=`/`font=`/`depends=`）  
    - 载荷 ELF（与 `file=` 同名，建议 **包内自包含**）  
    - 可选 `Assets/`（图标、私有字体、数据）
 3. 目录行：`Assets/Store/catalog.txt` 增加  
    `id|type|version|file|sha256|arch|title[|depends]`
-4. 同步 rootfs：`ToyImage` 侧 `prepare-rootfs` / 构建脚本已有拷贝约定。
+4. 同步 rootfs：`Runtime` 侧 `prepare-rootfs` / 构建脚本已有拷贝约定。
 5. Guest：`store combo <id>` 或先装依赖再 `store install <id>`。
 6. 验证：`Apps/<id>/` 存在；`exec Apps/<id>/<ELF>` 或桌面/开始菜单（需 `taskbar=yes` 等）。
 7. 卸：`store uncombo <id>` / `store remove <id>` → 树删 + DB 清。
@@ -204,7 +204,7 @@
 | `Apps/TASKMGR.ELF` `Apps/CAT.ELF` | **扁平遗留**，非 `Apps/<id>/` |
 | 无 PKG 的预装树 | 未体现「商店安装注册」（ToyDB `si.*`），与 `store install` 语义不一致 |
 
-**构建侧根因**：[`ToyKernel/build.sh`](../../build.sh) x86 同步段（约 L144+）逐个 `cp` 到卷根；仅 hello/guidemo/taskmgr 额外进 `Apps*`/`StoreCache`。
+**构建侧根因**：[`Kernel/build.sh`](../../build.sh) x86 同步段（约 L144+）逐个 `cp` 到卷根；仅 hello/guidemo/taskmgr 额外进 `Apps*`/`StoreCache`。
 
 ### 6.5 策略（写死）
 

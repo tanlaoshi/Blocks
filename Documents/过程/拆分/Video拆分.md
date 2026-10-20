@@ -13,7 +13,7 @@
 | ✅ TG `545ff66` | **PR-H-video-split-2** | `VideoPresent.c` | Dirty/Cursor/Present |
 
 **行数（约）**：`Video.c` ~800；Present ~292；Bochs ~89；Scale ~103。  
-**验收**：split-2 `./build.sh` OK；串口 `ToyOS ready` PASS（2026-09-16）。
+**验收**：split-2 `./build.sh` OK；串口 `Blocks ready` PASS（2026-09-16）。
 
 ### 边界
 

@@ -1,6 +1,6 @@
 # 网络 API 双轨化 · 执行前分析（C1 已定）
 
-> **决策已定**：`connect`/`bind` 归 POSIX；主机序便利版改名 `ToyNetConnect`/`ToyNetBind`。  
+> **决策已定**：`connect`/`bind` 归 POSIX；主机序便利版改名 `NetConnect`/`NetBind`。  
 > **进度**：任务书第 5 步（网-1 + POSIX `sockaddr`）**已落地**。下文 §1–§9 是动手前的实况，不要再按「没有 `sys/socket.h`」执行。  
 > **不在本次 POSIX 补充五步里**：`accept` 仍是 `accept(int fd)`；无 `inet_aton` / `inet_ntoa`。当前 ★ 是 [`PR-U-sched-yield`](../../项目/路线图.md#pr-u-sched-yield)，不是这两项。
 
@@ -10,32 +10,32 @@
 
 | # | 结论 |
 | - | ---- |
-| 1 | **无** `sys/socket.h`；`AF_INET`/`SOCK_STREAM`/`connect`/`bind` 全在 `ToyNet.h` + `ToyNet.c`。 |
+| 1 | **无** `sys/socket.h`；`AF_INET`/`SOCK_STREAM`/`connect`/`bind` 全在 `Net.h` + `Net.c`。 |
 | 2 | C 调用点仅 **`NetLibDemo.c`**、**`User/Pkg/Net/main.c`**（及 SDK Examples/Net 若同源）。`NetDemo.S` / `NetServer.S` 走**裸 syscall**（主机序），**不必**改汇编即可过第 1 步。 |
-| 3 | `ToyNetConnectIn`/`BindIn` 今日调用 `connect`/`bind`；第 1 步后必须改为调 `ToyNetConnect`/`ToyNetBind`。 |
+| 3 | `NetConnectIn`/`BindIn` 今日调用 `connect`/`bind`；第 1 步后必须改为调 `NetConnect`/`NetBind`。 |
 | 4 | 任务书第 4 步「创建 `dirent.c`」**错误**：`User/crt/dirent.c` **已存在**（OpenDirectory 实现）。`readdir` 样例也有逻辑/类型错误（见 §8）。 |
-| 5 | 第 1 步可独立：`TOY_NET_ABI` 升 **MAJOR=2**；编过 + `netlibdemo` 可测。第 2–3 步再建 `sys/socket.h` + `crt/socket.c`。 |
+| 5 | 第 1 步可独立：`NET_ABI` 升 **MAJOR=2**；编过 + `netlibdemo` 可测。第 2–3 步再建 `sys/socket.h` + `crt/socket.c`。 |
 | 6 | `sys/types.h` **尚无** `sa_family_t` / `socklen_t` / `uint16_t`；第 2 步须补（或 `#include <stdint.h>`，若 CRT 无则加最小 typedef）。 |
 
 ---
 
-## 1. `ToyNet.h` 现有结构
+## 1. `Net.h` 现有结构
 
-路径：`User/include/ToyNet.h`（现行 ABI **2.0.1**；下文分析稿写作时为 1.2.0，**仅作决策记录**）。
+路径：`User/include/Net.h`（现行 ABI **2.0.1**；下文分析稿写作时为 1.2.0，**仅作决策记录**）。
 
 | 内容 | 现状 |
 | ---- | ---- |
-| 常量 | `AF_INET` `SOCK_STREAM` `INADDR_ANY`；`TOY_NET_SOCK_RESOLVE` |
+| 常量 | `AF_INET` `SOCK_STREAM` `INADDR_ANY`；`NET_SOCK_RESOLVE` |
 | 主机序结构 | `ToySockAddrIn { Family, Port, Addr }`（**非**网络序） |
-| 便利 | `ToyNetIpv4`；**`connect(fd,ip,port)` / `bind(fd,ip,port)`** ← 将改名 |
-| 结构体 API | `ToyNetConnectIn` / `ToyNetBindIn` / `ToyNetAddrIn` / `ToyNetGetAddrIn` |
-| 其它 | `socket` `listen` `accept(fd)` `send` `recv` `ToyNetResolve` |
+| 便利 | `NetIpv4`；**`connect(fd,ip,port)` / `bind(fd,ip,port)`** ← 将改名 |
+| 结构体 API | `NetConnectIn` / `NetBindIn` / `NetAddrIn` / `NetGetAddrIn` |
+| 其它 | `socket` `listen` `accept(fd)` `send` `recv` `NetResolve` |
 
 第 1 步后头文件应变为：
 
 - **删除** `int connect(int, unsigned, unsigned)` / `int bind(...)`  
-- **新增** `ToyNetConnect` / `ToyNetBind`（`port` 用 `unsigned short` 与任务书一致；现实现是 `unsigned port`，改名时可收窄）  
-- `socket`/`listen`/`accept`/`send`/`recv`：**第 1 步仍留在 ToyNet**（避免半截链接）；第 2–3 步再在 `sys/socket.h` 声明，实现可仍链自 libToyNet 或迁入 `socket.c`（另刀定）
+- **新增** `NetConnect` / `NetBind`（`port` 用 `unsigned short` 与任务书一致；现实现是 `unsigned port`，改名时可收窄）  
+- `socket`/`listen`/`accept`/`send`/`recv`：**第 1 步仍留在 Net**（避免半截链接）；第 2–3 步再在 `sys/socket.h` 声明，实现可仍链自 libNet 或迁入 `socket.c`（另刀定）
 
 ---
 
@@ -45,14 +45,14 @@
 
 ---
 
-## 3. `ToyNet.c` 现有实现
+## 3. `Net.c` 现有实现
 
-路径：`User/Library/ToyNet/ToyNet.c`（约 216 行，&lt;300）。
+路径：`User/Library/Net/Net.c`（约 216 行，&lt;300）。
 
 | 函数 | 行为 |
 | ---- | ---- |
-| `connect`/`bind` | 调 `toy_connect` / `toy_bind`（主机序）；失败走 `ToyNetFail` |
-| `ToyNetConnectIn`/`BindIn` | 校验 `Family==AF_INET` 后 **直接调 `connect`/`bind`** |
+| `connect`/`bind` | 调 `NetConnect` / `toy_bind`（主机序）；失败走 `NetFail` |
+| `NetConnectIn`/`BindIn` | 校验 `Family==AF_INET` 后 **直接调 `connect`/`bind`** |
 | `socket`/`listen`/`accept`/`send`/`recv` | 现有；`send`/`recv` = `write`/`read` |
 
 第 1 步改动面小：改名两函数 + 改 In 包装的调用目标；**不改 syscall 号**。
@@ -63,10 +63,10 @@
 
 | 产物 | 源 | 与 `connect(fd,ip,port)` |
 | ---- | -- | ------------------------ |
-| **NETLIB.ELF** | `User/Apps/NetLibDemo.c` + `libToyNet.a` | **有**：`connect(Fd, ToyNetIpv4(10,0,2,2), 8888)` → 改为 `ToyNetConnect` |
+| **NETLIB.ELF** | `User/Apps/NetLibDemo.c` + `libNet.a` | **有**：`connect(Fd, NetIpv4(10,0,2,2), 8888)` → 改为 `NetConnect` |
 | **NETDEMO.ELF** | `User/Apps/NetDemo.S` | **无 C 调用**；`syscall` 直传主机序 IP/port → **第 1 步可不改** |
 | **NETSRV.ELF** | `User/Apps/NetServer.S` | **无 C 调用**；裸 `bind(fd, INADDR_ANY, 9000)` syscall → **可不改** |
-| **Pkg/Net** | `User/Pkg/Net/main.c` | **有**：同 NetLibDemo → 改 `ToyNetConnect` |
+| **Pkg/Net** | `User/Pkg/Net/main.c` | **有**：同 NetLibDemo → 改 `NetConnect` |
 | SDK Examples/Net | 若拷贝同逻辑 | 同步改（若在树内） |
 
 任务书写「NETLIB.c」——仓库里是 **`NetLibDemo.c`**，无 `NETLIB.c` 文件名。
@@ -93,7 +93,7 @@
 ```
 应用课写法:
   #include <sys/socket.h>     /* POSIX connect/bind + sockaddr */
-  #include <ToyNet.h>         /* ToyNetConnect / ToyNetIpv4 / Resolve … */
+  #include <Net.h>         /* NetConnect / NetIpv4 / Resolve … */
 
 sys/socket.h
   类型 sockaddr / sockaddr_in / in_addr
@@ -101,16 +101,16 @@ sys/socket.h
   htons/ntohs/htonl/ntohl（可放 socket.c 或 netinet）
 
 User/crt/socket.c
-  POSIX connect/bind：校验 AF_INET → ntohl/ntohs → ToyNetConnect/ToyNetBind
+  POSIX connect/bind：校验 AF_INET → ntohl/ntohs → NetConnect/NetBind
   字节序辅助
   （可选）accept：内核无对端地址时忽略 addr/addrlen 或填零并在速查写注意
 
-ToyNet.h
+Net.h
   #include <sys/socket.h> 复用 AF_*（避免双份宏）
   或保留 AF_* 并文档「与 socket.h 同值」
 ```
 
-**链接**：`netlibdemo` 已链 `USER_CRT_OBJS` + `libToyNet.a` → POSIX `connect` 进 CRT 后与 `ToyNetConnect` 同链无冲突。
+**链接**：`netlibdemo` 已链 `USER_CRT_OBJS` + `libNet.a` → POSIX `connect` 进 CRT 后与 `NetConnect` 同链无冲突。
 
 **accept 注意**：现 `accept(int fd)`；POSIX 三参数版第 3 步可做成「忽略出参」薄包装，syscall 号不变。
 
@@ -124,10 +124,10 @@ ToyNet.h
 
 | 任务书问题 | 应改为 |
 | ---------- | ------ |
-| `typedef TOY_DIR_ENT struct dirent;` | 非法；应 `struct dirent { char d_name[…]; … };`，由 `readdir` 填充 |
+| `typedef FS_DIR_ENT struct dirent;` | 非法；应 `struct dirent { char d_name[…]; … };`，由 `readdir` 填充 |
 | 「创建 dirent.c」 | **扩展**已有 `User/crt/dirent.c`（或拆 `dirent_posix.c` ≤300） |
-| `static TOY_DIR_ENT` + `ReadDirectory != 0` | `ReadDirectory`：**1=有项，0=结束，-1=失败**；且静态缓冲多目录不安全 → 缓冲挂在 `TOY_DIR` 内 |
-| 返回 `&Entry` 类型为 `TOY_DIR_ENT*` | 应返回 `struct dirent*` |
+| `static FS_DIR_ENT` + `ReadDirectory != 0` | `ReadDirectory`：**1=有项，0=结束，-1=失败**；且静态缓冲多目录不安全 → 缓冲挂在 `FS_DIR` 内 |
+| 返回 `&Entry` 类型为 `FS_DIR_ENT*` | 应返回 `struct dirent*` |
 
 `opendir`/`closedir` 宏别名到 `OpenDirectory`/`CloseDirectory` 可行。
 
@@ -135,13 +135,13 @@ ToyNet.h
 
 ## 9. 第 1 步执行清单（确认后只做这些）
 
-1. `ToyNet.h`：删 `connect`/`bind` 声明；加 `ToyNetConnect`/`ToyNetBind`；注释与 ABI **2.0.0**；更新「主机序」说明。  
-2. `ToyNet.c`：函数改名；`ToyNetConnectIn`/`BindIn` 改调新名。  
+1. `Net.h`：删 `connect`/`bind` 声明；加 `NetConnect`/`NetBind`；注释与 ABI **2.0.0**；更新「主机序」说明。  
+2. `Net.c`：函数改名；`NetConnectIn`/`BindIn` 改调新名。  
 3. 迁移：`NetLibDemo.c`、`Pkg/Net/main.c`（+ 树内 SDK 例程若有）。  
 4. **不**动 `NetDemo.S`/`NetServer.S`（除非想改注释）。  
 5. **不**建 `sys/socket.h` / `socket.c`。  
 6. `./build.sh`；冒烟：Guest `lwip on` + `exec NETLIB.ELF`（或文档记 QEMU 依赖）。  
-7. 可选：`Documents/开发/API速查.md` 一行提示「主机序请用 ToyNetConnect」——若你要求可并入第 1 步，否则留部分 A。
+7. 可选：`Documents/开发/API速查.md` 一行提示「主机序请用 NetConnect」——若你要求可并入第 1 步，否则留部分 A。
 
 ---
 

@@ -124,8 +124,8 @@ extern volatile UINT32 gStatIrqSkipped; /* IRQ 因独占跳过环推进的次数
 **验收**：
 
 ```bash
-cd ToyKernel && ./build.sh
-cd ../ToyImage && ./smoke-boot.sh   # kbd + xhci irq=msi
+cd Kernel && ./build.sh
+cd ../Runtime && ./smoke-boot.sh   # kbd + xhci irq=msi
 ```
 
 - claim 路径**仍可**出现 `boot: xhci irq=poll (fallback) msc-claim`  
@@ -161,7 +161,7 @@ cd ../ToyImage && ./smoke-boot.sh   # kbd + xhci irq=msi
 **验收**：
 
 ```bash
-cd ../ToyImage && TOY_USB_MSC=1 ./smoke-msc.sh
+cd ../Runtime && USB_MSC=1 ./smoke-msc.sh
 # 或 Shell：msc claim — 日志无 fallback msc-claim；mode 保持 dual（或 QEMU 已升 irq）
 ```
 
@@ -177,18 +177,18 @@ cd ../ToyImage && TOY_USB_MSC=1 ./smoke-msc.sh
 - `Command` 二次超时标 sick **前**再 Recover + 重武装 HID（不留挂起命令 TRB）。
 - PHOTO / `show xhci`：计数增加 **`x=`** = `gStatIrqSkipped`。
 
-**回归**：`smoke-boot` + `TOY_USB_MSC=1 smoke-msc`；`show xhci` 可见 `x=`。
+**回归**：`smoke-boot` + `USB_MSC=1 smoke-msc`；`show xhci` 可见 `x=`。
 
 ---
 
 ## 六、怎么测（每刀附）
 
 ```bash
-cd ToyKernel && ./build.sh
-cd ../ToyImage && ./smoke-boot.sh
+cd Kernel && ./build.sh
+cd ../Runtime && ./smoke-boot.sh
 
 # excl-1/2：claim 仍可出现 boot: xhci irq=poll (fallback) msc-claim
-# excl-3：TOY_USB_MSC=1 ./smoke-msc.sh 或 msc claim — 不应再 fallback msc-claim
+# excl-3：USB_MSC=1 ./smoke-msc.sh 或 msc claim — 不应再 fallback msc-claim
 # excl-3 真机：NUC 插 U 盘 claim + 打字/鼠标
 ```
 

@@ -29,7 +29,7 @@
 
 - 驱动只许进 **HAL**；Common / Gui 只走 `HalAudio*`。
 - **不**做完整 ALSA/Pulse；**不**多卡矩阵；**不** HDMI 音频（可后挂，本柱默认模拟线/耳机）。
-- 任一步失败 → **软退**，不得挡 `ToyOS ready`。
+- 任一步失败 → **软退**，不得挡 `Blocks ready`。
 - 新 `.c` ≤300 行；三架构可编（非 x86 **空桩**）。
 - 串口 **禁止**打印采样数据洪流；黄字只指纹 / 状态。
 
@@ -92,7 +92,7 @@
 
 | 项 | 内容 |
 | -- | ---- |
-| 改 | `HAL/X64/Drivers/Hda/Hda.c`；`TOY_DRIVER_CLASS_AUDIO`；`HalDevices` 注册并 Probe |
+| 改 | `HAL/X64/Drivers/Hda/Hda.c`；`DRIVER_CLASS_AUDIO`；`HalDevices` 注册并 Probe |
 | 不改 | 任何 MMIO 写；Gui |
 | 验收 | NUC probe+bound（✅ `0x9D71`）；QEMU skip（✅）；`smoke-boot` 绿（✅） |
 | 下一刀 | audio-1 |

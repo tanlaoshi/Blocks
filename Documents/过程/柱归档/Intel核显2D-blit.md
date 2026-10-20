@@ -26,9 +26,9 @@
 **红线**
 
 - 只许进 **HAL**（手册：GPU 禁止进 Common Gui）。
-- **不**自己 modeset / 改分辨率（继续 ToyBoot GOP 选模）。
+- **不**自己 modeset / 改分辨率（继续 Boot GOP 选模）。
 - **不**多代通用 i915；**不**独显；硬件光标另柱。
-- 任一步失败 → **软退**，桌面仍走 CPU 路径；不得挡 `ToyOS ready`。
+- 任一步失败 → **软退**，桌面仍走 CPU 路径；不得挡 `Blocks ready`。
 
 **为何不用 GOP `Blt`**：`ExitBootServices` 后协议未定义（与 live `SetMode` 同坑）。
 
@@ -96,7 +96,7 @@ QEMU 无此卡 → 整柱软退；Virt/Arm/RiscV **不编**或空桩。
 
 | 项 | 内容 |
 | -- | ---- |
-| 改 | `HAL/X64/Drivers/Igpu/Igpu.c`；`TOY_DRIVER_CLASS_DISPLAY`；`HalDevices` 注册并 Probe |
+| 改 | `HAL/X64/Drivers/Igpu/Igpu.c`；`DRIVER_CLASS_DISPLAY`；`HalDevices` 注册并 Probe |
 | 不改 | `HalVideo*` 热路径；Gui |
 | 验收 | NUC `Boot: igpu probe did=0x5917` + bound；QEMU soft-fail；`smoke-boot` 绿 |
 | 工期 | Agent **0.5～1 日** + 手测 **1 轮** → **1～2 日** |

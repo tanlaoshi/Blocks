@@ -169,7 +169,7 @@ flowchart TD
 | 版本识别 | 无 | `boot: xhci build=kbd-v6` |
 | PHOTO 键死提示 | 无 `!kbdIN=0` | `XhciDiagFormat` 可附 `!kbdIN=0` |
 
-文件：`ToyKernel/HAL/X64/Drivers/XHCI.c`。
+文件：`Kernel/HAL/X64/Drivers/XHCI.c`。
 
 ---
 

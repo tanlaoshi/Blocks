@@ -11,4 +11,4 @@
 | ✅ `b833ef9` | **PR-H-net-split-1** | `NetPrivate.h` + `NetVirtio.c`（队列/PCI/`VirtioNetStart`）；`Net.c` 留 ARP/ICMP/API |
 
 **行数**：`Net.c` ~771；`NetVirtio.c` ~351；`NetPrivate.h` ~154。  
-**验收**：`./build.sh` + headless smoke `ToyOS ready` PASS（2026-09-16；`TOY_NO_HOSTFWD`）。
+**验收**：`./build.sh` + headless smoke `Blocks ready` PASS（2026-09-16；`NO_HOSTFWD`）。

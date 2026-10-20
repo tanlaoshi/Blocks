@@ -161,7 +161,7 @@ static void UpdatePreview(void);
 2. 创建 `Services/FilesUiPaint.c`：搬 `PaintOverlay` / `PaintList` / `PaintView` / `PaintConfirm` / `PaintPrompt` / `Paint`，去 `static`。  
 3. `FilesUi.c`：删已搬 Paint*；宏/类型可先留在 `.c` **或** 已迁 Priv 则删重复；全局仍 `static`→改为非 static 定义以便其它 TU `extern`（**第 1 刀就必须去掉这些全局的 static**，否则 Paint.c 链不上）。  
 4. 宿主顶部改为 `#include "FilesUiPrivate.h"`。  
-5. `./build.sh` + `ToyImage/smoke-boot.sh`；QEMU 开 Files：列表/预览/侧栏**显示**正常。
+5. `./build.sh` + `Runtime/smoke-boot.sh`；QEMU 开 Files：列表/预览/侧栏**显示**正常。
 
 **第 1 刀故意不做**：不建 Nav/Actions；不改写操作逻辑。
 

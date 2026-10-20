@@ -1,4 +1,4 @@
-# ToyOS 驱动框架标准化 — PR 拆分方案
+# Blocks 驱动框架标准化 — PR 拆分方案
 
 > **已归档**（D-tpl 柱收官）。活文档：[`驱动开发指南.md`](../../手册/驱动/驱动开发指南.md)、[`驱动匹配规范.md`](../../手册/驱动/驱动匹配规范.md)。
 >
@@ -14,9 +14,9 @@
 | 1   | 模板编译            | `**HAL/X64/Drivers/_template/` 永不编进 Kernel**（只作拷贝源 / 文档骨架）。不得加入 `DRIVER_SRCS` 通配，也不得被递归 wildcard 扫进链接。             |
 | 1b  | Demo 源码位置       | 扁平 `HAL/X64/Drivers/DemoDriver.c`（现有 `Drivers/*.c` 通配自动编入）                                                         |
 | 2   | 文档落点            | 规划/分析/设计已归档 `Documents/已完/`；活文档仍 `Documents/`：`驱动开发指南.md` / `驱动匹配规范.md`                                         |
-| 3   | Demo 注册         | **默认注册**（`HalDriverRegister` 调 `DemoDriverRegister()`）；可用 `TOY_DEMO_DRIVER=0` 关掉                                   |
-| 4   | Demo 编译开关       | `TOY_DEMO_DRIVER` 默认 **1**（`#ifndef` 保护）；传 `-DTOY_DEMO_DRIVER=0` 关闭。勿写裸 `#if TOY_DEMO_DRIVER` 且不定义宏（未定义时求值为 0，会误关） |
-| 5   | Demo Bind       | **永远不**调用 `ToyDriverInputAttach`；只占 Driver 实例槽，保证 `lsdev` 可见且不抢真键鼠                                                 |
+| 3   | Demo 注册         | **默认注册**（`HalDriverRegister` 调 `DemoDriverRegister()`）；可用 `DEMO_DRIVER=0` 关掉                                   |
+| 4   | Demo 编译开关       | `DEMO_DRIVER` 默认 **1**（`#ifndef` 保护）；传 `-DDEMO_DRIVER=0` 关闭。勿写裸 `#if DEMO_DRIVER` 且不定义宏（未定义时求值为 0，会误关） |
+| 5   | Demo Bind       | **永远不**调用 `DriverInputAttach`；只占 Driver 实例槽，保证 `lsdev` 可见且不抢真键鼠                                                 |
 | 6   | D-tpl-1 `nm` 验收 | **精确符号**列表（见设计稿 §1.2）；裸 `grep -i template` / 对 ELF 扫 `template` 子串**不作为硬失败**                                       |
 
 
@@ -34,9 +34,9 @@
 | 1 分析   | ✅                  | `[驱动框架现状分析.md](驱动框架现状分析.md)`                         | 字段与源码一致                                                                                                               |
 | 2 设计   | **PR-D-tpl-0** ✅ `5e86cc5` | `[驱动模板设计.md](驱动模板设计.md)`                             | 步骤可执行；写明「模板不链入」；Demo 永不 Attach；精确 `nm`                                                                    |
 | 3 模板   | **PR-D-tpl-1** ✅ `4109d5c` | `HAL/X64/Drivers/_template/`（**无 .o 进 Kernel**）      | `./build.sh`；精确 `nm`（设计稿 §1.2）无匹配；README 5 步开篇                                                                |
-| 4 Demo | **PR-D-tpl-2** ✅ `18c1a71` | `DemoDriver.c` + `HalDriverRegister`（`#ifndef` + 注册） | smoke + 串口 `demo: probe/bind`；`TOY_DEMO_DRIVER=0` 无日志 |
+| 4 Demo | **PR-D-tpl-2** ✅ `18c1a71` | `DemoDriver.c` + `HalDriverRegister`（`#ifndef` + 注册） | smoke + 串口 `demo: probe/bind`；`DEMO_DRIVER=0` 无日志 |
 | 5 指南   | **PR-D-tpl-3** ✅ `66891ec` | `驱动开发指南.md`（≤5 页）+ 路线图/README 入口                     | 含 Demo 与 5 步；勿改 `_template/` 就期待编译；链到 README/设计稿 |
-| 6 匹配规范 | **PR-D-tpl-4** ✅ `e5c700e` | `驱动匹配规范.md` | 三模式 +「不强制」；写明本柱不实现表驱动匹配，`TOY_DRIVER.Match` 仍占位 |
+| 6 匹配规范 | **PR-D-tpl-4** ✅ `e5c700e` | `驱动匹配规范.md` | 三模式 +「不强制」；写明本柱不实现表驱动匹配，`DRIVER.Match` 仍占位 |
 
 
 ## 建议 JX 顺序

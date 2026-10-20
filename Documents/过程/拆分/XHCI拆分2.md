@@ -93,7 +93,7 @@ HAL/X64/Drivers/XHCI/
 ## 五、验收（每 PR）
 
 - [ ] `./build.sh`（x64）通过  
-- [ ] `ToyImage/smoke-boot.sh` 通过（含 xhci irq=msi / keyboard 行）  
+- [ ] `Runtime/smoke-boot.sh` 通过（含 xhci irq=msi / keyboard 行）  
 - [ ] 无行为改动意图（纯 move）  
 - [ ] **未**把 MSC/HID DMA 全局改到别的 `.c`  
 - [ ] Controller / Keyboard / Device 步：NUC 键鼠点验（有条件）  
@@ -108,14 +108,14 @@ HAL/X64/Drivers/XHCI/
 | 2026-09-13 | 初稿：七文件 + 全局重分配（分析待确认） |
 | 2026-09-13 | 修订为 **6 刀 PR**；对齐已落地 `XhciMsc`/`XhciEvent`；**禁止 BSS 搬迁**；插入路线图 ★（msc-6 之前） |
 | 2026-09-13 | **PR-H-xhci-core-split-1**：`40f88a8` — `XhciMmio.c`；`XhciCore.c` ~1410；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-1 → ToyImage Kernel sync |
+| 2026-09-13 | TG：xhci-core-split-1 → Runtime Kernel sync |
 | 2026-09-13 | **PR-H-xhci-core-split-2**：`4f4df06` — `XhciRing.c`；`XhciCore.c` ~1302；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-2 → ToyImage Kernel sync |
+| 2026-09-13 | TG：xhci-core-split-2 → Runtime Kernel sync |
 | 2026-09-13 | **PR-H-xhci-core-split-3**：`f771367` — `XhciCommand.c`；`XhciCore.c` ~1146；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-3 → ToyImage Kernel sync |
+| 2026-09-13 | TG：xhci-core-split-3 → Runtime Kernel sync |
 | 2026-09-13 | **PR-H-xhci-core-split-4**：`5ab4c18` — `XhciTransfer.c`；`XhciCore.c` ~1083；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-4 → ToyImage Kernel sync |
+| 2026-09-13 | TG：xhci-core-split-4 → Runtime Kernel sync |
 | 2026-09-13 | **PR-H-xhci-core-split-5**：`8456d0a` — `XhciController.c`；`XhciCore.c` ~795；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-5 → ToyImage Kernel sync |
+| 2026-09-13 | TG：xhci-core-split-5 → Runtime Kernel sync |
 | 2026-09-13 | **PR-H-xhci-core-split-6**：`dd61daf` — `XhciKeyboard.c` + SetupHid→`XhciDevice.c`；`XhciCore.c` ~679；build+smoke 过 |
-| 2026-09-13 | TG：xhci-core-split-6 → ToyImage Kernel sync；柱完 ★→msc-6 |
+| 2026-09-13 | TG：xhci-core-split-6 → Runtime Kernel sync；柱完 ★→msc-6 |

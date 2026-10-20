@@ -1,4 +1,4 @@
-# ToyOS GUI 一致性 + 按钮事件 + 后台任务模型
+# Blocks GUI 一致性 + 按钮事件 + 后台任务模型
 
 > **状态**：**已 GD**（2026-09-24；`PR-GUI-btn-*` / migrate / kerneltask；路线图 §七）。本文在 `Documents/已完/`。  
 > **前置**：无（柱已收官）。  

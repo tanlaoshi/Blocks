@@ -1,4 +1,4 @@
-# ToyOS PMM 稀疏化（内存上限 256GB）
+# Blocks PMM 稀疏化（内存上限 256GB）
 
 > **状态**：已落地（2026-09-24）。256 段 × 1GB。分配只返回恒等窗口内的页：x86 512MB，arm64/riscv 4GB。  
 > **前置**：cap = `PHYSICAL_MEMORY_MAX_PAGES` 256K 页 = 1 GiB。  

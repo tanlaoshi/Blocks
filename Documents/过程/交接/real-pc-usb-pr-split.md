@@ -9,7 +9,7 @@
 - **工作分支（当前）**：`home/xhci-pr1-5-bundle`（PR1–5 合包 + 真机迭代 WIP）
 - **曾计划起点**：`home/xhci-retry-from-scratch` @ `ea3c143`（干净重做基线；现以 bundle 为准）
 - **每刀验收**：公司 `./smoke-boot.sh` PASS + 家里真机约定日志；过线再下一刀
-- **不进本序列**：分辨率 / ToyBoot SetMode
+- **不进本序列**：分辨率 / Boot SetMode
 
 ```mermaid
 flowchart LR

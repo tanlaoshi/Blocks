@@ -14,7 +14,7 @@
 | ✅ TG `bb749ca` | **PR-S-desktop-split-3** | `DesktopMenu.c` + `DesktopIcons.c` | 菜单 + 图标/布局；`MenuCopyStr` 导出 |
 
 **行数（约）**：`Desktop.c` ~700；Wallpaper ~133；Paint ~280；Menu ~278；Icons ~436。  
-**验收**：split-3 `./build.sh` OK；串口 desktop ready + ToyOS ready PASS（2026-09-16）。
+**验收**：split-3 `./build.sh` OK；串口 desktop ready + Blocks ready PASS（2026-09-16）。
 
 ### 刀序（相对旧总表修订）
 

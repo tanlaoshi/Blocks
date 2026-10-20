@@ -1,7 +1,7 @@
 # 双机交接：PR-N-nic（近 12 小时）
 
 > **用途**：公司侧 / 另一台机器 Cursor 同步后，用本文接续工作。  
-> **仓库**：`ToyKernel`（独立 git；父仓 edk2 内嵌）。  
+> **仓库**：`Kernel`（独立 git；父仓 edk2 内嵌）。  
 > **暗号**：JX = 做文首 ★；TG = 只 commit；TS = push。  
 > **写于**：2026-09-18（家侧）。
 
@@ -19,7 +19,7 @@
 同步后先执行：
 
 ```bash
-cd ToyKernel && git status -sb && git log -6 --oneline
+cd Kernel && git status -sb && git log -6 --oneline
 ```
 
 若有未提交的 `DesktopNetTray*` / `Desktop*.c` / `Gui*.c` / 路线图改动 → 先手测再 **TG**。
@@ -44,7 +44,7 @@ cd ToyKernel && git status -sb && git log -6 --oneline
 - **新文件**：`Services/DesktopNetTray.c`（≤300）
 - **行为**：任务栏时钟**左侧**短文案（`net-` / `down` / IPv4）；点击弹简况（ip/gw/dns/link）；与开始菜单互斥；合成路径叠画；标签变化随时钟轮询刷新
 - **已改**：`DesktopPaint.c`、`Desktop.c`、`Desktop.h` / `DesktopPrivate.h`、`GuiCompose.c`、`GuiDraw.c`、`GuiPointer.c`、路线图 / 范例文档
-- **冒烟**：`./smoke-boot.sh`、`TOY_NET=e1000e ./smoke-boot.sh` → PASS  
+- **冒烟**：`./smoke-boot.sh`、`NET=e1000e ./smoke-boot.sh` → PASS  
 - **手测**：任务栏见 IP → 点开合简况 → 开开始菜单无烙印 → **TG**（再按需 **TS**）
 
 ---
@@ -53,7 +53,7 @@ cd ToyKernel && git status -sb && git log -6 --oneline
 
 | 文档 / 代码 | 用途 |
 | --- | --- |
-| [`驱动开发指南.md`](../../手册/驱动/驱动开发指南.md) §5.1 | 新人写网卡：仍是 ToyDriver；Bind → `NetAttachNic` |
+| [`驱动开发指南.md`](../../手册/驱动/驱动开发指南.md) §5.1 | 新人写网卡：仍是 Driver；Bind → `NetAttachNic` |
 | [`驱动开发范例-网卡L2.md`](../柱归档/驱动开发范例-网卡L2.md) | 本柱过程 / 决策 / 文件地图 |
 | [`路线图.md`](../../项目/路线图.md#pr-n-nic) | 七刀状态与验收命令 |
 | `Include/DriverNic.h` + `NetE1000.c` | L2 契约 + 活范例 |
@@ -67,10 +67,10 @@ cd ToyKernel && git status -sb && git log -6 --oneline
 ## 5. 验收备忘
 
 ```bash
-# TOY_NET 必须是环境变量（不要写成 ./run-split.sh TOY_NET=e1000e）
-cd ToyKernel && ./build.sh
-cd ../ToyImage && ./smoke-boot.sh
-TOY_NET=e1000e ./smoke-boot.sh
+# NET 必须是环境变量（不要写成 ./run-split.sh NET=e1000e）
+cd Kernel && ./build.sh
+cd ../Runtime && ./smoke-boot.sh
+NET=e1000e ./smoke-boot.sh
 
 # Guest（可选）
 show network / net config

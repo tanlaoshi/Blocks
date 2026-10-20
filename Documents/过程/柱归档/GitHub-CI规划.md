@@ -1,4 +1,4 @@
-# ToyOS GitHub Actions CI/CD
+# Blocks GitHub Actions CI/CD
 
 > **本文是本柱总纲 + 现状分析 + PR 切分。** 排期认 [`路线图.md`](../../项目/路线图.md#pr-ci)。  
 > **状态（2026-09-20）**：**PR-CI-1…3 ✅**（本柱收官）。  
@@ -11,24 +11,24 @@
 
 ### 1.1 根目录结构：不是单仓
 
-本机工作区是 **edk2 大树**，ToyOS 三仓只是其中子目录，但 **GitHub 上是三个独立仓库**：
+本机工作区是 **edk2 大树**，Blocks 三仓只是其中子目录，但 **GitHub 上是三个独立仓库**：
 
 | 仓 | 远程 | 默认分支 | 仓库根是什么 |
 | -- | ---- | -------- | ------------ |
-| **ToyKernel** | `github.com:tanlaoshi/ToyKernel.git` | **`main`** | 内核本身（`build.sh` 就在根） |
-| **ToyImage** | `github.com:tanlaoshi/ToyImage.git` | **`master`** | QEMU 镜像 / `Scripts/` |
-| **ToyBoot** | `github.com:tanlaoshi/ToyBoot.git` | **`main`** | UEFI `BOOTX64.EFI` |
+| **Kernel** | `github.com:tanlaoshi/Kernel.git` | **`main`** | 内核本身（`build.sh` 就在根） |
+| **Runtime** | `github.com:tanlaoshi/Runtime.git` | **`master`** | QEMU 镜像 / `Scripts/` |
+| **Boot** | `github.com:tanlaoshi/Boot.git` | **`main`** | UEFI `BOOTX64.EFI` |
 
-**任务书 YAML 里的 `cd ToyKernel` / `cd ToyImage` 只适用于本机 edk2 并列目录，不能原样贴进 GitHub。**  
-在 ToyKernel 仓里工作目录已经是内核根：应 `./build.sh`，产物 `Build/HAL/X64/Kernel.elf`。
+**任务书 YAML 里的 `cd Kernel` / `cd Runtime` 只适用于本机 edk2 并列目录，不能原样贴进 GitHub。**  
+在 Kernel 仓里工作目录已经是内核根：应 `./build.sh`，产物 `Build/HAL/X64/Kernel.elf`。
 
-edk2 根也有 `.github/`，那是 **tianocore/EDK2** 的 CI，**禁止**往那里加 ToyOS workflow。
+edk2 根也有 `.github/`，那是 **tianocore/EDK2** 的 CI，**禁止**往那里加 Blocks workflow。
 
 公开/私有：本机 `gh` 未返回 visibility；按远程是 GitHub 个人仓。**阶段 1 不依赖额度数字**；私有仓注意 2000 分钟/月。
 
-### 1.2 `ToyKernel/build.sh` 用法
+### 1.2 `Kernel/build.sh` 用法
 
-路径准确：**仓根** `./build.sh`（不是 `ToyKernel/build.sh`，那是本机相对 edk2 的说法）。
+路径准确：**仓根** `./build.sh`（不是 `Kernel/build.sh`，那是本机相对 edk2 的说法）。
 
 ```bash
 ./build.sh                 # 默认 ARCH=x86_64，LWIP=1
@@ -42,7 +42,7 @@ edk2 根也有 `.github/`，那是 **tianocore/EDK2** 的 CI，**禁止**往那�
 要点：
 
 - 每次会 `make clean`。
-- 有并列 `../ToyImage/RootFs/X64` 才拷 Kernel/演示 ELF；**纯 Kernel checkout 会 skip copy**（已为 CI 写过）。
+- 有并列 `../Runtime/RootFs/X64` 才拷 Kernel/演示 ELF；**纯 Kernel checkout 会 skip copy**（已为 CI 写过）。
 - **`ThirdParty/lwip/` 在 `.gitignore`**，未 clone 时默认 `LWIP=1` **编不过**。CI 必须二选一：workflow 里 `git clone` lwIP，或 `./build.sh LWIP=0`。不改 `build.sh`。
 
 产物路径：
@@ -55,18 +55,18 @@ edk2 根也有 `.github/`，那是 **tianocore/EDK2** 的 CI，**禁止**往那�
 
 ### 1.3 冒烟脚本路径
 
-**不是** `ToyImage/smoke-boot.sh`。  
-正确：**`ToyImage/Scripts/smoke-boot.sh`**（仓根为 ToyImage 时即 `./Scripts/smoke-boot.sh`）。
+**不是** `Runtime/smoke-boot.sh`。  
+正确：**`Runtime/Scripts/smoke-boot.sh`**（仓根为 Runtime 时即 `./Scripts/smoke-boot.sh`）。
 
-依赖：已编好的 `RootFs/X64/Kernel.elf`、`Scripts/run-split.sh`、QEMU `qemu-system-x86`、OVMF、ESP 上的 `BOOTX64.EFI`（通常已在 Image 的 `Esp/X64`）。等串口 `ToyOS ready` / `ToyOS 就绪`；默认超时 90s，可用 `SMOKE_TIMEOUT`。
+依赖：已编好的 `RootFs/X64/Kernel.elf`、`Scripts/run-split.sh`、QEMU `qemu-system-x86`、OVMF、ESP 上的 `BOOTX64.EFI`（通常已在 Image 的 `Esp/X64`）。等串口 `Blocks ready` / `Blocks 就绪`；默认超时 90s，可用 `SMOKE_TIMEOUT`。
 
 ### 1.4 已有 `.github`（不要当空白）
 
 | 路径 | 现状 |
 | ---- | ---- |
-| `ToyKernel/.github/workflows/build.yml` | **已有（PR-Q1）**：`main` push/PR；`ubuntu-latest`；`./build.sh x86_64`；检查 ELF；**无**交叉编译、artifact、timeout |
-| `ToyImage/.github/workflows/smoke.yml` | **已有**：checkout Image + `tanlaoshi/ToyKernel`；编内核；`TOY_SMP=1 SMOKE_TIMEOUT=120 ./Scripts/smoke-boot.sh`；**仅** Image 脚本路径变更才跑，**不是每次 Kernel PR** |
-| `ToyBoot/` | 无 `.github` |
+| `Kernel/.github/workflows/build.yml` | **已有（PR-Q1）**：`main` push/PR；`ubuntu-latest`；`./build.sh x86_64`；检查 ELF；**无**交叉编译、artifact、timeout |
+| `Runtime/.github/workflows/smoke.yml` | **已有**：checkout Image + `tanlaoshi/Kernel`；编内核；`SMP=1 SMOKE_TIMEOUT=120 ./Scripts/smoke-boot.sh`；**仅** Image 脚本路径变更才跑，**不是每次 Kernel PR** |
+| `Boot/` | 无 `.github` |
 | `.gitee/` | **三仓皆无**（不要 Gitee Actions） |
 
 路线图已归档：[`【归档】PR-Q1`](../../项目/路线图.md) 记过这两份 workflow。本柱是 **增强**，不是从零发明。
@@ -75,10 +75,10 @@ edk2 根也有 `.github/`，那是 **tianocore/EDK2** 的 CI，**禁止**往那�
 
 | 样例 | 问题 | 落地时 |
 | ---- | ---- | ------ |
-| `cd ToyKernel && ./build.sh` | Kernel 仓根没有子目录 ToyKernel | `./build.sh` |
-| `cd ToyImage && ./smoke-boot.sh` | 脚本在 `Scripts/` | Image 仓：`./Scripts/smoke-boot.sh` |
-| 单仓三架构 + smoke | smoke 依赖 Image/Boot 资产 | smoke **留在 ToyImage workflow**；Kernel 仓只编 |
-| lint >800 行 | 现门槛是 **300**；且 `Core/` 已不在 `Common/` | 阶段 2 可选 warn-only；find 含 `ToyKernel/Core` 在 **Kernel 仓则 `Core/`** |
+| `cd Kernel && ./build.sh` | Kernel 仓根没有子目录 Kernel | `./build.sh` |
+| `cd Runtime && ./smoke-boot.sh` | 脚本在 `Scripts/` | Image 仓：`./Scripts/smoke-boot.sh` |
+| 单仓三架构 + smoke | smoke 依赖 Image/Boot 资产 | smoke **留在 Runtime workflow**；Kernel 仓只编 |
+| lint >800 行 | 现门槛是 **300**；且 `Core/` 已不在 `Common/` | 阶段 2 可选 warn-only；find 含 `Kernel/Core` 在 **Kernel 仓则 `Core/`** |
 | `ubuntu-latest`（现有） | 任务书指定 24.04 | 阶段 1 起改 `ubuntu-24.04` |
 | 无 `timeout-minutes` | 额度保护 | 每 job **20**（上限 30） |
 | 默认 `LWIP=1` | CI 无 lwIP 源 | clone 或 `LWIP=0`（见下） |
@@ -103,7 +103,7 @@ git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
 | 3 | 每阶段独立可验证；**不要一次做完三阶段** |
 | 4 | GitHub Actions；不用 Gitee；不部署服务器 |
 | 5 | job `timeout-minutes` ≤ 30 |
-| 6 | 不往 **edk2** 上游 `.github` 塞 ToyOS CI |
+| 6 | 不往 **edk2** 上游 `.github` 塞 Blocks CI |
 
 ---
 
@@ -111,15 +111,15 @@ git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
 
 | 序 | PR | 仓 | 交付 | 验收 |
 | -- | -- | -- | ---- | ---- |
-| **1** | **PR-CI-1** | **ToyKernel** | 增强现有 `build.yml`：x86_64 编通 + 上传 artifact | ✅ TG `a48b4b9` |
+| **1** | **PR-CI-1** | **Kernel** | 增强现有 `build.yml`：x86_64 编通 + 上传 artifact | ✅ TG `a48b4b9` |
 | **2** | **PR-CI-2** | Kernel + Image | Kernel：三 job + smoke；Image：`smoke.yml` lwIP/24.04 | ✅ |
-| **3** | **PR-CI-3** | **ToyKernel** | `release.yml`：tag `v*` → 三架构包 + GitHub Release | ✅ |
+| **3** | **PR-CI-3** | **Kernel** | `release.yml`：tag `v*` → 三架构包 + GitHub Release | ✅ |
 
-ToyBoot 编 EFI **不进这三刀**（可选后置）。
+Boot 编 EFI **不进这三刀**（可选后置）。
 
 ### 第 1 刀（阶段 1）细则 — 最小 CI
 
-改 **`ToyKernel/.github/workflows/build.yml`**（已存在，勿另起一套抢触发）：
+改 **`Kernel/.github/workflows/build.yml`**（已存在，勿另起一套抢触发）：
 
 - `runs-on: ubuntu-24.04`
 - `timeout-minutes: 20`
@@ -142,7 +142,7 @@ ToyBoot 编 EFI **不进这三刀**（可选后置）。
 **Image `smoke.yml`**：
 
 - 扩触发：不要只盯 Image 脚本路径；至少 `workflow_dispatch` + **定时或 `repository_dispatch`**，或 Kernel workflow `workflow_call` / 用 `actions/checkout` 拉 Image。
-- 推荐：Kernel CI 在 x86 编完后 **checkout `tanlaoshi/ToyImage`** 到 `../ToyImage`（或 `ToyImage/` 并列），拷 ELF 进 `RootFs/X64`，再 `./Scripts/smoke-boot.sh`。这样 **Kernel PR 也能冒烟**，且不改脚本。
+- 推荐：Kernel CI 在 x86 编完后 **checkout `tanlaoshi/Runtime`** 到 `../Runtime`（或 `Runtime/` 并列），拷 ELF 进 `RootFs/X64`，再 `./Scripts/smoke-boot.sh`。这样 **Kernel PR 也能冒烟**，且不改脚本。
 - 依赖：`qemu-system-x86`、`ovmf`；`SMOKE_TIMEOUT=120`；外层再设 job timeout 20。
 - **不要** `timeout 120 ./smoke-boot.sh` 包一层还指错路径。
 
@@ -150,16 +150,16 @@ lint：可选、warn-only；行数阈值与仓库 **300** 对齐或标明「历�
 
 ### 第 3 刀（阶段 3）细则 — tag 发 Release
 
-新 **`ToyKernel/.github/workflows/release.yml`**：
+新 **`Kernel/.github/workflows/release.yml`**：
 
 - `on.push.tags: ['v*']`
 - `permissions.contents: write`
 - 同一 runner 依次 `./build.sh` / `arm64` / `riscv`（先 clone lwIP）
-- 打包仓内：`Kernel-*.elf` + `README.md` + `Documents/`（**不要**假设 `ToyKernel/` 前缀）
+- 打包仓内：`Kernel-*.elf` + `README.md` + `Documents/`（**不要**假设 `Kernel/` 前缀）
 - `softprops/action-gh-release` + `GITHUB_TOKEN`
 - job timeout 25
 
-不把 ToyImage 整盘打进 Release（体积/密钥无关；Image 是另一仓）。
+不把 Runtime 整盘打进 Release（体积/密钥无关；Image 是另一仓）。
 
 ---
 
@@ -176,12 +176,12 @@ lint：可选、warn-only；行数阈值与仓库 **300** 对齐或标明「历�
 
 ## 五、测试口令（阶段 1 后）
 
-1. 把 `PR-CI-1` 推进 `tanlaoshi/ToyKernel` 的 `main` 或开 PR。  
+1. 把 `PR-CI-1` 推进 `tanlaoshi/Kernel` 的 `main` 或开 PR。  
 2. GitHub → Actions → **build** 绿。  
 3. 下载 artifact `Kernel-x86_64`。  
 
 阶段 2：Actions 见三个 Build + Smoke。  
-阶段 3：`git tag v0.x.0 && git push origin v0.x.0`（**ToyKernel**）。
+阶段 3：`git tag v0.x.0 && git push origin v0.x.0`（**Kernel**）。
 
 ### 每刀报告模板
 
@@ -197,7 +197,7 @@ lint：可选、warn-only；行数阈值与仓库 **300** 对齐或标明「历�
 
 ## 六、结论摘要
 
-1. **结构**：三仓；workflow 写在 **ToyKernel / ToyImage** 仓根 `.github/workflows/`。  
+1. **结构**：三仓；workflow 写在 **Kernel / Runtime** 仓根 `.github/workflows/`。  
 2. **build.sh**：仓根 `./build.sh`；注意 **lwIP 不在 git**。  
 3. **smoke**：`Scripts/smoke-boot.sh`，依赖 Image + Kernel ELF + QEMU/OVMF。  
 4. **已有** PR-Q1 `build.yml` + `smoke.yml`，阶段 1 是增强不是空白。  

@@ -7,8 +7,8 @@
  *
  *   1. Serial       串口（Serial.c）
  *   2. FillRsdp / FillXhci / DiskGuid  可选交接（找不到填 0）
- *   3. Video        GetVideoInfo / SetVideoMode（辅助：VideoScore / Edid / Theme）
- *   4. LoadKernel   读盘装入 Kernel.elf
+ *   3. Video/       GetVideoInfo / SetVideoMode（Score/Edid/Theme）
+ *   4. LoadKernel/  读盘装入 Kernel.elf（Read/Elf）
  *   5. JumpToKernel ExitBootServices + 跳内核
  */
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {

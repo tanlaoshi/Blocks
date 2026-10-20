@@ -1,5 +1,5 @@
 /*
- * VideoScore.c — Video 辅助：模式打分
+ * Score.c — 模式打分
  */
 #include <Library/BaseLib.h>
 

@@ -23,7 +23,7 @@
 typedef UEFI_VIDEO_CONFIG VIDEO_CONFIG;
 typedef UEFI_MEMORY_MAP   MEMORY_MAP;
 
-/* Video：GetVideoInfo / SetVideoMode；辅助 VideoScore / Edid / Theme */
+/* Video/：GetVideoInfo / SetVideoMode；辅助 Score / Edid / Theme */
 BOOLEAN IsVirtualMachine(VOID);
 BOOLEAN IsModeUsable(const EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info);
 EFI_STATUS TryGetEdidPreferred(EFI_HANDLE ImageHandle, EFI_HANDLE GopHandle,
@@ -48,7 +48,7 @@ BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);
 VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 
-/* LoadKernel：Read / Elf / 编排 */
+/* LoadKernel/：Read / Elf / 编排 */
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
 BOOLEAN BootScanOsMarkerVolumes(VOID);

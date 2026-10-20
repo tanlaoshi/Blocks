@@ -1,5 +1,5 @@
 /*
- * VideoTheme.c — 显示偏好：从 BLOCKS.DB 读 mode=WxH（分辨率唯一真相）
+ * Theme.c — 显示偏好：从 BLOCKS.DB 读 mode=WxH（分辨率唯一真相）
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>

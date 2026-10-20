@@ -1,7 +1,7 @@
 /*
  * LoadKernel.c — 编排：读盘 → 校验 → 装入
  *
- * 读盘见 LoadKernelRead.c；ELF 见 LoadKernelElf.c。
+ * 读盘见 Read.c；ELF 见 Elf.c。
  */
 #include "BootPrivate.h"
 

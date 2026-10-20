@@ -8,15 +8,15 @@
 [Sources]
   Boot.c
   Serial.c
-  Video.c
   BootLogo.c
-  VideoScore.c
-  VideoEdid.c
-  VideoTheme.c
   Volume.c
-  LoadKernel.c
-  LoadKernelRead.c
-  LoadKernelElf.c
+  Video/Video.c
+  Video/Score.c
+  Video/Edid.c
+  Video/Theme.c
+  LoadKernel/LoadKernel.c
+  LoadKernel/Read.c
+  LoadKernel/Elf.c
   FillRsdp.c
   FillXhci.c
   JumpToKernel.c

@@ -43,8 +43,8 @@ cd ~/Blocks/Boot && ./build.sh
 | ---- | -------------- |
 | `BootPkg/Boot.c` | 节目单：只按顺序调下面六步 |
 | `Serial.c` / `.h` | ① 串口 COM1 |
-| `Video.c`（+ Score/Edid/Theme） | ② GOP 选模 / 设分辨率 |
-| `LoadKernel.c` | ③ 读盘装入 `Kernel.elf` |
+| `Video/`（`Video.c` + Score/Edid/Theme） | ② GOP 选模 / 设分辨率 |
+| `LoadKernel/`（`LoadKernel.c` + Read/Elf） | ③ 读盘装入 `Kernel.elf` |
 | `FillRsdp.c` | ④ ACPI RSDP |
 | `FillXhci.c` | ⑤ PCI 上找 xHCI |
 | `JumpToKernel.c` | ⑥ ExitBootServices + 跳内核 |

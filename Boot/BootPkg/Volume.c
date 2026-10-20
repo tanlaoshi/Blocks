@@ -1,7 +1,7 @@
 /*
  * Volume.c — 卷标记与启动盘 GUID（BLOCKS.ID / GPT DiskGUID）
  *
- * 供 VideoTheme 选 THEME.CFG、LoadKernel 找系统盘共用。
+ * 供 Video/Theme 读 BLOCKS.DB、LoadKernel/ 找系统盘共用。
  */
 #include <Library/BaseMemoryLib.h>
 #include <Library/DevicePathLib.h>

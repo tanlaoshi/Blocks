@@ -1,5 +1,5 @@
 /*
- * LoadKernelRead.c — 按卷找 Kernel.elf 并读入内存
+ * Read.c — 按卷找 Kernel.elf 并读入内存
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>

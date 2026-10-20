@@ -1,5 +1,5 @@
 /*
- * VideoEdid.c — Video 辅助：EDID 首选分辨率
+ * Edid.c — EDID 首选分辨率
  */
 #include <Protocol/EdidActive.h>
 #include <Library/UefiBootServicesTableLib.h>

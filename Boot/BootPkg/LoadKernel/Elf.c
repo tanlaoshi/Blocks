@@ -1,5 +1,5 @@
 /*
- * LoadKernelElf.c — 校验 ELF 并按固定物理地址装入
+ * Elf.c — 校验 ELF 并按固定物理地址装入
  */
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>

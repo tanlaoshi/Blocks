@@ -58,10 +58,10 @@ int HalUsbMscMount(void);
 int HalUsbMscAutoEnabled(void);
 void HalUsbMscAutoSet(int On);
 int HalUsbMscAutoBeforeFs(void);
-/* PR-H-msc-hot */
+/* PR-H-msc-hot / story-s3：Worker ~2Hz HotPoll=拔出|热插(auto)；Shell 仍可用 Hot */
 int HalUsbMscRelease(void);
-int HalUsbMscHotPoll(void);
-int HalUsbMscHot(void);
+int HalUsbMscHotPoll(void); /* 1=需 Remount（拔 Release 或插 Mount） */
+int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc hot */
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */
 int HalUsbUartClaim(void);
 int HalUsbUartReady(void);

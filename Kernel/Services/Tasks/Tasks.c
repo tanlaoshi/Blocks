@@ -3,7 +3,7 @@
  *
  * SchedulerStart 后（Shell 见 Shell.c）：
  *   GuiTask    — 唯一 GuiPollMouse（Pointer.c）→ YieldForPollInput
- *   WorkerTask — DesktopWorkerTick → 扫盘/Store/iwl/DHCP → ready（序见 WorkerTask 头）
+ *   WorkerTask — DesktopWorkerTick（含 MSC 热插拔 story-s3）→ 扫盘/Store/iwl/DHCP → ready
  *   InputTask  — Count≥HAL_INPUT_CPU_MIN 才 Create，钉 CPU2（Hal.h）
  * Shell 不泵鼠标（runtime-a-poll）。钉核大表 sched-pin-doc；四环 runtime-4。
  *
@@ -90,15 +90,15 @@ void GuiTask(void) {
 
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
- *   0 DesktopWorkerTick     — MSC/钟采样（圈首；下表 continue 不饿死）
+ *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
  *   1 DesktopEnsureIconsLoaded
  *   2 DesktopEnsureMenuRebuilt
- *   3 StoreUiEnsureOpenLoad
+ *   3 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
  *   4 LocaleDbFlushStep
  *   5 LocaleTtfPreheatStep  — 可 breath；不 continue
  *   6 FontTtfWantDrain      — 同上
  *   7 HalIwlClaim（一次）
- *   8 StoreJobStep          — busy → continue（挡网/ready）
+ *   8 StoreJobStep          — story-s4；busy → continue（挡网/ready）
  *   9 HalIwlBgPump          — busy → continue
  *  10 DHCP restart / Step   — busy → continue
  *  11 真机 iwl 静默窗       — 未静默 → continue

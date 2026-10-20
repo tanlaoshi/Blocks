@@ -1,6 +1,8 @@
 /*
- * Net.c — 仓库地址与 sync（目录）/ fetch（兼容→install）
- * HTTP：Http.c；解析与哈希：Parse.c。
+ * Net.c — 仓库地址与 sync/fetch（story-s4）
+ *
+ * StoreSyncCatalog / StoreFetch*：Job JP_PKG 调用；HTTP→Http.c / HttpLwIp.c。
+ * 解析与哈希：Parse.c。Repo IP/Port 来自 STORE_REPO / repo.txt。
  */
 #include "StoreNetPrivate.h"
 
@@ -130,6 +132,6 @@ int StoreSyncCatalog(void) {
 }
 
 int StoreFetchId(const char *Id) {
-    /* 兼容旧子命令：等价于 install（HTTP 直达 Apps，无 Cache） */
+    /* 兼容旧子命令：现≡StoreInstall（直装目标）；FinishStatus 仍写 fetched → s4-2 */
     return StoreInstall(Id);
 }

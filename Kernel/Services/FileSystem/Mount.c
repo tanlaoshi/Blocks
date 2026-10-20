@@ -1,10 +1,12 @@
 /*
- * Mount.c — 扫描并挂上各卷（编排；PR-F-fs-1）
- * 单卷：MountVolume.c；默认卷：MountPick.c
+ * Mount.c — 扫描并挂上各卷（story-s3 / PR-F-fs-1）
  *
- * MountAllVolumes：按 Drive 0..N → GptFindAllFat → FsMountOneFatPart
- * （多 BLOCKS.ID → NameBlocksIdVol / BootDiskGuid）→ RES → FsMountPickDefault。
- * Remount：只 BlockInitialize 重 Probe，勿 HalBlockInitialize（会冲掉 Mux）。
+ * 稳态 S3 挂载编排：
+ *   MountAllVolumes — Drive 扫 → GPT FAT → MountVolume → RES → 默认卷
+ *   FileSystemRemountVolumes — 热拔后：BlockInitialize 重 Probe + MountAll
+ *     勿 HalBlockInitialize（冲 BlockMux / MSC 盘号）
+ * 开机两轮 / Policy：FileSystem.c。热拔触发：DesktopWorkerTick（Clock.c）。
+ * 单卷实现：MountVolume.c；默认卷：MountPick.c。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

@@ -1,16 +1,11 @@
 /*
- * Store.c — PR-S1：离线 catalog 安装；PR-S3：font/asset → Assets/
- *           PR-S4：ToyDB 已装清单 + store remove
- *           PR-M1：depends=（catalog 第 8 段 / PKG.TXT）；缺依赖拒绝安装
- *           PR-M2：store combo / uncombo — 按依赖顺序装卸多包「功能」
+ * Catalog.c — 商店 catalog 门面（story-s4 / PR-S* / PR-M*）
  *
- * 载荷查找：Store/packages/<id>/<file> → Store/<file> → 卷根 <file>；
- * 本地皆无则 HTTP 直装目标（Apps/Fonts/Packs），不落网络 ELF 缓存。
- * 卸装删的是 Apps/（或 Fonts/Packs）已装副本，不是 Store/ 本地源。
- * sha256=- 时跳过校验（教学默认）。
- * 清单键：si.<id>=type|file ；依赖 sd.<id>=逗号 id 或 -
- * catalog 在 Load.c。安装在 Install.c。组合包在 Combo.c。卸装在 Remove.c。查询在 Query.c / Managed.c。
- * 依赖帮手：StoreDepends.c；清单键：StoreDb.c。
+ * 离线 catalog；font/asset→Assets/；Db 已装清单 + remove；
+ * depends=（catalog / PKG.TXT）；combo/uncombo 按依赖序。
+ * 载荷：Store/packages/<id>/ → Store/ → 卷根；皆无则 HTTP 直装目标。
+ * 卸装删 Apps|Fonts|Packs 副本。sha256=- 跳校验。
+ * Load/Install/Combo/Remove/Query/Managed/Depends/Database 分文件。
  */
 #include "Store.h"
 #include "StorePrivate.h"

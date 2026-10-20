@@ -1,7 +1,7 @@
 /*
- * StoreJob.c — Store UI 作业入队 / 忙态 / 取消（PR-S3-storejob-1）
+ * StoreJob.c — 入队 / 忙态 / 取消（story-s4 / PR-S3-storejob-1）
  *
- * 步进状态机见 StoreJobStep.c。
+ * Enqueue 填 pending；步进状态机 StoreJobStep.c；Shell 互斥 StoreJobShell.c。
  */
 #include "StoreUiPrivate.h"
 #include "StoreJob.h"

@@ -1,12 +1,13 @@
 /*
- * Clock.c — 任务栏钟 / MSC 热拔（runtime-c-tick）
+ * Clock.c — 任务栏钟 / MSC 热插拔（story-s3 / runtime-c-tick）
  *
- * 拆两路（改 Worker；Present 仍 Gui）：
- *   DesktopWorkerTick — Worker 圈首：~2Hz MSC 热拔 + 钟/网托采样→置栏脏
- *   DesktopTickClock  — GuiPollMouse 末：图标/TTF 补画 + 栏 Present
+ * 稳态 S3 入口（Worker，非 Gui）：
+ *   DesktopWorkerTick ~2Hz → HalUsbMscHotPoll==1 → FileSystemRemountVolumes
+ *   HotPoll：拔出 Release；热插（gMscAuto）Scan→Claim/Mount（空闲 ~5s）
+ * 钟/网托采样→栏脏；Present 仍 DesktopTickClock（GuiPollMouse 末）。
  *
- * 勿在 Worker 上 RequestRefresh/全量 Compose（4K 易打穿栈，见 Icons.c）。
- * 热拔走 Worker：与鼠标帧解耦；拖窗时 Gui 早退也不漏拍 MSC。
+ * 上游：Tasks.c WorkerTask 圈首。开机挂卷：FileSystemInitialize（非本文件）。
+ * 勿在 Worker 上 RequestRefresh/全量 Compose（4K 栈）。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
@@ -32,10 +33,10 @@ void DesktopWorkerTick(void) {
     }
     LastCheckTick = Now;
 
-    /* PR-H-msc-hot：~2Hz 拔出探测（仅 CCS/hub；不 Address） */
+    /* story-s3：~2Hz HotPoll（拔出 / 热插 auto）；1→Remount */
     if (HalUsbMscHotPoll() == 1) {
         (void)FileSystemRemountVolumes();
-        DebugWrite("desktop: msc hot remount after unplug\n");
+        DebugWrite("desktop: msc hot remount\n");
     }
 
     NeedPaint = 0;

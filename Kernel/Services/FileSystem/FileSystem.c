@@ -1,16 +1,16 @@
 /*
- * FileSystem.c — 卷激活、路径解析和开机挂卷（PR-S-filesystem-1）
+ * FileSystem.c — 卷激活、路径解析和开机挂卷（story-s3 / PR-S-filesystem-1）
  *
- * 路径操作：Operations.c；挂卷：Mount.c / MountVolume.c / MountPick.c。
+ * 稳态 S3：开机挂卷在此；热拔 Remount 在 Mount.c（Worker→HotPoll 触发）。
+ * 路径操作：Operations.c；挂卷编排：Mount.c / MountVolume.c / MountPick.c。
  *
- * 开机两轮挂卷（判定序见路线图 fs-msc-order；语义勿改）：
+ * 开机两轮（判定序 fs-msc-order；语义勿改）：
  *   1. HalBlockInitialize → MountAllVolumes（内置盘 / 已见 Block）
- *   2. 盘上 MSC.OFF/msc=0：有 BLOCKS 才关 auto；无则 Keep
- *   3. 无 BLOCKS 且 auto 关 → Force
- *   4. 已有 BLOCKS → Skip 本轮 USB 扫（gMscAuto 留给热插拔）
- *   5. 仍 auto：HalUsbMscAutoBeforeFs → 再挂；无 BLOCKS 最多再 claim 一轮
+ *   2. MscAutoApplyPolicy：盘上 MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
+ *   3–4. MscAutoResolveClaim：Force / Skip（Skip 不关热插拔 gMscAuto）
+ *   5. 仍 claim：HalUsbMscAutoBeforeFs → 再挂；无 BLOCKS 最多再一轮
  *
- * 多份 BLOCKS.ID：默认名 BLOCKS 跟 BootDiskGuid（加载 EFI 的盘）；另一份 USB:。
+ * 多份 BLOCKS.ID：默认 BLOCKS 跟 BootDiskGuid；另一份可名 USB:。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
  */
 #include "FileSystemPrivate.h"

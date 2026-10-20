@@ -1,6 +1,7 @@
 /*
- * MountVolume.c — 单 FAT 分区挂载 + RES（PR-F-fs-1）
- * 核心：Mount.c
+ * MountVolume.c — 单 FAT 分区挂载 + RES（story-s3 / PR-F-fs-1）
+ *
+ * MountAllVolumes 每分区落到这里；编排在 Mount.c。BLOCKS.ID / BootDiskGuid 命名。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"

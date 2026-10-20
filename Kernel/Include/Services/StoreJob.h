@@ -1,9 +1,10 @@
 /*
- * StoreJob.h — Store 后台作业（窗/Shell 同队；Worker 泵）
+ * StoreJob.h — Store 后台作业（story-s4；窗/Shell 同队；Worker 泵）
  *
- * INTERFACE：Enqueue 入队即返回；WorkerTask 调 StoreJobStep。
- * Shell：StoreJobShellRun 只 Enqueue（rm-exc-11）；完成用 store job。
- * 窗：Enqueue 后回 Gui 循环。Cancel 在相位/chunk 边界生效。
+ * 窗/Shell：StoreJobEnqueue 即返；WorkerTask #8 StoreJobStep 推进。
+ * 相位：PLAN→PKG→FONT→RELOAD→FINISH（见 StoreJobStep.c）。
+ * Shell：StoreJobShellRun 只 Enqueue；完成看 store job / 窗状态行。
+ * Cancel 在相位/chunk 边界生效。勿在 Gui→StoreUiPump 里 Step。
  */
 #ifndef STORE_JOB_H
 #define STORE_JOB_H

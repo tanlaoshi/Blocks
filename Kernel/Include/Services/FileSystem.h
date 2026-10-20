@@ -1,8 +1,9 @@
 /*
- * FileSystem.h — 文件系统模块（PR-FS2 多卷 / 路径前缀）
+ * FileSystem.h — 文件系统模块（story-s3 / PR-FS2 多卷）
  *
- * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`、`B:/x`；无前缀用默认卷（优先带 BLOCKS.ID 的卷）。
- * Shell/exec/open/Theme 请走 FileSystem*；底层 Fat* 仍相对「当前已激活卷」。
+ * 开机挂卷 FileSystemInitialize；热插拔 RemountVolumes（Worker→HotPoll）。
+ * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`；无前缀用默认卷（优先 BLOCKS.ID）。
+ * Shell/exec 走 FileSystem*；链图见 FileSystem.c / Mount.c / Clock.c 头。
  */
 #ifndef FILE_SYSTEM_H
 #define FILE_SYSTEM_H

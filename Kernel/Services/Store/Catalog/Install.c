@@ -1,6 +1,7 @@
 /*
- * StoreInstall.c — 单包安装与登记
- * 拷贝切片：StoreInstallCopy.c。组合包：StoreCombo.c。
+ * Install.c — 单包安装与登记（story-s4）
+ *
+ * StoreInstallPump：Job JP_PKG 每圈切片；拷贝 StoreInstallCopy.c；组合 Combo.c。
  */
 #include "Store.h"
 #include "StorePrivate.h"

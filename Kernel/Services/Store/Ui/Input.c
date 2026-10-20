@@ -1,6 +1,8 @@
 /*
- * StoreUiInput.c — 点击、悬停、装卸队列
- * 核心：Ui.c
+ * Input.c — 点击、悬停、装卸队列（story-s4）
+ *
+ * Install/Remove/Sync → StoreJobEnqueue；Repo → 编辑 STORE_REPO_PATH。
+ * StoreUiPump 空（Job 在 Worker）。核心全局：Ui.c。
  */
 #include "StoreUiPrivate.h"
 

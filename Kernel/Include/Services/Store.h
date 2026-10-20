@@ -1,5 +1,8 @@
 /*
- * Store.h — 本地商店（PR-S1～S5）+ 依赖（PR-M1）+ 组合装卸（PR-M2）
+ * Store.h — 本地商店 API（story-s4 / PR-S* / PR-M*）
+ *
+ * Catalog：Load/Install/Remove/Combo/Query；Net：SyncCatalog/Fetch*。
+ * UI Job 经 StoreJob*；长 IO 切片 StoreInstallPump + IoBreath。
  */
 #ifndef STORE_H
 #define STORE_H

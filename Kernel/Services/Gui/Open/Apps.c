@@ -1,9 +1,9 @@
 /*
- * Apps.c — Shell / Settings / Store / Files / Edit 开窗（story-s1）
+ * Apps.c — Shell / Settings / Store / Files / Edit 开窗（story-s1 / story-s4）
  *
  * 链：ClickDesktop Action → 这里 GuiOpen* → OpenChromeDefer →（填内容）→ OpenFadeIn。
- * Defer/Fade 契约：Open.c；关窗：Close.c（USER 轻量 gui-g3）。
- * 单例前置：FocusExistingKind（Settings/Store/Edit）；Shell/Files 每次新槽。
+ * Store：StoreUiOpen defer → Worker StoreUiEnsureOpenLoad；Job 见 StoreJob*。
+ * Defer/Fade：Open.c；关窗：Close.c。单例：Settings/Store/Edit。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

@@ -1,7 +1,12 @@
 /*
- * StoreJobStep.c — Store 作业步进状态机（PR-S3-storejob-1）
+ * StoreJobStep.c — 作业步进状态机（story-s4；Worker #8）
  *
- * 从 StoreJob.c 原样搬家；不改语义。作业态见 StoreJob.c。
+ * PLAN→PKG→FONT→RELOAD→FINISH（SYNC/FETCH 跳 ComboPlan）。
+ * SYNC：一圈 StoreSyncCatalog（HTTP 内 Breath）；→RELOAD。
+ * FETCH：StoreFetchId≡StoreInstall（文案仍 “fetched”；见 story-s4-2）。
+ * INSTALL：本地 Copy 4K 切片；HTTP 直装整段在一圈 Pump。
+ * Cancel：相位/Copy 返回 1 边界；整段 Sync/Http 中途不撤。
+ * RELOAD：Worker 内 GuiPollMouseMotion 保光标。窗/Shell 只 Enqueue。
  */
 #include "StoreUiPrivate.h"
 #include "StoreJob.h"

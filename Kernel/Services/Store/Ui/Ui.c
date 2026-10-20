@@ -1,6 +1,8 @@
 /*
- * Ui.c — 商店三分栏核心（全局、开窗）
- * 过滤：Model.c；绘制：Paint.c；输入：Input.c。
+ * Ui.c — 商店三分栏核心（story-s4；全局、开窗）
+ *
+ * StoreUiOpen：置 defer；StoreUiEnsureOpenLoad（Worker #3）扫 catalog。
+ * 过滤 Model.c；绘制 Paint.c；钮/Enqueue Input.c。
  */
 #include "StoreUiPrivate.h"
 

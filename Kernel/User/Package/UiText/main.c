@@ -14,18 +14,18 @@ int main(void) {
     int Wid;
     int Ev;
 
-    Wid = ToyUiLoadWindow(MYAPP_WIN_TITLE, MYAPP_WIN_W, MYAPP_WIN_H,
+    Wid = UiLoadWindow(MYAPP_WIN_TITLE, MYAPP_WIN_W, MYAPP_WIN_H,
                           gMyAppWidgets, MYAPP_WIDGET_COUNT);
     if (Wid < 0) {
         printf("create window failed\n");
         return 1;
     }
     for (;;) {
-        Ev = ToyUiPoll(Wid);
-        if (Ev == TOY_UI_EVENT_CLOSE) {
+        Ev = UiPoll(Wid);
+        if (Ev == UI_EVENT_CLOSE) {
             break;
         }
-        if (Ev == TOY_UI_EVENT_NONE) {
+        if (Ev == UI_EVENT_NONE) {
             toy_yield();
             continue;
         }

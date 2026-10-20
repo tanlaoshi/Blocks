@@ -16,12 +16,12 @@
 /* §5 动作桩：设计器生成空实现，学生只需填 TODO 处的业务逻辑 */
 static void OnAboutInfo(int Wid) {
     /* TODO: 真实业务（如弹说明、切子页） */
-    ToyUiSetLabel(Wid, "About: info 1200");
+    UiSetLabel(Wid, "About: info 1200");
 }
 
 static void OnAboutHelp(int Wid) {
     /* TODO: 真实业务 */
-    ToyUiSetLabel(Wid, "About: help 1201");
+    UiSetLabel(Wid, "About: help 1201");
 }
 
 /* §2.3 分发表：逻辑 ID → 处理函数指针。
@@ -37,16 +37,16 @@ static const ID_HANDLER gAboutMap[] = {
 };
 
 void AboutCreate(int Wid) {
-    ToyUiSetLabel(Wid, "About 1200  nav=9002");
-    ToyUiAddButton(Wid, 0, "Info");
-    ToyUiAddButton(Wid, 1, "Help");
-    ToyUiAddButton(Wid, 2, "->Home");
-    ToyUiAddButton(Wid, 3, "->Set");
+    UiSetLabel(Wid, "About 1200  nav=9002");
+    UiAddButton(Wid, 0, "Info");
+    UiAddButton(Wid, 1, "Help");
+    UiAddButton(Wid, 2, "->Home");
+    UiAddButton(Wid, 3, "->Set");
 }
 
 void AboutDestroy(int Wid) {
     /* 切页前清标签；按钮槽由下页 Create 覆盖 */
-    ToyUiSetLabel(Wid, "");
+    UiSetLabel(Wid, "");
 }
 
 void AboutDispatch(int Wid, int Id) {

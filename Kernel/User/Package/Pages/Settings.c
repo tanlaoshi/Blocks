@@ -6,18 +6,18 @@
 #include "Settings.h"
 
 void SettingsCreate(int Wid) {
-    ToyUiSetLabel(Wid, "Settings 1100  nav=9001");
-    ToyUiAddButton(Wid, 0, "OK");
-    ToyUiAddButton(Wid, 1, "->Home");
-    ToyUiAddButton(Wid, 2, "->About");
+    UiSetLabel(Wid, "Settings 1100  nav=9001");
+    UiAddButton(Wid, 0, "OK");
+    UiAddButton(Wid, 1, "->Home");
+    UiAddButton(Wid, 2, "->About");
 }
 
 void SettingsDestroy(int Wid) {
-    ToyUiSetLabel(Wid, "");
+    UiSetLabel(Wid, "");
 }
 
 void SettingsDispatch(int Wid, int Id) {
     if (Id == ID_SET_OK) {
-        ToyUiSetLabel(Wid, "Settings OK 1100");
+        UiSetLabel(Wid, "Settings OK 1100");
     }
 }

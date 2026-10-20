@@ -6,19 +6,19 @@
 #include "Home.h"
 
 void HomeCreate(int Wid) {
-    ToyUiSetLabel(Wid, "Home 1000  nav=9000");
-    ToyUiAddButton(Wid, 0, "Ping");
-    ToyUiAddButton(Wid, 1, "->Set");
-    ToyUiAddButton(Wid, 2, "->About");
+    UiSetLabel(Wid, "Home 1000  nav=9000");
+    UiAddButton(Wid, 0, "Ping");
+    UiAddButton(Wid, 1, "->Set");
+    UiAddButton(Wid, 2, "->About");
 }
 
 void HomeDestroy(int Wid) {
     /* 切页前清标签；按钮槽由下页 Create 覆盖 */
-    ToyUiSetLabel(Wid, "");
+    UiSetLabel(Wid, "");
 }
 
 void HomeDispatch(int Wid, int Id) {
     if (Id == ID_HOME_PING) {
-        ToyUiSetLabel(Wid, "Home ping 1000");
+        UiSetLabel(Wid, "Home ping 1000");
     }
 }

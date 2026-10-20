@@ -69,7 +69,7 @@ int SysDamage(int Wid, UINT64 UserText) {
 #define DAMAGE_RECT_MAX_PX    4096u
 
 int SysDamageRect(int Wid, UINT64 UserDesc) {
-    TOY_GFX_DAMAGE_RECT Desc;
+    GFX_DAMAGE_RECT Desc;
     UINT32 X;
     UINT32 Y;
     UINT32 W;

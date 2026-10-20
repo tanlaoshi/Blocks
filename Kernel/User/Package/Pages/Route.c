@@ -26,36 +26,36 @@ static int s_Page = PAGE_HOME;
 
 static int MapEv(int Ev) {
     if (s_Page == PAGE_HOME) {
-        if (Ev == TOY_UI_BUTTON_EVENT(0)) {
+        if (Ev == UI_BUTTON_EVENT(0)) {
             return ID_HOME_PING;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(1)) {
+        if (Ev == UI_BUTTON_EVENT(1)) {
             return ID_NAV_SETTINGS;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(2)) {
+        if (Ev == UI_BUTTON_EVENT(2)) {
             return ID_NAV_ABOUT;
         }
     } else if (s_Page == PAGE_SETTINGS) {
-        if (Ev == TOY_UI_BUTTON_EVENT(0)) {
+        if (Ev == UI_BUTTON_EVENT(0)) {
             return ID_SET_OK;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(1)) {
+        if (Ev == UI_BUTTON_EVENT(1)) {
             return ID_NAV_HOME;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(2)) {
+        if (Ev == UI_BUTTON_EVENT(2)) {
             return ID_NAV_ABOUT;
         }
     } else { /* PAGE_ABOUT：§2.3 表驱动页内分发，这里只做槽→逻辑 ID 映射 */
-        if (Ev == TOY_UI_BUTTON_EVENT(0)) {
+        if (Ev == UI_BUTTON_EVENT(0)) {
             return ID_ABOUT_INFO;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(1)) {
+        if (Ev == UI_BUTTON_EVENT(1)) {
             return ID_ABOUT_HELP;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(2)) {
+        if (Ev == UI_BUTTON_EVENT(2)) {
             return ID_NAV_HOME;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(3)) {
+        if (Ev == UI_BUTTON_EVENT(3)) {
             return ID_NAV_SETTINGS;
         }
     }
@@ -83,23 +83,23 @@ int RoutePage(void) {
 int RouteDispatch(int Wid, int Ev) {
     int Id;
 
-    if (Ev == TOY_UI_EVENT_CLOSE || Ev < 0) {
+    if (Ev == UI_EVENT_CLOSE || Ev < 0) {
         return 1;
     }
     Id = MapEv(Ev);
     /* 导航优先：不属于任何页面（§4） */
     if (Id == ID_NAV_HOME) {
-        ToyUiSetLabel(Wid, "nav 9000 ->Home");
+        UiSetLabel(Wid, "nav 9000 ->Home");
         RouteSetPage(Wid, PAGE_HOME);
         return 0;
     }
     if (Id == ID_NAV_SETTINGS) {
-        ToyUiSetLabel(Wid, "nav 9001 ->Settings");
+        UiSetLabel(Wid, "nav 9001 ->Settings");
         RouteSetPage(Wid, PAGE_SETTINGS);
         return 0;
     }
     if (Id == ID_NAV_ABOUT) {
-        ToyUiSetLabel(Wid, "nav 9002 ->About");
+        UiSetLabel(Wid, "nav 9002 ->About");
         RouteSetPage(Wid, PAGE_ABOUT);
         return 0;
     }

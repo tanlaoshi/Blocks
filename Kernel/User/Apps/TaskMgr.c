@@ -78,7 +78,7 @@ static void Paint(void) {
     }
     if (gSnap.Count == 0) {
         snprintf(Page, sizeof(Page), "%s", Tr("no tasks", "没有任务"));
-        ToyUiSetLabel(gWid, Page);
+        UiSetLabel(gWid, Page);
         return;
     }
     if (gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
@@ -103,7 +103,7 @@ static void Paint(void) {
         }
         Used += N;
     }
-    ToyUiSetLabel(gWid, Page);
+    UiSetLabel(gWid, Page);
 }
 
 static int Refresh(void) {
@@ -140,20 +140,20 @@ static void KillCurrent(void) {
     const TOY_TASK_ENTRY *E;
 
     if (gSnap.Count == 0 || gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
-        ToyUiSetLabel(gWid, Tr("nothing to end", "没有可结束的任务"));
+        UiSetLabel(gWid, Tr("nothing to end", "没有可结束的任务"));
         return;
     }
     E = &gSnap.Tasks[gIndex];
     if (!(E->Flags & TOY_TASK_F_USER)) {
-        ToyUiSetLabel(gWid, Tr("refuse: kernel task", "不能结束内核任务"));
+        UiSetLabel(gWid, Tr("refuse: kernel task", "不能结束内核任务"));
         return;
     }
     if (E->Pid == gSnap.SelfPid) {
-        ToyUiSetLabel(gWid, Tr("refuse: self", "不能结束自己"));
+        UiSetLabel(gWid, Tr("refuse: self", "不能结束自己"));
         return;
     }
     if (kill((pid_t)E->Pid, SIGKILL) != 0) {
-        ToyUiSetLabel(gWid, Tr("end failed", "结束失败"));
+        UiSetLabel(gWid, Tr("end failed", "结束失败"));
         return;
     }
     Refresh();
@@ -163,8 +163,8 @@ static void DrainClicks(void) {
     int Ev;
 
     for (;;) {
-        Ev = ToyUiPoll(gWid);
-        if (Ev <= 0 || Ev == TOY_UI_EVENT_CLOSE) {
+        Ev = UiPoll(gWid);
+        if (Ev <= 0 || Ev == UI_EVENT_CLOSE) {
             break;
         }
     }
@@ -174,38 +174,38 @@ int main(void) {
     int Ev;
 
     LoadLang();
-    gWid = ToyUiCreateWindow(Tr("Task Manager", "任务管理器"), 720, 600);
+    gWid = UiCreateWindow(Tr("Task Manager", "任务管理器"), 720, 600);
     if (gWid < 0) {
         printf("taskmgr: create fail\n");
         return 1;
     }
-    if (ToyUiAddButton(gWid, 0, Tr("Refresh", "刷新")) != 0 ||
-        ToyUiAddButton(gWid, 1, Tr("Next", "下一项")) != 0 ||
-        ToyUiAddButton(gWid, 2, Tr("Kill", "结束")) != 0) {
+    if (UiAddButton(gWid, 0, Tr("Refresh", "刷新")) != 0 ||
+        UiAddButton(gWid, 1, Tr("Next", "下一项")) != 0 ||
+        UiAddButton(gWid, 2, Tr("Kill", "结束")) != 0) {
         printf("taskmgr: button fail\n");
         return 1;
     }
     DrainClicks();
     gIndex = 0;
     if (Refresh() != 0) {
-        ToyUiSetLabel(gWid, Tr("snapshot failed", "读取任务失败"));
+        UiSetLabel(gWid, Tr("snapshot failed", "读取任务失败"));
     }
 
     for (;;) {
-        Ev = ToyUiPoll(gWid);
-        if (Ev == TOY_UI_EVENT_CLOSE || Ev < 0) {
+        Ev = UiPoll(gWid);
+        if (Ev == UI_EVENT_CLOSE || Ev < 0) {
             break;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(0)) {
+        if (Ev == UI_BUTTON_EVENT(0)) {
             if (Refresh() != 0) {
-                ToyUiSetLabel(gWid, Tr("refresh failed", "刷新失败"));
+                UiSetLabel(gWid, Tr("refresh failed", "刷新失败"));
             }
-        } else if (Ev == TOY_UI_BUTTON_EVENT(1)) {
+        } else if (Ev == UI_BUTTON_EVENT(1)) {
             Move(1);
-        } else if (Ev == TOY_UI_BUTTON_EVENT(2)) {
+        } else if (Ev == UI_BUTTON_EVENT(2)) {
             KillCurrent();
-        } else if (TOY_UI_IS_KEY(Ev)) {
-            int Hid = TOY_UI_KEY_CODE(Ev);
+        } else if (UI_IS_KEY(Ev)) {
+            int Hid = UI_KEY_CODE(Ev);
 
             if (Hid == 0x52) {
                 Move(-1);

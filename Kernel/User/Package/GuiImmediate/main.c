@@ -1,5 +1,5 @@
 /*
- * GuiIm — ToyUiIm Label/Check/Button 范例（PR-UI-im-1，≈ GuiDemo）
+ * GuiIm — UiIm Label/Check/Button 范例（PR-UI-im-1，≈ GuiDemo）
  */
 #include <stdio.h>
 #include <sched.h>
@@ -11,7 +11,7 @@ int main(void) {
     int On;
     const char *Msg;
 
-    Wid = ToyUiCreateWindow("GuiIm", 480, 280);
+    Wid = UiCreateWindow("GuiIm", 480, 280);
     if (Wid < 0) {
         printf("guiim: create fail\n");
         return 1;
@@ -19,24 +19,24 @@ int main(void) {
     On = 0;
     Msg = "Click OK or check";
     for (;;) {
-        if (ToyUiImBegin(Wid, 0) != 0) {
+        if (UiImBegin(Wid, 0) != 0) {
             break;
         }
-        if (ToyUiImClosed()) {
-            ToyUiImEnd();
+        if (UiImClosed()) {
+            UiImEnd();
             break;
         }
-        if (ToyUiImCheck(&On)) {
+        if (UiImCheck(&On)) {
             Msg = On ? "check on" : "check off";
         }
-        if (ToyUiImButton("OK")) {
+        if (UiImButton("OK")) {
             Msg = "OK clicked";
         }
-        if (ToyUiImButton("Cancel")) {
+        if (UiImButton("Cancel")) {
             Msg = "Cancel clicked";
         }
-        ToyUiImLabel(Msg);
-        ToyUiImEnd();
+        UiImLabel(Msg);
+        UiImEnd();
         sched_yield();
     }
     return 0;

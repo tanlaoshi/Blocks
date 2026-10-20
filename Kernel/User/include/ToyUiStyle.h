@@ -1,11 +1,11 @@
 /*
- * ToyUiStyle.h — 用户态样式表（PR-UI-style-0）
+ * UiStyle.h — 用户态样式表（PR-UI-style-0）
  *
  * 纯数据结构；自绘控件读表。不改 ToyUi.h / ToyGfx.h ABI。
  * 内核 Theme 仍管窗口边框/桌面；本表只管控件客户区外观。
  */
-#ifndef TOY_UI_STYLE_H
-#define TOY_UI_STYLE_H
+#ifndef UI_STYLE_H
+#define UI_STYLE_H
 
 typedef struct {
     /* 复选框 */
@@ -20,15 +20,15 @@ typedef struct {
     unsigned FieldBg;
     unsigned FieldBorder;
     unsigned FieldBorderFocus;
-} TOY_UI_STYLE;
+} UI_STYLE;
 
 /* 默认表（与原硬编码一致） */
-TOY_UI_STYLE ToyUiStyleDefault(void);
+UI_STYLE UiStyleDefault(void);
 
-/* 设当前样式；之后 ToyUiRedrawWin 读本表。NULL 恢复默认。 */
-void ToyUiSetStyle(const TOY_UI_STYLE *Style);
+/* 设当前样式；之后 UiRedrawWin 读本表。NULL 恢复默认。 */
+void UiSetStyle(const UI_STYLE *Style);
 
 /* 取当前样式指针（恒非空） */
-const TOY_UI_STYLE *ToyUiStyleCurrent(void);
+const UI_STYLE *UiStyleCurrent(void);
 
 #endif

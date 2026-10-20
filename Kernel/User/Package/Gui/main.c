@@ -13,23 +13,23 @@ int main(void) {
     int Wid;
     int Ev;
 
-    Wid = ToyUiCreateWindow("MyGui", 400, 240);
+    Wid = UiCreateWindow("MyGui", 400, 240);
     if (Wid < 0) {
         printf("mygui: create fail\n");
         return 1;
     }
-    ToyUiSetLabel(Wid, "Hello GUI");
-    ToyUiAddButton(Wid, 0, "OK");
+    UiSetLabel(Wid, "Hello GUI");
+    UiAddButton(Wid, 0, "OK");
     printf("mygui: wid=%d\n", Wid);
 
     for (;;) {
-        Ev = ToyUiPoll(Wid);
-        if (Ev == TOY_UI_EVENT_CLOSE) {
+        Ev = UiPoll(Wid);
+        if (Ev == UI_EVENT_CLOSE) {
             break;
         }
-        if (Ev == TOY_UI_BUTTON_EVENT(0)) {
-            ToyUiSetLabel(Wid, "OK!");
-        } else if (Ev == TOY_UI_EVENT_NONE) {
+        if (Ev == UI_BUTTON_EVENT(0)) {
+            UiSetLabel(Wid, "OK!");
+        } else if (Ev == UI_EVENT_NONE) {
             sched_yield();
         }
     }

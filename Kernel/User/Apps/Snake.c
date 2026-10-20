@@ -60,7 +60,7 @@ static int OnSnake(int X, int Y, int SkipTail) {
 }
 
 static void DrawCell(int Wid, int X, int Y, unsigned Color) {
-    ToyGfxFillRect(Wid, OX + (unsigned)X * CELL, OY + (unsigned)Y * CELL,
+    GfxFillRect(Wid, OX + (unsigned)X * CELL, OY + (unsigned)Y * CELL,
                    CELL - 1, CELL - 1, Color);
 }
 
@@ -85,7 +85,7 @@ static void PlaceFood(void) {
 static void DrawBoard(int Wid) {
     int I;
 
-    ToyGfxFillRect(Wid, OX, OY, COLS * CELL, ROWS * CELL, COL_BOARD);
+    GfxFillRect(Wid, OX, OY, COLS * CELL, ROWS * CELL, COL_BOARD);
     for (I = 0; I < Glen; I++) {
         DrawCell(Wid, Gx[I], Gy[I], I == 0 ? COL_HEAD : COL_BODY);
     }
@@ -179,13 +179,13 @@ static int WaitTick(int Wid) {
      */
     Deadline = clock_ms() + 500ul;
     for (K = 0; K < 20000; K++) {
-        int Ev = ToyUiPoll(Wid);
+        int Ev = UiPoll(Wid);
 
-        if (Ev == TOY_UI_EVENT_CLOSE || Ev < 0) {
+        if (Ev == UI_EVENT_CLOSE || Ev < 0) {
             return -1;
         }
-        if (TOY_UI_IS_KEY(Ev)) {
-            OnKey(TOY_UI_KEY_CODE(Ev));
+        if (UI_IS_KEY(Ev)) {
+            OnKey(UI_KEY_CODE(Ev));
             if (!Galive) {
                 return 2;
             }
@@ -202,7 +202,7 @@ int main(void) {
     int Wid;
     int St;
 
-    Wid = ToyUiCreateWindow("Snake", WIN_W, WIN_H);
+    Wid = UiCreateWindow("Snake", WIN_W, WIN_H);
     if (Wid < 0) {
         printf("snake: create fail\n");
         return 1;

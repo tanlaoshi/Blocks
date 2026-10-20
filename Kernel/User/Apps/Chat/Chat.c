@@ -117,7 +117,7 @@ static void UiPaint(void) {
     }
     Buf[Off] = 0;
     if (gWid >= 0) {
-        ToyUiSetLabel(gWid, Buf[0] ? Buf : "chat>");
+        UiSetLabel(gWid, Buf[0] ? Buf : "chat>");
     }
 }
 
@@ -216,12 +216,12 @@ int main(void) {
            (Ip >> 24) & 0xffu, (Ip >> 16) & 0xffu,
            (Ip >> 8) & 0xffu, Ip & 0xffu, (unsigned)Port);
 
-    if (ToyGfxInitialize() != 0) {
+    if (GfxInitialize() != 0) {
         printf("chat: gfx init fail\n");
         return 1;
     }
     /* 无底栏按钮：客户区整页给日志 + chat> */
-    gWid = ToyUiCreateWindow("Chat", 420, 260);
+    gWid = UiCreateWindow("Chat", 420, 260);
     if (gWid < 0) {
         printf("chat: window fail\n");
         return 1;
@@ -259,12 +259,12 @@ int main(void) {
                 break;
             }
         }
-        Ev = ToyUiPoll(gWid);
-        if (Ev == TOY_UI_EVENT_CLOSE || Ev < 0) {
+        Ev = UiPoll(gWid);
+        if (Ev == UI_EVENT_CLOSE || Ev < 0) {
             break;
         }
-        if (TOY_UI_IS_KEY(Ev)) {
-            int Hid = TOY_UI_KEY_CODE(Ev);
+        if (UI_IS_KEY(Ev)) {
+            int Hid = UI_KEY_CODE(Ev);
             if (Hid == 0x28) {
                 int Rc = TrySendDraft();
                 if (Rc == -2 || Rc < 0) {

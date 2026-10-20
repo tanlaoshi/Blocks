@@ -12,8 +12,8 @@ typedef struct {
     unsigned W;
     unsigned H;
     const unsigned *Pixels; /* W*H × 0x00RRGGBB，行优先 */
-} TOY_GFX_DAMAGE_RECT;
+} GFX_DAMAGE_RECT;
 
-_Static_assert(sizeof(TOY_GFX_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
+_Static_assert(sizeof(GFX_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
 
 #endif

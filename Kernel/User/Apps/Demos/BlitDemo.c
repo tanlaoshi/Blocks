@@ -1,5 +1,5 @@
 /*
- * BlitDemo.c — PR-G-desk-3：ToyGfxDamageRect 像素 blit 演示
+ * BlitDemo.c — PR-G-desk-3：GfxDamageRect 像素 blit 演示
  * Shell：exec BLITDEMO.ELF → 窗内画色块 → 点 × 退出
  */
 #include <stdio.h>
@@ -18,18 +18,18 @@ int main(void) {
     unsigned Pix[BLIT_W * BLIT_H];
     unsigned Row;
     unsigned Col;
-    TOY_GFX_DAMAGE_RECT Desc;
+    GFX_DAMAGE_RECT Desc;
 
-    WindowId = ToyUiCreateWindow("BlitDemo", 420, 260);
+    WindowId = UiCreateWindow("BlitDemo", 420, 260);
     if (WindowId < 0) {
         printf("blitdemo: create fail\n");
         return 1;
     }
-    if (ToyGfxInitialize() != 0) {
+    if (GfxInitialize() != 0) {
         printf("blitdemo: gfx init fail\n");
         return 1;
     }
-    if (ToyGfxDamageText(WindowId, "pixel blit (close window to exit)") != 0) {
+    if (GfxDamageText(WindowId, "pixel blit (close window to exit)") != 0) {
         printf("blitdemo: text fail\n");
         return 1;
     }
@@ -47,32 +47,32 @@ int main(void) {
     Desc.W = BLIT_W;
     Desc.H = BLIT_H;
     Desc.Pixels = Pix;
-    if (ToyGfxDamageRect(WindowId, &Desc) != 0) {
+    if (GfxDamageRect(WindowId, &Desc) != 0) {
         printf("blitdemo: damage_rect fail\n");
         return 1;
     }
-    if (ToyGfxFillRect(WindowId, 80, 32, 72, 24, 0x004080C0u) != 0) {
+    if (GfxFillRect(WindowId, 80, 32, 72, 24, 0x004080C0u) != 0) {
         printf("blitdemo: fill fail\n");
         return 1;
     }
-    if (ToyGfxDrawRect(WindowId, 80, 64, 72, 40, 0x00E0E0E0u) != 0) {
+    if (GfxDrawRect(WindowId, 80, 64, 72, 40, 0x00E0E0E0u) != 0) {
         printf("blitdemo: rect fail\n");
         return 1;
     }
-    if (ToyGfxDrawLine(WindowId, 16, 120, 200, 140, 0x00E0C040u) != 0) {
+    if (GfxDrawLine(WindowId, 16, 120, 200, 140, 0x00E0C040u) != 0) {
         printf("blitdemo: line fail\n");
         return 1;
     }
 
     printf("blitdemo: wid=%d blit ok (ToyGfx %s)\n", WindowId,
-           TOY_GFX_ABI_VERSION_STRING);
+           GFX_ABI_VERSION_STRING);
     for (;;) {
-        Event = ToyUiPoll(WindowId);
+        Event = UiPoll(WindowId);
         if (Event < 0) {
             printf("blitdemo: poll fail\n");
             return 1;
         }
-        if (Event == TOY_UI_EVENT_CLOSE) {
+        if (Event == UI_EVENT_CLOSE) {
             break;
         }
         sched_yield();

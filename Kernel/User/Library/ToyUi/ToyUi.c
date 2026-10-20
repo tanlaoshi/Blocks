@@ -8,21 +8,21 @@
 
 #include "Private.h"
 
-static TOY_UI_WIN s_Wins[TOY_UI_WIN_MAX];
+static UI_WIN s_Wins[UI_WIN_MAX];
 
-TOY_UI_WIN *ToyUiWinState(int WindowId) {
-    if (WindowId < 0 || WindowId >= TOY_UI_WIN_MAX) {
+UI_WIN *UiWinState(int WindowId) {
+    if (WindowId < 0 || WindowId >= UI_WIN_MAX) {
         return 0;
     }
     return &s_Wins[WindowId];
 }
 
-int ToyUiInRect(unsigned X, unsigned Y, unsigned Rx, unsigned Ry, unsigned Rw,
+int UiInRect(unsigned X, unsigned Y, unsigned Rx, unsigned Ry, unsigned Rw,
                 unsigned Rh) {
     return X >= Rx && Y >= Ry && X < Rx + Rw && Y < Ry + Rh;
 }
 
-void ToyUiCopyCap(char *Dst, unsigned Cap, const char *Src) {
+void UiCopyCap(char *Dst, unsigned Cap, const char *Src) {
     unsigned I;
 
     if (!Dst || Cap == 0) {
@@ -38,44 +38,44 @@ void ToyUiCopyCap(char *Dst, unsigned Cap, const char *Src) {
     Dst[I] = 0;
 }
 
-int ToyUiCreateWindow(const char *Title, unsigned Width, unsigned Height) {
+int UiCreateWindow(const char *Title, unsigned Width, unsigned Height) {
     int Wid;
-    TOY_UI_WIN *St;
+    UI_WIN *St;
 
     Wid = create_window(Title, Width, Height);
-    St = ToyUiWinState(Wid);
+    St = UiWinState(Wid);
     if (St) {
         memset(St, 0, sizeof(*St));
     }
     return Wid;
 }
 
-int ToyUiSetLabel(int WindowId, const char *Text) {
+int UiSetLabel(int WindowId, const char *Text) {
     int Rc;
 
-    Rc = ToyGfxDamageText(WindowId, Text);
+    Rc = GfxDamageText(WindowId, Text);
     if (Rc == 0) {
-        ToyUiRedrawWin(WindowId, ToyUiWinState(WindowId));
+        UiRedrawWin(WindowId, UiWinState(WindowId));
     }
     return Rc;
 }
 
-int ToyUiAddButton(int WindowId, int ButtonId, const char *Label) {
+int UiAddButton(int WindowId, int ButtonId, const char *Label) {
     long R;
 
-    if (WindowId < 0 || ButtonId < TOY_UI_BUTTON_ID_MIN ||
-        ButtonId > TOY_UI_BUTTON_ID_MAX || !Label) {
+    if (WindowId < 0 || ButtonId < UI_BUTTON_ID_MIN ||
+        ButtonId > UI_BUTTON_ID_MAX || !Label) {
         return -1;
     }
     R = toy_ui_button(WindowId, ButtonId, Label);
     if (R < 0) {
         return -1;
     }
-    ToyUiRedrawWin(WindowId, ToyUiWinState(WindowId));
+    UiRedrawWin(WindowId, UiWinState(WindowId));
     return 0;
 }
 
-int ToyUiPoll(int WindowId) {
+int UiPoll(int WindowId) {
     long R;
     unsigned X;
     unsigned Y;
@@ -88,14 +88,14 @@ int ToyUiPoll(int WindowId) {
     if (R < 0) {
         return -1;
     }
-    if (R >= TOY_UI_CLICK_PACK_BASE) {
-        X = (unsigned)(R - TOY_UI_CLICK_PACK_BASE) & TOY_UI_CLICK_MASK;
-        Y = (unsigned)(R - TOY_UI_CLICK_PACK_BASE) >> TOY_UI_CLICK_SHIFT;
-        return ToyUiHitWidgets(WindowId, X, Y);
+    if (R >= UI_CLICK_PACK_BASE) {
+        X = (unsigned)(R - UI_CLICK_PACK_BASE) & UI_CLICK_MASK;
+        Y = (unsigned)(R - UI_CLICK_PACK_BASE) >> UI_CLICK_SHIFT;
+        return UiHitWidgets(WindowId, X, Y);
     }
-    if (R >= TOY_UI_EVENT_KEY_BASE && R < TOY_UI_CLICK_PACK_BASE) {
-        Hid = (int)(R - TOY_UI_EVENT_KEY_BASE);
-        ToyUiApplyKeyToField(WindowId, Hid);
+    if (R >= UI_EVENT_KEY_BASE && R < UI_CLICK_PACK_BASE) {
+        Hid = (int)(R - UI_EVENT_KEY_BASE);
+        UiApplyKeyToField(WindowId, Hid);
         return (int)R;
     }
     return (int)R;

@@ -1,13 +1,13 @@
 /*
- * ToyUiStyle.c — 用户态样式表实现（PR-UI-style-0）
+ * UiStyle.c — 用户态样式表实现（PR-UI-style-0）
  */
 #include <ToyUiStyle.h>
 
-static TOY_UI_STYLE s_Style;
+static UI_STYLE s_Style;
 static int s_Init;
 
 static void InitDefault(void) {
-    TOY_UI_STYLE *S = &s_Style;
+    UI_STYLE *S = &s_Style;
     S->CheckBorder     = 0x00202020u;
     S->CheckFillOn     = 0x00208040u;
     S->CheckFillOff    = 0x00FFFFFFu;
@@ -20,8 +20,8 @@ static void InitDefault(void) {
     s_Init = 1;
 }
 
-TOY_UI_STYLE ToyUiStyleDefault(void) {
-    TOY_UI_STYLE S;
+UI_STYLE UiStyleDefault(void) {
+    UI_STYLE S;
     S.CheckBorder     = 0x00202020u;
     S.CheckFillOn     = 0x00208040u;
     S.CheckFillOff    = 0x00FFFFFFu;
@@ -34,7 +34,7 @@ TOY_UI_STYLE ToyUiStyleDefault(void) {
     return S;
 }
 
-void ToyUiSetStyle(const TOY_UI_STYLE *Style) {
+void UiSetStyle(const UI_STYLE *Style) {
     if (!Style) {
         InitDefault();
         return;
@@ -43,7 +43,7 @@ void ToyUiSetStyle(const TOY_UI_STYLE *Style) {
     s_Init = 1;
 }
 
-const TOY_UI_STYLE *ToyUiStyleCurrent(void) {
+const UI_STYLE *UiStyleCurrent(void) {
     if (!s_Init) {
         InitDefault();
     }

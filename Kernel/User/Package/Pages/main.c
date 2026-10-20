@@ -10,18 +10,18 @@ int main(void) {
     int Wid;
     int Ev;
 
-    Wid = ToyUiCreateWindow("Pages", 480, 280);
+    Wid = UiCreateWindow("Pages", 480, 280);
     if (Wid < 0) {
         printf("pages: create fail\n");
         return 1;
     }
     RouteInit(Wid);
     for (;;) {
-        Ev = ToyUiPoll(Wid);
+        Ev = UiPoll(Wid);
         if (RouteDispatch(Wid, Ev) != 0) {
             break;
         }
-        if (Ev == TOY_UI_EVENT_NONE || Ev == TOY_UI_EVENT_CLICK) {
+        if (Ev == UI_EVENT_NONE || Ev == UI_EVENT_CLICK) {
             sched_yield();
         }
     }

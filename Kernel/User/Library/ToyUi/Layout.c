@@ -1,5 +1,5 @@
 /*
- * ToyUiLayout.c — 用户态布局装载（编译进 Guest ELF，不进内核镜像）
+ * UiLayout.c — 用户态布局装载（编译进 Guest ELF，不进内核镜像）
  *
  * 人话：给 .uitxt 生成的控件表装窗；和 ToyUi 同属 User/Library。
  * 只由 Pkg EXTRA_OBJS 链进应用，不进 Kernel.elf。
@@ -7,7 +7,7 @@
 #include "ToyUiLayout.h"
 #include "ToyOS/syscall.h"
 
-int ToyUiScreenWidth(void) {
+int UiScreenWidth(void) {
     int W = 0;
     int H = 0;
     if (toy_screen_size(&W, &H) != 0 || W <= 0) {
@@ -16,7 +16,7 @@ int ToyUiScreenWidth(void) {
     return W;
 }
 
-int ToyUiScreenHeight(void) {
+int UiScreenHeight(void) {
     int W = 0;
     int H = 0;
     if (toy_screen_size(&W, &H) != 0 || H <= 0) {
@@ -57,12 +57,12 @@ static int ApplyScale(int V, int Scale1000) {
 
 static void ApplyFontTier(int Scale1000, int Unused) {
     (void)Unused;
-    (void)ToyUiFontTier(Scale1000);
+    (void)UiFontTier(Scale1000);
 }
 
 /* PR-UID-font：scale(千分) → 档位。<1500→1, <2500→2, <3500→3, 否则+1。
  * 只缩不放下 scale≤1000 → 恒为 1。App 可据此调 toy_set_font_id。 */
-int ToyUiFontTier(int Scale1000) {
+int UiFontTier(int Scale1000) {
     int Tier;
     if (Scale1000 < 1500) {
         Tier = 1;
@@ -76,8 +76,8 @@ int ToyUiFontTier(int Scale1000) {
     return Tier;
 }
 
-int ToyUiLoadWindow(const char *Title, int DesignW, int DesignH,
-                    const TOY_UI_WIDGET *Widgets, int Count) {
+int UiLoadWindow(const char *Title, int DesignW, int DesignH,
+                    const UI_WIDGET *Widgets, int Count) {
     int ScreenW;
     int Scale;
     int WinW;
@@ -85,7 +85,7 @@ int ToyUiLoadWindow(const char *Title, int DesignW, int DesignH,
     int Wid;
     int I;
     int X, Y, W, H;
-    const TOY_UI_WIDGET *Wgt;
+    const UI_WIDGET *Wgt;
 
     if (!Title || DesignW <= 0 || DesignH <= 0 || Count < 0) {
         return -1;
@@ -94,12 +94,12 @@ int ToyUiLoadWindow(const char *Title, int DesignW, int DesignH,
         return -1;
     }
 
-    ScreenW = ToyUiScreenWidth();
+    ScreenW = UiScreenWidth();
     if (ScreenW <= 0) {
         ScreenW = 1280;
     }
     {
-        int ScreenH = ToyUiScreenHeight();
+        int ScreenH = UiScreenHeight();
         if (ScreenH <= 0) {
             ScreenH = 720;
         }
@@ -116,7 +116,7 @@ int ToyUiLoadWindow(const char *Title, int DesignW, int DesignH,
         WinH = 48;
     }
 
-    Wid = ToyUiCreateWindow(Title, (unsigned)WinW, (unsigned)WinH);
+    Wid = UiCreateWindow(Title, (unsigned)WinW, (unsigned)WinH);
     if (Wid < 0) {
         return -1;
     }
@@ -134,30 +134,30 @@ int ToyUiLoadWindow(const char *Title, int DesignW, int DesignH,
             H = 1;
         }
         switch (Wgt->Kind) {
-        case TOY_UI_WIDGET_LABEL:
-            ToyUiSetLabel(Wid, Wgt->Text ? Wgt->Text : "");
+        case UI_WIDGET_LABEL:
+            UiSetLabel(Wid, Wgt->Text ? Wgt->Text : "");
             break;
-        case TOY_UI_WIDGET_BUTTON:
-            if (Wgt->Id >= TOY_UI_BUTTON_ID_MIN &&
-                Wgt->Id <= TOY_UI_BUTTON_ID_MAX) {
-                ToyUiAddButton(Wid, Wgt->Id, Wgt->Text ? Wgt->Text : "");
+        case UI_WIDGET_BUTTON:
+            if (Wgt->Id >= UI_BUTTON_ID_MIN &&
+                Wgt->Id <= UI_BUTTON_ID_MAX) {
+                UiAddButton(Wid, Wgt->Id, Wgt->Text ? Wgt->Text : "");
             }
             (void)X;
             (void)Y;
             (void)W;
             (void)H;
             break;
-        case TOY_UI_WIDGET_CHECKBOX:
-            if (Wgt->Id >= 0 && Wgt->Id <= TOY_UI_CHECK_ID_MAX) {
-                ToyUiAddCheckBox(Wid, Wgt->Id, (unsigned)X, (unsigned)Y);
+        case UI_WIDGET_CHECKBOX:
+            if (Wgt->Id >= 0 && Wgt->Id <= UI_CHECK_ID_MAX) {
+                UiAddCheckBox(Wid, Wgt->Id, (unsigned)X, (unsigned)Y);
             }
             break;
-        case TOY_UI_WIDGET_TEXTBOX:
-            if (Wgt->Id >= 0 && Wgt->Id <= TOY_UI_TEXT_ID_MAX) {
-                ToyUiAddTextField(Wid, Wgt->Id, (unsigned)X, (unsigned)Y,
+        case UI_WIDGET_TEXTBOX:
+            if (Wgt->Id >= 0 && Wgt->Id <= UI_TEXT_ID_MAX) {
+                UiAddTextField(Wid, Wgt->Id, (unsigned)X, (unsigned)Y,
                                   (unsigned)W);
                 if (Wgt->Text) {
-                    ToyUiSetTextField(Wid, Wgt->Id, Wgt->Text);
+                    UiSetTextField(Wid, Wgt->Id, Wgt->Text);
                 }
             }
             break;

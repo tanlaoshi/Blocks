@@ -1,7 +1,10 @@
 /*
  * Scheduler.c — 任务槽 / 当前任务 / 切换（PR-S3-sched-2）
  *
- * 创建见 Create.c；信号 / fork / 启动分见 Signal / User / Boot。
+ * 模块表 SchedulerInitialize（软成功：恒 return 0）：
+ *   锁 / Online=0 → Ops+RunQueue → 清 CPU·idle·gTasks → HalDriverSchedRegister
+ * SchedulerStart 不在模块表：见 Boot.c（KernelMain Common / Virt 多核壳之后）。
+ * 创建见 Create.c；信号 / fork 见 Signal / User。
  */
 #include "KernelModulesPrivate.h"
 #include "Scheduler.h"

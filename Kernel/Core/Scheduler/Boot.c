@@ -1,5 +1,8 @@
 /*
  * Boot.c — idle、AP 与 SchedulerStart（PR-S-sched-1）
+ *
+ * 非模块表入口。模块表只调 SchedulerInitialize（Scheduler.c）；
+ * 本文件在 BringUp 拉起 Shell/Gui/Worker 等之后才 SchedulerStart。
  */
 #include "Scheduler.h"
 #include "SchedulerOps.h"

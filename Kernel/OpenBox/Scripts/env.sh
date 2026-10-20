@@ -8,6 +8,8 @@
 #   sync usb              # 已挂载的 ESP + TOYOS U 盘
 #   run-virt-arm|riscv    # QEMU virt -kernel
 #
+# 路径四件套：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD
+#
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     echo "error: 请 source 本脚本，例如: source Kernel/OpenBox/Scripts/env.sh" >&2
     exit 1
@@ -24,18 +26,17 @@ if [ ! -d "$_BlocksRootCand/Kernel" ] || [ ! -d "$_BlocksRootCand/Boot" ] || \
 fi
 
 export BLOCKS_ROOT="$_BlocksRootCand"
-export BLOCKS_KERNEL="$BLOCKS_ROOT/Kernel"
+export KERNEL="$BLOCKS_ROOT/Kernel"
+export RUNTIME="$BLOCKS_ROOT/Runtime"
+export KERNEL_BUILD="$KERNEL/Build"
 export BLOCKS_BOOT="$BLOCKS_ROOT/Boot"
-export BLOCKS_RUNTIME="$BLOCKS_ROOT/Runtime"
 export BLOCKS_SCRIPTS="$_BlocksEnvDir"
-# 兼容仍读 TOYOS_ROOT 的旧脚本（指向 Blocks 根）
-export TOYOS_ROOT="$BLOCKS_ROOT"
 
 # shellcheck source=lib/toyos-common.sh
 . "$BLOCKS_SCRIPTS/lib/toyos-common.sh"
 
 build() {
-    (cd "$BLOCKS_KERNEL" && ./build.sh "$@")
+    (cd "$KERNEL" && ./build.sh "$@")
 }
 
 boot() {
@@ -48,17 +49,17 @@ sync() {
             bash "$BLOCKS_SCRIPTS/sync.sh" "$@"
             ;;
         *)
-            (cd "$BLOCKS_RUNTIME" && ./sync.sh "$@")
+            (cd "$RUNTIME" && ./sync.sh "$@")
             ;;
     esac
 }
 
 run() {
-    (cd "$BLOCKS_RUNTIME" && ./run.sh "$@")
+    (cd "$RUNTIME" && ./run.sh "$@")
 }
 
 smoke() {
-    (cd "$BLOCKS_RUNTIME" && ./smoke-boot.sh "$@")
+    (cd "$RUNTIME" && ./smoke-boot.sh "$@")
 }
 
 smoke-boot() {
@@ -73,6 +74,6 @@ run-virt-riscv() {
     bash "$BLOCKS_SCRIPTS/run-virt-riscv.sh" "$@"
 }
 
-echo "BLOCKS_ROOT=$BLOCKS_ROOT"
+echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
 echo "短名: build boot sync|sync usb run smoke|smoke-boot run-virt-arm run-virt-riscv"
 unset _BlocksEnvDir _BlocksRootCand

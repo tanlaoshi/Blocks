@@ -1,4 +1,4 @@
-# toyos-common.sh — 解析 TOYOS_ROOT / Config；供 Scripts/*.sh source
+# toyos-common.sh — 解析 BLOCKS_ROOT / Config；供 Scripts/*.sh source
 
 toyos_die() {
     echo "error: $*" >&2
@@ -24,14 +24,7 @@ toyos_resolve_root() {
             printf '%s\n' "$Root"
             return 0
         fi
-    fi
-    if [ -n "${TOYOS_ROOT:-}" ]; then
-        Root="$(cd "$TOYOS_ROOT" && pwd)"
-        if toyos_root_ok "$Root"; then
-            printf '%s\n' "$Root"
-            return 0
-        fi
-        toyos_die "TOYOS_ROOT=$TOYOS_ROOT 无效（需 Blocks: Boot/Kernel/Runtime，或旧树 ToyKernel+Scripts）"
+        toyos_die "BLOCKS_ROOT=$BLOCKS_ROOT 无效（需 Blocks: Boot/Kernel/Runtime，或旧树 ToyKernel+Scripts）"
     fi
     Here="$(cd "$(dirname "$Caller")" && pwd)"
     for Cand in \
@@ -46,7 +39,7 @@ toyos_resolve_root() {
             return 0
         fi
     done
-    toyos_die "无法解析根目录（从 $Here）；请 export BLOCKS_ROOT=… 或 TOYOS_ROOT=…"
+    toyos_die "无法解析根目录（从 $Here）；请 export BLOCKS_ROOT=…"
 }
 
 toyos_arch_kernel() {
@@ -111,7 +104,7 @@ toyos_scripts_lib() {
     printf '%s/lib\n' "$(toyos_scripts_dir "$Root")"
 }
 
-# $1=TOYOS_ROOT $2=ToyKernel|ToyBoot → $TOYOS_ROOT/Build/<名>
+# $1=BLOCKS_ROOT $2=ToyKernel|ToyBoot → $BLOCKS_ROOT/Build/<名>
 toyos_component_build_dir() {
     printf '%s/Build/%s\n' "$1" "$2"
 }
@@ -140,8 +133,8 @@ toyos_kernel_build_dir() {
     printf 'Build\n'
 }
 
-# 去掉仓内旧 Build 符号链接；有内容则迁到 $TOYOS_ROOT/Build/ToyKernel。
-# $1=TOYOS_ROOT $2=ToyKernel 仓绝对路径
+# 去掉仓内旧 Build 符号链接；有内容则迁到 $BLOCKS_ROOT/Build/ToyKernel。
+# $1=BLOCKS_ROOT $2=ToyKernel 仓绝对路径
 toyos_drop_kernel_build_link() {
     local Root="$1"
     local Ker="$2"
@@ -160,8 +153,8 @@ toyos_drop_kernel_build_link() {
     fi
 }
 
-# Boot：保证 $TOYOS_ROOT/Build/ToyBoot 可见（已在根下则不动；否则链到 EDK2 产物目录）。
-# $1=TOYOS_ROOT $2=EDK 侧 Build/ToyBoot 绝对路径（含 DEBUG_GCC/… 的父级）
+# Boot：保证 $BLOCKS_ROOT/Build/ToyBoot 可见（已在根下则不动；否则链到 EDK2 产物目录）。
+# $1=BLOCKS_ROOT $2=EDK 侧 Build/ToyBoot 绝对路径（含 DEBUG_GCC/… 的父级）
 toyos_link_boot_build() {
     local Root="$1"
     local EdkBoot="$2"

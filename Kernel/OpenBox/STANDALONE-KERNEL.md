@@ -6,12 +6,12 @@
 ## 步骤
 
 ```bash
-cd /path/to/ToyKernel          # 例如 $TOYOS_ROOT/ToyKernel 或任意拷贝
+cd /path/to/ToyKernel          # 例如 $BLOCKS_ROOT/ToyKernel 或任意拷贝
 # 工具链：已有 Tools/Extract 即可；否则按 Tools/README 拉取
 ./build.sh                     # 默认 x86_64 → Build/HAL/X64/Kernel.elf（单仓）
 # ./build.sh arm64 LWIP=0
 # ./build.sh riscv LWIP=0
-# 旁有 ToyOS 树根时产物在 $TOYOS_ROOT/Build/ToyKernel/
+# 旁有 ToyOS 树根时产物在 $BLOCKS_ROOT/Build/ToyKernel/
 ```
 
 - 若旁边有 `../ToyImage/RootFs/…`：编完会同步 `Kernel.elf`（便利，非硬依赖）。  
@@ -22,8 +22,8 @@ cd /path/to/ToyKernel          # 例如 $TOYOS_ROOT/ToyKernel 或任意拷贝
 | 产物 | 谁提供 | 说明 |
 | ---- | ------ | ---- |
 | `Kernel.elf` | 本仓 `./build.sh` | 本刀验收对象 |
-| `BOOTX64.EFI` | `$TOYOS_ROOT/ToyBoot` + `$TOYOS_ROOT/EDK2` | BOX-6；加载 Kernel |
-| RootFs / QEMU | `$TOYOS_ROOT/ToyImage` | 把 `Kernel.elf` 放进 `RootFs/X64/` 后 `smoke` |
+| `BOOTX64.EFI` | `$BLOCKS_ROOT/ToyBoot` + `$BLOCKS_ROOT/EDK2` | BOX-6；加载 Kernel |
+| RootFs / QEMU | `$BLOCKS_ROOT/ToyImage` | 把 `Kernel.elf` 放进 `RootFs/X64/` 后 `smoke` |
 
 X64 交接包是两份内容相同的 `UefiBootConfig.h`：`Boot/BootPkg/` 与 `BringUp/X64/`。内核编译包含自己这份，不 `#include` Boot 树，才能单独编出 `Kernel.elf`。`BOOT_INFO` 仍是内核自己的、给 `KernelMain` 用的结构。
 

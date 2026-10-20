@@ -6,7 +6,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/lib/toyos-common.sh"
 
 ROOT="$(toyos_resolve_root "$0")"
-echo "bootstrap: TOYOS_ROOT=$ROOT"
+echo "bootstrap: BLOCKS_ROOT=$ROOT"
 
 need_cmd() {
     command -v "$1" >/dev/null 2>&1

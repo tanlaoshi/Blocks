@@ -3,14 +3,14 @@ set -e
 cd "$(dirname "$0")"
 
 # Blocks 单仓：产物始终 ./Build（旁挂 Boot/Runtime，不再回写 ToyOS Build）。
-# 旧 ToyOS 树根探测已去掉，避免 TOYOS_ROOT 把成品拐走。
+# 旧 ToyOS 树根探测已去掉，避免 BLOCKS_ROOT 把成品拐走。
 toyos_pick_root_for_build() {
     return 1
 }
 
 BUILDDIR=Build
 if Root="$(toyos_pick_root_for_build)"; then
-    export TOYOS_ROOT="$Root"
+    export BLOCKS_ROOT="$Root"
     # 去掉旧仓内 Build 符号链接 / 真目录（有内容则迁到树根）
     if [ -L Build ]; then
         rm -f Build

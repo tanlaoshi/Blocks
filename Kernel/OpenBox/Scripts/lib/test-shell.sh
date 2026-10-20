@@ -78,8 +78,8 @@ if {$image_root eq ""} {
     exit 2
 }
 set run_split [file normalize [file join $image_root .. Scripts lib run-split.sh]]
-if {![file exists $run_split] && [info exists env(TOYOS_ROOT)]} {
-    set run_split [file join $env(TOYOS_ROOT) Scripts lib run-split.sh]
+if {![file exists $run_split] && [info exists env(BLOCKS_ROOT)]} {
+    set run_split [file join $env(BLOCKS_ROOT) Scripts lib run-split.sh]
 }
 if {![file exists $run_split]} {
     send_user "error: run-split.sh not found under Scripts/lib\n"

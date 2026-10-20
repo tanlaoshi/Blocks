@@ -54,7 +54,7 @@ build_toyos() {
 
 build_toyboot() {
     echo "==> ToyBoot @ $ROOT/ToyBoot (EDK2_SRC=${EDK2_SRC:-auto})"
-    export TOYOS_ROOT="$ROOT"
+    export BLOCKS_ROOT="$ROOT"
     if [ -n "${EDK2_SRC:-}" ]; then
         export EDK2_SRC
     fi

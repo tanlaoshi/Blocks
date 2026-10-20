@@ -53,7 +53,7 @@ sync_repo ToyImage \
     --exclude '/.qemu*/'
 
 # Scripts + Config → $DST
-export TOYOS_ROOT="$DST"
+export BLOCKS_ROOT="$DST"
 bash "$OPENBOX/install-to-root.sh"
 
 # EDK2/：有 trim-edk2 则裁剪无 .git；否则临时链备份（旧行为）
@@ -61,7 +61,7 @@ mkdir -p "$DST/Scripts"
 {
     echo "# Scripts/Config.local.txt — 本机覆盖（勿提交）"
     echo "# 迁自：SRC=$SRC  date=$(date -Iseconds)"
-    echo "# 日常：TOYOS_ROOT=$DST；源 edk2 仅冷备份；再裁 EDK2 用 trim-edk2.sh"
+    echo "# 日常：BLOCKS_ROOT=$DST；源 edk2 仅冷备份；再裁 EDK2 用 trim-edk2.sh"
     echo "EDK2_SRC=$SRC"
 } > "$DST/Scripts/Config.local.txt"
 
@@ -76,7 +76,7 @@ fi
 echo "wrote $DST/Scripts/Config.local.txt"
 
 echo "=========================================="
-echo "DONE: TOYOS_ROOT=$DST"
+echo "DONE: BLOCKS_ROOT=$DST"
 echo "  保留备份: $SRC"
 echo "  next: source \"$DST/Scripts/env.sh\" && build && toytest smoke"
 echo "=========================================="

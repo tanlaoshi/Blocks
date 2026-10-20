@@ -8,7 +8,7 @@
 # 由 run-virt-arm.sh / run-virt-riscv.sh source；调用方须先设：
 #   TOY_VIRT_ARCH=arm64|riscv
 #   TOY_VIRT_QEMU=qemu-system-...
-#   TOY_VIRT_ELF=$TOYOS_ROOT/Build/ToyKernel/HAL/<Arch>/Kernel.elf（可省略，由本脚本填）
+#   TOY_VIRT_ELF=$BLOCKS_ROOT/Build/ToyKernel/HAL/<Arch>/Kernel.elf（可省略，由本脚本填）
 #   TOY_VIRT_MAKE_ARCH=arm64|riscv
 #   TOY_VIRT_HAL_ARCH=Arm64|RiscV
 #   可选：TOY_VIRT_QEMU_EXTRA=(...)  TOY_VIRT_HELLO_PAT=...
@@ -25,39 +25,39 @@
 toy_virt_paths() {
     local Here
     Here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ -z "${TOY_KERNEL:-}" ] || [ -z "${TOY_IMAGE:-}" ]; then
+    if [ -z "${KERNEL:-}" ] || [ -z "${RUNTIME:-}" ]; then
         # Blocks：…/Kernel/OpenBox/Scripts/lib
         if [ -f "$Here/../../../build.sh" ] && [ -d "$Here/../../../../Runtime" ]; then
-            TOY_KERNEL="$(cd "$Here/../../.." && pwd)"
-            TOY_IMAGE="$(cd "$TOY_KERNEL/../Runtime" && pwd)"
-            TOYOS_ROOT="$(cd "$TOY_KERNEL/.." && pwd)"
+            KERNEL="$(cd "$Here/../../.." && pwd)"
+            RUNTIME="$(cd "$KERNEL/../Runtime" && pwd)"
+            BLOCKS_ROOT="$(cd "$KERNEL/.." && pwd)"
         elif [ -d "$Here/../../ToyImage" ]; then
-            TOY_IMAGE="$(cd "$Here/../../ToyImage" && pwd)"
-            TOY_KERNEL="$(cd "$TOY_IMAGE/../ToyKernel" && pwd)"
-            TOYOS_ROOT="$(cd "$TOY_IMAGE/.." && pwd)"
+            RUNTIME="$(cd "$Here/../../ToyImage" && pwd)"
+            KERNEL="$(cd "$RUNTIME/../ToyKernel" && pwd)"
+            BLOCKS_ROOT="$(cd "$RUNTIME/.." && pwd)"
         elif [ -d "${BLOCKS_ROOT:-}/Kernel" ]; then
-            TOY_KERNEL="$(cd "$BLOCKS_ROOT/Kernel" && pwd)"
-            TOY_IMAGE="$(cd "$BLOCKS_ROOT/Runtime" && pwd)"
-            TOYOS_ROOT="$(cd "$BLOCKS_ROOT" && pwd)"
+            KERNEL="$(cd "$BLOCKS_ROOT/Kernel" && pwd)"
+            RUNTIME="$(cd "$BLOCKS_ROOT/Runtime" && pwd)"
+            BLOCKS_ROOT="$(cd "$BLOCKS_ROOT" && pwd)"
         else
-            TOY_IMAGE="$(cd "$Here/.." && pwd)"
-            TOY_KERNEL="$(cd "$TOY_IMAGE/../ToyKernel" 2>/dev/null && pwd || true)"
-            TOYOS_ROOT="$(cd "$TOY_IMAGE/.." 2>/dev/null && pwd || true)"
+            RUNTIME="$(cd "$Here/.." && pwd)"
+            KERNEL="$(cd "$RUNTIME/../ToyKernel" 2>/dev/null && pwd || true)"
+            BLOCKS_ROOT="$(cd "$RUNTIME/.." 2>/dev/null && pwd || true)"
         fi
     fi
-    if [ -z "${TOYOS_ROOT:-}" ] && [ -n "${TOY_KERNEL:-}" ]; then
-        TOYOS_ROOT="$(cd "$TOY_KERNEL/.." && pwd)"
+    if [ -z "${BLOCKS_ROOT:-}" ] && [ -n "${KERNEL:-}" ]; then
+        BLOCKS_ROOT="$(cd "$KERNEL/.." && pwd)"
     fi
     if type toyos_kernel_build_dir >/dev/null 2>&1; then
-        TOY_KERNEL_BUILD="$(toyos_kernel_build_dir "$TOYOS_ROOT" "$TOY_KERNEL")"
-    elif [ -d "${TOY_KERNEL:-}/Build" ]; then
-        TOY_KERNEL_BUILD="$TOY_KERNEL/Build"
-        mkdir -p "$TOY_KERNEL_BUILD"
+        KERNEL_BUILD="$(toyos_kernel_build_dir "$BLOCKS_ROOT" "$KERNEL")"
+    elif [ -d "${KERNEL:-}/Build" ]; then
+        KERNEL_BUILD="$KERNEL/Build"
+        mkdir -p "$KERNEL_BUILD"
     else
-        TOY_KERNEL_BUILD="$TOYOS_ROOT/Build/ToyKernel"
-        mkdir -p "$TOY_KERNEL_BUILD"
+        KERNEL_BUILD="$BLOCKS_ROOT/Build/ToyKernel"
+        mkdir -p "$KERNEL_BUILD"
     fi
-    export TOY_IMAGE TOY_KERNEL TOYOS_ROOT TOY_KERNEL_BUILD
+    export RUNTIME KERNEL BLOCKS_ROOT KERNEL_BUILD
 }
 
 toy_virt_usage() {
@@ -136,8 +136,8 @@ toy_virt_parse_args() {
 toy_virt_resolve_qemu() {
     toy_virt_paths
     if ! command -v "$TOY_VIRT_QEMU" >/dev/null 2>&1; then
-        if [ -x "$TOY_KERNEL/Tools/Root/usr/bin/$TOY_VIRT_QEMU" ]; then
-            TOY_VIRT_QEMU="$TOY_KERNEL/Tools/Root/usr/bin/$TOY_VIRT_QEMU"
+        if [ -x "$KERNEL/Tools/Root/usr/bin/$TOY_VIRT_QEMU" ]; then
+            TOY_VIRT_QEMU="$KERNEL/Tools/Root/usr/bin/$TOY_VIRT_QEMU"
         else
             echo "error: $TOY_VIRT_QEMU not found" >&2
             exit 1
@@ -148,7 +148,7 @@ toy_virt_resolve_qemu() {
 toy_virt_ensure_elf() {
     local WantBoard Stamp PrevBoard NeedBuild HelloElf
     toy_virt_paths
-    cd "$TOY_KERNEL"
+    cd "$KERNEL"
     # QEMU virt 验收必须用板包 virt；忽略环境里残留的 BOARD=milk-v-duo-s 等
     WantBoard=virt
     BOARD=virt
@@ -157,19 +157,19 @@ toy_virt_ensure_elf() {
     fi
     # Blocks / 现网：HAL/<Arch>/；旧路径 HAL/<Arch>/ 作回退
     if [ -z "${TOY_VIRT_ELF:-}" ]; then
-        if [ -f "$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf" ]; then
-            TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
+        if [ -f "$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf" ]; then
+            TOY_VIRT_ELF="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
         else
-            TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
+            TOY_VIRT_ELF="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
         fi
     fi
     case "$TOY_VIRT_ELF" in
         /*) ;;
-        Build/*) TOY_VIRT_ELF="$TOY_KERNEL_BUILD/${TOY_VIRT_ELF#Build/}" ;;
-        *) TOY_VIRT_ELF="$TOY_KERNEL/$TOY_VIRT_ELF" ;;
+        Build/*) TOY_VIRT_ELF="$KERNEL_BUILD/${TOY_VIRT_ELF#Build/}" ;;
+        *) TOY_VIRT_ELF="$KERNEL/$TOY_VIRT_ELF" ;;
     esac
-    Stamp="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
-    [ -f "$Stamp" ] || Stamp="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
+    Stamp="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
+    [ -f "$Stamp" ] || Stamp="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/.toy_board"
     PrevBoard=""
     if [ -f "$Stamp" ]; then
         PrevBoard=$(tr -d '\n' <"$Stamp" 2>/dev/null || true)
@@ -180,7 +180,7 @@ toy_virt_ensure_elf() {
     elif [ "$PrevBoard" != "$WantBoard" ]; then
         NeedBuild=1
         echo "note: $TOY_VIRT_ELF board='${PrevBoard:-unknown}' → rebuilding BOARD=$WantBoard"
-        make clean "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" "BUILDDIR=$TOY_KERNEL_BUILD"
+        make clean "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" "BUILDDIR=$KERNEL_BUILD"
     fi
     VirtLwip=1
     if [ ! -d "HAL/${TOY_VIRT_HAL_ARCH}/LwIp" ] && \
@@ -189,17 +189,17 @@ toy_virt_ensure_elf() {
     fi
     if [ "$NeedBuild" = "1" ]; then
         echo "building ARCH=$TOY_VIRT_MAKE_ARCH BOARD=$WantBoard LWIP=$VirtLwip ..."
-        make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$TOY_KERNEL_BUILD"
-        TOY_VIRT_ELF="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
+        make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$KERNEL_BUILD"
+        TOY_VIRT_ELF="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/Kernel.elf"
     fi
     if [ ! -f "$TOY_VIRT_ELF" ]; then
         echo "error: missing $TOY_VIRT_ELF" >&2
         exit 1
     fi
-    HelloElf="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
-    [ -f "$HelloElf" ] || HelloElf="$TOY_KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
+    HelloElf="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
+    [ -f "$HelloElf" ] || HelloElf="$KERNEL_BUILD/HAL/${TOY_VIRT_HAL_ARCH}/user/hello.elf"
     if [ ! -f "$HelloElf" ]; then
-        make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$TOY_KERNEL_BUILD" "$HelloElf"
+        make "ARCH=$TOY_VIRT_MAKE_ARCH" "BOARD=$WantBoard" BRINGUP=0 "LWIP=$VirtLwip" "BUILDDIR=$KERNEL_BUILD" "$HelloElf"
     fi
 }
 toy_virt_build_dev_args() {
@@ -218,9 +218,9 @@ toy_virt_build_dev_args() {
     if [ "${TOY_VIRT_NODISK:-0}" != "1" ]; then
         export TOY_VIRT_MAKE_ARCH TOY_VIRT_HAL_ARCH
         toy_virt_paths
-        "$TOY_IMAGE/Scripts/prepare-virt-rootfs.sh" >/dev/null
+        "$KERNEL/OpenBox/Scripts/prepare-virt-rootfs.sh" >/dev/null
         # N10：用 raw FAT 镜像，避免 QEMU fat:rw(vvfat) 与 virtio-net 同机 TX 故障
-        DEV_ARGS+=(-drive "if=none,id=toyroot,format=raw,file=$TOY_IMAGE/RootFs/${TOY_VIRT_HAL_ARCH}/disk.img"
+        DEV_ARGS+=(-drive "if=none,id=toyroot,format=raw,file=$RUNTIME/RootFs/${TOY_VIRT_HAL_ARCH}/disk.img"
                    -device virtio-blk-device,drive=toyroot)
     fi
 

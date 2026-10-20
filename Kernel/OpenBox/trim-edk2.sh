@@ -1,13 +1,13 @@
 #!/bin/bash
-# trim-edk2.sh — BOX-6：从备份 edk2 裁出无 .git 的 Boot 子集到 $TOYOS_ROOT/EDK2
+# trim-edk2.sh — BOX-6：从备份 edk2 裁出无 .git 的 Boot 子集到 $BLOCKS_ROOT/EDK2
 # 用法：
 #   ./OpenBox/trim-edk2.sh [源edk2] [目标TOYOS根]
-# 默认源 = EDK2_SRC 或 OpenBox 上两级；目标 = $TOYOS_ROOT 或 $HOME/ToyOS
+# 默认源 = EDK2_SRC 或 OpenBox 上两级；目标 = $BLOCKS_ROOT 或 $HOME/ToyOS
 set -euo pipefail
 
 OPENBOX="$(cd "$(dirname "$0")" && pwd)"
 SRC_DEFAULT="$(cd "$OPENBOX/../.." && pwd)"
-DST_ROOT="${2:-${TOYOS_ROOT:-$HOME/ToyOS}}"
+DST_ROOT="${2:-${BLOCKS_ROOT:-$HOME/ToyOS}}"
 SRC="${1:-}"
 
 if [ -z "$SRC" ]; then
@@ -138,7 +138,7 @@ cat > "$DST/README-TRIM.md" <<EOF
 | ---- | ---- |
 | \`edksetup.sh\` / \`Conf/\` / \`BaseTools/\` | 构建环境 |
 | \`MdePkg/Include\` + \`Boot.dsc\` 用到的 \`Library/*\` | 唯一包依赖 |
-| \`ToyBoot/\` | **符号链接**到 \`\$TOYOS_ROOT/ToyBoot\` |
+| \`ToyBoot/\` | **符号链接**到 \`\$BLOCKS_ROOT/ToyBoot\` |
 | \`License.txt\` / \`README-TRIM.md\` | 许可与本说明 |
 
 ## 已剔除
@@ -148,8 +148,8 @@ cat > "$DST/README-TRIM.md" <<EOF
 ## 再生成
 
 \`\`\`bash
-bash "\$TOYOS_ROOT/ToyKernel/OpenBox/trim-edk2.sh" "\$EDK2_SRC" "\$TOYOS_ROOT"
-source "\$TOYOS_ROOT/Scripts/env.sh" && build toyboot
+bash "\$BLOCKS_ROOT/ToyKernel/OpenBox/trim-edk2.sh" "\$EDK2_SRC" "\$BLOCKS_ROOT"
+source "\$BLOCKS_ROOT/Scripts/env.sh" && build toyboot
 \`\`\`
 EOF
 

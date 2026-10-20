@@ -8,7 +8,7 @@ STRICT=0
 [ "${1:-}" = "--strict" ] && STRICT=1
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# ToyOS/Scripts → $TOYOS_ROOT/ToyKernel；OpenBox/Scripts → ToyKernel；仓根 Scripts 旁挂 Common
+# ToyOS/Scripts → $BLOCKS_ROOT/ToyKernel；OpenBox/Scripts → ToyKernel；仓根 Scripts 旁挂 Common
 if [ -d "$HERE/../ToyKernel/Common" ]; then
     KER="$(cd "$HERE/../ToyKernel" && pwd)"
 elif [ -d "$HERE/../../Common" ]; then

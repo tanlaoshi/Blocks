@@ -4,8 +4,8 @@ if {![file exists [file join $image_root RootFs X64 TOYOS.ID]]} {
   set image_root [file normalize [file join [pwd] .. ToyImage]]
 }
 set run_split [file normalize [file join $image_root .. Scripts lib run-split.sh]]
-if {[info exists env(TOYOS_ROOT)] && [file exists [file join $env(TOYOS_ROOT) Scripts lib run-split.sh]]} {
-  set run_split [file join $env(TOYOS_ROOT) Scripts lib run-split.sh]
+if {[info exists env(BLOCKS_ROOT)] && [file exists [file join $env(BLOCKS_ROOT) Scripts lib run-split.sh]]} {
+  set run_split [file join $env(BLOCKS_ROOT) Scripts lib run-split.sh]
 }
 spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless --smp=1"
 expect {

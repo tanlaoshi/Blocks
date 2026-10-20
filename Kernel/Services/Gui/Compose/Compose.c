@@ -8,7 +8,8 @@
  * 主路径：RequestRefresh → GuiRefreshDesktop（Refresh.c）
  *   → GuiComposeDamage（G5 回退）| 菜单快路径 | GuiComposeThemeScene（本文件）
  *   → DeferPresent=1 画完 → PresentFlush（须仍在 ComposeBusy 内）→ ComposeEnd
- * Shell 环末 HalVideoPresent（!GuiPresentBlocked）。Worker 永不 Compose@4K。
+ * Shell 环末 HalVideoPresent（!GuiPresentBlocked；非 Flush — gui-g6-present）。
+ * Worker 永不 Compose@4K。
  *
  * Present 门闩对照（G1；≠ Pointer 包合并 B）：
  *   DeferPresent（计数）— GraphicsPresent 直接 return；中间态不进 GOP
@@ -17,7 +18,7 @@
  *   ShellEchoCoalesce — 打字跳过本帧 GraphicsPresent；Shell 环末合并刷
  *   Pause/Resume — 最外层暂清 Defer=0，放行光标（等 StoreJob / 拖图标）
  *   Pop 且 Defer==0 → HalVideoPresent；合成末用 PresentFlush（Busy 内）
- * 窗绘制 GuiDraw；备份 GuiBackup。整柱 gui-compose-prs。
+ * Flush vs Present / 条带 Partial：HAL Present.c 头（G6）。窗绘制 GuiDraw；备份 GuiBackup。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

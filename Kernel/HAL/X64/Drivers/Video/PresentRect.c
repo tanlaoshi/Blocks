@@ -1,5 +1,9 @@
 /*
- * PresentRect.c — Present 条带 blit（PR-S3-videopresent-1）
+ * PresentRect.c — Present 条带 blit（gui-g6-present）
+ *
+ * 被 VideoPresent 调用：按 PRESENT_CHUNK_ROWS（或 Set 值）cli 拷一行带，
+ * 条间 HalIrqRestore + 抽串口软环。OutPartial=1 时上层留下 Dirty 待下轮。
+ * 编排 / Flush 语义见 Present.c 头。
  */
 #include "Private.h"
 #include "HalDevices.h"

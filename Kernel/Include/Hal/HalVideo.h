@@ -9,8 +9,9 @@
 void HalVideoSet(const VIDEO_CONFIG *Config);
 /* PR-G9：分配并启用后缓冲；Present 提交脏区到 GOP */
 void HalVideoInitializeBackbuffer(void);
+/* 推进一轮 HAL 脏→GOP（可 Partial）；Shell 环末用。对照 gui-g6-present */
 void HalVideoPresent(void);
-/* 刷完所有脏区（关窗/主题全屏合成后用） */
+/* 循环刷完脏区（合成/关窗收官）；勿在 Shell 热路径滥用 */
 void HalVideoPresentFlush(void);
 /* 标记脏矩形（拖窗并旧∪新 footprint） */
 void HalVideoMarkDirty(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);

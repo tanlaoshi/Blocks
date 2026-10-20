@@ -1,7 +1,28 @@
 /*
- * Present.c — 脏矩形 / 光标叠层 / Present 编排（PR-S3-videopresent-1）
+ * Present.c — HAL Present 编排（gui-g6-present；条带 blit 见 PresentRect.c）
  *
- * 条带 blit 见 PresentRect.c。
+ * 两层脏提醒：此处是 HAL DirtyUnion → GOP blit；Gui MarkDamage 在 Compose/Damage.c。
+ *
+ * ── Present vs Flush（对表拧，勿凭感觉改）──
+ *
+ * HalVideoPresent / VideoPresent
+ *   · 至多推进「一轮」内容脏 + 光标脏（各走 PresentRectRows）
+ *   · 内容 Partial（FbBytes 边界 / 条带未跑完）→ 立刻 return，留下 Dirty 待下轮
+ *   · 调用方：Shell 环末（!GuiPresentBlocked）；光标/拖窗部分路径；Defer Pop 等
+ *   · 真机：单次 cli memcpy 过久 → xHCI poll 饿死；故必须条带 + 条间开中断
+ *
+ * HalVideoPresentFlush / VideoPresentFlush
+ *   · 循环 Present 直到两脏皆空（Guard 上限）；仍脏则并整屏再刷
+ *   · 调用方：Compose/Damage/Refresh/Theme 末（ComposeBusy 内）；关窗轻量 PresentFlush
+ *   · 用途：合成结束保证任务栏/底边进 GOP，避免「半栏洞」
+ *
+ * 分矩形：gDirty（内容）与 gCurDirty（光标）分开 Present，避免 AABB 并成近全屏。
+ * Partial 坑：真机 Pitch>Width 时勿用过小 FrameBufferSize 裁 Y——中下部永不前进
+ *   → 栏/底边永远不 Present（见下方 FbBytes=max(Size, Pitch*H*4)）。
+ *
+ * 条带：PRESENT_CHUNK_ROWS（默认 64）；拖窗可 SetPresentChunkRows 放大减频闪。
+ * 门闩（Gui 侧 G1）：DeferPresent / GuiPresentBlocked / ShellEchoCoalesce — Compose.c 头。
+ * Shell 契约：Present 前抽 RX — Shell.c 头（runtime-e-shell）。
  */
 #include "Private.h"
 #include "HalDriverSched.h"
@@ -95,7 +116,7 @@ void VideoPresent(void) {
     HalDriverPreemptDisable();
     /*
      * 内容与光标分矩形 Present，避免 AABB 并成近全屏。
-     * 大块按行条带 cli，条间开中断（G7：禁止长 cli 饿死 USB）。
+     * 大块按行条带 cli，条间开中断（禁止长 cli 饿死 USB；光标契约见 G7）。
      */
     LayoutBytes = (UINT64)gFrontPitch * (UINT64)gPhysH * 4ull;
     if (gPhysH == 0) {

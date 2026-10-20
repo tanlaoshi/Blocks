@@ -1,5 +1,5 @@
 /*
- * Shell.c — ShellTask 环（runtime-e-shell）
+ * Shell.c — ShellTask 环（runtime-e-shell + gui-g6-present）
  *
  * ready / blocks>（谁打、谁勿抢）：
  *   Worker 泵到末档 AnnounceBootReady（一次）→ ready 文案 + blocks> + ShellOwn
@@ -10,9 +10,14 @@
  *   1 HID dequeue（只取键；稳态 drain 在 YieldForPollInput）
  *   2 串口 RX — 必须在 Present 前（16550 FIFO@115200≈1.4ms 满；后抽粘贴截断）
  *     分流：StdinUserHold / Settings·Files·Edit·Tty 焦点 → 不进 shell 行
- *   3 HalVideoPresent（!GuiPresentBlocked）
+ *   3 HalVideoPresent（!GuiPresentBlocked）— 只推进一轮脏（非 Flush）
  *   4 LwIp|Net/Tcp → UDP 回显
  *   5 YieldForPollInput
+ *
+ * Present 契约（G6；细节 Present.c 头）：
+ *   · 此处用 Present 不用 Flush：Shell 环要短，Partial 留给后续圈/Compose Flush
+ *   · GuiPresentBlocked（拖/ComposeBusy）时跳过，避免与 Gui 抢 GOP
+ *   · 合成收官、关窗、主题全屏 → Compose 路径 PresentFlush（Busy 内）
  * 不调 GuiPollMouse（runtime-a-poll）。四环 runtime-4；Worker 序 runtime-d-worker。
  */
 #include "Tasks.h"

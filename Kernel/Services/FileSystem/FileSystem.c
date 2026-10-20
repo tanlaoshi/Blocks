@@ -1,6 +1,20 @@
 /*
  * FileSystem.c — 卷激活、路径解析和开机挂卷（PR-S-filesystem-1）
- * 路径操作：Operations.c；挂卷：Mount.c。
+ *
+ * 路径操作：Operations.c；挂卷：Mount.c / MountVolume.c / MountPick.c。
+ *
+ * 开机两轮挂卷（勿改判定意图）：
+ *   1. HalBlockInitialize → MountAllVolumes（内置盘 / 已见 Block）
+ *   2. 若仍需系统卷：MSC auto claim → 再 BlockInitialize → MountAllVolumes
+ *
+ * MSC auto：
+ *   - 已有 BLOCKS.ID 且 MSC.OFF / msc=0 → 可关 auto
+ *   - 尚无 BLOCKS.ID 时不得因盘上 msc=0 关 auto（NUC Live 否则扫不到 U 盘系统卷）
+ *   - 全程无 BLOCKS → force auto，claim 最多再试一轮
+ *   - 已有 BLOCKS → 跳过 USB 扫（省 Logo 前空等）
+ *
+ * 多份 BLOCKS.ID：默认名 BLOCKS 跟 BootDiskGuid（加载 EFI 的盘）；另一份 USB:。
+ * 模块表：本函数失败也常 return 0（软成功，仅 WARN），见文件末。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"
@@ -60,7 +74,7 @@ int FileSystemActivate(int VolIdx) {
 
 /*
  * 解析前缀：
- *   TOYOS:path / ESP:path / A:path / B:path
+ *   BLOCKS:path / ESP:path / A:path / B:path
  *   0:path / 1:path（卷下标）
  * 无冒号 → 默认卷，整串为相对路径。
  */
@@ -210,11 +224,11 @@ static int MscPolicySaysOff(void) {
     return 0;
 }
 
-static int AnyVolumeHasToyId(void) {
+static int AnyVolumeHasBlocksId(void) {
     int i;
 
     for (i = 0; i < gVolCount; i++) {
-        if (gVols[i].HasToyId) {
+        if (gVols[i].HasBlocksId) {
             return 1;
         }
     }
@@ -226,7 +240,7 @@ int FileSystemInitialize(void) {
     int Auto;
     int HaveVols = 0;
     int MuxOk = 0;
-    int HasToy = 0;
+    int HasBlocks = 0;
 
     if (gVirtualFileSystem.Register(FatFsOps()) != 0) {
         DebugWrite("FS: gVirtualFileSystem.Register(fat) failed\n");
@@ -247,9 +261,9 @@ int FileSystemInitialize(void) {
     Auto = HalUsbMscAutoEnabled();
     if (HalBlockInitialize() > 0 && MountAllVolumes()) {
         HaveVols = 1;
-        HasToy = AnyVolumeHasToyId();
+        HasBlocks = AnyVolumeHasBlocksId();
         if (Auto && MscPolicySaysOff()) {
-            if (HasToy) {
+            if (HasBlocks) {
                 Auto = 0;
                 HalUsbMscAutoSet(0);
                 LogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
@@ -262,13 +276,13 @@ int FileSystemInitialize(void) {
         DebugWrite("FS: no primary volumes yet (Live USB path ok)\n");
     }
 
-    if (!HasToy && !Auto) {
+    if (!HasBlocks && !Auto) {
         Auto = 1;
         HalUsbMscAutoSet(1);
         LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
     }
     /* 系统卷已经在（NVMe / 已挂上的盘）。再扫 Hub 和失败根口会在 Logo 前空等数秒。 */
-    if (Auto && HasToy) {
+    if (Auto && HasBlocks) {
         Auto = 0;
         LogBoot("Boot: MSC skip (BLOCKS already)\n");
     }
@@ -287,9 +301,9 @@ int FileSystemInitialize(void) {
                 }
             } else {
                 HaveVols = 1;
-                HasToy = AnyVolumeHasToyId();
+                HasBlocks = AnyVolumeHasBlocksId();
             }
-        } else if (!HasToy) {
+        } else if (!HasBlocks) {
             /*
              * Live U 盘上电慢：首轮 claim 空 → 只见 NVMe ESP。
              * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
@@ -300,7 +314,7 @@ int FileSystemInitialize(void) {
                 MuxOk = 1;
                 if (BlockInitialize() > 0 && MountAllVolumes()) {
                     HaveVols = 1;
-                    HasToy = AnyVolumeHasToyId();
+                    HasBlocks = AnyVolumeHasBlocksId();
                 }
             }
         }
@@ -337,7 +351,7 @@ int FileSystemInitialize(void) {
     Svc.WriteFileAt = FileSystemWriteFileAt;
     VfsServiceOpsRegister(&Svc);
     DebugWrite("FS ready (ls, cat, write, wrbig, dirstress, rm, mkdir, rmdir, mv, vols, filestat, filesync)\n");
-    if (!AnyVolumeHasToyId()) {
+    if (!AnyVolumeHasBlocksId()) {
         HalConsoleWriteSerial("Fs: WARN no BLOCKS.ID on any volume\n");
     }
     BootLogFlush();

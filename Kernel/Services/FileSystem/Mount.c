@@ -17,7 +17,7 @@
 int MountAllVolumes(void) {
     UINT32 d;
     UINT8 Tmp[64];
-    int ToyVol = -1;
+    int BlocksVol = -1;
 
     gVolCount = 0;
     gDefaultVol = 0;
@@ -39,7 +39,7 @@ int MountAllVolumes(void) {
             continue;
         }
         for (p = 0; p < N; p++) {
-            FsMountOneFatPart(d, &Parts[p], &ToyVol);
+            FsMountOneFatPart(d, &Parts[p], &BlocksVol);
         }
     }
 
@@ -48,7 +48,7 @@ int MountAllVolumes(void) {
     if (gVolCount <= 0) {
         return 0;
     }
-    FsMountPickDefault(ToyVol, Tmp, sizeof(Tmp));
+    FsMountPickDefault(BlocksVol, Tmp, sizeof(Tmp));
     if (FileSystemActivate(gDefaultVol) != FAT_OK) {
         return 0;
     }

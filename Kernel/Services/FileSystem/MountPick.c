@@ -37,22 +37,22 @@ static void RenameEspIfLetterOnly(int i) {
     }
 }
 
-static void PickWithToyId(int ToyVol) {
+static void PickWithBlocksId(int BlocksVol) {
     int i;
 
-    gDefaultVol = ToyVol;
-    /* 有 TOYOS 卷时，其余 Block 卷视为启动/ESP：只读，名 ESP（仍可用 A:） */
+    gDefaultVol = BlocksVol;
+    /* 有 BLOCKS 卷时，其余 Block 卷视为启动/ESP：只读，名 ESP（仍可用 A:） */
     for (i = 0; i < gVolCount; i++) {
         if (gVols[i].Ops && gVols[i].Ops->Synthetic) {
             continue;
         }
-        if (!gVols[i].HasToyId) {
+        if (!gVols[i].HasBlocksId) {
             RenameEspIfLetterOnly(i);
         }
     }
 }
 
-static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
+static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
     int i;
     int FatVol = -1;
     int PrefVol = -1;
@@ -94,10 +94,10 @@ static void PickWithoutToyId(UINT8 *Tmp, UINTN TmpSz) {
     }
 }
 
-void FsMountPickDefault(int ToyVol, UINT8 *Tmp, UINTN TmpSz) {
-    if (ToyVol >= 0) {
-        PickWithToyId(ToyVol);
+void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz) {
+    if (BlocksVol >= 0) {
+        PickWithBlocksId(BlocksVol);
     } else {
-        PickWithoutToyId(Tmp, TmpSz);
+        PickWithoutBlocksId(Tmp, TmpSz);
     }
 }

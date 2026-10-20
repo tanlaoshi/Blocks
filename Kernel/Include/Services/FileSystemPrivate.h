@@ -14,10 +14,10 @@
 typedef struct {
     UINT32 Drive;
     UINT32 StartLba;
-    char   Name[FS_VOL_NAME_MAX]; /* 前缀名，不含冒号：TOYOS / A / ESP / RES */
+    char   Name[FS_VOL_NAME_MAX]; /* 前缀名，不含冒号：BLOCKS / A / ESP / RES */
     char   Letter;                /* 'A'+index，便于 A: 访问 */
     int    ReadOnly;
-    int    HasToyId;
+    int    HasBlocksId;
     const FS_OPS *Ops;            /* PR-F3：每卷后端（fat / res） */
 } FS_VOLUME;
 
@@ -33,9 +33,9 @@ int MountAllVolumes(void);
 int FileSystemPathBlocked(const char *Path);
 
 /* PR-F-fs-1：单卷 / 默认卷（MountVolume.c / MountPick.c） */
-void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol);
+void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol);
 void FsMountAddResVolume(void);
-void FsMountPickDefault(int ToyVol, UINT8 *Tmp, UINTN TmpSz);
+void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
 
 /* Path.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
 static inline int StrEqIgnoreCase(const char *A, const char *B) {

@@ -1,7 +1,7 @@
 /*
  * FileSystem.h — 文件系统模块（PR-FS2 多卷 / 路径前缀）
  *
- * 路径：`TOYOS:HELLO.ELF`、`A:DOCS`、`B:/x`；无前缀用默认卷（优先 TOYOS）。
+ * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`、`B:/x`；无前缀用默认卷（优先带 BLOCKS.ID 的卷）。
  * Shell/exec/open/Theme 请走 FileSystem*；底层 Fat* 仍相对「当前已激活卷」。
  */
 #ifndef FILE_SYSTEM_H
@@ -10,7 +10,7 @@
 #include "BootTypes.h"
 #include "Fat.h"
 
-#define FS_MAX_VOLUMES 8 /* NUC：NVMe 多 FAT + Live USB ESP/TOYOS；4 易挤掉 TOYOS */
+#define FS_MAX_VOLUMES 8 /* NUC：NVMe 多 FAT + Live USB ESP/BLOCKS；4 易挤掉系统卷 */
 #define FS_VOL_NAME_MAX 8
 
 int FileSystemInitialize(void);
@@ -24,7 +24,7 @@ int FileSystemRemountVolumes(void);
 /* 卷数；下标 0..Count-1 */
 int FileSystemVolCount(void);
 int FileSystemDefaultVol(void);
-/* Name 如 "TOYOS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
+/* Name 如 "BLOCKS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
 int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
                       UINT32 *StartLba, int *ReadOnly);
 /* PR-F3：后端名 fat / res */

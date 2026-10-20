@@ -74,38 +74,38 @@ static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
     V->ReadOnly = 1;
 }
 
-static void NameToyIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *ToyVol) {
+static void NameBlocksIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *BlocksVol) {
     int Msc = BlockDriveIsMsc(Drive);
     int Take = 0;
     int NewMatch;
     int OldMatch = 0;
 
-    V->HasToyId = 1;
+    V->HasBlocksId = 1;
     /*
-     * 多份 BLOCKS.ID：默认卷跟加载 EFI 的那块盘，分辨率和设置写回同一处。
-     * 旧 Boot 没有 Disk GUID 时，仍跟内置盘。另一份改名 USB:。
+     * 多份带 BLOCKS.ID 的卷：默认名 BLOCKS 跟加载 EFI 的那块盘（BootDiskGuid），
+     * 分辨率和设置写回同一处。旧 Boot 无 GUID 时仍偏内置盘；另一份改名 USB:。
      */
     NewMatch = CacheBootDiskMatch(Drive);
-    if (*ToyVol >= 0 && gVols[*ToyVol].Drive < BOOT_GUID_CACHE &&
-        sDriveGuidOk[gVols[*ToyVol].Drive] == 1) {
+    if (*BlocksVol >= 0 && gVols[*BlocksVol].Drive < BOOT_GUID_CACHE &&
+        sDriveGuidOk[gVols[*BlocksVol].Drive] == 1) {
         const BOOT_INFO *Info = BootInfoGet();
         OldMatch = Info && Info->BootDiskGuidOk &&
-                   GuidEq16(sDriveGuid[gVols[*ToyVol].Drive], Info->BootDiskGuid);
+                   GuidEq16(sDriveGuid[gVols[*BlocksVol].Drive], Info->BootDiskGuid);
     }
-    if (*ToyVol < 0) {
+    if (*BlocksVol < 0) {
         Take = 1;
     } else if (NewMatch == 1 && !OldMatch) {
-        StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
+        StringCopy(gVols[*BlocksVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
         LogFs("Fs: Prefer Boot Disk BLOCKS\n");
     } else if (NewMatch == 0 && OldMatch) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
         LogFs("Fs: Other BLOCKS Kept As USB:\n");
-    } else if (NewMatch < 0 && !Msc && BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
-        StringCopy(gVols[*ToyVol].Name, FS_VOL_NAME_MAX, "USB");
+    } else if (NewMatch < 0 && !Msc && BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
+        StringCopy(gVols[*BlocksVol].Name, FS_VOL_NAME_MAX, "USB");
         Take = 1;
         LogFs("Fs: Prefer Internal BLOCKS Over USB\n");
-    } else if (NewMatch < 0 && Msc && !BlockDriveIsMsc(gVols[*ToyVol].Drive)) {
+    } else if (NewMatch < 0 && Msc && !BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
         LogFs("Fs: USB BLOCKS Kept As USB:\n");
     } else {
@@ -113,7 +113,7 @@ static void NameToyIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *ToyVol) {
     }
     if (Take) {
         StringCopy(V->Name, FS_VOL_NAME_MAX, "BLOCKS");
-        *ToyVol = Idx;
+        *BlocksVol = Idx;
     }
 }
 
@@ -132,7 +132,7 @@ static int PickVolSlot(int HasId) {
     {
         int j;
         for (j = gVolCount - 1; j >= 0; j--) {
-            if (gVols[j].HasToyId) {
+            if (gVols[j].HasBlocksId) {
                 continue;
             }
             if (gVols[j].Ops && gVols[j].Ops->Synthetic) {
@@ -146,8 +146,8 @@ static int PickVolSlot(int HasId) {
     return -1;
 }
 
-/* 挂上 Drive 上一个 FAT 分区；成功记入 gVols，并可能更新 *ToyVol */
-void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
+/* 挂上 Drive 上一个 FAT 分区；成功记入 gVols，并可能更新 *BlocksVol */
+void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     FS_VOLUME *V;
     int Idx;
     int IsEsp;
@@ -156,7 +156,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     UINT8 Tmp[64];
     UINTN Sz;
 
-    if (!Part || !ToyVol) {
+    if (!Part || !BlocksVol) {
         return;
     }
     IsEsp = Part->IsEsp;
@@ -182,13 +182,13 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *ToyVol) {
     V->StartLba = Start;
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = IsEsp ? 1 : 0;
-    V->HasToyId = 0;
+    V->HasBlocksId = 0;
     V->Ops = FatFsOps();
     V->Name[0] = V->Letter;
     V->Name[1] = 0;
 
     if (HasId) {
-        NameToyIdVol(V, Drive, Idx, ToyVol);
+        NameBlocksIdVol(V, Drive, Idx, BlocksVol);
     } else if (IsEsp) {
         NameEspSlot(V, gVolCount, Idx);
     }
@@ -225,7 +225,7 @@ void FsMountAddResVolume(void) {
     V->StartLba = 0;
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = 1;
-    V->HasToyId = 0;
+    V->HasBlocksId = 0;
     V->Ops = ResourceFileSystemOps();
     StringCopy(V->Name, FS_VOL_NAME_MAX, "RES");
     if (gVirtualFileSystem.Select(V->Ops) == 0 && gVirtualFileSystem.Mount(0) == FAT_OK) {

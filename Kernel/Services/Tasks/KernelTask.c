@@ -2,8 +2,9 @@
  * KernelTask.c — 教学慢任务槽（进度条演示；与 Gui/Worker 同属 Tasks）
  *
  * 非 BringUp：启动编排见 Kernel.c / Modules.c。
- * KernelMainCommon 调 KernelTaskDemoStart → Register → DemoRun。
+ * KernelMainCommon 调 KernelTaskDemoStart；仅 KERNEL_TASK_DEMO=1 时 Register→DemoRun。
  * 槽位最多 4；Name ≤15；Store 装卸不走这张表（走 Worker）。
+ * 打开：make / ./build.sh KERNEL_TASK_DEMO=1
  */
 #include "KernelTask.h"
 #include "CString.h"
@@ -92,6 +93,7 @@ int KernelTaskProgress(int Slot) {
     return gSlots[Slot].Progress;
 }
 
+#if KERNEL_TASK_DEMO
 /* 教学：假装一段慢活，每 25% 让出 CPU，让调度器和进度显示能被看见。 */
 static void KernelTaskDemoRun(void *Ctx) {
     KERNEL_TASK_SLOT *Slot = (KERNEL_TASK_SLOT *)Ctx;
@@ -105,7 +107,10 @@ static void KernelTaskDemoRun(void *Ctx) {
     Slot->State = KERNEL_TASK_DONE;
     DebugWrite("KernelTask: Demo Done\n");
 }
+#endif
 
 void KernelTaskDemoStart(void) {
+#if KERNEL_TASK_DEMO
     (void)KernelTaskRegister("KernelTaskDemo", KernelTaskDemoRun, 0);
+#endif
 }

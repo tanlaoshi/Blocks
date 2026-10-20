@@ -1,5 +1,5 @@
 /*
- * Gfx.c — 几何。未注册画点时落笔为空，不写内存。
+ * Graphics.c — 几何。未注册画点时落笔为空，不写内存。
  */
 #include "Graphics.h"
 

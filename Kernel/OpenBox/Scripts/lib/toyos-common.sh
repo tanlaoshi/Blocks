@@ -53,12 +53,15 @@ toyos_arch_kernel() {
 
 toyos_load_config() {
     local Root="$1"
-    DEFAULT_TARGET=toyos
+    DEFAULT_TARGET=blocks
     DEFAULT_ARCH=x86
     EDK2_SRC="${EDK2_SRC:-}"
     if [ -f "$Root/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Config.txt"
+    elif [ -f "$Root/Kernel/OpenBox/Config.txt" ]; then
+        # shellcheck disable=SC1090
+        . "$Root/Kernel/OpenBox/Config.txt"
     elif [ -f "$Root/ToyKernel/OpenBox/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/ToyKernel/OpenBox/Config.txt"
@@ -66,9 +69,16 @@ toyos_load_config() {
     if [ -f "$Root/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Scripts/Config.local.txt"
+    elif [ -f "$Root/Kernel/OpenBox/Scripts/Config.local.txt" ]; then
+        # shellcheck disable=SC1090
+        . "$Root/Kernel/OpenBox/Scripts/Config.local.txt"
     elif [ -f "$Root/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Config.local.txt"
+    fi
+    # 旧名 toyos → blocks（同：编 Kernel）
+    if [ "${DEFAULT_TARGET:-}" = "toyos" ]; then
+        DEFAULT_TARGET=blocks
     fi
     export EDK2_SRC
 }

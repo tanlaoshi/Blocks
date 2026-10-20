@@ -4,10 +4,14 @@
  * 人话：给「慢一点的内核活」挂个名字、状态、进度，给任务管理器看。
  * 商店装卸不走这里，走 Worker。实现：Services/Tasks/KernelTask.c。
  *
- * 从哪读：KernelTaskRegister；开机演示见 KernelTaskDemoStart。
+ * 从哪读：KernelTaskRegister；开机演示见 KernelTaskDemoStart（须 KERNEL_TASK_DEMO=1）。
  */
 #ifndef KERNEL_TASK_H
 #define KERNEL_TASK_H
+
+#ifndef KERNEL_TASK_DEMO
+#define KERNEL_TASK_DEMO 0
+#endif
 
 #define KERNEL_TASK_SLOTS 4
 
@@ -22,7 +26,7 @@ void KernelTaskSetProgress(int Slot, int Progress, const char *Message);
 int KernelTaskState(int Slot);
 int KernelTaskProgress(int Slot);
 
-/* 开机拉起教学慢任务，ps / 任务管理器里名字是 KernelTaskDemo */
+/* 开机教学慢任务；默认空操作，KERNEL_TASK_DEMO=1 才 Register（名 KernelTaskDemo） */
 void KernelTaskDemoStart(void);
 
 #endif

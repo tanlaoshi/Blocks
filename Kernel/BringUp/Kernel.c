@@ -135,12 +135,12 @@ static void KernelRunPath(int (*RunModules)(void), void (*Finish)(void)) {
     Finish();
 }
 
-/* 桌面常驻：只顺序 Create / 演示任务 / 可选 input / Start。 */
+/* 桌面常驻：只顺序 Create / 可选教学 Demo（KERNEL_TASK_DEMO）/ 可选 input / Start。 */
 static void KernelMainCommon(void) {
     KernelSpawnOrPark("Shell", ShellTask);
     KernelSpawnOrPark("Gui", GuiTask);
     KernelSpawnOrPark("Worker", WorkerTask);
-    KernelTaskDemoStart();
+    KernelTaskDemoStart(); /* 默认关；见 KERNEL_TASK_DEMO */
     KernelTrySpawnInput();
     SchedulerStart();
 }

@@ -3,8 +3,8 @@
 # 套件: smoke | smoke-virt | smoke-install | smoke-msc | fs | user | shell | enosys | mod-verify | all | unit
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/toyos-common.sh
-. "$HERE/lib/toyos-common.sh"
+# shellcheck source=../lib/toyos-common.sh
+. "$HERE/../lib/toyos-common.sh"
 
 ROOT="$(toyos_resolve_root "$0")"
 toyos_load_config "$ROOT"

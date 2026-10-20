@@ -46,7 +46,7 @@ boot() {
 sync() {
     case "${1:-}" in
         usb|nuc|kernel)
-            bash "$BLOCKS_SCRIPTS/sync.sh" "$@"
+            bash "$BLOCKS_SCRIPTS/sync/sync.sh" "$@"
             ;;
         *)
             (cd "$RUNTIME" && ./sync.sh "$@")
@@ -67,11 +67,11 @@ smoke-boot() {
 }
 
 run-virt-arm() {
-    bash "$BLOCKS_SCRIPTS/run-virt-arm.sh" "$@"
+    bash "$BLOCKS_SCRIPTS/run/run-virt-arm.sh" "$@"
 }
 
 run-virt-riscv() {
-    bash "$BLOCKS_SCRIPTS/run-virt-riscv.sh" "$@"
+    bash "$BLOCKS_SCRIPTS/run/run-virt-riscv.sh" "$@"
 }
 
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"

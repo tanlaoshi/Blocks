@@ -218,7 +218,7 @@ toy_virt_build_dev_args() {
     if [ "${VIRT_NODISK:-0}" != "1" ]; then
         export VIRT_MAKE_ARCH VIRT_HAL_ARCH
         toy_virt_paths
-        "$KERNEL/OpenBox/Scripts/prepare-virt-rootfs.sh" >/dev/null
+        "$KERNEL/OpenBox/Scripts/sync/prepare-virt-rootfs.sh" >/dev/null
         # N10：用 raw FAT 镜像，避免 QEMU fat:rw(vvfat) 与 virtio-net 同机 TX 故障
         DEV_ARGS+=(-drive "if=none,id=toyroot,format=raw,file=$RUNTIME/RootFs/${VIRT_HAL_ARCH}/disk.img"
                    -device virtio-blk-device,drive=toyroot)

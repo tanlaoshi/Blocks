@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh — build.sh [<toyos|toyboot|sdk|all>] [<x86|arm64|riscv>] [KEY=VAL…]
+# build.sh — build.sh [<blocks|boot|sdk|all>] [<x86|arm64|riscv>] [KEY=VAL…]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/toyos-common.sh
@@ -8,7 +8,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(toyos_resolve_root "$0")"
 toyos_load_config "$ROOT"
 
-TARGET="${DEFAULT_TARGET:-toyos}"
+TARGET="${DEFAULT_TARGET:-blocks}"
 ARCH_IN="${DEFAULT_ARCH:-x86}"
 ARGS=()
 GOT_TARGET=0
@@ -19,7 +19,7 @@ for A in "$@"; do
         *=*)
             ARGS+=("$A")
             ;;
-        toyos|toyboot|sdk|all|kernel|boot)
+        blocks|toyos|toyboot|sdk|all|kernel|boot)
             if [ "$GOT_TARGET" = 0 ]; then
                 TARGET="$A"
                 GOT_TARGET=1
@@ -77,12 +77,12 @@ build_sdk() {
 }
 
 case "$TARGET" in
-    toyos|kernel) build_toyos ;;
+    blocks|toyos|kernel) build_toyos ;;
     toyboot|boot) build_toyboot ;;
     sdk) build_sdk ;;
     all)
         build_toyos
         build_toyboot
         ;;
-    *) toyos_die "未知目标: $TARGET（toyos|toyboot|sdk|all）" ;;
+    *) toyos_die "未知目标: $TARGET（blocks|boot|sdk|all）" ;;
 esac

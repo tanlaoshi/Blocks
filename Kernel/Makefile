@@ -160,9 +160,11 @@ endif
 
 XHCI_DIAG_VERBOSE ?= 0
 DEMO_DRIVER ?= 1
+KERNEL_TASK_DEMO ?= 0
 CFLAGS_BASE = -ffreestanding -nostdlib -O2 -Wall -Wextra \
               -fno-stack-protector -fno-builtin -fno-pie -fno-pic \
               -DKERNEL_DEBUG=$(DEBUG) -DBRINGUP=$(BRINGUP) \
+              -DKERNEL_TASK_DEMO=$(KERNEL_TASK_DEMO) \
               -DSERIAL_ENABLE=$(SERIAL) \
               -DSERIAL_BOOT=$(SERIAL_BOOT) \
               -DSERIAL_USB=$(SERIAL_USB) \

@@ -1,4 +1,4 @@
-# Config.txt — ToyOS 开箱默认（BOX-4）
+# Config.txt — Blocks 开箱默认
 # 本机覆盖：Scripts/Config.local.txt（勿提交）
-DEFAULT_TARGET=toyos
+DEFAULT_TARGET=blocks
 DEFAULT_ARCH=x86

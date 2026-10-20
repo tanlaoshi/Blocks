@@ -2,8 +2,8 @@
 # run.sh — run.sh [<x86|arm64|riscv>] [split|virt] …
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/toyos-common.sh
-. "$HERE/lib/toyos-common.sh"
+# shellcheck source=../lib/toyos-common.sh
+. "$HERE/../lib/toyos-common.sh"
 
 ROOT="$(toyos_resolve_root "$0")"
 toyos_load_config "$ROOT"

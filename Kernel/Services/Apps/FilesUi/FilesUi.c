@@ -4,7 +4,7 @@
  * 列表：进目录 / 开 ELF / 预览文本
  * 写：d/Del 删除（Y/N 确认）；n 新建目录；f 新建空文件；r 重命名
  * U1：左栏固定宽 + 右栏列表
- * U2：侧栏按已挂载卷列出（TOYOS 置顶）；跨盘标 drive
+ * U2：侧栏按已挂载卷列出（BLOCKS 置顶）；跨盘标 drive
  * 开窗一次填满客户区后再淡入（勿空框 Present）
  * U3：右栏再分 列表 | 预览；空态/焦点行与 G12 一致
  * PR-S-filesui-split-1：Paint* → Paint.c；本文件为全局宿主。
@@ -174,7 +174,7 @@ void CwdPop(void) {
         gCwd[Last] = 0;
         return;
     }
-    /* 卷根保留 "TOYOS:"；无前缀则清空 */
+    /* 卷根保留 "BLOCKS:"；无前缀则清空 */
     if (Colon >= 0) {
         gCwd[Colon + 1] = 0;
         return;
@@ -192,7 +192,7 @@ void FilesUiOpen(void) {
 
     /*
      * 开窗一次填满：侧栏 + 目录 List 都在淡入前完成，避免空框闪一下再刷内容。
-     * 侧栏 TOYOS 置顶；开窗优先进 TOYOS:。
+     * 侧栏 BLOCKS 置顶；开窗优先进 BLOCKS:。
      */
     RebuildPlaces();
     gCwd[0] = 0;

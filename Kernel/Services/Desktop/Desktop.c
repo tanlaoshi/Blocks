@@ -5,7 +5,7 @@
  * 从哪读：DesktopInitialize（开机搭好）→ DesktopEnsureIconsLoaded（晚一点
  *       才扫盘加载图标）→ DesktopDraw / DesktopDrawStartMenu（谁画什么）。
  *
- * 别改：图标坐标松手后写 TOYOS.DB，下次开机 LoadIconLayout 读回来。
+ * 别改：图标坐标松手后写 BLOCKS.DB，下次开机 LoadIconLayout 读回来。
  *       开始菜单里 Apps 列表认已装清单 + 盘上 ELF，勿只扫半边。
  *       DesktopInitialize 与 OnDisplayResize 勿重入（gDesktopBusy）。
  *
@@ -191,7 +191,7 @@ void DesktopNotifyAppsChanged(void) {
 
 void DesktopInitialize(void) {
     if (gDesktopBusy) {
-        DebugWrite("desktop: Init reenter ignored\n");
+        LogGui("Gui: Desktop Init Reenter Ignored\n");
         return;
     }
     gDesktopBusy = 1;
@@ -222,9 +222,9 @@ void DesktopInitialize(void) {
     gIconDragIdx = -1;
     gIconDragMoved = 0;
     LoadWallpaper();
-    LogGui("Boot: Desktop Ready\n");
+    LogGui("Gui: Desktop Layout Ready\n");
     HalAudioBeep();
-    DebugWrite("desktop: solid ready (icons deferred)\n");
+    LogGui("Gui: Desktop Solid Ready (Icons Deferred)\n");
 #if KERNEL_DEBUG
     UiActionSelfCheck();
 #endif

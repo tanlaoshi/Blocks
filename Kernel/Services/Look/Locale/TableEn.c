@@ -81,6 +81,7 @@ const char *const gEnFallback[MSG_COUNT] = {
     "PCI devices",
     "ready",
     "TTY",
+    "Edit",
     "Click item to apply",
     "The quick brown fox",
     "50=small 100=normal",

@@ -1,7 +1,11 @@
 /*
  * WindowManager.c — 窗口全局态、开机和标题刷新（PR-S-guiwm-split-2）
  *
- * 模块表入口 GuiInitialize：Db/字体/Theme/Logo → GuiDesktopInitialize。
+ * 模块表 GuiInitialize（软成功：Db/Theme 失败仍 return 0，见函数末）：
+ *   PollInput → Logo(96) → Db/字体 → Theme/Locale → UI scale
+ *   → LogoFinish → GuiDesktopInitialize → DrainMouse
+ * GuiDesktopInitialize：屏/光标 → DesktopInitialize → 登记 Ops → Redraw
+ *   → GOP mute → 鼠交接 → BootLogFlush
  * 开窗见 GuiOpen.c；点击与鼠标见 GuiPointer.c；命中见 GuiHit.c。
  */
 #include "GuiPrivate.h"
@@ -25,6 +29,7 @@
 #include "Font.h"
 #include "Db.h"
 #include "LogFile.h"
+#include "SerialLog.h"
 
 GUI_WINDOW_MANAGER gGuiWindowManager = {
     .HoverWin = -1,
@@ -76,7 +81,7 @@ void GuiRefreshTitles(void) {
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
             gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_FILES);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
-            gGuiWindowManager.Windows[i].Title = "Edit";
+            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_EDIT);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
             gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_TTY);
         }
@@ -166,7 +171,7 @@ void GuiDesktopInitialize(void) {
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();
-    DebugWrite("Gui: desktop ready\n");
+    LogGui("Gui: Desktop Ready\n");
 }
 
 static void PollInput(void) {
@@ -205,5 +210,6 @@ int GuiInitialize(void) {
     DesktopBootLogoFinish();
     GuiDesktopInitialize();
     DrainMouse();
+    /* 软成功：库/主题/字缺失不挡进桌面（模块表仍前进） */
     return 0;
 }

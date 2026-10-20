@@ -126,7 +126,7 @@ static void AppLayoutKey(const char *Id, char *Out, int Max) {
     Out[i] = 0;
 }
 
-/* PR-G-desk-1：从 TOYOS.DB 覆盖默认坐标 */
+/* PR-G-desk-1：从 BLOCKS.DB 覆盖默认坐标 */
 void LoadIconLayout(void) {
     int i;
     int Any = 0;
@@ -161,7 +161,7 @@ void LoadIconLayout(void) {
         Any = 1;
     }
     if (Any) {
-        DebugWrite("desktop: icon layout from TOYOS.DB\n");
+        DebugWrite("desktop: icon layout from BLOCKS.DB\n");
     }
 }
 

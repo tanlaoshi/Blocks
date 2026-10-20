@@ -1,7 +1,7 @@
 /*
  * Nav.c — Files 路径/卷侧栏/预览
  *
- * 侧栏按 FileSystem 已挂载卷动态生成；TOYOS 置顶。
+ * 侧栏按 FileSystem 已挂载卷动态生成；BLOCKS 置顶。
  */
 #include "FilesUiPrivate.h"
 #include "Fat.h"
@@ -38,7 +38,7 @@ static void AppendDriveTag(char *Label, int Max, UINT32 Drive) {
     Label[n] = 0;
 }
 
-static int NameIsToy(const char *Name) {
+static int NameIsBlocks(const char *Name) {
     return Name && (Name[0] == 'B' || Name[0] == 'b') &&
            (Name[1] == 'L' || Name[1] == 'l') &&
            (Name[2] == 'O' || Name[2] == 'o') &&
@@ -65,9 +65,9 @@ void RebuildPlaces(void) {
     int j;
     int PlaceN = 0;
     int MarkDrive = 0;
-    int ToyVol = -1;
+    int BlocksVol = -1;
     int EspVol = -1;
-    UINT32 ToyDrive = 0;
+    UINT32 BlocksDrive = 0;
     UINT32 EspDrive = 0;
     char Names[FS_MAX_VOLUMES][FS_VOL_NAME_MAX];
     UINT32 Drives[FS_MAX_VOLUMES];
@@ -92,9 +92,9 @@ void RebuildPlaces(void) {
         Drives[VolN] = Drive;
         Letters[VolN] = (char)('A' + i);
         Order[VolN] = VolN;
-        if (NameIsToy(Names[VolN])) {
-            ToyVol = VolN;
-            ToyDrive = Drive;
+        if (NameIsBlocks(Names[VolN])) {
+            BlocksVol = VolN;
+            BlocksDrive = Drive;
         }
         if (EspVol < 0 && NameIsEsp(Names[VolN])) {
             EspVol = VolN;
@@ -103,9 +103,9 @@ void RebuildPlaces(void) {
         VolN++;
     }
 
-    /* ESP 与 TOYOS 不在同一盘 → 侧栏标 dN */
-    if (ToyVol >= 0 && EspVol >= 0 && ToyDrive != EspDrive &&
-        ToyDrive != 0xFFFFFFFEu && EspDrive != 0xFFFFFFFEu) {
+    /* ESP 与 BLOCKS 不在同一盘 → 侧栏标 dN */
+    if (BlocksVol >= 0 && EspVol >= 0 && BlocksDrive != EspDrive &&
+        BlocksDrive != 0xFFFFFFFEu && EspDrive != 0xFFFFFFFEu) {
         MarkDrive = 1;
     }
     for (i = 0; i < VolN && !MarkDrive; i++) {
@@ -117,16 +117,16 @@ void RebuildPlaces(void) {
         }
     }
 
-    /* 排序：TOYOS 置顶，RES 垫底，其余保持挂载序 */
+    /* 排序：BLOCKS 置顶，RES 垫底，其余保持挂载序 */
     for (i = 0; i < VolN; i++) {
         for (j = i + 1; j < VolN; j++) {
             int Ai = Order[i];
             int Aj = Order[j];
             int Swap = 0;
 
-            if (NameIsToy(Names[Aj]) && !NameIsToy(Names[Ai])) {
+            if (NameIsBlocks(Names[Aj]) && !NameIsBlocks(Names[Ai])) {
                 Swap = 1;
-            } else if (!NameIsToy(Names[Ai]) && !NameIsToy(Names[Aj])) {
+            } else if (!NameIsBlocks(Names[Ai]) && !NameIsBlocks(Names[Aj])) {
                 if (NameIsRes(Names[Ai]) && !NameIsRes(Names[Aj])) {
                     Swap = 1;
                 }
@@ -150,7 +150,7 @@ void RebuildPlaces(void) {
                 break;
             }
         }
-        /* 名唯一 → TOYOS: / ESP:；撞名 → A: 等字母前缀 */
+        /* 名唯一 → BLOCKS: / ESP:；撞名 → A: 等字母前缀 */
         if (NameUnique && Names[V][0]) {
             for (k = 0; Names[V][k] && k < FILES_PLACE_PATH_MAX - 2; k++) {
                 gPlacePaths[PlaceN][k] = Names[V][k];
@@ -163,7 +163,7 @@ void RebuildPlaces(void) {
             gPlacePaths[PlaceN][2] = 0;
         }
 
-        /* 标签带冒号，与旧书签 TOYOS: 观感一致 */
+        /* 标签带冒号，与旧书签 BLOCKS: 观感一致 */
         for (k = 0; gPlacePaths[PlaceN][k] && k < FILES_PLACE_LABEL_MAX - 1; k++) {
             gPlaceLabels[PlaceN][k] = gPlacePaths[PlaceN][k];
         }
@@ -242,7 +242,7 @@ int PlaceMatches(int Idx) {
     if (P[i] != 0) {
         return 0;
     }
-    /* Path 耗尽：卷根 TOYOS: 匹配 TOYOS:Apps；目录捷径需边界 / 或结束 */
+    /* Path 耗尽：卷根 BLOCKS: 匹配 BLOCKS:Apps；目录捷径需边界 / 或结束 */
     if (n > 0 && P[n - 1] == ':') {
         return 1;
     }

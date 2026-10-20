@@ -81,6 +81,7 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_DEV_PCI_COUNT",
     "MSG_DEV_READY",
     "MSG_APP_TTY",
+    "MSG_APP_EDIT",
     "MSG_SET_CLICK_APPLY",
     "MSG_SET_FONT_SAMPLE",
     "MSG_SET_SCALE_HINT1",

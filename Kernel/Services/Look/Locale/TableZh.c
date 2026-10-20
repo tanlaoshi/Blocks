@@ -81,6 +81,7 @@ const char *const gZhFallback[MSG_COUNT] = {
     "PCI 设备",
     "就绪",
     "串口",
+    "编辑",
     "点击条目以应用",
     "永和九年 汉字预览",
     "50=小 100=标准",

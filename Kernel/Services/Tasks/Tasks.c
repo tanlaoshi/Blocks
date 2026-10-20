@@ -1,5 +1,12 @@
 /*
- * Tasks.c — GUI / Worker / 输入专核（PR-S-tasks-1）
+ * Tasks.c — Gui / Worker / Input 三环（PR-S-tasks-1）
+ *
+ * SchedulerStart 后（Shell 见 Shell.c）：
+ *   GuiTask    — GuiPollMouse（肉在 Pointer.c）→ YieldForPollInput
+ *   WorkerTask — 扫盘/Store/iwl/DHCP → AnnounceBootReady → Halt
+ *   InputTask  — 逻辑 CPU≥3：cli+HalInputPoll / sti+pause（深栈勿被抢）
+ * YieldForPollInput：不足 3 核稳态 drain；否则只让步（Input 独占）。
+ * 全表 runtime-4；Gui 主环 gui-loop；钉核 sched-pin-doc。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"

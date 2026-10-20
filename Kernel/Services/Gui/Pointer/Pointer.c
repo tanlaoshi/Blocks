@@ -1,7 +1,12 @@
 /*
- * GuiPointer.c — 鼠标队列轮询与输入锁（PR-S3-guipointer-1）
+ * Pointer.c — 鼠标队列轮询与输入锁（PR-S3-guipointer-1）
  *
- * 长 IO 挪光标见 GuiPointerMotion.c；辅助 GuiClick / GuiPointerMouse。
+ * GuiTask / ShellTask 均调 GuiPollMouse（Gui 主环肉在此）：
+ *   无鼠标·InputLocked → 排空/return
+ *   PresentBlocked → HoldDrain（只留末包）
+ *   DeferPresent + 合并位移；边沿/滚轮逐份 → 点击/拖/Flush
+ *   → DesktopTickClock → StoreUiPump（装卸 Step 在 Worker，勿挪回）
+ * 长 IO 挪光标见 Motion.c；点击见 Click；表见路线图新 gui-loop。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

@@ -1,5 +1,10 @@
 /*
- * TasksShell.c — Shell 任务（PR-S-tasks-1）
+ * Shell.c — ShellTask 环（PR-S-tasks-1）
+ *
+ * 交互核：HID dequeue → GuiPollMouse → 串口 RX（Present 前）
+ *   → Present → LwIp|Net/Tcp → UDP 回显 → YieldForPollInput
+ * ready/blocks> 由 Worker Announce，此处勿抢先 Prompt。
+ * 四环总表：路线图新 runtime-4；Gui/Worker/Input 见 Tasks.c。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"

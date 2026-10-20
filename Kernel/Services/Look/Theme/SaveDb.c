@@ -62,9 +62,9 @@ int ThemeSaveWriteDb(const THEME_SAVE_VALS *V) {
         DbOk = 0;
     }
     if (!DbOk) {
-        HalConsoleWriteSerial("Theme: saved THEME.CFG (DB write failed)\n");
+        HalConsoleWriteSerial("Theme: BLOCKS.DB write failed\n");
         return -1;
     }
-    HalConsoleWriteSerial("Theme: saved THEME.CFG + TOYOS.DB\n");
+    HalConsoleWriteSerial("Theme: saved BLOCKS.DB (+ THEME.CFG without mode)\n");
     return 0;
 }

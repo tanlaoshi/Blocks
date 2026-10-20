@@ -241,6 +241,7 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
             return Status;
         }
     }
+    BootLogoProgress(100);
     BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
 
     BootConfig->OsIdSeen = ScanOsMarkerVolumes() ? 1u : 0u;

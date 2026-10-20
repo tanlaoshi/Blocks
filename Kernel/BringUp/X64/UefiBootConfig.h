@@ -2,7 +2,7 @@
  * UefiBootConfig.h — 交接包的两份副本，内容必须相同（UEFI_BOOT_CONFIG，656 字节）
  *
  *   Boot/BootPkg/UefiBootConfig.h
- *   Kernel/HAL/X64/UefiBootConfig.h
+ *   Kernel/BringUp/X64/UefiBootConfig.h
  *
  * 两边互不 #include。Boot 离开内核、内核离开 Boot，都要能单独编译。
  * 改一份必须改另一份，并让两边的 _Static_assert 仍然通过。

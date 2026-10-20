@@ -13,6 +13,7 @@
   VideoScore.c
   VideoEdid.c
   VideoTheme.c
+  Volume.c
   LoadKernel.c
   FillRsdp.c
   FillXhci.c

@@ -78,15 +78,15 @@ if [ -z "${DISPLAY:-}" ] && [ "$HEADLESS" = 0 ]; then
 fi
 
 # VGA EDID：固件 GOP 初模；VM 内勿 SetMode（见 Boot Video.c），改分辨率须重起本脚本。
-# 优先 QEMU_XRES/YRES；否则读 THEME.CFG mode=WxH；缺省/auto → 1440x900（32px 字更宽松）。
+# 优先 QEMU_XRES/YRES；否则读 BLOCKS.DB mode=WxH；缺省 → 1440x900。
 QEMU_XRES="${QEMU_XRES:-}"
 QEMU_YRES="${QEMU_YRES:-}"
 if [ -z "$QEMU_XRES" ] || [ -z "$QEMU_YRES" ]; then
-    Cfg="RootFs/X64/THEME.CFG"
+    Db="RootFs/X64/BLOCKS.DB"
     Line=""
-    if [ -f "$Cfg" ]; then
-        # 末尾可能有空字节，不用 -a 时 grep 会当成二进制，mode= 读不出来，只能落到 1440x900。
-        Line="$(grep -aE '^[[:space:]]*mode=' "$Cfg" | head -1 || true)"
+    if [ -f "$Db" ]; then
+        # 末尾可能有空字节，不用 -a 时 grep 会当成二进制，mode= 读不出来。
+        Line="$(grep -aE '^[[:space:]]*mode=' "$Db" | head -1 || true)"
     fi
     W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
     H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"

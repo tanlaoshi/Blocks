@@ -3,7 +3,7 @@
  *
  * UEFI：ExitBootServices 后 Boot 协议（含 GOP SetMode）未定义。
  * NUC 实测：强行 SetMode → 先 #PF（缺映），映足后变成 #UD @ ip=0（固件跳空）。
- * 故真机**不做** live SetMode；Settings 写 THEME.CFG，下次 ToyBoot（EBS 前）切模式。
+ * 故真机**不做** live SetMode；Settings 写 BLOCKS.DB mode=，下次 Boot（EBS 前）切模式。
  * QEMU 热切走 Bochs，不进本文件。
  *
  * 仍保留 Map + Available：供「已是目标分辨率」时只同步内核 FB 视图，以及将来探测。

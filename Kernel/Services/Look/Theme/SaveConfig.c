@@ -53,9 +53,7 @@ UINTN ThemeSaveBuildCfg(char *Buf, UINTN Cap, const THEME_SAVE_VALS *V) {
     BufPutKeyHex(Buf, &N, Cap, "desktop", gDesktopBg);
     BufPutKeyHex(Buf, &N, Cap, "shell", gShellClientBg);
     BufPutKeyStr(Buf, &N, Cap, "font", V->FontVal);
-    if (ThemeHasDisplayPref() && V->ModeVal[0]) {
-        BufPutKeyStr(Buf, &N, Cap, "mode", V->ModeVal);
-    }
+    /* 分辨率只写 BLOCKS.DB 的 mode=；CFG 不再带 mode，避免双份 */
     BufPutKeyStr(Buf, &N, Cap, "scale", V->ScaleVal);
     if (gScaleUserSet) {
         BufPutStr(Buf, &N, Cap, "scalesrc=user\n");

@@ -1,5 +1,5 @@
 /*
- * BootPrivate.h ? BootPkg ???????? .c ???
+ * BootPrivate.h — BootPkg 内部声明（各 .c 共用）
  */
 #ifndef BOOT_PRIVATE_H
 #define BOOT_PRIVATE_H
@@ -23,7 +23,7 @@
 typedef UEFI_VIDEO_CONFIG VIDEO_CONFIG;
 typedef UEFI_MEMORY_MAP   MEMORY_MAP;
 
-/* Video?GetVideoInfo / SetVideoMode?????? VideoScore / Edid / Theme? */
+/* Video：GetVideoInfo / SetVideoMode；辅助 VideoScore / Edid / Theme */
 BOOLEAN IsVirtualMachine(VOID);
 BOOLEAN IsModeUsable(const EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info);
 EFI_STATUS TryGetEdidPreferred(EFI_HANDLE ImageHandle, EFI_HANDLE GopHandle,
@@ -36,16 +36,19 @@ VOID SortVideoModesForSettings(UEFI_VIDEO_MODE *Modes, UINT32 Count,
                                BOOLEAN InVm, BOOLEAN HasEdid,
                                UINT32 EdidW, UINT32 EdidH);
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
-VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);
 VOID BootShowLogo(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop);
-/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。读盘用到 40。 */
+/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。读盘到 40，装完到 100。 */
 VOID BootLogoProgress(UINTN Pct);
 
-/* LoadKernel（Read / Check / Load 统一 *KernelFile） */
+/* Volume：BLOCKS.ID、启动盘 GUID、同盘判定 */
 BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
+BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);
+VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
+
+/* LoadKernel（Read / Check / Load 统一 *KernelFile） */
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
 EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,

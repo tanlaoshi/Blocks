@@ -114,11 +114,11 @@ void ApplyDisplayChoice(int Index) {
         gDisplayHint = 1;
         if (HalCpuIsHypervisor()) {
         HalConsoleWriteSerial(
-            "settings: display saved; quit QEMU, then run (EDID follows THEME.CFG)\n");
+            "settings: display saved; quit QEMU, then run (EDID follows BLOCKS.DB)\n");
             DebugWrite("settings: display pref saved (relaunch QEMU on VM)\n");
         } else {
             HalConsoleWriteSerial(
-                "settings: display pref saved; reboot real PC to apply THEME.CFG\n");
+                "settings: display pref saved; reboot real PC to apply BLOCKS.DB\n");
             DebugWrite("settings: display pref saved (real PC reboot)\n");
         }
     } else {

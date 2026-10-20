@@ -43,7 +43,7 @@ const char *const gZhFallback[MSG_COUNT] = {
     "已保存。请退出 QEMU 后 ./run-split.sh",
     "已保存。重启后生效（无精确模式则就近）",
     "偏好不等于当前：退出 QEMU 后 ./run-split.sh",
-    "偏好不等于当前：重启后按 THEME.CFG 应用",
+    "偏好不等于当前：重启后按 BLOCKS.DB 应用",
     " 1. English",
     " 2. 中文",
     "[桌面背景]",

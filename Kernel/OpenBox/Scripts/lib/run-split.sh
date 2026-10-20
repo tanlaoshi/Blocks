@@ -31,7 +31,7 @@ install_toyos_dock_icon || true
 toy_qemu_parse_args "$@"
 "$SCRIPT_DIR/prepare-rootfs.sh"
 
-toy_qemu_read_theme_mode RootFs/X64/THEME.CFG
+toy_qemu_read_theme_mode RootFs/X64/BLOCKS.DB
 toy_qemu_setup_ovmf
 toy_qemu_prepare_smp
 

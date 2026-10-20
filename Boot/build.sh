@@ -38,6 +38,20 @@ export EDK_TOOLS_PATH="$EDK2_ROOT/BaseTools"
 export CONF_PATH="$EDK2_ROOT/Conf"
 unset EDK_TOOLS_BIN || true
 
+BOOT_CFG="$SCRIPT_DIR/BootPkg/UefiBootConfig.h"
+KERN_CFG="$(cd "$SCRIPT_DIR/.." && pwd)/Kernel/BringUp/X64/UefiBootConfig.h"
+if [ ! -f "$KERN_CFG" ]; then
+    echo "error: 缺少内核交接头 $KERN_CFG" >&2
+    exit 1
+fi
+if ! cmp -s "$BOOT_CFG" "$KERN_CFG"; then
+    echo "error: UEFI_BOOT_CONFIG 双份不一致：" >&2
+    echo "  $BOOT_CFG" >&2
+    echo "  $KERN_CFG" >&2
+    diff -u "$BOOT_CFG" "$KERN_CFG" >&2 || true
+    exit 1
+fi
+
 # shellcheck disable=SC1091
 source "$EDK2_ROOT/edksetup.sh"
 

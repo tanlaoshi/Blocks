@@ -35,8 +35,11 @@ int ThemeLoadFromCfg(void) {
     return 0;
 }
 
-/* PR-D-res：仅覆盖 mode=（CFG 与 QEMU edid / Boot 同源） */
-int ThemeOverlayModeFromCfg(void) {
+/*
+ * 旧卷：DB 有其它键但还没有 mode= 时，从 THEME.CFG 迁一次进 DB。
+ * 正常路径分辨率只认 BLOCKS.DB。
+ */
+int ThemeMigrateModeFromCfg(void) {
     static char Buf[256];
     UINTN Size = 0;
     UINTN i;
@@ -44,6 +47,7 @@ int ThemeOverlayModeFromCfg(void) {
     UINTN L;
     int Got = 0;
     const char *Val;
+    THEME_SAVE_VALS Vals;
 
     if (FileSystemReadFile(THEME_CFG_PATH, Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
         return -1;
@@ -74,32 +78,48 @@ int ThemeOverlayModeFromCfg(void) {
             Line[L++] = C;
         }
     }
-    return Got ? 0 : -1;
+    if (!Got) {
+        return -1;
+    }
+    ThemeSaveFillVals(&Vals);
+    if (ThemeHasDisplayPref() && Vals.ModeVal[0]) {
+        (void)DbSet("mode", Vals.ModeVal);
+        HalConsoleWriteSerial("Theme: migrated mode from THEME.CFG -> BLOCKS.DB\n");
+    }
+    return 0;
 }
 
 int ThemeLoad(void) {
     int FromDb;
-    int ModeFromCfg;
+    int ModeFromDb;
 
     FromDb = ApplyDbKey("desktop") + ApplyDbKey("shell") +
-             ApplyDbKey("font") + ApplyDbKey("mode") + ApplyDbKey("scale") +
+             ApplyDbKey("font") + ApplyDbKey("scale") +
              ApplyDbKey("scalesrc") + ApplyDbKey("fade") + ApplyDbKey("wallpaper") +
              ApplyDbKey("theme") + ApplyDbKey("deskgrad") +
              ApplyDbKey("theme.effects");
-    if (FromDb == 0) {
+    ModeFromDb = ApplyDbKey("mode");
+    if (FromDb == 0 && ModeFromDb == 0) {
         if (ThemeLoadFromCfg() != 0) {
             return -1;
         }
+        /* 库空：CFG 可能带旧 mode=，立刻落到 DB，供 Boot/QEMU */
+        if (ThemeHasDisplayPref()) {
+            THEME_SAVE_VALS Vals;
+
+            ThemeSaveFillVals(&Vals);
+            if (Vals.ModeVal[0]) {
+                (void)DbSet("mode", Vals.ModeVal);
+            }
+        }
         ToyLogGui("Theme: Loaded THEME.CFG\n");
     } else {
-        ModeFromCfg = (ThemeOverlayModeFromCfg() == 0);
+        if (ModeFromDb == 0) {
+            (void)ThemeMigrateModeFromCfg();
+        }
         ToyLogGui("Theme: Loaded ");
         ToyLogGui(DbLoadedName());
-        if (ModeFromCfg) {
-            ToyLogGui(" (mode from THEME.CFG)\n");
-        } else {
-            ToyLogGui("\n");
-        }
+        ToyLogGui("\n");
     }
     /*
      * PR-K-log-cont：boot GOP 仍上滚时勿 FontSetById——Gui 加载 Sun 8x16 会中途换字。

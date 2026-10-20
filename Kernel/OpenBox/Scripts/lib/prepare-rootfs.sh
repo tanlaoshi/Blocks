@@ -32,7 +32,7 @@ if [ -n "$KERNEL_SRC" ] && [ "$KERNEL_SRC" != "$ROOT/Kernel.elf" ]; then
     fi
 fi
 
-# 主题：RootFs/X64/THEME.CFG 是唯一权威
+# 主题配色：THEME.CFG；分辨率 mode= 在 BLOCKS.DB
 if [ -f "$ROOT/theme.cfg" ]; then
     if [ ! -f "$ROOT/THEME.CFG" ]; then
         cp -f "$ROOT/theme.cfg" "$ROOT/THEME.CFG"
@@ -40,7 +40,6 @@ if [ -f "$ROOT/theme.cfg" ]; then
     rm -f "$ROOT/theme.cfg"
 fi
 if [ ! -f "$ROOT/THEME.CFG" ]; then
-    # 无 mode=：真机 Keep 固件分辨率（PR-BOOT-fast-4）；QEMU 缺 mode= 时 edid 默认 1920x1080
     cat > "$ROOT/THEME.CFG" <<'EOF'
 desktop=808080
 shell=c0c0c0
@@ -52,11 +51,11 @@ theme=default
 deskgrad=0
 theme.effects=low
 EOF
-    if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared THEME.CFG -> $ROOT/ (no mode=, solid grey)"; fi
+    if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared THEME.CFG -> $ROOT/ (no mode; mode in BLOCKS.DB)"; fi
 fi
 chmod u+rw "$ROOT/THEME.CFG" "$ROOT/BLOCKS.DB" 2>/dev/null || true
-if [ -f "$ROOT/THEME.CFG" ] && [ ! -w "$ROOT/THEME.CFG" ]; then
-    echo "warning: $ROOT/THEME.CFG not writable by $(id -un) — Settings resolution will not persist" >&2
+if [ -f "$ROOT/BLOCKS.DB" ] && [ ! -w "$ROOT/BLOCKS.DB" ]; then
+    echo "warning: $ROOT/BLOCKS.DB not writable by $(id -un) — Settings resolution will not persist" >&2
 fi
 
 # PR-UI-ttf：仓库种子 Tools/Fonts/CJK.TTF → Assets（真子集优先；缺则 gen stub）

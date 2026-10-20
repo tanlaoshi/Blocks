@@ -7,6 +7,11 @@
 
 #include "BootPrivate.h"
 
+STATIC EFI_STATUS FailVideo(CONST CHAR8 *Step, EFI_STATUS Status) {
+    BootSerialPrintf("Boot: %a Failed: %r\n", Step, Status);
+    return Status;
+}
+
 /* Get → Set 之间暂存（UefiMain 单线程顺序调用） */
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *sGop;
 STATIC UINTN                         sBestMode;
@@ -59,7 +64,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
     Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiGraphicsOutputProtocolGuid,
                                      NULL, &HandleCount, &HandleBuffer);
     if (EFI_ERROR(Status)) {
-        return Status;
+        return FailVideo("GetVideoInfo", Status);
     }
 
     Status = gBS->OpenProtocol(HandleBuffer[0], &gEfiGraphicsOutputProtocolGuid,
@@ -67,12 +72,12 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
                                EFI_OPEN_PROTOCOL_GET_PROTOCOL);
     if (EFI_ERROR(Status)) {
         gBS->FreePool(HandleBuffer);
-        return Status;
+        return FailVideo("GetVideoInfo", Status);
     }
 
     if (TryLoadDisplayPref(ImageHandle, &CfgW, &CfgH)) {
         HasCfgTarget = TRUE;
-        BootDbg("Boot: THEME.CFG Mode %dx%d\n", CfgW, CfgH);
+        BootDbg("Boot: BLOCKS.DB Mode %dx%d\n", CfgW, CfgH);
     }
 
     if (!InVm) {
@@ -214,7 +219,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
     if (BestScore == 0) {
         BootDbg("Boot: No Usable GOP Mode Found\n");
-        return EFI_NOT_FOUND;
+        return FailVideo("GetVideoInfo", EFI_NOT_FOUND);
     }
 
     sGop = Gop;
@@ -247,7 +252,7 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     BootSerialPrintf("Boot: SetVideoMode\n");
 
     if (Gop == NULL || sBestScore == 0 || VideoConfig == NULL) {
-        return EFI_NOT_READY;
+        return FailVideo("SetVideoMode", EFI_NOT_READY);
     }
 
     /* 已是目标分辨率则勿 SetMode：QEMU+GTK 下改分辨率常会整机再复位一次 */
@@ -270,9 +275,9 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
             BootDbg("Boot: Skip SetMode %dx%d -> %dx%d On VM (QEMU+GTK Loop)\n",
                   CurW, CurH, sBestW, sBestH);
             if (sHasCfgTarget) {
-                BootDbg("Boot: THEME.CFG Wants %dx%d But GOP Is %dx%d\n",
+                BootDbg("Boot: BLOCKS.DB Wants %dx%d But GOP Is %dx%d\n",
                       sCfgW, sCfgH, CurW, CurH);
-                BootDbg("Boot: Quit QEMU Window, Then Runtime/run.sh (EDID From THEME.CFG)\n");
+                BootDbg("Boot: Quit QEMU Window, Then Runtime/run.sh (EDID From BLOCKS.DB)\n");
             }
         } else {
             Status = Gop->SetMode(Gop, sBestMode);
@@ -292,17 +297,17 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     if (sHasCfgTarget && sCfgMatched &&
         VideoConfig->HorizontalResolution == sCfgW &&
         VideoConfig->VerticalResolution == sCfgH) {
-        BootDbg("Boot: Display %dx%d (THEME.CFG)\n",
+        BootDbg("Boot: Display %dx%d (BLOCKS.DB)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
     } else if (sHasCfgTarget &&
                (VideoConfig->HorizontalResolution != sCfgW ||
                 VideoConfig->VerticalResolution != sCfgH)) {
         if (sInVm) {
-            BootDbg("Boot: Display %dx%d (GOP; THEME.CFG %dx%d Not Applied — Relaunch QEMU)\n",
+            BootDbg("Boot: Display %dx%d (GOP; BLOCKS.DB %dx%d Not Applied — Relaunch QEMU)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
                   sCfgW, sCfgH);
         } else {
-            BootDbg("Boot: Display %dx%d (Nearest To THEME.CFG %dx%d)\n",
+            BootDbg("Boot: Display %dx%d (Nearest To BLOCKS.DB %dx%d)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
                   sCfgW, sCfgH);
         }

@@ -5,7 +5,7 @@
 
 #include "BootPrivate.h"
 
-/* 虚拟机（QEMU/KVM 等）用窗口友好表；真机选模见 GetVideoInfo（THEME 优先） */
+/* 虚拟机（QEMU/KVM 等）用窗口友好表；真机选模见 GetVideoInfo（BLOCKS.DB mode= 优先） */
 BOOLEAN IsVirtualMachine(VOID) {
     UINT32 Eax;
     UINT32 Ebx;
@@ -82,8 +82,8 @@ STATIC UINTN ManhattanDist(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH) {
 
 /*
  * 相对 Target 打分（精确 → 同宽高比就近 → 其它就近）。
- * 选模：Target = THEME.CFG（有 mode=）或 Auto 时的 EDID。
- * Settings 列表排序：Target = EDID（与 THEME 无关）。
+ * 选模：Target = BLOCKS.DB mode=，或 Auto 时的 EDID。
+ * Settings 列表排序：Target = EDID（与 mode 无关）。
  */
 UINTN ScoreModeNative(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH,
                              BOOLEAN HasTarget) {

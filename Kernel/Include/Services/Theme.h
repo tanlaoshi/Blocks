@@ -1,8 +1,9 @@
 /*
  * Theme.h — 桌面/Shell 主题（PR-D2）+ FAT 持久化（PR-D6）+ 分辨率偏好（PR-D7）
  *
- * 偏好键 desktop/shell/font/mode/wallpaper/theme：优先 TOYOS.DB（PR-DB1）；仍写 THEME.CFG
- * 供 ToyBoot GOP SetMode（冷启动）。ThemeLoad 在 GuiInitialize 前；ThemeApply 末尾 ThemeSave。
+ * 偏好键 desktop/shell/font/wallpaper/theme：BLOCKS.DB + THEME.CFG。
+ * 分辨率 mode= 只认 BLOCKS.DB（Boot / QEMU edid / Settings）；CFG 不再写 mode。
+ * ThemeLoad 在 GuiInitialize 前；ThemeApply 末尾 ThemeSave。
  * PR-G-hotres：QEMU 上 ThemeApplyDisplayLive 可运行时切分辨率（Bochs DISPI）。
  * PR-G-hotres-pc：真机可经 Boot 交接 GOP SetMode；失败仍 D7 写盘+重启。
  */
@@ -164,9 +165,9 @@ int ThemeApplyDisplayLive(UINT32 Width, UINT32 Height);
 /* 应用 FontId 与窗属性，再 GuiComposeThemeScene 一次提交；并 ThemeSave */
 void ThemeApply(void);
 
-/* PR-DB1/D6/D7：优先 TOYOS.DB，否则 THEME.CFG；成功 0，皆无 -1（保持当前值） */
+/* 优先 BLOCKS.DB，否则 THEME.CFG；成功 0，皆无 -1（保持当前值） */
 int ThemeLoad(void);
-/* 写 TOYOS.DB + THEME.CFG；CFG 失败则 -1 */
+/* 写 BLOCKS.DB（含 mode）+ THEME.CFG（不含 mode）；两边都失败则 -1 */
 int ThemeSave(void);
 
 #endif

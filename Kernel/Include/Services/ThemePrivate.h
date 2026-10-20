@@ -128,7 +128,7 @@ int ApplyDbKey(const char *Key);
 void PutHex6(char *Dst, UINT32 Color);
 void PutDec(char *Dst, UINT32 V, UINTN *Len);
 int ThemeLoadFromCfg(void);
-int ThemeOverlayModeFromCfg(void);
+int ThemeMigrateModeFromCfg(void);
 
 /* PR-F-theme-1：ThemeSave 拆分 */
 typedef struct THEME_SAVE_VALS {

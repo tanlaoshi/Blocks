@@ -43,7 +43,7 @@ const char *const gEnFallback[MSG_COUNT] = {
     "Saved. Quit QEMU + ./run-split.sh",
     "Saved. Reboot to apply (nearest GOP if needed)",
     "Pref!=Now: quit QEMU + ./run-split.sh",
-    "Pref!=Now: reboot PC to apply THEME.CFG",
+    "Pref!=Now: reboot PC to apply BLOCKS.DB",
     " 1. English",
     " 2. Chinese",
     "[Desktop bg]",

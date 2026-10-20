@@ -146,9 +146,9 @@ toy_qemu_prepare_smp() {
     toy_qemu_info "qemu: -smp ${TOY_SMP}"
 }
 
-# 从 RootFs/X64/THEME.CFG 读 mode=WxH（系统盘为唯一权威）
+# 从 RootFs/X64/BLOCKS.DB 读 mode=WxH（分辨率唯一真相）
 toy_qemu_read_theme_mode() {
-    local Cfg="${1:-RootFs/X64/THEME.CFG}"
+    local Db="${1:-RootFs/X64/BLOCKS.DB}"
     local Line W H
 
     TOY_QEMU_XRES="${TOY_QEMU_XRES:-}"
@@ -157,24 +157,24 @@ toy_qemu_read_theme_mode() {
         toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (env override)"
         return 0
     fi
-    if [ ! -f "$Cfg" ]; then
+    if [ ! -f "$Db" ]; then
         TOY_QEMU_XRES=1920
         TOY_QEMU_YRES=1080
-        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no $Cfg)"
+        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no $Db)"
         return 0
     fi
-    Line="$(grep -E '^[[:space:]]*mode=' "$Cfg" | head -1 || true)"
+    Line="$(grep -aE '^[[:space:]]*mode=' "$Db" | head -1 || true)"
     W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
     H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"
     if [ -z "$W" ] || [ -z "$H" ]; then
         TOY_QEMU_XRES=1920
         TOY_QEMU_YRES=1080
-        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no mode= in $Cfg)"
+        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no mode= in $Db)"
         return 0
     fi
     TOY_QEMU_XRES="$W"
     TOY_QEMU_YRES="$H"
-    toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (from $Cfg)"
+    toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (from $Db)"
 }
 
 # ESP 已是 Esp/X64（仅 EFI）；无需再 stash 根目录 ELF

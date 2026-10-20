@@ -16,7 +16,7 @@ extern char __kernel_end[];
 
 #define RISCV_VIRT_FWCFG_FALLBACK 0x10100000ULL
 
-#if TOY_BRINGUP
+#if BRINGUP
 
 void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
@@ -51,11 +51,11 @@ static void HexU64(UINT64 V) {
 
 void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     BOOT_INFO Info;
-    UINT64 KernelStart = TOY_BOARD_KERNEL_LOAD;
+    UINT64 KernelStart = BOARD_KERNEL_LOAD;
     UINT64 KernelEnd = (UINT64)(UINTN)__kernel_end;
     UINT64 FirmwareEnd = KernelStart;
-    UINT64 RamBase = TOY_BOARD_RAM_BASE;
-    UINT64 RamSize = TOY_BOARD_RAM_SIZE;
+    UINT64 RamBase = BOARD_RAM_BASE;
+    UINT64 RamSize = BOARD_RAM_SIZE;
     UINT64 FreeStart;
     UINT64 FwCfg = 0;
     UINTN i;
@@ -78,8 +78,8 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
         HalSerialWrite("\n");
     } else {
         HalSerialWrite("Boot: DTB Memory Missing, Fallback BoardConfig RAM\n");
-        RamBase = TOY_BOARD_RAM_BASE;
-        RamSize = TOY_BOARD_RAM_SIZE;
+        RamBase = BOARD_RAM_BASE;
+        RamSize = BOARD_RAM_SIZE;
     }
 
     for (i = 0; i < sizeof(Info); i++) {
@@ -93,7 +93,7 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
         FreeStart = FirmwareEnd;
     }
 
-#if TOY_BOARD_HAS_FRAMEBUFFER
+#if BOARD_HAS_FRAMEBUFFER
     if (FromDtb && DtbPhys != 0 && DtbFwCfgBase(DtbPhys, &FwCfg) != 0) {
         FwCfg = 0;
     }

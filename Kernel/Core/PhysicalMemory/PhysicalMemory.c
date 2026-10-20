@@ -23,7 +23,7 @@ int PhysicalMemoryInitialize(void) {
     }
     PmmPhysLockInit();
     PmmSegmentInit(Info);
-#ifdef TOY_MEM_BESTFIT
+#ifdef MEM_BESTFIT
     MemoryOpsRegister(MemoryBestFitOps());
 #else
     MemoryOpsRegister(MemoryBitmapOps());

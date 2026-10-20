@@ -3,7 +3,7 @@
  */
 #include "Network/Private.h"
 #include "Network/IpInput.h"
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
 #include "PhysicalMemory.h"
@@ -37,7 +37,7 @@ static void NetProcessRx(void) {
         if (Ok && Len > VIRTIO_NET_HDR_LEN + ETH_HDR_LEN) {
             const UINT8 *Pkt = Buf + VIRTIO_NET_HDR_LEN;
             UINTN PktLen = Len - VIRTIO_NET_HDR_LEN;
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
             if (gLwIpRx) {
                 /* lwip on: all IP RX to lwIP; builtin IpInput idle */
                 ToyNetifInput(Pkt, PktLen);
@@ -60,7 +60,7 @@ void NetInputFrame(const UINT8 *Pkt, UINTN Len) {
     if (!Pkt || Len < ETH_HDR_LEN) {
         return;
     }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (gLwIpRx) {
         ToyNetifInput(Pkt, Len);
         return;

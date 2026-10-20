@@ -3,7 +3,7 @@
  *
  * 证明 Register → Match → Probe(BusCtx) → Bind → lsdev 路径；
  * 不摸硬件、不抢 Input Backend。
- * 关闭：编译加 -DTOY_DEMO_DRIVER=0（见 HalDevices.c）。
+ * 关闭：编译加 -DDEMO_DRIVER=0（见 HalDevices.c）。
  */
 #include "Driver.h"
 #include "DriverBoot.h"
@@ -69,6 +69,6 @@ void DemoDriverRegister(void) {
     (void)ToyDriverRegister(&gDemoDriver);
 }
 
-#if TOY_DEMO_DRIVER
+#if DEMO_DRIVER
 DRIVER_BOOT(DRIVER_BOOT_DEMO, DemoDriverRegister);
 #endif

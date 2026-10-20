@@ -25,7 +25,7 @@ static void CommandUdpListen(int Argc, char **Argv) {
         gConsole.Write("bad port\n");
         return;
     }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (LwIpActive()) {
         if (LwIpUdpBind((UINT16)Port) != 0) {
             gConsole.Write("udplisten: failed\n");
@@ -66,7 +66,7 @@ static void CommandUdpSend(int Argc, char **Argv) {
         while (Argv[3][Len]) {
             Len++;
         }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
         if (LwIpActive()) {
             if (LwIpUdpSend(Ip, (UINT16)Port, Argv[3], Len) != 0) {
                 gConsole.Write("udpsend failed\n");

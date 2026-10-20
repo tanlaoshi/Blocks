@@ -172,7 +172,7 @@ static void MarkBootUsed(void)
     }
 }
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
 static void PmmDebugDump(void)
 {
     UINT32 i;
@@ -278,7 +278,7 @@ void PmmSegmentInit(const BOOT_INFO *Info)
     }
     MarkBootUsed();
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
     PmmDebugDump();
 #endif
 }

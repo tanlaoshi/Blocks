@@ -4,12 +4,12 @@
 #include "Hal.h"
 #include "BoardConfig.h"
 #include "DriverNet.h"
-#if TOY_BOARD_HAS_NET
+#if BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
 
 int HalNetInitialize(void) {
-#if TOY_BOARD_HAS_NET
+#if BOARD_HAS_NET
     return VirtioNetInit();
 #else
     return 0;

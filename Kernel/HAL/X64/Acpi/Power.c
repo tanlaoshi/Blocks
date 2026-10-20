@@ -197,7 +197,7 @@ int AcpiPowerInit(UINT64 RsdpPhys) {
     if (Flags & FADT_FLAG_PWR_BUTTON) {
         PowerBootLine("Boot: ACPI PwrBtn=AML (Still Arm Fixed)\n");
     } else {
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
         PowerBootLine("Boot: ACPI PwrBtn=Fixed\n");
 #endif
     }

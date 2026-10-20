@@ -89,7 +89,7 @@ static void CommandNet(int Argc, char **Argv) {
         gConsole.WriteHex32(RxFrames);
         gConsole.Write("\n");
     }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     gConsole.Write("stack ");
     gConsole.Write(LwIpActive() ? "lwip (RX unified)\n" : "builtin (run lwip on)\n");
 #endif
@@ -117,7 +117,7 @@ static void CommandPing(int Argc, char **Argv) {
     gConsole.Write("ping ");
     gConsole.Write(Argv[1]);
     gConsole.Write(" ...\n");
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     {
         UINT32 Ip;
 
@@ -149,7 +149,7 @@ static void CommandPing(int Argc, char **Argv) {
 #endif
 }
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 /* PR-N-dns：dns <name|ip> → A / 字面量 */
 static void CommandDns(int Argc, char **Argv) {
     UINT32 Ip;
@@ -200,7 +200,7 @@ void ShellCommandsNetRegister(void) {
     gConsole.RegisterAliasLine("network", "show", "network");
     ShellCommandsNetAddrRegister();
     gConsole.Register("ping", "ICMP echo", CommandPing);
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     gConsole.Register("dns", "DNS A / IPv4 literal (PR-N-dns)", CommandDns);
 #endif
     ShellCommandsNetUdpRegister();

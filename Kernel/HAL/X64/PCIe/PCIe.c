@@ -148,7 +148,7 @@ int PciScanUSBControllers(USB_CONTROLLER *Controllers, int MaxControllers) {
                         Controllers[Count].Function = (UINT8)Function;
                         Controllers[Count].BaseAddress = IoBase;
                         Controllers[Count].Type = ProgIF;
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
                         DebugWrite("USB: UHCI io=");
                         DebugWrite(Uint64ToHex(IoBase));
                         DebugWrite("\n");
@@ -184,7 +184,7 @@ int PciScanUSBControllers(USB_CONTROLLER *Controllers, int MaxControllers) {
                     Controllers[Count].BaseAddress = BaseAddress;
                     Controllers[Count].Type = ProgIF;
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
                     {
                         char *TypeStr;
                         if (ProgIF == 0x10) TypeStr = "OHCI";

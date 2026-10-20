@@ -23,7 +23,7 @@ int UiActionDispatch(UI_BUTTON_ACTION *Act, int Pressed, int Hit) {
 
 /* ---- DEBUG 桩：证明 SYNC/ASYNC 完整单击均命中 Fn ---- */
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
 static int gStubSyncHit;
 static int gStubAsyncHit;
 
@@ -54,7 +54,7 @@ static void StubInit(UI_BUTTON_ACTION *Act, UI_ACTION_KIND Kind,
 #endif
 
 void UiActionSelfCheck(void) {
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
     UI_BUTTON_ACTION Sync;
     UI_BUTTON_ACTION Async;
     UI_BUTTON_ACTION Miss;

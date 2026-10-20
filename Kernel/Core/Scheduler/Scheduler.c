@@ -86,7 +86,7 @@ void SchedulerInitialize(void) {
 
     SpinLockInitialize(&gSchedulerLock);
     gSchedulerOnline = 0;
-#ifdef TOY_SCHED_PRIORITY
+#ifdef SCHED_PRIORITY
     SchedulerOpsRegister(SchedulerPriorityOps());
 #else
     SchedulerOpsRegister(SchedulerRoundRobinOps());

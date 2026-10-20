@@ -49,7 +49,7 @@ void PowerBootLine(const char *Text) {
 }
 
 void PowerBootHex(const char *Prefix, UINT32 Value) {
-#if !TOY_KERNEL_DEBUG
+#if !KERNEL_DEBUG
     (void)Prefix;
     (void)Value;
     return;

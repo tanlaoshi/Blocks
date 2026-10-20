@@ -4,7 +4,7 @@
 #ifndef LWIP_PRIVATE_H
 #define LWIP_PRIVATE_H
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 void LwIpConfigPushDns(void);
 int  LwIpConfigBindNetif(void);
 void LwIpConfigLogDns(void);

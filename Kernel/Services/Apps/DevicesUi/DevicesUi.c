@@ -53,7 +53,7 @@ void DevicesUiOpen(void) {
     gDevUiSummary = 1;
     DevicesUiReload();
     DevicesUiPaint();
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
     /* PR-DEV-ui-summary-data：开窗时串口自检摘要字段非空 */
     DevicesUiSummarySelfCheck();
 #endif

@@ -12,7 +12,7 @@
 #include "Private.h"
 #include "Scheduler.h"
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 
 #include "lwip/init.h"
 #include "lwip/timeouts.h"

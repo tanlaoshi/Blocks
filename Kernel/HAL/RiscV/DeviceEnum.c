@@ -1,7 +1,7 @@
 /*
  * DeviceEnum.c — RiscV 把已登记的 virtio 设备写入设备表
  *
- * 仍看 TOY_BOARD_HAS_*。不扫 PCI。探测顺序不在这里改。
+ * 仍看 BOARD_HAS_*。不扫 PCI。探测顺序不在这里改。
  */
 #include "Device.h"
 #include "CString.h"
@@ -18,13 +18,13 @@ static void AddMmio(const char *Name, UINT16 VirtioId) {
 }
 
 void HalDeviceEnumerate(void) {
-#if TOY_BOARD_HAS_BLOCK
+#if BOARD_HAS_BLOCK
     AddMmio("virtio-blk", 2);
 #endif
-#if TOY_BOARD_HAS_FRAMEBUFFER
+#if BOARD_HAS_FRAMEBUFFER
     AddMmio("virtio-input", 18);
 #endif
-#if TOY_BOARD_HAS_NET
+#if BOARD_HAS_NET
     AddMmio("virtio-net", 1);
 #endif
 }

@@ -2,35 +2,35 @@
  * HalDevices.c — RiscV：注册 / Block·USB 桩 / Wifi·Iwl / Igpu·Hda（PR-S3-haldev-1）
  *
  * Common 只见 Hal*；Input/Net 见 HalDevicesInput.c / HalDevicesNet.c。
- * 板包用 TOY_BOARD_HAS_* 勾选；Duo S 等命令行靶不探 virtio（避免误扫 MMIO）。
+ * 板包用 BOARD_HAS_* 勾选；Duo S 等命令行靶不探 virtio（避免误扫 MMIO）。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
 #include "Driver.h"
-#if TOY_BOARD_HAS_BLOCK
+#if BOARD_HAS_BLOCK
 #include "Virtio/BlockDevice.h"
 #endif
-#if TOY_BOARD_HAS_FRAMEBUFFER
+#if BOARD_HAS_FRAMEBUFFER
 #include "Virtio/Input.h"
 #endif
-#if TOY_BOARD_HAS_NET
+#if BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
 
 void HalDriverRegister(void) {
-#if TOY_BOARD_HAS_BLOCK
+#if BOARD_HAS_BLOCK
     VirtioBlockRegister();
 #endif
-#if TOY_BOARD_HAS_FRAMEBUFFER
+#if BOARD_HAS_FRAMEBUFFER
     VirtioInputRegister();
 #endif
-#if TOY_BOARD_HAS_NET
+#if BOARD_HAS_NET
     VirtioNetRegister();
 #endif
 }
 
 int HalBlockInitialize(void) {
-#if TOY_BOARD_HAS_BLOCK
+#if BOARD_HAS_BLOCK
     return VirtioBlockInit();
 #else
     return 0;
@@ -38,7 +38,7 @@ int HalBlockInitialize(void) {
 }
 
 int HalUsbInitialize(void) {
-#if TOY_BOARD_HAS_FRAMEBUFFER
+#if BOARD_HAS_FRAMEBUFFER
     return VirtioInputInit();
 #else
     return 0;

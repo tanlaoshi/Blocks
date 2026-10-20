@@ -5,7 +5,7 @@
 #include "DriverBoot.h"
 #include "Udp.h"
 #include "Tcp.h"
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
 #include "PhysicalMemory.h"

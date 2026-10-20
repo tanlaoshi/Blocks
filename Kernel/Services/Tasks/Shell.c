@@ -125,7 +125,7 @@ void ShellTask(void) {
         if (!GuiPresentBlocked()) {
             HalVideoPresent();
         }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
         /*
          * NO_SYS：Shell@AP 与 Worker@BSP 均可 LwIpService；gLwIpLock 串行。
          * 勿在 Job busy 时停泵——窗/Worker 上的 HttpGet 仍依赖 Shell 侧轮询 RX。
@@ -147,7 +147,7 @@ void ShellTask(void) {
         {
             UDP_DATAGRAM Dg;
             int (*RecvFn)(UDP_DATAGRAM *) = UdpRecv;
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
             if (LwIpActive()) {
                 RecvFn = LwIpUdpRecv;
             }

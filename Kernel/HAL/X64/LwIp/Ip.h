@@ -1,5 +1,5 @@
-#ifndef TOY_LWIP_IP_H
-#define TOY_LWIP_IP_H
+#ifndef LWIP_ENABLE_IP_H
+#define LWIP_ENABLE_IP_H
 
 #include "BootTypes.h"
 #include "lwip/ip4_addr.h"

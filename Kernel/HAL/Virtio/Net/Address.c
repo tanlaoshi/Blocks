@@ -13,7 +13,7 @@
 #include "DriverNet.h"
 #include "SerialLog.h"
 #include "Text.h"
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
 

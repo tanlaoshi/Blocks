@@ -6,7 +6,7 @@
 #include "LwIp.h"
 #include "Scheduler.h"
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 
 #include "lwip/dns.h"
 #include "lwip/ip_addr.h"

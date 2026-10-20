@@ -13,7 +13,7 @@ static int ArgIsStop(const char *S) {
 }
 
 void ShellOnInterrupt(void) {
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (LwIpActive()) {
         if (LwIpTcpListenStop() == 0) {
             gConsole.Write("lwip: echo server stopped\n");
@@ -47,7 +47,7 @@ static void CommandTcpListen(int Argc, char **Argv) {
         return;
     }
     if (ArgIsStop(Argv[1])) {
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
         if (LwIpActive()) {
             if (LwIpTcpListenStop() != 0) {
                 gConsole.Write("tcplisten: not listening\n");
@@ -76,7 +76,7 @@ static void CommandTcpListen(int Argc, char **Argv) {
         }
         Port = Port * 10 + (UINT32)(*P - '0');
     }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (LwIpActive()) {
         if (LwIpTcpListen((UINT16)Port) != 0) {
             gConsole.Write("tcplisten: failed\n");
@@ -109,7 +109,7 @@ static void CommandTcpStatus(int Argc, char **Argv) {
     UINT8 Retrans;
     (void)Argc;
     (void)Argv;
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (LwIpActive()) {
         gConsole.Write("tcpstatus: lwIP active (builtin idle)\n");
         gConsole.Write("  tcp listen=");
@@ -151,7 +151,7 @@ static void CommandTcpConnect(int Argc, char **Argv) {
         gConsole.Write("usage: tcp connect <ip> <port> <text>\n");
         return;
     }
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     if (LwIpActive()) {
         UINTN TextLen;
         int Ret;

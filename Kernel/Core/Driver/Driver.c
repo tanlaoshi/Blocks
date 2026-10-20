@@ -138,7 +138,7 @@ int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
             }
         }
     }
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
     LogDrv("driver: registered=");
     LogDrvHex32((UINT32)gDriverCount);
     LogDrv(" bound=");

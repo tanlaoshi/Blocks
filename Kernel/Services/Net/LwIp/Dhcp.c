@@ -10,7 +10,7 @@
 #include "Console.h"
 #include "Debug.h"
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 
 #include "lwip/dhcp.h"
 #include "lwip/dns.h"

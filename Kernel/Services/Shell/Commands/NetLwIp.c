@@ -6,7 +6,7 @@
 #include "LwIp.h"
 #include "HalDevices.h"
 
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
 static void ShellLwIpPrintStatus(void) {
     gConsole.Write("lwip: on (RX unified; ping/tcp/udp via lwIP)\n");
     gConsole.Write("  tcp listen=");
@@ -90,7 +90,7 @@ static void CommandLwIp(int Argc, char **Argv) {
 #endif
 
 void ShellCommandsNetLwipRegister(void) {
-#ifdef TOY_LWIP
+#ifdef LWIP_ENABLE
     gConsole.Register2("lwip", "on", "enable lwIP stack", CommandLwIp);
     gConsole.Register2("lwip", "status", "lwIP status", CommandLwIp);
     gConsole.Register2("lwip", "dhcp", "DHCP; wait IP then prompt", CommandLwIpDhcp);

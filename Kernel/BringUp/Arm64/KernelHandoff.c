@@ -19,7 +19,7 @@ extern char __kernel_end[];
 #define ARM64_VIRT_DTB_ADDR 0x4a000000ULL
 #define ARM64_VIRT_FWCFG_FALLBACK 0x09020000ULL
 
-#if TOY_BRINGUP
+#if BRINGUP
 
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;

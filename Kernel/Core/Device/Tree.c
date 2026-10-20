@@ -78,7 +78,7 @@ int DeviceGetChildren(DEVICE_NODE *Parent, DEVICE_NODE **Out, int Max) {
     return Found;
 }
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
 /* PR-DEV-tree-api：DEBUG 自检——SetParent 后 GetChildren 能找回，且环检测生效。
  * 用表中前两个 PCI 设备做一次挂接再还原；不影响后续驱动绑定（Parent 不参与匹配）。 */
 void DeviceTreeSelfTest(void) {

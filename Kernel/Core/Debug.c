@@ -4,7 +4,7 @@
  */
 #include "Debug.h"
 
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
 
 #include "Hal.h"
 

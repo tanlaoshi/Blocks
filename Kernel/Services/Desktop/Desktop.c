@@ -225,7 +225,7 @@ void DesktopInitialize(void) {
     LogGui("Boot: Desktop Ready\n");
     HalAudioBeep();
     DebugWrite("desktop: solid ready (icons deferred)\n");
-#if TOY_KERNEL_DEBUG
+#if KERNEL_DEBUG
     UiActionSelfCheck();
 #endif
     gDesktopBusy = 0;

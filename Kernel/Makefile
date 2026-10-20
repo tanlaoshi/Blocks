@@ -58,12 +58,8 @@ LWIPOBJS :=
 LWIP_PORT_OBJS :=
 BOARD_OBJS :=
 
-# PR-A6/A7：非 x86 默认可链接完整 Common（BRINGUP=1 仍为串口 hello）
-ifeq ($(ARCH),x86_64)
+# PR-A6/A7：BRINGUP=1 仅串口 hello；默认 0 链完整 Common
 BRINGUP ?= 0
-else
-BRINGUP ?= 0
-endif
 
 CC = gcc
 LD = ld
@@ -163,10 +159,10 @@ INCLUDES_HAL += -I$(BOARD_DIR)
 endif
 
 XHCI_DIAG_VERBOSE ?= 0
-TOY_DEMO_DRIVER ?= 1
+DEMO_DRIVER ?= 1
 CFLAGS_BASE = -ffreestanding -nostdlib -O2 -Wall -Wextra \
               -fno-stack-protector -fno-builtin -fno-pie -fno-pic \
-              -DTOY_KERNEL_DEBUG=$(DEBUG) -DTOY_BRINGUP=$(BRINGUP) \
+              -DKERNEL_DEBUG=$(DEBUG) -DBRINGUP=$(BRINGUP) \
               -DSERIAL_ENABLE=$(SERIAL) \
               -DSERIAL_BOOT=$(SERIAL_BOOT) \
               -DSERIAL_USB=$(SERIAL_USB) \
@@ -189,12 +185,12 @@ CFLAGS_BASE = -ffreestanding -nostdlib -O2 -Wall -Wextra \
               -DSCREEN_LOG_MISC=$(SCREEN_LOG_MISC) \
               -DFILE_LOG=$(FILE_LOG) \
               -DXHCI_DIAG_VERBOSE=$(XHCI_DIAG_VERBOSE) \
-              -DTOY_DEMO_DRIVER=$(TOY_DEMO_DRIVER) \
+              -DDEMO_DRIVER=$(DEMO_DRIVER) \
               -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 \
               $(ARCH_CFLAGS)
 
 ifeq ($(LWIP),1)
-CFLAGS_BASE += -DTOY_LWIP=1
+CFLAGS_BASE += -DLWIP_ENABLE=1
 LWIPDIR = ThirdParty/lwip/src
 LWIPINCLUDES = -I$(LWIPDIR)/include \
                -IHAL/$(HAL_ARCH)/LwIp/include \
@@ -238,7 +234,6 @@ CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)
 # PR-UI-ttf-fpu：仅 HalFpuSse.c 去掉 general-regs-only，允许 SSE
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL)) -msse2
 ifneq ($(BOARD_DIR),)
-CFLAGS_HAL += -DTOY_BOARD=\"$(BOARD)\"
 endif
 
 LDFLAGS = -nostdlib -static -z noexecstack -T HAL/$(HAL_ARCH)/link.ld -e KernelEntry $(LDFLAGS_ARCH)
@@ -275,13 +270,13 @@ endif
 endif
 endif
 
-# PR-D-tpl-2：TOY_DEMO_DRIVER 变了必须重编 HalDevices（裸 make 换宏否则会「无需做任何事」）
+# PR-D-tpl-2：DEMO_DRIVER 变了必须重编 HalDevices（裸 make 换宏否则会「无需做任何事」）
 DEMO_STAMP := $(HALDIR)/.toy_demo_driver
 .PHONY: FORCE
 FORCE:
 $(DEMO_STAMP): FORCE
 	@mkdir -p $(dir $@)
-	@echo '$(TOY_DEMO_DRIVER)' > $@.new
+	@echo '$(DEMO_DRIVER)' > $@.new
 	@if [ ! -f $@ ] || ! cmp -s $@.new $@; then mv $@.new $@; else rm -f $@.new; fi
 
 # BringUp：启动段（Entry/Handoff 分 arch + KernelMain/Modules 合流）；非契约圆
@@ -560,7 +555,7 @@ ifeq ($(SCHEDULER),round-robin)
 SCHED_SRCS := Core/Scheduler/RoundRobin.c
 else ifeq ($(SCHEDULER),priority)
 SCHED_SRCS := Core/Scheduler/Student/Priority.c
-CFLAGS_COMMON += -DTOY_SCHED_PRIORITY
+CFLAGS_COMMON += -DSCHED_PRIORITY
 else
 $(error unknown SCHEDULER=$(SCHEDULER))
 endif
@@ -571,7 +566,7 @@ ifeq ($(MEMORY),bitmap)
 MEMORY_SRCS := Core/PhysicalMemory/Bitmap.c
 else ifeq ($(MEMORY),bestfit)
 MEMORY_SRCS := Core/PhysicalMemory/Student/BestFit.c
-CFLAGS_COMMON += -DTOY_MEM_BESTFIT
+CFLAGS_COMMON += -DMEM_BESTFIT
 else
 $(error Unknown MEMORY: $(MEMORY))
 endif
@@ -582,7 +577,7 @@ FS_SRCS :=
 else ifeq ($(FS),ram)
 FS_SRCS := Core/FileSystem/Student/FileSystemRam.c \
            Core/FileSystem/Student/FileSystemRamCompat.c
-CFLAGS_COMMON += -DTOY_FS_RAM
+CFLAGS_COMMON += -DFS_RAM
 else
 $(error Unknown FS: $(FS))
 endif
@@ -603,8 +598,8 @@ OBJS = $(BRINGUP_ARCH_OBJS) \
 EXTRA_OBJS =
 endif
 
-# 汇编用同一 TOY_BRINGUP（KernelEntry → KernelHandoff）
-ASFLAGS_ARCH = -DTOY_BRINGUP=$(BRINGUP)
+# 汇编用同一 BRINGUP（KernelEntry → KernelHandoff）
+ASFLAGS_ARCH = -DBRINGUP=$(BRINGUP)
 
 .PHONY: all clean boards kernel-bin runtests runtests-memory runtests-fs scheduler check-library-pure check-syscall check-elf
 .DEFAULT_GOAL := all
@@ -612,19 +607,19 @@ ASFLAGS_ARCH = -DTOY_BRINGUP=$(BRINGUP)
 all: check-library-pure check-syscall check-elf
 
 HOSTCC ?= gcc
-TEST_CFLAGS = -std=c11 -Wall -Wextra -DTOY_SCHED_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
+TEST_CFLAGS = -std=c11 -Wall -Wextra -DSCHED_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
 ifeq ($(SCHEDULER),priority)
-TEST_CFLAGS += -DTOY_SCHED_PRIORITY
+TEST_CFLAGS += -DSCHED_PRIORITY
 endif
 
-MEM_TEST_CFLAGS = -std=c11 -Wall -Wextra -DTOY_MEM_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
+MEM_TEST_CFLAGS = -std=c11 -Wall -Wextra -DMEM_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
 ifeq ($(MEMORY),bestfit)
-MEM_TEST_CFLAGS += -DTOY_MEM_BESTFIT
+MEM_TEST_CFLAGS += -DMEM_BESTFIT
 endif
 
-FS_TEST_CFLAGS = -std=c11 -Wall -Wextra -DTOY_FS_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
+FS_TEST_CFLAGS = -std=c11 -Wall -Wextra -DFS_HOST -I Tools/Tests/Stub -I Include -I Include/Abi -I Include/Core -I Include/Driver -I Include/Library -I Include/Services -I Include/Hal
 ifeq ($(FS),ram)
-FS_TEST_CFLAGS += -DTOY_FS_RAM
+FS_TEST_CFLAGS += -DFS_RAM
 FS_TEST_POLICY := Core/FileSystem/Student/FileSystemRam.c
 else
 FS_TEST_POLICY := Tools/Tests/Stub/FsStub.c
@@ -755,7 +750,7 @@ check-elf:
 $(HALDIR)/Drivers/%.o: HAL/$(HAL_ARCH)/Drivers/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
-# 先于通用 HAL/%.o：依赖 DEMO_STAMP，换 TOY_DEMO_DRIVER=0/1 会触发重编+重链
+# 先于通用 HAL/%.o：依赖 DEMO_STAMP，换 DEMO_DRIVER=0/1 会触发重编+重链
 $(HALDIR)/Hal/HalDevices.o: HAL/$(HAL_ARCH)/Hal/HalDevices.c $(DEMO_STAMP) | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 

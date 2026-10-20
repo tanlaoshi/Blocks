@@ -23,7 +23,7 @@ int HalPinInteractiveToBootstrap(void) {
 
 int HalPlatformIsVirtSerialConsole(void) {
     /* virt 平台形状（协作调度 / 桌面模块表）；真机板包 IS_VIRT=0（PR-B3） */
-#if defined(TOY_BOARD_IS_VIRT) && TOY_BOARD_IS_VIRT
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     return 1;
 #else
     return 0;
@@ -31,7 +31,7 @@ int HalPlatformIsVirtSerialConsole(void) {
 }
 
 int HalCpuIsHypervisor(void) {
-#if defined(TOY_BOARD_IS_VIRT) && TOY_BOARD_IS_VIRT
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     return 1;
 #else
     return 0;

@@ -8,12 +8,12 @@
 #include "BoardConfig.h"
 #include "SerialConfig.h"
 
-#ifndef TOY_BOARD_UART_REG_SHIFT
-#define TOY_BOARD_UART_REG_SHIFT 0
+#ifndef BOARD_UART_REG_SHIFT
+#define BOARD_UART_REG_SHIFT 0
 #endif
 
-#define UART_BASE  ((UINTN)TOY_BOARD_UART_BASE)
-#define UART_OFF(N) ((UINTN)(N) << (TOY_BOARD_UART_REG_SHIFT))
+#define UART_BASE  ((UINTN)BOARD_UART_BASE)
+#define UART_OFF(N) ((UINTN)(N) << (BOARD_UART_REG_SHIFT))
 #define UART_THR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(0)))
 #define UART_LSR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(5)))
 #define UART_LSR_THRE  (1u << 5)

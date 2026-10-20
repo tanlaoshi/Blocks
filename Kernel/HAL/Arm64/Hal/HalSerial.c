@@ -8,7 +8,7 @@
 #include "BoardConfig.h"
 #include "SerialConfig.h"
 
-#define PL011_BASE  ((UINTN)TOY_BOARD_UART_BASE)
+#define PL011_BASE  ((UINTN)BOARD_UART_BASE)
 #define PL011_DR    (*(volatile UINT32 *)(PL011_BASE + 0x00))
 #define PL011_FR    (*(volatile UINT32 *)(PL011_BASE + 0x18))
 #define PL011_FR_TXFF  (1u << 5)

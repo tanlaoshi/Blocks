@@ -1,7 +1,7 @@
 /*
- * GuiOpen.c — 开窗辅助 / 槽位（PR-S3-guiopen-1）
+ * Open.c — 开窗辅助 / 槽位
  *
- * 关窗见 GuiOpenClose.c；应用开窗见 GuiOpenApps.c。
+ * 关窗 Close.c；应用 Apps.c。Present 门闩总表 Compose.c（gui-g1-defer）。
  */
 #include "GuiPrivate.h"
 #include "UI.h"
@@ -9,8 +9,8 @@
 #include "Debug.h"
 
 /*
- * 开窗：Defer Present，先画满 chrome+客户区再备份，最后一次淡入。
- * 避免「空框 Present → 再填内容」闪白。
+ * 开窗：Push Defer → 画满 chrome+客户区 →（调用方）OpenFadeIn=Pop。
+ * 避免「空框 Present → 再填内容」闪白。配对必须 Pop，否则全局禁 Present。
  */
 void OpenChromeDefer(int Idx) {
     GuiPresentDeferPush();

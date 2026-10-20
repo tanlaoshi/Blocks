@@ -48,15 +48,15 @@ void GuiPointerMove(UINT32 X, UINT32 Y);
 void GuiCursorPaint(void);
 void GuiFrameBufferBegin(void);
 void GuiFrameBufferEnd(void);
-/* 批量输出时推迟 Present（真机 4K 级 GOP 逐行 Present 极卡） */
+/* Defer 计数：GraphicsPresent 吞帧；对照见 Compose.c 头 gui-g1-defer */
 void GuiPresentDeferPush(void);
-void GuiPresentDeferPop(void);
-/* Shell 等 Job 时暂停 Defer，否则全局禁 Present → 光标假死（窗装卸仍可动） */
+void GuiPresentDeferPop(void); /* Defer==0 时 Present */
+/* 最外层暂清 Defer，放行光标（等 Job / 拖）；可嵌套 */
 void GuiPresentDeferPause(void);
 void GuiPresentDeferResume(void);
-/* PR-G-shell-present：下一次 GraphicsPresent 可合并（打字回显）；ShellTask 轮询末再刷 */
+/* 打字回显：跳过本帧 GraphicsPresent；Shell 环末合并 */
 void GuiPresentShellEchoMark(void);
-/* 拖帧或主题合成中：其它核勿 Present、勿再开一帧 */
+/* gDragFrame|ComposeBusy：他核/Shell 勿 Present */
 int GuiPresentBlocked(void);
 /* 标题栏拖移或改大小进行中 */
 int GuiDragActive(void);

@@ -1,5 +1,5 @@
 /*
- * Compose.c — 主题场景 / ComposeBusy / Present 门闩（gui-g0-map）
+ * Compose.c — 主题场景 / Present 门闩（gui-g0-map + gui-g1-defer）
  *
  * 两层脏（勿混）：
  *   Gui  — GuiMarkDamage AABB → 重画哪块（Damage.c）
@@ -10,9 +10,14 @@
  *   → DeferPresent=1 画完 → PresentFlush（须仍在 ComposeBusy 内）→ ComposeEnd
  * Shell 环末 HalVideoPresent（!GuiPresentBlocked）。Worker 永不 Compose@4K。
  *
- * 不变式：Flush 在 Busy 内（多核否则光标镂空/半栏）；拖动见 Damage/PresentBlocked。
- * Defer/Blocked 细表 → G1；Pointer 位移合并 → runtime-b-present。
- * 窗绘制 GuiDraw；备份 GuiBackup。整柱路线图新 gui-compose-prs。
+ * Present 门闩对照（G1；≠ Pointer 包合并 B）：
+ *   DeferPresent（计数）— GraphicsPresent 直接 return；中间态不进 GOP
+ *     Push/Pop；Theme/Damage 内置 1；开窗 OpenChromeDefer→OpenFadeIn=Pop
+ *   GuiPresentBlocked — gDragFrame|ComposeBusy；Shell/他核勿 Present；Poll HoldDrain
+ *   ShellEchoCoalesce — 打字跳过本帧 GraphicsPresent；Shell 环末合并刷
+ *   Pause/Resume — 最外层暂清 Defer=0，放行光标（等 StoreJob / 拖图标）
+ *   Pop 且 Defer==0 → HalVideoPresent；合成末用 PresentFlush（Busy 内）
+ * 窗绘制 GuiDraw；备份 GuiBackup。整柱 gui-compose-prs。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

@@ -1,5 +1,9 @@
 /*
- * GuiPollHold.c — 拖帧进行中排空鼠标，帧后再补边沿
+ * PollHold.c — PresentBlocked 时排空鼠标（gui-g8-drag）
+ *
+ * GuiPollHoldDrain：只 Remember 末包坐标/键/轮，不 Move、不合成、不 Present。
+ * 调用方 Pointer：GuiPresentBlocked（gDragFrame|ComposeBusy）→ Drain 后 return。
+ * GuiPollHoldApply：帧后再补边沿（抬起→DragEnd 等）；与 runtime-b 位移合并对照。
  */
 #include "GuiPrivate.h"
 #include "Hal.h"

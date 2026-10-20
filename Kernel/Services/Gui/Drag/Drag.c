@@ -1,7 +1,25 @@
 /*
- * GuiDrag.c — 标题栏拖动生命周期（PR-S3-guidrag-1）
+ * Drag.c — 标题栏拖动生命周期（gui-g8-drag）
  *
- * 移窗见 GuiDragMove.c；辅助 GuiDragBackup / Composite / Slide。
+ * 移窗 Move.c；备份 Backup.c；帧画 Composite.c / Slide.c。
+ *
+ * ── 拖动 vs 合成柱边界（对表拧）──
+ *
+ * 合成柱不得插手拖中画面：
+ *   GuiComposeDamage：GuiDragActive()（DragWin|ResizeWin）→ 早退
+ *   （脏标记可积；松手后 Refresh 再画。拖中由 Move/Slide 自管 Present）
+ *
+ * 多核 Present 互斥：
+ *   gDragFrame（Slide.c Try/Leave）| ComposeBusy → GuiPresentBlocked
+ *   Pointer：Blocked 时 GuiPollHoldDrain 只留末包，不 Move/不合成
+ *   Shell 环末：!GuiPresentBlocked 才 HalVideoPresent（G6）
+ *
+ * 热路径帧画：DragHasBackup → RedrawDragFrameSlide（CopyRect+擦条+Flush）
+ *   RedrawDragFrame（Composite）仍在库中；ClearOldDragFootprint 等公用
+ *   Move 在有备份时走 Slide，勿混两条热路径（闪/残影难对）
+ *
+ * 生命周期：Armed→StartDragBackups→Update(持 Frame)→End→ResetDragState
+ *   Reset 勿清 WinBackupValid（单击标题也会 End）。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

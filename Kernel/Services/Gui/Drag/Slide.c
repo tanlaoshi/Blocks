@@ -1,6 +1,15 @@
 /*
- * GuiDragSlide.c — CopyRect 平移 + 只擦露出条（减左右拖频闪）
- * 核心：GuiDrag.c
+ * Slide.c — 拖帧门闩 + CopyRect 平移（gui-g8-drag）
+ *
+ * gDragFrame：一帧只一核写后缓冲并 Present；他核见忙 → HoldDrain。
+ * GuiPresentBlocked = gDragFrame | ComposeBusy（G1 门闩表）。
+ * GuiDragActive = DragWin|ResizeWin ≥0 — Damage 早退用这个，≠ gDragFrame。
+ *
+ * RedrawDragFrameSlide（Move 有备份时热路径）：
+ *   CopyRect 整窗 → 只擦露出条（勿 Expand 影吃进新窗边）→ 备份重贴
+ *   → 旧∪新 MarkDirty → PresentFlush（抬高条带）→ 复原 ChunkRows
+ * 与 Composite.RedrawDragFrame（擦足迹+贴备份+Present，非 CopyRect）对照；
+ * 改拖闪先认清走的是哪条，勿两刀同时拧。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

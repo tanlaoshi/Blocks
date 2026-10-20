@@ -7,11 +7,11 @@
  *   位移 — 只留末坐标，出队后一次 Move/拖更新（勿逐包 Present）
  *   边沿 — 按下/抬起逐包（点击、松手、Settings/Store/Edit）
  *   滚轮 — WheelSum 累加，出队后一次派发
- *   PresentBlocked — HoldDrain 只留末包，不合成
+ *   PresentBlocked — HoldDrain 只留末包，不合成（gui-g8-drag；见 PollHold.c）
  *   Defer — Push…Pop 包住 dequeue；拖图标内 Pause/Flush/Resume
  * 然后 DesktopTickClock（栏/图标/TTF 画）→ StoreUiPump。
  * MSC 热拔与钟采样在 Worker：DesktopWorkerTick（runtime-c-tick）。
- * 长 IO 挪光标见 Motion.c；点击见 Click。
+ * 拖边界 / Slide vs Composite：Drag/*.c 头。长 IO 挪光标 Motion.c；点击 Click。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

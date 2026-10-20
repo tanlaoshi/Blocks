@@ -1,7 +1,11 @@
 /*
- * GuiDragMove.c — 窗位夹紧与拖移重画（PR-S3-guidrag-1）
+ * Move.c — 窗位夹紧与拖移重画（gui-g8-drag）
  *
- * 从 GuiDrag.c 原样搬家；不改语义。
+ * MoveWindowTo 分支（持 ComposeBusy；光标 erase 进 Irq）：
+ *   DragHasBackup → RedrawDragFrameSlide（热路径；见 Slide.c）
+ *   DragWin≥0 无备份 → ClearOldDragFootprint + 备份/全窗画 + Present
+ *   非拖（程序移窗）→ CopyRect + 擦足迹 + chrome/影 + CursorPaint Present
+ * 拖中勿在 CursorRestore 后单独 Present（加重两侧闪）。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

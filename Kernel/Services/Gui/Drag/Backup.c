@@ -1,6 +1,8 @@
 /*
- * GuiDragBackup.c — 拖动备份缓冲与起始抓屏
- * 核心：GuiDrag.c
+ * Backup.c — 拖动备份缓冲与起始抓屏（gui-g8-drag）
+ *
+ * StartDragBackups：首帧 Armed 时抓屏/窗备份，置 DragHasBackup → 此后走 Slide。
+ * UnderDrag / DragDirty / ScreenSnap 生命周期见 Drag.c ResetDragState。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

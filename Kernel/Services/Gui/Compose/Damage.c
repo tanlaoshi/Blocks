@@ -3,7 +3,7 @@
  *
  * GuiMarkDamage：并一个屏幕 AABB（仅 Gui 层；≠ HAL DirtyUnion）。
  * GuiComposeDamage（gui-g5-fallback 回退 → ThemeScene）：
- *   拖动中 → 早退（Drag 自管备份/PresentBlocked）
+ *   GuiDragActive → 早退（gui-g8-drag：拖/改大小中合成柱勿画；Drag 自管）
  *   无标记 → ThemeScene
  *   裁剪后空矩形 → 早退（无事可画）
  *   并集面积 ≥ 屏 50% → ThemeScene（大洞脏路径不比全屏省）

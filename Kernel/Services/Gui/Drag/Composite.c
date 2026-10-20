@@ -1,6 +1,12 @@
 /*
- * GuiDragComposite.c — 拖动脏区合成与脚印
- * 核心：GuiDrag.c
+ * Composite.c — 拖动脚印擦除 / 像素合成（gui-g8-drag）
+ *
+ * 公用：TopmostBelowDragPixel、ClearOldDragFootprint、CompositeDrag*
+ *   Slide 擦条/底影、Move 无备份分支、Resize 擦旧框都调脚印清除。
+ *
+ * RedrawDragFrame：擦旧足迹 → 贴窗备份(+影) → Present（非 Flush）
+ *   现 Move 有备份时走 Slide，本入口保留作对照/备用；勿双热路径并行改。
+ * 条带间开中断契约与 Slide 同（禁长 cli 饿 USB；G6）。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

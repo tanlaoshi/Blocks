@@ -48,7 +48,7 @@ void LwIpDhcpStop(void) {
     if (!gDhcpRunning) {
         return;
     }
-    Netif = ToyNetifGet();
+    Netif = LwIpNetifGet();
     if (Netif) {
         dhcp_release_and_stop(Netif);
     }
@@ -150,12 +150,12 @@ int LwIpDhcpEnqueue(int TimeoutMs) {
     if (!LwIpActive() && LwIpInitialize() != 0) {
         return -2;
     }
-    Netif = ToyNetifGet();
+    Netif = LwIpNetifGet();
     if (!Netif) {
         return -2;
     }
     /* WiFi 覆盖有线后 epoch 重启 DHCP：须换 SA，否则 Offer 对不上 */
-    ToyNetifSyncMac();
+    LwIpNetifSyncMac();
     LwIpDhcpStop();
     ClearNetifAddr(Netif);
     Err = dhcp_start(Netif);
@@ -188,7 +188,7 @@ int LwIpDhcpStep(void) {
     if (gJob != DHCP_JOB_RUN) {
         return 1;
     }
-    Netif = ToyNetifGet();
+    Netif = LwIpNetifGet();
     if (!Netif) {
         LwIpDhcpStop();
         gJob = DHCP_JOB_FAIL;

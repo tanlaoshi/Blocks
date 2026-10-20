@@ -36,47 +36,47 @@ int LwIpSocketCreate(void) {
     if (!LwIpActive() && LwIpInitialize() != 0) {
         return -1;
     }
-    return ToySocketCreate();
+    return TcpSocketCreate();
 }
 
 int LwIpSocketBind(int Sock, UINT32 Ip, UINT16 Port) {
     if (!LwIpActive()) {
         return -1;
     }
-    return ToySocketBind(Sock, Ip, Port);
+    return TcpSocketBind(Sock, Ip, Port);
 }
 
 int LwIpSocketListen(int Sock, int Backlog) {
     if (!LwIpActive()) {
         return -1;
     }
-    return ToySocketListen(Sock, Backlog);
+    return TcpSocketListen(Sock, Backlog);
 }
 
 int LwIpSocketAccept(int Sock, int TimeoutMs) {
     if (!LwIpActive()) {
         return -1;
     }
-    return ToySocketAccept(Sock, TimeoutMs);
+    return TcpSocketAccept(Sock, TimeoutMs);
 }
 
 int LwIpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort) {
     if (!LwIpActive()) {
         return -1;
     }
-    return ToySocketConnect(Sock, DstIp, DstPort, 8000);
+    return TcpSocketConnect(Sock, DstIp, DstPort, 8000);
 }
 
 int LwIpSocketSend(int Sock, const void *Data, UINTN Len) {
-    return ToySocketSend(Sock, Data, Len);
+    return TcpSocketSend(Sock, Data, Len);
 }
 
 int LwIpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
-    return ToySocketRecv(Sock, Buf, Len, TimeoutMs);
+    return TcpSocketRecv(Sock, Buf, Len, TimeoutMs);
 }
 
 int LwIpSocketClose(int Sock) {
-    return ToySocketClose(Sock);
+    return TcpSocketClose(Sock);
 }
 
 /* PR-N-dns：点分字面量或 lwIP DNS A 记录；成功 0 且 *OutIp 主机序 */

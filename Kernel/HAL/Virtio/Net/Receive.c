@@ -54,7 +54,7 @@ void NetProcessRx(void) {
             UINTN PktLen = Len - gNetHdrLen;
 #ifdef LWIP_ENABLE
             if (gLwIpRx) {
-                ToyNetifInput(Pkt, PktLen);
+                LwIpNetifInput(Pkt, PktLen);
             } else
 #endif
             {

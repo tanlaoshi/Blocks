@@ -29,7 +29,7 @@ void LwIpConfigPushDns(void) {
 }
 
 int LwIpConfigBindNetif(void) {
-    return ToyNetifAdd(NetConfigGetIp(), NetConfigGetMask(), NetConfigGetGw());
+    return LwIpNetifAdd(NetConfigGetIp(), NetConfigGetMask(), NetConfigGetGw());
 }
 
 int LwIpApplyConfig(void) {
@@ -41,7 +41,7 @@ int LwIpApplyConfig(void) {
     /* 静态后设覆盖 DHCP */
     LwIpDhcpStop();
     IrqFlags = HalIrqSave();
-    if (ToyNetifSetAddr(NetConfigGetIp(), NetConfigGetMask(),
+    if (LwIpNetifSetAddr(NetConfigGetIp(), NetConfigGetMask(),
                         NetConfigGetGw()) != 0) {
         HalIrqRestore(IrqFlags);
         return -1;

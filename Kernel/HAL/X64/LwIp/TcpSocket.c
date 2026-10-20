@@ -61,15 +61,15 @@ typedef struct {
     volatile err_t Err;
     UINT8 Rx[SOCK_RX_MAX];
     UINTN RxLen;
-    int Pending[TOY_SOCK_PENDING];
+    int Pending[TCP_SOCK_PENDING];
     int PendingCount;
     int IsListen;
 } TOY_SOCK;
 
-static TOY_SOCK gSocks[TOY_SOCK_MAX];
+static TOY_SOCK gSocks[TCP_SOCK_MAX];
 
 static TOY_SOCK *SockGet(int Sock) {
-    if (Sock < 0 || Sock >= TOY_SOCK_MAX || !gSocks[Sock].Used) {
+    if (Sock < 0 || Sock >= TCP_SOCK_MAX || !gSocks[Sock].Used) {
         return 0;
     }
     return &gSocks[Sock];
@@ -78,7 +78,7 @@ static TOY_SOCK *SockGet(int Sock) {
 static int SockAllocSlot(void) {
     int i;
 
-    for (i = 0; i < TOY_SOCK_MAX; i++) {
+    for (i = 0; i < TCP_SOCK_MAX; i++) {
         if (!gSocks[i].Used) {
             gSocks[i].Used = 1;
             gSocks[i].Pcb = NULL;
@@ -207,7 +207,7 @@ static err_t SockAcceptCb(void *Arg, struct tcp_pcb *NewPcb, err_t Err) {
         }
         return ERR_VAL;
     }
-    if (Listen->PendingCount >= TOY_SOCK_PENDING) {
+    if (Listen->PendingCount >= TCP_SOCK_PENDING) {
         tcp_abort(NewPcb);
         return ERR_MEM;
     }
@@ -223,11 +223,11 @@ static err_t SockAcceptCb(void *Arg, struct tcp_pcb *NewPcb, err_t Err) {
     return ERR_OK;
 }
 
-int ToySocketCreate(void) {
+int TcpSocketCreate(void) {
     return SockAllocSlot();
 }
 
-int ToySocketBind(int Sock, UINT32 Ip, UINT16 Port) {
+int TcpSocketBind(int Sock, UINT32 Ip, UINT16 Port) {
     TOY_SOCK *S = SockGet(Sock);
     struct tcp_pcb *Pcb;
     err_t Err;
@@ -261,7 +261,7 @@ int ToySocketBind(int Sock, UINT32 Ip, UINT16 Port) {
     return 0;
 }
 
-int ToySocketListen(int Sock, int Backlog) {
+int TcpSocketListen(int Sock, int Backlog) {
     TOY_SOCK *S = SockGet(Sock);
     struct tcp_pcb *ListenPcb;
 
@@ -269,7 +269,7 @@ int ToySocketListen(int Sock, int Backlog) {
     if (S == NULL || S->Pcb == NULL || S->Phase != 3) {
         return -1;
     }
-    ListenPcb = tcp_listen_with_backlog(S->Pcb, TOY_SOCK_PENDING);
+    ListenPcb = tcp_listen_with_backlog(S->Pcb, TCP_SOCK_PENDING);
     if (ListenPcb == NULL) {
         return -1;
     }
@@ -282,7 +282,7 @@ int ToySocketListen(int Sock, int Backlog) {
     return 0;
 }
 
-int ToySocketAccept(int Sock, int TimeoutMs) {
+int TcpSocketAccept(int Sock, int TimeoutMs) {
     TOY_SOCK *S = SockGet(Sock);
     int Child;
     int Tries;
@@ -314,7 +314,7 @@ int ToySocketAccept(int Sock, int TimeoutMs) {
     return Child;
 }
 
-int ToySocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
+int TcpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
     TOY_SOCK *S = SockGet(Sock);
     struct tcp_pcb *Pcb;
     ip4_addr_t Remote;
@@ -389,7 +389,7 @@ int ToySocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
     return 0;
 }
 
-int ToySocketSend(int Sock, const void *Data, UINTN Len) {
+int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
     TOY_SOCK *S = SockGet(Sock);
     err_t Err;
     UINTN Sent = 0;
@@ -455,7 +455,7 @@ int ToySocketSend(int Sock, const void *Data, UINTN Len) {
     return -EAGAIN;
 }
 
-int ToySocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
+int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     TOY_SOCK *S = SockGet(Sock);
     UINTN N;
     UINTN i;
@@ -517,9 +517,9 @@ int ToySocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     return 0;
 }
 
-int ToySocketClose(int Sock) {
+int TcpSocketClose(int Sock) {
     TOY_SOCK *S = SockGet(Sock);
-    int Pending[TOY_SOCK_PENDING];
+    int Pending[TCP_SOCK_PENDING];
     int Count;
     int i;
 
@@ -535,7 +535,7 @@ int ToySocketClose(int Sock) {
         S->PendingCount = 0;
         LwIpUnlock();
         for (i = 0; i < Count; i++) {
-            ToySocketClose(Pending[i]);
+            TcpSocketClose(Pending[i]);
         }
         LwIpLock();
         if (S->Pcb != NULL) {
@@ -566,30 +566,30 @@ int ToySocketClose(int Sock) {
 #include "TcpSocket.h"
 #include "SerialLog.h"
 
-int ToySocketCreate(void) {
+int TcpSocketCreate(void) {
     return -1;
 }
 
-int ToySocketBind(int Sock, UINT32 Ip, UINT16 Port) {
+int TcpSocketBind(int Sock, UINT32 Ip, UINT16 Port) {
     (void)Sock;
     (void)Ip;
     (void)Port;
     return -1;
 }
 
-int ToySocketListen(int Sock, int Backlog) {
+int TcpSocketListen(int Sock, int Backlog) {
     (void)Sock;
     (void)Backlog;
     return -1;
 }
 
-int ToySocketAccept(int Sock, int TimeoutMs) {
+int TcpSocketAccept(int Sock, int TimeoutMs) {
     (void)Sock;
     (void)TimeoutMs;
     return -1;
 }
 
-int ToySocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
+int TcpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
     (void)Sock;
     (void)DstIp;
     (void)DstPort;
@@ -597,14 +597,14 @@ int ToySocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
     return -1;
 }
 
-int ToySocketSend(int Sock, const void *Data, UINTN Len) {
+int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
     (void)Sock;
     (void)Data;
     (void)Len;
     return -1;
 }
 
-int ToySocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
+int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     (void)Sock;
     (void)Buf;
     (void)Len;
@@ -612,7 +612,7 @@ int ToySocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     return -1;
 }
 
-int ToySocketClose(int Sock) {
+int TcpSocketClose(int Sock) {
     (void)Sock;
     return -1;
 }

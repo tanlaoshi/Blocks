@@ -15,8 +15,8 @@
 
 extern void *memcpy(void *Dst, const void *Src, UINTN Len);
 
-static struct netif gToyNetif;
-static int gToyNetifUp;
+static struct netif gLwIpNetif;
+static int gLwIpNetifUp;
 
 /* QEMU user-net 网关 10.0.2.2 的固定 MAC；仅 hypervisor 注入 */
 static const UINT8 gQemuGwMac[6] = { 0x52, 0x55, 0x0a, 0x00, 0x02, 0x02 };
@@ -34,7 +34,7 @@ static void MaybeSeedQemuGwArp(UINT32 Gw) {
     (void)etharp_add_static_entry(&GwIp, &GwMac);
 }
 
-static err_t ToyNetifOutput(struct netif *Netif, struct pbuf *P) {
+static err_t LwIpNetifOutput(struct netif *Netif, struct pbuf *P) {
     struct pbuf *Q;
     UINT8 Frame[1518];
     UINTN Off = 0;
@@ -53,14 +53,14 @@ static err_t ToyNetifOutput(struct netif *Netif, struct pbuf *P) {
     return NetSendEthernet(Frame, Off) == 0 ? ERR_OK : ERR_IF;
 }
 
-static err_t ToyNetifInit(struct netif *Netif) {
+static err_t LwIpNetifInit(struct netif *Netif) {
     UINT8 Mac[6];
 
     NetGetMac(Mac);
     Netif->name[0] = 'e';
     Netif->name[1] = 'n';
     Netif->output = etharp_output;
-    Netif->linkoutput = ToyNetifOutput;
+    Netif->linkoutput = LwIpNetifOutput;
     Netif->mtu = 1500;
     Netif->hwaddr_len = ETH_HWADDR_LEN;
     Netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
@@ -68,11 +68,11 @@ static err_t ToyNetifInit(struct netif *Netif) {
     return ERR_OK;
 }
 
-struct netif *ToyNetifGet(void) {
-    return &gToyNetif;
+struct netif *LwIpNetifGet(void) {
+    return &gLwIpNetif;
 }
 
-int ToyNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
+int LwIpNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     ip4_addr_t IpAddr;
     ip4_addr_t NetMask;
     ip4_addr_t GwAddr;
@@ -80,54 +80,54 @@ int ToyNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     ToyHostIpToLwIp(Ip, &IpAddr);
     ToyHostIpToLwIp(Mask, &NetMask);
     ToyHostIpToLwIp(Gw, &GwAddr);
-    if (netif_add(&gToyNetif, &IpAddr, &NetMask, &GwAddr, NULL,
-                  ToyNetifInit, ethernet_input) == NULL) {
+    if (netif_add(&gLwIpNetif, &IpAddr, &NetMask, &GwAddr, NULL,
+                  LwIpNetifInit, ethernet_input) == NULL) {
         return -1;
     }
-    netif_set_default(&gToyNetif);
-    netif_set_up(&gToyNetif);
-    gToyNetifUp = 1;
+    netif_set_default(&gLwIpNetif);
+    netif_set_up(&gLwIpNetif);
+    gLwIpNetifUp = 1;
     MaybeSeedQemuGwArp(Gw);
     return 0;
 }
 
-int ToyNetifSetAddr(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
+int LwIpNetifSetAddr(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     ip4_addr_t IpAddr;
     ip4_addr_t NetMask;
     ip4_addr_t GwAddr;
 
-    if (!gToyNetifUp) {
+    if (!gLwIpNetifUp) {
         return -1;
     }
     ToyHostIpToLwIp(Ip, &IpAddr);
     ToyHostIpToLwIp(Mask, &NetMask);
     ToyHostIpToLwIp(Gw, &GwAddr);
-    netif_set_addr(&gToyNetif, &IpAddr, &NetMask, &GwAddr);
+    netif_set_addr(&gLwIpNetif, &IpAddr, &NetMask, &GwAddr);
     MaybeSeedQemuGwArp(Gw);
     return 0;
 }
 
-void ToyNetifSyncMac(void) {
+void LwIpNetifSyncMac(void) {
     UINT8 Mac[6];
     int i;
 
-    if (!gToyNetifUp) {
+    if (!gLwIpNetifUp) {
         return;
     }
     NetGetMac(Mac);
     for (i = 0; i < 6; i++) {
-        if (gToyNetif.hwaddr[i] != Mac[i]) {
+        if (gLwIpNetif.hwaddr[i] != Mac[i]) {
             break;
         }
     }
     if (i == 6) {
         return;
     }
-    memcpy(gToyNetif.hwaddr, Mac, ETH_HWADDR_LEN);
+    memcpy(gLwIpNetif.hwaddr, Mac, ETH_HWADDR_LEN);
     HalConsoleWriteSerial("netif: mac sync\n");
 }
 
-void ToyNetifInput(const UINT8 *Frame, UINTN Len) {
+void LwIpNetifInput(const UINT8 *Frame, UINTN Len) {
     struct pbuf *P;
 
     if (Len < 14 || Len > 1518) {
@@ -147,7 +147,7 @@ void ToyNetifInput(const UINT8 *Frame, UINTN Len) {
         HalConsoleWriteSerial("netif: pbuf_take fail\n");
         return;
     }
-    if (gToyNetif.input(P, &gToyNetif) != ERR_OK) {
+    if (gLwIpNetif.input(P, &gLwIpNetif) != ERR_OK) {
         pbuf_free(P);
     }
 }

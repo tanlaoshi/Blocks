@@ -40,7 +40,7 @@ static void NetProcessRx(void) {
 #ifdef LWIP_ENABLE
             if (gLwIpRx) {
                 /* lwip on: all IP RX to lwIP; builtin IpInput idle */
-                ToyNetifInput(Pkt, PktLen);
+                LwIpNetifInput(Pkt, PktLen);
             } else
 #endif
             {
@@ -62,7 +62,7 @@ void NetInputFrame(const UINT8 *Pkt, UINTN Len) {
     }
 #ifdef LWIP_ENABLE
     if (gLwIpRx) {
-        ToyNetifInput(Pkt, Len);
+        LwIpNetifInput(Pkt, Len);
         return;
     }
 #endif

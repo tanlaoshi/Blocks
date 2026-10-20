@@ -4,7 +4,8 @@
 
 ## 顶层
 
-结构示意（同心圆）：[Documents/项目/Kernel-rings.png](../Documents/项目/Kernel-rings.png)
+结构示意（同心圆）：[Documents/项目/Kernel-rings.png](../Documents/项目/Kernel-rings.png)  
+阅读顺序（先骨后肉）：[Documents/手册/仓库与启动/骨架与肉.md](../Documents/手册/仓库与启动/骨架与肉.md)
 
 ```text
 BringUp/    # 阶段2：<Arch>/Entry·Handoff + KernelMain/Modules（读启动段只看这里）

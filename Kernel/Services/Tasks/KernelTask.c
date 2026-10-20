@@ -1,8 +1,9 @@
 /*
- * KernelTask.c — BringUp：教学慢任务槽（进度条演示）
+ * KernelTask.c — 教学慢任务槽（进度条演示；与 Gui/Worker 同属 Tasks）
  *
- * KernelTaskDemoStart → Register → DemoRun；对照 KernelMainCommon 的调用。
- * 槽位最多 4；Name ≤15；Store 装卸不走这张表。
+ * 非 BringUp：启动编排见 Kernel.c / Modules.c。
+ * KernelMainCommon 调 KernelTaskDemoStart → Register → DemoRun。
+ * 槽位最多 4；Name ≤15；Store 装卸不走这张表（走 Worker）。
  */
 #include "KernelTask.h"
 #include "CString.h"

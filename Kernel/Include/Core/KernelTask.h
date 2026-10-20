@@ -2,7 +2,7 @@
  * KernelTask.h — 通用内核任务登记表（最多 4 槽）
  *
  * 人话：给「慢一点的内核活」挂个名字、状态、进度，给任务管理器看。
- * 商店装卸不走这里，走 Worker。
+ * 商店装卸不走这里，走 Worker。实现：Services/Tasks/KernelTask.c。
  *
  * 从哪读：KernelTaskRegister；开机演示见 KernelTaskDemoStart。
  */

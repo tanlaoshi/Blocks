@@ -14,7 +14,8 @@
  * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
  *
  * 任务拉起（不在模块表；Initialize 已在表内 Scheduler 项做完）：
- *   Common：Create Shell/Gui/Worker（失败 Park）→ Demo → 可选 Input → SchedulerStart
+ *   Common：Create Shell/Gui/Worker（失败 Park）→ KernelTaskDemoStart（Tasks 层）
+ *            → 可选 Input → SchedulerStart
  *   Virt 多核：Create Shell → SchedulerStart；单核直跑 SerialRun（不 Start）
  * SchedulerStart 步骤见 Core/Scheduler/Boot.c。
  */

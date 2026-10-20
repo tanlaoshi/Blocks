@@ -27,8 +27,8 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
     Pw = gPrevW;
 
     gPrevX = Px;
-    GfxFillRectangle(Px, Y, 2, H, ThemePanelSeparator());
-    GfxFillRectangle(Px + 2, Y, Pw > 2 ? Pw - 2 : Pw, H, ThemePanelDetailBackground());
+    GraphicsFillRectangle(Px, Y, 2, H, ThemePanelSeparator());
+    GraphicsFillRectangle(Px + 2, Y, Pw > 2 ? Pw - 2 : Pw, H, ThemePanelDetailBackground());
     DrawLine(Px + 10, Py, LocStr(MSG_FILES_PREVIEW), ThemeText());
     DrawLine(Px + 10, Py + LineH, gViewTitle[0] ? gViewTitle : LocStr(MSG_FILES_NONE),
              ThemeTextMuted());
@@ -40,9 +40,9 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
 
     if (gPrevKind == PREV_EMPTY || gPrevKind == PREV_NONE) {
         if (InnerW > 8 && InnerH > LineH + 8) {
-            GfxFillRectangle(InnerX, InnerY, InnerW, InnerH > LineH * 4 ? LineH * 4 : InnerH,
+            GraphicsFillRectangle(InnerX, InnerY, InnerW, InnerH > LineH * 4 ? LineH * 4 : InnerH,
                             ThemeDialogFace());
-            GfxDrawRectangle(InnerX, InnerY,
+            GraphicsDrawRectangle(InnerX, InnerY,
                             InnerW, InnerH > LineH * 4 ? LineH * 4 : InnerH,
                             ThemePanelSeparator());
             DrawLine(InnerX + 10, InnerY + LineH,

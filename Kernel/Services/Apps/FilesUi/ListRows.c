@@ -126,8 +126,8 @@ void PaintListDrawRows(UINT32 ListX, UINT32 ListW, UINT32 Y, UINT32 H, UINT32 Li
             }
         }
         if (BoxW > 8 && BoxH > LineH + 8) {
-            GfxFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
-            GfxDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
+            GraphicsFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
+            GraphicsDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
             DrawLine(BoxX + 12, BoxY + LineH, LocStr(MSG_FILES_EMPTY), ThemeTextMuted());
             if (BoxH >= LineH * 3) {
                 DrawLine(BoxX + 12, BoxY + LineH * 2 + 4,

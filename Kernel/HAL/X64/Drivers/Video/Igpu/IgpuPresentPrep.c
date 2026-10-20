@@ -108,8 +108,8 @@ static int ProbeSrcCopyOffscreen(void) {
     }
 
     Mode = IgpuMmioRead32(IGPU_RING_MODE);
-    if ((Mode & IGPU_GFX_PPGTT_EN) != 0) {
-        IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GFX_PPGTT_EN));
+    if ((Mode & IGPU_GRAPHICS_PPGTT_EN) != 0) {
+        IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GRAPHICS_PPGTT_EN));
     }
     if (!IgpuForcewakeGet()) {
         LogBoot("Boot: igpu copy soft (fw)\n");

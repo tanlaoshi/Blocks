@@ -8,7 +8,7 @@
 #include "Hal.h"
 #include "Font.h"
 #include "Theme.h"
-#include "Gfx.h"
+#include "Graphics.h"
 #include "Desktop.h"
 
 int DisplayHardwareInitialize(void) {
@@ -33,8 +33,8 @@ int VideoInitialize(void) {
     HalVideoSet(&Video);
     HalVideoEnableFbWc();
     HalVideoInitializeBackbuffer();
-    GfxSetPixel(HalVideoDrawPixel);
-    GfxSetFillRect(HalVideoFillRect);
+    GraphicsSetPixel(HalVideoDrawPixel);
+    GraphicsSetFillRect(HalVideoFillRect);
     HalSerialGopEnable();
     HalVideoLogFbPte();
     /*

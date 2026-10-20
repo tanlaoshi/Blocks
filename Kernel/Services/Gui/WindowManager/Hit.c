@@ -158,15 +158,15 @@ void GuiRaiseToFront(int Idx) {
                !gGuiWindowManager.WinBackupValid[Top]) {
         /* Sync 已画过光标；无备份时才 Fill 客户区。
          * 有备份则与 FixedSize 一样贴备份（ToyGfx 复选等在里面），Fill 会抹掉。 */
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorRestore();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
         DrawWindowAtEx(Top, 0);
         PaintUserClient(Top);
         BackupWindowAtEx(Top, 1);
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorPaint();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
         HalVideoPresentFlush();
     } else if (gGuiWindowManager.Windows[Top].Kind == GUI_WIN_SHELL && !gGuiWindowManager.WinBackupValid[Top]) {
         /* 欢迎语级恢复；完整历史需备份一直有效 */

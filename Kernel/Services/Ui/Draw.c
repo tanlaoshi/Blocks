@@ -38,10 +38,10 @@ void UiDrawButtonEx(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char 
         BorderOuter = ThemeControlAccent();
         BorderInner = ThemeControlAccent();
     }
-    GfxFillRoundRectangle(X, Y, Width, Height, 5, Face);
-    GfxDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
+    GraphicsFillRoundRectangle(X, Y, Width, Height, 5, Face);
+    GraphicsDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
     if (Width > 2 && Height > 2) {
-        GfxDrawRoundRectangle(X + 1, Y + 1, Width - 2, Height - 2, 5, BorderInner);
+        GraphicsDrawRoundRectangle(X + 1, Y + 1, Width - 2, Height - 2, 5, BorderInner);
     }
 
     while (Text[TextLen]) {
@@ -84,8 +84,8 @@ void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const
     if (!Text) {
         Text = "";
     }
-    GfxFillRoundRectangle(X, Y, Width, Height, 5, Face);
-    GfxDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
+    GraphicsFillRoundRectangle(X, Y, Width, Height, 5, Face);
+    GraphicsDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
     while (Text[TextLen]) {
         TextLen++;
     }
@@ -108,8 +108,8 @@ void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const
 
 /* 绘制水平进度条 */
 void UiDrawProgressBar(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Progress, UINT32 MaxProgress, UINT32 Color, UINT32 BgColor) {
-    GfxFillRoundRectangle(X, Y, Width, Height, 3, BgColor);
-    GfxDrawRoundRectangle(X, Y, Width, Height, 3, ThemeScrollBorder());
+    GraphicsFillRoundRectangle(X, Y, Width, Height, 3, BgColor);
+    GraphicsDrawRoundRectangle(X, Y, Width, Height, 3, ThemeScrollBorder());
 
     if (MaxProgress == 0) {
         return;
@@ -117,7 +117,7 @@ void UiDrawProgressBar(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 P
     {
         UINT32 FillWidth = (Progress * (Width - 4)) / MaxProgress;
         if (FillWidth > 0) {
-            GfxFillRoundRectangle(X + 2, Y + 2, FillWidth, Height - 4, 2, Color);
+            GraphicsFillRoundRectangle(X + 2, Y + 2, FillWidth, Height - 4, 2, Color);
         }
     }
 }

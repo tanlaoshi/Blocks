@@ -340,7 +340,7 @@ LIB_SRCS      := $(wildcard Library/*.c)
 LIB_SRCS      += $(wildcard Library/Block/*.c)
 LIB_SRCS      += $(wildcard Library/VirtualFileSystem/*.c)
 LIB_SRCS      += $(wildcard Library/Gpt/*.c)
-LIB_SRCS      += $(wildcard Library/Gfx/*.c)
+LIB_SRCS      += $(wildcard Library/Graphics/*.c)
 LIB_SRCS      += $(wildcard Library/Bmp/*.c)
 ifeq ($(FS),fat)
 LIB_SRCS      += $(wildcard Library/Fat/*.c)
@@ -475,15 +475,15 @@ USER_NETLIB_OBJ = $(USER_OUT)/netlibdemo.o
 USER_SOCKDEMO_OBJ = $(USER_OUT)/sockdemo.o
 USER_CHAT_OBJ = $(USER_OUT)/chat.o
 USER_ENOSYS_OBJ = $(USER_OUT)/enosysdemo.o
-USER_LIB_TOY_GFX_OBJ = User/Library/ToyGfx/ToyGfx.o
-USER_LIB_TOY_GFX_BATCH_OBJ = User/Library/ToyGfx/Batch.o
+USER_LIB_GRAPHICS_OBJ = User/Library/Graphics/Graphics.o
+USER_LIB_GRAPHICS_BATCH_OBJ = User/Library/Graphics/Batch.o
 USER_LIB_TOY_UI_OBJ = User/Library/ToyUi/ToyUi.o
 USER_LIB_TOY_UI_WIDGETS_OBJ = User/Library/ToyUi/Widgets.o
 USER_LIB_TOY_UI_IM_OBJ = User/Library/ToyUi/Immediate.o
 USER_LIB_TOY_UI_STYLE_OBJ = User/Library/ToyUi/Style.o
 USER_LIB_TOY_NET_OBJ = User/Library/ToyNet/ToyNet.o
 USER_LIB_FSUTIL_OBJ = User/Library/VolumePath/VolumePath.o
-USER_LIB_TOY_GFX_A = User/Library/ToyGfx/libToyGfx.a
+USER_LIB_GRAPHICS_A = User/Library/Graphics/libGraphics.a
 USER_LIB_TOY_UI_A = User/Library/ToyUi/libToyUi.a
 USER_LIB_TOY_NET_A = User/Library/ToyNet/libToyNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
@@ -856,20 +856,20 @@ $(USER_WINDEMO_OBJ): User/Apps/Demos/WindowDemo.c User/include/stdio.h User/incl
 $(USER_WINDEMO_ELF): $(USER_WINDEMO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_WINDEMO_OBJ) $(USER_CRT_OBJS)
 
-$(USER_LIB_TOY_GFX_OBJ): User/Library/ToyGfx/ToyGfx.c User/include/ToyGfx.h User/include/unistd.h User/include/ToyOS/syscall.h 
-	$(CC) $(USER_CFLAGS) -c User/Library/ToyGfx/ToyGfx.c -o $@
+$(USER_LIB_GRAPHICS_OBJ): User/Library/Graphics/Graphics.c User/include/Graphics.h User/include/unistd.h User/include/ToyOS/syscall.h 
+	$(CC) $(USER_CFLAGS) -c User/Library/Graphics/Graphics.c -o $@
 
-$(USER_LIB_TOY_GFX_BATCH_OBJ): User/Library/ToyGfx/Batch.c \
-		User/include/ToyGfxBatch.h User/include/ToyGfx.h
-	$(CC) $(USER_CFLAGS) -c User/Library/ToyGfx/Batch.c -o $@
+$(USER_LIB_GRAPHICS_BATCH_OBJ): User/Library/Graphics/Batch.c \
+		User/include/GraphicsBatch.h User/include/Graphics.h
+	$(CC) $(USER_CFLAGS) -c User/Library/Graphics/Batch.c -o $@
 
 $(USER_LIB_TOY_UI_OBJ): User/Library/ToyUi/ToyUi.c User/Library/ToyUi/Private.h \
-		User/include/ToyUi.h User/include/ToyGfx.h User/include/unistd.h \
+		User/include/ToyUi.h User/include/Graphics.h User/include/unistd.h \
 		User/include/ToyOS/syscall.h
 	$(CC) $(USER_CFLAGS) -c User/Library/ToyUi/ToyUi.c -o $@
 
 $(USER_LIB_TOY_UI_WIDGETS_OBJ): User/Library/ToyUi/Widgets.c \
-		User/Library/ToyUi/Private.h User/include/ToyUi.h User/include/ToyGfx.h
+		User/Library/ToyUi/Private.h User/include/ToyUi.h User/include/Graphics.h
 	$(CC) $(USER_CFLAGS) -c User/Library/ToyUi/Widgets.c -o $@
 
 $(USER_LIB_TOY_UI_IM_OBJ): User/Library/ToyUi/Immediate.c \
@@ -880,8 +880,8 @@ $(USER_LIB_TOY_UI_STYLE_OBJ): User/Library/ToyUi/Style.c \
 		User/include/ToyUiStyle.h
 	$(CC) $(USER_CFLAGS) -c User/Library/ToyUi/Style.c -o $@
 
-$(USER_LIB_TOY_GFX_A): $(USER_LIB_TOY_GFX_OBJ) $(USER_LIB_TOY_GFX_BATCH_OBJ)
-	ar rcs $@ $(USER_LIB_TOY_GFX_OBJ) $(USER_LIB_TOY_GFX_BATCH_OBJ)
+$(USER_LIB_GRAPHICS_A): $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
+	ar rcs $@ $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
 
 $(USER_LIB_TOY_UI_A): $(USER_LIB_TOY_UI_OBJ) $(USER_LIB_TOY_UI_WIDGETS_OBJ) $(USER_LIB_TOY_UI_IM_OBJ) $(USER_LIB_TOY_UI_STYLE_OBJ)
 	ar rcs $@ $(USER_LIB_TOY_UI_OBJ) $(USER_LIB_TOY_UI_WIDGETS_OBJ) $(USER_LIB_TOY_UI_IM_OBJ) $(USER_LIB_TOY_UI_STYLE_OBJ)
@@ -907,19 +907,19 @@ $(USER_LIB_TOYOS_A): $(USER_LIB_TOYOS_OBJS)
 	mkdir -p $(dir $@)
 	ar rcs $@ $(USER_LIB_TOYOS_OBJS)
 
-$(USER_GUIDEMO_OBJ): User/Apps/Demos/GuiDemo.c User/include/ToyUi.h User/include/ToyGfx.h User/include/stdio.h User/include/unistd.h User/include/ToyOS/syscall.h | $(USER_OUT)
+$(USER_GUIDEMO_OBJ): User/Apps/Demos/GuiDemo.c User/include/ToyUi.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h User/include/ToyOS/syscall.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/GuiDemo.c -o $@
 
-$(USER_GUIDEMO_ELF): $(USER_GUIDEMO_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_GUIDEMO_ELF): $(USER_GUIDEMO_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_GUIDEMO_OBJ) \
-		$(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS)
+		$(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
-$(USER_BLITDEMO_OBJ): User/Apps/Demos/BlitDemo.c User/include/ToyUi.h User/include/ToyGfx.h User/include/stdio.h User/include/unistd.h User/include/ToyOS/syscall.h | $(USER_OUT)
+$(USER_BLITDEMO_OBJ): User/Apps/Demos/BlitDemo.c User/include/ToyUi.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h User/include/ToyOS/syscall.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/BlitDemo.c -o $@
 
-$(USER_BLITDEMO_ELF): $(USER_BLITDEMO_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_BLITDEMO_ELF): $(USER_BLITDEMO_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_BLITDEMO_OBJ) \
-		$(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS)
+		$(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_LIBCDEMO_OBJ): User/Apps/Demos/LibcDemo.c User/include/stdio.h User/include/stdlib.h User/include/string.h User/include/signal.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/LibcDemo.c -o $@
@@ -948,19 +948,19 @@ $(USER_THREADDEMO_OBJ): User/Apps/Demos/ThreadDemo.c User/include/pthread.h User
 $(USER_THREADDEMO_ELF): $(USER_THREADDEMO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_THREADDEMO_OBJ) $(USER_CRT_OBJS)
 
-$(USER_SNAKE_OBJ): User/Apps/Snake.c User/include/ToyUi.h User/include/ToyGfx.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
+$(USER_SNAKE_OBJ): User/Apps/Snake.c User/include/ToyUi.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Snake.c -o $@
 
-$(USER_SNAKE_ELF): $(USER_SNAKE_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_SNAKE_ELF): $(USER_SNAKE_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_SNAKE_OBJ) \
-		$(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS)
+		$(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_TASKMGR_OBJ): User/Apps/TaskMgr.c User/include/ToyUi.h User/include/ToyOS/task.h User/include/stdio.h User/include/unistd.h User/include/signal.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/TaskMgr.c -o $@
 
-$(USER_TASKMGR_ELF): $(USER_TASKMGR_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_TASKMGR_ELF): $(USER_TASKMGR_OBJ) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASKMGR_OBJ) \
-		$(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS)
+		$(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_DIRDEMO_OBJ): User/Apps/Demos/DirDemo.c User/include/stdio.h User/include/dirent.h User/include/string.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/DirDemo.c -o $@
@@ -988,16 +988,16 @@ $(USER_SOCKDEMO_ELF): $(USER_SOCKDEMO_OBJ) $(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_SOCKDEMO_OBJ) \
 		$(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS)
 
-$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/Net.h User/include/ToyNet.h User/include/ToyUi.h User/include/ToyGfx.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
+$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/Net.h User/include/ToyNet.h User/include/ToyUi.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Chat.c -o $@
 
 USER_CHAT_NET_OBJ = $(USER_OUT)/chat_net.o
 $(USER_CHAT_NET_OBJ): User/Apps/Chat/Net.c User/Apps/Chat/Net.h User/include/ToyNet.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Net.c -o $@
 
-$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_LIB_TOY_NET_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_LIB_TOY_NET_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) \
-		$(USER_LIB_TOY_NET_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_GFX_A) $(USER_CRT_OBJS)
+		$(USER_LIB_TOY_NET_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_ENOSYS_OBJ): User/Apps/Demos/EnosysDemo.c User/include/stdio.h User/include/errno.h User/include/ToyOS/syscall.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/EnosysDemo.c -o $@
@@ -1165,10 +1165,10 @@ ifeq ($(ARCH),x86_64)
 	rm -f $(USER_EXECDEMO_OBJ) $(USER_PIPEDEMO_OBJ) $(USER_BRKDEMO_OBJ) $(USER_MMAPDEMO_OBJ) $(USER_KILLDEMO_OBJ) $(USER_SIGDEMO_OBJ)
 	rm -f $(USER_WINDEMO_OBJ) $(USER_GUIDEMO_OBJ) $(USER_BLITDEMO_OBJ) $(USER_LIBCDEMO_OBJ) $(USER_SLEEPDEMO_OBJ) $(USER_THREADSMOKE_OBJ) $(USER_PTHREADSMOKE_OBJ) $(USER_THREADDEMO_OBJ) $(USER_SNAKE_OBJ) $(USER_DIRDEMO_OBJ) $(USER_CWDDEMO_OBJ)
 	rm -f $(USER_NETLIB_OBJ) $(USER_SOCKDEMO_OBJ) $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_ENOSYS_OBJ)
-	rm -f $(USER_LIB_TOY_GFX_OBJ) $(USER_LIB_TOY_GFX_BATCH_OBJ) $(USER_LIB_TOY_UI_OBJ) $(USER_LIB_TOY_UI_WIDGETS_OBJ) \
+	rm -f $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) $(USER_LIB_TOY_UI_OBJ) $(USER_LIB_TOY_UI_WIDGETS_OBJ) \
 		$(USER_LIB_TOY_UI_IM_OBJ) $(USER_LIB_TOY_UI_STYLE_OBJ) \
 		$(USER_LIB_TOY_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
-	rm -f $(USER_LIB_TOY_GFX_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIB_TOYOS_A)
+	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_TOY_UI_A) $(USER_LIB_TOY_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIB_TOYOS_A)
 	rm -f $(USER_CRT_OBJS)
 	rm -f $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF)
 	rm -f $(USER_LIBTOY_SO) $(USER_DYNDEMO_ELF) $(USER_CAT_ELF) $(USER_WRITE_ELF)

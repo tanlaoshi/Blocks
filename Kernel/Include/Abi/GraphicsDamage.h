@@ -1,10 +1,10 @@
 /*
- * GfxDamage.h — 用户贴像素矩形（SYS_DAMAGE_RECT）
+ * GraphicsDamage.h — 用户贴像素矩形（SYS_DAMAGE_RECT）
  *
  * 内核和用户共用这一份。x86_64 / Arm64 / RiscV 上都是 24 字节。
  */
-#ifndef GFX_DAMAGE_H
-#define GFX_DAMAGE_H
+#ifndef GRAPHICS_DAMAGE_H
+#define GRAPHICS_DAMAGE_H
 
 typedef struct {
     unsigned X;
@@ -12,8 +12,8 @@ typedef struct {
     unsigned W;
     unsigned H;
     const unsigned *Pixels; /* W*H × 0x00RRGGBB，行优先 */
-} GFX_DAMAGE_RECT;
+} GRAPHICS_DAMAGE_RECT;
 
-_Static_assert(sizeof(GFX_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
+_Static_assert(sizeof(GRAPHICS_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
 
 #endif

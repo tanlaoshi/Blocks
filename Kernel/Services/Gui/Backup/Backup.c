@@ -120,9 +120,9 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
 
     WasVisible = gGuiWindowManager.CursorVisible;
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
 
     /*
      * ForceFull：compose 自下而上、上层尚未画时整窗 ReadRect（含将被盖住的区域）。
@@ -135,9 +135,9 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
         if (!HadValid) {
             gGuiWindowManager.WinBackupValid[Idx] = 0;
             if (WasVisible) {
-                GfxIrqEnter();
+                GraphicsIrqEnter();
                 CursorPaint();
-                GfxIrqLeave();
+                GraphicsIrqLeave();
             }
             ComposeEnd();
             return;
@@ -162,9 +162,9 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
         gGuiWindowManager.WinBackupH[Idx] = Rh;
         gGuiWindowManager.WinBackupValid[Idx] = 1;
         if (WasVisible) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorPaint();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
         }
         ComposeEnd();
         return;
@@ -175,9 +175,9 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
     gGuiWindowManager.WinBackupH[Idx] = Rh;
     gGuiWindowManager.WinBackupValid[Idx] = 1;
     if (WasVisible) {
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorPaint();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
     }
     ComposeEnd();
 }

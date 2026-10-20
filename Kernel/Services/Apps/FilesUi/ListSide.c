@@ -22,9 +22,9 @@ void PaintListDrawSide(UINT32 X, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 SideW)
     gSideRow0 = Y + Pad + LineH + UI_LAYOUT_GAP;
     RowW = SideW > Pad * 2u ? SideW - Pad * 2u : SideW;
 
-    GfxFillRectangle(X, Y, SideW, H, ThemePanelSideBackground());
+    GraphicsFillRectangle(X, Y, SideW, H, ThemePanelSideBackground());
     if (SideW > UI_LAYOUT_SEP_W) {
-        GfxFillRectangle(X + SideW - UI_LAYOUT_SEP_W, Y, UI_LAYOUT_SEP_W, H,
+        GraphicsFillRectangle(X + SideW - UI_LAYOUT_SEP_W, Y, UI_LAYOUT_SEP_W, H,
                          ThemePanelSeparator());
     }
     DrawLine(X + Pad, Y + Pad, LocStr(MSG_FILES_VOLUMES), ThemeText());

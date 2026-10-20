@@ -23,12 +23,12 @@ void FillRectFree(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 Color) {
                 RunStart = Col;
                 InRun = 1;
             } else if (!Free && InRun) {
-                GfxFillRectangle(X + RunStart, Y + Row, Col - RunStart, 1, Color);
+                GraphicsFillRectangle(X + RunStart, Y + Row, Col - RunStart, 1, Color);
                 InRun = 0;
             }
         }
         if (InRun) {
-            GfxFillRectangle(X + RunStart, Y + Row, W - RunStart, 1, Color);
+            GraphicsFillRectangle(X + RunStart, Y + Row, W - RunStart, 1, Color);
         }
     }
 }
@@ -93,10 +93,10 @@ void DrawOneIconRaw(const DESKTOP_ICON *Icon, int Selected) {
 
     BlitIconFaceRaw(Icon->X, Icon->Y, Icon);
     Border = Selected ? ThemeIconSelect() : ThemeIconBorder();
-    GfxDrawRectangle(Icon->X, Icon->Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE,
+    GraphicsDrawRectangle(Icon->X, Icon->Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE,
                     Border);
     if (Selected) {
-        GfxDrawRectangle(Icon->X + 1, Icon->Y + 1,
+        GraphicsDrawRectangle(Icon->X + 1, Icon->Y + 1,
                         DESKTOP_ICON_SIZE - 2, DESKTOP_ICON_SIZE - 2,
                         ThemeIconSelect());
     }

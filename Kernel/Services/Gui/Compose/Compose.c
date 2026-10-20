@@ -18,17 +18,17 @@
 #include "TtyUi.h"
 #include "Scheduler.h"
 
-void GfxIrqEnter(void) {
-    if (gGuiWindowManager.GfxLockDepth++ == 0) {
+void GraphicsIrqEnter(void) {
+    if (gGuiWindowManager.GraphicsLockDepth++ == 0) {
         SchedulerPreemptDisable();
-        gGuiWindowManager.GfxIrqFlags = HalIrqSave();
+        gGuiWindowManager.GraphicsIrqFlags = HalIrqSave();
     }
 }
 
 
-void GfxIrqLeave(void) {
-    if (gGuiWindowManager.GfxLockDepth > 0 && --gGuiWindowManager.GfxLockDepth == 0) {
-        HalIrqRestore(gGuiWindowManager.GfxIrqFlags);
+void GraphicsIrqLeave(void) {
+    if (gGuiWindowManager.GraphicsLockDepth > 0 && --gGuiWindowManager.GraphicsLockDepth == 0) {
+        HalIrqRestore(gGuiWindowManager.GraphicsIrqFlags);
         SchedulerPreemptEnable();
     }
 }
@@ -49,15 +49,15 @@ void ComposeEnd(void) {
 
 /* 先擦光标再置 Busy，避免 SMP 上 Busy 抢在 Restore 前清 Visible → 镂空 */
 void ComposeBeginEraseCursor(void) {
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     ComposeBegin();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
 }
 
 
 /* 主题合成中推迟 Present；拖动等路径仍立即提交 */
-void GfxPresent(void) {
+void GraphicsPresent(void) {
     if (gGuiWindowManager.DeferPresent) {
         gGuiWindowManager.ShellEchoCoalesce = 0;
         return;
@@ -125,9 +125,9 @@ void GuiRedraw(void) {
     DesktopDrawStartMenu();
     DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     HalVideoPresentFlush();
     ComposeEnd();
 }
@@ -240,9 +240,9 @@ void GuiComposeThemeScene(void) {
     } else {
         HalVideoClearClip();
     }
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     gGuiWindowManager.DeferPresent = 0;
     /*
      * PresentFlush 必须仍在 ComposeBusy 内：NUC 8 核上 AP 鼠标否则会
@@ -257,12 +257,12 @@ void GuiPaintWindow(int Idx) {
     if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return;
     }
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     DrawWindowAt(Idx);
     CursorPaint();
     HalVideoPresent();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
 }
 
 

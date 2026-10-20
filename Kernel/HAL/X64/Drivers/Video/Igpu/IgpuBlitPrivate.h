@@ -13,7 +13,7 @@
 #define IGPU_RING_START      (IGPU_BLT_RING_BASE + 0x38u)
 #define IGPU_RING_CTL        (IGPU_BLT_RING_BASE + 0x3cu)
 #define IGPU_RING_MODE       (IGPU_BLT_RING_BASE + 0x29cu) /* RING_MODE_GEN7 */
-#define IGPU_GFX_PPGTT_EN    (1u << 9)
+#define IGPU_GRAPHICS_PPGTT_EN    (1u << 9)
 #define IGPU_RING_VALID      1u
 #define IGPU_FW_DISABLE(Bits) ((Bits) << 16) /* MMIO 掩码写：清位 */
 #define IGPU_RING_GTT_OFF    0x01000000ull

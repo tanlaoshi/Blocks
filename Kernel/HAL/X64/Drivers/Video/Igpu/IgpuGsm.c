@@ -1,7 +1,7 @@
 /*
  * IgpuGsm.c — PR-G-igpu-3：Gen8+ GSM（GGTT PTE 表在 BAR 后半）
  *
- * 对照 i915：GSM = GTTMMADR + size/2；PTE = phys | PRESENT；GFX_FLSH 作废。
+ * 对照 i915：GSM = GTTMMADR + size/2；PTE = phys | PRESENT；GRAPHICS_FLSH 作废。
  * 禁止改 GTT 偏移 0（固件 scanout）。
  */
 #include "Igpu.h"
@@ -9,8 +9,8 @@
 
 #define IGPU_GSM_OFF           (8u * 1024u * 1024u)
 #define IGPU_GEN8_PTE_PRESENT  1ull
-#define IGPU_REG_GFX_FLSH      0x101008u
-#define IGPU_GFX_FLSH_EN       1u
+#define IGPU_REG_GRAPHICS_FLSH      0x101008u
+#define IGPU_GRAPHICS_FLSH_EN       1u
 
 static volatile UINT64 *gIgpuGsm;
 static UINTN gIgpuGsmEntries;
@@ -21,8 +21,8 @@ int IgpuGsmOk(void) {
 }
 
 static void FlushGtt(void) {
-    IgpuMmioWrite32(IGPU_REG_GFX_FLSH, IGPU_GFX_FLSH_EN);
-    (void)IgpuMmioRead32(IGPU_REG_GFX_FLSH);
+    IgpuMmioWrite32(IGPU_REG_GRAPHICS_FLSH, IGPU_GRAPHICS_FLSH_EN);
+    (void)IgpuMmioRead32(IGPU_REG_GRAPHICS_FLSH);
 }
 
 UINT64 IgpuGsmPteRead(UINT64 GttOff) {

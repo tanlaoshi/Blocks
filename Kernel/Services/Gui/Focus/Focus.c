@@ -161,13 +161,13 @@ void GuiFocusClearClient(void) {
     if (!GuiFocusClient(&X, &Y, &W, &H, &Bg)) {
         return;
     }
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     /*
      * 整块清客户区。主题合成靠 gGuiWindowManager.DeferPresent + 上层后画，勿 FillRectOccluded，
      * 否则重叠区不换色，抬窗后备份镂空。
      */
-    GfxFillRectangle(X, Y, W, H, Bg);
+    GraphicsFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipOrigin(X, Y, W, H, Bg);
     Win = &gGuiWindowManager.Windows[gGuiWindowManager.FocusWin];
     Win->TermX = 0;
@@ -175,8 +175,8 @@ void GuiFocusClearClient(void) {
     Win->TermSet = 1;
     GuiBackupSyncRect(X, Y, W, H);
     CursorPaint();
-    GfxPresent();
-    GfxIrqLeave();
+    GraphicsPresent();
+    GraphicsIrqLeave();
 }
 
 void GuiSetFocusWindow(int Idx) {

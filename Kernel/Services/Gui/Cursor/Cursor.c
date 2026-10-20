@@ -121,10 +121,10 @@ void CursorMove(UINT32 X, UINT32 Y) {
 
     if (gGuiWindowManager.DragWin >= 0 || DesktopIconDragActive()) {
         if (gGuiWindowManager.CursorVisible) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorRestore();
-            GfxPresent();
-            GfxIrqLeave();
+            GraphicsPresent();
+            GraphicsIrqLeave();
         }
         gGuiWindowManager.CursorX = X;
         gGuiWindowManager.CursorY = Y;
@@ -132,14 +132,14 @@ void CursorMove(UINT32 X, UINT32 Y) {
         return;
     }
 
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     gGuiWindowManager.CursorX = X;
     gGuiWindowManager.CursorY = Y;
     gGuiWindowManager.CursorKind = NewKind;
     CursorPaint();
-    GfxPresent();
-    GfxIrqLeave();
+    GraphicsPresent();
+    GraphicsIrqLeave();
 }
 
 void GuiPointerMove(UINT32 X, UINT32 Y) {
@@ -173,9 +173,9 @@ void GuiFrameBufferBegin(void) {
 }
 
 void GuiFrameBufferEnd(void) {
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     /*
      * Shell 命令 DeferPresent 期间勿逐字/逐行 Flush：
      * 否则 help 等会一行一帧 Present，真机极卡。
@@ -188,23 +188,23 @@ void GuiFrameBufferEnd(void) {
 }
 
 void GuiCursorPaint(void) {
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     CursorPaint();
-    GfxPresent();
-    GfxIrqLeave();
+    GraphicsPresent();
+    GraphicsIrqLeave();
 }
 
 void GuiCursorHide(void) {
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
-    GfxPresent();
-    GfxIrqLeave();
+    GraphicsPresent();
+    GraphicsIrqLeave();
 }
 
 void GuiCursorShow(void) {
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxPresent();
-    GfxIrqLeave();
+    GraphicsPresent();
+    GraphicsIrqLeave();
 }

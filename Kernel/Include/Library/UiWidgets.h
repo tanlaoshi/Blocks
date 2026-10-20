@@ -1,7 +1,7 @@
 /*
  * UiWidgets.h — Blocks 控件：按钮、列表行、滚动条、换行文字。
  *
- * 几何在 UI.h / Gfx.h。本头不进对外几何库。
+ * 几何在 UI.h / Graphics.h。本头不进对外几何库。
  */
 #ifndef UI_WIDGETS_H
 #define UI_WIDGETS_H

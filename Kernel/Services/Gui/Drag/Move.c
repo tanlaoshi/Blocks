@@ -58,9 +58,9 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
         return;
     }
 
-    /* G7：合成开中断；仅光标 erase/paint 与 Present 进 GfxIrq */
+    /* G7：合成开中断；仅光标 erase/paint 与 Present 进 GraphicsIrq */
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     if (gGuiWindowManager.CursorVisible) {
         CursorRestore();
         /* 拖窗中勿在此 Present：会多刷一帧旧画面，加重两侧闪 */
@@ -68,7 +68,7 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
             HalVideoPresent();
         }
     }
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     if (gGuiWindowManager.DragHasBackup) {
         W->X = NewX;
         W->Y = NewY;
@@ -110,10 +110,10 @@ void MoveWindowTo(int Idx, UINT32 NewX, UINT32 NewY) {
         DrawWindowShadowAt(Idx);
     }
     if (gGuiWindowManager.DragWin < 0) {
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorPaint();
         HalVideoPresent();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
     }
     ComposeEnd();
 }

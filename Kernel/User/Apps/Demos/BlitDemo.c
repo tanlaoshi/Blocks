@@ -1,11 +1,11 @@
 /*
- * BlitDemo.c — PR-G-desk-3：GfxDamageRect 像素 blit 演示
+ * BlitDemo.c — PR-G-desk-3：GraphicsDamageRect 像素 blit 演示
  * Shell：exec BLITDEMO.ELF → 窗内画色块 → 点 × 退出
  */
 #include <stdio.h>
 #include <unistd.h>
 #include <sched.h>
-#include <ToyGfx.h>
+#include <Graphics.h>
 #include <ToyUi.h>
 #include <ToyOS/syscall.h>
 
@@ -18,18 +18,18 @@ int main(void) {
     unsigned Pix[BLIT_W * BLIT_H];
     unsigned Row;
     unsigned Col;
-    GFX_DAMAGE_RECT Desc;
+    GRAPHICS_DAMAGE_RECT Desc;
 
     WindowId = UiCreateWindow("BlitDemo", 420, 260);
     if (WindowId < 0) {
         printf("blitdemo: create fail\n");
         return 1;
     }
-    if (GfxInitialize() != 0) {
+    if (GraphicsInitialize() != 0) {
         printf("blitdemo: gfx init fail\n");
         return 1;
     }
-    if (GfxDamageText(WindowId, "pixel blit (close window to exit)") != 0) {
+    if (GraphicsDamageText(WindowId, "pixel blit (close window to exit)") != 0) {
         printf("blitdemo: text fail\n");
         return 1;
     }
@@ -47,25 +47,25 @@ int main(void) {
     Desc.W = BLIT_W;
     Desc.H = BLIT_H;
     Desc.Pixels = Pix;
-    if (GfxDamageRect(WindowId, &Desc) != 0) {
+    if (GraphicsDamageRect(WindowId, &Desc) != 0) {
         printf("blitdemo: damage_rect fail\n");
         return 1;
     }
-    if (GfxFillRect(WindowId, 80, 32, 72, 24, 0x004080C0u) != 0) {
+    if (GraphicsFillRect(WindowId, 80, 32, 72, 24, 0x004080C0u) != 0) {
         printf("blitdemo: fill fail\n");
         return 1;
     }
-    if (GfxDrawRect(WindowId, 80, 64, 72, 40, 0x00E0E0E0u) != 0) {
+    if (GraphicsDrawRect(WindowId, 80, 64, 72, 40, 0x00E0E0E0u) != 0) {
         printf("blitdemo: rect fail\n");
         return 1;
     }
-    if (GfxDrawLine(WindowId, 16, 120, 200, 140, 0x00E0C040u) != 0) {
+    if (GraphicsDrawLine(WindowId, 16, 120, 200, 140, 0x00E0C040u) != 0) {
         printf("blitdemo: line fail\n");
         return 1;
     }
 
-    printf("blitdemo: wid=%d blit ok (ToyGfx %s)\n", WindowId,
-           GFX_ABI_VERSION_STRING);
+    printf("blitdemo: wid=%d blit ok (Graphics %s)\n", WindowId,
+           GRAPHICS_ABI_VERSION_STRING);
     for (;;) {
         Event = UiPoll(WindowId);
         if (Event < 0) {

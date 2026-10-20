@@ -99,7 +99,7 @@ void DesktopNetTrayMakePrefixed(char *Out, int Max, const char *Prefix, UINT32 I
 /* 与任务栏同路径 UiFill，避免半透栏上 HalVideoFillRect 看不见 */
 static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     if (W && H) {
-        GfxFillRectangle(X, Y, W, H, C);
+        GraphicsFillRectangle(X, Y, W, H, C);
     }
 }
 

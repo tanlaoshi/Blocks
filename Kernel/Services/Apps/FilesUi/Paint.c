@@ -33,11 +33,11 @@ void PaintOverlay(const char *Line1, const char *Line2, const char *Line3) {
     BoxY = Y + (H - BoxH) / 2;
 
     GuiFrameBufferBegin();
-    GfxFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
-    /* PR-G11：确认/输入框边框走 GfxDrawRectangle */
-    GfxDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
+    GraphicsFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
+    /* PR-G11：确认/输入框边框走 GraphicsDrawRectangle */
+    GraphicsDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
     if (BoxW > 4 && BoxH > 4) {
-        GfxDrawRectangle(BoxX + 1, BoxY + 1, BoxW - 2, BoxH - 2, ThemePanelSeparator());
+        GraphicsDrawRectangle(BoxX + 1, BoxY + 1, BoxW - 2, BoxH - 2, ThemePanelSeparator());
     }
     HalVideoSetClipRegion(BoxX + 4, BoxY + 4, BoxW > 8 ? BoxW - 8 : BoxW, BoxH > 8 ? BoxH - 8 : BoxH,
                           ThemeDialogFace());
@@ -83,7 +83,7 @@ void PaintView(void) {
         return;
     }
     GuiFrameBufferBegin();
-    GfxFillRectangle(X, Y, W, H, Bg);
+    GraphicsFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = FontAdvanceY();

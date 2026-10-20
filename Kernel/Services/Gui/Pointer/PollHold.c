@@ -98,10 +98,10 @@ void GuiPollHoldApply(UINT32 *LastX, UINT32 *LastY, UINT8 *LastBtn,
                     ClearIconFootprint(Sx, Sy, SbW, SbH);
                 }
             }
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorPaint();
             HalVideoPresentFlush();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
             GuiPresentDeferResume();
             GuiDragFrameLeave();
         }

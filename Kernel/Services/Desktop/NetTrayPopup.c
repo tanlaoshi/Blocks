@@ -109,8 +109,8 @@ void DesktopNetTrayDrawPopup(void) {
         return;
     }
     PopupGeom(&Px, &Py, &Pw, &Ph);
-    GfxFillRectangle(Px, Py, Pw, Ph, ThemeControlFace());
-    GfxDrawRectangle(Px, Py, Pw, Ph, ThemeMenuBorder());
+    GraphicsFillRectangle(Px, Py, Pw, Ph, ThemeControlFace());
+    GraphicsDrawRectangle(Px, Py, Pw, Ph, ThemeMenuBorder());
 
     Ty = Py + NET_POP_PAD;
     Kind = DesktopNetTrayDetectKind();

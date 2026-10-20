@@ -115,8 +115,8 @@ void DesktopDrawContextMenu(void) {
         return;
     }
     CtxGeom(&Mx, &My, &Mw, &Mh);
-    GfxFillRectangle(Mx, My, Mw, Mh, ThemeControlFace());
-    GfxDrawRectangle(Mx, My, Mw, Mh, ThemeMenuBorder());
+    GraphicsFillRectangle(Mx, My, Mw, Mh, ThemeControlFace());
+    GraphicsDrawRectangle(Mx, My, Mw, Mh, ThemeMenuBorder());
     for (i = 0; i < CTX_ROWS; i++) {
         MENU_ROW Row;
         UINT32 Iy = My + (UINT32)i * MENU_ITEM_H;
@@ -130,7 +130,7 @@ void DesktopDrawContextMenu(void) {
         Row.IconSrc = gCtxRows[i].IconSrc;
         Row.Label[0] = 0;
         Row.Path[0] = 0;
-        GfxDrawRectangle(Mx, Iy, Mw, MENU_ITEM_H, ThemeMenuSep());
+        GraphicsDrawRectangle(Mx, Iy, Mw, MENU_ITEM_H, ThemeMenuSep());
         if (DrawMenuRowIcon(&Row, IconX, IconY)) {
             TextX = IconX + MENU_ICON_SZ + 6u;
         }

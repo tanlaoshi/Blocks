@@ -42,10 +42,10 @@ void ConsoleSbRepaint(void) {
     }
 
     /*
-     * 安静清客户区：勿走 GuiFocusClearClient（内含 GfxPresent），
+     * 安静清客户区：勿走 GuiFocusClearClient（内含 GraphicsPresent），
      * 否则滚轮每格 Present 极慢。
      */
-    GfxFillRectangle(Cx, Cy, Cw, Ch, Bg);
+    GraphicsFillRectangle(Cx, Cy, Cw, Ch, Bg);
     GuiFocusHome();
 
     End = Count - ViewOff;

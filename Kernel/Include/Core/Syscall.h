@@ -25,7 +25,7 @@
 /* SYS_MMAP：rdi=len rsi=prot rdx=flags → VA；匿名或文件私有（PR-U-mmap2）；失败 -1
  * 非匿名时 flags 高 16 位 = fd；offset 教学固定 0 */
 /* SYS_MUNMAP：rdi=addr rsi=len → 0；失败 -1 */
-/* SYS_DAMAGE_RECT：rdi=wid rsi=GFX_DAMAGE_RECT* → 0；失败 -1（PR-G-desk-3） */
+/* SYS_DAMAGE_RECT：rdi=wid rsi=GRAPHICS_DAMAGE_RECT* → 0；失败 -1（PR-G-desk-3） */
 /* SYS_LSEEK：rdi=fd rsi=signed off rdx=whence(0=SET/1=CUR/2=END) → 新 Pos；管道/套接字 -ESPIPE */
 /* SYS_SLEEP：rdi=ms（上限 60000）；课堂 1 tick≈1ms；成功返回 0 */
 /* SYS_CLOCK_MS：无参；返回 BSP 定时器 tick（与 sleep 同尺） */

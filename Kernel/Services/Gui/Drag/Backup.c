@@ -194,10 +194,10 @@ void BeginDragBackups(int DragIdx) {
 void StartDragBackups(int DragIdx) {
     /* G7：抓屏/合成不关中断，只锁光标擦除；ComposeBusy 防嵌套鼠标 */
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     HalVideoPresent();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     GuiFocusSave();
     BeginDragBackups(DragIdx);
     if (!gGuiWindowManager.DragHasBackup || !gGuiWindowManager.WinBackupValid[DragIdx]) {

@@ -28,7 +28,7 @@ void PaintList(void) {
         return;
     }
     GuiFrameBufferBegin();
-    GfxFillRectangle(X, Y, W, H, Bg);
+    GraphicsFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
     LineH = UiLayoutRowH();

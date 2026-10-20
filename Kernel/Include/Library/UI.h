@@ -1,5 +1,5 @@
 /*
- * UI.h — 颜色。线、矩形、圆在 Gfx.h。半透明在 HalVideo.h。
+ * UI.h — 颜色。线、矩形、圆在 Graphics.h。半透明在 HalVideo.h。
  *
  * 按钮、列表、滚动条在 UiWidgets.h。颜色为 0x00RRGGBB。
  */
@@ -7,7 +7,7 @@
 #define UI_H
 
 #include "BootTypes.h"
-#include "Gfx.h"
+#include "Graphics.h"
 
 #define COLOR_BLACK       0x00000000
 #define COLOR_WHITE       0x00FFFFFF

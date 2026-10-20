@@ -152,7 +152,7 @@ void DesktopFillRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     if (ThemeDesktopGradientEnabled()) {
         HalVideoGetSize(&Sw, &Sh);
         if (Sw == 0 || Sh == 0) {
-            GfxFillRectangle(X, Y, W, H, ThemeDesktopBackground());
+            GraphicsFillRectangle(X, Y, W, H, ThemeDesktopBackground());
             return;
         }
         for (Row = 0; Row < H; Row++) {
@@ -171,7 +171,7 @@ void DesktopFillRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         }
         return;
     }
-    GfxFillRectangle(X, Y, W, H, ThemeDesktopBackground());
+    GraphicsFillRectangle(X, Y, W, H, ThemeDesktopBackground());
 }
 
 /* 只填未被窗占用的像素（图标拖动擦旧脚印，勿盖标题栏/客户区） */

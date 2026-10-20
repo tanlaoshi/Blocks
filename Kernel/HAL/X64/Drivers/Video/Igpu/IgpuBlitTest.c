@@ -99,8 +99,8 @@ int SubmitMemTest(void) {
         LogBoot("Boot: igpu bcs mode=");
         LogBootHex32(Mode);
         LogBoot("\n");
-        if ((Mode & IGPU_GFX_PPGTT_EN) != 0) {
-            IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GFX_PPGTT_EN));
+        if ((Mode & IGPU_GRAPHICS_PPGTT_EN) != 0) {
+            IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GRAPHICS_PPGTT_EN));
         }
     }
 

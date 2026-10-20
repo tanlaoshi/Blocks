@@ -60,7 +60,7 @@ static int OnSnake(int X, int Y, int SkipTail) {
 }
 
 static void DrawCell(int Wid, int X, int Y, unsigned Color) {
-    GfxFillRect(Wid, OX + (unsigned)X * CELL, OY + (unsigned)Y * CELL,
+    GraphicsFillRect(Wid, OX + (unsigned)X * CELL, OY + (unsigned)Y * CELL,
                    CELL - 1, CELL - 1, Color);
 }
 
@@ -85,7 +85,7 @@ static void PlaceFood(void) {
 static void DrawBoard(int Wid) {
     int I;
 
-    GfxFillRect(Wid, OX, OY, COLS * CELL, ROWS * CELL, COL_BOARD);
+    GraphicsFillRect(Wid, OX, OY, COLS * CELL, ROWS * CELL, COL_BOARD);
     for (I = 0; I < Glen; I++) {
         DrawCell(Wid, Gx[I], Gy[I], I == 0 ? COL_HEAD : COL_BODY);
     }

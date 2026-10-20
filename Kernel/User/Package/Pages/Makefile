@@ -7,6 +7,6 @@ PROG      ?= PAGES
 SRCS      ?= main.c Route.c Home.c Settings.c About.c
 
 EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/ToyGfx/libToyGfx.a
+             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
 
 include ../ToyUser.mk

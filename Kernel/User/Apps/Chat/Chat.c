@@ -216,7 +216,7 @@ int main(void) {
            (Ip >> 24) & 0xffu, (Ip >> 16) & 0xffu,
            (Ip >> 8) & 0xffu, Ip & 0xffu, (unsigned)Port);
 
-    if (GfxInitialize() != 0) {
+    if (GraphicsInitialize() != 0) {
         printf("chat: gfx init fail\n");
         return 1;
     }

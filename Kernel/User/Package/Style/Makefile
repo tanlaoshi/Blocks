@@ -7,6 +7,6 @@ PROG      ?= STYLE
 SRCS      ?= main.c
 
 EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/ToyGfx/libToyGfx.a
+             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
 
 include ../ToyUser.mk

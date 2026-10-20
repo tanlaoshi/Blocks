@@ -75,9 +75,9 @@ int GuiClickTryDesktopBar(UINT32 X, UINT32 Y) {
         return 0;
     }
     if (DesktopIconDragActive()) {
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorRestore();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
     }
     GuiClickRunDesktopAction(Act, ExecPath);
     return 1;
@@ -93,9 +93,9 @@ int GuiClickTryDesktopMiss(UINT32 X, UINT32 Y) {
     }
     /* PR-G-desk-1：与窗标题拖一致，武装拖放前先擦光标，避免留下光标脏块 */
     if (DesktopIconDragActive()) {
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorRestore();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
     }
     GuiClickRunDesktopAction(Act, ExecPath);
     return 1;

@@ -67,9 +67,9 @@ static void DrawDetail(UINT32 Dx, UINT32 Dy, UINT32 Dw, UINT32 Dh) {
     char Tmp[4];
     int T;
 
-    GfxFillRectangle(Dx, Dy, Dw, Dh, ThemePanelDetailBackground());
+    GraphicsFillRectangle(Dx, Dy, Dw, Dh, ThemePanelDetailBackground());
     if (Dw > 3) {
-        GfxFillRectangle(Dx, Dy, 3, Dh, ThemePanelSeparator());
+        GraphicsFillRectangle(Dx, Dy, 3, Dh, ThemePanelSeparator());
     }
     Ty = Dy + 8;
     MaxY = Dy + Dh - 4;
@@ -154,7 +154,7 @@ void DevicesUiPaint(void) {
         return;
     }
     GuiFrameBufferBegin();
-    GfxFillRectangle(Cx, Cy, Cw, Ch, ThemeSettingsClientBackground());
+    GraphicsFillRectangle(Cx, Cy, Cw, Ch, ThemeSettingsClientBackground());
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, ThemeSettingsClientBackground());
 
     LineH = UiLayoutRowH();
@@ -173,9 +173,9 @@ void DevicesUiPaint(void) {
         gDevUiSideLineH = LineH;
         gDevUiSideRow0 = Cy + UI_LAYOUT_PAD + LineH + UI_LAYOUT_GAP;
         RowW = SideW > UI_LAYOUT_PAD * 2u ? SideW - UI_LAYOUT_PAD * 2u : SideW;
-        GfxFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
+        GraphicsFillRectangle(Cx, Cy, SideW, Ch, ThemePanelSideBackground());
         if (SideW > UI_LAYOUT_SEP_W) {
-            GfxFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
+            GraphicsFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
         HalVideoDrawStringAt(Cx + UI_LAYOUT_PAD, Cy + UI_LAYOUT_PAD, LocStr(MSG_APP_DEVICES),
@@ -224,9 +224,9 @@ void DevicesUiPaint(void) {
         }
     }
 
-    GfxFillRectangle(gDevUiListX, gDevUiListY, gDevUiListW, gDevUiListH,
+    GraphicsFillRectangle(gDevUiListX, gDevUiListY, gDevUiListW, gDevUiListH,
                      ThemePanelSideBackground());
-    GfxDrawRectangle(gDevUiListX, gDevUiListY, gDevUiListW, gDevUiListH,
+    GraphicsDrawRectangle(gDevUiListX, gDevUiListY, gDevUiListW, gDevUiListH,
                     ThemePanelSeparator());
 
     if (gDevUiFiltCount <= 0) {
@@ -246,7 +246,7 @@ void DevicesUiPaint(void) {
             RowBg = (Idx == gDevUiSel) ? ThemeControlAccent()
                                        : ThemePanelSideBackground();
             Fg = (Idx == gDevUiSel) ? ThemeTextOnAccent() : ThemeText();
-            GfxFillRectangle(gDevUiListX + 1,
+            GraphicsFillRectangle(gDevUiListX + 1,
                              gDevUiListY + (UINT32)Row * DEVUI_ROW_H + 1,
                              gDevUiListW > 2 ? gDevUiListW - 2 : 1,
                              DEVUI_ROW_H - 1, RowBg);

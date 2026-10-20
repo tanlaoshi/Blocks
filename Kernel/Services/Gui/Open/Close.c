@@ -174,9 +174,9 @@ void CloseWindow(int Idx) {
         DesktopFillRect(0, BarY, Sw, TASKBAR_H);
         DrawTaskbarRaw();
         gGuiWindowManager.FocusWin = SavedFocus;
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorPaint();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
         HalVideoPresentFlush();
         ComposeEnd();
     } else {

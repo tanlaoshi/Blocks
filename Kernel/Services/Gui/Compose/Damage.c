@@ -161,9 +161,9 @@ void GuiComposeDamage(void) {
     } else {
         HalVideoClearClip();
     }
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     gGuiWindowManager.DeferPresent = 0;
     HalVideoPresentFlush();
     ComposeEnd();

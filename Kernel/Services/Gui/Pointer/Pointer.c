@@ -154,10 +154,10 @@ void GuiPollMouse(void) {
                         ClearIconFootprint(Sx, Sy, SbW, SbH);
                     }
                 }
-                GfxIrqEnter();
+                GraphicsIrqEnter();
                 CursorPaint();
                 HalVideoPresentFlush();
-                GfxIrqLeave();
+                GraphicsIrqLeave();
                 GuiPresentDeferResume();
                 GuiDragFrameLeave();
             }
@@ -208,10 +208,10 @@ void GuiPollMouse(void) {
                 gGuiWindowManager.CursorX = LastX;
                 gGuiWindowManager.CursorY = LastY;
                 DesktopIconDragUpdate(LastX, LastY);
-                GfxIrqEnter();
+                GraphicsIrqEnter();
                 CursorPaint();
                 HalVideoPresentFlush();
-                GfxIrqLeave();
+                GraphicsIrqLeave();
                 GuiPresentDeferResume();
                 GuiDragFrameLeave();
             }

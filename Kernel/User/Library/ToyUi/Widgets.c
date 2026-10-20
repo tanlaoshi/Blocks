@@ -4,7 +4,7 @@
  * 从 ToyUi.c 原样搬家；不改语义。
  */
 #include <ToyUi.h>
-#include <ToyGfx.h>
+#include <Graphics.h>
 #include <ToyUiStyle.h>
 
 #include "Private.h"
@@ -21,14 +21,14 @@ void UiRedrawWin(int WindowId, UI_WIN *St) {
         if (!St->Check[I].Used) {
             continue;
         }
-        GfxDrawRect(WindowId, St->Check[I].X, St->Check[I].Y,
+        GraphicsDrawRect(WindowId, St->Check[I].X, St->Check[I].Y,
                        UI_CHECK_SIZE, UI_CHECK_SIZE, S->CheckBorder);
         if (St->Check[I].Checked) {
-            GfxFillRect(WindowId, St->Check[I].X + 3, St->Check[I].Y + 3,
+            GraphicsFillRect(WindowId, St->Check[I].X + 3, St->Check[I].Y + 3,
                            UI_CHECK_SIZE - 6, UI_CHECK_SIZE - 6,
                            S->CheckFillOn);
         } else {
-            GfxFillRect(WindowId, St->Check[I].X + 3, St->Check[I].Y + 3,
+            GraphicsFillRect(WindowId, St->Check[I].X + 3, St->Check[I].Y + 3,
                            UI_CHECK_SIZE - 6, UI_CHECK_SIZE - 6,
                            S->CheckFillOff);
         }
@@ -37,20 +37,20 @@ void UiRedrawWin(int WindowId, UI_WIN *St) {
         for (I = 0; I < St->List.Count; I++) {
             RowY = St->List.Y + (unsigned)I * UI_LIST_ROW;
             if (I == St->List.Selected) {
-                GfxFillRect(WindowId, St->List.X, RowY, St->List.W,
+                GraphicsFillRect(WindowId, St->List.X, RowY, St->List.W,
                                UI_LIST_ROW - 2, S->ListRowSelBg);
             } else {
-                GfxFillRect(WindowId, St->List.X, RowY, St->List.W,
+                GraphicsFillRect(WindowId, St->List.X, RowY, St->List.W,
                                UI_LIST_ROW - 2, S->ListRowBg);
             }
-            GfxDrawRect(WindowId, St->List.X, RowY, St->List.W,
+            GraphicsDrawRect(WindowId, St->List.X, RowY, St->List.W,
                            UI_LIST_ROW - 2, S->ListRowBorder);
         }
     }
     if (St->Field.Used) {
-        GfxFillRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
+        GraphicsFillRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
                        UI_FIELD_H, S->FieldBg);
-        GfxDrawRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
+        GraphicsDrawRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
                        UI_FIELD_H,
                        St->Field.Focus ? S->FieldBorderFocus : S->FieldBorder);
     }

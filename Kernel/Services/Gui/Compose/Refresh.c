@@ -55,9 +55,9 @@ void GuiRefreshDesktop(void) {
             DesktopContextMenuCoverClear();
         }
         DesktopDrawNetTrayPopup();
-        GfxIrqEnter();
+        GraphicsIrqEnter();
         CursorPaint();
-        GfxIrqLeave();
+        GraphicsIrqLeave();
         HalVideoPresentFlush();
         ComposeEnd();
         return;

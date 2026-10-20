@@ -53,7 +53,7 @@ int UiCreateWindow(const char *Title, unsigned Width, unsigned Height) {
 int UiSetLabel(int WindowId, const char *Text) {
     int Rc;
 
-    Rc = GfxDamageText(WindowId, Text);
+    Rc = GraphicsDamageText(WindowId, Text);
     if (Rc == 0) {
         UiRedrawWin(WindowId, UiWinState(WindowId));
     }

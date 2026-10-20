@@ -10,7 +10,7 @@
 #include "Tasks.h"
 #include "Hal.h"
 #include "Font.h"
-#include "GfxDamage.h"
+#include "GraphicsDamage.h"
 #include "TaskSnap.h"
 
 int SysExecve(HAL_INTERRUPT_FRAME *Frame, UINT64 UserPath, UINT64 UserArgv,
@@ -63,13 +63,13 @@ int SysDamage(int Wid, UINT64 UserText) {
 }
 
 /*
- * PR-G-desk-3：用户描述符是 Include/Abi/GfxDamage.h 里的 24 字节。
+ * PR-G-desk-3：用户描述符是 Include/Abi/GraphicsDamage.h 里的 24 字节。
  * 像素上限 GUI_BLIT_MAX_PIXELS，避免大块拷贝撑爆栈。
  */
 #define DAMAGE_RECT_MAX_PX    4096u
 
 int SysDamageRect(int Wid, UINT64 UserDesc) {
-    GFX_DAMAGE_RECT Desc;
+    GRAPHICS_DAMAGE_RECT Desc;
     UINT32 X;
     UINT32 Y;
     UINT32 W;

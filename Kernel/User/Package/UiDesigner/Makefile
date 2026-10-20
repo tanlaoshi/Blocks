@@ -12,7 +12,7 @@ LAYOUT_C  := $(TOYKERNEL)/User/Library/ToyUi/Layout.c
 LAYOUT_O  := $(BUILDDIR)/ToyUiLayout.o
 
 EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/ToyGfx/libToyGfx.a
+             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
 EXTRA_OBJS = $(LAYOUT_O)
 
 include ../ToyUser.mk

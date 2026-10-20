@@ -95,17 +95,17 @@ void RepaintUserWindow(int Wid) {
      * Sync 末尾已 CursorPaint，gGuiWindowManager.Under 是重画前的按钮像素。
      * 若不先 Restore，后面的 CursorPaint 会把旧底盖回新按钮 → 轮廓/文字被擦。
      */
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     /* Sync 后仍强制不透明整窗，再画控件 */
     DrawWindowAtEx(Idx, 0);
     PaintUserClient(Idx);
     BackupWindowAtEx(Idx, 1);
     GuiFocusApply();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     HalVideoPresentFlush();
     ComposeEnd();
     gGuiWindowManager.UserSlot[Idx].UserButtonClick = -1;
@@ -268,16 +268,16 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     gGuiWindowManager.WinBackupValid[Idx] = 0;
     ComposeBeginEraseCursor();
     SyncWindowVisualsEx(0);
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     DrawWindowAtEx(Idx, 0);
     PaintUserClient(Idx);
     BackupWindowAtEx(Idx, 1);
     GuiFocusApply();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     HalVideoPresentFlush();
     ComposeEnd();
     DebugWrite("Gui: open user idx=");

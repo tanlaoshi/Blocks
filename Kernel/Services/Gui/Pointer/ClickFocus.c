@@ -160,9 +160,9 @@ int GuiClickTryRaiseWindow(UINT32 X, UINT32 Y) {
 
         if (PointInResizeCorner(&gGuiWindowManager.Windows[gGuiWindowManager.FocusWin], X, Y) &&
             !PointOnAnyClose(X, Y)) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorRestore();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
             RaiseWindow(gGuiWindowManager.FocusWin);
             GuiResizeBegin(gGuiWindowManager.FocusWin, X, Y);
             /* 按下瞬间须立刻换成 E/S/SE 形，勿等下一次 Move */
@@ -171,9 +171,9 @@ int GuiClickTryRaiseWindow(UINT32 X, UINT32 Y) {
         }
         if (PointInTitle(&gGuiWindowManager.Windows[gGuiWindowManager.FocusWin], X, Y) &&
             !PointOnAnyClose(X, Y)) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorRestore();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
             RaiseWindow(gGuiWindowManager.FocusWin);
             gGuiWindowManager.ResizeWin = -1;
             gGuiWindowManager.DragWin = gGuiWindowManager.FocusWin;

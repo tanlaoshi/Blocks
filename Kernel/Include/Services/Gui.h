@@ -54,7 +54,7 @@ void GuiPresentDeferPop(void);
 /* Shell 等 Job 时暂停 Defer，否则全局禁 Present → 光标假死（窗装卸仍可动） */
 void GuiPresentDeferPause(void);
 void GuiPresentDeferResume(void);
-/* PR-G-shell-present：下一次 GfxPresent 可合并（打字回显）；ShellTask 轮询末再刷 */
+/* PR-G-shell-present：下一次 GraphicsPresent 可合并（打字回显）；ShellTask 轮询末再刷 */
 void GuiPresentShellEchoMark(void);
 /* 拖帧或主题合成中：其它核勿 Present、勿再开一帧 */
 int GuiPresentBlocked(void);

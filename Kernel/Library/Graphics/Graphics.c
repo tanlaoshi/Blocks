@@ -1,16 +1,16 @@
 /*
  * Gfx.c — 几何。未注册画点时落笔为空，不写内存。
  */
-#include "Gfx.h"
+#include "Graphics.h"
 
 static void (*gDrawPixel)(UINT32 X, UINT32 Y, UINT32 Color);
 static void (*gFillRect)(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color);
 
-void GfxSetPixel(void (*DrawPixel)(UINT32 X, UINT32 Y, UINT32 Color)) {
+void GraphicsSetPixel(void (*DrawPixel)(UINT32 X, UINT32 Y, UINT32 Color)) {
     gDrawPixel = DrawPixel;
 }
 
-void GfxSetFillRect(void (*FillRect)(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color)) {
+void GraphicsSetFillRect(void (*FillRect)(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color)) {
     gFillRect = FillRect;
 }
 
@@ -40,7 +40,7 @@ static int ISqrt(int N) {
     return X;
 }
 
-void GfxDrawLine(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 Color) {
+void GraphicsDrawLine(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 Color) {
     int X0 = (int)X1;
     int Y0 = (int)Y1;
     int Xn = (int)X2;
@@ -70,17 +70,17 @@ void GfxDrawLine(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 Color) {
     }
 }
 
-void GfxDrawRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color) {
+void GraphicsDrawRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color) {
     if (Width < 2 || Height < 2) {
         return;
     }
-    GfxDrawLine(X, Y, X + Width - 1, Y, Color);
-    GfxDrawLine(X, Y + Height - 1, X + Width - 1, Y + Height - 1, Color);
-    GfxDrawLine(X, Y, X, Y + Height - 1, Color);
-    GfxDrawLine(X + Width - 1, Y, X + Width - 1, Y + Height - 1, Color);
+    GraphicsDrawLine(X, Y, X + Width - 1, Y, Color);
+    GraphicsDrawLine(X, Y + Height - 1, X + Width - 1, Y + Height - 1, Color);
+    GraphicsDrawLine(X, Y, X, Y + Height - 1, Color);
+    GraphicsDrawLine(X + Width - 1, Y, X + Width - 1, Y + Height - 1, Color);
 }
 
-void GfxFillRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color) {
+void GraphicsFillRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color) {
     UINT32 Row;
     UINT32 Col;
 
@@ -95,7 +95,7 @@ void GfxFillRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Co
     }
 }
 
-void GfxDrawRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Radius, UINT32 Color) {
+void GraphicsDrawRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Radius, UINT32 Color) {
     if (Radius > Width / 2) {
         Radius = Width / 2;
     }
@@ -103,14 +103,14 @@ void GfxDrawRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT
         Radius = Height / 2;
     }
     if (Radius == 0) {
-        GfxDrawRectangle(X, Y, Width, Height, Color);
+        GraphicsDrawRectangle(X, Y, Width, Height, Color);
         return;
     }
 
-    GfxDrawLine(X + Radius, Y, X + Width - Radius, Y, Color);
-    GfxDrawLine(X + Radius, Y + Height, X + Width - Radius, Y + Height, Color);
-    GfxDrawLine(X, Y + Radius, X, Y + Height - Radius, Color);
-    GfxDrawLine(X + Width, Y + Radius, X + Width, Y + Height - Radius, Color);
+    GraphicsDrawLine(X + Radius, Y, X + Width - Radius, Y, Color);
+    GraphicsDrawLine(X + Radius, Y + Height, X + Width - Radius, Y + Height, Color);
+    GraphicsDrawLine(X, Y + Radius, X, Y + Height - Radius, Color);
+    GraphicsDrawLine(X + Width, Y + Radius, X + Width, Y + Height - Radius, Color);
 
     {
         int R = (int)Radius;
@@ -146,7 +146,7 @@ void GfxDrawRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT
     }
 }
 
-void GfxFillRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Radius, UINT32 Color) {
+void GraphicsFillRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Radius, UINT32 Color) {
     if (Radius > Width / 2) {
         Radius = Width / 2;
     }
@@ -154,7 +154,7 @@ void GfxFillRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT
         Radius = Height / 2;
     }
     if (Radius == 0) {
-        GfxFillRectangle(X, Y, Width, Height, Color);
+        GraphicsFillRectangle(X, Y, Width, Height, Color);
         return;
     }
 
@@ -193,7 +193,7 @@ void GfxFillRoundRectangle(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT
     }
 }
 
-void GfxDrawCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) {
+void GraphicsDrawCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) {
     if (Radius == 0) {
         Plot(CenterX, CenterY, Color);
         return;
@@ -223,7 +223,7 @@ void GfxDrawCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) 
     }
 }
 
-void GfxFillCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) {
+void GraphicsFillCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) {
     int PY;
 
     if (Radius == 0) {
@@ -239,12 +239,12 @@ void GfxFillCircle(UINT32 CenterX, UINT32 CenterY, UINT32 Radius, UINT32 Color) 
     }
 }
 
-void GfxDrawTriangle(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 X3, UINT32 Y3, UINT32 Color) {
-    GfxDrawLine(X1, Y1, X2, Y2, Color);
-    GfxDrawLine(X2, Y2, X3, Y3, Color);
-    GfxDrawLine(X3, Y3, X1, Y1, Color);
+void GraphicsDrawTriangle(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 X3, UINT32 Y3, UINT32 Color) {
+    GraphicsDrawLine(X1, Y1, X2, Y2, Color);
+    GraphicsDrawLine(X2, Y2, X3, Y3, Color);
+    GraphicsDrawLine(X3, Y3, X1, Y1, Color);
 }
 
-void GfxFillTriangle(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 X3, UINT32 Y3, UINT32 Color) {
-    GfxDrawTriangle(X1, Y1, X2, Y2, X3, Y3, Color);
+void GraphicsFillTriangle(UINT32 X1, UINT32 Y1, UINT32 X2, UINT32 Y2, UINT32 X3, UINT32 Y3, UINT32 Color) {
+    GraphicsDrawTriangle(X1, Y1, X2, Y2, X3, Y3, Color);
 }

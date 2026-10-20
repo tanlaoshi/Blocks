@@ -141,8 +141,8 @@ typedef struct {
     UINT32   DragStartY;
     UINT32   DragStartW;
     UINT32   DragStartH;
-    int    GfxLockDepth;
-    UINT64 GfxIrqFlags;
+    int    GraphicsLockDepth;
+    UINT64 GraphicsIrqFlags;
     volatile int ComposeBusy;
     int    DeferPresent;
     int    ShellEchoCoalesce;
@@ -175,14 +175,14 @@ static inline void GuiConsoleOpsPaintShellWindow(int Idx) {
 }
 
 /* Compose / gfx */
-void GfxIrqEnter(void);
-void GfxIrqLeave(void);
+void GraphicsIrqEnter(void);
+void GraphicsIrqLeave(void);
 void ComposeBegin(void);
 void ComposeEnd(void);
 int GuiInputOwner(void);
 void ComposeBeginEraseCursor(void);
 void GuiComposeDamage(void);
-void GfxPresent(void);
+void GraphicsPresent(void);
 UINT32 TitleBarColor(int Idx);
 UINT32 TitleBarColorAtRow(int Idx, UINT32 Row, UINT32 TitleH);
 UINT32 WindowBorderColor(int Idx);

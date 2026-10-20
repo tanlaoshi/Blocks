@@ -136,9 +136,9 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     }
 
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
 
     if (!CaptureUnderNoPresent(Idx, Under, Rw, Rh)) {
         ComposeEnd();
@@ -151,9 +151,9 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
             Alpha = (UINT8)((Step * 255u) / Steps);
             BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
             HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             HalVideoPresent();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
             if (Step < Steps) {
                 FadeFrameDelay();
             }
@@ -166,9 +166,9 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
             Alpha = (UINT8)((Step * 255u) / Steps);
             BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
             HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             HalVideoPresent();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
             if (Step > 1) {
                 FadeFrameDelay();
             }
@@ -176,10 +176,10 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
         HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Under);
     }
 
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorPaint();
     HalVideoPresent();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     ComposeEnd();
     Ok = 1;
 

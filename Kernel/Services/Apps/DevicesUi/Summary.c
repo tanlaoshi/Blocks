@@ -262,9 +262,9 @@ void DevicesUiPaintSummary(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     }
     DevicesUiFillSummary(&S);
 
-    GfxFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
+    GraphicsFillRectangle(X, Y, W, H, ThemePanelDetailBackground());
     if (W > 3) {
-        GfxFillRectangle(X, Y, 3, H, ThemePanelSeparator());
+        GraphicsFillRectangle(X, Y, 3, H, ThemePanelSeparator());
     }
 
     LineH = FontAdvanceY();

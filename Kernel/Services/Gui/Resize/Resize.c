@@ -58,7 +58,7 @@ void GuiResizeUpdate(UINT32 X, UINT32 Y) {
     }
 
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     if (gGuiWindowManager.ResizeBandOn) {
         EraseResizeBand(gGuiWindowManager.ResizeWin, gGuiWindowManager.ResizeBandW, gGuiWindowManager.ResizeBandH);
@@ -66,7 +66,7 @@ void GuiResizeUpdate(UINT32 X, UINT32 Y) {
     DrawResizeBand(gGuiWindowManager.ResizeWin, Nw, Nh);
     CursorPaint();
     HalVideoPresent();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     ComposeEnd();
 }
 
@@ -95,7 +95,7 @@ void GuiResizeEnd(void) {
     gGuiWindowManager.ResizeEdge = RESIZE_EDGE_NONE;
 
     ComposeBegin();
-    GfxIrqEnter();
+    GraphicsIrqEnter();
     CursorRestore();
     if (gGuiWindowManager.ResizeBandOn) {
         EraseResizeBand(Idx, gGuiWindowManager.ResizeBandW, gGuiWindowManager.ResizeBandH);
@@ -134,7 +134,7 @@ void GuiResizeEnd(void) {
 
     CursorPaint();
     HalVideoPresent();
-    GfxIrqLeave();
+    GraphicsIrqLeave();
     ComposeEnd();
 
     gGuiWindowManager.ResizeBandOn = 0;

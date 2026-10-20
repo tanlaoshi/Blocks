@@ -5,12 +5,12 @@
  * 1.0.0：窗 / 标签 / 底栏按钮 0..3 / Poll。
  * 1.1.0：+ 复选框 / 列表 / 输入框（用户态绘制；客户区点击经 Poll 分发）。
  * 1.2.0：+ 键盘入窗（焦点 USER 时 Poll 返回 KEY=300+HID）。
- * 依赖 libToyGfx + G14/G15 窗口 syscall；不链接内核 UI.c。
+ * 依赖 libGraphics + G14/G15 窗口 syscall；不链接内核 UI.c。
  */
 #ifndef UI_H
 #define UI_H
 
-#include <ToyGfx.h>
+#include <Graphics.h>
 
 #define UI_ABI_VERSION_MAJOR 2
 #define UI_ABI_VERSION_MINOR 0
@@ -58,7 +58,7 @@ int UiAddButton(int WindowId, int ButtonId, const char *Label);
  */
 int UiPoll(int WindowId);
 
-/* PR-A-ui-api：客户区控件（坐标与 ToyGfx 相同，含 pad） */
+/* PR-A-ui-api：客户区控件（坐标与 Graphics 相同，含 pad） */
 int UiAddCheckBox(int WindowId, int CheckId, unsigned X, unsigned Y);
 int UiSetCheckBox(int WindowId, int CheckId, int Checked);
 int UiGetCheckBox(int WindowId, int CheckId);

@@ -150,9 +150,9 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
         GuiDragUpdate(Mouse->X, Mouse->Y);
     } else if ((Mouse->Buttons & 1) && DesktopIconDragActive()) {
         if (gGuiWindowManager.CursorVisible) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorRestore();
-            GfxIrqLeave();
+            GraphicsIrqLeave();
         }
         DesktopIconDragUpdate(Mouse->X, Mouse->Y);
     }
@@ -163,10 +163,10 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
         GuiDragEnd();
         DesktopIconDragEnd();
         if (WasIconDrag) {
-            GfxIrqEnter();
+            GraphicsIrqEnter();
             CursorPaint();
-            GfxPresent();
-            GfxIrqLeave();
+            GraphicsPresent();
+            GraphicsIrqLeave();
         }
     }
     /* 右键按下边沿 */

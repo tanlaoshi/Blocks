@@ -1,5 +1,8 @@
 /*
- * TasksHid.c — HID 报告送进控制台（PR-S-tasks-1）
+ * Hid.c — HID 报告送进控制台（input-f1-gates）
+ *
+ * TasksPumpKeyboard：Count<3 → HalInputPoll（与 YieldForPollInput 同门闩）；
+ * ≥3 只 dequeue（InputTask@CPU2 独占 poll）。清单主表 Tasks.c 头。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"

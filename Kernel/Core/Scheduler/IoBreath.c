@@ -1,8 +1,8 @@
 /*
- * IoBreath.c — PR-K-preempt-breath：统一长 IO 呼吸
+ * IoBreath.c — 统一长 IO 呼吸（PR-K-preempt-breath）
  *
- * 长 Store/FAT/Present/HTTP 路径改调本函数；稳态仍走 YieldForPollInput。
- * 5i ❌ 曾去掉 CondResched；已恢复。5j 不改本文件。
+ * 长 Store/FAT/Present/HTTP 改调本函数；稳态仍走 YieldForPollInput。
+ * 旁路 drain：无条件 HalInputPoll（非 Input 门槛常数；input-f1-gates 旁注）。
  */
 #include "Scheduler.h"
 #include "Hal.h"

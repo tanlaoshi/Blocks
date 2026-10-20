@@ -1,11 +1,24 @@
 /*
- * Tasks.c — Gui / Worker / Input 三环
+ * Tasks.c — Gui / Worker / Input 三环（input-f1-gates 清单主表）
  *
  * SchedulerStart 后（Shell 见 Shell.c）：
  *   GuiTask    — 唯一 GuiPollMouse（Pointer.c）→ YieldForPollInput
  *   WorkerTask — DesktopWorkerTick → 扫盘/Store/iwl/DHCP → ready（序见 WorkerTask 头）
- *   InputTask  — 逻辑 CPU≥3 才 Create，钉 CPU2（门槛见 YieldForPollInput 头）
+ *   InputTask  — 逻辑 CPU≥3 才 Create，钉 CPU2（门槛见下方 Yield 头）
  * Shell 不泵鼠标（runtime-a-poll）。钉核大表 sched-pin-doc；四环 runtime-4。
+ *
+ * ── Input 门槛门闩清单（F1；改阈值须五处同改，F2）──
+ *
+ * | 点 | 判定 | 作用 |
+ * | Kernel.c KernelTrySpawnInput | Count<=2 return | 不 Create Input |
+ * | 本文件 YieldForPollInput | Count<3 → HalInputPoll | 1–2 核稳态 drain |
+ * | Hid.c TasksPumpKeyboard | Count<3 → HalInputPoll | 同门闩；≥3 只 dequeue |
+ * | XHCI/Irq.c InputIrqCpu | Count>2 → dest 2 else 0 | MSI 与 Input 同核 |
+ * | Scheduler/Boot.c Start 钉核 | Cpus>2 → Input@2 | 与 Create 对齐 |
+ * 旁路（非门槛常数，勿当第六门闩）：
+ *   StoreIoBreath / SchedulerIoBreath — 长 IO 自带 HalInputPoll（非稳态）
+ *   HalConsoleOnly / PinInteractive → Input 改钉 0（F3；盖过 >2）
+ * 语义：≥3=槽 0/1/2，非「必须三核」。F0 说明见 Yield 头；钉核表 sched-pin-doc。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -44,7 +57,7 @@ UINT32 WorkerLoopCount(void) {
  * 常见 1/2/4/…；QEMU -smp 3 会走专核。≥4 时 Input 仍钉 2，CPU3+ 多 idle。
  *
  * 稳态 HalInputPoll 分域（禁止双路径抢 xHCI）：
- *   核数 1–2 — 无 InputTask；此处 drain（Hid 同门闩）
+ *   核数 1–2 — 无 InputTask；此处 drain（Hid 同门闩；清单见文件头 F1）
  *   核数 ≥3 — 仅 InputTask@CPU2 drain；此处只 pause/hlt
  * 长 Store IO：StoreIoBreath 自带 drain（非稳态）。钉核表 sched-pin-doc。
  * 真机：勿纯 hlt 等 tick（光标锁 ~10ms+）；短自旋 + 偶发 hlt。

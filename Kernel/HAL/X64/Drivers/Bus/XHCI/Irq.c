@@ -6,9 +6,10 @@
 #include "HalIrq.h"
 #include "PCIe.h"
 
-/* PR-S-input-irq：xHCI IRQ dest 逻辑核。SMP≥3→CPU2（与 InputTask 同核）；
- * SMP<3→CPU0（无 InputTask，保持原行为）。序 2 cli 守 drain 期 IF=0，
- * MSI 不会在持 gEvtConsumerLock 时投递 → 无 ISR/任务死锁。 */
+/* PR-S-input-irq / input-f1-gates：xHCI IRQ dest。
+ * Count>2 → CPU2（与 InputTask 同核）；否则 CPU0（无 InputTask）。
+ * 与 Create/Yield/Hid/Boot 钉核同一门槛（改阈值 F2 五处同改）。
+ * 序 2 cli 守 drain 期 IF=0，MSI 不在持 gEvtConsumerLock 时投递。 */
 static UINT8 InputIrqCpu(void) {
     return (HalCpuCount() > 2) ? 2u : 0u;
 }

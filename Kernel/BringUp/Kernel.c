@@ -46,8 +46,8 @@ static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
 
 /*
  * 逻辑 CPU≥3 才 Create Input（要 0/1/2 三槽，非「板子必须三核」）。
- * Start 再钉 CPU2。drain 分域：Tasks.c YieldForPollInput 头；钉核 sched-pin-doc。
- * 失败只打日志。
+ * 门闩：Count<=2 等同他处 <3（input-f1-gates；改阈值 F2 五处同改）。
+ * Start 再钉 CPU2。drain：Tasks.c Yield 头；钉核 sched-pin-doc。失败只打日志。
  */
 static void KernelTrySpawnInput(void) {
     if (HalCpuCount() <= 2) {

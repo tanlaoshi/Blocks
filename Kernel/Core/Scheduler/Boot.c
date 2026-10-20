@@ -11,9 +11,10 @@
  *     CPU1     — Shell + Gui（SHELL）；SMP≥2
  *     CPU2     — Input（DEFAULT）；仅 SMP≥3 且 Kernel 已 Create
  *   ConsoleOnly 或 HalPinInteractiveToBootstrap：交互/Input 全钉 BSP
- *     （virt 定时器在 BSP 时钉 AP → 永 WFI）
+ *     （virt 定时器在 BSP 时钉 AP → 永 WFI）— F3；盖过 Cpus>2
+ *   Start：Cpus>2 → InputCpu=2（input-f1-gates 五门闩之一；改阈值见 F2）
  *   Start 时 BSP 只切入 Affinity 0/未钉；AP 任务由各核调度接。
- * 任务谁 Create：BringUp/Kernel.c。
+ * 任务谁 Create：BringUp/Kernel.c（Count<=2 不 Create）。
  */
 #include "Scheduler.h"
 #include "SchedulerOps.h"

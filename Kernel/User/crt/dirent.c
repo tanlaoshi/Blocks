@@ -7,16 +7,16 @@
 #include <string.h>
 #include <ToyOS/syscall.h>
 
-struct ToyDirectory {
+struct FsDirectory {
     int Fd;
     struct dirent Ent; /* 每 DIR 一份；供 readdir 返回（非进程级静态） */
 };
 
-TOY_DIR *OpenDirectory(const char *path) {
-    TOY_DIR *Dir;
+FS_DIR *OpenDirectory(const char *path) {
+    FS_DIR *Dir;
     long Fd;
 
-    Dir = (TOY_DIR *)malloc(sizeof(*Dir));
+    Dir = (FS_DIR *)malloc(sizeof(*Dir));
     if (!Dir) {
         errno = ENOMEM;
         return 0;
@@ -32,7 +32,7 @@ TOY_DIR *OpenDirectory(const char *path) {
     return Dir;
 }
 
-int ReadDirectory(TOY_DIR *dir, TOY_DIR_ENT *out) {
+int ReadDirectory(FS_DIR *dir, FS_DIR_ENT *out) {
     long R;
 
     if (!dir || !out) {
@@ -47,7 +47,7 @@ int ReadDirectory(TOY_DIR *dir, TOY_DIR_ENT *out) {
     return (int)R;
 }
 
-int CloseDirectory(TOY_DIR *dir) {
+int CloseDirectory(FS_DIR *dir) {
     long R;
 
     if (!dir) {
@@ -63,7 +63,7 @@ int CloseDirectory(TOY_DIR *dir) {
     return 0;
 }
 
-int FileStat(const char *path, TOY_FILE_STAT *out) {
+int FileStat(const char *path, FS_FILE_STAT *out) {
     long R;
 
     if (!out) {
@@ -79,7 +79,7 @@ int FileStat(const char *path, TOY_FILE_STAT *out) {
 }
 
 struct dirent *readdir(DIR *dir) {
-    TOY_DIR_ENT Ent;
+    FS_DIR_ENT Ent;
     int Rc;
     size_t N;
 
@@ -95,8 +95,8 @@ struct dirent *readdir(DIR *dir) {
         return 0;
     }
     N = strlen(Ent.Name);
-    if (N >= TOY_ENT_NAME_MAX) {
-        N = TOY_ENT_NAME_MAX - 1;
+    if (N >= FS_ENT_NAME_MAX) {
+        N = FS_ENT_NAME_MAX - 1;
     }
     memcpy(dir->Ent.d_name, Ent.Name, N);
     dir->Ent.d_name[N] = 0;

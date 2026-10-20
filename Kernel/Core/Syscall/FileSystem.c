@@ -197,7 +197,7 @@ int SysFileStat(UINT64 UserPath, UINT64 UserOut) {
     return 0;
 }
 
-/* PR-U-stat：按 fd.Path 填 TOY_FILE_STAT；socket/pipe 失败 */
+/* PR-U-stat：按 fd.Path 填 FS_FILE_STAT；socket/pipe 失败 */
 int SysFstat(int Fd, UINT64 UserOut) {
     TASK *T = SchedulerCurrent();
     TASK_FD *F;

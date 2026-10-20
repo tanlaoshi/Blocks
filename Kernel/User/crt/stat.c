@@ -7,14 +7,14 @@
 #include <errno.h>
 #include <ToyOS/syscall.h>
 
-static void FillFromToy(struct stat *St, const TOY_FILE_STAT *T) {
-    St->st_mode = (T->Attr & TOY_ATTR_DIR) ? S_IFDIR : S_IFREG;
+static void FillFromFsStat(struct stat *St, const FS_FILE_STAT *T) {
+    St->st_mode = (T->Attr & FS_ATTR_DIR) ? S_IFDIR : S_IFREG;
     St->st_size = (off_t)T->Size;
     St->st_ino  = T->Cluster;
 }
 
 int stat(const char *path, struct stat *st) {
-    TOY_FILE_STAT T;
+    FS_FILE_STAT T;
 
     if (!st) {
         errno = EINVAL;
@@ -23,12 +23,12 @@ int stat(const char *path, struct stat *st) {
     if (FileStat(path ? path : "", &T) != 0) {
         return -1;
     }
-    FillFromToy(st, &T);
+    FillFromFsStat(st, &T);
     return 0;
 }
 
 int fstat(int fd, struct stat *st) {
-    TOY_FILE_STAT T;
+    FS_FILE_STAT T;
     long R;
 
     if (!st) {
@@ -40,6 +40,6 @@ int fstat(int fd, struct stat *st) {
         errno = EBADF;
         return -1;
     }
-    FillFromToy(st, &T);
+    FillFromFsStat(st, &T);
     return 0;
 }

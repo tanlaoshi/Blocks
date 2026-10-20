@@ -72,7 +72,7 @@ FILE *fopen(const char *path, const char *mode) {
     int MustExist;
     int Fd;
     FILE *Fp;
-    TOY_FILE_STAT St;
+    FS_FILE_STAT St;
 
     if (ParseMode(mode, &Flags, &Append, &MustExist) < 0 || !path || !path[0]) {
         errno = EINVAL;
@@ -83,7 +83,7 @@ FILE *fopen(const char *path, const char *mode) {
             errno = ENOENT;
             return 0;
         }
-        if (St.Attr & TOY_ATTR_DIR) {
+        if (St.Attr & FS_ATTR_DIR) {
             errno = EINVAL;
             return 0;
         }

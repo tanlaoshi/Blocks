@@ -6,9 +6,9 @@
 #include <string.h>
 
 int main(void) {
-    TOY_DIR *Dir;
-    TOY_DIR_ENT Ent;
-    TOY_FILE_STAT St;
+    FS_DIR *Dir;
+    FS_DIR_ENT Ent;
+    FS_FILE_STAT St;
     int Count = 0;
     int SawHello = 0;
     int Rc;
@@ -17,7 +17,7 @@ int main(void) {
         printf("dirdemo: FAIL FileStat HELLO.ELF\n");
         return 1;
     }
-    if (St.Attr & TOY_ATTR_DIR) {
+    if (St.Attr & FS_ATTR_DIR) {
         printf("dirdemo: FAIL HELLO.ELF marked dir\n");
         return 1;
     }
@@ -31,7 +31,7 @@ int main(void) {
         printf("dirdemo: FAIL FileStat root\n");
         return 1;
     }
-    if ((St.Attr & TOY_ATTR_DIR) == 0) {
+    if ((St.Attr & FS_ATTR_DIR) == 0) {
         printf("dirdemo: FAIL root not dir\n");
         return 1;
     }
@@ -48,7 +48,7 @@ int main(void) {
         }
         if (Count <= 4) {
             printf("ent %s%s\n", Ent.Name,
-                   (Ent.Attr & TOY_ATTR_DIR) ? "/" : "");
+                   (Ent.Attr & FS_ATTR_DIR) ? "/" : "");
         }
     }
     if (Rc < 0) {

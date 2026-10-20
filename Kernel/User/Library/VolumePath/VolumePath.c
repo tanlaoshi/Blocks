@@ -159,12 +159,12 @@ int FsUtilVolumePath(char *Out, unsigned Cap, const char *Vol, const char *Rel) 
     return 0;
 }
 
-int FsUtilToyosPath(char *Out, unsigned Cap, const char *Rel) {
-    return FsUtilVolumePath(Out, Cap, TOY_FS_VOL_TOYOS, Rel);
+int FsUtilBlocksPath(char *Out, unsigned Cap, const char *Rel) {
+    return FsUtilVolumePath(Out, Cap, FS_VOL_BLOCKS, Rel);
 }
 
-int FsUtilListDir(const char *Path, TOY_DIR_ENT *Out, int Max) {
-    TOY_DIR *Dir;
+int FsUtilListDir(const char *Path, FS_DIR_ENT *Out, int Max) {
+    FS_DIR *Dir;
     int Count;
     int Rc;
 
@@ -192,15 +192,15 @@ int FsUtilListDir(const char *Path, TOY_DIR_ENT *Out, int Max) {
     return Count;
 }
 
-int FsUtilStat(const char *Path, TOY_FILE_STAT *Out) {
+int FsUtilStat(const char *Path, FS_FILE_STAT *Out) {
     return FileStat(Path ? Path : "", Out);
 }
 
 int FsUtilIsDir(const char *Path) {
-    TOY_FILE_STAT St;
+    FS_FILE_STAT St;
 
     if (FsUtilStat(Path, &St) != 0) {
         return -1;
     }
-    return (St.Attr & TOY_ATTR_DIR) ? 1 : 0;
+    return (St.Attr & FS_ATTR_DIR) ? 1 : 0;
 }

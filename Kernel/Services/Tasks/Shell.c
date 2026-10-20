@@ -1,8 +1,9 @@
 /*
  * Shell.c — ShellTask 环（PR-S-tasks-1）
  *
- * 交互核：HID dequeue → GuiPollMouse → 串口 RX（Present 前）
- *   → Present → LwIp|Net/Tcp → UDP 回显 → YieldForPollInput
+ * 交互核：HID dequeue → 串口 RX（Present 前）→ Present
+ *   → LwIp|Net/Tcp → UDP 回显 → YieldForPollInput
+ * 不调 GuiPollMouse（单一主人 GuiTask，见 runtime-a-poll）。
  * ready/blocks> 由 Worker Announce，此处勿抢先 Prompt。
  * 四环总表：路线图新 runtime-4；Gui/Worker/Input 见 Tasks.c。
  */
@@ -47,7 +48,7 @@ void ShellTask(void) {
             FeedHid(&Report, &Previous);
             Previous = Report;
         }
-        GuiPollMouse();
+        /* 鼠标泵仅 GuiTask（runtime-a-poll）；此处勿 GuiPollMouse */
         /*
          * COM1 RX → Shell / 用户 stdin 环（CoolTerm 遥控）。
          * 必须在 HalVideoPresent 之前抽：Present 可达数 ms，16550 FIFO(16)

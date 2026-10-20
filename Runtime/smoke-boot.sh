@@ -76,15 +76,22 @@ require() {
     return 1
 }
 
-READY_RE='Blocks ready|Blocks 就绪|Blocks ready'
+# 盘上 Locale 与内建 fallback 均为 Blocks；旧 ToyOS 串不再认（品牌刀后）
+READY_RE='Blocks ready|Blocks 就绪'
 i=0
 while [ "$i" -lt "$TIMEOUT_SEC" ]; do
     if log_text | grep -E "$READY_RE" >/dev/null 2>&1; then
         echo "smoke: PASS — ready"
         log_text | grep -E "$READY_RE" | tail -1 || true
         Fail=0
-        # 现网桌面关键字较松：有 Gui 桌面或 Files/Shell 窗路径即可
-        require 'Boot: Desktop Ready|Gui: desktop ready|Gui: desktop ok' 'desktop' || Fail=1
+        # d170c43 起为「Gui: Desktop Ready」（LogGui）；兼容旧小写 DebugWrite
+        if log_text | grep -iE 'Gui: Desktop Ready|Boot: Desktop Ready|Gui: desktop ok' >/dev/null 2>&1; then
+            echo "smoke: PASS — desktop"
+            log_text | grep -iE 'Gui: Desktop Ready|Boot: Desktop Ready|Gui: desktop ok' | tail -1 || true
+        else
+            echo "smoke: FAIL — missing: desktop" >&2
+            Fail=1
+        fi
         if [ "${USB_MSC:-0}" = 1 ]; then
             require 'Boot: MSC Auto Mux OK' 'msc auto mux' || Fail=1
         fi

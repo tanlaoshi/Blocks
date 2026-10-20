@@ -1,24 +1,26 @@
 /*
- * Damage.c — Gui 合成脏矩形（gui-g0-map + gui-g2-mark + gui-g4-mark）
+ * Damage.c — Gui 合成脏矩形（gui-g0-map … gui-g5-fallback）
  *
  * GuiMarkDamage：并一个屏幕 AABB（仅 Gui 层；≠ HAL DirtyUnion）。
- * GuiComposeDamage：
+ * GuiComposeDamage（gui-g5-fallback 回退 → ThemeScene）：
  *   拖动中 → 早退（Drag 自管备份/PresentBlocked）
- *   无标记 → GuiComposeThemeScene（整屏回退）
- *   有矩形 → 擦→DesktopDrawInRect→命中窗→菜单/托盘→光标
+ *   无标记 → ThemeScene
+ *   裁剪后空矩形 → 早退（无事可画）
+ *   并集面积 ≥ 屏 50% → ThemeScene（大洞脏路径不比全屏省）
+ *   命中活动窗 ≥ 3 → ThemeScene（多窗 PaintOne 易比全屏贵）
+ *   否则 → 擦→DesktopDrawInRect→命中窗→菜单/托盘→光标
  *            → PresentFlush（ComposeBusy 内）→ ComposeEnd
  *
  * 调用面清单：
  *   GuiMarkDamage —
- *     Clock.c（图标 bbox；TTF 时 0,0,Sw,Sh）
+ *     Clock.c（图标 bbox；TTF 时 0,0,Sw,Sh → 面积回退全屏）
  *     Desktop/Mark.c（栏 / 开始菜单 cover / 右键 cover）
  *     NetTrayPopup DesktopMarkNetTrayPopup
- *   RequestRefresh → GuiRefreshDesktop — TaskbarClick、ContextMenu、NetTray*、
- *     DismissStartMenu、Clock；菜单/右键/网托开或覆盖刚关→快路径，
- *     否则本函数（G4：上述开关先 Mark，关托盘勿整屏）
- *   直 ThemeScene — Mouse 改分辨率、Theme、Catalog、Close 非 USER（故意全屏）
- *   轻量自画 — Close USER（禁 4K ThemeScene；契约 Close.c 头 gui-g3-close）
- * 总图 Compose.c；菜单快路径 Refresh.c。
+ *   RequestRefresh → GuiRefreshDesktop — 菜单/右键/网托快路径见 Refresh.c；
+ *     否则本函数（G4 Mark + G5 回退）
+ *   直 ThemeScene — Mouse 改分辨率、Theme、Catalog、Close 非 USER
+ *   轻量自画 — Close USER（禁 ThemeScene；Close.c 头 gui-g3-close）
+ * 总图 Compose.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
@@ -29,6 +31,11 @@
 #include "DevicesUi.h"
 #include "EditUi.h"
 #include "TtyUi.h"
+
+/* 并集占屏比（百分）；≥ 此值走 ThemeScene */
+#define DAMAGE_FALLBACK_AREA_PCT 50u
+/* 脏矩形命中活动窗数；≥ 此值走 ThemeScene */
+#define DAMAGE_FALLBACK_WIN_HITS 3
 
 static int gHave;
 static UINT32 gX;
@@ -93,6 +100,37 @@ static int WindowHits(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     return Overlap(Wx, Wy, Ww, Wh, X, Y, W, H);
 }
 
+static int CountWindowHits(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
+    int i;
+    int N = 0;
+
+    for (i = 0; i < MAX_WINS; i++) {
+        if (!gGuiWindowManager.Windows[i].Active) {
+            continue;
+        }
+        if (WindowHits(i, X, Y, W, H)) {
+            N++;
+        }
+    }
+    return N;
+}
+
+static int AreaNeedsFullscreen(UINT32 W, UINT32 H) {
+    UINT32 Sw;
+    UINT32 Sh;
+    UINT64 Dirty;
+    UINT64 Screen;
+
+    HalVideoGetSize(&Sw, &Sh);
+    if (Sw == 0 || Sh == 0) {
+        return 1;
+    }
+    Dirty = (UINT64)W * (UINT64)H;
+    Screen = (UINT64)Sw * (UINT64)Sh;
+    /* Dirty/Screen ≥ PCT/100  ↔  Dirty*100 ≥ Screen*PCT */
+    return (Dirty * (UINT64)100 >= Screen * (UINT64)DAMAGE_FALLBACK_AREA_PCT) ? 1 : 0;
+}
+
 static void PaintOne(int Idx, int SavedFocus) {
     gGuiWindowManager.FocusWin = SavedFocus;
     DrawWindowAtEx(Idx, 0);
@@ -131,6 +169,7 @@ void GuiComposeDamage(void) {
     UINT32 H;
     int i;
     int SavedFocus;
+    int Hits;
 
     if (GuiDragActive()) {
         return;
@@ -146,6 +185,15 @@ void GuiComposeDamage(void) {
     gHave = 0;
     ClipRectToScreen(&X, &Y, &W, &H);
     if (W == 0 || H == 0) {
+        return;
+    }
+    if (AreaNeedsFullscreen(W, H)) {
+        GuiComposeThemeScene();
+        return;
+    }
+    Hits = CountWindowHits(X, Y, W, H);
+    if (Hits >= DAMAGE_FALLBACK_WIN_HITS) {
+        GuiComposeThemeScene();
         return;
     }
 

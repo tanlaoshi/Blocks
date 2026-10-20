@@ -1,9 +1,9 @@
-# ToyOS UI strings — edit with any text editor; no kernel rebuild.
+# Blocks UI strings — edit with any text editor; no kernel rebuild.
 # Format: MSG_KEY=value   (# starts a comment)
-# After edit on the TOYOS volume: lang reload
-# Language choice itself: TOYOS.DB key lang=en|zh
+# After edit on the BLOCKS volume: lang reload
+# Language choice itself: BLOCKS.DB key lang=en|zh
 
-MSG_APP_SHELL=ToyOS Shell
+MSG_APP_SHELL=Blocks Shell
 MSG_APP_SETTINGS=Settings
 MSG_APP_FILES=Files
 MSG_APP_STORE=Store
@@ -42,8 +42,8 @@ MSG_FILES_PROMPT_HINT=Enter=ok  Esc=cancel  Backspace
 MSG_FILES_EMPTY=This folder is empty
 MSG_FILES_EMPTY_HINT=n = mkdir    f = new file
 MSG_FILES_STORE_MANAGED=Store app — remove in Store
-MSG_CON_WELCOME=ToyOS console. Type help.
-MSG_CON_READY=ToyOS ready. Type shell / settings, or any key to open Shell.
+MSG_CON_WELCOME=Blocks console. Type help.
+MSG_CON_READY=Blocks ready. Type shell / settings, or any key to open Shell.
 MSG_LANG_USAGE=usage: lang en|zh|reload\n
 MSG_LANG_NOW=lang: 
 MSG_LANG_SET=lang set\n

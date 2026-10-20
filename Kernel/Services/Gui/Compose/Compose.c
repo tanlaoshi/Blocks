@@ -6,7 +6,7 @@
  *   HAL  — DirtyUnion* → blit 哪块（Present.c）；画进后缓冲会并 HAL 脏
  *
  * 主路径：RequestRefresh → GuiRefreshDesktop（Refresh.c）
- *   → GuiComposeDamage | 菜单快路径 | GuiComposeThemeScene（本文件）
+ *   → GuiComposeDamage（G5 回退）| 菜单快路径 | GuiComposeThemeScene（本文件）
  *   → DeferPresent=1 画完 → PresentFlush（须仍在 ComposeBusy 内）→ ComposeEnd
  * Shell 环末 HalVideoPresent（!GuiPresentBlocked）。Worker 永不 Compose@4K。
  *

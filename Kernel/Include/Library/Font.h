@@ -56,7 +56,11 @@ int FontTtfWantStep(void);
 /* 开窗前/Worker：一次抽干最多 Max 个 Want（0→32） */
 UINT32 FontTtfWantDrain(UINT32 Max);
 /* 自上次调用以来有新的 TTF 字形进缓存则 1。给界面把点阵补位换成真字。 */
+/* 1=有新 HIT 待合成；Ack 前可反复查。合成后 Ack。 */
 int FontTtfTakePaint(void);
+void FontTtfAckPaint(void);
+/* 预热整批结束后喊一声，Gui 再合成一次 */
+void FontTtfBumpPaint(void);
 /*
  * PR-S-app-font：按路径加载 TOYF 到专用应用槽（覆盖上次私有字）。
  * 成功返回字体 id（≥0）；失败 -1。不改当前选中 id。

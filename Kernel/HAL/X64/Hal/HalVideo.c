@@ -120,6 +120,10 @@ void HalVideoPresent(void) {
     VideoPresent();
 }
 
+void HalVideoPresentCursor(void) {
+    VideoPresentCursor();
+}
+
 void HalVideoPresentFlush(void) {
     VideoPresentFlush();
 }

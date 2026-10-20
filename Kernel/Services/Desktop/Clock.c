@@ -110,15 +110,31 @@ void DesktopTickClock(void) {
         RequestRefresh();
     }
 
-    /* 点阵已画上、TTF 随后进缓存：再合成一次，否则补位会一直留在屏上。 */
+    /*
+     * 点阵→TTF：Want 泵进缓存后须再合成。整屏 Refresh 很贵 → 节流约 4Hz，
+     * 且 Ack 吞掉窗口内多次 gen（预热已不 bump，见 TrueTypeCache）。
+     */
     if (FontTtfTakePaint()) {
+        static UINT64 LastTtfRefresh;
+        UINT64 Now = HalCpuTicks(0);
+        UINT32 Tps = HalTicksPerSec();
         UINT32 Sw = 0;
         UINT32 Sh = 0;
 
-        HalVideoGetSize(&Sw, &Sh);
-        if (Sw > 0 && Sh > 0) {
-            GuiMarkDamage(0, 0, Sw, Sh);
-            RequestRefresh();
+        if (Tps == 0) {
+            Tps = 250;
+        }
+        if (LastTtfRefresh != 0 &&
+            (Now - LastTtfRefresh) < (UINT64)(Tps / 4u)) {
+            /* 未到点：不 Ack，下一圈 Tick 再试 */
+        } else {
+            LastTtfRefresh = Now;
+            HalVideoGetSize(&Sw, &Sh);
+            if (Sw > 0 && Sh > 0) {
+                GuiMarkDamage(0, 0, Sw, Sh);
+                RequestRefresh();
+            }
+            FontTtfAckPaint();
         }
     }
 

@@ -27,6 +27,8 @@ UINT64 VideoBackbufferBase(void);
 UINT32 VideoBackbufferPages(void);
 /* 脏矩形 blit 到 GOP；无后缓冲时为空操作 */
 void VideoPresent(void);
+/* 只提交光标脏（小框、LivePatch）；Restore/Paint 各调一次，勿并 AABB */
+void VideoPresentCursor(void);
 /* 循环 Present 直到脏区清空（4K 全屏合成勿半截留下任务栏空洞） */
 void VideoPresentFlush(void);
 /* 丢掉脏区（不 Present）；Boot 已铺同色底时只填后缓冲用 */

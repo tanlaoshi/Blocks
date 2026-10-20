@@ -18,8 +18,9 @@
  *     用旧 Under Restore → 正方形镂空 / 十字印
  *
  * 移动 CursorMove：
- *   常态：Irq 内 Restore→改 XY→Paint→GraphicsPresent（可被 Defer/Echo 吞）
- *   拖窗/拖图标：只 Restore+Present，不 Paint（光标隐；Drag 自管画面）
+ *   常态：Irq 内 Restore→PresentCursor→改 XY→Paint→PresentCursor
+ *   （各刷小框；勿靠 DeferPop 并 AABB，空桌面甩鼠会大块 blit 顿）
+ *   拖窗/拖图标：只 Restore+PresentCursor，不 Paint
  *
  * 对外：GuiCursorHide/Show/Paint、GuiFrameBufferBegin/End — 同文件下部。
  * HAL 分脏 / XOR：Pixel.c；Flush vs Present：Present.c（G6）。
@@ -144,7 +145,7 @@ void CursorMove(UINT32 X, UINT32 Y) {
         if (gGuiWindowManager.CursorVisible) {
             GraphicsIrqEnter();
             CursorRestore();
-            GraphicsPresent();
+            HalVideoPresentCursor();
             GraphicsIrqLeave();
         }
         gGuiWindowManager.CursorX = X;
@@ -155,11 +156,12 @@ void CursorMove(UINT32 X, UINT32 Y) {
 
     GraphicsIrqEnter();
     CursorRestore();
+    HalVideoPresentCursor();
     gGuiWindowManager.CursorX = X;
     gGuiWindowManager.CursorY = Y;
     gGuiWindowManager.CursorKind = NewKind;
     CursorPaint();
-    GraphicsPresent();
+    HalVideoPresentCursor();
     GraphicsIrqLeave();
 }
 

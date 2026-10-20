@@ -26,6 +26,7 @@
  */
 #include "Private.h"
 #include "HalDriverSched.h"
+#include "HalDevices.h"
 
 /* 单次 Present 条带行数：cli 下 memcpy 过久会饿死 xHCI poll/MSI */
 void DirtyUnionInto(int *Dirty, UINT32 *Dx0, UINT32 *Dy0, UINT32 *Dx1,
@@ -166,9 +167,58 @@ void VideoPresent(void) {
             if (Y1 > gScreen.Height) {
                 Y1 = gScreen.Height;
             }
+            /* 光标脏禁止整页 flip（见 IgpuPresent LivePatchOnly） */
+            HalIgpuPresentSetLivePatchOnly(1);
             PresentRectRows(X0, Y0, X1, Y1, FbBytes, &gCurDirty, &gCx0, &gCy0,
                             &gCx1, &gCy1, &Partial);
+            HalIgpuPresentSetLivePatchOnly(0);
         }
+    }
+    HalDriverPreemptEnable();
+}
+
+/*
+ * 光标专用：只刷 gCurDirty，且 LivePatchOnly。
+ * GuiPollMouse 在 Defer 内会把 Restore∪Paint 并成大 AABB再 Pop Present →
+ * 空桌面一甩就大块双缓冲 blit，仍顿。Restore / Paint 后各调一次本函数。
+ */
+void VideoPresentCursor(void) {
+    UINT32 X0;
+    UINT32 Y0;
+    UINT32 X1;
+    UINT32 Y1;
+    UINT64 FbBytes;
+    UINT64 LayoutBytes;
+    int Partial;
+
+    if (!gBackOn || !gBack || !gFront || !gCurDirty) {
+        return;
+    }
+    HalDriverPreemptDisable();
+    LayoutBytes = (UINT64)gFrontPitch * (UINT64)gPhysH * 4ull;
+    if (gPhysH == 0) {
+        LayoutBytes = (UINT64)gFrontPitch * (UINT64)gScreen.Height * 4ull;
+    }
+    FbBytes = gScreen.FrameBufferSize;
+    if (FbBytes < LayoutBytes) {
+        FbBytes = LayoutBytes;
+    }
+    X0 = gCx0;
+    Y0 = gCy0;
+    X1 = gCx1;
+    Y1 = gCy1;
+    gCurDirty = 0;
+    if (X0 < gScreen.Width && Y0 < gScreen.Height) {
+        if (X1 > gScreen.Width) {
+            X1 = gScreen.Width;
+        }
+        if (Y1 > gScreen.Height) {
+            Y1 = gScreen.Height;
+        }
+        HalIgpuPresentSetLivePatchOnly(1);
+        PresentRectRows(X0, Y0, X1, Y1, FbBytes, &gCurDirty, &gCx0, &gCy0,
+                        &gCx1, &gCy1, &Partial);
+        HalIgpuPresentSetLivePatchOnly(0);
     }
     HalDriverPreemptEnable();
 }

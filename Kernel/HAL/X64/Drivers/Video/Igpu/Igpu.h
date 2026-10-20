@@ -61,6 +61,8 @@ int IgpuBackMap(UINT64 PhysBase, UINTN Bytes);
 int IgpuSrcCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
                     UINT32 W, UINT32 H, UINT32 SrcPitchB, UINT32 DstPitchB,
                     UINT64 SrcGtt, UINT64 DstGtt);
+/* 1=光标脏：live 时只双缓冲 blit，禁止整页 WaitVblank（甩鼠 AABB 大会顿） */
+void IgpuPresentSetLivePatchOnly(int On);
 int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
                     UINT32 BackH, UINT32 X0, UINT32 Y0, UINT32 X1, UINT32 Y1);
 int IgpuCopyRectBack(const UINT32 *Back, UINT32 PitchPx, UINT32 BufH,

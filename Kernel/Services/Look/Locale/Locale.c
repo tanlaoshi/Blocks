@@ -161,6 +161,8 @@ int LocaleTtfPreheatStep(void) {
     gTtfPreheatIdx++;
     if (gTtfPreheatIdx >= (UINT32)MSG_COUNT) {
         gTtfPreheatWant = 0;
+        /* 整批静默预热完：一次合成，换掉仍留在屏上的点阵 */
+        FontTtfBumpPaint();
         return 0;
     }
     return 1;

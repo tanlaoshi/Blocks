@@ -25,6 +25,11 @@ static UINT64 gBackGtt;
 static UINT64 gBackPhys;
 static UINTN gBackBytes;
 static int gScaleSkipLogged;
+static int gLivePatchOnly; /* Present 光标脏：禁整页 flip */
+
+void IgpuPresentSetLivePatchOnly(int On) {
+    gLivePatchOnly = On ? 1 : 0;
+}
 
 int IgpuReady(void) {
     if (HalCpuIsHypervisor()) {
@@ -172,9 +177,19 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
         if (IgpuScanoutOk() && IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
             return 1;
         }
-    } else if (W <= IGPU_LIVE_PATCH_MAX && H <= IGPU_LIVE_PATCH_MAX) {
+    } else if (gLivePatchOnly ||
+               (W <= IGPU_LIVE_PATCH_MAX && H <= IGPU_LIVE_PATCH_MAX)) {
+        /*
+         * 光标：Restore∪Paint 的 AABB 常远超 160（空桌面一甩）。
+         * 若走 ScanoutPresent 会等 vblank 整页翻 → 间歇顿。
+         * 只补两页；失败再 SRC_COPY，仍不整页 flip。
+         */
         if (IgpuScanoutBlitRect(gBackGtt, BackPitchPx, X0, Y0, W, H)) {
             return 1;
+        }
+        if (gLivePatchOnly) {
+            return IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
+                                   gBackGtt, DstGtt);
         }
     } else if (IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
         return 1;

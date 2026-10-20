@@ -133,7 +133,11 @@ int FontTtfCachePending(UINT32 Cp) {
     return 1;
 }
 
-static void FillSlot(UINT32 Cp) {
+/*
+ * NotifyPaint=1：屏上可能仍是点阵，Gui 须再合成（Want 泵）。
+ * Preheat 填缓存勿 Notify：否则每字整屏 Refresh → 空桌面偶尔顿一下。
+ */
+static void FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
 
     if (Cp < 128u) {
@@ -156,20 +160,24 @@ static void FillSlot(UINT32 Cp) {
         Slot->Cp = Cp;
         Slot->Side = FontTtfPixel();
         Slot->State = TTF_HIT;
-        /* 屏上可能还是点阵。Gui 看到代数变了再合成一次。 */
-        gPaintGen++;
+        if (NotifyPaint) {
+            gPaintGen++;
+        }
     }
 }
 
-int FontTtfTakePaint(void) {
-    static UINT32 Seen;
-    UINT32 Gen = gPaintGen;
+static UINT32 gPaintSeen;
 
-    if (Gen == Seen) {
-        return 0;
-    }
-    Seen = Gen;
-    return 1;
+int FontTtfTakePaint(void) {
+    return (gPaintGen != gPaintSeen) ? 1 : 0;
+}
+
+void FontTtfAckPaint(void) {
+    gPaintSeen = gPaintGen;
+}
+
+void FontTtfBumpPaint(void) {
+    gPaintGen++;
 }
 
 void FontTtfPreheatUtf8(const char *S) {
@@ -185,7 +193,7 @@ void FontTtfPreheatUtf8(const char *S) {
             break;
         }
         if (Cp >= 128u) {
-            FillSlot(Cp);
+            FillSlot(Cp, 0);
         }
         S += N;
     }
@@ -205,7 +213,7 @@ int FontTtfWantStep(void) {
             gWant[w] = gWant[w + 1];
         }
     }
-    FillSlot(Cp);
+    FillSlot(Cp, 1);
     return gWantN > 0 ? 1 : 0;
 }
 

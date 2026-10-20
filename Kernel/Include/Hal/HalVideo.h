@@ -11,6 +11,8 @@ void HalVideoSet(const VIDEO_CONFIG *Config);
 void HalVideoInitializeBackbuffer(void);
 /* 推进一轮 HAL 脏→GOP（可 Partial）；Shell 环末用。对照 gui-g6-present */
 void HalVideoPresent(void);
+/* 光标 Restore/Paint 后立刻小框 Present（绕开 Defer 大 AABB） */
+void HalVideoPresentCursor(void);
 /* 循环刷完脏区（合成/关窗收官）；勿在 Shell 热路径滥用 */
 void HalVideoPresentFlush(void);
 /* 丢掉脏区不写 LFB（开机：Boot 已 GOP 铺底，只同步后缓冲） */

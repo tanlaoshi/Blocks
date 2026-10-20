@@ -123,6 +123,8 @@ void HalIgpuPresentInvalidate(void);
 int HalIgpuReady(void);
 UINT32 HalIgpuBlitMinPixels(void);
 void HalIgpuNotePresentSkipScale(void);
+/* 光标 Present：live 只局部 blit，勿整页 flip */
+void HalIgpuPresentSetLivePatchOnly(int On);
 int HalIgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
                        UINT32 BackH, UINT32 X0, UINT32 Y0, UINT32 X1, UINT32 Y1);
 int HalIgpuCopyRectBack(const UINT32 *Back, UINT32 PitchPx, UINT32 BufH,

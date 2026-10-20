@@ -210,6 +210,10 @@ UINT32 HalIgpuBlitMinPixels(void) {
 void HalIgpuNotePresentSkipScale(void) {
 }
 
+void HalIgpuPresentSetLivePatchOnly(int On) {
+    (void)On;
+}
+
 int HalIgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
                        UINT32 BackH, UINT32 X0, UINT32 Y0, UINT32 X1, UINT32 Y1) {
     (void)Back;

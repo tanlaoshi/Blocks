@@ -128,7 +128,7 @@ const char *HalCpuInfo(void);
  * HalHasFrameBuffer — BOOT_INFO 有可用帧缓冲（亮屏 / 桌面模块前提）
  * HalConsoleOnly    — 串口命令行靶：Virt 模块表、不 Create Gui/Worker/Input
  * HalPinInteractiveToBootstrap — 1→Shell/Gui/Input 全钉 BSP（盖过 HAL_INPUT_CPU_MIN）
- * 二者与 Input 门槛分域见 input-f3-console（Boot.c / HalPlat.c 头）；勿跟 F2 门槛缠改。
+ * 二者与 Input 门槛分域见 input-f3-console（Scheduler/Start.c / HalPlat.c）；勿跟 F2 缠改。
  */
 int HalHasFrameBuffer(void);
 int HalConsoleOnly(void);

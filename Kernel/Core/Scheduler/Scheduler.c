@@ -3,7 +3,7 @@
  *
  * 模块表 SchedulerInitialize（软成功：恒 return 0）：
  *   锁 / Online=0 → Ops+RunQueue → 清 CPU·idle·gTasks → HalDriverSchedRegister
- * SchedulerStart 不在模块表：见 Boot.c（KernelMain Common / Virt 多核壳之后）。
+ * SchedulerStart 不在模块表：见 Start.c（KernelMain Common / Virt 多核壳之后）。
  * 创建见 Create.c；信号 / fork 见 Signal / User。
  */
 #include "KernelModulesPrivate.h"

@@ -309,7 +309,7 @@ ToyKernel/
 | 文件 | 用途 |
 | ---- | ---- |
 | `Core/Scheduler/Scheduler.c` | 任务槽 / 当前任务 / 切换（PR-S3-sched-2） |
-| `Core/Scheduler/SchedulerBoot.c` | idle、AP 与 SchedulerStart（PR-S-sched-1） |
+| `Core/Scheduler/Start.c` | idle、钉核与 SchedulerStart（≠ Boot/BootPkg） |
 | `Core/Scheduler/SchedulerCond.c` | PR-K-preempt-needresched：NeedResched + CondResched |
 | `Core/Scheduler/SchedulerCreate.c` | 内核/用户任务创建（PR-S3-sched-2） |
 | `Core/Scheduler/SchedulerFork.c` | fork COW 克隆（PR-S3-scheduser-1） |

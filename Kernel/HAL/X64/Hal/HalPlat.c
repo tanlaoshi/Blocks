@@ -69,7 +69,7 @@ int HalHasFrameBuffer(void) {
 
 /*
  * input-f3-console（x64）：两旗均恒 0 — 桌面走 Full + 默认钉核表。
- * ConsoleOnly / Pin 行为语义见 Arm/RiscV HalPlat 与 Scheduler/Boot.c 头；
+ * ConsoleOnly / Pin 行为语义见 Arm/RiscV HalPlat 与 Scheduler/Start.c 头；
  * 改 x64 串口子集或强制钉 BSP 是行为刀，勿与 HAL_INPUT_CPU_MIN（F2）混改。
  */
 int HalConsoleOnly(void) {

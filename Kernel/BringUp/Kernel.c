@@ -11,7 +11,7 @@
  *   3. 否则 → Full → Common
  *
  * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
- * Common：Shell/Gui/Worker → Demo → 可选 Input → SchedulerStart（Boot.c）。
+ * Common：Shell/Gui/Worker → Demo → 可选 Input → SchedulerStart（Start.c）。
  */
 #include "BootInfo.h"
 #include "SerialLog.h"

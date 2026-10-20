@@ -1,5 +1,5 @@
 /*
- * Boot.c — idle、AP 与 SchedulerStart（PR-S-sched-1）
+ * Start.c — SchedulerStart：idle、钉核、Online、Enter（≠ Boot/BootPkg）
  *
  * 非模块表入口。模块表只调 SchedulerInitialize（Scheduler.c）；
  * BringUp 先 Create 任务，再进本文件 SchedulerStart：
@@ -17,7 +17,7 @@
  *        （不 Create Gui/Worker/Input；门槛 MIN 无对象）
  *   假 → Common：Shell/Gui/Worker + 可选 Input
  *
- * HalPinInteractiveToBootstrap（钉核例外，本文件 Start）：
+ * HalPinInteractiveToBootstrap（钉核例外，本文件 SchedulerStart）：
  *   与 ConsoleOnly 任一为真 → InteractiveCpu=InputCpu=0（盖过 MIN→CPU2）
  *   用途：定时器只在 BSP 时，交互钉 AP 会永 WFI
  *   现三架构均返回 0；活的串口子集主要靠 ConsoleOnly（arm/riscv 无 FB）

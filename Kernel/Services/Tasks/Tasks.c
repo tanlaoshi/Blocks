@@ -14,7 +14,7 @@
  * | 本文件 YieldForPollInput | Count < MIN → HalInputPoll | 稳态 drain |
  * | Hid.c TasksPumpKeyboard | Count < MIN → HalInputPoll | 同门闩 |
  * | XHCI/Irq.c InputIrqCpu | Count ≥ MIN → dest 2 else 0 | MSI 同核 |
- * | Scheduler/Boot.c Start 钉核 | Cpus ≥ MIN → Input@2 | 与 Create 对齐 |
+ * | Scheduler/Start.c 钉核 | Cpus ≥ MIN → Input@2 | 与 Create 对齐 |
  * 旁路：IoBreath 无条件 drain；ConsoleOnly/PinInteractive → Input@0（F3）。
  * 现 MIN=4（1/2/4 核形态）；改数只改 Hal.h。钉核表 sched-pin-doc。
  */

@@ -1,5 +1,6 @@
 /*
  * HalDevicesNet.c — x86：Net 门面（PR-S3-haldev-1）
+ * HalNetInitialize → NetInit（恒 0；见 Drivers/Network/Network.c）。
  */
 #include "Hal.h"
 #include "DriverNet.h"

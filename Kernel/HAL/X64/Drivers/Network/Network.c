@@ -1,5 +1,9 @@
 /*
  * Network.c — 发送帧与地址查询（PR-S-net-1）
+ *
+ * NetInit：HAL/驱动层开机探测（HalNetInitialize 直调）。
+ * 与模块表 NetworkInitialize 双名并存，本刀不改符号。
+ * 恒 return 0（Probe 成败不挡模块表）。
  */
 #include "Network/Private.h"
 #include "Udp.h"

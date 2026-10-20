@@ -158,7 +158,7 @@ void GuiInitialize(void) {
         DesktopOpsRegister(&Desk);
     }
     GuiRedraw();
-    /* 桌面已铺满：停 GOP 叠字 boot log，避免「gui ready / ToyOS ready」留在壁纸上 */
+    /* 桌面已铺满：停 GOP 叠字 boot log，避免「gui ready / Blocks ready」留在壁纸上 */
     HalSerialGopMute(1);
     /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();

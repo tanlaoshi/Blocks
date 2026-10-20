@@ -3,8 +3,8 @@
 # test-fs.sh — PR-TEST-fs：自动化功能测试第 3 步（文件系统）。
 # 规格：Documents/待做/自动化功能测试.md §四。
 #
-# 沿用喂命令方式：拉起 run-split.sh --headless --smp=1，等 ToyOS ready，
-# 逐条测文件系统动作，用 expect_out(buffer) 断言命令后到下一 toyos> 之间
+# 沿用喂命令方式：拉起 run-split.sh --headless --smp=1，等 Blocks ready，
+# 逐条测文件系统动作，用 expect_out(buffer) 断言命令后到下一 blocks> 之间
 # 的输出含目标串。末尾 rm 清理测试文件（不断言）。
 #
 # 动作：write+cat 内容一致 / mkdir+ls 目录在 / rmdir 目录消失 / wrbig 大文件写完。
@@ -39,7 +39,7 @@ proc run_cmd {Cmd Need} {
     global CMD_TO
     send "$Cmd\r"
     expect {
-        -re "toyos>" {
+        -re "blocks>" {
             if {[regexp -- $Need $expect_out(buffer)]} {
                 send_user "ok: $Cmd -> $Need\n"
             } else {
@@ -93,11 +93,11 @@ spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless --smp=1"
 # ---- 等启动 ----
 set timeout $BOOT_TO
 expect {
-    -re "ToyOS ready|ToyOS 就绪" {
-        send_user "ok: boot -> ToyOS ready\n"
+    -re "Blocks ready|Blocks 就绪" {
+        send_user "ok: boot -> Blocks ready\n"
     }
     timeout {
-        send_user "timeout waiting ToyOS ready\n"
+        send_user "timeout waiting Blocks ready\n"
         fail_dump
     }
 }
@@ -106,11 +106,11 @@ expect {
 set timeout $PROMPT_TO
 send "\r"
 expect {
-    -re "toyos>" {
+    -re "blocks>" {
         send_user "ok: shell prompt\n"
     }
     timeout {
-        send_user "timeout waiting first toyos>\n"
+        send_user "timeout waiting first blocks>\n"
         fail_dump
     }
 }
@@ -136,9 +136,9 @@ run_cmd "stat TSTDIR"                "not found"
 # ---- 清理测试文件（不断言）----
 set timeout $CMD_TO
 send "rm TST.TXT\r"
-expect { -re "toyos>" {} timeout { } }
+expect { -re "blocks>" {} timeout { } }
 send "rm BIG.TXT\r"
-expect { -re "toyos>" {} timeout { } }
+expect { -re "blocks>" {} timeout { } }
 
 # ---- 结束：halt 等 QEMU 退出；未退出则 kill，仍算 PASS ----
 send "halt\r"

@@ -3,8 +3,8 @@
 # test-user.sh — PR-TEST-user：自动化功能测试第 2 步（用户程序）。
 # 规格：Documents/待做/自动化功能测试.md §四。
 #
-# 沿用第 1 步的喂命令方式：拉起 run-split.sh --headless，等 ToyOS ready，
-# 逐条 exec 用户程序，用 expect_out(buffer) 断言命令后到下一 toyos> 之间
+# 沿用第 1 步的喂命令方式：拉起 run-split.sh --headless，等 Blocks ready，
+# 逐条 exec 用户程序，用 expect_out(buffer) 断言命令后到下一 blocks> 之间
 # 的输出含目标串。断言已按程序实际打印核对（见规格 §四核对栏）。
 #
 # 运行：./Scripts/test-user.sh  （需 expect）
@@ -37,7 +37,7 @@ proc run_cmd {Cmd Need} {
     global CMD_TO
     send "$Cmd\r"
     expect {
-        -re "toyos>" {
+        -re "blocks>" {
             if {[regexp -- $Need $expect_out(buffer)]} {
                 send_user "ok: $Cmd -> $Need\n"
             } else {
@@ -91,11 +91,11 @@ spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless --smp=1"
 # ---- 等启动 ----
 set timeout $BOOT_TO
 expect {
-    -re "ToyOS ready|ToyOS 就绪" {
-        send_user "ok: boot -> ToyOS ready\n"
+    -re "Blocks ready|Blocks 就绪" {
+        send_user "ok: boot -> Blocks ready\n"
     }
     timeout {
-        send_user "timeout waiting ToyOS ready\n"
+        send_user "timeout waiting Blocks ready\n"
         fail_dump
     }
 }
@@ -104,11 +104,11 @@ expect {
 set timeout $PROMPT_TO
 send "\r"
 expect {
-    -re "toyos>" {
+    -re "blocks>" {
         send_user "ok: shell prompt\n"
     }
     timeout {
-        send_user "timeout waiting first toyos>\n"
+        send_user "timeout waiting first blocks>\n"
         fail_dump
     }
 }

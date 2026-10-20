@@ -1,21 +1,21 @@
 #!/bin/bash
-# sync-nuc.sh — 同步到 NUC SSD 上的 ToyOS 分区（日常路径）
+# sync-nuc.sh — 同步到 NUC SSD 上的 BLOCKS 分区（日常路径）
 #
 # 布局：
-#   LABEL=ToyOS（nvme 数据分区）→ Kernel.elf / RootFs / FW/ …
+#   LABEL=BLOCKS（nvme 数据分区；旧标 ToyOS/TOYOS 仍可认）→ Kernel.elf / RootFs / FW/ …
 #   /boot/efi/EFI/Blocks/BOOTX64.EFI ← 仅 --boot 时更新（grub chainloader）
 #
 # U 盘双分区仍用 Scripts/sync-usb.sh（备选）。
 #
 # 用法：
-#   ./sync-nuc.sh                 # RootFs → ToyOS（不动 Boot）
+#   ./sync-nuc.sh                 # RootFs → BLOCKS（不动 Boot）
 #   ./sync-nuc.sh --kernel-only   # 只更新 Kernel.elf + FW/
 #   ./sync-nuc.sh --boot          # 另写 EFI/Blocks/BOOTX64.EFI（需可写 ESP）
 #   ./sync-nuc.sh --build         # 先编 Kernel（+ Boot 若 --boot），再 prepare-rootfs，再同步
 #   BLOCKS_MNT=/mnt/toy ./sync-nuc.sh
 #   ESP_BOOT_DIR=/boot/efi/EFI/Blocks ./sync-nuc.sh --boot
 #
-# WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG：保留在 ToyOS 上，不同步覆盖。
+# WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG：保留在 BLOCKS 上，不同步覆盖。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -62,7 +62,7 @@ sync_toyos_fw() {
     echo "warning: $Dest/FW/ has no IWL8265.UCODE" >&2
   fi
   if [[ -f "$Dest/FW/WIFI.CFG" ]]; then
-    echo "FW/WIFI.CFG kept on ToyOS (not overwritten)"
+    echo "FW/WIFI.CFG kept on BLOCKS (not overwritten)"
   else
     echo "note: no FW/WIFI.CFG — cp WIFI_H.CFG or WIFI_C.CFG → WIFI.CFG"
   fi
@@ -126,7 +126,7 @@ ensure_toyos_mounted() {
       return 0
     fi
   fi
-  echo "error: ToyOS at $Dev not mounted. Try: udisksctl mount -b $Dev" >&2
+  echo "error: BLOCKS at $Dev not mounted. Try: udisksctl mount -b $Dev" >&2
   return 1
 }
 
@@ -199,12 +199,12 @@ if [[ -z "$BLOCKS_MNT" ]]; then
   fi
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
-  echo "error: ToyOS volume not found/mounted." >&2
+  echo "error: BLOCKS volume not found/mounted." >&2
   echo "  Expected LABEL=BLOCKS on SSD. USB 备选: $SCRIPT_DIR/sync-usb.sh" >&2
   exit 1
 fi
 if [[ ! -d "$BLOCKS_MNT" || ! -w "$BLOCKS_MNT" ]]; then
-  echo "error: ToyOS not writable: $BLOCKS_MNT" >&2
+  echo "error: BLOCKS not writable: $BLOCKS_MNT" >&2
   exit 1
 fi
 
@@ -233,7 +233,7 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   sync
   echo "=== nuc kernel-only ==="
-  echo "ToyOS -> $BLOCKS_MNT"
+  echo "Blocks -> $BLOCKS_MNT"
   echo "src   -> $SRC"
   ls -l --time-style=long-iso "$SRC" "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID"
   ls -l --time-style=long-iso "$BLOCKS_MNT/FW/IWL8265.UCODE" 2>/dev/null || true
@@ -258,13 +258,13 @@ fi
 echo "== prepare-rootfs =="
 "$SCRIPT_DIR/prepare-rootfs.sh"
 
-echo "ToyOS -> $BLOCKS_MNT"
+echo "Blocks -> $BLOCKS_MNT"
 if [[ "$DO_BOOT" -eq 1 ]]; then
   echo "== sync chainloader Boot =="
   sync_boot_chainloader "$BOOT_EFI"
 fi
 
-echo "== sync ToyOS (RootFs/X64) =="
+echo "== sync Blocks (RootFs/X64) =="
 if command -v rsync >/dev/null 2>&1; then
   rsync -rltD --delete \
     --no-owner --no-group --no-perms \

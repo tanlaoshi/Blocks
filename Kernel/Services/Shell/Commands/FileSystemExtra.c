@@ -154,7 +154,7 @@ static void CommandVols(int Argc, char **Argv) {
                 T++;
             }
             if (IsToy && *N == 0) {
-                gConsole.Write(" toyos");
+                gConsole.Write(" blocks");
             }
         }
         gConsole.Write("\n");

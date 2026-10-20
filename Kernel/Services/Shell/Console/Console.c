@@ -22,7 +22,7 @@ int gPromptSuspend;
 int gAtLineStart = 1;
 /* -2=无 Job；-1=串口壳；>=0=发起 Shell 窗下标 */
 static int gJobPromptWin = -2;
-/* Worker 在 RunLine 内已 Release 并打过 toyos> 时，阻止 PromptAfterCommand 再打一次 */
+/* Worker 在 RunLine 内已 Release 并打过 blocks> 时，阻止 PromptAfterCommand 再打一次 */
 static int gJobSkipAfterCommand;
 /* -2=非命令输出；-1=串口；>=0=本条命令输出归属窗（跟发起窗，不跟焦点） */
 static int gCmdOutWin = -2;
@@ -93,13 +93,13 @@ void Prompt(void) {
     if (!gAtLineStart) {
         gConsole.Write("\n");
     }
-    HalConsoleWriteSerial("toyos> ");
+    HalConsoleWriteSerial("blocks> ");
     gAtLineStart = 0;
     if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
         ConsoleSbBindFocus();
         ConsoleSbEnsureLive();
-        ConsoleSbFeed("toyos> ");
-        ConsoleDrawString("toyos> ", ThemeShellPrompt());
+        ConsoleSbFeed("blocks> ");
+        ConsoleDrawString("blocks> ", ThemeShellPrompt());
     }
 }
 
@@ -259,7 +259,7 @@ static void JobReleasePrompt(void) {
         return;
     }
     /* 已切走：完成行在 WinFeed；槽内补提示符并清该窗 WaitPrompt */
-    ConsoleSbWinFeed(Owner, "toyos> ");
+    ConsoleSbWinFeed(Owner, "blocks> ");
     GuiConsoleSetWaitPrompt(Owner, 0);
     if (gWaitPrompt > 0) {
         gWaitPrompt--;

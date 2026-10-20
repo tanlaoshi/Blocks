@@ -14,18 +14,18 @@ if {[info exists env(BLOCKS_ROOT)] && [file exists [file join $env(BLOCKS_ROOT) 
 }
 spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless --smp=1"
 expect {
-    -re "ToyOS ready|就绪" {}
+    -re "Blocks ready|就绪" {}
     timeout { puts "boot timeout"; exit 1 }
 }
-# ShellTask 可能已打 toyos>；再发 Enter 仍应回到提示符
+# ShellTask 可能已打 blocks>；再发 Enter 仍应回到提示符
 send "\r"
-expect -re "toyos>"
+expect -re "blocks>"
 
 proc run {Cmd} {
     set timeout 90
     send "$Cmd\r"
     expect {
-        -re "toyos>" { return $expect_out(buffer) }
+        -re "blocks>" { return $expect_out(buffer) }
         timeout { puts "timeout after: $Cmd"; exit 1 }
     }
 }

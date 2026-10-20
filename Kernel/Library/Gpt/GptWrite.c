@@ -215,7 +215,7 @@ int GptWriteToyLayout(UINT64 TotalSectors, UINT32 EspMib,
     }
     LibWrite("gpt: wrote ESP@");
     LibWriteHex32(EspLba);
-    LibWrite(" TOYOS@");
+    LibWrite(" BLOCKS@");
     LibWriteHex32(ToyLba);
     LibWrite("\n");
     return 1;

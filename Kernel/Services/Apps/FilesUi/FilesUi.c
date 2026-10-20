@@ -210,7 +210,7 @@ void FilesUiOpen(void) {
         SetStatus("");
     } else if (gPlaceCount > 0 && gPlaces[0].Path) {
         StringCopy(gCwd, sizeof(gCwd), gPlaces[0].Path);
-        SetStatus("No TOYOS volume (vols / msc mount)");
+        SetStatus("No BLOCKS volume (vols / msc mount)");
     } else {
         SetStatus("No volumes mounted");
     }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# make-usb-stick.sh — 把一块 USB 盘做成 ToyOS 真机启动盘（GPT）
+# make-usb-stick.sh — 把一块 USB 盘做成 Blocks 真机启动盘（GPT）
 #
 # 布局（与家里一致）：
 #   p1 ESP   256MiB  FAT32  LABEL=ESP   → EFI/BOOT/BOOTX64.EFI
@@ -99,10 +99,10 @@ if [[ "$SIZE_BYTES" -lt $((512 * 1024 * 1024)) ]]; then
   exit 1
 fi
 
-echo "=== ToyOS USB stick plan ==="
+echo "=== Blocks USB stick plan ==="
 echo "device : $DEVICE"
 lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINT,TRAN,MODEL "$DEVICE"
-echo "layout : GPT | ESP ${ESP_MIB}MiB (FAT32/ESP) | TOYOS rest (FAT32/TOYOS)"
+echo "layout : GPT | ESP ${ESP_MIB}MiB (FAT32/ESP) | BLOCKS rest (FAT32/BLOCKS)"
 echo
 
 if [[ "$DO_YES" -ne 1 ]]; then
@@ -155,7 +155,7 @@ MGID="${SUDO_GID:-0}"
 mkdir -p "$ESP_MNT" "$BLOCKS_MNT"
 mount -o "uid=${MUID},gid=${MGID},umask=022" "$P1" "$ESP_MNT"
 mount -o "uid=${MUID},gid=${MGID},umask=022" "$P2" "$BLOCKS_MNT"
-echo "mounted ESP=$ESP_MNT TOYOS=$BLOCKS_MNT (uid=${MUID})"
+echo "mounted ESP=$ESP_MNT BLOCKS=$BLOCKS_MNT (uid=${MUID})"
 
 if [[ "$DO_SYNC" -eq 1 ]]; then
   export ESP_MNT="$ESP_MNT"
@@ -164,5 +164,5 @@ if [[ "$DO_SYNC" -eq 1 ]]; then
 else
   echo
   echo "Next: ESP_MNT=$ESP_MNT BLOCKS_MNT=$BLOCKS_MNT $ROOT/sync-usb.sh"
-  echo "Or unplug/replug and let the desktop mount ESP+TOYOS, then ./sync-usb.sh"
+  echo "Or unplug/replug and let the desktop mount ESP+BLOCKS, then ./sync-usb.sh"
 fi

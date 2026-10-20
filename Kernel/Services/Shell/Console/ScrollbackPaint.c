@@ -79,7 +79,7 @@ void ConsoleSbRepaint(void) {
         /* 历史行里的提示符也保持青色 */
         if (L[0] == 't' && L[1] == 'o' && L[2] == 'y' && L[3] == 'o' &&
             L[4] == 's' && L[5] == '>' && L[6] == ' ') {
-            ConsoleDrawString("toyos> ", ThemeShellPrompt());
+            ConsoleDrawString("blocks> ", ThemeShellPrompt());
             if (L[7]) {
                 ConsoleDrawString(L + 7, ThemeShellText());
             }
@@ -91,7 +91,7 @@ void ConsoleSbRepaint(void) {
     if (ViewOff == 0 && AccLen > 0) {
         if (Acc[0] == 't' && Acc[1] == 'o' && Acc[2] == 'y' && Acc[3] == 'o' &&
             Acc[4] == 's' && Acc[5] == '>' && Acc[6] == ' ') {
-            ConsoleDrawString("toyos> ", ThemeShellPrompt());
+            ConsoleDrawString("blocks> ", ThemeShellPrompt());
             if (Acc[7]) {
                 ConsoleDrawString(Acc + 7, ThemeShellText());
             }

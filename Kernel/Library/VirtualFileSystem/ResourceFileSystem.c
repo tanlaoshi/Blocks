@@ -16,7 +16,7 @@ typedef struct {
 } RES_FILE;
 
 static const UINT8 gReadme[] =
-    "ToyOS resource volume (PR-F3)\n"
+    "Blocks resource volume (PR-F3)\n"
     "Read-only teaching files; desktop Assets live on BLOCKS:.\n";
 static const UINT8 gHello[] = "hello from RES\n";
 static const UINT8 gVersion[] = "resfs/2\n";

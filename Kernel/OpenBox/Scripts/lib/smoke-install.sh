@@ -34,7 +34,7 @@ echo "smoke-install: log=$LOG"
 (
   ready=0
   for i in $(seq 1 120); do
-    if tr -d '\r' <"$LOG" 2>/dev/null | grep -aq 'ToyOS ready\|ToyOS 就绪'; then
+    if tr -d '\r' <"$LOG" 2>/dev/null | grep -aq 'Blocks ready\|Blocks 就绪'; then
       ready=1
       break
     fi
@@ -44,7 +44,7 @@ echo "smoke-install: log=$LOG"
     sleep 0.5
   done
   if [ "$ready" != 1 ]; then
-    echo "smoke-install: timeout (no ToyOS ready)" >&2
+    echo "smoke-install: timeout (no Blocks ready)" >&2
     exit 0
   fi
   echo "smoke-install: ready — sending install 2 --yes --mib 512" >&2
@@ -93,7 +93,7 @@ wait "$PIPE_PID" 2>/dev/null || true
 sleep 0.2
 
 echo '=== guest (filtered) ==='
-tr -d '\r' <"$LOG" | grep -aE 'install:|ahci drives|ToyOS ready|drive |EXCEPTION|hosts volume|empty' | tail -60 || true
+tr -d '\r' <"$LOG" | grep -aE 'install:|ahci drives|Blocks ready|drive |EXCEPTION|hosts volume|empty' | tail -60 || true
 
 if [ "$ok" = 1 ] || tr -d '\r' <"$LOG" | grep -aq 'install: ok'; then
   echo 'FS-INST: PASS'
@@ -102,6 +102,6 @@ fi
 echo 'FS-INST: FAIL — full log: '"$LOG"
 echo 'Manual interactive:'
 echo '  DISK=ahci INSTALL_DISK=1 "$SCRIPT_DIR/run-split.sh"'
-echo '  toyos> install disks'
-echo '  toyos> install 2 --yes --mib 512'
+echo '  blocks> install disks'
+echo '  blocks> install 2 --yes --mib 512'
 exit 1

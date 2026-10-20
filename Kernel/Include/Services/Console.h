@@ -78,14 +78,14 @@ typedef struct {
     char (*StdinGetChar)(void);
     void (*StdinFlush)(void);
 
-    /* listen 等后台任务期间抑制 toyos>；Notify 只换行输出 */
+    /* listen 等后台任务期间抑制 blocks>；Notify 只换行输出 */
     void (*SuspendPrompt)(void);
     void (*ResumePrompt)(void);
     int (*PromptSuspended)(void);
     void (*Notify)(const char *Text);
 
     /*
-     * Shell 异步 Job（dhcp / store …）：Hold 后本窗不立刻 toyos>，
+     * Shell 异步 Job（dhcp / store …）：Hold 后本窗不立刻 blocks>，
      * 其它 Shell 仍可输入；完成后 Release 在发起窗补提示符。
      */
     void (*JobHoldPrompt)(void);
@@ -99,7 +99,7 @@ typedef struct {
     void (*SbShiftRaise)(int Idx, int Top);
     void (*JobShiftRaise)(int Idx, int Top);
 
-    /* Worker：iwl 后台 + 首轮 DHCP 结束后打一次 ready + toyos>；可重入 */
+    /* Worker：iwl 后台 + 首轮 DHCP 结束后打一次 ready + blocks>；可重入 */
     void (*AnnounceBootReady)(void);
     /* PR-K-uart-shell：运行时日志 → RUNTIME.LOG；Shell log / log save */
     int (*RuntimeLogFlush)(void);

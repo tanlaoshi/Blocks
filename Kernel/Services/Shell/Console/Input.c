@@ -25,7 +25,7 @@ static int ConsoleEnsureShell(int FromSerial) {
         /*
          * 串口始终可敲：不抢焦点、不开窗（与文件头注释一致）。
          * 已有 Shell 则置顶便于 GUI 同步；开窗交给 shell 命令 / 桌面点击。
-         * （曾在此 GuiOpenShell：淡入若卡住 → Enter 无 toyos>、像死机。）
+         * （曾在此 GuiOpenShell：淡入若卡住 → Enter 无 blocks>、像死机。）
          */
         if (FocusExistingKind(GUI_WIN_SHELL, 0, "shell-serial") >= 0) {
             return 1;

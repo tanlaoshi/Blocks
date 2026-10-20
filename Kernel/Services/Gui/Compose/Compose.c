@@ -146,7 +146,7 @@ void GuiApplyThemeColors(void) {
             gGuiWindowManager.Windows[i].TermY = 0;
             gGuiWindowManager.Windows[i].InputLen = 0;
             gGuiWindowManager.Windows[i].InputLine[0] = 0;
-            /* 勿清 PromptShown：否则 Compose 后切回 Shell 会在 toyos> 后再打欢迎语 */
+            /* 勿清 PromptShown：否则 Compose 后切回 Shell 会在 blocks> 后再打欢迎语 */
             gGuiWindowManager.Windows[i].WaitPrompt = 0;
         } else if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
             gGuiWindowManager.Windows[i].Background = ThemeSettingsClientBackground();

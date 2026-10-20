@@ -9,7 +9,7 @@ const char *HalArchName(void) {
 }
 
 const char *HalCpuInfo(void) {
-    return "x86-64 (ToyOS HAL)";
+    return "x86-64 (Blocks HAL)";
 }
 
 /* PR-A4：ELF e_machine = EM_X86_64 */

@@ -51,7 +51,7 @@ static void FocusLoad(void) {
         if (GuiConsoleNeedsPrompt()) {
             /*
              * 改字体/ThemeApply 会清 PromptShown；若 scrollback 仍在，
-             * 勿再打欢迎语（否则接在已有 toyos> 后面）。
+             * 勿再打欢迎语（否则接在已有 blocks> 后面）。
              */
             if (!ConsoleSbHasContent()) {
                 gConsole.Write(LocStr(MSG_CON_WELCOME));
@@ -87,7 +87,7 @@ static void BindFocus(void) {
     GuiFocusApply();
 }
 
-/* 初始化：无 Shell 时仅串口就绪文案；开窗 / gConsole.SerialRun 再画欢迎语与 toyos> */
+/* 初始化：无 Shell 时仅串口就绪文案；开窗 / gConsole.SerialRun 再画欢迎语与 blocks> */
 static void Initialize(void) {
     GUI_CONSOLE_OPS Ops;
 
@@ -110,7 +110,7 @@ static void Initialize(void) {
     gWaitPrompt = 0;
     gAtLineStart = 1;
     /*
-     * 勿在此打 ready / toyos>：iwl 在 Worker 里 Claim+BgPump，会插到提示符后面。
+     * 勿在此打 ready / blocks>：iwl 在 Worker 里 Claim+BgPump，会插到提示符后面。
      * 桌面：Worker 在 iwl 后台、首轮 DHCP、以及之后一小段 iwl 黄字静默后再 Announce。
      * ConsoleOnly：gConsole.SerialRun 里 Announce。
      */

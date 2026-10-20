@@ -131,7 +131,7 @@ static void Write(const char *Text) {
     if (GuiFocusKind() != GUI_WIN_SHELL) {
         /*
          * 用户窗（Snake/GuiDemo）焦点在 USER：stdout 不进教学串口、也不 Feed Shell。
-         * 旧逻辑「只走串口」会把 snake: 打进宿主 toyos>，看起来像占住终端。
+         * 旧逻辑「只走串口」会把 snake: 打进宿主 blocks>，看起来像占住终端。
          */
         if (GuiFocusKind() == GUI_WIN_USER) {
             return;

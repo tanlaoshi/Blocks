@@ -135,7 +135,7 @@ void HalSerialGopEnable(void) {
      */
     GopBannerOnce();
 #else
-    gGopBanner = 1; /* 跳过黄字 ToyOS boot */
+    gGopBanner = 1; /* 跳过黄字 Blocks boot */
 #endif
 }
 

@@ -4,7 +4,7 @@
 #include "LocalePrivate.h"
 
 const char *const gZhFallback[MSG_COUNT] = {
-    "ToyOS 外壳",
+    "Blocks 外壳",
     "设置",
     "文件",
     "商店",
@@ -62,8 +62,8 @@ const char *const gZhFallback[MSG_COUNT] = {
     "此文件夹为空",
     "n = 新建目录    f = 新建文件",
     "商店程序，请在商店卸载",
-    "ToyOS 控制台。输入 help。",
-    "ToyOS 就绪。输入 shell / settings，或按任意键打开外壳。",
+    "Blocks 控制台。输入 help。",
+    "Blocks 就绪。输入 shell / settings，或按任意键打开外壳。",
     "用法: lang en|zh|reload\n",
     "语言: ",
     "语言已切换\n",

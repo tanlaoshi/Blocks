@@ -3,8 +3,8 @@
 # test-shell.sh — PR-TEST-1：自动化功能测试第 1 步（Shell 命令）。
 # 规格：Documents/待做/自动化功能测试.md。
 #
-# 用 expect 拉起 run-split.sh --kill-qemu --headless，等 ToyOS ready 后逐条
-# 喂 Shell 命令并检查串口输出。断言只看「该命令之后、下一次 toyos> 之前」
+# 用 expect 拉起 run-split.sh --kill-qemu --headless，等 Blocks ready 后逐条
+# 喂 Shell 命令并检查串口输出。断言只看「该命令之后、下一次 blocks> 之前」
 # 的新输出（用 expect_out(buffer)）。失败打印日志尾部并 exit 1。
 #
 # 运行：./Scripts/test-shell.sh  （需先 sudo apt install expect）
@@ -37,7 +37,7 @@ proc run_cmd {Cmd Need} {
     global PROMPT_TO CMD_TO
     send "$Cmd\r"
     expect {
-        -re "toyos>" {
+        -re "blocks>" {
             if {[regexp -- $Need $expect_out(buffer)]} {
                 send_user "ok: $Cmd -> $Need\n"
             } else {
@@ -91,11 +91,11 @@ spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless"
 # ---- 等启动 ----
 set timeout $BOOT_TO
 expect {
-    -re "ToyOS ready|ToyOS 就绪" {
-        send_user "ok: boot -> ToyOS ready\n"
+    -re "Blocks ready|Blocks 就绪" {
+        send_user "ok: boot -> Blocks ready\n"
     }
     timeout {
-        send_user "timeout waiting ToyOS ready\n"
+        send_user "timeout waiting Blocks ready\n"
         fail_dump
     }
 }
@@ -104,11 +104,11 @@ expect {
 set timeout $PROMPT_TO
 send "\r"
 expect {
-    -re "toyos>" {
+    -re "blocks>" {
         send_user "ok: shell prompt\n"
     }
     timeout {
-        send_user "timeout waiting first toyos>\n"
+        send_user "timeout waiting first blocks>\n"
         fail_dump
     }
 }

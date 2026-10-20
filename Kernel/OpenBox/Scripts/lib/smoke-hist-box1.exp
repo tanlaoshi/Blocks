@@ -30,39 +30,39 @@ if {![file exists $run_split]} {
 
 spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless"
 expect {
-    -re "ToyOS ready|ToyOS 就绪" { send_user "ok boot\n" }
+    -re "Blocks ready|Blocks 就绪" { send_user "ok boot\n" }
     timeout { send_user "FAIL boot\n"; exit 1 }
 }
 set timeout 15
 send "\r"
-expect { -re "toyos>" { send_user "ok prompt\n" } timeout { exit 1 } }
+expect { -re "blocks>" { send_user "ok prompt\n" } timeout { exit 1 } }
 send "echo aaa\r"
-expect { -re "toyos>" { send_user "ok aaa\n" } timeout { exit 1 } }
+expect { -re "blocks>" { send_user "ok aaa\n" } timeout { exit 1 } }
 send "echo bbb\r"
-expect { -re "toyos>" { send_user "ok bbb\n" } timeout { exit 1 } }
+expect { -re "blocks>" { send_user "ok bbb\n" } timeout { exit 1 } }
 # single Up -> bbb
 send "\033\[A"
 after 200
 send "\r"
 expect {
-    -re "\nbbb\r?\r?\r?\ntoyos>" { send_user "ok single-up bbb\n" }
-    -re "\nccc\r?\r?\r?\ntoyos>" { send_user "FAIL ccc\n"; exit 1 }
-    -re "\naaa\r?\r?\r?\ntoyos>" { send_user "FAIL aaa\n"; exit 1 }
-    -re "toyos>" { send_user "FAIL buf=$expect_out(buffer)\n"; exit 1 }
+    -re "\nbbb\r?\r?\r?\nblocks>" { send_user "ok single-up bbb\n" }
+    -re "\nccc\r?\r?\r?\nblocks>" { send_user "FAIL ccc\n"; exit 1 }
+    -re "\naaa\r?\r?\r?\nblocks>" { send_user "FAIL aaa\n"; exit 1 }
+    -re "blocks>" { send_user "FAIL buf=$expect_out(buffer)\n"; exit 1 }
     timeout { send_user "FAIL timeout\n"; exit 1 }
 }
 # up-up after aaa bbb ccc: need third cmd
 send "echo ccc\r"
-expect { -re "toyos>" { send_user "ok ccc\n" } timeout { exit 1 } }
+expect { -re "blocks>" { send_user "ok ccc\n" } timeout { exit 1 } }
 send "\033\[A"
 after 150
 send "\033\[A"
 after 150
 send "\r"
 expect {
-    -re "\nbbb\r?\r?\r?\ntoyos>" { send_user "ok up-up bbb\n" }
-    -re "\nccc\r?\r?\r?\ntoyos>" { send_user "FAIL up-up ccc\n"; exit 1 }
-    -re "toyos>" { send_user "FAIL up-up buf=$expect_out(buffer)\n"; exit 1 }
+    -re "\nbbb\r?\r?\r?\nblocks>" { send_user "ok up-up bbb\n" }
+    -re "\nccc\r?\r?\r?\nblocks>" { send_user "FAIL up-up ccc\n"; exit 1 }
+    -re "blocks>" { send_user "FAIL up-up buf=$expect_out(buffer)\n"; exit 1 }
     timeout { send_user "FAIL up-up timeout\n"; exit 1 }
 }
 send "halt\r"

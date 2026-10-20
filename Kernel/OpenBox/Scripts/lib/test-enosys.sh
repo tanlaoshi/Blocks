@@ -57,11 +57,11 @@ spawn sh -c "cd $image_root && exec $run_split --kill-qemu --headless --smp=1"
 
 set timeout $BOOT_TO
 expect {
-    -re "ToyOS ready|ToyOS 就绪" {
+    -re "Blocks ready|Blocks 就绪" {
         send_user "ok: boot\n"
     }
     timeout {
-        send_user "timeout waiting ToyOS ready\n"
+        send_user "timeout waiting Blocks ready\n"
         fail_dump
     }
 }
@@ -69,11 +69,11 @@ expect {
 set timeout $PROMPT_TO
 send "\r"
 expect {
-    -re "toyos>" {
+    -re "blocks>" {
         send_user "ok: prompt\n"
     }
     timeout {
-        send_user "timeout waiting toyos>\n"
+        send_user "timeout waiting blocks>\n"
         fail_dump
     }
 }
@@ -81,7 +81,7 @@ expect {
 set timeout $CMD_TO
 send "exec ENOSYS.ELF\r"
 expect {
-    -re "toyos>" {
+    -re "blocks>" {
         if {[regexp -- {enosys: ok} $expect_out(buffer)]} {
             send_user "ok: enosys demo\n"
         } else {

@@ -86,7 +86,7 @@ void TtyUiOpen(void) {
     gTtyBuf[0] = 0;
     gTtyScroll = 0;
     /* ASCII only：点阵字体无 UTF-8 字形 */
-    TtyAppendStr("ToyOS TTY - serial session (not boot log)\n");
+    TtyAppendStr("Blocks TTY - serial session (not boot log)\n");
     TtyAppendStr("Type to TX; RX while focused. Esc=clear.\n\n");
     if (HalSerialPresent()) {
         TtySetStatus("serial: present");

@@ -8,7 +8,7 @@
 # 锚点（相对本脚本启动 qemu 的 t0）：
 #   [Mod] Gui        — DesktopInit 含在 Gui 内
 #   [Mod] Scheduler  — Gui 返回后；QEMU 上作「桌面可点」代理
-#   ToyOS ready      — 串口就绪行
+#   Blocks ready      — 串口就绪行
 # 真机「桌面可点」另记墙钟（见 ToyKernel Documents/开发/开机流程与加速.md §7）。
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -65,7 +65,7 @@ proc = subprocess.Popen(
     bufsize=1,
 )
 
-ready_re = re.compile(r"ToyOS ready|ToyOS 就绪")
+ready_re = re.compile(r"Blocks ready|Blocks 就绪")
 ok = False
 try:
     with open(log_path, "w", encoding="utf-8", errors="replace") as out:
@@ -112,7 +112,7 @@ def rel(pat: str):
     return "-"
 
 if not ok:
-    print(f"measure: FAIL run#{n} — no ToyOS ready (log={log_path})", file=sys.stderr)
+    print(f"measure: FAIL run#{n} — no Blocks ready (log={log_path})", file=sys.stderr)
     sys.exit(1)
 
 keys = [
@@ -122,7 +122,7 @@ keys = [
     ("gui", r"\[Mod\] Gui"),
     ("sched", r"\[Mod\] Scheduler"),
     ("console", r"\[Mod\] Console"),
-    ("ready", r"ToyOS ready|ToyOS 就绪"),
+    ("ready", r"Blocks ready|Blocks 就绪"),
 ]
 vals = {k: rel(p) for k, p in keys}
 print(f"measure: run#{n} PASS")
@@ -133,7 +133,7 @@ print(f"  [Mod] FileSystem {vals['fs']}s")
 print(f"  [Mod] Gui        {vals['gui']}s")
 print(f"  [Mod] Scheduler  {vals['sched']}s  ← QEMU「桌面可点」代理")
 print(f"  [Mod] Console    {vals['console']}s")
-print(f"  ToyOS ready      {vals['ready']}s")
+print(f"  Blocks ready      {vals['ready']}s")
 print(
     "CSV run=%s serial=%s usb=%s fs=%s gui=%s sched=%s console=%s ready=%s"
     % (

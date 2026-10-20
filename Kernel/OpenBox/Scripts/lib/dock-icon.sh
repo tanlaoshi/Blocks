@@ -17,8 +17,8 @@ install_toyos_dock_icon() {
     cat > "$Desktop" <<EOF || return 0
 [Desktop Entry]
 Type=Application
-Name=ToyOS (QEMU)
-Comment=ToyOS virtual machine
+Name=Blocks (QEMU)
+Comment=Blocks virtual machine
 Exec=qemu-system-x86_64
 Icon=$Icon
 Terminal=false

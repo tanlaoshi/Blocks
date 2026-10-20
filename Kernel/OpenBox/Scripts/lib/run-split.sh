@@ -171,7 +171,7 @@ MEM="${MEM:-1024M}"
 toy_qemu_info "qemu: mem=${MEM}"
 
 qemu-system-x86_64 \
-    -name "ToyOS",process=qemu-system-x86_64 \
+    -name "Blocks",process=qemu-system-x86_64 \
     -drive if=pflash,format=raw,readonly=on,file="$CODE" \
     -drive if=pflash,format=raw,file=Fw/OVMF_VARS.fd \
     "${DISK_ARGS[@]}" \

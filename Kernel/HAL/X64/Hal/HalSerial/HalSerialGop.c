@@ -151,7 +151,7 @@ void GopBannerOnce(void) {
         LineH = BootLogLineH();
         HalVideoClearClip();
         HalVideoFillRect(0, 0, W, BootLogBodyY(LineH), 0x00000000u);
-        HalVideoDrawStringAt(BOOT_LOG_X, BOOT_LOG_TITLE_Y, "ToyOS boot", 0x00FFFF00u);
+        HalVideoDrawStringAt(BOOT_LOG_X, BOOT_LOG_TITLE_Y, "Blocks boot", 0x00FFFF00u);
         gBootVisN = 0;
         gBootLogY = BootLogBodyY(LineH);
         gLineLen = 0;

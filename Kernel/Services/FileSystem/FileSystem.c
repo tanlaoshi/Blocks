@@ -3,15 +3,12 @@
  *
  * 路径操作：Operations.c；挂卷：Mount.c / MountVolume.c / MountPick.c。
  *
- * 开机两轮挂卷（勿改判定意图）：
+ * 开机两轮挂卷（判定序见路线图 fs-msc-order；语义勿改）：
  *   1. HalBlockInitialize → MountAllVolumes（内置盘 / 已见 Block）
- *   2. 若仍需系统卷：MSC auto claim → 再 BlockInitialize → MountAllVolumes
- *
- * MSC auto：
- *   - 已有 BLOCKS.ID 且 MSC.OFF / msc=0 → 可关 auto
- *   - 尚无 BLOCKS.ID 时不得因盘上 msc=0 关 auto（NUC Live 否则扫不到 U 盘系统卷）
- *   - 全程无 BLOCKS → force auto，claim 最多再试一轮
- *   - 已有 BLOCKS → 跳过 USB 扫（省 Logo 前空等）
+ *   2. 盘上 MSC.OFF/msc=0：有 BLOCKS 才关 auto；无则 Keep
+ *   3. 无 BLOCKS 且 auto 关 → Force
+ *   4. 已有 BLOCKS → Skip 本轮 USB 扫（gMscAuto 留给热插拔）
+ *   5. 仍 auto：HalUsbMscAutoBeforeFs → 再挂；无 BLOCKS 最多再 claim 一轮
  *
  * 多份 BLOCKS.ID：默认名 BLOCKS 跟 BootDiskGuid（加载 EFI 的盘）；另一份 USB:。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
@@ -199,7 +196,7 @@ int FileSystemPathBlocked(const char *Path) {
     return gPathBlocked(Path);
 }
 
-/* PR-H-msc-7b：卷上 MSC.OFF 或 THEME.CFG 含 msc=0 → 关 auto */
+/* PR-H-msc-7b：默认卷上 MSC.OFF 或 THEME.CFG 含 msc=0 → 倾向关 auto */
 static int MscPolicySaysOff(void) {
     UINT8 Buf[512];
     UINTN Sz = 0;
@@ -233,6 +230,40 @@ static int AnyVolumeHasBlocksId(void) {
     return 0;
 }
 
+/*
+ * 第一轮挂卷成功后：读盘上 MSC.OFF / msc=0（序 2）。
+ * 无第一轮卷时不读盘（与旧分支一致）。
+ */
+static int MscAutoApplyPolicy(int Auto, int HasBlocks) {
+    if (!Auto || !MscPolicySaysOff()) {
+        return Auto;
+    }
+    if (HasBlocks) {
+        HalUsbMscAutoSet(0);
+        LogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
+        return 0;
+    }
+    LogBoot("Boot: MSC Auto Keep (No BLOCKS.ID; Ignore MSC=0)\n");
+    return Auto;
+}
+
+/*
+ * 序 3–4：Force / Skip → 是否本轮 claim。
+ * Skip 只清返回值，不 HalUsbMscAutoSet(0)，热插拔仍认 gMscAuto。
+ */
+static int MscAutoResolveClaim(int Auto, int HasBlocks) {
+    if (!HasBlocks && !Auto) {
+        HalUsbMscAutoSet(1);
+        LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
+        return 1;
+    }
+    if (Auto && HasBlocks) {
+        LogBoot("Boot: MSC skip (BLOCKS already)\n");
+        return 0;
+    }
+    return Auto ? 1 : 0;
+}
+
 int FileSystemInitialize(void) {
     VFS_SERVICE_OPS Svc;
     int Auto;
@@ -252,38 +283,18 @@ int FileSystemInitialize(void) {
     HalDriverFileReadRegister(FileSystemReadFile);
 
     /*
-     * PR-H-msc-7b：Live 默认 FS 前 auto（claim→Mux），再一次 MountAllVolumes。
-     * 主盘已有 BLOCKS 且 MSC.OFF / msc=0 → 可关 auto。
-     * 主盘只有 ESP、尚无 BLOCKS.ID 时不得关 auto（NUC Live：否则永远读不到 U 盘系统卷）。
+     * 1：内置盘先挂；2：仅首轮成功才读盘上关；3–4：Force/Skip（fs-msc-order）。
+     * 主盘只有 ESP、尚无 BLOCKS.ID 时不得因 msc=0 关 auto。
      */
     Auto = HalUsbMscAutoEnabled();
     if (HalBlockInitialize() > 0 && MountAllVolumes()) {
         HaveVols = 1;
         HasBlocks = AnyVolumeHasBlocksId();
-        if (Auto && MscPolicySaysOff()) {
-            if (HasBlocks) {
-                Auto = 0;
-                HalUsbMscAutoSet(0);
-                LogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
-            } else {
-                LogBoot(
-                    "Boot: MSC Auto Keep (No BLOCKS.ID; Ignore MSC=0)\n");
-            }
-        }
+        Auto = MscAutoApplyPolicy(Auto, HasBlocks);
     } else {
         LogFs("Fs: No Primary Volumes Yet (Live USB Path Ok)\n");
     }
-
-    if (!HasBlocks && !Auto) {
-        Auto = 1;
-        HalUsbMscAutoSet(1);
-        LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
-    }
-    /* 系统卷已经在（NVMe / 已挂上的盘）。再扫 Hub 和失败根口会在 Logo 前空等数秒。 */
-    if (Auto && HasBlocks) {
-        Auto = 0;
-        LogBoot("Boot: MSC skip (BLOCKS already)\n");
-    }
+    Auto = MscAutoResolveClaim(Auto, HasBlocks);
 
     if (Auto) {
         if (HalUsbMscAutoBeforeFs() == 0) {

@@ -4,7 +4,7 @@
 #include "LocalePrivate.h"
 
 const char *const gEnFallback[MSG_COUNT] = {
-    "ToyOS Shell",
+    "Blocks Shell",
     "Settings",
     "Files",
     "Store",
@@ -62,8 +62,8 @@ const char *const gEnFallback[MSG_COUNT] = {
     "This folder is empty",
     "n = mkdir    f = new file",
     "Store app — remove in Store",
-    "ToyOS console. Type help.",
-    "ToyOS ready. Type shell / settings, or any key to open Shell.",
+    "Blocks console. Type help.",
+    "Blocks ready. Type shell / settings, or any key to open Shell.",
     "usage: lang en|zh|reload\n",
     "lang: ",
     "lang set\n",

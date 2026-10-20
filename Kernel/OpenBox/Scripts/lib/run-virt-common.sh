@@ -294,7 +294,7 @@ toy_virt_smoke_ok() {
     if ! grep -qiE 'user: (back in EL1|back in S-mode|EL0 syscall ok|U-mode syscall ok)' "$Out" 2>/dev/null; then
         return 1
     fi
-    if ! grep -qiE 'ToyOS ready|ToyOS 就绪' "$Out" 2>/dev/null; then
+    if ! grep -qiE 'Blocks ready|Blocks 就绪' "$Out" 2>/dev/null; then
         return 1
     fi
     if [ "$VIRT_MODE" = "serial" ]; then

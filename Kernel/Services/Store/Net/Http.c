@@ -105,7 +105,7 @@ int HttpGet(UINT32 Ip, UINT16 Port, const char *Path,
 
     {
         const char *A = "GET ";
-        const char *B = " HTTP/1.0\r\nHost: toyos\r\nConnection: close\r\n\r\n";
+        const char *B = " HTTP/1.0\r\nHost: blocks\r\nConnection: close\r\n\r\n";
         while (*A && Rlen < (int)sizeof(gHttpReq) - 1) {
             gHttpReq[Rlen++] = *A++;
         }
@@ -271,7 +271,7 @@ ParseHttp:
             }
             Msg[n++] = '\n';
             Msg[n] = 0;
-            /* Worker 异步：gConsole.Notify 先换行离开 toyos>，勿用裸串口插在提示符后 */
+            /* Worker 异步：gConsole.Notify 先换行离开 blocks>，勿用裸串口插在提示符后 */
             gConsole.Notify(Msg);
             PhysicalMemoryFreePages(Resp, Pages);
             return STORE_ERR_NET;

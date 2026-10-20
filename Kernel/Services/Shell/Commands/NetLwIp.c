@@ -29,7 +29,7 @@ static void CommandLwIpDhcp(int Argc, char **Argv) {
         gConsole.Write("lwip dhcp: busy\n");
         return;
     }
-    /* 先 Hold：防 Worker 抢在 PromptAfterCommand 前打完并再出一次 toyos> */
+    /* 先 Hold：防 Worker 抢在 PromptAfterCommand 前打完并再出一次 blocks> */
     gConsole.JobHoldPrompt();
     Rc = LwIpDhcpEnqueue(12000);
     if (Rc == -1) {

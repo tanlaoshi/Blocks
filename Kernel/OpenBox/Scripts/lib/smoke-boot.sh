@@ -1,5 +1,5 @@
 #!/bin/bash
-# PR-Q1：无头冒烟 — 清残留 QEMU、默认单核、等到串口出现 ToyOS ready
+# PR-Q1：无头冒烟 — 清残留 QEMU、默认单核、等到串口出现 Blocks ready
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=toyos-common.sh
@@ -15,7 +15,7 @@ TIMEOUT_SEC="${SMOKE_TIMEOUT:-90}"
 LOG="${SMOKE_LOG:-/tmp/toyos-smoke-$$.log}"
 
 cleanup() {
-    pkill -9 -f 'qemu-system-x86_64.*ToyOS' 2>/dev/null || \
+    pkill -9 -f 'qemu-system-x86_64.*Blocks' 2>/dev/null || \
         pkill -9 -f 'qemu-system-x86_64' 2>/dev/null || true
     if [ -n "${QEMU_PID:-}" ] && kill -0 "$QEMU_PID" 2>/dev/null; then
         kill -9 "$QEMU_PID" 2>/dev/null || true
@@ -38,9 +38,9 @@ QEMU_PID=$!
 i=0
 while [ "$i" -lt "$TIMEOUT_SEC" ]; do
     # 去掉 CR，避免某些 grep 把串口日志当怪异文本
-    # PR-I18N2：就绪串可中/英（lang=zh →「ToyOS 就绪」）
-    if tr -d '\r' <"$LOG" 2>/dev/null | grep -E 'ToyOS ready|ToyOS 就绪' >/dev/null 2>&1; then
-        echo "smoke: PASS — found ToyOS ready/就绪"
+    # PR-I18N2：就绪串可中/英（lang=zh →「Blocks 就绪」）
+    if tr -d '\r' <"$LOG" 2>/dev/null | grep -E 'Blocks ready|Blocks 就绪' >/dev/null 2>&1; then
+        echo "smoke: PASS — found Blocks ready/就绪"
         if [ "${DISK:-ide}" = "ahci" ] || [ "${DISK:-}" = "AHCI" ]; then
             if tr -d '\r' <"$LOG" | grep -F 'Boot: AHCI Drives=' >/dev/null 2>&1; then
                 echo "smoke: PASS — AHCI backend (PR-H1)"
@@ -121,7 +121,7 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
                 exit 1
             fi
             if tr -d '\r' <"$CDC_LOG" 2>/dev/null | grep -F 'boot: usb-uart ftdi' >/dev/null 2>&1 || \
-               tr -d '\r' <"$CDC_LOG" 2>/dev/null | grep -F 'ToyOS ready' >/dev/null 2>&1; then
+               tr -d '\r' <"$CDC_LOG" 2>/dev/null | grep -F 'Blocks ready' >/dev/null 2>&1; then
                 echo "smoke: PASS — usb-uart TX on usb-serial chardev"
             else
                 echo "smoke: FAIL — usb-serial chardev has no tee output ($CDC_LOG)" >&2
@@ -187,6 +187,6 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
     sleep 1
 done
 
-echo "smoke: FAIL — timeout waiting for ToyOS ready" >&2
+echo "smoke: FAIL — timeout waiting for Blocks ready" >&2
 tail -n 60 "$LOG" >&2 || true
 exit 1

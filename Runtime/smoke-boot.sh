@@ -3,7 +3,7 @@
 # smoke-boot.sh — 无头冒烟（Blocks Boot + 现网能力核）
 #
 # 清残留 QEMU → 无头 run.sh → 串口关键字。
-# 现网核日志为 ToyOS ready；兼容旧 Blocks ready。
+# 现网核日志为 Blocks ready；兼容旧 Blocks ready。
 #
 # 用法：
 #   cd ~/Blocks/Runtime && ./smoke-boot.sh
@@ -76,7 +76,7 @@ require() {
     return 1
 }
 
-READY_RE='ToyOS ready|ToyOS 就绪|Blocks ready'
+READY_RE='Blocks ready|Blocks 就绪|Blocks ready'
 i=0
 while [ "$i" -lt "$TIMEOUT_SEC" ]; do
     if log_text | grep -E "$READY_RE" >/dev/null 2>&1; then

@@ -27,7 +27,7 @@ static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
             DebugWrite(ExecPath);
             DebugWrite("\n");
             (void)ProcessExec(ExecPath);
-            /* 用户 ELF 往串口打字会冲掉 toyos>；补一行提示，宿主仍可敲 */
+            /* 用户 ELF 往串口打字会冲掉 blocks>；补一行提示，宿主仍可敲 */
             gConsole.Write("\n");
             gConsole.ShowPrompt();
         }

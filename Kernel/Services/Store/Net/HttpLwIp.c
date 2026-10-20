@@ -10,7 +10,7 @@
 
 static int BuildGetReq(const char *Path, char *Out, int OutMax) {
     const char *A = "GET ";
-    const char *B = " HTTP/1.0\r\nHost: toyos\r\nConnection: close\r\n\r\n";
+    const char *B = " HTTP/1.0\r\nHost: blocks\r\nConnection: close\r\n\r\n";
     const char *P;
     int N = 0;
 

@@ -20,7 +20,7 @@
 #include "ShellCommands.h"
 #include "SerialLog.h"
 
-/* CoolTerm 常发 CR+LF：两次 Enter → 双 toyos>；吞掉紧跟 CR 的 LF */
+/* CoolTerm 常发 CR+LF：两次 Enter → 双 blocks>；吞掉紧跟 CR 的 LF */
 static int gSerialSkipLf;
 
 void ShellTask(void) {
@@ -28,7 +28,7 @@ void ShellTask(void) {
     HAL_KEYBOARD_REPORT Previous = {0};
     DebugWrite("shell task running (preemptive)\n");
     /*
-     * 串口 ready/toyos> 由 Worker 在 iwl + 首轮 DHCP 结束后 Announce。
+     * 串口 ready/blocks> 由 Worker 在 iwl + 首轮 DHCP 结束后 Announce。
      * 此处勿 Prompt：否则夹在 Boot: iwl8265 / dhcp 中间。
      */
     for (;;) {

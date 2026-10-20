@@ -1,12 +1,11 @@
 /*
- * Tasks.c — Gui / Worker / Input 三环（PR-S-tasks-1）
+ * Tasks.c — Gui / Worker / Input 三环
  *
  * SchedulerStart 后（Shell 见 Shell.c）：
  *   GuiTask    — 唯一 GuiPollMouse（Pointer.c）→ YieldForPollInput
- *   WorkerTask — DesktopWorkerTick（MSC/钟采样）→ 扫盘/Store/iwl/DHCP → ready
- *   InputTask  — 逻辑 CPU≥3：cli+HalInputPoll / sti+pause（深栈勿被抢）
- * Shell 不泵鼠标（runtime-a-poll）。YieldForPollInput：不足 3 核稳态 drain。
- * 全表 runtime-4；Gui 主环 gui-loop；钉核 sched-pin-doc；钟归属 runtime-c-tick。
+ *   WorkerTask — DesktopWorkerTick → 扫盘/Store/iwl/DHCP → ready（序见 WorkerTask 头）
+ *   InputTask  — 逻辑 CPU≥3 才 Create，钉 CPU2（门槛见 YieldForPollInput 头）
+ * Shell 不泵鼠标（runtime-a-poll）。钉核大表 sched-pin-doc；四环 runtime-4。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -39,18 +38,18 @@ UINT32 WorkerLoopCount(void) {
 }
 
 /*
- * 真机 poll-USB：纯 hlt 要等 PIT/HPET tick 才醒 → 光标更新锁在 ~10ms+，体感极卡。
- * 多数轮次短自旋；偶发 hlt 仍给定时器/短按电源窗口。
+ * 稳态让步 +（按核数）drain（runtime-f-input）。
+ *
+ * 门槛 ≥3 = 逻辑槽够 0=Worker / 1=Shell·Gui / 2=Input，不是「板子必须三核」。
+ * 常见 1/2/4/…；QEMU -smp 3 会走专核。≥4 时 Input 仍钉 2，CPU3+ 多 idle。
+ *
+ * 稳态 HalInputPoll 分域（禁止双路径抢 xHCI）：
+ *   核数 1–2 — 无 InputTask；此处 drain（Hid 同门闩）
+ *   核数 ≥3 — 仅 InputTask@CPU2 drain；此处只 pause/hlt
+ * 长 Store IO：StoreIoBreath 自带 drain（非稳态）。钉核表 sched-pin-doc。
+ * 真机：勿纯 hlt 等 tick（光标锁 ~10ms+）；短自旋 + 偶发 hlt。
  */
 void YieldForPollInput(void) {
-    /*
-     * PR-S-compose-sep（序 4）：单一 drain 主人——反例禁止「专核空转却仍在 shell
-     * 同步 HalInputPoll 双路径抢设备」。故按 InputTask 是否存在分域：
-     * - SMP<3（无 InputTask）：此处为稳态 drain 主人（序 1 等价）。
-     * - SMP≥3（InputTask 钉 CPU2 持续 drain）：InputTask 为单一主人，此处不 drain，
-     *   只让步（pause/hlt），避双路径抢 xHCI 设备。
-     * 长 Store IO 不走此路径，由 StoreIoBreath 自带 drain 兜底（IO 呼吸，非稳态）。
-     */
     if (HalCpuCount() < 3) {
         HalInputPoll();
     }
@@ -199,17 +198,11 @@ void WorkerTask(void) {
 }
 
 /*
- * PR-S-input-pin（序 2）：输入钉专核（SMP≥3 → 逻辑 CPU2）。
+ * Input 专核（仅 SMP≥3；Create 见 KernelTrySpawnInput；钉核 sched-pin-doc）。
+ * 稳态唯一 HalInputPoll 主人；门槛/分域见 YieldForPollInput 头。
  *
- * scoped sti（关键）：sti 只在浅栈的 200-pause 期开；HalInputPoll 期 cli 关中断。
- * 原因：HalInputPoll → XchiDrainEvents → ProcessEvents* 调用链深，若被定时器在
- * 深调用中抢占，ISR 链（InterruptDispatch→SchedulerOnTimer→PickNext）压在深栈之上，
- * 实测会损坏 iret 帧（rip/rsp 变 gTasks 栈址）→ #UD/#GP。worker 之所以稳，是它只在
- * hlt（浅栈）被抢。故 InputTask 须只在浅 pause 处被抢：cli 守 drain，sti 放 pause。
- * 其专核上只有 InputTask+idle，sti 不外溢到 shell/gui 协作态（CPU1 仍 IF=0）。
- *
- * 并发安全：XchiDrainEvents 已 gEvtConsumerLock/gHidQueueLock 串行 + 命令期
- * EventIsExclusive 早退 → 与 shell/gui 的 yield-path drain 并发安全（序 1 已证）。
+ * scoped sti：drain 期 cli（深调用勿被抢 → iret 帧坏 → #UD/#GP）；
+ * pause 期 sti（浅栈可被定时器抢）。专核仅 Input+idle；CPU1 仍 IF=0。
  */
 void InputTask(void) {
     for (;;) {

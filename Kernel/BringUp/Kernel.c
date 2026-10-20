@@ -10,8 +10,9 @@
  *        → VirtDesktop → Common（可按 HAL_INPUT_CPU_MIN Create Input）
  *   3. 否则 → Full → Common
  *
- * 公共节拍：AttachEarlyVideo → ModulesRun → AfterModules → Finish。
+ * 公共节拍：AttachEarlyVideo → ModulesRun（阶段见 Modules.c）→ AfterModules → Finish。
  * Common：Shell/Gui/Worker → Demo → 可选 Input → SchedulerStart（Start.c）。
+ * Modules 表只 Init；四环 Create 在 Common，不在 MODULE_PHASE_SESSION。
  */
 #include "BootInfo.h"
 #include "SerialLog.h"

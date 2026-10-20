@@ -288,7 +288,7 @@ BRINGUP_ARCH_SRCS := $(wildcard BringUp/$(HAL_ARCH)/*.c)
 BRINGUP_ARCH_ASM  := $(wildcard BringUp/$(HAL_ARCH)/*.S)
 BRINGUP_ARCH_OBJS := $(patsubst BringUp/$(HAL_ARCH)/%.c,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_SRCS)) \
                      $(patsubst BringUp/$(HAL_ARCH)/%.S,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_ASM))
-# Core：内核机制；薄 Initialize* 在 HAL/Initialize 与 Services（见下）
+# Core：内核机制；模块表胶水在 BringUp/Initialize；业务 Init 在 Services/Core 主文件
 CORE_SRCS     := $(wildcard Core/*.c)
 CORE_SRCS     += $(wildcard Core/Driver/*.c)
 CORE_SRCS     += $(wildcard Core/FileSystem/*.c)
@@ -300,9 +300,12 @@ CORE_SRCS     += $(wildcard Core/VirtualMemory/*.c)
 CORE_SRCS     += $(filter-out Core/PhysicalMemory/Bitmap.c,$(wildcard Core/PhysicalMemory/*.c))
 CORE_SRCS     += $(wildcard Core/Elf/*.c)
 CORE_SRCS     += $(wildcard Core/Device/*.c)
-# 开机 Init（Hal 侧，架构无关胶水；用 CFLAGS_COMMON）
-HAL_INIT_SRCS := $(wildcard HAL/Initialize/*.c)
-HAL_INIT_OBJS := $(patsubst HAL/Initialize/%.c,$(BUILDDIR)/HAL/Initialize/%.o,$(HAL_INIT_SRCS))
+# Modules 表胶水（Serial/Cpu/Usb/Video；用 CFLAGS_COMMON）
+BRINGUP_INIT_SRCS := $(wildcard BringUp/Initialize/*.c)
+BRINGUP_INIT_OBJS := $(patsubst BringUp/Initialize/%.c,$(BUILDDIR)/BringUp/Initialize/%.o,$(BRINGUP_INIT_SRCS))
+# 驱动回调槽（非 Modules 表）
+HAL_SLOT_SRCS := $(wildcard HAL/Slots/*.c)
+HAL_SLOT_OBJS := $(patsubst HAL/Slots/%.c,$(BUILDDIR)/HAL/Slots/%.o,$(HAL_SLOT_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
 SERVICES_SRCS += $(wildcard Services/Look/Locale/*.c)
@@ -585,7 +588,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_INIT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -713,7 +716,10 @@ $(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o: BringUp/$(HAL_ARCH)/%.S | $(BUILDDIR)
 $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
-$(BUILDDIR)/HAL/Initialize/%.o: HAL/Initialize/%.c | $(BUILDDIR)
+$(BUILDDIR)/BringUp/Initialize/%.o: BringUp/Initialize/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+$(BUILDDIR)/HAL/Slots/%.o: HAL/Slots/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU

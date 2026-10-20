@@ -1,16 +1,19 @@
 /*
  * Modules.c — 模块表 + ModulesRun（按表顺序调 Init）
  *
- * 三张表对应 KernelMain 三条路（选路见 BringUp/Kernel.c 文件头）：
- *   Virt          ← HalConsoleOnly
- *   VirtDesktop   ← FB 且 HalPlatformIsVirtSerialConsole
- *   Full          ← 否则（真机；USB 在 FileSystem 前）
+ * 三张表（选路见 Kernel.c）：Virt / VirtDesktop / Full。
+ * 从哪读：MODULE_PHASE_* → gModules* → ModulesRun。
  *
- * 从哪读：下方 gModules*，再看 KernelModulesRun*；ModulesRun 在文件后部。
- * 别改：各表展开后的条目顺序（尤其 Full 里 USB 在 FileSystem 前）。
- * 串口、处理器、USB、画面的开机函数在 HAL/Initialize/，名词在前。
- * 多核直接调 HalSmpStartApplicationProcessors。
- * 调度、控制台、文件系统、窗口管理器、虚拟内存、驱动的开机函数在各自主文件里。
+ * 硬脊（违反会起不来或挂盘/输入错序）：
+ *   PMM → VMM → DISPLAY(Video) → … → INPUT(USB) → FileSystem
+ *   Create 任务在 ModulesRun 返回之后（SESSION 只登记调度/命令，不开四环）。
+ *
+ * 现序（已收软点）：
+ *   · PLATFORM：Cpu → Driver → Smp（先中断/syscall，再绑 MMIO/块，再拉 AP）
+ *   · SESSION 在 FS/Gui/Net 前（HalDriverSched 早挂；Gui 长画可用 IoBreath）
+ *
+ * 落点：Initialize 胶水 → BringUp/Initialize/；机制 → Core/；会话 → Services/；
+ *   Smp → HalSmp*；驱动回调槽 → HAL/Slots/（不进本表）。
  */
 #include "KernelModules.h"
 #include "KernelModulesPrivate.h"
@@ -26,50 +29,65 @@ static int gVirtDesktop;
 
 #define MODULE_COUNT(Table) ((int)(sizeof(Table) / sizeof((Table)[0])))
 
-/* 三表共用片段；只拼表，不改相对顺序 */
-#define MODULE_HEAD                                                                \
+/*
+ * 阶段宏 —— 只拼表；展开后条目相对顺序勿改。
+ *
+ * EARLY     Serial → PMM → VMM     早日志；PMM 必须紧挨在 VMM 前
+ * DISPLAY   Video                  背缓冲/Logo；必须紧跟 VMM（无 FB 的 Virt 表无本阶段）
+ * PLATFORM  Cpu → Driver → Smp     先 CPU/中断/syscall；再绑 MMIO/块；再拉 AP
+ * INPUT     USB                    键鼠；仅 Full；必须在 FileSystem 前
+ * SESSION   Scheduler → Console    调度槽与命令表；须在 FS/Gui/Net 前（IoBreath）
+ * （字面量）FileSystem / Gui / Network   Services；Virt 可省略 Gui/Net
+ */
+#define MODULE_PHASE_EARLY                                                         \
     { "Serial",          SerialModuleInitialize },                                 \
     { "PhysicalMemory",  PhysicalMemoryInitialize },                               \
     { "VirtualMemory",   VirtualMemoryInitialize }
 
-#define MODULE_CPU_STACK                                                           \
-    { "Driver",          DriverInitialize },                                       \
+#define MODULE_PHASE_DISPLAY                                                       \
+    { "Video",           VideoInitialize }
+
+#define MODULE_PHASE_PLATFORM                                                      \
     { "Cpu",             CpuInitialize },                                          \
+    { "Driver",          DriverInitialize },                                       \
     { "Smp",             HalSmpStartApplicationProcessors }
 
-#define MODULE_TAIL                                                                \
+#define MODULE_PHASE_INPUT                                                         \
+    { "USB",             UsbInitialize }
+
+#define MODULE_PHASE_SESSION                                                       \
     { "Scheduler",       SchedulerInitialize },                                    \
     { "Console",         ConsoleInitialize }
 
-/* x86 全量：usb 在 FS 前；Video 紧跟 VMM；Driver 在 Video 后（Block 可绑 MMIO） */
+/* 真机 / QEMU 桌面：EARLY→DISPLAY→PLATFORM→INPUT→SESSION→FS/Gui/Net */
 static const MODULE gModulesFull[] = {
-    MODULE_HEAD,
-    { "Video",           VideoInitialize },
-    MODULE_CPU_STACK,
-    { "USB",             UsbInitialize },
+    MODULE_PHASE_EARLY,
+    MODULE_PHASE_DISPLAY,
+    MODULE_PHASE_PLATFORM,
+    MODULE_PHASE_INPUT,
+    MODULE_PHASE_SESSION,
     { "FileSystem",      FileSystemInitialize },
     { "Gui",             GuiInitialize },
     { "Network",         NetworkInitialize },
-    MODULE_TAIL,
 };
 
-/* 串口子集。仍挂 FileSystem：virt --serial 有 virtio-blk，供 exec HELLO.ELF */
+/* 串口-only：无 DISPLAY/INPUT/Gui/Net；SESSION 在 FS 前；FS 仍要（virtio-blk） */
 static const MODULE gModulesVirt[] = {
-    MODULE_HEAD,
-    MODULE_CPU_STACK,
+    MODULE_PHASE_EARLY,
+    MODULE_PHASE_PLATFORM,
+    MODULE_PHASE_SESSION,
     { "FileSystem",      FileSystemInitialize },
-    MODULE_TAIL,
 };
 
-/* virt 桌面（输入在后续路径；挂 net） */
+/* virt 桌面：有 DISPLAY/Gui/Net，无 INPUT；SESSION 在 FS/Gui/Net 前 */
 static const MODULE gModulesVirtDesktop[] = {
-    MODULE_HEAD,
-    { "Video",           VideoInitialize },
-    MODULE_CPU_STACK,
+    MODULE_PHASE_EARLY,
+    MODULE_PHASE_DISPLAY,
+    MODULE_PHASE_PLATFORM,
+    MODULE_PHASE_SESSION,
     { "FileSystem",      FileSystemInitialize },
     { "Gui",             GuiInitialize },
     { "Network",         NetworkInitialize },
-    MODULE_TAIL,
 };
 
 int KernelModulesVirtDesktop(void) {
@@ -91,7 +109,7 @@ int KernelModulesRunFull(void) {
     return ModulesRun(gModulesFull, MODULE_COUNT(gModulesFull));
 }
 
-/* ---- ModulesRun ---- */
+/* ---- ModulesRun：按表顺序调 Init；失败打模块名。真机每步后 HalInputPoll 防 USB 环堵 ---- */
 
 static void ModLog(const char *Name, const char *Suffix) {
     LogBoot("Boot: Mod ");
@@ -99,12 +117,12 @@ static void ModLog(const char *Name, const char *Suffix) {
     LogBoot(Suffix);
 }
 
-/* 引导读盘时 T 落到 40。这里按做完的模块继续下落。 */
+/* 引导读盘时 T 落到 40。按做完模块下落（序随 PLATFORM：Cpu→Driver→Smp）。 */
 static UINT32 ModLogoPct(const char *Name) {
-    if (Name[0] == 'D' && Name[1] == 'r') {
+    if (Name[0] == 'C' && Name[1] == 'p') {
         return 55;
     }
-    if (Name[0] == 'C' && Name[1] == 'p') {
+    if (Name[0] == 'D' && Name[1] == 'r') {
         return 62;
     }
     if (Name[0] == 'S' && Name[1] == 'm') {
@@ -127,9 +145,8 @@ static void ModProgressMark(const char *Name) {
     }
 }
 
-/* 按顺序初始化所有模块；失败时打印模块名并返回 -1 */
 int ModulesRun(const MODULE *List, int Count) {
-    /* 桌面在控制台模块之前就会登记命令、写提示。表必须先有函数。 */
+    /* Gui 等会早于 Console 模块登记命令；函数指针须先就位 */
     ConsolePublishAll();
 
     for (int i = 0; i < Count; i++) {

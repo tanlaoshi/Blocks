@@ -1,5 +1,5 @@
 /*
- * Usb.c — UsbInitialize（开机模块表；Hal 本层）
+ * Usb.c — UsbInitialize（开机模块表；BringUp 胶水）
  *
  * 探 USB/PS2 输入；无键盘也继续。
  * USB 转串口在挂盘扫口之后认。板载 COM1 在不在都认，两路可以同时用。

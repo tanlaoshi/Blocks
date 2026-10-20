@@ -1,5 +1,5 @@
 /*
- * DriverFile.c — HalDriverFileRead 槽实现
+ * DriverFile.c — HalDriverFileRead 槽实现（HAL/Slots，非 Modules 表）
  */
 #include "HalDriverFile.h"
 

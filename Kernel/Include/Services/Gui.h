@@ -45,6 +45,7 @@ void GuiDesktopInitialize(void);
 /* PR-G-hotres：HalVideoSetMode 成功后钳窗/光标并整桌重绘 */
 void GuiOnDisplayResize(void);
 void GuiPointerMove(UINT32 X, UINT32 Y);
+/* 光标契约（Erase/Busy Flush/分脏）见 Cursor.c / Compose.c 头 gui-g7-cursor */
 void GuiCursorPaint(void);
 void GuiFrameBufferBegin(void);
 void GuiFrameBufferEnd(void);

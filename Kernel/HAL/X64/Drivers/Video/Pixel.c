@@ -1,5 +1,13 @@
 /*
- * Pixel.c — 像素读写与混合（PR-S-video-1）
+ * Pixel.c — 像素读写与混合（gui-g7-cursor 分脏旁注）
+ *
+ * DirtyUnion（内容 gDirty）← DrawPixelRaw / Blend / 普通画
+ * DirtyUnionCursor（光标 gCurDirty）← XorPixelRaw；以及 CursorOverlay 期内
+ *   DirtyUnion 被重定向（Present.c：gCursorOverlay）— WriteRect/画字形勿并进
+ *   内容 AABB，否则 Shell∪远处光标 → 近全屏 Present
+ *
+ * 光标主路径用 save-under（Cursor.c Read/WriteRect），非 XOR；
+ * XOR 保留给旧/特殊路径，仍必须走光标脏。编排见 Present.c（G6）。
  */
 #include "Private.h"
 

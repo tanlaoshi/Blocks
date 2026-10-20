@@ -1,7 +1,28 @@
 /*
- * GuiCursor.c — 鼠标光标：save-under + 移动/显隐
+ * Cursor.c — 鼠标光标 save-under + 移动/显隐（gui-g7-cursor）
  *
- * 字形见 GuiCursorShape.c。改大小悬停换形见 GuiResizeCursorKindAt。
+ * 字形 Shape.c；改大小悬停换形 GuiResizeCursorKindAt。
+ *
+ * ── 光标契约（对表拧，勿凭感觉改序）──
+ *
+ * 原语：
+ *   CursorRestore — Overlay 内 WriteRect(Under) 盖回；清 Visible
+ *   CursorPaint   — 若 Visible 先 Restore → ReadRect→Under → 画字形 → Visible=1
+ *   二者写后缓冲时必 CursorOverlayBegin/End → 脏进 gCurDirty（≠ 内容 gDirty）
+ *
+ * 合成序（Compose / ThemeScene / FrameBuffer / Redraw）：
+ *   1 ComposeBeginEraseCursor：先 Restore 再 ComposeBusy（见 Compose.c）
+ *   2 开中断画桌面/窗（Busy 丢弃嵌套鼠标）
+ *   3 Irq 内 CursorPaint
+ *   4 PresentFlush 仍在 ComposeBusy 内（G6）— 出 Busy 再 Flush → AP 鼠
+ *     用旧 Under Restore → 正方形镂空 / 十字印
+ *
+ * 移动 CursorMove：
+ *   常态：Irq 内 Restore→改 XY→Paint→GraphicsPresent（可被 Defer/Echo 吞）
+ *   拖窗/拖图标：只 Restore+Present，不 Paint（光标隐；Drag 自管画面）
+ *
+ * 对外：GuiCursorHide/Show/Paint、GuiFrameBufferBegin/End — 同文件下部。
+ * HAL 分脏 / XOR：Pixel.c；Flush vs Present：Present.c（G6）。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

@@ -18,7 +18,14 @@
  *   ShellEchoCoalesce — 打字跳过本帧 GraphicsPresent；Shell 环末合并刷
  *   Pause/Resume — 最外层暂清 Defer=0，放行光标（等 StoreJob / 拖图标）
  *   Pop 且 Defer==0 → HalVideoPresent；合成末用 PresentFlush（Busy 内）
- * Flush vs Present / 条带 Partial：HAL Present.c 头（G6）。窗绘制 GuiDraw；备份 GuiBackup。
+ * Flush vs Present / 条带 Partial：HAL Present.c 头（G6）。
+ *
+ * 光标契约（G7；细节 Cursor.c / Pixel.c）：
+ *   ComposeBeginEraseCursor — Irq 内先 CursorRestore，再 ComposeBegin
+ *     （Busy 抢在 Restore 前 → SMP 清 Visible → Restore 空操作 → 镂空）
+ *   ThemeScene / Redraw / FrameBufferEnd — Paint 后 PresentFlush 须仍在 Busy 内
+ *   GuiPaintWindow — 局部 Restore→画窗→Paint→Present（非 Flush；短路径）
+ * 窗绘制 GuiDraw；备份 GuiBackup。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

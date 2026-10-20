@@ -1,5 +1,11 @@
 /*
- * ShellCommandsSystemProc.c — PR-S3-shellsys-1：exec / ps / kill / set priority / runuser
+ * SystemProcess.c — exec / ps / kill / set priority / run user（story-s2）
+ *
+ * 稳态 S2 入口：
+ *   run user → ProcessRunDemo（内嵌 hello）→ 成功则 WaitPrompt
+ *   exec <file> → WaitPrompt（非 virt）→ ClassExecPath → ProcessExec
+ *                 失败 ShowPrompt；成功等 exit 再 ShowPrompt
+ * 下一跳：Core/Process（ProcessExec / Load / StartElf）。桌面图标 EXEC 同契约见 ClickDesktop。
  */
 #include "ShellPrivate.h"
 #include "Console.h"

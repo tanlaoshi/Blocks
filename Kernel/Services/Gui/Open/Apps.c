@@ -1,6 +1,9 @@
 /*
- * GuiOpenApps.c — Shell / Settings / Store / Files / Edit 开窗
- * 核心：GuiOpen.c
+ * Apps.c — Shell / Settings / Store / Files / Edit 开窗（story-s1）
+ *
+ * 链：ClickDesktop Action → 这里 GuiOpen* → OpenChromeDefer →（填内容）→ OpenFadeIn。
+ * Defer/Fade 契约：Open.c；关窗：Close.c（USER 轻量 gui-g3）。
+ * 单例前置：FocusExistingKind（Settings/Store/Edit）；Shell/Files 每次新槽。
  */
 #include "GuiPrivate.h"
 #include "UI.h"
@@ -261,7 +264,7 @@ int GuiOpenEdit(const char *Path) {
     gGuiWindowManager.Windows[Idx].Width = W;
     gGuiWindowManager.Windows[Idx].Height = H;
     gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
-    gGuiWindowManager.Windows[Idx].Title = "Edit";
+    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_EDIT);
     gGuiWindowManager.Windows[Idx].TermSet = 0;
     gGuiWindowManager.Windows[Idx].InputLen = 0;
     gGuiWindowManager.Windows[Idx].WaitPrompt = 0;

@@ -65,10 +65,10 @@ CC = gcc
 LD = ld
 OBJCOPY = objcopy
 
-# 可选：旁挂 Blocks/Tools/Extract 或本树 Tools/Extract（xPack 交叉链）
-TOOLS_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../Tools/Extract)
+# 可选：旁挂 Blocks/Tools 或本树 Tools（xPack 交叉链，目录名 xpack-*）
+TOOLS_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../Tools)
 ifeq ($(wildcard $(TOOLS_ROOT)/xpack-*),)
-TOOLS_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/Tools/Extract)
+TOOLS_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/Tools)
 endif
 
 

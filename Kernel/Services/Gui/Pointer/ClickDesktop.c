@@ -1,7 +1,12 @@
 /*
- * GuiClickDesktop.c — 桌面/菜单/托盘点击与 DESKTOP_ACTION（PR-F-guiclick-1）
+ * ClickDesktop.c — 桌面/菜单/托盘 → DESKTOP_ACTION → 开窗（story-s1）
  *
- * 从 GuiClick.c 抽出；不改点击语义。
+ * GuiClickRunDesktopAction：
+ *   SHELL/SETTINGS/FILES/STORE/DEVICES → GuiOpen*（Open/Apps.c 等）
+ *   EXEC → ProcessExec + WaitPrompt（与 shell exec 同契约；双 blocks> 坑见下）
+ *   SHUTDOWN/REBOOT → HalCpu*
+ * 单例（Settings/Store/Edit）在 Open.c FocusExistingKind；Shell/Files 可多开。
+ * 图标双击出 Action：Desktop/Click.c；栏/菜单单击：TaskbarClick.c。
  */
 #include "GuiPrivate.h"
 #include "Hal.h"

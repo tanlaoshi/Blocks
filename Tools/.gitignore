@@ -1,3 +1,5 @@
-# 交叉工具链解压树（体积大，本机放置；不进 git）
-Extract/
+# 交叉工具链与可选缓存（体积大，本机放置；不进 git）
+xpack-*/
 Tarballs/
+# 旧路径：曾用 Extract/ 包一层，忽略残留以免误提交
+Extract/

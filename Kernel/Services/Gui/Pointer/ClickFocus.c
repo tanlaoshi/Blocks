@@ -1,7 +1,8 @@
 /*
- * GuiClickFocus.c — USER 命中与置顶后按窗种类分发（PR-F-guiclick-1）
+ * ClickFocus.c — USER 命中与置顶后按窗种类分发（story-s1 / PR-F-guiclick-1）
  *
- * 从 GuiClick.c 抽出；不改点击语义。
+ * GuiHandleClick 第 4–5 步：USER 客户区按钮（Raise 前命中）→ 置顶已有窗再按 Kind 分发。
+ * 开新窗不在这里，在 ClickDesktop→GuiOpen*。关窗 × 在 Click.c 全窗扫。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

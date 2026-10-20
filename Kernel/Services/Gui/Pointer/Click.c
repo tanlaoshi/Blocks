@@ -1,8 +1,13 @@
 /*
- * GuiClick.c — 按下命中编排（PR-F-guiclick-1）
+ * Click.c — 按下命中编排（story-s1 / PR-F-guiclick-1）
  *
- * 关窗 / 桌面栏 / USER / 置顶分发 / 桌面落空；语义不变。
- * 核心：GuiPointer.c
+ * 稳态故事 S1 入口之一：GuiPollMouse 边沿 → 这里 → 分发或开窗。
+ *
+ * 序（先到先得，改序要手测关钮被挡 / 菜单外点窗）：
+ *   1 ContextMenu → 2 全窗 ×（CloseWindow）→ 3 任务栏/菜单（TryDesktopBar）
+ *   → 4 USER 客户区 → 5 置顶已有窗 → 6 桌面落空（图标双击 / 菜单）
+ * Action→开窗：ClickDesktop.c GuiClickRunDesktopAction。
+ * 上游：Pointer.c；桌面几何：Desktop/Click.c（图标要双击）。
  */
 #include "GuiPrivate.h"
 

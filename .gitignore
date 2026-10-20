@@ -8,9 +8,10 @@ Boot/EDK2/Conf/BuildEnv.sh
 Boot/EDK2/Conf/.AutoGenIdFile.txt
 Boot/EDK2/Conf/.cache/
 
-# 交叉工具链解压树（见 Tools/README.md 与 Tools/.gitignore）
-Tools/Extract/
+# 交叉工具链（见 Tools/README.md 与 Tools/.gitignore）
+Tools/xpack-*/
 Tools/Tarballs/
+Tools/Extract/
 
 # 本地覆盖
 *.local

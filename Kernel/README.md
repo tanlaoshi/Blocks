@@ -28,7 +28,7 @@ cd ~/Blocks/Kernel
 ./build.sh riscv        # → Build/HAL/RiscV/Kernel.elf
 ```
 
-交叉链：`../Tools/Extract/xpack-*`。
+交叉链：`../Tools/xpack-*`。
 
 ## 手测（X64 桌面）
 

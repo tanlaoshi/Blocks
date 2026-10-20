@@ -1,5 +1,8 @@
 /*
- * Load.c — 读盘装载 ELF（PR-S-process-1）
+ * Load.c — 读盘装载 ELF（story-s2 / PR-S-process-1）
+ *
+ * ProcessLoadPath：Fat 读→Elf 映射。ProcessStopAllUsers：开窗 App 的 Exec 前清其它用户+USER 窗
+ *（防 Raise 挪槽 wid 串台）；Hello 等无窗不走停清（ProcessAppTakesWindow）。
  */
 #include "Process.h"
 #include "ProcessPrivate.h"

@@ -37,8 +37,9 @@ fi
 # 交叉工具链仍走 ToyKernel/Tools（不强制系统包）
 if [ -x "$ROOT/ToyKernel/Tools/fetch-toolchain.sh" ]; then
     echo "bootstrap: 可选 — $ROOT/ToyKernel/Tools/fetch-toolchain.sh"
-elif [ -d "$ROOT/ToyKernel/Tools/Extract" ]; then
-    echo "bootstrap: 已有 Tools/Extract 工具链树"
+elif compgen -G "$ROOT/ToyKernel/Tools/xpack-*" > /dev/null || \
+     compgen -G "$ROOT/Tools/xpack-*" > /dev/null; then
+    echo "bootstrap: 已有 Tools/xpack-* 工具链树"
 fi
 
 echo "bootstrap: 完成。下一步: source \"$ROOT/Scripts/env.sh\" && build"

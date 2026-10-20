@@ -59,11 +59,11 @@ jobs:
       - name: Fetch xPack aarch64-none-elf
         working-directory: Kernel
         run: |
-          mkdir -p Tools/Tarballs Tools/Extract
+          mkdir -p Tools/Tarballs
           wget -q -O Tools/Tarballs/arm-gnu.tar.gz \
             'https://github.com/xpack-dev-tools/aarch64-none-elf-gcc-xpack/releases/download/v13.2.1-1.1/xpack-aarch64-none-elf-gcc-13.2.1-1.1-linux-x64.tar.gz'
-          tar -xzf Tools/Tarballs/arm-gnu.tar.gz -C Tools/Extract
-          Tools/Extract/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc --version | head -1
+          tar -xzf Tools/Tarballs/arm-gnu.tar.gz -C Tools
+          Tools/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc --version | head -1
 
       - name: Build
         working-directory: Kernel
@@ -94,11 +94,11 @@ jobs:
       - name: Fetch xPack riscv-none-elf
         working-directory: Kernel
         run: |
-          mkdir -p Tools/Tarballs Tools/Extract
+          mkdir -p Tools/Tarballs
           wget -q -O Tools/Tarballs/riscv-gnu.tar.gz \
             'https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v13.2.0-2/xpack-riscv-none-elf-gcc-13.2.0-2-linux-x64.tar.gz'
-          tar -xzf Tools/Tarballs/riscv-gnu.tar.gz -C Tools/Extract
-          Tools/Extract/xpack-riscv-none-elf-gcc-*/bin/riscv-none-elf-gcc --version | head -1
+          tar -xzf Tools/Tarballs/riscv-gnu.tar.gz -C Tools
+          Tools/xpack-riscv-none-elf-gcc-*/bin/riscv-none-elf-gcc --version | head -1
 
       - name: Build
         working-directory: Kernel

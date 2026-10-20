@@ -1,7 +1,9 @@
 /*
- * Open.c — 开窗辅助 / 槽位
+ * Open.c — 开窗辅助 / 槽位（story-s1）
  *
- * 关窗 Close.c；应用 Apps.c。Present 门闩总表 Compose.c（gui-g1-defer）。
+ * OpenChromeDefer：Push Defer → 画 chrome → 调用方填客户区 → OpenFadeIn=Pop。
+ * 必须配对 Pop，否则全局禁 Present（半帧/卡死）。门闩总表 Compose.c（gui-g1）。
+ * FocusExistingKind：单例应用前置。应用入口 Apps.c；关窗 Close.c。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

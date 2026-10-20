@@ -1,7 +1,9 @@
 /*
- * Click.c — 图标点选（PR-S3-desktopclick-1）
+ * Click.c — 桌面图标点选（story-s1 / PR-S3-desktopclick-1）
  *
- * 任务栏 / 开始菜单见 TaskbarClick.c。核心：Desktop.c。
+ * 图标：单击选中+武装拖；同标双击（时限/位移）才 OutAction→开窗。
+ * 任务栏 / 开始菜单单击出 Action：TaskbarClick.c（Gui 侧 TryDesktopBar）。
+ * 上游编排：Gui/Pointer/Click*.c。
  */
 #include "DesktopPrivate.h"
 

@@ -1,5 +1,8 @@
 /*
- * GuiOpenDevices.c — 设备管理器开窗（PR-DEV-6）
+ * Devices.c — 设备管理器开窗（story-s1 / PR-DEV-6）
+ *
+ * 与 Apps.c 同链：Action→GuiOpenDevices→OpenChromeDefer→DevicesUiOpen→OpenFadeIn。
+ * 单例：FocusExistingKind(DEVICES)。
  */
 #include "GuiPrivate.h"
 #include "Theme.h"

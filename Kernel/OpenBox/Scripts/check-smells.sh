@@ -30,6 +30,7 @@ GLOBS=(
     --glob '!Documents/**'
     --glob '!Build/**'
     --glob '!ThirdParty/**'
+    --glob '!Tools/xpack-*/**' \
     --glob '!Tools/Extract/**'
     --glob '!Tools/Tarballs/**'
     --glob '!Tools/Debs/**'

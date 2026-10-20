@@ -1,3 +1,8 @@
+/*
+ * Process.h — 用户 ELF 装载 / exec（story-s2）
+ *
+ * Shell `exec`/`run user` 与桌面 EXEC → ProcessExec / ProcessRunDemo。
+ */
 #ifndef PROCESS_H
 #define PROCESS_H
 

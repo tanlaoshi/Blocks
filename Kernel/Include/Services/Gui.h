@@ -1,5 +1,8 @@
 /*
  * Gui.h — 简易窗口管理器与鼠标光标
+ *
+ * 稳态开窗故事（story-s1）：PollMouse → GuiHandleClick → Desktop Action → GuiOpen*。
+ * 合成/脏/拖见 Compose·Damage·Drag 头（gui-g0…g8）；本头只挂对外 API。
  */
 #ifndef GUI_H
 #define GUI_H

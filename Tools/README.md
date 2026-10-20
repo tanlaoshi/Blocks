@@ -4,12 +4,12 @@
 
 | 路径 | 说明 |
 | ---- | ---- |
-| `Extract/` | 解压后的 xPack 等（**不进 git**） |
+| `xpack-*/` | 解压后的 xPack 等（**不进 git**） |
 | `Tarballs/` | 可选缓存包（不进 git） |
 
 X64 的 Boot / Kernel 用系统 `gcc`，不读这里。Arm64 / RiscV 时，`Kernel/Makefile` 会找：
 
-1. `Tools/Extract/xpack-aarch64-none-elf-gcc-*/` 或 `xpack-riscv-none-elf-gcc-*/`
+1. `Tools/xpack-aarch64-none-elf-gcc-*/` 或 `xpack-riscv-none-elf-gcc-*/`
 2. 否则 PATH 上的 `aarch64-linux-gnu-gcc` / `riscv64-linux-gnu-gcc`
 
-换电脑时如何只拷这份工具链（要保留符号链接），见仓库根目录 [`同步.md`](../同步.md)。目标目录是 `~/Blocks/Tools/Extract/`。
+换电脑时如何只拷这份工具链（要保留符号链接），见仓库根目录 [`同步.md`](../同步.md)。目标目录是 `~/Blocks/Tools/`（`xpack-*` 直接放在此层，不再套 `Extract/`）。

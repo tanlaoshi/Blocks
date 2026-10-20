@@ -1,5 +1,9 @@
 /*
- * Process.c — exec / execve / 嵌入演示（PR-S-process-1）
+ * Process.c — exec / execve / 嵌入演示（story-s2 / PR-S-process-1）
+ *
+ * ProcessExec：LoadPath→argv 栈→（开窗 App 才 StopAllUsers）→StartElf；virt 则 CoopDrain。
+ * ProcessRunDemo：链入 `_binary_User_hello_elf_*`（无盘 hello）。
+ * 上游：Shell SystemProcess / 桌面 EXEC。装载细节 Load.c；停旧用户见 ProcessStopAllUsers。
  */
 #include "Process.h"
 #include "ProcessPrivate.h"

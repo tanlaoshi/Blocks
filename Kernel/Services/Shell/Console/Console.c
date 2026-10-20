@@ -1,6 +1,10 @@
 /*
  * Console.c — Shell 提示符与 Job 输出（PR-S3-console-2）
  *
+ * 模块表 ConsoleInitialize（软成功：恒 return 0）：
+ *   PublishAll → StorePathGuard → Locale → Builtins/Commands
+ *   → UserAliasLoad → gConsole.Initialize
+ * ModulesRun 进表前已 PublishAll 一次（Db 早登记）；此处再填。
  * 焦点 / 开窗重画见 Focus.c。
  */
 #include "Console.h"

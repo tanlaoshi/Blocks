@@ -19,7 +19,7 @@
 #include "DriverNic.h"
 #include "NetConfig.h"
 
-static int NetDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int NetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     UINT8 Bus;
     UINT8 Dev;
     UINT8 Fn;
@@ -54,8 +54,8 @@ static int NetDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int NetDriverBind(TOY_DRIVER_INSTANCE *Inst);
-static void NetDriverRemove(TOY_DRIVER_INSTANCE *Inst);
+static int NetDriverBind(DRIVER_INSTANCE *Inst);
+static void NetDriverRemove(DRIVER_INSTANCE *Inst);
 
 /* Net.h 导出的 ops；此处仅作后端表前向声明 */
 int NetReady(void);
@@ -85,23 +85,23 @@ static const NET_BACKEND gNetBackend = {
     .SetLwIpRx = NetSetLwIpRx,
 };
 
-static int NetDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int NetDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    if (ToyDriverNetAttach(&gNetBackend) != 0) {
+    if (DriverNetAttach(&gNetBackend) != 0) {
         return -1;
     }
     NetConfigEnsure(); /* virtio 路径原先不 Ensure → Hal 停在 10.0.2.15 */
     return 0;
 }
 
-static void NetDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void NetDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gNetOk = 0;
 }
 
-static const TOY_DRIVER gVirtioNetPciDriver = {
+static const DRIVER gVirtioNetPciDriver = {
     .Name = "virtio-net-pci",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = 0,
     .Probe = NetDriverProbe,
     .Bind = NetDriverBind,
@@ -109,11 +109,11 @@ static const TOY_DRIVER gVirtioNetPciDriver = {
 };
 
 void NetDriverRegister(void) {
-    (void)ToyDriverRegister(&gVirtioNetPciDriver);
+    (void)DriverRegister(&gVirtioNetPciDriver);
 }
 
 int NetProtocolAttach(void) {
-    return ToyDriverNetAttach(&gNetBackend);
+    return DriverNetAttach(&gNetBackend);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_NET, NetDriverRegister);

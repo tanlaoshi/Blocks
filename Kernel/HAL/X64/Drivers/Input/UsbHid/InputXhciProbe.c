@@ -36,7 +36,7 @@ static int TryFallback(void **OutPrivate) {
     return -1;
 }
 
-int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+int DriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
     USB_CONTROLLER One;
 

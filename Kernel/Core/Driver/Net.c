@@ -6,7 +6,7 @@
 
 static const NET_BACKEND *gNetBackend;
 
-int ToyDriverNetAttach(const NET_BACKEND *Backend) {
+int DriverNetAttach(const NET_BACKEND *Backend) {
     if (!Backend || !Backend->Ready || !Backend->Poll || !Backend->GetMac ||
         !Backend->GetIp || !Backend->SetIp || !Backend->FormatIp ||
         !Backend->ParseIp || !Backend->Ping || !Backend->GetStats ||
@@ -18,20 +18,20 @@ int ToyDriverNetAttach(const NET_BACKEND *Backend) {
     return 0;
 }
 
-int ToyDriverNetReady(void) {
+int DriverNetReady(void) {
     if (!gNetBackend || !gNetBackend->Ready) {
         return 0;
     }
     return gNetBackend->Ready();
 }
 
-void ToyDriverNetPoll(void) {
+void DriverNetPoll(void) {
     if (gNetBackend && gNetBackend->Poll) {
         gNetBackend->Poll();
     }
 }
 
-void ToyDriverNetGetMac(UINT8 Mac[6]) {
+void DriverNetGetMac(UINT8 Mac[6]) {
     if (gNetBackend && gNetBackend->GetMac) {
         gNetBackend->GetMac(Mac);
     } else if (Mac) {
@@ -39,20 +39,20 @@ void ToyDriverNetGetMac(UINT8 Mac[6]) {
     }
 }
 
-UINT32 ToyDriverNetGetIp(void) {
+UINT32 DriverNetGetIp(void) {
     if (!gNetBackend || !gNetBackend->GetIp) {
         return 0;
     }
     return gNetBackend->GetIp();
 }
 
-void ToyDriverNetSetIp(UINT32 Ip) {
+void DriverNetSetIp(UINT32 Ip) {
     if (gNetBackend && gNetBackend->SetIp) {
         gNetBackend->SetIp(Ip);
     }
 }
 
-void ToyDriverNetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
+void DriverNetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
     if (gNetBackend && gNetBackend->FormatIp) {
         gNetBackend->FormatIp(Ip, Buf, BufLen);
     } else if (Buf && BufLen > 0) {
@@ -60,21 +60,21 @@ void ToyDriverNetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
     }
 }
 
-int ToyDriverNetParseIp(const char *Text, UINT32 *Ip) {
+int DriverNetParseIp(const char *Text, UINT32 *Ip) {
     if (!gNetBackend || !gNetBackend->ParseIp) {
         return -1;
     }
     return gNetBackend->ParseIp(Text, Ip);
 }
 
-int ToyDriverNetPing(const char *Host, int TimeoutMs) {
+int DriverNetPing(const char *Host, int TimeoutMs) {
     if (!gNetBackend || !gNetBackend->Ping) {
         return -1;
     }
     return gNetBackend->Ping(Host, TimeoutMs);
 }
 
-void ToyDriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
+void DriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
     if (gNetBackend && gNetBackend->GetStats) {
         gNetBackend->GetStats(TxDone, RxFrames);
         return;
@@ -87,21 +87,21 @@ void ToyDriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
     }
 }
 
-int ToyDriverNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen) {
+int DriverNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen) {
     if (!gNetBackend || !gNetBackend->SendIp) {
         return -1;
     }
     return gNetBackend->SendIp(DstIp, Proto, Payload, PayloadLen);
 }
 
-UINT16 ToyDriverNetChecksum(const void *Data, UINTN Len) {
+UINT16 DriverNetChecksum(const void *Data, UINTN Len) {
     if (!gNetBackend || !gNetBackend->Checksum) {
         return 0;
     }
     return gNetBackend->Checksum(Data, Len);
 }
 
-void ToyDriverNetSetLwIpRx(int Enable) {
+void DriverNetSetLwIpRx(int Enable) {
     if (gNetBackend && gNetBackend->SetLwIpRx) {
         gNetBackend->SetLwIpRx(Enable);
     }

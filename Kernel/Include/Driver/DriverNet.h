@@ -1,7 +1,7 @@
 /*
  * DriverNet.h — Net 类适配（PR-D3）
  *
- * 驱动 Bind 时调用 ToyDriverNetAttach；Common 仍只见 HalNet*。
+ * 驱动 Bind 时调用 DriverNetAttach；Common 仍只见 HalNet*。
  */
 #ifndef DRIVER_NET_H
 #define DRIVER_NET_H
@@ -23,19 +23,19 @@ typedef struct {
     void (*SetLwIpRx)(int Enable);
 } NET_BACKEND;
 
-int ToyDriverNetAttach(const NET_BACKEND *Backend);
-int ToyDriverNetReady(void);
+int DriverNetAttach(const NET_BACKEND *Backend);
+int DriverNetReady(void);
 
-void ToyDriverNetPoll(void);
-void ToyDriverNetGetMac(UINT8 Mac[6]);
-UINT32 ToyDriverNetGetIp(void);
-void ToyDriverNetSetIp(UINT32 Ip);
-void ToyDriverNetFormatIp(UINT32 Ip, char *Buf, int BufLen);
-int ToyDriverNetParseIp(const char *Text, UINT32 *Ip);
-int ToyDriverNetPing(const char *Host, int TimeoutMs);
-void ToyDriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
-int ToyDriverNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
-UINT16 ToyDriverNetChecksum(const void *Data, UINTN Len);
-void ToyDriverNetSetLwIpRx(int Enable);
+void DriverNetPoll(void);
+void DriverNetGetMac(UINT8 Mac[6]);
+UINT32 DriverNetGetIp(void);
+void DriverNetSetIp(UINT32 Ip);
+void DriverNetFormatIp(UINT32 Ip, char *Buf, int BufLen);
+int DriverNetParseIp(const char *Text, UINT32 *Ip);
+int DriverNetPing(const char *Host, int TimeoutMs);
+void DriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
+int DriverNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
+UINT16 DriverNetChecksum(const void *Data, UINTN Len);
+void DriverNetSetLwIpRx(int Enable);
 
 #endif

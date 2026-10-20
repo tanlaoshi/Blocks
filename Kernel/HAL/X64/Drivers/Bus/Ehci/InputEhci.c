@@ -1,7 +1,7 @@
 /*
  * InputEhci.c — ehci 经 Driver Input 类注册（PR-H-ehci-1/2）
  *
- * ehci-2：Bind → ToyDriverInputAttach（mux 与 ps2/xhci 并存）。
+ * ehci-2：Bind → DriverInputAttach（mux 与 ps2/xhci 并存）。
  */
 #include "Driver.h"
 #include "DriverBoot.h"
@@ -72,7 +72,7 @@ static const DRIVER_MATCH gEhciMatch[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int DriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
     USB_CONTROLLER One;
 
@@ -102,21 +102,21 @@ static int DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) 
     return 0;
 }
 
-static int DriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int DriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!Ready()) {
         return -1;
     }
-    return ToyDriverInputAttach(&gEhciInputBackend);
+    return DriverInputAttach(&gEhciInputBackend);
 }
 
-static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void DriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gEhciDriver = {
+static const DRIVER gEhciDriver = {
     .Name = "ehci",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = gEhciMatch,
     .Probe = DriverProbe,
     .Bind = DriverBind,
@@ -124,7 +124,7 @@ static const TOY_DRIVER gEhciDriver = {
 };
 
 void InputEhciRegister(void) {
-    (void)ToyDriverRegister(&gEhciDriver);
+    (void)DriverRegister(&gEhciDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_INPUT_EHCI, InputEhciRegister);

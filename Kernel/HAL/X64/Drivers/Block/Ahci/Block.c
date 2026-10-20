@@ -2,7 +2,7 @@
  * Block.c — AHCI 块设备经 Driver Block 类注册（PR-H1）
  *
  * 注册顺序在 Ata 之前；HalBlockInitialize 在 VMM 后再 Probe，AHCI 绑定时
- * ToyDriverBlockAttach 覆盖 ATA（真机无 IDE 时 ATA 本就不会绑）。
+ * DriverBlockAttach 覆盖 ATA（真机无 IDE 时 ATA 本就不会绑）。
  */
 #include "Block.h"
 #include "DriverBoot.h"
@@ -34,7 +34,7 @@ static const DRIVER_MATCH gAhciMatch[] = {
     { .Type = DRIVER_MATCH_NONE },
 };
 
-static int AhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int AhciDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -63,18 +63,18 @@ static int AhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     return 0;
 }
 
-static int AhciDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int AhciDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverBlockAttach(&gAhciBackend);
+    return DriverBlockAttach(&gAhciBackend);
 }
 
-static void AhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void AhciDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gAhciDriver = {
+static const DRIVER gAhciDriver = {
     .Name = "ahci",
-    .Class = TOY_DRIVER_CLASS_BLOCK,
+    .Class = DRIVER_CLASS_BLOCK,
     .Match = gAhciMatch,
     .Probe = AhciDriverProbe,
     .Bind = AhciDriverBind,
@@ -82,7 +82,7 @@ static const TOY_DRIVER gAhciDriver = {
 };
 
 void AhciDriverRegister(void) {
-    (void)ToyDriverRegister(&gAhciDriver);
+    (void)DriverRegister(&gAhciDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_AHCI, AhciDriverRegister);

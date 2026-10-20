@@ -39,7 +39,7 @@ static const NIC_L2 gIwlNicL2 = {
     .GetLink = IwlNicGetLink,
 };
 
-static int IwlDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int IwlDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -65,7 +65,7 @@ static int IwlDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int IwlDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int IwlDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!IwlReady()) {
         return -1;
@@ -78,13 +78,13 @@ static int IwlDriverBind(TOY_DRIVER_INSTANCE *Inst) {
     return NetAttachNicKind(&gIwlNicL2, NET_NIC_KIND_WIFI);
 }
 
-static void IwlDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void IwlDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gIwlDriver = {
+static const DRIVER gIwlDriver = {
     .Name = "iwl8265",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = gIwlMatch,
     .Probe = IwlDriverProbe,
     .Bind = IwlDriverBind,
@@ -105,7 +105,7 @@ void IwlDriverRegister(void) {
     };
 
     HalIwlSetOps(&Ops);
-    (void)ToyDriverRegister(&gIwlDriver);
+    (void)DriverRegister(&gIwlDriver);
 }
 
 /* Worker：后台上片；成功则 NetAttach（Probe 时尚未 assoc） */

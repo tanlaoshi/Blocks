@@ -10,8 +10,8 @@
 #include "BootTypes.h"
 
 /* 前向声明（避免 include Driver.h） */
-struct TOY_DRIVER;
-struct TOY_DRIVER_INSTANCE;
+struct DRIVER;
+struct DRIVER_INSTANCE;
 
 /* 设备总线类型 */
 typedef enum {
@@ -63,8 +63,8 @@ typedef struct DEVICE_NODE {
     struct DEVICE_NODE *Parent;
 
     /* 驱动绑定 */
-    const struct TOY_DRIVER *Driver;
-    struct TOY_DRIVER_INSTANCE *Instance;
+    const struct DRIVER *Driver;
+    struct DRIVER_INSTANCE *Instance;
     int Bound;
 } DEVICE_NODE;
 
@@ -88,8 +88,8 @@ DEVICE_NODE *DeviceGetParent(DEVICE_NODE *Dev);
 int DeviceGetChildren(DEVICE_NODE *Parent, DEVICE_NODE **Out, int Max);
 /* PR-DEV-tree-api：DEBUG 自检（release 下空实现）。枚举后由 DeviceEnumerateAll 调用。 */
 void DeviceTreeSelfTest(void);
-void DeviceBindDriver(DEVICE_NODE *Dev, const struct TOY_DRIVER *Drv,
-                      struct TOY_DRIVER_INSTANCE *Inst);
+void DeviceBindDriver(DEVICE_NODE *Dev, const struct DRIVER *Drv,
+                      struct DRIVER_INSTANCE *Inst);
 void DeviceUnbind(DEVICE_NODE *Dev);
 void DeviceListDump(void (*Write)(const char *Text));
 /* PR-DEV-lsdev：解析 -v / -b / -u / -c。0=已打印，-1=用法错误。Write 由调用方传入。 */
@@ -106,7 +106,7 @@ int DeviceRegisterMmio(DEVICE_NODE *Dev, UINT64 Base, UINT64 Size);
  */
 void DeviceEnumerateAll(void);
 /*
- * PR-DEV-enum 策略 A：已绑定 ToyDriverInstance 按名认领一台 PCI 设备，
+ * PR-DEV-enum 策略 A：已绑定 DriverInstance 按名认领一台 PCI 设备，
  * 回填 State / Bound / Driver。实例表无 BDF，同名多台只认第一台。
  */
 void DeviceSyncBound(void);

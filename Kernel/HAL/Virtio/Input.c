@@ -156,7 +156,7 @@ static const INPUT_BACKEND gInputBackend = {
     .MouseDequeue = VirtioInputMouseDequeue,
 };
 
-static int VirtioInputDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int VirtioInputDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     IN_SCAN S;
     UINT8 *Page;
 
@@ -206,20 +206,20 @@ static int VirtioInputDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **O
     return 0;
 }
 
-static int VirtioInputDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int VirtioInputDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverInputAttach(&gInputBackend);
+    return DriverInputAttach(&gInputBackend);
 }
 
-static void VirtioInputDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void VirtioInputDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gKbdOn = 0;
     gTabOn = 0;
 }
 
-static const TOY_DRIVER gVirtioInputDriver = {
+static const DRIVER gVirtioInputDriver = {
     .Name = "virtio-input",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = 0,
     .Probe = VirtioInputDriverProbe,
     .Bind = VirtioInputDriverBind,
@@ -227,10 +227,10 @@ static const TOY_DRIVER gVirtioInputDriver = {
 };
 
 void VirtioInputRegister(void) {
-    (void)ToyDriverRegister(&gVirtioInputDriver);
+    (void)DriverRegister(&gVirtioInputDriver);
 }
 
 int VirtioInputInit(void) {
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_INPUT);
-    return ToyDriverInputReady() ? 0 : -1;
+    (void)DriverProbeClass(DRIVER_CLASS_INPUT);
+    return DriverInputReady() ? 0 : -1;
 }

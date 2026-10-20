@@ -45,7 +45,7 @@ static const DRIVER_MATCH gHdaMatch[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static int HdaProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int HdaProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -76,7 +76,7 @@ static int HdaProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     return 0;
 }
 
-static int HdaBind(TOY_DRIVER_INSTANCE *Inst) {
+static int HdaBind(DRIVER_INSTANCE *Inst) {
     if (!Inst || !Inst->Driver || !gHdaNode) {
         return -1;
     }
@@ -85,16 +85,16 @@ static int HdaBind(TOY_DRIVER_INSTANCE *Inst) {
     return 0;
 }
 
-static void HdaRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void HdaRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gHdaProbed = 0;
     gHdaNode = 0;
     gHdaDid = 0;
 }
 
-static const TOY_DRIVER gHdaDriver = {
+static const DRIVER gHdaDriver = {
     .Name = "hda",
-    .Class = TOY_DRIVER_CLASS_AUDIO,
+    .Class = DRIVER_CLASS_AUDIO,
     .Match = gHdaMatch,
     .Probe = HdaProbe,
     .Bind = HdaBind,
@@ -102,11 +102,11 @@ static const TOY_DRIVER gHdaDriver = {
 };
 
 void HdaDriverRegister(void) {
-    if (ToyDriverRegister(&gHdaDriver) != 0) {
+    if (DriverRegister(&gHdaDriver) != 0) {
         LogBoot("Boot: hda register fail\n");
         return;
     }
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_AUDIO);
+    (void)DriverProbeClass(DRIVER_CLASS_AUDIO);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_HDA, HdaDriverRegister);

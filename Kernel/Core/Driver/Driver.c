@@ -10,17 +10,17 @@
 #include "SerialLog.h"
 #include "Debug.h"
 
-static const TOY_DRIVER *gDrivers[TOY_DRIVER_MAX_DRIVERS];
+static const DRIVER *gDrivers[DRIVER_MAX_DRIVERS];
 static UINTN gDriverCount;
 
-static TOY_DRIVER_INSTANCE gInstances[TOY_DRIVER_MAX_INSTANCES];
+static DRIVER_INSTANCE gInstances[DRIVER_MAX_INSTANCES];
 static UINTN gInstanceCount;
 
-int ToyDriverRegister(const TOY_DRIVER *Driver) {
+int DriverRegister(const DRIVER *Driver) {
     if (!Driver || !Driver->Name || !Driver->Probe) {
         return -1;
     }
-    if (gDriverCount >= TOY_DRIVER_MAX_DRIVERS) {
+    if (gDriverCount >= DRIVER_MAX_DRIVERS) {
         LogDrv("driver: register full\n");
         return -1;
     }
@@ -28,18 +28,18 @@ int ToyDriverRegister(const TOY_DRIVER *Driver) {
     return 0;
 }
 
-int ToyDriverProbeAll(void) {
-    return ToyDriverProbeClass(TOY_DRIVER_CLASS_NONE);
+int DriverProbeAll(void) {
+    return DriverProbeClass(DRIVER_CLASS_NONE);
 }
 
-static int InstanceLimit(const TOY_DRIVER *D) {
+static int InstanceLimit(const DRIVER *D) {
     if (D->MaxInstances > 1) {
         return D->MaxInstances;
     }
     return 1;
 }
 
-static int BoundCount(const TOY_DRIVER *D) {
+static int BoundCount(const DRIVER *D) {
     UINTN i;
     int Count = 0;
 
@@ -52,7 +52,7 @@ static int BoundCount(const TOY_DRIVER *D) {
 }
 
 /*
- * Class == TOY_DRIVER_CLASS_NONE：Probe 全部（D1 行为）。
+ * Class == DRIVER_CLASS_NONE：Probe 全部（D1 行为）。
  * 其它：只 Probe 该类；已绑定的驱动跳过（供 HalBlockInitialize 在 VMM 后再试 virtio-blk）。
  *
  * PR-DRV-match-logic：
@@ -61,13 +61,13 @@ static int BoundCount(const TOY_DRIVER *D) {
  *                 Probe(Self, (void *)Dev, …)，成功必须 DeviceBindDriver。
  *                 MaxInstances 为 0 或 1 时命中即停。大于 1 时继续下一台，直到够数。
  */
-static TOY_DRIVER_INSTANCE *DriverAdoptInstance(const TOY_DRIVER *D, void *Private) {
-    TOY_DRIVER_INSTANCE *Inst;
+static DRIVER_INSTANCE *DriverAdoptInstance(const DRIVER *D, void *Private) {
+    DRIVER_INSTANCE *Inst;
 
-    if (gInstanceCount >= TOY_DRIVER_MAX_INSTANCES) {
+    if (gInstanceCount >= DRIVER_MAX_INSTANCES) {
         LogDrv("driver: instance full\n");
         if (D->Remove) {
-            TOY_DRIVER_INSTANCE Tmp;
+            DRIVER_INSTANCE Tmp;
             Tmp.Driver = D;
             Tmp.Private = Private;
             Tmp.Bound = 0;
@@ -92,16 +92,16 @@ static TOY_DRIVER_INSTANCE *DriverAdoptInstance(const TOY_DRIVER *D, void *Priva
     return Inst;
 }
 
-int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
+int DriverProbeClass(DRIVER_CLASS Class) {
     UINTN i;
     int Bound = 0;
 
     for (i = 0; i < gDriverCount; i++) {
-        const TOY_DRIVER *D = gDrivers[i];
+        const DRIVER *D = gDrivers[i];
         void *Private = 0;
-        TOY_DRIVER_INSTANCE *Inst;
+        DRIVER_INSTANCE *Inst;
 
-        if (Class != TOY_DRIVER_CLASS_NONE && D->Class != Class) {
+        if (Class != DRIVER_CLASS_NONE && D->Class != Class) {
             continue;
         }
         if (BoundCount(D) >= InstanceLimit(D)) {
@@ -152,11 +152,11 @@ int ToyDriverProbeClass(TOY_DRIVER_CLASS Class) {
     return 0;
 }
 
-void ToyDriverRemoveAll(void) {
+void DriverRemoveAll(void) {
     UINTN i;
 
     for (i = gInstanceCount; i > 0; i--) {
-        TOY_DRIVER_INSTANCE *Inst = &gInstances[i - 1];
+        DRIVER_INSTANCE *Inst = &gInstances[i - 1];
         if (Inst->Driver && Inst->Driver->Remove) {
             Inst->Driver->Remove(Inst);
         }
@@ -167,22 +167,22 @@ void ToyDriverRemoveAll(void) {
     gInstanceCount = 0;
 }
 
-UINTN ToyDriverRegisteredCount(void) {
+UINTN DriverRegisteredCount(void) {
     return gDriverCount;
 }
 
-const TOY_DRIVER *ToyDriverRegisteredGet(UINTN Index) {
+const DRIVER *DriverRegisteredGet(UINTN Index) {
     if (Index >= gDriverCount) {
         return 0;
     }
     return gDrivers[Index];
 }
 
-UINTN ToyDriverInstanceCount(void) {
+UINTN DriverInstanceCount(void) {
     return gInstanceCount;
 }
 
-const TOY_DRIVER_INSTANCE *ToyDriverInstanceGet(UINTN Index) {
+const DRIVER_INSTANCE *DriverInstanceGet(UINTN Index) {
     if (Index >= gInstanceCount) {
         return 0;
     }
@@ -201,7 +201,7 @@ int InitializeDriver(void) {
     HalDriverRegister();
     LogBoot("Boot: Driver Register OK\n");
     (void)DisplayHardwareInitialize();
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_BLOCK);
+    (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
     LogBoot("Boot: Driver Block Probe Done\n");
     return 0;
 }

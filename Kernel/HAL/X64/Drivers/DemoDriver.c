@@ -24,7 +24,7 @@ static const DRIVER_MATCH gDemoMatches[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static int DemoProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int DemoProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     if (OutPrivate) {
         *OutPrivate = 0;
@@ -42,23 +42,23 @@ static int DemoProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     return 0; /* 命中即绑；课堂证明 Match→BusCtx→Bind */
 }
 
-static int DemoBind(TOY_DRIVER_INSTANCE *Inst) {
+static int DemoBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     DebugWrite("demo: bind called\n");
     /*
-     * 故意不调用 ToyDriverInputAttach。
+     * 故意不调用 DriverInputAttach。
      * 只占 Driver 实例槽，使 lsdev 可见；真 Input 仍由 xhci-hid / ps2-kbd 管理。
      */
     return 0;
 }
 
-static void DemoRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void DemoRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gDemoDriver = {
+static const DRIVER gDemoDriver = {
     .Name = "demo-driver",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = gDemoMatches,
     .Probe = DemoProbe,
     .Bind = DemoBind,
@@ -66,7 +66,7 @@ static const TOY_DRIVER gDemoDriver = {
 };
 
 void DemoDriverRegister(void) {
-    (void)ToyDriverRegister(&gDemoDriver);
+    (void)DriverRegister(&gDemoDriver);
 }
 
 #if DEMO_DRIVER

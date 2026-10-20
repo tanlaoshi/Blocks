@@ -16,7 +16,7 @@ static const DRIVER_MATCH gUhciMatch[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static int UhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int UhciDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
     USB_CONTROLLER One;
 
@@ -43,18 +43,18 @@ static int UhciDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     return 0;
 }
 
-static int UhciDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int UhciDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     return UhciReady() ? 0 : -1;
 }
 
-static void UhciDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void UhciDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gUhciDriver = {
+static const DRIVER gUhciDriver = {
     .Name = "uhci",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = gUhciMatch,
     .Probe = UhciDriverProbe,
     .Bind = UhciDriverBind,
@@ -62,7 +62,7 @@ static const TOY_DRIVER gUhciDriver = {
 };
 
 void InputUhciRegister(void) {
-    (void)ToyDriverRegister(&gUhciDriver);
+    (void)DriverRegister(&gUhciDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_INPUT_UHCI, InputUhciRegister);

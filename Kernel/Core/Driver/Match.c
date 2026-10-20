@@ -2,7 +2,7 @@
  * Match.c — 驱动匹配表过滤（PR-DRV-match-logic）
  *
  * DriverMatchesDevice：按 DRIVER_MATCH 表过滤 DEVICE_NODE。
- * Match==NULL 由 ToyDriverProbeClass 走旧路径（Probe 自扫），本文件只管有表路径。
+ * Match==NULL 由 DriverProbeClass 走旧路径（Probe 自扫），本文件只管有表路径。
  * 规格见 Documents/待做/设备管理器驱动匹配.md。
  */
 #include "Driver.h"
@@ -26,7 +26,7 @@ static int ByteOk(UINT8 Have, UINT8 Want, UINT8 Mask) {
  *   FIXED：Bar[0]==entry.Base。
  * 表以 DRIVER_MATCH_NONE 结尾；任一条命中即返回 1。
  */
-int DriverMatchesDevice(const TOY_DRIVER *Drv, const DEVICE_NODE *Dev) {
+int DriverMatchesDevice(const DRIVER *Drv, const DEVICE_NODE *Dev) {
     const DRIVER_MATCH *M;
 
     if (!Drv || !Dev || !Drv->Match) {

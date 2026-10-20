@@ -15,7 +15,7 @@ static const BLOCK_BACKEND gAtaBackend = {
     .Flush = 0,
 };
 
-static int AtaDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int AtaDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
     /* 至少能 Probe 到 drive 0 才算有 ATA */
@@ -28,19 +28,19 @@ static int AtaDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int AtaDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int AtaDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverBlockAttach(&gAtaBackend);
+    return DriverBlockAttach(&gAtaBackend);
 }
 
-static void AtaDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void AtaDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     /* Block 后端全局一份；Remove 不拆（重启才清） */
 }
 
-static const TOY_DRIVER gAtaDriver = {
+static const DRIVER gAtaDriver = {
     .Name = "ata-pio",
-    .Class = TOY_DRIVER_CLASS_BLOCK,
+    .Class = DRIVER_CLASS_BLOCK,
     .Match = 0,
     .Probe = AtaDriverProbe,
     .Bind = AtaDriverBind,
@@ -48,7 +48,7 @@ static const TOY_DRIVER gAtaDriver = {
 };
 
 void AtaDriverRegister(void) {
-    (void)ToyDriverRegister(&gAtaDriver);
+    (void)DriverRegister(&gAtaDriver);
 }
 
 int HalBlockInitialize(void) {
@@ -57,7 +57,7 @@ int HalBlockInitialize(void) {
      * - ATA 多在 InitDriver 已绑（PIO，无需 MMIO）
      * - AHCI（H1）/ NVMe（H5）需 MMIO，早 Probe 跳过，此处绑上并覆盖后端
      */
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_BLOCK);
+    (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
     if (!BlockBackendReady()) {
         return 0;
     }

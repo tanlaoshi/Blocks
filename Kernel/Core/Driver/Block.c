@@ -4,7 +4,7 @@
 #include "DriverBlock.h"
 #include "Debug.h"
 
-int ToyDriverBlockAttach(const BLOCK_BACKEND *Backend) {
+int DriverBlockAttach(const BLOCK_BACKEND *Backend) {
     if (!Backend || !Backend->Probe || !Backend->ReadSectors || !Backend->WriteSectors) {
         DebugWrite("drv-block: bad backend\n");
         return -1;

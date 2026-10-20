@@ -42,7 +42,7 @@ static void DrainHid(void) {
 int UsbInitialize(void) {
     LogBoot("Boot: Input Probe (USB Then PS/2)\n");
     (void)HalUsbInitialize();
-    if (ToyDriverInputReady()) {
+    if (DriverInputReady()) {
         LogBoot("Boot: Input Backend Ready\n");
     } else {
         LogBoot("Boot: Input NONE (Continue)\n");

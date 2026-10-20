@@ -92,14 +92,14 @@ void LwIpPoll(void) {
  */
 void LwIpService(void) {
     if (!gLwIpReady) {
-        ToyDriverNetPoll();
+        DriverNetPoll();
         return;
     }
     if (__sync_lock_test_and_set(&gLwIpSoft, 1u)) {
         SchedulerIoBreath();
         return;
     }
-    ToyDriverNetPoll();
+    DriverNetPoll();
     sys_check_timeouts();
     __sync_lock_release(&gLwIpSoft);
 }

@@ -120,7 +120,7 @@ UINT16 NetChecksum(const void *Data, UINTN Len) {
 
 int NetInit(void) {
     NetConfigEnsure(); /* QEMU 静态；真机为 0，等挂上 L2 后再 DHCP */
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_NET);
+    (void)DriverProbeClass(DRIVER_CLASS_NET);
     return 0;
 }
 

@@ -32,23 +32,23 @@
  *     return -1;
  * }
  *
- * static int TemplateNetBind(TOY_DRIVER_INSTANCE *Inst) {
+ * static int TemplateNetBind(DRIVER_INSTANCE *Inst) {
  *     (void)Inst;
  *     return NetAttachNic(&gTemplateNicL2);
  * }
  *
  * // RX 路径（Poll 或 IRQ）：NetInputFrame(Pkt, Len);
  *
- * static const TOY_DRIVER gTemplateNetDriver = {
+ * static const DRIVER gTemplateNetDriver = {
  *     .Name  = "template-net",
- *     .Class = TOY_DRIVER_CLASS_NET,
+ *     .Class = DRIVER_CLASS_NET,
  *     .Probe = TemplateNetProbe,
  *     .Bind  = TemplateNetBind,
  *     .Remove = ...,
  * };
  *
  * void TemplateNetDriverRegister(void) {
- *     (void)ToyDriverRegister(&gTemplateNetDriver);
+ *     (void)DriverRegister(&gTemplateNetDriver);
  * }
  * // HalDriverRegister() 加一行 TemplateNetDriverRegister();
  */

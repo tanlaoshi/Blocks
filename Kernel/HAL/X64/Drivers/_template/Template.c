@@ -40,7 +40,7 @@ static const INPUT_BACKEND gTemplateBackend = {
     .MouseDequeue = TemplateMouseDequeue,
 };
 
-static int TemplateProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int TemplateProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
     /* TODO: 扫 PCI / 口 / MMIO；有设备则 gTemplateReady=1; *OutPrivate=…; return 0; */
@@ -50,22 +50,22 @@ static int TemplateProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate
     return -1; /* 模板默认不上线 */
 }
 
-static int TemplateBind(TOY_DRIVER_INSTANCE *Inst) {
+static int TemplateBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    if (ToyDriverInputReady()) {
+    if (DriverInputReady()) {
         return -1; /* 单槽：已有 Input 则失败 */
     }
-    return ToyDriverInputAttach(&gTemplateBackend);
+    return DriverInputAttach(&gTemplateBackend);
 }
 
-static void TemplateRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void TemplateRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gTemplateReady = 0;
 }
 
-static const TOY_DRIVER gTemplateDriver = {
+static const DRIVER gTemplateDriver = {
     .Name = "template-input",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = 0,
     .Probe = TemplateProbe,
     .Bind = TemplateBind,
@@ -73,5 +73,5 @@ static const TOY_DRIVER gTemplateDriver = {
 };
 
 void TemplateDriverRegister(void) {
-    (void)ToyDriverRegister(&gTemplateDriver);
+    (void)DriverRegister(&gTemplateDriver);
 }

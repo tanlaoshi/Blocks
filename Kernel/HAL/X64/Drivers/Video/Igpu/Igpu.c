@@ -52,7 +52,7 @@ static const DRIVER_MATCH gIgpuMatch[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static int IgpuProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int IgpuProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -83,7 +83,7 @@ static int IgpuProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
     return 0;
 }
 
-static int IgpuBind(TOY_DRIVER_INSTANCE *Inst) {
+static int IgpuBind(DRIVER_INSTANCE *Inst) {
     if (!Inst || !Inst->Driver || !gIgpuNode) {
         return -1;
     }
@@ -92,16 +92,16 @@ static int IgpuBind(TOY_DRIVER_INSTANCE *Inst) {
     return 0;
 }
 
-static void IgpuRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void IgpuRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gIgpuProbed = 0;
     gIgpuNode = 0;
     gIgpuDid = 0;
 }
 
-static const TOY_DRIVER gIgpuDriver = {
+static const DRIVER gIgpuDriver = {
     .Name = "igpu",
-    .Class = TOY_DRIVER_CLASS_DISPLAY,
+    .Class = DRIVER_CLASS_DISPLAY,
     .Match = gIgpuMatch,
     .Probe = IgpuProbe,
     .Bind = IgpuBind,
@@ -109,11 +109,11 @@ static const TOY_DRIVER gIgpuDriver = {
 };
 
 void IgpuDriverRegister(void) {
-    if (ToyDriverRegister(&gIgpuDriver) != 0) {
+    if (DriverRegister(&gIgpuDriver) != 0) {
         LogBoot("Boot: igpu register fail\n");
         return;
     }
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_DISPLAY);
+    (void)DriverProbeClass(DRIVER_CLASS_DISPLAY);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_IGPU, IgpuDriverRegister);

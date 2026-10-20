@@ -50,7 +50,7 @@ static const NIC_L2 gAlxNicL2 = {
     .GetLink = AlxNicGetLink,
 };
 
-static int AlxDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int AlxDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -78,7 +78,7 @@ static int AlxDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int AlxDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int AlxDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!AlxReady()) {
         return -1;
@@ -86,13 +86,13 @@ static int AlxDriverBind(TOY_DRIVER_INSTANCE *Inst) {
     return NetAttachNicKind(&gAlxNicL2, NET_NIC_KIND_WIRED);
 }
 
-static void AlxDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void AlxDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gAlxDriver = {
+static const DRIVER gAlxDriver = {
     .Name = "alx",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = gAlxMatch,
     .Probe = AlxDriverProbe,
     .Bind = AlxDriverBind,
@@ -100,7 +100,7 @@ static const TOY_DRIVER gAlxDriver = {
 };
 
 void AlxDriverRegister(void) {
-    (void)ToyDriverRegister(&gAlxDriver);
+    (void)DriverRegister(&gAlxDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_ALX, AlxDriverRegister);

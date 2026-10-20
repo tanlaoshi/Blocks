@@ -45,7 +45,7 @@ static void NetFindCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
     }
 }
 
-static int VirtioNetDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int VirtioNetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     UINT64 Base = 0;
     UINT32 Ver;
     volatile VIRTIO_NET_CFG *Cfg;
@@ -112,7 +112,7 @@ static int VirtioNetDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **Out
     return 0;
 }
 
-static void VirtioNetDriverRemove(TOY_DRIVER_INSTANCE *Inst);
+static void VirtioNetDriverRemove(DRIVER_INSTANCE *Inst);
 
 static int VirtioNetReady(void);
 static void VirtioNetGetMac(UINT8 Mac[6]);
@@ -137,19 +137,19 @@ static const NET_BACKEND gNetBackend = {
     .SetLwIpRx = VirtioNetSetLwIpRx,
 };
 
-static int VirtioNetDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int VirtioNetDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverNetAttach(&gNetBackend);
+    return DriverNetAttach(&gNetBackend);
 }
 
-static void VirtioNetDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void VirtioNetDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gNetOk = 0;
 }
 
-static const TOY_DRIVER gVirtioNetDriver = {
+static const DRIVER gVirtioNetDriver = {
     .Name = "virtio-net",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = 0,
     .Probe = VirtioNetDriverProbe,
     .Bind = VirtioNetDriverBind,
@@ -157,11 +157,11 @@ static const TOY_DRIVER gVirtioNetDriver = {
 };
 
 void VirtioNetRegister(void) {
-    (void)ToyDriverRegister(&gVirtioNetDriver);
+    (void)DriverRegister(&gVirtioNetDriver);
 }
 
 int VirtioNetInit(void) {
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_NET);
+    (void)DriverProbeClass(DRIVER_CLASS_NET);
     return 0;
 }
 

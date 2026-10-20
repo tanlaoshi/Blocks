@@ -33,7 +33,7 @@ static const DRIVER_MATCH gNvmeMatch[] = {
     { .Type = DRIVER_MATCH_NONE },
 };
 
-static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int NvmeDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     DEVICE_NODE *Dev = (DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -55,18 +55,18 @@ static int NvmeDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     return 0;
 }
 
-static int NvmeDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int NvmeDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverBlockAttach(&gNvmeBackend);
+    return DriverBlockAttach(&gNvmeBackend);
 }
 
-static void NvmeDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void NvmeDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gNvmeDriver = {
+static const DRIVER gNvmeDriver = {
     .Name = "nvme",
-    .Class = TOY_DRIVER_CLASS_BLOCK,
+    .Class = DRIVER_CLASS_BLOCK,
     .Match = gNvmeMatch,
     .Probe = NvmeDriverProbe,
     .Bind = NvmeDriverBind,
@@ -75,7 +75,7 @@ static const TOY_DRIVER gNvmeDriver = {
 };
 
 void NvmeDriverRegister(void) {
-    (void)ToyDriverRegister(&gNvmeDriver);
+    (void)DriverRegister(&gNvmeDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_NVME, NvmeDriverRegister);

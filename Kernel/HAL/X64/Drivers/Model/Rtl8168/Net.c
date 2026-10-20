@@ -56,7 +56,7 @@ static const NIC_L2 gRtlNicL2 = {
     .GetLink = RtlNicGetLink,
 };
 
-static int RtlDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int RtlDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -84,7 +84,7 @@ static int RtlDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int RtlDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int RtlDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!RtlReady()) {
         return -1;
@@ -92,13 +92,13 @@ static int RtlDriverBind(TOY_DRIVER_INSTANCE *Inst) {
     return NetAttachNicKind(&gRtlNicL2, NET_NIC_KIND_WIRED);
 }
 
-static void RtlDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void RtlDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gRtlDriver = {
+static const DRIVER gRtlDriver = {
     .Name = "r8169",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = gRtlMatch,
     .Probe = RtlDriverProbe,
     .Bind = RtlDriverBind,
@@ -106,7 +106,7 @@ static const TOY_DRIVER gRtlDriver = {
 };
 
 void RtlDriverRegister(void) {
-    (void)ToyDriverRegister(&gRtlDriver);
+    (void)DriverRegister(&gRtlDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_RTL8168, RtlDriverRegister);

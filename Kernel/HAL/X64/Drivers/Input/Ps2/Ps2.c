@@ -63,7 +63,7 @@ static const INPUT_BACKEND gPs2Backend = {
     .MouseDequeue = Ps2MouseDequeue,
 };
 
-static int Ps2DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int Ps2DriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
     if (!VirtualMemoryEnabled()) {
@@ -86,20 +86,20 @@ static int Ps2DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int Ps2DriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int Ps2DriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverInputAttach(&gPs2Backend);
+    return DriverInputAttach(&gPs2Backend);
 }
 
-static void Ps2DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void Ps2DriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gPs2Ready = 0;
     gPs2AuxReady = 0;
 }
 
-static const TOY_DRIVER gPs2Driver = {
+static const DRIVER gPs2Driver = {
     .Name = "ps2-kbd",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = 0,
     .Probe = Ps2DriverProbe,
     .Bind = Ps2DriverBind,
@@ -107,7 +107,7 @@ static const TOY_DRIVER gPs2Driver = {
 };
 
 void InputPs2Register(void) {
-    (void)ToyDriverRegister(&gPs2Driver);
+    (void)DriverRegister(&gPs2Driver);
 }
 
 void Ps2MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {

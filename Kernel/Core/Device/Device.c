@@ -139,8 +139,8 @@ DEVICE_NODE *DeviceFindByCompatible(const char *Compatible) {
     return 0;
 }
 
-void DeviceBindDriver(DEVICE_NODE *Dev, const struct TOY_DRIVER *Drv,
-                      struct TOY_DRIVER_INSTANCE *Inst) {
+void DeviceBindDriver(DEVICE_NODE *Dev, const struct DRIVER *Drv,
+                      struct DRIVER_INSTANCE *Inst) {
     if (!Dev) {
         return;
     }
@@ -178,7 +178,7 @@ static int StartsWith(const char *S, const char *Prefix) {
 }
 
 /* 驱动名 ↔ 枚举短键。实例没有 PCI 位，一台驱动只认第一台未绑定设备。 */
-static int InstanceClaims(const TOY_DRIVER *Drv, const DEVICE_NODE *Node) {
+static int InstanceClaims(const DRIVER *Drv, const DEVICE_NODE *Node) {
     const char *Name;
 
     if (!Drv || !Drv->Name || !Node || Node->Bus != DEVICE_BUS_PCI) {
@@ -215,8 +215,8 @@ void DeviceSyncBound(void) {
         gDevices[i].Driver = 0;
         gDevices[i].Instance = 0;
     }
-    for (k = 0; k < ToyDriverInstanceCount(); k++) {
-        const TOY_DRIVER_INSTANCE *Inst = ToyDriverInstanceGet(k);
+    for (k = 0; k < DriverInstanceCount(); k++) {
+        const DRIVER_INSTANCE *Inst = DriverInstanceGet(k);
 
         if (!Inst || !Inst->Bound || !Inst->Driver) {
             continue;
@@ -233,7 +233,7 @@ void DeviceSyncBound(void) {
             Node->State = DEVICE_STATE_BOUND;
             Node->Bound = 1;
             Node->Driver = Inst->Driver;
-            Node->Instance = (struct TOY_DRIVER_INSTANCE *)Inst;
+            Node->Instance = (struct DRIVER_INSTANCE *)Inst;
             break;
         }
     }

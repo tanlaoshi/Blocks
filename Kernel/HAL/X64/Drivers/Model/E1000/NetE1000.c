@@ -67,7 +67,7 @@ static const NIC_L2 gE1000NicL2 = {
     .GetLink = E1000NicGetLink,
 };
 
-static int E1000DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int E1000DriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     const DEVICE_NODE *Dev = (const DEVICE_NODE *)BusCtx;
 
     (void)Self;
@@ -99,7 +99,7 @@ static int E1000DriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriv
     return 0;
 }
 
-static int E1000DriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int E1000DriverBind(DRIVER_INSTANCE *Inst) {
     int Up = 0;
 
     (void)Inst;
@@ -116,13 +116,13 @@ static int E1000DriverBind(TOY_DRIVER_INSTANCE *Inst) {
     return NetAttachNicKind(&gE1000NicL2, NET_NIC_KIND_WIRED);
 }
 
-static void E1000DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void E1000DriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gE1000Driver = {
+static const DRIVER gE1000Driver = {
     .Name = gE1000DriverName,
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = gE1000Match,
     .Probe = E1000DriverProbe,
     .Bind = E1000DriverBind,
@@ -131,7 +131,7 @@ static const TOY_DRIVER gE1000Driver = {
 };
 
 void E1000DriverRegister(void) {
-    (void)ToyDriverRegister(&gE1000Driver);
+    (void)DriverRegister(&gE1000Driver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_E1000, E1000DriverRegister);

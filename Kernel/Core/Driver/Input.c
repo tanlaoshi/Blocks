@@ -9,7 +9,7 @@
 static const INPUT_BACKEND *gInputBackends[INPUT_BACKEND_MAX];
 static UINTN gInputBackendCount;
 
-int ToyDriverInputAttach(const INPUT_BACKEND *Backend) {
+int DriverInputAttach(const INPUT_BACKEND *Backend) {
     UINTN i;
 
     if (!Backend || !Backend->Poll || !Backend->KeyboardDequeue ||
@@ -30,11 +30,11 @@ int ToyDriverInputAttach(const INPUT_BACKEND *Backend) {
     return 0;
 }
 
-int ToyDriverInputReady(void) {
+int DriverInputReady(void) {
     return gInputBackendCount != 0;
 }
 
-void ToyDriverInputPoll(void) {
+void DriverInputPoll(void) {
     UINTN i;
 
     for (i = 0; i < gInputBackendCount; i++) {
@@ -44,7 +44,7 @@ void ToyDriverInputPoll(void) {
     }
 }
 
-int ToyDriverInputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
+int DriverInputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     UINTN i;
 
     if (!Report) {
@@ -59,7 +59,7 @@ int ToyDriverInputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     return 0;
 }
 
-int ToyDriverInputKeyboardSetLeds(UINT8 Leds) {
+int DriverInputKeyboardSetLeds(UINT8 Leds) {
     UINTN i;
     int Ok = -1;
 
@@ -72,7 +72,7 @@ int ToyDriverInputKeyboardSetLeds(UINT8 Leds) {
     return Ok;
 }
 
-int ToyDriverInputMousePresent(void) {
+int DriverInputMousePresent(void) {
     UINTN i;
 
     for (i = 0; i < gInputBackendCount; i++) {
@@ -84,7 +84,7 @@ int ToyDriverInputMousePresent(void) {
     return 0;
 }
 
-int ToyDriverInputMouseDequeue(HAL_MOUSE_REPORT *Report) {
+int DriverInputMouseDequeue(HAL_MOUSE_REPORT *Report) {
     UINTN i;
 
     if (!Report) {

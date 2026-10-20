@@ -17,7 +17,7 @@ void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
 }
 
 void HalInputPoll(void) {
-    ToyDriverInputPoll();
+    DriverInputPoll();
 }
 
 void HalInputDiagFormat(char *Buf, int Max) {
@@ -89,17 +89,17 @@ int HalPs2AuxRetry(void) {
 }
 
 int HalKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
-    return ToyDriverInputKeyboardDequeue(Report);
+    return DriverInputKeyboardDequeue(Report);
 }
 
 int HalKeyboardSetLeds(UINT8 Leds) {
-    return ToyDriverInputKeyboardSetLeds(Leds);
+    return DriverInputKeyboardSetLeds(Leds);
 }
 
 int HalMousePresent(void) {
-    return ToyDriverInputMousePresent();
+    return DriverInputMousePresent();
 }
 
 int HalMouseDequeue(HAL_MOUSE_REPORT *Report) {
-    return ToyDriverInputMouseDequeue(Report);
+    return DriverInputMouseDequeue(Report);
 }

@@ -47,7 +47,7 @@ void BlockMscInstall(void) {
     BlockMuxInstallMsc(&gMscBackend);
 }
 
-static int MscDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int MscDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
     if (!VirtualMemoryEnabled()) {
@@ -59,20 +59,20 @@ static int MscDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivat
     return 0;
 }
 
-static int MscDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int MscDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     /* 启动不装 Mux；显式 `msc mount` 才 BlockMscInstall */
     DebugWrite("msc: registered (mount via shell)\n");
     return 0;
 }
 
-static void MscDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void MscDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gMscDriver = {
+static const DRIVER gMscDriver = {
     .Name = "usb-msc",
-    .Class = TOY_DRIVER_CLASS_BLOCK,
+    .Class = DRIVER_CLASS_BLOCK,
     .Match = 0,
     .Probe = MscDriverProbe,
     .Bind = MscDriverBind,
@@ -80,7 +80,7 @@ static const TOY_DRIVER gMscDriver = {
 };
 
 void MscDriverRegister(void) {
-    (void)ToyDriverRegister(&gMscDriver);
+    (void)DriverRegister(&gMscDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_MSC, MscDriverRegister);

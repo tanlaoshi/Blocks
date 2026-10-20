@@ -102,18 +102,18 @@ static void CommandHalt(int Argc, char **Argv) {
     HalCpuPark();
 }
 
-/* PR-D4：列出已绑定驱动（TOY_DRIVER.Name + 类） */
-static const char *DriverClassName(TOY_DRIVER_CLASS Class) {
+/* PR-D4：列出已绑定驱动（DRIVER.Name + 类） */
+static const char *DriverClassName(DRIVER_CLASS Class) {
     switch (Class) {
-    case TOY_DRIVER_CLASS_BLOCK:
+    case DRIVER_CLASS_BLOCK:
         return "block";
-    case TOY_DRIVER_CLASS_INPUT:
+    case DRIVER_CLASS_INPUT:
         return "input";
-    case TOY_DRIVER_CLASS_NET:
+    case DRIVER_CLASS_NET:
         return "net";
-    case TOY_DRIVER_CLASS_DISPLAY:
+    case DRIVER_CLASS_DISPLAY:
         return "display";
-    case TOY_DRIVER_CLASS_AUDIO:
+    case DRIVER_CLASS_AUDIO:
         return "audio";
     default:
         return "?";
@@ -128,8 +128,8 @@ static void CommandLsdev(int Argc, char **Argv) {
         return;
     }
 
-    for (i = 0; i < ToyDriverInstanceCount(); i++) {
-        const TOY_DRIVER_INSTANCE *Inst = ToyDriverInstanceGet(i);
+    for (i = 0; i < DriverInstanceCount(); i++) {
+        const DRIVER_INSTANCE *Inst = DriverInstanceGet(i);
         if (!Inst || !Inst->Bound || !Inst->Driver || !Inst->Driver->Name) {
             continue;
         }
@@ -142,8 +142,8 @@ static void CommandLsdev(int Argc, char **Argv) {
         gConsole.Write("  (none)\n");
         return;
     }
-    for (i = 0; i < ToyDriverInstanceCount(); i++) {
-        const TOY_DRIVER_INSTANCE *Inst = ToyDriverInstanceGet(i);
+    for (i = 0; i < DriverInstanceCount(); i++) {
+        const DRIVER_INSTANCE *Inst = DriverInstanceGet(i);
         if (!Inst || !Inst->Bound || !Inst->Driver || !Inst->Driver->Name) {
             continue;
         }
@@ -152,7 +152,7 @@ static void CommandLsdev(int Argc, char **Argv) {
         gConsole.Write("  ");
         gConsole.Write(DriverClassName(Inst->Driver->Class));
         /* PR-H4e-2：net + e1000* 时附链路 */
-        if (Inst->Driver->Class == TOY_DRIVER_CLASS_NET) {
+        if (Inst->Driver->Class == DRIVER_CLASS_NET) {
             int Up = 0;
             UINT32 Mbps = 0;
             int Fd = 0;

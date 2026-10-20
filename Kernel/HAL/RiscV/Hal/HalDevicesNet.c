@@ -17,7 +17,7 @@ int HalNetInitialize(void) {
 }
 
 int HalNetReady(void) {
-    return ToyDriverNetReady();
+    return DriverNetReady();
 }
 
 UINT32 HalNetNicEpoch(void) {
@@ -25,35 +25,35 @@ UINT32 HalNetNicEpoch(void) {
 }
 
 void HalNetPoll(void) {
-    ToyDriverNetPoll();
+    DriverNetPoll();
 }
 
 void HalNetGetMacAddress(UINT8 Mac[6]) {
-    ToyDriverNetGetMac(Mac);
+    DriverNetGetMac(Mac);
 }
 
 UINT32 HalNetGetIpAddress(void) {
-    return ToyDriverNetGetIp();
+    return DriverNetGetIp();
 }
 
 void HalNetSetIpAddress(UINT32 Ip) {
-    ToyDriverNetSetIp(Ip);
+    DriverNetSetIp(Ip);
 }
 
 void HalNetFormatIp(UINT32 Ip, char *Buf, int BufLen) {
-    ToyDriverNetFormatIp(Ip, Buf, BufLen);
+    DriverNetFormatIp(Ip, Buf, BufLen);
 }
 
 int HalNetParseIp(const char *Text, UINT32 *Ip) {
-    return ToyDriverNetParseIp(Text, Ip);
+    return DriverNetParseIp(Text, Ip);
 }
 
 int HalNetPing(const char *Host, int TimeoutMs) {
-    return ToyDriverNetPing(Host, TimeoutMs);
+    return DriverNetPing(Host, TimeoutMs);
 }
 
 void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
-    ToyDriverNetGetStats(TxDone, RxFrames);
+    DriverNetGetStats(TxDone, RxFrames);
 }
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
@@ -78,13 +78,13 @@ void HalNetDumpNicNote(void (*Write)(const char *Text)) {
 }
 
 int HalNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen) {
-    return ToyDriverNetSendIp(DstIp, Proto, Payload, PayloadLen);
+    return DriverNetSendIp(DstIp, Proto, Payload, PayloadLen);
 }
 
 UINT16 HalNetChecksum(const void *Data, UINTN Len) {
-    return ToyDriverNetChecksum(Data, Len);
+    return DriverNetChecksum(Data, Len);
 }
 
 void HalNetSetLwipReceive(int Enable) {
-    ToyDriverNetSetLwIpRx(Enable);
+    DriverNetSetLwIpRx(Enable);
 }

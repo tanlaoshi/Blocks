@@ -9,19 +9,19 @@
 /* DEVICE_NODE 用于 DriverMatchesDevice 声明；Device.h 不回 include 本头，无环。 */
 #include "Device.h"
 
-#define TOY_DRIVER_MAX_DRIVERS  20
-#define TOY_DRIVER_MAX_INSTANCES 20
+#define DRIVER_MAX_DRIVERS  20
+#define DRIVER_MAX_INSTANCES 20
 
 typedef enum {
-    TOY_DRIVER_CLASS_NONE = 0,
-    TOY_DRIVER_CLASS_BLOCK,
-    TOY_DRIVER_CLASS_INPUT,
-    TOY_DRIVER_CLASS_NET,
-    TOY_DRIVER_CLASS_DISPLAY,
-    TOY_DRIVER_CLASS_AUDIO
-} TOY_DRIVER_CLASS;
+    DRIVER_CLASS_NONE = 0,
+    DRIVER_CLASS_BLOCK,
+    DRIVER_CLASS_INPUT,
+    DRIVER_CLASS_NET,
+    DRIVER_CLASS_DISPLAY,
+    DRIVER_CLASS_AUDIO
+} DRIVER_CLASS;
 
-typedef struct TOY_DRIVER_INSTANCE TOY_DRIVER_INSTANCE;
+typedef struct DRIVER_INSTANCE DRIVER_INSTANCE;
 
 /*
  * 驱动匹配表（阶段 2）。NULL = 旧行为（Probe 自扫 PCI/DTB）。
@@ -59,41 +59,41 @@ typedef struct DRIVER_MATCH {
     } U;
 } DRIVER_MATCH;
 
-typedef struct TOY_DRIVER {
+typedef struct DRIVER {
     const char *Name;
-    TOY_DRIVER_CLASS Class;
+    DRIVER_CLASS Class;
     /* 匹配表（阶段 2 定型）；NULL = 旧行为，Probe 自扫 */
     const DRIVER_MATCH *Match;
     /*
      * Probe：有设备则返回 0 并可选写入 *OutPrivate；无设备返回非 0。
      * BusCtx 预留总线上下文：Match!=NULL 时框架传入 DEVICE_NODE *。
      */
-    int (*Probe)(const struct TOY_DRIVER *Self, void *BusCtx, void **OutPrivate);
-    int (*Bind)(TOY_DRIVER_INSTANCE *Inst);
-    void (*Remove)(TOY_DRIVER_INSTANCE *Inst);
+    int (*Probe)(const struct DRIVER *Self, void *BusCtx, void **OutPrivate);
+    int (*Bind)(DRIVER_INSTANCE *Inst);
+    void (*Remove)(DRIVER_INSTANCE *Inst);
     /* 0 或 1：只要一个实例。大于 1 时同一张匹配表可以绑多台设备。 */
     int MaxInstances;
-} TOY_DRIVER;
+} DRIVER;
 
-struct TOY_DRIVER_INSTANCE {
-    const TOY_DRIVER *Driver;
+struct DRIVER_INSTANCE {
+    const DRIVER *Driver;
     void *Private;
     int Bound;
 };
 
-int ToyDriverRegister(const TOY_DRIVER *Driver);
+int DriverRegister(const DRIVER *Driver);
 /* 对已注册驱动调用 Probe；成功则 Bind 并记入实例表 */
-int ToyDriverProbeAll(void);
+int DriverProbeAll(void);
 /* PR-D2：只 Probe 指定类；已达该驱动的实例上限则跳过 */
-int ToyDriverProbeClass(TOY_DRIVER_CLASS Class);
-void ToyDriverRemoveAll(void);
+int DriverProbeClass(DRIVER_CLASS Class);
+void DriverRemoveAll(void);
 
 /* PR-DRV-match-logic：有表驱动按 DRIVER_MATCH 过滤设备；命中返回 1。 */
-int DriverMatchesDevice(const TOY_DRIVER *Drv, const DEVICE_NODE *Dev);
+int DriverMatchesDevice(const DRIVER *Drv, const DEVICE_NODE *Dev);
 
-UINTN ToyDriverRegisteredCount(void);
-const TOY_DRIVER *ToyDriverRegisteredGet(UINTN Index);
-UINTN ToyDriverInstanceCount(void);
-const TOY_DRIVER_INSTANCE *ToyDriverInstanceGet(UINTN Index);
+UINTN DriverRegisteredCount(void);
+const DRIVER *DriverRegisteredGet(UINTN Index);
+UINTN DriverInstanceCount(void);
+const DRIVER_INSTANCE *DriverInstanceGet(UINTN Index);
 
 #endif

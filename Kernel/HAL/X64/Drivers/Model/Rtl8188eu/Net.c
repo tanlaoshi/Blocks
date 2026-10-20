@@ -8,7 +8,7 @@
 #include "Rtl8188eu.h"
 #include "HalDevices.h"
 
-static int WifiDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int WifiDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     (void)Self;
     (void)BusCtx;
 
@@ -27,7 +27,7 @@ static int WifiDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPriva
     return 0;
 }
 
-static int WifiDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int WifiDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!WifiReady()) {
         return -1;
@@ -36,13 +36,13 @@ static int WifiDriverBind(TOY_DRIVER_INSTANCE *Inst) {
     return 0;
 }
 
-static void WifiDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void WifiDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
 }
 
-static const TOY_DRIVER gWifiDriver = {
+static const DRIVER gWifiDriver = {
     .Name = "rtl8188eu",
-    .Class = TOY_DRIVER_CLASS_NET,
+    .Class = DRIVER_CLASS_NET,
     .Match = 0,
     .Probe = WifiDriverProbe,
     .Bind = WifiDriverBind,
@@ -60,7 +60,7 @@ void WifiDriverRegister(void) {
     };
 
     HalWifiSetOps(&Ops);
-    (void)ToyDriverRegister(&gWifiDriver);
+    (void)DriverRegister(&gWifiDriver);
 }
 
 DRIVER_BOOT(DRIVER_BOOT_RTL8188EU, WifiDriverRegister);

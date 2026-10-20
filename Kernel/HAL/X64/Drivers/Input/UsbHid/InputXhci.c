@@ -174,12 +174,12 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
     return 1;
 }
 
-static int DriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int DriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverInputAttach(&gXhciInputBackend);
+    return DriverInputAttach(&gXhciInputBackend);
 }
 
-static void DriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void DriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gXhciReady = 0;
 }
@@ -191,9 +191,9 @@ static const DRIVER_MATCH gXhciMatch[] = {
     { .Type = DRIVER_MATCH_NONE }
 };
 
-static const TOY_DRIVER gXhciInputDriver = {
+static const DRIVER gXhciInputDriver = {
     .Name = "xhci-hid",
-    .Class = TOY_DRIVER_CLASS_INPUT,
+    .Class = DRIVER_CLASS_INPUT,
     .Match = gXhciMatch,
     .Probe = DriverProbe,
     .Bind = DriverBind,
@@ -201,12 +201,12 @@ static const TOY_DRIVER gXhciInputDriver = {
 };
 
 void InputXhciRegister(void) {
-    (void)ToyDriverRegister(&gXhciInputDriver);
+    (void)DriverRegister(&gXhciInputDriver);
 }
 
 int InputXhciInit(void) {
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_INPUT);
-    return ToyDriverInputReady() ? 0 : -1;
+    (void)DriverProbeClass(DRIVER_CLASS_INPUT);
+    return DriverInputReady() ? 0 : -1;
 }
 
 /* 真机：PHOTO 后 Arm → EnableIrq 试 dual，失败 poll (fallback) */

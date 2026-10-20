@@ -151,7 +151,7 @@ static void BlkScanCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
     }
 }
 
-static int VirtioBlockDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **OutPrivate) {
+static int VirtioBlockDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     BLK_SCAN_CTX Ctx;
     UINT8 *Meta;
 
@@ -194,19 +194,19 @@ static int VirtioBlockDriverProbe(const TOY_DRIVER *Self, void *BusCtx, void **O
     return 0;
 }
 
-static int VirtioBlockDriverBind(TOY_DRIVER_INSTANCE *Inst) {
+static int VirtioBlockDriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    return ToyDriverBlockAttach(&gBlkBackend);
+    return DriverBlockAttach(&gBlkBackend);
 }
 
-static void VirtioBlockDriverRemove(TOY_DRIVER_INSTANCE *Inst) {
+static void VirtioBlockDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gBlkReady = 0;
 }
 
-static const TOY_DRIVER gVirtioBlockDriver = {
+static const DRIVER gVirtioBlockDriver = {
     .Name = "virtio-blk",
-    .Class = TOY_DRIVER_CLASS_BLOCK,
+    .Class = DRIVER_CLASS_BLOCK,
     .Match = 0,
     .Probe = VirtioBlockDriverProbe,
     .Bind = VirtioBlockDriverBind,
@@ -214,11 +214,11 @@ static const TOY_DRIVER gVirtioBlockDriver = {
 };
 
 void VirtioBlockRegister(void) {
-    (void)ToyDriverRegister(&gVirtioBlockDriver);
+    (void)DriverRegister(&gVirtioBlockDriver);
 }
 
 int VirtioBlockInit(void) {
-    (void)ToyDriverProbeClass(TOY_DRIVER_CLASS_BLOCK);
+    (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
     if (!BlockBackendReady()) {
         return 0;
     }

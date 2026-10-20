@@ -1,5 +1,5 @@
 /*
- * Damage.c — Gui 合成脏矩形（gui-g0-map）
+ * Damage.c — Gui 合成脏矩形（gui-g0-map + gui-g2-mark）
  *
  * GuiMarkDamage：并一个屏幕 AABB（仅 Gui 层；≠ HAL DirtyUnion）。
  * GuiComposeDamage：
@@ -7,7 +7,15 @@
  *   无标记 → GuiComposeThemeScene（整屏回退）
  *   有矩形 → 擦→DesktopDrawInRect→命中窗→菜单/托盘→光标
  *            → PresentFlush（ComposeBusy 内）→ ComposeEnd
- * 总图见 Compose.c 头；菜单快路径见 Refresh.c。
+ *
+ * 调用面清单（G2；扩 Mark 见 G4，勿盲改）：
+ *   GuiMarkDamage — 仅 Desktop/Clock.c（图标 bbox；TTF 时 0,0,Sw,Sh）
+ *   RequestRefresh → GuiRefreshDesktop — TaskbarClick、ContextMenu、NetTray*、
+ *     DismissStartMenu、Clock；有菜单覆盖→快路径，否则本函数（常无 Mark→整屏）
+ *   直 ThemeScene — Mouse 改分辨率、Theme、Catalog、Close 非 USER（故意全屏）
+ *   轻量自画 — Close USER（禁 4K ThemeScene；钉死见 G3）
+ * G4 候选优先：TaskbarClick / 菜单开关（先 Mark 栏或菜单 AABB 再 Refresh）。
+ * 总图 Compose.c；菜单快路径 Refresh.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

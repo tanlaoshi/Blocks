@@ -4,7 +4,7 @@
  * Desktop RequestRefresh 钩子（WindowManager 挂上）。
  *   开始菜单 / 右键 / 覆盖区开或刚关 → 只画菜单层 + PresentFlush（快路径）
  *   否则 → GuiComposeDamage（有 Mark 则脏矩形，无则整屏 ThemeScene）
- * 总图 Compose.c；脏矩形 Damage.c。
+ * 谁调 RequestRefresh / Mark：见 Damage.c 头 gui-g2-mark。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

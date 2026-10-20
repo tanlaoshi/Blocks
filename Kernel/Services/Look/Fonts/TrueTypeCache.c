@@ -85,6 +85,8 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     S = SlotLookup(Cp);
     if (S) {
         if (S->State == TTF_MISS) {
+            /* 早先失败（如 TTF 未 Init）→ 再排队，勿永久钉死 */
+            WantPush(Cp);
             return 0;
         }
         if (S->Side != FontTtfPixel()) {
@@ -128,7 +130,12 @@ static void FillSlot(UINT32 Cp) {
         return;
     }
     Slot = SlotAlloc(Cp);
-    if (Slot->State != TTF_EMPTY && Slot->Cp == Cp && Slot->Side == FontTtfPixel()) {
+    /*
+     * 仅 HIT 且边长一致才跳过。MISS 须可重试：
+     * SESSION 在 FS/Gui 前时 Console→LocaleTtfPreheat 会在 gInit=0 时灌满 MISS，
+     * 若此处把 MISS 当「已填」则 Gui 二次预热永不再栅格（汉字一直缺字框）。
+     */
+    if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == FontTtfPixel()) {
         return;
     }
     if (FontTtfRasterCp(Cp, Slot->Pix) != 0) {

@@ -132,8 +132,13 @@ static char (*CurrentStrings(void))[LOCALE_STR_MAX] {
 
 void LocaleTtfPreheatUi(void) {
     UINT32 i;
+    UINT32 BlobSize = 0;
     char (*Strings)[LOCALE_STR_MAX] = CurrentStrings();
 
+    /* Console 早于 Gui/TTF：无 blob 勿预热（避免缓存灌 MISS） */
+    if (!FontTtfBlob(&BlobSize) || BlobSize < 12u) {
+        return;
+    }
     for (i = 0; i < (UINT32)MSG_COUNT; i++) {
         FontTtfPreheatUtf8(Strings[i]);
     }

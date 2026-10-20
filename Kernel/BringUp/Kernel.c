@@ -43,7 +43,10 @@ static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
     }
 }
 
-/* SMP≥3 才起 InputTask 钉 CPU2；失败只打日志（与旧 (void)KernelSpawn 相同）。 */
+/*
+ * SMP≥3 才 Create Input；SchedulerStart 再钉到 CPU2（见 Boot.c / sched-pin-doc）。
+ * 失败只打日志（与旧 (void)KernelSpawn 相同）。
+ */
 static void KernelTrySpawnInput(void) {
     if (HalCpuCount() <= 2) {
         return;

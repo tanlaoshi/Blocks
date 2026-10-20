@@ -3,9 +3,17 @@
  *
  * 非模块表入口。模块表只调 SchedulerInitialize（Scheduler.c）；
  * BringUp 先 Create 任务，再进本文件 SchedulerStart：
- *   每核 idle → 按名钉核（shell/gui / input / worker）→ Online
- *   → TimerStart → HalSchedulerEnter（不返回）
- * 钉核策略见函数内注释；改策略另刀。任务谁 Create 见 BringUp/Kernel.c。
+ *   每核 idle → 按名钉核 → Online → TimerStart → Enter（不返回）
+ *
+ * 钉核策略（只记现状；改策略另刀；全程表见路线图新 sched-pin-doc）：
+ *   默认桌面（非 ConsoleOnly）：
+ *     CPU0 BSP — idle0 + Worker（UP 时 Worker 优先级提到 SHELL，免饿死）
+ *     CPU1     — Shell + Gui（SHELL）；SMP≥2
+ *     CPU2     — Input（DEFAULT）；仅 SMP≥3 且 Kernel 已 Create
+ *   ConsoleOnly 或 HalPinInteractiveToBootstrap：交互/Input 全钉 BSP
+ *     （virt 定时器在 BSP 时钉 AP → 永 WFI）
+ *   Start 时 BSP 只切入 Affinity 0/未钉；AP 任务由各核调度接。
+ * 任务谁 Create：BringUp/Kernel.c。
  */
 #include "Scheduler.h"
 #include "SchedulerOps.h"
@@ -137,12 +145,7 @@ void SchedulerStart(void) {
         }
     }
 
-    /*
-     * PR-S-ap：多核时 shell/gui 同钉 AP（逻辑 CPU1），BSP 留给 idle0 / worker / 中断；
-     * 单核仍钉 0。交互 Priority 偏高；worker 钉 BSP（rm-exc-11 与 INTERFACE 分核）。
-     * PR-S-input-pin 序 2：input 钉独立 CPU2（SMP≥3），与 shell/gui 分核，sti 不外溢。
-     * 串口 ConsoleOnly：shell 必须钉 BSP——virt RiscV/Arm64 定时器在 BSP，钉 AP 会永 WFI。
-     */
+    /* 钉核：表与例外见文件头 / 路线图新 sched-pin-doc（此处只执行，不改策略）。 */
     {
         UINT32 InteractiveCpu = (Cpus > 1) ? 1u : 0u;
         UINT32 InputCpu = (Cpus > 2) ? 2u : InteractiveCpu;
@@ -157,7 +160,6 @@ void SchedulerStart(void) {
                 continue;
             }
             if (NameStarts(gTasks[i].Name, 'i', 'n')) {
-                /* input：钉专核，默认优先级（>idle -0x80，独占该核 drain） */
                 SchedulerOpsGet()->Remove(&gTasks[i]);
                 gTasks[i].Affinity = (INT32)InputCpu;
                 gTasks[i].HomeCpu = (INT32)InputCpu;
@@ -174,15 +176,11 @@ void SchedulerStart(void) {
                 RunQueueEnqueue(InteractiveCpu, &gTasks[i]);
                 continue;
             }
-            /* worker：钉 BSP（≠ shell/gui 的 AP），后台 Job 与 INTERFACE 分核 */
             if (NameStarts(gTasks[i].Name, 'w', 'o')) {
                 SchedulerOpsGet()->Remove(&gTasks[i]);
                 gTasks[i].Affinity = 0;
                 gTasks[i].HomeCpu = 0;
-                /*
-                 * UP：与 shell/gui 同核；prio=DEFAULT 会被 SHELL(8) 饿死，
-                 * 图标/Store/iwl 后台泵永不跑。同级让 RR 有机会切到 worker。
-                 */
+                /* UP：与 shell 同核时提到 SHELL，否则 DEFAULT 会被饿死 */
                 gTasks[i].Priority = (Cpus <= 1) ? SCHED_PRIORITY_SHELL
                                                  : SCHED_PRIORITY_DEFAULT;
                 RunQueueEnqueue(0, &gTasks[i]);

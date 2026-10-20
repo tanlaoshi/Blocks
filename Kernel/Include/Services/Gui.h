@@ -67,13 +67,13 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);
 void GuiOnArrowKey(UINT8 Key);
 void GuiRedraw(void);
-/* PR-G13：清桌面（壁纸/图标/任务栏）并按备份重贴各窗 */
+/* 桌面刷新入口（菜单快路径 / Damage）；管线见 Compose/*.c 头 gui-g0-map */
 void GuiRefreshDesktop(void);
 /* PR-D2：按 Theme 刷新已开窗客户区底色（不立即重绘） */
 void GuiApplyThemeColors(void);
-/* PR-G8：桌面+各窗内容自下而上一次合成并备份 */
+/* 整屏画家算法回退（无 Gui Mark 时）；见 Compose.c */
 void GuiComposeThemeScene(void);
-/* 记下要重画的屏幕矩形。下一次桌面刷新只合成这块，不再整屏。 */
+/* 并 Gui 合成脏 AABB；下次 Refresh/Damage 只画这块（≠ HAL 脏） */
 void GuiMarkDamage(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 按当前几何重画整窗（标题栏+客户区底）；不画 Shell 文字 / Settings 菜单 */
 void GuiPaintWindow(int Idx);

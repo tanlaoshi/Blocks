@@ -1,7 +1,18 @@
 /*
- * GuiCompose.c — Present / 主题场景编排（PR-S-compose-split-1）
+ * Compose.c — 主题场景 / ComposeBusy / Present 门闩（gui-g0-map）
  *
- * 窗绘制见 GuiDraw.c；备份见 GuiBackup.c。
+ * 两层脏（勿混）：
+ *   Gui  — GuiMarkDamage AABB → 重画哪块（Damage.c）
+ *   HAL  — DirtyUnion* → blit 哪块（Present.c）；画进后缓冲会并 HAL 脏
+ *
+ * 主路径：RequestRefresh → GuiRefreshDesktop（Refresh.c）
+ *   → GuiComposeDamage | 菜单快路径 | GuiComposeThemeScene（本文件）
+ *   → DeferPresent=1 画完 → PresentFlush（须仍在 ComposeBusy 内）→ ComposeEnd
+ * Shell 环末 HalVideoPresent（!GuiPresentBlocked）。Worker 永不 Compose@4K。
+ *
+ * 不变式：Flush 在 Busy 内（多核否则光标镂空/半栏）；拖动见 Damage/PresentBlocked。
+ * Defer/Blocked 细表 → G1；Pointer 位移合并 → runtime-b-present。
+ * 窗绘制 GuiDraw；备份 GuiBackup。整柱路线图新 gui-compose-prs。
  */
 #include "GuiPrivate.h"
 #include "UI.h"

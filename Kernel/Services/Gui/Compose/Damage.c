@@ -1,6 +1,13 @@
 /*
- * GuiComposeDamage.c — 只合成一块脏矩形。
- * 没记下矩形时仍走整屏。拖动进行中先不合成，备份留给拖动路径。
+ * Damage.c — Gui 合成脏矩形（gui-g0-map）
+ *
+ * GuiMarkDamage：并一个屏幕 AABB（仅 Gui 层；≠ HAL DirtyUnion）。
+ * GuiComposeDamage：
+ *   拖动中 → 早退（Drag 自管备份/PresentBlocked）
+ *   无标记 → GuiComposeThemeScene（整屏回退）
+ *   有矩形 → 擦→DesktopDrawInRect→命中窗→菜单/托盘→光标
+ *            → PresentFlush（ComposeBusy 内）→ ComposeEnd
+ * 总图见 Compose.c 头；菜单快路径见 Refresh.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

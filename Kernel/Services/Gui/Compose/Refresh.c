@@ -1,11 +1,15 @@
 /*
- * GuiComposeRefresh.c — GuiRefreshDesktop（开始菜单局部刷新）
+ * Refresh.c — GuiRefreshDesktop（gui-g0-map）
+ *
+ * Desktop RequestRefresh 钩子（WindowManager 挂上）。
+ *   开始菜单 / 右键 / 覆盖区开或刚关 → 只画菜单层 + PresentFlush（快路径）
+ *   否则 → GuiComposeDamage（有 Mark 则脏矩形，无则整屏 ThemeScene）
+ * 总图 Compose.c；脏矩形 Damage.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
 #include "Desktop.h"
 
-/* 开/关/flyout 只动菜单覆盖区；其它桌面刷新仍走全量 Compose */
 void GuiRefreshDesktop(void) {
     UINT32 Ox;
     UINT32 Oy;

@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/WaitNoHang.S — fork + WNOHANG：父轮询 wait/yield，子退出后再 done */
     .intel_syntax noprefix
     .section .text

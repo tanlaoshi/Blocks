@@ -168,10 +168,10 @@ int SysGetPpid(void) {
 
 /*
  * SYS_TASK_SNAP：把当前任务表与若干全局计数拷到用户缓冲（同 Shell ps）。
- * Cap 须 >= sizeof(TOY_TASK_SNAP)；成功 0，失败 -1。
+ * Cap 须 >= sizeof(TASK_SNAP)；成功 0，失败 -1。
  */
 int SysTaskSnap(UINT64 UserOut, UINTN Cap) {
-    TOY_TASK_SNAP Snap;
+    TASK_SNAP Snap;
     TASK *Self;
     TASK *Cur;
     int i;
@@ -186,8 +186,8 @@ int SysTaskSnap(UINT64 UserOut, UINTN Cap) {
     for (k = 0; k < sizeof(Snap); k++) {
         ((UINT8 *)&Snap)[k] = 0;
     }
-    Snap.Magic = TOY_TASK_SNAP_MAGIC;
-    Snap.Version = TOY_TASK_SNAP_VER;
+    Snap.Magic = TASK_SNAP_MAGIC;
+    Snap.Version = TASK_SNAP_VER;
     Snap.FreePages = (UINT32)PhysicalMemoryFreePageCount();
     Snap.CpuTicks = HalCpuTicks(0);
     Snap.WorkerLoops = WorkerLoopCount();
@@ -196,9 +196,9 @@ int SysTaskSnap(UINT64 UserOut, UINTN Cap) {
 
     Cur = SchedulerCurrent();
     N = 0;
-    for (i = 0; i < MAX_TASKS && N < TOY_TASK_SNAP_MAX; i++) {
+    for (i = 0; i < MAX_TASKS && N < TASK_SNAP_MAX; i++) {
         const TASK *T = SchedulerTaskByIndex(i);
-        TOY_TASK_ENTRY *E;
+        TASK_ENTRY *E;
         int n;
 
         if (!T || T->State == TASK_UNUSED) {
@@ -209,15 +209,15 @@ int SysTaskSnap(UINT64 UserOut, UINTN Cap) {
         E->Parent = (T->ParentId < 0) ? 0 : (T->ParentId + 1);
         E->Flags = 0;
         if (T->IsUser) {
-            E->Flags |= TOY_TASK_F_USER;
+            E->Flags |= TASK_F_USER;
         }
         if (T->State == TASK_ZOMBIE) {
-            E->Flags |= TOY_TASK_F_ZOMBIE;
+            E->Flags |= TASK_F_ZOMBIE;
         } else if (T->State == TASK_BLOCKED) {
-            E->Flags |= TOY_TASK_F_BLOCKED;
+            E->Flags |= TASK_F_BLOCKED;
         }
         if (Cur == T) {
-            E->Flags |= TOY_TASK_F_CURRENT;
+            E->Flags |= TASK_F_CURRENT;
         }
         E->Priority = T->Priority;
         E->OnCpu = T->OnCpu;

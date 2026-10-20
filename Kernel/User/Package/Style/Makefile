@@ -2,11 +2,11 @@
 #   make -C User/Package/Style
 #   exec STYLE.ELF
 
-TOYKERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= STYLE
 SRCS      ?= main.c
 
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a \
+             $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-include ../ToyUser.mk
+include ../BlocksUser.mk

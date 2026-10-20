@@ -5,7 +5,7 @@
 #include "stdio.h"
 #include "unistd.h"
 #include "sched.h"
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 int main(void) {
     int Wid;

@@ -4,9 +4,9 @@
  * 产物：MYAPP.ELF → 拷到 ToyImage/rootfs/ 后 exec MYAPP.ELF
  */
 #include <stdio.h>
-#include <ToyOS/version.h>
+#include <Blocks/version.h>
 
 int main(void) {
-    printf("ToyOS pkg template (CRT %s)\n", TOYOS_CRT_VERSION_STRING);
+    printf("Blocks pkg template (CRT %s)\n", CRT_VERSION_STRING);
     return 0;
 }

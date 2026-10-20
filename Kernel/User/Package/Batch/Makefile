@@ -2,11 +2,11 @@
 #   make -C User/Package/Batch
 #   exec BATCH.ELF
 
-TOYKERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= BATCH
 SRCS      ?= main.c
 
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/Graphics/libGraphics.a \
-             $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a \
+             $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a
 
-include ../ToyUser.mk
+include ../BlocksUser.mk

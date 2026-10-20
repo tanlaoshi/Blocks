@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/CatFile.S — 旧 int 0x80 对照；CRT 版见 Cat.c（CAT.ELF） */
     .intel_syntax noprefix
     .section .text

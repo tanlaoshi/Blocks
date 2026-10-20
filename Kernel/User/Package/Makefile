@@ -1,9 +1,9 @@
 # 用户程序模板（PR-L1）
 # 在本目录：make
-# 或拷贝本目录到别处后：make TOYKERNEL=/path/to/ToyKernel
+# 或拷贝本目录到别处后：make BLOCKS_KERNEL=/path/to/ToyKernel
 
-TOYKERNEL ?= $(abspath ../..)
+BLOCKS_KERNEL ?= $(abspath ../..)
 PROG      ?= MYAPP
 SRCS      ?= main.c
 
-include $(TOYKERNEL)/User/Package/ToyUser.mk
+include $(BLOCKS_KERNEL)/User/Package/BlocksUser.mk

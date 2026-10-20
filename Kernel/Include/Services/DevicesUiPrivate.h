@@ -57,7 +57,7 @@ void DevicesUiPaint(void);
  * UI 不读 HAL 私有头。第 2 刀由 Paint 据本结构绘制 About 页。
  */
 typedef struct {
-    const char *OsVersion;   /* TOY_OS_VERSION_STRING */
+    const char *OsVersion;   /* OS_VERSION_STRING */
     const char *Arch;         /* HalArchName()；可为 NULL */
     const char *CpuInfo;      /* HalCpuInfo() */
     int         CpuCount;     /* HalCpuCount() */

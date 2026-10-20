@@ -1,7 +1,7 @@
-/* User/crt/syscall_aarch64.S — long toy_syscall(n,a,b,c) via SVC */
+/* User/crt/syscall_aarch64.S — long blocks_syscall(n,a,b,c) via SVC */
 	.section .text
-	.global toy_syscall
-toy_syscall:
+	.global blocks_syscall
+blocks_syscall:
 	mov	x8, x0
 	mov	x0, x1
 	mov	x1, x2
@@ -9,5 +9,5 @@ toy_syscall:
 	svc	#0
 	ret
 
-	.global toy_syscall2
-	.set toy_syscall2, toy_syscall
+	.global blocks_syscall2
+	.set blocks_syscall2, blocks_syscall

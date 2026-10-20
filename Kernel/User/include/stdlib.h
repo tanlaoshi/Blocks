@@ -2,7 +2,7 @@
 #define STDLIB_H
 
 #include <stddef.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 void *malloc(size_t n);
 void *calloc(size_t nmemb, size_t size);

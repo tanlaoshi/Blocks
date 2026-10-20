@@ -8,9 +8,9 @@
 #include <sched.h>
 #include <signal.h>
 #include <ToyUi.h>
-#include <ToyOS/task.h>
+#include <Blocks/task.h>
 
-static TOY_TASK_SNAP gSnap;
+static TASK_SNAP gSnap;
 static int gIndex;
 static int gWid = -1;
 static int gZh = 1;
@@ -49,20 +49,20 @@ static void LoadLang(void) {
 }
 
 static const char *StateWord(uint32_t Flags) {
-    if (Flags & TOY_TASK_F_ZOMBIE) {
+    if (Flags & TASK_F_ZOMBIE) {
         return Tr("zombie", "僵尸");
     }
-    if (Flags & TOY_TASK_F_BLOCKED) {
+    if (Flags & TASK_F_BLOCKED) {
         return Tr("blocked", "阻塞");
     }
-    if (Flags & TOY_TASK_F_CURRENT) {
+    if (Flags & TASK_F_CURRENT) {
         return Tr("running", "运行");
     }
     return Tr("ready", "就绪");
 }
 
 static const char *KindWord(uint32_t Flags) {
-    if (Flags & TOY_TASK_F_USER) {
+    if (Flags & TASK_F_USER) {
         return Tr("User", "用户");
     }
     return Tr("Kernel", "内核");
@@ -91,7 +91,7 @@ static void Paint(void) {
         Used = 0;
     }
     for (i = 0; i < gSnap.Count && Used < (int)sizeof(Page) - 1; i++) {
-        const TOY_TASK_ENTRY *E = &gSnap.Tasks[i];
+        const TASK_ENTRY *E = &gSnap.Tasks[i];
         int N;
 
         N = snprintf(Page + Used, sizeof(Page) - (size_t)Used,
@@ -107,10 +107,10 @@ static void Paint(void) {
 }
 
 static int Refresh(void) {
-    if (toy_task_snap(&gSnap) != 0) {
+    if (blocks_task_snap(&gSnap) != 0) {
         return -1;
     }
-    if (gSnap.Magic != TOY_TASK_SNAP_MAGIC || gSnap.Version != TOY_TASK_SNAP_VER) {
+    if (gSnap.Magic != TASK_SNAP_MAGIC || gSnap.Version != TASK_SNAP_VER) {
         return -1;
     }
     if (gSnap.Count == 0) {
@@ -137,14 +137,14 @@ static void Move(int Delta) {
 }
 
 static void KillCurrent(void) {
-    const TOY_TASK_ENTRY *E;
+    const TASK_ENTRY *E;
 
     if (gSnap.Count == 0 || gIndex < 0 || (unsigned)gIndex >= gSnap.Count) {
         UiSetLabel(gWid, Tr("nothing to end", "没有可结束的任务"));
         return;
     }
     E = &gSnap.Tasks[gIndex];
-    if (!(E->Flags & TOY_TASK_F_USER)) {
+    if (!(E->Flags & TASK_F_USER)) {
         UiSetLabel(gWid, Tr("refuse: kernel task", "不能结束内核任务"));
         return;
     }

@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 int abs(int x) {
     return x < 0 ? -x : x;

@@ -5,7 +5,7 @@
  * 只由 Pkg EXTRA_OBJS 链进应用，不进 Kernel.elf。
  */
 #include "ToyUiLayout.h"
-#include "ToyOS/syscall.h"
+#include "Blocks/syscall.h"
 
 int UiScreenWidth(void) {
     int W = 0;

@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 typedef struct {
     char *Buf;

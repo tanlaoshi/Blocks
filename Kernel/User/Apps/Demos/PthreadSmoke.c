@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <ToyOS/thread.h>
+#include <Blocks/thread.h>
 
 #define LOOPS 2000
 

@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
-#include <ToyOS/thread.h>
+#include <Blocks/thread.h>
 
 int pthread_create(pthread_t *Thread, const pthread_attr_t *Attr,
                    void *(*Start)(void *), void *Arg) {
@@ -16,7 +16,7 @@ int pthread_create(pthread_t *Thread, const pthread_attr_t *Attr,
         return EINVAL;
     }
     /* 经 ToyThreadRoot：Start 返回后自动 thread_exit */
-    Tid = toy_syscall(SYS_THREAD_CREATE, (long)ToyThreadRoot, (long)Start,
+    Tid = blocks_syscall(SYS_THREAD_CREATE, (long)ToyThreadRoot, (long)Start,
                       (long)Arg);
     if (Tid < 0) {
         errno = (int)(-Tid);

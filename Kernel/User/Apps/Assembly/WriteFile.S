@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/WriteFile.S — 旧 int 0x80 对照；CRT 版见 WriteFile.c（WRITE.ELF） */
     .intel_syntax noprefix
     .section .text

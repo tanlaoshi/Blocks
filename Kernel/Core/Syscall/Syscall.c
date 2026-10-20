@@ -222,7 +222,7 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
                 LogMisc("syscall: unknown (further suppressed)\n");
             }
         }
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_ENOSYS));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)ENOSYS));
         break;
     }
 

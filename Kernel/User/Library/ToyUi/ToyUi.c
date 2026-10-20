@@ -4,7 +4,7 @@
 #include <ToyUi.h>
 #include <string.h>
 #include <unistd.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 #include "Private.h"
 

@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/sysFork.S — fork + wait 走 syscall（对照 FORK.ELF 的 int 0x80） */
     .intel_syntax noprefix
     .section .text

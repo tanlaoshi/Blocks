@@ -1,11 +1,11 @@
 # GuiIm — ToyUiIm Label/Check/Button 范例（PR-UI-im-1）
 #   make -C User/Package/GuiIm
 
-TOYKERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= GUIIM
 SRCS      ?= main.c
 
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a \
+             $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-include ../ToyUser.mk
+include ../BlocksUser.mk

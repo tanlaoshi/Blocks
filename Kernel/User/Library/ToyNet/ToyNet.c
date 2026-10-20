@@ -5,7 +5,7 @@
 #include <string.h>
 #include <ToyNet.h>
 #include <unistd.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 /* syscall 返回 -(errno) 时贯通；-1 仍映射 EIO */
 static void NetFail(long R) {

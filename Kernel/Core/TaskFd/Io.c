@@ -56,7 +56,7 @@ int SchedulerFdReadTimeout(TASK *T, int Fd, void *Buf, UINTN Len,
             return 0; /* EOF */
         }
         if (SockTimeoutMs < 0 && Ret == 0) {
-            return -TOY_EAGAIN; /* 非阻塞无数据 */
+            return -EAGAIN; /* 非阻塞无数据 */
         }
         return Ret;
     }
@@ -173,11 +173,11 @@ INT64 SchedulerFdSeek(TASK *T, int Fd, INT64 Offset, int Whence) {
     INT64 Neu;
 
     if (!T || Fd < 0 || Fd >= MAX_FDS || !T->Fds[Fd].Used) {
-        return -(INT64)TOY_EBADF;
+        return -(INT64)EBADF;
     }
     F = &T->Fds[Fd];
     if (F->Kind != FD_KIND_FILE) {
-        return -(INT64)TOY_ESPIPE;
+        return -(INT64)ESPIPE;
     }
     if (Whence == 0) {
         Base = 0;
@@ -186,11 +186,11 @@ INT64 SchedulerFdSeek(TASK *T, int Fd, INT64 Offset, int Whence) {
     } else if (Whence == 2) {
         Base = (INT64)F->Size;
     } else {
-        return -(INT64)TOY_EINVAL;
+        return -(INT64)EINVAL;
     }
     Neu = Base + Offset;
     if (Neu < 0) {
-        return -(INT64)TOY_EINVAL;
+        return -(INT64)EINVAL;
     }
     F->Pos = (UINTN)Neu;
     return Neu;

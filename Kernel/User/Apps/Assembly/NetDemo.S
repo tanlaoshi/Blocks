@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/NetDemo.S — socket/connect/write/read/close via syscalls (needs LWIP=1) */
     .intel_syntax noprefix
     .section .text

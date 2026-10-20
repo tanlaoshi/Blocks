@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/HelloInt80.S — 旧版 Ring3：int 0x80 write + exit（教学对照；CRT 见 Hello.c） */
     .intel_syntax noprefix
     .section .text

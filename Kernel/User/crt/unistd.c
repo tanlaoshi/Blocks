@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 int open(const char *path, int flags) {
     long r;
@@ -139,7 +139,7 @@ pid_t fork(void) {
 }
 
 pid_t wait(int *status) {
-    TOY_RET2 r = toy_syscall2(SYS_WAIT, 0, 0, 0);
+    BLOCKS_RET2 r = blocks_syscall2(SYS_WAIT, 0, 0, 0);
     if (r.A < 0) {
         errno = ECHILD;
         return -1;

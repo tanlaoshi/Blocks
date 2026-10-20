@@ -3,14 +3,14 @@
  */
 #include <errno.h>
 #include <stdio.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 #define BAD_SYS 9999
 
 int main(void) {
     long R;
 
-    R = toy_syscall(BAD_SYS, 0, 0, 0);
+    R = blocks_syscall(BAD_SYS, 0, 0, 0);
     if (R == -(long)ENOSYS) {
         printf("enosys: ok r=%d\n", (int)R);
         return 0;

@@ -30,7 +30,7 @@ UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame) {
     }
     /* PR-U-thread：组内 >1 线程则拒绝（thr-0 钉死；避免半拷贝） */
     if (SchedulerGroupAliveCount(Parent->GroupId) > 1) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EAGAIN));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EAGAIN));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }

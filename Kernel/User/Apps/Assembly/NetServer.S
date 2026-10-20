@@ -2,7 +2,7 @@
  *
  * 流程：打印 listen → accept 阻塞 → 宿主机 echo hi | nc 127.0.0.1 9000 → ok
  */
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
     .intel_syntax noprefix
     .section .text
     .global _start

@@ -4,14 +4,14 @@
 #include <stddef.h>
 #include <errno.h>
 #include <unistd.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 char *getcwd(char *buf, size_t size) {
     if (!buf || size < 2) {
         errno = EINVAL;
         return 0;
     }
-    if (toy_syscall(SYS_GETCWD, (long)buf, (long)size, 0) < 0) {
+    if (blocks_syscall(SYS_GETCWD, (long)buf, (long)size, 0) < 0) {
         errno = EINVAL;
         return 0;
     }
@@ -23,7 +23,7 @@ int chdir(const char *path) {
         errno = EINVAL;
         return -1;
     }
-    if (toy_syscall(SYS_CHDIR, (long)path, 0, 0) < 0) {
+    if (blocks_syscall(SYS_CHDIR, (long)path, 0, 0) < 0) {
         errno = ENOENT;
         return -1;
     }

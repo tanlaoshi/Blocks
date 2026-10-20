@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 struct FsDirectory {
     int Fd;

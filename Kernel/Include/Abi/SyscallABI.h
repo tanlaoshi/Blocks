@@ -10,7 +10,7 @@
  *   4. 空号预留，勿跳号占位；新增号紧接已用号
  *
  * 本头纯 #define，无类型依赖；内核 Include/Syscall.h 与
- * 用户 User/include/ToyOS/syscall.h 共享此文件。
+ * 用户 User/include/Blocks/syscall.h 共享此文件。
  */
 #ifndef SYSCALL_ABI_H
 #define SYSCALL_ABI_H
@@ -162,7 +162,7 @@
  * 段 1200-1299：系统信息
  * ============================================================ */
 /* ToyOS 子段 1200-1249 */
-#define SYS_TASK_SNAP 1200 /* 任务快照（ps 同源；见 ToyOS/task.h） */
+#define SYS_TASK_SNAP 1200 /* 任务快照（ps 同源；见 Blocks/task.h） */
 /* 1201-1249 预留 */
 
 /* POSIX 子段 1250-1299：预留 */

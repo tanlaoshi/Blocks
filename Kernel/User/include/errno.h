@@ -1,7 +1,7 @@
 /*
  * errno.h — 用户态错误码（PR-CRT2 / PR-N-dns）
  *
- * 数值与 Include/Errno.h（TOY_*）一致；socket 失败可经 syscall 返回 -errno。
+ * 数值与 Include/Abi/Errno.h 一致；socket 失败可经 syscall 返回 -errno。
  */
 #ifndef ERRNO_H
 #define ERRNO_H

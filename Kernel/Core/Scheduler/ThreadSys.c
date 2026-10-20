@@ -19,7 +19,7 @@ UINT64 SchedulerThreadCreate(HAL_INTERRUPT_FRAME *Frame) {
     SpinLockAcquire(&gSchedulerLock);
     Self = CurrentTask();
     if (!Self || !Self->IsUser || !Self->UserSpace) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }
@@ -29,13 +29,13 @@ UINT64 SchedulerThreadCreate(HAL_INTERRUPT_FRAME *Frame) {
     SpinLockRelease(&gSchedulerLock);
 
     if (Entry == 0) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         return 0;
     }
 
     Slot = SchedulerCreateThread(Self, "thread", Entry, Arg0, Arg1, 0, 1);
     if (Slot < 0) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EAGAIN));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EAGAIN));
         return 0;
     }
     HalFrameSetReturn(Frame, (UINT64)gTasks[Slot].Id);
@@ -56,14 +56,14 @@ UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame) {
     SpinLockAcquire(&gSchedulerLock);
     Self = CurrentTask();
     if (!Self || !Self->IsUser) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }
     Tid = (INT32)HalFrameGetArgument0(Frame);
     StatusUser = HalFrameGetArgument1(Frame);
     if (Tid < 0 || Tid >= MAX_TASKS) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }
@@ -77,7 +77,7 @@ UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame) {
             continue;
         }
         if (gTasks[i].GroupId != Self->GroupId) {
-            HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EPERM));
+            HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EPERM));
             SpinLockRelease(&gSchedulerLock);
             return 0;
         }
@@ -85,12 +85,12 @@ UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame) {
         break;
     }
     if (!Target) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_ESRCH));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)ESRCH));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }
     if (Target == Self) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }
@@ -107,7 +107,7 @@ UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame) {
     }
 
     if (Target->JoinerSlot >= 0) {
-        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)TOY_EINVAL));
+        HalFrameSetReturn(Frame, (UINT64)(INT64)(-(INT64)EINVAL));
         SpinLockRelease(&gSchedulerLock);
         return 0;
     }

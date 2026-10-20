@@ -2,11 +2,11 @@
 #   make -C User/Package/Pages
 #   exec PAGES.ELF
 
-TOYKERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= PAGES
 SRCS      ?= main.c Route.c Home.c Settings.c About.c
 
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a \
+             $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-include ../ToyUser.mk
+include ../BlocksUser.mk

@@ -1,7 +1,7 @@
 /*
  * thread_root.c — CRT 入口桩：Start(Arg) 后 thread_exit
  */
-#include <ToyOS/thread.h>
+#include <Blocks/thread.h>
 
 void ToyThreadRoot(void *(*Start)(void *), void *Arg) {
     void *Ret = 0;

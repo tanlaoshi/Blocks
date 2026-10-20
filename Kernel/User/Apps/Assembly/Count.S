@@ -1,4 +1,4 @@
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 /* user/Count.S — 打印 0-9 每行一个数字，验证第二个 ELF 程序 */
     .intel_syntax noprefix
     .section .text

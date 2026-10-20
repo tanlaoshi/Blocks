@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <ToyUi.h>
 #include <ToyUiLayout.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 #include "MyAppUi.h"
 
 void UiDispatch(int Wid, int Ev);

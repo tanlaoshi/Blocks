@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <ToyOS/thread.h>
+#include <Blocks/thread.h>
 
 #define LOOPS 3000
 #define BUF_N 8

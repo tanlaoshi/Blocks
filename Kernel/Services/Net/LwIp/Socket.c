@@ -86,13 +86,13 @@ int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
     ip_addr_t Addr;
 
     if (!Name || !Name[0] || !OutIp) {
-        return -TOY_EINVAL;
+        return -EINVAL;
     }
     if (HalNetParseIp(Name, OutIp) == 0) {
         return 0;
     }
     if (!LwIpActive() && LwIpInitialize() != 0) {
-        return -TOY_ENETUNREACH;
+        return -ENETUNREACH;
     }
     gDnsDone = 0;
     gDnsErr = ERR_INPROGRESS;
@@ -103,7 +103,7 @@ int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
         return 0;
     }
     if (Err != ERR_INPROGRESS) {
-        return -TOY_EINVAL;
+        return -EINVAL;
     }
     Tries = TimeoutMs > 0 ? TimeoutMs : 5000;
     HalIrqEnable();
@@ -112,10 +112,10 @@ int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
         SchedulerIoBreath(); /* 与 ping/dhcp：勿空转饿死键鼠 */
     }
     if (!gDnsDone) {
-        return -TOY_ETIMEDOUT;
+        return -ETIMEDOUT;
     }
     if (gDnsErr != ERR_OK) {
-        return -TOY_ENOENT;
+        return -ENOENT;
     }
     *OutIp = ToyLwIpToHost(ip_2_ip4(&gDnsAddr));
     return 0;

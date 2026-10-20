@@ -6,7 +6,7 @@
  * 不 include HAL 私有头。十进制格式化自备，不拉巨型 printf。
  */
 #include "DevicesUiPrivate.h"
-#include "ToyOSVersion.h"
+#include "OsVersion.h"
 #include "Hal.h"
 #include "PhysicalMemory.h"
 #include "Block.h"
@@ -81,7 +81,7 @@ void DevicesUiFillSummary(DEVICES_UI_SUMMARY *Out) {
         return;
     }
 
-    Out->OsVersion  = TOY_OS_VERSION_STRING;
+    Out->OsVersion  = OS_VERSION_STRING;
     Out->Arch      = HalArchName();
     Out->CpuInfo   = HalCpuInfo();
     Out->CpuCount  = HalCpuCount();

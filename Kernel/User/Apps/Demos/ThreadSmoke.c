@@ -3,7 +3,7 @@
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <ToyOS/thread.h>
+#include <Blocks/thread.h>
 
 static volatile int GFlag;
 

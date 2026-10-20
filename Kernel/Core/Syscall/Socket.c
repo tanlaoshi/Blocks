@@ -23,10 +23,10 @@ int SysSocket(int Domain, int Type, UINT64 Protocol) {
     }
     if (Type == NET_SOCK_RESOLVE) {
         if (Domain != AF_INET || Protocol == 0) {
-            return -TOY_EINVAL;
+            return -EINVAL;
         }
         if (VirtualMemoryCopyFromUser(&Query, Protocol, sizeof(Query)) < 0) {
-            return -TOY_EINVAL;
+            return -EINVAL;
         }
         Query.Name[NET_NAME_MAX] = 0;
         Rc = LwIpDnsLookup(Query.Name, &Ip, 5000);
@@ -35,7 +35,7 @@ int SysSocket(int Domain, int Type, UINT64 Protocol) {
         }
         Query.Ip = Ip;
         if (VirtualMemoryCopyToUser(Protocol, &Query, sizeof(Query)) < 0) {
-            return -TOY_EINVAL;
+            return -EINVAL;
         }
         return 0;
     }
@@ -78,7 +78,7 @@ int SysAccept(int Fd) {
     return SchedulerFdAccept(T, Fd);
 }
 
-/* 非阻塞：>0 字节；0=EOF；-TOY_EAGAIN=暂无数据；其它负=错 */
+/* 非阻塞：>0 字节；0=EOF；-EAGAIN=暂无数据；其它负=错 */
 int SysRecvNb(int Fd, UINT64 UserBuf, UINTN Len) {
     char Buf[COPY_BUF_MAX];
     TASK *T = SchedulerCurrent();
@@ -91,8 +91,8 @@ int SysRecvNb(int Fd, UINT64 UserBuf, UINTN Len) {
         Len = COPY_BUF_MAX;
     }
     N = SchedulerFdReadTimeout(T, Fd, Buf, Len, -1);
-    if (N == -TOY_EAGAIN) {
-        return -TOY_EAGAIN;
+    if (N == -EAGAIN) {
+        return -EAGAIN;
     }
     if (N < 0) {
         return -1;

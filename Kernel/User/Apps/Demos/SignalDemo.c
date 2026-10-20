@@ -6,7 +6,7 @@
 #include "unistd.h"
 #include "signal.h"
 #include <sched.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 static volatile int gGot;
 

@@ -1,0 +1,14 @@
+/*
+ * Blocks/version.h — CRT / libBlocks 版本（PR-L1）
+ * 与 syscall 号无关；改 ABI 时递增 MINOR，破坏性改 MAJOR。
+ */
+#ifndef CRT_VERSION_H
+#define CRT_VERSION_H
+
+#define CRT_VERSION_MAJOR 1
+#define CRT_VERSION_MINOR 5
+#define CRT_VERSION_PATCH 0
+
+#define CRT_VERSION_STRING "1.5.0"
+
+#endif

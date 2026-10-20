@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 static void FillFromFsStat(struct stat *St, const FS_FILE_STAT *T) {
     St->st_mode = (T->Attr & FS_ATTR_DIR) ? S_IFDIR : S_IFREG;

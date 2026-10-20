@@ -2,7 +2,7 @@
  * Graphics.c — libGraphics
  */
 #include <Graphics.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 #define GRAPHICS_TILE 64u
 

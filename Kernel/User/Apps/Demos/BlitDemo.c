@@ -7,7 +7,7 @@
 #include <sched.h>
 #include <Graphics.h>
 #include <ToyUi.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 #define BLIT_W 48u
 #define BLIT_H 48u

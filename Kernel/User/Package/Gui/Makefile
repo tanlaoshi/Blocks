@@ -3,11 +3,11 @@
 #   cp build/MYGUI.ELF ../../ToyImage/rootfs/
 #   toyos> exec MYGUI.ELF
 
-TOYKERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= MYGUI
 SRCS      ?= main.c
 
-EXTRA_LIBS = $(TOYKERNEL)/User/Library/ToyUi/libToyUi.a \
-             $(TOYKERNEL)/User/Library/Graphics/libGraphics.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyUi/libToyUi.a \
+             $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-include $(TOYKERNEL)/User/Package/ToyUser.mk
+include $(BLOCKS_KERNEL)/User/Package/BlocksUser.mk

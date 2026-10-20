@@ -3,7 +3,7 @@
  */
 #include <errno.h>
 #include <signal.h>
-#include <ToyOS/syscall.h>
+#include <Blocks/syscall.h>
 
 sighandler_t signal(int sig, sighandler_t handler) {
     long r;

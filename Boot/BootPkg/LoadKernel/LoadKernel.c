@@ -33,9 +33,6 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
     }
     BootLogoProgress(100);
     BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
-
-    BootConfig->OsIdSeen = BootScanOsMarkerVolumes() ? 1u : 0u;
-    BootSerialPrintf(BootConfig->OsIdSeen ? "Boot: BLOCKS.ID seen\n"
-                                             : "Boot: BLOCKS.ID missing\n");
+    /* OsIdSeen 已废弃，保持交接包清零值；系统卷由内核挂载时再认 */
     return EFI_SUCCESS;
 }

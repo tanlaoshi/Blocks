@@ -91,7 +91,7 @@ int KernelModulesRunFull(void) {
 /* ---- ModulesRun ---- */
 
 static void ModLog(const char *Name, const char *Suffix) {
-    ToyLogBoot("[Mod] ");
+    ToyLogBoot("Boot: Mod ");
     ToyLogBoot(Name);
     ToyLogBoot(Suffix);
 }

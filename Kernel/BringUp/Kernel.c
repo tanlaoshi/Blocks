@@ -29,7 +29,7 @@ static void KernelParkForever(void);
 
 static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
     if (SchedulerCreate(Name, Entry) < 0) {
-        ToyLogBoot("kernel: SchedulerCreate failed\n");
+        ToyLogBoot("Boot: SchedulerCreate Failed\n");
         KernelParkForever();
     }
 }
@@ -40,7 +40,7 @@ static void KernelTrySpawnInput(void) {
         return;
     }
     if (SchedulerCreate("Input", InputTask) < 0) {
-        ToyLogBoot("kernel: SchedulerCreate failed\n");
+        ToyLogBoot("Boot: SchedulerCreate Failed\n");
     }
 }
 
@@ -86,7 +86,7 @@ static void KernelLogFrameBufferSize(const BOOT_INFO *Info) {
 
 /*
  * 尽早挂串口和帧缓冲：后面模块 gConsole.Write 若 Width=0 会空转。
- * 有 FB 则开 GOP 镜像（接 ToyBoot 黑底，禁止再全屏 Clear）。
+ * 有 FB 则开 GOP 镜像（接 Boot 黑底，禁止再全屏 Clear）。
  */
 static ELF_RELOC_KIND KernelElfRelocKind(UINT32 Type) {
     return (ELF_RELOC_KIND)HalElfRelocKind(Type);

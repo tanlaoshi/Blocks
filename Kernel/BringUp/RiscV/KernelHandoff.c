@@ -22,7 +22,7 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
     (void)DtbPhys;
     HalSerialInitialize();
-    HalSerialWrite("ToyOS RiscV: hello\n");
+    HalSerialWrite("Boot: RiscV Hello\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");
@@ -64,7 +64,7 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
 
     HalSerialInitialize();
-    HalSerialWrite("ToyOS RiscV: KernelMain\n");
+    HalSerialWrite("Boot: RiscV KernelMain\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");

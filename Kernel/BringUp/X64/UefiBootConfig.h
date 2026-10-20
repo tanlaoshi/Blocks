@@ -61,7 +61,10 @@ typedef struct {
     UINT32               VideoModePad; /* GOP handoff：UEFI_GOP_HANDOFF_MAGIC */
     UEFI_VIDEO_MODE       VideoModes[UEFI_VIDEO_MODE_MAX];
     UINT64               GopProtocol;
-    /* K9：Boot 见过 BLOCKS.ID 则为 1 */
+    /*
+     * 已废弃：曾表示 Boot 扫到过 BLOCKS.ID。内核不读；认盘靠 BootDiskGuid，
+     * 系统卷靠挂载后再找标记。字段保留以免改 ABI 尺寸/偏移。
+     */
     UINT32               OsIdSeen;
     /* UEFI_BOOT_DISK_GUID_MAGIC：BootDiskGuid 是加载本 EFI 的那块盘 */
     UINT32               OsIdPad;

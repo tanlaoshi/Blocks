@@ -184,28 +184,3 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     BootSerialPrintf("Boot: Kernel.elf Not Found On Any Volume\n");
     return EFI_NOT_FOUND;
 }
-
-BOOLEAN BootScanOsMarkerVolumes(VOID) {
-    EFI_STATUS Status;
-    UINTN HandleCount = 0;
-    EFI_HANDLE *Handles = NULL;
-    UINTN i;
-    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
-    BOOLEAN Seen = FALSE;
-
-    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
-                                     NULL, &HandleCount, &Handles);
-    if (EFI_ERROR(Status) || Handles == NULL) {
-        return FALSE;
-    }
-    for (i = 0; i < HandleCount; i++) {
-        Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
-                                     (VOID **)&Fs);
-        if (!EFI_ERROR(Status) && FsHasOsMarker(Fs)) {
-            Seen = TRUE;
-            break;
-        }
-    }
-    gBS->FreePool(Handles);
-    return Seen;
-}

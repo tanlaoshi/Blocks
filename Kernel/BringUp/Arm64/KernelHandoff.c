@@ -24,7 +24,7 @@ extern char __kernel_end[];
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
     HalSerialInitialize();
-    HalSerialWrite("ToyOS Arm64 virt: hello\n");
+    HalSerialWrite("Boot: Arm64 Virt Hello\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");
@@ -72,7 +72,7 @@ void KernelHandoff(UINT64 DtbPhys) {
     int FromDtb;
 
     HalSerialInitialize();
-    HalSerialWrite("ToyOS Arm64 virt: KernelMain\n");
+    HalSerialWrite("Boot: Arm64 Virt KernelMain\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");

@@ -592,10 +592,10 @@ OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
-# PR-A6：BringUp Entry/Handoff + HalSerial + Hal（Halt），不链 Common
+# PR-A6：BringUp Entry/Handoff* + HalSerial + Hal（Halt），不链 Common
 # PR-B2：仍链 Board.o（横幅 BoardName；HalSerial 用 BoardConfig）
-OBJS = $(BUILDDIR)/BringUp/$(HAL_ARCH)/KernelEntry.o \
-       $(BUILDDIR)/BringUp/$(HAL_ARCH)/KernelHandoff.o \
+# X64 的 HandoffConfig/Memory/Platform 与 KernelHandoff 同在 BRINGUP_ARCH_OBJS
+OBJS = $(BRINGUP_ARCH_OBJS) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/%.c,$(HALDIR)/Hal/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial.c)) \
        $(HALDIR)/Hal/Hal.o \

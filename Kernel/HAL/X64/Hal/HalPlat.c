@@ -90,10 +90,29 @@ int HalCpuIsHypervisor(void) {
                      : "=a"(Eax), "=b"(Ebx), "=c"(Ecx), "=d"(Edx)
                      : "a"(1)
                      : "memory");
-    (void)Eax;
-    (void)Ebx;
-    (void)Edx;
-    return (Ecx & (1u << 31)) != 0;
+    if ((Ecx & (1u << 31)) != 0) {
+        return 1;
+    }
+    /*
+     * 部分 QEMU/TCG 未置 ECX.31，但仍有 0x40000000 品牌叶。
+     * 真机通常无此叶；只认常见签名，避免误判。
+     */
+    __asm__ volatile("cpuid"
+                     : "=a"(Eax), "=b"(Ebx), "=c"(Ecx), "=d"(Edx)
+                     : "a"(0x40000000u)
+                     : "memory");
+    if (Eax < 0x40000000u) {
+        return 0;
+    }
+    /* "KVMKVMKVM\0\0\0" */
+    if (Ebx == 0x4B4D564Bu && Ecx == 0x564B4D56u && Edx == 0x0000004Du) {
+        return 1;
+    }
+    /* "TCGTCGTCGTCG" */
+    if (Ebx == 0x54434754u && Ecx == 0x43544743u && Edx == 0x47435447u) {
+        return 1;
+    }
+    return 0;
 }
 
 void HalVirtPlatformIdleLoop(void) {

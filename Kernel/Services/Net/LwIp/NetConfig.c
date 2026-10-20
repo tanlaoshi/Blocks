@@ -17,25 +17,51 @@ static UINT32 gMask = NET_CFG_MASK_DEFAULT;
 static UINT32 gGw;
 static UINT32 gDns;
 
+static void ApplyQemuSlirp(void) {
+    gIp = NET_CFG_IP_QEMU;
+    gGw = NET_CFG_GW_QEMU;
+    gDns = NET_CFG_DNS_QEMU;
+    HalNetSetIpAddress(gIp);
+}
+
+/*
+ * QEMU run.sh 用 -cpu qemu64，常不带 Hypervisor CPUID。
+ * virtio-net 走胖后端、不挂 NIC_L2；真机 e1000/iwl 会挂 L2。
+ */
+static int UseQemuSlirp(void) {
+    if (HalCpuIsHypervisor()) {
+        return 1;
+    }
+    if (HalNetReady() && !HalNetHasNicL2()) {
+        return 1;
+    }
+    return 0;
+}
+
 void NetConfigEnsure(void) {
     if (gReady) {
+        /*
+         * 开机 NetInit 若按真机清成 0，virtio 起来后再问 IP 时补回课默认。
+         */
+        if (gIp == 0 && UseQemuSlirp()) {
+            ApplyQemuSlirp();
+            return;
+        }
         /* Attach 晚于首次 Ensure、或 Hal 后端曾空写：把配置表推回驱动 */
         if (gIp != 0 && HalNetGetIpAddress() != gIp) {
             HalNetSetIpAddress(gIp);
         }
         return;
     }
-    if (HalCpuIsHypervisor()) {
-        gIp = NET_CFG_IP_QEMU;
-        gGw = NET_CFG_GW_QEMU;
-        gDns = NET_CFG_DNS_QEMU;
+    if (UseQemuSlirp()) {
+        ApplyQemuSlirp();
     } else {
         /* 真机不预置地址，等当前 L2 上的 DHCP */
         gIp = 0;
         gGw = 0;
         gDns = 0;
+        HalNetSetIpAddress(gIp);
     }
-    HalNetSetIpAddress(gIp);
     gReady = 1;
 }
 

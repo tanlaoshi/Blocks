@@ -68,6 +68,10 @@ int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
     return 1;
 }
 
+int HalNetHasNicL2(void) {
+    return NetNicHasL2();
+}
+
 int HalNetPrimaryKind(void) {
     return NetNicPrimaryKind();
 }

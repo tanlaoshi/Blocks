@@ -55,10 +55,11 @@ NET_TRAY_KIND DesktopNetTrayDetectKind(void) {
     if (HalNetGetLinkInfo(&Up, &Mbps, &Fd) && !Up) {
         return NET_TRAY_NONE;
     }
+    /* GetIp → Ensure：QEMU virtio 会在这里补上 10.0.2.15 */
     if (DesktopNetTrayCurrentIp() == 0) {
         return NET_TRAY_NONE;
     }
-    /* 双槽：图标跟默认出站（有线优先）；无外置 L2 时回落旧启发式 */
+    /* 双槽：图标跟默认出站（有线优先）；无外置 L2（virtio）→ 有线绿标 */
     Primary = HalNetPrimaryKind();
     if (Primary == 1) {
         return NET_TRAY_WIFI;

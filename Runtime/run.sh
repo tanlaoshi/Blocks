@@ -123,9 +123,11 @@ echo "=========================================="
 # 双盘均走 AHCI：现网 x86 块驱动认 AHCI，不认 virtio-blk（旧 run-split 同款）。
 # disk0=Esp（Boot）；disk1=RootFs（TOYOS.ID / Assets / Kernel.elf）。
 # K52：qemu-xhci + usb-kbd + usb-tablet（GTK 绝对鼠）。
+# 课用现代 virtio-net（驱动走 PCI caps）；disable-modern 会让认卡失败、托盘一直红。
+# 注意：# 注释不能插在 \ 续行中间，否则后面参数全被吃掉。
 exec qemu-system-x86_64 \
     -machine q35,accel=kvm:tcg \
-    -cpu qemu64 \
+    -cpu qemu64,+hypervisor \
     -m "$MEM" \
     -smp "$SMP" \
     -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
@@ -136,7 +138,7 @@ exec qemu-system-x86_64 \
     -drive if=none,id=toyroot,format=raw,file=fat:rw:RootFs/X64 \
     -device ide-hd,drive=toyroot,bus=ahci.1,bootindex=1 \
     -device VGA,edid=on,xres="${QEMU_XRES}",yres="${QEMU_YRES}" \
-    -device virtio-net-pci,netdev=n0,disable-modern=on \
+    -device virtio-net-pci,netdev=n0 \
     -netdev user,id=n0,hostfwd=tcp::15000-:5000 \
     -device qemu-xhci,id=xhci \
     -device usb-kbd,bus=xhci.0 \

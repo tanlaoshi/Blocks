@@ -194,7 +194,7 @@ static void DrainMouse(void) {
 int GuiInitialize(void) {
     PollInput();
     /* Logo 已在 Video 后缓冲就绪时画出；这里继续读字体主题，仍盖在 Logo 下 */
-    DesktopBootLogoSet(96);
+    DesktopBootLogoSet(95);
     (void)DbInitialize();
     (void)FontLoadAssets();
     (void)FontTtfLoad();

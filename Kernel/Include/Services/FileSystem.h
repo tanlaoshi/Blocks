@@ -1,7 +1,7 @@
 /*
  * FileSystem.h — 文件系统模块（story-s3 / PR-FS2 多卷）
  *
- * 开机挂卷 FileSystemInitialize；热插拔 RemountVolumes（Worker→HotPoll）。
+ * 开机挂卷 FileSystemInitialize；拔出 RemountVolumes（Worker→HotPoll）；晚插 `msc hot`。
  * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`；无前缀用默认卷（优先 BLOCKS.ID）。
  * Shell/exec 走 FileSystem*；链图见 FileSystem.c / Mount.c / Clock.c 头。
  */

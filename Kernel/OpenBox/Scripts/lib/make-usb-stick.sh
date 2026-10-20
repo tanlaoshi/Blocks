@@ -148,8 +148,8 @@ echo "formatted:"
 lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DEVICE"
 
 # 尝试挂载（桌面自动挂载或手动）；FAT 用调用者 uid 以便后续 sync-usb 免 root
-ESP_MNT="/mnt/toyos-esp"
-BLOCKS_MNT="/mnt/toyos-data"
+ESP_MNT="/mnt/blocks-esp"
+BLOCKS_MNT="/mnt/blocks-data"
 MUID="${SUDO_UID:-0}"
 MGID="${SUDO_GID:-0}"
 mkdir -p "$ESP_MNT" "$BLOCKS_MNT"

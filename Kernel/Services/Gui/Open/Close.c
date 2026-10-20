@@ -1,13 +1,14 @@
 /*
  * Close.c — 关窗与 Closing 等待（gui-g3-close）
  *
- * CloseWindow 合成分叉（WasUser 在槽清空前取样）：
- *   USER — 轻量：擦本窗 → 相交窗重画 → 清 clip 画任务栏 → PresentFlush（Busy 内）
- *          禁止 GuiComposeThemeScene（4K 全屏会拖死 GuiWaitNoWindowClosing
- *          → Destroy 抢页 → #PF）。完整合成在 SchedulerExitUser Destroy 之后。
- *   非 USER — 全窗 BackupValid 清零 → GuiComposeThemeScene（故意全屏）
+ * CloseWindow 合成分叉（Kind 在槽清空前取样）：
+ *   轻量（USER + Files/Edit/Settings/Store/Devices/Shell/TTY）—
+ *          擦本窗 → 相交窗重画 → 清 clip 画任务栏 → PresentFlush
+ *          禁止 GuiComposeThemeScene（高分全屏数秒 → 鼠假死）。
+ *   USER 另置 ClosePending（exit 竞态）；完整合成在 ExitUser Destroy 之后。
+ *   其它 — 全窗 BackupValid 清零 → GuiComposeThemeScene
  * GuiWaitNoWindowClosing：自旋至 Closing 清零；禁止超时强拆页表。
- * 断言：USER 轻量期间 GuiCloseUserLightActive=1；ThemeScene 入口见则 halt。
+ * 断言：轻量关窗期间 GuiCloseUserLightActive=1；ThemeScene 入口见则 halt。
  * 调用面四档见 Damage.c（gui-g2-mark）。开窗辅助 Open.c。
  */
 #include "GuiPrivate.h"
@@ -41,6 +42,8 @@ void CloseWindow(int Idx) {
     int i;
     int SavedFocus;
     int WasUser;
+    int UseLight;
+    GUI_WIN_KIND K;
 
     if (Idx < 0 || Idx >= MAX_WINS || !gGuiWindowManager.Windows[Idx].Active) {
         return;
@@ -49,7 +52,13 @@ void CloseWindow(int Idx) {
         return;
     }
     gGuiWindowManager.Windows[Idx].Closing = 1;
-    WasUser = (gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_USER);
+    K = gGuiWindowManager.Windows[Idx].Kind;
+    WasUser = (K == GUI_WIN_USER);
+    /* Files/Edit 等关窗若走 ThemeScene，1920×1200 上鼠会卡死数秒 */
+    UseLight = WasUser || K == GUI_WIN_FILES || K == GUI_WIN_EDIT ||
+               K == GUI_WIN_SETTINGS || K == GUI_WIN_STORE ||
+               K == GUI_WIN_DEVICES || K == GUI_WIN_SHELL ||
+               K == GUI_WIN_TTY;
     if (gGuiWindowManager.Windows[Idx].Kind == GUI_WIN_SHELL) {
         gConsole.SbWinForget(Idx);
     }
@@ -62,10 +71,10 @@ void CloseWindow(int Idx) {
     Wh = gGuiWindowManager.Windows[Idx].Height;
 
     /*
-     * USER 关窗不做淡出（真机淡出易与 exit 竞态 → 二次 exec #PF）。
+     * 轻量关窗不做淡出（USER：exit 竞态；系统窗：淡出+全屏同样拖死输入）。
      * 其它窗仍可淡出；淡出 under 只铺本窗矩形（GuiFade）。
      */
-    if (!WasUser && ThemeWindowFadeSteps() != 0) {
+    if (!UseLight && ThemeWindowFadeSteps() != 0) {
         if (!gGuiWindowManager.WinBackupValid[Idx]) {
             BackupWindowAt(Idx);
         }
@@ -122,12 +131,12 @@ void CloseWindow(int Idx) {
 
     SavedFocus = gGuiWindowManager.FocusWin;
 
-    if (WasUser) {
+    if (UseLight) {
         UINT32 BarY;
         UINT32 Sw;
         UINT32 Sh;
 
-        /* USER 轻量：契约见文件头（禁 ThemeScene；旗标供 ThemeScene 断言） */
+        /* 轻量：契约见文件头（禁 ThemeScene；旗标供 ThemeScene 断言） */
         gCloseUserLight = 1;
         ComposeBeginEraseCursor();
         HalVideoClearClip();

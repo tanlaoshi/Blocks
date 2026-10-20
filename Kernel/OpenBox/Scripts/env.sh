@@ -5,7 +5,7 @@
 #   build                 # Kernel
 #   boot                  # Boot → BOOTX64.EFI
 #   sync                  # 本机 Runtime
-#   sync usb              # 已挂载的 ESP + TOYOS U 盘
+#   sync usb              # 已挂载的 ESP + BLOCKS U 盘
 #   run-virt-arm|riscv    # QEMU virt -kernel
 #
 # 路径四件套：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD

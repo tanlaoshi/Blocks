@@ -6,18 +6,22 @@
 #include "XHCI/Private.h"
 
 /*
- * Force PR 直到 PED+CCS（真机）；QEMU 且已 PED 则直过。
- * 成功 1 并写 *Force；失败 0。
- * PR-BOOT-fast-2：收紧 Attempt/空转上限（仍软退 continue）；慢盘靠 hub 再扫。
+ * 口未 PED：Force PR。已 PED+CCS：软过（*Force=0）——冷启动 U 盘常驻 PED，
+ * 真机先 Force 易 reset fail。gPortNeedForcePr 仍先 Force。
  */
 int ForceUntilPed(UINT32 P, int *Force) {
     UINT32 Ps;
     int Ready = 0;
     UINT32 QuietSave;
+    int NeedForce;
 
     *Force = 0;
+    if (gXhciPortEnumFreeze) {
+        return 0;
+    }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));
-    if (HalCpuIsHypervisor() && (Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
+    NeedForce = (gPortNeedForcePr & (1u << P)) != 0;
+    if (!NeedForce && (Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
         BootLogHex("Boot: MSC claim try PED port=", P, 2);
         return 1;
     }
@@ -75,12 +79,12 @@ int ForceUntilPed(UINT32 P, int *Force) {
     }
     gDiagQuiet = QuietSave;
     if (!Ready) {
-        BootLogHex("Boot: MSC claim reset fail port=", P, 2);
+        BootLogHex("Boot: XHCI port reset fail=", P, 2);
         return 0;
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));
     if (!(Ps & PORTSC_PED) || !(Ps & PORTSC_CCS)) {
-        BootLogHex("Boot: MSC claim not PED port=", P, 2);
+        BootLogHex("Boot: XHCI port not PED=", P, 2);
         return 0;
     }
     return 1;
@@ -105,7 +109,10 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
         DisableSlot(gMscScanSlot);
         gMscScanSlot = 0;
     }
-    /* QEMU PED 直 Address 失败：Force 再试（真机本轮已 Force） */
+    /*
+     * QEMU：软 Address 失败再 Force。
+     * 真机：勿立刻 Force（易 0x6E1）；记 NeedForce，留给后续口 / 热插。
+     */
     if (!AddrOk && !Force) {
         if (gXhciCmdSick) {
             gDiagQuiet = QuietSave;
@@ -114,11 +121,15 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
             gXhciCmdSick = 0;
             return -1;
         }
+        if (!HalCpuIsHypervisor()) {
+            BootLogHex("Boot: MSC claim addr soft fail port=", P, 2);
+            gPortNeedForcePr |= (1u << P);
+            gDiagQuiet = QuietSave;
+            return 0;
+        }
         BootLogHex("Boot: MSC claim addr retry Force port=", P, 2);
         if (ResetPortEx(P, 1)) {
-            if (!HalCpuIsHypervisor()) {
-                StallMs(50);
-            }
+            StallMs(50);
             *Speed = PortSpeed(ReadMmio32(gOperationalBase + PortReg(P)));
             AddrOk = AddressDeviceOnPort(P, *Speed, &gMscScanSlot, gMscScanDevCtx,
                                          0, 0, 0, 0, 0);
@@ -217,6 +228,17 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
                 *Ok = 1;
                 return 1;
             }
+            /*
+             * SS 侧非 SS 速度的设备：规格走 USB2 hub。ProbeSecondHub
+             * 失败后已恢复 gHub*=原 USB2 hub，再扫一轮子口。
+             */
+            if (gHubSlotId != 0 && gHubSpeed < 4) {
+                BootLog("Boot: MSC claim usb2 rescan after ss\n");
+                if (EnumerateHubChildren()) {
+                    *Ok = 1;
+                    return 1;
+                }
+            }
             return 0;
         }
         if (ClaimHubOnRootPort(P, Speed, Was)) {
@@ -228,12 +250,20 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
                 *Ok = 1;
                 return 1;
             }
-            /* HID 未占用此 hub：无 MSC 则放掉，试其它根口 */
+            /*
+             * USB2 hub 无 MSC：先保留。后面 SS hub 子口若 Speed=0/HS
+             *（USB3 §10.14.2.6 = FS/LS 或 HS），设备在双总线 hub 的
+             * USB2 侧，须再扫此 hub，勿过早 Disable。
+             */
             if (HubBefore == 0 && gHubSlotId != 0 && gHubRootPort == P) {
-                DisableSlot(gHubSlotId);
-                gHubSlotId = 0;
-                gHubRootPort = 0;
-                BootLog("Boot: MSC claim hub no msc, release\n");
+                if (Speed < 4) {
+                    BootLog("Boot: MSC claim keep usb2 hub\n");
+                } else {
+                    DisableSlot(gHubSlotId);
+                    gHubSlotId = 0;
+                    gHubRootPort = 0;
+                    BootLog("Boot: MSC claim hub no msc, release\n");
+                }
             }
         } else if (Was != 0) {
             DisableSlot(Was);

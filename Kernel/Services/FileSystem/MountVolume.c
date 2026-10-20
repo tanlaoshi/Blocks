@@ -37,7 +37,7 @@ static int CacheBootDiskMatch(UINT32 Drive) {
         return 0;
     }
     if (sDriveGuidOk[Drive] == 0) {
-        if (!GptCurrentDiskGuid(sDriveGuid[Drive])) {
+        if (!BlockSelect(Drive) || !GptCurrentDiskGuid(sDriveGuid[Drive])) {
             sDriveGuidOk[Drive] = 2;
             return 0;
         }
@@ -47,6 +47,28 @@ static int CacheBootDiskMatch(UINT32 Drive) {
         return 0;
     }
     return GuidEq16(sDriveGuid[Drive], Info->BootDiskGuid);
+}
+
+/*
+ * U 盘启动时本机 NVMe 也可能有 BLOCKS.ID；MSC skip 必须看「启动盘」是否已有，
+ * 不能只看「任意盘」。1=启动盘已有；0=启动盘尚无（别处可能有）；-1=旧 Boot 无 GUID。
+ */
+int FsBootDiskHasBlocksId(void) {
+    const BOOT_INFO *Info = BootInfoGet();
+    int i;
+
+    if (!Info || !Info->BootDiskGuidOk) {
+        return -1;
+    }
+    for (i = 0; i < gVolCount; i++) {
+        if (!gVols[i].HasBlocksId) {
+            continue;
+        }
+        if (CacheBootDiskMatch(gVols[i].Drive) == 1) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {

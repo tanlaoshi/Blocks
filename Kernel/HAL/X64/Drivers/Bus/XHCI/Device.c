@@ -92,6 +92,9 @@ int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
     if (SlotOut) {
         *SlotOut = 0;
     }
+    if (gXhciPortEnumFreeze) {
+        return 0;
+    }
     DiagChk("AddressDev.port", 1, "root+spd", ((UINT64)RootPort << 8) | Speed, 4);
     if (Command(0, TRB_TYPE(TRB_ENABLE_SLOT), SlotOut) < 0 || *SlotOut == 0 ||
         *SlotOut > gDcbaaMaxSlot) {
@@ -138,7 +141,8 @@ int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
     if (HubDevice && HubNumPorts != 0) {
         Slot[1] |= ((UINT32)HubNumPorts << 24);
     }
-    if (ParentHubSlot != 0 && Speed < 3) {
+    /* 非根口须填 Parent Hub（含 HS/SS；旧逻辑只填 Speed<3） */
+    if (ParentHubSlot != 0) {
         Slot[2] = (UINT32)ParentHubSlot | ((UINT32)TtPort << 8);
     }
 

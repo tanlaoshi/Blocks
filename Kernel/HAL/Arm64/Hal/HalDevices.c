@@ -67,6 +67,14 @@ int HalUsbMscAutoBeforeFs(void) {
     return 1;
 }
 
+void HalBootLogoBumpRegister(HAL_BOOT_LOGO_BUMP_FN Fn) {
+    (void)Fn;
+}
+
+void HalBootLogoBump(UINT32 Cap) {
+    (void)Cap;
+}
+
 int HalUsbMscRelease(void) {
     return 0;
 }

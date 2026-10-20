@@ -107,10 +107,13 @@
 #define HUB_PORT_POWER        (1u << 8)
 #define HUB_C_PORT_CONNECTION (1u << 16)
 #define HUB_C_PORT_RESET      (1u << 20)
+#define HUB_C_BH_PORT_RESET   (1u << 21) /* USB3 wPortChange */
 #define HUB_FEAT_PORT_RESET   4
 #define HUB_FEAT_PORT_POWER   8
 #define HUB_FEAT_C_PORT_CONNECTION 16
 #define HUB_FEAT_C_PORT_RESET 20
+#define HUB_FEAT_BH_PORT_RESET 28    /* USB3 Warm Reset */
+#define HUB_FEAT_C_BH_PORT_RESET 29
 
 typedef struct {
     UINT64 Parameter;
@@ -321,6 +324,9 @@ extern volatile UINT32 gCmdDone;
 extern UINT32 gCmdCode;
 extern UINT32 gCmdSlot;
 extern UINT32 gXhciCmdSick;
+extern UINT32 gXhciPortEnumFreeze; /* MSC sick 后禁根口再枚举 */
+extern UINT32 gXhciCmdWaitMs; /* 0=默认 800ms；SS hub 子口 Address 可缩短 */
+extern UINT32 gXhciCmdAttempts; /* 0=默认 2；SS hub 子口可 1 次快退 */
 extern UINT32 gXhciCmdWaiting; /* WaitCommand 中：Drain/Irq 勿碰事件环 */
 extern volatile UINT32 gXferDone;
 extern UINT32 gXferCode;

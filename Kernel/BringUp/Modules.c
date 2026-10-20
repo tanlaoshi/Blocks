@@ -117,22 +117,25 @@ static void ModLog(const char *Name, const char *Suffix) {
     LogBoot(Suffix);
 }
 
-/* 引导读盘时 T 落到 40。按做完模块下落（序随 PLATFORM：Cpu→Driver→Smp）。 */
+/*
+ * Logo 从 0 起；模块目标点间距收紧（大跳由 Set 拆成 1%）；
+ * USB→FS 之间 78..92 留给 MSC claim 按口 HalBootLogoBump。
+ */
 static UINT32 ModLogoPct(const char *Name) {
     if (Name[0] == 'C' && Name[1] == 'p') {
-        return 55;
+        return 20;
     }
     if (Name[0] == 'D' && Name[1] == 'r') {
-        return 62;
+        return 35;
     }
     if (Name[0] == 'S' && Name[1] == 'm') {
-        return 70;
+        return 50;
     }
     if (Name[0] == 'U') {
-        return 84;
+        return 70;
     }
     if (Name[0] == 'F') {
-        return 94;
+        return 92;
     }
     return 0;
 }

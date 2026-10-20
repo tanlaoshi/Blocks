@@ -17,8 +17,9 @@ int WaitCommand(int Timeout) {
 
     if (!HalCpuIsHypervisor()) {
         UINT64 T0 = ReadTsc();
+        UINT32 WaitMs = gXhciCmdWaitMs ? gXhciCmdWaitMs : 800u;
         /* Force PR 后 EnableSlot 真机可 >300ms；过短会误超时→CA→HID 伤 */
-        UINT64 Need = 800ULL * 3000000ULL; /* ~800ms */
+        UINT64 Need = (UINT64)WaitMs * 3000000ULL;
         UINT64 Mid = Need / 2;
         (void)Timeout;
         while (ReadTsc() - T0 < Need) {
@@ -137,13 +138,16 @@ int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut) {
     int Wait = HalCpuIsHypervisor() ? 150000 : 200000;
     int RealPc = !HalCpuIsHypervisor();
     int Attempt;
+    int MaxAttempts = (gXhciCmdAttempts > 0 && gXhciCmdAttempts <= 2)
+                          ? (int)gXhciCmdAttempts
+                          : 2;
     const char *Name = CmdTrbName(Control);
 
     if (gXhciCmdSick) {
         return -1;
     }
 
-    for (Attempt = 0; Attempt < 2; Attempt++) {
+    for (Attempt = 0; Attempt < MaxAttempts; Attempt++) {
         gCmdDone = 0;
         gCmdCode = 0;
         gCmdSlot = 0;
@@ -181,7 +185,7 @@ int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut) {
         if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
             QueueMouseIntr();
         }
-        if (Attempt == 0) {
+        if (Attempt + 1 < MaxAttempts) {
             BootLog("xhci retry after cmd recover\n");
         }
     }

@@ -1,35 +1,47 @@
 /*
- * BootLogo.c — 启动 Logo → 清屏 → 再进 DesktopInitialize。
- * T 向下四格、凹口向上五格。一开始 T 悬在上面，读盘落到 40，
- * 进桌面前竖条填进凹口，合成三行、每行三块。凹形不动。格子尺寸两边相同。
- *
- * Video 后缓冲就绪即 Show，盖住核显 / USB / 挂盘 / 读字体。
- * Finish 时若屏上停得不够久，再补到大约一秒，避免一闪而过。
+ * BootLogo.c — 内核只画 Logo 格子。
+ * 屏上底色：Boot GOP 已铺；后缓冲：VideoInitialize 已铺且 DiscardDirty（勿再 Clear）。
+ * 须在 igpu 探针之后调用，否则翻页/探针会跳帧。
  */
 #include "Desktop.h"
 #include "UI.h"
 #include "Hal.h"
 #include "HalVideo.h"
+#include "HalDevices.h"
 #include "SerialLog.h"
 #include "BootTypes.h"
 
-#define LOGO_BG     0x00101828u
+#define LOGO_BG     0x00000000u
 #define LOGO_ACCENT 0x00C07820u
 #define LOGO_TEAL   0x001E9A8Eu
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
 #define LOGO_OPEN   112u
+/* 清屏后略停再画 Logo */
+#define LOGO_SHOW_DELAY_MS 280u
+/* 每 1% 帧最短间隔：早期模块 Set 连跳时匀速下落（约 100×22ms ≈ 2.2s 满程） */
+#define LOGO_FRAME_MS 22u
 /* 至少约 1 秒（按 ~3GHz 估），读盘已久则 Finish 几乎不再空等 */
 #define LOGO_MIN_MS 1000u
 #define LOGO_TSC_PER_MS 3000000ull
+#define LOGO_SHIFT_NONE 0xFFFFFFFFu
 
 static int gLogoUp;
+static int gTealBottomUp; /* 底部三格青绿只画一次 */
 static UINT64 gLogoTsc;
 static UINT32 gPct;
 static UINT32 gAx;
 static UINT32 gAy;
 static UINT32 gMarkW;
 static UINT32 gMarkH;
+static UINT32 gLastShift; /* 上一帧橙色 Shift；用于只擦脚印 */
+
+/* 与 Drag/Slide 相同：抬高条带，整块 Present，避免 64 行撕开 */
+static void LogoPresentFlush(void) {
+    HalVideoSetPresentChunkRows(16384u);
+    HalVideoPresentFlush();
+    HalVideoSetPresentChunkRows(0);
+}
 
 static UINT64 LogoTsc(void) {
 #if defined(__x86_64__)
@@ -46,6 +58,16 @@ static UINT64 LogoTsc(void) {
 #endif
 }
 
+static void LogoSpinMs(UINT32 Ms) {
+    UINT64 Need = (UINT64)Ms * LOGO_TSC_PER_MS;
+    UINT64 Start = LogoTsc();
+
+    while (LogoTsc() - Start < Need) {
+        HalInputPoll();
+        HalCpuRelax();
+    }
+}
+
 static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     if (W == 0 || H == 0) {
         return;
@@ -60,33 +82,55 @@ static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {
 }
 
 /* Shift 是 T 还悬在凹形上方的距离。0 时竖条落进凹口。 */
-static void DrawBlocks(UINT32 X, UINT32 Y, UINT32 Shift) {
+static void DrawOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
     UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
-    UINT32 Yu = Y;
 
     Cell(X, Yt, 0, 0, LOGO_ACCENT);
     Cell(X, Yt, 1, 0, LOGO_ACCENT);
     Cell(X, Yt, 2, 0, LOGO_ACCENT);
     Cell(X, Yt, 1, 1, LOGO_ACCENT);
-    /* 凹口在第二行正中，留给 T 的竖条。 */
-    Cell(X, Yu, 0, 1, LOGO_TEAL);
-    Cell(X, Yu, 2, 1, LOGO_TEAL);
-    Cell(X, Yu, 0, 2, LOGO_TEAL);
-    Cell(X, Yu, 1, 2, LOGO_TEAL);
-    Cell(X, Yu, 2, 2, LOGO_TEAL);
+}
+
+/* 只擦上一帧橙色四格，绝不碰青绿（整带擦会闪线）。 */
+static void ClearOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
+    UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
+    UINT32 Step = LOGO_CELL + LOGO_GAP;
+
+    Fill(X + 0 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
+    Fill(X + 1 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
+    Fill(X + 2 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
+    Fill(X + 1 * Step, Yt + 1 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
+}
+
+static void DrawTealSides(UINT32 X, UINT32 Y) {
+    Cell(X, Y, 0, 1, LOGO_TEAL);
+    Cell(X, Y, 2, 1, LOGO_TEAL);
+}
+
+static void DrawTealBottom(UINT32 X, UINT32 Y) {
+    Cell(X, Y, 0, 2, LOGO_TEAL);
+    Cell(X, Y, 1, 2, LOGO_TEAL);
+    Cell(X, Y, 2, 2, LOGO_TEAL);
 }
 
 static void PaintPieces(UINT32 Pct) {
     UINT32 Shift;
-    UINT32 BandY;
 
     if (Pct > 100) {
         Pct = 100;
     }
     Shift = (100 - Pct) * LOGO_OPEN / 100;
-    BandY = (gAy > LOGO_OPEN) ? (gAy - LOGO_OPEN) : 0;
-    Fill(gAx, BandY, gMarkW, gMarkH + LOGO_OPEN, LOGO_BG);
-    DrawBlocks(gAx, gAy, Shift);
+    if (gLastShift != LOGO_SHIFT_NONE) {
+        ClearOrange(gAx, gAy, gLastShift);
+    }
+    DrawOrange(gAx, gAy, Shift);
+    /* 两侧每帧点一下（两格很轻），竖条贴近凹口时也不会被擦出闪线 */
+    DrawTealSides(gAx, gAy);
+    if (!gTealBottomUp) {
+        DrawTealBottom(gAx, gAy);
+        gTealBottomUp = 1;
+    }
+    gLastShift = Shift;
     gPct = Pct;
 }
 
@@ -103,6 +147,24 @@ static void LogoHoldUntilMin(void) {
     }
 }
 
+void DesktopBootLogoBump(UINT32 Cap) {
+    UINT32 Next;
+
+    if (!gLogoUp || Cap <= gPct) {
+        return;
+    }
+    Next = gPct + 1;
+    if (Next > Cap) {
+        Next = Cap;
+    }
+    if (Next > 100) {
+        Next = 100;
+    }
+    PaintPieces(Next);
+    LogoPresentFlush();
+    LogoSpinMs(LOGO_FRAME_MS);
+}
+
 void DesktopBootLogoShow(void) {
     UINT32 W;
     UINT32 H;
@@ -117,29 +179,44 @@ void DesktopBootLogoShow(void) {
         return;
     }
 
-    HalVideoClearScreen(LOGO_BG);
+    LogoSpinMs(LOGO_SHOW_DELAY_MS);
 
     MarkW = LOGO_CELL * 3 + LOGO_GAP * 2;
     MarkH = LOGO_CELL * 3 + LOGO_GAP * 2;
     gMarkW = MarkW;
     gMarkH = MarkH;
     gAx = (W > MarkW) ? (W - MarkW) / 2 : 0;
-    /* 与引导相同：合成后的九格居中，T 从上方落下。 */
     gAy = (H > MarkH) ? (H - MarkH) / 2 : 0;
-    /* 引导读盘时 T 已落到 40，这里接上，避免弹回顶部。 */
-    PaintPieces(40);
-    HalVideoPresentFlush();
+    /* 底色不碰 LFB；后缓冲已在 VideoInitialize 铺好。只 Present 格子。 */
+    gPct = 0;
+    gTealBottomUp = 0;
+    gLastShift = LOGO_SHIFT_NONE;
+    PaintPieces(0);
+    LogoPresentFlush();
     LogBoot("Boot: Logo\n");
     gLogoTsc = LogoTsc();
     gLogoUp = 1;
+    HalBootLogoBumpRegister(DesktopBootLogoBump);
 }
 
 void DesktopBootLogoSet(UINT32 Pct) {
+    UINT32 Cur;
+
     if (!gLogoUp || Pct <= gPct) {
         return;
     }
-    PaintPieces(Pct);
-    HalVideoPresentFlush();
+    if (Pct > 100) {
+        Pct = 100;
+    }
+    /* 大阶段拆成 1% 步进；每帧限速，避免早期模块连跳时下落过猛 */
+    Cur = gPct;
+    while (Cur < Pct) {
+        Cur++;
+        PaintPieces(Cur);
+        LogoPresentFlush();
+        LogoSpinMs(LOGO_FRAME_MS);
+        HalInputPoll();
+    }
 }
 
 void DesktopBootLogoFinish(void) {
@@ -147,13 +224,14 @@ void DesktopBootLogoFinish(void) {
         DesktopBootLogoShow();
     }
     DesktopBootLogoSet(100);
-    /* 合成后的九格再停大约一秒，然后进桌面。 */
+    /* 合成后的九格再停大约一秒；勿清黑——GuiDesktopInitialize→Redraw 会直接盖住。 */
     gLogoTsc = LogoTsc();
     LogoHoldUntilMin();
-    HalVideoClearScreen(0x00000000u);
-    HalVideoPresentFlush();
-    LogBoot("Boot: Logo Cleared\n");
+    LogBoot("Boot: Logo Done\n");
+    HalBootLogoBumpRegister(0);
     gLogoUp = 0;
+    gTealBottomUp = 0;
+    gLastShift = LOGO_SHIFT_NONE;
     gLogoTsc = 0;
     gPct = 0;
 }

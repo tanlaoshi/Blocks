@@ -31,7 +31,6 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
             return Status;
         }
     }
-    BootLogoProgress(100);
     BootSerialPrintf("Boot: Kernel Loaded, Entry=0x%lx\n", BootConfig->EntryAddress);
     /* OsIdSeen 已废弃，保持交接包清零值；系统卷由内核挂载时再认 */
     return EFI_SUCCESS;

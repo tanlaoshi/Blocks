@@ -28,6 +28,7 @@ static void NoteMouseRootDropped(void) {
 int ClaimPorts(void) {
     UINT32 P;
     int Ok = 0;
+    int Sick = 0;
 
     if (!gXhciStarted || gOperationalBase == 0 || gMaxPorts == 0) {
         BootLog("Boot: MSC claim no hc\n");
@@ -39,6 +40,9 @@ int ClaimPorts(void) {
     }
 
     BootLog("Boot: MSC claim begin\n");
+    HalBootLogoBump(80);
+    /* Shell msc hot / 新一轮 claim：解开上次 sick 冻结 */
+    gXhciPortEnumFreeze = 0;
     /*
      * excl-3：不再 FallbackToPoll("msc-claim")。
      * 事件环由 excl-1/2 单消费者 + 消费锁串行；claim 保持 dual/irq。
@@ -79,16 +83,18 @@ int ClaimPorts(void) {
         goto done;
     }
 
-    for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
+    for (P = 1; P <= gMaxPorts && P <= 32u && !Sick; P++) {
         UINT32 Ps;
         UINT8 Speed;
         int Force;
         int HubRc;
+        int Arc;
 
         Ps = ReadMmio32(gOperationalBase + PortReg(P));
         if (!(Ps & PORTSC_CCS)) {
             continue;
         }
+        HalBootLogoBump(90);
         if (gSlotId != 0 && P == gPort1) {
             continue;
         }
@@ -96,7 +102,7 @@ int ClaimPorts(void) {
             continue;
         }
         if (gHubSlotId != 0 && P == gHubRootPort) {
-            continue; /* 子口已在上面 EnumerateHubChildren 试过 */
+            continue;
         }
         if (gFtdiClaimed && gFtdiPort == P) {
             continue;
@@ -106,23 +112,26 @@ int ClaimPorts(void) {
         }
 
         /*
-         * MSC 认领必须稳：真机始终 Force PR 再 Address。
-         * 82978dd「PED 直 Address」在台式常 cc=0x04，再 Force 易 Why=not PED 丢 U 盘。
-         * QEMU（hypervisor）仍可 PED 直试（msc-8）；失败再 Force。
+         * 已 PED：软 Address；未 PED / NeedForce：Force。
+         * 真机跳过根口 FS/LS（几乎不是 MSC；软 Address 超时易 sick→鼠卡）。
          */
         if (!ForceUntilPed(P, &Force)) {
             continue;
         }
-
-        {
-            int Arc = AddressPort(P, Force, &Speed);
-
-            if (Arc < 0) {
-                break;
-            }
-            if (Arc == 0) {
+        if (Force == 0 && !HalCpuIsHypervisor()) {
+            Speed = PortSpeed(Ps);
+            if (Speed > 0 && Speed < 3) {
                 continue;
             }
+        }
+
+        Arc = AddressPort(P, Force, &Speed);
+        if (Arc < 0) {
+            Sick = 1;
+            break;
+        }
+        if (Arc == 0) {
+            continue;
         }
 
         gXferSlot = gMscScanSlot;
@@ -134,37 +143,46 @@ int ClaimPorts(void) {
             continue;
         }
 
-        /*
-         * 根口 hub：device class 9，或 class 0 但配置含 hub iface（真机常见）。
-         * 认领后扫子口 MSC；本刀新认领且无 MSC 则释放，以便试下一根口 hub。
-         */
         HubRc = TryHubOnRoot(P, Speed, &Ok);
         if (HubRc == 1) {
             goto done;
         }
         if (HubRc == 0) {
+            if (gXhciCmdSick) {
+                Sick = 1;
+                break;
+            }
             continue;
         }
 
-        /* FinishClaim 会再 GetDeviceDesc；描述已在 gCtrlBuf，直接走配置 */
         if (FinishClaim(P, Speed)) {
             Ok = 1;
             goto done;
         }
     }
 
-    BootLog("Boot: MSC claim none\n");
+    if (!Ok && !Sick) {
+        BootLog("Boot: MSC claim none\n");
+    }
+    if (Sick) {
+        BootLog("Boot: MSC claim abort (cmd sick)\n");
+    }
 
 done:
     /*
-     * EnableSlot 超时 → cmd sick。excl-4：Command() 标 sick 前已 Recover+重武装 HID。
-     * 此处再 Recover 清 sick，并 poll fallback（硬失败兜底；非 msc-claim 路径）。
+     * sick：Recover + 重武装 HID，保持 Dual MSI。
+     * 勿 FallbackToPoll——切 POLL 后鼠标轮询极卡（U 盘启 Claim 失败常见）。
+     * 返回 -1：AutoBeforeFs 勿再整轮重试。
      */
-    if (gXhciCmdSick) {
+    if (gXhciCmdSick || Sick) {
         BootLog("Boot: MSC claim recover after sick\n");
         RecoverCommandRing();
         gXhciCmdSick = 0;
-        FallbackToPoll("cmd-sick");
+        gXhciCmdWaitMs = 0;
+        gXhciCmdAttempts = 0;
+        /* 冻结后续 UART/WiFi 等根口 Force，避免再超时把鼠打卡 */
+        gXhciPortEnumFreeze = 1;
+        BootLog("Boot: XHCI port enum freeze (keep mouse)\n");
         if (!HalCpuIsHypervisor()) {
             int i;
 
@@ -173,6 +191,15 @@ done:
             }
             ServiceHidCompletions();
         }
+        NoteMouseRootDropped();
+        /* 勿 RecoverEp0：sick 后再发 Stop/ResetEP 会二次超时（见最新串口） */
+        if (gSlotId != 0 && gIntrDci != 0) {
+            QueueIntr();
+        }
+        if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
+            QueueMouseIntr();
+        }
+        return -1;
     }
     NoteMouseRootDropped();
     if (gSlotId != 0 && gIntrDci != 0) {

@@ -39,10 +39,14 @@ int FontReloadAssets(void);
 int FontTtfLoad(void);
 const UINT8 *FontTtfBlob(UINT32 *OutSize);
 int FontTtfInit(void);
+/* 1=stbtt 已 Init（可栅格）；0=未加载/无 FPU */
+int FontTtfReady(void);
 /* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
 UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
+/* 1=已栅格失败（真缺字）；可回落 cjk32 */
+int FontTtfCacheMissed(UINT32 Cp);
 /* 不在点阵里：x86 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
 int FontTtfCachePending(UINT32 Cp);
 /* PR-UI-ttf-3：仅 Worker / 开窗短 burst；绘制路径 FontTtfCacheGet 只 Lookup */

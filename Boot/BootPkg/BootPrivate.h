@@ -39,10 +39,6 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
 EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig);
-VOID BootShowLogo(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop);
-/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。读盘到 40，装完到 100。 */
-VOID BootLogoProgress(UINTN Pct);
-
 /* Volume：BLOCKS.ID、启动盘 GUID、同盘判定 */
 BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);

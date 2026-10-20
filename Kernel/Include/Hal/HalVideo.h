@@ -13,6 +13,8 @@ void HalVideoInitializeBackbuffer(void);
 void HalVideoPresent(void);
 /* 循环刷完脏区（合成/关窗收官）；勿在 Shell 热路径滥用 */
 void HalVideoPresentFlush(void);
+/* 丢掉脏区不写 LFB（开机：Boot 已 GOP 铺底，只同步后缓冲） */
+void HalVideoDiscardDirty(void);
 /* 标记脏矩形（拖窗并旧∪新 footprint） */
 void HalVideoMarkDirty(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 拖窗：Rows 极大 → 整脏区一次 blit，减轻左右条带频闪；0=恢复默认 64 */

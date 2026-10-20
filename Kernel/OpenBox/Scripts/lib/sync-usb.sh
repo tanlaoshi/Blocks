@@ -9,7 +9,7 @@
 #   ./sync-usb.sh                 # 全量：RootFs/X64 → BLOCKS；ESP 已挂载才更新 BOOTX64.EFI
 #   ./sync-usb.sh --build         # 先编 Kernel + Boot，再 prepare-rootfs，再全量同步
 #   ./sync-usb.sh --kernel-only   # BLOCKS/Kernel.elf + FW/ + Assets/Icons/bmp48
-#   ESP_MNT=/mnt/esp BLOCKS_MNT=/mnt/toy ./sync-usb.sh
+#   ESP_MNT=/mnt/blocks-esp BLOCKS_MNT=/mnt/blocks-data ./sync-usb.sh
 #
 # 兼容旧单分区：若只有 BLOCKS、没有 ESP，则把 EFI 也写进 BLOCKS（单 FAT 布局）。
 set -euo pipefail
@@ -23,7 +23,7 @@ KERNEL_ONLY=0
 
 # BLOCKS 卷上的无线固件目录（PR-N-wifi-1：FW/IWL8265.UCODE）
 # WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG 含 PSK：只活在 U 盘上；同步时保留、不覆盖、不 --delete。
-sync_toyos_fw() {
+sync_blocks_fw() {
   local Dest="$1"
   local SrcFw="$ROOT/RootFs/X64/FW"
   if [[ ! -d "$SrcFw" ]]; then
@@ -100,12 +100,51 @@ find_label_mnt() {
   printf '%s\n' "$Mnt"
 }
 
-# 桌面常只挂 BLOCKS、不挂 ESP；UEFI 却从 ESP 启动 → 只改 BLOCKS/EFI 等于白改。
-# 若 LABEL 存在但未挂载，挂到 /mnt/toyos-{esp,data}。
+# 旧盘 LABEL=TOYOS → 一次性改成 BLOCKS（不兼容旧标；需 sudo 写块设备）
+relabel_legacy_toyos_to_blocks() {
+  local Dev Mnt
+  if [[ -n "$(find_label_dev BLOCKS)" ]]; then
+    return 0
+  fi
+  Dev="$(find_label_dev TOYOS)"
+  if [[ -z "$Dev" ]]; then
+    return 0
+  fi
+  echo "relabel: $Dev LABEL=TOYOS → BLOCKS (needs sudo once)" >&2
+  Mnt="$(lsblk -ln -o MOUNTPOINT "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  if [[ -n "$Mnt" && "$Mnt" != "-" ]]; then
+    if command -v udisksctl >/dev/null 2>&1; then
+      udisksctl unmount -b "$Dev" >/dev/null
+    else
+      umount "$Dev" 2>/dev/null || sudo umount "$Dev"
+    fi
+  fi
+  if ! command -v fatlabel >/dev/null 2>&1 && ! command -v dosfslabel >/dev/null 2>&1; then
+    echo "error: need fatlabel (dosfstools) to rename volume" >&2
+    return 1
+  fi
+  if command -v fatlabel >/dev/null 2>&1; then
+    sudo fatlabel "$Dev" BLOCKS
+  else
+    sudo dosfslabel "$Dev" BLOCKS
+  fi
+  udevadm settle 2>/dev/null || sleep 1
+  if command -v udisksctl >/dev/null 2>&1; then
+    udisksctl mount -b "$Dev" >/dev/null || true
+  fi
+  if [[ -z "$(find_label_dev BLOCKS)" ]]; then
+    echo "error: relabel failed; blkid still has no LABEL=BLOCKS" >&2
+    return 1
+  fi
+  echo "relabel: ok → $(find_label_dev BLOCKS) LABEL=BLOCKS" >&2
+}
+
+# 桌面常只挂数据卷、不挂 ESP；UEFI 却从 ESP 启动 → 只改数据卷等于白改。
+# 优先 udisksctl（免 root，挂到 /media/$USER/…）；再试 /mnt/blocks-*。
 ensure_label_mounted() {
   local Label="$1"
   local DefaultMnt="$2"
-  local Dev Mnt MUID MGID
+  local Dev Mnt MUID MGID Out
   Dev="$(find_label_dev "$Label")"
   if [[ -z "$Dev" ]]; then
     return 1
@@ -115,26 +154,46 @@ ensure_label_mounted() {
     printf '%s\n' "$Mnt"
     return 0
   fi
+  if command -v udisksctl >/dev/null 2>&1; then
+    Out="$(udisksctl mount -b "$Dev" 2>/dev/null || true)"
+    if [[ "$Out" =~ Mounted\ .*\ at\ (.+)$ ]]; then
+      Mnt="${BASH_REMATCH[1]}"
+      echo "mounted LABEL=$Label $Dev -> $Mnt (udisksctl)" >&2
+      printf '%s\n' "$Mnt"
+      return 0
+    fi
+    # 已挂上但 udisks 只回 AlreadyMounted
+    Mnt="$(lsblk -ln -o MOUNTPOINT "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+    if [[ -n "$Mnt" && "$Mnt" != "-" ]]; then
+      printf '%s\n' "$Mnt"
+      return 0
+    fi
+  fi
   MUID="$(id -u)"
   MGID="$(id -g)"
-  mkdir -p "$DefaultMnt"
-  if mount -o "uid=${MUID},gid=${MGID},umask=022" "$Dev" "$DefaultMnt" 2>/dev/null; then
+  if mkdir -p "$DefaultMnt" 2>/dev/null && \
+     mount -o "uid=${MUID},gid=${MGID},umask=022" "$Dev" "$DefaultMnt" 2>/dev/null; then
     echo "mounted LABEL=$Label $Dev -> $DefaultMnt" >&2
     printf '%s\n' "$DefaultMnt"
     return 0
   fi
   if command -v sudo >/dev/null 2>&1 && \
+     sudo mkdir -p "$DefaultMnt" && \
      sudo mount -o "uid=${MUID},gid=${MGID},umask=022" "$Dev" "$DefaultMnt" 2>/dev/null; then
     echo "mounted LABEL=$Label $Dev -> $DefaultMnt (sudo)" >&2
     printf '%s\n' "$DefaultMnt"
     return 0
   fi
-  echo "error: found LABEL=$Label at $Dev but cannot mount (need root for ESP)." >&2
+  echo "error: found LABEL=$Label at $Dev but cannot mount." >&2
+  echo "  Try: udisksctl mount -b $Dev" >&2
   return 1
 }
 
 ESP_MNT="${ESP_MNT:-}"
 BLOCKS_MNT="${BLOCKS_MNT:-}"
+
+# 先把遗留 TOYOS 卷标改成 BLOCKS，再找挂载点
+relabel_legacy_toyos_to_blocks
 
 if [[ -z "$ESP_MNT" ]]; then
   ESP_MNT="$(find_label_mnt ESP || true)"
@@ -145,14 +204,10 @@ fi
 if [[ -z "$BLOCKS_MNT" ]]; then
   BLOCKS_MNT="$(find_label_mnt BLOCKS || true)"
 fi
-if [[ -z "$BLOCKS_MNT" ]]; then
-  BLOCKS_MNT="$(find_label_mnt TOYOS || true)"
-fi
 
 # 常见自动挂载路径兜底
 if [[ -z "$BLOCKS_MNT" ]]; then
-  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS /run/media/"${USER:-tank}"/BLOCKS \
-           /media/*/TOYOS /media/"${USER:-tank}"/TOYOS /run/media/"${USER:-tank}"/TOYOS; do
+  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS /run/media/"${USER:-tank}"/BLOCKS; do
     if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
   done
 fi
@@ -165,22 +220,18 @@ fi
 
 # 未挂载则尝试挂上（尤其 ESP：否则 UEFI 仍跑旧 BOOTX64）
 if [[ -z "$ESP_MNT" ]]; then
-  ESP_MNT="$(ensure_label_mounted ESP /mnt/toyos-esp || true)"
+  ESP_MNT="$(ensure_label_mounted ESP /mnt/blocks-esp || true)"
 fi
 if [[ -z "$ESP_MNT" ]]; then
-  ESP_MNT="$(ensure_label_mounted EFI /mnt/toyos-esp || true)"
+  ESP_MNT="$(ensure_label_mounted EFI /mnt/blocks-esp || true)"
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
-  BLOCKS_MNT="$(ensure_label_mounted BLOCKS /mnt/toyos-data || true)"
-fi
-if [[ -z "$BLOCKS_MNT" ]]; then
-  BLOCKS_MNT="$(ensure_label_mounted TOYOS /mnt/toyos-data || true)"
+  BLOCKS_MNT="$(ensure_label_mounted BLOCKS /mnt/blocks-data || true)"
 fi
 
 if [[ -z "$BLOCKS_MNT" ]]; then
   echo "error: BLOCKS volume not mounted (label BLOCKS)." >&2
-  echo "  Format: $ROOT/make-usb-stick.sh --yes --sync" >&2
-  echo "  Or mount the BLOCKS partition and re-run." >&2
+  echo "  Plug the USB, or: udisksctl mount -b \$(blkid -L BLOCKS)" >&2
   exit 1
 fi
 
@@ -209,13 +260,13 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     echo "error: no Kernel.elf — build first or drop --kernel-only" >&2
     exit 1
   fi
-  if [[ -d "$BLOCKS_MNT/EFI/BOOT" && ! -f "$BLOCKS_MNT/BLOCKS.ID" && ! -f "$BLOCKS_MNT/TOYOS.ID" ]]; then
+  if [[ -d "$BLOCKS_MNT/EFI/BOOT" && ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
     echo "error: $BLOCKS_MNT looks like ESP (EFI/BOOT present, no BLOCKS.ID)." >&2
     echo "  Use the data partition (LABEL=BLOCKS), e.g. /media/\$USER/BLOCKS" >&2
     exit 1
   fi
   cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
-  sync_toyos_fw "$BLOCKS_MNT"
+  sync_blocks_fw "$BLOCKS_MNT"
   # 图标不在内核里。快同步也带上 bmp48，否则 GAME.BMP 等要等全量镜像。
   if [[ -d "$ROOT/RootFs/X64/Assets/Icons/bmp48" ]]; then
     mkdir -p "$BLOCKS_MNT/Assets/Icons/bmp48"
@@ -258,20 +309,20 @@ ESP_DEV="$(find_label_dev ESP)"
 if [[ -z "$ESP_DEV" ]]; then
   ESP_DEV="$(find_label_dev EFI)"
 fi
-# 桌面常把 ESP 挂在 /mnt/toyos-esp，但 blkid 无 LABEL=ESP
-if [[ -z "$ESP_MNT" && -d /mnt/toyos-esp/EFI/BOOT ]]; then
-  ESP_MNT=/mnt/toyos-esp
-  echo "note: using /mnt/toyos-esp as ESP (no LABEL=ESP in blkid)"
+# 桌面常把 ESP 挂在 /mnt/blocks-esp，但 blkid 无 LABEL=ESP
+if [[ -z "$ESP_MNT" && -d /mnt/blocks-esp/EFI/BOOT ]]; then
+  ESP_MNT=/mnt/blocks-esp
+  echo "note: using /mnt/blocks-esp as ESP (no LABEL=ESP in blkid)"
 fi
 if [[ -z "$ESP_MNT" ]]; then
   if [[ -n "$ESP_DEV" ]]; then
     echo "warning: USB ESP/EFI ($ESP_DEV) is not mounted — bootloader unchanged." >&2
     echo "  BLOCKS still gets a full RootFs sync." >&2
-    echo "  To update BOOTX64.EFI: sudo mount $ESP_DEV /mnt/toyos-esp && ESP_MNT=/mnt/toyos-esp $0" >&2
+    echo "  To update BOOTX64.EFI: sudo mount $ESP_DEV /mnt/blocks-esp && ESP_MNT=/mnt/blocks-esp $0" >&2
     SKIP_ESP=1
-  elif lsblk -n -o NAME,MOUNTPOINT 2>/dev/null | grep -q toyos-esp; then
+  elif lsblk -n -o NAME,MOUNTPOINT 2>/dev/null | grep -q blocks-esp; then
     echo "warning: dual-partition USB but ESP mount not resolved — bootloader unchanged." >&2
-    echo "  BLOCKS still gets a full RootFs sync. Or: ESP_MNT=/mnt/toyos-esp $0" >&2
+    echo "  BLOCKS still gets a full RootFs sync. Or: ESP_MNT=/mnt/blocks-esp $0" >&2
     SKIP_ESP=1
   else
     SINGLE_FAT=1
@@ -334,7 +385,7 @@ else
   exit 1
 fi
 # 显式再扫一眼 FW/（rsync 已含；WIFI*.CFG 在 U 盘侧保留）
-sync_toyos_fw "$BLOCKS_MNT"
+sync_blocks_fw "$BLOCKS_MNT"
 
 if [[ "$SINGLE_FAT" -eq 1 ]]; then
   # 仅单分区盘：启动与系统同卷，EFI 只能放 BLOCKS

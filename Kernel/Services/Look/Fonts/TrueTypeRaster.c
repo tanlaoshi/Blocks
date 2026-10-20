@@ -135,6 +135,10 @@ int FontTtfInit(void) {
     return 0;
 }
 
+int FontTtfReady(void) {
+    return gInit ? 1 : 0;
+}
+
 /* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */
 static float FontTtfTopShift(int Glyph, float Scale) {
     int X0;
@@ -246,6 +250,10 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
 int FontTtfInit(void) {
     LogBoot("Boot: ttf init skip\n");
     return -1;
+}
+
+int FontTtfReady(void) {
+    return 0;
 }
 
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {

@@ -98,22 +98,35 @@ int GetDesc(UINT16 TypeIndex, UINT16 Index, UINT16 Length, void *Buf) {
     return 0;
 }
 
-/* USB2 hub：对齐 EDK2 XhcConfigHubContext —— 从 Output Slot 拷贝后 ConfigEP，写入 Hub/TTT/MTT/端口数。
- * 仅 Evaluate 且不带 TTT 时，真机常见 EP0 经 TT 成功、中断 IN 永不完成（PHOTO m=0）。 */
+/* 对齐 EDK2 XhcConfigHubContext：从 Output Slot 拷贝后 ConfigEP，写入 Hub/端口数。
+ * USB2：再写 MTT/TTT（缺 TTT 时真机 EP0 经 TT 成功、中断 IN 永不完成）。
+ * USB3：也须 Hub+NumPorts；旧逻辑 Speed>=4 直接 return → 子口 Address 挂死→鼠卡。 */
 int EvaluateHubSlot(UINT32 SlotId, UINT32 RootPort, UINT8 Speed, UINT8 NumPorts) {
     UINT32 *InSlotCtx;
     UINT32 *OutSlotCtx;
+    UINT8 *OutCtx;
+    UINT64 Phys;
     UINT32 i;
     UINT32 Words;
+    int Usb2Hub = (Speed < 4);
 
-    if (Speed >= 4 || NumPorts == 0 || SlotId == 0) {
+    if (NumPorts == 0 || SlotId == 0) {
         return 0;
+    }
+    Phys = (gDcbaaLive && SlotId <= gDcbaaMaxSlot) ? gDcbaaLive[SlotId] : 0;
+    OutCtx = gHubDevCtx;
+    if (Phys == PointerToPhysical(gMscScanDevCtx)) {
+        OutCtx = gMscScanDevCtx;
+    } else if (Phys == PointerToPhysical(gMouseDevCtx)) {
+        OutCtx = gMouseDevCtx;
+    } else if (Phys == PointerToPhysical(gDevCtx)) {
+        OutCtx = gDevCtx;
     }
     ZeroMemory(gInCtx, sizeof(gInCtx));
     *(UINT32 *)(void *)(gInCtx + 4) = (1u << 0); /* Add A0 */
     InSlotCtx = (UINT32 *)(void *)InSlot();
-    FlushDma(gHubDevCtx, 2048);
-    OutSlotCtx = (UINT32 *)(void *)gHubDevCtx;
+    FlushDma(OutCtx, 2048);
+    OutSlotCtx = (UINT32 *)(void *)OutCtx;
     Words = gCtxSize / 4u;
     if (Words > 16) {
         Words = 16;
@@ -121,31 +134,39 @@ int EvaluateHubSlot(UINT32 SlotId, UINT32 RootPort, UINT8 Speed, UINT8 NumPorts)
     for (i = 0; i < Words; i++) {
         InSlotCtx[i] = OutSlotCtx[i];
     }
-    /* Context Entries 至少 1；Hub + 可选 MTT + TTT */
+    /* Context Entries 至少 1；Hub +（USB2）可选 MTT + TTT */
     if (((InSlotCtx[0] >> 27) & 0x1Fu) < 1u) {
         InSlotCtx[0] = (InSlotCtx[0] & ~(0x1Fu << 27)) | (1u << 27);
     }
     InSlotCtx[0] |= (1u << 26);
-    if (gHubMtt) {
+    if (Usb2Hub && gHubMtt) {
         InSlotCtx[0] |= (1u << 25);
     } else {
         InSlotCtx[0] &= ~(1u << 25);
     }
-    InSlotCtx[0] = (InSlotCtx[0] & ~(3u << 16)) | (((UINT32)gHubTtt & 3u) << 16);
+    if (Usb2Hub) {
+        InSlotCtx[0] = (InSlotCtx[0] & ~(3u << 16)) | (((UINT32)gHubTtt & 3u) << 16);
+    } else {
+        InSlotCtx[0] &= ~(3u << 16);
+    }
     if (Speed != 0) {
         InSlotCtx[0] = (InSlotCtx[0] & ~(0xFu << 20)) | ((UINT32)Speed << 20);
     }
     InSlotCtx[1] = (InSlotCtx[1] & 0x0000FFFFu) |
                    ((UINT32)RootPort << 16) | ((UINT32)NumPorts << 24);
     FlushDma(gInCtx, sizeof(gInCtx));
-    FlushDma(gHubDevCtx, 2048);
+    FlushDma(OutCtx, 2048);
     /* EDK2 走 Configure Endpoint（非 Evaluate）更新 hub Slot */
     if (Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) != 0) {
         BootLogHex("Boot: XHCI hub cfg cc=", gCmdCode, 2);
         return 0;
     }
-    BootLogHex("Boot: XHCI hub mtt=", gHubMtt, 1);
-    BootLogHex("Boot: XHCI hub ttt=", gHubTtt, 1);
+    if (Usb2Hub) {
+        BootLogHex("Boot: XHCI hub mtt=", gHubMtt, 1);
+        BootLogHex("Boot: XHCI hub ttt=", gHubTtt, 1);
+    } else {
+        BootLogHex("Boot: XHCI hub ss ports=", NumPorts, 1);
+    }
     return 1;
 }
 

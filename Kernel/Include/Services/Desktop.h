@@ -37,8 +37,10 @@ void DesktopNotifyAppsChanged(void);
 void DesktopInitialize(void);
 /* PR-BOX-2：先画出 Logo；读完字体/主题后再 Finish 清屏 */
 void DesktopBootLogoShow(void);
-/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。引导读盘占到 40。 */
+/* 0..100，只往前。0 时 T 在上方，100 时扣进凹形。 */
 void DesktopBootLogoSet(UINT32 Pct);
+/* 长阶段（MSC claim）内 +1，且不超过 Cap；供 HalBootLogoBump */
+void DesktopBootLogoBump(UINT32 Cap);
 void DesktopBootLogoFinish(void);
 /* PR-BOOT-fast-1：Worker 补齐 BMP/菜单；Gui 只 Consume 后刷新（勿在 Gui 路径读盘） */
 void DesktopEnsureIconsLoaded(void);

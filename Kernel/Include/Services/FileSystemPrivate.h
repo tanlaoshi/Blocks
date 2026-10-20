@@ -36,6 +36,8 @@ int FileSystemPathBlocked(const char *Path);
 void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol);
 void FsMountAddResVolume(void);
 void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
+/* 1=启动盘已有 BLOCKS.ID；0=启动盘尚无；-1=旧 Boot 无 GUID */
+int FsBootDiskHasBlocksId(void);
 
 /* Path.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
 static inline int StrEqIgnoreCase(const char *A, const char *B) {

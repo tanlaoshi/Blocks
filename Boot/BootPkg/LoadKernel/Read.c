@@ -87,9 +87,6 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                     break;
                 }
                 Got += Chunk;
-                if (Total != 0) {
-                    BootLogoProgress(Got * 40 / Total);
-                }
             }
             if (!EFI_ERROR(Status) && OutSize != NULL) {
                 *OutSize = Got;

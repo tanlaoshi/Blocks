@@ -245,7 +245,7 @@ static void CommandMsc(int Argc, char **Argv) {
     gConsole.Write(HalUsbMscReady() ? "1" : "0");
     gConsole.Write(" auto=");
     gConsole.Write(HalUsbMscAutoEnabled() ? "1" : "0");
-    gConsole.Write(" (scan|claim|capacity|mount|release|hot; auto=THEME msc=0|MSC.OFF)\n");
+    gConsole.Write(" (scan|claim|capacity|mount|release|hot; hot=晚插挂盘; auto=开机认盘 THEME msc=0|MSC.OFF)\n");
 }
 
 void ShellCommandsUsbRegister(void) {
@@ -255,7 +255,7 @@ void ShellCommandsUsbRegister(void) {
     gConsole.Register2("show", "uhci", "UHCI CCS (PR-H-uhci-1)", CommandUhci);
     gConsole.Register2("show", "ps2", "PS/2 Kbd+Aux (Ps2 Retry)", CommandPs2);
     gConsole.Register("msc",
-                    "USB MSC: scan|claim|capacity|mount|release|hot",
+                    "USB MSC: scan|claim|…|hot(晚插); 桌面不自动 Claim",
                     CommandMsc);
     gConsole.RegisterAliasLine("xhci", "show", "xhci");
     gConsole.RegisterAliasLine("input", "show", "input");

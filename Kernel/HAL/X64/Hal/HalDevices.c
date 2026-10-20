@@ -94,6 +94,18 @@ int HalUsbMscAutoBeforeFs(void) {
     return UsbMscAutoBeforeFs();
 }
 
+static HAL_BOOT_LOGO_BUMP_FN gBootLogoBump;
+
+void HalBootLogoBumpRegister(HAL_BOOT_LOGO_BUMP_FN Fn) {
+    gBootLogoBump = Fn;
+}
+
+void HalBootLogoBump(UINT32 Cap) {
+    if (gBootLogoBump) {
+        gBootLogoBump(Cap);
+    }
+}
+
 int HalUsbMscRelease(void) {
     return UsbMscRelease();
 }

@@ -596,12 +596,23 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         gGlyphCpBpp = 1;
         return G;
     }
-    /* TTF 缓存优先。没有则试文件字，再回落链进内核的点阵。 */
+    /*
+     * TTF 缓存优先。已 init 且尚未确认缺字时：等 Worker 栅格，
+     * 勿立刻回落 cjk32（18→24 拉伸会糊，看起来像「TTF 没加载」）。
+     */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 8;
         return G;
     }
+#if defined(__x86_64__)
+    if (FontTtfReady() && !FontTtfCacheMissed(Cp)) {
+        if (FontTtfCachePending(Cp)) {
+            gGlyphDefer = 1;
+        }
+        return 0;
+    }
+#endif
     G = FileGlyph(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 1;
@@ -613,7 +624,6 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         return G;
     }
 #if defined(__x86_64__)
-    /* GB2312 没有这字：等 TTF。队列满了就让调用方画缺字框。 */
     if (FontTtfCachePending(Cp)) {
         gGlyphDefer = 1;
     }

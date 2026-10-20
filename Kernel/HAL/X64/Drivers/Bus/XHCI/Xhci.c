@@ -168,6 +168,9 @@ volatile UINT32 gCmdDone;
 UINT32 gCmdCode;
 UINT32 gCmdSlot;
 UINT32 gXhciCmdSick; /* 命令环超时未恢复：禁再发命令 */
+UINT32 gXhciPortEnumFreeze; /* MSC claim sick 后：禁再 Force/Address 根口（保鼠） */
+UINT32 gXhciCmdWaitMs; /* 0=800ms；HubEnumerate SS 子口可缩短 */
+UINT32 gXhciCmdAttempts; /* 0=2；HubEnumerate SS 子口可 1 */
 UINT32 gXhciCmdWaiting; /* 1：WaitCommand 中，Drain/Irq 勿碰事件环 */
 volatile UINT32 gXferDone;
 UINT32 gXferCode;

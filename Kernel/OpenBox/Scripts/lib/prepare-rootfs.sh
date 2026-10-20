@@ -1,5 +1,5 @@
 #!/bin/bash
-# 准备第二盘 RootFs/X64/（TOYOS 系统卷）
+# 准备第二盘 RootFs/X64/（BLOCKS 系统卷）
 # 规范：Kernel.elf / THEME.CFG / 用户 ELF 只在 RootFs/X64；ESP 在 Esp/X64。
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -86,7 +86,7 @@ if [ -d Store ]; then
     fi
 fi
 rm -rf "$ROOT/Assets/Store" "$ROOT/StoreCache"
-# 无线固件（PR-N-wifi-1）：须随 TOYOS 进 U 盘；缺则 iwl fw=miss
+# 无线固件（PR-N-wifi-1）：须随 BLOCKS 进 U 盘；缺则 iwl fw=miss
 if [ ! -f "$ROOT/FW/IWL8265.UCODE" ]; then
     echo "warning: $ROOT/FW/IWL8265.UCODE missing — sync-usb will warn; NUC iwl needs it" >&2
 elif [ "${QEMU_VERBOSE:-0}" = 1 ]; then
@@ -110,9 +110,9 @@ fi
 
 printf "Blocks root volume\n" > "$ROOT/BLOCKS.ID"
 if [ "${QEMU_VERBOSE:-0}" = 1 ]; then
-    echo "Prepared $ROOT (TOYOS system disk):"
+    echo "Prepared $ROOT (BLOCKS system disk):"
     ls -lh "$ROOT"
     find "$ROOT/Assets" -type f 2>/dev/null | sort || true
 else
-    echo "Prepared $ROOT (TOYOS system disk)"
+    echo "Prepared $ROOT (BLOCKS system disk)"
 fi

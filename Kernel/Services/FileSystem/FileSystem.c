@@ -1,14 +1,14 @@
 /*
  * FileSystem.c — 卷激活、路径解析和开机挂卷（story-s3 / PR-S-filesystem-1）
  *
- * 稳态 S3：开机挂卷在此；热拔 Remount 在 Mount.c（Worker→HotPoll 触发）。
- * 路径操作：Operations.c；挂卷编排：Mount.c / MountVolume.c / MountPick.c。
+ * 稳态 S3：开机挂卷在此；拔出 Remount 在 Mount.c（Worker→HotPoll 仅拔出）。
+ * 桌面不自动 Claim；晚插 U 盘用 Shell `msc hot`。路径：Operations.c；挂卷：Mount*。
  *
- * 开机两轮（判定序 fs-msc-order；语义勿改）：
- *   1. HalBlockInitialize → MountAllVolumes（内置盘 / 已见 Block）
- *   2. MscAutoApplyPolicy：盘上 MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
- *   3–4. MscAutoResolveClaim：Force / Skip（Skip 不关热插拔 gMscAuto）
- *   5. 仍 claim：HalUsbMscAutoBeforeFs → 再挂；无 BLOCKS 最多再一轮
+ * 开机（判定序 fs-msc-order）：
+ *   1. HalBlockInitialize → MountAllVolumes
+ *   2. MscAutoApplyPolicy：MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
+ *   3–4. MscAutoResolveClaim：仅启动盘已有 BLOCKS 才 Skip
+ *   5. HalUsbMscAutoBeforeFs → 再挂；启动盘仍无 BLOCKS 最多再一轮
  *
  * 多份 BLOCKS.ID：默认 BLOCKS 跟 BootDiskGuid；另一份可名 USB:。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
@@ -23,6 +23,7 @@
 #include "KernelModulesPrivate.h"
 #include "HalDriverFile.h"
 #include "LogFile.h"
+#include "Desktop.h"
 
 FS_VOLUME gVols[FS_MAX_VOLUMES];
 int gVolCount;
@@ -248,18 +249,29 @@ static int MscAutoApplyPolicy(int Auto, int HasBlocks) {
 }
 
 /*
- * 序 3–4：Force / Skip → 是否本轮 claim。
- * Skip 只清返回值，不 HalUsbMscAutoSet(0)，热插拔仍认 gMscAuto。
+ * 序 3–4：Force / Skip → 是否本轮开机 claim。
+ * Skip 只清返回值，不 HalUsbMscAutoSet(0)（auto 仍供策略；桌面 HotPoll 已不 Claim）。
  */
 static int MscAutoResolveClaim(int Auto, int HasBlocks) {
+    int BootHas;
+
     if (!HasBlocks && !Auto) {
         HalUsbMscAutoSet(1);
         LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
         return 1;
     }
     if (Auto && HasBlocks) {
-        LogBoot("Boot: MSC skip (BLOCKS already)\n");
-        return 0;
+        /*
+         * 旧逻辑：任意盘有 BLOCKS.ID 就 skip → U 盘启动时 NVMe 先挂上，
+         * 永远不 claim USB。仅启动盘已有才 skip；0/-1 都继续 claim。
+         */
+        BootHas = FsBootDiskHasBlocksId();
+        if (BootHas == 1) {
+            LogBoot("Boot: MSC skip (boot-disk BLOCKS already)\n");
+            return 0;
+        }
+        LogBoot("Boot: MSC claim (need boot-disk BLOCKS)\n");
+        return 1;
     }
     return Auto ? 1 : 0;
 }
@@ -297,7 +309,13 @@ int FileSystemInitialize(void) {
     Auto = MscAutoResolveClaim(Auto, HasBlocks);
 
     if (Auto) {
-        if (HalUsbMscAutoBeforeFs() == 0) {
+        int MscRc;
+
+        /* MSC claim 可能很长：先落到 79，口扫描里再 bump 到 91 */
+        DesktopBootLogoSet(79);
+        MscRc = HalUsbMscAutoBeforeFs();
+
+        if (MscRc == 0) {
             MuxOk = 1;
             if (BlockInitialize() <= 0) {
                 LogFs("Fs: BlockInitialize After Msc Auto Failed\n");
@@ -312,20 +330,13 @@ int FileSystemInitialize(void) {
                 HaveVols = 1;
                 HasBlocks = AnyVolumeHasBlocksId();
             }
-        } else if (!HasBlocks) {
+        } else if (MscRc > 0 &&
+                   (!HasBlocks || FsBootDiskHasBlocksId() != 1)) {
             /*
-             * Live U 盘上电慢：首轮 claim 空 → 只见 NVMe ESP。
-             * PR-BOOT-fast-2：仅再试一轮（claim 内 Force/hub 等待已收紧）。
-             * 仍无卷则下面 return -1；有 ESP/RES 可进桌面（WARN no BLOCKS.ID）。
+             * claim 空：勿整轮 Force 再扫（会 reset 根口、鼠间歇卡）。
+             * USB2/SS 双总线已在同一次 ClaimPorts 内扫完；缺盘用 msc hot。
              */
-            LogBoot("Boot: MSC Auto Retry (No BLOCKS)\n");
-            if (HalUsbMscAutoBeforeFs() == 0) {
-                MuxOk = 1;
-                if (BlockInitialize() > 0 && MountAllVolumes()) {
-                    HaveVols = 1;
-                    HasBlocks = AnyVolumeHasBlocksId();
-                }
-            }
+            LogBoot("Boot: MSC Auto empty (no Force retry)\n");
         }
     }
 

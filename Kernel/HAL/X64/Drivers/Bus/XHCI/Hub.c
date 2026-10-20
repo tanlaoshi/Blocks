@@ -87,17 +87,35 @@ int HubClearPortFeat(UINT8 Port, UINT16 Feat) {
     return HubCtrlSetup(&Setup, 0);
 }
 
-/* hub 口速度：USB2 wPortStatus bits 10..9 → xHCI Port Speed 编码近似 */
+/*
+ * hub 口速度 → xHCI Port Speed（0=尚不可 Address）。
+ * USB2：bits 10..9 = FS/LS/HS → 1/2/3。
+ * USB3（USB 3.2 §10.14.2.6）：bits 12..10 = 0 FS/LS、1 HS、2+ SS；
+ * bit9=Power，不是速度。st=0x0203 的 Speed 字段是 0，绝不能报成 SS(4)。
+ */
 UINT8 HubPortSpeed(UINT32 St) {
-    UINT32 Bits = (St >> 9) & 3u;
+    UINT32 Bits;
+    UINT32 Spd3;
+
+    if (gHubSpeed >= 4) {
+        Spd3 = (St >> 10) & 7u;
+        if (Spd3 >= 2u) {
+            return 4; /* SuperSpeed(+) */
+        }
+        if (Spd3 == 1u) {
+            return 3; /* HS：SS hub 父 slot 无 TT，调用方应跳过 Address */
+        }
+        return 0; /* 未协商好 / FS/LS：禁止当 SS Address */
+    }
+    Bits = (St >> 9) & 3u;
     if (Bits == 0) {
-        return 1; /* full */
+        return 1;
     }
     if (Bits == 1) {
-        return 2; /* low */
+        return 2;
     }
     if (Bits == 2) {
-        return 3; /* high */
+        return 3;
     }
     return 1;
 }
@@ -159,10 +177,32 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
 
     if (ExistingSlot != 0) {
         BootLogV("Boot: XHCI hub adopt slot\n");
+        /* MSC/鼠 Address 的 DevCtx 迁到 gHubDevCtx，Evaluate 才能读到真 Output */
+        {
+            UINT64 Phys = (gDcbaaLive && ExistingSlot <= gDcbaaMaxSlot)
+                              ? gDcbaaLive[ExistingSlot]
+                              : 0;
+            UINT8 *Src = 0;
+
+            if (Phys == PointerToPhysical(gMscScanDevCtx)) {
+                Src = gMscScanDevCtx;
+            } else if (Phys == PointerToPhysical(gMouseDevCtx)) {
+                Src = gMouseDevCtx;
+            } else if (Phys == PointerToPhysical(gDevCtx)) {
+                Src = gDevCtx;
+            }
+            if (Src != 0 && Src != gHubDevCtx) {
+                FlushDma(Src, 2048);
+                CopyMemory(gHubDevCtx, Src, 2048);
+                FlushDma(gHubDevCtx, 2048);
+                DcbaaSet(ExistingSlot, PointerToPhysical(gHubDevCtx));
+                DcbaaFlush();
+            }
+        }
         gHubSlotId = ExistingSlot;
         gXferSlot = ExistingSlot;
         gEp0Mps = SpeedMps(Speed);
-        /* 该 slot 先前按 mouse 环 Address；迁到 hub 专用环，避免后续鼠 Address 踩坏 TT */
+        /* 该 slot 先前按 mouse/msc 环 Address；迁到 hub 专用环 */
         RecoverEp0(gHubSlotId);
         if (!FinishHubSetup(&Nports)) {
             DisableSlot(gHubSlotId);
@@ -170,14 +210,17 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
             EnumWhy("Boot: Why=hub cfg\n");
             return 0;
         }
-        if (Usb2Hub && !EvaluateHubSlot(gHubSlotId, RootPort, Speed, Nports)) {
+        /* USB2/SS 均须 Hub+端口数；SS 无 TT 也要 ConfigEP，否则子口 Address 挂死 */
+        if (!EvaluateHubSlot(gHubSlotId, RootPort, Speed, Nports)) {
             DisableSlot(gHubSlotId);
             gHubSlotId = 0;
             EnumWhy("Boot: Why=hub eval\n");
             return 0;
         }
         BootLogHex("Boot: XHCI hub spd=", Speed, 1);
-        BootLog("Boot: XHCI ep0=split\n");
+        if (Usb2Hub) {
+            BootLog("Boot: XHCI ep0=split\n");
+        }
         return 1;
     }
 
@@ -197,8 +240,12 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
         gHubSlotId = 0;
         return 0;
     }
-    if (Usb2Hub && !EvaluateHubSlot(gHubSlotId, RootPort, Speed, Nports)) {
-        BootLog("Boot: XHCI hub eval skip\n");
+    if (!EvaluateHubSlot(gHubSlotId, RootPort, Speed, Nports)) {
+        /* SS 无 Hub+ports 时子口 Address 会挂命令环；失败则整颗 hub 放弃 */
+        DisableSlot(gHubSlotId);
+        gHubSlotId = 0;
+        EnumWhy("Boot: Why=hub eval\n");
+        return 0;
     }
     return 1;
 }

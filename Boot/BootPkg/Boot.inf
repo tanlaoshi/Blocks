@@ -8,7 +8,6 @@
 [Sources]
   Boot.c
   Serial.c
-  BootLogo.c
   Volume.c
   Video/Video.c
   Video/Score.c

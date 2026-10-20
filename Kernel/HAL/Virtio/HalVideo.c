@@ -107,6 +107,10 @@ void HalVideoPresentFlush(void) {
     VideoPresentFlush();
 }
 
+void HalVideoDiscardDirty(void) {
+    VideoDiscardDirty();
+}
+
 void HalVideoMarkDirty(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     DirtyUnion(X, Y, W, H);
 }

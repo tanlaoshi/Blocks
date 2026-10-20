@@ -1,9 +1,8 @@
 /*
- * Clock.c — 任务栏钟 / MSC 热插拔（story-s3 / runtime-c-tick）
+ * Clock.c — 任务栏钟 / MSC 拔出（story-s3 / runtime-c-tick）
  *
- * 稳态 S3 入口（Worker，非 Gui）：
- *   DesktopWorkerTick ~2Hz → HalUsbMscHotPoll==1 → FileSystemRemountVolumes
- *   HotPoll：拔出 Release；热插（gMscAuto）Scan→Claim/Mount（空闲 ~5s）
+ * Worker ~2Hz → HalUsbMscHotPoll==1 → FileSystemRemountVolumes
+ * HotPoll：仅拔出 Release（桌面不自动 Claim；挂盘靠开机 Auto / msc hot）
  * 钟/网托采样→栏脏；Present 仍 DesktopTickClock（GuiPollMouse 末）。
  *
  * 上游：Tasks.c WorkerTask 圈首。开机挂卷：FileSystemInitialize（非本文件）。
@@ -33,10 +32,10 @@ void DesktopWorkerTick(void) {
     }
     LastCheckTick = Now;
 
-    /* story-s3：~2Hz HotPoll（拔出 / 热插 auto）；1→Remount */
+    /* story-s3：~2Hz 仅拔出；1→Remount */
     if (HalUsbMscHotPoll() == 1) {
         (void)FileSystemRemountVolumes();
-        DebugWrite("desktop: msc hot remount\n");
+        DebugWrite("desktop: msc unplug remount\n");
     }
 
     NeedPaint = 0;

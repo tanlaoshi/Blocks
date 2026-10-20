@@ -29,6 +29,8 @@ UINT32 VideoBackbufferPages(void);
 void VideoPresent(void);
 /* 循环 Present 直到脏区清空（4K 全屏合成勿半截留下任务栏空洞） */
 void VideoPresentFlush(void);
+/* 丢掉脏区（不 Present）；Boot 已铺同色底时只填后缓冲用 */
+void VideoDiscardDirty(void);
 void DirtyUnion(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* Rows=0 → 默认 64；拖窗可传极大值整块 blit */
 void VideoSetPresentChunkRows(UINT32 Rows);

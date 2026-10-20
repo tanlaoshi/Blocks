@@ -38,10 +38,13 @@ int VideoInitialize(void) {
     HalSerialGopEnable();
     HalVideoLogFbPte();
     /*
-     * 后缓冲一好就出 Logo，盖住后面核显探针、USB、挂盘、读字体的黑屏。
-     * 进桌面前再 Finish。
+     * 屏：Boot 已 GOP 铺黑，这里绝不 Present 底色（逐行写 LFB 会撕）。
+     * 后缓冲：PMM 页是未初始化的，须铺黑并 DiscardDirty——否则之后 igpu
+     * 整帧翻页会把垃圾像素拷上屏。这是填内存，不是再画一遍显示器。
      */
-    DesktopBootLogoShow();
+    HalVideoClearScreen(0x00000000u);
+    HalVideoDiscardDirty();
     (void)DisplayHardwareInitialize();
+    DesktopBootLogoShow();
     return 0;
 }

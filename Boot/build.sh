@@ -80,11 +80,16 @@ fi
 
 cp -f "$EFI_OUT" "$BOOT_BUILD_DIR/BOOTX64.EFI"
 cp -f "$EFI_OUT" "$BOOT_BUILD_DIR/BootPkg.efi"
+# sync usb/nuc 从 Runtime/Esp 取 BOOTX64；勿只留在 Boot/Build 导致 U 盘仍跑旧 EFI
+RUNTIME_EFI="$(cd "$SCRIPT_DIR/.." && pwd)/Runtime/Esp/X64/EFI/BOOT/BOOTX64.EFI"
+mkdir -p "$(dirname "$RUNTIME_EFI")"
+cp -f "$EFI_OUT" "$RUNTIME_EFI"
 
 echo "=========================================="
 echo "Boot OK  BOOT_DEBUG=$DEBUG"
 echo "WORKSPACE=$WORKSPACE"
 echo "PACKAGES_PATH=$PACKAGES_PATH"
 echo "Installed: $BOOT_BUILD_DIR/BOOTX64.EFI"
-ls -lh "$BOOT_BUILD_DIR/BOOTX64.EFI"
+echo "Runtime : $RUNTIME_EFI"
+ls -lh "$BOOT_BUILD_DIR/BOOTX64.EFI" "$RUNTIME_EFI"
 echo "=========================================="

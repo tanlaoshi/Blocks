@@ -201,3 +201,8 @@ void VideoSetPresentChunkRows(UINT32 Rows) {
     }
     gPresentChunkRows = Rows;
 }
+
+void VideoDiscardDirty(void) {
+    gDirty = 0;
+    gCurDirty = 0;
+}

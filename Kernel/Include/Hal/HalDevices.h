@@ -58,9 +58,13 @@ int HalUsbMscMount(void);
 int HalUsbMscAutoEnabled(void);
 void HalUsbMscAutoSet(int On);
 int HalUsbMscAutoBeforeFs(void);
-/* PR-H-msc-hot / story-s3：Worker ~2Hz HotPoll=拔出|热插(auto)；Shell 仍可用 Hot */
+/* 开机 Logo：MSC 等长阶段按口 bump，避免整段进度不动 */
+typedef void (*HAL_BOOT_LOGO_BUMP_FN)(UINT32 Cap);
+void HalBootLogoBumpRegister(HAL_BOOT_LOGO_BUMP_FN Fn);
+void HalBootLogoBump(UINT32 Cap);
+/* story-s3 收口：HotPoll 仅拔出；挂盘=开机 Auto 或 HalUsbMscHot（Shell msc hot） */
 int HalUsbMscRelease(void);
-int HalUsbMscHotPoll(void); /* 1=需 Remount（拔 Release 或插 Mount） */
+int HalUsbMscHotPoll(void); /* 1=需 Remount（仅拔出 Release） */
 int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc hot */
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */
 int HalUsbUartClaim(void);

@@ -1,12 +1,11 @@
 /*
  * UsbMsc.c — BOT 门面（story-s3 / PR-H-msc-*；主机表 UsbMscHost）
  *
- * 稳态 S3 设备侧：
- *   开机：HalUsbMscAutoBeforeFs → Claim/Mount(Mux)（FileSystemInitialize 序 5）
- *   HotPoll（Worker ~2Hz）：拔出→Release；热插→Scan 后 Claim/Mount（认 gMscAuto）
- *   UsbMscHot：Shell msc hot（不认 auto；拔卸或 claim）
- *   就绪：UsbMscReady / HalUsbMscReady（Shell msc、BlockMsc）
- * Init/Scan/Claim/Capacity/Mount；主机优先 xHCI，否则 EHCI。
+ * 设备侧（收口：桌面不再自动 Claim，避冷盘 Force / 轮询 MSI 鼠死）：
+ *   开机：HalUsbMscAutoBeforeFs → Claim/Mount（认 gMscAuto + 启动盘 BLOCKS 策略）
+ *   HotPoll（Worker ~2Hz）：仅拔出→Release→1；不 Scan/Claim
+ *   UsbMscHot：Shell `msc hot` 显式 claim/mount（或拔卸）
+ *   就绪：UsbMscReady / HalUsbMscReady
  */
 #include "Msc/UsbMsc.h"
 #include "UsbMscHost.h"
@@ -264,7 +263,8 @@ int UsbMscAutoBeforeFs(void) {
 
     Claim = UsbMscClaim();
     if (Claim < 0) {
-        LogBoot("Boot: MSC Auto No HC\n");
+        /* 无 HC 或 claim 中 cmd sick（已 Recover，勿当「空」再扫） */
+        LogBoot("Boot: MSC Auto claim abort\n");
         return -1;
     }
     if (Claim == 0) {
@@ -294,56 +294,21 @@ int UsbMscRelease(void) {
 int UsbMscHotPoll(void) {
     const MSC_HOST *H;
     int Present;
-    int N;
-    int Claim;
-    int Rc;
-    static UINT64 LastPlugScan;
-    UINT64 Now;
-    UINT32 Tps;
-
-    /* 拔出：已 claim 且 CCS/hub 不在 → Release，调用方 Remount */
-    if (UsbMscReady()) {
-        H = CurHost();
-        Present = (H && H->Present) ? H->Present() : 0;
-        if (Present) {
-            return 0;
-        }
-        DebugWrite("msc: hot unplug → release\n");
-        (void)UsbMscRelease();
-        return 1;
-    }
 
     /*
-     * 热插（story-s3-2）：仅 auto；先 Scan（PORTSC，不 Address）再 Claim。
-     * 空闲节流 ~5s，避免 2Hz Claim 抢 xHCI（NUC Address 超时→MSI stall）。
+     * 仅拔出。桌面自动 Claim 已关：冷启动口 Force/软 Address 轮询易 MSI 鼠死；
+     * 挂盘靠开机 AutoBeforeFs，或 Shell `msc hot`。
      */
-    if (!UsbMscAutoEnabled()) {
+    if (!UsbMscReady()) {
         return 0;
     }
-    Now = HalCpuTicks(0);
-    Tps = HalTicksPerSec();
-    if (Tps == 0) {
-        Tps = 250;
-    }
-    if (LastPlugScan != 0 && (Now - LastPlugScan) < (UINT64)Tps * 5u) {
+    H = CurHost();
+    Present = (H && H->Present) ? H->Present() : 0;
+    if (Present) {
         return 0;
     }
-    LastPlugScan = Now;
-
-    N = UsbMscScan();
-    if (N <= 0) {
-        return 0;
-    }
-    Claim = UsbMscClaim();
-    if (Claim <= 0) {
-        return 0;
-    }
-    Rc = UsbMscMount();
-    if (Rc != 0) {
-        (void)UsbMscRelease();
-        return 0;
-    }
-    DebugWrite("msc: hot plug → mount\n");
+    DebugWrite("msc: hot unplug → release\n");
+    (void)UsbMscRelease();
     return 1;
 }
 

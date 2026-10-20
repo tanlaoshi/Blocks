@@ -2,7 +2,7 @@
 # sync-nuc.sh — 同步到 NUC SSD 上的 BLOCKS 分区（日常路径）
 #
 # 布局：
-#   LABEL=BLOCKS（nvme 数据分区；旧标 ToyOS/TOYOS 仍可认）→ Kernel.elf / RootFs / FW/ …
+#   LABEL=BLOCKS（nvme 数据分区）→ Kernel.elf / RootFs / FW/ …
 #   /boot/efi/EFI/Blocks/BOOTX64.EFI ← 仅 --boot 时更新（grub chainloader）
 #
 # U 盘双分区仍用 Scripts/sync-usb.sh（备选）。
@@ -88,15 +88,13 @@ find_label_dev() {
   blkid -L "$1" 2>/dev/null || true
 }
 
-find_toyos_dev() {
-  local D Lab
-  for Lab in BLOCKS ToyOS TOYOS; do
-    D="$(find_label_dev "$Lab")"
-    if [[ -n "$D" ]]; then
-      printf '%s\n' "$D"
-      return 0
-    fi
-  done
+find_blocks_dev() {
+  local D
+  D="$(find_label_dev BLOCKS)"
+  if [[ -n "$D" ]]; then
+    printf '%s\n' "$D"
+    return 0
+  fi
   return 1
 }
 
@@ -109,7 +107,7 @@ find_dev_mnt() {
   printf '%s\n' "$Mnt"
 }
 
-ensure_toyos_mounted() {
+ensure_blocks_mounted() {
   local Dev="$1"
   local Mnt Out
   Mnt="$(find_dev_mnt "$Dev" || true)"
@@ -176,26 +174,23 @@ BLOCKS_MNT="${BLOCKS_MNT:-}"
 BLOCKS_DEV=""
 
 if [[ -z "$BLOCKS_MNT" ]]; then
-  BLOCKS_DEV="$(find_toyos_dev || true)"
+  BLOCKS_DEV="$(find_blocks_dev || true)"
   if [[ -n "$BLOCKS_DEV" ]]; then
     BLOCKS_MNT="$(find_dev_mnt "$BLOCKS_DEV" || true)"
   fi
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
   for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS \
-           /run/media/"${USER:-tank}"/BLOCKS \
-           /media/*/ToyOS /media/*/TOYOS \
-           /media/"${USER:-tank}"/ToyOS /media/"${USER:-tank}"/TOYOS \
-           /run/media/"${USER:-tank}"/ToyOS /run/media/"${USER:-tank}"/TOYOS; do
+           /run/media/"${USER:-tank}"/BLOCKS; do
     if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
   done
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
   if [[ -z "$BLOCKS_DEV" ]]; then
-    BLOCKS_DEV="$(find_toyos_dev || true)"
+    BLOCKS_DEV="$(find_blocks_dev || true)"
   fi
   if [[ -n "$BLOCKS_DEV" ]]; then
-    BLOCKS_MNT="$(ensure_toyos_mounted "$BLOCKS_DEV" || true)"
+    BLOCKS_MNT="$(ensure_blocks_mounted "$BLOCKS_DEV" || true)"
   fi
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
@@ -221,7 +216,7 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     exit 1
   fi
   cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
-  sync_toyos_fw "$BLOCKS_MNT"
+  sync_blocks_fw "$BLOCKS_MNT"
   if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
     printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
   fi
@@ -282,7 +277,7 @@ else
   echo "error: 需要 rsync。没有它时整盘拷贝会盖掉盘上已写好的 FW/WIFI.CFG" >&2
   exit 1
 fi
-sync_toyos_fw "$BLOCKS_MNT"
+sync_blocks_fw "$BLOCKS_MNT"
 
 # 双分区：Boot 只在 /boot/efi/EFI/Blocks；清掉误写到数据分区的 EFI/
 if [[ -d "$BLOCKS_MNT/EFI" ]]; then

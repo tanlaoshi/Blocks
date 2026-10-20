@@ -333,17 +333,17 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     }
 
     if (Gop->Mode != NULL && Gop->Mode->Info != NULL) {
-        EFI_GRAPHICS_OUTPUT_BLT_PIXEL Black;
+        /* 与内核 Logo 底色一致（纯黑）；Boot 只清屏，格子由内核画 */
+        EFI_GRAPHICS_OUTPUT_BLT_PIXEL Bg;
         UINTN W = Gop->Mode->Info->HorizontalResolution;
         UINTN H = Gop->Mode->Info->VerticalResolution;
 
-        Black.Blue = 0;
-        Black.Green = 0;
-        Black.Red = 0;
-        Black.Reserved = 0;
-        (void)Gop->Blt(Gop, &Black, EfiBltVideoFill, 0, 0, 0, 0, W, H, 0);
+        Bg.Red = 0;
+        Bg.Green = 0;
+        Bg.Blue = 0;
+        Bg.Reserved = 0;
+        (void)Gop->Blt(Gop, &Bg, EfiBltVideoFill, 0, 0, 0, 0, W, H, 0);
         BootSerialPrintf("Boot: GOP Cleared %ux%u\n", (UINT32)W, (UINT32)H);
-        BootShowLogo(Gop);
     }
 
     BootSerialPrintf("Boot: SetVideoMode Done\n");

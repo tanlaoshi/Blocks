@@ -105,6 +105,16 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     return 0;
 }
 
+int FontTtfCacheMissed(UINT32 Cp) {
+    TTF_SLOT *S;
+
+    if (Cp < 128u) {
+        return 0;
+    }
+    S = SlotLookup(Cp);
+    return (S && S->State == TTF_MISS) ? 1 : 0;
+}
+
 int FontTtfCachePending(UINT32 Cp) {
     UINT32 w;
 

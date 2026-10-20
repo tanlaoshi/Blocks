@@ -30,8 +30,8 @@ int UsbMscAutoBeforeFs(void);
 /* PR-H-msc-hot：卸 Mux + xHCI slot；成功 0 */
 int UsbMscRelease(void);
 /*
- * Worker ~2Hz：拔出→Release→1；热插（auto）→Scan 后 Claim/Mount→1；否则 0。
- * 热插空闲节流 ~5s；调用方对 1 做 FileSystemRemountVolumes。
+ * Worker ~2Hz：仅拔出→Release→1；不自动 Claim。
+ * 调用方对 1 做 FileSystemRemountVolumes。挂盘：开机 Auto 或 UsbMscHot。
  */
 int UsbMscHotPoll(void);
 /* Shell msc hot：拔则卸；未认则 claim→mount。0=ok/-ready；1=无设备；<0 失败 */

@@ -10,7 +10,7 @@
 
 int HalNetInitialize(void) {
 #if BOARD_HAS_NET
-    return VirtioNetInit();
+    return VirtioNetInitialize();
 #else
     return 0;
 #endif

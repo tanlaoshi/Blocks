@@ -160,7 +160,7 @@ void VirtioNetRegister(void) {
     (void)DriverRegister(&gVirtioNetDriver);
 }
 
-int VirtioNetInit(void) {
+int VirtioNetInitialize(void) {
     (void)DriverProbeClass(DRIVER_CLASS_NET);
     return 0;
 }

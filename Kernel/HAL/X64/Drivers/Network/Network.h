@@ -14,7 +14,7 @@
 
 /* PR-D3：向 Driver 注册描述符（不 Probe） */
 void NetDriverRegister(void);
-int  NetInit(void);
+int  NetInitialize(void);
 int  NetReady(void);
 void NetPoll(void);
 

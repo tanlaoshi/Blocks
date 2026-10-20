@@ -41,7 +41,7 @@ static int UseQemuSlirp(void) {
 void NetConfigEnsure(void) {
     if (gReady) {
         /*
-         * 开机 NetInit 若按真机清成 0，virtio 起来后再问 IP 时补回课默认。
+         * 开机 NetInitialize 若按真机清成 0，virtio 起来后再问 IP 时补回课默认。
          */
         if (gIp == 0 && UseQemuSlirp()) {
             ApplyQemuSlirp();

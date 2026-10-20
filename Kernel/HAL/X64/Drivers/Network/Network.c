@@ -1,8 +1,8 @@
 /*
  * Network.c — 发送帧与地址查询（PR-S-net-1）
  *
- * NetInit：HAL/驱动层开机探测（HalNetInitialize 直调）。
- * 与模块表 NetworkInitialize 双名并存，本刀不改符号。
+ * NetInitialize：HAL/驱动层开机探测（HalNetInitialize 直调）。
+ * 与模块表 NetworkInitialize 分层：本函数只 ConfigEnsure + Probe NET。
  * 恒 return 0（Probe 成败不挡模块表）。
  */
 #include "Network/Private.h"
@@ -122,7 +122,7 @@ UINT16 NetChecksum(const void *Data, UINTN Len) {
     return Sum16((const UINT8 *)Data, Len);
 }
 
-int NetInit(void) {
+int NetInitialize(void) {
     NetConfigEnsure(); /* QEMU 静态；真机为 0，等挂上 L2 后再 DHCP */
     (void)DriverProbeClass(DRIVER_CLASS_NET);
     return 0;

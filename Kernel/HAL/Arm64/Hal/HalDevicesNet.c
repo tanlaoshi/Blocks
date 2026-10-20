@@ -6,7 +6,7 @@
 #include "Virtio/Net/Net.h"
 
 int HalNetInitialize(void) {
-    return VirtioNetInit();
+    return VirtioNetInitialize();
 }
 
 int HalNetReady(void) {

@@ -335,7 +335,7 @@ int FileSystemInitialize(void) {
     /*
      * PR-BOOT-fast-3：勿在此 HalIwlClaim / Probe NET。
      * iwl BAR+FW/关联由 Worker（图标之后）HalIwlClaim → BgPump；
-     * 有线 NIC 仍在 Network 模块 NetInit Probe。
+     * 有线 NIC 仍在 Network 模块 NetInitialize Probe。
      * 勿在此调 HalWifiClaim（USB 8188EU）：会踩已认 MSC hub。
      */
 

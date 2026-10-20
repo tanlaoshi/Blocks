@@ -235,7 +235,7 @@ int main(void) {
     }
     LogPush("--", "connecting…");
     UiPaint();
-    if (ToyNetConnect(gSock, Ip, Port) != 0) {
+    if (NetConnect(gSock, Ip, Port) != 0) {
         LogPush("--", "connect fail");
         UiPaint();
         close(gSock);

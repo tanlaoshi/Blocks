@@ -10,25 +10,25 @@
 #include "Errno.h"
 #include "BootTypes.h"
 
-_Static_assert(sizeof(TOY_NET_DNS_QUERY) == 132, "TOY_NET_DNS_QUERY layout");
+_Static_assert(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
 
 int SysSocket(int Domain, int Type, UINT64 Protocol) {
     TASK *T = SchedulerCurrent();
-    TOY_NET_DNS_QUERY Query;
+    NET_DNS_QUERY Query;
     UINT32 Ip;
     int Rc;
 
     if (!T || !T->IsUser) {
         return -1;
     }
-    if (Type == TOY_NET_SOCK_RESOLVE) {
+    if (Type == NET_SOCK_RESOLVE) {
         if (Domain != AF_INET || Protocol == 0) {
             return -TOY_EINVAL;
         }
         if (VirtualMemoryCopyFromUser(&Query, Protocol, sizeof(Query)) < 0) {
             return -TOY_EINVAL;
         }
-        Query.Name[TOY_NET_NAME_MAX] = 0;
+        Query.Name[NET_NAME_MAX] = 0;
         Rc = LwIpDnsLookup(Query.Name, &Ip, 5000);
         if (Rc != 0) {
             return Rc;

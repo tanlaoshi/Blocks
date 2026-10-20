@@ -14,14 +14,14 @@ int main(void) {
     ssize_t N;
     const char *Msg = "from libnet!\n";
 
-    printf("netlib: ToyNet %s\n", TOY_NET_ABI_VERSION_STRING);
+    printf("netlib: ToyNet %s\n", NET_ABI_VERSION_STRING);
 
     Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (Fd < 0) {
         printf("netlib: socket fail (need LWIP=1?)\n");
         return 1;
     }
-    if (ToyNetConnect(Fd, ToyNetIpv4(10, 0, 2, 2), 8888) != 0) {
+    if (NetConnect(Fd, NetIpv4(10, 0, 2, 2), 8888) != 0) {
         printf("netlib: connect fail\n");
         close(Fd);
         return 1;

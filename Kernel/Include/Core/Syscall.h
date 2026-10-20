@@ -31,7 +31,7 @@
 /* SYS_CLOCK_MS：无参；返回 BSP 定时器 tick（与 sleep 同尺） */
 /* SYS_SOCKET：rdi=domain(AF_INET=2) rsi=type rdx=protocol
  *   type=SOCK_STREAM(1)：rdx 忽略 → fd
- *   type=TOY_NET_SOCK_RESOLVE(0x100)：rdx=TOY_NET_DNS_QUERY* → 0；失败 -errno
+ *   type=NET_SOCK_RESOLVE(0x100)：rdx=NET_DNS_QUERY* → 0；失败 -errno
  * SYS_CONNECT：rdi=fd rsi=ip(host-order u32) rdx=port
  * SYS_BIND：rdi=fd rsi=ip(0=INADDR_ANY) rdx=port
  * SYS_LISTEN：rdi=fd rsi=backlog

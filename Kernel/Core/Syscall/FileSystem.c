@@ -12,7 +12,7 @@
 #include "BootTypes.h"
 #include "PhysicalMemory.h"
 
-_Static_assert(sizeof(TOY_NET_DNS_QUERY) == 132, "TOY_NET_DNS_QUERY layout");
+_Static_assert(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
 
 int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen) {
     UINTN i;

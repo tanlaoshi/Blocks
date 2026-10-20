@@ -60,7 +60,7 @@ static int ParsePeer(const char *Val, unsigned *OutIp, unsigned short *OutPort) 
         || Port == 0 || Port > 65535) {
         return -1;
     }
-    *OutIp = ToyNetIpv4(A, B, C, D);
+    *OutIp = NetIpv4(A, B, C, D);
     *OutPort = (unsigned short)Port;
     return 0;
 }

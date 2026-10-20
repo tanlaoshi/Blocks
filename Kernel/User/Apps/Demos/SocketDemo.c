@@ -15,7 +15,7 @@ int main(void) {
     char Buf[64];
     ssize_t N;
 
-    printf("sockdemo: ToyNet %s\n", TOY_NET_ABI_VERSION_STRING);
+    printf("sockdemo: ToyNet %s\n", NET_ABI_VERSION_STRING);
 
     Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (Fd < 0) {
@@ -26,7 +26,7 @@ int main(void) {
     memset(&Sa, 0, sizeof(Sa));
     Sa.sin_family = AF_INET;
     Sa.sin_port = htons(8888);
-    Sa.sin_addr.s_addr = htonl(ToyNetIpv4(10, 0, 2, 2));
+    Sa.sin_addr.s_addr = htonl(NetIpv4(10, 0, 2, 2));
 
     if (connect(Fd, (struct sockaddr *)&Sa, sizeof(Sa)) != 0) {
         printf("sockdemo: connect fail\n");

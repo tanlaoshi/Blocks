@@ -1,7 +1,7 @@
 /*
  * sys/socket.h — 第 1 轨 POSIX 套接字声明（PR-U-abi-dual 刀 C）
  *
- * connect/bind：网络序 sockaddr → 内部 ToyNetConnect/Bind（主机序）。
+ * connect/bind：网络序 sockaddr → 内部 NetConnect/Bind（主机序）。
  * socket/listen/accept/send/recv：实现仍在 libToyNet；accept 无对端地址出参。
  */
 #ifndef SYS_SOCKET_H

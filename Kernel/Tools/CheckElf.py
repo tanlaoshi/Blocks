@@ -6,7 +6,7 @@ from pathlib import Path
 
 KERNEL = Path(__file__).resolve().parents[1]
 REPO = KERNEL.parent
-BOOT = REPO / "Boot/BootPkg/LoadKernel.c"
+BOOT = REPO / "Boot/BootPkg/LoadKernel/Elf.c"
 ELF_H = KERNEL / "Include/Core/Elf.h"
 
 WIDTH = {"UINT8": 1, "UINT16": 2, "UINT32": 4, "UINT64": 8, "INT64": 8}

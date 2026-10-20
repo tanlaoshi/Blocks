@@ -95,7 +95,7 @@ static void CommandInstall(int Argc, char **Argv) {
     if (Argc >= 2 && Argv[1][0] == 'd') {
         gConsole.Write("install disks:\n");
         InstallListDisks(InstallPrintDisk);
-        gConsole.Write("hint: need blank raw disk (TOY_DISK=ahci TOY_INSTALL_DISK=1 → drive 2)\n");
+        gConsole.Write("hint: need blank raw disk (DISK=ahci INSTALL_DISK=1 → drive 2)\n");
         return;
     }
     if (Argc < 2) {
@@ -126,7 +126,7 @@ static void CommandInstall(int Argc, char **Argv) {
     if (!BlockDriveReady(Drive)) {
         gConsole.Write("install: drive ");
         InstallWriteDec(Drive);
-        gConsole.Write(" empty — start with TOY_DISK=ahci TOY_INSTALL_DISK=1\n");
+        gConsole.Write(" empty — start with DISK=ahci INSTALL_DISK=1\n");
         return;
     }
     /* 拒绝误装到当前已挂载的 ESP/TOYOS（vvfat），除非 --force */

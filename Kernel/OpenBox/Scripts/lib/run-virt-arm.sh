@@ -11,12 +11,12 @@ BOARD=virt
 # shellcheck source=run-virt-common.sh
 source "$SCRIPT_DIR/run-virt-common.sh"
 
-TOY_VIRT_ARCH=arm64
-TOY_VIRT_MAKE_ARCH=arm64
-TOY_VIRT_HAL_ARCH=Arm64
-export TOY_VIRT_MAKE_ARCH TOY_VIRT_HAL_ARCH
-TOY_VIRT_ELF="${TOY_VIRT_ELF:-}"
-TOY_VIRT_QEMU="${QEMU_AARCH64:-qemu-system-aarch64}"
-TOY_VIRT_HELLO_PAT='ToyOS Arm64 virt: hello'
+VIRT_ARCH=arm64
+VIRT_MAKE_ARCH=arm64
+VIRT_HAL_ARCH=Arm64
+export VIRT_MAKE_ARCH VIRT_HAL_ARCH
+VIRT_ELF="${VIRT_ELF:-}"
+VIRT_QEMU="${QEMU_AARCH64:-qemu-system-aarch64}"
+VIRT_HELLO_PAT='ToyOS Arm64 virt: hello'
 
 toy_virt_main "$@"

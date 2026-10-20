@@ -7,15 +7,15 @@
 # 常用：
 #   ./Scripts/run-split.sh
 #   ./Scripts/run-split.sh --kill-qemu
-#   TOY_SMP=1 ./Scripts/run-split.sh
+#   SMP=1 ./Scripts/run-split.sh
 #   ./Scripts/run-split.sh --headless
-#   TOY_MEM=2G ./Scripts/run-split.sh        # 默认 1024M（1G）
-#   TOY_DISK=ahci ./Scripts/run-split.sh
-#   TOY_DISK=nvme ./Scripts/run-split.sh
-#   TOY_NET=e1000 ./Scripts/run-split.sh
-#   TOY_USB_HUB=1 ./Scripts/run-split.sh
-#   TOY_USB_MSC=1 ./Scripts/run-split.sh   # Msc/（usb-storage）
-#   TOY_USB_UHCI=1 ./Scripts/run-split.sh  # piix3-usb-uhci + mouse（PR-H-uhci-1）
+#   MEM=2G ./Scripts/run-split.sh        # 默认 1024M（1G）
+#   DISK=ahci ./Scripts/run-split.sh
+#   DISK=nvme ./Scripts/run-split.sh
+#   NET=e1000 ./Scripts/run-split.sh
+#   USB_HUB=1 ./Scripts/run-split.sh
+#   USB_MSC=1 ./Scripts/run-split.sh   # Msc/（usb-storage）
+#   USB_UHCI=1 ./Scripts/run-split.sh  # piix3-usb-uhci + mouse（PR-H-uhci-1）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=toyos-common.sh
@@ -46,21 +46,21 @@ pull_root_back() {
 trap pull_root_back EXIT
 
 DISPLAY_ARGS=(-display gtk,zoom-to-fit=off)
-if [ "${TOY_HEADLESS:-0}" = 1 ]; then
+if [ "${HEADLESS:-0}" = 1 ]; then
     DISPLAY_ARGS=(-display none)
     toy_qemu_info "qemu: headless (-display none)"
 fi
 
 USB_ARGS=()
 UHCI_ARGS=()
-if [ "${TOY_USB_UHCI:-0}" = 1 ]; then
+if [ "${USB_UHCI:-0}" = 1 ]; then
     # i440fx：piix3-usb-uhci；挂一只鼠造 CCS≠0
     UHCI_ARGS=(-device piix3-usb-uhci,id=uhci -device usb-mouse,bus=uhci.0)
-    toy_qemu_info "qemu: TOY_USB_UHCI=1 (piix3-usb-uhci + usb-mouse)"
+    toy_qemu_info "qemu: USB_UHCI=1 (piix3-usb-uhci + usb-mouse)"
 fi
-if [ "${TOY_USB_HUB:-0}" = 1 ]; then
+if [ "${USB_HUB:-0}" = 1 ]; then
     USB_ARGS=(-device usb-hub,bus=xhci.0,port=1 -device usb-kbd,bus=xhci.0,port=1.1 -device usb-tablet,bus=xhci.0,port=2)
-    toy_qemu_info "qemu: TOY_USB_HUB=1 (kbd behind hub port 1.1)"
+    toy_qemu_info "qemu: USB_HUB=1 (kbd behind hub port 1.1)"
 else
     USB_ARGS=(-device usb-kbd,bus=xhci.0 -device usb-tablet,bus=xhci.0)
 fi
@@ -68,23 +68,23 @@ fi
 # PR-H-usb-uart：QEMU usb-serial 实为 FTDI（VID 0x0403），不是 CDC-ACM。
 # 用于课堂验 FTDI TX tee；CDC 认领仅当真机/仿真出现 0x02/0x0A 描述符时。
 CDC_CHARDEV_ARGS=()
-if [ "${TOY_USB_SERIAL:-0}" = 1 ]; then
-    TOY_USB_SERIAL_LOG="${TOY_USB_SERIAL_LOG:-/tmp/toy-usb-uart-cdc.log}"
-    : >"$TOY_USB_SERIAL_LOG"
+if [ "${USB_SERIAL:-0}" = 1 ]; then
+    USB_SERIAL_LOG="${USB_SERIAL_LOG:-/tmp/toy-usb-uart-cdc.log}"
+    : >"$USB_SERIAL_LOG"
     CDC_CHARDEV_ARGS=(
-        -chardev "file,id=toycdc,path=${TOY_USB_SERIAL_LOG},append=on"
+        -chardev "file,id=toycdc,path=${USB_SERIAL_LOG},append=on"
         -device usb-serial,bus=xhci.0,chardev=toycdc
     )
-    toy_qemu_info "qemu: TOY_USB_SERIAL=1 (usb-serial=FTDI → $TOY_USB_SERIAL_LOG)"
+    toy_qemu_info "qemu: USB_SERIAL=1 (usb-serial=FTDI → $USB_SERIAL_LOG)"
 fi
 
 MSC_DISK_ARGS=()
-if [ "${TOY_USB_MSC:-0}" = 1 ]; then
+if [ "${USB_MSC:-0}" = 1 ]; then
     if [ ! -d Msc ] || { [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/TOYOS.ID ]; }; then
-        echo "error: TOY_USB_MSC=1 needs Msc/BLOCKS.ID" >&2
+        echo "error: USB_MSC=1 needs Msc/BLOCKS.ID" >&2
         exit 1
     fi
-    toy_qemu_info "qemu: TOY_USB_MSC=1 (usb-storage ← Msc/)"
+    toy_qemu_info "qemu: USB_MSC=1 (usb-storage ← Msc/)"
     MSC_DISK_ARGS=(
         -drive if=none,id=toymsc,format=raw,file=fat:rw:Msc
         -device usb-storage,drive=toymsc,bus=xhci.0
@@ -92,13 +92,13 @@ if [ "${TOY_USB_MSC:-0}" = 1 ]; then
 fi
 
 NETDEV_ARGS=(user,id=n0)
-if [ "${TOY_NO_HOSTFWD:-0}" != 1 ]; then
+if [ "${NO_HOSTFWD:-0}" != 1 ]; then
     NETDEV_ARGS=(user,id=n0,hostfwd=udp::5555-:5555,hostfwd=tcp::2222-:7,hostfwd=tcp::9000-:9000)
 fi
 
 # bootindex：干净 NVRAM 时仍优先从 ESP 找 \EFI\BOOT\BOOTX64.EFI
 DISK_ARGS=()
-case "${TOY_DISK:-ide}" in
+case "${DISK:-ide}" in
     ahci|AHCI)
         toy_qemu_info "qemu: disk=ahci (PR-H1)"
         DISK_ARGS=(
@@ -129,18 +129,18 @@ case "${TOY_DISK:-ide}" in
 esac
 
 # 镜像勿放在 Esp vvfat 内
-if [ "${TOY_INSTALL_DISK:-0}" = 1 ]; then
-    if [ "${TOY_DISK:-ide}" != "ahci" ] && [ "${TOY_DISK:-ide}" != "AHCI" ]; then
-        echo "error: TOY_INSTALL_DISK=1 requires TOY_DISK=ahci (third AHCI port)" >&2
+if [ "${INSTALL_DISK:-0}" = 1 ]; then
+    if [ "${DISK:-ide}" != "ahci" ] && [ "${DISK:-ide}" != "AHCI" ]; then
+        echo "error: INSTALL_DISK=1 requires DISK=ahci (third AHCI port)" >&2
         exit 1
     fi
-    INSTALL_IMG="${TOY_INSTALL_IMG:-/tmp/toyos-install-target.img}"
-    INSTALL_MIB="${TOY_INSTALL_MIB:-512}"
+    INSTALL_IMG="${INSTALL_IMG:-/tmp/toyos-install-target.img}"
+    INSTALL_MIB="${INSTALL_MIB:-512}"
     if [ ! -f "$INSTALL_IMG" ]; then
         toy_qemu_info "qemu: create $INSTALL_IMG (${INSTALL_MIB}MiB)"
         qemu-img create -f raw "$INSTALL_IMG" "${INSTALL_MIB}M" >/dev/null
     fi
-    toy_qemu_info "qemu: TOY_INSTALL_DISK=1 → $INSTALL_IMG on ahci.2 (Guest drive 2)"
+    toy_qemu_info "qemu: INSTALL_DISK=1 → $INSTALL_IMG on ahci.2 (Guest drive 2)"
     DISK_ARGS+=(
         -drive if=none,id=toyinst,format=raw,file="$INSTALL_IMG"
         -device ide-hd,drive=toyinst,bus=ahci.2
@@ -148,7 +148,7 @@ if [ "${TOY_INSTALL_DISK:-0}" = 1 ]; then
 fi
 
 NET_ARGS=()
-case "${TOY_NET:-virtio}" in
+case "${NET:-virtio}" in
     e1000e|E1000E)
         toy_qemu_info "qemu: net=e1000e (PR-H4e-1)"
         NET_ARGS=(-device e1000e,netdev=n0)
@@ -163,11 +163,11 @@ case "${TOY_NET:-virtio}" in
 esac
 
 NO_REBOOT_ARGS=()
-if [ "${TOY_HEADLESS:-0}" = 1 ] || [ "${TOY_NO_REBOOT:-0}" = 1 ]; then
+if [ "${HEADLESS:-0}" = 1 ] || [ "${NO_REBOOT:-0}" = 1 ]; then
     NO_REBOOT_ARGS=(-no-reboot)
 fi
 
-MEM="${TOY_MEM:-1024M}"
+MEM="${MEM:-1024M}"
 toy_qemu_info "qemu: mem=${MEM}"
 
 qemu-system-x86_64 \
@@ -176,8 +176,8 @@ qemu-system-x86_64 \
     -drive if=pflash,format=raw,file=Fw/OVMF_VARS.fd \
     "${DISK_ARGS[@]}" \
     -m "$MEM" \
-    -smp "$TOY_SMP" \
-    -device VGA,edid=on,xres="${TOY_QEMU_XRES}",yres="${TOY_QEMU_YRES}" \
+    -smp "$SMP" \
+    -device VGA,edid=on,xres="${QEMU_XRES}",yres="${QEMU_YRES}" \
     "${DISPLAY_ARGS[@]}" \
     -device qemu-xhci,id=xhci \
     "${USB_ARGS[@]}" \

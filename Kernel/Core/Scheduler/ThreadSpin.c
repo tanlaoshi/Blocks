@@ -31,7 +31,7 @@ int SchedulerCreateThreadSpin(TASK *Leader) {
 
     /*
      * Leader 在别核 RUNNING 时改页表不安全。短等几拍（UP/刚切走常见）；
-     * 仍 busy 则让调用方换 TOY_SMP=1 或 THREADSMOKE。
+     * 仍 busy 则让调用方换 SMP=1 或 THREADSMOKE。
      */
     for (i = 0; i < 64; i++) {
         SpinLockAcquire(&gSchedulerLock);

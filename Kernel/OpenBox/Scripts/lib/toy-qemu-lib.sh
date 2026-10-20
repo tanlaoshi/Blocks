@@ -2,9 +2,9 @@
 # shellcheck shell=bash
 # 假定调用方已 cd 到 ToyImage 根目录。
 
-# 宿主例行提示：默认安静；TOY_QEMU_VERBOSE=1 才刷
+# 宿主例行提示：默认安静；QEMU_VERBOSE=1 才刷
 toy_qemu_info() {
-    if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then
+    if [ "${QEMU_VERBOSE:-0}" = 1 ]; then
         echo "$@"
     fi
 }
@@ -43,15 +43,15 @@ toy_qemu_setup_ovmf() {
 
 toy_qemu_parse_args() {
     CLEAN_NVRAM="${CLEAN_NVRAM:-0}"
-    TOY_KILL_QEMU="${TOY_KILL_QEMU:-0}"
-    TOY_HEADLESS="${TOY_HEADLESS:-0}"
+    KILL_QEMU="${KILL_QEMU:-0}"
+    HEADLESS="${HEADLESS:-0}"
     for Arg in "$@"; do
         case "$Arg" in
             --clean-nvram) CLEAN_NVRAM=1 ;;
-            --kill-qemu) TOY_KILL_QEMU=1 ;;
-            --headless) TOY_HEADLESS=1 ;;
+            --kill-qemu) KILL_QEMU=1 ;;
+            --headless) HEADLESS=1 ;;
             --smp=*)
-                TOY_SMP="${Arg#--smp=}"
+                SMP="${Arg#--smp=}"
                 ;;
             --smp)
                 echo "error: use --smp=N (e.g. --smp=1)" >&2
@@ -75,28 +75,28 @@ Options:
   -h, --help        This help
 
 Env:
-  TOY_SMP=N         Same as --smp=N
-  TOY_KILL_QEMU=1   Same as --kill-qemu
-  TOY_HEADLESS=1    Same as --headless
-  TOY_NO_HOSTFWD=1  Skip hostfwd (smoke/CI; avoids port bind failures)
-  TOY_DISK=ahci     Use ich9-ahci instead of IDE (PR-H1 AHCI Block)
-  TOY_DISK=nvme     Use PCIe NVMe instead of IDE (PR-H5 NVMe Block)
-  TOY_NET=e1000     Use Intel e1000 instead of virtio-net (PR-H4)
-  TOY_QEMU_XRES/YRES  Override VGA edid (else RootFs/X64/THEME.CFG mode=)
+  SMP=N         Same as --smp=N
+  KILL_QEMU=1   Same as --kill-qemu
+  HEADLESS=1    Same as --headless
+  NO_HOSTFWD=1  Skip hostfwd (smoke/CI; avoids port bind failures)
+  DISK=ahci     Use ich9-ahci instead of IDE (PR-H1 AHCI Block)
+  DISK=nvme     Use PCIe NVMe instead of IDE (PR-H5 NVMe Block)
+  NET=e1000     Use Intel e1000 instead of virtio-net (PR-H4)
+  QEMU_XRES/YRES  Override VGA edid (else RootFs/X64/THEME.CFG mode=)
   CLEAN_NVRAM=1     Same as --clean-nvram
   OVMF_CODE / OVMF_VARS_SRC  Custom firmware paths
 
 Troubleshoot SIPI/AP timeout:
   ./Scripts/run-split.sh --kill-qemu
-  TOY_SMP=1 ./Scripts/run-split.sh
+  SMP=1 ./Scripts/run-split.sh
 EOF
                 exit 0
                 ;;
         esac
     done
-    export CLEAN_NVRAM TOY_KILL_QEMU TOY_HEADLESS
-    if [ -n "${TOY_SMP:-}" ]; then
-        export TOY_SMP
+    export CLEAN_NVRAM KILL_QEMU HEADLESS
+    if [ -n "${SMP:-}" ]; then
+        export SMP
     fi
 }
 
@@ -129,21 +129,21 @@ toy_qemu_prepare_smp() {
     local Other
     Other="$(toy_qemu_count_others)"
 
-    if [ "${TOY_KILL_QEMU:-0}" = 1 ]; then
+    if [ "${KILL_QEMU:-0}" = 1 ]; then
         toy_qemu_kill_others
         Other=0
     elif [ "$Other" -gt 0 ]; then
         echo "warning: ${Other} qemu-system-x86_64 already running — SIPI/AP may timeout." >&2
         echo "warning: re-run with --kill-qemu, or: pkill -9 -f qemu-system-x86_64" >&2
-        if [ -z "${TOY_SMP:-}" ]; then
-            TOY_SMP=1
-            echo "warning: defaulting TOY_SMP=1 while other QEMU exist" >&2
+        if [ -z "${SMP:-}" ]; then
+            SMP=1
+            echo "warning: defaulting SMP=1 while other QEMU exist" >&2
         fi
     fi
 
-    TOY_SMP="${TOY_SMP:-2}"
-    export TOY_SMP
-    toy_qemu_info "qemu: -smp ${TOY_SMP}"
+    SMP="${SMP:-2}"
+    export SMP
+    toy_qemu_info "qemu: -smp ${SMP}"
 }
 
 # 从 RootFs/X64/BLOCKS.DB 读 mode=WxH（分辨率唯一真相）
@@ -151,30 +151,30 @@ toy_qemu_read_theme_mode() {
     local Db="${1:-RootFs/X64/BLOCKS.DB}"
     local Line W H
 
-    TOY_QEMU_XRES="${TOY_QEMU_XRES:-}"
-    TOY_QEMU_YRES="${TOY_QEMU_YRES:-}"
-    if [ -n "$TOY_QEMU_XRES" ] && [ -n "$TOY_QEMU_YRES" ]; then
-        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (env override)"
+    QEMU_XRES="${QEMU_XRES:-}"
+    QEMU_YRES="${QEMU_YRES:-}"
+    if [ -n "$QEMU_XRES" ] && [ -n "$QEMU_YRES" ]; then
+        toy_qemu_info "qemu: VGA edid ${QEMU_XRES}x${QEMU_YRES} (env override)"
         return 0
     fi
     if [ ! -f "$Db" ]; then
-        TOY_QEMU_XRES=1920
-        TOY_QEMU_YRES=1080
-        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no $Db)"
+        QEMU_XRES=1920
+        QEMU_YRES=1080
+        toy_qemu_info "qemu: VGA edid ${QEMU_XRES}x${QEMU_YRES} (default; no $Db)"
         return 0
     fi
     Line="$(grep -aE '^[[:space:]]*mode=' "$Db" | head -1 || true)"
     W="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\1/p')"
     H="$(printf '%s' "$Line" | sed -n 's/.*mode=\([0-9][0-9]*\)[xX]\([0-9][0-9]*\).*/\2/p')"
     if [ -z "$W" ] || [ -z "$H" ]; then
-        TOY_QEMU_XRES=1920
-        TOY_QEMU_YRES=1080
-        toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (default; no mode= in $Db)"
+        QEMU_XRES=1920
+        QEMU_YRES=1080
+        toy_qemu_info "qemu: VGA edid ${QEMU_XRES}x${QEMU_YRES} (default; no mode= in $Db)"
         return 0
     fi
-    TOY_QEMU_XRES="$W"
-    TOY_QEMU_YRES="$H"
-    toy_qemu_info "qemu: VGA edid ${TOY_QEMU_XRES}x${TOY_QEMU_YRES} (from $Db)"
+    QEMU_XRES="$W"
+    QEMU_YRES="$H"
+    toy_qemu_info "qemu: VGA edid ${QEMU_XRES}x${QEMU_YRES} (from $Db)"
 }
 
 # ESP 已是 Esp/X64（仅 EFI）；无需再 stash 根目录 ELF

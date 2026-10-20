@@ -9,14 +9,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE_ROOT="$(toyos_image_root "$0")"
 cd "$IMAGE_ROOT"
 
-ARCH="${TOY_VIRT_MAKE_ARCH:-}"
-HAL_ARCH="${TOY_VIRT_HAL_ARCH:-}"
+ARCH="${VIRT_MAKE_ARCH:-}"
+HAL_ARCH="${VIRT_HAL_ARCH:-}"
 if [ -z "$HAL_ARCH" ]; then
     case "$ARCH" in
         arm64) HAL_ARCH=Arm64 ;;
         riscv) HAL_ARCH=RiscV ;;
         *)
-            echo "error: set TOY_VIRT_HAL_ARCH=Arm64|RiscV (or TOY_VIRT_MAKE_ARCH)" >&2
+            echo "error: set VIRT_HAL_ARCH=Arm64|RiscV (or VIRT_MAKE_ARCH)" >&2
             exit 1
             ;;
     esac

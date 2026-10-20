@@ -26,7 +26,7 @@ ESP_MIB=256
 # 分区/mkfs 需要 root；非 root 时自动提权（会提示密码）
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "make-usb-stick: elevating with sudo (needs disk wipe rights)..."
-  exec sudo --preserve-env=TOY_ESP_MNT,TOY_TOYOS_MNT "$0" "$@"
+  exec sudo --preserve-env=ESP_MNT,BLOCKS_MNT "$0" "$@"
 fi
 
 usage() {
@@ -149,20 +149,20 @@ lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DEVICE"
 
 # 尝试挂载（桌面自动挂载或手动）；FAT 用调用者 uid 以便后续 sync-usb 免 root
 ESP_MNT="/mnt/toyos-esp"
-TOY_MNT="/mnt/toyos-data"
+BLOCKS_MNT="/mnt/toyos-data"
 MUID="${SUDO_UID:-0}"
 MGID="${SUDO_GID:-0}"
-mkdir -p "$ESP_MNT" "$TOY_MNT"
+mkdir -p "$ESP_MNT" "$BLOCKS_MNT"
 mount -o "uid=${MUID},gid=${MGID},umask=022" "$P1" "$ESP_MNT"
-mount -o "uid=${MUID},gid=${MGID},umask=022" "$P2" "$TOY_MNT"
-echo "mounted ESP=$ESP_MNT TOYOS=$TOY_MNT (uid=${MUID})"
+mount -o "uid=${MUID},gid=${MGID},umask=022" "$P2" "$BLOCKS_MNT"
+echo "mounted ESP=$ESP_MNT TOYOS=$BLOCKS_MNT (uid=${MUID})"
 
 if [[ "$DO_SYNC" -eq 1 ]]; then
-  export TOY_ESP_MNT="$ESP_MNT"
-  export TOY_TOYOS_MNT="$TOY_MNT"
+  export ESP_MNT="$ESP_MNT"
+  export BLOCKS_MNT="$BLOCKS_MNT"
   "$ROOT/sync-usb.sh"
 else
   echo
-  echo "Next: TOY_ESP_MNT=$ESP_MNT TOY_TOYOS_MNT=$TOY_MNT $ROOT/sync-usb.sh"
+  echo "Next: ESP_MNT=$ESP_MNT BLOCKS_MNT=$BLOCKS_MNT $ROOT/sync-usb.sh"
   echo "Or unplug/replug and let the desktop mount ESP+TOYOS, then ./sync-usb.sh"
 fi

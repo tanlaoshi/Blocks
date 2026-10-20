@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/toyos-common.sh"
 cd "$(toyos_image_root "$0")"
-export TOY_SMP="${TOY_SMP:-1}"
+export SMP="${SMP:-1}"
 
 need_expect() {
   if ! command -v expect >/dev/null 2>&1; then

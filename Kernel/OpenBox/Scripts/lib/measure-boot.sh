@@ -30,10 +30,10 @@ fi
 run_once() {
     local n="$1"
     local stamped="${STAMP_DIR}/run${n}.ts.log"
-    export TOY_KILL_QEMU=1
-    export TOY_HEADLESS=1
-    export TOY_NO_HOSTFWD=1
-    export TOY_SMP="${TOY_SMP:-1}"
+    export KILL_QEMU=1
+    export HEADLESS=1
+    export NO_HOSTFWD=1
+    export SMP="${SMP:-1}"
 
     MEASURE_N="$n" MEASURE_LOG="$stamped" MEASURE_TIMEOUT="$TIMEOUT_SEC" \
     MEASURE_RUN="$SCRIPT_DIR/run-split.sh" \
@@ -44,7 +44,7 @@ n = os.environ["MEASURE_N"]
 log_path = os.environ["MEASURE_LOG"]
 timeout = int(os.environ.get("MEASURE_TIMEOUT", "90"))
 run_split = os.environ["MEASURE_RUN"]
-smp = os.environ.get("TOY_SMP", "1")
+smp = os.environ.get("SMP", "1")
 
 def kill_qemu():
     subprocess.run(
@@ -151,7 +151,7 @@ sys.exit(0)
 PY
 }
 
-echo "measure: runs=${RUNS} TOY_SMP=${TOY_SMP:-1} timeout=${TIMEOUT_SEC}s dir=${STAMP_DIR}"
+echo "measure: runs=${RUNS} SMP=${SMP:-1} timeout=${TIMEOUT_SEC}s dir=${STAMP_DIR}"
 fail=0
 r=1
 while [ "$r" -le "$RUNS" ]; do

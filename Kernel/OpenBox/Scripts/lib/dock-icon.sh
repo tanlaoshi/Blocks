@@ -3,7 +3,7 @@
 # instead of a generic gear when launched from the terminal (Wayland).
 install_toyos_dock_icon() {
     # CI / headless：勿写宿主桌面文件
-    if [ "${TOY_HEADLESS:-0}" = 1 ]; then
+    if [ "${HEADLESS:-0}" = 1 ]; then
         return 0
     fi
     local Apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"

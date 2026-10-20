@@ -9,7 +9,7 @@
 #   ./sync-usb.sh                 # 全量：RootFs/X64 → TOYOS；ESP 已挂载才更新 BOOTX64.EFI
 #   ./sync-usb.sh --build         # 先编 Kernel + Boot，再 prepare-rootfs，再全量同步
 #   ./sync-usb.sh --kernel-only   # TOYOS/Kernel.elf + FW/ + Assets/Icons/bmp48
-#   TOY_ESP_MNT=/mnt/esp TOY_TOYOS_MNT=/mnt/toy ./sync-usb.sh
+#   ESP_MNT=/mnt/esp BLOCKS_MNT=/mnt/toy ./sync-usb.sh
 #
 # 兼容旧单分区：若只有 TOYOS、没有 ESP，则把 EFI 也写进 TOYOS（单 FAT 布局）。
 set -euo pipefail
@@ -133,8 +133,8 @@ ensure_label_mounted() {
   return 1
 }
 
-ESP_MNT="${TOY_ESP_MNT:-}"
-TOY_MNT="${TOY_TOYOS_MNT:-}"
+ESP_MNT="${ESP_MNT:-}"
+BLOCKS_MNT="${BLOCKS_MNT:-}"
 
 if [[ -z "$ESP_MNT" ]]; then
   ESP_MNT="$(find_label_mnt ESP || true)"
@@ -142,18 +142,18 @@ fi
 if [[ -z "$ESP_MNT" ]]; then
   ESP_MNT="$(find_label_mnt EFI || true)"
 fi
-if [[ -z "$TOY_MNT" ]]; then
-  TOY_MNT="$(find_label_mnt BLOCKS || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  BLOCKS_MNT="$(find_label_mnt BLOCKS || true)"
 fi
-if [[ -z "$TOY_MNT" ]]; then
-  TOY_MNT="$(find_label_mnt TOYOS || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  BLOCKS_MNT="$(find_label_mnt TOYOS || true)"
 fi
 
 # 常见自动挂载路径兜底
-if [[ -z "$TOY_MNT" ]]; then
+if [[ -z "$BLOCKS_MNT" ]]; then
   for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS /run/media/"${USER:-tank}"/BLOCKS \
            /media/*/TOYOS /media/"${USER:-tank}"/TOYOS /run/media/"${USER:-tank}"/TOYOS; do
-    if [[ -d "$d" ]]; then TOY_MNT="$d"; break; fi
+    if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
   done
 fi
 if [[ -z "$ESP_MNT" ]]; then
@@ -170,14 +170,14 @@ fi
 if [[ -z "$ESP_MNT" ]]; then
   ESP_MNT="$(ensure_label_mounted EFI /mnt/toyos-esp || true)"
 fi
-if [[ -z "$TOY_MNT" ]]; then
-  TOY_MNT="$(ensure_label_mounted BLOCKS /mnt/toyos-data || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  BLOCKS_MNT="$(ensure_label_mounted BLOCKS /mnt/toyos-data || true)"
 fi
-if [[ -z "$TOY_MNT" ]]; then
-  TOY_MNT="$(ensure_label_mounted TOYOS /mnt/toyos-data || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  BLOCKS_MNT="$(ensure_label_mounted TOYOS /mnt/toyos-data || true)"
 fi
 
-if [[ -z "$TOY_MNT" ]]; then
+if [[ -z "$BLOCKS_MNT" ]]; then
   echo "error: BLOCKS volume not mounted (label BLOCKS)." >&2
   echo "  Format: $ROOT/make-usb-stick.sh --yes --sync" >&2
   echo "  Or mount the TOYOS partition and re-run." >&2
@@ -190,12 +190,12 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     echo "== build Kernel =="
     (cd "$ROOT/../ToyKernel" && ./build.sh)
   fi
-  if [[ ! -d "$TOY_MNT" ]]; then
-    echo "error: TOYOS mount missing: $TOY_MNT" >&2
+  if [[ ! -d "$BLOCKS_MNT" ]]; then
+    echo "error: TOYOS mount missing: $BLOCKS_MNT" >&2
     exit 1
   fi
-  if [[ ! -w "$TOY_MNT" ]]; then
-    echo "error: TOYOS not writable: $TOY_MNT (try: sudo chown \$USER \"$TOY_MNT\" or sudo $0 --kernel-only)" >&2
+  if [[ ! -w "$BLOCKS_MNT" ]]; then
+    echo "error: TOYOS not writable: $BLOCKS_MNT (try: sudo chown \$USER \"$BLOCKS_MNT\" or sudo $0 --kernel-only)" >&2
     exit 1
   fi
   SRC=""
@@ -209,46 +209,46 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     echo "error: no Kernel.elf — build first or drop --kernel-only" >&2
     exit 1
   fi
-  if [[ -d "$TOY_MNT/EFI/BOOT" && ! -f "$TOY_MNT/BLOCKS.ID" && ! -f "$TOY_MNT/TOYOS.ID" ]]; then
-    echo "error: $TOY_MNT looks like ESP (EFI/BOOT present, no BLOCKS.ID)." >&2
+  if [[ -d "$BLOCKS_MNT/EFI/BOOT" && ! -f "$BLOCKS_MNT/BLOCKS.ID" && ! -f "$BLOCKS_MNT/TOYOS.ID" ]]; then
+    echo "error: $BLOCKS_MNT looks like ESP (EFI/BOOT present, no BLOCKS.ID)." >&2
     echo "  Use the data partition (LABEL=BLOCKS), e.g. /media/\$USER/BLOCKS" >&2
     exit 1
   fi
-  cp -f "$SRC" "$TOY_MNT/Kernel.elf"
-  sync_toyos_fw "$TOY_MNT"
+  cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
+  sync_toyos_fw "$BLOCKS_MNT"
   # 图标不在内核里。快同步也带上 bmp48，否则 GAME.BMP 等要等全量镜像。
   if [[ -d "$ROOT/RootFs/X64/Assets/Icons/bmp48" ]]; then
-    mkdir -p "$TOY_MNT/Assets/Icons/bmp48"
+    mkdir -p "$BLOCKS_MNT/Assets/Icons/bmp48"
     if command -v rsync >/dev/null 2>&1; then
       rsync -rltD --no-owner --no-group --no-perms \
-        "$ROOT/RootFs/X64/Assets/Icons/bmp48/" "$TOY_MNT/Assets/Icons/bmp48/"
+        "$ROOT/RootFs/X64/Assets/Icons/bmp48/" "$BLOCKS_MNT/Assets/Icons/bmp48/"
     else
-      cp -f "$ROOT/RootFs/X64/Assets/Icons/bmp48/"*.BMP "$TOY_MNT/Assets/Icons/bmp48/"
+      cp -f "$ROOT/RootFs/X64/Assets/Icons/bmp48/"*.BMP "$BLOCKS_MNT/Assets/Icons/bmp48/"
     fi
-    echo "Assets/Icons/bmp48 -> $TOY_MNT/Assets/Icons/bmp48"
+    echo "Assets/Icons/bmp48 -> $BLOCKS_MNT/Assets/Icons/bmp48"
   fi
-  if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
-    printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
-    echo "note: wrote $TOY_MNT/BLOCKS.ID (UEFI Boot 靠它认系统盘)"
+  if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
+    printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
+    echo "note: wrote $BLOCKS_MNT/BLOCKS.ID (UEFI Boot 靠它认系统盘)"
   fi
   sync
   echo "=== kernel-only sync (TOYOS only; ESP untouched) ==="
-  echo "TOYOS -> $TOY_MNT"
+  echo "TOYOS -> $BLOCKS_MNT"
   echo "src   -> $SRC"
-  ls -l --time-style=long-iso "$SRC" "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID"
-  ls -l --time-style=long-iso "$TOY_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
+  ls -l --time-style=long-iso "$SRC" "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID"
+  ls -l --time-style=long-iso "$BLOCKS_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
     echo "note: FW/IWL8265.UCODE missing on TOYOS (wifi fw=miss)"
-  ls -l --time-style=long-iso "$TOY_MNT/FW/WIFI.CFG" 2>/dev/null || \
+  ls -l --time-style=long-iso "$BLOCKS_MNT/FW/WIFI.CFG" 2>/dev/null || \
     echo "note: FW/WIFI.CFG missing — cfg=miss until you create it on the stick"
-  md5sum "$SRC" "$TOY_MNT/Kernel.elf"
+  md5sum "$SRC" "$BLOCKS_MNT/Kernel.elf"
   echo
   echo "Boot loads Kernel from TOYOS via TOYOS.ID. Do not put Kernel.elf on ESP."
   echo "PHOTO 'fs: default=ESP (no TOYOS.ID)' is often the PC's NVMe ESP — kernel may not see USB yet."
   exit 0
 fi
 
-if [[ ! -d "$TOY_MNT" || ! -w "$TOY_MNT" ]]; then
-  echo "error: TOYOS mount not writable: $TOY_MNT" >&2
+if [[ ! -d "$BLOCKS_MNT" || ! -w "$BLOCKS_MNT" ]]; then
+  echo "error: TOYOS mount not writable: $BLOCKS_MNT" >&2
   exit 1
 fi
 
@@ -267,15 +267,15 @@ if [[ -z "$ESP_MNT" ]]; then
   if [[ -n "$ESP_DEV" ]]; then
     echo "warning: USB ESP/EFI ($ESP_DEV) is not mounted — bootloader unchanged." >&2
     echo "  TOYOS still gets a full RootFs sync." >&2
-    echo "  To update BOOTX64.EFI: sudo mount $ESP_DEV /mnt/toyos-esp && TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
+    echo "  To update BOOTX64.EFI: sudo mount $ESP_DEV /mnt/toyos-esp && ESP_MNT=/mnt/toyos-esp $0" >&2
     SKIP_ESP=1
   elif lsblk -n -o NAME,MOUNTPOINT 2>/dev/null | grep -q toyos-esp; then
     echo "warning: dual-partition USB but ESP mount not resolved — bootloader unchanged." >&2
-    echo "  TOYOS still gets a full RootFs sync. Or: TOY_ESP_MNT=/mnt/toyos-esp $0" >&2
+    echo "  TOYOS still gets a full RootFs sync. Or: ESP_MNT=/mnt/toyos-esp $0" >&2
     SKIP_ESP=1
   else
     SINGLE_FAT=1
-    ESP_MNT="$TOY_MNT"
+    ESP_MNT="$BLOCKS_MNT"
     echo "note: no ESP partition — writing EFI into TOYOS (single-FAT layout)"
   fi
 elif [[ ! -w "$ESP_MNT" ]]; then
@@ -284,7 +284,7 @@ elif [[ ! -w "$ESP_MNT" ]]; then
 fi
 
 echo "ESP   -> $ESP_MNT"
-echo "TOYOS -> $TOY_MNT"
+echo "TOYOS -> $BLOCKS_MNT"
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
   echo "== build Kernel =="
@@ -328,27 +328,27 @@ if command -v rsync >/dev/null 2>&1; then
     --filter 'protect FW/WIFI.CFG' \
     --filter 'protect FW/WIFI_H.CFG' \
     --filter 'protect FW/WIFI_C.CFG' \
-    "$ROOT/RootFs/X64/" "$TOY_MNT/"
+    "$ROOT/RootFs/X64/" "$BLOCKS_MNT/"
 else
   echo "error: rsync is required for a full TOYOS mirror" >&2
   exit 1
 fi
 # 显式再扫一眼 FW/（rsync 已含；WIFI*.CFG 在 U 盘侧保留）
-sync_toyos_fw "$TOY_MNT"
+sync_toyos_fw "$BLOCKS_MNT"
 
 if [[ "$SINGLE_FAT" -eq 1 ]]; then
   # 仅单分区盘：启动与系统同卷，EFI 只能放 TOYOS
-  mkdir -p "$TOY_MNT/EFI/BOOT"
-  cp -f "$BOOT_EFI" "$TOY_MNT/EFI/BOOT/BOOTX64.EFI"
-elif [[ "$SKIP_ESP" -eq 0 && -d "$TOY_MNT/EFI" ]]; then
+  mkdir -p "$BLOCKS_MNT/EFI/BOOT"
+  cp -f "$BOOT_EFI" "$BLOCKS_MNT/EFI/BOOT/BOOTX64.EFI"
+elif [[ "$SKIP_ESP" -eq 0 && -d "$BLOCKS_MNT/EFI" ]]; then
   # 双分区且这次写过 ESP：清掉 TOYOS 上误放的 EFI（UEFI 不读它）
-  echo "note: removing stale $TOY_MNT/EFI (Boot lives on ESP only)"
-  rm -rf "$TOY_MNT/EFI"
+  echo "note: removing stale $BLOCKS_MNT/EFI (Boot lives on ESP only)"
+  rm -rf "$BLOCKS_MNT/EFI"
 fi
 
 # 确保识别文件存在
-if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
-  printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
+if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
+  printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
 fi
 
 sync
@@ -359,13 +359,13 @@ if [[ "$SKIP_ESP" -eq 0 ]]; then
 else
   echo "ESP BOOTX64.EFI : unchanged (ESP not mounted)"
 fi
-echo "TOYOS Kernel    : $(stat -c%s "$TOY_MNT/Kernel.elf") bytes"
-ls -lh "$TOY_MNT/Assets/Fonts/CJK.TTF" 2>/dev/null || \
+echo "TOYOS Kernel    : $(stat -c%s "$BLOCKS_MNT/Kernel.elf") bytes"
+ls -lh "$BLOCKS_MNT/Assets/Fonts/CJK.TTF" 2>/dev/null || \
   echo "warning: TOYOS missing Assets/Fonts/CJK.TTF (Boot: ttf miss)"
-ls -lh "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID" "$TOY_MNT/THEME.CFG" 2>/dev/null || true
-ls -lh "$TOY_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
+ls -lh "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID" "$BLOCKS_MNT/THEME.CFG" 2>/dev/null || true
+ls -lh "$BLOCKS_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
   echo "warning: TOYOS missing FW/IWL8265.UCODE (iwl fw=miss)"
-ls -lh "$TOY_MNT/FW/WIFI.CFG" "$TOY_MNT/FW/WIFI_H.CFG" "$TOY_MNT/FW/WIFI_C.CFG" 2>/dev/null || \
+ls -lh "$BLOCKS_MNT/FW/WIFI.CFG" "$BLOCKS_MNT/FW/WIFI_H.CFG" "$BLOCKS_MNT/FW/WIFI_C.CFG" 2>/dev/null || \
   echo "note: TOYOS missing FW/WIFI.CFG (iwl cfg=miss; cp WIFI_H or WIFI_C → WIFI.CFG)"
 echo
 echo "Boot Menu: select this USB (UEFI). Expect GOP desktop / ToyOS ready."

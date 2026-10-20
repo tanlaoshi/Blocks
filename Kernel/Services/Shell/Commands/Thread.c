@@ -27,7 +27,7 @@ static void WriteSpinErr(int Err) {
     gConsole.WriteHex32((UINT32)Err);
     gConsole.Write(" (1=arg 2=busy 3=nomem 4=nova 5=map 6=create)\n");
     if (Err == 2) {
-        gConsole.Write("  hint: TOY_SMP=1 + SNAKE；串口敲命令（0 非法会变成双核）\n");
+        gConsole.Write("  hint: SMP=1 + SNAKE；串口敲命令（0 非法会变成双核）\n");
     }
 }
 
@@ -42,7 +42,7 @@ static void CommandTestThread(int Argc, char **Argv) {
 
     if (Argc < 2) {
         gConsole.Write("usage: test thread <pid>\n");
-        gConsole.Write("  TOY_SMP=1；ps 十进制 pid；SNAKE 挂住后测\n");
+        gConsole.Write("  SMP=1；ps 十进制 pid；SNAKE 挂住后测\n");
         return;
     }
     if (ParseDecInt(Argv[1], &Pid) != 0 || Pid <= 0 || Pid > MAX_TASKS) {

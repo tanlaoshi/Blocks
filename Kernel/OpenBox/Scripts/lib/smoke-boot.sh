@@ -7,10 +7,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE_ROOT="$(toyos_image_root "$0")"
 cd "$IMAGE_ROOT"
 
-export TOY_KILL_QEMU=1
-export TOY_HEADLESS=1
-export TOY_NO_HOSTFWD=1
-export TOY_SMP="${TOY_SMP:-1}"
+export KILL_QEMU=1
+export HEADLESS=1
+export NO_HOSTFWD=1
+export SMP="${SMP:-1}"
 TIMEOUT_SEC="${SMOKE_TIMEOUT:-90}"
 LOG="${SMOKE_LOG:-/tmp/toyos-smoke-$$.log}"
 
@@ -29,10 +29,10 @@ if [ ! -f RootFs/X64/Kernel.elf ]; then
     exit 1
 fi
 
-echo "smoke: TOY_SMP=${TOY_SMP} TOY_DISK=${TOY_DISK:-ide} TOY_NET=${TOY_NET:-virtio} TOY_USB_HUB=${TOY_USB_HUB:-0} TOY_USB_MSC=${TOY_USB_MSC:-0} TOY_USB_SERIAL=${TOY_USB_SERIAL:-0} TOY_USB_UHCI=${TOY_USB_UHCI:-0} timeout=${TIMEOUT_SEC}s log=${LOG}"
+echo "smoke: SMP=${SMP} DISK=${DISK:-ide} NET=${NET:-virtio} USB_HUB=${USB_HUB:-0} USB_MSC=${USB_MSC:-0} USB_SERIAL=${USB_SERIAL:-0} USB_UHCI=${USB_UHCI:-0} timeout=${TIMEOUT_SEC}s log=${LOG}"
 rm -f "$LOG"
 : >"$LOG"
-"$SCRIPT_DIR/run-split.sh" --kill-qemu --headless --smp="${TOY_SMP}" >"$LOG" 2>&1 &
+"$SCRIPT_DIR/run-split.sh" --kill-qemu --headless --smp="${SMP}" >"$LOG" 2>&1 &
 QEMU_PID=$!
 
 i=0
@@ -41,22 +41,22 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
     # PR-I18N2：就绪串可中/英（lang=zh →「ToyOS 就绪」）
     if tr -d '\r' <"$LOG" 2>/dev/null | grep -E 'ToyOS ready|ToyOS 就绪' >/dev/null 2>&1; then
         echo "smoke: PASS — found ToyOS ready/就绪"
-        if [ "${TOY_DISK:-ide}" = "ahci" ] || [ "${TOY_DISK:-}" = "AHCI" ]; then
+        if [ "${DISK:-ide}" = "ahci" ] || [ "${DISK:-}" = "AHCI" ]; then
             if tr -d '\r' <"$LOG" | grep -F 'Boot: AHCI Drives=' >/dev/null 2>&1; then
                 echo "smoke: PASS — AHCI backend (PR-H1)"
                 tr -d '\r' <"$LOG" | grep -F 'Boot: AHCI Drives=' | tail -1 || true
             else
-                echo "smoke: FAIL — TOY_DISK=ahci but no Boot: AHCI line" >&2
+                echo "smoke: FAIL — DISK=ahci but no Boot: AHCI line" >&2
                 tr -d '\r' <"$LOG" | grep -E 'ahci|block:|ata' | tail -20 >&2 || true
                 exit 1
             fi
         fi
-        if [ "${TOY_DISK:-ide}" = "nvme" ] || [ "${TOY_DISK:-}" = "NVME" ] || [ "${TOY_DISK:-}" = "NVMe" ]; then
+        if [ "${DISK:-ide}" = "nvme" ] || [ "${DISK:-}" = "NVME" ] || [ "${DISK:-}" = "NVMe" ]; then
             if tr -d '\r' <"$LOG" | grep -F 'Boot: NVMe Drives=' >/dev/null 2>&1; then
                 echo "smoke: PASS — NVMe backend (PR-H5)"
                 tr -d '\r' <"$LOG" | grep -F 'Boot: NVMe Drives=' | tail -1 || true
             else
-                echo "smoke: FAIL — TOY_DISK=nvme but no Boot: NVMe line" >&2
+                echo "smoke: FAIL — DISK=nvme but no Boot: NVMe line" >&2
                 tr -d '\r' <"$LOG" | grep -E 'nvme|block:|ata' | tail -20 >&2 || true
                 exit 1
             fi
@@ -86,22 +86,22 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
         else
             echo "smoke: WARN — no Boot: XHCI IRQ= line" >&2
         fi
-        if [ "${TOY_USB_HUB:-0}" = 1 ]; then
+        if [ "${USB_HUB:-0}" = 1 ]; then
             if tr -d '\r' <"$LOG" | grep -F 'Boot: XHCI-HID Via Hub' >/dev/null 2>&1; then
                 echo "smoke: PASS — hub keyboard (PR-H-hub)"
             else
-                echo "smoke: FAIL — TOY_USB_HUB=1 but no Boot: XHCI-HID Via Hub" >&2
+                echo "smoke: FAIL — USB_HUB=1 but no Boot: XHCI-HID Via Hub" >&2
                 tr -d '\r' <"$LOG" | grep -E 'xhci|hub' | tail -30 >&2 || true
                 exit 1
             fi
         fi
-        # PR-H-msc-8：TOY_USB_MSC=1 须见 auto mux（7b）；键鼠仍在
-        if [ "${TOY_USB_MSC:-0}" = 1 ]; then
+        # PR-H-msc-8：USB_MSC=1 须见 auto mux（7b）；键鼠仍在
+        if [ "${USB_MSC:-0}" = 1 ]; then
             if tr -d '\r' <"$LOG" | grep -F 'Boot: MSC Auto Mux OK' >/dev/null 2>&1; then
                 echo "smoke: PASS — msc auto mux (PR-H-msc-8)"
                 tr -d '\r' <"$LOG" | grep -F 'Boot: MSC Auto Mux OK' | tail -1 || true
             else
-                echo "smoke: FAIL — TOY_USB_MSC=1 but no Boot: MSC Auto Mux OK" >&2
+                echo "smoke: FAIL — USB_MSC=1 but no Boot: MSC Auto Mux OK" >&2
                 tr -d '\r' <"$LOG" | grep -E 'msc auto|msc claim|msc bot|block-mux' | tail -40 >&2 || true
                 exit 1
             fi
@@ -110,13 +110,13 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
                 exit 1
             fi
         fi
-        # PR-H-usb-uart：TOY_USB_SERIAL=1 → QEMU usb-serial(=FTDI) 认领 + chardev TX
-        if [ "${TOY_USB_SERIAL:-0}" = 1 ]; then
-            CDC_LOG="${TOY_USB_SERIAL_LOG:-/tmp/toy-usb-uart-cdc.log}"
+        # PR-H-usb-uart：USB_SERIAL=1 → QEMU usb-serial(=FTDI) 认领 + chardev TX
+        if [ "${USB_SERIAL:-0}" = 1 ]; then
+            CDC_LOG="${USB_SERIAL_LOG:-/tmp/toy-usb-uart-cdc.log}"
             if tr -d '\r' <"$LOG" | grep -F 'boot: usb-uart ftdi' >/dev/null 2>&1; then
                 echo "smoke: PASS — usb-uart ftdi via QEMU usb-serial"
             else
-                echo "smoke: FAIL — TOY_USB_SERIAL=1 but no boot: usb-uart ftdi" >&2
+                echo "smoke: FAIL — USB_SERIAL=1 but no boot: usb-uart ftdi" >&2
                 tr -d '\r' <"$LOG" | grep -iE 'usb-uart|ftdi|cdc' | tail -20 >&2 || true
                 exit 1
             fi
@@ -129,13 +129,13 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
                 exit 1
             fi
         fi
-        # PR-H-uhci-1：TOY_USB_UHCI=1 → piix3-usb-uhci + mouse → Boot: UHCI CCS
-        if [ "${TOY_USB_UHCI:-0}" = 1 ]; then
+        # PR-H-uhci-1：USB_UHCI=1 → piix3-usb-uhci + mouse → Boot: UHCI CCS
+        if [ "${USB_UHCI:-0}" = 1 ]; then
             if tr -d '\r' <"$LOG" | grep -E 'Boot: UHCI#|Boot: UHCI CCS' >/dev/null 2>&1; then
                 echo "smoke: PASS — UHCI probe/CCS (PR-H-uhci-1)"
                 tr -d '\r' <"$LOG" | grep -E 'Boot: UHCI#|Boot: UHCI CCS' | tail -3 || true
             else
-                echo "smoke: FAIL — TOY_USB_UHCI=1 but no Boot: UHCI line" >&2
+                echo "smoke: FAIL — USB_UHCI=1 but no Boot: UHCI line" >&2
                 tr -d '\r' <"$LOG" | grep -iE 'uhci|UHCI' | tail -20 >&2 || true
                 exit 1
             fi
@@ -148,29 +148,29 @@ while [ "$i" -lt "$TIMEOUT_SEC" ]; do
         elif tr -d '\r' <"$LOG" | grep -F 'COM1 Serial OK' >/dev/null 2>&1; then
             echo "smoke: PASS — COM1 serial (PR-H3, legacy)"
         fi
-        # PR-H4 / H4e-1…3：TOY_NET=e1000|e1000e
-        if [ "${TOY_NET:-virtio}" = "e1000e" ] || [ "${TOY_NET:-}" = "E1000E" ]; then
+        # PR-H4 / H4e-1…3：NET=e1000|e1000e
+        if [ "${NET:-virtio}" = "e1000e" ] || [ "${NET:-}" = "E1000E" ]; then
             if tr -d '\r' <"$LOG" | grep -E 'Boot: E1000E($|[^a-zA-Z0-9_])' >/dev/null 2>&1 || \
                tr -d '\r' <"$LOG" | grep -F 'Boot: E1000E' >/dev/null 2>&1; then
                 echo "smoke: PASS — e1000e backend (PR-H4e-1)"
                 if tr -d '\r' <"$LOG" | grep -F 'Boot: E1000E IRQ=MSI' >/dev/null 2>&1; then
                     echo "smoke: PASS — e1000e irq=msi (PR-H4e-3)"
                 else
-                    echo "smoke: FAIL — TOY_NET=e1000e but no Boot: E1000E IRQ=MSI" >&2
+                    echo "smoke: FAIL — NET=e1000e but no Boot: E1000E IRQ=MSI" >&2
                     tr -d '\r' <"$LOG" | grep -E 'e1000|MSI|irq' | tail -20 >&2 || true
                     exit 1
                 fi
             else
-                echo "smoke: FAIL — TOY_NET=e1000e but no Boot: E1000E line" >&2
+                echo "smoke: FAIL — NET=e1000e but no Boot: E1000E line" >&2
                 tr -d '\r' <"$LOG" | grep -E 'e1000|net:|virtio|link' | tail -20 >&2 || true
                 exit 1
             fi
-        elif [ "${TOY_NET:-virtio}" = "e1000" ] || [ "${TOY_NET:-}" = "E1000" ]; then
+        elif [ "${NET:-virtio}" = "e1000" ] || [ "${NET:-}" = "E1000" ]; then
             if tr -d '\r' <"$LOG" | grep -E 'Boot: E1000($|[^eE])' >/dev/null 2>&1 || \
                tr -d '\r' <"$LOG" | grep -F 'Boot: E1000 IRQ=MSI' >/dev/null 2>&1; then
                 echo "smoke: PASS — e1000 backend (PR-H4)"
             else
-                echo "smoke: FAIL — TOY_NET=e1000 but no Boot: E1000 line" >&2
+                echo "smoke: FAIL — NET=e1000 but no Boot: E1000 line" >&2
                 tr -d '\r' <"$LOG" | grep -E 'e1000|net:|virtio|link' | tail -20 >&2 || true
                 exit 1
             fi

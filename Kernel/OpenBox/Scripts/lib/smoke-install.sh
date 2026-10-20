@@ -20,8 +20,8 @@ cleanup
 sleep 0.5
 rm -f /tmp/toyos-install-target.img
 
-export TOY_KILL_QEMU=1 TOY_HEADLESS=1 TOY_SMP=1 TOY_NO_HOSTFWD=1
-export TOY_DISK=ahci TOY_INSTALL_DISK=1 TOY_INSTALL_MIB=512
+export KILL_QEMU=1 HEADLESS=1 SMP=1 NO_HOSTFWD=1
+export DISK=ahci INSTALL_DISK=1 INSTALL_MIB=512
 
 LOG=/tmp/toy-fsinst-guest.log
 rm -f "$LOG"
@@ -101,7 +101,7 @@ if [ "$ok" = 1 ] || tr -d '\r' <"$LOG" | grep -aq 'install: ok'; then
 fi
 echo 'FS-INST: FAIL — full log: '"$LOG"
 echo 'Manual interactive:'
-echo '  TOY_DISK=ahci TOY_INSTALL_DISK=1 "$SCRIPT_DIR/run-split.sh"'
+echo '  DISK=ahci INSTALL_DISK=1 "$SCRIPT_DIR/run-split.sh"'
 echo '  toyos> install disks'
 echo '  toyos> install 2 --yes --mib 512'
 exit 1

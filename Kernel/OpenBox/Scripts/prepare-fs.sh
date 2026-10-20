@@ -18,7 +18,7 @@ case "$KARCH" in
         ;;
     arm64|riscv)
         echo "==> prepare-virt-rootfs ($KARCH)"
-        export TOY_VIRT_MAKE_ARCH="$KARCH"
+        export VIRT_MAKE_ARCH="$KARCH"
         "$LIB/prepare-virt-rootfs.sh"
         ;;
     *) toyos_die "prepare-fs: 未知 arch $ARCH_IN" ;;

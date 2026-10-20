@@ -12,8 +12,8 @@
 #   ./sync-nuc.sh --kernel-only   # 只更新 Kernel.elf + FW/
 #   ./sync-nuc.sh --boot          # 另写 EFI/Blocks/BOOTX64.EFI（需可写 ESP）
 #   ./sync-nuc.sh --build         # 先编 Kernel（+ Boot 若 --boot），再 prepare-rootfs，再同步
-#   TOY_TOYOS_MNT=/mnt/toy ./sync-nuc.sh
-#   TOY_ESP_BOOT_DIR=/boot/efi/EFI/Blocks ./sync-nuc.sh --boot
+#   BLOCKS_MNT=/mnt/toy ./sync-nuc.sh
+#   ESP_BOOT_DIR=/boot/efi/EFI/Blocks ./sync-nuc.sh --boot
 #
 # WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG：保留在 ToyOS 上，不同步覆盖。
 set -euo pipefail
@@ -25,7 +25,7 @@ ROOT="$(toyos_image_root "$0")"
 DO_BUILD=0
 KERNEL_ONLY=0
 DO_BOOT=0
-ESP_BOOT_DIR="${TOY_ESP_BOOT_DIR:-/boot/efi/EFI/Blocks}"
+ESP_BOOT_DIR="${ESP_BOOT_DIR:-/boot/efi/EFI/Blocks}"
 
 sync_toyos_fw() {
   local Dest="$1"
@@ -172,39 +172,39 @@ sync_boot_chainloader() {
   echo "Boot -> $Dest ($Sz bytes)"
 }
 
-TOY_MNT="${TOY_TOYOS_MNT:-}"
-TOY_DEV=""
+BLOCKS_MNT="${BLOCKS_MNT:-}"
+BLOCKS_DEV=""
 
-if [[ -z "$TOY_MNT" ]]; then
-  TOY_DEV="$(find_toyos_dev || true)"
-  if [[ -n "$TOY_DEV" ]]; then
-    TOY_MNT="$(find_dev_mnt "$TOY_DEV" || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  BLOCKS_DEV="$(find_toyos_dev || true)"
+  if [[ -n "$BLOCKS_DEV" ]]; then
+    BLOCKS_MNT="$(find_dev_mnt "$BLOCKS_DEV" || true)"
   fi
 fi
-if [[ -z "$TOY_MNT" ]]; then
+if [[ -z "$BLOCKS_MNT" ]]; then
   for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS \
            /run/media/"${USER:-tank}"/BLOCKS \
            /media/*/ToyOS /media/*/TOYOS \
            /media/"${USER:-tank}"/ToyOS /media/"${USER:-tank}"/TOYOS \
            /run/media/"${USER:-tank}"/ToyOS /run/media/"${USER:-tank}"/TOYOS; do
-    if [[ -d "$d" ]]; then TOY_MNT="$d"; break; fi
+    if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
   done
 fi
-if [[ -z "$TOY_MNT" ]]; then
-  if [[ -z "$TOY_DEV" ]]; then
-    TOY_DEV="$(find_toyos_dev || true)"
+if [[ -z "$BLOCKS_MNT" ]]; then
+  if [[ -z "$BLOCKS_DEV" ]]; then
+    BLOCKS_DEV="$(find_toyos_dev || true)"
   fi
-  if [[ -n "$TOY_DEV" ]]; then
-    TOY_MNT="$(ensure_toyos_mounted "$TOY_DEV" || true)"
+  if [[ -n "$BLOCKS_DEV" ]]; then
+    BLOCKS_MNT="$(ensure_toyos_mounted "$BLOCKS_DEV" || true)"
   fi
 fi
-if [[ -z "$TOY_MNT" ]]; then
+if [[ -z "$BLOCKS_MNT" ]]; then
   echo "error: ToyOS volume not found/mounted." >&2
   echo "  Expected LABEL=BLOCKS on SSD. USB 备选: $SCRIPT_DIR/sync-usb.sh" >&2
   exit 1
 fi
-if [[ ! -d "$TOY_MNT" || ! -w "$TOY_MNT" ]]; then
-  echo "error: ToyOS not writable: $TOY_MNT" >&2
+if [[ ! -d "$BLOCKS_MNT" || ! -w "$BLOCKS_MNT" ]]; then
+  echo "error: ToyOS not writable: $BLOCKS_MNT" >&2
   exit 1
 fi
 
@@ -220,10 +220,10 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     echo "error: no Kernel.elf — ./build.sh 或去掉 --kernel-only" >&2
     exit 1
   fi
-  cp -f "$SRC" "$TOY_MNT/Kernel.elf"
-  sync_toyos_fw "$TOY_MNT"
-  if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
-    printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
+  cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
+  sync_toyos_fw "$BLOCKS_MNT"
+  if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
+    printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
   fi
   if [[ "$DO_BOOT" -eq 1 ]]; then
     if [[ "$DO_BUILD" -eq 1 && -x "$ROOT/../ToyBoot/build.sh" ]]; then
@@ -233,12 +233,12 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   sync
   echo "=== nuc kernel-only ==="
-  echo "ToyOS -> $TOY_MNT"
+  echo "ToyOS -> $BLOCKS_MNT"
   echo "src   -> $SRC"
-  ls -l --time-style=long-iso "$SRC" "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID"
-  ls -l --time-style=long-iso "$TOY_MNT/FW/IWL8265.UCODE" 2>/dev/null || true
-  ls -l --time-style=long-iso "$TOY_MNT/FW/WIFI.CFG" 2>/dev/null || true
-  md5sum "$SRC" "$TOY_MNT/Kernel.elf"
+  ls -l --time-style=long-iso "$SRC" "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID"
+  ls -l --time-style=long-iso "$BLOCKS_MNT/FW/IWL8265.UCODE" 2>/dev/null || true
+  ls -l --time-style=long-iso "$BLOCKS_MNT/FW/WIFI.CFG" 2>/dev/null || true
+  md5sum "$SRC" "$BLOCKS_MNT/Kernel.elf"
   exit 0
 fi
 
@@ -258,7 +258,7 @@ fi
 echo "== prepare-rootfs =="
 "$SCRIPT_DIR/prepare-rootfs.sh"
 
-echo "ToyOS -> $TOY_MNT"
+echo "ToyOS -> $BLOCKS_MNT"
 if [[ "$DO_BOOT" -eq 1 ]]; then
   echo "== sync chainloader Boot =="
   sync_boot_chainloader "$BOOT_EFI"
@@ -277,27 +277,27 @@ if command -v rsync >/dev/null 2>&1; then
     --filter 'protect FW/WIFI.CFG' \
     --filter 'protect FW/WIFI_H.CFG' \
     --filter 'protect FW/WIFI_C.CFG' \
-    "$ROOT/RootFs/X64/" "$TOY_MNT/"
+    "$ROOT/RootFs/X64/" "$BLOCKS_MNT/"
 else
   echo "error: 需要 rsync。没有它时整盘拷贝会盖掉盘上已写好的 FW/WIFI.CFG" >&2
   exit 1
 fi
-sync_toyos_fw "$TOY_MNT"
+sync_toyos_fw "$BLOCKS_MNT"
 
 # 双分区：Boot 只在 /boot/efi/EFI/Blocks；清掉误写到数据分区的 EFI/
-if [[ -d "$TOY_MNT/EFI" ]]; then
-  echo "note: removing stale $TOY_MNT/EFI (NUC Boot is on ESP EFI/Blocks only)"
-  rm -rf "$TOY_MNT/EFI"
+if [[ -d "$BLOCKS_MNT/EFI" ]]; then
+  echo "note: removing stale $BLOCKS_MNT/EFI (NUC Boot is on ESP EFI/Blocks only)"
+  rm -rf "$BLOCKS_MNT/EFI"
 fi
 
-if [[ ! -f "$TOY_MNT/BLOCKS.ID" ]]; then
-  printf "Blocks root volume\n" > "$TOY_MNT/BLOCKS.ID"
+if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
+  printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
 fi
 
 sync
 echo
 echo "=== nuc sync done ==="
 [[ "$DO_BOOT" -eq 1 ]] && echo "Boot : $ESP_BOOT_DIR/BOOTX64.EFI"
-echo "Kernel : $(stat -c%s "$TOY_MNT/Kernel.elf") bytes @ $TOY_MNT"
-ls -lh "$TOY_MNT/Kernel.elf" "$TOY_MNT/BLOCKS.ID" 2>/dev/null || true
+echo "Kernel : $(stat -c%s "$BLOCKS_MNT/Kernel.elf") bytes @ $BLOCKS_MNT"
+ls -lh "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID" 2>/dev/null || true
 echo "日常只跑本脚本；U 盘备选 sync-usb.sh。ToyBoot 有改动再加 --boot。"

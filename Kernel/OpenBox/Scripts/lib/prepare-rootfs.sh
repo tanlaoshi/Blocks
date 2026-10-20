@@ -28,7 +28,7 @@ if [ -n "$KERNEL_SRC" ] && [ "$KERNEL_SRC" != "$ROOT/Kernel.elf" ]; then
     if [ ! -f "$ROOT/Kernel.elf" ] || [ "$KERNEL_SRC" -nt "$ROOT/Kernel.elf" ] ||
        ! cmp -s "$KERNEL_SRC" "$ROOT/Kernel.elf" 2>/dev/null; then
         cp -f "$KERNEL_SRC" "$ROOT/Kernel.elf"
-        if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared kernel from $KERNEL_SRC"; fi
+        if [ "${QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared kernel from $KERNEL_SRC"; fi
     fi
 fi
 
@@ -51,7 +51,7 @@ theme=default
 deskgrad=0
 theme.effects=low
 EOF
-    if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared THEME.CFG -> $ROOT/ (no mode; mode in BLOCKS.DB)"; fi
+    if [ "${QEMU_VERBOSE:-0}" = 1 ]; then echo "Prepared THEME.CFG -> $ROOT/ (no mode; mode in BLOCKS.DB)"; fi
 fi
 chmod u+rw "$ROOT/THEME.CFG" "$ROOT/BLOCKS.DB" 2>/dev/null || true
 if [ -f "$ROOT/BLOCKS.DB" ] && [ ! -w "$ROOT/BLOCKS.DB" ]; then
@@ -89,7 +89,7 @@ rm -rf "$ROOT/Assets/Store" "$ROOT/StoreCache"
 # 无线固件（PR-N-wifi-1）：须随 TOYOS 进 U 盘；缺则 iwl fw=miss
 if [ ! -f "$ROOT/FW/IWL8265.UCODE" ]; then
     echo "warning: $ROOT/FW/IWL8265.UCODE missing — sync-usb will warn; NUC iwl needs it" >&2
-elif [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then
+elif [ "${QEMU_VERBOSE:-0}" = 1 ]; then
     echo "FW/IWL8265.UCODE present ($(stat -c%s "$ROOT/FW/IWL8265.UCODE") bytes)"
 fi
 mkdir -p "$ROOT/Assets/Packs"
@@ -109,7 +109,7 @@ if [ -f "$ROOT/GUIDEMO.ELF" ]; then
 fi
 
 printf "Blocks root volume\n" > "$ROOT/BLOCKS.ID"
-if [ "${TOY_QEMU_VERBOSE:-0}" = 1 ]; then
+if [ "${QEMU_VERBOSE:-0}" = 1 ]; then
     echo "Prepared $ROOT (TOYOS system disk):"
     ls -lh "$ROOT"
     find "$ROOT/Assets" -type f 2>/dev/null | sort || true

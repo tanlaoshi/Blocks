@@ -298,7 +298,12 @@ int PointOnAnyClose(UINT32 X, UINT32 Y);
 void RaiseWindow(int Idx);
 int AllocWindowSlot(void);
 void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY, UINT32 *OutW, UINT32 *OutH);
-/* 开窗辅助。定义在 GuiOpen.c；拆出应用开窗后同模块可见 */
+/* S1.3：槽位字段 / 尺寸夹紧（Open.c）；Apps/Devices/Terminal 共用 */
+void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H);
+void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
+                    UINT32 H, UINT32 Background, const char *Title,
+                    int PromptShown);
+/* 开窗辅助。定义在 Open.c */
 void OpenChromeDefer(int Idx);
 void OpenFadeIn(int Idx);
 int FocusExistingKind(GUI_WIN_KIND Kind, void (*Repaint)(void), const char *LogTag);

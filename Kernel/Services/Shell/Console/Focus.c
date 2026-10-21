@@ -50,16 +50,16 @@ static void FocusLoad(void) {
         GuiFocusApplyClip();
         if (GuiConsoleNeedsPrompt()) {
             /*
-             * 改字体/ThemeApply 会清 PromptShown；若 scrollback 仍在，
-             * 勿再打欢迎语（否则接在已有 blocks> 后面）。
+             * RequestPrompt（tty/settings 开窗抢走焦点后 PromptAfterCommand）
+             * 或空窗：须再打 blocks>。有 scrollback 时勿再打欢迎语。
              */
             if (!ConsoleSbHasContent()) {
                 gConsole.Write(LocStr(MSG_CON_WELCOME));
                 gConsole.Write("\n");
-                Prompt();
             } else {
                 ConsoleSbRepaint();
             }
+            Prompt();
             GuiConsoleMarkPrompt();
             GuiFocusSave();
         } else if (ConsoleSbHasContent()) {
@@ -76,8 +76,8 @@ static void FocusLoad(void) {
             GuiFocusHome();
             gConsole.Write(LocStr(MSG_CON_WELCOME));
             gConsole.Write("\n");
-            Prompt();
         }
+        Prompt();
         GuiConsoleMarkPrompt();
         GuiFocusSave();
     }

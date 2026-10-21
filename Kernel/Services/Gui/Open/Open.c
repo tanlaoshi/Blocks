@@ -1,6 +1,7 @@
 /*
- * Open.c — 开窗辅助 / 槽位（story-s1）
+ * Open.c — 开窗辅助 / 槽位（story-s1 / S1.3）
  *
+ * InitWindowSlot / ClampWindowBox：Apps.c·Devices.c·Terminal.c 共用槽位样板。
  * OpenChromeDefer：Push Defer → 画 chrome → 调用方填客户区 → OpenFadeIn=Pop。
  * 必须配对 Pop，否则全局禁 Present（半帧/卡死）。门闩总表 Compose.c（gui-g1）。
  * FocusExistingKind：单例应用前置。应用入口 Apps.c；关窗 Close.c。
@@ -74,6 +75,46 @@ int AllocWindowSlot(void) {
         }
     }
     return -1;
+}
+
+void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H) {
+    if (!W || !H) {
+        return;
+    }
+    if (*W + Margin * 2u > gGuiWindowManager.ScreenWidth) {
+        *W = gGuiWindowManager.ScreenWidth > Margin * 2u
+                 ? gGuiWindowManager.ScreenWidth - Margin * 2u
+                 : gGuiWindowManager.ScreenWidth / 2u;
+    }
+    if (*H + Margin * 2u > gGuiWindowManager.ScreenHeight) {
+        *H = gGuiWindowManager.ScreenHeight > Margin * 2u
+                 ? gGuiWindowManager.ScreenHeight - Margin * 2u
+                 : gGuiWindowManager.ScreenHeight / 2u;
+    }
+}
+
+void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
+                    UINT32 H, UINT32 Background, const char *Title,
+                    int PromptShown) {
+    GUI_WINDOW *Win;
+
+    if (Idx < 0 || Idx >= MAX_WINS) {
+        return;
+    }
+    Win = &gGuiWindowManager.Windows[Idx];
+    Win->Active = 1;
+    Win->Kind = Kind;
+    Win->X = X;
+    Win->Y = Y;
+    Win->Width = W;
+    Win->Height = H;
+    Win->Background = Background;
+    Win->Title = Title;
+    Win->TermSet = 0;
+    Win->InputLen = 0;
+    Win->WaitPrompt = 0;
+    Win->PromptShown = PromptShown ? 1 : 0;
+    Win->InputLine[0] = 0;
 }
 
 void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY,

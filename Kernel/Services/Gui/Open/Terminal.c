@@ -1,5 +1,7 @@
 /*
- * GuiOpenTty.c — 串口会话窗开窗（PR-GUI-tty-win）
+ * Terminal.c — 串口会话窗开窗（PR-GUI-tty-win / S1.3）
+ *
+ * 槽位：InitWindowSlot / ClampWindowBox（Open.c）。
  */
 #include "GuiPrivate.h"
 #include "Theme.h"
@@ -26,27 +28,11 @@ int GuiOpenTty(void) {
     }
     W = 720;
     H = 480;
-    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
-        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
-    }
-    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
-        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
-    }
+    ClampWindowBox(Margin, &W, &H);
     X = Margin + 24;
     Y = Margin + 48;
-    gGuiWindowManager.Windows[Idx].Active = 1;
-    gGuiWindowManager.Windows[Idx].Kind = GUI_WIN_TTY;
-    gGuiWindowManager.Windows[Idx].X = X;
-    gGuiWindowManager.Windows[Idx].Y = Y;
-    gGuiWindowManager.Windows[Idx].Width = W;
-    gGuiWindowManager.Windows[Idx].Height = H;
-    gGuiWindowManager.Windows[Idx].Background = ThemeShellClientBackground();
-    gGuiWindowManager.Windows[Idx].Title = LocStr(MSG_APP_TTY);
-    gGuiWindowManager.Windows[Idx].TermSet = 0;
-    gGuiWindowManager.Windows[Idx].InputLen = 0;
-    gGuiWindowManager.Windows[Idx].WaitPrompt = 0;
-    gGuiWindowManager.Windows[Idx].PromptShown = 0;
-    gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
+    InitWindowSlot(Idx, GUI_WIN_TTY, X, Y, W, H, ThemeShellClientBackground(),
+                   LocStr(MSG_APP_TTY), 0);
 
     OpenChromeDefer(Idx);
     TtyUiOpen();

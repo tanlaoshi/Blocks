@@ -209,8 +209,6 @@ int ClaimPorts(void) {
 
                 if (FinishClaim(P, Speed)) {
                     Ok = 1;
-                    gMscBootWatchPort = 0;
-                    gMscBootWatchArm = 0;
                     goto done;
                 }
             }
@@ -228,7 +226,15 @@ int ClaimPorts(void) {
     }
 
 done:
-    if (Ok) {
+    /*
+     * U 盘起 Arm 了 watch：claim 成功也继续盯 MSC 根口（常为 hub）。
+     * 旧逻辑成功即清 watch → hub 后 MSC 靠 Present；父 hub EP0 失败曾假在位，
+     * 整根拔无大窗。claim 失败路径仍靠 watch CCS。
+     */
+    if (Ok && gMscBootWatchArm && gMscPort != 0) {
+        gMscBootWatchPort = gMscPort;
+        BootLogHex("Boot: MSC boot-watch keep port=", gMscBootWatchPort, 2);
+    } else if (Ok) {
         gMscBootWatchPort = 0;
         gMscBootWatchArm = 0;
     }

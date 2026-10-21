@@ -332,13 +332,18 @@ int UsbMscPollUnplug(void) {
     sPresentTick = Now;
 
     /*
-     * U 盘起 claim 失败：无 Ready，仍盯开机试过的口 CCS（只读 PORTSC）。
+     * U 盘起 boot-watch：claim 成败都盯根口 CCS（只读 PORTSC）。
+     * hub 后 MSC claim 成功后仍 keep watch——整根拔时 Present 可能假在位。
      */
-    if (!UsbMscReady() && XhciMscBootWatchCcsLost(&WatchPort)) {
+    if (XhciMscBootWatchCcsLost(&WatchPort)) {
         LogFs("Fs: msc/4 watch unplug port=");
         LogFsHex32(WatchPort);
         LogFs("\n");
         FileSystemNotifyBootWatchUnplug();
+        if (UsbMscReady()) {
+            FileSystemNotifyMscUnplug();
+            (void)UsbMscRelease();
+        }
         return 1;
     }
 

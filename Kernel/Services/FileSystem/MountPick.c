@@ -5,6 +5,7 @@
 #include "FileSystemPrivate.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
+#include "BootInfo.h"
 
 static void RenameEspIfLetterOnly(int i) {
     int NeedEspName = 0;
@@ -80,6 +81,40 @@ static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
 }
 
 void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz) {
+    const BOOT_INFO *Info = BootInfoGet();
+
+    /*
+     * U 盘起、启动盘 BLOCKS 尚未 MSC 进表：禁止选旁路盘上的 BLOCKS
+     *（含「扫到 Kernel.elf/BLOCKS.DB 就当地默认」）。暂用 ESP/RES。
+     */
+    if (Info && Info->BootDiskGuidOk && FsBootDiskHasBlocksId() == 0) {
+        int i;
+        int Esp = -1;
+        int Res = -1;
+
+        for (i = 0; i < gVolCount; i++) {
+            if (gVols[i].Ops && gVols[i].Ops->Synthetic) {
+                Res = i;
+                continue;
+            }
+            if (gVols[i].HasBlocksId) {
+                continue;
+            }
+            RenameEspIfLetterOnly(i);
+            if (Esp < 0) {
+                Esp = i;
+            }
+        }
+        if (Esp >= 0) {
+            gDefaultVol = Esp;
+        } else if (Res >= 0) {
+            gDefaultVol = Res;
+        } else {
+            gDefaultVol = 0;
+        }
+        LogFs("Fs: Default=ESP/RES (boot-disk BLOCKS pending; skip bypass)\n");
+        return;
+    }
     if (BlocksVol >= 0) {
         PickWithBlocksId(BlocksVol);
     } else {

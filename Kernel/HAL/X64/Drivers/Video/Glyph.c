@@ -211,17 +211,28 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 }
 
 /*
- * gui-ttf-crisp：剥外晕 + 中灰抬实心。
- * 112/176 略硬偏细；现 88 丢 / ≥152 实心，中段抬高→笔画略粗、仍不太糊。
+ * gui-ttf-crisp：
+ * - 汉字：88 丢 / ≥148 实心（再粗一档；100/160 仍偏瘦）
+ * - mono：保留灰阶（接近 Windows 灰度 AA）；硬切会比 ClearType 难看一截
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
+    if (FontTtfMonoActive()) {
+        if (N < 24u) {
+            return 0;
+        }
+        if (N >= 232u) {
+            return 255;
+        }
+        return N;
+    }
     if (N < 88u) {
         return 0;
     }
-    if (N >= 152u) {
+    if (N >= 148u) {
         return 255;
     }
-    return (UINT8)(152u + (N - 88u) * 103u / 64u);
+    /* [88,148) 线性抬到 [148,255) */
+    return (UINT8)(148u + (N - 88u) * 107u / 60u);
 }
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */

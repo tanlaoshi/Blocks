@@ -81,7 +81,12 @@ int ForceUntilPed(UINT32 P, int *Force) {
     }
     gDiagQuiet = QuietSave;
     if (!Ready) {
+        Ps = ReadMmio32(gOperationalBase + PortReg(P));
         BootLogHex("Boot: XHCI port reset fail=", P, 2);
+        BootLogHex("Boot: XHCI reset fail PORTSC=", Ps, 8);
+        if (gEnumWhy != 0) {
+            BootLog(gEnumWhy);
+        }
         return 0;
     }
     Ps = ReadMmio32(gOperationalBase + PortReg(P));

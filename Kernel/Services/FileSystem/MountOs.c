@@ -294,6 +294,14 @@ void FsResolveOsTarget(int *BlocksVol) {
             LogFs("Fs: OsTarget via ROOT.CFG\n");
             return;
         }
+        /*
+         * 指针已钉（常为 U 盘），卷尚未进 Mux：禁止把已扫到的旁路 BLOCKS
+         * 当地默认——否则 U 盘起装了 U 盘 Kernel，字体却读 NVMe 旧 CJK。
+         */
+        if (BlocksVol) {
+            *BlocksVol = -1;
+        }
+        gOsVolIdx = -1;
         LogFs("Fs: OsTarget ROOT.CFG not mounted yet\n");
         return;
     }
@@ -315,13 +323,15 @@ void FsResolveOsTarget(int *BlocksVol) {
             return;
         }
         /*
-         * 启动盘尚未挂上（U 盘起、MSC 未 claim）：可暂用旁路卷浏览，
-         * 但绝不 Pin——否则永远钉在 NUC，拔启动盘也不 halt。
+         * 启动盘尚未挂上（U 盘起、MSC 未 claim）：绝不把旁路 BLOCKS 当地默认，
+         * 也不 Pin——否则字体/主题读 NVMe，且拔 U 盘永不 halt。
+         * Files 旁路浏览等 Secondary / claim 后再挂。
          */
-        if (BlocksVol && *BlocksVol >= 0) {
-            gOsVolIdx = *BlocksVol;
+        if (BlocksVol) {
+            *BlocksVol = -1;
         }
-        LogFs("Fs: OsTarget defer (boot disk not mounted)\n");
+        gOsVolIdx = -1;
+        LogFs("Fs: OsTarget defer (boot disk not mounted; skip bypass BLOCKS)\n");
         return;
     }
 

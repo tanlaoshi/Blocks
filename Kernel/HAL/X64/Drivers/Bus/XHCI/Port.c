@@ -127,20 +127,32 @@ void PowerConnectedPorts(void) {
 }
 /*
  * 标准化端口复位（xHCI）：
- * USB2：PP → CCS → PR（勿写 PED=0）→ 等 PRC → 等 PED+CCS。
- * USB3：WPR。
- * 真机：已 PED 勿再 PR；成功后不清变更（sticky PRC）；仅 PED=0 时可清 sticky。
+ * USB2：PP → CCS → PR → 等 PRC → PED+CCS。USB3：WPR。
+ * Force=0 且已 PED+CCS：跳过。成功后 leavePRC。
+ * Force=1：须 PR/WPR 回 Default（软 Address USBTE cc=0x04）。
+ *
+ * NUC 证据链（勿再踩）：
+ *   0x00200E03 Why=force dis PED → 写 PED=0 忽略；
+ *   0x002006E1 Why=not PED → PED 上 W1C CHANGE → 卡 Polling；
+ *   0x002006E1 Why=reset timeout → 单次 PR 进 Polling 后 500ms 内 PED 不回。
+ * 索赔注释成功路径是 Force !PED。故 Force+PED：先 PR（不清 CHANGE）把
+ * PED 打掉（常变 0x6E1），再在 !PED 上清 sticky、第二次 PR/WPR——走 !PED 成功路径。
+ * Speed 以跌 PED 前为准（Polling 时 Speed 字段不可靠）。
  */
 /*
  * Force=0：真机已 PED+CCS 则跳过 PR（同 pass 内二次 PR 易打坏口）。
- * Force=1：鼠标等二次枚举须 PR（DisableSlot 后设备仍 PED，不重置会 cc=0x04）。
+ * Force=1：DisableSlot / soft Address USBTE 后须复位到 Default（否则 cc=0x04）。
  */
 int ResetPortEx(UINT32 Port1, int Force) {
     UINT64 Ps = gOperationalBase + PortReg(Port1);
     UINT32 Val = ReadMmio32(Ps);
     UINT32 SpeedHint = PortSpeed(Val);
     UINT32 Speed;
+    UINT32 Pls;
+    UINT32 SpdSave;
+    UINT32 ResetBit;
     int RealPc = !HalCpuIsHypervisor();
+    int UseWpr;
     int i;
     int t;
     int Ok;
@@ -192,7 +204,39 @@ int ResetPortEx(UINT32 Port1, int Force) {
         }
     }
 
-    /* PED=0 时清 sticky 变更安全；便于重新 PR */
+    /*
+     * 真机 Force：若仍 PED，先一记 PR/WPR（不清 CHANGE）把 PED 打掉，
+     * 再落入下面与「Force !PED」相同的清 sticky → 再复位。
+     */
+    if (RealPc && Force && (Val & PORTSC_PED)) {
+        SpdSave = PortSpeed(Val);
+        Pls = (Val >> 5) & 0xFu;
+        UseWpr = (SpdSave >= 4) || (SpdSave == 0) || (Pls == 6u);
+        ResetBit = UseWpr ? PORTSC_WPR : PORTSC_PR;
+        WriteMmio32(Ps, PortscNeutral(Val) | ResetBit | PORTSC_PP);
+        Fence();
+        for (t = 0; t < 500 && (ReadMmio32(Ps) & PORTSC_PED); t++) {
+            StallMs(1);
+        }
+        /* 等 PR/WPR 自清，避免第二记叠在第一记上 */
+        for (t = 0; t < 100 && (ReadMmio32(Ps) & ResetBit); t++) {
+            StallMs(1);
+        }
+        Val = ReadMmio32(Ps);
+        DiagChk("ResetPort.knock", !(Val & PORTSC_PED) && !!(Val & PORTSC_CCS),
+                "!PED+CCS", Val, 8);
+        if (Val & PORTSC_PED) {
+            EnumWhy("Boot: Why=force still PED\n");
+            return 0;
+        }
+        if (!(Val & PORTSC_CCS)) {
+            EnumWhy("Boot: Why=lost CCS\n");
+            return 0;
+        }
+        SpeedHint = SpdSave; /* Polling 时 Speed 不可靠 */
+    }
+
+    /* PED=0 时清 sticky 变更安全；便于等 PRC 边沿 */
     if (RealPc && !(Val & PORTSC_PED) && (Val & PORTSC_CHANGE)) {
         WriteMmio32(Ps, PortscNeutral(Val) | (Val & PORTSC_CHANGE) | PORTSC_PP);
         Fence();
@@ -201,15 +245,15 @@ int ResetPortEx(UINT32 Port1, int Force) {
         DiagChk("ResetPort.clrSticky", !(Val & PORTSC_PRC), "PRC=0", Val, 8);
     }
 
-    SpeedHint = PortSpeed(Val);
+    if (!(RealPc && Force && SpeedHint != 0)) {
+        SpeedHint = PortSpeed(Val);
+    }
+    Pls = (Val >> 5) & 0xFu;
     DiagChk("ResetPort.speed", SpeedHint != 0, "spd!=0", SpeedHint, 2);
 
-    /*
-     * 无条件热复位。USB2：写 PR，保留 PP；不要 &~PED（禁用口）。
-     * 硬件会在复位过程中自行清 PED，完成后置 PED。
-     */
+    UseWpr = (SpeedHint >= 4) || (Force && SpeedHint == 0) || (Pls == 6u);
     Val = PortscNeutral(ReadMmio32(Ps));
-    if (SpeedHint >= 4) {
+    if (UseWpr) {
         WriteMmio32(Ps, Val | PORTSC_WPR | PORTSC_PP);
     } else {
         WriteMmio32(Ps, Val | PORTSC_PR | PORTSC_PP);
@@ -218,8 +262,8 @@ int ResetPortEx(UINT32 Port1, int Force) {
 
     if (RealPc) {
         /*
-         * 照片：PED OK → 任意 afterClr → Polling。成功后 leavePRC。
-         * PRC 可先到而 PED 仍 0（0x002006E1），多等一会 PED。
+         * 照片：PED OK → afterClr → Polling。成功后 leavePRC。
+         * 现已保证写 PR 前 PED=0 且 sticky 已清，可等 PRC|WRC 边沿。
          */
         Ok = WaitSetMs(Ps, PORTSC_PRC | PORTSC_WRC, 500);
         Val = ReadMmio32(Ps);
@@ -229,7 +273,6 @@ int ResetPortEx(UINT32 Port1, int Force) {
             return 0;
         }
         if (!(Val & PORTSC_PED)) {
-            /* Force PR 后 PED 可明显慢于 PRC（台式 Live U 盘常见） */
             Ok = WaitSetMs(Ps, PORTSC_PED, Force ? 2000 : 1000);
             Val = ReadMmio32(Ps);
         }

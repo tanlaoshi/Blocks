@@ -144,7 +144,7 @@ void LocaleTtfPreheatUi(void) {
     }
 }
 
-/* gui-ttf-preheat-defer：首屏 Start/图标标签同步栅，避免进桌面全点阵 */
+/* gui-ttf-preheat-defer：首屏 Start/图标/设置侧栏同步栅，避免进桌面全点阵 */
 static void LocaleTtfPreheatCritical(void) {
     static const MSG_ID Crit[] = {
         MSG_START,
@@ -159,6 +159,15 @@ static void LocaleTtfPreheatCritical(void) {
         MSG_ICON_SHUTDOWN,
         MSG_ICON_REBOOT,
         MSG_MENU_EMPTY,
+        MSG_SET_TITLE,
+        MSG_SET_DESKTOP_BG,
+        MSG_SET_SHELL_BG,
+        MSG_SET_FONT,
+        MSG_SET_DISPLAY,
+        MSG_SET_LANGUAGE,
+        MSG_SET_SCALE,
+        MSG_SET_THEME,
+        MSG_SET_EFFECTS,
     };
     UINT32 i;
     UINT32 BlobSize = 0;

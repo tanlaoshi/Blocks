@@ -147,12 +147,13 @@ int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
         Slot[1] |= ((UINT32)HubNumPorts << 24);
     }
     /*
-     * Slot DWORD2 = TT Hub Slot / TT Port（xHCI §6.2.2）。
-     * 仅 LS/FS（经 HS hub TT）或 HS 子设备填；SuperSpeed 必须为 0，
-     * 拓扑只靠 Route String + Root Hub Port。误填会导致 Address 无完成事件
-     * （本机 SS hub 子口 st=0x0203 → cmd wait 超时 → sick → 鼠废）。
+     * Slot DWORD2 = TT Hub Slot / TT Port（xHCI §6.2.2）：
+     * 仅 LS/FS（Speed 1/2）经 HS hub 的 TT 须填；HS（3）与 SS（≥4）必须 0，
+     * 拓扑靠 Route String + Root Hub Port。
+     * 旧条件 Speed<4 给 HS 子设备也填 TT → Address USBTE cc=0x04
+     * （NUC：root hub 子口2 speed=3 反复 addr fail；ConfigureBulk 已是 Speed<3）。
      */
-    if (ParentHubSlot != 0 && Speed < 4) {
+    if (ParentHubSlot != 0 && Speed < 3) {
         Slot[2] = (UINT32)ParentHubSlot | ((UINT32)TtPort << 8);
     }
 

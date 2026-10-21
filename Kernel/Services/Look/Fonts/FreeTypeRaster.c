@@ -108,32 +108,22 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   if (!HalFpuBegin()) {
     return -1;
   }
-  /*
-   * 汉字略小于格：FORCE_AUTOHINT 墨水常顶破 CellH → 底被削。
-   * mono 仍满高（等宽基线对齐）。
-   */
-  {
-    FT_UInt Px = (FT_UInt)CellH;
-
-    if (!Mono && Cp >= 128u && CellH > 4u) {
-      Px = (FT_UInt)(CellH - 2u);
-    }
-    Err = FT_Set_Pixel_Sizes(Face, 0, Px);
-  }
+  /* 满格像素高；格内居中，勿再 CellH-2（缩后观感接近旧 stb，像「没换字」）。 */
+  Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
   if (Err) {
     HalFpuEnd();
     return -1;
   }
   /*
    * font-freetype-hint：
-   * - 汉字（UMing）：FORCE_AUTOHINT，桌面已验更锐
-   * - mono（DejaVu）：走 native TT hint；强行 autohint 观感几乎无差
+   * - 汉字（UMing）：TARGET_NORMAL（笔画更实；LIGHT 偏瘦）
+   * - mono（DejaVu）：native TT + TARGET_LIGHT（近 Windows 屏显；禁 FORCE_AUTOHINT）
    */
   {
     int Flags = FT_LOAD_RENDER;
 
-    if (!Mono) {
-      Flags |= FT_LOAD_FORCE_AUTOHINT;
+    if (Mono) {
+      Flags |= FT_LOAD_TARGET_LIGHT;
     }
     Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
   }
@@ -179,18 +169,33 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     Oy = AscPx - Slot->bitmap_top;
     Ox = 0;
   }
-  for (Y = 0; Y < Bm->rows; Y++) {
-    int Dy = Oy + (int)Y;
-    if (Dy < 0 || Dy >= (int)CellH) {
-      continue;
-    }
-    for (X = 0; X < Bm->width; X++) {
-      int Dx = Ox + (int)X;
-      if (Dx < 0 || Dx >= (int)CellW) {
+  {
+    UINT32 Ink = 0;
+
+    for (Y = 0; Y < Bm->rows; Y++) {
+      int Dy = Oy + (int)Y;
+      if (Dy < 0 || Dy >= (int)CellH) {
         continue;
       }
-      Pix[(UINT32)Dy * CellW + (UINT32)Dx] =
-          Bm->buffer[Y * (UINT32)Bm->pitch + X];
+      for (X = 0; X < Bm->width; X++) {
+        int Dx = Ox + (int)X;
+        UINT8 V;
+
+        if (Dx < 0 || Dx >= (int)CellW) {
+          continue;
+        }
+        V = Bm->buffer[Y * (UINT32)Bm->pitch + X];
+        Pix[(UINT32)Dy * CellW + (UINT32)Dx] = V;
+        if (V >= (Mono ? 24u : 88u)) {
+          Ink++;
+        }
+      }
+    }
+    /* 空心 HIT 会步进却不画（设置「桌」丢字）；软退 stb */
+    if (Ink == 0u && (Bm->width == 0u || Bm->rows == 0u || Cp >= 128u)) {
+      HalFpuEnd();
+      gFtLastAdv = 0;
+      return -1;
     }
   }
   Adv = (UINT32)(Slot->advance.x >> 6);

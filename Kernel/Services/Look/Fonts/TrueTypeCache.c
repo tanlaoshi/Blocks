@@ -7,7 +7,7 @@
 #include "Font.h"
 
 #define TTF_CACHE_N 1024u
-#define TTF_PROBE   8u
+#define TTF_PROBE   32u
 #define TTF_CELL    32u
 #define TTF_PIX     (TTF_CELL * TTF_CELL)
 #define TTF_EMPTY   0
@@ -50,6 +50,7 @@ static TTF_SLOT *SlotAlloc(UINT32 Cp) {
     UINT32 i0 = Cp % TTF_CACHE_N;
     UINT32 k;
     TTF_SLOT *Empty = 0;
+    TTF_SLOT *Miss = 0;
 
     for (k = 0; k < TTF_PROBE; k++) {
         TTF_SLOT *S = &gSlot[(i0 + k) % TTF_CACHE_N];
@@ -60,11 +61,28 @@ static TTF_SLOT *SlotAlloc(UINT32 Cp) {
         if (S->State == TTF_EMPTY && !Empty) {
             Empty = S;
         }
+        if (S->State == TTF_MISS && !Miss) {
+            Miss = S;
+        }
     }
     if (Empty) {
         return Empty;
     }
-    /* 探测窗满：覆盖主槽 */
+    if (Miss) {
+        return Miss;
+    }
+    /* 探测窗尽是别人 HIT：全表找空/MISS，勿默默顶掉无关字（曾丢「桌」） */
+    for (k = 0; k < TTF_CACHE_N; k++) {
+        if (gSlot[k].State == TTF_EMPTY) {
+            return &gSlot[k];
+        }
+    }
+    for (k = 0; k < TTF_CACHE_N; k++) {
+        if (gSlot[k].State == TTF_MISS) {
+            return &gSlot[k];
+        }
+    }
+    /* 真满：覆盖主槽 */
     return &gSlot[i0];
 }
 

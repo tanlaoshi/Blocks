@@ -154,6 +154,14 @@ void SettingsUiOpen(void) {
     gSetPressKind = -1;
     gSetPressIdx = -1;
     LocaleTtfPreheatUi(); /* 开窗前补栅，避免首帧点阵 */
+    /* 全量预热后侧栏短名再钉一次，防探测窗顶槽丢「桌」等字 */
+    {
+        int Ci;
+
+        for (Ci = 0; Ci < SETTINGS_CAT_COUNT; Ci++) {
+            FontTtfPreheatUtf8(CatLabel((SETTINGS_CAT)Ci));
+        }
+    }
     (void)FontTtfWantDrain(64u);
     PaintMenu();
     DebugWrite("settings: three-pane open\n");

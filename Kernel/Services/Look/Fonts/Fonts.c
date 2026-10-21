@@ -613,22 +613,14 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         }
     }
     /*
-     * 汉字：TTF/FT 优先；已 init 且未确认缺字时等 Worker，勿立刻点阵。
+     * 汉字：TTF/FT 优先。未命中勿空白 return——设置「桌面」曾只剩「面」
+     *（Cache miss + Deferred 不画）。先点阵/CJK32，Want 泵 HIT 后 TakePaint 换真字。
      */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 8;
         return G;
     }
-#if defined(__x86_64__)
-    if (FontTtfReady() && Cp >= 128u && !FontTtfCacheMissed(Cp) &&
-        !FileSystemBootMediumGone()) {
-        if (FontTtfCachePending(Cp)) {
-            gGlyphDefer = 1;
-        }
-        return 0;
-    }
-#endif
     G = FileGlyph(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 1;
@@ -640,7 +632,8 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         return G;
     }
 #if defined(__x86_64__)
-    if (FontTtfCachePending(Cp)) {
+    if (FontTtfReady() && Cp >= 128u && !FontTtfCacheMissed(Cp) &&
+        !FileSystemBootMediumGone() && FontTtfCachePending(Cp)) {
         gGlyphDefer = 1;
     }
 #endif

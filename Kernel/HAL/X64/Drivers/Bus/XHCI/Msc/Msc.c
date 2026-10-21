@@ -197,9 +197,16 @@ static int Present(void) {
         return 0;
     }
     if (gMscHubSlot != 0 && gMscTtPort != 0) {
+        /*
+         * 父 hub 非当前 gHub*（第二 hub 扫完恢复 HID hub）：勿乱 HubCtrl。
+         * 改看 MSC 根口 CCS——整根拔掉时必 0（旧逻辑恒 return 1 → 失根大窗死）。
+         */
         if (gMscHubSlot != (UINT8)gHubSlotId || gHubSlotId == 0) {
-            /* 父 hub 非当前 gHub*：勿乱 HubCtrl；当仍在 */
-            return 1;
+            if (gMscPort == 0 || gMscPort > gMaxPorts) {
+                return 1;
+            }
+            Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
+            return (Ps & PORTSC_CCS) ? 1 : 0;
         }
         /*
          * BOT 进行中勿 HubGetPortStatus：与 Bulk 抢事件环/EP0 → STALL/Babble。
@@ -211,9 +218,16 @@ static int Present(void) {
         if (HubGetPortStatus(gMscTtPort, &St) < 0) {
             __sync_lock_release(&gMscBotBusy);
             /*
-             * EP0 失败 ≠ 拔出。若当 Present=0 → HotPoll Release，启动盘 FS 断
-             * → Worker 读盘挂死 → 鼠不露、网托红。与 BOT busy 同：假定仍在。
+             * EP0 失败：瞬时 STALL 常见 → 根口仍 CCS 则假定在位。
+             * 父 hub 整根已拔：根口 CCS=0 → Present=0（否则 claim 成功清
+             * boot-watch 后拔 hub 永不 Gone）。
              */
+            if (gMscPort != 0 && gMscPort <= gMaxPorts) {
+                Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
+                if (!(Ps & PORTSC_CCS)) {
+                    return 0;
+                }
+            }
             return 1;
         }
         __sync_lock_release(&gMscBotBusy);

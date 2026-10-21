@@ -210,6 +210,14 @@ void CloseWindow(int Idx) {
     }
 
     GuiFocusApply();
+    /*
+     * 关 TTY：轻量路径对相交 Shell 会 PaintShellWindow→MarkPrompt，
+     * 随后 FocusLoad 以为已有提示符而不再 Prompt；串口仍停在 tty>。
+     * 强制再打 blocks>（与 PromptAfterCommand 被抢焦点时只 RequestPrompt 对称）。
+     */
+    if (K == GUI_WIN_TTY && gConsole.ShowPrompt) {
+        gConsole.ShowPrompt();
+    }
     gGuiWindowManager.Windows[Idx].Closing = 0;
     DebugWrite("Gui: closed (clip)\n");
 }

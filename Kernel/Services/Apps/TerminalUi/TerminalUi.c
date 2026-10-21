@@ -100,6 +100,8 @@ void TtyUiOpen(void) {
 
 void TtyUiClose(void) {
     gTtyOpen = 0;
+    /* 离开 tty> 行，便于随后 Shell Prompt 换行再打 blocks> */
+    TtySerialOut("\r\n");
 }
 
 void TtyUiOnChar(char C) {

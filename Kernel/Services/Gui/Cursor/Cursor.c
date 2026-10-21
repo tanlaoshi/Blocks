@@ -29,6 +29,10 @@
  *   HID 开机早绑；桌面先出、不 Present / 不跟坐标。
  *   Worker 网/iwl 静默后、AnnounceBootReady 前 Reveal：居中 + Handoff + 画出。
  *   契约：一露就必须流畅；慢活未完勿 Reveal。
+ *
+ * 硬件光标（hw-cursor-*）：
+ *   Enable 成功 → gHwCursorOn：Move 只 HalVideoHwCursorSetPos；Compose 勿 Restore FB。
+ *   Supported=0 / Enable 失败 → 软件末波（本文件 Restore+Paint+PresentCursor）。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
@@ -43,6 +47,36 @@
 
 /* 0：Secondary 未完，不画/不 Present；Reveal 置 1 */
 static int gCursorUsbReady;
+/* 1：HalVideoHwCursorEnable 已成功；热路径只写位置 */
+static int gHwCursorOn;
+
+int CursorHwActive(void) {
+    return gHwCursorOn ? 1 : 0;
+}
+
+static void CursorHwTryEnable(void) {
+    /* igpu 刀接通前 Supported=0；此处留钩，Enable 失败保持软路径 */
+    if (!HalVideoHwCursorSupported()) {
+        gHwCursorOn = 0;
+        return;
+    }
+    /* 字形上载见 hw-cursor-glyph；api 刀不传真 ARGB */
+    if (!HalVideoHwCursorEnable(0, 0, 0, 0, 0)) {
+        gHwCursorOn = 0;
+        return;
+    }
+    gHwCursorOn = 1;
+    HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    DebugWrite("Gui: hw cursor on\n");
+}
+
+static void CursorHwDisable(void) {
+    if (!gHwCursorOn) {
+        return;
+    }
+    HalVideoHwCursorDisable();
+    gHwCursorOn = 0;
+}
 
 void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
                       UINT32 *Sw, UINT32 *Sh) {
@@ -105,6 +139,10 @@ void DrawCursorAt(UINT32 X, UINT32 Y) {
 }
 
 void CursorRestore(void) {
+    if (gHwCursorOn) {
+        /* FB 无光标像素；Visible 仅软路径意义 */
+        return;
+    }
     if (!gGuiWindowManager.CursorVisible) {
         return;
     }
@@ -119,6 +157,10 @@ void CursorRestore(void) {
 
 void CursorPaint(void) {
     if (!gCursorUsbReady) {
+        return;
+    }
+    if (gHwCursorOn) {
+        HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
         return;
     }
     gGuiWindowManager.CursorKind = GuiResizeCursorKindAt(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
@@ -157,6 +199,14 @@ void CursorMove(UINT32 X, UINT32 Y) {
         return;
     }
 
+    if (gHwCursorOn) {
+        gGuiWindowManager.CursorX = X;
+        gGuiWindowManager.CursorY = Y;
+        gGuiWindowManager.CursorKind = NewKind;
+        HalVideoHwCursorSetPos(X, Y);
+        return;
+    }
+
     if (gGuiWindowManager.DragWin >= 0 || DesktopIconDragActive()) {
         if (gGuiWindowManager.CursorVisible) {
             GraphicsIrqEnter();
@@ -171,8 +221,7 @@ void CursorMove(UINT32 X, UINT32 Y) {
     }
 
     /*
-     * 后缓冲：Restore 旧盒 + Paint 新盒（gCurDirty 并成旧∪新）；
-     * 再一次 PresentCursor。中间多一次 Present 只加倍 GPU/cli，易拖影。
+     * 软件末波：Restore 旧盒 + Paint 新盒，一次 PresentCursor。
      */
     GraphicsIrqEnter();
     CursorRestore();
@@ -238,6 +287,10 @@ void GuiCursorPaint(void) {
 }
 
 void GuiCursorHide(void) {
+    if (gHwCursorOn) {
+        CursorHwDisable();
+        return;
+    }
     GraphicsIrqEnter();
     CursorRestore();
     GraphicsIrqLeave();
@@ -246,6 +299,10 @@ void GuiCursorHide(void) {
 
 void GuiCursorShow(void) {
     if (!gCursorUsbReady) {
+        return;
+    }
+    CursorHwTryEnable();
+    if (gHwCursorOn) {
         return;
     }
     GraphicsIrqEnter();

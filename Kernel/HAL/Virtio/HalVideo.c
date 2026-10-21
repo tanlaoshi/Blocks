@@ -107,6 +107,29 @@ void HalVideoPresentCursor(void) {
     VideoPresentCursor();
 }
 
+/* QEMU Virtio/GOP：无硬件光标平面 → 恒回退软件末波 */
+int HalVideoHwCursorSupported(void) {
+    return 0;
+}
+
+int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
+                           UINT32 HotX, UINT32 HotY) {
+    (void)Argb;
+    (void)Width;
+    (void)Height;
+    (void)HotX;
+    (void)HotY;
+    return 0;
+}
+
+void HalVideoHwCursorSetPos(UINT32 X, UINT32 Y) {
+    (void)X;
+    (void)Y;
+}
+
+void HalVideoHwCursorDisable(void) {
+}
+
 void HalVideoPresentFlush(void) {
     VideoPresentFlush();
 }

@@ -11,8 +11,18 @@ void HalVideoSet(const VIDEO_CONFIG *Config);
 void HalVideoInitializeBackbuffer(void);
 /* 推进一轮 HAL 脏→GOP（可 Partial）；Shell 环末用。对照 gui-g6-present */
 void HalVideoPresent(void);
-/* 光标 Restore/Paint 后立刻小框 Present（绕开 Defer 大 AABB） */
+/* 光标 Restore/Paint 后立刻小框 Present（绕开 Defer 大 AABB）；Hw 启用时 Gui 勿调 */
 void HalVideoPresentCursor(void);
+/*
+ * 硬件光标（hw-cursor-*）：有则热路径只 SetPos；无/失败 → Gui 走软件末波。
+ * Supported：探测后；Enable 失败不得自称 Supported。
+ * X64+igpu 目标真 CUR_*；Virtio/Arm/RiscV stub → Supported=0。
+ */
+int HalVideoHwCursorSupported(void);
+int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
+                           UINT32 HotX, UINT32 HotY);
+void HalVideoHwCursorSetPos(UINT32 X, UINT32 Y);
+void HalVideoHwCursorDisable(void);
 /* 循环刷完脏区（合成/关窗收官）；勿在 Shell 热路径滥用 */
 void HalVideoPresentFlush(void);
 /* 丢掉脏区不写 LFB（开机：Boot 已 GOP 铺底，只同步后缓冲） */

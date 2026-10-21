@@ -75,7 +75,10 @@ void ComposeEnd(void) {
 /* 先擦光标再置 Busy，避免 SMP 上 Busy 抢在 Restore 前清 Visible → 镂空 */
 void ComposeBeginEraseCursor(void) {
     GraphicsIrqEnter();
-    CursorRestore();
+    /* 硬件光标不在 FB：Restore 空操作；仍进 Busy 挡嵌套鼠 */
+    if (!CursorHwActive()) {
+        CursorRestore();
+    }
     ComposeBegin();
     GraphicsIrqLeave();
 }

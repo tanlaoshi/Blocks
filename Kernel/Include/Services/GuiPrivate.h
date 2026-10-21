@@ -240,6 +240,8 @@ void DrawCursorAt(UINT32 X, UINT32 Y);
 void CursorRestore(void);
 void CursorPaint(void);
 void CursorMove(UINT32 X, UINT32 Y);
+/* 1=硬件光标已 Enable；Compose 勿 Restore FB（光标不在后缓冲） */
+int CursorHwActive(void);
 /* 指针边沿基准。和窗口状态放在一起。 */
 
 /* Drag */

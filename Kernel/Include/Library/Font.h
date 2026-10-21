@@ -45,6 +45,8 @@ int FontTtfReady(void);
 UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
+/* HIT 槽步进；未命中 0。拉丁约为 Side/2，汉字 Side */
+UINT32 FontTtfCacheAdvance(UINT32 Cp);
 /* 1=已栅格失败（真缺字）；可回落 cjk32 */
 int FontTtfCacheMissed(UINT32 Cp);
 /* 不在点阵里：x86 已排队等栅格则 1。队列满或已确认没有字形则 0。 */

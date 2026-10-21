@@ -211,18 +211,17 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 }
 
 /*
- * gui-ttf-crisp：只剥最外淡晕；中灰提早实心，避免细笔画被阈值削没。
- * 160 丢边曾过狠→细笔发细；现 96 丢 / ≥168 实心。
+ * gui-ttf-crisp：剥外晕 + 中灰抬实心。
+ * 96/168 偏软；160 过细；现 112 丢 / ≥176 实心（略硬一档）。
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (N < 96u) {
+    if (N < 112u) {
         return 0;
     }
-    if (N >= 168u) {
+    if (N >= 176u) {
         return 255;
     }
-    /* 中段略抬，细笔不发灰发细 */
-    return (UINT8)(168u + (N - 96u) * 87u / 72u);
+    return (UINT8)(176u + (N - 112u) * 79u / 64u);
 }
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */
@@ -460,16 +459,21 @@ void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
     UINT32 H;
     const UINT8 *G;
 
-    if (Cp < 128) {
-        VideoDrawCharAt(X, Y, (char)Cp, Color);
-        return;
-    }
+    /* font-unified-ttf：ASCII 也走 FontGlyphCp（TTF 优先，软退 Terminus） */
     G = FontGlyphCp(Cp, &W, &H);
     if (!G) {
         if (FontGlyphCpDeferred()) {
             return;
         }
+        if (Cp < 128u) {
+            VideoDrawCharAt(X, Y, (char)Cp, Color);
+            return;
+        }
         VideoDrawMissingGlyphBox(X, Y, Color);
+        return;
+    }
+    if (Cp < 128u && FontGlyphCpBpp() == 1u) {
+        VideoDrawCharAt(X, Y, (char)Cp, Color);
         return;
     }
     VideoDrawBitmapAt(X, Y, G, W, H, Color, FontGlyphCpBpp());

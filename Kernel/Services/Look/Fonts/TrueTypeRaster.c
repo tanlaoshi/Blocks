@@ -1,8 +1,8 @@
 /*
- * FontTtfRaster.c — 汉字按当前行高直接栅格（须 HalFpuBegin；CFLAGS_FPU）
+ * FontTtfRaster.c — 汉字按当前行高栅格（须 HalFpuBegin；CFLAGS_FPU）
  *
- * 按行高的 4/3 直接栅格，上沿对齐像素边界，绘制时不再缩小。
- * 缩回行高时上横会整段落进同一输出行，看起来比下面的横细一像素。
+ * gui-ttf-oversample：先 2× 直栅进 arena，再 2×2 箱滤缩到 FontTtfPixel；
+ * 失败软退 1×。上沿对齐像素边界；缓存槽仍按显示边长。
  */
 #include "Font.h"
 #include "Hal.h"
@@ -33,6 +33,7 @@ UINT32 FontTtfPixel(void) {
 
 #define TTF_CELL 32
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
+#define TTF_OS   2u
 #define TTF_ARENA (64u * 1024u)
 
 static unsigned char gArena[TTF_ARENA];
@@ -164,10 +165,12 @@ static float FontTtfTopShift(int Glyph, float Scale) {
     return Shift;
 }
 
-int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
+/* 在 Cell 边长上算 Scale/框/居中；成功填 *Out*，失败 -1（已在 FPU 岛内）。 */
+static int FontTtfLayout(UINT32 Cp, int Glyph, UINT32 Cell, float *OutScale,
+                         float *OutShift, int *OutGw, int *OutGh, int *OutOx,
+                         int *OutOy) {
     float Scale;
     float Shift;
-    int Glyph;
     int X0;
     int Y0;
     int X1;
@@ -176,10 +179,92 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     int Gh;
     int Ox;
     int Oy;
-    UINT32 Side;
-    UINT32 i;
 
-    if (!Pix18 || !gInit || Cp < 128u) {
+    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)Cell);
+    Shift = FontTtfTopShift(Glyph, Scale);
+    stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f, Shift,
+                                        &X0, &Y0, &X1, &Y1);
+    Gw = X1 - X0;
+    Gh = Y1 - Y0;
+    if (Gw <= 0 || Gh <= 0) {
+        return -1;
+    }
+    if (Gw > (int)Cell || Gh > (int)Cell) {
+        float FitX = (float)Cell / (float)Gw;
+        float FitY = (float)Cell / (float)Gh;
+        float Fit = (FitX < FitY) ? FitX : FitY;
+
+        Scale *= Fit;
+        Shift = FontTtfTopShift(Glyph, Scale);
+        stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f,
+                                            Shift, &X0, &Y0, &X1, &Y1);
+        Gw = X1 - X0;
+        Gh = Y1 - Y0;
+        if (Gw <= 0 || Gh <= 0 || Gw > (int)Cell || Gh > (int)Cell) {
+            return -1;
+        }
+    }
+    Ox = ((int)Cell - Gw) / 2;
+    Oy = ((int)Cell - Gh) / 2;
+    if (Ox < 0) {
+        Ox = 0;
+    }
+    if (Oy < 0) {
+        Oy = 0;
+    }
+    if (Ox + Gw > (int)Cell) {
+        Gw = (int)Cell - Ox;
+    }
+    if (Oy + Gh > (int)Cell) {
+        Gh = (int)Cell - Oy;
+    }
+    if (Gw <= 0 || Gh <= 0) {
+        return -1;
+    }
+    *OutScale = Scale;
+    *OutShift = Shift;
+    *OutGw = Gw;
+    *OutGh = Gh;
+    *OutOx = Ox;
+    *OutOy = Oy;
+    return 0;
+}
+
+static void FontTtfDownsample2(const UINT8 *Hi, UINT32 OsSide, UINT8 *Lo,
+                               UINT32 Side) {
+    UINT32 Y;
+    UINT32 X;
+
+    for (Y = 0; Y < Side; Y++) {
+        for (X = 0; X < Side; X++) {
+            UINT32 S = 0;
+            UINT32 R0 = (Y * TTF_OS) * OsSide + (X * TTF_OS);
+
+            S += Hi[R0];
+            S += Hi[R0 + 1u];
+            S += Hi[R0 + OsSide];
+            S += Hi[R0 + OsSide + 1u];
+            Lo[Y * Side + X] = (UINT8)((S + 2u) / 4u);
+        }
+    }
+}
+
+int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
+    float Scale;
+    float Shift;
+    int Glyph;
+    int Gw;
+    int Gh;
+    int Ox;
+    int Oy;
+    UINT32 Side;
+    UINT32 OsSide;
+    UINT32 i;
+    UINT8 *Hi;
+    UINT32 HiBytes;
+
+    /* font-unified-ttf：可打印 ASCII 与汉字同源栅格；控制符仍拒 */
+    if (!Pix18 || !gInit || Cp < 32u || Cp == 127u) {
         return -1;
     }
     Side = FontTtfPixel();
@@ -190,57 +275,33 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     if (!HalFpuBegin()) {
         return -1;
     }
-    /*
-     * 按放大后的边长画进格子。比例仍是字模方框。
-     * 上沿对齐到像素边界，左右、上下都放在格中间。超出格子才缩小。
-     */
     Glyph = stbtt_FindGlyphIndex(&gInfo, (int)Cp);
-    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)Side);
-    Shift = FontTtfTopShift(Glyph, Scale);
-    stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f, Shift,
-                                        &X0, &Y0, &X1, &Y1);
-    Gw = X1 - X0;
-    Gh = Y1 - Y0;
-    if (Gw <= 0 || Gh <= 0) {
-        HalFpuEnd();
-        return -1;
-    }
-    if (Gw > (int)Side || Gh > (int)Side) {
-        float FitX = (float)Side / (float)Gw;
-        float FitY = (float)Side / (float)Gh;
-        float Fit = (FitX < FitY) ? FitX : FitY;
 
-        Scale *= Fit;
-        Shift = FontTtfTopShift(Glyph, Scale);
-        stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f,
-                                            Shift, &X0, &Y0, &X1, &Y1);
-        Gw = X1 - X0;
-        Gh = Y1 - Y0;
-        if (Gw <= 0 || Gh <= 0 || Gw > (int)Side || Gh > (int)Side) {
-            HalFpuEnd();
-            return -1;
-        }
+    /* 2× 过采样：大格直栅 → 箱滤；暂存不够或布局失败 → 1× */
+    OsSide = Side * TTF_OS;
+    HiBytes = OsSide * OsSide;
+    Hi = (UINT8 *)FontTtfMalloc(HiBytes);
+    if (Hi != 0 &&
+        FontTtfLayout(Cp, Glyph, OsSide, &Scale, &Shift, &Gw, &Gh, &Ox, &Oy) ==
+            0) {
+        STBTT_memset(Hi, 0, HiBytes);
+        stbtt_MakeCodepointBitmapSubpixel(&gInfo, Hi + Oy * (int)OsSide + Ox, Gw,
+                                          Gh, (int)OsSide, Scale, Scale, 0.0f,
+                                          Shift, (int)Cp);
+        FontTtfDownsample2(Hi, OsSide, Pix18, Side);
+        HalFpuEnd();
+        return 0;
     }
-    Ox = ((int)Side - Gw) / 2;
-    Oy = ((int)Side - Gh) / 2;
-    if (Ox < 0) {
-        Ox = 0;
-    }
-    if (Oy < 0) {
-        Oy = 0;
-    }
-    if (Ox + Gw > (int)Side) {
-        Gw = (int)Side - Ox;
-    }
-    if (Oy + Gh > (int)Side) {
-        Gh = (int)Side - Oy;
-    }
-    if (Gw <= 0 || Gh <= 0) {
+
+    gArenaUsed = 0;
+    if (FontTtfLayout(Cp, Glyph, Side, &Scale, &Shift, &Gw, &Gh, &Ox, &Oy) !=
+        0) {
         HalFpuEnd();
         return -1;
     }
     stbtt_MakeCodepointBitmapSubpixel(&gInfo, Pix18 + Oy * (int)Side + Ox, Gw, Gh,
-                                      (int)Side, Scale, Scale, 0.0f, Shift, (int)Cp);
+                                      (int)Side, Scale, Scale, 0.0f, Shift,
+                                      (int)Cp);
     HalFpuEnd();
     return 0;
 }

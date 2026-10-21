@@ -581,6 +581,24 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const UINT8 *G;
 
     gGlyphDefer = 0;
+    /*
+     * font-unified-ttf：可打印 ASCII 与汉字都先 TTF（同源 CJK.TTF）。
+     * 已 init 且尚未确认缺字时：等 Worker 栅格，勿立刻回落点阵。
+     */
+    G = FontTtfCacheGet(Cp, OutW, OutH);
+    if (G) {
+        gGlyphCpBpp = 8;
+        return G;
+    }
+#if defined(__x86_64__)
+    if (FontTtfReady() && Cp >= 32u && Cp != 127u && !FontTtfCacheMissed(Cp)) {
+        if (FontTtfCachePending(Cp)) {
+            gGlyphDefer = 1;
+        }
+        return 0;
+    }
+#endif
+    /* 拉丁软退 Terminus；汉字再 File/cjk32 */
     if (Cp >= 32 && Cp < 127) {
         F = FontGetCurrent();
         G = FontGlyph((char)Cp);
@@ -596,23 +614,6 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         gGlyphCpBpp = 1;
         return G;
     }
-    /*
-     * TTF 缓存优先。已 init 且尚未确认缺字时：等 Worker 栅格，
-     * 勿立刻回落 cjk32（18→24 拉伸会糊，看起来像「TTF 没加载」）。
-     */
-    G = FontTtfCacheGet(Cp, OutW, OutH);
-    if (G) {
-        gGlyphCpBpp = 8;
-        return G;
-    }
-#if defined(__x86_64__)
-    if (FontTtfReady() && !FontTtfCacheMissed(Cp)) {
-        if (FontTtfCachePending(Cp)) {
-            gGlyphDefer = 1;
-        }
-        return 0;
-    }
-#endif
     G = FileGlyph(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 1;
@@ -685,16 +686,23 @@ void FontGlyphBox(UINT32 GlyphW, UINT32 GlyphH, UINT32 *OutW, UINT32 *OutH) {
 UINT32 FontCodepointAdvance(UINT32 Cp) {
     UINT32 W;
     UINT32 H;
+    UINT32 Adv;
 
-    if (Cp < 128) {
-        return FontAdvanceX();
+    Adv = FontTtfCacheAdvance(Cp);
+    if (Adv != 0u) {
+        return Adv;
     }
     if (!FontGlyphCp(Cp, &W, &H)) {
+        if (Cp < 128u) {
+            return FontAdvanceX();
+        }
         W = FontCjkDim();
         H = W;
     }
+    if (Cp < 128u && FontGlyphCpBpp() == 1u) {
+        return FontAdvanceX();
+    }
     FontGlyphBox(W, H, &W, &H);
-    /* 汉字和缺字框按自己的绘制宽度前进，不抬到拉丁字母的格子。 */
     return W;
 }
 

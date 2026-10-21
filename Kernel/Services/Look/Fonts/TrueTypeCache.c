@@ -1,7 +1,8 @@
 /*
  * FontTtfCache.c — 32×32×8bpp 定长缓存
  *
- * 绘制路径只 Lookup（不栅格）。栅格仅 Preheat / Want 泵（Worker / 开窗短 burst）。
+ * font-unified-ttf：可打印 ASCII 与汉字同槽；绘制只 Lookup。
+ * 栅格仅 Preheat / Want 泵（Worker / 开窗短 burst）。
  */
 #include "Font.h"
 
@@ -17,9 +18,14 @@
 typedef struct {
     UINT32 Cp;
     UINT32 Side;
+    UINT32 Adv; /* 步进：拉丁用字宽，汉字用 Side */
     int State;
     UINT8 Pix[TTF_PIX];
 } TTF_SLOT;
+
+static int TtfCpOk(UINT32 Cp) {
+    return (Cp >= 32u && Cp != 127u) ? 1 : 0;
+}
 
 static TTF_SLOT gSlot[TTF_CACHE_N];
 static UINT32 gWant[TTF_WANT_N];
@@ -79,7 +85,7 @@ static void WantPush(UINT32 Cp) {
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     TTF_SLOT *S;
 
-    if (Cp < 128u) {
+    if (!TtfCpOk(Cp)) {
         return 0;
     }
     S = SlotLookup(Cp);
@@ -93,6 +99,7 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
             WantPush(Cp);
             return 0;
         }
+        /* 位图仍是 Side×Side；步进见 FontTtfCacheAdvance */
         if (OutW) {
             *OutW = S->Side;
         }
@@ -105,10 +112,23 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     return 0;
 }
 
+UINT32 FontTtfCacheAdvance(UINT32 Cp) {
+    TTF_SLOT *S;
+
+    if (!TtfCpOk(Cp)) {
+        return 0;
+    }
+    S = SlotLookup(Cp);
+    if (!S || S->State != TTF_HIT || S->Side != FontTtfPixel()) {
+        return 0;
+    }
+    return S->Adv ? S->Adv : S->Side;
+}
+
 int FontTtfCacheMissed(UINT32 Cp) {
     TTF_SLOT *S;
 
-    if (Cp < 128u) {
+    if (!TtfCpOk(Cp)) {
         return 0;
     }
     S = SlotLookup(Cp);
@@ -118,7 +138,7 @@ int FontTtfCacheMissed(UINT32 Cp) {
 int FontTtfCachePending(UINT32 Cp) {
     UINT32 w;
 
-    if (Cp < 128u || SlotLookup(Cp) != 0) {
+    if (!TtfCpOk(Cp) || SlotLookup(Cp) != 0) {
         return 0;
     }
     for (w = 0; w < gWantN; w++) {
@@ -139,26 +159,34 @@ int FontTtfCachePending(UINT32 Cp) {
  */
 static void FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
+    UINT32 Side;
 
-    if (Cp < 128u) {
+    if (!TtfCpOk(Cp)) {
         return;
     }
     Slot = SlotAlloc(Cp);
+    Side = FontTtfPixel();
     /*
      * 仅 HIT 且边长一致才跳过。MISS 须可重试：
      * SESSION 在 FS/Gui 前时 Console→LocaleTtfPreheat 会在 gInit=0 时灌满 MISS，
      * 若此处把 MISS 当「已填」则 Gui 二次预热永不再栅格（汉字一直缺字框）。
      */
-    if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == FontTtfPixel()) {
+    if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == Side) {
         return;
     }
     if (FontTtfRasterCp(Cp, Slot->Pix) != 0) {
         Slot->Cp = Cp;
-        Slot->Side = FontTtfPixel();
+        Slot->Side = Side;
+        Slot->Adv = Side;
         Slot->State = TTF_MISS;
     } else {
         Slot->Cp = Cp;
-        Slot->Side = FontTtfPixel();
+        Slot->Side = Side;
+        /* 拉丁用半格步进，避免每字母占满汉字方格；汉字仍 Side */
+        Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
+        if (Slot->Adv < 1u) {
+            Slot->Adv = 1u;
+        }
         Slot->State = TTF_HIT;
         if (NotifyPaint) {
             gPaintGen++;
@@ -192,7 +220,7 @@ void FontTtfPreheatUtf8(const char *S) {
         if (!N) {
             break;
         }
-        if (Cp >= 128u) {
+        if (TtfCpOk(Cp)) {
             FillSlot(Cp, 0);
         }
         S += N;

@@ -1,7 +1,9 @@
 /*
- * MscClaimPort.c — PR-S-xhcimsc-1：单口 Force / Address / 根口 hub。
- * 从 ClaimPorts 嵌套块原样抽出；不改语义。
- * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
+ * ClaimPort.c — 单口 Force / Address / 根口 hub（usb-map / PR-S-xhcimsc-1）
+ *
+ * ForceUntilPed：freeze 则拒；已 PED+CCS 可软过；否则 Port Reset。
+ * Address 失败日志 `addr cc=`（常见 0x04 USBTE / 0x11 Context）→ 规格对表后再改，勿堆重试。
+ * 上游 ClaimPorts；全局仍 Xhci.c。
  */
 #include "XHCI/Private.h"
 

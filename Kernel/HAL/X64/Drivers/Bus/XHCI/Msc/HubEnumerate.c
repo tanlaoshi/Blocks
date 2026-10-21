@@ -1,7 +1,9 @@
 /*
- * HubEnumMsc.c — PR-S-xhcihub-1：hub 子口 MSC 枚举与第二 hub
+ * HubEnumerate.c — hub 子口 MSC 枚举（usb-map / PR-S-xhcihub-1）
  *
- * 从 Hub.c 原样搬家；不改语义。Hub 口帮手去掉 static，声明在 Internal.h。
+ * GetPortStatus → HubPortSpeed（USB3：0=SS）→ BH_PORT_RESET（SS）或 Hot Reset（USB2）
+ * → AddressDeviceOnPort（SS 子设备 Slot TT=0）→ FinishClaim。
+ * 跳过键/鼠已占子口；第二 hub 路径同构。详见 HubPortSpeed / Warm Reset 注释。
  */
 #include "XHCI/Private.h"
 

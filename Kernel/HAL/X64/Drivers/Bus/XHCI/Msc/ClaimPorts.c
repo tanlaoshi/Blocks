@@ -1,7 +1,11 @@
 /*
- * ClaimPorts.c — PR-S-xhcimsc-1：根口/hub claim 编排。
- * Force/Address/Hub 帮手在 MscClaimPort.c。
- * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
+ * ClaimPorts.c — 根口/hub MSC claim 编排（usb-map / PR-S-xhcimsc-1）
+ *
+ * 链：UsbMscClaim / AutoBeforeFs / Hot → ClaimPorts
+ *   →（hub 子口）HubEnumerate |（根口）ClaimPort ForceUntilPed → Address → FinishClaim
+ * 收口：Ok → Ready；!Ok 或 sick → gXhciPortEnumFreeze=1（禁 UART/Wifi 再 Address，保鼠）
+ *       入口清 freeze；msc-claim-stop：Ok 即停扫（不因 Ok freeze）。
+ * Force/Address 帮手：ClaimPort.c；MSC 全局仍在 Xhci.c（BSS↔HID DMA）。
  */
 #include "XHCI/Private.h"
 

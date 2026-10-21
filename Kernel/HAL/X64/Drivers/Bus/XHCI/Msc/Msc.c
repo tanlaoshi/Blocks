@@ -1,9 +1,9 @@
 /*
- * Msc.c — PR-S-xhcimsc-1：MSC 核心（BringUp / Ready / Scan / 容量查询入口）
+ * Msc.c — xHCI MSC 核心（usb-map / PR-S-xhcimsc-1）
  *
- * Bulk→MscBulk；BOT/扇区→XhciMscBot；配置认领→XhciMscClaim；
- * 根口编排→ClaimPorts。事件环 Bulk 完成仍在 Xhci.c。
- * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环地址；勿迁出）。
+ * Scan：只读 PORTSC 清点（禁 Address/Disable——真机易命令环 sick）。
+ * Claim→ClaimPorts；Bulk/BOT→MscBulk/BulkOnly；事件环仍 Xhci.c。
+ * 门面：UsbMsc.c（开机 Auto / HotPoll）。全局 BSS 仍 Xhci.c。
  */
 #include "XHCI/Private.h"
 #include "DriverBoot.h"

@@ -1,9 +1,9 @@
 /*
- * FileSystem.h — 文件系统模块（story-s3 / PR-FS2 多卷）
+ * FileSystem.h — 文件系统模块（usb-map / story-s3 / PR-FS2 多卷）
  *
- * 开机挂卷 FileSystemInitialize；桌面后 HotPoll 拔/插（节流）；Shell `msc hot` 仍可。
- * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`；无前缀用默认卷（优先 BLOCKS.ID）。
- * Shell/exec 走 FileSystem*；链图见 FileSystem.c / Mount.c / Clock.c 头。
+ * 开机 FileSystemInitialize；桌面 HotPoll 拔/插（UsbMsc + Clock）；Shell `msc hot`。
+ * BootMediumGone：启动盘已拔且本会话曾见其上卷 → 失根（应 Park；非旁路热拔）。
+ * 路径：`BLOCKS:…`；链图 FileSystem.c / MountOs.c / Clock.c / UsbMsc.c 头。
  */
 #ifndef FILE_SYSTEM_H
 #define FILE_SYSTEM_H

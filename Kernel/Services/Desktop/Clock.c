@@ -1,13 +1,15 @@
 /*
- * Clock.c — 任务栏钟 / MSC 拔出（story-s3 / runtime-c-tick）
+ * Clock.c — 任务栏钟 / MSC 热插拔收口（usb-map / story-s3 / runtime-c-tick）
  *
- * Worker ~2Hz → HalUsbMscHotPoll==1 → Remount + FilesUiRefresh
- * HotPoll（桌面后）：拔 Release；插 Scan→Claim（~5s 节流）。开机不调。
- * 拔的是启动盘且根在其上 → BootMediumGone → Park（非旁路热拔）。
- * 钟/网托采样→栏脏；Present 仍 DesktopTickClock（GuiPollMouse 末）。
- *
- * 上游：Tasks.c WorkerTask 圈首。开机挂卷：FileSystemInitialize（非本文件）。
- * 勿在 Worker 上 RequestRefresh/全量 Compose（4K 栈）。
+ * ```
+ * WorkerTask 圈首 DesktopWorkerTick ~2Hz
+ *   → HalUsbMscHotPoll（UsbMsc.c；开机不调）
+ *   → RemountVolumes → FsUpdateBootMediumState
+ *   → BootMediumGone? Log msc/4 halt → HalCpuPark
+ *   → 否则 FilesUiRefresh
+ * ```
+ * 旁路 U 盘热拔：不 Park。U 盘起拔启动盘应 Park（usb-boot-unplug 缺口：OsTarget 仍可能钉旁路）。
+ * 钟/网托→栏脏；Present 仍 DesktopTickClock。勿 Worker 上全量 Compose。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */

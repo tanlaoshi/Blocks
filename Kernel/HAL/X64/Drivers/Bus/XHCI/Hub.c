@@ -1,7 +1,12 @@
 /*
- * Hub.c — PR-S-xhcihub-1：Hub 控制与根口认领
+ * Hub.c — Hub 控制与根口认领（usb-map / PR-S-xhcihub-1）
  *
- * 从 Hub.c 原样搬家；不改语义。Hub 口帮手去掉 static，声明在 Internal.h。
+ * 规格锚：USB 3.0 Table 10-10 PORT_SPEED（bits 10..12）→ HubPortSpeed()：
+ *   字段 0 = 5 Gbps（SS），不是「未协商/FS」；Reserved(1–7) 返回 0 勿臆造。
+ * USB2 hub：bits 10..9 → FS/LS/HS。bit9 在 USB3 是 PORT_POWER，不是速度。
+ *
+ * 链：ClaimPorts →（根口 hub）AddressDeviceOnPort → FinishHubSetup
+ *      → HubEnumerate 子口 GetPortStatus → HubPortSpeed → Warm/Hot Reset → Address
  */
 #include "XHCI/Private.h"
 #include "Hub/Private.h"

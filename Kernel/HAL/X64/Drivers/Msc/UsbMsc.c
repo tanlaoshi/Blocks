@@ -1,12 +1,15 @@
 /*
- * UsbMsc.c — BOT 门面（story-s3 / PR-H-msc-*；主机表 UsbMscHost）
+ * UsbMsc.c — MSC 门面（usb-map / story-s3；主机表 UsbMscHost）
  *
- *   开机：HalUsbMscAutoBeforeFs → Claim/Mount（启动盘策略；不搅热插）
- *   HotPoll（Worker ~2Hz，仅桌面后）：
- *     拔：Ready && !Present → Release→1
- *     插：!Ready && auto → Scan>0 → Claim/Mount→1；空闲 ~5s 节流（避 2Hz Address）
- *   UsbMscHot：Shell `msc hot` / EnsureSecondary 显式 claim
- *   日志：LogFs → 环缓冲；BOOT.LOG（开机 Flush）/ RUNTIME.LOG（ready 后）
+ * ```
+ * 开机 AutoBeforeFs → Claim/Mount（策略；不搅热插）
+ * Worker DesktopWorkerTick ~2Hz → HotPoll（仅桌面后）
+ *   拔：Ready && !Present → Release →1 → Remount → BootMediumGone? Park
+ *   插：!Ready && auto → Scan>0（含 hub）→ Claim/Mount →1；~5s 节流
+ * Shell msc hot / EnsureSecondary → UsbMscHot（显式 claim）
+ * ```
+ * 日志：`Fs: msc/1..4` → BOOT/RUNTIME（角色见路线图 msc-desktop-hotplug）。
+ * 失根：FileSystemBootMediumGone（MountOs）← Remount 后 Clock 判 Park。
  */
 #include "Msc/UsbMsc.h"
 #include "UsbMscHost.h"

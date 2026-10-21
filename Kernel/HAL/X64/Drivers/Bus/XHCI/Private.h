@@ -324,7 +324,8 @@ extern volatile UINT32 gCmdDone;
 extern UINT32 gCmdCode;
 extern UINT32 gCmdSlot;
 extern UINT32 gXhciCmdSick;
-extern UINT32 gXhciPortEnumFreeze; /* MSC sick 后禁根口再枚举 */
+/* usb-map：claim sick/扫空后置 1，禁 UART/Wifi 再 Address（保鼠）；ClaimPorts 入口清 0 */
+extern UINT32 gXhciPortEnumFreeze;
 extern UINT32 gXhciCmdWaitMs; /* 0=默认 800ms；SS hub 子口 Address 可缩短 */
 extern UINT32 gXhciCmdAttempts; /* 0=默认 2；SS hub 子口可 1 次快退 */
 extern UINT32 gXhciCmdWaiting; /* WaitCommand 中：Drain/Irq 勿碰事件环 */

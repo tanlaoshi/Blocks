@@ -1,7 +1,11 @@
 /*
- * Device.c — PR-S-xhcidevice-1：Address / Slot / Ep0 环选择
+ * Device.c — Address / Slot / Ep0 环选择（usb-map / PR-S-xhcidevice-1）
  *
- * 从 Device.c 原样搬家；不改语义。无 static 提升。
+ * AddressDeviceOnPort：EnableSlot → Address Device 命令；完成码见 gCmdCode（日志 cc=）。
+ * 规格：xHCI 完成码 SUCCESS=1；USB Transaction Error 等勿当「再猜一次超时」。
+ * 各设备独立 EP0 环（Hub/MSC/Mouse…）：共享环会毁掉 hub dequeue → 子口永不完成。
+ *
+ * 上游：ClaimPort / HubEnumerate / HID / Serial。gXhciPortEnumFreeze=1 时调用方应拒绝再 Address。
  */
 #include "XHCI/Private.h"
 

@@ -1,9 +1,14 @@
 /*
- * MountOs.c — ROOT.CFG OsTarget + SecondaryReady（fs-msc-defer）
+ * MountOs.c — OsTarget / SecondaryReady / 失根（usb-map / fs-msc-defer）
  *
- * 开机：优先读「加载 EFI 的那块盘」上 ESP 的 ROOT.CFG，定启动卷（可跨盘）。
- * OsTarget 在本会话钉死：热拔后只按已钉 disk/part 重绑下标，绝不改认旁路盘。
- * Files：SecondaryReady=0 时只展 OsDisk。
+ * ```
+ * 开机 ResolveOsTarget：启动盘 ESP ROOT.CFG → 钉 Disk/Part
+ *   例外：曾误钉旁路且启动盘现已挂上 → unpin 重认
+ * Remount 后 FsUpdateBootMediumState：
+ *   曾见 BootDisk 卷、现无 → gBootMediumGone（拔加载 EFI 的盘）
+ * Clock HotPoll→Remount→FileSystemBootMediumGone→Park（usb-boot-unplug 待可靠）
+ * ```
+ * Files：SecondaryReady=0 只展 OsDisk。钉死后热拔只 rebind 下标，勿改认旁路。
  */
 #include "FileSystemPrivate.h"
 #include "BootInfo.h"

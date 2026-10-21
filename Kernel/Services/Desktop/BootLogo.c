@@ -112,15 +112,21 @@ static void DrawOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
     Cell(X, Yt, 1, 1, LOGO_ACCENT); /* 5 */
 }
 
-/* 只擦上一帧橙色四格（整槽擦干净）；绝不碰青绿。 */
-static void ClearOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
-    UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
+/*
+ * 整段下落走廊抹黑再重画（QEMU 只擦旧∪新仍会拉烟横线）。
+ * 止于橙 T 底，不盖底行青绿槽顶之上的 gap；底三格每帧重画。
+ */
+static void ClearOrangeCorridor(UINT32 X, UINT32 Y) {
     UINT32 Step = LOGO_CELL + LOGO_GAP;
+    UINT32 Th = Step + LOGO_CELL;
+    UINT32 Top = (Y > LOGO_OPEN) ? (Y - LOGO_OPEN) : 0;
+    UINT32 Bot = Y + Th;
+    UINT32 MarkW = LOGO_CELL * 3u + LOGO_GAP * 2u;
 
-    Fill(X + 0 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
-    Fill(X + 1 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
-    Fill(X + 2 * Step, Yt + 0 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
-    Fill(X + 1 * Step, Yt + 1 * Step, LOGO_CELL, LOGO_CELL, LOGO_BG);
+    if (Bot > Top) {
+        Fill(X, Top, MarkW, Bot - Top, LOGO_BG);
+        HalVideoMarkDirty(X, Top, MarkW, Bot - Top);
+    }
 }
 
 static void DrawTealSides(UINT32 X, UINT32 Y) {
@@ -145,16 +151,11 @@ static void PaintPieces(UINT32 Pct) {
         Pct = 100;
     }
     Shift = (100 - Pct) * LOGO_OPEN / 100;
-    if (gLastShift != LOGO_SHIFT_NONE) {
-        ClearOrange(gAx, gAy, gLastShift);
-    }
+    ClearOrangeCorridor(gAx, gAy);
     DrawOrange(gAx, gAy, Shift);
-    /* 两侧每帧点一下（两格很轻），竖条贴近凹口时也不会被擦出闪线 */
     DrawTealSides(gAx, gAy);
-    if (!gTealBottomUp) {
-        DrawTealBottom(gAx, gAy);
-        gTealBottomUp = 1;
-    }
+    DrawTealBottom(gAx, gAy);
+    gTealBottomUp = 1;
     gLastShift = Shift;
     gPct = Pct;
 }

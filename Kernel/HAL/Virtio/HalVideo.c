@@ -142,9 +142,9 @@ void HalVideoMarkDirty(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     DirtyUnion(X, Y, W, H);
 }
 
-/* 拖窗条带：Virt Present 无分块；空实现满足链接 */
+/* 与 X64 同：Logo/拖窗可抬高条带，避免 64 行撕成横线残影 */
 void HalVideoSetPresentChunkRows(UINT32 Rows) {
-    (void)Rows;
+    VideoSetPresentChunkRows(Rows);
 }
 
 void HalVideoSetGlyphSmooth(int On) {

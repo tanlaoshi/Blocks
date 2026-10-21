@@ -12,8 +12,8 @@
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00000000u
-#define LOGO_ACCENT 0x00C07820u
-#define LOGO_TEAL   0x001E9A8Eu
+#define LOGO_ACCENT 0x00A86418u
+#define LOGO_TEAL   0x00187A70u
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
 #define LOGO_OPEN   112u
@@ -80,7 +80,8 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
  *   1 2 3
  *   4 5 6
  *   7 8 9
- * 1/3/5 橙：下部缩短 1/4（顶边不动）；2 满高；8 青满高。
+ * 橙 1/2/3/5 满高；青 4/6/8 上部减 1/3（底边对齐）；7/9 满高。
+ * 面积：橙 4 格 = 青 4×(2/3)+2 = 4 格。
  */
 static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {
     UINT32 Step = LOGO_CELL + LOGO_GAP;
@@ -88,26 +89,27 @@ static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {
     Fill(X + Col * Step, Y + Row * Step, LOGO_CELL, LOGO_CELL, C);
 }
 
-/* 顶边对齐槽位，高度 ShortH（1/3） */
-static void CellTop(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 ShortH,
-                    UINT32 C) {
+/* 底边对齐槽位，高度 ShortH（上部裁掉） */
+static void CellBottom(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row,
+                       UINT32 ShortH, UINT32 C) {
     UINT32 Step = LOGO_CELL + LOGO_GAP;
+    UINT32 TopPad;
 
-    if (ShortH == 0) {
+    if (ShortH == 0 || ShortH > LOGO_CELL) {
         return;
     }
-    Fill(X + Col * Step, Y + Row * Step, LOGO_CELL, ShortH, C);
+    TopPad = LOGO_CELL - ShortH;
+    Fill(X + Col * Step, Y + Row * Step + TopPad, LOGO_CELL, ShortH, C);
 }
 
 /* Shift 是 T 还悬在凹形上方的距离。0 时竖条落进凹口。 */
 static void DrawOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
     UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
-    UINT32 ShortH = (LOGO_CELL * 3u) / 4u;
 
-    CellTop(X, Yt, 0, 0, ShortH, LOGO_ACCENT); /* 1 */
-    Cell(X, Yt, 1, 0, LOGO_ACCENT);             /* 2 满高 */
-    CellTop(X, Yt, 2, 0, ShortH, LOGO_ACCENT); /* 3 */
-    CellTop(X, Yt, 1, 1, ShortH, LOGO_ACCENT); /* 5 下部缩短 1/4 */
+    Cell(X, Yt, 0, 0, LOGO_ACCENT); /* 1 */
+    Cell(X, Yt, 1, 0, LOGO_ACCENT); /* 2 */
+    Cell(X, Yt, 2, 0, LOGO_ACCENT); /* 3 */
+    Cell(X, Yt, 1, 1, LOGO_ACCENT); /* 5 */
 }
 
 /* 只擦上一帧橙色四格（整槽擦干净）；绝不碰青绿。 */
@@ -122,14 +124,18 @@ static void ClearOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
 }
 
 static void DrawTealSides(UINT32 X, UINT32 Y) {
-    Cell(X, Y, 0, 1, LOGO_TEAL);
-    Cell(X, Y, 2, 1, LOGO_TEAL);
+    UINT32 ShortH = (LOGO_CELL * 2u) / 3u;
+
+    CellBottom(X, Y, 0, 1, ShortH, LOGO_TEAL); /* 4 上部减 1/3 */
+    CellBottom(X, Y, 2, 1, ShortH, LOGO_TEAL); /* 6 */
 }
 
 static void DrawTealBottom(UINT32 X, UINT32 Y) {
-    Cell(X, Y, 0, 2, LOGO_TEAL); /* 7 */
-    Cell(X, Y, 1, 2, LOGO_TEAL); /* 8 满高 */
-    Cell(X, Y, 2, 2, LOGO_TEAL); /* 9 */
+    UINT32 ShortH = (LOGO_CELL * 2u) / 3u;
+
+    Cell(X, Y, 0, 2, LOGO_TEAL);               /* 7 */
+    CellBottom(X, Y, 1, 2, ShortH, LOGO_TEAL); /* 8 上部减 1/3 */
+    Cell(X, Y, 2, 2, LOGO_TEAL);               /* 9 */
 }
 
 static void PaintPieces(UINT32 Pct) {

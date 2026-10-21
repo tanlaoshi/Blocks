@@ -108,7 +108,18 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   if (!HalFpuBegin()) {
     return -1;
   }
-  Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
+  /*
+   * 汉字略小于格：FORCE_AUTOHINT 墨水常顶破 CellH → 底被削。
+   * mono 仍满高（等宽基线对齐）。
+   */
+  {
+    FT_UInt Px = (FT_UInt)CellH;
+
+    if (!Mono && Cp >= 128u && CellH > 4u) {
+      Px = (FT_UInt)(CellH - 2u);
+    }
+    Err = FT_Set_Pixel_Sizes(Face, 0, Px);
+  }
   if (Err) {
     HalFpuEnd();
     return -1;
@@ -140,23 +151,33 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   if (AscPx < 0) {
     AscPx = 0;
   }
-  Oy = AscPx - Slot->bitmap_top;
-  Ox = Slot->bitmap_left;
   if (Mono) {
-    /* 等宽格：水平用 bitmap_left，超出则夹进格内 */
+    /* 等宽：VMetrics 基线；水平夹进格内 */
+    Oy = AscPx - Slot->bitmap_top;
+    Ox = Slot->bitmap_left;
     if (Ox < 0) {
       Ox = 0;
     }
-  } else if (Cp < 128u) {
+  } else if (Cp >= 128u) {
     /*
-     * UI 拉丁：缓存槽仍是 Side×Side，步进约半宽；右半必须留空，
-     * 否则下一字 Adv=Side/2 会叠在本字墨水上（汉字方框字体尤甚）。
+     * UI 汉字：与 stb 格内居中一致。纯基线时 UMing 常 Oy+rows>CellH → 底被削。
+     * 仍超高则顶齐（宁可削顶，桌面标签少见）。
      */
-    Ox = 0;
-    if ((int)Bm->width > (int)(CellW / 2u) && CellW >= 2u) {
-      /* 宽字母：仍靠左，允许少量伸进右半，步进用真实 advance */
+    Ox = ((int)CellW - (int)Bm->width) / 2;
+    Oy = ((int)CellH - (int)Bm->rows) / 2;
+    if (Ox < 0) {
       Ox = 0;
     }
+    if (Oy < 0) {
+      Oy = 0;
+    }
+    if (Oy + (int)Bm->rows > (int)CellH && (int)Bm->rows <= (int)CellH) {
+      Oy = (int)CellH - (int)Bm->rows;
+    }
+  } else {
+    /* UI 拉丁（若走 FT）：靠左，步进半宽防叠字 */
+    Oy = AscPx - Slot->bitmap_top;
+    Ox = 0;
   }
   for (Y = 0; Y < Bm->rows; Y++) {
     int Dy = Oy + (int)Y;

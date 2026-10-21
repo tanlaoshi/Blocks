@@ -66,6 +66,8 @@ UINT32 gMscBulkOutDci;
 UINT16 gMscBulkInMps;
 UINT16 gMscBulkOutMps;
 int    gMscClaimed;       /* 1：已 SetConfig + Bulk EP */
+UINT32 gMscBootWatchPort; /* U 盘起 claim 失败时盯 PORTSC；0=关 */
+int    gMscBootWatchArm;  /* FS：BootDisk 未挂时 Arm，成功 claim 后清 */
 volatile UINT32 gMscBotBusy; /* BOT 整段互斥（勿 SpinLock：WaitBulk 可数百 ms） */
 UINT32 gMscBlockCount;    /* PR-H-msc-5：READ CAPACITY 后扇区数 */
 UINT32 gMscBlockSize;

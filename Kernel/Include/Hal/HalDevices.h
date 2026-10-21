@@ -64,6 +64,9 @@ void HalBootLogoBumpRegister(HAL_BOOT_LOGO_BUMP_FN Fn);
 void HalBootLogoBump(UINT32 Cap);
 /* usb-map：HotPoll 拔+插（桌面 Worker）；开机 Auto / Shell msc hot 另路 */
 int HalUsbMscRelease(void);
+int HalUsbMscPollUnplug(void); /* 1=已认领 MSC 拔出（Release）；指针忙也可 */
+/* U 盘起、BootDisk 未挂：claim 前 Arm，失败后盯口 CCS 失根 */
+void HalUsbMscArmBootWatch(int On);
 int HalUsbMscHotPoll(void); /* 1=需 Remount（拔 Release 或插 Claim/Mount） */
 int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc hot */
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */

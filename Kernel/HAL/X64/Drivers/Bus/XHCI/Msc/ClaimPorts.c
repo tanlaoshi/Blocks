@@ -169,6 +169,13 @@ int ClaimPorts(void) {
                 if (!ForceUntilPed(P, &Force)) {
                     continue;
                 }
+                /*
+                 * U 盘起但 claim 常失败（PED 软 Address cc=04）：记下口，
+                 * PollUnplug 盯 CCS——棒拔了仍能钉 Gone 出大窗。
+                 */
+                if (gMscBootWatchArm) {
+                    gMscBootWatchPort = P;
+                }
 
                 Arc = AddressPort(P, Force, &Speed);
                 if (Arc < 0) {
@@ -202,6 +209,8 @@ int ClaimPorts(void) {
 
                 if (FinishClaim(P, Speed)) {
                     Ok = 1;
+                    gMscBootWatchPort = 0;
+                    gMscBootWatchArm = 0;
                     goto done;
                 }
             }
@@ -214,8 +223,15 @@ int ClaimPorts(void) {
     if (Sick) {
         BootLog("Boot: MSC claim abort (cmd sick)\n");
     }
+    if (!Ok && gMscBootWatchArm && gMscBootWatchPort != 0) {
+        BootLogHex("Boot: MSC boot-watch port=", gMscBootWatchPort, 2);
+    }
 
 done:
+    if (Ok) {
+        gMscBootWatchPort = 0;
+        gMscBootWatchArm = 0;
+    }
     /*
      * sick：Recover + 重武装 HID，保持 Dual MSI。
      * 勿 FallbackToPoll——切 POLL 后鼠标轮询极卡（U 盘启 Claim 失败常见）。

@@ -196,18 +196,42 @@ int SchedulerSetPriority(INT32 Pid, INT32 Priority) {
 UINT64 SchedulerResumeFrame(TASK *T) {
     UINT64 Frame = (UINT64)(UINTN)T->Frame;
     UINT64 Sp;
+    UINT64 Ip;
+    UINT8 *Lo;
+    UINT8 *Hi;
 
     if (Frame == 0) {
         return 0;
     }
     if (T->Started) {
+        /*
+         * 已跑过：Frame 须为冻结栈上的 live 帧。IP∈Stack 或 SP 越界 → 帧已砸。
+         * 勿 return 0（调用方可能已 ActivateTask）；停机留串口。
+         */
+        Ip = HalFrameGetInstructionPointer(T->Frame);
+        Sp = HalFrameGetStackPointer(T->Frame);
+        Lo = T->Stack;
+        Hi = T->Stack + sizeof(T->Stack);
+        if ((Ip >= (UINT64)(UINTN)Lo && Ip < (UINT64)(UINTN)Hi) ||
+            Sp < (UINT64)(UINTN)Lo || Sp > (UINT64)(UINTN)Hi) {
+            LogSmp("sched: corrupt resume frame task=");
+            LogSmp(T->Name);
+            LogSmp(" ip=");
+            LogSmpHex64(Ip);
+            LogSmp(" sp=");
+            LogSmpHex64(Sp);
+            LogSmp("\n");
+            for (;;) {
+                HalCpuPark();
+            }
+        }
         return Frame;
     }
     /* 首入 KernelEnter：StackPointer 须为 Create 栈顶；损坏则就地修复 */
     Sp = HalFrameGetStackPointer(T->Frame);
     if (Sp < 0x10000ULL) {
         UINT8 *Top = T->Stack + sizeof(T->Stack);
-        UINT64 Ip = HalFrameGetInstructionPointer(T->Frame);
+        Ip = HalFrameGetInstructionPointer(T->Frame);
 
         if (Ip == 0) {
             LogSmp("sched: bad StackPointer no ip\n");

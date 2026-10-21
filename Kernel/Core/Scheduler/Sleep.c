@@ -73,7 +73,7 @@ UINT64 SchedulerSleepMs(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms) {
 
     /*
      * 保持 RUNNING：标记 SleepWakeTick，OnTimer 未到期不抢占。
-     * sti+hlt 让节拍前进；timer 可能改写 Cur->Frame，返回前复原。
+     * sti+hlt 让节拍前进；不切走时 OnTimer 不再改 Frame 指针。
      */
     Self->Waiting = 0;
     Self->SleepWakeTick = Wake;
@@ -86,6 +86,5 @@ UINT64 SchedulerSleepMs(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms) {
     }
 
     Self->SleepWakeTick = 0;
-    Self->Frame = Frame;
     return 0;
 }

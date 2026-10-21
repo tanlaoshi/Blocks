@@ -119,7 +119,7 @@ char (*LocaleLive(int Index))[LOCALE_STR_MAX] {
     return gLocale[Index].Live;
 }
 
-/* Worker 补预热当前语言。开机同步扫过一遍；切语言后再排队。 */
+/* Worker 分片预热当前语言。开机只同步桌面关键文案，其余 Request。 */
 static UINT32 gTtfPreheatIdx;
 static int gTtfPreheatWant;
 
@@ -144,7 +144,39 @@ void LocaleTtfPreheatUi(void) {
     }
 }
 
-static void LocaleTtfPreheatRequest(void) {
+/* gui-ttf-preheat-defer：首屏 Start/图标标签同步栅，避免进桌面全点阵 */
+static void LocaleTtfPreheatCritical(void) {
+    static const MSG_ID Crit[] = {
+        MSG_START,
+        MSG_ICON_SHELL,
+        MSG_ICON_SETTINGS,
+        MSG_ICON_FILES,
+        MSG_ICON_STORE,
+        MSG_ICON_DEVICES,
+        MSG_ICON_APPS,
+        MSG_ICON_GAME,
+        MSG_ICON_SNAKE,
+        MSG_ICON_SHUTDOWN,
+        MSG_ICON_REBOOT,
+        MSG_MENU_EMPTY,
+    };
+    UINT32 i;
+    UINT32 BlobSize = 0;
+    char (*Strings)[LOCALE_STR_MAX] = CurrentStrings();
+
+    if (!FontTtfBlob(&BlobSize) || BlobSize < 12u) {
+        return;
+    }
+    for (i = 0; i < sizeof(Crit) / sizeof(Crit[0]); i++) {
+        UINT32 Id = (UINT32)Crit[i];
+
+        if (Id < (UINT32)MSG_COUNT) {
+            FontTtfPreheatUtf8(Strings[Id]);
+        }
+    }
+}
+
+void LocaleTtfPreheatRequest(void) {
     gTtfPreheatIdx = 0;
     gTtfPreheatWant = 1;
 }
@@ -183,8 +215,12 @@ void LocaleInitialize(void) {
     DebugWrite("locale: ");
     DebugWrite(gLocale[gLang].Code);
     DebugWrite("\n");
-    /* 开机同步预热中文目录（FontTtfInit 已完成）；求 UI 基本无点阵 */
-    LocaleTtfPreheatUi();
+    /*
+     * gui-ttf-preheat-defer：FT 已在 GuiInitialize。首屏只栅关键文案，
+     * 其余 Worker PreheatStep（Reveal 后），勿开机全量 MSG_COUNT。
+     */
+    LocaleTtfPreheatCritical();
+    LocaleTtfPreheatRequest();
 }
 
 void LocaleReload(void) {

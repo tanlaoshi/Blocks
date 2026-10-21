@@ -82,6 +82,36 @@ static void WantPush(UINT32 Cp) {
     gWant[gWantN++] = Cp;
 }
 
+void FontTtfCacheDropHits(void) {
+    UINT32 i;
+
+    for (i = 0; i < TTF_CACHE_N; i++) {
+        if (gSlot[i].State == TTF_HIT) {
+            gSlot[i].State = TTF_EMPTY;
+            gSlot[i].Cp = 0;
+            gSlot[i].Side = 0;
+            gSlot[i].Adv = 0;
+        }
+    }
+    gWantN = 0;
+    gPaintGen++;
+}
+
+void FontTtfCacheDropCjkHits(void) {
+    UINT32 i;
+
+    for (i = 0; i < TTF_CACHE_N; i++) {
+        if (gSlot[i].State == TTF_HIT && gSlot[i].Cp >= 128u) {
+            gSlot[i].State = TTF_EMPTY;
+            gSlot[i].Cp = 0;
+            gSlot[i].Side = 0;
+            gSlot[i].Adv = 0;
+        }
+    }
+    /* 不抬 Want 满；由绘制路径 CacheGet→WantPush 自然补 */
+    gPaintGen++;
+}
+
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     TTF_SLOT *S;
 

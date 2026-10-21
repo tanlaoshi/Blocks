@@ -331,6 +331,7 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
     T->StdoutSerialOnly = ProcessAppTakesWindow(Path) ? 1 : 0;
     /* 保留 Fds / ParentId / Id；映像已换 */
     HalFrameSetUserEntry(Frame, Info.Entry, NewRsp);
+    /* 本拍 syscall live 帧；切走前 PinLiveFrame 会再挂 */
     T->Frame = Frame;
     T->Started = 1; /* 经 sysret/iret 回到用户，非 HalUserEnter 首入 */
 

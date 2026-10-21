@@ -363,6 +363,18 @@ int FileSystemInitialize(void) {
         /* MSC claim 可能很长：先落到 79，口扫描里再 bump 到 91 */
         DesktopBootLogoSet(79);
         LogBoot("Fs: msc/2 boot-claim begin\n");
+        /*
+         * 启动盘尚无 BLOCKS（0）或旧 Boot 无 GUID（-1）且仍走 claim：
+         * Arm 盯口，claim 失败后拔棒靠 PORTSC.CCS → 大窗。
+         */
+        {
+            int BootHas = FsBootDiskHasBlocksId();
+
+            if (BootHas == 0 || BootHas < 0) {
+                HalUsbMscArmBootWatch(1);
+                LogBoot("Fs: msc boot-watch arm\n");
+            }
+        }
         MscRc = HalUsbMscAutoBeforeFs();
 
         if (MscRc == 0) {
@@ -435,13 +447,22 @@ void FileSystemEnsureSecondaryVolumes(void) {
         return;
     }
     LogFs("Fs: msc/3 secondary begin (desktop once)\n");
-    HotRc = HalUsbMscHot();
-    if (HotRc != 0) {
-        LogFs("Fs: msc/3 secondary hot rc=");
-        LogFsHex32((UINT32)HotRc);
-        LogFs(" (0=ok/already,1=empty,else fail)\n");
+    /*
+     * 已认领 MSC（U 盘起常见）：勿 HalUsbMscHot——其首句 Unfreeze，
+     * 会解开 port-enum 冻、再 Address 抢 xHCI，露光标后鼠死。
+     * 只 Remount 把旁路卷扫进表即可。
+     */
+    if (HalUsbMscReady()) {
+        LogFs("Fs: msc/3 secondary skip hot (msc ready)\n");
     } else {
-        LogFs("Fs: msc/3 secondary hot ok\n");
+        HotRc = HalUsbMscHot();
+        if (HotRc != 0) {
+            LogFs("Fs: msc/3 secondary hot rc=");
+            LogFsHex32((UINT32)HotRc);
+            LogFs(" (0=ok/already,1=empty,else fail)\n");
+        } else {
+            LogFs("Fs: msc/3 secondary hot ok\n");
+        }
     }
     (void)FileSystemRemountVolumes();
     gSecondaryReady = 1;

@@ -73,6 +73,10 @@ UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame) {
         return 0;
     }
 
+    /*
+     * 子任务尚无 live IRQ：把父帧拷到子栈顶红区（与历史 CreateUser 同形），
+     * 首调走普通 iretq，不经 UserEnter。
+     */
     Top = gTasks[Child].Stack + sizeof(gTasks[Child].Stack);
     CF = (HAL_INTERRUPT_FRAME *)(Top - sizeof(HAL_INTERRUPT_FRAME));
     HalFrameCopy(CF, Frame);
@@ -119,7 +123,7 @@ UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame) {
     gTaskCount++;
     /* 先不入队；松锁 EnsureTls 后再挂 */
     HalFrameSetReturn(Frame, (UINT64)(UINT32)(Child + 1));
-    Parent->Frame = Frame;
+    SchedulerPinLiveFrame(Parent, Frame);
     VirtualMemoryLoadPageTable(Parent->PageRoot);
     SpinLockRelease(&gSchedulerLock);
     (void)SchedulerThreadEnsureTls(&gTasks[Child]);

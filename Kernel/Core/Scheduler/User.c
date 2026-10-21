@@ -190,13 +190,13 @@ UINT64 SchedulerYield(HAL_INTERRUPT_FRAME *Frame) {
     if (Cur == 0) {
         return 0;
     }
-    Cur->Frame = Frame;
     Cpu = HalCpuGetId();
     /* PR-S-runq：yield 与 timer 同形，不持任务大锁 */
     Next = SchedulerOpsGet()->PickNext(Cpu);
     if (Next == Cur || Next == 0) {
         return 0;
     }
+    SchedulerPinLiveFrame(Cur, Frame);
     ActivateTask(Next);
     return SchedulerResumeFrame(Next);
 }

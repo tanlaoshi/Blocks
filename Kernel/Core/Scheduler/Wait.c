@@ -205,7 +205,7 @@ UINT64 SchedulerWait(HAL_INTERRUPT_FRAME *Frame) {
         return 0;
     }
 
-    Self->Frame = Frame;
+    SchedulerPinLiveFrame(Self, Frame);
     Self->Waiting = 1;
     Self->State = TASK_BLOCKED;
     Self->OnCpu = -1;

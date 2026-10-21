@@ -23,6 +23,9 @@
 
 /* Services：Release 前判启动盘；勿在 RemoveMsc 之后调（盘号 KIND 已清） */
 void FileSystemNotifyMscUnplug(void);
+void FileSystemNotifyBootWatchUnplug(void);
+void XhciMscArmBootWatch(int On);
+int XhciMscBootWatchCcsLost(UINT32 *OutPort);
 
 void BlockMscInstall(void); /* BlockMsc.c */
 
@@ -301,9 +304,59 @@ int UsbMscRelease(void) {
     return 0;
 }
 
-int UsbMscHotPoll(void) {
+/*
+ * 已认领 MSC 丢 Present → Notify+Release→1。
+ * 根口只读 PORTSC；hub 子口 HubGetPortStatus（EP0）——仍 5s 节流。
+ * Clock 在指针忙时也调本函数：失根大窗优先于空拖让路。
+ */
+void UsbMscArmBootWatch(int On) {
+    XhciMscArmBootWatch(On);
+}
+
+int UsbMscPollUnplug(void) {
     const MSC_HOST *H;
     int Present;
+    static UINT64 sPresentTick;
+    UINT64 Now;
+    UINT32 Tps;
+    UINT32 WatchPort;
+
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    if (sPresentTick != 0 && (Now - sPresentTick) < (UINT64)Tps * 5u) {
+        return 0;
+    }
+    sPresentTick = Now;
+
+    /*
+     * U 盘起 claim 失败：无 Ready，仍盯开机试过的口 CCS（只读 PORTSC）。
+     */
+    if (!UsbMscReady() && XhciMscBootWatchCcsLost(&WatchPort)) {
+        LogFs("Fs: msc/4 watch unplug port=");
+        LogFsHex32(WatchPort);
+        LogFs("\n");
+        FileSystemNotifyBootWatchUnplug();
+        return 1;
+    }
+
+    if (!UsbMscReady()) {
+        return 0;
+    }
+    H = CurHost();
+    Present = (H && H->Present) ? H->Present() : 0;
+    if (Present) {
+        return 0;
+    }
+    LogFs("Fs: msc/4 hot unplug\n");
+    FileSystemNotifyMscUnplug();
+    (void)UsbMscRelease();
+    return 1;
+}
+
+int UsbMscHotPoll(void) {
     int ScanN;
     int Claim;
     int Rc;
@@ -311,32 +364,12 @@ int UsbMscHotPoll(void) {
     UINT64 Now;
     UINT32 Tps;
 
-    /*
-     * 拔出探测：WorkerTick ~2Hz。hub 子口 Present→HubGetPortStatus（EP0），
-     * 与键鼠抢事件环 → 空拖约 1s 一顿、甩几下只闪不动。
-     * 已认领时 5s 才问一次仍在否；根口只读 PORTSC 也一并节流无害。
-     */
-    if (UsbMscReady()) {
-        static UINT64 sPresentTick;
-
-        Now = HalCpuTicks(0);
-        Tps = HalTicksPerSec();
-        if (Tps == 0) {
-            Tps = 250;
-        }
-        if (sPresentTick != 0 && (Now - sPresentTick) < (UINT64)Tps * 5u) {
-            return 0;
-        }
-        sPresentTick = Now;
-        H = CurHost();
-        Present = (H && H->Present) ? H->Present() : 0;
-        if (Present) {
-            return 0;
-        }
-        LogFs("Fs: msc/4 hot unplug\n");
-        FileSystemNotifyMscUnplug();
-        (void)UsbMscRelease();
+    /* 拔：与 PollUnplug 同路径（Clock 也可能已先调过） */
+    if (UsbMscPollUnplug() == 1) {
         return 1;
+    }
+    if (UsbMscReady()) {
+        return 0;
     }
 
     /* 热插：仅 Worker 调本函数；开机路径不进这里 */

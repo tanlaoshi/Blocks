@@ -44,7 +44,17 @@ typedef struct {
 } TASK_FD;
 
 typedef struct TASK {
-    UINT8                  Stack[8192] __attribute__((aligned(16)));
+    /*
+     * 首入帧（KernelEnter/UserEnter）在 Stack 之前，避免旧「栈顶软帧」被深
+     * C 栈砸烂。切走后 Frame 改挂本拍 live IRQ 帧（任务冻结期间栈不动）；
+     * 禁切/不切走时勿改 Frame（iret 后 live 槽会被盖 → #UD/#GP）。
+     */
+    HAL_INTERRUPT_FRAME    SavedFrame __attribute__((aligned(16)));
+    /*
+     * FreeType autofit（af_cjk_hints_apply）+ 中断帧远超 8K；曾栈溢出砸
+     * Frame → corrupt resume / #GP。32K 给 FT 岛 + IRQ 留余量。
+     */
+    UINT8                  Stack[32768] __attribute__((aligned(16)));
     HAL_INTERRUPT_FRAME             *Frame;
     TASK_STATE             State;
     UINT32                 Id;

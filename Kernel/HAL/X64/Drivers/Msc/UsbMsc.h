@@ -30,7 +30,12 @@ int UsbMscAutoBeforeFs(void);
 /* PR-H-msc-hot：卸 Mux + xHCI slot；成功 0 */
 int UsbMscRelease(void);
 /*
- * Worker ~2Hz：仅拔出→Release→1；不自动 Claim。
+ * 已认领且 Present=0 → Notify+Release→1（5s 节流）。指针忙也可调。
+ */
+int UsbMscPollUnplug(void);
+void UsbMscArmBootWatch(int On);
+/*
+ * Worker ~2Hz：拔（PollUnplug）或热插 Claim/Mount→1；不自动 Claim 旁路。
  * 调用方对 1 做 FileSystemRemountVolumes。挂盘：开机 Auto 或 UsbMscHot。
  */
 int UsbMscHotPoll(void);

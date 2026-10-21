@@ -79,6 +79,14 @@ int HalUsbMscRelease(void) {
     return 0;
 }
 
+int HalUsbMscPollUnplug(void) {
+    return 0;
+}
+
+void HalUsbMscArmBootWatch(int On) {
+    (void)On;
+}
+
 int HalUsbMscHotPoll(void) {
     return 0;
 }

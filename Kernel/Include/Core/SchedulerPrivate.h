@@ -41,6 +41,17 @@ INT32 TaskSlot(const TASK *T);
 void ActivateTask(TASK *T);
 UINT64 SchedulerResumeFrame(TASK *T);
 
+/*
+ * 切走/阻塞：挂上本拍 live 帧（在任务栈上，冻结期间有效）。
+ * 勿 HalFrameCopy 到 SavedFrame 再 mov rsp 过去——与历史 IsrCommon 语义不一致
+ * 曾致 #GP rip∈Stack rsp=垃圾。
+ */
+static inline void SchedulerPinLiveFrame(TASK *T, HAL_INTERRUPT_FRAME *Live) {
+    if (T && Live) {
+        T->Frame = Live;
+    }
+}
+
 /* PR-K-preempt-needresched：OnTimer 置位；CondResched 见 Scheduler.h */
 void SchedulerSetNeedResched(void);
 

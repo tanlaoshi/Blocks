@@ -201,6 +201,10 @@ int GuiInitialize(void) {
     (void)FontTtfLoad();
     (void)FontTtfInit();
     (void)FontTtfMonoInit();
+    /*
+     * FT 须在 Locale 预热前：否则开机 stb HIT 占槽，Worker 再 Init 也
+     * DropCjkHits 风暴 → 鼠死；不 Drop 则汉字永远旧 stb。
+     */
     (void)FontFtInit();
     PollInput();
     (void)ThemeLoad();

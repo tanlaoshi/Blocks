@@ -110,6 +110,14 @@ int HalUsbMscRelease(void) {
     return UsbMscRelease();
 }
 
+int HalUsbMscPollUnplug(void) {
+    return UsbMscPollUnplug();
+}
+
+void HalUsbMscArmBootWatch(int On) {
+    UsbMscArmBootWatch(On);
+}
+
 int HalUsbMscHotPoll(void) {
     return UsbMscHotPoll();
 }

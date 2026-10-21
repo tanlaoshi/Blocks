@@ -3,11 +3,11 @@
  *
  * ```
  * WorkerTask 圈首 DesktopWorkerTick ~2Hz
- *   → 指针忙则整段 return（空拖保鼠）
- *   → HalUsbMscHotPoll（拔检/热插 5s；freeze 不 Scan）
+ *   → HalUsbMscPollUnplug（指针忙也跑；失根大窗）
+ *   → 指针忙则 return（热插 Scan / CMOS 让路保鼠）
+ *   → HalUsbMscHotPoll（热插；拔已在 PollUnplug）
  *   → RTC/网托 ~5s（勿 2Hz CMOS：SMM 会令空拖规律顿）
- *   → BootMediumGone? 大窗 5s → HalCpuShutdown（不 Remount，勿扶旁路）
- *   → 否则 Remount → FilesUiRefresh
+ *   → BootMediumGone? 大窗 → HalCpuShutdown（不 Remount，勿扶旁路）
  * ```
  * 旁路 U 盘热拔：不关机。U 盘起拔启动盘：Gone → 提示后关机（usb-boot-unplug）。
  * 钟/网托→栏脏；Present 仍 DesktopTickClock（指针闲才画栏）。勿 Worker 上全量 Compose。
@@ -204,12 +204,14 @@ void DesktopBootMediumGoneShutdown(void) {
 void DesktopWorkerTick(void) {
     static UINT64 LastCheckTick;
     static UINT64 LastRtcNetTick;
+    static int sRemountWant;
     UINT64 Now;
     UINT32 Tps;
     UINT8 Hour = 0;
     UINT8 Minute = 0;
     int Ok;
     int NeedPaint;
+    int Hot;
 
     Now = HalCpuTicks(0);
     Tps = HalTicksPerSec();
@@ -222,19 +224,31 @@ void DesktopWorkerTick(void) {
     }
     LastCheckTick = Now;
 
+    /* 失根：指针忙也检（勿整段 return 漏大窗） */
+    if (HalUsbMscPollUnplug() == 1) {
+        if (FileSystemBootMediumGone()) {
+            LogFs("Fs: msc/4 halt (boot medium removed)\n");
+            DesktopBootMediumGoneShutdown();
+        }
+        /* Gone 未钉时才 Remount（旁路拔）；已 Gone 则上面不返回 */
+        sRemountWant = 1;
+    }
+
     /*
-     * 空拖优先：指针刚动过则整段让路（HotPoll Scan/HubGetPortStatus、CMOS/SMM、
+     * 空拖优先：指针刚动过则让路热插 Scan/HubGetPortStatus、CMOS/SMM、
      * 网托脏）。否则约 5s 一拍会让 Present cli 饿死 HID → 先顿再只闪不动。
      */
     if (!GuiPointerIdleForMs(400)) {
         return;
     }
 
-    /* story-s3 / msc-desktop-hotplug：拔或插成功 → Remount + Files */
-    if (HalUsbMscHotPoll() == 1) {
+    /* story-s3：热插；拔已在 PollUnplug。旁路拔 Remount 可挂 sRemountWant */
+    Hot = HalUsbMscHotPoll();
+    if (Hot == 1 || sRemountWant) {
+        sRemountWant = 0;
         /*
          * Notify 已在 Release 前钉 Gone。失根则勿 Remount（会 PickDefault 扶 NUC）。
-         * RAM 里画大窗 → 5s → 关机。
+         * RAM 里画大窗 → 关机。
          */
         if (FileSystemBootMediumGone()) {
             LogFs("Fs: msc/4 halt (boot medium removed)\n");

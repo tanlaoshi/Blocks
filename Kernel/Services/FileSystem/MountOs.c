@@ -514,3 +514,16 @@ void FsUpdateBootMediumState(void) {
 int FileSystemBootMediumGone(void) {
     return gBootMediumGone ? 1 : 0;
 }
+
+/*
+ * U 盘起 claim 失败后盯口 CCS 掉线。
+ * 仅 HalUsbMscArmBootWatch(1) 后才会走到这里——门闩已在 FS claim 前拉上，
+ * 勿再要求 BootDiskGuidOk/卷表（缺 GUID 时旧逻辑直接 return → 拔棒无大窗）。
+ */
+void FileSystemNotifyBootWatchUnplug(void) {
+    if (gBootMediumGone) {
+        return;
+    }
+    gBootMediumGone = 1;
+    LogFs("Fs: boot medium removed (watch port)\n");
+}

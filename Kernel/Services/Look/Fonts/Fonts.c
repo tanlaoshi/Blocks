@@ -595,8 +595,25 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         }
     }
     /*
-     * font-unified-ttf：可打印 ASCII 与汉字都先 TTF（同源 CJK.TTF）。
-     * 已 init 且尚未确认缺字时：等 Worker 栅格，勿立刻回落点阵。
+     * UI ASCII：Terminus 优先。UMing/FT 拉丁 + GlyphCrispAlpha8 会滤成空心框
+     *（已踩过；勿再「为看得见变化」强开）。
+     */
+    if (Cp >= 32u && Cp < 127u) {
+        F = FontGetCurrent();
+        G = FontGlyph((char)Cp);
+        if (G && F) {
+            if (OutW) {
+                *OutW = F->Width;
+            }
+            if (OutH) {
+                *OutH = F->Height;
+            }
+            gGlyphCpBpp = 1;
+            return G;
+        }
+    }
+    /*
+     * 汉字：TTF/FT 优先；已 init 且未确认缺字时等 Worker，勿立刻点阵。
      */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
@@ -604,29 +621,14 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         return G;
     }
 #if defined(__x86_64__)
-    if (FontTtfReady() && Cp >= 32u && Cp != 127u && !FontTtfCacheMissed(Cp)) {
+    if (FontTtfReady() && Cp >= 128u && !FontTtfCacheMissed(Cp) &&
+        !FileSystemBootMediumGone()) {
         if (FontTtfCachePending(Cp)) {
             gGlyphDefer = 1;
         }
         return 0;
     }
 #endif
-    /* 拉丁软退 Terminus；汉字再 File/cjk32 */
-    if (Cp >= 32 && Cp < 127) {
-        F = FontGetCurrent();
-        G = FontGlyph((char)Cp);
-        if (!G || !F) {
-            return 0;
-        }
-        if (OutW) {
-            *OutW = F->Width;
-        }
-        if (OutH) {
-            *OutH = F->Height;
-        }
-        gGlyphCpBpp = 1;
-        return G;
-    }
     G = FileGlyph(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 1;
@@ -707,19 +709,20 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
             return Adv;
         }
     }
+    /* 与 GlyphCp 一致：UI ASCII 用 Terminus 步进 */
+    if (Cp >= 32u && Cp < 127u) {
+        Adv = FontAdvanceX();
+        if (Adv != 0u) {
+            return Adv;
+        }
+    }
     Adv = FontTtfCacheAdvance(Cp);
     if (Adv != 0u) {
         return Adv;
     }
     if (!FontGlyphCp(Cp, &W, &H)) {
-        if (Cp < 128u) {
-            return FontAdvanceX();
-        }
         W = FontCjkDim();
         H = W;
-    }
-    if (Cp < 128u && FontGlyphCpBpp() == 1u) {
-        return FontAdvanceX();
     }
     FontGlyphBox(W, H, &W, &H);
     return W;

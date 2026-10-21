@@ -4,6 +4,7 @@
  * 其余内核 TU 仍 -mgeneral-regs-only。本文件不用 XMM。
  */
 #include "Hal.h"
+#include "HalDriverSched.h"
 
 #define CR0_EM       (1ULL << 2)
 #define CR0_MP       (1ULL << 1)
@@ -77,6 +78,11 @@ int HalFpuBegin(void) {
         return 0;
     }
     Cpu = CpuIndex();
+    /*
+     * FT autofit 栈深；岛内若被 timer 切走，活帧落在深栈上，溢出即砸
+     * 邻任务 Frame → corrupt resume。禁切至 End（与 ComposeBusy 同形）。
+     */
+    HalDriverPreemptDisable();
     Flags = HalIrqSave();
     if (gDepth[Cpu] == 0) {
         __asm__ volatile ("fxsave %0" : "=m"(gFx[Cpu]) : : "memory");
@@ -104,6 +110,7 @@ void HalFpuEnd(void) {
         }
     }
     HalIrqRestore(Flags);
+    HalDriverPreemptEnable();
 }
 
 int HalFpuOk(void) {

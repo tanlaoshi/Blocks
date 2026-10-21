@@ -54,19 +54,12 @@ int SchedulerCreate(const char *Name, void (*Entry)(void)) {
         }
         UINT8 *Top = gTasks[i].Stack + sizeof(gTasks[i].Stack);
         /*
-         * rm-exc-10：X64 KernelEnter 后 RSP=Top-8；首 IRQ 帧占 [Top-184, Top-8)。
-         * 5l Create@Top-176 与之重叠（且 F->Ss≡Top-8 被伪返回清零）→ remove 期
-         * #GP@IsrCommon iretq（err 垃圾选择子）。伪返回槽 + 整帧红区 + Create 在下。
-         * 勿只挪 8（刀 8 ❌）；CreateUser/fork 仍 Top-sizeof（走 UserEnter/已 Started）。
+         * 首入帧在 Stack 前 SavedFrame（非栈顶软帧）。KernelEnter 后 RSP=Top-8；
+         * 首 IRQ 占 [Top-184, Top-8)。切走后 Frame 改挂 live。
          */
-        {
-            UINT8 *IrqCeil = Top - 8;
-            UINT8 *IrqFloor = IrqCeil - sizeof(HAL_INTERRUPT_FRAME);
-            HAL_INTERRUPT_FRAME *F =
-                (HAL_INTERRUPT_FRAME *)(IrqFloor - sizeof(HAL_INTERRUPT_FRAME));
-            HalFrameSetKernelEntry(F, (UINT64)(UINTN)Use, (UINT64)(UINTN)Top);
-            gTasks[i].Frame = F;
-        }
+        HalFrameSetKernelEntry(&gTasks[i].SavedFrame, (UINT64)(UINTN)Use,
+                               (UINT64)(UINTN)Top);
+        gTasks[i].Frame = &gTasks[i].SavedFrame;
         gTasks[i].State = TASK_READY;
         gTasks[i].Ticks = 0;
         gTasks[i].PageRoot = VirtualMemoryKernelRoot();
@@ -130,10 +123,9 @@ int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoo
             continue;
         }
         UINT8 *Top = gTasks[i].Stack + sizeof(gTasks[i].Stack);
-        HAL_INTERRUPT_FRAME *F = (HAL_INTERRUPT_FRAME *)(Top - sizeof(HAL_INTERRUPT_FRAME));
-        HalFrameSetUserEntry(F, Rip, Rsp);
-
-        gTasks[i].Frame = F;
+        (void)Top;
+        HalFrameSetUserEntry(&gTasks[i].SavedFrame, Rip, Rsp);
+        gTasks[i].Frame = &gTasks[i].SavedFrame;
         gTasks[i].State = TASK_READY;
         gTasks[i].Ticks = 0;
         gTasks[i].PageRoot = PageRoot;

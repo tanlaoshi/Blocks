@@ -199,9 +199,11 @@ int LocaleSetCode(const char *Code);
 const char *LocStr(MSG_ID Id);
 /* 语言变更后刷新桌面图标与窗标题（调用方负责重绘） */
 void LocaleApplyUi(void);
-/* PR-UI-ttf-3：Worker 每圈最多 1 条 zh 文案；1=仍忙，0=空闲 */
+/* PR-UI-ttf-3：Worker 每圈最多 1 条文案；1=仍忙，0=空闲 */
 int LocaleTtfPreheatStep(void);
-/* 开机 / 开 Settings：同步预热全部中文目录（HIT 则跳过） */
+/* 排队分片预热当前语言目录（FT 升级后可再 Request） */
+void LocaleTtfPreheatRequest(void);
+/* 开 Settings / Reload：同步预热全部目录（HIT 则跳过） */
 void LocaleTtfPreheatUi(void);
 /* Worker：刷落 LocaleSet 时 batch 的 lang= */
 int LocaleDbFlushStep(void);

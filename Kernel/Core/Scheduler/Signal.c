@@ -114,7 +114,7 @@ int DeliverKillLocked(TASK *T, INT32 Sig, int *ShowPrompt,
                 return -1;
             }
             if (T == CurrentTask() && LiveFrame) {
-                T->Frame = LiveFrame;
+                SchedulerPinLiveFrame(T, LiveFrame);
             }
         }
         return 0;
@@ -149,7 +149,10 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
     if (Cur == 0) {
         return 0;
     }
-    Cur->Frame = Frame;
+    /*
+     * 切走才 PinLiveFrame；禁切/不切走勿挂 live（iret 后槽被盖 → #UD/#GP）。
+     * 首入用 Stack 前 SavedFrame，免深 Compose 砸栈顶软帧。
+     */
     Cur->Ticks++;
 
     /* 原地 sleep：未到期不抢占；并唤醒已 BLOCKED 的 sleep 者（若有） */
@@ -178,7 +181,6 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
                 SpinLockRelease(&gSchedulerLock);
             } else {
                 Cur->PendingKill = 0;
-                Cur->Frame = Frame;
                 SpinLockRelease(&gSchedulerLock);
                 return 0;
             }
@@ -192,6 +194,7 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
                     HalCpuPark();
                 }
             }
+            SchedulerPinLiveFrame(Cur, Frame);
             ActivateTask(Next);
             Ret = SchedulerResumeFrame(Next);
             SpinLockRelease(&gSchedulerLock);
@@ -221,6 +224,7 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
             return 0;
         }
     }
+    SchedulerPinLiveFrame(Cur, Frame);
     ActivateTask(Next);
     return SchedulerResumeFrame(Next);
 }

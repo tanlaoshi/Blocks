@@ -100,17 +100,15 @@ void SchedulerApStart(void) {
         }
     }
     /*
-     * SmpBoot 在进本函数前已 sti。若此处仍 IF=1：OnTimer 会把 Idle->Frame
-     * 改成 IRQ 栈帧，随后 HalSchedulerEnter 读到 SP=0 → #PF cr2=-8。
-     * 首入前 cli，并用本地 Frame*（勿在解锁后再读 Idle->Frame）。
+     * SmpBoot 在进本函数前已 sti。首入前 cli；Frame 须为 SavedFrame（栈外），
+     * 勿指 IRQ 栈槽（见 OnTimer Capture / 历史 SP=0 #PF）。
      */
     HalIrqDisable();
     Frame = Idle->Frame;
-    if (!Frame || HalFrameGetStackPointer(Frame) < 0x10000ULL) {
+    if (!Frame || Frame != &Idle->SavedFrame ||
+        HalFrameGetStackPointer(Frame) < 0x10000ULL) {
         UINT8 *Top = Idle->Stack + sizeof(Idle->Stack);
-        UINT8 *IrqCeil = Top - 8;
-        UINT8 *IrqFloor = IrqCeil - sizeof(HAL_INTERRUPT_FRAME);
-        Frame = (HAL_INTERRUPT_FRAME *)(IrqFloor - sizeof(HAL_INTERRUPT_FRAME));
+        Frame = &Idle->SavedFrame;
         HalFrameSetKernelEntry(Frame, (UINT64)(UINTN)IdleTask,
                                (UINT64)(UINTN)Top);
         Idle->Frame = Frame;

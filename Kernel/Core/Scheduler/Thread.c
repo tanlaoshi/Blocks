@@ -223,10 +223,11 @@ int SchedulerCreateThread(TASK *Leader, const char *Name, UINT64 Rip, UINT64 Arg
     }
 
     Top = gTasks[Slot].Stack + sizeof(gTasks[Slot].Stack);
-    F = (HAL_INTERRUPT_FRAME *)(Top - sizeof(HAL_INTERRUPT_FRAME));
+    F = &gTasks[Slot].SavedFrame;
     HalFrameSetUserEntry(F, Rip, StackTop);
     HalFrameSetArgument0(F, Arg0);
     HalFrameSetArgument1(F, Arg1);
+    (void)Top;
 
     gTasks[Slot].Frame = F;
     gTasks[Slot].State = TASK_READY;

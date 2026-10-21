@@ -219,7 +219,11 @@ extern UINT32 gMscBulkOutDci;
 extern UINT16 gMscBulkInMps;
 extern UINT16 gMscBulkOutMps;
 extern int gMscClaimed;
+extern UINT32 gMscBootWatchPort;
+extern int gMscBootWatchArm;
 extern volatile UINT32 gMscBotBusy; /* 1：MscBot 进行中；HotPoll 勿 HubCtrl */
+void XhciMscArmBootWatch(int On);
+int XhciMscBootWatchCcsLost(UINT32 *OutPort);
 extern UINT32 gMscBlockCount;
 extern UINT32 gMscBlockSize;
 extern int gMscCapacityOk;

@@ -32,7 +32,7 @@ mkdir -p ThirdParty/freetype
 tar -xzf /tmp/ft.tar.gz -C ThirdParty/freetype --strip-components=1
 ```
 
-无上游树时 X64 仍可编通（`FontFt*` 桩，栅格软退 stb）。有树则链 TT + smooth + psnames（hook）；`autofit` 留给 hint 刀。`ftsystem` arena ≤256K（防 Boot BSS 装不下）。
+无上游树时 X64 仍可编通（`FontFt*` 桩，栅格软退 stb）。有树则链 TT + smooth + psnames + autofit。`ftsystem` arena ≤256K（防 Boot BSS 装不下）。
 
 移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`Netif.c`、`Ping.c`、`TcpEcho.c`、`UdpQueue.c`、`TcpClient.c`、`TcpSocket.c`）。
 

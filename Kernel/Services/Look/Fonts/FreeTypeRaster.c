@@ -1,6 +1,6 @@
 /*
- * FreeTypeRaster.c — font-freetype-hook：FPU 岛内 FT 栅格；失败由调用方软退 stb。
- * hint 刀再拧 FT_LOAD_*；本刀默认 DEFAULT（可走字形自带 TT hint）。
+ * FreeTypeRaster.c — FreeType 栅格（hook + hint）。
+ * font-freetype-hint：FT_LOAD_FORCE_AUTOHINT；失败由调用方软退 stb。
  */
 #include "Font.h"
 #include "Hal.h"
@@ -113,8 +113,19 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     HalFpuEnd();
     return -1;
   }
-  /* hook：DEFAULT；hint 刀再 FORCE_AUTOHINT / 拧 flags */
-  Err = FT_Load_Char(Face, (FT_ULong)Cp, FT_LOAD_RENDER);
+  /*
+   * font-freetype-hint：
+   * - 汉字（UMing）：FORCE_AUTOHINT，桌面已验更锐
+   * - mono（DejaVu）：走 native TT hint；强行 autohint 观感几乎无差
+   */
+  {
+    int Flags = FT_LOAD_RENDER;
+
+    if (!Mono) {
+      Flags |= FT_LOAD_FORCE_AUTOHINT;
+    }
+    Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
+  }
   if (Err) {
     HalFpuEnd();
     return -1;

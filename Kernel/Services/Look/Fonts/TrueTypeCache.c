@@ -273,7 +273,7 @@ static UINT8 gMonoHit[MONO_N];
 static UINT32 gMonoSide;
 static UINT32 gMonoCellW;
 /* 基线布局算法变更时递增，逼缓存失效 */
-static UINT32 gMonoLayout = 3u;
+static UINT32 gMonoLayout = 4u;
 static UINT32 gMonoCachedLayout;
 
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {

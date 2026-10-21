@@ -2,41 +2,10 @@
  * Nav.c — Files 路径/卷侧栏/预览
  *
  * 侧栏按 FileSystem 已挂载卷动态生成；BLOCKS 置顶。
+ * SecondaryReady=0：只展 OsDisk（ROOT.CFG 启动卷所在盘）。
  */
 #include "FilesUiPrivate.h"
 #include "Fat.h"
-
-static void AppendDriveTag(char *Label, int Max, UINT32 Drive) {
-    int n = 0;
-    char Dig[4];
-    int Dn = 0;
-    UINT32 V;
-
-    if (Max <= 0 || !Label) {
-        return;
-    }
-    while (Label[n]) {
-        n++;
-    }
-    if (n + 4 >= Max) {
-        return;
-    }
-    Label[n++] = ' ';
-    Label[n++] = 'd';
-    V = Drive;
-    if (V == 0) {
-        Dig[Dn++] = '0';
-    } else {
-        while (V > 0 && Dn < (int)sizeof(Dig)) {
-            Dig[Dn++] = (char)('0' + (V % 10));
-            V /= 10;
-        }
-    }
-    while (Dn > 0 && n < Max - 1) {
-        Label[n++] = Dig[--Dn];
-    }
-    Label[n] = 0;
-}
 
 static int NameIsBlocks(const char *Name) {
     return Name && (Name[0] == 'B' || Name[0] == 'b') &&
@@ -53,24 +22,12 @@ static int NameIsRes(const char *Name) {
            (Name[2] == 'S' || Name[2] == 's') && Name[3] == 0;
 }
 
-static int NameIsEsp(const char *Name) {
-    return Name && (Name[0] == 'E' || Name[0] == 'e') &&
-           (Name[1] == 'S' || Name[1] == 's') &&
-           (Name[2] == 'P' || Name[2] == 'p');
-}
-
 void RebuildPlaces(void) {
     int N;
     int i;
     int j;
     int PlaceN = 0;
-    int MarkDrive = 0;
-    int BlocksVol = -1;
-    int EspVol = -1;
-    UINT32 BlocksDrive = 0;
-    UINT32 EspDrive = 0;
     char Names[FS_MAX_VOLUMES][FS_VOL_NAME_MAX];
-    UINT32 Drives[FS_MAX_VOLUMES];
     char Letters[FS_MAX_VOLUMES];
     int Order[FS_MAX_VOLUMES];
     int VolN = 0;
@@ -85,36 +42,16 @@ void RebuildPlaces(void) {
         UINT32 Drive = 0;
         int Ro = 0;
 
+        if (!FileSystemSecondaryVolsReady() && !FileSystemVolOnOsDisk(i)) {
+            continue;
+        }
         Names[VolN][0] = 0;
         if (FileSystemVolInfo(i, Names[VolN], FS_VOL_NAME_MAX, &Drive, 0, &Ro) != 0) {
             continue;
         }
-        Drives[VolN] = Drive;
         Letters[VolN] = (char)('A' + i);
         Order[VolN] = VolN;
-        if (NameIsBlocks(Names[VolN])) {
-            BlocksVol = VolN;
-            BlocksDrive = Drive;
-        }
-        if (EspVol < 0 && NameIsEsp(Names[VolN])) {
-            EspVol = VolN;
-            EspDrive = Drive;
-        }
         VolN++;
-    }
-
-    /* ESP 与 BLOCKS 不在同一盘 → 侧栏标 dN */
-    if (BlocksVol >= 0 && EspVol >= 0 && BlocksDrive != EspDrive &&
-        BlocksDrive != 0xFFFFFFFEu && EspDrive != 0xFFFFFFFEu) {
-        MarkDrive = 1;
-    }
-    for (i = 0; i < VolN && !MarkDrive; i++) {
-        for (j = i + 1; j < VolN; j++) {
-            if (FilesUiStrEqIgnoreCase(Names[i], Names[j])) {
-                MarkDrive = 1;
-                break;
-            }
-        }
     }
 
     /* 排序：BLOCKS 置顶，RES 垫底，其余保持挂载序 */
@@ -150,7 +87,10 @@ void RebuildPlaces(void) {
                 break;
             }
         }
-        /* 名唯一 → BLOCKS: / ESP:；撞名 → A: 等字母前缀 */
+        /*
+         * 标签可同名（两份 BLOCKS:）；撞名时路径用字母 A:（Resolve 唯一）。
+         * 区分靠 Preview 里的 DiskGUID，侧栏不加 dN。
+         */
         if (NameUnique && Names[V][0]) {
             for (k = 0; Names[V][k] && k < FILES_PLACE_PATH_MAX - 2; k++) {
                 gPlacePaths[PlaceN][k] = Names[V][k];
@@ -163,13 +103,17 @@ void RebuildPlaces(void) {
             gPlacePaths[PlaceN][2] = 0;
         }
 
-        /* 标签带冒号，与旧书签 BLOCKS: 观感一致 */
-        for (k = 0; gPlacePaths[PlaceN][k] && k < FILES_PLACE_LABEL_MAX - 1; k++) {
-            gPlaceLabels[PlaceN][k] = gPlacePaths[PlaceN][k];
-        }
-        gPlaceLabels[PlaceN][k] = 0;
-        if (MarkDrive && Drives[V] != 0xFFFFFFFEu) {
-            AppendDriveTag(gPlaceLabels[PlaceN], FILES_PLACE_LABEL_MAX, Drives[V]);
+        if (Names[V][0]) {
+            for (k = 0; Names[V][k] && k < FILES_PLACE_LABEL_MAX - 2; k++) {
+                gPlaceLabels[PlaceN][k] = Names[V][k];
+            }
+            gPlaceLabels[PlaceN][k++] = ':';
+            gPlaceLabels[PlaceN][k] = 0;
+        } else {
+            for (k = 0; gPlacePaths[PlaceN][k] && k < FILES_PLACE_LABEL_MAX - 1; k++) {
+                gPlaceLabels[PlaceN][k] = gPlacePaths[PlaceN][k];
+            }
+            gPlaceLabels[PlaceN][k] = 0;
         }
 
         gPlaces[PlaceN].Label = gPlaceLabels[PlaceN];

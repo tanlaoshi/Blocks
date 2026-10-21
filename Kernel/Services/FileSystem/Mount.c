@@ -17,7 +17,7 @@
 
 /*
  * 扫描所有 Block 盘，挂上每个盘上的全部 FAT 分区；
- * 含 BLOCKS.ID 的命名为 BLOCKS（默认）；GPT ESP 只读且可名 ESP。
+ * 含 BLOCKS.ID 的皆名 BLOCKS；默认卷跟 OsTarget（ROOT.CFG / BootDiskGuid）。
  */
 int MountAllVolumes(void) {
     UINT32 d;
@@ -30,6 +30,8 @@ int MountAllVolumes(void) {
     gActiveOps = 0;
     gActiveDrive = 0xFFFFFFFFu;
     gActiveLba = 0xFFFFFFFFu;
+    gOsVolIdx = -1;
+    gOsDiskOk = 0;
 
     for (d = 0; d < BLOCK_MAX_DRIVES && gVolCount < FS_MAX_VOLUMES; d++) {
         GPT_FAT_PART Parts[GPT_MAX_FAT_PARTS];
@@ -53,7 +55,11 @@ int MountAllVolumes(void) {
     if (gVolCount <= 0) {
         return 0;
     }
+    FsResolveOsTarget(&BlocksVol);
     FsMountPickDefault(BlocksVol, Tmp, sizeof(Tmp));
+    if (gOsVolIdx >= 0 && gOsVolIdx < gVolCount) {
+        gDefaultVol = gOsVolIdx;
+    }
     if (FileSystemActivate(gDefaultVol) != FAT_OK) {
         return 0;
     }

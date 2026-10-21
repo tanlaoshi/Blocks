@@ -97,6 +97,8 @@ const char *const gEnFallback[MSG_COUNT] = {
     "n mkdir  f newfile  r rename",
     "Esc = back to list",
     "Preview",
+    "Boot volume",
+    "Boot disk",
     "(none)",
     "[Directory]",
     "Enter to open",

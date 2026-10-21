@@ -37,8 +37,10 @@ static int LbaLooksLikeFat(UINT32 Lba) {
     return IsFatBootSector();
 }
 
-static int AddPart(GPT_FAT_PART *Out, int Max, int Count, UINT32 Lba, int IsEsp) {
+static int AddPart(GPT_FAT_PART *Out, int Max, int Count, UINT32 Lba, int IsEsp,
+                   const UINT8 *PartGuid) {
     int i;
+    int g;
 
     if (Count >= Max || !Out) {
         return Count;
@@ -48,11 +50,24 @@ static int AddPart(GPT_FAT_PART *Out, int Max, int Count, UINT32 Lba, int IsEsp)
             if (IsEsp) {
                 Out[i].IsEsp = 1;
             }
+            if (PartGuid && !Out[i].PartGuidOk) {
+                for (g = 0; g < 16; g++) {
+                    Out[i].PartGuid[g] = PartGuid[g];
+                }
+                Out[i].PartGuidOk = 1;
+            }
             return Count;
         }
     }
     Out[Count].StartLba = Lba;
     Out[Count].IsEsp = IsEsp ? 1 : 0;
+    Out[Count].PartGuidOk = 0;
+    if (PartGuid) {
+        for (g = 0; g < 16; g++) {
+            Out[Count].PartGuid[g] = PartGuid[g];
+        }
+        Out[Count].PartGuidOk = 1;
+    }
     return Count + 1;
 }
 
@@ -82,7 +97,7 @@ static int MbrCollectFat(GPT_FAT_PART *Out, int Max, int *InOutCount) {
             int IsEsp = (Type == 0xEF) ? 1 : 0;
             Start = (UINT32)P[8] | ((UINT32)P[9] << 8) |
                     ((UINT32)P[10] << 16) | ((UINT32)P[11] << 24);
-            *InOutCount = AddPart(Out, Max, *InOutCount, Start, IsEsp);
+            *InOutCount = AddPart(Out, Max, *InOutCount, Start, IsEsp, 0);
         }
     }
     return SawGpt ? 2 : (*InOutCount > 0 ? 1 : 0);
@@ -161,7 +176,9 @@ static int GptCollectFat(GPT_FAT_PART *Out, int Max, int *InOutCount) {
                     continue;
                 }
             }
-            *InOutCount = AddPart(Out, Max, *InOutCount, (UINT32)First, IsEsp);
+            /* Unique partition GUID at entry+16 */
+            *InOutCount = AddPart(Out, Max, *InOutCount, (UINT32)First, IsEsp,
+                                  Entry + 16);
         }
     }
     return *InOutCount > 0 ? 1 : 0;
@@ -187,6 +204,109 @@ int GptCurrentDiskGuid(UINT8 Out[16]) {
     return 1;
 }
 
+void GptFormatGuidUuid(const UINT8 Bin[16], char Out[37]) {
+    static const char Hex[] = "0123456789abcdef";
+    UINT32 D1;
+    UINT16 D2;
+    UINT16 D3;
+    int i = 0;
+
+    if (!Bin || !Out) {
+        return;
+    }
+    D1 = (UINT32)Bin[0] | ((UINT32)Bin[1] << 8) | ((UINT32)Bin[2] << 16) |
+         ((UINT32)Bin[3] << 24);
+    D2 = (UINT16)((UINT16)Bin[4] | ((UINT16)Bin[5] << 8));
+    D3 = (UINT16)((UINT16)Bin[6] | ((UINT16)Bin[7] << 8));
+    Out[i++] = Hex[(D1 >> 28) & 0xF];
+    Out[i++] = Hex[(D1 >> 24) & 0xF];
+    Out[i++] = Hex[(D1 >> 20) & 0xF];
+    Out[i++] = Hex[(D1 >> 16) & 0xF];
+    Out[i++] = Hex[(D1 >> 12) & 0xF];
+    Out[i++] = Hex[(D1 >> 8) & 0xF];
+    Out[i++] = Hex[(D1 >> 4) & 0xF];
+    Out[i++] = Hex[D1 & 0xF];
+    Out[i++] = '-';
+    Out[i++] = Hex[(D2 >> 12) & 0xF];
+    Out[i++] = Hex[(D2 >> 8) & 0xF];
+    Out[i++] = Hex[(D2 >> 4) & 0xF];
+    Out[i++] = Hex[D2 & 0xF];
+    Out[i++] = '-';
+    Out[i++] = Hex[(D3 >> 12) & 0xF];
+    Out[i++] = Hex[(D3 >> 8) & 0xF];
+    Out[i++] = Hex[(D3 >> 4) & 0xF];
+    Out[i++] = Hex[D3 & 0xF];
+    Out[i++] = '-';
+    Out[i++] = Hex[(Bin[8] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[8] & 0xF];
+    Out[i++] = Hex[(Bin[9] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[9] & 0xF];
+    Out[i++] = '-';
+    Out[i++] = Hex[(Bin[10] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[10] & 0xF];
+    Out[i++] = Hex[(Bin[11] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[11] & 0xF];
+    Out[i++] = Hex[(Bin[12] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[12] & 0xF];
+    Out[i++] = Hex[(Bin[13] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[13] & 0xF];
+    Out[i++] = Hex[(Bin[14] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[14] & 0xF];
+    Out[i++] = Hex[(Bin[15] >> 4) & 0xF];
+    Out[i++] = Hex[Bin[15] & 0xF];
+    Out[i] = 0;
+}
+
+static int HexNibble(char C) {
+    if (C >= '0' && C <= '9') {
+        return C - '0';
+    }
+    if (C >= 'a' && C <= 'f') {
+        return C - 'a' + 10;
+    }
+    if (C >= 'A' && C <= 'F') {
+        return C - 'A' + 10;
+    }
+    return -1;
+}
+
+int GptParseUuidStr(const char *Str, UINT8 Out[16]) {
+    /* 8-4-4-4-12 with mixed-endian first three fields */
+    static const int Pos[16] = {
+        0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34
+    };
+    static const int OutI[16] = {
+        3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15
+    };
+    int i;
+
+    if (!Str || !Out) {
+        return 0;
+    }
+    for (i = 0; i < 36; i++) {
+        if (i == 8 || i == 13 || i == 18 || i == 23) {
+            if (Str[i] != '-') {
+                return 0;
+            }
+        } else if (HexNibble(Str[i]) < 0) {
+            return 0;
+        }
+    }
+    if (Str[36] != 0 && Str[36] != '\n' && Str[36] != '\r' && Str[36] != ' ') {
+        return 0;
+    }
+    for (i = 0; i < 16; i++) {
+        int Hi = HexNibble(Str[Pos[i]]);
+        int Lo = HexNibble(Str[Pos[i] + 1]);
+
+        if (Hi < 0 || Lo < 0) {
+            return 0;
+        }
+        Out[OutI[i]] = (UINT8)((Hi << 4) | Lo);
+    }
+    return 1;
+}
+
 int GptFindAllFat(GPT_FAT_PART *Out, int Max) {
     int Count = 0;
     int Mbr;
@@ -198,7 +318,7 @@ int GptFindAllFat(GPT_FAT_PART *Out, int Max) {
         return 0;
     }
     if (IsFatBootSector()) {
-        return AddPart(Out, Max, 0, 0, 0);
+        return AddPart(Out, Max, 0, 0, 0, 0);
     }
     Mbr = MbrCollectFat(Out, Max, &Count);
     if (Mbr == 2) {

@@ -165,6 +165,10 @@ void DesktopEnsureMenuRebuilt(void) {
     gDesktopBusy = 0;
 }
 
+int DesktopIconsLoaded(void) {
+    return sDesktopIconsReady ? 1 : 0;
+}
+
 void DesktopEnsureIconsLoaded(void) {
     if (sDesktopIconsReady || gDesktopBusy) {
         return;

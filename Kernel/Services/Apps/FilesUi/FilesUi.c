@@ -4,12 +4,13 @@
  * 列表：进目录 / 开 ELF / 预览文本
  * 写：d/Del 删除（Y/N 确认）；n 新建目录；f 新建空文件；r 重命名
  * U1：左栏固定宽 + 右栏列表
- * U2：侧栏按已挂载卷列出（BLOCKS 置顶）；跨盘标 drive
+ * U2：侧栏按已挂载卷列出（BLOCKS 置顶；同名靠 Preview DiskGUID）
  * 开窗一次填满客户区后再淡入（勿空框 Present）
  * U3：右栏再分 列表 | 预览；空态/焦点行与 G12 一致
  * PR-S-filesui-split-1：Paint* → Paint.c；本文件为全局宿主。
  */
 #include "FilesUiPrivate.h"
+#include "FileSystem.h"
 
 char gCwd[FILES_PATH_MAX];
 FAT_DIRECTORY_ENTRY gEnts[FAT_LIST_MAX];
@@ -60,6 +61,9 @@ UINT32 gPrevX;
 UINT32 gPrevW;
 
 PREV_KIND gPrevKind;
+char gVolDiskGuid[40];
+int gVolIsBoot;
+int gVolOnBootDisk;
 
 UINT64 FilesClock(void) {
     return HalCpuTicks(0);
@@ -188,25 +192,50 @@ int PathEqIgnoreCase(const char *A, const char *B) {
 
 void FilesUiOpen(void) {
     int i;
-    int ToyPlace = -1;
+    int Prefer = -1;
+    char DefLetter;
+    int DefVol;
 
     /*
      * 开窗一次填满：侧栏 + 目录 List 都在淡入前完成，避免空框闪一下再刷内容。
-     * 侧栏 BLOCKS 置顶；开窗优先进 BLOCKS:。
+     * 侧栏 BLOCKS 置顶；开窗进默认卷（BootDiskGuid 那份 BLOCKS）。
      */
     RebuildPlaces();
     gCwd[0] = 0;
+    DefVol = FileSystemDefaultVol();
+    DefLetter = (char)('A' + DefVol);
     for (i = 0; i < gPlaceCount; i++) {
         const char *P = gPlaces[i].Path;
-        if (P && (P[0] == 'T' || P[0] == 't') && (P[1] == 'O' || P[1] == 'o') &&
-            (P[2] == 'Y' || P[2] == 'y') && (P[3] == 'O' || P[3] == 'o') &&
-            (P[4] == 'S' || P[4] == 's') && P[5] == ':') {
-            ToyPlace = i;
-            break;
+        if (!P || !P[0]) {
+            continue;
+        }
+        /* 路径 BLOCKS: 或撞名时的 A: —— 字母对上默认卷 */
+        if (P[1] == ':' && P[2] == 0 &&
+            ((P[0] >= 'A' && P[0] <= 'Z') || (P[0] >= 'a' && P[0] <= 'z'))) {
+            char L = P[0];
+            if (L >= 'a') {
+                L = (char)(L - 'a' + 'A');
+            }
+            if (L == DefLetter) {
+                Prefer = i;
+                break;
+            }
         }
     }
-    if (ToyPlace >= 0) {
-        StringCopy(gCwd, sizeof(gCwd), gPlaces[ToyPlace].Path);
+    if (Prefer < 0) {
+        for (i = 0; i < gPlaceCount; i++) {
+            const char *P = gPlaces[i].Path;
+            if (P && (P[0] == 'B' || P[0] == 'b') && (P[1] == 'L' || P[1] == 'l') &&
+                (P[2] == 'O' || P[2] == 'o') && (P[3] == 'C' || P[3] == 'c') &&
+                (P[4] == 'K' || P[4] == 'k') && (P[5] == 'S' || P[5] == 's') &&
+                P[6] == ':') {
+                Prefer = i;
+                break;
+            }
+        }
+    }
+    if (Prefer >= 0) {
+        StringCopy(gCwd, sizeof(gCwd), gPlaces[Prefer].Path);
         SetStatus("");
     } else if (gPlaceCount > 0 && gPlaces[0].Path) {
         StringCopy(gCwd, sizeof(gCwd), gPlaces[0].Path);

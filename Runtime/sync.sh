@@ -23,11 +23,18 @@ if [ ! -f "$KERNEL_ELF" ]; then
     exit 1
 fi
 
+mkdir -p "$RUNTIME/Esp/X64/EFI/Blocks"
 cp -f "$BOOT_EFI" "$RUNTIME/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 cp -f "$KERNEL_ELF" "$RUNTIME/RootFs/X64/Kernel.elf"
 
 if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
     printf 'Blocks root volume\n' > "$RUNTIME/RootFs/X64/BLOCKS.ID"
+fi
+
+# boot-root-cfg：目录树无 GPT GUID 时跳过（QEMU fat:rw 靠档 2/3）
+WRITE_ROOT="$BLOCKS/Kernel/OpenBox/Scripts/lib/write-root-cfg.sh"
+if [ -x "$WRITE_ROOT" ]; then
+    "$WRITE_ROOT" "$RUNTIME/Esp/X64/EFI/Blocks" "$RUNTIME/RootFs/X64" 2>/dev/null || true
 fi
 
 # TTF：缺则从种子补进 Assets/Fonts（内核只读这个路径）

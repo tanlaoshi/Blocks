@@ -1,7 +1,8 @@
 /*
  * MountVolume.c — 单 FAT 分区挂载 + RES（story-s3 / PR-F-fs-1）
  *
- * MountAllVolumes 每分区落到这里；编排在 Mount.c。BLOCKS.ID / BootDiskGuid 命名。
+ * MountAllVolumes 每分区落到这里；编排在 Mount.c。
+ * BLOCKS.ID → 名 BLOCKS；ESP 皆名 ESP（同名靠 DiskGUID / 启动盘标记）。
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"
@@ -72,27 +73,9 @@ int FsBootDiskHasBlocksId(void) {
 }
 
 static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
-    int EspN = 0;
-    int j;
-
-    for (j = 0; j < BeforeCount; j++) {
-        if (j == SkipIdx) {
-            continue;
-        }
-        if (gVols[j].Name[0] == 'E' && gVols[j].Name[1] == 'S' &&
-            gVols[j].Name[2] == 'P') {
-            EspN++;
-        }
-    }
-    if (EspN == 0) {
-        StringCopy(V->Name, FS_VOL_NAME_MAX, "ESP");
-    } else {
-        V->Name[0] = 'E';
-        V->Name[1] = 'S';
-        V->Name[2] = 'P';
-        V->Name[3] = (char)('0' + (EspN + 1 > 9 ? 9 : EspN + 1));
-        V->Name[4] = 0;
-    }
+    (void)BeforeCount;
+    (void)SkipIdx;
+    StringCopy(V->Name, FS_VOL_NAME_MAX, "ESP");
     V->ReadOnly = 1;
 }
 
@@ -100,41 +83,30 @@ static void NameBlocksIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *BlocksVol)
     int Msc = BlockDriveIsMsc(Drive);
     int Take = 0;
     int NewMatch;
-    int OldMatch = 0;
 
     V->HasBlocksId = 1;
     /*
-     * 多份带 BLOCKS.ID 的卷：默认名 BLOCKS 跟加载 EFI 的那块盘（BootDiskGuid），
-     * 分辨率和设置写回同一处。旧 Boot 无 GUID 时仍偏内置盘；另一份改名 USB:。
+     * 分区名保留 BLOCKS（与 GPT 名 / 卷身份一致）；多份并存不改名 USB。
+     * 默认卷用 BootDiskGuid（DiskGUID）区分；旧 Boot 无 GUID 时偏内置盘。
+     * Files 侧栏撞名时靠盘号 dN / 字母路径区分。
      */
+    StringCopy(V->Name, FS_VOL_NAME_MAX, "BLOCKS");
     NewMatch = CacheBootDiskMatch(Drive);
-    if (*BlocksVol >= 0 && gVols[*BlocksVol].Drive < BOOT_GUID_CACHE &&
-        sDriveGuidOk[gVols[*BlocksVol].Drive] == 1) {
-        const BOOT_INFO *Info = BootInfoGet();
-        OldMatch = Info && Info->BootDiskGuidOk &&
-                   GuidEq16(sDriveGuid[gVols[*BlocksVol].Drive], Info->BootDiskGuid);
-    }
     if (*BlocksVol < 0) {
         Take = 1;
-    } else if (NewMatch == 1 && !OldMatch) {
-        StringCopy(gVols[*BlocksVol].Name, FS_VOL_NAME_MAX, "USB");
+    } else if (NewMatch == 1) {
         Take = 1;
-        LogFs("Fs: Prefer Boot Disk BLOCKS\n");
-    } else if (NewMatch == 0 && OldMatch) {
-        StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
-        LogFs("Fs: Other BLOCKS Kept As USB:\n");
-    } else if (NewMatch < 0 && !Msc && BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
-        StringCopy(gVols[*BlocksVol].Name, FS_VOL_NAME_MAX, "USB");
+        LogFs("Fs: Default BLOCKS = Boot Disk\n");
+    } else if (NewMatch == 0) {
+        LogFs("Fs: Other Disk Also BLOCKS\n");
+    } else if (!Msc && BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
         Take = 1;
-        LogFs("Fs: Prefer Internal BLOCKS Over USB\n");
-    } else if (NewMatch < 0 && Msc && !BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
-        StringCopy(V->Name, FS_VOL_NAME_MAX, "USB");
-        LogFs("Fs: USB BLOCKS Kept As USB:\n");
-    } else {
-        Take = 1;
+        LogFs("Fs: Prefer Internal BLOCKS As Default\n");
+    } else if (Msc && !BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
+        LogFs("Fs: USB BLOCKS Not Default\n");
     }
+    /* 其余歧义：保留先挂上的为默认 */
     if (Take) {
-        StringCopy(V->Name, FS_VOL_NAME_MAX, "BLOCKS");
         *BlocksVol = Idx;
     }
 }
@@ -205,9 +177,37 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = IsEsp ? 1 : 0;
     V->HasBlocksId = 0;
+    V->DiskGuidOk = 0;
+    V->PartGuidOk = 0;
     V->Ops = FatFsOps();
     V->Name[0] = V->Letter;
     V->Name[1] = 0;
+    /* 缓存盘/分区 GUID（Block 已 Select）；供 ROOT.CFG / Files */
+    if (Drive < BOOT_GUID_CACHE) {
+        if (sDriveGuidOk[Drive] == 0) {
+            if (GptCurrentDiskGuid(sDriveGuid[Drive])) {
+                sDriveGuidOk[Drive] = 1;
+            } else {
+                sDriveGuidOk[Drive] = 2;
+            }
+        }
+        if (sDriveGuidOk[Drive] == 1) {
+            int g;
+            for (g = 0; g < 16; g++) {
+                V->DiskGuid[g] = sDriveGuid[Drive][g];
+            }
+            V->DiskGuidOk = 1;
+        }
+    } else if (GptCurrentDiskGuid(V->DiskGuid)) {
+        V->DiskGuidOk = 1;
+    }
+    if (Part->PartGuidOk) {
+        int g;
+        for (g = 0; g < 16; g++) {
+            V->PartGuid[g] = Part->PartGuid[g];
+        }
+        V->PartGuidOk = 1;
+    }
 
     if (HasId) {
         NameBlocksIdVol(V, Drive, Idx, BlocksVol);
@@ -248,6 +248,8 @@ void FsMountAddResVolume(void) {
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = 1;
     V->HasBlocksId = 0;
+    V->DiskGuidOk = 0;
+    V->PartGuidOk = 0;
     V->Ops = ResourceFileSystemOps();
     StringCopy(V->Name, FS_VOL_NAME_MAX, "RES");
     if (gVirtualFileSystem.Select(V->Ops) == 0 && gVirtualFileSystem.Mount(0) == FAT_OK) {

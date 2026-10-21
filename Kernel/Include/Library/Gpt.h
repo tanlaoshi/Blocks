@@ -13,6 +13,8 @@
 typedef struct {
     UINT32 StartLba;
     int    IsEsp; /* GPT EFI System Partition */
+    UINT8  PartGuid[16]; /* GPT Unique partition GUID；PartGuidOk=0 则无（MBR） */
+    int    PartGuidOk;
 } GPT_FAT_PART;
 
 /* 找当前 Block 盘上的 FAT 起始 LBA；成功非 0 */
@@ -32,6 +34,11 @@ int GptFindAllFat(GPT_FAT_PART *Out, int Max);
 
 /* 当前 Block 盘的 GPT Disk GUID（LBA1+56）。成功非 0。 */
 int GptCurrentDiskGuid(UINT8 Out[16]);
+
+/* EFI_GUID 混端 → 小写 UUID 串（37 字节含 NUL；与 lsblk PTUUID 一致） */
+void GptFormatGuidUuid(const UINT8 Bin[16], char Out[37]);
+/* 小写/大写 UUID 串 → 混端 16 字节；成功非 0 */
+int GptParseUuidStr(const char *Str, UINT8 Out[16]);
 
 /*
  * PR-FS-inst-1：在当前 Block 盘写入 protective MBR + GPT（ESP + BLOCKS）。

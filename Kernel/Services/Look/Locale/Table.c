@@ -97,6 +97,8 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_FILES_HINT2",
     "MSG_FILES_ESC_BACK",
     "MSG_FILES_PREVIEW",
+    "MSG_FILES_BOOT_VOL",
+    "MSG_FILES_BOOT_DISK",
     "MSG_FILES_NONE",
     "MSG_FILES_DIR",
     "MSG_FILES_ENTER_OPEN",

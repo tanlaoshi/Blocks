@@ -83,81 +83,101 @@ int ClaimPorts(void) {
         goto done;
     }
 
-    for (P = 1; P <= gMaxPorts && P <= 32u && !Sick; P++) {
-        UINT32 Ps;
-        UINT8 Speed;
-        int Force;
-        int HubRc;
-        int Arc;
+    /*
+     * Pass0：软 Address（冷启动 U 盘常驻 PED，先 Force 易挂）。
+     * Pass1：仅扫 Pass0 记入 NeedForce 的口再 Force——U 盘启动后固件留下的
+     * PED 口软 Address 常失败，旧逻辑本轮不回头 → claim none → Files 无 U 盘。
+     */
+    {
+        int Pass;
 
-        Ps = ReadMmio32(gOperationalBase + PortReg(P));
-        if (!(Ps & PORTSC_CCS)) {
-            continue;
-        }
-        HalBootLogoBump(90);
-        if (gSlotId != 0 && P == gPort1) {
-            continue;
-        }
-        if (gMouseSlotId != 0 && P == gMousePort) {
-            continue;
-        }
-        if (gHubSlotId != 0 && P == gHubRootPort) {
-            continue;
-        }
-        if (gFtdiClaimed && gFtdiPort == P) {
-            continue;
-        }
-        if (gCdcClaimed && gCdcPort == P) {
-            continue;
-        }
-
-        /*
-         * 已 PED：软 Address；未 PED / NeedForce：Force。
-         * 真机跳过根口 FS/LS（几乎不是 MSC；软 Address 超时易 sick→鼠卡）。
-         */
-        if (!ForceUntilPed(P, &Force)) {
-            continue;
-        }
-        if (Force == 0 && !HalCpuIsHypervisor()) {
-            Speed = PortSpeed(Ps);
-            if (Speed > 0 && Speed < 3) {
-                continue;
+        for (Pass = 0; Pass < 2 && !Ok && !Sick; Pass++) {
+            if (Pass == 1) {
+                if (gPortNeedForcePr == 0) {
+                    break;
+                }
+                BootLog("Boot: MSC claim NeedForce pass\n");
             }
-        }
+            for (P = 1; P <= gMaxPorts && P <= 32u && !Sick; P++) {
+                UINT32 Ps;
+                UINT8 Speed;
+                int Force;
+                int HubRc;
+                int Arc;
 
-        Arc = AddressPort(P, Force, &Speed);
-        if (Arc < 0) {
-            Sick = 1;
-            break;
-        }
-        if (Arc == 0) {
-            continue;
-        }
+                if (Pass == 1 && !(gPortNeedForcePr & (1u << P))) {
+                    continue;
+                }
+                Ps = ReadMmio32(gOperationalBase + PortReg(P));
+                if (!(Ps & PORTSC_CCS)) {
+                    continue;
+                }
+                HalBootLogoBump(90);
+                if (gSlotId != 0 && P == gPort1) {
+                    continue;
+                }
+                if (gMouseSlotId != 0 && P == gMousePort) {
+                    continue;
+                }
+                if (gHubSlotId != 0 && P == gHubRootPort) {
+                    continue;
+                }
+                if (gFtdiClaimed && gFtdiPort == P) {
+                    continue;
+                }
+                if (gCdcClaimed && gCdcPort == P) {
+                    continue;
+                }
 
-        gXferSlot = gMscScanSlot;
-        if (GetDeviceDesc() < 0) {
-            BootLogHex("Boot: MSC claim desc fail port=", P, 2);
-            gPortNeedForcePr |= (1u << P);
-            DisableSlot(gMscScanSlot);
-            gMscScanSlot = 0;
-            continue;
-        }
+                /*
+                 * 已 PED：软 Address；未 PED / NeedForce：Force。
+                 * 真机跳过根口 FS/LS（几乎不是 MSC；软 Address 超时易 sick→鼠卡）。
+                 */
+                if (!ForceUntilPed(P, &Force)) {
+                    continue;
+                }
+                if (Force == 0 && !HalCpuIsHypervisor()) {
+                    Speed = PortSpeed(Ps);
+                    if (Speed > 0 && Speed < 3) {
+                        continue;
+                    }
+                }
 
-        HubRc = TryHubOnRoot(P, Speed, &Ok);
-        if (HubRc == 1) {
-            goto done;
-        }
-        if (HubRc == 0) {
-            if (gXhciCmdSick) {
-                Sick = 1;
-                break;
+                Arc = AddressPort(P, Force, &Speed);
+                if (Arc < 0) {
+                    Sick = 1;
+                    break;
+                }
+                if (Arc == 0) {
+                    continue;
+                }
+
+                gXferSlot = gMscScanSlot;
+                if (GetDeviceDesc() < 0) {
+                    BootLogHex("Boot: MSC claim desc fail port=", P, 2);
+                    gPortNeedForcePr |= (1u << P);
+                    DisableSlot(gMscScanSlot);
+                    gMscScanSlot = 0;
+                    continue;
+                }
+
+                HubRc = TryHubOnRoot(P, Speed, &Ok);
+                if (HubRc == 1) {
+                    goto done;
+                }
+                if (HubRc == 0) {
+                    if (gXhciCmdSick) {
+                        Sick = 1;
+                        break;
+                    }
+                    continue;
+                }
+
+                if (FinishClaim(P, Speed)) {
+                    Ok = 1;
+                    goto done;
+                }
             }
-            continue;
-        }
-
-        if (FinishClaim(P, Speed)) {
-            Ok = 1;
-            goto done;
         }
     }
 

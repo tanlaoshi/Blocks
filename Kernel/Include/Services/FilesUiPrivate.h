@@ -112,6 +112,12 @@ extern UINT32 gSideLineH;
 extern UINT32 gPrevX;
 extern UINT32 gPrevW;
 extern PREV_KIND gPrevKind;
+/* 当前 cwd 卷的 DiskGUID 串（空=无）；Preview 展示 */
+extern char gVolDiskGuid[40];
+/* 1 = 当前卷即默认启动卷（OsTarget BLOCKS） */
+extern int gVolIsBoot;
+/* 1 = 当前卷在 OsDisk 上（含同盘 ESP；非默认时标「启动盘」） */
+extern int gVolOnBootDisk;
 
 /* ===== 工具（FilesUi.c） ===== */
 UINT64 FilesClock(void);

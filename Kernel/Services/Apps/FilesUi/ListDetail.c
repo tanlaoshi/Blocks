@@ -32,9 +32,55 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
     DrawLine(Px + 10, Py, LocStr(MSG_FILES_PREVIEW), ThemeText());
     DrawLine(Px + 10, Py + LineH, gViewTitle[0] ? gViewTitle : LocStr(MSG_FILES_NONE),
              ThemeTextMuted());
+    /* 同名卷：启动卷/启动盘 + DiskGUID（两行，避免撑破预览栏） */
+    {
+        UINT32 MetaY = Py + LineH * 2;
+        UINT32 GuidMaxCols;
+        UINT32 Adv;
+
+        if (gVolIsBoot) {
+            DrawLine(Px + 10, MetaY, LocStr(MSG_FILES_BOOT_VOL), ThemeTextAccent());
+            MetaY += LineH;
+        } else if (gVolOnBootDisk) {
+            DrawLine(Px + 10, MetaY, LocStr(MSG_FILES_BOOT_DISK), ThemeTextAccent());
+            MetaY += LineH;
+        }
+        if (gVolDiskGuid[0]) {
+            char Line1[40];
+            char Line2[40];
+            int n = 0;
+            const char *P = gVolDiskGuid;
+
+            Adv = FontAdvanceX() ? FontAdvanceX() : 8u;
+            GuidMaxCols = (Pw > 24u) ? (Pw - 20u) / Adv : 16u;
+            if (GuidMaxCols < 8u) {
+                GuidMaxCols = 8u;
+            }
+            if (GuidMaxCols > sizeof(Line1) - 1) {
+                GuidMaxCols = sizeof(Line1) - 1;
+            }
+            DrawLine(Px + 10, MetaY, "disk", ThemeTextMuted());
+            MetaY += LineH;
+            while (*P && n < (int)GuidMaxCols) {
+                Line1[n++] = *P++;
+            }
+            Line1[n] = 0;
+            DrawLine(Px + 10, MetaY, Line1, ThemeTextMuted());
+            MetaY += LineH;
+            if (*P) {
+                n = 0;
+                while (*P && n < (int)sizeof(Line2) - 1) {
+                    Line2[n++] = *P++;
+                }
+                Line2[n] = 0;
+                DrawLine(Px + 10, MetaY, Line2, ThemeTextMuted());
+                MetaY += LineH;
+            }
+        }
+        InnerY = MetaY + 8;
+    }
 
     InnerX = Px + 8;
-    InnerY = Py + LineH * 2 + 8;
     InnerW = Pw > 16 ? Pw - 16 : Pw;
     InnerH = (Y + H > InnerY + 8) ? (Y + H - InnerY - 8) : 0;
 

@@ -130,40 +130,28 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
     }
 
     /*
-     * 双盘布局：必须先读带 BLOCKS.ID 的系统盘（disk1/rootfs），避免启动盘旧
-     * Kernel.elf 抢先加载。Pass0=BLOCKS；Pass1=其它非启动卷；Pass2=启动卷兜底。
+     * boot-root-cfg：Pass0=ROOT.CFG；1=同盘+BLOCKS.ID；2=它盘+ID；3=启动卷兜底。
+     * 与 Theme 共用 BootOsVolForPass，避免误载它盘旧 Kernel。
      */
-    for (Pass = 0; Pass < 3; Pass++) {
+    for (Pass = 0; Pass < 4; Pass++) {
         for (i = 0; i < HandleCount; i++) {
-            BOOLEAN IsBoot = (Handles[i] == LoadedImage->DeviceHandle);
-            BOOLEAN IsOsVol;
-
             Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
                                          (VOID **)&Fs);
             if (EFI_ERROR(Status)) {
                 continue;
             }
-            IsOsVol = FsHasOsMarker(Fs);
-            if (Pass == 0) {
-                if (!IsOsVol) {
-                    continue;
-                }
-            } else if (Pass == 1) {
-                if (IsBoot) {
-                    continue;
-                }
-            } else {
-                if (!IsBoot) {
-                    continue;
-                }
+            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
+                continue;
             }
 
             Status = OpenKernelOnFs(Fs, OutBuffer, OutSize);
             if (!EFI_ERROR(Status)) {
                 if (Pass == 0) {
-                    BootDbg("Boot: Kernel.elf From BLOCKS Volume\n");
+                    BootDbg("Boot: Kernel.elf From ROOT.CFG\n");
                 } else if (Pass == 1) {
-                    BootDbg("Boot: Kernel.elf From Secondary Volume\n");
+                    BootDbg("Boot: Kernel.elf From Same-Disk BLOCKS\n");
+                } else if (Pass == 2) {
+                    BootDbg("Boot: Kernel.elf From Other-Disk BLOCKS\n");
                 } else {
                     BootDbg("Boot: Kernel.elf From Boot Volume\n");
                 }

@@ -97,6 +97,8 @@ const char *const gZhFallback[MSG_COUNT] = {
     "n 建目录  f 新文件  r 重命名",
     "Esc = 返回列表",
     "预览",
+    "启动卷",
+    "启动盘",
     "（无）",
     "[目录]",
     "Enter 打开",

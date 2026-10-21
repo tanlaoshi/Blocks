@@ -201,29 +201,16 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
     }
 
     /*
-     * Pass0: 和本 EFI 同一块盘上的 BLOCKS（U 盘启动读 U 盘，本机启动读本机）。
-     * Pass1: 其它盘上的 BLOCKS（QEMU 的系统盘不在 ESP 那块盘上）。
-     * Pass2: 其余卷。
+     * boot-root-cfg：与 ReadKernel 同序（ROOT.CFG → 同盘 ID → 它盘 ID → 启动卷）。
      */
-    for (Pass = 0; Pass < 3; Pass++) {
+    for (Pass = 0; Pass < 4; Pass++) {
         for (i = 0; i < HandleCount; i++) {
-            BOOLEAN SameDisk;
-
             Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
                                          (VOID **)&Fs);
             if (EFI_ERROR(Status)) {
                 continue;
             }
-            SameDisk = BootSamePhysicalDisk(LoadedImage->DeviceHandle, Handles[i]);
-            if (Pass == 0) {
-                if (!FsHasOsMarker(Fs) || !SameDisk) {
-                    continue;
-                }
-            } else if (Pass == 1) {
-                if (!FsHasOsMarker(Fs) || SameDisk) {
-                    continue;
-                }
-            } else if (FsHasOsMarker(Fs)) {
+            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
                 continue;
             }
             if (TryParseModeOnFs(Fs, OutW, OutH)) {
@@ -236,12 +223,6 @@ BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
     if (Handles != NULL) {
         gBS->FreePool(Handles);
     }
-
-    /* 单盘布局：启动卷即系统卷 */
-    Status = gBS->HandleProtocol(LoadedImage->DeviceHandle,
-                                 &gEfiSimpleFileSystemProtocolGuid, (VOID **)&Fs);
-    if (!EFI_ERROR(Status) && TryParseModeOnFs(Fs, OutW, OutH)) {
-        return TRUE;
-    }
+    (void)LoadedImage;
     return FALSE;
 }

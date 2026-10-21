@@ -18,6 +18,10 @@ typedef struct {
     char   Letter;                /* 'A'+index，便于 A: 访问 */
     int    ReadOnly;
     int    HasBlocksId;
+    UINT8  DiskGuid[16];          /* 所在盘 GPT DiskGUID；DiskGuidOk=0 则无 */
+    int    DiskGuidOk;
+    UINT8  PartGuid[16];          /* GPT 分区 Unique GUID */
+    int    PartGuidOk;
     const FS_OPS *Ops;            /* PR-F3：每卷后端（fat / res） */
 } FS_VOLUME;
 
@@ -29,6 +33,12 @@ extern UINT32 gActiveDrive;
 extern UINT32 gActiveLba;
 extern const FS_OPS *gActiveOps;
 
+/* fs-msc-defer：OsTarget / SecondaryReady（MountOs.c） */
+extern int gSecondaryReady;
+extern int gOsVolIdx;
+extern UINT8 gOsDiskGuid[16];
+extern int gOsDiskOk;
+
 int MountAllVolumes(void);
 int FileSystemPathBlocked(const char *Path);
 
@@ -38,6 +48,9 @@ void FsMountAddResVolume(void);
 void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
 /* 1=启动盘已有 BLOCKS.ID；0=启动盘尚无；-1=旧 Boot 无 GUID */
 int FsBootDiskHasBlocksId(void);
+void FsResolveOsTarget(int *BlocksVol);
+int FsOsVolumeMounted(void);
+int FsVolOnOsDisk(int Idx);
 
 /* Path.c 已有全局 StrEqIgnoreCase，这里不能再导出。 */
 static inline int StrEqIgnoreCase(const char *A, const char *B) {

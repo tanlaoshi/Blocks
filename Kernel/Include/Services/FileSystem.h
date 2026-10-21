@@ -29,6 +29,14 @@ int FileSystemDefaultVol(void);
 /* Name 如 "BLOCKS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
 int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
                       UINT32 *StartLba, int *ReadOnly);
+/* 卷所在盘 GPT DiskGUID（混端 UUID 串，Buf 建议 ≥37）；无则 -1 */
+int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax);
+/* fs-msc-defer：旁路卷已就绪；0 时 Files 只展 OsDisk */
+int FileSystemSecondaryVolsReady(void);
+/* 1=该卷在 OsTarget 所在盘（无 OsDisk 时恒 1） */
+int FileSystemVolOnOsDisk(int Idx);
+/* 桌面后慢认旁路 MSC；一次生效 */
+void FileSystemEnsureSecondaryVolumes(void);
 /* PR-F3：后端名 fat / res */
 int FileSystemVolBackend(int Idx, const char **OutName);
 

@@ -8,8 +8,6 @@
 
 static void RenameEspIfLetterOnly(int i) {
     int NeedEspName = 0;
-    int EspN = 0;
-    int j;
 
     gVols[i].ReadOnly = 1;
     if (!(gVols[i].Name[0] && gVols[i].Name[1])) {
@@ -20,21 +18,8 @@ static void RenameEspIfLetterOnly(int i) {
     if (!NeedEspName) {
         return;
     }
-    for (j = 0; j < i; j++) {
-        if (gVols[j].Name[0] == 'E' && gVols[j].Name[1] == 'S' &&
-            gVols[j].Name[2] == 'P') {
-            EspN++;
-        }
-    }
-    if (EspN == 0) {
-        StringCopy(gVols[i].Name, FS_VOL_NAME_MAX, "ESP");
-    } else {
-        gVols[i].Name[0] = 'E';
-        gVols[i].Name[1] = 'S';
-        gVols[i].Name[2] = 'P';
-        gVols[i].Name[3] = (char)('0' + (EspN + 1 > 9 ? 9 : EspN + 1));
-        gVols[i].Name[4] = 0;
-    }
+    /* 与 BLOCKS 一样：多份同名 ESP，不编号 */
+    StringCopy(gVols[i].Name, FS_VOL_NAME_MAX, "ESP");
 }
 
 static void PickWithBlocksId(int BlocksVol) {

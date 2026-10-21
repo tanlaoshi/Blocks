@@ -359,7 +359,7 @@ fi
 
 if [[ "$SKIP_ESP" -eq 0 && "$SINGLE_FAT" -eq 0 ]]; then
   echo "== sync ESP (Boot) =="
-  mkdir -p "$ESP_MNT/EFI/BOOT"
+  mkdir -p "$ESP_MNT/EFI/BOOT" "$ESP_MNT/EFI/Blocks"
   cp -f "$BOOT_EFI" "$ESP_MNT/EFI/BOOT/BOOTX64.EFI"
   sync
 fi
@@ -389,7 +389,7 @@ sync_blocks_fw "$BLOCKS_MNT"
 
 if [[ "$SINGLE_FAT" -eq 1 ]]; then
   # 仅单分区盘：启动与系统同卷，EFI 只能放 BLOCKS
-  mkdir -p "$BLOCKS_MNT/EFI/BOOT"
+  mkdir -p "$BLOCKS_MNT/EFI/BOOT" "$BLOCKS_MNT/EFI/Blocks"
   cp -f "$BOOT_EFI" "$BLOCKS_MNT/EFI/BOOT/BOOTX64.EFI"
 elif [[ "$SKIP_ESP" -eq 0 && -d "$BLOCKS_MNT/EFI" ]]; then
   # 双分区且这次写过 ESP：清掉 BLOCKS 上误放的 EFI（UEFI 不读它）
@@ -400,6 +400,14 @@ fi
 # 确保识别文件存在
 if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
   printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
+fi
+
+# boot-root-cfg：ESP（或单 FAT）写 ROOT.CFG 指向本 BLOCKS 分区
+if [[ "$SINGLE_FAT" -eq 1 ]]; then
+  "$SCRIPT_DIR/write-root-cfg.sh" "$BLOCKS_MNT/EFI/Blocks" "$BLOCKS_MNT" || true
+elif [[ "$SKIP_ESP" -eq 0 && -n "${ESP_MNT:-}" ]]; then
+  mkdir -p "$ESP_MNT/EFI/Blocks"
+  "$SCRIPT_DIR/write-root-cfg.sh" "$ESP_MNT/EFI/Blocks" "$BLOCKS_MNT" || true
 fi
 
 sync

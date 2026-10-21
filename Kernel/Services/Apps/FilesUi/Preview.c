@@ -5,6 +5,27 @@
 #include "FilesUiPrivate.h"
 #include "Fat.h"
 
+static void RefreshVolDiskGuid(void) {
+    int Vol = -1;
+    const char *Rel = 0;
+
+    gVolDiskGuid[0] = 0;
+    gVolIsBoot = 0;
+    gVolOnBootDisk = 0;
+    if (FileSystemResolve(gCwd[0] ? gCwd : "", &Vol, &Rel) != FAT_OK) {
+        return;
+    }
+    if (Vol == FileSystemDefaultVol()) {
+        gVolIsBoot = 1;
+    }
+    if (FileSystemVolOnOsDisk(Vol)) {
+        gVolOnBootDisk = 1;
+    }
+    if (FileSystemVolDiskGuidStr(Vol, gVolDiskGuid, (int)sizeof(gVolDiskGuid)) != 0) {
+        gVolDiskGuid[0] = 0;
+    }
+}
+
 void GotoPath(const char *Path) {
     StringCopy(gCwd, sizeof(gCwd), Path ? Path : "");
     gMode = FILES_MODE_LIST;
@@ -50,16 +71,18 @@ int ReloadListEx(int WantPlaces, int WantPreview) {
         gPrevKind = PREV_EMPTY;
         gViewLen = 0;
         gViewTitle[0] = 0;
+        RefreshVolDiskGuid();
         return Err;
     }
     SyncSideSel();
     if (WantPreview) {
         UpdatePreview();
     } else {
-        /* 开窗：目录/ELF 元数据即可，跳过读盘预览 */
+        /* 开窗：目录/ELF 元数据即可，跳过读文件；仍填 DiskGUID */
         gViewLen = 0;
         gViewTitle[0] = 0;
         gPrevKind = PREV_EMPTY;
+        RefreshVolDiskGuid();
         if (gCount > 0 && gSelected >= 0 && gSelected < gCount) {
             FAT_DIRECTORY_ENTRY *E = &gEnts[gSelected];
             StringCopy(gViewTitle, sizeof(gViewTitle), E->Name);
@@ -102,6 +125,7 @@ void UpdatePreview(void) {
     gViewLen = 0;
     gViewTitle[0] = 0;
     gPrevKind = PREV_NONE;
+    RefreshVolDiskGuid();
 
     if (gCount <= 0 || gSelected < 0 || gSelected >= gCount) {
         gPrevKind = PREV_EMPTY;

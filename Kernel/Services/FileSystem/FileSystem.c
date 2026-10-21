@@ -4,13 +4,13 @@
  * 稳态 S3：开机挂卷在此；拔出 Remount 在 Mount.c（Worker→HotPoll 仅拔出）。
  * 桌面不自动 Claim；晚插 U 盘用 Shell `msc hot`。路径：Operations.c；挂卷：Mount*。
  *
- * 开机（判定序 fs-msc-order）：
- *   1. HalBlockInitialize → MountAllVolumes
+ * 开机（fs-msc-defer）：
+ *   1. HalBlockInitialize → MountAllVolumes（读 ROOT.CFG → OsTarget）
  *   2. MscAutoApplyPolicy：MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
- *   3–4. MscAutoResolveClaim：仅启动盘已有 BLOCKS 才 Skip
- *   5. HalUsbMscAutoBeforeFs → 再挂；启动盘仍无 BLOCKS 最多再一轮
+ *   3–4. Os 卷已挂则 skip MSC；否则 claim
+ *   5. 桌面后 FileSystemEnsureSecondaryVolumes → SecondaryReady
  *
- * 多份 BLOCKS.ID：默认 BLOCKS 跟 BootDiskGuid；另一份可名 USB:。
+ * 多份 BLOCKS.ID：皆名 BLOCKS；默认卷跟 OsTarget（ROOT.CFG 可跨盘）。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
  */
 #include "FileSystemPrivate.h"
@@ -171,6 +171,20 @@ int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
     return 0;
 }
 
+int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax) {
+    char Uuid[37];
+
+    if (Idx < 0 || Idx >= gVolCount || !Buf || BufMax < 37) {
+        return -1;
+    }
+    if (!gVols[Idx].DiskGuidOk) {
+        return -1;
+    }
+    GptFormatGuidUuid(gVols[Idx].DiskGuid, Uuid);
+    StringCopy(Buf, BufMax, Uuid);
+    return 0;
+}
+
 /* PR-F3：后端名（如 fat / res）；Out 可 NULL */
 int FileSystemVolBackend(int Idx, const char **OutName) {
     const FS_OPS *Ops;
@@ -249,31 +263,24 @@ static int MscAutoApplyPolicy(int Auto, int HasBlocks) {
 }
 
 /*
- * 序 3–4：Force / Skip → 是否本轮开机 claim。
- * Skip 只清返回值，不 HalUsbMscAutoSet(0)（auto 仍供策略；桌面 HotPoll 已不 Claim）。
+ * 序 3–4：Os 卷已挂（ROOT.CFG/本机 BLOCKS）→ skip；否则 claim 启动棒。
+ * 旁路 U 盘留给桌面 EnsureSecondaryVolumes。
  */
 static int MscAutoResolveClaim(int Auto, int HasBlocks) {
-    int BootHas;
-
     if (!HasBlocks && !Auto) {
         HalUsbMscAutoSet(1);
         LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
         return 1;
     }
-    if (Auto && HasBlocks) {
-        /*
-         * 旧逻辑：任意盘有 BLOCKS.ID 就 skip → U 盘启动时 NVMe 先挂上，
-         * 永远不 claim USB。仅启动盘已有才 skip；0/-1 都继续 claim。
-         */
-        BootHas = FsBootDiskHasBlocksId();
-        if (BootHas == 1) {
-            LogBoot("Boot: MSC skip (boot-disk BLOCKS already)\n");
-            return 0;
-        }
-        LogBoot("Boot: MSC claim (need boot-disk BLOCKS)\n");
-        return 1;
+    if (!Auto) {
+        return 0;
     }
-    return Auto ? 1 : 0;
+    if (FsOsVolumeMounted()) {
+        LogBoot("Boot: MSC skip (OS volume mounted)\n");
+        return 0;
+    }
+    LogBoot("Boot: MSC claim (need OS volume)\n");
+    return 1;
 }
 
 int FileSystemInitialize(void) {
@@ -298,6 +305,7 @@ int FileSystemInitialize(void) {
      * 1：内置盘先挂；2：仅首轮成功才读盘上关；3–4：Force/Skip（fs-msc-order）。
      * 主盘只有 ESP、尚无 BLOCKS.ID 时不得因 msc=0 关 auto。
      */
+    gSecondaryReady = 0;
     Auto = HalUsbMscAutoEnabled();
     if (HalBlockInitialize() > 0 && MountAllVolumes()) {
         HaveVols = 1;
@@ -330,11 +338,10 @@ int FileSystemInitialize(void) {
                 HaveVols = 1;
                 HasBlocks = AnyVolumeHasBlocksId();
             }
-        } else if (MscRc > 0 &&
-                   (!HasBlocks || FsBootDiskHasBlocksId() != 1)) {
+        } else if (MscRc > 0 && !FsOsVolumeMounted()) {
             /*
              * claim 空：勿整轮 Force 再扫（会 reset 根口、鼠间歇卡）。
-             * USB2/SS 双总线已在同一次 ClaimPorts 内扫完；缺盘用 msc hot。
+             * 桌面 EnsureSecondary / msc hot 再试。
              */
             LogBoot("Boot: MSC Auto empty (no Force retry)\n");
         }
@@ -377,5 +384,16 @@ int FileSystemInitialize(void) {
     }
     BootLogFlush();
     return 0;
+}
+
+void FileSystemEnsureSecondaryVolumes(void) {
+    if (gSecondaryReady) {
+        return;
+    }
+    LogBoot("Boot: MSC secondary (desktop)\n");
+    (void)HalUsbMscHot();
+    (void)FileSystemRemountVolumes();
+    gSecondaryReady = 1;
+    LogBoot("Boot: MSC secondary ready\n");
 }
 

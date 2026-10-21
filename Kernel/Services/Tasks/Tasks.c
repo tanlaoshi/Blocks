@@ -31,6 +31,7 @@
 #include "Font.h"
 #include "SettingsUi.h"
 #include "FilesUi.h"
+#include "FileSystem.h"
 #include "EditUi.h"
 #include "Udp.h"
 #include "Tcp.h"
@@ -115,6 +116,16 @@ void WorkerTask(void) {
          * 真机曾见 #GP@IsrCommon iretq（rsp=0）。
          */
         DesktopEnsureIconsLoaded();
+        /* fs-msc-defer：图标扫盘完成后再慢认旁路 U 盘 */
+        {
+            static int sSecondaryOnce;
+
+            if (!sSecondaryOnce && DesktopIconsLoaded()) {
+                FileSystemEnsureSecondaryVolumes();
+                FilesUiRefresh();
+                sSecondaryOnce = 1;
+            }
+        }
         /* 切语言后扫盘重建菜单 / 落盘 lang=：必须在 Worker */
         DesktopEnsureMenuRebuilt();
         /* 商店开窗：catalog/已装探测勿堵 Gui 点击路径 */

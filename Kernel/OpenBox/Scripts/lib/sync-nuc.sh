@@ -27,7 +27,7 @@ KERNEL_ONLY=0
 DO_BOOT=0
 ESP_BOOT_DIR="${ESP_BOOT_DIR:-/boot/efi/EFI/Blocks}"
 
-sync_toyos_fw() {
+sync_blocks_fw() {
   local Dest="$1"
   local SrcFw="$ROOT/RootFs/X64/FW"
   if [[ ! -d "$SrcFw" ]]; then
@@ -226,6 +226,10 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     fi
     sync_boot_chainloader "$BOOT_EFI"
   fi
+  # boot-root-cfg：ESP 可写或 --boot 时刷新指针
+  if [[ -d "$ESP_BOOT_DIR" || "$DO_BOOT" -eq 1 ]]; then
+    "$SCRIPT_DIR/write-root-cfg.sh" "$ESP_BOOT_DIR" "$BLOCKS_MNT" || true
+  fi
   sync
   echo "=== nuc kernel-only ==="
   echo "Blocks -> $BLOCKS_MNT"
@@ -287,6 +291,11 @@ fi
 
 if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
   printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
+fi
+
+# boot-root-cfg：ESP 可写则更新 ROOT.CFG（--boot 或日常 sync）
+if [[ -d "$ESP_BOOT_DIR" || "$DO_BOOT" -eq 1 ]]; then
+  "$SCRIPT_DIR/write-root-cfg.sh" "$ESP_BOOT_DIR" "$BLOCKS_MNT" || true
 fi
 
 sync

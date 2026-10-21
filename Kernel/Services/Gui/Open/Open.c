@@ -34,8 +34,8 @@ void OpenFadeIn(int Idx) {
 }
 
 /*
- * 单例应用：Settings / Store（及 Edit）已有则前置焦点，不新开。
- * Shell / Files 允许多开（各占一槽；Files 内容态仍为全局宿主，见 FilesUi）。
+ * 单例应用：Settings / Store / Edit / Files / Devices / Tty 已有则前置，不新开。
+ * Shell 允许多开（各占一槽）。
  */
 int FocusExistingKind(GUI_WIN_KIND Kind, void (*Repaint)(void),
                              const char *LogTag) {

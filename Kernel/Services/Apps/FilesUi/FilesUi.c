@@ -8,6 +8,7 @@
  * 开窗一次填满客户区后再淡入（勿空框 Present）
  * U3：右栏再分 列表 | 预览；空态/焦点行与 G12 一致
  * PR-S-filesui-split-1：Paint* → Paint.c；本文件为全局宿主。
+ * S1.2：窗单例（GuiOpenFiles→FocusExistingKind）；态仍在此全局，勿多开窗。
  */
 #include "FilesUiPrivate.h"
 #include "FileSystem.h"

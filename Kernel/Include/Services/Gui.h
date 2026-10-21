@@ -110,7 +110,7 @@ void GuiRaiseToFront(int Idx);
 int GuiFocusIndex(void);
 
 /* PR-D3：打开应用窗；成功返回槽位，失败 -1。
- * Settings/Store 单例（已有则前置）；Shell/Files 可多开。 */
+ * Settings/Store/Edit/Files/Devices 单例（已有则前置）；Shell 可多开。 */
 int GuiOpenShell(void);
 int GuiOpenSettings(void);
 int GuiOpenFiles(void);

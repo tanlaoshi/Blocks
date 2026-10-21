@@ -3,7 +3,7 @@
  *
  * 链：ClickDesktop Action → 这里 GuiOpen* → OpenChromeDefer →（填内容）→ OpenFadeIn。
  * Store：StoreUiOpen defer → Worker StoreUiEnsureOpenLoad；Job 见 StoreJob*。
- * Defer/Fade：Open.c；关窗：Close.c。单例：Settings/Store/Edit。
+ * Defer/Fade：Open.c；关窗：Close.c。单例：Settings/Store/Edit/Files。
  */
 #include "GuiPrivate.h"
 #include "UI.h"
@@ -179,6 +179,12 @@ int GuiOpenFiles(void) {
     UINT32 W;
     UINT32 H;
     UINT32 Margin = 40;
+
+    /* 全局宿主一份态：已有窗则前置并 Refresh（侧栏跟挂载），不新开 */
+    Idx = FocusExistingKind(GUI_WIN_FILES, FilesUiRefresh, "files");
+    if (Idx >= 0) {
+        return Idx;
+    }
 
     Idx = AllocWindowSlot();
     if (Idx < 0) {

@@ -92,19 +92,20 @@ void GuiTask(void) {
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
  *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
- *   1 DesktopEnsureIconsLoaded
- *   2 DesktopEnsureMenuRebuilt
- *   3 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
- *   4 LocaleDbFlushStep
- *   5 LocaleTtfPreheatStep  — 可 breath；不 continue
- *   6 FontTtfWantDrain      — 同上
- *   7 HalNetInitialize（一次；boot-net-defer 有线 Probe）
- *   8 HalIwlClaim（一次）
- *   9 StoreJobStep          — story-s4；busy → continue（挡网/ready）
- *  10 HalIwlBgPump          — busy → continue
- *  11 DHCP restart / Step   — busy → continue
- *  12 真机 iwl 静默窗       — 未静默 → continue
- *  13 AnnounceBootReady → halt
+ *   1 EnsureSecondary + HDA + GuiCursorRevealAfterUsb（msc/3 完才露光标）
+ *   2 DesktopEnsureIconsLoaded
+ *   3 DesktopEnsureMenuRebuilt
+ *   4 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
+ *   5 LocaleDbFlushStep
+ *   6 LocaleTtfPreheatStep  — 可 breath；不 continue
+ *   7 FontTtfWantDrain      — 同上
+ *   8 HalNetInitialize（一次；boot-net-defer 有线 Probe）
+ *   9 HalIwlClaim（一次）
+ *  10 StoreJobStep          — story-s4；busy → continue（挡网/ready）
+ *  11 HalIwlBgPump          — busy → continue
+ *  12 DHCP restart / Step   — busy → continue
+ *  13 真机 iwl 静默窗       — 未静默 → continue
+ *  14 AnnounceBootReady → halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -116,21 +117,25 @@ void WorkerTask(void) {
          * 若放 Gui 路径读盘：iwl 的 IoBreath→CondResched→Gui 再读盘会重入 FAT，
          * 真机曾见 #GP@IsrCommon iretq（rsp=0）。
          */
-        DesktopEnsureIconsLoaded();
-        /* fs-msc-defer：图标扫盘完成后再慢认旁路 U 盘 */
+        /*
+         * fs-msc-defer / 光标门闩：桌面后先慢认旁路 U 盘（msc/3），认完才露光标。
+         * 勿等图标：BMP 扫盘再拖长「无光标」窗；图标仍可本圈后 Ensure。
+         */
         {
             static int sSecondaryOnce;
 
-            if (!sSecondaryOnce && DesktopIconsLoaded()) {
+            if (!sSecondaryOnce) {
                 FileSystemEnsureSecondaryVolumes();
                 FilesUiRefresh();
                 /* boot-hda-defer：旁路盘后认声卡（不挡进桌面） */
                 HalHdaMmioInitialize();
                 HalHdaCodecInitialize();
                 HalHdaStreamInitialize();
+                GuiCursorRevealAfterUsb();
                 sSecondaryOnce = 1;
             }
         }
+        DesktopEnsureIconsLoaded();
         /* 切语言后扫盘重建菜单 / 落盘 lang=：必须在 Worker */
         DesktopEnsureMenuRebuilt();
         /* 商店开窗：catalog/已装探测勿堵 Gui 点击路径 */

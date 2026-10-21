@@ -124,6 +124,10 @@ void GuiRightClickPlaceholder(UINT32 X, UINT32 Y) {
 }
 
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
+    /* USB 慢认未完：不点按、不跟坐标、不 Present；Reveal 后居中再动 */
+    if (!GuiCursorUsbReady()) {
+        return;
+    }
     /* 合成进行中只跟踪坐标/钮，避免嵌套 Move/Capture 采到半成品 FB。
      * 若光标仍画在旧位置，先擦掉，否则 Compose 期间移动会留下十字印。 */
     if (gGuiWindowManager.ComposeBusy) {

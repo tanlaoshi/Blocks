@@ -124,4 +124,7 @@ int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
 
+/* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
+void XhciPortEnumUnfreeze(void);
+
 #endif

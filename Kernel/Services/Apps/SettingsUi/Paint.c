@@ -243,17 +243,42 @@ void PaintHoverDelta(int OldKind, int OldIdx, int NewKind, int NewIdx) {
     HalVideoSetClipRegion(Cx, Cy, Cw, Ch, Bg);
     if (OldKind == 0 && OldIdx >= 0) {
         PaintSideRow(OldIdx, Cx, Pad, RowW);
+        if (gSetSideLineH != 0) {
+            GuiBackupSyncRect(Cx + Pad,
+                              gSetSideRow0 + (UINT32)OldIdx * gSetSideLineH,
+                              RowW, gSetSideLineH);
+        }
     }
     if (NewKind == 0 && NewIdx >= 0 && (NewKind != OldKind || NewIdx != OldIdx)) {
         PaintSideRow(NewIdx, Cx, Pad, RowW);
+        if (gSetSideLineH != 0) {
+            GuiBackupSyncRect(Cx + Pad,
+                              gSetSideRow0 + (UINT32)NewIdx * gSetSideLineH,
+                              RowW, gSetSideLineH);
+        }
     }
     if (OldKind == 1 && OldIdx >= 0) {
         PaintListRow(OldIdx, gSetListX, Pad, Bg);
+        if (gSetListLineH != 0) {
+            int Vis = OldIdx - gItemScroll;
+            if (Vis >= 0 && Vis < gSetListVisible) {
+                GuiBackupSyncRect(gSetListX + Pad,
+                                  gSetListTop + (UINT32)Vis * gSetListLineH,
+                                  gSetListRowW, gSetListLineH);
+            }
+        }
     }
     if (NewKind == 1 && NewIdx >= 0 && (NewKind != OldKind || NewIdx != OldIdx)) {
         PaintListRow(NewIdx, gSetListX, Pad, Bg);
+        if (gSetListLineH != 0) {
+            int Vis = NewIdx - gItemScroll;
+            if (Vis >= 0 && Vis < gSetListVisible) {
+                GuiBackupSyncRect(gSetListX + Pad,
+                                  gSetListTop + (UINT32)Vis * gSetListLineH,
+                                  gSetListRowW, gSetListLineH);
+            }
+        }
     }
-    GuiBackupSyncRect(Cx, Cy, Cw, Ch);
     HalVideoClearClip();
     GuiFrameBufferEnd();
 }

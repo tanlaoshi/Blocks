@@ -122,9 +122,11 @@ void FilesUiOnHover(UINT32 X, UINT32 Y) {
     }
     if (X < Cx || Y < Cy || X >= Cx + Cw || Y >= Cy + Ch) {
         if (gHoverIdx >= 0 || gSideHover >= 0) {
+            Prev = gHoverIdx;
+            Idx = gSideHover;
             gHoverIdx = -1;
             gSideHover = -1;
-            PaintList();
+            PaintListHoverDelta(Prev, -1, Idx, -1);
         }
         return;
     }
@@ -133,45 +135,53 @@ void FilesUiOnHover(UINT32 X, UINT32 Y) {
     if (gSideW > 0 && X < gContentX) {
         Idx = SideHitIndex(X, Y);
         if (Idx != gSideHover || gHoverIdx >= 0) {
+            Prev = gHoverIdx;
+            Row = gSideHover;
             gSideHover = Idx;
             gHoverIdx = -1;
-            PaintList();
+            PaintListHoverDelta(Prev, -1, Row, Idx);
         }
         return;
     }
 
-    if (gSideHover >= 0) {
-        gSideHover = -1;
-    }
+    {
+        int OldSide = gSideHover;
+        int NewSide = -1;
 
-    /* PR-U3：预览区无列表悬停 */
-    if (gPrevW > 0 && X >= gPrevX) {
-        if (gHoverIdx >= 0) {
-            gHoverIdx = -1;
-            PaintList();
+        if (gSideHover >= 0) {
+            gSideHover = -1;
         }
-        return;
-    }
 
-    Prev = gHoverIdx;
-    if (gSbVisible && X >= gSbX) {
-        Idx = -1;
-    } else if (Y < gListTop || gCount <= 0 || gListLineH == 0) {
-        Idx = -1;
-    } else {
-        Row = UiListRowFromY(gListTop, gListLineH, gListVisible, Y);
-        if (Row < 0) {
+        /* PR-U3：预览区无列表悬停 */
+        if (gPrevW > 0 && X >= gPrevX) {
+            Prev = gHoverIdx;
+            if (Prev >= 0 || OldSide >= 0) {
+                gHoverIdx = -1;
+                PaintListHoverDelta(Prev, -1, OldSide, -1);
+            }
+            return;
+        }
+
+        Prev = gHoverIdx;
+        if (gSbVisible && X >= gSbX) {
+            Idx = -1;
+        } else if (Y < gListTop || gCount <= 0 || gListLineH == 0) {
             Idx = -1;
         } else {
-            Idx = gScroll + Row;
-            if (Idx < 0 || Idx >= gCount) {
+            Row = UiListRowFromY(gListTop, gListLineH, gListVisible, Y);
+            if (Row < 0) {
                 Idx = -1;
+            } else {
+                Idx = gScroll + Row;
+                if (Idx < 0 || Idx >= gCount) {
+                    Idx = -1;
+                }
             }
         }
+        if (Idx == Prev && OldSide == NewSide) {
+            return;
+        }
+        gHoverIdx = Idx;
+        PaintListHoverDelta(Prev, Idx, OldSide, NewSide);
     }
-    if (Idx == Prev) {
-        return;
-    }
-    gHoverIdx = Idx;
-    PaintList();
 }

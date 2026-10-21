@@ -84,6 +84,13 @@ void GuiPollMouse(void) {
         return;
     }
 
+    /* USB 慢认未完：丢掉报告，不跟坐标；Reveal 后居中再动 */
+    if (!GuiCursorUsbReady()) {
+        while (HalMouseDequeue(&Raw)) {
+        }
+        return;
+    }
+
     /* 另一核正在写后缓冲：只留最后一包，勿再合成、勿 Present */
     if (GuiPresentBlocked()) {
         GuiPollHoldDrain(Sw, Sh);

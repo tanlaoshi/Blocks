@@ -117,6 +117,7 @@ void GuiDesktopInitialize(void) {
      */
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     gGuiWindowManager.FocusWin = -1;
+    /* 光标延到 Worker msc/3 Secondary 后再 Reveal（CursorUsbReady） */
     gGuiWindowManager.CursorVisible = 0;
     gGuiWindowManager.CursorKind = CURSOR_KIND_ARROW;
     gGuiWindowManager.DragWin = -1;

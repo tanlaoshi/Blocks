@@ -326,10 +326,12 @@ extern UINT32 gCmdSlot;
 extern UINT32 gXhciCmdSick;
 /*
  * usb-hid-keep / usb-map：MSC claim sick 或扫空后置 1。
- * AddressDeviceOnPort / ForceUntilPed 见 1 则拒；ClaimPorts 入口清 0（Hot 可再 Address）。
+ * AddressDeviceOnPort / ForceUntilPed 见 1 则拒；ClaimPorts 见 1 则 skip（不清零）。
+ * Shell msc hot：XhciPortEnumUnfreeze 后再 Claim。Worker HotPoll 勿解冻。
  * 置位方：ClaimPorts done；消费方：Device/ClaimPort + Wifi/FTDI/CDC claim 早退。
  */
 extern UINT32 gXhciPortEnumFreeze;
+void XhciPortEnumUnfreeze(void);
 extern UINT32 gXhciCmdWaitMs; /* 0=默认 800ms；SS hub 子口 Address 可缩短 */
 extern UINT32 gXhciCmdAttempts; /* 0=默认 2；SS hub 子口可 1 次快退 */
 extern UINT32 gXhciCmdWaiting; /* WaitCommand 中：Drain/Irq 勿碰事件环 */

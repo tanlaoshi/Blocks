@@ -3,7 +3,7 @@
  *
  * ```
  * UsbMscClaim|AutoBeforeFs|Hot → ClaimPorts
- *   入口：gXhciPortEnumFreeze=0（Hot 须解开才能 Address）
+ *   入口：若 freeze 则直接 return 0（Hot 须先 XhciPortEnumUnfreeze）
  *   若 cmd sick：Recover + QueueIntr/QueueMouseIntr（保持 Dual MSI，勿 FallbackToPoll）
  *   → HubEnumerate | ClaimPort(ForceUntilPed→Address) → FinishClaim
  *   跳过：kbd/mouse/hub 根口、已认 FTDI/CDC 口
@@ -39,6 +39,10 @@ static void NoteMouseRootDropped(void) {
     DisableSlot(gMouseSlotId);
 }
 
+void XhciPortEnumUnfreeze(void) {
+    gXhciPortEnumFreeze = 0;
+}
+
 int ClaimPorts(void) {
     UINT32 P;
     int Ok = 0;
@@ -48,8 +52,13 @@ int ClaimPorts(void) {
         BootLog("Boot: MSC claim no hc\n");
         return -1;
     }
-    /* 先于 already 短路：Hot 依赖解开 freeze 才能 Address */
-    gXhciPortEnumFreeze = 0;
+    /*
+     * 扫空/sick 后 freeze：勿在此清零。Worker HotPoll~5s 若每次解开再 Address，
+     * 桌面期持续抢命令环 → 空拖假死。Shell msc hot 先 Unfreeze。
+     */
+    if (gXhciPortEnumFreeze) {
+        return 0;
+    }
     if (gMscClaimed && gMscScanSlot != 0) {
         BootLogHex("Boot: MSC claim already port=", gMscPort, 2);
         return 1;

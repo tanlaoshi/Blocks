@@ -146,6 +146,8 @@ void UpdatePreview(void);
 /* ===== Paint（Paint.c / FilesUiList*.c） ===== */
 void PaintOverlay(const char *Line1, const char *Line2, const char *Line3);
 void PaintList(void);
+/* 悬停：只重画旧/新行与侧栏（勿整窗 PresentFlush，否则窗内鼠卡） */
+void PaintListHoverDelta(int OldHover, int NewHover, int OldSide, int NewSide);
 void PaintListDrawSide(UINT32 X, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 SideW);
 void PaintListDrawHeader(UINT32 Cx, UINT32 Y, UINT32 LineH, UINT32 Cw);
 void PaintListDrawRows(UINT32 ListX, UINT32 ListW, UINT32 Y, UINT32 H, UINT32 LineH);

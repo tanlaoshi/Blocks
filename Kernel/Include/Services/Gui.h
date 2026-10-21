@@ -66,6 +66,12 @@ int GuiPresentBlocked(void);
 int GuiDragActive(void);
 void GuiCursorHide(void);
 void GuiCursorShow(void);
+/*
+ * usb 慢认后再露光标：HID 可早绑；未就绪不 Present / 不跟坐标 / 不点按。
+ * Worker msc/3 后 Reveal：屏幕中央 + Handoff + 首次画出。
+ */
+int GuiCursorUsbReady(void);
+void GuiCursorRevealAfterUsb(void);
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
 /* 右键：桌面弹出菜单；点在窗口上则收起 */
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);

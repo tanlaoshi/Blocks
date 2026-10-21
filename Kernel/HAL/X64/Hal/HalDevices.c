@@ -115,6 +115,8 @@ int HalUsbMscHotPoll(void) {
 }
 
 int HalUsbMscHot(void) {
+    /* HotPoll 不解冻；仅显式 msc hot 允许再 Address */
+    XhciPortEnumUnfreeze();
     return UsbMscHot();
 }
 

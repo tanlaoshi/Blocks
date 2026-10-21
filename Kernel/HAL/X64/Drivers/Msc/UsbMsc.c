@@ -346,6 +346,7 @@ int UsbMscHotPoll(void) {
     LogFsHex32((UINT32)ScanN);
     LogFs("\n");
 
+    /* ClaimPorts 见 freeze 直接 0；不解冻（保鼠）。插盘用 msc hot */
     Claim = UsbMscClaim();
     if (Claim < 0) {
         LogFs("Fs: msc/4 hotplug claim abort\n");

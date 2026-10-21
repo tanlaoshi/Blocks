@@ -211,14 +211,18 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 }
 
 /*
- * 淡灰是笔画外面的一圈。留着的话，外壳、文件、设置这种笔画少的字会比商店粗一像素。
- * 盖掉这圈，粗细就跟商店靠齐。实心笔画仍用字库自己的灰度。
+ * gui-ttf-crisp：只剥最外淡晕；中灰提早实心，避免细笔画被阈值削没。
+ * 160 丢边曾过狠→细笔发细；现 96 丢 / ≥168 实心。
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (N < 128u) {
+    if (N < 96u) {
         return 0;
     }
-    return N;
+    if (N >= 168u) {
+        return 255;
+    }
+    /* 中段略抬，细笔不发灰发细 */
+    return (UINT8)(168u + (N - 96u) * 87u / 72u);
 }
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */

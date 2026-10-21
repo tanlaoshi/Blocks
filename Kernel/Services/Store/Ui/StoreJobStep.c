@@ -1,12 +1,12 @@
 /*
  * StoreJobStep.c — 作业步进状态机（story-s4；Worker #8）
  *
- * PLAN→PKG→FONT→RELOAD→FINISH（SYNC/FETCH 跳 ComboPlan）。
+ * PLAN→PKG→FONT→RELOAD→FINISH（SYNC 跳 ComboPlan）。
  * SYNC：一圈 StoreSyncCatalog（HTTP 内 Breath）；→RELOAD。
- * FETCH：StoreFetchId≡StoreInstall（文案仍 “fetched”；见 story-s4-2）。
  * INSTALL：本地 Copy 4K 切片；HTTP 直装整段在一圈 Pump。
  * Cancel：相位/Copy 返回 1 边界；整段 Sync/Http 中途不撤。
  * RELOAD：Worker 内 GuiPollMouseMotion 保光标。窗/Shell 只 Enqueue。
+ * S4.2：已删 STORE_JOB_FETCH。
  */
 #include "StoreUiPrivate.h"
 #include "StoreJob.h"
@@ -57,13 +57,6 @@ int StoreJobStep(void) {
             gJobInStep = 0;
             return 0;
         }
-        if (gJobKind == STORE_JOB_FETCH) {
-            StoreJobStatusWithId("fetch", gJobId);
-            StoreJobBusyRepaint();
-            gJobPhase = JP_PKG;
-            gJobInStep = 0;
-            return 0;
-        }
         StoreComboBatchBegin();
         gJobBatch = 1;
         StoreJobStatusWithId("plan", gJobId);
@@ -106,16 +99,6 @@ int StoreJobStep(void) {
                 gJobErr = Err;
             }
             gJobPhase = JP_RELOAD;
-            gJobInStep = 0;
-            return 0;
-        }
-        if (gJobKind == STORE_JOB_FETCH) {
-            Err = StoreFetchId(gJobId);
-            if (Err != 0) {
-                gJobErr = Err;
-            }
-            /* 仅写缓存，不必 font/reload */
-            gJobPhase = JP_FINISH;
             gJobInStep = 0;
             return 0;
         }

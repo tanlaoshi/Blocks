@@ -15,8 +15,7 @@ typedef enum {
     STORE_JOB_NONE = 0,
     STORE_JOB_INSTALL,
     STORE_JOB_REMOVE,
-    STORE_JOB_SYNC,
-    STORE_JOB_FETCH
+    STORE_JOB_SYNC
 } STORE_JOB_KIND;
 
 /* FinishStatus：用户取消（非 FAT 错） */
@@ -40,7 +39,7 @@ int StoreJobCancel(void);
 
 /*
  * Shell 互斥（遗留：仅当仍有同步 Store* 路径时用 Begin/End）。
- * fetch 已并入 Job；install/remove/sync/fetch 均走 Enqueue。
+ * install/remove/sync 均走 Enqueue（无独立 fetch Job）。
  */
 int StoreJobShellBegin(void);
 void StoreJobShellEnd(void);

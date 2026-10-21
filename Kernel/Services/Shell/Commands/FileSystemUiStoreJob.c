@@ -104,7 +104,7 @@ int StoreWordEq(const char *A, const char *B) {
 
 void StorePrintUsage(void) {
     gConsole.Write(
-        "usage: store <list|install|remove|combo|uncombo|installed|sync|fetch|repo|job> ...\n");
+        "usage: store <list|install|remove|combo|uncombo|installed|sync|repo|job> ...\n");
     gConsole.Write(
         "  aliases: (none)→list, status→list, rm→remove, list-installed→installed\n");
 }

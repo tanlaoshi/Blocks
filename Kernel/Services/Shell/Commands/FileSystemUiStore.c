@@ -75,33 +75,6 @@ static void CommandStore(int Argc, char **Argv) {
         return;
     }
 
-    if (StoreWordEq(Sub, "fetch")) {
-        if (Argc < 3) {
-            gConsole.Write("usage: store fetch <id>\n");
-            return;
-        }
-        if (LwIpActive()) {
-            int Err;
-
-            if (StoreJobShellBegin() != 0) {
-                gConsole.Write("store: busy (Cancel in Store UI, or store job)\n");
-                return;
-            }
-            gConsole.Write("store: fetching ");
-            gConsole.Write(Argv[2]);
-            gConsole.Write("...\n");
-            Err = StoreFetchId(Argv[2]);
-            StoreJobShellEnd();
-            ShellStoreNetDone("fetch", Err);
-            return;
-        }
-        if (ShellStoreJob(STORE_JOB_FETCH, Argv[2]) != 0) {
-            return;
-        }
-        ShellStoreQueued("fetch", Argv[2]);
-        return;
-    }
-
     if (StoreWordEq(Sub, "install") || StoreWordEq(Sub, "combo")) {
         if (Argc < 3) {
             if (StoreWordEq(Sub, "combo")) {

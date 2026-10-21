@@ -1,8 +1,9 @@
 /*
- * Net.c — 仓库地址与 sync/fetch（story-s4）
+ * Net.c — 仓库地址与 sync（story-s4）
  *
- * StoreSyncCatalog / StoreFetch*：Job JP_PKG 调用；HTTP→Http.c / HttpLwIp.c。
+ * StoreSyncCatalog / StoreFetchPath：Job JP_PKG / Install 内联下载；HTTP→Http.c / HttpLwIp.c。
  * 解析与哈希：Parse.c。Repo IP/Port 来自 STORE_REPO / repo.txt。
+ * S4.2：已删 StoreFetchId / store fetch（网包装靠 Install）。
  */
 #include "StoreNetPrivate.h"
 
@@ -129,9 +130,4 @@ int StoreFetchPath(const char *UrlPath, const char *DestRel,
 int StoreSyncCatalog(void) {
     /* 只更新远程目录表；不批量拉 ELF */
     return StoreFetchPath("/catalog.txt", STORE_REMOTE_CAT, "-");
-}
-
-int StoreFetchId(const char *Id) {
-    /* 兼容旧子命令：现≡StoreInstall（直装目标）；FinishStatus 仍写 fetched → s4-2 */
-    return StoreInstall(Id);
 }

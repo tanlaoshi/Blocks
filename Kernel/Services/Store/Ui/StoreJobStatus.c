@@ -1,5 +1,7 @@
 /*
  * StoreJobStatus.c — Job 状态行文案（PR-S-job）
+ *
+ * S4.2：已删 FETCH Job；Install 失败可带 HTTP hint。
  */
 #include "StoreUiPrivate.h"
 #include "StoreJob.h"
@@ -140,10 +142,6 @@ void StoreJobFinishStatus(STORE_JOB_KIND Kind, int Err, int PlanN) {
         } else if (Kind == STORE_JOB_REMOVE) {
             StoreSetStatus("removed");
             gConsole.WriteToJobShell("store job: removed\n");
-        } else if (Kind == STORE_JOB_FETCH) {
-            StoreSetStatus("fetched");
-            gConsole.WriteToJobShell("store job: fetched\n");
-            gConsole.WriteToJobShell("hint: store install <id>\n");
         } else {
             StoreSetStatus("sync ok");
             gConsole.WriteToJobShell("store job: sync ok\n");
@@ -151,15 +149,6 @@ void StoreJobFinishStatus(STORE_JOB_KIND Kind, int Err, int PlanN) {
     } else if (Kind == STORE_JOB_INSTALL) {
         StoreSetStatus("install fail");
         gConsole.WriteToJobShell("store job: install fail\n");
-    } else if (Kind == STORE_JOB_REMOVE) {
-        StoreSetStatus("remove fail");
-        gConsole.WriteToJobShell("store job: remove fail\n");
-        if (Err == FAT_ERR_INVAL) {
-            gConsole.WriteToJobShell("hint: still required by dependents; remove app first\n");
-        }
-    } else if (Kind == STORE_JOB_FETCH) {
-        StoreSetStatus("fetch fail");
-        gConsole.WriteToJobShell("store job: fetch fail\n");
         if (Err == -41 || Err == -2) {
             gConsole.WriteToJobShell("hint: HTTP not 200\n");
         } else if (Err == -42 || Err == -3) {
@@ -168,6 +157,12 @@ void StoreJobFinishStatus(STORE_JOB_KIND Kind, int Err, int PlanN) {
             gConsole.WriteToJobShell("hint: net/tcp fail\n");
         } else if (Err == -43) {
             gConsole.WriteToJobShell("hint: out of memory\n");
+        }
+    } else if (Kind == STORE_JOB_REMOVE) {
+        StoreSetStatus("remove fail");
+        gConsole.WriteToJobShell("store job: remove fail\n");
+        if (Err == FAT_ERR_INVAL) {
+            gConsole.WriteToJobShell("hint: still required by dependents; remove app first\n");
         }
     } else {
         StoreSetStatus("sync fail (need repo)");

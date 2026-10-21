@@ -5,16 +5,6 @@
 #include "HalVideo.h"
 #include "UI.h"
 
-static void PutCursorPx(int Px, int Py, UINT32 Color) {
-    if (Px < 0 || Py < 0) {
-        return;
-    }
-    if ((UINT32)Px >= gGuiWindowManager.ScreenWidth || (UINT32)Py >= gGuiWindowManager.ScreenHeight) {
-        return;
-    }
-    HalVideoDrawPixelRaw((UINT32)Px, (UINT32)Py, Color);
-}
-
 static void StrokeSeg(int Cx, int Cy, int X0, int Y0, int X1, int Y1, int Thick) {
     int Dx = X1 - X0;
     int Dy = Y1 - Y0;
@@ -34,16 +24,16 @@ static void StrokeSeg(int Cx, int Cy, int X0, int Y0, int X1, int Y1, int Thick)
         Px = X0 + Dx * i / Steps;
         Py = Y0 + Dy * i / Steps;
         for (t = -(Thick + CURSOR_OUTLINE); t <= (Thick + CURSOR_OUTLINE); t++) {
-            PutCursorPx(Cx + Px + t, Cy + Py, COLOR_BLACK);
-            PutCursorPx(Cx + Px, Cy + Py + t, COLOR_BLACK);
+            CursorPutPixel(Cx + Px + t, Cy + Py, COLOR_BLACK);
+            CursorPutPixel(Cx + Px, Cy + Py + t, COLOR_BLACK);
         }
     }
     for (i = 0; i <= Steps; i++) {
         Px = X0 + Dx * i / Steps;
         Py = Y0 + Dy * i / Steps;
         for (t = -Thick; t <= Thick; t++) {
-            PutCursorPx(Cx + Px + t, Cy + Py, COLOR_WHITE);
-            PutCursorPx(Cx + Px, Cy + Py + t, COLOR_WHITE);
+            CursorPutPixel(Cx + Px + t, Cy + Py, COLOR_WHITE);
+            CursorPutPixel(Cx + Px, Cy + Py + t, COLOR_WHITE);
         }
     }
 }

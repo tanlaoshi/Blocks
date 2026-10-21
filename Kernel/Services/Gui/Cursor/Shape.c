@@ -2,10 +2,18 @@
  * GuiCursorShape.c — 光标字形：指针箭头 / ↔ / ↕ / 对角 resize
  *
  * 热点：箭头 = 尖端；resize = 字形中心。
+ * hw-cursor-glyph：CursorGlyphToArgb 栅进 64×64 ARGB（CUR 平面）。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
 #include "UI.h"
+
+static UINT32 *gGlyphBuf;
+static int gGlyphOrigX;
+static int gGlyphOrigY;
+static int gGlyphHotX;
+static int gGlyphHotY;
+static UINT32 gGlyphScale = 100;
 
 void CursorMetrics(int *Half, int *Thick) {
     UINT32 H;
@@ -31,11 +39,29 @@ void CursorMetrics(int *Half, int *Thick) {
     *Thick = T;
 }
 
-static void PutCursorPx(int Px, int Py, UINT32 Color) {
+void CursorPutPixel(int Px, int Py, UINT32 Color) {
+    if (gGlyphBuf) {
+        int RelX;
+        int RelY;
+        int Rx;
+        int Ry;
+
+        RelX = Px - gGlyphOrigX;
+        RelY = Py - gGlyphOrigY;
+        Rx = (RelX * (int)gGlyphScale) / 100 + gGlyphHotX;
+        Ry = (RelY * (int)gGlyphScale) / 100 + gGlyphHotY;
+        if (Rx < 0 || Ry < 0 || Rx >= CURSOR_HW_DIM || Ry >= CURSOR_HW_DIM) {
+            return;
+        }
+        gGlyphBuf[(UINT32)Ry * CURSOR_HW_DIM + (UINT32)Rx] =
+            0xFF000000u | (Color & 0x00FFFFFFu);
+        return;
+    }
     if (Px < 0 || Py < 0) {
         return;
     }
-    if ((UINT32)Px >= gGuiWindowManager.ScreenWidth || (UINT32)Py >= gGuiWindowManager.ScreenHeight) {
+    if ((UINT32)Px >= gGuiWindowManager.ScreenWidth ||
+        (UINT32)Py >= gGuiWindowManager.ScreenHeight) {
         return;
     }
     HalVideoDrawPixelRaw((UINT32)Px, (UINT32)Py, Color);
@@ -221,17 +247,167 @@ static void DrawCursorArrow(UINT32 X, UINT32 Y) {
             }
             if (ArrowSolid(Ox - 1, Oy) || ArrowSolid(Ox + 1, Oy) ||
                 ArrowSolid(Ox, Oy - 1) || ArrowSolid(Ox, Oy + 1)) {
-                PutCursorPx((int)X + Ox, (int)Y + Oy, COLOR_BLACK);
+                CursorPutPixel((int)X + Ox, (int)Y + Oy, COLOR_BLACK);
             }
         }
     }
     for (Oy = MinY; Oy <= MaxY; Oy++) {
         for (Ox = MinX; Ox <= MaxX; Ox++) {
             if (ArrowSolid(Ox, Oy)) {
-                PutCursorPx((int)X + Ox, (int)Y + Oy, COLOR_WHITE);
+                CursorPutPixel((int)X + Ox, (int)Y + Oy, COLOR_WHITE);
             }
         }
     }
+}
+
+static void ArrowBBox(int *MinX, int *MaxX, int *MinY, int *MaxY) {
+    int TipX;
+    int TipY;
+    int Lx;
+    int Ly;
+    int Rx;
+    int Ry;
+    int Bx;
+    int By;
+    int Ex;
+    int Ey;
+    int StemR;
+
+    ArrowGeom(&TipX, &TipY, &Lx, &Ly, &Rx, &Ry, &Bx, &By, &Ex, &Ey, &StemR);
+    *MinX = TipX;
+    *MaxX = TipX;
+    *MinY = TipY;
+    *MaxY = TipY;
+    if (Lx < *MinX) {
+        *MinX = Lx;
+    }
+    if (Rx < *MinX) {
+        *MinX = Rx;
+    }
+    if (Ex < *MinX) {
+        *MinX = Ex;
+    }
+    if (Lx > *MaxX) {
+        *MaxX = Lx;
+    }
+    if (Rx > *MaxX) {
+        *MaxX = Rx;
+    }
+    if (Ex > *MaxX) {
+        *MaxX = Ex;
+    }
+    if (Ly < *MinY) {
+        *MinY = Ly;
+    }
+    if (Ry < *MinY) {
+        *MinY = Ry;
+    }
+    if (Ey < *MinY) {
+        *MinY = Ey;
+    }
+    if (Ly > *MaxY) {
+        *MaxY = Ly;
+    }
+    if (Ry > *MaxY) {
+        *MaxY = Ry;
+    }
+    if (Ey > *MaxY) {
+        *MaxY = Ey;
+    }
+    *MinX -= StemR + CURSOR_OUTLINE + 1;
+    *MinY -= StemR + CURSOR_OUTLINE + 1;
+    *MaxX += StemR + CURSOR_OUTLINE + 1;
+    *MaxY += StemR + CURSOR_OUTLINE + 1;
+}
+
+int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
+    UINT32 i;
+    UINT32 Scale;
+    int MinX;
+    int MaxX;
+    int MinY;
+    int MaxY;
+    int Axis;
+    int Half;
+    int Thick;
+    int Ext;
+    int NeedW;
+    int NeedH;
+
+    if (!Out || !HotX || !HotY) {
+        return 0;
+    }
+    Scale = HalVideoGetUiScale();
+    if (Scale == 0) {
+        Scale = 100;
+    }
+    for (i = 0; i < CURSOR_HW_DIM * CURSOR_HW_DIM; i++) {
+        Out[i] = 0;
+    }
+
+    gGlyphBuf = Out;
+    gGlyphScale = Scale;
+    gGlyphOrigX = 0;
+    gGlyphOrigY = 0;
+
+    if (Kind == CURSOR_KIND_RESIZE_E) {
+        Axis = 0;
+    } else if (Kind == CURSOR_KIND_RESIZE_S) {
+        Axis = 1;
+    } else if (Kind == CURSOR_KIND_RESIZE_SE) {
+        Axis = 2;
+    } else {
+        Axis = -1;
+    }
+
+    if (Axis < 0) {
+        ArrowBBox(&MinX, &MaxX, &MinY, &MaxY);
+        NeedW = ((MaxX - MinX) * (int)Scale) / 100 + 1;
+        NeedH = ((MaxY - MinY) * (int)Scale) / 100 + 1;
+        if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
+            gGlyphScale = 100;
+            Scale = 100;
+            NeedW = MaxX - MinX + 1;
+            NeedH = MaxY - MinY + 1;
+        }
+        if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
+            gGlyphBuf = 0;
+            return 0;
+        }
+        /* 尖在 (0,0)；热点 = 尖在缓冲内的位置 */
+        gGlyphHotX = (-MinX * (int)Scale) / 100;
+        gGlyphHotY = (-MinY * (int)Scale) / 100;
+        if (gGlyphHotX < 0) {
+            gGlyphHotX = 0;
+        }
+        if (gGlyphHotY < 0) {
+            gGlyphHotY = 0;
+        }
+        DrawCursorArrow(0, 0);
+    } else {
+        CursorMetrics(&Half, &Thick);
+        Ext = Half + Half / 2 + Thick + CURSOR_OUTLINE + 2;
+        Ext = (Ext * (int)Scale) / 100;
+        if (Ext < 4) {
+            Ext = 4;
+        }
+        if (Ext > (int)(CURSOR_HW_DIM / 2u) - 1) {
+            gGlyphScale = 100;
+            Scale = 100;
+            Ext = Half + Half / 2 + Thick + CURSOR_OUTLINE + 2;
+            if (Ext > (int)(CURSOR_HW_DIM / 2u) - 1) {
+                Ext = (int)(CURSOR_HW_DIM / 2u) - 1;
+            }
+        }
+        gGlyphHotX = Ext;
+        gGlyphHotY = Ext;
+        DrawCursorAxis(0, 0, Axis);
+    }
+
+    gGlyphBuf = 0;
+    *HotX = (UINT32)gGlyphHotX;
+    *HotY = (UINT32)gGlyphHotY;
+    return 1;
 }
 
 void DrawCursorGlyph(UINT32 X, UINT32 Y) {

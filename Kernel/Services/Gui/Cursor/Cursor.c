@@ -49,6 +49,9 @@
 static int gCursorUsbReady;
 /* 1：HalVideoHwCursorEnable 已成功；热路径只写位置 */
 static int gHwCursorOn;
+/* 已上载的 Kind；换形重 Enable */
+static int gHwKind = -1;
+static UINT32 gHwGlyph[CURSOR_HW_DIM * CURSOR_HW_DIM];
 
 int CursorHwActive(void) {
     return gHwCursorOn ? 1 : 0;
@@ -65,6 +68,20 @@ static void CursorHwEraseSoftFb(void) {
     HalVideoPresentCursor();
 }
 
+static int CursorHwUploadKind(int Kind) {
+    UINT32 HotX;
+    UINT32 HotY;
+
+    if (!CursorGlyphToArgb(Kind, gHwGlyph, &HotX, &HotY)) {
+        return 0;
+    }
+    if (!HalVideoHwCursorEnable(gHwGlyph, CURSOR_HW_DIM, CURSOR_HW_DIM, HotX, HotY)) {
+        return 0;
+    }
+    gHwKind = Kind;
+    return 1;
+}
+
 static void CursorHwTryEnable(void) {
     if (gHwCursorOn) {
         return;
@@ -73,8 +90,7 @@ static void CursorHwTryEnable(void) {
         return;
     }
     CursorHwEraseSoftFb();
-    /* 字形上载见 hw-cursor-glyph；此刻内置简箭头 */
-    if (!HalVideoHwCursorEnable(0, 0, 0, 0, 0)) {
+    if (!CursorHwUploadKind(gGuiWindowManager.CursorKind)) {
         return;
     }
     gHwCursorOn = 1;
@@ -89,6 +105,7 @@ static void CursorHwDisable(void) {
     }
     HalVideoHwCursorDisable();
     gHwCursorOn = 0;
+    gHwKind = -1;
 }
 
 void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
@@ -153,7 +170,8 @@ void DrawCursorAt(UINT32 X, UINT32 Y) {
 
 void CursorRestore(void) {
     if (gHwCursorOn) {
-        /* FB 无光标像素；Visible 仅软路径意义 */
+        /* FB 无光标像素；仍清 Visible，免后续软路径误 Restore Under */
+        gGuiWindowManager.CursorVisible = 0;
         return;
     }
     if (!gGuiWindowManager.CursorVisible) {
@@ -173,6 +191,10 @@ void CursorPaint(void) {
         return;
     }
     if (gHwCursorOn) {
+        /* ResizeBegin 已改 Kind 时补上载（同坐标 CursorMove 会早退） */
+        if (gGuiWindowManager.CursorKind != gHwKind) {
+            (void)CursorHwUploadKind(gGuiWindowManager.CursorKind);
+        }
         HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
         return;
     }
@@ -216,6 +238,10 @@ void CursorMove(UINT32 X, UINT32 Y) {
         gGuiWindowManager.CursorX = X;
         gGuiWindowManager.CursorY = Y;
         gGuiWindowManager.CursorKind = NewKind;
+        if (NewKind != gHwKind) {
+            /* 换形失败保留旧字形，勿半截回软 */
+            (void)CursorHwUploadKind(NewKind);
+        }
         HalVideoHwCursorSetPos(X, Y);
         return;
     }

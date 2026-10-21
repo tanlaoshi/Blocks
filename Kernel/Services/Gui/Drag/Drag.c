@@ -25,6 +25,7 @@
 #include "UI.h"
 #include "HalVideo.h"
 #include "Hal.h"
+#include "HalDevices.h"
 #include "Debug.h"
 #include "PhysicalMemory.h"
 #include "Desktop.h"
@@ -92,6 +93,8 @@ void GuiDragUpdate(UINT32 X, UINT32 Y) {
     INT32 Ny;
     INT32 Dx;
     INT32 Dy;
+    UINT32 PinX;
+    UINT32 PinY;
     GUI_WINDOW *W;
 
     if (gGuiWindowManager.DragWin < 0 || gGuiWindowManager.DragWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.DragWin].Active) {
@@ -110,26 +113,62 @@ void GuiDragUpdate(UINT32 X, UINT32 Y) {
     if (Dy < 0) {
         Dy = -Dy;
     }
-    if ((UINT32)Dx < DRAG_MIN_STEP && (UINT32)Dy < DRAG_MIN_STEP) {
-        return;
-    }
-    if (!GuiDragFrameTry()) {
-        return;
-    }
-    /* 持 gDragFrame 期间勿被抢：否则同核 Shell 自旋等锁会饿死本任务 */
-    SchedulerPreemptDisable();
-    if (gGuiWindowManager.DragArmed) {
-        StartDragBackups(gGuiWindowManager.DragWin);
-        gGuiWindowManager.DragArmed = 0;
-        if (gGuiWindowManager.DragWin < 0 || !gGuiWindowManager.DragHasBackup) {
+    if ((UINT32)Dx >= DRAG_MIN_STEP || (UINT32)Dy >= DRAG_MIN_STEP) {
+        if (GuiDragFrameTry()) {
+            /* 持 gDragFrame 期间勿被抢：否则同核 Shell 自旋等锁会饿死本任务 */
+            SchedulerPreemptDisable();
+            if (gGuiWindowManager.DragArmed) {
+                StartDragBackups(gGuiWindowManager.DragWin);
+                gGuiWindowManager.DragArmed = 0;
+                if (gGuiWindowManager.DragWin < 0 || !gGuiWindowManager.DragHasBackup) {
+                    SchedulerPreemptEnable();
+                    GuiDragFrameLeave();
+                    goto PinCursor;
+                }
+            }
+            MoveWindowTo(gGuiWindowManager.DragWin, (UINT32)Nx, (UINT32)Ny);
             SchedulerPreemptEnable();
             GuiDragFrameLeave();
-            return;
         }
     }
-    MoveWindowTo(gGuiWindowManager.DragWin, (UINT32)Nx, (UINT32)Ny);
-    SchedulerPreemptEnable();
-    GuiDragFrameLeave();
+
+PinCursor:
+    /*
+     * 钉死：光标始终停在「当前窗位 + 按下时标题栏偏移」。
+     * 窗贴边后鼠继续走，若不回钉，箭头会滑离当初点按处。
+     */
+    W = &gGuiWindowManager.Windows[gGuiWindowManager.DragWin];
+    if (gGuiWindowManager.DragWin < 0 || !W->Active) {
+        return;
+    }
+    {
+        INT32 Px = (INT32)W->X + gGuiWindowManager.DragOffX;
+        INT32 Py = (INT32)W->Y + gGuiWindowManager.DragOffY;
+
+        if (Px < 0) {
+            Px = 0;
+        }
+        if (Py < 0) {
+            Py = 0;
+        }
+        if ((UINT32)Px >= gGuiWindowManager.ScreenWidth && gGuiWindowManager.ScreenWidth > 0) {
+            Px = (INT32)gGuiWindowManager.ScreenWidth - 1;
+        }
+        if ((UINT32)Py >= gGuiWindowManager.ScreenHeight && gGuiWindowManager.ScreenHeight > 0) {
+            Py = (INT32)gGuiWindowManager.ScreenHeight - 1;
+        }
+        PinX = (UINT32)Px;
+        PinY = (UINT32)Py;
+    }
+    if (gGuiWindowManager.CursorX == PinX && gGuiWindowManager.CursorY == PinY) {
+        return;
+    }
+    gGuiWindowManager.CursorX = PinX;
+    gGuiWindowManager.CursorY = PinY;
+    if (CursorHwActive()) {
+        HalVideoHwCursorSetPos(PinX, PinY);
+    }
+    HalInputMouseHandoffDesktop(PinX, PinY);
 }
 
 void GuiDragEnd(void) {

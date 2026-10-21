@@ -68,12 +68,30 @@ static void ClampResizeSize(const GUI_WINDOW *W, UINT32 *OutW, UINT32 *OutH) {
 }
 
 void EraseResizeBand(int Idx, UINT32 Bw, UINT32 Bh) {
-    const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
+    const GUI_WINDOW *W;
+    UINT32 Fx;
+    UINT32 Fy;
+    UINT32 Fw;
+    UINT32 Fh;
 
     if (!gGuiWindowManager.ResizeBandOn || Bw == 0 || Bh == 0) {
         return;
     }
-    GuiClearIconDragFootprint(W->X, W->Y, Bw, Bh);
+    if (Idx < 0 || Idx >= MAX_WINS) {
+        gGuiWindowManager.ResizeBandOn = 0;
+        return;
+    }
+    W = &gGuiWindowManager.Windows[Idx];
+    /*
+     * 线框可大于当前窗（外扩黄线在桌面上）。勿整块 DesktopFillRect（透视）；
+     * FillDesktopRectClipped 只清窗外桌面残线，窗内黄线靠备份盖回。
+     */
+    Fx = W->X;
+    Fy = W->Y;
+    Fw = Bw;
+    Fh = Bh;
+    ClipRectToScreen(&Fx, &Fy, &Fw, &Fh);
+    FillDesktopRectClipped(Fx, Fy, Fw, Fh);
     if (gGuiWindowManager.WinBackupValid[Idx] && gGuiWindowManager.WinBackup[Idx] != 0) {
         PaintWindowFromBackup(Idx);
         DrawWindowShadowAt(Idx);

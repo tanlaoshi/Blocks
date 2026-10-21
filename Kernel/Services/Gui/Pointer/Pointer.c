@@ -196,12 +196,15 @@ void GuiPollMouse(void) {
     }
     if (NeedMove) {
         if ((LastBtn & 1) && gGuiWindowManager.ResizeWin >= 0) {
-            gGuiWindowManager.CursorX = LastX;
-            gGuiWindowManager.CursorY = LastY;
+            /*
+             * 须先 CursorMove：硬件光标只写 CUR_POS；若只改 CursorX 再
+             * Resize/Drag，窗跟上了、箭头仍停在旧位 →「追赶」。
+             * 软路径 CursorMove 在 Drag 时会藏光标（Visible=0）。
+             */
+            CursorMove(LastX, LastY);
             GuiResizeUpdate(LastX, LastY);
         } else if ((LastBtn & 1) && gGuiWindowManager.DragWin >= 0) {
-            gGuiWindowManager.CursorX = LastX;
-            gGuiWindowManager.CursorY = LastY;
+            CursorMove(LastX, LastY);
             GuiDragUpdate(LastX, LastY);
         } else if ((LastBtn & 1) && DesktopIconDragActive()) {
             /*

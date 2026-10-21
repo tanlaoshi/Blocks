@@ -232,8 +232,12 @@ int WindowBackupCoversPixel(int Idx, UINT32 Px, UINT32 Py);
 int PixelCoveredByHigherWindow(int Idx, UINT32 Px, UINT32 Py);
 
 /* Cursor */
+#define CURSOR_HW_DIM 64
 void CursorMetrics(int *Half, int *Thick);
 void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy, UINT32 *Sw, UINT32 *Sh);
+void CursorPutPixel(int Px, int Py, UINT32 Color);
+/* 栅成 CURSOR_HW_DIM² ARGB8888；热点相对缓冲左上。失败 0 */
+int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY);
 void DrawCursorGlyph(UINT32 X, UINT32 Y);
 void DrawCursorAxis(UINT32 X, UINT32 Y, int Axis);
 void DrawCursorAt(UINT32 X, UINT32 Y);

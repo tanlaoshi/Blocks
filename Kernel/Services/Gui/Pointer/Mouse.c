@@ -135,11 +135,15 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
          * 合成中只跟踪坐标/钮。禁止清 gGuiWindowManager.CursorVisible：
          * ComposeBegin 后、CursorRestore 前若 AP 清掉 Visible，Restore 空操作，
          * 十字留在后缓冲 → 末尾 ReadRect 把字形采进 gGuiWindowManager.Under → 镂空方块。
+         * 硬件光标例外：热路径只写 CUR_POS，不碰 FB，Busy 中也要跟上。
          */
         gGuiWindowManager.CursorX = Mouse->X;
         gGuiWindowManager.CursorY = Mouse->Y;
         gGuiWindowManager.CursorBtn = Mouse->Buttons;
         gGuiWindowManager.MousePrevBtn = Mouse->Buttons;
+        if (CursorHwActive()) {
+            HalVideoHwCursorSetPos(Mouse->X, Mouse->Y);
+        }
         return;
     }
 
@@ -148,9 +152,12 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
     if ((Mouse->Buttons & 1) && !(gGuiWindowManager.MousePrevBtn & 1)) {
         GuiHandleClick(Mouse->X, Mouse->Y);
     } else if ((Mouse->Buttons & 1) && gGuiWindowManager.ResizeWin >= 0) {
+        /* 与 PollMouse 一致：先光标再改尺寸，Hw 不追窗 */
+        CursorMove(Mouse->X, Mouse->Y);
         GuiResizeUpdate(Mouse->X, Mouse->Y);
     } else if ((Mouse->Buttons & 1) && gGuiWindowManager.DragWin >= 0) {
         /* PR-G10 L2：与 GuiPollMouse 统一，按住拖动时持续更新 */
+        CursorMove(Mouse->X, Mouse->Y);
         GuiDragUpdate(Mouse->X, Mouse->Y);
     } else if ((Mouse->Buttons & 1) && DesktopIconDragActive()) {
         if (gGuiWindowManager.CursorVisible) {

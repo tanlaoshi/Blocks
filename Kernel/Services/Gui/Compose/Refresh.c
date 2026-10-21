@@ -3,6 +3,7 @@
  *
  * Desktop RequestRefresh 钩子（WindowManager 挂上）。
  *   开始菜单 / 右键 / 网托开着 / 覆盖区刚关 → 只画菜单层 + PresentFlush（快路径）
+ *   关菜单时须 DesktopRedrawTaskbar：开始钮 Active 色不在 cover 内，Damage 被跳过会烙蓝。
  *   否则 → GuiComposeDamage（G5：空/过大/多窗→ThemeScene，否则脏矩形）
  * 谁调 RequestRefresh / Mark：见 Damage.c 头；栏/托盘 Mark 见 Desktop/Mark.c。
  */
@@ -53,6 +54,9 @@ void GuiRefreshDesktop(void) {
         if (Open) {
             DesktopDrawStartMenu();
         } else {
+            if (HadCover) {
+                DesktopRedrawTaskbar();
+            }
             DesktopMenuCoverClear();
         }
         if (CtxOpen) {

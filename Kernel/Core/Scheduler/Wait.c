@@ -2,6 +2,7 @@
  * Wait.c — PR-S-sched-split-2：wait / orphan / exit 用户入口
  *
  * 收尸与 TerminateUserLocked → Terminate.c（thr-3 拆分）。
+ * S2.2：ExitUser 仅在确有关掉 USER 窗时 DesktopComposeThemeScene（Hello 无窗勿全桌合成）。
  */
 #include "SchedulerPrivate.h"
 #include "SchedulerOps.h"
@@ -84,11 +85,12 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
     DebugWrite("\n");
 
     /*
-     * 非最后用户则勿 GuiCloseAllUserWindows：短命 ELF exit 会拆掉仍在跑的 GUI 窗。
+     * 非最后用户则勿 CloseAllUserWindows：短命 ELF exit 会拆掉仍在跑的 GUI 窗。
      */
     {
         int J;
         int LastUser = 1;
+        int ClosedUser = 0;
 
         for (J = 0; J < MAX_TASKS; J++) {
             TASK *U = &gTasks[J];
@@ -106,15 +108,20 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         DesktopWaitNoWindowClosing();
         if (LastUser) {
-            DesktopCloseAllUserWindows();
+            ClosedUser = DesktopCloseAllUserWindows();
             DesktopWaitNoWindowClosing();
             ProcessRestoreAppFont();
+        }
+        /*
+         * USER 轻量关窗后补全桌合成（任务栏/残影）。
+         * Hello 等从未开 USER 窗：ClosedUser=0，勿 ThemeScene（S2.2）。
+         */
+        if (ClosedUser > 0) {
+            DesktopComposeThemeScene();
         }
     }
     SchedulerDestroyDetached(Detached);
     Detached = 0;
-    /* USER 轻量关窗后补一次全桌合成，恢复任务栏/残影（此时页表已拆完） */
-    DesktopComposeThemeScene();
     SpinLockAcquire(&gSchedulerLock);
 
     if (gCoopDrain) {

@@ -65,6 +65,8 @@ void DesktopDraw(void);
 void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 开始菜单弹出层（开着时叠画在窗上；点菜单外则收起，再按窗聚焦） */
 void DesktopDrawStartMenu(void);
+/* 重画任务栏（关菜单快路径须调：开始钮 Active→Idle） */
+void DesktopRedrawTaskbar(void);
 /* 桌面右键：设置、关机、重启。点在窗口上不弹出。 */
 void DesktopContextMenuOpen(UINT32 X, UINT32 Y);
 void DesktopContextMenuClose(void);

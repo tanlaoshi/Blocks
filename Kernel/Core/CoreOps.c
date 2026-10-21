@@ -183,10 +183,11 @@ void DesktopPollMouseMotion(void) {
     }
 }
 
-void DesktopCloseAllUserWindows(void) {
+int DesktopCloseAllUserWindows(void) {
     if (gDesktopOps.CloseAllUserWindows) {
-        gDesktopOps.CloseAllUserWindows();
+        return gDesktopOps.CloseAllUserWindows();
     }
+    return 0;
 }
 
 void DesktopWaitNoWindowClosing(void) {

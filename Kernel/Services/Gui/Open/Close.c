@@ -222,17 +222,21 @@ void CloseWindow(int Idx) {
     DebugWrite("Gui: closed (clip)\n");
 }
 
-void GuiCloseAllUserWindows(void) {
+int GuiCloseAllUserWindows(void) {
     int i;
+    int Closed = 0;
 
     for (i = MAX_WINS - 1; i >= 0; i--) {
         if (gGuiWindowManager.Windows[i].Closing) {
             continue;
         }
-        if (gGuiWindowManager.Windows[i].Active && gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
+        if (gGuiWindowManager.Windows[i].Active &&
+            gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
             CloseWindow(i);
+            Closed++;
         }
     }
+    return Closed;
 }
 
 /*

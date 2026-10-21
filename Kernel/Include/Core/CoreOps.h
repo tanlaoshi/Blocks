@@ -60,14 +60,16 @@ void ConsoleIoShowPrompt(void);
 /* 长 IO 呼吸和用户进程退出时的桌面动作。Gui 初始化时登记；没登记则这些调用什么都不做。 */
 typedef struct {
     void (*PollMouseMotion)(void);
-    void (*CloseAllUserWindows)(void);
+    /* 关掉的 USER 窗个数；0=无窗（Hello 等） */
+    int (*CloseAllUserWindows)(void);
     void (*WaitNoWindowClosing)(void);
     void (*ComposeThemeScene)(void);
 } DESKTOP_OPS;
 
 void DesktopOpsRegister(const DESKTOP_OPS *Ops);
 void DesktopPollMouseMotion(void);
-void DesktopCloseAllUserWindows(void);
+/* 返回关掉的 USER 窗数；未登记桌面时 0 */
+int DesktopCloseAllUserWindows(void);
 void DesktopWaitNoWindowClosing(void);
 void DesktopComposeThemeScene(void);
 

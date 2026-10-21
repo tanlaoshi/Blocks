@@ -152,6 +152,10 @@ void DesktopDrawStartMenu(void) {
     }
 }
 
+void DesktopRedrawTaskbar(void) {
+    DrawTaskbarRaw();
+}
+
 void DesktopDrawNetTrayPopup(void) {
     DesktopNetTrayDrawPopup();
 }

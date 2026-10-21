@@ -20,6 +20,20 @@ git clone --depth 1 --branch STABLE-2_2_0_RELEASE \
 
 PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `Services/Fonts/TrueTypeRaster.c` 在 FPU 岛内包含。
 
+## FreeType
+
+`font-freetype-hook`：上游树本地检出（gitignore，同 lwIP）；移植在 `freetype-port/`（进仓）。
+
+```bash
+# 在 Kernel/ 下
+curl -L -o /tmp/ft.tar.gz \
+  https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
+mkdir -p ThirdParty/freetype
+tar -xzf /tmp/ft.tar.gz -C ThirdParty/freetype --strip-components=1
+```
+
+无上游树时 X64 仍可编通（`FontFt*` 桩，栅格软退 stb）。有树则链 TT + smooth + psnames（hook）；`autofit` 留给 hint 刀。`ftsystem` arena ≤256K（防 Boot BSS 装不下）。
+
 移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`Netif.c`、`Ping.c`、`TcpEcho.c`、`UdpQueue.c`、`TcpClient.c`、`TcpSocket.c`）。
 
 ---

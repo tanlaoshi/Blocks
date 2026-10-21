@@ -182,10 +182,16 @@ static void FillSlot(UINT32 Cp, int NotifyPaint) {
     } else {
         Slot->Cp = Cp;
         Slot->Side = Side;
-        /* 拉丁用半格步进，避免每字母占满汉字方格；汉字仍 Side */
-        Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
+        /* FT 有真实 advance 则用之；否则拉丁半格、汉字整格 */
+        Slot->Adv = FontFtLastAdvance();
+        if (Slot->Adv < 1u) {
+            Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
+        }
         if (Slot->Adv < 1u) {
             Slot->Adv = 1u;
+        }
+        if (Slot->Adv > Side) {
+            Slot->Adv = Side;
         }
         Slot->State = TTF_HIT;
         if (NotifyPaint) {
@@ -267,7 +273,7 @@ static UINT8 gMonoHit[MONO_N];
 static UINT32 gMonoSide;
 static UINT32 gMonoCellW;
 /* 基线布局算法变更时递增，逼缓存失效 */
-static UINT32 gMonoLayout = 2u;
+static UINT32 gMonoLayout = 3u;
 static UINT32 gMonoCachedLayout;
 
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {

@@ -201,6 +201,7 @@ int GuiInitialize(void) {
     (void)FontTtfLoad();
     (void)FontTtfInit();
     (void)FontTtfMonoInit();
+    (void)FontFtInit();
     PollInput();
     (void)ThemeLoad();
     LocaleInitialize();

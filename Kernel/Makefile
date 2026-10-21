@@ -55,6 +55,8 @@ endif
 LWIP ?= 1
 LWIPINCLUDES :=
 LWIPOBJS :=
+FREETYPE_OBJS :=
+FREETYPE_HAVE :=
 LWIP_PORT_OBJS :=
 BOARD_OBJS :=
 
@@ -128,6 +130,8 @@ INCLUDES_COMMON = -IInclude \
                   -ILibrary \
                   -ILibrary/Fonts \
                   -IThirdParty/stb \
+                  -IThirdParty/freetype-port \
+                  -IThirdParty/freetype/include \
                   -IHAL/$(HAL_ARCH) \
                   -IHAL/$(HAL_ARCH)/Hal \
                   -IHAL/$(HAL_ARCH)/Architecture \
@@ -235,6 +239,31 @@ CFLAGS_COMMON = $(CFLAGS_BASE) $(INCLUDES_COMMON) $(LWIPINCLUDES)
 CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp
 # PR-UI-ttf-fpu：仅 HalFpuSse.c 去掉 general-regs-only，允许 SSE
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL)) -msse2
+# font-freetype-hook：FT 源 + FreeTypeRaster 须 FPU；无上游树则跳过（软退 stb）
+FREETYPE_ROOT = ThirdParty/freetype
+FREETYPE_HAVE := $(wildcard $(FREETYPE_ROOT)/src/base/ftbase.c)
+ifeq ($(ARCH),x86_64)
+ifneq ($(FREETYPE_HAVE),)
+CFLAGS_FT = $(CFLAGS_FPU) -DFT2_BUILD_LIBRARY -DFONTS_HAVE_FREETYPE \
+            -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare \
+            -Wno-implicit-fallthrough -Wno-maybe-uninitialized
+FREETYPE_SRCS = \
+	ThirdParty/freetype-port/ftsystem_blocks.c \
+	ThirdParty/freetype-port/ftcompat.c \
+	$(FREETYPE_ROOT)/src/base/ftinit.c \
+	$(FREETYPE_ROOT)/src/base/ftdebug.c \
+	$(FREETYPE_ROOT)/src/base/ftbase.c \
+	$(FREETYPE_ROOT)/src/base/ftbitmap.c \
+	$(FREETYPE_ROOT)/src/base/ftmm.c \
+	$(FREETYPE_ROOT)/src/sfnt/sfnt.c \
+	$(FREETYPE_ROOT)/src/truetype/truetype.c \
+	$(FREETYPE_ROOT)/src/smooth/smooth.c \
+	$(FREETYPE_ROOT)/src/psnames/psnames.c
+FREETYPE_ASM = ThirdParty/freetype-port/ftsetjmp.S
+FREETYPE_OBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(FREETYPE_SRCS)) \
+	$(BUILDDIR)/ThirdParty/freetype-port/ftsetjmp.o
+endif
+endif
 ifneq ($(BOARD_DIR),)
 endif
 
@@ -588,7 +617,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(FREETYPE_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -728,6 +757,28 @@ ifeq ($(ARCH),x86_64)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -Wno-unused-parameter -c $< -o $@
 else
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+endif
+
+$(BUILDDIR)/Services/Look/Fonts/FreeTypeRaster.o: Services/Look/Fonts/FreeTypeRaster.c | $(BUILDDIR)
+ifeq ($(ARCH),x86_64)
+ifneq ($(FREETYPE_HAVE),)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FT) -c $< -o $@
+else
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+endif
+else
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+endif
+
+ifneq ($(FREETYPE_HAVE),)
+$(BUILDDIR)/ThirdParty/freetype-port/%.o: ThirdParty/freetype-port/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FT) -c $< -o $@
+
+$(BUILDDIR)/ThirdParty/freetype-port/ftsetjmp.o: ThirdParty/freetype-port/ftsetjmp.S | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FT) -c $< -o $@
+
+$(BUILDDIR)/$(FREETYPE_ROOT)/src/%.o: $(FREETYPE_ROOT)/src/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FT) -c $< -o $@
 endif
 
 $(BUILDDIR)/Services/%.o: Services/%.c | $(BUILDDIR)

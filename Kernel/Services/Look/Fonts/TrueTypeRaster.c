@@ -220,40 +220,21 @@ static stbtt_fontinfo *FontTtfCur(void) {
     return &gInfo;
 }
 
-/* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */
-static float FontTtfTopShift(stbtt_fontinfo *Info, int Glyph, float Scale) {
-    int X0;
-    int Y0;
-    int X1;
-    int Y1;
-    float Top;
-    int TopI;
-    float Shift;
-
-    if (!stbtt_GetGlyphBox(Info, Glyph, &X0, &Y0, &X1, &Y1)) {
-        return 0.0f;
-    }
-    (void)X0;
-    (void)X1;
-    (void)Y0;
-    Top = -(float)Y1 * Scale;
-    TopI = FontTtfIfloor(Top);
-    Shift = -(Top - (float)TopI);
-    if (Shift > -0.001f) {
-        Shift = 0.0f;
-    }
-    return Shift;
-}
-
 /*
- * 在 CellW×CellH 内算 Scale/框/居中。
- * mono：CellW=等宽步进、CellH=字高，勿再塞进汉字方格（否则画宽步进窄→叠字歪扭）。
+ * 在 CellW×CellH 内算 Scale/框。
+ * 垂直：VMetrics 基线（与 FT / mono 一致），禁止按字形高垂直居中——
+ * 否则拉丁 a/e 浮在格中，和汉字基线对不齐。
+ * 水平：仍居中；拉丁半宽步进靠 Adv，不靠底对齐。
  */
 static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 CellW,
                          UINT32 CellH, float *OutScale, float *OutShift, int *OutGw,
                          int *OutGh, int *OutOx, int *OutOy) {
     float Scale;
     float Shift;
+    int Ascent;
+    int Descent;
+    int LineGap;
+    int Baseline;
     int X0;
     int Y0;
     int X1;
@@ -263,11 +244,23 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
     int Ox;
     int Oy;
 
+    (void)Glyph;
     if (CellW == 0 || CellH == 0) {
         return -1;
     }
-    Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)CellH);
-    Shift = FontTtfTopShift(Info, Glyph, Scale);
+    /* 与 mono 同：按像素高定 Scale，基线用 ascent；拉丁不再 TopShift 顶齐 */
+    Scale = stbtt_ScaleForPixelHeight(Info, (float)CellH);
+    Shift = 0.0f;
+    stbtt_GetFontVMetrics(Info, &Ascent, &Descent, &LineGap);
+    (void)Descent;
+    (void)LineGap;
+    Baseline = (int)((float)Ascent * Scale);
+    if (Baseline < 1) {
+        Baseline = (int)CellH * 3 / 4;
+    }
+    if (Baseline >= (int)CellH) {
+        Baseline = (int)CellH - 1;
+    }
     stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f, Shift,
                                         &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
@@ -281,7 +274,13 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
         float Fit = (FitX < FitY) ? FitX : FitY;
 
         Scale *= Fit;
-        Shift = FontTtfTopShift(Info, Glyph, Scale);
+        Baseline = (int)((float)Ascent * Scale);
+        if (Baseline < 1) {
+            Baseline = (int)CellH * 3 / 4;
+        }
+        if (Baseline >= (int)CellH) {
+            Baseline = (int)CellH - 1;
+        }
         stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f,
                                             Shift, &X0, &Y0, &X1, &Y1);
         Gw = X1 - X0;
@@ -291,7 +290,7 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
         }
     }
     Ox = ((int)CellW - Gw) / 2;
-    Oy = ((int)CellH - Gh) / 2;
+    Oy = Baseline + Y0;
     if (Ox < 0) {
         Ox = 0;
     }
@@ -471,6 +470,17 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     for (i = 0; i < TTF_PIX; i++) {
         Pix18[i] = 0;
     }
+    /*
+     * font-freetype-hook：优先 FT。
+     * UI 拉丁（非 mono 的 ASCII）仍走 stb：UMing+FT 墨水易铺满 Side 格，
+     * 步进半宽就会叠字；汉字 / mono 用 FT。失败一律软退 stb。
+     */
+    FontFtClearLastAdvance();
+    if (FontFtReady() && (Mono || Cp >= 128u) &&
+        FontFtRasterCp(Cp, Pix18, CellW, CellH) == 0) {
+        return 0;
+    }
+    FontFtClearLastAdvance();
     gArenaUsed = 0;
     if (!HalFpuBegin()) {
         return -1;

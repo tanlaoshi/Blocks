@@ -54,6 +54,13 @@ const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
 UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
+/* FreeType 挂钩：Init 在 TTF Load/Init 之后；Raster 失败由 RasterCp 软退 stb */
+int FontFtInit(void);
+int FontFtReady(void);
+int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH);
+/* 最近一次 FontFtRasterCp 成功的像素步进；未走 FT / 已 Clear 为 0 */
+UINT32 FontFtLastAdvance(void);
+void FontFtClearLastAdvance(void);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* HIT 槽步进；未命中 0。拉丁约为 Side/2，汉字 Side */
 UINT32 FontTtfCacheAdvance(UINT32 Cp);

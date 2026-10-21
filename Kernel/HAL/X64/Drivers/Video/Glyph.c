@@ -212,16 +212,16 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 
 /*
  * gui-ttf-crisp：剥外晕 + 中灰抬实心。
- * 96/168 偏软；160 过细；现 112 丢 / ≥176 实心（略硬一档）。
+ * 112/176 略硬偏细；现 88 丢 / ≥152 实心，中段抬高→笔画略粗、仍不太糊。
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (N < 112u) {
+    if (N < 88u) {
         return 0;
     }
-    if (N >= 176u) {
+    if (N >= 152u) {
         return 255;
     }
-    return (UINT8)(176u + (N - 112u) * 79u / 64u);
+    return (UINT8)(152u + (N - 88u) * 103u / 64u);
 }
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */

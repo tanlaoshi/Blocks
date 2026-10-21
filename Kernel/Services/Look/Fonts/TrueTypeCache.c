@@ -265,36 +265,55 @@ UINT32 FontTtfWantDrain(UINT32 Max) {
 static UINT8 gMonoPix[MONO_N][TTF_PIX];
 static UINT8 gMonoHit[MONO_N];
 static UINT32 gMonoSide;
+static UINT32 gMonoCellW;
+/* 基线布局算法变更时递增，逼缓存失效 */
+static UINT32 gMonoLayout = 2u;
+static UINT32 gMonoCachedLayout;
 
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     UINT32 Idx;
     UINT32 Side;
+    UINT32 CellW;
 
     if (!FontTtfMonoActive() || Cp < 32u || Cp >= 127u) {
         return 0;
     }
     Idx = Cp - 32u;
     Side = FontTtfPixel();
-    if (gMonoHit[Idx] == TTF_HIT && gMonoSide == Side) {
+    CellW = FontTtfMonoAdvance();
+    if (CellW < 1u) {
+        CellW = Side / 2u;
+    }
+    if (gMonoCachedLayout != gMonoLayout || gMonoSide != Side ||
+        gMonoCellW != CellW) {
+        UINT32 k;
+
+        for (k = 0; k < MONO_N; k++) {
+            gMonoHit[k] = TTF_EMPTY;
+        }
+        gMonoCachedLayout = gMonoLayout;
+        gMonoSide = Side;
+        gMonoCellW = CellW;
+    }
+    if (gMonoHit[Idx] == TTF_HIT) {
         if (OutW) {
-            *OutW = Side;
+            *OutW = CellW;
         }
         if (OutH) {
             *OutH = Side;
         }
         return gMonoPix[Idx];
     }
-    if (gMonoHit[Idx] == TTF_MISS && gMonoSide == Side) {
+    if (gMonoHit[Idx] == TTF_MISS) {
         return 0;
     }
-    gMonoSide = Side;
     if (FontTtfRasterCp(Cp, gMonoPix[Idx]) != 0) {
         gMonoHit[Idx] = (UINT8)TTF_MISS;
         return 0;
     }
     gMonoHit[Idx] = (UINT8)TTF_HIT;
     if (OutW) {
-        *OutW = Side;
+        *OutW = CellW;
     }
     if (OutH) {
         *OutH = Side;

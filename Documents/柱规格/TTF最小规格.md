@@ -42,7 +42,8 @@
 | 禁止在光标/IRQ 路径首次栅格 | 开始菜单已有 4bpp 预热教训 |
 | 覆盖目标 = **现 UI 汉字 ∪ GB2312 子集文件**；不是完整 Unicode | 文件名生僻字可继续空心框 |
 
-**明确不做（本最小柱）**：FreeType、HarfBuzz、kerning、ligature、ClearType/子像素、完整 Unicode、把 Noto 全量 TTC 丢进镜像、改 `ToyUi.h`/`ToyGfx.h`、为 TTF 改窗口布局令牌。
+**明确不做（本最小柱当时）**：HarfBuzz、kerning、ligature、ClearType/子像素、完整 Unicode、把 Noto 全量 TTC 丢进镜像、改 `ToyUi.h`/`ToyGfx.h`。  
+**已放开（2026-10-22）**：内核 FreeType + hint → 路线图新 `font-freetype-hook` / `font-freetype-hint`。
 
 ---
 
@@ -133,7 +134,7 @@ NUC 手测：`lang zh` 开始菜单 / Settings / Files 侧栏；对比现 4bpp �
 | ---- | ---- |
 | 只是 18px 灰边发虚 | **cjk-crisp / 重跑 gen-cjk32** 即可；不要 TTF |
 | 要缺字更少、同一文件多号 | 才谈运行时 TTF；最小规格仍锁 18px |
-| 要 Windows 级小字锐利 | 最小规格 **达不到**；那是 FreeType+hint，政策不做 |
+| 要 Windows 级小字锐利 | 走路线图 **font-freetype-***（规格已放开） |
 | 不愿开 FPU 岛 | 运行时 TTF **不做** |
 
 ---

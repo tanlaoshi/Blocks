@@ -312,6 +312,11 @@ int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
 
     BootLog("Boot: MSC claim 2nd hub no msc\n");
     DisableSlot(HubSlot);
+    /*
+     * DisableSlot 后设备仍 PED/Addressed；不 Force PR/WPR 再 Address → cc=0x04
+     *（Port.c：二次枚举须 PR）。随后 UART/Wifi 扫到此根口会抢命令环、鼠假死。
+     */
+    (void)ResetPortEx(RootPort, 1);
     gHubSlotId = SavedSlot;
     gHubRootPort = SavedRoot;
     gHubNumPorts = SavedPorts;

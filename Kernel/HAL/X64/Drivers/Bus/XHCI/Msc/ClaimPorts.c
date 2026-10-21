@@ -208,5 +208,13 @@ done:
     if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
         QueueMouseIntr();
     }
+    /*
+     * 扫空后勿再让 UART/Wifi Address 根口：刚释放的 SS hub 口易 cc=0x04，
+     * 且桌面期抢命令环 → 空拖假死。msc hot 入口会清 freeze 再扫。
+     */
+    if (!Ok) {
+        gXhciPortEnumFreeze = 1;
+        BootLog("Boot: XHCI port enum freeze (msc empty, keep mouse)\n");
+    }
     return Ok;
 }

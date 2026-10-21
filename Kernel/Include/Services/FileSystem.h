@@ -2,7 +2,7 @@
  * FileSystem.h — 文件系统模块（usb-map / story-s3 / PR-FS2 多卷）
  *
  * 开机 FileSystemInitialize；桌面 HotPoll 拔/插（UsbMsc + Clock）；Shell `msc hot`。
- * BootMediumGone：启动盘已拔且本会话曾见其上卷 → 失根（应 Park；非旁路热拔）。
+ * BootMediumGone：MSC 上曾挂 BootDiskGuid 卷，热拔时钉失根（大窗倒数关机；非旁路热拔）。
  * 路径：`BLOCKS:…`；链图 FileSystem.c / MountOs.c / Clock.c / UsbMsc.c 头。
  */
 #ifndef FILE_SYSTEM_H
@@ -28,8 +28,13 @@ int FileSystemVolCount(void);
 int FileSystemDefaultVol(void);
 /* OsTarget 卷下标；未挂上（含启动介质已拔）为 -1；≠ 默认浏览卷 */
 int FileSystemOsVol(void);
-/* 1=启动盘已拔且根曾在其上：会话失根，应停机（非旁路 U 盘热拔） */
+/* 1=启动盘已拔：会话失根（大窗倒数后关机；非旁路 U 盘热拔） */
 int FileSystemBootMediumGone(void);
+/*
+ * MSC 即将 Release 前调用（卷表与 Mux 仍有效）：
+ * 若 BootDiskGuid 卷落在 MSC 盘号上 → 钉 BootMediumGone。
+ */
+void FileSystemNotifyMscUnplug(void);
 /* Name 如 "BLOCKS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
 int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
                       UINT32 *StartLba, int *ReadOnly);

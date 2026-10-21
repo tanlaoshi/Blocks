@@ -66,15 +66,27 @@ static void DrawStartMark(UINT32 X, UINT32 Y, UINT32 S) {
     }
     Ox = X + (S > Span ? (S - Span) / 2u : 0);
     Oy = Y + (S > Span ? (S - Span) / 2u : 0);
-    GraphicsFillRectangle(Ox, Oy, Cell, Cell, 0x00C07820u);
-    GraphicsFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00C07820u);
-    GraphicsFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00C07820u);
-    GraphicsFillRectangle(Ox, Oy + Step, Cell, Cell, 0x001E9A8Eu);
-    GraphicsFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00C07820u);
-    GraphicsFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x001E9A8Eu);
-    GraphicsFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
-    GraphicsFillRectangle(Ox + Step, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
-    GraphicsFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);
+    /* 与 BootLogo 同：1/3 橙下缩 1/4；5 满高；8 青上缩 1/4 */
+    {
+        UINT32 ShortH = (Cell * 3u) / 4u;
+        UINT32 TopPad;
+
+        if (ShortH < 1u) {
+            ShortH = 1u;
+        }
+        TopPad = Cell - ShortH;
+        GraphicsFillRectangle(Ox, Oy, Cell, ShortH, 0x00C07820u);                 /* 1 */
+        GraphicsFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00C07820u);             /* 2 */
+        GraphicsFillRectangle(Ox + Step * 2u, Oy, Cell, ShortH, 0x00C07820u);     /* 3 */
+        GraphicsFillRectangle(Ox, Oy + Step, Cell, Cell, 0x001E9A8Eu);             /* 4 */
+        GraphicsFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00C07820u);     /* 5 */
+        GraphicsFillRectangle(Ox + Step * 2u, Oy + Step, Cell, Cell, 0x001E9A8Eu); /* 6 */
+        GraphicsFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x001E9A8Eu);       /* 7 */
+        GraphicsFillRectangle(Ox + Step, Oy + Step * 2u + TopPad, Cell, ShortH,
+                              0x001E9A8Eu); /* 8 */
+        GraphicsFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell,
+                              0x001E9A8Eu); /* 9 */
+    }
 }
 
 /* 任务栏控件（边框/开始钮/时钟）；底色由调用方 Fill / BlendFill */

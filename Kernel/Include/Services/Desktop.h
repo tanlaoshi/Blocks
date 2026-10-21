@@ -42,6 +42,10 @@ void DesktopBootLogoSet(UINT32 Pct);
 /* 长阶段（MSC claim）内 +1，且不超过 Cap；供 HalBootLogoBump */
 void DesktopBootLogoBump(UINT32 Cap);
 void DesktopBootLogoFinish(void);
+/*
+ * usb-boot-unplug：启动盘已拔 — 大窗提示，5 秒倒数后 HalCpuShutdown（不返回）。
+ */
+void DesktopBootMediumGoneShutdown(void);
 /* PR-BOOT-fast-1：Worker 补齐 BMP/菜单；Gui 只 Consume 后刷新（勿在 Gui 路径读盘） */
 void DesktopEnsureIconsLoaded(void);
 /* 1=Worker 已完成图标/菜单扫盘（fs-msc-defer 旁路认盘门闩） */

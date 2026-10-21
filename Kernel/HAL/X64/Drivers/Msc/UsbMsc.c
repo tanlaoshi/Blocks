@@ -4,12 +4,13 @@
  * ```
  * 开机 AutoBeforeFs → Claim/Mount（策略；不搅热插）
  * Worker DesktopWorkerTick ~2Hz → HotPoll（仅桌面后）
- *   拔：Ready && !Present → Release →1 → Remount → BootMediumGone? Park
+ *   拔：Ready && !Present → NotifyMscUnplug（Mux 仍在）→ Release →1
+ *       → Clock：Gone? 大窗 5s 关机 : Remount+Files
  *   插：!Ready && auto → Scan>0（含 hub）→ Claim/Mount →1；~5s 节流
  * Shell msc hot / EnsureSecondary → UsbMscHot（显式 claim）
  * ```
  * 日志：`Fs: msc/1..4` → BOOT/RUNTIME（角色见路线图 msc-desktop-hotplug）。
- * 失根：FileSystemBootMediumGone（MountOs）← Remount 后 Clock 判 Park。
+ * 失根：Notify 在 Release 前钉 Gone（BootDiskGuid 卷在 MSC 盘号）。
  */
 #include "Msc/UsbMsc.h"
 #include "UsbMscHost.h"
@@ -18,6 +19,9 @@
 #include "SerialLog.h"
 #include "Debug.h"
 #include "Hal.h"
+
+/* Services：Release 前判启动盘；勿在 RemoveMsc 之后调（盘号 KIND 已清） */
+void FileSystemNotifyMscUnplug(void);
 
 void BlockMscInstall(void); /* BlockMsc.c */
 
@@ -314,6 +318,7 @@ int UsbMscHotPoll(void) {
             return 0;
         }
         LogFs("Fs: msc/4 hot unplug\n");
+        FileSystemNotifyMscUnplug();
         (void)UsbMscRelease();
         return 1;
     }
@@ -372,6 +377,7 @@ int UsbMscHot(void) {
         if (Present) {
             return 0;
         }
+        FileSystemNotifyMscUnplug();
         (void)UsbMscRelease();
     }
 

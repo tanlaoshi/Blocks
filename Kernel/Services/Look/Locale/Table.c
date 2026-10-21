@@ -165,4 +165,8 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_STORE_SRC_LOCAL",
     "MSG_STORE_SRC_NET",
     "MSG_MENU_EMPTY",
+    "MSG_BOOT_GONE_TITLE",
+    "MSG_BOOT_GONE_BODY",
+    "MSG_BOOT_GONE_BEFORE",
+    "MSG_BOOT_GONE_AFTER",
 };

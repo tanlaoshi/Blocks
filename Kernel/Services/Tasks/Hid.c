@@ -28,6 +28,15 @@ void TasksPumpKeyboard(void) {
     HAL_KEYBOARD_REPORT Report;
 
     /*
+     * usb-boot-unplug 大窗：InputLocked 时只排空键队列，勿 FeedHid（禁 Esc/快捷键搅关机）。
+     */
+    if (GuiInputLocked()) {
+        while (HalKeyboardDequeue(&Report)) {
+        }
+        return;
+    }
+
+    /*
      * Count≥HAL_INPUT_CPU_MIN：HalInputPoll 归 InputTask；此处只 dequeue。
      * 用户态 sleep 钉 BSP 且不抢占时，Shell 同核转不到 → 须在 poll 路径自抽。
      */

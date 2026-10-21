@@ -165,4 +165,8 @@ const char *const gEnFallback[MSG_COUNT] = {
     "Local",
     "Net",
     "Empty",
+    "Boot disk removed",
+    "The system cannot continue.",
+    "Shutting down in",
+    "seconds",
 };

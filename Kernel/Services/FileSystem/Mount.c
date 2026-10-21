@@ -52,7 +52,12 @@ int MountAllVolumes(void) {
 
     FsMountAddResVolume();
 
+    /*
+     * usb-boot-unplug：即便 0 卷也要 UpdateBootMedium（空表 + 曾见/钉启动盘 → Gone）。
+     * 旧逻辑在 gVolCount==0 时直接 return，拔光后永不 Park。
+     */
     if (gVolCount <= 0) {
+        FsUpdateBootMediumState();
         return 0;
     }
     FsResolveOsTarget(&BlocksVol);
@@ -61,6 +66,7 @@ int MountAllVolumes(void) {
         gDefaultVol = gOsVolIdx;
     }
     if (FileSystemActivate(gDefaultVol) != FAT_OK) {
+        FsUpdateBootMediumState();
         return 0;
     }
 
@@ -92,6 +98,8 @@ int FileSystemRemountVolumes(void) {
     }
     if (!MountAllVolumes()) {
         LogFs("Fs: Remount No Volumes\n");
+        /* MountAll 已 UpdateBootMedium；此处再调幂等，保 Gone 可见 */
+        FsUpdateBootMediumState();
         return 0;
     }
     return 1;

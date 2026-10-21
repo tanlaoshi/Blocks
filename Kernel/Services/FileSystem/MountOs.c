@@ -4,14 +4,17 @@
  * ```
  * 开机 ResolveOsTarget：启动盘 ESP ROOT.CFG → 钉 Disk/Part
  *   例外：曾误钉旁路且启动盘现已挂上 → unpin 重认
- * Remount 后 FsUpdateBootMediumState：
- *   曾见 BootDisk 卷、现无 → gBootMediumGone（拔加载 EFI 的盘）
- * Clock HotPoll→Remount→FileSystemBootMediumGone→Park（usb-boot-unplug 待可靠）
+ * usb-boot-unplug：
+ *   挂卷后 FsLatchMscBootDisk：读 MSC 盘 GPT GUID，==BootDiskGuid 则闩 gMscIsBootDisk
+ *   HotPoll 拔前 Notify：闩住则 Gone（不依赖此时 BlockDriveIsMsc/卷表）
+ *   Clock：Gone → 大窗 5s → Shutdown（勿 Remount 扶旁路）
  * ```
  * Files：SecondaryReady=0 只展 OsDisk。钉死后热拔只 rebind 下标，勿改认旁路。
  */
 #include "FileSystemPrivate.h"
 #include "BootInfo.h"
+#include "Block.h"
+#include "BlockMux.h"
 #include "Gpt.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
@@ -28,6 +31,10 @@ static int gOsTargetPinned;
 /* 本会话曾见过 BootDisk 上的卷；其后 BootDisk 空且 OsTarget 在该盘 → 失根 */
 static int gBootDiskSeen;
 static int gBootMediumGone;
+/* MSC 盘 GPT GUID（挂上时闩）；与 BootDiskGuid 相同 → 拔 MSC=拔启动盘 */
+static UINT8 gMscDiskGuid[16];
+static int gMscDiskGuidOk;
+static int gMscIsBootDisk;
 
 static int GuidEq16(const UINT8 *A, const UINT8 *B) {
     int i;
@@ -164,6 +171,8 @@ static int FindBlocksOnDisk(const UINT8 Disk[16]) {
 }
 
 static void PinOsTarget(const UINT8 Disk[16], const UINT8 Part[16], int HavePart) {
+    const BOOT_INFO *Info = BootInfoGet();
+
     CopyGuid16(gOsDiskGuid, Disk);
     gOsDiskOk = 1;
     if (HavePart) {
@@ -173,6 +182,13 @@ static void PinOsTarget(const UINT8 Disk[16], const UINT8 Part[16], int HavePart
         gOsPartOk = 0;
     }
     gOsTargetPinned = 1;
+    /*
+     * usb-boot-unplug：OsTarget 钉在加载 EFI 的盘上即视为「见过启动盘」。
+     * 勿只靠卷表 DiskGuidOk——GUID 未填时 UpdateBootMedium 永不置 Seen，拔棒不 halt。
+     */
+    if (Info && Info->BootDiskGuidOk && GuidEq16(Disk, Info->BootDiskGuid)) {
+        gBootDiskSeen = 1;
+    }
 }
 
 static void RebindPinnedOsTarget(int *BlocksVol) {
@@ -354,17 +370,113 @@ int FileSystemOsVol(void) {
 }
 
 /*
- * 挂卷后调用：区分「旁路 U 盘热拔」与「拔掉启动盘（根在其上）」。
- * 后者置位 BootMediumGone——Kernel 虽仍在 RAM，根文件系统已不在，不应继续当系统用。
+ * MSC 已在 Mux 上：读其 GPT DiskGUID，与 BootDiskGuid 比较并闩住。
+ * 必须在「还挂着」时调用；拔后再读会失败。
+ */
+void FsLatchMscBootDisk(void) {
+    const BOOT_INFO *Info = BootInfoGet();
+    UINT32 d;
+    UINT8 Guid[16];
+
+    gMscDiskGuidOk = 0;
+    gMscIsBootDisk = 0;
+    for (d = 0; d < BLOCK_MAX_DRIVES; d++) {
+        if (!BlockDriveIsMsc(d)) {
+            continue;
+        }
+        if (!BlockSelect(d)) {
+            continue;
+        }
+        if (!GptCurrentDiskGuid(Guid)) {
+            LogFs("Fs: msc latch gpt fail drive=");
+            LogFsHex32(d);
+            LogFs("\n");
+            continue;
+        }
+        CopyGuid16(gMscDiskGuid, Guid);
+        gMscDiskGuidOk = 1;
+        if (Info && Info->BootDiskGuidOk && GuidEq16(Guid, Info->BootDiskGuid)) {
+            gMscIsBootDisk = 1;
+            gBootDiskSeen = 1;
+            LogFs("Fs: msc latched BOOT disk\n");
+        } else {
+            LogFs("Fs: msc latched (bypass)\n");
+        }
+        return;
+    }
+}
+
+/*
+ * MSC Release 前调用。主判据：挂载时已闩 gMscIsBootDisk。
+ * 补判：卷表里 BootDiskGuid 仍落在 MSC 盘号（闩失败时）。
+ */
+void FileSystemNotifyMscUnplug(void) {
+    const BOOT_INFO *Info = BootInfoGet();
+    int i;
+
+    if (gBootMediumGone) {
+        return;
+    }
+
+    LogFs("Fs: msc unplug notify isBoot=");
+    LogFsHex32((UINT32)gMscIsBootDisk);
+    LogFs(" guidOk=");
+    LogFsHex32((UINT32)gMscDiskGuidOk);
+    LogFs("\n");
+
+    if (gMscIsBootDisk) {
+        gBootMediumGone = 1;
+        LogFs("Fs: boot medium removed (msc was boot disk)\n");
+        return;
+    }
+
+    if (!Info || !Info->BootDiskGuidOk) {
+        return;
+    }
+    /* 闩未立时：OsTarget 已钉在 BootDisk 且 MSC 盘 GUID==BootDisk */
+    if (gMscDiskGuidOk && GuidEq16(gMscDiskGuid, Info->BootDiskGuid)) {
+        gBootMediumGone = 1;
+        LogFs("Fs: boot medium removed (msc guid=BootDiskGuid)\n");
+        return;
+    }
+    if (gOsDiskOk && GuidEq16(gOsDiskGuid, Info->BootDiskGuid) && gMscDiskGuidOk &&
+        GuidEq16(gMscDiskGuid, gOsDiskGuid)) {
+        gBootMediumGone = 1;
+        LogFs("Fs: boot medium removed (msc held OsTarget)\n");
+        return;
+    }
+    for (i = 0; i < gVolCount; i++) {
+        if (!gVols[i].DiskGuidOk) {
+            continue;
+        }
+        if (!GuidEq16(gVols[i].DiskGuid, Info->BootDiskGuid)) {
+            continue;
+        }
+        if (!BlockDriveIsMsc(gVols[i].Drive)) {
+            continue;
+        }
+        gBootDiskSeen = 1;
+        gBootMediumGone = 1;
+        LogFs("Fs: boot medium removed (vol on msc)\n");
+        return;
+    }
+}
+
+/*
+ * Remount 后：闩 MSC；补判失根。
  */
 void FsUpdateBootMediumState(void) {
     const BOOT_INFO *Info = BootInfoGet();
     int i;
     int Present = 0;
+    int OsWasBootDisk = 0;
 
     if (gBootMediumGone) {
         return;
     }
+
+    FsLatchMscBootDisk();
+
     if (!Info || !Info->BootDiskGuidOk) {
         return;
     }
@@ -381,13 +493,20 @@ void FsUpdateBootMediumState(void) {
         gBootDiskSeen = 1;
         return;
     }
-    if (!gBootDiskSeen) {
-        return; /* 启动盘尚未挂上（例如 U 盘起、MSC 尚未 claim） */
+    if (gOsDiskOk && GuidEq16(gOsDiskGuid, Info->BootDiskGuid)) {
+        OsWasBootDisk = 1;
+    }
+    if (!gBootDiskSeen && !OsWasBootDisk && !gMscIsBootDisk) {
+        return;
     }
     /*
-     * 曾见过启动盘、现已无任何卷 = 拔掉加载 EFI 的那块盘。
-     * 不依赖 OsTarget 是否曾误钉旁路（U 盘起首轮只见 NVMe 时的旧坑）。
+     * 卷表已无 BootDisk，且本会话 MSC 曾是启动盘 / Seen / Os 在启动盘 → Gone。
+     * 注意：仅 Seen（NUC 起）且 MSC 不是启动盘时，Present 仍应为 1（NUC 卷）；
+     * 此处 Present=0 只在启动盘卷全消失时成立。
      */
+    if (!gMscIsBootDisk && !OsWasBootDisk && gBootDiskSeen) {
+        /* NUC 起却 Present=0：异常；仍标 Gone 以免空根 Continue */
+    }
     gBootMediumGone = 1;
     LogFs("Fs: boot medium removed\n");
 }

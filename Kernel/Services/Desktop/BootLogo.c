@@ -75,23 +75,55 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
     GraphicsFillRectangle(X, Y, W, H, C);
 }
 
+/*
+ * 九宫格编号（左→右、上→下）：
+ *   1 2 3
+ *   4 5 6
+ *   7 8 9
+ * 1/3 橙：下部缩短 1/4（顶边不动）；5 满高；8 青：上部缩短 1/4（底边不动）。
+ */
 static void Cell(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 C) {
     UINT32 Step = LOGO_CELL + LOGO_GAP;
 
     Fill(X + Col * Step, Y + Row * Step, LOGO_CELL, LOGO_CELL, C);
 }
 
+/* 顶边对齐槽位，高度 ShortH（1/3） */
+static void CellTop(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row, UINT32 ShortH,
+                    UINT32 C) {
+    UINT32 Step = LOGO_CELL + LOGO_GAP;
+
+    if (ShortH == 0) {
+        return;
+    }
+    Fill(X + Col * Step, Y + Row * Step, LOGO_CELL, ShortH, C);
+}
+
+/* 底边对齐槽位，高度 ShortH（8：槽顶空出 CELL-ShortH） */
+static void CellBottom(UINT32 X, UINT32 Y, UINT32 Col, UINT32 Row,
+                       UINT32 ShortH, UINT32 C) {
+    UINT32 Step = LOGO_CELL + LOGO_GAP;
+    UINT32 TopPad;
+
+    if (ShortH == 0 || ShortH > LOGO_CELL) {
+        return;
+    }
+    TopPad = LOGO_CELL - ShortH;
+    Fill(X + Col * Step, Y + Row * Step + TopPad, LOGO_CELL, ShortH, C);
+}
+
 /* Shift 是 T 还悬在凹形上方的距离。0 时竖条落进凹口。 */
 static void DrawOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
     UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
+    UINT32 ShortH = (LOGO_CELL * 3u) / 4u;
 
-    Cell(X, Yt, 0, 0, LOGO_ACCENT);
-    Cell(X, Yt, 1, 0, LOGO_ACCENT);
-    Cell(X, Yt, 2, 0, LOGO_ACCENT);
-    Cell(X, Yt, 1, 1, LOGO_ACCENT);
+    CellTop(X, Yt, 0, 0, ShortH, LOGO_ACCENT); /* 1 */
+    Cell(X, Yt, 1, 0, LOGO_ACCENT);             /* 2 满高 */
+    CellTop(X, Yt, 2, 0, ShortH, LOGO_ACCENT); /* 3 */
+    Cell(X, Yt, 1, 1, LOGO_ACCENT);             /* 5 满高 */
 }
 
-/* 只擦上一帧橙色四格，绝不碰青绿（整带擦会闪线）。 */
+/* 只擦上一帧橙色四格（整槽擦干净）；绝不碰青绿。 */
 static void ClearOrange(UINT32 X, UINT32 Y, UINT32 Shift) {
     UINT32 Yt = (Y > Shift) ? (Y - Shift) : 0;
     UINT32 Step = LOGO_CELL + LOGO_GAP;
@@ -108,9 +140,11 @@ static void DrawTealSides(UINT32 X, UINT32 Y) {
 }
 
 static void DrawTealBottom(UINT32 X, UINT32 Y) {
-    Cell(X, Y, 0, 2, LOGO_TEAL);
-    Cell(X, Y, 1, 2, LOGO_TEAL);
-    Cell(X, Y, 2, 2, LOGO_TEAL);
+    UINT32 ShortH = (LOGO_CELL * 3u) / 4u;
+
+    Cell(X, Y, 0, 2, LOGO_TEAL);                    /* 7 */
+    CellBottom(X, Y, 1, 2, ShortH, LOGO_TEAL);     /* 8 上部缩短 1/4 */
+    Cell(X, Y, 2, 2, LOGO_TEAL);                    /* 9 */
 }
 
 static void PaintPieces(UINT32 Pct) {

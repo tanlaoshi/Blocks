@@ -176,6 +176,10 @@ typedef enum {
     MSG_STORE_SRC_LOCAL,
     MSG_STORE_SRC_NET,
     MSG_MENU_EMPTY,
+    MSG_BOOT_GONE_TITLE,
+    MSG_BOOT_GONE_BODY,
+    MSG_BOOT_GONE_BEFORE, /* 计算机将在 / Shutting down in */
+    MSG_BOOT_GONE_AFTER,  /* 秒后关闭 / seconds */
     MSG_COUNT
 } MSG_ID;
 

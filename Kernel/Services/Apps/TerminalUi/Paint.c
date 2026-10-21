@@ -3,6 +3,7 @@
  */
 #include "TtyUiPrivate.h"
 #include "UI.h"
+#include "Font.h"
 
 static void DrawLine(UINT32 X, UINT32 Y, const char *S, UINT32 Fg) {
     if (S) {
@@ -39,6 +40,7 @@ void TtyPaint(void) {
     GraphicsFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
+    FontTtfMonoBegin();
     LineH = FontAdvanceY();
     if (LineH < 16) {
         LineH = 16;
@@ -117,6 +119,7 @@ void TtyPaint(void) {
         }
     }
 
+    FontTtfMonoEnd();
     HalVideoClearClip();
     GuiBackupFocusWindow();
     GuiFrameBufferEnd();

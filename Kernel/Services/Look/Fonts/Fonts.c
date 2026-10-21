@@ -478,7 +478,12 @@ UINT32 FontCellH(void) {
 UINT32 FontAdvanceX(void) {
     const FONT_FACE *F = FontGetCurrent();
     UINT32 S = ScaleOf(F);
+    UINT32 Mono;
 
+    Mono = FontTtfMonoAdvance();
+    if (FontTtfMonoActive() && Mono != 0u) {
+        return Mono;
+    }
     return FaceDrawW(F) + F->CharSpacing * S;
 }
 
@@ -581,6 +586,14 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const UINT8 *G;
 
     gGlyphDefer = 0;
+    /* font-latin-mono：控制台/TTY 激活时 ASCII 走 MONO.TTF（独立于 UI 缓存） */
+    if (FontTtfMonoActive() && Cp >= 32u && Cp < 127u) {
+        G = FontTtfMonoCacheGet(Cp, OutW, OutH);
+        if (G) {
+            gGlyphCpBpp = 8;
+            return G;
+        }
+    }
     /*
      * font-unified-ttf：可打印 ASCII 与汉字都先 TTF（同源 CJK.TTF）。
      * 已 init 且尚未确认缺字时：等 Worker 栅格，勿立刻回落点阵。
@@ -688,6 +701,12 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
     UINT32 H;
     UINT32 Adv;
 
+    if (FontTtfMonoActive() && Cp >= 32u && Cp < 127u) {
+        Adv = FontTtfMonoAdvance();
+        if (Adv != 0u) {
+            return Adv;
+        }
+    }
     Adv = FontTtfCacheAdvance(Cp);
     if (Adv != 0u) {
         return Adv;

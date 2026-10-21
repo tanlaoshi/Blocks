@@ -108,6 +108,10 @@ static int FontTtfIceil(float X) {
 #include "stb_truetype.h"
 
 static stbtt_fontinfo gInfo;
+static stbtt_fontinfo gMonoInfo;
+static int gMonoInit;
+static int gMonoNest;
+static UINT32 gMonoAdv;
 
 int FontTtfInit(void) {
     const UINT8 *Blob;
@@ -136,12 +140,88 @@ int FontTtfInit(void) {
     return 0;
 }
 
+int FontTtfMonoInit(void) {
+    const UINT8 *Blob;
+    UINT32 Size;
+    int Ok;
+    float Scale;
+    int Adv;
+    int Lsb;
+
+    gMonoInit = 0;
+    gMonoAdv = 0;
+    Blob = FontTtfMonoBlob(&Size);
+    if (!Blob || Size < 12u || !HalFpuOk() || !gInit) {
+        LogBoot("Boot: ttf-mono init skip\n");
+        return -1;
+    }
+    if (!HalFpuBegin()) {
+        LogBoot("Boot: ttf-mono init skip\n");
+        return -1;
+    }
+    gArenaUsed = 0;
+    Ok = stbtt_InitFont(&gMonoInfo, Blob, 0);
+    if (Ok) {
+        Scale = stbtt_ScaleForMappingEmToPixels(&gMonoInfo, (float)FontTtfPixel());
+        stbtt_GetCodepointHMetrics(&gMonoInfo, (int)'M', &Adv, &Lsb);
+        (void)Lsb;
+        if (Adv > 0) {
+            gMonoAdv = (UINT32)(Adv * Scale + 0.5f);
+        }
+        if (gMonoAdv < 1u) {
+            gMonoAdv = FontTtfPixel() / 2u;
+        }
+        if (gMonoAdv < 1u) {
+            gMonoAdv = 1u;
+        }
+    }
+    HalFpuEnd();
+    if (!Ok) {
+        LogBoot("Boot: ttf-mono init fail\n");
+        return -1;
+    }
+    gMonoInit = 1;
+    LogBoot("Boot: ttf-mono init ok\n");
+    return 0;
+}
+
 int FontTtfReady(void) {
     return gInit ? 1 : 0;
 }
 
+int FontTtfMonoReady(void) {
+    return gMonoInit ? 1 : 0;
+}
+
+void FontTtfMonoBegin(void) {
+    if (gMonoInit) {
+        gMonoNest++;
+    }
+}
+
+void FontTtfMonoEnd(void) {
+    if (gMonoNest > 0) {
+        gMonoNest--;
+    }
+}
+
+int FontTtfMonoActive(void) {
+    return (gMonoInit && gMonoNest > 0) ? 1 : 0;
+}
+
+UINT32 FontTtfMonoAdvance(void) {
+    return gMonoAdv;
+}
+
+static stbtt_fontinfo *FontTtfCur(void) {
+    if (FontTtfMonoActive()) {
+        return &gMonoInfo;
+    }
+    return &gInfo;
+}
+
 /* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */
-static float FontTtfTopShift(int Glyph, float Scale) {
+static float FontTtfTopShift(stbtt_fontinfo *Info, int Glyph, float Scale) {
     int X0;
     int Y0;
     int X1;
@@ -150,7 +230,7 @@ static float FontTtfTopShift(int Glyph, float Scale) {
     int TopI;
     float Shift;
 
-    if (!stbtt_GetGlyphBox(&gInfo, Glyph, &X0, &Y0, &X1, &Y1)) {
+    if (!stbtt_GetGlyphBox(Info, Glyph, &X0, &Y0, &X1, &Y1)) {
         return 0.0f;
     }
     (void)X0;
@@ -166,9 +246,9 @@ static float FontTtfTopShift(int Glyph, float Scale) {
 }
 
 /* 在 Cell 边长上算 Scale/框/居中；成功填 *Out*，失败 -1（已在 FPU 岛内）。 */
-static int FontTtfLayout(UINT32 Cp, int Glyph, UINT32 Cell, float *OutScale,
-                         float *OutShift, int *OutGw, int *OutGh, int *OutOx,
-                         int *OutOy) {
+static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell,
+                         float *OutScale, float *OutShift, int *OutGw, int *OutGh,
+                         int *OutOx, int *OutOy) {
     float Scale;
     float Shift;
     int X0;
@@ -180,9 +260,9 @@ static int FontTtfLayout(UINT32 Cp, int Glyph, UINT32 Cell, float *OutScale,
     int Ox;
     int Oy;
 
-    Scale = stbtt_ScaleForMappingEmToPixels(&gInfo, (float)Cell);
-    Shift = FontTtfTopShift(Glyph, Scale);
-    stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f, Shift,
+    Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)Cell);
+    Shift = FontTtfTopShift(Info, Glyph, Scale);
+    stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f, Shift,
                                         &X0, &Y0, &X1, &Y1);
     Gw = X1 - X0;
     Gh = Y1 - Y0;
@@ -195,8 +275,8 @@ static int FontTtfLayout(UINT32 Cp, int Glyph, UINT32 Cell, float *OutScale,
         float Fit = (FitX < FitY) ? FitX : FitY;
 
         Scale *= Fit;
-        Shift = FontTtfTopShift(Glyph, Scale);
-        stbtt_GetCodepointBitmapBoxSubpixel(&gInfo, (int)Cp, Scale, Scale, 0.0f,
+        Shift = FontTtfTopShift(Info, Glyph, Scale);
+        stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f,
                                             Shift, &X0, &Y0, &X1, &Y1);
         Gw = X1 - X0;
         Gh = Y1 - Y0;
@@ -263,8 +343,15 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     UINT8 *Hi;
     UINT32 HiBytes;
 
-    /* font-unified-ttf：可打印 ASCII 与汉字同源栅格；控制符仍拒 */
-    if (!Pix18 || !gInit || Cp < 32u || Cp == 127u) {
+    /* 可打印 ASCII/汉字；mono 激活时用 MONO.TTF */
+    if (!Pix18 || Cp < 32u || Cp == 127u) {
+        return -1;
+    }
+    if (FontTtfMonoActive()) {
+        if (!gMonoInit || Cp >= 128u) {
+            return -1;
+        }
+    } else if (!gInit) {
         return -1;
     }
     Side = FontTtfPixel();
@@ -275,33 +362,37 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     if (!HalFpuBegin()) {
         return -1;
     }
-    Glyph = stbtt_FindGlyphIndex(&gInfo, (int)Cp);
+    {
+        stbtt_fontinfo *Info = FontTtfCur();
 
-    /* 2× 过采样：大格直栅 → 箱滤；暂存不够或布局失败 → 1× */
-    OsSide = Side * TTF_OS;
-    HiBytes = OsSide * OsSide;
-    Hi = (UINT8 *)FontTtfMalloc(HiBytes);
-    if (Hi != 0 &&
-        FontTtfLayout(Cp, Glyph, OsSide, &Scale, &Shift, &Gw, &Gh, &Ox, &Oy) ==
-            0) {
-        STBTT_memset(Hi, 0, HiBytes);
-        stbtt_MakeCodepointBitmapSubpixel(&gInfo, Hi + Oy * (int)OsSide + Ox, Gw,
-                                          Gh, (int)OsSide, Scale, Scale, 0.0f,
-                                          Shift, (int)Cp);
-        FontTtfDownsample2(Hi, OsSide, Pix18, Side);
-        HalFpuEnd();
-        return 0;
-    }
+        Glyph = stbtt_FindGlyphIndex(Info, (int)Cp);
 
-    gArenaUsed = 0;
-    if (FontTtfLayout(Cp, Glyph, Side, &Scale, &Shift, &Gw, &Gh, &Ox, &Oy) !=
-        0) {
-        HalFpuEnd();
-        return -1;
+        /* 2× 过采样：大格直栅 → 箱滤；暂存不够或布局失败 → 1× */
+        OsSide = Side * TTF_OS;
+        HiBytes = OsSide * OsSide;
+        Hi = (UINT8 *)FontTtfMalloc(HiBytes);
+        if (Hi != 0 &&
+            FontTtfLayout(Info, Cp, Glyph, OsSide, &Scale, &Shift, &Gw, &Gh, &Ox,
+                          &Oy) == 0) {
+            STBTT_memset(Hi, 0, HiBytes);
+            stbtt_MakeCodepointBitmapSubpixel(Info, Hi + Oy * (int)OsSide + Ox, Gw,
+                                              Gh, (int)OsSide, Scale, Scale, 0.0f,
+                                              Shift, (int)Cp);
+            FontTtfDownsample2(Hi, OsSide, Pix18, Side);
+            HalFpuEnd();
+            return 0;
+        }
+
+        gArenaUsed = 0;
+        if (FontTtfLayout(Info, Cp, Glyph, Side, &Scale, &Shift, &Gw, &Gh, &Ox,
+                          &Oy) != 0) {
+            HalFpuEnd();
+            return -1;
+        }
+        stbtt_MakeCodepointBitmapSubpixel(Info, Pix18 + Oy * (int)Side + Ox, Gw,
+                                          Gh, (int)Side, Scale, Scale, 0.0f, Shift,
+                                          (int)Cp);
     }
-    stbtt_MakeCodepointBitmapSubpixel(&gInfo, Pix18 + Oy * (int)Side + Ox, Gw, Gh,
-                                      (int)Side, Scale, Scale, 0.0f, Shift,
-                                      (int)Cp);
     HalFpuEnd();
     return 0;
 }
@@ -313,7 +404,29 @@ int FontTtfInit(void) {
     return -1;
 }
 
+int FontTtfMonoInit(void) {
+    return -1;
+}
+
 int FontTtfReady(void) {
+    return 0;
+}
+
+int FontTtfMonoReady(void) {
+    return 0;
+}
+
+void FontTtfMonoBegin(void) {
+}
+
+void FontTtfMonoEnd(void) {
+}
+
+int FontTtfMonoActive(void) {
+    return 0;
+}
+
+UINT32 FontTtfMonoAdvance(void) {
     return 0;
 }
 

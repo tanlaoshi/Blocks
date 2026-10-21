@@ -38,9 +38,19 @@ int FontReloadAssets(void);
 /* PR-UI-ttf-0：读 CJK.TTF 校验 sfnt；不绘制。缺文件返回 -1 */
 int FontTtfLoad(void);
 const UINT8 *FontTtfBlob(UINT32 *OutSize);
+const UINT8 *FontTtfMonoBlob(UINT32 *OutSize);
 int FontTtfInit(void);
+int FontTtfMonoInit(void);
 /* 1=stbtt 已 Init（可栅格）；0=未加载/无 FPU */
 int FontTtfReady(void);
+int FontTtfMonoReady(void);
+/* Shell/TTY：嵌套计数；激活时 ASCII 走 MONO.TTF */
+void FontTtfMonoBegin(void);
+void FontTtfMonoEnd(void);
+int FontTtfMonoActive(void);
+UINT32 FontTtfMonoAdvance(void);
+/* mono 槽 Lookup+同步栅（控制台路径）；未就绪 0 */
+const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
 UINT32 FontTtfPixel(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);

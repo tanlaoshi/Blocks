@@ -258,3 +258,46 @@ UINT32 FontTtfWantDrain(UINT32 Max) {
     }
     return N;
 }
+
+/* font-latin-mono：ASCII 独立槽，避免与 UI UMing 缓存撞车 */
+#define MONO_N 96u
+
+static UINT8 gMonoPix[MONO_N][TTF_PIX];
+static UINT8 gMonoHit[MONO_N];
+static UINT32 gMonoSide;
+
+const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
+    UINT32 Idx;
+    UINT32 Side;
+
+    if (!FontTtfMonoActive() || Cp < 32u || Cp >= 127u) {
+        return 0;
+    }
+    Idx = Cp - 32u;
+    Side = FontTtfPixel();
+    if (gMonoHit[Idx] == TTF_HIT && gMonoSide == Side) {
+        if (OutW) {
+            *OutW = Side;
+        }
+        if (OutH) {
+            *OutH = Side;
+        }
+        return gMonoPix[Idx];
+    }
+    if (gMonoHit[Idx] == TTF_MISS && gMonoSide == Side) {
+        return 0;
+    }
+    gMonoSide = Side;
+    if (FontTtfRasterCp(Cp, gMonoPix[Idx]) != 0) {
+        gMonoHit[Idx] = (UINT8)TTF_MISS;
+        return 0;
+    }
+    gMonoHit[Idx] = (UINT8)TTF_HIT;
+    if (OutW) {
+        *OutW = Side;
+    }
+    if (OutH) {
+        *OutH = Side;
+    }
+    return gMonoPix[Idx];
+}

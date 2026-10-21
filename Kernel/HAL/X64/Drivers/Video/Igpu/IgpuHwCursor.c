@@ -1,12 +1,13 @@
 /*
- * IgpuHwCursor.c — hw-cursor-igpu：CUR_CTL/BASE/POS + GTT ARGB
+ * IgpuHwCursor.c — hw-cursor-igpu / hw-cursor-ddb
  *
  * 契约：Supported/Enable 失败 → Gui 软件末波。热路径只写位置并 CURBASE 武装。
  *
- * Gen9+（对照 i915 i9xx_cursor_update_arm / skl_write_cursor_wm）：
- *   开 CUR 前必须有 CUR_BUF_CFG（DDB）与 CUR_WM；无则 FIFO underrun → 闪后黑屏。
- *   禁止臆造 DDB/水位；固件未分给光标则 Supported=0，不写 CURCNTR 使能。
- *   武装序：CURCNTR → CURPOS → CURBASE（BASE 最后）。
+ * Gen9+（对照 i915 skl_cursor_allocation / skl_write_cursor_wm / i9xx_cursor_update_arm）：
+ *   开 CUR 前必须有 CUR_BUF_CFG（DDB）与 CUR_WM_EN；无则 FIFO underrun → 黑屏。
+ *   固件常 cfg=0：从 primary PLANE_BUF_CFG 尾割 32 块（单 pipe floor），
+ *   仅当剩余 > primary WM0 blocks；CUR_WM 复用固件值 | EN（不臆造水位公式）。
+ *   缩 primary 后写回 PLANE_SURF 武装。CUR 武装序：BUF/WM → CTL → POS → BASE。
  */
 #include "Igpu.h"
 #include "IgpuBlitPrivate.h"
@@ -15,16 +16,21 @@
 #include "VirtualMemory.h"
 #include "SerialLog.h"
 
-#define IGPU_CUR_GTT_OFF       0x05900000ull /* 避开 ring/scratch/batch/back/probe/flip */
+#define IGPU_CUR_GTT_OFF       0x05900000ull
 #define IGPU_CUR_SIZE          64u
 #define IGPU_CUR_BYTES         (IGPU_CUR_SIZE * IGPU_CUR_SIZE * 4u)
 #define IGPU_CUR_PAGES         ((IGPU_CUR_BYTES + 4095u) / 4096u)
+/* i915 skl_cursor_allocation：单 active pipe 至少 32 blocks */
+#define IGPU_CUR_DDB_BLOCKS    32u
 
 #define IGPU_REG_CUR_CTL_A     0x70080u
 #define IGPU_REG_CUR_BASE_A    0x70084u
 #define IGPU_REG_CUR_POS_A     0x70088u
 #define IGPU_REG_CUR_BUF_CFG_A 0x7017Cu
 #define IGPU_REG_CUR_WM_A0     0x70140u
+/* PLANE_1（primary）BUF/WM；与 PLANE_CTL 0x70180 同管 */
+#define IGPU_REG_PLANE_BUF_1_A 0x7027Cu
+#define IGPU_REG_PLANE_WM_1_A0 0x70240u
 #define IGPU_REG_PLANE_SURF_B  0x7119Cu
 #define IGPU_REG_PLANE_SURF_C  0x7219Cu
 
@@ -32,13 +38,17 @@
 #define CURSOR_POS_X_SIGN      (1u << 15)
 #define CURSOR_POS_Y_SIGN      (1u << 31)
 #define CUR_WM_EN              (1u << 31)
-#define CUR_BUF_START_MASK     0xFFFu
-#define CUR_BUF_END_SHIFT      16
-#define CUR_BUF_END_MASK       0xFFFu
+#define PLANE_WM_EN            (1u << 31)
+#define PLANE_WM_BLOCKS_MASK   0x1FFFu
+#define CUR_WM_BLOCKS_MASK     0xFFFu
+#define BUF_START_MASK         0xFFFu
+#define BUF_END_SHIFT          16
+#define BUF_END_MASK           0xFFFu
 
-static int gCapable;   /* 1=可试 Enable；失败后清 0 */
+static int gCapable;
 static int gProbed;
 static int gOn;
+static int gDdbReady;
 static UINT32 *gArgb;
 static UINT64 gPhys;
 static UINT32 gHotX;
@@ -48,8 +58,12 @@ static UINT32 gCurBase;
 static UINT32 gCurPos;
 static UINT32 gCurBufCfg;
 static UINT32 gCurWm0;
+static UINT32 gPlaneBufReg;
+static UINT32 gPlaneWm0Reg;
 static UINT32 gSavedBufCfg;
 static UINT32 gSavedWm0;
+static UINT32 gOrigPlaneBuf;
+static int gCarved;
 
 static void PickCursorRegs(void) {
     UINT32 SurfReg;
@@ -66,45 +80,164 @@ static void PickCursorRegs(void) {
     gCurCtl = IGPU_REG_CUR_CTL_A + PipeOff;
     gCurBase = IGPU_REG_CUR_BASE_A + PipeOff;
     gCurPos = IGPU_REG_CUR_POS_A + PipeOff;
-    /* CUR_BUF_CFG / CUR_WM 走 _PIPE 间距 0x1000（与 CUR_* 同） */
     gCurBufCfg = IGPU_REG_CUR_BUF_CFG_A + PipeOff;
     gCurWm0 = IGPU_REG_CUR_WM_A0 + PipeOff;
+    gPlaneBufReg = IGPU_REG_PLANE_BUF_1_A + PipeOff;
+    gPlaneWm0Reg = IGPU_REG_PLANE_WM_1_A0 + PipeOff;
 }
 
-/* 固件已分 DDB 且 WM0 使能才允许开 CUR；否则必黑（underrun） */
-static int CursorDdbWmOk(void) {
+static void ArmPlaneSurf(void) {
+    UINT32 SurfReg;
+    UINT32 Surf;
+
+    SurfReg = IgpuGttSurfReg();
+    Surf = IgpuMmioRead32(SurfReg);
+    IgpuMmioWrite32(SurfReg, Surf);
+}
+
+static int CursorDdbWmOkQuiet(void) {
     UINT32 Cfg;
     UINT32 Wm0;
     UINT32 Start;
     UINT32 End;
 
-    PickCursorRegs();
-    if (!IgpuForcewakeGet()) {
-        return 0;
-    }
     Cfg = IgpuMmioRead32(gCurBufCfg);
     Wm0 = IgpuMmioRead32(gCurWm0);
-    Start = Cfg & CUR_BUF_START_MASK;
-    End = (Cfg >> CUR_BUF_END_SHIFT) & CUR_BUF_END_MASK;
+    Start = Cfg & BUF_START_MASK;
+    End = (Cfg >> BUF_END_SHIFT) & BUF_END_MASK;
     if (End <= Start) {
-        LogBoot("Boot: igpu hw cursor soft (no ddb) cfg=");
-        LogBootHex32(Cfg);
-        LogBoot(" wm0=");
-        LogBootHex32(Wm0);
-        LogBoot("\n");
         return 0;
     }
     if ((Wm0 & CUR_WM_EN) == 0) {
-        LogBoot("Boot: igpu hw cursor soft (no wm) cfg=");
-        LogBootHex32(Cfg);
-        LogBoot(" wm0=");
-        LogBootHex32(Wm0);
-        LogBoot("\n");
         return 0;
     }
     gSavedBufCfg = Cfg;
     gSavedWm0 = Wm0;
     return 1;
+}
+
+/*
+ * 从 primary 尾割 IGPU_CUR_DDB_BLOCKS；剩余须能盖住 primary WM0 blocks。
+ * CUR_WM：固件已有值 | EN（NUC 曾见 wm0=0x4007）；blocks 超分配则软退。
+ */
+static int CarveCursorDdb(void) {
+    UINT32 PlaneCfg;
+    UINT32 PlaneWm;
+    UINT32 CurWm;
+    UINT32 PStart;
+    UINT32 PEnd;
+    UINT32 PSize;
+    UINT32 PWmBlocks;
+    UINT32 CBlocks;
+    UINT32 NewPEnd;
+    UINT32 CStart;
+    UINT32 CEnd;
+    UINT32 NewPlaneCfg;
+
+    PlaneCfg = IgpuMmioRead32(gPlaneBufReg);
+    PlaneWm = IgpuMmioRead32(gPlaneWm0Reg);
+    CurWm = IgpuMmioRead32(gCurWm0);
+    PStart = PlaneCfg & BUF_START_MASK;
+    PEnd = (PlaneCfg >> BUF_END_SHIFT) & BUF_END_MASK;
+    if (PEnd <= PStart) {
+        LogBoot("Boot: igpu hw cursor soft (plane ddb empty) cfg=");
+        LogBootHex32(PlaneCfg);
+        LogBoot("\n");
+        return 0;
+    }
+    PSize = PEnd - PStart + 1u;
+    PWmBlocks = PlaneWm & PLANE_WM_BLOCKS_MASK;
+    if ((PlaneWm & PLANE_WM_EN) != 0 && PWmBlocks >= PSize) {
+        LogBoot("Boot: igpu hw cursor soft (plane wm>=ddb) wm=");
+        LogBootHex32(PlaneWm);
+        LogBoot("\n");
+        return 0;
+    }
+    if (PSize < PWmBlocks + IGPU_CUR_DDB_BLOCKS + 1u) {
+        LogBoot("Boot: igpu hw cursor soft (ddb tight) psz=");
+        LogBootHex32(PSize);
+        LogBoot(" wmb=");
+        LogBootHex32(PWmBlocks);
+        LogBoot("\n");
+        return 0;
+    }
+
+    CBlocks = CurWm & CUR_WM_BLOCKS_MASK;
+    if (CBlocks == 0 || CBlocks >= IGPU_CUR_DDB_BLOCKS) {
+        /* 固件无可用 cursor WM blocks：软退，勿臆造 lines/blocks */
+        LogBoot("Boot: igpu hw cursor soft (cur wm) wm0=");
+        LogBootHex32(CurWm);
+        LogBoot("\n");
+        return 0;
+    }
+
+    NewPEnd = PEnd - IGPU_CUR_DDB_BLOCKS;
+    CStart = NewPEnd + 1u;
+    CEnd = PEnd;
+    NewPlaneCfg = (NewPEnd << BUF_END_SHIFT) | PStart;
+    gOrigPlaneBuf = PlaneCfg;
+    gSavedBufCfg = (CEnd << BUF_END_SHIFT) | CStart;
+    gSavedWm0 = CurWm | CUR_WM_EN;
+
+    IgpuMmioWrite32(gPlaneBufReg, NewPlaneCfg);
+    ArmPlaneSurf();
+    IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
+    IgpuMmioWrite32(gCurWm0, gSavedWm0);
+    /* CUR 尚未 Enable；BASE 武装留到 Enable / SetPos */
+    IgpuMmioWrite32(gCurCtl, 0);
+    IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
+
+    gCarved = 1;
+    LogBoot("Boot: igpu hw cursor ddb carve plane=");
+    LogBootHex32(PlaneCfg);
+    LogBoot("->");
+    LogBootHex32(NewPlaneCfg);
+    LogBoot(" cur=");
+    LogBootHex32(gSavedBufCfg);
+    LogBoot(" wm0=");
+    LogBootHex32(gSavedWm0);
+    LogBoot("\n");
+    return 1;
+}
+
+static int EnsureCursorDdb(void) {
+    PickCursorRegs();
+    if (!IgpuForcewakeGet()) {
+        return 0;
+    }
+    if (gDdbReady) {
+        return 1;
+    }
+    if (CursorDdbWmOkQuiet()) {
+        gDdbReady = 1;
+        return 1;
+    }
+    if (!CarveCursorDdb()) {
+        return 0;
+    }
+    if (!CursorDdbWmOkQuiet()) {
+        LogBoot("Boot: igpu hw cursor soft (carve verify)\n");
+        return 0;
+    }
+    gDdbReady = 1;
+    return 1;
+}
+
+static void RestorePlaneDdb(void) {
+    if (!gCarved) {
+        return;
+    }
+    if (!IgpuForcewakeGet()) {
+        return;
+    }
+    IgpuMmioWrite32(gCurCtl, 0);
+    IgpuMmioWrite32(gCurBufCfg, 0);
+    IgpuMmioWrite32(gCurWm0, gSavedWm0 & ~CUR_WM_EN);
+    IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
+    IgpuMmioWrite32(gPlaneBufReg, gOrigPlaneBuf);
+    ArmPlaneSurf();
+    gCarved = 0;
+    gDdbReady = 0;
 }
 
 static int ProbeCapable(void) {
@@ -116,8 +249,7 @@ static int ProbeCapable(void) {
         gCapable = 0;
         return 0;
     }
-    /* 无 DDB/WM 视同不支持，避免 Enable 写 CURCNTR 黑屏 */
-    if (!CursorDdbWmOk()) {
+    if (!EnsureCursorDdb()) {
         gCapable = 0;
         return 0;
     }
@@ -126,6 +258,11 @@ static int ProbeCapable(void) {
 }
 
 static void FailLatch(void) {
+    if (gOn && IgpuForcewakeGet()) {
+        IgpuMmioWrite32(gCurCtl, 0);
+        IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
+    }
+    RestorePlaneDdb();
     gCapable = 0;
     gOn = 0;
 }
@@ -133,7 +270,6 @@ static void FailLatch(void) {
 static void FillBuiltinArrow(UINT32 *Dst) {
     UINT32 y;
     UINT32 x;
-    /* 尖在 (1,1)；白芯黑边，其余透明。glyph 刀换真字形。 */
     static const char *Rows[16] = {
         "X               ",
         "XX              ",
@@ -266,7 +402,6 @@ static void LogToPhys(UINT32 Lx, UINT32 Ly, UINT32 *Px, UINT32 *Py) {
     *Py = (UINT32)(((UINT64)Ly * (UINT64)Ph) / (UINT64)Lh);
 }
 
-/* i915：POS 后必写 BASE 武装；任一 CUR* 写会取消未武装更新 */
 static void ArmCursor(UINT32 Ctl, UINT32 Pos) {
     IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
     IgpuMmioWrite32(gCurWm0, gSavedWm0);
@@ -302,8 +437,7 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
     if (!ProbeCapable()) {
         return 0;
     }
-    /* 再读一次：Present/翻页后 DDB 仍须在 */
-    if (!CursorDdbWmOk()) {
+    if (!EnsureCursorDdb()) {
         FailLatch();
         return 0;
     }

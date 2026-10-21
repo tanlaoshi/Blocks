@@ -54,18 +54,31 @@ int CursorHwActive(void) {
     return gHwCursorOn ? 1 : 0;
 }
 
-static void CursorHwTryEnable(void) {
-    /* igpu 刀接通前 Supported=0；此处留钩，Enable 失败保持软路径 */
-    if (!HalVideoHwCursorSupported()) {
-        gHwCursorOn = 0;
+static void CursorHwEraseSoftFb(void) {
+    /* 开 Hw 前擦净 FB 软像素；否则 CUR 叠在软影上 → 双光标 */
+    if (!gGuiWindowManager.CursorVisible) {
         return;
     }
-    /* 字形上载见 hw-cursor-glyph；api 刀不传真 ARGB */
+    GraphicsIrqEnter();
+    CursorRestore();
+    GraphicsIrqLeave();
+    HalVideoPresentCursor();
+}
+
+static void CursorHwTryEnable(void) {
+    if (gHwCursorOn) {
+        return;
+    }
+    if (!HalVideoHwCursorSupported()) {
+        return;
+    }
+    CursorHwEraseSoftFb();
+    /* 字形上载见 hw-cursor-glyph；此刻内置简箭头 */
     if (!HalVideoHwCursorEnable(0, 0, 0, 0, 0)) {
-        gHwCursorOn = 0;
         return;
     }
     gHwCursorOn = 1;
+    gGuiWindowManager.CursorVisible = 0;
     HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     DebugWrite("Gui: hw cursor on\n");
 }
@@ -349,7 +362,6 @@ void GuiCursorRevealAfterUsb(void) {
     if (gCursorUsbReady) {
         return;
     }
-    gCursorUsbReady = 1;
     Cx = gGuiWindowManager.ScreenWidth / 2;
     Cy = gGuiWindowManager.ScreenHeight / 2;
     if (gGuiWindowManager.ScreenWidth == 0) {
@@ -364,6 +376,17 @@ void GuiCursorRevealAfterUsb(void) {
     gGuiWindowManager.MousePrevBtn = 0;
     /* 驱动 Abs 与 Gui 居中对齐，首动勿从慢认期积压坐标飞角 */
     HalInputMouseHandoffDesktop(Cx, Cy);
+    /*
+     * 先试 Hw 再置 ready：避免 ready=1 后、Show 前 Compose 软画，
+     * 随后 Enable 不擦 → 双光标（小=CUR，大=FB 残影）。
+     */
+    CursorHwTryEnable();
+    gCursorUsbReady = 1;
     DebugWrite("Gui: cursor after usb secondary (center)\n");
-    GuiCursorShow();
+    if (!gHwCursorOn) {
+        GraphicsIrqEnter();
+        CursorPaint();
+        GraphicsIrqLeave();
+        GraphicsPresent();
+    }
 }

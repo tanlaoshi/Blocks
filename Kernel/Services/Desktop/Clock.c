@@ -285,6 +285,19 @@ void DesktopTickClock(void) {
         return;
     }
 
+    /* gui-wall-defer：Worker 建完壁纸后整桌刷新（勿在 Gui 路径 Build） */
+    if (DesktopWallConsumeNeedRefresh()) {
+        UINT32 Sw = 0;
+        UINT32 Sh = 0;
+
+        HalVideoGetSize(&Sw, &Sh);
+        if (Sw != 0 && Sh != 0) {
+            GuiMarkDamage(0, 0, Sw, Sh);
+        }
+        RequestRefresh();
+        return;
+    }
+
     /* Worker 已加载图标则只刷新；勿在 Gui 路径读盘（与 iwl IoBreath 重入） */
     if (DesktopIconsConsumeNeedRefresh()) {
         int i;

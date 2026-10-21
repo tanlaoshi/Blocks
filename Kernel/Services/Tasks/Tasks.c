@@ -118,8 +118,10 @@ void GuiTask(void) {
  *  11 HalIwlBgPump          — busy → continue
  *  12 DHCP restart / Step   — busy → continue
  *  13 真机 iwl 静默窗       — 未静默 → continue
- *  14 GuiCursorRevealAfterUsb → AnnounceBootReady → halt
+ *  14 GuiCursorRevealAfterUsb → AnnounceBootReady
  *     （光标须在网/iwl/图标等慢活之后：一露就必须流畅）
+ *  15 DesktopEnsureWallpaperBuilt — gui-wall-defer；Reveal 后才 Build（4K）
+ *  16 halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -244,6 +246,11 @@ void WorkerTask(void) {
         GuiCursorRevealAfterUsb();
         gConsole.AnnounceBootReady();
         (void)gConsole.RuntimeLogFlush(); /* ready 后 Log → RUNTIME.LOG */
+        /*
+         * gui-wall-defer：壁纸缩放在露光标之后。Build 内 IoBreath 保鼠。
+         * 每圈调用；已建则早退。
+         */
+        DesktopEnsureWallpaperBuilt();
         HalCpuHalt();
         (void)SchedulerCondResched();
     }

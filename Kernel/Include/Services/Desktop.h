@@ -48,6 +48,9 @@ void DesktopBootLogoFinish(void);
 void DesktopBootMediumGoneShutdown(void);
 /* PR-BOOT-fast-1：Worker 补齐 BMP/菜单；Gui 只 Consume 后刷新（勿在 Gui 路径读盘） */
 void DesktopEnsureIconsLoaded(void);
+/* gui-wall-defer：Reveal 后 Worker 读 WALL.BMP + BuildWallScreen；Gui Consume 刷新 */
+void DesktopEnsureWallpaperBuilt(void);
+int DesktopWallConsumeNeedRefresh(void);
 /* 1=Worker 已完成图标/菜单扫盘（fs-msc-defer 旁路认盘门闩） */
 int DesktopIconsLoaded(void);
 /* 切语言后 Worker 重建开始菜单；点开始时若仍脏则同步补建 */

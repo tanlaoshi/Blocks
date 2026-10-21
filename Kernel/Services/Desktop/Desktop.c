@@ -227,7 +227,12 @@ void DesktopInitialize(void) {
     DesktopNetTrayClose();
     gIconDragIdx = -1;
     gIconDragMoved = 0;
-    LoadWallpaper();
+    /*
+     * gui-wall-defer：开机不 Load/Build 壁纸（4K Build 最痛；BMP 亦慢）。
+     * 先纯色/渐变可点；Worker 在 Reveal 后 DesktopEnsureWallpaperBuilt。
+     */
+    FreeWallScreen();
+    gWallReady = 0;
     LogGui("Gui: Desktop Layout Ready\n");
     HalAudioBeep();
     LogGui("Gui: Desktop Solid Ready (Icons Deferred)\n");

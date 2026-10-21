@@ -1,9 +1,15 @@
 /*
- * Wallpaper.c — 壁纸缓存 / DesktopBgAt / DesktopFillRect（PR-S-desktop-split-1）
+ * Wallpaper.c — 壁纸缓存 / DesktopBgAt / DesktopFillRect
  *
- * 从 Desktop.c 迁出；只搬家、不改逻辑。
+ * gui-wall-defer：开机不 BuildWallScreen（4K 逐像素最痛）；Worker 在
+ * Reveal 后 LoadBmp+Build，Gui TickClock Consume 再刷新。未就绪时用纯色/渐变。
  */
 #include "DesktopPrivate.h"
+#include "Scheduler.h"
+#include "SerialLog.h"
+
+/* Worker 置位；Gui DesktopTickClock Consume 后 RequestRefresh */
+static int sWallNeedRefresh;
 
 void FreeWallScreen(void) {
     if (gWallScreen && gWallScreenPages) {
@@ -63,6 +69,10 @@ void BuildWallScreen(void) {
             }
             Dst[Y * Sw + X] = WallPix[Sy * WallW + Sx];
         }
+        /* 4K 缩放别饿死鼠：隔行让路 */
+        if ((Y & 15u) == 0u) {
+            SchedulerIoBreath();
+        }
     }
     gWallScreen = Dst;
     gWallScreenPages = Pages;
@@ -70,39 +80,72 @@ void BuildWallScreen(void) {
     gWallScreenH = Sh;
 }
 
+/* 只读 BMP，不 Build（开机 / Worker 共用） */
 void LoadWallpaper(void) {
     FreeWallScreen();
-    /* PR-BOOT-fast-1：wallpaper=0 时不读 WALL.BMP（U 盘上曾数秒级） */
     if (!ThemeWallpaperEnabled()) {
         gWallReady = 0;
         return;
     }
     gWallReady = LoadBmpPath("Assets/Images/WALL.BMP", &gWall, WALL_FILE_MAX,
                              "desktop: wallpaper");
+}
+
+int DesktopWallConsumeNeedRefresh(void) {
+    if (!sWallNeedRefresh) {
+        return 0;
+    }
+    sWallNeedRefresh = 0;
+    return 1;
+}
+
+/*
+ * Worker：主题开壁纸且尚未缩放到屏 —— 读盘+Build。
+ * 须在光标 Reveal 之后调，避免挡进桌面/露光标。
+ */
+void DesktopEnsureWallpaperBuilt(void) {
+    if (gDesktopBusy) {
+        return;
+    }
+    if (!ThemeWallpaperEnabled()) {
+        if (gWallScreen || gWallReady) {
+            FreeWallScreen();
+            gWallReady = 0;
+        }
+        return;
+    }
+    if (gWallScreen && gWallScreenW != 0 && gWallScreenH != 0) {
+        return;
+    }
+    gDesktopBusy = 1;
+    if (!gWallReady) {
+        LoadWallpaper();
+    }
     if (gWallReady) {
         BuildWallScreen();
+        if (gWallScreen) {
+            sWallNeedRefresh = 1;
+            LogGui("Boot: Desktop Wallpaper Built\n");
+        }
     }
+    gDesktopBusy = 0;
 }
 
 UINT32 DesktopBgAt(UINT32 X, UINT32 Y) {
     UINT32 Sw;
     UINT32 Sh;
 
-    if (ThemeWallpaperEnabled()) {
-        /* Settings 开壁纸后懒加载（开机默认跳过读盘） */
-        if (!gWallReady) {
-            LoadWallpaper();
+    /*
+     * 有缩放缓存才用壁纸像素；未 Build 前勿同步 Load/Build（gui-wall-defer）。
+     */
+    if (ThemeWallpaperEnabled() && gWallScreen && gWallScreenW && gWallScreenH) {
+        if (X >= gWallScreenW) {
+            X = gWallScreenW - 1;
         }
-        BuildWallScreen();
-        if (gWallScreen && gWallScreenW && gWallScreenH) {
-            if (X >= gWallScreenW) {
-                X = gWallScreenW - 1;
-            }
-            if (Y >= gWallScreenH) {
-                Y = gWallScreenH - 1;
-            }
-            return gWallScreen[Y * gWallScreenW + X];
+        if (Y >= gWallScreenH) {
+            Y = gWallScreenH - 1;
         }
+        return gWallScreen[Y * gWallScreenW + X];
     }
     HalVideoGetSize(&Sw, &Sh);
     if (ThemeDesktopGradientEnabled()) {
@@ -124,30 +167,24 @@ void DesktopFillRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     if (W == 0 || H == 0) {
         return;
     }
-    if (ThemeWallpaperEnabled()) {
-        if (!gWallReady) {
-            LoadWallpaper();
-        }
-        BuildWallScreen();
-        if (gWallScreen) {
-            Sw = gWallScreenW;
-            Sh = gWallScreenH;
-            if (X >= Sw || Y >= Sh) {
-                return;
-            }
-            if (X + W > Sw) {
-                W = Sw - X;
-            }
-            if (Y + H > Sh) {
-                H = Sh - Y;
-            }
-            CopyW = W;
-            for (Row = 0; Row < H; Row++) {
-                HalVideoWriteRect(X, Y + Row, CopyW, 1,
-                                  &gWallScreen[(Y + Row) * Sw + X]);
-            }
+    if (ThemeWallpaperEnabled() && gWallScreen) {
+        Sw = gWallScreenW;
+        Sh = gWallScreenH;
+        if (X >= Sw || Y >= Sh) {
             return;
         }
+        if (X + W > Sw) {
+            W = Sw - X;
+        }
+        if (Y + H > Sh) {
+            H = Sh - Y;
+        }
+        CopyW = W;
+        for (Row = 0; Row < H; Row++) {
+            HalVideoWriteRect(X, Y + Row, CopyW, 1,
+                              &gWallScreen[(Y + Row) * Sw + X]);
+        }
+        return;
     }
     if (ThemeDesktopGradientEnabled()) {
         HalVideoGetSize(&Sw, &Sh);
@@ -204,4 +241,3 @@ void DesktopFillRectFree(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         }
     }
 }
-

@@ -3,6 +3,7 @@
  * 核心：SettingsUi.c
  */
 #include "SettingsUiPrivate.h"
+#include "Desktop.h"
 
 void ApplyDesktopColor(int Index) {
     if (Index < 0 || Index >= DESKTOP_COLOR_COUNT) {
@@ -10,6 +11,8 @@ void ApplyDesktopColor(int Index) {
     }
     if (gDesktopColors[Index].Color == DESKTOP_COLOR_WALLPAPER) {
         ThemeSetWallpaper(1);
+        /* 用户点选：立刻建缓存（非开机路径）；失败则仍纯色至下次 Worker */
+        DesktopEnsureWallpaperBuilt();
     } else {
         ThemeSetWallpaper(0);
         ThemeSetDesktopBackground(gDesktopColors[Index].Color);

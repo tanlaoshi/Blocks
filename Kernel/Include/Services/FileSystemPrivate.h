@@ -49,6 +49,7 @@ void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
 /* 1=启动盘已有 BLOCKS.ID；0=启动盘尚无；-1=旧 Boot 无 GUID */
 int FsBootDiskHasBlocksId(void);
 void FsResolveOsTarget(int *BlocksVol);
+void FsUpdateBootMediumState(void);
 int FsOsVolumeMounted(void);
 int FsVolOnOsDisk(int Idx);
 

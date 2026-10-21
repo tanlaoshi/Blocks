@@ -50,6 +50,9 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
             char Line2[40];
             int n = 0;
             const char *P = gVolDiskGuid;
+            /* 启动卷/启动盘：disk+GUID 用强调色；旁路卷保持 muted */
+            UINT32 GuidColor =
+                (gVolIsBoot || gVolOnBootDisk) ? ThemeTextAccent() : ThemeTextMuted();
 
             Adv = FontAdvanceX() ? FontAdvanceX() : 8u;
             GuidMaxCols = (Pw > 24u) ? (Pw - 20u) / Adv : 16u;
@@ -59,13 +62,13 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
             if (GuidMaxCols > sizeof(Line1) - 1) {
                 GuidMaxCols = sizeof(Line1) - 1;
             }
-            DrawLine(Px + 10, MetaY, "disk", ThemeTextMuted());
+            DrawLine(Px + 10, MetaY, "disk", GuidColor);
             MetaY += LineH;
             while (*P && n < (int)GuidMaxCols) {
                 Line1[n++] = *P++;
             }
             Line1[n] = 0;
-            DrawLine(Px + 10, MetaY, Line1, ThemeTextMuted());
+            DrawLine(Px + 10, MetaY, Line1, GuidColor);
             MetaY += LineH;
             if (*P) {
                 n = 0;
@@ -73,7 +76,7 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
                     Line2[n++] = *P++;
                 }
                 Line2[n] = 0;
-                DrawLine(Px + 10, MetaY, Line2, ThemeTextMuted());
+                DrawLine(Px + 10, MetaY, Line2, GuidColor);
                 MetaY += LineH;
             }
         }

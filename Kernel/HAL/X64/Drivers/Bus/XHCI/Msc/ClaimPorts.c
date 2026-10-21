@@ -34,6 +34,8 @@ int ClaimPorts(void) {
         BootLog("Boot: MSC claim no hc\n");
         return -1;
     }
+    /* 先于 already 短路：Hot 依赖解开 freeze 才能 Address */
+    gXhciPortEnumFreeze = 0;
     if (gMscClaimed && gMscScanSlot != 0) {
         BootLogHex("Boot: MSC claim already port=", gMscPort, 2);
         return 1;
@@ -41,8 +43,6 @@ int ClaimPorts(void) {
 
     BootLog("Boot: MSC claim begin\n");
     HalBootLogoBump(80);
-    /* Shell msc hot / 新一轮 claim：解开上次 sick 冻结 */
-    gXhciPortEnumFreeze = 0;
     /*
      * excl-3：不再 FallbackToPoll("msc-claim")。
      * 事件环由 excl-1/2 单消费者 + 消费锁串行；claim 保持 dual/irq。
@@ -229,8 +229,9 @@ done:
         QueueMouseIntr();
     }
     /*
-     * 扫空后勿再让 UART/Wifi Address 根口：刚释放的 SS hub 口易 cc=0x04，
-     * 且桌面期抢命令环 → 空拖假死。msc hot 入口会清 freeze 再扫。
+     * 扫空后勿再让 UART/Wifi Address 根口（抢环/鼠卡）。
+     * Ok 已 goto done 停扫（msc-claim-stop）；成功时不 freeze，桌面 Hot 旁路仍可 Address。
+     * msc hot / 下轮 ClaimPorts 入口会清 freeze。
      */
     if (!Ok) {
         gXhciPortEnumFreeze = 1;

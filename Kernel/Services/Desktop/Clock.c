@@ -1,8 +1,9 @@
 /*
  * Clock.c — 任务栏钟 / MSC 拔出（story-s3 / runtime-c-tick）
  *
- * Worker ~2Hz → HalUsbMscHotPoll==1 → FileSystemRemountVolumes
- * HotPoll：仅拔出 Release（桌面不自动 Claim；挂盘靠开机 Auto / msc hot）
+ * Worker ~2Hz → HalUsbMscHotPoll==1 → Remount + FilesUiRefresh
+ * HotPoll（桌面后）：拔 Release；插 Scan→Claim（~5s 节流）。开机不调。
+ * 拔的是启动盘且根在其上 → BootMediumGone → Park（非旁路热拔）。
  * 钟/网托采样→栏脏；Present 仍 DesktopTickClock（GuiPollMouse 末）。
  *
  * 上游：Tasks.c WorkerTask 圈首。开机挂卷：FileSystemInitialize（非本文件）。
@@ -10,6 +11,10 @@
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
+#include "FilesUi.h"
+#include "FileSystem.h"
+#include "SerialLog.h"
+#include "Hal.h"
 
 static volatile int sClockBarNeedPaint;
 
@@ -32,10 +37,21 @@ void DesktopWorkerTick(void) {
     }
     LastCheckTick = Now;
 
-    /* story-s3：~2Hz 仅拔出；1→Remount */
+    /* story-s3 / msc-desktop-hotplug：拔或插成功 → Remount + Files */
     if (HalUsbMscHotPoll() == 1) {
         (void)FileSystemRemountVolumes();
-        DebugWrite("desktop: msc unplug remount\n");
+        /*
+         * U 盘起再拔启动盘：Kernel 仍在 RAM，但根文件系统没了——不能当旁路热拔继续跑。
+         * NUC 起拔 U 盘：启动盘仍在，走正常 Remount。
+         */
+        if (FileSystemBootMediumGone()) {
+            LogFs("Fs: msc/4 halt (boot medium removed)\n");
+            for (;;) {
+                HalCpuPark();
+            }
+        }
+        FilesUiRefresh();
+        LogFs("Fs: msc/4 hotpoll remount+Files\n");
     }
 
     NeedPaint = 0;

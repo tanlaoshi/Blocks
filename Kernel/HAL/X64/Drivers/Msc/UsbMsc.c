@@ -1,11 +1,12 @@
 /*
  * UsbMsc.c — BOT 门面（story-s3 / PR-H-msc-*；主机表 UsbMscHost）
  *
- * 设备侧（收口：桌面不再自动 Claim，避冷盘 Force / 轮询 MSI 鼠死）：
- *   开机：HalUsbMscAutoBeforeFs → Claim/Mount（认 gMscAuto + 启动盘 BLOCKS 策略）
- *   HotPoll（Worker ~2Hz）：仅拔出→Release→1；不 Scan/Claim
- *   UsbMscHot：Shell `msc hot` 显式 claim/mount（或拔卸）
- *   就绪：UsbMscReady / HalUsbMscReady
+ *   开机：HalUsbMscAutoBeforeFs → Claim/Mount（启动盘策略；不搅热插）
+ *   HotPoll（Worker ~2Hz，仅桌面后）：
+ *     拔：Ready && !Present → Release→1
+ *     插：!Ready && auto → Scan>0 → Claim/Mount→1；空闲 ~5s 节流（避 2Hz Address）
+ *   UsbMscHot：Shell `msc hot` / EnsureSecondary 显式 claim
+ *   日志：LogFs → 环缓冲；BOOT.LOG（开机 Flush）/ RUNTIME.LOG（ready 后）
  */
 #include "Msc/UsbMsc.h"
 #include "UsbMscHost.h"
@@ -274,6 +275,7 @@ int UsbMscAutoBeforeFs(void) {
     Rc = UsbMscMount();
     if (Rc != 0) {
         LogBoot("Boot: MSC Auto Mux Fail\n");
+        (void)UsbMscRelease();
         return Rc;
     }
     LogBoot("Boot: MSC Auto Mux OK\n");
@@ -294,21 +296,64 @@ int UsbMscRelease(void) {
 int UsbMscHotPoll(void) {
     const MSC_HOST *H;
     int Present;
+    int ScanN;
+    int Claim;
+    int Rc;
+    static UINT64 sPlugTryTick;
+    UINT64 Now;
+    UINT32 Tps;
 
-    /*
-     * 仅拔出。桌面自动 Claim 已关：冷启动口 Force/软 Address 轮询易 MSI 鼠死；
-     * 挂盘靠开机 AutoBeforeFs，或 Shell `msc hot`。
-     */
-    if (!UsbMscReady()) {
+    /* 拔出 */
+    if (UsbMscReady()) {
+        H = CurHost();
+        Present = (H && H->Present) ? H->Present() : 0;
+        if (Present) {
+            return 0;
+        }
+        LogFs("Fs: msc/4 hot unplug\n");
+        (void)UsbMscRelease();
+        return 1;
+    }
+
+    /* 热插：仅 Worker 调本函数；开机路径不进这里 */
+    if (!UsbMscAutoEnabled()) {
         return 0;
     }
-    H = CurHost();
-    Present = (H && H->Present) ? H->Present() : 0;
-    if (Present) {
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    /* ~5s 节流：Scan/Claim 含 Address，勿跟 2Hz 钟一起打 */
+    if (sPlugTryTick != 0 && (Now - sPlugTryTick) < (UINT64)Tps * 5u) {
         return 0;
     }
-    DebugWrite("msc: hot unplug → release\n");
-    (void)UsbMscRelease();
+    sPlugTryTick = Now;
+
+    ScanN = UsbMscScan();
+    if (ScanN <= 0) {
+        return 0;
+    }
+    LogFs("Fs: msc/4 hotplug scan=");
+    LogFsHex32((UINT32)ScanN);
+    LogFs("\n");
+
+    Claim = UsbMscClaim();
+    if (Claim < 0) {
+        LogFs("Fs: msc/4 hotplug claim abort\n");
+        return 0;
+    }
+    if (Claim == 0) {
+        LogFs("Fs: msc/4 hotplug claim empty\n");
+        return 0;
+    }
+    Rc = UsbMscMount();
+    if (Rc != 0) {
+        LogFs("Fs: msc/4 hotplug mount fail\n");
+        (void)UsbMscRelease();
+        return 0;
+    }
+    LogFs("Fs: msc/4 hotplug ok\n");
     return 1;
 }
 

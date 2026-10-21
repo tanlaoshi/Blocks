@@ -1,7 +1,7 @@
 /*
  * Video.c — VideoInitialize（开机模块表；BringUp 胶水）
  *
- * 帧缓冲、字体、主题和核显/声卡探针。勿全屏 Clear。
+ * 帧缓冲、字体、主题和核显探针（HDA 见 boot-hda-defer / Worker）。勿全屏 Clear。
  */
 #include "KernelModulesPrivate.h"
 #include "BootInfo.h"
@@ -14,10 +14,8 @@
 int DisplayHardwareInitialize(void) {
     int Found = HalIgpuMmioInitialize();
 
-    HalHdaMmioInitialize();
-    HalHdaCodecInitialize();
+    /* boot-hda-defer：HDA 桌面后 Worker 再探针；igpu 留开机服务 Present */
     HalIgpuForcewakeInitialize();
-    HalHdaStreamInitialize();
     HalIgpuGttInitialize();
     HalIgpuBlitInitialize();
     HalIgpuPresentPrepare();

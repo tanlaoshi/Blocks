@@ -7,8 +7,8 @@
  * 开机（fs-msc-defer）：
  *   1. HalBlockInitialize → MountAllVolumes（读 ROOT.CFG → OsTarget）
  *   2. MscAutoApplyPolicy：MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
- *   3–4. Os 卷已挂则 skip MSC；否则 claim
- *   5. 桌面后 FileSystemEnsureSecondaryVolumes → SecondaryReady
+ *   3–4. 启动盘已有 BLOCKS 则 skip MSC；启动盘未挂（U 盘起）必 claim
+ *   5. 桌面后 FileSystemEnsureSecondaryVolumes → SecondaryReady（旁路第二盘）
  *
  * 多份 BLOCKS.ID：皆名 BLOCKS；默认卷跟 OsTarget（ROOT.CFG 可跨盘）。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
@@ -16,11 +16,11 @@
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
+#include "BootInfo.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
-#include "KernelModulesPrivate.h"
 #include "HalDriverFile.h"
 #include "LogFile.h"
 #include "Desktop.h"
@@ -185,6 +185,32 @@ int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax) {
     return 0;
 }
 
+int FileSystemVolOnBootDisk(int Idx) {
+    const BOOT_INFO *Info;
+    int i;
+
+    if (Idx < 0 || Idx >= gVolCount || !gVols[Idx].DiskGuidOk) {
+        return -1;
+    }
+    Info = BootInfoGet();
+    if (!Info || !Info->BootDiskGuidOk) {
+        return -1;
+    }
+    for (i = 0; i < 16; i++) {
+        if (gVols[Idx].DiskGuid[i] != Info->BootDiskGuid[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int FileSystemVolHasBlocksId(int Idx) {
+    if (Idx < 0 || Idx >= gVolCount) {
+        return 0;
+    }
+    return gVols[Idx].HasBlocksId ? 1 : 0;
+}
+
 /* PR-F3：后端名（如 fat / res）；Out 可 NULL */
 int FileSystemVolBackend(int Idx, const char **OutName) {
     const FS_OPS *Ops;
@@ -263,10 +289,14 @@ static int MscAutoApplyPolicy(int Auto, int HasBlocks) {
 }
 
 /*
- * 序 3–4：Os 卷已挂（ROOT.CFG/本机 BLOCKS）→ skip；否则 claim 启动棒。
- * 旁路 U 盘留给桌面 EnsureSecondaryVolumes。
+ * 序 3–4：仅当「启动盘上」已有 Os/BLOCKS 才 skip MSC。
+ * 坑：U 盘起时 NVMe 常先挂上 BLOCKS/ROOT.CFG → 旧逻辑当 Os 已挂而跳过 claim，
+ * 启动棒永不进 Mux，Files 只剩 NUC 分区；旁路依赖桌面 Hot 也易空。
+ * 启动盘尚无卷（BootDiskHasBlocksId==0）→ 必须 claim。旁路第二只盘仍桌面 Secondary。
  */
 static int MscAutoResolveClaim(int Auto, int HasBlocks) {
+    int BootHas;
+
     if (!HasBlocks && !Auto) {
         HalUsbMscAutoSet(1);
         LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
@@ -275,11 +305,22 @@ static int MscAutoResolveClaim(int Auto, int HasBlocks) {
     if (!Auto) {
         return 0;
     }
-    if (FsOsVolumeMounted()) {
-        LogBoot("Boot: MSC skip (OS volume mounted)\n");
+    BootHas = FsBootDiskHasBlocksId();
+    /* 序码供 BOOT.LOG 对表：1=策略 2=开机claim 3=桌面secondary 4=热插拔 */
+    if (BootHas == 1) {
+        LogBoot("Fs: msc/1 skip (boot disk has BLOCKS — expect NUC/SSD path)\n");
         return 0;
     }
-    LogBoot("Boot: MSC claim (need OS volume)\n");
+    if (BootHas == 0) {
+        LogBoot("Fs: msc/1 claim (boot disk not mounted — expect USB-stick path)\n");
+        return 1;
+    }
+    /* 旧 Boot 无 DiskGUID：回退「任意 Os 已挂则 skip」 */
+    if (FsOsVolumeMounted()) {
+        LogBoot("Fs: msc/1 skip (OS volume mounted, no BootDiskGuid)\n");
+        return 0;
+    }
+    LogBoot("Fs: msc/1 claim (need OS volume)\n");
     return 1;
 }
 
@@ -321,17 +362,18 @@ int FileSystemInitialize(void) {
 
         /* MSC claim 可能很长：先落到 79，口扫描里再 bump 到 91 */
         DesktopBootLogoSet(79);
+        LogBoot("Fs: msc/2 boot-claim begin\n");
         MscRc = HalUsbMscAutoBeforeFs();
 
         if (MscRc == 0) {
             MuxOk = 1;
+            LogBoot("Fs: msc/2 boot-claim ok (mux)\n");
             if (BlockInitialize() <= 0) {
                 LogFs("Fs: BlockInitialize After Msc Auto Failed\n");
             }
             if (!MountAllVolumes()) {
                 LogFs("Fs: Mount After Msc Auto Failed\n");
                 if (!HaveVols) {
-                    (void)UsbUartInitialize();
                     return -1;
                 }
             } else {
@@ -343,18 +385,18 @@ int FileSystemInitialize(void) {
              * claim 空：勿整轮 Force 再扫（会 reset 根口、鼠间歇卡）。
              * 桌面 EnsureSecondary / msc hot 再试。
              */
-            LogBoot("Boot: MSC Auto empty (no Force retry)\n");
+            LogBoot("Fs: msc/2 boot-claim empty (desktop secondary/hotpoll will retry)\n");
+        } else if (MscRc < 0) {
+            LogBoot("Fs: msc/2 boot-claim abort\n");
         }
+    } else {
+        LogBoot("Fs: msc/2 boot-claim skipped\n");
     }
 
-    /* 两次 U 盘扫描都结束再认。扫盘中途配好会被下一轮复位冲掉，棒上就没有字节。 */
-    (void)UsbUartInitialize();
-
     /*
-     * PR-BOOT-fast-3：勿在此 HalIwlClaim / Probe NET。
-     * iwl BAR+FW/关联由 Worker（图标之后）HalIwlClaim → BgPump；
-     * 有线 NIC 仍在 Network 模块 NetInitialize Probe。
-     * 勿在此调 HalWifiClaim（USB 8188EU）：会踩已认 MSC hub。
+     * boot-usbuart-demote：勿在此 UsbUartInitialize；串口 App 按需 Claim。
+     * PR-BOOT-fast-3 / boot-net-defer：勿 HalIwlClaim / Probe NET（Worker）。
+     * 勿 HalWifiClaim（USB 8188EU）：会踩已认 MSC hub。
      */
 
     if (!HaveVols && !MuxOk) {
@@ -387,13 +429,22 @@ int FileSystemInitialize(void) {
 }
 
 void FileSystemEnsureSecondaryVolumes(void) {
+    int HotRc;
+
     if (gSecondaryReady) {
         return;
     }
-    LogBoot("Boot: MSC secondary (desktop)\n");
-    (void)HalUsbMscHot();
+    LogFs("Fs: msc/3 secondary begin (desktop once)\n");
+    HotRc = HalUsbMscHot();
+    if (HotRc != 0) {
+        LogFs("Fs: msc/3 secondary hot rc=");
+        LogFsHex32((UINT32)HotRc);
+        LogFs(" (0=ok/already,1=empty,else fail)\n");
+    } else {
+        LogFs("Fs: msc/3 secondary hot ok\n");
+    }
     (void)FileSystemRemountVolumes();
     gSecondaryReady = 1;
-    LogBoot("Boot: MSC secondary ready\n");
+    LogFs("Fs: msc/3 secondary ready (Files show all vols)\n");
 }
 

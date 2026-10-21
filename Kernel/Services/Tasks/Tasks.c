@@ -98,12 +98,13 @@ void GuiTask(void) {
  *   4 LocaleDbFlushStep
  *   5 LocaleTtfPreheatStep  — 可 breath；不 continue
  *   6 FontTtfWantDrain      — 同上
- *   7 HalIwlClaim（一次）
- *   8 StoreJobStep          — story-s4；busy → continue（挡网/ready）
- *   9 HalIwlBgPump          — busy → continue
- *  10 DHCP restart / Step   — busy → continue
- *  11 真机 iwl 静默窗       — 未静默 → continue
- *  12 AnnounceBootReady → halt
+ *   7 HalNetInitialize（一次；boot-net-defer 有线 Probe）
+ *   8 HalIwlClaim（一次）
+ *   9 StoreJobStep          — story-s4；busy → continue（挡网/ready）
+ *  10 HalIwlBgPump          — busy → continue
+ *  11 DHCP restart / Step   — busy → continue
+ *  12 真机 iwl 静默窗       — 未静默 → continue
+ *  13 AnnounceBootReady → halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -123,6 +124,10 @@ void WorkerTask(void) {
             if (!sSecondaryOnce && DesktopIconsLoaded()) {
                 FileSystemEnsureSecondaryVolumes();
                 FilesUiRefresh();
+                /* boot-hda-defer：旁路盘后认声卡（不挡进桌面） */
+                HalHdaMmioInitialize();
+                HalHdaCodecInitialize();
+                HalHdaStreamInitialize();
                 sSecondaryOnce = 1;
             }
         }
@@ -143,12 +148,17 @@ void WorkerTask(void) {
             SchedulerIoBreath();
         }
         /*
-         * PR-BOOT-fast-3：桌面就绪后再 Claim iwl（BAR）；FW/关联仍走下方 BgPump。
-         * FS/Net 模块内不再 Claim，避免拖长进桌面。
+         * boot-net-defer / PR-BOOT-fast-3：桌面后先 Probe 有线，再 Claim iwl。
+         * 模块表 Network 不再 HalNetInitialize，避免拖长进桌面。
          */
         {
+            static int sNetOnce;
             static int sIwlClaimOnce;
 
+            if (!sNetOnce) {
+                (void)HalNetInitialize();
+                sNetOnce = 1;
+            }
             if (!sIwlClaimOnce) {
                 (void)HalIwlClaim();
                 sIwlClaimOnce = 1;

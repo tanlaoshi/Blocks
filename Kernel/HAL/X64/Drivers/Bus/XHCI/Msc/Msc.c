@@ -67,7 +67,35 @@ static int ScanPorts(void) {
             continue;
         }
         if (gHubSlotId != 0 && P == gHubRootPort) {
-            BootLogHex("Boot: MSC scan skip hub port=", P, 2);
+            UINT8 Hp;
+            UINT8 MaxP = gHubNumPorts;
+
+            /* 根口是 HID hub：看子口 CONNECTION（键鼠口除外），供桌面热插 Scan */
+            for (Hp = 1; MaxP != 0 && Hp <= MaxP; Hp++) {
+                UINT32 St = 0;
+
+                if ((gKbdRoute & 0xFu) == (UINT32)Hp && gSlotId != 0) {
+                    continue;
+                }
+                if ((gMouseRoute & 0xFu) == (UINT32)Hp && gMouseSlotId != 0) {
+                    continue;
+                }
+                if (gMouseSlotId != 0 && gMouseTtPort == Hp &&
+                    (gMouseHubSlot == 0 || gMouseHubSlot == (UINT8)gHubSlotId)) {
+                    continue;
+                }
+                if (gMscClaimed && gMscHubSlot == (UINT8)gHubSlotId &&
+                    gMscTtPort == Hp) {
+                    continue;
+                }
+                if (HubGetPortStatus(Hp, &St) < 0) {
+                    continue;
+                }
+                if (St & HUB_PORT_CONNECTION) {
+                    BootLogHex("Boot: MSC scan hub child=", Hp, 2);
+                    Found++;
+                }
+            }
             continue;
         }
         if (gMscClaimed && P == gMscPort) {

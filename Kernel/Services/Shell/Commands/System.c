@@ -204,7 +204,7 @@ void ShellCommandsSystemRegisterVirtMin(void) {
     gConsole.RegisterAliasLine("mem", "show", "memory");
     gConsole.Register2("list", "devices", "list devices + bound drivers", CommandLsdev);
     gConsole.RegisterAliasLine("lsdev", "list", "devices");
-    gConsole.Register("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
+    gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
     gConsole.Register("halt", "stop CPU", CommandHalt);
     gConsole.RegisterAlias("halt", "exit");
     gConsole.RegisterAlias("halt", "quit");
@@ -225,7 +225,7 @@ void ShellCommandsSystemRegister(void) {
     gConsole.Register2("test", "memory", "alloc/verify/free one page", CommandMemtest);
     gConsole.RegisterAliasLine("memtest", "test", "memory");
 
-    gConsole.Register("log", "runtime log; log save [RUNTIME.LOG]", CommandLog);
+    gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
     gConsole.Register("reboot", "reset CPU (QEMU display: quit+./run-split.sh)", CommandReboot);
     gConsole.Register("halt", "stop CPU", CommandHalt);
     gConsole.RegisterAlias("halt", "exit");

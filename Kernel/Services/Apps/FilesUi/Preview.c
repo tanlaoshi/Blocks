@@ -15,10 +15,16 @@ static void RefreshVolDiskGuid(void) {
     if (FileSystemResolve(gCwd[0] ? gCwd : "", &Vol, &Rel) != FAT_OK) {
         return;
     }
-    if (Vol == FileSystemDefaultVol()) {
+    /* 启动卷 = 钉死的 OsTarget（通常一份 BLOCKS）；勿用 DefaultVol */
+    if (Vol >= 0 && Vol == FileSystemOsVol()) {
         gVolIsBoot = 1;
     }
-    if (FileSystemVolOnOsDisk(Vol)) {
+    /*
+     * 启动盘 = 同 BootDiskGuid 上的非系统卷（ESP 等）。
+     * 另一份 BLOCKS 绝不再标「启动盘」——否则两份 BLOCKS 会变成 vol+disk 各一，语义糊。
+     */
+    if (!gVolIsBoot && FileSystemVolOnBootDisk(Vol) == 1 &&
+        !FileSystemVolHasBlocksId(Vol)) {
         gVolOnBootDisk = 1;
     }
     if (FileSystemVolDiskGuidStr(Vol, gVolDiskGuid, (int)sizeof(gVolDiskGuid)) != 0) {

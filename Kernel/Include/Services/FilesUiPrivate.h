@@ -114,9 +114,9 @@ extern UINT32 gPrevW;
 extern PREV_KIND gPrevKind;
 /* 当前 cwd 卷的 DiskGUID 串（空=无）；Preview 展示 */
 extern char gVolDiskGuid[40];
-/* 1 = 当前卷即默认启动卷（OsTarget BLOCKS） */
+/* 1 = 当前卷即 OsTarget（启动卷；通常一份 BLOCKS） */
 extern int gVolIsBoot;
-/* 1 = 当前卷在 OsDisk 上（含同盘 ESP；非默认时标「启动盘」） */
+/* 1 = BootDisk 上的非 BLOCKS 卷（如 ESP）标「启动盘」；旁路 BLOCKS 不标 */
 extern int gVolOnBootDisk;
 
 /* ===== 工具（FilesUi.c） ===== */

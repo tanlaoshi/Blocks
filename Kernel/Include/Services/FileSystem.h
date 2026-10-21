@@ -1,7 +1,7 @@
 /*
  * FileSystem.h — 文件系统模块（story-s3 / PR-FS2 多卷）
  *
- * 开机挂卷 FileSystemInitialize；拔出 RemountVolumes（Worker→HotPoll）；晚插 `msc hot`。
+ * 开机挂卷 FileSystemInitialize；桌面后 HotPoll 拔/插（节流）；Shell `msc hot` 仍可。
  * 路径：`BLOCKS:HELLO.ELF`、`A:DOCS`；无前缀用默认卷（优先 BLOCKS.ID）。
  * Shell/exec 走 FileSystem*；链图见 FileSystem.c / Mount.c / Clock.c 头。
  */
@@ -26,6 +26,10 @@ int FileSystemRemountVolumes(void);
 /* 卷数；下标 0..Count-1 */
 int FileSystemVolCount(void);
 int FileSystemDefaultVol(void);
+/* OsTarget 卷下标；未挂上（含启动介质已拔）为 -1；≠ 默认浏览卷 */
+int FileSystemOsVol(void);
+/* 1=启动盘已拔且根曾在其上：会话失根，应停机（非旁路 U 盘热拔） */
+int FileSystemBootMediumGone(void);
 /* Name 如 "BLOCKS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
 int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
                       UINT32 *StartLba, int *ReadOnly);
@@ -35,6 +39,10 @@ int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax);
 int FileSystemSecondaryVolsReady(void);
 /* 1=该卷在 OsTarget 所在盘（无 OsDisk 时恒 1） */
 int FileSystemVolOnOsDisk(int Idx);
+/* 1=该卷在 BootDiskGuid 盘上；0=否；-1=无 GUID */
+int FileSystemVolOnBootDisk(int Idx);
+/* 1=卷有 BLOCKS.ID */
+int FileSystemVolHasBlocksId(int Idx);
 /* 桌面后慢认旁路 MSC；一次生效 */
 void FileSystemEnsureSecondaryVolumes(void);
 /* PR-F3：后端名 fat / res */

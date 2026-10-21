@@ -1,7 +1,8 @@
 /*
  * MountOs.c — ROOT.CFG OsTarget + SecondaryReady（fs-msc-defer）
  *
- * 开机：读已挂 ESP 上 EFI/Blocks/ROOT.CFG，定启动卷（可跨盘）。
+ * 开机：优先读「加载 EFI 的那块盘」上 ESP 的 ROOT.CFG，定启动卷（可跨盘）。
+ * OsTarget 在本会话钉死：热拔后只按已钉 disk/part 重绑下标，绝不改认旁路盘。
  * Files：SecondaryReady=0 时只展 OsDisk。
  */
 #include "FileSystemPrivate.h"
@@ -15,6 +16,14 @@ int gOsVolIdx = -1;
 UINT8 gOsDiskGuid[16];
 int gOsDiskOk;
 
+static UINT8 gOsPartGuid[16];
+static int gOsPartOk;
+/* 1=已为本会话钉过 OsTarget；Remount 不得再用旁路 ROOT.CFG/BLOCKS 改写 */
+static int gOsTargetPinned;
+/* 本会话曾见过 BootDisk 上的卷；其后 BootDisk 空且 OsTarget 在该盘 → 失根 */
+static int gBootDiskSeen;
+static int gBootMediumGone;
+
 static int GuidEq16(const UINT8 *A, const UINT8 *B) {
     int i;
 
@@ -26,8 +35,25 @@ static int GuidEq16(const UINT8 *A, const UINT8 *B) {
     return 1;
 }
 
+static void CopyGuid16(UINT8 *Dst, const UINT8 *Src) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        Dst[i] = Src[i];
+    }
+}
+
 static int VolIsEspName(const FS_VOLUME *V) {
     return V && V->Name[0] == 'E' && V->Name[1] == 'S' && V->Name[2] == 'P';
+}
+
+static int VolOnBootDisk(const FS_VOLUME *V) {
+    const BOOT_INFO *Info = BootInfoGet();
+
+    if (!V || !V->DiskGuidOk || !Info || !Info->BootDiskGuidOk) {
+        return 0;
+    }
+    return GuidEq16(V->DiskGuid, Info->BootDiskGuid);
 }
 
 static int ParseRootCfg(const char *Buf, UINTN Len, UINT8 Disk[16], UINT8 Part[16]) {
@@ -118,33 +144,127 @@ static int FindVolByDiskPart(const UINT8 Disk[16], const UINT8 Part[16]) {
     return -1;
 }
 
+static int FindBlocksOnDisk(const UINT8 Disk[16]) {
+    int i;
+
+    for (i = 0; i < gVolCount; i++) {
+        if (!gVols[i].HasBlocksId || !gVols[i].DiskGuidOk) {
+            continue;
+        }
+        if (GuidEq16(gVols[i].DiskGuid, Disk)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void PinOsTarget(const UINT8 Disk[16], const UINT8 Part[16], int HavePart) {
+    CopyGuid16(gOsDiskGuid, Disk);
+    gOsDiskOk = 1;
+    if (HavePart) {
+        CopyGuid16(gOsPartGuid, Part);
+        gOsPartOk = 1;
+    } else {
+        gOsPartOk = 0;
+    }
+    gOsTargetPinned = 1;
+}
+
+static void RebindPinnedOsTarget(int *BlocksVol) {
+    gOsVolIdx = -1;
+    if (!gOsDiskOk) {
+        return;
+    }
+    if (gOsPartOk) {
+        gOsVolIdx = FindVolByDiskPart(gOsDiskGuid, gOsPartGuid);
+    }
+    if (gOsVolIdx < 0) {
+        gOsVolIdx = FindBlocksOnDisk(gOsDiskGuid);
+    }
+    if (gOsVolIdx >= 0 && gVols[gOsVolIdx].HasBlocksId && BlocksVol) {
+        *BlocksVol = gOsVolIdx;
+    }
+    if (gOsVolIdx >= 0) {
+        LogFs("Fs: OsTarget rebind ok\n");
+    } else {
+        LogFs("Fs: OsTarget pinned (volume unplugged)\n");
+    }
+}
+
+static int AnyVolOnBootDisk(void) {
+    int i;
+
+    for (i = 0; i < gVolCount; i++) {
+        if (VolOnBootDisk(&gVols[i])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void FsResolveOsTarget(int *BlocksVol) {
     int i;
     UINT8 Disk[16];
     UINT8 Part[16];
     int FromCfg = 0;
+    const BOOT_INFO *Info = BootInfoGet();
+    int BootGuidOk = (Info && Info->BootDiskGuidOk) ? 1 : 0;
 
     gOsVolIdx = -1;
-    gOsDiskOk = 0;
 
-    for (i = 0; i < gVolCount; i++) {
-        if (!VolIsEspName(&gVols[i])) {
-            continue;
+    /*
+     * 已钉死：通常只重绑。
+     * 例外：U 盘起时首轮只挂到 NVMe，曾误把旁路 BLOCKS Pin 成 OsTarget——
+     * 启动盘现已挂上则作废重认（否则拔 U 盘仍 rebind 到 NUC、永不 halt）。
+     */
+    if (gOsTargetPinned && gOsDiskOk) {
+        if (BootGuidOk && !GuidEq16(gOsDiskGuid, Info->BootDiskGuid) &&
+            AnyVolOnBootDisk()) {
+            LogFs("Fs: OsTarget unpin (was not boot disk; boot disk now mounted)\n");
+            gOsTargetPinned = 0;
+            gOsDiskOk = 0;
+            gOsPartOk = 0;
+        } else {
+            RebindPinnedOsTarget(BlocksVol);
+            return;
         }
-        if (TryRootCfgFromVol(i, Disk, Part)) {
-            FromCfg = 1;
-            LogFs("Fs: ROOT.CFG loaded\n");
-            break;
+    }
+
+    gOsDiskOk = 0;
+    gOsPartOk = 0;
+
+    /* 1) 只认启动盘上的 ESP ROOT.CFG（避免旁路盘指针抢 OsTarget） */
+    if (BootGuidOk) {
+        for (i = 0; i < gVolCount; i++) {
+            if (!VolIsEspName(&gVols[i]) || !VolOnBootDisk(&gVols[i])) {
+                continue;
+            }
+            if (TryRootCfgFromVol(i, Disk, Part)) {
+                FromCfg = 1;
+                LogFs("Fs: ROOT.CFG loaded (boot disk ESP)\n");
+                break;
+            }
+        }
+    }
+
+    /* 2) 旧 Boot 无 GUID：才扫任意 ESP */
+    if (!FromCfg && !BootGuidOk) {
+        for (i = 0; i < gVolCount; i++) {
+            if (!VolIsEspName(&gVols[i])) {
+                continue;
+            }
+            if (TryRootCfgFromVol(i, Disk, Part)) {
+                FromCfg = 1;
+                LogFs("Fs: ROOT.CFG loaded\n");
+                break;
+            }
         }
     }
 
     if (FromCfg) {
         int Hit = FindVolByDiskPart(Disk, Part);
 
-        for (i = 0; i < 16; i++) {
-            gOsDiskGuid[i] = Disk[i];
-        }
-        gOsDiskOk = 1;
+        PinOsTarget(Disk, Part, 1);
         if (Hit >= 0) {
             gOsVolIdx = Hit;
             if (gVols[Hit].HasBlocksId && BlocksVol) {
@@ -153,15 +273,42 @@ void FsResolveOsTarget(int *BlocksVol) {
             LogFs("Fs: OsTarget via ROOT.CFG\n");
             return;
         }
-        /* ROOT.CFG 指向尚未挂上的卷（多半在 U 盘） */
         LogFs("Fs: OsTarget ROOT.CFG not mounted yet\n");
         return;
     }
 
-    /* 无 ROOT.CFG：回退 BlocksVol / 启动盘 BLOCKS */
+    /* 3) 无 ROOT.CFG：仅 Pin 启动盘上的 BLOCKS */
+    if (BootGuidOk) {
+        int OnBoot = FindBlocksOnDisk(Info->BootDiskGuid);
+
+        if (OnBoot >= 0) {
+            gOsVolIdx = OnBoot;
+            if (BlocksVol) {
+                *BlocksVol = OnBoot;
+            }
+            if (gVols[OnBoot].DiskGuidOk) {
+                PinOsTarget(gVols[OnBoot].DiskGuid, gVols[OnBoot].PartGuid,
+                            gVols[OnBoot].PartGuidOk);
+            }
+            LogFs("Fs: OsTarget = boot disk BLOCKS\n");
+            return;
+        }
+        /*
+         * 启动盘尚未挂上（U 盘起、MSC 未 claim）：可暂用旁路卷浏览，
+         * 但绝不 Pin——否则永远钉在 NUC，拔启动盘也不 halt。
+         */
+        if (BlocksVol && *BlocksVol >= 0) {
+            gOsVolIdx = *BlocksVol;
+        }
+        LogFs("Fs: OsTarget defer (boot disk not mounted)\n");
+        return;
+    }
+
+    /* 4) 旧 Boot：旁路 BlocksVol / 首个 BLOCKS 并 Pin */
     if (BlocksVol && *BlocksVol >= 0) {
         gOsVolIdx = *BlocksVol;
-    } else {
+    }
+    if (gOsVolIdx < 0) {
         for (i = 0; i < gVolCount; i++) {
             if (gVols[i].HasBlocksId) {
                 gOsVolIdx = i;
@@ -170,10 +317,8 @@ void FsResolveOsTarget(int *BlocksVol) {
         }
     }
     if (gOsVolIdx >= 0 && gVols[gOsVolIdx].DiskGuidOk) {
-        for (i = 0; i < 16; i++) {
-            gOsDiskGuid[i] = gVols[gOsVolIdx].DiskGuid[i];
-        }
-        gOsDiskOk = 1;
+        PinOsTarget(gVols[gOsVolIdx].DiskGuid, gVols[gOsVolIdx].PartGuid,
+                    gVols[gOsVolIdx].PartGuidOk);
     }
 }
 
@@ -197,4 +342,51 @@ int FileSystemSecondaryVolsReady(void) {
 
 int FileSystemVolOnOsDisk(int Idx) {
     return FsVolOnOsDisk(Idx);
+}
+
+int FileSystemOsVol(void) {
+    return gOsVolIdx;
+}
+
+/*
+ * 挂卷后调用：区分「旁路 U 盘热拔」与「拔掉启动盘（根在其上）」。
+ * 后者置位 BootMediumGone——Kernel 虽仍在 RAM，根文件系统已不在，不应继续当系统用。
+ */
+void FsUpdateBootMediumState(void) {
+    const BOOT_INFO *Info = BootInfoGet();
+    int i;
+    int Present = 0;
+
+    if (gBootMediumGone) {
+        return;
+    }
+    if (!Info || !Info->BootDiskGuidOk) {
+        return;
+    }
+    for (i = 0; i < gVolCount; i++) {
+        if (!gVols[i].DiskGuidOk) {
+            continue;
+        }
+        if (GuidEq16(gVols[i].DiskGuid, Info->BootDiskGuid)) {
+            Present = 1;
+            break;
+        }
+    }
+    if (Present) {
+        gBootDiskSeen = 1;
+        return;
+    }
+    if (!gBootDiskSeen) {
+        return; /* 启动盘尚未挂上（例如 U 盘起、MSC 尚未 claim） */
+    }
+    /*
+     * 曾见过启动盘、现已无任何卷 = 拔掉加载 EFI 的那块盘。
+     * 不依赖 OsTarget 是否曾误钉旁路（U 盘起首轮只见 NVMe 时的旧坑）。
+     */
+    gBootMediumGone = 1;
+    LogFs("Fs: boot medium removed\n");
+}
+
+int FileSystemBootMediumGone(void) {
+    return gBootMediumGone ? 1 : 0;
 }

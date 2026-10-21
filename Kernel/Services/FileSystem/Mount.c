@@ -30,8 +30,8 @@ int MountAllVolumes(void) {
     gActiveOps = 0;
     gActiveDrive = 0xFFFFFFFFu;
     gActiveLba = 0xFFFFFFFFu;
+    /* OsTarget 钉在 MountOs：此处只清卷表；勿清 gOsDiskOk（热拔会误认旁路盘） */
     gOsVolIdx = -1;
-    gOsDiskOk = 0;
 
     for (d = 0; d < BLOCK_MAX_DRIVES && gVolCount < FS_MAX_VOLUMES; d++) {
         GPT_FAT_PART Parts[GPT_MAX_FAT_PARTS];
@@ -74,6 +74,7 @@ int MountAllVolumes(void) {
     LogFs(" volume(s), default=");
     LogFs(gVols[gDefaultVol].Name);
     LogFs("\n");
+    FsUpdateBootMediumState();
     return 1;
 }
 

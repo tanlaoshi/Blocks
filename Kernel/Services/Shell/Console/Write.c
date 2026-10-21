@@ -91,6 +91,33 @@ void ConsoleDrawChar(char C, UINT32 Color) {
     ConsoleOutUnlock();
 }
 
+/*
+ * 仅 Shell 窗：scrollback + 帧缓冲。开窗欢迎语走这里，避免串口重复
+ * 「Blocks console. Type help.」（串口已有 blocks> / ready）。
+ */
+void ConsoleWriteShellScreen(const char *Text) {
+    const char *P;
+
+    if (Text == 0 || !HalConsoleVideoReady()) {
+        return;
+    }
+    if (GuiFocusKind() != GUI_WIN_SHELL) {
+        return;
+    }
+    ConsoleOutLock();
+    for (P = Text; *P; P++) {
+        gAtLineStart = (*P == '\n');
+    }
+    ConsoleSbBindFocus();
+    ConsoleSbEnsureLive();
+    ConsoleSbFeed(Text);
+    if (GuiShellAcceptsInput() || GuiShellWindowActive(GuiFocusIndex())) {
+        ConsoleDrawString(Text, ThemeShellText());
+    }
+    ConsoleSbBarAfterWrite();
+    ConsoleOutUnlock();
+}
+
 /* 同时输出到串口与屏幕（帧缓冲未就绪时只写串口） */
 static void Write(const char *Text) {
     const char *P;

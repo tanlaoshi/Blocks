@@ -1,5 +1,8 @@
 /*
  * Dispatch.c — x86-64 IDT / PIC / LAPIC / 中断分发（PR-S3-arch-1）
+ *
+ * 用户态异常（CS RPL=3）：杀当前用户任务并切走，勿 cli+hlt 拖死整机。
+ * 内核异常仍 ExceptionHalt。
  */
 #include "Architecture.h"
 #include "Private.h"
@@ -178,10 +181,41 @@ static void ExcAppendHex(char *Line, int Cap, int *Len, UINT64 Value, int Digits
     ExcAppend(Line, Cap, Len, Buf);
 }
 
+static int FrameFromUser(const HAL_INTERRUPT_FRAME *F) {
+    return F != 0 && (F->Cs & 3u) == 3u;
+}
+
+/* 拼 EXCEPTION 行（#PF 带 CR2）；调用方决定 Claim/停机或杀用户。 */
+static void ExceptionFormat(HAL_INTERRUPT_FRAME *F, char *Line, int Cap, int *Len) {
+    *Len = 0;
+    ExcAppend(Line, Cap, Len, "\nEXCEPTION vec=");
+    ExcAppendHex(Line, Cap, Len, (UINT32)F->Vector, 8);
+    ExcAppend(Line, Cap, Len, " err=");
+    ExcAppendHex(Line, Cap, Len, (UINT32)F->ErrorCode, 8);
+    ExcAppend(Line, Cap, Len, " ip=");
+    ExcAppendHex(Line, Cap, Len, F->InstructionPointer, 16);
+    ExcAppend(Line, Cap, Len, " cs=");
+    ExcAppendHex(Line, Cap, Len, F->Cs, 4);
+    ExcAppend(Line, Cap, Len, " ss=");
+    ExcAppendHex(Line, Cap, Len, F->Ss, 4);
+    ExcAppend(Line, Cap, Len, " rsp=");
+    ExcAppendHex(Line, Cap, Len, F->StackPointer, 16);
+    ExcAppend(Line, Cap, Len, " rfl=");
+    ExcAppendHex(Line, Cap, Len, F->Rflags, 8);
+    ExcAppend(Line, Cap, Len, " cpu=");
+    ExcAppendHex(Line, Cap, Len, (UINT32)HalCpuGetId(), 2);
+    if (F->Vector == 14) {
+        UINT64 Cr2;
+        __asm__ volatile ("mov %%cr2, %0" : "=r"(Cr2));
+        ExcAppend(Line, Cap, Len, " cr2=");
+        ExcAppendHex(Line, Cap, Len, Cr2, 16);
+    }
+    ExcAppend(Line, Cap, Len, "\n");
+}
+
 /*
- * 打印异常信息后 cli+hlt（#PF 时额外 CR2）。
- * PR-K-rm-exc-1：先 SerialClaimException 独占 UART，再整行一次写出，
- * 避免与其它核的 store: removed / MSC 日志字符交织。
+ * 内核异常：打印后 cli+hlt。
+ * PR-K-rm-exc-1：先 SerialClaimException 独占 UART，再整行一次写出。
  */
 static void ExceptionHalt(HAL_INTERRUPT_FRAME *F) {
     char Line[256];
@@ -189,34 +223,26 @@ static void ExceptionHalt(HAL_INTERRUPT_FRAME *F) {
 
     ArchCli();
     SerialClaimException();
-
-    ExcAppend(Line, (int)sizeof(Line), &Len, "\nEXCEPTION vec=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, (UINT32)F->Vector, 8);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " err=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, (UINT32)F->ErrorCode, 8);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " ip=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, F->InstructionPointer, 16);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " cs=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, F->Cs, 4);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " ss=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, F->Ss, 4);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " rsp=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, F->StackPointer, 16);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " rfl=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, F->Rflags, 8);
-    ExcAppend(Line, (int)sizeof(Line), &Len, " cpu=");
-    ExcAppendHex(Line, (int)sizeof(Line), &Len, (UINT32)HalCpuGetId(), 2);
-    if (F->Vector == 14) {
-        UINT64 Cr2;
-        __asm__ volatile ("mov %%cr2, %0" : "=r"(Cr2));
-        ExcAppend(Line, (int)sizeof(Line), &Len, " cr2=");
-        ExcAppendHex(Line, (int)sizeof(Line), &Len, Cr2, 16);
-    }
-    ExcAppend(Line, (int)sizeof(Line), &Len, "\n");
+    ExceptionFormat(F, Line, (int)sizeof(Line), &Len);
     SerialWrite(Line);
     for (;;) {
         __asm__ volatile ("cli; hlt");
     }
+}
+
+/*
+ * 用户态异常：打日志后按 exit(139) 收尸切走（勿 Claim——Claim 会永久独占串口）。
+ * hello/#PF 等不得拖死整机。
+ */
+static UINT64 ExceptionUserAbort(HAL_INTERRUPT_FRAME *F) {
+    char Line[256];
+    int Len = 0;
+
+    ExceptionFormat(F, Line, (int)sizeof(Line), &Len);
+    SerialWrite(Line);
+    SerialWrite("fault: kill user (code 139), resume\n");
+    HalFrameSetArgument0(F, 139);
+    return SchedulerExitUser(F);
 }
 
 /*
@@ -230,9 +256,15 @@ UINT64 InterruptDispatch(HAL_INTERRUPT_FRAME *F) {
         if (VirtualMemoryHandlePageFault(Cr2, F->ErrorCode) == 0) {
             return 0;
         }
+        if (FrameFromUser(F) && SchedulerIsOnline()) {
+            return ExceptionUserAbort(F);
+        }
         ExceptionHalt(F);
     }
     if (F->Vector < 32) {
+        if (FrameFromUser(F) && SchedulerIsOnline()) {
+            return ExceptionUserAbort(F);
+        }
         ExceptionHalt(F);
     }
     if (F->Vector == VEC_XHCI || F->Vector == VEC_E1000 || F->Vector == VEC_COM1) {

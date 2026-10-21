@@ -2,7 +2,7 @@
  * Process.c — exec / execve / 嵌入演示（story-s2 / PR-S-process-1）
  *
  * ProcessExec：LoadPath→argv 栈→（开窗 App 才 StopAllUsers）→StartElf；virt 则 CoopDrain。
- * ProcessRunDemo：链入 `_binary_User_hello_elf_*`（无盘 hello）。
+ * ProcessRunDemo：链入 `_binary_User_hello_elf_*`（无盘 hello）；同 Exec 铺 argc=0 栈（CRT 读 %rsp）。
  * 上游：Shell SystemProcess / 桌面 EXEC。装载细节 Load.c；停旧用户见 ProcessStopAllUsers。
  */
 #include "Process.h"
@@ -349,22 +349,33 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
 
 int ProcessRunDemo(void) {
     UINTN Size = (UINTN)(_binary_User_hello_elf_end - _binary_User_hello_elf_start);
+    UINT64 NewRsp;
+    char Dummy[1][EXEC_ARG_LEN];
+    VIRTUAL_ADDRESS_SPACE *Space;
+    ELF_LOAD_RESULT Info;
+
     if (Size == 0) {
         LogMisc("user: no embedded hello.elf\n");
         return -1;
     }
 
-    VIRTUAL_ADDRESS_SPACE *Space = VirtualMemorySpaceCreate();
+    Space = VirtualMemorySpaceCreate();
     if (!Space) {
         LogMisc("user: address space failed\n");
         return -1;
     }
 
-    ELF_LOAD_RESULT Info;
     if (ElfLoadFromMemory(Space, _binary_User_hello_elf_start, Size, &Info) != 0) {
         VirtualMemorySpaceDestroy(Space);
         return -1;
     }
+    /* StackTop 为映射区开区间上沿；不铺栈则 _start 的 mov (%rsp) 必 #PF */
+    if (ProcessSetupArgvStack(Space, Info.StackTop, Dummy, 0, &NewRsp) != 0) {
+        VirtualMemorySpaceDestroy(Space);
+        LogMisc("user: argv stack failed\n");
+        return -1;
+    }
+    Info.StackTop = NewRsp;
 
     HalInstallUserMode();
     return ProcessStartElf(Space, &Info, "hello", 0);

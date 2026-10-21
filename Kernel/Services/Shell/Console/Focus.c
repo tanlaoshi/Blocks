@@ -54,12 +54,12 @@ static void FocusLoad(void) {
              * 或空窗：须再打 blocks>。有 scrollback 时勿再打欢迎语。
              */
             if (!ConsoleSbHasContent()) {
-                gConsole.Write(LocStr(MSG_CON_WELCOME));
-                gConsole.Write("\n");
+                ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+                ConsoleWriteShellScreen("\n");
             } else {
                 ConsoleSbRepaint();
             }
-            Prompt();
+            PromptScreen();
             GuiConsoleMarkPrompt();
             GuiFocusSave();
         } else if (ConsoleSbHasContent()) {
@@ -74,10 +74,10 @@ static void FocusLoad(void) {
     if (GuiConsoleNeedsPrompt()) {
         if (!ConsoleSbHasContent()) {
             GuiFocusHome();
-            gConsole.Write(LocStr(MSG_CON_WELCOME));
-            gConsole.Write("\n");
+            ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+            ConsoleWriteShellScreen("\n");
         }
-        Prompt();
+        PromptScreen();
         GuiConsoleMarkPrompt();
         GuiFocusSave();
     }
@@ -169,9 +169,9 @@ static void PaintShellWindow(int Idx) {
     ConsoleSbReset();
     GuiFocusClearClient();
     GuiFocusHome();
-    gConsole.Write(LocStr(MSG_CON_WELCOME));
-    gConsole.Write("\n");
-    Prompt();
+    ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+    ConsoleWriteShellScreen("\n");
+    PromptScreen();
     GuiConsoleMarkPrompt();
     ConsoleSbWinSave(Idx);
     GuiConsolePush(gLine, gLen, gWaitPrompt);

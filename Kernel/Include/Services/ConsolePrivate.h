@@ -75,6 +75,8 @@ extern int gAtLineStart;
 
 void ConsoleDrawString(const char *Text, UINT32 Color);
 void ConsoleDrawChar(char C, UINT32 Color);
+/* Shell 客户区+scrollback，不写串口（开窗欢迎语等） */
+void ConsoleWriteShellScreen(const char *Text);
 void ConsoleRunLine(void);
 /* 本条命令输出归属窗：Begin/End 包住 RunLine；Write 钉发起 Shell */
 void ConsoleCmdOutBegin(void);
@@ -82,6 +84,8 @@ void ConsoleCmdOutEnd(void);
 int ConsoleCmdOutOwner(void);
 /* 提示符。定义在 Console.c；写屏与输入拆开后同模块可见 */
 void Prompt(void);
+/* 仅 Shell 客户区（开窗/FocusLoad）；串口已有 Announce 的 blocks> 勿再打 */
+void PromptScreen(void);
 /* SMP：串口/提示符/逐字 Write 互斥，避免 H\\nello+blocks> 交错 */
 void ConsoleOutLock(void);
 void ConsoleOutUnlock(void);

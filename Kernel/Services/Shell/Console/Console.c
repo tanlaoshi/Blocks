@@ -102,16 +102,19 @@ void ConsoleOutUnlock(void) {
     SpinLockRelease(&gConsoleOutLock);
 }
 
-void Prompt(void) {
+static void PromptCommon(int ToSerial) {
     /*
      * 整段在 OutLock 内：SMP 上勿把 \\n 与 blocks> 拆开，否则用户逐字 Write
      * 会插成「H\\nello」+「blocks>」粘在一起。
+     * ToSerial=0：开 Shell 窗只画客户区；串口已由 AnnounceBootReady 打过一份。
      */
     ConsoleOutLock();
     gLen = 0;
     /* 仅当不在行首时换行：开窗欢迎语后已有 \\n，再打会空一行像「提示语不对」 */
     if (!gAtLineStart) {
-        HalConsoleWriteSerial("\n");
+        if (ToSerial) {
+            HalConsoleWriteSerial("\n");
+        }
         if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
             ConsoleSbBindFocus();
             ConsoleSbEnsureLive();
@@ -119,7 +122,9 @@ void Prompt(void) {
             ConsoleDrawString("\n", ThemeShellText());
         }
     }
-    HalConsoleWriteSerial("blocks> ");
+    if (ToSerial) {
+        HalConsoleWriteSerial("blocks> ");
+    }
     gAtLineStart = 0;
     if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
         ConsoleSbBindFocus();
@@ -128,6 +133,14 @@ void Prompt(void) {
         ConsoleDrawString("blocks> ", ThemeShellPrompt());
     }
     ConsoleOutUnlock();
+}
+
+void Prompt(void) {
+    PromptCommon(1);
+}
+
+void PromptScreen(void) {
+    PromptCommon(0);
 }
 
 static void WaitPrompt(void) {

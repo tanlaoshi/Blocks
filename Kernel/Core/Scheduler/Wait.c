@@ -3,6 +3,7 @@
  *
  * 收尸与 TerminateUserLocked → Terminate.c（thr-3 拆分）。
  * S2.2：ExitUser 仅在确有关掉 USER 窗时 DesktopComposeThemeScene（Hello 无窗勿全桌合成）。
+ * S2.3：ExitUser 切回 KernelRoot 只 LoadPageTable 一次（曾连续两次）。
  */
 #include "SchedulerPrivate.h"
 #include "SchedulerOps.h"
@@ -104,7 +105,6 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
         }
         (void)TerminateUserLocked(Exiting, Code, &ShowPrompt, &Detached);
         SpinLockRelease(&gSchedulerLock);
-        VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         DesktopWaitNoWindowClosing();
         if (LastUser) {

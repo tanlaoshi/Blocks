@@ -88,6 +88,8 @@ void GuiPollMouse(void) {
     if (!GuiCursorUsbReady()) {
         while (HalMouseDequeue(&Raw)) {
         }
+        /* 仍 TickClock：图标/壁纸 NeedRefresh 勿绑在 Reveal 之后 */
+        DesktopTickClock();
         return;
     }
 

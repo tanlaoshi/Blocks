@@ -2,8 +2,8 @@
  * 人话：你开机后看见的桌面——图标、底栏任务栏、「开始」菜单、壁纸。
  *       开窗：双击图标，或点任务栏「开始」。
  *
- * 从哪读：DesktopInitialize（开机搭好）→ DesktopEnsureIconsLoaded（晚一点
- *       才扫盘加载图标）→ DesktopDraw / DesktopDrawStartMenu（谁画什么）。
+ * 从哪读：DesktopInitialize（占位+布局，不读 BMP）→ Worker
+ *       DesktopEnsureIconsLoaded → TickClock 补刷 → DesktopDraw。
  *
  * 别改：图标坐标松手后写 BLOCKS.DB，下次开机 LoadIconLayout 读回来。
  *       开始菜单里 Apps 列表认已装清单 + 盘上 ELF，勿只扫半边。
@@ -241,10 +241,10 @@ void DesktopInitialize(void) {
 #endif
     gDesktopBusy = 0;
     /*
-     * 单核时 worker 优先级低于 shell/gui，图标若只丢给 Worker 可能永远不加载。
-     * 所以 Init 末同步 Ensure：首帧就有图；Worker 再 Ensure 等于空操作。
+     * gui-icons-defer：Ensure 只在 Worker，且须先于 EnsureSecondary（旁路 MSC 慢）。
+     * 首帧允许纯色占位；Worker 置 NeedRefresh → TickClock 补画 BMP。
+     * 点开始若菜单仍空会同步 Rebuild（可接受一顿）。
      */
-    DesktopEnsureIconsLoaded();
 }
 
 /* 热切分辨率：只重算壁纸缓存与图标坐标，不重读 BMP（防 FAT/长循环重入） */

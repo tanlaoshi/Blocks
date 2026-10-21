@@ -94,6 +94,11 @@ void GuiTask(void) {
         } else {
             UINT32 i;
 
+            /*
+             * 勿泵鼠；仍跑 TickClock：Worker 已 Ensure 的图标 NeedRefresh
+             * 须在 Reveal 前 Consume，否则 BMP 要等网/iwl 完才出（观感更慢）。
+             */
+            DesktopTickClock();
             for (i = 0; i < 400; i++) {
                 HalCpuRelax();
             }
@@ -105,23 +110,22 @@ void GuiTask(void) {
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
  *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
- *   1 EnsureSecondary + HDA（msc/3；仍无光标）
- *   2 DesktopEnsureIconsLoaded
- *   3 DesktopEnsureMenuRebuilt
- *   4 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
- *   5 LocaleDbFlushStep
- *   6 LocaleTtfPreheatStep  — 可 breath；不 continue
- *   7 FontTtfWantDrain      — 同上
- *   8 HalNetInitialize（一次；boot-net-defer 有线 Probe）
- *   9 HalIwlClaim（一次）
- *  10 StoreJobStep          — story-s4；busy → continue（挡网/ready）
- *  11 HalIwlBgPump          — busy → continue
- *  12 DHCP restart / Step   — busy → continue
- *  13 真机 iwl 静默窗       — 未静默 → continue
- *  14 GuiCursorRevealAfterUsb → AnnounceBootReady
- *     （光标须在网/iwl/图标等慢活之后：一露就必须流畅）
- *  15 DesktopEnsureWallpaperBuilt — gui-wall-defer；Reveal 后才 Build（4K）
- *  16 halt
+ *   1 DesktopEnsureIconsLoaded + MenuRebuilt — gui-icons-defer；先于旁路扫盘
+ *   2 EnsureSecondary + HDA（msc/3；仍无光标）
+ *   3 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
+ *   4 LocaleDbFlushStep
+ *   5 LocaleTtfPreheatStep  — 可 breath；不 continue
+ *   6 FontTtfWantDrain      — 同上
+ *   7 HalNetInitialize（一次；boot-net-defer 有线 Probe）
+ *   8 HalIwlClaim（一次）
+ *   9 StoreJobStep          — story-s4；busy → continue（挡网/ready）
+ *  10 HalIwlBgPump          — busy → continue
+ *  11 DHCP restart / Step   — busy → continue
+ *  12 真机 iwl 静默窗       — 未静默 → continue
+ *  13 GuiCursorRevealAfterUsb → AnnounceBootReady
+ *     （光标须在网/iwl 等慢活之后：一露就必须流畅）
+ *  14 DesktopEnsureWallpaperBuilt — gui-wall-defer；Reveal 后才 Build（4K）
+ *  15 halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -129,10 +133,13 @@ void WorkerTask(void) {
         gWorkerCount++;
         DesktopWorkerTick();
         /*
-         * PR-BOOT-fast-1：图标/菜单扫盘必须在 Worker、且先于 iwl。
-         * 若放 Gui 路径读盘：iwl 的 IoBreath→CondResched→Gui 再读盘会重入 FAT，
-         * 真机曾见 #GP@IsrCommon iretq（rsp=0）。
+         * PR-BOOT-fast-1 / gui-icons-defer：图标/菜单在 Worker、先于 Secondary/iwl。
+         * 勿放 Gui 路径读盘（与 iwl IoBreath 重入 FAT → #GP）。
+         * 亦勿放 Secondary 之后：旁路 MSC 慢，BMP 会被拖成「桌面更慢」。
          */
+        DesktopEnsureIconsLoaded();
+        /* 切语言后扫盘重建菜单 / 落盘 lang=：必须在 Worker */
+        DesktopEnsureMenuRebuilt();
         /* fs-msc-defer：桌面后慢认旁路 U 盘；光标仍等网/iwl 静默后再 Reveal */
         {
             static int sSecondaryOnce;
@@ -147,9 +154,6 @@ void WorkerTask(void) {
                 sSecondaryOnce = 1;
             }
         }
-        DesktopEnsureIconsLoaded();
-        /* 切语言后扫盘重建菜单 / 落盘 lang=：必须在 Worker */
-        DesktopEnsureMenuRebuilt();
         /* 商店开窗：catalog/已装探测勿堵 Gui 点击路径 */
         StoreUiEnsureOpenLoad();
         (void)LocaleDbFlushStep();

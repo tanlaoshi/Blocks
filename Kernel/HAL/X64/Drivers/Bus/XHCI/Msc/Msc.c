@@ -108,6 +108,15 @@ static int ScanPorts(void) {
         BootLogHex("Boot: MSC scan speed=", Speed, 1);
         BootLogHex("Boot: MSC scan ped=", (Ps & PORTSC_PED) ? 1u : 0u, 1);
         BootLogHex("Boot: MSC scan portsc=", Ps, 8);
+        /*
+         * usb-hid-keep：根口 FS/LS 不当 MSC 候选（NUC 口8 蓝牙 0xE0=FS；
+         * HotPoll 每 5s Force 会弄死邻口鼠）。U 盘走 HS/SS。
+         */
+        if (!HalCpuIsHypervisor() && Speed > 0 && Speed < 3) {
+            BootLog("Boot: MSC scan skip FS/LS root (not MSC)\n");
+            gPortNeedForcePr &= ~(1u << P);
+            continue;
+        }
         if (!(Ps & PORTSC_PED)) {
             BootLog("Boot: MSC scan note: claim will Force PR\n");
             gPortNeedForcePr |= (1u << P);

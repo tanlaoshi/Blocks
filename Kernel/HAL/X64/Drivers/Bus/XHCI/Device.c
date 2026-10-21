@@ -5,7 +5,8 @@
  * 规格：xHCI 完成码 SUCCESS=1；USB Transaction Error 等勿当「再猜一次超时」。
  * 各设备独立 EP0 环（Hub/MSC/Mouse…）：共享环会毁掉 hub dequeue → 子口永不完成。
  *
- * 上游：ClaimPort / HubEnumerate / HID / Serial。gXhciPortEnumFreeze=1 时调用方应拒绝再 Address。
+ * 上游：ClaimPort / HubEnumerate / HID / Serial。
+ * usb-hid-keep：gXhciPortEnumFreeze=1 → 本函数直接 return 0（禁再 EnableSlot/Address，保鼠环）。
  */
 #include "XHCI/Private.h"
 

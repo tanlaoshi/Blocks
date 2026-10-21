@@ -199,6 +199,11 @@ int XhciWifiClaim(void) {
     if (gWifiXhciOk && gWifiSlot != 0) {
         return 1;
     }
+    /* usb-hid-keep：MSC sick/扫空已 freeze → 勿再 Address（AddressDev 也会拒，此处早退少日志噪声） */
+    if (gXhciPortEnumFreeze) {
+        BootLog("Boot: Wifi claim skip (port enum freeze, keep mouse)\n");
+        return 0;
+    }
     /*
      * MSC 已认则禁止再扫口/Address：会踩 hub 上 U 盘（cc=0x04 bulk fail）。
      * 主路径已改 iwl PCIe；USB 棒仅无 MSC 时才试。

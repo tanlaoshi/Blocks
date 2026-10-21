@@ -103,6 +103,7 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
         /* 勿把 FT232 当 MSC（厂商 Bulk）；留给 usb-uart */
         if (Vid == 0x0403u) {
             BootLog("Boot: MSC claim skip FTDI\n");
+            gPortNeedForcePr &= ~(1u << RootPort);
             FtdiKeepForUart(gMscScanSlot, RootPort, Speed, gMscRoute,
                             gMscHubSlot, gMscTtPort);
             gMscScanSlot = 0;
@@ -111,15 +112,15 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     }
     if (DevClass == 0x09) {
         BootLog("Boot: MSC claim skip hub device\n");
-        goto fail;
+        goto skip_not_msc;
     }
     if (DevClass == 0x02) {
         BootLog("Boot: MSC claim skip CDC\n");
-        goto fail;
+        goto skip_not_msc;
     }
     if (DevClass == 0x03 || DevClass == 0xE0) {
         BootLogHex("Boot: MSC claim skip class=", DevClass, 2);
-        goto fail;
+        goto skip_not_msc;
     }
 
     if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gMscCfgBuf) < 0) {
@@ -176,6 +177,15 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     BootLogHex("Boot: MSC claim route=", gMscRoute, 2);
     BootLog("Boot: MSC claim bulk ok\n");
     return 1;
+
+skip_not_msc:
+    /* 已知非 MSC：清 NeedForce，勿让 HotPoll 每 5s 再 Force PR（保鼠） */
+    if (gMscScanSlot != 0) {
+        gPortNeedForcePr &= ~(1u << RootPort);
+        DisableSlot(gMscScanSlot);
+        gMscScanSlot = 0;
+    }
+    return 0;
 
 fail:
     if (gMscScanSlot != 0) {

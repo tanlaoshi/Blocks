@@ -1,9 +1,11 @@
 #!/bin/bash
-# sync-usb.sh — 把当前 ToyImage / 构建产物同步到已挂载的 ESP + BLOCKS 分区
+# sync-usb.sh — 把构建产物同步到 U 盘上的 ESP + BLOCKS 分区
 #
 # 真机布局（见 make-usb-stick.sh）：
 #   ESP   → EFI/BOOT/BOOTX64.EFI
 #   BLOCKS → RootFs/X64/（Kernel.elf、BLOCKS.ID、THEME、Assets、FW/、*.ELF…）
+#
+# 选盘：只认 USB/可移动上的卷标；NUC nvme 同标（LABEL=BLOCKS）不写。本机盘用 sync-nuc.sh。
 #
 # 用法：
 #   ./sync-usb.sh                 # 全量：RootFs/X64 → BLOCKS；ESP 已挂载才更新 BOOTX64.EFI
@@ -81,15 +83,45 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# U 盘 / 可移动；排除 nvme 本机盘（与 sync-nuc 对仗）。
+is_usb_stick_dev() {
+  local Dev="$1"
+  local Tran Rm Name
+  [[ -b "$Dev" ]] || return 1
+  Name="$(basename "$Dev")"
+  case "$Name" in
+    nvme*) return 1 ;;
+  esac
+  Tran="$(lsblk -ln -o TRAN "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  if [[ -z "$Tran" ]]; then
+    Tran="$(lsblk -ln -o TRAN -s "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  fi
+  Rm="$(lsblk -ln -o RM "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  if [[ "$Tran" == "nvme" ]]; then
+    return 1
+  fi
+  [[ "$Tran" == "usb" || "$Rm" == "1" ]]
+}
+
+# 枚举 LABEL=…，只返回 USB/可移动上的那个（勿用 blkid -L，双标会跳到 nvme）。
 find_label_dev() {
   local Label="$1"
-  blkid -L "$Label" 2>/dev/null || true
+  local Dev Name
+  while read -r Name; do
+    [[ -n "$Name" ]] || continue
+    Dev="/dev/$Name"
+    [[ -b "$Dev" ]] || continue
+    is_usb_stick_dev "$Dev" || continue
+    printf '%s\n' "$Dev"
+    return 0
+  done < <(lsblk -ln -o NAME,LABEL 2>/dev/null | awk -v L="$Label" '$2==L{print $1}')
+  return 1
 }
 
 find_label_mnt() {
   local Label="$1"
   local Dev Mnt
-  Dev="$(find_label_dev "$Label")"
+  Dev="$(find_label_dev "$Label" || true)"
   if [[ -z "$Dev" ]]; then
     return 1
   fi
@@ -100,13 +132,48 @@ find_label_mnt() {
   printf '%s\n' "$Mnt"
 }
 
+# /media/*/BLOCKS 等可能是 NUC；只接受挂在 U 盘上的路径。
+find_usb_mnt_path() {
+  local Label="$1"
+  local d Src
+  for d in /media/*/"$Label" /media/"${USER:-tank}"/"$Label" \
+           /run/media/"${USER:-tank}"/"$Label"; do
+    [[ -d "$d" ]] || continue
+    Src="$(findmnt -n -o SOURCE --target "$d" 2>/dev/null || true)"
+    [[ -n "$Src" ]] || continue
+    if is_usb_stick_dev "$Src"; then
+      printf '%s\n' "$d"
+      return 0
+    fi
+  done
+  return 1
+}
+
+require_usb_mnt() {
+  local Mnt="$1"
+  local What="$2"
+  local Src
+  Src="$(findmnt -n -o SOURCE --target "$Mnt" 2>/dev/null || true)"
+  if [[ -z "$Src" ]]; then
+    echo "error: $What mount $Mnt has no block source" >&2
+    return 1
+  fi
+  if ! is_usb_stick_dev "$Src"; then
+    echo "error: $What at $Mnt is $Src (not USB) — sync-usb 不写本机盘" >&2
+    echo "  插 U 盘或用 sync-nuc.sh；勿把 BLOCKS_MNT 指到 nvme" >&2
+    return 1
+  fi
+  echo "USB $What: $Src -> $Mnt"
+  return 0
+}
+
 # 旧盘 LABEL=TOYOS → 一次性改成 BLOCKS（不兼容旧标；需 sudo 写块设备）
 relabel_legacy_toyos_to_blocks() {
   local Dev Mnt
-  if [[ -n "$(find_label_dev BLOCKS)" ]]; then
+  if [[ -n "$(find_label_dev BLOCKS || true)" ]]; then
     return 0
   fi
-  Dev="$(find_label_dev TOYOS)"
+  Dev="$(find_label_dev TOYOS || true)"
   if [[ -z "$Dev" ]]; then
     return 0
   fi
@@ -132,8 +199,8 @@ relabel_legacy_toyos_to_blocks() {
   if command -v udisksctl >/dev/null 2>&1; then
     udisksctl mount -b "$Dev" >/dev/null || true
   fi
-  if [[ -z "$(find_label_dev BLOCKS)" ]]; then
-    echo "error: relabel failed; blkid still has no LABEL=BLOCKS" >&2
+  if [[ -z "$(find_label_dev BLOCKS || true)" ]]; then
+    echo "error: relabel failed; no USB LABEL=BLOCKS" >&2
     return 1
   fi
   echo "relabel: ok → $(find_label_dev BLOCKS) LABEL=BLOCKS" >&2
@@ -205,17 +272,15 @@ if [[ -z "$BLOCKS_MNT" ]]; then
   BLOCKS_MNT="$(find_label_mnt BLOCKS || true)"
 fi
 
-# 常见自动挂载路径兜底
+# 常见自动挂载路径兜底（须 USB，跳过 nvme 上的同名挂载）
 if [[ -z "$BLOCKS_MNT" ]]; then
-  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS /run/media/"${USER:-tank}"/BLOCKS; do
-    if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
-  done
+  BLOCKS_MNT="$(find_usb_mnt_path BLOCKS || true)"
 fi
 if [[ -z "$ESP_MNT" ]]; then
-  for d in /media/*/ESP /media/"${USER:-tank}"/ESP /run/media/"${USER:-tank}"/ESP \
-           /media/*/EFI /media/"${USER:-tank}"/EFI; do
-    if [[ -d "$d" ]]; then ESP_MNT="$d"; break; fi
-  done
+  ESP_MNT="$(find_usb_mnt_path ESP || true)"
+fi
+if [[ -z "$ESP_MNT" ]]; then
+  ESP_MNT="$(find_usb_mnt_path EFI || true)"
 fi
 
 # 未挂载则尝试挂上（尤其 ESP：否则 UEFI 仍跑旧 BOOTX64）
@@ -230,9 +295,13 @@ if [[ -z "$BLOCKS_MNT" ]]; then
 fi
 
 if [[ -z "$BLOCKS_MNT" ]]; then
-  echo "error: BLOCKS volume not mounted (label BLOCKS)." >&2
-  echo "  Plug the USB, or: udisksctl mount -b \$(blkid -L BLOCKS)" >&2
+  echo "error: USB BLOCKS not found/mounted." >&2
+  echo "  插 U 盘；本机 nvme LABEL=BLOCKS 用 sync-nuc.sh" >&2
   exit 1
+fi
+require_usb_mnt "$BLOCKS_MNT" "BLOCKS" || exit 1
+if [[ -n "$ESP_MNT" && "$ESP_MNT" != "$BLOCKS_MNT" ]]; then
+  require_usb_mnt "$ESP_MNT" "ESP" || exit 1
 fi
 
 # --kernel-only：只碰 BLOCKS，不要求 ESP（避免误判 single-FAT / 往 ESP 写 Kernel）
@@ -309,10 +378,12 @@ ESP_DEV="$(find_label_dev ESP)"
 if [[ -z "$ESP_DEV" ]]; then
   ESP_DEV="$(find_label_dev EFI)"
 fi
-# 桌面常把 ESP 挂在 /mnt/blocks-esp，但 blkid 无 LABEL=ESP
+# 桌面常把 ESP 挂在 /mnt/blocks-esp，但 blkid 无 LABEL=ESP（仍须 USB）
 if [[ -z "$ESP_MNT" && -d /mnt/blocks-esp/EFI/BOOT ]]; then
-  ESP_MNT=/mnt/blocks-esp
-  echo "note: using /mnt/blocks-esp as ESP (no LABEL=ESP in blkid)"
+  if require_usb_mnt /mnt/blocks-esp "ESP" 2>/dev/null; then
+    ESP_MNT=/mnt/blocks-esp
+    echo "note: using /mnt/blocks-esp as ESP (no LABEL=ESP in blkid)"
+  fi
 fi
 if [[ -z "$ESP_MNT" ]]; then
   if [[ -n "$ESP_DEV" ]]; then

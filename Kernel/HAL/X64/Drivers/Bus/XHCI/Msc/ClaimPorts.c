@@ -1,11 +1,21 @@
 /*
- * ClaimPorts.c — 根口/hub MSC claim 编排（usb-map / PR-S-xhcimsc-1）
+ * ClaimPorts.c — 根口/hub MSC claim 编排（usb-map / usb-hid-keep / PR-S-xhcimsc-1）
  *
- * 链：UsbMscClaim / AutoBeforeFs / Hot → ClaimPorts
- *   →（hub 子口）HubEnumerate |（根口）ClaimPort ForceUntilPed → Address → FinishClaim
- * 收口：Ok → Ready；!Ok 或 sick → gXhciPortEnumFreeze=1（禁 UART/Wifi 再 Address，保鼠）
- *       入口清 freeze；msc-claim-stop：Ok 即停扫（不因 Ok freeze）。
- * Force/Address 帮手：ClaimPort.c；MSC 全局仍在 Xhci.c（BSS↔HID DMA）。
+ * ```
+ * UsbMscClaim|AutoBeforeFs|Hot → ClaimPorts
+ *   入口：gXhciPortEnumFreeze=0（Hot 须解开才能 Address）
+ *   若 cmd sick：Recover + QueueIntr/QueueMouseIntr（保持 Dual MSI，勿 FallbackToPoll）
+ *   → HubEnumerate | ClaimPort(ForceUntilPed→Address) → FinishClaim
+ *   跳过：kbd/mouse/hub 根口、已认 FTDI/CDC 口
+ * 收口：
+ *   Ok → Ready；成功不 freeze；勿重 Queue HID
+ *   扫空 → freeze=1；勿重 Queue HID（IN 仍挂着）
+ *   sick → freeze=1 + Recover + 重武装 HID
+ * ```
+ * 保鼠要点：WaitCommand 内仍 ServiceHidCompletions；sick 后勿 RecoverEp0；
+ * 无 sick 收口勿再 QueueIntr/QueueMouseIntr（secondary 扫空双投递会打死挂起的 IN）。
+ * AddressDeviceOnPort/ForceUntilPed 见 freeze 则拒。Wifi/FTDI/CDC claim 入口亦早退。
+ * Force/Address：ClaimPort.c；全局 BSS：Xhci.c。
  */
 #include "XHCI/Private.h"
 
@@ -135,16 +145,16 @@ int ClaimPorts(void) {
 
                 /*
                  * 已 PED：软 Address；未 PED / NeedForce：Force。
-                 * 真机跳过根口 FS/LS（几乎不是 MSC；软 Address 超时易 sick→鼠卡）。
+                 * 真机根口 FS/LS 不碰（几乎不是 U 盘；Force PR 会弄掉邻口鼠 — NUC
+                 * RUNTIME：口8 dclass=0xE0 反复 NeedForce → root dropped mouse + cc=12）。
                  */
-                if (!ForceUntilPed(P, &Force)) {
+                Speed = PortSpeed(Ps);
+                if (!HalCpuIsHypervisor() && Speed > 0 && Speed < 3) {
+                    gPortNeedForcePr &= ~(1u << P);
                     continue;
                 }
-                if (Force == 0 && !HalCpuIsHypervisor()) {
-                    Speed = PortSpeed(Ps);
-                    if (Speed > 0 && Speed < 3) {
-                        continue;
-                    }
+                if (!ForceUntilPed(P, &Force)) {
+                    continue;
                 }
 
                 Arc = AddressPort(P, Force, &Speed);
@@ -226,16 +236,10 @@ done:
         return -1;
     }
     NoteMouseRootDropped();
-    if (gSlotId != 0 && gIntrDci != 0) {
-        QueueIntr();
-    }
-    if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-        QueueMouseIntr();
-    }
     /*
-     * 扫空后勿再让 UART/Wifi Address 根口（抢环/鼠卡）。
-     * Ok 已 goto done 停扫（msc-claim-stop）；成功时不 freeze，桌面 Hot 旁路仍可 Address。
-     * msc hot / 下轮 ClaimPorts 入口会清 freeze。
+     * usb-hid-keep：无 sick 时键鼠 IN 仍挂着（桌面 secondary / 扫空常见）。
+     * 再 QueueIntr/QueueMouseIntr = 双投递 → HC 不完成 → 鼠死、键只能偶发。
+     * sick 路径上方已 Recover 后重武装；此处只 freeze，勿碰 HID 环。
      */
     if (!Ok) {
         gXhciPortEnumFreeze = 1;

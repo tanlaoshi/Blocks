@@ -247,6 +247,11 @@ static int Claim(void) {
     if (gCdcClaimed && gCdcSlot != 0) {
         return 1;
     }
+    /* usb-hid-keep：MSC sick/扫空 freeze 后勿再 Address */
+    if (gXhciPortEnumFreeze) {
+        BootLog("Boot: CDC claim skip (port enum freeze, keep mouse)\n");
+        return 0;
+    }
 
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
         UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));

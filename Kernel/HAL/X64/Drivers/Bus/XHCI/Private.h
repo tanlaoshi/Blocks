@@ -324,7 +324,11 @@ extern volatile UINT32 gCmdDone;
 extern UINT32 gCmdCode;
 extern UINT32 gCmdSlot;
 extern UINT32 gXhciCmdSick;
-/* usb-map：claim sick/扫空后置 1，禁 UART/Wifi 再 Address（保鼠）；ClaimPorts 入口清 0 */
+/*
+ * usb-hid-keep / usb-map：MSC claim sick 或扫空后置 1。
+ * AddressDeviceOnPort / ForceUntilPed 见 1 则拒；ClaimPorts 入口清 0（Hot 可再 Address）。
+ * 置位方：ClaimPorts done；消费方：Device/ClaimPort + Wifi/FTDI/CDC claim 早退。
+ */
 extern UINT32 gXhciPortEnumFreeze;
 extern UINT32 gXhciCmdWaitMs; /* 0=默认 800ms；SS hub 子口 Address 可缩短 */
 extern UINT32 gXhciCmdAttempts; /* 0=默认 2；SS hub 子口可 1 次快退 */

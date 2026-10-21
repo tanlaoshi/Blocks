@@ -5,6 +5,7 @@
 #   LABEL=BLOCKS（nvme 数据分区）→ Kernel.elf / RootFs / FW/ …
 #   /boot/efi/EFI/Blocks/BOOTX64.EFI ← 仅 --boot 时更新（grub chainloader）
 #
+# 选盘：只认 nvme（或非 USB）上的 LABEL=BLOCKS；U 盘同标可插着，不误写。
 # U 盘双分区仍用 Scripts/sync-usb.sh（备选）。
 #
 # 用法：
@@ -84,15 +85,52 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-find_label_dev() {
-  blkid -L "$1" 2>/dev/null || true
+# 是否 NUC 本机盘（nvme / 非 USB）；U 盘同 LABEL=BLOCKS 时排除。
+is_nuc_blocks_dev() {
+  local Dev="$1"
+  local Tran Rm Name
+  [[ -b "$Dev" ]] || return 1
+  Name="$(basename "$Dev")"
+  case "$Name" in
+    nvme*|sd*[0-9]|vd*[0-9]|mmcblk*p*) ;;
+    *) return 1 ;;
+  esac
+  Tran="$(lsblk -ln -o TRAN "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  if [[ -z "$Tran" ]]; then
+    # 分区常无 TRAN，看父盘
+    Tran="$(lsblk -ln -o TRAN -s "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  fi
+  Rm="$(lsblk -ln -o RM "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
+  if [[ "$Tran" == "usb" || "$Rm" == "1" ]]; then
+    return 1
+  fi
+  if [[ "$Tran" == "nvme" || "$Name" == nvme* ]]; then
+    return 0
+  fi
+  # 非 USB 的固定盘（少见 SATA 本机）也认
+  [[ -n "$Tran" && "$Tran" != "usb" ]]
 }
 
+# 枚举所有 LABEL=BLOCKS，优先 nvme。
 find_blocks_dev() {
-  local D
-  D="$(find_label_dev BLOCKS)"
-  if [[ -n "$D" ]]; then
-    printf '%s\n' "$D"
+  local Dev Name Prefer="" Fallback=""
+  while read -r Name; do
+    [[ -n "$Name" ]] || continue
+    Dev="/dev/$Name"
+    [[ -b "$Dev" ]] || continue
+    is_nuc_blocks_dev "$Dev" || continue
+    if [[ "$(basename "$Dev")" == nvme* ]]; then
+      Prefer="$Dev"
+      break
+    fi
+    [[ -z "$Fallback" ]] && Fallback="$Dev"
+  done < <(lsblk -ln -o NAME,LABEL 2>/dev/null | awk '$2=="BLOCKS"{print $1}')
+  if [[ -n "$Prefer" ]]; then
+    printf '%s\n' "$Prefer"
+    return 0
+  fi
+  if [[ -n "$Fallback" ]]; then
+    printf '%s\n' "$Fallback"
     return 0
   fi
   return 1
@@ -105,6 +143,22 @@ find_dev_mnt() {
     return 1
   fi
   printf '%s\n' "$Mnt"
+}
+
+# /media/*/BLOCKS 可能是 U 盘；只接受挂在本机盘上的路径。
+find_nuc_blocks_mnt_path() {
+  local d Src
+  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS \
+           /run/media/"${USER:-tank}"/BLOCKS; do
+    [[ -d "$d" ]] || continue
+    Src="$(findmnt -n -o SOURCE --target "$d" 2>/dev/null || true)"
+    [[ -n "$Src" ]] || continue
+    if is_nuc_blocks_dev "$Src"; then
+      printf '%s\n' "$d"
+      return 0
+    fi
+  done
+  return 1
 }
 
 ensure_blocks_mounted() {
@@ -152,7 +206,7 @@ sync_boot_chainloader() {
   local DestDir="$ESP_BOOT_DIR"
   local Dest="$DestDir/BOOTX64.EFI"
   if [[ ! -f "$BootEfi" ]]; then
-    echo "error: missing $BootEfi — build ToyBoot first" >&2
+    echo "error: missing $BootEfi — build Boot first" >&2
     return 1
   fi
   if [[ -d "$DestDir" && -w "$DestDir" ]]; then
@@ -180,10 +234,7 @@ if [[ -z "$BLOCKS_MNT" ]]; then
   fi
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
-  for d in /media/*/BLOCKS /media/"${USER:-tank}"/BLOCKS \
-           /run/media/"${USER:-tank}"/BLOCKS; do
-    if [[ -d "$d" ]]; then BLOCKS_MNT="$d"; break; fi
-  done
+  BLOCKS_MNT="$(find_nuc_blocks_mnt_path || true)"
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
   if [[ -z "$BLOCKS_DEV" ]]; then
@@ -194,14 +245,24 @@ if [[ -z "$BLOCKS_MNT" ]]; then
   fi
 fi
 if [[ -z "$BLOCKS_MNT" ]]; then
-  echo "error: BLOCKS volume not found/mounted." >&2
-  echo "  Expected LABEL=BLOCKS on SSD. USB 备选: $SCRIPT_DIR/sync-usb.sh" >&2
+  echo "error: NUC BLOCKS (nvme LABEL=BLOCKS) not found/mounted." >&2
+  echo "  U 盘同标可插着；本脚本不写 USB。备选: sync-usb.sh" >&2
   exit 1
 fi
 if [[ ! -d "$BLOCKS_MNT" || ! -w "$BLOCKS_MNT" ]]; then
   echo "error: BLOCKS not writable: $BLOCKS_MNT" >&2
   exit 1
 fi
+# 显式 BLOCKS_MNT 也校验：勿误指 U 盘
+if [[ -z "$BLOCKS_DEV" ]]; then
+  BLOCKS_DEV="$(findmnt -n -o SOURCE --target "$BLOCKS_MNT" 2>/dev/null || true)"
+fi
+if [[ -n "$BLOCKS_DEV" ]] && ! is_nuc_blocks_dev "$BLOCKS_DEV"; then
+  echo "error: $BLOCKS_MNT is $BLOCKS_DEV (USB/removable) — sync-nuc 只写本机盘" >&2
+  echo "  卸 U 盘或用 sync-usb.sh；或 BLOCKS_MNT= 指向 nvme 上的 BLOCKS" >&2
+  exit 1
+fi
+echo "NUC BLOCKS: $BLOCKS_DEV -> $BLOCKS_MNT"
 
 BOOT_EFI="$ROOT/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 
@@ -249,7 +310,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
     if [[ -x "$ROOT/../ToyBoot/build.sh" ]]; then
       (cd "$ROOT/../ToyBoot" && ./build.sh)
     else
-      echo "warning: ToyBoot/build.sh missing" >&2
+      echo "warning: Boot/build.sh missing" >&2
     fi
   fi
 fi
@@ -304,4 +365,4 @@ echo "=== nuc sync done ==="
 [[ "$DO_BOOT" -eq 1 ]] && echo "Boot : $ESP_BOOT_DIR/BOOTX64.EFI"
 echo "Kernel : $(stat -c%s "$BLOCKS_MNT/Kernel.elf") bytes @ $BLOCKS_MNT"
 ls -lh "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID" 2>/dev/null || true
-echo "日常只跑本脚本；U 盘备选 sync-usb.sh。ToyBoot 有改动再加 --boot。"
+echo "日常只跑本脚本；U 盘备选 sync-usb.sh。Boot 有改动再加 --boot。"

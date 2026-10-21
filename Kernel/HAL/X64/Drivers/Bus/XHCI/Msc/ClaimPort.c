@@ -251,9 +251,8 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
                 return 1;
             }
             /*
-             * USB2 hub 无 MSC：先保留。后面 SS hub 子口若 Speed=0/HS
-             *（USB3 §10.14.2.6 = FS/LS 或 HS），设备在双总线 hub 的
-             * USB2 侧，须再扫此 hub，勿过早 Disable。
+             * USB2 hub 无 MSC：先保留。SS hub 上非 SS（HubPortSpeed≠4，
+             * 即 PORT_SPEED Reserved）的设备在双总线 USB2 侧，须再扫勿 Disable。
              */
             if (HubBefore == 0 && gHubSlotId != 0 && gHubRootPort == P) {
                 if (Speed < 4) {

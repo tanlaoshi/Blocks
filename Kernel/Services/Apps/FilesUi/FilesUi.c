@@ -227,22 +227,11 @@ void FilesUiOpen(void) {
     SyncSideSel();
     /* 目录在首次 Paint 前就绪；跳过文件内容预览 */
     (void)ReloadListEx(0, 0);
-    {
-        int j;
-
-        LocaleTtfPreheatUi();
-        for (j = 0; j < gPlaceCount; j++) {
-            if (gPlaceLabels[j][0]) {
-                FontTtfPreheatUtf8(gPlaceLabels[j]);
-            }
-        }
-        for (j = 0; j < gCount; j++) {
-            if (gEnts[j].Name[0]) {
-                FontTtfPreheatUtf8(gEnts[j].Name);
-            }
-        }
-        (void)FontTtfWantDrain(64u);
-    }
+    /*
+     * 勿在此 LocaleTtfPreheatUi / 逐文件 Preheat / WantDrain：
+     * 开窗在 Gui 路径，stb 栅格几十上百字会占死鼠标泵（像 PPT 卡顿）。
+     * 首帧可先点阵；Worker 的 WantDrain + TakePaint 再换成 TTF。
+     */
     Paint();
 }
 

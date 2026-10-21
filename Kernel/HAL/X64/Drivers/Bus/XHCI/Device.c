@@ -141,8 +141,13 @@ int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
     if (HubDevice && HubNumPorts != 0) {
         Slot[1] |= ((UINT32)HubNumPorts << 24);
     }
-    /* 非根口须填 Parent Hub（含 HS/SS；旧逻辑只填 Speed<3） */
-    if (ParentHubSlot != 0) {
+    /*
+     * Slot DWORD2 = TT Hub Slot / TT Port（xHCI §6.2.2）。
+     * 仅 LS/FS（经 HS hub TT）或 HS 子设备填；SuperSpeed 必须为 0，
+     * 拓扑只靠 Route String + Root Hub Port。误填会导致 Address 无完成事件
+     * （本机 SS hub 子口 st=0x0203 → cmd wait 超时 → sick → 鼠废）。
+     */
+    if (ParentHubSlot != 0 && Speed < 4) {
         Slot[2] = (UINT32)ParentHubSlot | ((UINT32)TtPort << 8);
     }
 

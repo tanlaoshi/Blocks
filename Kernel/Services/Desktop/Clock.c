@@ -111,31 +111,12 @@ void DesktopTickClock(void) {
     }
 
     /*
-     * 点阵→TTF：Want 泵进缓存后须再合成。整屏 Refresh 很贵 → 节流约 4Hz，
-     * 且 Ack 吞掉窗口内多次 gen（预热已不 bump，见 TrueTypeCache）。
+     * 点阵→TTF：Worker Want 只灌缓存。空闲时勿 RequestRefresh——
+     * 会 ComposeBusy 丢弃鼠动 + 与 PresentCursor 抢双缓冲（空拖一直顿、留印）。
+     * 标签在下次菜单/钟栏/点桌面等自然重画时换成 TTF。
      */
     if (FontTtfTakePaint()) {
-        static UINT64 LastTtfRefresh;
-        UINT64 Now = HalCpuTicks(0);
-        UINT32 Tps = HalTicksPerSec();
-        UINT32 Sw = 0;
-        UINT32 Sh = 0;
-
-        if (Tps == 0) {
-            Tps = 250;
-        }
-        if (LastTtfRefresh != 0 &&
-            (Now - LastTtfRefresh) < (UINT64)(Tps / 4u)) {
-            /* 未到点：不 Ack，下一圈 Tick 再试 */
-        } else {
-            LastTtfRefresh = Now;
-            HalVideoGetSize(&Sw, &Sh);
-            if (Sw > 0 && Sh > 0) {
-                GuiMarkDamage(0, 0, Sw, Sh);
-                RequestRefresh();
-            }
-            FontTtfAckPaint();
-        }
+        FontTtfAckPaint();
     }
 
     NeedPaint = sClockBarNeedPaint;

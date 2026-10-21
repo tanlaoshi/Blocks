@@ -115,27 +115,59 @@ int EnumerateHubChildren(void) {
             BootLogHex("Boot: MSC claim hub st=", St, 4);
             HalBootLogoBump(91);
             /*
-             * USB3：已 Enable 时先读 Speed（§10.14.2.6），勿先 Hot/BH Reset
-             * ——对已链路上的口再复位会把 Speed 打成 0，且 BH 只适用于 SS 链路错误，
-             * 不适用于 Speed=0（FS/LS）或 1（HS）。
+             * PORT_SPEED（USB3 Table 10-10）：字段 0=5Gbps，不是「未协商」。
+             * Address 前必须复位到 Default：已 Enable 的 SS 口若跳过复位，
+             * 设备可能已在 Addressed，SET_ADDRESS→无应答→命令环超时（本机
+             * st=0x0203 / speed=4 后 AddressDev 超时→cmd sick→鼠 PPT）。
+             * SS：Warm Reset（BH_PORT_RESET §10.14.2.4）；USB2：Hot Reset。
              */
             Speed = HubPortSpeed(St);
-            if (gHubSpeed >= 4 && (St & HUB_PORT_ENABLE) && Speed != 4) {
-                for (t = 0; t < 15 && Speed != 4; t++) {
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(20);
+            if (gHubSpeed >= 4) {
+                if (HubSetPortFeat(Port, HUB_FEAT_BH_PORT_RESET) < 0) {
+                    BootLogHex("Boot: MSC claim hub BH reset fail port=", Port, 2);
+                    continue;
+                }
+                for (t = 0; t < (HalCpuIsHypervisor() ? 50000 : 100); t++) {
+                    if (HubGetPortStatus(Port, &St) < 0) {
+                        break;
                     }
+                    if (St & HUB_C_BH_PORT_RESET) {
+                        (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
+                        break;
+                    }
+                    if (St & HUB_C_PORT_RESET) {
+                        (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
+                    }
+                    if (!HalCpuIsHypervisor()) {
+                        StallMs(5);
+                    }
+                }
+                for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 100); t++) {
                     if (HubGetPortStatus(Port, &St) < 0) {
                         break;
                     }
                     if (St & HUB_C_PORT_CONNECTION) {
                         (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
                     }
-                    Speed = HubPortSpeed(St);
+                    if (St & HUB_C_BH_PORT_RESET) {
+                        (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
+                    }
+                    if ((St & HUB_PORT_ENABLE) && HubPortSpeed(St) == 4) {
+                        break;
+                    }
+                    if (!HalCpuIsHypervisor()) {
+                        StallMs(5);
+                    }
                 }
-            }
-            if (!(St & HUB_PORT_ENABLE) || gHubSpeed < 4) {
-                /* USB2 hub，或 SS 口尚未 Enable：Hot Reset 后等 Enable */
+                Speed = HubPortSpeed(St);
+                if (!(St & HUB_PORT_ENABLE) || Speed != 4) {
+                    BootLogHex("Boot: MSC claim hub warm not SS port=", Port, 2);
+                    BootLogHex("Boot: MSC claim hub st=", St, 4);
+                    BootLogHex("Boot: MSC claim hub speed=", Speed, 1);
+                    continue;
+                }
+                BootLogHex("Boot: MSC claim hub warm ok st=", St, 4);
+            } else {
                 if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {
                     continue;
                 }
@@ -171,17 +203,6 @@ int EnumerateHubChildren(void) {
                 }
                 Speed = HubPortSpeed(St);
             }
-            /*
-             * SS hub：仅 Speed≥2 → xHCI Speed=4 才 Address。
-             * Speed=0/1 按规格是 FS/LS/HS，父 SS slot 无 TT → 跳过，改扫 USB2 hub。
-             */
-            if (gHubSpeed >= 4 && Speed != 4) {
-                BootLogHex("Boot: MSC claim hub skip non-SS port=", Port, 2);
-                BootLogHex("Boot: MSC claim hub st=", St, 4);
-                BootLogHex("Boot: MSC claim hub speed=", Speed, 1);
-                HalBootLogoBump(91);
-                continue;
-            }
             if (gMscScanSlot != 0) {
                 DisableSlot(gMscScanSlot);
                 gMscScanSlot = 0;
@@ -202,7 +223,8 @@ int EnumerateHubChildren(void) {
                     NoteMouseHubDropped();
                     return 0;
                 }
-                (void)HubSetPortFeat(Port, HUB_FEAT_PORT_RESET);
+                (void)HubSetPortFeat(Port, gHubSpeed >= 4 ? HUB_FEAT_BH_PORT_RESET
+                                                          : HUB_FEAT_PORT_RESET);
                 continue;
             }
             if (gMscScanSlot <= DCBAA_SLOTS) {

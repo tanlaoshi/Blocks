@@ -213,7 +213,8 @@ int FontTtfWantStep(void) {
             gWant[w] = gWant[w + 1];
         }
     }
-    FillSlot(Cp, 1);
+    /* NotifyPaint=0：勿 bump gen → TickClock 空闲 Compose；屏上点阵等自然重画 */
+    FillSlot(Cp, 0);
     return gWantN > 0 ? 1 : 0;
 }
 

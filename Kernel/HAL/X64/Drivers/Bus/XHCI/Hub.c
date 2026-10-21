@@ -88,10 +88,12 @@ int HubClearPortFeat(UINT8 Port, UINT16 Feat) {
 }
 
 /*
- * hub 口速度 → xHCI Port Speed（0=尚不可 Address）。
- * USB2：bits 10..9 = FS/LS/HS → 1/2/3。
- * USB3（USB 3.2 §10.14.2.6）：bits 12..10 = 0 FS/LS、1 HS、2+ SS；
- * bit9=Power，不是速度。st=0x0203 的 Speed 字段是 0，绝不能报成 SS(4)。
+ * hub 口速度 → xHCI Slot Speed（0=不可 Address）。
+ * USB2 hub：wPortStatus bits 10..9 → FS/LS/HS → 1/2/3。
+ * USB3 hub：USB 3.0 Table 10-10 PORT_SPEED bits 10..12：
+ *   0 = 5 Gbps（SS）；1–7 Reserved（3.1+ 更高速率在 ExtPortStatus）。
+ * bit9 = PORT_POWER，不是速度。
+ * st=0x0203：CONN|EN|POWER，Speed 字段=0 → 正是 SS，须 Address（勿当 FS 跳过）。
  */
 UINT8 HubPortSpeed(UINT32 St) {
     UINT32 Bits;
@@ -99,13 +101,11 @@ UINT8 HubPortSpeed(UINT32 St) {
 
     if (gHubSpeed >= 4) {
         Spd3 = (St >> 10) & 7u;
-        if (Spd3 >= 2u) {
-            return 4; /* SuperSpeed(+) */
+        if (Spd3 == 0u) {
+            return 4; /* 5 Gbps → xHCI SuperSpeed */
         }
-        if (Spd3 == 1u) {
-            return 3; /* HS：SS hub 父 slot 无 TT，调用方应跳过 Address */
-        }
-        return 0; /* 未协商好 / FS/LS：禁止当 SS Address */
+        /* Reserved：不臆造 HS/FS；调用方见 0 则跳过 Address */
+        return 0;
     }
     Bits = (St >> 9) & 3u;
     if (Bits == 0) {

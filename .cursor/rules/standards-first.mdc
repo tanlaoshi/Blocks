@@ -12,5 +12,6 @@ alwaysApply: true
 3. **启发式须明示**：只有用户明确说「可以搞启发式 / 试错」时才允许。
 4. **改之前对齐证据**：串口/日志里的状态字、完成码须能在规格里对上号；对不上就先读规格，再改代码。
 
-反例：把 USB3 `st=0x0203`（Speed 字段为 0）硬改成 HS/SS 去 Address。
-正例：按 USB3 Hub Port Status 解 bits 12..10，非 SS 则不 Address，再按规格做 Warm Reset / 重读。
+USB3 hub `wPortStatus` PORT_SPEED（bits 10..12，Table 10-10）：**值为 0 = 5 Gbps**，不是 FS。
+反例：把字段 0 当成「未协商/FS」跳过 Address（`st=0x0203` 实为 SS）。
+正例：字段 0 → xHCI SS Address；Reserved(1–7) 不臆造；USB2 设备走双总线 USB2 hub。

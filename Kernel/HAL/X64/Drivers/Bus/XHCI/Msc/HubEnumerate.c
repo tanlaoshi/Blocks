@@ -1,11 +1,144 @@
 /*
- * HubEnumerate.c — hub 子口 MSC 枚举（usb-map / PR-S-xhcihub-1）
+ * HubEnumerate.c — hub 子口 MSC 枚举（usb-map / usb-link-cc）
  *
- * GetPortStatus → HubPortSpeed（USB3：0=SS）→ BH_PORT_RESET（SS）或 Hot Reset（USB2）
- * → AddressDeviceOnPort（SS 子设备 Slot TT=0）→ FinishClaim。
- * 跳过键/鼠已占子口；第二 hub 路径同构。详见 HubPortSpeed / Warm Reset 注释。
+ * GetPortStatus → Hot/Warm Reset（见 C_*）→ Address（SS：BSR1+BSR0）→ FinishClaim。
+ * 父 hub 须已 SetHubDepth。同一子口 Address USBTE 后：一次掉电重上电再试，禁止
+ * Warm/rescan 同招连撞（标准优先：换方法，勿重试风暴）。
  */
 #include "XHCI/Private.h"
+
+/*
+ * 子口复位到 Default，供 Address。成功则 *StOut / *SpeedOut 有效。
+ * WarmOnly：仅链路 SS.Inactive 时由调用方置 1；勿在 USBTE 后当「再撞一次」。
+ */
+static int HubResetChildForAddress(UINT8 Port, UINT32 *StOut, UINT8 *SpeedOut,
+                                   int WarmOnly) {
+    UINT32 St = 0;
+    UINT8 Speed;
+    int t;
+    int Warm;
+    int SawResetDone = 0;
+    int MaxWait = HalCpuIsHypervisor() ? 50000 : 100;
+
+    if (HubGetPortStatus(Port, &St) < 0) {
+        return 0;
+    }
+
+    if (gHubSpeed >= 4) {
+        UINT32 Pls = HUB_PORT_LINK_STATE(St);
+
+        /*
+         * 规格：Enabled 且链路非 U3 → Hot Reset；SS.Inactive 等才 Warm。
+         * 48ca72f 对已 U0 口一律 BH：部分 hub 不置 C_BH，循环超时后仍见旧 PED
+         * → 伪「warm ok」→ Address cc=0x04。
+         */
+        Warm = WarmOnly || (Pls == HUB_PLS_SS_INACTIVE);
+        if (HubSetPortFeat(Port, Warm ? HUB_FEAT_BH_PORT_RESET
+                                      : HUB_FEAT_PORT_RESET) < 0) {
+            BootLogHex("Boot: MSC claim hub reset fail port=", Port, 2);
+            return 0;
+        }
+        for (t = 0; t < MaxWait; t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                return 0;
+            }
+            if (St & HUB_C_PORT_RESET) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
+                SawResetDone = 1;
+                break;
+            }
+            if (St & HUB_C_BH_PORT_RESET) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
+                SawResetDone = 1;
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMs(5);
+            }
+        }
+        if (!SawResetDone) {
+            BootLogHex("Boot: MSC claim hub reset no C_ port=", Port, 2);
+            BootLogHex("Boot: MSC claim hub st=", St, 4);
+            return 0;
+        }
+        for (t = 0; t < MaxWait; t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                return 0;
+            }
+            if (St & HUB_C_PORT_CONNECTION) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
+            }
+            if (St & HUB_C_PORT_RESET) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
+            }
+            if (St & HUB_C_BH_PORT_RESET) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
+            }
+            if ((St & HUB_PORT_ENABLE) && HubPortSpeed(St) == 4 &&
+                HUB_PORT_LINK_STATE(St) == HUB_PLS_U0) {
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMs(5);
+            }
+        }
+        Speed = HubPortSpeed(St);
+        if (!(St & HUB_PORT_ENABLE) || Speed != 4 ||
+            HUB_PORT_LINK_STATE(St) != HUB_PLS_U0) {
+            BootLogHex("Boot: MSC claim hub not SS/U0 port=", Port, 2);
+            BootLogHex("Boot: MSC claim hub st=", St, 4);
+            BootLogHex("Boot: MSC claim hub speed=", Speed, 1);
+            return 0;
+        }
+        BootLogHex(Warm ? "Boot: MSC claim hub warm ok st="
+                        : "Boot: MSC claim hub hot ok st=",
+                   St, 4);
+    } else {
+        if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {
+            return 0;
+        }
+        for (t = 0; t < (HalCpuIsHypervisor() ? 50000 : 80); t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                return 0;
+            }
+            if (St & HUB_C_PORT_RESET) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
+                SawResetDone = 1;
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMs(5);
+            }
+        }
+        if (!SawResetDone) {
+            BootLogHex("Boot: MSC claim hub reset no C_ port=", Port, 2);
+            return 0;
+        }
+        for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 80); t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                return 0;
+            }
+            if (St & HUB_C_PORT_CONNECTION) {
+                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
+            }
+            if (St & HUB_PORT_ENABLE) {
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMs(5);
+            }
+        }
+        if (!(St & HUB_PORT_ENABLE)) {
+            BootLogHex("Boot: MSC claim hub not en port=", Port, 2);
+            return 0;
+        }
+        Speed = HubPortSpeed(St);
+    }
+
+    *StOut = St;
+    *SpeedOut = Speed;
+    return 1;
+}
 
 /*
  * PR-H-msc-4：hub 子口找 MSC（Bulk）；跳过已占用键/鼠子口。
@@ -31,10 +164,47 @@ static void NoteMouseHubDropped(void) {
     DisableSlot(gMouseSlotId);
 }
 
+/* 掉电再上电：与「再 Hot/Warm+Address」不同招（USB 端口电源控制）。 */
+static int HubPowerCyclePort(UINT8 Port) {
+    int t;
+    UINT32 St = 0;
+
+    if (HubClearPortFeat(Port, HUB_FEAT_PORT_POWER) < 0) {
+        return 0;
+    }
+    if (!HalCpuIsHypervisor()) {
+        StallMs(100); /* 下电可见；勿当「多等一会碰运气」缩超时 */
+    }
+    if (HubSetPortFeat(Port, HUB_FEAT_PORT_POWER) < 0) {
+        return 0;
+    }
+    if (!HalCpuIsHypervisor()) {
+        StallMs(100);
+    }
+    for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 40); t++) {
+        if (HubGetPortStatus(Port, &St) < 0) {
+            return 0;
+        }
+        if (St & HUB_C_PORT_CONNECTION) {
+            (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
+        }
+        if (St & HUB_PORT_CONNECTION) {
+            BootLogHex("Boot: MSC claim hub power-cycle ok port=", Port, 2);
+            return 1;
+        }
+        if (!HalCpuIsHypervisor()) {
+            StallMs(5);
+        }
+    }
+    BootLogHex("Boot: MSC claim hub power-cycle no conn port=", Port, 2);
+    return 0;
+}
+
 int EnumerateHubChildren(void) {
     UINT8 Port;
     UINT8 MaxP = gHubNumPorts;
     int Pass;
+    UINT16 AddrFailed = 0; /* bit N：子口 N 已 Address 失败，Pass1 勿同招再撞 */
 
     if (gHubSlotId == 0 || gMscClaimed) {
         return 0;
@@ -70,7 +240,6 @@ int EnumerateHubChildren(void) {
         for (Port = 1; Port <= MaxP; Port++) {
             UINT32 St = 0;
             UINT8 Speed;
-            int t;
             int Wait;
 
             if (HubGetPortStatus(Port, &St) < 0) {
@@ -113,97 +282,15 @@ int EnumerateHubChildren(void) {
             if (gFtdiClaimed && gFtdiHubSlot != 0 && gFtdiTtPort == Port) {
                 continue;
             }
+            /* Pass1 只收晚到连接；Address 已失败的口禁止同招再撞 */
+            if (Pass > 0 && (AddrFailed & (1u << Port)) != 0) {
+                continue;
+            }
             BootLogHex("Boot: MSC claim hub port=", Port, 2);
             BootLogHex("Boot: MSC claim hub st=", St, 4);
             HalBootLogoBump(91);
-            /*
-             * PORT_SPEED（USB3 Table 10-10）：字段 0=5Gbps，不是「未协商」。
-             * Address 前必须复位到 Default：已 Enable 的 SS 口若跳过复位，
-             * 设备可能已在 Addressed，SET_ADDRESS→无应答→命令环超时（本机
-             * st=0x0203 / speed=4 后 AddressDev 超时→cmd sick→鼠 PPT）。
-             * SS：Warm Reset（BH_PORT_RESET §10.14.2.4）；USB2：Hot Reset。
-             */
-            Speed = HubPortSpeed(St);
-            if (gHubSpeed >= 4) {
-                if (HubSetPortFeat(Port, HUB_FEAT_BH_PORT_RESET) < 0) {
-                    BootLogHex("Boot: MSC claim hub BH reset fail port=", Port, 2);
-                    continue;
-                }
-                for (t = 0; t < (HalCpuIsHypervisor() ? 50000 : 100); t++) {
-                    if (HubGetPortStatus(Port, &St) < 0) {
-                        break;
-                    }
-                    if (St & HUB_C_BH_PORT_RESET) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
-                        break;
-                    }
-                    if (St & HUB_C_PORT_RESET) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
-                    }
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(5);
-                    }
-                }
-                for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 100); t++) {
-                    if (HubGetPortStatus(Port, &St) < 0) {
-                        break;
-                    }
-                    if (St & HUB_C_PORT_CONNECTION) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
-                    }
-                    if (St & HUB_C_BH_PORT_RESET) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_BH_PORT_RESET);
-                    }
-                    if ((St & HUB_PORT_ENABLE) && HubPortSpeed(St) == 4) {
-                        break;
-                    }
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(5);
-                    }
-                }
-                Speed = HubPortSpeed(St);
-                if (!(St & HUB_PORT_ENABLE) || Speed != 4) {
-                    BootLogHex("Boot: MSC claim hub warm not SS port=", Port, 2);
-                    BootLogHex("Boot: MSC claim hub st=", St, 4);
-                    BootLogHex("Boot: MSC claim hub speed=", Speed, 1);
-                    continue;
-                }
-                BootLogHex("Boot: MSC claim hub warm ok st=", St, 4);
-            } else {
-                if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {
-                    continue;
-                }
-                for (t = 0; t < (HalCpuIsHypervisor() ? 50000 : 80); t++) {
-                    if (HubGetPortStatus(Port, &St) < 0) {
-                        break;
-                    }
-                    if (St & HUB_C_PORT_RESET) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
-                        break;
-                    }
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(5);
-                    }
-                }
-                for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 80); t++) {
-                    if (HubGetPortStatus(Port, &St) < 0) {
-                        break;
-                    }
-                    if (St & HUB_C_PORT_CONNECTION) {
-                        (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_CONNECTION);
-                    }
-                    if (St & HUB_PORT_ENABLE) {
-                        break;
-                    }
-                    if (!HalCpuIsHypervisor()) {
-                        StallMs(5);
-                    }
-                }
-                if (!(St & HUB_PORT_ENABLE)) {
-                    BootLogHex("Boot: MSC claim hub not en port=", Port, 2);
-                    continue;
-                }
-                Speed = HubPortSpeed(St);
+            if (!HubResetChildForAddress(Port, &St, &Speed, 0)) {
+                continue;
             }
             if (gMscScanSlot != 0) {
                 DisableSlot(gMscScanSlot);
@@ -225,9 +312,27 @@ int EnumerateHubChildren(void) {
                     NoteMouseHubDropped();
                     return 0;
                 }
-                (void)HubSetPortFeat(Port, gHubSpeed >= 4 ? HUB_FEAT_BH_PORT_RESET
-                                                          : HUB_FEAT_PORT_RESET);
-                continue;
+                /*
+                 * 换方法：端口掉电重上电（非再 Warm/再 Address）。
+                 * 仍失败则记 AddrFailed，Pass1 跳过该口。
+                 */
+                if (HubPowerCyclePort(Port) &&
+                    HubResetChildForAddress(Port, &St, &Speed, 0) &&
+                    AddressDeviceOnPort(gHubRootPort, Speed, &gMscScanSlot,
+                                        gMscScanDevCtx, (UINT32)Port,
+                                        (UINT8)gHubSlotId, Port, 0, 0)) {
+                    /* fall through FinishClaim */
+                } else {
+                    if (gMscScanSlot != 0) {
+                        DisableSlot(gMscScanSlot);
+                        gMscScanSlot = 0;
+                    }
+                    if (Port < 16) {
+                        AddrFailed |= (UINT16)(1u << Port);
+                    }
+                    BootLogHex("Boot: MSC claim hub give up port=", Port, 2);
+                    continue;
+                }
             }
             if (gMscScanSlot <= DCBAA_SLOTS) {
                 gSlotEp0UsesKbdRing[gMscScanSlot] = 0;
@@ -240,6 +345,9 @@ int EnumerateHubChildren(void) {
             if (gMscScanSlot != 0) {
                 DisableSlot(gMscScanSlot);
                 gMscScanSlot = 0;
+            }
+            if (Port < 16) {
+                AddrFailed |= (UINT16)(1u << Port);
             }
         }
     }
@@ -294,7 +402,9 @@ int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
     if (!EvaluateHubSlot(HubSlot, RootPort, Speed, Nports)) {
         BootLog("Boot: MSC claim 2nd hub eval skip\n");
     }
-    (void)Usb2Hub;
+    if (!Usb2Hub && !HubSetDepth(0)) {
+        BootLog("Boot: MSC claim 2nd hub depth fail\n");
+    }
 
     Ok = EnumerateHubChildren();
     gMscProbeHubSlot = 0;

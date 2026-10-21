@@ -1,8 +1,8 @@
 /*
  * Device.c — Address / Slot / Ep0 环选择（usb-map / PR-S-xhcidevice-1）
  *
- * AddressDeviceOnPort：EnableSlot → Address Device 命令；完成码见 gCmdCode（日志 cc=）。
- * 规格：xHCI 完成码 SUCCESS=1；USB Transaction Error 等勿当「再猜一次超时」。
+ * AddressDeviceOnPort：EnableSlot → Address Device；完成码见 gCmdCode（日志 cc=）。
+ * hub 后 SS：BSR=1 再 BSR=0（§4.6.5）；根口仍一步。USBTE≠「再同招超时」。
  * 各设备独立 EP0 环（Hub/MSC/Mouse…）：共享环会毁掉 hub dequeue → 子口永不完成。
  *
  * 上游：ClaimPort / HubEnumerate / HID / Serial。
@@ -170,6 +170,27 @@ int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
     FlushDma(DevCtx, 2048);
     DcbaaFlush();
     FlushDma(Ep0Ring, RING_SIZE * sizeof(XHCI_TRB));
+
+    /*
+     * xHCI §4.6.5：hub 后 SS 子设备先 BSR=1（不发 SET_ADDRESS，只建可寻址槽），
+     * 再 BSR=0 才发 SET_ADDRESS。直接 BSR=0 在部分 HC 上对 hub 子口 → USBTE cc=0x04。
+     * 根口设备仍一步 BSR=0（键鼠已通路径勿动）。
+     */
+    if (ParentHubSlot != 0 && Speed >= 4) {
+        Ok = Command(PointerToPhysical(gInCtx),
+                     TRB_TYPE(TRB_ADDRESS_DEV) | TRB_BSR | TRB_SLOT(*SlotOut), 0) == 0;
+        DiagChk("AddressDev.bsr1", Ok, "AddressDev BSR1 cc=1", gCmdCode, 2);
+        if (!Ok) {
+            BootLogHex("Boot: XHCI addr BSR1 cc=", gCmdCode, 2);
+            EnumWhy("Boot: Why=address fail\n");
+            if (gXhciCmdSick && SlotOut) {
+                *SlotOut = 0;
+            }
+            return 0;
+        }
+        FlushDma(gInCtx, sizeof(gInCtx));
+        FlushDma(DevCtx, 2048);
+    }
 
     Ok = Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_ADDRESS_DEV) | TRB_SLOT(*SlotOut), 0) == 0;
     DiagChk("AddressDev", Ok, "AddressDev cc=1", gCmdCode, 2);

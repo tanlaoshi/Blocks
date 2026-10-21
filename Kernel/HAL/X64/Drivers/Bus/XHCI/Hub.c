@@ -5,8 +5,8 @@
  *   字段 0 = 5 Gbps（SS），不是「未协商/FS」；Reserved(1–7) 返回 0 勿臆造。
  * USB2 hub：bits 10..9 → FS/LS/HS。bit9 在 USB3 是 PORT_POWER，不是速度。
  *
- * 链：ClaimPorts →（根口 hub）AddressDeviceOnPort → FinishHubSetup
- *      → HubEnumerate 子口 GetPortStatus → HubPortSpeed → Warm/Hot Reset → Address
+ * 链：ClaimPorts →（根口 hub）Address → FinishHubSetup → Evaluate →（SS）SetHubDepth
+ *      → HubEnumerate 子口 Hot/Warm Reset → Address（SS 子口 BSR=1 再 BSR=0）
  */
 #include "XHCI/Private.h"
 #include "Hub/Private.h"
@@ -90,6 +90,25 @@ int HubClearPortFeat(UINT8 Port, UINT16 Feat) {
 
     PortFeatureSetup(&Setup, Port, Feat, 0);
     return HubCtrlSetup(&Setup, 0);
+}
+
+/*
+ * USB3 §10.14.2.8：配置后须 SetHubDepth，hub 才按 Route String 正确转发。
+ * 根口下第一级 Depth=0（Linux hub_set_depth: level-1）。缺则子口 Address→USBTE。
+ */
+int HubSetDepth(UINT16 Depth) {
+    USB_SETUP Setup;
+
+    if (gHubSpeed < 4) {
+        return 1;
+    }
+    HubDepthSetup(&Setup, Depth);
+    if (HubCtrlSetup(&Setup, 0) < 0) {
+        BootLogHex("Boot: XHCI hub SetHubDepth fail d=", Depth, 1);
+        return 0;
+    }
+    BootLogHex("Boot: XHCI hub depth=", Depth, 1);
+    return 1;
 }
 
 /*
@@ -222,6 +241,12 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
             EnumWhy("Boot: Why=hub eval\n");
             return 0;
         }
+        if (!HubSetDepth(0)) {
+            DisableSlot(gHubSlotId);
+            gHubSlotId = 0;
+            EnumWhy("Boot: Why=hub depth\n");
+            return 0;
+        }
         BootLogHex("Boot: XHCI hub spd=", Speed, 1);
         if (Usb2Hub) {
             BootLog("Boot: XHCI ep0=split\n");
@@ -250,6 +275,12 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
         DisableSlot(gHubSlotId);
         gHubSlotId = 0;
         EnumWhy("Boot: Why=hub eval\n");
+        return 0;
+    }
+    if (!HubSetDepth(0)) {
+        DisableSlot(gHubSlotId);
+        gHubSlotId = 0;
+        EnumWhy("Boot: Why=hub depth\n");
         return 0;
     }
     return 1;

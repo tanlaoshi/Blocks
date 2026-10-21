@@ -19,6 +19,7 @@
 #include "SerialLog.h"
 #include "Debug.h"
 #include "Hal.h"
+#include "XHCI.h" /* XhciPortEnumIsFrozen：freeze 时勿 Scan 抢鼠 */
 
 /* Services：Release 前判启动盘；勿在 RemoveMsc 之后调（盘号 KIND 已清） */
 void FileSystemNotifyMscUnplug(void);
@@ -310,8 +311,23 @@ int UsbMscHotPoll(void) {
     UINT64 Now;
     UINT32 Tps;
 
-    /* 拔出 */
+    /*
+     * 拔出探测：WorkerTick ~2Hz。hub 子口 Present→HubGetPortStatus（EP0），
+     * 与键鼠抢事件环 → 空拖约 1s 一顿、甩几下只闪不动。
+     * 已认领时 5s 才问一次仍在否；根口只读 PORTSC 也一并节流无害。
+     */
     if (UsbMscReady()) {
+        static UINT64 sPresentTick;
+
+        Now = HalCpuTicks(0);
+        Tps = HalTicksPerSec();
+        if (Tps == 0) {
+            Tps = 250;
+        }
+        if (sPresentTick != 0 && (Now - sPresentTick) < (UINT64)Tps * 5u) {
+            return 0;
+        }
+        sPresentTick = Now;
         H = CurHost();
         Present = (H && H->Present) ? H->Present() : 0;
         if (Present) {
@@ -325,6 +341,13 @@ int UsbMscHotPoll(void) {
 
     /* 热插：仅 Worker 调本函数；开机路径不进这里 */
     if (!UsbMscAutoEnabled()) {
+        return 0;
+    }
+    /*
+     * freeze 后 Claim 必拒：再 Scan（含 HubGetPortStatus）只抢鼠环。
+     * 插盘用 Shell `msc hot`（Unfreeze）。
+     */
+    if (XhciPortEnumIsFrozen()) {
         return 0;
     }
     Now = HalCpuTicks(0);

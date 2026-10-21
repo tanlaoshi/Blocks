@@ -15,3 +15,14 @@ alwaysApply: true
 USB3 hub `wPortStatus` PORT_SPEED（bits 10..12，Table 10-10）：**值为 0 = 5 Gbps**，不是 FS。
 反例：把字段 0 当成「未协商/FS」跳过 Address（`st=0x0203` 实为 SS）。
 正例：字段 0 → xHCI SS Address；Reserved(1–7) 不臆造；USB2 设备走双总线 USB2 hub。
+
+# 鼠标优先（铁律 · 禁止半截方案）
+
+课堂口径：**键鼠最优先**；与 MSC/网/合成抢 xHCI 环或关中断窗口时，一律让鼠。
+
+1. **一露就必须流畅**：`GuiCursorUsbReady` 之后，禁止再引入会饿死 HID 的路径（2Hz `HubGetPortStatus`、整屏 `PresentFlush` 持 `ComposeBusy`、Present 时长时间 `IrqSave` 等）。
+2. **未露则整条链静默**：延后露光标时，禁止只做「不跟坐标」却继续泵鼠。
+   - 禁止：`GuiPollMouse` 倒队列、`YieldForPollInput`/`InputTask` 狂 `HalInputPoll` 收 HID。
+   - 必须：Gui 不泵鼠；Input 最多偶发 drain 防环堵；把 CPU/xHCI 留给 Worker（Secondary/iwl/网）直到 Reveal。
+3. **禁止图省事的半截修复**：表面关了 Gui 坐标、底层仍抢环 = 不合格。改完自问：晃鼠标会不会拖死 Reveal/网？露光标后空拖还会不会规律顿？
+4. **证据优先**：规律顿周期要对上定时器（如 WorkerTick ~0.5s、HotPoll、CMOS/UIP）；「只闪不动」优先查 xHCI 饿死 / cli Present，勿先堆重试。

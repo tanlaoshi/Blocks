@@ -84,15 +84,28 @@ void YieldForPollInput(void) {
 
 void GuiTask(void) {
     for (;;) {
-        GuiPollMouse();
-        YieldForPollInput();
+        /*
+         * 光标未 Reveal：勿泵鼠。晃鼠标会占满 xHCI/本核，Worker 到不了
+         * iwl/DHCP/Reveal → 光标永不出现、网托一直红。
+         */
+        if (GuiCursorUsbReady()) {
+            GuiPollMouse();
+            YieldForPollInput();
+        } else {
+            UINT32 i;
+
+            for (i = 0; i < 400; i++) {
+                HalCpuRelax();
+            }
+            (void)SchedulerCondResched();
+        }
     }
 }
 
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
  *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
- *   1 EnsureSecondary + HDA + GuiCursorRevealAfterUsb（msc/3 完才露光标）
+ *   1 EnsureSecondary + HDA（msc/3；仍无光标）
  *   2 DesktopEnsureIconsLoaded
  *   3 DesktopEnsureMenuRebuilt
  *   4 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
@@ -105,7 +118,8 @@ void GuiTask(void) {
  *  11 HalIwlBgPump          — busy → continue
  *  12 DHCP restart / Step   — busy → continue
  *  13 真机 iwl 静默窗       — 未静默 → continue
- *  14 AnnounceBootReady → halt
+ *  14 GuiCursorRevealAfterUsb → AnnounceBootReady → halt
+ *     （光标须在网/iwl/图标等慢活之后：一露就必须流畅）
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -117,10 +131,7 @@ void WorkerTask(void) {
          * 若放 Gui 路径读盘：iwl 的 IoBreath→CondResched→Gui 再读盘会重入 FAT，
          * 真机曾见 #GP@IsrCommon iretq（rsp=0）。
          */
-        /*
-         * fs-msc-defer / 光标门闩：桌面后先慢认旁路 U 盘（msc/3），认完才露光标。
-         * 勿等图标：BMP 扫盘再拖长「无光标」窗；图标仍可本圈后 Ensure。
-         */
+        /* fs-msc-defer：桌面后慢认旁路 U 盘；光标仍等网/iwl 静默后再 Reveal */
         {
             static int sSecondaryOnce;
 
@@ -131,7 +142,6 @@ void WorkerTask(void) {
                 HalHdaMmioInitialize();
                 HalHdaCodecInitialize();
                 HalHdaStreamInitialize();
-                GuiCursorRevealAfterUsb();
                 sSecondaryOnce = 1;
             }
         }
@@ -227,6 +237,11 @@ void WorkerTask(void) {
             }
         }
 #endif
+        /*
+         * 一露光标就必须流畅：此前 Secondary/图标/有线/iwl/DHCP 静默已过。
+         * 若再提前 Reveal，空拖/点 GuiDemo 仍会被 Worker 慢活饿死 xHCI。
+         */
+        GuiCursorRevealAfterUsb();
         gConsole.AnnounceBootReady();
         (void)gConsole.RuntimeLogFlush(); /* ready 后 Log → RUNTIME.LOG */
         HalCpuHalt();
@@ -242,10 +257,17 @@ void WorkerTask(void) {
  * pause 期 sti（浅栈可被定时器抢）。专核仅 Input+idle；CPU1 仍 IF=0。
  */
 void InputTask(void) {
+    static UINT32 sPreCursorDiv;
+
     for (;;) {
-        HalIrqDisable();   /* drain 期关中断：勿在深调用中被抢 */
-        HalInputPoll();
-        HalIrqEnable();    /* pause 期开中断：浅栈处可被定时器抢 → ticks>0 */
+        /*
+         * Reveal 前少 Poll：仍偶发 drain 防环堵，但不让晃鼠标饿死 Worker。
+         */
+        if (GuiCursorUsbReady() || (++sPreCursorDiv & 15u) == 0) {
+            HalIrqDisable(); /* drain 期关中断：勿在深调用中被抢 */
+            HalInputPoll();
+            HalIrqEnable(); /* pause 期开中断：浅栈处可被定时器抢 → ticks>0 */
+        }
         {
             UINT32 i;
             for (i = 0; i < 200; i++) {

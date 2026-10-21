@@ -43,6 +43,10 @@ void XhciPortEnumUnfreeze(void) {
     gXhciPortEnumFreeze = 0;
 }
 
+int XhciPortEnumIsFrozen(void) {
+    return gXhciPortEnumFreeze ? 1 : 0;
+}
+
 int ClaimPorts(void) {
     UINT32 P;
     int Ok = 0;

@@ -69,6 +69,7 @@
 #define TRB_IOC             (1u << 5)
 #define TRB_IDT             (1u << 6)
 #define TRB_TYPE(t)         ((UINT32)(t) << 10)
+#define TRB_BSR             (1u << 9) /* Address Device：1=不发 SET_ADDRESS */
 #define TRB_SLOT(s)         ((UINT32)(s) << 24)
 #define TRB_TRT_OUT         (2u << 16)
 #define TRB_TRT_IN          (3u << 16)
@@ -104,10 +105,14 @@
 #define HUB_PORT_CONNECTION   (1u << 0)
 #define HUB_PORT_ENABLE       (1u << 1)
 #define HUB_PORT_RESET        (1u << 4)
-#define HUB_PORT_POWER        (1u << 8)
+#define HUB_PORT_POWER        (1u << 8)  /* USB2 wPortStatus；USB3 见 bit9 */
+#define HUB_PORT_POWER_SS     (1u << 9)  /* USB3 Table 10-10 PORT_POWER */
+#define HUB_PORT_LINK_STATE(St) (((St) >> 5) & 0xFu) /* USB3 bits 5..8 */
+#define HUB_PLS_U0            0x0u
+#define HUB_PLS_SS_INACTIVE   0x6u
 #define HUB_C_PORT_CONNECTION (1u << 16)
 #define HUB_C_PORT_RESET      (1u << 20)
-#define HUB_C_BH_PORT_RESET   (1u << 21) /* USB3 wPortChange */
+#define HUB_C_BH_PORT_RESET   (1u << 21) /* USB3 wPortChange bit5 */
 #define HUB_FEAT_PORT_RESET   4
 #define HUB_FEAT_PORT_POWER   8
 #define HUB_FEAT_C_PORT_CONNECTION 16
@@ -462,6 +467,7 @@ int FinishHubSetup(UINT8 *OutNumPorts);
 int HubGetPortStatus(UINT8 Port, UINT32 *OutSt);
 int HubSetPortFeat(UINT8 Port, UINT16 Feat);
 int HubClearPortFeat(UINT8 Port, UINT16 Feat);
+int HubSetDepth(UINT16 Depth);
 UINT8 HubPortSpeed(UINT32 St);
 int IsHubDeviceDesc(void);
 int ConfigHasHubIface(UINT8 *Cfg, UINT16 Total);

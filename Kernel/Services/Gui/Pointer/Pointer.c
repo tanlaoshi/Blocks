@@ -251,6 +251,9 @@ void GuiPollMouse(void) {
         gGuiWindowManager.MousePrevBtn = LastBtn;
         gGuiWindowManager.CursorBtn = LastBtn;
     }
+    if (NeedMove) {
+        GuiPointerNoteActivity();
+    }
     GuiPresentDeferPop();
     DesktopTickClock();
     /* 按钮抬起后排队的 Store 作业在此执行，OnPointer 内不再同步拷贝/删文件 */

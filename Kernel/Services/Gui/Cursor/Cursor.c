@@ -18,17 +18,17 @@
  *     用旧 Under Restore → 正方形镂空 / 十字印
  *
  * 移动 CursorMove：
- *   常态：Irq 内 Restore → 开中断 PresentCursor → Irq 内改 XY+Paint → PresentCursor
- *   （Present 勿持 IrqSave：双 LivePatch cli 会饿死 xHCI → 空拖后光标只闪不动）
- *   各刷小框；勿靠 DeferPop 并 AABB（空桌面甩鼠大块 blit 顿）
+ *   常态：Irq 内 Restore+Paint → 开中断一次 PresentCursor（Poll 已并末坐标）
+ *   勿 Restore/Paint 各 Present：igpu 双缓冲曾各同步 blit → <5s 拖影后只闪
  *   拖窗/拖图标：只 Restore+PresentCursor，不 Paint
  *
  * 对外：GuiCursorHide/Show/Paint、GuiFrameBufferBegin/End — 同文件下部。
  * HAL 分脏 / XOR：Pixel.c；Flush vs Present：Present.c（G6）。
  *
- * usb 慢认门闩（CursorUsbReady）：
- *   HID 开机早绑；桌面先出、不 Present / 不跟坐标（避免 msc/3 Address 抢环）。
- *   Worker EnsureSecondary 后 Reveal：居中 + Handoff + 首次 Paint+Present。
+ * 光标门闩（CursorUsbReady）：
+ *   HID 开机早绑；桌面先出、不 Present / 不跟坐标。
+ *   Worker 网/iwl 静默后、AnnounceBootReady 前 Reveal：居中 + Handoff + 画出。
+ *   契约：一露就必须流畅；慢活未完勿 Reveal。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
@@ -170,12 +170,12 @@ void CursorMove(UINT32 X, UINT32 Y) {
         return;
     }
 
+    /*
+     * 后缓冲：Restore 旧盒 + Paint 新盒（gCurDirty 并成旧∪新）；
+     * 再一次 PresentCursor。中间多一次 Present 只加倍 GPU/cli，易拖影。
+     */
     GraphicsIrqEnter();
     CursorRestore();
-    GraphicsIrqLeave();
-    HalVideoPresentCursor();
-
-    GraphicsIrqEnter();
     gGuiWindowManager.CursorX = X;
     gGuiWindowManager.CursorY = Y;
     gGuiWindowManager.CursorKind = NewKind;
@@ -252,6 +252,33 @@ void GuiCursorShow(void) {
     CursorPaint();
     GraphicsIrqLeave();
     GraphicsPresent();
+}
+
+/* 最近一次指针位移（HalCpuTicks）；供钟栏/HotPoll 让路 */
+static UINT64 gPointerActivityTick;
+
+void GuiPointerNoteActivity(void) {
+    gPointerActivityTick = HalCpuTicks(0);
+}
+
+int GuiPointerIdleForMs(UINT32 Ms) {
+    UINT64 Now;
+    UINT32 Tps;
+    UINT64 Need;
+
+    if (gPointerActivityTick == 0) {
+        return 1;
+    }
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    Need = ((UINT64)Tps * (UINT64)Ms) / 1000ull;
+    if (Need == 0) {
+        Need = 1;
+    }
+    return (Now - gPointerActivityTick) >= Need ? 1 : 0;
 }
 
 int GuiCursorUsbReady(void) {

@@ -3,12 +3,14 @@
  *
  * ```
  * WorkerTask 圈首 DesktopWorkerTick ~2Hz
- *   → HalUsbMscHotPoll（拔：NotifyMscUnplug→Release；插：Claim）
+ *   → 指针忙则整段 return（空拖保鼠）
+ *   → HalUsbMscHotPoll（拔检/热插 5s；freeze 不 Scan）
+ *   → RTC/网托 ~5s（勿 2Hz CMOS：SMM 会令空拖规律顿）
  *   → BootMediumGone? 大窗 5s → HalCpuShutdown（不 Remount，勿扶旁路）
  *   → 否则 Remount → FilesUiRefresh
  * ```
  * 旁路 U 盘热拔：不关机。U 盘起拔启动盘：Gone → 提示后关机（usb-boot-unplug）。
- * 钟/网托→栏脏；Present 仍 DesktopTickClock。勿 Worker 上全量 Compose。
+ * 钟/网托→栏脏；Present 仍 DesktopTickClock（指针闲才画栏）。勿 Worker 上全量 Compose。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
@@ -201,6 +203,7 @@ void DesktopBootMediumGoneShutdown(void) {
 
 void DesktopWorkerTick(void) {
     static UINT64 LastCheckTick;
+    static UINT64 LastRtcNetTick;
     UINT64 Now;
     UINT32 Tps;
     UINT8 Hour = 0;
@@ -213,10 +216,19 @@ void DesktopWorkerTick(void) {
     if (Tps == 0) {
         Tps = 250;
     }
+    /* HotPoll 入口仍 ~2Hz（内部拔检/热插已 5s 节流） */
     if (LastCheckTick != 0 && (Now - LastCheckTick) < (UINT64)(Tps / 2u)) {
         return;
     }
     LastCheckTick = Now;
+
+    /*
+     * 空拖优先：指针刚动过则整段让路（HotPoll Scan/HubGetPortStatus、CMOS/SMM、
+     * 网托脏）。否则约 5s 一拍会让 Present cli 饿死 HID → 先顿再只闪不动。
+     */
+    if (!GuiPointerIdleForMs(400)) {
+        return;
+    }
 
     /* story-s3 / msc-desktop-hotplug：拔或插成功 → Remount + Files */
     if (HalUsbMscHotPoll() == 1) {
@@ -236,6 +248,15 @@ void DesktopWorkerTick(void) {
         FilesUiRefresh();
         LogFs("Fs: msc/4 hotpoll remount+Files\n");
     }
+
+    /*
+     * CMOS/网托勿跟 2Hz：UIP~1Hz + 真机 CMOS 可能进 SMM，空拖规律 0.5s 一顿。
+     * 钟栏 HH:MM / 网标 ~5s 看一次足够。
+     */
+    if (LastRtcNetTick != 0 && (Now - LastRtcNetTick) < (UINT64)Tps * 5u) {
+        return;
+    }
+    LastRtcNetTick = Now;
 
     NeedPaint = 0;
     Ok = (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) ? 1 : 0;
@@ -257,10 +278,10 @@ void DesktopTickClock(void) {
     int NeedPaint;
 
     /*
-     * 拖窗/改大小时不读 CMOS、不重画任务栏，避免这一拍把鼠标卡住。
-     * MSC 已在 WorkerTick，拖窗期仍拍。
+     * 拖窗/改大小/空拖刚动：不重画任务栏。全栏 HalVideoPresent 带 cli 条带，
+     * 会饿死 xHCI → 约 5s 一顿后只闪不动。脏位保留，闲下来再画。
      */
-    if (GuiDragActive() || DesktopIconDragActive()) {
+    if (GuiDragActive() || DesktopIconDragActive() || !GuiPointerIdleForMs(400)) {
         return;
     }
 

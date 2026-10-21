@@ -126,5 +126,6 @@ UINT16 XhciWifiPid(void);
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumUnfreeze(void);
+int XhciPortEnumIsFrozen(void);
 
 #endif

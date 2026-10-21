@@ -153,7 +153,7 @@ void IgpuScanoutInvalidate(void) {
 int IgpuScanoutBlitRect(UINT64 SrcGtt, UINT32 SrcPitchPx, UINT32 X, UINT32 Y,
                         UINT32 W, UINT32 H) {
     UINT32 PitchB;
-    int i;
+    UINT64 Dst;
 
     if (!gScanOk || !IgpuPresentCopyOk() || SrcGtt == 0 || SrcPitchPx == 0) {
         return 0;
@@ -170,14 +170,13 @@ int IgpuScanoutBlitRect(UINT64 SrcGtt, UINT32 SrcPitchPx, UINT32 X, UINT32 Y,
     if (!IgpuForcewakeGet()) {
         return 0;
     }
+    /*
+     * LivePatch 只补正在扫的那一页。旧逻辑对 gGtt[0/1] 各 SRC_COPY+WaitHead，
+     * 空拖一移四次同步 blit → 拖影、HID 饿死。整页翻页路径仍会全幅拷隐藏页。
+     */
     PitchB = SrcPitchPx * 4u;
-    for (i = 0; i < 2; i++) {
-        if (!IgpuSrcCopyRect(X, Y, X, Y, W, H, PitchB, gPitchPx * 4u, SrcGtt,
-                             gGtt[i])) {
-            return 0;
-        }
-    }
-    return 1;
+    Dst = gScanLive ? gGtt[gShown] : gGtt[0];
+    return IgpuSrcCopyRect(X, Y, X, Y, W, H, PitchB, gPitchPx * 4u, SrcGtt, Dst);
 }
 
 int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx) {

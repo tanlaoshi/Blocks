@@ -67,11 +67,15 @@ int GuiDragActive(void);
 void GuiCursorHide(void);
 void GuiCursorShow(void);
 /*
- * usb 慢认后再露光标：HID 可早绑；未就绪不 Present / 不跟坐标 / 不点按。
- * Worker msc/3 后 Reveal：屏幕中央 + Handoff + 首次画出。
+ * 开机慢活后再露光标：HID 可早绑；未就绪不 Present / 不跟坐标 / 不点按。
+ * Worker 在 AnnounceBootReady 前 Reveal（Secondary+图标+网/iwl 静默后）：
+ * 居中 + Handoff + 首次画出。一露即须流畅。
  */
 int GuiCursorUsbReady(void);
 void GuiCursorRevealAfterUsb(void);
+/* 空拖保鼠：有位移时记时；Idle 后才允许钟栏 Present / Worker HotPoll+RTC */
+void GuiPointerNoteActivity(void);
+int GuiPointerIdleForMs(UINT32 Ms);
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
 /* 右键：桌面弹出菜单；点在窗口上则收起 */
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);

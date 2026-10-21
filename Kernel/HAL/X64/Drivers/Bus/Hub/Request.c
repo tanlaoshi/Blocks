@@ -26,3 +26,11 @@ void DescriptorSetup(USB_SETUP *Setup, UINT16 Length) {
     Setup->wIndex = 0;
     Setup->wLength = Length;
 }
+
+void HubDepthSetup(USB_SETUP *Setup, UINT16 Depth) {
+    Setup->bmRequestType = 0x20; /* OUT | Class | Device */
+    Setup->bRequest = 12;        /* SET_HUB_DEPTH USB3 §10.14.2.8 */
+    Setup->wValue = Depth;
+    Setup->wIndex = 0;
+    Setup->wLength = 0;
+}

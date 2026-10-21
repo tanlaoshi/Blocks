@@ -75,7 +75,10 @@ int UserWindowIndexAfterRaise(int Wid) {
 }
 
 
-/* 不透明重画用户窗内容并 ForceFull 备份，避免下层透视烙进备份 */
+/*
+ * 不透明重画用户窗客户区（标签/按钮）。
+ * 勿 SyncWindowVisualsEx 全桌：ComposeBusy+PresentFlush 整屏会饿死 xHCI → 点 OK 后鼠死。
+ */
 void RepaintUserWindow(int Wid) {
     int Idx;
 
@@ -86,19 +89,15 @@ void RepaintUserWindow(int Wid) {
         GuiInputLock(0);
         return;
     }
-    /* 丢弃可能含透视的旧备份，Sync 时走 DrawWindowAt */
-    gGuiWindowManager.WinBackupValid[Idx] = 0;
     ComposeBeginEraseCursor();
     HalVideoClearClip();
-    SyncWindowVisualsEx(0);
     /*
-     * Sync 末尾已 CursorPaint，gGuiWindowManager.Under 是重画前的按钮像素。
-     * 若不先 Restore，后面的 CursorPaint 会把旧底盖回新按钮 → 轮廓/文字被擦。
+     * 只重画本窗 chrome+客户区。勿 Sync 全桌：ComposeBusy+PresentFlush
+     * 整屏会饿死 xHCI（GuiDemo 点 OK 后鼠只闪不动）。
      */
     GraphicsIrqEnter();
     CursorRestore();
     GraphicsIrqLeave();
-    /* Sync 后仍强制不透明整窗，再画控件 */
     DrawWindowAtEx(Idx, 0);
     PaintUserClient(Idx);
     BackupWindowAtEx(Idx, 1);
@@ -106,7 +105,8 @@ void RepaintUserWindow(int Wid) {
     GraphicsIrqEnter();
     CursorPaint();
     GraphicsIrqLeave();
-    HalVideoPresentFlush();
+    /* 一窗脏即可；Flush 整屏会长时间 PresentBlocked */
+    HalVideoPresent();
     ComposeEnd();
     gGuiWindowManager.UserSlot[Idx].UserButtonClick = -1;
     gGuiWindowManager.UserSlot[Idx].UserClientClick = 0;

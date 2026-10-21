@@ -16,4 +16,7 @@ void PortFeatureSetup(USB_SETUP *Setup, UINT16 Port, UINT16 Feature, int Set);
 /* GET_DESCRIPTOR，Hub 类描述符，wValue = 0x2900。 */
 void DescriptorSetup(USB_SETUP *Setup, UINT16 Length);
 
+/* USB3 SET_HUB_DEPTH（bRequest=12）；根下第一级 Depth=0。 */
+void HubDepthSetup(USB_SETUP *Setup, UINT16 Depth);
+
 #endif

@@ -153,6 +153,7 @@ static int Release(void) {
 /*
  * 根口：PORTSC.CCS。hub 子设备：HubGetPortStatus(CONNECTION)
  *（仅当 gMscHubSlot==当前 HID hub，第二 hub 场景 Shell 手动 release）。
+ * 调用方 HotPoll 须节流：2Hz GetPortStatus 会抢 HID 环（空拖规律顿）。
  */
 static int Present(void) {
     UINT32 Ps;

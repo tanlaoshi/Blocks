@@ -139,7 +139,7 @@ int StoreInstallPump(const char *Id) {
                     return Err;
                 }
                 JoinPath(sPump.Dst, (int)sizeof(sPump.Dst), STORE_FONTS_DIR, Tab[i].File);
-                sPump.Check = STORE_CHECK_TOYF;
+                sPump.Check = STORE_CHECK_FONT;
             } else {
                 Err = EnsurePacksDir();
                 if (Err != FAT_OK) {

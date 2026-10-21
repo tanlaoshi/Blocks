@@ -13,10 +13,6 @@
 #define STORE_COPY_MAX         FAT_WRITE_MAX
 #define STORE_IO_BREATH_BYTES  4096u
 
-#define STORE_CHECK_NONE  0
-#define STORE_CHECK_ELF   1
-#define STORE_CHECK_TOYF  2
-
 #define COPY_IDLE   0
 #define COPY_READ   1
 #define COPY_WRITE  2
@@ -71,7 +67,7 @@ int StoreInstallCopyBegin(const char *Src, const char *Dst, int Check) {
     if (St.Size > STORE_COPY_MAX) {
         return FAT_ERR_FILE_TOO_BIG;
     }
-    /* ELF/TOYF 至少魔数 4 字节；其它（PKG/Assets）允许更小 */
+    /* ELF/字体 至少魔数 4 字节；其它（PKG/Assets）允许更小 */
     if (Check != STORE_CHECK_NONE && St.Size < 4) {
         return FAT_ERR_FILE_TOO_BIG;
     }
@@ -141,7 +137,8 @@ int StoreInstallCopyStep(void) {
             StoreInstallCopyAbort();
             return FAT_ERR_INVAL;
         }
-    } else if (sCopy.Check == STORE_CHECK_TOYF) {
+    } else if (sCopy.Check == STORE_CHECK_FONT) {
+        /* 与 Fonts.c FONT_TOYF_MAGIC 同四字符；格式改名另刀 */
         if (!(sCopy.Buf[0] == 'T' && sCopy.Buf[1] == 'O' && sCopy.Buf[2] == 'Y' &&
               sCopy.Buf[3] == 'F')) {
             StoreInstallCopyAbort();

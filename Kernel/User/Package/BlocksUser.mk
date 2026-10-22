@@ -29,7 +29,8 @@ USER_LD   := $(BLOCKS_KERNEL)/User/user.ld
 CRT_DIR   := $(BLOCKS_KERNEL)/User/crt
 LIB_DIR   := $(BLOCKS_KERNEL)/User/Library/Blocks
 
-USER_CFLAGS ?= -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
+# c99-1：课外模板与内核自有树同锁 ISO C99
+USER_CFLAGS ?= -std=c99 -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone \
 	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I.
 

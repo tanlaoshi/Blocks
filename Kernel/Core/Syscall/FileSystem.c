@@ -11,8 +11,9 @@
 #include "Errno.h"
 #include "BootTypes.h"
 #include "PhysicalMemory.h"
+#include "Compiler.h"
 
-_Static_assert(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
+BLOCKS_STATIC_ASSERT(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
 
 int CopyUserCString(char *Dst, UINT64 UserSrc, UINTN MaxLen) {
     UINTN i;

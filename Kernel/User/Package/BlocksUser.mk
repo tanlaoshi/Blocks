@@ -32,7 +32,7 @@ LIB_DIR   := $(BLOCKS_KERNEL)/User/Library/Blocks
 # c99-1：课外模板与内核自有树同锁 ISO C99
 USER_CFLAGS ?= -std=c99 -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone \
-	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I.
+	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I$(BLOCKS_KERNEL)/Include/Abi -I.
 
 # 链入用绝对路径；ensure-crt 调根 Makefile 须用相对目标名
 CRT0_OBJ    := $(CRT_DIR)/crt0.o

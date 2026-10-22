@@ -9,8 +9,9 @@
 #include "LwIp.h"
 #include "Errno.h"
 #include "BootTypes.h"
+#include "Compiler.h"
 
-_Static_assert(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
+BLOCKS_STATIC_ASSERT(sizeof(NET_DNS_QUERY) == 132, "NET_DNS_QUERY layout");
 
 int SysSocket(int Domain, int Type, UINT64 Protocol) {
     TASK *T = SchedulerCurrent();

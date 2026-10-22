@@ -7,6 +7,7 @@
 #define TASK_SNAP_H
 
 #include <stdint.h>
+#include "Compiler.h"
 
 #define TASK_SNAP_MAGIC 0x31535054u /* 'TPS1' LE */
 #define TASK_SNAP_VER   1
@@ -43,7 +44,7 @@ typedef struct {
     TASK_ENTRY Tasks[TASK_SNAP_MAX];
 } TASK_SNAP;
 
-_Static_assert(sizeof(TASK_ENTRY) == 44, "task entry width");
-_Static_assert(sizeof(TASK_SNAP) == 752, "task snap width");
+BLOCKS_STATIC_ASSERT(sizeof(TASK_ENTRY) == 44, "task entry width");
+BLOCKS_STATIC_ASSERT(sizeof(TASK_SNAP) == 752, "task snap width");
 
 #endif

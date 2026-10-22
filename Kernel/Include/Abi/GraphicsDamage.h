@@ -6,6 +6,8 @@
 #ifndef GRAPHICS_DAMAGE_H
 #define GRAPHICS_DAMAGE_H
 
+#include "Compiler.h"
+
 typedef struct {
     unsigned X;
     unsigned Y;
@@ -14,6 +16,6 @@ typedef struct {
     const unsigned *Pixels; /* W*H × 0x00RRGGBB，行优先 */
 } GRAPHICS_DAMAGE_RECT;
 
-_Static_assert(sizeof(GRAPHICS_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
+BLOCKS_STATIC_ASSERT(sizeof(GRAPHICS_DAMAGE_RECT) == 24, "damage rect abi is 24 bytes");
 
 #endif

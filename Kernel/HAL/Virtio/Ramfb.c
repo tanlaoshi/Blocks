@@ -9,6 +9,7 @@
 #include "Ramfb.h"
 #include "HalSerial.h"
 #include "SerialLog.h"
+#include "Compiler.h"
 
 #define FW_CFG_SIGNATURE 0x0000u
 #define FW_CFG_FILE_DIR  0x0019u
@@ -34,8 +35,8 @@ typedef struct __attribute__((packed)) {
     UINT64 Address;
 } FW_CFG_DMA_ACCESS;
 
-_Static_assert(sizeof(RAMFB_CFG) == 28, "RAMFB_CFG must match QEMU packed size");
-_Static_assert(sizeof(FW_CFG_DMA_ACCESS) == 16, "FW_CFG_DMA_ACCESS size");
+BLOCKS_STATIC_ASSERT(sizeof(RAMFB_CFG) == 28, "RAMFB_CFG must match QEMU packed size");
+BLOCKS_STATIC_ASSERT(sizeof(FW_CFG_DMA_ACCESS) == 16, "FW_CFG_DMA_ACCESS size");
 
 static UINT32 ReadBe32(const void *Addr) {
     const UINT8 *B = (const UINT8 *)Addr;

@@ -20,6 +20,8 @@
 typedef void VOID;
 #endif
 
+#include "Compiler.h"
+
 #define UEFI_VIDEO_MODE_MAX 32
 #define UEFI_GOP_HANDOFF_MAGIC 0x314E4F47u /* 'GON1' */
 
@@ -74,24 +76,7 @@ typedef struct {
 
 #define UEFI_BOOT_DISK_GUID_MAGIC 0x314B5344u
 
-/*
- * 与 Boot 副本布局钉死；断言写法可不同（此处 C99 垫片，Boot 用 EDK2 原样）。
- */
-#ifndef BLOCKS_STATIC_ASSERT
-#define BLOCKS_STATIC_ASSERT_PASTE2(A, B) A##B
-#define BLOCKS_STATIC_ASSERT_PASTE(A, B)  BLOCKS_STATIC_ASSERT_PASTE2(A, B)
-#define BLOCKS_STATIC_ASSERT(Cond, Msg) \
-    typedef char BLOCKS_STATIC_ASSERT_PASTE(BlocksStaticAssert_, __LINE__) \
-        [((Cond) ? 1 : -1)]
-#endif
-#ifndef BLOCKS_OFFSETOF
-#if defined(__GNUC__) || defined(__clang__)
-#define BLOCKS_OFFSETOF(Type, Member) __builtin_offsetof(Type, Member)
-#else
-#define BLOCKS_OFFSETOF(Type, Member) ((UINTN)&(((Type *)0)->Member))
-#endif
-#endif
-
+/* 与 Boot 副本布局钉死；断言走 Compiler.h（Boot 仍用 EDK2 _Static_assert） */
 BLOCKS_STATIC_ASSERT(sizeof(UEFI_VIDEO_CONFIG) == 32, "UEFI_VIDEO_CONFIG size");
 BLOCKS_STATIC_ASSERT(sizeof(UEFI_MEMORY_MAP) == 40, "UEFI_MEMORY_MAP size");
 BLOCKS_STATIC_ASSERT(sizeof(UEFI_VIDEO_MODE) == 16, "UEFI_VIDEO_MODE size");

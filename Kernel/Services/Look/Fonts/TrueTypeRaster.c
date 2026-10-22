@@ -7,6 +7,7 @@
 #include "Font.h"
 #include "Hal.h"
 #include "SerialLog.h"
+#include "CString.h"
 
 UINT32 FontTtfPixel(void) {
     const FONT_FACE *F = FontGetCurrent();
@@ -101,9 +102,9 @@ static int FontTtfIceil(float X) {
 #define STBTT_malloc(x, u) FontTtfMalloc(x)
 #define STBTT_free(x, u)   ((void)(x))
 #define STBTT_assert(x) ((void)0)
-#define STBTT_strlen(s) __builtin_strlen(s)
-#define STBTT_memcpy(d, s, n) __builtin_memcpy((d), (s), (n))
-#define STBTT_memset(d, v, n) __builtin_memset((d), (v), (n))
+#define STBTT_strlen(s) strlen(s)
+#define STBTT_memcpy(d, s, n) memcpy((d), (s), (n))
+#define STBTT_memset(d, v, n) memset((d), (v), (n))
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 

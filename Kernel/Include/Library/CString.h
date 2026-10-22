@@ -10,4 +10,11 @@
 int StringEqual(const char *A, const char *B);
 void StringCopy(char *Dst, UINTN Max, const char *Src);
 
+/* freestanding CRT（Library/CString.c）；业务走这些声明，不直调编译器 intrinsic */
+void *memcpy(void *Dst, const void *Src, UINTN Len);
+void *memset(void *Dst, int Val, UINTN Len);
+void *memmove(void *Dst, const void *Src, UINTN Len);
+int memcmp(const void *A, const void *B, UINTN Len);
+UINTN strlen(const char *S);
+
 #endif

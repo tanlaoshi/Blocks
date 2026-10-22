@@ -62,6 +62,12 @@ static void StoreBe64(void *Addr, UINT64 V) {
     StoreBe32((UINT8 *)Addr + 4, (UINT32)V);
 }
 
+/* LE 主机字 ↔ 总线/寄存器 BE 视角 */
+static UINT32 Bswap32(UINT32 V) {
+    return ((V & 0x000000FFu) << 24) | ((V & 0x0000FF00u) << 8) |
+           ((V & 0x00FF0000u) >> 8) | ((V & 0xFF000000u) >> 24);
+}
+
 static int StrEq56(const char *A, const char *B) {
     int i;
     for (i = 0; i < 56; i++) {
@@ -117,9 +123,9 @@ static int FwCfgDmaWrite(UINT64 Base, UINT16 Sel, const void *Buf, UINT32 Len) {
     Hi = (UINT32)(AccessPhys >> 32);
     Lo = (UINT32)AccessPhys;
     /* LE 总线视角写入 BE 寄存器值 */
-    *(volatile UINT32 *)(UINTN)(Base + 0x10) = __builtin_bswap32(Hi);
+    *(volatile UINT32 *)(UINTN)(Base + 0x10) = Bswap32(Hi);
     __sync_synchronize();
-    *(volatile UINT32 *)(UINTN)(Base + 0x14) = __builtin_bswap32(Lo);
+    *(volatile UINT32 *)(UINTN)(Base + 0x14) = Bswap32(Lo);
 
     for (Spins = 0; Spins < 1000000u; Spins++) {
         __sync_synchronize();

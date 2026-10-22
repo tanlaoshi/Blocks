@@ -152,12 +152,26 @@ static int Format(FmtOut *O, const char *fmt, va_list ap) {
 }
 
 int vprintf(const char *fmt, va_list ap) {
-    FmtOut O;
-    O.Buf = 0;
-    O.Cap = 0;
-    O.Pos = 0;
-    O.ToFd = 1;
-    return Format(&O, fmt, ap);
+    char Buf[512];
+    int N;
+    size_t W;
+
+    /*
+     * 整段一次 write：避免逐字 SYS_WRITE→Shell PresentFlush（关中断下会卡死）。
+     * 超长则截断到缓冲；课堂 printf 够用。
+     */
+    N = vsnprintf(Buf, sizeof(Buf), fmt, ap);
+    if (N < 0) {
+        return N;
+    }
+    W = (size_t)N;
+    if (W >= sizeof(Buf)) {
+        W = sizeof(Buf) - 1u;
+    }
+    if (W > 0) {
+        toy_write(1, Buf, W);
+    }
+    return N;
 }
 
 int printf(const char *fmt, ...) {

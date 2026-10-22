@@ -29,6 +29,7 @@ export BUILDDIR
 
 # 用法:
 #   ./build.sh              # ARCH=x86_64
+#   ./build.sh sdk          # 打 Build/BlocksSDK.tar.gz（不编内核）
 #   ./build.sh DEBUG=1
 #   ./build.sh SERIAL=0              # 总开关：不 Init UART、无串口 TX
 #   ./build.sh SERIAL_USB=0          # 仅 USB/xHCI 串口 quiet
@@ -43,6 +44,12 @@ export BUILDDIR
 #   ./build.sh riscv BOARD=milk-v-duo-s
 #   ./build.sh arm64 LWIP=0      # 显式关（默认已自动关）
 #   ./build.sh V=1          # 打印每条 gcc/ld；默认只留警告、错误和结果
+
+# 仅打用户态 SDK（离树分发）；其余参数忽略
+if [ "${1:-}" = "sdk" ]; then
+    exec bash Tools/build-sdk.sh
+fi
+
 ARCH=x86_64
 BOARD=virt
 DEBUG=0
@@ -209,6 +216,13 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         "$DEST/EXECDEMO.ELF" "$DEST/PIPEDEMO.ELF" "$DEST/THREADSMOKE.ELF" \
         "$DEST/PTHREADSMOKE.ELF" "$DEST/THREADDEMO.ELF" "$DEST/ENOSYS.ELF" \
         "$DEST/MYAPP.ELF"
+    # 课外模板：Class/ 放当前 Package 无窗 Hello（勿留旧 ToyUi）；exec MYAPP.ELF 走 Class/
+    rm -f "$DEST/Class/MYAPP.ELF"
+    if [ -f User/Package/build/MYAPP.ELF ]; then
+        cp -f User/Package/build/MYAPP.ELF "$DEST/Class/MYAPP.ELF"
+    elif [ -f "$USER_OUT/hello.elf" ]; then
+        cp -f "$USER_OUT/hello.elf" "$DEST/Class/MYAPP.ELF"
+    fi
 
     # 课堂预装目录包（非扁平）；仍禁止 Apps/*.ELF。Snake 不预装，须 store install。
     mkdir -p "$DEST/Apps/hello" "$DEST/Apps/guidemo" "$DEST/Apps/taskmgr"

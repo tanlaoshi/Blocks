@@ -32,20 +32,22 @@ static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
             DebugWrite(ExecPath);
             DebugWrite("\n");
             /*
-             * 与 shell exec 同契约：x64 异步起进程 → WaitPrompt，exit 再 ShowPrompt。
-             * 旧逻辑 Exec 返回后立刻 ShowPrompt，关窗 exit 再打一次 → 双 blocks>；
-             * 且 LogMisc 的 \\n 曾把 gAtLineStart 置 1，第二次会粘成「blocks> blocks>」。
+             * 无窗：CoopDrain 同步，exit 跳过 ShowPrompt → 此处补。
+             * 开窗：WaitPrompt + 异步，exit 再 ShowPrompt（勿此处再打）。
              */
-            if (!HalPlatformIsVirtSerialConsole()) {
-                gConsole.WaitPrompt();
-            }
-            if (ProcessExec(ExecPath) != 0) {
-                if (!HalPlatformIsVirtSerialConsole()) {
+            {
+                int WindowApp = ProcessAppTakesWindow(ExecPath);
+
+                if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
+                    gConsole.WaitPrompt();
+                }
+                if (ProcessExec(ExecPath) != 0) {
+                    if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
+                        gConsole.ShowPrompt();
+                    }
+                } else if (!WindowApp || HalPlatformIsVirtSerialConsole()) {
                     gConsole.ShowPrompt();
                 }
-            } else if (HalPlatformIsVirtSerialConsole()) {
-                /* CoopDrain 内 exit 跳过 ShowPrompt，此处补一次 */
-                gConsole.ShowPrompt();
             }
         }
     } else if (Act == DESKTOP_ACTION_SHUTDOWN) {

@@ -246,8 +246,12 @@ int ProcessExec(const char *Path) {
             return -1;
         }
     }
-    /* PR-A12 / B1：virt 平台形状无定时抢占 → 协作排空用户任务 */
-    if (HalPlatformIsVirtSerialConsole()) {
+    /*
+     * PR-A12 / PR-sdk-exec：无窗短命 ELF（Hello/Class）同步 CoopDrain。
+     * 开窗 App 仍异步：GUI 事件循环若一直 READY，drain 会卡死壳/桌面。
+     * virt 全形状仍 drain（无定时抢用户）。
+     */
+    if (!ProcessAppTakesWindow(Path) || HalPlatformIsVirtSerialConsole()) {
         SchedulerCoopDrainUsers();
     }
     return 0;
@@ -379,5 +383,9 @@ int ProcessRunDemo(void) {
     Info.StackTop = NewRsp;
 
     HalInstallUserMode();
-    return ProcessStartElf(Space, &Info, "hello", 0);
+    if (ProcessStartElf(Space, &Info, "hello", 0) != 0) {
+        return -1;
+    }
+    SchedulerCoopDrainUsers();
+    return 0;
 }

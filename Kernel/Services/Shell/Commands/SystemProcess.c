@@ -2,9 +2,9 @@
  * SystemProcess.c — exec / ps / kill / set priority / run user（story-s2）
  *
  * 稳态 S2 入口：
- *   run user → ProcessRunDemo（内嵌 hello）→ 成功则 WaitPrompt
- *   exec <file> → WaitPrompt（非 virt）→ ClassExecPath → ProcessExec
- *                 失败 ShowPrompt；成功等 exit 再 ShowPrompt
+ *   run user → ProcessRunDemo（内嵌 hello + CoopDrain）→ AfterCommand 提示符
+ *   exec <file> → ClassExecPath → ProcessExec
+ *                 无窗：CoopDrain 同步；开窗：WaitPrompt + 异步等退
  * 下一跳：Core/Process（ProcessExec / Load / StartElf）。桌面图标 EXEC 同契约见 ClickDesktop。
  */
 #include "ShellPrivate.h"
@@ -16,6 +16,7 @@
 #include "Scheduler.h"
 #include "Syscall.h"
 #include "Tasks.h"
+#include "TasksPrivate.h"
 
 /* 卷根没有这个文件时，上课程序在 Class/。路径里已有目录则不动。 */
 static int PathHasDir(const char *S) {
@@ -67,38 +68,42 @@ static const char *ClassExecPath(const char *Name, char *Alt, int AltMax) {
 static void CommandRunuser(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
-    if (ProcessRunDemo() == 0) {
-        gConsole.WaitPrompt();
-    }
+    /* ProcessRunDemo 内 CoopDrain；提示符交给 ConsolePromptAfterCommand */
+    (void)ProcessRunDemo();
 }
 
 static void CommandExec(int Argc, char **Argv) {
+    char Alt[40];
+    const char *Path;
+    int WindowApp;
+
     if (Argc < 2) {
         gConsole.Write("usage: exec <file>\n");
         return;
     }
     /*
-     * 先占 stdin，再起用户态：避免 ProcessExec 返回前 GUI/Shell 已抢串口。
-     * virt 协作排空：exec 返回时进程已结束，立刻 ShowPrompt 还原。
+     * 无窗（Hello/MYAPP）：ProcessExec 内 CoopDrain 同步；AfterCommand 打 blocks>。
+     * 开窗 App：WaitPrompt + 异步，退完再 ShowPrompt（drain 会卡 GUI 循环）。
      */
-    if (!HalPlatformIsVirtSerialConsole()) {
+    Path = ClassExecPath(Argv[1], Alt, (int)sizeof(Alt));
+    WindowApp = ProcessAppTakesWindow(Path);
+    if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
         gConsole.WaitPrompt();
     }
-    {
-        char Alt[40];
-        const char *Path = ClassExecPath(Argv[1], Alt, (int)sizeof(Alt));
-
-        if (ProcessExec(Path) != 0) {
-            if (!HalPlatformIsVirtSerialConsole()) {
-                gConsole.ShowPrompt();
-            }
-            return;
+    if (ProcessExec(Path) != 0) {
+        if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
+            gConsole.ShowPrompt();
         }
-    }
-    if (HalPlatformIsVirtSerialConsole()) {
         return;
     }
-    /* 已 WaitPrompt；exit 时 ShowPrompt */
+    if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
+        while (SchedulerLiveUserApps()) {
+            YieldForPollInput();
+        }
+        if (gConsole.StdinUserHold()) {
+            gConsole.ShowPrompt();
+        }
+    }
 }
 
 static void CommandPs(int Argc, char **Argv) {

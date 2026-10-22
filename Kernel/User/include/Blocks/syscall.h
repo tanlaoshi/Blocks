@@ -6,8 +6,8 @@
 #ifndef BLOCKS_SYSCALL_H
 #define BLOCKS_SYSCALL_H
 
-/* SYS_* 号段定义见 SyscallABI.h（段内双轨 + 预留区） */
-#include "../../../Include/Abi/SyscallABI.h"
+/* SYS_* 号段定义见 SyscallABI.h（段内双轨 + 预留区；SDK 包同用 <Abi/…>） */
+#include <Abi/SyscallABI.h>
 
 #ifndef __ASSEMBLER__
 

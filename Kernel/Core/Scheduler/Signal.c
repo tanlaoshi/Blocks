@@ -218,8 +218,9 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
      * PR-V-input-fix：virt 用户只走 SchedulerCoopDrainUsers / HalUserCoopEnter。
      * IRQ 路径 OnTimer 若切到未跑过的用户帧（或从用户切走再以 Create 帧恢复），
      * Arm64/RiscV 会落到非法 ELR（如 0x100）/ user fault；内核任务仍可抢占。
+     * PR-sdk-exec：x64 CoopDrain 期间同样禁止定时器抢用户，否则 HalUserCoopReturn 失宿主。
      */
-    if (HalPlatformIsVirtSerialConsole()) {
+    if (HalPlatformIsVirtSerialConsole() || gCoopDrain) {
         if (Cur->IsUser || Next->IsUser) {
             return 0;
         }
@@ -236,10 +237,10 @@ void SchedulerCoopDrainUsers(void) {
     UINT32 Cpu;
     int i;
 
-    if (!HalPlatformIsVirtSerialConsole()) {
-        return;
-    }
-
+    /*
+     * virt / x64 均走 HalUserCoopEnter 同步排空（x64 曾空桩 → exec 异步假死）。
+     * 桌面图标 / shell exec 依赖：exit 在 gCoopDrain 内跳过 ShowPrompt，由调用方补。
+     */
     Host = CurrentTask();
     if (!Host || Host->IsUser) {
         return;

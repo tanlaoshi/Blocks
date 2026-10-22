@@ -1,0 +1,9 @@
+# 复制为本应用 Makefile，改 PROG/SRCS；设 BLOCKS_SDK 或放在 SDK 旁。
+#   cp Makefile.template myapp/Makefile
+#   make -C myapp BLOCKS_SDK=/path/to/BlocksSDK
+
+BLOCKS_SDK ?= $(abspath ../BlocksSDK)
+PROG      ?= MYAPP
+SRCS      ?= main.c
+
+include $(BLOCKS_SDK)/BlocksSdk.mk

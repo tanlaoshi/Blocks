@@ -183,11 +183,47 @@ UserEnter:
     mov [rsp], rax
     mov [rsp + 8], rcx
     mov [rsp + 16], rdx
-    mov [rsp + 24], r11
+    mov [rsp + 24], r11     /* iretq 恢复的 RSP */
     mov [rsp + 32], r10
     mov rdi, r12
     mov rsi, r13
     iretq
+
+/*
+ * PR-sdk-exec：x64 CoopDrain（对齐 Arm/RiscV HalUserCoop*）。
+ * rdi=Ksp（用户任务内核栈顶），rsi=Frame*；iretq 进用户，exit→HalUserCoopReturn。
+ * GS：与 UserEnter 相同，保持内核 GS_BASE=0；用户 syscall 首条 swapgs 切到 KERNEL_GS。
+ */
+.global HalUserCoopEnter
+HalUserCoopEnter:
+    lea rax, [rip + gUserCoopRet]
+    mov [rax + 0], rsp
+    mov [rax + 8], rbx
+    mov [rax + 16], rbp
+    mov [rax + 24], r12
+    mov [rax + 32], r13
+    mov [rax + 40], r14
+    mov [rax + 48], r15
+    mov rsp, rdi
+    mov rdi, rsi
+    jmp UserEnter
+
+.global HalUserCoopReturn
+HalUserCoopReturn:
+    lea rax, [rip + gUserCoopRet]
+    mov rsp, [rax + 0]
+    mov rbx, [rax + 8]
+    mov rbp, [rax + 16]
+    mov r12, [rax + 24]
+    mov r13, [rax + 32]
+    mov r14, [rax + 40]
+    mov r15, [rax + 48]
+    ret
+
+.section .bss
+.align 8
+gUserCoopRet:
+    .space 56
 
 .section .rodata
 /* 异常处理函数指针表，供 Arch.c IdtLoad 使用 */

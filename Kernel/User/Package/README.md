@@ -1,35 +1,29 @@
 # 用户程序模板（PR-L1）
 
-用 ToyOS CRT（`<stdio.h>` / `libToyOS`）编一个可 `exec` 的 ELF。
+用 Blocks CRT（`<stdio.h>` / `libBlocks`）编一个可 `exec` 的 ELF。
 
-教程入口：[`Documents/开发/应用开发指南.md`](../../Documents/开发/应用开发指南.md) ·  
-自学总览：[`Documents/开发/开发者接手指南.md`](../../Documents/开发/开发者接手指南.md)。
+- 教程：[`Documents/手册/应用开发指南.md`](../../../Documents/手册/应用开发指南.md)
+- **离树 SDK**（推荐课外）：`cd Kernel && ./Tools/build-sdk.sh` → `Build/BlocksSDK.tar.gz`
 
-## 快速开始
+## 快速开始（树内）
 
 ```bash
-# 先编好内核侧 CRT / libToyOS（或直接 make，模板会代调）
-cd /path/to/ToyKernel && ./build.sh
+cd /path/to/Kernel && ./build.sh   # 先有 CRT / libBlocks
 
 cd User/Package
-make                 # → build/MYAPP.ELF
-# 拷到 rootfs（FAT 8.3 大写；三仓同级时）
-cp build/MYAPP.ELF ../../../ToyImage/RootFs/X64/MYAPP.ELF
-# QEMU：
-#   cd ../../../ToyImage && ./Scripts/run-split.sh
-#   toyos> exec MYAPP.ELF
+make                               # → build/MYAPP.ELF
+cp build/MYAPP.ELF ../../../Runtime/RootFs/X64/MYAPP.ELF
+# Guest：exec MYAPP.ELF
+# 注意：卷根没有时会找 Class/MYAPP.ELF；勿留旧 ToyUi 陈货（会饿死鼠标）。
 ```
 
-换名：
+
+换名：`make PROG=HELLO2 SRCS=main.c`。
+
+课外独立目录：复制本目录，构建时指定树根：
 
 ```bash
-make PROG=HELLO2 SRCS=main.c
-```
-
-课外独立目录：复制 `User/Package/`，保留或改 `main.c`，构建时指定树根：
-
-```bash
-make BLOCKS_KERNEL=/path/to/ToyKernel
+make BLOCKS_KERNEL=/path/to/Kernel
 ```
 
 ## 头文件
@@ -38,27 +32,28 @@ make BLOCKS_KERNEL=/path/to/ToyKernel
 |---------|------|
 | `<stdio.h>` / `<stdlib.h>` / `<string.h>` / `<unistd.h>` | libc 子集 |
 | `<fcntl.h>` / `<errno.h>` / `<signal.h>` | 文件与信号 |
-| `<ToyOS/syscall.h>` | 系统调用号 + `toy_*` 薄封装 |
-| `<ToyOS/version.h>` | `TOYOS_CRT_VERSION_*` |
-| `<ToyOS.h>` | 伞头（demo 用） |
+| `<Blocks/syscall.h>` | 系统调用号 + `toy_*` / `blocks_syscall` |
+| `<Blocks/version.h>` | `CRT_VERSION_*` |
+| `<Blocks.h>` | 伞头（demo 用） |
 
-`-I` 指向 `ToyKernel/User/include`（由 `ToyUser.mk` 自动加）。
+`-I` 由 `BlocksUser.mk` 自动加。
 
 ## 链接
 
-`crt0.o` + `syscall.o` + `libToyOS.a`（string/printf/malloc/errno/unistd）+ `user.ld`。
+`crt0.o` + `syscall.o` + `libBlocks.a` + `user.ld`。
 
-GUI 程序可追加（或直接用 `User/Package/Gui/`）：
+GUI / 网络模板：
 
 ```make
+# User/Package/Gui/
 EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a \
-             $(BLOCKS_KERNEL)/User/Library/ToyGfx/libToyGfx.a
-```
+             $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-教程：[`Documents/技术手册.md`](../../Documents/技术手册.md#tm-iv-gui)（GUI）· [`应用开发指南`](../../Documents/开发/应用开发指南.md)。  
-网络模板：`User/Package/Net/`（**用 `ToyNetConnect`，勿写旧 `connect(fd,ip,port)`**；Guest 需 `lwip on`）。
+# User/Package/Net/
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyNet/libToyNet.a
+```
 
 ## 不要做的事
 
-- 不要 `#include` 内核 `Include/` 或调用 `Hal*`
-- 不要依赖宿主 glibc（`-nostdlib`）
+- 不要 `#include` 内核私有头或调用 `Hal*`
+- 不要依赖宿主 glibc（`-nostdlib`）；不要 `-pie`

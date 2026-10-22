@@ -154,10 +154,4 @@ void HalUserEnter(struct HAL_INTERRUPT_FRAME *Frame) {
     UserEnter(Frame);
 }
 
-void HalUserCoopEnter(UINT64 Ksp, struct HAL_INTERRUPT_FRAME *Frame) {
-    (void)Ksp;
-    (void)Frame;
-}
-
-void HalUserCoopReturn(void) {
-}
+/* HalUserCoopEnter / HalUserCoopReturn：Interrupt.S（PR-sdk-exec） */

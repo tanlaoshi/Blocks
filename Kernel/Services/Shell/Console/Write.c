@@ -152,6 +152,27 @@ static void Write(const char *Text) {
         ConsoleOutUnlock();
         return;
     }
+    /*
+     * Hello 等控制台 ELF（非 StdoutSerialOnly）：只串口 + scrollback。
+     * 禁止在用户 syscall（常 IF=0 / CoopDrain）里 ConsoleDrawString→PresentFlush，
+     * 否则 printf 逐字会打出首字符后卡死（串口可见「B」）。
+     */
+    if (T && T->IsUser) {
+        int Owner;
+
+        for (P = Text; *P; P++) {
+            gAtLineStart = (*P == '\n');
+        }
+        HalConsoleWriteSerial(Text);
+        Owner = ConsoleCmdOutOwner();
+        if (Owner >= 0) {
+            ConsoleSbWinFeed(Owner, Text);
+        } else {
+            ConsoleSbFeedLiveIfBound(Text);
+        }
+        ConsoleOutUnlock();
+        return;
+    }
     for (P = Text; *P; P++) {
         gAtLineStart = (*P == '\n');
     }

@@ -4,6 +4,8 @@
 #ifndef IWL_HW_PRIVATE_H
 #define IWL_HW_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Iwl/IwlState.h"
 #include "Iwl/Hw/IwlRegs.h"
 
@@ -35,7 +37,7 @@ typedef struct {
     UINT16 Length;
     UINT8 Reserved;
     UINT8 Version;
-} __attribute__((packed)) IWL_CMD_HDR_WIDE;
+} BLOCKS_PACKED IWL_CMD_HDR_WIDE;
 
 typedef struct {
     UINT32 LenNFlags;
@@ -46,14 +48,14 @@ typedef struct {
 typedef struct {
     UINT32 Lo;
     UINT16 HiNLen; /* [3:0]=addr[35:32] [15:4]=len */
-} __attribute__((packed)) IWL_TFD_TB;
+} BLOCKS_PACKED IWL_TFD_TB;
 
 typedef struct {
     UINT8 Reserved[3];
     UINT8 NumTbs;
     IWL_TFD_TB Tb[IWL_TFD_NUM_TBS];
     UINT32 Pad;
-} __attribute__((packed)) IWL_TFD;
+} BLOCKS_PACKED IWL_TFD;
 
 extern IWL_FW_IMG gIwlImgRt;
 extern IWL_FW_IMG gIwlImgInit;

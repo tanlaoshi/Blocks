@@ -66,7 +66,26 @@ void HandoffFillMemory(const UEFI_BOOT_CONFIG *Cfg, BOOT_INFO *Out,
 
     HandoffAddRegion(Out, 0, 4096, 0);
     HandoffAddRegion(Out, 0x7000, 0x2000, 0);
-    HandoffAddRegion(Out, Out->KernelStart, Out->KernelEnd - Out->KernelStart, 0);
+    /*
+     * 内核两段：低端 text/data 与 32MiB BSS（中间空洞留给 PMM，勿整跨度保留）。
+     */
+    {
+        extern char __kernel_start[];
+        extern char __kernel_data_end[];
+        extern char __kernel_bss_start[];
+        extern char __kernel_end[];
+        UINT64 Lo = (UINT64)(UINTN)__kernel_start;
+        UINT64 Mid = (UINT64)(UINTN)__kernel_data_end;
+        UINT64 Bss = (UINT64)(UINTN)__kernel_bss_start;
+        UINT64 Hi = (UINT64)(UINTN)__kernel_end;
+
+        if (Mid > Lo) {
+            HandoffAddRegion(Out, Lo, Mid - Lo, 0);
+        }
+        if (Hi > Bss) {
+            HandoffAddRegion(Out, Bss, Hi - Bss, 0);
+        }
+    }
     if (CfgPhys) {
         HandoffAddRegion(Out, (UINT64)(UINTN)CfgPhys, sizeof(UEFI_BOOT_CONFIG), 0);
     }

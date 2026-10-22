@@ -3,6 +3,7 @@
  */
 #include "HandoffPrivate.h"
 
+extern char __kernel_start[];
 extern char __kernel_end[];
 
 void HandoffFillConfig(const UEFI_BOOT_CONFIG *Cfg, BOOT_INFO *Out) {
@@ -15,7 +16,8 @@ void HandoffFillConfig(const UEFI_BOOT_CONFIG *Cfg, BOOT_INFO *Out) {
     Out->VerticalResolution = Cfg->VideoConfig.VerticalResolution;
     Out->PixelsPerScanLine = Cfg->VideoConfig.PixelsPerScanLine;
     Out->RegionCount = 0;
-    Out->KernelStart = 0x100000;
+    /* Start=低端 text；End=高位 BSS 末（段布局见 link.ld / HandoffMemory） */
+    Out->KernelStart = (UINT64)(UINTN)__kernel_start;
     Out->KernelEnd = (UINT64)(UINTN)__kernel_end;
     Out->VideoModeCount = 0;
     Out->GopProtocol = 0;

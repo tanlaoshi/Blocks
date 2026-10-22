@@ -4,6 +4,8 @@
 #ifndef TCP_PRIVATE_H
 #define TCP_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Tcp.h"
 
 #define TCP_HDR_LEN       20
@@ -31,7 +33,7 @@ typedef struct {
     UINT16 Window;
     UINT16 Checksum;
     UINT16 Urgent;
-} __attribute__((packed)) TCP_HDR;
+} BLOCKS_PACKED TCP_HDR;
 
 typedef struct {
     TCP_STATE State;

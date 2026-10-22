@@ -4,6 +4,8 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include "Compiler.h"
+
 #include "BootTypes.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
@@ -49,12 +51,13 @@ typedef struct TASK {
      * C 栈砸烂。切走后 Frame 改挂本拍 live IRQ 帧（任务冻结期间栈不动）；
      * 禁切/不切走时勿改 Frame（iret 后 live 槽会被盖 → #UD/#GP）。
      */
-    HAL_INTERRUPT_FRAME    SavedFrame __attribute__((aligned(16)));
+    HAL_INTERRUPT_FRAME    SavedFrame BLOCKS_ALIGNED(16);
     /*
      * FreeType autofit（af_cjk_hints_apply）+ 中断帧远超 8K；曾栈溢出砸
      * Frame → corrupt resume / #GP。32K 给 FT 岛 + IRQ 留余量。
+     * 大 .bss 链在 32MiB（link.ld），Boot 按 PT_LOAD 分段 AllocateAddress。
      */
-    UINT8                  Stack[32768] __attribute__((aligned(16)));
+    UINT8                  Stack[32768] BLOCKS_ALIGNED(16);
     HAL_INTERRUPT_FRAME             *Frame;
     TASK_STATE             State;
     UINT32                 Id;

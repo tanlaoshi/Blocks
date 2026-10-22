@@ -5,7 +5,8 @@
  *   Kernel/BringUp/X64/UefiBootConfig.h
  *
  * 两边互不 #include。Boot 离开内核、内核离开 Boot，都要能单独编译。
- * 改一份必须改另一份，并让两边的 BLOCKS_STATIC_ASSERT 仍然通过。
+ * 改一份必须改另一份，并让两边的布局断言仍然通过。
+ * 内核侧 C99 垫片；Boot 副本跟 EDK2（_Static_assert），不收进 c99-dialect。
  *
  * Boot 的 EDK2 编译已经定义 EFIAPI，整数类型来自 Uefi.h，不会走到 BootTypes.h。
  * 内核没有 EFIAPI，整数类型来自 BootTypes.h。
@@ -74,8 +75,7 @@ typedef struct {
 #define UEFI_BOOT_DISK_GUID_MAGIC 0x314B5344u
 
 /*
- * 本头 Boot/内核各一份、互不 #include，故就地放与 Abi/Compiler.h 同口径的 C99 断言
- * （不引入内核 -I，避免 Boot EDK2 依赖 Kernel 树）。
+ * 与 Boot 副本布局钉死；断言写法可不同（此处 C99 垫片，Boot 用 EDK2 原样）。
  */
 #ifndef BLOCKS_STATIC_ASSERT
 #define BLOCKS_STATIC_ASSERT_PASTE2(A, B) A##B
@@ -85,7 +85,11 @@ typedef struct {
         [((Cond) ? 1 : -1)]
 #endif
 #ifndef BLOCKS_OFFSETOF
+#if defined(__GNUC__) || defined(__clang__)
+#define BLOCKS_OFFSETOF(Type, Member) __builtin_offsetof(Type, Member)
+#else
 #define BLOCKS_OFFSETOF(Type, Member) ((UINTN)&(((Type *)0)->Member))
+#endif
 #endif
 
 BLOCKS_STATIC_ASSERT(sizeof(UEFI_VIDEO_CONFIG) == 32, "UEFI_VIDEO_CONFIG size");

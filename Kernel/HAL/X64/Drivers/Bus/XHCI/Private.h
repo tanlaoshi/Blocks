@@ -8,6 +8,8 @@
 #ifndef XHCI_INTERNAL_H
 #define XHCI_INTERNAL_H
 
+#include "Compiler.h"
+
 #include "XHCI.h"
 #include "Hal.h"
 #include "Debug.h"
@@ -124,7 +126,7 @@ typedef struct {
     UINT64 Parameter;
     UINT32 Status;
     UINT32 Control;
-} __attribute__((packed, aligned(16))) XHCI_TRB;
+} BLOCKS_PACKED BLOCKS_ALIGNED(16) XHCI_TRB;
 
 typedef struct {
     UINT32 Enq;

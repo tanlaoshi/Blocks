@@ -3,6 +3,7 @@
  *
  * KernelMain 在模块表前 Enable；栈须已在窗内（KernelEntry 换栈）。
  */
+#include "Compiler.h"
 #include "EarlyIdentity.h"
 #include "IdentityMap.h"
 #include "BootTypes.h"
@@ -15,7 +16,7 @@
 /* 4GiB / 2MiB = 2048 大页 → 4 张 PD；另加 PML4+PDPT + 余量 */
 #define EARLY_PT_PAGES   16
 
-static UINT8 gEarlyPtPool[EARLY_PT_PAGES][PAGE_SIZE] __attribute__((aligned(4096)));
+static UINT8 gEarlyPtPool[EARLY_PT_PAGES][PAGE_SIZE] BLOCKS_ALIGNED(4096);
 static UINTN gEarlyPtNext;
 static UINT64 gKernelRoot;
 

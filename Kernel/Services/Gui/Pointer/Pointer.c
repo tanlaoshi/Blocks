@@ -11,7 +11,7 @@
  *   Defer — Push…Pop 包住 dequeue；拖图标内 Pause/Flush/Resume
  * 然后 DesktopTickClock（栏/图标/TTF 画）→ StoreUiPump。
  * MSC 热拔与钟采样在 Worker：DesktopWorkerTick（runtime-c-tick）。
- * 拖边界 / Slide vs Composite：Drag/*.c 头。长 IO 挪光标 Motion.c；点击 Click。
+ * 拖边界 / Slide vs Composite：见 Drag/ 下各 .c 头。长 IO 挪光标 Motion.c；点击 Click。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"

@@ -1,6 +1,7 @@
 /*
  * FtdiRx.c — PR-H-usb-uart-ftdi-2：Bulk IN + 剥 2 字节状态 → 字符环
  */
+#include "Compiler.h"
 #include "XHCI/Serial/Ftdi/Private.h"
 
 #define FTDI_RX_Q   256
@@ -8,10 +9,10 @@
 
 UINT32 gFtdiBulkInDci;
 UINT16 gFtdiBulkInMps;
-XHCI_TRB gFtdiBulkInRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gFtdiBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gFtdiBulkIn;
 
-static UINT8 gFtdiRxDma[64] __attribute__((aligned(64)));
+static UINT8 gFtdiRxDma[64] BLOCKS_ALIGNED(64);
 static char gFtdiRxQ[FTDI_RX_Q];
 static UINT32 gFtdiRxR;
 static UINT32 gFtdiRxW;

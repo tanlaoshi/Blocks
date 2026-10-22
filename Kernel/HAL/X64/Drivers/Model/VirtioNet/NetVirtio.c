@@ -3,6 +3,7 @@
  *
  * 从 Net.c 迁出；只搬家、不改逻辑。ARP/ICMP/对外 API 仍在 Net.c。
  */
+#include "Compiler.h"
 #include "Network/Private.h"
 #include "PCIe.h"
 #include "VirtualMemory.h"
@@ -10,10 +11,10 @@
 #include "Hal.h"
 
 
-UINT8 gVirtQueueRxMemory[4 * PAGE_SIZE] __attribute__((aligned(4096)));
-UINT8 gVirtQueueTxMemory[4 * PAGE_SIZE] __attribute__((aligned(4096)));
-UINT8 gRxBufData[RX_BUF_COUNT][PAGE_SIZE] __attribute__((aligned(4096)));
-static UINT8 gTxBufData[PAGE_SIZE] __attribute__((aligned(4096)));
+UINT8 gVirtQueueRxMemory[4 * PAGE_SIZE] BLOCKS_ALIGNED(4096);
+UINT8 gVirtQueueTxMemory[4 * PAGE_SIZE] BLOCKS_ALIGNED(4096);
+UINT8 gRxBufData[RX_BUF_COUNT][PAGE_SIZE] BLOCKS_ALIGNED(4096);
+static UINT8 gTxBufData[PAGE_SIZE] BLOCKS_ALIGNED(4096);
 UINT8 *gTxBuf = gTxBufData;
 
 volatile VIRTIO_COMMON_CFG *gCommon;

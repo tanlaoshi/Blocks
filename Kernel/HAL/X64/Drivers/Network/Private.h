@@ -7,6 +7,8 @@
 #ifndef NET_PRIVATE_H
 #define NET_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Network.h"
 #include "BootTypes.h"
 #include "PhysicalMemory.h"
@@ -60,7 +62,7 @@ typedef struct {
     UINT32 Len;
     UINT16 Flags;
     UINT16 Next;
-} __attribute__((packed)) VRING_DESC;
+} BLOCKS_PACKED VRING_DESC;
 
 typedef struct {
     UINT16 Flags;
@@ -71,7 +73,7 @@ typedef struct {
 typedef struct {
     UINT32 Id;
     UINT32 Len;
-} __attribute__((packed)) VRING_USED_ELEM;
+} BLOCKS_PACKED VRING_USED_ELEM;
 
 typedef struct {
     UINT16 Flags;
@@ -96,12 +98,12 @@ typedef struct {
     UINT64 QueueDesc;
     UINT64 QueueDriver;
     UINT64 QueueDevice;
-} __attribute__((packed)) VIRTIO_COMMON_CFG;
+} BLOCKS_PACKED VIRTIO_COMMON_CFG;
 
 typedef struct {
     UINT8 Mac[6];
     UINT16 Status;
-} __attribute__((packed)) VIRTIO_NET_CFG;
+} BLOCKS_PACKED VIRTIO_NET_CFG;
 
 typedef struct {
     UINT16 Size;
@@ -123,7 +125,7 @@ typedef struct {
     UINT8  Dst[6];
     UINT8  Src[6];
     UINT16 EtherType;
-} __attribute__((packed)) ETH_HDR;
+} BLOCKS_PACKED ETH_HDR;
 
 typedef struct {
     UINT16 HwType;
@@ -135,7 +137,7 @@ typedef struct {
     UINT32 SenderIp;
     UINT8  TargetMac[6];
     UINT32 TargetIp;
-} __attribute__((packed)) ARP_PKT;
+} BLOCKS_PACKED ARP_PKT;
 
 typedef struct {
     UINT8  VerIhl;
@@ -148,7 +150,7 @@ typedef struct {
     UINT16 Checksum;
     UINT32 Src;
     UINT32 Dst;
-} __attribute__((packed)) IP_HDR;
+} BLOCKS_PACKED IP_HDR;
 
 typedef struct {
     UINT8  Type;
@@ -156,7 +158,7 @@ typedef struct {
     UINT16 Checksum;
     UINT16 Id;
     UINT16 Seq;
-} __attribute__((packed)) ICMP_HDR;
+} BLOCKS_PACKED ICMP_HDR;
 
 static inline UINT16 ByteSwap16(UINT16 V) {
     return (UINT16)((V >> 8) | (V << 8));

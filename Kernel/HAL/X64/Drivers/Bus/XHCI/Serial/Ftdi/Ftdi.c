@@ -1,6 +1,7 @@
 /*
  * Ftdi.c — FT232 认领（VID/PID + Bulk OUT + 115200）
  */
+#include "Compiler.h"
 #include "XHCI/Serial/Ftdi/Private.h"
 #include "HalSerial.h"
 
@@ -26,12 +27,12 @@ UINT32 gFtdiBulkOutDci;
 UINT16 gFtdiBulkOutMps;
 int gFtdiClaimed;
 
-UINT8 gFtdiDevCtx[2048] __attribute__((aligned(64)));
-XHCI_TRB gFtdiEp0Ring[RING_SIZE] __attribute__((aligned(64)));
+UINT8 gFtdiDevCtx[2048] BLOCKS_ALIGNED(64);
+XHCI_TRB gFtdiEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gFtdiEp0;
-XHCI_TRB gFtdiBulkOutRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gFtdiBulkOutRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gFtdiBulkOut;
-static UINT8 gFtdiCfgBuf[512] __attribute__((aligned(64)));
+static UINT8 gFtdiCfgBuf[512] BLOCKS_ALIGNED(64);
 
 static void EndpointZeroRing(XHCI_TRB **RingOut, RING_STATE **StOut) {
     *RingOut = gFtdiEp0Ring;

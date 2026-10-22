@@ -4,6 +4,8 @@
 #ifndef NVME_PRIVATE_H
 #define NVME_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Nvme.h"
 #include "Block.h"
 
@@ -46,7 +48,7 @@ typedef struct {
     UINT32 Cdw13;
     UINT32 Cdw14;
     UINT32 Cdw15;
-} __attribute__((packed)) NVME_SQE;
+} BLOCKS_PACKED NVME_SQE;
 
 typedef struct {
     UINT32 Dword0;
@@ -55,7 +57,7 @@ typedef struct {
     UINT16 SqId;
     UINT16 Cid;
     UINT16 StatusPhase; /* low bit = phase; status = bits[15:1] */
-} __attribute__((packed)) NVME_CQE;
+} BLOCKS_PACKED NVME_CQE;
 
 typedef struct {
     volatile UINT8 *Bar;

@@ -20,7 +20,7 @@
 
 #define RAMFB_FOURCC_XR24 0x34325258u /* DRM 'XR24' / XRGB8888 */
 
-typedef struct __attribute__((packed)) {
+typedef struct BLOCKS_PACKED {
     UINT64 Addr;
     UINT32 Fourcc;
     UINT32 Flags;
@@ -29,7 +29,7 @@ typedef struct __attribute__((packed)) {
     UINT32 Stride;
 } RAMFB_CFG;
 
-typedef struct __attribute__((packed)) {
+typedef struct BLOCKS_PACKED {
     UINT32 Control;
     UINT32 Length;
     UINT64 Address;

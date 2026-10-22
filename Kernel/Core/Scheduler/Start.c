@@ -236,11 +236,11 @@ void SchedulerStart(void) {
         HalTimerStart();
         DebugWrite("Boot: Scheduler Online\n");
         /*
-         * PR-V-input-fix：Start 前 cli；First 若是 shell（virt 钉 BSP）则从不
-         * HalCpuHalt 开中断 → 无 tick、OnTimer 不转、Poll 侧也饿（见 show input t0=0）。
-         * 进任务前开 IRQ；AP 首入仍由 IdleTask→Halt 路径保活。
+         * 保持 cli 直到 KernelEnter→iretq。Frame.Rflags 已带 IF=1，iret 后开中断。
+         * 若在此 HalIrqEnable，定时器可能在仍占 gEarlyStack 时入 Shell（Started=1），
+         * live 帧 SP∈early → sched: corrupt resume（CI/本地冒烟稳复现）。
+         * AP 首入仍走 Idle→Halt 开中断路径。
          */
-        HalIrqEnable();
         HalSchedulerEnter(Frame);
     }
 }

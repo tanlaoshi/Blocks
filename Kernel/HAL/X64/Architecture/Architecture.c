@@ -3,6 +3,7 @@
  *
  * 中断 IDT/PIC/LAPIC/分发见 Dispatch.c。
  */
+#include "Compiler.h"
 #include "Architecture.h"
 #include "Private.h"
 #include "Hal.h"
@@ -13,11 +14,11 @@
 typedef struct {
     UINT16 Limit;
     UINT64 Base;
-} __attribute__((packed)) DT_PTR;
+} BLOCKS_PACKED DT_PTR;
 
 static UINT64 gGdt[5 + HAL_MAX_CPUS * 2];
 
-typedef struct __attribute__((packed)) {
+typedef struct BLOCKS_PACKED {
     UINT32 Reserved0;
     UINT64 RSP0;
     UINT64 RSP1;
@@ -35,8 +36,8 @@ typedef struct __attribute__((packed)) {
     UINT16 IOPBOffset;
 } TSS64;
 
-static TSS64 gTss[HAL_MAX_CPUS] __attribute__((aligned(16)));
-static UINT8 gKernelIstStack[HAL_MAX_CPUS][16384] __attribute__((aligned(16)));
+static TSS64 gTss[HAL_MAX_CPUS] BLOCKS_ALIGNED(16);
+static UINT8 gKernelIstStack[HAL_MAX_CPUS][16384] BLOCKS_ALIGNED(16);
 
 /* SYSCALL 入口用：KERNEL_GS_BASE 指向本结构；与 int 0x80 无关 */
 typedef struct {
@@ -44,7 +45,7 @@ typedef struct {
     UINT64 ScratchUserRsp; /* gs:[8] — SyscallEntry 暂存用户 RSP */
 } ARCH_CPU_LOCAL;
 
-static ARCH_CPU_LOCAL gArchCpuLocal[HAL_MAX_CPUS] __attribute__((aligned(16)));
+static ARCH_CPU_LOCAL gArchCpuLocal[HAL_MAX_CPUS] BLOCKS_ALIGNED(16);
 
 #define MSR_EFER            0xC0000080u
 #define MSR_STAR            0xC0000081u

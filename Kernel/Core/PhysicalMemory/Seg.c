@@ -1,13 +1,17 @@
 /*
  * Seg.c — 分段位图。静态位图挂在内核所在段。
  */
+#include "Compiler.h"
 #include "PhysicalMemoryPrivate.h"
 #include "Debug.h"
 #define PMM_BITMAP_BYTES (PMM_PAGES_PER_SEGMENT / 8)
 
 static PMM_SEGMENT gSegments[PMM_SEGMENT_COUNT];
-static UINT8       gSegment0Bitmap[PMM_BITMAP_BYTES];
-static UINT16      gSegment0RefCount[PMM_PAGES_PER_SEGMENT];
+/* 位图/引用上抬：段0 静态表约 544KiB，勿粘低端装载跨度 */
+static UINT8  gSegment0Bitmap[PMM_BITMAP_BYTES]
+    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
+static UINT16 gSegment0RefCount[PMM_PAGES_PER_SEGMENT]
+    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
 static UINT64      gBootAllocBase;
 static UINT64      gBootAllocNext;
 

@@ -4,6 +4,8 @@
 #ifndef E1000_PRIVATE_H
 #define E1000_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "E1000.h"
 
 #define E1000_VENDOR          0x8086u
@@ -103,7 +105,7 @@ typedef struct {
     UINT8  Status;
     UINT8  Errors;
     UINT16 Special;
-} __attribute__((packed)) E1000_RX_DESC;
+} BLOCKS_PACKED E1000_RX_DESC;
 
 typedef struct {
     UINT64 Addr;
@@ -113,7 +115,7 @@ typedef struct {
     UINT8  Status;
     UINT8  Css;
     UINT16 Special;
-} __attribute__((packed)) E1000_TX_DESC;
+} BLOCKS_PACKED E1000_TX_DESC;
 
 extern volatile UINT8 *gBar;
 extern UINT64 gBarPhys;

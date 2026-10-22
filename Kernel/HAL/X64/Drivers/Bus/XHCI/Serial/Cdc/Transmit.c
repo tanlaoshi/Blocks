@@ -1,9 +1,10 @@
 /*
  * CdcTx.c — PR-H-usb-uart-cdc-1：CDC Bulk OUT TX + ConfigEP + 事件匹配
  */
+#include "Compiler.h"
 #include "XHCI/Serial/Cdc/Private.h"
 
-static UINT8 gCdcTxBuf[64] __attribute__((aligned(64)));
+static UINT8 gCdcTxBuf[64] BLOCKS_ALIGNED(64);
 static volatile UINT32 gCdcBulkDone;
 static volatile UINT32 gCdcBulkCode;
 static int gCdcTxBusy;

@@ -8,6 +8,7 @@
  *
  * 仍保留 Map + Available：供「已是目标分辨率」时只同步内核 FB 视图，以及将来探测。
  */
+#include "Compiler.h"
 #include "Private.h"
 #include "BootInfo.h"
 #include "VirtualMemory.h"
@@ -39,7 +40,7 @@ struct TOY_GOP {
     void *QueryMode;
     /* UEFI GOP 为 MS ABI；仅 x86 真机路径可能用到约定，virt 编译勿告警告 */
 #if defined(__x86_64__) || defined(_M_X64)
-    UINT64 (__attribute__((ms_abi)) *SetMode)(TOY_GOP *This, UINT32 ModeNumber);
+    UINT64 (BLOCKS_MS_ABI *SetMode)(TOY_GOP *This, UINT32 ModeNumber);
 #else
     UINT64 (*SetMode)(TOY_GOP *This, UINT32 ModeNumber);
 #endif

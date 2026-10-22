@@ -3,6 +3,7 @@
  *
  * 由单体 Drivers/XHCI.c 剩余部分迁入；子模块见 Drivers/XHCI/ 下各 .c。
  */
+#include "Compiler.h"
 #include "XHCI/Private.h"
 #include "UsbHostController.h"
 
@@ -38,23 +39,23 @@ UINT8  gMouseAbsolute;   /* 1：报告为绝对坐标（QEMU usb-tablet） */
 UINT8  gMouseEpAddr;
 UINT8  gMouseReportLen;
 UINT8  gMouseXferLen; /* 最近一次中断 IN 实际字节（短包后 < MPS） */
-UINT8  gMouseBuf[8] __attribute__((aligned(64)));
+UINT8  gMouseBuf[8] BLOCKS_ALIGNED(64);
 /* boot 相对鼠：在驱动内累加成屏坐标；PHOTO→桌面时重置到光标 */
 int    gMouseAbsX = 512;
 int    gMouseAbsY = 384;
 int    gMouseAbsInit;
-XHCI_TRB gMouseIntrRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gMouseIntrRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gMouseIntr;
 /* PR-H-msc-2：Bulk 静态环（仅 InitRing；不配 EP、不门铃、不扫口） */
-XHCI_TRB gBulkInRing[RING_SIZE] __attribute__((aligned(64)));
-XHCI_TRB gBulkOutRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
+XHCI_TRB gBulkOutRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gBulkIn;
 RING_STATE gBulkOut;
 int gMscBulkRingsInited;
 /* PR-H-msc-3/4：scan 临时 / claim 常驻 slot，独立 EP0，勿 InitRing 键盘 gEp0 */
 UINT32 gMscScanSlot;
-UINT8  gMscScanDevCtx[2048] __attribute__((aligned(64)));
-XHCI_TRB gMscScanEp0Ring[RING_SIZE] __attribute__((aligned(64)));
+UINT8  gMscScanDevCtx[2048] BLOCKS_ALIGNED(64);
+XHCI_TRB gMscScanEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gMscScanEp0;
 UINT32 gMscPort;          /* PR-H-msc-4：claim 时根口（hub 子设备亦记 hub 根口） */
 UINT32 gMscRoute;
@@ -75,8 +76,8 @@ int    gMscCapacityOk;
 volatile UINT32 gBulkDone;
 volatile UINT32 gBulkCode;
 volatile UINT32 gBulkRemain;
-UINT8  gMscCfgBuf[1024] __attribute__((aligned(64))); /* 配置描述符；勿用 256 截断 */
-UINT8  gMouseDevCtx[2048] __attribute__((aligned(64)));
+UINT8  gMscCfgBuf[1024] BLOCKS_ALIGNED(64); /* 配置描述符；勿用 256 截断 */
+UINT8  gMouseDevCtx[2048] BLOCKS_ALIGNED(64);
 volatile UINT32 gMouseIntrDone;
 volatile UINT32 gIntrReportReady;
 volatile UINT32 gMouseReportReady;
@@ -102,12 +103,12 @@ volatile UINT32 gMouseReadIndex;
 SPIN_LOCK gHidQueueLock; /* PR-S-ap：IRQ 入队 vs AP 出队 */
 SPIN_LOCK gEvtConsumerLock; /* excl-2：事件环消费串行 */
 
-XHCI_TRB gCmdRing[RING_SIZE] __attribute__((aligned(64)));
-XHCI_TRB gEp0Ring[RING_SIZE] __attribute__((aligned(64)));
-XHCI_TRB gHubEp0Ring[RING_SIZE] __attribute__((aligned(64)));   /* hub 专用：勿与键鼠共环 */
-XHCI_TRB gMouseEp0Ring[RING_SIZE] __attribute__((aligned(64))); /* 独立鼠/子设备专用 */
-XHCI_TRB gIntrRing[RING_SIZE] __attribute__((aligned(64)));
-XHCI_TRB gEvtRing[EVT_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gCmdRing[RING_SIZE] BLOCKS_ALIGNED(64);
+XHCI_TRB gEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+XHCI_TRB gHubEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);   /* hub 专用：勿与键鼠共环 */
+XHCI_TRB gMouseEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64); /* 独立鼠/子设备专用 */
+XHCI_TRB gIntrRing[RING_SIZE] BLOCKS_ALIGNED(64);
+XHCI_TRB gEvtRing[EVT_SIZE] BLOCKS_ALIGNED(64);
 /* 真机可指向固件环（IOMMU 已映射）；QEMU 用上面静态缓冲 */
 XHCI_TRB *gCmdRingLive = gCmdRing;
 XHCI_TRB *gEvtRingLive = gEvtRing;
@@ -121,7 +122,7 @@ RING_STATE gIntr;
 UINT32 gEvtDeq;
 UINT32 gEvtCcs;
 
-UINT64 gDcbaa[DCBAA_SLOTS + 1] __attribute__((aligned(64)));
+UINT64 gDcbaa[DCBAA_SLOTS + 1] BLOCKS_ALIGNED(64);
 /*
  * 真机 bRS 2：自建 DCBAA/scratch 后 RS 挂；固件 DCBAAP 可 RS。
  * gDcbaaLive 指向固件表或本地 gDcbaa；槽位写入走 DcbaaSet。
@@ -147,13 +148,15 @@ UINT64 gFwErdpSave;   /* 固件 ERDP：勿清环后强行改回基址 */
  *   count = (Hi << 5) | Lo
  * 旧式把 Hi/Lo 对调会少/多配页 → 装环后写 RS 时 DMA 踩错 → 真机硬挂。
  */
-UINT64 gScratchPtr[XHCI_SCRATCH_MAX] __attribute__((aligned(64)));
-UINT8  gScratchBuf[XHCI_SCRATCH_MAX][4096] __attribute__((aligned(4096)));
-UINT8  gDevCtx[2048] __attribute__((aligned(64)));
-UINT8  gHubDevCtx[2048] __attribute__((aligned(64))); /* PR-H-hub */
-UINT8  gInCtx[2048] __attribute__((aligned(64)));
-UINT8  gCtrlBuf[256] __attribute__((aligned(64)));
-UINT8  gErst[16] __attribute__((aligned(64)));
+UINT64 gScratchPtr[XHCI_SCRATCH_MAX] BLOCKS_ALIGNED(64);
+/* 上抬 .bss.high：512KiB 若粘在低端 BSS，装载跨度易撞 OVMF ~8MiB 保留区 */
+UINT8  gScratchBuf[XHCI_SCRATCH_MAX][4096]
+    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(4096);
+UINT8  gDevCtx[2048] BLOCKS_ALIGNED(64);
+UINT8  gHubDevCtx[2048] BLOCKS_ALIGNED(64); /* PR-H-hub */
+UINT8  gInCtx[2048] BLOCKS_ALIGNED(64);
+UINT8  gCtrlBuf[256] BLOCKS_ALIGNED(64);
+UINT8  gErst[16] BLOCKS_ALIGNED(64);
 
 UINT32 gHubSlotId;
 UINT32 gHubRootPort;

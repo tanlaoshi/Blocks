@@ -5,6 +5,8 @@
 #ifndef DRIVER_BOOT_H
 #define DRIVER_BOOT_H
 
+#include "Compiler.h"
+
 enum {
     DRIVER_BOOT_AHCI = 10,
     DRIVER_BOOT_ATA = 20,
@@ -36,7 +38,7 @@ typedef struct {
 
 #define DRIVER_BOOT(Order, Call) \
     static const DRIVER_BOOT Call##_Boot \
-        __attribute__((used, section(".toy.driver.boot"), aligned(16))) = { \
+        BLOCKS_USED BLOCKS_SECTION(".toy.driver.boot") BLOCKS_ALIGNED(16) = { \
             (Order), (Call) \
         }
 

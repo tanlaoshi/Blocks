@@ -4,6 +4,8 @@
 #ifndef VIRTIO_INPUT_PRIVATE_H
 #define VIRTIO_INPUT_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Virtio.h"
 #include "DriverInput.h"
 #include "HalDevices.h"
@@ -25,7 +27,7 @@ typedef struct {
     UINT16 Type;
     UINT16 Code;
     INT32  Value;
-} __attribute__((packed)) VIRTIO_INPUT_EVENT;
+} BLOCKS_PACKED VIRTIO_INPUT_EVENT;
 
 typedef struct {
     UINT8 Select;
@@ -33,7 +35,7 @@ typedef struct {
     UINT8 Size;
     UINT8 Reserved[5];
     UINT8 Data[128];
-} __attribute__((packed)) VIRTIO_INPUT_CFG;
+} BLOCKS_PACKED VIRTIO_INPUT_CFG;
 
 #define KBD_Q_SIZE 16
 #define MOUSE_Q_SIZE 32

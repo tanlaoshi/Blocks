@@ -1,6 +1,7 @@
 /*
  * Exception.c — PR-A10 缺页 + PR-A11 用户 SVC / 自测
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "Syscall.h"
 #include "VirtualMemory.h"
@@ -17,7 +18,7 @@ static volatile int gUserSelfTest;
 static UINT64 gUserSelfRoot;
 static VIRTUAL_ADDRESS_SPACE *gUserSelfSpace;
 static HAL_INTERRUPT_FRAME gUserSelfFrame;
-static UINT8 gUserSelfKStack[8192] __attribute__((aligned(16)));
+static UINT8 gUserSelfKStack[8192] BLOCKS_ALIGNED(16);
 
 void HalExceptionVectorsInstall(void) {
     __asm__ volatile("msr vbar_el1, %0" :: "r"(HalExceptionVectors) : "memory");

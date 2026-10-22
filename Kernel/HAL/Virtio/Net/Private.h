@@ -4,6 +4,8 @@
 #ifndef VIRTIO_NET_PRIVATE_H
 #define VIRTIO_NET_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Net.h"
 #include "Virtio/Virtio.h"
 #include "Driver.h"
@@ -41,13 +43,13 @@
 typedef struct {
     UINT8 Mac[6];
     UINT16 Status;
-} __attribute__((packed)) VIRTIO_NET_CFG;
+} BLOCKS_PACKED VIRTIO_NET_CFG;
 
 typedef struct {
     UINT8 Dst[6];
     UINT8 Src[6];
     UINT16 EtherType;
-} __attribute__((packed)) ETH_HDR;
+} BLOCKS_PACKED ETH_HDR;
 
 typedef struct {
     UINT16 HwType;
@@ -59,7 +61,7 @@ typedef struct {
     UINT32 SenderIp;
     UINT8 TargetMac[6];
     UINT32 TargetIp;
-} __attribute__((packed)) ARP_PKT;
+} BLOCKS_PACKED ARP_PKT;
 
 typedef struct {
     UINT8 VerIhl;
@@ -72,7 +74,7 @@ typedef struct {
     UINT16 Checksum;
     UINT32 Src;
     UINT32 Dst;
-} __attribute__((packed)) IP_HDR;
+} BLOCKS_PACKED IP_HDR;
 
 typedef struct {
     UINT8 Type;
@@ -80,7 +82,7 @@ typedef struct {
     UINT16 Checksum;
     UINT16 Id;
     UINT16 Seq;
-} __attribute__((packed)) ICMP_HDR;
+} BLOCKS_PACKED ICMP_HDR;
 
 typedef struct {
     UINT32 Ip;

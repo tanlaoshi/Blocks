@@ -1,11 +1,12 @@
 /*
  * CdcRx.c — PR-H-usb-uart-cdc-2：CDC Bulk IN → 字符环（无状态前缀）
  */
+#include "Compiler.h"
 #include "XHCI/Serial/Cdc/Private.h"
 
 #define CDC_RX_Q 256
 
-static UINT8 gCdcRxDma[64] __attribute__((aligned(64)));
+static UINT8 gCdcRxDma[64] BLOCKS_ALIGNED(64);
 static char gCdcRxQ[CDC_RX_Q];
 static UINT32 gCdcRxR;
 static UINT32 gCdcRxW;

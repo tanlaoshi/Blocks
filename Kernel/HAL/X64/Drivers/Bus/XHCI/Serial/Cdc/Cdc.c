@@ -1,4 +1,5 @@
 /* Cdc.c — CDC-ACM 认领（Comm 0x02/02/01 + Data 0x0A） */
+#include "Compiler.h"
 #include "XHCI/Private.h"
 #include "XHCI/Serial/Cdc/Private.h"
 UINT32 gCdcSlot;
@@ -13,15 +14,15 @@ UINT32 gCdcBulkInDci;
 UINT16 gCdcBulkInMps;
 int gCdcClaimed;
 
-UINT8 gCdcDevCtx[2048] __attribute__((aligned(64)));
-XHCI_TRB gCdcEp0Ring[RING_SIZE] __attribute__((aligned(64)));
+UINT8 gCdcDevCtx[2048] BLOCKS_ALIGNED(64);
+XHCI_TRB gCdcEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gCdcEp0;
-XHCI_TRB gCdcBulkOutRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gCdcBulkOutRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gCdcBulkOut;
-XHCI_TRB gCdcBulkInRing[RING_SIZE] __attribute__((aligned(64)));
+XHCI_TRB gCdcBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gCdcBulkIn;
-static UINT8 gCdcCfgBuf[512] __attribute__((aligned(64)));
-static UINT8 gCdcLineCoding[7] __attribute__((aligned(64)));
+static UINT8 gCdcCfgBuf[512] BLOCKS_ALIGNED(64);
+static UINT8 gCdcLineCoding[7] BLOCKS_ALIGNED(64);
 
 static void EndpointZeroRing(XHCI_TRB **RingOut, RING_STATE **StOut) {
     *RingOut = gCdcEp0Ring;

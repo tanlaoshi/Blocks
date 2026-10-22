@@ -1,6 +1,7 @@
 /*
  * Trap.c — PR-A10 缺页 + PR-A11 U-mode ecall / 自测
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "Syscall.h"
 #include "Scheduler.h"
@@ -18,7 +19,7 @@ static volatile int gUserSelfTest;
 static UINT64 gUserSelfRoot;
 static VIRTUAL_ADDRESS_SPACE *gUserSelfSpace;
 static HAL_INTERRUPT_FRAME gUserSelfFrame;
-static UINT8 gUserSelfKStack[8192] __attribute__((aligned(16)));
+static UINT8 gUserSelfKStack[8192] BLOCKS_ALIGNED(16);
 
 #define SSTATUS_SPIE (1ULL << 5)
 #define SSTATUS_SPP  (1ULL << 8)

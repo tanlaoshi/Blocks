@@ -4,6 +4,8 @@
 #ifndef ACPI_PRIVATE_H
 #define ACPI_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Acpi.h"
 #include "Hal.h"
 #include "VirtualMemory.h"
@@ -22,7 +24,7 @@ typedef struct {
     UINT64 XsdtAddress;
     UINT8  ExtendedChecksum;
     UINT8  Reserved[3];
-} __attribute__((packed)) ACPI_RSDP;
+} BLOCKS_PACKED ACPI_RSDP;
 
 typedef struct {
     char   Signature[4];
@@ -34,13 +36,13 @@ typedef struct {
     UINT32 OemRevision;
     UINT32 CreatorId;
     UINT32 CreatorRevision;
-} __attribute__((packed)) ACPI_SDT_HEADER;
+} BLOCKS_PACKED ACPI_SDT_HEADER;
 
 typedef struct {
     ACPI_SDT_HEADER Header;
     UINT32 LocalApicAddress;
     UINT32 Flags;
-} __attribute__((packed)) ACPI_MADT;
+} BLOCKS_PACKED ACPI_MADT;
 
 #define PM1_PWRBTN_STS (1u << 8)
 #define PM1_PWRBTN_EN  (1u << 8)

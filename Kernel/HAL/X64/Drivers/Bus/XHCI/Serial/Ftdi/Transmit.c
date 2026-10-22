@@ -1,9 +1,10 @@
 /*
  * FtdiTx.c — PR-H-usb-uart：FT232 Bulk OUT TX + 事件匹配（IN/OUT）
  */
+#include "Compiler.h"
 #include "XHCI/Serial/Ftdi/Private.h"
 
-static UINT8 gFtdiTxBuf[64] __attribute__((aligned(64)));
+static UINT8 gFtdiTxBuf[64] BLOCKS_ALIGNED(64);
 static volatile UINT32 gFtdiBulkDone;
 static volatile UINT32 gFtdiBulkCode;
 static int gFtdiTxBusy;

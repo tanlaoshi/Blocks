@@ -5,6 +5,8 @@
 #ifndef USB_HOST_CONTROLLER_H
 #define USB_HOST_CONTROLLER_H
 
+#include "Compiler.h"
+
 #include "BootTypes.h"
 
 #define USB_HOST_CONTROLLER_NONE 0
@@ -18,7 +20,7 @@ typedef struct {
     UINT16 wValue;
     UINT16 wIndex;
     UINT16 wLength;
-} __attribute__((packed)) USB_SETUP;
+} BLOCKS_PACKED USB_SETUP;
 
 typedef struct USB_PIPE {
     void *HostControllerPrivate;

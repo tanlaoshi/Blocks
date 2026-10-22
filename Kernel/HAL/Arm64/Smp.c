@@ -1,6 +1,7 @@
 /*
  * Smp.c — PR-A14：QEMU virt aarch64 PSCI CPU_ON + 每核 idle
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
@@ -21,7 +22,7 @@ extern void HalExceptionVectorsInstall(void);
 
 UINT64 gApStackTop[HAL_MAX_CPUS];
 
-static UINT8 gApStacks[HAL_MAX_CPUS][8192] __attribute__((aligned(16)));
+static UINT8 gApStacks[HAL_MAX_CPUS][8192] BLOCKS_ALIGNED(16);
 static int gCpuCount = 1;
 static volatile UINT32 gApReady[HAL_MAX_CPUS];
 static volatile UINT32 gApHelloCount;

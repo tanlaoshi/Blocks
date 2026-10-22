@@ -3,6 +3,7 @@
  *
  * 其余内核 TU 仍 -mgeneral-regs-only。本文件不用 XMM。
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "HalDriverSched.h"
 
@@ -18,7 +19,7 @@
 static int gCapable;
 static int gOk;
 static UINT8 gDepth[HAL_MAX_CPUS];
-static UINT8 gFx[HAL_MAX_CPUS][FX_BYTES] __attribute__((aligned(16)));
+static UINT8 gFx[HAL_MAX_CPUS][FX_BYTES] BLOCKS_ALIGNED(16);
 
 int HalFpuSseProbe(void);
 

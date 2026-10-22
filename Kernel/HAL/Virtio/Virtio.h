@@ -4,6 +4,8 @@
 #ifndef HAL_VIRTIO_H
 #define HAL_VIRTIO_H
 
+#include "Compiler.h"
+
 #include "BootTypes.h"
 
 #define VIRTIO_DEV_BLOCK 2u
@@ -26,24 +28,24 @@ typedef struct {
     UINT32 Len;
     UINT16 Flags;
     UINT16 Next;
-} __attribute__((packed)) VRING_DESC;
+} BLOCKS_PACKED VRING_DESC;
 
 typedef struct {
     UINT16 Flags;
     UINT16 Idx;
     UINT16 Ring[0];
-} __attribute__((packed)) VRING_AVAIL;
+} BLOCKS_PACKED VRING_AVAIL;
 
 typedef struct {
     UINT32 Id;
     UINT32 Len;
-} __attribute__((packed)) VRING_USED_ELEM;
+} BLOCKS_PACKED VRING_USED_ELEM;
 
 typedef struct {
     UINT16 Flags;
     UINT16 Idx;
     VRING_USED_ELEM Ring[0];
-} __attribute__((packed)) VRING_USED;
+} BLOCKS_PACKED VRING_USED;
 
 typedef struct {
     UINT64 Base; /* MMIO */

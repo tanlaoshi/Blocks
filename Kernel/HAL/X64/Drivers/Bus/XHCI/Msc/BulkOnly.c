@@ -2,6 +2,7 @@
  * MscBot.c — PR-S-xhcimsc-1：从 Msc.c 原样搬家；不改语义。
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
+#include "Compiler.h"
 #include "XHCI/Private.h"
 #include "UsbHostController.h"
 #include "Msc/Private.h"
@@ -14,8 +15,8 @@ static int gMscInSense;  /* REQUEST SENSE 重入保护 */
  */
 static int Bot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
                   void *Data) {
-    UINT8 Cbw[32] __attribute__((aligned(64)));
-    UINT8 Csw[16] __attribute__((aligned(64)));
+    UINT8 Cbw[32] BLOCKS_ALIGNED(64);
+    UINT8 Csw[16] BLOCKS_ALIGNED(64);
     static UINT32 Tag;
     int Locked = 0;
     int Rc = -1;
@@ -73,7 +74,7 @@ static int Bot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
     }
     if (Csw[12] != 0) {
         if (!gMscInSense) {
-            UINT8 Sense[18] __attribute__((aligned(64)));
+            UINT8 Sense[18] BLOCKS_ALIGNED(64);
             UINT8 Scdb[16];
 
             BootLogHex("Boot: MSC bot status=", Csw[12], 2);
@@ -104,8 +105,8 @@ Out:
  * 成功 0 并填 gMscBlockCount/Size；失败 -1。
  */
 int Capacity(void) {
-    UINT8 Inquiry[36] __attribute__((aligned(64)));
-    UINT8 Cap[8] __attribute__((aligned(64)));
+    UINT8 Inquiry[36] BLOCKS_ALIGNED(64);
+    UINT8 Cap[8] BLOCKS_ALIGNED(64);
     UINT8 Cdb[16];
     UINT32 LastLba;
     UINT32 Bsz;
@@ -196,7 +197,7 @@ int Capacity(void) {
  * 仅支持逻辑块 512；bounce 对齐。勿带 FUA/SYNC：不少棒 CSW=1 且会搞丢写缓存。
  */
 static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
-    UINT8 Bounce[512] __attribute__((aligned(64)));
+    UINT8 Bounce[512] BLOCKS_ALIGNED(64);
     UINT8 *Ptr = (UINT8 *)Buffer;
     UINT32 i;
 

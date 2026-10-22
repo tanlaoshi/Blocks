@@ -1,6 +1,7 @@
 /*
  * Udp.c — 极简 UDP
  */
+#include "Compiler.h"
 #include "Udp.h"
 #include "HalDevices.h"
 
@@ -12,7 +13,7 @@ typedef struct {
     UINT16 DstPort;
     UINT16 Length;
     UINT16 Checksum;
-} __attribute__((packed)) UDP_HDR;
+} BLOCKS_PACKED UDP_HDR;
 
 static UINT16 gBindPort;
 static UDP_DATAGRAM gRxQ[UDP_RX_QUEUE];

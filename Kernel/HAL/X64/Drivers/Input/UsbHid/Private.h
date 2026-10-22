@@ -5,6 +5,8 @@
 #ifndef USB_HID_PRIVATE_H
 #define USB_HID_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "BootTypes.h"
 #include "PCIe.h"
 #include "Hal.h"
@@ -38,7 +40,7 @@ typedef struct {
     UINT8 ModifierKeys;
     UINT8 Reserved;
     UINT8 KeyCode[6];
-} __attribute__((packed)) USB_KEYBOARD_REPORT;
+} BLOCKS_PACKED USB_KEYBOARD_REPORT;
 #endif
 
 #ifndef USB_MOUSE_REPORT_DEFINED

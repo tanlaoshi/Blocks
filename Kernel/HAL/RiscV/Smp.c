@@ -4,6 +4,7 @@
  * OpenSBI Boot HART 常非 0（见 gBspHartId）。逻辑 CPU0=BSP；其余 hart 经 HSM
  * 或 KernelEntry SecondaryPark soft-release 拉起。
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
@@ -30,7 +31,7 @@ UINT64 gApStackTop[HAL_MAX_CPUS];
 volatile UINT32 gApGo[HAL_MAX_CPUS];
 volatile UINT32 gApLogical[HAL_MAX_CPUS];
 
-static UINT8 gApStacks[HAL_MAX_CPUS][8192] __attribute__((aligned(16)));
+static UINT8 gApStacks[HAL_MAX_CPUS][8192] BLOCKS_ALIGNED(16);
 static int gCpuCount = 1;
 static volatile UINT32 gApReady[HAL_MAX_CPUS];
 static volatile UINT32 gApHelloCount;

@@ -6,6 +6,8 @@
 #ifndef XHCI_H
 #define XHCI_H
 
+#include "Compiler.h"
+
 #include "BootTypes.h"
 
 struct USB_CONTROLLER;
@@ -17,7 +19,7 @@ typedef struct {
     UINT16 wValue;
     UINT16 wIndex;
     UINT16 wLength;
-} __attribute__((packed)) USB_SETUP_PACKET;
+} BLOCKS_PACKED USB_SETUP_PACKET;
 
 /* GET_DESCRIPTOR wValue（高字节=描述符类型）；EHCI/xHCI 共用 */
 #define USB_WVALUE_DT_DEVICE  0x0100u /* Device */
@@ -42,7 +44,7 @@ typedef struct {
     UINT8  iProduct;
     UINT8  iSerialNumber;
     UINT8  bNumConfigurations;
-} __attribute__((packed)) USB_DEVICE_DESCRIPTOR;
+} BLOCKS_PACKED USB_DEVICE_DESCRIPTOR;
 
 /* HID 键盘 8 字节引导协议报告 */
 #ifndef USB_KEYBOARD_REPORT_DEFINED
@@ -51,7 +53,7 @@ typedef struct {
     UINT8  ModifierKeys;
     UINT8  Reserved;
     UINT8  KeyCode[6];
-} __attribute__((packed)) USB_KEYBOARD_REPORT;
+} BLOCKS_PACKED USB_KEYBOARD_REPORT;
 #endif
 
 /* USB 鼠标/平板报告；Absolute=1 时 X/Y 为 HID 0..32767 */

@@ -25,7 +25,8 @@ EFI_STATUS BootLoadKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) 
             BootSerialPrintf("Boot: CheckKernelFile Failed: %r\n", Status);
             return Status;
         }
-        Status = LoadKernelFile(ElfBuffer, LoadLow, PageCount, &BootConfig->EntryAddress);
+        Status = LoadKernelFile(&ElfBuffer, ElfSize, LoadLow, PageCount,
+                                &BootConfig->EntryAddress);
         if (EFI_ERROR(Status)) {
             BootSerialPrintf("Boot: LoadKernelFile Failed: %r\n", Status);
             return Status;

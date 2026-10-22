@@ -3,6 +3,7 @@
  *
  * 中断帧见 HalFrame.c；平台元信息见 HalPlat.c（同构切块供 arm/riscv）。
  */
+#include "Compiler.h"
 #include "Hal.h"
 #include "Architecture.h"
 #include "Debug.h"
@@ -24,7 +25,7 @@ void HalCpuReboot(void) {
     void *St;
     void *Rt;
     typedef void (*EfiResetSystemFn)(UINT32, UINT64, UINT64, void *)
-        __attribute__((ms_abi));
+        BLOCKS_MS_ABI;
     EfiResetSystemFn ResetFn;
 
     HalIrqDisable();

@@ -4,6 +4,7 @@
  * 用户态异常（CS RPL=3）：杀当前用户任务并切走，勿 cli+hlt 拖死整机。
  * 内核异常仍 ExceptionHalt。
  */
+#include "Compiler.h"
 #include "Architecture.h"
 #include "Private.h"
 #include "Hal.h"
@@ -26,7 +27,7 @@ void SerialHexFormat(char *Buf, UINT64 Value, int Digits);
 typedef struct {
     UINT16 Limit;
     UINT64 Base;
-} __attribute__((packed)) DT_PTR;
+} BLOCKS_PACKED DT_PTR;
 
 typedef struct {
     UINT16 OffLo;
@@ -36,9 +37,9 @@ typedef struct {
     UINT16 OffMid;
     UINT32 OffHi;
     UINT32 Zero;
-} __attribute__((packed)) IDT_GATE;
+} BLOCKS_PACKED IDT_GATE;
 
-static IDT_GATE gIdt[256] __attribute__((aligned(16)));
+static IDT_GATE gIdt[256] BLOCKS_ALIGNED(16);
 volatile UINT32 gArchIrqCount;
 static void (*gIrqNotify[256])(void);
 

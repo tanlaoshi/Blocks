@@ -3,6 +3,7 @@
  *
  * VID 0BDA + PID 白名单；SetConfig；记 Bulk EP 供 wifi-2。不灌固件。
  */
+#include "Compiler.h"
 #include "XHCI/Wifi/Private.h"
 #include "DriverBoot.h"
 #include "Rtl8188eu/WifiIds.h"
@@ -22,10 +23,10 @@ UINT16 gWifiMpsIn;
 UINT16 gWifiMpsOut;
 int gWifiXhciOk;
 
-UINT8 gWifiDevCtx[2048] __attribute__((aligned(64)));
-XHCI_TRB gWifiEp0Ring[RING_SIZE] __attribute__((aligned(64)));
+UINT8 gWifiDevCtx[2048] BLOCKS_ALIGNED(64);
+XHCI_TRB gWifiEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gWifiEp0;
-static UINT8 gWifiCfgBuf[WIFI_CFG_MAX] __attribute__((aligned(64)));
+static UINT8 gWifiCfgBuf[WIFI_CFG_MAX] BLOCKS_ALIGNED(64);
 
 void WifiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut) {
     *RingOut = gWifiEp0Ring;

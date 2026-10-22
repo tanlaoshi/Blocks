@@ -4,6 +4,8 @@
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
 
+#include "Compiler.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -25,7 +27,7 @@ typedef uintptr_t mem_ptr_t;
 #define BYTE_ORDER LITTLE_ENDIAN
 
 #define PACK_STRUCT_FIELD(x) x
-#define PACK_STRUCT_STRUCT __attribute__((packed))
+#define PACK_STRUCT_STRUCT BLOCKS_PACKED
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 

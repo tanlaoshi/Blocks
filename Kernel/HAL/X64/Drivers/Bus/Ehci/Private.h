@@ -7,6 +7,8 @@
 #ifndef EHCI_PRIVATE_H
 #define EHCI_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Ehci.h"
 #include "PCIe.h"
 #include "XHCI.h" /* USB_SETUP_PACKET / DEVICE_DESCRIPTOR */
@@ -83,7 +85,7 @@ typedef struct {
     UINT32 Buf[5];
     UINT32 BufHi[5];
     UINT32 Pad[3]; /* → 64B，避免相邻 qTD 被 HC 当同一描述符读穿 */
-} __attribute__((packed, aligned(64))) EHCI_QTD;
+} BLOCKS_PACKED BLOCKS_ALIGNED(64) EHCI_QTD;
 
 typedef struct {
     UINT32 Horiz;
@@ -98,7 +100,7 @@ typedef struct {
     UINT32 BufHi[5];
     UINT32 Pad; /* → 68B spec；再 pad 到 128B 槽 */
     UINT32 Pad2[14];
-} __attribute__((packed, aligned(64))) EHCI_QH;
+} BLOCKS_PACKED BLOCKS_ALIGNED(64) EHCI_QH;
 
 typedef struct {
     USB_CONTROLLER Pci;

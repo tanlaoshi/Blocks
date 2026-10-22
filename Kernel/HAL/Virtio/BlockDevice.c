@@ -1,6 +1,7 @@
 /*
  * BlockDevice.c — virtio-blk MMIO（PR-V4；PR-D2 经 Driver Block 类）
  */
+#include "Compiler.h"
 #include "BlockDevice.h"
 #include "Virtio.h"
 #include "HalSerial.h"
@@ -17,7 +18,7 @@ typedef struct {
     UINT32 Type;
     UINT32 Reserved;
     UINT64 Sector;
-} __attribute__((packed)) VIRTIO_BLK_REQ;
+} BLOCKS_PACKED VIRTIO_BLK_REQ;
 
 static VIRTIO_MMIO_DEV gBlk;
 static int gBlkReady;

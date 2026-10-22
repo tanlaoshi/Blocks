@@ -4,6 +4,8 @@
 #ifndef AHCI_PRIVATE_H
 #define AHCI_PRIVATE_H
 
+#include "Compiler.h"
+
 #include "Ahci.h"
 #include "Block.h"
 #include "Hal.h"
@@ -80,21 +82,21 @@ typedef struct {
     UINT32 Ctba;
     UINT32 Ctbau;
     UINT32 Reserved[4];
-} __attribute__((packed)) AHCI_CMD_HDR;
+} BLOCKS_PACKED AHCI_CMD_HDR;
 
 typedef struct {
     UINT32 Dba;
     UINT32 Dbau;
     UINT32 Reserved;
     UINT32 Dbc; /* bits[21:0]=byte_count-1；bit31=I */
-} __attribute__((packed)) AHCI_PRDT;
+} BLOCKS_PACKED AHCI_PRDT;
 
 typedef struct {
     UINT8  Fis[64];
     UINT8  Atapi[16];
     UINT8  Reserved[48];
     AHCI_PRDT Prdt[8];
-} __attribute__((packed)) AHCI_CMD_TABLE;
+} BLOCKS_PACKED AHCI_CMD_TABLE;
 
 typedef struct {
     volatile AHCI_PORT *Port;

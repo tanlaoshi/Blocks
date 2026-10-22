@@ -5,7 +5,8 @@
  *   Kernel/BringUp/X64/UefiBootConfig.h
  *
  * 两边互不 #include。Boot 离开内核、内核离开 Boot，都要能单独编译。
- * 改一份必须改另一份，并让两边的 BLOCKS_STATIC_ASSERT 仍然通过。
+ * 改一份必须改另一份，并让两边的布局断言仍然通过。
+ * Boot 跟 EDK2：可用 _Static_assert / __builtin_offsetof；内核侧走 C99 垫片。
  *
  * Boot 的 EDK2 编译已经定义 EFIAPI，整数类型来自 Uefi.h，不会走到 BootTypes.h。
  * 内核没有 EFIAPI，整数类型来自 BootTypes.h。
@@ -73,34 +74,21 @@ typedef struct {
 
 #define UEFI_BOOT_DISK_GUID_MAGIC 0x314B5344u
 
-/*
- * 本头 Boot/内核各一份、互不 #include，故就地放与 Abi/Compiler.h 同口径的 C99 断言
- * （不引入内核 -I，避免 Boot EDK2 依赖 Kernel 树）。
- */
-#ifndef BLOCKS_STATIC_ASSERT
-#define BLOCKS_STATIC_ASSERT_PASTE2(A, B) A##B
-#define BLOCKS_STATIC_ASSERT_PASTE(A, B)  BLOCKS_STATIC_ASSERT_PASTE2(A, B)
-#define BLOCKS_STATIC_ASSERT(Cond, Msg) \
-    typedef char BLOCKS_STATIC_ASSERT_PASTE(BlocksStaticAssert_, __LINE__) \
-        [((Cond) ? 1 : -1)]
+#if defined(__GNUC__)
+_Static_assert(sizeof(UEFI_VIDEO_CONFIG) == 32, "UEFI_VIDEO_CONFIG size");
+_Static_assert(sizeof(UEFI_MEMORY_MAP) == 40, "UEFI_MEMORY_MAP size");
+_Static_assert(sizeof(UEFI_VIDEO_MODE) == 16, "UEFI_VIDEO_MODE size");
+_Static_assert(sizeof(UEFI_BOOT_CONFIG) == 656, "UEFI_BOOT_CONFIG size");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoConfig) == 0, "VideoConfig off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, MemoryMap) == 32, "MemoryMap off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, EntryAddress) == 72, "EntryAddress off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, RsdpAddress) == 80, "RsdpAddress off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, SystemTable) == 88, "SystemTable off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, XhciBaseAddress) == 96, "XhciBase off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoModeCount) == 104, "VideoModeCount off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, VideoModes) == 112, "VideoModes off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, GopProtocol) == 624, "GopProtocol off");
+_Static_assert(__builtin_offsetof(UEFI_BOOT_CONFIG, OsIdSeen) == 632, "OsIdSeen off");
 #endif
-#ifndef BLOCKS_OFFSETOF
-#define BLOCKS_OFFSETOF(Type, Member) ((UINTN)&(((Type *)0)->Member))
-#endif
-
-BLOCKS_STATIC_ASSERT(sizeof(UEFI_VIDEO_CONFIG) == 32, "UEFI_VIDEO_CONFIG size");
-BLOCKS_STATIC_ASSERT(sizeof(UEFI_MEMORY_MAP) == 40, "UEFI_MEMORY_MAP size");
-BLOCKS_STATIC_ASSERT(sizeof(UEFI_VIDEO_MODE) == 16, "UEFI_VIDEO_MODE size");
-BLOCKS_STATIC_ASSERT(sizeof(UEFI_BOOT_CONFIG) == 656, "UEFI_BOOT_CONFIG size");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, VideoConfig) == 0, "VideoConfig off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, MemoryMap) == 32, "MemoryMap off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, EntryAddress) == 72, "EntryAddress off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, RsdpAddress) == 80, "RsdpAddress off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, SystemTable) == 88, "SystemTable off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, XhciBaseAddress) == 96, "XhciBase off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, VideoModeCount) == 104, "VideoModeCount off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, VideoModes) == 112, "VideoModes off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, GopProtocol) == 624, "GopProtocol off");
-BLOCKS_STATIC_ASSERT(BLOCKS_OFFSETOF(UEFI_BOOT_CONFIG, OsIdSeen) == 632, "OsIdSeen off");
 
 #endif

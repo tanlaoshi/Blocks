@@ -1,6 +1,7 @@
 /*
  * SmpBoot.c — MADT + AP 拉起 / CPU Id·ticks（PR-S3-smpboot-1）
  */
+#include "Compiler.h"
 #include "Acpi.h"
 #include "Hal.h"
 #include "Platform.h"
@@ -12,7 +13,7 @@
 UINT8 gApicIds[HAL_MAX_CPUS];
 int gCpuCount = 1;
 UINT8 gBspApicId;
-UINT8 gApStacks[HAL_MAX_CPUS][8192] __attribute__((aligned(16)));
+UINT8 gApStacks[HAL_MAX_CPUS][8192] BLOCKS_ALIGNED(16);
 volatile UINT32 gApHelloCount;
 volatile UINT64 gCpuTicks[HAL_MAX_CPUS];
 

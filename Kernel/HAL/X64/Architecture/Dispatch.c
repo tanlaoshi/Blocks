@@ -55,9 +55,9 @@ static inline void Outb(UINT16 Port, UINT8 Value) {
     __asm__ volatile ("outb %0, %1" : : "a"(Value), "Nd"(Port));
 }
 
-/* 设置 IDT 门（Type: 0x8E=内核中断门, 0xEE=用户可调用中断门） */
-void ArchIdtSetGate(UINT32 Vec, void *Handler, UINT8 Type) {
-    UINT64 Addr = (UINT64)(UINTN)Handler;
+/* 设置 IDT 门（Type: 0x8E=内核中断门, 0xEE=用户可调用中断门；Handler 为入口 VA） */
+void ArchIdtSetGate(UINT32 Vec, UINTN Handler, UINT8 Type) {
+    UINT64 Addr = (UINT64)Handler;
     gIdt[Vec].OffLo = (UINT16)Addr;
     gIdt[Vec].Selector = 0x08;
     gIdt[Vec].Ist = 0;
@@ -67,7 +67,7 @@ void ArchIdtSetGate(UINT32 Vec, void *Handler, UINT8 Type) {
     gIdt[Vec].Zero = 0;
 }
 
-static void IdtSet(UINT32 Vec, void *Handler) {
+static void IdtSet(UINT32 Vec, UINTN Handler) {
     ArchIdtSetGate(Vec, Handler, 0x8E);
 }
 
@@ -82,19 +82,19 @@ void ArchIdtLidt(void) {
 void ArchIdtLoad(void) {
     UINT32 i;
     for (i = 0; i < 32; i++) {
-        IdtSet(i, (void *)IsrException[i]);
+        IdtSet(i, (UINTN)IsrException[i]);
     }
     for (i = 32; i < 48; i++) {
-        IdtSet(i, (void *)IsrPic[i - 32]);
+        IdtSet(i, (UINTN)IsrPic[i - 32]);
     }
     for (i = 48; i < 256; i++) {
-        IdtSet(i, (void *)Isr255);
+        IdtSet(i, (UINTN)Isr255);
     }
-    IdtSet(VEC_XHCI, (void *)Isr64);
-    IdtSet(VEC_TIMER, (void *)Isr65);
-    IdtSet(VEC_E1000, (void *)Isr66);
-    IdtSet(VEC_COM1, (void *)Isr67);
-    IdtSet(255, (void *)Isr255);
+    IdtSet(VEC_XHCI, (UINTN)Isr64);
+    IdtSet(VEC_TIMER, (UINTN)Isr65);
+    IdtSet(VEC_E1000, (UINTN)Isr66);
+    IdtSet(VEC_COM1, (UINTN)Isr67);
+    IdtSet(255, (UINTN)Isr255);
     ArchIdtLidt();
 }
 

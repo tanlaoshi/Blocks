@@ -165,8 +165,8 @@ endif
 XHCI_DIAG_VERBOSE ?= 0
 DEMO_DRIVER ?= 1
 KERNEL_TASK_DEMO ?= 0
-# c99-1：自有树锁定 ISO C99（非 gnu99）。ThirdParty/lwIP/FT 见下方去标或改回宽松 -std。
-CFLAGS_BASE = -std=c99 -ffreestanding -nostdlib -O2 -Wall -Wextra \
+# c99-1/5：自有树 ISO C99 + -pedantic。ThirdParty/lwIP/FT 见下方去标或改回宽松 -std。
+CFLAGS_BASE = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra \
               -fno-stack-protector -fno-builtin -fno-pie -fno-pic \
               -DKERNEL_DEBUG=$(DEBUG) -DBRINGUP=$(BRINGUP) \
               -DKERNEL_TASK_DEMO=$(KERNEL_TASK_DEMO) \
@@ -245,7 +245,7 @@ FREETYPE_ROOT = ThirdParty/freetype
 FREETYPE_HAVE := $(wildcard $(FREETYPE_ROOT)/src/base/ftbase.c)
 ifeq ($(ARCH),x86_64)
 ifneq ($(FREETYPE_HAVE),)
-# FreeType 上游：不跟自有树 C99 锁（末尾 -std 覆盖 CFLAGS_BASE）
+# FreeType 上游：不跟自有树 C99/pedantic 锁（不吃 CFLAGS_BASE）
 CFLAGS_FT = $(CFLAGS_FPU) -std=gnu11 -DFT2_BUILD_LIBRARY -DFONTS_HAVE_FREETYPE \
             -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare \
             -Wno-implicit-fallthrough -Wno-maybe-uninitialized
@@ -531,7 +531,7 @@ USER_LIB_BLOCKS_OBJS = User/crt/string.o User/crt/printf.o User/crt/malloc.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
-USER_CFLAGS = -std=c99 -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
+USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone -IUser/include -IInclude -IInclude/Abi
 USER_ASFLAGS = -IUser/include -IInclude -IInclude/Abi
 USER_CRT_OBJS = User/crt/crt0.o User/crt/syscall.o $(USER_LIB_BLOCKS_OBJS)
@@ -569,7 +569,7 @@ USER_CRT0_SRC = User/crt/crt0_riscv.S
 USER_SYSCALL_SRC = User/crt/syscall_riscv.S
 USER_LDFLAGS = -m elf64lriscv -z noexecstack
 endif
-USER_CFLAGS = -std=c99 -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
+USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic $(ARCH_CFLAGS) -IUser/include -IInclude -IInclude/Abi
 ifeq ($(ARCH),arm64)
 # pthread __sync_*：内联原子，避免裸链依赖 __aarch64_swp4_sync（libgcc）
@@ -843,9 +843,9 @@ $(HALDIR)/LwIp/%.o: HAL/$(HAL_ARCH)/LwIp/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(LWIP),1)
-# lwIP 上游：不跟自有树 C99 锁
+# lwIP 上游：不跟自有树 C99/pedantic 锁
 $(BUILDDIR)/ThirdParty/lwip/src/%.o: $(LWIPDIR)/%.c | $(BUILDDIR)
-	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -std=gnu11 -c $< -o $@
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -std=gnu11 -Wno-pedantic -c $< -o $@
 endif
 
 $(HALDIR)/%.o: HAL/$(HAL_ARCH)/%.S | $(HALDIR)

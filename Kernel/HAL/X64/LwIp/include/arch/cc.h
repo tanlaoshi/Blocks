@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* 类型只在本口定义；禁 arch.h 再 typedef（否则 -pedantic 告 redefinition） */
+#define LWIP_NO_STDINT_H 1
+
 typedef uint8_t   u8_t;
 typedef int8_t    s8_t;
 typedef uint16_t  u16_t;

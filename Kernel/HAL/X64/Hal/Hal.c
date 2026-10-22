@@ -118,11 +118,11 @@ void HalCpuRelax(void) {
 }
 
 void HalIrqVectorSet(UINT32 Vector, void *Handler, UINT8 Type) {
-    ArchIdtSetGate(Vector, Handler, Type);
+    ArchIdtSetGate(Vector, (UINTN)Handler, Type);
 }
 
 void HalIrqRegister(UINT32 Vector, void (*Handler)(void)) {
-    ArchIdtSetGate(Vector, Handler, 0x8E);
+    ArchIdtSetGate(Vector, (UINTN)Handler, 0x8E);
 }
 
 void HalIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
@@ -130,7 +130,7 @@ void HalIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
 }
 
 void HalIrqUnregister(UINT32 Vector) {
-    ArchIdtSetGate(Vector, (void *)0, 0);
+    ArchIdtSetGate(Vector, 0, 0);
     (void)Vector;
 }
 
@@ -180,7 +180,7 @@ void HalSyscallInitialize(void) {
     extern void Isr128(void);
 
     /* legacy：IDT 0x80，DPL=3（不进 Common） */
-    ArchIdtSetGate(VEC_SYSCALL, (void *)Isr128, 0xEE);
+    ArchIdtSetGate(VEC_SYSCALL, (UINTN)Isr128, 0xEE);
     DebugWrite("syscall: vector 0x80 (DPL=3) ready\n");
     /* 快速路径 MSR（BSP）；AP 在 ArchApInit 中各自初始化 */
     ArchSyscallMsrInit(0);

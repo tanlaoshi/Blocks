@@ -11,6 +11,7 @@
 #include "NetConfig.h"
 #include "Private.h"
 #include "Scheduler.h"
+#include "Atomic.h"
 
 #ifdef LWIP_ENABLE
 
@@ -40,13 +41,13 @@ u32_t sys_now(void) {
 }
 
 void LwIpLock(void) {
-    while (__sync_lock_test_and_set(&gLwIpSoft, 1u)) {
+    while (BLOCKS_ATOMIC_TAS(&gLwIpSoft, 1u)) {
         SchedulerIoBreath();
     }
 }
 
 void LwIpUnlock(void) {
-    __sync_lock_release(&gLwIpSoft);
+    BLOCKS_ATOMIC_RELEASE(&gLwIpSoft);
 }
 
 int LwIpInitialize(void) {
@@ -75,11 +76,11 @@ void LwIpPoll(void) {
     if (!gLwIpReady) {
         return;
     }
-    if (__sync_lock_test_and_set(&gLwIpSoft, 1u)) {
+    if (BLOCKS_ATOMIC_TAS(&gLwIpSoft, 1u)) {
         return;
     }
     sys_check_timeouts();
-    __sync_lock_release(&gLwIpSoft);
+    BLOCKS_ATOMIC_RELEASE(&gLwIpSoft);
 }
 
 /*
@@ -95,13 +96,13 @@ void LwIpService(void) {
         DriverNetPoll();
         return;
     }
-    if (__sync_lock_test_and_set(&gLwIpSoft, 1u)) {
+    if (BLOCKS_ATOMIC_TAS(&gLwIpSoft, 1u)) {
         SchedulerIoBreath();
         return;
     }
     DriverNetPoll();
     sys_check_timeouts();
-    __sync_lock_release(&gLwIpSoft);
+    BLOCKS_ATOMIC_RELEASE(&gLwIpSoft);
 }
 
 int LwIpActive(void) {

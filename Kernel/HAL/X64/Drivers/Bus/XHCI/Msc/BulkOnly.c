@@ -3,6 +3,7 @@
  * MSC 全局仍定义在 Xhci.c（BSS 顺序影响 HID DMA 环；勿迁出）。
  */
 #include "Compiler.h"
+#include "Atomic.h"
 #include "XHCI/Private.h"
 #include "UsbHostController.h"
 #include "Msc/Private.h"
@@ -38,7 +39,7 @@ static int Bot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
      * 勿用 SpinLock：持锁跨 WaitBulk 可达数百 ms（会长期 cli）。
      */
     if (!gMscInSense) {
-        while (__sync_lock_test_and_set(&gMscBotBusy, 1u)) {
+        while (BLOCKS_ATOMIC_TAS(&gMscBotBusy, 1u)) {
             HalCpuRelax();
         }
         Locked = 1;
@@ -95,7 +96,7 @@ static int Bot(UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen, int DataIn,
     Rc = 0;
 Out:
     if (Locked) {
-        __sync_lock_release(&gMscBotBusy);
+        BLOCKS_ATOMIC_RELEASE(&gMscBotBusy);
     }
     return Rc;
 }

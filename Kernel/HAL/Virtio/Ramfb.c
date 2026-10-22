@@ -10,6 +10,7 @@
 #include "HalSerial.h"
 #include "SerialLog.h"
 #include "Compiler.h"
+#include "Atomic.h"
 
 #define FW_CFG_SIGNATURE 0x0000u
 #define FW_CFG_FILE_DIR  0x0019u
@@ -117,18 +118,18 @@ static int FwCfgDmaWrite(UINT64 Base, UINT16 Sel, const void *Buf, UINT32 Len) {
               ((UINT32)Sel << 16) | FW_CFG_DMA_CTL_SELECT | FW_CFG_DMA_CTL_WRITE);
     StoreBe32(&Access.Length, Len);
     StoreBe64(&Access.Address, (UINT64)(UINTN)Buf);
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
 
     AccessPhys = (UINT64)(UINTN)&Access;
     Hi = (UINT32)(AccessPhys >> 32);
     Lo = (UINT32)AccessPhys;
     /* LE 总线视角写入 BE 寄存器值 */
     *(volatile UINT32 *)(UINTN)(Base + 0x10) = Bswap32(Hi);
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
     *(volatile UINT32 *)(UINTN)(Base + 0x14) = Bswap32(Lo);
 
     for (Spins = 0; Spins < 1000000u; Spins++) {
-        __sync_synchronize();
+        BLOCKS_ATOMIC_FENCE();
         Ctrl = ReadBe32(&Access.Control);
         if (Ctrl == 0) {
             return 0;

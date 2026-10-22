@@ -16,17 +16,18 @@
 #include "Hal.h"
 #include "Theme.h"
 #include "Debug.h"
+#include "Atomic.h"
 
 /* 一帧只许一个核改后缓冲并 Present；另一核见忙则排空鼠标 */
 static volatile UINT32 gDragFrame;
 static UINT32 gDragFrames;
 
 int GuiDragFrameTry(void) {
-    return __sync_lock_test_and_set(&gDragFrame, 1u) == 0;
+    return BLOCKS_ATOMIC_TAS(&gDragFrame, 1u) == 0;
 }
 
 void GuiDragFrameLeave(void) {
-    __sync_lock_release(&gDragFrame);
+    BLOCKS_ATOMIC_RELEASE(&gDragFrame);
 }
 
 int GuiPresentBlocked(void) {

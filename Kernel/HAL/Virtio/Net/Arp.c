@@ -12,6 +12,7 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "SerialLog.h"
+#include "Atomic.h"
 #ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
@@ -89,7 +90,7 @@ int NetSendFrame(const UINT8 *Frame, UINTN FrameLen) {
     gTx.Desc[1].Next = 0;
     A = gTx.NextAvail;
     gTx.AvailRing[A % gTx.QueueSize] = 0;
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
     *gTx.AvailIdx = (UINT16)(A + 1);
     gTx.NextAvail = (UINT16)(A + 1);
     gTxBusy = 1;

@@ -15,6 +15,7 @@
  */
 #include "SchedulerOps.h"
 #include "SchedulerPrivate.h"
+#include "Atomic.h"
 
 static volatile int gPriorityHome;
 
@@ -67,7 +68,7 @@ static UINT32 PriorityPickHome(const TASK *T)
     if (T && T->Affinity >= 0 && T->Affinity < Cpus) {
         return (UINT32)T->Affinity;
     }
-    Rr = __sync_fetch_and_add(&gPriorityHome, 1);
+    Rr = BLOCKS_ATOMIC_FETCH_ADD(&gPriorityHome, 1);
     if (Rr < 0) {
         Rr = -Rr;
     }

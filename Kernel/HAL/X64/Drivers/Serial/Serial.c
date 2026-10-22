@@ -12,6 +12,7 @@
 #include "HalIrq.h"
 #include "IoApic.h"
 #include "SerialConfig.h"
+#include "Atomic.h"
 
 #define COM1 0x3F8
 
@@ -28,11 +29,11 @@ static volatile UINT32 gRxTail; /* Shell consumer */
 static volatile INT32 gRxLock;  /* 仅 poll 路径；IRQ 开后不用 */
 
 static int SerialRxTryLock(void) {
-    return __sync_lock_test_and_set(&gRxLock, 1) == 0;
+    return BLOCKS_ATOMIC_TAS(&gRxLock, 1) == 0;
 }
 
 static void SerialRxUnlock(void) {
-    __sync_lock_release(&gRxLock);
+    BLOCKS_ATOMIC_RELEASE(&gRxLock);
 }
 
 static void SerialRxPush(char C) {
@@ -44,7 +45,7 @@ static void SerialRxPush(char C) {
         gRxTail = (gRxTail + 1u) % SERIAL_RX_RING;
     }
     gRxRing[Head] = C;
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
     gRxHead = Next;
 }
 
@@ -222,7 +223,7 @@ char SerialReadChar(void) {
     }
     Tail = gRxTail;
     C = gRxRing[Tail];
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
     gRxTail = (Tail + 1u) % SERIAL_RX_RING;
     return C;
 }
@@ -231,7 +232,7 @@ void SerialClaimException(void) {
     INT32 Cpu = (INT32)HalCpuGetId();
     INT32 Expected = -1;
 
-    if (__sync_bool_compare_and_swap(&gSerialExcOwner, Expected, Cpu)) {
+    if (BLOCKS_ATOMIC_CAS(&gSerialExcOwner, Expected, Cpu)) {
         return;
     }
     if (gSerialExcOwner == Cpu) {

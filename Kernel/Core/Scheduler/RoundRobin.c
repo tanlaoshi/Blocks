@@ -3,6 +3,7 @@
  */
 #include "SchedulerOps.h"
 #include "SchedulerPrivate.h"
+#include "Atomic.h"
 
 static volatile int gRoundRobinHome;
 
@@ -52,7 +53,7 @@ static UINT32 RoundRobinPickHome(const TASK *T)
     if (T && T->Affinity >= 0 && T->Affinity < Cpus) {
         return (UINT32)T->Affinity;
     }
-    Rr = __sync_fetch_and_add(&gRoundRobinHome, 1);
+    Rr = BLOCKS_ATOMIC_FETCH_ADD(&gRoundRobinHome, 1);
     if (Rr < 0) {
         Rr = -Rr;
     }

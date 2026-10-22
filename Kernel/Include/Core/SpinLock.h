@@ -10,6 +10,7 @@
 
 #include "BootTypes.h"
 #include "Hal.h"
+#include "Atomic.h"
 
 typedef struct {
     volatile UINT32 Locked;
@@ -30,7 +31,7 @@ static inline void SpinLockAcquire(SPIN_LOCK *Lock) {
         return;
     }
     Flags = HalIrqSave();
-    while (__sync_lock_test_and_set(&Lock->Locked, 1u)) {
+    while (BLOCKS_ATOMIC_TAS(&Lock->Locked, 1u)) {
         HalIrqRestore(Flags);
         HalCpuRelax();
         Flags = HalIrqSave();
@@ -45,7 +46,7 @@ static inline void SpinLockRelease(SPIN_LOCK *Lock) {
         return;
     }
     Flags = Lock->IrqFlags;
-    __sync_lock_release(&Lock->Locked);
+    BLOCKS_ATOMIC_RELEASE(&Lock->Locked);
     HalIrqRestore(Flags);
 }
 

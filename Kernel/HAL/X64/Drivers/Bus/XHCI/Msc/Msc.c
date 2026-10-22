@@ -8,6 +8,7 @@
 #include "XHCI/Private.h"
 #include "DriverBoot.h"
 #include "Msc/UsbMscHost.h"
+#include "Atomic.h"
 
 /*
  * PR-H-msc-2/4：Bulk 环 Init；claim 后 Ready=1（仍无 SCSI）。
@@ -212,11 +213,11 @@ static int Present(void) {
          * BOT 进行中勿 HubGetPortStatus：与 Bulk 抢事件环/EP0 → STALL/Babble。
          * 忙则假定仍在位（拔出下个空闲 tick 再确认）。
          */
-        if (__sync_lock_test_and_set(&gMscBotBusy, 1u) != 0) {
+        if (BLOCKS_ATOMIC_TAS(&gMscBotBusy, 1u) != 0) {
             return 1;
         }
         if (HubGetPortStatus(gMscTtPort, &St) < 0) {
-            __sync_lock_release(&gMscBotBusy);
+            BLOCKS_ATOMIC_RELEASE(&gMscBotBusy);
             /*
              * EP0 失败：瞬时 STALL 常见 → 根口仍 CCS 则假定在位。
              * 父 hub 整根已拔：根口 CCS=0 → Present=0（否则 claim 成功清
@@ -230,7 +231,7 @@ static int Present(void) {
             }
             return 1;
         }
-        __sync_lock_release(&gMscBotBusy);
+        BLOCKS_ATOMIC_RELEASE(&gMscBotBusy);
         return (St & HUB_PORT_CONNECTION) ? 1 : 0;
     }
     if (gMscPort == 0 || gMscPort > gMaxPorts) {

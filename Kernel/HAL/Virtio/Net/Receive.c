@@ -11,6 +11,7 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "SerialLog.h"
+#include "Atomic.h"
 #ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
@@ -24,7 +25,7 @@ void RxRefillOne(UINT16 DescId, UINT8 *Buf) {
     gRx.Desc[DescId].Next = 0;
     A = gRx.NextAvail;
     gRx.AvailRing[A % gRx.QueueSize] = DescId;
-    __sync_synchronize();
+    BLOCKS_ATOMIC_FENCE();
     *gRx.AvailIdx = (UINT16)(A + 1);
     gRx.NextAvail = (UINT16)(A + 1);
 }

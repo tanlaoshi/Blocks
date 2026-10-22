@@ -6,6 +6,7 @@
 #include "Hal.h"
 #include "SpinLock.h"
 #include "SerialLog.h"
+#include "Atomic.h"
 
 static SPIN_LOCK gRunQueueLock[HAL_MAX_CPUS];
 static volatile UINT64 gStealCount;
@@ -246,7 +247,7 @@ TASK *PickNext(UINT32 Cpu) {
             continue;
         }
         if (TaskFitsCpu(T, Cpu)) {
-            __sync_fetch_and_add(&gStealCount, 1);
+            BLOCKS_ATOMIC_FETCH_ADD(&gStealCount, 1);
             return T;
         }
         Home = SchedulerOpsGet()->PickHome(T);

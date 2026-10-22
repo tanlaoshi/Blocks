@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <Blocks/thread.h>
+#include "Atomic.h"
 
 int pthread_create(pthread_t *Thread, const pthread_attr_t *Attr,
                    void *(*Start)(void *), void *Arg) {
@@ -71,7 +72,7 @@ int pthread_mutex_trylock(pthread_mutex_t *M) {
         errno = EINVAL;
         return EINVAL;
     }
-    if (__sync_lock_test_and_set(&M->Lock, 1) != 0) {
+    if (BLOCKS_ATOMIC_TAS(&M->Lock, 1) != 0) {
         errno = EAGAIN;
         return EAGAIN;
     }
@@ -83,7 +84,7 @@ int pthread_mutex_lock(pthread_mutex_t *M) {
         errno = EINVAL;
         return EINVAL;
     }
-    while (__sync_lock_test_and_set(&M->Lock, 1) != 0) {
+    while (BLOCKS_ATOMIC_TAS(&M->Lock, 1) != 0) {
         (void)sched_yield();
     }
     return 0;
@@ -94,6 +95,6 @@ int pthread_mutex_unlock(pthread_mutex_t *M) {
         errno = EINVAL;
         return EINVAL;
     }
-    __sync_lock_release(&M->Lock);
+    BLOCKS_ATOMIC_RELEASE(&M->Lock);
     return 0;
 }

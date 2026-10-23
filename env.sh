@@ -14,6 +14,7 @@
 #   run-virt-arm --headless         # Arm64 virt（须先 build arm64）
 #   run-virt-riscv
 #   boards [arm64|riscv]            # 列出板包
+#   prepare-pi-sd [OUT] [--dtb=…]   # Pi3BPlus SD 摆盘目录（不插卡）
 #
 # 路径：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD
 # 实现仍在 Kernel/OpenBox/Scripts/；勿再写 cd Kernel && ./build.sh …
@@ -111,9 +112,14 @@ kernel-bin() {
                 ;;
         esac
     done
-    (cd "$KERNEL" && make ARCH="$Arch" BOARD="$Board" kernel-bin)
+    (cd "$KERNEL" && make ARCH="$Arch" BOARD="$Board" LWIP=0 kernel-bin)
+}
+
+# Pi3BPlus SD 摆盘目录（不插卡）。须先 build arm64 BOARD=Raspberry/Pi3BPlus
+prepare-pi-sd() {
+    bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/prepare-sd.sh" "$@"
 }
 
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
-echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin"
+echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd"
 unset _BlocksEnvDir _BlocksRootCand

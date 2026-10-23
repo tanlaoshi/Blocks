@@ -31,6 +31,11 @@ kernel-bin arm64 BOARD=Raspberry/Pi3BPlus
 # 公司验收公共层：切回 virt 再冒烟
 build arm64 BOARD=virt
 run-virt-arm --headless
+
+# SD 摆盘目录（不插卡；rpi-2）
+build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
+prepare-pi-sd                          # → Build/Pi3BPlus-sd/
+# prepare-pi-sd /tmp/out --dtb=/path/to/bcm2837-rpi-3-b-plus.dtb
 ```
 
 默认不 source 时仍可 `cd Kernel && ./build.sh …`；日常以短名为准。
@@ -39,18 +44,17 @@ run-virt-arm --headless
 
 ## 加载约定（U-Boot · 概念）
 
-变量名以板子 `printenv` 为准（常见 `kernel_addr_r` / `fdt_addr_r`）：
+变量名以板子 `printenv` 为准。摆盘产物见 `prepare-pi-sd` → `README-SD.txt`。推荐 **bootelf**（与 Duo S 同形；本柱不强制 Linux `Image`/`booti`）：
 
 ```text
-load mmc 0:1 ${kernel_addr_r} Image
+load mmc 0:1 ${kernel_addr_r} Kernel.elf
 load mmc 0:1 ${fdt_addr_r} bcm2837-rpi-3-b-plus.dtb
-booti ${kernel_addr_r} - ${fdt_addr_r}
+fdt addr ${fdt_addr_r}
+bootelf -p ${kernel_addr_r}
 ```
 
 入口（AArch64）：`x0 = DTB 物理地址`，`x1～x3 = 0`。  
 Startup 保存 DTB → 填 `BOOT_INFO` → `KernelMain`。**Common 不解析 DTB。**
-
-SD 摆盘脚本见路线图 **rpi-2**（尚未交）。
 
 ---
 
@@ -62,13 +66,15 @@ SD 摆盘脚本见路线图 **rpi-2**（尚未交）。
 | `BoardConfig.h` | UART / 加载提示 / 能力勾选 |
 | `Board.h` / `Board.c` | 板名骨架；Startup 填充后置 |
 | `NOTES.md` | 串口/固件踩坑备忘 |
+| `scripts/prepare-sd.sh` | SD 摆盘目录（短名 `prepare-pi-sd`） |
 
 ---
 
 ## 验收（本板）
 
-- [ ] `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` 过（公司即可）  
-- [ ] `build arm64 BOARD=virt` + `run-virt-arm --headless` 不回退  
+- [x] `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` 过（公司即可）  
+- [x] `prepare-pi-sd` 产出含 `Kernel.elf` + `README-SD.txt`（公司即可）  
+- [ ] `build arm64 BOARD=virt` + `run-virt-arm --headless` 不回退（有 QEMU 的机器）  
 - [ ] 厂商/社区 U-Boot 不改源码即可加载（回家 · rpi-3）  
 - [ ] 串口出现约定横幅（回家 · rpi-3）  
 - [ ] `BOOT_INFO.Regions` 与 DRAM 大致一致（回家 · rpi-4）  
@@ -81,7 +87,7 @@ SD 摆盘脚本见路线图 **rpi-2**（尚未交）。
 
 ## 已知缺口
 
-- SD 摆盘脚本未交（rpi-2）  
+- DTB 须自备（`--dtb=`）；脚本不打包官方固件  
 - 真机串口 / DTB memory 未手测（rpi-3 / rpi-4）  
 - HDMI FB、USB 键鼠、网：后置，不进本柱刀表  
 

@@ -9,9 +9,9 @@
  *       Remove、PickNext 用框架的，不要在这张表里换成自己的。
  *       Enqueue 被叫时这一核的队列锁已经拿着。
  *
- * 想照着做：Documents/开发/如何写一个调度器.md
+ * 想照着做：Documents/手册/课堂作业/如何写一个调度器.md
  *           编进内核 make SCHEDULER=priority
- *           断言 ./Tools/Scripts/runtests.sh scheduler
+ *           断言 make runtests / make SCHEDULER=priority runtests
  */
 #include "SchedulerOps.h"
 #include "SchedulerPrivate.h"

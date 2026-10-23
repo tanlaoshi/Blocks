@@ -3,7 +3,8 @@
  *
  * 不碰 Block；挂载后在内存里读写若干文件。默认不链进内核。
  * 编进内核：make FS=ram（提供 FatFsOps 别名，挂载路径不用改）。
- * Host：./Scripts/runtests.sh fs
+ * Host：make runtests-fs / make FS=ram runtests-fs
+ * 说明：Documents/手册/课堂作业/如何写一个文件系统.md
  */
 #include "VirtualFileSystem.h"
 #include "CString.h"

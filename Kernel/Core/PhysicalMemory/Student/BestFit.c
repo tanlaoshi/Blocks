@@ -4,7 +4,8 @@
  * 改 SegmentFindFreeRange：在能放下的空洞里选最短的。
  * Free / Retain / Release 与默认 bitmap 相同。不要加锁，不要碰 gPhysLock。
  * 编进内核：make MEMORY=bestfit
- * 只跑断言：./Scripts/runtests.sh memory
+ * 只跑断言：make runtests-memory
+ * 说明：Documents/手册/课堂作业/如何写一个分配器.md
  */
 #include "MemoryOps.h"
 #include "PhysicalMemoryPrivate.h"

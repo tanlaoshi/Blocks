@@ -160,7 +160,7 @@ CopyOk 稳定后再接通翻页。失败则仍脏矩形 SRC_COPY。
 - `IgpuPresent.c` / `IgpuPresentPrep.c` / `IgpuScanout.c` / `VideoPresentRect.c`
 - [`../技术手册.md`](../../项目/技术手册.md) §I
 - [`../../CodeA-HAL/X64/NOTES-UEFI-PC.md`](../../../Kernel/CodeA-HAL/X64/NOTES-UEFI-PC.md)
-- [`开机流程与加速.md`](../../手册/仓库与启动/开机流程与加速.md)
+- [`Blocks开机流程.md`](../../手册/仓库与启动/Blocks开机流程.md)
 
 ---
 

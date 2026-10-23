@@ -6,11 +6,12 @@ Blocks 单仓里，**日常 QEMU** 优先 `Runtime/run.sh` / `sync.sh` / `smoke-
 ## 布局
 
 ```text
+Blocks/env.sh         # 【仓库根】source 后短名：build / sync / run / smoke …
 OpenBox/
   Config.txt          # DEFAULT_TARGET=blocks；本机覆盖见 Scripts/Config.local.txt
   README.md           # 本文件
   Scripts/            # 入口按功能分子目录（无旧路径兼容壳）
-    env.sh            # source 后短名：build / sync / run / smoke …
+    env.sh            # 薄转调 → 根 env.sh（兼容旧路径）
     build.sh          # OpenBox 编 Kernel/Boot（少用；日常 Kernel/build.sh）
     lib/              # 真实现（扁平，被入口 exec）
     sync/ run/ smoke/ test/ usb/ measure/
@@ -21,7 +22,7 @@ OpenBox/
 
 | 类 | 目录 | 常用 | 与 Runtime 关系 |
 | --- | --- | --- | --- |
-| 环境 | `Scripts/env.sh` | `source …/env.sh` | — |
+| 环境 | 仓库根 `env.sh` | `source ~/Blocks/env.sh` | — |
 | 同步/摆盘 | `Scripts/sync/` | **sync-nuc**（本机 BLOCKS）、**sync-usb**（U 盘）、prepare-rootfs | Runtime/sync.sh 只管编产物→双盘布局 |
 | 运行 | `Scripts/run/` | run-split、run-virt-arm/riscv | **X64 日常用 Runtime/run.sh** |
 | 冒烟 | `Scripts/smoke/` | smoke-virt / msc / install | **X64 日常用 Runtime/smoke-boot.sh** |
@@ -42,8 +43,9 @@ OpenBox/
 ## 真机一口令
 
 ```bash
-source Kernel/OpenBox/Scripts/env.sh
-build                          # → Kernel/build.sh
+source ~/Blocks/env.sh         # 或在仓库根：source ./env.sh
+build                          # x64 Kernel
+build arm64 BOARD=virt         # Arm 课堂靶
+run-virt-arm --headless
 sync nuc                       # → Scripts/sync/sync-nuc.sh
-# 或：./Kernel/OpenBox/Scripts/sync/sync-nuc.sh
 ```

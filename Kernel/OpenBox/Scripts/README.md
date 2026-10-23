@@ -11,4 +11,4 @@
 | `usb/` | `make-usb-stick.sh` |
 | `measure/` | `measure-boot.sh` |
 
-根上保留：`env.sh` `build.sh` `bootstrap.sh` `desktop.sh` `store.sh` `pack.sh` `prepare-fs.sh` `check-smells.sh`。
+短名环境在**仓库根** `Blocks/env.sh`（`source ~/Blocks/env.sh`）。本目录根上保留：`env.sh`（转调根）、`build.sh` `bootstrap.sh` `desktop.sh` `store.sh` `pack.sh` `prepare-fs.sh` `check-smells.sh`。

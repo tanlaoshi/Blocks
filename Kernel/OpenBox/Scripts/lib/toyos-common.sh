@@ -85,7 +85,7 @@ toyos_load_config() {
 
 toyos_scripts_dir() {
     local Root="$1"
-    if [ -f "$Root/Kernel/OpenBox/Scripts/env.sh" ]; then
+    if [ -d "$Root/Kernel/OpenBox/Scripts/lib" ]; then
         printf '%s\n' "$Root/Kernel/OpenBox/Scripts"
     elif [ -f "$Root/Scripts/build.sh" ]; then
         printf '%s\n' "$Root/Scripts"

@@ -293,13 +293,16 @@ endif
 $(shell mkdir -p '$(BUILDDIR)' && echo '$(ARCH)' > '$(ARCH_STAMP)')
 
 # PR-B3：同 HALDIR 多板包共用；BOARD 与 .toy_board 不一致（或缺 stamp）时清 HAL，避免链错 UART/Config
+# 仅列出板包（make boards）不清理，避免 boards 默认 BOARD=virt 误删刚编的 Pi 产物
 ifneq ($(ARCH),x86_64)
+ifneq ($(filter boards,$(MAKECMDGOALS)),boards)
 BOARD_STAMP := $(HALDIR)/.toy_board
 ifneq ($(wildcard $(HALDIR)/Kernel.elf),)
 _STAMP_BOARD := $(shell cat $(BOARD_STAMP) 2>/dev/null)
 ifneq ($(_STAMP_BOARD),$(BOARD))
 $(info BOARD: stale build '$(_STAMP_BOARD)' → '$(BOARD)'; cleaning $(HALDIR))
 $(shell rm -rf '$(HALDIR)')
+endif
 endif
 endif
 endif
@@ -724,7 +727,9 @@ ifeq ($(ARCH),x86_64)
 	@echo "BOARD: (unused on x86_64; desktop PC is 1.3c / HAL/X64)"
 else
 	@echo "ARCH=$(ARCH) HAL_ARCH=$(HAL_ARCH) BOARD=$(BOARD) → $(BOARD_DIR)"
-	@ls -1 HAL/$(HAL_ARCH)/Board 2>/dev/null | sed 's/^/  /' || echo "  (none)"
+	@find HAL/$(HAL_ARCH)/Board -mindepth 2 -maxdepth 3 -name README.md 2>/dev/null \
+		| sed 's|^HAL/$(HAL_ARCH)/Board/||;s|/README.md$$||' | sort | sed 's/^/  /' \
+		|| echo "  (none)"
 endif
 
 $(BUILDDIR) $(HALDIR):

@@ -42,4 +42,4 @@ elif compgen -G "$ROOT/ToyKernel/Tools/xpack-*" > /dev/null || \
     echo "bootstrap: 已有 Tools/xpack-* 工具链树"
 fi
 
-echo "bootstrap: 完成。下一步: source \"$ROOT/Scripts/env.sh\" && build"
+echo "bootstrap: 完成。下一步: source \"$ROOT/env.sh\" && build"

@@ -41,9 +41,15 @@ export BUILDDIR
 #   ./build.sh riscv
 #   ./build.sh arm64 BRINGUP=1   # PR-A6：仅串口 hello
 #   ./build.sh arm64 BOARD=virt
+#   ./build.sh arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
 #   ./build.sh riscv BOARD=milk-v-duo-s
 #   ./build.sh arm64 LWIP=0      # 显式关（默认已自动关）
 #   ./build.sh V=1          # 打印每条 gcc/ld；默认只留警告、错误和结果
+#
+# 日常推荐（仓库根）：
+#   source ~/Blocks/env.sh
+#   build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
+#   run-virt-arm --headless
 
 # 仅打用户态 SDK（离树分发）；其余参数忽略
 if [ "${1:-}" = "sdk" ]; then

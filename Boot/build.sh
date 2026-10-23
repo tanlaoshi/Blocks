@@ -44,11 +44,25 @@ if [ ! -f "$KERN_CFG" ]; then
     echo "error: 缺少内核交接头 $KERN_CFG" >&2
     exit 1
 fi
-if ! cmp -s "$BOOT_CFG" "$KERN_CFG"; then
-    echo "error: UEFI_BOOT_CONFIG 双份不一致：" >&2
+# 布局必须一致；断言方言可不同（Boot=EDK2 _Static_assert，Kernel=BLOCKS_* 垫片，见 c99-dialect）。
+uefi_boot_config_norm() {
+    # 去断言方言与空行，只比结构体/宏布局
+    sed -E \
+        -e '/^#include "Compiler\.h"/d' \
+        -e '/_Static_assert/d' \
+        -e '/BLOCKS_STATIC_ASSERT/d' \
+        -e '/^#if defined\(__GNUC__\)$/,/^#endif$/d' \
+        -e '/与 Boot 副本布局钉死/d' \
+        -e 's/Boot 跟 EDK2：可用 _Static_assert \/ __builtin_offsetof；内核侧走 C99 垫片。/DIALECT/' \
+        -e 's/内核侧 C99 垫片；Boot 副本跟 EDK2（_Static_assert），不收进 c99-dialect。/DIALECT/' \
+        -e '/^[[:space:]]*$/d' \
+        "$1"
+}
+if ! diff -q <(uefi_boot_config_norm "$BOOT_CFG") <(uefi_boot_config_norm "$KERN_CFG") >/dev/null; then
+    echo "error: UEFI_BOOT_CONFIG 双份布局不一致（已忽略断言方言）：" >&2
     echo "  $BOOT_CFG" >&2
     echo "  $KERN_CFG" >&2
-    diff -u "$BOOT_CFG" "$KERN_CFG" >&2 || true
+    diff -u <(uefi_boot_config_norm "$BOOT_CFG") <(uefi_boot_config_norm "$KERN_CFG") >&2 || true
     exit 1
 fi
 

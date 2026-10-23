@@ -1,40 +1,29 @@
 # Blocks
 
-ToyOS 新工作树（单仓）。现网对照：`~/ToyOS`。
+单仓：Boot · Kernel · Runtime · **Manual** · Documents。
 
 ```text
 Blocks/
-  Boot/
-  Kernel/
-  Runtime/
-  Tools/
-  Documents/   ← 项目 / 规范 / 手册 / 过程 / 柱规格
+  Manual/      ← 读者手册（按身份：App / Driver / System / Contribute / Course）
+  Documents/   ← 日档路线图、过程归档、柱规格
+  Boot/  Kernel/  Runtime/  Tools/
+  env.sh
 ```
 
-- **文档地图**：[`Documents/README.md`](Documents/README.md)
-- **从 OVMF 逐段学懂**：[`原则与学习记录.md`](原则与学习记录.md)
-- **Boot 细则**：[`Boot/README.md`](Boot/README.md)
-- **换一台电脑**：[`同步.md`](同步.md)（拉分支 `working`，不要拉 `main`）
-- **GitHub**：`git@github.com:tanlaoshi/Blocks.git`
+| 你要… | 去哪 |
+| ------ | ---- |
+| **读手册 / 上手** | [`Manual/README.md`](Manual/README.md) · [`Manual/START.md`](Manual/START.md) |
+| 日档 ★ / 排期 | [`Documents/路线图1023.md`](Documents/路线图1023.md) |
+| 从 OVMF 逐段学 | [`原则与学习记录.md`](原则与学习记录.md) |
+| 换机 / 工具链 | [`Documents/同步.md`](Documents/同步.md) |
+| GitHub | `git@github.com:tanlaoshi/Blocks.git` |
 
 ## 怎么开始
 
-### Boot
-
 ```bash
-cd ~/Blocks/Boot && ./build.sh   # → Boot/Build/BOOTX64.EFI
+cd ~/Blocks && source ./env.sh
+build          # Kernel
+run            # QEMU → blocks>
 ```
 
-工具链见 `Tools/`（若有）。
-
-### Runtime（已迁自 ToyImage）
-
-```bash
-cd ~/Blocks/Runtime && ./run.sh --headless   # 需先编好 Boot + Kernel
-```
-
-### Kernel（已迁入 + ABI 640）
-
-```bash
-cd ~/Blocks/Kernel && ./build.sh   # → Build/CodeA-HAL/X64/Kernel.elf
-```
+细节见 [`Manual/START.md`](Manual/START.md)。

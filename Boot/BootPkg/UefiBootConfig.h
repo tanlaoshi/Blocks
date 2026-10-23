@@ -6,7 +6,7 @@
  *
  * 两边互不 #include。Boot 离开内核、内核离开 Boot，都要能单独编译。
  * 改一份必须改另一份，并让两边的布局断言仍然通过。
- * Boot 跟 EDK2：可用 _Static_assert / __builtin_offsetof；内核侧走 C99 垫片。
+ * 内核侧 C99 垫片；Boot 副本跟 EDK2（_Static_assert），不收进 c99-dialect。
  *
  * Boot 的 EDK2 编译已经定义 EFIAPI，整数类型来自 Uefi.h，不会走到 BootTypes.h。
  * 内核没有 EFIAPI，整数类型来自 BootTypes.h。

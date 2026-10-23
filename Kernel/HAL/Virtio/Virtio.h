@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
     UINT16 Flags;
     UINT16 Idx;
-    UINT16 Ring[0];
+    UINT16 Ring[]; /* C99 柔性数组成员；勿用 GNU Ring[0]（-Wpedantic） */
 } BLOCKS_PACKED VRING_AVAIL;
 
 typedef struct {
@@ -44,7 +44,7 @@ typedef struct {
 typedef struct {
     UINT16 Flags;
     UINT16 Idx;
-    VRING_USED_ELEM Ring[0];
+    VRING_USED_ELEM Ring[];
 } BLOCKS_PACKED VRING_USED;
 
 typedef struct {

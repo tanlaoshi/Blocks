@@ -1,14 +1,13 @@
 /*
  * _template/Template.c — 拷贝源（PR-D-tpl-1）
  *
- * 本文件在 HAL/X64/Drivers/_template/ 下，Makefile 只通配 Drivers/*.c，
- * **不会**编进 Kernel.elf。请复制到上一级再改名接入。
+ * 本文件在 HAL/X64/Drivers/_template/ 下，**不会**编进 Kernel.elf。
+ * 请复制到分层设备目录再改名接入（见同目录 README.md）。
  *
  * 复制后：
- *   1) cp Template.c ../MyDriver.c
- *  2) 改 Name / Template* / gTemplate* / TemplateDriverRegister
- *  3) HalDriverRegister() 加 MyDriverRegister();
- *  见同目录 README.md
+ *   1) cp Template.c ../Input/<MyDevice>/MyDriver.c（或 Block/Model/…）
+ *   2) 改 Name / Template* / gTemplate* / MyDriverRegister
+ *   3) DriverBoot.h 加序值 + DRIVER_BOOT(...)；必要时补 Makefile wildcard
  */
 #include "Driver.h"
 #include "DriverInput.h"

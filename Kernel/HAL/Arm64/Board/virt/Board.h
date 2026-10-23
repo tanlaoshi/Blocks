@@ -1,6 +1,6 @@
 /*
  * Board.h — QEMU aarch64 virt 板包门面（PR-B2）
- * B3 起可扩 BoardFillBootInfo / 兼容表；不进 Common。
+ * B3 起可扩 BoardFillBootHandoff / 兼容表；不进 Common。
  */
 #ifndef BOARD_H
 #define BOARD_H

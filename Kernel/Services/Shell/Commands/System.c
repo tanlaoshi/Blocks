@@ -4,7 +4,7 @@
  * exec/ps/kill/set priority 见 ShellCommandsSystemProc.c。
  */
 #include "ShellPrivate.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Console.h"
 #include "Device.h"
 #include "Driver.h"
@@ -12,7 +12,7 @@
 #include "Hal.h"
 
 static void CommandInfo(int Argc, char **Argv) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     (void)Argc;
     (void)Argv;
     if (!Info) {
@@ -29,7 +29,7 @@ static void CommandInfo(int Argc, char **Argv) {
 }
 
 static void CommandMemory(int Argc, char **Argv) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     UINT64 RegionBytes = 0;
     UINT32 i;
 

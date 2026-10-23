@@ -26,7 +26,7 @@ booti ${kernel_addr_r} - ${fdt_addr_r}
 ```
 
 入口寄存器（AArch64 常见）：`x0 = DTB 物理地址`，`x1～x3 = 0`。  
-Startup 必须保存 DTB，填 `BOOT_INFO` 后调 `KernelMain`。**Common 不解析 DTB。**
+Startup 必须保存 DTB，填 `BOOT_HANDOFF` 后调 `KernelMain`。**Common 不解析 DTB。**
 
 ---
 
@@ -45,7 +45,7 @@ Startup 必须保存 DTB，填 `BOOT_INFO` 后调 `KernelMain`。**Common 不解
 
 - [ ] 厂商 U-Boot 不改源码即可加载  
 - [ ] 串口出现 `ToyOS ready`（或下文写明的等价串）  
-- [ ] `BOOT_INFO.Regions` 与 DRAM 大致一致  
+- [ ] `BOOT_HANDOFF.Regions` 与 DRAM 大致一致  
 - [ ] `git diff`：**Common 无业务改动**（仅交本 Board 包 + 必要时薄 Startup）  
 - [ ] **未**在本板做 GUI / 桌面  
 

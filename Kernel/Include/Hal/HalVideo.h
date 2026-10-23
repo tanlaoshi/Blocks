@@ -4,7 +4,7 @@
 #ifndef HAL_VIDEO_H
 #define HAL_VIDEO_H
 
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 void HalVideoSet(const VIDEO_CONFIG *Config);
 /* PR-G9：分配并启用后缓冲；Present 提交脏区到 GOP */

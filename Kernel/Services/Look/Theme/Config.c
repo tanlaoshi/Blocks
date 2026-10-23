@@ -158,11 +158,11 @@ int ThemeLoad(void) {
     if (!HalCpuIsHypervisor() && !gScaleUserSet) {
         UINT32 PhysW = 0;
         UINT32 PhysH = 0;
-        const BOOT_INFO *Info;
+        const BOOT_HANDOFF *Info;
 
         HalVideoGetPhysicalSize(&PhysW, &PhysH);
         if (PhysW < 640u || PhysH < 480u) {
-            Info = BootInfoGet();
+            Info = BootHandoffGet();
             if (Info) {
                 PhysW = Info->HorizontalResolution;
                 PhysH = Info->VerticalResolution;

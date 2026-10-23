@@ -54,7 +54,7 @@ bootelf -p ${kernel_addr_r}
 ```
 
 入口（AArch64）：`x0 = DTB 物理地址`，`x1～x3 = 0`。  
-Startup 保存 DTB → 填 `BOOT_INFO` → `KernelMain`。**Common 不解析 DTB。**
+Startup 保存 DTB → 填 `BOOT_HANDOFF` → `KernelMain`。**Common 不解析 DTB。**
 
 ---
 
@@ -77,7 +77,7 @@ Startup 保存 DTB → 填 `BOOT_INFO` → `KernelMain`。**Common 不解析 DTB
 - [ ] `build arm64 BOARD=virt` + `run-virt-arm --headless` 不回退（有 QEMU 的机器）  
 - [ ] 厂商/社区 U-Boot 不改源码即可加载（回家 · rpi-3）  
 - [ ] 串口出现约定横幅（回家 · rpi-3）  
-- [ ] `BOOT_INFO.Regions` 与 DRAM 大致一致（回家 · rpi-4）  
+- [ ] `BOOT_HANDOFF.Regions` 与 DRAM 大致一致（回家 · rpi-4）  
 - [ ] `git diff`：**Common / Gui 无业务改动**  
 - [ ] **未**在本板做 GUI / 桌面（本柱）
 

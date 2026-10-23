@@ -30,8 +30,8 @@ cd ~/Blocks/Boot && ./build.sh
 3. 向固件告别（`ExitBootServices`）；
 4. 跳进内核，并递上一包材料 **`UEFI_BOOT_CONFIG`**。
 
-注意：X64 **不在 Boot 里**直接填好最终的 `BOOT_INFO`。  
-那包 `UEFI_BOOT_CONFIG` 会先到内核 HAL 的 **`KernelHandoff`**，转成 `BOOT_INFO`，再进三种架构共用的 `KernelMain`。
+注意：X64 **不在 Boot 里**直接填好最终的 `BOOT_HANDOFF`。  
+那包 `UEFI_BOOT_CONFIG` 会先到内核 HAL 的 **`KernelHandoff`**，转成 `BOOT_HANDOFF`，再进三种架构共用的 `KernelMain`。
 
 所以你会觉得 X64 的 Boot **文件特别多**——因为 PC 这条路本来就要自己当「加载器」。
 
@@ -84,7 +84,7 @@ cd ~/Blocks/Boot && ./build.sh
   → ExitBootServices（之后不能再随便问固件要服务了）
   → 调用内核入口（函数指针），参数是 &UEFI_BOOT_CONFIG
   → KernelHandoff(UEFI_BOOT_CONFIG*)
-       · 转成 BOOT_INFO
+       · 转成 BOOT_HANDOFF
        · 再调用 KernelMain
   → 之后是三种架构共用的操作系统代码
 ```
@@ -98,7 +98,7 @@ cd ~/Blocks/Boot && ./build.sh
 | 结构体 **`UEFI_BOOT_CONFIG`** | 作为函数参数传给 **`KernelHandoff`** | 内核 HAL（X64） |
 | 内核代码本身 | 已经按 ELF 装进内存；**`EntryAddress`** 是入口地址数字 | CPU 从该地址开始执行 |
 
-**`KernelHandoff`**：三架构角色名。X64 上由 HAL 实现，入参 `UEFI_BOOT_CONFIG*`；Arm/RiscV 在 `Kernel/Hal/<Arch>/`，入参为 DTB 等。都是填 `BOOT_INFO` 再进 `KernelMain`。
+**`KernelHandoff`**：三架构角色名。X64 上由 HAL 实现，入参 `UEFI_BOOT_CONFIG*`；Arm/RiscV 在 `Kernel/Hal/<Arch>/`，入参为 DTB 等。都是填 `BOOT_HANDOFF` 再进 `KernelMain`。
 
 ---
 
@@ -115,6 +115,6 @@ cd ~/Blocks/Boot && ./build.sh
 | 谁加载内核文件 | **Boot 自己** | 加载器已经放好了整颗 ELF |
 | 要不要和 UEFI 打交道 | **要** | 通常没有 |
 | Boot 编出什么 | 独立的 `.efi` | 几个 `.o`，链进内核 |
-| 第一次交出的清单 | `UEFI_BOOT_CONFIG` | 直接是 `BOOT_INFO` |
+| 第一次交出的清单 | `UEFI_BOOT_CONFIG` | 直接是 `BOOT_HANDOFF` |
 
-**汇合点不变**：大家都经 **`KernelHandoff`** 填好 `BOOT_INFO` 再进 `KernelMain`。X64 多的是前面的 EFI + `UEFI_BOOT_CONFIG`。
+**汇合点不变**：大家都经 **`KernelHandoff`** 填好 `BOOT_HANDOFF` 再进 `KernelMain`。X64 多的是前面的 EFI + `UEFI_BOOT_CONFIG`。

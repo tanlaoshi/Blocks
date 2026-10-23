@@ -19,7 +19,7 @@
 #include "Debug.h"
 #include "SerialLog.h"
 #include "VirtualMemory.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 /* ===== 全局（定义在 Theme.c） ===== */
 extern UINT32 gDesktopBg;

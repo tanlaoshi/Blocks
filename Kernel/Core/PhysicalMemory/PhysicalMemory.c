@@ -7,11 +7,11 @@
 #include "PhysicalMemory.h"
 #include "PhysicalMemoryPrivate.h"
 #include "MemoryOps.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Debug.h"
 
 int PhysicalMemoryInitialize(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     const MEMORY_OPS *Ops;
 
     if (Info == 0 || Info->RegionCount == 0) {

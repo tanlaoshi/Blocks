@@ -53,7 +53,7 @@ void DevicesUiPaint(void);
 
 /*
  * PR-DEV-ui-summary-data：系统摘要只读数据模型。
- * 填充走 Hal* / PhysicalMemory* / Block* / BootInfo / Device 公共 API；
+ * 填充走 Hal* / PhysicalMemory* / Block* / BootHandoff / Device 公共 API；
  * UI 不读 HAL 私有头。第 2 刀由 Paint 据本结构绘制 About 页。
  */
 typedef struct {

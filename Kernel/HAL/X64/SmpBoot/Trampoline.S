@@ -1,7 +1,7 @@
 /*
  * Trampoline.S — AP 实模式 → 长模式（链接地址 0x8000，由 BSP 拷贝）
  *
- * 启动参数在 0x7E00（见 SmpBoot.c SMP_BOOT_INFO）：
+ * 启动参数在 0x7E00（见 SmpBoot.c SMP_BOOT_HANDOFF）：
  *   +0  cr3
  *   +8  stack_top
  *   +16 ap_entry (64-bit)

@@ -18,7 +18,7 @@
 #include "HalConsole.h"
 #include "Debug.h"
 #include "Locale.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 /* ===== 类型（从 SettingsUi.c 搬入；布局不变） ===== */
 typedef enum {

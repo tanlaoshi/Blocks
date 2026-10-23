@@ -5,7 +5,7 @@
 #include "FileSystemPrivate.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 static void RenameEspIfLetterOnly(int i) {
     int NeedEspName = 0;
@@ -81,7 +81,7 @@ static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
 }
 
 void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     /*
      * U 盘起、启动盘 BLOCKS 尚未 MSC 进表：禁止选旁路盘上的 BLOCKS

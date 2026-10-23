@@ -7,7 +7,7 @@
 #include "Igpu.h"
 #include "Hal.h"
 #include "HalVideo.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
 #include "SerialLog.h"

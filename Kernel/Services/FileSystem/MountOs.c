@@ -12,7 +12,7 @@
  * Files：SecondaryReady=0 只展 OsDisk。钉死后热拔只 rebind 下标，勿改认旁路。
  */
 #include "FileSystemPrivate.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
@@ -60,7 +60,7 @@ static int VolIsEspName(const FS_VOLUME *V) {
 }
 
 static int VolOnBootDisk(const FS_VOLUME *V) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     if (!V || !V->DiskGuidOk || !Info || !Info->BootDiskGuidOk) {
         return 0;
@@ -171,7 +171,7 @@ static int FindBlocksOnDisk(const UINT8 Disk[16]) {
 }
 
 static void PinOsTarget(const UINT8 Disk[16], const UINT8 Part[16], int HavePart) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     CopyGuid16(gOsDiskGuid, Disk);
     gOsDiskOk = 1;
@@ -228,7 +228,7 @@ void FsResolveOsTarget(int *BlocksVol) {
     UINT8 Disk[16];
     UINT8 Part[16];
     int FromCfg = 0;
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     int BootGuidOk = (Info && Info->BootDiskGuidOk) ? 1 : 0;
 
     gOsVolIdx = -1;
@@ -384,7 +384,7 @@ int FileSystemOsVol(void) {
  * 必须在「还挂着」时调用；拔后再读会失败。
  */
 void FsLatchMscBootDisk(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     UINT32 d;
     UINT8 Guid[16];
 
@@ -421,7 +421,7 @@ void FsLatchMscBootDisk(void) {
  * 补判：卷表里 BootDiskGuid 仍落在 MSC 盘号（闩失败时）。
  */
 void FileSystemNotifyMscUnplug(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     int i;
 
     if (gBootMediumGone) {
@@ -476,7 +476,7 @@ void FileSystemNotifyMscUnplug(void) {
  * Remount 后：闩 MSC；补判失根。
  */
 void FsUpdateBootMediumState(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     int i;
     int Present = 0;
     int OsWasBootDisk = 0;

@@ -13,7 +13,7 @@
 |----|------|------|
 | 固件 | 能进 **UEFI**（CSM/Legacy 仅 BIOS 不够） | Secure Boot 可关；或把 `BOOTX64.EFI` 加入允许列表 |
 | 介质 | **U 盘 FAT**（建议 GPT + ESP） | 盘上有 `EFI/BOOT/BOOTX64.EFI`；系统文件可同盘或第二 FAT 卷 |
-| 显示 | 固件暴露 **Graphics Output Protocol（GOP）** | ToyBoot 选模式 → 填 `BOOT_CONFIG` → Startup → `BOOT_INFO` |
+| 显示 | 固件暴露 **Graphics Output Protocol（GOP）** | ToyBoot 选模式 → 填 `BOOT_CONFIG` → Startup → `BOOT_HANDOFF` |
 | 键盘 | **尽量 USB** | H0 不强制能敲键；无键仍以「屏亮了」为过。输入见 **H2** |
 | 串口 | **可选** | 多数笔记本无 `0x3F8`；调试见 **H3**（GOP 控制台），勿绑死 COM1 |
 

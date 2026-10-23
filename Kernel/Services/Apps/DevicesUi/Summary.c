@@ -2,7 +2,7 @@
  * Summary.c — 设备管理器「系统摘要」只读数据采集（PR-DEV-ui-summary-data）
  *
  * 第 1 刀：只建数据模型 + 填充；不改 Paint 布局。
- * 数据源均走公共 API：Hal* / PhysicalMemory* / Block* / BootInfo / Device。
+ * 数据源均走公共 API：Hal* / PhysicalMemory* / Block* / BootHandoff / Device。
  * 不 include HAL 私有头。十进制格式化自备，不拉巨型 printf。
  */
 #include "DevicesUiPrivate.h"
@@ -10,7 +10,7 @@
 #include "Hal.h"
 #include "PhysicalMemory.h"
 #include "Block.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Debug.h"
 
 /* ---- 极简缓冲写入（自带 NUL 终止，越界截断） ---- */
@@ -72,7 +72,7 @@ static void BufDec64(BUF *B, UINT64 V) {
 void DevicesUiFillSummary(DEVICES_UI_SUMMARY *Out) {
     BUF         Disk;
     BUF         Disp;
-    const BOOT_INFO *Bi;
+    const BOOT_HANDOFF *Bi;
     UINT64      Pages;
     int         Ready;
     UINT32      D;
@@ -111,9 +111,9 @@ void DevicesUiFillSummary(DEVICES_UI_SUMMARY *Out) {
     }
     BufFin(&Disk);
 
-    /* 显示器：BootInfo 帧缓冲宽高；无 FB 则「-」 */
+    /* 显示器：BootHandoff 帧缓冲宽高；无 FB 则「-」 */
     BufInit(&Disp, Out->Display, sizeof(Out->Display));
-    Bi = BootInfoGet();
+    Bi = BootHandoffGet();
     if (HalHasFrameBuffer() && Bi &&
         Bi->HorizontalResolution && Bi->VerticalResolution) {
         BufDec64(&Disp, (UINT64)Bi->HorizontalResolution);

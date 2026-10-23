@@ -2,6 +2,7 @@
  * KernelEntry.S — BringUp/X64：内核 ELF 入口（HAL/X64/link.ld ENTRY）
  *
  * Boot ExitBootServices 后跳到这里（RCX 或 RDI = UEFI_BOOT_CONFIG*）。
+ * 指针为空则直接 hlt（与旧 C 空指针环同级，无串口字）。
  * 换到 gEarlyStack → KernelHandoff → BringUp/KernelMain。
  */
     .section .text.boot, "ax"
@@ -13,6 +14,9 @@ KernelEntry:
     jnz     1f
     movq    %rdi, %r8
 1:
+    testq   %r8, %r8
+    jz      2f
+
     leaq    gEarlyStack(%rip), %rsp
     addq    $65536, %rsp
     andq    $-16, %rsp

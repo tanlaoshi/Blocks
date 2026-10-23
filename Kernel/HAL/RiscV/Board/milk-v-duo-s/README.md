@@ -40,7 +40,7 @@ make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
 ./build.sh riscv BOARD=milk-v-duo-s
 ```
 
-> `BRINGUP=1` 仅链 Startup/HalSerial/Hal，当前 RiscV 因 `Hal.o` 仍引用 BootInfo/timer 符号，**不能**单独作为 Duo S 验收路径；用完整构建即可。
+> `BRINGUP=1` 仅链 Startup/HalSerial/Hal，当前 RiscV 因 `Hal.o` 仍引用 BootHandoff/timer 符号，**不能**单独作为 Duo S 验收路径；用完整构建即可。
 ---
 
 ## 加载约定（厂商 U-Boot）

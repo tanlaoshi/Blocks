@@ -16,7 +16,7 @@
 #include "FileSystemPrivate.h"
 #include "Block.h"
 #include "Gpt.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
 #include "CoreOps.h"
@@ -186,13 +186,13 @@ int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax) {
 }
 
 int FileSystemVolOnBootDisk(int Idx) {
-    const BOOT_INFO *Info;
+    const BOOT_HANDOFF *Info;
     int i;
 
     if (Idx < 0 || Idx >= gVolCount || !gVols[Idx].DiskGuidOk) {
         return -1;
     }
-    Info = BootInfoGet();
+    Info = BootHandoffGet();
     if (!Info || !Info->BootDiskGuidOk) {
         return -1;
     }

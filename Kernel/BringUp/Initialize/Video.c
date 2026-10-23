@@ -4,7 +4,7 @@
  * 帧缓冲、字体、主题和核显探针（HDA 见 boot-hda-defer / Worker）。勿全屏 Clear。
  */
 #include "KernelModulesPrivate.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Hal.h"
 #include "Font.h"
 #include "Theme.h"
@@ -23,8 +23,8 @@ int DisplayHardwareInitialize(void) {
 }
 
 int VideoInitialize(void) {
-    const BOOT_INFO *Info = BootInfoGet();
-    VIDEO_CONFIG Video = BootInfoToVideoConfig(Info);
+    const BOOT_HANDOFF *Info = BootHandoffGet();
+    VIDEO_CONFIG Video = BootHandoffToVideoConfig(Info);
 
     FontInitialize();
     ThemeInitialize();

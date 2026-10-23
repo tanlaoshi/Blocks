@@ -19,7 +19,7 @@ HAL/
 │       └── <board>/           # 例：virt；或嵌套 Raspberry/Pi3BPlus（BOARD=含 /）
 │           ├── README.md      # 必填：加载约定、UART、验收
 │           ├── BoardConfig.h  # 建议：地址 / 能力勾选
-│           ├── Board.c        # 可选：填 BOOT_INFO 辅助、兼容表
+│           ├── Board.c        # 可选：填 BOOT_HANDOFF 辅助、兼容表
 │           └── NOTES.md       # 可选：真机踩坑
 ├── Virtio/                    # QEMU virt 共享（非 Board 包；见 HAL/Virtio/README.md）
 └── X64/                       # x86 UEFI 课堂 / 真机桌面 → 1.3c，不进 B 系列
@@ -76,7 +76,7 @@ cp -a HAL/Board/_template HAL/RiscV/Board/milk-v-duo-s   # Duo S 例（PR-B3）�
 
 1. 厂商 U-Boot（不改源码）能 `load` + `booti`（或等价）加载内核 + DTB。  
 2. 串口出现 `ToyOS ready`（或本板 README 写明的等价横幅）。  
-3. `BOOT_INFO.Regions` 与 DRAM 大致一致（来自 DTB `/memory` 或板级表）。  
+3. `BOOT_HANDOFF.Regions` 与 DRAM 大致一致（来自 DTB `/memory` 或板级表）。  
 4. **本柱跳过** video / gui / SD→FAT / 板上网卡（后置）。
 
 概念命令（板 README 必须改成该机真实变量）：
@@ -87,7 +87,7 @@ load mmc 0:1 ${fdt_addr_r} board.dtb
 booti ${kernel_addr_r} - ${fdt_addr_r}
 ```
 
-合流点永远是 `BOOT_INFO` → `KernelMain`（见 [`架构分层.md`](../../Documents/技术手册.md) §3）。
+合流点永远是 `BOOT_HANDOFF` → `KernelMain`（见 [`架构分层.md`](../../Documents/技术手册.md) §3）。
 
 ---
 

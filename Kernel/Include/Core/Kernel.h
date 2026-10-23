@@ -4,7 +4,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-/* BringUp/<Arch>/KernelHandoff 填好 BOOT_INFO 后调用 */
+/* BringUp/<Arch>/KernelHandoff 填好 BOOT_HANDOFF 后调用 */
 void KernelMain(void);
 
 #endif

@@ -20,3 +20,8 @@ Config.local.txt
 # 杂物
 *.o
 .DS_Store
+
+# clangd（本机生成；脚本：Tools/Scripts/gen-compile-commands.sh）
+compile_commands.json
+Kernel/compile_commands.json
+Tools/clangd/

@@ -1,7 +1,7 @@
 /*
  * EarlyIdentity.c — X64 早期 4GiB 恒等（静态页表池，不依赖 PMM）
  *
- * KernelMain 在模块表前 Enable；栈须已在窗内（KernelEntry 换栈）。
+ * KernelHandoff 在模块表前 EnableEarlyIdentityMap；栈须已在窗内（KernelEntry 换栈）。
  */
 #include "Compiler.h"
 #include "EarlyIdentity.h"
@@ -42,7 +42,8 @@ static UINT64 EarlyPhys(const void *P) {
     return (UINT64)(UINTN)P;
 }
 
-int EarlyIdentitySetup(void) {
+/* 铺表；成功 0，失败 -1（不开 PG） */
+static int EarlyIdentitySetup(void) {
     UINT64 *Pml4;
     UINT64 *Pdpt;
     UINTN Mb = IDENTITY_MB;
@@ -87,9 +88,13 @@ int EarlyIdentitySetup(void) {
     return 0;
 }
 
-void EarlyIdentityEnable(void) {
+void EnableEarlyIdentityMap(void) {
     UINT64 Cr4;
     UINT64 Cr0;
+
+    if (EarlyIdentitySetup() != 0) {
+        return;
+    }
 
     __asm__ volatile("mov %%cr4, %0" : "=r"(Cr4));
     Cr4 |= (1ull << 5); /* PAE */

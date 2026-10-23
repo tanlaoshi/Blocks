@@ -1,8 +1,8 @@
 /*
- * BootInfo.h — 各架构 Startup 传给 Common 的通用启动信息
+ * BootHandoff.h — 各架构 handoff 填好后交给 Common 的交接块（原 BOOT_INFO）
  */
-#ifndef BOOT_INFO_H
-#define BOOT_INFO_H
+#ifndef BOOT_HANDOFF_H
+#define BOOT_HANDOFF_H
 
 #include "BootTypes.h"
 
@@ -42,7 +42,7 @@ typedef struct {
     /* 加载 BOOTX64.EFI 的 GPT Disk GUID；BootDiskGuidOk=0 表示旧 Boot */
     UINT8           BootDiskGuid[16];
     UINT32          BootDiskGuidOk;
-} BOOT_INFO;
+} BOOT_HANDOFF;
 
 typedef struct {
     UINT64 FrameBufferBase;
@@ -52,9 +52,9 @@ typedef struct {
     UINT32 PixelsPerScanLine;
 } VIDEO_CONFIG;
 
-void BootInfoSet(const BOOT_INFO *Info);
-const BOOT_INFO *BootInfoGet(void);
+void BootHandoffSet(const BOOT_HANDOFF *Handoff);
+const BOOT_HANDOFF *BootHandoffGet(void);
 
-VIDEO_CONFIG BootInfoToVideoConfig(const BOOT_INFO *Info);
+VIDEO_CONFIG BootHandoffToVideoConfig(const BOOT_HANDOFF *Handoff);
 
 #endif

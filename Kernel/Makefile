@@ -629,7 +629,7 @@ TARGET = $(HALDIR)/Kernel.elf
 ifeq ($(BRINGUP),1)
 # PR-A6：BringUp Entry/Handoff* + HalSerial + Hal（Halt），不链 Common
 # PR-B2：仍链 Board.o（横幅 BoardName；HalSerial 用 BoardConfig）
-# X64 的 HandoffConfig/Memory/Platform 与 KernelHandoff 同在 BRINGUP_ARCH_OBJS
+# X64 KernelHandoff（含 FillHandoff/FillMemory/FillHalPlatform）在 BRINGUP_ARCH_OBJS
 OBJS = $(BRINGUP_ARCH_OBJS) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/%.c,$(HALDIR)/Hal/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial.c)) \

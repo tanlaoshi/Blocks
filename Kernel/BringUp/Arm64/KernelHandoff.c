@@ -1,12 +1,12 @@
 /*
- * KernelHandoff.c — Arm64：DTB → BOOT_INFO → KernelMain（ramfb 可选）
+ * KernelHandoff.c — Arm64：DTB → BOOT_HANDOFF → KernelMain（ramfb 可选）
  *
  * QEMU 对 ELF -kernel 不走 Linux 启动协议（x0 常为 0）。run-virt-arm.sh
  * 用 dumpdtb + -device loader 把 FDT 放到 ARM64_VIRT_DTB_ADDR。
  */
 #include "HalSerial.h"
 #include "Hal.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Kernel.h"
 #include "Virtio/Dtb.h"
 #include "Virtio/Ramfb.h"
@@ -33,7 +33,7 @@ void KernelHandoff(UINT64 DtbPhys) {
 
 #else
 
-static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free) {
+static int BootHandoffAddRegion(BOOT_HANDOFF *Info, UINT64 Phys, UINT64 Size, int Free) {
     if (Info->RegionCount >= BOOT_MEMORY_REGIONS_MAX || Size == 0) {
         return -1;
     }
@@ -59,7 +59,7 @@ static int TryDtb(UINT64 Phys, UINT64 *RamBase, UINT64 *RamSize) {
 }
 
 void KernelHandoff(UINT64 DtbPhys) {
-    BOOT_INFO Info;
+    BOOT_HANDOFF Info;
     UINT64 KernelStart = 0x40000000ULL;
     UINT64 KernelEnd = (UINT64)(UINTN)__kernel_end;
     UINT64 RamBase = KernelStart;
@@ -127,15 +127,15 @@ void KernelHandoff(UINT64 DtbPhys) {
         if (ResSize > RamSize) {
             ResSize = RamSize;
         }
-        BootInfoAddRegion(&Info, RamBase, ResSize, 0);
+        BootHandoffAddRegion(&Info, RamBase, ResSize, 0);
     }
     if (FreeStart < RamBase + RamSize && FreeStart >= RamBase) {
-        BootInfoAddRegion(&Info, FreeStart, RamBase + RamSize - FreeStart, 1);
+        BootHandoffAddRegion(&Info, FreeStart, RamBase + RamSize - FreeStart, 1);
     } else if (Info.RegionCount == 0 && RamSize > 0) {
-        BootInfoAddRegion(&Info, RamBase, RamSize, 1);
+        BootHandoffAddRegion(&Info, RamBase, RamSize, 1);
     }
 
-    BootInfoSet(&Info);
+    BootHandoffSet(&Info);
     HalSmpNoteDtb(UsedDtb ? UsedDtb : ARM64_VIRT_DTB_ADDR);
     KernelMain();
     for (;;) {

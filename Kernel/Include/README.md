@@ -8,7 +8,7 @@
 | ---- | ---- | ---- |
 | `Abi/` | 内核 + 用户态（号表/errno/socket 常数） | `SyscallABI` `Errno` `Socket` `BootTypes` `ToyOSVersion` |
 | `Hal/` | Common / Core 经门面访硬件 | `Hal*.h` |
-| `Core/` | 内核核心 | 调度 / PMM / VMM / 进程 / Syscall / Device / BootInfo … |
+| `Core/` | 内核核心 | 调度 / PMM / VMM / 进程 / Syscall / Device / BootHandoff … |
 | `Driver/` | 驱动框架 + Block 类 | `Driver*` `Block*` `HIDKeyboard` `PciNames` |
 | `Library/` | 共享库公开面 | Elf Fat Gpt Bmp Font UI Vfs … |
 | `Services/` | 系统服务 / GUI / Shell / Store / 网 | Gui Desktop Console Store LwIp … |

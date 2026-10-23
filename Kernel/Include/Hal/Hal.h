@@ -125,7 +125,7 @@ const char *HalCpuInfo(void);
 
 /*
  * PR-B1 能力旗标：Common 用能力判断，勿用「非 x86 = virt 串口」。
- * HalHasFrameBuffer — BOOT_INFO 有可用帧缓冲（亮屏 / 桌面模块前提）
+ * HalHasFrameBuffer — BOOT_HANDOFF 有可用帧缓冲（亮屏 / 桌面模块前提）
  * HalConsoleOnly    — 串口命令行靶：Virt 模块表、不 Create Gui/Worker/Input
  * HalPinInteractiveToBootstrap — 1→Shell/Gui/Input 全钉 BSP（盖过 HAL_INPUT_CPU_MIN）
  * 二者与 Input 门槛分域见 input-f3-console（Scheduler/Start.c / HalPlat.c）；勿跟 F2 缠改。

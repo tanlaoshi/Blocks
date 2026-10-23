@@ -7,7 +7,7 @@
 #include "Video/Video.h"
 #include "PhysicalMemory.h"
 #include "HalDevices.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 void HalVideoSet(const VIDEO_CONFIG *Config) {
     VIDEO_CONFIG Local;
@@ -78,7 +78,7 @@ int HalVideoSetMode(UINT32 Width, UINT32 Height) {
 }
 
 UINT32 HalVideoModeCount(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     if (!Info || Info->VideoModeCount == 0) {
         return 0;
@@ -90,7 +90,7 @@ UINT32 HalVideoModeCount(void) {
 }
 
 int HalVideoModeGet(UINT32 Index, UINT32 *Width, UINT32 *Height) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     if (!Info || Index >= Info->VideoModeCount || Index >= BOOT_VIDEO_MODE_MAX) {
         return -1;

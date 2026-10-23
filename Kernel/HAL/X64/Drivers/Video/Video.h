@@ -4,7 +4,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 /* 当前屏幕状态（分辨率、帧缓冲地址、文本光标） */
 typedef struct {

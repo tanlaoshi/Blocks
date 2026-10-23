@@ -2,7 +2,7 @@
  * HalPlat.c — PR-S3-hal-x64-1：架构名 / ELF / 调试 / 平台探测
  */
 #include "Hal.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 const char *HalArchName(void) {
     return "x86_64";
@@ -62,7 +62,7 @@ void HalCpuPark(void) {
 }
 
 int HalHasFrameBuffer(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     return (Info != 0 && Info->FrameBufferSize != 0) ? 1 : 0;
 }

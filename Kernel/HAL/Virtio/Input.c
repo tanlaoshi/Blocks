@@ -9,7 +9,7 @@
 #include "HalSerial.h"
 #include "HalVideo.h"
 #include "PhysicalMemory.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Driver.h"
 #include "DriverInput.h"
 #include "HalDevices.h"

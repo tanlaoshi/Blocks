@@ -1,7 +1,7 @@
 /*
  * Kernel.c — BringUp：三架构合流后的统一入口（KernelMain）
  *
- * BringUp/<Arch>/KernelHandoff 填好 BOOT_INFO 后走进这里。
+ * BringUp/<Arch>/KernelHandoff 填好 BOOT_HANDOFF 后走进这里。
  *
  * 三条路（勿改判定顺序；ConsoleOnly 与钉核见 input-f3-console）：
  *   1. HalConsoleOnly()
@@ -14,7 +14,7 @@
  * Common：Shell/Gui/Worker → Demo → 可选 Input → SchedulerStart（Start.c）。
  * Modules 表只 Init；四环 Create 在 Common，不在 MODULE_PHASE_SESSION。
  */
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "SerialLog.h"
 #include "Hal.h"
 #include "HalSerial.h"
@@ -76,7 +76,7 @@ static void KernelAppendDecimal4(char *Line, int *N, UINT32 Value) {
     Line[(*N)++] = (char)('0' + (Value % 10));
 }
 
-static void KernelLogFrameBufferSize(const BOOT_INFO *Info) {
+static void KernelLogFrameBufferSize(const BOOT_HANDOFF *Info) {
     char Line[48];
     int N = 0;
     const char *Prefix = "Boot: FB ";
@@ -101,8 +101,8 @@ static ELF_RELOC_KIND KernelElfRelocKind(UINT32 Type) {
 }
 
 static void KernelAttachEarlyVideo(void) {
-    const BOOT_INFO *Info = BootInfoGet();
-    VIDEO_CONFIG Video = BootInfoToVideoConfig(Info);
+    const BOOT_HANDOFF *Info = BootHandoffGet();
+    VIDEO_CONFIG Video = BootHandoffToVideoConfig(Info);
 
     HalSerialInitialize();
     LibWriteRegister(HalSerialWrite);

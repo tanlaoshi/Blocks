@@ -89,9 +89,9 @@ void MousePush(void) {
     HAL_MOUSE_REPORT R;
     UINT32 W = 800;
     UINT32 H = 600;
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
-    /* 逻辑分辨率（含 UI scale）；勿用 BootInfo 物理尺寸否则放大后钉右缘 */
+    /* 逻辑分辨率（含 UI scale）；勿用 BootHandoff 物理尺寸否则放大后钉右缘 */
     HalVideoGetSize(&W, &H);
     if (W == 0 || H == 0) {
         if (Info && Info->HorizontalResolution && Info->VerticalResolution) {

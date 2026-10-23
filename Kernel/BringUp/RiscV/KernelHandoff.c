@@ -1,11 +1,11 @@
 /*
- * KernelHandoff.c — RiscV：DTB / 板级表 → BOOT_INFO → KernelMain
+ * KernelHandoff.c — RiscV：DTB / 板级表 → BOOT_HANDOFF → KernelMain
  *
  * OpenSBI / 厂商 U-Boot：a0=hartid，a1=DTB。
  */
 #include "HalSerial.h"
 #include "Hal.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "Kernel.h"
 #include "Virtio/Dtb.h"
 #include "Virtio/Ramfb.h"
@@ -31,7 +31,7 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
 
 #else
 
-static int BootInfoAddRegion(BOOT_INFO *Info, UINT64 Phys, UINT64 Size, int Free) {
+static int BootHandoffAddRegion(BOOT_HANDOFF *Info, UINT64 Phys, UINT64 Size, int Free) {
     if (Info->RegionCount >= BOOT_MEMORY_REGIONS_MAX || Size == 0) {
         return -1;
     }
@@ -50,7 +50,7 @@ static void HexU64(UINT64 V) {
 }
 
 void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
-    BOOT_INFO Info;
+    BOOT_HANDOFF Info;
     UINT64 KernelStart = BOARD_KERNEL_LOAD;
     UINT64 KernelEnd = (UINT64)(UINTN)__kernel_end;
     UINT64 FirmwareEnd = KernelStart;
@@ -107,15 +107,15 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
 
     /* [RamBase, FreeStart) = 固件 + 内核（+ 可选 FB）；其后可分配 */
     if (FreeStart > RamBase && FreeStart - RamBase <= RamSize) {
-        BootInfoAddRegion(&Info, RamBase, FreeStart - RamBase, 0);
+        BootHandoffAddRegion(&Info, RamBase, FreeStart - RamBase, 0);
         if (FreeStart < RamBase + RamSize) {
-            BootInfoAddRegion(&Info, FreeStart, RamBase + RamSize - FreeStart, 1);
+            BootHandoffAddRegion(&Info, FreeStart, RamBase + RamSize - FreeStart, 1);
         }
     } else if (RamSize > 0) {
-        BootInfoAddRegion(&Info, RamBase, RamSize, 1);
+        BootHandoffAddRegion(&Info, RamBase, RamSize, 1);
     }
 
-    BootInfoSet(&Info);
+    BootHandoffSet(&Info);
     HalSmpNoteDtb(DtbPhys);
     KernelMain();
     for (;;) {

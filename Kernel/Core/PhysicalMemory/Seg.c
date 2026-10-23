@@ -223,7 +223,7 @@ static int AllocSegmentMaps(UINT32 Index)
     return 0;
 }
 
-void PmmSegmentInit(const BOOT_INFO *Info)
+void PmmSegmentInit(const BOOT_HANDOFF *Info)
 {
     UINT32 i;
     UINTN n;

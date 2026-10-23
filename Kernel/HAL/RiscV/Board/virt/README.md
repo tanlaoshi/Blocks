@@ -22,7 +22,7 @@
 ./run-virt-riscv.sh --headless
 ```
 
-入口：`BringUp/RiscV/KernelEntry.S` → `KernelHandoff`；DTB → `BOOT_INFO` → `BringUp/KernelMain`。
+入口：`BringUp/RiscV/KernelEntry.S` → `KernelHandoff`；DTB → `BOOT_HANDOFF` → `BringUp/KernelMain`。
 
 ---
 

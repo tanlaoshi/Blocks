@@ -9,7 +9,7 @@
 #include "HalVideo.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "SerialLog.h"
 
 #define IGPU_FLIP0_GTT       0x0A000000ull
@@ -99,7 +99,7 @@ static int AllocOne(int Idx, UINT64 GttOff) {
 
 int IgpuScanoutInit(void) {
     UINT64 Stride;
-    const BOOT_INFO *Info;
+    const BOOT_HANDOFF *Info;
 
     if (gScanOk) {
         return 1;
@@ -109,7 +109,7 @@ int IgpuScanoutInit(void) {
     }
 
     HalVideoGetPhysicalSize(&gWidth, &gHeight);
-    Info = BootInfoGet();
+    Info = BootHandoffGet();
     gPitchPx = Info ? Info->PixelsPerScanLine : gWidth;
     if (gPitchPx == 0) {
         gPitchPx = gWidth;

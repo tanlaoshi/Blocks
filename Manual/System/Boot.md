@@ -33,7 +33,7 @@
 加电 → OVMF
   → Blocks Boot (BOOTX64.EFI)
        串口 → GOP → 读 Kernel.elf → ExitBootServices → jmp KernelEntry
-  → BringUp/X64：KernelEntry → KernelHandoff → BOOT_INFO
+  → BringUp/X64：KernelEntry → KernelHandoff → BOOT_HANDOFF
   → KernelMain → ModulesRun(gModulesFull | …)
   → Create：shell / gui / worker [/ input]
   → SchedulerStart
@@ -89,7 +89,7 @@
 
 | 步 | 文件 | 做什么 |
 | -- | ---- | ------ |
-| Entry / Handoff | `BringUp/<Arch>/` | FB / 内存图 → `BOOT_INFO` |
+| Entry / Handoff | `BringUp/<Arch>/` | FB / 内存图 → `BOOT_HANDOFF` |
 | KernelMain | `BringUp/Kernel.c` | 选 Full / virt / 串口子集 |
 | ModulesRun | `BringUp/Modules.c` | 只认表；以代码为准 |
 | 建任务 + Start | `Scheduler/Start.c`、`Services/Tasks/` | 见 §2 |

@@ -2,11 +2,11 @@
  * HalPlat.c — PR-S3-hal-riscv-1：架构名 / ELF / 调试 / 平台探测
  */
 #include "Hal.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "BoardConfig.h"
 
 int HalHasFrameBuffer(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     return (Info != 0 && Info->FrameBufferSize != 0) ? 1 : 0;
 }

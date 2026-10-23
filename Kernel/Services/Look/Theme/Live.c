@@ -21,7 +21,7 @@ int ThemeApplyUiScaleLive(UINT32 Percent) {
 }
 
 int ThemeApplyDisplayLive(UINT32 Width, UINT32 Height) {
-    const BOOT_INFO *Info;
+    const BOOT_HANDOFF *Info;
     UINT64 Base;
     UINT64 MapBytes;
     UINT64 Need;
@@ -33,7 +33,7 @@ int ThemeApplyDisplayLive(UINT32 Width, UINT32 Height) {
         return -1;
     }
 
-    Info = BootInfoGet();
+    Info = BootHandoffGet();
     Base = HalVideoFrameBufferBase();
     if (Base == 0 && Info) {
         Base = Info->FrameBufferBase;

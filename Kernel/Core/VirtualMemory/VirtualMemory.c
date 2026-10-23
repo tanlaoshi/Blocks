@@ -4,7 +4,7 @@
  * 开机：建页表，映上帧缓冲和设备寄存器，再打开分页。
  */
 #include "KernelModulesPrivate.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "HalPlatform.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
@@ -282,7 +282,7 @@ static int MapIdentity(UINT64 Phys, UINT64 Size) {
 }
 
 int VirtualMemoryInitialize(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     UINT64 FbBytes;
     UINT64 Layout;
 

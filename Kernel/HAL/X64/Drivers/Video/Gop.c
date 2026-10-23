@@ -10,7 +10,7 @@
  */
 #include "Compiler.h"
 #include "Private.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "Debug.h"
@@ -76,7 +76,7 @@ static int MapPtrSpan(const void *Ptr, UINTN Span) {
 }
 
 int VideoGopAvailable(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     if (!Info || Info->GopProtocol == 0 || Info->VideoModeCount == 0) {
         return 0;
@@ -88,7 +88,7 @@ int VideoGopAvailable(void) {
 }
 
 static int FindModeNumber(UINT32 Width, UINT32 Height, UINT32 *OutMode) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     UINT32 i;
 
     if (!Info || !OutMode) {
@@ -109,7 +109,7 @@ static int FindModeNumber(UINT32 Width, UINT32 Height, UINT32 *OutMode) {
  * 返回 0=已对齐；-1=读不到 Mode / 几何不符（调用方再走「拒绝热切」）。
  */
 static int VideoGopSyncIfAlready(UINT32 Width, UINT32 Height) {
-    const BOOT_INFO *Info;
+    const BOOT_HANDOFF *Info;
     TOY_GOP *Gop;
     TOY_GOP_MODE *Mode;
     TOY_GOP_MODE_INFO *Mi;
@@ -124,7 +124,7 @@ static int VideoGopSyncIfAlready(UINT32 Width, UINT32 Height) {
         return 0;
     }
 
-    Info = BootInfoGet();
+    Info = BootHandoffGet();
     if (!Info || Info->GopProtocol == 0) {
         return -1;
     }

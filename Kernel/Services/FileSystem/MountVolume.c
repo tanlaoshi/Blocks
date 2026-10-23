@@ -8,7 +8,7 @@
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
 
@@ -29,7 +29,7 @@ static int GuidEq16(const UINT8 *A, const UINT8 *B) {
 
 /* 当前已选中的盘是否就是加载 EFI 的那块。-1 = 旧 Boot，未交代。 */
 static int CacheBootDiskMatch(UINT32 Drive) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
 
     if (!Info || !Info->BootDiskGuidOk) {
         return -1;
@@ -55,7 +55,7 @@ static int CacheBootDiskMatch(UINT32 Drive) {
  * 不能只看「任意盘」。1=启动盘已有；0=启动盘尚无（别处可能有）；-1=旧 Boot 无 GUID。
  */
 int FsBootDiskHasBlocksId(void) {
-    const BOOT_INFO *Info = BootInfoGet();
+    const BOOT_HANDOFF *Info = BootHandoffGet();
     int i;
 
     if (!Info || !Info->BootDiskGuidOk) {

@@ -169,7 +169,7 @@ static int FwCfgFindFile(UINT64 Base, const char *Name, UINT16 *OutSelect,
     return -1;
 }
 
-int RamfbSetup(BOOT_INFO *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
+int RamfbSetup(BOOT_HANDOFF *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
                UINT64 RamEnd) {
     UINT8 Sig[4];
     UINT16 Sel;

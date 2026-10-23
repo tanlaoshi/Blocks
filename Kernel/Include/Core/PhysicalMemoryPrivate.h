@@ -5,7 +5,7 @@
 #define PHYSICAL_MEMORY_PRIVATE_H
 
 #include "PhysicalMemory.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 
 #define PMM_SEGMENT_SHIFT     30
 #define PMM_SEGMENT_SIZE      (1ULL << PMM_SEGMENT_SHIFT)
@@ -29,7 +29,7 @@ typedef struct {
     UINT16 *RefCount;
 } PMM_SEGMENT;
 
-void PmmSegmentInit(const BOOT_INFO *Info);
+void PmmSegmentInit(const BOOT_HANDOFF *Info);
 void PmmPhysLockInit(void);
 PMM_SEGMENT *PmmSegment(UINT32 Index);
 /* 框架：Phys → 段 + 页下标；政策可调用，勿再加锁 */

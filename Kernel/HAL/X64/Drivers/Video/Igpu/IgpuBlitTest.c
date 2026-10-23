@@ -3,7 +3,7 @@
  */
 #include "Igpu.h"
 #include "PhysicalMemory.h"
-#include "BootInfo.h"
+#include "BootHandoff.h"
 #include "HalVideo.h"
 #include "VirtualMemory.h"
 #include "Hal.h"
@@ -181,7 +181,7 @@ static UINT32 ReadFrontPixel(UINT32 X, UINT32 Y, UINT32 PitchPx) {
 }
 
 int IgpuBlitColorTest(void) {
-    const BOOT_INFO *Info;
+    const BOOT_HANDOFF *Info;
     UINT32 PitchB;
     UINT32 PitchPx;
     UINT32 X1;
@@ -201,7 +201,7 @@ int IgpuBlitColorTest(void) {
         return 0;
     }
 
-    Info = BootInfoGet();
+    Info = BootHandoffGet();
     if (!Info || Info->PixelsPerScanLine == 0) {
         LogBoot("Boot: igpu color soft (pitch)\n");
         return 0;

@@ -16,7 +16,7 @@
 | Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |
-| Net | **3.0.0** | `Net.h`（或 `ToyNet.h` 同 API）；`libNet.a` | **只教** `NetConnect`/`NetBind`（主机序）+ `socket`/`send`/`recv` |
+| Net | **3.0.0** | `Net.h`；`libNet.a` | **只教** `NetConnect`/`NetBind`（主机序）+ `socket`/`send`/`recv` |
 | 文件 / 目录 | Blocks | `Blocks/File.h`、`Blocks/Dir.h`；`VolumePath.h` | `FileOpen`/`FileRead`…；`DirOpen`/`DirRead`…；`FsUtil*` |
 | 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
 

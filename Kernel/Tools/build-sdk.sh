@@ -21,7 +21,7 @@ make -C "$ROOT" \
     User/Library/Blocks/libBlocks.a \
     User/Library/Graphics/libGraphics.a \
     User/Library/Ui/libUi.a \
-    User/Library/ToyNet/libToyNet.a \
+    User/Library/Net/libNet.a \
     User/Library/FsUtil/libFsUtil.a
 
 echo "==> 暂存 $OUT"
@@ -40,7 +40,7 @@ cp -f "$ROOT/User/crt/crt0.o" "$ROOT/User/crt/syscall.o" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Blocks/libBlocks.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Graphics/libGraphics.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Ui/libUi.a" "$OUT/Lib/"
-cp -f "$ROOT/User/Library/ToyNet/libToyNet.a" "$OUT/Lib/"
+cp -f "$ROOT/User/Library/Net/libNet.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/FsUtil/libFsUtil.a" "$OUT/Lib/"
 cp -f "$ROOT/User/user.ld" "$OUT/Link/user.ld"
 

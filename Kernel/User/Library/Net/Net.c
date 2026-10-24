@@ -1,9 +1,9 @@
 /*
- * ToyNet.c — libToyNet（PR-L4 / PR-N-dns / PR-A-net-dns）
+ * Net.c — libNet（用户态 TCP / DNS 薄封装）
  */
 #include <errno.h>
 #include <string.h>
-#include <ToyNet.h>
+#include <Net.h>
 #include <unistd.h>
 #include <Blocks/File.h>
 #include <Blocks/syscall.h>

@@ -74,16 +74,10 @@ mkdir -p "$ROOT/Assets/Icons" "$ROOT/Assets/Images"
 if [ -d Assets ]; then
     cp -a Assets/. "$ROOT/Assets/"
 fi
-# 商店权威源：ToyImage/Store → Guest Store/（store-src；废 Assets/Store + StoreCache）
-# CHAT-4：chat 仅留在 ToyImage/Store 供 export-store-lan；Guest 须 LAN install。
+# 商店权威源：Runtime/Store → Guest Store/（store-src；废 Assets/Store + StoreCache）
 if [ -d Store ]; then
     mkdir -p "$ROOT/Store"
     cp -a Store/. "$ROOT/Store/"
-    rm -rf "$ROOT/Store/packages/chat" "$ROOT/Apps/chat"
-    if [ -f "$ROOT/Store/catalog.txt" ]; then
-        grep -v '^chat|' "$ROOT/Store/catalog.txt" > "$ROOT/Store/catalog.txt.noch" \
-            && mv "$ROOT/Store/catalog.txt.noch" "$ROOT/Store/catalog.txt"
-    fi
 fi
 rm -rf "$ROOT/Assets/Store" "$ROOT/StoreCache"
 # 无线固件（PR-N-wifi-1）：须随 BLOCKS 进 U 盘；缺则 iwl fw=miss

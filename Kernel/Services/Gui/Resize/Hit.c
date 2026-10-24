@@ -23,7 +23,7 @@ int GuiResizeEdgeAt(const GUI_WINDOW *W, UINT32 X, UINT32 Y) {
     /*
      * USER 底栏：按钮矩形 + 其下垫/边框仍落在 RESIZE_HOT(16) 内。
      * 只排除 UserButtonHit 时，点在钮缝/钮下会抢成 RESIZE_S → 拖一下窗「向下延伸」
-     *（GuiDemo 来回点 OK/Cancel 即现）。整条底栏带禁南向改大小。
+     *（USER 窗底栏按钮区来回点即现）。整条底栏带禁南向改大小。
      */
     Idx = (int)(W - gGuiWindowManager.Windows);
     if (Idx >= 0 && Idx < MAX_WINS && W == &gGuiWindowManager.Windows[Idx] &&

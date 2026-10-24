@@ -2,6 +2,6 @@ BLOCKS_SDK ?= $(abspath ../..)
 PROG      ?= MYNET
 SRCS      ?= main.c
 
-EXTRA_LIBS = $(BLOCKS_SDK)/Lib/libToyNet.a
+EXTRA_LIBS = $(BLOCKS_SDK)/Lib/libNet.a
 
 include $(BLOCKS_SDK)/BlocksSdk.mk

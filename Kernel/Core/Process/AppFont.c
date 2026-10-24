@@ -1,7 +1,9 @@
 /*
- * AppFont.c — PR-S-app-font：exec 时按 PKG font= 挂/卸应用私有字
+ * AppFont.c — exec 时 PKG font= / window=
  *
- * 单用户 GUI 下切全局当前字即可；无 font= 或非 Apps/<id>/ 路径则保持系统字。
+ * ProcessAppTakesWindow：只信 PKG window=yes（Apps 或 Store/packages 回落）。
+ * 无硬编码 Id 表。开窗 App → exec 异步（勿 CoopDrain）。
+ * 单用户 GUI 下切全局当前字即可；无 font= 则保持系统字。
  */
 #include "ProcessPrivate.h"
 #include "Store.h"
@@ -106,31 +108,6 @@ void ProcessRestoreAppFont(void) {
     DebugWrite("process: app font restored\n");
 }
 
-/* Class 开窗 Demo：PKG 读失败时仍勿 CoopDrain（空窗+鼠死） */
-static int ClassElfTakesWindow(const char *Id) {
-    static const char *const kWin[] = {
-        "snake", "taskmgr", "chat", 0
-    };
-    int i;
-
-    if (!Id || !Id[0]) {
-        return 0;
-    }
-    for (i = 0; kWin[i]; i++) {
-        const char *A = Id;
-        const char *B = kWin[i];
-
-        while (*A && *B && *A == *B) {
-            A++;
-            B++;
-        }
-        if (*A == 0 && *B == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 int ProcessAppTakesWindow(const char *Path) {
     STORE_APP_DESKTOP_META Meta;
     char Id[STORE_ID_MAX];
@@ -138,10 +115,10 @@ int ProcessAppTakesWindow(const char *Path) {
     if (!Path || ExtractAppsId(Path, Id, (int)sizeof(Id)) != 0) {
         return 0;
     }
-    if (StoreReadAppDesktopMeta(Id, &Meta) == FAT_OK && Meta.WindowYes) {
-        return 1;
+    if (StoreReadAppDesktopMeta(Id, &Meta) != FAT_OK) {
+        return 0;
     }
-    return ClassElfTakesWindow(Id);
+    return Meta.WindowYes ? 1 : 0;
 }
 
 void ProcessApplyAppFont(const char *Path) {

@@ -15,7 +15,7 @@
 | Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；宏名本位（`SYS_FILE_OPEN`…）；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h` → `UI_ABI_VERSION_*`；`libUi.a` | 高层窗 / Label / Button / `UiPoll` |
 | Graphics | **3.0.0** | `Graphics.h` → `GRAPHICS_ABI_VERSION_*`；`libGraphics.a` | `GraphicsDamageText` / `GraphicsDamageRect` / `GraphicsDraw*` |
-| Net | **3.0.0** | `<Net.h>` / `ToyNet.h` → `NET_ABI_VERSION_*`；`libToyNet.a` | `socket` + `NetConnect`/`NetBind`（主机序）；不教 `sockaddr` |
+| Net | **3.0.0** | `<Net.h>` → `NET_ABI_VERSION_*`；`libNet.a` | `socket` + `NetConnect`/`NetBind`（主机序）；不教 `sockaddr` |
 | FsUtil / VolumePath | **2.0.0** | `VolumePath.h` → `FS_UTIL_ABI_VERSION_*`；`libVolumePath.a` | `FsUtilJoin` / `FsUtilListDir`…；底层 `Dir*` |
 | 线程子集 | 课可用 | `Blocks/thread.h`、`<pthread.h>`（自旋 mutex） | `Thread*`；mutex 可用 `<pthread.h>`；**非**完整 POSIX 线程 |
 

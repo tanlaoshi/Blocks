@@ -11,7 +11,11 @@
 struct HAL_INTERRUPT_FRAME;
 
 int ProcessExec(const char *Path);
-/* Apps/<id> 且 PKG window=yes：开窗 App（exec 勿 CoopDrain） */
+/*
+ * 开窗 App？（exec 勿 CoopDrain）
+ * Path→包 Id（Apps/<id>/… 或 Class/<ELF> 基名）→ PKG window=yes
+ * （Apps 无包时 Store/packages 回落，见 StoreReadAppDesktopMeta）。
+ */
 int ProcessAppTakesWindow(const char *Path);
 /* PR-P1：替换当前用户映像；成功 0（Frame 已改写），失败 -1 */
 int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,

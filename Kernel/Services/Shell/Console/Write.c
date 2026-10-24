@@ -207,11 +207,11 @@ static void Write(const char *Text) {
     }
     /*
      * 仅 Shell 客户区接受控制台绘制。焦点在 USER/Settings/Files 时若仍画 FB，
-     * 会与 GuiDemo 标签等叠字，并污染用户窗备份（透视/花屏）。
+     * 会与 USER 窗标签等叠字，并污染用户窗备份（透视/花屏）。
      */
     if (GuiFocusKind() != GUI_WIN_SHELL) {
         /*
-         * 用户窗（Snake/GuiDemo）焦点在 USER：stdout 不进教学串口、也不 Feed Shell。
+         * 用户窗（Snake/TaskMgr…）焦点在 USER：stdout 不进教学串口、也不 Feed Shell。
          * 旧逻辑「只走串口」会把 snake: 打进宿主 blocks>，看起来像占住终端。
          */
         if (GuiFocusKind() == GUI_WIN_USER) {

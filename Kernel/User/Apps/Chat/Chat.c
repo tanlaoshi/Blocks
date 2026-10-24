@@ -7,8 +7,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
-#include <ToyNet.h>
+#include <Net.h>
 #include <Ui.h>
+#include <Blocks/thread.h>
 
 #define CHAT_LOG_MAX  4
 #define CHAT_LOG_COLS 28
@@ -235,15 +236,24 @@ int main(void) {
     }
     LogPush("--", "connecting…");
     UiPaint();
+    /* 先让出一拍：开窗 Present 后立刻堵在 connect 会叠饿键鼠 */
+    ThreadYield();
+    printf("chat: NetConnect %u.%u.%u.%u:%u …\n",
+           (Ip >> 24) & 0xffu, (Ip >> 16) & 0xffu,
+           (Ip >> 8) & 0xffu, Ip & 0xffu, (unsigned)Port);
     if (NetConnect(gSock, Ip, Port) != 0) {
         LogPush("--", "connect fail");
         UiPaint();
+        printf("chat: connect fail (host: nc -l 9090 / ./Tools/HostChat/chatd)\n");
         FileClose(gSock);
-        return 1;
+        gSock = -1;
+        /* 留窗可见错误；勿立刻 exit（关窗路径另测） */
+    } else {
+        LogPush("--", "connected");
+        gDraftN = 0;
+        UiPaint();
+        printf("chat: connected\n");
     }
-    LogPush("--", "connected");
-    gDraftN = 0;
-    UiPaint();
 
     for (;;) {
         if (gWaitPeer) {

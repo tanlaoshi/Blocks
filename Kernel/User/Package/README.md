@@ -50,7 +50,7 @@ EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a \
              $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
 # User/Package/Net/
-EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/ToyNet/libToyNet.a
+EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Net/libNet.a
 ```
 
 ## 不要做的事

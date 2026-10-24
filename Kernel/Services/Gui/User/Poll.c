@@ -63,7 +63,7 @@ int GuiPollUserInput(int Wid) {
     }
     /*
      * 无活动 USER 窗：当作已关闭（1），勿回 -1。
-     * 淡出竞态 / 进程已退时 ClosePending 可能已清，-1 会让 GUIDEMO 报 poll fail
+     * 淡出竞态 / 进程已退时 ClosePending 可能已清；-1 会让 App 报 poll fail
      * 且残留窗槽导致第二次 exec 开不出窗。
      */
     return 1;

@@ -7,3 +7,4 @@ arch=x86_64
 title=Chat
 desktop=no
 taskbar=no
+window=yes

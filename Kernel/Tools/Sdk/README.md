@@ -25,7 +25,7 @@ make -C myapp
 | 路径 | 内容 |
 | --- | --- |
 | `Include/` | 用户态头（+ `Include/Abi/`：SyscallABI / TaskSnap / …） |
-| `Lib/` | `crt0.o` `syscall.o` `libBlocks.a` 及可选 `libUi` / `libGraphics` / `libToyNet` / `libFsUtil` |
+| `Lib/` | `crt0.o` `syscall.o` `libBlocks.a` 及可选 `libUi` / `libGraphics` / `libNet` / `libFsUtil` |
 | `Link/user.ld` | x86_64 用户链接脚本（入口 `0x40000000`） |
 | `BlocksSdk.mk` | 共用编译规则（`-std=c99 -pedantic -nostdlib`） |
 | `Examples/` | Hello / Gui / Net |

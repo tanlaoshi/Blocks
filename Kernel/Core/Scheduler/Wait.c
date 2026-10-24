@@ -2,7 +2,7 @@
  * Wait.c — PR-S-sched-split-2：wait / orphan / exit 用户入口
  *
  * 收尸与 TerminateUserLocked → Terminate.c（thr-3 拆分）。
- * S2.2：ExitUser 关 USER 只走 Close 轻量路径，勿再 ThemeScene（Flush 饿死鼠）。
+ * S2.2：ExitUser 关 USER 只走 Close 轻量路径，勿再 ThemeScene（Flush 饿 xHCI）。
  * S2.3：ExitUser 切回 KernelRoot 只 LoadPageTable 一次（曾连续两次）。
  */
 #include "SchedulerPrivate.h"
@@ -113,9 +113,8 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
             ProcessRestoreAppFont();
         }
         /*
-         * USER 关窗已走 Close.c 轻量路径（擦窗+相交重画+任务栏+Present）。
-         * 勿再 ThemeScene：整屏 PresentFlush 会二次饿死 xHCI（关 GUIDEMO 后鼠死）。
-         * Hello 等从未开 USER 窗：ClosedUser=0（S2.2）。
+         * USER 关窗已走 Close 轻量脚印路径；勿再 ThemeScene（二次 Flush 饿 xHCI）。
+         * 从未开 USER 窗：ClosedUser=0（S2.2）。
          */
         (void)ClosedUser;
     }

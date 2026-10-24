@@ -15,7 +15,7 @@
 | 进程 | `<Blocks/Process.h>` | CRT |
 | 线程 | `<Blocks/thread.h>` | CRT |
 | UI / Graphics | `<Ui.h>` `<Graphics.h>` | `libUi` / `libGraphics` |
-| Net | `<Net.h>`（或 `<ToyNet.h>`） | `libNet.a` |
+| Net | `<Net.h>` | `libNet.a` |
 | 卷路径 | `<VolumePath.h>` | `libVolumePath.a` |
 
 ---

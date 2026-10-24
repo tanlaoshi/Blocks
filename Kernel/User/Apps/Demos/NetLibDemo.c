@@ -1,12 +1,12 @@
 /*
- * NetLibDemo.c — PR-L4：用 libToyNet 重写 NETDEMO 客户端路径
+ * NetLibDemo.c — libNet 客户端路径（对照旧 NETDEMO）
  * 默认 ./build.sh（LWIP=1）；Shell `lwip on`；宿主机 nc -l -p 8888
  * Shell：exec NETLIB.ELF
  */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <ToyNet.h>
+#include <Net.h>
 
 int main(void) {
     int Fd;
@@ -14,7 +14,7 @@ int main(void) {
     ssize_t N;
     const char *Msg = "from libnet!\n";
 
-    printf("netlib: ToyNet %s\n", NET_ABI_VERSION_STRING);
+    printf("netlib: Net %s\n", NET_ABI_VERSION_STRING);
 
     Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (Fd < 0) {

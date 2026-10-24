@@ -463,13 +463,12 @@ int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
 }
 
 int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
-    TOY_SOCK *S = SockGet(Sock);
     UINTN N;
     UINTN i;
     int Tries;
     int ForeverHalt;
 
-    if (S == NULL || Buf == NULL || Len == 0) {
+    if (Sock < 0 || Sock >= TCP_SOCK_MAX || Buf == NULL || Len == 0) {
         return -EINVAL;
     }
     /* TimeoutMs < 0：非阻塞；==0：一直等；>0：约 TimeoutMs 次 halt 后返回 0 */
@@ -484,7 +483,15 @@ int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
         Tries = TimeoutMs;
     }
     while (Tries-- > 0) {
+        TOY_SOCK *S;
+
         LwIpLock();
+        /* 每圈重取：Halt/IoBreath 后勿沿用跨调用的 S 指针/槽号寄存器 */
+        S = SockGet(Sock);
+        if (S == NULL) {
+            LwIpUnlock();
+            return -EINVAL;
+        }
         if (S->RxLen > 0) {
             N = S->RxLen;
             if (N > Len) {
@@ -516,6 +523,11 @@ int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
         }
         LwIpUnlock();
         LwIpService();
+        /*
+         * 与 Connect 同：阻塞 recv 必须 IoBreath，否则 CoopDrain 下键鼠饿死；
+         * 也曾见无 Breath 时跨 Halt 槽寄存器被破坏 → #PF @ RxLen。
+         */
+        SchedulerIoBreath();
         if (!ForeverHalt) {
             return 0;
         }

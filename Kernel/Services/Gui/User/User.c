@@ -77,7 +77,7 @@ int UserWindowIndexAfterRaise(int Wid) {
 
 /*
  * 不透明重画用户窗客户区（标签/按钮）。
- * 勿 SyncWindowVisualsEx 全桌：ComposeBusy+PresentFlush 整屏会饿死 xHCI → 点 OK 后鼠死。
+ * 只画本窗；勿 SyncWindowVisualsEx 全桌（ComposeBusy+Flush 饿死 xHCI）。
  */
 void RepaintUserWindow(int Wid) {
     int Idx;
@@ -91,10 +91,7 @@ void RepaintUserWindow(int Wid) {
     }
     ComposeBeginEraseCursor();
     HalVideoClearClip();
-    /*
-     * 只重画本窗 chrome+客户区。勿 Sync 全桌：ComposeBusy+PresentFlush
-     * 整屏会饿死 xHCI（GuiDemo 点 OK 后鼠只闪不动）。
-     */
+    /* 只重画本窗 chrome+客户区；勿 Sync 全桌。 */
     GraphicsIrqEnter();
     CursorRestore();
     GraphicsIrqLeave();
@@ -258,16 +255,18 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     gGuiWindowManager.Windows[Idx].PromptShown = 0;
     gGuiWindowManager.Windows[Idx].InputLine[0] = 0;
 
-    ComposeBeginEraseCursor();
-    HalVideoClearClip();
-    DrawWindowAtEx(Idx, 0);
-    ComposeEnd();
     gGuiWindowManager.FocusWin = Idx;
     RaiseWindow(Idx);
     Idx = gGuiWindowManager.FocusWin;
     gGuiWindowManager.WinBackupValid[Idx] = 0;
+    /*
+     * 只画本窗 + Present（非 Flush）。禁 SyncWindowVisualsEx 全桌：
+     * Chat 等一开窗就 PresentFlush → PresentBlocked 饿死 xHCI。
+     * 与 RepaintUserWindow 同契约。
+     */
+    GuiInputLock(1);
     ComposeBeginEraseCursor();
-    SyncWindowVisualsEx(0);
+    HalVideoClearClip();
     GraphicsIrqEnter();
     CursorRestore();
     GraphicsIrqLeave();
@@ -278,8 +277,9 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     GraphicsIrqEnter();
     CursorPaint();
     GraphicsIrqLeave();
-    HalVideoPresentFlush();
+    HalVideoPresent();
     ComposeEnd();
+    GuiInputLock(0);
     DebugWrite("Gui: open user idx=");
     DebugHex32((UINT32)gGuiWindowManager.FocusWin);
     DebugWrite("\n");

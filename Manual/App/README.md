@@ -39,6 +39,6 @@
 | --- | --- | --- | --- |
 | **底** | `crt0` + `syscall` + **`libBlocks.a`** | 进进程、printf/malloc/文件… | ISO C 头 + `<Blocks/…>` |
 | **窗** | + **`libUi.a`** + **`libGraphics.a`** | 开窗、控件、画 | `<Ui.h>` `<Graphics.h>` |
-| **网** | + **`libNet.a`** | TCP（**只教** `NetConnect`…） | `<Net.h>` 或 `<ToyNet.h>`（同 API） |
+| **网** | + **`libNet.a`** | TCP（**只教** `NetConnect`…） | `<Net.h>` |
 
 **明确不要**：新文档/新 API 再堆 Linux 眼熟、POSIX 双轨、别名。

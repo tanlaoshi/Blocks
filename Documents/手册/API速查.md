@@ -13,7 +13,7 @@
 | Syscall | `<Blocks/syscall.h>` | （CRT 内联） |
 | UI | `<Ui.h>` | `libUi.a` |
 | Graphics | `<Graphics.h>` | `libGraphics.a` |
-| Net | `<ToyNet.h>` | `libToyNet.a` |
+| Net | `<Net.h>` | `libNet.a` |
 | 卷路径 | `<VolumePath.h>` | `libVolumePath.a` |
 | 目录 | `<dirent.h>` | CRT / FsUtil |
 | 线程 | `<Blocks/thread.h>` / `<pthread.h>` | CRT |
@@ -69,7 +69,7 @@
 
 ---
 
-## 五、Net 3.0（`<Net.h>` / `ToyNet.h`）
+## 五、Net 3.0（`<Net.h>`）
 
 | API | 说明 |
 | --- | ---- |

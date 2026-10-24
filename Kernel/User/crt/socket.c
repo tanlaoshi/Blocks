@@ -1,6 +1,6 @@
 /*
  * socket.c — selfhost：sockaddr connect/bind 轨已拆除。
- * 用 NetConnect/NetBind；socket/send/recv 在 libToyNet。
+ * 用 NetConnect/NetBind；socket/send/recv 在 libNet。
  */
 #include <errno.h>
 

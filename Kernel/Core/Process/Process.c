@@ -247,9 +247,10 @@ int ProcessExec(const char *Path) {
         }
     }
     /*
-     * PR-A12 / PR-sdk-exec：无窗短命 ELF（Hello/Class）同步 CoopDrain。
-     * 开窗 App 仍异步：GUI 事件循环若一直 READY，drain 会卡死壳/桌面。
-     * virt 全形状仍 drain（无定时抢用户）。
+     * 无窗短命 ELF：同步 CoopDrain。
+     * 开窗 App（PKG window=yes）：异步；drain 会卡死 GUI 事件循环。
+     * HalPlatformIsVirtSerialConsole：仅平台为真才对开窗 App 也 drain；
+     * x64 桌面该函数恒 0 → 开窗恒异步。
      */
     if (!ProcessAppTakesWindow(Path) || HalPlatformIsVirtSerialConsole()) {
         SchedulerCoopDrainUsers();

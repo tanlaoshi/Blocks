@@ -18,6 +18,9 @@
 /* QEMU -kernel 链接/加载提示（见 HAL/Arm64/link.ld、Startup.c） */
 #define BOARD_KERNEL_LOAD      0x40000000ULL
 #define BOARD_DTB_LOAD         0x4a000000ULL
+/* Handoff 无 DTB 时的 RAM 回落（与 RiscV virt 同量级；有 DTB 会被覆盖） */
+#define BOARD_RAM_BASE         0x40000000ULL
+#define BOARD_RAM_SIZE         (256ULL * 1024ULL * 1024ULL)
 
 /* virt 默认可有 ramfb；串口子集由运行时 HalHasFrameBuffer 决定 */
 #define BOARD_HAS_FRAMEBUFFER  1

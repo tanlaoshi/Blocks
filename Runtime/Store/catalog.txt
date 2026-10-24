@@ -8,5 +8,6 @@ hello|app|1|HELLO.ELF|-|x86_64|Hello
 cat|app|1|CAT.ELF|-|x86_64|Cat
 taskmgr|app|1|TASKMGR.ELF|-|x86_64|Task Manager
 snake|app|1|SNAKE.ELF|-|x86_64|Snake
+chat|app|1|CHAT.ELF|-|x86_64|Chat
 sun8|font|1|VGA8X16.FNT|-|any|Sun 8x16 (store)
 demopack|asset|1|INFO.TXT|-|any|Demo asset pack

@@ -36,14 +36,14 @@
 | CRT | **1.5.0** | `Blocks/version.h` → `CRT_VERSION_STRING` |
 | UI | **3.0.0** | `Ui.h` → `UI_ABI_VERSION_*`；API `Ui*`；`libUi.a` |
 | Graphics | **3.0.0** | `Graphics.h`；`Graphics*`；`libGraphics.a` |
-| Net | **3.0.0** | `ToyNet.h`（文件名历史）；API **`Net*`**；`libToyNet.a` |
+| Net | **3.0.0** | `Net.h`；API **`Net*`**；`libNet.a` |
 | FsUtil | **2.0.0** | `VolumePath.h` → `FS_UTIL_*`；`libVolumePath.a` |
 | SDK 包 | 见 `Tools/Sdk/VERSION` | 与上表独立 |
 
 ```bash
 cd "$BLOCKS_ROOT/Kernel"   # 或 source ~/Blocks/env.sh 后用 $KERNEL
 rg -n 'VERSION_STRING|_ABI_VERSION_STRING' User/include/Blocks/version.h \
-  User/include/Ui.h User/include/Graphics.h User/include/ToyNet.h User/include/VolumePath.h
+  User/include/Ui.h User/include/Graphics.h User/include/Net.h User/include/VolumePath.h
 ```
 
 ### 2.1 Syscall（易错）
@@ -171,7 +171,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 | `Kernel/Include/Abi/SyscallABI.h` | syscall 号权威 |
 | `Kernel/Core/Syscall/Syscall.c` | 分发 + ENOSYS |
 | `Kernel/User/crt/` | CRT |
-| `Kernel/User/Library/{Ui,Graphics,ToyNet,VolumePath}/` | 用户库 |
+| `Kernel/User/Library/{Ui,Graphics,Net,VolumePath}/` | 用户库 |
 | `Kernel/User/Apps/` | Demo 源 |
 | `Kernel/Tools/Sdk/Examples/` | 离树最小示例 |
 | `Kernel/Tools/Scripts/test-all.sh` | 统一验收 |

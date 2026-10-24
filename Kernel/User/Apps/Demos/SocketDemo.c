@@ -4,7 +4,7 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include <ToyNet.h>
+#include <Net.h>
 #include <Blocks/File.h>
 
 int main(void) {

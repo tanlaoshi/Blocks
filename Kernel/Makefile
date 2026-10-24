@@ -523,11 +523,11 @@ USER_LIB_UI_OBJ = User/Library/Ui/Ui.o
 USER_LIB_UI_WIDGETS_OBJ = User/Library/Ui/Widgets.o
 USER_LIB_UI_IM_OBJ = User/Library/Ui/Immediate.o
 USER_LIB_UI_STYLE_OBJ = User/Library/Ui/Style.o
-USER_LIB_TOY_NET_OBJ = User/Library/ToyNet/ToyNet.o
+USER_LIB_NET_OBJ = User/Library/Net/Net.o
 USER_LIB_FSUTIL_OBJ = User/Library/VolumePath/VolumePath.o
 USER_LIB_GRAPHICS_A = User/Library/Graphics/libGraphics.a
 USER_LIB_UI_A = User/Library/Ui/libUi.a
-USER_LIB_TOY_NET_A = User/Library/ToyNet/libToyNet.a
+USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIB_BLOCKS_A = User/Library/Blocks/libBlocks.a
 USER_LIB_BLOCKS_OBJS = User/crt/string.o User/crt/printf.o User/crt/malloc.o \
@@ -715,7 +715,7 @@ all: $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF) \
 	$(USER_EXECDEMO_ELF) $(USER_PIPEDEMO_ELF) $(USER_BRKDEMO_ELF) $(USER_MMAPDEMO_ELF) $(USER_KILLDEMO_ELF) \
 	$(USER_SIGDEMO_ELF) \
 	$(USER_LIBCDEMO_ELF) $(USER_SLEEPDEMO_ELF) $(USER_THREADSMOKE_ELF) $(USER_PTHREADSMOKE_ELF) $(USER_THREADDEMO_ELF) $(USER_SNAKE_ELF) $(USER_TASKMGR_ELF) $(USER_DIRDEMO_ELF) $(USER_CWDDEMO_ELF) \
-	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIB_BLOCKS_A) $(USER_LIB_TOY_NET_A) $(USER_LIB_FSUTIL_A)
+	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIB_BLOCKS_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
 endif
 else
 ifneq ($(BRINGUP),1)
@@ -950,14 +950,14 @@ $(USER_LIB_GRAPHICS_A): $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
 $(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
 	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
 
-$(USER_LIB_TOY_NET_OBJ): User/Library/ToyNet/ToyNet.c User/include/ToyNet.h \
+$(USER_LIB_NET_OBJ): User/Library/Net/Net.c User/include/Net.h \
 		User/include/unistd.h User/include/errno.h User/include/string.h \
 		User/include/Blocks/syscall.h
-	$(CC) $(USER_CFLAGS) -c User/Library/ToyNet/ToyNet.c -o $@
+	$(CC) $(USER_CFLAGS) -c User/Library/Net/Net.c -o $@
 
-$(USER_LIB_TOY_NET_A): $(USER_LIB_TOY_NET_OBJ)
+$(USER_LIB_NET_A): $(USER_LIB_NET_OBJ)
 	mkdir -p $(dir $@)
-	ar rcs $@ $(USER_LIB_TOY_NET_OBJ)
+	ar rcs $@ $(USER_LIB_NET_OBJ)
 
 $(USER_LIB_FSUTIL_OBJ): User/Library/VolumePath/VolumePath.c User/include/VolumePath.h User/include/dirent.h User/include/errno.h 
 	$(CC) $(USER_CFLAGS) -c User/Library/VolumePath/VolumePath.c -o $@
@@ -1025,30 +1025,30 @@ $(USER_CWDDEMO_OBJ): User/Apps/Demos/WorkingDirectoryDemo.c User/include/stdio.h
 $(USER_CWDDEMO_ELF): $(USER_CWDDEMO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_CWDDEMO_OBJ) $(USER_CRT_OBJS)
 
-$(USER_NETLIB_OBJ): User/Apps/Demos/NetLibDemo.c User/include/ToyNet.h User/include/stdio.h User/include/string.h User/include/unistd.h | $(USER_OUT)
+$(USER_NETLIB_OBJ): User/Apps/Demos/NetLibDemo.c User/include/Net.h User/include/stdio.h User/include/string.h User/include/unistd.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/NetLibDemo.c -o $@
 
-$(USER_NETLIB_ELF): $(USER_NETLIB_OBJ) $(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_NETLIB_ELF): $(USER_NETLIB_OBJ) $(USER_LIB_NET_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_NETLIB_OBJ) \
-		$(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS)
+		$(USER_LIB_NET_A) $(USER_CRT_OBJS)
 
-$(USER_SOCKDEMO_OBJ): User/Apps/Demos/SocketDemo.c User/include/sys/socket.h User/include/ToyNet.h User/include/stdio.h | $(USER_OUT)
+$(USER_SOCKDEMO_OBJ): User/Apps/Demos/SocketDemo.c User/include/sys/socket.h User/include/Net.h User/include/stdio.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/SocketDemo.c -o $@
 
-$(USER_SOCKDEMO_ELF): $(USER_SOCKDEMO_OBJ) $(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_SOCKDEMO_ELF): $(USER_SOCKDEMO_OBJ) $(USER_LIB_NET_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_SOCKDEMO_OBJ) \
-		$(USER_LIB_TOY_NET_A) $(USER_CRT_OBJS)
+		$(USER_LIB_NET_A) $(USER_CRT_OBJS)
 
-$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/Net.h User/include/ToyNet.h User/include/Ui.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
+$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/Net.h User/include/Net.h User/include/Ui.h User/include/Graphics.h User/include/stdio.h User/include/unistd.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Chat.c -o $@
 
 USER_CHAT_NET_OBJ = $(USER_OUT)/chat_net.o
-$(USER_CHAT_NET_OBJ): User/Apps/Chat/Net.c User/Apps/Chat/Net.h User/include/ToyNet.h | $(USER_OUT)
+$(USER_CHAT_NET_OBJ): User/Apps/Chat/Net.c User/Apps/Chat/Net.h User/include/Net.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Net.c -o $@
 
-$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_LIB_TOY_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_LIB_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) \
-		$(USER_LIB_TOY_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
+		$(USER_LIB_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_ENOSYS_OBJ): User/Apps/Demos/EnosysDemo.c User/include/stdio.h User/include/errno.h User/include/Blocks/syscall.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/EnosysDemo.c -o $@
@@ -1218,8 +1218,8 @@ ifeq ($(ARCH),x86_64)
 	rm -f $(USER_NETLIB_OBJ) $(USER_SOCKDEMO_OBJ) $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_ENOSYS_OBJ)
 	rm -f $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) \
 		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) \
-		$(USER_LIB_TOY_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
-	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_TOY_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIB_BLOCKS_A)
+		$(USER_LIB_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
+	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIB_BLOCKS_A)
 	rm -f $(USER_CRT_OBJS)
 	rm -f $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF)
 	rm -f $(USER_LIBTOY_SO) $(USER_DYNDEMO_ELF) $(USER_CAT_ELF) $(USER_WRITE_ELF)

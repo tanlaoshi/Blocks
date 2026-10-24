@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | `Hello/` | `MYAPP.ELF` | CRT / libBlocks |
 | `Gui/` | `MYGUI.ELF` | + libUi + libGraphics |
-| `Net/` | `MYNET.ELF` | + libToyNet（Guest：`lwip on`） |
+| `Net/` | `MYNET.ELF` | + libNet（Guest：`lwip on`） |
 
 ```bash
 make -C Hello

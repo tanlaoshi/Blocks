@@ -260,26 +260,17 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
     PackStore cat "$USER_OUT/catfile.elf" CAT.ELF
     PackStore taskmgr "$USER_OUT/taskmgr.elf" TASKMGR.ELF
     PackStore snake "$USER_OUT/snake.elf" SNAKE.ELF
+    PackStore chat "$USER_OUT/chat.elf" CHAT.ELF
+    if [ -f "$IMAGE_STORE/packages/chat/PKG.TXT" ]; then
+        cp -f "$IMAGE_STORE/packages/chat/PKG.TXT" "$DEST/Store/packages/chat/"
+    fi
     rm -rf "$IMAGE_STORE/packages/guidemo" "$IMAGE_STORE/packages/windemo" \
         "$IMAGE_STORE/packages/blitdemo" \
         "$DEST/Store/packages/guidemo" "$DEST/Store/packages/windemo" \
         "$DEST/Store/packages/blitdemo"
-    # CHAT-4：chat 只入 Runtime/Store（供 export-store-lan），不进 Guest DEST。
-    mkdir -p "$IMAGE_STORE/packages/chat"
-    cp -f "$USER_OUT/chat.elf" "$IMAGE_STORE/packages/chat/CHAT.ELF"
     if [ -f "$IMAGE_STORE/catalog.txt" ]; then
         mkdir -p "$DEST/Store"
-        # Guest catalog 去掉 chat 行；源 catalog 仍含 chat（导出用）
-        grep -v '^chat|' "$IMAGE_STORE/catalog.txt" > "$DEST/Store/catalog.txt" || true
-    fi
-    rm -rf "$DEST/Store/packages/chat" "$DEST/Apps/chat"
-    if [ -d "$DEST/Store/packages/chat" ] || [ -d "$DEST/Apps/chat" ]; then
-        echo "error: Guest still has chat after strip" >&2
-        exit 1
-    fi
-    if grep -q '^chat|' "$DEST/Store/catalog.txt" 2>/dev/null; then
-        echo "error: Guest catalog still lists chat" >&2
-        exit 1
+        cp -f "$IMAGE_STORE/catalog.txt" "$DEST/Store/catalog.txt"
     fi
     # 废旧路径（store-src）
     rm -rf "$DEST/Assets/Store" "$DEST/StoreCache"

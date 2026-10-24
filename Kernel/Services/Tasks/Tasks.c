@@ -245,7 +245,7 @@ void WorkerTask(void) {
 #endif
         /*
          * 一露光标就必须流畅：此前 Secondary/图标/有线/iwl/DHCP 静默已过。
-         * 若再提前 Reveal，空拖/点 GuiDemo 仍会被 Worker 慢活饿死 xHCI。
+         * 若再提前 Reveal，空拖/点 USER 窗仍会被 Worker 慢活饿死 xHCI。
          */
         GuiCursorRevealAfterUsb();
         gConsole.AnnounceBootReady();

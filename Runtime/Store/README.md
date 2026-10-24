@@ -12,7 +12,7 @@ Guest 卷根同样是 **`Store/`**（`prepare-rootfs` / `build.sh` 同步）。�
 | `Assets/Fonts/`（Guest） | 已安装 `type=font` |
 | `Assets/Packs/`（Guest） | 已安装 `type=asset` |
 
-**CHAT-4**：`packages/chat/` 可留在本仓供 `export-store-lan`；**不**进 Guest（须 LAN install）。
+`packages/chat/` 与其它 app 一样进 Guest catalog（离线 `store install chat`）；LAN 导出仍可用。
 
 ## catalog.txt
 

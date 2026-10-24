@@ -23,7 +23,7 @@ static void FadeFrameDelay(void) {
 /*
  * 不 Present：铺桌面 + 其它窗（含影），读本窗矩形为 under。
  * 调用方须已 ComposeBegin + 擦光标。
- * 勿把本窗 Active 清零：淡出期间其它核上的 poll_input 会误得 -1（GUIDEMO poll fail）。
+ * 勿把本窗 Active 清零：淡出期间其它核上的 poll_input 会误得 -1（USER poll fail）。
  */
 static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh) {
     const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];

@@ -1,9 +1,9 @@
 /*
- * BlocksSDK Examples/Net — 链 libToyNet（Guest 需 lwip on）
+ * BlocksSDK Examples/Net — 链 libNet（Guest 需 lwip on）
  */
 #include <stdio.h>
 #include <unistd.h>
-#include <ToyNet.h>
+#include <Net.h>
 
 int main(void) {
     int Fd = socket(AF_INET, SOCK_STREAM, 0);

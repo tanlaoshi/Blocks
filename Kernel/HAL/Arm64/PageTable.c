@@ -57,28 +57,22 @@ void HalPagingEnable(UINT64 RootPhys) {
     UINT64 Mair;
     UINT64 Tcr;
     UINT64 Sctlr;
-    UINT64 El;
 
     HalExceptionVectorsInstall();
 
     gCurrentRoot = RootPhys;
     gKernelRoot = RootPhys;
 
-    __asm__ volatile("mrs %0, CurrentEL" : "=r"(El));
 #if !BOARD_IS_VIRT
     /*
-     * 真机若仍在 EL2：开的是 SCTLR_EL1，取指/数据仍走 EL2 机制；
-     * HalPagingSelfTest 访问 0x180000000 会在 EL2 上外部中止 → 无 VBAR 则整板复位。
-     * 本柱先跳过开 MMU/自测，保持物理恒等，把串口壳钉住。
+     * 真机（2026-10-24）：CoolTerm 停在 Boot: Mod VirtualMemory，无
+     * 「vmm: Arm64 MMU on」→ 开 SCTLR/自测路径挂死或打哑串口。
+     * rpi-3 先物理恒等跑通串口壳；页表/自测留 rpi-4。
      */
-    if (((El >> 2) & 3ULL) >= 2ULL) {
-        gMmuOn = 0;
-        HalSerialWrite("vmm: skip MMU (EL>=2)\n");
-        return;
-    }
-#else
-    (void)El;
-#endif
+    gMmuOn = 0;
+    HalSerialWrite("vmm: skip MMU (board)\n");
+    return;
+#else /* BOARD_IS_VIRT */
 
     /* Attr0=Normal WB，Attr1=Device-nGnRnE */
     Mair = (0xFFULL) | (0x00ULL << 8);
@@ -111,6 +105,7 @@ void HalPagingEnable(UINT64 RootPhys) {
     gMmuOn = 1;
     HalSerialWrite("vmm: Arm64 MMU on\n");
     HalPagingSelfTest();
+#endif /* BOARD_IS_VIRT */
 }
 
 /* PR-A14：AP 启用与 BSP 相同的内核页表（无自测横幅） */

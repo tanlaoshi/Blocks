@@ -1,8 +1,9 @@
 /*
  * KernelEntry.S — Arm64 入口（保留 x0=DTB）
  *
- * .S 经 cpp：可 #include BoardConfig.h。
- * Pi mini-UART：BSS 清零前先打字符，避免「Starting application」后长时间无字。
+ * 真机手测（2026-10-24）：带 SCTLR RES1 的 EL2→EL1 仍可能只打出 '*'、无 '+'
+ * （死在 eret）。能出 Boot: Mod 的那次是停在 EL2 + 后改 skip MMU。
+ * 故暂不降级；异常级专刀另做。入口信标保留。
  */
 #include "BoardConfig.h"
 
@@ -10,16 +11,21 @@
     .global KernelEntry
     .type KernelEntry, %function
 KernelEntry:
-    /* Linux/U-Boot aarch64：x0 = DTB 物理址 */
     mov     x19, x0
 
 #if BOARD_UART_MINI
-    /* AUX @0x3F215000；IO=+0x40 LSR=+0x54 bit5=TX empty */
+    /* AUX @0x3F215000；ENABLES|=1，有限等待后 '*' */
     movz    x0, #0x5000
     movk    x0, #0x3f21, lsl #16
+    ldr     w1, [x0, #0x04]
+    orr     w1, w1, #1
+    str     w1, [x0, #0x04]
+    mov     w2, #0x10000
 10: ldr     w1, [x0, #0x54]
-    tbz     w1, #5, 10b
-    mov     w1, #'*'
+    tbnz    w1, #5, 11f
+    subs    w2, w2, #1
+    b.ne    10b
+11: mov     w1, #'*'
     str     w1, [x0, #0x40]
 #endif
 
@@ -39,9 +45,12 @@ KernelEntry:
 #if BOARD_UART_MINI
     movz    x0, #0x5000
     movk    x0, #0x3f21, lsl #16
-11: ldr     w1, [x0, #0x54]
-    tbz     w1, #5, 11b
-    mov     w1, #'+'
+    mov     w2, #0x10000
+12: ldr     w1, [x0, #0x54]
+    tbnz    w1, #5, 13f
+    subs    w2, w2, #1
+    b.ne    12b
+13: mov     w1, #'+'
     str     w1, [x0, #0x40]
 #endif
 

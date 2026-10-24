@@ -90,6 +90,22 @@ if [ -n "${BIN:-}" ] && [ -f "$BIN" ]; then
     cp -f "$BIN" "$OUT/Kernel.bin"
 fi
 
+# boot.scr：少打字；串口丢字时用 HDMI 键盘敲两行即可
+cp -f "$BOARD_DIR/scripts/boot.cmd" "$OUT/boot.cmd"
+MKIMAGE=""
+for c in mkimage "$BLOCKS_ROOT/Build/u-boot-src/u-boot-2021.01/tools/mkimage"; do
+    if [ -x "$c" ] || command -v "$c" >/dev/null 2>&1; then
+        MKIMAGE=$c
+        break
+    fi
+done
+if [ -n "$MKIMAGE" ]; then
+    "$MKIMAGE" -A arm64 -O linux -T script -C none -n 'blocks-pi3' \
+        -d "$OUT/boot.cmd" "$OUT/boot.scr" >/dev/null
+else
+    echo "warn: 无 mkimage，跳过 boot.scr（可稍后补）" >&2
+fi
+
 DTB_NAME="bcm2837-rpi-3-b-plus.dtb"
 if [ -n "$DTB_SRC" ]; then
     if [ ! -f "$DTB_SRC" ]; then
@@ -121,43 +137,30 @@ fi
 
 | 文件 | 说明 |
 | --- | --- |
-| Kernel.elf | 必有；推荐 bootelf |
-| Kernel.bin | 可选扁平二进制；备选 go |
-| $DTB_NAME | $([ -f "$OUT/$DTB_NAME" ] && echo "已拷入" || echo "缺：请自备后放入本目录，或 prepare-pi-sd --dtb=…") |
+| Kernel.elf | 必用 |
+| pi.dtb | 短名 DTB |
+| boot.scr | **推荐**：两行启动（见下） |
+| boot.cmd | 脚本源码 |
 
-## U-Boot（推荐 bootelf，与 Duo S 命令行板同形）
+## U-Boot（推荐：少打字）
+
+串口输入常丢字 → **用 HDMI 键盘敲命令**，CoolTerm 只看输出。
 
 EOF
-    if [ -f "$OUT/$DTB_NAME" ]; then
-        cat <<EOF
-# 推荐：扁平二进制（2021.01 bootelf 易把入口搞成 0）
-load mmc 0:1 0x80000 Kernel.bin
-load mmc 0:1 \${fdt_addr_r} pi.dtb
-go 0x80000
+    cat <<'EOF'
+load mmc 0:1 0x1000000 boot.scr
+source 0x1000000
 EOF
-    else
-        cat <<EOF
-# 先把 pi.dtb（或 $DTB_NAME）放进本分区，再：
-load mmc 0:1 0x80000 Kernel.bin
-load mmc 0:1 \${fdt_addr_r} pi.dtb
-go 0x80000
-EOF
-    fi
     cat <<'EOF'
 
-提示地址（BoardConfig；以 printenv 为准）：
-  链接/运行     0x00080000（Pi3BPlus link.ld）
-  fdt_addr_r    常见 0x02400000
-  pi.dtb        短名，内容同 bcm2710-rpi-3-b-plus.dtb
+成功标志：Starting application at 0x00080000，串口 * → + → Boot: …
 
-入口（AArch64）：x0 = DTB 物理地址（go 时可能是 argc，可后置）。
+排障编年：Documents/过程/排障/Pi3BPlus真机启动排障历程.md
 
-## 备选：Kernel.elf + bootelf
+## 禁止
 
-load mmc 0:1 0x20000000 Kernel.elf
-load mmc 0:1 ${fdt_addr_r} pi.dtb
-fdt addr ${fdt_addr_r}
-bootelf -p 0x20000000
+- 在丢字的串口上敲长命令（易变成 lamm/otelf 等残句）
+- load Kernel.elf 到 0x80000 再 bootelf（Starting at 0x0）
 
 ## 关于 booti
 
@@ -169,6 +172,7 @@ booti 需要 Linux Image 头。本柱交付 ELF / .bin，**不**强制 Image 封
 - 回家：拷 SD → 上电串口（rpi-3）；DTB memory（rpi-4）
 EOF
 } >"$OUT/README-SD.txt"
+cp -f "$OUT/README-SD.txt" "$OUT/README-SD.md"
 
 cp -f "$BOARD_DIR/NOTES.md" "$OUT/NOTES-board.md" 2>/dev/null || true
 

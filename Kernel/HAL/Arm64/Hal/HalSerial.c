@@ -21,11 +21,15 @@
 #define UART_BASE  ((UINTN)BOARD_UART_BASE)
 
 #if BOARD_UART_MINI
+/* AUX @0x3F215000；mini-UART 寄存器窗 @+0x40（BCM2835 §2.2） */
 #define MU_IO      (*(volatile UINT32 *)(UART_BASE + 0x40))
 #define MU_LSR     (*(volatile UINT32 *)(UART_BASE + 0x54))
+#define MU_CNTL    (*(volatile UINT32 *)(UART_BASE + 0x60))
 #define MU_ENABLES (*(volatile UINT32 *)(UART_BASE + 0x04))
 #define MU_LSR_TX_EMPTY   (1u << 5)
 #define MU_LSR_DATA_READY (1u << 0)
+#define MU_CNTL_RXEN       (1u << 0)
+#define MU_CNTL_TXEN       (1u << 1)
 #else
 #define PL011_DR    (*(volatile UINT32 *)(UART_BASE + 0x00))
 #define PL011_FR    (*(volatile UINT32 *)(UART_BASE + 0x18))
@@ -163,7 +167,9 @@ static void GopMirrorLine(const char *Text) {
 
 void HalSerialInitialize(void) {
 #if SERIAL_ENABLE && BOARD_UART_MINI
+    /* 跟 U-Boot：只开使能，不改波特（固件已配）；须 TX+RX 都开 */
     MU_ENABLES |= 1u;
+    MU_CNTL |= (MU_CNTL_RXEN | MU_CNTL_TXEN);
 #endif
 }
 
@@ -229,14 +235,16 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     if (!Text) {
         return;
     }
-    if (gShellOwnUart) {
-        return;
-    }
     RingAppend(Text);
+    /*
+     * ShellOwn 只表示「COM1 交互壳已接管」——仍须把 Log* 打到 UART。
+     * 旧逻辑直接 return → 桌面 Announce 后 CoolTerm 全黑，但 RX 仍能收 halt。
+     * GOP 镜像仍受 Mute/Mirror（桌面后 Mirror=0）。
+     */
     if (ChannelUartOn(Channel)) {
         UartWriteRaw(Text);
     }
-    if (ChannelGopOn(Channel)) {
+    if (!gShellOwnUart && ChannelGopOn(Channel)) {
         GopMirrorLine(Text);
     }
 }
@@ -347,10 +355,11 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
         return;
     }
     RingAppend(Text);
-    if (!gShellOwnUart && ChannelUartOn(Channel)) {
+    /* BootMark 始终上 UART（ShellOwn 不挡）；屏仍认 Mirror */
+    if (ChannelUartOn(Channel)) {
         UartWriteRaw(Text);
     }
-    /* Mute 期间也上屏（对齐 X64 BootMark） */
+    /* Mute 期间也上屏（对齐 X64 BootMark）；Mirror=0 后停 */
     if (ChannelGopOn(Channel) && gGopMirror && gVideoUp) {
         GopWrite(Text);
     }

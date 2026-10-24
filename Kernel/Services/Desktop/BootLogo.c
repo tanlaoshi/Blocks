@@ -9,6 +9,7 @@
 #include "HalVideo.h"
 #include "HalDevices.h"
 #include "SerialLog.h"
+#include "SerialConfig.h"
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00000000u
@@ -197,6 +198,10 @@ void DesktopBootLogoShow(void) {
     UINT32 MarkW;
     UINT32 MarkH;
 
+#if SCREEN_LOG
+    /* 屏上 boot 日志与 logo 同 FB；再滑九格会像从日志页掉下来 */
+    return;
+#endif
     if (gLogoUp) {
         return;
     }
@@ -246,6 +251,9 @@ void DesktopBootLogoSet(UINT32 Pct) {
 }
 
 void DesktopBootLogoFinish(void) {
+#if SCREEN_LOG
+    return;
+#endif
     if (!gLogoUp) {
         DesktopBootLogoShow();
     }

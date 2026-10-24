@@ -3,6 +3,7 @@
  */
 #include "SyscallPrivate.h"
 #include "Scheduler.h"
+#include "SchedulerPrivate.h"
 #include "VirtualMemory.h"
 #include "Process.h"
 #include "CoreOps.h"
@@ -12,6 +13,7 @@
 #include "Font.h"
 #include "GraphicsDamage.h"
 #include "TaskSnap.h"
+#include "Debug.h"
 
 int SysExecve(HAL_INTERRUPT_FRAME *Frame, UINT64 UserPath, UINT64 UserArgv,
                      UINT64 UserEnvp) {
@@ -41,6 +43,14 @@ int SysCreateWindow(UINT64 UserTitle, UINT32 W, UINT32 H) {
     TASK *T = SchedulerCurrent();
 
     if (!T || !T->IsUser || W == 0 || H == 0) {
+        return -1;
+    }
+    /*
+     * CoopDrain 下 Gui/鼠不转：开 USER 窗会永久关不掉并钉死宿主。
+     * 契约：开窗 App 必须 PKG window=yes → exec 异步（勿 drain）。
+     */
+    if (gCoopDrain) {
+        DebugWrite("window: refuse create under CoopDrain (need PKG window=yes)\n");
         return -1;
     }
     if (CopyUserCString(Title, UserTitle, sizeof(Title)) < 0 || Title[0] == 0) {

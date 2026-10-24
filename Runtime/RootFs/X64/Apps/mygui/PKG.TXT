@@ -1,0 +1,3 @@
+id=mygui
+name=MyGui
+window=yes

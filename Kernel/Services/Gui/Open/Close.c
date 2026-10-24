@@ -4,7 +4,7 @@
  * CloseWindow 合成分叉（Kind 在槽清空前取样）：
  *   轻量（USER + Files/Edit/Settings/Store/Devices/Shell/TTY）—
  *          与拖动脚印同一套：擦矩形 → RestoreWindowsInFootprint（贴他窗 Backup）
- *          → 桌面图标 → 影 → 任务栏 → PresentFlush。
+ *          → 桌面图标 → 影 → 任务栏 → Present（非 Flush；同 OpenUser）。
  *          禁止 Busy 内对相交窗整窗 PaintShellWindow/Repaint（TaskMgr 撞 Shell
  *          → PresentBlocked 饿 xHCI）。无 Backup 也不回退重画，只脚印+补影。
  *          禁止 GuiComposeThemeScene（高分全屏数秒 → 鼠假死）。
@@ -180,7 +180,12 @@ void CloseWindow(int Idx) {
         GraphicsIrqEnter();
         CursorPaint();
         GraphicsIrqLeave();
-        HalVideoPresentFlush();
+        /*
+         * 与 GuiOpenUser / RepaintUserWindow 同契约：Present 非 Flush。
+         * Flush 长时间 ComposeBusy → 鼠 HoldDrain、UiPoll 见 Active=0 提前 exit、
+         * ExitUser 死等 Closing（MYGUI 关窗钉死、下次 run 像卡死）。
+         */
+        HalVideoPresent();
         ComposeEnd();
         gCloseUserLight = 0;
     } else {

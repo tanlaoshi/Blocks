@@ -2,6 +2,8 @@
 
 开课用户态开发包（宿主交叉编译 → Guest `exec`）。**不**含内核源；解压即可 `make`。
 
+**人手入口在仓库** [`Start/App/`](../../../Start/App/)（毛坯 / 样例 / 红线 / 部署）。本目录是打进 tar 的工具链与同源 Examples。
+
 - 包号：见根目录 `VERSION`（开课冻结 `1.0.0-course`）
 - CRT：头文件 `Blocks/version.h`（与仓库同步打进本包）
 

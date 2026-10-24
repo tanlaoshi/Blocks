@@ -18,7 +18,8 @@
 
 | 方式 | 路径 | 用途 |
 | ---- | ---- | ---- |
-| 离树 SDK 示例 | `Kernel/Tools/Sdk/Examples/{Hello,Gui,Net}` | 作业 / 最小复现 |
+| **Start / App** | [`Start/App/`](../../Start/App/) | 毛坯 · 样例 · 红线 · 部署（首选） |
+| 离树 SDK 示例 | `Kernel/Tools/Sdk/Examples/{Hello,Gui,Net}` | 与 Start 同源能力；打 tar 用 |
 | 树内 Demo | `Kernel/User/Apps/*Demo.c` | 随 `build` 进镜像 |
 | 接手总览 | [`开发者接手指南.md`](../Contribute/Onboarding.md) | 内核向 |
 
@@ -32,12 +33,13 @@ build                           # 编内核 + 默认同步 rootfs（x64）
 run                             # QEMU；看串口
 ```
 
-离树 Hello：
+毛坯 / Hello：
 
 ```bash
 source ~/Blocks/env.sh
-cd "$KERNEL/Tools/Sdk/Examples/Hello"
-make                            # 产出 build/*.ELF（以该目录 Makefile 为准）
+cd "$KERNEL" && ./Tools/build-sdk.sh   # 一次：打出 Build/BlocksSDK
+cd ~/Blocks/Start/App/Examples/Hello && make
+# 或：cp -a ~/Blocks/Start/App/Template ~/MyApp && make -C ~/MyApp
 ```
 
 把 ELF 放进客户机可见 FAT（常见：`Runtime` / `Image` 的 RootFs 约定，或 `Assets/Store/packages/` 商店包），再：

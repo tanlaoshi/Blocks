@@ -22,7 +22,7 @@ int main(void) {
 
     for (;;) {
         Ev = UiPoll(Wid);
-        if (Ev == UI_EVENT_CLOSE) {
+        if (Ev == UI_EVENT_CLOSE || Ev < 0) {
             break;
         }
         if (Ev == UI_BUTTON_EVENT(0)) {

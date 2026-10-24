@@ -11,7 +11,9 @@
 | [`LibcGaps.md`](LibcGaps.md) | ISO C 加厚缺口（selfhost · sh-5） |
 | [`UI/`](UI/) | 布局文件、多页面、拖控件设计器 |
 
-**代码入口**：`Kernel/Tools/Sdk/Examples/` · `Kernel/User/Apps/` · 头文件 `Kernel/User/include/`。  
+**代码入口（人手）**：[`Start/App/`](../../Start/App/) — 毛坯模板 / 样例 / 红线 / 部署。  
+**工具链包**：`Kernel/Tools/build-sdk.sh` → `Kernel/Build/BlocksSDK`（亦见 `Tools/Sdk/`）。  
+**树内 Demo**：`Kernel/User/Apps/` · 头：`Kernel/User/include/`。  
 **上机**：[`../START.md`](../START.md)。  
 编码规矩（贡献向）：[`../Contribute/Coding.md`](../Contribute/Coding.md)。
 

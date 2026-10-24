@@ -66,6 +66,9 @@ static int IdFromElfBasename(const char *Path, char *Id, int IdMax) {
  *   Apps/<id>/... → id
  *   Class/NAME.ELF / NAME.ELF → lower(NAME)（课堂 Class/ 与 PKG window= 对齐）
  * 失败 -1
+ *
+ * 注意：扁平 Apps/FOO.ELF（无子目录）故意失败 → TakesWindow=0。
+ * 若仍开窗会进 CoopDrain 钉死；SysCreateWindow 在 drain 下已拒创建。
  */
 static int ExtractAppsId(const char *Path, char *Id, int IdMax) {
     const char *P = Path;
@@ -84,6 +87,7 @@ static int ExtractAppsId(const char *Path, char *Id, int IdMax) {
             Id[i++] = *P++;
         }
         Id[i] = 0;
+        /* 必须 Apps/<id>/…；Apps/FOO.ELF 扁平文件 → -1 */
         if (i == 0 || (*P != '/' && *P != '\\')) {
             return -1;
         }

@@ -15,14 +15,20 @@ int GuiPollUserInput(int Wid) {
     Prefer = ResolveUserWindowIndex(Wid);
     /*
      * RaiseWindow 会搬槽位，用户态持有的 wid 可能过期。
-     * 优先读解析后的 USER 槽；再扫整表兜底。
+     * CloseWindow 先清 Kind/Active 再 Present：ClosePending 勿再要求 Kind==USER。
+     * Closing 未清时勿当已关（否则 App exit → WaitNoWindowClosing 与 Flush 互锁）。
      */
+    for (I = 0; I < MAX_WINS; I++) {
+        if (gGuiWindowManager.Windows[I].Closing) {
+            return 0;
+        }
+    }
     if (Prefer >= 0 && gGuiWindowManager.Windows[Prefer].ClosePending) {
         gGuiWindowManager.Windows[Prefer].ClosePending = 0;
         return 1;
     }
     for (I = 0; I < MAX_WINS; I++) {
-        if (gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER && gGuiWindowManager.Windows[I].ClosePending) {
+        if (gGuiWindowManager.Windows[I].ClosePending) {
             gGuiWindowManager.Windows[I].ClosePending = 0;
             return 1;
         }

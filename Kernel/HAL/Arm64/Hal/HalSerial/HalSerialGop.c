@@ -191,6 +191,15 @@ static void GopFlushLine(void) {
     }
     BootLogPushVisible(W, H, LineH);
     gLineLen = 0;
+#if SCREEN_LOG
+    /* 行间略顿，避免一闪而过（桌面盖屏前还有 BootHold） */
+    {
+        volatile UINT32 i;
+        for (i = 0; i < 20000u; i++) {
+            __asm__ volatile("nop");
+        }
+    }
+#endif
 }
 
 void GopWrite(const char *Text) {

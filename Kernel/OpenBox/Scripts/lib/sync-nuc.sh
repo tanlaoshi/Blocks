@@ -13,7 +13,7 @@
 #   ./sync-nuc.sh --kernel-only   # 只更新 Kernel.elf + FW/
 #   ./sync-nuc.sh --boot          # 另写 EFI/Blocks/BOOTX64.EFI（需可写 ESP）
 #   ./sync-nuc.sh --build         # 先编 Kernel（+ Boot 若 --boot），再 prepare-rootfs，再同步
-#   BLOCKS_MNT=/mnt/toy ./sync-nuc.sh
+#   BLOCKS_MNT=/mnt/blocks ./sync-nuc.sh
 #   ESP_BOOT_DIR=/boot/efi/EFI/Blocks ./sync-nuc.sh --boot
 #
 # WIFI.CFG / WIFI_H.CFG / WIFI_C.CFG：保留在 BLOCKS 上，不同步覆盖。

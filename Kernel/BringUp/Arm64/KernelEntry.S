@@ -14,12 +14,20 @@ KernelEntry:
     mov     x19, x0
 
 #if BOARD_UART_MINI
-    /* AUX @0x3F215000；ENABLES|=1，有限等待后 '*' */
+    /*
+     * AUX @0x3F215000：ENABLES|=1、LCR=8bit、CNTL TX+RX，再 '*'。
+     * 只开 ENABLES 不够：若 U-Boot 未留 TXEN，CoolTerm 会全哑（屏仍有字）。
+     */
     movz    x0, #0x5000
     movk    x0, #0x3f21, lsl #16
     ldr     w1, [x0, #0x04]
     orr     w1, w1, #1
     str     w1, [x0, #0x04]
+    mov     w1, #3                 /* LCR 8-bit @+0x4C */
+    str     w1, [x0, #0x4c]
+    ldr     w1, [x0, #0x60]        /* CNTL */
+    orr     w1, w1, #3             /* RXEN|TXEN */
+    str     w1, [x0, #0x60]
     mov     w2, #0x10000
 10: ldr     w1, [x0, #0x54]
     tbnz    w1, #5, 11f

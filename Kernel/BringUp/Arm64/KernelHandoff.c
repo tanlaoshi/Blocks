@@ -166,6 +166,13 @@ void KernelHandoff(UINT64 DtbPhys) {
     (void)FwCfg;
     if (BoardFbSetup(&Info) == 0) {
         EarlyGopFromHandoff(&Info);
+        /* FB dcache 之后再拉一次 UART，确认未被 civac 扫坏 */
+        HalSerialInitialize();
+        HalSerialBootMark("Boot: uart GPFSEL1=");
+        BootHexU64(*(volatile UINT32 *)(UINTN)0x3F200004ULL);
+        HalSerialBootMark(" MU_CNTL=");
+        BootHexU64(*(volatile UINT32 *)(UINTN)0x3F215060ULL);
+        HalSerialBootMark("\n");
         HalSerialBootMark("Boot: mbox FB base=");
         BootHexU64(Info.FrameBufferBase);
         HalSerialBootMark(" size=");

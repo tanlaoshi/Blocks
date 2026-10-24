@@ -90,7 +90,7 @@ if [ -n "${BIN:-}" ] && [ -f "$BIN" ]; then
     cp -f "$BIN" "$OUT/Kernel.bin"
 fi
 
-# boot.scr：少打字；串口丢字时用 HDMI 键盘敲两行即可
+# boot.scr：stock U-Boot distro_bootcmd 上电自动 source（勿再手敲）
 cp -f "$BOARD_DIR/scripts/boot.cmd" "$OUT/boot.cmd"
 MKIMAGE=""
 for c in mkimage "$BLOCKS_ROOT/Build/u-boot-src/u-boot-2021.01/tools/mkimage"; do
@@ -104,6 +104,31 @@ if [ -n "$MKIMAGE" ]; then
         -d "$OUT/boot.cmd" "$OUT/boot.scr" >/dev/null
 else
     echo "warn: 无 mkimage，跳过 boot.scr（可稍后补）" >&2
+fi
+
+# U-Boot：历程钉死 stock 2021.01（distro_bootcmd → 自动找 /boot.scr）。
+# 勿用带 bootcmd=bootflow scan 的新包当 u-boot.bin（常停提示符要手敲）。
+UBOOT_STOCK=""
+for c in \
+    "$OUT/u-boot-2021.01-stock.bin" \
+    "$OUT/u-boot-2021.01.bin" \
+    "$BOARD_DIR/firmware/u-boot-2021.01-stock.bin"; do
+    if [ -f "$c" ]; then
+        UBOOT_STOCK=$c
+        break
+    fi
+done
+if [ -n "$UBOOT_STOCK" ]; then
+    if [ -f "$OUT/u-boot.bin" ] && ! cmp -s "$UBOOT_STOCK" "$OUT/u-boot.bin"; then
+        # 保异名备份一次，避免误盖可对照包
+        if [ ! -f "$OUT/u-boot-prev.bin" ]; then
+            cp -f "$OUT/u-boot.bin" "$OUT/u-boot-prev.bin"
+        fi
+    fi
+    cp -f "$UBOOT_STOCK" "$OUT/u-boot.bin"
+    echo "prepare-sd: u-boot.bin <- $(basename "$UBOOT_STOCK") (auto boot.scr)"
+else
+    echo "warn: 无 u-boot-2021.01-stock.bin；未改 u-boot.bin" >&2
 fi
 
 DTB_NAME="bcm2837-rpi-3-b-plus.dtb"
@@ -138,13 +163,15 @@ fi
 | 文件 | 说明 |
 | --- | --- |
 | Kernel.elf | 必用 |
+| u-boot.bin | **stock 2021.01**（config.txt \`kernel=\`）；上电自动跑 boot.scr |
 | pi.dtb | 短名 DTB |
-| boot.scr | **推荐**：两行启动（见下） |
+| boot.scr | distro_bootcmd 自动 source |
 | boot.cmd | 脚本源码 |
 
-## U-Boot（推荐：少打字）
+## U-Boot（上电自动）
 
-串口输入常丢字 → **用 HDMI 键盘敲命令**，CoolTerm 只看输出。
+\`config.txt\`：\`kernel=u-boot.bin\` + 本目录 **stock 2021.01** → \`bootcmd=run distro_bootcmd\` → 找到 \`/boot.scr\` 即进内核。  
+**一般不用敲命令。** 救砖 / 自动失败时再用 HDMI 键盘：
 
 EOF
     cat <<'EOF'
@@ -159,6 +186,7 @@ EOF
 
 ## 禁止
 
+- 把带 \`bootflow scan\` 的新 U-Boot 盖成 \`u-boot.bin\`（常停提示符）
 - 在丢字的串口上敲长命令（易变成 lamm/otelf 等残句）
 - load Kernel.elf 到 0x80000 再 bootelf（Starting at 0x0）
 

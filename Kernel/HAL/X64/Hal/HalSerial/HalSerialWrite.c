@@ -312,6 +312,11 @@ void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
+void HalSerialBootHoldMs(UINT32 Ms) {
+    /* X64：桌面盖屏不强制停；真机看串口即可 */
+    (void)Ms;
+}
+
 /* 串口里程碑。屏幕总开关关掉时不往 GOP 画。 */
 void HalSerialBootMarkForce(const char *Text) {
     if (!Text) {

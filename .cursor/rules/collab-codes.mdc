@@ -18,7 +18,7 @@ alwaysApply: true
 | **TB** | fetch + 对齐另一台进度；只拉不推 |
 | **TBU** | 同步 U 盘（`sync-usb`）；勿当本机 EFI 刷盘 |
 | **TBN** | 同步 NUC SSD（`sync-nuc`）；真机手测优先 |
-| **CK** | **插卡了**（Pi SD 已插入读卡器）→ 把当前 `Build/Pi3BPlus-sd/` 必测文件刷进 `bootfs` 并安全弹出；**不** commit/push |
+| **CK** | 跑 `ck-pi-sd`：`Build/Pi3BPlus-sd/` → `bootfs`（含 `u-boot.bin`）→ sync 弹出；**无卡则等到挂上再刷**；**不** commit/push |
 | **GD** | 只改路线图归档布局；不写功能代码；不 commit/push |
 | **待选** | 未点名；勿当 JX |
 

@@ -214,6 +214,10 @@ void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
+void HalSerialBootHoldMs(UINT32 Ms) {
+    (void)Ms;
+}
+
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {
     if (Buf == 0 || Digits <= 0 || Digits > 16) {
         return;

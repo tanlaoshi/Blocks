@@ -51,8 +51,10 @@ U-Boot 二进制：已验证的 **stock 2021.01** 作 `kernel8.img` / `u-boot.bi
 
 ### 2.2 U-Boot 提示符
 
-**串口输入常丢字**（日志里 `lamm`/`Kene.el`/`otelf` 即残句）→ **命令用 HDMI 键盘敲**，CoolTerm **只看输出**。  
-本板无 `icache`/`dcache` 命令。长命令易敲残 → 用卡上 **`boot.scr`**：
+**常态**：`u-boot.bin` = **stock 2021.01** → `distro_bootcmd` 自动 `source /boot.scr`，**上电不用敲**。  
+（若卡上误放了 `bootflow scan` 新包，会停提示符——换回 stock。）
+
+**救砖 / 自动失败**：串口输入常丢字 → **HDMI 键盘**敲两行，CoolTerm **只看输出**：
 
 ```text
 load mmc 0:1 0x1000000 boot.scr

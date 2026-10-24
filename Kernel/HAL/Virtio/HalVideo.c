@@ -111,11 +111,37 @@ UINT64 HalVideoFbMapFlags(void) {
  */
 static int gFbSyncDefer;
 
+/*
+ * 只 sync 可见 FB。mailbox 回报的 FrameBufferSize 可能远大于 pitch×H
+ *（双缓冲尾），若 dc civac 扫进 0x3F000000 外设窗，会砸坏 mini-UART TX
+ *（RX 仍能收 halt，CoolTerm 却全无日志）。
+ */
 static void FbDcacheSync(void) {
     UINT64 Base = VideoFrameBufferBase();
     UINT64 Size = VideoFrameBufferSize();
+    UINT32 Pw = 0;
+    UINT32 Ph = 0;
+    UINT64 OneScreen;
+    const UINT64 Peri = 0x3F000000ULL;
 
-    if (Base != 0 && Size != 0) {
+    if (Base == 0 || Size == 0) {
+        return;
+    }
+    VideoGetPhysicalSize(&Pw, &Ph);
+    if (Pw != 0 && Ph != 0) {
+        OneScreen = (UINT64)Pw * (UINT64)Ph * 4ull;
+        /* Size 常含 2× 虚高；pitch≥W 时 OneScreen 略低估，允许到 2 屏 */
+        if (Size > OneScreen * 2ull) {
+            Size = OneScreen;
+        }
+    }
+    if (Base >= Peri) {
+        return;
+    }
+    if (Base + Size > Peri) {
+        Size = Peri - Base;
+    }
+    if (Size != 0) {
         HalDcacheCleanInvalidateRange((void *)(UINTN)Base, (UINTN)Size);
     }
 }

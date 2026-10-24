@@ -52,6 +52,8 @@ void HalSerialBootMark(const char *Text);
 /* 不看屏幕通道开关，开机时直接画到画面上。 */
 void HalSerialBootMarkForce(const char *Text);
 void HalSerialBootMarkChannel(int Channel, const char *Text);
+/* 桌面盖屏前暂停：屏上可读；并再打一串 UART 心跳供 CoolTerm */
+void HalSerialBootHoldMs(UINT32 Ms);
 int HalSerialDataReady(void);
 char HalSerialReadChar(void);
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits);

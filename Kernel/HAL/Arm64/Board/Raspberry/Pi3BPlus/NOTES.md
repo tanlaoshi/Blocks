@@ -13,9 +13,10 @@
 
 ## 启动 / EL
 
+- **`u-boot.bin` = stock 2021.01**（`distro_bootcmd` → 自动 `/boot.scr`）。勿用 `bootflow scan` 新包当主二进制（停提示符要手敲）。  
 - U-Boot `go`/`bootelf` 常停在 **EL2**。降 EL1 的 eret 在本板仍会挂（只见 `*` 不见 `+`）→ **暂留 EL2**；真机 **skip MMU**。  
 - 入口信标：`*` → BSS → `+` → `Boot:`；另见 `vmm: skip MMU (board)`。  
-- 早期 putc：先 `AUX_ENABLES|=1`，有限自旋。手测命令见排障历程 §2。
+- 早期 putc：先 `AUX_ENABLES|=1`，有限自旋。救砖两行见排障历程 §2。
 
 ## 固件 / DTB / DRAM（rpi-4）
 
@@ -40,8 +41,22 @@
 
 - 控制器：DWC2 @ `0x3F980000`（BCM2835 §14；VC `0x7E980000`）。
 - 3B+ 根口挂 **板上 LAN hub**；外接键鼠在 hub 后，须 **SPLIT**（尚未做）。
-- 当前：`BoardDwc2Probe` → GSNPSID + soft-reset + force host + HPRT 上电；屏/串口见 `Boot: DWC2 …`。
+- 当前：探针 + 根口 reset + **ch0 控制传输** → 根口 hub `GET_DESCRIPTOR` / `SET_ADDRESS`。
+- **DMA**：`HCDMA` 必须 `phys|0xC0000000`（BCM2837 `phys_to_bus`）；CPU 物理址会读到全 0 描述符再 STALL。
+- 屏标：`hub DESC len=0012 vid=….` → `hub addr=0001 ok` → `hub ports=` → `hub+N st=`（有设备 `LS|FS|HS`）。
+- **尚未**：SPLIT、HID、`DriverInputAttach`、露光标；外接鼠不动是预期。
 - 禁止：用 xHCI 时序硬套；未露光标前狂泵 HID。
+- 串口：屏上 `GPFSEL1=00012000` `CNTL=3` 已对；CoolTerm 仍哑 → 查 **GPIO14→TTL RX** 线（非再改复用）。
+
+## 串口（CoolTerm 无字时）
+
+- mini-UART：GPIO14/15 ALT5；入口即开 CNTL TX/RX；`HalSerialInitialize` 再拉复用。
+- CoolTerm：**115200 8N1**。线：`GPIO14 (TX) → USB-TTL RX`，`GPIO15 (RX) ← TTL TX`，共地，**3.3V**。
+- 判读：上电 CoolTerm 应先有 **U-Boot**；再 `*` `+` `Blocks uart`；HOLD 时 `UART-HOLD`。
+  - U-Boot 也没有 → 线/口/适配器（常见：只接了 RX、TX 空焊）。
+  - 仅有 U-Boot、无 `*` → 报内核；勿先猜改波特（`core_freq=250` 已钉）。
+- 桌面 `halt`：若敲的是 **HDMI 键盘** 进壳，**不能**证明串口 RX 通。
+- `halt` 后唤醒：排针 **5（GPIO3）短接 9（GND）**。
 
 ## 公司 vs 回家
 

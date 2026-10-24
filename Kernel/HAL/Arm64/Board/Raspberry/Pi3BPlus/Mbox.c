@@ -276,7 +276,22 @@ int BoardFbSetup(BOOT_HANDOFF *Info) {
 
     FbPhys = BUS_TO_PHYS(FbBus);
     Info->FrameBufferBase = (UINT64)FbPhys;
-    Info->FrameBufferSize = (UINT64)FbSize;
+    /*
+     * Handoff Size 用可见一屏，勿用 mailbox 可能偏大的整段（含双缓冲），
+     * 否则后续 dc civac 可能扫进 0x3F000000 外设、砸串口 TX。
+     */
+    {
+        UINT32 Vis = Pitch * PhyH;
+        const UINT32 Peri = 0x3F000000u;
+
+        if (Vis == 0 || Vis > FbSize) {
+            Vis = FbSize;
+        }
+        if (FbPhys < Peri && FbPhys + Vis > Peri) {
+            Vis = Peri - FbPhys;
+        }
+        Info->FrameBufferSize = (UINT64)Vis;
+    }
     Info->HorizontalResolution = PhyW;
     Info->VerticalResolution = PhyH;
     Info->PixelsPerScanLine = Pitch / 4u;

@@ -99,6 +99,7 @@ static void UartPut(char C) {
     while ((MU_LSR & MU_LSR_TX_EMPTY) == 0) {
     }
     MU_IO = (UINT32)(UINT8)C;
+    __asm__ volatile("dsb sy" ::: "memory");
 #else
     while (PL011_FR & PL011_FR_TXFF) {
     }
@@ -116,6 +117,11 @@ static void UartWriteRaw(const char *Text) {
     if (Text == 0) {
         return;
     }
+#if BOARD_UART_MINI
+    /* FB dcache 误扫外设后 TX 位可能被清；每次输出前拉回 */
+    MU_ENABLES |= 1u;
+    MU_CNTL |= (MU_CNTL_RXEN | MU_CNTL_TXEN);
+#endif
     while (*Text) {
         if (*Text == '\r' && Text[1] == '\n') {
             UartPut('\r');
@@ -165,12 +171,92 @@ static void GopMirrorLine(const char *Text) {
     GopWrite(Text);
 }
 
+#if BOARD_UART_MINI
+#define MU_LCR (*(volatile UINT32 *)(UART_BASE + 0x4Cu))
+#define MU_LCR_8BIT 3u
+#endif
+
 void HalSerialInitialize(void) {
 #if SERIAL_ENABLE && BOARD_UART_MINI
-    /* 跟 U-Boot：只开使能，不改波特（固件已配）；须 TX+RX 都开 */
+    /*
+     * GPIO14/15 → ALT5（mini-UART）。BCM2835 §6 GPFSEL1：
+     * FSEL14 bits[14:12]、FSEL15 bits[17:15]；ALT5=0b010。
+     * 若被改成别的复用，会出现 RX 偶发仍通、TX 全哑。
+     */
+    {
+        volatile UINT32 *Gpfsel1 =
+            (volatile UINT32 *)(UINTN)0x3F200004ULL;
+        UINT32 V = *Gpfsel1;
+
+        V &= ~((7u << 12) | (7u << 15));
+        V |= (2u << 12) | (2u << 15); /* ALT5 */
+        *Gpfsel1 = V;
+        __asm__ volatile("dsb sy" ::: "memory");
+    }
     MU_ENABLES |= 1u;
+    /* 8-bit；不改 MU_BAUD（跟 U-Boot/固件） */
+    MU_LCR = MU_LCR_8BIT;
     MU_CNTL |= (MU_CNTL_RXEN | MU_CNTL_TXEN);
+    __asm__ volatile("dsb sy" ::: "memory");
+    /* 最早心跳：此时尚无 FB dcache；CoolTerm 若仍无字 → 线/口问题 */
+    UartWriteRaw("Blocks uart\r\n");
 #endif
+}
+
+static void BootHoldSpinMs(UINT32 Ms) {
+    UINT32 m;
+    for (m = 0; m < Ms; m++) {
+        volatile UINT32 i;
+        for (i = 0; i < 80000u; i++) {
+            __asm__ volatile("nop");
+        }
+    }
+}
+
+void HalSerialBootHoldMs(UINT32 Ms) {
+    char Hex[9];
+
+    if (Ms == 0) {
+        return;
+    }
+    HalSerialBootMark("Boot: HOLD — CoolTerm expect: U-Boot then * + Blocks uart\n");
+    HalSerialBootMark("Boot: HOLD — if U-Boot quiet: check GPIO14->TTL RX\n");
+#if SERIAL_ENABLE && BOARD_UART_MINI
+    HalSerialInitialize();
+    HalSerialBootMark("Boot: uart GPFSEL1=");
+    HalSerialFormatHex(Hex, *(volatile UINT32 *)(UINTN)0x3F200004ULL, 8);
+    HalSerialBootMark(Hex);
+    HalSerialBootMark(" CNTL=");
+    HalSerialFormatHex(Hex, MU_CNTL, 8);
+    HalSerialBootMark(Hex);
+    HalSerialBootMark(" LSR=");
+    HalSerialFormatHex(Hex, MU_LSR, 8);
+    HalSerialBootMark(Hex);
+    HalSerialBootMark(" LCR=");
+    HalSerialFormatHex(Hex, MU_LCR, 8);
+    HalSerialBootMark(Hex);
+    HalSerialBootMark("\n");
+    /* 慢打；仍无 UART-HOLD → TX 线/口（halt 若来自 HDMI 壳则未证明 RX） */
+    UartWriteRaw("UART-HOLD\r\n");
+    {
+        UINTN N;
+        char Snap[512];
+        UINTN i;
+
+        N = HalSerialBootSnapshot(Snap, sizeof(Snap));
+        for (i = 0; i < N; i++) {
+            char One[2];
+            One[0] = Snap[i];
+            One[1] = 0;
+            UartWriteRaw(One);
+            if (Snap[i] == '\n') {
+                BootHoldSpinMs(15);
+            }
+        }
+    }
+#endif
+    BootHoldSpinMs(Ms);
+    HalSerialBootMark("Boot: HOLD end\n");
 }
 
 void HalSerialRetryIfMissing(void) {
@@ -299,10 +385,8 @@ void HalSerialBootMarkForce(const char *Text) {
     if (!Text) {
         return;
     }
-    RingAppend(Text);
-    if (!gShellOwnUart && ChannelUartOn(SLOG_BOOT)) {
-        UartWriteRaw(Text);
-    }
+    /* 与 BootMarkChannel 同：ShellOwn 不挡 UART */
+    HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
 void HalSerialWrite(const char *Text) {

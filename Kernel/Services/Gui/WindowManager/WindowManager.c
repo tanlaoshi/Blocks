@@ -168,7 +168,11 @@ void GuiDesktopInitialize(void) {
     /*
      * 首帧桌面：先停 GOP、整屏黑 sync，再一次 PresentFlush（抬高条带）。
      * 避免 U-Boot/boot 字与桌面条带撕开「底半先出任务栏」。
+     * SCREEN_LOG：盖屏前 HOLD，方便读 DWC2/串口诊断行。
      */
+#if SCREEN_LOG
+    HalSerialBootHoldMs(8000u);
+#endif
     HalSerialGopMirror(0);
     HalSerialGopMute(1);
     {

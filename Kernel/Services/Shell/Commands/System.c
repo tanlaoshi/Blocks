@@ -98,8 +98,10 @@ static void CommandReboot(int Argc, char **Argv) {
 static void CommandHalt(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
-    gConsole.Write("halt\n");
-    HalCpuPark();
+    gConsole.Write("shutdown (halt)...\n");
+    HalConsoleWriteSerial("shell: halt/shutdown\n");
+    /* Pi：firmware halt 停住等拔电；勿 HalCpuPark（那只停车仍占着机） */
+    HalCpuShutdown();
 }
 
 /* PR-D4：列出已绑定驱动（DRIVER.Name + 类） */
@@ -227,7 +229,8 @@ void ShellCommandsSystemRegister(void) {
 
     gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
     gConsole.Register("reboot", "reset CPU (QEMU display: quit+./run-split.sh)", CommandReboot);
-    gConsole.Register("halt", "stop CPU", CommandHalt);
+    gConsole.Register("halt", "power off / firmware halt (Pi: then unplug, pull SD)", CommandHalt);
+    gConsole.RegisterAlias("halt", "shutdown");
     gConsole.RegisterAlias("halt", "exit");
     gConsole.RegisterAlias("halt", "quit");
 }

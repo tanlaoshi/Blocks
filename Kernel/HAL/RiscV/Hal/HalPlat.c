@@ -71,6 +71,11 @@ HAL_ELF_RELOC_KIND HalElfRelocKind(UINT32 Type) {
     }
 }
 
+void HalDcacheCleanInvalidateRange(void *Va, UINTN Len) {
+    (void)Va;
+    (void)Len;
+}
+
 void HalSyncICache(void *Addr, UINTN Size) {
     (void)Addr;
     (void)Size;

@@ -107,6 +107,40 @@ static void DropNewTable(UINT64 *Parent, UINT64 Index, UINT64 *Table,
     PhysicalMemoryFreePage(Table);
 }
 
+/*
+ * 把 L2 上的 2MiB block 拆成 L3（512×4KiB），保留原 block 的属性位。
+ * ARM ARM：Create 路径遇 block 须拆表，不能直接失败（否则 MapIdentity(FB) 永挂）。
+ */
+static UINT64 *SplitBlockL2(UINT64 *L2, UINT64 I2, HalPageAllocateFunction Alloc, void *Ctx) {
+    UINT64 Old;
+    UINT64 PaBase;
+    UINT64 Attr;
+    UINT64 *L3;
+    UINT64 TableFlags = DESC_VALID | DESC_TABLE | AF_BIT | ATTR_NORMAL | SH_INNER | AP_EL1_RW;
+    UINTN i;
+
+    Old = L2[I2];
+    if (!IsBlock(Old)) {
+        return (UINT64 *)(UINTN)(Old & 0x0000FFFFFFFFF000ULL);
+    }
+    L3 = Alloc ? (UINT64 *)Alloc(Ctx) : (UINT64 *)PageAllocTable();
+    if (!L3) {
+        return 0;
+    }
+    if (!Alloc) {
+        PageZero(L3, PAGE_SIZE);
+    }
+    /* 2MiB block PA 在 [47:21]；属性在低位（含 AttrIndx/AP/SH/AF/UXN） */
+    PaBase = Old & 0x0000FFFFFFE00000ULL;
+    Attr = Old & ~0x0000FFFFFFE00000ULL;
+    Attr &= ~DESC_TABLE; /* block 的 bit1=0；页描述符要 VALID|TABLE */
+    for (i = 0; i < 512; i++) {
+        L3[i] = (PaBase + ((UINT64)i << 12)) | Attr | DESC_VALID | DESC_TABLE;
+    }
+    L2[I2] = PagePhys(L3) | TableFlags;
+    return L3;
+}
+
 UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
                         HalPageAllocateFunction Alloc, void *Ctx) {
     UINT64 i0 = (Virt >> 39) & 0x1FF;
@@ -138,6 +172,7 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
     }
     L1 = (UINT64 *)(UINTN)(L0[i0] & 0x0000FFFFFFFFF000ULL);
     if (IsBlock(L1[i1])) {
+        /* 本柱 HalPageKernelSetup 不用 1GiB block；遇则拒（无拆 1G 需求） */
         if (MadeL1) {
             DropNewTable(L0, i0, L1, Alloc, Ctx);
         }
@@ -163,13 +198,20 @@ UINT64 *PageWalk(UINT64 *L0, UINT64 Virt, int Create, int User,
     }
     L2 = (UINT64 *)(UINTN)(L1[i1] & 0x0000FFFFFFFFF000ULL);
     if (IsBlock(L2[i2])) {
-        if (MadeL2) {
-            DropNewTable(L1, i1, L2, Alloc, Ctx);
+        if (!Create) {
+            return 0;
         }
-        if (MadeL1) {
-            DropNewTable(L0, i0, L1, Alloc, Ctx);
+        L3 = SplitBlockL2(L2, i2, Alloc, Ctx);
+        if (!L3) {
+            if (MadeL2) {
+                DropNewTable(L1, i1, L2, Alloc, Ctx);
+            }
+            if (MadeL1) {
+                DropNewTable(L0, i0, L1, Alloc, Ctx);
+            }
+            return 0;
         }
-        return 0;
+        return &L3[i3];
     }
 
     if (!(L2[i2] & DESC_VALID)) {

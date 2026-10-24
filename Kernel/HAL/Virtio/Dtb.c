@@ -2,6 +2,8 @@
  * Dtb.c — FDT memory 节点 reg（PR-S3-dtb-1）
  *
  * fw-cfg / cpu@ 见 DtbProbe.c。
+ * Pi FAT 上的 *.dtb 常为 memory@0 { reg = <0 0>; } 模板（size=0）→ 本函数
+ * 失败；真机应读固件已 patch 的 FDT，或 BoardDramProbe（mailbox）。
  */
 #include "Dtb.h"
 #include "DtbPrivate.h"

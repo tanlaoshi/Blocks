@@ -6,6 +6,8 @@
 #include "PhysicalMemory.h"
 #include "Hal.h"
 
+/* VideoFrameBuffer* 在 Video.h */
+
 void HalVideoSet(const VIDEO_CONFIG *Config) {
     VIDEO_CONFIG Local;
 
@@ -99,8 +101,30 @@ UINT64 HalVideoFbMapFlags(void) {
     return HAL_PAGE_PRESENT | HAL_PAGE_WRITABLE;
 }
 
+/*
+ * Pi VC 与 CPU 不同 cache 域：凡写 scanout（Present / front 直写）后须 clean。
+ * 只 EndFront 刷、Present 不刷 → GuiRedraw 桌面困在 D-cache，屏上仍是 boot 黑字。
+ *
+ * PresentFlush 会连打多次 Present（默认 64 行条带）。若每条都 sync，HDMI 上会
+ * 「一条条撕开」：上半深色桌面贴 U-Boot 黑底不易察觉，浅色任务栏一到就像
+ * 「U-Boot 界面底部先出半个桌面」。Flush 期间推迟 sync，整屏拷完再一次 clean。
+ */
+static int gFbSyncDefer;
+
+static void FbDcacheSync(void) {
+    UINT64 Base = VideoFrameBufferBase();
+    UINT64 Size = VideoFrameBufferSize();
+
+    if (Base != 0 && Size != 0) {
+        HalDcacheCleanInvalidateRange((void *)(UINTN)Base, (UINTN)Size);
+    }
+}
+
 void HalVideoPresent(void) {
     VideoPresent();
+    if (!gFbSyncDefer) {
+        FbDcacheSync();
+    }
 }
 
 void HalVideoPresentCursor(void) {
@@ -131,7 +155,10 @@ void HalVideoHwCursorDisable(void) {
 }
 
 void HalVideoPresentFlush(void) {
+    gFbSyncDefer = 1;
     VideoPresentFlush();
+    gFbSyncDefer = 0;
+    FbDcacheSync();
 }
 
 void HalVideoDiscardDirty(void) {
@@ -152,9 +179,13 @@ void HalVideoSetGlyphSmooth(int On) {
 }
 
 void HalVideoDrawBeginFront(void) {
+    VideoDrawBeginFront();
 }
 
 void HalVideoDrawEndFront(void) {
+    VideoDrawEndFront();
+    /* 真机 FB：与 Present 同路径 FbDcacheSync（virt 同调无害） */
+    FbDcacheSync();
 }
 
 int HalVideoBackbufferEnabled(void) {

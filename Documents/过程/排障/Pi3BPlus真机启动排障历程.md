@@ -192,6 +192,18 @@ source 0x1000000
 
 已知限制：无 FB → HDMI 停在 Starting；MMU 仍 skip（board）；EL 未降。后续单变量再开。
 
+### rpi-4（DTB / DRAM）
+
+- 卡上 `pi.dtb` 的 `memory@0.reg=<0 0>` 是**模板**；`bootelf` 的 x0 是 argc 不是 DTB。  
+- 新 `boot.scr`：固件 FDT → `0x02400000`；内核再试 mailbox `GET_ARM_MEMORY`。  
+- 手测看：`Boot: DTB @… memory …` 或 `Boot: mbox GET_ARM_MEMORY …` + `Boot: regions=`（不要停在 Fallback）。
+
+### rpi-5（FB 花屏 / VirtualMemory Failed）
+
+- 花屏：U-Boot 开 D-cache，CPU 写 FB 未 `dc civac` → 修 flush + Begin/EndFront。  
+- 屏上日志已通后：`Boot: Mod VirtualMemory Failed`。根因：`MapIdentity(FB@0x3e8…)` 撞 `HalPageKernelSetup` 的 **2MiB block**，`PageWalk` 遇 block 直接 return 0。  
+- 修：`SplitBlockL2`（2MiB→L3×4KiB，保留属性）；横幅前整屏铺黑盖 U-Boot 残色。
+
 ---
 
 ## 7. 修订记录

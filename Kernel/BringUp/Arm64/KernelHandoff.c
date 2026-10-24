@@ -1,11 +1,15 @@
 /*
- * KernelHandoff.c — Arm64：DTB → BOOT_HANDOFF → KernelMain（ramfb 可选）
+ * KernelHandoff.c — Arm64：DTB → BOOT_HANDOFF → KernelMain（ramfb / Pi mailbox FB）
  *
  * QEMU 对 ELF -kernel 不走 Linux 启动协议（x0 常为 0）。run-virt-arm.sh
  * 用 dumpdtb + -device loader 把 FDT 放到 ARM64_VIRT_DTB_ADDR。
+ *
+ * Pi：bootelf 的 x0≠DTB；FAT 上 pi.dtb memory 常为 <0 0> 模板。
+ * 真机 FB：BoardFbSetup（mailbox）后尽早 HalSerialGopEnable，Boot: 上 HDMI。
  */
 #include "HalSerial.h"
 #include "Hal.h"
+#include "HalVideo.h"
 #include "BootHandoff.h"
 #include "Kernel.h"
 #include "Virtio/Dtb.h"
@@ -13,10 +17,10 @@
 #include "Board.h"
 #include "BoardConfig.h"
 #include "Text.h"
+#include "Font.h"
 
 extern char __kernel_end[];
 
-/* 与 run-virt-arm.sh 中 loader addr 一致（落在 ≥256MiB RAM 内）；非 virt 不用 */
 #define ARM64_VIRT_DTB_ADDR 0x4a000000ULL
 #define ARM64_VIRT_FWCFG_FALLBACK 0x09020000ULL
 
@@ -45,11 +49,11 @@ static int BootHandoffAddRegion(BOOT_HANDOFF *Info, UINT64 Phys, UINT64 Size, in
     return 0;
 }
 
-static void HexU64(UINT64 V) {
+static void BootHexU64(UINT64 V) {
     char Buf[17];
 
     FormatHexadecimal(Buf, (int)sizeof(Buf), V, 16, 0, 0);
-    HalSerialWrite(Buf);
+    HalSerialBootMark(Buf);
 }
 
 static int TryDtb(UINT64 Phys, UINT64 *RamBase, UINT64 *RamSize) {
@@ -57,6 +61,37 @@ static int TryDtb(UINT64 Phys, UINT64 *RamBase, UINT64 *RamSize) {
         return -1;
     }
     return DtbMemoryRegion(Phys, RamBase, RamSize);
+}
+
+static void PrintRegions(const BOOT_HANDOFF *Info) {
+    UINT32 i;
+
+    HalSerialBootMark("Boot: regions=");
+    BootHexU64(Info->RegionCount);
+    HalSerialBootMark("\n");
+    for (i = 0; i < Info->RegionCount; i++) {
+        HalSerialBootMark("Boot: region[");
+        BootHexU64(i);
+        HalSerialBootMark("] phys=");
+        BootHexU64(Info->Regions[i].Phys);
+        HalSerialBootMark(" size=");
+        BootHexU64(Info->Regions[i].Size);
+        HalSerialBootMark(Info->Regions[i].Free ? " free\n" : " reserved\n");
+    }
+}
+
+/* FB 已填进 Info 后：挂 Video + 屏上滚，后续 BootMark 可见 */
+static void EarlyGopFromHandoff(const BOOT_HANDOFF *Info) {
+    VIDEO_CONFIG Video;
+
+    if (Info == 0 || Info->FrameBufferSize == 0) {
+        return;
+    }
+    BootHandoffSet(Info);
+    Video = BootHandoffToVideoConfig(Info);
+    FontInitialize();
+    HalVideoSet(&Video);
+    HalSerialGopEnable();
 }
 
 void KernelHandoff(UINT64 DtbPhys) {
@@ -71,40 +106,38 @@ void KernelHandoff(UINT64 DtbPhys) {
     UINT64 FwCfg = 0;
     UINTN i;
     int FromDtb;
+    int FromMbox;
 
     HalSerialInitialize();
-    HalSerialWrite("Boot: Arm64 KernelMain\n");
-    HalSerialWrite("board: ");
-    HalSerialWrite(BoardName());
-    HalSerialWrite("\n");
+    HalSerialBootMark("Boot: Arm64 KernelMain\n");
+    HalSerialBootMark("board: ");
+    HalSerialBootMark(BoardName());
+    HalSerialBootMark("\n");
     {
         UINT64 El;
         __asm__ volatile("mrs %0, CurrentEL" : "=r"(El));
-        HalSerialWrite("Boot: EL=");
-        HexU64(El >> 2);
-        HalSerialWrite("\n");
+        HalSerialBootMark("Boot: EL=");
+        BootHexU64(El >> 2);
+        HalSerialBootMark("\n");
     }
 
-    FromDtb = (TryDtb(DtbPhys, &RamBase, &RamSize) == 0);
-    if (FromDtb) {
+    FromDtb = 0;
+    FromMbox = 0;
+    if (TryDtb(DtbPhys, &RamBase, &RamSize) == 0) {
+        FromDtb = 1;
         UsedDtb = DtbPhys;
+    } else if (TryDtb(BOARD_DTB_LOAD, &RamBase, &RamSize) == 0) {
+        FromDtb = 1;
+        UsedDtb = BOARD_DTB_LOAD;
 #if BOARD_IS_VIRT
     } else if (TryDtb(ARM64_VIRT_DTB_ADDR, &RamBase, &RamSize) == 0) {
         FromDtb = 1;
         UsedDtb = ARM64_VIRT_DTB_ADDR;
 #endif
-    }
-
-    if (FromDtb) {
-        HalSerialWrite("Boot: DTB @");
-        HexU64(UsedDtb);
-        HalSerialWrite(" memory base=");
-        HexU64(RamBase);
-        HalSerialWrite(" size=");
-        HexU64(RamSize);
-        HalSerialWrite("\n");
+    } else if (BoardDramProbe(&RamBase, &RamSize) == 0) {
+        FromMbox = 1;
     } else {
-        HalSerialWrite("Boot: DTB Memory Missing, Fallback BOARD_RAM\n");
+        HalSerialBootMark("Boot: DTB/mbox Memory Missing, Fallback BOARD_RAM\n");
         RamBase = BOARD_RAM_BASE;
         RamSize = BOARD_RAM_SIZE;
     }
@@ -128,9 +161,40 @@ void KernelHandoff(UINT64 DtbPhys) {
         FwCfg = ARM64_VIRT_FWCFG_FALLBACK;
     }
     (void)RamfbSetup(&Info, FwCfg, &FreeStart, RamBase + RamSize);
+    EarlyGopFromHandoff(&Info);
 #else
     (void)FwCfg;
+    if (BoardFbSetup(&Info) == 0) {
+        EarlyGopFromHandoff(&Info);
+        HalSerialBootMark("Boot: mbox FB base=");
+        BootHexU64(Info.FrameBufferBase);
+        HalSerialBootMark(" size=");
+        BootHexU64(Info.FrameBufferSize);
+        HalSerialBootMark(" ");
+        BootHexU64(Info.HorizontalResolution);
+        HalSerialBootMark("x");
+        BootHexU64(Info.VerticalResolution);
+        HalSerialBootMark("\n");
+    } else {
+        HalSerialBootMark("Boot: mbox FB failed (serial only)\n");
+    }
 #endif
+
+    if (FromDtb) {
+        HalSerialBootMark("Boot: DTB @");
+        BootHexU64(UsedDtb);
+        HalSerialBootMark(" memory base=");
+        BootHexU64(RamBase);
+        HalSerialBootMark(" size=");
+        BootHexU64(RamSize);
+        HalSerialBootMark("\n");
+    } else if (FromMbox) {
+        HalSerialBootMark("Boot: mbox GET_ARM_MEMORY base=");
+        BootHexU64(RamBase);
+        HalSerialBootMark(" size=");
+        BootHexU64(RamSize);
+        HalSerialBootMark("\n");
+    }
 
     ReserveEnd = FreeStart;
     if (ReserveEnd < RamBase) {
@@ -149,6 +213,7 @@ void KernelHandoff(UINT64 DtbPhys) {
         BootHandoffAddRegion(&Info, RamBase, RamSize, 1);
     }
 
+    PrintRegions(&Info);
     BootHandoffSet(&Info);
 #if BOARD_IS_VIRT
     HalSmpNoteDtb(UsedDtb ? UsedDtb : ARM64_VIRT_DTB_ADDR);

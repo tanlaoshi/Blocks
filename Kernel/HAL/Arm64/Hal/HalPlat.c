@@ -26,8 +26,15 @@ int HalPinInteractiveToBootstrap(void) {
 }
 
 int HalPlatformIsVirtSerialConsole(void) {
-    /* 仅 QEMU virt：挂 virtio、桌面模块形状；真机板禁止当 virt */
-    return BOARD_IS_VIRT ? 1 : 0;
+    /*
+     * 历史名：实际门控「用 Virt 桌面模块表」。
+     * virt：始终 1。
+     * 真机板：有 FB 时也走 VirtDesktop（勿 KernelModulesRunFull / PC 驱动表）。
+     */
+    if (BOARD_IS_VIRT) {
+        return 1;
+    }
+    return HalHasFrameBuffer() ? 1 : 0;
 }
 
 int HalCpuIsHypervisor(void) {

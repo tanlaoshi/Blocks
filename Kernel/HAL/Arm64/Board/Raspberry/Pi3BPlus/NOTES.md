@@ -17,10 +17,24 @@
 - 入口信标：`*` → BSS → `+` → `Boot:`；另见 `vmm: skip MMU (board)`。  
 - 早期 putc：先 `AUX_ENABLES|=1`，有限自旋。手测命令见排障历程 §2。
 
-## 固件 / DTB
+## 固件 / DTB / DRAM（rpi-4）
 
-- 卡上短名 **`pi.dtb`**（内容同 `bcm2710-rpi-3-b-plus.dtb`；优先官方 bcm2710，勿默认 bcm2837）。  
-- 加载地址以板上 `printenv` 为准；`BoardConfig.h` 仅为文档与 fallback。
+- 卡上 **`pi.dtb` 的 `memory@0.reg` 常为 `<0 0>`**（未 patch 模板）→ 不能当真机 DRAM。  
+- `boot.scr`：优先 `${fdt_addr}` / `${fdtcontroladdr}`（固件已 patch）`fdt move` → `0x02400000`；`bootelf` **不**把 DTB 放进 x0。  
+- 内核：`x0` → `BOARD_DTB_LOAD` → **mailbox `GET_ARM_MEMORY`**（与 U-Boot `dram_init` 同源）→ 最后才 `BOARD_RAM_*`。  
+- 验收：HDMI 屏上滚（勿只信 CoolTerm）见 `Boot: DTB|mbox …` + `regions=`。
+
+## FB / 屏上日志（rpi-5）
+
+- mailbox 要 FB → 深蓝铺底盖住 U-Boot Starting；`HalSerialGop` **全量**（`Hal/HalSerial/HalSerialGop.c`，对齐 X64）。  
+- 编：`build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
+- 有 FB → VirtDesktop 模块表（非 RunFull）。
+
+## 复位 / 关机拔卡
+
+- **要拔 SD 刷卡**：`blocks>` 敲 `halt` 或 `shutdown` → firmware halt（`PM_RSTS|=0x555`，U-Boot/Linux 同源）→ 机子停住不重启 → **拔电源** → 拔卡。  
+- **只想再跑一遍、不拔卡**：`reboot` 或 U-Boot `reset`。  
+- 卡在 Failed、无提示符：只能拔电源。
 
 ## 公司 vs 回家
 

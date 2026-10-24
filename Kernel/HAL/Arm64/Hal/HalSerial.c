@@ -1,15 +1,18 @@
 /*
- * HalSerial.c — aarch64 串口（基址/类型见 BoardConfig.h / PR-B2）
+ * HalSerial.c — aarch64 串口 + GOP 镜像门面
  *
  * - virt：PL011
- * - Pi3BPlus 等 BOARD_UART_MINI=1：BCM AUX mini-UART（寄存器布局不同）
+ * - Pi3BPlus 等 BOARD_UART_MINI=1：BCM AUX mini-UART
+ * - 屏上滚：HalSerial/HalSerialGop.c（与 X64 同形，勿 stub）
  *
- * SERIAL_ENABLE=0：不碰 UART；分模块 quiet 见 SerialConfig.h。
+ * SERIAL_ENABLE=0：不碰 UART；SCREEN_LOG=0：Gop 横幅/通道全关。
  */
 #include "HalSerial.h"
+#include "HalSerial/HalSerialPrivate.h"
 #include "Text.h"
 #include "BoardConfig.h"
 #include "SerialConfig.h"
+#include "Font.h"
 
 #ifndef BOARD_UART_MINI
 #define BOARD_UART_MINI 0
@@ -18,9 +21,8 @@
 #define UART_BASE  ((UINTN)BOARD_UART_BASE)
 
 #if BOARD_UART_MINI
-/* BCM2835 ARM Peripherals §2.2 AUX mini UART；BASE = AUX 块 */
-#define MU_IO     (*(volatile UINT32 *)(UART_BASE + 0x40))
-#define MU_LSR    (*(volatile UINT32 *)(UART_BASE + 0x54))
+#define MU_IO      (*(volatile UINT32 *)(UART_BASE + 0x40))
+#define MU_LSR     (*(volatile UINT32 *)(UART_BASE + 0x54))
 #define MU_ENABLES (*(volatile UINT32 *)(UART_BASE + 0x04))
 #define MU_LSR_TX_EMPTY   (1u << 5)
 #define MU_LSR_DATA_READY (1u << 0)
@@ -32,6 +34,20 @@
 #endif
 
 static int gShellOwnUart;
+static char gRing[GOP_RING];
+static UINTN gRingLen;
+static char gBootSnap[GOP_RING];
+static UINTN gBootSnapLen;
+
+int gVideoUp;
+int gGopBanner;
+int gGopMute;
+int gGopMirror = 1;
+UINT32 gBootLogY;
+char gHalSerialLine[BOOT_LOG_LINE_MAX];
+UINTN gLineLen;
+char gBootVis[BOOT_VIS_MAX][BOOT_LOG_LINE_MAX];
+UINT32 gBootVisN;
 
 static int ChannelUartOn(int Channel) {
 #if !SERIAL_ENABLE
@@ -53,6 +69,26 @@ static int ChannelUartOn(int Channel) {
 #endif
 }
 
+static int ChannelGopOn(int Channel) {
+#if !SCREEN_LOG
+    (void)Channel;
+    return 0;
+#else
+    switch (Channel) {
+    case SLOG_BOOT: return SCREEN_LOG_BOOT;
+    case SLOG_USB:  return SCREEN_LOG_USB;
+    case SLOG_SMP:  return SCREEN_LOG_SMP;
+    case SLOG_GUI:  return SCREEN_LOG_GUI;
+    case SLOG_NET:  return SCREEN_LOG_NET;
+    case SLOG_FS:   return SCREEN_LOG_FS;
+    case SLOG_MEM:  return SCREEN_LOG_MEM;
+    case SLOG_DRV:  return SCREEN_LOG_DRV;
+    case SLOG_MISC:
+    default:            return SCREEN_LOG_MISC;
+    }
+#endif
+}
+
 static void UartPut(char C) {
 #if SERIAL_ENABLE
 #if BOARD_UART_MINI
@@ -69,7 +105,6 @@ static void UartPut(char C) {
 #endif
 }
 
-/* \\n → \\r\\n（含 Input/timer 等直呼 HalSerialWrite 的路径）；已有 \\r\\n 不叠 */
 static void UartWriteRaw(const char *Text) {
 #if !SERIAL_ENABLE
     (void)Text;
@@ -95,12 +130,40 @@ static void UartWriteRaw(const char *Text) {
 #endif
 }
 
+void HalSerialBootCapture(const char *Text) {
+    while (Text && *Text) {
+        if (gBootSnapLen + 1 >= sizeof(gBootSnap)) {
+            break;
+        }
+        gBootSnap[gBootSnapLen++] = *Text++;
+    }
+}
+
+void RingAppend(const char *Text) {
+    HalSerialBootCapture(Text);
+    while (Text && *Text) {
+        if (gRingLen + 1 >= GOP_RING) {
+            UINTN Keep = GOP_RING / 2;
+            UINTN i;
+            for (i = 0; i < Keep; i++) {
+                gRing[i] = gRing[gRingLen - Keep + i];
+            }
+            gRingLen = Keep;
+        }
+        gRing[gRingLen++] = *Text++;
+    }
+}
+
+static void GopMirrorLine(const char *Text) {
+    if (!Text || !gGopMirror || !gVideoUp || gGopMute) {
+        return;
+    }
+    GopWrite(Text);
+}
+
 void HalSerialInitialize(void) {
 #if SERIAL_ENABLE && BOARD_UART_MINI
-    /* 固件/U-Boot 已配好波特率；只确保 AUX mini-UART 使能位，不改 BAUD */
     MU_ENABLES |= 1u;
-#else
-    /* QEMU virt 已初始化 PL011；SERIAL=0 时也不访问 */
 #endif
 }
 
@@ -121,32 +184,61 @@ int HalSerialPresent(void) {
 void HalSerialRxPump(void) {
 }
 
-void HalSerialGopEnable(void) {
+void HalSerialBootFontApply(void) {
+    (void)FontSetById(0);
 }
 
-void HalSerialBootFontApply(void) {
+void HalSerialGopEnable(void) {
+    HalSerialBootFontApply();
+    if (gVideoUp) {
+        return;
+    }
+    gVideoUp = 1;
+    gGopBanner = 0;
+    gBootVisN = 0;
+    gBootLogY = BootLogBodyY(BootLogLineH());
+    gLineLen = 0;
+#if SCREEN_LOG
+    GopBannerOnce();
+#else
+    gGopBanner = 1;
+#endif
 }
 
 void HalSerialGopMirror(int Enable) {
-    (void)Enable;
+    gGopMirror = Enable ? 1 : 0;
 }
 
 int HalSerialGopMirroring(void) {
-    return 0;
+    return (gGopMirror && gVideoUp && !gGopMute) ? 1 : 0;
+}
+
+void HalSerialGopMute(int Mute) {
+    gGopMute = Mute ? 1 : 0;
 }
 
 const char *HalSerialLogText(void) {
-    return "";
+    if (gRingLen >= GOP_RING) {
+        gRingLen = GOP_RING - 1;
+    }
+    gRing[gRingLen] = '\0';
+    return gRing;
 }
 
 void HalSerialWriteChannel(int Channel, const char *Text) {
+    if (!Text) {
+        return;
+    }
     if (gShellOwnUart) {
         return;
     }
-    if (!ChannelUartOn(Channel)) {
-        return;
+    RingAppend(Text);
+    if (ChannelUartOn(Channel)) {
+        UartWriteRaw(Text);
     }
-    UartWriteRaw(Text);
+    if (ChannelGopOn(Channel)) {
+        GopMirrorLine(Text);
+    }
 }
 
 void HalSerialShellOwn(void) {
@@ -175,16 +267,34 @@ UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
 }
 
 UINTN HalSerialBootSnapshot(char *Dst, UINTN Max) {
-    (void)Dst;
-    (void)Max;
-    return 0;
+    UINTN N;
+    UINTN i;
+
+    if (!Dst || Max == 0) {
+        return 0;
+    }
+    N = gBootSnapLen;
+    if (N >= Max) {
+        N = Max - 1;
+    }
+    for (i = 0; i < N; i++) {
+        Dst[i] = gBootSnap[i];
+    }
+    Dst[N] = 0;
+    return N;
 }
 
 void HalSerialReplayUsb(void) {
 }
 
 void HalSerialBootMarkForce(const char *Text) {
-    (void)Text;
+    if (!Text) {
+        return;
+    }
+    RingAppend(Text);
+    if (!gShellOwnUart && ChannelUartOn(SLOG_BOOT)) {
+        UartWriteRaw(Text);
+    }
 }
 
 void HalSerialWrite(const char *Text) {
@@ -232,12 +342,18 @@ char HalSerialReadChar(void) {
 void HalSerialBootLogRewind(void) {
 }
 
-void HalSerialGopMute(int Mute) {
-    (void)Mute;
-}
-
 void HalSerialBootMarkChannel(int Channel, const char *Text) {
-    HalSerialWriteChannel(Channel, Text);
+    if (!Text) {
+        return;
+    }
+    RingAppend(Text);
+    if (!gShellOwnUart && ChannelUartOn(Channel)) {
+        UartWriteRaw(Text);
+    }
+    /* Mute 期间也上屏（对齐 X64 BootMark） */
+    if (ChannelGopOn(Channel) && gGopMirror && gVideoUp) {
+        GopWrite(Text);
+    }
 }
 
 void HalSerialBootMark(const char *Text) {

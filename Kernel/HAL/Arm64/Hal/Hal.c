@@ -43,8 +43,63 @@ void HalCpuPark(void) {
         __asm__ volatile("wfi");
     }
 }
-void HalCpuReboot(void) { HalCpuPark(); }
-void HalCpuShutdown(void) { HalCpuPark(); }
+
+/*
+ * BCM2835 PM / watchdog @ 0x3F100000（与 U-Boot mach-bcm283x/reset.c 同源）
+ * RSTS 特殊分区 63（位型 0x555）：bootcode.bin 见之则 **停住不重启**，
+ * 直到拔电——便于拔 SD，而不是 reboot 循环。
+ */
+#if !BOARD_IS_VIRT
+#define PM_PASS                 0x5A000000u
+#define PM_RSTC                 ((volatile UINT32 *)(UINTN)0x3F10001Cu)
+#define PM_RSTS                 ((volatile UINT32 *)(UINTN)0x3F100020u)
+#define PM_WDOG                 ((volatile UINT32 *)(UINTN)0x3F100024u)
+#define PM_RSTC_WRCFG_MASK      0x00000030u
+#define PM_RSTC_WRCFG_FULL_RESET 0x00000020u
+#define PM_RSTS_RASPBERRYPI_HALT 0x555u
+
+static void PmWatchdogReset(int HaltFirmware) {
+    UINT32 Rstc;
+
+    if (HaltFirmware) {
+        UINT32 Rsts = *PM_RSTS;
+        Rsts |= PM_PASS;
+        Rsts |= PM_RSTS_RASPBERRYPI_HALT;
+        *PM_RSTS = Rsts;
+    }
+    Rstc = *PM_RSTC;
+    Rstc &= ~PM_RSTC_WRCFG_MASK;
+    Rstc |= PM_RSTC_WRCFG_FULL_RESET;
+    *PM_WDOG = PM_PASS | 1u;
+    *PM_RSTC = PM_PASS | Rstc;
+    __asm__ volatile("dsb sy" ::: "memory");
+}
+#endif
+
+void HalCpuReboot(void) {
+#if BOARD_IS_VIRT
+    {
+        register UINT64 X0 __asm__("x0") = 0x84000009ULL; /* PSCI_SYSTEM_RESET */
+        __asm__ volatile("hvc #0" : "+r"(X0) : : "memory");
+    }
+#else
+    PmWatchdogReset(0);
+#endif
+    HalCpuPark();
+}
+
+/*
+ * HalCpuShutdown — Pi：firmware halt（不自动再起）；virt：停车。
+ * 之后可拔电源再拔卡；不要用 reboot 当关机。
+ */
+void HalCpuShutdown(void) {
+#if BOARD_IS_VIRT
+    HalCpuPark();
+#else
+    PmWatchdogReset(1);
+    HalCpuPark();
+#endif
+}
 
 int HalPowerButtonPressed(void) {
     return 0;

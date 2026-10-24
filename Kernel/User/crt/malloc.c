@@ -1,5 +1,5 @@
 /*
- * malloc.c — PR-P3：经 SYS_BRK 扩展堆；PR-A-libc：块头记录 size 供 realloc
+ * malloc.c — PR-P3：经 SYS_MEMORY_BRK 扩展堆；PR-A-libc：块头记录 size 供 realloc
  */
 #include <stdlib.h>
 #include <string.h>

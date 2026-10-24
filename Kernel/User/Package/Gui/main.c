@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * Pkg/Gui — 第一个 GUI 程序模板（PR-L3）
  * 构建：make -C User/Package/Gui
@@ -30,7 +31,7 @@ int main(void) {
         if (Ev == UI_BUTTON_EVENT(0)) {
             UiSetLabel(Wid, "OK!");
         } else if (Ev == UI_EVENT_NONE) {
-            sched_yield();
+            ThreadYield();
         }
     }
     return 0;

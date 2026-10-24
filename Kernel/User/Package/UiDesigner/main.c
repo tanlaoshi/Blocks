@@ -26,7 +26,7 @@ int main(void) {
             break;
         }
         if (Ev == UI_EVENT_NONE) {
-            toy_yield();
+            blocks_yield();
             continue;
         }
         UiDispatch(Wid, Ev);

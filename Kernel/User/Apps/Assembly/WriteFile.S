@@ -4,14 +4,14 @@
     .section .text
     .global _start
 _start:
-    mov rax, SYS_OPEN              /* SYS_OPEN */
+    mov rax, SYS_FILE_OPEN              /* SYS_FILE_OPEN */
     lea rdi, [rip + path]
     int 0x80
     cmp rax, 0
     jl .Lfail
     mov rbx, rax            /* fd */
 
-    mov rax, SYS_WRITE              /* SYS_WRITE */
+    mov rax, SYS_FILE_WRITE              /* SYS_FILE_WRITE */
     mov rdi, rbx
     lea rsi, [rip + msg]
     mov rdx, 16
@@ -19,27 +19,27 @@ _start:
     cmp rax, 0
     jle .Lfail
 
-    mov rax, SYS_CLOSE              /* SYS_CLOSE */
+    mov rax, SYS_FILE_CLOSE              /* SYS_FILE_CLOSE */
     mov rdi, rbx
     int 0x80
 
-    mov rax, SYS_WRITE              /* confirm on stdout */
+    mov rax, SYS_FILE_WRITE              /* confirm on stdout */
     mov rdi, 1
     lea rsi, [rip + ok]
     mov rdx, 3
     int 0x80
 
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     xor rdi, rdi
     int 0x80
 
 .Lfail:
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + err]
     mov rdx, 4
     int 0x80
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     mov rdi, 1
     int 0x80
 

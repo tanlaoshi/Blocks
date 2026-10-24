@@ -1,3 +1,4 @@
+#include <Blocks/File.h>
 /*
  * Cat.c — CRT2：open/read/write/close 读 TOYOS.ID（CAT.ELF）
  * 旧 int 0x80 汇编见 CatFile.S
@@ -12,27 +13,27 @@ int main(void) {
     int fd;
     ssize_t n;
 
-    fd = open("BLOCKS.ID", O_RDONLY);
+    fd = FileOpen("BLOCKS.ID");
     if (fd < 0) {
         printf("cat: open failed errno=%d\n", errno);
         return 1;
     }
     for (;;) {
-        n = read(fd, buf, sizeof(buf));
+        n = FileRead(fd, buf, sizeof(buf));
         if (n < 0) {
             printf("cat: read failed errno=%d\n", errno);
-            close(fd);
+            FileClose(fd);
             return 1;
         }
         if (n == 0) {
             break;
         }
-        if (write(1, buf, (size_t)n) < 0) {
+        if (FileWrite(1, buf, (size_t)n) < 0) {
             printf("cat: write failed errno=%d\n", errno);
-            close(fd);
+            FileClose(fd);
             return 1;
         }
     }
-    close(fd);
+    FileClose(fd);
     return 0;
 }

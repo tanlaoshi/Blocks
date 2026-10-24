@@ -42,7 +42,7 @@ int UiCreateWindow(const char *Title, unsigned Width, unsigned Height) {
     int Wid;
     UI_WIN *St;
 
-    Wid = create_window(Title, Width, Height);
+    Wid = (int)blocks_create_window(Title, (long)Width, (long)Height);
     St = UiWinState(Wid);
     if (St) {
         memset(St, 0, sizeof(*St));
@@ -67,7 +67,7 @@ int UiAddButton(int WindowId, int ButtonId, const char *Label) {
         ButtonId > UI_BUTTON_ID_MAX || !Label) {
         return -1;
     }
-    R = toy_ui_button(WindowId, ButtonId, Label);
+    R = blocks_ui_button(WindowId, ButtonId, Label);
     if (R < 0) {
         return -1;
     }
@@ -84,7 +84,7 @@ int UiPoll(int WindowId) {
     if (WindowId < 0) {
         return -1;
     }
-    R = toy_poll_input(WindowId);
+    R = blocks_poll_input(WindowId);
     if (R < 0) {
         return -1;
     }

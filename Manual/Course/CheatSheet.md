@@ -5,37 +5,34 @@
 
 > 印刷 ABI 号见 [`开课ABI冻结.md`](ABI.md)；函数表见 [`API速查.md`](../App/API.md)。  
 > **自学总入口**：[`开发者接手指南.md`](../Contribute/Onboarding.md)。  
-> Shell：`blocks>` · 卷：`BLOCKS:`。**不承诺**完整 POSIX pthread / 动态链接 / TTF；**有**教学线程子集。
+> Shell：`blocks>` · 卷：`BLOCKS:`。**ISO C + Blocks API**；不承诺 Linux 兼容 / 完整线程 / 动态链接 / TTF。
 
 ---
 
-## 进程
+## 进程（`<Blocks/Process.h>`）
 
 | 签名 | 成功 | 失败 / 注意 |
 | ---- | ---- | ----------- |
-| `pid_t fork(void)` | 子 `0`；父=子 Id | `-1`；**组内 >1 线程 → `-EAGAIN`** |
-| `pid_t wait(int *status)` | 子 Id；`*status=(exit&0xff)<<8` | `-1` 无子；**无 pid 参**；`WEXITSTATUS(s)=(s>>8)&0xff` |
-| `int execve(path, argv, envp)` | 不返回 | `-1` |
-| `void exit(int status)` | — | 退出码 0–255 |
-| `pid_t getpid(void)` / `getppid` | Id | 无父时 ppid=`0` |
-| `long toy_gettid(void)` | 任务 tid | `<Blocks/thread.h>` |
-| `int sched_yield(void)` | `0` | |
-| `unsigned sleep(sec)` / `usleep` | 0 | 按调度节拍，**非墙钟** |
+| `ProcessFork()` | 子 `0`；父=子 Id | `-1` |
+| `ProcessWait(&status)` | 子 Id；`*status=(exit&0xff)<<8` | `-1`；`WEXITSTATUS` |
+| `ProcessExec(path, argv, envp)` | 不返回 | `-1` |
+| `exit(status)` | — | ISO C |
+| `ProcessGetPid()` / `ProcessGetPpid()` | Id | |
+| `ThreadYield()` | `0` | `<Blocks/thread.h>` |
+| `sleep` / `usleep` | 0 | 按调度节拍 |
 
 ```c
-pid_t p = fork();
+long p = ProcessFork();
 if (p == 0) { exit(7); }
-int st; wait(&st); /* WEXITSTATUS(st)==7 */
-/* 课堂：exec THREADDEMO.ELF → threaddemo: ok */
+int st; ProcessWait(&st); /* WEXITSTATUS(st)==7 */
 ```
 
-## 线程子集（非 Linux ABI）
+## 线程（`<Blocks/thread.h>`）
 
 | 签名 | 注意 |
 | ---- | ---- |
-| `pthread_create` / `join` / `exit` | `<pthread.h>`；经 `ToyThreadRoot` |
-| `pthread_mutex_lock/unlock` | **自旋**教学版 |
-| `toy_thread_*` | `<Blocks/thread.h>` 第 2 轨 |
+| `ThreadCreate` / `ThreadJoin` / `ThreadExit` | 教学子集 |
+| `ThreadMutexLock` / `Unlock` | **自旋**教学版 |
 
 ---
 
@@ -43,11 +40,10 @@ int st; wait(&st); /* WEXITSTATUS(st)==7 */
 
 | 签名 | 成功 | 失败 / 注意 |
 | ---- | ---- | ----------- |
-| `int open(path, flags)` | `fd≥0` | `-1`；内核**忽略** flags；可用 `BLOCKS:NAME` |
-| `ssize_t read(fd,buf,n)` | 字节数；EOF=`0` | `-1` |
-| `ssize_t write(fd,buf,n)` | 字节数 | `-1`；**`write=0` 视为错误** |
-| `int close(fd)` / `lseek(...)` | `0` / 新偏 | `-1` |
-| `FILE *fopen(path,mode)` | 非 NULL | NULL；**`"w"` 不截断**→先 `remove` 再 `fopen` |
+| `FileOpen(path)` | `fd≥0` | `-1`；可用 `BLOCKS:NAME` |
+| `FileRead` / `FileWrite` | 字节数；EOF=`0` | `-1`；**Write=0 视为错误** |
+| `FileClose` / `FileSeek` | `0` / 新偏 | `-1` |
+| `FILE *fopen(path,mode)` | 非 NULL | ISO C；**`"w"` 不截断**→先 `remove` |
 | `printf` / `snprintf` | 字符数 | 焦点在用户窗时多走**串口** |
 | `FsUtilBlocksPath` 等 | 0 | `<VolumePath.h>`；FsUtil **2.0.0** |
 
@@ -109,12 +105,11 @@ for (;;) {
 
 ---
 
-## 网络（libToyNet **3.0.0**；Guest 先 `lwip on`）
+## 网络（libNet **3.0.0**；Guest 先 `lwip on`）
 
 | 签名 | 注意 |
 | ---- | ---- |
-| `socket` / `connect` / `bind` / … | `<sys/socket.h>`；`sockaddr` **网络序** |
-| `NetConnect(fd, ip, port)` | **主机序**；`<ToyNet.h>` |
+| `socket` + `NetConnect`/`NetBind` | **主机序**；`<Net.h>`；不教 `sockaddr` |
 | `NetResolve(name, &ip)` | 点分 / `localhost` / 域名 |
 | `send` / `recv` | 字节数；失败负 / `-1` |
 
@@ -128,9 +123,10 @@ NetConnect(fd, NetIpv4(10,0,2,2), 7);
 ## 红字（必背）
 
 1. **`fopen("w")` 不截断** → `remove` 再 `fopen`。  
-2. **`wait` ≠ POSIX `waitpid`**（无 pid；退出码在 CRT 里 `<<8`）。  
+2. **`ProcessWait`**：退出码在 CRT 里 `<<8`（无按 pid 等待）。  
 3. **旧 GUI syscall 18/19/20/21 禁用**；只用 `Ui*` / `Graphics*`（1000+）。  
 4. 未知 syscall 返回 **`-ENOSYS`（-38）**，不崩。  
 5. 编译：**禁止** `-pie` / 宿主 libc；用 `Tools/Sdk/Examples` 或树内 User 规则。  
 6. ELF 盘名：**8.3 大写**（`MYAPP.ELF`）；卷前缀 **`BLOCKS:`**。  
-7. 日常构建：`source ~/Blocks/env.sh` → `build` / `run`。
+7. 日常构建：`source ~/Blocks/env.sh` → `build` / `run`。  
+8. **勿用**公开 `toy_*` / 假 POSIX 双轨课设。

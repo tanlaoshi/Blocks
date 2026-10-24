@@ -1,7 +1,6 @@
 /*
- * sched.h — POSIX 调度（PR-U-sched-yield）
- * 第 1 轨：sched_yield 让出 CPU；走已有 SYS_YIELD（150），不新增 syscall 号。
- * 第 2 轨旧名 toy_yield 保留为宏别名（见 Blocks/syscall.h）。
+ * sched.h — ThreadYield 的 C 名（教学；实现见 crt/sched.c）
+ * 走 SYS_THREAD_YIELD（150）；App 主路径更常用 <Blocks/thread.h> 的 ThreadYield。
  */
 #ifndef SCHED_H
 #define SCHED_H

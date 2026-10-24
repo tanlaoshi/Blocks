@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * GuiIm — UiIm Label/Check/Button 范例（PR-UI-im-1，≈ GuiDemo）
  */
@@ -37,7 +38,7 @@ int main(void) {
         }
         UiImLabel(Msg);
         UiImEnd();
-        sched_yield();
+        ThreadYield();
     }
     return 0;
 }

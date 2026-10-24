@@ -26,7 +26,8 @@
 | 层前缀在最前：`Hal*` / `Toy*` / `Board*` | 动词抢在层名前面 |
 | 类型 / 宏 `ALL_CAPS`；全局 `gXxx`；文件内静态宜 `sXxx` | 公开 API 用拼音或缩写谜语 |
 
-**例外（保持原样）**：POSIX / CRT（`fopen`、`malloc`…）、第三方（lwIP 等）、脚本文件名、盘上 `8.3` 名。
+**例外（保持原样）**：**ISO C** 标准库名（`fopen`、`malloc`、`printf`…）、第三方（lwIP 等）、脚本文件名、盘上 `8.3` 名。  
+**非 ISO C 的 Unix/假 POSIX 脸**（`open`/`fork`/`sockaddr`/`pthread_*`…）**不在例外里**——走 Blocks 本位名（见 [App §0.1](../App/README.md) / selfhost）。
 
 ### 2. 分层不焊死、不跨层
 

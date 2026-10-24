@@ -1,6 +1,6 @@
 /*
- * pthread.h — ToyOS 教学子集（thr-4）：create/join/exit + 自旋 mutex
- * 非 Linux ABI；勿链宿主 libpthread。
+ * pthread.h — 教学自旋 mutex + 薄封装（selfhost：线程主路径用 Thread*）
+ * create/join/exit 转 Thread*；非 Linux ABI；勿链宿主 libpthread。
  */
 #ifndef PTHREAD_H
 #define PTHREAD_H

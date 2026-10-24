@@ -1,6 +1,6 @@
 /*
- * stat.c — POSIX 形参 stat / fstat（PR-U-stat）
- * stat → FileStat（SYS_FILE_STAT）；fstat → SYS_FSTAT（451）。
+ * stat.c — FileStat / fstat 薄封装（PR-U-stat）
+ * stat → FileStat（SYS_FILE_STAT）；fstat → SYS_FILE_FSTAT（451）。
  */
 #include <sys/stat.h>
 #include <dirent.h>
@@ -35,7 +35,7 @@ int fstat(int fd, struct stat *st) {
         errno = EINVAL;
         return -1;
     }
-    R = toy_fstat(fd, &T);
+    R = blocks_fstat(fd, &T);
     if (R < 0) {
         errno = EBADF;
         return -1;

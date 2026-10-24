@@ -73,7 +73,7 @@ void qsort(void *base, size_t nmemb, size_t size,
 }
 
 void exit(int status) {
-    toy_exit(status);
+    blocks_exit(status);
     for (;;) {
     }
 }

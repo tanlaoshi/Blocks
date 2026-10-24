@@ -12,7 +12,7 @@ _start:
     add rax, rbx
     mov [rsp-2], al
     mov byte ptr [rsp-1], 10
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rsp-2]
     mov rdx, 2
@@ -20,6 +20,6 @@ _start:
     inc rbx
     jmp .Lloop
 .Ldone:
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     xor rdi, rdi
     int 0x80

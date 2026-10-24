@@ -28,7 +28,7 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
     HalIrqDisable();
 
     switch (HalFrameSyscallNum(Frame)) {
-    case SYS_EXIT:
+    case SYS_PROCESS_EXIT:
         Ret = SchedulerExitUser(Frame);
         break;
     case SYS_THREAD_CREATE:
@@ -40,97 +40,97 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
     case SYS_THREAD_EXIT:
         Ret = SchedulerThreadExit(Frame);
         break;
-    case SYS_WRITE:
+    case SYS_FILE_WRITE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysWrite(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame),
             (UINTN)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_OPEN:
+    case SYS_FILE_OPEN:
         HalFrameSetReturn(Frame, (UINT64)(long)SysOpen(HalFrameGetArgument0(Frame)));
         break;
-    case SYS_READ:
+    case SYS_FILE_READ:
         HalFrameSetReturn(Frame, (UINT64)(long)SysRead(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame),
             (UINTN)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_CLOSE:
+    case SYS_FILE_CLOSE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysClose((int)HalFrameGetArgument0(Frame)));
         break;
-    case SYS_LSEEK:
+    case SYS_FILE_SEEK:
         HalFrameSetReturn(Frame, (UINT64)SysLseek(
             (int)HalFrameGetArgument0(Frame),
             (INT64)HalFrameGetArgument1(Frame),
             (int)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_FORK:
+    case SYS_PROCESS_FORK:
         Ret = SchedulerFork(Frame);
         break;
-    case SYS_WAIT:
+    case SYS_PROCESS_WAIT:
         Ret = SchedulerWait(Frame);
         break;
-    case SYS_YIELD:
+    case SYS_THREAD_YIELD:
         Ret = SchedulerYield(Frame);
         break;
-    case SYS_SOCKET:
+    case SYS_NET_SOCKET:
         HalFrameSetReturn(Frame, (UINT64)(long)SysSocket(
             (int)HalFrameGetArgument0(Frame), (int)HalFrameGetArgument1(Frame),
             HalFrameGetArgument2(Frame)));
         break;
-    case SYS_CONNECT:
+    case SYS_NET_CONNECT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysConnect(
             (int)HalFrameGetArgument0(Frame), (UINT32)HalFrameGetArgument1(Frame),
             (UINT16)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_BIND:
+    case SYS_NET_BIND:
         HalFrameSetReturn(Frame, (UINT64)(long)SysBind(
             (int)HalFrameGetArgument0(Frame), (UINT32)HalFrameGetArgument1(Frame),
             (UINT16)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_LISTEN:
+    case SYS_NET_LISTEN:
         HalFrameSetReturn(Frame, (UINT64)(long)SysListen(
             (int)HalFrameGetArgument0(Frame), (int)HalFrameGetArgument1(Frame)));
         break;
-    case SYS_ACCEPT:
+    case SYS_NET_ACCEPT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysAccept((int)HalFrameGetArgument0(Frame)));
         break;
-    case SYS_RECV_NB:
+    case SYS_NET_RECV_NB:
         HalFrameSetReturn(Frame, (UINT64)(long)SysRecvNb(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame),
             (UINTN)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_EXECVE:
+    case SYS_PROCESS_EXEC:
         if (SysExecve(Frame, HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame),
                       HalFrameGetArgument2(Frame)) != 0) {
             HalFrameSetReturn(Frame, (UINT64)(INT64)-1);
         }
         /* 成功：Frame 已指向新入口，sysret 进新映像 */
         break;
-    case SYS_PIPE:
+    case SYS_PROCESS_PIPE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysPipe(HalFrameGetArgument0(Frame)));
         break;
-    case SYS_DUP:
+    case SYS_FILE_DUP:
         HalFrameSetReturn(Frame, (UINT64)(long)SysDup((int)HalFrameGetArgument0(Frame)));
         break;
-    case SYS_BRK:
+    case SYS_MEMORY_BRK:
         HalFrameSetReturn(Frame, ProcessBrk(HalFrameGetArgument0(Frame)));
         break;
-    case SYS_KILL:
+    case SYS_PROCESS_KILL:
         Ret = SchedulerKill(Frame);
         break;
-    case SYS_CREATE_WINDOW:
+    case SYS_WINDOW_CREATE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysCreateWindow(
             HalFrameGetArgument0(Frame), (UINT32)HalFrameGetArgument1(Frame),
             (UINT32)HalFrameGetArgument2(Frame)));
         break;
-    case SYS_DAMAGE:
+    case SYS_WINDOW_DAMAGE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysDamage(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_DAMAGE_RECT:
+    case SYS_GRAPHICS_DAMAGE_RECT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysDamageRect(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_POLL_INPUT:
+    case SYS_WINDOW_POLL:
         HalFrameSetReturn(Frame, (UINT64)(long)SysPollInput(
             (int)HalFrameGetArgument0(Frame)));
         break;
@@ -139,62 +139,62 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
             (int)HalFrameGetArgument0(Frame), (int)HalFrameGetArgument1(Frame),
             HalFrameGetArgument2(Frame)));
         break;
-    case SYS_SCREEN_SIZE:
+    case SYS_UI_SCREEN_SIZE:
         HalFrameSetReturn(Frame, (UINT64)(long)SysScreenSize(
             HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_SET_FONT_ID:
+    case SYS_UI_SET_FONT_ID:
         HalFrameSetReturn(Frame, (UINT64)(long)SysSetFontId(
             (UINT32)HalFrameGetArgument0(Frame)));
         break;
-    case SYS_FONT_COUNT:
+    case SYS_UI_FONT_COUNT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysFontCount());
         break;
     case SYS_FILE_STAT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysFileStat(
             HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_FSTAT:
+    case SYS_FILE_FSTAT:
         HalFrameSetReturn(Frame, (UINT64)(long)SysFstat(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_OPEN_DIRECTORY:
+    case SYS_DIR_OPEN:
         HalFrameSetReturn(Frame, (UINT64)(long)SysOpenDirectory(
             HalFrameGetArgument0(Frame)));
         break;
-    case SYS_READ_DIRECTORY:
+    case SYS_DIR_READ:
         HalFrameSetReturn(Frame, (UINT64)(long)SysReadDirectory(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_MMAP:
+    case SYS_MEMORY_MAP:
         HalFrameSetReturn(Frame, ProcessMmap(
             HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame),
             HalFrameGetArgument2(Frame)));
         break;
-    case SYS_MUNMAP:
+    case SYS_MEMORY_UNMAP:
         HalFrameSetReturn(Frame, ProcessMunmap(
             HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
-    case SYS_SIGNAL:
+    case SYS_PROCESS_SIGNAL:
         Ret = SchedulerSignal(Frame);
         break;
-    case SYS_SLEEP:
+    case SYS_TIME_SLEEP:
         Ret = SchedulerSleepMs(Frame, (UINT32)HalFrameGetArgument0(Frame));
         break;
-    case SYS_GETCWD:
+    case SYS_PATH_GETCWD:
         HalFrameSetReturn(Frame, (UINT64)(long)SysGetcwd(
             HalFrameGetArgument0(Frame), (UINTN)HalFrameGetArgument1(Frame)));
         break;
-    case SYS_CHDIR:
+    case SYS_PATH_CHDIR:
         HalFrameSetReturn(Frame, (UINT64)(long)SysChdir(HalFrameGetArgument0(Frame)));
         break;
-    case SYS_GETPID:
+    case SYS_PROCESS_GET_PID:
         HalFrameSetReturn(Frame, (UINT64)(long)SysGetPid());
         break;
-    case SYS_GETPPID:
+    case SYS_PROCESS_GET_PPID:
         HalFrameSetReturn(Frame, (UINT64)(long)SysGetPpid());
         break;
-    case SYS_GETTID:
+    case SYS_THREAD_GET_TID:
         HalFrameSetReturn(Frame, (UINT64)(long)SysGetTid());
         break;
     case SYS_CLOCK_MS:

@@ -14,7 +14,7 @@ cd User/Package
 make                               # → build/MYAPP.ELF
 cp build/MYAPP.ELF ../../../Runtime/RootFs/X64/MYAPP.ELF
 # Guest：exec MYAPP.ELF
-# 注意：卷根没有时会找 Class/MYAPP.ELF；勿留旧 ToyUi 陈货（会饿死鼠标）。
+# 注意：卷根没有时会找 Class/MYAPP.ELF；勿留旧 Ui 陈货（会饿死鼠标）。
 ```
 
 
@@ -32,7 +32,7 @@ make BLOCKS_KERNEL=/path/to/Kernel
 |---------|------|
 | `<stdio.h>` / `<stdlib.h>` / `<string.h>` / `<unistd.h>` | libc 子集 |
 | `<fcntl.h>` / `<errno.h>` / `<signal.h>` | 文件与信号 |
-| `<Blocks/syscall.h>` | 系统调用号 + `toy_*` / `blocks_syscall` |
+| `<Blocks/syscall.h>` | 系统调用号（`SYS_*`）+ `blocks_syscall` |
 | `<Blocks/version.h>` | `CRT_VERSION_*` |
 | `<Blocks.h>` | 伞头（demo 用） |
 

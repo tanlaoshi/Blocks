@@ -13,11 +13,11 @@ int main(void) {
     }
     if (NetConnect(Fd, NetIpv4(10, 0, 2, 2), 8888) != 0) {
         printf("mynet: connect fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     send(Fd, "hi\n", 3, 0);
-    close(Fd);
+    FileClose(Fd);
     printf("mynet: ok\n");
     return 0;
 }

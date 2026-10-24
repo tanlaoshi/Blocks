@@ -217,11 +217,17 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
     cp -f "$USER_OUT/pthreadsmoke.elf" "$DEST/Class/PTHREADSMOKE.ELF"
     cp -f "$USER_OUT/threaddemo.elf" "$DEST/Class/THREADDEMO.ELF"
     cp -f "$USER_OUT/enosysdemo.elf" "$DEST/Class/ENOSYS.ELF"
+    # 课上 exec Class/… 直达（与 Store/Apps 预装并存；卷根仍清陈货）
+    cp -f "$USER_OUT/sockdemo.elf" "$DEST/Class/SOCKDEMO.ELF"
+    cp -f "$USER_OUT/netlibdemo.elf" "$DEST/Class/NETLIB.ELF"
+    cp -f "$USER_OUT/dirdemo.elf" "$DEST/Class/DIRDEMO.ELF"
+    rm -f "$DEST/Class/GUIDEMO.ELF" "$DEST/Class/WINDEMO.ELF" "$DEST/Class/BLITDEMO.ELF"
     rm -f "$DEST/HELLO.ELF" "$DEST/COUNT.ELF" "$DEST/FORK.ELF" "$DEST/WAITNH.ELF" \
         "$DEST/LIBTOY.SO" "$DEST/DYNDEMO.ELF" "$DEST/SYSHELLO.ELF" "$DEST/SYSFORK.ELF" \
         "$DEST/EXECDEMO.ELF" "$DEST/PIPEDEMO.ELF" "$DEST/THREADSMOKE.ELF" \
         "$DEST/PTHREADSMOKE.ELF" "$DEST/THREADDEMO.ELF" "$DEST/ENOSYS.ELF" \
         "$DEST/MYAPP.ELF"
+
     # 课外模板：Class/ 放当前 Package 无窗 Hello（勿留旧 ToyUi）；exec MYAPP.ELF 走 Class/
     rm -f "$DEST/Class/MYAPP.ELF"
     if [ -f User/Package/build/MYAPP.ELF ]; then
@@ -231,12 +237,11 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
     fi
 
     # 课堂预装目录包（非扁平）；仍禁止 Apps/*.ELF。Snake 不预装，须 store install。
-    mkdir -p "$DEST/Apps/hello" "$DEST/Apps/guidemo" "$DEST/Apps/taskmgr"
+    mkdir -p "$DEST/Apps/hello" "$DEST/Apps/taskmgr"
     cp -f "$USER_OUT/hello.elf" "$DEST/Apps/hello/HELLO.ELF"
-    cp -f "$USER_OUT/guidemo.elf" "$DEST/Apps/guidemo/GUIDEMO.ELF"
     cp -f "$USER_OUT/taskmgr.elf" "$DEST/Apps/taskmgr/TASKMGR.ELF"
     rm -f "$DEST/Apps/TASKMGR.ELF" "$DEST/Apps/CAT.ELF" "$DEST/Apps/SNAKE.ELF"
-    rm -rf "$DEST/Apps/snake"
+    rm -rf "$DEST/Apps/snake" "$DEST/Apps/guidemo"
 
     PackStore() {
         local Id="$1" Src="$2" File="$3"
@@ -252,12 +257,13 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         fi
     }
     PackStore hello "$USER_OUT/hello.elf" HELLO.ELF
-    PackStore guidemo "$USER_OUT/guidemo.elf" GUIDEMO.ELF
     PackStore cat "$USER_OUT/catfile.elf" CAT.ELF
     PackStore taskmgr "$USER_OUT/taskmgr.elf" TASKMGR.ELF
     PackStore snake "$USER_OUT/snake.elf" SNAKE.ELF
-    PackStore windemo "$USER_OUT/windemo.elf" WINDEMO.ELF
-    PackStore blitdemo "$USER_OUT/blitdemo.elf" BLITDEMO.ELF
+    rm -rf "$IMAGE_STORE/packages/guidemo" "$IMAGE_STORE/packages/windemo" \
+        "$IMAGE_STORE/packages/blitdemo" \
+        "$DEST/Store/packages/guidemo" "$DEST/Store/packages/windemo" \
+        "$DEST/Store/packages/blitdemo"
     # CHAT-4：chat 只入 Runtime/Store（供 export-store-lan），不进 Guest DEST。
     mkdir -p "$IMAGE_STORE/packages/chat"
     cp -f "$USER_OUT/chat.elf" "$IMAGE_STORE/packages/chat/CHAT.ELF"

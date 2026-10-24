@@ -2,7 +2,7 @@
  * Graphics.h — 用户态绘图薄库（libGraphics；旧名 ToyGfx/Gfx）
  *
  * ABI：改签名 / 删符号须递增 GRAPHICS_ABI_VERSION_MAJOR。
- * 1.1.0：+ GraphicsDamageRect（SYS_DAMAGE_RECT 像素 blit）。
+ * 1.1.0：+ GraphicsDamageRect（SYS_GRAPHICS_DAMAGE_RECT 像素 blit）。
  * 1.2.0：+ 点 / 线 / 填充矩形 / 矩形框（底层仍 DamageRect；单次 ≤64×64）。
  * 1.3.0：+ GraphicsInitialize / GraphicsSystemFontRoot（方案 C：系统字体约定）。
  */

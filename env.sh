@@ -69,7 +69,15 @@ sync() {
 }
 
 run() {
+    local t0 t1
+    t0=$(date +%s)
     (cd "$RUNTIME" && ./run.sh "$@")
+    t1=$(date +%s)
+    # 图形窗被关 / DISPLAY 异常时常见：印完横幅几秒内就回到 shell
+    if [ "$((t1 - t0))" -le 3 ] && [ "$#" -eq 0 ]; then
+        echo "run: QEMU 立刻退出了。先: run --kill ；再: run --headless （串口进 blocks>）" >&2
+        echo "     或盯任务栏/其它桌面是否有 QEMU 窗被立刻关掉。" >&2
+    fi
 }
 
 smoke() {

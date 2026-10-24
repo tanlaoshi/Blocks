@@ -4,51 +4,51 @@
     .section .text
     .global _start
 _start:
-    mov rax, SYS_FORK          /* SYS_FORK */
+    mov rax, SYS_PROCESS_FORK          /* SYS_PROCESS_FORK */
     int 0x80
     cmp rax, 0
     je .Lchild
     jl .Lfail
 
     /* parent: print "P\n" then blocking wait */
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + msg_p]
     mov rdx, 2
     int 0x80
 
-    mov rax, SYS_WAIT          /* SYS_WAIT — blocks until child exits */
+    mov rax, SYS_PROCESS_WAIT          /* SYS_PROCESS_WAIT — blocks until child exits */
     xor rdi, rdi        /* options = 0（阻塞；勿沿用上一 syscall 的 rdi） */
     int 0x80
     cmp rax, 0
     jl .Lfail
 
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + msg_done]
     mov rdx, 5
     int 0x80
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     xor rdi, rdi
     int 0x80
 
 .Lchild:
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + msg_c]
     mov rdx, 2
     int 0x80
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     mov rdi, 42
     int 0x80
 
 .Lfail:
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + msg_fail]
     mov rdx, 5
     int 0x80
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     mov rdi, 1
     int 0x80
 

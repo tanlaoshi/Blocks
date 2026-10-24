@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <Blocks/File.h>
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
@@ -88,19 +89,19 @@ FILE *fopen(const char *path, const char *mode) {
             return 0;
         }
     }
-    Fd = open(path, (Flags & FF_WRITE) ? (O_RDWR | O_CREAT) : O_RDONLY);
+    Fd = FileOpen(path);
     if (Fd < 0) {
         return 0;
     }
     if (Append) {
-        if (lseek(Fd, 0, SEEK_END) < 0) {
-            close(Fd);
+        if (FileSeek(Fd, 0, SEEK_END) < 0) {
+            FileClose(Fd);
             return 0;
         }
     }
     Fp = (FILE *)malloc(sizeof(*Fp));
     if (!Fp) {
-        close(Fd);
+        FileClose(Fd);
         errno = ENOMEM;
         return 0;
     }
@@ -118,7 +119,7 @@ int fclose(FILE *fp) {
         errno = EINVAL;
         return EOF;
     }
-    Rc = close(fp->fd);
+    Rc = FileClose(fp->fd);
     free(fp);
     return Rc;
 }
@@ -141,7 +142,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *fp) {
         return 0;
     }
     Bytes = size * nmemb;
-    N = read(fp->fd, ptr, Bytes);
+    N = FileRead(fp->fd, ptr, Bytes);
     if (N < 0) {
         fp->err = 1;
         return 0;
@@ -170,7 +171,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *fp) {
         return 0;
     }
     Bytes = size * nmemb;
-    N = write(fp->fd, ptr, Bytes);
+    N = FileWrite(fp->fd, ptr, Bytes);
     if (N < 0) {
         fp->err = 1;
         return 0;
@@ -183,7 +184,7 @@ int fseek(FILE *fp, long offset, int whence) {
         errno = EINVAL;
         return -1;
     }
-    if (lseek(fp->fd, (off_t)offset, whence) < 0) {
+    if (FileSeek(fp->fd, (off_t)offset, whence) < 0) {
         fp->err = 1;
         return -1;
     }
@@ -198,7 +199,7 @@ long ftell(FILE *fp) {
         errno = EINVAL;
         return -1;
     }
-    Pos = lseek(fp->fd, 0, SEEK_CUR);
+    Pos = FileSeek(fp->fd, 0, SEEK_CUR);
     if (Pos < 0) {
         fp->err = 1;
         return -1;

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ToyNet.h>
 #include <unistd.h>
+#include <Blocks/File.h>
 #include <Blocks/syscall.h>
 
 /* syscall 返回 -(errno) 时贯通；-1 仍映射 EIO */
@@ -23,7 +24,7 @@ static void NetFail(long R) {
 }
 
 int socket(int domain, int type, int protocol) {
-    long r = toy_socket(domain, type, protocol);
+    long r = blocks_socket(domain, type, protocol);
     if (r < 0) {
         NetFail(r == -1 ? (long)-EIO : r);
         return -1;
@@ -37,7 +38,7 @@ int NetConnect(int fd, unsigned ip, unsigned short port) {
         errno = EBADF;
         return -1;
     }
-    r = toy_connect(fd, (long)ip, (long)port);
+    r = blocks_connect(fd, (long)ip, (long)port);
     if (r < 0) {
         NetFail(r);
         return -1;
@@ -51,7 +52,7 @@ int NetBind(int fd, unsigned ip, unsigned short port) {
         errno = EBADF;
         return -1;
     }
-    r = toy_bind(fd, (long)ip, (long)port);
+    r = blocks_bind(fd, (long)ip, (long)port);
     if (r < 0) {
         NetFail(r);
         return -1;
@@ -65,7 +66,7 @@ int listen(int fd, int backlog) {
         errno = EBADF;
         return -1;
     }
-    r = toy_listen(fd, backlog);
+    r = blocks_listen(fd, backlog);
     if (r < 0) {
         NetFail(r);
         return -1;
@@ -79,7 +80,7 @@ int accept(int fd) {
         errno = EBADF;
         return -1;
     }
-    r = toy_accept(fd);
+    r = blocks_accept(fd);
     if (r < 0) {
         NetFail(r);
         return -1;
@@ -89,14 +90,14 @@ int accept(int fd) {
 
 ssize_t send(int fd, const void *buf, size_t len, int flags) {
     (void)flags;
-    return write(fd, buf, len);
+    return FileWrite(fd, buf, len);
 }
 
 ssize_t recv(int fd, void *buf, size_t len, int flags) {
     long R;
 
     if (flags & MSG_DONTWAIT) {
-        R = toy_recv_nb(fd, buf, (long)len);
+        R = blocks_recv_nb(fd, buf, (long)len);
         if (R == -EAGAIN) {
             errno = EAGAIN;
             return -1;
@@ -107,7 +108,7 @@ ssize_t recv(int fd, void *buf, size_t len, int flags) {
         }
         return (ssize_t)R; /* 0=EOF */
     }
-    return read(fd, buf, len);
+    return FileRead(fd, buf, len);
 }
 
 void NetAddrIn(NET_SOCK_ADDR_IN *Sa, unsigned Ip, unsigned Port) {
@@ -149,7 +150,7 @@ int NetGetAddrIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port) {
     return 0;
 }
 
-/* 点分 IPv4 / localhost 本地完成；域名走 SYS_SOCKET type=NET_SOCK_RESOLVE */
+/* 点分 IPv4 / localhost 本地完成；域名走 SYS_NET_SOCKET type=NET_SOCK_RESOLVE */
 int NetResolve(const char *Name, unsigned *OutIp) {
     unsigned A = 0, B = 0, C = 0, D = 0;
     unsigned I;
@@ -219,7 +220,7 @@ int NetResolve(const char *Name, unsigned *OutIp) {
         }
         Query.Name[I] = Name[I];
     }
-    R = toy_socket(AF_INET, NET_SOCK_RESOLVE, (long)&Query);
+    R = blocks_socket(AF_INET, NET_SOCK_RESOLVE, (long)&Query);
     if (R < 0) {
         NetFail(R == -1 ? (long)-EIO : R);
         return -1;

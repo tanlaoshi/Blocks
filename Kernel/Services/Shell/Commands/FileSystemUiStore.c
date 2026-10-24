@@ -79,7 +79,7 @@ static void CommandStore(int Argc, char **Argv) {
         if (Argc < 3) {
             if (StoreWordEq(Sub, "combo")) {
                 gConsole.Write("usage: store combo <id>\n");
-                gConsole.Write("hint: e.g. store combo guidemo  (demopack+sun8 then app)\n");
+                gConsole.Write("hint: e.g. store combo snake  (deps then app)\n");
             } else {
                 gConsole.Write("usage: store install <id>\n");
             }

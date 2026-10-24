@@ -1,5 +1,5 @@
 /*
- * GraphicsDamage.h — 用户贴像素矩形（SYS_DAMAGE_RECT）
+ * GraphicsDamage.h — 用户贴像素矩形（SYS_GRAPHICS_DAMAGE_RECT）
  *
  * 内核和用户共用这一份。x86_64 / Arm64 / RiscV 上都是 24 字节。
  */

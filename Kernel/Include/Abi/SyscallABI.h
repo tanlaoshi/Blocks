@@ -1,171 +1,146 @@
 /*
- * SyscallABI.h — ToyOS 系统调用号段定义（段内双轨 + 预留区）
+ * SyscallABI.h — Blocks 系统调用号（段布局；宏名本位）
  *
  * 规则：
  *   1. 大段 = 功能族，每段 100 号
- *   2. 子段 = 来源：
- *        ToyOS 子段（前 50 号）= ToyOS 独有 API（POSIX 无对应）
- *        POSIX 子段（后 50 号）= POSIX 标准 API
- *   3. 两轨都有的 API（如 exit/fork/getpid）归 POSIX 子段
- *   4. 空号预留，勿跳号占位；新增号紧接已用号
+ *   2. 号值稳定：改名不改数；新增号紧接同段已用号，勿跳号占位
+ *   3. 宏名跟 Blocks API 对齐（File / Process / Thread / Net / Window…）
+ *      不是 Linux 号表，也不再按「POSIX 子段」叙事
  *
- * 本头纯 #define，无类型依赖；内核 Include/Syscall.h 与
- * 用户 User/include/Blocks/syscall.h 共享此文件。
+ * 本头纯 #define；内核 Include/Core/Syscall.h 与
+ * 用户 User/include/Blocks/syscall.h 共享。
  */
 #ifndef SYSCALL_ABI_H
 #define SYSCALL_ABI_H
 
 /* ============================================================
- * 段 0-99：进程控制
+ * 段 0-99：进程 / 线程
  * ============================================================ */
-/* ToyOS 子段 0-49：线程子集（PR-U-thread；thr-3 起实现） */
-#define SYS_THREAD_CREATE  0
-#define SYS_THREAD_JOIN    1
-#define SYS_THREAD_EXIT    2
+#define SYS_THREAD_CREATE     0
+#define SYS_THREAD_JOIN       1
+#define SYS_THREAD_EXIT       2
 /* 3-49 预留 */
 
-/* POSIX 子段 50-99 */
-#define SYS_EXIT     50
-#define SYS_FORK     51
-#define SYS_WAIT     52
-#define SYS_EXECVE   53
-#define SYS_GETPID   54
-#define SYS_GETPPID  55
-#define SYS_GETTID   56 /* 任务槽 Id（同 TASK.Id）；进程组见 getpid→GroupId（thr-1） */
+#define SYS_PROCESS_EXIT      50
+#define SYS_PROCESS_FORK      51
+#define SYS_PROCESS_WAIT      52
+#define SYS_PROCESS_EXEC      53
+#define SYS_PROCESS_GET_PID   54
+#define SYS_PROCESS_GET_PPID  55
+#define SYS_THREAD_GET_TID    56 /* 任务槽 Id；进程组见 GET_PID→GroupId */
 /* 57-99 预留 */
 
 /* ============================================================
  * 段 100-199：信号 / 调度
  * ============================================================ */
-/* ToyOS 子段 100-149：预留 */
+/* 100-149 预留 */
 
-/* POSIX 子段 150-199 */
-#define SYS_YIELD    150
-#define SYS_KILL     151
-#define SYS_SIGNAL   152
+#define SYS_THREAD_YIELD      150
+#define SYS_PROCESS_KILL      151
+#define SYS_PROCESS_SIGNAL    152
 /* 153-199 预留 */
 
 /* ============================================================
  * 段 200-299：内存
  * ============================================================ */
-/* ToyOS 子段 200-249：预留 */
+/* 200-249 预留 */
 
-/* POSIX 子段 250-299 */
-#define SYS_BRK      250
-#define SYS_MMAP     251
-#define SYS_MUNMAP   252
+#define SYS_MEMORY_BRK        250
+#define SYS_MEMORY_MAP        251
+#define SYS_MEMORY_UNMAP      252
 /* 253-299 预留 */
 
 /* ============================================================
- * 段 300-399：文件基础
+ * 段 300-399：文件
  * ============================================================ */
-/* ToyOS 子段 300-349：预留 */
+/* 300-349 预留 */
 
-/* POSIX 子段 350-399 */
-#define SYS_OPEN     350
-#define SYS_READ     351
-#define SYS_WRITE    352
-#define SYS_CLOSE    353
-#define SYS_LSEEK    354
+#define SYS_FILE_OPEN         350
+#define SYS_FILE_READ         351
+#define SYS_FILE_WRITE        352
+#define SYS_FILE_CLOSE        353
+#define SYS_FILE_SEEK         354
 /* 355-399 预留 */
 
 /* ============================================================
  * 段 400-499：文件高级
  * ============================================================ */
-/* ToyOS 子段 400-449 */
-#define SYS_FILE_STAT 400
+#define SYS_FILE_STAT         400
 /* 401-449 预留 */
 
-/* POSIX 子段 450-499（stat 走 FileStat/400，不占新号） */
-#define SYS_FSTAT 451
+#define SYS_FILE_FSTAT        451
 /* 450、452-499 预留 */
 
 /* ============================================================
- * 段 500-599：目录
+ * 段 500-599：目录 / 路径
  * ============================================================ */
-/* ToyOS 子段 500-549 */
-#define SYS_OPEN_DIRECTORY   500
-#define SYS_READ_DIRECTORY   501
+#define SYS_DIR_OPEN          500
+#define SYS_DIR_READ          501
 /* 502-549 预留 */
 
-/* POSIX 子段 550-599 */
-#define SYS_GETCWD   550
-#define SYS_CHDIR   551
-/* 552-599 预留（未来 opendir/readdir 若需独立号） */
+#define SYS_PATH_GETCWD       550
+#define SYS_PATH_CHDIR        551
+/* 552-599 预留 */
 
 /* ============================================================
  * 段 600-699：管道 / IPC
  * ============================================================ */
-/* ToyOS 子段 600-649：预留 */
+/* 600-649 预留 */
 
-/* POSIX 子段 650-699 */
-#define SYS_PIPE    650
-#define SYS_DUP     651
+#define SYS_PROCESS_PIPE      650
+#define SYS_FILE_DUP          651
 /* 652-699 预留 */
 
 /* ============================================================
  * 段 700-799：时间
  * ============================================================ */
-/* ToyOS 子段 700-749 */
-#define SYS_CLOCK_MS 700
+#define SYS_CLOCK_MS          700
 /* 701-749 预留 */
 
-/* POSIX 子段 750-799 */
-#define SYS_SLEEP   750
-/* 751-799 预留（未来 clock_gettime=751） */
+#define SYS_TIME_SLEEP        750
+/* 751-799 预留 */
 
 /* ============================================================
- * 段 800-899：网络基础
+ * 段 800-899：网络
  * ============================================================ */
-/* ToyOS 子段 800-849：预留 */
+/* 800-849 预留 */
 
-/* POSIX 子段 850-899 */
-#define SYS_SOCKET   850
-#define SYS_CONNECT  851
-#define SYS_BIND     852
-#define SYS_LISTEN   853
-#define SYS_ACCEPT   854
-#define SYS_RECV_NB  855 /* 非阻塞 recv：无数据返回 0（非 EOF） */
+#define SYS_NET_SOCKET        850
+#define SYS_NET_CONNECT       851
+#define SYS_NET_BIND          852
+#define SYS_NET_LISTEN        853
+#define SYS_NET_ACCEPT        854
+#define SYS_NET_RECV_NB       855 /* 非阻塞 recv：无数据返回 0（非 EOF） */
 /* 856-899 预留 */
 
 /* ============================================================
- * 段 900-999：网络高级
+ * 段 900-999：网络高级 — 预留
  * ============================================================ */
-/* ToyOS 子段 900-949：预留 */
-/* POSIX 子段 950-999：预留 */
 
 /* ============================================================
- * 段 1000-1099：GUI 基础
+ * 段 1000-1099：GUI / 窗
  * ============================================================ */
-/* ToyOS 子段 1000-1049 */
-#define SYS_CREATE_WINDOW  1000
-#define SYS_DAMAGE         1001
-#define SYS_POLL_INPUT     1002
-#define SYS_UI_BUTTON      1003
-#define SYS_SCREEN_SIZE    1004 /* 查屏宽/高（写用户指针；0=成功） */
-#define SYS_SET_FONT_ID    1005 /* 设全局字体 id（ThemeSetFontId；0=成功） */
-#define SYS_FONT_COUNT     1006 /* 返回已注册字体数 */
+#define SYS_WINDOW_CREATE     1000
+#define SYS_WINDOW_DAMAGE     1001
+#define SYS_WINDOW_POLL       1002
+#define SYS_UI_BUTTON         1003
+#define SYS_UI_SCREEN_SIZE    1004
+#define SYS_UI_SET_FONT_ID    1005
+#define SYS_UI_FONT_COUNT     1006
 /* 1007-1049 预留 */
-
-/* POSIX 子段 1050-1099：预留（GUI 为 ToyOS 独有） */
+/* 1050-1099 预留 */
 
 /* ============================================================
  * 段 1100-1199：GUI 高级
  * ============================================================ */
-/* ToyOS 子段 1100-1149 */
-#define SYS_DAMAGE_RECT 1100
-/* 1101-1149 预留 */
-
-/* POSIX 子段 1150-1199：预留 */
+#define SYS_GRAPHICS_DAMAGE_RECT 1100
+/* 1101-1199 预留 */
 
 /* ============================================================
  * 段 1200-1299：系统信息
  * ============================================================ */
-/* ToyOS 子段 1200-1249 */
-#define SYS_TASK_SNAP 1200 /* 任务快照（ps 同源；见 Blocks/task.h） */
-/* 1201-1249 预留 */
-
-/* POSIX 子段 1250-1299：预留 */
+#define SYS_TASK_SNAP         1200 /* 任务快照（ps 同源；见 Blocks/task.h） */
+/* 1201-1299 预留 */
 
 /* ============================================================
  * 段 1300-1399：设备 — 预留
@@ -176,25 +151,17 @@
  * 段 1800-1899：电源管理 — 预留
  * 段 1900-1999：虚拟化 — 预留
  * 段 2000-2099：容器 — 预留
+ * 段 2100+：未来扩展 — 预留
  * ============================================================ */
 
 /* ============================================================
- * 段 2100-2999：未来扩展（9 段，全预留）
- * 段 3000-3999：架构特有（3000-3499 ToyOS / 3500-3999 POSIX）
- * 段 4000-4999：厂商特有（4000-4499 ToyOS / 4500-4999 POSIX）
- * 段 5000-5999：实验性（5000-5499 ToyOS / 5500-5999 POSIX）
- * 段 6000-9999：长期预留
- * 段 10000+：无限预留
+ * 共享参数值（非 syscall 号）
  * ============================================================ */
 
-/* ============================================================
- * 共享参数值（非 syscall 号；两份 Syscall.h 共用）
- * ============================================================ */
-
-/* SYS_WAIT：rdi = options */
+/* SYS_PROCESS_WAIT：rdi = options */
 #define WNOHANG 1
 
-/* PR-P4 简单信号（无 sigaction / mask / 停止作业） */
+/* 简单信号（无 sigaction / mask / 停止作业） */
 #define SIGINT   2
 #define SIGKILL  9
 #define SIGTERM  15

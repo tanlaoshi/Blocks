@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * BlocksSDK Examples/Gui — 链 libUi + libGraphics
  */
@@ -27,7 +28,7 @@ int main(void) {
         if (Ev == UI_BUTTON_EVENT(0)) {
             UiSetLabel(Wid, "OK!");
         } else if (Ev == UI_EVENT_NONE) {
-            sched_yield();
+            ThreadYield();
         }
     }
     return 0;

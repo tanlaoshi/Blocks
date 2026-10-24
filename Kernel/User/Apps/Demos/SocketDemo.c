@@ -1,21 +1,19 @@
 /*
- * SockDemo.c — 刀 C：POSIX connect(sockaddr) 冒烟（同 NETLIB 路径）
+ * SockDemo.c — NetConnect 冒烟（selfhost：无 sockaddr）
  * Guest：lwip on；宿主 nc -l -p 8888；exec SOCKDEMO.ELF
  */
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
 #include <ToyNet.h>
+#include <Blocks/File.h>
 
 int main(void) {
     int Fd;
-    struct sockaddr_in Sa;
     const char *Msg = "from sockdemo!\n";
     char Buf[64];
     ssize_t N;
 
-    printf("sockdemo: ToyNet %s\n", NET_ABI_VERSION_STRING);
+    printf("sockdemo: Net %s\n", NET_ABI_VERSION_STRING);
 
     Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (Fd < 0) {
@@ -23,23 +21,18 @@ int main(void) {
         return 1;
     }
 
-    memset(&Sa, 0, sizeof(Sa));
-    Sa.sin_family = AF_INET;
-    Sa.sin_port = htons(8888);
-    Sa.sin_addr.s_addr = htonl(NetIpv4(10, 0, 2, 2));
-
-    if (connect(Fd, (struct sockaddr *)&Sa, sizeof(Sa)) != 0) {
+    if (NetConnect(Fd, NetIpv4(10, 0, 2, 2), 8888) != 0) {
         printf("sockdemo: connect fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     if (send(Fd, Msg, strlen(Msg), 0) <= 0) {
         printf("sockdemo: send fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     N = recv(Fd, Buf, sizeof(Buf) - 1, 0);
-    close(Fd);
+    FileClose(Fd);
     if (N > 0) {
         Buf[N] = 0;
         printf("sockdemo: ok recv=%s", Buf);

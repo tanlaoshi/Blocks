@@ -1,3 +1,4 @@
+#include <Blocks/Process.h>
 /*
  * ThreadSmoke.c — thr-3：create / join / gettid 冒烟
  */
@@ -9,9 +10,9 @@ static volatile int GFlag;
 
 static void *Worker(void *Arg) {
     long N = (long)Arg;
-    printf("worker: tid=%d arg=%d\n", (int)toy_gettid(), (int)N);
+    printf("worker: tid=%d arg=%d\n", (int)ThreadGetTid(), (int)N);
     GFlag = (int)N + 1;
-    toy_thread_exit(42);
+    ThreadExit(42);
     return 0;
 }
 
@@ -19,15 +20,15 @@ int main(void) {
     long Tid;
     int St = 0;
 
-    printf("threadsmoke: pid=%d tid=%d\n", (int)getpid(), (int)toy_gettid());
+    printf("threadsmoke: pid=%d tid=%d\n", (int)ProcessGetPid(), (int)ThreadGetTid());
     GFlag = 0;
-    Tid = toy_thread_create(Worker, (void *)(long)7);
+    Tid = ThreadCreate(Worker, (void *)(long)7);
     if (Tid < 0) {
         printf("threadsmoke: create fail %d\n", (int)Tid);
         return 1;
     }
     printf("threadsmoke: created tid=%d\n", (int)Tid);
-    if (toy_thread_join(Tid, &St) != 0) {
+    if (ThreadJoin(Tid, &St) != 0) {
         printf("threadsmoke: join fail\n");
         return 1;
     }

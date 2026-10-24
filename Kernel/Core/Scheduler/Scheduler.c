@@ -212,8 +212,14 @@ UINT64 SchedulerResumeFrame(TASK *T) {
         Sp = HalFrameGetStackPointer(T->Frame);
         Lo = T->Stack;
         Hi = T->Stack + sizeof(T->Stack);
+        /*
+         * 内核任务：live 帧 SP 必须落在本任务内核栈。
+         * 用户任务：帧上的 SP 是用户栈（不在 T->Stack 里）。把它当成越界会在
+         * 第二次恢复（首拍已把 Started 置 1）时 HalCpuPark，create 之后的
+         * damage/按钮再也不会跑，GuiTask 也停，表现为空客户区 + 鼠死。
+         */
         if ((Ip >= (UINT64)(UINTN)Lo && Ip < (UINT64)(UINTN)Hi) ||
-            Sp < (UINT64)(UINTN)Lo || Sp > (UINT64)(UINTN)Hi) {
+            (!T->IsUser && (Sp < (UINT64)(UINTN)Lo || Sp > (UINT64)(UINTN)Hi))) {
             LogSmp("sched: corrupt resume frame task=");
             LogSmp(T->Name);
             LogSmp(" ip=");

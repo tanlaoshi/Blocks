@@ -52,19 +52,19 @@ rg -n 'VERSION_STRING|_ABI_VERSION_STRING' User/include/Blocks/version.h \
 - GUI 用 **1000+** / `Ui*` / `Graphics*`；**禁止**旧号 18–21。  
 - 未知号 → **`-ENOSYS`（-38）**。
 
-### 2.2 `wait`（非完整 POSIX）
+### 2.2 进程等待（Blocks）
 
 | | |
 |--|--|
-| CRT `wait(&status)` | `*status = (exit & 0xff) << 8` |
+| `ProcessWait(&status)` | `*status = (exit & 0xff) << 8` |
 | `WEXITSTATUS(s)` | `(s >> 8) & 0xff` |
-| **没有** | `waitpid` / 按 pid 等待 |
+| **没有** | 按 pid 等待（非 Linux `waitpid`） |
 
 ### 2.3 文件红字
 
 - `fopen("w")` **不截断** → 先 `remove(path)` 再 `fopen`。  
-- `open` 的 flags 内核多半忽略。  
-- **`write` 返回 0 视为错误**（与 read EOF=0 不同）。
+- `FileOpen` 的 flags 内核多半忽略。  
+- **`FileWrite` 返回 0 视为错误**（与 FileRead EOF=0 不同）。
 
 ### 2.4 GUI / HID
 
@@ -74,7 +74,7 @@ rg -n 'VERSION_STRING|_ABI_VERSION_STRING' User/include/Blocks/version.h \
 ### 2.5 网络
 
 - 内核 x86 默认常 `LWIP=1`；Guest 先 **`lwip on`**。  
-- POSIX：`connect`/`bind` **网络序**；便利：`NetConnect`/`NetBind` **主机序**（`NetIpv4`）。  
+- **只教** `NetConnect`/`NetBind`（主机序，`NetIpv4`）。不教 `sockaddr`。  
 - Arm64/RiscV virt：常见 `LWIP=0`，无网络课端口。
 
 ---
@@ -131,7 +131,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 ## 6. 已知缺口（别当 bug 狂修）
 
-- 完整 POSIX / 完整 pthread / `.so` 全重定位  
+- Linux 兼容 / 假 POSIX 脸 / 完整 pthread / `.so` 全重定位  
 - Graphics **位图**、完整 TTF  
 - Guest 内编译、公网商店  
 - Arm/RiscV 上的 lwIP  

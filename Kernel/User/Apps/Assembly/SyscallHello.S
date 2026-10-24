@@ -4,13 +4,13 @@
     .section .text
     .global _start
 _start:
-    mov rax, SYS_WRITE
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
     lea rsi, [rip + msg]
     mov rdx, 14
     syscall
 
-    mov rax, SYS_EXIT
+    mov rax, SYS_PROCESS_EXIT
     mov rdi, 0
     syscall
 

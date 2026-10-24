@@ -1,8 +1,8 @@
 /*
- * Socket.h — 用户态 socket 常量（简化 ABI；完整 POSIX sockaddr 不做）
+ * Socket.h — 用户态 socket 常量（简化 ABI；无 sockaddr 轨）
  *
- * SYS_SOCKET / SYS_BIND / SYS_LISTEN / SYS_ACCEPT / SYS_CONNECT
- * SYS_WRITE / SYS_READ / SYS_CLOSE 在 socket fd 上即 send/recv/close
+ * SYS_NET_SOCKET / SYS_NET_BIND / SYS_NET_LISTEN / SYS_NET_ACCEPT / SYS_NET_CONNECT
+ * SYS_FILE_WRITE / SYS_FILE_READ / SYS_FILE_CLOSE 在 socket fd 上即 send/recv/close
  *
  * 默认 make LWIP=1（可用 LWIP=0 关掉）；首次 socket() 会自动 LwIpInitialize。
  * PR-A-net-dns：type=NET_SOCK_RESOLVE 时 rdx 为 NET_DNS_QUERY*（不占新 syscall 号）。

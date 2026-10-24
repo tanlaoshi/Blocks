@@ -140,7 +140,13 @@ void GuiPollMouse(void) {
 
         /* 按下/抬起边沿：必须逐包看；拖动位移合并到队尾再 Update */
         if ((Raw.Buttons & 1) && !(LastBtn & 1)) {
+            /*
+             * 本函数外层 DeferPush：关窗轻量路径须能真正 Present。
+             * 与图标拖一致 Pause，避免 Close 画完仍被 Defer 吞掉。
+             */
+            GuiPresentDeferPause();
             GuiHandleClick(X, Y);
+            GuiPresentDeferResume();
         }
         if (!(Raw.Buttons & 1) && (LastBtn & 1)) {
             int WasIconDrag = DesktopIconDragActive();

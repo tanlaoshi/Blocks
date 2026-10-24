@@ -11,6 +11,7 @@
 #include "Console.h"
 #include "Fat.h"
 #include "FileSystem.h"
+#include "Gui.h"
 #include "Hal.h"
 #include "Process.h"
 #include "Scheduler.h"
@@ -82,28 +83,26 @@ static void CommandExec(int Argc, char **Argv) {
         return;
     }
     /*
-     * 无窗（Hello/MYAPP）：ProcessExec 内 CoopDrain 同步；AfterCommand 打 blocks>。
-     * 开窗 App：WaitPrompt + 异步，退完再 ShowPrompt（drain 会卡 GUI 循环）。
+     * 无窗：ProcessExec 内 CoopDrain；OnEnter 的 Defer 须 Pause，否则 CoopDrain
+     * 期间 Present 被吞、鼠死。
+     * 开窗：与桌面图标同契约 — WaitPrompt + 异步返回；勿在此 while Live
+     *（会卡死 ShellTask 于 OnEnter，Gui/Present 转不动 → 空窗+鼠死）。
+     * 退完由 ExitUser → ShowPrompt；PromptAfterCommand 见 gWaitPrompt 跳过。
      */
     Path = ClassExecPath(Argv[1], Alt, (int)sizeof(Alt));
     WindowApp = ProcessAppTakesWindow(Path);
     if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
         gConsole.WaitPrompt();
     }
+    GuiPresentDeferPause();
     if (ProcessExec(Path) != 0) {
+        GuiPresentDeferResume();
         if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
             gConsole.ShowPrompt();
         }
         return;
     }
-    if (WindowApp && !HalPlatformIsVirtSerialConsole()) {
-        while (SchedulerLiveUserApps()) {
-            YieldForPollInput();
-        }
-        if (gConsole.StdinUserHold()) {
-            gConsole.ShowPrompt();
-        }
-    }
+    GuiPresentDeferResume();
 }
 
 static void CommandPs(int Argc, char **Argv) {

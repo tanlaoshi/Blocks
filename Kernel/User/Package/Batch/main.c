@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * Batch — GraphicsBatch 范例（PR-GFX-batch-0）
  * 排空开窗竞态后画一帧；点 Redraw 重画。
@@ -40,7 +41,7 @@ int main(void) {
         if (Ev == UI_BUTTON_EVENT(0)) {
             Draw(Wid);
         }
-        sched_yield();
+        ThreadYield();
     }
     return 0;
 }

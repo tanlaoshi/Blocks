@@ -250,7 +250,7 @@ static void Write(const char *Text) {
     ConsoleOutUnlock();
 }
 
-/* 按长度输出（SYS_WRITE 用；UTF-8 按码点画，不因中间的 NUL 截断） */
+/* 按长度输出（SYS_FILE_WRITE 用；UTF-8 按码点画，不因中间的 NUL 截断） */
 static void WriteLen(const char *Data, UINTN Len) {
     UINTN i;
 

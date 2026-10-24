@@ -1,3 +1,5 @@
+#include <Blocks/thread.h>
+#include <Blocks/Process.h>
 /*
  * 任务管理器。文字跟系统语言：读 BLOCKS.DB 的 lang=（缺省汉语，与内核一致）。
  * 列表里用上下键或「下一项」移动选择。刷新 / 下一项 / 结束三个按钮保留。
@@ -152,7 +154,7 @@ static void KillCurrent(void) {
         UiSetLabel(gWid, Tr("refuse: self", "不能结束自己"));
         return;
     }
-    if (kill((pid_t)E->Pid, SIGKILL) != 0) {
+    if (ProcessKill((pid_t)E->Pid, SIGKILL) != 0) {
         UiSetLabel(gWid, Tr("end failed", "结束失败"));
         return;
     }
@@ -213,7 +215,7 @@ int main(void) {
                 Move(1);
             }
         } else {
-            sched_yield();
+            ThreadYield();
         }
     }
     return 0;

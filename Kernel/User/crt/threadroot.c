@@ -1,5 +1,5 @@
 /*
- * thread_root.c — CRT 入口桩：Start(Arg) 后 thread_exit
+ * thread_root.c — CRT 入口桩：Start(Arg) 后 ThreadExit
  */
 #include <Blocks/thread.h>
 
@@ -9,5 +9,5 @@ void ToyThreadRoot(void *(*Start)(void *), void *Arg) {
     if (Start) {
         Ret = Start(Arg);
     }
-    (void)toy_thread_exit((long)Ret);
+    (void)ThreadExit((long)Ret);
 }

@@ -12,6 +12,7 @@
 #include "LwIp.h"
 #include "Errno.h"
 #include "SerialLog.h"
+#include "Scheduler.h"
 #include "lwip/tcp.h"
 #include "lwip/pbuf.h"
 
@@ -354,16 +355,22 @@ int TcpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs) {
     /*
      * 先忙泵：ARP 应答 / SYN-ACK 常已在 RX 环，勿每次 hlt 等 NUC≈4ms 定时器。
      * 之后再 Halt 等，避免空转烧 CPU。
+     * CoopDrain 下 Current=User 时定时器不切 Gui：必须 IoBreath 泵鼠，否则
+     * exec SOCKDEMO 等 8s 会饿死 xHCI（进桌面后鼠死）。
      */
     {
         int Burst = 800;
         while (S->Phase == 0 && Burst-- > 0) {
             LwIpService();
+            if ((Burst & 63) == 0) {
+                SchedulerIoBreath();
+            }
         }
     }
     Tries = TimeoutMs > 0 ? TimeoutMs : 8000;
     while (S->Phase == 0 && Tries-- > 0) {
         LwIpService();
+        SchedulerIoBreath();
         HalCpuHalt(); /* 等定时器/网卡；无 halt 会把 TimeoutMs 当空转次数瞬间耗尽 */
     }
     if (S->Phase != 1) {

@@ -15,7 +15,7 @@
 #define OX PAD
 #define OY PAD
 /*
- * create_window 的宽高是外框。可画客户区 =
+ * UiCreateWindow 的宽高是外框。可画客户区 =
  *   W - 2(边框) - 2*GUI_CLIENT_PAD(8)，H - TITLE(40) - 1 - 2*PAD。
  * 外框须预留这些，否则棋盘右侧会被裁掉约半格。
  */

@@ -1,5 +1,5 @@
 /*
- * cwd.c — getcwd / chdir（SYS_GETCWD / SYS_CHDIR）
+ * cwd.c — getcwd / chdir（SYS_PATH_GETCWD / SYS_PATH_CHDIR）
  */
 #include <stddef.h>
 #include <errno.h>
@@ -11,7 +11,7 @@ char *getcwd(char *buf, size_t size) {
         errno = EINVAL;
         return 0;
     }
-    if (blocks_syscall(SYS_GETCWD, (long)buf, (long)size, 0) < 0) {
+    if (blocks_syscall(SYS_PATH_GETCWD, (long)buf, (long)size, 0) < 0) {
         errno = EINVAL;
         return 0;
     }
@@ -23,7 +23,7 @@ int chdir(const char *path) {
         errno = EINVAL;
         return -1;
     }
-    if (blocks_syscall(SYS_CHDIR, (long)path, 0, 0) < 0) {
+    if (blocks_syscall(SYS_PATH_CHDIR, (long)path, 0, 0) < 0) {
         errno = ENOENT;
         return -1;
     }

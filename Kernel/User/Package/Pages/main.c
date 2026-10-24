@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * Pages — 2 页 App（PR-UI-page-1：页面表 + 导航 9000 + Destroy/Create）
  */
@@ -22,7 +23,7 @@ int main(void) {
             break;
         }
         if (Ev == UI_EVENT_NONE || Ev == UI_EVENT_CLICK) {
-            sched_yield();
+            ThreadYield();
         }
     }
     return 0;

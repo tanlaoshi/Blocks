@@ -5,14 +5,14 @@
 
 > 写用户态 ELF、进 Guest 跑、可选上商店。  
 > ABI / 版本以 [`开课ABI冻结.md`](ABI.md) 为准；函数表见 [`API速查.md`](API.md)。  
-> Shell：`blocks>` · 卷：`BLOCKS:` · CRT **1.5.0** · UI/Graphics/Net **3.0.0**。
+> Shell：`blocks>` · 卷：`BLOCKS:` · **ISO C + Blocks API**（无假 POSIX 双轨；见 [README §0.1](README.md)）。
 
 ---
 
 ## 一、你在改什么
 
-用户程序是 **静态链接的 ELF**，链 `libcrt.a`（及需要的 `libUi` / `libGraphics` / `libToyNet` / `libVolumePath`），经 syscall 进内核。  
-**不要**链宿主 libc，**不要** `-pie`。
+用户程序是 **静态链接的 ELF**，链 `libBlocks.a`（及需要的 `libUi` / `libGraphics` / `libNet` / `libVolumePath`），经 syscall 进内核。  
+**不要**链宿主 libc，**不要** `-pie`，**不要**再写 `sockaddr`/`toy_*` 课设路径。
 
 推荐入口：
 
@@ -154,25 +154,19 @@ int main(void) {
 需要像素绘制时再链 `libGraphics.a`，用 `GraphicsDamageText` / `GraphicsDraw*`（见 `Graphics.h`）。  
 **禁止**旧 GUI syscall 18–21。
 
-窗口槽有上限；创建失败先关其它窗。树内更完整按钮：`User/Apps/GuiDemo.c`。
+窗口槽有上限；创建失败先关其它窗。示例：`Tools/Sdk/Examples/Gui/main.c`。
 
 ---
 
 ## 五、网络（Net 3.0 · 需 lwIP）
 
-Guest 先：`lwip on`。宿主机可 `nc -l -p 8888`。
-
-**双轨**（勿混字节序）：
-
-| 轨 | API | 字节序 |
-| -- | --- | ------ |
-| 1 | `connect`/`bind` + `sockaddr_in` | 网络序 |
-| 2 | `NetConnect`/`NetBind` + `NetIpv4` | 主机序 |
+Guest 先：`lwip on`。宿主机可 `nc -l -p 8888`。  
+**只教** `NetConnect` / `NetBind`（主机序）；不教 `sockaddr` / `htons`。
 
 ```c
 #include <stdio.h>
-#include <unistd.h>
-#include <ToyNet.h>
+#include <Net.h>
+#include <Blocks/File.h>
 
 int main(void) {
     int Fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -182,32 +176,28 @@ int main(void) {
     }
     if (NetConnect(Fd, NetIpv4(10, 0, 2, 2), 8888) != 0) {
         printf("connect fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     send(Fd, "hi\n", 3, 0);
-    close(Fd);
+    FileClose(Fd);
     printf("ok\n");
     return 0;
 }
 ```
 
-模板：`Tools/Sdk/Examples/Net/main.c`。旧名 `ToyNetConnect` / `ToyNetIpv4` → 改为 `NetConnect` / `NetIpv4`。  
-Arm64/RiscV virt 常见 `LWIP=0`，无此课端口。
-
-跨机聊天协议 / 端口见柱规格「局域网商店与聊天」（若课程启用）。
+模板：`Tools/Sdk/Examples/Net/main.c`。Arm64/RiscV virt 常见 `LWIP=0`，无此课端口。
 
 ---
 
-## 六、线程子集（非完整 pthread）
+## 六、线程子集（Blocks）
 
 ```c
 #include <Blocks/thread.h>
-/* 或 #include <pthread.h> — mutex 为自旋教学版 */
 ```
 
 自测（镜像含 Demo 时）：`blocks> exec THREADDEMO.ELF`。  
-任务列表同源：`#include <Blocks/task.h>` → `blocks_task_snap`（见任务管理器课堂作业）。
+任务列表：`#include <Blocks/task.h>` → `blocks_task_snap`。
 
 ---
 
@@ -218,7 +208,7 @@ Arm64/RiscV virt 常见 `LWIP=0`，无此课端口。
 | `exec` 找不到文件 | ELF 是否在可见 FAT；名是否 8.3 大写；`ls` / `vols` |
 | 有 exec 无输出 | 串口（`printf` 不进窗） |
 | 立刻退出 | `main` 返回值 / 开头 `printf` 卡点 |
-| `open` = -1 | 路径 / 卷前缀 `BLOCKS:` |
+| `FileOpen` = -1 | 路径 / 卷前缀 `BLOCKS:` |
 | `socket` = -1 | `LWIP`、是否 `lwip on` |
 | 返回 -38 | 未知 syscall / 旧 GUI 号 → 查 `SyscallABI.h` |
 

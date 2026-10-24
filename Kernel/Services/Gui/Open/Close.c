@@ -3,9 +3,13 @@
  *
  * CloseWindow 合成分叉（Kind 在槽清空前取样）：
  *   轻量（USER + Files/Edit/Settings/Store/Devices/Shell/TTY）—
- *          擦本窗 → 相交窗重画 → 清 clip 画任务栏 → PresentFlush
+ *          抄拖动脚印 ClearOldDragFootprint / GuiClearIconDragFootprint：
+ *          擦本窗矩形 → RestoreWindowsInFootprint（贴回他窗 Backup）
+ *          → 桌面图标 → 影 → 任务栏 → PresentFlush
+ *          禁止在 Busy 里对相交 Shell 走 PaintShellWindow（GUIDEMO 居中必撞
+ *          Shell，整窗 SbRepaint+Backup 饿死 xHCI；关 Shell 自身无此相交故没事）。
  *          禁止 GuiComposeThemeScene（高分全屏数秒 → 鼠假死）。
- *   USER 另置 ClosePending（exit 竞态）；完整合成在 ExitUser Destroy 之后。
+ *   USER 另置 ClosePending（exit 竞态）；ExitUser 勿再 ThemeScene。
  *   其它 — 全窗 BackupValid 清零 → GuiComposeThemeScene
  * GuiWaitNoWindowClosing：自旋至 Closing 清零；禁止超时强拆页表。
  * 断言：轻量关窗期间 GuiCloseUserLightActive=1；ThemeScene 入口见则 halt。
@@ -135,53 +139,54 @@ void CloseWindow(int Idx) {
         UINT32 BarY;
         UINT32 Sw;
         UINT32 Sh;
+        UINT32 N = ThemeWindowShadowSize();
 
         /* 轻量：契约见文件头（禁 ThemeScene；旗标供 ThemeScene 断言） */
         gCloseUserLight = 1;
         ComposeBeginEraseCursor();
         HalVideoClearClip();
+        /*
+         * 与 GuiClearIconDragFootprint 同序：先擦矩形，再按 Backup 贴回他窗。
+         * Shell 开窗走 OpenFadeIn 必有 Backup；勿 PaintShellWindow 整窗重排。
+         */
         DesktopFillRect(X, Y, Ww, Wh);
+        RestoreWindowsInFootprint(X, Y, Ww, Wh, Idx);
         DesktopDrawRect(X, Y, Ww, Wh);
         for (i = 0; i < MAX_WINS; i++) {
             if (!gGuiWindowManager.Windows[i].Active) {
                 continue;
             }
-            if (!RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width,
-                                gGuiWindowManager.Windows[i].Height, X, Y, Ww, Wh)) {
+            if (!RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y,
+                                gGuiWindowManager.Windows[i].Width + N,
+                                gGuiWindowManager.Windows[i].Height + N, X, Y, Ww, Wh)) {
                 continue;
             }
-            gGuiWindowManager.WinBackupValid[i] = 0;
-            DrawWindowAtEx(i, 0);
-            if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
-                GuiConsoleOpsPaintShellWindow(i);
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
+            if (!gGuiWindowManager.WinBackupValid[i] ||
+                gGuiWindowManager.WinBackup[i] == 0) {
+                /* 无备份才回退重画（Settings 等偶发）；有 Backup 只补影 */
                 gGuiWindowManager.FocusWin = i;
-                SettingsUiRepaint();
+                DrawWindowAtEx(i, 0);
+                if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
+                    GuiConsoleOpsPaintShellWindow(i);
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
+                    SettingsUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_STORE) {
+                    StoreUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_DEVICES) {
+                    DevicesUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
+                    FilesUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
+                    EditUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
+                    TtyUiRepaint();
+                } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
+                    PaintUserClient(i);
+                }
+                BackupWindowAtEx(i, 1);
                 gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_STORE) {
-                gGuiWindowManager.FocusWin = i;
-                StoreUiRepaint();
-                gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_DEVICES) {
-                gGuiWindowManager.FocusWin = i;
-                DevicesUiRepaint();
-                gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
-                gGuiWindowManager.FocusWin = i;
-                FilesUiRepaint();
-                gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
-                gGuiWindowManager.FocusWin = i;
-                EditUiRepaint();
-                gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
-                gGuiWindowManager.FocusWin = i;
-                TtyUiRepaint();
-                gGuiWindowManager.FocusWin = SavedFocus;
-            } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_USER) {
-                PaintUserClient(i);
             }
-            BackupWindowAtEx(i, 1);
+            DrawWindowShadowAt(i);
         }
         TaskbarGeom(&BarY, &Sw, &Sh);
         /*

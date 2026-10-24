@@ -93,7 +93,7 @@ if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
 | yield / kill | CRT | `<sched.h>` `<signal.h>` |
 | 任务快照 | （无 .a，仅头+syscall） | `<Blocks/task.h>` |
 
-链接：`taskmgr.o` → `libUi.a` → 图形库 → CRT（与 `GUIDEMO` 同形，见 `Makefile` 中 `USER_TASKMGR_*`）。
+链接：`taskmgr.o` → `libUi.a` → 图形库 → CRT（见 `Makefile` 中 `USER_TASKMGR_*`）。
 
 ### 3.2 UI 结构（跟现网范例）
 

@@ -172,15 +172,15 @@ int FsUtilListDir(const char *Path, FS_DIR_ENT *Out, int Max) {
         errno = EINVAL;
         return -1;
     }
-    Dir = OpenDirectory(Path ? Path : "");
+    Dir = DirOpen(Path ? Path : "");
     if (!Dir) {
         return -1;
     }
     Count = 0;
     while (Count < Max) {
-        Rc = ReadDirectory(Dir, &Out[Count]);
+        Rc = DirRead(Dir, &Out[Count]);
         if (Rc < 0) {
-            CloseDirectory(Dir);
+            DirClose(Dir);
             return -1;
         }
         if (Rc == 0) {
@@ -188,7 +188,7 @@ int FsUtilListDir(const char *Path, FS_DIR_ENT *Out, int Max) {
         }
         Count++;
     }
-    CloseDirectory(Dir);
+    DirClose(Dir);
     return Count;
 }
 

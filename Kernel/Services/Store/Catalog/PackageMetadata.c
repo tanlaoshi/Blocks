@@ -113,11 +113,19 @@ int StoreReadAppDesktopMeta(const char *Id, STORE_APP_DESKTOP_META *Out) {
     Out->FontRel[0] = 0;
     Out->Category[0] = 0;
 
+    /* 已装 Apps/<id>/PKG.TXT；课堂 Class/<ELF> 可能尚未装，回落 Store/packages */
     StoreAppBundleDir(Path, (int)sizeof(Path), Id);
     JoinPath(Path, (int)sizeof(Path), Path, "PKG.TXT");
     Err = FileSystemReadFile(Path, Buf, sizeof(Buf) - 1, &Size);
     if (Err != FAT_OK) {
-        return Err;
+        char PkgDir[96];
+
+        JoinPath(PkgDir, (int)sizeof(PkgDir), STORE_PACKAGES_DIR, Id);
+        JoinPath(Path, (int)sizeof(Path), PkgDir, "PKG.TXT");
+        Err = FileSystemReadFile(Path, Buf, sizeof(Buf) - 1, &Size);
+        if (Err != FAT_OK) {
+            return Err;
+        }
     }
     if (Size >= sizeof(Buf)) {
         Size = sizeof(Buf) - 1;

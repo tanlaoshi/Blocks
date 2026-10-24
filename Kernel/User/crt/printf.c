@@ -16,7 +16,7 @@ typedef struct {
 
 static void OutChar(FmtOut *O, char C) {
     if (O->ToFd) {
-        toy_write(1, &C, 1);
+        blocks_write(1, &C, 1);
         O->Pos++;
         return;
     }
@@ -157,7 +157,7 @@ int vprintf(const char *fmt, va_list ap) {
     size_t W;
 
     /*
-     * 整段一次 write：避免逐字 SYS_WRITE→Shell PresentFlush（关中断下会卡死）。
+     * 整段一次 write：避免逐字 SYS_FILE_WRITE→Shell PresentFlush（关中断下会卡死）。
      * 超长则截断到缓冲；课堂 printf 够用。
      */
     N = vsnprintf(Buf, sizeof(Buf), fmt, ap);
@@ -169,7 +169,7 @@ int vprintf(const char *fmt, va_list ap) {
         W = sizeof(Buf) - 1u;
     }
     if (W > 0) {
-        toy_write(1, Buf, W);
+        blocks_write(1, Buf, W);
     }
     return N;
 }

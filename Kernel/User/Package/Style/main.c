@@ -1,3 +1,4 @@
+#include <Blocks/thread.h>
 /*
  * Style — UiStyle 范例（PR-UI-style-0）
  * 切换样式表，复选框颜色跟着变。
@@ -50,7 +51,7 @@ int main(void) {
         } else if (Ev == UI_CHECK_EVENT(0)) {
             On = UiGetCheckBox(Wid, 0);
         }
-        sched_yield();
+        ThreadYield();
     }
     return 0;
 }

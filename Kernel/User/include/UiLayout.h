@@ -24,13 +24,13 @@ typedef struct {
 int UiLoadWindow(const char *Title, int DesignW, int DesignH,
                     const UI_WIDGET *Widgets, int Count);
 
-/* 屏宽/高；经 SYS_SCREEN_SIZE 查询，失败回退 1280/720（见 Tools/UiDesigner/README） */
+/* 屏宽/高；经 SYS_UI_SCREEN_SIZE 查询，失败回退 1280/720（见 Tools/UiDesigner/README） */
 int UiScreenWidth(void);
 int UiScreenHeight(void);
 
 /*
  * PR-UID-font：scale(千分) → 字号档位（1=默认, 2=×2, 3=×3）。
- * 只算档位；是否调 toy_set_font_id 由 App 自决（改全局字影响桌面/Shell）。
+ * 只算档位；是否调 blocks_set_font_id 由 App 自决（改全局字影响桌面/Shell）。
  */
 int UiFontTier(int Scale1000);
 

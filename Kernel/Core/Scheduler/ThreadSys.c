@@ -135,6 +135,6 @@ UINT64 SchedulerThreadJoin(HAL_INTERRUPT_FRAME *Frame) {
 }
 
 UINT64 SchedulerThreadExit(HAL_INTERRUPT_FRAME *Frame) {
-    /* 与 SYS_EXIT 同收尸路径；非末活 → joinable zombie */
+    /* 与 SYS_PROCESS_EXIT 同收尸路径；非末活 → joinable zombie */
     return SchedulerExitUser(Frame);
 }

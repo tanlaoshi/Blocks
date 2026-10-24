@@ -3,7 +3,6 @@
  */
 #include <errno.h>
 #include <pthread.h>
-#include <sched.h>
 #include <Blocks/thread.h>
 #include "Atomic.h"
 
@@ -16,9 +15,7 @@ int pthread_create(pthread_t *Thread, const pthread_attr_t *Attr,
         errno = EINVAL;
         return EINVAL;
     }
-    /* 经 ToyThreadRoot：Start 返回后自动 thread_exit */
-    Tid = blocks_syscall(SYS_THREAD_CREATE, (long)ToyThreadRoot, (long)Start,
-                      (long)Arg);
+    Tid = ThreadCreate(Start, Arg);
     if (Tid < 0) {
         errno = (int)(-Tid);
         return errno;
@@ -31,7 +28,7 @@ int pthread_join(pthread_t Thread, void **Retval) {
     int St = 0;
     long R;
 
-    R = toy_thread_join((long)Thread, &St);
+    R = ThreadJoin((long)Thread, &St);
     if (R != 0) {
         errno = (int)(-R);
         return errno;
@@ -43,7 +40,7 @@ int pthread_join(pthread_t Thread, void **Retval) {
 }
 
 void pthread_exit(void *Retval) {
-    (void)toy_thread_exit((long)Retval);
+    (void)ThreadExit((long)Retval);
     for (;;) {
     }
 }
@@ -85,7 +82,7 @@ int pthread_mutex_lock(pthread_mutex_t *M) {
         return EINVAL;
     }
     while (BLOCKS_ATOMIC_TAS(&M->Lock, 1) != 0) {
-        (void)sched_yield();
+        (void)ThreadYield();
     }
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * signal.c — PR-U-sig：signal() → SYS_SIGNAL（教学级用户 handler）
+ * signal.c — PR-U-sig：signal() → SYS_PROCESS_SIGNAL（教学级用户 handler）
  */
 #include <errno.h>
 #include <signal.h>
@@ -16,7 +16,7 @@ sighandler_t signal(int sig, sighandler_t handler) {
         errno = EINVAL;
         return SIG_ERR;
     }
-    r = toy_signal((long)sig, (long)handler);
+    r = blocks_signal((long)sig, (long)handler);
     if (r < 0) {
         errno = EINVAL;
         return SIG_ERR;

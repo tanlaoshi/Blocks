@@ -1,3 +1,5 @@
+#include <Blocks/thread.h>
+#include <Blocks/Process.h>
 /*
  * SigDemo.c — PR-U-sig：子进程安装 SIGTERM handler，父 kill 后 handler 运行并退出
  */
@@ -21,7 +23,7 @@ int main(void) {
     int St;
     int I;
 
-    Pid = fork();
+    Pid = ProcessFork();
     if (Pid < 0) {
         printf("sigdemo: fork fail\n");
         return 1;
@@ -32,7 +34,7 @@ int main(void) {
             return 1;
         }
         for (;;) {
-            sched_yield();
+            ThreadYield();
             if (gGot) {
                 break;
             }
@@ -42,13 +44,13 @@ int main(void) {
 
     printf("sigdemo: child pid=%d\n", (int)Pid);
     for (I = 0; I < 8; I++) {
-        sched_yield();
+        ThreadYield();
     }
-    if (kill(Pid, SIGTERM) != 0) {
+    if (ProcessKill(Pid, SIGTERM) != 0) {
         printf("sigdemo: kill fail\n");
         return 1;
     }
-    St = wait(0);
+    St = ProcessWait(0);
     if (St < 0) {
         printf("sigdemo: wait fail\n");
         return 1;

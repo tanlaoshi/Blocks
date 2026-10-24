@@ -1,7 +1,7 @@
 /*
- * dirent.c — OpenDirectory / ReadDirectory / FileStat + readdir（刀 B）
+ * dirent.c — DirOpen / DirRead / DirClose / FileStat（selfhost）
  */
-#include <dirent.h>
+#include <Blocks/Dir.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +9,9 @@
 
 struct FsDirectory {
     int Fd;
-    struct dirent Ent; /* 每 DIR 一份；供 readdir 返回（非进程级静态） */
 };
 
-FS_DIR *OpenDirectory(const char *path) {
+FS_DIR *DirOpen(const char *path) {
     FS_DIR *Dir;
     long Fd;
 
@@ -21,25 +20,24 @@ FS_DIR *OpenDirectory(const char *path) {
         errno = ENOMEM;
         return 0;
     }
-    Fd = toy_open_directory(path ? path : "");
+    Fd = blocks_open_directory(path ? path : "");
     if (Fd < 0) {
         free(Dir);
         errno = ENOTDIR;
         return 0;
     }
     Dir->Fd = (int)Fd;
-    Dir->Ent.d_name[0] = 0;
     return Dir;
 }
 
-int ReadDirectory(FS_DIR *dir, FS_DIR_ENT *out) {
+int DirRead(FS_DIR *dir, FS_DIR_ENT *out) {
     long R;
 
     if (!dir || !out) {
         errno = EINVAL;
         return -1;
     }
-    R = toy_read_directory(dir->Fd, out);
+    R = blocks_read_directory(dir->Fd, out);
     if (R < 0) {
         errno = EBADF;
         return -1;
@@ -47,14 +45,14 @@ int ReadDirectory(FS_DIR *dir, FS_DIR_ENT *out) {
     return (int)R;
 }
 
-int CloseDirectory(FS_DIR *dir) {
+int DirClose(FS_DIR *dir) {
     long R;
 
     if (!dir) {
         errno = EINVAL;
         return -1;
     }
-    R = toy_close(dir->Fd);
+    R = blocks_close(dir->Fd);
     free(dir);
     if (R < 0) {
         errno = EBADF;
@@ -70,35 +68,10 @@ int FileStat(const char *path, FS_FILE_STAT *out) {
         errno = EINVAL;
         return -1;
     }
-    R = toy_file_stat(path ? path : "", out);
+    R = blocks_file_stat(path ? path : "", out);
     if (R < 0) {
         errno = ENOENT;
         return -1;
     }
     return 0;
-}
-
-struct dirent *readdir(DIR *dir) {
-    FS_DIR_ENT Ent;
-    int Rc;
-    size_t N;
-
-    if (!dir) {
-        errno = EINVAL;
-        return 0;
-    }
-    Rc = ReadDirectory(dir, &Ent);
-    if (Rc < 0) {
-        return 0;
-    }
-    if (Rc == 0) {
-        return 0;
-    }
-    N = strlen(Ent.Name);
-    if (N >= FS_ENT_NAME_MAX) {
-        N = FS_ENT_NAME_MAX - 1;
-    }
-    memcpy(dir->Ent.d_name, Ent.Name, N);
-    dir->Ent.d_name[N] = 0;
-    return &dir->Ent;
 }

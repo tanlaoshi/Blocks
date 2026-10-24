@@ -28,7 +28,7 @@ int GraphicsDamageText(int WindowId, const char *Text) {
     if (WindowId < 0 || !Text) {
         return -1;
     }
-    return (int)toy_damage(WindowId, Text);
+    return (int)blocks_damage(WindowId, Text);
 }
 
 int GraphicsDamageRect(int WindowId, const GRAPHICS_DAMAGE_RECT *Desc) {
@@ -44,7 +44,7 @@ int GraphicsDamageRect(int WindowId, const GRAPHICS_DAMAGE_RECT *Desc) {
     if (N == 0 || N > (unsigned long long)GRAPHICS_DAMAGE_RECT_MAX_PIXELS) {
         return -1;
     }
-    return (int)toy_damage_rect(WindowId, Desc);
+    return (int)blocks_damage_rect(WindowId, Desc);
 }
 
 int GraphicsFillRect(int WindowId, unsigned X, unsigned Y, unsigned W, unsigned H,

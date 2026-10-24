@@ -1,15 +1,15 @@
 #include <Blocks/syscall.h>
-/* user/LibToy.S — 共享库：导出 toy_hello，打印 from.so */
+/* user/LibToy.S — 共享库：导出 blocks_hello，打印 from.so */
     .intel_syntax noprefix
     .section .rodata
-toy_msg:
+blocks_msg:
     .ascii "from.so\n"
     .section .text
-    .global toy_hello
-toy_hello:
-    mov rax, SYS_WRITE
+    .global blocks_hello
+blocks_hello:
+    mov rax, SYS_FILE_WRITE
     mov rdi, 1
-    lea rsi, [rip + toy_msg]
+    lea rsi, [rip + blocks_msg]
     mov rdx, 8
     int 0x80
     ret

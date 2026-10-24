@@ -119,6 +119,17 @@ if [ "${USB_MSC:-0}" = 1 ]; then
     )
 fi
 echo "=========================================="
+if [ "$HEADLESS" = 0 ]; then
+    echo "提示: 应弹出 QEMU 图形窗；关掉该窗 = 进程结束并回到 shell。"
+    echo "      若一闪就回提示符 / 看不到窗：run --kill 后再试，或 run --headless（串口验收）"
+fi
+
+# 残留 qemu 占着 hostfwd :15000 → 第二次 run 直接失败（Could not set up host forwarding）
+if pgrep -f qemu-system-x86_64 >/dev/null 2>&1; then
+    echo "warning: 已有 qemu-system-x86_64，先 --kill 再启（否则 :15000 占线起不来）" >&2
+    pkill -9 -f qemu-system-x86_64 2>/dev/null || true
+    sleep 0.3
+fi
 
 # 双盘均走 AHCI：现网 x86 块驱动认 AHCI，不认 virtio-blk（旧 run-split 同款）。
 # disk0=Esp（Boot）；disk1=RootFs（TOYOS.ID / Assets / Kernel.elf）。
@@ -127,7 +138,7 @@ echo "=========================================="
 # 注意：# 注释不能插在 \ 续行中间，否则后面参数全被吃掉。
 exec qemu-system-x86_64 \
     -machine q35,accel=kvm:tcg \
-    -cpu qemu64,+hypervisor \
+    -cpu qemu64,+hypervisor,-svm \
     -m "$MEM" \
     -smp "$SMP" \
     -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \

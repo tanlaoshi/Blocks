@@ -1,5 +1,5 @@
 /*
- * DirDemo.c — PR-F4：OpenDirectory / ReadDirectory / FileStat 冒烟
+ * DirDemo.c — PR-F4：DirOpen / DirRead / FileStat 冒烟
  */
 #include <stdio.h>
 #include <dirent.h>
@@ -36,12 +36,12 @@ int main(void) {
         return 1;
     }
 
-    Dir = OpenDirectory("");
+    Dir = DirOpen("");
     if (!Dir) {
-        printf("dirdemo: FAIL OpenDirectory root\n");
+        printf("dirdemo: FAIL DirOpen root\n");
         return 1;
     }
-    while ((Rc = ReadDirectory(Dir, &Ent)) > 0) {
+    while ((Rc = DirRead(Dir, &Ent)) > 0) {
         Count++;
         if (strcmp(Ent.Name, "HELLO.ELF") == 0) {
             SawHello = 1;
@@ -52,58 +52,36 @@ int main(void) {
         }
     }
     if (Rc < 0) {
-        printf("dirdemo: FAIL ReadDirectory\n");
-        CloseDirectory(Dir);
+        printf("dirdemo: FAIL DirRead\n");
+        DirClose(Dir);
         return 1;
     }
-    CloseDirectory(Dir);
+    DirClose(Dir);
     if (Count < 1 || !SawHello) {
         printf("dirdemo: FAIL root list count=%d hello=%d\n", Count, SawHello);
         return 1;
     }
 
-    /* 刀 B：POSIX 名轨冒烟（与上同根目录） */
-    {
-        DIR *D;
-        struct dirent *De;
-        int Saw = 0;
 
-        D = opendir("");
-        if (!D) {
-            printf("dirdemo: FAIL opendir\n");
-            return 1;
-        }
-        while ((De = readdir(D)) != 0) {
-            if (strcmp(De->d_name, "HELLO.ELF") == 0) {
-                Saw = 1;
-            }
-        }
-        closedir(D);
-        if (!Saw) {
-            printf("dirdemo: FAIL readdir HELLO\n");
-            return 1;
-        }
-    }
-
-    Dir = OpenDirectory("RES:");
+    Dir = DirOpen("RES:");
     if (!Dir) {
-        printf("dirdemo: FAIL OpenDirectory RES:\n");
+        printf("dirdemo: FAIL DirOpen RES:\n");
         return 1;
     }
     Count = 0;
-    while ((Rc = ReadDirectory(Dir, &Ent)) > 0) {
+    while ((Rc = DirRead(Dir, &Ent)) > 0) {
         Count++;
     }
-    CloseDirectory(Dir);
+    DirClose(Dir);
     if (Rc < 0 || Count < 1) {
         printf("dirdemo: FAIL RES: list\n");
         return 1;
     }
 
-    Dir = OpenDirectory("HELLO.ELF");
+    Dir = DirOpen("HELLO.ELF");
     if (Dir) {
-        CloseDirectory(Dir);
-        printf("dirdemo: FAIL OpenDirectory on file\n");
+        DirClose(Dir);
+        printf("dirdemo: FAIL DirOpen on file\n");
         return 1;
     }
 

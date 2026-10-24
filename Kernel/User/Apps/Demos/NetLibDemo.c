@@ -23,16 +23,16 @@ int main(void) {
     }
     if (NetConnect(Fd, NetIpv4(10, 0, 2, 2), 8888) != 0) {
         printf("netlib: connect fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     if (send(Fd, Msg, strlen(Msg), 0) <= 0) {
         printf("netlib: send fail\n");
-        close(Fd);
+        FileClose(Fd);
         return 1;
     }
     N = recv(Fd, Buf, sizeof(Buf) - 1, 0);
-    close(Fd);
+    FileClose(Fd);
     if (N > 0) {
         Buf[N] = 0;
         printf("netlib: ok recv=%s", Buf);

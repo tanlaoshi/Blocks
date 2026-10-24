@@ -1,21 +1,21 @@
 /*
- * ToyNet.h — 用户态 libToyNet（PR-L4 / 网络双轨 C1 / 刀 C）
+ * ToyNet.h — 用户态 libNet（selfhost：只教 Net* 主机序）
  *
- * 第 2 轨：NetConnect / NetBind — (fd, ip, port) **主机序**。
- * 第 1 轨：POSIX connect / bind + sockaddr → <sys/socket.h>（CRT socket.c）。
+ * NetConnect / NetBind — (fd, ip, port) **主机序**。
+ * 勿再用 sockaddr/htons 课设路径。
  */
 #ifndef NET_H
 #define NET_H
 
 #include <sys/types.h>
-#include <sys/socket.h>
+#include <sys/socket.h> /* AF_INET / socket / send / recv */
 
 #define NET_ABI_VERSION_MAJOR 3
 #define NET_ABI_VERSION_MINOR 0
 #define NET_ABI_VERSION_PATCH 0
 #define NET_ABI_VERSION_STRING "3.0.0"
 
-/* SYS_SOCKET 的 type：域名查询；应用请用 NetResolve，不要直接 socket 此类型 */
+/* SYS_NET_SOCKET 的 type：域名查询；应用请用 NetResolve，不要直接 socket 此类型 */
 #define NET_SOCK_RESOLVE 0x100
 #define NET_NAME_MAX     127
 
@@ -26,7 +26,7 @@ typedef struct {
 
 /*
  * NET_SOCK_ADDR_IN — 主机序地址（与 NetConnect(fd, ip, port) 同一约定）。
- * 不是 POSIX 网络序 sockaddr_in。
+ * 主机序地址结构；勿与 Linux sockaddr_in 网络序混淆。
  */
 typedef struct {
     unsigned short Family;
@@ -39,7 +39,7 @@ static inline unsigned NetIpv4(unsigned A, unsigned B, unsigned C, unsigned D) {
     return ((A & 0xffu) << 24) | ((B & 0xffu) << 16) | ((C & 0xffu) << 8) | (D & 0xffu);
 }
 
-/* 主机序便利版（第 2 轨）；POSIX 形参见 <sys/socket.h> */
+/* 主机序 connect/bind */
 int NetConnect(int fd, unsigned ip, unsigned short port);
 int NetBind(int fd, unsigned ip, unsigned short port);
 

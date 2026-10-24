@@ -238,7 +238,7 @@ int main(void) {
     if (NetConnect(gSock, Ip, Port) != 0) {
         LogPush("--", "connect fail");
         UiPaint();
-        close(gSock);
+        FileClose(gSock);
         return 1;
     }
     LogPush("--", "connected");
@@ -277,7 +277,7 @@ int main(void) {
         usleep(5000);
     }
     if (gSock >= 0) {
-        close(gSock);
+        FileClose(gSock);
     }
     return 0;
 }

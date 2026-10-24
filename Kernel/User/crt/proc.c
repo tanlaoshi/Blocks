@@ -1,14 +1,13 @@
 /*
- * proc.c — getpid / getppid（PR-U-getpid；SYS_GETPID / SYS_GETPPID）
- * unistd.c 已 288 行，故单列。
+ * proc.c — ProcessGetPid / ProcessGetPpid
  */
-#include <unistd.h>
+#include <Blocks/Process.h>
 #include <Blocks/syscall.h>
 
-pid_t getpid(void) {
-    return (pid_t)blocks_syscall(SYS_GETPID, 0, 0, 0);
+pid_t ProcessGetPid(void) {
+    return (pid_t)blocks_syscall(SYS_PROCESS_GET_PID, 0, 0, 0);
 }
 
-pid_t getppid(void) {
-    return (pid_t)blocks_syscall(SYS_GETPPID, 0, 0, 0);
+pid_t ProcessGetPpid(void) {
+    return (pid_t)blocks_syscall(SYS_PROCESS_GET_PPID, 0, 0, 0);
 }

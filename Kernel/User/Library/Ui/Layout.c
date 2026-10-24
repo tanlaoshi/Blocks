@@ -10,7 +10,7 @@
 int UiScreenWidth(void) {
     int W = 0;
     int H = 0;
-    if (toy_screen_size(&W, &H) != 0 || W <= 0) {
+    if (blocks_screen_size(&W, &H) != 0 || W <= 0) {
         return 1280;
     }
     return W;
@@ -19,7 +19,7 @@ int UiScreenWidth(void) {
 int UiScreenHeight(void) {
     int W = 0;
     int H = 0;
-    if (toy_screen_size(&W, &H) != 0 || H <= 0) {
+    if (blocks_screen_size(&W, &H) != 0 || H <= 0) {
         return 720;
     }
     return H;
@@ -61,7 +61,7 @@ static void ApplyFontTier(int Scale1000, int Unused) {
 }
 
 /* PR-UID-font：scale(千分) → 档位。<1500→1, <2500→2, <3500→3, 否则+1。
- * 只缩不放下 scale≤1000 → 恒为 1。App 可据此调 toy_set_font_id。 */
+ * 只缩不放下 scale≤1000 → 恒为 1。App 可据此调 blocks_set_font_id。 */
 int UiFontTier(int Scale1000) {
     int Tier;
     if (Scale1000 < 1500) {

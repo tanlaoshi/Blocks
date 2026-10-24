@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <Blocks/File.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <ToyNet.h>
@@ -70,7 +71,7 @@ static int ReadFileLine(int Fd, char *Out, size_t Cap) {
 
     for (;;) {
         char C;
-        ssize_t R = read(Fd, &C, 1);
+        ssize_t R = FileRead(Fd, &C, 1);
         if (R == 0) {
             if (N == 0) {
                 return 0;
@@ -100,9 +101,9 @@ int ChatLoadPeer(unsigned *OutIp, unsigned short *OutPort) {
     const char *Key = "chat.peer=";
     size_t KeyLen = 10;
 
-    Fd = open("BLOCKS.DB", O_RDONLY);
+    Fd = FileOpen("BLOCKS.DB");
     if (Fd < 0) {
-        Fd = open("/BLOCKS.DB", O_RDONLY);
+        Fd = FileOpen("/BLOCKS.DB");
     }
     if (Fd < 0) {
         printf("chat: no BLOCKS.DB (dbset chat.peer <ip>)\n");
@@ -120,14 +121,14 @@ int ChatLoadPeer(unsigned *OutIp, unsigned short *OutPort) {
         while (*P == ' ' || *P == '\t') {
             P++;
         }
-        close(Fd);
+        FileClose(Fd);
         if (ParsePeer(P, OutIp, OutPort) != 0) {
             printf("chat: bad chat.peer=%s\n", P);
             return -1;
         }
         return 0;
     }
-    close(Fd);
+    FileClose(Fd);
     printf("chat: missing chat.peer\n");
     return -1;
 }

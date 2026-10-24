@@ -251,6 +251,13 @@ void HalSerialWriteShell(const char *Text) {
         SerialWrite(Text);
     }
     SpinLockRelease(&gSerialLock);
+    /*
+     * ShellOwn 后 COM1 已是主控制台：勿再 tee FTDI/CDC。
+     * Present/开窗路径里若 xHCI 忙，Bulk Wait 会拖死用户 syscall → 空窗+鼠死。
+     */
+    if (gShellOwnUart) {
+        return;
+    }
     if (gFtdiUart.Write) {
         gFtdiUart.Write(Text);
     }

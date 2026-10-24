@@ -103,11 +103,6 @@ if [ -f "$ROOT/HELLO.ELF" ]; then
     mkdir -p "$ROOT/Apps/hello"
     cp -f "$ROOT/HELLO.ELF" "$ROOT/Apps/hello/HELLO.ELF"
 fi
-if [ -f "$ROOT/GUIDEMO.ELF" ]; then
-    mkdir -p "$ROOT/Apps/guidemo"
-    cp -f "$ROOT/GUIDEMO.ELF" "$ROOT/Apps/guidemo/GUIDEMO.ELF"
-fi
-
 printf "Blocks root volume\n" > "$ROOT/BLOCKS.ID"
 if [ "${QEMU_VERBOSE:-0}" = 1 ]; then
     echo "Prepared $ROOT (BLOCKS system disk):"

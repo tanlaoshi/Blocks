@@ -1,5 +1,5 @@
 /*
- * Blocks/thread.h — PR-U-thread：入口桩 + create/join/exit/gettid
+ * Blocks/thread.h — 线程子集（selfhost：Thread* 本位名）
  */
 #ifndef BLOCKS_THREAD_H
 #define BLOCKS_THREAD_H
@@ -11,13 +11,12 @@
 
 void ToyThreadRoot(void *(*Start)(void *), void *Arg);
 
-static inline long toy_thread_create(void *(*Start)(void *), void *Arg) {
-    /* entry=ToyThreadRoot；Arg0=Start，Arg1=Arg（thr-4） */
+static inline long ThreadCreate(void *(*Start)(void *), void *Arg) {
     return blocks_syscall(SYS_THREAD_CREATE, (long)ToyThreadRoot, (long)Start,
-                       (long)Arg);
+                          (long)Arg);
 }
 
-static inline long toy_thread_join(long tid, int *status) {
+static inline long ThreadJoin(long tid, int *status) {
     BLOCKS_RET2 R = blocks_syscall2(SYS_THREAD_JOIN, tid, (long)status, 0);
     if (status && R.A == 0) {
         *status = (int)R.B;
@@ -25,15 +24,19 @@ static inline long toy_thread_join(long tid, int *status) {
     return R.A;
 }
 
-static inline long toy_thread_exit(long code) {
+static inline long ThreadExit(long code) {
     return blocks_syscall(SYS_THREAD_EXIT, code, 0, 0);
 }
 
-static inline long toy_gettid(void) {
-    return blocks_syscall(SYS_GETTID, 0, 0, 0);
+static inline long ThreadGetTid(void) {
+    return blocks_syscall(SYS_THREAD_GET_TID, 0, 0, 0);
 }
 
-static inline unsigned long toy_tls_tid(void) {
+static inline long ThreadYield(void) {
+    return blocks_syscall(SYS_THREAD_YIELD, 0, 0, 0);
+}
+
+static inline unsigned long ThreadTlsTid(void) {
 #if defined(__x86_64__)
     unsigned long V;
     __asm__ volatile("mov %%fs:0, %0" : "=r"(V));

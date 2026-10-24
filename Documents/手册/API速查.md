@@ -52,7 +52,7 @@
 | `UiPoll(wid)` | `UI_EVENT_NONE` / `UI_EVENT_CLOSE` / `UI_BUTTON_EVENT(i)` … |
 | `UiDestroyWindow` 等 | 见头文件 |
 
-示例：`Tools/Sdk/Examples/Gui/main.c`；树内 `User/Apps/GuiDemo.c`。
+示例：`Tools/Sdk/Examples/Gui/main.c`。
 
 ---
 
@@ -69,17 +69,13 @@
 
 ---
 
-## 五、Net 3.0（`ToyNet.h`）
-
-| 轨 | API | 字节序 |
-| -- | --- | ------ |
-| 1 | `socket` + `connect`/`bind` + `sockaddr_in` | **网络序**（`htons`/`htonl`） |
-| 2 | `NetConnect(fd, ip, port)` / `NetBind` | **主机序**；`NetIpv4(a,b,c,d)` |
+## 五、Net 3.0（`<Net.h>` / `ToyNet.h`）
 
 | API | 说明 |
 | --- | ---- |
+| `socket` + **`NetConnect` / `NetBind`** | **主机序**；`NetIpv4(a,b,c,d)`。不教 `sockaddr`/`htons` |
 | `NetResolve` / `NetGetAddrIn` | 域名 |
-| `NetConnectIn` / `NetBindIn` | `NET_SOCK_ADDR_IN` |
+| `NetConnectIn` / `NetBindIn` | `NET_SOCK_ADDR_IN`（主机序） |
 
 Guest 先 `lwip on`。模板：`Tools/Sdk/Examples/Net/main.c`。
 
@@ -89,8 +85,7 @@ Guest 先 `lwip on`。模板：`Tools/Sdk/Examples/Net/main.c`。
 
 | API | 头文件 | 说明 |
 | --- | ------ | ---- |
-| `OpenDirectory` / `ReadDirectory` / `CloseDirectory` / `FileStat` | `dirent.h` | F4 第 2 轨；`FS_DIR` / `FS_DIR_ENT` |
-| `opendir` / `readdir` | 宏 / 兼容 | |
+| `DirOpen` / `DirRead` / `DirClose` / `FileStat` | `<Blocks/Dir.h>`（或 `<dirent.h>`） | `FS_DIR` / `FS_DIR_ENT` |
 | `FsUtilJoin` / `FsUtilVolumePath` / `FsUtilBlocksPath` | `VolumePath.h` | 拼 `BLOCKS:…` |
 | `FsUtilListDir` / `FsUtilStat` / `FsUtilIsDir` | 同上 | |
 | `FS_VOL_BLOCKS` / `FS_VOL_ESP` / `FS_VOL_RES` | 卷名常量 | |
@@ -103,7 +98,7 @@ Guest 先 `lwip on`。模板：`Tools/Sdk/Examples/Net/main.c`。
 
 | API | 说明 |
 | --- | ---- |
-| `toy_thread_create` / `join` / `exit` / `toy_gettid` | `Blocks/thread.h` |
+| `ThreadCreate` / `ThreadJoin` / `ThreadExit` / `ThreadGetTid` | `Blocks/thread.h` |
 | `pthread_create` / `pthread_mutex_*`（自旋） | `<pthread.h>`；**非**完整 pthread |
 
 自测：`blocks> exec THREADDEMO.ELF`（若镜像已含）。

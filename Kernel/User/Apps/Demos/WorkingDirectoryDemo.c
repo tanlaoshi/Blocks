@@ -1,3 +1,4 @@
+#include <Blocks/Process.h>
 /*
  * CwdDemo.c — getcwd / chdir / wait 退出码
  */
@@ -24,7 +25,7 @@ int main(void) {
         return 1;
     }
     printf("cwd: %s\n", Buf);
-    Pid = fork();
+    Pid = ProcessFork();
     if (Pid < 0) {
         printf("cwd: fork fail\n");
         return 1;
@@ -33,7 +34,7 @@ int main(void) {
         exit(42);
     }
     St = 0;
-    if (wait(&St) < 0) {
+    if (ProcessWait(&St) < 0) {
         printf("cwd: wait fail\n");
         return 1;
     }

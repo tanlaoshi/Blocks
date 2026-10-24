@@ -102,3 +102,8 @@
 |----|----|
 | 2026-10-25 | 初稿：汇总 hub 别名、SPLIT MPS/XACTPOS、Attach、Reveal/timer、PresentCursor dcache、HOLD 豆腐；链到日档 rpi-7 |
 | 2026-10-25 | **鼠 ✅**：真机流畅、图标可双击；键仍无 → 下一刀键盘 HID |
+| 2026-10-25 | 录像 `02-22-32`：仅 `hub+4` → `046d:c09d` 鼠；`+2/+3/+5` 无 CONNECT；**无 kbd 枚举行** → 键未进主机或未插 Pi 口。串口 HOLD `GPFSEL1/CNTL` OK、`LSR=0`；CoolTerm 哑仍先查 GPIO14→TTL RX |
+| 2026-10-25 | 录像 `02-30-10`：同上；见 `skip mouse+extraHID as kbd`（鼠附加 HID，**正确拒认**）+ `Attach mouse`、无 `kbd ep`；U-Boot 仍 `4 USB Device(s)`＝无第二 HID。键未进总线，非 Dequeue 坏。屏加 `no kbd (plug…)` |
+| 2026-10-25 | **澄清**：能敲 U-Boot ≠ USB 键已进 Blocks。U-Boot 字可能走 CoolTerm RX；「无日志」＝ TX。用户确认 Pi 上另有 USB 键一直插着 → 录像仍无第二 CONNECT，疑 **CSFTRST 后键慢热** 被单轮扫漏。改：上电 +200ms、hub **3 轮**扫、已成功口不重 reset |
+| 2026-10-25 | 录像 `02-46-06`：三轮扫后 **hub+3 LS** `st=0303`；`getdesc18` → `HCINT=0x402`（CHHLTD\|DATATGLERR）`spl` 带 COMPSPLT；鼠仍 ok、`no kbd after hub passes`。修：CSPLIT 等下一微帧（USB2 §11.18）+ DATATGLERR 重试 + HCFG FSLSPClkSel |
+| 2026-10-25 | 录像 `02-53-02`：仍 `getdesc18 fail mps=8` @ hub+3 LS（微帧等待不够）。改：USB2 序 **GET8→SET_ADDR→GET18@addr**（addr0 满 18 失败不弃口）。串口：mini-UART 行末等 **TX idle(LSR.6)**（无流控暴打易丢；屏仍为准） |

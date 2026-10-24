@@ -26,7 +26,8 @@
 #define MU_LSR     (*(volatile UINT32 *)(UART_BASE + 0x54))
 #define MU_CNTL    (*(volatile UINT32 *)(UART_BASE + 0x60))
 #define MU_ENABLES (*(volatile UINT32 *)(UART_BASE + 0x04))
-#define MU_LSR_TX_EMPTY   (1u << 5)
+#define MU_LSR_TX_EMPTY   (1u << 5) /* FIFO 可再收至少 1 字节 */
+#define MU_LSR_TX_IDLE    (1u << 6) /* FIFO 空且移位器空闲（BCM2835 §2.2） */
 #define MU_LSR_DATA_READY (1u << 0)
 #define MU_CNTL_RXEN       (1u << 0)
 #define MU_CNTL_TXEN       (1u << 1)
@@ -110,6 +111,17 @@ static void UartPut(char C) {
 #endif
 }
 
+#if BOARD_UART_MINI && SERIAL_ENABLE
+/* 行末等到移位器空：mini-UART 无流控，暴打时 CoolTerm/FTDI 易丢字 */
+static void UartWaitTxIdle(void) {
+    UINT32 Guard = 0;
+    while ((MU_LSR & MU_LSR_TX_IDLE) == 0 && Guard < 200000u) {
+        __asm__ volatile("nop");
+        Guard++;
+    }
+}
+#endif
+
 static void UartWriteRaw(const char *Text) {
 #if !SERIAL_ENABLE
     (void)Text;
@@ -127,12 +139,18 @@ static void UartWriteRaw(const char *Text) {
             UartPut('\r');
             UartPut('\n');
             Text += 2;
+#if BOARD_UART_MINI
+            UartWaitTxIdle();
+#endif
             continue;
         }
         if (*Text == '\n') {
             UartPut('\r');
             UartPut('\n');
             Text++;
+#if BOARD_UART_MINI
+            UartWaitTxIdle();
+#endif
             continue;
         }
         UartPut(*Text++);

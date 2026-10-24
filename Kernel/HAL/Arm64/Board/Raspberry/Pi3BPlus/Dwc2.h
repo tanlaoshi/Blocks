@@ -20,6 +20,9 @@
 #define DWC2_GSNPSID        0x040u
 #define DWC2_GHWCFG2        0x048u
 #define DWC2_HCFG           0x400u
+/* HCFG：HS PHY 上 FS/LS 用 30/60MHz（U-Boot init_fslspclksel） */
+#define DWC2_HCFG_FSLSPCLKSEL_30_60_MHZ 0u
+#define DWC2_HCFG_FSLSPCLKSEL_MASK      (3u << 0)
 #define DWC2_HFIR           0x404u
 #define DWC2_HFNUM          0x408u
 #define DWC2_HPRT0          0x440u
@@ -99,6 +102,7 @@
 #define DWC2_HCINT_XACTERR    (1u << 7)
 #define DWC2_HCINT_BBLERR     (1u << 8)
 #define DWC2_HCINT_FRMOVRUN   (1u << 9)
+#define DWC2_HCINT_DATATGLERR (1u << 10)
 
 /* HCSPLT（U-Boot dwc2.h / Synopsys：非周期 SPLIT 须 XACTPOS=ALL） */
 #define DWC2_HCSPLT_PRTADDR_SHIFT 0

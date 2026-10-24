@@ -7,6 +7,7 @@
  */
 #include "Hal.h"
 #include "PhysicalMemory.h"
+#include "BoardConfig.h"
 
 #include "PageTablePrivate.h"
 
@@ -56,8 +57,28 @@ void HalPagingEnable(UINT64 RootPhys) {
     UINT64 Mair;
     UINT64 Tcr;
     UINT64 Sctlr;
+    UINT64 El;
 
     HalExceptionVectorsInstall();
+
+    gCurrentRoot = RootPhys;
+    gKernelRoot = RootPhys;
+
+    __asm__ volatile("mrs %0, CurrentEL" : "=r"(El));
+#if !BOARD_IS_VIRT
+    /*
+     * 真机若仍在 EL2：开的是 SCTLR_EL1，取指/数据仍走 EL2 机制；
+     * HalPagingSelfTest 访问 0x180000000 会在 EL2 上外部中止 → 无 VBAR 则整板复位。
+     * 本柱先跳过开 MMU/自测，保持物理恒等，把串口壳钉住。
+     */
+    if (((El >> 2) & 3ULL) >= 2ULL) {
+        gMmuOn = 0;
+        HalSerialWrite("vmm: skip MMU (EL>=2)\n");
+        return;
+    }
+#else
+    (void)El;
+#endif
 
     /* Attr0=Normal WB，Attr1=Device-nGnRnE */
     Mair = (0xFFULL) | (0x00ULL << 8);
@@ -76,9 +97,6 @@ void HalPagingEnable(UINT64 RootPhys) {
     __asm__ volatile("msr tcr_el1, %0" :: "r"(Tcr));
     __asm__ volatile("msr ttbr0_el1, %0" :: "r"(RootPhys));
     __asm__ volatile("isb");
-
-    gCurrentRoot = RootPhys;
-    gKernelRoot = RootPhys;
 
     __asm__ volatile("mrs %0, sctlr_el1" : "=r"(Sctlr));
     Sctlr |= (1ULL << 0);   /* M */
@@ -126,8 +144,11 @@ void HalPagingEnableAp(void) {
 }
 
 /*
- * 恒等映射 0..4GiB：低 1GiB Device（UART/GIC/virtio），其余 Normal（RAM @1GiB+）。
- * IdentityMegabytes 保留接口兼容；virt 固定覆盖 4GiB。
+ * 恒等映射 0..4GiB。
+ * - virt：低 1GiB Device（UART/GIC/virtio），其余 Normal（RAM @1GiB+）。
+ * - Pi3B+ 等：DRAM @0，外设窗 @0x3F000000 — 低 1GiB 内按 2MiB 块区分
+ *   Normal / Device，否则内核落在 Device 属性上取指会炸。
+ * IdentityMegabytes 保留接口兼容。
  */
 int HalPageKernelSetup(UINTN IdentityMegabytes) {
     UINT64 *L0;
@@ -135,6 +156,10 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
     UINTN GiB = 4;
     UINTN g;
     UINT64 TableFlags = DESC_VALID | DESC_TABLE | AF_BIT | ATTR_NORMAL | SH_INNER | AP_EL1_RW;
+#if !BOARD_IS_VIRT
+    /* BCM283x ARM 外设窗起址（3B+：0x3F000000） */
+    const UINT64 PeriBase = 0x3F000000ULL;
+#endif
 
     (void)IdentityMegabytes;
 
@@ -148,8 +173,6 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
 
     for (g = 0; g < GiB; g++) {
         UINT64 *L2 = (UINT64 *)PageAllocTable();
-        UINT64 Attr = (g == 0) ? ATTR_DEVICE : ATTR_NORMAL;
-        UINT64 BlockBase = DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | Attr;
         UINTN b;
 
         if (!L2) {
@@ -158,6 +181,17 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
         L1[g] = PagePhys(L2) | TableFlags;
         for (b = 0; b < 512; b++) {
             UINT64 Pa = ((UINT64)g << 30) + ((UINT64)b << 21);
+            UINT64 Attr;
+            UINT64 BlockBase;
+#if BOARD_IS_VIRT
+            Attr = (g == 0) ? ATTR_DEVICE : ATTR_NORMAL;
+#else
+            /* 真机：外设窗 Device，其余当 RAM（含内核 @BOARD_KERNEL_LOAD） */
+            Attr = (Pa >= PeriBase && Pa < PeriBase + 0x01000000ULL)
+                       ? ATTR_DEVICE
+                       : ATTR_NORMAL;
+#endif
+            BlockBase = DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | Attr;
             L2[b] = Pa | BlockBase;
         }
     }

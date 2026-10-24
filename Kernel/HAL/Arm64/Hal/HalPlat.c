@@ -3,6 +3,7 @@
  */
 #include "Hal.h"
 #include "BootHandoff.h"
+#include "BoardConfig.h"
 
 int HalHasFrameBuffer(void) {
     const BOOT_HANDOFF *Info = BootHandoffGet();
@@ -25,12 +26,12 @@ int HalPinInteractiveToBootstrap(void) {
 }
 
 int HalPlatformIsVirtSerialConsole(void) {
-    /* virt 平台形状（协作调度 / 桌面模块表）；串口见 HalConsoleOnly */
-    return 1;
+    /* 仅 QEMU virt：挂 virtio、桌面模块形状；真机板禁止当 virt */
+    return BOARD_IS_VIRT ? 1 : 0;
 }
 
 int HalCpuIsHypervisor(void) {
-    return 1; /* Arm virt 当作 hypervisor 环境 */
+    return BOARD_IS_VIRT ? 1 : 0;
 }
 
 void HalVirtIdleLoop(void) {
@@ -41,7 +42,13 @@ void HalVirtIdleLoop(void) {
 }
 
 const char *HalArchName(void) { return "aarch64"; }
-const char *HalCpuInfo(void) { return "ARM64 (virt A14)"; }
+const char *HalCpuInfo(void) {
+#if BOARD_IS_VIRT
+    return "ARM64 (virt A14)";
+#else
+    return "ARM64";
+#endif
+}
 
 UINT16 HalElfMachine(void) {
     return 183; /* EM_AARCH64 */

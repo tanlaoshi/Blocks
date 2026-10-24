@@ -270,7 +270,15 @@ endif
 ifneq ($(BOARD_DIR),)
 endif
 
-LDFLAGS = -nostdlib -static -z noexecstack -T HAL/$(HAL_ARCH)/link.ld -e KernelEntry $(LDFLAGS_ARCH)
+# 板包可自带 link.ld（如 Pi3BPlus @0x80000）；否则用 HAL 默认（virt @0x40000000）
+LDSCRIPT := HAL/$(HAL_ARCH)/link.ld
+ifneq ($(BOARD_DIR),)
+ifneq ($(wildcard $(BOARD_DIR)/link.ld),)
+LDSCRIPT := $(BOARD_DIR)/link.ld
+endif
+endif
+
+LDFLAGS = -nostdlib -static -z noexecstack -T $(LDSCRIPT) -e KernelEntry $(LDFLAGS_ARCH)
 # SpinLock 的 __sync_* 需要 libgcc（如 __aarch64_swp4_sync）
 LIBGCC := $(shell $(CC) $(ARCH_CFLAGS) -print-libgcc-file-name 2>/dev/null)
 

@@ -130,33 +130,34 @@ fi
 EOF
     if [ -f "$OUT/$DTB_NAME" ]; then
         cat <<EOF
-load mmc 0:1 \${kernel_addr_r} Kernel.elf
-load mmc 0:1 \${fdt_addr_r} $DTB_NAME
-fdt addr \${fdt_addr_r}
-bootelf -p \${kernel_addr_r}
+# 推荐：扁平二进制（2021.01 bootelf 易把入口搞成 0）
+load mmc 0:1 0x80000 Kernel.bin
+load mmc 0:1 \${fdt_addr_r} pi.dtb
+go 0x80000
 EOF
     else
         cat <<EOF
-# 先把 $DTB_NAME 放进本分区，再：
-load mmc 0:1 \${kernel_addr_r} Kernel.elf
-load mmc 0:1 \${fdt_addr_r} $DTB_NAME
-fdt addr \${fdt_addr_r}
-bootelf -p \${kernel_addr_r}
+# 先把 pi.dtb（或 $DTB_NAME）放进本分区，再：
+load mmc 0:1 0x80000 Kernel.bin
+load mmc 0:1 \${fdt_addr_r} pi.dtb
+go 0x80000
 EOF
     fi
     cat <<'EOF'
 
 提示地址（BoardConfig；以 printenv 为准）：
-  kernel_addr_r 常见 0x00080000
-  fdt_addr_r     常见 0x02400000
+  链接/运行     0x00080000（Pi3BPlus link.ld）
+  fdt_addr_r    常见 0x02400000
+  pi.dtb        短名，内容同 bcm2710-rpi-3-b-plus.dtb
 
-入口（AArch64）：x0 = DTB 物理地址。
+入口（AArch64）：x0 = DTB 物理地址（go 时可能是 argc，可后置）。
 
-## 备选：Kernel.bin + go
+## 备选：Kernel.elf + bootelf
 
-load mmc 0:1 ${kernel_addr_r} Kernel.bin
-load mmc 0:1 ${fdt_addr_r} bcm2837-rpi-3-b-plus.dtb
-go ${kernel_addr_r}
+load mmc 0:1 0x20000000 Kernel.elf
+load mmc 0:1 ${fdt_addr_r} pi.dtb
+fdt addr ${fdt_addr_r}
+bootelf -p 0x20000000
 
 ## 关于 booti
 

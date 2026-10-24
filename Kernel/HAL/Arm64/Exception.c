@@ -3,6 +3,7 @@
  */
 #include "Compiler.h"
 #include "Hal.h"
+#include "BoardConfig.h"
 #include "Syscall.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
@@ -21,7 +22,14 @@ static HAL_INTERRUPT_FRAME gUserSelfFrame;
 static UINT8 gUserSelfKStack[8192] BLOCKS_ALIGNED(16);
 
 void HalExceptionVectorsInstall(void) {
-    __asm__ volatile("msr vbar_el1, %0" :: "r"(HalExceptionVectors) : "memory");
+    UINT64 El;
+
+    __asm__ volatile("msr vbar_el1, %0" ::"r"(HalExceptionVectors) : "memory");
+    __asm__ volatile("mrs %0, CurrentEL" : "=r"(El));
+    /* Pi U-Boot go 常停在 EL2；只装 VBAR_EL1 时 EL2 同步异常会直接复位 */
+    if (((El >> 2) & 3ULL) == 2ULL) {
+        __asm__ volatile("msr vbar_el2, %0" ::"r"(HalExceptionVectors) : "memory");
+    }
 }
 
 void HalExceptionUnexpected(UINT64 Unused) {

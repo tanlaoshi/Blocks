@@ -12,10 +12,15 @@
 
 /*
  * BCM2837 ARM 物理外设窗 @ 0x3F000000。
- * PL011 UART0：0x3F201000（与 HalSerial PL011 驱动同形）。
- * 若发行版固件把控制台绑在 mini-UART，见 NOTES.md，勿在此猜改。
+ *
+ * 手测（2026-10-24）：本卡 U-Boot 2021.01 无 disable-bt 时串口出字；
+ * 加 dtoverlay=disable-bt 则整卡无 U-Boot 提示 → GPIO14/15 上是 **mini-UART**。
+ * Blocks 须跟同一口，勿再打 PL011（0x3F201000），也勿猜改波特率（固件/U-Boot 已配 115200 + core_freq=250）。
+ *
+ * AUX 块 @0x3F215000（BCM2835 ARM Peripherals §2.2）；IO/LSR 见 HalSerial。
  */
-#define BOARD_UART_BASE        0x3F201000ULL
+#define BOARD_UART_MINI        1
+#define BOARD_UART_BASE        0x3F215000ULL
 #define BOARD_UART_REG_SHIFT   0
 #define BOARD_UART_BAUD        115200
 

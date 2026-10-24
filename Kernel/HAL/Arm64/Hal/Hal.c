@@ -124,11 +124,18 @@ void HalTimerStart(void) {
         HalTimerInitialize();
     }
     HalExceptionVectorsInstall();
+#if BOARD_IS_VIRT
     HalGicInitialize();
     HalTimerSetInterval(gTimerMs);
     ArmTimerArm();
     gTimerIrq = 1;
     HalSerialWrite("timer: Arm64 CNTV+GIC irq\n");
+#else
+    /* 真机尚无板级 GIC 基址；轮询 CNTV（HalTimerPoll），勿写 virt@0x08000000 */
+    HalTimerSetInterval(gTimerMs);
+    gTimerIrq = 0;
+    HalSerialWrite("timer: Arm64 CNTV poll\n");
+#endif
 }
 
 UINT32 HalTicksPerSec(void) {
@@ -190,7 +197,9 @@ void HalInstallUserMode(void) {
 void HalSyscallInitialize(void) {
     HalExceptionVectorsInstall();
     HalSerialWrite("syscall: Arm64 SVC (EL0) ready\n");
+#if BOARD_IS_VIRT
     HalUserSelfTest();
+#endif
 }
 
 void HalKernelSetStack(UINT64 StackTop) {

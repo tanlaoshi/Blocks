@@ -11,11 +11,12 @@
 #include "Virtio/Dtb.h"
 #include "Virtio/Ramfb.h"
 #include "Board.h"
+#include "BoardConfig.h"
 #include "Text.h"
 
 extern char __kernel_end[];
 
-/* 与 run-virt-arm.sh 中 loader addr 一致（落在 ≥256MiB RAM 内） */
+/* 与 run-virt-arm.sh 中 loader addr 一致（落在 ≥256MiB RAM 内）；非 virt 不用 */
 #define ARM64_VIRT_DTB_ADDR 0x4a000000ULL
 #define ARM64_VIRT_FWCFG_FALLBACK 0x09020000ULL
 
@@ -24,7 +25,7 @@ extern char __kernel_end[];
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
     HalSerialInitialize();
-    HalSerialWrite("Boot: Arm64 Virt Hello\n");
+    HalSerialWrite("Boot: Arm64 Hello\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");
@@ -60,10 +61,10 @@ static int TryDtb(UINT64 Phys, UINT64 *RamBase, UINT64 *RamSize) {
 
 void KernelHandoff(UINT64 DtbPhys) {
     BOOT_HANDOFF Info;
-    UINT64 KernelStart = 0x40000000ULL;
+    UINT64 KernelStart = BOARD_KERNEL_LOAD;
     UINT64 KernelEnd = (UINT64)(UINTN)__kernel_end;
-    UINT64 RamBase = KernelStart;
-    UINT64 RamSize = 256ULL * 1024ULL * 1024ULL;
+    UINT64 RamBase = BOARD_RAM_BASE;
+    UINT64 RamSize = BOARD_RAM_SIZE;
     UINT64 FreeStart;
     UINT64 ReserveEnd;
     UINT64 UsedDtb = 0;
@@ -72,17 +73,26 @@ void KernelHandoff(UINT64 DtbPhys) {
     int FromDtb;
 
     HalSerialInitialize();
-    HalSerialWrite("Boot: Arm64 Virt KernelMain\n");
+    HalSerialWrite("Boot: Arm64 KernelMain\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());
     HalSerialWrite("\n");
+    {
+        UINT64 El;
+        __asm__ volatile("mrs %0, CurrentEL" : "=r"(El));
+        HalSerialWrite("Boot: EL=");
+        HexU64(El >> 2);
+        HalSerialWrite("\n");
+    }
 
     FromDtb = (TryDtb(DtbPhys, &RamBase, &RamSize) == 0);
     if (FromDtb) {
         UsedDtb = DtbPhys;
+#if BOARD_IS_VIRT
     } else if (TryDtb(ARM64_VIRT_DTB_ADDR, &RamBase, &RamSize) == 0) {
         FromDtb = 1;
         UsedDtb = ARM64_VIRT_DTB_ADDR;
+#endif
     }
 
     if (FromDtb) {
@@ -94,9 +104,9 @@ void KernelHandoff(UINT64 DtbPhys) {
         HexU64(RamSize);
         HalSerialWrite("\n");
     } else {
-        HalSerialWrite("Boot: DTB Memory Missing, Fallback 256MiB @0x40000000\n");
-        RamBase = KernelStart;
-        RamSize = 256ULL * 1024ULL * 1024ULL;
+        HalSerialWrite("Boot: DTB Memory Missing, Fallback BOARD_RAM\n");
+        RamBase = BOARD_RAM_BASE;
+        RamSize = BOARD_RAM_SIZE;
     }
 
     for (i = 0; i < sizeof(Info); i++) {
@@ -110,6 +120,7 @@ void KernelHandoff(UINT64 DtbPhys) {
         FreeStart = KernelStart;
     }
 
+#if BOARD_IS_VIRT
     if (UsedDtb != 0 && DtbFwCfgBase(UsedDtb, &FwCfg) != 0) {
         FwCfg = 0;
     }
@@ -117,6 +128,9 @@ void KernelHandoff(UINT64 DtbPhys) {
         FwCfg = ARM64_VIRT_FWCFG_FALLBACK;
     }
     (void)RamfbSetup(&Info, FwCfg, &FreeStart, RamBase + RamSize);
+#else
+    (void)FwCfg;
+#endif
 
     ReserveEnd = FreeStart;
     if (ReserveEnd < RamBase) {
@@ -136,7 +150,13 @@ void KernelHandoff(UINT64 DtbPhys) {
     }
 
     BootHandoffSet(&Info);
+#if BOARD_IS_VIRT
     HalSmpNoteDtb(UsedDtb ? UsedDtb : ARM64_VIRT_DTB_ADDR);
+#else
+    if (UsedDtb != 0) {
+        HalSmpNoteDtb(UsedDtb);
+    }
+#endif
     KernelMain();
     for (;;) {
         HalCpuPark();

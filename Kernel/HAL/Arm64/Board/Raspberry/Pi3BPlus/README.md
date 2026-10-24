@@ -47,11 +47,13 @@ prepare-pi-sd                          # → Build/Pi3BPlus-sd/
 变量名以板子 `printenv` 为准。摆盘产物见 `prepare-pi-sd` → `README-SD.txt`。推荐 **bootelf**（与 Duo S 同形；本柱不强制 Linux `Image`/`booti`）：
 
 ```text
-load mmc 0:1 ${kernel_addr_r} Kernel.elf
-load mmc 0:1 ${fdt_addr_r} bcm2837-rpi-3-b-plus.dtb
+load mmc 0:1 0x20000000 Kernel.elf
+load mmc 0:1 ${fdt_addr_r} bcm2710-rpi-3-b-plus.dtb
 fdt addr ${fdt_addr_r}
-bootelf -p ${kernel_addr_r}
+bootelf -p 0x20000000
 ```
+
+（内核链在 `0x80000`；ELF 文件暂存 `0x20000000`，避免与段重叠。卡上自带 DTB 用 `bcm2710`。）
 
 入口（AArch64）：`x0 = DTB 物理地址`，`x1～x3 = 0`。  
 Startup 保存 DTB → 填 `BOOT_HANDOFF` → `KernelMain`。**Common 不解析 DTB。**

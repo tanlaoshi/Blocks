@@ -11,6 +11,7 @@
 #define BOARD_ARCH             "Arm64"
 
 /* QEMU virt PL011 */
+#define BOARD_UART_MINI        0
 #define BOARD_UART_BASE        0x09000000ULL
 #define BOARD_UART_BAUD        115200
 

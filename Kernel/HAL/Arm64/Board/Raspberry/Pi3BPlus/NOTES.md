@@ -2,9 +2,11 @@
 
 ## 串口
 
-- 默认 `BOARD_UART_BASE = 0x3F201000`（BCM2837 **PL011 UART0**，ARM 物理地址）。  
-- 树莓派 40-pin：GPIO14/15 常为 UART TX/RX；USB-TTL 须 **3.3V**，共地。  
-- 部分镜像默认控制台在 **mini-UART**（AUX），不是 PL011：若上电无输出，先对 U-Boot/`config.txt`/`dtoverlay` 与 DTB `stdout-path`，再改基址或驱动——**禁止**无证据改波特率碰运气。
+- 当前手测配置：`BOARD_UART_MINI=1`，`BOARD_UART_BASE = 0x3F215000`（**AUX mini-UART**）。  
+- 证据：U-Boot 2021.01 在 **无** `dtoverlay=disable-bt` 时串口有字；加上则整卡无提示 → GPIO14/15 为 mini-UART，不是 PL011。  
+- 40-pin：GPIO14/15 TX/RX；USB-TTL **3.3V**，共地；`enable_uart=1` + `core_freq=250`。  
+- **禁止**无证据改波特率；沿用固件/U-Boot 已配好的 115200。  
+- 若改走 PL011：须 `disable-bt` 且 U-Boot 也能在 PL011 出字后再改 `BoardConfig`。
 
 ## 固件 / DTB
 

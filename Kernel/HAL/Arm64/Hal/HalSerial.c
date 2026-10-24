@@ -1,5 +1,8 @@
 /*
- * HalSerial.c — QEMU virt aarch64 PL011 UART（基址见 BoardConfig.h / PR-B2）
+ * HalSerial.c — aarch64 串口（基址/类型见 BoardConfig.h / PR-B2）
+ *
+ * - virt：PL011
+ * - Pi3BPlus 等 BOARD_UART_MINI=1：BCM AUX mini-UART（寄存器布局不同）
  *
  * SERIAL_ENABLE=0：不碰 UART；分模块 quiet 见 SerialConfig.h。
  */
@@ -8,10 +11,25 @@
 #include "BoardConfig.h"
 #include "SerialConfig.h"
 
-#define PL011_BASE  ((UINTN)BOARD_UART_BASE)
-#define PL011_DR    (*(volatile UINT32 *)(PL011_BASE + 0x00))
-#define PL011_FR    (*(volatile UINT32 *)(PL011_BASE + 0x18))
+#ifndef BOARD_UART_MINI
+#define BOARD_UART_MINI 0
+#endif
+
+#define UART_BASE  ((UINTN)BOARD_UART_BASE)
+
+#if BOARD_UART_MINI
+/* BCM2835 ARM Peripherals §2.2 AUX mini UART；BASE = AUX 块 */
+#define MU_IO     (*(volatile UINT32 *)(UART_BASE + 0x40))
+#define MU_LSR    (*(volatile UINT32 *)(UART_BASE + 0x54))
+#define MU_ENABLES (*(volatile UINT32 *)(UART_BASE + 0x04))
+#define MU_LSR_TX_EMPTY   (1u << 5)
+#define MU_LSR_DATA_READY (1u << 0)
+#else
+#define PL011_DR    (*(volatile UINT32 *)(UART_BASE + 0x00))
+#define PL011_FR    (*(volatile UINT32 *)(UART_BASE + 0x18))
 #define PL011_FR_TXFF  (1u << 5)
+#define PL011_FR_RXFE  (1u << 4)
+#endif
 
 static int gShellOwnUart;
 
@@ -37,9 +55,15 @@ static int ChannelUartOn(int Channel) {
 
 static void UartPut(char C) {
 #if SERIAL_ENABLE
+#if BOARD_UART_MINI
+    while ((MU_LSR & MU_LSR_TX_EMPTY) == 0) {
+    }
+    MU_IO = (UINT32)(UINT8)C;
+#else
     while (PL011_FR & PL011_FR_TXFF) {
     }
     PL011_DR = (UINT32)(UINT8)C;
+#endif
 #else
     (void)C;
 #endif
@@ -72,7 +96,12 @@ static void UartWriteRaw(const char *Text) {
 }
 
 void HalSerialInitialize(void) {
+#if SERIAL_ENABLE && BOARD_UART_MINI
+    /* 固件/U-Boot 已配好波特率；只确保 AUX mini-UART 使能位，不改 BAUD */
+    MU_ENABLES |= 1u;
+#else
     /* QEMU virt 已初始化 PL011；SERIAL=0 时也不访问 */
+#endif
 }
 
 void HalSerialRetryIfMissing(void) {
@@ -179,14 +208,20 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 int HalSerialDataReady(void) {
 #if !SERIAL_ENABLE
     return 0;
+#elif BOARD_UART_MINI
+    return (MU_LSR & MU_LSR_DATA_READY) ? 1 : 0;
 #else
-    return (PL011_FR & (1u << 4)) ? 0 : 1;
+    return (PL011_FR & PL011_FR_RXFE) ? 0 : 1;
 #endif
 }
 
 char HalSerialReadChar(void) {
 #if !SERIAL_ENABLE
     return 0;
+#elif BOARD_UART_MINI
+    while (!HalSerialDataReady()) {
+    }
+    return (char)(MU_IO & 0xFFu);
 #else
     while (!HalSerialDataReady()) {
     }

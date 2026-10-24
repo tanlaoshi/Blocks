@@ -3,6 +3,7 @@
  */
 #include "Compiler.h"
 #include "Hal.h"
+#include "BoardConfig.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
 #include "SerialLog.h"
@@ -136,6 +137,12 @@ int HalSmpStartApplicationProcessors(void) {
         gApStackTop[i] =
             (UINT64)(UINTN)(gApStacks[i] + sizeof(gApStacks[i]));
     }
+
+#if !BOARD_IS_VIRT
+    /* 真机：禁止对 QEMU PSCI 发 HVC；3B+ 本柱先单核 */
+    SmpLog("Smp: Single CPU (board, no PSCI)\n");
+    return 0;
+#endif
 
     Dtb = gSmpDtbPhys ? gSmpDtbPhys : ARM64_VIRT_DTB_ADDR;
     Want = DtbCpuCount(Dtb);

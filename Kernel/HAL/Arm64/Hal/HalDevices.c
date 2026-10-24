@@ -4,23 +4,34 @@
  * Common 只见 Hal*；Input/Net 门面见 HalDevicesInput.c / HalDevicesNet.c。
  */
 #include "Hal.h"
+#include "BoardConfig.h"
 #include "Driver.h"
 #include "Virtio/BlockDevice.h"
 #include "Virtio/Input.h"
 #include "Virtio/Net/Net.h"
 
 void HalDriverRegister(void) {
+#if BOARD_IS_VIRT
     VirtioBlockRegister();
     VirtioInputRegister();
     VirtioNetRegister();
+#endif
 }
 
 int HalBlockInitialize(void) {
+#if BOARD_IS_VIRT
     return VirtioBlockInit();
+#else
+    return 0;
+#endif
 }
 
 int HalUsbInitialize(void) {
+#if BOARD_IS_VIRT
     return VirtioInputInit();
+#else
+    return 0;
+#endif
 }
 
 int HalUsbMscInitialize(void) {

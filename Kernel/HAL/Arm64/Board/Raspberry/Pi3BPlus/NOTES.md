@@ -13,7 +13,7 @@
 
 ## 启动 / EL
 
-- **`u-boot.bin` = stock 2021.01**（`distro_bootcmd` → 自动 `/boot.scr`）。勿用 `bootflow scan` 新包当主二进制（停提示符要手敲）。  
+- **`u-boot.bin`**：stock 2021.01 + prepare 把默认知 **`bootdelay=-1`→`-2`**（rpi-10；否则每次停提示符）。`distro_bootcmd` → `/boot.scr`。勿用 `bootflow scan` 新包；勿留旧 `uboot.env` 盖掉 -2。  
 - U-Boot `go`/`bootelf` 常停在 **EL2**。降 EL1 的 eret 在本板仍会挂（只见 `*` 不见 `+`）→ **暂留 EL2**；真机 **skip MMU**。  
 - 入口信标：`*` → BSS → `+` → `Boot:`；另见 `vmm: skip MMU (board)`。  
 - 早期 putc：先 `AUX_ENABLES|=1`，有限自旋。救砖两行见排障历程 §2。

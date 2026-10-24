@@ -449,6 +449,16 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
         if (Done >= Len) {
             break;
         }
+        /* LS SPLIT：包与包之间跨微帧，减轻第 2 包起 DATATGLERR（cfg short=0x0b） */
+        if (gXferDoSplit && gXferLowSpeed) {
+            UINT32 F0 = *Dwc2Reg(DWC2_HFNUM) & 0x3FFFu;
+            UINT32 Guard = 0;
+            while ((((*Dwc2Reg(DWC2_HFNUM) & 0x3FFFu) - F0) & 0x3FFFu) < 2u &&
+                   Guard < 40000u) {
+                Dwc2Spin(50);
+                Guard++;
+            }
+        }
     }
     *Dwc2Reg(DWC2_HCINTMSK(DWC2_HC_CHANNEL)) = 0;
     *Dwc2Reg(DWC2_HCINT(DWC2_HC_CHANNEL)) = 0xFFFFFFFFu;
@@ -567,6 +577,21 @@ static int HubSetPortFeat(UINT8 Hub, UINT8 Port, UINT16 Feat, int Set) {
     Setup.BmRequestType = 0x23;
     Setup.BRequest = Set ? 0x03u : 0x01u;
     Setup.WValue = Feat;
+    Setup.WIndex = Port;
+    Setup.WLength = 0;
+    return ControlMsg(Hub, &Setup, 0, 0) < 0 ? -1 : 0;
+}
+
+/* USB2 §11.24.2.3 CLEAR_TT_BUFFER：LS SPLIT 中段挂后清 TT，再重试控制传输 */
+static int HubClearTtBuffer(UINT8 Hub, UINT8 Port, UINT8 DevAddr, UINT8 EpNum,
+                            int EpIn) {
+    UsbSetup Setup;
+
+    XferTargetHub();
+    Setup.BmRequestType = 0x23;
+    Setup.BRequest = 8;
+    Setup.WValue = (UINT16)(((UINT16)DevAddr << 8) | (EpNum & 0x0Fu) |
+                            (EpIn ? 0x80u : 0u));
     Setup.WIndex = Port;
     Setup.WLength = 0;
     return ControlMsg(Hub, &Setup, 0, 0) < 0 ? -1 : 0;
@@ -795,18 +820,28 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
     }
     gXferEp0Mps = Ep0;
     /*
-     * USB2 §5.5.3：8 字节已够知 MPS，可 SET_ADDR 再取满 18。
-     * LS 经 SPLIT 在 addr0 上 GET 18 常 DATATGLERR（录像 hub+3）；
-     * 先 SET_ADDR 再 GET 18 是常见稳妥序。
+     * USB2 §5.5.3：首 8 字节已含 bMaxPacketSize0 → 可 SET_ADDR。
+     * 满 18（vid/pid）LS+SPLIT 常挂（CASUE 2a7a:939f 真机）；
+     * 键接口在 **配置描述符**，GET18 失败不得弃口——继续 GET_CFG。
      */
-    Setup.WLength = 18;
-    Ret = ControlMsg(0, &Setup, Dev, 18);
-    if (Ret < 18) {
-        HalSerialBootMark("Boot: DWC2 SPLIT getdesc18@0 fail mps=");
-        Hex16(Ep0);
-        HalSerialBootMark(Low ? " LS → SET_ADDR retry\n" : "\n");
-        if (!Low) {
-            return -1;
+    {
+        UINT8 Dev8[8];
+        UINT32 i;
+        for (i = 0; i < 8; i++) {
+            Dev8[i] = Dev[i];
+        }
+        Setup.WLength = 18;
+        Ret = ControlMsg(0, &Setup, Dev, 18);
+        if (Ret < 18) {
+            HalSerialBootMark("Boot: DWC2 SPLIT getdesc18@0 fail mps=");
+            Hex16(Ep0);
+            HalSerialBootMark(Low ? " LS\n" : "\n");
+            for (i = 0; i < 8; i++) {
+                Dev[i] = Dev8[i];
+            }
+            if (!Low) {
+                return -1;
+            }
         }
     }
 
@@ -833,34 +868,100 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
         Setup.WLength = 18;
         Ret = ControlMsg(Addr, &Setup, Dev, 18);
         if (Ret < 18) {
-            HalSerialBootMark("Boot: DWC2 SPLIT getdesc18@addr fail\n");
-            return -1;
+            /* LS：MPS 已够；跳过 vid，直接 GET_CFG（串口曾见 2a7a:939f 仍弃口） */
+            HalSerialBootMark("Boot: DWC2 skip desc18 → GET_CFG (LS)\n");
         }
     }
 
-    HalSerialBootMark("Boot: DWC2 HID vid=");
-    Hex16((UINT16)(Dev[8] | ((UINT16)Dev[9] << 8)));
-    HalSerialBootMark(" pid=");
-    Hex16((UINT16)(Dev[10] | ((UINT16)Dev[11] << 8)));
-    HalSerialBootMark(Low ? " LS\n" : " FS\n");
+    if (Ret >= 18) {
+        HalSerialBootMark("Boot: DWC2 HID vid=");
+        Hex16((UINT16)(Dev[8] | ((UINT16)Dev[9] << 8)));
+        HalSerialBootMark(" pid=");
+        Hex16((UINT16)(Dev[10] | ((UINT16)Dev[11] << 8)));
+        HalSerialBootMark(Low ? " LS\n" : " FS\n");
+    } else {
+        HalSerialBootMark("Boot: DWC2 HID (no vid) LS ep0=");
+        Hex16(Ep0);
+        HalSerialBootMark("\n");
+    }
 
+    /*
+     * 配置描述符（LS）：单包 GET8 稳；满长易在第 2 包挂（曾 short=0x0b/0x3b）。
+     * 按 8 递增重取（每次完整控制传输），保留最长成功缓冲；不够 Parse 再 boot 回退。
+     */
     Setup.BmRequestType = 0x80;
     Setup.BRequest = 6;
     Setup.WValue = 0x0200;
     Setup.WIndex = 0;
-    Setup.WLength = 9;
-    if (ControlMsg(Addr, &Setup, CfgHdr, 9) < 9) {
-        HalSerialBootMark("Boot: DWC2 HID cfg hdr fail\n");
-        return -1;
-    }
-    CfgLen = (UINT16)(CfgHdr[2] | ((UINT16)CfgHdr[3] << 8));
-    if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
-        CfgLen = 9;
-    }
-    Setup.WLength = CfgLen;
-    if (ControlMsg(Addr, &Setup, Cfg, (int)CfgLen) < (int)CfgLen) {
-        HalSerialBootMark("Boot: DWC2 HID cfg fail\n");
-        return -1;
+    {
+        UINT32 i;
+        UINT16 Want;
+        UINT16 L;
+        UINT16 Best = 0;
+        int CfgTry;
+
+        Setup.WLength = 8;
+        XferTargetSplit(Hub, Port, Low, Ep0);
+        Ret = ControlMsg(Addr, &Setup, CfgHdr, 8);
+        if (Ret < 8) {
+            if (!Low) {
+                Setup.WLength = 9;
+                Ret = ControlMsg(Addr, &Setup, CfgHdr, 9);
+            }
+            if (Ret < 8) {
+                HalSerialBootMark("Boot: DWC2 HID cfg8 fail\n");
+                return -1;
+            }
+        }
+        Want = (UINT16)(CfgHdr[2] | ((UINT16)CfgHdr[3] << 8));
+        if (Want < 9 || Want > sizeof(Cfg)) {
+            Want = 9;
+        }
+        for (i = 0; i < 8; i++) {
+            Cfg[i] = CfgHdr[i];
+        }
+        Best = 8;
+        for (L = 16; L <= Want; L = (UINT16)(L + 8)) {
+            if (L > sizeof(Cfg)) {
+                L = (UINT16)sizeof(Cfg);
+            }
+            for (CfgTry = 0; CfgTry < (Low ? 4 : 1); CfgTry++) {
+                int Got;
+                Setup.WLength = L;
+                XferTargetSplit(Hub, Port, Low, Ep0);
+                Got = ControlMsg(Addr, &Setup, Cfg, (int)L);
+                if (Got > (int)Best) {
+                    Best = (UINT16)Got;
+                }
+                if (Got >= (int)L || Got >= 25) {
+                    break;
+                }
+                if (Low) {
+                    (void)HubClearTtBuffer(Hub, Port, Addr, 0, 1);
+                    XferTargetSplit(Hub, Port, Low, Ep0);
+                    Dwc2DelayMs(15);
+                }
+            }
+            if (Best >= Want || Best >= 25) {
+                if (ParseBootKeyboard(Cfg, Best, &KIface, &KEp, &KMps,
+                                      &KScore) ||
+                    ParseBootMouse(Cfg, Best, &MIface, &MEp, &MMps, &MScore)) {
+                    break;
+                }
+            }
+            if (L >= Want) {
+                break;
+            }
+        }
+        Ret = (int)Best;
+        CfgLen = Best;
+        if (Best < Want) {
+            HalSerialBootMark("Boot: DWC2 HID cfg best=");
+            Hex16(Best);
+            HalSerialBootMark("/");
+            Hex16(Want);
+            HalSerialBootMark("\n");
+        }
     }
 
     GotMouse = ParseBootMouse(Cfg, CfgLen, &MIface, &MEp, &MMps, &MScore);
@@ -869,6 +970,18 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
     if (GotKbd && KScore < 3 && GotMouse && MScore >= 2) {
         HalSerialBootMark("Boot: DWC2 skip mouse+extraHID as kbd\n");
         GotKbd = 0;
+    }
+    /*
+     * LS boot 键（CASUE 2a7a:939f 等）：配置读不全时，USB boot 惯例 iface0 + EP1 IN。
+     * 仅在已 SET_ADDR、cfg8 有 bConfigurationValue、且本口只要键时启用。
+     */
+    if (Low && WantKbd && !GotKbd && CfgHdr[0] >= 8) {
+        HalSerialBootMark("Boot: DWC2 LS kbd boot-fallback ep1\n");
+        GotKbd = 1;
+        KIface = 0;
+        KEp = 0x81;
+        KMps = 8;
+        KScore = 3;
     }
     if (!WantMouse) {
         GotMouse = 0;
@@ -886,6 +999,7 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
     Setup.WValue = CfgHdr[5] ? CfgHdr[5] : 1;
     Setup.WIndex = 0;
     Setup.WLength = 0;
+    XferTargetSplit(Hub, Port, Low, Ep0);
     if (ControlMsg(Addr, &Setup, 0, 0) < 0) {
         HalSerialBootMark("Boot: DWC2 HID SET_CFG fail\n");
         return -1;

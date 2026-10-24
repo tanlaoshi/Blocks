@@ -107,3 +107,9 @@
 | 2026-10-25 | **澄清**：能敲 U-Boot ≠ USB 键已进 Blocks。U-Boot 字可能走 CoolTerm RX；「无日志」＝ TX。用户确认 Pi 上另有 USB 键一直插着 → 录像仍无第二 CONNECT，疑 **CSFTRST 后键慢热** 被单轮扫漏。改：上电 +200ms、hub **3 轮**扫、已成功口不重 reset |
 | 2026-10-25 | 录像 `02-46-06`：三轮扫后 **hub+3 LS** `st=0303`；`getdesc18` → `HCINT=0x402`（CHHLTD\|DATATGLERR）`spl` 带 COMPSPLT；鼠仍 ok、`no kbd after hub passes`。修：CSPLIT 等下一微帧（USB2 §11.18）+ DATATGLERR 重试 + HCFG FSLSPClkSel |
 | 2026-10-25 | 录像 `02-53-02`：仍 `getdesc18 fail mps=8` @ hub+3 LS（微帧等待不够）。改：USB2 序 **GET8→SET_ADDR→GET18@addr**（addr0 满 18 失败不弃口）。串口：mini-UART 行末等 **TX idle(LSR.6)**（无流控暴打易丢；屏仍为准） |
+| 2026-10-25 | CoolTerm 残串口仍有用：`hub+3 LS` + **`HID vid=2a7a pid=939f`**（CASUE USB KB，Linux 03/01/01）+ `getdesc18@addr fail` + 仅 `Attach mouse`。说明键已露脸；满 18 仍脆。次日刀：LS 在 GET18 失败后仍 **SET_ADDR→GET_CFG**（MPS 已从 GET8 知，勿因 desc18 弃口） |
+| 2026-10-25 | **落地**：LS `getdesc18@addr` 失败 → `skip desc18 → GET_CFG`，不再 `return -1` |
+| 2026-10-25 | 串口/录像：跳过 desc18 后 **`HID cfg fail`**（hdr 已过）。改：LS 先 cfg **GET8**；满长失败则短包/32·48·64 重试，Parse 够用即绑 |
+| 2026-10-25 | 录像 `03-12-19`：`skip desc18` → **`cfg short=000b/003b`** → `no boot hid`。11 字节不够 iface+ep。改：CLEAR_TT_BUFFER 后重试至 ≥25 或满长 |
+| 2026-10-25 | 录像 `03-15-47`：ClearTT 后变 **`cfg fail`**（更差）。改：LS 控制包间跨 2 微帧；cfg **按 8 递增重取**；仍不够则 **boot-fallback ep1**（CASUE 类） |
+| 2026-10-25 | **真机键 ✅**（boot-fallback 路径）：桌面/Shell 可打字；鼠回归仍可用 |

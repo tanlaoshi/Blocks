@@ -108,6 +108,10 @@ fi
 
 # U-Boot：历程钉死 stock 2021.01（distro_bootcmd → 自动找 /boot.scr）。
 # 勿用带 bootcmd=bootflow scan 的新包当 u-boot.bin（常停提示符要手敲）。
+#
+# rpi-10：stock 默认可执行环境里是 bootdelay=-1（禁止自动启动→每次停提示符）。
+# 同长改成 -2：零等待自动 bootcmd，且不因 CoolTerm/串口噪声 abort（U-Boot 语义）。
+# 原 stock 文件保持 -1 不动；只改写出的 u-boot.bin。
 UBOOT_STOCK=""
 for c in \
     "$OUT/u-boot-2021.01-stock.bin" \
@@ -126,10 +130,27 @@ if [ -n "$UBOOT_STOCK" ]; then
         fi
     fi
     cp -f "$UBOOT_STOCK" "$OUT/u-boot.bin"
+    python3 - "$OUT/u-boot.bin" <<'PY'
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+data = bytearray(p.read_bytes())
+old, new = b"bootdelay=-1", b"bootdelay=-2"
+n = data.count(old)
+if n != 1:
+    print(f"error: u-boot.bin bootdelay=-1 count={n} (want 1)", file=sys.stderr)
+    sys.exit(1)
+i = data.find(old)
+data[i : i + len(old)] = new
+p.write_bytes(data)
+print("prepare-sd: u-boot.bin bootdelay=-1 → -2 (autoboot)")
+PY
     echo "prepare-sd: u-boot.bin <- $(basename "$UBOOT_STOCK") (auto boot.scr)"
 else
     echo "warn: 无 u-boot-2021.01-stock.bin；未改 u-boot.bin" >&2
 fi
+# FAT 上若留着旧 uboot.env 会整表覆盖默认环境（可能仍是 -1）；摆盘不部署该文件
+rm -f "$OUT/uboot.env"
 
 DTB_NAME="bcm2837-rpi-3-b-plus.dtb"
 if [ -n "$DTB_SRC" ]; then
@@ -170,8 +191,8 @@ fi
 
 ## U-Boot（上电自动）
 
-\`config.txt\`：\`kernel=u-boot.bin\` + 本目录 **stock 2021.01** → \`bootcmd=run distro_bootcmd\` → 找到 \`/boot.scr\` 即进内核。  
-**一般不用敲命令。** 救砖 / 自动失败时再用 HDMI 键盘：
+\`config.txt\`：\`kernel=u-boot.bin\`。prepare 已把默认知 \`bootdelay=-1\` 改成 \`-2\` → 上电自动 \`distro_bootcmd\` → \`/boot.scr\`。  
+**一般不用敲命令。** 卡上勿留旧 \`uboot.env\`。救砖 / 自动失败时再用 HDMI 键盘：
 
 EOF
     cat <<'EOF'

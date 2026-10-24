@@ -101,6 +101,12 @@ if [ -f "$SRC/u-boot.bin" ]; then
   cmp -s "$SRC/u-boot.bin" "$DST/u-boot.bin" || { echo "error: u-boot.bin 校验失败" >&2; exit 1; }
 fi
 echo "CK: 校验 OK"
+# 旧 uboot.env 会整表盖掉镜像内 bootdelay=-2；有则删
+if [ -f "$DST/uboot.env" ]; then
+  rm -f "$DST/uboot.env"
+  echo "CK: removed stale uboot.env (use image default bootdelay=-2)"
+  sync
+fi
 
 if [ "$DO_EJECT" = 1 ]; then
   # 卸 bootfs + BLOCKS，再对整盘 power-off

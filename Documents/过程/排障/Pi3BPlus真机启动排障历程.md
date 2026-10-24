@@ -51,8 +51,9 @@ U-Boot 二进制：已验证的 **stock 2021.01** 作 `kernel8.img` / `u-boot.bi
 
 ### 2.2 U-Boot 提示符
 
-**常态**：`u-boot.bin` = **stock 2021.01** → `distro_bootcmd` 自动 `source /boot.scr`，**上电不用敲**。  
-（若卡上误放了 `bootflow scan` 新包，会停提示符——换回 stock。）
+**常态（rpi-10）**：`prepare-sd` 把 stock 2021.01 默认可执行环境里的 **`bootdelay=-1`→`-2`** 后写出 `u-boot.bin` → 上电立刻 `run distro_bootcmd` → `/boot.scr`，**不用敲**。  
+`-1`＝禁止自动启动（旧卡每次停 `U-Boot>` 的真因）；`-2`＝零等待且不因串口噪声 abort。  
+勿用 `bootflow scan` 新包；卡上若有旧 **`uboot.env`** 会整表覆盖默认环境——CK 会删；也可手删。
 
 **救砖 / 自动失败**：串口输入常丢字 → **HDMI 键盘**敲两行，CoolTerm **只看输出**：
 
@@ -216,3 +217,4 @@ source 0x1000000
 | 2026-10-24 | 刷入 boot.scr；确认 HDMI Starting@0x80000 时 CoolTerm 残字属串口丢字节 |
 | 2026-10-24 | **真机进 blocks>**（boot.scr + skip-MMU Kernel）；rpi-3 基本启动过关 |
 | 2026-10-25 | 链出 rpi-7：[Pi3BPlus-DWC2-HID排障历程.md](Pi3BPlus-DWC2-HID排障历程.md)（桌面后键鼠另档） |
+| 2026-10-25 | **rpi-10**：stock 默认知 `bootdelay=-1`→每次手敲；prepare 改 `-2`；CK 删陈旧 `uboot.env` |

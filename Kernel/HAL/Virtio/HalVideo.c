@@ -121,10 +121,12 @@ static void FbDcacheSync(void) {
 }
 
 void HalVideoPresent(void) {
+    /*
+     * 增量 Present 不整屏 dcache sync：Shell 环每圈 Present，全 FB clean
+     * 会把 mini-UART TX 饿到「串口没日志、但还能收 halt」。
+     * 整屏可见靠 PresentFlush / EndFront。
+     */
     VideoPresent();
-    if (!gFbSyncDefer) {
-        FbDcacheSync();
-    }
 }
 
 void HalVideoPresentCursor(void) {

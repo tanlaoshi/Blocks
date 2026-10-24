@@ -3,8 +3,8 @@
  *
  * 规格：BCM2835 ARM Peripherals mailbox；property channel 8。
  * GET_ARM_MEMORY（0x00010005）与 U-Boot dram_init 同源。
- * FB：SET_PHYSICAL/VIRTUAL_W_H、SET_DEPTH、ALLOCATE_BUFFER、GET_PITCH
- * （BCM2835_MBOX_TAG_*，与 U-Boot mach/mbox.h 一致）。
+ * FB：先 GET 固件当前 physical（跟 U-Boot 同模），再 SET virt=phys 单缓冲、
+ * y_offset=0，避免「桌面上半画在屏下半、再跳全屏」（双缓冲/错 offset）。
  */
 #include "Board.h"
 #include "BootHandoff.h"
@@ -24,24 +24,25 @@
 
 #define MBOX_TAG_GET_ARM_MEM 0x00010005u
 #define MBOX_TAG_ALLOC_BUF   0x00040001u
+#define MBOX_TAG_GET_PHY_WH  0x00040003u
 #define MBOX_TAG_SET_PHY_WH  0x00048003u
+#define MBOX_TAG_GET_VIRT_WH 0x00040004u
 #define MBOX_TAG_SET_VIRT_WH 0x00048004u
 #define MBOX_TAG_SET_DEPTH   0x00048005u
 #define MBOX_TAG_SET_PIXORD  0x00048006u
 #define MBOX_TAG_GET_PITCH   0x00040008u
+#define MBOX_TAG_GET_VOFF    0x00040009u
 #define MBOX_TAG_SET_VOFF    0x00048009u
 
 #define MBOX_PIXORD_RGB      1u
 
-/* VC 看 DRAM：bus = phys | 0xC0000000（Pi2/3；≤1GiB） */
 #define PHYS_TO_BUS(P)       (((UINT32)(P) & 0x3FFFFFFFu) | 0xC0000000u)
 #define BUS_TO_PHYS(B)       ((UINT32)(B) & 0x3FFFFFFFu)
 
 #define MBOX_SPIN_MAX        10000000u
 
-/* 默认请求；VC 可在响应里改成实际值 */
-#define FB_REQ_W             1280u
-#define FB_REQ_H             720u
+#define FB_FALLBACK_W        1280u
+#define FB_FALLBACK_H        720u
 #define FB_REQ_BPP           32u
 #define FB_ALIGN             4096u
 
@@ -51,6 +52,12 @@ static volatile UINT32 *MboxReg(UINT32 Off) {
 
 static void Dsb(void) {
     __asm__ volatile("dsb sy" ::: "memory");
+}
+
+static void BootHex32(UINT32 V) {
+    char Buf[9];
+    HalSerialFormatHex(Buf, V, 8);
+    HalSerialBootMark(Buf);
 }
 
 /* 成功 0。Buf 须 16 字节对齐；Words = 字数（含 hdr/end）。 */
@@ -65,7 +72,7 @@ static int MboxProp(UINT32 *Buf, UINT32 Words) {
 
     Buf[0] = Words * 4u;
     Buf[1] = 0;
-    Buf[Words - 1] = 0; /* end tag */
+    Buf[Words - 1] = 0;
 
     HalDcacheCleanInvalidateRange(Buf, Words * 4u);
     Bus = PHYS_TO_BUS((UINTN)Buf);
@@ -139,87 +146,132 @@ int BoardDramProbe(UINT64 *Base, UINT64 *Size) {
     return 0;
 }
 
-/*
- * BoardFbSetup — mailbox 要帧缓冲并填 BOOT_HANDOFF。
- * 成功 0；失败 -1（保持串口壳，不复位）。
- */
 int BoardFbSetup(BOOT_HANDOFF *Info) {
     /*
-     * 布局（字）：
-     *  0..1  hdr
-     *  2..6  SET_PHY_WH
-     *  7..11 SET_VIRT_WH
-     * 12..15 SET_DEPTH
-     * 16..19 SET_PIXORD
-     * 20..24 SET_VOFF
-     * 25..29 ALLOC_BUF
-     * 30..33 GET_PITCH
-     * 34     end
+     * 一次 property：
+     *  SET_PHY / SET_VIRT(=phy 单缓冲) / DEPTH / PIXORD / VOFF0 /
+     *  ALLOC / GET_PITCH / GET_VIRT / GET_VOFF
      */
-    static UINT32 W[35] __attribute__((aligned(16)));
+    static UINT32 W[48] __attribute__((aligned(16)));
+    static UINT32 G[8] __attribute__((aligned(16)));
+    UINT32 ReqW;
+    UINT32 ReqH;
     UINT32 PhyW;
     UINT32 PhyH;
+    UINT32 VirtW;
+    UINT32 VirtH;
+    UINT32 OffY;
     UINT32 Pitch;
     UINT32 FbBus;
     UINT32 FbSize;
     UINT32 FbPhys;
     UINT32 *Px;
+    UINT32 i;
 
     if (Info == 0) {
         return -1;
     }
 
-    W[2] = MBOX_TAG_SET_PHY_WH;
-    W[3] = 8;
-    W[4] = 8;
-    W[5] = FB_REQ_W;
-    W[6] = FB_REQ_H;
+    /* 跟 U-Boot/固件当前输出，避免强改 1280x720 造成缩放/半屏窗 */
+    ReqW = FB_FALLBACK_W;
+    ReqH = FB_FALLBACK_H;
+    G[2] = MBOX_TAG_GET_PHY_WH;
+    G[3] = 8;
+    G[4] = 0;
+    G[5] = 0;
+    G[6] = 0;
+    if (MboxProp(G, 8) == 0 && G[5] != 0 && G[6] != 0) {
+        ReqW = G[5];
+        ReqH = G[6];
+    }
 
-    W[7] = MBOX_TAG_SET_VIRT_WH;
-    W[8] = 8;
-    W[9] = 8;
-    W[10] = FB_REQ_W;
-    W[11] = FB_REQ_H;
+    i = 2;
+    W[i++] = MBOX_TAG_SET_PHY_WH;
+    W[i++] = 8;
+    W[i++] = 8;
+    W[i++] = ReqW;
+    W[i++] = ReqH;
 
-    W[12] = MBOX_TAG_SET_DEPTH;
-    W[13] = 4;
-    W[14] = 4;
-    W[15] = FB_REQ_BPP;
+    W[i++] = MBOX_TAG_SET_VIRT_WH;
+    W[i++] = 8;
+    W[i++] = 8;
+    W[i++] = ReqW; /* 强制 virt == phys：禁 2× 双缓冲半屏 */
+    W[i++] = ReqH;
 
-    W[16] = MBOX_TAG_SET_PIXORD;
-    W[17] = 4;
-    W[18] = 4;
-    W[19] = MBOX_PIXORD_RGB;
+    W[i++] = MBOX_TAG_SET_DEPTH;
+    W[i++] = 4;
+    W[i++] = 4;
+    W[i++] = FB_REQ_BPP;
 
-    W[20] = MBOX_TAG_SET_VOFF;
-    W[21] = 8;
-    W[22] = 8;
-    W[23] = 0;
-    W[24] = 0;
+    W[i++] = MBOX_TAG_SET_PIXORD;
+    W[i++] = 4;
+    W[i++] = 4;
+    W[i++] = MBOX_PIXORD_RGB;
 
-    W[25] = MBOX_TAG_ALLOC_BUF;
-    W[26] = 8;
-    W[27] = 4;
-    W[28] = FB_ALIGN; /* req alignment；resp → address */
-    W[29] = 0;         /* resp size */
+    W[i++] = MBOX_TAG_SET_VOFF;
+    W[i++] = 8;
+    W[i++] = 8;
+    W[i++] = 0;
+    W[i++] = 0;
 
-    W[30] = MBOX_TAG_GET_PITCH;
-    W[31] = 4;
-    W[32] = 0;
-    W[33] = 0;
+    W[i++] = MBOX_TAG_ALLOC_BUF;
+    W[i++] = 8;
+    W[i++] = 4;
+    W[i++] = FB_ALIGN;
+    W[i++] = 0;
 
-    if (MboxProp(W, 35) != 0) {
+    W[i++] = MBOX_TAG_GET_PITCH;
+    W[i++] = 4;
+    W[i++] = 0;
+    W[i++] = 0;
+
+    W[i++] = MBOX_TAG_GET_VIRT_WH;
+    W[i++] = 8;
+    W[i++] = 0;
+    W[i++] = 0;
+    W[i++] = 0;
+
+    W[i++] = MBOX_TAG_GET_VOFF;
+    W[i++] = 8;
+    W[i++] = 0;
+    W[i++] = 0;
+    W[i++] = 0;
+
+    if (MboxProp(W, i + 1) != 0) {
         return -1;
     }
 
+    /* 按标签顺序回读（与上面写入序一致） */
     PhyW = W[5];
     PhyH = W[6];
     FbBus = W[28];
     FbSize = W[29];
     Pitch = W[33];
+    VirtW = W[37];
+    VirtH = W[38];
+    OffY = W[43];
 
     if (PhyW == 0 || PhyH == 0 || FbBus == 0 || FbSize == 0 || Pitch < PhyW * 4u) {
         return -1;
+    }
+
+    /* 若固件仍给了双高 virt / 非零 y_offset，再钉一次 */
+    if (VirtH > PhyH || OffY != 0 || VirtW != PhyW) {
+        static UINT32 Fix[16] __attribute__((aligned(16)));
+        Fix[2] = MBOX_TAG_SET_VIRT_WH;
+        Fix[3] = 8;
+        Fix[4] = 8;
+        Fix[5] = PhyW;
+        Fix[6] = PhyH;
+        Fix[7] = MBOX_TAG_SET_VOFF;
+        Fix[8] = 8;
+        Fix[9] = 8;
+        Fix[10] = 0;
+        Fix[11] = 0;
+        (void)MboxProp(Fix, 13);
+        VirtW = PhyW;
+        VirtH = PhyH;
+        OffY = 0;
     }
 
     FbPhys = BUS_TO_PHYS(FbBus);
@@ -229,25 +281,34 @@ int BoardFbSetup(BOOT_HANDOFF *Info) {
     Info->VerticalResolution = PhyH;
     Info->PixelsPerScanLine = Pitch / 4u;
 
-    /*
-     * 按 pitch 铺深蓝（盖住 U-Boot Starting）。
-     * 写后 HalDcacheCleanInvalidateRange：VC 与 CPU 不同 cache 域，
-     * 只写 DRAM 缓存行而不 clean → 花屏（标准做法，非「务实省 flush」）。
-     */
-    {
-        UINT32 PitchPx = Pitch / 4u;
-        UINT32 Y;
-        UINT32 X;
-        volatile UINT32 *Row;
+    HalSerialBootMark("Boot: FB phy=");
+    BootHex32(PhyW);
+    HalSerialBootMark("x");
+    BootHex32(PhyH);
+    HalSerialBootMark(" virt=");
+    BootHex32(VirtW);
+    HalSerialBootMark("x");
+    BootHex32(VirtH);
+    HalSerialBootMark(" offy=");
+    BootHex32(OffY);
+    HalSerialBootMark(" pitch=");
+    BootHex32(Pitch);
+    HalSerialBootMark("\n");
 
-        Px = (UINT32 *)(UINTN)FbPhys;
-        for (Y = 0; Y < PhyH; Y++) {
-            Row = (volatile UINT32 *)(Px + (UINTN)Y * PitchPx);
-            for (X = 0; X < PhyW; X++) {
-                Row[X] = 0x00001A33u;
-            }
+    {
+        UINT32 Vis = Pitch * PhyH;
+        UINT32 N;
+        UINT32 k;
+
+        if (Vis > FbSize) {
+            Vis = FbSize;
         }
-        HalDcacheCleanInvalidateRange(Px, FbSize);
+        N = Vis / 4u;
+        Px = (UINT32 *)(UINTN)FbPhys;
+        for (k = 0; k < N; k++) {
+            Px[k] = 0x00000000u;
+        }
+        HalDcacheCleanInvalidateRange(Px, Vis);
     }
 
     return 0;

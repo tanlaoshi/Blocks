@@ -30,6 +30,14 @@ int HalUsbInitialize(void) {
 #if BOARD_IS_VIRT
     return VirtioInputInit();
 #else
+    /*
+     * Pi3B+：rpi-7 探针 DWC2（GSNPSID / host / HPRT）。
+     * 软成功：无 USB 不挡桌面；枚举 HID 另刀。
+     */
+    {
+        int BoardDwc2Probe(void);
+        (void)BoardDwc2Probe();
+    }
     return 0;
 #endif
 }

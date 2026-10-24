@@ -2,11 +2,17 @@
  * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1）
  */
 #include "Hal.h"
+#include "BoardConfig.h"
 #include "DriverNet.h"
 #include "Virtio/Net/Net.h"
 
 int HalNetInitialize(void) {
+#if BOARD_IS_VIRT
     return VirtioNetInitialize();
+#else
+    /* Pi：无 virtio-net；勿扫 MMIO */
+    return 0;
+#endif
 }
 
 int HalNetReady(void) {

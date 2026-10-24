@@ -36,6 +36,13 @@
 - **只想再跑一遍、不拔卡**：`reboot` 或 U-Boot `reset`。  
 - 卡在 Failed、无提示符：只能拔电源。
 
+## USB（rpi-7）
+
+- 控制器：DWC2 @ `0x3F980000`（BCM2835 §14；VC `0x7E980000`）。
+- 3B+ 根口挂 **板上 LAN hub**；外接键鼠在 hub 后，须 **SPLIT**（尚未做）。
+- 当前：`BoardDwc2Probe` → GSNPSID + soft-reset + force host + HPRT 上电；屏/串口见 `Boot: DWC2 …`。
+- 禁止：用 xHCI 时序硬套；未露光标前狂泵 HID。
+
 ## 公司 vs 回家
 
 - 公司（先 `source ~/Blocks/env.sh`）：

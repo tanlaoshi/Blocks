@@ -30,6 +30,7 @@
 #include "Db.h"
 #include "LogFile.h"
 #include "SerialLog.h"
+#include "Console.h"
 
 GUI_WINDOW_MANAGER gGuiWindowManager = {
     .HoverWin = -1,
@@ -164,20 +165,36 @@ void GuiDesktopInitialize(void) {
         Desk.ComposeThemeScene = GuiComposeThemeScene;
         DesktopOpsRegister(&Desk);
     }
-    GuiRedraw();
     /*
-     * 桌面已铺满：停 GOP 叠字。
-     * Mute 只挡 Log*；BootMark 故意绕过 Mute（X64 USB 里程碑）——故须 Mirror(0)，
-     * 否则随后 Boot: save BOOT.LOG 会 BootLogRepaintBody 整区铺黑盖掉桌面。
+     * 首帧桌面：先停 GOP、整屏黑 sync，再一次 PresentFlush（抬高条带）。
+     * 避免 U-Boot/boot 字与桌面条带撕开「底半先出任务栏」。
      */
     HalSerialGopMirror(0);
     HalSerialGopMute(1);
+    {
+        UINT32 W = gGuiWindowManager.ScreenWidth;
+        UINT32 H = gGuiWindowManager.ScreenHeight;
+
+        HalVideoDrawBeginFront();
+        HalVideoFillRect(0, 0, W, H, 0x00000000u);
+        HalVideoDrawEndFront();
+    }
+    HalVideoSetPresentChunkRows(16384u);
+    GuiRedraw();
+    HalVideoSetPresentChunkRows(0);
     /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();
     LogGui("Gui: Desktop Ready\n");
+    /*
+     * Pi 无 USB 时 Worker 仍可能卡在 Secondary/网路径才 Announce；
+     * 桌面已就绪就打串口 ready + blocks>，避免「能收 halt、串口没字」。
+     */
+    if (gConsole.AnnounceBootReady) {
+        gConsole.AnnounceBootReady();
+    }
 }
 
 static void PollInput(void) {

@@ -43,7 +43,7 @@ cp Start/App/Template/build/MYAPP.ELF Runtime/RootFs/X64/MYAPP.ELF
 
 ## 商店包（可选）
 
-`Store/packages/<id>/`：`PKG.TXT` + `*.ELF`。见 [`Manual/App/Guide.md`](../../Manual/App/Guide.md)。
+`Store/packages/<id>/`：`PKG.TXT` + `*.ELF`。字段与打包步骤见 [`Docs/Guide.md`](Docs/Guide.md)。
 
 ## 网络样例
 

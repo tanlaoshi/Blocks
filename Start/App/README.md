@@ -30,7 +30,7 @@ make -C Template && make -C Template clean
 | --- | --- |
 | [`Template/`](Template/) | 毛坯：`main.c` + `Makefile` + `PKG.TXT` |
 | [`Examples/`](Examples/) | 可跑样例：Hello / Gui / Net |
-| [`Docs/`](Docs/) | 红线 + 链到正本手册 |
+| [`Docs/`](Docs/) | 自包含手册（红线 / 身份 / Guide / API / ABI） |
 | [`Deploy.md`](Deploy.md) | 编完怎么进 Guest / 商店 |
 
 开窗 App：**必须** `Apps/<id>/ELF` + `PKG.TXT` 且 **`window=yes`**（见 Deploy.md）。  

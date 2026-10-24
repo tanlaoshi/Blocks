@@ -6,7 +6,7 @@
 > **代码主战场**：`HAL/Arm64/Board/Raspberry/Pi3BPlus/`、`BringUp/Arm64/`、`HAL/Arm64/{HalSerial,PageTable,Exception,Smp}.c`  
 > **摆盘**：`prepare-pi-sd` → `Build/Pi3BPlus-sd/`；说明以 **`README-SD.txt`** 为准（勿信过期 `README-SD.md` 旧稿）  
 > **状态**：🔧 进行中。**CoolTerm 已见 `Boot: Mod Serial/PhysicalMemory/VirtualMemory`**（内核已跑）；HDMI 停在 U-Boot「Starting」**正常**（本柱无 FB）。  
-> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）
+> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）；键鼠 [DWC2-HID 排障](Pi3BPlus-DWC2-HID排障历程.md)（rpi-7）
 
 ---
 
@@ -215,3 +215,4 @@ source 0x1000000
 | 2026-10-24 | 初稿：汇总回家手测 U-Boot/链接/UART/EL/bootelf/cache；立少换卡原则 |
 | 2026-10-24 | 刷入 boot.scr；确认 HDMI Starting@0x80000 时 CoolTerm 残字属串口丢字节 |
 | 2026-10-24 | **真机进 blocks>**（boot.scr + skip-MMU Kernel）；rpi-3 基本启动过关 |
+| 2026-10-25 | 链出 rpi-7：[Pi3BPlus-DWC2-HID排障历程.md](Pi3BPlus-DWC2-HID排障历程.md)（桌面后键鼠另档） |

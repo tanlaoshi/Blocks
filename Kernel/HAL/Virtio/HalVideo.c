@@ -157,6 +157,12 @@ void HalVideoPresent(void) {
 
 void HalVideoPresentCursor(void) {
     VideoPresentCursor();
+    /*
+     * Pi VC≠CPU cache：光标只走 PresentCursor 时若不清 dcache，
+     * 桌面（PresentFlush 已 sync）看得见，箭头困在 D-cache → 屏上无光标。
+     * 仅刷光标路径；Shell 环普通 Present 仍不 sync（护 mini-UART）。
+     */
+    FbDcacheSync();
 }
 
 /* QEMU Virtio/GOP：无硬件光标平面 → 恒回退软件末波 */

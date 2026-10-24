@@ -64,6 +64,13 @@ UINT32 WorkerLoopCount(void) {
 void YieldForPollInput(void) {
     if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
         HalInputPoll();
+        /*
+         * Pi CNTV-poll：无定时器 IRQ 时 CondResched 无法切到 GuiTask，
+         * Shell 环代泵鼠（仅 !UsesIrq；x64/virt 仍只 GuiTask 泵）。
+         */
+        if (!HalTimerUsesIrq() && GuiCursorUsbReady()) {
+            GuiPollMouse();
+        }
     }
     if (!HalCpuIsHypervisor()) {
         UINT32 i;
@@ -72,6 +79,7 @@ void YieldForPollInput(void) {
             HalCpuShutdown();
         }
         /* 真机 poll-USB：勿 hlt 等 tick，否则光标锁 ~10ms+ */
+        HalTimerPoll();
         for (i = 0; i < 200; i++) {
             HalCpuRelax();
         }

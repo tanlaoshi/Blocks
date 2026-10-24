@@ -138,6 +138,8 @@ int HalPinInteractiveToBootstrap(void);
 
 /* 轮询时钟（virt 无 IRQ 时由 IdleLoop 调用；x86 可为空） */
 void HalTimerPoll(void);
+/* 1=定时器走 IRQ（CondResched→hlt→OnTimer）；0=仅 CNTV poll（Pi 真机） */
+int HalTimerUsesIrq(void);
 /* CPUID.1 ECX.31：QEMU/KVM 等为 1，裸机多为 0 */
 int HalCpuIsHypervisor(void);
 

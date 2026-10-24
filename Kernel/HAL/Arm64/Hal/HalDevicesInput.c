@@ -2,6 +2,7 @@
  * HalDevicesInput.c — Arm64：Input / EHCI·UHCI·PS2 桩（PR-S3-haldev-1）
  */
 #include "Hal.h"
+#include "BoardConfig.h"
 #include "DriverInput.h"
 #include "Virtio/InputDiag.h"
 
@@ -12,8 +13,15 @@ void HalInputInitializeMouseDeferred(void) {
 }
 
 void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
+#if !BOARD_IS_VIRT
+    {
+        void BoardDwc2MouseHandoff(UINT32 X, UINT32 Y);
+        BoardDwc2MouseHandoff(CursorX, CursorY);
+    }
+#else
     (void)CursorX;
     (void)CursorY;
+#endif
 }
 
 void HalInputPoll(void) {

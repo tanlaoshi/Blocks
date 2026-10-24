@@ -11,6 +11,7 @@
 
 typedef struct {
     void (*Poll)(void);
+    /* 可选；NULL = 无键（鼠-only backend，如 Pi DWC2 HID） */
     int (*KeyboardDequeue)(HAL_KEYBOARD_REPORT *Report);
     /* 可选；NULL → HalKeyboardSetLeds 返回 -1 */
     int (*KeyboardSetLeds)(UINT8 Leds);

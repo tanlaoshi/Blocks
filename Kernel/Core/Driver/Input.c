@@ -12,8 +12,9 @@ static UINTN gInputBackendCount;
 int DriverInputAttach(const INPUT_BACKEND *Backend) {
     UINTN i;
 
-    if (!Backend || !Backend->Poll || !Backend->KeyboardDequeue ||
-        !Backend->MousePresent || !Backend->MouseDequeue) {
+    /* KeyboardDequeue/SetLeds 可空（鼠-only，如 Pi DWC2）；Poll+鼠门面必有 */
+    if (!Backend || !Backend->Poll || !Backend->MousePresent ||
+        !Backend->MouseDequeue) {
         DebugWrite("drv-input: bad backend\n");
         return -1;
     }

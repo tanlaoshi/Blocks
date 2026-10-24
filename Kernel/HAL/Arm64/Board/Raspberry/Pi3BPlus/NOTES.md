@@ -39,14 +39,16 @@
 
 ## USB（rpi-7）
 
+> **排障正本（试错编年）**：[`Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../../Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)
+
 - 控制器：DWC2 @ `0x3F980000`（BCM2835 §14；VC `0x7E980000`）。
-- 3B+ 根口挂 **板上 LAN hub**；外接键鼠在 hub 后，须 **SPLIT**（尚未做）。
-- 当前：探针 + 根口 reset + **ch0 控制传输** → 根口 hub `GET_DESCRIPTOR` / `SET_ADDRESS`。
-- **DMA**：`HCDMA` 必须 `phys|0xC0000000`（BCM2837 `phys_to_bus`）；CPU 物理址会读到全 0 描述符再 STALL。
-- 屏标：`hub DESC len=0012 vid=….` → `hub addr=0001 ok` → `hub ports=` → `hub+N st=`（有设备 `LS|FS|HS`）。
-- **尚未**：SPLIT、HID、`DriverInputAttach`、露光标；外接鼠不动是预期。
-- 禁止：用 xHCI 时序硬套；未露光标前狂泵 HID。
-- 串口：屏上 `GPFSEL1=00012000` `CNTL=3` 已对；CoolTerm 仍哑 → 查 **GPIO14→TTL RX** 线（非再改复用）。
+- 3B+ 根口 **LAN9514**；外接键鼠在 hub FS 口 → **SPLIT**（已做）。
+- **DMA**：`HCDMA` = `phys|0xC0000000`；否则 DESC 全 0 → SET_ADDR STALL。
+- SPLIT：控制/批量 **`XACTPOS=ALL`**（MID→XACTERR `HCINT=0x82`）；FS ep0 **首包 MPS=8** 再 GET 18。
+- 屏标：`HID vid=` → `mouse ep= ok` → `DriverInputAttach mouse`；跳过 hub 上 HS（网）。
+- 光标：桌面后 Reveal；`PresentCursor` **必须** `FbDcacheSync`（VC≠CPU cache）；底边白块=HOLD 豆腐≠光标。
+- 参考：规格 + U-Boot dwc2；**勿** EDK2 当主指南；未露光标勿狂泵 HID。
+- 串口：`GPFSEL1`/`CNTL`/`LSR` 软侧 OK 而 CoolTerm 哑 → **GPIO14→TTL RX**；残字以 HDMI 录像为准。
 
 ## 串口（CoolTerm 无字时）
 

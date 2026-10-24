@@ -226,6 +226,10 @@ void HalTimerPoll(void) {
     }
 }
 
+int HalTimerUsesIrq(void) {
+    return gTimerIrq ? 1 : 0;
+}
+
 /* PR-A13 / PR-V-input-fix：IRQ 帧上 tick + SchedulerOnTimer（对齐 x86） */
 UINT64 HalExceptionIrqDispatch(HAL_INTERRUPT_FRAME *Frame) {
     UINT32 Id = HalGicAck();

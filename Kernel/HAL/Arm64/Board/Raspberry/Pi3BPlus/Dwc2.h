@@ -91,10 +91,22 @@
 /* HCINT */
 #define DWC2_HCINT_XFERCOMP   (1u << 0)
 #define DWC2_HCINT_CHHLTD     (1u << 1)
+#define DWC2_HCINT_AHBERR     (1u << 2)
+#define DWC2_HCINT_STALL      (1u << 3)
 #define DWC2_HCINT_NAK        (1u << 4)
 #define DWC2_HCINT_ACK        (1u << 5)
 #define DWC2_HCINT_NYET       (1u << 6)
+#define DWC2_HCINT_XACTERR    (1u << 7)
+#define DWC2_HCINT_BBLERR     (1u << 8)
 #define DWC2_HCINT_FRMOVRUN   (1u << 9)
+
+/* HCSPLT（U-Boot dwc2.h / Synopsys：非周期 SPLIT 须 XACTPOS=ALL） */
+#define DWC2_HCSPLT_PRTADDR_SHIFT 0
+#define DWC2_HCSPLT_HUBADDR_SHIFT 7
+#define DWC2_HCSPLT_XACTPOS_SHIFT 14
+#define DWC2_HCSPLT_XACTPOS_ALL   (3u << 14)
+#define DWC2_HCSPLT_COMPSPLT      (1u << 16)
+#define DWC2_HCSPLT_SPLTENA       (1u << 31)
 
 /* HCTSIZ */
 #define DWC2_HCTSIZ_XFERSIZE_SHIFT 0
@@ -105,7 +117,9 @@
 #define DWC2_HC_PID_DATA1   2u
 #define DWC2_HC_PID_SETUP   3u
 
-/* 探针 / 主机 + 根口 hub GET_DESCRIPTOR；成功 0。HID/SPLIT 下一刀。 */
+/* 探针 / 主机 + hub + SPLIT HID mouse；成功 0。 */
 int BoardDwc2Probe(void);
+/* Reveal/换分辨率：驱动 Abs 与 Gui 光标对齐（同 X64 MouseHandoffDesktop） */
+void BoardDwc2MouseHandoff(UINT32 CursorX, UINT32 CursorY);
 
 #endif

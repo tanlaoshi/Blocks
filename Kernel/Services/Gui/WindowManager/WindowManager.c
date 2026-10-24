@@ -189,6 +189,14 @@ void GuiDesktopInitialize(void) {
     /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    /*
+     * Pi DWC2：鼠在 Mod Gui 前已 Attach；真机 CNTV 无 IRQ → CondResched
+     * 切不到 Worker Reveal。桌面已 Present 且鼠在则此处露光标（幂等）。
+     */
+    if (HalMousePresent()) {
+        GuiCursorRevealAfterUsb();
+        HalSerialBootMark("Boot: cursor reveal (mouse already attached)\n");
+    }
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();
     LogGui("Gui: Desktop Ready\n");

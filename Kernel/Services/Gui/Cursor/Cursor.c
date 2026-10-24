@@ -413,6 +413,7 @@ void GuiCursorRevealAfterUsb(void) {
         GraphicsIrqEnter();
         CursorPaint();
         GraphicsIrqLeave();
-        GraphicsPresent();
+        /* PresentCursor（含 Pi FB dcache sync）；勿只用 GraphicsPresent */
+        HalVideoPresentCursor();
     }
 }

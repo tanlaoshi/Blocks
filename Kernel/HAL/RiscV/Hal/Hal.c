@@ -185,6 +185,10 @@ void HalTimerPoll(void) {
     }
 }
 
+int HalTimerUsesIrq(void) {
+    return gTimerIrq ? 1 : 0;
+}
+
 /* PR-A13：S-mode / U-mode 定时中断 */
 void HalTimerIrq(void) {
     HalCpuIncrementTicks();

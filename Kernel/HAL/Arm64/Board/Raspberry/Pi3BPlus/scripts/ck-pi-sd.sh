@@ -192,14 +192,47 @@ else
 fi
 echo "  + BLOCKS BLOCKS.ID"
 
-FontSrc="${BLOCKS_ROOT}/Runtime/Assets/Fonts"
+AssetRoot="${BLOCKS_ROOT}/Runtime/Assets"
+# 字体
 mkdir -p "$BlocksMnt/Assets/Fonts"
-for f in CJK.TTF MONO.TTF; do
-  if [ -f "$FontSrc/$f" ]; then
-    cp -f "$FontSrc/$f" "$BlocksMnt/Assets/Fonts/$f"
+for f in CJK.TTF MONO.TTF VGA8X16.FNT; do
+  if [ -f "$AssetRoot/Fonts/$f" ]; then
+    cp -f "$AssetRoot/Fonts/$f" "$BlocksMnt/Assets/Fonts/$f"
     echo "  + BLOCKS Assets/Fonts/$f"
   fi
 done
+# 桌面图标：规范路径 bmp48/；并扁平一份到 Icons/（录像见过扁平摆盘，Load 双试）
+if [ -d "$AssetRoot/Icons/bmp48" ]; then
+  mkdir -p "$BlocksMnt/Assets/Icons/bmp48"
+  cp -a "$AssetRoot/Icons/bmp48/." "$BlocksMnt/Assets/Icons/bmp48/"
+  # 缺 STORE.BMP 时用 SET 顶（菜单/桌面商店槽）
+  if [ ! -f "$BlocksMnt/Assets/Icons/bmp48/STORE.BMP" ] && \
+     [ -f "$BlocksMnt/Assets/Icons/bmp48/SET.BMP" ]; then
+    cp -f "$BlocksMnt/Assets/Icons/bmp48/SET.BMP" \
+      "$BlocksMnt/Assets/Icons/bmp48/STORE.BMP"
+  fi
+  cp -f "$BlocksMnt/Assets/Icons/bmp48/"*.BMP "$BlocksMnt/Assets/Icons/"
+  if [ ! -f "$BlocksMnt/Assets/Icons/bmp48/SHELL.BMP" ] || \
+     [ ! -f "$BlocksMnt/Assets/Icons/SHELL.BMP" ]; then
+    echo "CK: error — SHELL.BMP missing under Icons/ or Icons/bmp48/" >&2
+    exit 1
+  fi
+  echo "  + BLOCKS Assets/Icons/bmp48/ + flat Icons/*.BMP"
+elif [ -d "$AssetRoot/Icons" ]; then
+  mkdir -p "$BlocksMnt/Assets/Icons"
+  cp -a "$AssetRoot/Icons/." "$BlocksMnt/Assets/Icons/"
+  echo "  + BLOCKS Assets/Icons/ (no bmp48 dir in tree)"
+fi
+# 壁纸（可选；无则纯色/渐变）
+if [ -f "$AssetRoot/Images/WALL.BMP" ]; then
+  mkdir -p "$BlocksMnt/Assets/Images"
+  cp -f "$AssetRoot/Images/WALL.BMP" "$BlocksMnt/Assets/Images/WALL.BMP"
+  echo "  + BLOCKS Assets/Images/WALL.BMP"
+elif [ -f "$AssetRoot/Icons/bmp48/WALL.BMP" ]; then
+  mkdir -p "$BlocksMnt/Assets/Images"
+  cp -f "$AssetRoot/Icons/bmp48/WALL.BMP" "$BlocksMnt/Assets/Images/WALL.BMP"
+  echo "  + BLOCKS Assets/Images/WALL.BMP (from Icons)"
+fi
 
 ArmRoot="${BLOCKS_ROOT}/Runtime/RootFs/Arm64"
 if [ -d "$ArmRoot" ]; then

@@ -146,6 +146,11 @@ void GuiDesktopInitialize(void) {
     DesktopSetRequestRefresh(GuiRefreshDesktop);
     DesktopSetClearIconFootprint(GuiClearIconDragFootprint);
     DesktopInitialize();
+    /*
+     * 首帧前同步灌 BMP：ModulesRun 时尚无 Worker 并发，读盘安全。
+     * 仅靠 Worker+TickClock 时，鼠未闲 400ms 会一直停在纯色占位。
+     */
+    DesktopEnsureIconsLoaded();
     {
         WINDOW_OPS Ops;
 

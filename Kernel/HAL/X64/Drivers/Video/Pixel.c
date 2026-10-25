@@ -23,7 +23,7 @@ void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    Fb[Y * Pitch + X] = Color;
+    Fb[Y * Pitch + X] = FbPack(Color);
     DirtyUnion(X, Y, 1, 1);
 }
 
@@ -40,7 +40,7 @@ void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    Fb[Y * Pitch + X] ^= Mask;
+    Fb[Y * Pitch + X] ^= FbPack(Mask);
     /* 勿 DirtyUnion 进内容脏区：4K 下 Shell∪远处光标会并成近全屏 Present */
     DirtyUnionCursor(X, Y, 1, 1);
 }
@@ -96,7 +96,7 @@ void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
         return;
     }
     Pix = &Fb[Y * Pitch + X];
-    *Pix = VideoBlendRgb(*Pix, Color, Alpha);
+    *Pix = FbPack(VideoBlendRgb(FbPack(*Pix), Color, Alpha));
     DirtyUnion(X, Y, 1, 1);
 }
 
@@ -122,5 +122,5 @@ UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
     if (!Fb || Pitch == 0) {
         return 0;
     }
-    return Fb[Y * Pitch + X];
+    return FbPack(Fb[Y * Pitch + X]);
 }

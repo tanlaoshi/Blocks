@@ -24,6 +24,10 @@ void HalVideoSet(const VIDEO_CONFIG *Config) {
     VideoSet(&Local);
 }
 
+void HalVideoSetFbSwapRb(int On) {
+    VideoSetFbSwapRb(On);
+}
+
 /*
  * PR-G9：PMM 分配与屏同尺寸后缓冲并挂上。须在 PhysicalMemoryInitialize 之后调用。
  * 分配失败则保持直写 GOP（功能仍可用，仍可能撕裂）。

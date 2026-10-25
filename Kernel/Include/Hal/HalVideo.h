@@ -7,6 +7,8 @@
 #include "BootHandoff.h"
 
 void HalVideoSet(const VIDEO_CONFIG *Config);
+/* Pi：VC scanout 常为 RGB 低字节=R；UI 为 0x00RRGGBB 低字节=B → 写 FB 对调 */
+void HalVideoSetFbSwapRb(int On);
 /* PR-G9：分配并启用后缓冲；Present 提交脏区到 GOP */
 void HalVideoInitializeBackbuffer(void);
 /* 推进一轮 HAL 脏→GOP（可 Partial）；Shell 环末用。对照 gui-g6-present */

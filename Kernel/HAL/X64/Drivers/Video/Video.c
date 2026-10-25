@@ -44,9 +44,14 @@ UINT32  gCx1;
 UINT32  gCy1;
 /* 光标叠层绘制：DirtyUnion 改记光标矩形 */
 int     gCursorOverlay;
+int     gFbSwapRb;
 
 /* Present 条带行数；0 表示用 PRESENT_CHUNK_ROWS */
 UINT32  gPresentChunkRows;
+
+void VideoSetFbSwapRb(int On) {
+    gFbSwapRb = On ? 1 : 0;
+}
 
 void VideoDrawBeginFront(void) {
     gForceFront = 1;

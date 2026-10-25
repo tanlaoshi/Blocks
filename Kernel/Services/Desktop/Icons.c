@@ -30,16 +30,103 @@ int PathHasVolPrefix(const char *Path) {
     return 0;
 }
 
-/* 读 TOYOS（或显式路径）上 BI_RGB BMP；成功返回 1。失败不内嵌，由绘制侧纯色回退。 */
+/*
+ * 扁平 ↔ bmp48：
+ *   …/bmp48/X → …/X
+ *   …/Icons/X → …/Icons/bmp48/X
+ */
+static int BmpPathAltLayout(const char *Path, char *Out, int OutMax) {
+    const char *P;
+    const char *Leaf;
+    int o;
+
+    if (!Path || !Out || OutMax <= 1) {
+        return 0;
+    }
+    Out[0] = 0;
+    for (P = Path; P[0]; P++) {
+        if (P[0] == '/' && P[1] == 'b' && P[2] == 'm' && P[3] == 'p' &&
+            P[4] == '4' && P[5] == '8' && P[6] == '/') {
+            o = 0;
+            for (Leaf = Path; Leaf < P && o < OutMax - 1; Leaf++) {
+                Out[o++] = *Leaf;
+            }
+            for (Leaf = P + 6; *Leaf && o < OutMax - 1; Leaf++) {
+                Out[o++] = *Leaf;
+            }
+            Out[o] = 0;
+            return 1;
+        }
+    }
+    Leaf = 0;
+    for (P = Path; *P; P++) {
+        if (*P == '/') {
+            Leaf = P + 1;
+        }
+    }
+    if (!Leaf || !Leaf[0]) {
+        return 0;
+    }
+    /* 父目录名须为 Icons（Leaf 前一段） */
+    P = Leaf - 1; /* '/' */
+    if (P < Path + 5) {
+        return 0;
+    }
+    if (!(P[-5] == 'I' && P[-4] == 'c' && P[-3] == 'o' && P[-2] == 'n' &&
+          P[-1] == 's' && (P - 5 == Path || P[-6] == '/'))) {
+        return 0;
+    }
+    o = 0;
+    for (P = Path; P < Leaf && o < OutMax - 1; P++) {
+        Out[o++] = *P;
+    }
+    if (o + 6 >= OutMax) {
+        return 0;
+    }
+    Out[o++] = 'b';
+    Out[o++] = 'm';
+    Out[o++] = 'p';
+    Out[o++] = '4';
+    Out[o++] = '8';
+    Out[o++] = '/';
+    for (P = Leaf; *P && o < OutMax - 1; P++) {
+        Out[o++] = *P;
+    }
+    Out[o] = 0;
+    return 1;
+}
+
+static void BmpPathWithVol(const char *Rel, char *Out, int OutMax) {
+    int i;
+
+    if (!Rel || !Out || OutMax < 9) {
+        return;
+    }
+    Out[0] = 'B';
+    Out[1] = 'L';
+    Out[2] = 'O';
+    Out[3] = 'C';
+    Out[4] = 'K';
+    Out[5] = 'S';
+    Out[6] = ':';
+    for (i = 0; Rel[i] && i < OutMax - 8; i++) {
+        Out[7 + i] = Rel[i];
+    }
+    Out[7 + i] = 0;
+}
+
+/* 读 BI_RGB BMP；试 Path / 去 bmp48 / BLOCKS:…。失败纯色回退。 */
 int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
                        const char *Tag) {
     UINT8 *Buf;
     UINT32 Pages;
     UINTN Size;
     int Err;
-    char ToyPath[192];
+    char Flat[192];
+    char Vol[192];
     const char *TryPath;
     int Pass;
+    int HaveFlat;
 
     (void)Tag;
     if (!Path || !Out || FileMax < 54) {
@@ -54,28 +141,27 @@ int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
         return 0;
     }
 
-    for (Pass = 0; Pass < 2; Pass++) {
+    HaveFlat = BmpPathAltLayout(Path, Flat, (int)sizeof(Flat));
+
+    for (Pass = 0; Pass < 4; Pass++) {
         if (Pass == 0) {
             TryPath = Path;
+        } else if (Pass == 1) {
+            if (!HaveFlat) {
+                continue;
+            }
+            TryPath = Flat;
         } else if (PathHasVolPrefix(Path)) {
             break;
+        } else if (Pass == 2) {
+            BmpPathWithVol(Path, Vol, (int)sizeof(Vol));
+            TryPath = Vol;
         } else {
-            /* 默认卷可能是 ESP；再显式试 BLOCKS: */
-            ToyPath[0] = 'B';
-            ToyPath[1] = 'L';
-            ToyPath[2] = 'O';
-            ToyPath[3] = 'C';
-            ToyPath[4] = 'K';
-            ToyPath[5] = 'S';
-            ToyPath[6] = ':';
-            {
-                int i;
-                for (i = 0; Path[i] && i < (int)sizeof(ToyPath) - 8; i++) {
-                    ToyPath[7 + i] = Path[i];
-                }
-                ToyPath[7 + i] = 0;
+            if (!HaveFlat) {
+                continue;
             }
-            TryPath = ToyPath;
+            BmpPathWithVol(Flat, Vol, (int)sizeof(Vol));
+            TryPath = Vol;
         }
 
         Size = 0;
@@ -108,10 +194,12 @@ int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
 
 void LoadDesktopIcons(void) {
     int i;
+    int Ok = 0;
     static const char *const SysTags[DESKTOP_SYS_ICON_COUNT] = {
         "desktop: shell", "desktop: set", "desktop: files", "desktop: store",
         "desktop: info"
     };
+    static const char Hex[] = "0123456789abcdef";
 
     for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
         const char *Tag;
@@ -127,15 +215,43 @@ void LoadDesktopIcons(void) {
         }
         gIcons[i].BmpReady = LoadBmpPath(gIcons[i].BmpPath, &gIcons[i].Bmp,
                                          ICON_FILE_MAX, Tag);
+        if (gIcons[i].BmpReady) {
+            Ok++;
+        }
     }
-    gStartBmpReady = LoadBmpPath("Assets/Icons/bmp48/START.BMP", &gStartBmp,
+    gStartBmpReady = LoadBmpPath("Assets/Icons/START.BMP", &gStartBmp,
                                  ICON_FILE_MAX, "desktop: start");
-    gPowerBmpReady = LoadBmpPath("Assets/Icons/bmp48/POWER.BMP", &gPowerBmp,
+    gPowerBmpReady = LoadBmpPath("Assets/Icons/POWER.BMP", &gPowerBmp,
                                  ICON_FILE_MAX, "desktop: power");
-    gRebootBmpReady = LoadBmpPath("Assets/Icons/bmp48/REBOOT.BMP", &gRebootBmp,
+    gRebootBmpReady = LoadBmpPath("Assets/Icons/REBOOT.BMP", &gRebootBmp,
                                   ICON_FILE_MAX, "desktop: reboot");
-    gGameBmpReady = LoadBmpPath("Assets/Icons/bmp48/GAME.BMP", &gGameBmp,
+    gGameBmpReady = LoadBmpPath("Assets/Icons/GAME.BMP", &gGameBmp,
                                 ICON_FILE_MAX, "desktop: game");
+    if (gStartBmpReady) {
+        Ok++;
+    }
+    /* SCREEN_LOG：一眼看加载是否全挂（曾见盘上有 BMP 仍纯色） */
+    {
+        char Msg[24];
+        Msg[0] = 'G';
+        Msg[1] = 'u';
+        Msg[2] = 'i';
+        Msg[3] = ':';
+        Msg[4] = ' ';
+        Msg[5] = 'I';
+        Msg[6] = 'c';
+        Msg[7] = 'o';
+        Msg[8] = 'n';
+        Msg[9] = 'B';
+        Msg[10] = 'm';
+        Msg[11] = 'p';
+        Msg[12] = '=';
+        Msg[13] = Hex[(Ok >> 4) & 15];
+        Msg[14] = Hex[Ok & 15];
+        Msg[15] = '\n';
+        Msg[16] = 0;
+        LogGui(Msg);
+    }
 }
 
 void DesktopIconsResetDeferred(void) {

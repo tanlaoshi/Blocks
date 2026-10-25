@@ -214,28 +214,29 @@ void PlaceDesktopIcons(void) {
     gIcons[0].Action = DESKTOP_ACTION_SHELL;
     gIcons[0].ExecPath = 0;
     gIcons[0].IconColor = COLOR_BLUE;
-    gIcons[0].BmpPath = "Assets/Icons/bmp48/SHELL.BMP";
+    /* 扁平 Icons/X.BMP；LoadBmpPath 失败再试 bmp48/ */
+    gIcons[0].BmpPath = "Assets/Icons/SHELL.BMP";
     gIcons[0].X = DESKTOP_ORIGIN_X;
     gIcons[0].Y = DESKTOP_ORIGIN_Y;
     gIcons[0].Present = 1;
 
     gIcons[1].Action = DESKTOP_ACTION_SETTINGS;
     gIcons[1].IconColor = 0x00606080;
-    gIcons[1].BmpPath = "Assets/Icons/bmp48/SET.BMP";
+    gIcons[1].BmpPath = "Assets/Icons/SET.BMP";
     gIcons[1].X = DESKTOP_ORIGIN_X;
     gIcons[1].Y = DESKTOP_ORIGIN_Y + RowH;
     gIcons[1].Present = 1;
 
     gIcons[2].Action = DESKTOP_ACTION_FILES;
     gIcons[2].IconColor = 0x00208040;
-    gIcons[2].BmpPath = "Assets/Icons/bmp48/FILES.BMP";
+    gIcons[2].BmpPath = "Assets/Icons/FILES.BMP";
     gIcons[2].X = DESKTOP_ORIGIN_X;
     gIcons[2].Y = DESKTOP_ORIGIN_Y + RowH * 2;
     gIcons[2].Present = 1;
 
     gIcons[3].Action = DESKTOP_ACTION_STORE;
     gIcons[3].IconColor = 0x002080C0;
-    gIcons[3].BmpPath = "Assets/Icons/bmp48/STORE.BMP";
+    gIcons[3].BmpPath = "Assets/Icons/STORE.BMP";
     gIcons[3].X = DESKTOP_ORIGIN_X;
     gIcons[3].Y = DESKTOP_ORIGIN_Y + RowH * 3;
     gIcons[3].Present = 1;
@@ -243,7 +244,7 @@ void PlaceDesktopIcons(void) {
     gIcons[4].Action = DESKTOP_ACTION_DEVICES;
     gIcons[4].ExecPath = 0;
     gIcons[4].IconColor = 0x00806040;
-    gIcons[4].BmpPath = "Assets/Icons/bmp48/INFO.BMP";
+    gIcons[4].BmpPath = "Assets/Icons/INFO.BMP";
     gIcons[4].X = DESKTOP_ORIGIN_X;
     gIcons[4].Y = DESKTOP_ORIGIN_Y + RowH * 4;
     gIcons[4].Present = 1;

@@ -38,5 +38,10 @@
 #define BOARD_HAS_NET          0
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
+/*
+ * VC scanout 默认 RGB（低字节=R）；UI 为 0x00RRGGBB（低字节=B）。
+ * mailbox SET_PIXORD 常被忽略 → HalVideoSet 开软件 R/B 对调。
+ */
+#define BOARD_FB_SWAP_RB       1
 
 #endif /* BOARD_CONFIG_H */

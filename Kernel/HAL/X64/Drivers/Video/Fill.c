@@ -77,6 +77,7 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
     if (CopyW == 0 || CopyH == 0) {
         return;
     }
+    Color = FbPack(Color);
     for (Row = 0; Row < CopyH; Row++) {
         UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
 
@@ -169,7 +170,7 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
         UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
 
         for (Col = 0; Col < CopyW; Col++) {
-            Line[Col] = VideoBlendRgb(Line[Col], Color, Alpha);
+            Line[Col] = FbPack(VideoBlendRgb(FbPack(Line[Col]), Color, Alpha));
         }
     }
     DirtyUnion(X0, Y0, CopyW, CopyH);

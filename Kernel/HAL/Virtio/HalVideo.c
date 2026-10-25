@@ -5,6 +5,11 @@
 #include "Video/Video.h"
 #include "PhysicalMemory.h"
 #include "Hal.h"
+#include "BoardConfig.h"
+
+#ifndef BOARD_FB_SWAP_RB
+#define BOARD_FB_SWAP_RB 0
+#endif
 
 /* VideoFrameBuffer* 在 Video.h */
 
@@ -21,6 +26,13 @@ void HalVideoSet(const VIDEO_CONFIG *Config) {
         Local = *Config;
     }
     VideoSet(&Local);
+#if BOARD_FB_SWAP_RB
+    VideoSetFbSwapRb(1);
+#endif
+}
+
+void HalVideoSetFbSwapRb(int On) {
+    VideoSetFbSwapRb(On);
 }
 
 void HalVideoInitializeBackbuffer(void) {

@@ -69,6 +69,15 @@ extern UINT32  gCx1;
 extern UINT32  gCy1;
 
 extern int     gCursorOverlay;
+/* Pi VC 等：scanout 为 RGB 字节序时，把 0x00RRGGBB 的 R/B 对调再写 FB */
+extern int     gFbSwapRb;
+
+static inline UINT32 FbPack(UINT32 C) {
+    if (!gFbSwapRb) {
+        return C;
+    }
+    return (C & 0xFF00FF00u) | ((C & 0xFFu) << 16) | ((C >> 16) & 0xFFu);
+}
 
 static inline UINT32 *DrawBase(void) {
     if (gForceFront && gFront) {

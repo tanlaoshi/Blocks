@@ -18,6 +18,8 @@ typedef struct {
 } SCREEN_INFO;
 
 void VideoSet(VIDEO_CONFIG *VideoConfig);
+/* 1=写 FB 时对调 R/B（Pi mailbox RGB scanout vs 0x00RRGGBB） */
+void VideoSetFbSwapRb(int On);
 /* PR-G9：启用后缓冲；Buf 为 Width*Height 个 UINT32，Pages 供记录 */
 void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages);
 /* PR-G-hotres：释放后缓冲页（切分辨率前调用） */

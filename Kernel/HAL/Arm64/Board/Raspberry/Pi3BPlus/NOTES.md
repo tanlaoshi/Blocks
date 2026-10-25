@@ -28,6 +28,7 @@
 ## FB / 屏上日志（rpi-5）
 
 - mailbox 要 FB → 深蓝铺底盖住 U-Boot Starting；`HalSerialGop` **全量**（`Hal/HalSerial/HalSerialGop.c`，对齐 X64）。  
+- **像素序 BGR（mailbox 0）**：对齐 `0x00RRGGBB`；勿设 RGB，否则设蓝见红。  
 - 编：`build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
 - 有 FB → VirtDesktop 模块表（非 RunFull）。
 
@@ -47,7 +48,8 @@
 - **µSD = SDHOST** @ **`0x3F202000`**（VC `sdhost@7e202000` / `sdhost_gpio48`）；对齐 U-Boot `bcm2835_sdhost`（CORE 钟分频 + PIO）。  
 - **Arasan SDHCI** @ **`0x3F300000`**（`emmc_gpio34`）= **WiFi SDIO**，不是卡槽；打错则 CMD timeout → `default=RES` → `ttf miss`。  
 - 本柱：`bcm-sdhost` PIO 只读 CMD17 → **FAT32 `BLOCKS`**（对齐 X64）。  
-- 摆盘：`bootfs`=固件 only（u-boot/boot.scr/dtb）；**`Kernel.elf` + `BLOCKS.ID` + Assets 在 BLOCKS**；`boot.scr` `load mmc 0:2`。  
+- 摆盘：`bootfs`=固件 only（u-boot/boot.scr/dtb）；**`Kernel.elf` + `BLOCKS.ID` + Assets（Fonts/Icons/Images）在 BLOCKS**；`boot.scr` `load mmc 0:2`。  
+- 缺 `Assets/Icons` → 桌面纯色、无图标脸；`ck-pi-sd` 会拷 bmp48 + WALL.BMP。  
 - 整盘重做：`ck-pi-sd --repart` / `repart-pi-sd`（两分区皆 FAT32 type 0x0c；勿留 0x83 空壳）。  
 - Arm `HalFpu` 岛 + `TrueTypeRaster` aarch64；禁 RES/ELF 内嵌顶「盘上」。
 

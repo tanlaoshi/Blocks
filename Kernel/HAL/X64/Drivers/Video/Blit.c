@@ -100,7 +100,7 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
     }
     for (Row = 0; Row < Height; Row++) {
         for (Col = 0; Col < Width; Col++) {
-            Out[i++] = Fb[(Y + Row) * Pitch + X + Col];
+            Out[i++] = FbPack(Fb[(Y + Row) * Pitch + X + Col]);
         }
     }
 }
@@ -134,7 +134,7 @@ void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT3
         UINT32 Col;
 
         for (Col = 0; Col < CopyW; Col++) {
-            Dst[Col] = Src[Col];
+            Dst[Col] = FbPack(Src[Col]);
         }
     }
     DirtyUnion(X, Y, CopyW, CopyH);

@@ -34,7 +34,7 @@ static void ScrollClip(void) {
     }
     for (Y = YEnd - LineHeight; Y < YEnd; Y++) {
         for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = gClipBg;
+            Fb[Y * Pitch + X] = FbPack(gClipBg);
         }
     }
     DirtyUnion(gClipX, gClipY, gClipW, gClipH);
@@ -63,7 +63,7 @@ static void ScrollClipDown(void) {
     }
     for (Y = gClipY; Y < gClipY + LineHeight; Y++) {
         for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = gClipBg;
+            Fb[Y * Pitch + X] = FbPack(gClipBg);
         }
     }
     DirtyUnion(gClipX, gClipY, gClipW, gClipH);
@@ -114,7 +114,7 @@ static void ScrollScreen(void) {
     }
     for (Y = gScreen.Height - LineHeight; Y < gScreen.Height; Y++) {
         for (X = 0; X < W; X++) {
-            Fb[Y * Pitch + X] = gBackground;
+            Fb[Y * Pitch + X] = FbPack(gBackground);
         }
     }
     DirtyUnion(0, 0, gScreen.Width, gScreen.Height);

@@ -38,6 +38,11 @@
 
 #define MBOX_POWER_ON_WAIT   3u /* ON|WAIT */
 
+/*
+ * 固件：0=BGR，1=RGB。本仓 UI 色为 0x00RRGGBB（低字节=B），与 X64 GOP BGR 同形。
+ * 若设 RGB，COLOR_BLUE(0xFF) 会画成红（3B+ 桌面「设蓝见红」）。
+ */
+#define MBOX_PIXORD_BGR      0u
 #define MBOX_PIXORD_RGB      1u
 
 #define PHYS_TO_BUS(P)       (((UINT32)(P) & 0x3FFFFFFFu) | 0xC0000000u)
@@ -250,10 +255,11 @@ int BoardFbSetup(BOOT_HANDOFF *Info) {
     W[i++] = 4;
     W[i++] = FB_REQ_BPP;
 
+    /* 固件常忽略/保持 RGB；真纠正在 HalVideoSetFbSwapRb（见下） */
     W[i++] = MBOX_TAG_SET_PIXORD;
     W[i++] = 4;
     W[i++] = 4;
-    W[i++] = MBOX_PIXORD_RGB;
+    W[i++] = MBOX_PIXORD_BGR;
 
     W[i++] = MBOX_TAG_SET_VOFF;
     W[i++] = 8;

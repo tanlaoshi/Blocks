@@ -292,13 +292,9 @@ void DesktopTickClock(void) {
     int NeedPaint;
 
     /*
-     * 拖窗/改大小/空拖刚动：不重画任务栏。全栏 HalVideoPresent 带 cli 条带，
-     * 会饿死 xHCI → 约 5s 一顿后只闪不动。脏位保留，闲下来再画。
+     * 图标/壁纸补刷优先于「鼠未闲就 return」：否则 BMP 已加载仍一直纯色占位。
+     * 拖窗/栏钟仍要闲下来再画（全栏 Present 饿 xHCI）。
      */
-    if (GuiDragActive() || DesktopIconDragActive() || !GuiPointerIdleForMs(400)) {
-        return;
-    }
-
     /* gui-wall-defer：Worker 建完壁纸后整桌刷新（勿在 Gui 路径 Build） */
     if (DesktopWallConsumeNeedRefresh()) {
         UINT32 Sw = 0;
@@ -312,7 +308,7 @@ void DesktopTickClock(void) {
         return;
     }
 
-    /* Worker 已加载图标则只刷新；勿在 Gui 路径读盘（与 iwl IoBreath 重入） */
+    /* Worker/首帧 Ensure 已加载图标则只刷新；勿在 Gui 路径读盘 */
     if (DesktopIconsConsumeNeedRefresh()) {
         int i;
         int Any = 0;
@@ -355,6 +351,14 @@ void DesktopTickClock(void) {
             GuiMarkDamage(X0, Y0, X1 - X0, Y1 - Y0);
         }
         RequestRefresh();
+        return;
+    }
+
+    /*
+     * 拖窗/改大小/空拖刚动：不重画任务栏。全栏 Present 带 cli 条带会饿死 xHCI。
+     */
+    if (GuiDragActive() || DesktopIconDragActive() || !GuiPointerIdleForMs(400)) {
+        return;
     }
 
     /*

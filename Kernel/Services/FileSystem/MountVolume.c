@@ -213,6 +213,21 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
         NameBlocksIdVol(V, Drive, Idx, BlocksVol);
     } else if (IsEsp) {
         NameEspSlot(V, gVolCount, Idx);
+    } else {
+        /*
+         * MBR Pi bootfs 类型是 0x0C 非 0xEF：IsEsp=0，但根上有 Kernel.elf。
+         * 立刻标 ESP，避免无 BLOCKS.ID 时被 Pick 错名成 BLOCKS。
+         */
+        UINTN ProbeSz;
+        if (gVirtualFileSystem.ReadFile("boot.scr", Tmp, sizeof(Tmp), &ProbeSz) ==
+                FAT_OK ||
+            gVirtualFileSystem.ReadFile("config.txt", Tmp, sizeof(Tmp),
+                                        &ProbeSz) == FAT_OK ||
+            gVirtualFileSystem.ReadFile("u-boot.bin", Tmp, sizeof(Tmp),
+                                        &ProbeSz) == FAT_OK) {
+            NameEspSlot(V, gVolCount, Idx);
+            LogFs("Fs: Named ESP by boot firmware files\n");
+        }
     }
 
     if (Idx == gVolCount) {

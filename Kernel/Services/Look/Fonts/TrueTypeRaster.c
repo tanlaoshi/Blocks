@@ -28,7 +28,7 @@ UINT32 FontTtfPixel(void) {
     return H;
 }
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 
 #include <stddef.h>
 
@@ -43,8 +43,11 @@ static int gInit;
 
 static float FontTtfSqrtf(float X) {
     float R;
-
+#if defined(__x86_64__)
     __asm__ volatile("sqrtss %1, %0" : "=x"(R) : "x"(X));
+#else
+    __asm__ volatile("fsqrt %s0, %s1" : "=w"(R) : "w"(X));
+#endif
     return R;
 }
 

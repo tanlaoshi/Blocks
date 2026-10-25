@@ -48,8 +48,51 @@ static void BlobFree(TTF_BLOB *B) {
     B->Ok = 0;
 }
 
+static void LogMiss(const char *Tag, const char *Why, int Err, const char *Path) {
+    LogBoot("Boot: ");
+    LogBoot(Tag);
+    LogBoot(" ");
+    LogBoot(Why);
+    if (Err != 0) {
+        LogBoot(" err=");
+        LogBootHex32((UINT32)(Err < 0 ? -Err : Err));
+    }
+    LogBoot(" path=");
+    LogBoot(Path ? Path : "?");
+    LogBoot("\n");
+}
+
+/* 默认卷或显式 BLOCKS:（防 default 不是 BLOCKS 时误 miss） */
+static int BlobStat(const char *Path, const char **UsedPath, FAT_FILE_STAT *St) {
+    static char Prefixed[96];
+    int Err;
+    UINTN N;
+    UINTN I;
+
+    *UsedPath = Path;
+    Err = FileSystemFileStat(Path, St);
+    if (Err == FAT_OK) {
+        return FAT_OK;
+    }
+    Prefixed[0] = 'B';
+    Prefixed[1] = 'L';
+    Prefixed[2] = 'O';
+    Prefixed[3] = 'C';
+    Prefixed[4] = 'K';
+    Prefixed[5] = 'S';
+    Prefixed[6] = ':';
+    N = 7;
+    for (I = 0; Path[I] != 0 && N + 1 < sizeof(Prefixed); I++) {
+        Prefixed[N++] = Path[I];
+    }
+    Prefixed[N] = 0;
+    *UsedPath = Prefixed;
+    return FileSystemFileStat(Prefixed, St);
+}
+
 static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
     FAT_FILE_STAT St;
+    const char *Used;
     UINTN Got;
     UINT32 Mag;
     UINT16 Tables;
@@ -57,11 +100,10 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
 
     BlobFree(B);
     Got = 0;
-    Err = FileSystemFileStat(Path, &St);
+    Used = Path;
+    Err = BlobStat(Path, &Used, &St);
     if (Err != FAT_OK || (St.Attr & FAT_ATTR_DIR) || St.Size < 12u) {
-        LogBoot("Boot: ");
-        LogBoot(Tag);
-        LogBoot(" miss\n");
+        LogMiss(Tag, "miss", Err, Used);
         return -1;
     }
     if (St.Size > TTF_MAX) {
@@ -82,12 +124,10 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
         LogBoot(" oom\n");
         return -1;
     }
-    Err = FileSystemReadFile(Path, B->Blob, St.Size, &Got);
+    Err = FileSystemReadFile(Used, B->Blob, St.Size, &Got);
     if (Err != FAT_OK || Got < 12) {
         BlobFree(B);
-        LogBoot("Boot: ");
-        LogBoot(Tag);
-        LogBoot(" miss\n");
+        LogMiss(Tag, "read fail", Err, Used);
         return -1;
     }
     Mag = Be32(B->Blob);
@@ -130,5 +170,8 @@ int FontTtfLoad(void) {
 
     Ui = BlobLoad(&gUi, TTF_UI_PATH, "ttf");
     (void)BlobLoad(&gMono, TTF_MONO_PATH, "ttf-mono");
+    if (Ui != 0) {
+        LogBoot("Boot: ttf need BLOCKS:Assets/Fonts/CJK.TTF (host copy onto LABEL=BLOCKS)\n");
+    }
     return Ui;
 }

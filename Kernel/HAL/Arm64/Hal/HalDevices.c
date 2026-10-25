@@ -5,6 +5,7 @@
  */
 #include "Hal.h"
 #include "BoardConfig.h"
+#include "Block.h"
 #include "Driver.h"
 #include "Virtio/BlockDevice.h"
 #include "Virtio/Input.h"
@@ -15,6 +16,11 @@ void HalDriverRegister(void) {
     VirtioBlockRegister();
     VirtioInputRegister();
     VirtioNetRegister();
+#else
+    {
+        void BoardSdhostRegister(void);
+        BoardSdhostRegister();
+    }
 #endif
 }
 
@@ -22,7 +28,12 @@ int HalBlockInitialize(void) {
 #if BOARD_IS_VIRT
     return VirtioBlockInit();
 #else
-    return 0;
+    /* Pi3B+：bcm-sdhost（µSD）→ DriverBlockAttach → BlockInitialize */
+    (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
+    if (!BlockBackendReady()) {
+        return 0;
+    }
+    return BlockInitialize();
 #endif
 }
 

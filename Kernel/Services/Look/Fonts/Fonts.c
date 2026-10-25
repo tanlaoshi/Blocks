@@ -631,7 +631,7 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     if (G) {
         return G;
     }
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
     if (FontTtfReady() && Cp >= 128u && !FontTtfCacheMissed(Cp) &&
         !FileSystemBootMediumGone() && FontTtfCachePending(Cp)) {
         gGlyphDefer = 1;

@@ -207,6 +207,15 @@ source 0x1000000
 - 屏上日志已通后：`Boot: Mod VirtualMemory Failed`。根因：`MapIdentity(FB@0x3e8…)` 撞 `HalPageKernelSetup` 的 **2MiB block**，`PageWalk` 遇 block 直接 return 0。  
 - 修：`SplitBlockL2`（2MiB→L3×4KiB，保留属性）；横幅前整屏铺黑盖 U-Boot 残色。
 
+### rpi-12（盘上 TTF / 打错 SD 控制器）
+
+- 录像链：`SDHCI CMD* fail`（`st=0x10000` INT_TIMEOUT）→ `No Block Device` → `default=RES` → `ttf miss` / 点阵。  
+- **不是** FPU/栅格（早有 `fpu island ok`）；**不是** 卡上没字体（宿主 `LABEL=BLOCKS/Assets/Fonts/CJK.TTF` 已摆）。  
+- U-Boot DTB Pi3B+：`&sdhci`→GPIO34 **WiFi**；`&sdhost`→GPIO48 **µSD**。打 Arasan@`0x3F300000` 读卡 = 错外设。  
+- 正解：`bcm-sdhost` @ `0x3F202000`（对齐 `bcm2835_sdhost.c`）。禁止再对 SDHCI 堆 SoftReset/掉电启发式。  
+- 续：SDHOST 通后仍 ttf miss —— `PickWithoutBlocksId` 用 **`Kernel.elf` 把 bootfs 错名 BLOCKS**；真根无 `BLOCKS.ID`。修：boot 固件文件 → ESP；BLOCKS 只认 `BLOCKS.ID` / HELLO / Assets。  
+- 再续（录像 `default=ESP` / `No BLOCKS.ID On Any Volume`）：第二分区曾是 ext4，`mkfs.vfat` 后 **MBR 类型仍 0x83**，`MbrCollectFat` 只认 0x0B/0C… → BLOCKS 永不挂。修：异类型也 `LbaLooksLikeFat` 探测；正本布局 **整盘两 FAT32**（`ck-pi-sd --repart`）：bootfs 仅固件，`Kernel.elf`→BLOCKS，`boot.scr` `load mmc 0:2`。
+
 ---
 
 ## 7. 修订记录
@@ -218,3 +227,4 @@ source 0x1000000
 | 2026-10-24 | **真机进 blocks>**（boot.scr + skip-MMU Kernel）；rpi-3 基本启动过关 |
 | 2026-10-25 | 链出 rpi-7：[Pi3BPlus-DWC2-HID排障历程.md](Pi3BPlus-DWC2-HID排障历程.md)（桌面后键鼠另档） |
 | 2026-10-25 | **rpi-10**：stock 默认知 `bootdelay=-1`→每次手敲；prepare 改 `-2`；CK 删陈旧 `uboot.env` |
+| 2026-10-25 | **rpi-12**：CMD timeout+RES+ttf miss = 打错控制器；改挂 SDHOST |

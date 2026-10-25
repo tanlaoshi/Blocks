@@ -91,13 +91,30 @@ static int MbrCollectFat(GPT_FAT_PART *Out, int Max, int *InOutCount) {
             SawGpt = 1;
             continue;
         }
-        /* 0xEF = EFI System（多数可启动 U 盘 MBR ESP）；FAT 类型一并挂 */
+        /*
+         * 常见 FAT 类型直接收；其它（含 0x83：Pi 卡曾是 ext4，后 mkfs.vfat
+         * 只改内容不改类型）用首扇区探测，否则 BLOCKS 永挂不上 → default=ESP。
+         */
+        Start = (UINT32)P[8] | ((UINT32)P[9] << 8) | ((UINT32)P[10] << 16) |
+                ((UINT32)P[11] << 24);
         if (Type == 0x0B || Type == 0x0C || Type == 0x0E || Type == 0x06 ||
             Type == 0x04 || Type == 0xEF) {
             int IsEsp = (Type == 0xEF) ? 1 : 0;
-            Start = (UINT32)P[8] | ((UINT32)P[9] << 8) |
-                    ((UINT32)P[10] << 16) | ((UINT32)P[11] << 24);
             *InOutCount = AddPart(Out, Max, *InOutCount, Start, IsEsp, 0);
+        } else if (Start != 0) {
+            int Fat = LbaLooksLikeFat(Start);
+            /* LbaLooksLikeFat 覆写扇区缓冲；必须读回 MBR 再扫下一槽 */
+            if (!BlockReadSectors(0, 1, gGptSector)) {
+                return SawGpt ? 2 : (*InOutCount > 0 ? 1 : 0);
+            }
+            if (Fat) {
+                *InOutCount = AddPart(Out, Max, *InOutCount, Start, 0, 0);
+                LibWrite("FS: FAT LBA ");
+                LibWriteHex32(Start);
+                LibWrite(" (MBR type=");
+                LibWriteHex32(Type);
+                LibWrite(" probed)\n");
+            }
         }
     }
     return SawGpt ? 2 : (*InOutCount > 0 ? 1 : 0);

@@ -37,6 +37,20 @@
 - **只想再跑一遍、不拔卡**：`reboot` 或 U-Boot `reset`。  
 - 卡在 Failed、无提示符：只能拔电源。
 
+## 墙钟（rpi-11）
+
+- 无板载电池 RTC；`HalRtcGetTime` = **CNTV 软钟**（种子本地东八，任务栏 `HH:MM`）。  
+- 勿把 mailbox `GET_CLOCK_RATE`（给 SDHCI 基频用）当墙钟。
+
+## SD / 盘上 TTF（rpi-12）
+
+- **µSD = SDHOST** @ **`0x3F202000`**（VC `sdhost@7e202000` / `sdhost_gpio48`）；对齐 U-Boot `bcm2835_sdhost`（CORE 钟分频 + PIO）。  
+- **Arasan SDHCI** @ **`0x3F300000`**（`emmc_gpio34`）= **WiFi SDIO**，不是卡槽；打错则 CMD timeout → `default=RES` → `ttf miss`。  
+- 本柱：`bcm-sdhost` PIO 只读 CMD17 → **FAT32 `BLOCKS`**（对齐 X64）。  
+- 摆盘：`bootfs`=固件 only（u-boot/boot.scr/dtb）；**`Kernel.elf` + `BLOCKS.ID` + Assets 在 BLOCKS**；`boot.scr` `load mmc 0:2`。  
+- 整盘重做：`ck-pi-sd --repart` / `repart-pi-sd`（两分区皆 FAT32 type 0x0c；勿留 0x83 空壳）。  
+- Arm `HalFpu` 岛 + `TrueTypeRaster` aarch64；禁 RES/ELF 内嵌顶「盘上」。
+
 ## USB（rpi-7）
 
 > **排障正本（试错编年）**：[`Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../../Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)

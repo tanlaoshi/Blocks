@@ -128,11 +128,14 @@ prepare-pi-sd() {
     bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/prepare-sd.sh" "$@"
 }
 
-# 暗号 CK：有 bootfs 即刷；暂无则等到插卡（默认 90s）
+# 暗号 CK：固件→bootfs；Kernel→BLOCKS。可选 --repart 整盘两 FAT32
 ck-pi-sd() {
     bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/ck-pi-sd.sh" "$@"
 }
+repart-pi-sd() {
+    bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/repart-pi-sd.sh" "$@"
+}
 
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
-echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd"
+echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd repart-pi-sd"
 unset _BlocksEnvDir _BlocksRootCand

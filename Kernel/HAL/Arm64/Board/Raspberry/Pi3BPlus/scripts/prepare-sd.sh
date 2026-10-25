@@ -174,20 +174,20 @@ fi
 #
 # !!! 脚本成功 ≠ 真机 ready（rpi-3 串口手测）!!!
 
-## 分区建议
+## 分区（对齐 X64：ESP/bootfs + BLOCKS）
 
-- 第一分区：FAT32，放本目录文件（及你自备的 U-Boot / 固件，若尚未有 boot 链）
-- 本脚本**不**写入 bootcode.bin / start.elf / U-Boot 二进制（请用发行版或官方固件）
+- **bootfs**（FAT32 type 0x0c）：仅固件 — u-boot.bin / boot.scr / pi.dtb / config.txt（**无** Kernel.elf）
+- **BLOCKS**（FAT32 type 0x0c）：Kernel.elf + BLOCKS.ID + Assets/Fonts + 根文件
+- 整盘重做：\`ck-pi-sd --repart\` 或 \`repart-pi-sd /dev/sdX\`
+- \`boot.scr\`：\`load mmc 0:2 … Kernel.elf\`（第二分区）
 
-## 文件
+## 本目录文件（prepare 产出；CK 分流拷贝）
 
-| 文件 | 说明 |
+| 文件 | 去向 |
 | --- | --- |
-| Kernel.elf | 必用 |
-| u-boot.bin | **stock 2021.01**（config.txt \`kernel=\`）；上电自动跑 boot.scr |
-| pi.dtb | 短名 DTB |
-| boot.scr | distro_bootcmd 自动 source |
-| boot.cmd | 脚本源码 |
+| Kernel.elf | → LABEL=BLOCKS |
+| u-boot.bin | → bootfs（stock 2021.01；自动 boot.scr） |
+| pi.dtb / boot.scr / boot.cmd / config.txt | → bootfs |
 
 ## U-Boot（上电自动）
 

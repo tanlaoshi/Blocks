@@ -23,6 +23,8 @@
 #define MBOX_RESP_SUCCESS    0x80000000u
 
 #define MBOX_TAG_GET_ARM_MEM 0x00010005u
+#define MBOX_TAG_SET_POWER   0x00028001u
+#define MBOX_TAG_GET_CLOCK   0x00030002u
 #define MBOX_TAG_ALLOC_BUF   0x00040001u
 #define MBOX_TAG_GET_PHY_WH  0x00040003u
 #define MBOX_TAG_SET_PHY_WH  0x00048003u
@@ -33,6 +35,8 @@
 #define MBOX_TAG_GET_PITCH   0x00040008u
 #define MBOX_TAG_GET_VOFF    0x00040009u
 #define MBOX_TAG_SET_VOFF    0x00048009u
+
+#define MBOX_POWER_ON_WAIT   3u /* ON|WAIT */
 
 #define MBOX_PIXORD_RGB      1u
 
@@ -115,6 +119,49 @@ static int MboxProp(UINT32 *Buf, UINT32 Words) {
     if (Buf[1] != MBOX_RESP_SUCCESS) {
         return -1;
     }
+    return 0;
+}
+
+int BoardSdhciPowerOn(void) {
+    static UINT32 W[8] __attribute__((aligned(16)));
+
+    W[2] = MBOX_TAG_SET_POWER;
+    W[3] = 8;
+    W[4] = 0;
+    W[5] = BOARD_MBOX_POWER_SDHCI;
+    W[6] = MBOX_POWER_ON_WAIT;
+    return MboxProp(W, 8);
+}
+
+int BoardSdhciPowerOff(void) {
+    static UINT32 W[8] __attribute__((aligned(16)));
+
+    W[2] = MBOX_TAG_SET_POWER;
+    W[3] = 8;
+    W[4] = 0;
+    W[5] = BOARD_MBOX_POWER_SDHCI;
+    W[6] = 2u; /* WAIT only → off */
+    return MboxProp(W, 8);
+}
+
+int BoardMboxGetClockHz(UINT32 ClockId, UINT32 *OutHz) {
+    static UINT32 W[8] __attribute__((aligned(16)));
+
+    if (OutHz == 0) {
+        return -1;
+    }
+    W[2] = MBOX_TAG_GET_CLOCK;
+    W[3] = 8;
+    W[4] = 0;
+    W[5] = ClockId;
+    W[6] = 0;
+    if (MboxProp(W, 8) != 0) {
+        return -1;
+    }
+    if (W[6] == 0) {
+        return -1;
+    }
+    *OutHz = W[6];
     return 0;
 }
 

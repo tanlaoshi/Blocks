@@ -238,8 +238,14 @@ endif
 
 CFLAGS_COMMON = $(CFLAGS_BASE) $(INCLUDES_COMMON) $(LWIPINCLUDES)
 CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp
-# PR-UI-ttf-fpu：仅 HalFpuSse.c 去掉 general-regs-only，允许 SSE
+# PR-UI-ttf-fpu：栅格 / 探针 TU 去掉 general-regs-only
+ifeq ($(ARCH),x86_64)
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL)) -msse2
+else ifeq ($(ARCH),arm64)
+CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL))
+else
+CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL))
+endif
 # font-freetype-hook：FT 源 + FreeTypeRaster 须 FPU；无上游树则跳过（软退 stb）
 FREETYPE_ROOT = ThirdParty/freetype
 FREETYPE_HAVE := $(wildcard $(FREETYPE_ROOT)/src/base/ftbase.c)
@@ -761,9 +767,9 @@ $(BUILDDIR)/BringUp/Initialize/%.o: BringUp/Initialize/%.c | $(BUILDDIR)
 $(BUILDDIR)/HAL/Slots/%.o: HAL/Slots/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
-# 须先于通用 Services/%.o，保证 CFLAGS_FPU
+# 须先于通用 Services/%.o，保证 CFLAGS_FPU（x86 SSE / arm64 FP 岛）
 $(BUILDDIR)/Services/Look/Fonts/TrueTypeRaster.o: Services/Look/Fonts/TrueTypeRaster.c | $(BUILDDIR)
-ifeq ($(ARCH),x86_64)
+ifeq ($(ARCH),$(filter $(ARCH),x86_64 arm64))
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -Wno-unused-parameter -c $< -o $@
 else
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
@@ -840,6 +846,10 @@ endif
 
 ifeq ($(ARCH),x86_64)
 $(HALDIR)/Hal/HalFpuSse.o: HAL/X64/Hal/HalFpuSse.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -c $< -o $@
+endif
+ifeq ($(ARCH),arm64)
+$(HALDIR)/Hal/HalFpuFp.o: HAL/Arm64/Hal/HalFpuFp.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -c $< -o $@
 endif
 

@@ -38,12 +38,41 @@ static void PickWithBlocksId(int BlocksVol) {
     }
 }
 
+/*
+ * 无 BLOCKS.ID 时的启发式。
+ * bootfs 只留固件（boot.scr/u-boot/config）；Kernel.elf 在 BLOCKS（对齐 X64）。
+ * 勿用 Kernel.elf 判 boot —— 它应在系统卷上。
+ */
+static int VolLooksLikeBootFirmware(UINT8 *Tmp, UINTN TmpSz) {
+    UINTN Sz;
+
+    if (gVirtualFileSystem.ReadFile("boot.scr", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("config.txt", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("u-boot.bin", Tmp, TmpSz, &Sz) == FAT_OK) {
+        return 1;
+    }
+    return 0;
+}
+
+static int VolLooksLikeBlocksRoot(UINT8 *Tmp, UINTN TmpSz) {
+    UINTN Sz;
+
+    if (gVirtualFileSystem.ReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("BLOCKS.DB", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("Assets/Fonts/CJK.TTF", Tmp, TmpSz, &Sz) ==
+            FAT_OK) {
+        return 1;
+    }
+    return 0;
+}
+
 static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
     int i;
     int FatVol = -1;
     int PrefVol = -1;
     int MarkerVol = -1;
-    UINTN Sz;
+    int BootVol = -1;
 
     for (i = 0; i < gVolCount; i++) {
         if (!gVols[i].Ops || gVols[i].Ops->Synthetic) {
@@ -52,23 +81,32 @@ static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
         if (FatVol < 0) {
             FatVol = i;
         }
+        if (FileSystemActivate(i) != FAT_OK) {
+            continue;
+        }
+        if (VolLooksLikeBootFirmware(Tmp, TmpSz)) {
+            /* MBR bootfs：非 0xEF 也当 ESP，勿留给 BLOCKS 启发式 */
+            RenameEspIfLetterOnly(i);
+            if (BootVol < 0) {
+                BootVol = i;
+            }
+            continue;
+        }
         if (!gVols[i].ReadOnly && PrefVol < 0) {
             PrefVol = i;
         }
-        if (MarkerVol < 0 && FileSystemActivate(i) == FAT_OK) {
-            if (gVirtualFileSystem.ReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
-                gVirtualFileSystem.ReadFile("Kernel.elf", Tmp, TmpSz, &Sz) == FAT_OK ||
-                gVirtualFileSystem.ReadFile("BLOCKS.DB", Tmp, TmpSz, &Sz) == FAT_OK) {
-                MarkerVol = i;
-            }
+        if (MarkerVol < 0 && VolLooksLikeBlocksRoot(Tmp, TmpSz)) {
+            MarkerVol = i;
         }
     }
     if (MarkerVol >= 0) {
         gDefaultVol = MarkerVol;
         StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "BLOCKS");
-        LogFs("Fs: Named BLOCKS by marker (No BLOCKS.ID)\n");
+        LogFs("Fs: Named BLOCKS by root marker (No BLOCKS.ID)\n");
     } else if (PrefVol >= 0) {
         gDefaultVol = PrefVol;
+    } else if (FatVol >= 0 && FatVol != BootVol) {
+        gDefaultVol = FatVol;
     } else {
         gDefaultVol = (FatVol >= 0) ? FatVol : 0;
     }

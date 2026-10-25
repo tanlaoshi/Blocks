@@ -7,6 +7,7 @@
 #include "CString.h"
 #include "BoardConfig.h"
 
+#if BOARD_HAS_BLOCK || BOARD_HAS_FRAMEBUFFER || BOARD_HAS_NET
 static void AddMmio(const char *Name, UINT16 VirtioId) {
     DEVICE_NODE Node = {0};
 
@@ -16,6 +17,7 @@ static void AddMmio(const char *Name, UINT16 VirtioId) {
     StringCopy(Node.FriendlyName, sizeof(Node.FriendlyName), Name);
     (void)DeviceAdd(&Node);
 }
+#endif
 
 void HalDeviceEnumerate(void) {
 #if BOARD_HAS_BLOCK

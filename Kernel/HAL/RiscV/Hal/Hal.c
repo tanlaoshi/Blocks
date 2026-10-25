@@ -206,8 +206,14 @@ void HalInstallUserMode(void) {
 }
 
 void HalSyscallInitialize(void) {
+    extern int gMmuOn;
+
     HalInstallUserMode();
     HalSerialWrite("syscall: RiscV ecall (U-mode) ready\n");
+    if (!gMmuOn) {
+        HalSerialWrite("user: selftest skipped (no MMU)\n");
+        return;
+    }
     HalUserSelfTest();
 }
 

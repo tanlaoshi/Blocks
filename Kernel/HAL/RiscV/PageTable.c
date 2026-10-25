@@ -7,6 +7,7 @@
  */
 #include "Hal.h"
 #include "PhysicalMemory.h"
+#include "BoardConfig.h"
 
 #include "PageTablePrivate.h"
 
@@ -48,6 +49,17 @@ void HalPagingEnable(UINT64 RootPhys) {
     HalTrapVectorInstall();
     gCurrentRoot = RootPhys;
     gKernelRoot = RootPhys;
+
+#if !defined(BOARD_IS_VIRT) || !BOARD_IS_VIRT
+    /*
+     * Duo S 真机（2026-10-26）：一写 satp，随后任意 `ret` → cause=1 epc=0
+     *（跳过缺页自测仍复现）。对齐 Arm64 Pi3BPlus：先物理恒等跑通串口壳；
+     * Sv39 真开留后刀（排障档 §3.5 V7）。
+     */
+    gMmuOn = 0;
+    HalSerialWrite("vmm: skip MMU (board)\n");
+    return;
+#else
     __asm__ volatile(
         "csrw satp, %0\n"
         "sfence.vma\n"
@@ -55,6 +67,8 @@ void HalPagingEnable(UINT64 RootPhys) {
     gMmuOn = 1;
     HalSerialWrite("vmm: RiscV Sv39 on\n");
     HalPagingSelfTest();
+    HalSerialWrite("vmm: after probe\n");
+#endif
 }
 
 /* PR-A14：AP 装载与 BSP 相同的 Sv39 根 */

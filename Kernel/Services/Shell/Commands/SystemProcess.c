@@ -67,8 +67,15 @@ static const char *ClassExecPath(const char *Name, char *Alt, int AltMax) {
 }
 
 static void CommandRunuser(int Argc, char **Argv) {
+    extern int gMmuOn;
+
     (void)Argc;
     (void)Argv;
+    /* 真机 skip MMU（Duo/Pi）无 U 页表；嵌入 hello 须进 U-mode */
+    if (!gMmuOn) {
+        gConsole.Write("run user: needs MMU (board skipped Sv39/EL1 paging)\n");
+        return;
+    }
     /* ProcessRunDemo 内 CoopDrain；提示符交给 ConsolePromptAfterCommand */
     (void)ProcessRunDemo();
 }
@@ -245,6 +252,8 @@ static void CommandKill(int Argc, char **Argv) {
 void ShellCommandsSystemProcRegisterVirtMin(void) {
     gConsole.Register2("list", "tasks", "list tasks", CommandPs);
     gConsole.RegisterAliasLine("ps", "list", "tasks");
+    gConsole.Register2("run", "user", "run embedded hello ELF", CommandRunuser);
+    gConsole.RegisterAliasLine("runuser", "run", "user");
     gConsole.Register("execute", "load ELF (BLOCKS:FILE)", CommandExec);
     gConsole.RegisterAlias("execute", "exec");
     gConsole.Register("kill", "signal user task (PR-P4)", CommandKill);

@@ -11,10 +11,18 @@
     .global HalTrapVector
     .type HalTrapVector, @function
 HalTrapVector:
+    /*
+     * csrrw t0,sscratch,sp：原子交换。
+     *   U→S：旧 sscratch=内核栈顶 → t0；sscratch←用户 sp
+     *   S→S：旧 sscratch=0 → t0；sscratch←当时 sp
+     * 旧代码 S 态接着 csrw sscratch,zero 再 csrr 填 StackPointer，帧里永远是 0；
+     * 若 SPP 被误判为 U，会 mv sp,0 再 sret → 随后 ret 见 epc=0（Duo 真机已踩）。
+     */
     csrrw   t0, sscratch, sp
     bnez    t0, 1f
-    csrr    sp, sscratch
+    csrr    t1, sscratch
     csrw    sscratch, zero
+    mv      sp, t1
     j       2f
 1:
     mv      sp, t0
@@ -52,7 +60,11 @@ HalTrapVector:
     sd      t5, 240(sp)
     sd      t6, 248(sp)
 
+    /* StackPointer：U=sscratch 用户 sp；S=trap 前 sp（本帧底 +320） */
     csrr    t0, sscratch
+    bnez    t0, 21f
+    addi    t0, sp, 320
+21:
     sd      t0, 296(sp)
     csrr    t0, sepc
     sd      t0, 272(sp)

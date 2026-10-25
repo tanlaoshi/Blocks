@@ -6,7 +6,7 @@
 > **代码主战场**：`HAL/Arm64/Board/Raspberry/Pi3BPlus/`、`BringUp/Arm64/`、`HAL/Arm64/{HalSerial,PageTable,Exception,Smp}.c`  
 > **摆盘**：`prepare-pi-sd` → `Build/Pi3BPlus-sd/`；说明以 **`README-SD.txt`** 为准（勿信过期 `README-SD.md` 旧稿）  
 > **状态**：🔧 进行中。**CoolTerm 已见 `Boot: Mod Serial/PhysicalMemory/VirtualMemory`**（内核已跑）；HDMI 停在 U-Boot「Starting」**正常**（本柱无 FB）。  
-> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）；键鼠 [DWC2-HID 排障](Pi3BPlus-DWC2-HID排障历程.md)（rpi-7）
+> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）；键鼠 [DWC2-HID 排障](Pi3BPlus-DWC2-HID排障历程.md)（rpi-7）；RiscV 真机对照 [Milk-V Duo S 排障](MilkV-DuoS真机启动排障历程.md)
 
 ---
 

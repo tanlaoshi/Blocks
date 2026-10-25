@@ -2,6 +2,9 @@
 
 不要把秘密或专有固件 blob 提交进库。
 
+**真机排障编年**（镜像 / 串口 / bootelf / `epc=0`）：  
+[`Documents/过程/排障/MilkV-DuoS真机启动排障历程.md`](../../../../Documents/过程/排障/MilkV-DuoS真机启动排障历程.md)
+
 ## 硬件
 
 - SoC：SG2000（CV181x）；本包目标核：**RISC-V C906**
@@ -29,8 +32,15 @@
 | `make boards` 列出本包 | 在 CI 里自动出 `ToyOS ready`（无物理板） |
 | 默认 `BOARD=virt` smoke 不回归 | 代替真机 U-Boot `bootelf` |
 
-## 验收日志摘录（真机填）
+## 验收日志摘录（2026-10-26 真机）
 
 ```text
-（粘贴串口 ToyOS ready 前后若干行）
+board: milk-v-duo-s
+vmm: skip MMU (board)
+…
+Fs: Vol RES (Resfs) / default=RES
+Blocks 就绪。…
+blocks>
 ```
+
+配方：`fatload mmc 0:1 0x81800000 Kernel.elf` → `bootelf 0x81800000`。详档见上方排障历程。

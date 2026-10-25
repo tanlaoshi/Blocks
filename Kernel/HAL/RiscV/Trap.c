@@ -162,9 +162,16 @@ UINT64 HalTrapDispatch(HAL_INTERRUPT_FRAME *Frame) {
 }
 
 void HalPagingSelfTest(void) {
-    volatile UINT8 *Bad = (volatile UINT8 *)(UINTN)0x180000000ULL;
+    volatile UINT8 *Bad;
     UINT8 Tmp;
+    /*
+     * 先占栈再缺页：旧代码在无本机帧时 fault，trap 帧底紧贴调用方
+     * HalPagingEnable 帧；再叠加编译器尾调用易 epc=0（Duo 真机）。
+     */
+    volatile UINT64 StackPad[4];
+    StackPad[0] = 1;
 
+    Bad = (volatile UINT8 *)(UINTN)0x180000000ULL;
     gProbeSeen = 0;
     gProbeFar = 0;
     gProbeFault = 1;
@@ -178,6 +185,7 @@ void HalPagingSelfTest(void) {
         : "memory");
     (void)Tmp;
     gProbeFault = 0;
+    (void)StackPad[0];
 
     if (!gProbeSeen) {
         HalSerialWrite("vmm: fault probe MISSING\n");

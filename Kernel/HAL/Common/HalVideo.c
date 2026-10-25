@@ -1,5 +1,7 @@
 /*
- * HAL/Virtio/HalVideo.c — 帧缓冲门面，委托 Drivers/Video（PR-V2 ramfb scanout）
+ * HAL/Common/HalVideo.c — 非 x86 HalVideo 门面，委托 HAL/Common/Video
+ *
+ * 服务：QEMU virt ramfb、Pi mailbox FB。不属 Virtio 设备层。
  */
 #include "HalVideo.h"
 #include "Video/Video.h"

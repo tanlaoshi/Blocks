@@ -11,4 +11,4 @@
 
 同阶段其它：PMM/VMM/Driver/Scheduler→`Core/`；FS/Gui/Net/Console→`Services/`；Smp→各 arch `HalSmp*`。  
 PLATFORM 序：Cpu→Driver→Smp；SESSION 在 FS/Gui/Net 前。见 `Modules.c` 头。  
-驱动读文件 / 调度喘口气槽：[`../../HAL/Slots/`](../../HAL/Slots/)。
+驱动读文件 / 调度喘口气槽：[`../../HAL/Common/Slots/`](../../HAL/Common/Slots/)。

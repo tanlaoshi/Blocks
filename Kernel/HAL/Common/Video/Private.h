@@ -1,8 +1,7 @@
 /*
- * Private.h — Video 驱动内部共享头（仅 HAL/X64/Drivers/Video/）
+ * Private.h — Video 绘制内部共享头（仅 HAL/Common/Video/）
  *
  * 禁止 Common / User 包含；对外用 Video.h / HalVideo.h。
- * PR-H-video-split-1：与 Bochs.c / Scale.c 一并引入。
  */
 #ifndef VIDEO_PRIVATE_H
 #define VIDEO_PRIVATE_H

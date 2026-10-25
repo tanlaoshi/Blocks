@@ -144,6 +144,7 @@ INCLUDES_COMMON = -IInclude \
                   -IHAL/$(HAL_ARCH)/Acpi \
                   -IBringUp/$(HAL_ARCH)
 INCLUDES_HAL    = $(INCLUDES_COMMON) \
+                  -IHAL/Common \
                   -IHAL/$(HAL_ARCH)/Drivers \
                   -IHAL/$(HAL_ARCH)/Drivers/Bus \
                   -IHAL/$(HAL_ARCH)/Drivers/Input \
@@ -157,7 +158,7 @@ BOARD_DIR :=
 else
 BOARD_DIR := HAL/$(HAL_ARCH)/Board/$(BOARD)
 ifeq ($(wildcard $(BOARD_DIR)/README.md),)
-$(error BOARD=$(BOARD): missing $(BOARD_DIR)/ (see HAL/Board/README.md); default BOARD=virt)
+$(error BOARD=$(BOARD): missing $(BOARD_DIR)/ (see HAL/Common/Board/README.md); default BOARD=virt)
 endif
 INCLUDES_HAL += -I$(BOARD_DIR)
 endif
@@ -353,8 +354,8 @@ CORE_SRCS     += $(wildcard Core/Device/*.c)
 BRINGUP_INIT_SRCS := $(wildcard BringUp/Initialize/*.c)
 BRINGUP_INIT_OBJS := $(patsubst BringUp/Initialize/%.c,$(BUILDDIR)/BringUp/Initialize/%.o,$(BRINGUP_INIT_SRCS))
 # 驱动回调槽（非 Modules 表）
-HAL_SLOT_SRCS := $(wildcard HAL/Slots/*.c)
-HAL_SLOT_OBJS := $(patsubst HAL/Slots/%.c,$(BUILDDIR)/HAL/Slots/%.o,$(HAL_SLOT_SRCS))
+HAL_SLOT_SRCS := $(wildcard HAL/Common/Slots/*.c)
+HAL_SLOT_OBJS := $(patsubst HAL/Common/Slots/%.c,$(BUILDDIR)/HAL/Common/Slots/%.o,$(HAL_SLOT_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
 SERVICES_SRCS += $(wildcard Services/Look/Locale/*.c)
@@ -402,7 +403,7 @@ endif
 FONT_SRCS     := $(wildcard Library/Fonts/*.c)
 DRIVER_SRCS   := $(wildcard HAL/$(HAL_ARCH)/Drivers/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/*.c)
-DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/*.c)
+# 软件 FB 绘制 → HAL/Common/Video（SHARED_VIDEO_*）；此处只留 arch 专有
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Network/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/VirtioNet/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Model/E1000/*.c)
@@ -457,8 +458,12 @@ DRIVER_OBJS   := $(patsubst HAL/$(HAL_ARCH)/Drivers/%.c,$(HALDIR)/Drivers/%.o,$(
 ARCH_OBJS     := $(patsubst HAL/$(HAL_ARCH)/%.c,$(HALDIR)/%.o,$(ARCH_SRCS))
 ARCH_ASM_OBJS := $(patsubst HAL/$(HAL_ARCH)/%.S,$(HALDIR)/%.o,$(ARCH_ASM))
 
+# 软件帧缓冲绘制（arch 无关；落在 HAL/Common/Video）
+SHARED_VIDEO_SRCS := $(wildcard HAL/Common/Video/*.c)
+SHARED_VIDEO_OBJS := $(patsubst HAL/Common/Video/%.c,$(HALDIR)/Common/Video/%.o,$(SHARED_VIDEO_SRCS))
+
 ifeq ($(ARCH),x86_64)
-EXTRA_OBJS = $(HALDIR)/User_hello_blob.o $(HALDIR)/SmpTramp_blob.o
+EXTRA_OBJS = $(HALDIR)/User_hello_blob.o $(HALDIR)/SmpTramp_blob.o $(SHARED_VIDEO_OBJS)
 # 演示 ELF/OBJ 进 Build/User/（源在 User/Apps/）；CRT/Library 仍就地编
 USER_OUT = $(BUILDDIR)/User
 USER_HELLO_ELF = $(USER_OUT)/hello.elf
@@ -552,14 +557,13 @@ EXTRA_OBJS =
 BOARD_SRCS := $(wildcard $(BOARD_DIR)/*.c)
 BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
-# PR-R5：Arm/RiscV 共享 virtio/ramfb/DTB/HalVideo（HAL/Virtio）；复用 x86 Video 绘制
+# PR-R5：Arm/RiscV virtio/ramfb/DTB（HAL/Virtio）；HalVideo+绘制在 HAL/Common
 INCLUDES_HAL += -IHAL/X64/Drivers -IHAL/X64/Drivers/Input -IHAL/X64/Drivers/Block -IHAL/X64/Drivers/Video/Igpu -IHAL
 VIRT_SRCS := $(wildcard HAL/Virtio/*.c)
 VIRT_SRCS += $(wildcard HAL/Virtio/Net/*.c)
 VIRT_OBJS := $(patsubst HAL/Virtio/%.c,$(HALDIR)/Virtio/%.o,$(VIRT_SRCS))
-VIRT_VIDEO_SRCS := $(wildcard HAL/X64/Drivers/Video/*.c)
-VIRT_VIDEO_OBJS := $(patsubst HAL/X64/Drivers/Video/%.c,$(HALDIR)/Drivers/Video/%.o,$(VIRT_VIDEO_SRCS))
-EXTRA_OBJS += $(VIRT_OBJS) $(VIRT_VIDEO_OBJS)
+FB_HAL_OBJS := $(HALDIR)/Common/HalVideo.o
+EXTRA_OBJS += $(VIRT_OBJS) $(SHARED_VIDEO_OBJS) $(FB_HAL_OBJS)
 EXTRA_OBJS += $(HALDIR)/Drivers/Network/IpInput.o
 ifeq ($(ARCH),riscv)
 # RiscV virt MMIO 窗与 Arm 不同；Arm 用 Virtio.c 内默认值
@@ -764,7 +768,7 @@ $(BUILDDIR)/Core/%.o: Core/%.c | $(BUILDDIR)
 $(BUILDDIR)/BringUp/Initialize/%.o: BringUp/Initialize/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
-$(BUILDDIR)/HAL/Slots/%.o: HAL/Slots/%.c | $(BUILDDIR)
+$(BUILDDIR)/HAL/Common/Slots/%.o: HAL/Common/Slots/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU（x86 SSE / arm64 FP 岛）
@@ -829,8 +833,12 @@ $(HALDIR)/Drivers/%.o: HAL/$(HAL_ARCH)/Drivers/%.c | $(HALDIR)
 $(HALDIR)/Hal/HalDevices.o: HAL/$(HAL_ARCH)/Hal/HalDevices.c $(DEMO_STAMP) | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
+# HAL/Common：软件 FB 绘制 + 非 x86 HalVideo 门面
+$(HALDIR)/Common/Video/%.o: HAL/Common/Video/%.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
 ifneq ($(ARCH),x86_64)
-$(HALDIR)/Drivers/Video/%.o: HAL/X64/Drivers/Video/%.c | $(HALDIR)
+$(HALDIR)/Common/%.o: HAL/Common/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 $(HALDIR)/Virtio/%.o: HAL/Virtio/%.c | $(HALDIR)

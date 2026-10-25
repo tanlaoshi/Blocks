@@ -11,18 +11,11 @@
 
 ```text
 HAL/
-├── Board/
-│   ├── README.md              ← 本文（约定 + 清单）
-│   └── _template/             ← 复制起点（不要在 _template 下交真板）
-├── <Arch>/                    # Arm64 | RiscV（命令行板）；页表/异常/IRQ 形状在此
-│   └── Board/
-│       └── <board>/           # 例：virt；或嵌套 Raspberry/Pi3BPlus（BOARD=含 /）
-│           ├── README.md      # 必填：加载约定、UART、验收
-│           ├── BoardConfig.h  # 建议：地址 / 能力勾选
-│           ├── Board.c        # 可选：填 BOOT_HANDOFF 辅助、兼容表
-│           └── NOTES.md       # 可选：真机踩坑
-├── Virtio/                    # QEMU virt 共享（非 Board 包；见 HAL/Virtio/README.md）
-└── X64/                       # x86 UEFI 课堂 / 真机桌面 → 1.3c，不进 B 系列
+├── Common/Board/              ← 本文 + _template（约定；真板不交这里）
+├── <Arch>/                    # X64 | Arm64 | RiscV
+│   └── Board/<board>/         # 真板包（virt / Raspberry/Pi3BPlus / …）
+├── Virtio/                    # QEMU virt 设备共享
+└── Common/                    # 跨 Arch 仅此额外顶栏（Video / HalVideo / Slots / Board 约定）
 ```
 
 - **Arch vs Board**：MMU / 异常 / IRQ 控制器形状留在 `HAL/<Arch>/`；内存图、串口基址、模块子集、DTB 兼容串在 Board。  
@@ -44,7 +37,7 @@ HAL/
 复制模板：
 
 ```bash
-cp -a HAL/Board/_template HAL/RiscV/Board/milk-v-duo-s   # Duo S 例（PR-B3）；再 ./build.sh riscv BOARD=milk-v-duo-s
+cp -a HAL/Common/Board/_template HAL/RiscV/Board/milk-v-duo-s   # Duo S 例（PR-B3）；再 ./build.sh riscv BOARD=milk-v-duo-s
 # 编辑该目录 README.md / BoardConfig.h，删掉 .example 后缀
 ```
 

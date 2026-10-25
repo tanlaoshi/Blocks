@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | [`Pi3BPlus/`](Pi3BPlus/) | `Raspberry/Pi3BPlus` | 今日工作目录（路线图1023 · rpi-desk） |
 
-约定总览：[`HAL/Board/README.md`](../../../Board/README.md)。  
+约定总览：[`HAL/Common/Board/README.md`](../../../Common/Board/README.md)。  
 QEMU 课堂靶仍是同级 [`../virt/`](../virt/)（`BOARD=virt`）。
 
 ```bash

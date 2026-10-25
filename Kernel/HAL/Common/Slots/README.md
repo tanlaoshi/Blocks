@@ -1,4 +1,4 @@
-# HAL/Slots
+# HAL/Common/Slots
 
 驱动用的 **Hal 回调槽**（注册表），**不是** `Modules.c` 开机表里的一行。
 

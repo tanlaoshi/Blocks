@@ -13,7 +13,7 @@
  *   · SESSION 在 FS/Gui/Net 前（HalDriverSched 早挂；Gui 长画可用 IoBreath）
  *
  * 落点：Initialize 胶水 → BringUp/Initialize/；机制 → Core/；会话 → Services/；
- *   Smp → HalSmp*；驱动回调槽 → HAL/Slots/（不进本表）。
+ *   Smp → HalSmp*；驱动回调槽 → HAL/Common/Slots/（不进本表）。
  */
 #include "KernelModules.h"
 #include "KernelModulesPrivate.h"

@@ -1,7 +1,7 @@
 /*
  * HalDriverSched.h — 驱动用的调度窄钩子（不 #include Scheduler.h）
  *
- * 实现：HAL/Slots/DriverSched.c。Scheduler 模块注册；未注册时为空操作。
+ * 实现：HAL/Common/Slots/DriverSched.c。Scheduler 模块注册；未注册时为空操作。
  */
 #ifndef HAL_DRIVER_SCHED_H
 #define HAL_DRIVER_SCHED_H

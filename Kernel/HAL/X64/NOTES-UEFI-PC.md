@@ -203,4 +203,4 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 
 - **改**：`ToyBoot/`（GOP/EDID）、`HAL/X64/Startup*`（交接）、本笔记。  
 - **不改**：Common FAT / Gui / VFS（真机差异留 HAL）。  
-- **不与** `HAL/Board/`（Arm/RiscV 命令行板包）混 PR。
+- **不与** `HAL/Common/Board/`（Arm/RiscV 命令行板包）混 PR。

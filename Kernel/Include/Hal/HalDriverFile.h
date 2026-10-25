@@ -1,7 +1,7 @@
 /*
  * HalDriverFile.h — 驱动读文件槽（不 #include FileSystem）
  *
- * 实现：HAL/Slots/DriverFile.c。FileSystem 就绪时 Register；未注册则读失败。
+ * 实现：HAL/Common/Slots/DriverFile.c。FileSystem 就绪时 Register；未注册则读失败。
  */
 #ifndef HAL_DRIVER_FILE_H
 #define HAL_DRIVER_FILE_H

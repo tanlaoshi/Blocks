@@ -52,15 +52,14 @@ static void KernelTrySpawnInput(void) {
     }
 }
 
-/* 单核直跑串口壳；多核进调度让 AP idle。 */
+/*
+ * ConsoleOnly：Shell=SerialRun，必须进调度（CurrentTask=Shell）。
+ * 旧 UP 直跑 SerialRun → CurrentTask 空 → CoopDrain 宿主缺失 → run user 假 done。
+ * UP/SMP 同形：Create + SchedulerStart（不返回）。
+ */
 static void KernelMainVirtEnterShell(void) {
-    if (HalCpuCount() > 1) {
-        KernelSpawnOrPark("Shell", gConsole.SerialRun);
-        SchedulerStart();
-        return;
-    }
-    HalTimerStart();
-    gConsole.SerialRun();
+    KernelSpawnOrPark("Shell", gConsole.SerialRun);
+    SchedulerStart();
 }
 
 static void KernelParkForever(void) {

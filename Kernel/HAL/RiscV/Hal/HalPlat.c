@@ -71,15 +71,69 @@ HAL_ELF_RELOC_KIND HalElfRelocKind(UINT32 Type) {
     }
 }
 
+/*
+ * C906（T-Head）：fence.i  alone 不保证 D 脏行落 DRAM / I 作废。
+ * 写用户映像后须 dcache.cva + icache.iall（RT-Thread/Linux THEAD CMO）。
+ * virt：无 thead 扩展，仅 fence.i。
+ */
+#define C906_CACHE_LINE 64ULL
+
 void HalDcacheCleanInvalidateRange(void *Va, UINTN Len) {
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     (void)Va;
     (void)Len;
+#else
+    UINT64 Start;
+    UINT64 End;
+    UINT64 A;
+
+    if (!Va || Len == 0) {
+        return;
+    }
+    Start = (UINT64)(UINTN)Va & ~(C906_CACHE_LINE - 1ULL);
+    End = ((UINT64)(UINTN)Va + (UINT64)Len + C906_CACHE_LINE - 1ULL) &
+          ~(C906_CACHE_LINE - 1ULL);
+    for (A = Start; A < End; A += C906_CACHE_LINE) {
+        __asm__ volatile(".insn i 0x0B, 0, x0, %0, 0x027" ::"r"(A) : "memory"); /* civa */
+    }
+    __asm__ volatile(".long 0x0190000b" ::: "memory"); /* sync.s */
+#endif
 }
 
 void HalSyncICache(void *Addr, UINTN Size) {
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     (void)Addr;
     (void)Size;
     __asm__ volatile("fence.i" ::: "memory");
+#else
+    UINT64 Start;
+    UINT64 End;
+    UINT64 A;
+
+    /* 无 Addr 时整 D 回写（CoopDrain 入口） */
+    if (!Addr || Size == 0) {
+        __asm__ volatile(
+            ".long 0x0010000b\n" /* dcache.call */
+            ".long 0x0190000b\n" /* sync.s */
+            ".long 0x0100000b\n" /* icache.iall */
+            ".long 0x0190000b\n"
+            "fence.i\n"
+            ::: "memory");
+        return;
+    }
+    Start = (UINT64)(UINTN)Addr & ~(C906_CACHE_LINE - 1ULL);
+    End = ((UINT64)(UINTN)Addr + (UINT64)Size + C906_CACHE_LINE - 1ULL) &
+          ~(C906_CACHE_LINE - 1ULL);
+    for (A = Start; A < End; A += C906_CACHE_LINE) {
+        __asm__ volatile(".insn i 0x0B, 0, x0, %0, 0x025" ::"r"(A) : "memory"); /* cva */
+    }
+    __asm__ volatile(
+        ".long 0x0190000b\n" /* sync.s */
+        ".long 0x0100000b\n" /* icache.iall */
+        ".long 0x0190000b\n"
+        "fence.i\n"
+        ::: "memory");
+#endif
 }
 
 void HalDebugWrite(const char *Text) {

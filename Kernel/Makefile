@@ -84,6 +84,7 @@ endif
 ifeq ($(ARCH),riscv)
 HAL_ARCH = RiscV
 ARCH_CFLAGS = -march=rv64imac_zicsr_zifencei -mabi=lp64 -mcmodel=medany
+USER_BLOB_FMT = elf64-littleriscv
 LDFLAGS_ARCH =
 ifneq ($(wildcard $(TOOLS_ROOT)/xpack-riscv-none-elf-gcc-*/bin/riscv-none-elf-gcc),)
 TOOLS_RISCV := $(lastword $(sort $(wildcard $(TOOLS_ROOT)/xpack-riscv-none-elf-gcc-*)))
@@ -103,6 +104,7 @@ endif
 ifeq ($(ARCH),arm64)
 HAL_ARCH = Arm64
 ARCH_CFLAGS = -mgeneral-regs-only
+USER_BLOB_FMT = elf64-littleaarch64
 LDFLAGS_ARCH =
 ifneq ($(wildcard $(TOOLS_ROOT)/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc),)
 TOOLS_ARM := $(lastword $(sort $(wildcard $(TOOLS_ROOT)/xpack-aarch64-none-elf-gcc-*)))
@@ -559,12 +561,16 @@ BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
 # PR-R5：Arm/RiscV virtio/ramfb/DTB（HAL/Virtio）；HalVideo+绘制在 HAL/Common
 INCLUDES_HAL += -IHAL/X64/Drivers -IHAL/X64/Drivers/Input -IHAL/X64/Drivers/Block -IHAL/X64/Drivers/Video/Igpu -IHAL
-VIRT_SRCS := $(wildcard HAL/Virtio/*.c)
+# HelloBlob.c 是空 stub；真嵌入走 User_hello_blob.o（与 x86 同形），否则 run user Size≈0/-1 静默失败
+VIRT_SRCS := $(filter-out HAL/Virtio/HelloBlob.c,$(wildcard HAL/Virtio/*.c))
 VIRT_SRCS += $(wildcard HAL/Virtio/Net/*.c)
 VIRT_OBJS := $(patsubst HAL/Virtio/%.c,$(HALDIR)/Virtio/%.o,$(VIRT_SRCS))
 FB_HAL_OBJS := $(HALDIR)/Common/HalVideo.o
 EXTRA_OBJS += $(VIRT_OBJS) $(SHARED_VIDEO_OBJS) $(FB_HAL_OBJS)
 EXTRA_OBJS += $(HALDIR)/Drivers/Network/IpInput.o
+ifneq ($(BRINGUP),1)
+EXTRA_OBJS += $(HALDIR)/User_hello_blob.o
+endif
 ifeq ($(ARCH),riscv)
 # RiscV virt MMIO 窗与 Arm 不同；Arm 用 Virtio.c 内默认值
 CFLAGS_HAL += -DVIRTIO_MMIO_BASE0=0x10001000ULL \
@@ -1215,6 +1221,11 @@ $(USER_VIRT_DIR)/pthread.o: User/crt/pthread.c | $(USER_VIRT_DIR)
 $(USER_HELLO_ELF): $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
 	# 与 Kernel.elf 同：arm64 __sync_* 可能仍需 libgcc（与 -mno-outline-atomics 双保险）
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(LIBGCC)
+
+$(HALDIR)/User_hello_blob.o: $(USER_HELLO_ELF) | $(HALDIR)
+	# 固定输入名 User_hello.elf → `_binary_User_hello_elf_*`（ProcessRunDemo）
+	cp -f $(USER_HELLO_ELF) $(HALDIR)/User_hello.elf
+	cd $(HALDIR) && $(OBJCOPY) -I binary -O $(USER_BLOB_FMT) User_hello.elf User_hello_blob.o
 endif
 endif
 

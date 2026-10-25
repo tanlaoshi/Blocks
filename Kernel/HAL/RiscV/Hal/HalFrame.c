@@ -44,8 +44,13 @@ void HalFrameSetUserEntry(HAL_INTERRUPT_FRAME *F, UINT64 Entry, UINT64 UserStack
 }
 
 void HalTlsSetBase(UINT64 UserTlsBase) {
-    /* tp = x4；同时靠帧恢复保持跨 trap */
-    __asm__ volatile("mv tp, %0" :: "r"(UserTlsBase) : "memory");
+    /*
+     * RiscV：tp 专作逻辑 CPU id（HalCpuGetId / TrapVec 勿从帧恢复 tp）。
+     * Arm64 用 tpidr_el0 放 TLS、tpidr_el1 放 CPU id；此处不能把 TLS 写入 tp，
+     * 否则 ActivateTask(user) 后 CurrentTask()→NULL → CoopDrain 空转（Duo run user）。
+     * 用户 TLS 只在帧 X[4]（HalFrameSetTls）；进 U 不装 tp（与 HalUserEnter 一致）。
+     */
+    (void)UserTlsBase;
 }
 
 void HalFrameSetTls(HAL_INTERRUPT_FRAME *F, UINT64 UserTlsBase) {

@@ -17,6 +17,8 @@ void HalTlbFlush(UINT64 VirtualAddress);
 void HalPageTableLoad(UINT64 Root);
 UINT64 HalPageTableGetCurrent(void);
 void HalPagingEnable(UINT64 RootPhys);
+/* 1=分页已开（可进 U-mode）；skip MMU 板为 0。x86 恒 1 */
+int HalPagingIsOn(void);
 /* PR-A10：故意触未映射 VA，验收缺页路径（x86 可为空） */
 void HalPagingSelfTest(void);
 

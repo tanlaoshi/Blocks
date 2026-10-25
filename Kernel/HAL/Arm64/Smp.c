@@ -99,6 +99,10 @@ UINT32 HalCpuGetId(void) {
     return (UINT32)V;
 }
 
+void HalCpuSetLogicalId(UINT32 Id) {
+    __asm__ volatile("msr tpidr_el1, %0" ::"r"((UINT64)Id) : "memory");
+}
+
 int HalCpuIsBootstrapProcessor(void) {
     return HalCpuGetId() == 0;
 }

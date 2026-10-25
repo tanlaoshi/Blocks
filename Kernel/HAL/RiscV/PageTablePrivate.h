@@ -19,6 +19,19 @@
 #define PTE_PPN_SHIFT 10
 #define SATP_MODE_SV39 (8ULL << 60)
 
+/*
+ * T-Head C906 MAEE：叶子 PTE[63:59] 内存属性（非标准 Svpbmt）。
+ * AMO 要求 Cacheable（bit62）；否则 Store/AMO access fault（cause=7）。
+ * 对齐 Linux _PAGE_PMA_THEAD / NuttX MMU_THEAD_*；virt 无 MAEE → 0。
+ */
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
+#define PTE_THEAD_RAM 0ULL
+#define PTE_THEAD_DEV 0ULL
+#else
+#define PTE_THEAD_RAM ((1ULL << 62) | (1ULL << 61) | (1ULL << 60)) /* C|B|SH */
+#define PTE_THEAD_DEV ((1ULL << 63) | (1ULL << 60))               /* SO|SH */
+#endif
+
 #define HAL_PAGE_COPY_ON_WRITE (1ULL << 9)
 
 extern UINT64 gKernelRoot;

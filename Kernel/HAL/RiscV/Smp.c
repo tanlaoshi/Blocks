@@ -107,6 +107,11 @@ UINT32 HalCpuGetId(void) {
     return (UINT32)V;
 }
 
+void HalCpuSetLogicalId(UINT32 Id) {
+    UINT64 V = (UINT64)Id;
+    __asm__ volatile("mv tp, %0" ::"r"(V) : "memory");
+}
+
 int HalCpuIsBootstrapProcessor(void) {
     return HalCpuGetId() == 0;
 }

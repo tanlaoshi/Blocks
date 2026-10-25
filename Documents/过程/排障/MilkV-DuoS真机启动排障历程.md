@@ -146,19 +146,33 @@ bootelf 0x81800000
 | V5 | 反汇编：Enable **先 `ldsp ra` 再 `jal zero` after-probe**（尾调用） | after-probe 的 `ret` 用的是可能已脏的 ra | 根因 |
 | V6 | 真机跳过自测；禁 Enable 尾调用 | 仍 `after probe` 后 `epc=0` | 否因缺页 |
 | V7 | **对齐 Pi：真机 `vmm: skip MMU (board)`**；无 MMU 时跳过 U-mode 自测 | 写 satp 后栈上 `ret` 必炸；先物理跑通壳 | **✅ `blocks>`** |
+| V8 | C906：`dcache.call`→`satp`→`dcache.iall`+`sync.s`+`sfence`（T-Head MMU cache errata） | 过 probe / Mod Cpu / syscall ready | ✅ 过 probe |
+| V9 | 反汇编 `epc=0x802092da` → `PhysicalMemoryAllocatePage` 内 **AMO**（SpinLock） | `cause=7` Store/AMO access fault（≠15 缺页） | C906 MAEE：叶子无 Cacheable 则 AMO 炸 |
+| V10 | 恒等叶 / `NativeFromHal` 加 T-Head PMA（C\|B\|SH）；MMIO 用 SO\|SH | 对齐 Linux `_PAGE_PMA_THEAD` / NuttX | ✅ 过 U-selftest → `blocks>` |
+| V11 | `run user` 无字：RiscV 链 HelloBlob stub（start/end 反序） | Makefile 嵌 `User_hello_blob.o`；滤 stub | ✅ blob 已嵌 |
+| V12 | 嵌 blob 后仍无字 | C906：`HalSyncICache` 须 dcache.cva+icache.iall；`HalPageTableLoad` 刷 D | 部分（cache） |
+| V13 | 仅 `run user: …` 无 size/Hello | Shell Own 吞 HalSerialWrite；**Create→Drain 被 timer 抢走用户** | ✅ size/done |
+| V14 | size+done 仍无 Hello | 查 drained 计数 / write copyfail；SysWrite 旁路 WriteShell | 诊断中 |
+| V15 | `drained=0` task lost | RiscV `HalTlsSetBase` 写坏 tp（CPU id）→ Activate 后 `CurrentTask` 空 | ✅ 勿写 tp |
+| V16 | 假 `run user: done`、无 Hello | UP ConsoleOnly **直跑 SerialRun**（未 `SchedulerStart`）→ `CurrentTask==NULL` → CoopDrain 空退 | ✅ Create Shell + Start；真机 **Hello Ring3!** |
 
-日志锚点（坏相）：
+日志锚点（V1–V7 坏相：`epc=0`）：
 
 ```text
-Boot: RiscV KernelMain
-board: milk-v-duo-s
-Boot: DTB Memory Missing, Fallback BoardConfig RAM
-…
 vmm: RiscV Sv39 on
-vmm: fault va=0000000180000000 cause=000000000000000d
 vmm: fault path ok (probe)
-vmm: fault probe va=0000000180000000
 vmm: trap cause=0000000000000001 epc=0000000000000000
+```
+
+日志锚点（V8 过后 / V9 坏相：`cause=7`）：
+
+```text
+vmm: RiscV Sv39 on
+vmm: fault path ok (probe)
+vmm: after probe
+Boot: Mod Cpu
+syscall: RiscV ecall (U-mode) ready
+vmm: trap cause=0000000000000007 epc=00000000802092da
 ```
 
 ---
@@ -171,7 +185,8 @@ vmm: trap cause=0000000000000001 epc=0000000000000000
 | 链接 @`0x80200000` | 板级 `link.ld`（与 `BOARD_KERNEL_LOAD`） |
 | UART0 `0x04140000` reg-shift=2 | `HAL/RiscV/Hal/HalSerial.c` + BoardConfig |
 | Handoff / DTB fallback | `BringUp/RiscV/KernelHandoff.c` |
-| Sv39 / 自测调用 | `HAL/RiscV/PageTable.c` |
+| Sv39 / satp / 恒等叶 | `HAL/RiscV/PageTable.c`（含 T-Head `HalSatpWrite` + MAEE PMA） |
+| PTE 规范化 / 动态叶 | `HAL/RiscV/PageTableWalk.c`（`NativeFromHal` ⊕ `PTE_THEAD_RAM`） |
 | 缺页自测 / U-mode 自测 | `HAL/RiscV/Trap.c` |
 | trap 入口 / sret | `HAL/RiscV/TrapVec.S` |
 | ConsoleOnly → 串口壳 | `HAL/RiscV/Hal/HalPlat.c`；`BringUp/Kernel.c` |
@@ -190,7 +205,8 @@ vmm: trap cause=0000000000000001 epc=0000000000000000
 | 串口缺段、时间戳烂 | 拔延长线；直插；`tee` 落盘；换 FT232/CP2102 |
 | `halt` 变重启 | **预期**；拔电 |
 | `Starting @ 0x80200000` 后无字 | UART 基址/波特；是否错板包 elf |
-| `fault path ok` 后 `epc=0` | 是否已刷含 TrapVec/after-probe 的 elf |
+| `fault path ok` 后 `epc=0` | 是否已刷含 TrapVec/after-probe / SatpWrite 的 elf |
+| `syscall ready` 后 `cause=7` | C906 MAEE：叶子缺 Cacheable；AMO/SpinLock |
 | 有 `blocks>` 但 `exec HELLO.ELF` 失败 | **预期**（无 SD Block）；试 `run user` |
 | 想「格式化成和 3B+ 一样」 | **不要**；见 §0.3 |
 
@@ -203,7 +219,7 @@ vmm: trap cause=0000000000000001 epc=0000000000000000
 | **PR-B0～B2** | 板包约定 / 能力旗 / `BOARD=` | Duo 包能进树的前提 | ✅ 归档 |
 | **PR-B3** | 首个真机命令行板：`milk-v-duo-s` 串口壳 | **本档主柱** | ✅ `blocks>` |
 | **skip MMU** | 避开 satp 后 `epc=0` | 对齐 Pi；真开 → [1025 duo-mmu](../../路线图1025.md#duo-mmu) | ✅ 壳用 |
-| **`run user` 真跑** | 内嵌 hello | 须 MMU → [1025 duo-hello](../../路线图1025.md#duo-hello) | ⬜ |
+| **`run user` 真跑** | 内嵌 hello | [1025 duo-hello](../../路线图1025.md#duo-hello) | ✅ Hello Ring3! |
 | **SD→FAT Block** | `exec HELLO.ELF` | [1025 duo-block](../../路线图1025.md#duo-block) | ⬜ |
 | **自动 bootcmd** | 少抢 1 秒 | [1025 duo-boot](../../路线图1025.md#duo-boot) | ⬜ |
 | **DTB 传入** | 少走 RAM fallback | [1025 duo-dtb](../../路线图1025.md#duo-dtb) | 可选 |
@@ -216,24 +232,21 @@ Pi 侧后续刀（rpi-4…12、键鼠等）**不要**抄进 Duo 档；Duo 无 FB
 
 ## 7. 验收（2026-10-26）
 
-**过关**：`bootelf` → `vmm: skip MMU (board)` → 模块表 → `Blocks 就绪` → **`blocks>`**。
+**过关（壳+MMU+hello，2026-10-26）**：`bootelf` → `Sv39 on` → U-selftest → **`blocks>`** → **`run user` → Hello Ring3!**；`ls` RES。
 
 ```text
 fatload mmc 0:1 0x81800000 Kernel.elf
 bootelf 0x81800000
 → board: milk-v-duo-s
-→ vmm: skip MMU (board)
-→ Fs: Vol RES … default=RES
-→ serial shell …
-→ blocks>
+→ vmm: RiscV Sv39 on … after probe
+→ user: U-mode syscall ok (exit)
+→ Blocks 就绪 → blocks>
+→ run user → Hello Ring3!
 ```
-
-可选烟：`help` / `run user`（内嵌 hello；SD `HELLO.ELF` 仍无 Block 驱动）。
 
 已知限制：
 
-- **skip MMU**（Sv39 真开另刀）  
-- 无 FB / 无 SD Block → `WARN No BLOCKS.ID`、默认 RES  
+- 无 FB / 无 SD Block → `WARN No BLOCKS.ID`、默认 RES；`exec HELLO.ELF` 待 duo-block  
 - `halt` 非真关机；`bootdelay=1` 仍靠手速
 
 ---
@@ -249,3 +262,11 @@ bootelf 0x81800000
 | 2026-10-26 | 初稿本文；TrapVec S-SP + after-probe；手测仍 epc=0 |
 | 2026-10-26 | V6：跳过 probe 仍 epc=0 → 非缺页本身 |
 | 2026-10-26 | V7：skip MMU → **真机 `blocks>`**（B3 串口壳过关） |
+| 2026-10-26 | V8：SatpWrite T-Head 刷 cache → 过 probe / Cpu / syscall |
+| 2026-10-26 | V9：`cause=7` @ AllocatePage AMO；V10：叶子加 MAEE PMA |
+| 2026-10-26 | V10 手测：Sv39 + U-selftest → `blocks>`；`run user` 无字 |
+| 2026-10-26 | V11：非 x86 嵌 hello blob（此前 stub → Size 错） |
+| 2026-10-26 | V12：C906 HalSyncICache / PageTableLoad 真刷 cache；run user 面包屑 |
+| 2026-10-26 | V13：OnTimer 对 HalConsoleOnly 禁抢用户；面包屑改 WriteShell |
+| 2026-10-26 | V15：HalTlsSetBase 勿改 tp；V16：UP 须 SchedulerStart |
+| 2026-10-26 | **duo-hello 过关**：真机 `run user` → Hello Ring3!；★ → duo-block |

@@ -215,12 +215,13 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
         return 0;
     }
     /*
-     * PR-V-input-fix：virt 用户只走 SchedulerCoopDrainUsers / HalUserCoopEnter。
+     * PR-V-input-fix：virt / ConsoleOnly 用户只走 CoopDrain / HalUserCoopEnter。
      * IRQ 路径 OnTimer 若切到未跑过的用户帧（或从用户切走再以 Create 帧恢复），
      * Arm64/RiscV 会落到非法 ELR（如 0x100）/ user fault；内核任务仍可抢占。
+     * ConsoleOnly 同 virt：Create→Drain 窗口禁 timer 抢用户。
      * PR-sdk-exec：x64 CoopDrain 期间同样禁止定时器抢用户，否则 HalUserCoopReturn 失宿主。
      */
-    if (HalPlatformIsVirtSerialConsole() || gCoopDrain) {
+    if (HalPlatformIsVirtSerialConsole() || HalConsoleOnly() || gCoopDrain) {
         if (Cur->IsUser || Next->IsUser) {
             return 0;
         }
@@ -232,22 +233,39 @@ UINT64 SchedulerOnTimer(HAL_INTERRUPT_FRAME *Frame) {
 
 int gCoopDrain;
 
-void SchedulerCoopDrainUsers(void) {
+int SchedulerCoopDrainUsers(void) {
     TASK *Host;
     UINT32 Cpu;
     int i;
+    int Drained = 0;
 
     /*
      * virt / x64 均走 HalUserCoopEnter 同步排空（x64 曾空桩 → exec 异步假死）。
      * 桌面图标 / shell exec 依赖：exit 在 gCoopDrain 内跳过 ShowPrompt，由调用方补。
      */
     Host = CurrentTask();
+    if ((!Host || Host->IsUser) && HalCpuGetId() >= HAL_MAX_CPUS) {
+        /* 逻辑 CPU id 寄存器被污染 → CurrentTask 空；经 HAL 钳回再取宿主 */
+        HalCpuSetLogicalId(0);
+        Host = CurrentTask();
+    }
     if (!Host || Host->IsUser) {
-        return;
+        Cpu = HalCpuGetId();
+        if (Cpu >= HAL_MAX_CPUS) {
+            Cpu = 0;
+        }
+        Host = IdleTaskForCpu(Cpu);
+    }
+    if (!Host || Host->IsUser) {
+        return 0;
     }
 
     gCoopDrain = 1;
     Cpu = HalCpuGetId();
+    if (Cpu >= HAL_MAX_CPUS) {
+        HalCpuSetLogicalId(0);
+        Cpu = 0;
+    }
 
     for (;;) {
         TASK *U = 0;
@@ -273,6 +291,7 @@ void SchedulerCoopDrainUsers(void) {
         HalKernelSetStack(Ksp);
         HalSyncICache(0, 0);
         HalUserCoopEnter(Ksp, U->Frame);
+        Drained++;
 
         /* exit → HalUserCoopReturn；恢复宿主内核任务 */
         SpinLockAcquire(&gSchedulerLock);
@@ -281,7 +300,9 @@ void SchedulerCoopDrainUsers(void) {
         Host->OnCpu = (INT32)Cpu;
         SpinLockRelease(&gSchedulerLock);
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
+        HalCpuSetLogicalId(Cpu);
     }
 
     gCoopDrain = 0;
+    return Drained;
 }

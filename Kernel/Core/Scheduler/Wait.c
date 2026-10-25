@@ -73,6 +73,14 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame) {
     Exiting = CurrentTask();
     if (Exiting == 0 || !Exiting->IsUser) {
         SpinLockRelease(&gSchedulerLock);
+        /*
+         * CoopDrain 同步路径：宿主必须能收回；死等会让 shell 永远停在
+         * 「run user: …」且无字（CurrentTask 未钉上用户时）。
+         */
+        if (gCoopDrain) {
+            HalUserCoopReturn();
+            return 0;
+        }
         for (;;) {
             HalCpuPark();
         }

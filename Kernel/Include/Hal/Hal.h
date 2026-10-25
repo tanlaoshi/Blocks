@@ -155,6 +155,11 @@ int HalCpuIsHypervisor(void);
 
 int HalCpuCount(void);
 UINT32 HalCpuGetId(void);          /* 逻辑 CPU：0=BSP，1..N-1=AP */
+/*
+ * 写回逻辑 CPU id（CoopDrain 宿主恢复 / TLS 污染后钳正）。
+ * RiscV=tp；Arm64=tpidr_el1；x86 由 LAPIC 推导，空操作。
+ */
+void HalCpuSetLogicalId(UINT32 Id);
 UINT8 HalCpuApicId(UINT32 LogicalCpu); /* x86：LAPIC ID；其它 arch：0 */
 int HalCpuIsBootstrapProcessor(void);
 UINT64 HalCpuTicks(UINT32 Cpu); /* 每核 LAPIC/定时器原始拍 */

@@ -116,13 +116,17 @@ const char *HalSerialLogText(void) {
 }
 
 void HalSerialWriteChannel(int Channel, const char *Text) {
-    if (gShellOwnUart) {
+    if (!Text) {
         return;
     }
-    if (!ChannelUartOn(Channel)) {
-        return;
+    /*
+     * 对齐 Arm64：ShellOwn 只表示交互壳接管，不挡 Log / fault 上 UART。
+     * 旧逻辑 Own 后直接 return → Duo run user 进 U 后缺页/wfi 串口全黑
+     * （boot 自测在 Own 前，故看不见此坑）。
+     */
+    if (ChannelUartOn(Channel)) {
+        UartWriteRaw(Text);
     }
-    UartWriteRaw(Text);
 }
 
 void HalSerialShellOwn(void) {

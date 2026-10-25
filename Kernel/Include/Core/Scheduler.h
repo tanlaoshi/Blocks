@@ -168,8 +168,8 @@ void SchedulerReapOrphanZombies(void);
 /* 有未退出的用户任务时，串口/键盘 stdin 归用户 read(0)，勿进 shell 行缓冲 */
 int SchedulerLiveUserApps(void);
 
-/* PR-A12：virt 无定时抢占时，协作跑完就绪用户任务（exec HELLO） */
-void SchedulerCoopDrainUsers(void);
+/* PR-A12：virt 无定时抢占时，协作跑完就绪用户任务（exec HELLO）；返回排空数 */
+int SchedulerCoopDrainUsers(void);
 
 /* PR-K-preempt-cs：嵌套禁切；OnTimer 见 count≠0 则不换任务 */
 void SchedulerPreemptDisable(void);

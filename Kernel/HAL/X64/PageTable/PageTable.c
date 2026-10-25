@@ -41,6 +41,10 @@ void HalPagingEnable(UINT64 RootPhys) {
     __asm__ volatile ("mov %0, %%cr0" :: "r"(Cr0));
 }
 
+int HalPagingIsOn(void) {
+    return 1; /* UEFI 进核时已开分页 */
+}
+
 void HalPagingSelfTest(void) {
     /* x86 缺页路径已在 Arch.c #PF → VirtualMemoryHandlePageFault */
 }

@@ -7,6 +7,7 @@
  */
 #include "Hal.h"
 #include "PhysicalMemory.h"
+#include "BoardConfig.h"
 
 #include "PageTablePrivate.h"
 
@@ -34,6 +35,8 @@ UINT64 NativeFromHal(UINT64 Phys, UINT64 HalFlags) {
     UINT64 N = PTE_V | PTE_A | PTE_D | ((Phys >> 12) << PTE_PPN_SHIFT);
     /* 内核可执行代码也在恒等映射内：叶子给 R|W|X */
     N |= PTE_R | PTE_X;
+    /* 动态映射页来自 PMM（DRAM）：C906 须 Cacheable，否则 AMO cause=7 */
+    N |= PTE_THEAD_RAM;
     if (HalFlags & HAL_PAGE_WRITABLE) {
         N |= PTE_W;
     }

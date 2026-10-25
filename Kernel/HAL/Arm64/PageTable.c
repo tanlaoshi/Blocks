@@ -138,6 +138,10 @@ void HalPagingEnableAp(void) {
     gMmuOn = 1;
 }
 
+int HalPagingIsOn(void) {
+    return gMmuOn ? 1 : 0;
+}
+
 /*
  * 恒等映射 0..4GiB。
  * - virt：低 1GiB Device（UART/GIC/virtio），其余 Normal（RAM @1GiB+）。

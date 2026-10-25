@@ -238,22 +238,29 @@ int ProcessExec(const char *Path) {
     ProcessApplyAppFont(Path);
     {
         char Name[16];
+        int NeedDrain;
+        extern int gCoopDrain;
 
         CopyPathName(Name, (int)sizeof(Name), Path);
         StyleTaskName(Name);
+        /*
+         * 无窗短命 ELF：同步 CoopDrain。
+         * 开窗 App（PKG window=yes）：异步；drain 会卡死 GUI 事件循环。
+         * HalPlatformIsVirtSerialConsole：仅平台为真才对开窗 App 也 drain；
+         * x64 桌面该函数恒 0 → 开窗恒异步。
+         */
+        NeedDrain = !ProcessAppTakesWindow(Path) || HalPlatformIsVirtSerialConsole();
+        if (NeedDrain) {
+            gCoopDrain = 1;
+        }
         if (ProcessStartElf(Space, &Info, Name, ProcessAppTakesWindow(Path)) != 0) {
+            gCoopDrain = 0;
             ProcessRestoreAppFont();
             return -1;
         }
-    }
-    /*
-     * 无窗短命 ELF：同步 CoopDrain。
-     * 开窗 App（PKG window=yes）：异步；drain 会卡死 GUI 事件循环。
-     * HalPlatformIsVirtSerialConsole：仅平台为真才对开窗 App 也 drain；
-     * x64 桌面该函数恒 0 → 开窗恒异步。
-     */
-    if (!ProcessAppTakesWindow(Path) || HalPlatformIsVirtSerialConsole()) {
-        SchedulerCoopDrainUsers();
+        if (NeedDrain) {
+            (void)SchedulerCoopDrainUsers();
+        }
     }
     return 0;
 }
@@ -359,6 +366,7 @@ int ProcessRunDemo(void) {
     char Dummy[1][EXEC_ARG_LEN];
     VIRTUAL_ADDRESS_SPACE *Space;
     ELF_LOAD_RESULT Info;
+    extern int gCoopDrain;
 
     if (Size == 0) {
         LogMisc("user: no embedded hello.elf\n");
@@ -384,9 +392,18 @@ int ProcessRunDemo(void) {
     Info.StackTop = NewRsp;
 
     HalInstallUserMode();
+    /*
+     * Create→Drain 前拉高 gCoopDrain：与 OnTimer（virt / ConsoleOnly / gCoopDrain）
+     * 同契约，禁 timer 在窗口内抢走未 Started 用户（三架构 exec / run user 同形）。
+     */
+    gCoopDrain = 1;
     if (ProcessStartElf(Space, &Info, "hello", 0) != 0) {
+        gCoopDrain = 0;
         return -1;
     }
-    SchedulerCoopDrainUsers();
+    if (SchedulerCoopDrainUsers() == 0) {
+        gCoopDrain = 0;
+        return -1;
+    }
     return 0;
 }

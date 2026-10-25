@@ -67,17 +67,20 @@ static const char *ClassExecPath(const char *Name, char *Alt, int AltMax) {
 }
 
 static void CommandRunuser(int Argc, char **Argv) {
-    extern int gMmuOn;
-
     (void)Argc;
     (void)Argv;
-    /* 真机 skip MMU（Duo/Pi）无 U 页表；嵌入 hello 须进 U-mode */
-    if (!gMmuOn) {
-        gConsole.Write("run user: needs MMU (board skipped Sv39/EL1 paging)\n");
+    /* skip MMU 板无 U 页表；嵌入 hello 须进 U-mode */
+    if (!HalPagingIsOn()) {
+        gConsole.Write("run user: needs MMU (board skipped paging)\n");
         return;
     }
     /* ProcessRunDemo 内 CoopDrain；提示符交给 ConsolePromptAfterCommand */
-    (void)ProcessRunDemo();
+    gConsole.Write("run user: …\n");
+    if (ProcessRunDemo() != 0) {
+        gConsole.Write("run user: failed (no hello blob / load / start)\n");
+    } else {
+        gConsole.Write("run user: done\n");
+    }
 }
 
 static void CommandExec(int Argc, char **Argv) {

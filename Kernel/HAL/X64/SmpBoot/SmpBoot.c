@@ -106,6 +106,10 @@ UINT32 HalCpuGetId(void) {
     return 0;
 }
 
+void HalCpuSetLogicalId(UINT32 Id) {
+    (void)Id; /* x86 逻辑 id 由 LAPIC 映射，不可写 */
+}
+
 int HalCpuIsBootstrapProcessor(void) {
     return LapicGetId() == gBspApicId;
 }

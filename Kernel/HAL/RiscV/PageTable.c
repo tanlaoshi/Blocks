@@ -24,14 +24,37 @@ void HalTlbFlush(UINT64 VirtualAddress) {
 }
 
 void HalPageTableLoad(UINT64 Root) {
+    UINT64 Satp;
+
     gCurrentRoot = Root;
     if (!gMmuOn) {
         return;
     }
+    /*
+     * 用户根切换：新 PTE 可能仍脏在 D-cache；C906 walker 读 DRAM。
+     * 与 HalSatpWrite 同序（virt 仅 satp+sfence）。
+     */
+    Satp = SATP_MODE_SV39 | (Root >> 12);
+#if !defined(BOARD_IS_VIRT) || !BOARD_IS_VIRT
+    __asm__ volatile(
+        ".long 0x0010000b\n" /* dcache.call */
+        ".long 0x0190000b\n" /* sync.s */
+        "csrw satp, %0\n"
+        ".long 0x0020000b\n" /* dcache.iall */
+        ".long 0x0190000b\n"
+        "sfence.vma\n"
+        "fence.i\n"
+        :
+        : "r"(Satp)
+        : "memory");
+#else
     __asm__ volatile(
         "csrw satp, %0\n"
         "sfence.vma\n"
-        :: "r"(SATP_MODE_SV39 | (Root >> 12)) : "memory");
+        :
+        : "r"(Satp)
+        : "memory");
+#endif
 }
 
 UINT64 HalPageTableGetCurrent(void) {
@@ -45,30 +68,47 @@ UINT64 HalPageTableGetCurrent(void) {
 
 void HalTrapVectorInstall(void);
 
+/*
+ * 写 satp。真机 C906（T-Head）：页表/栈先 DCACHE.CALL 落 DRAM，再 satp，
+ * 后 DCACHE.IALL+SYNC.S+sfence（NuttX/Linux C906 MMU cache errata）。
+ * 旧路径仅 satp+sfence → 栈上 ret 见 cause=1 epc=0（Duo 排障 §3.5）。
+ * virt：无 thead 扩展，勿发 .long 自定义指令。
+ */
+static void HalSatpWrite(UINT64 RootPhys) {
+    UINT64 Satp = SATP_MODE_SV39 | (RootPhys >> 12);
+
+#if !defined(BOARD_IS_VIRT) || !BOARD_IS_VIRT
+    __asm__ volatile(
+        ".long 0x0010000b\n" /* dcache.call：脏行写回（含页表与 boot 栈） */
+        ".long 0x0190000b\n" /* sync.s */
+        "csrw satp, %0\n"
+        ".long 0x0020000b\n" /* dcache.iall：作废含 MMU/PTE 缓存 */
+        ".long 0x0190000b\n" /* sync.s */
+        "sfence.vma\n"
+        "fence.i\n"
+        :
+        : "r"(Satp)
+        : "memory");
+#else
+    __asm__ volatile(
+        "csrw satp, %0\n"
+        "sfence.vma\n"
+        :
+        : "r"(Satp)
+        : "memory");
+#endif
+}
+
 void HalPagingEnable(UINT64 RootPhys) {
     HalTrapVectorInstall();
     gCurrentRoot = RootPhys;
     gKernelRoot = RootPhys;
 
-#if !defined(BOARD_IS_VIRT) || !BOARD_IS_VIRT
-    /*
-     * Duo S 真机（2026-10-26）：一写 satp，随后任意 `ret` → cause=1 epc=0
-     *（跳过缺页自测仍复现）。对齐 Arm64 Pi3BPlus：先物理恒等跑通串口壳；
-     * Sv39 真开留后刀（排障档 §3.5 V7）。
-     */
-    gMmuOn = 0;
-    HalSerialWrite("vmm: skip MMU (board)\n");
-    return;
-#else
-    __asm__ volatile(
-        "csrw satp, %0\n"
-        "sfence.vma\n"
-        :: "r"(SATP_MODE_SV39 | (RootPhys >> 12)) : "memory");
+    HalSatpWrite(RootPhys);
     gMmuOn = 1;
     HalSerialWrite("vmm: RiscV Sv39 on\n");
     HalPagingSelfTest();
     HalSerialWrite("vmm: after probe\n");
-#endif
 }
 
 /* PR-A14：AP 装载与 BSP 相同的 Sv39 根 */
@@ -80,11 +120,12 @@ void HalPagingEnableAp(void) {
     }
     HalTrapVectorInstall();
     gCurrentRoot = RootPhys;
-    __asm__ volatile(
-        "csrw satp, %0\n"
-        "sfence.vma\n" ::"r"(SATP_MODE_SV39 | (RootPhys >> 12))
-        : "memory");
+    HalSatpWrite(RootPhys);
     gMmuOn = 1;
+}
+
+int HalPagingIsOn(void) {
+    return gMmuOn ? 1 : 0;
 }
 
 /*
@@ -111,8 +152,15 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
         L2[g] = PTE_V | ((PagePhys(L1) >> 12) << PTE_PPN_SHIFT);
         for (b = 0; b < 512; b++) {
             UINT64 Pa = ((UINT64)g << 30) + ((UINT64)b << 21);
-            /* 2MiB leaf @ L1：V|R|W|X|A|D + PPN of 2MiB page */
-            L1[b] = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D |
+            UINT64 Attr;
+            /* 2MiB leaf @ L1：V|R|W|X|A|D + PPN；C906 再加 MAEE 属性 */
+            if (Pa >= BOARD_RAM_BASE &&
+                Pa < BOARD_RAM_BASE + BOARD_RAM_SIZE) {
+                Attr = PTE_THEAD_RAM; /* AMO / 普通 DRAM */
+            } else {
+                Attr = PTE_THEAD_DEV; /* UART 等 MMIO：强序 */
+            }
+            L1[b] = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D | Attr |
                     ((Pa >> 12) << PTE_PPN_SHIFT);
         }
     }

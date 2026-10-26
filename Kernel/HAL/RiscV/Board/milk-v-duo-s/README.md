@@ -88,6 +88,7 @@ go ${kernel_addr_r}
 | `README.md` | 本文件 |
 | `BoardConfig.h` | UART / 加载地址 / 能力勾选 |
 | `Board.h` / `Board.c` | `BoardName()` |
+| `Sd.h` / `Sd.c` | µSD SDHCI 只读 → 块设备 |
 | `NOTES.md` | 真机踩坑与验证边界 |
 
 ---

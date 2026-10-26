@@ -18,6 +18,16 @@
 - 常见：`kernel_addr_r=0x80200000`，`fdt_addr_r=0x81200000`
 - 加载优先：`bootelf -p`（ELF）或 `go`（`.bin`）；`booti` 需 Linux Image 头（本柱不做）
 
+## µSD（duo-block）
+
+- 控制器：`sdhci0` / `sophgo,cv1800b-dwcmshc` @ **`0x04310000`**（上游 `cv18xx.dtsi`）。只读 PIO。  
+- 复位后厂商区：Linux `cv18xx_sdhci_reset`（latency 1T、PHY TX bypass、TX/RX 时钟反相）。SD 槽**不**置 `EMMC_FUNC_EN`。  
+- 基钟不用 CAPABILITIES（该字段坏）：按 U-Boot `cv1800b_sdhci.c` 的 **375 MHz** 做分频。识别 400 kHz，传输 25 MHz，不进 1.8V / 不调相。  
+- `rdtime` 按 `cv18xx.dtsi` **25 MHz**。  
+- **写扇区一律失败**。不擦除、不格式化。FAT 上有 `fip.bin` / `boot.sd` 时卷名叫 ESP、只读。  
+- `exec HELLO.ELF`：把文件放在启动 FAT（和 `Kernel.elf` 同分区）。默认卷就是这张 FAT。  
+- 卡检测位为 0 则放弃（`Boot: SD no card`）。U-Boot 刚 `fatload` 过却报无卡，把 `pst=` 记下来再改。
+
 ## DRAM / DTB
 
 - 有 DTB：信任 `a1`，Startup `DtbMemoryRegion`

@@ -224,7 +224,11 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
             gVirtualFileSystem.ReadFile("config.txt", Tmp, sizeof(Tmp),
                                         &ProbeSz) == FAT_OK ||
             gVirtualFileSystem.ReadFile("u-boot.bin", Tmp, sizeof(Tmp),
-                                        &ProbeSz) == FAT_OK) {
+                                        &ProbeSz) == FAT_OK ||
+            gVirtualFileSystem.ReadFile("fip.bin", Tmp, sizeof(Tmp), &ProbeSz) ==
+                FAT_OK ||
+            gVirtualFileSystem.ReadFile("boot.sd", Tmp, sizeof(Tmp), &ProbeSz) ==
+                FAT_OK) {
             NameEspSlot(V, gVolCount, Idx);
             LogFs("Fs: Named ESP by boot firmware files\n");
         }

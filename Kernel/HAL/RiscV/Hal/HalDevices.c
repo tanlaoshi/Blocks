@@ -6,18 +6,20 @@
  */
 #include "Hal.h"
 #include "BoardConfig.h"
+#include "Block.h"
 #include "Driver.h"
-#if BOARD_HAS_BLOCK
+#if BOARD_IS_VIRT && BOARD_HAS_BLOCK
 #include "Virtio/BlockDevice.h"
 #endif
-#if BOARD_HAS_FRAMEBUFFER
+#if BOARD_IS_VIRT && BOARD_HAS_FRAMEBUFFER
 #include "Virtio/Input.h"
 #endif
-#if BOARD_HAS_NET
+#if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
 
 void HalDriverRegister(void) {
+#if BOARD_IS_VIRT
 #if BOARD_HAS_BLOCK
     VirtioBlockRegister();
 #endif
@@ -27,13 +29,28 @@ void HalDriverRegister(void) {
 #if BOARD_HAS_NET
     VirtioNetRegister();
 #endif
+#else
+    {
+        void BoardSdRegister(void);
+        BoardSdRegister();
+    }
+#endif
 }
 
 int HalBlockInitialize(void) {
+#if BOARD_IS_VIRT
 #if BOARD_HAS_BLOCK
     return VirtioBlockInit();
 #else
     return 0;
+#endif
+#else
+    /* Duo S：cv1800-sdhci → DriverBlockAttach → BlockInitialize */
+    (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
+    if (!BlockBackendReady()) {
+        return 0;
+    }
+    return BlockInitialize();
 #endif
 }
 

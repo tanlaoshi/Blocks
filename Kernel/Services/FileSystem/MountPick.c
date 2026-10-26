@@ -48,7 +48,9 @@ static int VolLooksLikeBootFirmware(UINT8 *Tmp, UINTN TmpSz) {
 
     if (gVirtualFileSystem.ReadFile("boot.scr", Tmp, TmpSz, &Sz) == FAT_OK ||
         gVirtualFileSystem.ReadFile("config.txt", Tmp, TmpSz, &Sz) == FAT_OK ||
-        gVirtualFileSystem.ReadFile("u-boot.bin", Tmp, TmpSz, &Sz) == FAT_OK) {
+        gVirtualFileSystem.ReadFile("u-boot.bin", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("fip.bin", Tmp, TmpSz, &Sz) == FAT_OK ||
+        gVirtualFileSystem.ReadFile("boot.sd", Tmp, TmpSz, &Sz) == FAT_OK) {
         return 1;
     }
     return 0;

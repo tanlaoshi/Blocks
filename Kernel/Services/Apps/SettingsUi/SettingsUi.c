@@ -153,7 +153,7 @@ void SettingsUiOpen(void) {
     gSetHoverIdx = -1;
     gSetPressKind = -1;
     gSetPressIdx = -1;
-    LocaleTtfPreheatUi(); /* 开窗前补栅，避免首帧点阵 */
+    LocaleTtfPreheatUi(); /* 开窗前补栅，避免首帧 defer 空白 */
     /* 全量预热后侧栏短名再钉一次，防探测窗顶槽丢「桌」等字 */
     {
         int Ci;

@@ -144,7 +144,7 @@ void LocaleTtfPreheatUi(void) {
     }
 }
 
-/* gui-ttf-preheat-defer：首屏 Start/图标/设置侧栏同步栅，避免进桌面全点阵 */
+/* gui-ttf-preheat-defer：首屏 Start/图标/设置侧栏同步栅，避免进桌面 defer 空白 */
 static void LocaleTtfPreheatCritical(void) {
     static const MSG_ID Crit[] = {
         MSG_START,
@@ -202,7 +202,7 @@ int LocaleTtfPreheatStep(void) {
     gTtfPreheatIdx++;
     if (gTtfPreheatIdx >= (UINT32)MSG_COUNT) {
         gTtfPreheatWant = 0;
-        /* 整批静默预热完：一次合成，换掉仍留在屏上的点阵 */
+        /* 整批静默预热完：一次合成，补上仍 defer 的中文 */
         FontTtfBumpPaint();
         return 0;
     }

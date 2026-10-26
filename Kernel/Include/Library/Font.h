@@ -108,14 +108,14 @@ const UINT8 *FontGlyph(char C);
 
 /*
  * UTF-8：解析一个码点，返回消费字节数；非法序列返回 0。
- * 汉字等宽字形见 FontCjk32Lookup / FontGlyphCp。
+ * 汉字 GUI 只走 FontGlyphCp→TTF；FontCjk32Lookup 仅遗留/工具，勿顶 UI 中文。
  */
 UINTN Utf8Decode(const char *S, UINT32 *OutCp);
-/* ASCII→Terminus；汉字先 TTF 缓存，再 TOYF 文件字，再点阵 */
+/* ASCII→Terminus；汉字只 TTF 缓存（未 HIT 则 Deferred；禁点阵顶中文） */
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-/* 上一次 FontGlyphCp 返回空，是因为 x86 还在等 TTF，这一帧先不画框。 */
+/* 上一次 FontGlyphCp 返回空：等 TTF Want 泵，本帧不画框/点阵。 */
 int FontGlyphCpDeferred(void);
-/* 最近一次 FontGlyphCp 的位深（ASCII=1，TTF=8，cjk32=4） */
+/* 最近一次 FontGlyphCp 的位深（ASCII=1，TTF=8） */
 UINT32 FontGlyphCpBpp(void);
 const UINT8 *FontCjk32Lookup(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 const UINT8 *FontCjk16Lookup(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);

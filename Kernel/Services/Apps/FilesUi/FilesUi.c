@@ -260,7 +260,7 @@ void FilesUiOpen(void) {
     /*
      * 勿在此 LocaleTtfPreheatUi / 逐文件 Preheat / WantDrain：
      * 开窗在 Gui 路径，stb 栅格几十上百字会占死鼠标泵（像 PPT 卡顿）。
-     * 首帧可先点阵；Worker 的 WantDrain + TakePaint 再换成 TTF。
+     * 首帧可 defer；Worker WantDrain + TakePaint 再出 TTF（禁点阵顶中文）。
      */
     Paint();
 }

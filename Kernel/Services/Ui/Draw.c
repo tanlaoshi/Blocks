@@ -9,8 +9,6 @@
 /* 绘制圆角按钮（背景 + 居中文字；PR-G12 改走 DrawStringAt） */
 void UiDrawButtonEx(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char *Text,
                     UINT32 TextColor, UINT32 BgColor, int Hovered, int Pressed) {
-    UINT32 TextLen = 0;
-    UINT32 CellW;
     UINT32 CellH;
     UINT32 TextW;
     UINT32 TextX;
@@ -44,18 +42,12 @@ void UiDrawButtonEx(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char 
         GraphicsDrawRoundRectangle(X + 1, Y + 1, Width - 2, Height - 2, 5, BorderInner);
     }
 
-    while (Text[TextLen]) {
-        TextLen++;
-    }
-    CellW = FontCellW();
     CellH = FontCellH();
-    if (CellW == 0) {
-        CellW = 8;
-    }
     if (CellH == 0) {
         CellH = 16;
     }
-    TextW = TextLen * CellW;
+    /* cjk-2：按字形宽居中（勿 strlen×CellW，中英混排会偏） */
+    TextW = FontStringWidth(Text);
     TextX = X + 8 + Ox;
     if (TextW + 16 < Width) {
         TextX = X + (Width - TextW) / 2 + Ox;
@@ -71,8 +63,6 @@ void UiDrawButton(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char *T
 
 /* PR-GUI-btn-widget：禁用态。muted face + 灰边 + 灰文字，无偏移、无 blend。 */
 void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const char *Text) {
-    UINT32 TextLen = 0;
-    UINT32 CellW;
     UINT32 CellH;
     UINT32 TextW;
     UINT32 TextX;
@@ -86,18 +76,11 @@ void UiDrawButtonDisabled(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const
     }
     GraphicsFillRoundRectangle(X, Y, Width, Height, 5, Face);
     GraphicsDrawRoundRectangle(X, Y, Width, Height, 5, BorderOuter);
-    while (Text[TextLen]) {
-        TextLen++;
-    }
-    CellW = FontCellW();
     CellH = FontCellH();
-    if (CellW == 0) {
-        CellW = 8;
-    }
     if (CellH == 0) {
         CellH = 16;
     }
-    TextW = TextLen * CellW;
+    TextW = FontStringWidth(Text);
     TextX = X + 8;
     if (TextW + 16 < Width) {
         TextX = X + (Width - TextW) / 2;

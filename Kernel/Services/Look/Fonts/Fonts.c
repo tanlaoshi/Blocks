@@ -540,34 +540,6 @@ UINTN Utf8Decode(const char *S, UINT32 *OutCp) {
     return Need;
 }
 
-/* 已加载的 TOYF 运行时槽。没有该码点则返回 0，调用方回落点阵。 */
-static const UINT8 *FileGlyph(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
-    UINT32 i;
-
-    for (i = 0; i < FONT_RUNTIME_MAX; i++) {
-        const FONT_FACE *Face;
-        UINT32 Index;
-
-        if (!gRuntime[i].Used || gRuntime[i].Face.Glyphs == 0) {
-            continue;
-        }
-        Face = &gRuntime[i].Face;
-        if (Face->BytesPerGlyph == 0 || Cp < Face->FirstChar ||
-            Cp >= Face->FirstChar + Face->GlyphCount) {
-            continue;
-        }
-        Index = Cp - Face->FirstChar;
-        if (OutW) {
-            *OutW = Face->Width;
-        }
-        if (OutH) {
-            *OutH = Face->Height;
-        }
-        return Face->Glyphs + Index * Face->BytesPerGlyph;
-    }
-    return 0;
-}
-
 static int gGlyphDefer;
 
 int FontGlyphCpDeferred(void) {
@@ -606,30 +578,21 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         }
     }
     /*
-     * 汉字：TTF/FT 优先。未命中勿空白 return——设置「桌面」曾只剩「面」
-     *（Cache miss + Deferred 不画）。先点阵/CJK32，Want 泵 HIT 后 TakePaint 换真字。
+     * 汉字（gui-cjk-ttf / cjk-2）：只走 TTF 缓存。禁止运行时 TOYF/FNT 与
+     * CJK32「先点阵后换皮」。未 HIT：Want 排队 + Deferred（本帧不画）；
+     * Worker WantDrain + TakePaint 后再出矢量。永久 MISS / 无 TTF → 交 Glyph
+     * 缺字框（cjk-3 再钉策略）。
      */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
         gGlyphCpBpp = 8;
         return G;
     }
-    G = FileGlyph(Cp, OutW, OutH);
-    if (G) {
-        gGlyphCpBpp = 1;
-        return G;
-    }
-    G = FontCjk32Lookup(Cp, OutW, OutH);
-    gGlyphCpBpp = G ? FontCjkBitsPerPixel() : 0;
-    if (G) {
-        return G;
-    }
-#if defined(__x86_64__) || defined(__aarch64__)
-    if (FontTtfReady() && Cp >= 128u && !FontTtfCacheMissed(Cp) &&
-        !FileSystemBootMediumGone() && FontTtfCachePending(Cp)) {
+    if (Cp >= 128u && FontTtfReady() && !FontTtfCacheMissed(Cp) &&
+        !FileSystemBootMediumGone()) {
+        (void)FontTtfCachePending(Cp);
         gGlyphDefer = 1;
     }
-#endif
     return 0;
 }
 
@@ -707,7 +670,11 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
         return Adv;
     }
     if (!FontGlyphCp(Cp, &W, &H)) {
-        W = FontCjkDim();
+        /* 中文 defer：按 TTF 格占位，勿用 CJK32 宽导致换皮后跳排 */
+        W = (Cp >= 128u) ? FontTtfPixel() : FontCjkDim();
+        if (W == 0u) {
+            W = FontCjkDim();
+        }
         H = W;
     }
     FontGlyphBox(W, H, &W, &H);

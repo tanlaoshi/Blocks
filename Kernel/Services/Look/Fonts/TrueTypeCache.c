@@ -202,7 +202,7 @@ int FontTtfCachePending(UINT32 Cp) {
 }
 
 /*
- * NotifyPaint=1：屏上可能仍是点阵，Gui 须再合成（Want 泵）。
+ * NotifyPaint=1：屏上可能仍是 defer 空白，Gui 须再合成（Want 泵出 TTF）。
  * Preheat 填缓存勿 Notify：否则每字整屏 Refresh → 空桌面偶尔顿一下。
  */
 static void FillSlot(UINT32 Cp, int NotifyPaint) {

@@ -375,9 +375,9 @@ void DesktopTickClock(void) {
     }
 
     /*
-     * 点阵→TTF：Worker Want 只灌缓存。空闲时勿 RequestRefresh——
+     * defer→TTF：Worker Want 只灌缓存。空闲时勿 RequestRefresh——
      * 会 ComposeBusy 丢弃鼠动 + 与 PresentCursor 抢双缓冲（空拖一直顿、留印）。
-     * 标签在下次菜单/钟栏/点桌面等自然重画时换成 TTF。
+     * 标签在下次菜单/钟栏/点桌面等自然重画时出矢量（禁点阵顶中文）。
      */
     if (FontTtfTakePaint()) {
         FontTtfAckPaint();

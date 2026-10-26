@@ -1,23 +1,24 @@
-# BlocksUser.mk — 课外 / 模板共用规则（PR-L1）
+# BlocksUser.mk — 树内用户程序规则（系统面；课外毛坯请用 BlocksSDK）
 # 用法：设 BLOCKS_KERNEL 指向 Kernel 根，再 include 本文件。
+# 权威毛坯 / 样例：仓库 Start/App/（Template + Examples）。
 #
 # 调用方需提供：
 #   PROG   — 产物基名（默认 MYAPP；盘上建议大写 8.3：MYAPP.ELF）
 #   SRCS   — .c 源列表（默认 main.c）
 # 可选：
-#   BLOCKS_KERNEL — 默认本 mk 所在目录的 ../..
+#   BLOCKS_KERNEL — 默认本 mk 所在目录的上一级（Kernel/）
 #   EXTRA_LIBS — 额外 .a（如 libUi.a）
 #   EXTRA_OBJS — 额外 .o
 #   UITXT / UIH — .uitxt → 编译期头（Tools/UiLayout/uitxt2h.py）
 
 ifndef BLOCKS_KERNEL
-BLOCKS_KERNEL := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+BLOCKS_KERNEL := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 endif
 
 PROG      ?= MYAPP
 SRCS      ?= main.c
-# 统一产出：勿在 Package/Pkg 下散落 build/（进仓垃圾）。课设 ELF 仍在 Build/User/*.elf
-BUILDDIR  ?= $(BLOCKS_KERNEL)/Build/User/Package/$(PROG)
+# 统一产出：Build/User/out/<PROG>/（随 Build/ ignore）；课设 ELF 仍在 Build/User/*.elf
+BUILDDIR  ?= $(BLOCKS_KERNEL)/Build/User/out/$(PROG)
 ELF       := $(BUILDDIR)/$(PROG).ELF
 
 ARCH      ?= x86_64

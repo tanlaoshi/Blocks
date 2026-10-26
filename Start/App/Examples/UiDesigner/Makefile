@@ -1,7 +1,7 @@
-# UiDesigner — 设计器导出的 .uitxt → MYAPP.ELF
-#   make -C User/Package/UiDesigner
+# UiDesigner — 设计器导出的 .uitxt → MYAPP.ELF（须树内 Kernel）
+#   make -C Start/App/Examples/UiDesigner
 
-BLOCKS_KERNEL ?= $(abspath ../../..)
+BLOCKS_KERNEL ?= $(abspath ../../../../Kernel)
 PROG      ?= MYAPP
 SRCS      ?= main.c UiActions.c
 UITXT     ?= MyApp.uitxt
@@ -12,7 +12,7 @@ LAYOUT_C  := $(BLOCKS_KERNEL)/User/Library/Ui/Layout.c
 EXTRA_LIBS = $(BLOCKS_KERNEL)/User/Library/Ui/libUi.a \
              $(BLOCKS_KERNEL)/User/Library/Graphics/libGraphics.a
 
-include ../BlocksUser.mk
+include $(BLOCKS_KERNEL)/User/BlocksUser.mk
 
 LAYOUT_O  := $(BUILDDIR)/UiLayout.o
 EXTRA_OBJS = $(LAYOUT_O)

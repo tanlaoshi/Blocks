@@ -88,7 +88,7 @@ exec NETLIB.ELF
 | `accept` | 12 | listen_fd | 返回新连接 fd（默认一直等到有连接） |
 | `write`/`read`/`close` | 1/3/4 | 同文件 FD | socket fd 上即 send/recv/close |
 
-库封装：`#include <Net.h>`（`libNet.a`）；演示 `NETLIB.ELF`；模板 `User/Package/Net/`。
+库封装：`#include <Net.h>`（`libNet.a`）；演示 `NETLIB.ELF`；模板 `Start/App/Examples/Net/`。
 
 ### 快速对照（builtin 教学）
 

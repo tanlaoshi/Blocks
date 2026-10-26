@@ -228,11 +228,9 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         "$DEST/PTHREADSMOKE.ELF" "$DEST/THREADDEMO.ELF" "$DEST/ENOSYS.ELF" \
         "$DEST/MYAPP.ELF"
 
-    # 课外模板：Class/ 放当前 Package 无窗 Hello（勿留旧 ToyUi）；exec MYAPP.ELF 走 Class/
+    # Class/MYAPP.ELF：与 HELLO 同源（毛坯在 Start/App）
     rm -f "$DEST/Class/MYAPP.ELF"
-    if [ -f "$BUILDDIR/User/Package/MYAPP/MYAPP.ELF" ]; then
-        cp -f "$BUILDDIR/User/Package/MYAPP/MYAPP.ELF" "$DEST/Class/MYAPP.ELF"
-    elif [ -f "$USER_OUT/hello.elf" ]; then
+    if [ -f "$USER_OUT/hello.elf" ]; then
         cp -f "$USER_OUT/hello.elf" "$DEST/Class/MYAPP.ELF"
     fi
 

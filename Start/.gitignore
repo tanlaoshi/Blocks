@@ -1,2 +1,4 @@
 # 本地 make 产物
 **/build/
+# UiText / UiDesigner 生成头
+**/MyAppUi.h

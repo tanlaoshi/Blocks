@@ -3,7 +3,7 @@
 `.uitxt` → `uitxt2h` → `MyAppUi.h` → `Build/User/out/MYAPP/MYAPP.ELF`。运行时**不**解析布局。  
 须在 Blocks 树内编（`BlocksUser.mk` + `Layout.c`）。
 
-规范：[`Documents/开发/布局文件格式.md`](../../../../Documents/开发/布局文件格式.md)。
+规范：[`Archive/开发/布局文件格式.md`](../../../../Archive/开发/布局文件格式.md)。
 
 ## 用法
 

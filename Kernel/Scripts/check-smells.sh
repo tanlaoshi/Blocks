@@ -27,7 +27,7 @@ command -v rg >/dev/null 2>&1 || {
 }
 
 GLOBS=(
-    --glob '!Documents/**'
+    --glob '!Archive/**'
     --glob '!Build/**'
     --glob '!ThirdParty/**'
     --glob '!Tools/xpack-*/**' \

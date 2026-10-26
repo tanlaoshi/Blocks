@@ -201,7 +201,7 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         rm -rf "$DEST/Assets/Store"
     fi
 
-    # 上课 ELF 放 Class/，卷根只留内核和配置。exec 裸文件名会再到 Class/ 找。
+    # 上课 ELF → Class/（白名单见 User/Apps/README.md user-apps-1）。exec 裸名再找 Class/。
     mkdir -p "$DEST/Class"
     cp -f "$USER_OUT/hello.elf" "$DEST/Class/HELLO.ELF"
     cp -f "$USER_OUT/count.elf" "$DEST/Class/COUNT.ELF"

@@ -14,4 +14,4 @@ Intel 8265/8275 无线驱动（PCIe `8086:24FD`）。灌 `FW/IWL8265.UCODE`，�
 
 开机 Claim 在 Worker：桌面起来之后才 `IwlSetup`，固件和关联继续在 Worker 里泵。文件系统和网络的早 Probe 不进这条路径。无卡软失败，不挡启动。
 
-规格：[Iwl目录Hw-Mac-PR拆分.md](../../../../../Documents/柱规格/Iwl目录Hw-Mac-PR拆分.md)
+规格：[Iwl目录Hw-Mac-PR拆分.md](../../../../../Archive/柱规格/Iwl目录Hw-Mac-PR拆分.md)

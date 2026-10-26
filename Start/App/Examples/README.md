@@ -1,5 +1,7 @@
 # 样例
 
+课外 SDK 样例（**非** Class 课设源）。课设 / Store / Class 政策见 [`Kernel/User/Apps/README.md`](../../../Kernel/User/Apps/README.md)。
+
 先打 SDK：`cd ../../../Kernel && ./Tools/build-sdk.sh`
 
 | 目录 | 产物 | 依赖 | 备注 |

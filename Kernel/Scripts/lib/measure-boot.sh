@@ -9,7 +9,7 @@
 #   [Mod] Gui        — DesktopInit 含在 Gui 内
 #   [Mod] Scheduler  — Gui 返回后；QEMU 上作「桌面可点」代理
 #   Blocks ready      — 串口就绪行
-# 真机「桌面可点」另记墙钟（见 ToyKernel Documents/开发/开机流程与加速.md §7）。
+# 真机「桌面可点」另记墙钟（见 ToyKernel Archive/开发/开机流程与加速.md §7）。
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=toyos-common.sh

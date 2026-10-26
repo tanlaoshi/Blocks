@@ -1,6 +1,6 @@
 # 模块化轨 C · 真机/手测清单（PR-MOD-app-verify）
 
-> 对应规格 [`Documents/待做/模块化与App课堂闭环.md`](../../Documents/待做/模块化与App课堂闭环.md) §6；路线图 ★ `PR-MOD-app-verify`。  
+> 对应规格 [`Archive/待做/模块化与App课堂闭环.md`](../../Archive/待做/模块化与App课堂闭环.md) §6；路线图 ★ `PR-MOD-app-verify`。  
 > QEMU 自动化：`$BLOCKS_ROOT/Kernel/Scripts/test/test-mod-verify.sh`（需 `expect`）。  
 > store-disk 双盘真机挂账：**不阻塞**本刀 TG。
 

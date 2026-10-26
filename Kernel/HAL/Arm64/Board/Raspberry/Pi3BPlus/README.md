@@ -1,6 +1,6 @@
 # Board：`Raspberry/Pi3BPlus`（Raspberry Pi 3 Model B+）
 
-> **今日工作目录**（[路线图1023 · rpi-desk](../../../../../../Documents/路线图1023.md#rpi-desk)）。  
+> **今日工作目录**（[路线图1023 · rpi-desk](../../../../../../Archive/路线图1023.md#rpi-desk)）。  
 > Arm64 **真机靶**：厂商/社区 **U-Boot + DTB**（不要 UEFI）。GUI 课堂仍 QEMU `BOARD=virt`。  
 > 约定：[`HAL/Common/Board/README.md`](../../../../Common/Board/README.md)。
 

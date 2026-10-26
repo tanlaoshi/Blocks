@@ -1,7 +1,7 @@
 /*
  * Modern.c — PR-UI-palette：现代浅色板（出厂默认）
  *
- * 色值钉死见 Documents/开发/UI颜值与布局.md §3.2。
+ * 色值钉死见 Archive/开发/UI颜值与布局.md §3.2。
  */
 #include "ThemePrivate.h"
 

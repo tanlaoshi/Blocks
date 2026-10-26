@@ -1,9 +1,9 @@
 # x86 UEFI PC / 笔记本目标机（PR-H0）
 
-> 概念与步骤见 [`../../Documents/技术手册.md`](../../Documents/技术手册.md)「Boot / 真机」。本页只留 **机型本地**备注。
+> 概念与步骤见 [`../../Archive/技术手册.md`](../../Archive/技术手册.md)「Boot / 真机」。本页只留 **机型本地**备注。
 >
 > 与 **1.3b Board 包**互不混仓。本页只服务 **1.3c**：课堂桌面真机 = UEFI PC，亮屏走 **ToyBoot GOP**。  
-> 排期见 [`Documents/路线图.md`](../../Documents/路线图.md) **1.3c**；Boot 说明见 [`ToyBoot/README.md`](../../../ToyBoot/README.md)。
+> 排期见 [`Archive/路线图.md`](../../Archive/路线图.md) **1.3c**；Boot 说明见 [`ToyBoot/README.md`](../../../ToyBoot/README.md)。
 
 ---
 
@@ -161,7 +161,7 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 - 驱动：`E1000.c` + `NetE1000.c`；`NetAttachNic` / `NetInputFrame`（PR-N-nic）
 - QEMU：`TOY_NET=e1000|e1000e ./smoke-boot.sh`；默认 virtio 不回归；**无卡不挡桌面**
 - **H4e-1…3** ✅：e1000e 设备 / link / MSI（QEMU）；真机 I219 **禁 MSI → poll**
-- **PR-N-i219 课路径 ✅**（2026-09-22）：[`Documents/已完/I219真机网课路径.md`](../../Documents/已完/I219真机网课路径.md)
+- **PR-N-i219 课路径 ✅**（2026-09-22）：[`Archive/已完/I219真机网课路径.md`](../../Archive/已完/I219真机网课路径.md)
   - DID `156F`；Flush OK；**tx11**（Flush 后勿满配 TCTL）；ping / dhcp
   - 默认静态 `.129`/gw`.1`；shell **禁** `HalCpuHalt` 做协议超时
 - **序 4 刀史（失败也记）**：
@@ -175,11 +175,11 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
   | doc | 课路径页 | ✅ |
 
 - **未做**：Realtek、无线
-- 细表：[`Documents/路线图.md`](../../Documents/路线图.md#pr-n-i219)「序 4～6 刀史」
+- 细表：[`Archive/路线图.md`](../../Archive/路线图.md#pr-n-i219)「序 4～6 刀史」
 
 ### H-xhci-evt-excl：事件环单消费者（✅ 1…4）
 
-- 细则：[`../../Documents/已完/XHCI事件环单消费者.md`](../../Documents/已完/XHCI事件环单消费者.md)
+- 细则：[`../../Archive/已完/XHCI事件环单消费者.md`](../../Archive/已完/XHCI事件环单消费者.md)
 - **excl-1** ✅ TG `7c28c51`：独占 API + 门铃同窗 + 全 Wait*；保留 `fallback msc-claim`
 - **excl-2** ✅ TG `e982dd6`：`gEvtConsumerLock` + ProcessEventsLocked；Irq/Drain 与 HID 锁分离
 - **excl-3** ✅ TG `c26117c`：删 `fallback msc-claim`；真机永留 dual；irq-stall 认 `gStatEvtRing` 前进
@@ -195,7 +195,7 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 
 **冒烟勾选表**（上电→Boot→桌面/串口；xHCI/盘/网；交作业用一页总表）：
 
-→ [`../../Documents/已完/真机冒烟清单.md`](../../Documents/已完/真机冒烟清单.md)（**PR-PC-smoke**）
+→ [`../../Archive/已完/真机冒烟清单.md`](../../Archive/已完/真机冒烟清单.md)（**PR-PC-smoke**）
 
 ---
 

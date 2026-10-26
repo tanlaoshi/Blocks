@@ -3,7 +3,7 @@
 不要把秘密或专有固件 blob 提交进库。
 
 **真机排障编年**（镜像 / 串口 / bootelf / `epc=0`）：  
-[`Documents/过程/排障/MilkV-DuoS真机启动排障历程.md`](../../../../Documents/过程/排障/MilkV-DuoS真机启动排障历程.md)
+[`Archive/过程/排障/MilkV-DuoS真机启动排障历程.md`](../../../../Archive/过程/排障/MilkV-DuoS真机启动排障历程.md)
 
 ## 硬件
 

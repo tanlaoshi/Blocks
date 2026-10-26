@@ -1,38 +1,18 @@
-# Start / App — 毛坯房
+# Start / App — 应用开发
 
-不懂内核也能开干。工具链在 `Kernel/Build/BlocksSDK`（先打一次包）；手册与样例在本目录（**唯一**用户开干入口）。  
-产物：各例本地 `build/`（`Start/.gitignore`）；树内课设 ELF 在 `Kernel/Build/User/`。
+> 静态链接 ELF → Guest `exec` →（可选）商店目录包。  
+> **动手**：[`Template/`](Template/) · [`Examples/`](Examples/) · [`Deploy.md`](Deploy.md)。
 
-## 三步
+| 文档 | 内容 |
+| ---- | ---- |
+| [`红线.md`](红线.md) | 三条别踩 + PKG 认窗 + 库分层 |
+| [`身份.md`](身份.md) | 系统身份、SDK 三层 |
+| [`Guide.md`](Guide.md) | 上手：CRT / UI / Net / 打包 |
+| [`API.md`](API.md) | 一页 API 表 |
+| [`ABI.md`](ABI.md) | 开课冻结：承诺 / 不承诺 |
+| [`LibcGaps.md`](LibcGaps.md) | ISO C 加厚缺口 |
+| [`UI/`](UI/) | 布局文件、多页面、拖控件设计器 |
 
-```bash
-# 0）树内一次：打出可链的 SDK（头 + lib + ld）
-cd ../../Kernel && ./Tools/build-sdk.sh
-
-# 1）复制毛坯（可拷到仓外；仓外须 make BLOCKS_SDK=…）
-cp -a Template MyFirstApp
-cd MyFirstApp
-
-# 2）改 main.c；加 .c 就改 Makefile 的 SRCS
-make                             # → build/MYAPP.ELF
-
-# 3）部署进 Blocks：见 Deploy.md
-```
-
-不拷走、直接试编毛坯：
-
-```bash
-make -C Template && make -C Template clean
-```
-
-## 本目录
-
-| 路径 | 内容 |
-| --- | --- |
-| [`Template/`](Template/) | 毛坯：`main.c` + `Makefile` + `PKG.TXT` |
-| [`Examples/`](Examples/) | 可跑样例：Hello / Gui / Net |
-| [`Docs/`](Docs/) | 自包含手册（红线 / 身份 / Guide / API / ABI） |
-| [`Deploy.md`](Deploy.md) | 编完怎么进 Guest / 商店 |
-
-开窗 App：**必须** `Apps/<id>/ELF` + `PKG.TXT` 且 **`window=yes`**（见 Deploy.md）。  
-扁平 `Apps/FOO.ELF` 会 CoopDrain 钉死桌面——不是「关窗偶发」，是部署契约错了。
+**工具链**：`cd Kernel && ./Tools/build-sdk.sh` → `Build/BlocksSDK`；离树 `make BLOCKS_SDK=…`。  
+**课设 / Class / Store**：[`Kernel/User/Apps/README.md`](../../Kernel/User/Apps/README.md)。  
+**上机**：[`../START.md`](../START.md)。编码规矩：[`../Contribute/Coding.md`](../Contribute/Coding.md)。

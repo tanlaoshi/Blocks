@@ -22,4 +22,4 @@ Guest 卷根同样是 **`Store/`**（`prepare-rootfs` / `build.sh` 同步）。�
 id|type|version|file|sha256|arch|title
 ```
 
-`type` = `app` \| `font` \| `asset`。详情见 Kernel 文档 [`局域网商店与聊天.md`](../ToyKernel/Documents/开发/局域网商店与聊天.md)。
+`type` = `app` \| `font` \| `asset`。详情见 Kernel 文档 [`局域网商店与聊天.md`](../ToyKernel/Archive/开发/局域网商店与聊天.md)。

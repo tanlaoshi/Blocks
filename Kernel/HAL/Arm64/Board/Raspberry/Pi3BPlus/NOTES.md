@@ -1,6 +1,6 @@
 # Pi3BPlus · 踩坑备忘
 
-> **排障正本（试错编年 · 少换卡）**：[`Documents/过程/排障/Pi3BPlus真机启动排障历程.md`](../../../../../../Documents/过程/排障/Pi3BPlus真机启动排障历程.md)  
+> **排障正本（试错编年 · 少换卡）**：[`Archive/过程/排障/Pi3BPlus真机启动排障历程.md`](../../../../../../Archive/过程/排障/Pi3BPlus真机启动排障历程.md)  
 > 本文只留板级短备忘；新尝试先记历程，再改代码。
 
 ## 串口
@@ -55,7 +55,7 @@
 
 ## USB（rpi-7）
 
-> **排障正本（试错编年）**：[`Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../../Documents/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)
+> **排障正本（试错编年）**：[`Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../../Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)
 
 - 控制器：DWC2 @ `0x3F980000`（BCM2835 §14；VC `0x7E980000`）。
 - 3B+ 根口 **LAN9514**；外接键鼠在 hub FS 口 → **SPLIT**（已做）。

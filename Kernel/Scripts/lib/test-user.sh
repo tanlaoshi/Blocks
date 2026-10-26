@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 #
 # test-user.sh — PR-TEST-user：自动化功能测试第 2 步（用户程序）。
-# 规格：Documents/待做/自动化功能测试.md §四。
+# 规格：Archive/待做/自动化功能测试.md §四。
 #
 # 沿用第 1 步的喂命令方式：拉起 run-split.sh --headless，等 Blocks ready，
 # 逐条 exec 用户程序，用 expect_out(buffer) 断言命令后到下一 blocks> 之间

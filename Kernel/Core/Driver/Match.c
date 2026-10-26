@@ -3,7 +3,7 @@
  *
  * DriverMatchesDevice：按 DRIVER_MATCH 表过滤 DEVICE_NODE。
  * Match==NULL 由 DriverProbeClass 走旧路径（Probe 自扫），本文件只管有表路径。
- * 规格见 Documents/待做/设备管理器驱动匹配.md。
+ * 规格见 Archive/待做/设备管理器驱动匹配.md。
  */
 #include "Driver.h"
 #include "CString.h"

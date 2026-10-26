@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 #
 # test-shell.sh — PR-TEST-1：自动化功能测试第 1 步（Shell 命令）。
-# 规格：Documents/待做/自动化功能测试.md。
+# 规格：Archive/待做/自动化功能测试.md。
 #
 # 用 expect 拉起 run-split.sh --kill-qemu --headless，等 Blocks ready 后逐条
 # 喂 Shell 命令并检查串口输出。断言只看「该命令之后、下一次 blocks> 之前」

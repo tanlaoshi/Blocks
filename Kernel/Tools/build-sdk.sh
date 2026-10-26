@@ -49,8 +49,8 @@ cp -f "$SDK_SRC/VERSION" "$SDK_SRC/README.md" "$SDK_SRC/BlocksSdk.mk" \
 cp -a "$SDK_SRC/Examples" "$OUT/"
 
 # 可选：一页 API（缺文件不失败）
-if [[ -f "$ROOT/../Documents/手册/API速查.md" ]]; then
-    cp -f "$ROOT/../Documents/手册/API速查.md" "$OUT/Docs/"
+if [[ -f "$ROOT/../Archive/手册/API速查.md" ]]; then
+    cp -f "$ROOT/../Archive/手册/API速查.md" "$OUT/Docs/"
 fi
 
 echo "==> 打包 $TAR"

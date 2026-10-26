@@ -1,7 +1,7 @@
 # Blocks 驱动模板
 
 > **规范**：新设备落在 `Drivers/<层>/<Device>/`，禁止新增 `Drivers/` 根级业务 `.c`。  
-> 指南：[`Documents/手册/驱动/驱动开发指南.md`](../../../../Documents/手册/驱动/驱动开发指南.md)。
+> 指南：[`Archive/手册/驱动/驱动开发指南.md`](../../../../Archive/手册/驱动/驱动开发指南.md)。
 
 ## 写一个驱动（5 步）
 
@@ -15,7 +15,7 @@
 
 ## 三种 Probe 匹配模式
 
-详见 [`驱动匹配规范.md`](../../../../Documents/手册/驱动/驱动匹配规范.md)。短记：
+详见 [`驱动匹配规范.md`](../../../../Archive/手册/驱动/驱动匹配规范.md)。短记：
 
 | 模式 | 做法 |
 | --- | --- |
@@ -75,4 +75,4 @@ PS/2 → `Input/Ps2/`。USB 键鼠 → `Input/UsbHid/`。
 - 复杂参考：`Bus/XHCI/`
 - 网卡 L2：`Model/E1000/` + `Include/Driver/DriverNic.h`
 - 网卡骨架：同目录 `TemplateNetL2.c`（注释草稿，不链入）
-- 完整指南：`Documents/手册/驱动/驱动开发指南.md`
+- 完整指南：`Archive/手册/驱动/驱动开发指南.md`

@@ -203,7 +203,7 @@ EOF
 
 成功标志：Starting application at 0x00080000，串口 * → + → Boot: …
 
-排障编年：Documents/过程/排障/Pi3BPlus真机启动排障历程.md
+排障编年：Archive/过程/排障/Pi3BPlus真机启动排障历程.md
 
 ## 禁止
 

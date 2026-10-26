@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 #
 # test-fs.sh — PR-TEST-fs：自动化功能测试第 3 步（文件系统）。
-# 规格：Documents/待做/自动化功能测试.md §四。
+# 规格：Archive/待做/自动化功能测试.md §四。
 #
 # 沿用喂命令方式：拉起 run-split.sh --headless --smp=1，等 Blocks ready，
 # 逐条测文件系统动作，用 expect_out(buffer) 断言命令后到下一 blocks> 之间

@@ -1,23 +1,22 @@
 # Blocks
 
-单仓：Boot · Kernel · Runtime · **Manual** · Documents · **Start**。
+单仓：Boot · Kernel · Runtime · **Start** · **Archive**。
 
 ```text
 Blocks/
-  Manual/      ← 读者手册（按身份：App / Driver / System / Contribute / Course）
-  Start/       ← App 毛坯：模板 / 样例 / 自包含 Docs
-  Documents/   ← 日档路线图、过程归档、柱规格
+  Start/       ← 动手入口 + 读者手册（App / Driver / System / Contribute / Course）
+  Archive/     ← 日档、过程、柱规格、同步、原则与学习记录（存档）
   Boot/  Kernel/  Runtime/  Tools/
   env.sh
 ```
 
 | 你要… | 去哪 |
 | ------ | ---- |
-| **读手册 / 上手** | [`Manual/README.md`](Manual/README.md) · [`Manual/START.md`](Manual/START.md) |
+| **上手 / 写代码 / 读手册** | [`Start/`](Start/README.md) · [`Start/START.md`](Start/START.md) |
 | **写 App（毛坯）** | [`Start/App/`](Start/App/) |
-| 日档 ★ / 排期 | [`Documents/路线图1025.md`](Documents/路线图1025.md) |
-| 从 OVMF 逐段学 | [`原则与学习记录.md`](原则与学习记录.md) |
-| 换机 / 工具链细表 | [`Documents/同步.md`](Documents/同步.md) |
+| 日档 ★ / 排期 | [`Archive/路线图1026.md`](Archive/路线图1026.md) |
+| 从 OVMF 逐段学 | [`Archive/原则与学习记录.md`](Archive/原则与学习记录.md) |
+| 换机 / 工具链细表 | [`Archive/同步.md`](Archive/同步.md) |
 | GitHub | `git@github.com:tanlaoshi/Blocks.git` |
 
 ---
@@ -45,7 +44,7 @@ sudo apt install -y build-essential python3 make nasm uuid-dev \
 
 ```bash
 sudo apt install -y qemu-system-arm qemu-system-misc
-# 交叉编译二选一：系统包，或解压 xpack 到 Tools/（见 Documents/同步.md）
+# 交叉编译二选一：系统包，或解压 xpack 到 Tools/（见 Archive/同步.md）
 sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
 ```
 
@@ -83,7 +82,7 @@ cd ~/Blocks && source ./env.sh
 | **QEMU virt**（课堂靶） | `build arm64` 或 `build arm64 BOARD=virt` | `run-virt-arm`（可加 `--headless`） |
 | **树莓派 3B+** 真机 | `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` | 摆盘：`prepare-pi-sd` → 插卡 **`ck-pi-sd`**（固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
 
-板包列表：`boards arm64`。真机历程见 `Documents/过程/排障/` 下 Pi 档。
+板包列表：`boards arm64`。真机历程见 `Archive/过程/排障/` 下 Pi 档。
 
 ### RiscV
 
@@ -103,4 +102,4 @@ cd ~/Blocks && source ./env.sh
 | 真机启动 | RootFs 含 `Kernel.elf` | — | U-Boot + `ck-pi-sd`（核→BLOCKS） | 厂商 U-Boot + `ck-duo-sd`（核→BLOCKS；启动仍 `boot.sd`） |
 | 典型板旗 | 桌面 + HID | 串口/virt | FB + HID | **串口壳**（无 Duo GUI） |
 
-细节与换机：[`Documents/同步.md`](Documents/同步.md) · [`Manual/START.md`](Manual/START.md)。
+细节与换机：[`Archive/同步.md`](Archive/同步.md) · [`Start/START.md`](Start/START.md)。

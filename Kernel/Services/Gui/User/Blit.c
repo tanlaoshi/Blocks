@@ -171,6 +171,11 @@ int GuiDamageUser(int Wid, const char *Text) {
     if (Idx < 0 || !Text) {
         return -1;
     }
+    /*
+     * 同步栅整段：避免「用」已是 TTF、「户」仍点阵再等 Want 泵
+     *（TaskMgr 类型列等双汉字）。同 SettingsUi / Store 预热契约。
+     */
+    FontTtfPreheatUtf8(Text);
     CopyTitleBuf(gGuiWindowManager.Windows[Idx].ClientText, sizeof(gGuiWindowManager.Windows[Idx].ClientText),
                  Text);
     RepaintUserWindow(Idx);

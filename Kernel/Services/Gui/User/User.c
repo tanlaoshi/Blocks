@@ -232,6 +232,7 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     gGuiWindowManager.Windows[Idx].Width = W;
     gGuiWindowManager.Windows[Idx].Height = H;
     gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
+    FontTtfPreheatUtf8(Title);
     CopyTitleBuf(gGuiWindowManager.Windows[Idx].TitleBuf, sizeof(gGuiWindowManager.Windows[Idx].TitleBuf), Title);
     gGuiWindowManager.Windows[Idx].Title = gGuiWindowManager.Windows[Idx].TitleBuf;
     gGuiWindowManager.Windows[Idx].ClientText[0] = 0;
@@ -294,6 +295,7 @@ int GuiUserAddButton(int Wid, int ButtonId, const char *Label) {
         return -1;
     }
     gGuiWindowManager.UserSlot[Idx].UserButtonUsed[ButtonId] = 1;
+    FontTtfPreheatUtf8(Label);
     CopyTitleBuf(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId],
                  sizeof(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId]), Label);
     RepaintUserWindow(Idx);

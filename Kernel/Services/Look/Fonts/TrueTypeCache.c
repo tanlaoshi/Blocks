@@ -267,8 +267,10 @@ void FontTtfPreheatUtf8(const char *S) {
         UINT32 Cp;
         UINTN N;
 
-        if (*S == '\n') {
-            break;
+        /* 多行客户区（TaskMgr 表）须整段灌；勿在首个 \\n 停掉 */
+        if (*S == '\n' || *S == '\r' || *S == '\t') {
+            S++;
+            continue;
         }
         N = Utf8Decode(S, &Cp);
         if (!N) {

@@ -8,6 +8,8 @@
 #include "BootTypes.h"
 
 int StringEqual(const char *A, const char *B);
+/* ASCII A–Z/a–z 折叠；空指针不相等。壳命令查找用，勿用于路径/数据 */
+int StringEqualIgnoreCase(const char *A, const char *B);
 void StringCopy(char *Dst, UINTN Max, const char *Src);
 
 /* freestanding CRT（Library/CString.c）；业务走这些声明，不直调编译器 intrinsic */

@@ -177,6 +177,27 @@ int StringEqual(const char *A, const char *B) {
     return *A == *B;
 }
 
+static char AsciiFoldLower(char C) {
+    if (C >= 'A' && C <= 'Z') {
+        return (char)(C - 'A' + 'a');
+    }
+    return C;
+}
+
+int StringEqualIgnoreCase(const char *A, const char *B) {
+    if (A == 0 || B == 0) {
+        return 0;
+    }
+    while (*A != 0 && *B != 0) {
+        if (AsciiFoldLower(*A) != AsciiFoldLower(*B)) {
+            return 0;
+        }
+        A++;
+        B++;
+    }
+    return *A == *B;
+}
+
 void StringCopy(char *Dst, UINTN Max, const char *Src) {
     UINTN i;
 

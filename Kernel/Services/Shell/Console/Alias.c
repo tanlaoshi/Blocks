@@ -26,7 +26,7 @@ int FindUserAliasIndex(const char *Name) {
     int i;
 
     for (i = 0; i < gUserAliasCount; i++) {
-        if (StringEqual(gUserAliases[i].Alias, Name)) {
+        if (StringEqualIgnoreCase(gUserAliases[i].Alias, Name)) {
             return i;
         }
     }
@@ -45,7 +45,7 @@ static int AliasTargetOk(const char *Level1, const char *Level2) {
         return 1;
     }
     for (s = 0; s < gCommands[Idx].SubCount; s++) {
-        if (StringEqual(gCommands[Idx].Subs[s].Name, Level2)) {
+        if (StringEqualIgnoreCase(gCommands[Idx].Subs[s].Name, Level2)) {
             return 1;
         }
     }

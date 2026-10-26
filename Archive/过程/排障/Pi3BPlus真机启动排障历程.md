@@ -208,6 +208,11 @@ source 0x1000000
 
 - 花屏：U-Boot 开 D-cache，CPU 写 FB 未 `dc civac` → 修 flush + Begin/EndFront。  
 - 屏上日志已通后：`Boot: Mod VirtualMemory Failed`。根因：`MapIdentity(FB@0x3e8…)` 撞 `HalPageKernelSetup` 的 **2MiB block**，`PageWalk` 遇 block 直接 return 0。  
+
+### rpi-9（恒等 MMU 后花屏）
+
+- 根因：FB 落在恒等 **Normal WB**；VC 不扫 CPU D-cache → 花屏（仅靠 `FbDcacheSync` 不够稳）。  
+- 修：`HalVideoEnableFbWc` 重映 FB 为 **MAIR Attr1 Device**（`HAL_PAGE_PWT`；对齐 X64 FB-WC）；改属性前 `dc civac`。验收：`Boot: FB-WC OK (MAIR Attr1 Device)` + 桌面不花。  
 - 修：`SplitBlockL2`（2MiB→L3×4KiB，保留属性）；横幅前整屏铺黑盖 U-Boot 残色。
 
 ### rpi-12（盘上 TTF / 打错 SD 控制器）

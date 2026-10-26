@@ -6,6 +6,7 @@
  * Common 仍见 HAL_PAGE_*；HalPageGetEntry 返回规范化 PTE（phys|HAL flags|COW）。
  */
 #include "Hal.h"
+#include "HalPat.h"
 #include "PhysicalMemory.h"
 
 #include "PageTablePrivate.h"
@@ -32,7 +33,12 @@ void *PageAllocTable(void) {
 
 UINT64 NativeFlagsFromHal(UINT64 HalFlags, int Device) {
     UINT64 N = DESC_VALID | DESC_TABLE | AF_BIT | SH_INNER;
-    if (Device) {
+    /*
+     * HAL_PAGE_PWT：跨 arch 的「非 cacheable / WC」旗（x86=PWT→PAT WC）。
+     * Arm64：映 MAIR Attr1 Device-nGnRnE —— Pi FB 与 VC 不同 cache 域，
+     * 若仍 Normal WB，仅靠 dc civac 易花屏（rpi-9）。
+     */
+    if (Device || (HalFlags & HAL_PAGE_PWT)) {
         N |= ATTR_DEVICE;
     } else {
         N |= ATTR_NORMAL;

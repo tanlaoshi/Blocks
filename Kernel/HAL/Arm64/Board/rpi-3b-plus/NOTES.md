@@ -25,10 +25,11 @@
 - 内核：`x0` → `BOARD_DTB_LOAD` → **mailbox `GET_ARM_MEMORY`**（与 U-Boot `dram_init` 同源）→ 最后才 `BOARD_RAM_*`。  
 - 验收：HDMI 屏上滚（勿只信 CoolTerm）见 `Boot: DTB|mbox …` + `regions=`。
 
-## FB / 屏上日志（rpi-5）
+## FB / 屏上日志（rpi-5 / rpi-9）
 
 - mailbox 要 FB → 深蓝铺底盖住 U-Boot Starting；`HalSerialGop` **全量**（`Hal/HalSerial/HalSerialGop.c`，对齐 X64）。  
 - **像素序 BGR（mailbox 0）**：对齐 `0x00RRGGBB`；勿设 RGB，否则设蓝见红。  
+- **rpi-9**：`HalVideoEnableFbWc` 把 FB 页映 **MAIR Attr1 Device**（`HAL_PAGE_PWT`）；恒等表默认 Normal WB + 仅 dcache sync 易花屏。串口见 `Boot: FB-WC OK (MAIR Attr1 Device)`。  
 - 编：`build arm64 BOARD=rpi-3b-plus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
 - 有 FB → VirtDesktop 模块表（非 RunFull）。
 

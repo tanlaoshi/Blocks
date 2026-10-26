@@ -1,9 +1,8 @@
 /*
  * Netif.c — Arm64 lwIP 以太网 netif（rnet-1；对表 RiscV net-6）
  *
- * linkoutput：virt → Virtio NetSendFrame；有 BOARD_HAS_NET 的板 → BoardEthernet*；
- * Pi（暂无 L2）→ 发送失败，不谎称有线（rnet-2 再接 LAN9514）。
- * RX：驱动在 gLwIpRx 时调 LwIpNetifInput。
+ * linkoutput：virt → Virtio NetSendFrame；BOARD_HAS_NET 板 → BoardEthernetSendFrame。
+ * RX：驱动在 gLwIpRx 时调 LwIpNetifInput（Pi smsc95xx / virtio）。
  */
 #include "lwip/opt.h"
 #include "lwip/def.h"

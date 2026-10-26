@@ -9,7 +9,6 @@
 #include "Hal.h"
 #include "HalPat.h"
 #include "HalSerial.h"
-#include "VirtualMemory.h"
 #include "BoardConfig.h"
 
 #ifndef BOARD_FB_SWAP_RB
@@ -112,44 +111,31 @@ int HalVideoFbPteLine(char *Buf, UINTN Max) {
 }
 
 /*
- * rpi-9：真机 FB 映 Device（HAL_PAGE_PWT → Attr1），对齐 X64 FB-WC。
+ * rpi-9/boot-flick：真机 FB 映 Device（HAL_PAGE_PWT → Attr1），对齐 X64 FB-WC。
  * virt/ramfb 同缓存域，保持 Normal WB。
+ *
+ * 早映：VMM MapIdentity(FB) 即用 FbMapFlags（Attr1），MMU 一开就是 Device。
+ * EnableFbWc 只记账+BootMark——勿再全 FB civac（曾与屏上滚叠成开机「闪一下」）。
  */
 static int gFbDeviceMapped;
 
 UINT64 HalVideoFbMapFlags(void) {
+#if defined(__aarch64__) && !BOARD_IS_VIRT
+    return HAL_PAGE_PRESENT | HAL_PAGE_WRITABLE | HAL_PAGE_PWT;
+#else
     if (gFbDeviceMapped) {
         return HAL_PAGE_PRESENT | HAL_PAGE_WRITABLE | HAL_PAGE_PWT;
     }
     return HAL_PAGE_PRESENT | HAL_PAGE_WRITABLE;
+#endif
 }
 
 void HalVideoEnableFbWc(void) {
 #if defined(__aarch64__) && !BOARD_IS_VIRT
-    UINT64 Base;
-    UINT64 Size;
-    UINT64 Flags;
-    const UINT64 Peri = 0x3F000000ULL;
+    UINT64 Base = VideoFrameBufferBase();
 
-    Base = VideoFrameBufferBase();
-    Size = VideoFrameBufferSize();
-    if (Base == 0 || Size == 0) {
+    if (Base == 0 || VideoFrameBufferSize() == 0) {
         HalSerialBootMark("Boot: FB-WC Skip (No FB)\n");
-        return;
-    }
-    /* 勿把外设窗划进 Device 重映射（虚高 Size 曾砸 UART） */
-    if (Base >= Peri) {
-        HalSerialBootMark("Boot: FB-WC Skip (In Peri)\n");
-        return;
-    }
-    if (Base + Size > Peri) {
-        Size = Peri - Base;
-    }
-    /* 改属性前把 WB 脏行推到 PoC（ARM break-before-make） */
-    HalDcacheCleanInvalidateRange((void *)(UINTN)Base, (UINTN)Size);
-    Flags = HAL_PAGE_PRESENT | HAL_PAGE_WRITABLE | HAL_PAGE_PWT;
-    if (VirtualMemoryMapRange(Base, Base, (UINTN)Size, Flags) != 0) {
-        HalSerialBootMark("Boot: FB-WC Map Fail (Keep WB)\n");
         return;
     }
     gFbDeviceMapped = 1;

@@ -10,6 +10,7 @@
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "HalPageTable.h"
+#include "HalVideo.h"
 #include "Debug.h"
 #include "IdentityMap.h"
 
@@ -264,17 +265,20 @@ UINT64 VirtualMemoryKernelRoot(void) {
     return HalPageKernelRoot();
 }
 
-static int MapIdentity(UINT64 Phys, UINT64 Size) {
+static int MapIdentity(UINT64 Phys, UINT64 Size, UINT64 Flags) {
     UINT64 Start;
     UINT64 End;
 
     if (Size == 0) {
         return 0;
     }
+    if (Flags == 0) {
+        Flags = PTE_PRESENT | PTE_WRITABLE;
+    }
     Start = Phys & ~(UINT64)(PAGE_SIZE - 1);
     End = Phys + Size;
     while (Start < End) {
-        if (VirtualMemoryMapPage(Start, Start, PTE_PRESENT | PTE_WRITABLE) != 0) {
+        if (VirtualMemoryMapPage(Start, Start, Flags) != 0) {
             return -1;
         }
         Start += PAGE_SIZE;
@@ -310,8 +314,12 @@ int VirtualMemoryInitialize(void) {
             FbBytes = Layout;
         }
         if (FbBytes != 0) {
+            /*
+             * Pi：HalVideoFbMapFlags → Attr1 Device（boot-flick）。
+             * 须在开 MMU 前写入 PTE，避免先 Normal WB 再 EnableFbWc 全 FB civac 闪屏。
+             */
             HalSerialBootMark("vmm: mapfb\n");
-            if (MapIdentity(Info->FrameBufferBase, FbBytes) != 0) {
+            if (MapIdentity(Info->FrameBufferBase, FbBytes, HalVideoFbMapFlags()) != 0) {
                 HalSerialBootMark("vmm: mapfb fail\n");
                 return -1;
             }

@@ -103,6 +103,10 @@ static void SerialRun(void) {
         if (LwIpDhcpJobBusy()) {
             (void)LwIpDhcpStep();
         }
+        if (HalPowerButtonPressed()) {
+            HalConsoleWriteSerial("power button -> shutdown\n");
+            HalCpuShutdown();
+        }
         {
             int n = 0;
             while (HalSerialDataReady() && n < 256) {

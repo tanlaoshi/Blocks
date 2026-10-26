@@ -482,13 +482,20 @@ static void EthPoll(void) {
      */
     sLinkDiv++;
     if (!gLinkWasUp || (sLinkDiv & 63u) == 0u) {
+        static int sDownStreak;
+
         if (BoardEthernetGetLink(&Up, 0, 0) && Up) {
+            sDownStreak = 0;
             if (!gLinkWasUp) {
                 gLinkWasUp = 1;
                 HalNetNicEpochBump();
             }
-        } else {
-            gLinkWasUp = 0;
+        } else if (gLinkWasUp) {
+            /* BMSR 偶发低：连读 3 次 down 才认为掉线，避免 epoch 风暴 */
+            if (++sDownStreak >= 3) {
+                gLinkWasUp = 0;
+                sDownStreak = 0;
+            }
         }
     }
     /* 鼠优先：每次最多一次 bulk IN；短超时在 DWC2 层 */

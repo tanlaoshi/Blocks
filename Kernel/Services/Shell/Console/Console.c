@@ -254,15 +254,16 @@ static void WriteToJobShell(const char *Text) {
     if (!Text) {
         return;
     }
-    HalConsoleWriteSerial(Text);
     /*
-     * Owner==-2：无 JobHold（Worker 自动 DHCP 等）。勿画进正打字的 Shell，
-     * 否则「很早开壳 + 网刚好」黄字窜进 blocks>。走 LogNet → RUNTIME.LOG。
+     * Owner==-2：无 JobHold（自动 DHCP 等）。对表 c59c7f88：
+     * 勿窜正打字的壳，也勿 HalConsoleWriteSerial 刷屏（Pi epoch/链路抖会多次 ok）。
+     * 只 LogNet → RUNTIME.LOG；手敲 net dhcp 会 JobHold（Owner≠-2）仍上串口一行。
      */
     if (Owner == -2) {
         LogNet(Text);
         return;
     }
+    HalConsoleWriteSerial(Text);
     if (Owner < 0 || HalConsoleOnly()) {
         if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
             ConsoleSbEnsureLive();

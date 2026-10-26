@@ -75,7 +75,7 @@
   - U-Boot 也没有 → 线/口/适配器（常见：只接了 RX、TX 空焊）。
   - 仅有 U-Boot、无 `*` → 报内核；勿先猜改波特（`core_freq=250` 已钉）。
 - 桌面 `halt`：若敲的是 **HDMI 键盘** 进壳，**不能**证明串口 RX 通。
-- `halt` 后唤醒：排针 **5（GPIO3）短接 9（GND）**。
+- 排针 **5（GPIO3）↔ 9（GND）**：运行中短接一下 = 电源键 → `HalCpuShutdown`（同壳 `halt`，firmware 停住）；**halt 之后**再短接可唤醒 bootcode（官方 gpio-shutdown 同脚）。
 - U-Boot `smsc95xx_eth address not set`：**可忽略**（扫 LAN9514）；要消：提示符 `setenv usbethaddr b8:27:eb:00:00:01` + `ethaddr` 同值 + `saveenv`（boot.cmd 里也有，仅覆盖 source 之后）。
 - 对齐 X64：`blocks>`（ShellOwn）后 Log/BootMark **不再上串口**，进 `RUNTIME*.LOG`（`log` / `log save` 可看）。
 

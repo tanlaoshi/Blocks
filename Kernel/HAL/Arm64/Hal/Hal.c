@@ -101,8 +101,65 @@ void HalCpuShutdown(void) {
 #endif
 }
 
+/*
+ * Pi 3B+ 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown / 课堂线）。
+ * BCM2835 ARM Peripherals §6：输入 + 上拉，电平 0 为按下；下降沿触发一次（对表
+ * X64 PM1 写清 STS）。virt 无此脚。
+ */
 int HalPowerButtonPressed(void) {
+#if BOARD_IS_VIRT
     return 0;
+#else
+#define GPIO_BASE     0x3F200000ULL
+#define GPFSEL0       ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x00u))
+#define GPLEV0        ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x34u))
+#define GPPUD         ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x94u))
+#define GPPUDCLK0     ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x98u))
+#define GPIO3_FSEL_SHIFT 9u
+#define GPIO3_BIT     (1u << 3)
+
+    static int sReady;
+    static int sPrevHigh = 1;
+    UINT32 Lev;
+    UINT32 Sel;
+    volatile UINT32 i;
+    int High;
+    int Edge;
+
+    if (!sReady) {
+        Sel = *GPFSEL0;
+        Sel &= ~(7u << GPIO3_FSEL_SHIFT); /* input */
+        *GPFSEL0 = Sel;
+        /* 上拉：BCM2835 §6.1 GPPUD=2 → 等 → GPPUDCLK → 等 → 清 */
+        *GPPUD = 2u;
+        for (i = 0; i < 150u; i++) {
+            __asm__ volatile("nop");
+        }
+        *GPPUDCLK0 = GPIO3_BIT;
+        for (i = 0; i < 150u; i++) {
+            __asm__ volatile("nop");
+        }
+        *GPPUD = 0;
+        *GPPUDCLK0 = 0;
+        __asm__ volatile("dsb sy" ::: "memory");
+        sPrevHigh = ((*GPLEV0 & GPIO3_BIT) != 0) ? 1 : 0;
+        sReady = 1;
+        return 0; /* 首拍只武装，避免上电已短接立刻关机 */
+    }
+
+    Lev = *GPLEV0;
+    High = (Lev & GPIO3_BIT) != 0 ? 1 : 0;
+    Edge = (sPrevHigh && !High) ? 1 : 0;
+    sPrevHigh = High;
+    return Edge;
+#undef GPIO_BASE
+#undef GPFSEL0
+#undef GPLEV0
+#undef GPPUD
+#undef GPPUDCLK0
+#undef GPIO3_FSEL_SHIFT
+#undef GPIO3_BIT
+#endif
 }
 
 void HalIrqEnable(void) {

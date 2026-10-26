@@ -1,4 +1,17 @@
-# Assets/Fonts — 运行时点阵（PR-T3 / S3）
+# Assets/Fonts — 运行时字体（点阵 PR-T3 + TTF gui-cjk）
+
+## TTF（cjk-0 钉死）
+
+Guest 路径：
+
+| 文件 | 字体 | 用途 | 许可证（概要） |
+| --- | --- | --- | --- |
+| **`CJK.TTF`** | **AR PL UMing CN** | **UI 默认**（中英一个字体打天下） | Arphic Public License |
+| **`MONO.TTF`** | DejaVu Sans Mono | 终端等宽 Latin | DejaVu 自由许可 |
+
+内核：`TrueTypeLoad` → `Assets/Fonts/CJK.TTF` / `MONO.TTF`。短名单与备选见 `Archive/路线图1027.md` [cjk-0](#)。**禁止**用点阵 FNT 顶中文。
+
+## 点阵 FNT（遗留 / 拉丁回落）
 
 Guest 路径：`Assets/Fonts/*.FNT`。启动时（FS 就绪后）`FontLoadAssets`：
 

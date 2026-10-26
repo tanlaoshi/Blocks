@@ -1,5 +1,5 @@
 # GuiImmediate — 即时模式 GUI 范例
-#   make -C Start/App/Examples/GuiImmediate
+#   make -C Bingo/App/Examples/GuiImmediate
 
 BLOCKS_SDK ?= $(abspath ../../../../Kernel/Build/BlocksSDK)
 PROG      ?= GUIIM

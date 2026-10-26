@@ -101,7 +101,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 **验收**：`Kernel/Tools/Scripts/test-all.sh`（须镜像旁路齐）；`Kernel/Scripts/test/` 下 expect 冒烟。
 
-**SDK**：`Kernel/Tools/build-sdk.sh` → `Build/BlocksSDK`；动手入口 **`Start/App/Template`** · **`Start/App/Examples`**。
+**SDK**：`Kernel/Tools/build-sdk.sh` → `Build/BlocksSDK`；动手入口 **`Bingo/App/Template`** · **`Bingo/App/Examples`**。
 
 ---
 
@@ -142,7 +142,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 ## 7. 建议自学顺序
 
-1. `Start/App/Examples/Hello`（或复制 `Template`）→ 进镜像 `exec`（巩固 CRT）。  
+1. `Bingo/App/Examples/Hello`（或复制 `Template`）→ 进镜像 `exec`（巩固 CRT）。  
 2. 读 `SyscallABI.h` + `Core/Syscall/Syscall.c`（分发与 ENOSYS）。  
 3. 改一刀用户库（`User/Library/Ui`）看 ABI MAJOR 纪律。  
 4. 驱动：对照 [`Driver/Guide.md`](../Driver/Guide.md)；Board 外逻辑保持架构通用。  
@@ -173,7 +173,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 | `Kernel/User/crt/` | CRT |
 | `Kernel/User/Library/{Ui,Graphics,Net,VolumePath}/` | 用户库 |
 | `Kernel/User/Apps/` | 课设 / 镜像自带 Demo（政策见该目录 README） |
-| `Start/App/Template` · `Examples/` | **第一颗 ELF** 入口 |
+| `Bingo/App/Template` · `Examples/` | **第一颗 ELF** 入口 |
 | `Kernel/Tools/Scripts/test-all.sh` | 统一验收 |
 | `env.sh`（仓根） | `build` / `run` / `sync` 短名 |
-| `Start/System/{Tree,Boot}.md` | 目录结构 · 开机流程 |
+| `Bingo/System/{Tree,Boot}.md` | 目录结构 · 开机流程 |

@@ -3,7 +3,7 @@
 > 写用户态 ELF、进 Guest 跑、可选上商店。  
 > ABI / 版本以 [`ABI.md`](ABI.md) 为准；函数表见 [`API.md`](API.md)。  
 > Shell：`blocks>` · 卷：`BLOCKS:` · **ISO C + Blocks API**（无假 POSIX 双轨；见 [`身份.md`](身份.md)）。  
-> 本文件在 `Start/App/`，与毛坯同树。
+> 本文件在 `Bingo/App/`，与毛坯同树。
 
 ---
 
@@ -12,7 +12,7 @@
 用户程序是 **静态链接的 ELF**，链 `libBlocks.a`（及需要的 `libUi` / `libGraphics` / `libNet` / `libVolumePath`），经 syscall 进内核。  
 **不要**链宿主 libc，**不要** `-pie`，**不要**再写 `sockaddr`/`toy_*` 课设路径。
 
-推荐入口（均在本 `Start/App/` 下）：
+推荐入口（均在本 `Bingo/App/` 下）：
 
 | 方式 | 路径 | 用途 |
 | ---- | ---- | ---- |
@@ -36,8 +36,8 @@ run                             # QEMU；看串口
 ```bash
 source ~/Blocks/env.sh
 cd "$KERNEL" && ./Tools/build-sdk.sh   # 一次：打出 Build/BlocksSDK
-cd ~/Blocks/Start/App/Examples/Hello && make
-# 或：cp -a ~/Blocks/Start/App/Template ~/MyApp && make -C ~/MyApp
+cd ~/Blocks/Bingo/App/Examples/Hello && make
+# 或：cp -a ~/Blocks/Bingo/App/Template ~/MyApp && make -C ~/MyApp
 ```
 
 把 ELF 放进客户机可见 FAT（常见：`Runtime` / `Image` 的 RootFs 约定，或 `Assets/Store/packages/` 商店包），再：

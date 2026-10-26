@@ -1,5 +1,5 @@
 # UiText — .uitxt → MyAppUi.h → MYAPP.ELF（须树内 Kernel：Layout.c + uitxt2h）
-#   make -C Start/App/Examples/UiText
+#   make -C Bingo/App/Examples/UiText
 
 BLOCKS_KERNEL ?= $(abspath ../../../../Kernel)
 PROG      ?= MYAPP

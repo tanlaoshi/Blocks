@@ -1,5 +1,5 @@
 # UiDesigner — 设计器导出的 .uitxt → MYAPP.ELF（须树内 Kernel）
-#   make -C Start/App/Examples/UiDesigner
+#   make -C Bingo/App/Examples/UiDesigner
 
 BLOCKS_KERNEL ?= $(abspath ../../../../Kernel)
 PROG      ?= MYAPP

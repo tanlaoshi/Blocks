@@ -2,7 +2,7 @@
 
 1. PC：`python3 Kernel/Tools/UiDesigner/designer.py` → 导出 `MyApp.uitxt`  
 2. 覆盖本目录 `MyApp.uitxt`  
-3. `make -C Start/App/Examples/UiDesigner` → `Build/User/out/MYAPP/MYAPP.ELF`  
+3. `make -C Bingo/App/Examples/UiDesigner` → `Build/User/out/MYAPP/MYAPP.ELF`  
 4. 填 `UiActions.c`  
 5. 部署见 [`../../Deploy.md`](../../Deploy.md)
 

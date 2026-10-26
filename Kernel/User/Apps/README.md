@@ -1,6 +1,6 @@
 # User/Apps 政策（user-apps-1）
 
-权威表：课设从哪编、是否进 Class/Store。课外毛坯只在 [`Start/App/`](../../../../Start/App/)。  
+权威表：课设从哪编、是否进 Class/Store。课外毛坯只在 [`Bingo/App/`](../../../../Bingo/App/)。  
 开窗 **只信** PKG `window=yes`（禁止 Class 空框窗 Demo：GUIDEMO / WINDEMO / BLITDEMO）。
 
 ## 总表
@@ -13,13 +13,13 @@
 | `Snake.c` | **Kernel 编** | Store `snake`（`window=yes`） | **不**预装 Apps/；`store install` |
 | `TaskMgr.c` | **Kernel 编** | Store `taskmgr`；预装 `Apps/taskmgr/`（`window=yes`） | |
 | `Chat/` | **Kernel 编** | Store `chat`（`window=yes`） | 不预装桌面 |
-| `Demos/*.c` | **Kernel 编** | 见下「Demo 分列」 | 勿迁 Start |
+| `Demos/*.c` | **Kernel 编** | 见下「Demo 分列」 | 勿迁 Bingo |
 | `Assembly/*.S`（表内） | **Kernel 编** | Class / Build | 裸 syscall 课 |
 | `Assembly/CatFile.S` `HelloInt80.S` `WriteFile.S` | **删** | — | 未挂 Makefile；CRT 版已替代 |
-| Start `Examples/Hello|Gui|Net|…` | **Start Example** | 本地 `build/` + SDK | 课外模板；**不是** Class 源 |
-| Start `Examples/UiText|UiDesigner` | **Start Example** | 树内 `BlocksUser.mk` | 待 `uitxt2h` 回仓 |
+| Bingo `Examples/Hello|Gui|Net|…` | **Bingo Example** | 本地 `build/` + SDK | 课外模板；**不是** Class 源 |
+| Bingo `Examples/UiText|UiDesigner` | **Bingo Example** | 树内 `BlocksUser.mk` | 待 `uitxt2h` 回仓 |
 
-**不迁 Start**：Snake / Chat / TaskMgr / 全套 Demos·Assembly（跟核 `Makefile`·`build.sh` 绑死）。  
+**不迁 Bingo**：Snake / Chat / TaskMgr / 全套 Demos·Assembly（跟核 `Makefile`·`build.sh` 绑死）。  
 **不删（保留 Kernel）**：上表「Kernel 编」行。
 
 ## Demo / Assembly 分列（Kernel 编）

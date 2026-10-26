@@ -1,4 +1,4 @@
-# Start / System — 读源码 / 研究
+# Bingo / System — 读源码 / 研究
 
 > 目标：弄清分层、开机链、目录落点；手册当字典，代码当正文。
 
@@ -10,6 +10,6 @@
 
 **Syscall 真源**（勿手抄号）：[`Kernel/Include/Abi/SyscallABI.h`](../../Kernel/Include/Abi/SyscallABI.h)。  
 **板级**：[`Kernel/HAL/Board/README.md`](../../Kernel/HAL/Board/README.md)。  
-**上机对照**：[`../START.md`](../START.md)。
+**上机对照**：[`../BINGO.md`](../BINGO.md)。
 
 不在本目录：日档 ★、过程排障流水——见 [`Archive/`](../../Archive/README.md)。

@@ -1,5 +1,5 @@
 # Batch — Graphics batch 范例
-#   make -C Start/App/Examples/Batch
+#   make -C Bingo/App/Examples/Batch
 
 BLOCKS_SDK ?= $(abspath ../../../../Kernel/Build/BlocksSDK)
 PROG      ?= BATCH

@@ -1,5 +1,5 @@
 # Style — Ui 样式范例
-#   make -C Start/App/Examples/Style
+#   make -C Bingo/App/Examples/Style
 
 BLOCKS_SDK ?= $(abspath ../../../../Kernel/Build/BlocksSDK)
 PROG      ?= STYLE

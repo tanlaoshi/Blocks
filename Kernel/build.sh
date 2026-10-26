@@ -228,7 +228,7 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         "$DEST/PTHREADSMOKE.ELF" "$DEST/THREADDEMO.ELF" "$DEST/ENOSYS.ELF" \
         "$DEST/MYAPP.ELF"
 
-    # Class/MYAPP.ELF：与 HELLO 同源（毛坯在 Start/App）
+    # Class/MYAPP.ELF：与 HELLO 同源（毛坯在 Bingo/App）
     rm -f "$DEST/Class/MYAPP.ELF"
     if [ -f "$USER_OUT/hello.elf" ]; then
         cp -f "$USER_OUT/hello.elf" "$DEST/Class/MYAPP.ELF"

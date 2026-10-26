@@ -1,0 +1,4 @@
+id=myapp
+name=MyApp
+# 开窗改为 window=yes；认窗只信本字段
+window=no

@@ -167,7 +167,7 @@ blocks> exec TASKMGR.ELF
 | 路径 | 何时用 |
 | ---- | ------ |
 | `User/Apps/TaskMgr.c` + 内核 `Makefile` | **仓库内示范 / 开课镜像自带** |
-| `Start/App/Template` · `Examples` | 学生课外独立工程（复制开干） |
+| `Bingo/App/Template` · `Examples` | 学生课外独立工程（复制开干） |
 | `Tools/build-sdk.sh` → `Build/BlocksSDK` | 离树 SDK；头里应有 `Blocks/task.h` / `TaskSnap.h` |
 
 ---

@@ -1,10 +1,10 @@
 # Blocks
 
-单仓：Boot · Kernel · Runtime · **Start** · **Archive**。
+单仓：Boot · Kernel · Runtime · **Bingo** · **Archive**。
 
 ```text
 Blocks/
-  Start/       ← 动手入口 + 读者手册（App / Driver / System / Contribute / Course）
+  Bingo/       ← 动手入口 + 读者手册（App / Driver / System / Contribute / Course）
   Archive/     ← 日档、过程、柱规格、同步、原则与学习记录（存档）
   Boot/  Kernel/  Runtime/  Tools/
   env.sh
@@ -12,8 +12,8 @@ Blocks/
 
 | 你要… | 去哪 |
 | ------ | ---- |
-| **上手 / 写代码 / 读手册** | [`Start/`](Start/README.md) · [`Start/START.md`](Start/START.md) |
-| **写 App（毛坯）** | [`Start/App/`](Start/App/) |
+| **上手 / 写代码 / 读手册** | [`Bingo/`](Bingo/README.md) · [`Bingo/BINGO.md`](Bingo/BINGO.md) |
+| **写 App（毛坯）** | [`Bingo/App/`](Bingo/App/) |
 | 日档 ★ / 排期 | [`Archive/路线图1026.md`](Archive/路线图1026.md) |
 | 从 OVMF 逐段学 | [`Archive/原则与学习记录.md`](Archive/原则与学习记录.md) |
 | 换机 / 工具链细表 | [`Archive/同步.md`](Archive/同步.md) |
@@ -73,7 +73,7 @@ cd ~/Blocks && source ./env.sh
 | 启动 | `run` | OVMF + 图形/串口；Guest：`blocks>` |
 | 无窗串口 | `run --headless` | 终端里进壳 |
 
-产物：`Kernel/Build/HAL/X64/Kernel.elf`（亦进 RootFs）。App 毛坯见 `Start/App/`。
+产物：`Kernel/Build/HAL/X64/Kernel.elf`（亦进 RootFs）。App 毛坯见 `Bingo/App/`。
 
 ### Arm64
 
@@ -102,4 +102,4 @@ cd ~/Blocks && source ./env.sh
 | 真机启动 | RootFs 含 `Kernel.elf` | — | U-Boot + `ck-pi-sd`（核→BLOCKS） | 厂商 U-Boot + `ck-duo-sd`（核→BLOCKS；启动仍 `boot.sd`） |
 | 典型板旗 | 桌面 + HID | 串口/virt | FB + HID | **串口壳**（无 Duo GUI） |
 
-细节与换机：[`Archive/同步.md`](Archive/同步.md) · [`Start/START.md`](Start/START.md)。
+细节与换机：[`Archive/同步.md`](Archive/同步.md) · [`Bingo/BINGO.md`](Bingo/BINGO.md)。

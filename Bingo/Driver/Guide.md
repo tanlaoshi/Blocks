@@ -1,6 +1,6 @@
 # Blocks 驱动开发指南
 
-> **Start 正本**。`Archive/手册/` 对应文件仅为跳转 stub。
+> **Bingo 正本**。`Archive/手册/` 对应文件仅为跳转 stub。
 
 
 > 新人操作页（约 ≤5 页）。API：[`Kernel/Include/Driver/Driver.h`](../../Kernel/Include/Driver/Driver.h)。  

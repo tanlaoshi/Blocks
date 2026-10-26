@@ -9,8 +9,8 @@
 ```bash
 # 仓根；以 Gui 样例为例
 mkdir -p Runtime/RootFs/X64/Apps/mygui
-cp Start/App/Examples/Gui/build/MYGUI.ELF Runtime/RootFs/X64/Apps/mygui/MYGUI.ELF
-cp Start/App/Examples/Gui/PKG.TXT          Runtime/RootFs/X64/Apps/mygui/PKG.TXT
+cp Bingo/App/Examples/Gui/build/MYGUI.ELF Runtime/RootFs/X64/Apps/mygui/MYGUI.ELF
+cp Bingo/App/Examples/Gui/PKG.TXT          Runtime/RootFs/X64/Apps/mygui/PKG.TXT
 # PKG 必须含：window=yes
 ```
 
@@ -35,7 +35,7 @@ blocks> exec Apps/mygui/MYGUI.ELF
 可放卷根或 `Class/`：
 
 ```bash
-cp Start/App/Template/build/MYAPP.ELF Runtime/RootFs/X64/MYAPP.ELF
+cp Bingo/App/Template/build/MYAPP.ELF Runtime/RootFs/X64/MYAPP.ELF
 # Guest: exec MYAPP.ELF
 ```
 

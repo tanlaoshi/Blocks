@@ -1,6 +1,6 @@
 # 开课 ABI 冻结（课用面）
 
-> **Start 正本**：本文件在`Start/` 下维护。  
+> **Bingo 正本**：本文件在`Bingo/` 下维护。  
 > **身份**：Blocks 是全新系统，**不当 Linux 兼容层**（见 [README §0.1](../App/README.md)）。课上只教 **ISO C + Blocks API**。  
 > **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/include/*.h`、`lib*.a`。  
 > **卡纸**：[`../Course/CheatSheet.md`](../Course/CheatSheet.md)。  
@@ -51,7 +51,7 @@
 | 课上说法 | 仓库位置 |
 | -------- | -------- |
 | 内核树 | `Kernel/` |
-| 用户态 | `Kernel/User/`（CRT/库）；示例 `Start/App/{Template,Examples}` |
+| 用户态 | `Kernel/User/`（CRT/库）；示例 `Bingo/App/{Template,Examples}` |
 | Shell | Guest：`blocks>` |
 | 还债剧本 | [`路线图1024 · selfhost`](../../Archive/路线图1024.md#selfhost) |
 

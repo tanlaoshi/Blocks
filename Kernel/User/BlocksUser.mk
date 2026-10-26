@@ -1,6 +1,6 @@
 # BlocksUser.mk — 树内用户程序规则（系统面；课外毛坯请用 BlocksSDK）
 # 用法：设 BLOCKS_KERNEL 指向 Kernel 根，再 include 本文件。
-# 权威毛坯 / 样例：仓库 Start/App/（Template + Examples）。
+# 权威毛坯 / 样例：仓库 Bingo/App/（Template + Examples）。
 #
 # 调用方需提供：
 #   PROG   — 产物基名（默认 MYAPP；盘上建议大写 8.3：MYAPP.ELF）

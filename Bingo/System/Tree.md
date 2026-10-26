@@ -117,14 +117,14 @@ build && sync && run --headless
 
 ## 4. Archive（存档落点）
 
-读者手册在 **`Start/`**。本树：
+读者手册在 **`Bingo/`**。本树：
 
 | 路径 | 内容 |
 | ---- | ---- |
 | `路线图MMDD.md` | **活 ★** 日档 |
 | `项目/路线图.md` | 暗号 + 归档史（不堆新排期） |
 | `过程/` · `柱规格/` | 已完柱与规格 |
-| `手册/` · `规范/` | 过渡副本（正本在 `Start/`） |
+| `手册/` · `规范/` | 过渡副本（正本在 `Bingo/`） |
 
 ---
 
@@ -142,8 +142,8 @@ build && sync && run --headless
 | `source Scripts/env.sh` | `source ~/Blocks/env.sh` |
 | `CodeA-HAL`… 磁盘前缀 | 短名 `HAL/` `Core/`…（分层规则仍在） |
 | OpenBox 独立仓设想 | 已拍扁为 `Kernel/Scripts/` + 仓根 `env.sh` |
-| `Documents/` | **`Archive/`**（存档）；读者入口 **`Start/`** |
-| `Manual/` | 已并入 **`Start/`** |
+| `Documents/` | **`Archive/`**（存档）；读者入口 **`Bingo/`** |
+| `Manual/` | 已并入 **`Bingo/`** |
 
 ---
 
@@ -153,4 +153,4 @@ build && sync && run --headless
 | ---- | ---- |
 | 2026-10-23 | 合成：取代开箱/OpenBox/ToyKernel 目录长文与骨架文中的「树」部分。 |
 | 2026-10-26 | `Kernel/OpenBox` → `Kernel/Scripts` 拍扁。 |
-| 2026-10-26 | `Documents/` → `Archive/`；`Manual/` → `Start/`。 |
+| 2026-10-26 | `Documents/` → `Archive/`；`Manual/` → `Bingo/`。 |

@@ -3,7 +3,7 @@
 > **身份**：Blocks 是全新系统，**不当 Linux 兼容层**（见 [`身份.md`](身份.md)）。课上只教 **ISO C + Blocks API**。  
 > **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/include/*.h`、`lib*.a`。  
 > Shell：`blocks>` · 卷：`BLOCKS:`。  
-> 本文件在 `Start/App/`。
+> 本文件在 `Bingo/App/`。
 
 ---
 
@@ -52,7 +52,7 @@
 | 课上说法 | 仓库位置 |
 | -------- | -------- |
 | 内核树 | `Kernel/` |
-| 用户态 / 毛坯 | 本树 `Start/App/`；工具链 `Kernel/Build/BlocksSDK` |
+| 用户态 / 毛坯 | 本树 `Bingo/App/`；工具链 `Kernel/Build/BlocksSDK` |
 | Shell | Guest：`blocks>` |
 
 更细 API：[`API.md`](API.md)。上手：[`Guide.md`](Guide.md)。

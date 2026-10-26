@@ -8,7 +8,7 @@
 ## 用法
 
 1. 改 `MyApp.uitxt`  
-2. `make -C Start/App/Examples/UiText`  
+2. `make -C Bingo/App/Examples/UiText`  
 3. 在 `UiActions.c` 填 `OnId*`  
 4. 部署见 [`../../Deploy.md`](../../Deploy.md)
 

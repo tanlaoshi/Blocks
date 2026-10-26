@@ -1,5 +1,5 @@
 /*
- * UiDesigner 模板 — 布局编译期生成（见 Start/App/UI/拖控件设计器.md）
+ * UiDesigner 模板 — 布局编译期生成（见 Bingo/App/UI/拖控件设计器.md）
  */
 #include <stdio.h>
 #include <unistd.h>

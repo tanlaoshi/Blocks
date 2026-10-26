@@ -1,5 +1,5 @@
 # Pages — 多页 App 范例
-#   make -C Start/App/Examples/Pages
+#   make -C Bingo/App/Examples/Pages
 
 BLOCKS_SDK ?= $(abspath ../../../../Kernel/Build/BlocksSDK)
 PROG      ?= PAGES

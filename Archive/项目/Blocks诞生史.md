@@ -21748,7 +21748,7 @@ Briefly inform the user about the task result and perform any follow-up actions 
 
 ### 2706. 发问
 
-\n@Start/App/Docs/ABI.md @Start/App/Docs/API.md 看是否需要更新\n
+\n@Bingo/App/Docs/ABI.md @Bingo/App/Docs/API.md 看是否需要更新\n
 
 处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
 

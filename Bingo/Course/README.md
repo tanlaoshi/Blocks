@@ -1,4 +1,4 @@
-# Start / Course — 学生 / 教学
+# Bingo / Course — 学生 / 教学
 
 > 目标：认清课用承诺面，完成作业；少碰未承诺的内核深水区。
 
@@ -9,5 +9,5 @@
 | [`Homework/`](Homework/) | 调度器 / 分配器 / FS / TaskMgr |
 
 **写 App 作业**还要看：[`../App/Guide.md`](../App/Guide.md)。  
-**上机**：[`../START.md`](../START.md)。  
+**上机**：[`../BINGO.md`](../BINGO.md)。  
 **不承诺**完整 POSIX / 完整 pthread 等——以 ABI 文为准。

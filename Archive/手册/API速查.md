@@ -1,3 +1,3 @@
 # API 速查（已迁）
 
-> **正本**：[`Start/App/API.md`](../../Start/App/API.md)
+> **正本**：[`Bingo/App/API.md`](../../Bingo/App/API.md)

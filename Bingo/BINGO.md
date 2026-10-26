@@ -1,4 +1,4 @@
-# START — 五分钟进 `blocks>`
+# BINGO — 五分钟进 `blocks>`
 
 > 适用：App / 驱动 / 贡献 / 学生。研究源码可先读 [`System/`](System/README.md)，再回来跑通一次。
 
@@ -25,11 +25,11 @@ Guest 提示符：`blocks>`。
 
 ```bash
 cd ~/Blocks/Kernel && ./Tools/build-sdk.sh          # 一次：Build/BlocksSDK
-cp -a ~/Blocks/Start/App/Template ~/MyApp
+cp -a ~/Blocks/Bingo/App/Template ~/MyApp
 make -C ~/MyApp                                     # → build/MYAPP.ELF
 ```
 
-树内现成样例：`Start/App/Examples/{Hello,Gui,Net}`（见 [`App/Guide.md`](App/Guide.md)）。  
+树内现成样例：`Bingo/App/Examples/{Hello,Gui,Net}`（见 [`App/Guide.md`](App/Guide.md)）。  
 Guest：`exec HELLO.ELF`（或商店 `store combo hello`）。
 
 ## 4. 红字

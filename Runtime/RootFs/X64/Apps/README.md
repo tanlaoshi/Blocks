@@ -19,6 +19,6 @@ Apps/<id>/
 
 历史上曾有扁平 `Apps/HELLO.ELF`、`Apps/TASKMGR.ELF`。新应用**禁止**再往 `Apps/` 根丢 ELF。
 
-开发与打包：[`Start/App/Guide.md`](../../../../Start/App/Guide.md) · [`Start/App/Deploy.md`](../../../../Start/App/Deploy.md)。商店说明：[`../Store/README.md`](../Store/README.md)。
+开发与打包：[`Bingo/App/Guide.md`](../../../../Bingo/App/Guide.md) · [`Bingo/App/Deploy.md`](../../../../Bingo/App/Deploy.md)。商店说明：[`../Store/README.md`](../Store/README.md)。
 
 勿把手动构建垃圾提交进本目录。

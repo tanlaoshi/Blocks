@@ -376,13 +376,13 @@ void DesktopTickClock(void) {
 
     /*
      * cjk-3：指针已闲才合成。WantDrain/Preheat 灌 HIT 后 BumpPaint；
-     * 此处 RequestRefresh 补 defer 空白。忙时上面已 return，勿与鼠抢。
+     * RequestRefresh 补 defer 空白后 return——勿再抬 sClockBarNeedPaint 重画栏
+     * （曾与 Refresh 叠绘 → 任务栏哆嗦）。
      */
     if (FontTtfTakePaint()) {
         FontTtfAckPaint();
-        sClockBarNeedPaint = 1;
-        DesktopMarkTaskbar();
         RequestRefresh();
+        return;
     }
 
     NeedPaint = sClockBarNeedPaint;

@@ -22,7 +22,8 @@ run_one() {
 }
 
 need_expect
-pkill -9 -f qemu-system-x86_64 2>/dev/null || true
+killall -9 qemu-system-x86_64 2>/dev/null || true
+pkill -9 -f '[q]emu-system-x86_64' 2>/dev/null || true
 run_one test-bundle-install.exp
 run_one test-bundle-remove.exp
 run_one test-bundle-combo.exp

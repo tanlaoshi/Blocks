@@ -84,6 +84,8 @@ UINT32 FontTtfCacheAdvance(UINT32 Cp);
 int FontTtfCacheMissed(UINT32 Cp);
 /* 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
 int FontTtfCachePending(UINT32 Cp);
+/* UI ASCII：同步灌 TTF 槽（勿 defer 空白） */
+void FontTtfCacheEnsure(UINT32 Cp);
 /* PR-UI-ttf-3：Preheat 可同步；WantDrain 仅 Worker（Gui 路径勿大 burst） */
 void FontTtfPreheatUtf8(const char *S);
 /* Worker：泵绘制路径排队的缺字；1=仍有排队 */

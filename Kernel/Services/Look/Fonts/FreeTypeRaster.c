@@ -147,74 +147,128 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   if (!HalFpuBegin()) {
     return -1;
   }
-  /* 满格像素高；格内居中，勿再 CellH-2（缩后观感接近旧 stb，像「没换字」）。 */
-  Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
-  if (Err) {
-    HalFpuEnd();
-    return -1;
-  }
   /*
-   * cjk-3：无 cmap 项勿 Load 成 .notdef 当 HIT（静默空白/框装过关）。
-   * mono ASCII 缺字仍失败返回，由 Terminus 软退。
-   */
-  if (FT_Get_Char_Index(Face, (FT_ULong)Cp) == 0) {
-    HalFpuEnd();
-    return -1;
-  }
-  /*
-   * font-freetype-hint / cjk-5：
-   * - 汉字：TARGET_NORMAL（笔画更实；LIGHT 偏瘦）
-   * - mono / UI 拉丁：TARGET_LIGHT（近 Windows 灰度 AA；禁 FORCE_AUTOHINT）
+   * 汉字：满格 ppem。
+   * UI 拉丁：整数加档 +1/4 ppem（钳 32）重栅格，禁非整数位图拉伸。
+   * 中英共用 CellH 收进基线 SharedAsc：ascent+descent 超格则上移基线留底，
+   * 避免 Droid 汉字下横被裁；加档只放大拉丁、不改共用基线。
    */
   {
-    int Flags = FT_LOAD_RENDER;
+    UINT32 ReqH = CellH;
+    int SharedAsc = 0;
+    int DescPx = 0;
 
-    if (Mono || Cp < 128u) {
-      Flags |= FT_LOAD_TARGET_LIGHT;
+    if (!Mono) {
+      Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
+      if (Err) {
+        HalFpuEnd();
+        return -1;
+      }
+      AscPx = (int)(Face->size->metrics.ascender >> 6);
+      DescPx = -(int)(Face->size->metrics.descender >> 6);
+      if (AscPx < 0) {
+        AscPx = 0;
+      }
+      if (DescPx < 1) {
+        /* Droid/UMing 汉字常比 metrics 降部更深，至少留 2px 底 */
+        DescPx = 2;
+      }
+      if (AscPx + DescPx > (int)CellH) {
+        SharedAsc = (int)CellH - DescPx;
+      } else {
+        SharedAsc = AscPx;
+      }
+      if (SharedAsc < 1) {
+        SharedAsc = (int)CellH * 3 / 4;
+      }
+      if (SharedAsc >= (int)CellH) {
+        SharedAsc = (int)CellH - 1;
+      }
+      if (Cp < 128u) {
+        ReqH = CellH + (CellH / 4u);
+        if (ReqH > 32u) {
+          ReqH = 32u;
+        }
+        if (ReqH < CellH) {
+          ReqH = CellH;
+        }
+        if (ReqH != CellH) {
+          Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)ReqH);
+          if (Err) {
+            HalFpuEnd();
+            return -1;
+          }
+        }
+      }
+    } else {
+      Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
+      if (Err) {
+        HalFpuEnd();
+        return -1;
+      }
     }
-    Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
-  }
-  if (Err) {
-    HalFpuEnd();
-    return -1;
-  }
-  Slot = Face->glyph;
-  Bm = &Slot->bitmap;
-  if (Bm->pixel_mode != FT_PIXEL_MODE_GRAY || !Bm->buffer) {
-    HalFpuEnd();
-    return -1;
-  }
-  AscPx = (int)(Face->size->metrics.ascender >> 6);
-  if (AscPx < 0) {
-    AscPx = 0;
-  }
-  if (Mono) {
-    /* 等宽：VMetrics 基线；水平夹进格内 */
-    Oy = AscPx - Slot->bitmap_top;
-    Ox = Slot->bitmap_left;
-    if (Ox < 0) {
-      Ox = 0;
-    }
-  } else if (Cp >= 128u) {
     /*
-     * UI 汉字：与 stb 格内居中一致。纯基线时 UMing 常 Oy+rows>CellH → 底被削。
-     * 仍超高则顶齐（宁可削顶，桌面标签少见）。
+     * cjk-3：无 cmap 项勿 Load 成 .notdef 当 HIT（静默空白/框装过关）。
+     * mono ASCII 缺字仍失败返回，由 Terminus 软退。
      */
-    Ox = ((int)CellW - (int)Bm->width) / 2;
-    Oy = ((int)CellH - (int)Bm->rows) / 2;
-    if (Ox < 0) {
+    if (FT_Get_Char_Index(Face, (FT_ULong)Cp) == 0) {
+      HalFpuEnd();
+      return -1;
+    }
+    /*
+     * font-freetype-hint / cjk-5 / 拉丁光学：
+     * - 汉字、UI 拉丁：TARGET_NORMAL（笔画实度同级；LIGHT 拉丁偏瘦显更小）
+     * - mono：TARGET_LIGHT（近 Windows 灰度 AA；禁 FORCE_AUTOHINT）
+     */
+    {
+      int Flags = FT_LOAD_RENDER;
+
+      if (Mono) {
+        Flags |= FT_LOAD_TARGET_LIGHT;
+      }
+      Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
+    }
+    if (Err) {
+      HalFpuEnd();
+      return -1;
+    }
+    Slot = Face->glyph;
+    Bm = &Slot->bitmap;
+    if (Bm->pixel_mode != FT_PIXEL_MODE_GRAY || !Bm->buffer) {
+      HalFpuEnd();
+      return -1;
+    }
+    AscPx = (int)(Face->size->metrics.ascender >> 6);
+    if (AscPx < 0) {
+      AscPx = 0;
+    }
+    if (Mono) {
+      /* 等宽：VMetrics 基线；水平夹进格内 */
+      Oy = AscPx - Slot->bitmap_top;
+      Ox = Slot->bitmap_left;
+      if (Ox < 0) {
+        Ox = 0;
+      }
+    } else if (Cp >= 128u) {
+      /* UI 汉字：共用 SharedAsc；墨仍超底则整字上移进格（保下横） */
+      Ox = ((int)CellW - (int)Bm->width) / 2;
+      Oy = SharedAsc - Slot->bitmap_top;
+      if (Ox < 0) {
+        Ox = 0;
+      }
+      if ((int)Bm->rows <= (int)CellH) {
+        if (Oy + (int)Bm->rows > (int)CellH) {
+          Oy = (int)CellH - (int)Bm->rows;
+        }
+        if (Oy < 0) {
+          Oy = 0;
+        }
+      }
+    } else {
+      /* UI 拉丁：同一 SharedAsc + ReqH 字形；超格只 blit 裁 */
+      Oy = SharedAsc - Slot->bitmap_top;
       Ox = 0;
     }
-    if (Oy < 0) {
-      Oy = 0;
-    }
-    if (Oy + (int)Bm->rows > (int)CellH && (int)Bm->rows <= (int)CellH) {
-      Oy = (int)CellH - (int)Bm->rows;
-    }
-  } else {
-    /* UI 拉丁（若走 FT）：靠左，步进半宽防叠字 */
-    Oy = AscPx - Slot->bitmap_top;
-    Ox = 0;
   }
   {
     UINT32 Ink = 0;

@@ -76,12 +76,19 @@ void ConsoleSbRepaint(void) {
 
     for (i = Start; i < End; i++) {
         const char *L = ConsoleSbLine(i);
-        /* 历史行里的提示符也保持青色 */
+        /* 历史行提示符保持青色（兼容 toyos>/blocks>/Blocks>） */
         if (L[0] == 't' && L[1] == 'o' && L[2] == 'y' && L[3] == 'o' &&
             L[4] == 's' && L[5] == '>' && L[6] == ' ') {
-            ConsoleDrawString("blocks> ", ThemeShellPrompt());
+            ConsoleDrawString("Blocks> ", ThemeShellPrompt());
             if (L[7]) {
                 ConsoleDrawString(L + 7, ThemeShellText());
+            }
+        } else if ((L[0] == 'b' || L[0] == 'B') && L[1] == 'l' && L[2] == 'o' &&
+                   L[3] == 'c' && L[4] == 'k' && L[5] == 's' && L[6] == '>' &&
+                   L[7] == ' ') {
+            ConsoleDrawString("Blocks> ", ThemeShellPrompt());
+            if (L[8]) {
+                ConsoleDrawString(L + 8, ThemeShellText());
             }
         } else {
             ConsoleDrawString(L, ThemeShellText());
@@ -91,9 +98,16 @@ void ConsoleSbRepaint(void) {
     if (ViewOff == 0 && AccLen > 0) {
         if (Acc[0] == 't' && Acc[1] == 'o' && Acc[2] == 'y' && Acc[3] == 'o' &&
             Acc[4] == 's' && Acc[5] == '>' && Acc[6] == ' ') {
-            ConsoleDrawString("blocks> ", ThemeShellPrompt());
+            ConsoleDrawString("Blocks> ", ThemeShellPrompt());
             if (Acc[7]) {
                 ConsoleDrawString(Acc + 7, ThemeShellText());
+            }
+        } else if ((Acc[0] == 'b' || Acc[0] == 'B') && Acc[1] == 'l' &&
+                   Acc[2] == 'o' && Acc[3] == 'c' && Acc[4] == 'k' &&
+                   Acc[5] == 's' && Acc[6] == '>' && Acc[7] == ' ') {
+            ConsoleDrawString("Blocks> ", ThemeShellPrompt());
+            if (Acc[8]) {
+                ConsoleDrawString(Acc + 8, ThemeShellText());
             }
         } else {
             ConsoleDrawString(Acc, ThemeShellText());

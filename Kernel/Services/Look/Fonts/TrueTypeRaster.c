@@ -308,7 +308,24 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
     if (CellW == 0 || CellH == 0) {
         return -1;
     }
-    Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)CellH);
+    /*
+     * 与 FT 拉丁光学一致：ASCII 用整数加档 em→px（+1/4 钳 32）再装入格；
+     * 汉字仍 MappingEm=CellH。禁止非整数位图拉伸。
+     */
+    {
+        UINT32 EmPx = CellH;
+
+        if (Cp < 128u) {
+            EmPx = CellH + (CellH / 4u);
+            if (EmPx > 32u) {
+                EmPx = 32u;
+            }
+            if (EmPx < CellH) {
+                EmPx = CellH;
+            }
+        }
+        Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)EmPx);
+    }
     Shift = FontTtfTopShift(Info, Glyph, Scale);
     stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f, Shift,
                                         &X0, &Y0, &X1, &Y1);
@@ -317,7 +334,11 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
     if (Gw <= 0 || Gh <= 0) {
         return -1;
     }
-    if (Gw > (int)CellW || Gh > (int)CellH) {
+    /*
+     * 汉字超格：按比例 Fit 进格（整数格内重算 Scale）。
+     * 拉丁加档后可能略超格：勿 Fit 缩回（会抵消光学加档），平移裁切装入。
+     */
+    if (Cp >= 128u && (Gw > (int)CellW || Gh > (int)CellH)) {
         float FitX = (float)CellW / (float)Gw;
         float FitY = (float)CellH / (float)Gh;
         float Fit = (FitX < FitY) ? FitX : FitY;
@@ -332,8 +353,48 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
             return -1;
         }
     }
-    Ox = ((int)CellW - Gw) / 2;
-    Oy = ((int)CellH - Gh) / 2;
+    /*
+     * 与 FT 一致：CellH 收进基线（ascent+descent 超格则上移留底），
+     * 加档拉丁不贴边乱移；此处夹进格以免 MakeBitmap 越界。
+     */
+    {
+        int Ascent;
+        int Descent;
+        int LineGap;
+        int Baseline;
+        int DescPx;
+        float ScaleCell;
+
+        ScaleCell = stbtt_ScaleForMappingEmToPixels(Info, (float)CellH);
+        stbtt_GetFontVMetrics(Info, &Ascent, &Descent, &LineGap);
+        (void)LineGap;
+        Baseline = (int)((float)Ascent * ScaleCell);
+        DescPx = (int)(-(float)Descent * ScaleCell);
+        if (DescPx < 2) {
+            DescPx = 2;
+        }
+        if (Baseline + DescPx > (int)CellH) {
+            Baseline = (int)CellH - DescPx;
+        }
+        if (Baseline < 1) {
+            Baseline = (int)CellH * 3 / 4;
+        }
+        if (Baseline >= (int)CellH) {
+            Baseline = (int)CellH - 1;
+        }
+        stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f,
+                                            Shift, &X0, &Y0, &X1, &Y1);
+        Gw = X1 - X0;
+        Gh = Y1 - Y0;
+        if (Gw <= 0 || Gh <= 0) {
+            return -1;
+        }
+        Ox = (Cp < 128u) ? 0 : (((int)CellW - Gw) / 2);
+        Oy = Baseline + Y0;
+        if (Cp >= 128u && Gh <= (int)CellH && Oy + Gh > (int)CellH) {
+            Oy = (int)CellH - Gh;
+        }
+    }
     if (Ox < 0) {
         Ox = 0;
     }

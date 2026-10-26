@@ -120,7 +120,8 @@ toy_qemu_kill_others() {
         return 0
     fi
     echo "qemu: killing ${N} leftover qemu-system-x86_64 (SIPI safety)" >&2
-    pkill -9 -f 'qemu-system-x86_64' 2>/dev/null || true
+    killall -9 qemu-system-x86_64 2>/dev/null || true
+    pkill -9 -f '[q]emu-system-x86_64' 2>/dev/null || true
     sleep 0.3
 }
 
@@ -134,7 +135,7 @@ toy_qemu_prepare_smp() {
         Other=0
     elif [ "$Other" -gt 0 ]; then
         echo "warning: ${Other} qemu-system-x86_64 already running — SIPI/AP may timeout." >&2
-        echo "warning: re-run with --kill-qemu, or: pkill -9 -f qemu-system-x86_64" >&2
+        echo "warning: re-run with --kill-qemu, or: killall -9 qemu-system-x86_64" >&2
         if [ -z "${SMP:-}" ]; then
             SMP=1
             echo "warning: defaulting SMP=1 while other QEMU exist" >&2

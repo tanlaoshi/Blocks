@@ -707,15 +707,15 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     UiLatin = FontUiTtfSelected() && Cp >= 32u && Cp < 127u;
     if (UiLatin && FontTtfReady() && !FileSystemBootMediumGone()) {
         G = FontTtfCacheGet(Cp, OutW, OutH);
+        if (!G && !FontTtfCacheMissed(Cp)) {
+            /* ASCII 同步灌：避免 Hello→ello、blocks→locks 与任务栏 TakePaint 抖 */
+            FontTtfCacheEnsure(Cp);
+            G = FontTtfCacheGet(Cp, OutW, OutH);
+        }
         if (G) {
             gGlyphCpBpp = 8;
             gGlyphCrispLatin = 1;
             return G;
-        }
-        if (!FontTtfCacheMissed(Cp)) {
-            (void)FontTtfCachePending(Cp);
-            gGlyphDefer = 1;
-            return 0;
         }
         /* 真 MISS：软退点阵，避免空白 */
     }

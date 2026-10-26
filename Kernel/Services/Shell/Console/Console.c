@@ -105,8 +105,8 @@ void ConsoleOutUnlock(void) {
 
 static void PromptCommon(int ToSerial) {
     /*
-     * 整段在 OutLock 内：SMP 上勿把 \\n 与 blocks> 拆开，否则用户逐字 Write
-     * 会插成「H\\nello」+「blocks>」粘在一起。
+     * 整段在 OutLock 内：SMP 上勿把 \\n 与 Blocks> 拆开，否则用户逐字 Write
+     * 会插成「H\\nello」+「Blocks>」粘在一起。
      * ToSerial=0：开 Shell 窗只画客户区；串口已由 AnnounceBootReady 打过一份。
      */
     ConsoleOutLock();
@@ -124,14 +124,14 @@ static void PromptCommon(int ToSerial) {
         }
     }
     if (ToSerial) {
-        HalConsoleWriteSerial("blocks> ");
+        HalConsoleWriteSerial("Blocks> ");
     }
     gAtLineStart = 0;
     if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
         ConsoleSbBindFocus();
         ConsoleSbEnsureLive();
-        ConsoleSbFeed("blocks> ");
-        ConsoleDrawString("blocks> ", ThemeShellPrompt());
+        ConsoleSbFeed("Blocks> ");
+        ConsoleDrawString("Blocks> ", ThemeShellPrompt());
     }
     ConsoleOutUnlock();
 }
@@ -317,7 +317,7 @@ static void JobReleasePrompt(void) {
         return;
     }
     /* 已切走：完成行在 WinFeed；槽内补提示符并清该窗 WaitPrompt */
-    ConsoleSbWinFeed(Owner, "blocks> ");
+    ConsoleSbWinFeed(Owner, "Blocks> ");
     GuiConsoleSetWaitPrompt(Owner, 0);
     if (gWaitPrompt > 0) {
         gWaitPrompt--;

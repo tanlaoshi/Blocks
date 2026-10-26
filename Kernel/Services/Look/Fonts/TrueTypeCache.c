@@ -248,6 +248,17 @@ static void FillSlot(UINT32 Cp, int NotifyPaint) {
     }
 }
 
+/*
+ * UI 拉丁 ASCII：同步灌格。汉字仍走 Want/Deferred（防挡鼠）。
+ * 若 ASCII 也 defer，首帧会留下「ello」「locks>」，且 TakePaint 狂刷任务栏。
+ */
+void FontTtfCacheEnsure(UINT32 Cp) {
+    if (!TtfCpOk(Cp) || Cp >= 128u) {
+        return;
+    }
+    FillSlot(Cp, 0);
+}
+
 static UINT32 gPaintSeen;
 
 int FontTtfTakePaint(void) {

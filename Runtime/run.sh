@@ -29,7 +29,10 @@ for Arg in "$@"; do
         --no-sync) DO_SYNC=0 ;;
         --clean-nvram) CLEAN_NVRAM=1 ;;
         --kill)
-            pkill -9 -f qemu-system-x86_64 2>/dev/null || true
+            # killall 按 argv0；[q]emu 技巧避免 pkill -f 匹配到自身 cmdline 先自杀。
+            # （comm 名截断 15 字符，pkill -x qemu-system-x86_64 在 Linux 上无效）
+            killall -9 qemu-system-x86_64 2>/dev/null || true
+            pkill -9 -f '[q]emu-system-x86_64' 2>/dev/null || true
             echo "killed qemu-system-x86_64 (if any)"
             exit 0
             ;;
@@ -125,9 +128,10 @@ if [ "$HEADLESS" = 0 ]; then
 fi
 
 # 残留 qemu 占着 hostfwd :15000 → 第二次 run 直接失败（Could not set up host forwarding）
-if pgrep -f qemu-system-x86_64 >/dev/null 2>&1; then
-    echo "warning: 已有 qemu-system-x86_64，先 --kill 再启（否则 :15000 占线起不来）" >&2
-    pkill -9 -f qemu-system-x86_64 2>/dev/null || true
+if pgrep -f '[q]emu-system-x86_64' >/dev/null 2>&1; then
+    echo "warning: 已有 qemu-system-x86_64，先清再启（否则 :15000 占线起不来）" >&2
+    killall -9 qemu-system-x86_64 2>/dev/null || true
+    pkill -9 -f '[q]emu-system-x86_64' 2>/dev/null || true
     sleep 0.3
 fi
 

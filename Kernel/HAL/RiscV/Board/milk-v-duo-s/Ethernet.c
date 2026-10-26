@@ -15,6 +15,9 @@
 #include "HalDevices.h"
 #include "SerialLog.h"
 #include "Text.h"
+#ifdef LWIP_ENABLE
+#include "Netif.h"
+#endif
 
 typedef struct {
     UINT32 Descriptor0;
@@ -100,7 +103,7 @@ static UINT32 ByteSwap32(UINT32 Value) {
 }
 
 static UINT16 EthernetChecksum(const void *Data, UINTN Length);
-static int EthernetSendFrame(const UINT8 *Frame, UINTN FrameLength);
+int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength);
 static void EthernetPoll(void);
 static int EthernetParseIp(const char *Text, UINT32 *Ip);
 static int EthernetReady(void);
@@ -891,7 +894,7 @@ static int DmaStartWire(void) {
     return 0;
 }
 
-static int EthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
+int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
     UINT32 Index;
     UINT32 Length;
     UINT32 TransmitControl;
@@ -986,7 +989,7 @@ static void EthernetSendArpRequest(UINT32 TargetIp) {
     Arp->SenderIp = ByteSwap32(gIp);
     MemorySet(Arp->TargetMac, 0, 6);
     Arp->TargetIp = ByteSwap32(TargetIp);
-    (void)EthernetSendFrame(Frame, sizeof(Frame));
+    (void)BoardEthernetSendFrame(Frame, sizeof(Frame));
 }
 
 static void EthernetHandleArp(const EthernetArpPacket *Arp) {
@@ -1017,7 +1020,7 @@ static void EthernetHandleArp(const EthernetArpPacket *Arp) {
         Reply->SenderIp = ByteSwap32(gIp);
         MemoryCopy(Reply->TargetMac, Arp->SenderMac, 6);
         Reply->TargetIp = Arp->SenderIp;
-        (void)EthernetSendFrame(Frame, sizeof(Frame));
+        (void)BoardEthernetSendFrame(Frame, sizeof(Frame));
     }
 }
 
@@ -1075,7 +1078,7 @@ static void EthernetHandleIcmp(const EthernetIpHeader *Ip, const UINT8 *Payload,
         OutIcmp->Checksum = 0;
         Sum = EthernetChecksum(OutIcmp, PayloadLength);
         OutIcmp->Checksum = ByteSwap16(Sum);
-        (void)EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
+        (void)BoardEthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
     }
 }
 
@@ -1090,6 +1093,12 @@ static void EthernetHandleFrame(const UINT8 *Frame, UINTN FrameLength) {
     if (FrameLength >= ETHERNET_ETH_HEADER_LENGTH + 4u) {
         FrameLength -= 4u;
     }
+#ifdef LWIP_ENABLE
+    if (gLwIpReceive) {
+        LwIpNetifInput(Frame, FrameLength);
+        return;
+    }
+#endif
     Eth = (const EthernetEthHeader *)Frame;
     EtherType = ByteSwap16(Eth->EtherType);
     if (EtherType == ETHERNET_ETH_TYPE_ARP) {
@@ -1330,7 +1339,7 @@ static int EthernetSendIp(UINT32 DestinationIp, UINT8 Protocol,
     Ip->Checksum = ByteSwap16(Sum);
     MemoryCopy(Frame + ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH,
                Payload, PayloadLength);
-    return EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
+    return BoardEthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
 }
 
 static int EthernetPing(const char *Host, int TimeoutMilliseconds) {
@@ -1392,7 +1401,7 @@ static int EthernetPing(const char *Host, int TimeoutMilliseconds) {
     Icmp->Checksum = ByteSwap16(Sum);
     gPingTarget = Target;
     gPingWait = 1;
-    if (EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total) != 0) {
+    if (BoardEthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total) != 0) {
         gPingWait = 0;
         return -2;
     }

@@ -1,13 +1,15 @@
 /*
- * HalDevicesNet.c — RiscV：Net 门面（PR-S3-haldev-1 / duo-net net-4）
+ * HalDevicesNet.c — RiscV：Net 门面（PR-S3-haldev-1 / duo-net net-4…6）
  *
  * virt：VirtioNetInitialize → DriverProbeClass(NET)。
  * Duo：板驱动已 Register；此处只 Probe/Bind，不 VirtioNetRegister。
+ * net-6：lwIP on 时 Poll → LwIpService（对表 X64）。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
 #include "Driver.h"
 #include "DriverNet.h"
+#include "LwIp.h"
 #if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
@@ -37,6 +39,10 @@ UINT32 HalNetNicEpoch(void) {
 }
 
 void HalNetPoll(void) {
+    if (LwIpActive()) {
+        LwIpService();
+        return;
+    }
     DriverNetPoll();
 }
 

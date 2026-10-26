@@ -6,6 +6,7 @@
 #include "Hal.h"
 #include "HalDevices.h"
 #include "HIDKeyboard.h"
+#include "LwIp.h"
 #include "ShellCommands.h"
 
 static void SerialFeedChar(char C, int *SkipLf) {
@@ -93,8 +94,14 @@ static void SerialRun(void) {
     for (;;) {
         HalCpuHalt();
         HalInputPoll();
-        /* ConsoleOnly 无 Worker：串口壳泵网，ARP/ICMP 才能在空闲收 */
+        /*
+         * ConsoleOnly 无 Worker：泵网 + DHCP Step（net-6）。
+         * lwIP on 时 HalNetPoll → LwIpService；dhcp job 须本环推进。
+         */
         HalNetPoll();
+        if (LwIpDhcpJobBusy()) {
+            (void)LwIpDhcpStep();
+        }
         {
             int n = 0;
             while (HalSerialDataReady() && n < 256) {

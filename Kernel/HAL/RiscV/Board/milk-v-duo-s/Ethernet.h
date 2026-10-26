@@ -137,5 +137,7 @@ int BoardEthernetProbe(void);
 void BoardEthernetRegister(void);
 /* 1=写出 link 信息；0=无 PHY */
 int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
+/* L2 发帧（lwIP linkoutput / 自研栈） */
+int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength);
 
 #endif /* BOARD_ETHERNET_H */

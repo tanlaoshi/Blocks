@@ -82,7 +82,7 @@
 ## 网（rnet-2）
 
 - 板载 **LAN9514**：hub=`0424:9514`，以太网功能=`0424:ec00`（hub 口1 HS，勿当 HID skip）。  
-- `Ethernet.c` smsc95xx；串口应见 `Boot: DWC2 ETH vid=…ec00` → `SMSC ID_REV=` → `SMSC eth ok mac=` → 模块表后 `SMSC ETH bind`。  
+- `Ethernet.c` smsc95xx；串口应见 `Boot: DWC2 ETH vid=…ec00` → `SMSC ID_REV=` → `SMSC eth ok mac=` → **`Boot: Mod Network` 前** `SMSC ETH bind`（`HalNetProbeAtModuleInit`；勿等 Worker——Pi CNTV 无 IRQ 切不过去）。  
 - `blocks> net` 见 mac；`lwip on` 在 bind 后应可（插线）；静态 ping → rnet-3。
 
 ## 公司 vs 回家

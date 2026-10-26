@@ -12,6 +12,11 @@ int HalNetInitialize(void) {
     return NetInitialize();
 }
 
+int HalNetProbeAtModuleInit(void) {
+    /* 仍 boot-net-defer：有 Worker + 定时器 IRQ */
+    return 0;
+}
+
 int HalNetReady(void) {
     return DriverNetReady();
 }

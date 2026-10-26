@@ -30,6 +30,15 @@ int HalNetInitialize(void) {
 #endif
 }
 
+int HalNetProbeAtModuleInit(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    /* Pi：CNTV poll、Worker 可能饿死；LAN9514 已在 DWC2 hub 扫完 */
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 int HalNetReady(void) {
     return DriverNetReady();
 }

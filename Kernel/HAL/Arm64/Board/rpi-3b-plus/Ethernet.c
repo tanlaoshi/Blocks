@@ -654,6 +654,14 @@ int BoardEthernetGetLink(int *Up, UINT32 *Mbps, int *FullDuplex) {
     if (!gReady) {
         return 0;
     }
+    /*
+     * IEEE 802.3 BMSR.Link Status 是锁存低：掉线后保持 0 直到读一次。
+     * 只读一次会把「曾掉线」当成当前 down（插线仍收包、rx_frames 在涨）。
+     * 标准做法：读两次，以第二次为准。
+     */
+    if (MiiRead(MII_BMSR, &Bmsr) != 0) {
+        return 0;
+    }
     if (MiiRead(MII_BMSR, &Bmsr) != 0) {
         return 0;
     }

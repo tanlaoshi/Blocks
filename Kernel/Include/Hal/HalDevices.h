@@ -159,6 +159,11 @@ int HalMousePresent(void);
 int HalMouseDequeue(HAL_MOUSE_REPORT *Report);
 
 int HalNetInitialize(void);
+/*
+ * 1 → Network 模块表里立刻 Probe（真机板网；CNTV 无 IRQ 时 Worker 可能切不过来）。
+ * 0 → 仍 boot-net-defer，交给 Worker（X64 / virt）。
+ */
+int HalNetProbeAtModuleInit(void);
 int HalNetReady(void);
 /* 当前 L2 挂接次数；未挂过或本架构无此外置网卡时为 0 */
 UINT32 HalNetNicEpoch(void);

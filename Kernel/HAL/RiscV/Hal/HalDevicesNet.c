@@ -30,6 +30,14 @@ int HalNetInitialize(void) {
 #endif
 }
 
+int HalNetProbeAtModuleInit(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 int HalNetReady(void) {
     return DriverNetReady();
 }

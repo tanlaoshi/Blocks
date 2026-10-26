@@ -1,8 +1,11 @@
 /*
  * Network.c — 模块表 Network（Full / VirtDesktop / ConsoleOnly+HAS_NET）
  *
- * 桌面：boot-net-defer — 开机只建教学 UDP/TCP；Probe NET 在 Worker（HalNetInitialize）。
- * ConsoleOnly（Duo 等）：无 Worker → 本模块直接 HalNetInitialize，否则板网永不 Probe。
+ * 桌面 virt/X64：boot-net-defer — 开机只建教学 UDP/TCP；Probe NET 在 Worker。
+ * ConsoleOnly（Duo）：无 Worker → 本模块 HalNetInitialize。
+ * 真机板网（Pi LAN9514 等 HalNetProbeAtModuleInit=1）：USB 枚举已在 Cpu 完成，
+ * Probe/Bind 便宜；Pi CNTV 无 IRQ 时 Worker 可能切不过来 → 必须在此 Probe，
+ * 否则 eth ok 却永不 bind、`net` 报 no NIC。
  * HAL 探测入口 NetInitialize ≠ 本模块 NetworkInitialize。
  */
 #include "KernelModulesPrivate.h"
@@ -14,7 +17,7 @@
 int NetworkInitialize(void) {
     UdpInitialize();
     TcpInitialize();
-    if (HalConsoleOnly()) {
+    if (HalConsoleOnly() || HalNetProbeAtModuleInit()) {
         (void)HalNetInitialize();
     }
     return 0;

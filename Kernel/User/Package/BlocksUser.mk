@@ -16,7 +16,8 @@ endif
 
 PROG      ?= MYAPP
 SRCS      ?= main.c
-BUILDDIR  ?= build
+# 统一产出：勿在 Package/Pkg 下散落 build/（进仓垃圾）。课设 ELF 仍在 Build/User/*.elf
+BUILDDIR  ?= $(BLOCKS_KERNEL)/Build/User/Package/$(PROG)
 ELF       := $(BUILDDIR)/$(PROG).ELF
 
 ARCH      ?= x86_64

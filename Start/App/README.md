@@ -1,6 +1,7 @@
 # Start / App — 毛坯房
 
-不懂内核也能开干。工具链在 `Kernel/Build/BlocksSDK`（先打一次包）；手册与样例在本目录。
+不懂内核也能开干。工具链在 `Kernel/Build/BlocksSDK`（先打一次包）；手册与样例在本目录。  
+产物：各例本地 `build/`（`Start/.gitignore`）；树内系统课设 ELF 在 `Kernel/Build/User/`（与 `User/Package` 模板的 `Build/User/Package/<PROG>/` 分开）。
 
 ## 三步
 

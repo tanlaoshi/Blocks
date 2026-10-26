@@ -2,7 +2,7 @@
 
 1. PC：`python3 Tools/UiDesigner/designer.py` → 导出 `MyApp.uitxt`  
 2. 覆盖本目录 `MyApp.uitxt`  
-3. `make` → `build/MYAPP.ELF`  
+3. `make` → `Build/User/Package/MYAPP/MYAPP.ELF`  
 4. 填 `UiActions.c`  
 5. 拷到 RootFs 后 `exec MYAPP.ELF`  
 

@@ -11,11 +11,13 @@
 cd /path/to/Kernel && ./build.sh   # 先有 CRT / libBlocks
 
 cd User/Package
-make                               # → build/MYAPP.ELF
-cp build/MYAPP.ELF ../../../Runtime/RootFs/X64/MYAPP.ELF
+make                               # → Build/User/Package/MYAPP/MYAPP.ELF
+cp ../../Build/User/Package/MYAPP/MYAPP.ELF ../../../Runtime/RootFs/X64/Class/MYAPP.ELF
 # Guest：exec MYAPP.ELF
 # 注意：卷根没有时会找 Class/MYAPP.ELF；勿留旧 Ui 陈货（会饿死鼠标）。
 ```
+
+产物目录（user-build-1）：树内模板统一 `Kernel/Build/User/Package/<PROG>/`（随 `Build/` ignore）；**勿**在 `User/Package/**/build` 落盘。课外推荐 `Start/App` + `BlocksSDK`（本地 `build/`，见 `Start/.gitignore`）。
 
 
 换名：`make PROG=HELLO2 SRCS=main.c`。

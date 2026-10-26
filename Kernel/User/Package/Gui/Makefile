@@ -1,7 +1,7 @@
 # GUI 程序模板（PR-L3）— 链 libUi + libGraphics
 #   make -C User/Package/Gui
-#   cp build/MYGUI.ELF ../../ToyImage/rootfs/
-#   toyos> exec MYGUI.ELF
+#   → Build/User/Package/MYGUI/MYGUI.ELF
+#   Guest：exec MYGUI.ELF
 
 BLOCKS_KERNEL ?= $(abspath ../../..)
 PROG      ?= MYGUI

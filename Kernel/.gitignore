@@ -24,25 +24,17 @@ ThirdParty/freetype/
 .DS_Store
 .AppleDouble
 
-# PR-L1 课外模板产物
-User/Pkg/build/
-User/Pkg/Gui/build/
-User/Pkg/Net/build/
-CodeE-User/Pkg/build/
-CodeE-User/Pkg/Gui/build/
-CodeE-User/Pkg/Net/build/
-CodeE-User/Pkg/UiText/build/
-CodeE-User/Pkg/UiDesigner/build/
-CodeE-User/Pkg/GuiIm/build/
-CodeE-User/Pkg/Batch/build/
-CodeE-User/Pkg/Pages/build/
-CodeE-User/Pkg/Style/build/
-CodeE-User/Pkg/UiText/MyAppUi.h
-CodeE-User/Pkg/UiDesigner/MyAppUi.h
+# 用户模板产物：权威在 Build/User/Package/<PROG>/（随上方 Build/ ignore）
+# 若本地仍有旧散落目录，勿提交：
+User/Package/**/build/
+User/Pkg/**/build/
+User/Package/UiText/MyAppUi.h
+User/Package/UiDesigner/MyAppUi.h
 
-# Build/ 已忽略；SDK 产物：Build/BlocksSDK/ + Build/BlocksSDK.tar.gz（./Tools/build-sdk.sh）
+# Build/ 已忽略；SDK：Build/BlocksSDK/ + Build/BlocksSDK.tar.gz（./Tools/build-sdk.sh）
 # 旧路径遗迹（若本地仍有可删）
 Dist/
+CodeE-User/
 
 # HostChat 宿主产物
 Tools/HostChat/chatd

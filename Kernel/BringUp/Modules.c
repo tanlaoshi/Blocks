@@ -73,7 +73,8 @@ static const MODULE gModulesFull[] = {
 };
 
 /*
- * 串口-only（ConsoleOnly）：无 DISPLAY/Gui/Net；仍要 INPUT（Duo/Pi DWC2 键）+ FS。
+ * 串口-only（ConsoleOnly）：无 DISPLAY/Gui；仍要 INPUT（Duo/Pi DWC2 键）+ FS。
+ * Network：Duo BOARD_HAS_NET 须在表内 Probe（无 Worker / boot-net-defer）。
  * QEMU virt 无 FB 时同表：HalUsbInitialize 按板包决定（virtio 或空）。
  */
 static const MODULE gModulesVirt[] = {
@@ -82,6 +83,7 @@ static const MODULE gModulesVirt[] = {
     MODULE_PHASE_INPUT,
     MODULE_PHASE_SESSION,
     { "FileSystem",      FileSystemInitialize },
+    { "Network",         NetworkInitialize },
 };
 
 /* virt 桌面：有 DISPLAY/Gui/Net，无 INPUT；SESSION 在 FS/Gui/Net 前 */

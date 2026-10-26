@@ -32,11 +32,11 @@ void HalDriverRegister(void) {
 #else
     {
         void BoardSdhciRegister(void);
-        int BoardEthernetProbe(void);
+        void BoardEthernetRegister(void);
 
         BoardSdhciRegister();
-        /* 板载网：BoardEthernetProbe（Common/Board §2.1；勿 BOARD_HAS_NET 假 Ready） */
-        (void)BoardEthernetProbe();
+        /* 板载网：Register；Probe/Bind 在 HalNetInitialize（BOARD_HAS_NET） */
+        BoardEthernetRegister();
     }
 #endif
 }

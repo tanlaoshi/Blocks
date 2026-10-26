@@ -29,7 +29,7 @@
 /* 命令行靶：无 FB。块设备 = µSD（Sdhci.c PIO），不是 virtio */
 #define BOARD_HAS_FRAMEBUFFER  0
 #define BOARD_HAS_BLOCK        1
-#define BOARD_HAS_NET          0
+#define BOARD_HAS_NET          1
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
 

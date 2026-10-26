@@ -1,14 +1,19 @@
 /*
- * Ethernet.c — Duo S 以太网 MAC（net-1）+ PHY/link（net-2）+ DMA（net-3）
+ * Ethernet.c — Duo S 以太网 MAC（net-1…4）
  *
  * MDIO：dwmac1000 MII Address/Data；phy<<11 reg<<6（dwmac1000_core.c）。
  * PHY：优先地址 1；Basic Status 读两次消锁存。
- * DMA：dwmac_dma / enhanced 描述符；MAC LM 环回自发自收；HalDcache（Sv39 skip 仍 VA==PA）。
+ * DMA：normal 描述符（ENHDESSEL=0）；先 LM 自检再关 LM 常驻收发。
+ * net-4：DRIVER_CLASS_NET → DriverNetAttach；BOARD_HAS_NET；非 VirtioNet。
  */
 #include "Ethernet.h"
 #include "Board.h"
+#include "Driver.h"
+#include "DriverNet.h"
 #include "Hal.h"
+#include "HalDevices.h"
 #include "SerialLog.h"
+#include "Text.h"
 
 typedef struct {
     UINT32 Descriptor0;
@@ -25,6 +30,29 @@ static UINT8 gTransmitBuffer[DUO_ETHERNET_DMA_RING_COUNT][DUO_ETHERNET_DMA_BUFFE
     __attribute__((aligned(64)));
 static UINT8 gReceiveBuffer[DUO_ETHERNET_DMA_RING_COUNT][DUO_ETHERNET_DMA_BUFFER_SIZE]
     __attribute__((aligned(64)));
+
+static int gMacOk;
+static int gPhyOk;
+static int gDmaOk;
+static int gBound;
+static UINT32 gPhyAddress;
+static UINT8 gMac[6];
+static UINT32 gIp = HAL_NET_IP_DEFAULT;
+static UINT32 gTransmitIndex;
+static UINT32 gReceiveIndex;
+static UINT32 gTransmitDone;
+static UINT32 gReceiveFrames;
+static int gLwIpReceive;
+
+static void MemoryCopy(void *Destination, const void *Source, UINTN Length) {
+    UINT8 *Out = (UINT8 *)Destination;
+    const UINT8 *In = (const UINT8 *)Source;
+    UINTN Index;
+
+    for (Index = 0; Index < Length; Index++) {
+        Out[Index] = In[Index];
+    }
+}
 
 static volatile UINT32 *Register(UINT64 Address) {
     return (volatile UINT32 *)(UINTN)Address;
@@ -373,6 +401,8 @@ static int PhyProbe(void) {
         return -1;
     }
 
+    gPhyAddress = Address;
+    gPhyOk = 1;
     MarkHex("Boot: Duo ETH phy=", Address);
     HalSerialBootMark(" id=");
     MarkHex16(Identifier1);
@@ -462,9 +492,48 @@ static int DmaWaitOwnClear(volatile EthernetDmaDescriptor *Descriptor) {
     return -1;
 }
 
+static int PhyLinkUp(void) {
+    UINT16 BasicStatus;
+
+    if (!gPhyOk) {
+        return 0;
+    }
+    if (PhyReadBasicStatus(gPhyAddress, &BasicStatus) != 0) {
+        return 0;
+    }
+    return (BasicStatus & DUO_PHY_BASIC_STATUS_LINK) != 0;
+}
+
+static void DmaProgramMacAddress(void) {
+    gMac[0] = 0x02u;
+    gMac[1] = 0x00u;
+    gMac[2] = 0x00u;
+    gMac[3] = 0x00u;
+    gMac[4] = 0x00u;
+    gMac[5] = 0x01u;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_HIGH) =
+        DUO_ETHERNET_ADDRESS_ENABLE | ((UINT32)gMac[4] << 8) | gMac[5];
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_LOW) =
+        ((UINT32)gMac[0]) | ((UINT32)gMac[1] << 8) | ((UINT32)gMac[2] << 16) |
+        ((UINT32)gMac[3] << 24);
+}
+
+static void DmaRearmReceive(UINT32 Index) {
+    gReceiveDescriptor[Index].Descriptor1 =
+        DUO_ETHERNET_DMA_BUFFER_SIZE & DUO_ETHERNET_RECEIVE_BUFFER1_SIZE_MASK;
+    if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
+        gReceiveDescriptor[Index].Descriptor1 |= DUO_ETHERNET_RECEIVE_END_RING;
+    }
+    gReceiveDescriptor[Index].Descriptor2 =
+        (UINT32)(UINTN)&gReceiveBuffer[Index][0];
+    gReceiveDescriptor[Index].Descriptor3 = 0u;
+    gReceiveDescriptor[Index].Descriptor0 = DUO_ETHERNET_DESCRIPTOR_OWN;
+    DmaCacheSync(&gReceiveDescriptor[Index], sizeof(gReceiveDescriptor[Index]));
+}
+
 /*
- * net-3：normal 描述符环（本片 ENHDESSEL=0）+ MAC LM 环回。
- * 对表 Linux dwmac1000_dma / descs.h；完成后关 LM、停 DMA。
+ * net-3/4：normal 描述符环（本片 ENHDESSEL=0）。
+ * 先 MAC LM 自检；通过后关 LM，环常驻（收发包槽）。
  */
 static int DmaProbe(void) {
     UINT32 Index;
@@ -521,10 +590,7 @@ static int DmaProbe(void) {
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_TRANSMIT_LIST_BASE) =
         (UINT32)(UINTN)&gTransmitDescriptor[0];
 
-    /* 本地管理地址 02:00:00:00:00:01 */
-    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_HIGH) =
-        DUO_ETHERNET_ADDRESS_ENABLE | 0x0001u;
-    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_LOW) = 0x00000002u;
+    DmaProgramMacAddress();
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_FRAME_FILTER) =
         DUO_ETHERNET_FRAME_FILTER_PROMISCUOUS;
 
@@ -613,20 +679,391 @@ static int DmaProbe(void) {
     MarkHex("Boot: Duo ETH DMA rx=ok len=", FrameLength);
     HalSerialBootMark("\n");
 
-    /* 收尾：关环回、停 DMA（本刀不开 BOARD_HAS_NET） */
+    /* 关 LM，重挂 RX，DMA 常驻（net-4 收发包槽） */
     MacConfig = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG);
-    MacConfig &= ~(DUO_ETHERNET_MAC_LOOPBACK |
-                   DUO_ETHERNET_MAC_TRANSMITTER_ENABLE |
-                   DUO_ETHERNET_MAC_RECEIVER_ENABLE);
+    MacConfig &= ~DUO_ETHERNET_MAC_LOOPBACK;
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG) = MacConfig;
-    Operation = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE);
-    Operation &= ~(DUO_ETHERNET_DMA_START_TRANSMIT |
-                   DUO_ETHERNET_DMA_START_RECEIVE);
-    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+    for (Index = 0; Index < DUO_ETHERNET_DMA_RING_COUNT; Index++) {
+        DmaRearmReceive(Index);
+        gTransmitDescriptor[Index].Descriptor0 = 0u;
+        gTransmitDescriptor[Index].Descriptor1 = 0u;
+        if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
+            gTransmitDescriptor[Index].Descriptor1 =
+                DUO_ETHERNET_TRANSMIT_END_RING;
+        }
+        gTransmitDescriptor[Index].Descriptor2 = 0u;
+        gTransmitDescriptor[Index].Descriptor3 = 0u;
+    }
+    DmaCacheSync(gTransmitDescriptor, sizeof(gTransmitDescriptor));
+    gTransmitIndex = 0u;
+    gReceiveIndex = 0u;
+    gTransmitDone = 0u;
+    gReceiveFrames = 0u;
     Status = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS);
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS) = Status;
-
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_POLL) = 1u;
+    gDmaOk = 1;
+    HalSerialBootMark("Boot: Duo ETH DMA wire\n");
     return 0;
+}
+
+static int EthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
+    UINT32 Index;
+    UINT32 Length;
+    UINT32 TransmitControl;
+    volatile EthernetDmaDescriptor *Descriptor;
+
+    if (!gDmaOk || Frame == 0 || FrameLength < 14u) {
+        return -1;
+    }
+    Length = (UINT32)FrameLength;
+    if (Length < 60u) {
+        Length = 60u;
+    }
+    if (Length > DUO_ETHERNET_DMA_BUFFER_SIZE) {
+        return -1;
+    }
+    Index = gTransmitIndex;
+    Descriptor = &gTransmitDescriptor[Index];
+    DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+    if ((Descriptor->Descriptor0 & DUO_ETHERNET_DESCRIPTOR_OWN) != 0u) {
+        return -1;
+    }
+    for (TransmitControl = 0; TransmitControl < Length; TransmitControl++) {
+        gTransmitBuffer[Index][TransmitControl] = 0u;
+    }
+    MemoryCopy(gTransmitBuffer[Index], Frame, FrameLength);
+    DmaCacheSync(gTransmitBuffer[Index], Length);
+    TransmitControl = (Length & DUO_ETHERNET_TRANSMIT_BUFFER1_SIZE_MASK) |
+                      DUO_ETHERNET_TRANSMIT_FIRST_SEGMENT |
+                      DUO_ETHERNET_TRANSMIT_LAST_SEGMENT |
+                      DUO_ETHERNET_TRANSMIT_INTERRUPT;
+    if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
+        TransmitControl |= DUO_ETHERNET_TRANSMIT_END_RING;
+    }
+    Descriptor->Descriptor2 = (UINT32)(UINTN)&gTransmitBuffer[Index][0];
+    Descriptor->Descriptor3 = 0u;
+    Descriptor->Descriptor1 = TransmitControl;
+    Descriptor->Descriptor0 = DUO_ETHERNET_DESCRIPTOR_OWN;
+    DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_TRANSMIT_POLL) = 1u;
+    gTransmitIndex = (Index + 1u) % DUO_ETHERNET_DMA_RING_COUNT;
+    return 0;
+}
+
+static void EthernetPoll(void) {
+    UINT32 Index;
+    UINT32 Guard;
+
+    if (!gDmaOk) {
+        return;
+    }
+    for (Index = 0; Index < DUO_ETHERNET_DMA_RING_COUNT; Index++) {
+        volatile EthernetDmaDescriptor *Descriptor = &gTransmitDescriptor[Index];
+
+        DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+        if ((Descriptor->Descriptor0 & DUO_ETHERNET_DESCRIPTOR_OWN) != 0u) {
+            continue;
+        }
+        if (Descriptor->Descriptor2 != 0u) {
+            gTransmitDone++;
+            Descriptor->Descriptor2 = 0u;
+            Descriptor->Descriptor1 =
+                (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT)
+                    ? DUO_ETHERNET_TRANSMIT_END_RING
+                    : 0u;
+            DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+        }
+    }
+    for (Guard = 0; Guard < DUO_ETHERNET_DMA_RING_COUNT; Guard++) {
+        UINT32 Index = gReceiveIndex;
+        volatile EthernetDmaDescriptor *Descriptor = &gReceiveDescriptor[Index];
+        UINT32 Descriptor0;
+        UINT32 FrameLength;
+
+        DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+        Descriptor0 = Descriptor->Descriptor0;
+        if ((Descriptor0 & DUO_ETHERNET_DESCRIPTOR_OWN) != 0u) {
+            break;
+        }
+        FrameLength = (Descriptor0 >>
+                       DUO_ETHERNET_RECEIVE_DESCRIPTOR_FRAME_LENGTH_SHIFT) &
+                      DUO_ETHERNET_RECEIVE_DESCRIPTOR_FRAME_LENGTH_MASK;
+        if ((Descriptor0 & DUO_ETHERNET_RECEIVE_DESCRIPTOR_ERROR_SUMMARY) ==
+                0u &&
+            FrameLength >= 14u) {
+            gReceiveFrames++;
+            DmaCacheSync(gReceiveBuffer[Index], FrameLength);
+            /* IP/ARP 处理留给 net-5；本刀只计帧并重挂槽 */
+            (void)gReceiveBuffer[Index];
+        }
+        DmaRearmReceive(Index);
+        gReceiveIndex = (Index + 1u) % DUO_ETHERNET_DMA_RING_COUNT;
+        *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_POLL) = 1u;
+    }
+}
+
+static int EthernetReady(void) {
+    return gBound && gDmaOk && PhyLinkUp();
+}
+
+static void EthernetGetMac(UINT8 Mac[6]) {
+    if (Mac) {
+        MemoryCopy(Mac, gMac, 6);
+    }
+}
+
+static UINT32 EthernetGetIp(void) {
+    return gIp;
+}
+
+static void EthernetSetIp(UINT32 Ip) {
+    gIp = Ip;
+}
+
+static void EthernetFormatIp(UINT32 Ip, char *Buffer, int BufferLength) {
+    if (!Buffer || BufferLength < 16) {
+        return;
+    }
+    FormatDottedDecimal(Ip, Buffer, BufferLength);
+}
+
+static int EthernetParseIp(const char *Text, UINT32 *Ip) {
+    UINT32 Parts[4];
+    int Part = 0;
+    UINT32 Value = 0;
+    int Digits = 0;
+
+    if (Text == 0 || Ip == 0) {
+        return -1;
+    }
+    while (*Text) {
+        if (*Text >= '0' && *Text <= '9') {
+            Value = Value * 10u + (UINT32)(*Text - '0');
+            if (Value > 255u) {
+                return -1;
+            }
+            Digits++;
+        } else if (*Text == '.') {
+            if (Digits == 0 || Part >= 3) {
+                return -1;
+            }
+            Parts[Part++] = Value;
+            Value = 0;
+            Digits = 0;
+        } else {
+            return -1;
+        }
+        Text++;
+    }
+    if (Digits == 0 || Part != 3) {
+        return -1;
+    }
+    Parts[3] = Value;
+    *Ip = (Parts[0] << 24) | (Parts[1] << 16) | (Parts[2] << 8) | Parts[3];
+    return 0;
+}
+
+static UINT16 EthernetChecksum(const void *Data, UINTN Length) {
+    const UINT8 *Bytes = (const UINT8 *)Data;
+    UINT32 Sum = 0;
+    UINTN Index;
+
+    for (Index = 0; Index + 1u < Length; Index += 2u) {
+        Sum += ((UINT32)Bytes[Index] << 8) | Bytes[Index + 1u];
+    }
+    if (Index < Length) {
+        Sum += (UINT32)Bytes[Index] << 8;
+    }
+    while (Sum >> 16) {
+        Sum = (Sum & 0xFFFFu) + (Sum >> 16);
+    }
+    return (UINT16)~Sum;
+}
+
+static void EthernetGetStats(UINT32 *TransmitDone, UINT32 *ReceiveFrames) {
+    if (TransmitDone) {
+        *TransmitDone = gTransmitDone;
+    }
+    if (ReceiveFrames) {
+        *ReceiveFrames = gReceiveFrames;
+    }
+}
+
+static void EthernetSetLwIpReceive(int Enable) {
+    gLwIpReceive = Enable ? 1 : 0;
+}
+
+/*
+ * SendIp：L2 发包槽（广播 MAC 垫 IP；ARP/邻居在 net-5）。
+ * Ping：槽位保留，会话在 net-5（本刀不空 stub Ready）。
+ */
+static int EthernetSendIp(UINT32 DestinationIp, UINT8 Protocol,
+                          const void *Payload, UINTN PayloadLength) {
+    UINT8 Frame[14u + 20u + 1400u];
+    UINT32 Index;
+    UINT16 Total;
+
+    if (!EthernetReady() || gLwIpReceive || Payload == 0 ||
+        PayloadLength > 1400u) {
+        return -1;
+    }
+    Total = (UINT16)(20u + PayloadLength);
+    for (Index = 0; Index < sizeof(Frame); Index++) {
+        Frame[Index] = 0u;
+    }
+    for (Index = 0; Index < 6u; Index++) {
+        Frame[Index] = 0xFFu;
+    }
+    MemoryCopy(&Frame[6], gMac, 6);
+    Frame[12] = 0x08u;
+    Frame[13] = 0x00u;
+    Frame[14] = 0x45u;
+    Frame[16] = (UINT8)(Total >> 8);
+    Frame[17] = (UINT8)(Total & 0xFFu);
+    Frame[18] = 0x4Fu;
+    Frame[19] = 0x53u;
+    Frame[22] = 64u;
+    Frame[23] = Protocol;
+    Frame[26] = (UINT8)(gIp >> 24);
+    Frame[27] = (UINT8)(gIp >> 16);
+    Frame[28] = (UINT8)(gIp >> 8);
+    Frame[29] = (UINT8)(gIp);
+    Frame[30] = (UINT8)(DestinationIp >> 24);
+    Frame[31] = (UINT8)(DestinationIp >> 16);
+    Frame[32] = (UINT8)(DestinationIp >> 8);
+    Frame[33] = (UINT8)(DestinationIp);
+    {
+        UINT16 Sum = EthernetChecksum(&Frame[14], 20u);
+        Frame[24] = (UINT8)(Sum >> 8);
+        Frame[25] = (UINT8)(Sum & 0xFFu);
+    }
+    MemoryCopy(&Frame[34], Payload, PayloadLength);
+    return EthernetSendFrame(Frame, 14u + Total);
+}
+
+static int EthernetPing(const char *Host, int TimeoutMilliseconds) {
+    (void)Host;
+    (void)TimeoutMilliseconds;
+    if (!EthernetReady() || gLwIpReceive) {
+        return -1;
+    }
+    /* net-5：ICMP echo + ARP */
+    return -1;
+}
+
+static const NET_BACKEND gEthernetBackend = {
+    .Ready = EthernetReady,
+    .Poll = EthernetPoll,
+    .GetMac = EthernetGetMac,
+    .GetIp = EthernetGetIp,
+    .SetIp = EthernetSetIp,
+    .FormatIp = EthernetFormatIp,
+    .ParseIp = EthernetParseIp,
+    .Ping = EthernetPing,
+    .GetStats = EthernetGetStats,
+    .SendIp = EthernetSendIp,
+    .Checksum = EthernetChecksum,
+    .SetLwIpRx = EthernetSetLwIpReceive,
+};
+
+static int EthernetDriverProbe(const DRIVER *Self, void *BusContext,
+                               void **OutPrivate) {
+    (void)Self;
+    (void)BusContext;
+    if (gDmaOk) {
+        if (OutPrivate) {
+            *OutPrivate = 0;
+        }
+        return 0;
+    }
+    if (BoardEthernetProbe() != 0 || !gDmaOk) {
+        return -1;
+    }
+    if (OutPrivate) {
+        *OutPrivate = 0;
+    }
+    return 0;
+}
+
+static int EthernetDriverBind(DRIVER_INSTANCE *Instance) {
+    (void)Instance;
+    if (!gDmaOk) {
+        return -1;
+    }
+    if (DriverNetAttach(&gEthernetBackend) != 0) {
+        return -1;
+    }
+    gBound = 1;
+    HalSerialBootMark("Boot: Duo ETH bind\n");
+    return 0;
+}
+
+static void EthernetDriverRemove(DRIVER_INSTANCE *Instance) {
+    (void)Instance;
+    gBound = 0;
+}
+
+static const DRIVER gEthernetDriver = {
+    .Name = "cv181x-ethernet",
+    .Class = DRIVER_CLASS_NET,
+    .Match = 0,
+    .Probe = EthernetDriverProbe,
+    .Bind = EthernetDriverBind,
+    .Remove = EthernetDriverRemove,
+};
+
+void BoardEthernetRegister(void) {
+    (void)DriverRegister(&gEthernetDriver);
+}
+
+int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
+    UINT16 Partner;
+    int Link;
+
+    if (!gPhyOk) {
+        return 0;
+    }
+    Link = PhyLinkUp();
+    if (Up) {
+        *Up = Link;
+    }
+    if (Megabits) {
+        *Megabits = 0;
+    }
+    if (FullDuplex) {
+        *FullDuplex = 0;
+    }
+    if (!Link) {
+        return 1;
+    }
+    if (MiiRead(gPhyAddress, DUO_PHY_LINK_PARTNER_ABILITY, &Partner) != 0) {
+        Partner = 0;
+    }
+    if ((Partner & DUO_PHY_ADVERTISE_100_FULL) != 0) {
+        if (Megabits) {
+            *Megabits = 100u;
+        }
+        if (FullDuplex) {
+            *FullDuplex = 1;
+        }
+    } else if ((Partner & DUO_PHY_ADVERTISE_100_HALF) != 0) {
+        if (Megabits) {
+            *Megabits = 100u;
+        }
+    } else if ((Partner & DUO_PHY_ADVERTISE_10_FULL) != 0) {
+        if (Megabits) {
+            *Megabits = 10u;
+        }
+        if (FullDuplex) {
+            *FullDuplex = 1;
+        }
+    } else if ((Partner & DUO_PHY_ADVERTISE_10_HALF) != 0) {
+        if (Megabits) {
+            *Megabits = 10u;
+        }
+    }
+    return 1;
 }
 
 int BoardEthernetProbe(void) {
@@ -698,8 +1135,13 @@ int BoardEthernetProbe(void) {
         HalSerialBootMark(Buffer);
     }
     HalSerialBootMark(" (MAC ok)\n");
+    gMacOk = 1;
 
-    (void)PhyProbe();
-    (void)DmaProbe();
+    if (PhyProbe() != 0) {
+        return -1;
+    }
+    if (DmaProbe() != 0) {
+        return -1;
+    }
     return 0;
 }

@@ -111,7 +111,7 @@ go ${kernel_addr_r}
 | `BoardConfig.h` | UART / 加载地址 / 能力勾选 |
 | `Board.h` / `Board.c` | `BoardName()` |
 | `Sdhci.h` / `Sdhci.c` | µSD SDHCI PIO 读写 → 块设备 |
-| `Ethernet.h` / `Ethernet.c` | 板载以太网探针（`BoardEthernetProbe`；duo-net） |
+| `Ethernet.h` / `Ethernet.c` | 板载以太网（`BoardEthernetRegister` / Probe；duo-net net-4） |
 | `NOTES.md` | 真机踩坑与验证边界 |
 | `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` |
 | `scripts/mk-boot-sd.py` · `boot.sd` | duo-autoboot：FIT 顶替厂商 `boot.sd`（保留 `.vendor`） |

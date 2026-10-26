@@ -40,7 +40,7 @@ Naming：全词；协议/总线正式名可保留（`USB`、`SDHCI`）。**三�
 
 | 能力 | 文件 | 导出（Board 层） | 现状 |
 |------|------|------------------|------|
-| 板载以太网 | `Ethernet.c` / `Ethernet.h` | `BoardEthernetProbe` | Duo S ✅；Pi / X64 板包暂无则不交文件 |
+| 板载以太网 | `Ethernet.c` / `Ethernet.h` | `BoardEthernetRegister` / `BoardEthernetProbe` | Duo S ✅（net-4 Bind）；Pi / X64 板包暂无则不交文件 |
 | µSD / SDHCI | `Sdhci.c` / `Sdhci.h`（或 Pi `Sdhost.c`） | `BoardSdhciRegister` / `BoardSdhostRegister` | Duo + Pi |
 | USB host（Synopsys DWC2 IP） | `UsbHostController.c` / `UsbHostController.h` | `BoardUsbHostControllerProbe` | Duo + Pi |
 

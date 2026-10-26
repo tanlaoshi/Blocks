@@ -3,6 +3,7 @@
  *
  * net-1：VERSION @0x20（dwmac-3.70a）；时钟 / 释放 RST_ETH0。
  * net-2：GMAC MII @0x10/0x14；扫 PHY；BMSR.Link；无 link 不称 Ready。
+ * net-4：Register/Bind → NET_BACKEND；BOARD_HAS_NET=1。
  */
 #ifndef BOARD_ETHERNET_H
 #define BOARD_ETHERNET_H
@@ -128,7 +129,10 @@
      DUO_PHY_ADVERTISE_10_FULL | DUO_PHY_ADVERTISE_100_HALF | \
      DUO_PHY_ADVERTISE_100_FULL)
 
-/* MAC + PHY/link + DMA 环回探针；勿 BOARD_HAS_NET */
+/* MAC + PHY/link + DMA 常驻；Driver Probe 调用 */
 int BoardEthernetProbe(void);
+void BoardEthernetRegister(void);
+/* 1=写出 link 信息；0=无 PHY */
+int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 
 #endif /* BOARD_ETHERNET_H */

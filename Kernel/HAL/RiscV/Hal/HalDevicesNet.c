@@ -1,16 +1,28 @@
 /*
- * HalDevicesNet.c — RiscV：Net 门面（PR-S3-haldev-1）
+ * HalDevicesNet.c — RiscV：Net 门面（PR-S3-haldev-1 / duo-net net-4）
+ *
+ * virt：VirtioNetInitialize → DriverProbeClass(NET)。
+ * Duo：板驱动已 Register；此处只 Probe/Bind，不 VirtioNetRegister。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
+#include "Driver.h"
 #include "DriverNet.h"
-#if BOARD_HAS_NET
+#if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
+#endif
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 #endif
 
 int HalNetInitialize(void) {
 #if BOARD_HAS_NET
+#if BOARD_IS_VIRT
     return VirtioNetInitialize();
+#else
+    (void)DriverProbeClass(DRIVER_CLASS_NET);
+    return 0;
+#endif
 #else
     return 0;
 #endif
@@ -57,10 +69,14 @@ void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
 }
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+    return BoardEthernetGetLink(Up, Mbps, FullDuplex);
+#else
     (void)Up;
     (void)Mbps;
     (void)FullDuplex;
     return 0;
+#endif
 }
 
 int HalNetHasNicL2(void) {
@@ -73,7 +89,11 @@ int HalNetPrimaryKind(void) {
 
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     if (Write) {
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+        Write("ethernet note: cv181x dwmac-3.70a\n");
+#else
         Write("e1000 note: n/a (not x86)\n");
+#endif
     }
 }
 

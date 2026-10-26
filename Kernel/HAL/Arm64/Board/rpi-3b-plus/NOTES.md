@@ -14,8 +14,8 @@
 ## 启动 / EL
 
 - **`u-boot.bin`**：stock 2021.01 + prepare 把默认知 **`bootdelay=-1`→`-2`**（rpi-10；否则每次停提示符）。`distro_bootcmd` → `/boot.scr`。勿用 `bootflow scan` 新包；勿留旧 `uboot.env` 盖掉 -2。  
-- U-Boot `go`/`bootelf` 常停在 **EL2**。降 EL1 的 eret 在本板仍会挂（只见 `*` 不见 `+`）→ **暂留 EL2**；真机 **skip MMU**。  
-- 入口信标：`*` → BSS → `+` → `Boot:`；另见 `vmm: skip MMU (board)`。  
+- U-Boot `go`/`bootelf` 常停在 **EL2**。**rpi-8**：`KernelEntry` 降 EL1（`HCR.RW` + `SCTLR_EL1` RES1 + **`SP_EL1`** + `eret`）；并 **开恒等 MMU**（外设窗 Device）——EL1+MMU off 会 alignment halt。  
+- 入口信标：`*` →（降 EL）→ BSS → `+` → `Boot: EL=1` → `vmm: Arm64 MMU on`。  
 - 早期 putc：先 `AUX_ENABLES|=1`，有限自旋。救砖两行见排障历程 §2。
 
 ## 固件 / DTB / DRAM（rpi-4）
@@ -75,6 +75,8 @@
   - 仅有 U-Boot、无 `*` → 报内核；勿先猜改波特（`core_freq=250` 已钉）。
 - 桌面 `halt`：若敲的是 **HDMI 键盘** 进壳，**不能**证明串口 RX 通。
 - `halt` 后唤醒：排针 **5（GPIO3）短接 9（GND）**。
+- U-Boot `smsc95xx_eth address not set`：**可忽略**（扫 LAN9514）；要消：提示符 `setenv usbethaddr b8:27:eb:00:00:01` + `ethaddr` 同值 + `saveenv`（boot.cmd 里也有，仅覆盖 source 之后）。
+- 对齐 X64：`blocks>`（ShellOwn）后 Log/BootMark **不再上串口**，进 `RUNTIME*.LOG`（`log` / `log save` 可看）。
 
 ## 公司 vs 回家
 

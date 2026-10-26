@@ -128,7 +128,10 @@ source 0x1000000
 | E2 | EL≥2 跳过开 MMU；装 `VBAR_EL2` | 防 EL2 自测复位 | 不够：EL1 仍会开 MMU |
 | E2b | 真机 **一律** `vmm: skip MMU (board)` | **待一次刷卡** | 手测停在 VirtualMemory 的对策 |
 | E3 | EL2→EL1 且 `SCTLR_EL1=0` | eret 挂死、无 `*` | RES1 必须 |
-| E3b | EL2→EL1 且 SCTLR=`0x30d00800` | 仅 `*`、无 `+`（死在 eret 与 BSS 之间） | **暂撤降级**；留 EL2 + skip MMU |
+| E3b | EL2→EL1 且 SCTLR=`0x30d00800` | 仅 `*`、无 `+`（死在 eret 与 BSS 之间） | 曾撤降级；根因见 E3c |
+| E3c | 同 E3b 且 **`msr SP_EL1`**（EL1h）+ HCR/CNTHCTL/CPTR | `*`→`+`，`Boot: EL=1` | EL1h 用 SP_EL1≠EL2 的 sp；对齐 Linux / Arm CA53 帖 |
+| E3d | EL=1 后卡 `Boot: Mod VirtualMemory`（无 `vmm: skip`） | SpinLock TAS 死转 | EL1+MMU off→Device-nGnRnE，LDXR 不可靠；旧 EL2 靠 U-Boot MMU。Acquire 在 `!HalPagingIsOn()` 走 cli 非独占 |
+| E3e | `block: drive ready` 后 `fault va=…58ee9e esr=96000021` halt | DFSC=alignment | 同因：MMU off 全 Device，非对齐 LDR 必炸。**EL1 须开恒等 MMU**（勿再 skip） |
 | E4 | 真机走 QEMU **PSCI HVC** 拉 AP | 高危复位 | `#if !BOARD_IS_VIRT` 单核 |
 | E5 | 真机写 virt **GIC @0x08000000** | 写进 DRAM | Timer 改 poll；不写 GIC |
 | E6 | 真机 `HalPlatformIsVirtSerialConsole=1` → virtio 探针 | 多余 | 已按 `BOARD_IS_VIRT` 关掉 |

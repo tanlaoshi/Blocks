@@ -37,6 +37,9 @@ void HalVideoSetPresentChunkRows(UINT32 Rows);
 void HalVideoSetGlyphSmooth(int On);
 void HalVideoDrawBeginFront(void);
 void HalVideoDrawEndFront(void);
+/* 只收笔、不 FbDcacheSync（开机行日志批量 sync 用） */
+void HalVideoDrawEndFrontNoSync(void);
+void HalVideoFbDcacheSync(void);
 int HalVideoBackbufferEnabled(void);
 /* 后缓冲物理/恒等虚址；未启用则 0（igpu Present 用） */
 UINT64 HalVideoBackbufferBase(void);

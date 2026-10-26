@@ -34,8 +34,9 @@ run-virt-arm --headless
 
 # SD 摆盘目录（不插卡；rpi-2）
 build arm64 BOARD=rpi-3b-plus LWIP=0
-prepare-pi-sd                          # → Build/rpi-3b-plus-sd/
-# prepare-pi-sd /tmp/out --dtb=/path/to/bcm2837-rpi-3-b-plus.dtb
+ck-pi-sd                               # 摆盘 + 刷卡（内含 prepare）
+# prepare-pi-sd                        # 仅目录、不插卡（可选）
+# ck-pi-sd --dtb=/path/to/bcm2837-rpi-3-b-plus.dtb
 ```
 
 默认不 source 时仍可 `cd Kernel && ./build.sh …`；日常以短名为准。
@@ -68,7 +69,8 @@ Startup 保存 DTB → 填 `BOOT_HANDOFF` → `KernelMain`。**Common 不解析 
 | `BoardConfig.h` | UART / 加载提示 / 能力勾选 |
 | `Board.h` / `Board.c` | 板名骨架；Startup 填充后置 |
 | `NOTES.md` | 串口/固件踩坑备忘 |
-| `scripts/prepare-sd.sh` | SD 摆盘目录（短名 `prepare-pi-sd`） |
+| `scripts/prepare-sd.sh` | SD 摆盘（`ck-pi-sd` 内调；短名 `prepare-pi-sd` 仅目录） |
+| `scripts/ck-pi-sd.sh` | 暗号 CK：prepare + 刷 bootfs/BLOCKS |
 
 ---
 

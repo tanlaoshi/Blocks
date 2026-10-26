@@ -206,12 +206,9 @@ void GuiDesktopInitialize(void) {
     BootLogFlush();
     LogGui("Gui: Desktop Ready\n");
     /*
-     * Pi 无 USB 时 Worker 仍可能卡在 Secondary/网路径才 Announce；
-     * 桌面已就绪就打串口 ready + blocks>，避免「能收 halt、串口没字」。
+     * 勿在此 Announce：后面还有 Network 模块。
+     * 真机：KernelAfterModules（Modules 全完）Announce；virt：Worker 末。
      */
-    if (gConsole.AnnounceBootReady) {
-        gConsole.AnnounceBootReady();
-    }
 }
 
 static void PollInput(void) {

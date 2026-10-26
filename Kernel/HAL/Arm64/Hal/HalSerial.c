@@ -43,6 +43,29 @@ static char gRing[GOP_RING];
 static UINTN gRingLen;
 static char gBootSnap[GOP_RING];
 static UINTN gBootSnapLen;
+/* 对齐 X64：ShellOwn 后 Log* → 缓冲 → RUNTIME*.LOG，不再占 UART */
+#define RT_LOG_MAX 16384u
+static char gRtLog[RT_LOG_MAX];
+static UINTN gRtLen;
+static int gRtDirty;
+
+static void RtAppend(const char *Text) {
+    if (!gShellOwnUart || !Text) {
+        return;
+    }
+    while (*Text) {
+        if (gRtLen + 1 >= RT_LOG_MAX) {
+            UINTN Keep = RT_LOG_MAX / 2u;
+            UINTN i;
+            for (i = 0; i < Keep; i++) {
+                gRtLog[i] = gRtLog[gRtLen - Keep + i];
+            }
+            gRtLen = Keep;
+        }
+        gRtLog[gRtLen++] = *Text++;
+        gRtDirty = 1;
+    }
+}
 
 int gVideoUp;
 int gGopBanner;
@@ -340,12 +363,12 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
         return;
     }
     RingAppend(Text);
+    RtAppend(Text);
     /*
-     * ShellOwn 只表示「COM1 交互壳已接管」——仍须把 Log* 打到 UART。
-     * 旧逻辑直接 return → 桌面 Announce 后 CoolTerm 全黑，但 RX 仍能收 halt。
-     * GOP 镜像仍受 Mute/Mirror（桌面后 Mirror=0）。
+     * 对齐 X64：ShellOwn 后 UART 只留给 WriteShell（blocks> / 回显）；
+     * Log* 进 ring + RUNTIME 缓冲，Worker 末 RuntimeLogFlush 落盘。
      */
-    if (ChannelUartOn(Channel)) {
+    if (!gShellOwnUart && ChannelUartOn(Channel)) {
         UartWriteRaw(Text);
     }
     if (!gShellOwnUart && ChannelGopOn(Channel)) {
@@ -366,16 +389,29 @@ void HalSerialWriteShell(const char *Text) {
 }
 
 int HalSerialRuntimeDirty(void) {
-    return 0;
+    return gRtDirty;
 }
 
 void HalSerialRuntimeMarkSaved(void) {
+    gRtDirty = 0;
 }
 
 UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
-    (void)Dst;
-    (void)Max;
-    return 0;
+    UINTN N;
+    UINTN i;
+
+    if (!Dst || Max == 0) {
+        return 0;
+    }
+    N = gRtLen;
+    if (N >= Max) {
+        N = Max - 1;
+    }
+    for (i = 0; i < N; i++) {
+        Dst[i] = gRtLog[i];
+    }
+    Dst[N] = 0;
+    return N;
 }
 
 UINTN HalSerialBootSnapshot(char *Dst, UINTN Max) {
@@ -403,8 +439,7 @@ void HalSerialBootMarkForce(const char *Text) {
     if (!Text) {
         return;
     }
-    /* 与 BootMarkChannel 同：ShellOwn 不挡 UART */
-    HalSerialBootMarkChannel(SLOG_BOOT, Text);
+    HalSerialBootMarkChannel(SLOG_USB, Text);
 }
 
 void HalSerialWrite(const char *Text) {
@@ -457,8 +492,9 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
         return;
     }
     RingAppend(Text);
-    /* BootMark 始终上 UART（ShellOwn 不挡）；屏仍认 Mirror */
-    if (ChannelUartOn(Channel)) {
+    RtAppend(Text);
+    /* 对齐 X64：ShellOwn 后不再占 UART；屏仍认 Mirror */
+    if (!gShellOwnUart && ChannelUartOn(Channel)) {
         UartWriteRaw(Text);
     }
     /* Mute 期间也上屏（对齐 X64 BootMark）；Mirror=0 后停 */

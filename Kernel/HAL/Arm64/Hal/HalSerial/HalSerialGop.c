@@ -3,6 +3,7 @@
  *
  * Ubuntu 式上滚：可见行在 RAM，满则丢最旧并整区重绘。
  * boot 镜像直写 front；横幅一次性 Present。
+ * 行追加：隔几行再 FbDcacheSync（Pi VC）；勿每行全 FB clean + 假延时成「PPT」。
  */
 #include "HalSerial.h"
 #include "HalSerial/HalSerialPrivate.h"
@@ -80,6 +81,18 @@ static void BootLogCopyRow(char *Dst, const char *Src) {
     Dst[i] = 0;
 }
 
+/* 每写这么多行才 dc clean 一整屏可见 FB；卷屏/收笔强制 sync */
+#define BOOT_LOG_SYNC_EVERY 8u
+
+static UINT32 gBootUnsynced;
+
+static void BootLogFrontSync(int Force) {
+    if (Force || gBootUnsynced >= BOOT_LOG_SYNC_EVERY) {
+        HalVideoFbDcacheSync();
+        gBootUnsynced = 0;
+    }
+}
+
 static void BootLogRepaintBody(UINT32 W, UINT32 H, UINT32 LineH) {
     UINT32 BodyY = BootLogBodyY(LineH);
     UINT32 Bottom;
@@ -99,7 +112,9 @@ static void BootLogRepaintBody(UINT32 W, UINT32 H, UINT32 LineH) {
         HalVideoDrawStringAt(BOOT_LOG_X, Y, gBootVis[i], 0x00FFFFFFu);
         Y += LineH;
     }
-    HalVideoDrawEndFront();
+    HalVideoDrawEndFrontNoSync();
+    gBootUnsynced++;
+    BootLogFrontSync(1);
     gBootLogY = Y;
 }
 
@@ -123,7 +138,9 @@ static void BootLogPushVisible(UINT32 W, UINT32 H, UINT32 LineH) {
     gBootVisN++;
     HalVideoDrawBeginFront();
     HalVideoDrawStringAt(BOOT_LOG_X, gBootLogY, gHalSerialLine, 0x00FFFFFFu);
-    HalVideoDrawEndFront();
+    HalVideoDrawEndFrontNoSync();
+    gBootUnsynced++;
+    BootLogFrontSync(0);
     gBootLogY += LineH;
 }
 
@@ -191,15 +208,6 @@ static void GopFlushLine(void) {
     }
     BootLogPushVisible(W, H, LineH);
     gLineLen = 0;
-#if SCREEN_LOG
-    /* 行间略顿，避免一闪而过（桌面盖屏前还有 BootHold） */
-    {
-        volatile UINT32 i;
-        for (i = 0; i < 20000u; i++) {
-            __asm__ volatile("nop");
-        }
-    }
-#endif
 }
 
 void GopWrite(const char *Text) {
@@ -225,4 +233,6 @@ void GopWrite(const char *Text) {
         }
         Text++;
     }
+    /* 一段 Write 收笔：把未 sync 的尾行推到 VC */
+    BootLogFrontSync(1);
 }

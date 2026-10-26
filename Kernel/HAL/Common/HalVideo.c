@@ -236,6 +236,14 @@ void HalVideoDrawEndFront(void) {
     FbDcacheSync();
 }
 
+void HalVideoDrawEndFrontNoSync(void) {
+    VideoDrawEndFront();
+}
+
+void HalVideoFbDcacheSync(void) {
+    FbDcacheSync();
+}
+
 int HalVideoBackbufferEnabled(void) {
     return VideoBackbufferEnabled();
 }

@@ -31,10 +31,24 @@ static inline void SpinLockAcquire(SPIN_LOCK *Lock) {
         return;
     }
     Flags = HalIrqSave();
-    while (BLOCKS_ATOMIC_TAS(&Lock->Locked, 1u)) {
-        HalIrqRestore(Flags);
-        HalCpuRelax();
-        Flags = HalIrqSave();
+    /*
+     * MMU 关时 AArch64 默认 Device-nGnRnE：LDXR/STXR 监视器可不实现，
+     * __sync TAS 会永远「失败」→ 死转（Pi EL1 + skip MMU；QEMU 常不复现）。
+     * 已 cli：单核等价普通读改写；开 MMU 后仍走独占。
+     */
+    if (!HalPagingIsOn()) {
+        while (Lock->Locked) {
+            HalIrqRestore(Flags);
+            HalCpuRelax();
+            Flags = HalIrqSave();
+        }
+        Lock->Locked = 1u;
+    } else {
+        while (BLOCKS_ATOMIC_TAS(&Lock->Locked, 1u)) {
+            HalIrqRestore(Flags);
+            HalCpuRelax();
+            Flags = HalIrqSave();
+        }
     }
     Lock->IrqFlags = Flags;
 }

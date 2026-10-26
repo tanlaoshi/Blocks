@@ -4,6 +4,7 @@
 #   source ~/Blocks/env.sh
 #   build arm64 BOARD=rpi-3b-plus LWIP=0
 #   prepare-pi-sd [/path/to/out] [--dtb=/path/to/bcm2837-rpi-3-b-plus.dtb]
+#   （日常刷卡：ck-pi-sd 会先调本脚本再写卡）
 #
 # 产出 OUT/ 内：Kernel.elf、Kernel.bin（若能 objcopy）、可选 DTB、README-SD.txt
 # 公司验收：目录齐即可。真机上电属 rpi-3，勿把本脚本成功当成 ready。

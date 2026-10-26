@@ -80,7 +80,7 @@ cd ~/Blocks && source ./env.sh
 | 场景 | 编译 | 启动 |
 | --- | --- | --- |
 | **QEMU virt**（课堂靶） | `build arm64` 或 `build arm64 BOARD=virt` | `run-virt-arm`（可加 `--headless`） |
-| **树莓派 3B+** 真机 | `build arm64 BOARD=rpi-3b-plus LWIP=0` | 摆盘：`prepare-pi-sd` → 插卡 **`ck-pi-sd`**（固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
+| **树莓派 3B+** 真机 | `build arm64 BOARD=rpi-3b-plus LWIP=0` | 插卡 **`ck-pi-sd`**（先摆盘再刷：固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
 
 板包列表：`boards arm64`。真机历程见 `Archive/过程/排障/` 下 Pi 档。
 

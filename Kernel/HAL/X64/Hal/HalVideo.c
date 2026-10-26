@@ -157,6 +157,14 @@ void HalVideoDrawEndFront(void) {
     VideoDrawEndFront();
 }
 
+void HalVideoDrawEndFrontNoSync(void) {
+    VideoDrawEndFront();
+}
+
+void HalVideoFbDcacheSync(void) {
+    /* X64 GOP 无 VC 别名；sync 无操作 */
+}
+
 int HalVideoBackbufferEnabled(void) {
     return VideoBackbufferEnabled();
 }

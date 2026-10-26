@@ -14,7 +14,8 @@
 #   run-virt-arm --headless         # Arm64 virt（须先 build arm64）
 #   run-virt-riscv
 #   boards [arm64|riscv]            # 列出板包
-#   prepare-pi-sd [OUT] [--dtb=…]   # rpi-3b-plus SD 摆盘目录（不插卡）
+#   ck-pi-sd                        # Pi：摆盘+刷卡（内含原 prepare）
+#   prepare-pi-sd [OUT] [--dtb=…]   # 仅摆盘目录（不插卡；可选）
 #
 # 路径：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD
 # 实现在 Kernel/Scripts/；勿再写 cd Kernel && ./build.sh …
@@ -123,12 +124,12 @@ kernel-bin() {
     (cd "$KERNEL" && make ARCH="$Arch" BOARD="$Board" LWIP=0 kernel-bin)
 }
 
-# rpi-3b-plus SD 摆盘目录（不插卡）。须先 build arm64 BOARD=rpi-3b-plus
+# rpi-3b-plus：仅摆盘到目录（不插卡）。日常刷卡用 ck-pi-sd（已内含 prepare）
 prepare-pi-sd() {
     bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/prepare-sd.sh" "$@"
 }
 
-# 暗号 CK：固件→bootfs；Kernel→BLOCKS。可选 --repart 整盘两 FAT32（仅 Pi）
+# 暗号 CK：先 prepare 再刷 — 固件→bootfs；Kernel→BLOCKS。可选 --repart
 ck-pi-sd() {
     bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/ck-pi-sd.sh" "$@"
 }

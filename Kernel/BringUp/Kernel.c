@@ -119,6 +119,14 @@ static void KernelAttachEarlyVideo(void) {
 static void KernelAfterModules(void) {
     (void)FontSetById(ThemeFontId());
     HalSerialGopMirror(0);
+    /*
+     * 真机桌面：模块表已含 Network；Worker 还要 Secondary MSC 等，可能很久。
+     * 若等 Worker 末才 Announce → 串口要回车才见 blocks>（OnEnter→Prompt）。
+     * 此处先 ready+ShellOwn；Worker 再调 once 为空。virt 仍等 Worker（网/iwl 静默）。
+     */
+    if (!HalCpuIsHypervisor() && gConsole.AnnounceBootReady) {
+        gConsole.AnnounceBootReady();
+    }
 }
 
 static void KernelRunOrPark(int (*RunModules)(void)) {

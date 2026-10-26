@@ -63,17 +63,12 @@ void HalPagingEnable(UINT64 RootPhys) {
     gCurrentRoot = RootPhys;
     gKernelRoot = RootPhys;
 
-#if !BOARD_IS_VIRT
     /*
-     * 真机（2026-10-24）：CoolTerm 停在 Boot: Mod VirtualMemory，无
-     * 「vmm: Arm64 MMU on」→ 开 SCTLR/自测路径挂死或打哑串口。
-     * rpi-3 先物理恒等跑通串口壳；页表/自测留 rpi-4。
+     * EL1 必须开恒等 MMU：MMU off 时全部 Device-nGnRnE，非对齐访问 →
+     * ESR DFSC=alignment（例 va=0x58ee9e esr=0x96000021）在 block ready 后 halt。
+     * 旧「skip MMU」只在 EL2+U-Boot 页表下成立；rpi-8 降 EL1 后不再适用。
+     * 页表：HalPageKernelSetup 已把 0x3F000000 窗外设标 Device，其余 Normal。
      */
-    gMmuOn = 0;
-    HalSerialWrite("vmm: skip MMU (board)\n");
-    return;
-#else /* BOARD_IS_VIRT */
-
     /* Attr0=Normal WB，Attr1=Device-nGnRnE */
     Mair = (0xFFULL) | (0x00ULL << 8);
 
@@ -90,7 +85,11 @@ void HalPagingEnable(UINT64 RootPhys) {
     __asm__ volatile("msr mair_el1, %0" :: "r"(Mair));
     __asm__ volatile("msr tcr_el1, %0" :: "r"(Tcr));
     __asm__ volatile("msr ttbr0_el1, %0" :: "r"(RootPhys));
-    __asm__ volatile("isb");
+    __asm__ volatile(
+        "dsb ish\n"
+        "tlbi vmalle1\n"
+        "dsb ish\n"
+        "isb\n" ::: "memory");
 
     __asm__ volatile("mrs %0, sctlr_el1" : "=r"(Sctlr));
     Sctlr |= (1ULL << 0);   /* M */
@@ -104,8 +103,11 @@ void HalPagingEnable(UINT64 RootPhys) {
 
     gMmuOn = 1;
     HalSerialWrite("vmm: Arm64 MMU on\n");
+    /*
+     * 自测：未映射高址 0x180000000 应进 sync；只打串口。
+     * （旧 E1 是 EL2 开 SCTLR_EL1 无 VBAR → 复位；现 EL1+VBAR 可探针）
+     */
     HalPagingSelfTest();
-#endif /* BOARD_IS_VIRT */
 }
 
 /* PR-A14：AP 启用与 BSP 相同的内核页表（无自测横幅） */

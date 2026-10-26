@@ -89,23 +89,16 @@ static int FaceNameRegistered(const char *Name, const FONT_RUNTIME_SLOT *Candida
     return 0;
 }
 
-static int SystemFontLoaded(void) {
-    UINT32 i;
-
-    for (i = 0; i < FONT_APP_SLOT; i++) {
-        if (gRuntime[i].Used) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static void RebuildFontTable(void) {
     UINT32 i;
 
     gFontCount = 0;
-    /* 目录里有字就只用那些。没有文件时才留内建，开机和空盘还能画字。 */
-    if (!SystemFontLoaded() && gFontCount < FONT_TABLE_MAX) {
+    /*
+     * 内建永远占 id 0。曾：有 Assets 就丢掉内建 → LoadAssets 后 id0 变成 VGA，
+     * 当前仍是 0 → 屏上滚「没 SetById 却换字形」。开机镜像靠 id0 稳定，
+     * 桌面/主题再用 FontSetById(Theme…) 显式切到盘上字。
+     */
+    if (gFontCount < FONT_TABLE_MAX) {
         gFonts[gFontCount++] = &gFontFaceTerminus10x18;
     }
     for (i = 0; i < FONT_RUNTIME_MAX; i++) {

@@ -123,8 +123,11 @@ void VirtioInputDiagOnTimer(void) {
     char Buf[192];
     UINT64 Ticks;
 
-    /* 仅 virt 串口靶；真机 ConsoleOnly（Duo/Pi）无 virtio-input，勿刷屏 */
-    if (!HalPlatformIsVirtSerialConsole()) {
+    /*
+     * 仅 QEMU virt。勿用 HalPlatformIsVirtSerialConsole()：
+     * Pi 有 FB 时该门也为 1（选 VirtDesktop 表），会误刷 virtio 计数。
+     */
+    if (!HalCpuIsHypervisor()) {
         return;
     }
     /* 仅 BSP 采样，且只打前 3 次（约 1s/2s/3s @10ms） */

@@ -6,6 +6,7 @@
 #include "KernelModulesPrivate.h"
 #include "BootHandoff.h"
 #include "HalPlatform.h"
+#include "HalSerial.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "HalPageTable.h"
@@ -286,7 +287,9 @@ int VirtualMemoryInitialize(void) {
     UINT64 FbBytes;
     UINT64 Layout;
 
+    HalSerialBootMark("vmm: setup\n");
     if (HalPageKernelSetup(IDENTITY_MB) != 0) {
+        HalSerialBootMark("vmm: setup fail\n");
         return -1;
     }
 
@@ -307,12 +310,15 @@ int VirtualMemoryInitialize(void) {
             FbBytes = Layout;
         }
         if (FbBytes != 0) {
+            HalSerialBootMark("vmm: mapfb\n");
             if (MapIdentity(Info->FrameBufferBase, FbBytes) != 0) {
+                HalSerialBootMark("vmm: mapfb fail\n");
                 return -1;
             }
         }
     }
     HalPlatformMapMmio();
+    HalSerialBootMark("vmm: enable\n");
     VirtualMemoryEnable();
     return 0;
 }

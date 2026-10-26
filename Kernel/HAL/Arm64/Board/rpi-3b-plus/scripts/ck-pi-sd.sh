@@ -1,12 +1,16 @@
 #!/bin/bash
-# ck-pi-sd.sh — 暗号 CK：固件→bootfs；Kernel/根→BLOCKS（对齐 X64；blocks-elf）
+# ck-pi-sd.sh — 暗号 CK：先摆盘（原 prepare-pi-sd）再刷卡
+#   固件→bootfs；Kernel/根→BLOCKS（对齐 X64；blocks-elf）
 #
 #   source ~/Blocks/env.sh && ck-pi-sd
 #   ck-pi-sd --wait=120
 #   ck-pi-sd --no-eject
 #   ck-pi-sd --repart          # 整盘重做成 bootfs+BLOCKS 两 FAT32（须 sudo）
+#   ck-pi-sd --dtb=PATH        # 传给摆盘
+#   ck-pi-sd /path/to/out      # 摆盘 OUT（默认 Build/rpi-3b-plus-sd）
 #
-# 不 commit / 不 push。
+# 须已 build arm64 BOARD=rpi-3b-plus。不 commit / 不 push。
+# 只摆盘不刷卡：仍可用 prepare-pi-sd。
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -16,22 +20,31 @@ SRC="${BLOCKS_SRC:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 DO_REPART=0
+PREP_FLAGS=()
 
 for A in "$@"; do
   case "$A" in
     --no-eject) DO_EJECT=0 ;;
     --repart) DO_REPART=1 ;;
     --wait=*) WAIT_SEC="${A#--wait=}" ;;
+    --dtb=*|--elf=*|--bin) PREP_FLAGS+=("$A") ;;
     -h|--help)
-      sed -n '2,14p' "$0" | sed 's/^# \?//'
+      sed -n '2,16p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
-    *)
+    -*)
       echo "error: unknown arg: $A" >&2
       exit 1
       ;;
+    *)
+      # 位置参数 = 摆盘 OUT；刷卡 SRC 跟同一目录
+      SRC="$A"
+      ;;
   esac
 done
+
+echo "CK: prepare → $SRC"
+bash "$HERE/prepare-sd.sh" "$SRC" "${PREP_FLAGS[@]}"
 
 find_mnt() {
   local Label=$1
@@ -67,16 +80,12 @@ parent_of() {
   printf '%s\n' "$Parent"
 }
 
-if [ ! -d "$SRC" ]; then
-  echo "error: missing $SRC（先 prepare-pi-sd）" >&2
-  exit 1
-fi
 if [ ! -f "$SRC/Kernel.elf" ]; then
-  echo "error: missing $SRC/Kernel.elf" >&2
+  echo "error: missing $SRC/Kernel.elf（prepare 未产出）" >&2
   exit 1
 fi
 
-echo "CK: SRC=$SRC  wait≤${WAIT_SEC}s  repart=$DO_REPART"
+echo "CK: flash SRC=$SRC  wait≤${WAIT_SEC}s  repart=$DO_REPART"
 BootMnt=""
 Elapsed=0
 while [ "$Elapsed" -le "$WAIT_SEC" ]; do

@@ -189,7 +189,7 @@ void HalTimerStart(void) {
     /* 真机尚无板级 GIC 基址；轮询 CNTV（HalTimerPoll），勿写 virt@0x08000000 */
     HalTimerSetInterval(gTimerMs);
     gTimerIrq = 0;
-    HalSerialWrite("timer: Arm64 CNTV poll\n");
+    /* 勿 HalSerialWrite：常落在 blocks> 前后刷屏；需要时看 BootMark/调试 */
 #endif
 }
 

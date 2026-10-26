@@ -6,9 +6,11 @@
  */
 #include "LwIp.h"
 #include "NetConfig.h"
+#include "Hal.h"
 #include "HalDevices.h"
 #include "Console.h"
 #include "Debug.h"
+#include "SerialLog.h"
 
 #ifdef LWIP_ENABLE
 
@@ -28,11 +30,9 @@ typedef enum {
 
 static int gDhcpRunning;
 static volatile DHCP_JOB_STATE gJob;
-static UINT32 gBudget;
-#if defined(__x86_64__)
 static UINT64 gDhcpT0;
 static UINT64 gDhcpNeed;
-
+#if defined(__x86_64__)
 static UINT64 DhcpTsc(void) {
     UINT32 Lo;
     UINT32 Hi;
@@ -136,6 +136,23 @@ int LwIpDhcpRestart(int TimeoutMs) {
     return LwIpDhcpEnqueue(TimeoutMs);
 }
 
+void LwIpDhcpOnNicEpoch(void) {
+    static UINT32 sSeen;
+    UINT32 Ep;
+
+    if (HalCpuIsHypervisor()) {
+        return;
+    }
+    Ep = HalNetNicEpoch();
+    if (Ep == 0 || Ep == sSeen) {
+        return;
+    }
+    if (LwIpDhcpRestart(12000) == 0) {
+        sSeen = Ep;
+        LogNet("Net: dhcp queued\n");
+    }
+}
+
 int LwIpDhcpEnqueue(int TimeoutMs) {
     struct netif *Netif;
     err_t Err;
@@ -166,14 +183,27 @@ int LwIpDhcpEnqueue(int TimeoutMs) {
     }
     gDhcpRunning = 1;
     Ms = TimeoutMs > 0 ? (UINT32)TimeoutMs : 8000u;
-    gBudget = Ms * 200u;
-    if (gBudget < 20000u) {
-        gBudget = 20000u;
-    }
 #if defined(__x86_64__)
     /* 真机一拍远慢于 5µs。用 TSC，按约 3GHz 把 TimeoutMs 当成墙钟。 */
     gDhcpT0 = DhcpTsc();
     gDhcpNeed = (UINT64)Ms * 3000ULL * 1000ULL;
+#else
+    /*
+     * 对表 x86：墙钟超时。旧 gBudget=Ms*200 在 USB EthPoll 慢时像「卡住不动」。
+     * HalCpuTicks + HalTicksPerSec（Arm64/RiscV CNTV/timebase 经 Halt/Poll 推进）。
+     */
+    {
+        UINT32 Tps = HalTicksPerSec();
+
+        if (Tps == 0) {
+            Tps = 1000u;
+        }
+        gDhcpT0 = HalCpuTicks(0);
+        gDhcpNeed = (UINT64)Ms * (UINT64)Tps / 1000ULL;
+        if (gDhcpNeed == 0) {
+            gDhcpNeed = 1;
+        }
+    }
 #endif
     gJob = DHCP_JOB_RUN;
     return 0;
@@ -207,7 +237,7 @@ int LwIpDhcpStep(void) {
 #if defined(__x86_64__)
     if (DhcpTsc() - gDhcpT0 >= gDhcpNeed) {
 #else
-    if (gBudget-- == 0) {
+    if (HalCpuTicks(0) - gDhcpT0 >= gDhcpNeed) {
 #endif
         LwIpDhcpStop();
         (void)LwIpApplyConfig();
@@ -234,6 +264,9 @@ int LwIpDhcpEnqueue(int TimeoutMs) {
 int LwIpDhcpRestart(int TimeoutMs) {
     (void)TimeoutMs;
     return -1;
+}
+
+void LwIpDhcpOnNicEpoch(void) {
 }
 
 int LwIpDhcpStep(void) {

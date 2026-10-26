@@ -25,6 +25,10 @@ UINT32 HalNetNicEpoch(void) {
     return NetNicEpoch();
 }
 
+void HalNetNicEpochBump(void) {
+    /* X64：epoch 在 Nic.c ApplyPrimary；板驱勿重复 +1 */
+}
+
 void HalNetPoll(void) {
     /*
      * lwIP on：走 LwIpService（try_lock + poll），勿再 LwIpLock 阻塞。

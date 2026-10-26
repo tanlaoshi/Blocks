@@ -96,8 +96,9 @@ static void SerialRun(void) {
         HalInputPoll();
         /*
          * ConsoleOnly 无 Worker：泵网 + DHCP Step（net-6）。
-         * lwIP on 时 HalNetPoll → LwIpService；dhcp job 须本环推进。
+         * 对表 X64：epoch→自动 DHCP（Duo/无 FB Pi）；再 Step。
          */
+        LwIpDhcpOnNicEpoch();
         HalNetPoll();
         if (LwIpDhcpJobBusy()) {
             (void)LwIpDhcpStep();

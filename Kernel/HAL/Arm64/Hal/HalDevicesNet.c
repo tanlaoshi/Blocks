@@ -17,6 +17,10 @@
 int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 #endif
 
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+static UINT32 gNicEpoch;
+#endif
+
 int HalNetInitialize(void) {
 #if BOARD_HAS_NET
 #if BOARD_IS_VIRT
@@ -44,7 +48,19 @@ int HalNetReady(void) {
 }
 
 UINT32 HalNetNicEpoch(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    return gNicEpoch;
+#else
     return 0;
+#endif
+}
+
+void HalNetNicEpochBump(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    gNicEpoch++;
+#else
+    /* virtio / 无板网：无外置 L2 epoch */
+#endif
 }
 
 void HalNetPoll(void) {

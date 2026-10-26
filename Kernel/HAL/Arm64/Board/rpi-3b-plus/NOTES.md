@@ -85,7 +85,12 @@
 - `Ethernet.c` smsc95xx；串口应见 `Boot: DWC2 ETH vid=…ec00` → `SMSC ID_REV=` → `SMSC eth ok mac=` → **`Boot: Mod Network` 前** `SMSC ETH bind`（`HalNetProbeAtModuleInit`；勿等 Worker——Pi CNTV 无 IRQ 切不过去）。  
 - `blocks> net` 见 mac + `link up`；`lwip on` 在 bind 后应可。  
 - **rnet-3 ✅**：真机勿出现 `10.0.2.15`（`HalNetHasNicL2`）；`setip`/`setgw`/`lwip on`/`ping` 网关通。  
-- **rnet-4**：`lwip on` → `net dhcp` → `net` 见租约 → `ping` 网关。
+- **rnet-4**：对表 X64/Duo — `ShellTask`/`SerialRun` 泵 `LwIpDhcpStep`；Bind→`HalNetNicEpochBump`；`Adopt`→`DesktopNotifyNetChanged`（钟栏网托）。  
+  ```text
+  lwip on            # 或等 Worker 见 epoch 自动 dhcp
+  net dhcp           # 等 lwip dhcp: ok ip=…；托盘应变有线绿
+  ping <gw>
+  ```
 
 ## 公司 vs 回家
 

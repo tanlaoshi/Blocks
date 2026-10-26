@@ -1460,6 +1460,7 @@ static int EthernetDriverBind(DRIVER_INSTANCE *Instance) {
         return -1;
     }
     gBound = 1;
+    HalNetNicEpochBump();
     HalSerialBootMark("Boot: Duo ETH bind\n");
     return 0;
 }

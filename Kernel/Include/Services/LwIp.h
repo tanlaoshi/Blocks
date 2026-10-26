@@ -14,6 +14,11 @@ int  LwIpApplyConfig(void);
 int  LwIpDhcpEnqueue(int TimeoutMs);
 /* 已有任务也停掉再要一次；给换网卡用 */
 int  LwIpDhcpRestart(int TimeoutMs);
+/*
+ * 对表 X64 Worker：HalNetNicEpoch 变且非 hypervisor → Restart。
+ * Shell/Serial 亦调（Pi Worker 无定时 IRQ 易饿死；Duo 无 Worker）。
+ */
+void LwIpDhcpOnNicEpoch(void);
 int  LwIpDhcpStep(void);     /* 0=仍忙；1=空闲/本拍结束 */
 int  LwIpDhcpJobBusy(void);
 /* 遗留：等同 Enqueue；勿在 Shell 自旋 */

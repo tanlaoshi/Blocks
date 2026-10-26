@@ -204,17 +204,7 @@ void WorkerTask(void) {
             SchedulerIoBreath();
             continue;
         }
-        if (!HalCpuIsHypervisor()) {
-            static UINT32 DhcpEpoch;
-            UINT32 Ep = HalNetNicEpoch();
-
-            if (Ep != 0 && Ep != DhcpEpoch) {
-                if (LwIpDhcpRestart(12000) == 0) {
-                    DhcpEpoch = Ep;
-                    LogNet("Net: dhcp queued\n");
-                }
-            }
-        }
+        LwIpDhcpOnNicEpoch(); /* 对表：epoch→自动 DHCP（与 Shell/Serial 同入口） */
         if (LwIpDhcpJobBusy()) {
             (void)LwIpDhcpStep();
             SchedulerIoBreath();

@@ -8,6 +8,7 @@
 #include "UsbHostController.h"
 #include "BoardConfig.h"
 #include "Hal.h"
+#include "HalDevices.h"
 #include "Driver.h"
 #include "DriverNet.h"
 #include "Text.h"
@@ -79,6 +80,7 @@
 
 static int gReady;
 static int gBound;
+static int gLinkWasUp;
 static int gLwIpRx;
 static UINT8 gAddr;
 static UINT8 gHub;
@@ -467,9 +469,27 @@ static int EthReady(void) {
 
 static void EthPoll(void) {
     int Got;
+    int Up = 0;
+    static UINT32 sLinkDiv;
 
     if (!gReady) {
         return;
+    }
+    /*
+     * 链路 down→up：再 bump epoch（对表 X64 换主槽），Shell/Worker 自动 DHCP。
+     * 仅 Bind 一次会在「先 Bind、后插线」时吃掉 epoch 却拿不到租约。
+     * 鼠优先：MII 非每拍（未 up 时每拍找链路；已 up 每 64 拍复核）。
+     */
+    sLinkDiv++;
+    if (!gLinkWasUp || (sLinkDiv & 63u) == 0u) {
+        if (BoardEthernetGetLink(&Up, 0, 0) && Up) {
+            if (!gLinkWasUp) {
+                gLinkWasUp = 1;
+                HalNetNicEpochBump();
+            }
+        } else {
+            gLinkWasUp = 0;
+        }
     }
     /* 鼠优先：每次最多一次 bulk IN；短超时在 DWC2 层 */
     SelectDev();
@@ -622,6 +642,8 @@ static int EthDriverBind(DRIVER_INSTANCE *Inst) {
         return -1;
     }
     gBound = 1;
+    /* 对表 X64 ApplyPrimary：epoch++ → Worker 可自动 DHCP */
+    HalNetNicEpochBump();
     HalSerialBootMark("Boot: SMSC ETH bind\n");
     return 0;
 }

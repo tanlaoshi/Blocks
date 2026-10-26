@@ -33,6 +33,11 @@ void DevicesMenuRegister(void);
 
 /* Store 装卸后：若开始菜单开着则重建（含 Apps 二级） */
 void DesktopNotifyAppsChanged(void);
+/*
+ * IP/网关等变后：与 Worker DesktopWorkerTick 网托采样同形，置栏脏；
+ * Gui DesktopTickClock 闲时重画（对表 X64 钟/网托路径，勿另起门面）。
+ */
+void DesktopNotifyNetChanged(void);
 
 void DesktopInitialize(void);
 /* PR-BOX-2：先画出 Logo；读完字体/主题后再 Finish 清屏 */

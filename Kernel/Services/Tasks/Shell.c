@@ -145,8 +145,19 @@ void ShellTask(void) {
         /*
          * NO_SYS：Shell@AP 与 Worker@BSP 均可 LwIpService；gLwIpLock 串行。
          * 勿在 Job busy 时停泵——窗/Worker 上的 HttpGet 仍依赖 Shell 侧轮询 RX。
+         *
+         * DHCP Job：必须 Step（Adopt + WriteToJobShell + ReleasePrompt）。
+         * 仅 Service 时 lwIP 可能已拿到地址，但壳一直停在「queued」（Pi 有 FB
+         * 走 ShellTask、非 SerialRun；Worker 无定时 IRQ 时更易饿死 Step）。
          */
-        if (LwIpActive()) {
+        /*
+         * 自动 DHCP：对表 X64 Worker epoch 观察。Pi 有 FB 时 Worker 无 CNTV IRQ
+         * 易饿死，Shell 环必跑，故在此同调 LwIpDhcpOnNicEpoch。
+         */
+        LwIpDhcpOnNicEpoch();
+        if (LwIpDhcpJobBusy()) {
+            (void)LwIpDhcpStep();
+        } else if (LwIpActive()) {
             LwIpService();
         } else {
             HalNetPoll();

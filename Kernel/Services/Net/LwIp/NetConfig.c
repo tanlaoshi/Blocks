@@ -5,6 +5,7 @@
 #include "Hal.h"
 #include "HalDevices.h"
 #include "LwIp.h"
+#include "Desktop.h"
 
 #define NET_CFG_IP_QEMU      0x0A00020FU  /* 10.0.2.15 */
 #define NET_CFG_MASK_DEFAULT 0xFFFFFF00U  /* /24 */
@@ -91,9 +92,15 @@ static int ApplyStack(void) {
 }
 
 int NetConfigSetIp(UINT32 Ip) {
+    int Rc;
+
     NetConfigEnsure();
     gIp = Ip;
-    return ApplyStack();
+    Rc = ApplyStack();
+    if (Rc == 0) {
+        DesktopNotifyNetChanged();
+    }
+    return Rc;
 }
 
 int NetConfigSetMask(UINT32 Mask) {
@@ -121,4 +128,6 @@ void NetConfigAdopt(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
     gGw = Gw;
     gDns = Dns;
     HalNetSetIpAddress(Ip);
+    /* 对表 X64：配置表变 → 网托随 Worker/Gui 钟栏路径刷新 */
+    DesktopNotifyNetChanged();
 }

@@ -201,6 +201,19 @@ void DesktopBootMediumGoneShutdown(void) {
     }
 }
 
+void DesktopNotifyNetChanged(void) {
+    /*
+     * 与 Worker 网托采样同终点：栏脏 + Mark，Gui TickClock 闲时 DrawTaskbar。
+     * DHCP Adopt / setip 后立刻可绿；勿另起托盘 API。
+     */
+    sClockBarNeedPaint = 1;
+    DesktopMarkTaskbar();
+    if (DesktopNetTrayIsOpen()) {
+        DesktopMarkNetTrayPopup();
+    }
+    RequestRefresh();
+}
+
 void DesktopWorkerTick(void) {
     static UINT64 LastCheckTick;
     static UINT64 LastRtcNetTick;

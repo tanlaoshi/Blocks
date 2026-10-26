@@ -243,13 +243,18 @@ int SchedulerCoopDrainUsers(void) {
      * virt / x64 均走 HalUserCoopEnter 同步排空（x64 曾空桩 → exec 异步假死）。
      * 桌面图标 / shell exec 依赖：exit 在 gCoopDrain 内跳过 ShowPrompt，由调用方补。
      */
+    /*
+     * 宿主=调用方内核任务（Shell）。Duo/virt 串口：CurrentTask 偶空时钳 id、
+     * 再退 Idle。X64 桌面禁止退 Idle——否则 Drain 返回后 Activate(Idle)，
+     * Shell/Gui 失宿主 → 光标/网/壳整桌假死（NUC 回归）。
+     */
     Host = CurrentTask();
     if ((!Host || Host->IsUser) && HalCpuGetId() >= HAL_MAX_CPUS) {
-        /* 逻辑 CPU id 寄存器被污染 → CurrentTask 空；经 HAL 钳回再取宿主 */
         HalCpuSetLogicalId(0);
         Host = CurrentTask();
     }
-    if (!Host || Host->IsUser) {
+    if ((!Host || Host->IsUser) &&
+        (HalConsoleOnly() || HalPlatformIsVirtSerialConsole())) {
         Cpu = HalCpuGetId();
         if (Cpu >= HAL_MAX_CPUS) {
             Cpu = 0;

@@ -32,7 +32,7 @@ if [ ! -f "$RUNTIME/RootFs/X64/BLOCKS.ID" ]; then
 fi
 
 # boot-root-cfg：目录树无 GPT GUID 时跳过（QEMU fat:rw 靠档 2/3）
-WRITE_ROOT="$BLOCKS/Kernel/OpenBox/Scripts/lib/write-root-cfg.sh"
+WRITE_ROOT="$BLOCKS/Kernel/Scripts/lib/write-root-cfg.sh"
 if [ -x "$WRITE_ROOT" ]; then
     "$WRITE_ROOT" "$RUNTIME/Esp/X64/EFI/Blocks" "$RUNTIME/RootFs/X64" 2>/dev/null || true
 fi

@@ -1,6 +1,6 @@
 # Tools
 
-交叉工具链等本机构建依赖。参考旧仓 `ToyKernel/Tools`，路径按 OpenBox 修正。
+交叉工具链等本机构建依赖。参考旧仓 `ToyKernel/Tools`，路径按 `Kernel/Scripts` 修正。
 
 | 路径 | 说明 |
 | ---- | ---- |

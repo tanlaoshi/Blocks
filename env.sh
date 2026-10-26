@@ -17,7 +17,7 @@
 #   prepare-pi-sd [OUT] [--dtb=…]   # Pi3BPlus SD 摆盘目录（不插卡）
 #
 # 路径：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD
-# 实现仍在 Kernel/OpenBox/Scripts/；勿再写 cd Kernel && ./build.sh …
+# 实现在 Kernel/Scripts/；勿再写 cd Kernel && ./build.sh …
 #
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     echo "error: 请 source 本脚本，例如: source ~/Blocks/env.sh" >&2
@@ -38,7 +38,7 @@ export KERNEL="$BLOCKS_ROOT/Kernel"
 export RUNTIME="$BLOCKS_ROOT/Runtime"
 export KERNEL_BUILD="$KERNEL/Build"
 export BLOCKS_BOOT="$BLOCKS_ROOT/Boot"
-export BLOCKS_SCRIPTS="$BLOCKS_ROOT/Kernel/OpenBox/Scripts"
+export BLOCKS_SCRIPTS="$BLOCKS_ROOT/Kernel/Scripts"
 
 if [ ! -d "$BLOCKS_SCRIPTS/lib" ]; then
     echo "error: 缺少 $BLOCKS_SCRIPTS/lib" >&2
@@ -46,7 +46,7 @@ if [ ! -d "$BLOCKS_SCRIPTS/lib" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# shellcheck source=Kernel/OpenBox/Scripts/lib/toyos-common.sh
+# shellcheck source=Kernel/Scripts/lib/toyos-common.sh
 . "$BLOCKS_SCRIPTS/lib/toyos-common.sh"
 
 build() {

@@ -405,5 +405,7 @@ int ProcessRunDemo(void) {
         gCoopDrain = 0;
         return -1;
     }
+    /* Drain 成功路径已清 gCoopDrain；再保险 */
+    gCoopDrain = 0;
     return 0;
 }

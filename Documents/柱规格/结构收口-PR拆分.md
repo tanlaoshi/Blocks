@@ -385,7 +385,7 @@ PR-STRUCT-early
 
 仓库根没有 `.github/workflows`。写好的 workflow 在 `Kernel/.github/workflows/build.yml` 和 `release.yml`，GitHub 不会跑它们。这两份还在检查 `Build/CodeA-HAL/.../Kernel.elf`。现在的产物是 `Build/HAL/<Arch>/Kernel.elf`（`Kernel/Makefile` 里 `HALDIR`）。即使把 workflow 挪到仓根，三架构编译成功之后，检查仍会因为路径对不上而失败。
 
-QEMU 冒烟是另外几份脚本，不在默认构建里。`Runtime/smoke-boot.sh` 看桌面就绪。`Kernel/OpenBox/Scripts/lib/` 里还有 shell、用户态、文件系统的 expect，以及 arm/riscv 的 virt 冒烟。`check-smells.sh` 要找 `Common/` 目录，这棵树没有，一跑就 `exit 2`。
+QEMU 冒烟是另外几份脚本，不在默认构建里。`Runtime/smoke-boot.sh` 看桌面就绪。`Kernel/Scripts/lib/` 里还有 shell、用户态、文件系统的 expect，以及 arm/riscv 的 virt 冒烟。`check-smells.sh` 要找 `Common/` 目录，这棵树没有，一跑就 `exit 2`。
 
 规范里写了、构建没有守住的：警告当错误、系统调用号和分发表对账、返回值必须处理或写成 `(void)`、新 `.c` 不超过 300 行、Core/Services 不去包含驱动私有头。
 

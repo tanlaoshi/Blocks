@@ -16,7 +16,7 @@ toyos_resolve_root() {
             return 0
         fi
         # 旧 ToyOS 三仓树
-        [ -d "$R/ToyKernel" ] && { [ -d "$R/Scripts" ] || [ -d "$R/ToyKernel/OpenBox/Scripts" ]; }
+        [ -d "$R/ToyKernel" ] && { [ -d "$R/Scripts" ] || [ -d "$R/ToyKernel/Scripts" ] || [ -d "$R/ToyKernel/OpenBox/Scripts" ]; }
     }
     if [ -n "${BLOCKS_ROOT:-}" ]; then
         Root="$(cd "$BLOCKS_ROOT" && pwd)"
@@ -59,6 +59,9 @@ toyos_load_config() {
     if [ -f "$Root/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Config.txt"
+    elif [ -f "$Root/Kernel/Scripts/Config.txt" ]; then
+        # shellcheck disable=SC1090
+        . "$Root/Kernel/Scripts/Config.txt"
     elif [ -f "$Root/Kernel/OpenBox/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Kernel/OpenBox/Config.txt"
@@ -69,6 +72,9 @@ toyos_load_config() {
     if [ -f "$Root/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Scripts/Config.local.txt"
+    elif [ -f "$Root/Kernel/Scripts/Config.local.txt" ]; then
+        # shellcheck disable=SC1090
+        . "$Root/Kernel/Scripts/Config.local.txt"
     elif [ -f "$Root/Kernel/OpenBox/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Kernel/OpenBox/Scripts/Config.local.txt"
@@ -85,14 +91,16 @@ toyos_load_config() {
 
 toyos_scripts_dir() {
     local Root="$1"
-    if [ -d "$Root/Kernel/OpenBox/Scripts/lib" ]; then
+    if [ -d "$Root/Kernel/Scripts/lib" ]; then
+        printf '%s\n' "$Root/Kernel/Scripts"
+    elif [ -d "$Root/Kernel/OpenBox/Scripts/lib" ]; then
         printf '%s\n' "$Root/Kernel/OpenBox/Scripts"
     elif [ -f "$Root/Scripts/build.sh" ]; then
         printf '%s\n' "$Root/Scripts"
     elif [ -f "$Root/ToyKernel/OpenBox/Scripts/build.sh" ]; then
         printf '%s\n' "$Root/ToyKernel/OpenBox/Scripts"
     else
-        toyos_die "找不到 Scripts（$Root/Kernel/OpenBox/Scripts 或 Scripts 或 ToyKernel/OpenBox）"
+        toyos_die "找不到 Scripts（$Root/Kernel/Scripts 或 Scripts）"
     fi
 }
 

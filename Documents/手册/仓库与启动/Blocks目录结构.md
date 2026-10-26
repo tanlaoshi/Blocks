@@ -57,7 +57,7 @@ Kernel/
   Core/        # 调度 / PMM / VMM / Process / Syscall / Driver 表…
   Services/    # Shell、Gui、Tasks 四环、Store、Net…
   User/        # Ring3 App、CRT、include/Blocks
-  OpenBox/     # 真机 sync / virt / smoke / expect（Scripts/）
+  Scripts/     # 真机 sync / virt / smoke / expect（lib/）
   Include/     # 分层契约头
   ThirdParty/  # lwIP 等（肉）
   Build/       # 产物：HAL/<Arch>/Kernel.elf、User/*.elf
@@ -80,9 +80,9 @@ Kernel/
 
 一板一编：`build arm64 BOARD=…`。约定见 `HAL/Board/README.md`。
 
-### 2.2 OpenBox 脚本
+### 2.2 Scripts（宿主机工具）
 
-权威在 `Kernel/OpenBox/Scripts/`（`lib/` 实现 + `sync/` `run/` `smoke/` …）。  
+权威在 `Kernel/Scripts/`（`lib/` 实现 + `sync/` `run/` `smoke/` …；原 OpenBox 已拍扁）。  
 根 `env.sh` 把常用动作收成短名；**不**与 `Runtime/*.sh` 合成一套：
 
 | 短名 | 去向 |
@@ -139,7 +139,7 @@ build && sync && run --headless
 | ToyOS / ToyKernel / ToyBoot / ToyImage | **Blocks** / `Kernel` / `Boot` / `Runtime` |
 | `source Scripts/env.sh` | `source ~/Blocks/env.sh` |
 | `CodeA-HAL`… 磁盘前缀 | 短名 `HAL/` `Core/`…（分层规则仍在） |
-| OpenBox 独立仓设想 | 已收进 `Kernel/OpenBox/` + 仓根 `env.sh` |
+| OpenBox 独立仓设想 | 已拍扁为 `Kernel/Scripts/` + 仓根 `env.sh` |
 
 ---
 
@@ -148,3 +148,4 @@ build && sync && run --headless
 | 日期 | 说明 |
 | ---- | ---- |
 | 2026-10-23 | 合成：取代开箱/OpenBox/ToyKernel 目录长文与骨架文中的「树」部分。 |
+| 2026-10-26 | `Kernel/OpenBox` → `Kernel/Scripts` 拍扁。 |

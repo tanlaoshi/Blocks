@@ -305,7 +305,7 @@ Worker ────────── MSC/钟、扫盘、Store、网后台…
 - 键鼠优先（见仓库规则）
 
 历史慢点（多已进 PR-BOOT-fast 归档）：Gui 墙纸/图标过早读盘、MSC 重试、iwl Claim 挡 FS、GOP 无谓 SetMode。  
-测量：有 QEMU 时可用 OpenBox `measure-boot` 一类脚本；真机以 NUC 墙钟为准。排期认**日档 ★**，大文件路线图只留史。
+测量：有 QEMU 时可用 `Kernel/Scripts/measure/` 一类脚本；真机以 NUC 墙钟为准。排期认**日档 ★**，大文件路线图只留史。
 
 ---
 

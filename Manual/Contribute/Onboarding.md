@@ -99,7 +99,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 **U 盘 / NUC**：暗号 **TBU** / **TBN**（`sync usb` / `sync nuc`）。Wi‑Fi 凭证勿打串口 PSK。
 
-**验收**：`Kernel/Tools/Scripts/test-all.sh`（须镜像旁路齐）；`OpenBox/Scripts/test/` 下 expect 冒烟。
+**验收**：`Kernel/Tools/Scripts/test-all.sh`（须镜像旁路齐）；`Kernel/Scripts/test/` 下 expect 冒烟。
 
 **SDK**：`Kernel/Tools/build-sdk.sh` → 包出离树工具链；示例在 `Kernel/Tools/Sdk/Examples/{Hello,Gui,Net}`。
 

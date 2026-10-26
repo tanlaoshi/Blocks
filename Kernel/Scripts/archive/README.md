@@ -7,4 +7,4 @@
 | `trim-edk2.sh` | 裁 EDK2 子集 | Boot 已在仓内 |
 | `STANDALONE-KERNEL.md` | 单仓编 Kernel 说明（Toy 名） | 见 `Kernel/README.md` |
 
-需要考古时再翻；新流程以仓库根 `README` + `OpenBox/README.md` 为准。
+需要考古时再翻；新流程以仓库根 `README` + `Kernel/Scripts/README.md` 为准。

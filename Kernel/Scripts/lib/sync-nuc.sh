@@ -269,7 +269,7 @@ BOOT_EFI="$ROOT/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   if [[ "$DO_BUILD" -eq 1 ]]; then
     echo "== build Kernel =="
-    (cd "$ROOT/../ToyKernel" && ./build.sh)
+    (cd "$ROOT/../Kernel" && ./build.sh)
   fi
   SRC="$(pick_kernel_src || true)"
   if [[ -z "$SRC" ]]; then
@@ -282,8 +282,8 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
   fi
   if [[ "$DO_BOOT" -eq 1 ]]; then
-    if [[ "$DO_BUILD" -eq 1 && -x "$ROOT/../ToyBoot/build.sh" ]]; then
-      (cd "$ROOT/../ToyBoot" && ./build.sh)
+    if [[ "$DO_BUILD" -eq 1 && -x "$ROOT/../Boot/build.sh" ]]; then
+      (cd "$ROOT/../Boot" && ./build.sh)
     fi
     sync_boot_chainloader "$BOOT_EFI"
   fi
@@ -304,11 +304,11 @@ fi
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
   echo "== build Kernel =="
-  (cd "$ROOT/../ToyKernel" && ./build.sh)
+  (cd "$ROOT/../Kernel" && ./build.sh)
   if [[ "$DO_BOOT" -eq 1 ]]; then
     echo "== build Boot =="
-    if [[ -x "$ROOT/../ToyBoot/build.sh" ]]; then
-      (cd "$ROOT/../ToyBoot" && ./build.sh)
+    if [[ -x "$ROOT/../Boot/build.sh" ]]; then
+      (cd "$ROOT/../Boot" && ./build.sh)
     else
       echo "warning: Boot/build.sh missing" >&2
     fi

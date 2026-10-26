@@ -105,11 +105,7 @@ static void OnBackspaceEx(int FromSerial) {
     if (HalConsoleVideoReady() && GuiShellAcceptsInput()) {
         GuiFrameBufferBegin();
         GuiFocusApplyClip();
-        /*
-         * 与 ConsoleDrawChar 同开 Mono：回显步进是 FontTtfMonoAdvance，
-         * 退格若只用 FaceDrawW 会偏窄 → 删不净、行首残留。
-         */
-        FontTtfMonoBegin();
+        /* 与 DrawChar 同：Latin 点阵步进；退格脏矩形用 FontAdvanceX */
         HalConsoleEraseLastChar();
         {
             UINT32 X;
@@ -118,7 +114,6 @@ static void OnBackspaceEx(int FromSerial) {
             HalConsoleGetTextCursor(&X, &Y);
             GuiBackupSyncRect(X, Y, FontAdvanceX(), FontCellH());
         }
-        FontTtfMonoEnd();
         GuiFocusSyncCursor();
         GuiPresentShellEchoMark();
         GuiFrameBufferEnd();

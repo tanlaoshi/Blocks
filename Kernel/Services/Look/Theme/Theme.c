@@ -25,7 +25,7 @@ int gWallpaperPrefSet = 0;  /* DB/CFG 是否写过 wallpaper= */
 
 void ThemeInitialize(void) {
     FontChoiceRegister(ThemeSetFontId);
-    gFontId = 0; /* Terminus 10x18 */
+    gFontId = 0; /* cjk-4：有 UMING.TTF 时 id0=UMing；否则 Terminus */
     gModeW = 0;
     gModeH = 0;
     gThemeUiScale = 100;
@@ -195,7 +195,7 @@ const char *ThemeEffectLevelName(THEME_EFFECT_LEVEL Level) {
     }
 }
 
-/* 优先 Sun 8x16，其次 Terminus 10x18 */
+/* cjk-4：优先 UI TTF（UMing）；其次 Terminus；勿默认 Sun（无汉语） */
 UINT32 ThemeCompactFontId(void) {
     UINT32 i;
     const FONT_FACE *F;
@@ -209,11 +209,8 @@ UINT32 ThemeCompactFontId(void) {
     }
     for (i = 0; i < FontCount(); i++) {
         F = FontGetById(i);
-        if (!F || !F->Name) {
-            continue;
-        }
-        if (F->Width <= 8 && F->Height <= 16) {
-            return i; /* Sun 8x16 等 */
+        if (F && F->Glyphs == 0 && F->Name) {
+            return i; /* UMing / Droid 等 UI TTF */
         }
     }
     for (i = 0; i < FontCount(); i++) {
@@ -221,7 +218,7 @@ UINT32 ThemeCompactFontId(void) {
         if (!F || !F->Name) {
             continue;
         }
-        if (F->Width <= 10 && F->Height <= 18) {
+        if (F->Width <= 10 && F->Height <= 18 && F->Glyphs != 0) {
             return i;
         }
     }

@@ -242,6 +242,8 @@ int GuiInitialize(void) {
      * DropCjkHits 风暴 → 鼠死；不 Drop 则汉字永远旧 stb。
      */
     (void)FontFtInit();
+    /* cjk-4：UMING/DROID 进字体表，供设置→字体 / Theme font= 名 */
+    FontNotifyTtfReady();
     PollInput();
     (void)ThemeLoad();
     LocaleInitialize();

@@ -83,9 +83,8 @@ void ConsoleDrawString(const char *Text, UINT32 Color) {
     GuiFocusApplyClip();
     ConsoleSbBarReapplyClip();
     HalConsoleGetTextCursor(&X0, &Y0);
-    FontTtfMonoBegin();
+    /* ASCII 与桌面同走 Latin 点阵（Terminus）；勿开 MONO.TTF */
     HalConsoleDrawString(Text, Color);
-    FontTtfMonoEnd();
     HalConsoleGetTextCursor(&X1, &Y1);
     /*
      * 换行/滚屏后 X 回到行首：若仍用 (X0,X1) 轴对齐包围盒，
@@ -131,9 +130,7 @@ void ConsoleDrawChar(char C, UINT32 Color) {
     GuiFrameBufferBegin();
     GuiFocusApplyClip();
     HalConsoleGetTextCursor(&X, &Y);
-    FontTtfMonoBegin();
     HalConsoleDrawChar(C, Color);
-    FontTtfMonoEnd();
     GuiBackupSyncRect(X, Y, FontCellW(), FontCellH());
     GuiFocusSyncCursor();
     /* PR-G-shell-present：打字回显合并 Present（ShellTask 轮询末刷） */

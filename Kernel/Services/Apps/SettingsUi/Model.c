@@ -79,7 +79,6 @@ int ItemCount(void) {
 
 
 void ItemLabel(int Idx, char *Out, int OutMax) {
-    const FONT_FACE *Face;
     UINT32 Sc;
     int P;
 
@@ -98,8 +97,8 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
         StringCopy(Out, OutMax, LocStr(gShellColors[Idx].Msg));
         break;
     case SETTINGS_CAT_FONT:
-        Face = FontGetById((UINT32)Idx);
-        StringCopy(Out, OutMax, (Face && Face->Name) ? Face->Name : "?");
+        /* cjk-4：UMing 标（中英）；Sun/Terminus 标（仅英文） */
+        FontFaceLabel((UINT32)Idx, Out, OutMax);
         break;
     case SETTINGS_CAT_DISPLAY:
         if (Idx == 0) {

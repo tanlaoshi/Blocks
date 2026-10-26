@@ -40,6 +40,58 @@ static const FONT_FACE *gFonts[FONT_TABLE_MAX];
 static UINT32 gFontCount;
 static UINT32 gCurrentId;
 static UINT32 gGlyphCpBpp;
+static UINT32 gUiTtfSlot; /* 0=UMING.TTF；1=DROID.TTF */
+
+/*
+ * cjk-4：设置→字体列表里的 UI TTF 项（无点阵 Glyphs）。
+ * 选中改中文栅格槽；ASCII 软退 Terminus（勿 TTF 拉丁空心框）。
+ */
+/* 列表短名（详情/theme 也用）；全称见 UMING.TTF / DROID.TTF 文件 */
+static const FONT_FACE gFaceUiUming = {
+    .Name = "UMing",
+    .Width = 10,
+    .Height = 18,
+    .BytesPerGlyph = 0,
+    .BytesPerRow = 0,
+    .CharSpacing = 1,
+    .LineSpacing = 2,
+    .Scale = 1,
+    .Glyphs = 0,
+    .GlyphCount = 0,
+    .FirstChar = 32,
+};
+
+static const FONT_FACE gFaceUiDroid = {
+    .Name = "Droid",
+    .Width = 10,
+    .Height = 18,
+    .BytesPerGlyph = 0,
+    .BytesPerRow = 0,
+    .CharSpacing = 1,
+    .LineSpacing = 2,
+    .Scale = 1,
+    .Glyphs = 0,
+    .GlyphCount = 0,
+    .FirstChar = 32,
+};
+
+UINT32 FontTtfUiActiveSlot(void) {
+    return gUiTtfSlot < FONT_TTF_UI_MAX ? gUiTtfSlot : 0;
+}
+
+/* UI TTF 项 Glyphs=0：ASCII 须软退点阵，勿用空 face 的 BytesPerRow=0 去 Paint */
+const FONT_FACE *FontGetLatinFace(void) {
+    const FONT_FACE *F = (gCurrentId < gFontCount) ? gFonts[gCurrentId] : 0;
+
+    if (F && F->Glyphs != 0 && F->BytesPerGlyph != 0) {
+        return F;
+    }
+    return &gFontFaceTerminus10x18;
+}
+
+static const FONT_FACE *FontFaceForLatin(void) {
+    return FontGetLatinFace();
+}
 
 static UINT16 RdU16(const UINT8 *P) {
     return (UINT16)P[0] | ((UINT16)P[1] << 8);
@@ -71,12 +123,17 @@ static int NameEqCi(const char *A, const char *B) {
     return *A == 0 && *B == 0;
 }
 
-/* 已注册（内建 + 已占用运行时槽，不含 Candidate） */
+/* 已注册（内建 UMing/Terminus + 已占用运行时槽，不含 Candidate） */
 static int FaceNameRegistered(const char *Name, const FONT_RUNTIME_SLOT *Candidate) {
     UINT32 i;
 
     if (!Name || Name[0] == 0) {
         return 0;
+    }
+    if (NameEqCi(Name, gFaceUiUming.Name) ||
+        NameEqCi(Name, gFaceUiDroid.Name) ||
+        NameEqCi(Name, gFontFaceTerminus10x18.Name)) {
+        return 1;
     }
     for (i = 0; i < FONT_RUNTIME_MAX; i++) {
         if (!gRuntime[i].Used || &gRuntime[i] == Candidate) {
@@ -91,13 +148,22 @@ static int FaceNameRegistered(const char *Name, const FONT_RUNTIME_SLOT *Candida
 
 static void RebuildFontTable(void) {
     UINT32 i;
+    UINT32 BlobSize = 0;
 
     gFontCount = 0;
     /*
-     * 内建永远占 id 0。曾：有 Assets 就丢掉内建 → LoadAssets 后 id0 变成 VGA，
-     * 当前仍是 0 → 屏上滚「没 SetById 却换字形」。开机镜像靠 id0 稳定，
-     * 桌面/主题再用 FontSetById(Theme…) 显式切到盘上字。
+     * cjk-4：有 CJK*.TTF 则 UI TTF 置顶「中英」；无 TTF 时 id0=Terminus。
      */
+    BlobSize = 0;
+    if (FontTtfUiBlob(0, &BlobSize) && BlobSize >= 12u &&
+        gFontCount < FONT_TABLE_MAX) {
+        gFonts[gFontCount++] = &gFaceUiUming;
+    }
+    BlobSize = 0;
+    if (FontTtfUiBlob(1, &BlobSize) && BlobSize >= 12u &&
+        gFontCount < FONT_TABLE_MAX) {
+        gFonts[gFontCount++] = &gFaceUiDroid;
+    }
     if (gFontCount < FONT_TABLE_MAX) {
         gFonts[gFontCount++] = &gFontFaceTerminus10x18;
     }
@@ -106,6 +172,45 @@ static void RebuildFontTable(void) {
             gFonts[gFontCount++] = &gRuntime[i].Face;
         }
     }
+}
+
+void FontNotifyTtfReady(void) {
+    UINT32 Cur = gCurrentId;
+
+    RebuildFontTable();
+    if (FontSetById(Cur) != 0 && FontCount() > 0u) {
+        (void)FontSetById(0);
+    }
+}
+
+void FontFaceLabel(UINT32 Id, char *Out, int OutMax) {
+    const FONT_FACE *Face;
+    const char *Name;
+    const char *Tag;
+    int i;
+    int j;
+
+    if (!Out || OutMax <= 0) {
+        return;
+    }
+    Out[0] = 0;
+    Face = FontGetById(Id);
+    Name = (Face && Face->Name) ? Face->Name : "?";
+    /*
+     * cjk-4：中文后缀须先 Preheat，否则仅/英 defer →「（中 ）」「（  文）」空档。
+     * 标签仅数个汉字，开设置时同步灌槽可接受。
+     */
+    Tag = (Face && Face->Glyphs == 0)
+              ? "\xEF\xBC\x88\xE4\xB8\xAD\xE8\x8B\xB1\xEF\xBC\x89"
+              : "\xEF\xBC\x88\xE4\xBB\x85\xE8\x8B\xB1\xE6\x96\x87\xEF\xBC\x89";
+    for (i = 0; Name[i] && i + 1 < OutMax; i++) {
+        Out[i] = Name[i];
+    }
+    for (j = 0; Tag[j] && i + 1 < OutMax; j++) {
+        Out[i++] = Tag[j];
+    }
+    Out[i] = 0;
+    FontTtfPreheatUtf8(Out);
 }
 
 static void FreeRuntimeSlot(FONT_RUNTIME_SLOT *S) {
@@ -345,6 +450,14 @@ int FontIdByName(const char *Name) {
     if (!Name || Name[0] == 0) {
         return -1;
     }
+    /* 旧 theme/DB 全称 → 短名 */
+    if (NameEqCi(Name, "AR PL UMing CN")) {
+        Name = "UMing";
+    } else if (NameEqCi(Name, "Droid Sans Fallback")) {
+        Name = "Droid";
+    } else if (NameEqCi(Name, "Terminus 10x18") || NameEqCi(Name, "TER10X18")) {
+        Name = "Terminus";
+    }
     for (i = 0; i < gFontCount; i++) {
         if (gFonts[i] && NameEqCi(Name, gFonts[i]->Name)) {
             return (int)i;
@@ -424,8 +537,23 @@ const FONT_FACE *FontGetCurrent(void) {
 }
 
 int FontSetById(UINT32 Id) {
+    const FONT_FACE *F;
+    UINT32 NextSlot;
+
     if (Id >= gFontCount) {
         return -1;
+    }
+    F = gFonts[Id];
+    NextSlot = gUiTtfSlot;
+    if (F == &gFaceUiUming) {
+        NextSlot = 0;
+    } else if (F == &gFaceUiDroid) {
+        NextSlot = 1;
+    }
+    /* Latin 项不改中文槽；切 UI TTF 则丢汉字 HIT 以便换脸 */
+    if (NextSlot != gUiTtfSlot) {
+        gUiTtfSlot = NextSlot;
+        FontTtfCacheDropCjkHits();
     }
     gCurrentId = Id;
     return 0;
@@ -459,9 +587,7 @@ static UINT32 FaceDrawW(const FONT_FACE *F) {
 }
 
 UINT32 FontCellW(void) {
-    const FONT_FACE *F = FontGetCurrent();
-
-    return FaceDrawW(F);
+    return FaceDrawW(FontFaceForLatin());
 }
 
 UINT32 FontCellH(void) {
@@ -469,7 +595,7 @@ UINT32 FontCellH(void) {
 }
 
 UINT32 FontAdvanceX(void) {
-    const FONT_FACE *F = FontGetCurrent();
+    const FONT_FACE *F = FontFaceForLatin();
     UINT32 S = ScaleOf(F);
     UINT32 Mono;
 
@@ -481,14 +607,14 @@ UINT32 FontAdvanceX(void) {
 }
 
 UINT32 FontAdvanceY(void) {
-    const FONT_FACE *F = FontGetCurrent();
+    const FONT_FACE *F = FontFaceForLatin();
     UINT32 S = ScaleOf(F);
 
     return FontTtfPixel() + F->LineSpacing * S;
 }
 
 const UINT8 *FontGlyph(char C) {
-    const FONT_FACE *F = FontGetCurrent();
+    const FONT_FACE *F = FontFaceForLatin();
     UINT32 U = (UINT32)(UINT8)C;
 
     if (F == 0 || F->Glyphs == 0 || F->BytesPerGlyph == 0) {
@@ -551,7 +677,7 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const UINT8 *G;
 
     gGlyphDefer = 0;
-    /* font-latin-mono：控制台/TTY 激活时 ASCII 走 MONO.TTF（独立于 UI 缓存） */
+    /* MONO.TTF：仅 Begin 激活时；壳现默认不激活，ASCII 与 UI 同 Latin 点阵 */
     if (FontTtfMonoActive() && Cp >= 32u && Cp < 127u) {
         G = FontTtfMonoCacheGet(Cp, OutW, OutH);
         if (G) {
@@ -560,11 +686,11 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         }
     }
     /*
-     * UI ASCII：Terminus 优先。UMing/FT 拉丁 + GlyphCrispAlpha8 会滤成空心框
-     *（已踩过；勿再「为看得见变化」强开）。
+     * UI ASCII：点阵 Latin 优先（选 UMing 项时 FontFaceForLatin→Terminus）。
+     * UMing/FT 拉丁 + GlyphCrispAlpha8 会滤成空心框（已踩过）。
      */
     if (Cp >= 32u && Cp < 127u) {
-        F = FontGetCurrent();
+        F = FontFaceForLatin();
         G = FontGlyph((char)Cp);
         if (G && F) {
             if (OutW) {

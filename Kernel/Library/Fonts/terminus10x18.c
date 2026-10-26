@@ -674,7 +674,7 @@ const UINT8 gFontTerminus10x18[95][36] = {
 };
 
 const FONT_FACE gFontFaceTerminus10x18 = {
-    .Name = "Terminus 10x18",
+    .Name = "Terminus",
     .Width = 10,
     .Height = 18,
     .BytesPerGlyph = 36,

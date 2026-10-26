@@ -10,9 +10,17 @@
 #include "CString.h"
 
 UINT32 FontTtfPixel(void) {
-    const FONT_FACE *F = FontGetCurrent();
+    const FONT_FACE *F;
     UINT32 H = 24u;
 
+    /*
+     * cjk-4：用 Latin 点阵 face 量高。UI TTF 项（UMing）Glyphs=0，
+     * 若跟 FontGetCurrent 会在切 UMing 时改 Side、整表 miss → 中文 defer 全空。
+     */
+    F = FontGetCurrent();
+    if (F == 0 || F->Glyphs == 0 || F->BytesPerGlyph == 0) {
+        F = &gFontFaceTerminus10x18;
+    }
     /* 界面字高至少 24。换更矮的英文字体时，汉字不再跟着变小。 */
     if (F != 0 && F->Height != 0u) {
         UINT32 S = F->Scale ? F->Scale : 1u;
@@ -111,7 +119,8 @@ static int FontTtfIceil(float X) {
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
-static stbtt_fontinfo gInfo;
+static stbtt_fontinfo gInfo[FONT_TTF_UI_MAX];
+static UINT32 gInitMask;
 static stbtt_fontinfo gMonoInfo;
 static int gMonoInit;
 static int gMonoNest;
@@ -120,11 +129,13 @@ static UINT32 gMonoAdv;
 int FontTtfInit(void) {
     const UINT8 *Blob;
     UINT32 Size;
+    UINT32 Slot;
     int Ok;
+    int Any = 0;
 
     gInit = 0;
-    Blob = FontTtfBlob(&Size);
-    if (!Blob || Size < 12u || !HalFpuOk()) {
+    gInitMask = 0;
+    if (!HalFpuOk()) {
         LogBoot("Boot: ttf init skip\n");
         return -1;
     }
@@ -132,15 +143,28 @@ int FontTtfInit(void) {
         LogBoot("Boot: ttf init skip\n");
         return -1;
     }
-    gArenaUsed = 0;
-    Ok = stbtt_InitFont(&gInfo, Blob, 0);
+    for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
+        Size = 0;
+        Blob = FontTtfUiBlob(Slot, &Size);
+        if (!Blob || Size < 12u) {
+            continue;
+        }
+        gArenaUsed = 0;
+        Ok = stbtt_InitFont(&gInfo[Slot], Blob, 0);
+        if (Ok) {
+            gInitMask |= (1u << Slot);
+            Any = 1;
+        }
+    }
     HalFpuEnd();
-    if (!Ok) {
+    if (!Any) {
         LogBoot("Boot: ttf init fail\n");
         return -1;
     }
     gInit = 1;
-    LogBoot("Boot: ttf init ok\n");
+    LogBoot("Boot: ttf init ok slots=");
+    LogBootHex32(gInitMask);
+    LogBoot("\n");
     return 0;
 }
 
@@ -218,10 +242,24 @@ UINT32 FontTtfMonoAdvance(void) {
 }
 
 static stbtt_fontinfo *FontTtfCur(void) {
+    UINT32 Slot;
+
     if (FontTtfMonoActive()) {
         return &gMonoInfo;
     }
-    return &gInfo;
+    Slot = FontTtfUiActiveSlot();
+    if (Slot >= FONT_TTF_UI_MAX || (gInitMask & (1u << Slot)) == 0u) {
+        Slot = 0;
+    }
+    if ((gInitMask & (1u << Slot)) == 0u) {
+        /* 兜底：任一已 Init 槽 */
+        for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
+            if (gInitMask & (1u << Slot)) {
+                break;
+            }
+        }
+    }
+    return &gInfo[Slot < FONT_TTF_UI_MAX ? Slot : 0];
 }
 
 /* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */

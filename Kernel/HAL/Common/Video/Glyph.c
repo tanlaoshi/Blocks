@@ -279,7 +279,11 @@ void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     UINT32 Dw;
     UINT32 Dh;
 
-    F = FontGetCurrent();
+    /*
+     * cjk-4：须与 FontGlyph 同用 Latin face。选中 UI TTF（UMing，Glyphs=0）
+     * 时若跟 FontGetCurrent → BytesPerRow=0 → ASCII 整行空白。
+     */
+    F = FontGetLatinFace();
     Glyph = FontGlyph(C);
     if (F == 0 || Glyph == 0) {
         return;

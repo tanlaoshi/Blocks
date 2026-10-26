@@ -1,5 +1,5 @@
 /*
- * FontTtfLoad.c — 读 Assets/Fonts/CJK.TTF 与 MONO.TTF，校验 sfnt。
+ * FontTtfLoad.c — 读 Assets/Fonts/CJK*.TTF 与 MONO.TTF，校验 sfnt。
  * font-unified-ttf / font-latin-mono；不挂钩绘制。
  */
 #include "Font.h"
@@ -8,9 +8,13 @@
 #include "PhysicalMemory.h"
 #include "SerialLog.h"
 
-#define TTF_UI_PATH   "Assets/Fonts/CJK.TTF"
-#define TTF_MONO_PATH "Assets/Fonts/MONO.TTF"
-#define TTF_MAX       (8u * 1024u * 1024u)
+/* 文件名跟字体名；旧盘 CJK.TTF / CJK2.TTF 仍可读 */
+#define TTF_UI0_PATH    "Assets/Fonts/UMING.TTF"
+#define TTF_UI0_LEGACY  "Assets/Fonts/CJK.TTF"
+#define TTF_UI1_PATH    "Assets/Fonts/DROID.TTF"
+#define TTF_UI1_LEGACY  "Assets/Fonts/CJK2.TTF"
+#define TTF_MONO_PATH   "Assets/Fonts/MONO.TTF"
+#define TTF_MAX         (8u * 1024u * 1024u)
 
 typedef struct {
     UINT8 *Blob;
@@ -19,7 +23,7 @@ typedef struct {
     int Ok;
 } TTF_BLOB;
 
-static TTF_BLOB gUi;
+static TTF_BLOB gUi[FONT_TTF_UI_MAX];
 static TTF_BLOB gMono;
 
 static UINT16 Be16(const UINT8 *P) {
@@ -151,11 +155,33 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
     return 0;
 }
 
-const UINT8 *FontTtfBlob(UINT32 *OutSize) {
-    if (OutSize) {
-        *OutSize = gUi.Size;
+const UINT8 *FontTtfUiBlob(UINT32 Slot, UINT32 *OutSize) {
+    if (Slot >= FONT_TTF_UI_MAX || !gUi[Slot].Ok) {
+        if (OutSize) {
+            *OutSize = 0;
+        }
+        return 0;
     }
-    return gUi.Ok ? gUi.Blob : 0;
+    if (OutSize) {
+        *OutSize = gUi[Slot].Size;
+    }
+    return gUi[Slot].Blob;
+}
+
+UINT32 FontTtfUiCount(void) {
+    UINT32 N = 0;
+    UINT32 i;
+
+    for (i = 0; i < FONT_TTF_UI_MAX; i++) {
+        if (gUi[i].Ok) {
+            N++;
+        }
+    }
+    return N;
+}
+
+const UINT8 *FontTtfBlob(UINT32 *OutSize) {
+    return FontTtfUiBlob(0, OutSize);
 }
 
 const UINT8 *FontTtfMonoBlob(UINT32 *OutSize) {
@@ -165,13 +191,25 @@ const UINT8 *FontTtfMonoBlob(UINT32 *OutSize) {
     return gMono.Ok ? gMono.Blob : 0;
 }
 
+static int BlobLoadFirst(TTF_BLOB *B, const char *Path, const char *Legacy,
+                         const char *Tag) {
+    if (BlobLoad(B, Path, Tag) == 0) {
+        return 0;
+    }
+    if (Legacy && Legacy[0] != 0) {
+        return BlobLoad(B, Legacy, Tag);
+    }
+    return -1;
+}
+
 int FontTtfLoad(void) {
     int Ui;
 
-    Ui = BlobLoad(&gUi, TTF_UI_PATH, "ttf");
+    Ui = BlobLoadFirst(&gUi[0], TTF_UI0_PATH, TTF_UI0_LEGACY, "ttf-uming");
+    (void)BlobLoadFirst(&gUi[1], TTF_UI1_PATH, TTF_UI1_LEGACY, "ttf-droid");
     (void)BlobLoad(&gMono, TTF_MONO_PATH, "ttf-mono");
     if (Ui != 0) {
-        LogBoot("Boot: ttf need BLOCKS:Assets/Fonts/CJK.TTF (host copy onto LABEL=BLOCKS)\n");
+        LogBoot("Boot: ttf need BLOCKS:Assets/Fonts/UMING.TTF (host copy onto LABEL=BLOCKS)\n");
     }
     return Ui;
 }

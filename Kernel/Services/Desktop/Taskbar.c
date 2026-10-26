@@ -75,18 +75,18 @@ static void DrawStartMark(UINT32 X, UINT32 Y, UINT32 S) {
             ShortH = 1u;
         }
         TopPad = Cell - ShortH;
-        GraphicsFillRectangle(Ox, Oy, Cell, Cell, 0x00A86418u);                     /* 1 */
-        GraphicsFillRectangle(Ox + Step, Oy, Cell, Cell, 0x00A86418u);             /* 2 */
-        GraphicsFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x00A86418u);       /* 3 */
-        GraphicsFillRectangle(Ox, Oy + Step + TopPad, Cell, ShortH, 0x00187A70u); /* 4 */
-        GraphicsFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x00A86418u);     /* 5 */
+        GraphicsFillRectangle(Ox, Oy, Cell, Cell, 0x008C5010u);                     /* 1 */
+        GraphicsFillRectangle(Ox + Step, Oy, Cell, Cell, 0x008C5010u);             /* 2 */
+        GraphicsFillRectangle(Ox + Step * 2u, Oy, Cell, Cell, 0x008C5010u);       /* 3 */
+        GraphicsFillRectangle(Ox, Oy + Step + TopPad, Cell, ShortH, 0x00145850u); /* 4 */
+        GraphicsFillRectangle(Ox + Step, Oy + Step, Cell, Cell, 0x008C5010u);     /* 5 */
         GraphicsFillRectangle(Ox + Step * 2u, Oy + Step + TopPad, Cell, ShortH,
-                              0x00187A70u); /* 6 */
-        GraphicsFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x00187A70u);       /* 7 */
+                              0x00145850u); /* 6 */
+        GraphicsFillRectangle(Ox, Oy + Step * 2u, Cell, Cell, 0x00145850u);       /* 7 */
         GraphicsFillRectangle(Ox + Step, Oy + Step * 2u + TopPad, Cell, ShortH,
-                              0x00187A70u); /* 8 */
+                              0x00145850u); /* 8 */
         GraphicsFillRectangle(Ox + Step * 2u, Oy + Step * 2u, Cell, Cell,
-                              0x00187A70u); /* 9 */
+                              0x00145850u); /* 9 */
     }
 }
 

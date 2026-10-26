@@ -39,13 +39,25 @@ fi
 
 # TTF：缺则从种子补进 Assets/Fonts（内核只读这个路径）
 mkdir -p "$RUNTIME/RootFs/X64/Assets/Fonts"
-if [ ! -f "$RUNTIME/RootFs/X64/Assets/Fonts/CJK.TTF" ]; then
-    for Cjk in \
+if [ ! -f "$RUNTIME/RootFs/X64/Assets/Fonts/UMING.TTF" ]; then
+    for Src in \
+        "$RUNTIME/Assets/Fonts/UMING.TTF" \
         "$RUNTIME/Assets/Fonts/CJK.TTF" \
         "$BLOCKS/Kernel/Tools/Fonts/CJK.TTF"
     do
-        if [ -f "$Cjk" ]; then
-            cp -f "$Cjk" "$RUNTIME/RootFs/X64/Assets/Fonts/CJK.TTF"
+        if [ -f "$Src" ]; then
+            cp -f "$Src" "$RUNTIME/RootFs/X64/Assets/Fonts/UMING.TTF"
+            break
+        fi
+    done
+fi
+if [ ! -f "$RUNTIME/RootFs/X64/Assets/Fonts/DROID.TTF" ]; then
+    for Src in \
+        "$RUNTIME/Assets/Fonts/DROID.TTF" \
+        "$RUNTIME/Assets/Fonts/CJK2.TTF"
+    do
+        if [ -f "$Src" ]; then
+            cp -f "$Src" "$RUNTIME/RootFs/X64/Assets/Fonts/DROID.TTF"
             break
         fi
     done

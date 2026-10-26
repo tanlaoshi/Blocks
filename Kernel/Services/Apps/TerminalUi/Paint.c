@@ -40,7 +40,7 @@ void TtyPaint(void) {
     GraphicsFillRectangle(X, Y, W, H, Bg);
     HalVideoSetClipRegion(X, Y, W, H, Bg);
 
-    FontTtfMonoBegin();
+    /* ASCII 与外壳/桌面同 Latin 点阵；中文仍走当前 UI TTF（UMING/DROID） */
     LineH = FontAdvanceY();
     if (LineH < 16) {
         LineH = 16;
@@ -119,7 +119,6 @@ void TtyPaint(void) {
         }
     }
 
-    FontTtfMonoEnd();
     HalVideoClearClip();
     GuiBackupFocusWindow();
     GuiFrameBufferEnd();

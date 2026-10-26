@@ -1,15 +1,20 @@
 # Assets/Fonts — 运行时字体（点阵 PR-T3 + TTF gui-cjk）
 
-## TTF（cjk-0 钉死）
+## TTF（cjk-0 钉死；文件名跟字体）
 
 Guest 路径：
 
 | 文件 | 字体 | 用途 | 许可证（概要） |
 | --- | --- | --- | --- |
-| **`CJK.TTF`** | **AR PL UMing CN** | **UI 默认**（中英一个字体打天下） | Arphic Public License |
-| **`MONO.TTF`** | DejaVu Sans Mono | 终端等宽 Latin | DejaVu 自由许可 |
+| **`UMING.TTF`** | **AR PL UMing CN** | **UI 默认**（宋体向） | Arphic Public License |
+| **`DROID.TTF`** | **Droid Sans Fallback** | 设置可选第二中文（黑体向） | Apache-2.0 |
+| **`MONO.TTF`** | DejaVu Sans Mono | 终端等宽 Latin（现网壳默认不激活） | DejaVu 自由许可 |
 
-内核：`TrueTypeLoad` → `Assets/Fonts/CJK.TTF` / `MONO.TTF`。短名单与备选见 `Archive/路线图1027.md` [cjk-0](#)。**禁止**用点阵 FNT 顶中文。
+旧名兼容：`CJK.TTF`→UMing、`CJK2.TTF`→Droid（仅旧 SD；新镜像用上表名）。
+
+内核：`TrueTypeLoad` → `UMING.TTF` / `DROID.TTF` / `MONO.TTF`。短名单见 `Archive/路线图1027.md` [cjk-0](#)。**禁止**用点阵 FNT 顶中文。
+
+**CJK** = Chinese / Japanese / Korean（中日韩表意文字合称）；仓内用具体字体文件名，避免笼统 `CJK*.TTF`。
 
 ## 点阵 FNT（遗留 / 拉丁回落）
 

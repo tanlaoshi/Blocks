@@ -35,21 +35,29 @@ int FontLoadAssets(void);
 /* 按字面名字找 id（大小写不敏感）。没有返回 -1。 */
 int FontIdByName(const char *Name);
 int FontReloadAssets(void);
-/* PR-UI-ttf-0：读 CJK.TTF 校验 sfnt；不绘制。缺文件返回 -1 */
+/* cjk-4：TTF blob/Init 后重建表（UI TTF 进 id0）；设置列表标签 */
+void FontNotifyTtfReady(void);
+void FontFaceLabel(UINT32 Id, char *Out, int OutMax);
+/* PR-UI-ttf-0：读 UMING.TTF / DROID.TTF（旧名 CJK*.TTF 兼容）；缺主文件 -1 */
+#define FONT_TTF_UI_MAX 2u
 int FontTtfLoad(void);
-const UINT8 *FontTtfBlob(UINT32 *OutSize);
+const UINT8 *FontTtfBlob(UINT32 *OutSize); /* 主槽 UMING.TTF */
+const UINT8 *FontTtfUiBlob(UINT32 Slot, UINT32 *OutSize);
+UINT32 FontTtfUiCount(void);
+/* 当前选中的 UI TTF 槽（切 UMing/Droid 时改；Latin 项保持上次） */
+UINT32 FontTtfUiActiveSlot(void);
 const UINT8 *FontTtfMonoBlob(UINT32 *OutSize);
 int FontTtfInit(void);
 int FontTtfMonoInit(void);
 /* 1=stbtt 已 Init（可栅格）；0=未加载/无 FPU */
 int FontTtfReady(void);
 int FontTtfMonoReady(void);
-/* Shell/TTY：嵌套计数；激活时 ASCII 走 MONO.TTF */
+/* MONO.TTF 嵌套门面（保留）；壳/TTY 现与桌面同 Latin 点阵，默认不激活 */
 void FontTtfMonoBegin(void);
 void FontTtfMonoEnd(void);
 int FontTtfMonoActive(void);
 UINT32 FontTtfMonoAdvance(void);
-/* mono 槽 Lookup+同步栅（控制台路径）；未就绪 0 */
+/* mono 槽 Lookup+同步栅；未就绪 0 */
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
 UINT32 FontTtfPixel(void);
@@ -94,6 +102,8 @@ UINT32 FontCount(void);
 UINT32 FontCurrentId(void);
 const FONT_FACE *FontGetById(UINT32 Id);
 const FONT_FACE *FontGetCurrent(void);
+/* 当前用于 ASCII 点阵的 face（UI TTF 选中时软退 Terminus） */
+const FONT_FACE *FontGetLatinFace(void);
 /* 成功返回 0；Id 越界返回 -1 且保持当前字体 */
 int FontSetById(UINT32 Id);
 

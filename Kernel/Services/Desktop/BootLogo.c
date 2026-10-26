@@ -13,8 +13,8 @@
 #include "BootTypes.h"
 
 #define LOGO_BG     0x00000000u
-#define LOGO_ACCENT 0x00A86418u
-#define LOGO_TEAL   0x00187A70u
+#define LOGO_ACCENT 0x008C5010u
+#define LOGO_TEAL   0x00145850u
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
 /* 橙 T 下落行程：仅一方块高；合体终位（gAy）不变 */

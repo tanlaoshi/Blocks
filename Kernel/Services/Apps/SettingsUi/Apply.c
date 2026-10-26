@@ -29,11 +29,23 @@ void ApplyShellColor(int Index) {
 }
 
 void ApplyFont(int Index) {
+    UINT32 i;
+    char Lab[48];
+
     if (Index < 0 || (UINT32)Index >= FontCount()) {
         return;
     }
     if (ThemeSetFontId((UINT32)Index) != 0) {
         return;
+    }
+    /*
+     * 切 UI TTF 会 DropCjkHits；若直接 Compose，汉字 defer 跳画 → 旧像素留着
+     * 像「没刷新」。点选后同步预热可见串再 ThemeApply，屏上立刻换脸。
+     */
+    FontTtfCacheDropCjkHits();
+    LocaleTtfPreheatUi();
+    for (i = 0; i < FontCount() && i < 16u; i++) {
+        FontFaceLabel(i, Lab, (int)sizeof(Lab));
     }
     ThemeApply();
 }

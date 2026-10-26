@@ -127,20 +127,29 @@ static void CommandFont(int Argc, char **Argv) {
             gConsole.Write("Font: bad id\n");
             return;
         }
+        FontTtfCacheDropCjkHits();
+        LocaleTtfPreheatUi();
         ThemeApply();
         gConsole.Write("Font: set ");
-        F = FontGetCurrent();
-        gConsole.Write(F && F->Name ? F->Name : "?");
+        {
+            char Lab[64];
+
+            FontFaceLabel(FontCurrentId(), Lab, (int)sizeof(Lab));
+            gConsole.Write(Lab[0] ? Lab : "?");
+        }
         gConsole.Write("\n");
         return;
     }
     gConsole.Write("fonts:\n");
     for (i = 0; i < FontCount(); i++) {
-        F = FontGetById(i);
+        char Lab[64];
+
+        FontFaceLabel((UINT32)i, Lab, (int)sizeof(Lab));
         gConsole.Write(i == FontCurrentId() ? " * " : "   ");
-        gConsole.Write(F && F->Name ? F->Name : "?");
+        gConsole.Write(Lab[0] ? Lab : "?");
         gConsole.Write("\n");
     }
+    (void)F;
     if (Argc < 2) {
         gConsole.Write("usage: font [reload|<id>]\n");
     }

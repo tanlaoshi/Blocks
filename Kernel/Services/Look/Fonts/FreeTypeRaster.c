@@ -12,7 +12,8 @@
 #include FT_FREETYPE_H
 
 static FT_Library gLib;
-static FT_Face gFace;
+static FT_Face gFace[FONT_TTF_UI_MAX];
+static UINT32 gFtFaceMask;
 static FT_Face gMonoFace;
 static int gFtOk;
 static int gFtMonoOk;
@@ -21,16 +22,25 @@ static UINT32 gFtLastAdv;
 int FontFtInit(void) {
   const UINT8 *Blob;
   UINT32 Size;
+  UINT32 Slot;
   FT_Error Err;
+  int Any = 0;
 
   gFtOk = 0;
   gFtMonoOk = 0;
+  gFtFaceMask = 0;
   gLib = 0;
-  gFace = 0;
   gMonoFace = 0;
   gFtLastAdv = 0;
-  Blob = FontTtfBlob(&Size);
-  if (!Blob || Size < 12u || !HalFpuOk()) {
+  for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
+    gFace[Slot] = 0;
+  }
+  if (!HalFpuOk()) {
+    LogBoot("Boot: ft init skip\n");
+    return -1;
+  }
+  Blob = FontTtfUiBlob(0, &Size);
+  if (!Blob || Size < 12u) {
     LogBoot("Boot: ft init skip\n");
     return -1;
   }
@@ -44,8 +54,21 @@ int FontFtInit(void) {
     LogBoot("Boot: ft init fail\n");
     return -1;
   }
-  Err = FT_New_Memory_Face(gLib, Blob, (FT_Long)Size, 0, &gFace);
-  if (Err || !gFace) {
+  for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
+    Size = 0;
+    Blob = FontTtfUiBlob(Slot, &Size);
+    if (!Blob || Size < 12u) {
+      continue;
+    }
+    Err = FT_New_Memory_Face(gLib, Blob, (FT_Long)Size, 0, &gFace[Slot]);
+    if (!Err && gFace[Slot]) {
+      gFtFaceMask |= (1u << Slot);
+      Any = 1;
+    } else {
+      gFace[Slot] = 0;
+    }
+  }
+  if (!Any) {
     FT_Done_FreeType(gLib);
     gLib = 0;
     HalFpuEnd();
@@ -97,7 +120,23 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     return -1;
   }
   Mono = FontTtfMonoActive() && gFtMonoOk && Cp < 128u;
-  Face = Mono ? gMonoFace : gFace;
+  if (Mono) {
+    Face = gMonoFace;
+  } else {
+    UINT32 Slot = FontTtfUiActiveSlot();
+
+    if (Slot >= FONT_TTF_UI_MAX || (gFtFaceMask & (1u << Slot)) == 0u) {
+      Slot = 0;
+    }
+    if ((gFtFaceMask & (1u << Slot)) == 0u) {
+      for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
+        if (gFtFaceMask & (1u << Slot)) {
+          break;
+        }
+      }
+    }
+    Face = (Slot < FONT_TTF_UI_MAX) ? gFace[Slot] : 0;
+  }
   if (!Face || (!gFtOk && !Mono)) {
     return -1;
   }

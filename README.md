@@ -1,10 +1,11 @@
 # Blocks
 
-单仓：Boot · Kernel · Runtime · **Manual** · Documents。
+单仓：Boot · Kernel · Runtime · **Manual** · Documents · **Start**。
 
 ```text
 Blocks/
   Manual/      ← 读者手册（按身份：App / Driver / System / Contribute / Course）
+  Start/       ← App 毛坯：模板 / 样例 / 自包含 Docs
   Documents/   ← 日档路线图、过程归档、柱规格
   Boot/  Kernel/  Runtime/  Tools/
   env.sh
@@ -13,17 +14,93 @@ Blocks/
 | 你要… | 去哪 |
 | ------ | ---- |
 | **读手册 / 上手** | [`Manual/README.md`](Manual/README.md) · [`Manual/START.md`](Manual/START.md) |
-| 日档 ★ / 排期 | [`Documents/路线图1023.md`](Documents/路线图1023.md) |
+| **写 App（毛坯）** | [`Start/App/`](Start/App/) |
+| 日档 ★ / 排期 | [`Documents/路线图1025.md`](Documents/路线图1025.md) |
 | 从 OVMF 逐段学 | [`原则与学习记录.md`](原则与学习记录.md) |
-| 换机 / 工具链 | [`Documents/同步.md`](Documents/同步.md) |
+| 换机 / 工具链细表 | [`Documents/同步.md`](Documents/同步.md) |
 | GitHub | `git@github.com:tanlaoshi/Blocks.git` |
 
-## 怎么开始
+---
+
+## 需要安装的基本软件（Debian / Ubuntu）
+
+课机 x64 QEMU（最低）：
+
+```bash
+sudo apt update
+sudo apt install -y build-essential python3 make nasm uuid-dev \
+  qemu-system-x86 ovmf
+```
+
+| 包 | 用途 |
+| --- | --- |
+| `build-essential` / `make` | `gcc`/`ld` 编内核与用户 ELF |
+| `python3` | 板脚本（Duo `mk-boot-sd.py` / `mk-boot-scr.py`）等 |
+| `nasm` | 部分汇编 |
+| `uuid-dev` | Boot / 工具依赖 |
+| `qemu-system-x86` | `run` → `qemu-system-x86_64` |
+| `ovmf` | UEFI 固件（常见 `/usr/share/OVMF/OVMF_CODE_4M.fd`） |
+
+再编 / 跑 **Arm64 / RiscV** 模拟器时追加：
+
+```bash
+sudo apt install -y qemu-system-arm qemu-system-misc
+# 交叉编译二选一：系统包，或解压 xpack 到 Tools/（见 Documents/同步.md）
+sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
+```
+
+真机刷卡（Pi / Duo）另需：`mtools` 或能挂载 vfat 的桌面；**勿**对 Duo 卡跑 `ck-pi-sd`。
+
+---
+
+## 怎么开始（通用）
 
 ```bash
 cd ~/Blocks && source ./env.sh
-build          # Kernel
-run            # QEMU → blocks>
 ```
 
-细节见 [`Manual/START.md`](Manual/START.md)。
+短名：`build` · `boot` · `run` · `run-virt-arm` · `run-virt-riscv` · `boards` · `ck-pi-sd` 等（`source` 后会打印一览）。
+
+---
+
+## 按架构：编译与启动
+
+### X64（课机主路径 · UEFI + QEMU）
+
+| 步 | 命令 | 说明 |
+| --- | --- | --- |
+| 编内核 | `build` | 默认同步 `Runtime/RootFs/X64` |
+| 可选 Boot | `boot` | `BOOTX64.EFI` |
+| 启动 | `run` | OVMF + 图形/串口；Guest：`blocks>` |
+| 无窗串口 | `run --headless` | 终端里进壳 |
+
+产物：`Kernel/Build/HAL/X64/Kernel.elf`（亦进 RootFs）。App 毛坯见 `Start/App/`。
+
+### Arm64
+
+| 场景 | 编译 | 启动 |
+| --- | --- | --- |
+| **QEMU virt**（课堂靶） | `build arm64` 或 `build arm64 BOARD=virt` | `run-virt-arm`（可加 `--headless`） |
+| **树莓派 3B+** 真机 | `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` | 摆盘：`prepare-pi-sd` → 插卡 **`ck-pi-sd`**（固件→bootfs，核→BLOCKS）；串口 115200 |
+
+板包列表：`boards arm64`。真机历程见 `Documents/过程/排障/` 下 Pi 档。
+
+### RiscV
+
+| 场景 | 编译 | 启动 |
+| --- | --- | --- |
+| **QEMU virt** | `build riscv`（默认 virt 类板） | `run-virt-riscv` |
+| **Milk-V Duo S** 真机 | `build riscv BOARD=milk-v-duo-s` | `mk-boot-sd.py` → 卡上 **`boot.sd`**（厂商原件改名 `.vendor`；与 `fip.bin` 同 FAT）；**禁止** `ck-pi-sd`。上电 `run sdboot` 直进；抢壳可用 `boot.scr`/`bootelf`。串口 115200 |
+
+板包列表：`boards riscv`。Duo 脚本：`Kernel/HAL/RiscV/Board/milk-v-duo-s/scripts/`。
+
+### 对照（一眼）
+
+| | X64 | Arm64 virt | Arm64 Pi3B+ | RiscV Duo S |
+| --- | --- | --- | --- | --- |
+| 交叉工具 | 宿主 `gcc` | aarch64-*-gcc / xpack | 同左 | riscv64-*-gcc / xpack |
+| 模拟器 | `qemu-system-x86_64` + OVMF | `qemu-system-aarch64` | — | `qemu-system-riscv64`（virt） |
+| 真机启动 | — | — | U-Boot + `ck-pi-sd` | 厂商 U-Boot + 拷 `boot` |
+| 典型板旗 | 桌面 + HID | 串口/virt | FB + HID | **串口壳**（无 Duo GUI） |
+
+细节与换机：[`Documents/同步.md`](Documents/同步.md) · [`Manual/START.md`](Manual/START.md)。

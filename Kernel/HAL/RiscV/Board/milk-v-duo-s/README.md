@@ -53,21 +53,28 @@ make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
 | `fdt_addr_r` | `0x81200000` |
 | `fdtfile` | `cv181x_milkv_duos_sd.dtb` |
 
-### 推荐：卡上 `boot.scr`（duo-boot）
+### 推荐：上电直进 `boot.sd`（duo-autoboot）
+
+厂商默认 `bootcmd=run sdboot`（**无** `boot_targets`，不扫 `boot.scr`）：
+
+```bash
+python3 HAL/RiscV/Board/milk-v-duo-s/scripts/mk-boot-sd.py
+# 卡上：mv boot.sd boot.sd.vendor && cp scripts/boot.sd <LABEL=boot>/
+```
+
+断电上电不按键 → `blocks>`。细则：[`scripts/README.md`](scripts/README.md)。
+
+### 备选：卡上 `boot.scr`（duo-boot · 须抢壳）
 
 ```bash
 python3 HAL/RiscV/Board/milk-v-duo-s/scripts/mk-boot-scr.py
-# 拷 boot.scr + Kernel.elf → LABEL=boot（与 fip.bin 同 FAT）
+# 拷 boot.scr + Kernel.elf → LABEL=boot
 ```
-
-上电可先不按键（若默认扫脚本则直进 Blocks）。否则抢 `soph#`：
 
 ```text
 fatload mmc 0:1 0x81800000 boot.scr
 source 0x81800000
 ```
-
-细则：[`scripts/README.md`](scripts/README.md)。
 
 ### 备选：手工 ELF（`bootelf`）
 
@@ -113,7 +120,8 @@ go ${kernel_addr_r}
 | `Board.h` / `Board.c` | `BoardName()` |
 | `Sd.h` / `Sd.c` | µSD SDHCI 只读 → 块设备 |
 | `NOTES.md` | 真机踩坑与验证边界 |
-| `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` 生成 |
+| `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` |
+| `scripts/mk-boot-sd.py` · `boot.sd` | duo-autoboot：FIT 顶替厂商 `boot.sd`（保留 `.vendor`） |
 ---
 
 ## 验收

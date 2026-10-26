@@ -18,11 +18,12 @@
 - 常见：`kernel_addr_r=0x80200000`，`fdt_addr_r=0x81200000`
 - 加载优先：`bootelf -p`（ELF）或 `go`（`.bin`）；`booti` 需 Linux Image 头（本柱不做）
 
-## 启动减摩（duo-boot）
+## 启动减摩（duo-boot / duo-autoboot）
 
-- `bootdelay=1` + 部分镜像 `ENV nowhere` → **`saveenv` 常存不住**，不能只靠加长 delay。  
-- 卡上脚本：`scripts/boot.cmd` → `python3 scripts/mk-boot-scr.py` → 拷 **`boot.scr`** 与 `Kernel.elf` 到 boot FAT。  
-- 冷启动先试自动；否则 `soph#` 下 `fatload … boot.scr` + `source`。详见 [`scripts/README.md`](scripts/README.md)。
+- `bootdelay=1` + 部分镜像 `ENV nowhere` → **`saveenv` 常存不住**。  
+- 真机：`bootcmd=run sdboot`，**无** `boot_targets` → 只吃 **`boot.sd`**，不扫 `boot.scr`。  
+- **上电直进**：`python3 scripts/mk-boot-sd.py` → 卡上 `mv boot.sd boot.sd.vendor`，拷新 `boot.sd`（FIT 内嵌 Kernel）。  
+- **抢壳减摩**：仍可用 `boot.scr` + `source`。详见 [`scripts/README.md`](scripts/README.md)。
 
 ## µSD（duo-block）
 

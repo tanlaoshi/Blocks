@@ -119,9 +119,23 @@ void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops) {
         gConsoleIo.WriteLen = 0;
         gConsoleIo.ReadChar = 0;
         gConsoleIo.ShowPrompt = 0;
+        gConsoleIo.CoopUserOutClear = 0;
+        gConsoleIo.CoopUserOutFlush = 0;
         return;
     }
     gConsoleIo = *Ops;
+}
+
+void ConsoleIoCoopUserOutClear(void) {
+    if (gConsoleIo.CoopUserOutClear) {
+        gConsoleIo.CoopUserOutClear();
+    }
+}
+
+void ConsoleIoCoopUserOutFlush(void) {
+    if (gConsoleIo.CoopUserOutFlush) {
+        gConsoleIo.CoopUserOutFlush();
+    }
 }
 
 void ConsoleIoWriteLen(const char *Data, UINTN Len) {

@@ -74,11 +74,17 @@ static void CommandRunuser(int Argc, char **Argv) {
         gConsole.Write("run user: needs MMU (board skipped paging)\n");
         return;
     }
-    /* ProcessRunDemo 内 CoopDrain；提示符交给 ConsolePromptAfterCommand */
+    /*
+     * 与 exec 无窗同：DeferPause，免 CoopDrain 期间 Present 被吞 / 二次卡死。
+     * Hello 缓冲在 DeferPop 后 Flush（Pause 内 PresentFlush → 壳关不掉/鼠顿）。
+     */
     gConsole.Write("run user: …\n");
+    GuiPresentDeferPause();
     if (ProcessRunDemo() != 0) {
+        GuiPresentDeferResume();
         gConsole.Write("run user: failed (no hello blob / load / start)\n");
     } else {
+        GuiPresentDeferResume();
         gConsole.Write("run user: done\n");
     }
 }

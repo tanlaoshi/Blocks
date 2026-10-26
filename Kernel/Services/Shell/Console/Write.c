@@ -17,6 +17,39 @@
 #include "SerialLog.h"
 #include "HalSerial.h"
 
+extern int gCoopDrain;
+
+/*
+ * CoopDrain 内用户 printf：不可 ConsoleDrawString→PresentFlush（真机卡死）。
+ * 先串口+scrollback+本缓冲；Drain 回到 Shell 宿主后再 Write 刷屏。
+ */
+#define COOP_USER_OUT_MAX 512u
+static char gCoopUserOut[COOP_USER_OUT_MAX];
+static UINTN gCoopUserOutLen;
+
+void ConsoleCoopUserOutClear(void) {
+    gCoopUserOutLen = 0;
+}
+
+static void CoopUserOutAppend(const char *Text) {
+    if (!Text) {
+        return;
+    }
+    while (*Text && gCoopUserOutLen + 1u < COOP_USER_OUT_MAX) {
+        gCoopUserOut[gCoopUserOutLen++] = *Text++;
+    }
+}
+
+void ConsoleCoopUserOutFlush(void) {
+    if (gCoopUserOutLen == 0) {
+        return;
+    }
+    gCoopUserOut[gCoopUserOutLen] = 0;
+    gCoopUserOutLen = 0;
+    /* 宿主已是 Shell 内核任务：走完整 Write（串口+屏） */
+    gConsole.Write(gCoopUserOut);
+}
+
 void ConsoleDrawString(const char *Text, UINT32 Color) {
     UINT32 X0;
     UINT32 Y0;
@@ -153,9 +186,9 @@ static void Write(const char *Text) {
         return;
     }
     /*
-     * Hello 等控制台 ELF（非 StdoutSerialOnly）：只串口 + scrollback。
-     * 禁止在用户 syscall（常 IF=0 / CoopDrain）里 ConsoleDrawString→PresentFlush，
-     * 否则 printf 逐字会打出首字符后卡死（串口可见「B」）。
+     * Hello 等控制台 ELF（非 StdoutSerialOnly）：Drain 内只串口+scrollback+缓冲；
+     * 禁止 syscall 里 ConsoleDrawString→PresentFlush（真机打一字卡死）。
+     * 屏上 Hello：CoopUserOutFlush（Drain 后宿主 Write）。
      */
     if (T && T->IsUser) {
         int Owner;
@@ -164,6 +197,9 @@ static void Write(const char *Text) {
             gAtLineStart = (*P == '\n');
         }
         HalConsoleWriteSerial(Text);
+        if (gCoopDrain) {
+            CoopUserOutAppend(Text);
+        }
         Owner = ConsoleCmdOutOwner();
         if (Owner >= 0) {
             ConsoleSbWinFeed(Owner, Text);
@@ -337,6 +373,7 @@ static void WriteHex64(UINT64 Value) {
 void ConsolePublishWrite(CONSOLE_OPS *Ops) {
     Ops->Write = Write;
     Ops->WriteLen = WriteLen;
+    /* CoopUserOut* 经 CoreOps CONSOLE_IO_OPS 登记，见 Focus.c */
     Ops->WriteHex32 = WriteHex32;
     Ops->WriteHex64 = WriteHex64;
 }

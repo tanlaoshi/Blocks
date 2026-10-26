@@ -103,6 +103,8 @@ static void Initialize(void) {
         Io.WriteLen = gConsole.WriteLen;
         Io.ReadChar = gConsole.StdinGetChar;
         Io.ShowPrompt = gConsole.ShowPrompt;
+        Io.CoopUserOutClear = ConsoleCoopUserOutClear;
+        Io.CoopUserOutFlush = ConsoleCoopUserOutFlush;
         ConsoleIoRegister(&Io);
     }
 

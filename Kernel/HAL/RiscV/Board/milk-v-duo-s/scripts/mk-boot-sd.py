@@ -6,9 +6,15 @@ There is no distro boot_targets / boot.scr scan. ENV is often nowhere, so
 saveenv cannot persist a new bootcmd. Replace boot.sd with this FIT (keep the
 vendor file as boot.sd.vendor on the same FAT).
 
-No dtc/mkimage required. Packs Kernel.elf PT_LOAD into a contiguous blob at
-0x80200000 (same entry bootelf uses) and registers several Duo S config names
-so a mismatched FDT_NO still matches.
+Default: --embed-kernel packs Kernel.elf PT_LOAD @0x80200000 (sdboot needs
+  type=kernel; duo-autoboot proven).
+
+Optional --script: FIT kernel= → type=script (boot.cmd). Hand-test 2026-10-26:
+  Sophgo bootm verifies script then still demands RISC-V Kernel Image —
+  'ERROR: can't get kernel image!'. Not usable on stock fip; keep for
+  archaeology. True fatload-without-FIT-rebuild needs a stub ELF or fip/bootcmd.
+
+No dtc/mkimage required.
 """
 from __future__ import print_function
 
@@ -18,7 +24,6 @@ import zlib
 from pathlib import Path
 
 # bootm ${uImage_addr}#config-<FDT_NO>; FDT_NO = CVICHIP_CVIBOARD (SDK).
-# Include common Duo S / image-name variants; sdboot picks one.
 CONFIG_NAMES = (
     "config-sg2000_milkv_duos_musl_riscv64_sd",
     "config-cv181x_milkv_duos_sd",
@@ -116,7 +121,6 @@ class FitBuilder:
 
     def finish(self) -> bytes:
         self.struct += struct.pack(">I", FDT_END)
-        # reserve map: empty terminator
         rsv = b"\0" * 16
         off_dt_struct = 40 + len(rsv)
         off_dt_strings = off_dt_struct + len(self.struct)
@@ -135,17 +139,67 @@ class FitBuilder:
             len(self.struct),
         )
         assert len(header) == 40
-        blob = header + rsv + self.struct + self.strings
-        # header CRC not used by FDT; FIT optional hashes omitted (unsigned).
-        return blob
+        return header + rsv + self.struct + self.strings
 
 
-def build_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
+def _hash_crc(b: FitBuilder, data: bytes) -> None:
+    crc = zlib.crc32(data) & 0xFFFFFFFF
+    b.begin("hash-1")
+    b.prop_str("algo", "crc32")
+    b.prop("value", struct.pack(">I", crc))
+    b.end()
+
+
+def build_script_fit(script_text: bytes) -> bytes:
+    """FIT: configs point kernel= to a type=script image (boot.cmd body).
+
+    Duo sdboot prints 'Loading kernel from FIT' and requires a kernel=
+    property (plain script= was rejected: 'Could not find subimage node
+    type kernel'). Mainline bootm then dispatches on the image type field;
+    type=script should run_command_list. If a build still demands
+    type=kernel, use --embed-kernel.
+    """
+    text = script_text
+    if not text.endswith(b"\n"):
+        text += b"\n"
+    text.decode("ascii")  # U-Boot script parser is ASCII-only
+    b = FitBuilder()
+    b.begin("")
+    b.prop_str("description", "Blocks Duo S fatload BLOCKS")
+    b.prop_u32("#address-cells", 1)
+
+    b.begin("images")
+    # Name kernel-1: Sophgo resolves via config kernel=; type remains script.
+    b.begin("kernel-1")
+    b.prop_str("description", "fatload mmc 0:4 Kernel.elf + bootelf")
+    b.prop("data", text)
+    b.prop_str("type", "script")
+    b.prop_str("compression", "none")
+    _hash_crc(b, text)
+    b.end()  # kernel-1
+    b.end()  # images
+
+    b.begin("configurations")
+    b.prop_str("default", CONFIG_NAMES[0])
+    for name in CONFIG_NAMES:
+        b.begin(name)
+        b.prop_str("description", "Blocks script to BLOCKS/Kernel.elf")
+        b.prop_str("kernel", "kernel-1")
+        # Mainline also accepts script=; harmless alongside kernel=.
+        b.prop_str("script", "kernel-1")
+        b.end()
+    b.end()
+
+    b.end()
+    return b.finish()
+
+
+def build_embed_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
     if len(fdt) < 8 or struct.unpack_from(">I", fdt, 0)[0] != FDT_MAGIC:
         raise SystemExit("fdt is not a DTB (bad magic)")
     b = FitBuilder()
     b.begin("")
-    b.prop_str("description", "Blocks Milk-V Duo S")
+    b.prop_str("description", "Blocks Milk-V Duo S (embed kernel)")
     b.prop_u32("#address-cells", 1)
 
     b.begin("images")
@@ -158,12 +212,8 @@ def build_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
     b.prop_str("compression", "none")
     b.prop_u32("load", KERNEL_LOAD)
     b.prop_u32("entry", entry)
-    crc = zlib.crc32(kernel) & 0xFFFFFFFF
-    b.begin("hash-1")
-    b.prop_str("algo", "crc32")
-    b.prop("value", struct.pack(">I", crc))
+    _hash_crc(b, kernel)
     b.end()
-    b.end()  # kernel-1
 
     b.begin("fdt-1")
     b.prop_str("description", "Duo S DTB")
@@ -171,25 +221,21 @@ def build_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
     b.prop_str("type", "flat_dt")
     b.prop_str("arch", "riscv")
     b.prop_str("compression", "none")
-    crc = zlib.crc32(fdt) & 0xFFFFFFFF
-    b.begin("hash-1")
-    b.prop_str("algo", "crc32")
-    b.prop("value", struct.pack(">I", crc))
+    _hash_crc(b, fdt)
     b.end()
-    b.end()  # fdt-1
     b.end()  # images
 
     b.begin("configurations")
     b.prop_str("default", CONFIG_NAMES[0])
     for name in CONFIG_NAMES:
         b.begin(name)
-        b.prop_str("description", "Blocks")
+        b.prop_str("description", "Blocks embed")
         b.prop_str("kernel", "kernel-1")
         b.prop_str("fdt", "fdt-1")
         b.end()
     b.end()
 
-    b.end()  # root
+    b.end()
     return b.finish()
 
 
@@ -199,13 +245,6 @@ def main() -> int:
     repo = here.parents[5]  # .../Blocks
     default_elf = repo / "Kernel" / "Build" / "HAL" / "RiscV" / "Kernel.elf"
     ap.add_argument(
-        "-k",
-        "--kernel",
-        type=Path,
-        default=default_elf,
-        help="Kernel.elf (default: build tree RiscV)",
-    )
-    ap.add_argument(
         "-o",
         "--output",
         type=Path,
@@ -213,28 +252,59 @@ def main() -> int:
         help="FIT output path (default: scripts/boot.sd)",
     )
     ap.add_argument(
+        "--script",
+        action="store_true",
+        help="Try FIT type=script (fails on stock Duo bootm; see module doc)",
+    )
+    ap.add_argument(
+        "-s",
+        "--script-file",
+        type=Path,
+        default=here / "boot.cmd",
+        help="Script text for --script (default: boot.cmd)",
+    )
+    ap.add_argument(
+        "-k",
+        "--kernel",
+        type=Path,
+        default=default_elf,
+        help="Kernel.elf to embed (default)",
+    )
+    ap.add_argument(
         "-d",
         "--dtb",
         type=Path,
         default=here / "duo.dtb",
-        help="DTB for FIT fdt-1 (default: scripts/duo.dtb)",
+        help="DTB for embed fdt-1",
     )
     args = ap.parse_args()
-    if not args.kernel.is_file():
-        raise SystemExit("missing %s — build: ./build.sh riscv BOARD=milk-v-duo-s" % args.kernel)
-    if not args.dtb.is_file():
-        raise SystemExit(
-            "missing %s — vendor DTB (card has none loose; keep scripts/duo.dtb)"
-            % args.dtb
+
+    if args.script:
+        if not args.script_file.is_file():
+            raise SystemExit("missing script %s" % args.script_file)
+        text = args.script_file.read_bytes()
+        fit = build_script_fit(text)
+        args.output.write_bytes(fit)
+        print(
+            "wrote %s (%d bytes FIT script, %d bytes boot.cmd) [stock Duo bootm: FAIL]"
+            % (args.output, len(fit), len(text))
         )
-    flat, entry = flat_from_elf(args.kernel.read_bytes())
-    fdt = args.dtb.read_bytes()
-    fit = build_fit(flat, entry, fdt)
-    args.output.write_bytes(fit)
-    print(
-        "wrote %s (%d bytes FIT, %d bytes kernel @%#x, %d bytes dtb)"
-        % (args.output, len(fit), len(flat), entry, len(fdt))
-    )
+    else:
+        if not args.kernel.is_file():
+            raise SystemExit(
+                "missing %s — build: ./build.sh riscv BOARD=milk-v-duo-s" % args.kernel
+            )
+        if not args.dtb.is_file():
+            raise SystemExit("missing %s" % args.dtb)
+        flat, entry = flat_from_elf(args.kernel.read_bytes())
+        fdt = args.dtb.read_bytes()
+        fit = build_embed_fit(flat, entry, fdt)
+        args.output.write_bytes(fit)
+        print(
+            "wrote %s (%d bytes FIT embed, %d bytes kernel @%#x, %d bytes dtb)"
+            % (args.output, len(fit), len(flat), entry, len(fdt))
+        )
+
     print("configs: %s" % ", ".join(CONFIG_NAMES))
     print(
         "card: mv boot.sd boot.sd.vendor && cp %s <LABEL=boot>/boot.sd && sync"

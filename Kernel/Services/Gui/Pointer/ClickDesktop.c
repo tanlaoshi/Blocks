@@ -14,6 +14,7 @@
 #include "Desktop.h"
 #include "Console.h"
 #include "Process.h"
+#include "CoreOps.h"
 
 static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
     if (Act == DESKTOP_ACTION_SHELL) {
@@ -46,6 +47,7 @@ static void GuiClickRunDesktopAction(DESKTOP_ACTION Act, const char *ExecPath) {
                         gConsole.ShowPrompt();
                     }
                 } else if (!WindowApp || HalPlatformIsVirtSerialConsole()) {
+                    ConsoleIoCoopUserOutFlush();
                     gConsole.ShowPrompt();
                 }
             }

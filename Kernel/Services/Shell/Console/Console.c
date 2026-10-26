@@ -19,6 +19,7 @@
 #include "KernelModulesPrivate.h"
 #include "ShellCommands.h"
 #include "Store.h"
+#include "SerialLog.h"
 
 char gLine[LINE_MAX];
 int gLen;
@@ -254,6 +255,14 @@ static void WriteToJobShell(const char *Text) {
         return;
     }
     HalConsoleWriteSerial(Text);
+    /*
+     * Owner==-2：无 JobHold（Worker 自动 DHCP 等）。勿画进正打字的 Shell，
+     * 否则「很早开壳 + 网刚好」黄字窜进 blocks>。走 LogNet → RUNTIME.LOG。
+     */
+    if (Owner == -2) {
+        LogNet(Text);
+        return;
+    }
     if (Owner < 0 || HalConsoleOnly()) {
         if (HalConsoleVideoReady() && GuiFocusKind() == GUI_WIN_SHELL) {
             ConsoleSbEnsureLive();

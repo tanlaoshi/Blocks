@@ -75,6 +75,9 @@ extern int gAtLineStart;
 
 void ConsoleDrawString(const char *Text, UINT32 Color);
 void ConsoleDrawChar(char C, UINT32 Color);
+/* Write.c：CoopDrain 用户 stdout 缓冲（经 CoreOps 挂到 CONSOLE_IO_OPS） */
+void ConsoleCoopUserOutClear(void);
+void ConsoleCoopUserOutFlush(void);
 /* Shell 客户区+scrollback，不写串口（开窗欢迎语等） */
 void ConsoleWriteShellScreen(const char *Text);
 void ConsoleRunLine(void);

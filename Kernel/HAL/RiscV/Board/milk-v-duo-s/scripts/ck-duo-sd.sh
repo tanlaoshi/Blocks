@@ -2,13 +2,14 @@
 # ck-duo-sd.sh — Duo 刷卡：Kernel 只在 LABEL=BLOCKS（对齐 X64/Pi）
 #
 #   source ~/Blocks/env.sh && ck-duo-sd
-#   ck-duo-sd --blocks-only   # 只更新 BLOCKS/Kernel.elf（不碰 boot）
+#   ck-duo-sd --blocks-only     # 只更新 BLOCKS/Kernel.elf（上电仍用已刷 embed FIT）
+#   ck-duo-sd --script-fit      # 试 FIT type=script（真机已证厂商 bootm 不跑脚本）
 #   ck-duo-sd --wait=120
 #   ck-duo-sd --no-eject
 #
-# 默认：BLOCKS 为唯一 Kernel.elf；boot 上删除 Kernel.elf；并刷新
-# boot.sd（FIT 由 BLOCKS/Kernel.elf 打包，因厂商 sdboot 只能 bootm）、
-# boot.scr（fatload mmc 0:4）、duo.dtb。不删 fip.bin。
+# 默认：BLOCKS 唯一 Kernel.elf；boot 删 Kernel.elf；刷新
+# boot.sd（FIT 内嵌核，sdboot 可 bootm）、boot.scr、duo.dtb。不删 fip.bin。
+# duo-fatload：脚本 FIT 真机失败；上电改核仍须重打 embed FIT（或待 stub）。
 #
 # 禁止：对 Duo 跑 ck-pi-sd；格式化 boot；无备份删 boot.sd。
 # 不 commit / 不 push。
@@ -22,15 +23,18 @@ ELF="${BLOCKS_KERNEL_ELF:-$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/Kernel.elf}"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 BLOCKS_ONLY=0
+SCRIPT_FIT=0
 
 for A in "$@"; do
   case "$A" in
     --no-eject) DO_EJECT=0 ;;
     --blocks-only) BLOCKS_ONLY=1 ;;
+    --script-fit) SCRIPT_FIT=1 ;;
+    --embed-kernel) SCRIPT_FIT=0 ;; # 兼容旧口令：默认即 embed
     --boot) ;; # 兼容旧口令：默认已含 boot 刷新
     --wait=*) WAIT_SEC="${A#--wait=}" ;;
     -h|--help)
-      sed -n '2,16p' "$0" | sed 's/^# \?//'
+      sed -n '2,18p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
     *)
@@ -40,28 +44,54 @@ for A in "$@"; do
   esac
 done
 
-find_mnt() {
-  local Label=$1
-  local d Dev
+# 盘名：/dev/sda1→sda；/dev/mmcblk0p1→mmcblk0；/dev/nvme0n1p3→nvme0n1
+disk_parent() {
+  local Dev=$1 Name
+  Name="${Dev#/dev/}"
+  case "$Name" in
+    nvme*n*p*|mmcblk*p*) printf '%s\n' "${Name%p*}" ;;
+    *) printf '%s\n' "${Name%%[0-9]*}" ;;
+  esac
+}
+
+# Duo boot = 可写挂载且含 fip.bin（勿与本机 EFI 混淆）
+find_duo_boot() {
+  local d
   for d in \
-    /media/"${USER:-tank}"/"$Label" \
-    /run/media/"${USER:-tank}"/"$Label" \
-    /media/*/"$Label"; do
-    if [ -d "$d" ] && [ -w "$d" ]; then
+    /media/"${USER:-tank}"/boot \
+    /run/media/"${USER:-tank}"/boot \
+    /media/*/boot; do
+    if [ -f "$d/fip.bin" ] && [ -w "$d" ]; then
       printf '%s\n' "$d"
       return 0
     fi
   done
-  Dev="$(lsblk -ln -o NAME,LABEL | awk -v L="$Label" '$2==L{print "/dev/"$1; exit}')"
-  if [ -n "$Dev" ] && command -v udisksctl >/dev/null 2>&1; then
-    udisksctl mount -b "$Dev" >/dev/null 2>&1 || true
-    for d in /media/"${USER:-tank}"/"$Label" /run/media/"${USER:-tank}"/"$Label"; do
-      if [ -d "$d" ] && [ -w "$d" ]; then
-        printf '%s\n' "$d"
-        return 0
-      fi
-    done
-  fi
+  return 1
+}
+
+# 与 Duo boot 同盘的 LABEL=BLOCKS（避开本机 nvme 上的 BLOCKS）
+find_duo_blocks() {
+  local BootMnt=$1 BootDev Parent Name Lbl Part Mnt
+  BootDev="$(findmnt -n -o SOURCE --target "$BootMnt" 2>/dev/null || true)"
+  [ -n "$BootDev" ] || return 1
+  Parent="$(disk_parent "$BootDev")"
+  while read -r Name Lbl; do
+    [ "$Lbl" = "BLOCKS" ] || continue
+    case "$Name" in
+      "$Parent"p[0-9]*|"$Parent"[0-9]*) ;;
+      *) continue ;;
+    esac
+    Part="/dev/$Name"
+    Mnt="$(findmnt -n -o TARGET --source "$Part" 2>/dev/null || true)"
+    if [ -z "$Mnt" ] && command -v udisksctl >/dev/null 2>&1; then
+      udisksctl mount -b "$Part" >/dev/null 2>&1 || true
+      Mnt="$(findmnt -n -o TARGET --source "$Part" 2>/dev/null || true)"
+    fi
+    if [ -n "$Mnt" ] && [ -w "$Mnt" ]; then
+      printf '%s\n' "$Mnt"
+      return 0
+    fi
+  done < <(lsblk -ln -o NAME,LABEL)
   return 1
 }
 
@@ -72,22 +102,26 @@ fi
 
 echo "ck-duo-sd: ELF=$ELF  wait≤${WAIT_SEC}s  blocks_only=$BLOCKS_ONLY"
 
+BootMnt=""
 BlocksMnt=""
 Elapsed=0
 while [ "$Elapsed" -le "$WAIT_SEC" ]; do
-  if BlocksMnt="$(find_mnt BLOCKS)"; then
+  if BootMnt="$(find_duo_boot)" && BlocksMnt="$(find_duo_blocks "$BootMnt")"; then
     break
   fi
+  BootMnt=""
+  BlocksMnt=""
   if [ "$Elapsed" -eq 0 ]; then
-    echo "ck-duo-sd: 等待 LABEL=BLOCKS…"
+    echo "ck-duo-sd: 等待 Duo 卡（boot+fip.bin 与同盘 BLOCKS；勿与本机 BLOCKS 混淆）…"
   fi
   sleep 2
   Elapsed=$((Elapsed + 2))
 done
-if [ -z "$BlocksMnt" ]; then
-  echo "error: ${WAIT_SEC}s 内未检测到 BLOCKS（Duo 须另有 FAT32 LABEL=BLOCKS，勿 ck-pi-sd）" >&2
+if [ -z "${BootMnt:-}" ] || [ -z "${BlocksMnt:-}" ]; then
+  echo "error: ${WAIT_SEC}s 内未检测到 Duo 卡（须 LABEL=boot 含 fip.bin + 同盘 LABEL=BLOCKS）" >&2
   exit 1
 fi
+echo "ck-duo-sd: boot=$BootMnt"
 echo "ck-duo-sd: BLOCKS=$BlocksMnt"
 
 cp -f "$ELF" "$BlocksMnt/Kernel.elf"
@@ -109,33 +143,29 @@ else
   echo "  · BLOCKS.ID 已有"
 fi
 
-BootMnt="$(find_mnt boot)" || true
-if [ -n "${BootMnt:-}" ] && [ -f "$BootMnt/Kernel.elf" ]; then
+if [ -f "$BootMnt/Kernel.elf" ]; then
   rm -f "$BootMnt/Kernel.elf"
   echo "  - boot removed Kernel.elf"
 fi
 
 if [ "$BLOCKS_ONLY" = 0 ]; then
-  if [ -z "${BootMnt:-}" ]; then
-    echo "error: 需要 LABEL=boot（或改用 --blocks-only）" >&2
-    exit 1
+  echo "ck-duo-sd: 刷 boot FIT/scr/dtb"
+  if [ "$SCRIPT_FIT" = 1 ]; then
+    python3 "$HERE/mk-boot-sd.py" --script -o "$HERE/boot.sd"
+    FitNote="FIT script (stock bootm FAILS — archaeology)"
+  else
+    python3 "$HERE/mk-boot-sd.py" -k "$BlocksMnt/Kernel.elf" -o "$HERE/boot.sd"
+    FitNote="FIT embed kernel"
   fi
-  if [ ! -f "$BootMnt/fip.bin" ]; then
-    echo "error: boot 上无 fip.bin — 不像 Duo 厂商链，中止" >&2
-    exit 1
-  fi
-  echo "ck-duo-sd: boot=$BootMnt"
-  # FIT 必须内嵌核（sdboot=bootm）；真源仍是 BLOCKS/Kernel.elf
-  python3 "$HERE/mk-boot-sd.py" -k "$BlocksMnt/Kernel.elf" -o "$HERE/boot.sd"
   python3 "$HERE/mk-boot-scr.py"
   if [ ! -f "$BootMnt/boot.sd.vendor" ] && [ -f "$BootMnt/boot.sd" ]; then
     mv "$BootMnt/boot.sd" "$BootMnt/boot.sd.vendor"
     echo "  + boot.sd → boot.sd.vendor"
   fi
   cp -f "$HERE/boot.sd" "$BootMnt/boot.sd"
-  echo "  + boot boot.sd (FIT packed from BLOCKS/Kernel.elf)"
+  echo "  + boot boot.sd ($FitNote)"
   cp -f "$HERE/boot.scr" "$BootMnt/boot.scr"
-  echo "  + boot boot.scr (fatload mmc 0:4 Kernel.elf)"
+  echo "  + boot boot.scr (抢壳 fatload mmc 0:4)"
   if [ -f "$HERE/duo.dtb" ]; then
     cp -f "$HERE/duo.dtb" "$BootMnt/duo.dtb"
     echo "  + boot duo.dtb"
@@ -147,25 +177,26 @@ if [ "$BLOCKS_ONLY" = 0 ]; then
 fi
 
 sync
-echo "ck-duo-sd: OK — Kernel.elf only on BLOCKS; boot has no Kernel.elf"
+if [ "$BLOCKS_ONLY" = 1 ]; then
+  echo "ck-duo-sd: OK — BLOCKS/Kernel.elf only（须已刷脚本 FIT；上电勿再打 FIT）"
+else
+  echo "ck-duo-sd: OK — Kernel.elf only on BLOCKS; boot has no Kernel.elf"
+fi
 
 if [ "$DO_EJECT" = 1 ]; then
-  for Label in boot BLOCKS rootfs; do
-    M="$(find_mnt "$Label")" || true
-    if [ -n "${M:-}" ]; then
-      Dev="$(findmnt -n -o SOURCE --target "$M" 2>/dev/null || true)"
-      if [ -n "$Dev" ] && command -v udisksctl >/dev/null 2>&1; then
-        udisksctl unmount -b "$Dev" >/dev/null 2>&1 || true
-      fi
+  BootDev="$(findmnt -n -o SOURCE --target "$BootMnt" 2>/dev/null || true)"
+  ParentName=""
+  if [ -n "$BootDev" ]; then
+    ParentName="$(disk_parent "$BootDev")"
+  fi
+  for M in "$BootMnt" "$BlocksMnt"; do
+    Dev="$(findmnt -n -o SOURCE --target "$M" 2>/dev/null || true)"
+    if [ -n "$Dev" ] && command -v udisksctl >/dev/null 2>&1; then
+      udisksctl unmount -b "$Dev" >/dev/null 2>&1 || true
     fi
   done
-  if command -v udisksctl >/dev/null 2>&1; then
-    Disk="$(lsblk -ln -o NAME,LABEL | awk '$2=="BLOCKS"{print "/dev/"$1; exit}')"
-    if [ -n "$Disk" ]; then
-      Parent="${Disk%%[0-9]*}"
-      case "$Disk" in *p[0-9]*) Parent="${Disk%p[0-9]*}" ;; esac
-      udisksctl power-off -b "$Parent" >/dev/null 2>&1 || true
-    fi
+  if [ -n "$ParentName" ] && command -v udisksctl >/dev/null 2>&1; then
+    udisksctl power-off -b "/dev/$ParentName" >/dev/null 2>&1 || true
   fi
   echo "ck-duo-sd: ejected（可拔卡）"
 fi

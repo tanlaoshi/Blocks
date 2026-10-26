@@ -11,6 +11,7 @@
 #include "SettingsUi.h"
 #include "Locale.h"
 #include "LibWrite.h"
+#include "CoreOps.h"
 
 /* 空桌面开 Shell。返回 0 失败；1 可输入；2 刚打开（吞触发键）。 */
 static int ConsoleEnsureShell(int FromSerial) {
@@ -200,6 +201,11 @@ static void OnEnterEx(int FromSerial) {
     ConsoleRunLine();
     ConsoleCmdOutEnd();
     GuiPresentDeferPop();
+    /*
+     * CoopDrain 用户 stdout：须在 Pop 之后刷（Pause 已结束、Defer=0），
+     * 否则 Pause 内 PresentFlush 拖死合成 → 关窗/点 X 失灵、鼠顿。
+     */
+    ConsoleIoCoopUserOutFlush();
     gLen = 0;
     ConsolePromptAfterCommand(FromSerial);
 }

@@ -1,11 +1,11 @@
 /*
- * Sd.c — Duo S µSD：SDHCI PIO 只读 → BLOCK_BACKEND
+ * Sd.c — Duo S µSD：SDHCI PIO 读写 → BLOCK_BACKEND
  *
- * 主参考：SD Host Controller 简化规格；
+ * 主参考：SD Host Controller 简化规格（CMD17 读 / CMD24 写 + Buffer Ready）；
  * 厂商复位：Linux 6.12 sdhci-of-dwcmshc.c cv18xx_sdhci_reset（非 eMMC 路径）。
  * 基钟：U-Boot drivers/mmc/cv1800b_sdhci.c MMC_MAX_CLOCK。
  * CAPABILITIES 里的基钟不可用（SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN）。
- * 只读：WriteSectors 失败。不发擦除/写命令，不动 FSBL / U-Boot。
+ * 不发擦除命令；应用默认卷 BLOCKS，勿故意写坏 boot/fip。
  */
 #include "Sd.h"
 #include "Board.h"
@@ -305,6 +305,56 @@ static int ReadOne(UINT32 Lba, UINT8 *Buf) {
     return PioRead(Buf);
 }
 
+/* SDHCI：Buffer Write Ready → 填 BUFFER → Transfer Complete（单块 CMD24） */
+static int PioWrite(const UINT8 *Buf) {
+    UINT32 i;
+
+    if (WaitMs32(SDHCI_INT_STATUS, SDHCI_INT_SPACE_AVAIL | SDHCI_INT_ERROR, 1,
+                 500) != 0) {
+        gLastSt = Rd32(SDHCI_INT_STATUS);
+        return -1;
+    }
+    if ((Rd32(SDHCI_INT_STATUS) & SDHCI_INT_ERROR) != 0) {
+        gLastSt = Rd32(SDHCI_INT_STATUS);
+        Wr32(SDHCI_INT_STATUS, gLastSt);
+        return -1;
+    }
+    Wr32(SDHCI_INT_STATUS, SDHCI_INT_SPACE_AVAIL);
+    for (i = 0; i < 128u; i++) {
+        UINT32 W = (UINT32)Buf[i * 4u + 0] |
+                   ((UINT32)Buf[i * 4u + 1] << 8) |
+                   ((UINT32)Buf[i * 4u + 2] << 16) |
+                   ((UINT32)Buf[i * 4u + 3] << 24);
+        Wr32(SDHCI_BUFFER, W);
+    }
+    if (WaitMs32(SDHCI_INT_STATUS, SDHCI_INT_DATA_END | SDHCI_INT_ERROR, 1,
+                 2000) != 0) {
+        gLastSt = Rd32(SDHCI_INT_STATUS);
+        return -1;
+    }
+    if ((Rd32(SDHCI_INT_STATUS) & SDHCI_INT_ERROR) != 0) {
+        gLastSt = Rd32(SDHCI_INT_STATUS);
+        Wr32(SDHCI_INT_STATUS, gLastSt);
+        return -1;
+    }
+    Wr32(SDHCI_INT_STATUS, SDHCI_INT_DATA_END);
+    return 0;
+}
+
+static int WriteOne(UINT32 Lba, const UINT8 *Buf) {
+    UINT32 Arg = gSdhc ? Lba : (Lba * 512u);
+    UINT16 Flags = (UINT16)(SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_INDEX |
+                            SDHCI_CMD_DATA);
+    /* 写：TRANSFER_MODE 不置 READ */
+    UINT16 Xfer = SDHCI_TRNS_BLK_CNT_EN;
+
+    Wr32(SDHCI_BLOCK_SIZE, 512u | (1u << 16));
+    if (SendCmd(24, Arg, Flags, Xfer) != 0) {
+        return -1;
+    }
+    return PioWrite(Buf);
+}
+
 static void Fail(const char *What) {
     Mark(What);
     MarkHex(" st=", gLastSt);
@@ -454,11 +504,20 @@ static int SdRead(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer) {
 }
 
 static int SdWrite(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer) {
+    const UINT8 *P = (const UINT8 *)Buffer;
+    UINT32 i;
+
     (void)Drive;
-    (void)Lba;
-    (void)Count;
-    (void)Buffer;
-    return 0;
+    if (!gReady || Buffer == 0 || Count == 0) {
+        return 0;
+    }
+    for (i = 0; i < Count; i++) {
+        if (WriteOne(Lba + i, P + (UINTN)i * 512u) != 0) {
+            (void)SoftReset(SDHCI_RESET_CMD | SDHCI_RESET_DATA);
+            return 0;
+        }
+    }
+    return 1;
 }
 
 static const BLOCK_BACKEND gSdBackend = {

@@ -50,12 +50,17 @@ typedef struct {
     void (*WriteLen)(const char *Data, UINTN Len);
     char (*ReadChar)(void);
     void (*ShowPrompt)(void);
+    /* CoopDrain 期间用户 printf 缓冲；Drain 后由宿主 Shell 刷屏（免 syscall 内 Present） */
+    void (*CoopUserOutClear)(void);
+    void (*CoopUserOutFlush)(void);
 } CONSOLE_IO_OPS;
 
 void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops);
 void ConsoleIoWriteLen(const char *Data, UINTN Len);
 int ConsoleIoReadChar(char *Out);
 void ConsoleIoShowPrompt(void);
+void ConsoleIoCoopUserOutClear(void);
+void ConsoleIoCoopUserOutFlush(void);
 
 /* 长 IO 呼吸和用户进程退出时的桌面动作。Gui 初始化时登记；没登记则这些调用什么都不做。 */
 typedef struct {

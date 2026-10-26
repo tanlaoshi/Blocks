@@ -6,6 +6,7 @@
 #include "FilesUiPrivate.h"
 #include "Store.h"
 #include "Fat.h"
+#include "CoreOps.h"
 
 void OpenSelected(void) {
     FAT_DIRECTORY_ENTRY *E;
@@ -41,6 +42,8 @@ void OpenSelected(void) {
         if (ProcessExec(Path) != 0) {
             SetStatus("exec failed");
             Paint();
+        } else {
+            ConsoleIoCoopUserOutFlush();
         }
         return;
     }

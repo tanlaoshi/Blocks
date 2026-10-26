@@ -61,11 +61,13 @@
 
 #define SDHCI_INT_RESPONSE (1u << 0)
 #define SDHCI_INT_DATA_END (1u << 1)
-#define SDHCI_INT_DATA_AVAIL (1u << 5)
+#define SDHCI_INT_SPACE_AVAIL (1u << 4) /* Buffer Write Ready */
+#define SDHCI_INT_DATA_AVAIL (1u << 5)  /* Buffer Read Ready */
 #define SDHCI_INT_ERROR    (1u << 15)
 
 #define SDHCI_TRNS_BLK_CNT_EN (1u << 1)
 #define SDHCI_TRNS_READ       (1u << 4)
+/* 写：不置 TRNS_READ */
 
 #define SDHCI_CMD_RESP_NONE       0x00u
 #define SDHCI_CMD_RESP_LONG       0x01u

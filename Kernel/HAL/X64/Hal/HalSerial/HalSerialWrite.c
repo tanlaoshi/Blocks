@@ -152,8 +152,11 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     if (!gShellOwnUart && SerialPresent() && ChannelUartOn(Channel)) {
         SerialWrite(Text);
     }
-    /* 屏：受 SCREEN_LOG_* + Mirror/Mute（有无 COM1 都可画） */
-    if (ChannelGopOn(Channel)) {
+    /*
+     * 屏：SCREEN_LOG_* + Mirror/Mute。ShellOwn 后对齐 Arm64：不再 GOP 镜像，
+     * 免桌面/壳已出后网日志盖字（细日志进 ring / RUNTIME.LOG）。
+     */
+    if (!gShellOwnUart && ChannelGopOn(Channel)) {
         GopMirrorLine(Text);
     }
     SpinLockRelease(&gSerialLock);

@@ -53,21 +53,21 @@ make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
 | `fdt_addr_r` | `0x81200000` |
 | `fdtfile` | `cv181x_milkv_duos_sd.dtb` |
 
-### 推荐：刷卡 `ck-duo-sd`（blocks-elf + 可选 autoboot）
+### 推荐：刷卡 `ck-duo-sd`（blocks-elf + embed FIT）
 
 ```bash
 source ~/Blocks/env.sh
-ck-duo-sd              # Kernel.elf → LABEL=BLOCKS（对齐 X64/Pi）
-ck-duo-sd --boot       # 同上 + 刷新 boot.sd FIT（上电直进）
+ck-duo-sd                 # BLOCKS/Kernel.elf + embed FIT（上电直进）
+ck-duo-sd --blocks-only   # 只更新 BLOCKS（上电核仍是旧 FIT）
 ```
 
-厂商默认仍 `run sdboot`→`boot.sd`；**禁止** `ck-pi-sd`。细则：[`scripts/README.md`](scripts/README.md)。
+厂商仍 `run sdboot`→`boot.sd`；FIT `type=script` 真机已证不通（见 scripts/README）。**禁止** `ck-pi-sd`。
 
 ### 备选：卡上 `boot.scr`（duo-boot · 须抢壳）
 
 ```bash
 python3 HAL/RiscV/Board/milk-v-duo-s/scripts/mk-boot-scr.py
-# 拷 boot.scr + Kernel.elf → LABEL=boot
+# 拷 boot.scr → LABEL=boot（核在 BLOCKS）
 ```
 
 ```text
@@ -110,7 +110,7 @@ go ${kernel_addr_r}
 | `README.md` | 本文件 |
 | `BoardConfig.h` | UART / 加载地址 / 能力勾选 |
 | `Board.h` / `Board.c` | `BoardName()` |
-| `Sd.h` / `Sd.c` | µSD SDHCI 只读 → 块设备 |
+| `Sd.h` / `Sd.c` | µSD SDHCI PIO 读写 → 块设备 |
 | `NOTES.md` | 真机踩坑与验证边界 |
 | `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` |
 | `scripts/mk-boot-sd.py` · `boot.sd` | duo-autoboot：FIT 顶替厂商 `boot.sd`（保留 `.vendor`） |

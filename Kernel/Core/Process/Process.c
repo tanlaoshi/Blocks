@@ -252,6 +252,7 @@ int ProcessExec(const char *Path) {
         NeedDrain = !ProcessAppTakesWindow(Path) || HalPlatformIsVirtSerialConsole();
         if (NeedDrain) {
             gCoopDrain = 1;
+            ConsoleIoCoopUserOutClear();
         }
         if (ProcessStartElf(Space, &Info, Name, ProcessAppTakesWindow(Path)) != 0) {
             gCoopDrain = 0;
@@ -260,6 +261,8 @@ int ProcessExec(const char *Path) {
         }
         if (NeedDrain) {
             (void)SchedulerCoopDrainUsers();
+            gCoopDrain = 0;
+            /* Hello 刷屏：DeferPop 后 ConsoleIoCoopUserOutFlush（勿在 Pause 内 Present） */
         }
     }
     return 0;
@@ -397,15 +400,21 @@ int ProcessRunDemo(void) {
      * 同契约，禁 timer 在窗口内抢走未 Started 用户（三架构 exec / run user 同形）。
      */
     gCoopDrain = 1;
+    ConsoleIoCoopUserOutClear();
     if (ProcessStartElf(Space, &Info, "hello", 0) != 0) {
         gCoopDrain = 0;
         return -1;
     }
     if (SchedulerCoopDrainUsers() == 0) {
         gCoopDrain = 0;
+        ConsoleIoCoopUserOutClear();
         return -1;
     }
     /* Drain 成功路径已清 gCoopDrain；再保险 */
     gCoopDrain = 0;
+    /*
+     * 勿在此 Flush：run user 外层 GuiPresentDeferPause 期间 PresentFlush
+     * 会拖死合成 → 关不掉壳、鼠顿。刷屏见 OnEnter DeferPop 之后。
+     */
     return 0;
 }

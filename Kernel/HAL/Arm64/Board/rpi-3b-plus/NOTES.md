@@ -30,7 +30,7 @@
 - mailbox 要 FB → 深蓝铺底盖住 U-Boot Starting；`HalSerialGop` **全量**（`Hal/HalSerial/HalSerialGop.c`，对齐 X64）。  
 - **像素序 BGR（mailbox 0）**：对齐 `0x00RRGGBB`；勿设 RGB，否则设蓝见红。  
 - **rpi-9 / boot-flick**：VMM `MapIdentity(FB)` 即 **MAIR Attr1 Device**（`HalVideoFbMapFlags`/`HAL_PAGE_PWT`）；`EnableFbWc` 只 BootMark，**勿**再全 FB `civac`（曾与屏上滚叠闪）。串口仍 `Boot: FB-WC OK (MAIR Attr1 Device)`。  
-- 编：`build arm64 BOARD=rpi-3b-plus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
+- 编：`build arm64 BOARD=rpi-3b-plus LWIP=1 SCREEN_LOG=1`（rnet-1 起默认可开；无 L2 时 `lwip on` 因 `HalNetReady=0` 失败属预期）。`SCREEN_LOG=0` 则横幅/上滚关掉。  
 - 有 FB → VirtDesktop 模块表（非 RunFull）。
 
 ## 复位 / 关机拔卡
@@ -83,5 +83,5 @@
 
 - 公司（先 `source ~/Blocks/env.sh`）：
   - `build arm64 BOARD=virt` → `run-virt-arm --headless` 测公共层  
-  - `build arm64 BOARD=rpi-3b-plus LWIP=0` 只验能编  
+  - `build arm64 BOARD=rpi-3b-plus LWIP=1` 只验能编（rnet-1）  
 - 回家：SD + 串口才算 rpi-3 / rpi-4。

@@ -237,9 +237,9 @@ LWIP_PORT_SRCS = HAL/$(HAL_ARCH)/LwIp/Netif.c \
                  HAL/$(HAL_ARCH)/LwIp/UdpQueue.c \
                  HAL/$(HAL_ARCH)/LwIp/TcpClient.c \
                  HAL/$(HAL_ARCH)/LwIp/TcpSocket.c
-ifeq ($(ARCH),riscv)
-# freestanding：lwIP netif.c 要 atoi
-LWIP_PORT_SRCS += HAL/RiscV/LwIp/LibcStub.c
+ifneq ($(filter $(ARCH),riscv arm64),)
+# freestanding：lwIP netif.c 要 atoi（x86 有宿主 libc）
+LWIP_PORT_SRCS += HAL/$(HAL_ARCH)/LwIp/LibcStub.c
 endif
 LWIP_PORT_OBJS = $(patsubst HAL/$(HAL_ARCH)/LwIp/%.c,$(HALDIR)/LwIp/%.o,$(LWIP_PORT_SRCS))
 endif

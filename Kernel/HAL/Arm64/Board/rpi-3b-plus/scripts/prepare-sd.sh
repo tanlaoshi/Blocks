@@ -2,7 +2,7 @@
 # prepare-sd.sh — 摆盘到目录（可再拷进 SD 的 FAT 分区）；不要求本机插卡
 #
 #   source ~/Blocks/env.sh
-#   build arm64 BOARD=rpi-3b-plus LWIP=0
+#   build arm64 BOARD=rpi-3b-plus LWIP=1
 #   prepare-pi-sd [/path/to/out] [--dtb=/path/to/bcm2837-rpi-3-b-plus.dtb]
 #   （日常刷卡：ck-pi-sd 会先调本脚本再写卡）
 #
@@ -61,7 +61,7 @@ OUT="${OUT:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
 
 if [ ! -f "$ELF" ]; then
     echo "error: missing $ELF" >&2
-    echo "  先: source ~/Blocks/env.sh && build arm64 BOARD=rpi-3b-plus LWIP=0" >&2
+    echo "  先: source ~/Blocks/env.sh && build arm64 BOARD=rpi-3b-plus LWIP=1" >&2
     exit 1
 fi
 
@@ -71,7 +71,7 @@ if [ -f "$HALDIR/.toy_board" ]; then
 fi
 if [ -n "$STAMP" ] && [ "$STAMP" != "rpi-3b-plus" ]; then
     echo "error: Build/HAL/Arm64 当前板是 '$STAMP'，不是 rpi-3b-plus" >&2
-    echo "  一板一编：build arm64 BOARD=rpi-3b-plus LWIP=0" >&2
+    echo "  一板一编：build arm64 BOARD=rpi-3b-plus LWIP=1" >&2
     exit 1
 fi
 
@@ -80,7 +80,7 @@ cp -f "$ELF" "$OUT/Kernel.elf"
 
 BIN="$HALDIR/Kernel.bin"
 if [ "$FORCE_BIN" = 1 ] || [ ! -f "$BIN" ]; then
-    if (cd "$KERNEL" && make ARCH=arm64 BOARD=rpi-3b-plus LWIP=0 kernel-bin); then
+    if (cd "$KERNEL" && make ARCH=arm64 BOARD=rpi-3b-plus LWIP=1 kernel-bin); then
         BIN="$HALDIR/Kernel.bin"
     else
         echo "warn: kernel-bin 失败（可稍后补）；仍摆 Kernel.elf" >&2

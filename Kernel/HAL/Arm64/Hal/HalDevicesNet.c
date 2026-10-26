@@ -1,16 +1,31 @@
 /*
- * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1）
+ * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1 / rnet-1）
+ *
+ * virt：VirtioNetInitialize。
+ * Pi：暂无 L2（BOARD_HAS_NET=0）；rnet-2 再接 LAN9514。
+ * lwIP on：Poll → LwIpService（对表 X64 / RiscV）。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
+#include "Driver.h"
 #include "DriverNet.h"
+#include "LwIp.h"
+#if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
+#endif
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
+#endif
 
 int HalNetInitialize(void) {
+#if BOARD_HAS_NET
 #if BOARD_IS_VIRT
     return VirtioNetInitialize();
 #else
-    /* Pi：无 virtio-net；勿扫 MMIO */
+    (void)DriverProbeClass(DRIVER_CLASS_NET);
+    return 0;
+#endif
+#else
     return 0;
 #endif
 }
@@ -24,6 +39,10 @@ UINT32 HalNetNicEpoch(void) {
 }
 
 void HalNetPoll(void) {
+    if (LwIpActive()) {
+        LwIpService();
+        return;
+    }
     DriverNetPoll();
 }
 
@@ -56,10 +75,14 @@ void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
 }
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+    return BoardEthernetGetLink(Up, Mbps, FullDuplex);
+#else
     (void)Up;
     (void)Mbps;
     (void)FullDuplex;
     return 0;
+#endif
 }
 
 int HalNetHasNicL2(void) {
@@ -72,7 +95,13 @@ int HalNetPrimaryKind(void) {
 
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     if (Write) {
+#if !BOARD_IS_VIRT && BOARD_HAS_NET
+        Write("ethernet note: board MAC\n");
+#elif !BOARD_IS_VIRT
+        Write("ethernet note: Pi L2 pending (rnet-2 LAN9514)\n");
+#else
         Write("e1000 note: n/a (not x86)\n");
+#endif
     }
 }
 

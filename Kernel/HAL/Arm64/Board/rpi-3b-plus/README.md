@@ -22,7 +22,7 @@
 ```bash
 source ~/Blocks/env.sh
 
-build arm64 BOARD=rpi-3b-plus LWIP=0
+build arm64 BOARD=rpi-3b-plus LWIP=1
 # → Kernel/Build/HAL/Arm64/Kernel.elf
 
 # 可选扁平二进制（U-Boot load）：
@@ -33,7 +33,7 @@ build arm64 BOARD=virt
 run-virt-arm --headless
 
 # SD 摆盘目录（不插卡；rpi-2）
-build arm64 BOARD=rpi-3b-plus LWIP=0
+build arm64 BOARD=rpi-3b-plus LWIP=1
 ck-pi-sd                               # 摆盘 + 刷卡（内含 prepare）
 # prepare-pi-sd                        # 仅目录、不插卡（可选）
 # ck-pi-sd --dtb=/path/to/bcm2837-rpi-3-b-plus.dtb
@@ -76,7 +76,7 @@ Startup 保存 DTB → 填 `BOOT_HANDOFF` → `KernelMain`。**Common 不解析 
 
 ## 验收（本板）
 
-- [x] `build arm64 BOARD=rpi-3b-plus LWIP=0` 过（公司即可）  
+- [x] `build arm64 BOARD=rpi-3b-plus LWIP=1` 过（rnet-1；公司即可）  
 - [x] `prepare-pi-sd` 产出含 `Kernel.elf` + `README-SD.txt`（公司即可）  
 - [ ] `build arm64 BOARD=virt` + `run-virt-arm --headless` 不回退（有 QEMU 的机器）  
 - [ ] 厂商/社区 U-Boot 不改源码即可加载（回家 · rpi-3）  

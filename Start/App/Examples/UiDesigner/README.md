@@ -7,4 +7,4 @@
 5. 部署见 [`../../Deploy.md`](../../Deploy.md)
 
 依赖：`uitxt2h`、`User/include/UiLayout.h`、`User/Library/Ui/Layout.c`（树内）。  
-说明：[`Archive/手册/应用UI/拖控件设计器.md`](../../../../Archive/手册/应用UI/拖控件设计器.md)。
+说明：[`../../UI/拖控件设计器.md`](../../UI/拖控件设计器.md)。

@@ -101,7 +101,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 **验收**：`Kernel/Tools/Scripts/test-all.sh`（须镜像旁路齐）；`Kernel/Scripts/test/` 下 expect 冒烟。
 
-**SDK**：`Kernel/Tools/build-sdk.sh` → 包出离树工具链；示例在 `Kernel/Tools/Sdk/Examples/{Hello,Gui,Net}`。
+**SDK**：`Kernel/Tools/build-sdk.sh` → `Build/BlocksSDK`；动手入口 **`Start/App/Template`** · **`Start/App/Examples`**。
 
 ---
 
@@ -113,7 +113,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 4. JX 收口写清要不要手测；能量化的用 `test-*.sh`。  
 5. **TG** = 只 commit；**TS** = push；**GD** = 只挪路线图、不 commit。
 
-可读性细则：[`代码可读性规范`](../规范/细则备查/可读性.md)。键鼠优先：见工作区「鼠标优先」铁律。
+可读性细则：[`代码可读性规范`](../../Archive/规范/细则备查/可读性.md)。键鼠优先：见工作区「鼠标优先」铁律。
 
 ---
 
@@ -142,11 +142,11 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 ## 7. 建议自学顺序
 
-1. `Tools/Sdk/Examples/Hello` → 进镜像 `exec`（巩固 CRT）。  
+1. `Start/App/Examples/Hello`（或复制 `Template`）→ 进镜像 `exec`（巩固 CRT）。  
 2. 读 `SyscallABI.h` + `Core/Syscall/Syscall.c`（分发与 ENOSYS）。  
 3. 改一刀用户库（`User/Library/Ui`）看 ABI MAJOR 纪律。  
-4. 驱动：对照驱动指南；Board 外逻辑保持架构通用。  
-5. 动调度 / FS 前读模块化归档 + 课堂「如何写一个*」。
+4. 驱动：对照 [`Driver/Guide.md`](../Driver/Guide.md)；Board 外逻辑保持架构通用。  
+5. 动调度 / FS 前读模块化归档 + [`Course/Homework/`](../Course/Homework/)。
 
 ---
 
@@ -172,8 +172,8 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 | `Kernel/Core/Syscall/Syscall.c` | 分发 + ENOSYS |
 | `Kernel/User/crt/` | CRT |
 | `Kernel/User/Library/{Ui,Graphics,Net,VolumePath}/` | 用户库 |
-| `Kernel/User/Apps/` | Demo 源 |
-| `Kernel/Tools/Sdk/Examples/` | 离树最小示例 |
+| `Kernel/User/Apps/` | 课设 / 镜像自带 Demo（政策见该目录 README） |
+| `Start/App/Template` · `Examples/` | **第一颗 ELF** 入口 |
 | `Kernel/Tools/Scripts/test-all.sh` | 统一验收 |
 | `env.sh`（仓根） | `build` / `run` / `sync` 短名 |
-| `Archive/手册/仓库与启动/` | 目录结构 · 开机流程 |
+| `Start/System/{Tree,Boot}.md` | 目录结构 · 开机流程 |

@@ -21,14 +21,16 @@ run                      # QEMU；看串口
 
 Guest 提示符：`blocks>`。
 
-## 3. 跑一个现成 ELF
+## 3. 编出第一颗自己的 ELF
 
-```text
-blocks> exec HELLO.ELF
-# 或商店包：store combo hello → exec Apps/hello/HELLO.ELF
+```bash
+cd ~/Blocks/Kernel && ./Tools/build-sdk.sh          # 一次：Build/BlocksSDK
+cp -a ~/Blocks/Start/App/Template ~/MyApp
+make -C ~/MyApp                                     # → build/MYAPP.ELF
 ```
 
-离树最小示例：`Kernel/Tools/Sdk/Examples/{Hello,Gui,Net}`（见 [`App/Guide.md`](App/Guide.md)）。
+树内现成样例：`Start/App/Examples/{Hello,Gui,Net}`（见 [`App/Guide.md`](App/Guide.md)）。  
+Guest：`exec HELLO.ELF`（或商店 `store combo hello`）。
 
 ## 4. 红字
 

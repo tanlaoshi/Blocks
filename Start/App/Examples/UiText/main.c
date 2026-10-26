@@ -1,5 +1,5 @@
 /*
- * UiText — .uitxt 编译期布局模板（见 Archive/开发/布局文件格式.md）
+ * UiText — .uitxt 编译期布局模板（见 Start/App/UI/布局文件格式.md）
  */
 #include <stdio.h>
 #include <unistd.h>

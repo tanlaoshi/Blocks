@@ -51,7 +51,7 @@
 | 课上说法 | 仓库位置 |
 | -------- | -------- |
 | 内核树 | `Kernel/` |
-| 用户态 | `Kernel/User/`；示例 `Kernel/Tools/Sdk/Examples/` |
+| 用户态 | `Kernel/User/`（CRT/库）；示例 `Start/App/{Template,Examples}` |
 | Shell | Guest：`blocks>` |
 | 还债剧本 | [`路线图1024 · selfhost`](../../Archive/路线图1024.md#selfhost) |
 

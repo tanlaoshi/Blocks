@@ -14,7 +14,7 @@
 | 查拆分/排障/柱史 | [过程/](过程/)（历史；ABI 号可能旧） |
 | 未收官柱规格 | [柱规格/](柱规格/) |
 
-`手册/`、`规范/` 目录在迁移期可能仍有副本；**以 `Start/` 为准**。技术手册正文仍在 [项目/技术手册.md](项目/技术手册.md)，入口见 [`Start/System/Handbook.md`](../Start/System/Handbook.md)。
+`手册/` 下均为 **跳转 stub**（正本在 `Start/`）。`规范/` 过渡副本亦以 [`Start/Contribute/`](../Start/Contribute/) 为准。技术手册正文仍在 [项目/技术手册.md](项目/技术手册.md)，入口见 [`Start/System/Handbook.md`](../Start/System/Handbook.md)。
 
 ## 目录
 

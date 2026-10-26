@@ -2,7 +2,7 @@
 
 > **目标读者**：会 C、第一次在 **Blocks** 上做带窗口的应用。  
 > **成品**：`TASKMGR.ELF`（源码 `Kernel/User/Apps/TaskMgr.c`）——窗内显示与 Shell `ps` / `list tasks` **同源**的任务表；可 Refresh、翻页（按钮或上下键）、Kill 用户任务；文案跟 `BLOCKS.DB` 的 `lang=`。  
-> **配套**：[`应用开发指南.md`](../应用开发指南.md)；ABI [`开课ABI冻结.md`](../开课ABI冻结.md)；[`API速查.md`](../API速查.md)。
+> **配套**：[`Guide.md`](../../App/Guide.md)；ABI [`ABI.md`](../ABI.md)；[`API.md`](../../App/API.md)。
 
 本文按「想清楚 → 开接口 → 写 App → 编进盘 → 跑通 → 进菜单」顺序写，路径均相对 **`Blocks/Kernel`**（单仓）。
 
@@ -158,17 +158,17 @@ blocks> exec TASKMGR.ELF
 4. 选中**其它用户**任务 → **结束** → 刷新后消失。  
 5. 对照：`blocks> ps`（或 `list tasks`）与窗内 pid/名一致。
 
-真机：`sync nuc`（**TBN**）或 `sync usb`（**TBU**），见 [`同步.md`](../../Archive/同步.md)。
+真机：`sync nuc`（**TBN**）或 `sync usb`（**TBU**），见 [`同步.md`](../../../Archive/同步.md)。
 
 ---
 
-## 6. 和「课外 Pkg / SDK」的关系
+## 6. 和「课外毛坯 / SDK」的关系
 
 | 路径 | 何时用 |
 | ---- | ------ |
 | `User/Apps/TaskMgr.c` + 内核 `Makefile` | **仓库内示范 / 开课镜像自带** |
-| `User/Pkg/` | 学生课外独立工程 |
-| `Tools/build-sdk.sh` → `Build/BlocksSDK.tar.gz` | 离树 SDK；头里应有 `Blocks/task.h` / `TaskSnap.h` |
+| `Start/App/Template` · `Examples` | 学生课外独立工程（复制开干） |
+| `Tools/build-sdk.sh` → `Build/BlocksSDK` | 离树 SDK；头里应有 `Blocks/task.h` / `TaskSnap.h` |
 
 ---
 
@@ -179,7 +179,7 @@ blocks> exec TASKMGR.ELF
 3. **stdout**：有 USER 窗时默认串口；给人看的字写进 `UiSetLabel`。  
 4. **进菜单**：`Apps/<pkg>/…ELF` 或 catalog。  
 5. **三架构**：syscall 共用；用户 ELF 分盘（课主路径 `RootFs/X64`）。  
-6. **命名**：源文件 PascalCase；盘上 8.3；见 [`命名规范.md`](../../规范/命名规范.md)。  
+6. **命名**：源文件 PascalCase；盘上 8.3；见 [`Naming.md`](../../Contribute/Naming.md)。  
 7. **单文件宜短**；过长再拆。
 
 ---

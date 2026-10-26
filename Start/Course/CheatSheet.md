@@ -1,6 +1,6 @@
 # Blocks 学生速查卡（A4 · 课程承诺面）
 
-> **Start 正本**：本文件在`Start/` 下维护；`Archive/手册/` 同期副本仅过渡期保留。
+> **Start 正本**。`Archive/手册/` 对应文件仅为跳转 stub。
 
 
 > 印刷 ABI 号见 [`开课ABI冻结.md`](ABI.md)；函数表见 [`API速查.md`](../App/API.md)。  
@@ -126,7 +126,7 @@ NetConnect(fd, NetIpv4(10,0,2,2), 7);
 2. **`ProcessWait`**：退出码在 CRT 里 `<<8`（无按 pid 等待）。  
 3. **旧 GUI syscall 18/19/20/21 禁用**；只用 `Ui*` / `Graphics*`（1000+）。  
 4. 未知 syscall 返回 **`-ENOSYS`（-38）**，不崩。  
-5. 编译：**禁止** `-pie` / 宿主 libc；用 `Tools/Sdk/Examples` 或树内 User 规则。  
+5. 编译：**禁止** `-pie` / 宿主 libc；用 `Start/App/Template` · `Examples`（`BlocksSdk.mk`）。  
 6. ELF 盘名：**8.3 大写**（`MYAPP.ELF`）；卷前缀 **`BLOCKS:`**。  
 7. 日常构建：`source ~/Blocks/env.sh` → `build` / `run`。  
 8. **勿用**公开 `toy_*` / 假 POSIX 双轨课设。

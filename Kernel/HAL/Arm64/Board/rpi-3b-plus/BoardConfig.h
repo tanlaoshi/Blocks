@@ -7,7 +7,7 @@
 #ifndef BOARD_CONFIG_H
 #define BOARD_CONFIG_H
 
-#define BOARD_NAME             "Raspberry/Pi3BPlus"
+#define BOARD_NAME             "rpi-3b-plus"
 #define BOARD_ARCH             "Arm64"
 
 /*

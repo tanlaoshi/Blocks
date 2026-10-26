@@ -11,8 +11,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BOARD_DIR="$(cd "$HERE/.." && pwd)"
-BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../../.." && pwd)"
-SRC="${BLOCKS_SRC:-$BLOCKS_ROOT/Build/Pi3BPlus-sd}"
+BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../.." && pwd)"
+SRC="${BLOCKS_SRC:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 DO_REPART=0

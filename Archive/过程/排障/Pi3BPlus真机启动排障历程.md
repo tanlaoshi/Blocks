@@ -2,11 +2,11 @@
 
 > **日期**：2026-10-24 起（回家 SD 手测）  
 > **硬件**：Pi 3B+ · 专用 SD（原 Raspberry Pi OS 改 Blocks）· USB-TTL 3.3V（GPIO 14/15/GND）· HDMI 可看 U-Boot  
-> **目标（rpi-3）**：U-Boot → Blocks 串口见横幅（`Boot: Arm64` / `board: Raspberry/Pi3BPlus`）  
-> **代码主战场**：`HAL/Arm64/Board/Raspberry/Pi3BPlus/`、`BringUp/Arm64/`、`HAL/Arm64/{HalSerial,PageTable,Exception,Smp}.c`  
-> **摆盘**：`prepare-pi-sd` → `Build/Pi3BPlus-sd/`；说明以 **`README-SD.txt`** 为准（勿信过期 `README-SD.md` 旧稿）  
+> **目标（rpi-3）**：U-Boot → Blocks 串口见横幅（`Boot: Arm64` / `board: rpi-3b-plus`）  
+> **代码主战场**：`HAL/Arm64/Board/rpi-3b-plus/`、`BringUp/Arm64/`、`HAL/Arm64/{HalSerial,PageTable,Exception,Smp}.c`  
+> **摆盘**：`prepare-pi-sd` → `Build/rpi-3b-plus-sd/`；说明以 **`README-SD.txt`** 为准（勿信过期 `README-SD.md` 旧稿）  
 > **状态**：🔧 进行中。**CoolTerm 已见 `Boot: Mod Serial/PhysicalMemory/VirtualMemory`**（内核已跑）；HDMI 停在 U-Boot「Starting」**正常**（本柱无 FB）。  
-> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）；键鼠 [DWC2-HID 排障](Pi3BPlus-DWC2-HID排障历程.md)（rpi-7）；RiscV 真机对照 [Milk-V Duo S 排障](MilkV-DuoS真机启动排障历程.md)
+> **姊妹**：板包 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/rpi-3b-plus/NOTES.md)；日档 [路线图1023 · rpi-desk](../../路线图1023.md#rpi-desk)（手测 ⏸，活 ★ 在 1024）；键鼠 [DWC2-HID 排障](Pi3BPlus-DWC2-HID排障历程.md)（rpi-7）；RiscV 真机对照 [Milk-V Duo S 排障](MilkV-DuoS真机启动排障历程.md)
 
 ---
 
@@ -149,7 +149,7 @@ source 0x1000000
 
 | 主题 | 文件 |
 |------|------|
-| 链接 @0x80000 | `Board/Raspberry/Pi3BPlus/link.ld`；Makefile 优先板级 `link.ld` |
+| 链接 @0x80000 | `Board/rpi-3b-plus/link.ld`；Makefile 优先板级 `link.ld` |
 | mini-UART | `BoardConfig.h` `BOARD_UART_MINI`；`Hal/HalSerial.c` |
 | 入口信标 / EL2→EL1 | `BringUp/Arm64/KernelEntry.S` |
 | Handoff / RAM fallback | `BringUp/Arm64/KernelHandoff.c` + `BOARD_KERNEL_LOAD` / `BOARD_RAM_*` |

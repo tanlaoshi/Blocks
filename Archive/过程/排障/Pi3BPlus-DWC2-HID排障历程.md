@@ -3,9 +3,9 @@
 > **日期**：2026-10-24 夜 → 2026-10-25 凌晨（回家 SD 手测）  
 > **硬件**：Pi 3B+ · LAN9514 板上 hub · Logitech 鼠 `vid=046d pid=c09d`（hub FS 口）· HDMI 录像优先 · CoolTerm 常丢字  
 > **目标（rpi-7）**：桌面见软件光标；晃鼠跟手；键可后置  
-> **代码**：`HAL/Arm64/Board/Raspberry/Pi3BPlus/Dwc2.c` · `HalDevicesInput.c` · `Core/Driver/Input.c` · `Gui/Cursor` · `HAL/Common/HalVideo.c`（FB dcache）  
+> **代码**：`HAL/Arm64/Board/rpi-3b-plus/Dwc2.c` · `HalDevicesInput.c` · `Core/Driver/Input.c` · `Gui/Cursor` · `HAL/Common/HalVideo.c`（FB dcache）  
 > **主参考**：**DWC2/BCM 规格 + U-Boot dwc2**（+ 仓内 X64 Hub **形状**）；**勿**把 EDK2 当 Arm64/DWC2 主指南  
-> **日档**：[路线图1024 · rpi-7](../../路线图1024.md#rpi-7) · 板备忘 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/Raspberry/Pi3BPlus/NOTES.md)  
+> **日档**：[路线图1024 · rpi-7](../../路线图1024.md#rpi-7) · 板备忘 [`NOTES.md`](../../../Kernel/HAL/Arm64/Board/rpi-3b-plus/NOTES.md)  
 > **姊妹**：[启动排障](Pi3BPlus真机启动排障历程.md) · [NUC 键鼠排障](真机复合USB键盘排障历程.md)（xHCI 对照，勿硬套寄存器）  
 > **状态**：✅ **鼠** 真机过关（2026-10-25 ~02:23：流畅、图标可双击开）；🔧 **键** 尚未枚举/绑
 

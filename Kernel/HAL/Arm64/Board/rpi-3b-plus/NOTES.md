@@ -1,6 +1,6 @@
-# Pi3BPlus · 踩坑备忘
+# rpi-3b-plus · 踩坑备忘
 
-> **排障正本（试错编年 · 少换卡）**：[`Archive/过程/排障/Pi3BPlus真机启动排障历程.md`](../../../../../../Archive/过程/排障/Pi3BPlus真机启动排障历程.md)  
+> **排障正本（试错编年 · 少换卡）**：[`Archive/过程/排障/Pi3BPlus真机启动排障历程.md`](../../../../../Archive/过程/排障/Pi3BPlus真机启动排障历程.md)  
 > 本文只留板级短备忘；新尝试先记历程，再改代码。
 
 ## 串口
@@ -29,7 +29,7 @@
 
 - mailbox 要 FB → 深蓝铺底盖住 U-Boot Starting；`HalSerialGop` **全量**（`Hal/HalSerial/HalSerialGop.c`，对齐 X64）。  
 - **像素序 BGR（mailbox 0）**：对齐 `0x00RRGGBB`；勿设 RGB，否则设蓝见红。  
-- 编：`build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
+- 编：`build arm64 BOARD=rpi-3b-plus LWIP=0 SCREEN_LOG=1`（`SCREEN_LOG=0` 则横幅/上滚编译关掉）。  
 - 有 FB → VirtDesktop 模块表（非 RunFull）。
 
 ## 复位 / 关机拔卡
@@ -55,7 +55,7 @@
 
 ## USB（rpi-7）
 
-> **排障正本（试错编年）**：[`Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../../Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)
+> **排障正本（试错编年）**：[`Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md`](../../../../../Archive/过程/排障/Pi3BPlus-DWC2-HID排障历程.md)
 
 - 控制器：DWC2 @ `0x3F980000`（BCM2835 §14；VC `0x7E980000`）。
 - 3B+ 根口 **LAN9514**；外接键鼠在 hub FS 口 → **SPLIT**（已做）。
@@ -80,5 +80,5 @@
 
 - 公司（先 `source ~/Blocks/env.sh`）：
   - `build arm64 BOARD=virt` → `run-virt-arm --headless` 测公共层  
-  - `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` 只验能编  
+  - `build arm64 BOARD=rpi-3b-plus LWIP=0` 只验能编  
 - 回家：SD + 串口才算 rpi-3 / rpi-4。

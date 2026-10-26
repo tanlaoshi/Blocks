@@ -18,7 +18,7 @@ alwaysApply: true
 | **TB** | fetch + 对齐另一台进度；只拉不推 |
 | **TBU** | 同步 U 盘（`sync-usb`）；勿当本机 EFI 刷盘 |
 | **TBN** | 同步 NUC SSD（`sync-nuc`）；真机手测优先 |
-| **CK** | 跑 `ck-pi-sd`：`Build/Pi3BPlus-sd/` → `bootfs`（含 `u-boot.bin`）→ sync 弹出；**无卡则等到挂上再刷**；**不** commit/push |
+| **CK** | 跑 `ck-pi-sd`：`Build/rpi-3b-plus-sd/` → `bootfs`（含 `u-boot.bin`）→ sync 弹出；**无卡则等到挂上再刷**；**不** commit/push |
 | **CK / Duo** | 用户说 Duo 卡时：**只**把 `Kernel/Build/HAL/RiscV/Kernel.elf` 拷到 LABEL=`boot`，sync 弹出；**禁止**对 Duo 跑 `ck-pi-sd` |
 | **GD** | 只改路线图归档布局；不写功能代码；不 commit/push |
 | **待选** | 未点名；勿当 JX |

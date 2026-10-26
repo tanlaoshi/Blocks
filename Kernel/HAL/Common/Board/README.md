@@ -13,7 +13,7 @@
 HAL/
 ├── Common/Board/              ← 本文 + _template（约定；真板不交这里）
 ├── <Arch>/                    # X64 | Arm64 | RiscV
-│   └── Board/<board>/         # 真板包（virt / Raspberry/Pi3BPlus / …）
+│   └── Board/<board>/         # 真板包（virt / rpi-3b-plus / milk-v-duo-s / …）
 ├── Virtio/                    # QEMU virt 设备共享
 └── Common/                    # 跨 Arch 仅此额外顶栏（Video / HalVideo / Slots / Board 约定）
 ```

@@ -5,7 +5,7 @@
 #
 #   build                           # x64 Kernel（默认）
 #   build arm64                     # QEMU virt（默认 BOARD=virt）
-#   build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
+#   build arm64 BOARD=rpi-3b-plus LWIP=0
 #   build arm64 BOARD=virt          # 切回课堂靶后再 run-virt-arm
 #   build riscv BOARD=milk-v-duo-s
 #   boot                            # Boot → BOOTX64.EFI
@@ -14,7 +14,7 @@
 #   run-virt-arm --headless         # Arm64 virt（须先 build arm64）
 #   run-virt-riscv
 #   boards [arm64|riscv]            # 列出板包
-#   prepare-pi-sd [OUT] [--dtb=…]   # Pi3BPlus SD 摆盘目录（不插卡）
+#   prepare-pi-sd [OUT] [--dtb=…]   # rpi-3b-plus SD 摆盘目录（不插卡）
 #
 # 路径：BLOCKS_ROOT / KERNEL / RUNTIME / KERNEL_BUILD
 # 实现在 Kernel/Scripts/；勿再写 cd Kernel && ./build.sh …
@@ -102,7 +102,7 @@ boards() {
     (cd "$KERNEL" && make ARCH="$Arch" boards)
 }
 
-# U-Boot 用扁平二进制。用法：kernel-bin arm64 BOARD=Raspberry/Pi3BPlus
+# U-Boot 用扁平二进制。用法：kernel-bin arm64 BOARD=rpi-3b-plus
 kernel-bin() {
     local Arch=arm64
     local Board=virt
@@ -123,17 +123,17 @@ kernel-bin() {
     (cd "$KERNEL" && make ARCH="$Arch" BOARD="$Board" LWIP=0 kernel-bin)
 }
 
-# Pi3BPlus SD 摆盘目录（不插卡）。须先 build arm64 BOARD=Raspberry/Pi3BPlus
+# rpi-3b-plus SD 摆盘目录（不插卡）。须先 build arm64 BOARD=rpi-3b-plus
 prepare-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/prepare-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/prepare-sd.sh" "$@"
 }
 
 # 暗号 CK：固件→bootfs；Kernel→BLOCKS。可选 --repart 整盘两 FAT32（仅 Pi）
 ck-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/ck-pi-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/ck-pi-sd.sh" "$@"
 }
 repart-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/Raspberry/Pi3BPlus/scripts/repart-pi-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/repart-pi-sd.sh" "$@"
 }
 
 # Duo：Kernel.elf → LABEL=BLOCKS（blocks-elf）。可选 --boot 刷新 boot.sd；禁止当 CK

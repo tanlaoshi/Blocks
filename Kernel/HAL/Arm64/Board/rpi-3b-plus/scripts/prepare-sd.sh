@@ -2,7 +2,7 @@
 # prepare-sd.sh — 摆盘到目录（可再拷进 SD 的 FAT 分区）；不要求本机插卡
 #
 #   source ~/Blocks/env.sh
-#   build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
+#   build arm64 BOARD=rpi-3b-plus LWIP=0
 #   prepare-pi-sd [/path/to/out] [--dtb=/path/to/bcm2837-rpi-3-b-plus.dtb]
 #
 # 产出 OUT/ 内：Kernel.elf、Kernel.bin（若能 objcopy）、可选 DTB、README-SD.txt
@@ -12,8 +12,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BOARD_DIR="$(cd "$HERE/.." && pwd)"
-# …/HAL/Arm64/Board/Raspberry/Pi3BPlus → Blocks 根
-BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../../.." && pwd)"
+# Board/rpi-3b-plus → … → Blocks（五级；勿多一级）
+BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../.." && pwd)"
 KERNEL="$BLOCKS_ROOT/Kernel"
 HALDIR="$KERNEL/Build/HAL/Arm64"
 ELF="$HALDIR/Kernel.elf"
@@ -25,12 +25,12 @@ usage() {
     cat <<'EOF'
 usage: prepare-sd.sh [OUT_DIR] [--dtb=PATH] [--elf=PATH] [--bin]
 
-  OUT_DIR   默认：$BLOCKS_ROOT/Build/Pi3BPlus-sd
+  OUT_DIR   默认：$BLOCKS_ROOT/Build/rpi-3b-plus-sd
   --dtb=    拷入的 bcm2837-rpi-3-b-plus.dtb（缺则只写说明，不假装有 DTB）
   --elf=    覆盖默认 Build/HAL/Arm64/Kernel.elf
   --bin     强制再跑 make kernel-bin（需交叉 objcopy）
 
-须已：build arm64 BOARD=Raspberry/Pi3BPlus（一板一编）。
+须已：build arm64 BOARD=rpi-3b-plus（一板一编）。
 EOF
 }
 
@@ -56,11 +56,11 @@ for A in "$@"; do
     esac
 done
 
-OUT="${OUT:-$BLOCKS_ROOT/Build/Pi3BPlus-sd}"
+OUT="${OUT:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
 
 if [ ! -f "$ELF" ]; then
     echo "error: missing $ELF" >&2
-    echo "  先: source ~/Blocks/env.sh && build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0" >&2
+    echo "  先: source ~/Blocks/env.sh && build arm64 BOARD=rpi-3b-plus LWIP=0" >&2
     exit 1
 fi
 
@@ -68,9 +68,9 @@ STAMP=""
 if [ -f "$HALDIR/.toy_board" ]; then
     STAMP="$(cat "$HALDIR/.toy_board")"
 fi
-if [ -n "$STAMP" ] && [ "$STAMP" != "Raspberry/Pi3BPlus" ]; then
-    echo "error: Build/HAL/Arm64 当前板是 '$STAMP'，不是 Raspberry/Pi3BPlus" >&2
-    echo "  一板一编：build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0" >&2
+if [ -n "$STAMP" ] && [ "$STAMP" != "rpi-3b-plus" ]; then
+    echo "error: Build/HAL/Arm64 当前板是 '$STAMP'，不是 rpi-3b-plus" >&2
+    echo "  一板一编：build arm64 BOARD=rpi-3b-plus LWIP=0" >&2
     exit 1
 fi
 
@@ -79,7 +79,7 @@ cp -f "$ELF" "$OUT/Kernel.elf"
 
 BIN="$HALDIR/Kernel.bin"
 if [ "$FORCE_BIN" = 1 ] || [ ! -f "$BIN" ]; then
-    if (cd "$KERNEL" && make ARCH=arm64 BOARD=Raspberry/Pi3BPlus LWIP=0 kernel-bin); then
+    if (cd "$KERNEL" && make ARCH=arm64 BOARD=rpi-3b-plus LWIP=0 kernel-bin); then
         BIN="$HALDIR/Kernel.bin"
     else
         echo "warn: kernel-bin 失败（可稍后补）；仍摆 Kernel.elf" >&2

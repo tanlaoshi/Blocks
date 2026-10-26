@@ -20276,7 +20276,7 @@ Briefly inform the user about the task result and perform any follow-up actions 
 
 ### 2522. 发问
 
-\n./build.sh arm64 BOARD=Raspberry/Pi3BPlus LWIP=0，这类命令改成我source env.sh后的风格\n
+\n./build.sh arm64 BOARD=rpi-3b-plus LWIP=0，这类命令改成我source env.sh后的风格\n
 
 处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
 

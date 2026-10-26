@@ -61,9 +61,9 @@
 ### 1.2 Arm64 / RiscV
 
 **无 OVMF**。QEMU：`run-virt-arm` / `run-virt-riscv`（`-kernel` + DTB / OpenSBI）→ 同 `KernelMain`（模块表多为 virt / virt 桌面）。  
-真机板（Pi3BPlus、Duo S）：U-Boot + DTB → 板包 UART；见板目录 README / 日档 rpi-desk。
+真机板（`rpi-3b-plus`、`milk-v-duo-s`）：U-Boot + DTB → 板包 UART；见板目录 README / 日档 rpi-desk。
 
-Pi3BPlus 手测等价「关键点」：`go 0x80000` 后串口先见 Entry 探针 `*` / `+`（进了 `KernelEntry`），再谈横幅。
+`rpi-3b-plus` 手测等价「关键点」：`go 0x80000` 后串口先见 Entry 探针 `*` / `+`（进了 `KernelEntry`），再谈横幅。
 
 ---
 

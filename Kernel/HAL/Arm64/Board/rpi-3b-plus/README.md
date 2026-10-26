@@ -1,14 +1,14 @@
-# Board：`Raspberry/Pi3BPlus`（Raspberry Pi 3 Model B+）
+# Board：`rpi-3b-plus`（Raspberry Pi 3 Model B+）
 
-> **今日工作目录**（[路线图1023 · rpi-desk](../../../../../../Archive/路线图1023.md#rpi-desk)）。  
+> **今日工作目录**（[路线图1023 · rpi-desk](../../../../../Archive/路线图1023.md#rpi-desk)）。  
 > Arm64 **真机靶**：厂商/社区 **U-Boot + DTB**（不要 UEFI）。GUI 课堂仍 QEMU `BOARD=virt`。  
-> 约定：[`HAL/Common/Board/README.md`](../../../../Common/Board/README.md)。
+> 约定：[`HAL/Common/Board/README.md`](../../../Common/Board/README.md)。
 
 | 项 | 填写 |
 |----|------|
 | **板名** | Raspberry Pi 3 Model B+ |
 | **SoC** | Broadcom BCM2837B0（Cortex-A53 ×4） |
-| **Arch** | `Arm64`（`BOARD=Raspberry/Pi3BPlus`） |
+| **Arch** | `Arm64`（`BOARD=rpi-3b-plus`） |
 | **固件** | 官方 boot 固件 + 社区/发行版 U-Boot（**不改**厂商树源码） |
 | **加载方式** | U-Boot `booti`（见下）；DTB 常用 `bcm2837-rpi-3-b-plus.dtb` |
 | **串口** | 见 `BoardConfig.h`：默认按 **PL011 UART0** @ `0x3F201000`；接线与是否改走 mini-UART 见 [`NOTES.md`](NOTES.md) |
@@ -22,19 +22,19 @@
 ```bash
 source ~/Blocks/env.sh
 
-build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
+build arm64 BOARD=rpi-3b-plus LWIP=0
 # → Kernel/Build/HAL/Arm64/Kernel.elf
 
 # 可选扁平二进制（U-Boot load）：
-kernel-bin arm64 BOARD=Raspberry/Pi3BPlus
+kernel-bin arm64 BOARD=rpi-3b-plus
 
 # 公司验收公共层：切回 virt 再冒烟
 build arm64 BOARD=virt
 run-virt-arm --headless
 
 # SD 摆盘目录（不插卡；rpi-2）
-build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0
-prepare-pi-sd                          # → Build/Pi3BPlus-sd/
+build arm64 BOARD=rpi-3b-plus LWIP=0
+prepare-pi-sd                          # → Build/rpi-3b-plus-sd/
 # prepare-pi-sd /tmp/out --dtb=/path/to/bcm2837-rpi-3-b-plus.dtb
 ```
 
@@ -74,7 +74,7 @@ Startup 保存 DTB → 填 `BOOT_HANDOFF` → `KernelMain`。**Common 不解析 
 
 ## 验收（本板）
 
-- [x] `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` 过（公司即可）  
+- [x] `build arm64 BOARD=rpi-3b-plus LWIP=0` 过（公司即可）  
 - [x] `prepare-pi-sd` 产出含 `Kernel.elf` + `README-SD.txt`（公司即可）  
 - [ ] `build arm64 BOARD=virt` + `run-virt-arm --headless` 不回退（有 QEMU 的机器）  
 - [ ] 厂商/社区 U-Boot 不改源码即可加载（回家 · rpi-3）  

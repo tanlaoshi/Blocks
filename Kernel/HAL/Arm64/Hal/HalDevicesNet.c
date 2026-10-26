@@ -2,8 +2,8 @@
  * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1 / rnet-1）
  *
  * virt：VirtioNetInitialize。
- * Pi：暂无 L2（BOARD_HAS_NET=0）；rnet-2 再接 LAN9514。
- * lwIP on：Poll → LwIpService（对表 X64 / RiscV）。
+ * Pi：LAN9514 smsc95xx（BOARD_HAS_NET）；USB 枚举在 DWC2 hub 扫口。
+ * lwIP on：Poll → LwIpService（对表 X64 / RiscV）。鼠优先见 EthPoll。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
@@ -98,7 +98,7 @@ void HalNetDumpNicNote(void (*Write)(const char *Text)) {
 #if !BOARD_IS_VIRT && BOARD_HAS_NET
         Write("ethernet note: board MAC\n");
 #elif !BOARD_IS_VIRT
-        Write("ethernet note: Pi L2 pending (rnet-2 LAN9514)\n");
+        Write("ethernet note: smsc95xx LAN9514 USB\n");
 #else
         Write("e1000 note: n/a (not x86)\n");
 #endif

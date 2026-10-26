@@ -20,7 +20,12 @@ void HalDriverRegister(void) {
 #else
     {
         void BoardSdhostRegister(void);
+        void BoardEthernetRegister(void);
+
         BoardSdhostRegister();
+#if BOARD_HAS_NET
+        BoardEthernetRegister();
+#endif
     }
 #endif
 }

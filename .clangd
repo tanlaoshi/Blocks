@@ -1,0 +1,11 @@
+# Blocks：跳转 / 补全认仓库根或 Kernel/ 下的 compile_commands.json
+CompileFlags:
+  # 无库时 freestanding；个别宿主测试文件可忽略诊断噪声
+  Add:
+    - -Wno-unknown-warning-option
+Diagnostics:
+  Suppress:
+    - drv_unknown_argument
+    - pp_file_not_found
+Index:
+  Background: Build

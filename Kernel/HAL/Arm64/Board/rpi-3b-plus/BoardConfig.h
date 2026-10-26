@@ -35,7 +35,7 @@
 /* 本柱命令行靶：无 FB → 串口壳；块/网后置 */
 #define BOARD_HAS_FRAMEBUFFER  0
 #define BOARD_HAS_BLOCK        1 /* rpi-12：SDHCI @0x3F300000 → BLOCKS */
-#define BOARD_HAS_NET          0
+#define BOARD_HAS_NET          1 /* rnet-2：LAN9514 USB smsc95xx */
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
 /*

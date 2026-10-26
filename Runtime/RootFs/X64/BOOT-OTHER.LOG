@@ -1,0 +1,51 @@
+ToyKernel
+COM1 Serial OK
+Boot: KernelMain Live
+Boot: FB 1280x0800
+Boot: Mod Serial
+Boot: Mod PhysicalMemory
+Boot: Mod VirtualMemory
+vmm: setup
+vmm: mapfb
+vmm: enable
+Boot: Mod Video
+Boot: igpu blit soft (need surf)
+Boot: Logo
+Boot: Mod Cpu
+Boot: IOAPIC Base=0x00000000FEC00000 maxredir=0x00000018 gsi0=0x00000000 iso=0x00000005
+Boot: COM1 after Cpu
+Boot: IOAPIC Route GSI=0x00000004 vec=0x00000043 dest=0x00000000 edge high
+Boot: COM1 Ready
+Boot: fpu island ok
+Boot: Mod Driver
+Boot: Device Enumerate Done
+Boot: Driver Register OK
+Boot: igpu blit soft (need surf)
+Boot: AHCI Drives=2
+Boot: Driver Block Probe Done
+Boot: Mod Smp
+Boot: ACPI Power Ready
+Smp: MADT CPUs=0x00000001 bsp_apic=0x00000000
+Smp: APs Started=0x00000000 hellos=0x00000000
+Boot: Mod USB
+Boot: Input Probe (USB Then PS/2)
+Boot: XHCI-HID Keyboard
+Boot: XHCI-HID Mouse (Abs)
+Boot: XHCI IRQ=MSI (Dual)
+Boot: PS2-AUX Mouse (Stream)
+Boot: PS2-KBD Keyboard (Set2)
+Boot: Input Backend Ready
+Boot: Mod Scheduler
+Boot: Mod Console
+Boot: Mod FileSystem
+block: drive 00000000 ready
+block: drive 00000001 ready
+FS: FAT LBA 0000003f
+Fs: Vol A Letter=0x00000041 Drive=0x00000000 Lba=0x0000003F
+FS: FAT LBA 0000003f
+Fs: Vol BLOCKS Letter=0x00000042 Drive=0x00000001 Lba=0x0000003F
+Fs: Vol RES (Resfs)
+Fs: Mounted 3 volume(s), default=BLOCKS
+Fs: msc/1 skip (OS volume mounted, no BootDiskGuid)
+Fs: msc/2 boot-claim skipped
+Fs: Ready

@@ -1,14 +1,15 @@
-# Blocks 诞生史（单文档 · 本机对话编年）
+# Blocks 诞生史（单文档 · 对话编年）
 
-整理日：2026-10-26。范围：当前这台电脑（主机名 Box）上能读到的 Cursor agent 对话全文抽问。
-另一台电脑的对话尚未并入；按「另一台机-对话采集清单」打包回来后可续写本文件同一结构。
+整理日：2026-10-26；采集清单并入：2026-10-27。范围：本机（主机名 Box）Cursor agent 对话全文抽问。
+另一台电脑**尚未去采**（用户仍在本机）；「另一台机对话采集清单」全文已按时间写入文末文档段，换机打包进 `_inbox` 后再按时间插入会话编年。
 体例：按会话时间排列；每条含「发问 / 处置要点 / 是否通过」。处置要点由后续口令与现象推断，不是逐字粘贴 Agent 全文（全文在本地 jsonl，体积过大）。
-无外链。不占路线图 ★。
+无外链（采集清单正文在本文件内）。不占路线图 ★。
 
 ## 总览
 
-- 收录会话数：16
-- 收录发问条数：2801
+- 收录会话数：16（本机）；另一台待 `_inbox`
+- 收录发问条数：2801（本机抽问至 2026-10-26 诞生史收口；其后主会话续问未全量重抽）
+- 文末文档段：另一台机对话采集清单（2026-10-26，按时间排在收口之后）
 - 主线压缩：双机接续能跑 → FAT/桌面 → Blocks 分层名 → NUC 键鼠 → OpenBox 迁入并去 Toy → Pi/Duo。
 - 暗号：JX=做下一刀不擅自提交；TG=已验证只 commit；TS=只 push。
 
@@ -22468,56 +22469,282 @@ Briefly inform the user about the task result and perform any follow-up actions 
 
 ### 2796. 发问
 
-' in line or '\"role\":\"user\"' in line or '\"role\": \"user\"' in line:\n is_user = True\n \n if is_user and text.strip():\n n_user += 1\n if first_user is None:\n # strip tags\n t0 = text\n if '<user_query>' in t0:\n t0 = t0.split('<user_query>',1)[1].split('
+\n1.这个历史我想写成单文档的，无链接，需要把我的每次发问和怎么解决的，有没有通过都写进去；2.NUC回归失败，执行run user 输出顺序是...+done+Hello from Ring3!，顺序不对，另外二次执行run user，鼠标卡死，短按电源键不关机\n
 
-处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
+处置：诞生史改成单文档「发问 / 处置 / 是否通过」体例（本文件）；NUC 侧查 `run user` 输出顺序与二次 CoopReturn/Present 卡鼠、电源轮询。
 
-是否通过：过程中（无明确验收句）
+是否通过：过程中（诞生史体例已定；NUC 项后续多轮回归）
 
 ### 2797. 发问
 
-' not in line and '\"role\":\"user\"' not in line and '\"role\": \"user\"' not in line:\n continue\n try:\n o=json.loads(line)\n except: continue\n # extract\n text=''\n raw=line\n if '<user_query>' in raw:\n text=raw.split('<user_query>',1)[1].split('
+\n另外Video修改无回归，QEMU和NUC真机测试都正常\n
 
-处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
+处置：记录 Video 热切相关改动无回归；不回滚。
 
-是否通过：过程中（无明确验收句）
+是否通过：通过（用户确认 QEMU/NUC 正常）
 
 ### 2798. 发问
 
-' not in line: continue\n n+=1\n t=line.split('<user_query>',1)[1].split('
+\nnuc回归仍未过，run user输出顺序对了，但二次执行后短按电源和鼠标仍卡死\n
 
-处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
+处置：继续查二次 `run user` 后输入/电源路径（非仅输出顺序）。
 
-是否通过：过程中（无明确验收句）
+是否通过：未通过（用户报仍卡）
 
 ### 2799. 发问
 
-` | 长会话全文；家↔公司接力的主战场 |\n| Cursor `conversation-search.db` | **201** 条索引（多数无标题/正文为空） | 有过更多短会话；**不能**当全文档案 |\n| [`协作历程日志.md`](协作历程日志.md) | 已归纳 ~426 条指令（至 09-10） | ToyOS 产品化主线（FAT→GUI→JX/TG→NUC） |\n| git（本仓） | OpenBox 骨架 → 迁入 ToyOS → 去 Toy 品牌 → Pi/Duo | 改名与板级里程碑的硬时间戳 |\n\n**调不到的**：另一台电脑上未同步进本机/`agent-transcripts` 的 Cursor 对话；被压缩/删除的早期家用会话原文。 \n若要把「双机全量」补齐：在另一台打开同仓库 → 把对应 `agent-transcripts/<uuid>/` 拷过来或再开一刀「续篇」。\n\n本机可核对的 **超长主会话**（按时间）：\n\n| 时段 | 会话 id（可在 Cursor transcript 里搜） | 工作区 | 开场原话压缩 |\n| --- | --- | --- | --- |\n| ~09 初～中 | [`397ee6c6…`](…) / 同源副本 [`f46e94a1…`](…) | edk2 / ToyKernel | 「家里写了很多，办公室怎么继续？Image/Boot 没同步」 |\n| ~09-16 | [`0395365c…`](…) | ToyKernel | 应用开发指南 / SDK 包 |\n| ~09 末～10 初 | [`572318f9…`](…) | edk2 | 设备管理器阶段 4；Store/鼠卡；NUC；「TS，我要在另一个台式机开发了」 |\n| ~10-12 起 | [`c94f1c7e…`](…) | **Blocks** | 「看原则与学习记录」→ 迁文档 → **系统改名 Blocks** → Pi/Duo |\n\n---\n\n## 1. 一句话起源\n\nBlocks 不是某一天从零画出的新 OS。它是：\n\n1. 课堂向的 **ToyOS**（UEFI + FAT + 教学桌面 + 用户态），在双机 Cursor 里用 **JX/TG** 磨出来； \n2. 2026-10-07 起用 **OpenBox** 单仓骨架接住 Boot/Kernel/Runtime； \n3. 2026-10-12 **把现网 ToyOS 整树迁入**，再系统性地 **去掉 …(截断)
+\nAgent 全文（全文在本地 jsonl，体积过大，意思是从第一天安装cursor的记录都在吗？详细的也有？\n
 
-处置：双机/介质同步：fetch、刷盘或对照同步说明。
+处置：说明本机 jsonl 仅覆盖本机仍留存的父会话，不是装 Cursor 起的云端全集；另一台须按采集清单打包回来。
 
-是否通过：过程中（无明确验收句）
+是否通过：过程中（说明完成）
 
 ### 2800. 发问
 
 \n你写一个文档，我去另一台电脑把历史也调出来，就能拼齐了\n
 
-处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
+处置：写就「另一台机·Cursor 对话采集清单」（步骤、本机已有 uuid、打包脚本、回执模板）；约定拷回 `_inbox` 后再并入本诞生史。全文见下文「文档 · 另一台机对话采集清单」。
 
-是否通过：过程中（无明确验收句）
+是否通过：通过（清单已落盘并入本文件）
 
 ### 2801. 发问
 
-[^<]*' \"$f\" 2>/dev/null \\\n | head -1 | sed 's/<user_query>//' | tr '\\n\\t' ' ' | cut -c1-120)\n printf '%s\\t%s\\t%s\\t%s\\t%s\\n' \"$mt\" \"$proj\" \"$uuid\" \"$sz\" \"$snip\"\n done | sort >> \"$OUT\"\n\necho \"Wrote $OUT\"\nwc -l \"$OUT\"\n```\n\n### 2.4 打包全文（必交）\n\n只打包**父会话** jsonl（可含同目录 compaction，若有）：\n\n```bash\nDEST=\"$HOME/Blocks-peer-chats-$(hostname)-$(date +%Y%m%d)\"\nmkdir -p \"$DEST/agent-transcripts\" \"$DEST/meta\"\n\n# 索引\ncp -a \"$HOME/peer-transcripts-index.tsv\" \"$DEST/meta/\" 2>/dev/null || true\nhostname > \"$DEST/meta/MACHINE.txt\"\nwhoami >> \"$DEST/meta/MACHINE.txt\"\ndate -Iseconds >> \"$DEST/meta/MACHINE.txt\"\n\n# 按项目拷贝（保持相对路径，便于合并）\nfind \"$HOME/.cursor/projects\" -type d -name 'agent-transcripts' 2>/dev/null | while read -r d; do\n proj=$(echo \"$d\" | sed -n 's|.*/projects/\\([^/]*\\)/agent-transcripts|\\1|p')\n mkdir -p \"$DEST/agent-transcripts/$proj\"\n # 每个 uuid 目录整夹拷（含 jsonl；subagents 可选，体积大可删）\n find \"$d\" -mindepth 1 -maxdepth 1 -type d | while read -r sess; do\n cp -a \"$sess\" \"$DEST/agent-transcripts/$proj/\"\n done\ndone\n\n# 可选：对话搜索库 …(截断)
+\nnuc回归失败，二次鼠标和短按问题仍在，我是在进桌面立即开始输入，此时网络都没初始化好，是否从这个角度切入？问题现象跟之前一样\n
 
-处置：按当轮需求改代码或文档；以用户下一条肯定/否定为准。
+处置：按用户假设排查开机早期输入与网初始化竞态；与二次 `run user` 卡鼠并列查证。
 
-是否通过：过程中（无明确验收句）
+是否通过：过程中（无本段内验收句）
+
+---
+
+## 文档 · 另一台机对话采集清单（2026-10-26）
+
+> 时间位置：紧接上节「写一个文档…拼齐」发问之后。本机标签：主机名 Box · 用户 tank · 采录日 2026-10-26。  
+> **状态（写本段时）**：清单已并入诞生史；**另一台原文包尚未放入** `Archive/项目/_inbox/`，故下文「会话编年」仍仅本机。带回后按同一「发问 / 处置 / 是否通过」体例、**按会话本地修改时间插入对应时间段**，不另开第二份诞生史。
+
+# 另一台机 · Cursor 对话采集清单
+
+> **目的**：本机已整理半份 `Blocks诞生史.md`；你到**另一台电脑**按本文把历史捞出来，拷回后即可拼齐双机诞生史。  
+> **本机标签**（已采）：主机名 `Box` · 用户 `tank` · 采录日 2026-10-26。  
+> **不要**：在另一台机改诞生史正文；只**采集并打包**，带回本机（或 U 盘）再开刀合并。
+
+---
+
+## 1. 本机已经有什么（另一台可跳过重复）
+
+下列会话 id 在本机 `agent-transcripts` 里**已有**（拷回来时若撞名可覆盖或跳过）：
+
+| 会话 id 前缀 | 工作区痕迹 | 备注 |
+| --- | --- | --- |
+| `397ee6c6` | edk2 | ToyOS 超长主会话（办公室接力开场） |
+| `f46e94a1` | ToyKernel | 与上高度同源副本 |
+| `0395365c` | ToyKernel | 应用开发指南 |
+| `572318f9` | edk2 | 设备管理器 / Store / NUC |
+| `c94f1c7e` | Blocks | 改名 Blocks → Pi/Duo（当前长会话） |
+| `1032df5d` | Blocks | 短诊断会话 |
+
+本机相关目录：
+
+```text
+~/.cursor/projects/home-tank-Blocks/agent-transcripts/
+~/.cursor/projects/home-tank-tanlaoshi-edk2/agent-transcripts/
+~/.cursor/projects/home-tank-tanlaoshi-edk2-ToyKernel/agent-transcripts/
+~/.config/Cursor/User/globalStorage/conversation-search.db
+```
+
+**你要找的**：另一台独有的会话（尤其是**家里先写、尚未在办公室开过的早期**，以及文件名/工作区路径不同的 project 目录）。
+
+---
+
+## 2. 在另一台机上做（约 10～20 分钟）
+
+### 2.1 记下机器身份
+
+在终端执行，把输出粘进下面的「回执」或单独存 `MACHINE.txt`：
+
+```bash
+hostname
+whoami
+date -Iseconds
+echo "HOME=$HOME"
+```
+
+### 2.2 列出所有 Cursor 对话目录
+
+Linux / WSL（路径按实际用户改；macOS 多为 `~/Library/Application Support/Cursor/...`，见 §2.5）：
+
+```bash
+find "$HOME/.cursor/projects" -type d -name 'agent-transcripts' 2>/dev/null
+```
+
+对每个找到的目录，列出会话文件夹（父会话 = 一层 uuid 目录，**不要**只拷 `subagents/`）：
+
+```bash
+# 例：把 PATH 换成上一步某一条
+TRANS="$HOME/.cursor/projects/<某个项目>/agent-transcripts"
+find "$TRANS" -mindepth 1 -maxdepth 1 -type d ! -name subagents | sort
+```
+
+### 2.3 生成「会话清单」（必交）
+
+在另一台执行下面脚本，生成 `peer-transcripts-index.tsv`（带回）：
+
+```bash
+OUT="$HOME/peer-transcripts-index.tsv"
+echo -e "mtime\tproject\tuuid\tsize_bytes\tfirst_user_snip" > "$OUT"
+
+find "$HOME/.cursor/projects" -path '*/agent-transcripts/*/*.jsonl' 2>/dev/null \
+  | grep -v '/subagents/' \
+  | while read -r f; do
+      proj=$(echo "$f" | sed -n 's|.*/projects/\([^/]*\)/agent-transcripts/.*|\1|p')
+      uuid=$(basename "$(dirname "$f")")
+      mt=$(date -d "@$(stat -c %Y "$f")" '+%Y-%m-%d %H:%M' 2>/dev/null \
+           || date -r "$(stat -f %m "$f")" '+%Y-%m-%d %H:%M')
+      sz=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f")
+      snip=$(grep -m1 -o '<user_query>[^<]*' "$f" 2>/dev/null \
+             | head -1 | sed 's/<user_query>//' | tr '\n\t' ' ' | cut -c1-120)
+      printf '%s\t%s\t%s\t%s\t%s\n' "$mt" "$proj" "$uuid" "$sz" "$snip"
+    done | sort >> "$OUT"
+
+echo "Wrote $OUT"
+wc -l "$OUT"
+```
+
+### 2.4 打包全文（必交）
+
+只打包**父会话** jsonl（可含同目录 compaction，若有）：
+
+```bash
+DEST="$HOME/Blocks-peer-chats-$(hostname)-$(date +%Y%m%d)"
+mkdir -p "$DEST/agent-transcripts" "$DEST/meta"
+
+# 索引
+cp -a "$HOME/peer-transcripts-index.tsv" "$DEST/meta/" 2>/dev/null || true
+hostname > "$DEST/meta/MACHINE.txt"
+whoami >> "$DEST/meta/MACHINE.txt"
+date -Iseconds >> "$DEST/meta/MACHINE.txt"
+
+# 按项目拷贝（保持相对路径，便于合并）
+find "$HOME/.cursor/projects" -type d -name 'agent-transcripts' 2>/dev/null | while read -r d; do
+  proj=$(echo "$d" | sed -n 's|.*/projects/\([^/]*\)/agent-transcripts|\1|p')
+  mkdir -p "$DEST/agent-transcripts/$proj"
+  # 每个 uuid 目录整夹拷（含 jsonl；subagents 可选，体积大可删）
+  find "$d" -mindepth 1 -maxdepth 1 -type d | while read -r sess; do
+    cp -a "$sess" "$DEST/agent-transcripts/$proj/"
+  done
+done
+
+# 可选：对话搜索库（索引用，非全文）
+if [ -f "$HOME/.config/Cursor/User/globalStorage/conversation-search.db" ]; then
+  cp -a "$HOME/.config/Cursor/User/globalStorage/conversation-search.db" \
+        "$DEST/meta/conversation-search.db"
+fi
+
+tar -C "$HOME" -czf "$DEST.tar.gz" "$(basename "$DEST")"
+ls -lh "$DEST.tar.gz"
+echo "打包完成: $DEST.tar.gz"
+```
+
+### 2.5 macOS Cursor 路径（若另一台是 Mac）
+
+```text
+~/Library/Application Support/Cursor/User/globalStorage/conversation-search.db
+# agent-transcripts 仍常见于：
+~/.cursor/projects/*/agent-transcripts/
+```
+
+若 `~/.cursor/projects` 不存在，再搜：
+
+```bash
+find "$HOME/Library/Application Support/Cursor" -type d -name 'agent-transcripts' 2>/dev/null
+find "$HOME" -type d -name 'agent-transcripts' 2>/dev/null | head -40
+```
+
+把找到的根路径代入 §2.3 / §2.4 即可。
+
+### 2.6 Windows（若 Cursor 装在原生 Windows）
+
+常见：
+
+```text
+%USERPROFILE%\.cursor\projects\*\agent-transcripts\
+%APPDATA%\Cursor\User\globalStorage\conversation-search.db
+```
+
+用 Git Bash / WSL 跑 §2.3–2.4 最省事。
+
+---
+
+## 3. 带回本机后放哪
+
+推荐（本机）：
+
+```text
+/home/tank/Blocks/Archive/项目/_inbox/peer-chats-<hostname>/
+```
+
+或把 `*.tar.gz` 丢进：
+
+```text
+Archive/项目/_inbox/
+```
+
+然后在 Cursor 说一句：**「另一台对话已放到 _inbox，拼齐诞生史」**。
+
+合并时 Agent 会：
+
+1. 对照本清单 §1 去重；  
+2. 按 `Blocks诞生史.md` 同一体例（发问 / 处置 / 是否通过）**追加进同一文件**（不另开第二份、不写外链）；  
+3. 文首注明双机已齐。
+
+`_inbox/` 建议 **不进 git**（体积大、含本地路径）；诞生史正文再 TG。
+
+---
+
+## 4. 回执模板（另一台填完可粘聊天）
+
+```text
+【另一台对话回执】
+主机名：
+用户名：
+系统：Linux / macOS / Windows+WSL
+打包文件：Blocks-peer-chats-….tar.gz （大小：）
+会话条数（index 行数 − 1）：
+最早 mtime：
+最晚 mtime：
+与本机撞名的 uuid（可选）：
+特别想保留的早期话题（可选一句话）：
+已拷到：U盘 / 网盘 / 本机 _inbox
+```
+
+---
+
+## 5. 优先捞什么（时间不够时）
+
+1. **体积最大的几条** `.jsonl`（通常 >5MB）——主战场。  
+2. 工作区名含 `Toy` / `edk2` / `Blocks` / `OpenBox` / `Kernel` 的 project。  
+3. mtime 在 **2026-08～09** 的会话（本机诞生史对「家里先写」覆盖最薄）。  
+4. `conversation-search.db`（有则拷；没有也行）。
+
+短会话、纯 IDE 杂项可后补。
+
+---
+
+## 6. 隐私与体积
+
+- 对话里可能有本机绝对路径、串口日志、局域网 IP；打包仅你自己流转即可。  
+- `subagents/` 可删再打 tar，通常不影响诞生史。  
+- 勿把整包 `git add` 进 Blocks 主仓；只合并进诞生史文档。
+
+---
+
+*与 `Blocks诞生史.md` 配套；采齐后开合并刀，勿在另一台直接改诞生史正文。*
 
 ---
 
 ## 文末说明
 
-本文件共编号发问 2801 条，全部来自本机 Cursor agent-transcripts（已跳过与主会话高度重复的 ToyKernel 副本 f46e94a1）。
+本文件编号发问至 2801 条（Blocks 主会话此后仍有续问，未在本轮全量重抽）；主体来自本机 Cursor agent-transcripts（已跳过与主会话高度重复的 ToyKernel 副本 f46e94a1）。
+「文档 · 另一台机对话采集清单」已按时间排在 2026-10-26 诞生史收口之后；**不是**另一台对话正文。
 若某条「是否通过」标为过程中，表示对话里没有紧随的 TG/通过/仍报错等强信号，需对照当时 git 或真机记忆。
-拼齐另一台后：把新会话按同样「### 编号. 发问」格式追加到对应时间段，不要开第二份诞生史。
+拼齐另一台后：把新会话按同样「### 编号. 发问」格式**按时间插入**对应时段，并更新文首「双机已齐」与总览计数。

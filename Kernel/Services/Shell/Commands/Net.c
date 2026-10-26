@@ -20,7 +20,7 @@ static void CommandNet(int Argc, char **Argv) {
     (void)Argc;
     (void)Argv;
     if (!HalNetReady()) {
-        gConsole.Write("Net: not available (no virtio-net)\n");
+        gConsole.Write("Net: not available (no NIC)\n");
         return;
     }
     NetConfigEnsure();

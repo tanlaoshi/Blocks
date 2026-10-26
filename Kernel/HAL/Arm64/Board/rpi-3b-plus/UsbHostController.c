@@ -7,9 +7,13 @@
  */
 #include "UsbHostController.h"
 #include "Board.h"
+#include "BoardConfig.h"
 #include "Hal.h"
 #include "SerialLog.h"
 #include "DriverInput.h"
+#if !BOARD_IS_VIRT
+#include "Ethernet.h"
+#endif
 
 #define DWC2_DMA_BUF_SIZE  512u
 #define DWC2_CTRL_RETRY    8u
@@ -481,6 +485,15 @@ static void XferTargetSplit(UINT8 Hub, UINT8 Port, int Low, UINT16 Ep0Mps) {
     gXferEp0Mps = Ep0Mps ? Ep0Mps : (Low ? 8u : 64u);
 }
 
+/* HS 设备在 HS hub 后：无 TT/SPLIT */
+static void XferTargetHs(UINT8 Hub, UINT8 Port, UINT16 Ep0Mps) {
+    gXferDoSplit = 0;
+    gXferLowSpeed = 0;
+    gXferHub = Hub;
+    gXferPort = Port;
+    gXferEp0Mps = Ep0Mps ? Ep0Mps : 64u;
+}
+
 static int ControlMsg(UINT8 DevAddr, UsbSetup *Setup, void *Data, int Len) {
     UINT8 Pid;
     int Ret;
@@ -548,6 +561,42 @@ static int ControlMsg(UINT8 DevAddr, UsbSetup *Setup, void *Data, int Len) {
         return -1;
     }
     return Act;
+}
+
+void BoardDwc2SelectDevice(UINT8 Hub, UINT8 Port, int LowSpeed) {
+    if (LowSpeed) {
+        XferTargetSplit(Hub, Port, 1, gXferEp0Mps);
+    } else {
+        XferTargetHs(Hub, Port, gXferEp0Mps);
+    }
+}
+
+int BoardDwc2Control(UINT8 Addr, UINT8 BmRequestType, UINT8 BRequest,
+                     UINT16 WValue, UINT16 WIndex, void *Data, int Len) {
+    UsbSetup Setup;
+
+    Setup.BmRequestType = BmRequestType;
+    Setup.BRequest = BRequest;
+    Setup.WValue = WValue;
+    Setup.WIndex = WIndex;
+    Setup.WLength = (UINT16)(Len > 0 ? Len : 0);
+    return ControlMsg(Addr, &Setup, Data, Len);
+}
+
+int BoardDwc2Bulk(UINT8 Addr, UINT8 Ep, int In, void *Data, int Len, UINT16 Mps,
+                  UINT8 *Toggle) {
+    UINT8 Pid;
+    int Ret;
+
+    if (!Toggle || Mps == 0) {
+        return -1;
+    }
+    Pid = *Toggle;
+    Ret = ChunkMsg(Addr, Ep, DWC2_HCCHAR_EPTYPE_BULK, In, &Pid, Data, Len, Mps);
+    if (Ret >= 0) {
+        *Toggle = Pid;
+    }
+    return Ret;
 }
 
 static int HubGetPortStatus(UINT8 Hub, UINT8 Port, UINT16 *St, UINT16 *Ch) {
@@ -1216,6 +1265,143 @@ static const INPUT_BACKEND gInputBackend = {
  * 多轮扫口；已绑成功的口不再 reset（免弄死鼠）。
  */
 static UINT8 gPortDone; /* bit P：本口已成功 Enum 过 */
+static int gEthAttached;
+
+#if !BOARD_IS_VIRT
+/*
+ * rnet-2：HS 口上 LAN9514 以太网功能（0424:ec00）。无 SPLIT。
+ * 端点：配置描述符扫 bulk；缺省 IN=1 OUT=2 MPS=512（U-Boot 常见）。
+ */
+static int EnumEthOnPort(UINT8 Hub, UINT8 Port) {
+    UsbSetup Setup;
+    UINT8 Dev[18];
+    UINT8 Cfg[128];
+    UINT16 Vid;
+    UINT16 Pid;
+    UINT16 Ep0 = 64;
+    UINT8 Addr;
+    UINT8 EpIn = 1;
+    UINT8 EpOut = 2;
+    UINT16 Mps = 512;
+    int Ret;
+    int HaveIn = 0;
+    int HaveOut = 0;
+    UINT32 i;
+
+    if (gEthAttached) {
+        return 0;
+    }
+    XferTargetHs(Hub, Port, Ep0);
+    Setup.BmRequestType = 0x80;
+    Setup.BRequest = 6;
+    Setup.WValue = 0x0100;
+    Setup.WIndex = 0;
+    Setup.WLength = 8;
+    Ret = ControlMsg(0, &Setup, Dev, 8);
+    if (Ret < 8) {
+        HalSerialBootMark("Boot: DWC2 ETH getdesc8 fail\n");
+        return -1;
+    }
+    Ep0 = Dev[7] ? (UINT16)Dev[7] : 64u;
+    gXferEp0Mps = Ep0;
+    Setup.WLength = 18;
+    Ret = ControlMsg(0, &Setup, Dev, 18);
+    if (Ret < 18) {
+        HalSerialBootMark("Boot: DWC2 ETH getdesc18 fail\n");
+        return -1;
+    }
+    Vid = (UINT16)(Dev[8] | ((UINT16)Dev[9] << 8));
+    Pid = (UINT16)(Dev[10] | ((UINT16)Dev[11] << 8));
+    HalSerialBootMark("Boot: DWC2 ETH vid=");
+    Hex16(Vid);
+    HalSerialBootMark(" pid=");
+    Hex16(Pid);
+    HalSerialBootMark("\n");
+    if (Vid != 0x0424u || Pid != 0xec00u) {
+        return 0; /* 非 smsc 网口 */
+    }
+
+    Addr = gNextAddr++;
+    if (gNextAddr > 100) {
+        gNextAddr = 2;
+    }
+    Setup.BmRequestType = 0x00;
+    Setup.BRequest = 5;
+    Setup.WValue = Addr;
+    Setup.WIndex = 0;
+    Setup.WLength = 0;
+    if (ControlMsg(0, &Setup, 0, 0) < 0) {
+        HalSerialBootMark("Boot: DWC2 ETH SET_ADDR fail\n");
+        return -1;
+    }
+    DelayMilliseconds(2);
+    XferTargetHs(Hub, Port, Ep0);
+
+    Setup.BmRequestType = 0x80;
+    Setup.BRequest = 6;
+    Setup.WValue = 0x0200;
+    Setup.WIndex = 0;
+    Setup.WLength = 9;
+    Ret = ControlMsg(Addr, &Setup, Cfg, 9);
+    if (Ret >= 4) {
+        UINT16 Total = (UINT16)(Cfg[2] | ((UINT16)Cfg[3] << 8));
+        if (Total > sizeof(Cfg)) {
+            Total = (UINT16)sizeof(Cfg);
+        }
+        if (Total > 9) {
+            Setup.WLength = Total;
+            Ret = ControlMsg(Addr, &Setup, Cfg, (int)Total);
+        }
+        if (Ret >= 9) {
+            for (i = 0; i + 1u < (UINT32)Ret; ) {
+                UINT8 Len = Cfg[i];
+                UINT8 Type = Cfg[i + 1u];
+                if (Len < 2) {
+                    break;
+                }
+                if (Type == 0x05u && Len >= 7u) { /* endpoint */
+                    UINT8 AddrEp = Cfg[i + 2u];
+                    UINT8 Attr = Cfg[i + 3u];
+                    UINT16 Eps = (UINT16)(Cfg[i + 4u] | ((UINT16)Cfg[i + 5u] << 8));
+                    if ((Attr & 0x03u) == 0x02u) { /* bulk */
+                        if (AddrEp & 0x80u) {
+                            EpIn = AddrEp & 0x7Fu;
+                            Mps = Eps ? Eps : Mps;
+                            HaveIn = 1;
+                        } else {
+                            EpOut = AddrEp & 0x7Fu;
+                            if (Eps) {
+                                Mps = Eps;
+                            }
+                            HaveOut = 1;
+                        }
+                    }
+                }
+                i += Len;
+            }
+        }
+    }
+    if (!HaveIn || !HaveOut) {
+        HalSerialBootMark("Boot: DWC2 ETH eps default in=1 out=2\n");
+    }
+
+    Setup.BmRequestType = 0x00;
+    Setup.BRequest = 9;
+    Setup.WValue = 1;
+    Setup.WIndex = 0;
+    Setup.WLength = 0;
+    if (ControlMsg(Addr, &Setup, 0, 0) < 0) {
+        HalSerialBootMark("Boot: DWC2 ETH SET_CFG fail\n");
+        return -1;
+    }
+    DelayMilliseconds(10);
+    if (BoardEthernetUsbAttach(Addr, Hub, Port, EpIn, EpOut, Mps) != 0) {
+        return -1;
+    }
+    gEthAttached = 1;
+    return 1;
+}
+#endif
 
 static void HubScanPortsOnce(UINT8 Hub, UINT8 NPorts, UINT8 Pass) {
     UINT8 P;
@@ -1257,8 +1443,15 @@ static void HubScanPortsOnce(UINT8 Hub, UINT8 NPorts, UINT8 Pass) {
         HalSerialBootMark(" rst=");
         Hex16(St);
         if ((St & HUB_STAT_HIGH_SPEED) != 0) {
-            HalSerialBootMark(" HS (skip HID)\n");
-            gPortDone |= (UINT8)(1u << P); /* 网口等：勿每轮再 reset */
+            HalSerialBootMark(" HS\n");
+#if !BOARD_IS_VIRT
+            DelayMilliseconds(50);
+            if (!gEthAttached) {
+                (void)EnumEthOnPort(Hub, P);
+            }
+#endif
+            gPortDone |= (UINT8)(1u << P); /* HS：勿每轮再 reset（网口/非 HID） */
+            XferTargetHub();
             continue;
         }
         HalSerialBootMark(St & HUB_STAT_LOW_SPEED ? " LS\n" : " FS\n");

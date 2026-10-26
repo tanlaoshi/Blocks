@@ -166,15 +166,21 @@ void WorkerTask(void) {
         StoreUiEnsureOpenLoad();
         (void)LocaleDbFlushStep();
         /*
-         * PR-UI-ttf-3：zh 目录分片预热（每圈 1 条）。不 continue：
-         * 与 iwl/DHCP 同圈交替，勿挡 Gui/鼠标。
+         * cjk-3 / 鼠优先：光标已露且指针刚动过 → 本圈跳过 Preheat/WantDrain
+         *（FT/stb 栅格会饿 xHCI）。闲时再泵；不 continue，后面网/iwl 仍走。
          */
-        if (LocaleTtfPreheatStep()) {
-            SchedulerIoBreath();
-        }
-        /* 屏上缺字：每圈多抽几个，加快点阵→TTF */
-        if (FontTtfWantDrain(16u) != 0) {
-            SchedulerIoBreath();
+        if (!(GuiCursorUsbReady() && !GuiPointerIdleForMs(400u))) {
+            /*
+             * PR-UI-ttf-3：zh 目录分片预热（每圈 1 条）。不 continue：
+             * 与 iwl/DHCP 同圈交替，勿挡 Gui/鼠标。
+             */
+            if (LocaleTtfPreheatStep()) {
+                SchedulerIoBreath();
+            }
+            /* 屏上 defer：每圈少抽几个；有 HIT 则 BumpPaint → 闲时合成 */
+            if (FontTtfWantDrain(GuiCursorUsbReady() ? 8u : 16u) != 0) {
+                SchedulerIoBreath();
+            }
         }
         /*
          * boot-net-defer / PR-BOOT-fast-3：桌面后先 Probe 有线，再 Claim iwl。

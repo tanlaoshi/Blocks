@@ -375,12 +375,14 @@ void DesktopTickClock(void) {
     }
 
     /*
-     * defer→TTF：Worker Want 只灌缓存。空闲时勿 RequestRefresh——
-     * 会 ComposeBusy 丢弃鼠动 + 与 PresentCursor 抢双缓冲（空拖一直顿、留印）。
-     * 标签在下次菜单/钟栏/点桌面等自然重画时出矢量（禁点阵顶中文）。
+     * cjk-3：指针已闲才合成。WantDrain/Preheat 灌 HIT 后 BumpPaint；
+     * 此处 RequestRefresh 补 defer 空白。忙时上面已 return，勿与鼠抢。
      */
     if (FontTtfTakePaint()) {
         FontTtfAckPaint();
+        sClockBarNeedPaint = 1;
+        DesktopMarkTaskbar();
+        RequestRefresh();
     }
 
     NeedPaint = sClockBarNeedPaint;

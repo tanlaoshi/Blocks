@@ -68,21 +68,20 @@ void FontFtClearLastAdvance(void);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* HIT 槽步进；未命中 0。拉丁约为 Side/2，汉字 Side */
 UINT32 FontTtfCacheAdvance(UINT32 Cp);
-/* 1=已栅格失败（真缺字）；可回落 cjk32 */
+/* 1=已栅格失败（真缺字）；绘制层走 U+FFFD/tofu，禁点阵顶中文 */
 int FontTtfCacheMissed(UINT32 Cp);
-/* 不在点阵里：x86 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
+/* 已排队等栅格则 1。队列满或已确认没有字形则 0。 */
 int FontTtfCachePending(UINT32 Cp);
-/* PR-UI-ttf-3：仅 Worker / 开窗短 burst；绘制路径 FontTtfCacheGet 只 Lookup */
+/* PR-UI-ttf-3：Preheat 可同步；WantDrain 仅 Worker（Gui 路径勿大 burst） */
 void FontTtfPreheatUtf8(const char *S);
 /* Worker：泵绘制路径排队的缺字；1=仍有排队 */
 int FontTtfWantStep(void);
-/* 开窗前/Worker：一次抽干最多 Max 个 Want（0→32） */
+/* Worker：一次抽干最多 Max 个 Want（0→32）；有抽则 BumpPaint */
 UINT32 FontTtfWantDrain(UINT32 Max);
-/* 自上次调用以来有新的 TTF 字形进缓存则 1。给界面把点阵补位换成真字。 */
 /* 1=有新 HIT 待合成；Ack 前可反复查。合成后 Ack。 */
 int FontTtfTakePaint(void);
 void FontTtfAckPaint(void);
-/* 预热整批结束后喊一声，Gui 再合成一次 */
+/* WantDrain/预热整批后喊一声；Gui 闲时 RequestRefresh */
 void FontTtfBumpPaint(void);
 /*
  * PR-S-app-font：按路径加载 TOYF 到专用应用槽（覆盖上次私有字）。

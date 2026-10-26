@@ -3,6 +3,7 @@
  * PR-GUI-l2-font：1bpp 邻接覆盖做灰度边，不换字形格式。
  */
 #include "Private.h"
+#include "SerialLog.h"
 
 static int gGlyphSmooth;
 
@@ -433,9 +434,16 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
     PaintGlyph(X, Y, Glyph, Width, Height, Bpr, ScaleX, ScaleY, OffY, Color);
 }
 
-/* PR-UI-cjk：缺字空心框，边长跟当前行里的汉字一样 */
-static void VideoDrawMissingGlyphBox(UINT32 X, UINT32 Y, UINT32 Color) {
-    UINT32 Native = FontCjkDim();
+/*
+ * cjk-3 缺字策略（明示，禁静默装过关）：
+ * 1) 优先画已缓存的 U+FFFD（替换符）；未 HIT 则排队 Want
+ * 2) 否则 TTF 格大小的空心框 + 对角线 tofu（肉眼可辨「缺」）
+ * 3) 首次缺字打一条 Boot 日志（带码点）
+ */
+#define FONT_REPL_CP 0xFFFDu
+
+static void VideoDrawMissingGlyphTofu(UINT32 X, UINT32 Y, UINT32 Color) {
+    UINT32 Native = FontTtfPixel();
     UINT32 W;
     UINT32 H;
     UINT32 OffY;
@@ -443,7 +451,15 @@ static void VideoDrawMissingGlyphBox(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 Col;
     UINT32 Row;
     UINT32 Dy;
+    UINT32 i;
+    UINT32 Lim;
 
+    if (Native == 0u) {
+        Native = FontCjkDim();
+    }
+    if (Native == 0u) {
+        Native = 16u;
+    }
     FontGlyphBox(Native, Native, &W, &H);
     CellH = FontCellH();
     OffY = 0;
@@ -463,6 +479,39 @@ static void VideoDrawMissingGlyphBox(UINT32 X, UINT32 Y, UINT32 Color) {
             VideoDrawPixel(X + W - 1, Dy, Color);
         }
     }
+    /* 对角线：与空心框区分，勿被当成正常字 */
+    Lim = (W < H) ? W : H;
+    for (i = 0; i < Lim; i++) {
+        VideoDrawPixel(X + i, Y + OffY + i, Color);
+        if (H > 0 && W > 0) {
+            VideoDrawPixel(X + i, Y + OffY + (H - 1u - i), Color);
+        }
+    }
+}
+
+static void VideoDrawMissingGlyphBox(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
+    UINT32 W;
+    UINT32 H;
+    const UINT8 *G;
+    static int sMissLogged;
+
+    if (Cp != FONT_REPL_CP) {
+        G = FontTtfCacheGet(FONT_REPL_CP, &W, &H);
+        if (G) {
+            VideoDrawBitmapAt(X, Y, G, W, H, Color, 8u);
+            return;
+        }
+        if (FontTtfReady()) {
+            (void)FontTtfCachePending(FONT_REPL_CP);
+        }
+    }
+    if (!sMissLogged) {
+        sMissLogged = 1;
+        LogBoot("Font: missing glyph → tofu/U+FFFD cp=\n");
+        LogBootHex32(Cp);
+        LogBoot("\n");
+    }
+    VideoDrawMissingGlyphTofu(X, Y, Color);
 }
 
 void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
@@ -480,7 +529,7 @@ void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color) {
             VideoDrawCharAt(X, Y, (char)Cp, Color);
             return;
         }
-        VideoDrawMissingGlyphBox(X, Y, Color);
+        VideoDrawMissingGlyphBox(X, Y, Cp, Color);
         return;
     }
     if (Cp < 128u && FontGlyphCpBpp() == 1u) {

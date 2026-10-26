@@ -508,6 +508,14 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         }
 
         Glyph = stbtt_FindGlyphIndex(Info, (int)Cp);
+        /*
+         * cjk-3：glyph 0 = 字体无此码（常映 .notdef）。勿当 HIT 灌空白装过关；
+         * 交 Cache MISS → 绘制层明示缺字（U+FFFD / 斜线 tofu）。
+         */
+        if (Glyph == 0) {
+            HalFpuEnd();
+            return -1;
+        }
 
         /* UI 汉字：2× 过采样 → 箱滤；失败 → 1× */
         OsW = CellW * TTF_OS;

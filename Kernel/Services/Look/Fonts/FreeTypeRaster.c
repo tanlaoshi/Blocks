@@ -115,6 +115,14 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     return -1;
   }
   /*
+   * cjk-3：无 cmap 项勿 Load 成 .notdef 当 HIT（静默空白/框装过关）。
+   * mono ASCII 缺字仍失败返回，由 Terminus 软退。
+   */
+  if (FT_Get_Char_Index(Face, (FT_ULong)Cp) == 0) {
+    HalFpuEnd();
+    return -1;
+  }
+  /*
    * font-freetype-hint：
    * - 汉字（UMing）：TARGET_NORMAL（笔画更实；LIGHT 偏瘦）
    * - mono（DejaVu）：native TT + TARGET_LIGHT（近 Windows 屏显；禁 FORCE_AUTOHINT）

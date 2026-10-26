@@ -297,7 +297,7 @@ int FontTtfWantStep(void) {
             gWant[w] = gWant[w + 1];
         }
     }
-    /* NotifyPaint=0：勿 bump gen → TickClock 空闲 Compose；屏上点阵等自然重画 */
+    /* NotifyPaint=0：整批 WantDrain 末尾统一 BumpPaint */
     FillSlot(Cp, 0);
     return gWantN > 0 ? 1 : 0;
 }
@@ -311,6 +311,10 @@ UINT32 FontTtfWantDrain(UINT32 Max) {
     while (N < Max && gWantN > 0) {
         (void)FontTtfWantStep();
         N++;
+    }
+    /* cjk-3：本批灌进 HIT 后喊一声，Gui 闲时合成补 defer 空白 */
+    if (N > 0u) {
+        FontTtfBumpPaint();
     }
     return N;
 }

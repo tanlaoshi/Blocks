@@ -162,7 +162,7 @@ void SettingsUiOpen(void) {
             FontTtfPreheatUtf8(CatLabel((SETTINGS_CAT)Ci));
         }
     }
-    (void)FontTtfWantDrain(64u);
+    /* cjk-3：勿在 Gui 开窗路径 WantDrain(64) 栅格饿鼠；交 Worker 泵 */
     PaintMenu();
     DebugWrite("settings: three-pane open\n");
 }

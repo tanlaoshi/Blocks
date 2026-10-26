@@ -32,7 +32,11 @@ void HalDriverRegister(void) {
 #else
     {
         void BoardSdRegister(void);
+        int BoardEthProbe(void);
+
         BoardSdRegister();
+        /* net-1：MAC 探针（串口身份）；勿 BOARD_HAS_NET / 勿挂 VirtioNet */
+        (void)BoardEthProbe();
     }
 #endif
 }

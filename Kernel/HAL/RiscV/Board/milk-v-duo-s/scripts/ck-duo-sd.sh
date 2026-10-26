@@ -100,6 +100,17 @@ if [ ! -f "$ELF" ]; then
   exit 1
 fi
 
+# 防误刷：Build/HAL/RiscV 被 BOARD=virt 覆盖后上电会卡在 Starting kernel …
+STAMP="$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/.toy_board"
+if [ -f "$STAMP" ]; then
+  _Board="$(tr -d '\n' <"$STAMP" || true)"
+  if [ "$_Board" != "milk-v-duo-s" ]; then
+    echo "error: .toy_board='$_Board'（不是 milk-v-duo-s）→ 先: build riscv BOARD=milk-v-duo-s" >&2
+    exit 1
+  fi
+fi
+unset _Board
+
 echo "ck-duo-sd: ELF=$ELF  wait≤${WAIT_SEC}s  blocks_only=$BLOCKS_ONLY"
 
 BootMnt=""

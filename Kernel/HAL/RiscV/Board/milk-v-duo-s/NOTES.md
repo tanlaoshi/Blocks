@@ -33,6 +33,17 @@
 - 根口可直连 boot 键；hub 路径同 Pi SPLIT。串口壳 `HalInputPoll`+`HalKeyboardDequeue`。  
 - 手测：键须插 **Type-A**（冷启前插好更稳）；看 `Boot: Duo USB` / `DWC2 … kbd`。
 
+## 以太网 MAC（duo-net · net-1）
+
+- DTB：`ethernet@4070000` · `compatible = "cvitek,ethernet"` · `phy-mode = "rmii"`（`scripts/duo.dtb`）。  
+- MMIO：**`0x04070000`**，窗 `0x10000`。  
+- 身份：mainline `snps,dwmac-3.70a` → **`GMAC_VERSION @ +0x20`**；亦兼容 EQOS `@+0x110`（U-Boot `dwc_eth_qos`）。串口打 `ver20`/`ver110`。  
+- 时钟：clkgen **`0x03002000`** · EN_0 **bit25/26**；DIV `@0x08C`（en bit8、div[19:16]）；BYP0 bit9。  
+- 复位：TOP **`0x03003000` bit12** 仅 **OR 释放**（不拉低脉冲）。  
+- 板内 PHY：`0x03009000` — **net-2**。  
+- **真机（2026-10-26）**：`ver20=00001037` · `ver110=0` · `mac0=00008000` → **3.70a@0x20**（非 EQOS）。`clken0` 读全 F 仍可读 MAC（门控或假读；以 VERSION 为准）。  
+- 验收：`Boot: Duo ETH id=3.70a@20 ver=…`。`BOARD_HAS_NET=0`。刷卡前 `.toy_board=milk-v-duo-s`。
+
 ## µSD（duo-block）
 
 - 控制器：`sdhci0` / `sophgo,cv1800b-dwcmshc` @ **`0x04310000`**（上游 `cv18xx.dtsi`）。PIO 读 CMD17 / 写 CMD24。  

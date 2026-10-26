@@ -47,7 +47,8 @@
 - **真机 net-2（2026-10-26）**：`phy=1 id=00435649` · `bmcr=3100` · `bmsr=79ed` · `adv=01e1` · `lpa=cde1` · `aneg=1` · **`link=up`**。  
 - **net-3**：DMA **normal** 描述符（`dmafeat=420d5925` → ENHDESSEL=0）；MAC `LM` 环回；`HalDcacheCleanInvalidateRange`。测完关 LM、停 DMA。仍 **`BOARD_HAS_NET=0`**。  
 - **真机 net-3（2026-10-26）**：`enh=0 normal` · **`DMA tx=ok`** · **`rx=ok len=00000044`**（64+FCS）。  
-- **net-4**：`BOARD_HAS_NET=1`；`BoardEthernetRegister` → Probe/Bind → `DriverNetAttach`；LM 自检后关 LM **常驻** DMA；`HalNetInitialize` = `DriverProbeClass(NET)`（**不** `VirtioNetRegister`）。**ConsoleOnly 无 Worker**：`gModulesVirt` 含 Network，模块里直接 `HalNetInitialize`（桌面仍 defer 到 Worker）。串口 `Duo ETH probe`…`DMA wire` / `ETH bind`；壳 `net` 见 mac/ip/link。Ping/ARP → net-5。  
+- **net-4**：`BOARD_HAS_NET=1`；`BoardEthernetRegister` → Probe/Bind → `DriverNetAttach`；LM 自检后关 LM **常驻** DMA；`HalNetInitialize` = `DriverProbeClass(NET)`（**不** `VirtioNetRegister`）。**ConsoleOnly 无 Worker**：`gModulesVirt` 含 Network，模块里直接 `HalNetInitialize`（桌面仍 defer 到 Worker）。串口 `Duo ETH probe`…`DMA wire` / `ETH bind`；壳 `net` 见 mac/ip/link。  
+- **net-5**：ARP 缓存 + ICMP echo（对齐 Virtio Arp/Protocol）；默认 IP `HAL_NET_IP_DEFAULT`（`10.0.2.15`）— 局域网请 `setip`；壳 `ping <ip>`。无 lwIP/DHCP（RiscV 无端口）。  
 - 刷卡前 `.toy_board=milk-v-duo-s`。
 
 ## µSD（duo-block）

@@ -7,6 +7,8 @@
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
     ShellCommandsSystemRegisterVirtMin();
+    /* Duo 等 ConsoleOnly：有网无桌面，须 net/setip/ping（否则 unknown: setip） */
+    ShellCommandsNetRegister();
 }
 
 void ShellCommandsRegister(void) {

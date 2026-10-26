@@ -4,6 +4,7 @@
 #include "Console.h"
 #include "ConsolePrivate.h"
 #include "Hal.h"
+#include "HalDevices.h"
 #include "HIDKeyboard.h"
 #include "ShellCommands.h"
 
@@ -92,6 +93,8 @@ static void SerialRun(void) {
     for (;;) {
         HalCpuHalt();
         HalInputPoll();
+        /* ConsoleOnly 无 Worker：串口壳泵网，ARP/ICMP 才能在空闲收 */
+        HalNetPoll();
         {
             int n = 0;
             while (HalSerialDataReady() && n < 256) {

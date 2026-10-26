@@ -139,12 +139,20 @@ static void CommandPing(int Argc, char **Argv) {
         return;
     }
 #else
-    if (HalNetPing(Argv[1], 3000) == 0) {
-        gConsole.Write("reply from ");
-        gConsole.Write(Argv[1]);
-        gConsole.Write("\n");
-    } else {
-        gConsole.Write("no reply\n");
+    {
+        int Rc = HalNetPing(Argv[1], 3000);
+
+        if (Rc == 0) {
+            gConsole.Write("reply from ");
+            gConsole.Write(Argv[1]);
+            gConsole.Write("\n");
+        } else if (Rc == -1) {
+            gConsole.Write("arp fail / bad host\n");
+        } else if (Rc == -2) {
+            gConsole.Write("tx fail\n");
+        } else {
+            gConsole.Write("no reply\n");
+        }
     }
 #endif
 }

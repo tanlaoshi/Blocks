@@ -8,6 +8,7 @@
  */
 #include "Ethernet.h"
 #include "Board.h"
+#include "Compiler.h"
 #include "Driver.h"
 #include "DriverNet.h"
 #include "Hal.h"
@@ -44,6 +45,32 @@ static UINT32 gTransmitDone;
 static UINT32 gReceiveFrames;
 static int gLwIpReceive;
 
+/* net-5：ARP / ICMP（对齐 Virtio Net Protocol·Arp） */
+#define ETHERNET_ETH_HEADER_LENGTH       14u
+#define ETHERNET_IP_HEADER_LENGTH        20u
+#define ETHERNET_ICMP_HEADER_LENGTH      8u
+#define ETHERNET_ETH_TYPE_ARP            0x0806u
+#define ETHERNET_ETH_TYPE_IP             0x0800u
+#define ETHERNET_ARP_OPERATION_REQUEST   1u
+#define ETHERNET_ARP_OPERATION_REPLY     2u
+#define ETHERNET_IP_PROTOCOL_ICMP        1u
+#define ETHERNET_ICMP_ECHO_REQUEST       8u
+#define ETHERNET_ICMP_ECHO_REPLY         0u
+#define ETHERNET_ARP_CACHE_SIZE          4u
+#define ETHERNET_PING_PAYLOAD_LENGTH     32u
+
+typedef struct {
+    UINT32 Ip;
+    UINT8 Mac[6];
+    int Valid;
+} EthernetArpEntry;
+
+static EthernetArpEntry gArpCache[ETHERNET_ARP_CACHE_SIZE];
+static int gPingWait;
+static UINT32 gPingTarget;
+static UINT16 gPingId = 0x4F53u;
+static UINT16 gPingSequence;
+
 static void MemoryCopy(void *Destination, const void *Source, UINTN Length) {
     UINT8 *Out = (UINT8 *)Destination;
     const UINT8 *In = (const UINT8 *)Source;
@@ -53,6 +80,70 @@ static void MemoryCopy(void *Destination, const void *Source, UINTN Length) {
         Out[Index] = In[Index];
     }
 }
+
+static void MemorySet(void *Destination, UINT8 Value, UINTN Length) {
+    UINT8 *Out = (UINT8 *)Destination;
+    UINTN Index;
+
+    for (Index = 0; Index < Length; Index++) {
+        Out[Index] = Value;
+    }
+}
+
+static UINT16 ByteSwap16(UINT16 Value) {
+    return (UINT16)((Value << 8) | (Value >> 8));
+}
+
+static UINT32 ByteSwap32(UINT32 Value) {
+    return ((Value & 0x000000FFu) << 24) | ((Value & 0x0000FF00u) << 8) |
+           ((Value & 0x00FF0000u) >> 8) | ((Value & 0xFF000000u) >> 24);
+}
+
+static UINT16 EthernetChecksum(const void *Data, UINTN Length);
+static int EthernetSendFrame(const UINT8 *Frame, UINTN FrameLength);
+static void EthernetPoll(void);
+static int EthernetParseIp(const char *Text, UINT32 *Ip);
+static int EthernetReady(void);
+static int DmaStartWire(void);
+
+typedef struct {
+    UINT8 Destination[6];
+    UINT8 Source[6];
+    UINT16 EtherType;
+} BLOCKS_PACKED EthernetEthHeader;
+
+typedef struct {
+    UINT16 HardwareType;
+    UINT16 ProtocolType;
+    UINT8 HardwareLength;
+    UINT8 ProtocolLength;
+    UINT16 Operation;
+    UINT8 SenderMac[6];
+    UINT32 SenderIp;
+    UINT8 TargetMac[6];
+    UINT32 TargetIp;
+} BLOCKS_PACKED EthernetArpPacket;
+
+typedef struct {
+    UINT8 VersionIhl;
+    UINT8 TypeOfService;
+    UINT16 TotalLength;
+    UINT16 Identification;
+    UINT16 Fragment;
+    UINT8 TimeToLive;
+    UINT8 Protocol;
+    UINT16 Checksum;
+    UINT32 Source;
+    UINT32 Destination;
+} BLOCKS_PACKED EthernetIpHeader;
+
+typedef struct {
+    UINT8 Type;
+    UINT8 Code;
+    UINT16 Checksum;
+    UINT16 Id;
+    UINT16 Sequence;
+} BLOCKS_PACKED EthernetIcmpHeader;
 
 static volatile UINT32 *Register(UINT64 Address) {
     return (volatile UINT32 *)(UINTN)Address;
@@ -679,22 +770,115 @@ static int DmaProbe(void) {
     MarkHex("Boot: Duo ETH DMA rx=ok len=", FrameLength);
     HalSerialBootMark("\n");
 
-    /* 关 LM，重挂 RX，DMA 常驻（net-4 收发包槽） */
-    MacConfig = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG);
-    MacConfig &= ~DUO_ETHERNET_MAC_LOOPBACK;
+    /*
+     * LM 后整环重拉线缆模式（对表 U-Boot designware_eth_init）：
+     * 停 TE/RE→DMA 复位→环→按 PHY LPA 写 MAC→开 SF/Flush→TE/RE。
+     * 只清 LM 位不够：协商速度/双工与环回残留会让线缆收发静默失败。
+     */
+    return DmaStartWire();
+}
+
+static void MacAdjustFromPhy(void) {
+    UINT16 Partner = 0;
+    UINT32 MacConfig;
+    int FullDuplex = 1;
+    int Speed100 = 1;
+
+    if (gPhyOk &&
+        MiiRead(gPhyAddress, DUO_PHY_LINK_PARTNER_ABILITY, &Partner) == 0) {
+        if ((Partner & DUO_PHY_ADVERTISE_100_FULL) != 0) {
+            Speed100 = 1;
+            FullDuplex = 1;
+        } else if ((Partner & DUO_PHY_ADVERTISE_100_HALF) != 0) {
+            Speed100 = 1;
+            FullDuplex = 0;
+        } else if ((Partner & DUO_PHY_ADVERTISE_10_FULL) != 0) {
+            Speed100 = 0;
+            FullDuplex = 1;
+        } else if ((Partner & DUO_PHY_ADVERTISE_10_HALF) != 0) {
+            Speed100 = 0;
+            FullDuplex = 0;
+        }
+    }
+
+    MacConfig = DUO_ETHERNET_MAC_PORT_SELECT_MII | DUO_ETHERNET_MAC_FRAME_BURST |
+                DUO_ETHERNET_MAC_DISABLE_RECEIVE_OWN;
+    if (Speed100) {
+        MacConfig |= DUO_ETHERNET_MAC_SPEED_100;
+    }
+    if (FullDuplex) {
+        MacConfig |= DUO_ETHERNET_MAC_DUPLEX;
+    }
+    MacConfig |= DUO_ETHERNET_MAC_TRANSMITTER_ENABLE |
+                 DUO_ETHERNET_MAC_RECEIVER_ENABLE;
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG) = MacConfig;
+    MarkHex("Boot: Duo ETH mac=", MacConfig);
+    HalSerialBootMark(Speed100 ? " 100" : " 10");
+    HalSerialBootMark(FullDuplex ? "/FD\n" : "/HD\n");
+}
+
+static int DmaStartWire(void) {
+    UINT32 Index;
+    UINT32 Feature;
+    UINT32 BusMode;
+    UINT32 Operation;
+    UINT32 Status;
+
+    HalSerialBootMark("Boot: Duo ETH DMA wire\n");
+
+    /* 停 MAC / DMA */
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG) = 0u;
+    Operation = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE);
+    Operation &= ~(DUO_ETHERNET_DMA_START_TRANSMIT |
+                   DUO_ETHERNET_DMA_START_RECEIVE);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+
+    Feature = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_HARDWARE_FEATURE);
+    if ((Feature & DUO_ETHERNET_DMA_FEATURE_ENHANCED_DESCRIPTOR) != 0u) {
+        return -1;
+    }
+    if (DmaSoftwareReset() != 0) {
+        HalSerialBootMark("Boot: Duo ETH DMA wire reset fail\n");
+        return -1;
+    }
+
+    BusMode = (8u << DUO_ETHERNET_DMA_PBL_SHIFT);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_BUS_MODE) = BusMode;
+
     for (Index = 0; Index < DUO_ETHERNET_DMA_RING_COUNT; Index++) {
         DmaRearmReceive(Index);
         gTransmitDescriptor[Index].Descriptor0 = 0u;
-        gTransmitDescriptor[Index].Descriptor1 = 0u;
-        if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
-            gTransmitDescriptor[Index].Descriptor1 =
-                DUO_ETHERNET_TRANSMIT_END_RING;
-        }
+        gTransmitDescriptor[Index].Descriptor1 =
+            (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT)
+                ? DUO_ETHERNET_TRANSMIT_END_RING
+                : 0u;
         gTransmitDescriptor[Index].Descriptor2 = 0u;
         gTransmitDescriptor[Index].Descriptor3 = 0u;
     }
     DmaCacheSync(gTransmitDescriptor, sizeof(gTransmitDescriptor));
+    DmaCacheSync(gReceiveDescriptor, sizeof(gReceiveDescriptor));
+
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_LIST_BASE) =
+        (UINT32)(UINTN)&gReceiveDescriptor[0];
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_TRANSMIT_LIST_BASE) =
+        (UINT32)(UINTN)&gTransmitDescriptor[0];
+
+    DmaProgramMacAddress();
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_FRAME_FILTER) =
+        DUO_ETHERNET_FRAME_FILTER_PROMISCUOUS;
+
+    Operation = DUO_ETHERNET_DMA_TRANSMIT_STORE_FORWARD |
+                DUO_ETHERNET_DMA_RECEIVE_STORE_FORWARD |
+                DUO_ETHERNET_DMA_OPERATE_SECOND_FRAME |
+                DUO_ETHERNET_DMA_FLUSH_TRANSMIT_FIFO;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+    Operation |= DUO_ETHERNET_DMA_START_TRANSMIT |
+                 DUO_ETHERNET_DMA_START_RECEIVE;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_INTERRUPT_ENABLE) = 0u;
+
+    MacAdjustFromPhy();
+
     gTransmitIndex = 0u;
     gReceiveIndex = 0u;
     gTransmitDone = 0u;
@@ -703,7 +887,7 @@ static int DmaProbe(void) {
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS) = Status;
     *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_POLL) = 1u;
     gDmaOk = 1;
-    HalSerialBootMark("Boot: Duo ETH DMA wire\n");
+    HalSerialBootMark("Boot: Duo ETH DMA wire ready\n");
     return 0;
 }
 
@@ -751,6 +935,203 @@ static int EthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
     return 0;
 }
 
+static int ArpLookup(UINT32 Ip, UINT8 Mac[6]) {
+    UINT32 Index;
+
+    for (Index = 0; Index < ETHERNET_ARP_CACHE_SIZE; Index++) {
+        if (gArpCache[Index].Valid && gArpCache[Index].Ip == Ip) {
+            MemoryCopy(Mac, gArpCache[Index].Mac, 6);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void ArpLearn(UINT32 Ip, const UINT8 Mac[6]) {
+    UINT32 Index;
+    UINT32 Slot = 0;
+
+    for (Index = 0; Index < ETHERNET_ARP_CACHE_SIZE; Index++) {
+        if (gArpCache[Index].Valid && gArpCache[Index].Ip == Ip) {
+            MemoryCopy(gArpCache[Index].Mac, Mac, 6);
+            return;
+        }
+        if (!gArpCache[Index].Valid) {
+            Slot = Index;
+            break;
+        }
+        Slot = Index;
+    }
+    gArpCache[Slot].Ip = Ip;
+    MemoryCopy(gArpCache[Slot].Mac, Mac, 6);
+    gArpCache[Slot].Valid = 1;
+}
+
+static void EthernetSendArpRequest(UINT32 TargetIp) {
+    UINT8 Frame[ETHERNET_ETH_HEADER_LENGTH + sizeof(EthernetArpPacket)];
+    EthernetEthHeader *Eth = (EthernetEthHeader *)Frame;
+    EthernetArpPacket *Arp =
+        (EthernetArpPacket *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+
+    MemorySet(Frame, 0, sizeof(Frame));
+    MemorySet(Eth->Destination, 0xFF, 6);
+    MemoryCopy(Eth->Source, gMac, 6);
+    Eth->EtherType = ByteSwap16(ETHERNET_ETH_TYPE_ARP);
+    Arp->HardwareType = ByteSwap16(1);
+    Arp->ProtocolType = ByteSwap16(ETHERNET_ETH_TYPE_IP);
+    Arp->HardwareLength = 6;
+    Arp->ProtocolLength = 4;
+    Arp->Operation = ByteSwap16(ETHERNET_ARP_OPERATION_REQUEST);
+    MemoryCopy(Arp->SenderMac, gMac, 6);
+    Arp->SenderIp = ByteSwap32(gIp);
+    MemorySet(Arp->TargetMac, 0, 6);
+    Arp->TargetIp = ByteSwap32(TargetIp);
+    (void)EthernetSendFrame(Frame, sizeof(Frame));
+}
+
+static void EthernetHandleArp(const EthernetArpPacket *Arp) {
+    UINT16 Operation = ByteSwap16(Arp->Operation);
+    UINT32 SenderIp = ByteSwap32(Arp->SenderIp);
+
+    if (Operation == ETHERNET_ARP_OPERATION_REPLY ||
+        Operation == ETHERNET_ARP_OPERATION_REQUEST) {
+        ArpLearn(SenderIp, Arp->SenderMac);
+    }
+    if (Operation == ETHERNET_ARP_OPERATION_REQUEST &&
+        ByteSwap32(Arp->TargetIp) == gIp) {
+        UINT8 Frame[ETHERNET_ETH_HEADER_LENGTH + sizeof(EthernetArpPacket)];
+        EthernetEthHeader *Eth = (EthernetEthHeader *)Frame;
+        EthernetArpPacket *Reply =
+            (EthernetArpPacket *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+
+        MemorySet(Frame, 0, sizeof(Frame));
+        MemoryCopy(Eth->Destination, Arp->SenderMac, 6);
+        MemoryCopy(Eth->Source, gMac, 6);
+        Eth->EtherType = ByteSwap16(ETHERNET_ETH_TYPE_ARP);
+        Reply->HardwareType = ByteSwap16(1);
+        Reply->ProtocolType = ByteSwap16(ETHERNET_ETH_TYPE_IP);
+        Reply->HardwareLength = 6;
+        Reply->ProtocolLength = 4;
+        Reply->Operation = ByteSwap16(ETHERNET_ARP_OPERATION_REPLY);
+        MemoryCopy(Reply->SenderMac, gMac, 6);
+        Reply->SenderIp = ByteSwap32(gIp);
+        MemoryCopy(Reply->TargetMac, Arp->SenderMac, 6);
+        Reply->TargetIp = Arp->SenderIp;
+        (void)EthernetSendFrame(Frame, sizeof(Frame));
+    }
+}
+
+static void EthernetHandleIcmp(const EthernetIpHeader *Ip, const UINT8 *Payload,
+                               UINTN PayloadLength, const UINT8 *SourceMac) {
+    const EthernetIcmpHeader *Icmp;
+    UINT32 SourceIp;
+
+    if (PayloadLength < ETHERNET_ICMP_HEADER_LENGTH) {
+        return;
+    }
+    Icmp = (const EthernetIcmpHeader *)Payload;
+    SourceIp = ByteSwap32(Ip->Source);
+    if (Icmp->Type == ETHERNET_ICMP_ECHO_REPLY) {
+        if (gPingWait && SourceIp == gPingTarget &&
+            ByteSwap16(Icmp->Id) == gPingId) {
+            gPingWait = 0;
+        }
+        return;
+    }
+    if (Icmp->Type == ETHERNET_ICMP_ECHO_REQUEST &&
+        ByteSwap32(Ip->Destination) == gIp && SourceMac != 0) {
+        UINT8 Frame[ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH +
+                     1500u];
+        EthernetEthHeader *Eth = (EthernetEthHeader *)Frame;
+        EthernetIpHeader *OutIp =
+            (EthernetIpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+        EthernetIcmpHeader *OutIcmp =
+            (EthernetIcmpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH +
+                                   ETHERNET_IP_HEADER_LENGTH);
+        UINT16 Total = (UINT16)(ETHERNET_IP_HEADER_LENGTH + PayloadLength);
+        UINT16 Sum;
+
+        if (PayloadLength >
+            sizeof(Frame) - ETHERNET_ETH_HEADER_LENGTH -
+                ETHERNET_IP_HEADER_LENGTH) {
+            return;
+        }
+        MemorySet(Frame, 0, sizeof(Frame));
+        MemoryCopy(Eth->Destination, SourceMac, 6);
+        MemoryCopy(Eth->Source, gMac, 6);
+        Eth->EtherType = ByteSwap16(ETHERNET_ETH_TYPE_IP);
+        OutIp->VersionIhl = 0x45u;
+        OutIp->TimeToLive = 64u;
+        OutIp->Protocol = ETHERNET_IP_PROTOCOL_ICMP;
+        OutIp->Source = ByteSwap32(gIp);
+        OutIp->Destination = Ip->Source;
+        OutIp->TotalLength = ByteSwap16(Total);
+        OutIp->Identification = ByteSwap16(0x4F53u);
+        OutIp->Checksum = 0;
+        Sum = EthernetChecksum(OutIp, ETHERNET_IP_HEADER_LENGTH);
+        OutIp->Checksum = ByteSwap16(Sum);
+        MemoryCopy(OutIcmp, Payload, PayloadLength);
+        OutIcmp->Type = ETHERNET_ICMP_ECHO_REPLY;
+        OutIcmp->Checksum = 0;
+        Sum = EthernetChecksum(OutIcmp, PayloadLength);
+        OutIcmp->Checksum = ByteSwap16(Sum);
+        (void)EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
+    }
+}
+
+static void EthernetHandleFrame(const UINT8 *Frame, UINTN FrameLength) {
+    const EthernetEthHeader *Eth;
+    UINT16 EtherType;
+
+    if (Frame == 0 || FrameLength < ETHERNET_ETH_HEADER_LENGTH) {
+        return;
+    }
+    /* dwmac 描述符长度常含 FCS；剥 4 再解析 */
+    if (FrameLength >= ETHERNET_ETH_HEADER_LENGTH + 4u) {
+        FrameLength -= 4u;
+    }
+    Eth = (const EthernetEthHeader *)Frame;
+    EtherType = ByteSwap16(Eth->EtherType);
+    if (EtherType == ETHERNET_ETH_TYPE_ARP) {
+        if (FrameLength >=
+            ETHERNET_ETH_HEADER_LENGTH + sizeof(EthernetArpPacket)) {
+            EthernetHandleArp(
+                (const EthernetArpPacket *)(Frame + ETHERNET_ETH_HEADER_LENGTH));
+        }
+        return;
+    }
+    if (EtherType == ETHERNET_ETH_TYPE_IP) {
+        const EthernetIpHeader *Ip;
+        UINT16 Total;
+        UINTN HeaderLength;
+        UINTN PayloadLength;
+
+        if (FrameLength <
+            ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH) {
+            return;
+        }
+        Ip = (const EthernetIpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+        HeaderLength = (UINTN)(Ip->VersionIhl & 0x0Fu) * 4u;
+        if (HeaderLength < ETHERNET_IP_HEADER_LENGTH) {
+            return;
+        }
+        Total = ByteSwap16(Ip->TotalLength);
+        if (Total < HeaderLength) {
+            return;
+        }
+        PayloadLength = (UINTN)Total - HeaderLength;
+        if (ETHERNET_ETH_HEADER_LENGTH + HeaderLength + PayloadLength >
+            FrameLength) {
+            return;
+        }
+        if (Ip->Protocol == ETHERNET_IP_PROTOCOL_ICMP) {
+            EthernetHandleIcmp(Ip,
+                               Frame + ETHERNET_ETH_HEADER_LENGTH + HeaderLength,
+                               PayloadLength, Eth->Source);
+        }
+    }
+}
+
 static void EthernetPoll(void) {
     UINT32 Index;
     UINT32 Guard;
@@ -776,8 +1157,9 @@ static void EthernetPoll(void) {
         }
     }
     for (Guard = 0; Guard < DUO_ETHERNET_DMA_RING_COUNT; Guard++) {
-        UINT32 Index = gReceiveIndex;
-        volatile EthernetDmaDescriptor *Descriptor = &gReceiveDescriptor[Index];
+        UINT32 ReceiveIndex = gReceiveIndex;
+        volatile EthernetDmaDescriptor *Descriptor =
+            &gReceiveDescriptor[ReceiveIndex];
         UINT32 Descriptor0;
         UINT32 FrameLength;
 
@@ -791,16 +1173,32 @@ static void EthernetPoll(void) {
                       DUO_ETHERNET_RECEIVE_DESCRIPTOR_FRAME_LENGTH_MASK;
         if ((Descriptor0 & DUO_ETHERNET_RECEIVE_DESCRIPTOR_ERROR_SUMMARY) ==
                 0u &&
-            FrameLength >= 14u) {
+            FrameLength >= ETHERNET_ETH_HEADER_LENGTH) {
             gReceiveFrames++;
-            DmaCacheSync(gReceiveBuffer[Index], FrameLength);
-            /* IP/ARP 处理留给 net-5；本刀只计帧并重挂槽 */
-            (void)gReceiveBuffer[Index];
+            DmaCacheSync(gReceiveBuffer[ReceiveIndex], FrameLength);
+            EthernetHandleFrame(gReceiveBuffer[ReceiveIndex], FrameLength);
         }
-        DmaRearmReceive(Index);
-        gReceiveIndex = (Index + 1u) % DUO_ETHERNET_DMA_RING_COUNT;
+        DmaRearmReceive(ReceiveIndex);
+        gReceiveIndex = (ReceiveIndex + 1u) % DUO_ETHERNET_DMA_RING_COUNT;
         *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_POLL) = 1u;
     }
+}
+
+static int EthernetResolve(UINT32 TargetIp, UINT8 Mac[6], int TimeoutMilliseconds) {
+    int Tries = TimeoutMilliseconds > 0 ? TimeoutMilliseconds / 10 : 100;
+
+    if (ArpLookup(TargetIp, Mac)) {
+        return 0;
+    }
+    EthernetSendArpRequest(TargetIp);
+    while (Tries-- > 0) {
+        EthernetPoll();
+        if (ArpLookup(TargetIp, Mac)) {
+            return 0;
+        }
+        HalCpuHalt();
+    }
+    return -1;
 }
 
 static int EthernetReady(void) {
@@ -895,61 +1293,119 @@ static void EthernetSetLwIpReceive(int Enable) {
 }
 
 /*
- * SendIp：L2 发包槽（广播 MAC 垫 IP；ARP/邻居在 net-5）。
- * Ping：槽位保留，会话在 net-5（本刀不空 stub Ready）。
+ * net-5：SendIp / Ping 经 ARP；对齐 Virtio Protocol.c。
  */
 static int EthernetSendIp(UINT32 DestinationIp, UINT8 Protocol,
                           const void *Payload, UINTN PayloadLength) {
-    UINT8 Frame[14u + 20u + 1400u];
-    UINT32 Index;
+    UINT8 DestinationMac[6];
+    UINT8 Frame[ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH + 1400u];
+    EthernetEthHeader *Eth;
+    EthernetIpHeader *Ip;
     UINT16 Total;
+    UINT16 Sum;
 
     if (!EthernetReady() || gLwIpReceive || Payload == 0 ||
         PayloadLength > 1400u) {
         return -1;
     }
-    Total = (UINT16)(20u + PayloadLength);
-    for (Index = 0; Index < sizeof(Frame); Index++) {
-        Frame[Index] = 0u;
+    if (EthernetResolve(DestinationIp, DestinationMac, 2000) != 0) {
+        return -2;
     }
-    for (Index = 0; Index < 6u; Index++) {
-        Frame[Index] = 0xFFu;
-    }
-    MemoryCopy(&Frame[6], gMac, 6);
-    Frame[12] = 0x08u;
-    Frame[13] = 0x00u;
-    Frame[14] = 0x45u;
-    Frame[16] = (UINT8)(Total >> 8);
-    Frame[17] = (UINT8)(Total & 0xFFu);
-    Frame[18] = 0x4Fu;
-    Frame[19] = 0x53u;
-    Frame[22] = 64u;
-    Frame[23] = Protocol;
-    Frame[26] = (UINT8)(gIp >> 24);
-    Frame[27] = (UINT8)(gIp >> 16);
-    Frame[28] = (UINT8)(gIp >> 8);
-    Frame[29] = (UINT8)(gIp);
-    Frame[30] = (UINT8)(DestinationIp >> 24);
-    Frame[31] = (UINT8)(DestinationIp >> 16);
-    Frame[32] = (UINT8)(DestinationIp >> 8);
-    Frame[33] = (UINT8)(DestinationIp);
-    {
-        UINT16 Sum = EthernetChecksum(&Frame[14], 20u);
-        Frame[24] = (UINT8)(Sum >> 8);
-        Frame[25] = (UINT8)(Sum & 0xFFu);
-    }
-    MemoryCopy(&Frame[34], Payload, PayloadLength);
-    return EthernetSendFrame(Frame, 14u + Total);
+    Total = (UINT16)(ETHERNET_IP_HEADER_LENGTH + PayloadLength);
+    MemorySet(Frame, 0, sizeof(Frame));
+    Eth = (EthernetEthHeader *)Frame;
+    MemoryCopy(Eth->Destination, DestinationMac, 6);
+    MemoryCopy(Eth->Source, gMac, 6);
+    Eth->EtherType = ByteSwap16(ETHERNET_ETH_TYPE_IP);
+    Ip = (EthernetIpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+    Ip->VersionIhl = 0x45u;
+    Ip->TimeToLive = 64u;
+    Ip->Protocol = Protocol;
+    Ip->Source = ByteSwap32(gIp);
+    Ip->Destination = ByteSwap32(DestinationIp);
+    Ip->TotalLength = ByteSwap16(Total);
+    Ip->Identification = ByteSwap16(0x4F53u);
+    Ip->Checksum = 0;
+    Sum = EthernetChecksum(Ip, ETHERNET_IP_HEADER_LENGTH);
+    Ip->Checksum = ByteSwap16(Sum);
+    MemoryCopy(Frame + ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH,
+               Payload, PayloadLength);
+    return EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total);
 }
 
 static int EthernetPing(const char *Host, int TimeoutMilliseconds) {
-    (void)Host;
-    (void)TimeoutMilliseconds;
+    UINT32 Target;
+    UINT8 DestinationMac[6];
+    UINT8 Frame[ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH +
+                ETHERNET_ICMP_HEADER_LENGTH + ETHERNET_PING_PAYLOAD_LENGTH];
+    EthernetEthHeader *Eth;
+    EthernetIpHeader *Ip;
+    EthernetIcmpHeader *Icmp;
+    UINT8 *Payload;
+    UINT16 Total;
+    UINT16 Sum;
+    int Tries;
+    UINTN Index;
+
     if (!EthernetReady() || gLwIpReceive) {
         return -1;
     }
-    /* net-5：ICMP echo + ARP */
-    return -1;
+    if (EthernetParseIp(Host, &Target) != 0) {
+        return -1;
+    }
+    if (EthernetResolve(Target, DestinationMac, TimeoutMilliseconds) != 0) {
+        return -1;
+    }
+    MemorySet(Frame, 0, sizeof(Frame));
+    Eth = (EthernetEthHeader *)Frame;
+    MemoryCopy(Eth->Destination, DestinationMac, 6);
+    MemoryCopy(Eth->Source, gMac, 6);
+    Eth->EtherType = ByteSwap16(ETHERNET_ETH_TYPE_IP);
+    Ip = (EthernetIpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH);
+    Ip->VersionIhl = 0x45u;
+    Ip->TimeToLive = 64u;
+    Ip->Protocol = ETHERNET_IP_PROTOCOL_ICMP;
+    Ip->Source = ByteSwap32(gIp);
+    Ip->Destination = ByteSwap32(Target);
+    Total = ETHERNET_IP_HEADER_LENGTH + ETHERNET_ICMP_HEADER_LENGTH +
+            ETHERNET_PING_PAYLOAD_LENGTH;
+    Ip->TotalLength = ByteSwap16(Total);
+    Ip->Identification = ByteSwap16(0x1234u);
+    Ip->Checksum = 0;
+    Sum = EthernetChecksum(Ip, ETHERNET_IP_HEADER_LENGTH);
+    Ip->Checksum = ByteSwap16(Sum);
+    Icmp = (EthernetIcmpHeader *)(Frame + ETHERNET_ETH_HEADER_LENGTH +
+                                  ETHERNET_IP_HEADER_LENGTH);
+    gPingSequence++;
+    Icmp->Type = ETHERNET_ICMP_ECHO_REQUEST;
+    Icmp->Code = 0;
+    Icmp->Id = ByteSwap16(gPingId);
+    Icmp->Sequence = ByteSwap16(gPingSequence);
+    Payload = Frame + ETHERNET_ETH_HEADER_LENGTH + ETHERNET_IP_HEADER_LENGTH +
+              ETHERNET_ICMP_HEADER_LENGTH;
+    for (Index = 0; Index < ETHERNET_PING_PAYLOAD_LENGTH; Index++) {
+        Payload[Index] = (UINT8)Index;
+    }
+    Icmp->Checksum = 0;
+    Sum = EthernetChecksum(Icmp, ETHERNET_ICMP_HEADER_LENGTH +
+                                     ETHERNET_PING_PAYLOAD_LENGTH);
+    Icmp->Checksum = ByteSwap16(Sum);
+    gPingTarget = Target;
+    gPingWait = 1;
+    if (EthernetSendFrame(Frame, ETHERNET_ETH_HEADER_LENGTH + Total) != 0) {
+        gPingWait = 0;
+        return -2;
+    }
+    Tries = TimeoutMilliseconds > 0 ? TimeoutMilliseconds / 10 : 300;
+    while (Tries-- > 0 && gPingWait) {
+        EthernetPoll();
+        HalCpuHalt();
+    }
+    if (gPingWait) {
+        gPingWait = 0;
+        return -3;
+    }
+    return 0;
 }
 
 static const NET_BACKEND gEthernetBackend = {

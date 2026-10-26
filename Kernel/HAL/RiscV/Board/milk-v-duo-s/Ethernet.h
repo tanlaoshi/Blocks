@@ -32,12 +32,15 @@
 /* GMAC Configuration（dwmac1000.h） */
 #define DUO_ETHERNET_MAC_TRANSMITTER_ENABLE   (1u << 3)
 #define DUO_ETHERNET_MAC_RECEIVER_ENABLE      (1u << 2)
+#define DUO_ETHERNET_MAC_DISABLE_RECEIVE_OWN  (1u << 13) /* U-Boot DISABLERXOWN */
 #define DUO_ETHERNET_MAC_DUPLEX               (1u << 11)
 #define DUO_ETHERNET_MAC_LOOPBACK             (1u << 12)
 #define DUO_ETHERNET_MAC_SPEED_100            (1u << 14)
 #define DUO_ETHERNET_MAC_PORT_SELECT_MII      (1u << 15)
+#define DUO_ETHERNET_MAC_FRAME_BURST          (1u << 21) /* U-Boot FRAMEBURSTENABLE */
 #define DUO_ETHERNET_FRAME_FILTER_PROMISCUOUS (1u << 0)
 #define DUO_ETHERNET_ADDRESS_ENABLE           (1u << 31)
+#define DUO_ETHERNET_DMA_FLUSH_TRANSMIT_FIFO  (1u << 20)
 
 /* DMA CSR（dwmac_dma.h；相对 MAC 基址） */
 #define DUO_ETHERNET_DMA_BUS_MODE             0x1000u

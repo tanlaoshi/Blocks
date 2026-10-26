@@ -162,14 +162,14 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     return -1;
   }
   /*
-   * font-freetype-hint：
-   * - 汉字（UMing）：TARGET_NORMAL（笔画更实；LIGHT 偏瘦）
-   * - mono（DejaVu）：native TT + TARGET_LIGHT（近 Windows 屏显；禁 FORCE_AUTOHINT）
+   * font-freetype-hint / cjk-5：
+   * - 汉字：TARGET_NORMAL（笔画更实；LIGHT 偏瘦）
+   * - mono / UI 拉丁：TARGET_LIGHT（近 Windows 灰度 AA；禁 FORCE_AUTOHINT）
    */
   {
     int Flags = FT_LOAD_RENDER;
 
-    if (Mono) {
+    if (Mono || Cp < 128u) {
       Flags |= FT_LOAD_TARGET_LIGHT;
     }
     Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
@@ -233,13 +233,14 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
         }
         V = Bm->buffer[Y * (UINT32)Bm->pitch + X];
         Pix[(UINT32)Dy * CellW + (UINT32)Dx] = V;
-        if (V >= (Mono ? 24u : 88u)) {
+        /* 拉丁/mono 用低阈值计墨；汉字仍 88（与 GlyphCrisp 一致） */
+        if (V >= ((Mono || Cp < 128u) ? 24u : 88u)) {
           Ink++;
         }
       }
     }
-    /* 空心 HIT 会步进却不画（设置「桌」丢字）；软退 stb */
-    if (Ink == 0u && (Bm->width == 0u || Bm->rows == 0u || Cp >= 128u)) {
+    /* 空心 HIT 会步进却不画；一律软退 stb（含 UI 拉丁） */
+    if (Ink == 0u) {
       HalFpuEnd();
       gFtLastAdv = 0;
       return -1;

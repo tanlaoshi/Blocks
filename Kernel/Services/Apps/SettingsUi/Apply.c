@@ -39,10 +39,10 @@ void ApplyFont(int Index) {
         return;
     }
     /*
-     * 切 UI TTF 会 DropCjkHits；若直接 Compose，汉字 defer 跳画 → 旧像素留着
+     * cjk-5：切脸丢全部 HIT（含拉丁）；若直接 Compose，defer 跳画 → 旧像素留着
      * 像「没刷新」。点选后同步预热可见串再 ThemeApply，屏上立刻换脸。
      */
-    FontTtfCacheDropCjkHits();
+    FontTtfCacheDropHits();
     LocaleTtfPreheatUi();
     for (i = 0; i < FontCount() && i < 16u; i++) {
         FontFaceLabel(i, Lab, (int)sizeof(Lab));

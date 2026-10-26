@@ -212,12 +212,12 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 }
 
 /*
- * gui-ttf-crisp：
+ * gui-ttf-crisp / cjk-5：
  * - 汉字：88 丢 / ≥148 实心（再粗一档；100/160 仍偏瘦）
- * - mono：保留灰阶（接近 Windows 灰度 AA）；硬切会比 ClearType 难看一截
+ * - mono / UI TTF 拉丁：保留灰阶（近 Windows 灰度 AA）；硬切会滤成空心框
  */
 static UINT8 GlyphCrispAlpha8(UINT8 N) {
-    if (FontTtfMonoActive()) {
+    if (FontTtfMonoActive() || FontGlyphCrispLatin()) {
         if (N < 24u) {
             return 0;
         }

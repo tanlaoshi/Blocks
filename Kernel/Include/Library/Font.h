@@ -46,6 +46,10 @@ const UINT8 *FontTtfUiBlob(UINT32 Slot, UINT32 *OutSize);
 UINT32 FontTtfUiCount(void);
 /* 当前选中的 UI TTF 槽（切 UMing/Droid 时改；Latin 项保持上次） */
 UINT32 FontTtfUiActiveSlot(void);
+/* 1=当前字体表项是 UI TTF（UMing/Droid）；ASCII 走同文件拉丁 */
+int FontUiTtfSelected(void);
+/* 1=最近一次 FontGlyphCp 交出的是 UI TTF 拉丁灰图（绘制用软 AA，勿汉字硬 crisp） */
+int FontGlyphCrispLatin(void);
 const UINT8 *FontTtfMonoBlob(UINT32 *OutSize);
 int FontTtfInit(void);
 int FontTtfMonoInit(void);
@@ -102,7 +106,7 @@ UINT32 FontCount(void);
 UINT32 FontCurrentId(void);
 const FONT_FACE *FontGetById(UINT32 Id);
 const FONT_FACE *FontGetCurrent(void);
-/* 当前用于 ASCII 点阵的 face（UI TTF 选中时软退 Terminus） */
+/* ASCII 点阵 face：UI TTF 选中时仍回 Terminus（软退/度量兜底）；真同脸走 FontGlyphCp→TTF */
 const FONT_FACE *FontGetLatinFace(void);
 /* 成功返回 0；Id 越界返回 -1 且保持当前字体 */
 int FontSetById(UINT32 Id);
@@ -120,7 +124,7 @@ const UINT8 *FontGlyph(char C);
  * 汉字 GUI 只走 FontGlyphCp→TTF；FontCjk32Lookup 仅遗留/工具，勿顶 UI 中文。
  */
 UINTN Utf8Decode(const char *S, UINT32 *OutCp);
-/* ASCII→Terminus；汉字只 TTF 缓存（未 HIT 则 Deferred；禁点阵顶中文） */
+/* UI TTF 选中：ASCII+汉字同文件 TTF；否则 ASCII→点阵，汉字只 TTF（Deferred；禁点阵顶中文） */
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 /* 上一次 FontGlyphCp 返回空：等 TTF Want 泵，本帧不画框/点阵。 */
 int FontGlyphCpDeferred(void);

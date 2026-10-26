@@ -514,12 +514,11 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         Pix18[i] = 0;
     }
     /*
-     * font-freetype-hook：汉字 / mono 优先 FT。
-     * UI 拉丁（非 mono ASCII）勿走 FT/UMing——GlyphCrisp 易滤成空心框；
-     * 仍走 stb 仅作缓存填充，绘制层 UI ASCII 用 Terminus。
+     * font-freetype-hook / cjk-5：汉字、mono、UI 拉丁均优先 FT。
+     * 拉丁绘制走 FontGlyphCrispLatin 软 AA（勿再汉字硬 crisp 滤空心）。
      */
     FontFtClearLastAdvance();
-    if (FontFtReady() && (Mono || Cp >= 128u) &&
+    if (FontFtReady() &&
         FontFtRasterCp(Cp, Pix18, CellW, CellH) == 0) {
         return 0;
     }

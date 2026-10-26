@@ -40,11 +40,12 @@ static const FONT_FACE *gFonts[FONT_TABLE_MAX];
 static UINT32 gFontCount;
 static UINT32 gCurrentId;
 static UINT32 gGlyphCpBpp;
+static int gGlyphCrispLatin; /* cjk-5：TTF 拉丁灰图 → 软 AA */
 static UINT32 gUiTtfSlot; /* 0=UMING.TTF；1=DROID.TTF */
 
 /*
- * cjk-4：设置→字体列表里的 UI TTF 项（无点阵 Glyphs）。
- * 选中改中文栅格槽；ASCII 软退 Terminus（勿 TTF 拉丁空心框）。
+ * cjk-4/5：设置→字体列表里的 UI TTF 项（无点阵 Glyphs）。
+ * 选中改中文栅格槽；cjk-5 起 ASCII 同文件 TTF 拉丁（软 AA，勿汉字硬 crisp）。
  */
 /* 列表短名（详情/theme 也用）；全称见 UMING.TTF / DROID.TTF 文件 */
 static const FONT_FACE gFaceUiUming = {
@@ -79,7 +80,17 @@ UINT32 FontTtfUiActiveSlot(void) {
     return gUiTtfSlot < FONT_TTF_UI_MAX ? gUiTtfSlot : 0;
 }
 
-/* UI TTF 项 Glyphs=0：ASCII 须软退点阵，勿用空 face 的 BytesPerRow=0 去 Paint */
+int FontUiTtfSelected(void) {
+    const FONT_FACE *F = (gCurrentId < gFontCount) ? gFonts[gCurrentId] : 0;
+
+    return (F && F->Glyphs == 0) ? 1 : 0;
+}
+
+int FontGlyphCrispLatin(void) {
+    return gGlyphCrispLatin;
+}
+
+/* UI TTF 项 Glyphs=0：点阵路径软退 Terminus（勿用空 face BytesPerRow=0 去 Paint） */
 const FONT_FACE *FontGetLatinFace(void) {
     const FONT_FACE *F = (gCurrentId < gFontCount) ? gFonts[gCurrentId] : 0;
 
@@ -550,10 +561,10 @@ int FontSetById(UINT32 Id) {
     } else if (F == &gFaceUiDroid) {
         NextSlot = 1;
     }
-    /* Latin 项不改中文槽；切 UI TTF 则丢汉字 HIT 以便换脸 */
+    /* Latin 项不改槽；切 UMing↔Droid 丢全部 HIT（含拉丁）以便换脸 */
     if (NextSlot != gUiTtfSlot) {
         gUiTtfSlot = NextSlot;
-        FontTtfCacheDropCjkHits();
+        FontTtfCacheDropHits();
     }
     gCurrentId = Id;
     return 0;
@@ -675,20 +686,39 @@ int FontGlyphCpDeferred(void) {
 const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     const FONT_FACE *F;
     const UINT8 *G;
+    int UiLatin;
 
     gGlyphDefer = 0;
-    /* MONO.TTF：仅 Begin 激活时；壳现默认不激活，ASCII 与 UI 同 Latin 点阵 */
+    gGlyphCrispLatin = 0;
+    /* MONO.TTF：仅 Begin 激活时；壳现默认不激活 */
     if (FontTtfMonoActive() && Cp >= 32u && Cp < 127u) {
         G = FontTtfMonoCacheGet(Cp, OutW, OutH);
         if (G) {
             gGlyphCpBpp = 8;
+            gGlyphCrispLatin = 1;
             return G;
         }
     }
     /*
-     * UI ASCII：点阵 Latin 优先（选 UMing 项时 FontFaceForLatin→Terminus）。
-     * UMing/FT 拉丁 + GlyphCrispAlpha8 会滤成空心框（已踩过）。
+     * cjk-5：选中 UI TTF 时 ASCII 与汉字同文件（UMING/DROID）。
+     * 绘制层对拉丁走软 AA（FontGlyphCrispLatin），勿再 GlyphCrisp 硬阈值滤空心。
+     * 选 Terminus/Sun：ASCII 仍点阵。
      */
+    UiLatin = FontUiTtfSelected() && Cp >= 32u && Cp < 127u;
+    if (UiLatin && FontTtfReady() && !FileSystemBootMediumGone()) {
+        G = FontTtfCacheGet(Cp, OutW, OutH);
+        if (G) {
+            gGlyphCpBpp = 8;
+            gGlyphCrispLatin = 1;
+            return G;
+        }
+        if (!FontTtfCacheMissed(Cp)) {
+            (void)FontTtfCachePending(Cp);
+            gGlyphDefer = 1;
+            return 0;
+        }
+        /* 真 MISS：软退点阵，避免空白 */
+    }
     if (Cp >= 32u && Cp < 127u) {
         F = FontFaceForLatin();
         G = FontGlyph((char)Cp);
@@ -702,12 +732,15 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
             gGlyphCpBpp = 1;
             return G;
         }
+        if (UiLatin) {
+            return 0;
+        }
     }
     /*
      * 汉字（gui-cjk-ttf / cjk-2）：只走 TTF 缓存。禁止运行时 TOYF/FNT 与
      * CJK32「先点阵后换皮」。未 HIT：Want 排队 + Deferred（本帧不画）；
      * Worker WantDrain + TakePaint 后再出矢量。永久 MISS / 无 TTF → 交 Glyph
-     * 缺字框（cjk-3 再钉策略）。
+     * 缺字框（cjk-3）。
      */
     G = FontTtfCacheGet(Cp, OutW, OutH);
     if (G) {
@@ -784,7 +817,18 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
             return Adv;
         }
     }
-    /* 与 GlyphCp 一致：UI ASCII 用 Terminus 步进 */
+    /* cjk-5：UI TTF 拉丁用缓存步进；未 HIT 先半格占位，勿 Terminus 宽跳排 */
+    if (FontUiTtfSelected() && Cp >= 32u && Cp < 127u) {
+        Adv = FontTtfCacheAdvance(Cp);
+        if (Adv != 0u) {
+            return Adv;
+        }
+        Adv = FontTtfPixel() / 2u;
+        if (Adv < 1u) {
+            Adv = 1u;
+        }
+        return Adv;
+    }
     if (Cp >= 32u && Cp < 127u) {
         Adv = FontAdvanceX();
         if (Adv != 0u) {

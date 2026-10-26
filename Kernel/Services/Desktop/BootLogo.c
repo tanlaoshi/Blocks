@@ -17,10 +17,11 @@
 #define LOGO_TEAL   0x00187A70u
 #define LOGO_CELL   48u
 #define LOGO_GAP    8u
-#define LOGO_OPEN   112u
+/* 橙 T 下落行程：仅一方块高；合体终位（gAy）不变 */
+#define LOGO_OPEN   LOGO_CELL
 /* 清屏后略停再画 Logo */
 #define LOGO_SHOW_DELAY_MS 280u
-/* 每 1% 帧最短间隔：早期模块 Set 连跳时匀速下落（约 100×22ms ≈ 2.2s 满程） */
+/* 每 1% 帧最短间隔：早期模块 Set 连跳时匀速下落 */
 #define LOGO_FRAME_MS 22u
 /* 至少约 1 秒（按 ~3GHz 估），读盘已久则 Finish 几乎不再空等 */
 #define LOGO_MIN_MS 1000u

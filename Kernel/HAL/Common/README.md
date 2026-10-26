@@ -4,8 +4,8 @@ HAL 顶栏只认：**X64 / Arm64 / RiscV / Virtio**，外加本目录。
 
 | 子路径 | 内容 |
 | --- | --- |
-| `Video/` | 软件帧缓冲绘制（原误放 `X64/Drivers/Video`） |
-| `HalVideo.c` | 非 x86 的 `HalVideo` 门面（Pi mailbox / virt ramfb） |
+| `Video/` | 软件帧缓冲绘制（热切不在此；见 `X64/.../Hotres/`） |
+| `HalVideo.c` | 非 x86 的 `HalVideo` 门面（Pi mailbox / virt ramfb；SetMode 恒失败） |
 | `Slots/` | 驱动回调槽（FileRead / Sched） |
 | `Board/` | 板包约定 README + `_template`（真板仍在 `HAL/<Arch>/Board/`） |
 

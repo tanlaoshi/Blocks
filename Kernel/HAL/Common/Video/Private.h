@@ -11,24 +11,6 @@
 #include "PhysicalMemory.h"
 #include "Hal.h"
 
-/* Bochs/QEMU VBE DISPI（OVMF QemuVideo 同端口） */
-#define VBE_DISPI_IOPORT_INDEX  0x01CE
-#define VBE_DISPI_IOPORT_DATA   0x01D0
-#define VBE_DISPI_INDEX_ID      0x0
-#define VBE_DISPI_INDEX_XRES    0x1
-#define VBE_DISPI_INDEX_YRES    0x2
-#define VBE_DISPI_INDEX_BPP     0x3
-#define VBE_DISPI_INDEX_ENABLE  0x4
-#define VBE_DISPI_INDEX_BANK    0x5
-#define VBE_DISPI_INDEX_VIRT_WIDTH  0x6
-#define VBE_DISPI_INDEX_VIRT_HEIGHT 0x7
-#define VBE_DISPI_INDEX_X_OFFSET    0x8
-#define VBE_DISPI_INDEX_Y_OFFSET    0x9
-#define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa
-#define VBE_DISPI_ID0           0xB0C0
-#define VBE_DISPI_ENABLED       0x01
-#define VBE_DISPI_LFB_ENABLED   0x40
-
 #define PRESENT_CHUNK_ROWS 64u
 
 /* 0=默认 PRESENT_CHUNK_ROWS；拖窗可升到极大值整块 blit，减左右条带频闪 */

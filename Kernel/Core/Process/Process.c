@@ -395,6 +395,7 @@ int ProcessRunDemo(void) {
     Info.StackTop = NewRsp;
 
     HalInstallUserMode();
+    SchedulerReapOrphanZombies();
     /*
      * Create→Drain 前拉高 gCoopDrain：与 OnTimer（virt / ConsoleOnly / gCoopDrain）
      * 同契约，禁 timer 在窗口内抢走未 Started 用户（三架构 exec / run user 同形）。

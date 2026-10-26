@@ -200,12 +200,14 @@ static void OnEnterEx(int FromSerial) {
     ConsoleCmdOutBegin();
     ConsoleRunLine();
     ConsoleCmdOutEnd();
-    GuiPresentDeferPop();
     /*
-     * CoopDrain 用户 stdout：须在 Pop 之后刷（Pause 已结束、Defer=0），
-     * 否则 Pause 内 PresentFlush 拖死合成 → 关窗/点 X 失灵、鼠顿。
+     * CoopDrain 用户 stdout（Hello）+ run user done：必须在 DeferPop 之前刷。
+     * Pop 后 Defer=0 → FrameBufferEnd 走 PresentFlush；进桌面初期 Worker 仍在
+     * 有线/iwl/DHCP，二次 Flush 易饿死 xHCI → 鼠死、短按电源失效（NUC）。
+     * Defer>0 时只画后缓冲，Pop 一次 Present。
      */
     ConsoleIoCoopUserOutFlush();
+    GuiPresentDeferPop();
     gLen = 0;
     ConsolePromptAfterCommand(FromSerial);
 }

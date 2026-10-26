@@ -5,7 +5,7 @@ alwaysApply: true
 
 # 协作暗号
 
-权威细表：`Documents/项目/路线图.md`「〇、协作暗号」。活 ★：`Documents/路线图2026.md` 文首 story-prs（中期柱档；点名后再钉刀）。日档史：`路线图1025.md` 已交棒。已收日档：`Documents/项目/进展/`。
+权威细表：`Documents/项目/路线图.md`「〇、协作暗号」。活 ★：`Documents/路线图1026.md` 文首 story-prs（日档）。已收日档：`Documents/项目/进展/`。
 
 | 口令 | Agent 动作 |
 | --- | --- |
@@ -28,4 +28,4 @@ alwaysApply: true
 1. **TG ≠ 推送**。旧习惯「TG 含 push」已废止。
 2. Git 跟踪 **`origin/main`**；勿再按过时的 `working` 分流推送。
 3. 未说 TG/TS 时不要擅自 commit/push。
-4. JX 只认**活档**文首 ★（现 `路线图2026.md`），勿把 `项目/进展/` 已收日档 / `项目/路线图.md` 大文件 / 已交棒日档当待做。
+4. JX 只认**活档**文首 ★（现 `路线图1026.md`），勿把 `项目/进展/` 已收日档 / `项目/路线图.md` 大文件当待做。

@@ -26,9 +26,16 @@ extern int gCoopDrain;
 #define COOP_USER_OUT_MAX 512u
 static char gCoopUserOut[COOP_USER_OUT_MAX];
 static UINTN gCoopUserOutLen;
+/* run user：done 须在 Hello 之后；且须 DeferPop 后再 Write（见 Flush） */
+static int gCoopUserOutTrailRunUserDone;
 
 void ConsoleCoopUserOutClear(void) {
     gCoopUserOutLen = 0;
+    gCoopUserOutTrailRunUserDone = 0;
+}
+
+void ConsoleCoopUserOutArmRunUserDone(void) {
+    gCoopUserOutTrailRunUserDone = 1;
 }
 
 static void CoopUserOutAppend(const char *Text) {
@@ -41,13 +48,20 @@ static void CoopUserOutAppend(const char *Text) {
 }
 
 void ConsoleCoopUserOutFlush(void) {
-    if (gCoopUserOutLen == 0) {
-        return;
+    if (gCoopUserOutLen != 0) {
+        gCoopUserOut[gCoopUserOutLen] = 0;
+        gCoopUserOutLen = 0;
+        /* 宿主已是 Shell 内核任务：走完整 Write（串口+屏） */
+        gConsole.Write(gCoopUserOut);
     }
-    gCoopUserOut[gCoopUserOutLen] = 0;
-    gCoopUserOutLen = 0;
-    /* 宿主已是 Shell 内核任务：走完整 Write（串口+屏） */
-    gConsole.Write(gCoopUserOut);
+    /*
+     * 顺序：… → Hello（上）→ done（本尾）；调用方须在 DeferPop 前 Flush，
+     * 避免 PresentFlush 与 Worker 网初始化抢 xHCI（NUC 二次鼠/电源死）。
+     */
+    if (gCoopUserOutTrailRunUserDone) {
+        gCoopUserOutTrailRunUserDone = 0;
+        gConsole.Write("run user: done\n");
+    }
 }
 
 void ConsoleDrawString(const char *Text, UINT32 Color) {

@@ -192,7 +192,9 @@ UserEnter:
 /*
  * PR-sdk-exec：x64 CoopDrain（对齐 Arm/RiscV HalUserCoop*）。
  * rdi=Ksp（用户任务内核栈顶），rsi=Frame*；iretq 进用户，exit→HalUserCoopReturn。
- * GS：与 UserEnter 相同，保持内核 GS_BASE=0；用户 syscall 首条 swapgs 切到 KERNEL_GS。
+ * GS：UserEnter 时 GS_BASE=0；用户 syscall 首条 swapgs → KERNEL_GS。
+ * exit 走 CoopReturn（不经 SyscallEntry 的 swapgs 归还）→ 此处必须再 swapgs，
+ * 否则 Shell 停在 KERNEL_GS；第二次 run user 再 syscall 会 gs:[0] 读错栈 → 鼠/电源假死。
  */
 .global HalUserCoopEnter
 HalUserCoopEnter:
@@ -210,6 +212,7 @@ HalUserCoopEnter:
 
 .global HalUserCoopReturn
 HalUserCoopReturn:
+    swapgs
     lea rax, [rip + gUserCoopRet]
     mov rsp, [rax + 0]
     mov rbx, [rax + 8]

@@ -1,5 +1,5 @@
 /*
- * Gop.c — PR-G-hotres-pc：真机 GOP 热切策略
+ * Gop.c — PR-G-hotres-pc：真机 GOP 热切策略（x86 Hotres）
  *
  * UEFI：ExitBootServices 后 Boot 协议（含 GOP SetMode）未定义。
  * NUC 实测：强行 SetMode → 先 #PF（缺映），映足后变成 #UD @ ip=0（固件跳空）。
@@ -9,12 +9,14 @@
  * 仍保留 Map + Available：供「已是目标分辨率」时只同步内核 FB 视图，以及将来探测。
  */
 #include "Compiler.h"
-#include "Private.h"
+#include "Video/Private.h"
+#include "Hotres.h"
 #include "BootHandoff.h"
 #include "VirtualMemory.h"
 #include "PhysicalMemory.h"
 #include "Debug.h"
 #include "HalConsole.h"
+#include "HalVideo.h"
 
 /* 最小 GOP 布局（与 UEFI 一致；调用约定 MS ABI） */
 typedef struct {
@@ -38,12 +40,7 @@ typedef struct {
 typedef struct TOY_GOP TOY_GOP;
 struct TOY_GOP {
     void *QueryMode;
-    /* UEFI GOP 为 MS ABI；仅 x86 真机路径可能用到约定，virt 编译勿告警告 */
-#if defined(__x86_64__) || defined(_M_X64)
     UINT64 (BLOCKS_MS_ABI *SetMode)(TOY_GOP *This, UINT32 ModeNumber);
-#else
-    UINT64 (*SetMode)(TOY_GOP *This, UINT32 ModeNumber);
-#endif
     void *Blt;
     TOY_GOP_MODE *Mode;
 };

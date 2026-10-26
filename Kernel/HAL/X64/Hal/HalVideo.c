@@ -5,6 +5,7 @@
  */
 #include "HalVideo.h"
 #include "Video/Video.h"
+#include "Hotres.h"
 #include "PhysicalMemory.h"
 #include "HalDevices.h"
 #include "BootHandoff.h"

@@ -9,6 +9,7 @@
  */
 #include "ShellPrivate.h"
 #include "Console.h"
+#include "ConsolePrivate.h"
 #include "Fat.h"
 #include "FileSystem.h"
 #include "Gui.h"
@@ -75,17 +76,15 @@ static void CommandRunuser(int Argc, char **Argv) {
         return;
     }
     /*
-     * 与 exec 无窗同：DeferPause，免 CoopDrain 期间 Present 被吞 / 二次卡死。
-     * Hello 缓冲在 DeferPop 后 Flush（Pause 内 PresentFlush → 壳关不掉/鼠顿）。
+     * Hello 进 coop 缓冲；成功则 Arm done。Input：Defer 内 Flush（Hello→done）再 Pop。
+     * 不做 DeferPause：Pause 把 Defer 置 0，Drain 期间 Gui/Worker PresentFlush
+     * 与进桌面初期网初始化叠在一起 → NUC 二次鼠死、短按电源失效。
      */
     gConsole.Write("run user: …\n");
-    GuiPresentDeferPause();
     if (ProcessRunDemo() != 0) {
-        GuiPresentDeferResume();
         gConsole.Write("run user: failed (no hello blob / load / start)\n");
     } else {
-        GuiPresentDeferResume();
-        gConsole.Write("run user: done\n");
+        ConsoleCoopUserOutArmRunUserDone();
     }
 }
 

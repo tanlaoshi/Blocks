@@ -38,12 +38,7 @@ void VideoDiscardDirty(void);
 void DirtyUnion(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* Rows=0 → 默认 64；拖窗可传极大值整块 blit */
 void VideoSetPresentChunkRows(UINT32 Rows);
-/* PR-G-hotres：Bochs/QEMU VGA DISPI；成功 0，无 Bochs/失败 -1 */
-int VideoBochsSetMode(UINT32 Width, UINT32 Height);
-int VideoBochsAvailable(void);
-/* PR-G-hotres-pc：真机 GOP SetMode（Boot 交接）；QEMU 有 Bochs 时勿用 */
-int VideoGopSetMode(UINT32 Width, UINT32 Height);
-int VideoGopAvailable(void);
+/* 热切（Bochs/GOP）→ HAL/X64/Drivers/Video/Hotres/；不进本头 */
 UINT64 VideoFrameBufferBase(void);
 UINT64 VideoFrameBufferSize(void);
 /* GPU 翻页后切换 CPU 所见 scanout（与 PLANE_SURF 一致） */

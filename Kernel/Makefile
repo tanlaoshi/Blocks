@@ -152,6 +152,7 @@ INCLUDES_HAL    = $(INCLUDES_COMMON) \
                   -IHAL/$(HAL_ARCH)/Drivers/Input \
                   -IHAL/$(HAL_ARCH)/Drivers/Block \
                   -IHAL/$(HAL_ARCH)/Drivers/Video/Igpu \
+                  -IHAL/$(HAL_ARCH)/Drivers/Video/Hotres \
                   -IHAL/$(HAL_ARCH)/Drivers/Model
 
 # PR-B2：非 x86 必须选中 Board 包（默认 virt）；Common 不 -I 板目录
@@ -427,6 +428,7 @@ DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/Hub/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Input/UsbHid/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Serial/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/Igpu/*.c)
+DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Video/Hotres/*.c)
 DRIVER_SRCS   += $(wildcard HAL/$(HAL_ARCH)/Drivers/Hda/*.c)
 # PR-H-xhci-split-8：Drivers/XHCI/*.c（Core/Port/Device/Hid/Hub/Mouse/Irq/Diag）；已删单体 Drivers/XHCI.c
 XHCI_SPLIT_SRCS := $(wildcard HAL/$(HAL_ARCH)/Drivers/Bus/XHCI/*.c)
@@ -460,7 +462,7 @@ DRIVER_OBJS   := $(patsubst HAL/$(HAL_ARCH)/Drivers/%.c,$(HALDIR)/Drivers/%.o,$(
 ARCH_OBJS     := $(patsubst HAL/$(HAL_ARCH)/%.c,$(HALDIR)/%.o,$(ARCH_SRCS))
 ARCH_ASM_OBJS := $(patsubst HAL/$(HAL_ARCH)/%.S,$(HALDIR)/%.o,$(ARCH_ASM))
 
-# 软件帧缓冲绘制（arch 无关；落在 HAL/Common/Video）
+# 软件帧缓冲绘制（arch 无关；落在 HAL/Common/Video；热切在 X64 Hotres）
 SHARED_VIDEO_SRCS := $(wildcard HAL/Common/Video/*.c)
 SHARED_VIDEO_OBJS := $(patsubst HAL/Common/Video/%.c,$(HALDIR)/Common/Video/%.o,$(SHARED_VIDEO_SRCS))
 

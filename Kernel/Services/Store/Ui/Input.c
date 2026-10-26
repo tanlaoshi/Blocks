@@ -210,29 +210,36 @@ void StoreUiOnPointer(UINT32 X, UINT32 Y, UINT8 Buttons) {
         return;
     }
 
-    if (!Running && gStoreUiSideW > 0 && X >= Cx && X < Cx + gStoreUiSideW &&
-        Y >= gStoreUiSideRow0) {
-        Side = (int)((Y - gStoreUiSideRow0) / gStoreUiSideLineH);
-        if (Side < 0 || Side >= STORE_CAT_COUNT) {
-            Side = -1;
-        }
-    } else if (Y >= gBtnY && Y < gBtnY + STORE_BTN_H) {
-        for (i = 0; i < STORE_BTN_N; i++) {
-            Bx = gBtnX0 + (UINT32)i * (gBtnW + STORE_BTN_GAP);
-            if (X >= Bx && X < Bx + gBtnW) {
-                Btn = i;
-                break;
+    /*
+     * 对表 FilesUiOnHover：悬停只认客户区。窗外仍走下方清 Hover /
+     * 松键逻辑，否则只凭 Y 落在列表带也会「划过」。
+     */
+    if (X >= Cx && Y >= Cy && X < Cx + Cw && Y < Cy + Ch) {
+        if (!Running && gStoreUiSideW > 0 && X < Cx + gStoreUiSideW &&
+            Y >= gStoreUiSideRow0) {
+            Side = (int)((Y - gStoreUiSideRow0) / gStoreUiSideLineH);
+            if (Side < 0 || Side >= STORE_CAT_COUNT) {
+                Side = -1;
             }
-        }
-        if (Running && Btn > 0) {
-            Btn = -1;
-        }
-    } else if (!Running && !(gStoreUiPrevW > 0 && X >= gStoreUiPrevX) &&
-               Y >= gStoreUiListTop && Y < gBtnY && gFiltCount > 0) {
-        Row = UiListRowFromY(gStoreUiListTop, gStoreUiListLineH, gStoreUiListVisible, Y);
-        if (Row >= 0) {
-            int Fi = gStoreUiScroll + Row;
-            Row = (Fi >= 0 && Fi < gFiltCount) ? Fi : -1;
+        } else if (Y >= gBtnY && Y < gBtnY + STORE_BTN_H) {
+            for (i = 0; i < STORE_BTN_N; i++) {
+                Bx = gBtnX0 + (UINT32)i * (gBtnW + STORE_BTN_GAP);
+                if (X >= Bx && X < Bx + gBtnW) {
+                    Btn = i;
+                    break;
+                }
+            }
+            if (Running && Btn > 0) {
+                Btn = -1;
+            }
+        } else if (!Running && !(gStoreUiPrevW > 0 && X >= gStoreUiPrevX) &&
+                   Y >= gStoreUiListTop && Y < gBtnY && gFiltCount > 0) {
+            Row = UiListRowFromY(gStoreUiListTop, gStoreUiListLineH,
+                                gStoreUiListVisible, Y);
+            if (Row >= 0) {
+                int Fi = gStoreUiScroll + Row;
+                Row = (Fi >= 0 && Fi < gFiltCount) ? Fi : -1;
+            }
         }
     }
 

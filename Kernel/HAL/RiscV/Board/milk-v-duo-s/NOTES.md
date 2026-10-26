@@ -45,6 +45,8 @@
 - **实现文件**：`Ethernet.c` / `Ethernet.h`（`BoardEthernetProbe`；Naming 全词，三架构同门面）；块设备 `Sdhci.c`（`BoardSdhciRegister`）。  
 - **net-2**：MDIO `MII_ADDR/DATA` @`+0x10/+0x14`（shift 11/6，CSR=4）。EPHY：`cv181x_ephy_id_init`（写 ID `0043:5649`）+ Linux `cvitek` `config_init`（ANA 表、`CTL=0x090e` 启 AN、BMCR FD）；MDIO 扫 addr1；`BMCR` 重启 AN；轮询 `BMSR`。串口 `phy=` / `id=` / `bmcr=` / `adv=` / `lpa=` / `link=`。无 link **不**称 Ready。  
 - **真机 net-2（2026-10-26）**：`phy=1 id=00435649` · `bmcr=3100` · `bmsr=79ed` · `adv=01e1` · `lpa=cde1` · `aneg=1` · **`link=up`**。  
+- **net-3**：DMA **normal** 描述符（`dmafeat=420d5925` → ENHDESSEL=0）；MAC `LM` 环回；`HalDcacheCleanInvalidateRange`。测完关 LM、停 DMA。仍 **`BOARD_HAS_NET=0`**。  
+- **真机 net-3（2026-10-26）**：`enh=0 normal` · **`DMA tx=ok`** · **`rx=ok len=00000044`**（64+FCS）。  
 - `BOARD_HAS_NET=0`。刷卡前 `.toy_board=milk-v-duo-s`。
 
 ## µSD（duo-block）

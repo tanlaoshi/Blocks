@@ -1,13 +1,30 @@
 /*
- * Ethernet.c — Duo S 以太网 MAC（net-1）+ PHY/link（net-2）
+ * Ethernet.c — Duo S 以太网 MAC（net-1）+ PHY/link（net-2）+ DMA（net-3）
  *
  * MDIO：dwmac1000 MII Address/Data；phy<<11 reg<<6（dwmac1000_core.c）。
- * PHY：优先地址 1（mainline internal_ephy@1），再扫 0..31；Basic Status 读两次消锁存。
+ * PHY：优先地址 1；Basic Status 读两次消锁存。
+ * DMA：dwmac_dma / enhanced 描述符；MAC LM 环回自发自收；HalDcache（Sv39 skip 仍 VA==PA）。
  */
 #include "Ethernet.h"
 #include "Board.h"
 #include "Hal.h"
 #include "SerialLog.h"
+
+typedef struct {
+    UINT32 Descriptor0;
+    UINT32 Descriptor1;
+    UINT32 Descriptor2;
+    UINT32 Descriptor3;
+} EthernetDmaDescriptor;
+
+static EthernetDmaDescriptor gTransmitDescriptor[DUO_ETHERNET_DMA_RING_COUNT]
+    __attribute__((aligned(64)));
+static EthernetDmaDescriptor gReceiveDescriptor[DUO_ETHERNET_DMA_RING_COUNT]
+    __attribute__((aligned(64)));
+static UINT8 gTransmitBuffer[DUO_ETHERNET_DMA_RING_COUNT][DUO_ETHERNET_DMA_BUFFER_SIZE]
+    __attribute__((aligned(64)));
+static UINT8 gReceiveBuffer[DUO_ETHERNET_DMA_RING_COUNT][DUO_ETHERNET_DMA_BUFFER_SIZE]
+    __attribute__((aligned(64)));
 
 static volatile UINT32 *Register(UINT64 Address) {
     return (volatile UINT32 *)(UINTN)Address;
@@ -411,6 +428,207 @@ static int PhyProbe(void) {
     return 0;
 }
 
+static int DmaSoftwareReset(void) {
+    UINT32 Index;
+    UINT32 BusMode;
+
+    BusMode = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_BUS_MODE);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_BUS_MODE) =
+        BusMode | DUO_ETHERNET_DMA_SOFTWARE_RESET;
+    for (Index = 0; Index < 100000u; Index++) {
+        if ((*Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_BUS_MODE) &
+             DUO_ETHERNET_DMA_SOFTWARE_RESET) == 0u) {
+            return 0;
+        }
+        Spin(50u);
+    }
+    return -1;
+}
+
+static void DmaCacheSync(void *Address, UINTN Length) {
+    HalDcacheCleanInvalidateRange(Address, Length);
+}
+
+static int DmaWaitOwnClear(volatile EthernetDmaDescriptor *Descriptor) {
+    UINT32 Index;
+
+    for (Index = 0; Index < 200000u; Index++) {
+        DmaCacheSync((void *)Descriptor, sizeof(*Descriptor));
+        if ((Descriptor->Descriptor0 & DUO_ETHERNET_DESCRIPTOR_OWN) == 0u) {
+            return 0;
+        }
+        Spin(50u);
+    }
+    return -1;
+}
+
+/*
+ * net-3：normal 描述符环（本片 ENHDESSEL=0）+ MAC LM 环回。
+ * 对表 Linux dwmac1000_dma / descs.h；完成后关 LM、停 DMA。
+ */
+static int DmaProbe(void) {
+    UINT32 Index;
+    UINT32 Feature;
+    UINT32 BusMode;
+    UINT32 Operation;
+    UINT32 MacConfig;
+    UINT32 Status;
+    UINT32 FrameLength;
+    UINT32 TransmitControl;
+
+    HalSerialBootMark("Boot: Duo ETH DMA\n");
+
+    Feature = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_HARDWARE_FEATURE);
+    MarkHex("Boot: Duo ETH dmafeat=", Feature);
+    if ((Feature & DUO_ETHERNET_DMA_FEATURE_ENHANCED_DESCRIPTOR) != 0u) {
+        HalSerialBootMark(" enh=1\n");
+        HalSerialBootMark("Boot: Duo ETH DMA need normal (enh unsupported)\n");
+        return -1;
+    }
+    HalSerialBootMark(" enh=0 normal\n");
+
+    if (DmaSoftwareReset() != 0) {
+        HalSerialBootMark("Boot: Duo ETH DMA reset fail\n");
+        return -1;
+    }
+
+    BusMode = (8u << DUO_ETHERNET_DMA_PBL_SHIFT);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_BUS_MODE) = BusMode;
+
+    for (Index = 0; Index < DUO_ETHERNET_DMA_RING_COUNT; Index++) {
+        gReceiveDescriptor[Index].Descriptor1 =
+            DUO_ETHERNET_DMA_BUFFER_SIZE & DUO_ETHERNET_RECEIVE_BUFFER1_SIZE_MASK;
+        if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
+            gReceiveDescriptor[Index].Descriptor1 |=
+                DUO_ETHERNET_RECEIVE_END_RING;
+        }
+        gReceiveDescriptor[Index].Descriptor2 =
+            (UINT32)(UINTN)&gReceiveBuffer[Index][0];
+        gReceiveDescriptor[Index].Descriptor3 = 0u;
+        gReceiveDescriptor[Index].Descriptor0 = DUO_ETHERNET_DESCRIPTOR_OWN;
+
+        gTransmitDescriptor[Index].Descriptor0 = 0u;
+        gTransmitDescriptor[Index].Descriptor1 = 0u;
+        gTransmitDescriptor[Index].Descriptor2 = 0u;
+        gTransmitDescriptor[Index].Descriptor3 = 0u;
+    }
+    DmaCacheSync(gReceiveDescriptor, sizeof(gReceiveDescriptor));
+    DmaCacheSync(gTransmitDescriptor, sizeof(gTransmitDescriptor));
+    DmaCacheSync(gReceiveBuffer, sizeof(gReceiveBuffer));
+
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_LIST_BASE) =
+        (UINT32)(UINTN)&gReceiveDescriptor[0];
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_TRANSMIT_LIST_BASE) =
+        (UINT32)(UINTN)&gTransmitDescriptor[0];
+
+    /* 本地管理地址 02:00:00:00:00:01 */
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_HIGH) =
+        DUO_ETHERNET_ADDRESS_ENABLE | 0x0001u;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_ADDRESS0_LOW) = 0x00000002u;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_FRAME_FILTER) =
+        DUO_ETHERNET_FRAME_FILTER_PROMISCUOUS;
+
+    MacConfig = DUO_ETHERNET_MAC_PORT_SELECT_MII | DUO_ETHERNET_MAC_SPEED_100 |
+                DUO_ETHERNET_MAC_DUPLEX | DUO_ETHERNET_MAC_LOOPBACK |
+                DUO_ETHERNET_MAC_TRANSMITTER_ENABLE |
+                DUO_ETHERNET_MAC_RECEIVER_ENABLE;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG) = MacConfig;
+
+    Operation = DUO_ETHERNET_DMA_TRANSMIT_STORE_FORWARD |
+                DUO_ETHERNET_DMA_RECEIVE_STORE_FORWARD |
+                DUO_ETHERNET_DMA_OPERATE_SECOND_FRAME |
+                DUO_ETHERNET_DMA_START_TRANSMIT |
+                DUO_ETHERNET_DMA_START_RECEIVE;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_INTERRUPT_ENABLE) = 0u;
+
+    /* 最小以太网帧：广播 + 本机 SA + ethertype 0x88B5 */
+    for (Index = 0; Index < 64u; Index++) {
+        gTransmitBuffer[0][Index] = 0u;
+    }
+    for (Index = 0; Index < 6u; Index++) {
+        gTransmitBuffer[0][Index] = 0xFFu;
+    }
+    gTransmitBuffer[0][6] = 0x02u;
+    gTransmitBuffer[0][12] = 0x88u;
+    gTransmitBuffer[0][13] = 0xB5u;
+    gTransmitBuffer[0][14] = 0x54u; /* 'T' */
+    gTransmitBuffer[0][15] = 0x4Fu; /* 'O' */
+    gTransmitBuffer[0][16] = 0x59u; /* 'Y' */
+    DmaCacheSync(gTransmitBuffer[0], 64u);
+
+    for (Index = 0; Index < DUO_ETHERNET_DMA_RING_COUNT; Index++) {
+        gTransmitDescriptor[Index].Descriptor0 = 0u;
+        gTransmitDescriptor[Index].Descriptor1 = 0u;
+        gTransmitDescriptor[Index].Descriptor2 = 0u;
+        gTransmitDescriptor[Index].Descriptor3 = 0u;
+        if (Index + 1u == DUO_ETHERNET_DMA_RING_COUNT) {
+            gTransmitDescriptor[Index].Descriptor1 =
+                DUO_ETHERNET_TRANSMIT_END_RING;
+        }
+    }
+    /* normal：FS/LS/IC/size 在 TDES1；OWN 最后写 TDES0 */
+    TransmitControl = (64u & DUO_ETHERNET_TRANSMIT_BUFFER1_SIZE_MASK) |
+                      DUO_ETHERNET_TRANSMIT_FIRST_SEGMENT |
+                      DUO_ETHERNET_TRANSMIT_LAST_SEGMENT |
+                      DUO_ETHERNET_TRANSMIT_INTERRUPT;
+    gTransmitDescriptor[0].Descriptor2 =
+        (UINT32)(UINTN)&gTransmitBuffer[0][0];
+    gTransmitDescriptor[0].Descriptor3 = 0u;
+    gTransmitDescriptor[0].Descriptor1 = TransmitControl;
+    gTransmitDescriptor[0].Descriptor0 = DUO_ETHERNET_DESCRIPTOR_OWN;
+    DmaCacheSync(gTransmitDescriptor, sizeof(gTransmitDescriptor));
+
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_TRANSMIT_POLL) = 1u;
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_RECEIVE_POLL) = 1u;
+
+    if (DmaWaitOwnClear(&gTransmitDescriptor[0]) != 0) {
+        Status = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS);
+        MarkHex("Boot: Duo ETH DMA tx timeout st=", Status);
+        HalSerialBootMark("\n");
+        return -1;
+    }
+    HalSerialBootMark("Boot: Duo ETH DMA tx=ok\n");
+
+    if (DmaWaitOwnClear(&gReceiveDescriptor[0]) != 0) {
+        Status = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS);
+        MarkHex("Boot: Duo ETH DMA rx timeout st=", Status);
+        HalSerialBootMark("\n");
+        return -1;
+    }
+
+    DmaCacheSync(&gReceiveDescriptor[0], sizeof(gReceiveDescriptor[0]));
+    DmaCacheSync(gReceiveBuffer[0], DUO_ETHERNET_DMA_BUFFER_SIZE);
+    if ((gReceiveDescriptor[0].Descriptor0 &
+         DUO_ETHERNET_RECEIVE_DESCRIPTOR_ERROR_SUMMARY) != 0u) {
+        MarkHex("Boot: Duo ETH DMA rx err des0=",
+                gReceiveDescriptor[0].Descriptor0);
+        HalSerialBootMark("\n");
+        return -1;
+    }
+    FrameLength =
+        (gReceiveDescriptor[0].Descriptor0 >>
+         DUO_ETHERNET_RECEIVE_DESCRIPTOR_FRAME_LENGTH_SHIFT) &
+        DUO_ETHERNET_RECEIVE_DESCRIPTOR_FRAME_LENGTH_MASK;
+    MarkHex("Boot: Duo ETH DMA rx=ok len=", FrameLength);
+    HalSerialBootMark("\n");
+
+    /* 收尾：关环回、停 DMA（本刀不开 BOARD_HAS_NET） */
+    MacConfig = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG);
+    MacConfig &= ~(DUO_ETHERNET_MAC_LOOPBACK |
+                   DUO_ETHERNET_MAC_TRANSMITTER_ENABLE |
+                   DUO_ETHERNET_MAC_RECEIVER_ENABLE);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_MAC_CONFIG) = MacConfig;
+    Operation = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE);
+    Operation &= ~(DUO_ETHERNET_DMA_START_TRANSMIT |
+                   DUO_ETHERNET_DMA_START_RECEIVE);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
+    Status = *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS);
+    *Register(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_STATUS) = Status;
+
+    return 0;
+}
+
 int BoardEthernetProbe(void) {
     UINT32 SoftReset;
     UINT32 ClockEnableBefore;
@@ -482,5 +700,6 @@ int BoardEthernetProbe(void) {
     HalSerialBootMark(" (MAC ok)\n");
 
     (void)PhyProbe();
+    (void)DmaProbe();
     return 0;
 }

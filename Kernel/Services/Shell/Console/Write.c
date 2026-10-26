@@ -186,20 +186,23 @@ static void Write(const char *Text) {
         return;
     }
     /*
-     * Hello 等控制台 ELF（非 StdoutSerialOnly）：Drain 内只串口+scrollback+缓冲；
-     * 禁止 syscall 里 ConsoleDrawString→PresentFlush（真机打一字卡死）。
-     * 屏上 Hello：CoopUserOutFlush（Drain 后宿主 Write）。
+     * Hello 等控制台 ELF（非 StdoutSerialOnly）：
+     * CoopDrain 内禁止 ConsoleDrawString→PresentFlush（真机打一字卡死）；
+     * 只进缓冲，DeferPop 后 CoopUserOutFlush→宿主 Write 打一次。
+     * （曾 drain 内串口+Flush 再 Write →「Hello Ring3!」双行回归。）
      */
     if (T && T->IsUser) {
         int Owner;
 
+        if (gCoopDrain) {
+            CoopUserOutAppend(Text);
+            ConsoleOutUnlock();
+            return;
+        }
         for (P = Text; *P; P++) {
             gAtLineStart = (*P == '\n');
         }
         HalConsoleWriteSerial(Text);
-        if (gCoopDrain) {
-            CoopUserOutAppend(Text);
-        }
         Owner = ConsoleCmdOutOwner();
         if (Owner >= 0) {
             ConsoleSbWinFeed(Owner, Text);

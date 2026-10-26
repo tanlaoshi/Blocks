@@ -124,6 +124,10 @@ static void SerialRun(void) {
                     gConsole.OnBackspace();
                 } else if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
                     gConsole.OnHistHid(Key, 0);
+                } else if (Key == HID_KEY_CAPSLOCK) {
+                    /* 与 Tasks/Hid.c 同形；ConsoleOnly 无 Input 任务，须在此切 */
+                    HIDKeyboardToggleCapsLock();
+                    (void)HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 } else if (Key == HID_KEY_C &&
                            (Report.ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL)) != 0) {
                     ShellOnInterrupt();

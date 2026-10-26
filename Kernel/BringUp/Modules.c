@@ -35,7 +35,8 @@ static int gVirtDesktop;
  * EARLY     Serial → PMM → VMM     早日志；PMM 必须紧挨在 VMM 前
  * DISPLAY   Video                  背缓冲/Logo；必须紧跟 VMM（无 FB 的 Virt 表无本阶段）
  * PLATFORM  Cpu → Driver → Smp     先 CPU/中断/syscall；再绑 MMIO/块；再拉 AP
- * INPUT     USB                    键鼠；仅 Full；必须在 FileSystem 前
+ * INPUT     USB                    键鼠；Full 必有；ConsoleOnly(Virt 表)也要（Duo/Pi 真机 Host）
+ *                                  必须在 FileSystem 前
  * SESSION   Scheduler → Console    调度槽与命令表；须在 FS/Gui/Net 前（IoBreath）
  * （字面量）FileSystem / Gui / Network   Services；Virt 可省略 Gui/Net
  */
@@ -71,10 +72,14 @@ static const MODULE gModulesFull[] = {
     { "Network",         NetworkInitialize },
 };
 
-/* 串口-only：无 DISPLAY/INPUT/Gui/Net；SESSION 在 FS 前；FS 仍要（virtio-blk） */
+/*
+ * 串口-only（ConsoleOnly）：无 DISPLAY/Gui/Net；仍要 INPUT（Duo/Pi DWC2 键）+ FS。
+ * QEMU virt 无 FB 时同表：HalUsbInitialize 按板包决定（virtio 或空）。
+ */
 static const MODULE gModulesVirt[] = {
     MODULE_PHASE_EARLY,
     MODULE_PHASE_PLATFORM,
+    MODULE_PHASE_INPUT,
     MODULE_PHASE_SESSION,
     { "FileSystem",      FileSystemInitialize },
 };

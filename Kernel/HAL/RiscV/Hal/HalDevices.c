@@ -55,8 +55,15 @@ int HalBlockInitialize(void) {
 }
 
 int HalUsbInitialize(void) {
-#if BOARD_HAS_FRAMEBUFFER
+#if BOARD_IS_VIRT && BOARD_HAS_FRAMEBUFFER
     return VirtioInputInit();
+#elif !BOARD_IS_VIRT
+    /* Duo S：DWC2 host + HID boot 键（duo-usb-kbd）；无设备软成功 */
+    {
+        int BoardDwc2Probe(void);
+        (void)BoardDwc2Probe();
+    }
+    return 0;
 #else
     return 0;
 #endif

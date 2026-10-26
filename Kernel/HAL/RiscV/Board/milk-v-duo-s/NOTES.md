@@ -26,6 +26,13 @@
 - **应用卷**：`source env.sh && ck-duo-sd` → **`Kernel.elf`→LABEL=BLOCKS**。  
 - **禁止** `ck-pi-sd`。详见 [`scripts/README.md`](scripts/README.md)。
 
+## USB Host（duo-usb-kbd）
+
+- DWC2 @ **`0x04340000`**；PHY/ID/VBUS：`TOP 0x03000048`（host：EXTVBUS|VBUS_PWR|ID_OVR，清 ID_VALUE）；ECO RX flush @ `0x030000B4`。  
+- Type-A **VBUS_EN** = **XGPIOB[5]**（pinmux `USB_VBUS_EN`→3）；`HalUsbInitialize` → `BoardDwc2Probe` → `DriverInputAttach`。  
+- 根口可直连 boot 键；hub 路径同 Pi SPLIT。串口壳 `HalInputPoll`+`HalKeyboardDequeue`。  
+- 手测：键须插 **Type-A**（冷启前插好更稳）；看 `Boot: Duo USB` / `DWC2 … kbd`。
+
 ## µSD（duo-block）
 
 - 控制器：`sdhci0` / `sophgo,cv1800b-dwcmshc` @ **`0x04310000`**（上游 `cv18xx.dtsi`）。PIO 读 CMD17 / 写 CMD24。  

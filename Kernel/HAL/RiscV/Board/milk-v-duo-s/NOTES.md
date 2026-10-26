@@ -29,7 +29,7 @@
 ## USB Host（duo-usb-kbd）
 
 - DWC2 @ **`0x04340000`**；PHY/ID/VBUS：`TOP 0x03000048`（host：EXTVBUS|VBUS_PWR|ID_OVR，清 ID_VALUE）；ECO RX flush @ `0x030000B4`。  
-- Type-A **VBUS_EN** = **XGPIOB[5]**（pinmux `USB_VBUS_EN`→3）；`HalUsbInitialize` → `BoardDwc2Probe` → `DriverInputAttach`。  
+- Type-A **VBUS_EN** = **XGPIOB[5]**（pinmux `USB_VBUS_EN`→3）；`HalUsbInitialize` → `BoardUsbHostControllerProbe` → `DriverInputAttach`。  
 - 根口可直连 boot 键；hub 路径同 Pi SPLIT。串口壳 `HalInputPoll`+`HalKeyboardDequeue`。  
 - 手测：键须插 **Type-A**（冷启前插好更稳）；看 `Boot: Duo USB` / `DWC2 … kbd`。
 
@@ -41,8 +41,11 @@
 - 时钟：clkgen **`0x03002000`** · EN_0 **bit25/26**；DIV `@0x08C`（en bit8、div[19:16]）；BYP0 bit9。  
 - 复位：TOP **`0x03003000` bit12** 仅 **OR 释放**（不拉低脉冲）。  
 - 板内 PHY：`0x03009000` — **net-2**。  
-- **真机（2026-10-26）**：`ver20=00001037` · `ver110=0` · `mac0=00008000` → **3.70a@0x20**（非 EQOS）。`clken0` 读全 F 仍可读 MAC（门控或假读；以 VERSION 为准）。  
-- 验收：`Boot: Duo ETH id=3.70a@20 ver=…`。`BOARD_HAS_NET=0`。刷卡前 `.toy_board=milk-v-duo-s`。
+- **真机 net-1（2026-10-26）**：`ver20=00001037` · `ver110=0` · `mac0=00008000` → **3.70a@0x20**。  
+- **实现文件**：`Ethernet.c` / `Ethernet.h`（`BoardEthernetProbe`；Naming 全词，三架构同门面）；块设备 `Sdhci.c`（`BoardSdhciRegister`）。  
+- **net-2**：MDIO `MII_ADDR/DATA` @`+0x10/+0x14`（shift 11/6，CSR=4）。EPHY：`cv181x_ephy_id_init`（写 ID `0043:5649`）+ Linux `cvitek` `config_init`（ANA 表、`CTL=0x090e` 启 AN、BMCR FD）；MDIO 扫 addr1；`BMCR` 重启 AN；轮询 `BMSR`。串口 `phy=` / `id=` / `bmcr=` / `adv=` / `lpa=` / `link=`。无 link **不**称 Ready。  
+- **真机 net-2（2026-10-26）**：`phy=1 id=00435649` · `bmcr=3100` · `bmsr=79ed` · `adv=01e1` · `lpa=cde1` · `aneg=1` · **`link=up`**。  
+- `BOARD_HAS_NET=0`。刷卡前 `.toy_board=milk-v-duo-s`。
 
 ## µSD（duo-block）
 

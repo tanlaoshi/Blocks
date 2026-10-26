@@ -26,7 +26,7 @@
 /* cv18xx.dtsi cpus.timebase-frequency；SD 延时用，勿改 virt 的 10MHz 定时器 */
 #define BOARD_TIMEBASE_HZ      25000000u
 
-/* 命令行靶：无 FB。块设备 = µSD（Sd.c PIO），不是 virtio */
+/* 命令行靶：无 FB。块设备 = µSD（Sdhci.c PIO），不是 virtio */
 #define BOARD_HAS_FRAMEBUFFER  0
 #define BOARD_HAS_BLOCK        1
 #define BOARD_HAS_NET          0

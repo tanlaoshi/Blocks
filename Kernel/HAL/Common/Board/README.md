@@ -34,6 +34,18 @@ HAL/
 | `NOTES.md` | 可选 | 真机踩坑（引脚、分区、厂商环境变量） |
 | `dts/` 或链接到厂商 `.dtb` | 可选 | 仅文档/脚本引用；**Common 禁止解析 DTB** |
 
+### 2.1 板级外设文件名（X64 / Arm64 / RiscV 同形）
+
+Naming：全词；协议/总线正式名可保留（`USB`、`SDHCI`）。**三架构同一门面名**，有则实现、无则不交空 stub。
+
+| 能力 | 文件 | 导出（Board 层） | 现状 |
+|------|------|------------------|------|
+| 板载以太网 | `Ethernet.c` / `Ethernet.h` | `BoardEthernetProbe` | Duo S ✅；Pi / X64 板包暂无则不交文件 |
+| µSD / SDHCI | `Sdhci.c` / `Sdhci.h`（或 Pi `Sdhost.c`） | `BoardSdhciRegister` / `BoardSdhostRegister` | Duo + Pi |
+| USB host（Synopsys DWC2 IP） | `UsbHostController.c` / `UsbHostController.h` | `BoardUsbHostControllerProbe` | Duo + Pi |
+
+禁止：`Eth.c`、`Dwmac.c`、`Sd.c`、`Dwc2.c` 等砍短名顶门面（USB 主机用 `UsbHostController`）。
+
 复制模板：
 
 ```bash

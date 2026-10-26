@@ -1,20 +1,21 @@
 /*
- * Dwc2.c — Pi3B+ DWC2 host（rpi-7）
+ * UsbHostController.c — Milk-V Duo S USB 主机（duo-usb-kbd；IP=DWC2）
  *
- * rpi-7：控制传输 + hub 枚举 + SPLIT HID boot 鼠/键 → DriverInputAttach。
- * 传输形：U-Boot dwc2；HCSPLT.XACTPOS=ALL（Synopsys 非周期 SPLIT）；
- * hub 类请求对齐 HAL/X64 Hub/Request.c；键解析对齐 X64 HidParse（拒假键）。
+ * 对齐 Pi3B+ UsbHostController：控制传输 + hub 枚举 + SPLIT HID；根口也可直连 boot 键。
+ * 板差：BASE/PHY/VBUS/软复位（U-Boot board_usb_init + mainline phy-cv1800）；
+ * DMA 总线地址恒等（无 BCM PHYS_TO_BUS）。键 → DriverInputAttach（勿缩水门面）。
  */
-#include "Dwc2.h"
+#include "UsbHostController.h"
 #include "Board.h"
 #include "Hal.h"
 #include "SerialLog.h"
 #include "DriverInput.h"
+#include "CoreOps.h"
 
 #define DWC2_DMA_BUF_SIZE  512u
 #define DWC2_CTRL_RETRY    8u
-/* BCM2837：DWC2/VC 见总线别名（U-Boot phys_to_bus；同 Mbox PHYS_TO_BUS） */
-#define DWC2_PHYS_TO_BUS(P) (((UINT32)(UINTN)(P) & 0x3FFFFFFFu) | 0xC0000000u)
+/* CV181x：AHB 见物理地址（Sv39 恒等；无 BCM 0xC0000000 别名） */
+#define DWC2_PHYS_TO_BUS(P) ((UINT32)(UINTN)(P))
 
 typedef struct {
     UINT8 BmRequestType;
@@ -24,24 +25,24 @@ typedef struct {
     UINT16 WLength;
 } __attribute__((packed)) UsbSetup;
 
-static volatile UINT32 *Dwc2Reg(UINT32 Off) {
+static volatile UINT32 *Register(UINT32 Off) {
     return (volatile UINT32 *)(UINTN)(DWC2_BASE + Off);
 }
 
-static void Dwc2Spin(UINT32 N) {
+static void Spin(UINT32 N) {
     volatile UINT32 i;
     for (i = 0; i < N; i++) {
         __asm__ volatile("nop");
     }
 }
 
-static int Dwc2WaitBits(UINT32 Off, UINT32 Mask, UINT32 Want, UINT32 Spins) {
+static int WaitBits(UINT32 Off, UINT32 Mask, UINT32 Want, UINT32 Spins) {
     UINT32 i;
     for (i = 0; i < Spins; i++) {
-        if ((*Dwc2Reg(Off) & Mask) == Want) {
+        if ((*Register(Off) & Mask) == Want) {
             return 0;
         }
-        Dwc2Spin(100);
+        Spin(100);
     }
     return -1;
 }
@@ -58,16 +59,74 @@ static void Hex16(UINT16 V) {
     HalSerialBootMark(Buf);
 }
 
-static void Dwc2DelayMs(UINT32 Ms) {
+static void DelayMilliseconds(UINT32 Ms) {
     UINT32 m;
     for (m = 0; m < Ms; m++) {
-        Dwc2Spin(80000u);
+        Spin(80000u);
     }
 }
 
 static void HprtWrite(UINT32 Val) {
     Val &= ~DWC2_HPRT0_W1C_MASK;
-    *Dwc2Reg(DWC2_HPRT0) = Val;
+    *Register(DWC2_HPRT0) = Val;
+}
+
+static volatile UINT32 *TopReg(UINT64 Addr) {
+    return (volatile UINT32 *)(UINTN)Addr;
+}
+
+/*
+ * 板级：Type-A 口选通 + VBUS + TOP USB 复位 + PHY host。
+ * 口选序对齐厂商 usb-host.sh（gpio510=PORT_SEL↑ → gpio453=VBUS↑）；
+ * PHY/复位对齐 U-Boot board_usb_init + mainline phy-cv1800 HOST。
+ */
+static void DuoUsbHwInit(void) {
+    UINT32 V;
+
+    /*
+     * Duo S：Type-A 与 Type-C 互斥。默认走 Type-C；HOST 须 USB_PORT_SEL=1
+     *（XGPIOA[30] / Linux gpio 510，pad AUX0）。再开 VBUS_EN=XGPIOB[5]。
+     */
+    V = *TopReg(DUO_FMUX_AUX0);
+    V = (V & ~7u) | DUO_AUX0_XGPIOA30;
+    *TopReg(DUO_FMUX_AUX0) = V;
+    V = *TopReg(DUO_GPIOA_BASE + DUO_GPIO_SWPORT_DDR);
+    *TopReg(DUO_GPIOA_BASE + DUO_GPIO_SWPORT_DDR) = V | DUO_PORT_SEL_BIT;
+    V = *TopReg(DUO_GPIOA_BASE + DUO_GPIO_SWPORT_DR);
+    *TopReg(DUO_GPIOA_BASE + DUO_GPIO_SWPORT_DR) = V | DUO_PORT_SEL_BIT;
+    DelayMilliseconds(500);
+
+    V = *TopReg(DUO_FMUX_USB_VBUS_EN);
+    V = (V & ~7u) | DUO_USB_VBUS_EN_XGPIOB5;
+    *TopReg(DUO_FMUX_USB_VBUS_EN) = V;
+    V = *TopReg(DUO_GPIOB_BASE + DUO_GPIO_SWPORT_DDR);
+    *TopReg(DUO_GPIOB_BASE + DUO_GPIO_SWPORT_DDR) = V | DUO_VBUS_EN_BIT;
+    V = *TopReg(DUO_GPIOB_BASE + DUO_GPIO_SWPORT_DR);
+    *TopReg(DUO_GPIOB_BASE + DUO_GPIO_SWPORT_DR) = V | DUO_VBUS_EN_BIT;
+    DelayMilliseconds(500);
+
+    /* TOP soft-reset USB（U-Boot board_usb_init） */
+    V = *TopReg(DUO_REG_TOP_SOFT_RST);
+    *TopReg(DUO_REG_TOP_SOFT_RST) = V & ~DUO_BIT_TOP_SOFT_RST_USB;
+    Spin(50000u);
+    V = *TopReg(DUO_REG_TOP_SOFT_RST);
+    *TopReg(DUO_REG_TOP_SOFT_RST) = V | DUO_BIT_TOP_SOFT_RST_USB;
+    Spin(50000u);
+
+    /*
+     * PHY：EXTVBUS + VBUS_POWER + ID override host（清 ID_VALUE）。
+     * U-Boot gadget 置 ID_VALUE=device；host 须清 bit7（mainline MODE_HOST）。
+     */
+    V = *TopReg(DUO_REG_TOP_USB_PHY_CTRL);
+    V |= DUO_BIT_USB_PHY_EXTVBUS | DUO_BIT_USB_PHY_VBUS_PWR |
+         DUO_BIT_USB_PHY_ID_OVR;
+    V &= ~DUO_BIT_USB_PHY_ID_VALUE;
+    *TopReg(DUO_REG_TOP_USB_PHY_CTRL) = V;
+
+    *TopReg(DUO_REG_TOP_USB_ECO) =
+        *TopReg(DUO_REG_TOP_USB_ECO) | DUO_BIT_USB_ECO_RX_FLUSH;
+
+    HalSerialBootMark("Boot: Duo USB PORT_SEL+VBUS+PHY host\n");
 }
 
 /* skip-MMU：VA==PA；仍 civac 供 DWC2 DMA 见缓冲 */
@@ -108,6 +167,8 @@ static UINT8 gMqT;
 static int gKbdOk;
 static UINT8 gKbdAddr;
 static UINT8 gKbdEp;
+static UINT8 gKbdIface;
+static UINT16 gKbdEp0Mps;
 static UINT16 gKbdMps;
 static UINT8 gKbdToggle;
 static UINT8 gKbdHub;
@@ -131,16 +192,16 @@ static UINT8 gKqT;
 #define HUB_STAT_HIGH_SPEED        (1u << 10)
 
 static void FlushTxFifo(UINT32 Num) {
-    *Dwc2Reg(DWC2_GRSTCTL) =
+    *Register(DWC2_GRSTCTL) =
         DWC2_GRSTCTL_TXFFLSH | (Num << DWC2_GRSTCTL_TXFNUM_SHIFT);
-    (void)Dwc2WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_TXFFLSH, 0, 100000u);
-    Dwc2Spin(1000);
+    (void)WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_TXFFLSH, 0, 100000u);
+    Spin(1000);
 }
 
 static void FlushRxFifo(void) {
-    *Dwc2Reg(DWC2_GRSTCTL) = DWC2_GRSTCTL_RXFFLSH;
-    (void)Dwc2WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_RXFFLSH, 0, 100000u);
-    Dwc2Spin(1000);
+    *Register(DWC2_GRSTCTL) = DWC2_GRSTCTL_RXFFLSH;
+    (void)WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_RXFFLSH, 0, 100000u);
+    Spin(1000);
 }
 
 static void HaltChannels(void) {
@@ -148,24 +209,24 @@ static void HaltChannels(void) {
     UINT32 i;
     UINT32 Char;
 
-    N = (*Dwc2Reg(DWC2_GHWCFG2) & DWC2_GHWCFG2_NUM_HOST_CHAN_MASK) >>
+    N = (*Register(DWC2_GHWCFG2) & DWC2_GHWCFG2_NUM_HOST_CHAN_MASK) >>
         DWC2_GHWCFG2_NUM_HOST_CHAN_SHIFT;
     N += 1u;
     if (N > 16u) {
         N = 16u;
     }
     for (i = 0; i < N; i++) {
-        Char = *Dwc2Reg(DWC2_HCCHAR(i));
+        Char = *Register(DWC2_HCCHAR(i));
         Char &= ~(DWC2_HCCHAR_CHEN | DWC2_HCCHAR_EPDIR);
         Char |= DWC2_HCCHAR_CHDIS;
-        *Dwc2Reg(DWC2_HCCHAR(i)) = Char;
+        *Register(DWC2_HCCHAR(i)) = Char;
     }
     for (i = 0; i < N; i++) {
-        Char = *Dwc2Reg(DWC2_HCCHAR(i));
+        Char = *Register(DWC2_HCCHAR(i));
         Char &= ~DWC2_HCCHAR_EPDIR;
         Char |= DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS;
-        *Dwc2Reg(DWC2_HCCHAR(i)) = Char;
-        (void)Dwc2WaitBits(DWC2_HCCHAR(i), DWC2_HCCHAR_CHEN, 0, 50000u);
+        *Register(DWC2_HCCHAR(i)) = Char;
+        (void)WaitBits(DWC2_HCCHAR(i), DWC2_HCCHAR_CHEN, 0, 50000u);
     }
 }
 
@@ -173,20 +234,20 @@ static int RootPortReset(void) {
     UINT32 Hprt;
     UINT32 i;
 
-    Hprt = *Dwc2Reg(DWC2_HPRT0);
+    Hprt = *Register(DWC2_HPRT0);
     Hprt |= DWC2_HPRT0_PRTRST;
     HprtWrite(Hprt);
-    Dwc2DelayMs(60);
-    Hprt = *Dwc2Reg(DWC2_HPRT0);
+    DelayMilliseconds(60);
+    Hprt = *Register(DWC2_HPRT0);
     Hprt &= ~DWC2_HPRT0_PRTRST;
     HprtWrite(Hprt);
 
     for (i = 0; i < 100u; i++) {
-        Hprt = *Dwc2Reg(DWC2_HPRT0);
+        Hprt = *Register(DWC2_HPRT0);
         if ((Hprt & DWC2_HPRT0_PRTENA) != 0) {
             return 0;
         }
-        Dwc2DelayMs(10);
+        DelayMilliseconds(10);
     }
     return -1;
 }
@@ -205,15 +266,15 @@ static void HcInit(UINT8 DevAddr, UINT8 EpNum, int EpIn, UINT8 EpType,
     if (LowSpeed) {
         Hcchar |= DWC2_HCCHAR_LSPDDEV;
     }
-    *Dwc2Reg(DWC2_HCCHAR(DWC2_HC_CHANNEL)) = Hcchar;
+    *Register(DWC2_HCCHAR(DWC2_HC_CHANNEL)) = Hcchar;
     if (DoSplit) {
         /* Synopsys：控制/批量 SPLIT 的 XACTPOS=ALL；0(MID) 仅周期中间包 */
-        *Dwc2Reg(DWC2_HCSPLT(DWC2_HC_CHANNEL)) =
+        *Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)) =
             DWC2_HCSPLT_SPLTENA | DWC2_HCSPLT_XACTPOS_ALL |
             ((UINT32)gXferHub << DWC2_HCSPLT_HUBADDR_SHIFT) |
             ((UINT32)gXferPort << DWC2_HCSPLT_PRTADDR_SHIFT);
     } else {
-        *Dwc2Reg(DWC2_HCSPLT(DWC2_HC_CHANNEL)) = 0;
+        *Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)) = 0;
     }
 }
 
@@ -228,17 +289,17 @@ static int WaitChhltd(UINT32 *SubOut, UINT8 *PidOut) {
     UINT32 Off = DWC2_HCINT(DWC2_HC_CHANNEL);
 
     for (i = 0; i < 200000u; i++) {
-        if ((*Dwc2Reg(Off) & DWC2_HCINT_CHHLTD) != 0) {
+        if ((*Register(Off) & DWC2_HCINT_CHHLTD) != 0) {
             break;
         }
-        Dwc2Spin(50);
+        Spin(50);
     }
-    if ((*Dwc2Reg(Off) & DWC2_HCINT_CHHLTD) == 0) {
+    if ((*Register(Off) & DWC2_HCINT_CHHLTD) == 0) {
         return -1;
     }
 
-    Hcint = *Dwc2Reg(Off);
-    Hctsiz = *Dwc2Reg(DWC2_HCTSIZ(DWC2_HC_CHANNEL));
+    Hcint = *Register(Off);
+    Hctsiz = *Register(DWC2_HCTSIZ(DWC2_HC_CHANNEL));
     *SubOut = Hctsiz & 0x7FFFFu;
     *PidOut = (UINT8)((Hctsiz >> DWC2_HCTSIZ_PID_SHIFT) & 3u);
 
@@ -260,7 +321,7 @@ static int TransferChunk(UINT8 *Pid, int In, void *Buffer, UINT32 NumPkts,
     UINT32 Sub;
     int Ret;
 
-    *Dwc2Reg(DWC2_HCTSIZ(DWC2_HC_CHANNEL)) =
+    *Register(DWC2_HCTSIZ(DWC2_HC_CHANNEL)) =
         (XferLen << DWC2_HCTSIZ_XFERSIZE_SHIFT) |
         (NumPkts << DWC2_HCTSIZ_PKTCNT_SHIFT) |
         ((UINT32)(*Pid) << DWC2_HCTSIZ_PID_SHIFT);
@@ -277,18 +338,18 @@ static int TransferChunk(UINT8 *Pid, int In, void *Buffer, UINT32 NumPkts,
         }
     }
 
-    *Dwc2Reg(DWC2_HCDMA(DWC2_HC_CHANNEL)) = DWC2_PHYS_TO_BUS(gDmaBuf);
-    *Dwc2Reg(DWC2_HCINT(DWC2_HC_CHANNEL)) = 0x3FFFu;
+    *Register(DWC2_HCDMA(DWC2_HC_CHANNEL)) = DWC2_PHYS_TO_BUS(gDmaBuf);
+    *Register(DWC2_HCINT(DWC2_HC_CHANNEL)) = 0x3FFFu;
 
     {
-        UINT32 Hcchar = *Dwc2Reg(DWC2_HCCHAR(DWC2_HC_CHANNEL));
+        UINT32 Hcchar = *Register(DWC2_HCCHAR(DWC2_HC_CHANNEL));
         Hcchar &= ~(DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS | DWC2_HCCHAR_ODDFRM |
                     (3u << DWC2_HCCHAR_MULTICNT_SHIFT));
         Hcchar |= (1u << DWC2_HCCHAR_MULTICNT_SHIFT) | DWC2_HCCHAR_CHEN;
         if (OddFrame) {
             Hcchar |= DWC2_HCCHAR_ODDFRM;
         }
-        *Dwc2Reg(DWC2_HCCHAR(DWC2_HC_CHANNEL)) = Hcchar;
+        *Register(DWC2_HCCHAR(DWC2_HC_CHANNEL)) = Hcchar;
     }
 
     Ret = WaitChhltd(&Sub, Pid);
@@ -352,7 +413,7 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
         /* EDK2：每包重装 HCCHAR/HCSPLT（含 CSPLIT 切换） */
         HcInit(DevAddr, EpNum, In, EpType, Mps, gXferLowSpeed, gXferDoSplit);
         if (gXferDoSplit) {
-            Spl = *Dwc2Reg(DWC2_HCSPLT(DWC2_HC_CHANNEL));
+            Spl = *Register(DWC2_HCSPLT(DWC2_HC_CHANNEL));
             if (CompleteSplit) {
                 Spl |= DWC2_HCSPLT_COMPSPLT;
                 /*
@@ -361,31 +422,31 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
                  */
                 {
                     UINT32 Guard = 0;
-                    while (((*Dwc2Reg(DWC2_HFNUM) & 0x3FFFu) == SsplitFrame) &&
+                    while (((*Register(DWC2_HFNUM) & 0x3FFFu) == SsplitFrame) &&
                            Guard < 20000u) {
-                        Dwc2Spin(50);
+                        Spin(50);
                         Guard++;
                     }
                 }
             } else {
                 Spl &= ~DWC2_HCSPLT_COMPSPLT;
             }
-            *Dwc2Reg(DWC2_HCSPLT(DWC2_HC_CHANNEL)) = Spl;
+            *Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)) = Spl;
         }
 
         if (EpType == DWC2_HCCHAR_EPTYPE_INTR) {
-            Odd = ((*Dwc2Reg(DWC2_HFNUM) & 1u) == 0) ? 1 : 0;
+            Odd = ((*Register(DWC2_HFNUM) & 1u) == 0) ? 1 : 0;
         }
 
-        Dwc2Spin(gXferLowSpeed ? 16000u : 8000u); /* LS 多 settle */
+        Spin(gXferLowSpeed ? 16000u : 8000u); /* LS 多 settle */
         Ret = TransferChunk(Pid, In,
                             Len ? (void *)((UINT8 *)Buffer + Done) : gStatusBuf,
                             Npkts, Xfer, &Actual, Odd);
-        Hcint = *Dwc2Reg(DWC2_HCINT(DWC2_HC_CHANNEL));
+        Hcint = *Register(DWC2_HCINT(DWC2_HC_CHANNEL));
 
         if (CompleteSplit) {
             if (Ret == -3 || (Hcint & DWC2_HCINT_NYET) != 0) {
-                UINT32 Fn = *Dwc2Reg(DWC2_HFNUM) & 0x3FFFu;
+                UINT32 Fn = *Register(DWC2_HFNUM) & 0x3FFFu;
                 if (((Fn - SsplitFrame) & 0x3FFFu) > 4u) {
                     return -2;
                 }
@@ -403,7 +464,7 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
                 NyetTries = 0;
             }
         } else if (gXferDoSplit && (Hcint & DWC2_HCINT_ACK) != 0) {
-            SsplitFrame = *Dwc2Reg(DWC2_HFNUM) & 0x3FFFu;
+            SsplitFrame = *Register(DWC2_HFNUM) & 0x3FFFu;
             CompleteSplit = 1;
             NyetTries = 0;
             Actual = 0;
@@ -421,18 +482,24 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
                 XactTries++;
                 CompleteSplit = 0;
                 NyetTries = 0;
-                Dwc2DelayMs(2);
+                DelayMilliseconds(2);
                 continue;
             }
-            HalSerialBootMark("Boot: DWC2 HCINT=");
-            Hex32(Hcint);
-            HalSerialBootMark(" spl=");
-            Hex32(*Dwc2Reg(DWC2_HCSPLT(DWC2_HC_CHANNEL)));
-            HalSerialBootMark(" hub=");
-            Hex16(gXferHub);
-            HalSerialBootMark("+");
-            Hex16(gXferPort);
-            HalSerialBootMark("\n");
+            /*
+             * 枚举期打一次 HCINT 便于对表；已绑 HID 后 Poll 掉线常见 HCINT=0，
+             * 勿每轮 BootMark（带电拔键真机刷屏）。
+             */
+            if (!gMouseOk && !gKbdOk) {
+                HalSerialBootMark("Boot: DWC2 HCINT=");
+                Hex32(Hcint);
+                HalSerialBootMark(" spl=");
+                Hex32(*Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)));
+                HalSerialBootMark(" hub=");
+                Hex16(gXferHub);
+                HalSerialBootMark("+");
+                Hex16(gXferPort);
+                HalSerialBootMark("\n");
+            }
             return Ret;
         }
         XactTries = 0;
@@ -451,17 +518,17 @@ static int ChunkMsg(UINT8 DevAddr, UINT8 EpNum, UINT8 EpType, int In,
         }
         /* LS SPLIT：包与包之间跨微帧，减轻第 2 包起 DATATGLERR（cfg short=0x0b） */
         if (gXferDoSplit && gXferLowSpeed) {
-            UINT32 F0 = *Dwc2Reg(DWC2_HFNUM) & 0x3FFFu;
+            UINT32 F0 = *Register(DWC2_HFNUM) & 0x3FFFu;
             UINT32 Guard = 0;
-            while ((((*Dwc2Reg(DWC2_HFNUM) & 0x3FFFu) - F0) & 0x3FFFu) < 2u &&
+            while ((((*Register(DWC2_HFNUM) & 0x3FFFu) - F0) & 0x3FFFu) < 2u &&
                    Guard < 40000u) {
-                Dwc2Spin(50);
+                Spin(50);
                 Guard++;
             }
         }
     }
-    *Dwc2Reg(DWC2_HCINTMSK(DWC2_HC_CHANNEL)) = 0;
-    *Dwc2Reg(DWC2_HCINT(DWC2_HC_CHANNEL)) = 0xFFFFFFFFu;
+    *Register(DWC2_HCINTMSK(DWC2_HC_CHANNEL)) = 0;
+    *Register(DWC2_HCINT(DWC2_HC_CHANNEL)) = 0xFFFFFFFFu;
     return Done;
 }
 
@@ -474,7 +541,8 @@ static void XferTargetHub(void) {
 }
 
 static void XferTargetSplit(UINT8 Hub, UINT8 Port, int Low, UINT16 Ep0Mps) {
-    gXferDoSplit = (gRootSpd == DWC2_HPRT0_PRTSPD_HS) ? 1 : 0;
+    /* SPLIT 仅 HS 根口后的 hub 下游；Hub==0 为根设备直连 */
+    gXferDoSplit = (Hub != 0 && gRootSpd == DWC2_HPRT0_PRTSPD_HS) ? 1 : 0;
     gXferLowSpeed = Low;
     gXferHub = Hub;
     gXferPort = Port;
@@ -612,11 +680,11 @@ static int HubResetPort(UINT8 Hub, UINT8 Port, UINT16 *StOut) {
         if ((St & HUB_STAT_RESET) == 0) {
             break;
         }
-        Dwc2DelayMs(10);
+        DelayMilliseconds(10);
     }
     (void)HubSetPortFeat(Hub, Port, HUB_FEAT_C_PORT_RESET, 0);
     (void)HubSetPortFeat(Hub, Port, HUB_FEAT_C_PORT_ENABLE, 0);
-    Dwc2DelayMs(20);
+    DelayMilliseconds(20);
     if (HubGetPortStatus(Hub, Port, &St, &Ch) != 0) {
         return -1;
     }
@@ -786,8 +854,12 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
     int GotKbd;
     int Bound = 0;
 
-    if ((PortSt & HUB_STAT_HIGH_SPEED) != 0) {
-        return 0; /* 板上网口等 HS：非 SPLIT HID */
+    /*
+     * Pi：HS 口跳过（网口等，非 SPLIT HID）。
+     * Duo 根口（Hub==0）可直连 HS boot 键/复合：允许，且不做 SPLIT。
+     */
+    if ((PortSt & HUB_STAT_HIGH_SPEED) != 0 && Hub != 0) {
+        return 0;
     }
     WantMouse = !gMouseOk;
     WantKbd = !gKbdOk;
@@ -799,8 +871,14 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
      * 曾用 FS→64 先 GET 18 → SPLIT getdesc18 fail（屏上已见）。
      */
     Low = ((PortSt & HUB_STAT_LOW_SPEED) != 0) ? 1 : 0;
-    Ep0 = 8;
-    XferTargetSplit(Hub, Port, Low, Ep0);
+    Ep0 = ((PortSt & HUB_STAT_HIGH_SPEED) != 0) ? 64u : 8u;
+    if (Hub == 0) {
+        XferTargetHub();
+        gXferLowSpeed = Low;
+        gXferEp0Mps = Ep0;
+    } else {
+        XferTargetSplit(Hub, Port, Low, Ep0);
+    }
 
     Setup.BmRequestType = 0x80;
     Setup.BRequest = 6;
@@ -858,7 +936,7 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
         HalSerialBootMark("Boot: DWC2 HID SET_ADDR fail\n");
         return -1;
     }
-    Dwc2DelayMs(Low ? 10u : 2u);
+    DelayMilliseconds(Low ? 10u : 2u);
 
     if (Ret < 18) {
         Setup.BmRequestType = 0x80;
@@ -936,10 +1014,10 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
                 if (Got >= (int)L || Got >= 25) {
                     break;
                 }
-                if (Low) {
+                if (Low && Hub != 0) {
                     (void)HubClearTtBuffer(Hub, Port, Addr, 0, 1);
                     XferTargetSplit(Hub, Port, Low, Ep0);
-                    Dwc2DelayMs(15);
+                    DelayMilliseconds(15);
                 }
             }
             if (Best >= Want || Best >= 25) {
@@ -1025,6 +1103,8 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
         HidSetBootIdle(Addr, KIface);
         gKbdAddr = Addr;
         gKbdEp = (UINT8)(KEp & 0x0Fu);
+        gKbdIface = KIface;
+        gKbdEp0Mps = Ep0 ? Ep0 : (Low ? 8u : 64u);
         gKbdMps = KMps ? KMps : 8;
         gKbdToggle = DWC2_HC_PID_DATA0;
         gKbdHub = Hub;
@@ -1038,6 +1118,20 @@ static int EnumHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortSt) {
         HalSerialBootMark(" ok\n");
     }
     return Bound;
+}
+
+/* 壳运行中掉线：先换行脱离 blocks>，打一行，再重打提示符（勿粘在提示符后） */
+static void DuoHidGoneNote(const char *Msg) {
+    UINTN L;
+
+    if (!Msg) {
+        return;
+    }
+    ConsoleIoWriteLen("\n", 1);
+    for (L = 0; Msg[L] != 0; L++) {
+    }
+    ConsoleIoWriteLen(Msg, L);
+    ConsoleIoShowPrompt();
 }
 
 static void MouseEnqueue(UINT8 Btn, INT8 Dx, INT8 Dy, INT8 Wh) {
@@ -1090,7 +1184,7 @@ static void MouseEnqueue(UINT8 Btn, INT8 Dx, INT8 Dy, INT8 Wh) {
     gMqT = N;
 }
 
-static void Dwc2MousePollOnce(void) {
+static void MousePollOnce(void) {
     UINT8 Buf[8];
     int Ret;
     UINT8 Pid;
@@ -1107,6 +1201,11 @@ static void Dwc2MousePollOnce(void) {
                    (int)gMouseMps > 8 ? 8 : (int)gMouseMps, gMouseMps);
     if (Ret == -2) {
         return; /* NAK：无报告 */
+    }
+    if (Ret < 0) {
+        gMouseOk = 0; /* 掉线/超时：停泵 */
+        DuoHidGoneNote("Boot: DWC2 mouse gone\n");
+        return;
     }
     if (Ret < 3) {
         return;
@@ -1134,7 +1233,7 @@ static void KbdEnqueue(const UINT8 *Rep8) {
     gKqT = N;
 }
 
-static void Dwc2KbdPollOnce(void) {
+static void KeyboardPollOnce(void) {
     UINT8 Buf[8];
     int Ret;
     UINT8 Pid;
@@ -1157,6 +1256,12 @@ static void Dwc2KbdPollOnce(void) {
     if (Ret == -2) {
         return;
     }
+    if (Ret < 0) {
+        /* 带电拔：WaitChhltd 超时 HCINT=0 → 停泵，串口不回归刷屏 */
+        gKbdOk = 0;
+        DuoHidGoneNote("Boot: DWC2 kbd gone\n");
+        return;
+    }
     if (Ret < 3) {
         return;
     }
@@ -1165,16 +1270,17 @@ static void Dwc2KbdPollOnce(void) {
 }
 
 /* 鼠优先：先鼠后键，勿让键 IN 饿死鼠 */
-static void Dwc2HidPoll(void) {
-    Dwc2MousePollOnce();
-    Dwc2KbdPollOnce();
+static void HidPoll(void) {
+    MousePollOnce();
+    KeyboardPollOnce();
 }
 
-void BoardDwc2MouseHandoff(UINT32 CursorX, UINT32 CursorY) {
+/* Duo ConsoleOnly 无 Gui；保留与 Pi 同形，供日后有屏时对齐 */
+void BoardUsbHostControllerMouseHandoff(UINT32 CursorX, UINT32 CursorY) {
     gMouseX = CursorX;
     gMouseY = CursorY;
     gMouseAbsInit = 1;
-    gMqH = gMqT; /* 丢积压，避免 Reveal 后飞角 */
+    gMqH = gMqT;
 }
 
 static int MousePresentWrap(void) {
@@ -1203,10 +1309,32 @@ static int KeyboardDequeueWrap(HAL_KEYBOARD_REPORT *Report) {
     return 1;
 }
 
-static const INPUT_BACKEND gDwc2Input = {
-    .Poll = Dwc2HidPoll,
+/*
+ * HID boot 键盘灯：SET_REPORT Output（USB HID §7.2.2）；
+ * wValue=0x0200 同 X64 KeyboardSetLeds（Output+ReportID0）。
+ */
+static int KeyboardSetLedsWrap(UINT8 Leds) {
+    UsbSetup Setup;
+    UINT8 LedByte = Leds;
+    int Ret;
+
+    if (!gKbdOk) {
+        return -1;
+    }
+    XferTargetSplit(gKbdHub, gKbdPort, gKbdLow, gKbdEp0Mps);
+    Setup.BmRequestType = 0x21;
+    Setup.BRequest = 0x09; /* SET_REPORT */
+    Setup.WValue = 0x0200;
+    Setup.WIndex = gKbdIface;
+    Setup.WLength = 1;
+    Ret = ControlMsg(gKbdAddr, &Setup, &LedByte, 1);
+    return (Ret >= 0) ? 0 : -1;
+}
+
+static const INPUT_BACKEND gInputBackend = {
+    .Poll = HidPoll,
     .KeyboardDequeue = KeyboardDequeueWrap,
-    .KeyboardSetLeds = 0,
+    .KeyboardSetLeds = KeyboardSetLedsWrap,
     .MousePresent = MousePresentWrap,
     .MouseDequeue = MouseDequeueWrap,
 };
@@ -1262,7 +1390,7 @@ static void HubScanPortsOnce(UINT8 Hub, UINT8 NPorts, UINT8 Pass) {
             continue;
         }
         HalSerialBootMark(St & HUB_STAT_LOW_SPEED ? " LS\n" : " FS\n");
-        Dwc2DelayMs(50); /* 口复位恢复；再 SPLIT */
+        DelayMilliseconds(50); /* 口复位恢复；再 SPLIT */
         if (!gMouseOk || !gKbdOk) {
             if (EnumHidOnPort(Hub, P, St) > 0) {
                 gPortDone |= (UINT8)(1u << P);
@@ -1326,7 +1454,7 @@ static void HubScanPorts(UINT8 Hub) {
      * bPwrOn2PwrGood×2ms（USB2 §11.23.2.1）+ 额外 settle：
      * 我们 CSFTRST 后键常比鼠慢亮 CONNECT（U-Boot 曾用过的键也会重枚）。
      */
-    Dwc2DelayMs((UINT32)PwrGood * 2u + 200u);
+    DelayMilliseconds((UINT32)PwrGood * 2u + 200u);
 
     gPortDone = 0;
     for (Pass = 1; Pass <= 3; Pass++) {
@@ -1335,12 +1463,12 @@ static void HubScanPorts(UINT8 Hub) {
             break;
         }
         if (Pass < 3) {
-            Dwc2DelayMs(300);
+            DelayMilliseconds(300);
         }
     }
 
     if (gMouseOk || gKbdOk) {
-        if (DriverInputAttach(&gDwc2Input) == 0) {
+        if (DriverInputAttach(&gInputBackend) == 0) {
             HalSerialBootMark("Boot: DWC2 DriverInputAttach");
             if (gMouseOk) {
                 HalSerialBootMark(" mouse");
@@ -1370,6 +1498,7 @@ static int EnumRootHub(void) {
     UINT16 Pid;
     UINT8 Cls;
     UINT8 Addr = 1;
+    UINT16 RootSt;
 
     XferTargetHub();
     /* GET_DESCRIPTOR(DEVICE) @ addr0 */
@@ -1387,7 +1516,7 @@ static int EnumRootHub(void) {
     Cls = Desc[4];
     Vid = (UINT16)Desc[8] | ((UINT16)Desc[9] << 8);
     Pid = (UINT16)Desc[10] | ((UINT16)Desc[11] << 8);
-    HalSerialBootMark("Boot: DWC2 hub DESC len=");
+    HalSerialBootMark("Boot: DWC2 root DESC len=");
     Hex16(Desc[0]);
     HalSerialBootMark(" cls=");
     Hex16(Cls);
@@ -1396,13 +1525,52 @@ static int EnumRootHub(void) {
     HalSerialBootMark(" pid=");
     Hex16(Pid);
     HalSerialBootMark("\n");
-    /* 全 0：多半 HCDMA 未走 0xC0000000 总线别名 */
+    /* 全 0：HCDMA/总线地址或 PHY 未就绪 */
     if (Desc[0] == 0 || (Vid == 0 && Pid == 0)) {
-        HalSerialBootMark("Boot: DWC2 DESC bogus (check DMA bus addr)\n");
+        HalSerialBootMark("Boot: DWC2 DESC bogus (check DMA/PHY)\n");
         return -1;
     }
 
-    /* SET_ADDRESS */
+    /* 根口速度 → 合成 hub PortStatus（EnumHidOnPort） */
+    RootSt = HUB_STAT_CONNECT | HUB_STAT_ENABLE;
+    if (gRootSpd == DWC2_HPRT0_PRTSPD_LS) {
+        RootSt |= HUB_STAT_LOW_SPEED;
+    } else if (gRootSpd == DWC2_HPRT0_PRTSPD_HS) {
+        RootSt |= HUB_STAT_HIGH_SPEED;
+    }
+
+    /*
+     * Duo Type-A：常直连键/复合（bDeviceClass=0/3），非 Pi 板上 hub。
+     * Class 9 → hub 扫口；否则根口 EnumHid（Hub=0，无 SPLIT）。
+     */
+    if (Cls != 9) {
+        HalSerialBootMark("Boot: DWC2 root HID (no hub)\n");
+        /*
+         * EnumHidOnPort 内 SET_ADDR；此处勿先占 addr1。
+         * gNextAddr 从 2 起（Pi）；根设备用 1 起亦可——EnumHid 自增。
+         */
+        if (EnumHidOnPort(0, 0, RootSt) > 0) {
+            if (gMouseOk || gKbdOk) {
+                if (DriverInputAttach(&gInputBackend) == 0) {
+                    HalSerialBootMark("Boot: DWC2 DriverInputAttach");
+                    if (gMouseOk) {
+                        HalSerialBootMark(" mouse");
+                    }
+                    if (gKbdOk) {
+                        HalSerialBootMark(" kbd");
+                    }
+                    HalSerialBootMark("\n");
+                } else {
+                    HalSerialBootMark("Boot: DWC2 DriverInputAttach fail\n");
+                }
+            }
+            return 0;
+        }
+        HalSerialBootMark("Boot: DWC2 root HID enum fail\n");
+        return -1;
+    }
+
+    /* SET_ADDRESS（hub） */
     Setup.BmRequestType = 0x00;
     Setup.BRequest = 5;
     Setup.WValue = Addr;
@@ -1413,7 +1581,7 @@ static int EnumRootHub(void) {
         HalSerialBootMark("Boot: DWC2 SET_ADDR fail\n");
         return -1;
     }
-    Dwc2DelayMs(2);
+    DelayMilliseconds(2);
     gHubAddr = Addr;
 
     /* GET_DESCRIPTOR again @ new addr（确认控制通路） */
@@ -1435,13 +1603,15 @@ static int EnumRootHub(void) {
     return 0;
 }
 
-int BoardDwc2Probe(void) {
+int BoardUsbHostControllerProbe(void) {
     UINT32 Id;
     UINT32 Hprt;
     UINT32 Gusbcfg;
     UINT32 Spd;
 
-    Id = *Dwc2Reg(DWC2_GSNPSID);
+    DuoUsbHwInit();
+
+    Id = *Register(DWC2_GSNPSID);
     HalSerialBootMark("Boot: DWC2 GSNPSID=");
     Hex32(Id);
     HalSerialBootMark("\n");
@@ -1451,39 +1621,70 @@ int BoardDwc2Probe(void) {
         return -1;
     }
 
-    if (Dwc2WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_AHBIDLE, DWC2_GRSTCTL_AHBIDLE,
+    if (WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_AHBIDLE, DWC2_GRSTCTL_AHBIDLE,
                      100000u) != 0) {
         HalSerialBootMark("Boot: DWC2 AHB busy\n");
         return -1;
     }
-    *Dwc2Reg(DWC2_GRSTCTL) = DWC2_GRSTCTL_CSFTRST;
-    if (Dwc2WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_CSFTRST, 0, 100000u) != 0) {
+    /*
+     * Core Soft Reset：GSNPSID≥4.20a（本片 4f54420a）须等 CSFTRST_DONE，
+     * 再清 CSFTRST|写 DONE（Linux dwc2_core_reset / U-Boot dwc2_core_reset）。
+     * 旧路径等 CSFTRST→0 在 4.20a 上会假 hang（真机已见）。
+     */
+    *Register(DWC2_GRSTCTL) = DWC2_GRSTCTL_CSFTRST;
+    if ((Id & DWC2_CORE_REV_MASK) >= (DWC2_CORE_REV_4_20A & DWC2_CORE_REV_MASK)) {
+        if (WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_CSFTRST_DONE,
+                         DWC2_GRSTCTL_CSFTRST_DONE, 100000u) != 0) {
+            HalSerialBootMark("Boot: DWC2 soft-reset DONE hang\n");
+            return -1;
+        }
+        {
+            UINT32 Gr = *Register(DWC2_GRSTCTL);
+            Gr &= ~DWC2_GRSTCTL_CSFTRST;
+            Gr |= DWC2_GRSTCTL_CSFTRST_DONE;
+            *Register(DWC2_GRSTCTL) = Gr;
+        }
+    } else if (WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_CSFTRST, 0, 100000u) !=
+               0) {
         HalSerialBootMark("Boot: DWC2 soft-reset hang\n");
         return -1;
     }
-    Dwc2Spin(10000);
+    if (WaitBits(DWC2_GRSTCTL, DWC2_GRSTCTL_AHBIDLE, DWC2_GRSTCTL_AHBIDLE,
+                     100000u) != 0) {
+        HalSerialBootMark("Boot: DWC2 AHB busy after rst\n");
+        return -1;
+    }
+    Spin(10000);
 
-    Gusbcfg = *Dwc2Reg(DWC2_GUSBCFG);
+    /* Force host + UTMI 16-bit（Linux dwc2_set_cv1800_params） */
+    Gusbcfg = *Register(DWC2_GUSBCFG);
     Gusbcfg &= ~DWC2_GUSBCFG_FORCEDEV;
-    Gusbcfg |= DWC2_GUSBCFG_FORCEHOST;
-    *Dwc2Reg(DWC2_GUSBCFG) = Gusbcfg;
-    Dwc2Spin(10000);
+    Gusbcfg |= DWC2_GUSBCFG_FORCEHOST | DWC2_GUSBCFG_PHYIF;
+    *Register(DWC2_GUSBCFG) = Gusbcfg;
+    Spin(10000);
 
-    *Dwc2Reg(DWC2_PCGCCTL) = 0;
-    *Dwc2Reg(DWC2_GAHBCFG) = DWC2_GAHBCFG_DMAEN | DWC2_GAHBCFG_GLBLINTRMSK;
+    *Register(DWC2_PCGCCTL) = 0;
+    /*
+     * DMA + HBSTLEN_INCR16。mainline 对 cv1800 标 host_dma=false；
+     * 本仓 Pi 路径与多数 U-Boot dwc2 host 用 DMA——先同形；DESC bogus 再查。
+     */
+    *Register(DWC2_GAHBCFG) =
+        DWC2_GAHBCFG_DMAEN | DWC2_GAHBCFG_GLBLINTRMSK |
+        (DWC2_GAHBCFG_HBSTLEN_INCR16 << DWC2_GAHBCFG_HBSTLEN_SHIFT);
     /* HS PHY：FSLSPClkSel=30/60MHz（U-Boot init_fslspclksel）；勿留复位后不定值 */
-    *Dwc2Reg(DWC2_HCFG) = DWC2_HCFG_FSLSPCLKSEL_30_60_MHZ;
+    *Register(DWC2_HCFG) = DWC2_HCFG_FSLSPCLKSEL_30_60_MHZ;
 
     FlushTxFifo(0x10u);
     FlushRxFifo();
     HaltChannels();
 
-    Hprt = *Dwc2Reg(DWC2_HPRT0);
+    Hprt = *Register(DWC2_HPRT0);
     Hprt |= DWC2_HPRT0_PRTPWR;
     HprtWrite(Hprt);
-    Dwc2DelayMs(100);
+    /* 口选/VBUS 后设备上电；100ms 偏紧，对齐 usb-host.sh 量级再读 CONN */
+    DelayMilliseconds(500);
 
-    Hprt = *Dwc2Reg(DWC2_HPRT0);
+    Hprt = *Register(DWC2_HPRT0);
     HalSerialBootMark("Boot: DWC2 HPRT0 pre=");
     Hex32(Hprt);
     HalSerialBootMark("\n");
@@ -1495,14 +1696,14 @@ int BoardDwc2Probe(void) {
 
     if (RootPortReset() != 0) {
         HalSerialBootMark("Boot: DWC2 root reset timeout\n");
-        Hprt = *Dwc2Reg(DWC2_HPRT0);
+        Hprt = *Register(DWC2_HPRT0);
         HalSerialBootMark("Boot: DWC2 HPRT0=");
         Hex32(Hprt);
         HalSerialBootMark("\n");
         return -1;
     }
 
-    Hprt = *Dwc2Reg(DWC2_HPRT0);
+    Hprt = *Register(DWC2_HPRT0);
     Spd = Hprt & DWC2_HPRT0_PRTSPD_MASK;
     gRootSpd = Spd;
     if (Spd == DWC2_HPRT0_PRTSPD_HS) {
@@ -1520,7 +1721,7 @@ int BoardDwc2Probe(void) {
                       Spd == DWC2_HPRT0_PRTSPD_LS ? " LS\n" : " ?\n");
 
     /* 根口复位后等 hub 醒：对齐 U-Boot dwc2_init_common 1s */
-    Dwc2DelayMs(1000);
+    DelayMilliseconds(1000);
     if (EnumRootHub() != 0) {
         return -1;
     }

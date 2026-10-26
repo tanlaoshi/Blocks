@@ -31,12 +31,12 @@ void HalDriverRegister(void) {
 #endif
 #else
     {
-        void BoardSdRegister(void);
-        int BoardEthProbe(void);
+        void BoardSdhciRegister(void);
+        int BoardEthernetProbe(void);
 
-        BoardSdRegister();
-        /* net-1：MAC 探针（串口身份）；勿 BOARD_HAS_NET / 勿挂 VirtioNet */
-        (void)BoardEthProbe();
+        BoardSdhciRegister();
+        /* 板载网：BoardEthernetProbe（Common/Board §2.1；勿 BOARD_HAS_NET 假 Ready） */
+        (void)BoardEthernetProbe();
     }
 #endif
 }
@@ -64,8 +64,8 @@ int HalUsbInitialize(void) {
 #elif !BOARD_IS_VIRT
     /* Duo S：DWC2 host + HID boot 键（duo-usb-kbd）；无设备软成功 */
     {
-        int BoardDwc2Probe(void);
-        (void)BoardDwc2Probe();
+        int BoardUsbHostControllerProbe(void);
+        (void)BoardUsbHostControllerProbe();
     }
     return 0;
 #else

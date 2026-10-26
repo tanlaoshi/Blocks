@@ -2,6 +2,7 @@
  * HalDevices.c — x86：注册 / USB·MSC / Wifi·Iwl / Igpu·Hda（PR-S3-haldev-1）
  *
  * Common 只见 Hal*；Input/Net 门面见 HalDevicesInput.c / HalDevicesNet.c。
+ * 板载网门面（三架构同名）：有则 `BoardEthernetProbe`（`Ethernet.c`）；本 Arch 走 PCI NIC，不交板级空 stub。
  */
 #include "Hal.h"
 #include "DriverBoot.h"

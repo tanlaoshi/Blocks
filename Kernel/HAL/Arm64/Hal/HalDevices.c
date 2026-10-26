@@ -2,6 +2,7 @@
  * HalDevices.c — Arm64：注册 / Block·USB 桩 / Wifi·Iwl / Igpu·Hda（PR-S3-haldev-1）
  *
  * Common 只见 Hal*；Input/Net 门面见 HalDevicesInput.c / HalDevicesNet.c。
+ * 板载网门面（三架构同名）：有则 `BoardEthernetProbe`（`Ethernet.c`）；Pi 暂无板载 MAC。
  */
 #include "Hal.h"
 #include "BoardConfig.h"
@@ -46,8 +47,8 @@ int HalUsbInitialize(void) {
      * 软成功：无 USB 不挡桌面；枚举 HID 另刀。
      */
     {
-        int BoardDwc2Probe(void);
-        (void)BoardDwc2Probe();
+        int BoardUsbHostControllerProbe(void);
+        (void)BoardUsbHostControllerProbe();
     }
     return 0;
 #endif

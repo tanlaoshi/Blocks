@@ -1,13 +1,11 @@
 /*
- * Dwc2.h — Sophgo CV181x / SG2000 Synopsys DWC2 OTG（Milk-V Duo S USB）
+ * UsbHostController.h — Milk-V Duo S USB 主机（Synopsys DWC2 OTG）
  *
- * 规格：DWC2 控制器 @ 0x04340000（U-Boot CONFIG_USB_DWC2_REG_ADDR /
- * Linux usb@04340000）；板级 PHY/ID/VBUS 见 TOP 0x03000048（cv181x_reg.h
- * REG_TOP_USB_PHY_CTRL）与 Linux phy-cv1800-usb2；Type-A VBUS_EN = XGPIOB[5]。
- * 寄存器布局：Synopsys DWC2 / U-Boot drivers/usb/host/dwc2.h（与 Pi Dwc2 同形）。
+ * 门面名对齐 X64 `UsbHostController` / Pi 板包。寄存器宏 DWC2_* 对表 U-Boot dwc2.h。
+ * 控制器 @ 0x04340000；PHY/ID/VBUS：TOP 0x03000048；Type-A VBUS_EN = XGPIOB[5]。
  */
-#ifndef BOARD_DUO_DWC2_H
-#define BOARD_DUO_DWC2_H
+#ifndef BOARD_USB_HOST_CONTROLLER_H
+#define BOARD_USB_HOST_CONTROLLER_H
 
 #include "BootTypes.h"
 
@@ -141,7 +139,8 @@
 #define DWC2_HC_PID_DATA1   2u
 #define DWC2_HC_PID_SETUP   3u
 
-/* 探针 / 主机 +（hub|根口）HID boot 键；成功 0。 */
-int BoardDwc2Probe(void);
+/* 探针 / 主机 +（hub|根口）HID；成功 0。 */
+int BoardUsbHostControllerProbe(void);
+void BoardUsbHostControllerMouseHandoff(UINT32 CursorX, UINT32 CursorY);
 
 #endif

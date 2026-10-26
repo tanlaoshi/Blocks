@@ -1,12 +1,11 @@
 /*
- * Dwc2.h — BCM283x Synopsys DWC2 OTG（Pi3B+ USB）
+ * UsbHostController.h — Pi3B+ USB 主机（Synopsys DWC2 OTG）
  *
- * 规格：BCM2835 ARM Peripherals §14 USB；控制器 @ VC 0x7E980000 →
- * ARM 外设窗 0x3F980000（与 U-Boot/Linux dwc2 同源）。
- * 寄存器布局：Synopsys DWC2 / U-Boot drivers/usb/host/dwc2.h。
+ * 门面名对齐 X64 / Duo。寄存器宏 DWC2_* 对表 U-Boot dwc2.h。
+ * BCM2835 §14；VC 0x7E980000 → ARM 窗 0x3F980000。
  */
-#ifndef BOARD_PI3_DWC2_H
-#define BOARD_PI3_DWC2_H
+#ifndef BOARD_USB_HOST_CONTROLLER_H
+#define BOARD_USB_HOST_CONTROLLER_H
 
 #include "BootTypes.h"
 
@@ -122,8 +121,8 @@
 #define DWC2_HC_PID_SETUP   3u
 
 /* 探针 / 主机 + hub + SPLIT HID mouse；成功 0。 */
-int BoardDwc2Probe(void);
+int BoardUsbHostControllerProbe(void);
 /* Reveal/换分辨率：驱动 Abs 与 Gui 光标对齐（同 X64 MouseHandoffDesktop） */
-void BoardDwc2MouseHandoff(UINT32 CursorX, UINT32 CursorY);
+void BoardUsbHostControllerMouseHandoff(UINT32 CursorX, UINT32 CursorY);
 
 #endif

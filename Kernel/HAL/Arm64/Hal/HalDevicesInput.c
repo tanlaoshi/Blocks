@@ -15,8 +15,8 @@ void HalInputInitializeMouseDeferred(void) {
 void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
 #if !BOARD_IS_VIRT
     {
-        void BoardDwc2MouseHandoff(UINT32 X, UINT32 Y);
-        BoardDwc2MouseHandoff(CursorX, CursorY);
+        void BoardUsbHostControllerMouseHandoff(UINT32 X, UINT32 Y);
+        BoardUsbHostControllerMouseHandoff(CursorX, CursorY);
     }
 #else
     (void)CursorX;

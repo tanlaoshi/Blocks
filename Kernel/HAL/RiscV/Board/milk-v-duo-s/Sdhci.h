@@ -1,13 +1,13 @@
 /*
- * Sd.h — Milk-V Duo S µSD：DWC MSHC（SDHCI）@ 0x04310000
+ * Sdhci.h — Milk-V Duo S µSD：DWC MSHC（SDHCI）@ 0x04310000
  *
  * 上游 cv18xx.dtsi：mmc@4310000 compatible "sophgo,cv1800b-dwcmshc"（sdhci0）。
  * 寄存器按 SD Host Controller 简化规格；厂商区按 Linux sdhci-of-dwcmshc.c
  * cv18xx_sdhci_reset（P_VENDOR_AREA1 @0xE8）。
  * eMMC 不在本文件（勿把 SD 槽写成 eMMC）。
  */
-#ifndef BOARD_SD_H
-#define BOARD_SD_H
+#ifndef BOARD_SDHCI_H
+#define BOARD_SDHCI_H
 
 #include "BootTypes.h"
 
@@ -88,6 +88,6 @@
 /* TX src = invert clk（bits 9:8 = 1），RX src = invert（bits 25:24 = 1），dly = 0 */
 #define CV_PHY_DLY_BYPASS ((1u << 8) | (1u << 24))
 
-void BoardSdRegister(void);
+void BoardSdhciRegister(void);
 
 #endif

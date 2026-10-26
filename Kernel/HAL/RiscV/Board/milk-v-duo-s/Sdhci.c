@@ -1,5 +1,5 @@
 /*
- * Sd.c — Duo S µSD：SDHCI PIO 读写 → BLOCK_BACKEND
+ * Sdhci.c — Duo S µSD：SDHCI PIO 读写 → BLOCK_BACKEND
  *
  * 主参考：SD Host Controller 简化规格（CMD17 读 / CMD24 写 + Buffer Ready）；
  * 厂商复位：Linux 6.12 sdhci-of-dwcmshc.c cv18xx_sdhci_reset（非 eMMC 路径）。
@@ -7,7 +7,7 @@
  * CAPABILITIES 里的基钟不可用（SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN）。
  * 不发擦除命令；应用默认卷 BLOCKS，勿故意写坏 boot/fip。
  */
-#include "Sd.h"
+#include "Sdhci.h"
 #include "Board.h"
 #include "Block.h"
 #include "Driver.h"
@@ -566,6 +566,6 @@ static const DRIVER gSdDriver = {
     .Remove = SdDriverRemove,
 };
 
-void BoardSdRegister(void) {
+void BoardSdhciRegister(void) {
     (void)DriverRegister(&gSdDriver);
 }

@@ -16,7 +16,7 @@
 | 线程 | `<Blocks/thread.h>` | CRT |
 | UI / Graphics | `<Ui.h>` `<Graphics.h>` | `libUi` / `libGraphics` |
 | Net | `<Net.h>` | `libNet.a` |
-| 卷路径 | `<VolumePath.h>` | `libVolumePath.a` |
+| 卷路径 | `<VolumePath.h>` | `libFsUtil.a` |
 
 ---
 

@@ -93,7 +93,8 @@ bootelf 0x81800000
 |------|--------|------|
 | 厂商 boot 文件（`fip.bin` / `boot.sd` 等） | **必须** | 启动链 |
 | `Kernel.elf` | 测 Blocks 时必须 | `./build.sh riscv BOARD=milk-v-duo-s` |
-| `HELLO.ELF` | 可选 | 板包 **`BOARD_HAS_BLOCK=0`**，壳里暂读不到 SD FAT；先用 **`run user`**（内嵌 hello） |
+| `boot.scr` | duo-boot 推荐 | `scripts/mk-boot-scr.py`；冷启动或 `source` |
+| `HELLO.ELF` | 可选 | 盘上 `exec`（duo-block ✅）；亦可 `run user` |
 
 ---
 
@@ -221,7 +222,7 @@ vmm: trap cause=0000000000000007 epc=00000000802092da
 | **skip MMU** | 避开 satp 后 `epc=0` | 对齐 Pi；真开 → [1025 duo-mmu](../../路线图1025.md#duo-mmu) | ✅ 壳用 |
 | **`run user` 真跑** | 内嵌 hello | [1025 duo-hello](../../路线图1025.md#duo-hello) | ✅ Hello Ring3! |
 | **SD→FAT Block** | `exec HELLO.ELF` | [1025 duo-block](../../路线图1025.md#duo-block) | ⬜ |
-| **自动 bootcmd** | 少抢 1 秒 | [1025 duo-boot](../../路线图1025.md#duo-boot) | ⬜ |
+| **自动 bootcmd** | 少抢 1 秒 | [1025 duo-boot](../../路线图1025.md#duo-boot)：`source boot.scr` 真机过 | ✅ TG |
 | **DTB 传入** | 少走 RAM fallback | [1025 duo-dtb](../../路线图1025.md#duo-dtb) | 可选 |
 | **DeviceEnum 空引用** | 编 Duo 时少 warning | `AddMmio` 用 `BOARD_HAS_*` 包 | 小修（视 TG） |
 | **不对齐** | Duo 上桌面 / HDMI | B3 **明确不做**；GUI 仍 QEMU virt | — |
@@ -247,7 +248,7 @@ bootelf 0x81800000
 已知限制：
 
 - 无 FB / 无 SD Block → `WARN No BLOCKS.ID`、默认 RES；`exec HELLO.ELF` 待 duo-block  
-- `halt` 非真关机；`bootdelay=1` 仍靠手速
+- `halt` 非真关机；`bootdelay=1` + ENV nowhere 时勿指望 `saveenv`；改用卡上 `boot.scr`（见板包 `scripts/`）
 
 ---
 

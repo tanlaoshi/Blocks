@@ -16,7 +16,7 @@
 | 线程 | `<Blocks/thread.h>` | CRT |
 | UI / Graphics | `<Ui.h>` `<Graphics.h>` | `libUi` / `libGraphics` |
 | Net | `<Net.h>` | `libNet.a` |
-| 卷路径 | `<VolumePath.h>` | `libVolumePath.a` |
+| 卷路径 | `<VolumePath.h>` | `libFsUtil.a` |
 
 ---
 
@@ -70,7 +70,10 @@ Guest 先 `lwip on`。模板：[`../Examples/Net/main.c`](../Examples/Net/main.c
 | 命令 | 说明 |
 | ---- | ---- |
 | `store combo <id>` / `store install <id>` | 目录包 |
-| `exec <path>` | 跑 ELF |
+| `exec Apps/<id>/NAME.ELF` | 开窗 App（须同目录 `PKG.TXT` 含 `window=yes`） |
+| `exec NAME.ELF` / `exec Class/NAME.ELF` | 无窗短命 ELF |
+
+开窗部署细则：[`../Deploy.md`](../Deploy.md)。
 
 ---
 

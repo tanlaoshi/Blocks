@@ -53,9 +53,32 @@ make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
 | `fdt_addr_r` | `0x81200000` |
 | `fdtfile` | `cv181x_milkv_duos_sd.dtb` |
 
-### 推荐：ELF（`bootelf`）
+### 推荐：卡上 `boot.scr`（duo-boot）
+
+```bash
+python3 HAL/RiscV/Board/milk-v-duo-s/scripts/mk-boot-scr.py
+# 拷 boot.scr + Kernel.elf → LABEL=boot（与 fip.bin 同 FAT）
+```
+
+上电可先不按键（若默认扫脚本则直进 Blocks）。否则抢 `soph#`：
+
+```text
+fatload mmc 0:1 0x81800000 boot.scr
+source 0x81800000
+```
+
+细则：[`scripts/README.md`](scripts/README.md)。
+
+### 备选：手工 ELF（`bootelf`）
 
 把 `Kernel.elf` 与厂商 DTB 放到 SD 的 FAT 分区（或 TFTP）：
+
+```text
+fatload mmc 0:1 0x81800000 Kernel.elf
+bootelf 0x81800000
+```
+
+（有 DTB 时仍可用 `bootelf -p`，见下。）
 
 ```text
 load mmc 0:1 ${kernel_addr_r} Kernel.elf
@@ -90,7 +113,7 @@ go ${kernel_addr_r}
 | `Board.h` / `Board.c` | `BoardName()` |
 | `Sd.h` / `Sd.c` | µSD SDHCI 只读 → 块设备 |
 | `NOTES.md` | 真机踩坑与验证边界 |
-
+| `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` 生成 |
 ---
 
 ## 验收

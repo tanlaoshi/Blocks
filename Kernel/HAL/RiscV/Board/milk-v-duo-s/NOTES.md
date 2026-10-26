@@ -14,9 +14,15 @@
 
 ## 厂商 U-Boot
 
-- 预装即可；**不改**源码，只改环境变量 / 手工 `load`
+- 预装即可；**不改**源码，只改环境变量 / 卡上脚本 / 手工 `load`
 - 常见：`kernel_addr_r=0x80200000`，`fdt_addr_r=0x81200000`
 - 加载优先：`bootelf -p`（ELF）或 `go`（`.bin`）；`booti` 需 Linux Image 头（本柱不做）
+
+## 启动减摩（duo-boot）
+
+- `bootdelay=1` + 部分镜像 `ENV nowhere` → **`saveenv` 常存不住**，不能只靠加长 delay。  
+- 卡上脚本：`scripts/boot.cmd` → `python3 scripts/mk-boot-scr.py` → 拷 **`boot.scr`** 与 `Kernel.elf` 到 boot FAT。  
+- 冷启动先试自动；否则 `soph#` 下 `fatload … boot.scr` + `source`。详见 [`scripts/README.md`](scripts/README.md)。
 
 ## µSD（duo-block）
 

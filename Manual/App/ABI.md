@@ -12,7 +12,7 @@
 
 | 面 | 版本 | 头文件 / 库 | 说明 |
 | -- | ---- | ----------- | ---- |
-| CRT / ISO C | **1.6.0** | `stdio`/`stdlib`/`string`…；`Blocks/version.h`；`libBlocks.a` | `printf`/`malloc`/`fopen` 等 **ISO C**；文件/进程用 Blocks 名见下 |
+| CRT / ISO C | **1.5.0** | `stdio`/`stdlib`/`string`…；`Blocks/version.h`；`libBlocks.a` | 与 `CRT_VERSION_*` 对齐；文件/进程用 Blocks 名见下 |
 | Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |

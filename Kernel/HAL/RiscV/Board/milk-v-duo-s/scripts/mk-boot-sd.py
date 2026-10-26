@@ -35,27 +35,6 @@ FDT_PROP = 3
 FDT_END = 9
 
 KERNEL_LOAD = 0x80200000
-# BoardConfig DRAM fallback (~510 MiB); also exposed via minimal FIT FDT.
-DRAM_BASE = 0x80000000
-DRAM_SIZE = 0x1FE00000
-
-
-def minimal_memory_dtb() -> bytes:
-    """Tiny DTB: /memory@80000000 so bootm + Blocks Startup have a1 FDT."""
-    b = FitBuilder()
-    b.begin("")
-    b.prop_str("compatible", "milkv,duo-s")
-    b.prop_u32("#address-cells", 1)
-    b.prop_u32("#size-cells", 1)
-    b.begin("memory@80000000")
-    b.prop_str("device_type", "memory")
-    b.prop("reg", struct.pack(">II", DRAM_BASE, DRAM_SIZE))
-    b.end()
-    b.begin("chosen")
-    b.prop_str("stdout-path", "serial0:115200n8")
-    b.end()
-    b.end()
-    return b.finish()
 
 
 def elf64_le_loads(data: bytes):
@@ -161,8 +140,9 @@ class FitBuilder:
         return blob
 
 
-def build_fit(kernel: bytes, entry: int) -> bytes:
-    fdt = minimal_memory_dtb()
+def build_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
+    if len(fdt) < 8 or struct.unpack_from(">I", fdt, 0)[0] != FDT_MAGIC:
+        raise SystemExit("fdt is not a DTB (bad magic)")
     b = FitBuilder()
     b.begin("")
     b.prop_str("description", "Blocks Milk-V Duo S")
@@ -186,7 +166,7 @@ def build_fit(kernel: bytes, entry: int) -> bytes:
     b.end()  # kernel-1
 
     b.begin("fdt-1")
-    b.prop_str("description", "Blocks minimal memory")
+    b.prop_str("description", "Duo S DTB")
     b.prop("data", fdt)
     b.prop_str("type", "flat_dt")
     b.prop_str("arch", "riscv")
@@ -232,15 +212,28 @@ def main() -> int:
         default=here / "boot.sd",
         help="FIT output path (default: scripts/boot.sd)",
     )
+    ap.add_argument(
+        "-d",
+        "--dtb",
+        type=Path,
+        default=here / "duo.dtb",
+        help="DTB for FIT fdt-1 (default: scripts/duo.dtb)",
+    )
     args = ap.parse_args()
     if not args.kernel.is_file():
         raise SystemExit("missing %s — build: ./build.sh riscv BOARD=milk-v-duo-s" % args.kernel)
+    if not args.dtb.is_file():
+        raise SystemExit(
+            "missing %s — vendor DTB (card has none loose; keep scripts/duo.dtb)"
+            % args.dtb
+        )
     flat, entry = flat_from_elf(args.kernel.read_bytes())
-    fit = build_fit(flat, entry)
+    fdt = args.dtb.read_bytes()
+    fit = build_fit(flat, entry, fdt)
     args.output.write_bytes(fit)
     print(
-        "wrote %s (%d bytes FIT, %d bytes kernel @%#x)"
-        % (args.output, len(fit), len(flat), entry)
+        "wrote %s (%d bytes FIT, %d bytes kernel @%#x, %d bytes dtb)"
+        % (args.output, len(fit), len(flat), entry, len(fdt))
     )
     print("configs: %s" % ", ".join(CONFIG_NAMES))
     print(

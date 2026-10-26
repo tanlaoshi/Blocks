@@ -1,62 +1,32 @@
-# Duo S 启动脚本（duo-boot / duo-autoboot）
+# Duo S 启动 / 刷卡脚本
 
-目标：少抢 / 不抢 `soph#`。**不改**厂商 U-Boot 源码；**不**赌 `saveenv`（常 ENV nowhere）。
+**Kernel.elf 只在 LABEL=BLOCKS**（与 X64 / Pi 对齐）。boot 分区**不**放 `Kernel.elf`。
 
-## 真机默认链（已证）
+## 分区
 
-```text
-soph# printenv bootcmd
-bootcmd=run sdboot
-soph# printenv boot_targets
-## Error: "boot_targets" not defined
-```
+| LABEL | mmc | 内容 |
+| --- | --- | --- |
+| **boot** | `0:1` | `fip.bin`、`boot.sd`（FIT）、`duo.dtb`、`boot.scr`；**无 Kernel.elf** |
+| **BLOCKS** | `0:4` | **`Kernel.elf`**（唯一）、`BLOCKS.ID`、`HELLO.ELF`… |
 
-`sdboot` = fatload `boot.sd` → `bootm ${uImage_addr}#config-<FDT_NO>`。  
-**不会**扫 `boot.scr`。上电直进 = 换卡上的 `boot.sd`（厂商原件改名备份），不是照抄 Pi 的 distro 脚本路径。
+厂商 `bootcmd=run sdboot` → `bootm boot.sd`（**不能**直接 fatload 另一分区的 ELF）。因此：
 
-## A. 上电直进（duo-autoboot · 推荐）
+- **上电**：FIT 内嵌核，但由 **`BLOCKS/Kernel.elf` 打包**（`ck-duo-sd`）
+- **抢壳 `source boot.scr`**：真·`fatload mmc 0:4 Kernel.elf` + `duo.dtb` + `bootelf -p`
 
-```bash
-# 宿主（已 ./build.sh riscv BOARD=milk-v-duo-s）
-python3 mk-boot-sd.py          # → boot.sd（FIT，内嵌 Kernel @ 0x80200000）
-```
+卡上通常无散装厂商 `.dtb` → 用仓内 `duo.dtb`。
 
-卡上 **LABEL=boot**（与 `fip.bin` 同 FAT）：
+## 一键
 
 ```bash
-# 保留厂商 FIT，勿删 fip.bin
-mv boot.sd boot.sd.vendor      # 仅首次；已有 .vendor 可跳过
-cp /path/to/scripts/boot.sd .
-# Kernel.elf / boot.scr 可仍放着（手测 / 回退）
-sync
+source ~/Blocks/env.sh
+# 已 build riscv BOARD=milk-v-duo-s
+ck-duo-sd                 # BLOCKS/Kernel.elf + 刷 FIT/scr/dtb + 删 boot/Kernel.elf
+ck-duo-sd --blocks-only   # 只更新 BLOCKS（上电 FIT 仍是旧核，慎用）
 ```
-
-断电上电、**不按键** → 期望串口 `blocks>`。
-
-若报 `Could not find configuration node`：在 `soph#` 执行 `printenv sdboot`，把 `#config-…` 后缀记下来（脚本已含常见 Duo S 名；缺则加进 `mk-boot-sd.py` 的 `CONFIG_NAMES` 再打一版）。
-
-回退 Linux：`mv boot.sd.vendor boot.sd && sync`。
-
-换内核后须**重跑** `mk-boot-sd.py` 再拷 `boot.sd`（FIT 内嵌镜像；只更 `Kernel.elf` 不会被 sdboot 加载）。
-
-## B. 抢壳后一行（duo-boot · 已过）
-
-```bash
-python3 mk-boot-scr.py          # → boot.scr
-cp boot.scr Kernel.elf /path/to/boot/
-```
-
-```text
-fatload mmc 0:1 0x81800000 boot.scr
-source 0x81800000
-```
-
-## C. 环境能落盘时（少见）
-
-仅当日志是 `Loading Environment from FAT... OK`（**不是** `nowhere`）才可 `setenv`/`saveenv`。ENV nowhere → 用 A。
 
 ## 禁止
 
-- 格式化掉 `fip.bin` / 清空 boot FAT  
-- 删掉厂商 `boot.sd` 且不留 `.vendor` 又不成 FIT（变砖需重刷镜像）  
 - 对 Duo 跑 `ck-pi-sd`  
+- 格式化掉 `fip.bin` / 无 `.vendor` 删 `boot.sd`  
+- 再往 boot 拷 `Kernel.elf`  

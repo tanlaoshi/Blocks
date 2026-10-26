@@ -92,10 +92,11 @@ bootelf 0x81800000
 | 文件 | 必须？ | 说明 |
 |------|--------|------|
 | 厂商 boot 文件（`fip.bin` / `boot.sd` 等） | **必须** | 启动链 |
-| `Kernel.elf` | 测 Blocks 时必须 | `./build.sh riscv BOARD=milk-v-duo-s` |
-| `boot.scr` | duo-boot | `mk-boot-scr.py`；须抢壳 `source`（默认不扫） |
-| `boot.sd`（Blocks FIT） | duo-autoboot | `mk-boot-sd.py`；厂商原件改名 `boot.sd.vendor` |
-| `HELLO.ELF` | 可选 | 盘上 `exec`（duo-block ✅）；亦可 `run user` |
+| `Kernel.elf`（LABEL=**BLOCKS**） | blocks-elf | `ck-duo-sd`；与 X64/Pi 应用卷对齐 |
+| `Kernel.elf`（LABEL=boot） | 可选回退 | 抢壳 `bootelf`；上电不依赖 |
+| `boot.scr` | duo-boot | `mk-boot-scr.py`；须抢壳 `source` |
+| `boot.sd`（Blocks FIT） | duo-autoboot | `mk-boot-sd.py` / `ck-duo-sd --boot`；`.vendor` 备份 |
+| `HELLO.ELF`（BLOCKS） | 可选 | `exec`（duo-block ✅） |
 
 ---
 
@@ -225,6 +226,8 @@ vmm: trap cause=0000000000000007 epc=00000000802092da
 | **SD→FAT Block** | `exec HELLO.ELF` | [1025 duo-block](../../路线图1025.md#duo-block) | ⬜ |
 | **自动 bootcmd** | 少抢 1 秒 | [1025 duo-boot](../../路线图1025.md#duo-boot)：`source boot.scr` 真机过 | ✅ TG |
 | **上电直进** | 不抢壳、不手打 | [1025 duo-autoboot](../../路线图1025.md#duo-autoboot)：`bootcmd=run sdboot` → FIT `boot.sd` | ✅ |
+| **Kernel→BLOCKS** | 应用卷根有核 | [1025 blocks-elf](../../路线图1025.md#blocks-elf)：`ck-duo-sd` | ✅ |
+| **传 DTB** | 少 Fallback | [1025 duo-dtb](../../路线图1025.md#duo-dtb)：FIT/`duo.dtb` | ✅ |
 | **DTB 传入** | 少走 RAM fallback | [1025 duo-dtb](../../路线图1025.md#duo-dtb) | 可选 |
 | **DeviceEnum 空引用** | 编 Duo 时少 warning | `AddMmio` 用 `BOARD_HAS_*` 包 | 小修（视 TG） |
 | **不对齐** | Duo 上桌面 / HDMI | B3 **明确不做**；GUI 仍 QEMU virt | — |

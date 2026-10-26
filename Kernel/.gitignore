@@ -57,3 +57,5 @@ __pycache__/
 
 # Duo S 生成的 FIT（mk-boot-sd.py；内嵌 Kernel，勿入库）
 HAL/RiscV/Board/milk-v-duo-s/scripts/boot.sd
+# boot.scr 由 mk-boot-scr.py 生成；可入库亦可本地再打
+# duo.dtb 入库（厂商树拷贝；卡上通常无散装 .dtb）

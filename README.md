@@ -49,7 +49,7 @@ sudo apt install -y qemu-system-arm qemu-system-misc
 sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
 ```
 
-真机刷卡（Pi / Duo）另需：`mtools` 或能挂载 vfat 的桌面；**勿**对 Duo 卡跑 `ck-pi-sd`。
+真机刷卡（Pi / Duo）另需：`mtools` 或能挂载 vfat 的桌面。Pi：`ck-pi-sd`；Duo：`ck-duo-sd`（**勿**对 Duo 跑 `ck-pi-sd`）。应用卷 **BLOCKS** 根含 `Kernel.elf`（三架构对齐）。
 
 ---
 
@@ -59,7 +59,7 @@ sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
 cd ~/Blocks && source ./env.sh
 ```
 
-短名：`build` · `boot` · `run` · `run-virt-arm` · `run-virt-riscv` · `boards` · `ck-pi-sd` 等（`source` 后会打印一览）。
+短名：`build` · `boot` · `run` · `run-virt-arm` · `run-virt-riscv` · `boards` · `ck-pi-sd` · `ck-duo-sd` 等（`source` 后会打印一览）。
 
 ---
 
@@ -81,7 +81,7 @@ cd ~/Blocks && source ./env.sh
 | 场景 | 编译 | 启动 |
 | --- | --- | --- |
 | **QEMU virt**（课堂靶） | `build arm64` 或 `build arm64 BOARD=virt` | `run-virt-arm`（可加 `--headless`） |
-| **树莓派 3B+** 真机 | `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` | 摆盘：`prepare-pi-sd` → 插卡 **`ck-pi-sd`**（固件→bootfs，核→BLOCKS）；串口 115200 |
+| **树莓派 3B+** 真机 | `build arm64 BOARD=Raspberry/Pi3BPlus LWIP=0` | 摆盘：`prepare-pi-sd` → 插卡 **`ck-pi-sd`**（固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
 
 板包列表：`boards arm64`。真机历程见 `Documents/过程/排障/` 下 Pi 档。
 
@@ -90,7 +90,7 @@ cd ~/Blocks && source ./env.sh
 | 场景 | 编译 | 启动 |
 | --- | --- | --- |
 | **QEMU virt** | `build riscv`（默认 virt 类板） | `run-virt-riscv` |
-| **Milk-V Duo S** 真机 | `build riscv BOARD=milk-v-duo-s` | `mk-boot-sd.py` → 卡上 **`boot.sd`**（厂商原件改名 `.vendor`；与 `fip.bin` 同 FAT）；**禁止** `ck-pi-sd`。上电 `run sdboot` 直进；抢壳可用 `boot.scr`/`bootelf`。串口 115200 |
+| **Milk-V Duo S** 真机 | `build riscv BOARD=milk-v-duo-s` | **`ck-duo-sd`**：`Kernel.elf` **只**在 LABEL=BLOCKS（boot 上删除）；上电 `boot.sd` FIT 由该文件打包。**禁止** `ck-pi-sd`。串口 115200 |
 
 板包列表：`boards riscv`。Duo 脚本：`Kernel/HAL/RiscV/Board/milk-v-duo-s/scripts/`。
 
@@ -100,7 +100,7 @@ cd ~/Blocks && source ./env.sh
 | --- | --- | --- | --- | --- |
 | 交叉工具 | 宿主 `gcc` | aarch64-*-gcc / xpack | 同左 | riscv64-*-gcc / xpack |
 | 模拟器 | `qemu-system-x86_64` + OVMF | `qemu-system-aarch64` | — | `qemu-system-riscv64`（virt） |
-| 真机启动 | — | — | U-Boot + `ck-pi-sd` | 厂商 U-Boot + 拷 `boot` |
+| 真机启动 | RootFs 含 `Kernel.elf` | — | U-Boot + `ck-pi-sd`（核→BLOCKS） | 厂商 U-Boot + `ck-duo-sd`（核→BLOCKS；启动仍 `boot.sd`） |
 | 典型板旗 | 桌面 + HID | 串口/virt | FB + HID | **串口壳**（无 Duo GUI） |
 
 细节与换机：[`Documents/同步.md`](Documents/同步.md) · [`Manual/START.md`](Manual/START.md)。

@@ -53,16 +53,15 @@ make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
 | `fdt_addr_r` | `0x81200000` |
 | `fdtfile` | `cv181x_milkv_duos_sd.dtb` |
 
-### 推荐：上电直进 `boot.sd`（duo-autoboot）
-
-厂商默认 `bootcmd=run sdboot`（**无** `boot_targets`，不扫 `boot.scr`）：
+### 推荐：刷卡 `ck-duo-sd`（blocks-elf + 可选 autoboot）
 
 ```bash
-python3 HAL/RiscV/Board/milk-v-duo-s/scripts/mk-boot-sd.py
-# 卡上：mv boot.sd boot.sd.vendor && cp scripts/boot.sd <LABEL=boot>/
+source ~/Blocks/env.sh
+ck-duo-sd              # Kernel.elf → LABEL=BLOCKS（对齐 X64/Pi）
+ck-duo-sd --boot       # 同上 + 刷新 boot.sd FIT（上电直进）
 ```
 
-断电上电不按键 → `blocks>`。细则：[`scripts/README.md`](scripts/README.md)。
+厂商默认仍 `run sdboot`→`boot.sd`；**禁止** `ck-pi-sd`。细则：[`scripts/README.md`](scripts/README.md)。
 
 ### 备选：卡上 `boot.scr`（duo-boot · 须抢壳）
 
@@ -78,23 +77,16 @@ source 0x81800000
 
 ### 备选：手工 ELF（`bootelf`）
 
-把 `Kernel.elf` 与厂商 DTB 放到 SD 的 FAT 分区（或 TFTP）：
+`Kernel.elf` 在 **BLOCKS**（`mmc 0:4`）；`duo.dtb` 在 **boot**（`mmc 0:1`）。卡上通常无散装厂商 dtb——用仓内 `scripts/duo.dtb`。
 
 ```text
-fatload mmc 0:1 0x81800000 Kernel.elf
-bootelf 0x81800000
+fatload mmc 0:4 0x81800000 Kernel.elf
+fatload mmc 0:1 0x81200000 duo.dtb
+fdt addr 0x81200000
+bootelf -p 0x81800000
 ```
 
-（有 DTB 时仍可用 `bootelf -p`，见下。）
-
-```text
-load mmc 0:1 ${kernel_addr_r} Kernel.elf
-load mmc 0:1 ${fdt_addr_r} cv181x_milkv_duos_sd.dtb
-fdt addr ${fdt_addr_r}
-bootelf -p ${kernel_addr_r}
-```
-
-入口约定（与 OpenSBI / virt 相同）：`a0 = hartid`，`a1 = DTB`。Startup 解析 `/memory`；失败则用 `BoardConfig` DRAM fallback。
+入口：`a0 = hartid`，`a1 = DTB`。Startup 认 `/memory`；失败则 `BoardConfig` fallback。
 
 ### 备选：扁平二进制（`go`）
 
@@ -122,6 +114,8 @@ go ${kernel_addr_r}
 | `NOTES.md` | 真机踩坑与验证边界 |
 | `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` |
 | `scripts/mk-boot-sd.py` · `boot.sd` | duo-autoboot：FIT 顶替厂商 `boot.sd`（保留 `.vendor`） |
+| `scripts/ck-duo-sd.sh` | `Kernel.elf`→BLOCKS；`--boot` 刷 FIT+`duo.dtb`+`boot.scr` |
+| `scripts/duo.dtb` | duo-dtb：厂商树 DTB（卡上常无散装） |
 ---
 
 ## 验收

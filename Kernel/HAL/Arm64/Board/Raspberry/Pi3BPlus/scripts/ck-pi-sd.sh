@@ -1,5 +1,5 @@
 #!/bin/bash
-# ck-pi-sd.sh — 暗号 CK：固件→bootfs；Kernel/根→BLOCKS（对齐 X64）
+# ck-pi-sd.sh — 暗号 CK：固件→bootfs；Kernel/根→BLOCKS（对齐 X64；blocks-elf）
 #
 #   source ~/Blocks/env.sh && ck-pi-sd
 #   ck-pi-sd --wait=120

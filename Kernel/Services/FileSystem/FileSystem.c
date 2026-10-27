@@ -21,7 +21,6 @@
 #include "SerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
-#include "HalBluetooth.h"
 #include "HalDriverFile.h"
 #include "LogFile.h"
 #include "Desktop.h"
@@ -403,13 +402,11 @@ int FileSystemInitialize(void) {
             LogBoot("Fs: msc/2 boot-claim abort\n");
         }
         /*
-         * btx-1：MSC claim / freeze 后再软探 HCI。
-         * 放键鼠后、claim 前会 Address 邻口 → 假 Gone / 鼠键失灵（已踩过）。
+         * btx：勿在此 HalBluetoothInitialize——挡进桌面。
+         * Worker Reveal 后再探（仍须晚于 MSC claim；claim 前 Address 会假 Gone）。
          */
-        (void)HalBluetoothInitialize();
     } else {
         LogBoot("Fs: msc/2 boot-claim skipped\n");
-        (void)HalBluetoothInitialize();
     }
 
     /*

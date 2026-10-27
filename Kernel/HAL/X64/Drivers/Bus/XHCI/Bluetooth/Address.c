@@ -1,8 +1,8 @@
 /*
- * Address.c — 根口一次 Enable + Address + 读描述符（btx-1）
+ * Address.c — 根口 Enable + Address + 认 HCI（btx-1）→ Configure/Reset（btx-2）
  *
  * 已 PED：软 Address。CCS 无 PED：ForceUntilPed 一次（规格 Port Reset）。
- * freeze 挡的是 MSC Hot 反复 Force；此处短暂放下只认 HCI，再恢复。
+ * freeze 挡 MSC Hot 反复 Force；此处短暂放下只认 HCI。
  */
 #include "XHCI/Bluetooth/Private.h"
 
@@ -68,7 +68,7 @@ static int BluetoothDeviceLooksLikeHci(UINT8 DeviceClass) {
     return BluetoothConfigHasHci(gBluetoothConfigBuffer, Total);
 }
 
-int BluetoothFinishProbe(UINT32 RootPort) {
+int BluetoothFinishProbe(UINT32 RootPort, UINT8 Speed) {
     UINT8 DeviceClass;
     UINT16 VendorId;
     UINT16 ProductId;
@@ -94,6 +94,7 @@ int BluetoothFinishProbe(UINT32 RootPort) {
     gBluetoothVendorId = VendorId;
     gBluetoothProductId = ProductId;
     gBluetoothRootPort = RootPort;
+    gBluetoothSpeed = Speed;
     {
         char Line[80];
         char Hex[12];
@@ -138,7 +139,16 @@ int BluetoothFinishProbe(UINT32 RootPort) {
         Line[N] = 0;
         BootLog(Line);
     }
-    BluetoothReleaseSlot();
+    /* btx-2：保留 slot → 配端点 → HCI_Reset；失败仍记 Seen，放 slot */
+    if (!BluetoothConfigure(RootPort, Speed)) {
+        BluetoothReleaseSlot();
+        return 1;
+    }
+    if (!BluetoothHciReset()) {
+        BluetoothReleaseSlot();
+        gBluetoothConfigured = 0;
+        return 1;
+    }
     return 1;
 }
 

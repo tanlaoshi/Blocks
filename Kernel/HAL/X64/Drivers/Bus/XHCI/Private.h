@@ -257,6 +257,7 @@ extern UINT32 gCdcBulkOutDci;
 
 /* PR-N-wifi-1 */
 extern UINT32 gWifiSlot;
+extern UINT32 gBluetoothSlot;
 extern UINT32 gWifiPort;
 extern int gWifiXhciOk;
 
@@ -535,6 +536,9 @@ int XhciWifiClaim(void);
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
 void WifiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
+void BluetoothEp0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut);
+int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
+                           UINT32 Code, UINT32 Remain);
 int WifiFinishClaim(UINT32 RootPort, UINT8 Speed);
 int WifiTryHubChildren(void);
 

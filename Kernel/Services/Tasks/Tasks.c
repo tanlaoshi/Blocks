@@ -22,6 +22,7 @@
 #include "TasksPrivate.h"
 #include "Hal.h"
 #include "HalDevices.h"
+#include "HalBluetooth.h"
 #include "HalVideo.h"
 #include "HIDKeyboard.h"
 #include "Console.h"
@@ -133,7 +134,8 @@ void GuiTask(void) {
  *  13 GuiCursorRevealAfterUsb → AnnounceBootReady
  *     （光标须在网/iwl 等慢活之后：一露就必须流畅）
  *  14 DesktopEnsureWallpaperBuilt — gui-wall-defer；Reveal 后才 Build（4K）
- *  15 halt
+ *  15 HalBluetoothInitialize — bt-defer；Reveal 后一次（不挡进桌面）
+ *  16 halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
@@ -259,6 +261,19 @@ void WorkerTask(void) {
          * 每圈调用；已建则早退。
          */
         DesktopEnsureWallpaperBuilt();
+        /*
+         * bt-defer：桌面+光标已出再配 HCI / Reset。Hci 等待窗内仍 ServiceHid。
+         * 须晚于 boot MSC claim（claim 前 Address 邻口曾假 Gone）。
+         */
+        {
+            static int sBluetoothOnce;
+
+            if (!sBluetoothOnce) {
+                (void)HalBluetoothInitialize();
+                sBluetoothOnce = 1;
+                SchedulerIoBreath();
+            }
+        }
         HalCpuHalt();
         (void)SchedulerCondResched();
     }

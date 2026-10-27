@@ -1,8 +1,8 @@
 /*
  * Probe.c — xHCI 根口认板载蓝牙 HCI（btx-1）
  *
- * Class 0xE0 或接口 E0/01/01。MSC claim 后调用；立刻 DisableSlot。
- * 不 SetConfig / 不端点 / 不 HCI Reset（btx-2）。
+ * Class 0xE0 或接口 E0/01/01。MSC claim 后调用。
+ * 认到后 Configure + HCI_Reset（btx-2）；失败则 DisableSlot，Seen 仍保留。
  * 证据：NUC 口8 portsc=0x6E1（CCS 无 PED）→ 须一次 Port Reset，见 Address.c。
  */
 #include "XHCI/Bluetooth/Private.h"
@@ -19,6 +19,10 @@ static int gBluetoothProbeDone;
 
 int XhciBluetoothSeen(void) {
     return gBluetoothUsbSeen ? 1 : 0;
+}
+
+int XhciBluetoothHciResetOk(void) {
+    return gBluetoothHciResetOk ? 1 : 0;
 }
 
 UINT16 XhciBluetoothVendorId(void) {
@@ -110,7 +114,7 @@ int XhciBluetoothProbe(void) {
             continue;
         }
         (void)Speed;
-        if (BluetoothFinishProbe(Port)) {
+        if (BluetoothFinishProbe(Port, Speed)) {
             BluetoothRequeueHid();
             return 1;
         }

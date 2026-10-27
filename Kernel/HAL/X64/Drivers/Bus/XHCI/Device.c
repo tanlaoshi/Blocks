@@ -46,6 +46,8 @@ void Ep0RingForSlot(UINT32 SlotId, XHCI_TRB **RingOut, RING_STATE **StOut) {
         }
     } else if (SlotId != 0 && SlotId == gWifiSlot) {
         WifiEp0Ring(RingOut, StOut);
+    } else if (SlotId != 0 && SlotId == gBluetoothSlot) {
+        BluetoothEp0Ring(RingOut, StOut);
     } else if (SlotId != 0 && SlotId <= DCBAA_SLOTS && gSlotEp0UsesKbdRing[SlotId]) {
         /* 曾以键盘路径 Address：claim 为鼠后仍跟 gEp0 硬件 dequeue */
         *RingOut = gEp0Ring;
@@ -79,6 +81,8 @@ void Ep0RingForSlotOut(UINT32 *SlotOut, XHCI_TRB **RingOut, RING_STATE **StOut) 
         }
     } else if (SlotOut == &gWifiSlot) {
         WifiEp0Ring(RingOut, StOut);
+    } else if (SlotOut == &gBluetoothSlot) {
+        BluetoothEp0Ring(RingOut, StOut);
     } else {
         *RingOut = gEp0Ring;
         *StOut = &gEp0;

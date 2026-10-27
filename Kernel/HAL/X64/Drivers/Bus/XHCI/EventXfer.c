@@ -47,6 +47,11 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
                            Evt->Status & 0xFFFFFFu)) {
         Matched = 1;
     }
+    if (!Matched &&
+        BluetoothMatchTransfer(EvtSlot, Ep, TrbPtr, Code,
+                               Evt->Status & 0xFFFFFFu)) {
+        Matched = 1;
+    }
     if (!Matched) {
         UINT64 BulkInLo = PointerToPhysical(gBulkInRing);
         UINT64 BulkInHi = BulkInLo + sizeof(gBulkInRing);

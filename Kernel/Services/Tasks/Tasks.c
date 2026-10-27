@@ -264,6 +264,7 @@ void WorkerTask(void) {
         /*
          * bt-defer：桌面+光标已出再配 HCI / Reset。Hci 等待窗内仍 ServiceHid。
          * 须晚于 boot MSC claim（claim 前 Address 邻口曾假 Gone）。
+         * ShellOwn 后 BootLog→RUNTIME 环（不占串口）；须再 Flush，否则只停在内存。
          */
         {
             static int sBluetoothOnce;
@@ -271,6 +272,7 @@ void WorkerTask(void) {
             if (!sBluetoothOnce) {
                 (void)HalBluetoothInitialize();
                 sBluetoothOnce = 1;
+                (void)gConsole.RuntimeLogFlush();
                 SchedulerIoBreath();
             }
         }

@@ -562,8 +562,8 @@ USER_ASFLAGS = -IUser/include -IInclude -IInclude/Abi
 USER_CRT_OBJS = User/crt/crt0.o User/crt/syscall.o $(USER_LIB_BLOCKS_OBJS)
 else
 EXTRA_OBJS =
-# PR-B2：Board 包 .c（BoardConfig.h 仅 HAL -I；不进 Common）
-BOARD_SRCS := $(wildcard $(BOARD_DIR)/*.c)
+# PR-B2：Board 包 .c（含一层子目录，如 Ethernet/*.c）；BoardConfig.h 仅 HAL -I
+BOARD_SRCS := $(sort $(wildcard $(BOARD_DIR)/*.c) $(wildcard $(BOARD_DIR)/*/*.c))
 BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
 # PR-R5：Arm/RiscV virtio/ramfb/DTB（HAL/Virtio）；HalVideo+绘制在 HAL/Common

@@ -51,6 +51,14 @@ int EnumAndBind(void) {
         for (UINT32 P = 1; P <= gMaxPorts && P <= 32; P++) {
             if (InitMouseOnPort(P)) {
                 BootLog("Boot: XHCI mouse only\n");
+                /*
+                 * 键鼠同 hub：键三轮未成（上电慢 / 子口先撞鼠）会只走鼠；
+                 * Mouse Via Hub 后须再扫键，否则永无 Via Hub（USB3 hub 真机）。
+                 */
+                if (gSlotId == 0 && gHubSlotId != 0 &&
+                    EnumHubChildrenForKeyboard()) {
+                    BootLog("Boot: XHCI-HID Keyboard (after mouse-only)\n");
+                }
                 break;
             }
         }

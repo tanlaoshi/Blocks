@@ -126,6 +126,10 @@ int EnumHubChildrenForKeyboard(void) {
         if (!(St & HUB_PORT_CONNECTION)) {
             continue;
         }
+        /* 鼠已占子口：勿 Reset（mouse-only 后再扫键时保鼠） */
+        if (gMouseSlotId != 0 && (gMouseRoute & 0xFu) == (UINT32)Port) {
+            continue;
+        }
         BootLog("Boot: XHCI hub port connect\n");
         if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {
             continue;

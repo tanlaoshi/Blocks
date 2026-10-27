@@ -40,3 +40,12 @@ int HalBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
     (void)TimeoutMs;
     return -1;
 }
+
+int HalBluetoothDiscoverable(void) {
+    return 0;
+}
+
+int HalBluetoothSetDiscoverable(int On) {
+    (void)On;
+    return -1;
+}

@@ -44,4 +44,9 @@ int HalBluetoothGetLocalName(char *Out, UINTN NameMax);
 int HalBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                      UINT32 TimeoutMs);
 
+/* 1=Inquiry+Page Scan 开，可被附近搜到；未 Ready → 0 */
+int HalBluetoothDiscoverable(void);
+/* On≠0 开可见（名 Blocks）；0 关闭。成功 → 0；失败 → -1 */
+int HalBluetoothSetDiscoverable(int On);
+
 #endif

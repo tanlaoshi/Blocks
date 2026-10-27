@@ -121,5 +121,7 @@ int BluetoothBringUpIdentity(void) {
     gBluetoothReady = 1;
     LogAddressLine();
     BootLog("Boot: Bluetooth Ready\n");
+    /* btx-5：默认可被发现，课堂手机可搜到 Blocks */
+    (void)BluetoothSetDiscoverable(1);
     return 1;
 }

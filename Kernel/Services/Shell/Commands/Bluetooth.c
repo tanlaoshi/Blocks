@@ -1,5 +1,5 @@
 /*
- * Bluetooth.c — 壳 bt / bt info / bt scan（btx-3/4）
+ * Bluetooth.c — 壳 bt / info / scan / visible / hide（btx-3…5）
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -26,8 +26,8 @@ static void WriteAddress(const UINT8 Addr[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
     }
 }
 
-static int ArgIsScan(const char *Arg) {
-    const char *A = "scan";
+static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
+    const char *A = Word;
     const char *B = Arg;
 
     if (!B) {
@@ -70,7 +70,7 @@ static void CommandBluetoothInfo(void) {
     gConsole.Write(Name[0] ? Name : "(none)");
     gConsole.Write(" addr=");
     WriteAddress(Addr);
-    gConsole.Write("\n");
+    gConsole.Write(HalBluetoothDiscoverable() ? " visible\n" : " hidden\n");
 }
 
 static void CommandBluetoothScan(void) {
@@ -113,14 +113,35 @@ static void CommandBluetoothScan(void) {
     }
 }
 
+static void CommandBluetoothVisible(int On) {
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    if (HalBluetoothSetDiscoverable(On) != 0) {
+        gConsole.Write(On ? "bt: visible fail\n" : "bt: hide fail\n");
+        return;
+    }
+    gConsole.Write(On ? "bt: visible (phone search Blocks)\n"
+                      : "bt: hidden\n");
+}
+
 static void CommandBluetooth(int Argc, char **Argv) {
-    if (Argc >= 2 && ArgIsScan(Argv[1])) {
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "scan")) {
         CommandBluetoothScan();
+        return;
+    }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "visible")) {
+        CommandBluetoothVisible(1);
+        return;
+    }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "hide")) {
+        CommandBluetoothVisible(0);
         return;
     }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
-    gConsole.Register("bt", "bt [info|scan] — addr / Inquiry", CommandBluetooth);
+    gConsole.Register("bt", "bt [info|scan|visible|hide]", CommandBluetooth);
 }

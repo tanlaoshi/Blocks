@@ -127,7 +127,7 @@ int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
 
-/* btx-1…4：板载 USB HCI；Inquiry 见 XhciBluetoothScan */
+/* btx-1…5：板载 USB HCI；Inquiry / 可被发现 */
 int XhciBluetoothProbe(void); /* 1 见过；0 无；-1 无 HC */
 int XhciBluetoothSeen(void);
 int XhciBluetoothHciResetOk(void);
@@ -136,6 +136,8 @@ int XhciBluetoothCopyAddress(UINT8 Out[6]); /* HCI 线序；未 Ready → -1 */
 int XhciBluetoothCopyLocalName(char *Out, UINTN NameMax);
 int XhciBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                       UINT32 TimeoutMs);
+int XhciBluetoothDiscoverable(void);
+int XhciBluetoothSetDiscoverable(int On); /* 0 ok；-1 fail */
 UINT16 XhciBluetoothVendorId(void);
 UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */

@@ -1,5 +1,5 @@
 /*
- * Bluetooth/Private.h — 板载 USB HCI 内部（btx-1…4；勿出 XHCI.h）
+ * Bluetooth/Private.h — 板载 USB HCI 内部（btx-1…5；勿出 XHCI.h）
  *
  * 本机：8087:0A2B @口08。命令 Class Control；事件 Interrupt IN。
  */
@@ -23,8 +23,11 @@
 #define HCI_OPCODE_REMOTE_NAME_CANCEL 0x041Au
 #define HCI_OPCODE_RESET 0x0C03u
 #define HCI_OPCODE_WRITE_LOCAL_NAME 0x0C13u
+#define HCI_OPCODE_WRITE_SCAN_ENABLE 0x0C1Au
 #define HCI_OPCODE_WRITE_PAGE_TIMEOUT 0x0C18u
+#define HCI_OPCODE_WRITE_CLASS_OF_DEVICE 0x0C24u
 #define HCI_OPCODE_WRITE_INQUIRY_MODE 0x0C45u
+#define HCI_OPCODE_WRITE_EXTENDED_INQUIRY_RESPONSE 0x0C52u
 #define HCI_OPCODE_READ_BD_ADDR 0x1009u
 #define HCI_EVENT_INQUIRY_COMPLETE 0x01u
 #define HCI_EVENT_INQUIRY_RESULT 0x02u
@@ -54,6 +57,7 @@ extern UINT16 gBluetoothAclOutMps;
 extern int gBluetoothConfigured;
 extern int gBluetoothHciResetOk;
 extern int gBluetoothReady;
+extern int gBluetoothDiscoverable;
 extern UINT8 gBluetoothAddress[6];
 extern char gBluetoothLocalName[64];
 extern volatile UINT32 gBluetoothEventDone;
@@ -83,6 +87,7 @@ int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
                         UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
                         UINT8 *ReturnLenOut);
 int BluetoothBringUpIdentity(void);
+int BluetoothSetDiscoverable(int On);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
 

@@ -80,6 +80,7 @@ void HalConsoleWriteSerial(const char *Text) {
 }
 
 void HalConsoleBackspaceSerial(void) {
+    /* BS-SP-BS；勿发 ANSI——CoolTerm 常原样打出 "[K" */
     HalSerialWriteShell("\b \b");
 }
 

@@ -123,8 +123,10 @@ static void KernelAfterModules(void) {
      * 真机桌面：模块表已含 Network；Worker 还要 Secondary MSC 等，可能很久。
      * 若等 Worker 末才 Announce → 串口要回车才见 blocks>（OnEnter→Prompt）。
      * 此处先 ready+ShellOwn；Worker 再调 once 为空。virt 仍等 Worker（网/iwl 静默）。
+     * ConsoleOnly：勿在此 Announce——SerialRun 先打 banner 再 ready+Blocks>；
+     * 否则会先 Blocks> 再粘上「serial shell …」（Duo 真机）。
      */
-    if (!HalCpuIsHypervisor() && gConsole.AnnounceBootReady) {
+    if (!HalCpuIsHypervisor() && !HalConsoleOnly() && gConsole.AnnounceBootReady) {
         gConsole.AnnounceBootReady();
     }
 }

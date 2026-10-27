@@ -170,6 +170,9 @@ static void ConsolePromptAfterCommand(int FromSerial) {
 static void OnEnterEx(int FromSerial) {
     int Ensured;
 
+    /* USB 路径无 SerialFeedChar 清 IgnoreRx；防历史后粘住 */
+    gConsole.HistClearIgnoreRx();
+
     /* 用户 ELF 占 stdin：误入勿当 shell 命令（chat> HI → unknown） */
     if (gConsole.StdinUserHold()) {
         gLen = 0;

@@ -133,14 +133,38 @@ static void SerialRun(void) {
                 if (Was) {
                     continue;
                 }
-                if (Key == 0x28) {
+                /*
+                 * 与 Tasks/Hid.c FeedHid 同形：exec 占 stdin 时键进环，
+                 * 勿走 shell 行（否则退格 gLen=0 空操作，像「没处理」）。
+                 */
+                if (gConsole.StdinUserHold()) {
+                    if (Key == HID_KEY_ENTER) {
+                        gConsole.StdinPut('\n');
+                    } else if (Key == HID_KEY_BACKSPACE || Key == HID_KEY_DELETE) {
+                        gConsole.StdinPut('\b');
+                    } else if (Key == HID_KEY_CAPSLOCK) {
+                        HIDKeyboardToggleCapsLock();
+                        (void)HalKeyboardSetLeds(HIDKeyboardGetLeds());
+                    } else if (Key == HID_KEY_C &&
+                               (Report.ModifierKeys &
+                                (HID_MOD_LCTRL | HID_MOD_RCTRL)) != 0) {
+                        ShellOnInterrupt();
+                    } else {
+                        char C = HIDKeyCodeToASCII(Key, Report.ModifierKeys);
+                        if (C) {
+                            gConsole.StdinPut(C);
+                        }
+                    }
+                    continue;
+                }
+                if (Key == HID_KEY_ENTER) {
                     gConsole.OnEnter();
-                } else if (Key == 0x2A) {
+                } else if (Key == HID_KEY_BACKSPACE || Key == HID_KEY_DELETE) {
                     gConsole.OnBackspace();
                 } else if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
                     gConsole.OnHistHid(Key, 0);
                 } else if (Key == HID_KEY_CAPSLOCK) {
-                    /* 与 Tasks/Hid.c 同形；ConsoleOnly 无 Input 任务，须在此切 */
+                    /* ConsoleOnly 无 Input 任务，须在此切 Caps + 灯 */
                     HIDKeyboardToggleCapsLock();
                     (void)HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 } else if (Key == HID_KEY_C &&

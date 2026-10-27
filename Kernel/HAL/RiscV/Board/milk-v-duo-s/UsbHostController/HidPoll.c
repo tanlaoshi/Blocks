@@ -105,6 +105,25 @@ static void KeyboardEnqueue(const UINT8 *Report8) {
     if (!Report8) {
         return;
     }
+    /* 同报告不入队：SerialRun 每圈只 Poll 一次，仍避免无边沿洪水 */
+    if (gKeyboardQueueHead != gKeyboardQueueTail) {
+        UINT8 Last = (UINT8)((gKeyboardQueueTail + KEYBOARD_QUEUE_LENGTH - 1u) %
+                             KEYBOARD_QUEUE_LENGTH);
+        int Same = 1;
+
+        if (gKeyboardQueue[Last].ModifierKeys != Report8[0] ||
+            gKeyboardQueue[Last].Reserved != Report8[1]) {
+            Same = 0;
+        }
+        for (i = 0; Same && i < 6; i++) {
+            if (gKeyboardQueue[Last].KeyCode[i] != Report8[2 + i]) {
+                Same = 0;
+            }
+        }
+        if (Same) {
+            return;
+        }
+    }
     if (N == gKeyboardQueueHead) {
         return; /* 满：丢新保旧（同 X64 KbdPush） */
     }
@@ -121,9 +140,13 @@ static void KeyboardPollOnce(void) {
     int Ret;
     UINT8 PacketId;
     int Length;
+    int i;
 
     if (!gKeyboardOk) {
         return;
+    }
+    for (i = 0; i < 8; i++) {
+        Buffer[i] = 0;
     }
     gTransferDoSplit = gKeyboardSplit;
     gTransferLowSpeed = gKeyboardLowSpeed;

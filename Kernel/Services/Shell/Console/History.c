@@ -64,8 +64,15 @@ static void HistReplaceLine(const char *Text, int FromSerial) {
             gConsole.OnCharEx(Src[i], 0);
         }
     } else {
-        /* 串口：先 IgnoreRx 再 TX，挡 pty local-echo */
-        gIgnoreRx = 1;
+        /*
+         * 串口：IgnoreRx 挡 pty local-echo。
+         * ConsoleOnly USB（FromSerial=0 且无 Gui Shell）：无 pty echo，勿置
+         * IgnoreRx——否则 HistOnEdit 被挡、gNavActive 不消，回车还原整行，
+         * 退格/改字像「没处理」（Duo 真机课轨）。
+         */
+        if (FromSerial) {
+            gIgnoreRx = 1;
+        }
         NewLen = 0;
         while (Src[NewLen] != 0 && NewLen < LINE_MAX - 1) {
             NewLen++;
@@ -98,7 +105,8 @@ static void HistReplaceLine(const char *Text, int FromSerial) {
 }
 
 static void HistOnEdit(void) {
-    if (gReplacing || gIgnoreRx) {
+    /* IgnoreRx 只挡串口 RX；USB 编辑仍须清 gNavActive，否则回车还原 */
+    if (gReplacing) {
         return;
     }
     gBrowse = -1;

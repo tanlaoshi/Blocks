@@ -96,7 +96,7 @@ static void Poll(void) {
         }
     }
     SmscSelectDevice();
-    Got = BoardDwc2Bulk(gSmscAddress, gSmscEndpointIn, 1, gSmscReceiveBuffer, (int)RX_URB_SIZE, gSmscBulkMaxPacketSize,
+    Got = BoardUsbHostControllerBulk(gSmscAddress, gSmscEndpointIn, 1, gSmscReceiveBuffer, (int)RX_URB_SIZE, gSmscBulkMaxPacketSize,
                         &gSmscReceiveToggle);
     if (Got > 4) {
         SmscHandleReceive(gSmscReceiveBuffer, Got);

@@ -28,7 +28,7 @@ int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
         }
     }
     SmscSelectDevice();
-    Ret = BoardDwc2Bulk(gSmscAddress, gSmscEndpointOut, 0, gSmscTransmitBuffer, (int)(8u + FrameLength),
+    Ret = BoardUsbHostControllerBulk(gSmscAddress, gSmscEndpointOut, 0, gSmscTransmitBuffer, (int)(8u + FrameLength),
                         gSmscBulkMaxPacketSize, &gSmscTransmitToggle);
     if (Ret < 0) {
         return -1;

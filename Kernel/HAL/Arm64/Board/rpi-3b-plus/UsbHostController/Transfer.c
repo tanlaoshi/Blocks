@@ -245,7 +245,7 @@ int ControlMessage(UINT8 DeviceAddress, UsbSetup *Setup, void *Data, int Length)
     return Act;
 }
 
-void BoardDwc2SelectDevice(UINT8 Hub, UINT8 Port, int LowSpeed) {
+void BoardUsbHostControllerSelectDevice(UINT8 Hub, UINT8 Port, int LowSpeed) {
     if (LowSpeed) {
         TransferTargetSplit(Hub, Port, 1, gTransferEndpoint0MaxPacketSize);
     } else {
@@ -253,7 +253,7 @@ void BoardDwc2SelectDevice(UINT8 Hub, UINT8 Port, int LowSpeed) {
     }
 }
 
-int BoardDwc2Control(UINT8 Address, UINT8 BmRequestType, UINT8 BRequest,
+int BoardUsbHostControllerControl(UINT8 Address, UINT8 BmRequestType, UINT8 BRequest,
                      UINT16 WValue, UINT16 WIndex, void *Data, int Length) {
     UsbSetup Setup;
 
@@ -265,7 +265,7 @@ int BoardDwc2Control(UINT8 Address, UINT8 BmRequestType, UINT8 BRequest,
     return ControlMessage(Address, &Setup, Data, Length);
 }
 
-int BoardDwc2Bulk(UINT8 Address, UINT8 Endpoint, int EndpointIn, void *Data,
+int BoardUsbHostControllerBulk(UINT8 Address, UINT8 Endpoint, int EndpointIn, void *Data,
                   int Length, UINT16 MaxPacketSize, UINT8 *Toggle) {
     UINT8 PacketId;
     int Ret;

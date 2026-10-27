@@ -15,7 +15,7 @@ void SmscDelayMilliseconds(UINT32 Milliseconds) {
 }
 
 void SmscSelectDevice(void) {
-    BoardDwc2SelectDevice(gSmscHub, gSmscPort, 0);
+    BoardUsbHostControllerSelectDevice(gSmscHub, gSmscPort, 0);
 }
 
 int SmscWriteRegister(UINT32 Index, UINT32 Data) {
@@ -23,7 +23,7 @@ int SmscWriteRegister(UINT32 Index, UINT32 Data) {
     int Ret;
 
     SmscSelectDevice();
-    Ret = BoardDwc2Control(gSmscAddress, 0x40u, USB_VENDOR_WRITE_REG, 0, (UINT16)Index,
+    Ret = BoardUsbHostControllerControl(gSmscAddress, 0x40u, USB_VENDOR_WRITE_REG, 0, (UINT16)Index,
                            &Le, 4);
     return (Ret == 4) ? 0 : -1;
 }
@@ -36,7 +36,7 @@ int SmscReadRegister(UINT32 Index, UINT32 *OutValue) {
         return -1;
     }
     SmscSelectDevice();
-    Ret = BoardDwc2Control(gSmscAddress, 0xC0u, USB_VENDOR_READ_REG, 0, (UINT16)Index,
+    Ret = BoardUsbHostControllerControl(gSmscAddress, 0xC0u, USB_VENDOR_READ_REG, 0, (UINT16)Index,
                            &Le, 4);
     if (Ret != 4) {
         return -1;

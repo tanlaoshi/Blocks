@@ -195,10 +195,13 @@ void GuiDesktopInitialize(void) {
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     /*
-     * Pi DWC2：鼠在 Mod Gui 前已 Attach；真机 CNTV 无 IRQ → CondResched
-     * 切不到 Worker Reveal。桌面已 Present 且鼠在则此处露光标（幂等）。
+     * 仅 Pi（!HalTimerUsesIrq）：CNTV 无 IRQ → CondResched 切不到 Worker，
+     * 鼠已 Attach 则此处露光标，否则永不 Reveal。
+     * X64/NUC 禁止早 Reveal：一露 Gui 泵鼠，Worker 仍 Secondary/claim/iwl
+     * 会饿死 xHCI → 光标在、坐标不动（本机「already attached」后鼠死）。
+     * NUC 须等 Worker 网/iwl 静默后再 GuiCursorRevealAfterUsb。
      */
-    if (HalMousePresent()) {
+    if (!HalTimerUsesIrq() && HalMousePresent()) {
         GuiCursorRevealAfterUsb();
         HalSerialBootMark("Boot: cursor reveal (mouse already attached)\n");
     }

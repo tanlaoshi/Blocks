@@ -102,7 +102,7 @@ void HalCpuShutdown(void) {
 }
 
 /*
- * Pi 3B+ 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown / 课堂线）。
+ * Pi 3B 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown / 课堂线）。
  * BCM2835 ARM Peripherals §6：输入 + 上拉，电平 0 为按下；下降沿触发一次（对表
  * X64 PM1 写清 STS）。virt 无此脚。
  */

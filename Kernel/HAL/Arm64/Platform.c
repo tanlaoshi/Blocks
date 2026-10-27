@@ -1,7 +1,7 @@
 /*
  * Platform.c — Arm64 平台 MMIO 占位 + 软墙钟
  *
- * Pi3B+ 无板载电池 RTC；mailbox GET_CLOCK_RATE 只报 Hz，不是墙钟。
+ * Pi3B 无板载电池 RTC；mailbox GET_CLOCK_RATE 只报 Hz，不是墙钟。
  * 用 CNTVCT/CNTFRQ（ARM 体系计时器）从编译期种子推进；任务栏已接 HalRtcGetTime。
  * 种子按课堂本地（东八）写，勿再套 X64 的 UTC→CST。
  */

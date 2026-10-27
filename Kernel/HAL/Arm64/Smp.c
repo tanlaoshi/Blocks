@@ -145,7 +145,7 @@ int HalSmpStartApplicationProcessors(void) {
     }
 
 #if !BOARD_IS_VIRT
-    /* 真机：禁止对 QEMU PSCI 发 HVC；3B+ 本柱先单核 */
+    /* 真机：禁止对 QEMU PSCI 发 HVC；3B 本柱先单核 */
     SmpLog("Smp: Single CPU (board, no PSCI)\n");
     return 0;
 #endif

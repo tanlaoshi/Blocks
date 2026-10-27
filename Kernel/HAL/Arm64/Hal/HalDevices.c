@@ -5,6 +5,7 @@
  * 板载网门面（三架构同名）：有则 `BoardEthernetProbe`（`Ethernet.c`）；Pi 暂无板载 MAC。
  */
 #include "Hal.h"
+#include "HalDevices.h"
 #include "BoardConfig.h"
 #include "Block.h"
 #include "Driver.h"
@@ -21,11 +22,13 @@ void HalDriverRegister(void) {
     {
         void BoardSdhostRegister(void);
         void BoardEthernetRegister(void);
+        void BoardWifiRegister(void);
 
         BoardSdhostRegister();
 #if BOARD_HAS_NET
         BoardEthernetRegister();
 #endif
+        BoardWifiRegister();
     }
 #endif
 }
@@ -34,7 +37,7 @@ int HalBlockInitialize(void) {
 #if BOARD_IS_VIRT
     return VirtioBlockInit();
 #else
-    /* Pi3B+：bcm-sdhost（µSD）→ DriverBlockAttach → BlockInitialize */
+    /* Pi3B：bcm-sdhost（µSD）→ DriverBlockAttach → BlockInitialize */
     (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
     if (!BlockBackendReady()) {
         return 0;
@@ -48,7 +51,7 @@ int HalUsbInitialize(void) {
     return VirtioInputInit();
 #else
     /*
-     * Pi3B+：rpi-7 探针 DWC2（GSNPSID / host / HPRT）。
+     * Pi3B：rpi-7 探针 DWC2（GSNPSID / host / HPRT）。
      * 软成功：无 USB 不挡桌面；枚举 HID 另刀。
      */
     {
@@ -143,12 +146,28 @@ int HalUsbUartReady(void) {
     return 0;
 }
 
+/* 板包 BoardWifiRegister → HalWifiSetOps；virt / 未登记 → 0 */
+static HAL_WIFI_OPS gWifiOps;
+
+void HalWifiSetOps(const HAL_WIFI_OPS *Ops) {
+    if (Ops == 0) {
+        return;
+    }
+    gWifiOps = *Ops;
+}
+
 int HalWifiClaim(void) {
-    return 0;
+    if (gWifiOps.Claim == 0) {
+        return 0;
+    }
+    return gWifiOps.Claim();
 }
 
 int HalWifiReady(void) {
-    return 0;
+    if (gWifiOps.Ready == 0) {
+        return 0;
+    }
+    return gWifiOps.Ready();
 }
 
 int HalIwlClaim(void) {

@@ -80,7 +80,7 @@ cd ~/Blocks && source ./env.sh
 | 场景 | 编译 | 启动 |
 | --- | --- | --- |
 | **QEMU virt**（课堂靶） | `build arm64` 或 `build arm64 BOARD=virt` | `run-virt-arm`（可加 `--headless`） |
-| **树莓派 3B+** 真机 | `build arm64 BOARD=rpi-3b-plus LWIP=1` | 插卡 **`ck-pi-sd`**（先摆盘再刷：固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
+| **树莓派 3B** 真机 | `build arm64 BOARD=rpi-3b LWIP=1` | 插卡 **`ck-pi-sd`**（先摆盘再刷：固件→bootfs；**`Kernel.elf`→BLOCKS**）；串口 115200 |
 
 板包列表：`boards arm64`。真机历程见 `Archive/过程/排障/` 下 Pi 档。
 
@@ -95,7 +95,7 @@ cd ~/Blocks && source ./env.sh
 
 ### 对照（一眼）
 
-| | X64 | Arm64 virt | Arm64 Pi3B+ | RiscV Duo S |
+| | X64 | Arm64 virt | Arm64 Pi3B | RiscV Duo S |
 | --- | --- | --- | --- | --- |
 | 交叉工具 | 宿主 `gcc` | aarch64-*-gcc / xpack | 同左 | riscv64-*-gcc / xpack |
 | 模拟器 | `qemu-system-x86_64` + OVMF | `qemu-system-aarch64` | — | `qemu-system-riscv64`（virt） |

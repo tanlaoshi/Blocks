@@ -74,7 +74,7 @@ Kernel/
 | `HAL/X64/` | 桌面真机 / QEMU OVMF（键鼠、网、块、核显…） |
 | `HAL/Arm64/`、`HAL/RiscV/` | virt + 真机板；**Arch 通用**，板差进 `Board/` |
 | `HAL/<Arch>/Board/virt/` | QEMU 默认板 |
-| `HAL/Arm64/Board/rpi-3b-plus/` | 树莓派 3B+（`BOARD=rpi-3b-plus`） |
+| `HAL/Arm64/Board/rpi-3b/` | 树莓派 3B（`BOARD=rpi-3b`） |
 | `HAL/RiscV/Board/milk-v-duo-s/` | Duo S 串口靶 |
 | `HAL/Virtio/` | QEMU virt 共享 |
 
@@ -92,7 +92,7 @@ Kernel/
 | `sync usb` / `sync nuc` | 真机 U 盘 / NUC SSD（TBU / TBN） |
 | `run` / `smoke` | X64 QEMU |
 | `run-virt-arm` / `run-virt-riscv` | 多架构 virt |
-| `prepare-pi-sd` | rpi-3b-plus 摆盘目录 |
+| `prepare-pi-sd` | rpi-3b 摆盘目录 |
 
 ---
 

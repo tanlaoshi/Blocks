@@ -147,7 +147,7 @@ int HalPagingIsOn(void) {
 /*
  * 恒等映射 0..4GiB。
  * - virt：低 1GiB Device（UART/GIC/virtio），其余 Normal（RAM @1GiB+）。
- * - Pi3B+ 等：DRAM @0，外设窗 @0x3F000000 — 低 1GiB 内按 2MiB 块区分
+ * - Pi3B 等：DRAM @0，外设窗 @0x3F000000 — 低 1GiB 内按 2MiB 块区分
  *   Normal / Device，否则内核落在 Device 属性上取指会炸。
  * IdentityMegabytes 保留接口兼容。
  */
@@ -158,7 +158,7 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
     UINTN g;
     UINT64 TableFlags = DESC_VALID | DESC_TABLE | AF_BIT | ATTR_NORMAL | SH_INNER | AP_EL1_RW;
 #if !BOARD_IS_VIRT
-    /* BCM283x ARM 外设窗起址（3B+：0x3F000000） */
+    /* BCM283x ARM 外设窗起址（3B：0x3F000000） */
     const UINT64 PeriBase = 0x3F000000ULL;
 #endif
 

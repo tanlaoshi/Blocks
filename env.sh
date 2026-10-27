@@ -5,7 +5,7 @@
 #
 #   build                           # x64 Kernel（默认）
 #   build arm64                     # QEMU virt（默认 BOARD=virt）
-#   build arm64 BOARD=rpi-3b-plus LWIP=0
+#   build arm64 BOARD=rpi-3b LWIP=0
 #   build arm64 BOARD=virt          # 切回课堂靶后再 run-virt-arm
 #   build riscv BOARD=milk-v-duo-s
 #   boot                            # Boot → BOOTX64.EFI
@@ -103,7 +103,7 @@ boards() {
     (cd "$KERNEL" && make ARCH="$Arch" boards)
 }
 
-# U-Boot 用扁平二进制。用法：kernel-bin arm64 BOARD=rpi-3b-plus
+# U-Boot 用扁平二进制。用法：kernel-bin arm64 BOARD=rpi-3b
 kernel-bin() {
     local Arch=arm64
     local Board=virt
@@ -124,17 +124,17 @@ kernel-bin() {
     (cd "$KERNEL" && make ARCH="$Arch" BOARD="$Board" LWIP=0 kernel-bin)
 }
 
-# rpi-3b-plus：仅摆盘到目录（不插卡）。日常刷卡用 ck-pi-sd（已内含 prepare）
+# rpi-3b：仅摆盘到目录（不插卡）。日常刷卡用 ck-pi-sd（已内含 prepare）
 prepare-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/prepare-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b/scripts/prepare-sd.sh" "$@"
 }
 
 # 暗号 CK：先 prepare 再刷 — 固件→bootfs；Kernel→BLOCKS。可选 --repart
 ck-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/ck-pi-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b/scripts/ck-pi-sd.sh" "$@"
 }
 repart-pi-sd() {
-    bash "$KERNEL/HAL/Arm64/Board/rpi-3b-plus/scripts/repart-pi-sd.sh" "$@"
+    bash "$KERNEL/HAL/Arm64/Board/rpi-3b/scripts/repart-pi-sd.sh" "$@"
 }
 
 # Duo：Kernel.elf → LABEL=BLOCKS（blocks-elf）。可选 --boot 刷新 boot.sd；禁止当 CK

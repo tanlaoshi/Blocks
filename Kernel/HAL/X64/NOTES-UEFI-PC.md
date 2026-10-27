@@ -199,7 +199,13 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 
 ---
 
-## 5. 与代码边界
+## 5. 蓝牙（bt-3arch · NUC 课轨）
+
+- **课标硬件**：**NUC 板载 BT**（如 NUC7 + 8265 模组）；**不要求**外置 USB 棒。  
+- 对 OS 常见形态：内部 **USB HCI**（Class `E0/01/01`）挂现网 xHCI → 门面 `HalBluetooth*`（`Include/Hal/HalBluetooth.h`）；真探针从 **btx-1** 起。  
+- 无控制器或未 Ready：`HalBluetoothReady()==0`，禁止谎称已配对。
+
+## 6. 与代码边界
 
 - **改**：`ToyBoot/`（GOP/EDID）、`HAL/X64/Startup*`（交接）、本笔记。  
 - **不改**：Common FAT / Gui / VFS（真机差异留 HAL）。  

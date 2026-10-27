@@ -122,9 +122,27 @@ toyos_scripts_lib() {
     printf '%s/lib\n' "$(toyos_scripts_dir "$Root")"
 }
 
-# $1=BLOCKS_ROOT $2=ToyKernel|ToyBoot → $BLOCKS_ROOT/Build/<名>
+# $1=BLOCKS_ROOT $2=ToyKernel|ToyBoot|Kernel|Boot
+# Blocks 单仓：禁止仓顶 Build/ → Kernel/Build 或 Boot/Build；旧 ToyOS 树才用 $Root/Build/<名>
 toyos_component_build_dir() {
-    printf '%s/Build/%s\n' "$1" "$2"
+    local Root="$1"
+    local Name="$2"
+
+    case "$Name" in
+        ToyBoot|Boot)
+            if [ -d "$Root/Boot" ]; then
+                printf '%s/Boot/Build\n' "$Root"
+                return 0
+            fi
+            ;;
+        ToyKernel|Kernel)
+            if [ -d "$Root/Kernel" ] && [ -f "$Root/Kernel/build.sh" ]; then
+                printf '%s/Kernel/Build\n' "$Root"
+                return 0
+            fi
+            ;;
+    esac
+    printf '%s/Build/%s\n' "$Root" "$Name"
 }
 
 # Kernel 产物目录：
@@ -151,7 +169,7 @@ toyos_kernel_build_dir() {
     printf 'Build\n'
 }
 
-# 去掉仓内旧 Build 符号链接；有内容则迁到 $BLOCKS_ROOT/Build/ToyKernel。
+# 去掉仓内旧 Build 符号链接；有内容则迁到 Kernel/Build（Blocks）或旧 $Root/Build/ToyKernel。
 # $1=BLOCKS_ROOT $2=ToyKernel 仓绝对路径
 toyos_drop_kernel_build_link() {
     local Root="$1"
@@ -171,14 +189,14 @@ toyos_drop_kernel_build_link() {
     fi
 }
 
-# Boot：保证 $BLOCKS_ROOT/Build/ToyBoot 可见（已在根下则不动；否则链到 EDK2 产物目录）。
-# $1=BLOCKS_ROOT $2=EDK 侧 Build/ToyBoot 绝对路径（含 DEBUG_GCC/… 的父级）
+# Boot：Blocks 用 Boot/Build；勿再 mkdir 仓顶 Build/。
+# $1=BLOCKS_ROOT $2=EDK 侧产物目录（含 DEBUG_GCC/… 的父级）
 toyos_link_boot_build() {
     local Root="$1"
     local EdkBoot="$2"
     local Dest
-    Dest="$(toyos_component_build_dir "$Root" ToyBoot)"
-    mkdir -p "$Root/Build"
+    Dest="$(toyos_component_build_dir "$Root" Boot)"
+    mkdir -p "$(dirname "$Dest")"
     if [ ! -d "$EdkBoot" ]; then
         return 1
     fi
@@ -186,11 +204,15 @@ toyos_link_boot_build() {
     if [ "$EdkBoot" = "$Dest" ]; then
         return 0
     fi
+    # Blocks：Boot/build.sh 已写 Boot/Build/BOOTX64.EFI，无需仓顶软链
+    if [ -d "$Root/Boot" ] && [ -f "$Root/Boot/build.sh" ]; then
+        return 0
+    fi
+    mkdir -p "$(dirname "$Dest")"
     if [ -L "$Dest" ] || [ ! -e "$Dest" ]; then
         ln -sfn "$EdkBoot" "$Dest"
         return 0
     fi
-    # 已是真目录：不覆盖，仅提示
     echo "note: $Dest 已存在（非链接）；EDK 产物在 $EdkBoot" >&2
     return 0
 }

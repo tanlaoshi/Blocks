@@ -8,7 +8,7 @@
 # 由 run-virt-arm.sh / run-virt-riscv.sh source；调用方须先设：
 #   VIRT_ARCH=arm64|riscv
 #   VIRT_QEMU=qemu-system-...
-#   VIRT_ELF=$BLOCKS_ROOT/Build/ToyKernel/HAL/<Arch>/Kernel.elf（可省略，由本脚本填）
+#   VIRT_ELF=$BLOCKS_ROOT/Kernel/Build/HAL/<Arch>/Kernel.elf（可省略，由本脚本填）
 #   VIRT_MAKE_ARCH=arm64|riscv
 #   VIRT_HAL_ARCH=Arm64|RiscV
 #   可选：VIRT_QEMU_EXTRA=(...)  VIRT_HELLO_PAT=...
@@ -53,8 +53,12 @@ toy_virt_paths() {
     elif [ -d "${KERNEL:-}/Build" ]; then
         KERNEL_BUILD="$KERNEL/Build"
         mkdir -p "$KERNEL_BUILD"
+    elif [ -n "${BLOCKS_ROOT:-}" ] && [ -d "$BLOCKS_ROOT/Kernel/Build" ]; then
+        KERNEL_BUILD="$BLOCKS_ROOT/Kernel/Build"
+        mkdir -p "$KERNEL_BUILD"
     else
-        KERNEL_BUILD="$BLOCKS_ROOT/Build/ToyKernel"
+        # 旧 ToyOS 旁挂树；Blocks 单仓勿落仓顶 Build/
+        KERNEL_BUILD="${KERNEL:-.}/Build"
         mkdir -p "$KERNEL_BUILD"
     fi
     export RUNTIME KERNEL BLOCKS_ROOT KERNEL_BUILD

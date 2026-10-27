@@ -1,4 +1,5 @@
-# 构建产物
+# 构建产物（禁止仓顶统一 Build/：见 Bingo/System/Tree.md）
+/Build/
 Boot/Build/**
 Kernel/Build/**
 !Kernel/Build/.gitkeep

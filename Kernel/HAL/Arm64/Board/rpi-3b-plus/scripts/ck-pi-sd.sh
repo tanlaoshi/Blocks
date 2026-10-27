@@ -7,7 +7,7 @@
 #   ck-pi-sd --no-eject
 #   ck-pi-sd --repart          # 整盘重做成 bootfs+BLOCKS 两 FAT32（须 sudo）
 #   ck-pi-sd --dtb=PATH        # 传给摆盘
-#   ck-pi-sd /path/to/out      # 摆盘 OUT（默认 Build/rpi-3b-plus-sd）
+#   ck-pi-sd /path/to/out      # 摆盘 OUT（默认 Kernel/Build/rpi-3b-plus-sd）
 #
 # 须已 build arm64 BOARD=rpi-3b-plus。不 commit / 不 push。
 # 只摆盘不刷卡：仍可用 prepare-pi-sd。
@@ -16,7 +16,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BOARD_DIR="$(cd "$HERE/.." && pwd)"
 BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../.." && pwd)"
-SRC="${BLOCKS_SRC:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
+SRC="${BLOCKS_SRC:-$BLOCKS_ROOT/Kernel/Build/rpi-3b-plus-sd}"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 DO_REPART=0

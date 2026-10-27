@@ -26,9 +26,9 @@ usage() {
     cat <<'EOF'
 usage: prepare-sd.sh [OUT_DIR] [--dtb=PATH] [--elf=PATH] [--bin]
 
-  OUT_DIR   默认：$BLOCKS_ROOT/Build/rpi-3b-plus-sd
+  OUT_DIR   默认：$KERNEL/Build/rpi-3b-plus-sd（勿用仓顶 Build/）
   --dtb=    拷入的 bcm2837-rpi-3-b-plus.dtb（缺则只写说明，不假装有 DTB）
-  --elf=    覆盖默认 Build/HAL/Arm64/Kernel.elf
+  --elf=    覆盖默认 Kernel/Build/HAL/Arm64/Kernel.elf
   --bin     强制再跑 make kernel-bin（需交叉 objcopy）
 
 须已：build arm64 BOARD=rpi-3b-plus（一板一编）。
@@ -57,7 +57,7 @@ for A in "$@"; do
     esac
 done
 
-OUT="${OUT:-$BLOCKS_ROOT/Build/rpi-3b-plus-sd}"
+OUT="${OUT:-$KERNEL/Build/rpi-3b-plus-sd}"
 
 if [ ! -f "$ELF" ]; then
     echo "error: missing $ELF" >&2
@@ -94,7 +94,7 @@ fi
 # boot.scr：stock U-Boot distro_bootcmd 上电自动 source（勿再手敲）
 cp -f "$BOARD_DIR/scripts/boot.cmd" "$OUT/boot.cmd"
 MKIMAGE=""
-for c in mkimage "$BLOCKS_ROOT/Build/u-boot-src/u-boot-2021.01/tools/mkimage"; do
+for c in mkimage "$KERNEL/Build/u-boot-src/u-boot-2021.01/tools/mkimage"; do
     if [ -x "$c" ] || command -v "$c" >/dev/null 2>&1; then
         MKIMAGE=$c
         break

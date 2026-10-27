@@ -10,6 +10,7 @@
 #include "HalVideo.h"
 #include "HalConsole.h"
 #include "HalDevices.h"
+#include "HalBluetooth.h"
 #include "HalPageTable.h"
 #include "HalPat.h"
 #include "HalPlatform.h"

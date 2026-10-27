@@ -1,0 +1,34 @@
+/*
+ * HalBluetooth.c — Arm64 蓝牙门面（bt-facade）
+ * Pi UART HCI 在 bt-pi；本刀无硬件 → Ready=0。
+ */
+#include "Hal.h"
+#include "HalBluetooth.h"
+
+int HalBluetoothInitialize(void) {
+    return 0;
+}
+
+int HalBluetoothReady(void) {
+    return 0;
+}
+
+int HalBluetoothGetDeviceAddress(UINT8 Out[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
+    UINT32 i;
+
+    if (Out == 0) {
+        return -1;
+    }
+    for (i = 0; i < HAL_BLUETOOTH_ADDRESS_LENGTH; i++) {
+        Out[i] = 0;
+    }
+    return -1;
+}
+
+int HalBluetoothGetLocalName(char *Out, UINTN NameMax) {
+    if (Out == 0 || NameMax < 1u) {
+        return -1;
+    }
+    Out[0] = 0;
+    return -1;
+}

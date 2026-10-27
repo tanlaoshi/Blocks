@@ -32,3 +32,11 @@ int HalBluetoothGetLocalName(char *Out, UINTN NameMax) {
     Out[0] = 0;
     return -1;
 }
+
+int HalBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                     UINT32 TimeoutMs) {
+    (void)Out;
+    (void)OutMax;
+    (void)TimeoutMs;
+    return -1;
+}

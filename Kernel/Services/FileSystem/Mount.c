@@ -71,7 +71,7 @@ int MountAllVolumes(void) {
         return 0;
     }
 
-    LogFs("Fs: Mounted ");
+    LogFs("FS: Mounted ");
     {
         char Msg[8];
         Msg[0] = (char)('0' + (gVolCount > 9 ? 9 : gVolCount));
@@ -97,18 +97,18 @@ int FileSystemRemountVolumes(void) {
     if (!BlockBackendReady()) {
         if (HalBlockInitialize() <= 0) {
             LibWriteSetQuiet(0);
-            LogFs("Fs: Remount No Block Backend\n");
+            LogFs("FS: Remount No Block Backend\n");
             return 0;
         }
     } else if (BlockInitialize() <= 0) {
         LibWriteSetQuiet(0);
-        LogFs("Fs: Remount BlockInitialize Found 0 Drives\n");
+        LogFs("FS: Remount BlockInitialize Found 0 Drives\n");
         return 0;
     }
     Ok = MountAllVolumes();
     LibWriteSetQuiet(0);
     if (!Ok) {
-        LogFs("Fs: Remount No Volumes\n");
+        LogFs("FS: Remount No Volumes\n");
         /* MountAll 已 UpdateBootMedium；此处再调幂等，保 Gone 可见 */
         FsUpdateBootMediumState();
         return 0;

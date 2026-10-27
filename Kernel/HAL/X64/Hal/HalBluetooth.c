@@ -1,8 +1,8 @@
 /*
- * HalBluetooth.c — x86 蓝牙门面（bt-facade / btx-1…3）
+ * HalBluetooth.c — x86 蓝牙门面（bt-facade / btx-1…4）
  *
  * NOTES（NUC 2026-10-27）：vid=8087 pid=0A2B class=E0 根口=08。
- * Worker Reveal 后 Probe → Reset → BD_ADDR + 名 Blocks；Ready 见 XhciBluetoothReady。
+ * Worker Reveal 后 Probe → Reset → BD_ADDR；`bt scan` → Inquiry。
  */
 #include "Hal.h"
 #include "HalBluetooth.h"
@@ -41,4 +41,9 @@ int HalBluetoothGetLocalName(char *Out, UINTN NameMax) {
     }
     Out[0] = 0;
     return -1;
+}
+
+int HalBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                     UINT32 TimeoutMs) {
+    return XhciBluetoothScan(Out, OutMax, TimeoutMs);
 }

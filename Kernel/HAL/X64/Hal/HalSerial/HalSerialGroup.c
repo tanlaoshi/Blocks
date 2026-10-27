@@ -1,5 +1,7 @@
 /*
  * HalSerialGroup.c — 行首前缀分组；组切换插一空行
+ *
+ * 存储/MSC（block: / FS: / Boot: MSC）同组，挂盘段不拆空行。
  */
 #include "HalSerialPrivate.h"
 
@@ -7,13 +9,10 @@ static int gLogAtBol = 1;
 static int gLogGroup;
 
 #define LOG_GROUP_NONE 0
-#define LOG_GROUP_BLOCK 1
-#define LOG_GROUP_FAT 2
-#define LOG_GROUP_FS 3
-#define LOG_GROUP_BOOT 4
-#define LOG_GROUP_MUX 5
-#define LOG_GROUP_MODULE 6
-#define LOG_GROUP_BANNER 7
+#define LOG_GROUP_STORAGE 1
+#define LOG_GROUP_BOOT 2
+#define LOG_GROUP_MODULE 3
+#define LOG_GROUP_BANNER 4
 
 static int TextStartsWith(const char *Text, const char *Prefix) {
     while (*Prefix) {
@@ -28,17 +27,11 @@ static int LogPrefixGroup(const char *Text) {
     if (!Text || Text[0] == 0 || Text[0] == '\n' || Text[0] == '\r') {
         return LOG_GROUP_NONE;
     }
-    if (TextStartsWith(Text, "block-mux:")) {
-        return LOG_GROUP_MUX;
-    }
-    if (TextStartsWith(Text, "block:")) {
-        return LOG_GROUP_BLOCK;
-    }
-    if (TextStartsWith(Text, "FS:")) {
-        return LOG_GROUP_FAT;
-    }
-    if (TextStartsWith(Text, "Fs:")) {
-        return LOG_GROUP_FS;
+    if (TextStartsWith(Text, "block:") ||
+        TextStartsWith(Text, "block-mux:") ||
+        TextStartsWith(Text, "FS:") ||
+        TextStartsWith(Text, "Boot: MSC")) {
+        return LOG_GROUP_STORAGE;
     }
     if (TextStartsWith(Text, "Boot:")) {
         return LOG_GROUP_BOOT;
@@ -83,5 +76,6 @@ void HalSerialGroupNoteBol(const char *Text) {
     while (*P) {
         P++;
     }
-    gLogAtBol = (P > Text && P[-1] == '\n') ? 1 : 0;
+    /* \n 或裸 \r（部分终端拷贝）都算行结束 */
+    gLogAtBol = (P > Text && (P[-1] == '\n' || P[-1] == '\r')) ? 1 : 0;
 }

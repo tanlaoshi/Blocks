@@ -206,9 +206,9 @@ static void RebindPinnedOsTarget(int *BlocksVol) {
         *BlocksVol = gOsVolIdx;
     }
     if (gOsVolIdx >= 0) {
-        LogFs("Fs: OsTarget rebind ok\n");
+        LogFs("FS: OsTarget rebind ok\n");
     } else {
-        LogFs("Fs: OsTarget pinned (volume unplugged)\n");
+        LogFs("FS: OsTarget pinned (volume unplugged)\n");
     }
 }
 
@@ -241,7 +241,7 @@ void FsResolveOsTarget(int *BlocksVol) {
     if (gOsTargetPinned && gOsDiskOk) {
         if (BootGuidOk && !GuidEq16(gOsDiskGuid, Info->BootDiskGuid) &&
             AnyVolOnBootDisk()) {
-            LogFs("Fs: OsTarget unpin (was not boot disk; boot disk now mounted)\n");
+            LogFs("FS: OsTarget unpin (was not boot disk; boot disk now mounted)\n");
             gOsTargetPinned = 0;
             gOsDiskOk = 0;
             gOsPartOk = 0;
@@ -262,7 +262,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             }
             if (TryRootCfgFromVol(i, Disk, Part)) {
                 FromCfg = 1;
-                LogFs("Fs: ROOT.CFG loaded (boot disk ESP)\n");
+                LogFs("FS: ROOT.CFG loaded (boot disk ESP)\n");
                 break;
             }
         }
@@ -276,7 +276,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             }
             if (TryRootCfgFromVol(i, Disk, Part)) {
                 FromCfg = 1;
-                LogFs("Fs: ROOT.CFG loaded\n");
+                LogFs("FS: ROOT.CFG loaded\n");
                 break;
             }
         }
@@ -291,7 +291,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             if (gVols[Hit].HasBlocksId && BlocksVol) {
                 *BlocksVol = Hit;
             }
-            LogFs("Fs: OsTarget via ROOT.CFG\n");
+            LogFs("FS: OsTarget via ROOT.CFG\n");
             return;
         }
         /*
@@ -302,7 +302,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             *BlocksVol = -1;
         }
         gOsVolIdx = -1;
-        LogFs("Fs: OsTarget ROOT.CFG not mounted yet\n");
+        LogFs("FS: OsTarget ROOT.CFG not mounted yet\n");
         return;
     }
 
@@ -319,7 +319,7 @@ void FsResolveOsTarget(int *BlocksVol) {
                 PinOsTarget(gVols[OnBoot].DiskGuid, gVols[OnBoot].PartGuid,
                             gVols[OnBoot].PartGuidOk);
             }
-            LogFs("Fs: OsTarget = boot disk BLOCKS\n");
+            LogFs("FS: OsTarget = boot disk BLOCKS\n");
             return;
         }
         /*
@@ -331,7 +331,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             *BlocksVol = -1;
         }
         gOsVolIdx = -1;
-        LogFs("Fs: OsTarget defer (boot disk not mounted; skip bypass BLOCKS)\n");
+        LogFs("FS: OsTarget defer (boot disk not mounted; skip bypass BLOCKS)\n");
         return;
     }
 
@@ -398,7 +398,7 @@ void FsLatchMscBootDisk(void) {
             continue;
         }
         if (!GptCurrentDiskGuid(Guid)) {
-            LogFs("Fs: msc latch gpt fail drive=");
+            LogFs("FS: msc latch gpt fail drive=");
             LogFsHex32(d);
             LogFs("\n");
             continue;
@@ -408,9 +408,9 @@ void FsLatchMscBootDisk(void) {
         if (Info && Info->BootDiskGuidOk && GuidEq16(Guid, Info->BootDiskGuid)) {
             gMscIsBootDisk = 1;
             gBootDiskSeen = 1;
-            LogFs("Fs: msc latched BOOT disk\n");
+            LogFs("FS: msc latched BOOT disk\n");
         } else {
-            LogFs("Fs: msc latched (bypass)\n");
+            LogFs("FS: msc latched (bypass)\n");
         }
         return;
     }
@@ -428,7 +428,7 @@ void FileSystemNotifyMscUnplug(void) {
         return;
     }
 
-    LogFs("Fs: msc unplug notify isBoot=");
+    LogFs("FS: msc unplug notify isBoot=");
     LogFsHex32((UINT32)gMscIsBootDisk);
     LogFs(" guidOk=");
     LogFsHex32((UINT32)gMscDiskGuidOk);
@@ -436,7 +436,7 @@ void FileSystemNotifyMscUnplug(void) {
 
     if (gMscIsBootDisk) {
         gBootMediumGone = 1;
-        LogFs("Fs: boot medium removed (msc was boot disk)\n");
+        LogFs("FS: boot medium removed (msc was boot disk)\n");
         return;
     }
 
@@ -446,13 +446,13 @@ void FileSystemNotifyMscUnplug(void) {
     /* 闩未立时：OsTarget 已钉在 BootDisk 且 MSC 盘 GUID==BootDisk */
     if (gMscDiskGuidOk && GuidEq16(gMscDiskGuid, Info->BootDiskGuid)) {
         gBootMediumGone = 1;
-        LogFs("Fs: boot medium removed (msc guid=BootDiskGuid)\n");
+        LogFs("FS: boot medium removed (msc guid=BootDiskGuid)\n");
         return;
     }
     if (gOsDiskOk && GuidEq16(gOsDiskGuid, Info->BootDiskGuid) && gMscDiskGuidOk &&
         GuidEq16(gMscDiskGuid, gOsDiskGuid)) {
         gBootMediumGone = 1;
-        LogFs("Fs: boot medium removed (msc held OsTarget)\n");
+        LogFs("FS: boot medium removed (msc held OsTarget)\n");
         return;
     }
     for (i = 0; i < gVolCount; i++) {
@@ -467,7 +467,7 @@ void FileSystemNotifyMscUnplug(void) {
         }
         gBootDiskSeen = 1;
         gBootMediumGone = 1;
-        LogFs("Fs: boot medium removed (vol on msc)\n");
+        LogFs("FS: boot medium removed (vol on msc)\n");
         return;
     }
 }
@@ -527,7 +527,7 @@ void FsUpdateBootMediumState(void) {
         /* NUC 起却 Present=0：异常；仍标 Gone 以免空根 Continue */
     }
     gBootMediumGone = 1;
-    LogFs("Fs: boot medium removed\n");
+    LogFs("FS: boot medium removed\n");
 }
 
 int FileSystemBootMediumGone(void) {
@@ -544,5 +544,5 @@ void FileSystemNotifyBootWatchUnplug(void) {
         return;
     }
     gBootMediumGone = 1;
-    LogFs("Fs: boot medium removed (watch port)\n");
+    LogFs("FS: boot medium removed (watch port)\n");
 }

@@ -308,19 +308,19 @@ static int MscAutoResolveClaim(int Auto, int HasBlocks) {
     BootHas = FsBootDiskHasBlocksId();
     /* 序码供 BOOT.LOG 对表：1=策略 2=开机claim 3=桌面secondary 4=热插拔 */
     if (BootHas == 1) {
-        LogBoot("Fs: msc/1 skip (boot disk has BLOCKS — expect NUC/SSD path)\n");
+        LogBoot("FS: msc/1 skip (boot disk has BLOCKS — expect NUC/SSD path)\n");
         return 0;
     }
     if (BootHas == 0) {
-        LogBoot("Fs: msc/1 claim (boot disk not mounted — expect USB-stick path)\n");
+        LogBoot("FS: msc/1 claim (boot disk not mounted — expect USB-stick path)\n");
         return 1;
     }
     /* 旧 Boot 无 DiskGUID：回退「任意 Os 已挂则 skip」 */
     if (FsOsVolumeMounted()) {
-        LogBoot("Fs: msc/1 skip (OS volume mounted, no BootDiskGuid)\n");
+        LogBoot("FS: msc/1 skip (OS volume mounted, no BootDiskGuid)\n");
         return 0;
     }
-    LogBoot("Fs: msc/1 claim (need OS volume)\n");
+    LogBoot("FS: msc/1 claim (need OS volume)\n");
     return 1;
 }
 
@@ -332,11 +332,11 @@ int FileSystemInitialize(void) {
     int HasBlocks = 0;
 
     if (gVirtualFileSystem.Register(FatFsOps()) != 0) {
-        LogFs("Fs: Register Fat Failed\n");
+        LogFs("FS: Register Fat Failed\n");
         return -1;
     }
     if (gVirtualFileSystem.Register(ResourceFileSystemOps()) != 0) {
-        LogFs("Fs: Register Res Failed\n");
+        LogFs("FS: Register Res Failed\n");
         return -1;
     }
     /* 驱动固件/配置经 HalDriverFileRead，不直接 #include FileSystem.h */
@@ -353,7 +353,7 @@ int FileSystemInitialize(void) {
         HasBlocks = AnyVolumeHasBlocksId();
         Auto = MscAutoApplyPolicy(Auto, HasBlocks);
     } else {
-        LogFs("Fs: No Primary Volumes Yet (Live USB Path Ok)\n");
+        LogFs("FS: No Primary Volumes Yet (Live USB Path Ok)\n");
     }
     Auto = MscAutoResolveClaim(Auto, HasBlocks);
 
@@ -362,7 +362,7 @@ int FileSystemInitialize(void) {
 
         /* MSC claim 可能很长：先落到 79，口扫描里再 bump 到 91 */
         DesktopBootLogoSet(79);
-        LogBoot("Fs: msc/2 boot-claim begin\n");
+        LogBoot("FS: msc/2 boot-claim begin\n");
         /*
          * 启动盘尚无 BLOCKS（0）或旧 Boot 无 GUID（-1）且仍走 claim：
          * Arm 盯口，claim 失败后拔棒靠 PORTSC.CCS → 大窗。
@@ -372,19 +372,19 @@ int FileSystemInitialize(void) {
 
             if (BootHas == 0 || BootHas < 0) {
                 HalUsbMscArmBootWatch(1);
-                LogBoot("Fs: msc boot-watch arm\n");
+                LogBoot("FS: msc boot-watch arm\n");
             }
         }
         MscRc = HalUsbMscAutoBeforeFs();
 
         if (MscRc == 0) {
             MuxOk = 1;
-            LogBoot("Fs: msc/2 boot-claim ok (mux)\n");
+            LogBoot("FS: msc/2 boot-claim ok (mux)\n");
             if (BlockInitialize() <= 0) {
-                LogFs("Fs: BlockInitialize After Msc Auto Failed\n");
+                LogFs("FS: BlockInitialize After Msc Auto Failed\n");
             }
             if (!MountAllVolumes()) {
-                LogFs("Fs: Mount After Msc Auto Failed\n");
+                LogFs("FS: Mount After Msc Auto Failed\n");
                 if (!HaveVols) {
                     return -1;
                 }
@@ -397,16 +397,16 @@ int FileSystemInitialize(void) {
              * claim 空：勿整轮 Force 再扫（会 reset 根口、鼠间歇卡）。
              * 桌面 EnsureSecondary / msc hot 再试。
              */
-            LogBoot("Fs: msc/2 boot-claim empty (desktop secondary/hotpoll will retry)\n");
+            LogBoot("FS: msc/2 boot-claim empty (desktop secondary/hotpoll will retry)\n");
         } else if (MscRc < 0) {
-            LogBoot("Fs: msc/2 boot-claim abort\n");
+            LogBoot("FS: msc/2 boot-claim abort\n");
         }
         /*
          * btx：勿在此 HalBluetoothInitialize——挡进桌面。
          * Worker Reveal 后再探（仍须晚于 MSC claim；claim 前 Address 会假 Gone）。
          */
     } else {
-        LogBoot("Fs: msc/2 boot-claim skipped\n");
+        LogBoot("FS: msc/2 boot-claim skipped\n");
     }
 
     /*
@@ -417,15 +417,15 @@ int FileSystemInitialize(void) {
 
     if (!HaveVols && !MuxOk) {
         if (HalBlockInitialize() <= 0) {
-            LogFs("Fs: No Block Device (Try RES Only)\n");
+            LogFs("FS: No Block Device (Try RES Only)\n");
         }
         if (!MountAllVolumes()) {
-            LogFs("Fs: No Volumes Mounted\n");
+            LogFs("FS: No Volumes Mounted\n");
             return -1;
         }
         HaveVols = 1;
     } else if (!HaveVols) {
-        LogFs("Fs: No Volumes Mounted\n");
+        LogFs("FS: No Volumes Mounted\n");
         return -1;
     }
 
@@ -436,9 +436,9 @@ int FileSystemInitialize(void) {
     Svc.ReadFileAt = FileSystemReadFileAt;
     Svc.WriteFileAt = FileSystemWriteFileAt;
     VfsServiceOpsRegister(&Svc);
-    LogFs("Fs: Ready\n");
+    LogFs("FS: Ready\n");
     if (!AnyVolumeHasBlocksId()) {
-        LogFs("Fs: WARN No BLOCKS.ID On Any Volume\n");
+        LogFs("FS: WARN No BLOCKS.ID On Any Volume\n");
     }
     BootLogFlush();
     return 0;
@@ -450,7 +450,7 @@ void FileSystemEnsureSecondaryVolumes(void) {
     if (gSecondaryReady) {
         return;
     }
-    LogFs("Fs: msc/3 secondary begin (desktop once)\n");
+    LogFs("FS: msc/3 secondary begin (desktop once)\n");
     /*
      * 已认领 MSC（U 盘起常见）：勿 HalUsbMscHot——其首句 Unfreeze，
      * 会解开 port-enum 冻、再 Address 抢 xHCI，露光标后鼠死。
@@ -458,21 +458,21 @@ void FileSystemEnsureSecondaryVolumes(void) {
      * 打毛刺 → 进桌面假「启动盘已拔出」。只 Remount 旁路卷；插盘用 msc hot。
      */
     if (HalUsbMscReady()) {
-        LogFs("Fs: msc/3 secondary skip hot (msc ready)\n");
+        LogFs("FS: msc/3 secondary skip hot (msc ready)\n");
     } else if (HalUsbPortEnumIsFrozen()) {
-        LogFs("Fs: msc/3 secondary skip hot (port enum freeze, keep mouse)\n");
+        LogFs("FS: msc/3 secondary skip hot (port enum freeze, keep mouse)\n");
     } else {
         HotRc = HalUsbMscHot();
         if (HotRc != 0) {
-            LogFs("Fs: msc/3 secondary hot rc=");
+            LogFs("FS: msc/3 secondary hot rc=");
             LogFsHex32((UINT32)HotRc);
             LogFs(" (0=ok/already,1=empty,else fail)\n");
         } else {
-            LogFs("Fs: msc/3 secondary hot ok\n");
+            LogFs("FS: msc/3 secondary hot ok\n");
         }
     }
     (void)FileSystemRemountVolumes();
     gSecondaryReady = 1;
-    LogFs("Fs: msc/3 secondary ready (Files show all vols)\n");
+    LogFs("FS: msc/3 secondary ready (Files show all vols)\n");
 }
 

@@ -1,7 +1,7 @@
 /*
- * Hci.c — HCI 命令 / 事件（btx-2/3）
+ * Hci.c — HCI 命令 / 事件（btx-2…4）
  *
- * Class Control 发命令；先投 Interrupt IN 再发，收 Command Complete。
+ * Class Control 发命令；先投 Interrupt IN 再发。
  * 等待窗 ProcessEvents + ServiceHidCompletions（鼠优先）。
  */
 #include "XHCI/Bluetooth/Private.h"
@@ -29,7 +29,7 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
     return 0;
 }
 
-static void QueueEventReceive(void) {
+void BluetoothHciArmEvent(void) {
     UINT32 Len = gBluetoothEventMps ? gBluetoothEventMps : 16u;
 
     if (Len > BLUETOOTH_EVENT_MAX) {
@@ -37,7 +37,8 @@ static void QueueEventReceive(void) {
     }
     /*
      * 勿每次 InitRing：ConfigEP 已钉 dequeue；Reset 后再 Init 会与 HC
-     * 失步 → 后续 Read_BD_ADDR 等不到事件 → Ready=0（对表 HID QueueIntr）。
+     * 失步 → 后续命令等不到事件 → Ready=0（对表 HID QueueIntr）。
+     * 长度跟 MPS：Inquiry Result 小包稳；过大 TD 真机易 babble。
      */
     ZeroMemory(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
@@ -50,7 +51,7 @@ static void QueueEventReceive(void) {
     RingDoorbell(gBluetoothSlot, gBluetoothEventDci);
 }
 
-static int WaitEvent(UINT32 TimeoutMs) {
+int BluetoothHciWaitArmed(UINT32 TimeoutMs) {
     UINT64 Start = ReadTsc();
     UINT64 Need = (UINT64)TimeoutMs * 3000000ULL;
     int Own = 0;
@@ -86,16 +87,10 @@ static int WaitEvent(UINT32 TimeoutMs) {
     return Result;
 }
 
-int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
-                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
-                        UINT8 *ReturnLenOut) {
+int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
     USB_SETUP_PACKET Setup;
     UINT32 Total;
     UINT8 I;
-    UINT16 GotOpcode;
-    UINT8 ParameterLength;
-    UINT8 Status;
-    UINT8 RetLen;
 
     if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
         gBluetoothEventDci == 0) {
@@ -111,7 +106,6 @@ int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
     for (I = 0; I < ParamLen; I++) {
         gBluetoothCommandBuffer[3u + I] = Params ? Params[I] : 0;
     }
-    QueueEventReceive();
     Setup.bmRequestType = 0x20;
     Setup.bRequest = 0x00;
     Setup.wValue = 0;
@@ -120,10 +114,26 @@ int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
     FlushDma(gBluetoothCommandBuffer, Total);
     gXferSlot = gBluetoothSlot;
     if (ControlXfer(&Setup, gBluetoothCommandBuffer) < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
+                        UINT8 *ReturnLenOut) {
+    UINT8 I;
+    UINT16 GotOpcode;
+    UINT8 ParameterLength;
+    UINT8 Status;
+    UINT8 RetLen;
+
+    BluetoothHciArmEvent();
+    if (BluetoothHciSendRaw(Opcode, Params, ParamLen) < 0) {
         BluetoothRequeueHid();
         return -1;
     }
-    if (WaitEvent(2000u) < 0) {
+    if (BluetoothHciWaitArmed(2000u) < 0) {
         BootLogHex("Boot: Bluetooth HCI cmd timeout op=", Opcode, 4);
         BootLogHex(" xfer-cc=", gBluetoothEventCode, 2);
         BluetoothRequeueHid();

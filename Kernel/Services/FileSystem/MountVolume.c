@@ -96,14 +96,14 @@ static void NameBlocksIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *BlocksVol)
         Take = 1;
     } else if (NewMatch == 1) {
         Take = 1;
-        LogFs("Fs: Default BLOCKS = Boot Disk\n");
+        LogFs("FS: Default BLOCKS = Boot Disk\n");
     } else if (NewMatch == 0) {
-        LogFs("Fs: Other Disk Also BLOCKS\n");
+        LogFs("FS: Other Disk Also BLOCKS\n");
     } else if (!Msc && BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
         Take = 1;
-        LogFs("Fs: Prefer Internal BLOCKS As Default\n");
+        LogFs("FS: Prefer Internal BLOCKS As Default\n");
     } else if (Msc && !BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
-        LogFs("Fs: USB BLOCKS Not Default\n");
+        LogFs("FS: USB BLOCKS Not Default\n");
     }
     /* 其余歧义：保留先挂上的为默认 */
     if (Take) {
@@ -120,7 +120,7 @@ static int PickVolSlot(int HasId) {
      * 否则 NVMe 上多个 ESP/OEM FAT 会先占满，USB 系统卷永远挂不上。
      */
     if (!HasId) {
-        LogFs("Fs: Skip Fat (Table Full)\n");
+        LogFs("FS: Skip Fat (Table Full)\n");
         return -1;
     }
     {
@@ -132,11 +132,11 @@ static int PickVolSlot(int HasId) {
             if (gVols[j].Ops && gVols[j].Ops->Synthetic) {
                 continue;
             }
-            LogFs("Fs: Displace Vol For BLOCKS.ID\n");
+            LogFs("FS: Displace Vol For BLOCKS.ID\n");
             return j;
         }
     }
-    LogFs("Fs: Skip BLOCKS (No Slot To Displace)\n");
+    LogFs("FS: Skip BLOCKS (No Slot To Displace)\n");
     return -1;
 }
 
@@ -230,7 +230,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
             gVirtualFileSystem.ReadFile("boot.sd", Tmp, sizeof(Tmp), &ProbeSz) ==
                 FAT_OK) {
             NameEspSlot(V, gVolCount, Idx);
-            LogFs("Fs: Named ESP by boot firmware files\n");
+            LogFs("FS: Named ESP by boot firmware files\n");
         }
     }
 
@@ -242,7 +242,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     gActiveDrive = Drive;
     gActiveLba = Start;
 
-    LogFs("Fs: Vol ");
+    LogFs("FS: Vol ");
     LogFs(V->Name);
     LogFs(" Letter=");
     LogFsHex32((UINT32)(UINT8)V->Letter);
@@ -277,6 +277,6 @@ void FsMountAddResVolume(void) {
         gActiveOps = V->Ops;
         gActiveDrive = V->Drive;
         gActiveLba = 0;
-        LogFs("Fs: Vol RES (Resfs)\n");
+        LogFs("FS: Vol RES (Resfs)\n");
     }
 }

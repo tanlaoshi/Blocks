@@ -342,13 +342,13 @@ int UsbMscPollUnplug(void) {
             H = CurHost();
             Present = (H && H->Present) ? H->Present() : 0;
             if (Present) {
-                LogFs("Fs: msc/4 watch CCS glitch ignored port=");
+                LogFs("FS: msc/4 watch CCS glitch ignored port=");
                 LogFsHex32(WatchPort);
                 LogFs("\n");
                 return 0;
             }
         }
-        LogFs("Fs: msc/4 watch unplug port=");
+        LogFs("FS: msc/4 watch unplug port=");
         LogFsHex32(WatchPort);
         LogFs("\n");
         XhciMscBootWatchClear();
@@ -379,7 +379,7 @@ int UsbMscPollUnplug(void) {
         }
         sAbsentStreak = 0;
     }
-    LogFs("Fs: msc/4 hot unplug\n");
+    LogFs("FS: msc/4 hot unplug\n");
     XhciMscBootWatchClear();
     FileSystemNotifyMscUnplug();
     (void)UsbMscRelease();
@@ -428,27 +428,27 @@ int UsbMscHotPoll(void) {
     if (ScanN <= 0) {
         return 0;
     }
-    LogFs("Fs: msc/4 hotplug scan=");
+    LogFs("FS: msc/4 hotplug scan=");
     LogFsHex32((UINT32)ScanN);
     LogFs("\n");
 
     /* ClaimPorts 见 freeze 直接 0；不解冻（保鼠）。插盘用 msc hot */
     Claim = UsbMscClaim();
     if (Claim < 0) {
-        LogFs("Fs: msc/4 hotplug claim abort\n");
+        LogFs("FS: msc/4 hotplug claim abort\n");
         return 0;
     }
     if (Claim == 0) {
-        LogFs("Fs: msc/4 hotplug claim empty\n");
+        LogFs("FS: msc/4 hotplug claim empty\n");
         return 0;
     }
     Rc = UsbMscMount();
     if (Rc != 0) {
-        LogFs("Fs: msc/4 hotplug mount fail\n");
+        LogFs("FS: msc/4 hotplug mount fail\n");
         (void)UsbMscRelease();
         return 0;
     }
-    LogFs("Fs: msc/4 hotplug ok\n");
+    LogFs("FS: msc/4 hotplug ok\n");
     return 1;
 }
 

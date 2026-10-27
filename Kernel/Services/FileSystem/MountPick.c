@@ -104,7 +104,7 @@ static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
     if (MarkerVol >= 0) {
         gDefaultVol = MarkerVol;
         StringCopy(gVols[MarkerVol].Name, FS_VOL_NAME_MAX, "BLOCKS");
-        LogFs("Fs: Named BLOCKS by root marker (No BLOCKS.ID)\n");
+        LogFs("FS: Named BLOCKS by root marker (No BLOCKS.ID)\n");
     } else if (PrefVol >= 0) {
         gDefaultVol = PrefVol;
     } else if (FatVol >= 0 && FatVol != BootVol) {
@@ -116,7 +116,7 @@ static void PickWithoutBlocksId(UINT8 *Tmp, UINTN TmpSz) {
         gVols[gDefaultVol].Name[0] == 'E' && gVols[gDefaultVol].Name[1] == 'S' &&
         gVols[gDefaultVol].Name[2] == 'P') {
         LogFs(
-            "Fs: Default=ESP (No BLOCKS.ID; Put Rootfs On A FAT With BLOCKS.ID)\n");
+            "FS: Default=ESP (No BLOCKS.ID; Put Rootfs On A FAT With BLOCKS.ID)\n");
     }
 }
 
@@ -152,7 +152,7 @@ void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz) {
         } else {
             gDefaultVol = 0;
         }
-        LogFs("Fs: Default=ESP/RES (boot-disk BLOCKS pending; skip bypass)\n");
+        LogFs("FS: Default=ESP/RES (boot-disk BLOCKS pending; skip bypass)\n");
         return;
     }
     if (BlocksVol >= 0) {

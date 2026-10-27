@@ -12,6 +12,13 @@
 
 #define HAL_BLUETOOTH_ADDRESS_LENGTH 6u
 #define HAL_BLUETOOTH_NAME_MAX 64u
+#define HAL_BLUETOOTH_SCAN_MAX 16u
+
+typedef struct {
+    UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH]; /* HCI 线序 */
+    UINT8 ClassOfDevice[3];
+    char Name[HAL_BLUETOOTH_NAME_MAX];
+} HAL_BLUETOOTH_SCAN_ENTRY;
 
 /* 0=门面已挂（可无控制器）；不表示 Ready */
 int HalBluetoothInitialize(void);
@@ -29,5 +36,12 @@ int HalBluetoothGetDeviceAddress(UINT8 Out[HAL_BLUETOOTH_ADDRESS_LENGTH]);
  * 未 Ready 或无名 → -1；成功 → 0。
  */
 int HalBluetoothGetLocalName(char *Out, UINTN NameMax);
+
+/*
+ * 经典 Inquiry；TimeoutMs=0 → 默认约 8s。鼠优先分片泵。
+ * 成功 → 条数（0…OutMax）；未 Ready / 无硬件 → -1。
+ */
+int HalBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                     UINT32 TimeoutMs);
 
 #endif

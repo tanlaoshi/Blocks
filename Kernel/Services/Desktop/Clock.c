@@ -201,7 +201,7 @@ void DesktopBootMediumGoneShutdown(void) {
 
     BootGoneBuildCount(CountLine, sizeof(CountLine), 0);
     BootGonePaint(Title, Body, CountLine);
-    LogFs("Fs: msc/4 shutdown (boot medium removed)\n");
+    LogFs("FS: msc/4 shutdown (boot medium removed)\n");
     HalCpuShutdown();
     for (;;) {
         HalCpuPark();
@@ -247,7 +247,7 @@ void DesktopWorkerTick(void) {
     /* 失根：指针忙也检（勿整段 return 漏大窗） */
     if (HalUsbMscPollUnplug() == 1) {
         if (FileSystemBootMediumGone()) {
-            LogFs("Fs: msc/4 halt (boot medium removed)\n");
+            LogFs("FS: msc/4 halt (boot medium removed)\n");
             DesktopBootMediumGoneShutdown();
         }
         /* Gone 未钉时才 Remount（旁路拔）；已 Gone 则上面不返回 */
@@ -271,16 +271,16 @@ void DesktopWorkerTick(void) {
          * RAM 里画大窗 → 关机。
          */
         if (FileSystemBootMediumGone()) {
-            LogFs("Fs: msc/4 halt (boot medium removed)\n");
+            LogFs("FS: msc/4 halt (boot medium removed)\n");
             DesktopBootMediumGoneShutdown();
         }
         (void)FileSystemRemountVolumes();
         if (FileSystemBootMediumGone()) {
-            LogFs("Fs: msc/4 halt (boot medium removed)\n");
+            LogFs("FS: msc/4 halt (boot medium removed)\n");
             DesktopBootMediumGoneShutdown();
         }
         FilesUiRefresh();
-        LogFs("Fs: msc/4 hotpoll remount+Files\n");
+        LogFs("FS: msc/4 hotpoll remount+Files\n");
     }
 
     /*

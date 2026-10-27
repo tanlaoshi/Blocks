@@ -9,6 +9,7 @@
 #include "Compiler.h"
 
 #include "BootTypes.h"
+#include "HalBluetooth.h"
 
 struct USB_CONTROLLER;
 
@@ -126,13 +127,15 @@ int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
 
-/* btx-1…3：板载 USB HCI 探针 + Reset + BD_ADDR；Ready=读址成功 */
+/* btx-1…4：板载 USB HCI；Inquiry 见 XhciBluetoothScan */
 int XhciBluetoothProbe(void); /* 1 见过；0 无；-1 无 HC */
 int XhciBluetoothSeen(void);
 int XhciBluetoothHciResetOk(void);
 int XhciBluetoothReady(void);
 int XhciBluetoothCopyAddress(UINT8 Out[6]); /* HCI 线序；未 Ready → -1 */
 int XhciBluetoothCopyLocalName(char *Out, UINTN NameMax);
+int XhciBluetoothScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                      UINT32 TimeoutMs);
 UINT16 XhciBluetoothVendorId(void);
 UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */

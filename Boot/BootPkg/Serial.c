@@ -135,7 +135,10 @@ void EFIAPI BootSerialBanner(void) {
     if (!BootSerialPresent()) {
         return;
     }
+    /* 大横幅：20* / 标题 / 20* 各独占一行 */
+    BootSerialWrite("********************\n");
     BootSerialWrite("Blocks Boot\n");
+    BootSerialWrite("********************\n");
     BootSerialWrite("COM1 Serial OK\n");
 }
 

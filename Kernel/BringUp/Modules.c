@@ -118,10 +118,14 @@ int KernelModulesRunFull(void) {
 
 /* ---- ModulesRun：按表顺序调 Init；失败打模块名。真机每步后 HalInputPoll 防 USB 环堵 ---- */
 
-static void ModLog(const char *Name, const char *Suffix) {
-    LogBoot("Boot: Mod ");
+static void ModLog(const char *Name, int Failed) {
+    /* ***** Module Gui *****（失败：***** Module Gui Failed *****） */
+    LogBoot("***** Module ");
     LogBoot(Name);
-    LogBoot(Suffix);
+    if (Failed) {
+        LogBoot(" Failed");
+    }
+    LogBoot(" *****\n");
 }
 
 /*
@@ -161,9 +165,9 @@ int ModulesRun(const MODULE *List, int Count) {
 
     for (int i = 0; i < Count; i++) {
         /* 真机无 COM1 时也要走 HalSerial→GOP，才能看见卡在哪个模块 */
-        ModLog(List[i].Name, "\n");
+        ModLog(List[i].Name, 0);
         if (List[i].Init == 0 || List[i].Init() != 0) {
-            ModLog(List[i].Name, " Failed\n");
+            ModLog(List[i].Name, 1);
             ModProgressMark(List[i].Name);
             return -1;
         }

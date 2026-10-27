@@ -212,9 +212,9 @@ int EnumerateHubChildren(void) {
     if (MaxP == 0 || MaxP > 15) {
         MaxP = 8;
     }
-    BootLog("Boot: MSC claim hub children\n");
-    BootLogHex("Boot: MSC claim hub slot=", gHubSlotId, 2);
-    BootLogHex("Boot: MSC claim hub nports=", MaxP, 2);
+    BootLogV("Boot: MSC claim hub children\n");
+    BootLogHexV("Boot: MSC claim hub slot=", gHubSlotId, 2);
+    BootLogHexV("Boot: MSC claim hub nports=", MaxP, 2);
     HalBootLogoBump(82);
 
     /* Pass0：全部上电；Pass1：读状态并认领（再扫一轮） */
@@ -233,7 +233,7 @@ int EnumerateHubChildren(void) {
 
     for (Pass = 0; Pass < 2; Pass++) {
         if (Pass > 0 && !HalCpuIsHypervisor()) {
-            BootLogHex("Boot: MSC claim hub rescan pass=", (UINT32)Pass, 1);
+            BootLogHexV("Boot: MSC claim hub rescan pass=", (UINT32)Pass, 1);
             HalBootLogoBump(91);
             StallMs(100); /* 原 200 */
         }
@@ -260,8 +260,8 @@ int EnumerateHubChildren(void) {
                 }
                 if (!(St & HUB_PORT_CONNECTION)) {
                     if (Pass == 1) {
-                        BootLogHex("Boot: MSC claim hub empty port=", Port, 2);
-                        BootLogHex("Boot: MSC claim hub empty st=", St, 4);
+                        BootLogHexV("Boot: MSC claim hub empty port=", Port, 2);
+                        BootLogHexV("Boot: MSC claim hub empty st=", St, 4);
                         HalBootLogoBump(91);
                     }
                     continue;
@@ -287,8 +287,8 @@ int EnumerateHubChildren(void) {
             if (Pass > 0 && (AddrFailed & (1u << Port)) != 0) {
                 continue;
             }
-            BootLogHex("Boot: MSC claim hub port=", Port, 2);
-            BootLogHex("Boot: MSC claim hub st=", St, 4);
+            BootLogHexV("Boot: MSC claim hub port=", Port, 2);
+            BootLogHexV("Boot: MSC claim hub st=", St, 4);
             HalBootLogoBump(91);
             if (!HubResetChildForAddress(Port, &St, &Speed, 0)) {
                 continue;
@@ -300,7 +300,7 @@ int EnumerateHubChildren(void) {
             gMscRoute = (UINT32)Port;
             gMscHubSlot = (UINT8)gHubSlotId;
             gMscTtPort = Port;
-            BootLogHex("Boot: MSC claim hub speed=", Speed, 1);
+            BootLogHexV("Boot: MSC claim hub speed=", Speed, 1);
             if (!AddressDeviceOnPort(gHubRootPort, Speed, &gMscScanSlot, gMscScanDevCtx,
                                      (UINT32)Port, (UINT8)gHubSlotId, Port, 0, 0)) {
                 if (gMscScanSlot != 0) {
@@ -339,7 +339,7 @@ int EnumerateHubChildren(void) {
                 gSlotEp0UsesKbdRing[gMscScanSlot] = 0;
             }
             if (FinishClaim(gHubRootPort, Speed)) {
-                BootLog("Boot: MSC claim via hub\n");
+                BootLogV("Boot: MSC claim via hub\n");
                 NoteMouseHubDropped();
                 return 1;
             }
@@ -375,8 +375,8 @@ int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
         return EnumerateHubChildren();
     }
 
-    BootLogHex("Boot: MSC claim 2nd hub slot=", HubSlot, 2);
-    BootLogHex("Boot: MSC claim 2nd hub root=", RootPort, 2);
+    BootLogHexV("Boot: MSC claim 2nd hub slot=", HubSlot, 2);
+    BootLogHexV("Boot: MSC claim 2nd hub root=", RootPort, 2);
 
     /* Ep0 走 msc 环，勿 InitRing(gHubEp0) 毁掉 HID hub dequeue */
     gMscProbeHubSlot = HubSlot;
@@ -411,7 +411,7 @@ int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed) {
     gMscProbeHubSlot = 0;
 
     if (Ok) {
-        BootLog("Boot: MSC claim 2nd hub keep parent\n");
+        BootLogV("Boot: MSC claim 2nd hub keep parent\n");
         if (SavedSlot != 0) {
             gHubSlotId = SavedSlot;
             gHubRootPort = SavedRoot;

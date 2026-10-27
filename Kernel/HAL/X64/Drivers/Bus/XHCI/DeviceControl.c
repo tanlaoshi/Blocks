@@ -162,10 +162,10 @@ int EvaluateHubSlot(UINT32 SlotId, UINT32 RootPort, UINT8 Speed, UINT8 NumPorts)
         return 0;
     }
     if (Usb2Hub) {
-        BootLogHex("Boot: XHCI hub mtt=", gHubMtt, 1);
-        BootLogHex("Boot: XHCI hub ttt=", gHubTtt, 1);
+        BootLogHexV("Boot: XHCI hub mtt=", gHubMtt, 1);
+        BootLogHexV("Boot: XHCI hub ttt=", gHubTtt, 1);
     } else {
-        BootLogHex("Boot: XHCI hub ss ports=", NumPorts, 1);
+        BootLogHexV("Boot: XHCI hub ss ports=", NumPorts, 1);
     }
     return 1;
 }

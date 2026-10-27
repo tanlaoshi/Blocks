@@ -125,18 +125,18 @@ int IgpuScanoutInit(void) {
     gOrigPitch = gPitchPx;
 
     if (!AllocOne(0, IGPU_FLIP0_GTT)) {
-        LogBoot("Boot: igpu scanout soft (oom0)\n");
+        LogDrv("Boot: igpu scanout soft (oom0)\n");
         return 0;
     }
     if (!AllocOne(1, IGPU_FLIP0_GTT + ((gBytes + 0x1FFFFFull) & ~0x1FFFFFull))) {
-        LogBoot("Boot: igpu scanout soft (oom1)\n");
+        LogDrv("Boot: igpu scanout soft (oom1)\n");
         return 0;
     }
 
     gShown = 0;
     gScanLive = 0;
     gScanOk = 1;
-    LogBoot("Boot: igpu scanout flip ready\n");
+    LogDrv("Boot: igpu scanout flip ready\n");
     return 1;
 }
 

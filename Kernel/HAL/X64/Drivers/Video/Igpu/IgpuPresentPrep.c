@@ -80,7 +80,7 @@ static int ProbeSrcCopyOffscreen(void) {
     SrcPage = PhysicalMemoryAllocatePage();
     DstPage = PhysicalMemoryAllocatePage();
     if (!SrcPage || !DstPage) {
-        LogBoot("Boot: igpu copy soft (oom)\n");
+        LogDrv("Boot: igpu copy soft (oom)\n");
         return 0;
     }
     SrcPhys = (UINT64)(UINTN)SrcPage;
@@ -88,7 +88,7 @@ static int ProbeSrcCopyOffscreen(void) {
     FlagsUc = PTE_PRESENT | PTE_WRITABLE | PTE_PWT | PTE_PCD;
     if (VirtualMemoryMapRange(SrcPhys, SrcPhys, PAGE_SIZE, FlagsUc) != 0 ||
         VirtualMemoryMapRange(DstPhys, DstPhys, PAGE_SIZE, FlagsUc) != 0) {
-        LogBoot("Boot: igpu copy soft (uc)\n");
+        LogDrv("Boot: igpu copy soft (uc)\n");
         return 0;
     }
     Src = (volatile UINT32 *)(UINTN)SrcPhys;
@@ -103,7 +103,7 @@ static int ProbeSrcCopyOffscreen(void) {
     FlushCpu((const void *)(UINTN)DstPhys, PAGE_SIZE);
     if (!ProbeMapPage(IGPU_PROBE_GTT_SRC, SrcPhys) ||
         !ProbeMapPage(IGPU_PROBE_GTT_DST, DstPhys)) {
-        LogBoot("Boot: igpu copy soft (pte)\n");
+        LogDrv("Boot: igpu copy soft (pte)\n");
         return 0;
     }
 
@@ -112,7 +112,7 @@ static int ProbeSrcCopyOffscreen(void) {
         IgpuMmioWrite32(IGPU_RING_MODE, IGPU_FW_DISABLE(IGPU_GRAPHICS_PPGTT_EN));
     }
     if (!IgpuForcewakeGet()) {
-        LogBoot("Boot: igpu copy soft (fw)\n");
+        LogDrv("Boot: igpu copy soft (fw)\n");
         return 0;
     }
 
@@ -126,21 +126,21 @@ static int ProbeSrcCopyOffscreen(void) {
     Words[6] = IGPU_PROBE_COLOR;
     Words[7] = IGPU_MI_NOOP;
     if (!EmitDwords(Words, 7)) {
-        LogBoot("Boot: igpu copy soft (color)\n");
+        LogDrv("Boot: igpu copy soft (color)\n");
         return 0;
     }
     FlushCpu((const void *)(UINTN)SrcPhys, PAGE_SIZE);
     if ((Src[0] & 0x00FFFFFFu) != (IGPU_PROBE_COLOR & 0x00FFFFFFu)) {
-        LogBoot("Boot: igpu copy soft (color pix=");
-        LogBootHex32(Src[0]);
-        LogBoot(")\n");
+        LogDrv("Boot: igpu copy soft (color pix=");
+        LogDrvHex32(Src[0]);
+        LogDrv(")\n");
         return 0;
     }
 
     if (!IgpuSrcCopyRect(0, 0, 0, 0, IGPU_PROBE_W, IGPU_PROBE_H,
                          IGPU_PROBE_PITCH_B, IGPU_PROBE_PITCH_B,
                          IGPU_PROBE_GTT_SRC, IGPU_PROBE_GTT_DST)) {
-        LogBoot("Boot: igpu copy soft (emit)\n");
+        LogDrv("Boot: igpu copy soft (emit)\n");
         return 0;
     }
     FlushCpu((const void *)(UINTN)DstPhys, PAGE_SIZE);
@@ -148,9 +148,9 @@ static int ProbeSrcCopyOffscreen(void) {
     if ((Dst[0] & 0x00FFFFFFu) != (IGPU_PROBE_COLOR & 0x00FFFFFFu) ||
         (Dst[IGPU_PROBE_W - 1u] & 0x00FFFFFFu) != (IGPU_PROBE_COLOR & 0x00FFFFFFu) ||
         (Dst[Last] & 0x00FFFFFFu) != (IGPU_PROBE_COLOR & 0x00FFFFFFu)) {
-        LogBoot("Boot: igpu copy soft (miss pix=");
-        LogBootHex32(Dst[0]);
-        LogBoot(")\n");
+        LogDrv("Boot: igpu copy soft (miss pix=");
+        LogDrvHex32(Dst[0]);
+        LogDrv(")\n");
         return 0;
     }
     return 1;
@@ -174,19 +174,19 @@ void IgpuPresentPrepare(void) {
         return;
     }
     if (!IgpuGttOk()) {
-        LogBoot("Boot: igpu present soft (no gtt)\n");
+        LogDrv("Boot: igpu present soft (no gtt)\n");
         return;
     }
 
     Fb = HalVideoFrameBufferBase();
     if (!HalVideoBackbufferEnabled()) {
-        LogBoot("Boot: igpu present soft (no back)\n");
+        LogDrv("Boot: igpu present soft (no back)\n");
         return;
     }
     Back = HalVideoBackbufferBase();
     HalVideoGetSize(&Bw, &Bh);
     if (Back == 0 || Bw == 0 || Bh == 0) {
-        LogBoot("Boot: igpu present soft (no back)\n");
+        LogDrv("Boot: igpu present soft (no back)\n");
         return;
     }
     BackBytes = (UINTN)Bw * (UINTN)Bh * 4u;
@@ -194,18 +194,18 @@ void IgpuPresentPrepare(void) {
         return;
     }
 
-    LogBoot("Boot: igpu present ready fb=");
-    LogBootHex32((UINT32)Fb);
-    LogBoot(" back=");
-    LogBootHex32((UINT32)Back);
-    LogBoot("\n");
+    LogDrv("Boot: igpu present ready fb=");
+    LogDrvHex32((UINT32)Fb);
+    LogDrv(" back=");
+    LogDrvHex32((UINT32)Back);
+    LogDrv("\n");
 
     if (!ProbeSrcCopyOffscreen()) {
-        LogBoot("Boot: igpu present cpu fallback (probe miss)\n");
+        LogDrv("Boot: igpu present cpu fallback (probe miss)\n");
         return;
     }
     gPresentCopyOk = 1;
-    LogBoot("Boot: igpu present copy ok\n");
+    LogDrv("Boot: igpu present copy ok\n");
     /* 翻页失败保持 CopyOk：Present 仍走脏矩形 SRC_COPY → gtt0 */
     (void)IgpuScanoutInit();
 }

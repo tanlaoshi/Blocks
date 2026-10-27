@@ -46,9 +46,9 @@ static int DomainGet(UINT32 FwReg, UINT32 AckReg, const char *Name) {
     }
     /* i915：先等旧 ACK 清（未醒时应为 0） */
     if (!WaitAckEq(AckReg, IGPU_FW_KERNEL, 0)) {
-        LogBoot("Boot: igpu fw ");
-        LogBoot(Name);
-        LogBoot(" clr to\n");
+        LogDrv("Boot: igpu fw ");
+        LogDrv(Name);
+        LogDrv(" clr to\n");
         return 0;
     }
     IgpuMmioWrite32(FwReg, IGPU_FW_ENABLE(IGPU_FW_KERNEL));
@@ -63,9 +63,9 @@ static int DomainGet(UINT32 FwReg, UINT32 AckReg, const char *Name) {
         return 1;
     }
     IgpuMmioWrite32(FwReg, IGPU_FW_DISABLE(IGPU_FW_FALLBACK));
-    LogBoot("Boot: igpu fw ");
-    LogBoot(Name);
-    LogBoot(" ack to\n");
+    LogDrv("Boot: igpu fw ");
+    LogDrv(Name);
+    LogDrv(" ack to\n");
     return 0;
 }
 
@@ -101,13 +101,13 @@ int IgpuForcewakeInit(void) {
         return 0;
     }
     if (!IgpuForcewakeGet()) {
-        LogBoot("Boot: igpu fw soft (ack)\n");
+        LogDrv("Boot: igpu fw soft (ack)\n");
         return 0;
     }
 
     Ts = IgpuMmioRead32(IGPU_REG_TIMESTAMP);
-    LogBoot("Boot: igpu fw ok ts=");
-    LogBootHex32(Ts);
-    LogBoot("\n");
+    LogDrv("Boot: igpu fw ok ts=");
+    LogDrvHex32(Ts);
+    LogDrv("\n");
     return 1;
 }

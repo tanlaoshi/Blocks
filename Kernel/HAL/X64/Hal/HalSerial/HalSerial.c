@@ -90,9 +90,14 @@ void HalSerialInitialize(void) {
 #endif
     } else {
         /* ASCII only — NUC terminals often mangled UTF-8 */
-        SerialWrite("ToyKernel\n");
+        /* 大横幅：20* / 标题 / 20* 各独占一行（勿再写 ToyKernel） */
+        SerialWrite("********************\n");
+        SerialWrite("Blocks Kernel\n");
+        SerialWrite("********************\n");
         SerialWrite("COM1 Serial OK\n");
-        RingAppend("ToyKernel\n");
+        RingAppend("********************\n");
+        RingAppend("Blocks Kernel\n");
+        RingAppend("********************\n");
         RingAppend("COM1 Serial OK\n");
     }
     gSerialReady = 1;

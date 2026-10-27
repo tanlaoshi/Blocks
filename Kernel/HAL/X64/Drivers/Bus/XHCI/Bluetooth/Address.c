@@ -149,6 +149,10 @@ int BluetoothFinishProbe(UINT32 RootPort, UINT8 Speed) {
         gBluetoothConfigured = 0;
         return 1;
     }
+    /* btx-3：BD_ADDR + 本地名；失败 Ready=0，slot 仍留（可壳侧重试后刀） */
+    if (!BluetoothBringUpIdentity()) {
+        BootLog("Boot: Bluetooth identity fail (Ready=0)\n");
+    }
     return 1;
 }
 

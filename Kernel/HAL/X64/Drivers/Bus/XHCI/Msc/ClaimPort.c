@@ -24,7 +24,7 @@ int ForceUntilPed(UINT32 P, int *Force) {
     Ps = ReadMmio32(gOperationalBase + PortReg(P));
     NeedForce = (gPortNeedForcePr & (1u << P)) != 0;
     if (!NeedForce && (Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
-        BootLogHex("Boot: MSC claim try PED port=", P, 2);
+        BootLogHexV("Boot: MSC claim try PED port=", P, 2);
         return 1;
     }
 
@@ -225,7 +225,7 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
         UINT32 HubBefore = gHubSlotId;
 
         gMscScanSlot = 0;
-        BootLogHex("Boot: MSC claim hub on root=", P, 2);
+        BootLogHexV("Boot: MSC claim hub on root=", P, 2);
         /*
          * 已有 HID hub 时 ClaimHubOnRootPort 会 DisableSlot(Was)，
          * 正是外接第二 hub（U 盘所在）→ none + 长时间 Stall 像卡死。

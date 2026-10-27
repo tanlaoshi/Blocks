@@ -65,7 +65,7 @@ void XhciMscBootWatchAfterClaim(int Ok) {
 
     if (Ok && gMscBootWatchArm && gMscPort != 0) {
         gMscBootWatchPort = gMscPort;
-        BootLogHex("Boot: MSC boot-watch keep port=", gMscBootWatchPort, 2);
+        BootLogHexV("Boot: MSC boot-watch keep port=", gMscBootWatchPort, 2);
         return;
     }
     if (Ok) {

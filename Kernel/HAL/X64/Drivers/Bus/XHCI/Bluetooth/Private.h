@@ -1,8 +1,7 @@
 /*
- * Bluetooth/Private.h — 板载 USB HCI 内部（btx-1/2；勿出 XHCI.h）
+ * Bluetooth/Private.h — 板载 USB HCI 内部（btx-1…3；勿出 XHCI.h）
  *
- * 本机：8087:0A2B @口08，冷启 CCS 无 PED → 一次 Port Reset。
- * btx-2：SetConfig + 事件 Intr + ACL Bulk；HCI_Reset 走 Class Control。
+ * 本机：8087:0A2B @口08。命令 Class Control；事件 Interrupt IN。
  */
 #ifndef XHCI_BLUETOOTH_PRIVATE_H
 #define XHCI_BLUETOOTH_PRIVATE_H
@@ -12,10 +11,14 @@
 
 #define BLUETOOTH_CONFIG_MAX 512
 #define BLUETOOTH_EVENT_MAX 64
+#define BLUETOOTH_COMMAND_MAX 256
+#define BLUETOOTH_NAME_MAX 248
 #define USB_CLASS_WIRELESS 0xE0u
 #define USB_BLUETOOTH_SUBCLASS 0x01u
 #define USB_BLUETOOTH_PROTOCOL_HCI 0x01u
 #define HCI_OPCODE_RESET 0x0C03u
+#define HCI_OPCODE_WRITE_LOCAL_NAME 0x0C13u
+#define HCI_OPCODE_READ_BD_ADDR 0x1009u
 #define HCI_EVENT_COMMAND_COMPLETE 0x0Eu
 
 extern UINT8 gBluetoothDeviceContext[2048];
@@ -35,6 +38,9 @@ extern UINT16 gBluetoothAclInMps;
 extern UINT16 gBluetoothAclOutMps;
 extern int gBluetoothConfigured;
 extern int gBluetoothHciResetOk;
+extern int gBluetoothReady;
+extern UINT8 gBluetoothAddress[6];
+extern char gBluetoothLocalName[64];
 extern volatile UINT32 gBluetoothEventDone;
 extern volatile UINT32 gBluetoothEventCode;
 
@@ -55,6 +61,10 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut);
 int BluetoothFinishProbe(UINT32 RootPort, UINT8 Speed);
 int BluetoothConfigure(UINT32 RootPort, UINT8 Speed);
 int BluetoothHciReset(void);
+int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
+                        UINT8 *ReturnLenOut);
+int BluetoothBringUpIdentity(void);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
 

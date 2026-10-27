@@ -126,10 +126,13 @@ int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
 
-/* btx-1/2：板载 USB HCI 探针 + Configure + HCI_Reset；Ready 仍 0 至 btx-3 */
+/* btx-1…3：板载 USB HCI 探针 + Reset + BD_ADDR；Ready=读址成功 */
 int XhciBluetoothProbe(void); /* 1 见过；0 无；-1 无 HC */
 int XhciBluetoothSeen(void);
-int XhciBluetoothHciResetOk(void); /* 1=Reset Command Complete */
+int XhciBluetoothHciResetOk(void);
+int XhciBluetoothReady(void);
+int XhciBluetoothCopyAddress(UINT8 Out[6]); /* HCI 线序；未 Ready → -1 */
+int XhciBluetoothCopyLocalName(char *Out, UINTN NameMax);
 UINT16 XhciBluetoothVendorId(void);
 UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */

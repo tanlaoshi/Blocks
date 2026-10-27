@@ -87,27 +87,27 @@ int IgpuGttInit(void) {
     gIgpuFbPhys = Fb;
     Surf = PickSurf(&Ctl);
     if (Surf == 0xFFFFFFFFu) {
-        LogBoot("Boot: igpu gtt soft (no plane) ctl=");
-        LogBootHex32(Ctl);
-        LogBoot("\n");
+        LogDrv("Boot: igpu gtt soft (no plane) ctl=");
+        LogDrvHex32(Ctl);
+        LogDrv("\n");
         return 0;
     }
     gIgpuSurf = Surf;
 
     gIgpuGttOk = 1;
-    LogBoot("Boot: igpu gtt ok surf=");
-    LogBootHex32(Surf);
-    LogBoot(" ctl=");
-    LogBootHex32(Ctl);
-    LogBoot(" fb=");
-    LogBootHex32((UINT32)Fb);
+    LogDrv("Boot: igpu gtt ok surf=");
+    LogDrvHex32(Surf);
+    LogDrv(" ctl=");
+    LogDrvHex32(Ctl);
+    LogDrv(" fb=");
+    LogDrvHex32((UINT32)Fb);
     if (Fb > 0xFFFFFFFFu) {
-        LogBoot(":");
-        LogBootHex32((UINT32)(Fb >> 32));
+        LogDrv(":");
+        LogDrvHex32((UINT32)(Fb >> 32));
     }
     if (Surf == 0) {
-        LogBoot(" (gtt0)");
+        LogDrv(" (gtt0)");
     }
-    LogBoot("\n");
+    LogDrv("\n");
     return 1;
 }

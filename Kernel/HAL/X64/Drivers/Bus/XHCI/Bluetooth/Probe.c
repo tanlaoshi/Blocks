@@ -25,6 +25,35 @@ int XhciBluetoothHciResetOk(void) {
     return gBluetoothHciResetOk ? 1 : 0;
 }
 
+int XhciBluetoothReady(void) {
+    return gBluetoothReady ? 1 : 0;
+}
+
+int XhciBluetoothCopyAddress(UINT8 Out[6]) {
+    UINT32 I;
+
+    if (Out == 0 || !gBluetoothReady) {
+        return -1;
+    }
+    for (I = 0; I < 6u; I++) {
+        Out[I] = gBluetoothAddress[I];
+    }
+    return 0;
+}
+
+int XhciBluetoothCopyLocalName(char *Out, UINTN NameMax) {
+    UINTN I;
+
+    if (Out == 0 || NameMax < 1u || !gBluetoothReady) {
+        return -1;
+    }
+    for (I = 0; I + 1u < NameMax && gBluetoothLocalName[I]; I++) {
+        Out[I] = gBluetoothLocalName[I];
+    }
+    Out[I] = 0;
+    return 0;
+}
+
 UINT16 XhciBluetoothVendorId(void) {
     return gBluetoothVendorId;
 }

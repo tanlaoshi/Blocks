@@ -31,10 +31,15 @@ static int CompanionPortOwned(UINT32 P) {
     return 0;
 }
 
+/* 仅 VERBOSE；默认可读路径不刷 survey（曾拆成多行+空行） */
 static void SurveyRootCcs(const char *Tag) {
     UINT32 P;
     UINT32 N = 0;
 
+    if (!DiagVerbose()) {
+        (void)Tag;
+        return;
+    }
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
         UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));
 
@@ -46,15 +51,9 @@ static void SurveyRootCcs(const char *Tag) {
         BootLogHex(" ccs port=", P, 2);
         BootLogHex(" portsc=", Ps, 8);
         BootLogHex(" spd=", PortSpeed(Ps), 1);
-        if (CompanionPortOwned(P)) {
-            BootLog(" owned\n");
-        } else {
-            BootLog(" free\n");
-        }
+        BootLog(CompanionPortOwned(P) ? " owned\n" : " free\n");
     }
-    BootLog(Tag);
-    BootLogHex(" ccs count=", N, 2);
-    BootLog("\n");
+    BootLogHex("Boot: MSC claim companion ccs n=", N, 2);
 }
 
 static int CompanionAddressRoot(UINT32 P, UINT8 *SpeedOut) {
@@ -98,11 +97,11 @@ static int CompanionScanOnce(UINT32 SavedHub) {
          */
         if (!HalCpuIsHypervisor() && (Ps & PORTSC_PED) && Speed > 0 &&
             Speed < 3) {
-            BootLogHex("Boot: MSC claim companion skip ls/fs port=", P, 2);
+            BootLogHexV("Boot: MSC claim companion skip ls/fs port=", P, 2);
             continue;
         }
-        BootLogHex("Boot: MSC claim companion try port=", P, 2);
-        BootLogHex("Boot: MSC claim companion portsc=", Ps, 8);
+        BootLogHexV("Boot: MSC claim companion try port=", P, 2);
+        BootLogHexV("Boot: MSC claim companion portsc=", Ps, 8);
         if (!CompanionAddressRoot(P, &Speed)) {
             if (gXhciCmdSick) {
                 return 0;

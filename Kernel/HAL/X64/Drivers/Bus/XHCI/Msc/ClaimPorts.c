@@ -70,8 +70,8 @@ int ClaimPorts(void) {
 
     BootLog("Boot: MSC claim begin\n");
     HalBootLogoBump(80);
-    /* 调研：哪些根口 CCS（对表后上棒 vs 后下 hub） */
-    {
+    /* 根口 CCS 明细仅 VERBOSE（默认可读：begin → ok/none） */
+    if (DiagVerbose()) {
         UINT32 Sp;
 
         for (Sp = 1; Sp <= gMaxPorts && Sp <= 32u; Sp++) {

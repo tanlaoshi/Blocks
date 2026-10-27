@@ -96,7 +96,7 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
         goto fail;
     }
     DevClass = gCtrlBuf[4];
-    BootLogHex("Boot: MSC claim dclass=", DevClass, 2);
+    BootLogHexV("Boot: MSC claim dclass=", DevClass, 2);
     {
         UINT16 Vid = (UINT16)(gCtrlBuf[8] | (gCtrlBuf[9] << 8));
 
@@ -144,7 +144,7 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
             goto fail;
         }
     }
-    BootLogHex("Boot: MSC claim cfg len=", Total, 4);
+    BootLogHexV("Boot: MSC claim cfg len=", Total, 4);
 
     if (ConfigHasHubIface(gMscCfgBuf, Total)) {
         /* 根口应在 ClaimPorts 已认领；子口嵌套 hub 跳过 */
@@ -170,12 +170,11 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     gMscPort = RootPort;
     gMscClaimed = 1;
     BootLogHex("Boot: MSC claim ok port=", RootPort, 2);
-    BootLogHex("Boot: MSC claim slot=", gMscScanSlot, 2);
-    BootLogHex("Boot: MSC claim iface=", Iface, 2);
-    BootLogHex("Boot: MSC claim epin=", EpIn, 2);
-    BootLogHex("Boot: MSC claim epout=", EpOut, 2);
-    BootLogHex("Boot: MSC claim route=", gMscRoute, 2);
-    BootLog("Boot: MSC claim bulk ok\n");
+    BootLogHexV("Boot: MSC claim slot=", gMscScanSlot, 2);
+    BootLogHexV("Boot: MSC claim iface=", Iface, 2);
+    BootLogHexV("Boot: MSC claim epin=", EpIn, 2);
+    BootLogHexV("Boot: MSC claim epout=", EpOut, 2);
+    BootLogHexV("Boot: MSC claim route=", gMscRoute, 2);
     return 1;
 
 skip_not_msc:

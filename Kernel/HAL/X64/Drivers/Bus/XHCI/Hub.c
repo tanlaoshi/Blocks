@@ -107,7 +107,7 @@ int HubSetDepth(UINT16 Depth) {
         BootLogHex("Boot: XHCI hub SetHubDepth fail d=", Depth, 1);
         return 0;
     }
-    BootLogHex("Boot: XHCI hub depth=", Depth, 1);
+    BootLogHexV("Boot: XHCI hub depth=", Depth, 1);
     return 1;
 }
 
@@ -247,7 +247,7 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
             EnumWhy("Boot: Why=hub depth\n");
             return 0;
         }
-        BootLogHex("Boot: XHCI hub spd=", Speed, 1);
+        BootLogHexV("Boot: XHCI hub spd=", Speed, 1);
         if (Usb2Hub) {
             BootLog("Boot: XHCI ep0=split\n");
         }

@@ -9,6 +9,7 @@
 #include "StoreJob.h"
 
 void ShellCommandsUsbRegister(void);
+void ShellCommandsBluetoothRegister(void);
 void ShellCommandsNetRegister(void);
 void ShellCommandsNetAddrRegister(void);
 void ShellCommandsNetUdpRegister(void);

@@ -1,11 +1,12 @@
 /*
- * Hci.c — HCI_Reset + 事件收（btx-2）
+ * Hci.c — HCI 命令 / 事件（btx-2/3）
  *
- * 命令：USB Class Control（bmRequestType=0x20）到 HCI 接口。
- * 事件：先投 Interrupt IN，再发命令，免得丢 Command Complete。
- * 等待窗内 ProcessEvents + ServiceHidCompletions（鼠优先）。
+ * Class Control 发命令；先投 Interrupt IN 再发，收 Command Complete。
+ * 等待窗 ProcessEvents + ServiceHidCompletions（鼠优先）。
  */
 #include "XHCI/Bluetooth/Private.h"
+
+static UINT8 gBluetoothCommandBuffer[BLUETOOTH_COMMAND_MAX] BLOCKS_ALIGNED(64);
 
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain) {
@@ -34,11 +35,14 @@ static void QueueEventReceive(void) {
     if (Len > BLUETOOTH_EVENT_MAX) {
         Len = BLUETOOTH_EVENT_MAX;
     }
+    /*
+     * 勿每次 InitRing：ConfigEP 已钉 dequeue；Reset 后再 Init 会与 HC
+     * 失步 → 后续 Read_BD_ADDR 等不到事件 → Ready=0（对表 HID QueueIntr）。
+     */
     ZeroMemory(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     gBluetoothEventDone = 0;
     gBluetoothEventCode = 0;
-    InitRing(gBluetoothEventRing, &gBluetoothEvent, RING_SIZE);
     Enqueue(gBluetoothEventRing, &gBluetoothEvent,
             PointerToPhysical(gBluetoothEventBuffer), Len,
             TRB_TYPE(TRB_NORMAL) | TRB_IOC | TRB_ISP);
@@ -82,73 +86,107 @@ static int WaitEvent(UINT32 TimeoutMs) {
     return Result;
 }
 
-static UINT8 gBluetoothCommandBuffer[16] BLOCKS_ALIGNED(64);
-
-static int SendResetCommand(void) {
+int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
+                        UINT8 *ReturnLenOut) {
     USB_SETUP_PACKET Setup;
+    UINT32 Total;
+    UINT8 I;
+    UINT16 GotOpcode;
+    UINT8 ParameterLength;
+    UINT8 Status;
+    UINT8 RetLen;
 
-    gBluetoothCommandBuffer[0] = (UINT8)(HCI_OPCODE_RESET & 0xFFu);
-    gBluetoothCommandBuffer[1] = (UINT8)((HCI_OPCODE_RESET >> 8) & 0xFFu);
-    gBluetoothCommandBuffer[2] = 0;
+    if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
+        gBluetoothEventDci == 0) {
+        return -1;
+    }
+    Total = 3u + (UINT32)ParamLen;
+    if (Total > BLUETOOTH_COMMAND_MAX) {
+        return -1;
+    }
+    gBluetoothCommandBuffer[0] = (UINT8)(Opcode & 0xFFu);
+    gBluetoothCommandBuffer[1] = (UINT8)((Opcode >> 8) & 0xFFu);
+    gBluetoothCommandBuffer[2] = ParamLen;
+    for (I = 0; I < ParamLen; I++) {
+        gBluetoothCommandBuffer[3u + I] = Params ? Params[I] : 0;
+    }
+    QueueEventReceive();
     Setup.bmRequestType = 0x20;
     Setup.bRequest = 0x00;
     Setup.wValue = 0;
     Setup.wIndex = gBluetoothInterface;
-    Setup.wLength = 3;
-    FlushDma(gBluetoothCommandBuffer, 3);
+    Setup.wLength = (UINT16)Total;
+    FlushDma(gBluetoothCommandBuffer, Total);
     gXferSlot = gBluetoothSlot;
-    return ControlXfer(&Setup, gBluetoothCommandBuffer);
-}
-
-static int EventIsResetComplete(void) {
-    UINT8 EventCode;
-    UINT8 ParameterLength;
-    UINT16 Opcode;
-    UINT8 Status;
-
-    EventCode = gBluetoothEventBuffer[0];
+    if (ControlXfer(&Setup, gBluetoothCommandBuffer) < 0) {
+        BluetoothRequeueHid();
+        return -1;
+    }
+    if (WaitEvent(2000u) < 0) {
+        BootLogHex("Boot: Bluetooth HCI cmd timeout op=", Opcode, 4);
+        BootLogHex(" xfer-cc=", gBluetoothEventCode, 2);
+        BluetoothRequeueHid();
+        return -1;
+    }
+    if (gBluetoothEventBuffer[0] != HCI_EVENT_COMMAND_COMPLETE) {
+        BootLogHex("Boot: Bluetooth event code=", gBluetoothEventBuffer[0], 2);
+        BootLogHex(" want-op=", Opcode, 4);
+        BluetoothRequeueHid();
+        return -1;
+    }
     ParameterLength = gBluetoothEventBuffer[1];
-    if (EventCode != HCI_EVENT_COMMAND_COMPLETE) {
-        BootLogHex("Boot: Bluetooth event code=", EventCode, 2);
-        return 0;
-    }
     if (ParameterLength < 3u) {
-        BootLog("Boot: Bluetooth event short\n");
-        return 0;
+        BluetoothRequeueHid();
+        return -1;
     }
-    Opcode = (UINT16)(gBluetoothEventBuffer[3] |
-                      (gBluetoothEventBuffer[4] << 8));
-    Status = gBluetoothEventBuffer[5];
-    BootLogHex("Boot: Bluetooth CC opcode=", Opcode, 4);
-    BootLogHex(" status=", Status, 2);
-    return (Opcode == HCI_OPCODE_RESET && Status == 0) ? 1 : 0;
+    GotOpcode = (UINT16)(gBluetoothEventBuffer[3] |
+                         (gBluetoothEventBuffer[4] << 8));
+    if (GotOpcode != Opcode) {
+        BootLogHex("Boot: Bluetooth CC opcode=", GotOpcode, 4);
+        BluetoothRequeueHid();
+        return -1;
+    }
+    Status = 0;
+    RetLen = 0;
+    if (ParameterLength >= 4u) {
+        Status = gBluetoothEventBuffer[5];
+        RetLen = (UINT8)(ParameterLength - 4u);
+        if (ReturnData != 0 && ReturnMax > 0 && RetLen > 0) {
+            if (RetLen > ReturnMax) {
+                RetLen = ReturnMax;
+            }
+            for (I = 0; I < RetLen; I++) {
+                ReturnData[I] = gBluetoothEventBuffer[6u + I];
+            }
+        }
+    }
+    if (StatusOut) {
+        *StatusOut = Status;
+    }
+    if (ReturnLenOut) {
+        *ReturnLenOut = RetLen;
+    }
+    BluetoothRequeueHid();
+    return 0;
 }
 
 int BluetoothHciReset(void) {
-    if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
-        gBluetoothEventDci == 0) {
-        return 0;
-    }
+    UINT8 Status = 0xFF;
+
     gBluetoothHciResetOk = 0;
-    QueueEventReceive();
-    if (SendResetCommand() < 0) {
-        BootLog("Boot: Bluetooth HCI Reset send fail\n");
-        BluetoothRequeueHid();
+    gBluetoothReady = 0;
+    if (BluetoothHciCommand(HCI_OPCODE_RESET, 0, 0, &Status, 0, 0, 0) < 0) {
+        BootLog("Boot: Bluetooth HCI Reset send/event fail\n");
         return 0;
     }
-    if (WaitEvent(2000u) < 0) {
-        BootLogHex("Boot: Bluetooth HCI Reset event fail cc=",
-                   gBluetoothEventCode, 2);
-        BluetoothRequeueHid();
-        return 0;
-    }
-    if (!EventIsResetComplete()) {
-        BootLog("Boot: Bluetooth HCI Reset bad event\n");
-        BluetoothRequeueHid();
+    BootLogHex("Boot: Bluetooth CC opcode=", HCI_OPCODE_RESET, 4);
+    BootLogHex(" status=", Status, 2);
+    if (Status != 0) {
+        BootLog("Boot: Bluetooth HCI Reset bad status\n");
         return 0;
     }
     gBluetoothHciResetOk = 1;
     BootLog("Boot: Bluetooth HCI Reset ok\n");
-    BluetoothRequeueHid();
     return 1;
 }

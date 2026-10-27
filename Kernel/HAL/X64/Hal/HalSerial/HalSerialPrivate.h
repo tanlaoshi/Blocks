@@ -41,5 +41,8 @@ void HalSerialBootCapture(const char *Text);
 void RingAppend(const char *Text);
 void GopBannerOnce(void);
 void GopWrite(const char *Text);
+/* 行首前缀分组（HalSerialGroup.c）；调用方已持写出锁 */
+int HalSerialGroupShouldBreak(const char *Text);
+void HalSerialGroupNoteBol(const char *Text);
 
 #endif

@@ -47,7 +47,7 @@ void IgpuNotePresentSkipScale(void) {
         return;
     }
     gScaleSkipLogged = 1;
-    LogBoot("Boot: igpu present skip (scale)\n");
+    LogDrv("Boot: igpu present skip (scale)\n");
 }
 
 void IgpuBackInvalidate(void) {
@@ -74,13 +74,13 @@ int IgpuBackMap(UINT64 PhysBase, UINTN Bytes) {
     }
     Pages = (Bytes + 4095u) / 4096u;
     if (Pages == 0 || Pages > IGPU_MAP_MAX_PAGES) {
-        LogBoot("Boot: igpu back soft (pages)\n");
+        LogDrv("Boot: igpu back soft (pages)\n");
         return 0;
     }
     for (i = 0; i < Pages; i++) {
         if (!IgpuGsmMapQuiet(IGPU_BACK_GTT_OFF + (UINT64)i * 4096ull,
                              PhysBase + (UINT64)i * 4096ull)) {
-            LogBoot("Boot: igpu back soft (pte)\n");
+            LogDrv("Boot: igpu back soft (pte)\n");
             gBackMapped = 0;
             return 0;
         }

@@ -60,7 +60,7 @@ static int IgpuProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
         *OutPrivate = 0;
     }
     if (!Dev || Dev->Bus != DEVICE_BUS_PCI) {
-        LogBoot("Boot: igpu skip (no Intel display)\n");
+        LogDrv("Boot: igpu skip (no Intel display)\n");
         return -1;
     }
 
@@ -71,15 +71,15 @@ static int IgpuProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
     gIgpuFn = Dev->PciFn;
     gIgpuProbed = 1;
 
-    LogBoot("Boot: igpu probe did=");
-    LogBootHex32((UINT32)gIgpuDid);
-    LogBoot(" @");
-    LogBootHex32((UINT32)gIgpuBus);
-    LogBoot(":");
-    LogBootHex32((UINT32)gIgpuDev);
-    LogBoot(".");
-    LogBootHex32((UINT32)gIgpuFn);
-    LogBoot("\n");
+    LogDrv("Boot: igpu probe did=");
+    LogDrvHex32((UINT32)gIgpuDid);
+    LogDrv(" @");
+    LogDrvHex32((UINT32)gIgpuBus);
+    LogDrv(":");
+    LogDrvHex32((UINT32)gIgpuDev);
+    LogDrv(".");
+    LogDrvHex32((UINT32)gIgpuFn);
+    LogDrv("\n");
     return 0;
 }
 
@@ -88,7 +88,7 @@ static int IgpuBind(DRIVER_INSTANCE *Inst) {
         return -1;
     }
     DeviceBindDriver(gIgpuNode, Inst->Driver, Inst);
-    LogBoot("Boot: igpu bound\n");
+    LogDrv("Boot: igpu bound\n");
     return 0;
 }
 
@@ -110,7 +110,7 @@ static const DRIVER gIgpuDriver = {
 
 void IgpuDriverRegister(void) {
     if (DriverRegister(&gIgpuDriver) != 0) {
-        LogBoot("Boot: igpu register fail\n");
+        LogDrv("Boot: igpu register fail\n");
         return;
     }
     (void)DriverProbeClass(DRIVER_CLASS_DISPLAY);

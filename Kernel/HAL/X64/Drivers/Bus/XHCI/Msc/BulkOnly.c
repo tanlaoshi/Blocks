@@ -129,8 +129,8 @@ int Capacity(void) {
         BootLog("Boot: MSC inquiry fail\n");
         return -1;
     }
-    BootLogHex("Boot: MSC inquiry pdt=", Inquiry[0] & 0x1Fu, 2);
-    {
+    BootLogHexV("Boot: MSC inquiry pdt=", Inquiry[0] & 0x1Fu, 2);
+    if (DiagVerbose()) {
         char Line[48];
         int n = 0;
         const char *P = "Boot: MSC vendor=";
@@ -188,8 +188,8 @@ int Capacity(void) {
     gMscBlockCount = LastLba + 1u;
     gMscBlockSize = Bsz;
     gMscCapacityOk = 1;
-    BootLogHex("Boot: MSC blocks=", gMscBlockCount, 8);
-    BootLogHex("Boot: MSC bsize=", gMscBlockSize, 8);
+    BootLogHexV("Boot: MSC blocks=", gMscBlockCount, 8);
+    BootLogHexV("Boot: MSC bsize=", gMscBlockSize, 8);
     return 0;
 }
 

@@ -140,34 +140,34 @@ static int CarveCursorDdb(void) {
     PStart = PlaneCfg & BUF_START_MASK;
     PEnd = (PlaneCfg >> BUF_END_SHIFT) & BUF_END_MASK;
     if (PEnd <= PStart) {
-        LogBoot("Boot: igpu hw cursor soft (plane ddb empty) cfg=");
-        LogBootHex32(PlaneCfg);
-        LogBoot("\n");
+        LogDrv("Boot: igpu hw cursor soft (plane ddb empty) cfg=");
+        LogDrvHex32(PlaneCfg);
+        LogDrv("\n");
         return 0;
     }
     PSize = PEnd - PStart + 1u;
     PWmBlocks = PlaneWm & PLANE_WM_BLOCKS_MASK;
     if ((PlaneWm & PLANE_WM_EN) != 0 && PWmBlocks >= PSize) {
-        LogBoot("Boot: igpu hw cursor soft (plane wm>=ddb) wm=");
-        LogBootHex32(PlaneWm);
-        LogBoot("\n");
+        LogDrv("Boot: igpu hw cursor soft (plane wm>=ddb) wm=");
+        LogDrvHex32(PlaneWm);
+        LogDrv("\n");
         return 0;
     }
     if (PSize < PWmBlocks + IGPU_CUR_DDB_BLOCKS + 1u) {
-        LogBoot("Boot: igpu hw cursor soft (ddb tight) psz=");
-        LogBootHex32(PSize);
-        LogBoot(" wmb=");
-        LogBootHex32(PWmBlocks);
-        LogBoot("\n");
+        LogDrv("Boot: igpu hw cursor soft (ddb tight) psz=");
+        LogDrvHex32(PSize);
+        LogDrv(" wmb=");
+        LogDrvHex32(PWmBlocks);
+        LogDrv("\n");
         return 0;
     }
 
     CBlocks = CurWm & CUR_WM_BLOCKS_MASK;
     if (CBlocks == 0 || CBlocks >= IGPU_CUR_DDB_BLOCKS) {
         /* 固件无可用 cursor WM blocks：软退，勿臆造 lines/blocks */
-        LogBoot("Boot: igpu hw cursor soft (cur wm) wm0=");
-        LogBootHex32(CurWm);
-        LogBoot("\n");
+        LogDrv("Boot: igpu hw cursor soft (cur wm) wm0=");
+        LogDrvHex32(CurWm);
+        LogDrv("\n");
         return 0;
     }
 
@@ -188,15 +188,15 @@ static int CarveCursorDdb(void) {
     IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
 
     gCarved = 1;
-    LogBoot("Boot: igpu hw cursor ddb carve plane=");
-    LogBootHex32(PlaneCfg);
-    LogBoot("->");
-    LogBootHex32(NewPlaneCfg);
-    LogBoot(" cur=");
-    LogBootHex32(gSavedBufCfg);
-    LogBoot(" wm0=");
-    LogBootHex32(gSavedWm0);
-    LogBoot("\n");
+    LogDrv("Boot: igpu hw cursor ddb carve plane=");
+    LogDrvHex32(PlaneCfg);
+    LogDrv("->");
+    LogDrvHex32(NewPlaneCfg);
+    LogDrv(" cur=");
+    LogDrvHex32(gSavedBufCfg);
+    LogDrv(" wm0=");
+    LogDrvHex32(gSavedWm0);
+    LogDrv("\n");
     return 1;
 }
 
@@ -216,7 +216,7 @@ static int EnsureCursorDdb(void) {
         return 0;
     }
     if (!CursorDdbWmOkQuiet()) {
-        LogBoot("Boot: igpu hw cursor soft (carve verify)\n");
+        LogDrv("Boot: igpu hw cursor soft (carve verify)\n");
         return 0;
     }
     gDdbReady = 1;
@@ -446,7 +446,7 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
     }
     if (!EnsureBuf()) {
         FailLatch();
-        LogBoot("Boot: igpu hw cursor fail (buf)\n");
+        LogDrv("Boot: igpu hw cursor fail (buf)\n");
         return 0;
     }
 
@@ -469,16 +469,16 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
 
     if (!IgpuForcewakeGet()) {
         FailLatch();
-        LogBoot("Boot: igpu hw cursor fail (fw)\n");
+        LogDrv("Boot: igpu hw cursor fail (fw)\n");
         return 0;
     }
 
     ArmCursor(MCURSOR_MODE_64_ARGB_AX, EncodePos(0, 0));
 
     gOn = 1;
-    LogBoot("Boot: igpu hw cursor ok cfg=");
-    LogBootHex32(gSavedBufCfg);
-    LogBoot("\n");
+    LogDrv("Boot: igpu hw cursor ok cfg=");
+    LogDrvHex32(gSavedBufCfg);
+    LogDrv("\n");
     return 1;
 }
 

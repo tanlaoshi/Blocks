@@ -80,7 +80,7 @@ static int ArmRing(void) {
 
     Page = PhysicalMemoryAllocatePage();
     if (!Page) {
-        LogBoot("Boot: igpu blit soft (oom)\n");
+        LogDrv("Boot: igpu blit soft (oom)\n");
         return 0;
     }
     gRing = (UINT32 *)Page;
@@ -90,7 +90,7 @@ static int ArmRing(void) {
     }
     FlushCpu(gRing, PAGE_SIZE);
     if (!IgpuGsmMap(IGPU_RING_GTT_OFF, gRingPhys)) {
-        LogBoot("Boot: igpu blit soft (pte)\n");
+        LogDrv("Boot: igpu blit soft (pte)\n");
         return 0;
     }
     return RingRestart();
@@ -141,7 +141,7 @@ static int SubmitNoops(void) {
         Words[i] = IGPU_MI_NOOP;
     }
     if (!EmitDwords(Words, 8)) {
-        LogBoot("Boot: igpu blit soft (head to)\n");
+        LogDrv("Boot: igpu blit soft (head to)\n");
         return 0;
     }
     return 1;
@@ -152,11 +152,11 @@ int IgpuBlitInit(void) {
         return 1;
     }
     if (!IgpuGttOk()) {
-        LogBoot("Boot: igpu blit soft (need surf)\n");
+        LogDrv("Boot: igpu blit soft (need surf)\n");
         return 0;
     }
     if (!IgpuForcewakeOk()) {
-        LogBoot("Boot: igpu blit soft (need fw)\n");
+        LogDrv("Boot: igpu blit soft (need fw)\n");
         return 0;
     }
     if (!IgpuGsmInit()) {
@@ -168,7 +168,7 @@ int IgpuBlitInit(void) {
     if (!SubmitNoops()) {
         return 0;
     }
-    LogBoot("Boot: igpu blit ring ok\n");
+    LogDrv("Boot: igpu blit ring ok\n");
     if (!SubmitMemTest()) {
         return 0;
     }

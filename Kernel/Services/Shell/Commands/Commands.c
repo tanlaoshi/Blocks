@@ -16,6 +16,7 @@ void ShellCommandsRegister(void) {
     ShellCommandsSystemRegister();
     ShellCommandsThemeRegister();
     ShellCommandsUsbRegister();
+    ShellCommandsBluetoothRegister();
     ShellCommandsNetRegister();
     ShellCommandsFsUiRegister();
     ShellCommandsAudioRegister();

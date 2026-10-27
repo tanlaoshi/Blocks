@@ -92,7 +92,7 @@ int IgpuGsmInit(void) {
     }
     Map = IgpuMmioMapBytes();
     if (Map < IGPU_GSM_OFF + 0x1000u) {
-        LogBoot("Boot: igpu gsm soft (map)\n");
+        LogDrv("Boot: igpu gsm soft (map)\n");
         return 0;
     }
 
@@ -101,10 +101,10 @@ int IgpuGsmInit(void) {
     gIgpuGsmOk = 1;
 
     Pte0 = IgpuGsmPteRead(0);
-    LogBoot("Boot: igpu gsm ok pte0=");
-    LogBootHex32((UINT32)(Pte0 >> 32));
-    LogBoot(":");
-    LogBootHex32((UINT32)Pte0);
-    LogBoot("\n");
+    LogDrv("Boot: igpu gsm ok pte0=");
+    LogDrvHex32((UINT32)(Pte0 >> 32));
+    LogDrv(":");
+    LogDrvHex32((UINT32)Pte0);
+    LogDrv("\n");
     return 1;
 }

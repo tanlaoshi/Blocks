@@ -142,10 +142,24 @@ static void GopMirrorLine(const char *Text) {
 }
 
 void HalSerialWriteChannel(int Channel, const char *Text) {
+    int Break;
+
     if (!Text) {
         return;
     }
     SpinLockAcquire(&gSerialLock);
+    Break = HalSerialGroupShouldBreak(Text);
+    if (Break) {
+        /* 组切换：仅一组间空行；不经分组再判 */
+        RingAppend("\n");
+        RtAppend("\n");
+        if (!gShellOwnUart && SerialPresent() && ChannelUartOn(Channel)) {
+            SerialWrite("\n");
+        }
+        if (!gShellOwnUart && ChannelGopOn(Channel)) {
+            GopMirrorLine("\n");
+        }
+    }
     /* ring 始终收（boot / Desktop） */
     RingAppend(Text);
     RtAppend(Text);
@@ -159,7 +173,11 @@ void HalSerialWriteChannel(int Channel, const char *Text) {
     if (!gShellOwnUart && ChannelGopOn(Channel)) {
         GopMirrorLine(Text);
     }
+    HalSerialGroupNoteBol(Text);
     SpinLockRelease(&gSerialLock);
+    if (Break) {
+        TeeUsb("\n");
+    }
     TeeUsb(Text);
 }
 
@@ -293,11 +311,24 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
  * USB BootMark：Mute 期间也上屏（front only）。
  */
 void HalSerialBootMarkChannel(int Channel, const char *Text) {
+    int Break;
+
     if (!Text) {
         return;
     }
     /* 与 WriteChannel 同锁：多核 BootLog 否则字节交错成 BBoot: */
     SpinLockAcquire(&gSerialLock);
+    Break = HalSerialGroupShouldBreak(Text);
+    if (Break) {
+        RingAppend("\n");
+        RtAppend("\n");
+        if (!gShellOwnUart && SerialPresent() && ChannelUartOn(Channel)) {
+            SerialWrite("\n");
+        }
+        if (ChannelGopOn(Channel) && gGopMirror && gVideoUp) {
+            GopWrite("\n");
+        }
+    }
     RingAppend(Text);
     RtAppend(Text);
     if (!gShellOwnUart && SerialPresent() && ChannelUartOn(Channel)) {
@@ -307,7 +338,11 @@ void HalSerialBootMarkChannel(int Channel, const char *Text) {
         /* 绕过 gGopMute：里程碑必须看得见；细日志走 Log* → GopMirrorLine 仍受 Mute */
         GopWrite(Text);
     }
+    HalSerialGroupNoteBol(Text);
     SpinLockRelease(&gSerialLock);
+    if (Break) {
+        TeeUsb("\n");
+    }
     TeeUsb(Text);
 }
 
@@ -322,15 +357,29 @@ void HalSerialBootHoldMs(UINT32 Ms) {
 
 /* 串口里程碑。屏幕总开关关掉时不往 GOP 画。 */
 void HalSerialBootMarkForce(const char *Text) {
+    int Break;
+
     if (!Text) {
         return;
     }
     SpinLockAcquire(&gSerialLock);
+    Break = HalSerialGroupShouldBreak(Text);
+    if (Break) {
+        RingAppend("\n");
+        RtAppend("\n");
+        if (!gShellOwnUart && SerialPresent() && ChannelUartOn(SLOG_USB)) {
+            SerialWrite("\n");
+        }
+    }
     RingAppend(Text);
     RtAppend(Text);
     if (!gShellOwnUart && SerialPresent() && ChannelUartOn(SLOG_USB)) {
         SerialWrite(Text);
     }
+    HalSerialGroupNoteBol(Text);
     SpinLockRelease(&gSerialLock);
+    if (Break) {
+        TeeUsb("\n");
+    }
     TeeUsb(Text);
 }

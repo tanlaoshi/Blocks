@@ -207,7 +207,11 @@ void GuiDesktopInitialize(void) {
     }
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();
-    LogGui("Gui: Desktop Ready\n");
+    /*
+     * 课堂 build.sh 默认 SERIAL_GUI=0：LogGui 不上 UART。
+     * CI smoke 认「Gui: Desktop Ready」——须走 BOOT 通道（与上列 BootMark 同形）。
+     */
+    HalSerialBootMark("Gui: Desktop Ready\n");
     /*
      * 勿在此 Announce：后面还有 Network 模块。
      * 真机：KernelAfterModules（Modules 全完）Announce；virt：Worker 末。

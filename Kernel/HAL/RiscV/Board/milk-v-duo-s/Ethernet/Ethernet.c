@@ -10,10 +10,10 @@ UINT8 gDuoReceiveBuffer[DUO_ETHERNET_DMA_RING_COUNT][DUO_ETHERNET_DMA_BUFFER_SIZ
     __attribute__((aligned(64)));
 
 int gDuoMacOk;
-int gDuoPhyOk;
+int gDuoPhysicalOk;
 int gDuoDmaOk;
 int gDuoBound;
-UINT32 gDuoPhyAddress;
+UINT32 gDuoPhysicalAddress;
 UINT8 gDuoMac[6];
 UINT32 gDuoIp = HAL_NET_IP_DEFAULT;
 UINT32 gDuoTransmitIndex;
@@ -35,10 +35,10 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
     UINT16 Partner;
     int Link;
 
-    if (!gDuoPhyOk) {
+    if (!gDuoPhysicalOk) {
         return 0;
     }
-    Link = DuoPhyLinkUp();
+    Link = DuoPhysicalLinkUp();
     if (Up) {
         *Up = Link;
     }
@@ -51,28 +51,28 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
     if (!Link) {
         return 1;
     }
-    if (DuoMiiRead(gDuoPhyAddress, DUO_PHY_LINK_PARTNER_ABILITY, &Partner) != 0) {
+    if (DuoMediaIndependentInterfaceRead(gDuoPhysicalAddress, DUO_PHYSICAL_LINK_PARTNER_ABILITY, &Partner) != 0) {
         Partner = 0;
     }
-    if ((Partner & DUO_PHY_ADVERTISE_100_FULL) != 0) {
+    if ((Partner & DUO_PHYSICAL_ADVERTISE_100_FULL) != 0) {
         if (Megabits) {
             *Megabits = 100u;
         }
         if (FullDuplex) {
             *FullDuplex = 1;
         }
-    } else if ((Partner & DUO_PHY_ADVERTISE_100_HALF) != 0) {
+    } else if ((Partner & DUO_PHYSICAL_ADVERTISE_100_HALF) != 0) {
         if (Megabits) {
             *Megabits = 100u;
         }
-    } else if ((Partner & DUO_PHY_ADVERTISE_10_FULL) != 0) {
+    } else if ((Partner & DUO_PHYSICAL_ADVERTISE_10_FULL) != 0) {
         if (Megabits) {
             *Megabits = 10u;
         }
         if (FullDuplex) {
             *FullDuplex = 1;
         }
-    } else if ((Partner & DUO_PHY_ADVERTISE_10_HALF) != 0) {
+    } else if ((Partner & DUO_PHYSICAL_ADVERTISE_10_HALF) != 0) {
         if (Megabits) {
             *Megabits = 10u;
         }
@@ -151,7 +151,7 @@ int BoardEthernetProbe(void) {
     HalSerialBootMark(" (MAC ok)\n");
     gDuoMacOk = 1;
 
-    if (DuoPhyProbe() != 0) {
+    if (DuoPhysicalProbe() != 0) {
         return -1;
     }
     if (DuoDmaProbe() != 0) {

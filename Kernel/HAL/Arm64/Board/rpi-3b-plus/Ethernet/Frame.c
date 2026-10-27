@@ -13,56 +13,56 @@ int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength) {
     }
     CmdA = (UINT32)FrameLength | TX_CMD_A_FIRST | TX_CMD_A_LAST;
     CmdB = (UINT32)FrameLength;
-    gSmscTxBuf[0] = (UINT8)(CmdA);
-    gSmscTxBuf[1] = (UINT8)(CmdA >> 8);
-    gSmscTxBuf[2] = (UINT8)(CmdA >> 16);
-    gSmscTxBuf[3] = (UINT8)(CmdA >> 24);
-    gSmscTxBuf[4] = (UINT8)(CmdB);
-    gSmscTxBuf[5] = (UINT8)(CmdB >> 8);
-    gSmscTxBuf[6] = (UINT8)(CmdB >> 16);
-    gSmscTxBuf[7] = (UINT8)(CmdB >> 24);
+    gSmscTransmitBuffer[0] = (UINT8)(CmdA);
+    gSmscTransmitBuffer[1] = (UINT8)(CmdA >> 8);
+    gSmscTransmitBuffer[2] = (UINT8)(CmdA >> 16);
+    gSmscTransmitBuffer[3] = (UINT8)(CmdA >> 24);
+    gSmscTransmitBuffer[4] = (UINT8)(CmdB);
+    gSmscTransmitBuffer[5] = (UINT8)(CmdB >> 8);
+    gSmscTransmitBuffer[6] = (UINT8)(CmdB >> 16);
+    gSmscTransmitBuffer[7] = (UINT8)(CmdB >> 24);
     {
         UINTN i;
         for (i = 0; i < FrameLength; i++) {
-            gSmscTxBuf[8u + i] = Frame[i];
+            gSmscTransmitBuffer[8u + i] = Frame[i];
         }
     }
-    SmscSelectDev();
-    Ret = BoardDwc2Bulk(gSmscAddr, gSmscEpOut, 0, gSmscTxBuf, (int)(8u + FrameLength),
-                        gSmscBulkMps, &gSmscTxToggle);
+    SmscSelectDevice();
+    Ret = BoardDwc2Bulk(gSmscAddress, gSmscEndpointOut, 0, gSmscTransmitBuffer, (int)(8u + FrameLength),
+                        gSmscBulkMaxPacketSize, &gSmscTransmitToggle);
     if (Ret < 0) {
         return -1;
     }
-    gSmscTxDone++;
+    gSmscTransmitDone++;
     return 0;
 }
 
-void SmscHandleRx(const UINT8 *Buf, int Len) {
-    int Off = 0;
+void SmscHandleReceive(const UINT8 *Buffer, int Length) {
+    int Offset = 0;
 
-    while (Off + 4 <= Len) {
+    while (Offset + 4 <= Length) {
         UINT32 Sts;
         UINT32 PktLen;
         const UINT8 *Frame;
 
-        Sts = (UINT32)Buf[Off] | ((UINT32)Buf[Off + 1] << 8) |
-              ((UINT32)Buf[Off + 2] << 16) | ((UINT32)Buf[Off + 3] << 24);
-        Off += 4;
+        Sts = (UINT32)Buffer[Offset] | ((UINT32)Buffer[Offset + 1] << 8) |
+              ((UINT32)Buffer[Offset + 2] << 16) | ((UINT32)Buffer[Offset + 3] << 24);
+        Offset += 4;
         if (Sts & RX_STS_ES) {
             break;
         }
         PktLen = (Sts & RX_STS_FL) >> 16;
-        if (PktLen < 4u || Off + (int)PktLen > Len) {
+        if (PktLen < 4u || Offset + (int)PktLen > Length) {
             break;
         }
-        Frame = Buf + Off;
+        Frame = Buffer + Offset;
         /* U-Boot：上报长度减 4（FCS） */
         {
             UINTN Fl = PktLen - 4u;
             if (Fl >= 14u) {
-                gSmscRxFrames++;
+                gSmscReceiveFrames++;
 #ifdef LWIP_ENABLE
-                if (gSmscLwIpRx) {
+                if (gSmscLwIpReceive) {
                     LwIpNetifInput(Frame, Fl);
                 }
 #else
@@ -70,9 +70,9 @@ void SmscHandleRx(const UINT8 *Buf, int Len) {
 #endif
             }
         }
-        Off += (int)PktLen;
-        if (Off & 3) {
-            Off += 4 - (Off & 3);
+        Offset += (int)PktLen;
+        if (Offset & 3) {
+            Offset += 4 - (Offset & 3);
         }
     }
 }

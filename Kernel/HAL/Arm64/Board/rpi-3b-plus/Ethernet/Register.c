@@ -3,45 +3,45 @@
  */
 #include "Ethernet/Private.h"
 
-void SmscDelayMs(UINT32 Ms) {
+void SmscDelayMilliseconds(UINT32 Milliseconds) {
     UINT32 m;
     volatile UINT32 i;
 
-    for (m = 0; m < Ms; m++) {
+    for (m = 0; m < Milliseconds; m++) {
         for (i = 0; i < 80000u; i++) {
             __asm__ volatile("nop");
         }
     }
 }
 
-void SmscSelectDev(void) {
+void SmscSelectDevice(void) {
     BoardDwc2SelectDevice(gSmscHub, gSmscPort, 0);
 }
 
-int SmscWriteReg(UINT32 Index, UINT32 Data) {
+int SmscWriteRegister(UINT32 Index, UINT32 Data) {
     UINT32 Le = Data;
     int Ret;
 
-    SmscSelectDev();
-    Ret = BoardDwc2Control(gSmscAddr, 0x40u, USB_VENDOR_WRITE_REG, 0, (UINT16)Index,
+    SmscSelectDevice();
+    Ret = BoardDwc2Control(gSmscAddress, 0x40u, USB_VENDOR_WRITE_REG, 0, (UINT16)Index,
                            &Le, 4);
     return (Ret == 4) ? 0 : -1;
 }
 
-int SmscReadReg(UINT32 Index, UINT32 *Out) {
+int SmscReadRegister(UINT32 Index, UINT32 *OutValue) {
     UINT32 Le = 0;
     int Ret;
 
-    if (!Out) {
+    if (!OutValue) {
         return -1;
     }
-    SmscSelectDev();
-    Ret = BoardDwc2Control(gSmscAddr, 0xC0u, USB_VENDOR_READ_REG, 0, (UINT16)Index,
+    SmscSelectDevice();
+    Ret = BoardDwc2Control(gSmscAddress, 0xC0u, USB_VENDOR_READ_REG, 0, (UINT16)Index,
                            &Le, 4);
     if (Ret != 4) {
         return -1;
     }
-    *Out = Le;
+    *OutValue = Le;
     return 0;
 }
 
@@ -50,87 +50,87 @@ static int MiiWait(void) {
     UINT32 T;
 
     for (T = 0; T < 1000u; T++) {
-        if (SmscReadReg(MII_ADDR, &V) != 0) {
+        if (SmscReadRegister(MII_ADDR, &V) != 0) {
             return -1;
         }
         if ((V & MII_BUSY) == 0) {
             return 0;
         }
-        SmscDelayMs(1);
+        SmscDelayMilliseconds(1);
     }
     return -1;
 }
 
-int SmscMiiRead(int Idx, UINT16 *Out) {
+int SmscMiiRead(int Index, UINT16 *OutValue) {
     UINT32 Addr;
-    UINT32 Val;
+    UINT32 Value;
 
     if (MiiWait() != 0) {
         return -1;
     }
-    Addr = ((UINT32)SMSC_PHY_ID << 11) | ((UINT32)Idx << 6) | MII_BUSY;
-    if (SmscWriteReg(MII_ADDR, Addr) != 0 || MiiWait() != 0) {
+    Addr = ((UINT32)SMSC_PHY_ID << 11) | ((UINT32)Index << 6) | MII_BUSY;
+    if (SmscWriteRegister(MII_ADDR, Addr) != 0 || MiiWait() != 0) {
         return -1;
     }
-    if (SmscReadReg(MII_DATA, &Val) != 0) {
+    if (SmscReadRegister(MII_DATA, &Value) != 0) {
         return -1;
     }
-    if (Out) {
-        *Out = (UINT16)(Val & 0xFFFFu);
+    if (OutValue) {
+        *OutValue = (UINT16)(Value & 0xFFFFu);
     }
     return 0;
 }
 
-int SmscMiiWrite(int Idx, UINT16 Val) {
+int SmscMiiWrite(int Index, UINT16 Value) {
     UINT32 Addr;
 
     if (MiiWait() != 0) {
         return -1;
     }
-    if (SmscWriteReg(MII_DATA, Val) != 0) {
+    if (SmscWriteRegister(MII_DATA, Value) != 0) {
         return -1;
     }
-    Addr = ((UINT32)SMSC_PHY_ID << 11) | ((UINT32)Idx << 6) | MII_BUSY |
+    Addr = ((UINT32)SMSC_PHY_ID << 11) | ((UINT32)Index << 6) | MII_BUSY |
            MII_WRITE;
-    if (SmscWriteReg(MII_ADDR, Addr) != 0) {
+    if (SmscWriteRegister(MII_ADDR, Addr) != 0) {
         return -1;
     }
     return MiiWait();
 }
 
-int SmscEepromRead(UINT32 Off, UINT8 *Dst, UINT32 Len) {
+int SmscEepromRead(UINT32 Offset, UINT8 *Destination, UINT32 Length) {
     UINT32 i;
     UINT32 Cmd;
     UINT32 Data;
     UINT32 T;
 
-    for (i = 0; i < Len; i++) {
+    for (i = 0; i < Length; i++) {
         for (T = 0; T < 100u; T++) {
-            if (SmscReadReg(E2P_CMD, &Cmd) != 0) {
+            if (SmscReadRegister(E2P_CMD, &Cmd) != 0) {
                 return -1;
             }
             if ((Cmd & E2P_CMD_BUSY) == 0) {
                 break;
             }
-            SmscDelayMs(1);
+            SmscDelayMilliseconds(1);
         }
-        Cmd = E2P_CMD_BUSY | E2P_CMD_READ | ((Off + i) & E2P_CMD_ADDR);
-        if (SmscWriteReg(E2P_CMD, Cmd) != 0) {
+        Cmd = E2P_CMD_BUSY | E2P_CMD_READ | ((Offset + i) & E2P_CMD_ADDR);
+        if (SmscWriteRegister(E2P_CMD, Cmd) != 0) {
             return -1;
         }
         for (T = 0; T < 100u; T++) {
-            if (SmscReadReg(E2P_CMD, &Cmd) != 0) {
+            if (SmscReadRegister(E2P_CMD, &Cmd) != 0) {
                 return -1;
             }
             if ((Cmd & E2P_CMD_BUSY) == 0) {
                 break;
             }
-            SmscDelayMs(1);
+            SmscDelayMilliseconds(1);
         }
-        if (SmscReadReg(E2P_DATA, &Data) != 0) {
+        if (SmscReadRegister(E2P_DATA, &Data) != 0) {
             return -1;
         }
-        Dst[i] = (UINT8)(Data & 0xFFu);
+        Destination[i] = (UINT8)(Data & 0xFFu);
     }
     return 0;
 }

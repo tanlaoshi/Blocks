@@ -4,7 +4,7 @@
  * U-Boot cv181x_ephy_id_init：放复位 / ANA 上电 / 写 PHY ID。
  * 末尾保持 APB，交给 Configure（Linux cvitek config_init）。
  */
-void DuoPhyInitialize(void) {
+void DuoPhysicalInitialize(void) {
     *DuoRegister(DUO_EPHY_APB_SELECT) = 1u;
 
     *DuoRegister(DUO_EPHY_CONTROL) = 0x0900u;
@@ -25,7 +25,7 @@ void DuoPhyInitialize(void) {
  * Linux drivers/net/phy/cvitek.c · cv182xa_phy_config_init（无 efuse 走 else 默认；
  * CONFIG_ARCH_CV181X LPF/HPF）。收尾 0x090e 启自协商 + BMCR 全双工，再交 MDIO。
  */
-void DuoPhyConfigure(void) {
+void DuoPhysicalConfigure(void) {
     *DuoRegister(DUO_EPHY_APB_SELECT) = 1u;
     *DuoRegister(DUO_EPHY_PAGE_SELECT) = 0x0000u;
 
@@ -143,9 +143,9 @@ void DuoPhyConfigure(void) {
 
     *DuoRegister(DUO_EPHY_PAGE_SELECT) = 0x0000u;
     *DuoRegister(DUO_EPHY_CONTROL) = DUO_EPHY_CONTROL_AUTONEG_START;
-    *DuoRegister(DUO_EPHY_APB(DUO_PHY_BASIC_CONTROL)) =
-        *DuoRegister(DUO_EPHY_APB(DUO_PHY_BASIC_CONTROL)) |
-        DUO_PHY_BASIC_CONTROL_FULL_DUPLEX;
+    *DuoRegister(DUO_EPHY_APB(DUO_PHYSICAL_BASIC_CONTROL)) =
+        *DuoRegister(DUO_EPHY_APB(DUO_PHYSICAL_BASIC_CONTROL)) |
+        DUO_PHYSICAL_BASIC_CONTROL_FULL_DUPLEX;
 
     *DuoRegister(DUO_EPHY_APB_SELECT) = 0u;
     DuoDelayMilliseconds(1u);

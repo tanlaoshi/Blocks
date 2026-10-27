@@ -7,38 +7,38 @@
 int gSmscReady;
 int gSmscBound;
 int gSmscLinkWasUp;
-int gSmscLwIpRx;
-UINT8 gSmscAddr;
+int gSmscLwIpReceive;
+UINT8 gSmscAddress;
 UINT8 gSmscHub;
 UINT8 gSmscPort;
-UINT8 gSmscEpIn;
-UINT8 gSmscEpOut;
-UINT16 gSmscBulkMps;
-UINT8 gSmscTxToggle;
-UINT8 gSmscRxToggle;
-UINT32 gSmscMacCr;
+UINT8 gSmscEndpointIn;
+UINT8 gSmscEndpointOut;
+UINT16 gSmscBulkMaxPacketSize;
+UINT8 gSmscTransmitToggle;
+UINT8 gSmscReceiveToggle;
+UINT32 gSmscMacControl;
 UINT8 gSmscMac[6];
 UINT32 gSmscIp;
-UINT32 gSmscTxDone;
-UINT32 gSmscRxFrames;
-UINT8 gSmscTxBuf[8u + 1518u] __attribute__((aligned(64)));
-UINT8 gSmscRxBuf[RX_URB_SIZE] __attribute__((aligned(64)));
+UINT32 gSmscTransmitDone;
+UINT32 gSmscReceiveFrames;
+UINT8 gSmscTransmitBuffer[8u + 1518u] __attribute__((aligned(64)));
+UINT8 gSmscReceiveBuffer[RX_URB_SIZE] __attribute__((aligned(64)));
 
 int BoardEthernetUsbAttach(UINT8 DevAddr, UINT8 Hub, UINT8 Port,
                            UINT8 EpBulkIn, UINT8 EpBulkOut, UINT16 BulkMps) {
     if (gSmscReady) {
         return 0;
     }
-    gSmscAddr = DevAddr;
+    gSmscAddress = DevAddr;
     gSmscHub = Hub;
     gSmscPort = Port;
-    gSmscEpIn = EpBulkIn & 0x7Fu;
-    gSmscEpOut = EpBulkOut & 0x7Fu;
-    gSmscBulkMps = BulkMps ? BulkMps : 512u;
-    gSmscTxToggle = 0;
-    gSmscRxToggle = 0;
+    gSmscEndpointIn = EpBulkIn & 0x7Fu;
+    gSmscEndpointOut = EpBulkOut & 0x7Fu;
+    gSmscBulkMaxPacketSize = BulkMps ? BulkMps : 512u;
+    gSmscTransmitToggle = 0;
+    gSmscReceiveToggle = 0;
     gSmscIp = 0;
-    if (SmscInitMac() != 0) {
+    if (SmscMacInitialize() != 0) {
         HalSerialBootMark("Boot: SMSC init fail\n");
         return -1;
     }
@@ -62,11 +62,11 @@ int BoardEthernetUsbAttach(UINT8 DevAddr, UINT8 Hub, UINT8 Port,
     return 0;
 }
 
-static int EthReady(void) {
+static int Ready(void) {
     return gSmscReady && gSmscBound;
 }
 
-static void EthPoll(void) {
+static void Poll(void) {
     int Got;
     int Up = 0;
     static UINT32 sLinkDiv;
@@ -95,15 +95,15 @@ static void EthPoll(void) {
             }
         }
     }
-    SmscSelectDev();
-    Got = BoardDwc2Bulk(gSmscAddr, gSmscEpIn, 1, gSmscRxBuf, (int)RX_URB_SIZE, gSmscBulkMps,
-                        &gSmscRxToggle);
+    SmscSelectDevice();
+    Got = BoardDwc2Bulk(gSmscAddress, gSmscEndpointIn, 1, gSmscReceiveBuffer, (int)RX_URB_SIZE, gSmscBulkMaxPacketSize,
+                        &gSmscReceiveToggle);
     if (Got > 4) {
-        SmscHandleRx(gSmscRxBuf, Got);
+        SmscHandleReceive(gSmscReceiveBuffer, Got);
     }
 }
 
-static void EthGetMac(UINT8 Mac[6]) {
+static void GetMac(UINT8 Mac[6]) {
     int i;
     if (!Mac) {
         return;
@@ -113,25 +113,25 @@ static void EthGetMac(UINT8 Mac[6]) {
     }
 }
 
-static UINT32 EthGetIp(void) {
+static UINT32 GetIp(void) {
     return gSmscIp;
 }
 
-static void EthSetIp(UINT32 Ip) {
+static void SetIp(UINT32 Ip) {
     gSmscIp = Ip;
 }
 
-static void EthFormatIp(UINT32 Ip, char *Buf, int BufLen) {
-    if (!Buf || BufLen < 16) {
+static void FormatIp(UINT32 Ip, char *Buffer, int BufLen) {
+    if (!Buffer || BufLen < 16) {
         return;
     }
-    FormatDottedDecimal(Ip, Buf, BufLen);
+    FormatDottedDecimal(Ip, Buffer, BufLen);
 }
 
-static int EthParseIp(const char *Text, UINT32 *Ip) {
+static int ParseIp(const char *Text, UINT32 *Ip) {
     UINT32 Parts[4];
     int Part = 0;
-    UINT32 Val = 0;
+    UINT32 Value = 0;
     int Digits = 0;
 
     if (!Text || !Ip) {
@@ -139,8 +139,8 @@ static int EthParseIp(const char *Text, UINT32 *Ip) {
     }
     while (*Text) {
         if (*Text >= '0' && *Text <= '9') {
-            Val = Val * 10u + (UINT32)(*Text - '0');
-            if (Val > 255) {
+            Value = Value * 10u + (UINT32)(*Text - '0');
+            if (Value > 255) {
                 return -1;
             }
             Digits++;
@@ -148,8 +148,8 @@ static int EthParseIp(const char *Text, UINT32 *Ip) {
             if (Digits == 0 || Part >= 3) {
                 return -1;
             }
-            Parts[Part++] = Val;
-            Val = 0;
+            Parts[Part++] = Value;
+            Value = 0;
             Digits = 0;
         } else {
             return -1;
@@ -159,20 +159,20 @@ static int EthParseIp(const char *Text, UINT32 *Ip) {
     if (Digits == 0 || Part != 3) {
         return -1;
     }
-    Parts[3] = Val;
+    Parts[3] = Value;
     *Ip = (Parts[0] << 24) | (Parts[1] << 16) | (Parts[2] << 8) | Parts[3];
     return 0;
 }
 
-static UINT16 EthChecksum(const void *Data, UINTN Len) {
+static UINT16 Checksum(const void *Data, UINTN Length) {
     const UINT8 *B = (const UINT8 *)Data;
     UINT32 Sum = 0;
     UINTN i;
 
-    for (i = 0; i + 1 < Len; i += 2) {
+    for (i = 0; i + 1 < Length; i += 2) {
         Sum += ((UINT32)B[i] << 8) | B[i + 1];
     }
-    if (i < Len) {
+    if (i < Length) {
         Sum += (UINT32)B[i] << 8;
     }
     while (Sum >> 16) {
@@ -181,61 +181,61 @@ static UINT16 EthChecksum(const void *Data, UINTN Len) {
     return (UINT16)~Sum;
 }
 
-static int EthPing(const char *Host, int TimeoutMs) {
+static int Ping(const char *Host, int TimeoutMs) {
     (void)Host;
     (void)TimeoutMs;
     return -1;
 }
 
-static void EthGetStats(UINT32 *Tx, UINT32 *Rx) {
-    if (Tx) {
-        *Tx = gSmscTxDone;
+static void GetStats(UINT32 *TransmitDone, UINT32 *ReceiveFrames) {
+    if (TransmitDone) {
+        *TransmitDone = gSmscTransmitDone;
     }
-    if (Rx) {
-        *Rx = gSmscRxFrames;
+    if (ReceiveFrames) {
+        *ReceiveFrames = gSmscReceiveFrames;
     }
 }
 
-static int EthSendIp(UINT32 Dst, UINT8 Proto, const void *Payload, UINTN Len) {
-    (void)Dst;
+static int SendIp(UINT32 Destination, UINT8 Proto, const void *Payload, UINTN Length) {
+    (void)Destination;
     (void)Proto;
     (void)Payload;
-    (void)Len;
+    (void)Length;
     return -1;
 }
 
-static void EthSetLwIpRx(int Enable) {
-    gSmscLwIpRx = Enable ? 1 : 0;
+static void SetLwIpReceive(int Enable) {
+    gSmscLwIpReceive = Enable ? 1 : 0;
 }
 
 static const NET_BACKEND gBackend = {
-    .Ready = EthReady,
-    .Poll = EthPoll,
-    .GetMac = EthGetMac,
-    .GetIp = EthGetIp,
-    .SetIp = EthSetIp,
-    .FormatIp = EthFormatIp,
-    .ParseIp = EthParseIp,
-    .Ping = EthPing,
-    .GetStats = EthGetStats,
-    .SendIp = EthSendIp,
-    .Checksum = EthChecksum,
-    .SetLwIpRx = EthSetLwIpRx,
+    .Ready = Ready,
+    .Poll = Poll,
+    .GetMac = GetMac,
+    .GetIp = GetIp,
+    .SetIp = SetIp,
+    .FormatIp = FormatIp,
+    .ParseIp = ParseIp,
+    .Ping = Ping,
+    .GetStats = GetStats,
+    .SendIp = SendIp,
+    .Checksum = Checksum,
+    .SetLwIpRx = SetLwIpReceive,
 };
 
-static int EthDriverProbe(const DRIVER *Self, void *Bus, void **Out) {
+static int DriverProbe(const DRIVER *Self, void *Bus, void **OutValue) {
     (void)Self;
     (void)Bus;
     if (!gSmscReady) {
         return -1;
     }
-    if (Out) {
-        *Out = 0;
+    if (OutValue) {
+        *OutValue = 0;
     }
     return 0;
 }
 
-static int EthDriverBind(DRIVER_INSTANCE *Inst) {
+static int DriverBind(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     if (!gSmscReady) {
         return -1;
@@ -249,22 +249,22 @@ static int EthDriverBind(DRIVER_INSTANCE *Inst) {
     return 0;
 }
 
-static void EthDriverRemove(DRIVER_INSTANCE *Inst) {
+static void DriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
     gSmscBound = 0;
 }
 
-static const DRIVER gEthDriver = {
+static const DRIVER gDriver = {
     .Name = "smsc95xx",
     .Class = DRIVER_CLASS_NET,
     .Match = 0,
-    .Probe = EthDriverProbe,
-    .Bind = EthDriverBind,
-    .Remove = EthDriverRemove,
+    .Probe = DriverProbe,
+    .Bind = DriverBind,
+    .Remove = DriverRemove,
 };
 
 void BoardEthernetRegister(void) {
-    (void)DriverRegister(&gEthDriver);
+    (void)DriverRegister(&gDriver);
 }
 
 int BoardEthernetProbe(void) {

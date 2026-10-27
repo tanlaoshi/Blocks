@@ -127,9 +127,9 @@ void BoardUsbHostControllerMouseHandoff(UINT32 CursorX, UINT32 CursorY);
 
 /* rnet-2：Smsc95xx；HS 无 SPLIT。Toggle=DWC2 PID（DATA0=0） */
 void BoardDwc2SelectDevice(UINT8 Hub, UINT8 Port, int LowSpeed);
-int BoardDwc2Control(UINT8 Addr, UINT8 BmRequestType, UINT8 BRequest,
-                     UINT16 WValue, UINT16 WIndex, void *Data, int Len);
-int BoardDwc2Bulk(UINT8 Addr, UINT8 Ep, int In, void *Data, int Len, UINT16 Mps,
-                  UINT8 *Toggle);
+int BoardDwc2Control(UINT8 Address, UINT8 BmRequestType, UINT8 BRequest,
+                     UINT16 WValue, UINT16 WIndex, void *Data, int Length);
+int BoardDwc2Bulk(UINT8 Address, UINT8 Endpoint, int EndpointIn, void *Data,
+                  int Length, UINT16 MaxPacketSize, UINT8 *Toggle);
 
 #endif

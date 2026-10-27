@@ -1,5 +1,5 @@
 /*
- * Util.c — 内存 / 字节序 / MMIO / 延时 / BootMark（bd-duo-eth）
+ * Utility.c — 内存 / 字节序 / MMIO / 延时 / BootMark（bd-duo-eth）
  */
 #include "Ethernet/Private.h"
 

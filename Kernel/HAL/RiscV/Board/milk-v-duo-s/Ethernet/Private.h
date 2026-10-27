@@ -90,10 +90,10 @@ extern UINT8 gDuoReceiveBuffer[DUO_ETHERNET_DMA_RING_COUNT]
     [DUO_ETHERNET_DMA_BUFFER_SIZE];
 
 extern int gDuoMacOk;
-extern int gDuoPhyOk;
+extern int gDuoPhysicalOk;
 extern int gDuoDmaOk;
 extern int gDuoBound;
-extern UINT32 gDuoPhyAddress;
+extern UINT32 gDuoPhysicalAddress;
 extern UINT8 gDuoMac[6];
 extern UINT32 gDuoIp;
 extern UINT32 gDuoTransmitIndex;
@@ -118,19 +118,19 @@ void DuoMarkHex(const char *Tag, UINT32 Value);
 void DuoMarkHex16(UINT32 Value);
 int DuoVersionIsLive(UINT32 Version);
 
-int DuoMiiWaitIdle(void);
-int DuoMiiRead(UINT32 PhyAddress, UINT32 RegisterIndex, UINT16 *OutValue);
-int DuoMiiWrite(UINT32 PhyAddress, UINT32 RegisterIndex, UINT16 Value);
+int DuoMediaIndependentInterfaceWaitIdle(void);
+int DuoMediaIndependentInterfaceRead(UINT32 PhysicalAddress, UINT32 RegisterIndex, UINT16 *OutValue);
+int DuoMediaIndependentInterfaceWrite(UINT32 PhysicalAddress, UINT32 RegisterIndex, UINT16 Value);
 
-void DuoPhyInitialize(void);
-void DuoPhyConfigure(void);
-int DuoPhyIdentityValid(UINT16 Identifier1, UINT16 Identifier2);
-int DuoPhyFind(UINT32 *OutAddress, UINT16 *OutIdentifier1,
+void DuoPhysicalInitialize(void);
+void DuoPhysicalConfigure(void);
+int DuoPhysicalIdentityValid(UINT16 Identifier1, UINT16 Identifier2);
+int DuoPhysicalFind(UINT32 *OutAddress, UINT16 *OutIdentifier1,
                UINT16 *OutIdentifier2);
-int DuoPhyReadBasicStatus(UINT32 Address, UINT16 *OutStatus);
-int DuoPhyRestartAutoneg(UINT32 Address);
-int DuoPhyProbe(void);
-int DuoPhyLinkUp(void);
+int DuoPhysicalReadBasicStatus(UINT32 Address, UINT16 *OutStatus);
+int DuoPhysicalRestartAutoneg(UINT32 Address);
+int DuoPhysicalProbe(void);
+int DuoPhysicalLinkUp(void);
 
 int DuoDmaSoftwareReset(void);
 void DuoDmaCacheSync(void *Address, UINTN Length);
@@ -139,7 +139,7 @@ void DuoDmaProgramMacAddress(void);
 void DuoDmaRearmReceive(UINT32 Index);
 int DuoDmaProbe(void);
 
-void DuoMacAdjustFromPhy(void);
+void DuoMacAdjustFromPhysical(void);
 int DuoDmaStartWire(void);
 
 int DuoArpLookup(UINT32 Ip, UINT8 Mac[6]);

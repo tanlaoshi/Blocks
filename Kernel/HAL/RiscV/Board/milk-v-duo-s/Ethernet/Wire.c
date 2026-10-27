@@ -1,23 +1,23 @@
 #include "Ethernet/Private.h"
 
-void DuoMacAdjustFromPhy(void) {
+void DuoMacAdjustFromPhysical(void) {
     UINT16 Partner = 0;
     UINT32 MacConfig;
     int FullDuplex = 1;
     int Speed100 = 1;
 
-    if (gDuoPhyOk &&
-        DuoMiiRead(gDuoPhyAddress, DUO_PHY_LINK_PARTNER_ABILITY, &Partner) == 0) {
-        if ((Partner & DUO_PHY_ADVERTISE_100_FULL) != 0) {
+    if (gDuoPhysicalOk &&
+        DuoMediaIndependentInterfaceRead(gDuoPhysicalAddress, DUO_PHYSICAL_LINK_PARTNER_ABILITY, &Partner) == 0) {
+        if ((Partner & DUO_PHYSICAL_ADVERTISE_100_FULL) != 0) {
             Speed100 = 1;
             FullDuplex = 1;
-        } else if ((Partner & DUO_PHY_ADVERTISE_100_HALF) != 0) {
+        } else if ((Partner & DUO_PHYSICAL_ADVERTISE_100_HALF) != 0) {
             Speed100 = 1;
             FullDuplex = 0;
-        } else if ((Partner & DUO_PHY_ADVERTISE_10_FULL) != 0) {
+        } else if ((Partner & DUO_PHYSICAL_ADVERTISE_10_FULL) != 0) {
             Speed100 = 0;
             FullDuplex = 1;
-        } else if ((Partner & DUO_PHY_ADVERTISE_10_HALF) != 0) {
+        } else if ((Partner & DUO_PHYSICAL_ADVERTISE_10_HALF) != 0) {
             Speed100 = 0;
             FullDuplex = 0;
         }
@@ -99,7 +99,7 @@ int DuoDmaStartWire(void) {
     *DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_OPERATION_MODE) = Operation;
     *DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_DMA_INTERRUPT_ENABLE) = 0u;
 
-    DuoMacAdjustFromPhy();
+    DuoMacAdjustFromPhysical();
 
     gDuoTransmitIndex = 0u;
     gDuoReceiveIndex = 0u;

@@ -1,7 +1,7 @@
 #include "Ethernet/Private.h"
 
 int DuoEthernetReady(void) {
-    return gDuoBound && gDuoDmaOk && DuoPhyLinkUp();
+    return gDuoBound && gDuoDmaOk && DuoPhysicalLinkUp();
 }
 
 void DuoEthernetGetMac(UINT8 Mac[6]) {

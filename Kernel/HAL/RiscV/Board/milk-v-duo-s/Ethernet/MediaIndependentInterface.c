@@ -1,6 +1,6 @@
 #include "Ethernet/Private.h"
 
-int DuoMiiWaitIdle(void) {
+int DuoMediaIndependentInterfaceWaitIdle(void) {
     UINT32 Index;
     for (Index = 0; Index < 100000u; Index++) {
         if ((*DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_MII_ADDRESS) & DUO_ETHERNET_MII_BUSY) ==
@@ -12,18 +12,18 @@ int DuoMiiWaitIdle(void) {
     return -1;
 }
 
-int DuoMiiRead(UINT32 PhyAddress, UINT32 RegisterIndex, UINT16 *OutValue) {
+int DuoMediaIndependentInterfaceRead(UINT32 PhysicalAddress, UINT32 RegisterIndex, UINT16 *OutValue) {
     UINT32 Command;
 
-    if (DuoMiiWaitIdle() != 0) {
+    if (DuoMediaIndependentInterfaceWaitIdle() != 0) {
         return -1;
     }
     Command = DUO_ETHERNET_MII_BUSY |
-              ((PhyAddress & 0x1Fu) << DUO_ETHERNET_MII_PHY_SHIFT) |
+              ((PhysicalAddress & 0x1Fu) << DUO_ETHERNET_MII_PHY_SHIFT) |
               ((RegisterIndex & 0x1Fu) << DUO_ETHERNET_MII_REGISTER_SHIFT) |
               (DUO_ETHERNET_MII_CLOCK_RANGE << DUO_ETHERNET_MII_CLOCK_RANGE_SHIFT);
     *DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_MII_ADDRESS) = Command;
-    if (DuoMiiWaitIdle() != 0) {
+    if (DuoMediaIndependentInterfaceWaitIdle() != 0) {
         return -1;
     }
     *OutValue =
@@ -31,17 +31,17 @@ int DuoMiiRead(UINT32 PhyAddress, UINT32 RegisterIndex, UINT16 *OutValue) {
     return 0;
 }
 
-int DuoMiiWrite(UINT32 PhyAddress, UINT32 RegisterIndex, UINT16 Value) {
+int DuoMediaIndependentInterfaceWrite(UINT32 PhysicalAddress, UINT32 RegisterIndex, UINT16 Value) {
     UINT32 Command;
 
-    if (DuoMiiWaitIdle() != 0) {
+    if (DuoMediaIndependentInterfaceWaitIdle() != 0) {
         return -1;
     }
     *DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_MII_DATA) = (UINT32)Value;
     Command = DUO_ETHERNET_MII_BUSY | DUO_ETHERNET_MII_WRITE |
-              ((PhyAddress & 0x1Fu) << DUO_ETHERNET_MII_PHY_SHIFT) |
+              ((PhysicalAddress & 0x1Fu) << DUO_ETHERNET_MII_PHY_SHIFT) |
               ((RegisterIndex & 0x1Fu) << DUO_ETHERNET_MII_REGISTER_SHIFT) |
               (DUO_ETHERNET_MII_CLOCK_RANGE << DUO_ETHERNET_MII_CLOCK_RANGE_SHIFT);
     *DuoRegister(DUO_ETHERNET_BASE + DUO_ETHERNET_MII_ADDRESS) = Command;
-    return DuoMiiWaitIdle();
+    return DuoMediaIndependentInterfaceWaitIdle();
 }

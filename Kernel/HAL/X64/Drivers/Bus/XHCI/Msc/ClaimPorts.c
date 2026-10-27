@@ -70,6 +70,21 @@ int ClaimPorts(void) {
 
     BootLog("Boot: MSC claim begin\n");
     HalBootLogoBump(80);
+    /* 调研：哪些根口 CCS（对表后上棒 vs 后下 hub） */
+    {
+        UINT32 Sp;
+
+        for (Sp = 1; Sp <= gMaxPorts && Sp <= 32u; Sp++) {
+            UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(Sp));
+
+            if (!(Ps & PORTSC_CCS)) {
+                continue;
+            }
+            BootLogHex("Boot: MSC claim survey ccs port=", Sp, 2);
+            BootLogHex("Boot: MSC claim survey portsc=", Ps, 8);
+            BootLogHex("Boot: MSC claim survey spd=", PortSpeed(Ps), 1);
+        }
+    }
     /*
      * excl-3：不再 FallbackToPoll("msc-claim")。
      * 事件环由 excl-1/2 单消费者 + 消费锁串行；claim 保持 dual/irq。
@@ -155,6 +170,10 @@ int ClaimPorts(void) {
                 if (gCdcClaimed && gCdcPort == P) {
                     continue;
                 }
+                /* btx-1 已软探的 HCI 口：勿再 Force/Address（曾把 boot-watch 钉到 E0→假 Gone） */
+                if (XhciBluetoothSeen() && P == XhciBluetoothRootPort()) {
+                    continue;
+                }
 
                 /*
                  * 已 PED：软 Address；未 PED / NeedForce：Force。
@@ -167,6 +186,7 @@ int ClaimPorts(void) {
                     continue;
                 }
                 if (!ForceUntilPed(P, &Force)) {
+                    BootLogHexV("Boot: MSC claim force-fail port=", P, 2);
                     continue;
                 }
                 /*
@@ -221,23 +241,9 @@ int ClaimPorts(void) {
     if (Sick) {
         BootLog("Boot: MSC claim abort (cmd sick)\n");
     }
-    if (!Ok && gMscBootWatchArm && gMscBootWatchPort != 0) {
-        BootLogHex("Boot: MSC boot-watch port=", gMscBootWatchPort, 2);
-    }
-
 done:
-    /*
-     * U 盘起 Arm 了 watch：claim 成功也继续盯 MSC 根口（常为 hub）。
-     * 旧逻辑成功即清 watch → hub 后 MSC 靠 Present；父 hub EP0 失败曾假在位，
-     * 整根拔无大窗。claim 失败路径仍靠 watch CCS。
-     */
-    if (Ok && gMscBootWatchArm && gMscPort != 0) {
-        gMscBootWatchPort = gMscPort;
-        BootLogHex("Boot: MSC boot-watch keep port=", gMscBootWatchPort, 2);
-    } else if (Ok) {
-        gMscBootWatchPort = 0;
-        gMscBootWatchArm = 0;
-    }
+    /* watch 钉/清见 XhciMscBootWatchAfterClaim；EnsureSecondary 勿对 freeze Hot */
+    XhciMscBootWatchAfterClaim(Ok);
     /*
      * sick：Recover + 重武装 HID，保持 Dual MSI。
      * 勿 FallbackToPoll——切 POLL 后鼠标轮询极卡（U 盘启 Claim 失败常见）。

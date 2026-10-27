@@ -119,6 +119,10 @@ void HalUsbMscArmBootWatch(int On) {
     UsbMscArmBootWatch(On);
 }
 
+int HalUsbPortEnumIsFrozen(void) {
+    return XhciPortEnumIsFrozen();
+}
+
 int HalUsbMscHotPoll(void) {
     return UsbMscHotPoll();
 }

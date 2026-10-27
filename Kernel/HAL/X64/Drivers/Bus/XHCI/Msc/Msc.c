@@ -156,37 +156,6 @@ static int Release(void) {
  *（仅当 gMscHubSlot==当前 HID hub，第二 hub 场景 Shell 手动 release）。
  * 调用方 HotPoll 须节流：2Hz GetPortStatus 会抢 HID 环（空拖规律顿）。
  */
-void XhciMscArmBootWatch(int On) {
-    gMscBootWatchArm = On ? 1 : 0;
-    if (!On) {
-        gMscBootWatchPort = 0;
-    }
-}
-
-/* 1=盯口已无 CCS；清 watch。OutPort 可空。 */
-int XhciMscBootWatchCcsLost(UINT32 *OutPort) {
-    UINT32 Ps;
-
-    if (gMscBootWatchPort == 0 || gOperationalBase == 0) {
-        return 0;
-    }
-    if (gMscBootWatchPort > gMaxPorts) {
-        gMscBootWatchPort = 0;
-        gMscBootWatchArm = 0;
-        return 0;
-    }
-    Ps = ReadMmio32(gOperationalBase + PortReg(gMscBootWatchPort));
-    if (Ps & PORTSC_CCS) {
-        return 0;
-    }
-    if (OutPort) {
-        *OutPort = gMscBootWatchPort;
-    }
-    gMscBootWatchPort = 0;
-    gMscBootWatchArm = 0;
-    return 1;
-}
-
 static int Present(void) {
     UINT32 Ps;
     UINT32 St;

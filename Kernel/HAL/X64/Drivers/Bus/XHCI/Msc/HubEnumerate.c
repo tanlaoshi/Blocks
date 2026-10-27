@@ -261,6 +261,7 @@ int EnumerateHubChildren(void) {
                 if (!(St & HUB_PORT_CONNECTION)) {
                     if (Pass == 1) {
                         BootLogHex("Boot: MSC claim hub empty port=", Port, 2);
+                        BootLogHex("Boot: MSC claim hub empty st=", St, 4);
                         HalBootLogoBump(91);
                     }
                     continue;

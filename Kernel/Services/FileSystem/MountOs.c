@@ -486,6 +486,15 @@ void FsUpdateBootMediumState(void) {
     }
 
     FsLatchMscBootDisk();
+    /*
+     * MSC 仍在 Mux 且 GPT==BootDiskGuid：棒还在。
+     * 卷表暂时缺该 GUID（claim 后首轮 FAT 未齐 / Activate 失败）≠ 拔出；
+     * 旧逻辑此处钉 Gone → 开机直接「启动盘已拔出」。
+     */
+    if (gMscIsBootDisk) {
+        gBootDiskSeen = 1;
+        return;
+    }
 
     if (!Info || !Info->BootDiskGuidOk) {
         return;

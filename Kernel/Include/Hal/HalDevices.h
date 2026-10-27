@@ -67,6 +67,7 @@ int HalUsbMscRelease(void);
 int HalUsbMscPollUnplug(void); /* 1=已认领 MSC 拔出（Release）；指针忙也可 */
 /* U 盘起、BootDisk 未挂：claim 前 Arm，失败后盯口 CCS 失根 */
 void HalUsbMscArmBootWatch(int On);
+int HalUsbPortEnumIsFrozen(void); /* 1=ClaimPorts 扫空/sick 已冻；EnsureSecondary 勿 Hot */
 int HalUsbMscHotPoll(void); /* 1=需 Remount（拔 Release 或插 Claim/Mount） */
 int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc hot */
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */

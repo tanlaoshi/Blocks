@@ -1,14 +1,15 @@
 /*
- * HalBluetooth.c — x86 蓝牙门面（bt-facade）
+ * HalBluetooth.c — x86 蓝牙门面（bt-facade / btx-1）
  *
- * 课轨硬件：NUC 板载蓝牙（实现上常见内部 USB HCI，挂现网 xHCI）。
- * 本刀只挂门面：无探针 → Ready=0。真枚举 / Reset / 扫 → btx-1…5。
+ * 课轨：NUC 板载蓝牙（常见内部 USB HCI，挂现网 xHCI）。
+ * btx-1：UsbInitialize 键鼠后调本函数 → XhciBluetoothProbe；Ready 仍 0 至 btx-3。
  */
 #include "Hal.h"
 #include "HalBluetooth.h"
+#include "XHCI.h"
 
 int HalBluetoothInitialize(void) {
-    /* 门面就位；控制器留给 btx-1 */
+    (void)XhciBluetoothProbe();
     return 0;
 }
 

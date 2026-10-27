@@ -258,17 +258,25 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
                 return 1;
             }
             /*
-             * USB2 hub 无 MSC：先保留。SS hub 上非 SS（HubPortSpeed≠4，
-             * 即 PORT_SPEED Reserved）的设备在双总线 USB2 侧，须再扫勿 Disable。
+             * USB2 hub 无 MSC：保留。
+             * SS hub 子口全空：也保留、勿 Disable——USB3 双总线下棒常在
+             * HS 伴生 hub（另一 xHCI 根口）。先 release 再扫会看不到伴生 CCS
+             *（本机：port=0x10 SS empty → release → claim none）。
              */
             if (HubBefore == 0 && gHubSlotId != 0 && gHubRootPort == P) {
                 if (Speed < 4) {
                     BootLog("Boot: MSC claim keep usb2 hub\n");
                 } else {
-                    DisableSlot(gHubSlotId);
-                    gHubSlotId = 0;
-                    gHubRootPort = 0;
-                    BootLog("Boot: MSC claim hub no msc, release\n");
+                    BootLog("Boot: MSC claim keep ss hub (scan companion roots)\n");
+                    if (ProbeCompanionRootHubs()) {
+                        *Ok = 1;
+                        return 1;
+                    }
+                }
+                /* hub 子口无棒：再扫其它根口直挂（后上棒 / 后下 hub） */
+                if (ProbeRootStorageAfterHub()) {
+                    *Ok = 1;
+                    return 1;
                 }
             }
         } else if (Was != 0) {

@@ -21,6 +21,7 @@
 #include "SerialLog.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
+#include "HalBluetooth.h"
 #include "HalDriverFile.h"
 #include "LogFile.h"
 #include "Desktop.h"
@@ -401,8 +402,14 @@ int FileSystemInitialize(void) {
         } else if (MscRc < 0) {
             LogBoot("Fs: msc/2 boot-claim abort\n");
         }
+        /*
+         * btx-1：MSC claim / freeze 后再软探 HCI。
+         * 放键鼠后、claim 前会 Address 邻口 → 假 Gone / 鼠键失灵（已踩过）。
+         */
+        (void)HalBluetoothInitialize();
     } else {
         LogBoot("Fs: msc/2 boot-claim skipped\n");
+        (void)HalBluetoothInitialize();
     }
 
     /*
@@ -450,10 +457,13 @@ void FileSystemEnsureSecondaryVolumes(void) {
     /*
      * 已认领 MSC（U 盘起常见）：勿 HalUsbMscHot——其首句 Unfreeze，
      * 会解开 port-enum 冻、再 Address 抢 xHCI，露光标后鼠死。
-     * 只 Remount 把旁路卷扫进表即可。
+     * claim 空同样 freeze（keep mouse）：再 Hot 会把 boot-watch 口 CCS
+     * 打毛刺 → 进桌面假「启动盘已拔出」。只 Remount 旁路卷；插盘用 msc hot。
      */
     if (HalUsbMscReady()) {
         LogFs("Fs: msc/3 secondary skip hot (msc ready)\n");
+    } else if (HalUsbPortEnumIsFrozen()) {
+        LogFs("Fs: msc/3 secondary skip hot (port enum freeze, keep mouse)\n");
     } else {
         HotRc = HalUsbMscHot();
         if (HotRc != 0) {

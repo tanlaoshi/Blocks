@@ -226,6 +226,8 @@ extern int gMscBootWatchArm;
 extern volatile UINT32 gMscBotBusy; /* 1：MscBot 进行中；HotPoll 勿 HubCtrl */
 void XhciMscArmBootWatch(int On);
 int XhciMscBootWatchCcsLost(UINT32 *OutPort);
+void XhciMscBootWatchClear(void);
+void XhciMscBootWatchAfterClaim(int Ok);
 extern UINT32 gMscBlockCount;
 extern UINT32 gMscBlockSize;
 extern int gMscCapacityOk;
@@ -489,6 +491,8 @@ int EnumerateHubChildren(void);
  * 保留第二 hub slot 作 gMscHubSlot 父；失败则 Disable 第二 hub 并恢复 HID hub。
  */
 int ProbeSecondHub(UINT32 HubSlot, UINT32 RootPort, UINT8 Speed);
+int ProbeCompanionRootHubs(void);
+int ProbeRootStorageAfterHub(void);
 int BringUp(void);
 int BulkTransfer(int DirIn, void *Buf, UINT32 Len);
 int ClaimPorts(void);

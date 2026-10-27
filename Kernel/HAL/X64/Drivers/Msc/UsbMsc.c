@@ -26,6 +26,7 @@ void FileSystemNotifyMscUnplug(void);
 void FileSystemNotifyBootWatchUnplug(void);
 void XhciMscArmBootWatch(int On);
 int XhciMscBootWatchCcsLost(UINT32 *OutPort);
+void XhciMscBootWatchClear(void);
 
 void BlockMscInstall(void); /* BlockMsc.c */
 
@@ -334,11 +335,23 @@ int UsbMscPollUnplug(void) {
     /*
      * U 盘起 boot-watch：claim 成败都盯根口 CCS（只读 PORTSC）。
      * hub 后 MSC claim 成功后仍 keep watch——整根拔时 Present 可能假在位。
+     * Ready 且 Present：CCS 毛刺忽略，保持 watch。
      */
     if (XhciMscBootWatchCcsLost(&WatchPort)) {
+        if (UsbMscReady()) {
+            H = CurHost();
+            Present = (H && H->Present) ? H->Present() : 0;
+            if (Present) {
+                LogFs("Fs: msc/4 watch CCS glitch ignored port=");
+                LogFsHex32(WatchPort);
+                LogFs("\n");
+                return 0;
+            }
+        }
         LogFs("Fs: msc/4 watch unplug port=");
         LogFsHex32(WatchPort);
         LogFs("\n");
+        XhciMscBootWatchClear();
         FileSystemNotifyBootWatchUnplug();
         if (UsbMscReady()) {
             FileSystemNotifyMscUnplug();
@@ -352,10 +365,22 @@ int UsbMscPollUnplug(void) {
     }
     H = CurHost();
     Present = (H && H->Present) ? H->Present() : 0;
-    if (Present) {
-        return 0;
+    {
+        static UINT32 sAbsentStreak;
+
+        if (Present) {
+            sAbsentStreak = 0;
+            return 0;
+        }
+        /* Present 单次 0：EP0/邻口毛刺；~5s×2 才 Release */
+        sAbsentStreak++;
+        if (sAbsentStreak < 2u) {
+            return 0;
+        }
+        sAbsentStreak = 0;
     }
     LogFs("Fs: msc/4 hot unplug\n");
+    XhciMscBootWatchClear();
     FileSystemNotifyMscUnplug();
     (void)UsbMscRelease();
     return 1;

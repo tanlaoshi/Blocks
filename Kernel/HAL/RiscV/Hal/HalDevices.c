@@ -137,6 +137,10 @@ void HalUsbMscArmBootWatch(int On) {
     (void)On;
 }
 
+int HalUsbPortEnumIsFrozen(void) {
+    return 0;
+}
+
 int HalUsbMscHotPoll(void) {
     return 0;
 }

@@ -89,6 +89,8 @@ void GuiApplyThemeColors(void);
 void GuiComposeThemeScene(void);
 /* 并 Gui 合成脏 AABB；下次 Refresh/Damage 只画这块（≠ HAL 脏） */
 void GuiMarkDamage(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
+/* TTF TakePaint：脏活动窗（含影）；返回脏窗数。0→Refresh 走 ThemeScene */
+int GuiMarkDamageActiveWindows(void);
 /* 按当前几何重画整窗（标题栏+客户区底）；不画 Shell 文字 / Settings 菜单 */
 void GuiPaintWindow(int Idx);
 void GuiBackupAllWindows(void);

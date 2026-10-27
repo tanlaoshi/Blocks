@@ -130,6 +130,19 @@ void FontTtfCacheDropCjkHits(void) {
     gPaintGen++;
 }
 
+void FontTtfCacheDropMisses(void) {
+    UINT32 i;
+
+    for (i = 0; i < TTF_CACHE_N; i++) {
+        if (gSlot[i].State == TTF_MISS) {
+            gSlot[i].State = TTF_EMPTY;
+            gSlot[i].Cp = 0;
+            gSlot[i].Side = 0;
+            gSlot[i].Adv = 0;
+        }
+    }
+}
+
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     TTF_SLOT *S;
 
@@ -139,8 +152,11 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     S = SlotLookup(Cp);
     if (S) {
         if (S->State == TTF_MISS) {
-            /* 早先失败（如 TTF 未 Init）→ 再排队，勿永久钉死 */
-            WantPush(Cp);
+            /*
+             * 真缺字勿再 Want：否则 Drain→Bump→ThemeScene 死循环叠半透栏
+             * （开 Settings 等字多的窗时栏很抖）。Init 前灌的 MISS 由
+             * FontTtfCacheDropMisses（FontTtfInit 后）清掉再画。
+             */
             return 0;
         }
         if (S->Side != FontTtfPixel()) {
@@ -204,13 +220,14 @@ int FontTtfCachePending(UINT32 Cp) {
 /*
  * NotifyPaint=1：屏上可能仍是 defer 空白，Gui 须再合成（Want 泵出 TTF）。
  * Preheat 填缓存勿 Notify：否则每字整屏 Refresh → 空桌面偶尔顿一下。
+ * 返回 1=本调用新成 HIT（供 WantDrain 决定是否 Bump）。
  */
-static void FillSlot(UINT32 Cp, int NotifyPaint) {
+static int FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
     UINT32 Side;
 
     if (!TtfCpOk(Cp)) {
-        return;
+        return 0;
     }
     Slot = SlotAlloc(Cp);
     Side = FontTtfPixel();
@@ -220,32 +237,33 @@ static void FillSlot(UINT32 Cp, int NotifyPaint) {
      * 若此处把 MISS 当「已填」则 Gui 二次预热永不再栅格（汉字一直缺字框）。
      */
     if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == Side) {
-        return;
+        return 0;
     }
     if (FontTtfRasterCp(Cp, Slot->Pix) != 0) {
         Slot->Cp = Cp;
         Slot->Side = Side;
         Slot->Adv = Side;
         Slot->State = TTF_MISS;
-    } else {
-        Slot->Cp = Cp;
-        Slot->Side = Side;
-        /* FT 有真实 advance 则用之；否则拉丁半格、汉字整格 */
-        Slot->Adv = FontFtLastAdvance();
-        if (Slot->Adv < 1u) {
-            Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
-        }
-        if (Slot->Adv < 1u) {
-            Slot->Adv = 1u;
-        }
-        if (Slot->Adv > Side) {
-            Slot->Adv = Side;
-        }
-        Slot->State = TTF_HIT;
-        if (NotifyPaint) {
-            gPaintGen++;
-        }
+        return 0;
     }
+    Slot->Cp = Cp;
+    Slot->Side = Side;
+    /* FT 有真实 advance 则用之；否则拉丁半格、汉字整格 */
+    Slot->Adv = FontFtLastAdvance();
+    if (Slot->Adv < 1u) {
+        Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
+    }
+    if (Slot->Adv < 1u) {
+        Slot->Adv = 1u;
+    }
+    if (Slot->Adv > Side) {
+        Slot->Adv = Side;
+    }
+    Slot->State = TTF_HIT;
+    if (NotifyPaint) {
+        gPaintGen++;
+    }
+    return 1;
 }
 
 /*
@@ -256,7 +274,7 @@ void FontTtfCacheEnsure(UINT32 Cp) {
     if (!TtfCpOk(Cp) || Cp >= 128u) {
         return;
     }
-    FillSlot(Cp, 0);
+    (void)FillSlot(Cp, 0);
 }
 
 static UINT32 gPaintSeen;
@@ -288,10 +306,14 @@ void FontTtfPreheatUtf8(const char *S) {
             break;
         }
         if (TtfCpOk(Cp)) {
-            FillSlot(Cp, 0);
+            (void)FillSlot(Cp, 0);
         }
         S += N;
     }
+}
+
+UINT32 FontTtfWantCount(void) {
+    return gWantN;
 }
 
 int FontTtfWantStep(void) {
@@ -309,22 +331,37 @@ int FontTtfWantStep(void) {
         }
     }
     /* NotifyPaint=0：整批 WantDrain 末尾统一 BumpPaint */
-    FillSlot(Cp, 0);
+    (void)FillSlot(Cp, 0);
     return gWantN > 0 ? 1 : 0;
 }
 
 UINT32 FontTtfWantDrain(UINT32 Max) {
     UINT32 N = 0;
+    UINT32 Hits = 0;
 
     if (Max == 0) {
         Max = 32u;
     }
     while (N < Max && gWantN > 0) {
-        (void)FontTtfWantStep();
+        UINT32 Cp = gWant[0];
+
+        gWantN--;
+        {
+            UINT32 w;
+            for (w = 0; w < gWantN; w++) {
+                gWant[w] = gWant[w + 1];
+            }
+        }
+        if (FillSlot(Cp, 0)) {
+            Hits++;
+        }
         N++;
     }
-    /* cjk-3：本批灌进 HIT 后喊一声，Gui 闲时合成补 defer 空白 */
-    if (N > 0u) {
+    /*
+     * 队列抽干且本批确有新 HIT 才 Bump。纯 MISS 抽干勿 Bump——否则
+     * 开窗 ThemeScene 再画缺字 → Want→Drain→Bump 死循环抖半透栏。
+     */
+    if (Hits > 0u && gWantN == 0u) {
         FontTtfBumpPaint();
     }
     return N;

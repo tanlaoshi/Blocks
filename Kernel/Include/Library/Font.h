@@ -73,6 +73,8 @@ int FontFtReady(void);
 void FontTtfCacheDropHits(void);
 /* 仅丢汉字 HIT，供 FT 就绪后升级锐化，不动拉丁槽 */
 void FontTtfCacheDropCjkHits(void);
+/* Init 前灌的 MISS 清成 EMPTY，便于 TTF 就绪后再栅 */
+void FontTtfCacheDropMisses(void);
 int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH);
 /* 最近一次 FontFtRasterCp 成功的像素步进；未走 FT / 已 Clear 为 0 */
 UINT32 FontFtLastAdvance(void);
@@ -90,8 +92,10 @@ void FontTtfCacheEnsure(UINT32 Cp);
 void FontTtfPreheatUtf8(const char *S);
 /* Worker：泵绘制路径排队的缺字；1=仍有排队 */
 int FontTtfWantStep(void);
-/* Worker：一次抽干最多 Max 个 Want（0→32）；有抽则 BumpPaint */
+/* Worker：一次抽干最多 Max 个 Want（0→32）；队列空才 BumpPaint */
 UINT32 FontTtfWantDrain(UINT32 Max);
+/* 仍排队待栅格的码位数（TickClock 勿在未抽干时全桌 Refresh） */
+UINT32 FontTtfWantCount(void);
 /* 1=有新 HIT 待合成；Ack 前可反复查。合成后 Ack。 */
 int FontTtfTakePaint(void);
 void FontTtfAckPaint(void);

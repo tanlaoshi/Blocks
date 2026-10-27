@@ -162,6 +162,32 @@ static void PaintOne(int Idx, int SavedFocus) {
     BackupWindowAtEx(Idx, 1);
 }
 
+int GuiMarkDamageActiveWindows(void) {
+    int i;
+    int N = 0;
+
+    for (i = 0; i < MAX_WINS; i++) {
+        GUI_WINDOW *Win;
+        UINT32 Wx;
+        UINT32 Wy;
+        UINT32 Ww;
+        UINT32 Wh;
+
+        if (!gGuiWindowManager.Windows[i].Active) {
+            continue;
+        }
+        Win = &gGuiWindowManager.Windows[i];
+        Wx = Win->X;
+        Wy = Win->Y;
+        Ww = Win->Width;
+        Wh = Win->Height;
+        ExpandRectByWindowShadow(&Wx, &Wy, &Ww, &Wh);
+        GuiMarkDamage(Wx, Wy, Ww, Wh);
+        N++;
+    }
+    return N;
+}
+
 void GuiComposeDamage(void) {
     UINT32 X;
     UINT32 Y;

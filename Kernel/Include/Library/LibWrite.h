@@ -12,5 +12,7 @@ void LibWriteRegister(void (*Write)(const char *Text));
 void LibWrite(const char *Text);
 void LibWriteHex32(UINT32 Value);
 void LibWriteHex64(UINT64 Value);
+/* Remount / Secondary：静音 block:/FS: FAT 刷屏（勿盖过开机首挂） */
+void LibWriteSetQuiet(int On);
 
 #endif

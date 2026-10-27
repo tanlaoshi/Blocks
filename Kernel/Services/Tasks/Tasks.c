@@ -177,7 +177,7 @@ void WorkerTask(void) {
             if (LocaleTtfPreheatStep()) {
                 SchedulerIoBreath();
             }
-            /* 屏上 defer：每圈少抽几个；有 HIT 则 BumpPaint → 闲时合成 */
+            /* 屏上 defer：每圈少抽；队列抽干才 BumpPaint → 闲时合成（防栏哆嗦） */
             if (FontTtfWantDrain(GuiCursorUsbReady() ? 8u : 16u) != 0) {
                 SchedulerIoBreath();
             }

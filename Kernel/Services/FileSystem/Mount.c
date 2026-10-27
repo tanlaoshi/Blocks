@@ -12,6 +12,7 @@
 #include "Block.h"
 #include "BlockMux.h"
 #include "Gpt.h"
+#include "LibWrite.h"
 #include "SerialLog.h"
 #include "HalDevices.h"
 
@@ -85,18 +86,28 @@ int MountAllVolumes(void) {
 }
 
 int FileSystemRemountVolumes(void) {
+    int Ok;
+
     /*
      * 勿再 HalBlockInitialize()/ProbeClass：会重绑 AHCI 冲掉已装的 BlockMux。
      * 后端已在时只 BlockInitialize 重 Probe（Mux 会挂上 MSC 盘号）。
+     * Secondary/热拔在 Blocks> 之后：静音 block:/FS: FAT，免刷进提示符后。
      */
+    LibWriteSetQuiet(1);
     if (!BlockBackendReady()) {
         if (HalBlockInitialize() <= 0) {
+            LibWriteSetQuiet(0);
             LogFs("Fs: Remount No Block Backend\n");
+            return 0;
         }
     } else if (BlockInitialize() <= 0) {
+        LibWriteSetQuiet(0);
         LogFs("Fs: Remount BlockInitialize Found 0 Drives\n");
+        return 0;
     }
-    if (!MountAllVolumes()) {
+    Ok = MountAllVolumes();
+    LibWriteSetQuiet(0);
+    if (!Ok) {
         LogFs("Fs: Remount No Volumes\n");
         /* MountAll 已 UpdateBootMedium；此处再调幂等，保 Gone 可见 */
         FsUpdateBootMediumState();

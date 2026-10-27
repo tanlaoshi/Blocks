@@ -136,11 +136,11 @@ int FontTtfInit(void) {
     gInit = 0;
     gInitMask = 0;
     if (!HalFpuOk()) {
-        LogBoot("Boot: ttf init skip\n");
+        LogDrv("Boot: ttf init skip\n");
         return -1;
     }
     if (!HalFpuBegin()) {
-        LogBoot("Boot: ttf init skip\n");
+        LogDrv("Boot: ttf init skip\n");
         return -1;
     }
     for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
@@ -158,13 +158,15 @@ int FontTtfInit(void) {
     }
     HalFpuEnd();
     if (!Any) {
-        LogBoot("Boot: ttf init fail\n");
+        LogDrv("Boot: ttf init fail\n");
         return -1;
     }
     gInit = 1;
-    LogBoot("Boot: ttf init ok slots=");
-    LogBootHex32(gInitMask);
-    LogBoot("\n");
+    /* SESSION 早预热可能灌满 MISS；清掉才能在就绪后再栅 */
+    FontTtfCacheDropMisses();
+    LogDrv("Boot: ttf init ok slots=");
+    LogDrvHex32(gInitMask);
+    LogDrv("\n");
     return 0;
 }
 
@@ -180,11 +182,11 @@ int FontTtfMonoInit(void) {
     gMonoAdv = 0;
     Blob = FontTtfMonoBlob(&Size);
     if (!Blob || Size < 12u || !HalFpuOk() || !gInit) {
-        LogBoot("Boot: ttf-mono init skip\n");
+        LogDrv("Boot: ttf-mono init skip\n");
         return -1;
     }
     if (!HalFpuBegin()) {
-        LogBoot("Boot: ttf-mono init skip\n");
+        LogDrv("Boot: ttf-mono init skip\n");
         return -1;
     }
     gArenaUsed = 0;
@@ -205,11 +207,11 @@ int FontTtfMonoInit(void) {
     }
     HalFpuEnd();
     if (!Ok) {
-        LogBoot("Boot: ttf-mono init fail\n");
+        LogDrv("Boot: ttf-mono init fail\n");
         return -1;
     }
     gMonoInit = 1;
-    LogBoot("Boot: ttf-mono init ok\n");
+    LogDrv("Boot: ttf-mono init ok\n");
     return 0;
 }
 
@@ -649,7 +651,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
 #else
 
 int FontTtfInit(void) {
-    LogBoot("Boot: ttf init skip\n");
+    LogDrv("Boot: ttf init skip\n");
     return -1;
 }
 

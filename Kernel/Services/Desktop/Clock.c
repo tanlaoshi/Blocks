@@ -16,6 +16,7 @@
 #include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
 #include "FilesUi.h"
 #include "FileSystem.h"
+#include "Font.h"
 #include "Locale.h"
 #include "SerialLog.h"
 #include "Hal.h"
@@ -177,13 +178,19 @@ void DesktopBootMediumGoneShutdown(void) {
     /*
      * 锁输入；按 RTC 秒跳倒数（勿用 HalTicksPerSec——NUC 上 250 拍/s 与墙钟不符，
      * 曾见 1 墙钟秒跳 2 个数）。
+     * 同步灌 TTF：关机大窗不走 Gui WantDrain；且 Gone 后门面拒 Ensure → 否则整屏方框。
      */
     GuiInputLock(1);
     GuiCursorHide();
     HalVideoClearClip();
+    FontTtfPreheatUtf8(Title);
+    FontTtfPreheatUtf8(Body);
+    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_BEFORE));
+    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_AFTER));
 
     for (Left = BOOT_GONE_SECS; Left >= 1u; Left--) {
         BootGoneBuildCount(CountLine, sizeof(CountLine), Left);
+        FontTtfPreheatUtf8(CountLine);
         BootGonePaint(Title, Body, CountLine);
         while (HalMouseDequeue(&Mouse)) {
         }
@@ -375,13 +382,16 @@ void DesktopTickClock(void) {
     }
 
     /*
-     * cjk-3：指针已闲才合成。WantDrain/Preheat 灌 HIT 后 BumpPaint；
-     * RequestRefresh 补 defer 空白后 return——勿再抬 sClockBarNeedPaint 重画栏
-     * （曾与 Refresh 叠绘 → 任务栏哆嗦）。
+     * cjk-3：指针已闲才合成。Want 抽干后才 BumpPaint；此处 Refresh 补 defer。
+     * 队列未空勿全桌 Refresh（半透栏叠绘 → 哆嗦）；勿再抬 sClockBarNeedPaint。
+     * 有窗：只脏窗矩形（ComposeDamage），避免 ThemeScene 反复叠半透栏。
      */
     if (FontTtfTakePaint()) {
         FontTtfAckPaint();
-        RequestRefresh();
+        if (FontTtfWantCount() == 0u) {
+            (void)GuiMarkDamageActiveWindows();
+            RequestRefresh();
+        }
         return;
     }
 

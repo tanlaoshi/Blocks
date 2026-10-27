@@ -7,13 +7,18 @@
 #include "Text.h"
 
 static void (*gLibWrite)(const char *Text);
+static int gLibWriteQuiet;
 
 void LibWriteRegister(void (*Write)(const char *Text)) {
     gLibWrite = Write;
 }
 
+void LibWriteSetQuiet(int On) {
+    gLibWriteQuiet = On ? 1 : 0;
+}
+
 void LibWrite(const char *Text) {
-    if (!Text || !gLibWrite) {
+    if (!Text || !gLibWrite || gLibWriteQuiet) {
         return;
     }
     gLibWrite(Text);

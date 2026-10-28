@@ -874,6 +874,18 @@ $(HALDIR)/Hal/HalFpuFp.o: HAL/Arm64/Hal/HalFpuFp.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_FPU) -c $< -o $@
 endif
 
+# Pi 无电池 RTC：每次编注入宿主机本地时刻（东八课堂），避免旧 .o 卡在编译日 03:xx
+ifeq ($(ARCH),arm64)
+RTC_SEED_FLAGS = -DTOY_RTC_SEED_YEAR=$(shell date +%Y) \
+	-DTOY_RTC_SEED_MONTH=$(shell date +%-m) \
+	-DTOY_RTC_SEED_DAY=$(shell date +%-d) \
+	-DTOY_RTC_SEED_HOUR=$(shell date +%-H) \
+	-DTOY_RTC_SEED_MINUTE=$(shell date +%-M) \
+	-DTOY_RTC_SEED_SECOND=$(shell date +%-S)
+$(HALDIR)/Platform.o: HAL/$(HAL_ARCH)/Platform.c FORCE | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) $(RTC_SEED_FLAGS) -c $< -o $@
+endif
+
 $(HALDIR)/%.o: HAL/$(HAL_ARCH)/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 

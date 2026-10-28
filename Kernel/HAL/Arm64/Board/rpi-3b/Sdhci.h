@@ -40,8 +40,9 @@
 
 #define SDHCI_CMD_INHIBIT    (1u << 0)
 #define SDHCI_DATA_INHIBIT   (1u << 1)
-#define SDHCI_DATA_AVAILABLE (1u << 11)
-#define SDHCI_CARD_PRESENT   (1u << 16)
+#define SDHCI_SPACE_AVAILABLE (1u << 10) /* Buffer Write Enable */
+#define SDHCI_DATA_AVAILABLE  (1u << 11) /* Buffer Read Enable */
+#define SDHCI_CARD_PRESENT    (1u << 16)
 
 #define SDHCI_POWER_ON       0x01u
 #define SDHCI_POWER_330      0x0Eu
@@ -54,10 +55,11 @@
 #define SDHCI_RESET_CMD      0x02u
 #define SDHCI_RESET_DATA     0x04u
 
-#define SDHCI_INT_RESPONSE   (1u << 0)
-#define SDHCI_INT_DATA_END   (1u << 1)
-#define SDHCI_INT_DATA_AVAIL (1u << 5)
-#define SDHCI_INT_ERROR      (1u << 15)
+#define SDHCI_INT_RESPONSE    (1u << 0)
+#define SDHCI_INT_DATA_END    (1u << 1)
+#define SDHCI_INT_SPACE_AVAIL (1u << 4)
+#define SDHCI_INT_DATA_AVAIL  (1u << 5)
+#define SDHCI_INT_ERROR       (1u << 15)
 
 #define SDHCI_TRNS_BLK_CNT_EN (1u << 1)
 #define SDHCI_TRNS_READ      (1u << 4)

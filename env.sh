@@ -5,9 +5,10 @@
 #
 #   build                           # x64 Kernel（默认）
 #   build arm64                     # QEMU virt（默认 BOARD=virt）
-#   build arm64 BOARD=rpi-3b LWIP=0
-#   build arm64 BOARD=virt          # 切回课堂靶后再 run-virt-arm
-#   build riscv BOARD=milk-v-duo-s
+#   build arm64 pi                  # → BOARD=rpi-3b（短名；等同 BOARD=rpi-3b）
+#   build riscv duo                 # → BOARD=milk-v-duo-s
+#   build arm64 virt                # 切回课堂靶后再 run-virt-arm
+#   build arm64 BOARD=rpi-3b        # 仍可用全名
 #   boot                            # Boot → BOOTX64.EFI
 #   sync / sync usb|nuc|kernel
 #   run / smoke                     # x64 QEMU
@@ -103,21 +104,31 @@ boards() {
     (cd "$KERNEL" && make ARCH="$Arch" boards)
 }
 
-# U-Boot 用扁平二进制。用法：kernel-bin arm64 BOARD=rpi-3b
+# U-Boot 用扁平二进制。用法：kernel-bin arm64 pi | kernel-bin riscv duo
 kernel-bin() {
     local Arch=arm64
     local Board=virt
+    local ArchSet=0
     local A
     for A in "$@"; do
         case "$A" in
-            arm64|aarch64) Arch=arm64 ;;
-            riscv|riscv64) Arch=riscv ;;
+            arm64|aarch64) Arch=arm64; ArchSet=1 ;;
+            riscv|riscv64) Arch=riscv; ArchSet=1 ;;
+            x86_64|x64) Arch=x86_64; ArchSet=1 ;;
             BOARD=*) Board="${A#BOARD=}" ;;
+            pi|rpi|3b|rpi3b|rpi-3b)
+                Board=rpi-3b
+                if [ "$ArchSet" = 0 ]; then Arch=arm64; ArchSet=1; fi
+                ;;
+            duo|duo-s|milkv|milk-v-duo-s)
+                Board=milk-v-duo-s
+                if [ "$ArchSet" = 0 ]; then Arch=riscv; ArchSet=1; fi
+                ;;
+            virt) Board=virt ;;
             *=*) ;;
             *)
-                if [ -n "$A" ]; then
-                    Arch="$A"
-                fi
+                echo "error: kernel-bin unknown arg: $A" >&2
+                return 1
                 ;;
         esac
     done

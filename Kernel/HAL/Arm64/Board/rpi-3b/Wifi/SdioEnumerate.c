@@ -190,3 +190,24 @@ int WifiSdioEnableFunction1(void) {
     HalSerialBootMark("Boot: Pi WIFI F1 not ready\n");
     return -1;
 }
+
+int WifiSdioEnableFunction2(void) {
+    UINT8 Value = 0;
+
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR2_BLOCK_SIZE,
+                               (UINT8)(WIFI_WLAN_BLOCK_BYTES & 0xFFu)) != 0 ||
+        WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR2_BLOCK_SIZE + 1u,
+                               (UINT8)((WIFI_WLAN_BLOCK_BYTES >> 8) & 0xFFu)) != 0) {
+        HalSerialBootMark("Boot: Pi WIFI FBR2 blk fail\n");
+        return -1;
+    }
+    if (WifiSdioCommand52Read(SDIO_FUNCTION_0, SDIO_CCCR_IO_ENABLE, &Value) != 0) {
+        return -1;
+    }
+    Value = (UINT8)(Value | (1u << SDIO_FUNCTION_1) | (1u << SDIO_FUNCTION_2));
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_CCCR_IO_ENABLE, Value) != 0) {
+        HalSerialBootMark("Boot: Pi WIFI F2 enable fail\n");
+        return -1;
+    }
+    return 0;
+}

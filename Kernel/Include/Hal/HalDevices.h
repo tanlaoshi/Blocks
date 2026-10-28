@@ -73,15 +73,25 @@ int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc h
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */
 int HalUsbUartClaim(void);
 int HalUsbUartReady(void);
-/* PR-N-wifi-1：USB RTL8188EU；非 x86 空操作。没登记时返回 0 */
+/* PR-N-wifi-1 / pwifi-2：板载或 USB WiFi；没登记时返回 0 / -1 */
 typedef struct {
     int (*Claim)(void);
     int (*Ready)(void);
+    int (*Scan)(void); /* 0=ok */
+    UINT32 (*ScanCount)(void);
+    int (*ScanEntryAt)(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
+                       UINT16 *ChannelOut);
+    int (*AssociateOpen)(const char *Ssid);
 } HAL_WIFI_OPS;
 
 void HalWifiSetOps(const HAL_WIFI_OPS *Ops);
 int HalWifiClaim(void);
 int HalWifiReady(void);
+int HalWifiScan(void);
+UINT32 HalWifiScanCount(void);
+int HalWifiScanEntryAt(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
+                       UINT16 *ChannelOut);
+int HalWifiAssociateOpen(const char *Ssid);
 /* PR-N-wifi-1：NUC iwl8265；非 x86 空操作。没登记时这四个返回 0 */
 typedef struct {
     int (*Claim)(void);

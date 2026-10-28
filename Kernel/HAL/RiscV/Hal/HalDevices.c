@@ -165,6 +165,29 @@ int HalWifiReady(void) {
     return 0;
 }
 
+int HalWifiScan(void) {
+    return -1;
+}
+
+UINT32 HalWifiScanCount(void) {
+    return 0;
+}
+
+int HalWifiScanEntryAt(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
+                       UINT16 *ChannelOut) {
+    (void)Index;
+    (void)SsidOut;
+    (void)SsidCapacity;
+    (void)RssiOut;
+    (void)ChannelOut;
+    return -1;
+}
+
+int HalWifiAssociateOpen(const char *Ssid) {
+    (void)Ssid;
+    return -1;
+}
+
 int HalIwlClaim(void) {
     return 0;
 }

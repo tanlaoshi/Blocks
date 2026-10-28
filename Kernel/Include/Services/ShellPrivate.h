@@ -10,6 +10,7 @@
 
 void ShellCommandsUsbRegister(void);
 void ShellCommandsBluetoothRegister(void);
+void ShellCommandsWifiRegister(void);
 void ShellCommandsNetRegister(void);
 void ShellCommandsNetAddrRegister(void);
 void ShellCommandsNetUdpRegister(void);

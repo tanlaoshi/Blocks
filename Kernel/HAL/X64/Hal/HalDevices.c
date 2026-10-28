@@ -180,6 +180,35 @@ int HalWifiReady(void) {
     return gWifiOps.Ready();
 }
 
+int HalWifiScan(void) {
+    if (gWifiOps.Scan == 0) {
+        return -1;
+    }
+    return gWifiOps.Scan();
+}
+
+UINT32 HalWifiScanCount(void) {
+    if (gWifiOps.ScanCount == 0) {
+        return 0;
+    }
+    return gWifiOps.ScanCount();
+}
+
+int HalWifiScanEntryAt(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
+                       UINT16 *ChannelOut) {
+    if (gWifiOps.ScanEntryAt == 0) {
+        return -1;
+    }
+    return gWifiOps.ScanEntryAt(Index, SsidOut, SsidCapacity, RssiOut, ChannelOut);
+}
+
+int HalWifiAssociateOpen(const char *Ssid) {
+    if (gWifiOps.AssociateOpen == 0) {
+        return -1;
+    }
+    return gWifiOps.AssociateOpen(Ssid);
+}
+
 /* PR-N-wifi-1 / PR-BOOT-fast-3：放行后 PCI+BAR；FW/关联仍走 Worker BgPump；无卡 0 */
 static HAL_IWL_OPS gIwlOps;
 

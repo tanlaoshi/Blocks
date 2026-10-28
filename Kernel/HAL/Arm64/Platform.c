@@ -104,6 +104,7 @@ static void SoftAddSeconds(UINT16 *Year, UINT8 *Month, UINT8 *Day,
     }
 }
 
+#if !defined(TOY_RTC_SEED_YEAR)
 static int SoftMonth(const char *Mon3) {
     static const char *Names = "JanFebMarAprMayJunJulAugSepOctNovDec";
     int i;
@@ -115,34 +116,50 @@ static int SoftMonth(const char *Mon3) {
     }
     return 10;
 }
+#endif
 
 static void SoftRtcEnsure(void) {
-    const char *D = __DATE__; /* "Mmm dd yyyy" */
-    const char *T = __TIME__; /* "hh:mm:ss" */
-    int Mo;
-
     if (gRtcInited) {
         return;
     }
     /*
-     * 无板载 RTC/NTP：种子 = 编译时刻（本地），CNTV 推进。
-     * 编完即 CK 则接近墙上钟；久置会漂。Settings/NTP 另刀。
+     * 无板载 RTC/NTP：种子优先 Makefile 注入的宿主机本地时刻
+     *（每次编 Platform.o 刷新）；否则退回 __DATE__/__TIME__。
+     * CNTV 推进；久置会漂。Settings/NTP 另刀。
      */
-    Mo = SoftMonth(D);
-    gSeedYear = (UINT16)((D[7] - '0') * 1000 + (D[8] - '0') * 100 +
-                         (D[9] - '0') * 10 + (D[10] - '0'));
-    gSeedMonth = (UINT8)Mo;
-    gSeedDay = (UINT8)((D[4] == ' ' ? 0 : (D[4] - '0')) * 10 + (D[5] - '0'));
-    gSeedHour = (UINT8)((T[0] - '0') * 10 + (T[1] - '0'));
-    gSeedMinute = (UINT8)((T[3] - '0') * 10 + (T[4] - '0'));
-    gSeedSecond = (UINT8)((T[6] - '0') * 10 + (T[7] - '0'));
+#if defined(TOY_RTC_SEED_YEAR)
+    gSeedYear = (UINT16)TOY_RTC_SEED_YEAR;
+    gSeedMonth = (UINT8)TOY_RTC_SEED_MONTH;
+    gSeedDay = (UINT8)TOY_RTC_SEED_DAY;
+    gSeedHour = (UINT8)TOY_RTC_SEED_HOUR;
+    gSeedMinute = (UINT8)TOY_RTC_SEED_MINUTE;
+    gSeedSecond = (UINT8)TOY_RTC_SEED_SECOND;
+#else
+    {
+        const char *D = __DATE__; /* "Mmm dd yyyy" */
+        const char *T = __TIME__; /* "hh:mm:ss" */
+        int Mo = SoftMonth(D);
+
+        gSeedYear = (UINT16)((D[7] - '0') * 1000 + (D[8] - '0') * 100 +
+                             (D[9] - '0') * 10 + (D[10] - '0'));
+        gSeedMonth = (UINT8)Mo;
+        gSeedDay = (UINT8)((D[4] == ' ' ? 0 : (D[4] - '0')) * 10 + (D[5] - '0'));
+        gSeedHour = (UINT8)((T[0] - '0') * 10 + (T[1] - '0'));
+        gSeedMinute = (UINT8)((T[3] - '0') * 10 + (T[4] - '0'));
+        gSeedSecond = (UINT8)((T[6] - '0') * 10 + (T[7] - '0'));
+    }
+#endif
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(gRtcFreq));
     if (gRtcFreq == 0) {
         gRtcFreq = 19200000ULL; /* BCM2837 常见 19.2MHz */
     }
     __asm__ volatile("mrs %0, cntvct_el0" : "=r"(gRtcBaseCnt));
     gRtcInited = 1;
+#if defined(TOY_RTC_SEED_YEAR)
+    HalSerialBootMark("Boot: RTC soft CNTV seed=host date\n");
+#else
     HalSerialBootMark("Boot: RTC soft CNTV seed=__DATE__/__TIME__\n");
+#endif
 }
 
 int HalRtcGetTime(UINT16 *Year, UINT8 *Month, UINT8 *Day,

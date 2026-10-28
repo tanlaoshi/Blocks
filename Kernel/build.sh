@@ -43,12 +43,15 @@ export BUILDDIR
 #   ./build.sh arm64 BOARD=virt
 #   ./build.sh arm64 BOARD=rpi-3b LWIP=0
 #   ./build.sh riscv BOARD=milk-v-duo-s
+#   ./build.sh arm64 pi          # 短名 → BOARD=rpi-3b
+#   ./build.sh riscv duo         # 短名 → BOARD=milk-v-duo-s
 #   ./build.sh arm64 LWIP=0      # 显式关（默认已自动关）
 #   ./build.sh V=1          # 打印每条 gcc/ld；默认只留警告、错误和结果
 #
 # 日常推荐（仓库根）：
 #   source ~/Blocks/env.sh
-#   build arm64 BOARD=rpi-3b LWIP=0
+#   build arm64 pi
+#   build riscv duo
 #   run-virt-arm --headless
 
 # 仅打用户态 SDK（离树分发）；其余参数忽略
@@ -89,6 +92,7 @@ DEMO_DRIVER=1
 KERNEL_TASK_DEMO=0
 BRINGUP=
 QUIET=1
+ARCH_SET=0
 for Arg in "$@"; do
     case "$Arg" in
         DEBUG=1|debug=1) DEBUG=1 ;;
@@ -129,7 +133,25 @@ for Arg in "$@"; do
         BRINGUP=1|bringup=1) BRINGUP=1 ;;
         BRINGUP=0|bringup=0) BRINGUP=0 ;;
         BOARD=*) BOARD="${Arg#BOARD=}" ;;
-        *) ARCH="$Arg" ;;
+        # 架构
+        x86_64|x64|amd64) ARCH=x86_64; ARCH_SET=1 ;;
+        arm64|aarch64) ARCH=arm64; ARCH_SET=1 ;;
+        riscv|riscv64) ARCH=riscv; ARCH_SET=1 ;;
+        # 板包短名（勿再写 rpi-3b / milk-v-duo-s）
+        pi|rpi|3b|rpi3b|rpi-3b)
+            BOARD=rpi-3b
+            if [ "$ARCH_SET" = 0 ]; then ARCH=arm64; ARCH_SET=1; fi
+            ;;
+        duo|duo-s|milkv|milk-v-duo-s)
+            BOARD=milk-v-duo-s
+            if [ "$ARCH_SET" = 0 ]; then ARCH=riscv; ARCH_SET=1; fi
+            ;;
+        virt) BOARD=virt ;;
+        *)
+            echo "error: unknown build arg: $Arg" >&2
+            echo "  arch: x86_64|arm64|riscv   board: pi|duo|virt|BOARD=…" >&2
+            exit 1
+            ;;
     esac
 done
 

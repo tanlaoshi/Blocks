@@ -1,5 +1,5 @@
 /*
- * Wifi.c — Pi3B WiFi 门面：探针 + HalWifi ops（pwifi-1）
+ * Wifi.c — Pi3B WiFi 门面：探针 + 灌片 + HalWifi ops（pwifi-1/2）
  */
 #include "Wifi/Private.h"
 #include "HalDevices.h"
@@ -8,14 +8,22 @@ static int WifiOpsClaim(void) {
     if (!gWifiChipProbed) {
         return 0;
     }
-    /* FS 就绪后 Claim 才看得见盘上固件；启动瞬间 miss 不挡有芯 */
+    if (gWifiFirmwareLoaded) {
+        return 1;
+    }
     WifiFirmwarePathProbe();
+    if (!gWifiFirmwarePresent) {
+        return 1; /* 有芯；固件后补 */
+    }
+    if (WifiFirmwareLoad() != 0) {
+        return 1;
+    }
+    (void)WifiRadioBringUp();
     return 1;
 }
 
 static int WifiOpsReady(void) {
-    /* 本刀：有芯即 Ready；无芯绝不谎称。固件灌片 / 关联 → pwifi-2 */
-    return gWifiChipProbed ? 1 : 0;
+    return (gWifiChipProbed && gWifiFirmwareLoaded) ? 1 : 0;
 }
 
 int BoardWifiClaim(void) {
@@ -24,6 +32,64 @@ int BoardWifiClaim(void) {
 
 int BoardWifiReady(void) {
     return WifiOpsReady();
+}
+
+int BoardWifiScan(void) {
+    return WifiScanAccessPoints();
+}
+
+int BoardWifiAssociateOpen(const char *Ssid) {
+    return WifiAssociateOpen(Ssid);
+}
+
+UINT32 BoardWifiScanEntryCount(void) {
+    return gWifiScanEntryCount;
+}
+
+const BOARD_WIFI_SCAN_ENTRY *BoardWifiScanEntryAt(UINT32 Index) {
+    if (Index >= gWifiScanEntryCount) {
+        return 0;
+    }
+    return &gWifiScanEntries[Index];
+}
+
+static int WifiOpsScan(void) {
+    return WifiScanAccessPoints();
+}
+
+static UINT32 WifiOpsScanCount(void) {
+    return gWifiScanEntryCount;
+}
+
+static int WifiOpsScanEntryAt(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
+                              UINT16 *ChannelOut) {
+    const BOARD_WIFI_SCAN_ENTRY *Entry;
+    UINT32 Copy;
+    UINT32 ByteIndex;
+
+    Entry = BoardWifiScanEntryAt(Index);
+    if (Entry == 0 || SsidOut == 0 || SsidCapacity == 0) {
+        return -1;
+    }
+    Copy = Entry->SsidLength;
+    if (Copy >= SsidCapacity) {
+        Copy = SsidCapacity - 1u;
+    }
+    for (ByteIndex = 0; ByteIndex < Copy; ByteIndex++) {
+        SsidOut[ByteIndex] = Entry->Ssid[ByteIndex];
+    }
+    SsidOut[Copy] = 0;
+    if (RssiOut != 0) {
+        *RssiOut = Entry->SignalRssi;
+    }
+    if (ChannelOut != 0) {
+        *ChannelOut = Entry->Channel;
+    }
+    return 0;
+}
+
+static int WifiOpsAssociateOpen(const char *Ssid) {
+    return WifiAssociateOpen(Ssid);
 }
 
 static int WifiProbeOnce(void) {
@@ -47,7 +113,7 @@ static int WifiProbeOnce(void) {
         const char *Path = WifiFirmwarePathForChip();
         HalSerialBootMark("Boot: Pi WIFI fw path=");
         HalSerialBootMark(Path ? Path : "(none)");
-        HalSerialBootMark(" (Claim checks disk)\n");
+        HalSerialBootMark(" (load after FS)\n");
     }
     return 0;
 }
@@ -56,6 +122,10 @@ void BoardWifiRegister(void) {
     static const HAL_WIFI_OPS Ops = {
         .Claim = WifiOpsClaim,
         .Ready = WifiOpsReady,
+        .Scan = WifiOpsScan,
+        .ScanCount = WifiOpsScanCount,
+        .ScanEntryAt = WifiOpsScanEntryAt,
+        .AssociateOpen = WifiOpsAssociateOpen,
     };
 
     HalWifiSetOps(&Ops);

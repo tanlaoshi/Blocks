@@ -200,6 +200,14 @@ void WorkerTask(void) {
                 (void)HalIwlClaim();
                 sIwlClaimOnce = 1;
             }
+            /* pwifi-2：Pi SDIO 固件须 FS 后 Claim（X64 USB WiFi 无 Scan ops 亦可） */
+            {
+                static int sWifiClaimOnce;
+                if (!sWifiClaimOnce) {
+                    (void)HalWifiClaim();
+                    sWifiClaimOnce = 1;
+                }
+            }
         }
         if (StoreJobUiIsBusy()) {
             (void)StoreJobStep();

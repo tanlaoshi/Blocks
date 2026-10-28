@@ -19,6 +19,12 @@ int NetworkInitialize(void) {
     TcpInitialize();
     if (HalConsoleOnly() || HalNetProbeAtModuleInit()) {
         (void)HalNetInitialize();
+        /*
+         * pwifi-2：Pi CNTV poll 时 Worker 可能切不过来（与 eth 同因）。
+         * SDIO 灌片须 FS 后；本模块在 FileSystem 之后，在此 Claim。
+         * X64 USB WiFi：HalNetProbeAtModuleInit=0，不走这里（仍 Worker/壳）。
+         */
+        (void)HalWifiClaim();
     }
     return 0;
 }

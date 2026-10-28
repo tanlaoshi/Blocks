@@ -202,12 +202,15 @@ fi
 echo "  + BLOCKS BLOCKS.ID"
 
 AssetRoot="${BLOCKS_ROOT}/Runtime/Assets"
-# 字体
+# 字体：与 X64 同名（UMING/DROID）；CJK.TTF 仅旧盘兼容
 mkdir -p "$BlocksMnt/Assets/Fonts"
-for f in CJK.TTF MONO.TTF VGA8X16.FNT; do
+for f in UMING.TTF DROID.TTF MONO.TTF VGA8X16.FNT CJK.TTF; do
   if [ -f "$AssetRoot/Fonts/$f" ]; then
     cp -f "$AssetRoot/Fonts/$f" "$BlocksMnt/Assets/Fonts/$f"
     echo "  + BLOCKS Assets/Fonts/$f"
+  elif [ -f "${BLOCKS_ROOT}/Runtime/RootFs/Arm64/Assets/Fonts/$f" ]; then
+    cp -f "${BLOCKS_ROOT}/Runtime/RootFs/Arm64/Assets/Fonts/$f" "$BlocksMnt/Assets/Fonts/$f"
+    echo "  + BLOCKS Assets/Fonts/$f (Arm64 RootFs)"
   fi
 done
 # 桌面图标：规范路径 bmp48/；并扁平一份到 Icons/（录像见过扁平摆盘，Load 双试）
@@ -241,6 +244,12 @@ elif [ -f "$AssetRoot/Icons/bmp48/WALL.BMP" ]; then
   mkdir -p "$BlocksMnt/Assets/Images"
   cp -f "$AssetRoot/Icons/bmp48/WALL.BMP" "$BlocksMnt/Assets/Images/WALL.BMP"
   echo "  + BLOCKS Assets/Images/WALL.BMP (from Icons)"
+fi
+# WiFi 固件（pwifi-2；BCM43430）
+if [ -d "$AssetRoot/Firmware/brcm" ]; then
+  mkdir -p "$BlocksMnt/Assets/Firmware/brcm"
+  cp -a "$AssetRoot/Firmware/brcm/." "$BlocksMnt/Assets/Firmware/brcm/"
+  echo "  + BLOCKS Assets/Firmware/brcm/"
 fi
 
 ArmRoot="${BLOCKS_ROOT}/Runtime/RootFs/Arm64"

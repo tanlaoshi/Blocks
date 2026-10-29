@@ -60,7 +60,7 @@ static int ListInstalledCb(const char *Key, const char *Value, void *Ctx) {
     return 0;
 }
 
-/* 镜像预置 Apps/<id>/ELF 但 TOYOS.DB 漏了 si.* 时，菜单/桌面看不见。补登记。 */
+/* 镜像预置 Apps/<id>/ELF 但 BLOCKS.DB 漏了 si.* 时，菜单/桌面看不见。补登记。 */
 static void StoreAdoptDiskApps(void) {
     STORE_ENTRY *Tab;
     int Count = 0;

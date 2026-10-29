@@ -127,7 +127,7 @@ static void RegisterBuiltins(void) {
     gConsole.Register("clear", "clear screen", CommandClear);
     gConsole.RegisterAlias("clear", "cls");
     gConsole.Register("echo", "print arguments", CommandEcho);
-    gConsole.Register("alias", "alias [name[=]cmd [sub]] (user; TOYOS.DB)", CommandAlias);
+    gConsole.Register("alias", "alias [name[=]cmd [sub]] (user; BLOCKS.DB)", CommandAlias);
     gConsole.Register("unalias", "remove user alias", CommandUnalias);
 }
 

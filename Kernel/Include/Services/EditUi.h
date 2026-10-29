@@ -8,7 +8,7 @@
 
 #include "BootTypes.h"
 
-/* Path 为 FileSystem 路径（可含 TOYOS:）；成功加载或空缓冲后由 GuiOpenEdit 调用 */
+/* Path 为 FileSystem 路径（可含 BLOCKS:）；成功加载或空缓冲后由 GuiOpenEdit 调用 */
 void EditUiOpen(const char *Path);
 void EditUiRepaint(void);
 void EditUiPaintFocused(void);

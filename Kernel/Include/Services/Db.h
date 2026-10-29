@@ -1,7 +1,7 @@
 /*
  * Db.h — 轻量 KV 库（PR-DB1）
  *
- * 卷上文件 TOYOS.DB（默认卷）：每行 key=value；# 注释。
+ * 卷上文件 BLOCKS.DB（默认卷）：每行 key=value；# 注释。
  * Theme 的 desktop/shell/font/mode 经此持久化；仍可从 THEME.CFG 导入。
  */
 #ifndef DB_H

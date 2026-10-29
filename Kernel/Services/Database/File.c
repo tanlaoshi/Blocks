@@ -1,5 +1,5 @@
 /*
- * DbFile.c — TOYOS.DB 读盘 / 写盘（PR-S-db-1）
+ * DbFile.c — BLOCKS.DB 读盘 / 写盘（PR-S-db-1）
  */
 #include "DbPrivate.h"
 #include "FileSystem.h"
@@ -73,11 +73,7 @@ int DbLoad(void) {
     ClearAll();
     gLoadedName = DB_PATH;
     if (FileSystemReadFile(DB_PATH, Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
-        gLoadedName = "TOYOS.DB";
-        if (FileSystemReadFile("TOYOS.DB", Buf, sizeof(Buf) - 1, &Size) != FAT_OK || Size == 0) {
-            gLoadedName = DB_PATH;
-            return DB_NOENT;
-        }
+        return DB_NOENT;
     }
     Buf[Size] = 0;
     L = 0;
@@ -182,5 +178,5 @@ void ImportThemeCfgIfEmpty(void) {
     }
     /* ApplyLine 只填内存；刷盘 */
     (void)DbSave();
-    HalConsoleWriteSerial("db: imported THEME.CFG -> TOYOS.DB\n");
+    HalConsoleWriteSerial("db: imported THEME.CFG -> BLOCKS.DB\n");
 }

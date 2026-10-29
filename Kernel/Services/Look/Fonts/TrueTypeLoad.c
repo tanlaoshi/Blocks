@@ -53,17 +53,17 @@ static void BlobFree(TTF_BLOB *B) {
 }
 
 static void LogMiss(const char *Tag, const char *Why, int Err, const char *Path) {
-    LogBoot("Boot: ");
-    LogBoot(Tag);
-    LogBoot(" ");
-    LogBoot(Why);
+    LogDrv("Boot: ");
+    LogDrv(Tag);
+    LogDrv(" ");
+    LogDrv(Why);
     if (Err != 0) {
-        LogBoot(" err=");
-        LogBootHex32((UINT32)(Err < 0 ? -Err : Err));
+        LogDrv(" err=");
+        LogDrvHex32((UINT32)(Err < 0 ? -Err : Err));
     }
-    LogBoot(" path=");
-    LogBoot(Path ? Path : "?");
-    LogBoot("\n");
+    LogDrv(" path=");
+    LogDrv(Path ? Path : "?");
+    LogDrv("\n");
 }
 
 /* 默认卷或显式 BLOCKS:（防 default 不是 BLOCKS 时误 miss） */
@@ -111,9 +111,9 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
         return -1;
     }
     if (St.Size > TTF_MAX) {
-        LogBoot("Boot: ");
-        LogBoot(Tag);
-        LogBoot(" too big\n");
+        LogDrv("Boot: ");
+        LogDrv(Tag);
+        LogDrv(" too big\n");
         return -1;
     }
     B->Pages = (St.Size + 4095u) / 4096u;
@@ -123,9 +123,9 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
     B->Blob = (UINT8 *)PhysicalMemoryAllocatePages(B->Pages);
     if (!B->Blob) {
         B->Pages = 0;
-        LogBoot("Boot: ");
-        LogBoot(Tag);
-        LogBoot(" oom\n");
+        LogDrv("Boot: ");
+        LogDrv(Tag);
+        LogDrv(" oom\n");
         return -1;
     }
     Err = FileSystemReadFile(Used, B->Blob, St.Size, &Got);
@@ -137,21 +137,21 @@ static int BlobLoad(TTF_BLOB *B, const char *Path, const char *Tag) {
     Mag = Be32(B->Blob);
     if (!SfntOk(Mag)) {
         BlobFree(B);
-        LogBoot("Boot: ");
-        LogBoot(Tag);
-        LogBoot(" not sfnt\n");
+        LogDrv("Boot: ");
+        LogDrv(Tag);
+        LogDrv(" not sfnt\n");
         return -1;
     }
     B->Size = (UINT32)Got;
     B->Ok = 1;
     Tables = Be16(B->Blob + 4);
-    LogBoot("Boot: ");
-    LogBoot(Tag);
-    LogBoot(" sfnt ok bytes=");
-    LogBootHex32(B->Size);
-    LogBoot(" tables=");
-    LogBootHex32((UINT32)Tables);
-    LogBoot("\n");
+    LogDrv("Boot: ");
+    LogDrv(Tag);
+    LogDrv(" sfnt ok bytes=");
+    LogDrvHex32(B->Size);
+    LogDrv(" tables=");
+    LogDrvHex32((UINT32)Tables);
+    LogDrv("\n");
     return 0;
 }
 
@@ -209,7 +209,7 @@ int FontTtfLoad(void) {
     (void)BlobLoadFirst(&gUi[1], TTF_UI1_PATH, TTF_UI1_LEGACY, "ttf-droid");
     (void)BlobLoad(&gMono, TTF_MONO_PATH, "ttf-mono");
     if (Ui != 0) {
-        LogBoot("Boot: ttf need BLOCKS:Assets/Fonts/UMING.TTF (host copy onto LABEL=BLOCKS)\n");
+        LogDrv("Boot: ttf need BLOCKS:Assets/Fonts/UMING.TTF (host copy onto LABEL=BLOCKS)\n");
     }
     return Ui;
 }

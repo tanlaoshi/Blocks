@@ -30,7 +30,7 @@
 #define FILES_SB_W          UI_LAYOUT_SB_W
 #define FILES_SIDE_W        UI_LAYOUT_SIDE_W
 #define FILES_SIDE_BG       0x00A0A8B0u
-/* 侧栏 = 已挂载卷（动态）；TOYOS 置顶 */
+/* 侧栏 = 已挂载卷（动态）；BLOCKS 置顶 */
 #define FILES_PLACE_MAX        FS_MAX_VOLUMES
 #define FILES_PLACE_LABEL_MAX  20
 #define FILES_PLACE_PATH_MAX   16

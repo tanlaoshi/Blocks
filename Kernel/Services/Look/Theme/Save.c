@@ -5,7 +5,7 @@
  */
 #include "Theme.h"
 #include "ThemePrivate.h"
-#include "HalConsole.h"
+#include "SerialLog.h"
 
 int ThemeSave(void) {
     char Buf[320];
@@ -16,7 +16,7 @@ int ThemeSave(void) {
     static int sBusy;
 
     if (sBusy) {
-        HalConsoleWriteSerial("Theme: save reenter skipped\n");
+        LogDrv("Theme: save reenter skipped\n");
         return -1;
     }
     sBusy = 1;

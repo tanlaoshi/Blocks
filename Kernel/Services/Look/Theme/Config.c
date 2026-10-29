@@ -84,7 +84,7 @@ int ThemeMigrateModeFromCfg(void) {
     ThemeSaveFillVals(&Vals);
     if (ThemeHasDisplayPref() && Vals.ModeVal[0]) {
         (void)DbSet("mode", Vals.ModeVal);
-        HalConsoleWriteSerial("Theme: migrated mode from THEME.CFG -> BLOCKS.DB\n");
+        LogDrv("Theme: migrated mode from THEME.CFG -> BLOCKS.DB\n");
     }
     return 0;
 }

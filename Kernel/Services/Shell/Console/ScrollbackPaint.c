@@ -76,7 +76,7 @@ void ConsoleSbRepaint(void) {
 
     for (i = Start; i < End; i++) {
         const char *L = ConsoleSbLine(i);
-        /* 历史行提示符保持青色（兼容 toyos>/blocks>/Blocks>） */
+        /* 历史行提示符保持青色（兼容 blocks>/blocks>/Blocks>） */
         if (L[0] == 't' && L[1] == 'o' && L[2] == 'y' && L[3] == 'o' &&
             L[4] == 's' && L[5] == '>' && L[6] == ' ') {
             ConsoleDrawString("Blocks> ", ThemeShellPrompt());

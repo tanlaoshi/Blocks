@@ -25,7 +25,7 @@
 /* 与内核 DAMAGE_RECT_MAX_PX 对齐：单次最多 64×64 */
 #define GRAPHICS_DAMAGE_RECT_MAX_PIXELS 4096u
 
-/* 系统共享字库根（TOYOS 卷相对路径；应用勿拼私有路径） */
+/* 系统共享字库根（BLOCKS 卷相对路径；应用勿拼私有路径） */
 #define GRAPHICS_SYSTEM_FONT_ROOT "Assets/Fonts"
 
 /*

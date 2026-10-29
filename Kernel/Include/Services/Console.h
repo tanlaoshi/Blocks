@@ -24,7 +24,7 @@ typedef struct {
     /* 粘连别名 → 一级+二级（如 tcplisten → tcp listen） */
     void (*RegisterAliasLine)(const char *Alias, const char *Level1,
                               const char *Level2);
-    /* 从 TOYOS.DB 加载 al.* 用户别名（须在命令表注册之后） */
+    /* 从 BLOCKS.DB 加载 al.* 用户别名（须在命令表注册之后） */
     void (*UserAliasLoad)(void);
     void (*Write)(const char *Text);
     void (*WriteLen)(const char *Data, UINTN Len);

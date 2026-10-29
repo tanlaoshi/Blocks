@@ -1,6 +1,6 @@
 #include <Blocks/File.h>
 /*
- * Cat.c — CRT2：open/read/write/close 读 TOYOS.ID（CAT.ELF）
+ * Cat.c — CRT2：open/read/write/close 读 BLOCKS.ID（CAT.ELF）
  * 旧 int 0x80 汇编见 CatFile.S
  */
 #include "errno.h"

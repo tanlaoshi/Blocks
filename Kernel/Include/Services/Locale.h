@@ -1,7 +1,7 @@
 /*
  * Locale.h — UI 字符串与语言切换
  *
- * 持久化：TOYOS.DB 键 lang=en|zh（缺省 zh）
+ * 持久化：BLOCKS.DB 键 lang=en|zh（缺省 zh）
  * 文案：优先 Assets/Locale/{en,zh}.txt（可编辑）；缺省内建 fallback
  */
 #ifndef LOCALE_H

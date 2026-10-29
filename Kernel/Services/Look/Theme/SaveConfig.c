@@ -3,7 +3,7 @@
  * 核心：Save.c
  */
 #include "ThemePrivate.h"
-#include "HalConsole.h"
+#include "SerialLog.h"
 
 #define THEME_CFG_CAP 320u
 
@@ -88,12 +88,13 @@ int ThemeSaveWriteCfg(const char *Buf, UINTN N) {
             }
         }
         if (Same) {
-            HalConsoleWriteSerial("Theme: already saved (skip)\n");
+            LogDrv("Theme: already saved (skip)\n");
             return 1;
         }
     }
     if (FileSystemWriteFile(THEME_CFG_PATH, Buf, N) != FAT_OK) {
-        HalConsoleWriteSerial("Theme: save THEME.CFG failed\n");
+        /* 勿进串口壳；Pi µSD 现只读时属预期失败 */
+        LogDrv("Theme: save THEME.CFG failed\n");
         return -1;
     }
     for (i = 0; i < N && i < sizeof(sLastCfg); i++) {

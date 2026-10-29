@@ -1,9 +1,9 @@
 /*
- * SaveDb.c — 批量写 TOYOS.DB（PR-F-theme-1）
+ * SaveDb.c — 批量写 BLOCKS.DB（PR-F-theme-1）
  * 核心：Save.c
  */
 #include "ThemePrivate.h"
-#include "HalConsole.h"
+#include "SerialLog.h"
 
 /* 0=全成；-1=有失败（CFG 已写时仍只打日志） */
 int ThemeSaveWriteDb(const THEME_SAVE_VALS *V) {
@@ -62,9 +62,10 @@ int ThemeSaveWriteDb(const THEME_SAVE_VALS *V) {
         DbOk = 0;
     }
     if (!DbOk) {
-        HalConsoleWriteSerial("Theme: BLOCKS.DB write failed\n");
+        /* 勿 HalConsoleWriteSerial：会进 Blocks> 串口壳，像 halt 旁的报错 */
+        LogDrv("Theme: BLOCKS.DB write failed\n");
         return -1;
     }
-    HalConsoleWriteSerial("Theme: saved BLOCKS.DB (+ THEME.CFG without mode)\n");
+    LogDrv("Theme: saved BLOCKS.DB (+ THEME.CFG without mode)\n");
     return 0;
 }

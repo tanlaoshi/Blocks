@@ -61,7 +61,6 @@ static int VolLooksLikeBlocksRoot(UINT8 *Tmp, UINTN TmpSz) {
 
     if (gVirtualFileSystem.ReadFile("HELLO.ELF", Tmp, TmpSz, &Sz) == FAT_OK ||
         gVirtualFileSystem.ReadFile("BLOCKS.DB", Tmp, TmpSz, &Sz) == FAT_OK ||
-        gVirtualFileSystem.ReadFile("TOYOS.ID", Tmp, TmpSz, &Sz) == FAT_OK ||
         gVirtualFileSystem.ReadFile("Assets/Fonts/CJK.TTF", Tmp, TmpSz, &Sz) ==
             FAT_OK) {
         return 1;

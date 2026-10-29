@@ -1,5 +1,5 @@
 /*
- * Db.c — TOYOS.DB 文本 KV（PR-DB1）
+ * Db.c — BLOCKS.DB 文本 KV（PR-DB1）
  * 读盘 / 写盘：DbFile.c
  */
 #include "DbPrivate.h"
@@ -239,9 +239,9 @@ int DbInitialize(void) {
         ImportThemeCfgIfEmpty();
     }
     gReady = 1;
-    gConsole.Register2("database", "get", "get KV from TOYOS.DB", CommandDbGet);
-    gConsole.Register2("database", "set", "set KV in TOYOS.DB", CommandDbSet);
-    gConsole.Register2("database", "list", "list TOYOS.DB", CommandDbList);
+    gConsole.Register2("database", "get", "get KV from BLOCKS.DB", CommandDbGet);
+    gConsole.Register2("database", "set", "set KV in BLOCKS.DB", CommandDbSet);
+    gConsole.Register2("database", "list", "list BLOCKS.DB", CommandDbList);
     gConsole.RegisterAliasLine("dbget", "database", "get");
     gConsole.RegisterAliasLine("dbset", "database", "set");
     gConsole.RegisterAliasLine("dblist", "database", "list");

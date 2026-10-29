@@ -36,22 +36,22 @@ int FontFtInit(void) {
     gFace[Slot] = 0;
   }
   if (!HalFpuOk()) {
-    LogBoot("Boot: ft init skip\n");
+    LogDrv("Boot: ft init skip\n");
     return -1;
   }
   Blob = FontTtfUiBlob(0, &Size);
   if (!Blob || Size < 12u) {
-    LogBoot("Boot: ft init skip\n");
+    LogDrv("Boot: ft init skip\n");
     return -1;
   }
   if (!HalFpuBegin()) {
-    LogBoot("Boot: ft init skip\n");
+    LogDrv("Boot: ft init skip\n");
     return -1;
   }
   Err = FT_Init_FreeType(&gLib);
   if (Err) {
     HalFpuEnd();
-    LogBoot("Boot: ft init fail\n");
+    LogDrv("Boot: ft init fail\n");
     return -1;
   }
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
@@ -72,7 +72,7 @@ int FontFtInit(void) {
     FT_Done_FreeType(gLib);
     gLib = 0;
     HalFpuEnd();
-    LogBoot("Boot: ft face fail\n");
+    LogDrv("Boot: ft face fail\n");
     return -1;
   }
   gFtOk = 1;
@@ -84,7 +84,7 @@ int FontFtInit(void) {
     }
   }
   HalFpuEnd();
-  LogBoot(gFtMonoOk ? "Boot: ft init ok mono\n" : "Boot: ft init ok\n");
+  LogDrv(gFtMonoOk ? "Boot: ft init ok mono\n" : "Boot: ft init ok\n");
   return 0;
 }
 

@@ -45,6 +45,12 @@ void GuiOnDisplayResize(void) {
     gGuiWindowManager.DragWin = -1;
     gGuiWindowManager.ResizeWin = -1;
     gGuiWindowManager.ResizeEdge = RESIZE_EDGE_NONE;
+    /*
+     * 切换缩放后重算光标形状：旧 kind 是按旧布局算的（可能停在 resize 角上
+     * 那个三角箭头），窗口重排后位置含义已经变了。这里先复位成普通箭头，
+     * 之后每次 CursorPaint 会按新布局重新判断。
+     */
+    gGuiWindowManager.CursorKind = CURSOR_KIND_ARROW;
 
     for (i = 0; i < MAX_WINS; i++) {
         if (!gGuiWindowManager.Windows[i].Active) {

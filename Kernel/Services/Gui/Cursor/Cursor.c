@@ -174,15 +174,51 @@ void DrawCursorAt(UINT32 X, UINT32 Y) {
     DrawCursorGlyph(X, Y);
 }
 
-/* 绘制倍数：物理 = 逻辑 × 本值（200% 为 2，其余为 1） */
-static UINT32 CursorDrawScale(void) {
-    UINT32 Scale = HalVideoGetDrawScale();
+/*
+ * PR-23E：逻辑矩形 → 物理矩形。用有理数 Num/Den（50/100/150/200 →
+ * 1/2、1/1、3/2、2/1），起点向下取整、末端向上取整，宽度用端点相减。
+ *
+ * 不能再用「X * HalVideoGetDrawScale()」：那个值现在的语义是「一个逻辑
+ * 像素最多占几个物理像素」（150% 时为 2），拿它当坐标倍数会让 save-under
+ * 偏半格 —— 光标画在 1.5X、存却在 2X，移开时把旁边区域盖回来，表现为
+ * 150% 下残留一枚光标箭头。
+ */
+static void CursorPhysRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+                           UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp) {
+    UINT32 Num = HalVideoGetDrawNum();
+    UINT32 Den = HalVideoGetDrawDen();
+    UINT32 X0;
+    UINT32 Y0;
+    UINT32 X1;
+    UINT32 Y1;
 
-    return Scale ? Scale : 1u;
+    if (Num == 0) {
+        Num = 1;
+    }
+    if (Den == 0) {
+        Den = 1;
+    }
+    X0 = (UINT32)((UINT64)X * Num / Den);
+    Y0 = (UINT32)((UINT64)Y * Num / Den);
+    X1 = (UINT32)(((UINT64)(X + W) * Num + Den - 1u) / Den);
+    Y1 = (UINT32)(((UINT64)(Y + H) * Num + Den - 1u) / Den);
+    if (X1 <= X0) {
+        X1 = X0 + 1u;
+    }
+    if (Y1 <= Y0) {
+        Y1 = Y0 + 1u;
+    }
+    *Xp = X0;
+    *Yp = Y0;
+    *Wp = X1 - X0;
+    *Hp = Y1 - Y0;
 }
 
 void CursorRestore(void) {
-    UINT32 Scale;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
 
     if (gHwCursorOn) {
         /* FB 无光标像素；仍清 Visible，免后续软路径误 Restore Under */
@@ -197,22 +233,23 @@ void CursorRestore(void) {
      * 换算成物理后必然装得下——勿拿物理尺寸去比 CURSOR_BOX，否则 200%
      * 下整段跳过写回，就成了光标残影。
      */
-    Scale = CursorDrawScale();
     if (gGuiWindowManager.SaveWidth > 0 && gGuiWindowManager.SaveHeight > 0 &&
         gGuiWindowManager.SaveWidth <= (UINT32)CURSOR_BOX && gGuiWindowManager.SaveHeight <= (UINT32)CURSOR_BOX) {
+        CursorPhysRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
+                       gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight,
+                       &Xp, &Yp, &Wp, &Hp);
         HalVideoCursorOverlayBegin();
-        HalVideoWriteRectPhys(gGuiWindowManager.SaveX * Scale,
-                              gGuiWindowManager.SaveY * Scale,
-                              gGuiWindowManager.SaveWidth * Scale,
-                              gGuiWindowManager.SaveHeight * Scale,
-                              gGuiWindowManager.Under);
+        HalVideoWriteRectPhys(Xp, Yp, Wp, Hp, gGuiWindowManager.Under);
         HalVideoCursorOverlayEnd();
     }
     gGuiWindowManager.CursorVisible = 0;
 }
 
 void CursorPaint(void) {
-    UINT32 Scale;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
 
     if (!gCursorUsbReady) {
         return;
@@ -234,14 +271,12 @@ void CursorPaint(void) {
         gGuiWindowManager.SaveWidth > (UINT32)CURSOR_BOX || gGuiWindowManager.SaveHeight > (UINT32)CURSOR_BOX) {
         return;
     }
-    Scale = CursorDrawScale();
+    CursorPhysRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
+                   gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight,
+                   &Xp, &Yp, &Wp, &Hp);
     HalVideoCursorOverlayBegin();
     /* 物理像素读回：块内细节全留住，Restore 才能原样还原（PR-23c） */
-    HalVideoReadRectPhys(gGuiWindowManager.SaveX * Scale,
-                         gGuiWindowManager.SaveY * Scale,
-                         gGuiWindowManager.SaveWidth * Scale,
-                         gGuiWindowManager.SaveHeight * Scale,
-                         gGuiWindowManager.Under);
+    HalVideoReadRectPhys(Xp, Yp, Wp, Hp, gGuiWindowManager.Under);
     DrawCursorGlyph(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     HalVideoCursorOverlayEnd();
     gGuiWindowManager.CursorVisible = 1;

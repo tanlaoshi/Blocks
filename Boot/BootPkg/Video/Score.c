@@ -97,16 +97,16 @@ UINTN ScoreModeNative(UINT32 W, UINT32 H, UINT32 TargetW, UINT32 TargetH,
         return 0;
     }
     if (W == TargetW && H == TargetH) {
-        return 3000000000ULL + Area;
+        return SCORE_NATIVE_EXACT + Area;
     }
     Dist = ManhattanDist(W, H, TargetW, TargetH);
-    if (Dist > 100000) {
-        Dist = 100000;
+    if (Dist > SCORE_DISTANCE_CAP) {
+        Dist = SCORE_DISTANCE_CAP;
     }
     if (SameAspectRatio(W, H, TargetW, TargetH)) {
-        return 2000000000ULL - Dist * 1000ULL + Area / 10000ULL;
+        return SCORE_SAME_ASPECT - Dist * SCORE_DIST_STEP + Area / SCORE_AREA_DIV;
     }
-    return 1000000000ULL - Dist * 1000ULL + Area / 10000ULL;
+    return SCORE_NEAREST - Dist * SCORE_DIST_STEP + Area / SCORE_AREA_DIV;
 }
 
 /* Settings 选项顺序：EDID 精确 → 同宽高比 → 就近（VM 用 QEMU 友好序） */

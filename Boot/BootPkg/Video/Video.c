@@ -152,7 +152,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
             }
 
             if (HasCfgTarget && W == CfgW && H == CfgH) {
-                Score = 5000000000ULL;
+                Score = SCORE_CFG_EXACT;
                 CfgMatched = TRUE;
             } else if (HasCfgTarget) {
                 Score = ScoreModeNative(W, H, CfgW, CfgH, TRUE);
@@ -163,8 +163,9 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
                 if (HasEdidTarget &&
                     !SameAspectRatio(W, H, CfgW, CfgH) &&
                     SameAspectRatio(W, H, EdidW, EdidH) &&
-                    Score < 1500000000ULL) {
-                    Score = 1500000000ULL + ((UINTN)W * (UINTN)H) / 10000ULL;
+                    Score < SCORE_ASPECT_FALLBACK) {
+                    Score = SCORE_ASPECT_FALLBACK +
+                            ((UINTN)W * (UINTN)H) / SCORE_AREA_DIV;
                 }
             } else if (KeepCurrentMode) {
                 Score = 0;

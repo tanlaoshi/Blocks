@@ -23,6 +23,30 @@
 typedef UEFI_VIDEO_CONFIG VIDEO_CONFIG;
 typedef UEFI_MEMORY_MAP   MEMORY_MAP;
 
+/*
+ * 选模分值：数字越大越优先。优先级从高到低——
+ *
+ *   SCORE_KEEP_CURRENT   保留固件当前模式（无 mode= 时；不再切模）
+ *   SCORE_CFG_EXACT      BLOCKS.DB 的 mode= 精确命中
+ *   SCORE_NATIVE_EXACT   与目标（EDID）同宽高
+ *   SCORE_SAME_ASPECT    同宽高比，按距离就近
+ *   SCORE_ASPECT_FALLBACK 请求的宽高比不在 GOP 里时，跟显示器宽高比
+ *   SCORE_NEAREST        其它，按距离就近
+ *
+ * 距离项：每差 1 像素扣 SCORE_DIST_STEP，距离上限 SCORE_DISTANCE_CAP；
+ * 面积项：像素数 / SCORE_AREA_DIV 作为同档内的次级排序。
+ * 改这些常量前先看 Score.c 的注释表，别让两处分值域打架。
+ */
+#define SCORE_KEEP_CURRENT    6000000000ULL
+#define SCORE_CFG_EXACT       5000000000ULL
+#define SCORE_NATIVE_EXACT    3000000000ULL
+#define SCORE_SAME_ASPECT     2000000000ULL
+#define SCORE_ASPECT_FALLBACK 1500000000ULL
+#define SCORE_NEAREST         1000000000ULL
+#define SCORE_DISTANCE_CAP    100000
+#define SCORE_DIST_STEP       1000ULL
+#define SCORE_AREA_DIV        10000ULL
+
 /* Video/：GetVideoInfo / SetVideoMode；辅助 Score / Edid / Theme */
 BOOLEAN IsVirtualMachine(VOID);
 BOOLEAN IsModeUsable(const EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info);

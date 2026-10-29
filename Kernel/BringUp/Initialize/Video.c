@@ -43,6 +43,8 @@ int VideoInitialize(void) {
     HalVideoClearScreen(0x00000000u);
     HalVideoDiscardDirty();
     (void)DisplayHardwareInitialize();
+    /* PR-28：先把最终缩放应用上，Logo 第一帧就是对的大小 */
+    (void)ThemeBootScaleApply();
     DesktopBootLogoShow();
     return 0;
 }

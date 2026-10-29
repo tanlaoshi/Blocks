@@ -62,3 +62,35 @@ int ThemeApplyDisplayLive(UINT32 Width, UINT32 Height) {
     GuiOnDisplayResize();
     return 0;
 }
+
+/*
+ * ThemeBootScaleApply — 开机第一帧就用最终缩放（PR-28）
+ *
+ * 以前 ThemeLoad 在 GuiInitialize 里才把 scale 落到 HalVideoSetUiScale，
+ * 而 Logo 早在 VideoInitialize 就以 100% 画过一次：屏上看到「先 100%
+ * 大小、再跳到目标档」。这里在画 Logo 之前把同一份 DB 值先应用一次，
+ * 于是第一帧就是对的，不再有跳变。
+ *
+ * 注意：只应用缩放，不碰主题/字体；GuiInitialize 里的 ThemeLoad 照常跑
+ * （DbInitialize 幂等，这里提前初始化不影响后续）。
+ */
+int ThemeBootScaleApply(void) {
+    char Raw[16];
+    UINT32 Val;
+
+    if (DbInitialize() != DB_OK) {
+        return -1;
+    }
+    if (DbGet("scale", Raw, sizeof Raw) != DB_OK || Raw[0] == 0) {
+        return -1;
+    }
+    if (ParseDecU32(Raw, &Val, 0) != 0) {
+        return -1;
+    }
+    gThemeUiScale = NormalizeUiScale(Val);
+    if (HalVideoSetUiScale(gThemeUiScale) != 0) {
+        return -1;
+    }
+    LogGui("Theme: boot scale applied\n");
+    return 0;
+}

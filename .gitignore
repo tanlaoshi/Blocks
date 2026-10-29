@@ -26,3 +26,6 @@ Config.local.txt
 compile_commands.json
 Kernel/compile_commands.json
 Tools/clangd/
+
+# 厂商 SDK / 镜像 / 手册：本地资料，不入库
+Source/

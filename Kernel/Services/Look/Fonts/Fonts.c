@@ -548,6 +548,7 @@ const FONT_FACE *FontGetCurrent(void) {
 }
 
 int FontSetById(UINT32 Id) {
+    UINT32 PrevId;
     const FONT_FACE *F;
     UINT32 NextSlot;
 
@@ -555,14 +556,22 @@ int FontSetById(UINT32 Id) {
         return -1;
     }
     F = gFonts[Id];
+    PrevId = gCurrentId;
     NextSlot = gUiTtfSlot;
     if (F == &gFaceUiUming) {
         NextSlot = 0;
     } else if (F == &gFaceUiDroid) {
         NextSlot = 1;
     }
-    /* Latin 项不改槽；切 UMing↔Droid 丢全部 HIT（含拉丁）以便换脸 */
-    if (NextSlot != gUiTtfSlot) {
+    /*
+     * PR-21：只要有「换脸」就丢全部 HIT（含拉丁）。
+     *
+     * 原来只在 UMing↔Droid 之间丢槽；从 Terminus 切到 UMing 时槽号不变，
+     * 于是早先用 Terminus 栅格过的数字（4/7/9）继续命中，设置→显示→分辨率
+     * 里的数字就一直是 Terminus 的样，看着像「UMing 的 4/7 有问题」。
+     * 字形缓存只按 (码位, 边长) 索引，不含字体身份，所以换脸必须整片作废。
+     */
+    if (NextSlot != gUiTtfSlot || PrevId != Id) {
         gUiTtfSlot = NextSlot;
         FontTtfCacheDropHits();
     }

@@ -1,20 +1,15 @@
 /*
- * FirmwareVerify.c — 灌片后 ALP + 可选 4B 字校验（pwifi-2）
+ * FirmwareVerify.c — 灌片后确认下载通路仍活（pwifi-2）
  *
- * 大块 CMD53 读曾楔死；4B Read32 与 Write32 同形，能读则核对 fw[4]。
+ * 对表 Linux brcmfmac：brcmf_sdio_verifymemory() 只在 DEBUG 构建里回读，
+ * 量产路径灌完直接 set_active。实证本板 bulk 后 CMD53 读 RAM 会楔死且
+ * 不可恢复（abort 只能救主机，卡侧背板事务留在队列里），故不再回读。
  */
 #include "Wifi/Private.h"
 
-int WifiVerifyFirmwareWord(const UINT8 *Firmware) {
+int WifiVerifyDownloadPath(void) {
     UINT8 ClockStatus = 0;
-    UINT32 WordAtFour = 0;
-    UINT32 Expect;
 
-    if (Firmware == 0) {
-        return -1;
-    }
-    Expect = (UINT32)Firmware[4] | ((UINT32)Firmware[5] << 8) | ((UINT32)Firmware[6] << 16) |
-             ((UINT32)Firmware[7] << 24);
     if (WifiSdioHostCommandDataRecover() != 0) {
         return -1;
     }
@@ -28,24 +23,8 @@ int WifiVerifyFirmwareWord(const UINT8 *Firmware) {
         HalSerialBootMarkForce("Boot: Pi WIFI F1 CMD52 dead after write\n");
         return -1;
     }
+    /* 0x49 = FORCE_ALP|ALP_REQ|ALP_AVAIL：写路径与 ALP 都还活着 */
     WifiBootMarkHexadecimal32("Boot: Pi WIFI csr after write=", ClockStatus);
     HalSerialBootMarkForce("\n");
-    /* 4B Read32（与 Write32 同形）；对上则灌片可信，楔死则 recover 后继续 */
-    if (WifiBackplaneRead32(4u, &WordAtFour) == 0) {
-        WifiBootMarkHexadecimal32("Boot: Pi WIFI fw[4]=", WordAtFour);
-        HalSerialBootMarkForce("\n");
-        if (WordAtFour != Expect) {
-            WifiBootMarkHexadecimal32("Boot: Pi WIFI fw[4] expect=", Expect);
-            HalSerialBootMarkForce("\n");
-            HalSerialBootMarkForce("Boot: Pi WIFI fw image mismatch\n");
-            return -1;
-        }
-        HalSerialBootMarkForce("Boot: Pi WIFI fw word ok\n");
-    } else {
-        HalSerialBootMarkForce("Boot: Pi WIFI fw word read skip\n");
-        (void)WifiSdioHostCommandDataRecover();
-        (void)WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
-                                     (UINT8)(WIFI_CLOCK_REQUEST_ALP | WIFI_CLOCK_FORCE_ALP));
-    }
     return 0;
 }

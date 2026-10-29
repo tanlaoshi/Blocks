@@ -109,6 +109,7 @@ static int WifiProbeOnce(void) {
     if (WifiChipIdentityProbe() != 0) {
         return -1;
     }
+    WifiBringUpDiagnosticsPrint();
     {
         const char *Path = WifiFirmwarePathForChip();
         HalSerialBootMark("Boot: Pi WIFI fw path=");

@@ -39,6 +39,10 @@
 #define SDIO_BACKPLANE_ACCESS_32BIT  0x8000u
 #define SDIO_FUNCTION2_WATERMARK     0x10008u
 #define SDIO_CHIP_CLOCK_CONTROL      0x1000Eu
+#define SDIO_PULL_UP_CONTROL         0x1000Fu
+#define WIFI_SDIO_DEVICE_CONTROL     0x10009u
+#define WIFI_SDIO_WAKEUP_CONTROL     0x1001Eu
+#define WIFI_SDIO_SLEEP_CONTROL      0x1001Fu
 
 #define WIFI_CHIPCOMMON_BASE         0x18000000u
 /* 对表 Linux cores_check：D11 base 0x18001000 wrap 0x18101000（勿把 wrap 当 core） */
@@ -70,12 +74,12 @@
 #define WIFI_SDIO_FUNCTION_INT_MASK  (WIFI_SDIO_CORE_BASE + 0x34u)
 #define WIFI_SDIO_TO_SB_MAILBOX      (WIFI_SDIO_CORE_BASE + 0x40u)
 
-#define WIFI_AI_IO_CONTROL_OFFSET    0x408u
-#define WIFI_AI_RESET_CONTROL_OFFSET 0x800u
-#define WIFI_AI_RESET_BIT            1u
-#define WIFI_SICF_CLOCK_ENABLE       0x0001u
-#define WIFI_SICF_FORCE_GATED_CLOCK  0x0002u
-#define WIFI_SICF_CPU_HALT           0x0020u
+#define WIFI_AI_IO_CONTROL_OFFSET     0x408u
+#define WIFI_AI_RESET_CONTROL_OFFSET  0x800u
+#define WIFI_AI_RESET_BIT             1u
+#define WIFI_SICF_CLOCK_ENABLE        0x0001u
+#define WIFI_SICF_FORCE_GATED_CLOCK   0x0002u
+#define WIFI_SICF_CPU_HALT            0x0020u
 
 #define WIFI_CLOCK_FORCE_ALP         0x01u
 #define WIFI_CLOCK_FORCE_HT          0x02u
@@ -86,11 +90,29 @@
 #define WIFI_HOST_MAILBOX_SOFTWARE_MASK 0x000000F0u
 #define WIFI_FUNCTION2_WATERMARK_VALUE  8u
 
+/* SDHCI PRESENT_STATE bit2：DAT 线仍被卡占用（写块后 busy） */
+#define WIFI_HOST_DAT_LINE_ACTIVE    0x00000004u
+/* R5_STATUS：仅 ERROR 位（卡侧 function busy），非地址/CRC 类错 */
+#define WIFI_SDIO_R5_ERROR_ONLY      0x0800u
+#define WIFI_SDIO_R5_ERROR_MASK      0xCB00u
+
 #define WIFI_CHIP_ID_43455           0x4345u
 #define WIFI_CHIP_ID_43430           0xA9A6u
 #define WIFI_RAM_SIZE                (512u * 1024u)
 /* 灌片 CMD53 块长；4B@0 曾 write fail，64B+|0x8000 能灌完（HT 另查） */
 #define WIFI_BACKPLANE_BLOCK_BYTES   64u
+/*
+ * 固件下载基址。EROM 给同一块 SRAM 列了三个从端口别名：0x0 / 0x10000000 / 0x1e000000。
+ * 经 0x0 写入会在第一块之后把卡挂死（背板写永不完成），改用第二个别名。
+ */
+#define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
+/* 每改一版就 +1：串口第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
+#define WIFI_BUILD_TAG               0x00000122u
+/* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
+/* 1 = 按 Linux sdio_io_rw_ext_helper 的形状：块模式批量 + 字节模式收尾 */
+#define WIFI_BACKPLANE_BLOCK_MODE    1
+/* SDHCI 传输模式 bit5：多块（Sdhci.h 未定义，只在 Wifi 内用） */
+#define WIFI_SDHCI_TRANSFER_MULTI    (1u << 5)
 #define WIFI_WLAN_BLOCK_BYTES        512u
 #define WIFI_FIRMWARE_MAX_BYTES      (512u * 1024u)
 #define WIFI_NVRAM_MAX_BYTES         4096u
@@ -150,9 +172,29 @@ int WifiSdioCommand53Read(UINT32 Function, UINT32 RegisterAddress, UINT8 *Buffer
                           UINT32 ByteCount, int AddressIncrement);
 int WifiSdioCommand53Write(UINT32 Function, UINT32 RegisterAddress, const UINT8 *Buffer,
                            UINT32 ByteCount, int AddressIncrement);
+/* 块模式写（CMD53 bit27=1）：对表 brcmf_sdiod_ramrw → sdio_memcpy_toio */
+int WifiSdioBlockWrite(UINT32 Function, UINT32 RegisterAddress, const UINT8 *Buffer,
+                       UINT32 ByteCount, UINT32 BlockBytes);
+int WifiSdioReadFunctionMaxBlockSize(void);
+int WifiSdioReadFunctionBlockSize(void);
+int WifiSdioSetFunctionBlockSize(UINT32 Bytes);
+/* 传输层内部件：块模式写与字节模式写共用 */
+int WifiSdioWaitCardIdle(void);
+int WifiSdioWaitCardIdleMilliseconds(UINT32 Milliseconds);
+void WifiSdioResetWaitReport(void);
+void WifiDiagnosticsSramAccessProbe(void);
+void WifiDiagnosticsSocramState(void);
+void WifiDiagnosticsClockState(void);
+UINT32 WifiSramFindAccessibleBase(void);
+int WifiClockRequestHighThroughputAndWait(void);
+int WifiBackplaneWriteReadbackTest(void);
+int WifiSdioProgrammedIoWriteBytes(const UINT8 *Buffer, UINT32 ByteCount);
+void WifiSdioProgrammedIoFailCleanup(void);
 int WifiSdioEnumerate(void);
 int WifiSdioEnableFunction1(void);
 int WifiSdioEnableFunction2(void);
+/* pwifi-2 解封第 1 步：只读打印 KSO / GPCLK2 / SDIO core rev */
+void WifiBringUpDiagnosticsPrint(void);
 int WifiChipIdentityProbe(void);
 const char *WifiFirmwarePathForChip(void);
 const char *WifiNvramPathForChip(void);
@@ -169,14 +211,11 @@ int WifiBackplaneReadMemory(UINT32 Address, UINT8 *Data, UINT32 ByteCount);
 int WifiCoreDisable(UINT32 WrapperBase, UINT32 PreResetBits, UINT32 ResetBits);
 int WifiCoreReset(UINT32 WrapperBase, UINT32 PreResetBits, UINT32 ResetBits,
                   UINT32 PostResetBits);
-/* 灌后 CMD53 读楔死时用：只写、延时，对表 cyw43 reset_device_core 写序 */
-int WifiCoreResetWritesOnly(UINT32 WrapperBase, UINT32 PreResetBits, UINT32 ResetBits,
-                            UINT32 PostResetBits);
 int WifiCoreIsUp(UINT32 WrapperBase);
 
 int WifiNvramPrepare(const UINT8 *Text, UINTN TextBytes, UINT8 *Out, UINT32 OutCapacity,
                      UINT32 *OutBytes);
-int WifiVerifyFirmwareWord(const UINT8 *Firmware);
+int WifiVerifyDownloadPath(void);
 int WifiExitDownload(void);
 int WifiWaitHtAndFunction2(void);
 int WifiSdioHostCommandDataRecover(void); /* F1 abort + CMD|DATA 复位 */

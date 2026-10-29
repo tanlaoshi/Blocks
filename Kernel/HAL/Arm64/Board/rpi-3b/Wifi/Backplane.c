@@ -65,6 +65,44 @@ int WifiBackplaneWrite32(UINT32 Address, UINT32 Value) {
     return WifiSdioCommand53Write(SDIO_FUNCTION_1, Offset, Buffer, 4u, 1);
 }
 
+static int gWifiBlockSizeReady = 0;
+static UINT32 gWifiBackplaneBlockBytes = WIFI_BACKPLANE_BLOCK_BYTES;
+
+/*
+ * 一块窗口内的写入。对表 Linux sdio_io_rw_ext_helper：
+ * 先尽量用块模式发满（单条 CMD53 上限 511 块），余数再走字节模式。
+ * 这与我们之前「每包 64 字节字节模式」完全不同——那形状卡不认。
+ */
+static int WifiBackplaneWriteChunk(UINT32 WindowOffset, UINT8 *Cursor, UINT32 ByteCount) {
+    if (WIFI_BACKPLANE_BLOCK_MODE != 0 && ByteCount > gWifiBackplaneBlockBytes) {
+        UINT32 Blocks = ByteCount / gWifiBackplaneBlockBytes;
+        UINT32 BulkBytes;
+
+        if (Blocks > 511u) {
+            Blocks = 511u;
+        }
+        BulkBytes = Blocks * gWifiBackplaneBlockBytes;
+        if (WifiSdioBlockWrite(SDIO_FUNCTION_1, WindowOffset, Cursor, BulkBytes,
+                               gWifiBackplaneBlockBytes) != 0) {
+            return -1;
+        }
+        WindowOffset += BulkBytes;
+        Cursor += BulkBytes;
+        ByteCount -= BulkBytes;
+    }
+    while (ByteCount > 0u) {
+        UINT32 Piece = (ByteCount > 64u) ? 64u : ByteCount;
+
+        if (WifiSdioCommand53Write(SDIO_FUNCTION_1, WindowOffset, Cursor, Piece, 1) != 0) {
+            return -1;
+        }
+        WindowOffset += Piece;
+        Cursor += Piece;
+        ByteCount -= Piece;
+    }
+    return 0;
+}
+
 static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteCount,
                                        int Write) {
     UINT32 Remaining = ByteCount;
@@ -74,6 +112,29 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
 
     if (Data == 0 && ByteCount != 0) {
         return -1;
+    }
+    /* 块长必须跟卡自己声明的最大块长一致，否则卡等不满一块、数据阶段永不完成 */
+    if (Write && !gWifiBlockSizeReady) {
+        WifiSdioResetWaitReport();
+    }
+    if (WIFI_BACKPLANE_BLOCK_MODE == 0) {
+        gWifiBackplaneBlockBytes = WIFI_BACKPLANE_BLOCK_BYTES;
+    } else if (Write && !gWifiBlockSizeReady) {
+        int ReadBack;
+
+        /*
+         * 对表 Linux sdio_set_block_size：块长取卡声明的值（上限 512），并写回 FBR。
+         * 之前的 0x100 读的是 CSA 指针不是块长，所以恒 0；真正的块长在 0x110/0x111。
+         */
+        /* 512 会被卡以 R5 OUT_OF_RANGE 拒绝，说明 F1 块长上限是 64 */
+        (void)WifiSdioSetFunctionBlockSize(64u);
+        ReadBack = WifiSdioReadFunctionBlockSize();
+        WifiBootMarkHexadecimal32("Boot: Pi WIFI fbr readback=", (UINT32)ReadBack);
+        HalSerialBootMarkForce("\n");
+        gWifiBackplaneBlockBytes = (ReadBack == 512) ? 512u : 64u;
+        gWifiBlockSizeReady = 1;
+        WifiBootMarkHexadecimal32("Boot: Pi WIFI fbr blk=", gWifiBackplaneBlockBytes);
+        HalSerialBootMarkForce("\n");
     }
     /*
      * 对表 Linux brcmf_sdiod_ramrw（Pi Arasan）：窗内偏移 | ACCESS_2_4B（0x8000）。
@@ -89,8 +150,9 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
         if (Chunk > Remaining) {
             Chunk = Remaining;
         }
-        if (Chunk > WIFI_BACKPLANE_BLOCK_BYTES) {
-            Chunk = WIFI_BACKPLANE_BLOCK_BYTES;
+        /* 块模式下 Chunk 由窗口大小决定（最多 32 KB）；只有字节模式才需要压到 9 位计数以内 */
+        if (WIFI_BACKPLANE_BLOCK_MODE == 0 && Chunk > 480u) {
+            Chunk = 480u;
         }
         if (Chunk > 4u && (Chunk & 3u) != 0) {
             Chunk &= ~3u;
@@ -101,7 +163,7 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
             return -1;
         }
         if (Write) {
-            Error = WifiSdioCommand53Write(SDIO_FUNCTION_1, WindowOffset, Cursor, Chunk, 1);
+            Error = WifiBackplaneWriteChunk(WindowOffset, Cursor, Chunk);
         } else {
             Error = WifiSdioCommand53Read(SDIO_FUNCTION_1, WindowOffset, Cursor, Chunk, 1);
         }
@@ -113,6 +175,8 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw pst=", gSdhciLastPresentState);
             HalSerialBootMarkForce("\n");
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw isr=", gSdhciLastCommandStatus);
+            HalSerialBootMarkForce("\n");
+            WifiBootMarkHexadecimal32("Boot: Pi WIFI fw r5=", gSdhciResponse[0]);
             HalSerialBootMarkForce("\n");
             return -1;
         }
@@ -138,4 +202,26 @@ int WifiBackplaneWriteMemory(UINT32 Address, const UINT8 *Data, UINT32 ByteCount
 
 int WifiBackplaneReadMemory(UINT32 Address, UINT8 *Data, UINT32 ByteCount) {
     return WifiBackplaneMemoryTransfer(Address, Data, ByteCount, 0);
+}
+
+/*
+ * 验证「背板写真的落地」这个前提：往 bankidx 写 1 读回，再写 3 读回。
+ * 窗口寄存器是 F1 空间（CMD52 直写），落地不代表背板写也落地；
+ * 若这里读回 0，说明所有背板写都是空操作，此前「寄存器通」的结论就要推翻。
+ */
+int WifiBackplaneWriteReadbackTest(void) {
+    UINT32 First = 0;
+    UINT32 Second = 0;
+
+    if (WifiBackplaneWrite32(WIFI_SOCRAM_BANK_INDEX, 1u) != 0 ||
+        WifiBackplaneRead32(WIFI_SOCRAM_BANK_INDEX, &First) != 0 ||
+        WifiBackplaneWrite32(WIFI_SOCRAM_BANK_INDEX, 3u) != 0 ||
+        WifiBackplaneRead32(WIFI_SOCRAM_BANK_INDEX, &Second) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI bankidx roundtrip fail\n");
+        return -1;
+    }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI bankidx write1 read=", First);
+    WifiBootMarkHexadecimal32(" write3 read=", Second);
+    HalSerialBootMarkForce("\n");
+    return 0;
 }

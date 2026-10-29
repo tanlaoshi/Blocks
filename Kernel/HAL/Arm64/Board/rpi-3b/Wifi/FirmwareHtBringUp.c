@@ -5,21 +5,94 @@
  */
 #include "Wifi/Private.h"
 
+/*
+ * 对表 brcmf_sdio_htclk：请求 HT 是把整个字节写成 HT_AVAIL_REQ，
+ * FORCE_ALP 与 ALP_AVAIL_REQ 必须一起清掉。保留 FORCE_ALP 会把 ALP 钉死，
+ * 芯片永远不会切到 HT，SRAM（HT 域）随之无响应。
+ */
+static int WifiClockRequestHighThroughput(void) {
+    UINT8 ClockControl = 0;
+
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
+                               (UINT8)WIFI_CLOCK_REQUEST_HT) != 0) {
+        return -1;
+    }
+    if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &ClockControl) != 0) {
+        return -1;
+    }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI HT req csr=", ClockControl);
+    HalSerialBootMarkForce("\n");
+    return 0;
+}
+
+
+static void WifiCoreStateProbeMark(const char *Name, UINT32 WrapperBase) {
+    UINT32 IoControl = 0;
+    UINT32 ResetControl = 0;
+    int IoRead;
+    int ResetRead;
+
+    IoRead = WifiBackplaneRead32(WrapperBase + WIFI_AI_IO_CONTROL_OFFSET, &IoControl);
+    ResetRead = WifiBackplaneRead32(WrapperBase + WIFI_AI_RESET_CONTROL_OFFSET, &ResetControl);
+    HalSerialBootMarkForce("Boot: Pi WIFI ");
+    HalSerialBootMarkForce(Name);
+    if (IoRead == 0) {
+        WifiBootMarkHexadecimal32(" io=", IoControl);
+    } else {
+        HalSerialBootMarkForce(" io=fail");
+    }
+    if (ResetRead == 0) {
+        WifiBootMarkHexadecimal32(" rst=", ResetControl);
+    } else {
+        HalSerialBootMarkForce(" rst=fail");
+    }
+    HalSerialBootMarkForce("\n");
+}
+
+/*
+ * 灌数据前先要 HT 并等它真的到手：
+ * 寄存器块在常开域（ALP 即可），存储阵列在高速域；若 HT 拿不到，
+ * 阵列访问就会像现在这样「发出去、永不回应」。
+ */
+int WifiClockRequestHighThroughputAndWait(void) {
+    UINT8 Status = 0;
+    UINT32 Attempt;
+
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
+                               (UINT8)WIFI_CLOCK_REQUEST_HT) != 0) {
+        return -1;
+    }
+    for (Attempt = 0; Attempt < 1500u; Attempt++) {
+        if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &Status) != 0) {
+            return -1;
+        }
+        if ((Status & WIFI_CLOCK_HT_AVAILABLE) != 0) {
+            break;
+        }
+        SdhciDelayMicroseconds(1000);
+    }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI HT before sram csr=", Status);
+    HalSerialBootMarkForce("\n");
+    return ((Status & WIFI_CLOCK_HT_AVAILABLE) != 0) ? 0 : -1;
+}
+
 int WifiExitDownload(void) {
     /*
-     * 对表 Linux cm3_set_active：activate 清 intstatus → resetcore(ARM)。
-     * 只写（bulk 后 CMD53 读楔死）。拉起后延时 + CMD|DATA 复位再轮询 HT。
+     * 对表 Linux cm3_set_active + cyw43：SOCRAM 已在下刀前拉出复位（见 WifiEnterDownload），
+     * 此处只清 intstatus 再拉 ARM —— 灌完后再动 SOCRAM 会把刚写进去的固件一起复位掉。
      */
     if (WifiBackplaneWrite32(WIFI_SDIO_INT_STATUS, 0xFFFFFFFFu) != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI intstatus clear fail\n");
         return -1;
     }
-    if (WifiCoreResetWritesOnly(WIFI_ARM_WRAPPER, 0, 0, 0) != 0) {
+    if (WifiCoreReset(WIFI_ARM_WRAPPER, 0, 0, 0) != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI ARM reset fail\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI ARM reset (writes-only)\n");
+    HalSerialBootMarkForce("Boot: Pi WIFI ARM reset ok\n");
     SdhciDelayMicroseconds(50000);
+    WifiCoreStateProbeMark("socram-after", WIFI_SOCRAM_WRAPPER);
+    WifiCoreStateProbeMark("arm-after", WIFI_ARM_WRAPPER);
     if (WifiSdioHostCommandDataRecover() != 0) {
         return -1;
     }
@@ -33,8 +106,7 @@ int WifiWaitHtAndFunction2(void) {
     UINT8 Status = 0;
     UINT32 ChipCommon = 0;
 
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
-                               (UINT8)WIFI_CLOCK_REQUEST_HT) != 0) {
+    if (WifiClockRequestHighThroughput() != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI HT req fail\n");
         return -1;
     }
@@ -56,14 +128,15 @@ int WifiWaitHtAndFunction2(void) {
         if ((Attempt % 200u) == 0u) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI HT wait csr=", Status);
             HalSerialBootMarkForce("\n");
-            (void)WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
-                                         (UINT8)WIFI_CLOCK_REQUEST_HT);
+            (void)WifiClockRequestHighThroughput();
         }
         SdhciDelayMicroseconds(1000);
     }
     if ((Status & WIFI_CLOCK_HT_AVAILABLE) == 0) {
         WifiBootMarkHexadecimal32("Boot: Pi WIFI HT timeout csr=", Status);
         HalSerialBootMarkForce("\n");
+        WifiCoreStateProbeMark("arm-timeout", WIFI_ARM_WRAPPER);
+        WifiCoreStateProbeMark("socram-timeout", WIFI_SOCRAM_WRAPPER);
         return -1;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI HT ok csr=", Status);

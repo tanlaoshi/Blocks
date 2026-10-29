@@ -121,11 +121,18 @@ void WifiPinConfigure(void) {
 }
 
 int WifiWirelessPowerOn(void) {
+    /*
+     * 先拉低再拉高：Pi 的固件早就给 WiFi 加过电，直接写 1 不会产生上电复位，
+     * 芯片的 ROM 初始化（含存储域上电）可能从未完整跑过。
+     * 断电 100 ms 再上电，等于强制一次真正的 POR。
+     */
+    (void)BoardExpanderGpioWrite(BOARD_EXPANDER_WIRELESS_ON, 0u);
+    SdhciDelayMicroseconds(100000u);
     if (BoardExpanderGpioWrite(BOARD_EXPANDER_WIRELESS_ON, 1u) != 0) {
         HalSerialBootMark("Boot: Pi WIFI WL_ON mbox fail\n");
         return -1;
     }
-    SdhciDelayMicroseconds(150000u);
-    HalSerialBootMark("Boot: Pi WIFI WL_ON\n");
+    SdhciDelayMicroseconds(500000u);
+    HalSerialBootMark("Boot: Pi WIFI WL_ON cycle\n");
     return 0;
 }

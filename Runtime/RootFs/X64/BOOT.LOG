@@ -1,0 +1,62 @@
+ToyKernel
+COM1 Serial OK
+Boot: KernelMain Live
+Boot: FB 1280x0800
+Boot: Mod Serial
+Boot: Mod PhysicalMemory
+Boot: Mod VirtualMemory
+Boot: Mod Video
+Boot: Logo
+Boot: igpu blit soft (need surf)
+Boot: Mod Cpu
+Boot: IOAPIC Base=0x00000000FEC00000 maxredir=0x00000018 gsi0=0x00000000 iso=0x00000005
+Boot: COM1 after Cpu
+Boot: IOAPIC Route GSI=0x00000004 vec=0x00000043 dest=0x00000000 edge high
+Boot: COM1 Ready
+Boot: fpu island ok
+Boot: Mod Driver
+Boot: Device Enumerate Done
+Boot: Driver Register OK
+Boot: igpu blit soft (need surf)
+Boot: AHCI Drives=2
+Boot: Driver Block Probe Done
+Boot: Mod Smp
+Boot: ACPI Power Ready
+Smp: MADT CPUs=0x00000001 bsp_apic=0x00000000
+Smp: APs Started=0x00000000 hellos=0x00000000
+Boot: Mod USB
+Boot: Input Probe (USB Then PS/2)
+Boot: XHCI-HID Keyboard
+Boot: XHCI-HID Mouse (Abs)
+Boot: XHCI IRQ=MSI (Dual)
+Boot: PS2-AUX Mouse (Stream)
+Boot: PS2-KBD Keyboard (Set2)
+Boot: Input Backend Ready
+Boot: Mod Scheduler
+Boot: Mod Console
+Boot: Mod FileSystem
+block: drive 00000000 ready
+block: drive 00000001 ready
+FS: FAT LBA 0000003f
+Fs: Vol A Letter=0x00000041 Drive=0x00000000 Lba=0x0000003F
+FS: FAT LBA 0000003f
+Fs: Vol BLOCKS Letter=0x00000042 Drive=0x00000001 Lba=0x0000003F
+Fs: Vol RES (Resfs)
+Fs: Mounted 3 volume(s), default=BLOCKS
+Boot: MSC claim (need boot-disk BLOCKS)
+Boot: MSC Auto Retry (boot disk needs BLOCKS)
+Boot: USB-UART None
+Fs: Ready
+Boot: Mod Gui
+Font: Loaded Assets/Fonts/VGA8X16.FNT (Sun 8x16)
+Font: Loaded Assets/Fonts/TER10X18.FNT (Terminus 10x18)
+Boot: ttf sfnt ok bytes=0x000EF100 tables=0x0000000E
+Boot: ttf init ok
+Theme: Loaded BLOCKS.DB
+Boot: Logo Cleared
+Boot: XHCI mouse handoff desktop
+Gui: Desktop Layout Ready
+Gui: Desktop Solid Ready (Icons Deferred)
+Boot: Desktop Icons Loaded
+Boot: XHCI mouse handoff desktop
+Boot: save BOOT.LOG

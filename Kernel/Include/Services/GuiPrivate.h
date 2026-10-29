@@ -34,6 +34,14 @@
 /* resize 居中臂；指针头+尾最大约 4*HALF_MAX+描边 */
 #define CURSOR_EXT_MAX   40
 #define CURSOR_BOX       112
+/*
+ * PR-23c：save-under 按物理像素存。
+ * 盒子仍是 CURSOR_BOX 个逻辑像素（布局单位不变），200% 时覆盖
+ * CURSOR_BOX×2 = 224 物理像素，故缓冲按最大绘制倍数预留。
+ * CURSOR_MAX_DRAW_SCALE 必须 ≥ VideoGetDrawScale() 的上限（当前 2）。
+ */
+#define CURSOR_MAX_DRAW_SCALE 2
+#define CURSOR_BOX_PHYS  (CURSOR_BOX * CURSOR_MAX_DRAW_SCALE)
 
 /* 光标外形：0=指针箭头；1..3=边/角 resize */
 #define CURSOR_KIND_ARROW     0
@@ -104,7 +112,12 @@ typedef struct {
     UINT32 SaveY;
     UINT32 SaveWidth;
     UINT32 SaveHeight;
-    UINT32 Under[CURSOR_BOX * CURSOR_BOX];
+    /*
+     * PR-23c：Under 存物理像素（ReadRectPhys/WriteRectPhys）。
+     * SaveX/SaveY/SaveWidth/SaveHeight 仍是逻辑坐标——布局、ClearIconFootprint
+     * 等调用方都用逻辑单位，物理换算只在 Cursor.c 读写 Under 时做。
+     */
+    UINT32 Under[CURSOR_BOX_PHYS * CURSOR_BOX_PHYS];
     int    CursorVisible;
     int    DragWin;
     INT32  DragOffX;

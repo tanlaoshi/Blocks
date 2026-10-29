@@ -62,6 +62,14 @@ void HalVideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UI
     VideoWriteRect(X, Y, Width, Height, In);
 }
 
+void HalVideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out) {
+    VideoReadRectPhys(Xp, Yp, Wp, Hp, Out);
+}
+
+void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In) {
+    VideoWriteRectPhys(Xp, Yp, Wp, Hp, In);
+}
+
 void HalVideoClearScreen(UINT32 Color) {
     VideoClearScreen(Color);
 }

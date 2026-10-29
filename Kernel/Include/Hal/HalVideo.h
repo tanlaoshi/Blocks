@@ -94,6 +94,13 @@ void HalVideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
                       UINT32 Width, UINT32 Height);
 void HalVideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out);
 void HalVideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT32 *In);
+/*
+ * PR-23c：物理像素矩形读写（save-under 用）。坐标已是物理像素
+ * （调用方按 HalVideoGetDrawScale 换算）；读回再写回逐像素还原，
+ * 200% 下不会把块内细节抹平。越界裁剪到绘制尺寸。
+ */
+void HalVideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out);
+void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In);
 void HalVideoClearScreen(UINT32 Color);
 
 void HalVideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color);

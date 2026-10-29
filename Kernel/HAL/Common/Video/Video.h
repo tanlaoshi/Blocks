@@ -86,6 +86,13 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
                    UINT32 Width, UINT32 Height);
 void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out);
 void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT32 *In);
+/*
+ * PR-23c：物理像素矩形读写（save-under 专用）。
+ * 坐标/尺寸都是绘制坐标（逻辑×DrawScale），不再乘倍数、不按块采样；
+ * 行距 = DrawPitch，Out/In 按 Wp 紧排。越界裁剪到 gDrawW/gDrawH。
+ */
+void VideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out);
+void VideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In);
 void VideoClearScreen(UINT32 Color);
 void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color);
 void VideoDrawCodepointAt(UINT32 X, UINT32 Y, UINT32 Cp, UINT32 Color);

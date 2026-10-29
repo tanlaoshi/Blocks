@@ -101,12 +101,14 @@ int DbSave(void) {
     int i;
     int k;
 
+    /* 头是给人看的注释：换成产品名，读侧本来就忽略 '#' 行 */
     Buf[N++] = '#';
     Buf[N++] = ' ';
-    Buf[N++] = 'T';
+    Buf[N++] = 'B';
+    Buf[N++] = 'L';
     Buf[N++] = 'O';
-    Buf[N++] = 'Y';
-    Buf[N++] = 'O';
+    Buf[N++] = 'C';
+    Buf[N++] = 'K';
     Buf[N++] = 'S';
     Buf[N++] = '.';
     Buf[N++] = 'D';

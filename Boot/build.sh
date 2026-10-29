@@ -10,6 +10,11 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# PR-16：两份 UefiBootConfig.h 一致性检查（各留一份可编，但不许语义漂移）
+if [ -f "$SCRIPT_DIR/../Kernel/Scripts/lib/check-uefi-boot-config.py" ]; then
+    python3 "$SCRIPT_DIR/../Kernel/Scripts/lib/check-uefi-boot-config.py" "$SCRIPT_DIR/.."
+fi
+
 DEBUG=0
 for Arg in "$@"; do
     case "$Arg" in

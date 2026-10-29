@@ -8,6 +8,11 @@ blocks_pick_root_for_build() {
     return 1
 }
 
+# PR-16：两份 UefiBootConfig.h 一致性检查（各留一份可编，但不许语义漂移）
+if [ -f "$PWD/Scripts/lib/check-uefi-boot-config.py" ]; then
+    python3 "$PWD/Scripts/lib/check-uefi-boot-config.py" "$PWD/.."
+fi
+
 BUILDDIR=Build
 if Root="$(blocks_pick_root_for_build)"; then
     export BLOCKS_ROOT="$Root"

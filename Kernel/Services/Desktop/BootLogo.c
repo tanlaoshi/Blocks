@@ -37,6 +37,9 @@ static UINT32 gAy;
 static UINT32 gMarkW;
 static UINT32 gMarkH;
 static UINT32 gLastShift; /* 上一帧橙色 Shift；用于只擦脚印 */
+/* gAx/gAy 是按哪一档逻辑画布算出来的（PR-19 修复/200% 残留） */
+static UINT32 gLayoutW;
+static UINT32 gLayoutH;
 
 /* 与 Drag/Slide 相同：抬高条带，整块 Present，避免 64 行撕开 */
 static void LogoPresentFlush(void) {
@@ -146,9 +149,58 @@ static void DrawTealBottom(UINT32 X, UINT32 Y) {
     Cell(X, Y, 2, 2, LOGO_TEAL);               /* 9 */
 }
 
+/*
+ * PR-19 修复/200%：gAx/gAy 原来只在 Show 里按当时的逻辑尺寸算一次。
+ * 真机 4K 默认 200%：VideoInitialize 时 gUiScale=100（逻辑=物理 3840×2160），
+ * logo 画在正中；GuiInitialize 里 ThemeLoad 之后才 HalVideoSetUiScale(200)
+ * （逻辑变 1920×1080，绘制×2）。旧 gAx/gAy=1840/1000 是上一档逻辑坐标，
+ * 再按 ×2 落笔就被裁到右下角 → 右下角残留一块 logo（中间那份 100% 的
+ * 旧后缓冲内容还在）。这里每帧核对画布：尺寸变了就按新逻辑尺寸重算，
+ * 并把「旧 bbox（在新画布上正是残留处）+ 新 bbox」都抹黑，再让调用方
+ * 按新坐标重画。坐标/尺寸全部保持逻辑值，×2 交给 GraphicsFillRectangle。
+ */
+static int LogoLayout(void) {
+    UINT32 W;
+    UINT32 H;
+    UINT32 MarkW;
+    UINT32 MarkH;
+    UINT32 Ax;
+    UINT32 Ay;
+
+    HalVideoGetSize(&W, &H);
+    if (W < 320 || H < 200) {
+        return 0;
+    }
+    MarkW = LOGO_CELL * 3u + LOGO_GAP * 2u;
+    MarkH = MarkW;
+    Ax = (W > MarkW) ? (W - MarkW) / 2u : 0u;
+    Ay = (H > MarkH) ? (H - MarkH) / 2u : 0u;
+    if (gLayoutW == W && gLayoutH == H && gAx == Ax && gAy == Ay &&
+        gMarkW == MarkW && gMarkH == MarkH) {
+        return 1;
+    }
+    /* 先擦旧位（缩放切换后旧逻辑坐标就是屏上残留的物理位置） */
+    if (gMarkW != 0 && gMarkH != 0) {
+        Fill(gAx, gAy, gMarkW, gMarkH, LOGO_BG);
+    }
+    gAx = Ax;
+    gAy = Ay;
+    gMarkW = MarkW;
+    gMarkH = MarkH;
+    gLayoutW = W;
+    gLayoutH = H;
+    gLastShift = LOGO_SHIFT_NONE;
+    /* 再擦新位：新后缓冲可能是复用的旧页，中间还留着上一档的 logo */
+    Fill(gAx, gAy, gMarkW, gMarkH, LOGO_BG);
+    return 1;
+}
+
 static void PaintPieces(UINT32 Pct) {
     UINT32 Shift;
 
+    if (!LogoLayout()) {
+        return;
+    }
     if (Pct > 100) {
         Pct = 100;
     }
@@ -196,8 +248,6 @@ void DesktopBootLogoBump(UINT32 Cap) {
 void DesktopBootLogoShow(void) {
     UINT32 W;
     UINT32 H;
-    UINT32 MarkW;
-    UINT32 MarkH;
 
 #if SCREEN_LOG
     /* 屏上 boot 日志与 logo 同 FB；再滑九格会像从日志页掉下来 */
@@ -213,12 +263,11 @@ void DesktopBootLogoShow(void) {
 
     LogoSpinMs(LOGO_SHOW_DELAY_MS);
 
-    MarkW = LOGO_CELL * 3 + LOGO_GAP * 2;
-    MarkH = LOGO_CELL * 3 + LOGO_GAP * 2;
-    gMarkW = MarkW;
-    gMarkH = MarkH;
-    gAx = (W > MarkW) ? (W - MarkW) / 2 : 0;
-    gAy = (H > MarkH) ? (H - MarkH) / 2 : 0;
+    /* 新一次开机：丢掉上一次的布局缓存，让 LogoLayout 按当前逻辑尺寸算 */
+    gMarkW = 0;
+    gMarkH = 0;
+    gLayoutW = 0;
+    gLayoutH = 0;
     /* 底色不碰 LFB；后缓冲已在 VideoInitialize 铺好。只 Present 格子。 */
     gPct = 0;
     gTealBottomUp = 0;
@@ -269,4 +318,8 @@ void DesktopBootLogoFinish(void) {
     gLastShift = LOGO_SHIFT_NONE;
     gLogoTsc = 0;
     gPct = 0;
+    gMarkW = 0;
+    gMarkH = 0;
+    gLayoutW = 0;
+    gLayoutH = 0;
 }

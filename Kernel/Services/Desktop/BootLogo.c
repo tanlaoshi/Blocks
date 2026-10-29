@@ -27,6 +27,9 @@
 #define LOGO_MIN_MS 1000u
 #define LOGO_TSC_PER_MS 3000000ull
 #define LOGO_SHIFT_NONE 0xFFFFFFFFu
+/* 九格整体外框（物理像素）：3 格 + 2 间隙 */
+#define LOGO_MARK_W (LOGO_CELL * 3u + LOGO_GAP * 2u)
+#define LOGO_MARK_H LOGO_MARK_W
 
 static int gLogoUp;
 static int gTealBottomUp; /* 底部三格青绿只画一次 */
@@ -34,21 +37,10 @@ static UINT64 gLogoTsc;
 static UINT32 gPct;
 static UINT32 gAx;
 static UINT32 gAy;
-static UINT32 gMarkW;
-static UINT32 gMarkH;
 static UINT32 gLastShift; /* 上一帧橙色 Shift；用于只擦脚印 */
-/* gAx/gAy 是按哪一档逻辑画布算出来的（PR-19 修复/200% 残留） */
+/* gAx/gAy 是按哪一档物理分辨率算出来的（与 UI 缩放档无关） */
 static UINT32 gLayoutW;
 static UINT32 gLayoutH;
-/*
- * 上一次真正落笔的物理矩形。换缩放档后逻辑坐标的物理含义变了，
- * 只按逻辑 Fill(gAx,gAy) 擦不到旧像素（50% 冷启动会留下 100% 的大
- * logo，和新画的小 logo 叠在一起）。这里按当时的物理位置擦。
- */
-static UINT32 gPhysX;
-static UINT32 gPhysY;
-static UINT32 gPhysW;
-static UINT32 gPhysH;
 
 /* 与 Drag/Slide 相同：抬高条带，整块 Present，避免 64 行撕开 */
 static void LogoPresentFlush(void) {
@@ -82,30 +74,29 @@ static void LogoSpinMs(UINT32 Ms) {
     }
 }
 
+/*
+ * 开机 Logo 永远按 100% 几何画：坐标/尺寸全是物理像素，直接按物理矩形
+ * 落笔，不经过 GraphicsFillRectangle 的逻辑→物理换算，因此与
+ * HalVideoGetDrawNum()/Den() 无关。缩放只作用于桌面，切档时 Logo 不重排。
+ * 物理直写同时会把覆盖到的逻辑脏区记账，Present 再映射回物理，缩放档下
+ * 也能把这几个格子刷上屏。
+ */
 static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
-    if (W == 0 || H == 0) {
-        return;
-    }
-    GraphicsFillRectangle(X, Y, W, H, C);
-}
-
-/* 物理像素抹底：换档后擦旧 logo 用，绕开逻辑→物理换算 */
-static void FillPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 C) {
-    static UINT32 Row[LOGO_CELL * 7u];
+    static UINT32 Row[LOGO_MARK_W];
     UINT32 i;
     UINT32 r;
 
-    if (Wp == 0u || Hp == 0u) {
+    if (W == 0u || H == 0u) {
         return;
     }
-    if (Wp > (UINT32)(sizeof(Row) / sizeof(Row[0]))) {
-        Wp = (UINT32)(sizeof(Row) / sizeof(Row[0]));
+    if (W > (UINT32)(sizeof(Row) / sizeof(Row[0]))) {
+        W = (UINT32)(sizeof(Row) / sizeof(Row[0]));
     }
-    for (i = 0; i < Wp; i++) {
+    for (i = 0; i < W; i++) {
         Row[i] = C;
     }
-    for (r = 0; r < Hp; r++) {
-        HalVideoWriteRectPhys(Xp, Yp + r, Wp, 1u, Row);
+    for (r = 0; r < H; r++) {
+        HalVideoWriteRectPhys(X, Y + r, W, 1u, Row);
     }
 }
 
@@ -155,11 +146,11 @@ static void ClearOrangeCorridor(UINT32 X, UINT32 Y) {
     UINT32 Th = Step + LOGO_CELL;
     UINT32 Top = (Y > LOGO_OPEN) ? (Y - LOGO_OPEN) : 0;
     UINT32 Bot = Y + Th;
-    UINT32 MarkW = LOGO_CELL * 3u + LOGO_GAP * 2u;
+    UINT32 MarkW = LOGO_MARK_W;
 
     if (Bot > Top) {
+        /* Fill 走物理直写，脏区由 HalVideoWriteRectPhys 记账 */
         Fill(X, Top, MarkW, Bot - Top, LOGO_BG);
-        HalVideoMarkDirty(X, Top, MarkW, Bot - Top);
     }
 }
 
@@ -179,69 +170,36 @@ static void DrawTealBottom(UINT32 X, UINT32 Y) {
 }
 
 /*
- * PR-19 修复/200%：gAx/gAy 原来只在 Show 里按当时的逻辑尺寸算一次。
- * 真机 4K 默认 200%：VideoInitialize 时 gUiScale=100（逻辑=物理 3840×2160），
- * logo 画在正中；GuiInitialize 里 ThemeLoad 之后才 HalVideoSetUiScale(200)
- * （逻辑变 1920×1080，绘制×2）。旧 gAx/gAy=1840/1000 是上一档逻辑坐标，
- * 再按 ×2 落笔就被裁到右下角 → 右下角残留一块 logo（中间那份 100% 的
- * 旧后缓冲内容还在）。这里每帧核对画布：尺寸变了就按新逻辑尺寸重算，
- * 并把「旧 bbox（在新画布上正是残留处）+ 新 bbox」都抹黑，再让调用方
- * 按新坐标重画。坐标/尺寸全部保持逻辑值，×2 交给 GraphicsFillRectangle。
+ * 布局只按物理分辨率居中，与 HalVideoGetDrawNum()/Den() 无关。
+ *
+ * 开机 Logo 属于固件/引导阶段的品牌画面，不跟用户的桌面缩放设置走：
+ * 物理尺寸不变（50/150/200% 都不改物理宽高）时这里只做查询，不擦不重排，
+ * 于是 ThemeLoad 后 HalVideoSetUiScale() 切档不会再把 Logo 按新比例重画，
+ * 也就没有「进桌面前 Logo 跳一下」。
+ *
+ * 若物理分辨率真的变了（正常开机流程不会），按新物理尺寸重新居中即可；
+ * 坐标仍旧是 1:1，不做 Num/Den 换算。
  */
 static int LogoLayout(void) {
     UINT32 W;
     UINT32 H;
-    UINT32 MarkW;
-    UINT32 MarkH;
     UINT32 Ax;
     UINT32 Ay;
 
-    HalVideoGetSize(&W, &H);
-    if (W < 320 || H < 200) {
+    HalVideoGetPhysicalSize(&W, &H);
+    if (W < 320u || H < 200u) {
         return 0;
     }
-    MarkW = LOGO_CELL * 3u + LOGO_GAP * 2u;
-    MarkH = MarkW;
-    Ax = (W > MarkW) ? (W - MarkW) / 2u : 0u;
-    Ay = (H > MarkH) ? (H - MarkH) / 2u : 0u;
-    if (gLayoutW == W && gLayoutH == H && gAx == Ax && gAy == Ay &&
-        gMarkW == MarkW && gMarkH == MarkH) {
+    Ax = (W > LOGO_MARK_W) ? (W - LOGO_MARK_W) / 2u : 0u;
+    Ay = (H > LOGO_MARK_H) ? (H - LOGO_MARK_H) / 2u : 0u;
+    if (gLayoutW == W && gLayoutH == H && gAx == Ax && gAy == Ay) {
         return 1;
-    }
-    /*
-     * 先擦旧位：必须用上一次落笔时的物理矩形。缩放档一变，旧逻辑
-     * 坐标再乘新比例就落到别处（100→50% 擦到左上四分之一，旧 logo
-     * 原样留着，和新的叠成两层）。
-     */
-    if (gPhysW != 0 && gPhysH != 0) {
-        FillPhys(gPhysX, gPhysY, gPhysW, gPhysH, LOGO_BG);
     }
     gAx = Ax;
     gAy = Ay;
-    gMarkW = MarkW;
-    gMarkH = MarkH;
     gLayoutW = W;
     gLayoutH = H;
     gLastShift = LOGO_SHIFT_NONE;
-    {
-        UINT32 Num = HalVideoGetDrawNum();
-        UINT32 Den = HalVideoGetDrawDen();
-
-        if (Num == 0u) {
-            Num = 1u;
-        }
-        if (Den == 0u) {
-            Den = 1u;
-        }
-        gPhysX = (UINT32)(((UINT64)Ax * (UINT64)Num) / (UINT64)Den);
-        gPhysY = (UINT32)(((UINT64)Ay * (UINT64)Num) / (UINT64)Den);
-        gPhysW = (UINT32)(((UINT64)(Ax + MarkW) * (UINT64)Num) / (UINT64)Den) -
-                 gPhysX;
-        gPhysH = (UINT32)(((UINT64)(Ay + MarkH) * (UINT64)Num) / (UINT64)Den) -
-                 gPhysY;
-    }
-    /* 再擦新位：新后缓冲可能是复用的旧页，中间还留着上一档的 logo */
-    Fill(gAx, gAy, gMarkW, gMarkH, LOGO_BG);
     return 1;
 }
 
@@ -255,6 +213,12 @@ static void PaintPieces(UINT32 Pct) {
         Pct = 100;
     }
     Shift = (100 - Pct) * LOGO_OPEN / 100;
+    /*
+     * 每帧整块抹黑自己的物理矩形：切档会重配后缓冲（可能是未初始化页），
+     * 格间空隙必须是底色。这只是补背景，几何仍与缩放档无关；
+     * 不按 Num/Den 重排，也不需要「先擦旧档再画新档」。
+     */
+    Fill(gAx, gAy, LOGO_MARK_W, LOGO_MARK_H, LOGO_BG);
     ClearOrangeCorridor(gAx, gAy);
     DrawOrange(gAx, gAy, Shift);
     DrawTealSides(gAx, gAy);
@@ -306,20 +270,16 @@ void DesktopBootLogoShow(void) {
     if (gLogoUp) {
         return;
     }
-    HalVideoGetSize(&W, &H);
-    if (W < 320 || H < 200) {
+    HalVideoGetPhysicalSize(&W, &H);
+    if (W < 320u || H < 200u) {
         return;
     }
 
     LogoSpinMs(LOGO_SHOW_DELAY_MS);
 
-    /* 新一次开机：丢掉上一次的布局缓存，让 LogoLayout 按当前逻辑尺寸算 */
-    gMarkW = 0;
-    gMarkH = 0;
+    /* 新一次开机：丢掉上一次的布局缓存；几何只由物理分辨率决定 */
     gLayoutW = 0;
     gLayoutH = 0;
-    gPhysW = 0;
-    gPhysH = 0;
     /* 底色不碰 LFB；后缓冲已在 VideoInitialize 铺好。只 Present 格子。 */
     gPct = 0;
     gTealBottomUp = 0;
@@ -370,10 +330,6 @@ void DesktopBootLogoFinish(void) {
     gLastShift = LOGO_SHIFT_NONE;
     gLogoTsc = 0;
     gPct = 0;
-    gMarkW = 0;
-    gMarkH = 0;
     gLayoutW = 0;
     gLayoutH = 0;
-    gPhysW = 0;
-    gPhysH = 0;
 }

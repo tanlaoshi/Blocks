@@ -11,6 +11,7 @@
 #include <Protocol/DevicePath.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
+#include <Guid/FileInfo.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
 
@@ -316,13 +317,19 @@ typedef struct {
     CHAR8   Part[40];
 } BOOT_ROOT_CFG;
 
+/* ROOT.CFG 是纯文本，正常几十字节；上限只用于挡住异常文件 */
+#define ROOT_CFG_MAX_SIZE 4096
+
 STATIC BOOLEAN LoadRootCfgFromEsp(EFI_HANDLE ImageHandle, BOOT_ROOT_CFG *Out) {
     EFI_STATUS Status;
     EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
     EFI_FILE_PROTOCOL *Root = NULL;
     EFI_FILE_PROTOCOL *File = NULL;
-    CHAR8 Buf[256];
+    EFI_FILE_INFO *Info = NULL;
+    UINTN InfoSize;
+    UINTN FileSize;
+    CHAR8 *Buf = NULL;
     UINTN Size;
     UINTN i;
     UINTN LineStart;
@@ -353,11 +360,40 @@ STATIC BOOLEAN LoadRootCfgFromEsp(EFI_HANDLE ImageHandle, BOOT_ROOT_CFG *Out) {
         Root->Close(Root);
         return FALSE;
     }
-    Size = sizeof(Buf) - 1;
+
+    /*
+     * 先问大小再整读：固定小缓冲会被 Read 静默夹到剩余长度
+     * （EFI_FILE_PROTOCOL.Read 在缓冲不足时按剩余量返回成功），
+     * disk=/part= 落在后面时就会认错盘，且日志看不出是配置没读到。
+     */
+    InfoSize = sizeof(EFI_FILE_INFO) + 128;
+    Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&Info);
+    if (EFI_ERROR(Status)) {
+        File->Close(File);
+        Root->Close(Root);
+        return FALSE;
+    }
+    Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, Info);
+    if (EFI_ERROR(Status) || Info->FileSize == 0 || Info->FileSize > ROOT_CFG_MAX_SIZE) {
+        gBS->FreePool(Info);
+        File->Close(File);
+        Root->Close(Root);
+        return FALSE;
+    }
+    FileSize = (UINTN)Info->FileSize;
+    Status = gBS->AllocatePool(EfiLoaderData, FileSize + 1, (VOID **)&Buf);
+    gBS->FreePool(Info);
+    if (EFI_ERROR(Status)) {
+        File->Close(File);
+        Root->Close(Root);
+        return FALSE;
+    }
+    Size = FileSize;
     Status = File->Read(File, &Size, Buf);
     File->Close(File);
     Root->Close(Root);
     if (EFI_ERROR(Status) || Size == 0) {
+        gBS->FreePool(Buf);
         return FALSE;
     }
     Buf[Size] = 0;
@@ -385,9 +421,9 @@ STATIC BOOLEAN LoadRootCfgFromEsp(EFI_HANDLE ImageHandle, BOOT_ROOT_CFG *Out) {
     }
     if (Out->Disk[0] != 0 && Out->Part[0] != 0) {
         Out->Ok = TRUE;
-        return TRUE;
     }
-    return FALSE;
+    gBS->FreePool(Buf);
+    return Out->Ok;
 }
 
 STATIC BOOLEAN VolMatchesRootCfg(EFI_HANDLE VolHandle, CONST BOOT_ROOT_CFG *Cfg) {

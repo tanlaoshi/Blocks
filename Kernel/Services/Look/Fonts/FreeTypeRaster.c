@@ -11,6 +11,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "ftarena.h"
+
 static FT_Library gLib;
 static FT_Face gFace[FONT_TTF_UI_MAX];
 static UINT32 gFtFaceMask;
@@ -18,19 +20,33 @@ static FT_Face gMonoFace;
 static int gFtOk;
 static int gFtMonoOk;
 /*
- * PR-22：freetype-port 的 FT_Memory 是 256KiB 静态 bump arena，
- * free 是空实现（ThirdParty/freetype-port/ftsystem_blocks.c），见
- * ftsystem_blocks.c:46 FtFree。一屏字（~300 个 FT_Load_Char）就能把它
- * 灌满，之后所有 FT_Load_Char 都返回 FT_Err_Out_Of_Memory。
- * 旧行为：每个字先试 FT（失败）再退 stb，同一行字一半 FT 一半 stb，
- * 并且换字体后整片变 stb——「同一张脸，换回来字形却变了」。
- * 现在：FT 调用串行化（自有自旋锁），OOM 时在同一把锁内重开 FT
- * （FT_Done_FreeType 会 FT_Done_Memory→gFtUsed=0，即把 arena 归零），
- * 然后重试一次。这样 FT 一直可用，字形在各次换脸之间保持一致。
+ * freetype-port 的 FT_Memory 现在是 256KiB 静态 arena + 首次适配 free-list
+ * （ThirdParty/freetype-port/ftsystem_blocks.c）：free 会按物理前后邻合并，
+ * realloc 先试原地，回收的内存立即复用。旧版 FtFree 是空实现：开机预热
+ * 到 cp=24212（U+5E94「应」）时 256KiB bump arena 已灌满，此后
+ * FT_Load_Char 全返回 FT_Err_Out_Of_Memory，整个会话退 stb。
+ *
+ * FT 调用仍用自有自旋锁串行化（FT 库非线程安全，Gui/Worker 都会进来）。
+ * OOM 不再一发生就整会话停用：只打一行 arena 统计并让本次字形退 stb；
+ * 连续 64 次 OOM（期间一次都没成功）才把 gFtDead 置 1 并丢 HIT 兜底，
+ * 防止 arena 真耗尽时每个字都白跑一趟 FT。
  */
 static volatile int gFtLock;
 static int gFtDead;
+static UINT32 gFtOomStreak;
 static UINT32 gFtLastAdv;
+
+/* 连续 OOM 达到这个数才判 FT 不可用（单次 OOM 只降级当前字形）。 */
+#define FT_OOM_DISABLE_STREAK 64u
+/* FtArenaLog 的「无此参数」哨兵 */
+#define FT_LOG_NONE 0xFFFFFFFFu
+
+/*
+ * 临时自检：改 1 重编后，开机连续栅 5000 码点 × 3 字号（共 15000 次
+ * FT_Load_Char），每 1000 次打印 arena 用量并做全量块链自检。默认 0，
+ * 不占开机时间；真机复验时再开。
+ */
+#define FT_ARENA_SELFTEST 0
 
 static void FtLock(void) {
   while (__sync_lock_test_and_set(&gFtLock, 1)) {
@@ -40,6 +56,184 @@ static void FtLock(void) {
 static void FtUnlock(void) {
   __sync_lock_release(&gFtLock);
 }
+
+static char *FtPutStr(char *P, const char *S) {
+  while (*S) {
+    *P++ = *S++;
+  }
+  return P;
+}
+
+static char *FtPutU32(char *P, UINT32 V) {
+  char T[10];
+  int N = 0;
+
+  if (V == 0u) {
+    *P++ = '0';
+    return P;
+  }
+  while (V != 0u) {
+    T[N++] = (char)('0' + (int)(V % 10u));
+    V /= 10u;
+  }
+  while (N > 0) {
+    *P++ = T[--N];
+  }
+  return P;
+}
+
+/*
+ * 一行 arena 统计：used/peak 用来判断「稳定波动」还是「只增不减」，
+ * fail 是 FT_Memory 分配失败次数，bad 是块链/坏指针自检计数（正常 0）。
+ */
+static void FtArenaLog(const char *Tag, UINT32 A, UINT32 B) {
+  char Line[192];
+  char *P = Line;
+  unsigned long Total;
+  unsigned long Used;
+  unsigned long Peak;
+  unsigned long Fail;
+  unsigned long Allocs;
+  unsigned long Frees;
+  unsigned long Bad;
+
+  FtArenaStats(&Total, &Used, &Peak, &Fail);
+  FtArenaOps(&Allocs, &Frees);
+  Bad = FtArenaBadness();
+  P = FtPutStr(P, "FONT ftarena ");
+  P = FtPutStr(P, Tag);
+  if (A != FT_LOG_NONE) {
+    P = FtPutStr(P, " a=");
+    P = FtPutU32(P, A);
+  }
+  if (B != FT_LOG_NONE) {
+    P = FtPutStr(P, " b=");
+    P = FtPutU32(P, B);
+  }
+  P = FtPutStr(P, " used=");
+  P = FtPutU32(P, (UINT32)Used);
+  P = FtPutStr(P, " peak=");
+  P = FtPutU32(P, (UINT32)Peak);
+  P = FtPutStr(P, " fail=");
+  P = FtPutU32(P, (UINT32)Fail);
+  P = FtPutStr(P, " bad=");
+  P = FtPutU32(P, (UINT32)Bad);
+  P = FtPutStr(P, " alloc=");
+  P = FtPutU32(P, (UINT32)Allocs);
+  P = FtPutStr(P, " free=");
+  P = FtPutU32(P, (UINT32)Frees);
+  P = FtPutStr(P, " total=");
+  P = FtPutU32(P, (UINT32)Total);
+  *P++ = '\r';
+  *P++ = '\n';
+  *P = 0;
+  HalSerialWriteShell(Line);
+}
+
+#if FT_ARENA_SELFTEST
+/*
+ * 连续栅 5000 个真实 cmap 码点 × 3 种字号，共 15000 次 FT_Load_Char。
+ * 每次按当前 Face 的 cmap 顺序取字，走完一轮从头再来；每 1000 次打印
+ * used/peak/fail 并跑一次 FtArenaCheck（物理块链 + 空闲链 + 记账）。
+ * 判据：oom=0，check 全绿，预热后 used 在一个窄区间里波动。
+ */
+static int FtArenaSelfTest(void) {
+  static const FT_UInt Sizes[3] = {18u, 32u, 48u};
+  FT_Face Face;
+  FT_UInt GlyphIndex = 0u;
+  FT_ULong Cp;
+  FT_Error Err;
+  UINT32 Loaded = 0u;
+  UINT32 OomN = 0u;
+  UINT32 S;
+  UINT32 I;
+  unsigned long MinUsed = 0xFFFFFFFFul;
+  unsigned long MaxUsed = 0ul;
+  int Rc = 0;
+
+  if ((gFtFaceMask & 1u) == 0u || !gFace[0]) {
+    return -1;
+  }
+  Face = gFace[0];
+  if (!HalFpuBegin()) {
+    return -1;
+  }
+  for (S = 0; S < 3u && Rc == 0; S++) {
+    if (FT_Set_Pixel_Sizes(Face, 0, Sizes[S])) {
+      Rc = -1;
+      break;
+    }
+    Cp = (FT_ULong)FT_Get_First_Char(Face, &GlyphIndex);
+    if (GlyphIndex == 0u) {
+      Rc = -1;
+      break;
+    }
+    for (I = 0; I < 5000u; I++) {
+      UINT32 Guard = 0u;
+
+      while (Guard < 200000u) {
+        if (Cp >= 32u && Cp != 127u &&
+            FT_Get_Char_Index(Face, Cp) != 0u) {
+          break;
+        }
+        Cp = (FT_ULong)FT_Get_Next_Char(Face, Cp, &GlyphIndex);
+        if (GlyphIndex == 0u) {
+          Cp = (FT_ULong)FT_Get_First_Char(Face, &GlyphIndex);
+        }
+        Guard++;
+      }
+      if (Guard >= 200000u) {
+        Rc = -1;
+        break;
+      }
+      Err = FT_Load_Char(Face, Cp, FT_LOAD_RENDER);
+      if (Err == FT_Err_Out_Of_Memory) {
+        OomN++;
+      }
+      Loaded++;
+      if ((Loaded % 1000u) == 0u) {
+        unsigned long T;
+        unsigned long U;
+        unsigned long Pk;
+        unsigned long F;
+
+        FtArenaStats(&T, &U, &Pk, &F);
+        FtArenaLog("step", Loaded, FtArenaCheck() ? 1u : 0u);
+        if (Loaded > 3000u) {
+          if (U < MinUsed) {
+            MinUsed = U;
+          }
+          if (U > MaxUsed) {
+            MaxUsed = U;
+          }
+        }
+      }
+      Cp = (FT_ULong)FT_Get_Next_Char(Face, Cp, &GlyphIndex);
+      if (GlyphIndex == 0u) {
+        Cp = (FT_ULong)FT_Get_First_Char(Face, &GlyphIndex);
+      }
+    }
+  }
+  HalFpuEnd();
+  {
+    char Line[112];
+    char *P = Line;
+
+    P = FtPutStr(P, "FONT ft selftest glyphs=");
+    P = FtPutU32(P, Loaded);
+    P = FtPutStr(P, " oom=");
+    P = FtPutU32(P, OomN);
+    P = FtPutStr(P, " used-min=");
+    P = FtPutU32(P, (UINT32)MinUsed);
+    P = FtPutStr(P, " used-max=");
+    P = FtPutU32(P, (UINT32)MaxUsed);
+    P = FtPutStr(P, Rc == 0 ? " ok\r\n" : " FAIL\r\n");
+    *P = 0;
+    HalSerialWriteShell(Line);
+  }
+  return Rc;
+}
+#endif
 
 static int FtInitLocked(void);
 
@@ -60,8 +254,9 @@ static int FtInitLocked(void) {
   int Any = 0;
 
   /*
-   * 重开：FT_Done_FreeType → FT_Done_Memory → gFtUsed=0，
-   * 256KiB bump arena 整块回收（ftsystem_blocks.c:FT_Done_Memory）。
+   * 重开：FT_Done_FreeType → FT_Done_Memory 会把 FT 对象逐个 free 回
+   * free-list；万一还有残留，FT_Done_Memory 兜底整块归零。之后这里不
+   * 再手工清 Used，正常分配/回收就能复用同一个 arena。
    */
   if (gLib) {
     FT_Done_FreeType(gLib);
@@ -72,6 +267,7 @@ static int FtInitLocked(void) {
   gFtFaceMask = 0;
   gLib = 0;
   gFtDead = 0;
+  gFtOomStreak = 0;
   gMonoFace = 0;
   gFtLastAdv = 0;
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
@@ -126,6 +322,10 @@ static int FtInitLocked(void) {
     }
   }
   HalFpuEnd();
+#if FT_ARENA_SELFTEST
+  (void)FtArenaSelfTest();
+#endif
+  FtArenaLog("init", FT_LOG_NONE, FT_LOG_NONE);
   LogDrv(gFtMonoOk ? "Boot: ft init ok mono\n" : "Boot: ft init ok\n");
   return 0;
 }
@@ -202,39 +402,21 @@ static void FtFail(UINT32 Cp, UINT32 Reason) {
 }
 
 static void FtOom(UINT32 Cp) {
-  char Line[48];
-  char *P = Line;
-  const char *Pre = "FONT ft oom cp=";
-
-  gFtDead = 1;
-  while (*Pre) {
-    *P++ = *Pre++;
+  gFtOomStreak++;
+  /* 单次 OOM 只降级当前字形：打一行统计（used/peak/fail）便于定位。 */
+  FtArenaLog("oom", Cp, gFtOomStreak);
+  if (gFtOomStreak < FT_OOM_DISABLE_STREAK) {
+    return;
   }
-  {
-    char T[10];
-    int n = 0;
-
-    if (Cp == 0u) {
-      T[n++] = '0';
-    }
-    while (Cp != 0u) {
-      T[n++] = (char)('0' + (int)(Cp % 10u));
-      Cp /= 10u;
-    }
-    while (n > 0) {
-      *P++ = T[--n];
-    }
-  }
-  *P++ = '\r';
-  *P++ = '\n';
-  *P = 0;
-  HalSerialWriteShell(Line);
   /*
-   * 已经用 FT 栅过的字形是「另一条路」的位图；FT 既然废了，整片作废，
-   * 让它们按 stb 重栅，避免同一屏里两种栅格器混排（换字体后又变样）。
+   * 连续 64 次 OOM（期间没有一次成功）才判 arena 真耗尽：停用 FT 并丢 HIT，
+   * 避免每个字都白跑一趟。已经用 FT 栅过的字形是「另一条路」的位图，
+   * 整片作废后按 stb 重栅，避免同一屏混排两种栅格器。
    * 注意：这里是 FillSlot 内部，DropHits 抬了代数 → 本次写入会被
    * FillSlot 的代次校验丢掉，不会把旧位图写回。
    */
+  gFtDead = 1;
+  FtArenaLog("disable", Cp, gFtOomStreak);
   FontTtfCacheDropHits();
 }
 
@@ -259,6 +441,14 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   }
   if (!Pix || CellW == 0 || CellH == 0 || Cp < 32u || Cp == 127u) {
     FtFail(Cp, 1u);
+    return -1;
+  }
+  /*
+   * 空格没有墨：FT 的空位图 buffer==NULL，原逻辑会落到 reason=7 并把
+   * 每个空格都记一次失败（FT 复活后开机 40 行噪音）。直接交 stb 出空白，
+   * 与旧行为（FT 已死时）一致，也省一次 FT_Load_Char。
+   */
+  if (Cp == 32u) {
     return -1;
   }
   Mono = FontTtfMonoActive() && gFtMonoOk && Cp < 128u;
@@ -469,6 +659,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     Adv = CellW;
   }
   gFtLastAdv = Adv;
+  gFtOomStreak = 0;
   HalFpuEnd();
   return 0;
 }

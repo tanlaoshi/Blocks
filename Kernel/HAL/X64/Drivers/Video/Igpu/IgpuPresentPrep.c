@@ -27,6 +27,7 @@
 
 static int gPresentLogged;
 static int gPresentCopyOk;
+static int gRebuildLogged;
 
 int IgpuPresentCopyOk(void) {
     return gPresentCopyOk;
@@ -41,6 +42,86 @@ void IgpuPresentInvalidate(void) {
     gPresentCopyOk = 0;
     IgpuScanoutInvalidate();
     IgpuBackInvalidate();
+}
+
+/* 小开销 LFB 抽样 hash（8×8 步长，供真机确认冻结帧；一次性日志用） */
+static UINT32 LfbSampleHash(void) {
+    const UINT32 *P;
+    UINT64 Base;
+    UINT32 W = 0;
+    UINT32 H = 0;
+    UINT32 Pitch;
+    UINT32 X;
+    UINT32 Y;
+    UINT32 Hsh = 2166136261u;
+    const BOOT_HANDOFF *Info;
+
+    Base = HalVideoFrameBufferBase();
+    HalVideoGetPhysicalSize(&W, &H);
+    Info = BootHandoffGet();
+    Pitch = Info ? Info->PixelsPerScanLine : W;
+    if (Base == 0 || W == 0 || H == 0 || Pitch == 0) {
+        return 0;
+    }
+    P = (const UINT32 *)(UINTN)Base;
+    for (Y = 0; Y < H; Y += 8u) {
+        for (X = 0; X < W; X += 8u) {
+            Hsh = (Hsh ^ P[(UINT64)Y * Pitch + X]) * 16777619u;
+        }
+    }
+    return Hsh;
+}
+
+/*
+ * 后缓冲重建（UI 缩放）：物理尺寸没变，已翻上屏的 scanout 页继续扫描。
+ *
+ * 不能调 IgpuScanoutInvalidate：它会把 PLANE_SURF 立刻写回固件旧面（LFB），
+ * 而新后缓冲此时还没分配/重绘——那一下就把 LFB 里冻结的开机 logo 整屏
+ * 露出来（切档「闪黑底 + logo」的根因）。这里只丢掉后缓冲 GTT 映射，
+ * 让随后的 IgpuPresentPrepare 重新映射新页；gScanLive/gScanOk/gShown
+ * 与 gFront 原样保留，屏幕停在重绘前的最后一帧桌面上。
+ *
+ * 只有几何不一致（分辨率变化/销毁）才走完整 Invalidate。
+ */
+void IgpuPresentRebuild(void) {
+    UINT32 W = 0;
+    UINT32 H = 0;
+    UINT32 PitchPx;
+    const BOOT_HANDOFF *Info;
+
+    if (!IgpuReady() || !IgpuGttOk()) {
+        if (!gRebuildLogged && HalVideoGetUiScale() != 100u) {
+            gRebuildLogged = 1;
+            IgpuLogS("Boot: rebuild: live=0 (no igpu) -> invalidate\n");
+        }
+        IgpuPresentInvalidate();
+        return;
+    }
+    HalVideoGetPhysicalSize(&W, &H);
+    Info = BootHandoffGet();
+    PitchPx = Info ? Info->PixelsPerScanLine : W;
+    if (PitchPx == 0) {
+        PitchPx = W;
+    }
+    if (IgpuScanoutGeometryMatches(W, H, PitchPx)) {
+        if (!gRebuildLogged && HalVideoGetUiScale() != 100u) {
+            gRebuildLogged = 1;
+            IgpuLogS("Boot: rebuild: live=");
+            IgpuLogX((UINT32)IgpuScanoutLive());
+            IgpuLogS(" shown=");
+            IgpuLogX((UINT32)IgpuScanoutShown());
+            IgpuLogS(" surf=0x");
+            IgpuLogX(IgpuGttSurf());
+            IgpuLogS(" lfbhash=0x");
+            IgpuLogX(LfbSampleHash());
+            IgpuLogS("\n");
+        }
+        gPresentLogged = 0;
+        gPresentCopyOk = 0;
+        IgpuBackInvalidate();
+        return;
+    }
+    IgpuPresentInvalidate();
 }
 
 int IgpuFrontMapEnsure(UINT64 PhysBase, UINTN Bytes) {

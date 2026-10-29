@@ -41,7 +41,12 @@ void HalVideoInitializeBackbuffer(void) {
     UINT32 Pages;
     UINT32 *Buf;
 
-    HalIgpuPresentInvalidate();
+    /*
+     * PR-fix-ui-scale-flash：UI 缩放重建时物理尺寸不变，翻页页仍有效。
+     * 走 Rebuild 保留当前 scanout 页继续扫描；旧代码的 Invalidate 会先
+     * 把 SURF 切回 LFB，若 LFB 里冻着开机 logo，新帧没画好就整屏闪一帧。
+     */
+    HalIgpuPresentRebuild();
     VideoReleaseBackbuffer();
     VideoGetDrawSize(&W, &H);
     if (W == 0 || H == 0) {

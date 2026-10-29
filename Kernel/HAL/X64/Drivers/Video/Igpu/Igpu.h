@@ -5,6 +5,20 @@
 #define IGPU_H
 
 #include "BootTypes.h"
+#include "HalSerial.h"
+
+/* 一次性取证日志：shell 接管 UART 后 LogDrv 不再上串口，运行时切档须走 shell 通道。
+ * 取证期用；后续可整体删除（与 rebuild/fallback 日志一同）。 */
+static inline void IgpuLogS(const char *T) {
+    HalSerialWriteShell(T);
+}
+
+static inline void IgpuLogX(UINT32 V) {
+    char B[12];
+
+    HalSerialFormatHex(B, V, 8);
+    HalSerialWriteShell(B);
+}
 
 void IgpuDriverRegister(void);
 
@@ -51,6 +65,8 @@ int IgpuReady(void);
 UINT32 IgpuBlitMinPixels(void);
 void IgpuNotePresentSkipScale(void);
 void IgpuPresentInvalidate(void);
+/* 后缓冲重建（UI 缩放，物理尺寸不变）：保留 scanout 页，只重映射后缓冲 */
+void IgpuPresentRebuild(void);
 void IgpuPresentPrepare(void);
 int IgpuPresentCopyOk(void); /* 1=屏外 SRC_COPY 探针通过 */
 void IgpuBackInvalidate(void);
@@ -71,6 +87,8 @@ int IgpuCopyRectBack(const UINT32 *Back, UINT32 PitchPx, UINT32 BufH,
 
 /* igpu-5：双缓冲翻页 */
 int IgpuScanoutOk(void);
+int IgpuScanoutShown(void);
+int IgpuScanoutGeometryMatches(UINT32 Width, UINT32 Height, UINT32 PitchPx);
 int IgpuScanoutLive(void); /* 1=已改 PLANE_SURF 到翻页缓冲 */
 int IgpuScanoutInit(void);
 void IgpuScanoutInvalidate(void);

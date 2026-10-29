@@ -134,6 +134,8 @@ void HalIgpuBlitColorTest(void);
 /* PR-G-igpu-4：大矩形 Present/CopyRect；非 x86 恒失败→CPU */
 void HalIgpuPresentPrepare(void);
 void HalIgpuPresentInvalidate(void);
+/* 后缓冲重建：UI 缩放不翻旧 scanout 面；分辨率变化才内部走 Invalidate */
+void HalIgpuPresentRebuild(void);
 int HalIgpuReady(void);
 UINT32 HalIgpuBlitMinPixels(void);
 void HalIgpuNotePresentSkipScale(void);

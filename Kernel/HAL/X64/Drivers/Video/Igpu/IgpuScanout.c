@@ -140,8 +140,30 @@ int IgpuScanoutInit(void) {
     return 1;
 }
 
+/*
+ * 物理几何是否与当前翻页页一致。
+ * UI 缩放只改逻辑比例（gDrawNum/Den），物理宽高/stride 不变 → 翻页页仍有效；
+ * 分辨率热切才会让这里返回 0，需要真正 invalidate 后重建。
+ */
+int IgpuScanoutShown(void) {
+    return gShown;
+}
+
+int IgpuScanoutGeometryMatches(UINT32 Width, UINT32 Height, UINT32 PitchPx) {
+    return gScanOk && gBytes != 0 && gWidth == Width && gHeight == Height &&
+           gPitchPx == PitchPx;
+}
+
+static int gSurfRestoreLogged;
+
 void IgpuScanoutInvalidate(void) {
     if (gScanLive) {
+        if (!gSurfRestoreLogged) {
+            gSurfRestoreLogged = 1;
+            IgpuLogS("Boot: present: surf restore surf=0x");
+            IgpuLogX(IgpuGttSurf());
+            IgpuLogS("\n");
+        }
         (void)IgpuForcewakeGet();
         IgpuMmioWrite32(gSurfReg, (UINT32)IgpuGttSurf());
         HalVideoSetScanout(gOrigFront, gOrigPitch, gOrigFb, gBytes);

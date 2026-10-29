@@ -25,6 +25,7 @@ static UINT64 gBackGtt;
 static UINT64 gBackPhys;
 static UINTN gBackBytes;
 static int gScaleSkipLogged;
+static int gFallbackLogged;
 static int gLivePatchOnly; /* Present 光标脏：禁整页 flip */
 
 void IgpuPresentSetLivePatchOnly(int On) {
@@ -193,6 +194,14 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
         }
     } else if (IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
         return 1;
+    }
+    if (!gFallbackLogged) {
+        gFallbackLogged = 1;
+        IgpuLogS("Boot: present: fallback lfb live=");
+        IgpuLogX((UINT32)IgpuScanoutLive());
+        IgpuLogS(" dst=0x");
+        IgpuLogX((UINT32)DstGtt);
+        IgpuLogS("\n");
     }
     return IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
                            gBackGtt, DstGtt);

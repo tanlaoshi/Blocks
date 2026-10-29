@@ -312,6 +312,10 @@ void HalIgpuPresentInvalidate(void) {
     IgpuPresentInvalidate();
 }
 
+void HalIgpuPresentRebuild(void) {
+    IgpuPresentRebuild();
+}
+
 int HalIgpuReady(void) {
     /* igpu-6/7：探针 CopyOk 才 GPU Present；翻页另见 IgpuScanoutOk */
     return IgpuReady() && IgpuPresentCopyOk();

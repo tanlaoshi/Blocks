@@ -60,11 +60,14 @@ void HalVideoInitializeBackbuffer(void) {
 }
 
 int HalVideoCanHotSetMode(void) {
-    /* QEMU：Bochs；真机：Boot 交接的 GOP（无 Bochs） */
-    if (VideoBochsAvailable()) {
-        return 1;
-    }
-    return VideoGopAvailable();
+    /*
+     * 只有 Bochs VBE（QEMU 标准 VGA）能真正热切分辨率。
+     * 真机走 Boot 交接的 GOP：EBS 之后 live SetMode 会炸（NUC：#PF → #UD@0），
+     * VideoGopSetMode 里已经是「拒绝」逻辑——那这里就不能报「能热切」，
+     * 否则只有「当前分辨率」这一项会因为「已经在目标模式」被误判成即时生效，
+     * 出现「1920x1080 点了立刻刷新、其它都要重启」的不一致。
+     */
+    return VideoBochsAvailable();
 }
 
 int HalVideoSetMode(UINT32 Width, UINT32 Height) {

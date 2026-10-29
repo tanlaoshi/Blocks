@@ -1,7 +1,7 @@
 /*
  * Fw.c — 固件钩子（PR-N-wifi-1）
  *
- * 探测 TOYOS 卷上是否有 blob；本刀不灌芯片、不常驻大缓冲（wifi-2）。
+ * 探测 BLOCKS 卷上是否有 blob；本刀不灌芯片、不常驻大缓冲（wifi-2）。
  */
 #include "Private.h"
 #include "HalDriverFile.h"

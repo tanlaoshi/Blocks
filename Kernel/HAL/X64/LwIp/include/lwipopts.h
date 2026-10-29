@@ -1,5 +1,5 @@
 /*
- * lwipopts.h — ToyOS lwIP (NO_SYS raw API, IPv4 only)
+ * lwipopts.h — Blocks lwIP (NO_SYS raw API, IPv4 only)
  */
 #ifndef LWIP_LWIPOPTS_H
 #define LWIP_LWIPOPTS_H

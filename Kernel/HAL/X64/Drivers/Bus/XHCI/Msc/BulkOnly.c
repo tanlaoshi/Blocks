@@ -197,10 +197,19 @@ int Capacity(void) {
  * PR-H-msc-6：逐扇区 BOT READ(10)/WRITE(10)。
  * 仅支持逻辑块 512；bounce 对齐。勿带 FUA/SYNC：不少棒 CSW=1 且会搞丢写缓存。
  */
+/*
+ * PR-F4：多扇区传输。原先每个扇区发一条 WRITE(10)/READ(10)，一条 BOT
+ * （CBW→DATA→CSW）只搬 512 B，USB 3.0 的盘被锁在 0.3~1 MB/s。
+ * 现在一次最多 MSC_BATCH_SECTORS 扇区（32 KiB），大幅减少往返次数。
+ * 单 TRB 上限 64 KiB，32 KiB 留足余量；bounce 放 BSS，避免 32 KiB 栈。
+ */
+#define MSC_BATCH_SECTORS 64
+
+static UINT8 gMscBounce[512u * MSC_BATCH_SECTORS] BLOCKS_ALIGNED(64);
+
 static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
-    UINT8 Bounce[512] BLOCKS_ALIGNED(64);
     UINT8 *Ptr = (UINT8 *)Buffer;
-    UINT32 i;
+    UINT32 i = 0;
 
     if (!gMscCapacityOk || gMscBlockSize != 512 || Buffer == 0 || Count == 0) {
         return 0;
@@ -209,9 +218,16 @@ static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
         return 0;
     }
 
-    for (i = 0; i < Count; i++) {
+    while (i < Count) {
         UINT8 Cdb[16];
         UINT32 Cur = Lba + i;
+        UINT32 Chunk = Count - i;
+        UINT32 Bytes;
+
+        if (Chunk > MSC_BATCH_SECTORS) {
+            Chunk = MSC_BATCH_SECTORS;
+        }
+        Bytes = Chunk * 512u;
 
         ZeroMemory(Cdb, sizeof(Cdb));
         Cdb[0] = Write ? 0x2Au : 0x28u; /* WRITE(10) / READ(10) */
@@ -219,20 +235,21 @@ static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
         Cdb[3] = (UINT8)(Cur >> 16);
         Cdb[4] = (UINT8)(Cur >> 8);
         Cdb[5] = (UINT8)(Cur);
-        Cdb[7] = 0;
-        Cdb[8] = 1;
+        Cdb[7] = (UINT8)(Chunk >> 8);
+        Cdb[8] = (UINT8)(Chunk);
         if (Write) {
-            CopyMemory(Bounce, Ptr + (UINTN)i * 512u, 512);
-            if (Bot(Cdb, 10, 512, 0, Bounce) < 0) {
+            CopyMemory(gMscBounce, Ptr + (UINTN)i * 512u, Bytes);
+            if (Bot(Cdb, 10, Bytes, 0, gMscBounce) < 0) {
                 return 0;
             }
         } else {
-            ZeroMemory(Bounce, sizeof(Bounce));
-            if (Bot(Cdb, 10, 512, 1, Bounce) < 0) {
+            ZeroMemory(gMscBounce, Bytes);
+            if (Bot(Cdb, 10, Bytes, 1, gMscBounce) < 0) {
                 return 0;
             }
-            CopyMemory(Ptr + (UINTN)i * 512u, Bounce, 512);
+            CopyMemory(Ptr + (UINTN)i * 512u, gMscBounce, Bytes);
         }
+        i += Chunk;
     }
     return 1;
 }

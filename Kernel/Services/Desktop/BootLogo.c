@@ -40,6 +40,15 @@ static UINT32 gLastShift; /* 上一帧橙色 Shift；用于只擦脚印 */
 /* gAx/gAy 是按哪一档逻辑画布算出来的（PR-19 修复/200% 残留） */
 static UINT32 gLayoutW;
 static UINT32 gLayoutH;
+/*
+ * 上一次真正落笔的物理矩形。换缩放档后逻辑坐标的物理含义变了，
+ * 只按逻辑 Fill(gAx,gAy) 擦不到旧像素（50% 冷启动会留下 100% 的大
+ * logo，和新画的小 logo 叠在一起）。这里按当时的物理位置擦。
+ */
+static UINT32 gPhysX;
+static UINT32 gPhysY;
+static UINT32 gPhysW;
+static UINT32 gPhysH;
 
 /* 与 Drag/Slide 相同：抬高条带，整块 Present，避免 64 行撕开 */
 static void LogoPresentFlush(void) {
@@ -78,6 +87,26 @@ static void Fill(UINT32 X, UINT32 Y, UINT32 W, UINT32 H, UINT32 C) {
         return;
     }
     GraphicsFillRectangle(X, Y, W, H, C);
+}
+
+/* 物理像素抹底：换档后擦旧 logo 用，绕开逻辑→物理换算 */
+static void FillPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 C) {
+    static UINT32 Row[LOGO_CELL * 7u];
+    UINT32 i;
+    UINT32 r;
+
+    if (Wp == 0u || Hp == 0u) {
+        return;
+    }
+    if (Wp > (UINT32)(sizeof(Row) / sizeof(Row[0]))) {
+        Wp = (UINT32)(sizeof(Row) / sizeof(Row[0]));
+    }
+    for (i = 0; i < Wp; i++) {
+        Row[i] = C;
+    }
+    for (r = 0; r < Hp; r++) {
+        HalVideoWriteRectPhys(Xp, Yp + r, Wp, 1u, Row);
+    }
 }
 
 /*
@@ -179,9 +208,13 @@ static int LogoLayout(void) {
         gMarkW == MarkW && gMarkH == MarkH) {
         return 1;
     }
-    /* 先擦旧位（缩放切换后旧逻辑坐标就是屏上残留的物理位置） */
-    if (gMarkW != 0 && gMarkH != 0) {
-        Fill(gAx, gAy, gMarkW, gMarkH, LOGO_BG);
+    /*
+     * 先擦旧位：必须用上一次落笔时的物理矩形。缩放档一变，旧逻辑
+     * 坐标再乘新比例就落到别处（100→50% 擦到左上四分之一，旧 logo
+     * 原样留着，和新的叠成两层）。
+     */
+    if (gPhysW != 0 && gPhysH != 0) {
+        FillPhys(gPhysX, gPhysY, gPhysW, gPhysH, LOGO_BG);
     }
     gAx = Ax;
     gAy = Ay;
@@ -190,6 +223,23 @@ static int LogoLayout(void) {
     gLayoutW = W;
     gLayoutH = H;
     gLastShift = LOGO_SHIFT_NONE;
+    {
+        UINT32 Num = HalVideoGetDrawNum();
+        UINT32 Den = HalVideoGetDrawDen();
+
+        if (Num == 0u) {
+            Num = 1u;
+        }
+        if (Den == 0u) {
+            Den = 1u;
+        }
+        gPhysX = (UINT32)(((UINT64)Ax * (UINT64)Num) / (UINT64)Den);
+        gPhysY = (UINT32)(((UINT64)Ay * (UINT64)Num) / (UINT64)Den);
+        gPhysW = (UINT32)(((UINT64)(Ax + MarkW) * (UINT64)Num) / (UINT64)Den) -
+                 gPhysX;
+        gPhysH = (UINT32)(((UINT64)(Ay + MarkH) * (UINT64)Num) / (UINT64)Den) -
+                 gPhysY;
+    }
     /* 再擦新位：新后缓冲可能是复用的旧页，中间还留着上一档的 logo */
     Fill(gAx, gAy, gMarkW, gMarkH, LOGO_BG);
     return 1;
@@ -268,6 +318,8 @@ void DesktopBootLogoShow(void) {
     gMarkH = 0;
     gLayoutW = 0;
     gLayoutH = 0;
+    gPhysW = 0;
+    gPhysH = 0;
     /* 底色不碰 LFB；后缓冲已在 VideoInitialize 铺好。只 Present 格子。 */
     gPct = 0;
     gTealBottomUp = 0;
@@ -322,4 +374,6 @@ void DesktopBootLogoFinish(void) {
     gMarkH = 0;
     gLayoutW = 0;
     gLayoutH = 0;
+    gPhysW = 0;
+    gPhysH = 0;
 }

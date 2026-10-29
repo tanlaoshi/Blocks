@@ -154,6 +154,9 @@ void FontTtfCacheDropMisses(void) {
     }
 }
 
+/* 比例切换时就地重栅（定义见下）：CacheGet 需要提前声明 */
+static int FillSlot(UINT32 Cp, int NotifyPaint);
+
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     TTF_SLOT *S;
 
@@ -171,8 +174,18 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
             return 0;
         }
         if (S->Side != FontTtfCell()) {
-            WantPush(Cp);
-            return 0;
+            /*
+             * PR-23E 修：比例/字号切换后槽内是旧边长的位图。旧逻辑只
+             * Want 排队等 Worker：界面先按「不画」合成 → 屏上留着旧字
+             * 像素，Worker 又被鼠标活动挡着不泵 → 半新半旧（乱码/缺字）。
+             * 这里当场按新边长重栅这一格（每个可见字只一次），绘制与
+             * 步进立刻同档，不再出现新旧混排。
+             */
+            (void)FillSlot(Cp, 1);
+            S = SlotLookup(Cp);
+            if (!S || S->State != TTF_HIT || S->Side != FontTtfCell()) {
+                return 0;
+            }
         }
         /* 位图仍是 Side×Side；步进见 FontTtfCacheAdvance */
         if (OutW) {
@@ -286,8 +299,14 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
     if (Slot->Adv < 1u) {
         Slot->Adv = 1u;
     }
-    if (Slot->Adv > Side) {
-        Slot->Adv = Side;
+    /*
+     * PR-23E 修：Adv 是逻辑步进，上限只能是逻辑字格 FontTtfPixel()。
+     * 旧代码夹到 Side（物理边长）：50% 汉字 FT 阶段 24、Side=12 →
+     * 步进被砍成 12，整行汉字叠一半；150%/200% 恰好没触发。
+     * 100%（Side=24）、200%（Side=48）下上限不变，基线 0 差异。
+     */
+    if (Slot->Adv > FontTtfPixel()) {
+        Slot->Adv = FontTtfPixel();
     }
     Slot->State = TTF_HIT;
     if (NotifyPaint) {

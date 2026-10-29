@@ -445,12 +445,10 @@ STATIC BOOLEAN VolMatchesRootCfg(EFI_HANDLE VolHandle, CONST BOOT_ROOT_CFG *Cfg)
 }
 
 STATIC BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle,
-                                UINTN Pass) {
+                                UINTN Pass, CONST BOOT_ROOT_CFG *RootCfg) {
     EFI_STATUS Status;
     EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
-    STATIC BOOT_ROOT_CFG sRootCfg;
-    STATIC BOOLEAN sRootTried;
     BOOLEAN SameDisk;
     BOOLEAN HasId;
 
@@ -473,16 +471,10 @@ STATIC BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle,
     SameDisk = BootSamePhysicalDisk(LoadedImage->DeviceHandle, VolHandle);
 
     if (Pass == 0) {
-        if (!sRootTried) {
-            sRootTried = TRUE;
-            if (LoadRootCfgFromEsp(ImageHandle, &sRootCfg) && sRootCfg.Ok) {
-                BootDbg("Boot: ROOT.CFG disk=%a part=%a\n", sRootCfg.Disk, sRootCfg.Part);
-            }
-        }
-        if (!sRootCfg.Ok || !HasId) {
+        if (RootCfg == NULL || !RootCfg->Ok || !HasId) {
             return FALSE;
         }
-        if (VolMatchesRootCfg(VolHandle, &sRootCfg)) {
+        if (VolMatchesRootCfg(VolHandle, RootCfg)) {
             BootDbg("Boot: OS Vol Via ROOT.CFG\n");
             return TRUE;
         }
@@ -515,11 +507,20 @@ EFI_STATUS BootSelectOsVolume(EFI_HANDLE ImageHandle, BOOT_VOL_PREDICATE Pred,
     EFI_HANDLE *Handles = NULL;
     UINTN Pass;
     UINTN i;
+    BOOT_ROOT_CFG Cfg;
 
     if (OutVol == NULL) {
         return EFI_INVALID_PARAMETER;
     }
     *OutVol = NULL;
+
+    /* ROOT.CFG 只解析一次，作为只读上下文往下传（原来藏在函数内 static 里） */
+    ZeroMem(&Cfg, sizeof(Cfg));
+    if (!LoadRootCfgFromEsp(ImageHandle, &Cfg) || !Cfg.Ok) {
+        Cfg.Ok = FALSE;
+    } else {
+        BootDbg("Boot: ROOT.CFG disk=%a part=%a\n", Cfg.Disk, Cfg.Part);
+    }
 
     Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
                                      NULL, &HandleCount, &Handles);
@@ -535,7 +536,7 @@ EFI_STATUS BootSelectOsVolume(EFI_HANDLE ImageHandle, BOOT_VOL_PREDICATE Pred,
             if (EFI_ERROR(Status) || Fs == NULL) {
                 continue;
             }
-            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
+            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass, &Cfg)) {
                 continue;
             }
             if (Pred != NULL && !Pred(Fs, Ctx)) {

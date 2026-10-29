@@ -207,5 +207,5 @@ A：用户态没有内核符号与地址空间。教学上强制走 syscall。
 **Q：`getpid()` 和列表里的 pid 不一样？**  
 A：`ps` / `kill` / 快照用 **槽位+1**；以 `SelfPid` 与 Kill 为准。
 
-**Q：提示符是 `toyos>` 还是 `blocks>`？**  
-A：现网 Guest 提示符为 **`blocks>`**（旧文写 toyos 的已废）。
+**Q：提示符是 `blocks>` 还是 `blocks>`？**  
+A：现网 Guest 提示符为 **`blocks>`**（旧文写 blocks 的已废）。

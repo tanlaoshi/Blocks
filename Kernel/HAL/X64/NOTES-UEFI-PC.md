@@ -28,17 +28,17 @@
 ### 2.1 NUC SSD 双分区（日常 · `sync-nuc.sh` / 暗号 **TBN**）
 
 ```text
-/boot/efi (与 Ubuntu 共用 ESP):  EFI/ubuntu/ …  EFI/BOOT/ …  EFI/toyos/BOOTX64.EFI
-LABEL=ToyOS (数据分区):          TOYOS.ID, Kernel.elf, THEME.CFG, Apps/, Assets/, FW/, …
+/boot/efi (与 Ubuntu 共用 ESP):  EFI/ubuntu/ …  EFI/BOOT/ …  EFI/blocks/BOOTX64.EFI
+LABEL=Blocks (数据分区):          BLOCKS.ID, Kernel.elf, THEME.CFG, Apps/, Assets/, FW/, …
 ```
 
-- Boot **只**写 `EFI/toyos/`（勿覆盖 ubuntu / 默认 `EFI/BOOT`）
-- ToyOS 卷上 **不要**留 `EFI/`（误用 `sync-usb` 单 FAT 会写进去；`sync-nuc` 会清掉）
+- Boot **只**写 `EFI/blocks/`（勿覆盖 ubuntu / 默认 `EFI/BOOT`）
+- Blocks 卷上 **不要**留 `EFI/`（误用 `sync-usb` 单 FAT 会写进去；`sync-nuc` 会清掉）
 - 用法：
 
 ```bash
-cd ToyImage && ./Scripts/sync-nuc.sh           # RootFs → ToyOS
-cd ToyImage && ./Scripts/sync-nuc.sh --boot    # 另写 EFI/toyos/BOOTX64.EFI（常需 sudo）
+cd ToyImage && ./Scripts/sync-nuc.sh           # RootFs → Blocks
+cd ToyImage && ./Scripts/sync-nuc.sh --boot    # 另写 EFI/blocks/BOOTX64.EFI（常需 sudo）
 ```
 
 ### 2.2 UEFI U 盘（备选 · `sync-usb.sh` / 暗号 **TBU**）
@@ -47,23 +47,23 @@ cd ToyImage && ./Scripts/sync-nuc.sh --boot    # 另写 EFI/toyos/BOOTX64.EFI（
 
 ```text
 ESP (FAT):     EFI/BOOT/BOOTX64.EFI
-TOYOS (FAT):   TOYOS.ID, Kernel.elf, THEME.CFG, *.ELF, ...
+BLOCKS (FAT):   BLOCKS.ID, Kernel.elf, THEME.CFG, *.ELF, ...
 ```
 
-ToyBoot **优先**从含 `TOYOS.ID` 的卷加载 `Kernel.elf`（启动盘仅兜底）。制作：
+ToyBoot **优先**从含 `BLOCKS.ID` 的卷加载 `Kernel.elf`（启动盘仅兜底）。制作：
 
 ```bash
 cd ToyKernel && ./build.sh
 cd ../ToyBoot && ./build.sh          # → ToyImage/Esp/X64/EFI/BOOT/BOOTX64.EFI
 cd ../ToyImage && ./Scripts/prepare-rootfs.sh
-# 推荐脚本（ESP 256MiB + TOYOS 剩余）：
+# 推荐脚本（ESP 256MiB + BLOCKS 剩余）：
 ./Scripts/make-usb-stick.sh --device /dev/sdX --yes --sync   # 首次分区
 ./Scripts/sync-usb.sh                                       # 日常同步 U 盘
 ```
 
 **硬规则**：`sync-usb.sh` **只**刷 U 盘；`sync-nuc.sh` **只**刷本机 SSD。**禁止**用 `sync-usb` 指向 `/boot/efi`。路线图 §〇 **TBN/TBU**、§三「真机刷盘」。
 
-从固件 Boot Menu 选对应项；成功时屏上应出现桌面（或至少 GOP 清屏 / 壁纸色），串口若有则见 `ToyOS ready`。
+从固件 Boot Menu 选对应项；成功时屏上应出现桌面（或至少 GOP 清屏 / 壁纸色），串口若有则见 `Blocks ready`。
 
 ---
 
@@ -76,14 +76,14 @@ cd ../ToyImage && ./Scripts/prepare-rootfs.sh
 | 跳入 `KernelMain` | 进核后先深蓝灰清屏，再走模块；`HalVideoSet` 挂帧缓冲 |
 | 屏 | **有像素变化**（清屏 / 桌面 / 图标）；即本刀过线 |
 
-真机若停在 `Kernel.elf from TOYOS volume` 且无后续 `loading`/`jump` 行：仍在 Boot。  
+真机若停在 `Kernel.elf from BLOCKS volume` 且无后续 `loading`/`jump` 行：仍在 Boot。  
 若已 `jump` 但仍是 Boot 白字、从不换色：多为进核后缺页（旧 bug：UEFI 高栈 + 仅映射低 512MB）。现已在 `Startup.c` 切到 BSS 早期栈。
 
 QEMU 回归（无真机时）：
 
 ```bash
 cd ToyKernel && ./build.sh
-cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
+cd ../ToyImage && ./smoke-boot.sh    # 串口 Blocks ready
 # 有显示时：./run-split.sh          # 窗口内应见桌面
 ```
 
@@ -104,7 +104,7 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 
 - 驱动：`HAL/X64/Drivers/Ahci.c` + `BlockAhci.c`（Driver Block / **D2**）
 - 课堂：默认仍 IDE+ATA；验收 `TOY_DISK=ahci ./smoke-boot.sh`（串口 `boot: ahci drives=`）
-- 真机：SATA/AHCI 控制器上的 FAT（含 `TOYOS.ID`）可 `ls` / `exec`；**纯 USB 大容量（MSC）本刀不做**
+- 真机：SATA/AHCI 控制器上的 FAT（含 `BLOCKS.ID`）可 `ls` / `exec`；**纯 USB 大容量（MSC）本刀不做**
 - Common FAT/VFS 无改动
 
 ### H2：真机键盘
@@ -127,7 +127,7 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 - `Serial.c`：scratch 探测 COM1；失败则 `SerialPresent()==0`，不再空转等待 THRE
 - `HalSerialWrite`：有 COM1 → 原路径；无 COM1 → 视频前入环，`HalSerialGopEnable`（`InitializeVideo`）后 `HalVideoDrawString` + Present
 - 串口有：`boot: COM1 serial ok`（课堂 QEMU / `smoke-boot` 不回归）
-- 课堂强制验 GOP 路径：`./build.sh NO_COM1=1` 后 `./run-split.sh`（有显示窗）应见黄字 `ToyOS GOP console (no COM1)`
+- 课堂强制验 GOP 路径：`./build.sh NO_COM1=1` 后 `./run-split.sh`（有显示窗）应见黄字 `Blocks GOP console (no COM1)`
 - **未做**：USB-UART；完整独立 TTY 窗；Arm/RiscV 无此刀
 
 ### H5：NVMe Block
@@ -135,8 +135,8 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 - 驱动：`HAL/X64/Drivers/Nvme.c` + `BlockNvme.c`（Driver Block / **D2**）
 - PCI class `01.08.02`；Admin + 单 IO 队列；同步轮询；512B LBA；单页 PRP bounce
 - 课堂：`TOY_DISK=nvme ./smoke-boot.sh`（串口 `boot: nvme drives=`；双盘=2）
-- 真机：PCIe NVMe 上 FAT（含 `TOYOS.ID`）可 `ls` / `exec`；**4KiB LBA / 多 NS / MSI 本刀不做**
-- **Store 主盘**：内置盘与 U 盘都有 `TOYOS.ID` 时，默认卷是内置（`default=TOYOS`），U 盘改名 `USB:`。课堂单盘：`TOY_DISK=nvme` 或 `ahci` 即可，Store 写在该盘上，比 MSC 快。仅 U 盘有 `TOYOS.ID` 时默认仍是 U 盘。
+- 真机：PCIe NVMe 上 FAT（含 `BLOCKS.ID`）可 `ls` / `exec`；**4KiB LBA / 多 NS / MSI 本刀不做**
+- **Store 主盘**：内置盘与 U 盘都有 `BLOCKS.ID` 时，默认卷是内置（`default=BLOCKS`），U 盘改名 `USB:`。课堂单盘：`TOY_DISK=nvme` 或 `ahci` 即可，Store 写在该盘上，比 MSC 快。仅 U 盘有 `BLOCKS.ID` 时默认仍是 U 盘。
 - Common FAT/VFS 无改动；注册在 AHCI 之后，有 NVMe 时覆盖后端
 
 ### H-msc：USB MSC（分 PR）
@@ -154,7 +154,7 @@ cd ../ToyImage && ./smoke-boot.sh    # 串口 ToyOS ready
 - **msc-7b** ✅ `4e8e0ee`：FS 前 Live 默认 auto；`THEME msc=0` / `MSC.OFF` 关；无盘 soft-fail
 - **msc-8** ✅ `5145e47`：`TOY_USB_MSC=1` / `./smoke-msc.sh`；QEMU 可 claim 已 PED；真机仍跳过陈旧 PED
 - **课堂**：`cd ToyImage && ./smoke-msc.sh` → `boot: msc auto mux ok`
-- **里程碑 tag**：`v1.0.0-nuc-live`（NUC Live：桌面 + TOYOS）；下一刀见路线图缺口
+- **里程碑 tag**：`v1.0.0-nuc-live`（NUC Live：桌面 + BLOCKS）；下一刀见路线图缺口
 
 ### H4：真机网卡范例（e1000）+ NUC I219 课路径
 

@@ -7,7 +7,7 @@ Runtime/
   Esp/X64/EFI/BOOT/BOOTX64.EFI   # Blocks Boot（disk0）
   RootFs/X64/Kernel.elf          # 现网能力核（disk1）
   RootFs/X64/BLOCKS.ID           # Boot 认卷
-  RootFs/X64/TOYOS.ID            # 旧卷标兼容（认卷以 BLOCKS.ID 为准）
+  RootFs/X64/BLOCKS.ID            # 旧卷标兼容（认卷以 BLOCKS.ID 为准）
   Assets/ Store/ Fw/ …           # 原 ToyImage 资源
   sync.sh / run.sh / smoke-boot.sh
 ```

@@ -1,4 +1,4 @@
-# ToyOS offline store catalog (PR-S0 / PR-M1 / PR-M2)
+# Blocks offline store catalog (PR-S0 / PR-M1 / PR-M2)
 # id|type|version|file|sha256|arch|title[|depends]
 # depends= 可选第 8 段：逗号分隔包 id
 #   store install：缺依赖拒绝（M1）

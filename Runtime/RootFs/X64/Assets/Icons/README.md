@@ -1,4 +1,4 @@
-# ToyOS 桌面 / UI 图标
+# Blocks 桌面 / UI 图标
 
 统一风格图标：桌面 Shell / Settings / Files，任务栏「开始」与开始菜单项。
 
@@ -6,7 +6,7 @@
 
 - 矢量源： [Lucide](https://lucide.dev/)（[ISC License](https://github.com/lucide-icons/lucide/blob/main/LICENSE)）
 - 本目录对 SVG 做了重命名（`shell` ← `terminal`，`files` ← `folder`，`start` ← `layout-grid`，`help` ← `circle-question-mark` 等），并栅格化为 PNG/BMP
-- 底板色块为 ToyOS 自行合成（圆角矩形 + 白色描边字形），便于当前 `Bmp.c`（BI_RGB、无透明通道）直接解码
+- 底板色块为 Blocks 自行合成（圆角矩形 + 白色描边字形），便于当前 `Bmp.c`（BI_RGB、无透明通道）直接解码
 
 ISC 允许商用/修改；保留 Lucide 版权声明见 [`LICENSE-Lucide.txt`](LICENSE-Lucide.txt)。
 

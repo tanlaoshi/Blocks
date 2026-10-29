@@ -8,8 +8,8 @@
 
 | # | 步骤 | 期望 |
 | - | ---- | ---- |
-| 0 | `sync-nuc.sh`（NUC）或 `sync-usb.sh`（U 盘备选） | 有 `TOYOS.ID`；ToyOS 无残留 `EFI/` |
-| 1 | 开机进桌面 | 默认卷 ToyOS |
+| 0 | `sync-nuc.sh`（NUC）或 `sync-usb.sh`（U 盘备选） | 有 `BLOCKS.ID`；Blocks 无残留 `EFI/` |
+| 1 | 开机进桌面 | 默认卷 Blocks |
 
 ## 根白名单（trim）
 
@@ -40,8 +40,8 @@
 
 | # | 步骤 | 期望 |
 | - | ---- | ---- |
-| 12 | 看开机串口 | `toyos>` 不与 `AP entered idle` 抢同一行 |
-| 13 | 空 Enter | 只多一行 `toyos>` |
+| 12 | 看开机串口 | `blocks>` 不与 `AP entered idle` 抢同一行 |
+| 13 | 空 Enter | 只多一行 `blocks>` |
 
 ## 自动化（QEMU）
 

@@ -1,7 +1,7 @@
 # Blocks 目录结构
 
 > **写给**：开箱、找文件、弄清 Boot / Kernel / Runtime 边界。  
-> **不是**：逐文件清单（过时的 CodeA–E / ToyOS 三仓叙述已废）。  
+> **不是**：逐文件清单（过时的 CodeA–E / Blocks 三仓叙述已废）。  
 > **开机链路**：见同目录 [`Blocks开机流程.md`](Boot.md)。  
 > **日常短名**：仓库根 `source ~/Blocks/env.sh` → `build` / `run` / `sync` …
 
@@ -35,7 +35,7 @@ Blocks/                    # git 根；GitHub: tanlaoshi/Blocks
 | 项 | 现网 |
 | -- | ---- |
 | X64 | `Boot/BootPkg/` + 裁剪 `Boot/EDK2/` → `Boot/Build/BOOTX64.EFI` |
-| 职责 | GOP、读含 `TOYOS.ID`/`BLOCKS.ID` 卷上的 `Kernel.elf`、ExitBootServices、跳 `KernelEntry` |
+| 职责 | GOP、读含 `BLOCKS.ID`/`BLOCKS.ID` 卷上的 `Kernel.elf`、ExitBootServices、跳 `KernelEntry` |
 | Arm64 / RiscV | **无**本树 UEFI 主路径；virt / 真机走 Kernel 自有 Boot（`-kernel` + DTB / OpenSBI） |
 
 ```bash
@@ -138,7 +138,7 @@ build && sync && run --headless
 
 | 旧 | 现 |
 | -- | -- |
-| ToyOS / ToyKernel / ToyBoot / ToyImage | **Blocks** / `Kernel` / `Boot` / `Runtime` |
+| Blocks / ToyKernel / ToyBoot / ToyImage | **Blocks** / `Kernel` / `Boot` / `Runtime` |
 | `source Scripts/env.sh` | `source ~/Blocks/env.sh` |
 | `CodeA-HAL`… 磁盘前缀 | 短名 `HAL/` `Core/`…（分层规则仍在） |
 | OpenBox 独立仓设想 | 已拍扁为 `Kernel/Scripts/` + 仓根 `env.sh` |

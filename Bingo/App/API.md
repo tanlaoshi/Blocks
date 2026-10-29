@@ -82,4 +82,4 @@ Guest 先 `lwip on`。模板：[`Examples/Net/main.c`](Examples/Net/main.c)。
 - GUI 旧 syscall **18–21**  
 - 手写 syscall 号  
 - 公开 **`toy_*`**、`sockaddr`/`htons` 课设路径、假 POSIX 双轨文档  
-- 新代码写 `TOYOS:`（用 `BLOCKS:`）
+- 新代码写 `BLOCKS:`（用 `BLOCKS:`）

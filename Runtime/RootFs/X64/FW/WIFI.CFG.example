@@ -1,6 +1,6 @@
-# ToyOS Wi-Fi config example (do NOT commit real passwords)
+# Blocks Wi-Fi config example (do NOT commit real passwords)
 
-# On the USB TOYOS volume (same folder as IWL8265.UCODE):
+# On the USB BLOCKS volume (same folder as IWL8265.UCODE):
 #   WIFI_H.CFG  — home
 #   WIFI_C.CFG  — company / classroom
 #   WIFI.CFG    — active (kernel reads only this name)

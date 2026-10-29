@@ -1,6 +1,6 @@
 # Board：`milk-v-duo-s`（Milk-V Duo S / SG2000）
 
-> **PR-B3**：第一个真机命令行板包。厂商 U-Boot（**不改源码**）+ SoC UART0 → 串口 `ToyOS ready`。  
+> **PR-B3**：第一个真机命令行板包。厂商 U-Boot（**不改源码**）+ SoC UART0 → 串口 `Blocks ready`。  
 > 约定总览：[`HAL/Common/Board/README.md`](../../../Common/Board/README.md)。操作：[`Archive/技术手册.md`](../../../../Archive/技术手册.md)。
 
 | 项 | 填写 |
@@ -124,7 +124,7 @@ go ${kernel_addr_r}
 - [x] `./build.sh riscv BOARD=milk-v-duo-s` 成功
 - [x] `make boards ARCH=riscv` 列出本包
 - [x] 默认 `BOARD=virt` 的 `./smoke-virt.sh` **不回归**
-- [ ] **真机**：厂商 U-Boot 加载后串口出现 `ToyOS ready`（或 `ToyOS 就绪`）
+- [ ] **真机**：厂商 U-Boot 加载后串口出现 `Blocks ready`（或 `Blocks 就绪`）
 - [x] **未**做 GUI / video / SD→FAT / 板上网卡
 - [x] **Common 无业务改动**（仅能力旗标消费路径；见 PR-B3 归档）
 

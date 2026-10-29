@@ -80,7 +80,7 @@ cp -a HAL/Common/Board/_template HAL/RiscV/Board/milk-v-duo-s   # Duo S 例（PR
 最小里程碑（对齐 **B3** / Duo S）：
 
 1. 厂商 U-Boot（不改源码）能 `load` + `booti`（或等价）加载内核 + DTB。  
-2. 串口出现 `ToyOS ready`（或本板 README 写明的等价横幅）。  
+2. 串口出现 `Blocks ready`（或本板 README 写明的等价横幅）。  
 3. `BOOT_HANDOFF.Regions` 与 DRAM 大致一致（来自 DTB `/memory` 或板级表）。  
 4. **本柱跳过** video / gui / SD→FAT / 板上网卡（后置）。
 

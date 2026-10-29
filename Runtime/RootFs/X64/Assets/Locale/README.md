@@ -14,7 +14,7 @@ MSG_ICON_SHELL=Shell
 MSG_ICON_SHELL=终端    # 在 zh.txt 里改
 ```
 
-**语言选择**仍在 `TOYOS.DB`：`lang=en|zh`（Settings / `lang zh`）。
+**语言选择**仍在 `BLOCKS.DB`：`lang=en|zh`（Settings / `lang zh`）。
 
 改完文件后，在 Guest 里执行：
 

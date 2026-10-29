@@ -14,5 +14,5 @@ cd ~/Blocks/Runtime
 | 路径 | 角色 |
 |------|------|
 | `Esp/X64/` | disk0：ESP / `BOOTX64.EFI` |
-| `RootFs/X64/` | disk1：`BLOCKS.ID` + `TOYOS.ID` + `Kernel.elf` |
+| `RootFs/X64/` | disk1：`BLOCKS.ID` + `BLOCKS.ID` + `Kernel.elf` |
 | `Assets/` `Store/` `Fw/` `Msc/` | 资源 / 商店 / OVMF / USB MSC 种子 |

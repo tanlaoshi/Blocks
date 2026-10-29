@@ -73,7 +73,7 @@
 | 能 | 不能 |
 |----|------|
 | `BOARD=milk-v-duo-s` 交叉编译通过 | QEMU virt 上跑 Duo S UART/MMIO |
-| `make boards` 列出本包 | 在 CI 里自动出 `ToyOS ready`（无物理板） |
+| `make boards` 列出本包 | 在 CI 里自动出 `Blocks ready`（无物理板） |
 | 默认 `BOARD=virt` smoke 不回归 | 代替真机 U-Boot `bootelf` |
 
 ## 验收日志摘录（2026-10-26 真机）

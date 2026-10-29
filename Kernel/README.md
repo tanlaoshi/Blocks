@@ -1,6 +1,6 @@
 # Kernel
 
-现网能力核（自 `ToyOS/ToyKernel` 迁入）。Boot 在旁挂 `../Boot`。
+现网能力核（自 `Blocks/ToyKernel` 迁入）。Boot 在旁挂 `../Boot`。
 
 ## 顶层
 

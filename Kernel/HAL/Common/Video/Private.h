@@ -38,6 +38,14 @@ extern UINT32  gPhysW;
 extern UINT32  gPhysH;
 extern UINT32  gUiScale;
 
+/*
+ * PR-23a：整数绘制倍数。200% 时 gDrawScale=2，逻辑像素在绘制/后缓冲里
+ * 写成 2×2 实心块，后缓冲即物理分辨率；其它档位恒为 1（恒等映射）。
+ */
+extern UINT32  gDrawScale;
+extern UINT32  gDrawW;
+extern UINT32  gDrawH;
+
 extern int     gDirty;
 extern UINT32  gDx0;
 extern UINT32  gDy0;
@@ -58,6 +66,11 @@ static inline UINT32 FbPack(UINT32 C) {
         return C;
     }
     return (C & 0xFF00FF00u) | ((C & 0xFFu) << 16) | ((C >> 16) & 0xFFu);
+}
+
+/* 绘制倍数；未初始化时按 1 处理，保证恒等路径 */
+static inline UINT32 DrawScale(void) {
+    return gDrawScale ? gDrawScale : 1u;
 }
 
 static inline UINT32 *DrawBase(void) {

@@ -14,6 +14,9 @@
 void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 *Fb;
     UINT32 Pitch;
+    UINT32 S;
+    UINT32 Sx;
+    UINT32 Sy;
 
     if (X >= gScreen.Width || Y >= gScreen.Height) {
         return;
@@ -23,7 +26,16 @@ void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    Fb[Y * Pitch + X] = FbPack(Color);
+    /* PR-23a：逻辑像素写成 S×S 实心块；S=1 时与原路径逐字等价 */
+    S = DrawScale();
+    Color = FbPack(Color);
+    for (Sy = 0; Sy < S; Sy++) {
+        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+
+        for (Sx = 0; Sx < S; Sx++) {
+            Line[Sx] = Color;
+        }
+    }
     DirtyUnion(X, Y, 1, 1);
 }
 
@@ -31,6 +43,9 @@ void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
 void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     UINT32 *Fb;
     UINT32 Pitch;
+    UINT32 S;
+    UINT32 Sx;
+    UINT32 Sy;
 
     if (X >= gScreen.Width || Y >= gScreen.Height) {
         return;
@@ -40,7 +55,15 @@ void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    Fb[Y * Pitch + X] ^= FbPack(Mask);
+    S = DrawScale();
+    Mask = FbPack(Mask);
+    for (Sy = 0; Sy < S; Sy++) {
+        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+
+        for (Sx = 0; Sx < S; Sx++) {
+            Line[Sx] ^= Mask;
+        }
+    }
     /* 勿 DirtyUnion 进内容脏区：4K 下 Shell∪远处光标会并成近全屏 Present */
     DirtyUnionCursor(X, Y, 1, 1);
 }
@@ -78,7 +101,9 @@ UINT32 VideoBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha) {
 void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
     UINT32 *Fb;
     UINT32 Pitch;
-    UINT32 *Pix;
+    UINT32 S;
+    UINT32 Sx;
+    UINT32 Sy;
 
     if (Alpha == 0) {
         return;
@@ -95,8 +120,15 @@ void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    Pix = &Fb[Y * Pitch + X];
-    *Pix = FbPack(VideoBlendRgb(FbPack(*Pix), Color, Alpha));
+    /* 每个物理子像素各 blend 一次；块内同色时与先逻辑混合再放大等价 */
+    S = DrawScale();
+    for (Sy = 0; Sy < S; Sy++) {
+        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+
+        for (Sx = 0; Sx < S; Sx++) {
+            Line[Sx] = FbPack(VideoBlendRgb(FbPack(Line[Sx]), Color, Alpha));
+        }
+    }
     DirtyUnion(X, Y, 1, 1);
 }
 
@@ -113,6 +145,7 @@ void VideoBlendPixel(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
 UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
     UINT32 *Fb;
     UINT32 Pitch;
+    UINT32 S;
 
     if (X >= gScreen.Width || Y >= gScreen.Height) {
         return 0;
@@ -122,5 +155,7 @@ UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
     if (!Fb || Pitch == 0) {
         return 0;
     }
-    return FbPack(Fb[Y * Pitch + X]);
+    /* 逻辑像素对应该块的左上角；块内同色，save-under 读回可原样还原 */
+    S = DrawScale();
+    return FbPack(Fb[Y * S * Pitch + X * S]);
 }

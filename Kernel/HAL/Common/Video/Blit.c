@@ -17,6 +17,11 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
     UINT32 CopyW = Width;
     UINT32 CopyH = Height;
     UINTN RowBytes;
+    UINT32 S;
+    UINT32 DirtyX;
+    UINT32 DirtyY;
+    UINT32 DirtyW;
+    UINT32 DirtyH;
 
     if (!Fb || !Width || !Height || Pitch == 0) {
         return;
@@ -43,12 +48,29 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
         return;
     }
 
+    /* 脏矩形仍记逻辑坐标；绘制/后缓冲内坐标乘 S（PR-23a） */
+    DirtyX = DstX;
+    DirtyY = DstY;
+    DirtyW = CopyW;
+    DirtyH = CopyH;
+    S = DrawScale();
+    if (S != 1u) {
+        SrcX *= S;
+        SrcY *= S;
+        DstX *= S;
+        DstY *= S;
+        W *= (INT32)S;
+        H *= (INT32)S;
+        CopyW = (UINT32)W;
+        CopyH = (UINT32)H;
+    }
+
     /* igpu-4：大且不重叠的后缓冲内拷贝可走 SRC_COPY */
     if (gBackOn && Fb == gBack && HalIgpuReady()
         && ((UINT64)CopyW * (UINT64)CopyH >= (UINT64)HalIgpuBlitMinPixels())
-        && HalIgpuCopyRectBack(gBack, gBackPitch, gScreen.Height,
+        && HalIgpuCopyRectBack(gBack, gBackPitch, gDrawH ? gDrawH : gScreen.Height,
                             SrcX, SrcY, DstX, DstY, CopyW, CopyH)) {
-        DirtyUnion(DstX, DstY, CopyW, CopyH);
+        DirtyUnion(DirtyX, DirtyY, DirtyW, DirtyH);
         return;
     }
 
@@ -76,7 +98,7 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
             memcpy(Dst, Src, RowBytes);
         }
     }
-    DirtyUnion(DstX, DstY, (UINT32)W, (UINT32)H);
+    DirtyUnion(DirtyX, DirtyY, DirtyW, DirtyH);
 }
 
 void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out) {
@@ -85,6 +107,7 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
     UINT32 Row;
     UINT32 Col;
     UINT32 i = 0;
+    UINT32 S;
 
     if (!Fb || !Out || !Width || !Height || Pitch == 0) {
         return;
@@ -98,9 +121,11 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
     if (Y + Height > gScreen.Height) {
         Height = gScreen.Height - Y;
     }
+    /* 逻辑矩形按块左上角采样；块内同色，等价于原逻辑后缓冲读出 */
+    S = DrawScale();
     for (Row = 0; Row < Height; Row++) {
         for (Col = 0; Col < Width; Col++) {
-            Out[i++] = FbPack(Fb[(Y + Row) * Pitch + X + Col]);
+            Out[i++] = FbPack(Fb[(Y + Row) * S * Pitch + (X + Col) * S]);
         }
     }
 }
@@ -112,6 +137,7 @@ void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT3
     UINT32 SrcStride;
     UINT32 CopyW;
     UINT32 CopyH;
+    UINT32 S;
 
     if (!Fb || !In || !Width || !Height || Pitch == 0) {
         return;
@@ -128,14 +154,23 @@ void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT3
     if (Y + CopyH > gScreen.Height) {
         CopyH = gScreen.Height - Y;
     }
+    DirtyUnion(X, Y, CopyW, CopyH);
+    /* 输入仍是逻辑像素；每个写成 S×S 块（PR-23a） */
+    S = DrawScale();
     for (Row = 0; Row < CopyH; Row++) {
-        UINT32 *Dst = &Fb[(Y + Row) * Pitch + X];
-        const UINT32 *Src = &In[Row * SrcStride];
-        UINT32 Col;
+        UINT32 Sy;
 
-        for (Col = 0; Col < CopyW; Col++) {
-            Dst[Col] = FbPack(Src[Col]);
+        for (Sy = 0; Sy < S; Sy++) {
+            UINT32 *Dst = &Fb[((Y + Row) * S + Sy) * Pitch + X * S];
+
+            for (UINT32 Col = 0; Col < CopyW; Col++) {
+                UINT32 C = FbPack(In[Row * SrcStride + Col]);
+                UINT32 Sx;
+
+                for (Sx = 0; Sx < S; Sx++) {
+                    Dst[Col * S + Sx] = C;
+                }
+            }
         }
     }
-    DirtyUnion(X, Y, CopyW, CopyH);
 }

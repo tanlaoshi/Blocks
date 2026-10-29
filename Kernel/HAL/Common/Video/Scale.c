@@ -48,6 +48,13 @@ void ApplyLogicalFromPhys(void) {
     }
     gScreen.Width = Lw;
     gScreen.Height = Lh;
+    /*
+     * PR-23a：200% 时按物理分辨率绘制（每逻辑像素 ×2 实心块），
+     * 后缓冲尺寸随之为物理分辨率；其它档位 gDrawScale=1，恒等映射。
+     */
+    gDrawScale = (gUiScale == 200u) ? 2u : 1u;
+    gDrawW = gScreen.Width * gDrawScale;
+    gDrawH = gScreen.Height * gDrawScale;
 }
 
 void VideoSet(VIDEO_CONFIG *VideoConfig) {

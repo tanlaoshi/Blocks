@@ -20,7 +20,7 @@ typedef struct {
 void VideoSet(VIDEO_CONFIG *VideoConfig);
 /* 1=写 FB 时对调 R/B（Pi mailbox RGB scanout vs 0x00RRGGBB） */
 void VideoSetFbSwapRb(int On);
-/* PR-G9：启用后缓冲；Buf 为 Width*Height 个 UINT32，Pages 供记录 */
+/* PR-G9：启用后缓冲；Buf 为 gDrawW*gDrawH 个 UINT32（见 VideoGetDrawSize），Pages 供记录 */
 void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages);
 /* PR-G-hotres：释放后缓冲页（切分辨率前调用） */
 void VideoReleaseBackbuffer(void);
@@ -49,6 +49,8 @@ void VideoSetGlyphSmooth(int On);
 void VideoDrawBeginFront(void);
 void VideoDrawEndFront(void);
 void VideoGetSize(UINT32 *Width, UINT32 *Height);
+/* PR-23a：后缓冲绘制尺寸（200% 时为物理分辨率，其它为逻辑尺寸） */
+void VideoGetDrawSize(UINT32 *Width, UINT32 *Height);
 /* UI 整体缩放 50/100/150/200；逻辑分辨率见 GetSize，物理见 GetPhysicalSize */
 UINT32 VideoGetUiScale(void);
 void VideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);

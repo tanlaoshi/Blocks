@@ -17,24 +17,29 @@ static void ScrollClip(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight = FontAdvanceY();
-    UINT32 Y;
+    UINT32 S = DrawScale();
     UINT32 X;
     UINT32 XEnd;
+    UINT32 Y;
     UINT32 YEnd;
 
     if (!Fb || Pitch == 0 || gClipW == 0 || gClipH <= LineHeight) {
         return;
     }
-    XEnd = gClipX + gClipW;
-    YEnd = gClipY + gClipH;
-    for (Y = gClipY; Y + LineHeight < YEnd; Y++) {
-        for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = Fb[(Y + LineHeight) * Pitch + X];
+    /* 直接写后缓冲：逻辑坐标同样乘绘制倍数（PR-23a） */
+    X = gClipX * S;
+    XEnd = (gClipX + gClipW) * S;
+    Y = gClipY * S;
+    YEnd = (gClipY + gClipH) * S;
+    LineHeight *= S;
+    for (; Y + LineHeight < YEnd; Y++) {
+        for (UINT32 Col = X; Col < XEnd; Col++) {
+            Fb[Y * Pitch + Col] = Fb[(Y + LineHeight) * Pitch + Col];
         }
     }
-    for (Y = YEnd - LineHeight; Y < YEnd; Y++) {
-        for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = FbPack(gClipBg);
+    for (; Y < YEnd; Y++) {
+        for (UINT32 Col = X; Col < XEnd; Col++) {
+            Fb[Y * Pitch + Col] = FbPack(gClipBg);
         }
     }
     DirtyUnion(gClipX, gClipY, gClipW, gClipH);
@@ -45,25 +50,30 @@ static void ScrollClipDown(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight = FontAdvanceY();
-    UINT32 Y;
+    UINT32 S = DrawScale();
     UINT32 X;
     UINT32 XEnd;
+    UINT32 Y;
+    UINT32 YStart;
     UINT32 YEnd;
 
     if (!Fb || Pitch == 0 || !gClipOn || gClipW == 0 || gClipH <= LineHeight) {
         return;
     }
-    XEnd = gClipX + gClipW;
-    YEnd = gClipY + gClipH;
-    for (Y = YEnd; Y > gClipY + LineHeight; ) {
+    X = gClipX * S;
+    XEnd = (gClipX + gClipW) * S;
+    YStart = gClipY * S;
+    YEnd = (gClipY + gClipH) * S;
+    LineHeight *= S;
+    for (Y = YEnd; Y > YStart + LineHeight; ) {
         Y--;
-        for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = Fb[(Y - LineHeight) * Pitch + X];
+        for (UINT32 Col = X; Col < XEnd; Col++) {
+            Fb[Y * Pitch + Col] = Fb[(Y - LineHeight) * Pitch + Col];
         }
     }
-    for (Y = gClipY; Y < gClipY + LineHeight; Y++) {
-        for (X = gClipX; X < XEnd; X++) {
-            Fb[Y * Pitch + X] = FbPack(gClipBg);
+    for (Y = YStart; Y < YStart + LineHeight; Y++) {
+        for (UINT32 Col = X; Col < XEnd; Col++) {
+            Fb[Y * Pitch + Col] = FbPack(gClipBg);
         }
     }
     DirtyUnion(gClipX, gClipY, gClipW, gClipH);
@@ -93,9 +103,11 @@ static void ScrollScreen(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight;
+    UINT32 S;
     UINT32 Y;
     UINT32 X;
     UINT32 W;
+    UINT32 H;
 
     if (!Fb || Pitch == 0) {
         return;
@@ -106,13 +118,16 @@ static void ScrollScreen(void) {
     }
 
     LineHeight = FontAdvanceY();
-    W = gScreen.Width;
-    for (Y = 0; Y < gScreen.Height - LineHeight; Y++) {
+    S = DrawScale();
+    W = gScreen.Width * S;
+    H = gScreen.Height * S;
+    LineHeight *= S;
+    for (Y = 0; Y < H - LineHeight; Y++) {
         for (X = 0; X < W; X++) {
             Fb[Y * Pitch + X] = Fb[(Y + LineHeight) * Pitch + X];
         }
     }
-    for (Y = gScreen.Height - LineHeight; Y < gScreen.Height; Y++) {
+    for (Y = H - LineHeight; Y < H; Y++) {
         for (X = 0; X < W; X++) {
             Fb[Y * Pitch + X] = FbPack(gBackground);
         }

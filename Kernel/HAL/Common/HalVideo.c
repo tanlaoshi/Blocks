@@ -47,7 +47,8 @@ void HalVideoInitializeBackbuffer(void) {
     UINT32 *Buf;
 
     VideoReleaseBackbuffer();
-    VideoGetSize(&W, &H);
+    /* PR-23a：后缓冲按绘制尺寸（200% 时物理分辨率）分配 */
+    VideoGetDrawSize(&W, &H);
     if (W == 0 || H == 0) {
         return;
     }

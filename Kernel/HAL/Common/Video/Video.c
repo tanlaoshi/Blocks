@@ -30,6 +30,10 @@ int     gForceFront;
 UINT32  gPhysW;
 UINT32  gPhysH;
 UINT32  gUiScale = 100;
+/* PR-23a：200% 时 gDrawScale=2，按物理分辨率绘制；gDrawW/H = 逻辑×倍数 */
+UINT32  gDrawScale = 1;
+UINT32  gDrawW;
+UINT32  gDrawH;
 
 /* 内容脏矩形 [gDx0,gDx1) x [gDy0,gDy1)；光标 XOR 单独跟踪，避免 AABB 并成近全屏 */
 int     gDirty;
@@ -94,18 +98,22 @@ void VideoSetScanout(UINT32 *Va, UINT32 PitchPx, UINT64 Phys, UINT64 Size) {
 }
 
 /*
- * 启用与屏同尺寸的后缓冲（紧密 pitch=Width）。Buf 由调用方 PMM 分配。
+ * 启用与屏同尺寸的后缓冲（紧密 pitch=绘制宽）。Buf 由调用方 PMM 分配。
+ * PR-23a：尺寸取 gDrawW×gDrawH（200% 时是物理分辨率），不再是逻辑宽。
  * Pages 仅记录；失败/空指针则保持直写 GOP。
  */
 void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages) {
+    UINT32 Dw;
+
     if (!Buf || gScreen.Width == 0 || gScreen.Height == 0 || !gFront) {
         gBack = 0;
         gBackPages = 0;
         gBackOn = 0;
         return;
     }
+    Dw = gDrawW ? gDrawW : gScreen.Width;
     gBack = Buf;
-    gBackPitch = gScreen.Width;
+    gBackPitch = Dw;
     gBackPages = Pages;
     gBackOn = 1;
     /*
@@ -134,6 +142,16 @@ void VideoGetSize(UINT32 *Width, UINT32 *Height) {
     }
     if (Height) {
         *Height = gScreen.Height;
+    }
+}
+
+/* 后缓冲使用的绘制尺寸（PR-23a）；未初始化时退回逻辑尺寸 */
+void VideoGetDrawSize(UINT32 *Width, UINT32 *Height) {
+    if (Width) {
+        *Width = gDrawW ? gDrawW : gScreen.Width;
+    }
+    if (Height) {
+        *Height = gDrawH ? gDrawH : gScreen.Height;
     }
 }
 

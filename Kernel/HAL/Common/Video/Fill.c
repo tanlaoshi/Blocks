@@ -12,6 +12,7 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
     UINT32 CopyH;
     UINT32 X0;
     UINT32 Y0;
+    UINT32 S;
 
     if (!Width || !Height) {
         return;
@@ -77,6 +78,13 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
     if (CopyW == 0 || CopyH == 0) {
         return;
     }
+    /* 脏矩形仍用逻辑坐标；落笔前再乘绘制倍数（PR-23a） */
+    DirtyUnion(X0, Y0, CopyW, CopyH);
+    S = DrawScale();
+    X0 *= S;
+    Y0 *= S;
+    CopyW *= S;
+    CopyH *= S;
     Color = FbPack(Color);
     for (Row = 0; Row < CopyH; Row++) {
         UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
@@ -85,7 +93,6 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
             Line[Col] = Color;
         }
     }
-    DirtyUnion(X0, Y0, CopyW, CopyH);
 }
 
 void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
@@ -98,6 +105,7 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     UINT32 CopyH;
     UINT32 X0;
     UINT32 Y0;
+    UINT32 S;
 
     if (Alpha == 0 || !Width || !Height) {
         return;
@@ -166,6 +174,13 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     if (CopyW == 0 || CopyH == 0) {
         return;
     }
+    /* 逻辑脏区先记账，再按绘制倍数写满每个逻辑像素的 S×S 块 */
+    DirtyUnion(X0, Y0, CopyW, CopyH);
+    S = DrawScale();
+    X0 *= S;
+    Y0 *= S;
+    CopyW *= S;
+    CopyH *= S;
     for (Row = 0; Row < CopyH; Row++) {
         UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
 
@@ -173,5 +188,4 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
             Line[Col] = FbPack(VideoBlendRgb(FbPack(Line[Col]), Color, Alpha));
         }
     }
-    DirtyUnion(X0, Y0, CopyW, CopyH);
 }

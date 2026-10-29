@@ -63,10 +63,25 @@ void ApplyScaleChoice(int Index) {
     GuiInputLock(1);
     if (ThemeApplyUiScaleLive(gScales[Index]) == 0) {
         gDisplayHint = 2;
+        /*
+         * 先放输入锁再写盘（PR-26 防御）。
+         *
+         * 这条路径原本把 ThemeSave() 包在 GuiInputLock(1) 里：写盘期间鼠标/
+         * 键盘全被挡在外面，只要一次 FAT/FS 写慢（vvfat flush、U 盘），界面
+         * 就是「点不动」——看起来像卡死，而系统其实活着。用户报的偶发卡死
+         * 未能复现（140 次鼠标 + 120 次键盘切换全正常），这里不假装修掉未
+         * 知根因，只保证「写盘不再挡住输入」。
+         *
+         * 注意：写盘仍在热切之后（与 ApplyDisplayChoice 相同的顺序），没有
+         * 改动 vvfat 那条「热切后再写会断言」的既定顺序。
+         */
+        GuiInputLock(0);
         (void)ThemeSave();
-    } else {
-        gDisplayHint = 0;
+        sBusy = 0;
+        PaintMenu();
+        return;
     }
+    gDisplayHint = 0;
     GuiInputLock(0);
     sBusy = 0;
     PaintMenu();

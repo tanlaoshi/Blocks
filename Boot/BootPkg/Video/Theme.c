@@ -1,5 +1,6 @@
 /*
  * Theme.c — 显示偏好：从 BLOCKS.DB 读 mode=WxH（分辨率唯一真相）
+ *           mode= 只认第一行；mode=auto 表示「不指定目标」，交给 EDID/最高模式兜底。
  */
 #include <Guid/FileInfo.h>
 #include <Protocol/LoadedImage.h>
@@ -9,14 +10,24 @@
 
 #include "BootPrivate.h"
 
+/*
+ * mode= 行的解析结果。用三态而不是布尔：把「不是 mode= 行（含写错）」
+ * 与「显式写了 mode=auto」分开，调用方不必再靠 W/H 的数值去猜意图。
+ */
+typedef enum {
+    MODE_LINE_NONE = 0, /* 不是 mode= 行，或格式不对：继续看下一行 */
+    MODE_LINE_AUTO,     /* mode=auto：显式要求自动选模，不指定目标 */
+    MODE_LINE_EXACT     /* mode=WxH：显式目标分辨率 */
+} MODE_LINE_KIND;
+
 /* 解析一行 mode=WxH 或 mode=auto */
-STATIC BOOLEAN ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH) {
+STATIC MODE_LINE_KIND ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH) {
     UINT32 W = 0;
     UINT32 H = 0;
     UINTN i = 0;
 
     if (Line == NULL || OutW == NULL || OutH == NULL) {
-        return FALSE;
+        return MODE_LINE_NONE;
     }
     while (Line[i] == ' ' || Line[i] == '\t') {
         i++;
@@ -25,37 +36,37 @@ STATIC BOOLEAN ParseAsciiModeLine(const CHAR8 *Line, UINT32 *OutW, UINT32 *OutH)
         Line[i + 3] == 'e' && Line[i + 4] == '=') {
         i += 5;
     } else {
-        return FALSE;
+        return MODE_LINE_NONE;
     }
     if (Line[i] == 'a' || Line[i] == 'A') {
         *OutW = 0;
         *OutH = 0;
-        return TRUE;
+        return MODE_LINE_AUTO;
     }
     while (Line[i] >= '0' && Line[i] <= '9') {
         W = W * 10 + (UINT32)(Line[i] - '0');
         i++;
         if (W > 10000) {
-            return FALSE;
+            return MODE_LINE_NONE;
         }
     }
     if (Line[i] != 'x' && Line[i] != 'X') {
-        return FALSE;
+        return MODE_LINE_NONE;
     }
     i++;
     while (Line[i] >= '0' && Line[i] <= '9') {
         H = H * 10 + (UINT32)(Line[i] - '0');
         i++;
         if (H > 10000) {
-            return FALSE;
+            return MODE_LINE_NONE;
         }
     }
     if (W < 640 || H < 480) {
-        return FALSE;
+        return MODE_LINE_NONE;
     }
     *OutW = W;
     *OutH = H;
-    return TRUE;
+    return MODE_LINE_EXACT;
 }
 
 STATIC BOOLEAN ParseModeFromDb(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
@@ -63,6 +74,7 @@ STATIC BOOLEAN ParseModeFromDb(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
     UINTN i;
     CHAR8 Line[64];
     UINTN L = 0;
+    MODE_LINE_KIND Kind;
 
     if (Buf == NULL || Size == 0) {
         return FALSE;
@@ -72,10 +84,19 @@ STATIC BOOLEAN ParseModeFromDb(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
         if (C == '\n' || C == '\r' || i == Size) {
             if (L > 0) {
                 Line[L] = 0;
-                if (ParseAsciiModeLine(Line, OutW, OutH)) {
-                    return (*OutW >= 640 && *OutH >= 480);
-                }
+                Kind = ParseAsciiModeLine(Line, OutW, OutH);
                 L = 0;
+                /*
+                 * 首行生效：mode= 只认第一条。
+                 * auto = 显式「不指定目标」，结束并回报无目标（由 EDID/最高模式兜底）；
+                 * 格式不对 = MODE_LINE_NONE，继续往下找，别让一行笔误吃掉整份配置。
+                 */
+                if (Kind == MODE_LINE_AUTO) {
+                    return FALSE;
+                }
+                if (Kind == MODE_LINE_EXACT) {
+                    return TRUE;
+                }
             }
             continue;
         }

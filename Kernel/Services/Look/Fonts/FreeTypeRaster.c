@@ -3,6 +3,7 @@
  * font-freetype-hint：FT_LOAD_FORCE_AUTOHINT；失败由调用方软退 stb。
  */
 #include "Font.h"
+#include "FontLayout.h"
 #include "Hal.h"
 #include "SerialLog.h"
 
@@ -80,6 +81,65 @@ static char *FtPutU32(char *P, UINT32 V) {
     *P++ = T[--N];
   }
   return P;
+}
+
+static char *FtPutI32(char *P, int V) {
+  if (V < 0) {
+    *P++ = '-';
+    return FtPutU32(P, (UINT32)(-V));
+  }
+  return FtPutU32(P, (UINT32)V);
+}
+
+/*
+ * 真机验收用：b/T/4 各打一行，把「位图需要多少行」与「槽里给了多少行」
+ * 摆在同一条日志里。base 是格顶到基线，oy 是位图首行落在格内的 y；
+ * 正常加档拉丁 oy=0（顶行贴格顶、一行不丢）；oy<0 就是削顶。
+ * 只打三个码位、每次 FT 初始化后重来一遍，不刷屏。
+ */
+#define FT_GLYPH_DIAG 1
+static UINT8 gFtDiagSeen;
+
+static void FtGlyphDiag(UINT32 Cp, const FT_Bitmap *Bm, int Top, UINT32 CellH,
+                        int Oy, int Base, UINT32 Em, int Fit) {
+  char Line[176];
+  char *P = Line;
+  UINT32 Bit;
+  int Clip;
+
+  if (Cp != (UINT32)'b' && Cp != (UINT32)'T' && Cp != (UINT32)'4') {
+    return;
+  }
+  Bit = (Cp == (UINT32)'b') ? 1u : (Cp == (UINT32)'T') ? 2u : 4u;
+  if (gFtDiagSeen & Bit) {
+    return;
+  }
+  gFtDiagSeen |= (UINT8)Bit;
+  Clip = (Oy < 0 || Oy + (int)Bm->rows > (int)CellH) ? 1 : 0;
+  P = FtPutStr(P, "FONT ftglyph cp=");
+  P = FtPutU32(P, Cp);
+  P = FtPutStr(P, " rows=");
+  P = FtPutU32(P, (UINT32)Bm->rows);
+  P = FtPutStr(P, " width=");
+  P = FtPutU32(P, (UINT32)Bm->width);
+  P = FtPutStr(P, " top=");
+  P = FtPutI32(P, Top);
+  P = FtPutStr(P, " slot=");
+  P = FtPutU32(P, CellH);
+  P = FtPutStr(P, " oy=");
+  P = FtPutI32(P, Oy);
+  P = FtPutStr(P, " base=");
+  P = FtPutI32(P, Base);
+  P = FtPutStr(P, " em=");
+  P = FtPutU32(P, Em);
+  P = FtPutStr(P, " fit=");
+  P = FtPutU32(P, (UINT32)(Fit ? 1 : 0));
+  P = FtPutStr(P, " clip=");
+  P = FtPutU32(P, (UINT32)Clip);
+  *P++ = '\r';
+  *P++ = '\n';
+  *P = 0;
+  HalSerialWriteShell(Line);
 }
 
 /*
@@ -270,6 +330,7 @@ static int FtInitLocked(void) {
   gFtOomStreak = 0;
   gMonoFace = 0;
   gFtLastAdv = 0;
+  gFtDiagSeen = 0;
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
     gFace[Slot] = 0;
   }
@@ -432,6 +493,9 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   int Oy;
   int Mono;
   int AscPx;
+  int Flags;
+  int SharedAsc = 0;
+  int Fit = 1;
   UINT32 Adv;
   UINT32 MaxPix;
 
@@ -483,25 +547,23 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   }
   /*
    * 汉字：满格 ppem。
-   * UI 拉丁：整数加档 +1/4 ppem 重栅格，禁非整数位图拉伸。
-   * PR-23E / 坑 2：提权上限改成与格高成比例（CellH+CellH/4：100%→30、
-   * 150%→45、200%→60），不再写 32×整数绘制倍数——那条式子把「逻辑上限」
-   * 和「绘制倍数」混在一起，150% 比例化后必然对不上号。
-   * 这里再封一层 64（= TrueTypeCache/TrueTypeRaster 的 TTF_CELL，槽边长），
-   * 免得格更大时 em 超出缓存槽。50/100/150/200 下上限都取不到，行为不变。
-   * 中英共用 CellH 收进基线 SharedAsc：ascent+descent 超格则上移基线留底，
-   * 避免 Droid 汉字下横被裁；加档只放大拉丁、不改共用基线。
+   * UI 拉丁：整数加档 +1/4 ppem（100%→30、150%→45、200%→60）。
+   *
+   * 中英共用一条基线 SharedAsc：由 FontTtfCellBaseline() 统一按
+   * 「hhea metrics 截断 + 加档拉丁墨顶」算。旧代码取 FT size metrics
+   * （FreeType 把 ascender/descender 向上取整到整像素：UMing@24 是
+   * 22/4），再套「ascent+descent 超格则上移基线」得 20；而加档 30px
+   * 拉丁的墨顶是 21（704/1024×30 上取整）→ Oy=20-21=-1，位图顶行被
+   * blit 丢掉，正是「英文最上面像被削掉一行」。stb 侧按截断口径得 21，
+   * 两条路径必须共用同一个基线定义，否则切换栅格器还会上下跳。
    */
   {
     UINT32 ReqH = CellH;
-    UINT32 ReqCap = CellH + (CellH / 4u);
 
-    if (ReqCap > 64u) {
-      ReqCap = 64u;
+    Flags = FT_LOAD_RENDER;
+    if (Mono) {
+      Flags |= FT_LOAD_TARGET_LIGHT;
     }
-    int SharedAsc = 0;
-    int DescPx = 0;
-
     if (!Mono) {
       Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
       if (Err) {
@@ -509,19 +571,27 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
         HalFpuEnd();
         return -1;
       }
-      AscPx = (int)(Face->size->metrics.ascender >> 6);
-      DescPx = -(int)(Face->size->metrics.descender >> 6);
-      if (AscPx < 0) {
-        AscPx = 0;
-      }
-      if (DescPx < 1) {
-        /* Droid/UMing 汉字常比 metrics 降部更深，至少留 2px 底 */
-        DescPx = 2;
-      }
-      if (AscPx + DescPx > (int)CellH) {
-        SharedAsc = (int)CellH - DescPx;
-      } else {
-        SharedAsc = AscPx;
+      SharedAsc = FontTtfCellBaseline(CellH);
+      if (SharedAsc < 0) {
+        /*
+         * stb 脸没就绪（启动早期/坏 blob）：退回 FT size metrics 旧口径，
+         * 至少保持旧行为；正常 x86_64 启动不会走到这里。
+         */
+        int DescPx;
+
+        AscPx = (int)(Face->size->metrics.ascender >> 6);
+        DescPx = -(int)(Face->size->metrics.descender >> 6);
+        if (AscPx < 0) {
+          AscPx = 0;
+        }
+        if (DescPx < 1) {
+          DescPx = 2;
+        }
+        SharedAsc =
+            (AscPx + DescPx > (int)CellH) ? ((int)CellH - DescPx) : AscPx;
+        if (SharedAsc < 1) {
+          SharedAsc = (int)CellH * 3 / 4;
+        }
       }
       if (SharedAsc < 1) {
         SharedAsc = (int)CellH * 3 / 4;
@@ -530,10 +600,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
         SharedAsc = (int)CellH - 1;
       }
       if (Cp < 128u) {
-        ReqH = CellH + (CellH / 4u);
-        if (ReqH > ReqCap) {
-          ReqH = ReqCap;
-        }
+        ReqH = FontTtfLatinEm(CellH);
         if (ReqH < CellH) {
           ReqH = CellH;
         }
@@ -551,6 +618,10 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
         HalFpuEnd();
         return -1;
       }
+      AscPx = (int)(Face->size->metrics.ascender >> 6);
+      if (AscPx < 0) {
+        AscPx = 0;
+      }
     }
     /*
      * cjk-3：无 cmap 项勿 Load 成 .notdef 当 HIT（静默空白/框装过关）。
@@ -566,14 +637,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
      * - 汉字、UI 拉丁：TARGET_NORMAL（笔画实度同级；LIGHT 拉丁偏瘦显更小）
      * - mono：TARGET_LIGHT（近 Windows 灰度 AA；禁 FORCE_AUTOHINT）
      */
-    {
-      int Flags = FT_LOAD_RENDER;
-
-      if (Mono) {
-        Flags |= FT_LOAD_TARGET_LIGHT;
-      }
-      Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
-    }
+    Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
     if (Err) {
       if (Err == FT_Err_Out_Of_Memory) {
         FtOom(Cp);
@@ -587,10 +651,6 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
       FtFail(Cp, 7u);
       HalFpuEnd();
       return -1;
-    }
-    AscPx = (int)(Face->size->metrics.ascender >> 6);
-    if (AscPx < 0) {
-      AscPx = 0;
     }
     if (Mono) {
       /* 等宽：VMetrics 基线；水平夹进格内 */
@@ -613,12 +673,52 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
         if (Oy < 0) {
           Oy = 0;
         }
+      } else if (Oy < 0) {
+        /* 比格还高的汉字：保顶裁底，别把最上面几行丢了 */
+        Oy = 0;
       }
     } else {
-      /* UI 拉丁：同一 SharedAsc + ReqH 字形；超格只 blit 裁 */
+      /*
+       * UI 拉丁：共用 SharedAsc + 加档 ReqH。正常字母/数字在 100% 下
+       * Oy==0（顶行贴格顶、一行不丢）；若某字体/字号仍高出基线，或
+       * 括号这类比格还高的字，先退回 CellH ppem 重栅（步进也随之下调），
+       * 不靠 blit 去裁顶。重栅后仍比格高才顶对齐、交 blit 裁底。
+       */
       Oy = SharedAsc - Slot->bitmap_top;
       Ox = 0;
+      if ((Oy < 0 || (int)Bm->rows > (int)CellH) && ReqH != CellH) {
+        FT_Error FitErr = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
+
+        if (FitErr == 0) {
+          FitErr = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
+        }
+        if (FitErr == 0) {
+          Slot = Face->glyph;
+          Bm = &Slot->bitmap;
+          if (Bm->pixel_mode == FT_PIXEL_MODE_GRAY && Bm->buffer) {
+            Oy = SharedAsc - Slot->bitmap_top;
+            ReqH = CellH;
+            Fit = 0;
+          }
+        }
+      }
+      if ((int)Bm->rows <= (int)CellH) {
+        if (Oy < 0) {
+          Oy = (int)CellH - (int)Bm->rows;
+        } else if (Oy + (int)Bm->rows > (int)CellH) {
+          Oy = (int)CellH - (int)Bm->rows;
+        }
+        if (Oy < 0) {
+          Oy = 0;
+        }
+      } else if (Oy < 0) {
+        Oy = 0;
+      }
     }
+#if FT_GLYPH_DIAG
+    FtGlyphDiag(Cp, Bm, Slot->bitmap_top, CellH, Oy,
+                Mono ? AscPx : SharedAsc, Mono ? CellH : ReqH, Fit);
+#endif
   }
   {
     UINT32 Ink = 0;

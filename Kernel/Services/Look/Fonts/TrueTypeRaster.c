@@ -5,6 +5,7 @@
  * 失败软退 1×。上沿对齐像素边界；缓存槽按物理边长（PR-23b）。
  */
 #include "Font.h"
+#include "FontLayout.h"
 #include "Hal.h"
 #include "SerialLog.h"
 #include "CString.h"
@@ -59,6 +60,27 @@ UINT32 FontTtfCell(void) {
         Cell = 1u;
     }
     return Cell;
+}
+
+/* 拉丁加档上限：1× 栅格缓冲（TTF_CELL=64）装得下的 em。 */
+#define FONT_LATIN_EM_MAX 64u
+
+/*
+ * UI 拉丁「整数加档」：+1/4 格，钳 64。
+ * FT 与 stb 必须用同一个值，否则切换栅格器时英文字号会跳一档。
+ * 注意 2× 过采样路径由 FontTtfLayout 自己按「2×」算（见 EmPx），
+ * 这里只描述 1× 逻辑格。
+ */
+UINT32 FontTtfLatinEm(UINT32 CellH) {
+    UINT32 EmPx = CellH + (CellH / 4u);
+
+    if (EmPx < CellH) {
+        EmPx = CellH;
+    }
+    if (EmPx > FONT_LATIN_EM_MAX) {
+        EmPx = FONT_LATIN_EM_MAX;
+    }
+    return EmPx;
 }
 
 #if defined(__x86_64__) || defined(__aarch64__)
@@ -294,6 +316,95 @@ static stbtt_fontinfo *FontTtfCur(void) {
     return &gInfo[Slot < FONT_TTF_UI_MAX ? Slot : 0];
 }
 
+/*
+ * 格内共用基线（物理像素，从格顶到基线）。
+ *
+ * 旧代码 FT 用 Face->size->metrics（FreeType 把 ascender/descender 向上
+ * 取整到整像素：UMing@24 ascender 21.49→22、descender -3.63→-4），再套
+ * 「ascent+descent 超格则上移」得 20；stb 用 (int)(ascent*scale) 截断得
+ * 21。于是同一字号下两条路径的基线差 1px：FT 拉丁加档 30px 的墨顶是
+ * 21，Oy=20-21=-1，位图顶行被 blit 丢掉 →「英文最上面像被削掉一行」。
+ *
+ * 这里统一成 stb 的截断口径，并把「加档拉丁的最高墨顶」并进基线：
+ * 加档位图的顶行永远落在 Oy>=0，一个像素都不丢；汉字与拉丁共用同一
+ * 个基线，切换栅格器不会上下跳。
+ *
+ * 注意：只取字母/数字（行盒的定义者）。括号/竖线比格还高，属于
+ * 「加档装不下」的个别字形，由栅格侧退回 CellH ppem 重栅，不能为了
+ * 它们把整行基线压到底。
+ */
+int FontTtfCellBaseline(UINT32 CellH) {
+    static const char Letters[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    stbtt_fontinfo *Info;
+    int Asc;
+    int Desc;
+    int LineGap;
+    int Base;
+    int DescPx;
+    int Top = 0;
+    float Scale;
+    float EmScale;
+    UINT32 EmPx;
+    const char *P;
+
+    if (!gInit || CellH == 0u || FontTtfMonoActive()) {
+        return -1;
+    }
+    Info = FontTtfCur();
+    if (!Info) {
+        return -1;
+    }
+    Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)CellH);
+    stbtt_GetFontVMetrics(Info, &Asc, &Desc, &LineGap);
+    (void)LineGap;
+    Base = (int)((float)Asc * Scale);
+    DescPx = (int)(-(float)Desc * Scale);
+    if (DescPx < 2) {
+        DescPx = 2;
+    }
+    if (Base + DescPx > (int)CellH) {
+        Base = (int)CellH - DescPx;
+    }
+    if (Base < 1) {
+        Base = (int)CellH * 3 / 4;
+    }
+    if (Base >= (int)CellH) {
+        Base = (int)CellH - 1;
+    }
+    EmPx = FontTtfLatinEm(CellH);
+    EmScale = stbtt_ScaleForMappingEmToPixels(Info, (float)EmPx);
+    for (P = Letters; *P; P++) {
+        int Glyph = stbtt_FindGlyphIndex(Info, (int)(UINT8)*P);
+        int X0;
+        int Y0;
+        int X1;
+        int Y1;
+        int T;
+
+        if (Glyph == 0 || !stbtt_GetGlyphBox(Info, Glyph, &X0, &Y0, &X1, &Y1)) {
+            continue;
+        }
+        (void)X0;
+        (void)Y0;
+        (void)X1;
+        T = FontTtfIceil((float)Y1 * EmScale);
+        if (T > Top) {
+            Top = T;
+        }
+    }
+    if (Top > Base) {
+        Base = Top;
+    }
+    if (Base < 1) {
+        Base = 1;
+    }
+    if (Base >= (int)CellH) {
+        Base = (int)CellH - 1;
+    }
+    return Base;
+}
+
 /* 把字形上沿挪到像素边界。半像素上的第一行灰度很浅，看起来像少了一笔。 */
 static float FontTtfTopShift(stbtt_fontinfo *Info, int Glyph, float Scale) {
     int X0;
@@ -320,12 +431,16 @@ static float FontTtfTopShift(stbtt_fontinfo *Info, int Glyph, float Scale) {
 }
 
 /*
- * UI stb 布局：MappingEm + TopShift + 格内居中（过采样前后均用）。
- * 曾改 VMetrics 基线导致大量栅格失败→MISS→汉字点阵、拉丁等 TTF 空白/框。
+ * UI stb 布局：MappingEm + TopShift + 共用基线（过采样前后均用）。
+ * Baseline 由调用方按 1× 逻辑格算好（FontTtfCellBaseline），2× 路径传
+ * 2× 值——两条栅格路径因此共用同一条基线，切换时不会上下跳。
+ * Boost≠0 时 ASCII 才加档；加档装不下（括号/竖线等）由调用方以
+ * Boost=0 重试一次。
  */
 static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 CellW,
-                         UINT32 CellH, float *OutScale, float *OutShift, int *OutGw,
-                         int *OutGh, int *OutOx, int *OutOy) {
+                         UINT32 CellH, int Baseline, int Boost, float *OutScale,
+                         float *OutShift, int *OutGw, int *OutGh, int *OutOx,
+                         int *OutOy) {
     float Scale;
     float Shift;
     int X0;
@@ -341,41 +456,23 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
         return -1;
     }
     /*
-     * 与 FT 拉丁光学一致：ASCII 用整数加档 em→px（+1/4 钳 32）再装入格；
-     * 汉字仍 MappingEm=CellH。禁止非整数位图拉伸。
+     * 拉丁整数加档：1× 时 em=CellH+CellH/4（100%→30）；2× 过采样时
+     * CellH 已经是 2×，em 也自然是 2×（60），栅格完箱滤回 1×。
+     *
+     * 旧版把上限写成 FontTtfCell()*4/3（100%→32），2× 路径的 CellH=48
+     * 一进来就被夹回 48，等于「2× 路径没有加档」——FT 挂了退 stb 时
+     * 英文会突然小一号。这里上限按 2× 放大，两条路径的字号才一致。
      */
     {
         UINT32 EmPx = CellH;
 
-        if (Cp < 128u) {
-            /*
-             * PR-23E / 坑 2：ASCII 提权上限改成与「物理字格」成比例，
-             * 而不是 32×整数绘制倍数。旧式子在 150% 下把 EmPx 卡在 32，
-             * 而那时 cell 已经是 36 —— 拉丁字反而比汉字瘦小，档位一多就
-             * 对不上号。
-             *
-             * 上限取 FontTtfCell()*4/3：24→32、36→48、48→64，对
-             * 100%/200% 与旧式 32×S 逐个相等（S=1→32、S=2→64），所以
-             * 100% 逐像素不变；150% 下 1× 路径请求 45、上限 48 不夹，
-             * 正好是「cell+cell/4 = 45」。
-             *
-             * 为什么要夹：本函数的 CellH 有两种来源——1× 直接栅格
-             * （=FontTtfCell）与 2× 过采样（=2×FontTtfCell，栅格完箱滤
-             * 缩到 FontTtfCell）。2× 路径的 em 一旦超过自己的 Hi 缓冲，
-             * Oy 会变负、MakeCodepointBitmap 直接写穿 arena。
-             * 再封顶 TTF_CELL（64，编译期断言 ≥ 60）防止更大档位越界。
-             */
-            UINT32 EmCap = (FontTtfCell() * 4u) / 3u;
-
-            if (EmCap > TTF_CELL) {
-                EmCap = TTF_CELL;
-            }
+        if (Cp < 128u && Boost) {
             EmPx = CellH + (CellH / 4u);
-            if (EmPx > EmCap) {
-                EmPx = EmCap;
-            }
             if (EmPx < CellH) {
                 EmPx = CellH;
+            }
+            if (EmPx > 2u * FONT_LATIN_EM_MAX) {
+                EmPx = 2u * FONT_LATIN_EM_MAX;
             }
         }
         Scale = stbtt_ScaleForMappingEmToPixels(Info, (float)EmPx);
@@ -408,52 +505,41 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
         }
     }
     /*
-     * 与 FT 一致：CellH 收进基线（ascent+descent 超格则上移留底），
-     * 加档拉丁不贴边乱移；此处夹进格以免 MakeBitmap 越界。
+     * 落格：共用基线 + 顶对齐兜底。
+     *
+     * 「位图所有行都要留下」在这里写死：
+     * - Gh <= 格高：只要顶/底有一行越界，就整字平移进格（顶对齐），
+     *   绝不让 blit 从顶上裁掉一行。正常拉丁的 Oy 已经是 0~正值
+     *   （基线已按加档墨顶抬高），只有 '_' 这类贴底字会触发底越界。
+     * - Gh > 格高：根本装不下。拉丁返回 -1，由调用方退 CellH ppem
+     *   重栅一次；汉字沿用「保顶裁底」。
      */
-    {
-        int Ascent;
-        int Descent;
-        int LineGap;
-        int Baseline;
-        int DescPx;
-        float ScaleCell;
-
-        ScaleCell = stbtt_ScaleForMappingEmToPixels(Info, (float)CellH);
-        stbtt_GetFontVMetrics(Info, &Ascent, &Descent, &LineGap);
-        (void)LineGap;
-        Baseline = (int)((float)Ascent * ScaleCell);
-        DescPx = (int)(-(float)Descent * ScaleCell);
-        if (DescPx < 2) {
-            DescPx = 2;
+    stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f, Shift,
+                                        &X0, &Y0, &X1, &Y1);
+    Gw = X1 - X0;
+    Gh = Y1 - Y0;
+    if (Gw <= 0 || Gh <= 0) {
+        return -1;
+    }
+    Ox = (Cp < 128u) ? 0 : (((int)CellW - Gw) / 2);
+    Oy = Baseline + Y0;
+    if (Gh <= (int)CellH) {
+        if (Oy < 0 || Oy + Gh > (int)CellH) {
+            Oy = (int)CellH - Gh;
         }
-        if (Baseline + DescPx > (int)CellH) {
-            Baseline = (int)CellH - DescPx;
+        if (Oy < 0) {
+            Oy = 0;
         }
-        if (Baseline < 1) {
-            Baseline = (int)CellH * 3 / 4;
-        }
-        if (Baseline >= (int)CellH) {
-            Baseline = (int)CellH - 1;
-        }
-        stbtt_GetCodepointBitmapBoxSubpixel(Info, (int)Cp, Scale, Scale, 0.0f,
-                                            Shift, &X0, &Y0, &X1, &Y1);
-        Gw = X1 - X0;
-        Gh = Y1 - Y0;
-        if (Gw <= 0 || Gh <= 0) {
+    } else {
+        if (Cp < 128u) {
             return -1;
         }
-        Ox = (Cp < 128u) ? 0 : (((int)CellW - Gw) / 2);
-        Oy = Baseline + Y0;
-        if (Cp >= 128u && Gh <= (int)CellH && Oy + Gh > (int)CellH) {
-            Oy = (int)CellH - Gh;
+        if (Oy < 0) {
+            Oy = 0;
         }
     }
     if (Ox < 0) {
         Ox = 0;
-    }
-    if (Oy < 0) {
-        Oy = 0;
     }
     if (Ox + Gw > (int)CellW) {
         Gw = (int)CellW - Ox;
@@ -597,6 +683,8 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     UINT8 *Hi;
     UINT32 HiBytes;
     int Mono;
+    int Base1;
+    int Rc;
 
     /* 可打印 ASCII/汉字；mono 激活时用 MONO.TTF */
     if (!Pix18 || Cp < 32u || Cp == 127u) {
@@ -611,6 +699,20 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         return -1;
     }
     CellH = FontTtfCell();
+    /*
+     * 两条栅格路径共用同一条基线（1× 逻辑格口径）：FT 侧直接调
+     * FontTtfCellBaseline()，这里 2× 路径乘 2、1× 路径原样用。
+     */
+    Base1 = Mono ? (int)CellH * 3 / 4 : FontTtfCellBaseline(CellH);
+    if (Base1 < 0) {
+        Base1 = (int)CellH * 3 / 4;
+    }
+    if (Base1 < 1) {
+        Base1 = 1;
+    }
+    if (Base1 >= (int)CellH) {
+        Base1 = (int)CellH - 1;
+    }
     if (Mono) {
         CellW = gMonoAdv;
         if (CellW < 1u) {
@@ -674,21 +776,36 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         OsH = CellH * TTF_OS;
         HiBytes = OsW * OsH;
         Hi = (UINT8 *)FontTtfMalloc(HiBytes);
-        if (Hi != 0 &&
-            FontTtfLayout(Info, Cp, Glyph, OsW, OsH, &Scale, &Shift, &Gw, &Gh,
-                          &Ox, &Oy) == 0) {
-            STBTT_memset(Hi, 0, HiBytes);
-            stbtt_MakeCodepointBitmapSubpixel(Info, Hi + Oy * (int)OsW + Ox, Gw, Gh,
-                                              (int)OsW, Scale, Scale, 0.0f, Shift,
-                                              (int)Cp);
-            FontTtfDownsample2(Hi, OsW, OsH, Pix18, CellW, CellH);
-            HalFpuEnd();
-            return 0;
+        if (Hi != 0) {
+            /*
+             * 先按加档 em 布局；拉丁若装不下（括号/竖线比格高）返回 -1，
+             * 退回不加档的 CellH em 再算一次——保证位图每一行都在格内。
+             */
+            Rc = FontTtfLayout(Info, Cp, Glyph, OsW, OsH, Base1 * 2, 1, &Scale,
+                               &Shift, &Gw, &Gh, &Ox, &Oy);
+            if (Rc != 0 && Cp < 128u) {
+                Rc = FontTtfLayout(Info, Cp, Glyph, OsW, OsH, Base1 * 2, 0, &Scale,
+                                   &Shift, &Gw, &Gh, &Ox, &Oy);
+            }
+            if (Rc == 0) {
+                STBTT_memset(Hi, 0, HiBytes);
+                stbtt_MakeCodepointBitmapSubpixel(Info, Hi + Oy * (int)OsW + Ox, Gw,
+                                                  Gh, (int)OsW, Scale, Scale, 0.0f,
+                                                  Shift, (int)Cp);
+                FontTtfDownsample2(Hi, OsW, OsH, Pix18, CellW, CellH);
+                HalFpuEnd();
+                return 0;
+            }
         }
 
         gArenaUsed = 0;
-        if (FontTtfLayout(Info, Cp, Glyph, CellW, CellH, &Scale, &Shift, &Gw, &Gh,
-                          &Ox, &Oy) != 0) {
+        Rc = FontTtfLayout(Info, Cp, Glyph, CellW, CellH, Base1, 1, &Scale, &Shift,
+                           &Gw, &Gh, &Ox, &Oy);
+        if (Rc != 0 && Cp < 128u) {
+            Rc = FontTtfLayout(Info, Cp, Glyph, CellW, CellH, Base1, 0, &Scale,
+                               &Shift, &Gw, &Gh, &Ox, &Oy);
+        }
+        if (Rc != 0) {
             HalFpuEnd();
             return -1;
         }

@@ -166,6 +166,16 @@ void KernelHandoff(UEFI_BOOT_CONFIG *BootConfig) {
     /* 与 Fill* 无关；尽早开串口。空 BootConfig* 已在 KernelEntry 拦下 */
     HalSerialInitialize();
 
+    /*
+     * PR-15 契约（跨 Boot/Kernel 的唯一生命周期指针）：
+     * BootConfig 是 UEFI 侧 UefiMain 的栈地址，ExitBootServices 后仍然有效，
+     * 但内核一旦切到自己的栈、或开始用 PMM 回收「未登记」的物理页，它就随时
+     * 可能被复用。所以这里做的第一件事是整包复制到 static 存储：
+     *   - 复制之前不得调用会破坏该栈的任何东西；
+     *   - FillHandoffRegions 会把原地址 AddRegion 保留，供早期代码访问；
+     *   - 复制之后只准用 UefiBootConfig，不要再用入参 BootConfig。
+     * 对应 Boot 侧注释：Boot.c 的 UEFI_BOOT_CONFIG 声明处、JumpToKernel.c 的 Entry 调用点。
+     */
     UefiBootConfig = *BootConfig;
     FillHandoff(&UefiBootConfig, &BootHandoff);
     FillHalPlatform(&UefiBootConfig);

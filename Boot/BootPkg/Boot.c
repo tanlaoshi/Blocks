@@ -13,6 +13,16 @@
  */
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     EFI_STATUS Status;
+    /*
+     * 交接包在 UefiMain 的栈上（不是全局）：ExitBootServices 之后 Boot 的
+     * BSS 已不再可信，栈仍有效。这个指针会被内核拿走，见 PR-15 契约：
+     *
+     *   KernelEntry.S  先换到内核自己的栈（不碰这里的栈）
+     *   KernelHandoff  第一件事就是 *整包* 复制到 static UefiBootConfig
+     *   FillHandoffRegions 还把原地址 AddRegion 保留，防早期访存
+     *
+     * 三处任一改动都会让内核拿到悬垂指针。要改先读 KernelHandoff.c。
+     */
     UEFI_BOOT_CONFIG BootConfig = {0};
     VIDEO_SELECTION VideoSel;
 

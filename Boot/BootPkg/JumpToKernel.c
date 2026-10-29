@@ -75,7 +75,13 @@ EFI_STATUS JumpToKernel(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
             BootConfig->MemoryMap = MemoryMap;
             Entry = (KERNEL_ENTRY_FN)(UINTN)BootConfig->EntryAddress;
-            /* UEFI/MS ABI：首参在 RCX；HAL 入口优先读 RCX */
+            /*
+             * UEFI/MS ABI：首参在 RCX；HAL 入口优先读 RCX。
+             *
+             * PR-15 契约：BootConfig 指向 UefiMain 的栈（见 Boot.c 处注释）。
+             * 这里传出后 Boot 不再使用它；内核必须在换栈前不碰它、并在
+             * KernelHandoff 里整包复制。改这里的调用约定前先读 KernelHandoff.c。
+             */
             Entry(BootConfig);
             KernelReturned(BootConfig->EntryAddress);
         }

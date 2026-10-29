@@ -46,6 +46,8 @@ UINT64 HalVideoBackbufferBase(void);
 void HalVideoGetSize(UINT32 *Width, UINT32 *Height);
 /* UI 整体缩放（50/100/150/200）；成功 0，重配后缓冲 */
 UINT32 HalVideoGetUiScale(void);
+/* PR-23b：整数绘制倍数（200%→2，其余→1）；TTF 栅格尺寸 = 逻辑字高 × 本值 */
+UINT32 HalVideoGetDrawScale(void);
 void HalVideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
 int HalVideoSetUiScale(UINT32 Percent);
 /* PR-G-hotres：QEMU/Bochs VGA 可热切则 1；真机/无 DISPI 为 0 */

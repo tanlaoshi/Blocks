@@ -1,14 +1,17 @@
 /*
- * FontTtfCache.c — 32×32×8bpp 定长缓存
+ * FontTtfCache.c — 64×64×8bpp 定长缓存
  *
  * font-unified-ttf：可打印 ASCII 与汉字同槽；绘制只 Lookup。
  * 栅格仅 Preheat / Want 泵（Worker / 开窗短 burst）。
+ * PR-23b：边长按物理像素（FontTtfCell，200% 时 48），故槽位抬到 64×64。
  */
 #include "Font.h"
+#include "Hal.h"
+#include "Compiler.h"
 
 #define TTF_CACHE_N 1024u
 #define TTF_PROBE   32u
-#define TTF_CELL    32u
+#define TTF_CELL    64u
 #define TTF_PIX     (TTF_CELL * TTF_CELL)
 #define TTF_EMPTY   0
 #define TTF_HIT     1
@@ -17,8 +20,8 @@
 
 typedef struct {
     UINT32 Cp;
-    UINT32 Side;
-    UINT32 Adv; /* 步进：拉丁用字宽，汉字用 Side */
+    UINT32 Side; /* 位图边长（物理像素，= FontTtfCell）；步进见下一行 */
+    UINT32 Adv;  /* 逻辑步进：拉丁用字宽，汉字用 Side/绘制倍数 */
     int State;
     UINT8 Pix[TTF_PIX];
 } TTF_SLOT;
@@ -27,7 +30,13 @@ static int TtfCpOk(UINT32 Cp) {
     return (Cp >= 32u && Cp != 127u) ? 1 : 0;
 }
 
-static TTF_SLOT gSlot[TTF_CACHE_N];
+/*
+ * PR-23b：64×64 槽 ×1024 ≈ 4MB。必须上抬 .bss.high（链接在 32MiB），
+ * 不能留在低端 .bss：低端段变大后整段 [0x352000, ...) 会跨过 OVMF
+ * ~8MiB 保留区，Boot 的 AllocateAddress 整段申请直接失败（实测启动挂死）。
+ */
+static TTF_SLOT gSlot[TTF_CACHE_N]
+    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
 static UINT32 gWant[TTF_WANT_N];
 static UINT32 gWantN;
 static UINT32 gPaintGen;
@@ -159,7 +168,7 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
              */
             return 0;
         }
-        if (S->Side != FontTtfPixel()) {
+        if (S->Side != FontTtfCell()) {
             WantPush(Cp);
             return 0;
         }
@@ -183,7 +192,7 @@ UINT32 FontTtfCacheAdvance(UINT32 Cp) {
         return 0;
     }
     S = SlotLookup(Cp);
-    if (!S || S->State != TTF_HIT || S->Side != FontTtfPixel()) {
+    if (!S || S->State != TTF_HIT || S->Side != FontTtfCell()) {
         return 0;
     }
     return S->Adv ? S->Adv : S->Side;
@@ -225,12 +234,18 @@ int FontTtfCachePending(UINT32 Cp) {
 static int FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
     UINT32 Side;
+    UINT32 S;
 
     if (!TtfCpOk(Cp)) {
         return 0;
     }
     Slot = SlotAlloc(Cp);
-    Side = FontTtfPixel();
+    /* PR-23b：位图边长 = 逻辑字高 × 绘制倍数（200% 时 48） */
+    Side = FontTtfCell();
+    S = HalVideoGetDrawScale();
+    if (S < 1u) {
+        S = 1u;
+    }
     /*
      * 仅 HIT 且边长一致才跳过。MISS 须可重试：
      * SESSION 在 FS/Gui 前时 Console→LocaleTtfPreheat 会在 gInit=0 时灌满 MISS，
@@ -252,6 +267,13 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
     Slot->Adv = FontFtLastAdvance();
     if (Slot->Adv < 1u) {
         Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
+    }
+    /*
+     * PR-23b：栅格与 FT 步进都是物理像素，Slot->Adv 必须存逻辑步进
+     * （FontCodepointAdvance / 布局直接拿它排字），否则 200% 字距翻倍。
+     */
+    if (S > 1u) {
+        Slot->Adv /= S;
     }
     if (Slot->Adv < 1u) {
         Slot->Adv = 1u;
@@ -370,7 +392,9 @@ UINT32 FontTtfWantDrain(UINT32 Max) {
 /* font-latin-mono：ASCII 独立槽，避免与 UI UMing 缓存撞车 */
 #define MONO_N 96u
 
-static UINT8 gMonoPix[MONO_N][TTF_PIX];
+/* mono 槽同样按物理边长；.bss.high 理由同上（96×4096≈384KB） */
+static UINT8 gMonoPix[MONO_N][TTF_PIX]
+    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
 static UINT8 gMonoHit[MONO_N];
 static UINT32 gMonoSide;
 static UINT32 gMonoCellW;

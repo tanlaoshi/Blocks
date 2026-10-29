@@ -1,8 +1,8 @@
 /*
  * FontTtfRaster.c — 汉字按当前行高栅格（须 HalFpuBegin；CFLAGS_FPU）
  *
- * gui-ttf-oversample：先 2× 直栅进 arena，再 2×2 箱滤缩到 FontTtfPixel；
- * 失败软退 1×。上沿对齐像素边界；缓存槽仍按显示边长。
+ * gui-ttf-oversample：先 2× 直栅进 arena，再 2×2 箱滤缩到 FontTtfCell；
+ * 失败软退 1×。上沿对齐像素边界；缓存槽按物理边长（PR-23b）。
  */
 #include "Font.h"
 #include "Hal.h"
@@ -36,11 +36,25 @@ UINT32 FontTtfPixel(void) {
     return H;
 }
 
+/*
+ * PR-23b：栅格边长必须是物理像素。200% 时逻辑 24px 的汉字占 48 物理像素，
+ * 若仍按 24 栅格再由绘制层放大，物理分辨率就白丢了。
+ * FontTtfPixel 保持逻辑值（布局/行高用它），只有栅格/缓存用本函数。
+ */
+UINT32 FontTtfCell(void) {
+    UINT32 S = HalVideoGetDrawScale();
+
+    if (S < 1u) {
+        S = 1u;
+    }
+    return FontTtfPixel() * S;
+}
+
 #if defined(__x86_64__) || defined(__aarch64__)
 
 #include <stddef.h>
 
-#define TTF_CELL 32
+#define TTF_CELL 64
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
 #define TTF_OS   2u
 #define TTF_ARENA (64u * 1024u)
@@ -316,11 +330,17 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
      */
     {
         UINT32 EmPx = CellH;
+        /*
+         * PR-23b：上限随绘制倍数走（100%→32，200%→64）。
+         * 过采样 2× 路径传进来的 CellH 也是物理值；若恒用 64，100% 下
+         * ASCII 会从 48 突增到 60，整屏拉丁字变胖，基线不再逐像素相同。
+         */
+        UINT32 EmCap = 32u * HalVideoGetDrawScale();
 
         if (Cp < 128u) {
             EmPx = CellH + (CellH / 4u);
-            if (EmPx > 32u) {
-                EmPx = 32u;
+            if (EmPx > EmCap) {
+                EmPx = EmCap;
             }
             if (EmPx < CellH) {
                 EmPx = CellH;
@@ -558,7 +578,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     } else if (!gInit) {
         return -1;
     }
-    CellH = FontTtfPixel();
+    CellH = FontTtfCell();
     if (Mono) {
         CellW = gMonoAdv;
         if (CellW < 1u) {

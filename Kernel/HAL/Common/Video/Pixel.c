@@ -159,3 +159,95 @@ UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
     S = DrawScale();
     return FbPack(Fb[Y * S * Pitch + X * S]);
 }
+
+/*
+ * PR-23b：物理像素 1:1 读写。
+ *
+ * 坐标已是物理像素（调用方用 逻辑×S 算好），这里绝不能再乘 DrawScale，
+ * 否则 200% 下会写成 2×2 块，物理分辨率栅格就白做了。
+ * gClip* / 脏区仍是逻辑坐标：物理像素 (Xp,Yp) 属于逻辑像素
+ * (Xp/S,Yp/S)，裁剪与 DirtyUnion 都按它算，Present 再乘回 S。
+ */
+static int PhysPixelOk(UINT32 Xp, UINT32 Yp, UINT32 *OutLx, UINT32 *OutLy) {
+    UINT32 S = DrawScale();
+    UINT32 Lx = Xp / S;
+    UINT32 Ly = Yp / S;
+    UINT32 W = gDrawW ? gDrawW : gScreen.Width * S;
+    UINT32 H = gDrawH ? gDrawH : gScreen.Height * S;
+
+    if (Xp >= W || Yp >= H) {
+        return 0;
+    }
+    if (gClipOn) {
+        if (Lx < gClipX || Ly < gClipY ||
+            Lx >= gClipX + gClipW || Ly >= gClipY + gClipH) {
+            return 0;
+        }
+    }
+    if (OutLx) {
+        *OutLx = Lx;
+    }
+    if (OutLy) {
+        *OutLy = Ly;
+    }
+    return 1;
+}
+
+void VideoDrawPixelPhys(UINT32 Xp, UINT32 Yp, UINT32 Color) {
+    UINT32 *Fb;
+    UINT32 Pitch;
+    UINT32 Lx;
+    UINT32 Ly;
+
+    if (!PhysPixelOk(Xp, Yp, &Lx, &Ly)) {
+        return;
+    }
+    Fb = DrawBase();
+    Pitch = DrawPitch();
+    if (!Fb || Pitch == 0) {
+        return;
+    }
+    Fb[Yp * Pitch + Xp] = FbPack(Color);
+    DirtyUnion(Lx, Ly, 1, 1);
+}
+
+UINT32 VideoReadPixelPhys(UINT32 Xp, UINT32 Yp) {
+    UINT32 *Fb;
+    UINT32 Pitch;
+
+    if (!PhysPixelOk(Xp, Yp, 0, 0)) {
+        return 0;
+    }
+    Fb = DrawBase();
+    Pitch = DrawPitch();
+    if (!Fb || Pitch == 0) {
+        return 0;
+    }
+    return FbPack(Fb[Yp * Pitch + Xp]);
+}
+
+void VideoBlendPixelPhys(UINT32 Xp, UINT32 Yp, UINT32 Color, UINT8 Alpha) {
+    UINT32 *Fb;
+    UINT32 Pitch;
+    UINT32 Lx;
+    UINT32 Ly;
+
+    if (Alpha == 0) {
+        return;
+    }
+    if (Alpha == 255) {
+        VideoDrawPixelPhys(Xp, Yp, Color);
+        return;
+    }
+    if (!PhysPixelOk(Xp, Yp, &Lx, &Ly)) {
+        return;
+    }
+    Fb = DrawBase();
+    Pitch = DrawPitch();
+    if (!Fb || Pitch == 0) {
+        return;
+    }
+    Fb[Yp * Pitch + Xp] = FbPack(VideoBlendRgb(FbPack(Fb[Yp * Pitch + Xp]),
+                                               Color, Alpha));
+    DirtyUnion(Lx, Ly, 1, 1);
+}

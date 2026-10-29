@@ -63,8 +63,13 @@ int FontTtfMonoActive(void);
 UINT32 FontTtfMonoAdvance(void);
 /* mono 槽 Lookup+同步栅；未就绪 0 */
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-/* 汉字绘制高度。至少 24，不超过缓存的 32。英文按点阵原样画，不跟着拉高。 */
+/* 汉字逻辑绘制高度。至少 24，不超过 32（槽位按物理像素另算，见 FontTtfCell）。 */
 UINT32 FontTtfPixel(void);
+/*
+ * PR-23b：TTF 栅格边长 = FontTtfPixel × 绘制倍数（200% 时为 48）。
+ * 只用于栅格/缓存/位图判定；布局仍用 FontTtfPixel，勿拿它算行列。
+ */
+UINT32 FontTtfCell(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 /* FreeType：Worker 懒启；Raster 未就绪/失败软退 stb */
 int FontFtInit(void);
@@ -80,7 +85,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH);
 UINT32 FontFtLastAdvance(void);
 void FontFtClearLastAdvance(void);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-/* HIT 槽步进；未命中 0。拉丁约为 Side/2，汉字 Side */
+/* HIT 槽步进（逻辑像素）；未命中 0。拉丁约为 Side/2，汉字 Side/绘制倍数 */
 UINT32 FontTtfCacheAdvance(UINT32 Cp);
 /* 1=已栅格失败（真缺字）；绘制层走 U+FFFD/tofu，禁点阵顶中文 */
 int FontTtfCacheMissed(UINT32 Cp);

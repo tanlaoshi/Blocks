@@ -149,12 +149,14 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   }
   /*
    * 汉字：满格 ppem。
-   * UI 拉丁：整数加档 +1/4 ppem（钳 32）重栅格，禁非整数位图拉伸。
+   * UI 拉丁：整数加档 +1/4 ppem（上限 32×绘制倍数）重栅格，禁非整数位图拉伸。
+   * PR-23b：100% 上限仍是 32（ReqH=30，基线不变）；200% 抬到 64（48→60）。
    * 中英共用 CellH 收进基线 SharedAsc：ascent+descent 超格则上移基线留底，
    * 避免 Droid 汉字下横被裁；加档只放大拉丁、不改共用基线。
    */
   {
     UINT32 ReqH = CellH;
+    UINT32 ReqCap = 32u * HalVideoGetDrawScale();
     int SharedAsc = 0;
     int DescPx = 0;
 
@@ -186,8 +188,8 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
       }
       if (Cp < 128u) {
         ReqH = CellH + (CellH / 4u);
-        if (ReqH > 32u) {
-          ReqH = 32u;
+        if (ReqH > ReqCap) {
+          ReqH = ReqCap;
         }
         if (ReqH < CellH) {
           ReqH = CellH;

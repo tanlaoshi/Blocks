@@ -270,6 +270,45 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     }
 }
 
+/*
+ * PR-23b：TTF 位图按物理像素 1:1 落笔。
+ *
+ * 位图边长 = FontTtfCell() = 逻辑字高 × S，正好铺满一个逻辑行高；
+ * 因此不需要 OffY / 垂直居中，Y*S 就是位图顶。逐像素写物理坐标，
+ * 灰度仍走原来的 GammaBlend（线性光覆盖度），边缘观感与 100% 一致。
+ * 不用 PaintBlock：它会再乘 S×S，把 48px 字又放大成 96px 块。
+ */
+static void PaintGlyph8Phys(UINT32 X, UINT32 Y, const UINT8 *Glyph,
+                            UINT32 Width, UINT32 Height, UINT32 Color) {
+    UINT32 S = DrawScale();
+    UINT32 Row;
+    UINT32 Col;
+
+    if (!Glyph || Width == 0 || Height == 0) {
+        return;
+    }
+    for (Row = 0; Row < Height; Row++) {
+        UINT32 Dy = Y * S + Row;
+
+        for (Col = 0; Col < Width; Col++) {
+            UINT8 Alpha = GlyphCrispAlpha8(Glyph[Row * Width + Col]);
+            UINT32 Dx;
+
+            if (Alpha == 0) {
+                continue;
+            }
+            Dx = X * S + Col;
+            if (Alpha == 255) {
+                VideoDrawPixelPhys(Dx, Dy, Color);
+            } else {
+                VideoDrawPixelPhys(
+                    Dx, Dy,
+                    GammaBlend(VideoReadPixelPhys(Dx, Dy), Color, Alpha));
+            }
+        }
+    }
+}
+
 void VideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color) {
     const FONT_FACE *F;
     const UINT8 *Glyph;
@@ -395,6 +434,17 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
     UINT32 Bpr;
 
     if (!Glyph || Width == 0 || Height == 0) {
+        return;
+    }
+    /*
+     * PR-23b：TTF 位图边长 == FontTtfCell()（逻辑字高×S），已是物理分辨率。
+     * 200% 时必须先于 FontGlyphBox 分流：FontGlyphBox 会把它按逻辑行高收到
+     * 24，再交给放大路径，等于又把 48px 位图糊回 24px。
+     * 100% 时 S=1，下面原路径逐像素等价，故不切（保基线 0 差异）。
+     */
+    if (Bpp == 8u && DrawScale() > 1u &&
+        Width == FontTtfCell() && Height == FontTtfCell()) {
+        PaintGlyph8Phys(X, Y, Glyph, Width, Height, Color);
         return;
     }
     ScaleY = FontGlyphStretch(Height);

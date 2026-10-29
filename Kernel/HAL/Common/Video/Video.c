@@ -155,6 +155,14 @@ void VideoGetDrawSize(UINT32 *Width, UINT32 *Height) {
     }
 }
 
+/*
+ * PR-23b：字体层要按物理像素栅格，先问这里。只认 1/2；
+ * 其它值（未初始化、异常）一律按 1，保证旧布局路径不受影响。
+ */
+UINT32 VideoGetDrawScale(void) {
+    return (gDrawScale == 2u) ? 2u : 1u;
+}
+
 void VideoSetClipRegion(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Background) {
     gClipOn = 1;
     gClipX = X;

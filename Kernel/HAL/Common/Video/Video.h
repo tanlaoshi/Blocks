@@ -53,6 +53,11 @@ void VideoGetSize(UINT32 *Width, UINT32 *Height);
 void VideoGetDrawSize(UINT32 *Width, UINT32 *Height);
 /* UI 整体缩放 50/100/150/200；逻辑分辨率见 GetSize，物理见 GetPhysicalSize */
 UINT32 VideoGetUiScale(void);
+/*
+ * PR-23b：整数绘制倍数（200%→2，其余→1）。字体层据此按物理像素栅格 TTF，
+ * 但布局/行高仍用逻辑单位，故必须只读、不可反向改布局。
+ */
+UINT32 VideoGetDrawScale(void);
 void VideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
 int VideoSetUiScale(UINT32 Percent);
 void VideoDrawPixel(UINT32 X, UINT32 Y, UINT32 Color);
@@ -68,6 +73,13 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
 UINT32 VideoBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha);
 void VideoBlendPixel(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
 void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha);
+/*
+ * PR-23b：物理像素直写（坐标已是物理像素，不再乘绘制倍数）。
+ * 只给「已按物理像素栅格」的 TTF 位图用；裁剪仍按所属逻辑像素判定。
+ */
+void VideoDrawPixelPhys(UINT32 Xp, UINT32 Yp, UINT32 Color);
+UINT32 VideoReadPixelPhys(UINT32 Xp, UINT32 Yp);
+void VideoBlendPixelPhys(UINT32 Xp, UINT32 Yp, UINT32 Color, UINT8 Alpha);
 void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
                         UINT32 Color, UINT8 Alpha);
 void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,

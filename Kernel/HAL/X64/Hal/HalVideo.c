@@ -185,6 +185,10 @@ UINT32 HalVideoGetUiScale(void) {
     return VideoGetUiScale();
 }
 
+UINT32 HalVideoGetDrawScale(void) {
+    return VideoGetDrawScale();
+}
+
 void HalVideoGetPhysicalSize(UINT32 *Width, UINT32 *Height) {
     VideoGetPhysicalSize(Width, Height);
 }

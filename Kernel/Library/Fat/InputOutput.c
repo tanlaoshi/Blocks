@@ -3,25 +3,14 @@
  * 卷几何初始化：Fat.c
  */
 #include "Fat.h"
+#include "SerialLog.h"
 #include "FatPrivate.h"
 #include "Block.h"
 
-UINT8 gSector[SECTOR];
-UINT8 gCluster[SECTOR * 128];
-
-UINT32 gStartLba;
-UINT32 gBytesPerSector;
-UINT32 gSectorsPerCluster;
-UINT32 gReservedSectors;
-UINT32 gNumFats;
-UINT32 gSectorsPerFat;
-UINT32 gRootCluster;
-UINT32 gRootLba;
-UINT32 gRootSectors;
-UINT32 gFatStart;
-UINT32 gDataStart;
-UINT32 gFatType;
-UINT32 gMaxCluster;
+/* 每卷一套上下文（PR-F5）：gFatCur 指向当前操作的卷。
+ * 多方挂载互不覆盖；切换只换指针，不再靠重新 Mount 重置全局量。 */
+FAT_VOL gFatVols[FAT_VOL_MAX];
+FAT_VOL *gFatCur = &gFatVols[0];
 
 FAT_DIR_CTX FatRootCtx(void) {
     FAT_DIR_CTX C;

@@ -25,6 +25,7 @@ void BlockRegisterBackend(const BLOCK_BACKEND *Backend);
 const BLOCK_BACKEND *BlockPeekBackend(void);
 
 int BlockSelect(UINT32 Drive);
+UINT32 BlockSelectedDrive(void);
 UINT32 BlockCurrentDrive(void);
 int BlockInitialize(void);
 /* 是否已挂后端（PR-D2：Driver Bind 之后为真） */

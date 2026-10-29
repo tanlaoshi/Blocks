@@ -76,4 +76,8 @@ static inline int StrEqIgnoreCase(const char *A, const char *B) {
 }
 
 
+/* 串行化 FS 操作：FAT 层用全局「当前卷」指针 + 卷内缓冲，必须互斥（PR-F5）。 */
+void FileSystemLock(void);
+void FileSystemUnlock(void);
+
 #endif

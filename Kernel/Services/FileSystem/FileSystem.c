@@ -19,6 +19,8 @@
 #include "BootHandoff.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
+#include "Atomic.h"
+#include "Hal.h"
 #include "CoreOps.h"
 #include "HalDevices.h"
 #include "HalDriverFile.h"
@@ -476,3 +478,21 @@ void FileSystemEnsureSecondaryVolumes(void) {
     LogFs("FS: msc/3 secondary ready (Files show all vols)\n");
 }
 
+/*
+ * PR-F5：FS 互斥。
+ * FAT 层保留一个「当前卷」指针 + 每卷缓冲；两个线程（前台 shell/GUI 与
+ * 后台 Desktop Worker 的 Remount）同时进出会切走当前卷、写脏目录项。
+ * 这里一把粗锁把整段「解析→激活→读写」串起来；只在 FS 调用路径上持有，
+ * 不用 cli（持锁期间可能等 MSC 传输，cli 会让中断长时间关闭）。
+ */
+static volatile UINT32 gFsLock;
+
+void FileSystemLock(void) {
+    while (BLOCKS_ATOMIC_TAS(&gFsLock, 1u)) {
+        HalCpuRelax();
+    }
+}
+
+void FileSystemUnlock(void) {
+    gFsLock = 0;
+}

@@ -46,27 +46,60 @@ typedef struct {
     int    Valid;
 } FAT_LFN_ACC;
 
-/* 卷几何与扇区/簇缓冲（定义于 InputOutput.c） */
-extern UINT8 gSector[SECTOR];
-extern UINT8 gCluster[SECTOR * 128];
-extern UINT32 gStartLba;
-extern UINT32 gBytesPerSector;
-extern UINT32 gSectorsPerCluster;
-extern UINT32 gReservedSectors;
-extern UINT32 gNumFats;
-extern UINT32 gSectorsPerFat;
-extern UINT32 gRootCluster;
-extern UINT32 gRootLba;
-extern UINT32 gRootSectors;
-extern UINT32 gFatStart;
-extern UINT32 gDataStart;
-extern UINT32 gFatType;
-extern UINT32 gMaxCluster;
+/*
+ * 卷上下文：每卷一套扇区/簇缓冲与几何（PR-F5）。
+ *
+ * 原先这些是全局单份，多卷挂载时互相覆盖；后台 Remount（Worker）与前台
+ * 写盘交错会写出脏目录项 → vvfat 断言 / 真机 FAT 损坏。
+ * 现在按「盘号 + 起始 LBA」分卷保存，切换卷只换指针。
+ */
+#define FAT_VOL_MAX 4
 
-/* 目录枚举输出（定义于 Directory.c） */
-extern FAT_DIRECTORY_ENTRY *gListOut;
-extern int gListMax;
-extern int gListCount;
+typedef struct {
+    UINT8  Sector[SECTOR];
+    UINT8  Cluster[SECTOR * 128];
+    UINT32 StartLba;
+    UINT32 Drive;
+    UINT32 BytesPerSector;
+    UINT32 SectorsPerCluster;
+    UINT32 ReservedSectors;
+    UINT32 NumFats;
+    UINT32 SectorsPerFat;
+    UINT32 RootCluster;
+    UINT32 RootLba;
+    UINT32 RootSectors;
+    UINT32 FatStart;
+    UINT32 DataStart;
+    UINT32 FatType;
+    UINT32 MaxCluster;
+    int    Ready;
+    FAT_DIRECTORY_ENTRY *ListOut;
+    int    ListMax;
+    int    ListCount;
+} FAT_VOL;
+
+extern FAT_VOL gFatVols[FAT_VOL_MAX];
+extern FAT_VOL *gFatCur;
+
+#define gSector          (gFatCur->Sector)
+#define gCluster         (gFatCur->Cluster)
+#define gStartLba        (gFatCur->StartLba)
+#define gBytesPerSector  (gFatCur->BytesPerSector)
+#define gSectorsPerCluster (gFatCur->SectorsPerCluster)
+#define gReservedSectors (gFatCur->ReservedSectors)
+#define gNumFats         (gFatCur->NumFats)
+#define gSectorsPerFat   (gFatCur->SectorsPerFat)
+#define gRootCluster     (gFatCur->RootCluster)
+#define gRootLba         (gFatCur->RootLba)
+#define gRootSectors     (gFatCur->RootSectors)
+#define gFatStart        (gFatCur->FatStart)
+#define gDataStart       (gFatCur->DataStart)
+#define gFatType         (gFatCur->FatType)
+#define gMaxCluster      (gFatCur->MaxCluster)
+#define gListOut         (gFatCur->ListOut)
+#define gListMax         (gFatCur->ListMax)
+#define gListCount       (gFatCur->ListCount)
+
 
 /* —— InputOutput.c —— */
 FAT_DIR_CTX FatRootCtx(void);

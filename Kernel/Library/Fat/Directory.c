@@ -6,10 +6,6 @@
 #include "FatPrivate.h"
 #include "Block.h"
 
-FAT_DIRECTORY_ENTRY *gListOut;
-int gListMax;
-int gListCount;
-
 int FatListRoot(void) {
     return FatListDir(0);
 }

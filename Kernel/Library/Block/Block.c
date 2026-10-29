@@ -15,6 +15,10 @@ void BlockRegisterBackend(const BLOCK_BACKEND *Backend) {
     gBackend = Backend;
 }
 
+UINT32 BlockSelectedDrive(void) {
+    return gDrive;
+}
+
 const BLOCK_BACKEND *BlockPeekBackend(void) {
     return gBackend;
 }

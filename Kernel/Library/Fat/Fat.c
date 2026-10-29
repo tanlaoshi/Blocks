@@ -5,10 +5,67 @@
 #include "Fat.h"
 #include "FatPrivate.h"
 
+/*
+ * 选卷：同盘同 LBA 复用已有上下文；否则找空位新建。
+ * 必须先切 gFatCur 再读 BPB——扇区缓冲在卷上下文里。
+ */
+static int FatSelectVolume(UINT32 StartLba) {
+    UINT32 Drive = BlockSelectedDrive();
+    FAT_VOL *V = 0;
+    int Free = -1;
+    int i;
+
+    for (i = 0; i < FAT_VOL_MAX; i++) {
+        if (gFatVols[i].Ready != 0 &&
+            gFatVols[i].StartLba == StartLba &&
+            gFatVols[i].Drive == Drive) {
+            V = &gFatVols[i];
+            break;
+        }
+        if (Free < 0 && gFatVols[i].Ready == 0) {
+            Free = i;
+        }
+    }
+    if (!V) {
+        if (Free < 0) {
+            return FAT_ERR_NOSPC;
+        }
+        V = &gFatVols[Free];
+        V->Ready = 0;
+        V->StartLba = StartLba;
+        V->Drive = Drive;
+    }
+    gFatCur = V;
+    return FAT_OK;
+}
+
+static void FatZeroContext(FAT_VOL *V) {
+    UINT8 *P = (UINT8 *)V;
+    UINTN i;
+
+    for (i = 0; i < sizeof(FAT_VOL); i++) {
+        P[i] = 0;
+    }
+}
+
 int FatInitialize(UINT32 StartLba) {
     UINT32 TotSec;
     UINT32 DataSectors;
+    UINT32 Drive = BlockSelectedDrive();
+    int St = FatSelectVolume(StartLba);
+    FAT_VOL *V;
 
+    if (St != FAT_OK) {
+        return St;
+    }
+    V = gFatCur;
+    /*
+     * 每次都重读 BPB（一个扇区）：卷可能被格式化过，缓存几何会过期。
+     * 分卷上下文保证重读只影响本卷，不会冲掉别的卷的缓冲。
+     */
+    FatZeroContext(V);
+    V->StartLba = StartLba;
+    V->Drive = Drive;
     gStartLba = StartLba;
     if (!LoadSector(StartLba)) {
         return FAT_ERR_IO;
@@ -39,6 +96,7 @@ int FatInitialize(UINT32 StartLba) {
         if (gMaxCluster < 3) {
             gMaxCluster = FAT_U16_MASK;
         }
+        V->Ready = 1;
         return FAT_OK;
     }
 
@@ -56,5 +114,6 @@ int FatInitialize(UINT32 StartLba) {
         }
     }
     gFatType = 16;
+    V->Ready = 1;
     return FAT_OK;
 }

@@ -31,7 +31,7 @@ static int FileSystemPreparePath(const char *Path, const char **RelOut, int Need
     return FAT_OK;
 }
 
-int FileSystemListDirectory(const char *Path) {
+static int ImplFileSystemListDirectory(const char *Path) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path ? Path : "", &Rel, 0);
     if (Err != FAT_OK) {
@@ -43,7 +43,7 @@ int FileSystemListDirectory(const char *Path) {
     return gVirtualFileSystem.ListDir(Rel && Rel[0] ? Rel : 0);
 }
 
-int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
+static int ImplFileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path ? Path : "", &Rel, 0);
     if (Err != FAT_OK) {
@@ -55,7 +55,7 @@ int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, i
     return gVirtualFileSystem.ListEntries(Rel && Rel[0] ? Rel : 0, Out, Max, OutCount);
 }
 
-int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
+static int ImplFileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
     const char *Rel;
     int Err;
 
@@ -69,7 +69,7 @@ int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *Out
     return gVirtualFileSystem.ReadFile(Rel, Buffer, MaxSize, OutSize);
 }
 
-int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
+static int ImplFileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path, &Rel, 1);
     if (Err != FAT_OK) {
@@ -78,7 +78,7 @@ int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
     return gVirtualFileSystem.WriteFile(Rel, Buffer, Size);
 }
 
-int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
+static int ImplFileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
     const char *Rel;
     int Err;
 
@@ -92,7 +92,7 @@ int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len
     return gVirtualFileSystem.ReadFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
-int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
+static int ImplFileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path, &Rel, 1);
     if (Err != FAT_OK) {
@@ -101,7 +101,7 @@ int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
     return gVirtualFileSystem.WriteFileAt(Rel, Offset, Buffer, Len, OutN);
 }
 
-int FileSystemDeleteFile(const char *Path) {
+static int ImplFileSystemDeleteFile(const char *Path) {
     const char *Rel;
     int Err;
 
@@ -115,7 +115,7 @@ int FileSystemDeleteFile(const char *Path) {
     return gVirtualFileSystem.DeleteFile(Rel);
 }
 
-int FileSystemMakeDirectory(const char *Path) {
+static int ImplFileSystemMakeDirectory(const char *Path) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path, &Rel, 1);
     if (Err != FAT_OK) {
@@ -124,7 +124,7 @@ int FileSystemMakeDirectory(const char *Path) {
     return gVirtualFileSystem.Mkdir(Rel);
 }
 
-int FileSystemRemoveDirectory(const char *Path) {
+static int ImplFileSystemRemoveDirectory(const char *Path) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path, &Rel, 1);
     if (Err != FAT_OK) {
@@ -133,7 +133,7 @@ int FileSystemRemoveDirectory(const char *Path) {
     return gVirtualFileSystem.Rmdir(Rel);
 }
 
-int FileSystemRename(const char *OldPath, const char *NewPath) {
+static int ImplFileSystemRename(const char *OldPath, const char *NewPath) {
     const char *OldRel;
     const char *NewRel;
     int OldVol;
@@ -169,7 +169,7 @@ int FileSystemRename(const char *OldPath, const char *NewPath) {
     return gVirtualFileSystem.Rename(OldRel, NewRel);
 }
 
-int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
+static int ImplFileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path ? Path : "", &Rel, 0);
     if (Err != FAT_OK) {
@@ -181,7 +181,7 @@ int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
     return gVirtualFileSystem.FileStat(Rel && Rel[0] ? Rel : 0, Out);
 }
 
-int FileSystemFileSync(const char *Path) {
+static int ImplFileSystemFileSync(const char *Path) {
     const char *Rel;
     int Err = FileSystemPreparePath(Path ? Path : "", &Rel, 0);
     if (Err != FAT_OK) {
@@ -191,7 +191,7 @@ int FileSystemFileSync(const char *Path) {
     return gVirtualFileSystem.FileSync();
 }
 
-int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew) {
+static int ImplFileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew) {
     const char *Rel;
     const FS_OPS *Ops;
     int Err;
@@ -209,3 +209,110 @@ int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *Ou
     }
     return FatDirStress(Rel && Rel[0] ? Rel : Path, MaxFiles, OutCreated, OutGrew);
 }
+
+/* —— 公开入口：统一加 FS 锁（PR-F5） —— */
+
+int FileSystemListDirectory(const char *Path) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemListDirectory(Path);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, int *OutCount) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemListEntries(Path, Out, Max, OutCount);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemReadFile(const char *Path, void *Buffer, UINTN MaxSize, UINTN *OutSize) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemReadFile(Path, Buffer, MaxSize, OutSize);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemWriteFile(const char *Path, const void *Buffer, UINTN Size) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemWriteFile(Path, Buffer, Size);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemReadFileAt(Path, Offset, Buffer, Len, OutN);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemWriteFileAt(Path, Offset, Buffer, Len, OutN);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemDeleteFile(const char *Path) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemDeleteFile(Path);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemMakeDirectory(const char *Path) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemMakeDirectory(Path);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemRemoveDirectory(const char *Path) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemRemoveDirectory(Path);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemRename(const char *OldPath, const char *NewPath) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemRename(OldPath, NewPath);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemFileStat(const char *Path, FAT_FILE_STAT *Out) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemFileStat(Path, Out);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemFileSync(const char *Path) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemFileSync(Path);
+    FileSystemUnlock();
+    return R;
+}
+
+int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew) {
+    int R;
+    FileSystemLock();
+    R = ImplFileSystemDirStress(Path, MaxFiles, OutCreated, OutGrew);
+    FileSystemUnlock();
+    return R;
+}
+

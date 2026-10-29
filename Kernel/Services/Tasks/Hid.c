@@ -23,6 +23,83 @@
 #include "ShellCommands.h"
 #include "SerialLog.h"
 
+/*
+ * PR-19：按住方向键连续移动。
+ * 按键报告只在「新按下」时交给 FeedHid，所以重复要靠每个 poll 周期自己再发：
+ * 首次延迟 400ms（防误触），之后每 60ms 一次；键抬起（报告里没有这个码）
+ * 就停。只对 Edit 生效，其它窗口不受影响。
+ */
+static UINT8  gRepeatKey;
+static UINT64 gRepeatNext;
+
+static int HidKeyHeld(const HAL_KEYBOARD_REPORT *Report, UINT8 Key) {
+    int j;
+
+    if (Report == 0) {
+        return 0;
+    }
+    for (j = 0; j < 6; j++) {
+        if (Report->KeyCode[j] == Key) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void HidRepeatArm(UINT8 Key) {
+    UINT32 Hz = HalTicksPerSec();
+
+    gRepeatKey = Key;
+    gRepeatNext = HalCpuTicks(0) + (UINT64)Hz * 400u / 1000u;
+}
+
+static void HidRepeatTick(const HAL_KEYBOARD_REPORT *Report) {
+    UINT32 Hz;
+    UINT64 Now;
+    UINT64 Step;
+
+    if (gRepeatKey == 0) {
+        return;
+    }
+    if (!HidKeyHeld(Report, gRepeatKey)) {
+        gRepeatKey = 0;
+        return;
+    }
+    if (!EditUiIsFocused()) {
+        gRepeatKey = 0;
+        return;
+    }
+    Hz = HalTicksPerSec();
+    if (Hz == 0) {
+        return;
+    }
+    Now = HalCpuTicks(0);
+    if (Now < gRepeatNext) {
+        return;
+    }
+    Step = (UINT64)Hz * 60u / 1000u;
+    if (Step == 0) {
+        Step = 1;
+    }
+    gRepeatNext = Now + Step;
+    switch (gRepeatKey) {
+    case HID_KEY_UP:
+        EditUiOnArrow(0);
+        break;
+    case HID_KEY_DOWN:
+        EditUiOnArrow(1);
+        break;
+    case HID_KEY_LEFT:
+        EditUiOnArrowLeftRight(0);
+        break;
+    case HID_KEY_RIGHT:
+        EditUiOnArrowLeftRight(1);
+        break;
+    default:
+        break;
+    }
+}
+
 void TasksPumpKeyboard(void) {
     static HAL_KEYBOARD_REPORT Prev;
     HAL_KEYBOARD_REPORT Report;
@@ -47,6 +124,7 @@ void TasksPumpKeyboard(void) {
         FeedHid(&Report, &Prev);
         Prev = Report;
     }
+    HidRepeatTick(&Prev);
 }
 
 void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
@@ -98,10 +176,12 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
             }
             if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
                 EditUiOnArrow(Key == HID_KEY_DOWN);
+                HidRepeatArm(Key);
                 continue;
             }
             if (Key == HID_KEY_LEFT || Key == HID_KEY_RIGHT) {
                 EditUiOnArrowLeftRight(Key == HID_KEY_RIGHT);
+                HidRepeatArm(Key);
                 continue;
             }
             if (Key == HID_KEY_BACKSPACE) {

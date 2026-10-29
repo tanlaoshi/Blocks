@@ -29,6 +29,19 @@ typedef struct {
 #pragma pack()
 
 /*
+ * 一个 PT_LOAD 实际会占用的页区间 [Start, End)。
+ * 相邻段若「首段末页向上取整后盖住次段起点」，第二次 AllocateAddress 必败——
+ * 那时报的是泛化的 AllocatePages Failed，看不出是段布局问题，所以先自己查。
+ */
+#define ELF_MAX_LOAD 16
+
+typedef struct {
+    UINTN Index;  /* program header 下标，报错时能指回第几段 */
+    UINT64 Start;
+    UINT64 End;
+} LOAD_RANGE;
+
+/*
  * 谁调用：BootLoadKernel，文件已读入内存之后。
  * 只检查，不分配内核页。写出装载下界（最小 PAddress）供日志；页数仅为兼容旧调用方。
  */
@@ -38,6 +51,8 @@ EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
     PROGRAM_HEADER_64 *PHead;
     EFI_PHYSICAL_ADDRESS Low = 0xFFFFFFFFFFFFFFFFULL;
     EFI_PHYSICAL_ADDRESS High = 0;
+    LOAD_RANGE Segs[ELF_MAX_LOAD];
+    UINTN SegCount = 0;
     UINTN i;
     UINT64 PhEnd;
 
@@ -92,9 +107,39 @@ EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,
         if (High < SegEnd) {
             High = SegEnd;
         }
+        if (SegCount < ELF_MAX_LOAD) {
+            /*
+             * AllocateAddress 要求页对齐：先把起点按页下取整、终点按页上取整，
+             * 这样区间正好等于该段实际会占住的页。
+             */
+            Segs[SegCount].Index = i;
+            Segs[SegCount].Start = Ph->PAddress & ~0xFFFULL;
+            Segs[SegCount].End = (SegEnd + 0xFFFULL) & ~0xFFFULL;
+            SegCount++;
+        }
     }
     if (High <= Low) {
         return EFI_UNSUPPORTED;
+    }
+
+    /* 段区间两两不重叠：重叠时直接点名两个段号与地址 */
+    for (i = 0; i < SegCount; i++) {
+        UINTN j;
+
+        if ((Segs[i].Start & 0xFFFULL) != 0 || Segs[i].End == Segs[i].Start) {
+            BootSerialPrintf("Boot: PT_LOAD seg %d bad range [0x%lx,0x%lx)\n",
+                             (UINT64)Segs[i].Index, Segs[i].Start, Segs[i].End);
+            return EFI_UNSUPPORTED;
+        }
+        for (j = i + 1; j < SegCount; j++) {
+            if (Segs[i].End > Segs[j].Start && Segs[j].End > Segs[i].Start) {
+                BootSerialPrintf(
+                    "Boot: PT_LOAD Overlap: seg %d [0x%lx,0x%lx) vs seg %d [0x%lx,0x%lx)\n",
+                    (UINT64)Segs[i].Index, Segs[i].Start, Segs[i].End,
+                    (UINT64)Segs[j].Index, Segs[j].Start, Segs[j].End);
+                return EFI_UNSUPPORTED;
+            }
+        }
     }
 
     {
@@ -164,6 +209,8 @@ EFI_STATUS LoadKernelFile(EFI_PHYSICAL_ADDRESS *ElfBase, UINTN FileSize,
     EFI_PHYSICAL_ADDRESS DestEnd;
     EFI_STATUS Status;
     UINTN i;
+    LOAD_RANGE Loaded[ELF_MAX_LOAD];
+    UINTN LoadedCount = 0;
 
     BootSerialPrintf("Boot: LoadKernelFile\n");
 
@@ -200,9 +247,23 @@ EFI_STATUS LoadKernelFile(EFI_PHYSICAL_ADDRESS *ElfBase, UINTN FileSize,
         SegBase = Ph->PAddress;
         Status = gBS->AllocatePages(AllocateAddress, EfiLoaderCode, SegPages, &SegBase);
         if (EFI_ERROR(Status)) {
-            BootSerialPrintf("Boot: AllocatePages(0x%lx, %lu Pages) Failed: %r\n",
-                             Ph->PAddress, (UINT64)SegPages, Status);
+            UINTN k;
+
+            BootSerialPrintf(
+                "Boot: AllocatePages seg %d (PAddr=0x%lx, %lu Pages) Failed: %r\n",
+                (UINT64)i, Ph->PAddress, (UINT64)SegPages, Status);
+            /* 把已经占住的页区间列出来：重叠时一眼看出是谁挡了谁 */
+            for (k = 0; k < LoadedCount; k++) {
+                BootSerialPrintf("Boot:   already loaded seg %d: [0x%lx,0x%lx)\n",
+                                 (UINT64)Loaded[k].Index, Loaded[k].Start, Loaded[k].End);
+            }
             return Status;
+        }
+        if (LoadedCount < ELF_MAX_LOAD) {
+            Loaded[LoadedCount].Index = i;
+            Loaded[LoadedCount].Start = SegBase;
+            Loaded[LoadedCount].End = SegBase + ((UINT64)SegPages << 12);
+            LoadedCount++;
         }
         SetMem((VOID *)(UINTN)SegBase, SegPages * 4096, 0);
         if (Ph->SizeInFile > 0) {

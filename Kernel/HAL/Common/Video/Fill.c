@@ -12,7 +12,10 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
     UINT32 CopyH;
     UINT32 X0;
     UINT32 Y0;
-    UINT32 S;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
 
     if (!Width || !Height) {
         return;
@@ -78,18 +81,23 @@ void VideoFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Color
     if (CopyW == 0 || CopyH == 0) {
         return;
     }
-    /* 脏矩形仍用逻辑坐标；落笔前再乘绘制倍数（PR-23a） */
+    /* 脏矩形仍用逻辑坐标；落笔前按有理数比例换成物理矩形（PR-23E） */
     DirtyUnion(X0, Y0, CopyW, CopyH);
-    S = DrawScale();
-    X0 *= S;
-    Y0 *= S;
-    CopyW *= S;
-    CopyH *= S;
+    ScaleRect(X0, Y0, CopyW, CopyH, &Xp, &Yp, &Wp, &Hp);
+    if (Xp >= DrawWidth() || Yp >= DrawHeight()) {
+        return;
+    }
+    if (Wp > DrawWidth() - Xp) {
+        Wp = DrawWidth() - Xp;
+    }
+    if (Hp > DrawHeight() - Yp) {
+        Hp = DrawHeight() - Yp;
+    }
     Color = FbPack(Color);
-    for (Row = 0; Row < CopyH; Row++) {
-        UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
+    for (Row = 0; Row < Hp; Row++) {
+        UINT32 *Line = &Fb[(Yp + Row) * Pitch + Xp];
 
-        for (Col = 0; Col < CopyW; Col++) {
+        for (Col = 0; Col < Wp; Col++) {
             Line[Col] = Color;
         }
     }
@@ -105,7 +113,10 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     UINT32 CopyH;
     UINT32 X0;
     UINT32 Y0;
-    UINT32 S;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
 
     if (Alpha == 0 || !Width || !Height) {
         return;
@@ -174,17 +185,22 @@ void VideoBlendFillRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height,
     if (CopyW == 0 || CopyH == 0) {
         return;
     }
-    /* 逻辑脏区先记账，再按绘制倍数写满每个逻辑像素的 S×S 块 */
+    /* 逻辑脏区先记账，再按有理数比例把整块物理矩形逐像素混一遍 */
     DirtyUnion(X0, Y0, CopyW, CopyH);
-    S = DrawScale();
-    X0 *= S;
-    Y0 *= S;
-    CopyW *= S;
-    CopyH *= S;
-    for (Row = 0; Row < CopyH; Row++) {
-        UINT32 *Line = &Fb[(Y0 + Row) * Pitch + X0];
+    ScaleRect(X0, Y0, CopyW, CopyH, &Xp, &Yp, &Wp, &Hp);
+    if (Xp >= DrawWidth() || Yp >= DrawHeight()) {
+        return;
+    }
+    if (Wp > DrawWidth() - Xp) {
+        Wp = DrawWidth() - Xp;
+    }
+    if (Hp > DrawHeight() - Yp) {
+        Hp = DrawHeight() - Yp;
+    }
+    for (Row = 0; Row < Hp; Row++) {
+        UINT32 *Line = &Fb[(Yp + Row) * Pitch + Xp];
 
-        for (Col = 0; Col < CopyW; Col++) {
+        for (Col = 0; Col < Wp; Col++) {
             Line[Col] = FbPack(VideoBlendRgb(FbPack(Line[Col]), Color, Alpha));
         }
     }

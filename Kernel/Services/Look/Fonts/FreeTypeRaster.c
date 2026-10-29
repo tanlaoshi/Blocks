@@ -149,14 +149,22 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   }
   /*
    * 汉字：满格 ppem。
-   * UI 拉丁：整数加档 +1/4 ppem（上限 32×绘制倍数）重栅格，禁非整数位图拉伸。
-   * PR-23b：100% 上限仍是 32（ReqH=30，基线不变）；200% 抬到 64（48→60）。
+   * UI 拉丁：整数加档 +1/4 ppem 重栅格，禁非整数位图拉伸。
+   * PR-23E / 坑 2：提权上限改成与格高成比例（CellH+CellH/4：100%→30、
+   * 150%→45、200%→60），不再写 32×整数绘制倍数——那条式子把「逻辑上限」
+   * 和「绘制倍数」混在一起，150% 比例化后必然对不上号。
+   * 这里再封一层 64（= TrueTypeCache/TrueTypeRaster 的 TTF_CELL，槽边长），
+   * 免得格更大时 em 超出缓存槽。50/100/150/200 下上限都取不到，行为不变。
    * 中英共用 CellH 收进基线 SharedAsc：ascent+descent 超格则上移基线留底，
    * 避免 Droid 汉字下横被裁；加档只放大拉丁、不改共用基线。
    */
   {
     UINT32 ReqH = CellH;
-    UINT32 ReqCap = 32u * HalVideoGetDrawScale();
+    UINT32 ReqCap = CellH + (CellH / 4u);
+
+    if (ReqCap > 64u) {
+      ReqCap = 64u;
+    }
     int SharedAsc = 0;
     int DescPx = 0;
 

@@ -14,7 +14,10 @@
 void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     UINT32 *Fb;
     UINT32 Pitch;
-    UINT32 S;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
     UINT32 Sx;
     UINT32 Sy;
 
@@ -26,13 +29,30 @@ void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    /* PR-23a：逻辑像素写成 S×S 实心块；S=1 时与原路径逐字等价 */
-    S = DrawScale();
+    /*
+     * PR-23E：一个逻辑像素 = 物理上 PixelSpan 宽/高的实心块（起点
+     * ScaleX/ScaleY）。100% 是 1×1、200% 是 2×2，150% 下板块宽度按端点
+     * 相减得 1/2 交替——宽度取端点差而不是 ScaleW(1)，才不会与右邻
+     * 逻辑像素的块重叠（重叠会让后画的颜色吃掉前一列，细笔画出毛边）。
+     */
+    Xp = ScaleX(X);
+    Yp = ScaleY(Y);
+    Wp = PixelSpanX(X);
+    Hp = PixelSpanY(Y);
+    if (Xp >= DrawWidth() || Yp >= DrawHeight()) {
+        return;
+    }
+    if (Wp > DrawWidth() - Xp) {
+        Wp = DrawWidth() - Xp;
+    }
+    if (Hp > DrawHeight() - Yp) {
+        Hp = DrawHeight() - Yp;
+    }
     Color = FbPack(Color);
-    for (Sy = 0; Sy < S; Sy++) {
-        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+    for (Sy = 0; Sy < Hp; Sy++) {
+        UINT32 *Line = &Fb[(Yp + Sy) * Pitch + Xp];
 
-        for (Sx = 0; Sx < S; Sx++) {
+        for (Sx = 0; Sx < Wp; Sx++) {
             Line[Sx] = Color;
         }
     }
@@ -43,7 +63,10 @@ void VideoDrawPixelRaw(UINT32 X, UINT32 Y, UINT32 Color) {
 void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     UINT32 *Fb;
     UINT32 Pitch;
-    UINT32 S;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
     UINT32 Sx;
     UINT32 Sy;
 
@@ -55,12 +78,24 @@ void VideoXorPixelRaw(UINT32 X, UINT32 Y, UINT32 Mask) {
     if (!Fb || Pitch == 0) {
         return;
     }
-    S = DrawScale();
+    Xp = ScaleX(X);
+    Yp = ScaleY(Y);
+    Wp = PixelSpanX(X);
+    Hp = PixelSpanY(Y);
+    if (Xp >= DrawWidth() || Yp >= DrawHeight()) {
+        return;
+    }
+    if (Wp > DrawWidth() - Xp) {
+        Wp = DrawWidth() - Xp;
+    }
+    if (Hp > DrawHeight() - Yp) {
+        Hp = DrawHeight() - Yp;
+    }
     Mask = FbPack(Mask);
-    for (Sy = 0; Sy < S; Sy++) {
-        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+    for (Sy = 0; Sy < Hp; Sy++) {
+        UINT32 *Line = &Fb[(Yp + Sy) * Pitch + Xp];
 
-        for (Sx = 0; Sx < S; Sx++) {
+        for (Sx = 0; Sx < Wp; Sx++) {
             Line[Sx] ^= Mask;
         }
     }
@@ -101,7 +136,10 @@ UINT32 VideoBlendRgb(UINT32 Dst, UINT32 Src, UINT8 Alpha) {
 void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
     UINT32 *Fb;
     UINT32 Pitch;
-    UINT32 S;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
     UINT32 Sx;
     UINT32 Sy;
 
@@ -121,11 +159,23 @@ void VideoBlendPixelRaw(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
         return;
     }
     /* 每个物理子像素各 blend 一次；块内同色时与先逻辑混合再放大等价 */
-    S = DrawScale();
-    for (Sy = 0; Sy < S; Sy++) {
-        UINT32 *Line = &Fb[(Y * S + Sy) * Pitch + X * S];
+    Xp = ScaleX(X);
+    Yp = ScaleY(Y);
+    Wp = PixelSpanX(X);
+    Hp = PixelSpanY(Y);
+    if (Xp >= DrawWidth() || Yp >= DrawHeight()) {
+        return;
+    }
+    if (Wp > DrawWidth() - Xp) {
+        Wp = DrawWidth() - Xp;
+    }
+    if (Hp > DrawHeight() - Yp) {
+        Hp = DrawHeight() - Yp;
+    }
+    for (Sy = 0; Sy < Hp; Sy++) {
+        UINT32 *Line = &Fb[(Yp + Sy) * Pitch + Xp];
 
-        for (Sx = 0; Sx < S; Sx++) {
+        for (Sx = 0; Sx < Wp; Sx++) {
             Line[Sx] = FbPack(VideoBlendRgb(FbPack(Line[Sx]), Color, Alpha));
         }
     }
@@ -145,7 +195,6 @@ void VideoBlendPixel(UINT32 X, UINT32 Y, UINT32 Color, UINT8 Alpha) {
 UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
     UINT32 *Fb;
     UINT32 Pitch;
-    UINT32 S;
 
     if (X >= gScreen.Width || Y >= gScreen.Height) {
         return 0;
@@ -156,24 +205,22 @@ UINT32 VideoReadPixel(UINT32 X, UINT32 Y) {
         return 0;
     }
     /* 逻辑像素对应该块的左上角；块内同色，save-under 读回可原样还原 */
-    S = DrawScale();
-    return FbPack(Fb[Y * S * Pitch + X * S]);
+    return FbPack(Fb[ScaleY(Y) * Pitch + ScaleX(X)]);
 }
 
 /*
  * PR-23b：物理像素 1:1 读写。
  *
- * 坐标已是物理像素（调用方用 逻辑×S 算好），这里绝不能再乘 DrawScale，
- * 否则 200% 下会写成 2×2 块，物理分辨率栅格就白做了。
+ * 坐标已是物理像素（调用方用 ScaleX/ScaleY 算好），这里绝不能再按逻辑
+ * 像素写块，否则 200% 下会写成 2×2 块，物理分辨率栅格就白做了。
  * gClip* / 脏区仍是逻辑坐标：物理像素 (Xp,Yp) 属于逻辑像素
- * (Xp/S,Yp/S)，裁剪与 DirtyUnion 都按它算，Present 再乘回 S。
+ * UnscaleX(Xp)/UnscaleY(Yp)，裁剪与 DirtyUnion 都按它算，Present 再映射回物理。
  */
 static int PhysPixelOk(UINT32 Xp, UINT32 Yp, UINT32 *OutLx, UINT32 *OutLy) {
-    UINT32 S = DrawScale();
-    UINT32 Lx = Xp / S;
-    UINT32 Ly = Yp / S;
-    UINT32 W = gDrawW ? gDrawW : gScreen.Width * S;
-    UINT32 H = gDrawH ? gDrawH : gScreen.Height * S;
+    UINT32 Lx = UnscaleX(Xp);
+    UINT32 Ly = UnscaleY(Yp);
+    UINT32 W = DrawWidth();
+    UINT32 H = DrawHeight();
 
     if (Xp >= W || Yp >= H) {
         return 0;

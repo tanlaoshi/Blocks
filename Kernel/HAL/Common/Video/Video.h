@@ -20,7 +20,7 @@ typedef struct {
 void VideoSet(VIDEO_CONFIG *VideoConfig);
 /* 1=写 FB 时对调 R/B（Pi mailbox RGB scanout vs 0x00RRGGBB） */
 void VideoSetFbSwapRb(int On);
-/* PR-G9：启用后缓冲；Buf 为 gDrawW*gDrawH 个 UINT32（见 VideoGetDrawSize），Pages 供记录 */
+/* PR-G9：启用后缓冲；Buf 为 gDrawW*gDrawH 个 UINT32（=物理尺寸，见 VideoGetDrawSize），Pages 供记录 */
 void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages);
 /* PR-G-hotres：释放后缓冲页（切分辨率前调用） */
 void VideoReleaseBackbuffer(void);
@@ -49,13 +49,21 @@ void VideoSetGlyphSmooth(int On);
 void VideoDrawBeginFront(void);
 void VideoDrawEndFront(void);
 void VideoGetSize(UINT32 *Width, UINT32 *Height);
-/* PR-23a：后缓冲绘制尺寸（200% 时为物理分辨率，其它为逻辑尺寸） */
+/* PR-23E：后缓冲绘制尺寸 —— 恒为物理分辨率（任何 UI 比例） */
 void VideoGetDrawSize(UINT32 *Width, UINT32 *Height);
 /* UI 整体缩放 50/100/150/200；逻辑分辨率见 GetSize，物理见 GetPhysicalSize */
 UINT32 VideoGetUiScale(void);
 /*
- * PR-23b：整数绘制倍数（200%→2，其余→1）。字体层据此按物理像素栅格 TTF，
- * 但布局/行高仍用逻辑单位，故必须只读、不可反向改布局。
+ * PR-23E：绘制比例 = gUiScale/100 的有理数形式（50%→1/2、100%→1/1、
+ * 150%→3/2、200%→2/1）。字体层按 FontTtfPixel()*Num/Den 栅格物理位图，
+ * 布局/行高仍用逻辑单位，故必须只读、不可反向改布局。
+ * 除法一律 (UINT64)v * Num / Den，禁浮点。
+ */
+UINT32 VideoGetDrawNum(void);
+UINT32 VideoGetDrawDen(void);
+/*
+ * 兼容旧接口：一个逻辑像素最多占几个物理像素，即 ScaleW(1)
+ * （100%/50%→1，150%/200%→2）。只能当容量上限，不能拿来做坐标换算。
  */
 UINT32 VideoGetDrawScale(void);
 void VideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
@@ -88,7 +96,7 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
 void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT32 *In);
 /*
  * PR-23c：物理像素矩形读写（save-under 专用）。
- * 坐标/尺寸都是绘制坐标（逻辑×DrawScale），不再乘倍数、不按块采样；
+ * 坐标/尺寸都是物理像素（调用方自己按 Num/Den 换算），不再按逻辑块采样；
  * 行距 = DrawPitch，Out/In 按 Wp 紧排。越界裁剪到 gDrawW/gDrawH。
  */
 void VideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out);

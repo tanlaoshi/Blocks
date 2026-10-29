@@ -46,7 +46,18 @@ UINT64 HalVideoBackbufferBase(void);
 void HalVideoGetSize(UINT32 *Width, UINT32 *Height);
 /* UI 整体缩放（50/100/150/200）；成功 0，重配后缓冲 */
 UINT32 HalVideoGetUiScale(void);
-/* PR-23b：整数绘制倍数（200%→2，其余→1）；TTF 栅格尺寸 = 逻辑字高 × 本值 */
+/*
+ * PR-23E：绘制比例的有理数形式 Num/Den = UI 缩放/100
+ * （50%→1/2、100%→1/1、150%→3/2、200%→2/1）。
+ * TTF 栅格边长 = FontTtfPixel() * Num / Den；逻辑坐标→物理像素一律
+ * (UINT64)v * Num / Den，禁浮点。
+ */
+UINT32 HalVideoGetDrawNum(void);
+UINT32 HalVideoGetDrawDen(void);
+/*
+ * 兼容旧接口：一个逻辑像素最多占几个物理像素（100%/50%→1，150%/200%→2）。
+ * 只可当缓冲容量上限；150% 精确换算是 3/2，拿 2 去乘会多读一截。
+ */
 UINT32 HalVideoGetDrawScale(void);
 void HalVideoGetPhysicalSize(UINT32 *Width, UINT32 *Height);
 int HalVideoSetUiScale(UINT32 Percent);
@@ -96,8 +107,9 @@ void HalVideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *O
 void HalVideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT32 *In);
 /*
  * PR-23c：物理像素矩形读写（save-under 用）。坐标已是物理像素
- * （调用方按 HalVideoGetDrawScale 换算）；读回再写回逐像素还原，
- * 200% 下不会把块内细节抹平。越界裁剪到绘制尺寸。
+ * （调用方按 HalVideoGetDrawNum/Den 换算：Xp = X*Num/Den、
+ * Wp = (X+W)*Num/Den - Xp）；读回再写回逐像素还原，
+ * 200%/150% 下都不会把块内细节抹平。越界裁剪到绘制尺寸。
  */
 void HalVideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out);
 void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In);

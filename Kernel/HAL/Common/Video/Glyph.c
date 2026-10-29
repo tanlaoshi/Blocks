@@ -91,13 +91,17 @@ static UINT32 GammaBlend(UINT32 Dst, UINT32 Src, UINT8 Alpha) {
     return Out;
 }
 
-static void PaintBlock(UINT32 X, UINT32 Y, UINT32 ScaleX, UINT32 ScaleY,
+/*
+ * 一个点阵源像素 → BlockW×BlockH 个逻辑像素（再各自按有理数比例落物理）。
+ * 参数名勿用 ScaleX/ScaleY：那是 Private.h 里的坐标换算内联函数。
+ */
+static void PaintBlock(UINT32 X, UINT32 Y, UINT32 BlockW, UINT32 BlockH,
                        UINT32 Color, UINT8 Alpha) {
     UINT32 Sy;
     UINT32 Sx;
 
-    for (Sy = 0; Sy < ScaleY; Sy++) {
-        for (Sx = 0; Sx < ScaleX; Sx++) {
+    for (Sy = 0; Sy < BlockH; Sy++) {
+        for (Sx = 0; Sx < BlockW; Sx++) {
             if (Alpha == 255) {
                 VideoDrawPixel(X + Sx, Y + Sy, Color);
             } else {
@@ -116,7 +120,7 @@ static void PaintBlock(UINT32 X, UINT32 Y, UINT32 ScaleX, UINT32 ScaleY,
 }
 
 static void PaintGlyph(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
-                       UINT32 Height, UINT32 Bpr, UINT32 ScaleX, UINT32 ScaleY,
+                       UINT32 Height, UINT32 Bpr, UINT32 BlockW, UINT32 BlockH,
                        UINT32 OffY, UINT32 Color) {
     UINT32 Row;
     UINT32 Col;
@@ -124,21 +128,21 @@ static void PaintGlyph(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     if (!Glyph || Width == 0 || Height == 0 || Bpr == 0) {
         return;
     }
-    if (ScaleX < 1) {
-        ScaleX = 1;
+    if (BlockW < 1) {
+        BlockW = 1;
     }
-    if (ScaleY < 1) {
-        ScaleY = 1;
+    if (BlockH < 1) {
+        BlockH = 1;
     }
     for (Row = 0; Row < Height; Row++) {
         for (Col = 0; Col < Width; Col++) {
-            UINT32 Dx = X + Col * ScaleX;
-            UINT32 Dy = Y + OffY + Row * ScaleY;
+            UINT32 Dx = X + Col * BlockW;
+            UINT32 Dy = Y + OffY + Row * BlockH;
             UINT8 Alpha;
 
             if (GlyphBit(Glyph, Bpr, Width, Height, (INT32)Col, (INT32)Row)) {
                 /* 与放大路径同一系数。gamma 混合下 3/4 会发灰，15/16 只比实心略浅。 */
-                PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, 239);
+                PaintBlock(Dx, Dy, BlockW, BlockH, Color, 239);
                 continue;
             }
             if (!gGlyphSmooth) {
@@ -146,7 +150,7 @@ static void PaintGlyph(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
             }
             Alpha = EdgeAlpha(Glyph, Bpr, Width, Height, Col, Row);
             if (Alpha != 0) {
-                PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, Alpha);
+                PaintBlock(Dx, Dy, BlockW, BlockH, Color, Alpha);
             }
         }
     }
@@ -179,7 +183,7 @@ static UINT8 GlyphCrispAlpha4(UINT8 N) {
 
 /* PR-UI-cjk-gray：每像素 4bit（0..15）；crisp 后再 blend */
 static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
-                        UINT32 Height, UINT32 Bpr, UINT32 ScaleX, UINT32 ScaleY,
+                        UINT32 Height, UINT32 Bpr, UINT32 BlockW, UINT32 BlockH,
                         UINT32 OffY, UINT32 Color) {
     UINT32 Row;
     UINT32 Col;
@@ -187,11 +191,11 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     if (!Glyph || Width == 0 || Height == 0 || Bpr == 0) {
         return;
     }
-    if (ScaleX < 1) {
-        ScaleX = 1;
+    if (BlockW < 1) {
+        BlockW = 1;
     }
-    if (ScaleY < 1) {
-        ScaleY = 1;
+    if (BlockH < 1) {
+        BlockH = 1;
     }
     for (Row = 0; Row < Height; Row++) {
         for (Col = 0; Col < Width; Col++) {
@@ -204,9 +208,9 @@ static void PaintGlyph4(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
             if (Alpha == 0) {
                 continue;
             }
-            Dx = X + Col * ScaleX;
-            Dy = Y + OffY + Row * ScaleY;
-            PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, Alpha);
+            Dx = X + Col * BlockW;
+            Dy = Y + OffY + Row * BlockH;
+            PaintBlock(Dx, Dy, BlockW, BlockH, Color, Alpha);
         }
     }
 }
@@ -238,7 +242,7 @@ static UINT8 GlyphCrispAlpha8(UINT8 N) {
 
 /* PR-UI-ttf-2：stb 8bpp 灰图；淡边丢、深灰实心 */
 static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
-                        UINT32 Height, UINT32 Bpr, UINT32 ScaleX, UINT32 ScaleY,
+                        UINT32 Height, UINT32 Bpr, UINT32 BlockW, UINT32 BlockH,
                         UINT32 OffY, UINT32 Color) {
     UINT32 Row;
     UINT32 Col;
@@ -246,11 +250,11 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
     if (!Glyph || Width == 0 || Height == 0 || Bpr == 0) {
         return;
     }
-    if (ScaleX < 1) {
-        ScaleX = 1;
+    if (BlockW < 1) {
+        BlockW = 1;
     }
-    if (ScaleY < 1) {
-        ScaleY = 1;
+    if (BlockH < 1) {
+        BlockH = 1;
     }
     for (Row = 0; Row < Height; Row++) {
         for (Col = 0; Col < Width; Col++) {
@@ -263,9 +267,9 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
             if (Alpha == 0) {
                 continue;
             }
-            Dx = X + Col * ScaleX;
-            Dy = Y + OffY + Row * ScaleY;
-            PaintBlock(Dx, Dy, ScaleX, ScaleY, Color, Alpha);
+            Dx = X + Col * BlockW;
+            Dy = Y + OffY + Row * BlockH;
+            PaintBlock(Dx, Dy, BlockW, BlockH, Color, Alpha);
         }
     }
 }
@@ -273,14 +277,13 @@ static void PaintGlyph8(UINT32 X, UINT32 Y, const UINT8 *Glyph, UINT32 Width,
 /*
  * PR-23b：TTF 位图按物理像素 1:1 落笔。
  *
- * 位图边长 = FontTtfCell() = 逻辑字高 × S，正好铺满一个逻辑行高；
- * 因此不需要 OffY / 垂直居中，Y*S 就是位图顶。逐像素写物理坐标，
+ * 位图边长 = FontTtfCell() = 逻辑字高 × Num/Den，正好铺满一个逻辑行高；
+ * 因此不需要 OffY / 垂直居中，ScaleY(Y) 就是位图顶。逐像素写物理坐标，
  * 灰度仍走原来的 GammaBlend（线性光覆盖度），边缘观感与 100% 一致。
  * 不用 PaintBlock：它会再乘 S×S，把 48px 字又放大成 96px 块。
  */
 static void PaintGlyph8Phys(UINT32 X, UINT32 Y, const UINT8 *Glyph,
                             UINT32 Width, UINT32 Height, UINT32 Color) {
-    UINT32 S = DrawScale();
     UINT32 Row;
     UINT32 Col;
 
@@ -288,7 +291,7 @@ static void PaintGlyph8Phys(UINT32 X, UINT32 Y, const UINT8 *Glyph,
         return;
     }
     for (Row = 0; Row < Height; Row++) {
-        UINT32 Dy = Y * S + Row;
+        UINT32 Dy = ScaleY(Y) + Row;
 
         for (Col = 0; Col < Width; Col++) {
             UINT8 Alpha = GlyphCrispAlpha8(Glyph[Row * Width + Col]);
@@ -297,7 +300,7 @@ static void PaintGlyph8Phys(UINT32 X, UINT32 Y, const UINT8 *Glyph,
             if (Alpha == 0) {
                 continue;
             }
-            Dx = X * S + Col;
+            Dx = ScaleX(X) + Col;
             if (Alpha == 255) {
                 VideoDrawPixelPhys(Dx, Dy, Color);
             } else {
@@ -424,8 +427,8 @@ static void PaintGlyphFitted(UINT32 X, UINT32 Y, const UINT8 *Glyph,
 static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
                               UINT32 Width, UINT32 Height, UINT32 Color,
                               UINT32 Bpp) {
-    UINT32 ScaleX;
-    UINT32 ScaleY;
+    UINT32 StepW;
+    UINT32 StepH;
     UINT32 CellH;
     UINT32 OffY;
     UINT32 DrawnH;
@@ -437,33 +440,33 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
         return;
     }
     /*
-     * PR-23b：TTF 位图边长 == FontTtfCell()（逻辑字高×S），已是物理分辨率。
-     * 200% 时必须先于 FontGlyphBox 分流：FontGlyphBox 会把它按逻辑行高收到
-     * 24，再交给放大路径，等于又把 48px 位图糊回 24px。
-     * 100% 时 S=1，下面原路径逐像素等价，故不切（保基线 0 差异）。
+     * PR-23b：TTF 位图边长 == FontTtfCell()（逻辑字高×Num/Den），已是物理
+     * 分辨率。非 100% 时必须先于 FontGlyphBox 分流：FontGlyphBox 会把它按
+     * 逻辑行高收到 24，再交给放大路径，等于又把 48px 位图糊回 24px。
+     * 100% 时 FontTtfCell()==FontTtfPixel()，下面原路径逐像素等价，
+     * 故不切（保基线 0 差异）。
      */
-    if (Bpp == 8u && DrawScale() > 1u &&
+    if (Bpp == 8u && FontTtfCell() != FontTtfPixel() &&
         Width == FontTtfCell() && Height == FontTtfCell()) {
         PaintGlyph8Phys(X, Y, Glyph, Width, Height, Color);
         return;
     }
-    ScaleY = FontGlyphStretch(Height);
-    ScaleX = ScaleY;
-    if (ScaleX < 1) {
-        ScaleX = 1;
+    StepH = FontGlyphStretch(Height);
+    StepW = StepH;
+    if (StepW < 1) {
+        StepW = 1;
     }
-    if (ScaleY < 1) {
-        ScaleY = 1;
+    if (StepH < 1) {
+        StepH = 1;
     }
     CellH = FontCellH();
     FontGlyphBox(Width, Height, &BoxW, &BoxH);
     OffY = 0;
-    if (BoxH != Height * ScaleY || BoxW != Width * ScaleX) {
+    if (BoxH != Height * StepH || BoxW != Width * StepW) {
         PaintGlyphFitted(X, Y, Glyph, Width, Height, BoxW, BoxH, Bpp, Color);
         return;
     }
-    ScaleX = ScaleY;
-    DrawnH = Height * ScaleY;
+    DrawnH = Height * StepH;
     if (DrawnH > CellH) {
         UINT32 Up = (DrawnH - CellH) / 2u;
 
@@ -476,16 +479,16 @@ static void VideoDrawBitmapAt(UINT32 X, UINT32 Y, const UINT8 *Glyph,
         OffY = (CellH - DrawnH) / 2;
     }
     if (Bpp == 8) {
-        PaintGlyph8(X, Y, Glyph, Width, Height, Width, ScaleX, ScaleY, OffY, Color);
+        PaintGlyph8(X, Y, Glyph, Width, Height, Width, StepW, StepH, OffY, Color);
         return;
     }
     if (Bpp == 4) {
         Bpr = (Width + 1u) / 2u;
-        PaintGlyph4(X, Y, Glyph, Width, Height, Bpr, ScaleX, ScaleY, OffY, Color);
+        PaintGlyph4(X, Y, Glyph, Width, Height, Bpr, StepW, StepH, OffY, Color);
         return;
     }
     Bpr = (Width + 7u) / 8u;
-    PaintGlyph(X, Y, Glyph, Width, Height, Bpr, ScaleX, ScaleY, OffY, Color);
+    PaintGlyph(X, Y, Glyph, Width, Height, Bpr, StepW, StepH, OffY, Color);
 }
 
 /*

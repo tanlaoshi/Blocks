@@ -3,7 +3,7 @@
  *
  * font-unified-ttf：可打印 ASCII 与汉字同槽；绘制只 Lookup。
  * 栅格仅 Preheat / Want 泵（Worker / 开窗短 burst）。
- * PR-23b：边长按物理像素（FontTtfCell，200% 时 48），故槽位抬到 64×64。
+ * PR-23E：边长按物理像素（FontTtfCell：100→24、150→36、200→48），槽位 64×64。
  */
 #include "Font.h"
 #include "Hal.h"
@@ -13,6 +13,8 @@
 #define TTF_PROBE   32u
 #define TTF_CELL    64u
 #define TTF_PIX     (TTF_CELL * TTF_CELL)
+/* PR-23E：200% 的 ASCII 提权 em 是 60，槽必须装得下（与栅格侧同断言） */
+BLOCKS_STATIC_ASSERT(TTF_CELL >= 60u, "TTF_CELL must hold 200% ASCII em 60");
 #define TTF_EMPTY   0
 #define TTF_HIT     1
 #define TTF_MISS    2
@@ -234,18 +236,13 @@ int FontTtfCachePending(UINT32 Cp) {
 static int FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
     UINT32 Side;
-    UINT32 S;
 
     if (!TtfCpOk(Cp)) {
         return 0;
     }
     Slot = SlotAlloc(Cp);
-    /* PR-23b：位图边长 = 逻辑字高 × 绘制倍数（200% 时 48） */
+    /* PR-23E：位图边长 = FontTtfPixel() × Num/Den（100→24、150→36、200→48） */
     Side = FontTtfCell();
-    S = HalVideoGetDrawScale();
-    if (S < 1u) {
-        S = 1u;
-    }
     /*
      * 仅 HIT 且边长一致才跳过。MISS 须可重试：
      * SESSION 在 FS/Gui 前时 Console→LocaleTtfPreheat 会在 gInit=0 时灌满 MISS，
@@ -269,11 +266,22 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
         Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;
     }
     /*
-     * PR-23b：栅格与 FT 步进都是物理像素，Slot->Adv 必须存逻辑步进
-     * （FontCodepointAdvance / 布局直接拿它排字），否则 200% 字距翻倍。
+     * PR-23E：栅格与 FT 步进都是物理像素，Slot->Adv 必须存逻辑步进
+     * （FontCodepointAdvance / 布局直接拿它排字），否则缩放档字距翻倍。
+     * 反算按有理数比例：逻辑 = 物理 × Den / Num（150% 下 27 物理 → 18 逻辑；
+     * 拿整数 2 去除会得 13，字距立刻缩水）。
      */
-    if (S > 1u) {
-        Slot->Adv /= S;
+    {
+        UINT32 Num = HalVideoGetDrawNum();
+        UINT32 Den = HalVideoGetDrawDen();
+
+        if (Num != 1u || Den != 1u) {
+            if (Num == 0u) {
+                Num = 1u;
+            }
+            Slot->Adv = (UINT32)(((UINT64)Slot->Adv * (UINT64)Den) /
+                                 (UINT64)Num);
+        }
     }
     if (Slot->Adv < 1u) {
         Slot->Adv = 1u;

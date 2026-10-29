@@ -47,7 +47,7 @@ void HalVideoInitializeBackbuffer(void) {
     UINT32 *Buf;
 
     VideoReleaseBackbuffer();
-    /* PR-23a：后缓冲按绘制尺寸（200% 时物理分辨率）分配 */
+    /* PR-23E：后缓冲按绘制尺寸分配 —— 任何 UI 比例都是物理分辨率 */
     VideoGetDrawSize(&W, &H);
     if (W == 0 || H == 0) {
         return;
@@ -289,6 +289,14 @@ void HalVideoGetSize(UINT32 *Width, UINT32 *Height) {
 
 UINT32 HalVideoGetUiScale(void) {
     return VideoGetUiScale();
+}
+
+UINT32 HalVideoGetDrawNum(void) {
+    return VideoGetDrawNum();
+}
+
+UINT32 HalVideoGetDrawDen(void) {
+    return VideoGetDrawDen();
 }
 
 UINT32 HalVideoGetDrawScale(void) {

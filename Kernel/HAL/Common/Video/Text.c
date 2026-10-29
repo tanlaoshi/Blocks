@@ -17,7 +17,6 @@ static void ScrollClip(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight = FontAdvanceY();
-    UINT32 S = DrawScale();
     UINT32 X;
     UINT32 XEnd;
     UINT32 Y;
@@ -26,12 +25,19 @@ static void ScrollClip(void) {
     if (!Fb || Pitch == 0 || gClipW == 0 || gClipH <= LineHeight) {
         return;
     }
-    /* 直接写后缓冲：逻辑坐标同样乘绘制倍数（PR-23a） */
-    X = gClipX * S;
-    XEnd = (gClipX + gClipW) * S;
-    Y = gClipY * S;
-    YEnd = (gClipY + gClipH) * S;
-    LineHeight *= S;
+    /*
+     * 直接写后缓冲：裁剪框按端点相减换成物理矩形（PR-23E），行高用端点
+     * 差——文字行也是按 ScaleY(行起点) 落的，滚动偏移必须和它取同一个值，
+     * 否则滚一行会错位 1 像素。
+     */
+    X = ScaleX(gClipX);
+    XEnd = ScaleEndX(gClipX + gClipW);
+    Y = ScaleY(gClipY);
+    YEnd = ScaleEndY(gClipY + gClipH);
+    LineHeight = ScaleY(gClipY + LineHeight) - Y;
+    if (LineHeight < 1u) {
+        LineHeight = 1u;
+    }
     for (; Y + LineHeight < YEnd; Y++) {
         for (UINT32 Col = X; Col < XEnd; Col++) {
             Fb[Y * Pitch + Col] = Fb[(Y + LineHeight) * Pitch + Col];
@@ -50,7 +56,6 @@ static void ScrollClipDown(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight = FontAdvanceY();
-    UINT32 S = DrawScale();
     UINT32 X;
     UINT32 XEnd;
     UINT32 Y;
@@ -60,11 +65,14 @@ static void ScrollClipDown(void) {
     if (!Fb || Pitch == 0 || !gClipOn || gClipW == 0 || gClipH <= LineHeight) {
         return;
     }
-    X = gClipX * S;
-    XEnd = (gClipX + gClipW) * S;
-    YStart = gClipY * S;
-    YEnd = (gClipY + gClipH) * S;
-    LineHeight *= S;
+    X = ScaleX(gClipX);
+    XEnd = ScaleEndX(gClipX + gClipW);
+    YStart = ScaleY(gClipY);
+    YEnd = ScaleEndY(gClipY + gClipH);
+    LineHeight = ScaleY(gClipY + LineHeight) - YStart;
+    if (LineHeight < 1u) {
+        LineHeight = 1u;
+    }
     for (Y = YEnd; Y > YStart + LineHeight; ) {
         Y--;
         for (UINT32 Col = X; Col < XEnd; Col++) {
@@ -103,7 +111,6 @@ static void ScrollScreen(void) {
     UINT32 *Fb = DrawBase();
     UINT32 Pitch = DrawPitch();
     UINT32 LineHeight;
-    UINT32 S;
     UINT32 Y;
     UINT32 X;
     UINT32 W;
@@ -117,11 +124,12 @@ static void ScrollScreen(void) {
         return;
     }
 
-    LineHeight = FontAdvanceY();
-    S = DrawScale();
-    W = gScreen.Width * S;
-    H = gScreen.Height * S;
-    LineHeight *= S;
+    W = DrawWidth();
+    H = DrawHeight();
+    LineHeight = ScaleY(FontAdvanceY());
+    if (LineHeight < 1u) {
+        LineHeight = 1u;
+    }
     for (Y = 0; Y < H - LineHeight; Y++) {
         for (X = 0; X < W; X++) {
             Fb[Y * Pitch + X] = Fb[(Y + LineHeight) * Pitch + X];

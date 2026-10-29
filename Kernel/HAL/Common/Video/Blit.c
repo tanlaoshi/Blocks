@@ -17,7 +17,6 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
     UINT32 CopyW = Width;
     UINT32 CopyH = Height;
     UINTN RowBytes;
-    UINT32 S;
     UINT32 DirtyX;
     UINT32 DirtyY;
     UINT32 DirtyW;
@@ -48,27 +47,36 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
         return;
     }
 
-    /* 脏矩形仍记逻辑坐标；绘制/后缓冲内坐标乘 S（PR-23a） */
+    /* 脏矩形仍记逻辑坐标；绘制坐标按有理数比例换成物理（PR-23E） */
     DirtyX = DstX;
     DirtyY = DstY;
     DirtyW = CopyW;
     DirtyH = CopyH;
-    S = DrawScale();
-    if (S != 1u) {
-        SrcX *= S;
-        SrcY *= S;
-        DstX *= S;
-        DstY *= S;
-        W *= (INT32)S;
-        H *= (INT32)S;
-        CopyW = (UINT32)W;
-        CopyH = (UINT32)H;
+    {
+        /*
+         * 端点相减得到物理矩形：宽度取**目标**端的物理跨度（目标必须被铺满
+         * 整块），源端按自己的左端取整。150% 下两端奇偶不同会差 1 像素，
+         * 这是最近邻重采样的固有误差；拷贝内容本身仍逐像素连续。
+         */
+        UINT32 Dx0 = ScaleX(DstX);
+        UINT32 Dy0 = ScaleY(DstY);
+        UINT32 Wp = ScaleEndX(DstX + CopyW) - Dx0;
+        UINT32 Hp = ScaleEndY(DstY + CopyH) - Dy0;
+
+        SrcX = ScaleX(SrcX);
+        SrcY = ScaleY(SrcY);
+        DstX = Dx0;
+        DstY = Dy0;
+        CopyW = Wp;
+        CopyH = Hp;
+        W = (INT32)Wp;
+        H = (INT32)Hp;
     }
 
     /* igpu-4：大且不重叠的后缓冲内拷贝可走 SRC_COPY */
     if (gBackOn && Fb == gBack && HalIgpuReady()
         && ((UINT64)CopyW * (UINT64)CopyH >= (UINT64)HalIgpuBlitMinPixels())
-        && HalIgpuCopyRectBack(gBack, gBackPitch, gDrawH ? gDrawH : gScreen.Height,
+        && HalIgpuCopyRectBack(gBack, gBackPitch, DrawHeight(),
                             SrcX, SrcY, DstX, DstY, CopyW, CopyH)) {
         DirtyUnion(DirtyX, DirtyY, DirtyW, DirtyH);
         return;
@@ -104,26 +112,17 @@ void VideoCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
 /*
  * PR-23c：物理像素矩形读写。
  *
- * 坐标/尺寸已是后缓冲像素（调用方用 逻辑×DrawScale 算好），这里绝不再乘
- * DrawScale，也不再按 2×2 块采样——因此「读回一块、之后原样写回」能逐像素
- * 还原，200% 下不会再把手写笔迹/字形抹成块。
+ * 坐标/尺寸已是后缓冲像素（调用方用 ScaleX/ScaleY 算好），这里绝不再按逻辑
+ * 像素写块，也不再按块采样——因此「读回一块、之后原样写回」能逐像素还原，
+ * 200%/150% 下不会把手写笔迹/字形抹成块。
  * 行距仍是 DrawPitch（无后缓冲时即 gFrontPitch）；Out/In 的行距按传入的
  * Wp 紧排，越界裁剪只缩小填充范围、不改 stride（便于 Read→Write 成对使用）。
- * 越界裁剪到 gDrawW/gDrawH；脏区仍记逻辑坐标，Present 再乘回 S。
+ * 越界裁剪到 gDrawW/gDrawH；脏区仍记逻辑坐标，Present 再映射回物理。
  */
-static UINT32 PhysDrawW(void) {
-    return gDrawW ? gDrawW : gScreen.Width * DrawScale();
-}
-
-static UINT32 PhysDrawH(void) {
-    return gDrawH ? gDrawH : gScreen.Height * DrawScale();
-}
-
 static int PhysRectClip(UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp,
                         UINT32 *Lx, UINT32 *Ly, UINT32 *Lw, UINT32 *Lh) {
-    UINT32 S = DrawScale();
-    UINT32 W = PhysDrawW();
-    UINT32 H = PhysDrawH();
+    UINT32 W = DrawWidth();
+    UINT32 H = DrawHeight();
     UINT32 X1;
     UINT32 Y1;
 
@@ -139,13 +138,19 @@ static int PhysRectClip(UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp,
     if (*Hp > H - *Yp) {
         *Hp = H - *Yp;
     }
-    /* 物理矩形覆盖的逻辑矩形（向上取整：半个块也要整块重绘） */
+    /*
+     * 物理矩形覆盖的逻辑矩形（向右/下取整：半个块也要整块重绘）。
+     * 用 Unscale 的逆映射，150% 下不能用整数除法「/ S」——那会把
+     * 物理 3 像素当成 1 逻辑像素，多出一堆重复脏区。
+     */
     X1 = *Xp + *Wp;
     Y1 = *Yp + *Hp;
-    *Lx = *Xp / S;
-    *Ly = *Yp / S;
-    *Lw = ((X1 + S - 1u) / S) - *Lx;
-    *Lh = ((Y1 + S - 1u) / S) - *Ly;
+    *Lx = UnscaleX(*Xp);
+    *Ly = UnscaleY(*Yp);
+    *Lw = ((UINT32)(((UINT64)X1 * (UINT64)DrawDen() + (UINT64)DrawNum() - 1u) /
+                    (UINT64)DrawNum())) - *Lx;
+    *Lh = ((UINT32)(((UINT64)Y1 * (UINT64)DrawDen() + (UINT64)DrawNum() - 1u) /
+                    (UINT64)DrawNum())) - *Ly;
     return 1;
 }
 
@@ -228,7 +233,6 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
     UINT32 Row;
     UINT32 Col;
     UINT32 i = 0;
-    UINT32 S;
 
     if (!Fb || !Out || !Width || !Height || Pitch == 0) {
         return;
@@ -243,10 +247,11 @@ void VideoReadRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 *Out)
         Height = gScreen.Height - Y;
     }
     /* 逻辑矩形按块左上角采样；块内同色，等价于原逻辑后缓冲读出 */
-    S = DrawScale();
     for (Row = 0; Row < Height; Row++) {
+        UINT32 Yp = ScaleY(Y + Row);
+
         for (Col = 0; Col < Width; Col++) {
-            Out[i++] = FbPack(Fb[(Y + Row) * S * Pitch + (X + Col) * S]);
+            Out[i++] = FbPack(Fb[Yp * Pitch + ScaleX(X + Col)]);
         }
     }
 }
@@ -258,7 +263,6 @@ void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT3
     UINT32 SrcStride;
     UINT32 CopyW;
     UINT32 CopyH;
-    UINT32 S;
 
     if (!Fb || !In || !Width || !Height || Pitch == 0) {
         return;
@@ -276,20 +280,25 @@ void VideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UINT3
         CopyH = gScreen.Height - Y;
     }
     DirtyUnion(X, Y, CopyW, CopyH);
-    /* 输入仍是逻辑像素；每个写成 S×S 块（PR-23a） */
-    S = DrawScale();
+    /* 输入仍是逻辑像素；每个逻辑像素写成自己那道物理跨度（PR-23E） */
     for (Row = 0; Row < CopyH; Row++) {
+        UINT32 Yp = ScaleY(Y + Row);
+        UINT32 Hp = PixelSpanY(Y + Row);
         UINT32 Sy;
 
-        for (Sy = 0; Sy < S; Sy++) {
-            UINT32 *Dst = &Fb[((Y + Row) * S + Sy) * Pitch + X * S];
+        for (Sy = 0; Sy < Hp; Sy++) {
+            UINT32 *Dst = &Fb[(Yp + Sy) * Pitch];
 
             for (UINT32 Col = 0; Col < CopyW; Col++) {
                 UINT32 C = FbPack(In[Row * SrcStride + Col]);
+                UINT32 Xp = ScaleX(X + Col);
+                UINT32 Wp = PixelSpanX(X + Col);
                 UINT32 Sx;
 
-                for (Sx = 0; Sx < S; Sx++) {
-                    Dst[Col * S + Sx] = C;
+                for (Sx = 0; Sx < Wp; Sx++) {
+                    if (Xp + Sx < DrawWidth() && Yp + Sy < DrawHeight()) {
+                        Dst[Xp + Sx] = C;
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@
 #include "Hal.h"
 #include "SerialLog.h"
 #include "CString.h"
+#include "Compiler.h"
 
 UINT32 FontTtfPixel(void) {
     const FONT_FACE *F;
@@ -37,17 +38,27 @@ UINT32 FontTtfPixel(void) {
 }
 
 /*
- * PR-23b：栅格边长必须是物理像素。200% 时逻辑 24px 的汉字占 48 物理像素，
- * 若仍按 24 栅格再由绘制层放大，物理分辨率就白丢了。
+ * PR-23E：栅格边长必须是物理像素，比例按有理数算：
+ *   Cell = FontTtfPixel() * Num / Den
+ * 100% → 24、150% → 36（24*3/2）、200% → 48、50% → 12。
  * FontTtfPixel 保持逻辑值（布局/行高用它），只有栅格/缓存用本函数。
  */
 UINT32 FontTtfCell(void) {
-    UINT32 S = HalVideoGetDrawScale();
+    UINT64 Num = (UINT64)HalVideoGetDrawNum();
+    UINT64 Den = (UINT64)HalVideoGetDrawDen();
+    UINT32 Cell;
 
-    if (S < 1u) {
-        S = 1u;
+    if (Den == 0u) {
+        Den = 1u;
     }
-    return FontTtfPixel() * S;
+    if (Num == 0u) {
+        Num = 1u;
+    }
+    Cell = (UINT32)(((UINT64)FontTtfPixel() * Num) / Den);
+    if (Cell < 1u) {
+        Cell = 1u;
+    }
+    return Cell;
 }
 
 #if defined(__x86_64__) || defined(__aarch64__)
@@ -56,6 +67,11 @@ UINT32 FontTtfCell(void) {
 
 #define TTF_CELL 64
 #define TTF_PIX  (TTF_CELL * TTF_CELL)
+/*
+ * PR-23E / 坑 2：ASCII 提权上限必须装得下 200% 的 cell（48→EmPx 60）。
+ * 位图格比 TTF_CELL 大时，MakeBitmap 会越界写 arena。
+ */
+BLOCKS_STATIC_ASSERT(TTF_CELL >= 60, "TTF_CELL must hold 200% ASCII em 60");
 #define TTF_OS   2u
 #define TTF_ARENA (64u * 1024u)
 
@@ -330,14 +346,30 @@ static int FontTtfLayout(stbtt_fontinfo *Info, UINT32 Cp, int Glyph, UINT32 Cell
      */
     {
         UINT32 EmPx = CellH;
-        /*
-         * PR-23b：上限随绘制倍数走（100%→32，200%→64）。
-         * 过采样 2× 路径传进来的 CellH 也是物理值；若恒用 64，100% 下
-         * ASCII 会从 48 突增到 60，整屏拉丁字变胖，基线不再逐像素相同。
-         */
-        UINT32 EmCap = 32u * HalVideoGetDrawScale();
 
         if (Cp < 128u) {
+            /*
+             * PR-23E / 坑 2：ASCII 提权上限改成与「物理字格」成比例，
+             * 而不是 32×整数绘制倍数。旧式子在 150% 下把 EmPx 卡在 32，
+             * 而那时 cell 已经是 36 —— 拉丁字反而比汉字瘦小，档位一多就
+             * 对不上号。
+             *
+             * 上限取 FontTtfCell()*4/3：24→32、36→48、48→64，对
+             * 100%/200% 与旧式 32×S 逐个相等（S=1→32、S=2→64），所以
+             * 100% 逐像素不变；150% 下 1× 路径请求 45、上限 48 不夹，
+             * 正好是「cell+cell/4 = 45」。
+             *
+             * 为什么要夹：本函数的 CellH 有两种来源——1× 直接栅格
+             * （=FontTtfCell）与 2× 过采样（=2×FontTtfCell，栅格完箱滤
+             * 缩到 FontTtfCell）。2× 路径的 em 一旦超过自己的 Hi 缓冲，
+             * Oy 会变负、MakeCodepointBitmap 直接写穿 arena。
+             * 再封顶 TTF_CELL（64，编译期断言 ≥ 60）防止更大档位越界。
+             */
+            UINT32 EmCap = (FontTtfCell() * 4u) / 3u;
+
+            if (EmCap > TTF_CELL) {
+                EmCap = TTF_CELL;
+            }
             EmPx = CellH + (CellH / 4u);
             if (EmPx > EmCap) {
                 EmPx = EmCap;

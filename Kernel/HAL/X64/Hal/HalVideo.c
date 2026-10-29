@@ -31,7 +31,7 @@ void HalVideoSetFbSwapRb(int On) {
 
 /*
  * PR-G9：PMM 分配后缓冲并挂上。须在 PhysicalMemoryInitialize 之后调用。
- * PR-23a：尺寸按绘制尺寸（200% 时为物理分辨率），不再用逻辑宽高。
+ * PR-23E：尺寸按绘制尺寸（恒为物理分辨率），不再用逻辑宽高。
  * 分配失败则保持直写 GOP（功能仍可用，仍可能撕裂）。
  */
 void HalVideoInitializeBackbuffer(void) {
@@ -183,6 +183,14 @@ void HalVideoGetSize(UINT32 *Width, UINT32 *Height) {
 
 UINT32 HalVideoGetUiScale(void) {
     return VideoGetUiScale();
+}
+
+UINT32 HalVideoGetDrawNum(void) {
+    return VideoGetDrawNum();
+}
+
+UINT32 HalVideoGetDrawDen(void) {
+    return VideoGetDrawDen();
 }
 
 UINT32 HalVideoGetDrawScale(void) {

@@ -30,8 +30,9 @@ int     gForceFront;
 UINT32  gPhysW;
 UINT32  gPhysH;
 UINT32  gUiScale = 100;
-/* PR-23a：200% 时 gDrawScale=2，按物理分辨率绘制；gDrawW/H = 逻辑×倍数 */
-UINT32  gDrawScale = 1;
+/* PR-23E：绘制比例 Num/Den = gUiScale/100（1/1 起步=恒等）；gDrawW/H 恒为物理尺寸 */
+UINT32  gDrawNum = 1;
+UINT32  gDrawDen = 1;
 UINT32  gDrawW;
 UINT32  gDrawH;
 
@@ -99,7 +100,7 @@ void VideoSetScanout(UINT32 *Va, UINT32 PitchPx, UINT64 Phys, UINT64 Size) {
 
 /*
  * 启用与屏同尺寸的后缓冲（紧密 pitch=绘制宽）。Buf 由调用方 PMM 分配。
- * PR-23a：尺寸取 gDrawW×gDrawH（200% 时是物理分辨率），不再是逻辑宽。
+ * PR-23E：尺寸取 gDrawW×gDrawH，即物理分辨率（任何 UI 比例都一样）。
  * Pages 仅记录；失败/空指针则保持直写 GOP。
  */
 void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages) {
@@ -111,7 +112,7 @@ void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages) {
         gBackOn = 0;
         return;
     }
-    Dw = gDrawW ? gDrawW : gScreen.Width;
+    Dw = DrawWidth();
     gBack = Buf;
     gBackPitch = Dw;
     gBackPages = Pages;
@@ -145,22 +146,32 @@ void VideoGetSize(UINT32 *Width, UINT32 *Height) {
     }
 }
 
-/* 后缓冲使用的绘制尺寸（PR-23a）；未初始化时退回逻辑尺寸 */
+/* 后缓冲使用的绘制尺寸（PR-23E：恒为物理尺寸）；未初始化时退回逻辑尺寸 */
 void VideoGetDrawSize(UINT32 *Width, UINT32 *Height) {
     if (Width) {
-        *Width = gDrawW ? gDrawW : gScreen.Width;
+        *Width = DrawWidth();
     }
     if (Height) {
-        *Height = gDrawH ? gDrawH : gScreen.Height;
+        *Height = DrawHeight();
     }
 }
 
 /*
- * PR-23b：字体层要按物理像素栅格，先问这里。只认 1/2；
- * 其它值（未初始化、异常）一律按 1，保证旧布局路径不受影响。
+ * PR-23E：兼容旧调用（Gui/Cursor 等）——返回「一个逻辑像素最多占几个物理
+ * 像素」即 ScaleW(1)：50%/100%→1，150%/200%→2。
+ * 它只能当容量上限用（开多大缓冲），不能拿来做坐标换算：150% 的真比例是
+ * 3/2，拿 2 去乘会多读一截。精确换算用 VideoGetDrawNum/Den，或 Scale*。
  */
 UINT32 VideoGetDrawScale(void) {
-    return (gDrawScale == 2u) ? 2u : 1u;
+    return ScaleW(1u);
+}
+
+UINT32 VideoGetDrawNum(void) {
+    return DrawNum();
+}
+
+UINT32 VideoGetDrawDen(void) {
+    return DrawDen();
 }
 
 void VideoSetClipRegion(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, UINT32 Background) {

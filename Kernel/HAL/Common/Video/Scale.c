@@ -19,6 +19,29 @@ UINT32 NormalizeUiScale(UINT32 Percent) {
     return 200;
 }
 
+/*
+ * 绘制比例 = gUiScale/100 约到最简分数：50→1/2、100→1/1、150→3/2、200→2/1。
+ * 用整数 gcd 化简，不引入浮点（内核禁 FPU 于纯绘制路径）。
+ */
+static void DrawRatioFromScale(UINT32 Scale, UINT32 *Num, UINT32 *Den) {
+    UINT32 A = Scale ? Scale : 100u;
+    UINT32 B = 100u;
+    UINT32 T;
+
+    while (B != 0u) {
+        T = A % B;
+        A = B;
+        B = T;
+    }
+    if (A == 0u) {
+        *Num = 1u;
+        *Den = 1u;
+        return;
+    }
+    *Num = (Scale ? Scale : 100u) / A;
+    *Den = 100u / A;
+}
+
 /* 逻辑分辨率 = 物理 * 100 / scale；上限约 8M 像素防 OOM */
 void ApplyLogicalFromPhys(void) {
     UINT32 Lw;
@@ -49,12 +72,15 @@ void ApplyLogicalFromPhys(void) {
     gScreen.Width = Lw;
     gScreen.Height = Lh;
     /*
-     * PR-23a：200% 时按物理分辨率绘制（每逻辑像素 ×2 实心块），
-     * 后缓冲尺寸随之为物理分辨率；其它档位 gDrawScale=1，恒等映射。
+     * PR-23E：绘制变换是「逻辑 → 物理」的有理数比例，后缓冲永远拿物理
+     * 分辨率（gDrawW/gDrawH = 物理宽高），所以 Present 恒 1:1。
+     * 50%/150% 不再是「小缓冲 + 最近邻放大」，而是当场把逻辑坐标换算到
+     * 物理像素（每逻辑像素写 PixelSpan 宽/高的实心块），字形也按物理尺寸
+     * 栅格，物理分辨率才真正用上。
      */
-    gDrawScale = (gUiScale == 200u) ? 2u : 1u;
-    gDrawW = gScreen.Width * gDrawScale;
-    gDrawH = gScreen.Height * gDrawScale;
+    DrawRatioFromScale(gUiScale, &gDrawNum, &gDrawDen);
+    gDrawW = gPhysW;
+    gDrawH = gPhysH;
 }
 
 void VideoSet(VIDEO_CONFIG *VideoConfig) {

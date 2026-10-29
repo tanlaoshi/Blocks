@@ -450,8 +450,8 @@ else
   echo "ESP BOOTX64.EFI : unchanged (ESP not mounted)"
 fi
 echo "BLOCKS Kernel    : $(stat -c%s "$BLOCKS_MNT/Kernel.elf") bytes"
-ls -lh "$BLOCKS_MNT/Assets/Fonts/CJK.TTF" 2>/dev/null || \
-  echo "warning: BLOCKS missing Assets/Fonts/CJK.TTF (Boot: ttf miss)"
+ls -lh "$BLOCKS_MNT/Assets/Fonts/UMING.TTF" 2>/dev/null || \
+  echo "warning: BLOCKS missing Assets/Fonts/UMING.TTF (UI TTF 缺失，中文退点阵)"
 ls -lh "$BLOCKS_MNT/Kernel.elf" "$BLOCKS_MNT/BLOCKS.ID" "$BLOCKS_MNT/THEME.CFG" 2>/dev/null || true
 ls -lh "$BLOCKS_MNT/FW/IWL8265.UCODE" 2>/dev/null || \
   echo "warning: BLOCKS missing FW/IWL8265.UCODE (iwl fw=miss)"

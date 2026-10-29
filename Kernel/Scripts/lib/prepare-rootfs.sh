@@ -58,21 +58,16 @@ if [ -f "$ROOT/BLOCKS.DB" ] && [ ! -w "$ROOT/BLOCKS.DB" ]; then
     echo "warning: $ROOT/BLOCKS.DB not writable by $(id -un) — Settings resolution will not persist" >&2
 fi
 
-# PR-UI-ttf：仓库种子 Tools/Fonts/CJK.TTF → Assets（真子集优先；缺则 gen stub）
-SEED="$(blocks_resolve_root "$0")/ToyKernel/Tools/Fonts/CJK.TTF"
-GEN_STUB="$(blocks_resolve_root "$0")/ToyKernel/Tools/Scripts/gen-cjk-ttf-stub.py"
-mkdir -p Assets/Fonts
-if [ -f "$SEED" ]; then
-    cp -f "$SEED" Assets/Fonts/CJK.TTF
-elif [ ! -f Assets/Fonts/CJK.TTF ] && [ -f "$GEN_STUB" ]; then
-    python3 "$GEN_STUB" || echo "warning: gen-cjk-ttf-stub failed — Boot: ttf miss" >&2
-    [ -f "$SEED" ] && cp -f "$SEED" Assets/Fonts/CJK.TTF
-fi
+# UI TTF 已改名：主路径 Assets/Fonts/UMING.TTF（旧盘 CJK.TTF 由内核的 LEGACY 常量兜底）。
+# 旧的 ToyKernel/Tools/Fonts 播种路径早已不存在，删掉以免每次 sync 都报「缺 CJK.TTF」。
 
 # 运行时资源 — 公共 Assets/ 种子 → RootFs/X64/Assets/
 mkdir -p "$ROOT/Assets/Icons" "$ROOT/Assets/Images"
 if [ -d Assets ]; then
     cp -a Assets/. "$ROOT/Assets/"
+fi
+if [ ! -f "$ROOT/Assets/Fonts/UMING.TTF" ]; then
+    echo "warning: $ROOT/Assets/Fonts/UMING.TTF missing — UI 中文会退点阵" >&2
 fi
 # 商店权威源：Runtime/Store → Guest Store/（store-src；废 Assets/Store + StoreCache）
 if [ -d Store ]; then

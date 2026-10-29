@@ -67,6 +67,8 @@ if ! diff -q <(uefi_boot_config_norm "$BOOT_CFG") <(uefi_boot_config_norm "$KERN
 fi
 
 # shellcheck disable=SC1091
+# edksetup.sh 会读 $@：调脚本时若带 DEBUG=1，会被当成它的选项而打 usage 退出
+set --
 source "$EDK2_ROOT/edksetup.sh"
 
 if ! command -v build >/dev/null 2>&1; then

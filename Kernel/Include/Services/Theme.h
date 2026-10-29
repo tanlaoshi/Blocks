@@ -156,9 +156,6 @@ UINT32 ThemeUiScale(void);
 void ThemeSetUiScale(UINT32 Percent);
 /* 运行时改缩放并重配后缓冲/桌面；失败 -1 */
 int ThemeApplyUiScaleLive(UINT32 Percent);
-
-/* PR-28：画开机 Logo 之前先把 DB 里的 scale 应用一次，避免首帧 100% 再跳 */
-int ThemeBootScaleApply(void);
 /*
  * PR-G-hotres：尝试运行时切到 WxH（QEMU Bochs VGA）。
  * 成功 0 并重绘桌面；不支持/失败 -1（调用方仍可 ThemeSave 走重启路径）。

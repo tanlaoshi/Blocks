@@ -238,6 +238,16 @@ int DbInitialize(void) {
     if (Err == DB_NOENT) {
         ImportThemeCfgIfEmpty();
     }
+    /*
+     * 只在真的读到了（或确认不存在）时才闩上「已初始化」。
+     * 旧写法无论成败都置 gReady=1：若首次调用发生在 FileSystem 挂载之前
+     * （例如有人想在画开机 Logo 前读 scale），DbLoad 必然返回 IO 错误，
+     * 于是整场会话拿到的是空库——配置全失效，且之后任何 DbSet 触发的
+     * DbSave 会把 BLOCKS.DB 整份覆盖成只剩新键。
+     */
+    if (Err != DB_OK && Err != DB_NOENT) {
+        return Err;
+    }
     gReady = 1;
     gConsole.Register2("database", "get", "get KV from BLOCKS.DB", CommandDbGet);
     gConsole.Register2("database", "set", "set KV in BLOCKS.DB", CommandDbSet);

@@ -13,7 +13,33 @@ static int gGlyphOrigX;
 static int gGlyphOrigY;
 static int gGlyphHotX;
 static int gGlyphHotY;
-static UINT32 gGlyphScale = 100;
+/* 逻辑像素 → 硬件光标位图像素的比例（Num/Den，与绘制变换同源） */
+static UINT32 gGlyphNum = 1;
+static UINT32 gGlyphDen = 1;
+
+/* 向下取整除法（C 的整数除法向 0 截断，负坐标会差一像素） */
+static int GlyphFloorDiv(int V, UINT32 Den) {
+    if (V >= 0) {
+        return (int)((UINT32)V / Den);
+    }
+    return -(int)(((UINT32)(-V) + Den - 1u) / Den);
+}
+
+/*
+ * 逻辑负边界 → 位图热点：ceil(-Min * Num / Den)。
+ * 取 floor 会把箭头/描边最左一列裁掉（150% 下 -3 逻辑 = -4.5 物理）。
+ */
+static int GlyphHotFromLogical(int Min) {
+    if (Min >= 0) {
+        return 0;
+    }
+    return (int)(((UINT32)(-Min) * gGlyphNum + gGlyphDen - 1u) / gGlyphDen);
+}
+
+/* 逻辑右/下端点 → 位图内端点（floor，块覆盖 [start, end)） */
+static int GlyphEndFromLogical(int Max) {
+    return GlyphFloorDiv((Max + 1) * (int)gGlyphNum, gGlyphDen);
+}
 
 void CursorMetrics(int *Half, int *Thick) {
     UINT32 H;
@@ -43,18 +69,51 @@ void CursorPutPixel(int Px, int Py, UINT32 Color) {
     if (gGlyphBuf) {
         int RelX;
         int RelY;
+        int Rx0;
+        int Rx1;
+        int Ry0;
+        int Ry1;
         int Rx;
         int Ry;
+        UINT32 C = 0xFF000000u | (Color & 0x00FFFFFFu);
 
         RelX = Px - gGlyphOrigX;
         RelY = Py - gGlyphOrigY;
-        Rx = (RelX * (int)gGlyphScale) / 100 + gGlyphHotX;
-        Ry = (RelY * (int)gGlyphScale) / 100 + gGlyphHotY;
-        if (Rx < 0 || Ry < 0 || Rx >= CURSOR_HW_DIM || Ry >= CURSOR_HW_DIM) {
-            return;
+        /*
+         * 硬件光标平面是物理 1:1。一个逻辑像素必须写成
+         * [floor(r*Num/Den), floor((r+1)*Num/Den)) 的实心块；旧代码只写
+         * 一个点，200% 下隔行隔列全是透明 → 光标成网格/三角形，150% 下
+         * 半格错位成菱形。宽度用端点相减，与软件路径 PixelSpan 同规则。
+         */
+        Rx0 = GlyphFloorDiv(RelX * (int)gGlyphNum, gGlyphDen) + gGlyphHotX;
+        Rx1 = GlyphFloorDiv((RelX + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotX;
+        Ry0 = GlyphFloorDiv(RelY * (int)gGlyphNum, gGlyphDen) + gGlyphHotY;
+        Ry1 = GlyphFloorDiv((RelY + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotY;
+        if (Rx1 <= Rx0) {
+            Rx1 = Rx0 + 1;
         }
-        gGlyphBuf[(UINT32)Ry * CURSOR_HW_DIM + (UINT32)Rx] =
-            0xFF000000u | (Color & 0x00FFFFFFu);
+        if (Ry1 <= Ry0) {
+            Ry1 = Ry0 + 1;
+        }
+        if (Rx0 < 0) {
+            Rx0 = 0;
+        }
+        if (Ry0 < 0) {
+            Ry0 = 0;
+        }
+        if (Rx1 > CURSOR_HW_DIM) {
+            Rx1 = CURSOR_HW_DIM;
+        }
+        if (Ry1 > CURSOR_HW_DIM) {
+            Ry1 = CURSOR_HW_DIM;
+        }
+        for (Ry = Ry0; Ry < Ry1; Ry++) {
+            UINT32 *Row = &gGlyphBuf[(UINT32)Ry * CURSOR_HW_DIM];
+
+            for (Rx = Rx0; Rx < Rx1; Rx++) {
+                Row[Rx] = C;
+            }
+        }
         return;
     }
     if (Px < 0 || Py < 0) {
@@ -322,7 +381,6 @@ static void ArrowBBox(int *MinX, int *MaxX, int *MinY, int *MaxY) {
 
 int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
     UINT32 i;
-    UINT32 Scale;
     int MinX;
     int MaxX;
     int MinY;
@@ -337,16 +395,23 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
     if (!Out || !HotX || !HotY) {
         return 0;
     }
-    Scale = HalVideoGetUiScale();
-    if (Scale == 0) {
-        Scale = 100;
+    /*
+     * 栅格比例必须与绘制变换同源（Num/Den），不能用 UI 档位整数：
+     * 150% 的 3/2、以及超大逻辑屏被限幅后的实际比例都能对上。
+     */
+    gGlyphNum = HalVideoGetDrawNum();
+    gGlyphDen = HalVideoGetDrawDen();
+    if (gGlyphNum == 0) {
+        gGlyphNum = 1;
+    }
+    if (gGlyphDen == 0) {
+        gGlyphDen = 1;
     }
     for (i = 0; i < CURSOR_HW_DIM * CURSOR_HW_DIM; i++) {
         Out[i] = 0;
     }
 
     gGlyphBuf = Out;
-    gGlyphScale = Scale;
     gGlyphOrigX = 0;
     gGlyphOrigY = 0;
 
@@ -362,45 +427,40 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
 
     if (Axis < 0) {
         ArrowBBox(&MinX, &MaxX, &MinY, &MaxY);
-        NeedW = ((MaxX - MinX) * (int)Scale) / 100 + 1;
-        NeedH = ((MaxY - MinY) * (int)Scale) / 100 + 1;
+        gGlyphHotX = GlyphHotFromLogical(MinX);
+        gGlyphHotY = GlyphHotFromLogical(MinY);
+        NeedW = gGlyphHotX + GlyphEndFromLogical(MaxX);
+        NeedH = gGlyphHotY + GlyphEndFromLogical(MaxY);
         if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
-            gGlyphScale = 100;
-            Scale = 100;
-            NeedW = MaxX - MinX + 1;
-            NeedH = MaxY - MinY + 1;
+            /* 位图装不下：退回 1:1（仍是完整箭头，只是不放大） */
+            gGlyphNum = 1;
+            gGlyphDen = 1;
+            gGlyphHotX = GlyphHotFromLogical(MinX);
+            gGlyphHotY = GlyphHotFromLogical(MinY);
+            NeedW = gGlyphHotX + GlyphEndFromLogical(MaxX);
+            NeedH = gGlyphHotY + GlyphEndFromLogical(MaxY);
         }
         if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
             gGlyphBuf = 0;
             return 0;
         }
-        /* 尖在 (0,0)；热点 = 尖在缓冲内的位置 */
-        gGlyphHotX = (-MinX * (int)Scale) / 100;
-        gGlyphHotY = (-MinY * (int)Scale) / 100;
-        if (gGlyphHotX < 0) {
-            gGlyphHotX = 0;
-        }
-        if (gGlyphHotY < 0) {
-            gGlyphHotY = 0;
-        }
         DrawCursorArrow(0, 0);
     } else {
         CursorMetrics(&Half, &Thick);
         Ext = Half + Half / 2 + Thick + CURSOR_OUTLINE + 2;
-        Ext = (Ext * (int)Scale) / 100;
-        if (Ext < 4) {
-            Ext = 4;
-        }
-        if (Ext > (int)(CURSOR_HW_DIM / 2u) - 1) {
-            gGlyphScale = 100;
-            Scale = 100;
-            Ext = Half + Half / 2 + Thick + CURSOR_OUTLINE + 2;
+        gGlyphHotX = GlyphHotFromLogical(-Ext);
+        gGlyphHotY = gGlyphHotX;
+        NeedW = gGlyphHotX + GlyphEndFromLogical(Ext);
+        NeedH = NeedW;
+        if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
+            gGlyphNum = 1;
+            gGlyphDen = 1;
             if (Ext > (int)(CURSOR_HW_DIM / 2u) - 1) {
                 Ext = (int)(CURSOR_HW_DIM / 2u) - 1;
             }
+            gGlyphHotX = Ext;
+            gGlyphHotY = Ext;
         }
-        gGlyphHotX = Ext;
-        gGlyphHotY = Ext;
         DrawCursorAxis(0, 0, Axis);
     }
 

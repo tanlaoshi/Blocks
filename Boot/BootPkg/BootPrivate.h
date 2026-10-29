@@ -48,6 +48,27 @@ typedef UEFI_MEMORY_MAP   MEMORY_MAP;
 #define SCORE_AREA_DIV        10000ULL
 
 /* Video/：GetVideoInfo / SetVideoMode；辅助 Score / Edid / Theme */
+/*
+ * 选模结果：GetVideoInfo 填，SetVideoMode 读。
+ * 以前这是 13 个文件级 static，签名上看不出「必须先 Get 再 Set」。
+ */
+typedef struct {
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+    UINTN   BestMode;
+    UINT32  BestW;
+    UINT32  BestH;
+    UINTN   BestScore;
+    BOOLEAN InVm;
+    BOOLEAN HasCfgTarget;
+    BOOLEAN CfgMatched;
+    BOOLEAN HasEdidTarget;
+    UINT32  CfgW;
+    UINT32  CfgH;
+    UINT32  EdidW;
+    UINT32  EdidH;
+    UINT32  ModeCount;
+} VIDEO_SELECTION;
+
 BOOLEAN IsVirtualMachine(VOID);
 BOOLEAN IsModeUsable(const EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info);
 EFI_STATUS TryGetEdidPreferred(EFI_HANDLE ImageHandle, EFI_HANDLE GopHandle,
@@ -60,9 +81,11 @@ VOID SortVideoModesForSettings(UEFI_VIDEO_MODE *Modes, UINT32 Count,
                                BOOLEAN InVm, BOOLEAN HasEdid,
                                UINT32 EdidW, UINT32 EdidH);
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW, UINT32 *OutH);
-EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
+EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig,
+                        VIDEO_SELECTION *Sel);
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
-                        UEFI_BOOT_CONFIG *BootConfig);
+                        UEFI_BOOT_CONFIG *BootConfig,
+                        const VIDEO_SELECTION *Sel);
 /* Volume：BLOCKS.ID、启动盘 GUID、同盘判定、ROOT.CFG 三档认卷 */
 BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);

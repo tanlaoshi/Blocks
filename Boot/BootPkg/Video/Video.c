@@ -4,6 +4,7 @@
 #include <Protocol/GraphicsOutput.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/BaseMemoryLib.h>
 
 #include "BootPrivate.h"
 
@@ -12,23 +13,9 @@ STATIC EFI_STATUS FailVideo(CONST CHAR8 *Step, EFI_STATUS Status) {
     return Status;
 }
 
-/* Get → Set 之间暂存（UefiMain 单线程顺序调用） */
-STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *sGop;
-STATIC UINTN                         sBestMode;
-STATIC UINT32                        sBestW;
-STATIC UINT32                        sBestH;
-STATIC UINTN                         sBestScore;
-STATIC BOOLEAN                       sInVm;
-STATIC BOOLEAN                       sHasCfgTarget;
-STATIC BOOLEAN                       sCfgMatched;
-STATIC BOOLEAN                       sHasEdidTarget;
-STATIC UINT32                        sCfgW;
-STATIC UINT32                        sCfgH;
-STATIC UINT32                        sEdidW;
-STATIC UINT32                        sEdidH;
-STATIC UINT32                        sModeCount;
-
-EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
+/* Get → Set 之间的选模结果，由调用方持有（原先 13 个文件级 static） */
+EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig,
+                        VIDEO_SELECTION *Sel) {
     EFI_STATUS                            Status;
     EFI_GRAPHICS_OUTPUT_PROTOCOL          *Gop = NULL;
     UINTN                                 HandleCount = 0;
@@ -53,9 +40,10 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
     BootSerialPrintf("Boot: GetVideoInfo\n");
 
-    sGop = NULL;
-    sBestScore = 0;
-    sModeCount = 0;
+    if (Sel == NULL) {
+        return EFI_INVALID_PARAMETER;
+    }
+    ZeroMem(Sel, sizeof(*Sel));
 
     if (BootConfig != NULL) {
         BootConfig->VideoModeCount = 0;
@@ -230,20 +218,20 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
         return FailVideo("GetVideoInfo", EFI_NOT_FOUND);
     }
 
-    sGop = Gop;
-    sBestMode = BestMode;
-    sBestW = BestW;
-    sBestH = BestH;
-    sBestScore = BestScore;
-    sInVm = InVm;
-    sHasCfgTarget = HasCfgTarget;
-    sCfgMatched = CfgMatched;
-    sHasEdidTarget = HasEdidTarget;
-    sCfgW = CfgW;
-    sCfgH = CfgH;
-    sEdidW = EdidW;
-    sEdidH = EdidH;
-    sModeCount = ModeCount;
+    Sel->Gop = Gop;
+    Sel->BestMode = BestMode;
+    Sel->BestW = BestW;
+    Sel->BestH = BestH;
+    Sel->BestScore = BestScore;
+    Sel->InVm = InVm;
+    Sel->HasCfgTarget = HasCfgTarget;
+    Sel->CfgMatched = CfgMatched;
+    Sel->HasEdidTarget = HasEdidTarget;
+    Sel->CfgW = CfgW;
+    Sel->CfgH = CfgH;
+    Sel->EdidW = EdidW;
+    Sel->EdidH = EdidH;
+    Sel->ModeCount = ModeCount;
 
     BootSerialPrintf("Boot: GetVideoInfo Done (Pick %dx%d Mode %d)\n",
                      BestW, BestH, (UINT32)BestMode);
@@ -251,17 +239,20 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 }
 
 EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
-                        UEFI_BOOT_CONFIG *BootConfig) {
+                        UEFI_BOOT_CONFIG *BootConfig,
+                        const VIDEO_SELECTION *Sel) {
     EFI_STATUS Status;
-    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop = sGop;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
 
     (void)ImageHandle;
 
     BootSerialPrintf("Boot: SetVideoMode\n");
 
-    if (Gop == NULL || sBestScore == 0 || VideoConfig == NULL) {
+    /* 没有先跑 GetVideoInfo（或上下文为空）就是调用顺序错误 */
+    if (Sel == NULL || Sel->Gop == NULL || VideoConfig == NULL) {
         return FailVideo("SetVideoMode", EFI_NOT_READY);
     }
+    Gop = Sel->Gop;
 
     /* 已是目标分辨率则勿 SetMode：QEMU+GTK 下改分辨率常会整机再复位一次 */
     {
@@ -273,24 +264,24 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
             CurH = Gop->Mode->Info->VerticalResolution;
         }
 
-        if (CurW == sBestW && CurH == sBestH) {
-            BootSerialPrintf("Boot: Already %dx%d, Skip SetMode\n", sBestW, sBestH);
-        } else if (sInVm) {
+        if (CurW == Sel->BestW && CurH == Sel->BestH) {
+            BootSerialPrintf("Boot: Already %dx%d, Skip SetMode\n", Sel->BestW, Sel->BestH);
+        } else if (Sel->InVm) {
             /*
              * Guest reboot / QEMU Reset 不会重读宿主 run.sh 的 edid；若此处 SetMode
              * 改分辨率，GTK 跳变会再复位，固件又回到 edid 旧模式 → 无限重启。
              */
             BootDbg("Boot: Skip SetMode %dx%d -> %dx%d On VM (QEMU+GTK Loop)\n",
-                  CurW, CurH, sBestW, sBestH);
-            if (sHasCfgTarget) {
+                  CurW, CurH, Sel->BestW, Sel->BestH);
+            if (Sel->HasCfgTarget) {
                 BootDbg("Boot: BLOCKS.DB Wants %dx%d But GOP Is %dx%d\n",
-                      sCfgW, sCfgH, CurW, CurH);
+                      Sel->CfgW, Sel->CfgH, CurW, CurH);
                 BootDbg("Boot: Quit QEMU Window, Then Runtime/run.sh (EDID From BLOCKS.DB)\n");
             }
         } else {
-            Status = Gop->SetMode(Gop, sBestMode);
+            Status = Gop->SetMode(Gop, Sel->BestMode);
             if (EFI_ERROR(Status)) {
-                BootSerialPrintf("Boot: SetMode(%d) Failed: %r\n", sBestMode, Status);
+                BootSerialPrintf("Boot: SetMode(%d) Failed: %r\n", Sel->BestMode, Status);
                 return Status;
             }
         }
@@ -302,40 +293,40 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
     VideoConfig->VerticalResolution = Gop->Mode->Info->VerticalResolution;
     VideoConfig->PixelsPerScanLine = Gop->Mode->Info->PixelsPerScanLine;
 
-    if (sHasCfgTarget && sCfgMatched &&
-        VideoConfig->HorizontalResolution == sCfgW &&
-        VideoConfig->VerticalResolution == sCfgH) {
+    if (Sel->HasCfgTarget && Sel->CfgMatched &&
+        VideoConfig->HorizontalResolution == Sel->CfgW &&
+        VideoConfig->VerticalResolution == Sel->CfgH) {
         BootDbg("Boot: Display %dx%d (BLOCKS.DB)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
-    } else if (sHasCfgTarget &&
-               (VideoConfig->HorizontalResolution != sCfgW ||
-                VideoConfig->VerticalResolution != sCfgH)) {
-        if (sInVm) {
+    } else if (Sel->HasCfgTarget &&
+               (VideoConfig->HorizontalResolution != Sel->CfgW ||
+                VideoConfig->VerticalResolution != Sel->CfgH)) {
+        if (Sel->InVm) {
             BootDbg("Boot: Display %dx%d (GOP; BLOCKS.DB %dx%d Not Applied — Relaunch QEMU)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
-                  sCfgW, sCfgH);
+                  Sel->CfgW, Sel->CfgH);
         } else {
             BootDbg("Boot: Display %dx%d (Nearest To BLOCKS.DB %dx%d)\n",
                   VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution,
-                  sCfgW, sCfgH);
+                  Sel->CfgW, Sel->CfgH);
         }
-    } else if (sInVm) {
+    } else if (Sel->InVm) {
         BootDbg("Boot: Display %dx%d (QEMU/VM)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
-    } else if (sHasEdidTarget &&
-               VideoConfig->HorizontalResolution == sEdidW &&
-               VideoConfig->VerticalResolution == sEdidH) {
-        BootDbg("Boot: Display %dx%d (EDID Native)\n", sEdidW, sEdidH);
+    } else if (Sel->HasEdidTarget &&
+               VideoConfig->HorizontalResolution == Sel->EdidW &&
+               VideoConfig->VerticalResolution == Sel->EdidH) {
+        BootDbg("Boot: Display %dx%d (EDID Native)\n", Sel->EdidW, Sel->EdidH);
     } else {
         BootDbg("Boot: Display %dx%d (Hardware Best Match)\n",
               VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
     }
 
     BootDbg("Selected Mode: %d, Final %dx%d\n",
-          sBestMode, VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
+          Sel->BestMode, VideoConfig->HorizontalResolution, VideoConfig->VerticalResolution);
 
     if (BootConfig != NULL) {
-        BootConfig->VideoModeCount = sModeCount;
+        BootConfig->VideoModeCount = Sel->ModeCount;
         BootConfig->GopProtocol = (UINT64)(UINTN)Gop;
         BootConfig->VideoModePad = UEFI_GOP_HANDOFF_MAGIC;
     }

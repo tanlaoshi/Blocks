@@ -14,6 +14,7 @@
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     EFI_STATUS Status;
     UEFI_BOOT_CONFIG BootConfig = {0};
+    VIDEO_SELECTION VideoSel;
 
     /* 入口参数，与选模/读盘无关；尽早写入交接包 */
     BootConfig.SystemTable = SystemTable;
@@ -27,11 +28,12 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     BootFillDiskGuid(ImageHandle, &BootConfig);
 
     /* 失败文案在各步骤函数内；这里只决定是否继续 */
-    Status = GetVideoInfo(ImageHandle, &BootConfig);
+    Status = GetVideoInfo(ImageHandle, &BootConfig, &VideoSel);
     if (EFI_ERROR(Status)) {
         return Status;
     }
-    Status = SetVideoMode(ImageHandle, &BootConfig.VideoConfig, &BootConfig);
+    Status = SetVideoMode(ImageHandle, &BootConfig.VideoConfig, &BootConfig,
+                          &VideoSel);
     if (EFI_ERROR(Status)) {
         return Status;
     }

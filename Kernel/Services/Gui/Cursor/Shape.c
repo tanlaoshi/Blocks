@@ -16,6 +16,13 @@ static int gGlyphHotY;
 /* 逻辑像素 → 硬件光标位图像素的比例（Num/Den，与绘制变换同源） */
 static UINT32 gGlyphNum = 1;
 static UINT32 gGlyphDen = 1;
+/*
+ * 硬件字形按「物理屏高」取 100% 几何再乘 Num/Den：缩放档只改逻辑屏高，
+ * 若直接按逻辑屏高取几何，150%/200% 的 Head/Stem 会被最小值夹住，物理
+ * 尾巴只长 1.0/1.33 倍而不是 1.5/2 倍（真机表现为「少一点尾巴」）。
+ * 0 = 按当前逻辑屏高（软件光标路径）。
+ */
+static UINT32 gCursorMetricH;
 
 /* 向下取整除法（C 的整数除法向 0 截断，负坐标会差一像素） */
 static int GlyphFloorDiv(int V, UINT32 Den) {
@@ -36,9 +43,14 @@ static int GlyphHotFromLogical(int Min) {
     return (int)(((UINT32)(-Min) * gGlyphNum + gGlyphDen - 1u) / gGlyphDen);
 }
 
-/* 逻辑右/下端点 → 位图内端点（floor，块覆盖 [start, end)） */
+/* 向上取整除法：物理块右/下端点必须用 ceil，floor 会少最后一行/列 */
+static int GlyphCeilDiv(int V, UINT32 Den) {
+    return GlyphFloorDiv(V + (int)Den - 1, Den);
+}
+
+/* 逻辑右/下端点 → 位图内端点（ceil，块覆盖 [start, end)） */
 static int GlyphEndFromLogical(int Max) {
-    return GlyphFloorDiv((Max + 1) * (int)gGlyphNum, gGlyphDen);
+    return GlyphCeilDiv((Max + 1) * (int)gGlyphNum, gGlyphDen);
 }
 
 void CursorMetrics(int *Half, int *Thick) {
@@ -46,7 +58,8 @@ void CursorMetrics(int *Half, int *Thick) {
     UINT32 HalfU;
     int T;
 
-    H = gGuiWindowManager.ScreenHeight != 0 ? gGuiWindowManager.ScreenHeight : CURSOR_REF_H;
+    H = gCursorMetricH != 0 ? gCursorMetricH :
+        (gGuiWindowManager.ScreenHeight != 0 ? gGuiWindowManager.ScreenHeight : CURSOR_REF_H);
     HalfU = (CURSOR_HALF_BASE * H + CURSOR_REF_H / 2u) / CURSOR_REF_H;
     if (HalfU < 4u) {
         HalfU = 4u;
@@ -86,9 +99,9 @@ void CursorPutPixel(int Px, int Py, UINT32 Color) {
          * 半格错位成菱形。宽度用端点相减，与软件路径 PixelSpan 同规则。
          */
         Rx0 = GlyphFloorDiv(RelX * (int)gGlyphNum, gGlyphDen) + gGlyphHotX;
-        Rx1 = GlyphFloorDiv((RelX + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotX;
+        Rx1 = GlyphCeilDiv((RelX + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotX;
         Ry0 = GlyphFloorDiv(RelY * (int)gGlyphNum, gGlyphDen) + gGlyphHotY;
-        Ry1 = GlyphFloorDiv((RelY + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotY;
+        Ry1 = GlyphCeilDiv((RelY + 1) * (int)gGlyphNum, gGlyphDen) + gGlyphHotY;
         if (Rx1 <= Rx0) {
             Rx1 = Rx0 + 1;
         }
@@ -391,6 +404,8 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
     int Ext;
     int NeedW;
     int NeedH;
+    UINT32 Pw;
+    UINT32 Ph;
 
     if (!Out || !HotX || !HotY) {
         return 0;
@@ -407,6 +422,16 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
     if (gGlyphDen == 0) {
         gGlyphDen = 1;
     }
+    /*
+     * 以物理高为 100% 参考，再按 Num/Den 放大。这样 100/150/200% 的
+     * Head/Stem/Wing 同比例，尾巴不会被「Half 下限」吃掉。
+     */
+    HalVideoGetPhysicalSize(&Pw, &Ph);
+    /*
+     * 只对 ≥100% 的档位用物理高参考；50% 保持原来的「不缩小光标」行为，
+     * 避免动到已验收的 B（50% 布局）。
+     */
+    gCursorMetricH = (Ph != 0 && gGlyphNum >= gGlyphDen) ? Ph : 0;
     for (i = 0; i < CURSOR_HW_DIM * CURSOR_HW_DIM; i++) {
         Out[i] = 0;
     }
@@ -442,6 +467,7 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
         }
         if (NeedW > CURSOR_HW_DIM || NeedH > CURSOR_HW_DIM) {
             gGlyphBuf = 0;
+            gCursorMetricH = 0;
             return 0;
         }
         DrawCursorArrow(0, 0);
@@ -465,6 +491,7 @@ int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY) {
     }
 
     gGlyphBuf = 0;
+    gCursorMetricH = 0;
     *HotX = (UINT32)gGlyphHotX;
     *HotY = (UINT32)gGlyphHotY;
     return 1;

@@ -26,6 +26,7 @@
 #define IGPU_REG_CUR_CTL_A     0x70080u
 #define IGPU_REG_CUR_BASE_A    0x70084u
 #define IGPU_REG_CUR_POS_A     0x70088u
+#define IGPU_REG_CUR_FBC_CTL_A 0x700A0u
 #define IGPU_REG_CUR_BUF_CFG_A 0x7017Cu
 #define IGPU_REG_CUR_WM_A0     0x70140u
 /* PLANE_1（primary）BUF/WM；与 PLANE_CTL 0x70180 同管 */
@@ -56,6 +57,7 @@ static UINT32 gHotY;
 static UINT32 gCurCtl;
 static UINT32 gCurBase;
 static UINT32 gCurPos;
+static UINT32 gCurFbc;
 static UINT32 gCurBufCfg;
 static UINT32 gCurWm0;
 static UINT32 gPlaneBufReg;
@@ -80,6 +82,7 @@ static void PickCursorRegs(void) {
     gCurCtl = IGPU_REG_CUR_CTL_A + PipeOff;
     gCurBase = IGPU_REG_CUR_BASE_A + PipeOff;
     gCurPos = IGPU_REG_CUR_POS_A + PipeOff;
+    gCurFbc = IGPU_REG_CUR_FBC_CTL_A + PipeOff;
     gCurBufCfg = IGPU_REG_CUR_BUF_CFG_A + PipeOff;
     gCurWm0 = IGPU_REG_CUR_WM_A0 + PipeOff;
     gPlaneBufReg = IGPU_REG_PLANE_BUF_1_A + PipeOff;
@@ -184,6 +187,7 @@ static int CarveCursorDdb(void) {
     IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
     IgpuMmioWrite32(gCurWm0, gSavedWm0);
     /* CUR 尚未 Enable；BASE 武装留到 Enable / SetPos */
+    IgpuMmioWrite32(gCurFbc, 0);
     IgpuMmioWrite32(gCurCtl, 0);
     IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
 
@@ -230,6 +234,7 @@ static void RestorePlaneDdb(void) {
     if (!IgpuForcewakeGet()) {
         return;
     }
+    IgpuMmioWrite32(gCurFbc, 0);
     IgpuMmioWrite32(gCurCtl, 0);
     IgpuMmioWrite32(gCurBufCfg, 0);
     IgpuMmioWrite32(gCurWm0, gSavedWm0 & ~CUR_WM_EN);
@@ -340,6 +345,7 @@ static void CopyGlyph(const UINT32 *Src, UINT32 W, UINT32 H, UINT32 *Dst) {
 
 static int EnsureBuf(void) {
     UINT64 Flags;
+    UINT32 i;
 
     if (gArgb) {
         return 1;
@@ -355,11 +361,21 @@ static int EnsureBuf(void) {
         gPhys = 0;
         return 0;
     }
-    if (!IgpuGsmMap(IGPU_CUR_GTT_OFF, gPhys)) {
-        gArgb = 0;
-        gPhys = 0;
-        return 0;
+    /*
+     * 光标位图是 64×64×4=16KB，横跨 4 个 4KB GTT 页；IgpuGsmMap() 一次只装
+     * 一个 PTE。旧代码只映第一页 → 硬件只看到前 16 行：100% 的 12 行箭头
+     * 恰好完整，150% 缺尾巴，200% 只剩左上角。必须逐页映射再统一 flush。
+     */
+    for (i = 0; i < IGPU_CUR_PAGES; i++) {
+        UINT64 Off = IGPU_CUR_GTT_OFF + (UINT64)i * 4096ull;
+
+        if (!IgpuGsmMapQuiet(Off, gPhys + (UINT64)i * 4096ull)) {
+            gArgb = 0;
+            gPhys = 0;
+            return 0;
+        }
     }
+    IgpuGsmFlush();
     return 1;
 }
 
@@ -405,6 +421,13 @@ static void LogToPhys(UINT32 Lx, UINT32 Ly, UINT32 *Px, UINT32 *Py) {
 static void ArmCursor(UINT32 Ctl, UINT32 Pos) {
     IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
     IgpuMmioWrite32(gCurWm0, gSavedWm0);
+    /*
+     * IVB+ CUR_FBC_CTL 的 HEIGHT 字段会在方 cursors 之外限制扫描行数：
+     * 固件常留 EN|N（N 可能是 16/24），64×64 位图只有顶部 N 行上屏，
+     * 表现为 150%/200% 放大后「尾巴被裁」「只剩左上角」。i915 对
+     * width==height 写 0；这里同样在每次 ARM 前清零，绝不能沿用固件值。
+     */
+    IgpuMmioWrite32(gCurFbc, 0);
     IgpuMmioWrite32(gCurCtl, Ctl);
     IgpuMmioWrite32(gCurPos, Pos);
     IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
@@ -476,7 +499,21 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
     ArmCursor(MCURSOR_MODE_64_ARGB_AX, EncodePos(0, 0));
 
     gOn = 1;
-    LogDrv("Boot: igpu hw cursor ok cfg=");
+    LogDrv("Boot: igpu hw cursor ok w=");
+    LogDrvHex32(Width);
+    LogDrv(" h=");
+    LogDrvHex32(Height);
+    LogDrv(" hot=");
+    LogDrvHex32(gHotX);
+    LogDrv(",");
+    LogDrvHex32(gHotY);
+    LogDrv(" fbc=");
+    LogDrvHex32(IgpuMmioRead32(gCurFbc));
+    LogDrv(" ctl=");
+    LogDrvHex32(IgpuMmioRead32(gCurCtl));
+    LogDrv(" pte3=");
+    LogDrvHex32((UINT32)IgpuGsmPteRead(IGPU_CUR_GTT_OFF + 3ull * 4096ull));
+    LogDrv(" cfg=");
     LogDrvHex32(gSavedBufCfg);
     LogDrv("\n");
     return 1;

@@ -50,6 +50,7 @@
 #include "EditUi.h"
 #include "Desktop.h"
 #include "Debug.h"
+#include "SerialLog.h"
 
 /* 0：Secondary 未完，不画/不 Present；Reveal 置 1 */
 static int gCursorUsbReady;
@@ -57,6 +58,9 @@ static int gCursorUsbReady;
 static int gHwCursorOn;
 /* 已上载的 Kind；换形重 Enable */
 static int gHwKind = -1;
+/* 已上载位图所用的绘制比例；缩放档切换后必须重栅，不能只换位置 */
+static UINT32 gHwNum = 1;
+static UINT32 gHwDen = 1;
 static UINT32 gHwGlyph[CURSOR_HW_DIM * CURSOR_HW_DIM];
 
 int CursorHwActive(void) {
@@ -74,6 +78,47 @@ static void CursorHwEraseSoftFb(void) {
     HalVideoPresentCursor();
 }
 
+static void CursorHwLogGlyphBBox(const UINT32 *Pix) {
+    UINT32 X;
+    UINT32 Y;
+    int MinX = CURSOR_HW_DIM;
+    int MaxX = -1;
+    int MinY = CURSOR_HW_DIM;
+    int MaxY = -1;
+
+    for (Y = 0; Y < CURSOR_HW_DIM; Y++) {
+        for (X = 0; X < CURSOR_HW_DIM; X++) {
+            if ((Pix[Y * CURSOR_HW_DIM + X] & 0xFF000000u) == 0) {
+                continue;
+            }
+            if ((int)X < MinX) {
+                MinX = (int)X;
+            }
+            if ((int)X > MaxX) {
+                MaxX = (int)X;
+            }
+            if ((int)Y < MinY) {
+                MinY = (int)Y;
+            }
+            if ((int)Y > MaxY) {
+                MaxY = (int)Y;
+            }
+        }
+    }
+    if (MaxX < 0) {
+        LogDrv(" bbox=empty");
+        return;
+    }
+    LogDrv(" bbox=");
+    LogDrvHex32((UINT32)MinX);
+    LogDrv("-");
+    LogDrvHex32((UINT32)MaxX);
+    LogDrv(",");
+    LogDrvHex32((UINT32)MinY);
+    LogDrv("-");
+    LogDrvHex32((UINT32)MaxY);
+}
+
 static int CursorHwUploadKind(int Kind) {
     UINT32 HotX;
     UINT32 HotY;
@@ -85,7 +130,37 @@ static int CursorHwUploadKind(int Kind) {
         return 0;
     }
     gHwKind = Kind;
+    gHwNum = HalVideoGetDrawNum();
+    gHwDen = HalVideoGetDrawDen();
+    LogDrv("Cursor: hw upload kind=");
+    LogDrvHex32((UINT32)Kind);
+    LogDrv(" dim=");
+    LogDrvHex32(CURSOR_HW_DIM);
+    LogDrv(" hot=");
+    LogDrvHex32(HotX);
+    LogDrv(",");
+    LogDrvHex32(HotY);
+    LogDrv(" num=");
+    LogDrvHex32(gHwNum);
+    LogDrv(" den=");
+    LogDrvHex32(gHwDen);
+    CursorHwLogGlyphBBox(gHwGlyph);
+    LogDrv("\n");
     return 1;
+}
+
+/* 缩放档变了：位图边长/内容都变了，必须按新比例重上载 */
+static int CursorHwRatioChanged(void) {
+    UINT32 Num = HalVideoGetDrawNum();
+    UINT32 Den = HalVideoGetDrawDen();
+
+    if (Num == 0) {
+        Num = 1;
+    }
+    if (Den == 0) {
+        Den = 1;
+    }
+    return (Num != gHwNum || Den != gHwDen) ? 1 : 0;
 }
 
 static void CursorHwTryEnable(void) {
@@ -255,8 +330,9 @@ void CursorPaint(void) {
         return;
     }
     if (gHwCursorOn) {
-        /* ResizeBegin 已改 Kind 时补上载（同坐标 CursorMove 会早退） */
-        if (gGuiWindowManager.CursorKind != gHwKind) {
+        /* 缩放档或 Kind 变了都要补上载（同坐标 CursorMove 会早退） */
+        if (CursorHwRatioChanged() ||
+            gGuiWindowManager.CursorKind != gHwKind) {
             (void)CursorHwUploadKind(gGuiWindowManager.CursorKind);
         }
         HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
@@ -306,8 +382,8 @@ void CursorMove(UINT32 X, UINT32 Y) {
         gGuiWindowManager.CursorX = X;
         gGuiWindowManager.CursorY = Y;
         gGuiWindowManager.CursorKind = NewKind;
-        if (NewKind != gHwKind) {
-            /* 换形失败保留旧字形，勿半截回软 */
+        if (CursorHwRatioChanged() || NewKind != gHwKind) {
+            /* 换形/换缩放失败保留旧字形，勿半截回软 */
             (void)CursorHwUploadKind(NewKind);
         }
         HalVideoHwCursorSetPos(X, Y);

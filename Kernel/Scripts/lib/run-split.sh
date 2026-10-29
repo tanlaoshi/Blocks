@@ -167,6 +167,13 @@ if [ "${HEADLESS:-0}" = 1 ] || [ "${NO_REBOOT:-0}" = 1 ]; then
     NO_REBOOT_ARGS=(-no-reboot)
 fi
 
+# QEMU_EXTRA="-accel kvm" → 追加到 qemu 命令末尾（计时/复现用）
+EXTRA_ARGS=()
+if [ -n "${QEMU_EXTRA:-}" ]; then
+    # shellcheck disable=SC2206
+    EXTRA_ARGS=(${QEMU_EXTRA})
+fi
+
 MEM="${MEM:-1024M}"
 toy_qemu_info "qemu: mem=${MEM}"
 
@@ -187,4 +194,5 @@ qemu-system-x86_64 \
     -netdev "${NETDEV_ARGS[@]}" \
     "${NET_ARGS[@]}" \
     -serial stdio \
-    "${NO_REBOOT_ARGS[@]}"
+    "${NO_REBOOT_ARGS[@]}" \
+    "${EXTRA_ARGS[@]}"

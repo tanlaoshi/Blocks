@@ -29,10 +29,10 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
     BootDbg("Boot: Found %d PCI Devices\n", HandleCount);
 
     for (i = 0; i < HandleCount; i++) {
-        EFI_PCI_IO_PROTOCOL *PciIo;
-        UINT32 VendorID;
-        UINT32 DeviceID;
-        UINT32 ClassCode;
+        EFI_PCI_IO_PROTOCOL *PciIo = NULL;
+        UINT16 VendorID = 0;
+        UINT16 DeviceID = 0;
+        UINT32 ClassCode = 0;
         UINT8 Class;
         UINT8 Subclass;
         UINT8 ProgIF;
@@ -44,34 +44,55 @@ EFI_STATUS GetXhciBaseAddress(UINT64 *XhciBase) {
             continue;
         }
 
-        PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x00, 1, &VendorID);
-        PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x02, 1, &DeviceID);
-        PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x08, 1, &ClassCode);
+        /*
+         * 每次读都判返回值：读失败的设备直接跳过。
+         * VID/DID 各读 16 位，不再靠「根桥把地址 bit1:0 清零 + >>16」的实现细节。
+         */
+        Status = PciIo->Pci.Read(PciIo, EfiPciIoWidthUint16, 0x00, 1, &VendorID);
+        if (EFI_ERROR(Status)) {
+            BootDbg("Boot: Pci.Read VID Failed: %r\n", Status);
+            continue;
+        }
+        Status = PciIo->Pci.Read(PciIo, EfiPciIoWidthUint16, 0x02, 1, &DeviceID);
+        if (EFI_ERROR(Status)) {
+            BootDbg("Boot: Pci.Read DID Failed: %r\n", Status);
+            continue;
+        }
+        Status = PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x08, 1, &ClassCode);
+        if (EFI_ERROR(Status)) {
+            BootDbg("Boot: Pci.Read Class Failed: %r\n", Status);
+            continue;
+        }
 
         Class = (UINT8)((ClassCode >> 24) & 0xFF);
         Subclass = (UINT8)((ClassCode >> 16) & 0xFF);
         ProgIF = (UINT8)((ClassCode >> 8) & 0xFF);
 
-#if BOOT_DEBUG
         BootDbg("Boot: Device %d: VID=0x%04x DID=0x%04x Class=0x%02x Sub=0x%02x ProgIF=0x%02x\n",
-              i, VendorID & 0xFFFF, (DeviceID >> 16) & 0xFFFF, Class, Subclass, ProgIF);
-#else
-        (void)VendorID;
-        (void)DeviceID;
-#endif
+              i, VendorID, DeviceID, Class, Subclass, ProgIF);
 
         /* XHCI = USB serial bus class, xHCI ProgIF 0x30 */
         if (Class == 0x0C && Subclass == 0x03 && ProgIF == 0x30) {
-            UINT32 Bar0;
+            UINT32 Bar0 = 0;
             UINT64 Address;
-            UINT16 Vid = (UINT16)(VendorID & 0xFFFF);
-            UINT16 Did = (UINT16)((DeviceID >> 16) & 0xFFFF);
+            UINT16 Vid = VendorID;
+            UINT16 Did = DeviceID;
 
-            PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x10, 1, &Bar0);
+            Status = PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x10, 1, &Bar0);
+            if (EFI_ERROR(Status)) {
+                /* BAR 读不出来就不能把地址交给内核 */
+                BootDbg("Boot: Pci.Read BAR0 Failed: %r\n", Status);
+                continue;
+            }
             Address = Bar0 & 0xFFFFFFF0U;
             if ((Bar0 & 0x6) == 0x4) {
-                UINT32 Bar1;
-                PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x14, 1, &Bar1);
+                UINT32 Bar1 = 0;
+
+                Status = PciIo->Pci.Read(PciIo, EfiPciIoWidthUint32, 0x14, 1, &Bar1);
+                if (EFI_ERROR(Status)) {
+                    BootDbg("Boot: Pci.Read BAR1 Failed: %r\n", Status);
+                    continue;
+                }
                 Address |= ((UINT64)Bar1 << 32);
             }
 

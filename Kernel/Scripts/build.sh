@@ -2,11 +2,11 @@
 # build.sh — build.sh [<blocks|boot|sdk|all>] [<x86|arm64|riscv>] [KEY=VAL…]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/toyos-common.sh
-. "$HERE/lib/toyos-common.sh"
+# shellcheck source=lib/blocks-common.sh
+. "$HERE/lib/blocks-common.sh"
 
-ROOT="$(toyos_resolve_root "$0")"
-toyos_load_config "$ROOT"
+ROOT="$(blocks_resolve_root "$0")"
+blocks_load_config "$ROOT"
 
 TARGET="${DEFAULT_TARGET:-blocks}"
 ARCH_IN="${DEFAULT_ARCH:-x86}"
@@ -19,7 +19,7 @@ for A in "$@"; do
         *=*)
             ARGS+=("$A")
             ;;
-        blocks|toyos|toyboot|sdk|all|kernel|boot)
+        blocks|sdk|all|kernel|boot)
             if [ "$GOT_TARGET" = 0 ]; then
                 TARGET="$A"
                 GOT_TARGET=1
@@ -41,48 +41,48 @@ for A in "$@"; do
     esac
 done
 
-KARCH="$(toyos_arch_kernel "$ARCH_IN")"
+KARCH="$(blocks_arch_kernel "$ARCH_IN")"
 
-build_toyos() {
-    echo "==> ToyKernel ($KARCH) @ $ROOT/ToyKernel"
+build_blocks() {
+    echo "==> Kernel ($KARCH) @ $ROOT/Kernel"
     if [ "${#ARGS[@]}" -gt 0 ]; then
-        (cd "$ROOT/ToyKernel" && ./build.sh "$KARCH" "${ARGS[@]}")
+        (cd "$ROOT/Kernel" && ./build.sh "$KARCH" "${ARGS[@]}")
     else
-        (cd "$ROOT/ToyKernel" && ./build.sh "$KARCH")
+        (cd "$ROOT/Kernel" && ./build.sh "$KARCH")
     fi
 }
 
-build_toyboot() {
-    echo "==> ToyBoot @ $ROOT/ToyBoot (EDK2_SRC=${EDK2_SRC:-auto})"
+build_boot() {
+    echo "==> Boot @ $ROOT/Boot (EDK2_SRC=${EDK2_SRC:-auto})"
     export BLOCKS_ROOT="$ROOT"
     if [ -n "${EDK2_SRC:-}" ]; then
         export EDK2_SRC
     fi
     if [ "${#ARGS[@]}" -gt 0 ]; then
-        (cd "$ROOT/ToyBoot" && ./build.sh "${ARGS[@]}")
+        (cd "$ROOT/Boot" && ./build.sh "${ARGS[@]}")
     else
-        (cd "$ROOT/ToyBoot" && ./build.sh)
+        (cd "$ROOT/Boot" && ./build.sh)
     fi
 }
 
 build_sdk() {
-    local Sdk="$ROOT/ToyKernel/Tools/build-sdk.sh"
-    [ -f "$Sdk" ] || toyos_die "无 $Sdk"
+    local Sdk="$ROOT/Kernel/Tools/build-sdk.sh"
+    [ -f "$Sdk" ] || blocks_die "无 $Sdk"
     echo "==> SDK"
     if [ "${#ARGS[@]}" -gt 0 ]; then
-        (cd "$ROOT/ToyKernel" && bash Tools/build-sdk.sh "${ARGS[@]}")
+        (cd "$ROOT/Kernel" && bash Tools/build-sdk.sh "${ARGS[@]}")
     else
-        (cd "$ROOT/ToyKernel" && bash Tools/build-sdk.sh)
+        (cd "$ROOT/Kernel" && bash Tools/build-sdk.sh)
     fi
 }
 
 case "$TARGET" in
-    blocks|toyos|kernel) build_toyos ;;
-    toyboot|boot) build_toyboot ;;
+    blocks|kernel) build_blocks ;;
+    boot) build_boot ;;
     sdk) build_sdk ;;
     all)
-        build_toyos
-        build_toyboot
+        build_blocks
+        build_boot
         ;;
-    *) toyos_die "未知目标: $TARGET（blocks|boot|sdk|all）" ;;
+    *) blocks_die "未知目标: $TARGET（blocks|boot|sdk|all）" ;;
 esac

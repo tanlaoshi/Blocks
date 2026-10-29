@@ -1,13 +1,13 @@
 #!/bin/bash
 # trim-edk2.sh — BOX-6：从备份 edk2 裁出无 .git 的 Boot 子集到 $BLOCKS_ROOT/EDK2
 # 用法：
-#   ./OpenBox/trim-edk2.sh [源edk2] [目标TOYOS根]
-# 默认源 = EDK2_SRC 或 OpenBox 上两级；目标 = $BLOCKS_ROOT 或 $HOME/ToyOS
+#   ./OpenBox/trim-edk2.sh [源edk2] [目标BLOCKS根]
+# 默认源 = EDK2_SRC 或 OpenBox 上两级；目标 = $BLOCKS_ROOT 或 $HOME/Blocks
 set -euo pipefail
 
 OPENBOX="$(cd "$(dirname "$0")" && pwd)"
 SRC_DEFAULT="$(cd "$OPENBOX/../.." && pwd)"
-DST_ROOT="${2:-${BLOCKS_ROOT:-$HOME/ToyOS}}"
+DST_ROOT="${2:-${BLOCKS_ROOT:-$HOME/Blocks}}"
 SRC="${1:-}"
 
 if [ -z "$SRC" ]; then
@@ -74,7 +74,7 @@ for F in edksetup.sh License.txt; do
     fi
 done
 
-# ToyBoot 包：链到树内独立仓（改 Boot 只改 ~/ToyOS/ToyBoot）
+# ToyBoot 包：链到树内独立仓（改 Boot 只改 ~/Blocks/ToyBoot）
 ln -sfn "$(cd "$DST_ROOT/ToyBoot" && pwd)" "$DST/ToyBoot"
 echo "  + ToyBoot → $DST_ROOT/ToyBoot"
 

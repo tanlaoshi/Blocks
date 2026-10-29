@@ -12,14 +12,14 @@
 # 真机「桌面可点」另记墙钟（见 ToyKernel Archive/开发/开机流程与加速.md §7）。
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 RUNS="${1:-1}"
 TIMEOUT_SEC="${MEASURE_TIMEOUT:-90}"
-STAMP_DIR="${MEASURE_DIR:-/tmp/toyos-boot-measure}"
+STAMP_DIR="${MEASURE_DIR:-/tmp/blocks-boot-measure}"
 mkdir -p "$STAMP_DIR"
 
 if [ ! -f RootFs/X64/Kernel.elf ]; then

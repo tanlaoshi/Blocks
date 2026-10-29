@@ -15,9 +15,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-. "$SCRIPT_DIR/toyos-common.sh"
+. "$SCRIPT_DIR/blocks-common.sh"
 ROOT="$SCRIPT_DIR"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 DEVICE=""
 DO_YES=0
 DO_SYNC=0

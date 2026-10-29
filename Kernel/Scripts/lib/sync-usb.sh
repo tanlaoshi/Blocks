@@ -17,9 +17,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+ROOT="$(blocks_image_root "$0")"
 DO_BUILD=0
 KERNEL_ONLY=0
 
@@ -167,44 +167,6 @@ require_usb_mnt() {
   return 0
 }
 
-# 旧盘 LABEL=TOYOS → 一次性改成 BLOCKS（不兼容旧标；需 sudo 写块设备）
-relabel_legacy_toyos_to_blocks() {
-  local Dev Mnt
-  if [[ -n "$(find_label_dev BLOCKS || true)" ]]; then
-    return 0
-  fi
-  Dev="$(find_label_dev TOYOS || true)"
-  if [[ -z "$Dev" ]]; then
-    return 0
-  fi
-  echo "relabel: $Dev LABEL=TOYOS → BLOCKS (needs sudo once)" >&2
-  Mnt="$(lsblk -ln -o MOUNTPOINT "$Dev" 2>/dev/null | awk 'NF{print; exit}')"
-  if [[ -n "$Mnt" && "$Mnt" != "-" ]]; then
-    if command -v udisksctl >/dev/null 2>&1; then
-      udisksctl unmount -b "$Dev" >/dev/null
-    else
-      umount "$Dev" 2>/dev/null || sudo umount "$Dev"
-    fi
-  fi
-  if ! command -v fatlabel >/dev/null 2>&1 && ! command -v dosfslabel >/dev/null 2>&1; then
-    echo "error: need fatlabel (dosfstools) to rename volume" >&2
-    return 1
-  fi
-  if command -v fatlabel >/dev/null 2>&1; then
-    sudo fatlabel "$Dev" BLOCKS
-  else
-    sudo dosfslabel "$Dev" BLOCKS
-  fi
-  udevadm settle 2>/dev/null || sleep 1
-  if command -v udisksctl >/dev/null 2>&1; then
-    udisksctl mount -b "$Dev" >/dev/null || true
-  fi
-  if [[ -z "$(find_label_dev BLOCKS || true)" ]]; then
-    echo "error: relabel failed; no USB LABEL=BLOCKS" >&2
-    return 1
-  fi
-  echo "relabel: ok → $(find_label_dev BLOCKS) LABEL=BLOCKS" >&2
-}
 
 # 桌面常只挂数据卷、不挂 ESP；UEFI 却从 ESP 启动 → 只改数据卷等于白改。
 # 优先 udisksctl（免 root，挂到 /media/$USER/…）；再试 /mnt/blocks-*。
@@ -259,8 +221,6 @@ ensure_label_mounted() {
 ESP_MNT="${ESP_MNT:-}"
 BLOCKS_MNT="${BLOCKS_MNT:-}"
 
-# 先把遗留 TOYOS 卷标改成 BLOCKS，再找挂载点
-relabel_legacy_toyos_to_blocks
 
 if [[ -z "$ESP_MNT" ]]; then
   ESP_MNT="$(find_label_mnt ESP || true)"
@@ -308,7 +268,7 @@ fi
 if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   if [[ "$DO_BUILD" -eq 1 ]]; then
     echo "== build Kernel =="
-    (cd "$ROOT/../ToyKernel" && ./build.sh)
+    (cd "$ROOT/Kernel" && ./build.sh)
   fi
   if [[ ! -d "$BLOCKS_MNT" ]]; then
     echo "error: BLOCKS mount missing: $BLOCKS_MNT" >&2
@@ -320,7 +280,7 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   SRC=""
   for C in \
-    "$(toyos_kernel_build_dir "$(toyos_resolve_root "$0")")/HAL/X64/Kernel.elf" \
+    "$(blocks_kernel_build_dir "$(blocks_resolve_root "$0")")/HAL/X64/Kernel.elf" \
     "$ROOT/RootFs/X64/Kernel.elf"
   do
     if [[ -f "$C" ]]; then SRC="$C"; break; fi
@@ -410,12 +370,12 @@ echo "Blocks -> $BLOCKS_MNT"
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
   echo "== build Kernel =="
-  (cd "$ROOT/../ToyKernel" && ./build.sh)
+  (cd "$ROOT/Kernel" && ./build.sh)
   echo "== build Boot =="
-  if [[ -x "$ROOT/../ToyBoot/build.sh" ]]; then
-    (cd "$ROOT/../ToyBoot" && ./build.sh)
+  if [[ -x "$ROOT/Boot/build.sh" ]]; then
+    (cd "$ROOT/Boot" && ./build.sh)
   else
-    echo "warning: ToyBoot/build.sh missing; keep existing BOOTX64.EFI" >&2
+    echo "warning: Boot/build.sh missing; keep existing BOOTX64.EFI" >&2
   fi
 fi
 
@@ -424,7 +384,7 @@ echo "== prepare-rootfs =="
 
 BOOT_EFI="$ROOT/Esp/X64/EFI/BOOT/BOOTX64.EFI"
 if [[ "$SKIP_ESP" -eq 0 && ! -f "$BOOT_EFI" ]]; then
-  echo "error: missing $BOOT_EFI — build ToyBoot" >&2
+  echo "error: missing $BOOT_EFI — build Boot" >&2
   exit 1
 fi
 

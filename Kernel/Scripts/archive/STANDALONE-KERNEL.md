@@ -11,7 +11,7 @@ cd /path/to/ToyKernel          # 例如 $BLOCKS_ROOT/ToyKernel 或任意拷贝
 ./build.sh                     # 默认 x86_64 → Build/HAL/X64/Kernel.elf（单仓）
 # ./build.sh arm64 LWIP=0
 # ./build.sh riscv LWIP=0
-# 旁有 ToyOS 树根时产物在 $BLOCKS_ROOT/Build/ToyKernel/
+# 旁有 Blocks 树根时产物在 $BLOCKS_ROOT/Build/ToyKernel/
 ```
 
 - 若旁边有 `../ToyImage/RootFs/…`：编完会同步 `Kernel.elf`（便利，非硬依赖）。  

@@ -76,7 +76,7 @@ require() {
     return 1
 }
 
-# 盘上 Locale 与内建 fallback 均为 Blocks；旧 ToyOS 串不再认（品牌刀后）
+# 盘上 Locale 与内建 fallback 均为 Blocks；旧 Blocks 串不再认（品牌刀后）
 READY_RE='Blocks ready|Blocks 就绪'
 i=0
 while [ "$i" -lt "$TIMEOUT_SEC" ]; do

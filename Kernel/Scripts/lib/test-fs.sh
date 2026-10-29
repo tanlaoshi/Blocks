@@ -10,7 +10,7 @@
 # 动作：write+cat 内容一致 / mkdir+ls 目录在 / rmdir 目录消失 / wrbig 大文件写完。
 # 运行：./Scripts/test-fs.sh  （需 expect）
 
-set LOG "/tmp/toyos-test-fs.log"
+set LOG "/tmp/blocks-test-fs.log"
 
 # ---- 超时（秒）----
 set BOOT_TO   90

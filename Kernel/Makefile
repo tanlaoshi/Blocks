@@ -297,7 +297,7 @@ LDFLAGS = -nostdlib -static -z noexecstack -T $(LDSCRIPT) -e KernelEntry $(LDFLA
 LIBGCC := $(shell $(CC) $(ARCH_CFLAGS) -print-libgcc-file-name 2>/dev/null)
 
 # 产物树：Common、Services、Library、Core、User、Fonts 与 HAL 同级；HAL 下按 Arch 分目录。
-# 有 ToyOS 树时由 build.sh 传入 BUILDDIR=$TOYOS_ROOT/Build/ToyKernel；单仓默认 ./Build。
+# 有 Blocks 树时由 build.sh 传入 BUILDDIR=$BLOCKS_ROOT/Build/ToyKernel；单仓默认 ./Build。
 # 各 Arch 的 Kernel.elf / HAL .o 留在 $(BUILDDIR)/HAL/<Arch>/，换架构不删其它 Arch 成品。
 BUILDDIR ?= Build
 HALDIR = $(BUILDDIR)/HAL/$(HAL_ARCH)
@@ -726,7 +726,7 @@ endif
 # PR-B3：扁平二进制（U-Boot load / go；非 Linux Image 头）
 kernel-bin: $(TARGET)
 ifeq ($(ARCH),x86_64)
-	$(error kernel-bin: x86 uses ELF via ToyBoot; not applicable)
+	$(error kernel-bin: x86 uses ELF via Boot; not applicable)
 endif
 	$(OBJCOPY) -O binary $(TARGET) $(HALDIR)/Kernel.bin
 	@echo "Wrote $(HALDIR)/Kernel.bin (BOARD=$(BOARD))"

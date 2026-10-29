@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ToyOS 坏味道静态检查（P0）
+# Blocks 坏味道静态检查（P0）
 # 用法：bash Scripts/check-smells.sh [--strict]
 # 退出码：0 = 无违规或非严格；1 = 有违规且 --strict；2 = 环境缺依赖
 set -u
@@ -8,7 +8,7 @@ STRICT=0
 [ "${1:-}" = "--strict" ] && STRICT=1
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# ToyOS/Scripts → $BLOCKS_ROOT/ToyKernel；Kernel/Scripts → Kernel；仓根 Scripts 旁挂 Common
+# Blocks/Scripts → $BLOCKS_ROOT/ToyKernel；Kernel/Scripts → Kernel；仓根 Scripts 旁挂 Common
 if [ -d "$HERE/../ToyKernel/Common" ]; then
     KER="$(cd "$HERE/../ToyKernel" && pwd)"
 elif [ -d "$HERE/../../Common" ]; then

@@ -1,13 +1,13 @@
 #!/bin/bash
 # Install a user .desktop entry so GNOME Dock shows the QEMU icon
 # instead of a generic gear when launched from the terminal (Wayland).
-install_toyos_dock_icon() {
+install_blocks_dock_icon() {
     # CI / headless：勿写宿主桌面文件
     if [ "${HEADLESS:-0}" = 1 ]; then
         return 0
     fi
     local Apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-    local Desktop="$Apps/toyos-qemu.desktop"
+    local Desktop="$Apps/blocks-qemu.desktop"
     local Icon=qemu
     if [ ! -f /usr/share/icons/hicolor/scalable/apps/qemu.svg ] && \
        [ ! -f /usr/share/icons/hicolor/32x32/apps/qemu.png ]; then

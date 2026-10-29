@@ -4,9 +4,9 @@
 # （QEMU fat:rw/vvfat 与 virtio-net 同机时会破坏 TX；N10 改用真 FAT 镜像）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 ARCH="${VIRT_MAKE_ARCH:-}"
@@ -91,7 +91,7 @@ rm -rf "$ROOT/Assets/Store" "$ROOT/StoreCache"
 rm -f "$ROOT/WALL.BMP"
 
 # PR-A12：本 arch 用户 HELLO 覆盖盘上的 x86 机型
-HELLO_SRC="$(toyos_kernel_build_dir "$(toyos_resolve_root "$0")")/HAL/$HAL_ARCH/user/hello.elf"
+HELLO_SRC="$(blocks_kernel_build_dir "$(blocks_resolve_root "$0")")/HAL/$HAL_ARCH/user/hello.elf"
 if [ -f "$HELLO_SRC" ]; then
     cp -f "$HELLO_SRC" "$ROOT/HELLO.ELF"
 elif [ -f "$ROOT/HELLO.ELF" ] && [ -n "$ARCH" ]; then

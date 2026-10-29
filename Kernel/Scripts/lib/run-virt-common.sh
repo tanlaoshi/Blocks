@@ -48,8 +48,8 @@ toy_virt_paths() {
     if [ -z "${BLOCKS_ROOT:-}" ] && [ -n "${KERNEL:-}" ]; then
         BLOCKS_ROOT="$(cd "$KERNEL/.." && pwd)"
     fi
-    if type toyos_kernel_build_dir >/dev/null 2>&1; then
-        KERNEL_BUILD="$(toyos_kernel_build_dir "$BLOCKS_ROOT" "$KERNEL")"
+    if type blocks_kernel_build_dir >/dev/null 2>&1; then
+        KERNEL_BUILD="$(blocks_kernel_build_dir "$BLOCKS_ROOT" "$KERNEL")"
     elif [ -d "${KERNEL:-}/Build" ]; then
         KERNEL_BUILD="$KERNEL/Build"
         mkdir -p "$KERNEL_BUILD"
@@ -57,7 +57,7 @@ toy_virt_paths() {
         KERNEL_BUILD="$BLOCKS_ROOT/Kernel/Build"
         mkdir -p "$KERNEL_BUILD"
     else
-        # 旧 ToyOS 旁挂树；Blocks 单仓勿落仓顶 Build/
+        # 旧 Blocks 旁挂树；Blocks 单仓勿落仓顶 Build/
         KERNEL_BUILD="${KERNEL:-.}/Build"
         mkdir -p "$KERNEL_BUILD"
     fi
@@ -66,7 +66,7 @@ toy_virt_paths() {
 
 toy_virt_usage() {
     cat <<'EOF'
-ToyOS virt 验收（自有 Boot；脚本在 ToyImage，内核在 ../ToyKernel）
+Blocks virt 验收（自有 Boot；脚本在 ToyImage，内核在 ../ToyKernel）
 
   ./Scripts/run-virt-arm.sh | ./Scripts/run-virt-riscv.sh [选项] [Kernel.elf]
 
@@ -323,7 +323,7 @@ toy_virt_smoke_ok() {
     if [ "${VIRT_NODISK:-0}" = "1" ]; then
         return 0
     fi
-    if ! grep -qiE 'default=TOYOS|TOYOS:|THEME' "$Out" 2>/dev/null; then
+    if ! grep -qiE 'default=BLOCKS|BLOCKS:|THEME' "$Out" 2>/dev/null; then
         return 1
     fi
     # PR-A13：真 timer IRQ 横幅

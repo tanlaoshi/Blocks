@@ -2,9 +2,9 @@
 # PR-Q1：无头冒烟 — 清残留 QEMU、默认单核、等到串口出现 Blocks ready
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 export KILL_QEMU=1
@@ -12,7 +12,7 @@ export HEADLESS=1
 export NO_HOSTFWD=1
 export SMP="${SMP:-1}"
 TIMEOUT_SEC="${SMOKE_TIMEOUT:-90}"
-LOG="${SMOKE_LOG:-/tmp/toyos-smoke-$$.log}"
+LOG="${SMOKE_LOG:-/tmp/blocks-smoke-$$.log}"
 
 cleanup() {
     pkill -9 -f 'qemu-system-x86_64.*Blocks' 2>/dev/null || \

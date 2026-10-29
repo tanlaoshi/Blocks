@@ -9,7 +9,7 @@
 #
 # 运行：./Scripts/test-shell.sh  （需先 sudo apt install expect）
 
-set LOG "/tmp/toyos-test-shell.log"
+set LOG "/tmp/blocks-test-shell.log"
 
 # ---- 超时（秒）----
 set BOOT_TO   90

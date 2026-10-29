@@ -20,9 +20,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+ROOT="$(blocks_image_root "$0")"
 DO_BUILD=0
 KERNEL_ONLY=0
 DO_BOOT=0
@@ -184,7 +184,7 @@ ensure_blocks_mounted() {
 
 pick_kernel_src() {
   local Bld Rfs
-  Bld="$(toyos_kernel_build_dir "$(toyos_resolve_root "$0")")/HAL/X64/Kernel.elf"
+  Bld="$(blocks_kernel_build_dir "$(blocks_resolve_root "$0")")/HAL/X64/Kernel.elf"
   Rfs="$ROOT/RootFs/X64/Kernel.elf"
   if [[ -f "$Bld" && -f "$Rfs" ]]; then
     if [[ "$Bld" -nt "$Rfs" ]]; then

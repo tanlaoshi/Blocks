@@ -3,7 +3,7 @@
 # test-enosys.sh — 开课前：未知 syscall → -ENOSYS（Guest ENOSYS.ELF）
 # 在 ToyImage 根跑：./Scripts/test-enosys.sh（需 expect；ELF 由 ToyKernel ./build.sh 同步）
 #
-set LOG "/tmp/toyos-test-enosys.log"
+set LOG "/tmp/blocks-test-enosys.log"
 set BOOT_TO 90
 set PROMPT_TO 10
 set CMD_TO 20

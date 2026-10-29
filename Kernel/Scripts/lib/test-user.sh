@@ -9,7 +9,7 @@
 #
 # 运行：./Scripts/test-user.sh  （需 expect）
 
-set LOG "/tmp/toyos-test-user.log"
+set LOG "/tmp/blocks-test-user.log"
 
 # ---- 超时（秒）----
 set BOOT_TO   90

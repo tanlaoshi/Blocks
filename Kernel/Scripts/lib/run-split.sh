@@ -18,13 +18,13 @@
 #   USB_UHCI=1 ./Scripts/run-split.sh  # piix3-usb-uhci + mouse（PR-H-uhci-1）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 . "$SCRIPT_DIR/dock-icon.sh"
-install_toyos_dock_icon || true
+install_blocks_dock_icon || true
 # shellcheck source=toy-qemu-lib.sh
 . "$SCRIPT_DIR/toy-qemu-lib.sh"
 
@@ -80,7 +80,7 @@ fi
 
 MSC_DISK_ARGS=()
 if [ "${USB_MSC:-0}" = 1 ]; then
-    if [ ! -d Msc ] || { [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/TOYOS.ID ]; }; then
+    if [ ! -d Msc ] || { [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/BLOCKS.ID ]; }; then
         echo "error: USB_MSC=1 needs Msc/BLOCKS.ID" >&2
         exit 1
     fi
@@ -134,7 +134,7 @@ if [ "${INSTALL_DISK:-0}" = 1 ]; then
         echo "error: INSTALL_DISK=1 requires DISK=ahci (third AHCI port)" >&2
         exit 1
     fi
-    INSTALL_IMG="${INSTALL_IMG:-/tmp/toyos-install-target.img}"
+    INSTALL_IMG="${INSTALL_IMG:-/tmp/blocks-install-target.img}"
     INSTALL_MIB="${INSTALL_MIB:-512}"
     if [ ! -f "$INSTALL_IMG" ]; then
         toy_qemu_info "qemu: create $INSTALL_IMG (${INSTALL_MIB}MiB)"

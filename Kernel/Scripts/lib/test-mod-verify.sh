@@ -3,8 +3,8 @@
 # 用法：从树根 ./Scripts/test-mod-verify.sh（或 test.sh mod-verify）
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-. "$SCRIPT_DIR/toyos-common.sh"
-cd "$(toyos_image_root "$0")"
+. "$SCRIPT_DIR/blocks-common.sh"
+cd "$(blocks_image_root "$0")"
 export SMP="${SMP:-1}"
 
 need_expect() {

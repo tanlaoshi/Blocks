@@ -5,9 +5,9 @@
 # 约 1 分钟；进度在终端；成功后自动结束（不必 Ctrl+C）
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 cleanup() {
@@ -18,7 +18,7 @@ trap cleanup EXIT
 echo "smoke-install: kill leftover QEMU..."
 cleanup
 sleep 0.5
-rm -f /tmp/toyos-install-target.img
+rm -f /tmp/blocks-install-target.img
 
 export KILL_QEMU=1 HEADLESS=1 SMP=1 NO_HOSTFWD=1
 export DISK=ahci INSTALL_DISK=1 INSTALL_MIB=512

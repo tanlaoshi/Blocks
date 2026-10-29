@@ -2,14 +2,14 @@
 # prepare-fs.sh — prepare-fs.sh [<x86|arm64|riscv>]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/toyos-common.sh
-. "$HERE/lib/toyos-common.sh"
+# shellcheck source=lib/blocks-common.sh
+. "$HERE/lib/blocks-common.sh"
 
-ROOT="$(toyos_resolve_root "$0")"
-toyos_load_config "$ROOT"
-LIB="$(toyos_scripts_lib "$0")"
+ROOT="$(blocks_resolve_root "$0")"
+blocks_load_config "$ROOT"
+LIB="$(blocks_scripts_lib "$0")"
 ARCH_IN="${1:-${DEFAULT_ARCH:-x86}}"
-KARCH="$(toyos_arch_kernel "$ARCH_IN")"
+KARCH="$(blocks_arch_kernel "$ARCH_IN")"
 
 case "$KARCH" in
     x86_64)
@@ -21,5 +21,5 @@ case "$KARCH" in
         export VIRT_MAKE_ARCH="$KARCH"
         "$LIB/prepare-virt-rootfs.sh"
         ;;
-    *) toyos_die "prepare-fs: 未知 arch $ARCH_IN" ;;
+    *) blocks_die "prepare-fs: 未知 arch $ARCH_IN" ;;
 esac

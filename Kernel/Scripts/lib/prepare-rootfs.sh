@@ -3,15 +3,15 @@
 # 规范：Kernel.elf / THEME.CFG / 用户 ELF 只在 RootFs/X64；ESP 在 Esp/X64。
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 
 ROOT=RootFs/X64
 mkdir -p "$ROOT"
 
-BUILD_KERNEL="$(toyos_kernel_build_dir "$(toyos_resolve_root "$0")")/HAL/X64/Kernel.elf"
+BUILD_KERNEL="$(blocks_kernel_build_dir "$(blocks_resolve_root "$0")")/HAL/X64/Kernel.elf"
 if [ ! -f "$BUILD_KERNEL" ] && [ ! -f "$ROOT/Kernel.elf" ]; then
     echo "Missing Kernel.elf — build ToyKernel first (→ $ROOT/)" >&2
     exit 1
@@ -59,8 +59,8 @@ if [ -f "$ROOT/BLOCKS.DB" ] && [ ! -w "$ROOT/BLOCKS.DB" ]; then
 fi
 
 # PR-UI-ttf：仓库种子 Tools/Fonts/CJK.TTF → Assets（真子集优先；缺则 gen stub）
-SEED="$(toyos_resolve_root "$0")/ToyKernel/Tools/Fonts/CJK.TTF"
-GEN_STUB="$(toyos_resolve_root "$0")/ToyKernel/Tools/Scripts/gen-cjk-ttf-stub.py"
+SEED="$(blocks_resolve_root "$0")/ToyKernel/Tools/Fonts/CJK.TTF"
+GEN_STUB="$(blocks_resolve_root "$0")/ToyKernel/Tools/Scripts/gen-cjk-ttf-stub.py"
 mkdir -p Assets/Fonts
 if [ -f "$SEED" ]; then
     cp -f "$SEED" Assets/Fonts/CJK.TTF

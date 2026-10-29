@@ -3,13 +3,13 @@
 # 套件: smoke | smoke-virt | smoke-install | smoke-msc | fs | user | shell | enosys | mod-verify | all | unit
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=../lib/toyos-common.sh
-. "$HERE/../lib/toyos-common.sh"
+# shellcheck source=../lib/blocks-common.sh
+. "$HERE/../lib/blocks-common.sh"
 
-ROOT="$(toyos_resolve_root "$0")"
-toyos_load_config "$ROOT"
-LIB="$(toyos_scripts_lib "$0")"
-IMG="$(toyos_image_root "$0")"
+ROOT="$(blocks_resolve_root "$0")"
+blocks_load_config "$ROOT"
+LIB="$(blocks_scripts_lib "$0")"
+IMG="$(blocks_image_root "$0")"
 
 SUITE="${1:-smoke}"
 shift || true
@@ -21,14 +21,14 @@ for A in "$@"; do
         *) ARGS+=("$A") ;;
     esac
 done
-KARCH="$(toyos_arch_kernel "$ARCH_IN")"
+KARCH="$(blocks_arch_kernel "$ARCH_IN")"
 
 case "$SUITE" in
     smoke)
         case "$KARCH" in
             x86_64) "$LIB/smoke-boot.sh" "${ARGS[@]+"${ARGS[@]}"}" ;;
             arm64|riscv) "$LIB/smoke-virt.sh" "${ARGS[@]+"${ARGS[@]}"}" ;;
-            *) toyos_die "smoke: 不支持 arch=$ARCH_IN" ;;
+            *) blocks_die "smoke: 不支持 arch=$ARCH_IN" ;;
         esac
         ;;
     smoke-virt) "$LIB/smoke-virt.sh" "${ARGS[@]+"${ARGS[@]}"}" ;;
@@ -47,5 +47,5 @@ case "$SUITE" in
             bash "$T/test-all.sh" "${ARGS[@]+"${ARGS[@]}"}"
         fi
         ;;
-    *) toyos_die "未知套件: $SUITE" ;;
+    *) blocks_die "未知套件: $SUITE" ;;
 esac

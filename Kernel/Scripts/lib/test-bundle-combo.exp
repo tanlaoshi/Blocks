@@ -5,7 +5,7 @@
 #
 set timeout 120
 set image_root [pwd]
-if {![file exists [file join $image_root RootFs X64 TOYOS.ID]]} {
+if {![file exists [file join $image_root RootFs X64 BLOCKS.ID]]} {
   set image_root [file normalize [file join [pwd] .. ToyImage]]
 }
 set run_split [file normalize [file join $image_root .. Scripts lib run-split.sh]]

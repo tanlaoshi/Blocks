@@ -1,30 +1,28 @@
-# toyos-common.sh — 解析 BLOCKS_ROOT / Config；供 Scripts/*.sh source
+# blocks-common.sh — 解析 BLOCKS_ROOT / Config；供 Scripts/*.sh source
 
-toyos_die() {
+blocks_die() {
     echo "error: $*" >&2
     exit 1
 }
 
 # $1 = 调用脚本路径（$0 或 BASH_SOURCE）
-toyos_resolve_root() {
+blocks_resolve_root() {
     local Caller="$1"
     local Here Root Cand
-    toyos_root_ok() {
+    blocks_root_ok() {
         local R="$1"
         # Blocks 单仓：Boot + Kernel + Runtime
         if [ -d "$R/Boot" ] && [ -d "$R/Kernel" ] && [ -d "$R/Runtime" ]; then
             return 0
         fi
-        # 旧 ToyOS 三仓树
-        [ -d "$R/ToyKernel" ] && { [ -d "$R/Scripts" ] || [ -d "$R/ToyKernel/Scripts" ] || [ -d "$R/ToyKernel/OpenBox/Scripts" ]; }
     }
     if [ -n "${BLOCKS_ROOT:-}" ]; then
         Root="$(cd "$BLOCKS_ROOT" && pwd)"
-        if toyos_root_ok "$Root"; then
+        if blocks_root_ok "$Root"; then
             printf '%s\n' "$Root"
             return 0
         fi
-        toyos_die "BLOCKS_ROOT=$BLOCKS_ROOT 无效（需 Blocks: Boot/Kernel/Runtime，或旧树 ToyKernel+Scripts）"
+        blocks_die "BLOCKS_ROOT=$BLOCKS_ROOT 无效（需 Blocks: Boot/Kernel/Runtime）"
     fi
     Here="$(cd "$(dirname "$Caller")" && pwd)"
     for Cand in \
@@ -34,15 +32,15 @@ toyos_resolve_root() {
         "$(cd "$Here/../../../.." 2>/dev/null && pwd)"
     do
         [ -n "$Cand" ] || continue
-        if toyos_root_ok "$Cand"; then
+        if blocks_root_ok "$Cand"; then
             printf '%s\n' "$Cand"
             return 0
         fi
     done
-    toyos_die "无法解析根目录（从 $Here）；请 export BLOCKS_ROOT=…"
+    blocks_die "无法解析根目录（从 $Here）；请 export BLOCKS_ROOT=…"
 }
 
-toyos_arch_kernel() {
+blocks_arch_kernel() {
     case "$1" in
         x86|x86_64|X64|x64) echo x86_64 ;;
         arm64|aarch64|AA64) echo arm64 ;;
@@ -51,7 +49,7 @@ toyos_arch_kernel() {
     esac
 }
 
-toyos_load_config() {
+blocks_load_config() {
     local Root="$1"
     DEFAULT_TARGET=blocks
     DEFAULT_ARCH=x86
@@ -65,9 +63,6 @@ toyos_load_config() {
     elif [ -f "$Root/Kernel/OpenBox/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Kernel/OpenBox/Config.txt"
-    elif [ -f "$Root/ToyKernel/OpenBox/Config.txt" ]; then
-        # shellcheck disable=SC1090
-        . "$Root/ToyKernel/OpenBox/Config.txt"
     fi
     if [ -f "$Root/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
@@ -82,14 +77,10 @@ toyos_load_config() {
         # shellcheck disable=SC1090
         . "$Root/Config.local.txt"
     fi
-    # 旧名 toyos → blocks（同：编 Kernel）
-    if [ "${DEFAULT_TARGET:-}" = "toyos" ]; then
-        DEFAULT_TARGET=blocks
-    fi
     export EDK2_SRC
 }
 
-toyos_scripts_dir() {
+blocks_scripts_dir() {
     local Root="$1"
     if [ -d "$Root/Kernel/Scripts/lib" ]; then
         printf '%s\n' "$Root/Kernel/Scripts"
@@ -97,17 +88,15 @@ toyos_scripts_dir() {
         printf '%s\n' "$Root/Kernel/OpenBox/Scripts"
     elif [ -f "$Root/Scripts/build.sh" ]; then
         printf '%s\n' "$Root/Scripts"
-    elif [ -f "$Root/ToyKernel/OpenBox/Scripts/build.sh" ]; then
-        printf '%s\n' "$Root/ToyKernel/OpenBox/Scripts"
     else
-        toyos_die "找不到 Scripts（$Root/Kernel/Scripts 或 Scripts）"
+        blocks_die "找不到 Scripts（$Root/Kernel/Scripts 或 Scripts）"
     fi
 }
 
 # $1=调用脚本路径 → Runtime（Blocks）或 ToyImage（旧树）
-toyos_image_root() {
+blocks_image_root() {
     local Root
-    Root="$(toyos_resolve_root "$1")"
+    Root="$(blocks_resolve_root "$1")"
     if [ -d "$Root/Runtime" ]; then
         printf '%s/Runtime\n' "$Root"
     else
@@ -116,26 +105,26 @@ toyos_image_root() {
 }
 
 # $1=调用脚本路径 → Scripts/lib 绝对路径
-toyos_scripts_lib() {
+blocks_scripts_lib() {
     local Root
-    Root="$(toyos_resolve_root "$1")"
-    printf '%s/lib\n' "$(toyos_scripts_dir "$Root")"
+    Root="$(blocks_resolve_root "$1")"
+    printf '%s/lib\n' "$(blocks_scripts_dir "$Root")"
 }
 
-# $1=BLOCKS_ROOT $2=ToyKernel|ToyBoot|Kernel|Boot
-# Blocks 单仓：禁止仓顶 Build/ → Kernel/Build 或 Boot/Build；旧 ToyOS 树才用 $Root/Build/<名>
-toyos_component_build_dir() {
+# $1=BLOCKS_ROOT $2=Kernel|Boot
+# Blocks 单仓：禁止仓顶 Build/ → Kernel/Build 或 Boot/Build；旧 Blocks 树才用 $Root/Build/<名>
+blocks_component_build_dir() {
     local Root="$1"
     local Name="$2"
 
     case "$Name" in
-        ToyBoot|Boot)
+        Boot)
             if [ -d "$Root/Boot" ]; then
                 printf '%s/Boot/Build\n' "$Root"
                 return 0
             fi
             ;;
-        ToyKernel|Kernel)
+        Kernel)
             if [ -d "$Root/Kernel" ] && [ -f "$Root/Kernel/build.sh" ]; then
                 printf '%s/Kernel/Build\n' "$Root"
                 return 0
@@ -146,19 +135,14 @@ toyos_component_build_dir() {
 }
 
 # Kernel 产物目录：
-#   Blocks → $Root/Kernel/Build；旧树 → $Root/Build/ToyKernel；单仓 → $Ker/Build
+#   Blocks → $Root/Kernel/Build；单仓 → $Ker/Build
 # $1=根（可空） $2=Kernel 绝对路径（单仓时用）
-toyos_kernel_build_dir() {
+blocks_kernel_build_dir() {
     local Root="${1:-}"
     local Ker="${2:-}"
     if [ -n "$Root" ] && [ -d "$Root/Kernel" ] && [ -f "$Root/Kernel/build.sh" ]; then
         mkdir -p "$Root/Kernel/Build"
         printf '%s/Kernel/Build\n' "$Root"
-        return 0
-    fi
-    if [ -n "$Root" ] && [ -d "$Root/ToyKernel" ]; then
-        mkdir -p "$Root/Build/ToyKernel"
-        printf '%s/Build/ToyKernel\n' "$Root"
         return 0
     fi
     if [ -n "$Ker" ]; then
@@ -169,14 +153,14 @@ toyos_kernel_build_dir() {
     printf 'Build\n'
 }
 
-# 去掉仓内旧 Build 符号链接；有内容则迁到 Kernel/Build（Blocks）或旧 $Root/Build/ToyKernel。
-# $1=BLOCKS_ROOT $2=ToyKernel 仓绝对路径
-toyos_drop_kernel_build_link() {
+# 去掉仓内旧 Build 符号链接；有内容则迁到 Kernel/Build。
+# $1=BLOCKS_ROOT $2=Kernel 仓绝对路径
+blocks_drop_kernel_build_link() {
     local Root="$1"
     local Ker="$2"
     local Link="$Ker/Build"
     local Dest
-    Dest="$(toyos_kernel_build_dir "$Root" "$Ker")"
+    Dest="$(blocks_kernel_build_dir "$Root" "$Ker")"
     if [ -L "$Link" ]; then
         rm -f "$Link"
         return 0
@@ -191,11 +175,11 @@ toyos_drop_kernel_build_link() {
 
 # Boot：Blocks 用 Boot/Build；勿再 mkdir 仓顶 Build/。
 # $1=BLOCKS_ROOT $2=EDK 侧产物目录（含 DEBUG_GCC/… 的父级）
-toyos_link_boot_build() {
+blocks_link_boot_build() {
     local Root="$1"
     local EdkBoot="$2"
     local Dest
-    Dest="$(toyos_component_build_dir "$Root" Boot)"
+    Dest="$(blocks_component_build_dir "$Root" Boot)"
     mkdir -p "$(dirname "$Dest")"
     if [ ! -d "$EdkBoot" ]; then
         return 1

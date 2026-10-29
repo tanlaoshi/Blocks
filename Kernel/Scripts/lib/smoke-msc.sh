@@ -4,9 +4,9 @@
 # 须已有 Kernel.elf；通过条件：Blocks ready + boot: msc auto mux ok + keyboard
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 export USB_MSC=1
 exec "$SCRIPT_DIR/smoke-boot.sh" "$@"

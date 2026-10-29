@@ -65,7 +65,7 @@ Usage: ./Scripts/run-split.sh [options]
 
   Dual-disk QEMU (only supported entry):
     disk0 = Esp/X64/   ESP / Boot (EFI/BOOT/BOOTX64.EFI)
-    disk1 = RootFs/X64 TOYOS system volume (Kernel.elf, THEME.CFG, ELFs)
+    disk1 = RootFs/X64 BLOCKS system volume (Kernel.elf, THEME.CFG, ELFs)
 
 Options:
   --clean-nvram     Reset Fw/OVMF_VARS.fd from clean template

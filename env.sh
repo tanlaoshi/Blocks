@@ -48,8 +48,8 @@ if [ ! -d "$BLOCKS_SCRIPTS/lib" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# shellcheck source=Kernel/Scripts/lib/toyos-common.sh
-. "$BLOCKS_SCRIPTS/lib/toyos-common.sh"
+# shellcheck source=Kernel/Scripts/lib/blocks-common.sh
+. "$BLOCKS_SCRIPTS/lib/blocks-common.sh"
 
 build() {
     (cd "$KERNEL" && ./build.sh "$@")

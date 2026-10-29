@@ -4,7 +4,7 @@
 #
 # 【初学者】
 #   disk0 = Esp/X64/      → BOOTX64.EFI（AHCI.0）
-#   disk1 = RootFs/X64/   → TOYOS.ID + BLOCKS.ID + Kernel.elf + Assets（AHCI.1）
+#   disk1 = RootFs/X64/   → BLOCKS.ID + BLOCKS.ID + Kernel.elf + Assets（AHCI.1）
 #
 # 用法：
 #   ./run.sh                 # 默认同步产物后启动（有显示则 gtk）
@@ -111,7 +111,7 @@ echo "  mem=$MEM smp=$SMP headless=$HEADLESS"
 echo "  VGA   ${QEMU_XRES}x${QEMU_YRES}"
 MSC_ARGS=()
 if [ "${USB_MSC:-0}" = 1 ]; then
-    if [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/TOYOS.ID ]; then
+    if [ ! -f Msc/BLOCKS.ID ] && [ ! -f Msc/BLOCKS.ID ]; then
         echo "error: USB_MSC=1 needs Msc/BLOCKS.ID" >&2
         exit 1
     fi
@@ -136,7 +136,7 @@ if pgrep -f '[q]emu-system-x86_64' >/dev/null 2>&1; then
 fi
 
 # 双盘均走 AHCI：现网 x86 块驱动认 AHCI，不认 virtio-blk（旧 run-split 同款）。
-# disk0=Esp（Boot）；disk1=RootFs（TOYOS.ID / Assets / Kernel.elf）。
+# disk0=Esp（Boot）；disk1=RootFs（BLOCKS.ID / Assets / Kernel.elf）。
 # K52：qemu-xhci + usb-kbd + usb-tablet（GTK 绝对鼠）。
 # 课用现代 virtio-net（驱动走 PCI caps）；disable-modern 会让认卡失败、托盘一直红。
 # 注意：# 注释不能插在 \ 续行中间，否则后面参数全被吃掉。

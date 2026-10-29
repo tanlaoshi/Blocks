@@ -3,9 +3,9 @@
 # 自有 Boot：-kernel + DTB loader + ramfb/virtio；不是 run-split.sh / AAVMF。
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=toyos-common.sh
-. "$SCRIPT_DIR/toyos-common.sh"
-IMAGE_ROOT="$(toyos_image_root "$0")"
+# shellcheck source=blocks-common.sh
+. "$SCRIPT_DIR/blocks-common.sh"
+IMAGE_ROOT="$(blocks_image_root "$0")"
 cd "$IMAGE_ROOT"
 BOARD=virt
 # shellcheck source=run-virt-common.sh
@@ -17,6 +17,6 @@ VIRT_HAL_ARCH=Arm64
 export VIRT_MAKE_ARCH VIRT_HAL_ARCH
 VIRT_ELF="${VIRT_ELF:-}"
 VIRT_QEMU="${QEMU_AARCH64:-qemu-system-aarch64}"
-VIRT_HELLO_PAT='ToyOS Arm64 virt: hello'
+VIRT_HELLO_PAT='Blocks Arm64 virt: hello'
 
 toy_virt_main "$@"

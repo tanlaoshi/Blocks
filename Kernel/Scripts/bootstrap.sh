@@ -2,10 +2,10 @@
 # bootstrap.sh — 一键装宿主依赖（幂等；不写死用户名）
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/toyos-common.sh
-. "$HERE/lib/toyos-common.sh"
+# shellcheck source=lib/blocks-common.sh
+. "$HERE/lib/blocks-common.sh"
 
-ROOT="$(toyos_resolve_root "$0")"
+ROOT="$(blocks_resolve_root "$0")"
 echo "bootstrap: BLOCKS_ROOT=$ROOT"
 
 need_cmd() {

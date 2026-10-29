@@ -197,52 +197,30 @@ STATIC BOOLEAN TryParseModeOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     return FALSE;
 }
 
+typedef struct {
+    UINT32 *W;
+    UINT32 *H;
+} DISPLAY_PREF_OUT;
+
+/* 谓词：这块卷上的 BLOCKS.DB 有可用 mode= 才算数 */
+STATIC BOOLEAN DisplayPrefPredicate(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs, VOID *Ctx) {
+    DISPLAY_PREF_OUT *Out = (DISPLAY_PREF_OUT *)Ctx;
+
+    if (Fs == NULL || Out == NULL) {
+        return FALSE;
+    }
+    return TryParseModeOnFs(Fs, Out->W, Out->H);
+}
+
 BOOLEAN TryLoadDisplayPref(EFI_HANDLE ImageHandle, UINT32 *OutW,
                                   UINT32 *OutH) {
     EFI_STATUS Status;
-    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
-    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
-    UINTN HandleCount = 0;
-    EFI_HANDLE *Handles = NULL;
-    UINTN i;
-    UINTN Pass;
+    DISPLAY_PREF_OUT Out;
+    EFI_HANDLE Vol = NULL;
+    UINTN Pass = 0;
 
-    Status = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid,
-                                 (VOID **)&LoadedImage);
-    if (EFI_ERROR(Status)) {
-        return FALSE;
-    }
-
-    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
-                                     NULL, &HandleCount, &Handles);
-    if (EFI_ERROR(Status)) {
-        Handles = NULL;
-        HandleCount = 0;
-    }
-
-    /*
-     * boot-root-cfg：与 ReadKernel 同序（ROOT.CFG → 同盘 ID → 它盘 ID → 启动卷）。
-     */
-    for (Pass = 0; Pass < 4; Pass++) {
-        for (i = 0; i < HandleCount; i++) {
-            Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
-                                         (VOID **)&Fs);
-            if (EFI_ERROR(Status)) {
-                continue;
-            }
-            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
-                continue;
-            }
-            if (TryParseModeOnFs(Fs, OutW, OutH)) {
-                gBS->FreePool(Handles);
-                return TRUE;
-            }
-        }
-    }
-
-    if (Handles != NULL) {
-        gBS->FreePool(Handles);
-    }
-    (void)LoadedImage;
-    return FALSE;
+    Out.W = OutW;
+    Out.H = OutH;
+    Status = BootSelectOsVolume(ImageHandle, DisplayPrefPredicate, &Out, &Vol, &Pass);
+    return EFI_ERROR(Status) ? FALSE : TRUE;
 }

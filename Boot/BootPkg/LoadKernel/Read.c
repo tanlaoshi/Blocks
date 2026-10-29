@@ -124,15 +124,31 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     return Status;
 }
 
+typedef struct {
+    EFI_PHYSICAL_ADDRESS Addr;
+    UINTN                Size;
+} KERNEL_LOAD;
+
+/* 谓词：这块卷上真能装到 Kernel.elf 才算数（顺带把映像读进 Ctx） */
+STATIC BOOLEAN KernelPredicate(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs, VOID *Ctx) {
+    KERNEL_LOAD *Load = (KERNEL_LOAD *)Ctx;
+    EFI_STATUS Status;
+
+    if (Fs == NULL || Load == NULL) {
+        return FALSE;
+    }
+    Load->Addr = 0;
+    Load->Size = 0;
+    Status = OpenKernelOnFs(Fs, &Load->Addr, &Load->Size);
+    return (!EFI_ERROR(Status) && Load->Addr != 0) ? TRUE : FALSE;
+}
+
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                                  UINTN *OutSize) {
     EFI_STATUS Status;
-    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
-    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
-    UINTN HandleCount = 0;
-    EFI_HANDLE *Handles = NULL;
-    UINTN i;
-    UINTN Pass;
+    KERNEL_LOAD Load = { 0, 0 };
+    EFI_HANDLE Vol = NULL;
+    UINTN Pass = 0;
 
     BootSerialPrintf("Boot: ReadKernelFile\n");
 
@@ -140,56 +156,30 @@ EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffe
         *OutSize = 0;
     }
 
-    Status = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid,
-                                 (VOID **)&LoadedImage);
+    /*
+     * boot-root-cfg：ROOT.CFG → 同盘 ID → 它盘 ID → 启动卷兜底，
+     * 这套顺序只在 BootSelectOsVolume 里写一次。
+     */
+    Status = BootSelectOsVolume(ImageHandle, KernelPredicate, &Load, &Vol, &Pass);
     if (EFI_ERROR(Status)) {
         return Status;
     }
 
-    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
-                                     NULL, &HandleCount, &Handles);
-    if (EFI_ERROR(Status)) {
-        Handles = NULL;
-        HandleCount = 0;
+    if (Pass == 0) {
+        BootDbg("Boot: Kernel.elf From ROOT.CFG\n");
+    } else if (Pass == 1) {
+        BootDbg("Boot: Kernel.elf From Same-Disk BLOCKS\n");
+    } else if (Pass == 2) {
+        BootDbg("Boot: Kernel.elf From Other-Disk BLOCKS\n");
+    } else {
+        BootDbg("Boot: Kernel.elf From Boot Volume\n");
     }
 
-    /*
-     * boot-root-cfg：Pass0=ROOT.CFG；1=同盘+BLOCKS.ID；2=它盘+ID；3=启动卷兜底。
-     * 与 Theme 共用 BootOsVolForPass，避免误载它盘旧 Kernel。
-     */
-    for (Pass = 0; Pass < 4; Pass++) {
-        for (i = 0; i < HandleCount; i++) {
-            Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
-                                         (VOID **)&Fs);
-            if (EFI_ERROR(Status)) {
-                continue;
-            }
-            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
-                continue;
-            }
-
-            Status = OpenKernelOnFs(Fs, OutBuffer, OutSize);
-            if (!EFI_ERROR(Status)) {
-                if (Pass == 0) {
-                    BootDbg("Boot: Kernel.elf From ROOT.CFG\n");
-                } else if (Pass == 1) {
-                    BootDbg("Boot: Kernel.elf From Same-Disk BLOCKS\n");
-                } else if (Pass == 2) {
-                    BootDbg("Boot: Kernel.elf From Other-Disk BLOCKS\n");
-                } else {
-                    BootDbg("Boot: Kernel.elf From Boot Volume\n");
-                }
-                if (Handles != NULL) {
-                    gBS->FreePool(Handles);
-                }
-                return EFI_SUCCESS;
-            }
-        }
+    if (OutBuffer != NULL) {
+        *OutBuffer = Load.Addr;
     }
-
-    if (Handles != NULL) {
-        gBS->FreePool(Handles);
+    if (OutSize != NULL) {
+        *OutSize = Load.Size;
     }
-    BootSerialPrintf("Boot: Kernel.elf Not Found On Any Volume\n");
-    return EFI_NOT_FOUND;
+    return EFI_SUCCESS;
 }

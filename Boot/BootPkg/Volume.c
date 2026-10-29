@@ -444,7 +444,8 @@ STATIC BOOLEAN VolMatchesRootCfg(EFI_HANDLE VolHandle, CONST BOOT_ROOT_CFG *Cfg)
     return UuidStrEq(DiskStr, Cfg->Disk) && UuidStrEq(PartStr, Cfg->Part);
 }
 
-BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle, UINTN Pass) {
+STATIC BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle,
+                                UINTN Pass) {
     EFI_STATUS Status;
     EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
@@ -494,4 +495,61 @@ BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle, UINTN Pas
         return HasId && !SameDisk;
     }
     return FALSE;
+}
+
+/*
+ * BootSelectOsVolume — 「找系统盘」只写一次。
+ *
+ * 四段顺序（与历史行为一致）：0 ROOT.CFG 指认的盘 → 1 同盘 + BLOCKS.ID →
+ * 2 它盘 + BLOCKS.ID → 3 启动卷兜底。对每个候选先过 Predicate（是否真有
+ * Kernel.elf / BLOCKS.DB），第一个命中的写进 OutVol。
+ *
+ * Predicate 拿到的是已经打开的 Fs，省得调用方再 HandleProtocol 一次；
+ * Ctx 由调用方自定义（例如装载缓冲区）。
+ */
+EFI_STATUS BootSelectOsVolume(EFI_HANDLE ImageHandle, BOOT_VOL_PREDICATE Pred,
+                              VOID *Ctx, EFI_HANDLE *OutVol, UINTN *OutPass) {
+    EFI_STATUS Status;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    UINTN Pass;
+    UINTN i;
+
+    if (OutVol == NULL) {
+        return EFI_INVALID_PARAMETER;
+    }
+    *OutVol = NULL;
+
+    Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                     NULL, &HandleCount, &Handles);
+    if (EFI_ERROR(Status)) {
+        return Status;
+    }
+
+    for (Pass = 0; Pass < 4; Pass++) {
+        for (i = 0; i < HandleCount; i++) {
+            Fs = NULL;
+            Status = gBS->HandleProtocol(Handles[i], &gEfiSimpleFileSystemProtocolGuid,
+                                         (VOID **)&Fs);
+            if (EFI_ERROR(Status) || Fs == NULL) {
+                continue;
+            }
+            if (!BootOsVolForPass(ImageHandle, Handles[i], Pass)) {
+                continue;
+            }
+            if (Pred != NULL && !Pred(Fs, Ctx)) {
+                continue;
+            }
+            *OutVol = Handles[i];
+            if (OutPass != NULL) {
+                *OutPass = Pass;
+            }
+            gBS->FreePool(Handles);
+            return EFI_SUCCESS;
+        }
+    }
+
+    gBS->FreePool(Handles);
+    return EFI_NOT_FOUND;
 }

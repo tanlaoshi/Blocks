@@ -87,6 +87,10 @@ EFI_STATUS SetVideoMode(EFI_HANDLE ImageHandle, VIDEO_CONFIG *VideoConfig,
                         UEFI_BOOT_CONFIG *BootConfig,
                         const VIDEO_SELECTION *Sel);
 /* Volume：BLOCKS.ID、启动盘 GUID、同盘判定、ROOT.CFG 三档认卷 */
+typedef BOOLEAN (*BOOT_VOL_PREDICATE)(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
+                                      VOID *Ctx);
+EFI_STATUS BootSelectOsVolume(EFI_HANDLE ImageHandle, BOOT_VOL_PREDICATE Pred,
+                              VOID *Ctx, EFI_HANDLE *OutVol, UINTN *OutPass);
 BOOLEAN FsHasOsMarker(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs);
 BOOLEAN BootSamePhysicalDisk(EFI_HANDLE A, EFI_HANDLE B);
 VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
@@ -94,7 +98,6 @@ VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
  * Pass：0=ESP ROOT.CFG(disk+part) 且 BLOCKS.ID；1=同盘+ID；2=它盘+ID；3=启动卷。
  * ReadKernel / Theme 共用，避免两套规则。
  */
-BOOLEAN BootOsVolForPass(EFI_HANDLE ImageHandle, EFI_HANDLE VolHandle, UINTN Pass);
 
 /* LoadKernel/：Read / Elf / 编排 */
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,

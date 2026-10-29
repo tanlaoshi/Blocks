@@ -1,17 +1,48 @@
 /*
- * Sdhci.h — Milk-V Duo S µSD：DWC MSHC（SDHCI）@ 0x04310000
+ * Sdhci.h — Milk-V Duo S SDHCI 门面：SD0 µSD @0x04310000、SD1 wifi-sd @0x04320000
  *
- * 上游 cv18xx.dtsi：mmc@4310000 compatible "sophgo,cv1800b-dwcmshc"（sdhci0）。
- * 寄存器按 SD Host Controller 简化规格；厂商区按 Linux sdhci-of-dwcmshc.c
- * cv18xx_sdhci_reset（P_VENDOR_AREA1 @0xE8）。
- * eMMC 不在本文件（勿把 SD 槽写成 eMMC）。
+ * PR-30（S1-S3）：多实例 + SDIO 枚举。
+ *   SD0：SD 卡（CMD0/8/55/41/2/3/7/16）→ 块设备（启动盘），行为保持不变。
+ *   SD1：SDIO（CMD0/5/3/7/52/53）→ AIC8800D80，non-removable、无 CD 脚，
+ *        靠 TOP 0x03000294[9:8] 覆盖成「有卡」。
+ * 寄存器按 SD Host Controller 简化规格；厂商区（0x200 起）对齐
+ * Linux drivers/mmc/host/cvitek/sdhci-cv181x.c（SD1 复位带 MSHC_CTRL[16]）。
  */
 #ifndef BOARD_SDHCI_H
 #define BOARD_SDHCI_H
 
 #include "BootTypes.h"
 
-#define SDHCI_BASE 0x04310000ULL
+#define SDHCI_BASE_SD0 0x04310000ULL
+#define SDHCI_BASE_SD1 0x04320000ULL /* TRM 18.4：SD1 控制寄存器窗 0x04320000-0x0432FFFF */
+#define SDHCI_HOST_COUNT 2u
+
+/* 卡类型（Host->CardType） */
+#define SDHCI_CARD_NONE 0u
+#define SDHCI_CARD_SD 1u
+#define SDHCI_CARD_SDIO 2u
+
+/*
+ * 一个 SDHCI 控制器实例。原来散在 Sdhci.c 的全局量全部收进来，
+ * 同一份代码即可跑 SD0 与 SD1（PR-30 S1）。
+ */
+typedef struct SDHCI_HOST {
+    UINT64 Base;               /* MMIO 基址 */
+    UINT32 Index;              /* 0 = SD0，1 = SD1 */
+    UINT32 VendorArea;         /* P_VENDOR_AREA1(0xE8) & 0xFFF，板上应 0x200 */
+    UINT16 Specification;      /* HOST_VERSION[7:0] */
+    UINT32 ClockHertz;         /* 最近一次请求的时钟 */
+    UINT32 ActualClockHertz;   /* 分频后实际时钟（375 MHz 分频，拿不到整数 50 MHz） */
+    UINT32 RelativeCardAddress;
+    UINT32 BusWidth;           /* 1 / 4 */
+    UINT32 CardType;           /* SDHCI_CARD_* */
+    UINT32 Response[4];
+    UINT32 LastStatus;         /* 出错时的 INT_STATUS */
+    UINT32 LastPresentState;   /* 出错时的 PRESENT_STATE */
+    int HighCapacity;          /* SD：SDHC/SDXC */
+    int NonRemovable;          /* 1 = 无 CD 脚（wifi-sd） */
+    int Ready;
+} SDHCI_HOST;
 
 #define SDHCI_BLOCK_SIZE      0x04
 #define SDHCI_BLOCK_COUNT     0x06
@@ -44,9 +75,16 @@
 
 #define SDHCI_CMD_INHIBIT    (1u << 0)
 #define SDHCI_DATA_INHIBIT   (1u << 1)
+/* PRESENT_STATE 的缓冲就绪位：PIO 每个 512 B 块前查一次（Linux sdhci_transfer_pio） */
+#define SDHCI_BUF_WR_READY   (1u << 10) /* Buffer Write Enable：空=1 */
+#define SDHCI_BUF_RD_READY   (1u << 11) /* Buffer Read Enable：有数据=1 */
 #define SDHCI_CARD_INSERTED  (1u << 16)
 #define SDHCI_CARD_STABLE    (1u << 17)
 #define SDHCI_WIDTH_4BIT     (1u << 1)
+/* HOST_CONTROL[2] High Speed Enable：SDIO 协商 HS(50 MHz) 后必须置
+ * （Linux sdhci.c:2338-2355 在 MMC_TIMING_SD_HS 时置位）。
+ * 注意：这不是电压位，3.3V 由 POWER_CONTROL 决定。 */
+#define SDHCI_HIGH_SPEED     (1u << 2)
 
 #define SDHCI_POWER_ON  0x01u
 #define SDHCI_POWER_330 0x0Eu
@@ -63,10 +101,12 @@
 #define SDHCI_INT_DATA_END (1u << 1)
 #define SDHCI_INT_SPACE_AVAIL (1u << 4) /* Buffer Write Ready */
 #define SDHCI_INT_DATA_AVAIL (1u << 5)  /* Buffer Read Ready */
+#define SDHCI_INT_CARD_INT (1u << 8)    /* 卡中断（走 DAT1；本轮不用） */
 #define SDHCI_INT_ERROR    (1u << 15)
 
 #define SDHCI_TRNS_BLK_CNT_EN (1u << 1)
 #define SDHCI_TRNS_READ       (1u << 4)
+#define SDHCI_TRNS_MSBS       (1u << 5) /* 多块 */
 /* 写：不置 TRNS_READ */
 
 #define SDHCI_CMD_RESP_NONE       0x00u
@@ -87,7 +127,16 @@
 #define CV_PHY_TX_BPS  (1u << 0)
 /* TX src = invert clk（bits 9:8 = 1），RX src = invert（bits 25:24 = 1），dly = 0 */
 #define CV_PHY_DLY_BYPASS ((1u << 8) | (1u << 24))
+/*
+ * SD1 专用：sdhci-cv181x.c:859-862 在 DS/HS 分支置 MSHC_CTRL[16]
+ * （厂商注释 "reg_0x200[16] = 1 for sd1"）。
+ * TRM 18.4.4 对同一位的名字是 timer_clk_sel（1 = 32K，0 = 100K），
+ * 即卡检测去抖计数器的时钟源；两说并存，按厂商行为置 1。
+ */
+#define CV_MSHC_CTRL_SD1 (1u << 16)
 
+SDHCI_HOST *SdhciHostAt(UINT32 Index);
+int SdhciWifiInitialize(void);
 void BoardSdhciRegister(void);
 
 #endif

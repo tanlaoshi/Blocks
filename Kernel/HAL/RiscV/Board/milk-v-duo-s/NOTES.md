@@ -62,6 +62,38 @@
 - `exec HELLO.ELF` / `Kernel.elf`：放 **LABEL=BLOCKS**（与 X64/Pi 同）。  
 - 卡检测位为 0 则放弃（`Boot: SD no card`）。U-Boot 刚 `fatload` 过却报无卡，把 `pst=` 记下来再改。
 
+## WiFi / SDIO（duo-wifi · PR-30 S1-S3）
+
+板载 AIC8800D80 挂在 **SD1**（`0x04320000`，wifi-sd），SD0（`0x04310000`）仍是启动卡槽。
+`Sdhci` 现在是两实例：`SdhciHostAt(0/1)`，块设备只暴露 SD0。
+
+- 上电脚：`GPIOA15`（焊盘 SPK_EN，TRM 写明 FMUX 默认就是 `XGPIOA[15]`，不用配 pinmux）→ 拉高后等 50 ms。
+- 卡检测：wifi-sd 是 `non-removable`、无 CD 脚。写 TOP `0x03000294` bit8（override）/ bit9（software）＝假卡。
+  Linux 在 non-removable 上压根不读 `PRESENT_STATE[16:17]`（`sdhci.c:2438-2466`），所以
+  `SD1: present=… CARD_INSERTED=… CARD_STABLE=…` 只打印、不门禁。
+- SD1 专用 PHY 位：`MSHC_CTRL[16]`（厂商 `sdhci-cv181x.c:859-862`；TRM 名字是 `timer_clk_sel`）。
+- 时钟：基础 375 MHz，请求 50 MHz → 实际 **46.875 MHz**（`SDCLK=8`，精确 50 MHz 取不到）。
+  真机串口会打 `WiFi: SD1 clk actual=46875kHz`。
+- HS：CCCR `0x13` 置 `EHS`，同时 `HOST_CONTROL[2]=1`（Linux `sdhci.c:2338-2355`）。
+- 4-bit：先写卡 CCCR `0x07=2`，再置 `HOST_CONTROL[1]`。
+- SDIO 命令：CMD0/5/3/7 + CMD52/CMD53，PIO 按 512 B 块搬（`Sdio.c` / `Io.c`）。
+- 1536 B 固定地址 FIFO 自检写在 `SdhciWifiInitialize()` 末尾：只证明「多块 + `OP_CODE=0` 能走完」，
+  **不**证明数据正确（`0x10` 是发往固件的 TX FIFO，`0x0F` 是固件回的 RX FIFO，没有回环通路）。
+  真机上 diff 属预期，不致命。
+
+期望串口（首次真机应重点看这两行 + 前面的 CMD5/CCCR 行）：
+
+```text
+WiFi: SD1 init ok clock=50MHz width=4bit
+WiFi: CIS manfid=c8a1 device=0082
+```
+
+排障顺序：`WiFi: TOP 0x294=…` 两位没置上 → 覆盖无效；`SD1 CMD5 no response` → 供电/pad/时钟；
+`CMD5 timeout` → 电压窗口；`CCCR read fail` 带 `r5=` → CMD52 参数或 R5 错误位。
+
+桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
+17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
+
 ## DRAM / DTB
 
 - 有 DTB：信任 `a1`，Startup `DtbMemoryRegion`

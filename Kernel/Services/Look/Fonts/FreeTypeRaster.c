@@ -17,19 +17,61 @@ static UINT32 gFtFaceMask;
 static FT_Face gMonoFace;
 static int gFtOk;
 static int gFtMonoOk;
+/*
+ * PR-22：freetype-port 的 FT_Memory 是 256KiB 静态 bump arena，
+ * free 是空实现（ThirdParty/freetype-port/ftsystem_blocks.c），见
+ * ftsystem_blocks.c:46 FtFree。一屏字（~300 个 FT_Load_Char）就能把它
+ * 灌满，之后所有 FT_Load_Char 都返回 FT_Err_Out_Of_Memory。
+ * 旧行为：每个字先试 FT（失败）再退 stb，同一行字一半 FT 一半 stb，
+ * 并且换字体后整片变 stb——「同一张脸，换回来字形却变了」。
+ * 现在：FT 调用串行化（自有自旋锁），OOM 时在同一把锁内重开 FT
+ * （FT_Done_FreeType 会 FT_Done_Memory→gFtUsed=0，即把 arena 归零），
+ * 然后重试一次。这样 FT 一直可用，字形在各次换脸之间保持一致。
+ */
+static volatile int gFtLock;
+static int gFtDead;
 static UINT32 gFtLastAdv;
 
+static void FtLock(void) {
+  while (__sync_lock_test_and_set(&gFtLock, 1)) {
+  }
+}
+
+static void FtUnlock(void) {
+  __sync_lock_release(&gFtLock);
+}
+
+static int FtInitLocked(void);
+
 int FontFtInit(void) {
+  int Rc;
+
+  FtLock();
+  Rc = FtInitLocked();
+  FtUnlock();
+  return Rc;
+}
+
+static int FtInitLocked(void) {
   const UINT8 *Blob;
   UINT32 Size;
   UINT32 Slot;
   FT_Error Err;
   int Any = 0;
 
+  /*
+   * 重开：FT_Done_FreeType → FT_Done_Memory → gFtUsed=0，
+   * 256KiB bump arena 整块回收（ftsystem_blocks.c:FT_Done_Memory）。
+   */
+  if (gLib) {
+    FT_Done_FreeType(gLib);
+    gLib = 0;
+  }
   gFtOk = 0;
   gFtMonoOk = 0;
   gFtFaceMask = 0;
   gLib = 0;
+  gFtDead = 0;
   gMonoFace = 0;
   gFtLastAdv = 0;
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
@@ -100,7 +142,103 @@ void FontFtClearLastAdvance(void) {
   gFtLastAdv = 0;
 }
 
-int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
+static UINT32 gFtFailN;
+
+static void FtFail(UINT32 Cp, UINT32 Reason) {
+  static UINT32 Seen;
+  char Line[48];
+  char *P = Line;
+  const char *Pre = "FONT ftfail reason=";
+
+  if (gFtFailN >= 40u && (Seen & (1u << Reason))) {
+    return;
+  }
+  gFtFailN++;
+  Seen |= 1u << Reason;
+  while (*Pre) {
+    *P++ = *Pre++;
+  }
+  {
+    char R[10];
+    int n = 0;
+
+    if (Reason == 0u) {
+      R[n++] = '0';
+    }
+    while (Reason != 0u) {
+      R[n++] = (char)('0' + (int)(Reason % 10u));
+      Reason /= 10u;
+    }
+    while (n > 0) {
+      *P++ = R[--n];
+    }
+  }
+  {
+    const char *Mid = " cp=";
+
+    while (*Mid) {
+      *P++ = *Mid++;
+    }
+  }
+  {
+    char T[10];
+    int n = 0;
+
+    if (Cp == 0u) {
+      T[n++] = '0';
+    }
+    while (Cp != 0u) {
+      T[n++] = (char)('0' + (int)(Cp % 10u));
+      Cp /= 10u;
+    }
+    while (n > 0) {
+      *P++ = T[--n];
+    }
+  }
+  *P++ = '\r';
+  *P++ = '\n';
+  *P = 0;
+  HalSerialWriteShell(Line);
+}
+
+static void FtOom(UINT32 Cp) {
+  char Line[48];
+  char *P = Line;
+  const char *Pre = "FONT ft oom cp=";
+
+  gFtDead = 1;
+  while (*Pre) {
+    *P++ = *Pre++;
+  }
+  {
+    char T[10];
+    int n = 0;
+
+    if (Cp == 0u) {
+      T[n++] = '0';
+    }
+    while (Cp != 0u) {
+      T[n++] = (char)('0' + (int)(Cp % 10u));
+      Cp /= 10u;
+    }
+    while (n > 0) {
+      *P++ = T[--n];
+    }
+  }
+  *P++ = '\r';
+  *P++ = '\n';
+  *P = 0;
+  HalSerialWriteShell(Line);
+  /*
+   * 已经用 FT 栅过的字形是「另一条路」的位图；FT 既然废了，整片作废，
+   * 让它们按 stb 重栅，避免同一屏里两种栅格器混排（换字体后又变样）。
+   * 注意：这里是 FillSlot 内部，DropHits 抬了代数 → 本次写入会被
+   * FillSlot 的代次校验丢掉，不会把旧位图写回。
+   */
+  FontTtfCacheDropHits();
+}
+
+static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   FT_Face Face;
   FT_Error Err;
   FT_GlyphSlot Slot;
@@ -116,7 +254,11 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   UINT32 MaxPix;
 
   gFtLastAdv = 0;
+  if (gFtDead) {
+    return -1;
+  }
   if (!Pix || CellW == 0 || CellH == 0 || Cp < 32u || Cp == 127u) {
+    FtFail(Cp, 1u);
     return -1;
   }
   Mono = FontTtfMonoActive() && gFtMonoOk && Cp < 128u;
@@ -138,6 +280,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     Face = (Slot < FONT_TTF_UI_MAX) ? gFace[Slot] : 0;
   }
   if (!Face || (!gFtOk && !Mono)) {
+    FtFail(Cp, 2u);
     return -1;
   }
   MaxPix = CellW * CellH;
@@ -145,6 +288,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     Pix[i] = 0;
   }
   if (!HalFpuBegin()) {
+    FtFail(Cp, 3u);
     return -1;
   }
   /*
@@ -171,6 +315,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     if (!Mono) {
       Err = FT_Set_Pixel_Sizes(Face, 0, (FT_UInt)CellH);
       if (Err) {
+        FtFail(Cp, 400u + (UINT32)Err);
         HalFpuEnd();
         return -1;
       }
@@ -222,6 +367,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
      * mono ASCII 缺字仍失败返回，由 Terminus 软退。
      */
     if (FT_Get_Char_Index(Face, (FT_ULong)Cp) == 0) {
+      FtFail(Cp, 5u);
       HalFpuEnd();
       return -1;
     }
@@ -239,12 +385,16 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
       Err = FT_Load_Char(Face, (FT_ULong)Cp, Flags);
     }
     if (Err) {
+      if (Err == FT_Err_Out_Of_Memory) {
+        FtOom(Cp);
+      }
       HalFpuEnd();
       return -1;
     }
     Slot = Face->glyph;
     Bm = &Slot->bitmap;
     if (Bm->pixel_mode != FT_PIXEL_MODE_GRAY || !Bm->buffer) {
+      FtFail(Cp, 7u);
       HalFpuEnd();
       return -1;
     }
@@ -305,6 +455,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     }
     /* 空心 HIT 会步进却不画；一律软退 stb（含 UI 拉丁） */
     if (Ink == 0u) {
+      FtFail(Cp, 8u);
       HalFpuEnd();
       gFtLastAdv = 0;
       return -1;
@@ -320,6 +471,21 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   gFtLastAdv = Adv;
   HalFpuEnd();
   return 0;
+}
+
+int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
+  int Rc;
+
+  /*
+   * PR-22：FT 库不是线程安全的，而 FillSlot 既跑在 Gui 线程（同步灌格）
+   * 也跑在 Worker（WantDrain）。开机的 FPU 禁抢占只挡住本 CPU 的切换，
+   * 真机多核上两边会同时进 FT → 大小对象/字形缓冲互相踩。这里用自旋锁
+   * 把 FT 调用串起来（临界区内仍按原样 HalFpuBegin/End）。
+   */
+  FtLock();
+  Rc = FtRasterBody(Cp, Pix, CellW, CellH);
+  FtUnlock();
+  return Rc;
 }
 
 #else

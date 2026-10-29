@@ -189,6 +189,11 @@ void FontNotifyTtfReady(void) {
     UINT32 Cur = gCurrentId;
 
     RebuildFontTable();
+    /*
+     * 表重建会让同一个 id 指向另一张脸（TTF 就绪前 0=Terminus，之后
+     * 0=UMing）。不清缓存就会把「同 id、不同脸」的位图继续当命中。
+     */
+    FontTtfCacheDropHits();
     if (FontSetById(Cur) != 0 && FontCount() > 0u) {
         (void)FontSetById(0);
     }
@@ -481,6 +486,8 @@ int FontReloadAssets(void) {
     UINT32 Cur = gCurrentId;
 
     (void)FontLoadAssets();
+    /* 资源重载：脸/表都可能变，槽里一律作废 */
+    FontTtfCacheDropHits();
     /* 原 id 若是已卸 runtime：回到内建 Terminus 10x18 */
     if (FontSetById(Cur) != 0 && FontCount() > 0) {
         (void)FontSetById(0);
@@ -503,6 +510,8 @@ int FontLoadPath(const char *Path) {
     }
     /* 私有槽允许与系统同名；不跑 FaceNameRegistered */
     RebuildFontTable();
+    /* 新脸塞进表尾会顶掉旧索引，缓存必须整片作废 */
+    FontTtfCacheDropHits();
     for (i = 0; i < gFontCount; i++) {
         if (gFonts[i] == &gRuntime[FONT_APP_SLOT].Face) {
             return (int)i;
@@ -519,6 +528,11 @@ void FontUnloadApp(void) {
     }
     FreeRuntimeSlot(&gRuntime[FONT_APP_SLOT]);
     RebuildFontTable();
+    /*
+     * 旧代码直接改 gCurrentId，绕过 FontSetById 的 Drop：卸载后 id 可能
+     * 指向别的脸，而槽里还是刚卸那张脸的位图。这里补一次作废。
+     */
+    FontTtfCacheDropHits();
     if (gCurrentId >= gFontCount) {
         gCurrentId = gFontCount ? (gFontCount - 1u) : 0u;
     }
@@ -547,10 +561,80 @@ const FONT_FACE *FontGetCurrent(void) {
     return F;
 }
 
+/*
+ * PR-22-diag：换字体诊断（串口一行，避免 printf；内核栈只有 8KiB，缓冲放 static）。
+ * 口径：id= 目标字体 / prev= 之前 / slot= UI TTF 槽 旧→新 / drop= 是否整片作废。
+ */
+static char gDiagLine[192];
+
+/* 软退点阵日志：每码位每次换字体只记一次（ASCII 只有 128 个） */
+#define FONT_DIAG_CP_MAX 128u
+#define FONT_DIAG_BYTES  (FONT_DIAG_CP_MAX / 8u)
+static UINT8 gDiagFbSeen[FONT_DIAG_BYTES];
+
+static char *DiagStr(char *P, const char *S) {
+    while (S && *S) {
+        *P++ = *S++;
+    }
+    return P;
+}
+
+static char *DiagU32(char *P, UINT32 V) {
+    char Tmp[10];
+    int n = 0;
+
+    if (V == 0u) {
+        *P++ = '0';
+        return P;
+    }
+    while (V != 0u && n < (int)sizeof(Tmp)) {
+        Tmp[n++] = (char)('0' + (int)(V % 10u));
+        V /= 10u;
+    }
+    while (n > 0) {
+        *P++ = Tmp[--n];
+    }
+    return P;
+}
+
+static char *DiagPair(char *P, const char *Key, UINT32 V) {
+    *P++ = ' ';
+    P = DiagStr(P, Key);
+    *P++ = '=';
+    return DiagU32(P, V);
+}
+
+
+/* UI TTF 选中却退回点阵：这正是「个别数字像 Terminus」的可见路径，必须留证 */
+static int FontDiagFallbackFirst(UINT32 Cp) {
+    UINT32 Idx = Cp & 127u;
+    UINT32 Bit = 1u << (Idx & 7u);
+
+    if (gDiagFbSeen[Idx >> 3] & (UINT8)Bit) {
+        return 0;
+    }
+    gDiagFbSeen[Idx >> 3] |= (UINT8)Bit;
+    return 1;
+}
+
+static void FontDiagFallback(UINT32 Cp, UINT32 FontId, UINT32 Slot) {
+    char *P = gDiagLine;
+
+    P = DiagStr(P, "FONT glyph");
+    P = DiagPair(P, "cp", Cp);
+    P = DiagPair(P, "from-cache", 0u);
+    P = DiagPair(P, "font-id", FontId);
+    P = DiagPair(P, "slot", Slot);
+    P = DiagStr(P, " fallback=point\r\n");
+    *P = 0;
+    HalSerialWriteShell(gDiagLine);
+}
+
 int FontSetById(UINT32 Id) {
     UINT32 PrevId;
     const FONT_FACE *F;
     UINT32 NextSlot;
+    int Drop;
 
     if (Id >= gFontCount) {
         return -1;
@@ -570,8 +654,12 @@ int FontSetById(UINT32 Id) {
      * 于是早先用 Terminus 栅格过的数字（4/7/9）继续命中，设置→显示→分辨率
      * 里的数字就一直是 Terminus 的样，看着像「UMing 的 4/7 有问题」。
      * 字形缓存只按 (码位, 边长) 索引，不含字体身份，所以换脸必须整片作废。
+     *
+     * PR-22：只靠「换脸时清一次」不够——清完仍可能被写回（见 TrueTypeCache
+     * 的代数校验），而且 MISS 从来没清过（个别数字会一直走点阵软退）。
      */
-    if (NextSlot != gUiTtfSlot || PrevId != Id) {
+    Drop = (NextSlot != gUiTtfSlot || PrevId != Id) ? 1 : 0;
+    if (Drop) {
         gUiTtfSlot = NextSlot;
         FontTtfCacheDropHits();
     }
@@ -732,6 +820,15 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
         F = FontFaceForLatin();
         G = FontGlyph((char)Cp);
         if (G && F) {
+            /*
+             * PR-22-diag：UMing/Droid 选中却拿不到 TTF 位图，退回点阵。
+             * 这就是「个别数字/字母长得像 Terminus」的唯一可见来源：
+             * 不是缓存串了脸，而是这个码位在缓存里是 MISS/空，走了软退。
+             * 每代每码位只记一次，避免刷屏。
+             */
+            if (UiLatin && FontTtfReady() && FontDiagFallbackFirst(Cp)) {
+                FontDiagFallback(Cp, gCurrentId, FontTtfUiActiveSlot());
+            }
             if (OutW) {
                 *OutW = F->Width;
             }

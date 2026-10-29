@@ -8,6 +8,7 @@
 #include "Font.h"
 #include "Hal.h"
 #include "Compiler.h"
+#include "SerialLog.h"
 
 #define TTF_CACHE_N 1024u
 #define TTF_PROBE   32u
@@ -24,9 +25,122 @@ typedef struct {
     UINT32 Cp;
     UINT32 Side; /* 位图边长（物理像素，= FontTtfCell）；步进见下一行 */
     UINT32 Adv;  /* 逻辑步进：拉丁用字宽，汉字用 Side/绘制倍数 */
+    UINT32 Gen;  /* 栅这一格时的换脸代数；!= 当前代即「上一张脸的位图」 */
     int State;
     UINT8 Pix[TTF_PIX];
 } TTF_SLOT;
+
+/*
+ * PR-22-diag：换字体诊断（串口一行；内核栈 8KiB，缓冲放 static）。
+ *
+ * 这个缓存只按 (码位, 边长) 索引，不含「字形是哪个字体栅的」。正常启动时
+ * 一直只有一张脸，看不出问题；设置里来回换字体就会把不同脸的位图混在
+ * 一张表里，于是 4/7 之类的个位数停在上一张脸。下面每行日志带 font-id /
+ * slot / gen，用来分辨三种可能：没清 / 清了又被写回 / 压根没进缓存。
+ */
+static char gDiagLine[176];
+
+static char *DiagStr(char *P, const char *S) {
+    while (S && *S) {
+        *P++ = *S++;
+    }
+    return P;
+}
+
+static char *DiagU32(char *P, UINT32 V) {
+    char Tmp[10];
+    int n = 0;
+
+    if (V == 0u) {
+        *P++ = '0';
+        return P;
+    }
+    while (V != 0u && n < (int)sizeof(Tmp)) {
+        Tmp[n++] = (char)('0' + (int)(V % 10u));
+        V /= 10u;
+    }
+    while (n > 0) {
+        *P++ = Tmp[--n];
+    }
+    return P;
+}
+
+static char *DiagPair(char *P, const char *Key, UINT32 V) {
+    *P++ = ' ';
+    P = DiagStr(P, Key);
+    *P++ = '=';
+    return DiagU32(P, V);
+}
+
+/* 字形日志每代只打一次每个码位，免得每帧刷屏 */
+#define TTF_DIAG_N (TTF_CACHE_N / 8u)
+static UINT8 gDiagSeen[TTF_DIAG_N];
+/* 换脸代数：DropHits 递增；只用于日志（PR-22 起也参与有效性判定） */
+static UINT32 gCacheGen = 1u;
+
+static int DiagFirst(UINT32 Cp, UINT8 *Seen) {
+    UINT32 Idx = Cp % TTF_CACHE_N;
+    UINT32 Bit;
+
+    Bit = 1u << (Idx & 7u);
+    if (Seen[Idx >> 3] & (UINT8)Bit) {
+        return 0;
+    }
+    Seen[Idx >> 3] |= (UINT8)Bit;
+    return 1;
+}
+
+static UINT32 gDiagRasterSrc; /* 1=stb 2=FreeType；0=未记录 */
+void FontDiagRasterSrc(UINT32 Src) {
+    gDiagRasterSrc = Src;
+}
+
+static void DiagGlyph(UINT32 Cp, UINT32 Side, int FromCache, int Miss,
+                      UINT32 HitGen, UINT32 Adv) {
+    char *P = gDiagLine;
+
+    P = DiagStr(P, "FONT glyph");
+    P = DiagPair(P, "cp", Cp);
+    P = DiagPair(P, "side", Side);
+    P = DiagPair(P, "from-cache", (UINT32)(FromCache ? 1 : 0));
+    P = DiagPair(P, "font-id", FontCurrentId());
+    P = DiagPair(P, "slot", FontTtfUiActiveSlot());
+    P = DiagPair(P, "gen", gCacheGen);
+    P = DiagPair(P, "hit-gen", HitGen);
+    P = DiagPair(P, "adv", Adv);
+    P = DiagPair(P, "miss", (UINT32)(Miss ? 1 : 0));
+    *P++ = '\r';
+    *P++ = '\n';
+    *P = 0;
+    HalSerialWriteShell(gDiagLine);
+}
+
+static void DiagStale(UINT32 Cp, UINT32 Gen0) {
+    char *P = gDiagLine;
+
+    P = DiagStr(P, "FONT stale-raster");
+    P = DiagPair(P, "cp", Cp);
+    P = DiagPair(P, "gen0", Gen0);
+    P = DiagPair(P, "gen1", gCacheGen);
+    P = DiagPair(P, "font-id", FontCurrentId());
+    *P++ = '\r';
+    *P++ = '\n';
+    *P = 0;
+    HalSerialWriteShell(gDiagLine);
+}
+
+static void DiagDrop(UINT32 Hits, UINT32 Misses) {
+    char *P = gDiagLine;
+
+    P = DiagStr(P, "FONT drop");
+    P = DiagPair(P, "hits", Hits);
+    P = DiagPair(P, "miss", Misses);
+    P = DiagPair(P, "gen", gCacheGen);
+    *P++ = '\r';
+    *P++ = '\n';
+    *P = 0;
+    HalSerialWriteShell(gDiagLine);
+}
 
 static int TtfCpOk(UINT32 Cp) {
     return (Cp >= 32u && Cp != 127u) ? 1 : 0;
@@ -43,6 +157,11 @@ static UINT32 gWant[TTF_WANT_N];
 static UINT32 gWantN;
 static UINT32 gPaintGen;
 
+/*
+ * PR-22：按 (码位, 物理边长) 索引的槽必须再验一次「代数」。
+ * 槽是换脸前栅的就当不存在——这样即便某条换脸路径漏了 Drop、或者
+ * Worker 在 Drop 之后才把旧脸的位图写回，也绝不会被当成命中。
+ */
 static TTF_SLOT *SlotLookup(UINT32 Cp) {
     UINT32 i0 = Cp % TTF_CACHE_N;
     UINT32 k;
@@ -51,7 +170,7 @@ static TTF_SLOT *SlotLookup(UINT32 Cp) {
         TTF_SLOT *S = &gSlot[(i0 + k) % TTF_CACHE_N];
 
         if (S->State != TTF_EMPTY && S->Cp == Cp) {
-            return S;
+            return (S->Gen == gCacheGen) ? S : 0;
         }
     }
     return 0;
@@ -111,19 +230,45 @@ static void WantPush(UINT32 Cp) {
     gWant[gWantN++] = Cp;
 }
 
+static void MonoDropAll(void);
+
 void FontTtfCacheDropHits(void) {
     UINT32 i;
+    UINT32 Hits = 0;
+    UINT32 Misses = 0;
 
     for (i = 0; i < TTF_CACHE_N; i++) {
         if (gSlot[i].State == TTF_HIT) {
-            gSlot[i].State = TTF_EMPTY;
-            gSlot[i].Cp = 0;
-            gSlot[i].Side = 0;
-            gSlot[i].Adv = 0;
+            Hits++;
+        } else if (gSlot[i].State == TTF_MISS) {
+            Misses++;
+        } else {
+            continue;
         }
+        /*
+         * PR-22 修：HIT 和 MISS 都要清。
+         *
+         * 只清 HIT 时，MISS 会跨字体活下来：某个码点这次没栅出来（FT 显存
+         * 池满 / FPU 被 Worker 占着 / 该脸一时没就绪）就被记成 MISS，
+         * FontTtfCacheGet 见 MISS 直接返回 0 不再重试，绘制层只好退 1bpp
+         * 点阵——换回 UMing 也还是点阵的 4/7，就是「换了字体又换回来，
+         * 数字仍然是 Terminus 样」的直接原因。清掉后每张脸都重新栅一次。
+         */
+        gSlot[i].State = TTF_EMPTY;
+        gSlot[i].Cp = 0;
+        gSlot[i].Side = 0;
+        gSlot[i].Adv = 0;
+        gSlot[i].Gen = 0;
     }
     gWantN = 0;
     gPaintGen++;
+    gCacheGen++;
+    FontFtClearLastAdvance();
+    MonoDropAll();
+    for (i = 0; i < TTF_DIAG_N; i++) {
+        gDiagSeen[i] = 0;
+    }
+    DiagDrop(Hits, Misses);
 }
 
 void FontTtfCacheDropCjkHits(void) {
@@ -165,12 +310,27 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     }
     S = SlotLookup(Cp);
     if (S) {
+        if (S->State == TTF_MISS && S->Gen != gCacheGen) {
+            /*
+             * 上一代留下的 MISS 是「那次没栅出来」，不是「这个字不存在」。
+             * 换代后当场重试一次；仍失败才当缺字。
+             */
+            (void)FillSlot(Cp, 1);
+            S = SlotLookup(Cp);
+            if (S && S->State == TTF_HIT) {
+                goto Hit;
+            }
+            return 0;
+        }
         if (S->State == TTF_MISS) {
             /*
              * 真缺字勿再 Want：否则 Drain→Bump→ThemeScene 死循环叠半透栏
              * （开 Settings 等字多的窗时栏很抖）。Init 前灌的 MISS 由
              * FontTtfCacheDropMisses（FontTtfInit 后）清掉再画。
              */
+            if (DiagFirst(Cp, gDiagSeen)) {
+                DiagGlyph(Cp, S->Side, 0, 1, S->Gen, S->Adv);
+            }
             return 0;
         }
         if (S->Side != FontTtfCell()) {
@@ -184,9 +344,13 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
             (void)FillSlot(Cp, 1);
             S = SlotLookup(Cp);
             if (!S || S->State != TTF_HIT || S->Side != FontTtfCell()) {
+                if (DiagFirst(Cp, gDiagSeen)) {
+                    DiagGlyph(Cp, S ? S->Side : 0u, 0, 1, S ? S->Gen : 0u, S ? S->Adv : 0u);
+                }
                 return 0;
             }
         }
+Hit:
         /* 位图仍是 Side×Side；步进见 FontTtfCacheAdvance */
         if (OutW) {
             *OutW = S->Side;
@@ -249,6 +413,7 @@ int FontTtfCachePending(UINT32 Cp) {
 static int FillSlot(UINT32 Cp, int NotifyPaint) {
     TTF_SLOT *Slot;
     UINT32 Side;
+    UINT32 Gen0;
 
     if (!TtfCpOk(Cp)) {
         return 0;
@@ -261,15 +426,40 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
      * SESSION 在 FS/Gui 前时 Console→LocaleTtfPreheat 会在 gInit=0 时灌满 MISS，
      * 若此处把 MISS 当「已填」则 Gui 二次预热永不再栅格（汉字一直缺字框）。
      */
-    if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == Side) {
+    if (Slot->State == TTF_HIT && Slot->Cp == Cp && Slot->Side == Side &&
+        Slot->Gen == gCacheGen) {
         return 0;
     }
-    if (FontTtfRasterCp(Cp, Slot->Pix) != 0) {
-        Slot->Cp = Cp;
-        Slot->Side = Side;
-        Slot->Adv = Side;
-        Slot->State = TTF_MISS;
-        return 0;
+    /*
+     * PR-22-diag：记下栅格开始时的代数。栅一格里要跑 FT/stb（毫秒级），
+     * 期间 Gui 可能已经换脸并 DropHits；此时把旧脸的位图写成 HIT 就是
+     * 「清了又被写回」。先只记录，不改行为（下一步才作废这次写入）。
+     */
+    Gen0 = gCacheGen;
+    {
+        int Rc = FontTtfRasterCp(Cp, Slot->Pix);
+
+        /*
+         * PR-22 修：栅一格里 FT/stb 要跑毫秒级，期间别的线程完全可能已经
+         * 换脸并 DropHits。旧代码照旧发布——「清了又被写回」，屏上就出现
+         * 上一张脸的字形。代数变了就把这次结果整个丢掉（不写 HIT 也不写
+         * MISS），让下一次按新脸重栅。
+         */
+        if (gCacheGen != Gen0) {
+            DiagStale(Cp, Gen0);
+            return 0;
+        }
+        if (Rc != 0) {
+            Slot->Cp = Cp;
+            Slot->Side = Side;
+            Slot->Adv = Side;
+            Slot->Gen = gCacheGen;
+            Slot->State = TTF_MISS;
+            if (DiagFirst(Cp, gDiagSeen)) {
+                DiagGlyph(Cp, Side, 0, 1, gCacheGen, Side);
+            }
+            return 0;
+        }
     }
     Slot->Cp = Cp;
     Slot->Side = Side;
@@ -308,6 +498,7 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
     if (Slot->Adv > FontTtfPixel()) {
         Slot->Adv = FontTtfPixel();
     }
+    Slot->Gen = Gen0;
     Slot->State = TTF_HIT;
     if (NotifyPaint) {
         gPaintGen++;
@@ -428,6 +619,14 @@ static UINT32 gMonoCellW;
 /* 基线布局算法变更时递增，逼缓存失效 */
 static UINT32 gMonoLayout = 4u;
 static UINT32 gMonoCachedLayout;
+
+static void MonoDropAll(void) {
+    UINT32 k;
+
+    for (k = 0; k < MONO_N; k++) {
+        gMonoHit[k] = TTF_EMPTY;
+    }
+}
 
 const UINT8 *FontTtfMonoCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
     UINT32 Idx;

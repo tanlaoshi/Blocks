@@ -53,8 +53,22 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     }
 
     Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, FileInfo);
-    if (EFI_ERROR(Status)) {
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+        /*
+         * 文件名比 sizeof(EFI_FILE_INFO)+128 还长时 GetInfo 会返回此码，
+         * 并把所需长度写回 InfoSize；按实际大小重来一次即可，不必猜上限。
+         */
         gBS->FreePool(FileInfo);
+        FileInfo = NULL;
+        Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&FileInfo);
+        if (!EFI_ERROR(Status)) {
+            Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, FileInfo);
+        }
+    }
+    if (EFI_ERROR(Status)) {
+        if (FileInfo != NULL) {
+            gBS->FreePool(FileInfo);
+        }
         File->Close(File);
         Root->Close(Root);
         return Status;

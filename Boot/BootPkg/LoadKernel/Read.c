@@ -9,38 +9,40 @@
 
 #include "BootPrivate.h"
 
-STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
-                                 EFI_PHYSICAL_ADDRESS *OutBuffer, UINTN *OutSize) {
-    STATIC CHAR16 *Paths[] = {
-        L"\\Kernel.elf",
-        L"\\KERNEL.ELF",
-        L"\\EFI\\Blocks\\Kernel.elf",
-    };
+/*
+ * BootReadWholeFile — 整读一个文件（PR-12）
+ *
+ * 原来 Read.c 与 Theme.c 各写一份「开卷→开文件→GetInfo→分配→读→清理」，
+ * 错误码与上限还不同（一份无上限、一份 8192）。统一到这里：
+ *   UsePages=TRUE  → AllocatePages，返回可直接交给内核的物理缓冲；
+ *   UsePages=FALSE → AllocatePool，多分配 1 字节并补 NUL（文本配置用）。
+ *   MaxSize=0      → 不限制。
+ *
+ * 两个细节都来自踩过的坑：
+ *   - GetInfo 的文件名缓冲可能不够（EFI_BUFFER_TOO_SMALL，PR-02），按回填
+ *     的 InfoSize 重来一次，不猜上限；
+ *   - Read 返回 SUCCESS 但读到的比 FileSize 少（簇链比目录项短，PR-05），
+ *     显式报 short read 并返回 EFI_VOLUME_CORRUPTED，别把截断数据当成功。
+ */
+EFI_STATUS BootReadWholeFile(EFI_FILE_PROTOCOL *Root, CONST CHAR16 *Path,
+                             UINTN MaxSize, BOOLEAN UsePages,
+                             CHAR8 **OutBuf, UINTN *OutSize) {
     EFI_STATUS Status;
-    EFI_FILE_PROTOCOL *Root = NULL;
     EFI_FILE_PROTOCOL *File = NULL;
     EFI_FILE_INFO *FileInfo = NULL;
     UINTN InfoSize;
-    UINTN p;
+    UINTN Total;
+    UINTN Got;
+    CHAR8 *Buf = NULL;
 
-    if (OutSize != NULL) {
-        *OutSize = 0;
+    if (Root == NULL || Path == NULL || OutBuf == NULL || OutSize == NULL) {
+        return EFI_INVALID_PARAMETER;
     }
+    *OutBuf = NULL;
+    *OutSize = 0;
 
-    Status = Fs->OpenVolume(Fs, &Root);
-    if (EFI_ERROR(Status)) {
-        return Status;
-    }
-
-    for (p = 0; p < sizeof(Paths) / sizeof(Paths[0]); p++) {
-        Status = Root->Open(Root, &File, Paths[p], EFI_FILE_MODE_READ, 0);
-        if (!EFI_ERROR(Status)) {
-            break;
-        }
-        File = NULL;
-    }
-    if (File == NULL) {
-        Root->Close(Root);
+    Status = Root->Open(Root, &File, (CHAR16 *)(UINTN)Path, EFI_FILE_MODE_READ, 0);
+    if (EFI_ERROR(Status) || File == NULL) {
         return EFI_NOT_FOUND;
     }
 
@@ -48,16 +50,10 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
     Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&FileInfo);
     if (EFI_ERROR(Status)) {
         File->Close(File);
-        Root->Close(Root);
         return Status;
     }
-
     Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, FileInfo);
     if (Status == EFI_BUFFER_TOO_SMALL) {
-        /*
-         * 文件名比 sizeof(EFI_FILE_INFO)+128 还长时 GetInfo 会返回此码，
-         * 并把所需长度写回 InfoSize；按实际大小重来一次即可，不必猜上限。
-         */
         gBS->FreePool(FileInfo);
         FileInfo = NULL;
         Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&FileInfo);
@@ -70,58 +66,105 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
             gBS->FreePool(FileInfo);
         }
         File->Close(File);
-        Root->Close(Root);
+        return Status;
+    }
+    Total = (UINTN)FileInfo->FileSize;
+    gBS->FreePool(FileInfo);
+
+    if (Total == 0 || (MaxSize != 0 && Total > MaxSize)) {
+        File->Close(File);
+        return EFI_NOT_FOUND;
+    }
+
+    if (UsePages) {
+        UINTN Pages = (Total >> 12) + 1;
+
+        Status = gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, Pages,
+                                    (EFI_PHYSICAL_ADDRESS *)(VOID **)&Buf);
+        if (EFI_ERROR(Status)) {
+            File->Close(File);
+            return Status;
+        }
+    } else {
+        Status = gBS->AllocatePool(EfiLoaderData, Total + 1, (VOID **)&Buf);
+        if (EFI_ERROR(Status)) {
+            File->Close(File);
+            return Status;
+        }
+        Buf[Total] = 0;
+    }
+
+    Got = 0;
+    Status = EFI_SUCCESS;
+    while (Got < Total) {
+        UINTN Chunk = Total - Got;
+
+        if (Chunk > (256 * 1024)) {
+            Chunk = 256 * 1024;
+        }
+        Status = File->Read(File, &Chunk, (VOID *)(Buf + Got));
+        if (EFI_ERROR(Status) || Chunk == 0) {
+            break;
+        }
+        Got += Chunk;
+    }
+    if (!EFI_ERROR(Status) && Got < Total) {
+        BootSerialPrintf("Boot: Short Read got=0x%lx total=0x%lx\n",
+                         (UINT64)Got, (UINT64)Total);
+        Status = EFI_VOLUME_CORRUPTED;
+    }
+    if (EFI_ERROR(Status)) {
+        if (UsePages) {
+            gBS->FreePages((EFI_PHYSICAL_ADDRESS)(UINTN)Buf,
+                           (Total >> 12) + 1);
+        } else {
+            gBS->FreePool(Buf);
+        }
+        File->Close(File);
         return Status;
     }
 
-    {
-        UINTN FilePageSize = ((UINTN)FileInfo->FileSize >> 12) + 1;
-        Status = gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, FilePageSize, OutBuffer);
-        if (EFI_ERROR(Status)) {
-            gBS->FreePool(FileInfo);
-            File->Close(File);
-            Root->Close(Root);
-            return Status;
-        }
-
-        {
-            UINTN Total = (UINTN)FileInfo->FileSize;
-            UINTN Got = 0;
-            UINT8 *Dst = (UINT8 *)(UINTN)*OutBuffer;
-
-            Status = EFI_SUCCESS;
-            while (Got < Total) {
-                UINTN Chunk = Total - Got;
-
-                if (Chunk > (256 * 1024)) {
-                    Chunk = 256 * 1024;
-                }
-                Status = File->Read(File, &Chunk, Dst + Got);
-                if (EFI_ERROR(Status) || Chunk == 0) {
-                    break;
-                }
-                Got += Chunk;
-            }
-            /*
-             * 短读：Read 返回 SUCCESS 但 Chunk==0（簇链比 FileSize 短等）时，
-             * 原代码会带着截断的 ELF 继续往下走，最后报成 CheckKernelFile
-             * 失败——归因错误。这里显式判定并报出 got/total。
-             */
-            if (!EFI_ERROR(Status) && Got < Total) {
-                BootSerialPrintf("Boot: Kernel Short Read got=0x%lx total=0x%lx\n",
-                                 (UINT64)Got, (UINT64)Total);
-                Status = EFI_VOLUME_CORRUPTED;
-            }
-            if (!EFI_ERROR(Status) && OutSize != NULL) {
-                *OutSize = Got;
-            }
-        }
-    }
-
-    gBS->FreePool(FileInfo);
     File->Close(File);
+    *OutBuf = Buf;
+    *OutSize = Got;
+    return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
+                                 EFI_PHYSICAL_ADDRESS *OutBuffer, UINTN *OutSize) {
+    STATIC CHAR16 *Paths[] = {
+        L"\\Kernel.elf",
+        L"\\KERNEL.ELF",
+        L"\\EFI\\Blocks\\Kernel.elf",
+    };
+    EFI_STATUS Status;
+    EFI_FILE_PROTOCOL *Root = NULL;
+    UINTN p;
+    CHAR8 *Buf = NULL;
+    UINTN Size = 0;
+    EFI_STATUS Last = EFI_NOT_FOUND;
+
+    if (OutSize != NULL) {
+        *OutSize = 0;
+    }
+    Status = Fs->OpenVolume(Fs, &Root);
+    if (EFI_ERROR(Status)) {
+        return Status;
+    }
+    for (p = 0; p < sizeof(Paths) / sizeof(Paths[0]); p++) {
+        Status = BootReadWholeFile(Root, Paths[p], 0, TRUE, &Buf, &Size);
+        if (!EFI_ERROR(Status)) {
+            Root->Close(Root);
+            *OutBuffer = (EFI_PHYSICAL_ADDRESS)(UINTN)Buf;
+            if (OutSize != NULL) {
+                *OutSize = Size;
+            }
+            return EFI_SUCCESS;
+        }
+        Last = Status;
+    }
     Root->Close(Root);
-    return Status;
+    return Last;
 }
 
 typedef struct {

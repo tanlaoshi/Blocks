@@ -100,6 +100,9 @@ VOID BootFillDiskGuid(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig);
  */
 
 /* LoadKernel/：Read / Elf / 编排 */
+EFI_STATUS BootReadWholeFile(EFI_FILE_PROTOCOL *Root, CONST CHAR16 *Path,
+                             UINTN MaxSize, BOOLEAN UsePages,
+                             CHAR8 **OutBuf, UINTN *OutSize);
 EFI_STATUS ReadKernelFile(EFI_HANDLE ImageHandle, EFI_PHYSICAL_ADDRESS *OutBuffer,
                           UINTN *OutSize);
 EFI_STATUS CheckKernelFile(EFI_PHYSICAL_ADDRESS ElfBase, UINTN FileSize,

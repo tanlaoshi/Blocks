@@ -107,78 +107,19 @@ STATIC BOOLEAN ParseModeFromDb(const CHAR8 *Buf, UINTN Size, UINT32 *OutW,
     return FALSE;
 }
 
+/* BLOCKS.DB 是纯文本配置：pool 分配 + NUL 结尾 + 8192 上限 */
 STATIC EFI_STATUS ReadDbFileOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                                  CHAR8 **OutBuf, UINTN *OutSize) {
-    STATIC CHAR16 *Paths[] = {
-        L"\\BLOCKS.DB",
-    };
     EFI_STATUS Status;
     EFI_FILE_PROTOCOL *Root = NULL;
-    EFI_FILE_PROTOCOL *File = NULL;
-    EFI_FILE_INFO *FileInfo = NULL;
-    UINTN InfoSize;
-    UINTN p;
-    CHAR8 *Buf = NULL;
-    UINTN ReadSize;
-
-    *OutBuf = NULL;
-    *OutSize = 0;
 
     Status = Fs->OpenVolume(Fs, &Root);
     if (EFI_ERROR(Status)) {
         return Status;
     }
-
-    for (p = 0; p < sizeof(Paths) / sizeof(Paths[0]); p++) {
-        Status = Root->Open(Root, &File, Paths[p], EFI_FILE_MODE_READ, 0);
-        if (!EFI_ERROR(Status)) {
-            break;
-        }
-        File = NULL;
-    }
-    if (File == NULL) {
-        Root->Close(Root);
-        return EFI_NOT_FOUND;
-    }
-
-    InfoSize = sizeof(EFI_FILE_INFO) + 128;
-    Status = gBS->AllocatePool(EfiLoaderData, InfoSize, (VOID **)&FileInfo);
-    if (EFI_ERROR(Status)) {
-        File->Close(File);
-        Root->Close(Root);
-        return Status;
-    }
-
-    Status = File->GetInfo(File, &gEfiFileInfoGuid, &InfoSize, FileInfo);
-    if (EFI_ERROR(Status) || FileInfo->FileSize == 0 || FileInfo->FileSize > 8192) {
-        gBS->FreePool(FileInfo);
-        File->Close(File);
-        Root->Close(Root);
-        return EFI_NOT_FOUND;
-    }
-
-    Status = gBS->AllocatePool(EfiLoaderData, (UINTN)FileInfo->FileSize + 1,
-                               (VOID **)&Buf);
-    if (EFI_ERROR(Status)) {
-        gBS->FreePool(FileInfo);
-        File->Close(File);
-        Root->Close(Root);
-        return Status;
-    }
-
-    ReadSize = (UINTN)FileInfo->FileSize;
-    Status = File->Read(File, &ReadSize, Buf);
-    gBS->FreePool(FileInfo);
-    File->Close(File);
+    Status = BootReadWholeFile(Root, L"\\BLOCKS.DB", 8192, FALSE, OutBuf, OutSize);
     Root->Close(Root);
-    if (EFI_ERROR(Status)) {
-        gBS->FreePool(Buf);
-        return Status;
-    }
-    Buf[ReadSize] = 0;
-    *OutBuf = Buf;
-    *OutSize = ReadSize;
-    return EFI_SUCCESS;
+    return Status;
 }
 
 STATIC BOOLEAN TryParseModeOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,

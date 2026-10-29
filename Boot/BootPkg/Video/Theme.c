@@ -90,7 +90,6 @@ STATIC EFI_STATUS ReadDbFileOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                                  CHAR8 **OutBuf, UINTN *OutSize) {
     STATIC CHAR16 *Paths[] = {
         L"\\BLOCKS.DB",
-        L"\\TOYOS.DB", /* 旧库名兼容一次 */
     };
     EFI_STATUS Status;
     EFI_FILE_PROTOCOL *Root = NULL;

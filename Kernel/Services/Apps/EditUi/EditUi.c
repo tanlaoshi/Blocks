@@ -9,6 +9,9 @@ char gBuf[EDIT_BUF_MAX];
 UINTN gEditLen;
 UINTN gCursor;
 int gScrollLine;
+/* PR-18：用户用滚轮自己滚过之后，暂停「光标必须可见」的强制跟随 */
+static int gScrollUser;
+static UINTN gScrollLastCursor;
 int gEditDirty;
 char gEditStatus[EDIT_STATUS_MAX];
 
@@ -32,6 +35,16 @@ static void EditSaveInit(void) {
     gEditSave.Kind = UI_ACTION_SYNC;
     gEditSave.Fn = EditSaveAction;
     gEditSave.Ctx = 0;
+}
+
+void EditUiOnWheel(INT8 Wheel) {
+    if (Wheel == 0 || !EditUiIsFocused()) {
+        return;
+    }
+    /* 正滚轮 = 看列表上方；不改变光标，只改视口 */
+    gScrollUser = 1;
+    gScrollLine -= (int)Wheel;
+    EditUiRepaint();
 }
 
 void EditSetStatus(const char *S) {
@@ -64,6 +77,25 @@ void EditClampScroll(UINT32 VisLines) {
 
     if (VisLines < 1) {
         VisLines = 1;
+    }
+    /* 光标自己动了（方向键/输入）→ 恢复跟随光标 */
+    if (gCursor != gScrollLastCursor) {
+        gScrollLastCursor = gCursor;
+        gScrollUser = 0;
+    }
+    if (gScrollUser) {
+        /* 用户滚过：只把滚动位置夹在有效行范围内，别把光标硬拉回视野 */
+        UINTN LastLine = LineIndexOf(gEditLen);
+        int MaxTop;
+
+        MaxTop = (LastLine + 1u >= VisLines) ? (int)(LastLine + 1u - VisLines) : 0;
+        if (gScrollLine > MaxTop) {
+            gScrollLine = MaxTop;
+        }
+        if (gScrollLine < 0) {
+            gScrollLine = 0;
+        }
+        return;
     }
     if ((UINTN)gScrollLine > CurLine) {
         gScrollLine = (int)CurLine;

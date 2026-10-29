@@ -19,6 +19,8 @@ void EditUiOnEscape(void);
 void EditUiOnEnter(void);
 void EditUiOnArrow(int Down);
 void EditUiOnArrowLeftRight(int Right);
+/* PR-18：鼠标滚轮滚动（正=看上方） */
+void EditUiOnWheel(INT8 Wheel);
 void EditUiOnBackspace(void);
 void EditUiOnDeleteKey(void);
 void EditUiOnChar(char C);

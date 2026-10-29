@@ -192,6 +192,8 @@ void GuiOnMouse(const GUI_MOUSE_STATE *Mouse) {
     if (Mouse->Wheel != 0) {
         if (GuiFocusKind() == GUI_WIN_FILES) {
             FilesUiOnWheel(Mouse->Wheel);
+        } else if (GuiFocusKind() == GUI_WIN_EDIT) {
+            EditUiOnWheel(Mouse->Wheel);
         } else if (GuiFocusKind() == GUI_WIN_SHELL) {
             gConsole.OnWheel(Mouse->Wheel);
         }

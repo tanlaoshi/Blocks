@@ -254,6 +254,8 @@ void GuiPollMouse(void) {
         M.Wheel = WheelSum;
         if (GuiFocusKind() == GUI_WIN_FILES) {
             FilesUiOnWheel(M.Wheel);
+        } else if (GuiFocusKind() == GUI_WIN_EDIT) {
+            EditUiOnWheel(M.Wheel);
         } else if (GuiFocusKind() == GUI_WIN_SHELL) {
             gConsole.OnWheel(M.Wheel);
         }

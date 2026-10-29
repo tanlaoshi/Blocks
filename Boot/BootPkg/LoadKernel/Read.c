@@ -102,6 +102,16 @@ STATIC EFI_STATUS OpenKernelOnFs(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs,
                 }
                 Got += Chunk;
             }
+            /*
+             * 短读：Read 返回 SUCCESS 但 Chunk==0（簇链比 FileSize 短等）时，
+             * 原代码会带着截断的 ELF 继续往下走，最后报成 CheckKernelFile
+             * 失败——归因错误。这里显式判定并报出 got/total。
+             */
+            if (!EFI_ERROR(Status) && Got < Total) {
+                BootSerialPrintf("Boot: Kernel Short Read got=0x%lx total=0x%lx\n",
+                                 (UINT64)Got, (UINT64)Total);
+                Status = EFI_VOLUME_CORRUPTED;
+            }
             if (!EFI_ERROR(Status) && OutSize != NULL) {
                 *OutSize = Got;
             }

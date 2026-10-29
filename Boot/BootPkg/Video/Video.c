@@ -37,6 +37,8 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
     UINTN                                 InfoSize = 0;
     UINTN                                 BestMode = 0;
     UINTN                                 BestScore = 0;
+    BOOLEAN                               KeepCurrentMode = FALSE;
+    BOOLEAN                               FoundMode = FALSE;
     UINT32                                BestW = 0;
     UINT32                                BestH = 0;
     BOOLEAN                               InVm = IsVirtualMachine();
@@ -107,7 +109,10 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
             BestMode = (UINTN)Gop->Mode->Mode;
             BestW = CurW;
             BestH = CurH;
-            BestScore = 6000000000ULL;
+            /* 开关不再是「一个特别大的分值」：分值域里只有真实得分 */
+            KeepCurrentMode = TRUE;
+            FoundMode = TRUE;
+            BestScore = 0;
             BootDbg("Boot: Keep Firmware Mode %dx%d (No mode=)\n", CurW, CurH);
         }
     }
@@ -161,7 +166,7 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
                     Score < 1500000000ULL) {
                     Score = 1500000000ULL + ((UINTN)W * (UINTN)H) / 10000ULL;
                 }
-            } else if (BestScore >= 6000000000ULL) {
+            } else if (KeepCurrentMode) {
                 Score = 0;
             } else if (InVm) {
                 Score = ScoreModeQemu(W, H);
@@ -171,11 +176,12 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
             BootDbg("  Mode %d: %dx%d (Score: %d)\n", i, W, H, Score);
 
-            if (Score > BestScore) {
+            if (!KeepCurrentMode && Score > BestScore) {
                 BestScore = Score;
                 BestMode = i;
                 BestW = W;
                 BestH = H;
+                FoundMode = TRUE;
             }
         }
 
@@ -217,7 +223,8 @@ EFI_STATUS GetVideoInfo(EFI_HANDLE ImageHandle, UEFI_BOOT_CONFIG *BootConfig) {
 
     gBS->FreePool(HandleBuffer);
 
-    if (BestScore == 0) {
+    /* 用独立开关判断「有没有选到」，而不是拿分值为 0 猜 */
+    if (!FoundMode) {
         BootDbg("Boot: No Usable GOP Mode Found\n");
         return FailVideo("GetVideoInfo", EFI_NOT_FOUND);
     }

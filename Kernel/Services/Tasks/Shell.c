@@ -58,6 +58,13 @@ void ShellTask(void) {
             FeedHid(&Report, &Previous);
             Previous = Report;
         }
+        /*
+         * PR-19 修复：按住方向键的重复节拍。此处在 for(;;) 每圈都走——queue 空、
+         * 没有新报告时也会执行；键状态由 FeedHid 记下的 gLastReport 提供。
+         * 勿只放 TasksPumpKeyboard：那只在用户态 poll 时跑，Edit 内核窗按住
+         * 期间没有事件 → 永远不 tick（真机「只动一行」）。
+         */
+        TasksHidRepeatTick();
         /* 鼠标泵仅 GuiTask（runtime-a-poll）；此处勿 GuiPollMouse */
         /*
          * COM1 RX → Shell / 用户 stdin 环（CoolTerm 遥控）。

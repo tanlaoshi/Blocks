@@ -69,14 +69,36 @@
 #define AIC_SCAN_DRY_VIF_INDEX 0u       /* dry 没有 CFM，用 0 展示布局 */
 #define AIC_SCAN_NO_ALTERNATE 0xFFFFu   /* 不是任何合法消息 id */
 
-/* ---- 接收预算 ----
- * 总预算 8 s；每轮最多等 500 ms；连续 4 轮没收到结果就收工（2 s 静默）。
- * CFM 仍是 4 × 500 ms = 2 s，与 ver/mmreset 同一档。
+/* ---- 多轮扫描 ----
+ * 单轮驻留只有 30–50 ms/信道（真机 survey），而 beacon 间隔 100 ms ⇒ 一轮必然漏 AP。
+ * 默认 3 轮、最多 8 轮；每轮都是同一 vif 上的一次 SCANU_START + 收集，轮间不重加 vif。
+ * 上限 8：13 ch × 2.5 s 静默已经 ~20 s，再多就不是“扫一下”了；8 也是 3 bit
+ * （MaxBSSID Indicator 常用 3）能覆盖的量级，便于和 MBSSID 的 idx 对照。
  */
-#define AIC_SCAN_TOTAL_BUDGET_MS 8000u
+#define AIC_SCAN_ROUNDS_DEFAULT 3u
+#define AIC_SCAN_ROUNDS_MAX 8u
+
+/* ---- 接收预算 ----
+ * 主判据是 0x1001：厂商 rwnx_msg_rx.c:586 的 rwnx_rx_scanu_start_cfm 收到它就直接
+ * cfg80211_scan_done()，语义就是“扫描结束”；start 的回执是 0x1009（rwnx_msg_tx.c:2821
+ * rwnx_send_msg(..., SCANU_START_CFM_ADDTIONAL, NULL)）。真机已验证固件不发 0x1001，
+ * 所以 6 s 静默是纯等待、没有收益；本刀把单轮静默降到 2.5 s（5 × 500 ms）：
+ *   一轮正常 = 13 ch × 30–50 ms（0.4–0.65 s）+ 2.5 s 静默 ≈ 3.2 s；
+ *   单轮硬上限 6 s（仍小于上一刀的 12 s），3 轮 collect 正常 ≈ 10 s、最坏 18 s，
+ *   不会 36 s（另有每轮 start cfm ≤2 s，CFM 正常是立即回的）。
+ *   只有结果持续不断到 6 s 才会用满预算 —— 那是在收数据，不是在空等。
+ * duration 不动：厂商 rwnx_msg_tx.c:2723-2725 同样把它置 0（那行被注释掉）。
+ * CFM 仍是 4 × 500 ms = 2 s，与 ver/mmreset 同一档；它发生在每轮 collect 之前。
+ */
+#define AIC_SCAN_ROUND_BUDGET_MS 6000u
 #define AIC_SCAN_RX_POLL_MS 500u
-#define AIC_SCAN_IDLE_LIMIT 4u
+#define AIC_SCAN_IDLE_LIMIT 5u
 #define AIC_SCAN_CFM_TRIES 4u
+
+/* 收尾原因：只用于 scan summary 的尾标和失败文案分支 */
+#define AIC_SCAN_END_DONE 0
+#define AIC_SCAN_END_IDLE 1
+#define AIC_SCAN_END_BUDGET 2
 
 /* ---- 整帧缓冲与解析常量 ---- */
 #define AIC_SCAN_FRAME_MAX 1600u /* = AIC_MSG_MAX；单条消息的硬上限 */
@@ -84,16 +106,16 @@
 #define AIC_SCAN_SSID_TEXT_MAX 33u /* 32 B SSID + NUL */
 #define AIC_SCAN_MAC_TEXT_MAX 18u  /* 17 个字符 + NUL */
 
-/* ---- verbose 取证（本刀）----
+/* ---- verbose 取证（本刀压缩）----
  * 只读不判：打印原始字节和字段，不纠正、不猜。输出格式就是验收判据（报告里贴了原文）。
- * 前 96 B 覆盖 24 B 定长头 + 12 B 定长体 + 60 B IE 链，够看清 IE 起点落在哪。
+ * 前 32 B 覆盖 24 B 定长头 + 8 B 定长体（timestamp 前 8 B），够核对 payload 起点；
+ * IE 链只列前 6 条，`ie@36` 首行 + `left=` 仍在（真机判据，不能删）。
  */
 #define AIC_SCAN_VERBOSE_OFF 0
 #define AIC_SCAN_VERBOSE_ON 1
-#define AIC_SCAN_HEX_HEAD_BYTES 96u
-#define AIC_SCAN_HEX_COLUMNS 16u /* 一行 16 B，与 Wireshark 默认宽度一致 */
-#define AIC_SCAN_TAIL_BYTES 8u   /* 帧尾 8 B：有 FCS 的话最后 4 B 是 CRC */
-#define AIC_SCAN_IE_PRINT_MAX 14u /* 一条结果最多列 14 个 IE，防刷屏 */
+#define AIC_SCAN_HEX_HEAD_BYTES 32u
+#define AIC_SCAN_HEX_COLUMNS 16u  /* 一行 16 B，与 Wireshark 默认宽度一致 */
+#define AIC_SCAN_IE_PRINT_MAX 6u  /* 一条结果最多列 6 个 IE，防刷屏 */
 #define AIC_SCAN_IE_BODY_SHOW 8u  /* 每个 IE 只打前 8 B 体 */
 #define AIC_SCAN_WORD_BYTES 4u    /* 厂商 u32_l 字段 = 4 B 小端 */
 #define AIC_SCAN_BYTE_BITS 8u     /* 每个字节 8 bit */
@@ -141,6 +163,53 @@
 #define AIC_IE_DS_PARAMETER 3u
 #define AIC_SSID_PRINTABLE_MIN 0x20u
 #define AIC_SSID_PRINTABLE_MAX 0x7Eu
+
+/* ---- Multiple BSSID（IE 0x47）----
+ * 元素体：MaxBSSID Indicator(1) + Optional Subelements。
+ * 非传输 BSSID 在 Subelement ID 0（Nontransmitted BSSID Profile）里，profile
+ * 自身又是一条 IE 链：第一个元素必须是 Nontransmitted BSSID Capability(83,len=2)，
+ * 后面才有 SSID(0) 和 Multiple BSSID-Index(85)。ID 值照 linux_5.10
+ * include/linux/ieee80211.h:2754/2766/2768；解析骨架照
+ * net/wireless/scan.c:2081-2136（只取 index/SSID，不做 profile 继承合并）。
+ *
+ * 派生规则（**变的是最后一个字节 A5，不是第一个字节**）：
+ *   IEEE 802.11ax-2021 的 Multiple BSSID 集合：
+ *     A0-A1-A2-A3-A4-A5 = 参考（传输）BSSID，n = MaxBSSID Indicator
+ *     B = A5 mod 2^n
+ *     A5(i) = A5 - B + ((B + i) mod 2^n)
+ *   即 A5(i) = (A5 & ~mask) | (((A5 & mask) + i) & mask)，mask = 2^n - 1。
+ *   内核同款实现：linux_5.10/include/net/cfg80211.h:6125-6137
+ *   cfg80211_gen_new_bssid()（u64 的低位就是 A5）。真机看到的 04:…:f2 与
+ *   0a:…:f2 差在第一个字节，按这条规则不可能由 idx 派生 —— 先解 IE 0x47，
+ *   有 idx 才按上式派生；解不出就保留空 SSID，不猜。
+ */
+#define AIC_IE_MULTIPLE_BSSID 71u      /* WLAN_EID_MULTIPLE_BSSID = 0x47 */
+#define AIC_IE_NON_TX_BSSID_CAP 83u    /* WLAN_EID_NON_TX_BSSID_CAP = 0x53 */
+#define AIC_IE_MULTI_BSSID_INDEX 85u   /* WLAN_EID_MULTI_BSSID_IDX = 0x55 */
+#define AIC_IE_NON_TX_BSSID_CAP_LENGTH 2u /* capability 元素体固定 2 B（scan.c:2103） */
+#define AIC_MBSSID_PROFILE_MIN 4u      /* id+len+2 B capability = 4 B（scan.c:2097） */
+#define AIC_MBSSID_INDICATOR_LENGTH 1u /* MaxBSSID Indicator 占 1 B（元素体首字节） */
+#define AIC_MBSSID_MAX_BITS 8u         /* MaxBSSID Indicator 是 1 B；mask 用 u32 算 */
+#define AIC_MBSSID_INDEX_MIN 1u        /* index 0 是传输 BSSID（scan.c:2112） */
+#define AIC_SCAN_MBSSID_ERROR_NONE 0xFFFFu
+#define AIC_SCAN_RECORD_INDEX_NONE 0xFFFFu
+
+/* 合并表：32 个 BSSID 足够家庭/办公室；超出只丢展示，不丢轮次计数 */
+#define AIC_SCAN_AP_MAX 32u
+/* 一帧里最多取 16 个 AP（1 个传输 + 15 个 profile；n=4 的常见集合正好 16）。
+ * 再多也不扩栈：畸形 0x47 最多写满 16 项，溢出 profile 直接忽略。 */
+#define AIC_SCAN_AP_PER_FRAME 16u
+
+/* 一个可打印的 AP：由 Result 解析、Report 按 BSSID 合并 */
+typedef struct {
+    UINT8 Bssid[AIC_SCAN_MAC_LENGTH];
+    char Ssid[AIC_SCAN_SSID_TEXT_MAX];
+    UINT16 Frequency;
+    INT8 Rssi;
+    UINT8 Channel;
+    UINT8 MbssidIndex;       /* 0 = 传输 BSSID；1.. = 非传输，打印 (mbssid idx=N) */
+    UINT16 MbssidErrorOffset; /* 0xFFFF = 没出错；否则是 profile 解析失败的帧内偏移 */
+} AIC_SCAN_AP;
 
 /*
  * struct mac_chan_def（lmac_mac.h:109-118）：5 B 字段 + 1 B 对齐填充 = 6 B/项。
@@ -224,16 +293,41 @@ typedef struct {
     UINT32 Payload[];       /* +12 802.11 管理帧本体 */
 } AIC_SCANU_RESULT;
 
-/* ---- 跨文件原型（WifiScanMessage.c / WifiScanResult.c / WifiScanDump.c） ---- */
+/*
+ * verbose 取证帧：只给“合并后每个 AP 的最强那次”留一份整帧，普通 scan 不拷。
+ * 接收路径仍只 memcpy、不打印：115200 下几十行 dump 要几百毫秒，期间不轮询 SDIO，
+ * 固件侧的结果/测量帧会积压甚至被丢 —— 真机 verbose 那次 survey 缺了 2422..2442。
+ * 每槽存整帧 1600 B（= AIC_SCAN_FRAME_MAX，单条消息硬上限），dump 的 left= 才准确。
+ * 16 槽 × 1600 B = 25 KiB 静态 BSS；Duo S 128 MiB DRAM，不做动态分配。
+ * 多轮合并到 32 个 AP，但只有前 16 个“更强帧”能留 dump；其余结果行照打，只是没 dump。
+ */
+#define AIC_SCAN_RESULT_KEEP_MAX 16u
+
+typedef struct {
+    UINT16 FrameLength; /* e2a 整帧长，≤ AIC_SCAN_FRAME_MAX */
+    UINT16 ParamLength; /* scanu_result_ind 参数长 */
+    UINT8 Frame[AIC_SCAN_FRAME_MAX];
+} AIC_SCAN_RECORD;
+
+/* ---- 跨文件原型（WifiScanMessage.c / WifiScanResult.c / WifiScanDump.c / WifiScanReport.c） ---- */
 UINT32 AicMmAddIfBuild(UINT8 *Buffer);
 UINT32 AicScanuStartBuild(UINT8 *Buffer, UINT8 VifIndex);
 int AicScanLayoutCheck(void);
-int SdhciWifiScan(int Mode);
+int SdhciWifiScan(int Mode, UINT32 Rounds);
 void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength, UINT32 Index);
 void AicScanFormatAddress(const UINT8 *Address, char *Text);
 void AicScanMarkSigned(INT32 Value);
+/* Report：入口做一次 Reset，每轮 Start/Collect 前 Round，收帧 Add，轮末 RoundDone */
+void AicScanReportReset(UINT32 Rounds, int Verbose);
+void AicScanReportRound(UINT32 Round);
+void AicScanReportAdd(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength);
+void AicScanReportRoundDone(UINT32 Elapsed, int Done, int End);
+int AicScanReportFinish(void);
 void AicScanReportIgnored(UINT16 Id, UINT32 ParamLength, const UINT8 *Frame, int Verbose);
-void AicScanResultPrint(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength, UINT32 Index,
-                        int Verbose);
+/* Result：一帧 → 1 个传输 BSSID + 0..N 个非传输 BSSID；0 = 不是可解析的 Beacon/ProbeRsp */
+UINT32 AicScanResultParse(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength,
+                          AIC_SCAN_AP *Entries, UINT32 MaxEntries);
+void AicScanResultPrintAp(const AIC_SCAN_AP *Entry, UINT32 Index);
+void AicScanResultPrintMbssidFailure(const AIC_SCAN_AP *Entry);
 
 #endif

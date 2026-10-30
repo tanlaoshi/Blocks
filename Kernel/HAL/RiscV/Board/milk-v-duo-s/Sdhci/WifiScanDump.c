@@ -6,6 +6,8 @@
  * 从哪读：AicScanDumpVerbose（单条结果）/ AicScanReportIgnored（旁路消息）。
  * 别改：这里**只读不判** —— 不纠正偏移、不猜 SSID、不吞帧；解析结论仍归
  *       AicScanResultPrint。串口文案是对外判据（报告 §1 贴了原文），只写 ASCII。
+ *       判据必须留：`payload_fc … : match`、`ie@36` 首行、`left=`；
+ *       其余压到最小：payload 头 32 B、IE 只列前 6 条、不再并排打 24 起点。
  * 为什么单独一个文件：WifiScanResult.c 只管“解出 SSID/ch”，这里是“把字节原样摊开”，
  *       两件事；混一起既过 60 行也说不清职责。
  * 来源：payload 起点 = AIC_E2A_PARAM_OFF(16) + scanu_result_ind 头(12)；
@@ -88,6 +90,8 @@ static void ScanDumpDot11Header(const UINT8 *Payload, UINT32 Length) {
     SdhciMark(ScanSubtypeName(Type, Subtype));
     SdhciMarkHex(") flags=", (FrameControl >> AIC_DOT11_FLAGS_SHIFT) & AIC_DOT11_FLAGS_MASK, 2);
     SdhciMarkHex(" dur=", AicGet16(&Payload[AIC_DOT11_DURATION_OFFSET]), 4);
+    SdhciMarkDecimal(" seq=", Sequence >> AIC_DOT11_SEQUENCE_NUMBER_SHIFT);
+    SdhciMarkDecimal(" frag=", Sequence & AIC_DOT11_SEQUENCE_FRAG_MASK);
     SdhciMark("\n");
     SdhciMark("WiFi:   dot11: a1=");
     SdhciMark(Address1);
@@ -95,9 +99,6 @@ static void ScanDumpDot11Header(const UINT8 *Payload, UINT32 Length) {
     SdhciMark(Address2);
     SdhciMark(" a3=");
     SdhciMark(Address3);
-    SdhciMark("\n");
-    SdhciMarkDecimal("WiFi:   dot11: seq=", Sequence >> AIC_DOT11_SEQUENCE_NUMBER_SHIFT);
-    SdhciMarkDecimal(" frag=", Sequence & AIC_DOT11_SEQUENCE_FRAG_MASK);
     SdhciMark("\n");
 }
 
@@ -168,31 +169,17 @@ static void ScanDumpRawOnly(const UINT8 *Frame, UINT32 FrameLength) {
     ScanDumpHex("WiFi:     ", Frame, Show);
 }
 
-/* 帧尾 8 B：有 FCS 时最后 4 B 是 CRC，和 IE 链末端对照着看 */
-static void ScanDumpTail(const UINT8 *Payload, UINT32 Length) {
-    UINT32 Show = Length < AIC_SCAN_TAIL_BYTES ? Length : AIC_SCAN_TAIL_BYTES;
-    UINT32 Start = Length - Show;
-    UINT32 Index;
-
-    SdhciMarkDecimal("WiFi:   tail bytes=", Show);
-    SdhciMarkHex(" at off=", Start, 3);
-    SdhciMark(":");
-    for (Index = Start; Index < Length; Index++) {
-        SdhciMarkHex(" ", (UINT32)Payload[Index], 2);
-    }
-    SdhciMark("\n");
-}
-
 /*
- * 帧体取证：payload 前 96 B、24 B 帧头逐字段、IE 走链。
- * 走两遍链：36 是厂商/内核认定的 IE 起点，24 是老代码的起点，两条并排才看得出差在哪。
+ * 帧体取证：payload 前 32 B、24 B 帧头逐字段、IE 走链（只列前 6 条）。
+ * 只走 36 这一条链：IE 起点 36 已被真机证明（SSID="Apple"/"CMCC-cURu"），
+ * 不再并排打 24 起点 —— 那条纯粹是上一刀的历史对照，现在只占屏。
  */
 static void ScanDumpPayload(const UINT8 *Payload, UINT32 Length, UINT32 Declared) {
     UINT32 Show = Length < AIC_SCAN_HEX_HEAD_BYTES ? Length : AIC_SCAN_HEX_HEAD_BYTES;
     UINT32 End;
 
-    SdhciMarkDecimal("WiFi:   payload head bytes=", Show);
-    SdhciMarkDecimal(" of ", Length);
+    SdhciMarkDecimal("WiFi:   payload head ", Show);
+    SdhciMarkDecimal(" B of ", Length);
     SdhciMark(":\n");
     ScanDumpHex("WiFi:     ", Payload, Show);
     ScanDumpDot11Header(Payload, Length);
@@ -201,9 +188,6 @@ static void ScanDumpPayload(const UINT8 *Payload, UINT32 Length, UINT32 Declared
     SdhciMarkHex(" declared=", Declared, 4);
     SdhciMarkDecimal(" left=", Declared > End ? Declared - End : 0u);
     SdhciMark(" (left=4 => 4 B FCS still in frame)\n");
-    ScanDumpTail(Payload, Length);
-    /* 老行为对照：真机上从 24 起的第一条就是 timestamp 的 00 00 => SSID 空 */
-    (void)ScanDumpIes(Payload, Length, AIC_DOT11_HEADER_LENGTH, "ie@24old");
 }
 
 void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength, UINT32 Index) {
@@ -214,19 +198,12 @@ void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLeng
     UINT32 Length;
     UINT32 PayloadOffset = AIC_E2A_PARAM_OFF + AIC_SCANU_RESULT_HEADER;
 
-    SdhciMark("WiFi: scan result #");
-    SdhciMarkDecimal("", Index);
-    SdhciMark(" verbose:\n");
-    SdhciMarkHex("WiFi:   frame_len=", FrameLength, 4);
-    SdhciMarkHex(" param_len=", ParamLength, 4);
-    SdhciMarkHex(" payload_off=", PayloadOffset, 4);
-    SdhciMark(" (=");
-    SdhciMarkDecimal("", AIC_E2A_PARAM_OFF);
-    SdhciMark("+");
-    SdhciMarkDecimal("", AIC_SCANU_RESULT_HEADER);
-    SdhciMark(")\n");
+    (void)Index; /* 结果汇总行已经带 #N，dump 不再重复 */
+    SdhciMarkHex("WiFi:   ind: flen=", FrameLength, 4);
+    SdhciMarkHex(" plen=", ParamLength, 4);
+    SdhciMarkHex(" off=", PayloadOffset, 4);
     if (FrameLength < PayloadOffset || ParamLength < AIC_SCANU_RESULT_HEADER) {
-        SdhciMark("WiFi:   frame/param too short, payload not locatable\n");
+        SdhciMark("\nWiFi:   frame/param too short, payload not locatable\n");
         ScanDumpRawOnly(Frame, FrameLength);
         return;
     }
@@ -235,8 +212,8 @@ void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLeng
     Available = ParamLength - AIC_SCANU_RESULT_HEADER;
     Declared = Result->Length;
     Length = Declared < Available ? Declared : Available;
-    SdhciMarkHex("WiFi:   ind: length=", Declared, 4);
-    SdhciMarkHex(" framectrl=", Result->FrameControl, 4);
+    SdhciMarkHex(" len=", Declared, 4);
+    SdhciMarkHex(" fc=", Result->FrameControl, 4);
     SdhciMarkDecimal(" freq=", Result->CenterFrequency);
     SdhciMarkHex(" band=", Result->Band, 2);
     SdhciMarkHex(" sta=", Result->StationIndex, 2);

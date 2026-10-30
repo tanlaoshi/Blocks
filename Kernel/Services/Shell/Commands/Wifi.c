@@ -24,9 +24,11 @@ extern int SdhciWifiFwVersion(void) __attribute__((weak));
 extern int SdhciWifiFwMmReset(void) __attribute__((weak));
 /* PR-31：三条配置消息（ME_CONFIG → ME_CHAN_CONFIG → MM_START）。Dry != 0 只拼包打印 */
 extern int SdhciWifiBringup(int Dry) __attribute__((weak));
-/* PR-31 第二刀：0=真扫、1=dry 只拼包、2=verbose 真扫+取证；与板级 AIC_SCAN_MODE_* 同步 */
+/* PR-31 第二刀：2=verbose 真扫+取证；0=真扫、1=dry；与板级 AIC_SCAN_MODE_* 同步 */
 #define WIFI_SCAN_VERBOSE 2
-extern int SdhciWifiScan(int Mode) __attribute__((weak));
+#define WIFI_SCAN_ROUNDS_DEFAULT 3u
+#define WIFI_SCAN_ROUNDS_MAX 8u
+extern int SdhciWifiScan(int Mode, UINT32 Rounds) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -206,7 +208,6 @@ static void CommandWifi(int Argc, char **Argv) {
 /* wifiprobe：等价于 wifi probe，直接重跑 SD1 枚举（真机排障用） */
 static void CommandWifiProbeOnly(int Argc, char **Argv) {
     int Wake = 0;
-
     if (Argc >= 2 && Argv[1][0] == 'w' && Argv[1][1] == 'a') {
         Wake = 1;
     }
@@ -226,9 +227,10 @@ static void CommandWifiProbeOnly(int Argc, char **Argv) {
  *   wififw patch apply  真写 patch 表（每条 mem write 等 CFM，失败即停）
  *   wififw bringup      发 ME_CONFIG → ME_CHAN_CONFIG → MM_START，每步等 CFM（2000 ms）
  *   wififw bringup dry  只拼包：打印三条消息的总长与前 64 B，一个字节都不发
- *   wififw scan         加 STA 接口 → 广播扫描 2.4G 13 ch → 边收边打扫描结果
+ *   wififw scan         加 STA 接口 → 广播扫描 2.4G 13 ch × 3 轮 → 按 BSSID 合并打结果
+ *   wififw scan repeat N 指定轮数（1..8；默认 3）
  *   wififw scan dry     只拼 MM_ADD_IF 与 SCANU_START，打印总长与前 64 B，不发
- *   wififw scan verbose 同 scan；另打每条结果的原始字节（96 B、帧头、IE 走链）
+ *   wififw scan verbose 同 scan；每条合并结果再打“最强那帧”的 32 B 头、帧头、前 6 条 IE
  *
  * 真写是不可逆操作，所以拆成"检查 / confirm"两段，防手滑。
  */
@@ -239,7 +241,6 @@ static void WifiFwRun(UINT32 Mode) {
     {
         /* 评审 Y2：返回值不许丢，成败必须落到串口上 */
         int Rc = SdhciWifiFw(Mode);
-
         gConsole.Write(Rc == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
     }
     if (SdhciWifiMarkSink != 0) {
@@ -265,8 +266,8 @@ static void WifiFwBringup(int Dry) {
     }
 }
 
-/* wififw scan [dry|verbose]：0=真扫、1=只拼包（不需要卡）、2=真扫并打原始字节 */
-static void WifiFwScan(int Mode) {
+/* wififw scan [dry|verbose] [repeat N]：0=真扫、1=只拼包（不需要卡）、2=真扫并打原始字节 */
+static void WifiFwScan(int Mode, UINT32 Rounds) {
     if (SdhciWifiScan == 0) {
         gConsole.Write("wifi: this board has no SDIO firmware stage\n");
         return;
@@ -274,7 +275,7 @@ static void WifiFwScan(int Mode) {
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(ShellProbeMark);
     }
-    gConsole.Write(SdhciWifiScan(Mode) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+    gConsole.Write(SdhciWifiScan(Mode, Rounds) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(0);
     }
@@ -284,7 +285,6 @@ static void WifiFwScan(int Mode) {
 static int WifiParseHex(const char *Text, UINT32 *Out) {
     UINT32 V = 0;
     int k;
-
     if (Text == 0 || Text[0] == 0) {
         return 0;
     }
@@ -310,7 +310,23 @@ static int WifiParseHex(const char *Text, UINT32 *Out) {
     *Out = V;
     return 1;
 }
-
+static void CommandWifiFwScan(int Argc, char **Argv) {
+    UINT32 ScanMode = 0, Rounds = WIFI_SCAN_ROUNDS_DEFAULT;
+    int Dry = 0, Index = 2;
+    if (Argc > 2 && ArgEqualIgnoreCase(Argv[2], "dry")) { Dry = 1; Index = 3; }
+    else if (Argc > 2 && ArgEqualIgnoreCase(Argv[2], "verbose")) { ScanMode = WIFI_SCAN_VERBOSE; Index = 3; }
+    if (Index < Argc) {
+        if (ArgEqualIgnoreCase(Argv[Index], "repeat") == 0 || Index + 1 >= Argc ||
+            WifiParseHex(Argv[Index + 1], &Rounds) == 0 || Rounds < 1u ||
+            Rounds > WIFI_SCAN_ROUNDS_MAX || (Dry != 0 && Argc > 3)) {
+            gConsole.Write("wififw scan [dry|verbose] [repeat 1..8]\n");
+            return;
+        }
+        Index += 2;
+    }
+    if (Index != Argc) { gConsole.Write("wififw scan [dry|verbose] [repeat 1..8]\n"); return; }
+    WifiFwScan(Dry != 0 ? 1u : ScanMode, Rounds);
+}
 /*
  * 分发只做一件事：把命令行翻成 Mode，然后**一次**调用 WifiFwRun。
  * 以前是"一长串 else-if + 末尾兜底"，新增 patch 子命令时忘了从链里排除，
@@ -319,7 +335,6 @@ static int WifiParseHex(const char *Text, UINT32 *Out) {
  */
 static void CommandWifiFw(int Argc, char **Argv) {
     UINT32 Mode = 0u;
-
     if (SdhciWifiFw == 0) {
         gConsole.Write("wifi: this board has no SDIO firmware stage\n");
         return;
@@ -343,7 +358,6 @@ static void CommandWifiFw(int Argc, char **Argv) {
         UINT32 Address = 0;
         int Bad = 0;
         int k;
-
         if (Argc < 3) {
             gConsole.Write("wififw rd <hexaddr>   (e.g. wififw rd 00201940)\n");
             return;
@@ -391,14 +405,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         WifiFwBringup(Argc >= 3 ? 1 : 0);
         return;
     } else if (ArgEqualIgnoreCase(Argv[1], "scan")) {
-        /* 第二刀 dry 只拼包；第三刀 verbose = 真扫 + 原始字节取证 */
-        int Verbose = Argc >= 3 && ArgEqualIgnoreCase(Argv[2], "verbose");
-        int Dry = Argc >= 3 && ArgEqualIgnoreCase(Argv[2], "dry");
-        if (Argc >= 3 && !Dry && !Verbose) {
-            gConsole.Write("wififw scan [dry|verbose]\n");
-            return;
-        }
-        WifiFwScan(Verbose ? WIFI_SCAN_VERBOSE : Dry);
+        CommandWifiFwScan(Argc, Argv);
         return;
     } else if (ArgEqualIgnoreCase(Argv[1], "ver")) {
         /* 只读：MM_VERSION_REQ → 有 CFM 就证明固件在跑 */
@@ -418,7 +425,6 @@ static void CommandWifiFw(int Argc, char **Argv) {
         /* 诊断：单字写 + 立刻读回（同一上电周期内才有意义） */
         UINT32 Address = 0;
         UINT32 Value = 0;
-
         if (Argc < 4) {
             gConsole.Write("wififw wr <hexaddr> <hexval>  (e.g. wififw wr 00201940 000ee5fd)\n");
             return;
@@ -470,13 +476,12 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose]|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
 }
 #endif
-
 /*
  * 无桌面/无 FB 的板子（Duo S）走 ShellCommandsRegisterVirtMin，只挂命令最小集，
  * 所以 wifiprobe 单独开一个注册口给那里用；桌面靶则由 ShellCommandsWifiRegister 一起挂。
@@ -485,11 +490,10 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose]|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }
-
 void ShellCommandsWifiRegister(void) {
     gConsole.Register("wifi", "wifi [info|scan|join <ssid>|probe]", CommandWifi);
     ShellCommandsWifiProbeRegister();

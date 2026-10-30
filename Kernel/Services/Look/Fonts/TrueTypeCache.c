@@ -147,12 +147,11 @@ static int TtfCpOk(UINT32 Cp) {
 }
 
 /*
- * PR-23b：64×64 槽 ×1024 ≈ 4MB。必须上抬 .bss.high（链接在 32MiB），
- * 不能留在低端 .bss：低端段变大后整段 [0x352000, ...) 会跨过 OVMF
- * ~8MiB 保留区，Boot 的 AllocateAddress 整段申请直接失败（实测启动挂死）。
+ * 64×64 槽 ×1024 ≈ 4MB。BSS 整体已上抬到 32MiB（X64 link.ld，PR-24），
+ * 低端只剩 text/rodata/data，所以这块留普通 .bss 即可——不再需要
+ * .bss.high 那个特例（当初是低端段会跨过 OVMF ~8MiB 保留区才绕的）。
  */
-static TTF_SLOT gSlot[TTF_CACHE_N]
-    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
+static TTF_SLOT gSlot[TTF_CACHE_N] BLOCKS_ALIGNED(64);
 static UINT32 gWant[TTF_WANT_N];
 static UINT32 gWantN;
 static UINT32 gPaintGen;
@@ -615,9 +614,8 @@ UINT32 FontTtfWantDrain(UINT32 Max) {
 /* font-latin-mono：ASCII 独立槽，避免与 UI UMing 缓存撞车 */
 #define MONO_N 96u
 
-/* mono 槽同样按物理边长；.bss.high 理由同上（96×4096≈384KB） */
-static UINT8 gMonoPix[MONO_N][TTF_PIX]
-    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(64);
+/* mono 槽同样按物理边长；BSS 在 32MiB，留普通 .bss（96×4096≈384KB） */
+static UINT8 gMonoPix[MONO_N][TTF_PIX] BLOCKS_ALIGNED(64);
 static UINT8 gMonoHit[MONO_N];
 static UINT32 gMonoSide;
 static UINT32 gMonoCellW;

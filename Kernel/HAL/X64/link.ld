@@ -44,9 +44,8 @@ SECTIONS
      *
      * 原因：低端段从 1MiB 顺序往下排，而 OVMF 在约 8MiB 处有保留区，
      * Boot 又是按 PT_LOAD 整段 AllocateAddress —— 于是「data+bss」的总额
-     * 被隐形钉死在约 7MiB。PR-23b 的 4MB 字形缓存正是撞在这里（当时只能
-     * 把这一块单独放进 .bss.high 绕开）。把 BSS 整体搬上去之后这条预算从
-     * 7MiB 变成约 3GiB，.bss.high 这个特例也就不需要了。
+     * 被隐形钉死在约 7MiB。PR-23b 的 4MB 字形缓存正是撞在这里。把 BSS 整体
+     * 搬上去之后这条预算从 7MiB 变成约 3GiB，`.bss.high` 标记已全部退休。
      *
      * 清零由 Boot 的 ELF 装载保证：每个 PT_LOAD 都 SetMem(SegBase,
      * SegPages*4096, 0) 再拷 SizeInFile，所以 filesz=0 的 BSS 段整段为 0。
@@ -56,7 +55,6 @@ SECTIONS
     .bss : {
         *(.bss)
         *(COMMON)
-        *(.bss.high)   /* 历史标记，保留以免还有 .bss.high 的引用漏网 */
     } :bss
 
     __kernel_end = .;

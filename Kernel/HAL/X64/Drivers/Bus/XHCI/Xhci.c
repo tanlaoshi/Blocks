@@ -149,9 +149,8 @@ UINT64 gFwErdpSave;   /* 固件 ERDP：勿清环后强行改回基址 */
  * 旧式把 Hi/Lo 对调会少/多配页 → 装环后写 RS 时 DMA 踩错 → 真机硬挂。
  */
 UINT64 gScratchPtr[XHCI_SCRATCH_MAX] BLOCKS_ALIGNED(64);
-/* 上抬 .bss.high：512KiB 若粘在低端 BSS，装载跨度易撞 OVMF ~8MiB 保留区 */
-UINT8  gScratchBuf[XHCI_SCRATCH_MAX][4096]
-    BLOCKS_SECTION(".bss.high") BLOCKS_ALIGNED(4096);
+/* 512KiB；BSS 整体在 32MiB（X64 link.ld），保留 4K 对齐供 scratchpad DMA */
+UINT8  gScratchBuf[XHCI_SCRATCH_MAX][4096] BLOCKS_ALIGNED(4096);
 UINT8  gDevCtx[2048] BLOCKS_ALIGNED(64);
 UINT8  gHubDevCtx[2048] BLOCKS_ALIGNED(64); /* PR-H-hub */
 UINT8  gInCtx[2048] BLOCKS_ALIGNED(64);

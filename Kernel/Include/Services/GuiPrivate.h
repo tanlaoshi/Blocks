@@ -335,6 +335,21 @@ void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H);
 void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
                     UINT32 H, UINT32 Background, const char *Title,
                     int PromptShown);
+/*
+ * PR-layout：开窗尺寸预算 + 不重叠摆放（Open/Place.c）。
+ * 150%/200% 下逻辑分辨率缩小（1280×800 → 853×533 → 640×400），
+ * 两个 800×560 的窗只挪位置永远会叠；先按「同屏两窗」压尺寸，再摆位。
+ */
+#define GUI_PLACE_EDGE          8u   /* 首选点/回绕点的逻辑边距 */
+#define GUI_PLACE_GAP_PHYS      32u  /* 两窗最小物理间距（各档视觉一致） */
+#define GUI_PLACE_STEP_PHYS     32u  /* 级联步长（物理 px） */
+#define GUI_PLACE_SCAN_STEP     8u   /* 找不到空位时的网格扫描步长（逻辑 px） */
+#define GUI_PLACE_SHRINK_PERCENT 75u /* 仍放不下：每次缩到 3/4 */
+#define GUI_PLACE_SHRINK_TRIES   4u   /* 最多缩 4 次；再小 UI 已不可读 */
+#define GUI_PLACE_MIN_WIDTH     200u /* 收缩下限（再小 UI 无法读） */
+#define GUI_PLACE_MIN_HEIGHT    140u
+void GuiPlaceSizeBudget(UINT32 Margin, UINT32 *W, UINT32 *H);
+void GuiPlaceWindow(int Index, UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 /* 开窗辅助。定义在 Open.c */
 void OpenChromeDefer(int Idx);
 void OpenFadeIn(int Idx);

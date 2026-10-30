@@ -78,19 +78,8 @@ int AllocWindowSlot(void) {
 }
 
 void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H) {
-    if (!W || !H) {
-        return;
-    }
-    if (*W + Margin * 2u > gGuiWindowManager.ScreenWidth) {
-        *W = gGuiWindowManager.ScreenWidth > Margin * 2u
-                 ? gGuiWindowManager.ScreenWidth - Margin * 2u
-                 : gGuiWindowManager.ScreenWidth / 2u;
-    }
-    if (*H + Margin * 2u > gGuiWindowManager.ScreenHeight) {
-        *H = gGuiWindowManager.ScreenHeight > Margin * 2u
-                 ? gGuiWindowManager.ScreenHeight - Margin * 2u
-                 : gGuiWindowManager.ScreenHeight / 2u;
-    }
+    /* PR-layout：按可用区（去任务栏）与「同屏两窗」预算，不再只看整屏 */
+    GuiPlaceSizeBudget(Margin, W, H);
 }
 
 void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
@@ -101,6 +90,8 @@ void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
     if (Idx < 0 || Idx >= MAX_WINS) {
         return;
     }
+    /* PR-layout：先按尺寸预算与级联/回绕找不重叠位置，再写槽位 */
+    GuiPlaceWindow(Idx, &X, &Y, &W, &H);
     Win = &gGuiWindowManager.Windows[Idx];
     Win->Active = 1;
     Win->Kind = Kind;
@@ -117,30 +108,33 @@ void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
     Win->InputLine[0] = 0;
 }
 
+/* Shell 默认窗上限：960×600 ≈ 85 列×28 行（8×16 点阵），ps 长行不裁切 */
+#define SHELL_MAX_WIDTH  960u
+#define SHELL_MAX_HEIGHT 600u
+
 void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY,
                            UINT32 *OutW, UINT32 *OutH) {
-    UINT32 Margin = 48;
-    UINT32 Cascade = (UINT32)Idx * 28;
+    UINT32 Margin = GUI_PLACE_EDGE;
     UINT32 W;
     UINT32 H;
 
-    W = gGuiWindowManager.ScreenWidth > Margin * 2 + 200 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth - 32;
-    H = gGuiWindowManager.ScreenHeight > Margin * 2 + 120 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight - 32;
-    /* 默认桌面 1280×720：960×600 约 ~85 列×~28 行（8×16），ps 等长行不易裁切 */
-    if (W > 960) {
-        W = 960;
+    (void)Idx;
+    W = gGuiWindowManager.ScreenWidth > Margin * 2u + GUI_PLACE_MIN_WIDTH
+            ? gGuiWindowManager.ScreenWidth - Margin * 2u
+            : GUI_PLACE_MIN_WIDTH;
+    H = gGuiWindowManager.ScreenHeight > Margin * 2u + GUI_PLACE_MIN_HEIGHT
+            ? gGuiWindowManager.ScreenHeight - Margin * 2u
+            : GUI_PLACE_MIN_HEIGHT;
+    if (W > SHELL_MAX_WIDTH) {
+        W = SHELL_MAX_WIDTH;
     }
-    if (H > 600) {
-        H = 600;
+    if (H > SHELL_MAX_HEIGHT) {
+        H = SHELL_MAX_HEIGHT;
     }
-    *OutX = Margin + Cascade;
-    *OutY = Margin + Cascade;
-    if (*OutX + W > gGuiWindowManager.ScreenWidth) {
-        *OutX = Margin;
-    }
-    if (*OutY + H > gGuiWindowManager.ScreenHeight) {
-        *OutY = Margin;
-    }
+    GuiPlaceSizeBudget(Margin, &W, &H);
+    /* 首选左上；真正的级联/回绕在 InitWindowSlot → GuiPlaceWindow */
+    *OutX = Margin;
+    *OutY = Margin;
     *OutW = W;
     *OutH = H;
 }

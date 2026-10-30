@@ -79,6 +79,8 @@ void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void DesktopDrawStartMenu(void);
 /* 重画任务栏（关菜单快路径须调：开始钮 Active→Idle） */
 void DesktopRedrawTaskbar(void);
+/* 任务栏高度（逻辑 px）：开窗可用区下沿 = 屏高 - 本值 */
+UINT32 DesktopTaskbarHeight(void);
 /* 桌面右键：设置、关机、重启。点在窗口上不弹出。 */
 void DesktopContextMenuOpen(UINT32 X, UINT32 Y);
 void DesktopContextMenuClose(void);

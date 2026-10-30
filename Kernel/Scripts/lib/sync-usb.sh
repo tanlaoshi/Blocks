@@ -19,6 +19,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=blocks-common.sh
 . "$SCRIPT_DIR/blocks-common.sh"
+# 两个根别混：仓库根有 Kernel/ Boot/；镜像根（Runtime/）有 RootFs/ Esp/。
+# 旧写法用一个 ROOT 兼两用，--build 会去 cd "$ROOT/Kernel"（= Runtime/Kernel，不存在）。
+REPO_ROOT="$(blocks_resolve_root "$0")"
 ROOT="$(blocks_image_root "$0")"
 DO_BUILD=0
 KERNEL_ONLY=0
@@ -268,7 +271,7 @@ fi
 if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   if [[ "$DO_BUILD" -eq 1 ]]; then
     echo "== build Kernel =="
-    (cd "$ROOT/Kernel" && ./build.sh)
+    (cd "$REPO_ROOT/Kernel" && ./build.sh)
   fi
   if [[ ! -d "$BLOCKS_MNT" ]]; then
     echo "error: BLOCKS mount missing: $BLOCKS_MNT" >&2
@@ -372,8 +375,8 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   echo "== build Kernel =="
   (cd "$ROOT/Kernel" && ./build.sh)
   echo "== build Boot =="
-  if [[ -x "$ROOT/Boot/build.sh" ]]; then
-    (cd "$ROOT/Boot" && ./build.sh)
+  if [[ -x "$REPO_ROOT/Boot/build.sh" ]]; then
+    (cd "$REPO_ROOT/Boot" && ./build.sh)
   else
     echo "warning: Boot/build.sh missing; keep existing BOOTX64.EFI" >&2
   fi

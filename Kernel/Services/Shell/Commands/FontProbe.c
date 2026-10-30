@@ -111,7 +111,7 @@ static UINT32 ProbeEdgeAlpha(const UINT8 *G, UINT32 W, UINT32 H, UINT32 Col) {
 
 /* 位图里最右一列达到 Min 的列宽；0 = 全空 */
 static UINT32 ProbeInkColumns(const UINT8 *G, UINT32 W, UINT32 H, UINT32 Bpp,
-                              UINT32 Cp, UINT32 Min) {
+                              UINT32 Min) {
     UINT32 Best = 0;
     UINT32 Col;
     UINT32 Row;
@@ -201,8 +201,8 @@ static void ProbeOneChar(UINT32 Cp, FONT_PROBE_CHAR *Out) {
                                    : FONT_PROBE_PAINT_CJK;
         UINT32 Core;
 
-        Out->InkP = ProbeInkColumns(G, W, H, Bpp, Cp, Paint);
-        Core = ProbeInkColumns(G, W, H, Bpp, Cp, FONT_PROBE_INK_ALPHA);
+        Out->InkP = ProbeInkColumns(G, W, H, Bpp, Paint);
+        Core = ProbeInkColumns(G, W, H, Bpp, FONT_PROBE_INK_ALPHA);
         Out->Ink = ProbeInkLogical(W, H, Core);
         if (Bpp == 8u && Out->InkP > 0u) {
             Out->Edge = ProbeEdgeAlpha(G, W, H, Out->InkP - 1u);

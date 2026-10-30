@@ -19,6 +19,7 @@ extern void SdhciWifiMarkSink(void (*Sink)(const char *Text)) __attribute__((wea
 extern int SdhciWifiFw(UINT32 Mode) __attribute__((weak));
 extern int SdhciWifiFifoTest(void) __attribute__((weak));
 extern int SdhciWifiFwRead(UINT32 Address) __attribute__((weak));
+extern int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -235,6 +236,37 @@ static void WifiFwRun(UINT32 Mode) {
     }
 }
 
+/* 解析十六进制（允许 0x 前缀）；成功返回 1 */
+static int WifiParseHex(const char *Text, UINT32 *Out) {
+    UINT32 V = 0;
+    int k;
+
+    if (Text == 0 || Text[0] == 0) {
+        return 0;
+    }
+    for (k = 0; Text[k] != 0; k++) {
+        char c = Text[k];
+        UINT32 d;
+        if (c >= '0' && c <= '9') {
+            d = (UINT32)(c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            d = (UINT32)(c - 'a' + 10);
+        } else if (c >= 'A' && c <= 'F') {
+            d = (UINT32)(c - 'A' + 10);
+        } else if (c == 'x' || c == 'X') {
+            continue;
+        } else {
+            return 0;
+        }
+        if (V > 0x0FFFFFFFu) {
+            return 0;
+        }
+        V = (V << 4) | d;
+    }
+    *Out = V;
+    return 1;
+}
+
 /*
  * 分发只做一件事：把命令行翻成 Mode，然后**一次**调用 WifiFwRun。
  * 以前是"一长串 else-if + 末尾兜底"，新增 patch 子命令时忘了从链里排除，
@@ -272,26 +304,9 @@ static void CommandWifiFw(int Argc, char **Argv) {
             gConsole.Write("wififw rd <hexaddr>   (e.g. wififw rd 00201940)\n");
             return;
         }
-        for (k = 0; Argv[2][k] != 0; k++) {
-            char c = Argv[2][k];
-            UINT32 d;
-            if (c >= '0' && c <= '9') {
-                d = (UINT32)(c - '0');
-            } else if (c >= 'a' && c <= 'f') {
-                d = (UINT32)(c - 'a' + 10);
-            } else if (c >= 'A' && c <= 'F') {
-                d = (UINT32)(c - 'A' + 10);
-            } else if (c == 'x' || c == 'X') {
-                continue; /* 允许 0x 前缀 */
-            } else {
-                Bad = 1;
-                break;
-            }
-            if (Addr > 0x0FFFFFFFu) {
-                Bad = 1;
-                break;
-            }
-            Addr = (Addr << 4) | d;
+        (void)k;
+        if (WifiParseHex(Argv[2], &Addr) == 0) {
+            Bad = 1;
         }
         if (Bad != 0 || Addr == 0u) {
             gConsole.Write("wififw rd: bad hex address (need 4-aligned, e.g. 00201940)\n");
@@ -305,6 +320,31 @@ static void CommandWifiFw(int Argc, char **Argv) {
             SdhciWifiMarkSink(ShellProbeMark);
         }
         gConsole.Write(SdhciWifiFwRead(Addr) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(0);
+        }
+        return;
+    } else if (ArgEqualIgnoreCase(Argv[1], "wr")) {
+        /* 诊断：单字写 + 立刻读回（同一上电周期内才有意义） */
+        UINT32 Addr = 0;
+        UINT32 Val = 0;
+
+        if (Argc < 4) {
+            gConsole.Write("wififw wr <hexaddr> <hexval>  (e.g. wififw wr 00201940 000ee5fd)\n");
+            return;
+        }
+        if (WifiParseHex(Argv[2], &Addr) == 0 || WifiParseHex(Argv[3], &Val) == 0) {
+            gConsole.Write("wififw wr: bad hex addr/val\n");
+            return;
+        }
+        if (SdhciWifiFwWriteDiag == 0) {
+            gConsole.Write("wifi: this board has no SDIO firmware stage\n");
+            return;
+        }
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(ShellProbeMark);
+        }
+        gConsole.Write(SdhciWifiFwWriteDiag(Addr, Val) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
         if (SdhciWifiMarkSink != 0) {
             SdhciWifiMarkSink(0);
         }
@@ -340,7 +380,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -355,7 +395,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

@@ -336,6 +336,31 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 13:12 写通不通：加 `wififw wr <addr> <val>` 单字写 + 立刻读回
+
+**先纠正一个推论**：上一轮"adid 没写进去"不成立 —— 那次写在上一次上电，中间刷卡重启过，
+SRAM 易失，重启后读到旧值属正常。所以"写通不通"至今**没有证据**，必须同一上电周期内写完立刻读回。
+
+新增诊断（只改板包 + Shell，不动 patch 计划、不动 `gAicPatchReady=1`）：
+
+* `wififw wr <hexaddr> <hexval>`：走 `DBG_MEM_WRITE_REQ`（单字），**同一命令内**立刻 `AicMemRead` 读回，
+  打 `mem wr readback=… (match)` 或 `(MISMATCH, wrote …)`；
+* 护栏：只允许 `[0x00100000,0x00210000)`（RAM）与 `[0x40500000,0x40510000)`（寄存器），
+  其它地址拒绝并打原因；4 字节对齐检查；
+* `wififw rd <hexaddr>` 同时保留（只读对账），rd/wr 共用 `WifiParseHex`。
+
+**厂商前置步骤核查（结论：没有漏步）**：
+
+* `rwnx_plat_bin_fw_upload_android` 的下载循环就是纯 1024 B 块写 + 最后一块余数，无解锁/看门狗/时钟切换；
+* `rwnx_set_cmd_tx`（`aic_bsp_driver.c:251-283`）的帧构造与我们的 `AicSendMsg` **逐字节一致**：
+  `hdr(4) [len+4, 0x11, crc8] + dummy word(4) + lmac_msg{id,dest_id=TASK_DBG,src_id=DRV_TASK_ID,param_len} + param`，
+  写入长度 `len+8` = 16+param_len，与我们的 `Body+8` 相同；
+* `crc8_ponl_107` 与我们的 `AicCrc8` 多项式/流程完全相同（0x107，MSB-first）；
+* 设备侧 `aicwf_rx` 用 `(struct ipc_e2a_msg *)(data + 4)` 解析（`aicsdio_txrxif.c:214`），
+  与我们 +16 的参数偏移一致。
+
+所以若 `wr` 也读不回来，方向应该转向"ROM 对写请求的处理策略"，而不是帧格式或前置步骤。
+
 ### 12:59 e2a 解析少 4 B：pattern 被当成 param[0]（真机定位）
 
 真机 `stage=adid FAIL write` 其实是**误判**。RX 帧实测 20 B（plen=4）：

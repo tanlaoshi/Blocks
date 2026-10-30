@@ -2137,6 +2137,65 @@ int SdhciWifiFwRead(UINT32 Address) {
     return 0;
 }
 
+/*
+ * 单字写诊断：`wififw wr <addr> <val>`。
+ * 走 DBG_MEM_WRITE_REQ（不是 block write），**写完立刻读回**（同一命令、同一上电周期），
+ * 用来回答"写到底通不通"这个至今没有证据的问题。
+ *
+ * 护栏：只允许写 patch/fw 会用到的两段——
+ *   [0x00100000, 0x00210000)  RAM（adid/patch/fmacfw 都在这片，重下即覆盖）
+ *   [0x40500000, 0x40510000)  外设寄存器（PWRON/TRAP 要打的那些）
+ * 其它地址一律拒绝并说明原因。
+ */
+int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT32 ReadBack = 0;
+
+    if ((Address & 3u) != 0u) {
+        SdhciMarkHex("WiFi: mem wr refused: not 4-aligned addr=", Address, 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    if (!((Address >= 0x00100000u && Address < 0x00210000u) ||
+          (Address >= 0x40500000u && Address < 0x40510000u))) {
+        SdhciMarkHex("WiFi: mem wr refused: addr outside allowed windows ", Address, 8);
+        SdhciMark("\n");
+        SdhciMark("WiFi: allowed: [00100000,0020ffff] ram, [40500000,4050ffff] regs\n");
+        return -1;
+    }
+    if (Host == 0 || !SdhciWifiReady()) {
+        SdhciMark("WiFi: mem wr needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (AicWifiVendorPrepare(Host) != 0) {
+        SdhciMark("WiFi: mem wr: vendor prepare failed\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: mem wr addr=", Address, 8);
+    SdhciMarkHex(" val=", Value, 8);
+    SdhciMark("\n");
+    if (AicMemWrite32(Host, Address, Value) != 0) {
+        SdhciMarkHex("WiFi: mem wr FAIL addr=", Address, 8);
+        SdhciMarkHex(" r5=", Host->LastR5, 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    /* 同一命令内立刻读回：中间不允许插入别的操作 */
+    if (AicMemRead(Host, Address, &ReadBack) != 0) {
+        SdhciMarkHex("WiFi: mem wr readback FAIL addr=", Address, 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: mem wr readback=", ReadBack, 8);
+    if (ReadBack == Value) {
+        SdhciMark(" (match)\n");
+        return 0;
+    }
+    SdhciMarkHex(" (MISMATCH, wrote ", Value, 8);
+    SdhciMark(")\n");
+    return -1;
+}
+
 int SdhciWifiFw(UINT32 Mode) {
     SDHCI_HOST *Host = SdhciHostAt(1);
     int WantWrite = (Mode & (SDHCI_WIFI_FW_WRITE | SDHCI_WIFI_FW_CONFIRM)) != 0u;

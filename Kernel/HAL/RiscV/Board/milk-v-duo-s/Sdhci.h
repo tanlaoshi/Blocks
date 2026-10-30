@@ -159,6 +159,8 @@ int SdhciWifiInitialize(void);
 int SdhciWifiFw(UINT32 Mode);
 /* 只读诊断：读一个 RAM 字（用于真写之后对账） */
 int SdhciWifiFwRead(UINT32 Address);
+/* 单字写诊断：写完立刻读回（同一命令内），回答"写通不通" */
+int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value);
 /* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */
 int SdhciWifiFifoTest(void);
 #define SDHCI_WIFI_PROBE_WAKE 2u

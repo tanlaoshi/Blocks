@@ -314,31 +314,106 @@ static int SdioRecoverBus(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHer
  * CIS 是卡自己的 ROM，一定回数据 —— 与模块固件在不在、FIFO 里有没有消息无关，
  * 所以它能单独证明 DAT0-3 的读方向没问题。
  */
-static int SdioDatReadCheck(SDHCI_HOST *Host) {
+/*
+ * 把"CMD53 读回来的一串字节"和"CMD52 逐字节读的同一地址"并排打出来并比对。
+ * 两个来源不同：CMD53 走数据线（DAT0-3）批量读，CMD52 走命令线单字节读。
+ * 两者一致 → 数据线读方向可信；不一致 → 直接把两边原文摆出来，不用猜。
+ */
+static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT8 *Buf,
+                          UINT32 Bytes) {
+    UINT8 Ref[16];
     UINT32 i;
-    UINT8 Byte;
+    UINT32 Bad = Bytes;
 
-    for (i = 0; i < 16u; i++) {
-        gSdioReadback[i] = 0;
+    if (Bytes > 16u) {
+        Bytes = 16u;
     }
-    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 0, 0, 16u, gSdioReadback) != 0) {
-        SdioMarkXfer(Host, "WiFi: DAT read (CMD53 fn0 cis 16B) fail");
-        return -1;
+
+    SdhciMark(Tag);
+    SdhciMarkHex(" cmd53@", Address, 6);
+    SdhciMark(":");
+    for (i = 0; i < Bytes; i++) {
+        SdhciMarkHex(" ", Buf[i], 2);
     }
-    for (i = 0; i < 16u; i++) {
-        if (SdhciIoRead8(Host, 0, 0x1000u + i, &Byte) != 0 || Byte != gSdioReadback[i]) {
+    SdhciMark("\n");
+    SdhciMark("WiFi:  cmd52 ref            :");
+    for (i = 0; i < Bytes; i++) {
+        if (SdhciIoRead8(Host, 0, Address + i, &Ref[i]) != 0) {
+            SdhciMark(" <read fail>");
+            break;
+        }
+        SdhciMarkHex(" ", Ref[i], 2);
+    }
+    SdhciMark("\n");
+    for (i = 0; i < Bytes; i++) {
+        if (Buf[i] != Ref[i]) {
+            Bad = i;
             break;
         }
     }
-    if (i == 16u) {
-        SdhciMark("WiFi: DAT read ok (CMD53 fn0 cis 16B matches CMD52)\n");
+    if (Bad == Bytes) {
         return 0;
     }
-    SdhciMarkHex("WiFi: DAT read mismatch at ", i, 2);
-    SdhciMarkHex(" got=", gSdioReadback[i], 2);
-    SdhciMarkHex(" want=", Byte, 2);
+    SdhciMarkHex("WiFi:  mismatch +", Bad, 2);
+    SdhciMarkHex(" cmd53=", Buf[Bad], 2);
+    SdhciMarkHex(" cmd52=", Ref[Bad], 2);
     SdhciMark("\n");
     return -1;
+}
+
+/*
+ * DAT 读方向自证：CMD53（字节模式、**地址自增**）从 fn0 的 Common CIS 读 16 B，
+ * 与 CMD52 逐字节读的结果比对。
+ *
+ * 09:23 真机上的 `DAT read mismatch at 01 got=20 want=04` 就是这里的 bug：
+ * 当时 Increment 传的是 0 → OP_CODE=0 = **固定地址**，卡老老实实把 0x1000 的
+ * 那个 0x20 重复回了 16 次，所以 buf[1] 还是 0x20，而 CIS 的真值是 0x04。
+ * 读路径本身没错，是参数错了（`20 04 a1 c8` 里 0x20 恰好是 MANFID tuple 头，
+ * 看着像"读到了正确内容"，特别容易骗过人）。
+ *
+ * 失败时退 25 MHz / 1-bit 再对照一次（用户要求第 4 点），然后恢复总线。
+ */
+static int SdioDatReadCheck(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHertz) {
+    UINT32 i;
+    UINT8 Buf[16];
+    UINT8 Low[16];
+    int Rc;
+
+    for (i = 0; i < 16u; i++) {
+        Buf[i] = 0;
+    }
+    /* Increment=1：CIS 是存储区，必须自增；固定地址只适合 FIFO */
+    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 1, 0, 16u, Buf) != 0) {
+        SdioMarkXfer(Host, "WiFi: dat rd cmd53 fn0 cis incr=1 FAIL");
+        return -1;
+    }
+    Rc = SdioCmpCisRead(Host, "WiFi: dat rd", 0x1000u, Buf, 16u);
+    if (Rc == 0) {
+        SdhciMark("WiFi: DAT read ok (cmd53 incr=1 == cmd52, 16B)\n");
+        return 0;
+    }
+
+    /* 降速对照：25 MHz / 1-bit（卡侧仍是 4-bit，CMD53 只走 DAT0 时无影响） */
+    SdhciMark("WiFi: dat rd retry 25MHz 1-bit\n");
+    SdhciWrite8(Host, SDHCI_HOST_CONTROL, 0);
+    (void)SdhciClockConfigure(Host, SD_TRANSFER_HERTZ);
+    for (i = 0; i < 16u; i++) {
+        Low[i] = 0;
+    }
+    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 1, 0, 16u, Low) == 0) {
+        Rc = SdioCmpCisRead(Host, "WiFi: low cis0", 0x1000u, Low, 16u);
+        SdhciMark(Rc == 0 ? "WiFi: low-speed read matches cmd52\n"
+                          : "WiFi: low-speed read ALSO mismatches\n");
+    } else {
+        SdhciMark("WiFi: low-speed cmd53 failed\n");
+        Rc = -1;
+    }
+    SdhciWrite8(Host, SDHCI_HOST_CONTROL, HostControl);
+    (void)SdhciClockConfigure(Host, RestoreHertz);
+    SdhciMarkHex("WiFi: bus restored hctl=", SdhciRead8(Host, SDHCI_HOST_CONTROL), 2);
+    SdhciMarkHex(" clk=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+    SdhciMark("\n");
+    return Rc;
 }
 
 /*
@@ -366,7 +441,7 @@ static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     SdhciMarkHex(" wr=", AIC_WR_FIFO_ADDR_V3, 2);
     SdhciMark(" (fixed, no window reg)\n");
 
-    if (SdioDatReadCheck(Host) != 0) {
+    if (SdioDatReadCheck(Host, HostControl, RestoreHertz) != 0) {
         (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
     }
 

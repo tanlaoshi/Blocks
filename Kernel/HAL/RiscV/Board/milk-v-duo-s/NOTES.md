@@ -213,6 +213,28 @@ chipid 选），不需要先写什么 window/len 寄存器。
 5. 恢复阶梯（`SdioRecoverBus`）：`RESET_DAT` → 还卡就 `RESET_ALL + 400kHz` + 恢复
    `HOST_CONTROL`/时钟 + CMD52 验活，打印 `bus recovered (RESET_DAT|RESET_ALL)`。
 
+### 09:27 真机 `DAT read mismatch at 01 got=20 want=04` → CMD53 的 OP_CODE 传错
+
+打这行的是 `SdioDatReadCheck()`（Sdio.c）。根因是**参数**，不是读路径：
+
+```
+SdhciIoRwExtended(Host, 0, 0x1000u, 0, /*Increment=*/0, 0, 16u, Buf)
+                                      ^ OP_CODE=0 = 固定地址
+```
+
+固定地址的多字节读，卡会把同一个字节重复 N 次 —— 实测 buf = `20 20 20 20 …`，
+所以 `buf[1]` 还是 `0x20`，而 CIS 真值是 `0x04`。而且 `20` 恰好是 MANFID 元组头，
+"第一字节对上了"特别容易骗人。FIFO（`0x0F`/`0x10`）必须用固定地址，**存储区/CIS 必须自增**。
+
+改法：
+
+1. `SdioDatReadCheck(Host, HostControl, RestoreHertz)`：Increment 改 **1**；
+2. 新增 `SdioCmpCisRead()`：把 CMD53 读到的 16 B 和 CMD52 逐字节读的同一地址**并排打出来**
+   （`cmd53@001000: …` / `cmd52 ref: …`），不一致就打 `mismatch +N cmd53=xx cmd52=yy`；
+3. 不一致先退 **25 MHz / 1-bit** 再对照一次（`bold low cis0`），然后恢复总线；
+4. 测试台补齐：假卡的固定地址读改为"同字节重复"，并新增断言
+   "发往 CIS 的 CMD53 全部带地址自增" —— 把参数改回 0 会立刻挂 2 条。
+
 桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
 17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
 

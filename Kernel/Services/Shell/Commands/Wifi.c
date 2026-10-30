@@ -17,6 +17,18 @@ extern int SdhciWifiProbe(UINT32 Flags) __attribute__((weak));
 extern UINT32 SdhciWifiProbeForceFlag(void) __attribute__((weak));
 extern void SdhciWifiMarkSink(void (*Sink)(const char *Text)) __attribute__((weak));
 extern int SdhciWifiFw(UINT32 Mode) __attribute__((weak));
+extern int SdhciWifiFifoTest(void) __attribute__((weak));
+
+/*
+ * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
+ * Shell 层不 include 板级头，所以在这里镜像一份；改板级时务必同步。
+ */
+#define WIFI_FW_STAT 1u
+#define WIFI_FW_ID 2u
+#define WIFI_FW_WRITE 4u
+#define WIFI_FW_CONFIRM 8u
+#define WIFI_FW_PATCH_DRY 16u
+#define WIFI_FW_PATCH_APPLY 32u
 #endif
 
 static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
@@ -203,51 +215,12 @@ static void CommandWifiProbeOnly(int Argc, char **Argv) {
  *   wififw write            **检查模式**：打印将要写的阶段/文件/大小/落点，一个字节都不写
  *   wififw write confirm    **真写**：adid → patch(可选) → fmacfw → start_app → 等首条消息
  *   wififw fifotest  只读：显式 FIFO 回环自检（不参与枚举判定）
+ *   wififw patch dry    只解析 patch 表并打印全部待写条目，一个字节不写、不发消息
+ *   wififw patch apply  真写 patch 表（每条 mem write 等 CFM，失败即停）
  *
  * 真写是不可逆操作，所以拆成"检查 / confirm"两段，防手滑。
  */
-static void CommandWifiFw(int Argc, char **Argv) {
-    UINT32 Mode = 1u; /* SDHCI_WIFI_FW_READ */
-
-    if (SdhciWifiFw == 0) {
-        gConsole.Write("wifi: this board has no SDIO firmware stage\n");
-        return;
-    }
-    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "read")) {
-        gConsole.Write("wififw: 'read' renamed to 'stat' (it only stats, never reads)\n");
-    }
-    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "id")) {
-        Mode = 2u; /* SDHCI_WIFI_FW_ID */
-    } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "write")) {
-        /*
-         * 不可逆操作，必须防误触：
-         *   wififw write            → 检查模式，只打印"将要写什么"，一个字节都不写
-         *   wififw write confirm    → 真写
-         */
-        Mode = 4u; /* SDHCI_WIFI_FW_WRITE */
-        if (Argc >= 3 && ArgEqualIgnoreCase(Argv[2], "confirm")) {
-            Mode |= 8u; /* SDHCI_WIFI_FW_CONFIRM */
-        }
-    } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "fifotest")) {
-        /* 显式 FIFO 回环自检：只做人工诊断，不参与枚举判定 */
-        extern int SdhciWifiFifoTest(void) __attribute__((weak));
-        if (SdhciWifiFifoTest == 0) {
-            gConsole.Write("wifi: this board has no FIFO self-test\n");
-            return;
-        }
-        if (SdhciWifiMarkSink != 0) {
-            SdhciWifiMarkSink(ShellProbeMark);
-        }
-        (void)SdhciWifiFifoTest();
-        if (SdhciWifiMarkSink != 0) {
-            SdhciWifiMarkSink(0);
-        }
-        return;
-    } else if (Argc >= 2 && !ArgEqualIgnoreCase(Argv[1], "read") &&
-               !ArgEqualIgnoreCase(Argv[1], "stat")) {
-        gConsole.Write("wififw [stat|id|write [confirm]|fifotest]\n");
-        return;
-    }
+static void WifiFwRun(UINT32 Mode) {
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(ShellProbeMark);
     }
@@ -261,6 +234,67 @@ static void CommandWifiFw(int Argc, char **Argv) {
         SdhciWifiMarkSink(0);
     }
 }
+
+/*
+ * 分发只做一件事：把命令行翻成 Mode，然后**一次**调用 WifiFwRun。
+ * 以前是"一长串 else-if + 末尾兜底"，新增 patch 子命令时忘了从链里排除，
+ * 结果 `wififw patch dry` 落到兜底分支打出用法行（真机 11:15 复现）。
+ * 现在只有一个出口：要么 return 于用法/自检，要么落在最后那一行。
+ */
+static void CommandWifiFw(int Argc, char **Argv) {
+    UINT32 Mode = 0u;
+
+    if (SdhciWifiFw == 0) {
+        gConsole.Write("wifi: this board has no SDIO firmware stage\n");
+        return;
+    }
+    if (Argc < 2) {
+        Mode = WIFI_FW_STAT; /* 裸命令：只 stat */
+    } else if (ArgEqualIgnoreCase(Argv[1], "stat")) {
+        Mode = WIFI_FW_STAT;
+    } else if (ArgEqualIgnoreCase(Argv[1], "read")) {
+        gConsole.Write("wififw: 'read' renamed to 'stat' (it only stats, never reads)\n");
+        Mode = WIFI_FW_STAT;
+    } else if (ArgEqualIgnoreCase(Argv[1], "id")) {
+        Mode = WIFI_FW_ID;
+    } else if (ArgEqualIgnoreCase(Argv[1], "write")) {
+        Mode = WIFI_FW_WRITE;
+        if (Argc >= 3 && ArgEqualIgnoreCase(Argv[2], "confirm")) {
+            Mode |= WIFI_FW_CONFIRM;
+        }
+    } else if (ArgEqualIgnoreCase(Argv[1], "patch")) {
+        if (Argc < 3) {
+            gConsole.Write("wififw patch [dry|apply]\n");
+            return;
+        }
+        if (ArgEqualIgnoreCase(Argv[2], "dry")) {
+            Mode = WIFI_FW_PATCH_DRY;
+        } else if (ArgEqualIgnoreCase(Argv[2], "apply")) {
+            Mode = WIFI_FW_PATCH_APPLY;
+        } else {
+            gConsole.Write("wififw patch [dry|apply]\n");
+            return;
+        }
+    } else if (ArgEqualIgnoreCase(Argv[1], "fifotest")) {
+        /* 显式 FIFO 回环自检：只做人工诊断，不参与枚举判定 */
+        if (SdhciWifiFifoTest == 0) {
+            gConsole.Write("wifi: this board has no FIFO self-test\n");
+            return;
+        }
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(ShellProbeMark);
+        }
+        (void)SdhciWifiFifoTest();
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(0);
+        }
+        return;
+    } else {
+        gConsole.Write("wififw [stat|id|write [confirm]|fifotest|patch [dry|apply]]\n");
+        return;
+    }
+    WifiFwRun(Mode);
+}
 #endif
 
 /*
@@ -271,7 +305,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|write [confirm]|fifotest]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|write [confirm]|fifotest|patch]",
                       CommandWifiFw);
 #endif
 }

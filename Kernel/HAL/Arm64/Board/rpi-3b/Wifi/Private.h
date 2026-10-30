@@ -107,7 +107,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x00000122u
+#define WIFI_BUILD_TAG               0x00000124u
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 按 Linux sdio_io_rw_ext_helper 的形状：块模式批量 + 字节模式收尾 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -128,7 +128,13 @@
 
 #define WIFI_GPIO_BASE               0x3F200000ULL
 #define WIFI_IDENTIFY_HERTZ          400000u
-#define WIFI_TRANSFER_HERTZ          25000000u
+/*
+ * 传输钟：旧值 25 MHz（default speed）。Linux 真机 mmc1 ios
+ * （Source/PI/wifi/board/pi-mmc1-ios.txt）是 50 MHz / sd high-speed / 4-bit。
+ * tag 0x123（Docs/04 刀 A）与之对齐；CCCR EHS 失败时退回 25 MHz。
+ */
+#define WIFI_TRANSFER_HERTZ          50000000u
+#define WIFI_TRANSFER_HERTZ_FALLBACK 25000000u
 
 /* SDPCM / IOCTL（对表 cyw43 / wlioctl） */
 #define WIFI_SDPCM_HEADER_BYTES      12u

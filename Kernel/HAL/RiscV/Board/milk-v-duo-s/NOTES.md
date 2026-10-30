@@ -336,6 +336,89 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 11:30 真机 bug（二）：MODE 9 条整体错位（字下标当 pair 下标）
+
+真机 dry 后用户逐条对表，发现 MODE 9 条全错。根因：厂商 `aic_bsp_driver.c:1481-1493` 的
+`data` 是 `u32*`，每对是 `(data[0]=addr, data[1]=val)`，所以 `*(data+1)` 是 **pair 0 的 value**，
+`*(data+17)` 是 **pair 8 的 value**。我按字下标写成 `switch(i) case 1/3/5…/17`，而 `i` 是
+**pair 下标 0..8** —— 结果整体错位一位：
+
+| pair | addr | 表值 | 厂商应写 | 上一版写了 | 现在 |
+|---|---|---|---|---|---|
+| 0 | 00201fd4 | 00000000 | 00000001 (hwinfo<0) | 00000000 | 00000001 |
+| 1 | 00201fd8 | 00000000 | ffffffff (hwinfo=-1) | 00000001 | ffffffff |
+| 2 | 00201fd0 | 000000ff | 00000000 (D80 cpmode) | 000000ff | 00000000 |
+| 3 | 00201fc8 | 00000005 | 00000005 (btmode=5) | ffffffff ← 危险 | 00000005 |
+| 4 | 00201fc4 | 00000002 | 00000002 (btport=2 UART) | 00000002 | 00000002 |
+| 5 | 00201fe8 | 000e1000 | 0016e360 (1500000) | 00000000 | 0016e360 |
+| 6 | 00201fe4 | 00000001? | 00000001 (fc=1) | 00000000 | 00000001 |
+| 7 | 00201fdc | 00000000 | 00000000 (lpm=0) | 00000005 | 00000000 |
+| 8 | 00201fe0 | 00007f2f | 00006f2f (D80 txpwr) | 00007f2f | 00006f2f |
+
+最要命的是 pair 3（btmode）被写了 `0xffffffff`，而 `AICBT_MODE_NULL = 0xFF` 是非法值 ——
+固件解析配置时可能直接起不来，而日志还是"100 条全绿"。
+
+修法：`switch` 改为 pair 下标 0..8 全量覆盖；计划项加一列 `Tbl` 保存表值，dry 打
+`kind=cfg src=vendor … (table=…)` 便于对账；新增 `AicPatchSelfCheck()`：
+`btmode==0xFF` / `baud==0` / `flowctrl>1` 任一成立即 `patch plan INVALID`，**dry 与 apply 都拒绝**。
+
+顺带确认 `patch_config` 那 10 条写：`str+0x00/0x08/0x04/0x0c` 与 `pair+0x00/0x04` 照
+`aic8800d80_compat.c:196-248`；另外 4 条 `str+0x30..0x3c = 0` 来自同文件 `:229-248` 的
+`block_size[0..3]`（`aic_patch_t` 偏移 48，4 个字），来源确认无误。
+
+### 11:19 真机 bug：`wififw patch dry/apply` 落进兜底分支打用法
+
+真机（11:15 构建）：
+
+```
+Blocks> wififw patch dry
+wififw [stat|id|write [confirm]|fifotest|patch dry|patch apply]
+```
+
+根因：`Wifi.c` 的分发是"一长串 else-if + 末尾兜底"。`patch` 分支只设了 `Mode |= 16/32`
+却没从链里排除，于是 `Argv[1]=="patch"` 继续往下走，既不等于 id/write/fifotest、
+也不等于 read/stat，命中最末的 else-if 打用法并 return —— **`SdhciWifiFw` 一次都没被调**。
+
+修法（评审建议的方案 A）：把执行段抽成 `WifiFwRun(Mode)`，分发改成一个 if/else-if 链，
+**只有一个出口**：要么 return 于"用法/自检"，要么落到最后那一行。新增子命令不会再撞兜底。
+
+用法行统一为 `wififw [stat|id|write [confirm]|fifotest|patch [dry|apply]]`。
+
+回归（新增 `/tmp/sdtest/dispatch.c`：直接编译**真实** `Kernel/Services/Shell/Commands/Wifi.c`，
+弱引用全给真身，用真实 `CONSOLE_OPS` 布局注册后调 handler）：**14/14 通过**，含
+
+* `patch dry` → 只调用一次、`Mode==16`、**没打用法行**
+* `patch apply` → `Mode==32`、没打用法行
+* `patch`（缺子参数）/`patch bogus` → 打用法且不执行
+* 裸 `wififw`→1、`id`→2、`write`→4、`write confirm`→12、`stat`→1、未知→用法
+
+反向验证：把同一测试链到 `git show HEAD:.../Wifi.c`（无 patch 支持）→ **8 通过 / 6 失败**，
+说明这条回归确实抓得住这类分发 bug。
+
+### 11:2x B2 刀：patch 表落地（实解析 100 写 + patch_config 14 op）
+
+**关键发现：不是 46 条，是 100 条。** 46 = 评审只数的 `INF(4)+TRAP(19)+PWRON(3)+TAF(20)`；
+厂商 `aicbt_patch_table_load`（`aic_bsp_driver.c:1469-1515`）的循环里只有 `VER` 被 `continue`，
+所以 `TB4(45)` 和 `MODE(9)` 也会被写：**4+19+45+9+3+20 = 100**（+ PWRON 后 `udelay(500)`）。
+
+`patch_config_8800d80`（`aic8800d80_compat.c:114-248`）是另一段：4 个必读字
+`0x120198/0x1201A0/0x12001C/0x1201A4`（第 4 个只在 `ver>0x06090100` 时读）+ 10 个写
+（magic/magic2/pair_start/pair_count/block_size[4]/pair 两条）。**读不到就失败，不用 0 猜。**
+
+实现：
+
+* `AicMemWrite32()`：`DBG_MEM_WRITE_REQ=0x402`/`CFM=0x403`，每字一条消息 + CFM；
+* `AicPatchBuildPlan()`：把 7 条记录摊平成 `gAicPlan[160]`，**先算后写**；写地址做越界检查
+  （非对齐拒绝、落在 `0x00120000 + 331348` 主固件区拒绝）；
+* `wififw patch dry`：只读文件 + 打清单，**不写寄存器、不发消息**；
+* `wififw patch apply`：按清单逐条写，失败即停、不续写；`gAicPatchApplied` 只在全绿后置 1；
+  幂等：第二次直接 `patch already applied`；
+* MODE（BTMODE）条目按厂商规则用运行时值覆盖奇数下标（`aic_bsp_driver.c:1481-1493`），
+  我们没有 BT，用 D80 默认常量（btmode=5/btport=2(UART)/baud=1500000/flowctrl=1/lpm=0/
+  txpwr=0x6F2F/hwinfo=-1），清单里标 `kind=cfg` 以示"这是配置不是表值"。
+
+`wififw write confirm` **仍然锁着**（`gAicPatchReady` 恒 0）。
+
 ### 11:0x B1 刀：patch 表解析 + 落点改由表决定 + patch 改必需
 
 **表布局**（`aic_bsp_driver.c:1295-1352` `aicbt_patch_table_alloc`）：

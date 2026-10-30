@@ -147,23 +147,36 @@ static int WifiSdioOrByte(UINT32 Function, UINT32 RegisterAddress, UINT8 Bits) {
 int WifiSdioEnableFunction1(void) {
     UINT32 Attempt;
     UINT8 Ready = 0;
+    UINT32 TransferHertz = WIFI_TRANSFER_HERTZ_FALLBACK;
+    UINT8 HostControl = SDHCI_WIDTH_4BIT;
+    int HighSpeedOk = 0;
 
-    if (WifiSdioOrByte(SDIO_FUNCTION_0, SDIO_CCCR_HIGH_SPEED, 2u) != 0) {
-        /* 部分芯无 HS；不挡探针 */
+    /*
+     * Docs/04 刀 A：对表 Source/PI/wifi/board/pi-mmc1-ios.txt
+     * （50 MHz / sd high-speed / 4-bit）。先卡侧 EHS，再主机 HISPD，最后抬钟。
+     */
+    if (WifiSdioOrByte(SDIO_FUNCTION_0, SDIO_CCCR_HIGH_SPEED, 2u) == 0) {
+        HighSpeedOk = 1;
+        TransferHertz = WIFI_TRANSFER_HERTZ;
+        HostControl = (UINT8)(SDHCI_WIDTH_4BIT | SDHCI_HIGH_SPEED);
+    } else {
+        HalSerialBootMark("Boot: Pi WIFI no HS, stay 25MHz\n");
     }
     if (WifiSdioOrByte(SDIO_FUNCTION_0, SDIO_CCCR_BUS_INTERFACE, 2u) != 0) {
         HalSerialBootMark("Boot: Pi WIFI bus width fail\n");
         return -1;
     }
-    SdhciWrite8(SDHCI_HOST_CONTROL, 0x02u); /* 4-bit */
-    gSdhciTwoTicksMicroseconds = ((2u * 1000000u) / WIFI_TRANSFER_HERTZ) + 1u;
+    SdhciWrite8(SDHCI_HOST_CONTROL, HostControl);
+    gSdhciTwoTicksMicroseconds = ((2u * 1000000u) / TransferHertz) + 1u;
     if (gSdhciTwoTicksMicroseconds < 2u) {
         gSdhciTwoTicksMicroseconds = 2u;
     }
-    if (SdhciClockConfigure(WIFI_TRANSFER_HERTZ) != 0) {
+    if (SdhciClockConfigure(TransferHertz) != 0) {
         HalSerialBootMark("Boot: Pi WIFI clock xfer fail\n");
         return -1;
     }
+    HalSerialBootMark(HighSpeedOk ? "Boot: Pi WIFI clock=50MHz width=4bit HS\n"
+                                   : "Boot: Pi WIFI clock=25MHz width=4bit\n");
 
     if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR1_BLOCK_SIZE, 64u) != 0 ||
         WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR1_BLOCK_SIZE + 1u, 0) != 0) {

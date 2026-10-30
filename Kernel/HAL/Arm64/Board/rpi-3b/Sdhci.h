@@ -43,6 +43,9 @@
 #define SDHCI_SPACE_AVAILABLE (1u << 10) /* Buffer Write Enable */
 #define SDHCI_DATA_AVAILABLE  (1u << 11) /* Buffer Read Enable */
 #define SDHCI_CARD_PRESENT    (1u << 16)
+#define SDHCI_WIDTH_4BIT     (1u << 1) /* HOST_CONTROL：4-bit */
+/* HOST_CONTROL[2] High Speed Enable：CCCR EHS 后须置（对表 Linux MMC_TIMING_SD_HS） */
+#define SDHCI_HIGH_SPEED     (1u << 2)
 
 #define SDHCI_POWER_ON       0x01u
 #define SDHCI_POWER_330      0x0Eu

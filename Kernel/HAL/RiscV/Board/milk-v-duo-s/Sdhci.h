@@ -152,6 +152,9 @@ int SdhciWifiInitialize(void);
 #define SDHCI_WIFI_FW_WRITE 4u
 /* 与 WRITE 同时置位才真写；只给 WRITE 时是"检查模式"，一个字节都不写 */
 #define SDHCI_WIFI_FW_CONFIRM 8u
+/* B2：patch 表的 dry（只解析打印）/ apply（真写） */
+#define SDHCI_WIFI_FW_PATCH_DRY 16u
+#define SDHCI_WIFI_FW_PATCH_APPLY 32u
 /* S5b：固件阶段（WifiFw.c）。Mode 取上面的位或；只读的 READ/ID 可单独跑 */
 int SdhciWifiFw(UINT32 Mode);
 /* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */

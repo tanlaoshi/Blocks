@@ -59,6 +59,8 @@
 #define AIC_D80_U02_ADID_ADDR 0x00201940u
 /* 兜底值，正常路径不用它：表里的 addr_patch=0x001E0000 才是真的（W3） */
 #define AIC_D80_U02_PATCH_ADDR 0x0020B43Cu
+/* fmacfw 长度：越界检查用（patch 写绝不允许落到这片主固件区） */
+#define AIC_D80_FMAC_SIZE 331348u
 #define AIC_D80_CHIP_REV_ADDR 0x40500000u /* 版本号在芯片存储区，不是寄存器 */
 
 /* 厂商 sdio_reg 里我们还要用到的两个（aicsdio.h:44、aicsdio.c:1714-1719） */
@@ -89,6 +91,10 @@
 #define AICBT_PT_VER 0x06u
 #define AICBT_PT_NAME 16u
 #define AICBT_PT_HDR 16u
+
+/* DBG_MEM_WRITE_REQ/CFM：单字32 位写（aic_bsp_driver.h:187-188，REQ=0x402 CFM=0x403） */
+#define AIC_DBG_MEM_WRITE_REQ AIC_MSGID(AIC_TASK_DBG, 2u)
+#define AIC_DBG_MEM_WRITE_CFM AIC_MSGID(AIC_TASK_DBG, 3u)
 
 /* 分块大小：**不一次性把 331 KB 读进内核堆**，按 8 KB 复用同一缓冲 */
 #define AIC_FW_CHUNK 8192u
@@ -859,26 +865,76 @@ static int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info
     return -1;
 }
 
-/*
- * B2 要做的事先摆在这里：把表里 INF/TRAP/PWRON/PATCH_TAF 的条目写进 RAM，
- * 再跑 patch_config_8800d80。现在只解析 + 报数，然后返回"未实现"。
- */
-#define AIC_PATCH_NOT_IMPLEMENTED (-2)
+/* ---------- B2：patch 表落地（实解析 100 条 + patch_config 14 op） ---------- */
 
-static int AicPatchApply(SDHCI_HOST *Host, const UINT8 *Table, UINT32 Len) {
-    AIC_PATCH_INFO Info;
+/* 单字写：dbg_mem_write_req { u32 memaddr; u32 memdata; }（aic_bsp_driver.h:264-270） */
+static int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buf, UINT32 BufSize, UINT32 *OutLen);
+
+static int AicMemWrite32(SDHCI_HOST *Host, UINT32 Address, UINT32 Value) {
+    UINT8 Param[8];
+    UINT8 Cfm[8];
+    UINT32 CfmLen = 0;
+
+    AicPut16(&Param[0], (UINT16)(Address & 0xFFFFu));
+    AicPut16(&Param[2], (UINT16)((Address >> 16) & 0xFFFFu));
+    AicPut16(&Param[4], (UINT16)(Value & 0xFFFFu));
+    AicPut16(&Param[6], (UINT16)((Value >> 16) & 0xFFFFu));
+    if (AicSendMsg(Host, AIC_DBG_MEM_WRITE_REQ, Param, 8u) != 0) {
+        return -1;
+    }
+    if (AicRecvMsg(Host, AIC_DBG_MEM_WRITE_CFM, Cfm, 8u, &CfmLen) != 0) {
+        return -1;
+    }
+    return 0;
+}
+
+/* 计划表：把"要写哪些字"先全部算出来（先算后写） */
+#define AIC_PLAN_MAX 160
+#define AIC_PLAN_MEM 0u   /* 普通写 */
+#define AIC_PLAN_CFG 1u   /* 厂商会用运行时配置覆盖的写（BTMODE） */
+#define AIC_PLAN_DELAY 2u /* PWRON 之后的 udelay(500) */
+
+typedef struct {
+    UINT8 Kind;  /* mem / cfg */
+    UINT8 Type;  /* AICBT_PT_* */
+    UINT32 Addr;
+    UINT32 Val;  /* 实际要写的值（MODE 已被厂商运行时值覆盖） */
+    UINT32 Tbl;  /* 表里原本的值，只用于对账打印 */
+} AIC_PLAN_ITEM;
+
+static AIC_PLAN_ITEM gAicPlan[AIC_PLAN_MAX];
+/* MODE 那 9 个 pair 的最终值（pair 下标 0..8），自检用 */
+static UINT32 gAicModeVal[9];
+
+/* D80 的 BT 默认值（aic_bsp_driver.h:505-517；CONFIG_SDIO_BT=n → btport=UART） */
+#define AIC_BT_HWINFO 0xFFFFFFFFu /* AICBSP_HWINFO_DEFAULT (-1)：未知 */
+#define AIC_BT_CPMODE 0u          /* AICBSP_CPMODE_WORK */
+#define AIC_BT_BTMODE 5u          /* AICBT_BTMODE_BT_ONLY_COANT */
+#define AIC_BT_BTPORT 2u          /* AICBT_BTPORT_UART */
+#define AIC_BT_BAUD 1500000u      /* AICBT_UART_BAUD_1_5M */
+#define AIC_BT_FLOWCTRL 1u        /* AICBT_UART_FLOWCTRL_ENABLE */
+#define AIC_BT_LPM 0u
+#define AIC_BT_TXPWR 0x00006F2Fu /* AICBT_TXPWR_LVL_8800d80 */
+
+/* 越界检查：不许写主固件区（0x00120000 起 331348 B），不许非对齐 */
+static int AicPatchAddrOk(UINT32 Addr) {
+    if ((Addr & 3u) != 0u) {
+        return 0;
+    }
+    if (Addr >= AIC_RAM_FMAC_FW_ADDR && Addr < AIC_RAM_FMAC_FW_ADDR + AIC_D80_FMAC_SIZE) {
+        return 0;
+    }
+    return 1;
+}
+
+/* 把表里的 7 条记录摊平成计划（顺序 = 厂商 for 循环顺序，不重排） */
+static int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
     UINT32 Off = AICBT_PT_HDR;
     UINT32 Type;
     UINT32 EntryLen;
-    UINT32 Traps = 0;
-    UINT32 Pwrons = 0;
-    UINT32 Pairs = 0;
+    UINT32 i;
+    UINT32 N = 0;
 
-    (void)Host;
-    if (AicPatchTableParse(Table, Len, &Info) != 0) {
-        return -1;
-    }
-    /* 数一遍表里有多少条要写（B2 的输入规模，顺便证明解析走通了） */
     while (Off + 24u <= Len) {
         Type = (UINT32)Table[Off + 16u] | ((UINT32)Table[Off + 17u] << 8) |
                ((UINT32)Table[Off + 18u] << 16) | ((UINT32)Table[Off + 19u] << 24);
@@ -887,20 +943,377 @@ static int AicPatchApply(SDHCI_HOST *Host, const UINT8 *Table, UINT32 Len) {
         if (Type >= 1000u) {
             EntryLen = 0;
         }
-        if (Type == AICBT_PT_TRAP) {
-            Traps++;
-            Pairs += EntryLen * 2u;
-        } else if (Type == AICBT_PT_PWRON) {
-            Pwrons++;
-            Pairs += EntryLen * 2u;
+        if (Off + 24u + EntryLen * 8u > Len) {
+            SdhciMarkHex("WiFi: patch plan: entry overruns at ", Off, 8);
+            SdhciMark("\n");
+            return -1;
+        }
+        if (Type == AICBT_PT_VER) {
+            char Ver[72];
+            UINT32 k;
+            UINT32 NChars = EntryLen * 8u;
+            if (NChars > (UINT32)sizeof(Ver) - 1u) {
+                NChars = (UINT32)sizeof(Ver) - 1u;
+            }
+            for (k = 0; k < NChars; k++) {
+                UINT8 C = Table[Off + 24u + k];
+                Ver[k] = (C >= 0x20u && C < 0x7Fu) ? (char)C : '.';
+            }
+            Ver[NChars] = 0;
+            SdhciMark("WiFi: patch ver=\"");
+            SdhciMark(Ver);
+            SdhciMark("\" (print only, no write)\n");
+            Off += 24u + EntryLen * 8u;
+            continue;
+        }
+        for (i = 0; i < EntryLen; i++) {
+            const UINT8 *P = &Table[Off + 24u + i * 8u];
+            UINT32 Addr = (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
+                          ((UINT32)P[3] << 24);
+            UINT32 Val = (UINT32)P[4] | ((UINT32)P[5] << 8) | ((UINT32)P[6] << 16) |
+                         ((UINT32)P[7] << 24);
+            UINT32 Tbl = Val; /* 表里原值，覆盖后仍保留一列用于对账 */
+            UINT8 Kind = AIC_PLAN_MEM;
+
+            if (Type == AICBT_PT_BTMODE) {
+                /*
+                 * 厂商 aic_bsp_driver.c:1481-1493 覆盖的是 **pair 的 value**：
+                 * data 是 u32*，每对是 (data[0]=addr, data[1]=val)，所以
+                 *   *(data+1)=hwinfo<0  *(data+3)=hwinfo  *(data+5)=cpmode
+                 *   *(data+7)=btmode  *(data+9)=btport  *(data+11)=baud
+                 *   *(data+13)=flowctrl  *(data+15)=lpm  *(data+17)=txpwr
+                 * 换算成 pair 下标就是 0..8 —— 不是 1/3/5/…/17。
+                 * 上一版把字下标当 pair 下标，9 条整体错位（btmode 槽位写进了 0xffffffff）。
+                 */
+                switch (i) {
+                case 0u: Val = 1u; break; /* hwinfo < 0 → true（hwinfo 未知） */
+                case 1u: Val = AIC_BT_HWINFO; break;
+                case 2u: Val = AIC_BT_CPMODE; break;
+                case 3u: Val = AIC_BT_BTMODE; break;
+                case 4u: Val = AIC_BT_BTPORT; break;
+                case 5u: Val = AIC_BT_BAUD; break;
+                case 6u: Val = AIC_BT_FLOWCTRL; break;
+                case 7u: Val = AIC_BT_LPM; break;
+                case 8u: Val = AIC_BT_TXPWR; break;
+                default: break;
+                }
+                if (i < 9u) {
+                    gAicModeVal[i] = Val;
+                }
+                Kind = AIC_PLAN_CFG;
+            }
+            if (AicPatchAddrOk(Addr) == 0) {
+                SdhciMarkHex("WiFi: patch plan: bad addr ", Addr, 8);
+                SdhciMarkHex(" at entry off=", Off, 8);
+                SdhciMark("\n");
+                return -1;
+            }
+            if (N >= AIC_PLAN_MAX - 2u) {
+                SdhciMark("WiFi: patch plan overflow\n");
+                return -1;
+            }
+            gAicPlan[N].Kind = Kind;
+            gAicPlan[N].Type = (UINT8)Type;
+            gAicPlan[N].Addr = Addr;
+            gAicPlan[N].Val = Val;
+            gAicPlan[N].Tbl = Tbl;
+            N++;
+        }
+        if (Type == AICBT_PT_PWRON) {
+            gAicPlan[N].Kind = AIC_PLAN_DELAY;
+            gAicPlan[N].Type = (UINT8)Type;
+            gAicPlan[N].Addr = 500u;
+            gAicPlan[N].Val = 0u;
+            N++;
         }
         Off += 24u + EntryLen * 8u;
     }
-    SdhciMarkHex("WiFi: patch apply: trap=", Traps, 4);
-    SdhciMarkHex(" pwron=", Pwrons, 4);
-    SdhciMarkHex(" words=", Pairs, 4);
-    SdhciMark(" entries, NOT IMPLEMENTED (B2)\n");
-    return AIC_PATCH_NOT_IMPLEMENTED;
+    *OutCount = N;
+    return 0;
+}
+
+/* ---------- B2：dry 清单 + apply ---------- */
+
+#define AIC_PATCH_NOT_IMPLEMENTED (-2)
+
+static const char *AicPatchTypeName(UINT32 Type) {
+    switch (Type) {
+    case AICBT_PT_INF: return "INF";
+    case AICBT_PT_TRAP: return "TRAP";
+    case AICBT_PT_B4: return "TB4";
+    case AICBT_PT_BTMODE: return "MODE";
+    case AICBT_PT_PWRON: return "PWRON";
+    case AICBT_PT_AF: return "TAF";
+    case AICBT_PT_VER: return "VER";
+    default: return "?";
+    }
+}
+
+/*
+ * MODE 自检（真机评审要求）：写完清单立刻验算，不合法就不许进 apply。
+ *   btmode 不能是 0xFF（AICBT_MODE_NULL = 非法值）
+ *   baud 不能是 0
+ *   flowctrl 只能是 0/1
+ */
+static int AicPatchSelfCheck(void) {
+    if (gAicModeVal[3] == 0xFFu) {
+        SdhciMark("WiFi: patch plan INVALID: btmode=000000ff (AICBT_MODE_NULL)\n");
+        return -1;
+    }
+    if (gAicModeVal[5] == 0u) {
+        SdhciMark("WiFi: patch plan INVALID: baud=0\n");
+        return -1;
+    }
+    if (gAicModeVal[6] > 1u) {
+        SdhciMarkHex("WiFi: patch plan INVALID: flowctrl=", gAicModeVal[6], 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    SdhciMarkDecimal("WiFi: patch self-check ok (btmode=", gAicModeVal[3]);
+    SdhciMarkDecimal(" baud=", gAicModeVal[5]);
+    SdhciMarkDecimal(" fc=", gAicModeVal[6]);
+    SdhciMark(")\n");
+    return 0;
+}
+
+/* 打一遍清单（dry 用，也用于 apply 前的回显）：一条一行，序号两位 */
+static void AicPatchPrintPlan(UINT32 Count) {
+    UINT32 i;
+    UINT32 Mem = 0;
+    UINT32 Cfg = 0;
+    UINT32 Delay = 0;
+
+    UINT32 PerType[7];
+    UINT32 k;
+
+    for (k = 0; k < 7u; k++) {
+        PerType[k] = 0;
+    }
+    for (i = 0; i < Count; i++) {
+        AIC_PLAN_ITEM *It = &gAicPlan[i];
+        if (It->Kind == AIC_PLAN_DELAY) {
+            Delay++;
+            continue;
+        }
+        if (It->Kind == AIC_PLAN_CFG) {
+            Cfg++;
+        } else {
+            Mem++;
+        }
+        if (It->Type < 7u) {
+            PerType[It->Type]++;
+        }
+    }
+    SdhciMarkHex("WiFi: patch plan: ", Count, 4);
+    SdhciMarkHex(" items = writes ", Mem + Cfg, 4);
+    SdhciMarkHex(" (mem=", Mem, 4);
+    SdhciMarkHex(" cfg=", Cfg, 4);
+    SdhciMark(")\n");
+    SdhciMarkHex("WiFi: patch plan: per type inf=", PerType[AICBT_PT_INF], 4);
+    SdhciMarkHex(" trap=", PerType[AICBT_PT_TRAP], 4);
+    SdhciMarkHex(" tb4=", PerType[AICBT_PT_B4], 4);
+    SdhciMarkHex(" mode=", PerType[AICBT_PT_BTMODE], 4);
+    SdhciMarkHex(" pwron=", PerType[AICBT_PT_PWRON], 4);
+    SdhciMarkHex(" taf=", PerType[AICBT_PT_AF], 4);
+    SdhciMarkHex(" (+delay=", Delay, 4);
+    SdhciMark(")\n");
+    SdhciMark("WiFi: patch plan: cfg_ops=14 separate (rd=4 wr=10), nothing executed\n");
+    for (i = 0; i < Count; i++) {
+        AIC_PLAN_ITEM *It = &gAicPlan[i];
+        if (It->Kind == AIC_PLAN_DELAY) {
+            SdhciMarkDecimal("WiFi: patch[", i);
+            SdhciMark("] kind=delay type=PWRON udelay=500\n");
+            continue;
+        }
+        SdhciMarkDecimal("WiFi: patch[", i);
+        SdhciMark("] ");
+        if (It->Kind == AIC_PLAN_CFG) {
+            /* 这些值来自厂商运行时覆盖（不是表值），表值留一列便于对账 */
+            SdhciMark("kind=cfg src=vendor ");
+        } else {
+            SdhciMark("kind=mem ");
+        }
+        SdhciMark("type=");
+        SdhciMark(AicPatchTypeName(It->Type));
+        SdhciMarkHex(" addr=", It->Addr, 8);
+        SdhciMarkHex(" val=", It->Val, 8);
+        if (It->Kind == AIC_PLAN_CFG) {
+            SdhciMarkHex(" (table=", It->Tbl, 8);
+            SdhciMark(")");
+        }
+        SdhciMark("\n");
+    }
+    /* patch_config_8800d80（aic8800d80_compat.c:114-248）的 14 个 op，地址是符号式的 */
+    SdhciMark("WiFi: patch[cfg] kind=rd addr=00120198 -> config_base\n");
+    SdhciMark("WiFi: patch[cfg] kind=rd addr=001201a0 -> str_base\n");
+    SdhciMark("WiFi: patch[cfg] kind=rd addr=0012001c -> fw_version\n");
+    SdhciMark("WiFi: patch[cfg] kind=rd addr=001201a4 -> patch_buff_base (only if ver>06090100)\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=str+0x00 val=48435450 (magic)\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=str+0x08 val=50544348 (magic2)\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=str+0x04 val=<patch_addr> (pair_start)\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=str+0x0c val=<pair_cnt> (pair_count)\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=str+0x30..3c val=00000000 (block_size[0..3])\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=pair+0x00 val=<config_base+0x00b4>\n");
+    SdhciMark("WiFi: patch[cfg] kind=mem addr=pair+0x04 val=f3010000\n");
+}
+
+/*
+ * patch_config_8800d80：4 个必须从芯片读的字，读不到就失败（不许用 0 或猜值）。
+ * 之后按厂商写 10 个字。
+ */
+static int AicPatchConfig(SDHCI_HOST *Host, int Dry) {
+    UINT32 ConfigBase = 0;
+    UINT32 StrBase = 0;
+    UINT32 Version = 0;
+    UINT32 PatchBuff = 0;
+    UINT32 PatchAddr = 0x0016F800u;
+    UINT32 PairCnt = 1u; /* patch_tbl_8800d80 在 u02 非 5G 下只有 1 对 */
+
+    if (Dry != 0) {
+        SdhciMark("WiFi: patch cfg: DRY (4 rd + 10 wr未执行)\n");
+        return 0;
+    }
+    if (AicMemRead(Host, AIC_RAM_FMAC_FW_ADDR + 0x0198u, &ConfigBase) != 0) {
+        SdhciMark("WiFi: patch cfg: rd 00120198 FAIL\n");
+        return -1;
+    }
+    if (AicMemRead(Host, AIC_RAM_FMAC_FW_ADDR + 0x01A0u, &StrBase) != 0) {
+        SdhciMark("WiFi: patch cfg: rd 001201a0 FAIL\n");
+        return -1;
+    }
+    if (AicMemRead(Host, AIC_RAM_FMAC_FW_ADDR + 0x001Cu, &Version) != 0) {
+        SdhciMark("WiFi: patch cfg: rd 0012001c FAIL\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: patch cfg: config_base=", ConfigBase, 8);
+    SdhciMarkHex(" str_base=", StrBase, 8);
+    SdhciMarkHex(" ver=", Version, 8);
+    SdhciMark("\n");
+    if (StrBase == 0u || StrBase == 0xFFFFFFFFu) {
+        SdhciMark("WiFi: patch cfg: str_base invalid, refuse (no guessing)\n");
+        return -1;
+    }
+    if (Version > 0x06090100u) {
+        if (AicMemRead(Host, AIC_RAM_FMAC_FW_ADDR + 0x01A4u, &PatchBuff) != 0) {
+            SdhciMark("WiFi: patch cfg: rd 001201a4 FAIL\n");
+            return -1;
+        }
+        SdhciMarkHex("WiFi: patch cfg: patch_buff_base=", PatchBuff, 8);
+        SdhciMark(" (new map)\n");
+        if (PatchBuff != 0u) {
+            PatchAddr = PatchBuff;
+        }
+    } else {
+        SdhciMark("WiFi: patch cfg: old map (ver<=06090100), use 0016f800\n");
+    }
+    /* 4 个 magic/pair 字段（aic_patch_t 布局见 aic8800d80_compat.c:12-24） */
+    if (AicMemWrite32(Host, StrBase + 0x00u, 0x48435450u) != 0 ||
+        AicMemWrite32(Host, StrBase + 0x08u, 0x50544348u) != 0 ||
+        AicMemWrite32(Host, StrBase + 0x04u, PatchAddr) != 0 ||
+        AicMemWrite32(Host, StrBase + 0x0Cu, PairCnt) != 0) {
+        SdhciMark("WiFi: patch cfg: magic/pair write FAIL\n");
+        return -1;
+    }
+    {
+        UINT32 k;
+        for (k = 0; k < 4u; k++) {
+            if (AicMemWrite32(Host, StrBase + 0x30u + k * 4u, 0u) != 0) {
+                SdhciMarkDecimal("WiFi: patch cfg: block_size write FAIL k=", k);
+                SdhciMark("\n");
+                return -1;
+            }
+        }
+    }
+    if (AicMemWrite32(Host, PatchAddr + 0u, ConfigBase + 0x00B4u) != 0 ||
+        AicMemWrite32(Host, PatchAddr + 4u, 0xF3010000u) != 0) {
+        SdhciMark("WiFi: patch cfg: pair write FAIL\n");
+        return -1;
+    }
+    SdhciMark("WiFi: patch cfg: 10 writes ok\n");
+    return 0;
+}
+
+/* dry：只解析表 + 打清单，一个字节不写、一条消息不发 */
+static int AicPatchDry(void) {
+    UINT32 TableLen = 0;
+    UINT32 Count = 0;
+
+    SdhciMark("WiFi: patch dry start\n");
+    if (AicFwLoadPatchTable(0, gAicFwBuf, AIC_FW_CHUNK, &TableLen) != 0) {
+        SdhciMark("WiFi: patch dry: table unusable\n");
+        return -1;
+    }
+    if (AicPatchBuildPlan(gAicFwBuf, TableLen, &Count) != 0) {
+        SdhciMark("WiFi: patch dry: plan build FAILED\n");
+        return -1;
+    }
+    AicPatchPrintPlan(Count);
+    if (AicPatchSelfCheck() != 0) {
+        SdhciMark("WiFi: patch plan end INVALID, nothing written\n");
+        return -1;
+    }
+    (void)AicPatchConfig(0, 1); /* dry 只打印 */
+    SdhciMark("WiFi: patch plan end, nothing written\n");
+    return 0;
+}
+
+/* apply：真写。必须先过 dry，失败即停，绝不续写 */
+static int AicPatchApply(SDHCI_HOST *Host, const UINT8 *Table, UINT32 Len) {
+    UINT32 Count = 0;
+    UINT32 i;
+    UINT32 Done = 0;
+
+    if (gAicPatchApplied != 0u) {
+        SdhciMark("WiFi: patch already applied\n");
+        return -1;
+    }
+    if (AicPatchBuildPlan(Table, Len, &Count) != 0) {
+        SdhciMark("WiFi: patch apply: plan build FAILED\n");
+        return -1;
+    }
+    if (AicPatchSelfCheck() != 0) {
+        SdhciMark("WiFi: patch apply refused: plan INVALID\n");
+        return -1;
+    }
+    SdhciMarkDecimal("WiFi: patch apply start, ", Count);
+    SdhciMark(" items\n");
+    for (i = 0; i < Count; i++) {
+        AIC_PLAN_ITEM *It = &gAicPlan[i];
+        if (It->Kind == AIC_PLAN_DELAY) {
+            SdhciDelayMicroseconds(It->Addr);
+            continue;
+        }
+        if (AicMemWrite32(Host, It->Addr, It->Val) != 0) {
+            SdhciMarkDecimal("WiFi: patch[", i);
+            SdhciMark("] type=");
+            SdhciMark(AicPatchTypeName(It->Type));
+            SdhciMarkHex(" addr=", It->Addr, 8);
+            SdhciMarkHex(" val=", It->Val, 8);
+            SdhciMark(" FAIL (stop, no resume)\n");
+            SdhciMarkDecimal("WiFi: patch applied ", Done);
+            SdhciMark("/");
+            SdhciMarkDecimal("", Count);
+            SdhciMark(" then stopped; state stays NOT applied\n");
+            return -1;
+        }
+        Done++;
+        if ((Done % 16u) == 0u || Done == Count) {
+            SdhciMarkDecimal("WiFi: patch progress ", Done);
+            SdhciMark("/");
+            SdhciMarkDecimal("", Count);
+            SdhciMark(" ok\n");
+        }
+    }
+    if (AicPatchConfig(Host, 0) != 0) {
+        SdhciMark("WiFi: patch cfg FAILED (table writes done, cfg not)\n");
+        return -1;
+    }
+    gAicPatchApplied = 1u;
+    SdhciMarkDecimal("WiFi: patch applied: ", Count);
+    SdhciMark("/");
+    SdhciMarkDecimal("", Count);
+    SdhciMark(" ok, state=applied\n");
+    return 0;
 }
 
 /* 读 patch 表、解析、把 adid/patch 落点改成表里的值；任何一步不过就失败 */
@@ -1360,6 +1773,45 @@ int SdhciWifiFw(UINT32 Mode) {
         if (WifiFwChipRev() != 0) {
             return -1;
         }
+    }
+
+    if ((Mode & SDHCI_WIFI_FW_PATCH_DRY) != 0u) {
+        /* dry：只读文件 + 解析，不碰芯片（不写寄存器、不发消息） */
+        if (AicPatchDry() != 0) {
+            SdhciMark("WiFi: patch dry end FAILED\n");
+            return -1;
+        }
+        SdhciMark("WiFi: patch dry end ok\n");
+        return 0;
+    }
+
+    if ((Mode & SDHCI_WIFI_FW_PATCH_APPLY) != 0u) {
+        UINT32 TableLen = 0;
+        if (Host == 0 || !SdhciWifiReady()) {
+            SdhciMark("WiFi: patch apply needs a probed card (run wifiprobe first)\n");
+            return -1;
+        }
+        if (!SdhciWifiChipIsD80()) {
+            SdhciMark("WiFi: chip is not aic8800d80, refuse patch apply\n");
+            return -1;
+        }
+        /* 先证明消息通道通（这一步会跑 vendor init，是写；apply 本来就要写） */
+        if (WifiFwChipRev() != 0) {
+            SdhciMark("WiFi: no msg channel, refuse patch apply\n");
+            return -1;
+        }
+        if (AicFwLoadPatchTable(Host, gAicFwBuf, AIC_FW_CHUNK, &TableLen) != 0) {
+            SdhciMark("WiFi: patch apply: table unusable\n");
+            return -1;
+        }
+        SdhciMark("WiFi: note: firmware upload still locked (write confirm), "
+                  "these writes are RAM-only\n");
+        if (AicPatchApply(Host, gAicFwBuf, TableLen) != 0) {
+            SdhciMark("WiFi: patch apply end FAILED\n");
+            return -1;
+        }
+        SdhciMark("WiFi: patch apply end ok\n");
+        return 0;
     }
 
     if (WantWrite != 0) {

@@ -132,7 +132,11 @@ int WifiWirelessPowerOn(void) {
         HalSerialBootMark("Boot: Pi WIFI WL_ON mbox fail\n");
         return -1;
     }
-    SdhciDelayMicroseconds(500000u);
-    HalSerialBootMark("Boot: Pi WIFI WL_ON cycle\n");
+    /*
+     * Docs/04 刀 B：Linux 加电到 brcmfmac 接手往往数秒；旧值 500 ms。
+     * 与刀 A（50 MHz HS）同镜像一次烧，靠屏/BOOT.LOG 看 tag=0x124。
+     */
+    SdhciDelayMicroseconds(3000000u);
+    HalSerialBootMark("Boot: Pi WIFI WL_ON cycle wait=3000ms\n");
     return 0;
 }

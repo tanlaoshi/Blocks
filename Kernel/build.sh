@@ -59,6 +59,7 @@ export BUILDDIR
 #   ./build.sh arm64 pi          # 短名 → BOARD=rpi-3b
 #   ./build.sh riscv duo         # 短名 → BOARD=milk-v-duo-s
 #   ./build.sh arm64 LWIP=0      # 显式关（默认已自动关）
+#   ./build.sh x86_64 FREETYPE=0 # 显式不用 FreeType（字体走 stb；缺树默认报错，不再静默软退）
 #   ./build.sh V=1          # 打印每条 gcc/ld；默认只留警告、错误和结果
 #
 # 日常推荐（仓库根）：
@@ -77,6 +78,7 @@ BOARD=virt
 DEBUG=0
 LWIP=1
 LWIP_SET=0
+FREETYPE=1
 NO_COM1=0
 SERIAL=1
 SERIAL_BOOT=1
@@ -112,6 +114,8 @@ for Arg in "$@"; do
         DEBUG=0|debug=0) DEBUG=0 ;;
         LWIP=1|lwip=1) LWIP=1; LWIP_SET=1 ;;
         LWIP=0|lwip=0) LWIP=0; LWIP_SET=1 ;;
+        FREETYPE=1|freetype=1) FREETYPE=1 ;;
+        FREETYPE=0|freetype=0) FREETYPE=0 ;;
         NO_COM1=1|no_com1=1) NO_COM1=1; SERIAL=0 ;;
         NO_COM1=0|no_com1=0) NO_COM1=0 ;;
         SERIAL=1|serial=1) SERIAL=1 ;;
@@ -207,7 +211,21 @@ if [ "$LWIP" = "1" ] && [ ! -f "HAL/Common/LwIp/include/lwipopts.h" ]; then
     LWIP=0
 fi
 
-echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD BUILDDIR=$BUILDDIR KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG FILE_LOG=$FILE_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
+# font-freetype-hook：X64 完整内核默认走 FreeType。缺上游树时不再静默退 stb
+# （会编出与主树不同的内核）；默认报错，只有显式 FREETYPE=0 才降级。
+# BRINGUP=1 仅串口 hello，不含字体，故不要求。
+if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ "$FREETYPE" = "1" ] && \
+   [ ! -f "ThirdParty/freetype/src/base/ftbase.c" ]; then
+    echo "error: 缺 FreeType 源码 ThirdParty/freetype/（默认不静默退 stb）" >&2
+    echo "  fix: Scripts/fetch-freetype.sh      # 抓 FreeType 2.13.2 并校验指纹" >&2
+    echo "  or : ./build.sh $ARCH FREETYPE=0   # 显式降级 stb（二进制与主树不同）" >&2
+    exit 1
+fi
+if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ "$FREETYPE" = "0" ]; then
+    echo "note: 未使用 FreeType，字体走 stb"
+fi
+
+echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD BUILDDIR=$BUILDDIR KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG FILE_LOG=$FILE_LOG USB=$SERIAL_USB LWIP=$LWIP FREETYPE=$FREETYPE BRINGUP=$BRINGUP"
 ELF="$BUILDDIR/HAL/$HAL_ARCH/Kernel.elf"
 USER_HELLO="$BUILDDIR/HAL/$HAL_ARCH/user/hello.elf"
 
@@ -216,7 +234,7 @@ if [ "$QUIET" = 1 ]; then
     MAKE=(make -s)
 fi
 "${MAKE[@]}" clean ARCH="$ARCH" BOARD="$BOARD" BUILDDIR="$BUILDDIR"
-"${MAKE[@]}" ARCH="$ARCH" BOARD="$BOARD" BUILDDIR="$BUILDDIR" DEBUG="$DEBUG" LWIP="$LWIP" BRINGUP="$BRINGUP" \
+"${MAKE[@]}" ARCH="$ARCH" BOARD="$BOARD" BUILDDIR="$BUILDDIR" DEBUG="$DEBUG" LWIP="$LWIP" FREETYPE="$FREETYPE" BRINGUP="$BRINGUP" \
     NO_COM1="$NO_COM1" SERIAL="$SERIAL" \
     SERIAL_BOOT="$SERIAL_BOOT" SERIAL_USB="$SERIAL_USB" SERIAL_SMP="$SERIAL_SMP" \
     SERIAL_GUI="$SERIAL_GUI" SERIAL_NET="$SERIAL_NET" SERIAL_FS="$SERIAL_FS" \

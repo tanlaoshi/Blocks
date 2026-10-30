@@ -30,6 +30,10 @@ jobs:
               https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
           fi
 
+      - name: Fetch FreeType 2.13.2
+        working-directory: Kernel
+        run: ./Scripts/fetch-freetype.sh
+
       - name: Fetch xPack toolchains (arm64 + riscv)
         working-directory: Kernel
         run: |

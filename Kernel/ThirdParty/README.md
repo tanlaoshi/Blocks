@@ -23,16 +23,30 @@ PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `Se
 ## FreeType
 
 `font-freetype-hook`：上游树本地检出（gitignore，同 lwIP）；移植在 `freetype-port/`（进仓）。
+版本**钉死**为 **2.13.2**（上游 tag `VER-2-13-2`），由脚本抓取并做两层校验，不手工 curl：
 
 ```bash
-# 在 Kernel/ 下
-curl -L -o /tmp/ft.tar.gz \
-  https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
-mkdir -p ThirdParty/freetype
-tar -xzf /tmp/ft.tar.gz -C ThirdParty/freetype --strip-components=1
+# 在 Kernel/ 下（bootstrap.sh 也会调用）
+Scripts/fetch-freetype.sh          # 缺则下载；已有且校验通过则跳过（幂等）
+Scripts/fetch-freetype.sh --check  # 只校验现有树，不联网
+Scripts/fetch-freetype.sh --force  # 丢弃现有树重下
 ```
 
-无上游树时 X64 仍可编通（`FontFt*` 桩，栅格软退 stb）。有树则链 TT + smooth + psnames + autofit。`ftsystem` arena ≤256K（防 Boot BSS 装不下）。
+- tarball sha256：`427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c`
+- 解包树内容指纹（730 文件）：
+  `cd ThirdParty/freetype && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum`
+  = `cb12af55da443b3af1e8c37aa701b13fec5424c9e279740da4c71b04d0ff8259`
+
+缺树时 **x86_64 默认构建报错**（不再静默退 stb）：
+
+```bash
+./build.sh x86_64                 # 缺树 → error，提示跑抓取脚本
+./build.sh x86_64 FREETYPE=0      # 显式降级：输出 note: 未使用 FreeType，字体走 stb
+```
+
+非 x86_64 内核本就只用 stb（`FreeTypeRaster.c` 仅 `__x86_64__` 启用），FreeType 不参与其构建。
+有树时 x64 链 TT + smooth + psnames + autofit；`ftsystem` arena ≤256K（防 Boot BSS 装不下）。
+许可：FreeType License / GPLv2 双许可，见树内 `LICENSE.TXT`。
 
 移植文件：`HAL/X64/LwIp/`（`lwipopts.h`、`Netif.c`、`Ping.c`、`TcpEcho.c`、`UdpQueue.c`、`TcpClient.c`、`TcpSocket.c`）。
 

@@ -28,7 +28,7 @@ Kernel/Scripts/
 | 测试 | `test/` | test-enosys、test-mod-verify… | expect 自动化 |
 | U 盘 | `usb/` | make-usb-stick | 首次分区；之后 sync-usb |
 | 测量 | `measure/` | measure boot | 开机计时 |
-| 其它 | 本目录根 | bootstrap、desktop、store、pack、check-smells | 专项 |
+| 其它 | 本目录根 | bootstrap、fetch-freetype、desktop、store、pack、check-smells | 专项 |
 
 ## 能否再合并？
 

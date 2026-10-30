@@ -30,6 +30,10 @@ jobs:
               https://github.com/lwip-tcpip/lwip.git ThirdParty/lwip
           fi
 
+      - name: Fetch FreeType 2.13.2
+        working-directory: Kernel
+        run: ./Scripts/fetch-freetype.sh
+
       - name: Build
         working-directory: Kernel
         run: ./build.sh x86_64

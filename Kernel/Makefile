@@ -55,6 +55,7 @@ endif
 LWIP ?= 1
 LWIPINCLUDES :=
 LWIPOBJS :=
+FREETYPE ?= 1
 FREETYPE_OBJS :=
 FREETYPE_HAVE :=
 LWIP_PORT_OBJS :=
@@ -258,9 +259,26 @@ CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL))
 else
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL))
 endif
-# font-freetype-hook：FT 源 + FreeTypeRaster 须 FPU；无上游树则跳过（软退 stb）
+# font-freetype-hook：FT 源 + FreeTypeRaster 须 FPU；无上游树不再静默退 stb。
+# 默认 FREETYPE=1：X64 缺树直接 error（提示抓取脚本）；显式 FREETYPE=0 才允许无 FT。
 FREETYPE_ROOT = ThirdParty/freetype
+ifeq ($(FREETYPE),1)
 FREETYPE_HAVE := $(wildcard $(FREETYPE_ROOT)/src/base/ftbase.c)
+else
+FREETYPE_HAVE :=
+endif
+FREETYPE_GOALS := $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
+ifeq ($(ARCH),x86_64)
+ifeq ($(BRINGUP),0)
+ifeq ($(FREETYPE),1)
+ifeq ($(FREETYPE_HAVE),)
+ifneq ($(filter all kernel-bin %/Kernel.elf,$(FREETYPE_GOALS)),)
+$(error 缺 FreeType 源码 $(FREETYPE_ROOT)/src/base/ftbase.c；先跑 Scripts/fetch-freetype.sh，或显式 FREETYPE=0 降级 stb)
+endif
+endif
+endif
+endif
+endif
 ifeq ($(ARCH),x86_64)
 ifneq ($(FREETYPE_HAVE),)
 # FreeType 上游：不跟自有树 C99/pedantic 锁（不吃 CFLAGS_BASE）

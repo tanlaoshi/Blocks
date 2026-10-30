@@ -42,4 +42,15 @@ elif compgen -G "$ROOT/ToyKernel/Tools/xpack-*" > /dev/null || \
     echo "bootstrap: 已有 Tools/xpack-* 工具链树"
 fi
 
+# FreeType 源码（x86_64 内核字体；gitignore，按固定版本抓取并校验指纹）
+FT_FETCH="$ROOT/Kernel/Scripts/fetch-freetype.sh"
+if [ "${BLOCKS_NO_FREETYPE:-0}" = "1" ]; then
+    echo "bootstrap: BLOCKS_NO_FREETYPE=1 — 跳过 FreeType（x86_64 构建需另跑 fetch-freetype.sh）"
+elif [ -x "$FT_FETCH" ]; then
+    echo "bootstrap: FreeType 2.13.2 → $ROOT/Kernel/ThirdParty/freetype"
+    "$FT_FETCH"
+else
+    echo "bootstrap: 未找到 $FT_FETCH（跳过；x86_64 构建前需手工抓取）"
+fi
+
 echo "bootstrap: 完成。下一步: source \"$ROOT/env.sh\" && build"

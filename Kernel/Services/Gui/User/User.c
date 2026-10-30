@@ -215,11 +215,14 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     if (H < 100) {
         H = 100;
     }
-    /* PR-layout：与内核窗同一尺寸预算（去任务栏、同屏两窗），再避让摆放 */
-    GuiPlaceSizeBudget(Margin, &W, &H);
+    if (W + Margin * 2 > gGuiWindowManager.ScreenWidth) {
+        W = gGuiWindowManager.ScreenWidth > Margin * 2 ? gGuiWindowManager.ScreenWidth - Margin * 2 : gGuiWindowManager.ScreenWidth / 2;
+    }
+    if (H + Margin * 2 > gGuiWindowManager.ScreenHeight) {
+        H = gGuiWindowManager.ScreenHeight > Margin * 2 ? gGuiWindowManager.ScreenHeight - Margin * 2 : gGuiWindowManager.ScreenHeight / 2;
+    }
     X = (gGuiWindowManager.ScreenWidth > W) ? (gGuiWindowManager.ScreenWidth - W) / 2 : 0;
     Y = (gGuiWindowManager.ScreenHeight > H + 40) ? (gGuiWindowManager.ScreenHeight - H) / 3 : Margin;
-    GuiPlaceWindow(Idx, &X, &Y, &W, &H);
 
     gGuiWindowManager.Windows[Idx].Active = 1;
     gGuiWindowManager.Windows[Idx].FixedSize = TitleIsFixedUser(Title);

@@ -49,11 +49,6 @@ int PointInIcon(const DESKTOP_ICON *Icon, UINT32 X, UINT32 Y) {
     return X >= Ix && X < Ix + Iw && Y >= Iy && Y < Iy + Ih;
 }
 
-/* 开窗布局用：不把 TASKBAR_H 抄到 Gui 里，改栏高只改一处 */
-UINT32 DesktopTaskbarHeight(void) {
-    return TASKBAR_H;
-}
-
 void TaskbarGeom(UINT32 *BarY, UINT32 *Sw, UINT32 *Sh) {
     HalVideoGetSize(Sw, Sh);
     *BarY = (*Sh > TASKBAR_H) ? (*Sh - TASKBAR_H) : 0;

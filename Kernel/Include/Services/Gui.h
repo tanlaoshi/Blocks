@@ -106,32 +106,6 @@ void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 把焦点窗当前帧缓冲整窗抓进备份（Shell/Settings 画完内容后调用） */
 void GuiBackupFocusWindow(void);
 /*
- * PR-layout：只读几何查询（`gui wr` 判据 / 自测）。
- * 坐标全是逻辑像素；Phys* 按 GuiPhysRect 口径（起点 floor、末端 ceil），
- * 100%=恒等，150%=3/2，200%=2/1。
- */
-typedef struct {
-    UINT32 X;
-    UINT32 Y;
-    UINT32 Width;
-    UINT32 Height;
-    UINT32 PhysX;
-    UINT32 PhysY;
-    UINT32 PhysWidth;
-    UINT32 PhysHeight;
-} GUI_RECT_INFO;
-
-typedef struct {
-    int Active;
-    const char *Title;
-    GUI_RECT_INFO Rect;
-} GUI_WINDOW_INFO;
-
-/* 桌面可用区：整屏去掉底部任务栏；无窗口也能调（开机后有效） */
-void GuiDesktopUsableGet(GUI_RECT_INFO *Out);
-/* 槽位 Index 的矩形；Active=0 返回 0，成功返回 1 */
-int GuiWindowRectGet(int Index, GUI_WINDOW_INFO *Out);
-/*
  * PR-23d 自测：焦点窗「抓备份 → 从备份贴回」往返，逐物理像素与抓之前比较。
  * 成功 0（OutWp/Hp=物理尺寸、OutDiff=不同像素数、OutRows=有差异的行数）；
  * 无焦点窗/无备份 -1。diff=0 才算备份/还原没抹平细节（150% 下不糊）。

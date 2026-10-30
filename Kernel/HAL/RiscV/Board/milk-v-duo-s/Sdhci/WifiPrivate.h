@@ -253,6 +253,8 @@ int AicPatchSelfCheck(void);
 int AicPatchTableParse(const UINT8 *Buffer, UINT32 Length, AIC_PATCH_INFO *Info);
 int AicRecvMessage(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength);
 int AicRecvMessageTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs);
+/* 变长消息（SCANU_RESULT_IND）用：把整帧原始字节交给调用方，不只拷 param */
+int AicReceiveFrameTimeout(SDHCI_HOST *Host, UINT8 *Frame, UINT32 MaxFrame, UINT16 *OutId, UINT32 *OutFrameLength, UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs);
 int AicSendMessage(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLength);
 int AicSendMessageEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param, UINT16 ParamLength);
 int AicWaitMessagePending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLength);

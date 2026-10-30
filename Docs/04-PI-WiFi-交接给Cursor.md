@@ -1,139 +1,135 @@
 # 04 · PI 3B WiFi 交接给 Cursor
 
-> 用途：把 PI 3B 板载 WiFi（BCM43430 / CYW43438）的开发交给 Cursor 时，直接把本文件给它。
-> 它没参与 DUO 那轮的实现，所以这里把**能踩的坑**和**不能碰的边界**一次写清。
->
-> 权威路线见 [`Archive/路线图1030.md`](../Archive/路线图1030.md) §九（7 步 + 验收字符串）；
-> 本文只补充「交接口径」：边界、资料、前 3 刀具体化、回报格式。
+> 用途：把 PI 3B 板载 WiFi（BCM43430 / CYW43438）交给 Cursor 时，直接给本文件。  
+> 权威路线见 [`Archive/路线图1030.md`](../Archive/路线图1030.md) §九；失败细节见  
+> [`Archive/过程/排障/Pi-WiFi-43430-失败尝试记录.md`](../Archive/过程/排障/Pi-WiFi-43430-失败尝试记录.md)。  
+> 本文只定**交接口径**：与 DUO 并行边界、续作现有代码（勿另起炉灶）、资料缺口、下一刀、回报格式。
 
 ---
 
 ## 0 · 一句话任务
 
-**让 PI 3B 的板载 WiFi 在 Blocks 里跑起来**：SDIO 枚举 → backplane 访问 → ALP/HT 时钟 →
-固件下载 → SDPCM → scan/assoc → DHCP。
+**在现有 Pi 板包上**把板载 WiFi 跑通：背板窗口可信 → SRAM 可写 → ALP/HT → 固件真正跑起来 →（之后）SDPCM / scan / DHCP。
 
-**先只做 P1–P3**（到 HT 时钟为止），这是上次失败的那一段；P4 之后再谈。
+**先只做「解开 SRAM / HT」这一段**（失败记录暂存点）；P4 固件下载验证通过之前，不要碰 scan/assoc。
 
 ---
 
-## 1 · 硬边界（先看这条，避免和 DUO 撞车）
+## 1 · 硬边界（与 DUO 并行）
 
 | 允许改 | 禁止改 |
 |---|---|
-| `Kernel/HAL/RiscV/Board/raspberry-pi-3b/**`（新建） | `Kernel/HAL/RiscV/Board/milk-v-duo-s/**`（DUO 正在改） |
-| PI 专属板级代码、PI 的 shell 命令 | `Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci/*` |
-| 新增独立文件 | `Kernel/Library/`、`Kernel/Services/` 内被多板共享的模块 |
+| `Kernel/HAL/Arm64/Board/rpi-3b/Wifi/**` | `Kernel/HAL/RiscV/Board/milk-v-duo-s/**`（DUO 正在改） |
+| 同板 `rpi-3b/Sdhci/**`（**仅** WiFi 路径必需时） | 新建 `HAL/RiscV/Board/raspberry-pi-3b/`（**错架构，仓里没有这个板**） |
+| `Archive/过程/排障/Pi-WiFi-*`、本文件、`Source/PI/README.md` | 从 DUO 复制一份 `Sdhci` 到 Pi（Arasan 栈已在板包里） |
+| | `Kernel/Library/**`、`Kernel/Services/**` 里多板共享模块 |
+| | **`Kernel/Services/Shell/Commands/Wifi.c`**（已挂 DUO 的 `SdhciWifiProbe` / `SdhciWifiFw` weak；并行改必撞） |
 
-**为什么不许抽公共 `Sdhci` 层**：DUO 侧正在 `Sdio.c` 上做固件下载（B2），**此时抽公共层会两边同时改同一批文件**。
-等 DUO 收口后再做 §9.5 的抽取，那时 PI 已经有可用实现，抽取风险更低。
+**为什么现在不许抽公共 `Sdhci`（暂缓 1030 §9.5 / PI-1）**：DUO 还在收口固件下载；抽公共层 = 两边同时改同一批文件。等 DUO 回归绿再抽。并行期用**目录隔离**，不是用「复制 Duo 代码」。
 
-**做法**：PI 侧先复制一份 `Sdhci` 到自己的板目录（`Board/raspberry-pi-3b/Sdhci/`），
-在文件头写一行：
+**做法**：续作 **`Arm64/Board/rpi-3b/Wifi/`**（tag 见 `Private.h` 的 `WIFI_BUILD_TAG`）。  
+Pi WiFi SDIO 控制器是 **Arasan @ `0x3F300000`**（`rpi-3b/Sdhci*`），µSD 是 SDHOST——勿混。
 
-```c
-/* 暂时复制自 milk-v-duo-s/Sdhci；等 DUO 收口后按 1030 §9.5 抽公共层 */
-```
+### 并行时编译
 
-**复制不是技术债，是没有更便宜的办法时的正确选择**——但要留下这行注释，否则半年后没人知道为什么有两份。
+同机两个 agent 同时 `build.sh` 会互踩 `Build/`（见 1030 §8.1）。并行请错开编译，或分不同 `BUILDDIR`。
 
 ---
 
-## 2 · 资料（已全部在本地，不需要再下载）
+## 2 · 现有代码状态（必读，勿推倒重来）
+
+路径：`Kernel/HAL/Arm64/Board/rpi-3b/Wifi/`（失败记录暂存 **tag `0x122`**）。
+
+| 已验证 | 未通 / 未验证 |
+|---|---|
+| SDIO 枚举、F1、块长、背板窗读写 | 三个 SRAM 别名 CMD53：**接命令、进传输、零字节**（R5 无错位） |
+| EROM、五核基址、SOCRAM 尺寸/银行 | 固件真正写入 SRAM（路径有，阵列不可达） |
+| ALP / `buscoreprep` 等价、D11/SOCRAM 复位顺序 | 拉 ARM 后 HT / F2 / SDPCM |
+
+**当前卡点不是「还没枚举」**，而是：**`0x18000000` 寄存器区正常，SRAM 别名 `0` / `0x10000000` / `0x1e000000` 写不进**。  
+串口上的 `csr=0x50`（`ALP_AVAIL|HT_AVAIL_REQ`）是固件没跑起来的**后果**；先把 SRAM 通路坐实，再谈 HT 批准。
+
+失败记录「下一步」（一次只动一项）：
+
+1. WL_ON 后等待 0.5 s → **3 s**（对照 Linux 加电到驱动接手）；
+2. 与 Linux `mmc1 ios` 对齐时钟/时序（见 `Source/PI/wifi/board/pi-mmc1-ios.txt`：**50 MHz / 4-bit / sd high-speed / 3.3 V**）；旧代码曾用 25 MHz default——改这一项时打清 `WIFI_BUILD_TAG`；
+3. 仍不通 → Linux 侧最小探针模块（失败记录里已写，未再跑）。
+
+---
+
+## 3 · 资料（本地有；缺口写明）
 
 | 类别 | 路径 | 用途 |
 |---|---|---|
-| 厂商驱动（SDIO 层） | `Source/PI/wifi/driver/` `bcmsdh.c` `sdio.c` `chip.c` `core.c` `firmware.c` | **主对照物**：枚举、backplane、固件下载 |
-| 参考实现（更干净） | `Source/PI/wifi/reference/cyw43_ll.c` / `.h` | Pico W 的裸机驱动，**最适合照抄结构**（无 OS 依赖） |
-| 固件 | `Source/PI/wifi/firmware/brcmfmac43430-sdio.bin`（约 400 KB） | 要下载进芯片的 blob |
-| NVRAM | `Source/PI/wifi/firmware/brcmfmac43430-sdio.txt` / `...raspberrypi,3-model-b.txt`（后者优先） | 板级校准参数，**与固件版本必须配对** |
-| 数据手册 | `Source/PI/wifi/CYW43438.PDF` | backplane 寄存器、SDIO 函数定义 |
-| 板上实况 | `Source/PI/wifi/board/brcmf-env.txt`、`pi-config.txt`、`brcmf-debug.log`、`Info.txt` | 能跑起来那台机器的真实配置（比文档准） |
+| 本仓实现 | `Kernel/HAL/Arm64/Board/rpi-3b/Wifi/` | **续作主战场** |
+| 失败记录 | `Archive/过程/排障/Pi-WiFi-43430-失败尝试记录.md` | 已否掉的假设，禁止重踩 |
+| 厂商驱动 | `Source/PI/wifi/driver/`（`bcmsdh`/`sdio`/`chip`/`core`/`firmware`） | 对照流程与常量 |
+| 裸机对照 | `Source/PI/wifi/reference/cyw43_ll.c` / `.h` | ALP/HT/backplane 结构 |
+| 固件 | `Source/PI/wifi/firmware/`（`brcmfmac43430-sdio.bin`、`cyfmac43430-sdio.bin`） | 注意仓内可能有多份、**md5 须与板上工作副本核对** |
+| NVRAM | 同目录；**优先** `...raspberrypi,3-model-b.txt` | 与固件版本配对 |
+| PDF | `Source/PI/wifi/CYW43438.PDF` | 语义；ALP/HT 细节仍以 `cyw43_ll` 为准 |
+| 板级 | `Source/PI/wifi/board/`（`pi-dt.dts`、`pi-mmc1-ios.txt`、`pi-wifi.txt`、`Info.txt`…） | 真机事实 |
 
-**优先级**：`cyw43_ll.c`（结构） > 厂商 `driver/`（细节） > PDF（语义） > 板上日志（事实）。
+**优先级**：失败记录 + 本仓 `Wifi/` > `cyw43_ll` > 厂商 `driver/` > PDF > 板上日志。
 
----
+**缺口（不挡开刀，挡「一次解释清 0x50」）**：
 
-## 3 · 上次为什么失败（必读，别重复）
-
-上一次已经把固件全灌进去了，双核也出了复位，但卡在：
-
-```
-csr=0x50
-```
-
-`0x50 = ALP_AVAIL(0x40) | HT_AVAIL_REQ(0x10)`，即：
-
-> **ALP 时钟已就绪，HT 请求已发出，但 HT 一直没批准 → 芯片没有真正开始执行固件。**
-
-**这说明"写完了"不等于"跑起来了"。** 三个可能方向（按可能性排序）：
-
-1. **backplane 窗口没对齐**：`SBSDIO_FUNC1_SBADDRLOW/HIGH` 写错，导致后续读到的 `csr` 本身就是假值；
-2. **固件下载地址/长度错**：写到了错误 RAM 段，芯片校验失败后不释放 core；
-3. **缺少 ARM core 释放步骤**：厂商在固件尾部写 `SBSDIO_DEVICE_CTL` 或写 chipcommon 的 reset 寄存器，我们可能漏了一步。
-
-**P2 的「写后读回」是分水岭**：如果写入 `0x1000A/0x1000B` 后读不回同值，后面所有判断都不成立。
+- `board/brcmf-debug.log` 可能仍空；`brcmf.log` 多为驱动起来后的 runtime，**不是**冷启动灌片 TRACE。需要时按 `board/Info.txt` 重抓。
+- 仓内 bin 与板上 `md5` 可能不一致；缺 A0 blob 时不要用「换固件」当第一假设。
 
 ---
 
-## 4 · 前 3 刀（每刀一个判据，不到判据不往下走）
+## 4 · 前几刀（接在现有栈上；不到判据不往下）
 
-### P1 · SDIO 枚举
+判据字符串可与旧日志并存；**以 `Boot: Pi WIFI` / `WIFI_BUILD_TAG` 为准**，不必另起一套 `Pi: SD1…` 新树。
 
-**做**：SD1 初始化（PI 3B 的 WiFi SDIO 控制器基址/时钟与 DUO 不同，按 `pi-config.txt` / `dts` 取）、
-CMD5 → RCA → CCCR → 4-bit → HS。
+### 刀 A · 与 Linux ios 对齐（一次一项）
 
-**判据（串口逐字）**：
+**做**：传输钟 / HOST_CONTROL High Speed 与 `pi-mmc1-ios.txt` 一致（50 MHz + HS + 4-bit）；EHS 失败则降级并打日志。
 
-```
-Pi: SD1 init ok clock=50MHz width=4bit
-Pi: CIS manfid=02d0 device=a9a6
-```
+**判据**：串口出现明确 clock/HS 行；`sram base` 三别名探针结果相对 tag `0x122` 有无变化（原文贴出）。
 
-`02d0` = Broadcom，`a9a6` = BCM43430/1 的 SDIO 设备号。**这两个值不对就是枚举没通**，别往下做。
+### 刀 B · 上电等待加长
 
-### P2 · backplane 访问
+**做**：仅改 WL_ON 后等待（0.5 s → 3 s），其它不动。
 
-**做**：写 `SBSDIO_FUNC1_SBADDRLOW(0x1000A)` / `SBADDRHIGH(0x1000B)` 打开窗口，
-经 F1 读写 backplane 寄存器；读 chipcommon 的 `chipid`。
+**判据**：同上，`sram` 探针原文。
+
+### 刀 C · 背板「写后读回」自证（若日志尚不够硬）
+
+**做**：对已知可写寄存器（非 SRAM 别名）写图案再读回；失败则停，禁止猜 HT。
 
 **判据**：
 
 ```
-Pi: backplane wr/rd ok addr=... wrote=.. read=..
-Pi: chipcommon chipid=43430 rev=..
+Boot: Pi WIFI backplane wr/rd ok …
+Boot: Pi WIFI chipid=…（与 EROM / 0xa9a6 叙事一致）
 ```
 
-**必须做「写后读回同值」**，这是唯一能证明窗口对齐的方法。
+### 关于 P1 枚举
 
-### P3 · ALP / HT 时钟
+枚举/CIS/`02d0:a9a6` **已在旧栈验证过**。不要为「跑通 P1 验收句」重建控制器。若回归坏了再修枚举；默认假设 P1 绿。
 
-**做**：`SBSDIO_ALP_AVAIL_REQ(0x08)` → 等 `ALP_AVAIL(0x40)`；
-`HT_AVAIL_REQ(0x10)` → 等 `HT_AVAIL(0x80)`。超时要打**每一轮的 `csr` 原始值**。
+### HT（`csr=0x50`）
 
-**判据**：
-
-```
-Pi: ALP ok csr=40
-Pi: HT ok csr=c0
-```
-
-**并且必须回答**：上次的 `0x50` 是怎么造成的（是窗口错、还是漏了释放 core、还是超时太短）。
+**在 SRAM 可写之前，不把「等到 HT_AVAIL」当独立成功刀。**  
+HT 超时必须打每轮 `csr` 原文，并回答：窗口假值 / 固件没落地 / 漏释放 core——用日志区分，禁止三选一瞎改。
 
 ---
 
-## 5 · 报告格式（每次交付照这个写）
+## 5 · 报告格式（每次交付）
 
 ```
 ## 本轮做了什么
+## WIFI_BUILD_TAG / 改了哪些文件（路径 + 大约行数）
 ## 真机日志（原文，不要摘要）
 ## 判据是否达成（逐条 yes/no）
 ## 失败时的假设与下一次实验（谁 vs 谁，日志怎么区分）
-## 改了哪些文件（路径 + 行数）
 ## 没做的 / 存疑的
+## 确认未碰：milk-v-duo-s、Shell/Commands/Wifi.c、Library、抽公共 Sdhci
 ```
 
-**日志一律贴原文**，不要"整理"——摘要会把关键位丢掉。
+**日志一律贴原文。**
 
 ---
 
@@ -141,26 +137,23 @@ Pi: HT ok csr=c0
 
 | 规则 | 说明 |
 |---|---|
-| **单写者** | 同一时间只有一个人改 PI 目录；DUO 目录你完全别碰 |
-| **不 commit、不 push** | 改动留在工作区，由主会话统一提交（保持历史干净） |
-| **一次一刀** | 每刀独立可编译；不要一边做 P1 一边改 P3 |
-| **不猜寄存器** | 每个寄存器地址都要能指到 `cyw43_ll.c` / 厂商 `driver/` / PDF 的具体位置 |
-| **失败要能区分** | 每次加日志都对"两个假设"下注，别打一堆看不懂的 hex |
+| **单写者（Pi 目录）** | 同时只一人改 `rpi-3b/Wifi`（及必要的同板 `Sdhci`） |
+| **DUO 只读** | 可对照 `milk-v-duo-s` 的 CMD52/53 / 读路径自证思路，**禁止改** |
+| **不 commit / 不 push** | 除非用户明示 TG / TS |
+| **一次一刀** | 独立可编译；勿同时改等待时间 + 时钟 + 复位顺序 |
+| **不猜寄存器** | 地址须能指到 `cyw43_ll` / `driver/` / PDF / 失败记录已解 EROM |
+| **失败要能区分** | 每条新日志对应两个互斥假设 |
 
 ---
 
-## 7 · 与 DUO 的复用关系（将来，不是现在）
+## 7 · 与 DUO 的复用（将来，不是现在）
 
-DUO 侧已经跑通的东西，**将来**可以复用到 PI：
-
-| DUO 已验证 | PI 能不能用 |
+| DUO 已验证 | 现在能不能用 |
 |---|---|
-| SDHCI 命令/传输/时钟（`Command.c`/`Transfer.c`） | ✅ 同 IP，换基址即可 |
-| CMD52/53 参数位、R5 拆位 | ✅ 直接复用 |
-| **读路径自证**（CMD53 vs CMD52 交叉验证） | ✅ **强烈建议照抄**，这是最便宜的正确性证明 |
-| CIS 解析 | ✅ 结构相同（MANFID 都在 Common CIS `0x001000`） |
-| AIC8800 的 vendor init / 消息协议 | ❌ 完全不同，别照搬 |
-| 流控 credit / 512 补齐 | ❌ 那是 AIC 的私有协议 |
+| CMD52/53 参数位、R5 拆位、读路径自证思路 | ✅ **照抄思路**到 Pi 日志；不要拷 Duo 文件过来 |
+| CIS 解析结构 | ✅ 已有；MANFID 目标是 `02d0:a9a6` |
+| SDHCI 命令/PIO 实现 | ⚠️ Pi 用 **本板 Arasan `Sdhci`**，不是 Duo 的 cv181x 副本 |
+| AIC vendor init / 流控 / 512 补齐消息 | ❌ 私有协议，禁止照搬 |
+| 抽公共 `Sdhci` 层 | ❌ **DUO 收口 + 回归后再做**（1030 §9.5） |
 
-**PI 的固件下载由我们自己发数据**（brcmfmac 的 `download_firmware`），不是 AIC 那种"发消息让固件自己搬"，
-这是两者最本质的差别。
+**本质差别**：Pi 固件是主机经 backplane **自己写 RAM**（brcmfmac `download_firmware`）；Duo/AIC 是消息让芯片侧搬。并行开发时两边协议不要混。

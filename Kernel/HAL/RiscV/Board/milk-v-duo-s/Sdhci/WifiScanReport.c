@@ -75,6 +75,48 @@ static AIC_SCAN_REPORT_ENTRY *ScanFindEntry(const UINT8 *Bssid) {
     return 0;
 }
 
+/*
+ * PR-32：`wififw join` 从这里挑目标。表是"最近一次扫描"的合并结果，只有扫过才有。
+ *   Bssid != NULL：SSID 与 BSSID 必须同时相等（避免"同名不同 AP"的含糊）；
+ *   Bssid == NULL：同名里取 RSSI 最强的一个（表里每个 BSSID 已经取过历史最强）。
+ * 返回 0 = 找到；-1 = 没找到。不打印：调用方要分开"缓存空/没这个 SSID/文本非法"。
+ */
+int AicScanReportFind(const char *Ssid, const UINT8 *Bssid, AIC_SCAN_AP *Out) {
+    const AIC_SCAN_REPORT_ENTRY *Best = 0;
+    UINT32 Index;
+
+    if (Ssid == 0 || Out == 0) {
+        return -1;
+    }
+    for (Index = 0; Index < sAicScanEntryCount; Index++) {
+        const AIC_SCAN_REPORT_ENTRY *Entry = &sAicScanEntries[Index];
+
+        if (StringEqual(Entry->Ap.Ssid, Ssid) == 0) {
+            continue;
+        }
+        if (Bssid != 0) {
+            if (ScanAddressEqual(Entry->Ap.Bssid, Bssid) != 0) {
+                *Out = Entry->Ap;
+                return 0;
+            }
+            continue;
+        }
+        if (Best == 0 || Entry->Ap.Rssi > Best->Ap.Rssi) {
+            Best = Entry;
+        }
+    }
+    if (Best == 0) {
+        return -1;
+    }
+    *Out = Best->Ap;
+    return 0;
+}
+
+/* join 用：区分"还没扫过"（0）和"扫过但没这个 SSID" */
+UINT32 AicScanReportCount(void) {
+    return sAicScanEntryCount;
+}
+
 /* 只有新 AP、RSSI 更强、或补上非空 SSID 才值得留一份整帧给 verbose */
 static int ScanNeedsFrame(const AIC_SCAN_AP *Ap) {
     AIC_SCAN_REPORT_ENTRY *Entry = ScanFindEntry(Ap->Bssid);

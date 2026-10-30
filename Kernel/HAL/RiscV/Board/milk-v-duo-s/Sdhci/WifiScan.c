@@ -132,6 +132,25 @@ static int ScanVifAcquire(SDHCI_HOST *Host, UINT8 *OutVifIndex) {
     return 0;
 }
 
+/*
+ * PR-32：join 与扫描必须用**同一个 vif**（固件按 vif 记 BSS / 信道上下文）。
+ * Cached 只读缓存、不碰卡 —— dry 用；Ensure 没有缓存就补一条 MM_ADD_IF —— 真发用。
+ */
+int AicScanVifCached(UINT8 *OutVifIndex) {
+    if (sAicScanVifValid == 0) {
+        return -1;
+    }
+    *OutVifIndex = sAicScanVifIndex;
+    return 0;
+}
+
+int AicScanVifEnsure(SDHCI_HOST *Host, UINT8 *OutVifIndex) {
+    if (sAicScanVifValid == 0) {
+        SdhciMark("WiFi: join: no scan vif yet, adding one (MM_ADD_IF)\n");
+    }
+    return ScanVifAcquire(Host, OutVifIndex);
+}
+
 static int ScanStart(SDHCI_HOST *Host, UINT8 VifIndex, UINT16 *OutAckId) {
     UINT32 Length = AicScanuStartBuild((UINT8 *)sAicScanBuffer, VifIndex);
     UINT32 ParamLength = 0;

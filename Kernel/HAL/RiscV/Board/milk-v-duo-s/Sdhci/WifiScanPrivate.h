@@ -324,6 +324,12 @@ void AicScanReportAdd(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength
 void AicScanReportRoundDone(UINT32 Elapsed, int Done, int End);
 int AicScanReportFinish(void);
 void AicScanReportIgnored(UINT16 Id, UINT32 ParamLength, const UINT8 *Frame, int Verbose);
+/* join 用：在合并表里找目标 / 问"扫过没有"（WifiAssoc.c） */
+int AicScanReportFind(const char *Ssid, const UINT8 *Bssid, AIC_SCAN_AP *Out);
+UINT32 AicScanReportCount(void);
+/* join 用：拿扫描时建的 vif。Cached 不问卡；Ensure 没有就补一条 MM_ADD_IF */
+int AicScanVifCached(UINT8 *OutVifIndex);
+int AicScanVifEnsure(SDHCI_HOST *Host, UINT8 *OutVifIndex);
 /* Result：一帧 → 1 个传输 BSSID + 0..N 个非传输 BSSID；0 = 不是可解析的 Beacon/ProbeRsp */
 UINT32 AicScanResultParse(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength,
                           AIC_SCAN_AP *Entries, UINT32 MaxEntries);

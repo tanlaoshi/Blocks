@@ -112,6 +112,8 @@ void CloseWindow(int Idx) {
         gGuiWindowManager.WinBackupPages[Idx] = 0;
         gGuiWindowManager.WinBackupW[Idx] = 0;
         gGuiWindowManager.WinBackupH[Idx] = 0;
+        gGuiWindowManager.WinBackupWp[Idx] = 0;
+        gGuiWindowManager.WinBackupHp[Idx] = 0;
     }
     if (gGuiWindowManager.DragWin == Idx) {
         gGuiWindowManager.DragWin = -1;

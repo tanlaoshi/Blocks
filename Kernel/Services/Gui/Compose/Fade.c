@@ -25,7 +25,8 @@ static void FadeFrameDelay(void) {
  * 调用方须已 ComposeBegin + 擦光标。
  * 勿把本窗 Active 清零：淡出期间其它核上的 poll_input 会误得 -1（USER poll fail）。
  */
-static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh) {
+static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh,
+                                 UINT32 Wp, UINT32 Hp) {
     const GUI_WINDOW *Win = &gGuiWindowManager.Windows[Idx];
     int i;
 
@@ -56,7 +57,12 @@ static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh) {
         }
         DrawWindowShadowAt(i);
     }
-    HalVideoReadRect(Win->X, Win->Y, Rw, Rh, Under);
+    /*
+     * PR-23d：under 也按物理像素存，否则淡入淡出中间帧整窗糊。
+     * 尺寸取窗备份的物理宽高——BlendFrame 把 Under 与备份当同 stride 的
+     * 平铺图逐像素混，两者必须严格同尺寸。
+     */
+    HalVideoReadRectPhys(GuiPhysX(Win->X), GuiPhysY(Win->Y), Wp, Hp, Under);
     return 1;
 }
 
@@ -90,6 +96,10 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     UINT32 Steps;
     UINT32 Rw;
     UINT32 Rh;
+    UINT32 Xp;
+    UINT32 Yp;
+    UINT32 Wp;
+    UINT32 Hp;
     UINT32 Pages;
     UINT32 *Under = 0;
     UINT32 *Frame = 0;
@@ -128,7 +138,15 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
         return;
     }
 
-    Pages = BackupPageCount(Rw, Rh);
+    /* PR-23d：缓冲按物理像素开；Under/Frame 与窗备份同尺寸同 stride */
+    Xp = GuiPhysX(Win->X);
+    Yp = GuiPhysY(Win->Y);
+    Wp = gGuiWindowManager.WinBackupWp[Idx];
+    Hp = gGuiWindowManager.WinBackupHp[Idx];
+    if (Wp == 0 || Hp == 0) {
+        return;
+    }
+    Pages = BackupPageCount(Wp, Hp);
     Under = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
     Frame = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
     if (Under == 0 || Frame == 0) {
@@ -140,17 +158,17 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     CursorRestore();
     GraphicsIrqLeave();
 
-    if (!CaptureUnderNoPresent(Idx, Under, Rw, Rh)) {
+    if (!CaptureUnderNoPresent(Idx, Under, Rw, Rh, Wp, Hp)) {
         ComposeEnd();
         goto done;
     }
 
-    Npix = Rw * Rh;
+    Npix = Wp * Hp;
     if (FadeIn) {
         for (Step = 1; Step <= Steps; Step++) {
             Alpha = (UINT8)((Step * 255u) / Steps);
             BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
-            HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
+            HalVideoWriteRectPhys(Xp, Yp, Wp, Hp, Frame);
             GraphicsIrqEnter();
             HalVideoPresent();
             GraphicsIrqLeave();
@@ -158,14 +176,14 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
                 FadeFrameDelay();
             }
         }
-        HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, gGuiWindowManager.WinBackup[Idx]);
+        HalVideoWriteRectPhys(Xp, Yp, Wp, Hp, gGuiWindowManager.WinBackup[Idx]);
         DrawWindowChromeAt(Idx);
         DrawWindowShadowAt(Idx);
     } else {
         for (Step = Steps; Step >= 1; Step--) {
             Alpha = (UINT8)((Step * 255u) / Steps);
             BlendFrame(Frame, Under, gGuiWindowManager.WinBackup[Idx], Npix, Alpha);
-            HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Frame);
+            HalVideoWriteRectPhys(Xp, Yp, Wp, Hp, Frame);
             GraphicsIrqEnter();
             HalVideoPresent();
             GraphicsIrqLeave();
@@ -173,7 +191,7 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
                 FadeFrameDelay();
             }
         }
-        HalVideoWriteRect(Win->X, Win->Y, Rw, Rh, Under);
+        HalVideoWriteRectPhys(Xp, Yp, Wp, Hp, Under);
     }
 
     GraphicsIrqEnter();

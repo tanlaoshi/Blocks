@@ -923,17 +923,24 @@ UINT32 FontCodepointAdvance(UINT32 Cp) {
             return Adv;
         }
     }
-    /* cjk-5：UI TTF 拉丁用缓存步进；未 HIT 先半格占位，勿 Terminus 宽跳排 */
+    /*
+     * cjk-5：UI TTF 拉丁用缓存步进。缓存还没这一格时，先按绘制同一条路
+     * 补灌（FontGlyphCp 对 ASCII 本来就会同步 FontTtfCacheEnsure），再取
+     * 真步进。旧代码在这里退回「半格占位」：M/W/A 的实际步进比半格大，
+     * 占位让下一个字母压进它们的墨里（100% 实测 adv=12 vs ink=15）。
+     * 真缺字（已记 MISS）或 TTF 未就绪时不重试，继续落到下面点阵口径，
+     * 与 FontGlyphCp 的软退同源——别再拿猜的宽度排字。
+     */
     if (FontUiTtfSelected() && Cp >= 32u && Cp < 127u) {
         Adv = FontTtfCacheAdvance(Cp);
+        if (Adv == 0u && FontTtfReady() && !FileSystemBootMediumGone() &&
+            !FontTtfCacheMissed(Cp)) {
+            FontTtfCacheEnsure(Cp);
+            Adv = FontTtfCacheAdvance(Cp);
+        }
         if (Adv != 0u) {
             return Adv;
         }
-        Adv = FontTtfPixel() / 2u;
-        if (Adv < 1u) {
-            Adv = 1u;
-        }
-        return Adv;
     }
     if (Cp >= 32u && Cp < 127u) {
         Adv = FontAdvanceX();

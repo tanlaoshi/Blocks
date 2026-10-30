@@ -136,8 +136,12 @@ typedef struct {
     GUI_WINDOW WinSwap;
     int      DragHasBackup;
     int      WinBackupValid[MAX_WINS];
+    /* 逻辑范围（旧字段，调用方按逻辑单位判边界） */
     UINT32   WinBackupW[MAX_WINS];
     UINT32   WinBackupH[MAX_WINS];
+    /* PR-23d：同一块的物理像素宽/高（缓冲 stride）。150% 下 != W/H */
+    UINT32   WinBackupWp[MAX_WINS];
+    UINT32   WinBackupHp[MAX_WINS];
     UINT32   WinBackupPages[MAX_WINS];
     UINT32  *WinBackup[MAX_WINS];
     UINT32   DragRowBuf[DRAG_ROW_MAX];
@@ -226,6 +230,15 @@ int WindowOccludedByOther(int Idx);
 int WindowOccludedByOtherOrShadow(int Idx);
 int AllActiveWindowsHaveValidBackup(void);
 UINT32 BackupPageCount(UINT32 Ww, UINT32 Wh);
+/*
+ * PR-23d：逻辑坐标 → 物理像素（起点下取整；末端用 GuiPhysRect 上取整）。
+ * 100%=恒等，150%=3/2。窗备份/拖动 under 的缓冲一律按物理像素存，
+ * 逻辑坐标只留在窗口模型里，换算只在读写处做（与 PR-23c 光标同口径）。
+ */
+UINT32 GuiPhysX(UINT32 X);
+UINT32 GuiPhysY(UINT32 Y);
+void GuiPhysRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+                 UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp);
 int EnsureWindowBackupBuf(int Idx);
 void PreallocWindowBackups(void);
 void BackupWindowAtEx(int Idx, int ForceFull);

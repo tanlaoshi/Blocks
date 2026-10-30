@@ -23,6 +23,10 @@ void ShellCommandsSystemRegisterVirtMin(void);
 void ShellCommandsSystemProcRegister(void);
 void ShellCommandsSystemProcRegisterVirtMin(void);
 void ShellCommandsThemeRegister(void);
+/* fonts probe：只读字形步进/墨宽数字判据（任务 1 判据） */
+void ShellCommandsFontProbeRegister(void);
+/* gui backupprobe：窗备份物理化自测（PR-23d 判据） */
+void ShellCommandsGuiProbeRegister(void);
 void ShellCommandsFsUiRegister(void);
 void ShellCommandsFsUiStoreRegister(void);
 void ShellCommandsFsExtraRegister(void);

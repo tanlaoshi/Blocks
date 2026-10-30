@@ -70,6 +70,10 @@ void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UIN
     VideoWriteRectPhys(Xp, Yp, Wp, Hp, In);
 }
 
+UINT32 HalVideoReadPixelPhys(UINT32 Xp, UINT32 Yp) {
+    return VideoReadPixelPhys(Xp, Yp);
+}
+
 void HalVideoClearScreen(UINT32 Color) {
     VideoClearScreen(Color);
 }

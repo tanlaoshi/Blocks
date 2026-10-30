@@ -42,25 +42,29 @@ UINT32 AnalyticWindowPixel(int Idx, UINT32 Px, UINT32 Py) {
 
 UINT32 SampleWindowBackupPixel(int Idx, UINT32 Px, UINT32 Py) {
     const GUI_WINDOW *W = &gGuiWindowManager.Windows[Idx];
-    UINT32 Bw;
-    UINT32 Bh;
     UINT32 Lx;
     UINT32 Ly;
+    UINT32 Xp;
+    UINT32 Yp;
 
     if (!gGuiWindowManager.WinBackupValid[Idx] || gGuiWindowManager.WinBackup[Idx] == 0 || !W->Active) {
         return DesktopBgAt(Px, Py);
     }
-    Bw = gGuiWindowManager.WinBackupW[Idx];
-    Bh = gGuiWindowManager.WinBackupH[Idx];
     if (Px < W->X || Py < W->Y) {
         return DesktopBgAt(Px, Py);
     }
     Lx = Px - W->X;
     Ly = Py - W->Y;
-    if (Lx >= Bw || Ly >= Bh) {
+    if (Lx >= gGuiWindowManager.WinBackupW[Idx] || Ly >= gGuiWindowManager.WinBackupH[Idx]) {
         return DesktopBgAt(Px, Py);
     }
-    return gGuiWindowManager.WinBackup[Idx][Ly * Bw + Lx];
+    /* PR-23d：缓冲是物理像素，采样点也要落到被采样逻辑格对应的物理格左上 */
+    Xp = GuiPhysX(Px) - GuiPhysX(W->X);
+    Yp = GuiPhysY(Py) - GuiPhysY(W->Y);
+    if (Xp >= gGuiWindowManager.WinBackupWp[Idx] || Yp >= gGuiWindowManager.WinBackupHp[Idx]) {
+        return DesktopBgAt(Px, Py);
+    }
+    return gGuiWindowManager.WinBackup[Idx][Yp * gGuiWindowManager.WinBackupWp[Idx] + Xp];
 }
 
 
@@ -142,7 +146,10 @@ void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     UINT32 Py;
     UINT32 Bx;
     UINT32 By;
-    UINT32 Dst;
+    UINT32 Ex;
+    UINT32 Ey;
+    UINT32 Ox;
+    UINT32 Oy;
     int Idx;
 
     if (gGuiWindowManager.FocusWin < 0 || gGuiWindowManager.FocusWin >= MAX_WINS || !gGuiWindowManager.Windows[gGuiWindowManager.FocusWin].Active) {
@@ -153,28 +160,51 @@ void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         return;
     }
     Win = &gGuiWindowManager.Windows[Idx];
-    Bw = gGuiWindowManager.WinBackupW[Idx];
-    Bh = gGuiWindowManager.WinBackupH[Idx];
+    Bw = gGuiWindowManager.WinBackupWp[Idx];
+    Bh = gGuiWindowManager.WinBackupHp[Idx];
     if (Bw == 0 || Bh == 0) {
         return;
     }
+    Ox = GuiPhysX(Win->X);
+    Oy = GuiPhysY(Win->Y);
     for (Row = 0; Row < H; Row++) {
         Py = Y + Row;
-        if (Py < Win->Y || Py >= Win->Y + Bh) {
+        if (Py < Win->Y || Py >= Win->Y + gGuiWindowManager.WinBackupH[Idx]) {
             continue;
         }
         for (Col = 0; Col < W; Col++) {
+            UINT32 Sy;
+
             Px = X + Col;
-            if (Px < Win->X || Px >= Win->X + Bw) {
+            if (Px < Win->X || Px >= Win->X + gGuiWindowManager.WinBackupW[Idx]) {
                 continue;
             }
             if (PixelCoveredByHigherWindow(Idx, Px, Py)) {
                 continue;
             }
-            Bx = Px - Win->X;
-            By = Py - Win->Y;
-            Dst = By * Bw + Bx;
-            gGuiWindowManager.WinBackup[Idx][Dst] = HalVideoReadPixel(Px, Py);
+            /*
+             * PR-23d：一个逻辑格覆盖的整片物理像素都要同步，否则备份里
+             * 这块还是旧的缩略采样，下一步贴回又把字边抹平。
+             */
+            Bx = GuiPhysX(Px) - Ox;
+            By = GuiPhysY(Py) - Oy;
+            Ex = GuiPhysX(Px + 1u) - Ox;
+            Ey = GuiPhysY(Py + 1u) - Oy;
+            if (Ex > Bw) {
+                Ex = Bw;
+            }
+            if (Ey > Bh) {
+                Ey = Bh;
+            }
+            for (Sy = By; Sy < Ey; Sy++) {
+                UINT32 Sx;
+
+                for (Sx = Bx; Sx < Ex; Sx++) {
+                    gGuiWindowManager.WinBackup[Idx][Sy * Bw + Sx] =
+                        HalVideoReadPixelPhys(GuiPhysX(Px) + (Sx - Bx),
+                                              GuiPhysY(Py) + (Sy - By));
+                }
+            }
         }
     }
 }

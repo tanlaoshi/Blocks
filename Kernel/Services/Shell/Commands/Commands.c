@@ -22,6 +22,8 @@ void ShellCommandsRegister(void) {
     ShellCommandsWifiRegister();
     ShellCommandsNetRegister();
     ShellCommandsFsUiRegister();
+    ShellCommandsFontProbeRegister();
+    ShellCommandsGuiProbeRegister();
     ShellCommandsAudioRegister();
     ShellCommandsThreadRegister();
 }

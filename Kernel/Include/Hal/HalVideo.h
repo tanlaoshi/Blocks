@@ -113,6 +113,8 @@ void HalVideoWriteRect(UINT32 X, UINT32 Y, UINT32 Width, UINT32 Height, const UI
  */
 void HalVideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Out);
 void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In);
+/* PR-23d：单物理像素读（窗备份按物理像素采样/同步用）；越界返回 0 */
+UINT32 HalVideoReadPixelPhys(UINT32 Xp, UINT32 Yp);
 void HalVideoClearScreen(UINT32 Color);
 
 void HalVideoDrawCharAt(UINT32 X, UINT32 Y, char C, UINT32 Color);

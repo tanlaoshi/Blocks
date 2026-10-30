@@ -105,6 +105,13 @@ void GuiFocusSyncCursor(void);
 void GuiBackupSyncRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 /* 把焦点窗当前帧缓冲整窗抓进备份（Shell/Settings 画完内容后调用） */
 void GuiBackupFocusWindow(void);
+/*
+ * PR-23d 自测：焦点窗「抓备份 → 从备份贴回」往返，逐物理像素与抓之前比较。
+ * 成功 0（OutWp/Hp=物理尺寸、OutDiff=不同像素数、OutRows=有差异的行数）；
+ * 无焦点窗/无备份 -1。diff=0 才算备份/还原没抹平细节（150% 下不糊）。
+ */
+int GuiBackupRoundTripDiff(UINT32 *OutWp, UINT32 *OutHp, UINT32 *OutDiff,
+                           UINT32 *OutRows);
 void GuiFocusClearClient(void);
 int GuiShellAcceptsInput(void);
 void GuiFocusHome(void);

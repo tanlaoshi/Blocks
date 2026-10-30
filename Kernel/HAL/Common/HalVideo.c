@@ -383,6 +383,10 @@ void HalVideoReadRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, UINT32 *Ou
     VideoReadRectPhys(Xp, Yp, Wp, Hp, Out);
 }
 
+UINT32 HalVideoReadPixelPhys(UINT32 Xp, UINT32 Yp) {
+    return VideoReadPixelPhys(Xp, Yp);
+}
+
 void HalVideoWriteRectPhys(UINT32 Xp, UINT32 Yp, UINT32 Wp, UINT32 Hp, const UINT32 *In) {
     VideoWriteRectPhys(Xp, Yp, Wp, Hp, In);
 }

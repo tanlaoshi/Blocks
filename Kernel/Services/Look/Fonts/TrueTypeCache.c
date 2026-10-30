@@ -473,17 +473,22 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
      * （FontCodepointAdvance / 布局直接拿它排字），否则缩放档字距翻倍。
      * 反算按有理数比例：逻辑 = 物理 × Den / Num（150% 下 27 物理 → 18 逻辑；
      * 拿整数 2 去除会得 13，字距立刻缩水）。
+     *
+     * 任务 1 修：这里必须向上取整，不能截断。150% 下 UMing 的 M 物理步进
+     * 22 → 22×2/3 = 14.67，截断成 14 后布局按 14 走，物理下一格只走
+     * floor(14×3/2)=21，比位图墨宽（22 列）还短 1px → M 与下一个字母叠。
+     * 向上取整保证 floor(Adv×Num/Den) ≥ 物理步进，即步进永不短于墨；
+     * 100%（Num=Den=1）结果逐字节不变，200%（Den/Num=2）整除也不变。
      */
     {
-        UINT32 Num = HalVideoGetDrawNum();
-        UINT32 Den = HalVideoGetDrawDen();
+        UINT64 Num = (UINT64)HalVideoGetDrawNum();
+        UINT64 Den = (UINT64)HalVideoGetDrawDen();
 
+        if (Num == 0u) {
+            Num = 1u;
+        }
         if (Num != 1u || Den != 1u) {
-            if (Num == 0u) {
-                Num = 1u;
-            }
-            Slot->Adv = (UINT32)(((UINT64)Slot->Adv * (UINT64)Den) /
-                                 (UINT64)Num);
+            Slot->Adv = (UINT32)((((UINT64)Slot->Adv * Den) + Num - 1u) / Num);
         }
     }
     if (Slot->Adv < 1u) {

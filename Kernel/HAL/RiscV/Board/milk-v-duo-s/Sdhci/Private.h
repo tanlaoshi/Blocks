@@ -118,4 +118,64 @@ int SdhciWifiChipIsD80(void);
 int SdhciWifiBusRecover(SDHCI_HOST *Host);
 int SdhciHostInitialize(SDHCI_HOST *Host);
 
+/* ---- SDIO 枚举（Sdio.c / SdioCis.c / SdioTransfer.c / SdioSelfTest.c） ---- */
+/* CCCR / FBR 偏移（include/linux/mmc/sdio.h） */
+#define SDIO_CCCR_CCCR 0x00u
+#define SDIO_CCCR_IOEX 0x02u
+#define SDIO_CCCR_IORX 0x03u
+#define SDIO_CCCR_IF 0x07u
+#define SDIO_CCCR_CAPS 0x08u
+#define SDIO_CCCR_SPEED 0x13u
+#define SDIO_FBR_CIS 0x09u
+#define SDIO_FBR_BLKSIZE 0x10u
+#define SDIO_BUS_WIDTH_MASK 0x03u
+#define SDIO_BUS_WIDTH_4BIT 0x02u
+#define SDIO_SPEED_SHS 0x01u
+#define SDIO_SPEED_EHS 0x02u
+#define SDIO_CAP_SDC 0x01u
+#define SDIO_CAP_SMB 0x02u
+#define SDIO_CAP_4BLS 0x80u
+/* CIS tuple（sdio_cis.c:235 的 TPLMID 表） */
+#define CISTPL_MANFID 0x20u
+#define CISTPL_FUNCID 0x21u
+#define CISTPL_FUNCE 0x22u
+/* AIC fn1 私有寄存器（aicsdio.h:36-48，D80/V3 表） */
+#define AIC_BYTEMODE_ENABLE_REG_V3 0x07u
+#define AIC_MISC_INT_STATUS_REG_V3 0x04u
+#define AIC_RD_FIFO_ADDR_V3 0x0Fu
+#define AIC_WR_FIFO_ADDR_V3 0x10u
+/* 自检：1536 B = 3 块 × 512（固件块消息的线上长度，时序表 §2.6） */
+#define SDIO_SELFTEST_BYTES 1536u
+#define SDIO_SELFTEST_BLOCKS (SDIO_SELFTEST_BYTES / SDHCI_BLOCK_BYTES)
+
+typedef struct SDIO_CIS_INFO {
+    UINT16 Vendor;
+    UINT16 Device;
+    UINT8 FunctionClass;
+    UINT16 MaxBlockSize;
+    int SawManfid;
+} SDIO_CIS_INFO;
+
+extern int gWifiSdioState;
+extern UINT16 gWifiChipVendor;
+extern UINT16 gWifiChipDevice;
+extern UINT8 gWifiHostControl;
+extern UINT32 gWifiRestoreHertz;
+extern UINT8 gSdioPattern[SDIO_SELFTEST_BYTES];
+extern UINT8 gSdioReadback[SDIO_SELFTEST_BYTES];
+
+UINT32 SdioScanCis(SDHCI_HOST *Host, UINT32 From, UINT32 To);
+int SdioChipIdentify(void);
+int SdioCmd5Window(SDHCI_HOST *Host);
+int SdioFifoTest(SDHCI_HOST *Host, int MultiBlock);
+int SdioFifoTransfer(SDHCI_HOST *Host, int Write, UINT8 *Buffer, int MultiBlock);
+int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info);
+int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *Pointer);
+int SdioRecoverBus(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHertz);
+void SdioDumpCis(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT32 Count);
+void SdioMarkCis(UINT32 Function, UINT32 Pointer, const SDIO_CIS_INFO *Info);
+void SdioMarkCmd5State(SDHCI_HOST *Host, const char *Tag);
+void SdioMarkFn1Regs(SDHCI_HOST *Host);
+void SdioMarkXfer(SDHCI_HOST *Host, const char *Tag);
+
 #endif

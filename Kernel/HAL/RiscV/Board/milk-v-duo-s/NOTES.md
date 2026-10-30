@@ -336,6 +336,36 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 11:0x B1 刀：patch 表解析 + 落点改由表决定 + patch 改必需
+
+**表布局**（`aic_bsp_driver.c:1295-1352` `aicbt_patch_table_alloc`）：
+`[0..15] "AICBT_PT_TAG"`，之后循环 `name[16] / type(u32) / len(u32，以 8 B 为单位) / data[len*8]`。
+
+用 SDK 里那份真表跑通了解析（1048 B，逐项对齐、正好走到文件末尾）：
+
+```
+off=0010 AICBT_PINF_T  type=0 len=4    adid_addrinf=001e7290 addr_adid=00201940
+                                       patch_addrinf=001e7294 addr_patch=001e0000
+                                       reset=(40500150,00000001) adid_flag=(40500150,00000001)
+off=0048 AICBT_TRAP_T  type=1 len=19
+off=00f8 AICBT_PATCH_TB4 type=2 len=45
+off=0278 AICBT_MODE_T  type=3 len=9
+off=02d8 AICBT_POWER_ON type=4 len=3
+off=0308 AICBT_PATCH_TAF type=5 len=20
+off=03c0 AICBT_VER_INFO type=6 len=8
+```
+
+改动：
+
+* `AicPatchTableParse()`：验 16 B tag（`AICBT_PT_TAG`）+ info 元组名字（`AICBT_PINF_T`），
+  取 `info_len / addr_adid / addr_patch / reset / adid_flag`；tag 不对**明确失败**，不猜着用。
+* `AicFwLoadPatchTable()`：读表 → 解析 → 把 `gAicStages[0].Addr / [1].Addr` **改成表值**；
+  表里缺字段才用兜底，并打 `(fallback, table missing)`。
+* patch 阶段 `optional → required`（D80 强制 `info_len != 0`，表与 patch 都是必需件）。
+* `AicPatchApply()` 空实现：解析 + 数 `trap/pwron` 条目，返回 `AIC_PATCH_NOT_IMPLEMENTED`；
+  它已经挂在 `start_app` 之前的位置上 —— 接了 B2 就自动生效，现在必然失败并停。
+* confirm 拒绝文案改成 `patch apply not implemented (B2)`。
+
 ### 10:51 评审 A 刀：清掉"假绿"和"说假话"
 
 按 `Archive/Duo-WiFi通道-代码Review.md` 的 P0-1…P0-3 + P1-1 + Y2 + W10 逐条改：

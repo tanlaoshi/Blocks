@@ -51,12 +51,7 @@ int IwlFindEapol(UINT8 *Dot11, UINTN FLen, UINT8 **OutEap, UINTN *OutLen);
 int IwlAddr1IsUs(const UINT8 *Dot11);
 UINT16 IwlBe16(const UINT8 *P);
 void IwlPutBe16(UINT8 *P, UINT16 V);
-void IwlPrf384(const UINT8 Pmk[32], const UINT8 *A, UINTN Alen,
-               const UINT8 *B, UINTN Blen, UINT8 Out[48]);
-void IwlBuildPtk(const UINT8 Pmk[32], const UINT8 *Anon, const UINT8 *Snon,
-                 UINT8 Ptk[48], UINT8 Ver);
-void IwlEapolMic(UINT8 Ver, const UINT8 Kck[16], UINT8 *Eapol,
-                 UINTN EapolLen, UINT8 Mic[16]);
+/* PTK / MIC 已搬到 HAL/Common/WifiCrypto；这里只剩 GTK 安装胶水（串口 + gIwlGtk*）。 */
 void IwlInstallGtk(const UINT8 *Eapol, UINTN EapLen, const UINT8 Kek[16]);
 int IwlRxDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
                        UINT32 *MpduN, UINT32 *DataN, UINT32 *UniN,

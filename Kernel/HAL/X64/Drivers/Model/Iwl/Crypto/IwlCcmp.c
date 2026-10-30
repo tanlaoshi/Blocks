@@ -9,6 +9,7 @@
  * caller writes PN/KeyID into the 8-byte CCMP header separately.
  */
 #include "Iwl/Private.h"
+#include "WifiCrypto/WifiAes.h"
 
 static void MemClr(UINT8 *P, UINTN N)
 {
@@ -128,7 +129,7 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
     MemCpy(B + 1, Nonce, 13);
     B[14] = (UINT8)(BodyLen >> 8);
     B[15] = (UINT8)BodyLen;
-    IwlAesEncrypt(Key, B, X);
+    WifiAesEncrypt(Key, B, X);
 
     /* Auth AAD (encoded length + data, zero-padded to 16) */
     MemClr(B, 16);
@@ -139,14 +140,14 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
         B[Off++] = Aad[I];
         if (Off == 16) {
             XorBlk(X, B, 16);
-            IwlAesEncrypt(Key, X, X);
+            WifiAesEncrypt(Key, X, X);
             MemClr(B, 16);
             Off = 0;
         }
     }
     if (Off) {
         XorBlk(X, B, 16);
-        IwlAesEncrypt(Key, X, X);
+        WifiAesEncrypt(Key, X, X);
     }
 
     /* CTR prep: Flags=(L-1)=1, Nonce, counter */
@@ -166,24 +167,24 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
             MemClr(B, 16);
             MemCpy(B, Body + Off, N);
             XorBlk(X, B, 16);
-            IwlAesEncrypt(Key, X, X);
+            WifiAesEncrypt(Key, X, X);
             A[14] = (UINT8)(Ctr >> 8);
             A[15] = (UINT8)Ctr;
-            IwlAesEncrypt(Key, A, S);
+            WifiAesEncrypt(Key, A, S);
             for (I = 0; I < N; I++) {
                 Body[Off + I] = (UINT8)(Body[Off + I] ^ S[I]);
             }
         } else {
             A[14] = (UINT8)(Ctr >> 8);
             A[15] = (UINT8)Ctr;
-            IwlAesEncrypt(Key, A, S);
+            WifiAesEncrypt(Key, A, S);
             for (I = 0; I < N; I++) {
                 Body[Off + I] = (UINT8)(Body[Off + I] ^ S[I]);
             }
             MemClr(B, 16);
             MemCpy(B, Body + Off, N);
             XorBlk(X, B, 16);
-            IwlAesEncrypt(Key, X, X);
+            WifiAesEncrypt(Key, X, X);
         }
         Off += N;
         Ctr++;
@@ -192,7 +193,7 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
     /* S0 masks the MIC tag */
     A[14] = 0;
     A[15] = 0;
-    IwlAesEncrypt(Key, A, S);
+    WifiAesEncrypt(Key, A, S);
     for (I = 0; I < 8; I++) {
         Mic[I] = (UINT8)(X[I] ^ S[I]);
     }

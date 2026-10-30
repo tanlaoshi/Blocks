@@ -3,6 +3,8 @@
  */
 #include "Iwl/Private.h"
 #include "HalDriverFile.h"
+#include "WifiCrypto/WifiPbkdf2.h"
+#include "WifiCrypto/WifiPrf.h"
 
 char gIwlSsid[IWL_SSID_MAX + 1];
 char gIwlPsk[IWL_PSK_MAX + 1];
@@ -43,7 +45,8 @@ int IwlPmkPrepare(void) {
     while (gIwlSsid[SsidLen]) {
         SsidLen++;
     }
-    if (!IwlPbkdf2Sha1(gIwlPsk, (const UINT8 *)gIwlSsid, SsidLen, 4096, gIwlPmk, 32)) {
+    if (!WifiPbkdf2Sha1(gIwlPsk, (const UINT8 *)gIwlSsid, SsidLen,
+                        WIFI_PBKDF2_WPA2_ITERATIONS, gIwlPmk, WIFI_PMK_LENGTH)) {
         return 0;
     }
     gIwlPmkOk = 1;

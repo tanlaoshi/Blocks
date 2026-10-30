@@ -3,6 +3,9 @@
  */
 #include "Iwl/Private.h"
 #include "HalSerial.h"
+#include "WifiCrypto/WifiEapol.h"
+#include "WifiCrypto/WifiPbkdf2.h"
+#include "WifiCrypto/WifiPrf.h"
 
 int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *Replay,
                             UINT8 KeyDesc) {
@@ -57,7 +60,8 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
         while (gIwlSsid[SsidLen]) {
             SsidLen++;
         }
-        if (!IwlPbkdf2Sha1(gIwlPsk, (const UINT8 *)gIwlSsid, SsidLen, 4096, Pmk, 32)) {
+        if (!WifiPbkdf2Sha1(gIwlPsk, (const UINT8 *)gIwlSsid, SsidLen,
+                            WIFI_PBKDF2_WPA2_ITERATIONS, Pmk, WIFI_PMK_LENGTH)) {
             IwlLogStage("wpa2=pmk");
             return 0;
         }
@@ -66,7 +70,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
     for (i = 0; i < 32; i++) {
         Snonce[i] = (UINT8)(gIwlMac[i % 6] ^ (UINT8)(i * 17u + 3u));
     }
-    IwlBuildPtk(Pmk, Anonce, Snonce, Ptk, KeyVer);
+    WifiPtkDerive(Pmk, gIwlMac, gIwlBssid, Anonce, Snonce, Ptk, KeyVer);
     IwlEapolCopyN(Kck, Ptk, 16);
     IwlEapolCopyN(gIwlPtk, Ptk + 32, 16);
 
@@ -112,7 +116,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
         }
         {
             UINT8 Mic[16];
-            IwlEapolMic(KeyVer, Kck, Eapol, Total, Mic);
+            WifiEapolMic(KeyVer, Kck, Eapol, Total, Mic);
             (void)Mic;
         }
         if (IwlSendEapol(Eapol, Total) != 0) {
@@ -184,7 +188,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
                         continue;
                     }
                     IwlEapolCopyN(Saved, Eapol + 81, 16);
-                    IwlEapolMic(KeyVer, Kck, Eapol, EapLen, Calc);
+                    WifiEapolMic(KeyVer, Kck, Eapol, EapLen, Calc);
                     Diff = 0;
                     for (k = 0; k < 16; k++) {
                         Diff |= (int)(Calc[k] ^ Saved[k]);
@@ -276,7 +280,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
     IwlPutBe16(Eapol + 97, 0);
     {
         UINT8 Mic[16];
-        IwlEapolMic(KeyVer, Kck, Eapol, 99, Mic);
+        WifiEapolMic(KeyVer, Kck, Eapol, 99, Mic);
         (void)Mic;
     }
     if (IwlSendEapol(Eapol, 99) != 0) {

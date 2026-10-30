@@ -493,6 +493,10 @@ ARCH_ASM_OBJS := $(patsubst HAL/$(HAL_ARCH)/%.S,$(HALDIR)/%.o,$(ARCH_ASM))
 SHARED_VIDEO_SRCS := $(wildcard HAL/Common/Video/*.c)
 SHARED_VIDEO_OBJS := $(patsubst HAL/Common/Video/%.c,$(HALDIR)/Common/Video/%.o,$(SHARED_VIDEO_SRCS))
 
+# 公共 WPA2 算法（arch 无关；X64 Iwl 与 RiscV Duo 共用；落 HAL/Common/WifiCrypto）
+WIFI_CRYPTO_SRCS := $(wildcard HAL/Common/WifiCrypto/*.c)
+WIFI_CRYPTO_OBJS := $(patsubst HAL/Common/WifiCrypto/%.c,$(HALDIR)/Common/WifiCrypto/%.o,$(WIFI_CRYPTO_SRCS))
+
 ifeq ($(ARCH),x86_64)
 EXTRA_OBJS = $(HALDIR)/User_hello_blob.o $(HALDIR)/SmpTramp_blob.o $(SHARED_VIDEO_OBJS)
 # 演示 ELF/OBJ 进 Build/User/（源在 User/Apps/）；CRT/Library 仍就地编
@@ -670,7 +674,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(FREETYPE_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(WIFI_CRYPTO_OBJS) $(FREETYPE_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -917,6 +921,10 @@ $(HALDIR)/LwIp/%.o: HAL/$(HAL_ARCH)/LwIp/%.c | $(HALDIR)
 # HAL/Common/LwIp：协议层 + LibcStub（LibcStub 仅非 x64 入 LWIP_PORT_SRCS）。
 # 显式规则：上方 $(HALDIR)/Common/%.o 通用规则被 ifneq(x86_64) 包裹，x64 匹配不到。
 $(HALDIR)/Common/LwIp/%.o: HAL/Common/LwIp/%.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
+# HAL/Common/WifiCrypto：公共 WPA2 算法。同上，必须写显式规则，x64 才编得到。
+$(HALDIR)/Common/WifiCrypto/%.o: HAL/Common/WifiCrypto/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(LWIP),1)

@@ -4,6 +4,13 @@
 #include "ShellCommands.h"
 #include "ShellPrivate.h"
 
+/*
+ * ksend 的注册口在 Commands/Ksend.c。声明放这里而不是 ShellPrivate.h：
+ * 板级开发工具只该动本目录，少碰一个公共头（其它靶不编命令体，
+ * 弱引用保证 link 不炸）。
+ */
+void ShellCommandsKsendRegister(void);
+
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
     ShellCommandsSystemRegisterVirtMin();
@@ -11,6 +18,8 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsNetRegister();
     /* Duo S：wifiprobe —— 真机上重跑 SD1(wifi-sd) SDIO 探测，不用重启 */
     ShellCommandsWifiProbeRegister();
+    /* Duo S：ksend —— 串口增量写 Kernel.elf（开发期免拔卡） */
+    ShellCommandsKsendRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -26,4 +35,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsGuiProbeRegister();
     ShellCommandsAudioRegister();
     ShellCommandsThreadRegister();
+    ShellCommandsKsendRegister();
 }

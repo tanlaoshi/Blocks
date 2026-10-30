@@ -336,6 +336,36 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 12:59 e2a 解析少 4 B：pattern 被当成 param[0]（真机定位）
+
+真机 `stage=adid FAIL write` 其实是**误判**。RX 帧实测 20 B（plen=4）：
+
+```
+14 00 11 00 | 01 04 64 00 | 01 00 08 00 | 2a de de ad | 00 00 50 40 | 20 88 07 fb
+ 块头4B        id  dest      src  plen     pattern      param[0]      param[1]
+```
+
+厂商 `struct ipc_e2a_msg`（`aic_bsp_driver.h:62-71`）里 `pattern` 在 `param[]` **之前**：
+`id/dest/src/plen`(8 B) + `pattern`(4 B) + `param[]`。我们原来从 `+12` 拷参数，
+**整体偏移 4 B**：把 `pattern=0xaddede2a` 当成 `param[0]`。
+
+后果（两帧都自证）：
+
+* block write CFM：`param[0]=wstatus=0`（写成功）被读成 `0xaddede2a` → 报 `status=de2a` **假失败**；
+* mem read CFM：`param[0]=0x40500000`（地址回显）、`param[1]=0xfb078820`（真值），
+  我们却把地址当值打成 `chip rev raw=40500000`，`rev=50` 是从 pattern 里切出来的垃圾。
+  旁证：厂商读 `0x40500000` 取 `bond_id = data >> 24`（`aic_bsp_driver.c:672-680`），
+  `0xfb078820` 合理、`0x40500000` 不合理。
+
+修法：
+
+* `AIC_E2A_PARAM_OFF = 16`，`AIC_E2A_PATTERN = 0xaddede2a`；所有 RX 参数从 +16 拷；
+* 每帧校验 `pattern == 0xaddede2a`，不符打 `rx bad pattern=… drop` 丢帧（比 type 判断硬）；
+* 长度关系写进注释：`总长 = 16 + param_len`，块头 `len 字段 = 12 + param_len`；
+* mem read 打印改两字段 `addr=… data=…`，不再出现 `raw`；
+* block write 判据 `wstatus == 0`，失败打 `wstatus=… addr=… FAIL`；
+* 新增只读诊断 `wififw rd <hexaddr>`（4 对齐检查、失败打 `r5=`），用于真写后对账。
+
 ### 11:52 B2 审查整改（P0-1/2/3 + P1-1/2/3/4/5/6/7）
 
 按 `Archive/Duo-WiFi-patch-B2-独立审查.md` §7 的顺序改完，**`gAicPatchReady` 仍为 0**。

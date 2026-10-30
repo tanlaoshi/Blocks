@@ -46,6 +46,21 @@
 
 /* 帧长上限：16 B 头 + 参数；FIFO 一块 512 B，写时分块 */
 #define AIC_MSG_MAX 1600u
+/*
+ * e2a 消息的"有效性戳"（aic_bsp_driver.h:62-71 struct ipc_e2a_msg 的 pattern 字段）。
+ * 厂商拿它判断一个 MSG buffer 里是不是真有一条消息；我们也拿它当硬判据，
+ * 比 `hdr[2]&0x7f == 0x11` 强得多。
+ *
+ * 帧布局（实测 20 B 一帧，plen=4）：
+ *   +0  4 B 块头： len(12bit)=总长-4 | type | crc8
+ *   +4  4 B e2a：  id(u16) | dummy_dest(u16)
+ *   +8  4 B e2a：  dummy_src(u16) | param_len(u16)
+ *   +12 4 B       pattern = 0xaddede2a
+ *   +16 params    ← 以前从 +12 拷，整体偏移 4 B，把 pattern 当成了 param[0]
+ * 即 总长 = 16 + param_len，块头 len 字段 = 12 + param_len。
+ */
+#define AIC_E2A_PATTERN 0xADDEDE2Au
+#define AIC_E2A_PARAM_OFF 16u
 #define AIC_FIFO_CHUNK 512u
 /* 厂商 aicwf_sdio.h:28/51-53：流控队列、tx 缓冲、尾补齐 */
 #define AIC_FLOW_CTRL_REG_V3 0x03u
@@ -591,8 +606,23 @@ static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
         SdhciMarkHex(" type=", (UINT32)(gAicRx[2] & 0x7Fu), 2);
         SdhciMarkHex(" id=", AicGet16(&gAicRx[4]), 4);
         SdhciMarkHex(" plen=", AicGet16(&gAicRx[10]), 4);
+        SdhciMarkHex(" pattern=",
+                     (UINT32)(gAicRx[12] | (gAicRx[13] << 8) | ((UINT32)gAicRx[14] << 16) |
+                              ((UINT32)gAicRx[15] << 24)),
+                     8);
         SdhciMark("\n");
         AicDumpBytes(gAicRx, Len);
+        /* 硬判据：不是 e2a 有效性戳就丢帧（评审：比 type 判断可靠） */
+        {
+            UINT32 Pat = (UINT32)(gAicRx[12] | (gAicRx[13] << 8) | ((UINT32)gAicRx[14] << 16) |
+                                  ((UINT32)gAicRx[15] << 24));
+            if (Pat != AIC_E2A_PATTERN) {
+                SdhciMarkHex("WiFi: rx bad pattern=", Pat, 8);
+                SdhciMark(" (want addede2a) drop\n");
+                continue;
+            }
+        }
+        SdhciMark("WiFi: rx pattern=addede2a ok\n");
         if ((gAicRx[2] & 0x7Fu) != (UINT8)AIC_TYPE_CFG_CMD_RSP &&
             (gAicRx[2] & 0x7Fu) != (UINT8)AIC_TYPE_CFG_DATA_CFM) {
             SdhciMarkHex("WiFi: rx skip type=", gAicRx[2], 2);
@@ -609,15 +639,21 @@ static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
         if (ParamLen > MaxParam) {
             ParamLen = MaxParam;
         }
-        if (ParamLen > (Len > 12u ? Len - 12u : 0u)) {
-            ParamLen = (Len > 12u) ? Len - 12u : 0u;
+        /* params 从 +16 起：可拷长度 = Len - 16（不是 Len - 12） */
+        if (Len < AIC_E2A_PARAM_OFF) {
+            SdhciMarkHex("WiFi: rx frame too short len=", Len, 4);
+            SdhciMark("\n");
+            continue;
+        }
+        if (ParamLen > Len - AIC_E2A_PARAM_OFF) {
+            ParamLen = Len - AIC_E2A_PARAM_OFF;
         }
         if (OutParamLen != 0) {
             *OutParamLen = ParamLen;
         }
         if (Param != 0 && ParamLen > 0u) {
             for (i = 0; i < ParamLen; i++) {
-                Param[i] = gAicRx[12u + i];
+                Param[i] = gAicRx[AIC_E2A_PARAM_OFF + i];
             }
         }
         return 0;
@@ -687,12 +723,16 @@ static int AicMemBlockWrite(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const
             SdhciMark("\n");
             return -1;
         }
-        /* dbg_mem_block_write_cfm { u32 wstatus; } —— 非 0 即失败 */
-        if ((Param[0] | Param[1] | Param[2] | Param[3]) != 0u) {
-            SdhciMarkHex("WiFi: blk write status=", (UINT32)(Param[0] | (Param[1] << 8)), 4);
-            SdhciMarkHex(" addr=", Address + Done, 8);
-            SdhciMark("\n");
-            return -1;
+        /* dbg_mem_block_write_cfm { u32 wstatus; }：wstatus == 0 才算写成功 */
+        {
+            UINT32 WStatus = (UINT32)Param[0] | ((UINT32)Param[1] << 8) |
+                             ((UINT32)Param[2] << 16) | ((UINT32)Param[3] << 24);
+            if (WStatus != 0u) {
+                SdhciMarkHex("WiFi: blk write wstatus=", WStatus, 8);
+                SdhciMarkHex(" addr=", Address + Done, 8);
+                SdhciMark(" FAIL\n");
+                return -1;
+            }
         }
         Done += Step;
     }
@@ -2049,7 +2089,10 @@ static int WifiFwChipRev(void) {
         SdhciMark("WiFi: chip rev read failed (msg channel not up)\n");
         return -1;
     }
-    SdhciMarkHex("WiFi: chip rev raw=", Value, 8);
+    SdhciMarkHex("WiFi: mem rd addr=", AIC_D80_CHIP_REV_ADDR, 8);
+    SdhciMarkHex(" data=", Value, 8);
+    SdhciMark("\n");
+    SdhciMarkHex("WiFi: chip rev data=", Value, 8);
     SdhciMarkHex(" rev=", (Value >> 16) & 0xFFu, 2);
     SdhciMark("\n");
     return 0;
@@ -2061,6 +2104,39 @@ static int WifiFwChipRev(void) {
  * write confirm 卡在 "patch already applied"。现在 patch 表落地只能是
  * write confirm 的第 4 阶段。保留这个入口只为打印一句明确的迁移提示。
  */
+/*
+ * 只读诊断：`wififw rd <hexaddr>`。真写之后要能读回内存对账，这是唯一手段。
+ * 只做准备动作 + 一次 mem read，不改 patch 状态、不发任何写消息。
+ */
+int SdhciWifiFwRead(UINT32 Address) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT32 Value = 0;
+
+    if ((Address & 3u) != 0u) {
+        SdhciMarkHex("WiFi: mem rd refused: not 4-aligned addr=", Address, 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    if (Host == 0 || !SdhciWifiReady()) {
+        SdhciMark("WiFi: mem rd needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (AicWifiVendorPrepare(Host) != 0) {
+        SdhciMark("WiFi: mem rd: vendor prepare failed\n");
+        return -1;
+    }
+    if (AicMemRead(Host, Address, &Value) != 0) {
+        SdhciMarkHex("WiFi: mem rd FAIL addr=", Address, 8);
+        SdhciMarkHex(" r5=", Host->LastR5, 8);
+        SdhciMark("\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: mem rd addr=", Address, 8);
+    SdhciMarkHex(" data=", Value, 8);
+    SdhciMark("\n");
+    return 0;
+}
+
 int SdhciWifiFw(UINT32 Mode) {
     SDHCI_HOST *Host = SdhciHostAt(1);
     int WantWrite = (Mode & (SDHCI_WIFI_FW_WRITE | SDHCI_WIFI_FW_CONFIRM)) != 0u;

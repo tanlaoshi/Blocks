@@ -13,7 +13,13 @@ if [ -f "$PWD/Scripts/lib/check-uefi-boot-config.py" ]; then
     python3 "$PWD/Scripts/lib/check-uefi-boot-config.py" "$PWD/.."
 fi
 
-BUILDDIR=Build
+# 默认 ./Build；可用 BUILDDIR=… 覆盖。BOARD=rpi-3b 默认改到 Build/PI，
+# 与 Duo/riscv 共用的 Build/ 错开（1030 §8.1 并行互清）。
+BUILDDIR="${BUILDDIR:-Build}"
+BUILDDIR_SET=0
+if [ "$BUILDDIR" != "Build" ]; then
+    BUILDDIR_SET=1
+fi
 if Root="$(blocks_pick_root_for_build)"; then
     export BLOCKS_ROOT="$Root"
     # 去掉旧仓内 Build 符号链接 / 真目录（有内容则迁到树根）
@@ -26,7 +32,9 @@ if Root="$(blocks_pick_root_for_build)"; then
         fi
         rm -rf Build
     fi
-    BUILDDIR="$Root/Build/ToyKernel"
+    if [ "$BUILDDIR_SET" = 0 ]; then
+        BUILDDIR="$Root/Build/ToyKernel"
+    fi
     mkdir -p "$BUILDDIR"
     echo "BUILDDIR=$BUILDDIR"
 fi
@@ -138,6 +146,7 @@ for Arg in "$@"; do
         BRINGUP=1|bringup=1) BRINGUP=1 ;;
         BRINGUP=0|bringup=0) BRINGUP=0 ;;
         BOARD=*) BOARD="${Arg#BOARD=}" ;;
+        BUILDDIR=*) BUILDDIR="${Arg#BUILDDIR=}"; BUILDDIR_SET=1 ;;
         # 架构
         x86_64|x64|amd64) ARCH=x86_64; ARCH_SET=1 ;;
         arm64|aarch64) ARCH=arm64; ARCH_SET=1 ;;
@@ -174,6 +183,19 @@ case "$ARCH" in
         ;;
 esac
 
+# Pi 与 Duo 并行：未显式 BUILDDIR= 时，按板分开，互不清对方产物（1030 §8.1）
+#   rpi-3b       → Build/PI
+#   milk-v-duo-s → Build/DUO
+# 其余（virt / x86_64 默认）保持 Build/，行为不变。
+if [ "$BUILDDIR_SET" = 0 ]; then
+    case "$BOARD" in
+        rpi-3b)       BUILDDIR=Build/PI ;;
+        milk-v-duo-s) BUILDDIR=Build/DUO ;;
+    esac
+fi
+mkdir -p "$BUILDDIR"
+export BUILDDIR
+
 # virt arm64/riscv 尚无 HAL/*/LwIp/lwipopts.h；默认关 lwIP，避免误编挂掉
 if [ "$LWIP" = "1" ] && [ ! -f "HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
     if [ "$LWIP_SET" = "1" ]; then
@@ -185,7 +207,7 @@ if [ "$LWIP" = "1" ] && [ ! -f "HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
     LWIP=0
 fi
 
-echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG FILE_LOG=$FILE_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
+echo "Building ToyKernel for ARCH=$ARCH BOARD=$BOARD BUILDDIR=$BUILDDIR KERNEL_DEBUG=$DEBUG SERIAL=$SERIAL SCREEN_LOG=$SCREEN_LOG FILE_LOG=$FILE_LOG USB=$SERIAL_USB LWIP=$LWIP BRINGUP=$BRINGUP"
 ELF="$BUILDDIR/HAL/$HAL_ARCH/Kernel.elf"
 USER_HELLO="$BUILDDIR/HAL/$HAL_ARCH/user/hello.elf"
 

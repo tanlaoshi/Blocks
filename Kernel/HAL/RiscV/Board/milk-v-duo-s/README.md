@@ -29,9 +29,10 @@ cd ToyKernel
 ./build.sh riscv BOARD=milk-v-duo-s
 # 可选：扁平二进制（U-Boot load / go）
 make ARCH=riscv BOARD=milk-v-duo-s kernel-bin
-# 产物：
-#   Build/HAL/RiscV/Kernel.elf
-#   Build/HAL/RiscV/Kernel.bin
+# 产物（BOARD=milk-v-duo-s 默认落 Build/DUO，与 Build/PI 并行互不清）：
+#   Build/DUO/HAL/RiscV/Kernel.elf
+#   Build/DUO/HAL/RiscV/Kernel.bin
+# 旧布局 Build/HAL/RiscV 仍可用：显式 BUILDDIR=Build
 ```
 
 串口-only 全内核（推荐；跳过 video/gui）：

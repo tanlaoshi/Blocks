@@ -19,7 +19,13 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BOARD_DIR="$(cd "$HERE/.." && pwd)"
 # milk-v-duo-s → Board → RiscV → HAL → Kernel → Blocks
 BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../.." && pwd)"
-ELF="${BLOCKS_KERNEL_ELF:-$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/Kernel.elf}"
+# 产物目录：BOARD=milk-v-duo-s 默认 Build/DUO（与 Build/PI 并行互不清）。
+# 兼容旧布局：新路径不存在时回退 Build/HAL/RiscV。
+DUE_BUILD_DIR="${BLOCKS_DUO_BUILD_DIR:-$BLOCKS_ROOT/Kernel/Build/DUO}"
+if [ ! -d "$DUE_BUILD_DIR" ] && [ -f "$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/Kernel.elf" ]; then
+    DUE_BUILD_DIR="$BLOCKS_ROOT/Kernel/Build"
+fi
+ELF="${BLOCKS_KERNEL_ELF:-$DUE_BUILD_DIR/HAL/RiscV/Kernel.elf}"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 BLOCKS_ONLY=0
@@ -100,8 +106,8 @@ if [ ! -f "$ELF" ]; then
   exit 1
 fi
 
-# 防误刷：Build/HAL/RiscV 被 BOARD=virt 覆盖后上电会卡在 Starting kernel …
-STAMP="$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/.toy_board"
+# 防误刷：产物目录被 BOARD=virt 覆盖后上电会卡在 Starting kernel …
+STAMP="$DUE_BUILD_DIR/HAL/RiscV/.toy_board"
 if [ -f "$STAMP" ]; then
   _Board="$(tr -d '\n' <"$STAMP" || true)"
   if [ "$_Board" != "milk-v-duo-s" ]; then

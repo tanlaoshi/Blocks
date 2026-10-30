@@ -5,17 +5,20 @@ blocks_die() {
     exit 1
 }
 
+# $1=候选根；是 Blocks 单仓根（Boot + Kernel + Runtime）则 0，否则 1
+# 注意：if 无 else 时整个 if 退出码为 0，必须显式 return 1。
+blocks_root_ok() {
+    local R="$1"
+    if [ -d "$R/Boot" ] && [ -d "$R/Kernel" ] && [ -d "$R/Runtime" ]; then
+        return 0
+    fi
+    return 1
+}
+
 # $1 = 调用脚本路径（$0 或 BASH_SOURCE）
 blocks_resolve_root() {
     local Caller="$1"
     local Here Root Cand
-    blocks_root_ok() {
-        local R="$1"
-        # Blocks 单仓：Boot + Kernel + Runtime
-        if [ -d "$R/Boot" ] && [ -d "$R/Kernel" ] && [ -d "$R/Runtime" ]; then
-            return 0
-        fi
-    }
     if [ -n "${BLOCKS_ROOT:-}" ]; then
         Root="$(cd "$BLOCKS_ROOT" && pwd)"
         if blocks_root_ok "$Root"; then

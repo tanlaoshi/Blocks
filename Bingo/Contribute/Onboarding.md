@@ -10,7 +10,7 @@
 
 1. **活 ★ / 日档**认当日 `Archive/路线图MMDD.md` 文首（协作暗号见路线图「〇」）；月进展写 [`../项目/进展/`](../../Archive/项目/进展/)。  
 2. **用户可见 ABI**只认 [`开课ABI冻结.md`](../App/ABI.md) + `Kernel/User/include/` 宏；syscall 号只认 [`SyscallABI.h`](../../Kernel/Include/Abi/SyscallABI.h)。  
-3. **写新代码**守 [`代码规范.md`](Coding.md)；驱动/USB 等先查标准（见 `.cursor/rules/standards-first`）。
+3. **写新代码**守 [`编码规范.md`](../../Archive/规范/编码规范.md)；驱动/USB 等先查标准（见 `.cursor/rules/standards-first`）。
 
 ---
 

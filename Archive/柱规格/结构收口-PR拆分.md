@@ -414,7 +414,7 @@ QEMU 冒烟是另外几份脚本，不在默认构建里。`Runtime/smoke-boot.s
 
 ### 命名：扫过，不按计数改名
 
-对照 `Archive/规范/命名规范.md` 扫了 `Kernel/`、`Boot/BootPkg/`、`Kernel/User/`。跳过第三方、EDK2、Build、`cjk32.c`。POSIX 和 CRT 的小写（`memcpy`、`main`、`socket`）以及正式协议名没有算进去。`Hal` 目录名、`XhciBaseAddress`、`Gfx` 前缀、已经留下的 `Xhci` / `Ehci` 函数前缀也不算违例。
+对照 `Archive/规范/编码规范.md` 扫了 `Kernel/`、`Boot/BootPkg/`、`Kernel/User/`。跳过第三方、EDK2、Build、`cjk32.c`。POSIX 和 CRT 的小写（`memcpy`、`main`、`socket`）以及正式协议名没有算进去。`Hal` 目录名、`XhciBaseAddress`、`Gfx` 前缀、已经留下的 `Xhci` / `Ehci` 函数前缀也不算违例。
 
 扫出来的数量：函数名重复文件名大约 1440 个；辅助文件重复文件夹名大约 387 个，分布在大约 71 个目录；全局函数里的简写大约 171 个；参数和局部变量里的 `Len`、`Buf`、`Dst` 大约 1900 处。
 

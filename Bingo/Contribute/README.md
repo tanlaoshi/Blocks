@@ -5,8 +5,7 @@
 | 文档 | 内容 |
 | ---- | ---- |
 | [`Onboarding.md`](Onboarding.md) | 接手：文档地图、坑、命令、同步清单 |
-| [`Coding.md`](Coding.md) | **编码规范**（写新代码只认这篇） |
-| [`Naming.md`](Naming.md) | 命名细则摘要 |
+| [`Coding.md`](Coding.md) | 编码规范**指针**（正本在 [`Archive/规范/编码规范.md`](../../Archive/规范/编码规范.md)） |
 
 **排期 / ★**：不在 Manual —— 见 [`Archive/路线图1023.md`](../../Archive/路线图1023.md)。  
 **协作暗号**：路线图「〇」。**上机**：[`../BINGO.md`](../BINGO.md)。

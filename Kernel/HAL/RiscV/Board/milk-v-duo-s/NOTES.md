@@ -336,6 +336,37 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 16:05 拆文件（2406 行 → 7 个 .c，纯搬家）
+
+用户要求先做命名/行数规范，MM_START 功能开发暂缓。本刀只搬家、不改名、不动逻辑。
+
+| 文件 | 行数 | 内容 |
+|---|---|---|
+| `Sdhci/WifiFw.c` | 449 | 全局状态定义 + `AicFwFail` + 7 个对外入口 |
+| `Sdhci/WifiMessage.c` | 400 | crc8/Put16/Get16、流控、FIFO 读写、收发、轮询、dump |
+| `Sdhci/WifiMemory.c` | 288 | 现场打印、`AicWriteReg`、venor prepare、mem read/write/block write |
+| `Sdhci/WifiPatchTable.c` | 439 | 表解析、名字匹配、写计划、自检、清单打印、状态复位 |
+| `Sdhci/WifiPatchApply.c` | 286 | cfg 4 读 10 写、100 条写、哨兵、dry、apply |
+| `Sdhci/WifiDownload.c` | 254 | 分块读、阶段检查、1 KB 块写、start_app、启动轮询 |
+| `Sdhci/WifiProbe.c` | 120 | MM_VERSION / MM_RESET 探针 |
+| `Sdhci/WifiPrivate.h` | 244 | 跨文件共享宏/类型/extern/原型（**扁平目录的唯一例外**） |
+
+`WifiPrivate.h` 单独存在的原因：`Sdhci/Private.h` 是 SDHCI 层公共头，把 WiFi 内部声明塞进去
+就又回到"改一条动一片"。例外已写进 `Archive/规范/编码规范.md` 第 6 条（辅助头命名）。
+
+**删掉的重复声明（3 处，全是原型不是定义）**：原文里同一函数既有前向声明又有定义，
+搬到分文件后统一由 `WifiPrivate.h` 提供，故删除：
+
+* 原 429-430 `static int AicSendMsg(...);`（"先用后定义，这里先声明"）
+* 原 855-857 `static int AicFwReadChunk(...);`（"这两个定义在本段之后…"）
+* 原 995-996 `static int AicFwLoadPatchTable(...);`
+
+**结论：原文并不存在"函数体重复定义"**（`grep -c` 数出来的是"声明+定义"，不是两份定义），
+这一点与派工单的假设不同，已确认为 3 处多余前向声明。
+
+可见性调整：跨文件调用的函数/全局由 `static` 改为外部链接（`WifiPrivate.h` 里有原型/extern），
+文件内自用的仍保持 `static`。`gAicPatchReady = 1u` 原样保留（只去掉 `static`）。
+
 ### 15:46 `wififw mmreset` + MM_START 调研
 
 真机 `ver` 成功：`lmac=06090101 machw1=0002fdfb machw2=00014047 phy1=5ee24111 phy2=01020000`

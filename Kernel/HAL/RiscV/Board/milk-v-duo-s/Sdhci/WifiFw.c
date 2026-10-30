@@ -762,11 +762,16 @@ typedef struct {
 /* 失败态：0=未跑 1=全部成功 2=失败（失败时 gWifiFwStageIdx 指向停在哪一阶段） */
 static UINT32 gWifiFwState;
 /*
- * patch 管线是否已实现并应用（patch_table 的 INF/TRAP/PWRON/PATCH_TAF 46 条写 +
- * patch_config_8800d80 的四个运行时读）。**管线落地前恒为 0**，confirm 一律拒绝。
+ * patch 管线是否已实现并应用（patch_table 全量 100 条写 + patch_config_8800d80 的
+ * 4 读 10 写）。0 = 未开闸，confirm 一律拒绝；1 = 已开闸，允许走 5 阶段真写。
+ *
+ * 2026-10-30 开闸：真机 dry 三条判据全过（101 items / sentinels=6 / self-check ok，
+ * 见提交 e21645c6），B2 独立审查的 P0-1..P0-3、P1-1..P1-6 已全部修完，
+ * 用户明确批准执行首次真写。开闸只此一次，改动须留痕：
+ *   以前 = 恒 0（拒），现在 = 1（允许）。要收回就把 1 改回 0 并说明原因。
  * volatile：故意让编译器不能把它折成常量，两条分支都必须留在二进制里可审查。
  */
-static volatile UINT32 gAicPatchReady;
+static volatile UINT32 gAicPatchReady = 1u;
 /* 本次运行是否真的把 patch 应用过（start_app 的前置条件） */
 /* 评审 P1-4：三态，避免"失败后重放"和"掉电后仍以为已应用" */
 #define AIC_PATCH_NONE 0u

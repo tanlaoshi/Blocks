@@ -10,8 +10,8 @@
 
 
 
-int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *Pointer) {
-    UINT32 Ptr = 0;
+int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *CisPointer) {
+    UINT32 Pointer = 0;
     UINT32 i;
     UINT8 Byte;
 
@@ -19,15 +19,15 @@ int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *Pointer) {
         if (SdhciIoRead8(Host, 0, Function * 0x100u + SDIO_FBR_CIS + i, &Byte) != 0) {
             return -1;
         }
-        Ptr |= (UINT32)Byte << (i * 8u);
+        Pointer |= (UINT32)Byte << (i * 8u);
     }
-    *Pointer = Ptr & 0x1FFFFu;
+    *CisPointer = Pointer & 0x1FFFFu;
     return 0;
 }
 
 
-int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info) {
-    UINT32 Ptr = Pointer;
+int SdioParseCis(SDHCI_HOST *Host, UINT32 CisPointer, SDIO_CIS_INFO *Info) {
+    UINT32 Pointer = CisPointer;
     UINT32 Guard;
 
     Info->Vendor = 0;
@@ -44,29 +44,29 @@ int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info) {
         UINT8 Data[4];
         UINT32 i;
 
-        if (Ptr > 0x1FFF0u) {
+        if (Pointer > 0x1FFF0u) {
             return -1;
         }
-        if (SdhciIoRead8(Host, 0, Ptr, &Code) != 0) {
+        if (SdhciIoRead8(Host, 0, Pointer, &Code) != 0) {
             return -1;
         }
-        Ptr++;
+        Pointer++;
         if (Code == 0xFFu) {
             return 0;
         }
         if (Code == 0x00u) {
             continue; /* 空条目：只有 code，没有 link/data */
         }
-        if (SdhciIoRead8(Host, 0, Ptr, &Length) != 0) {
+        if (SdhciIoRead8(Host, 0, Pointer, &Length) != 0) {
             return -1;
         }
-        Ptr++;
+        Pointer++;
         if (Length == 0xFFu) {
             return 0;
         }
         if (Code == CISTPL_MANFID && Length >= 4u) {
             for (i = 0; i < 4u; i++) {
-                if (SdhciIoRead8(Host, 0, Ptr + i, &Data[i]) != 0) {
+                if (SdhciIoRead8(Host, 0, Pointer + i, &Data[i]) != 0) {
                     return -1;
                 }
             }
@@ -74,19 +74,19 @@ int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info) {
             Info->Device = (UINT16)((UINT16)Data[2] | ((UINT16)Data[3] << 8));
             Info->SawManfid = 1;
         } else if (Code == CISTPL_FUNCID && Length >= 1u) {
-            if (SdhciIoRead8(Host, 0, Ptr, &Data[0]) != 0) {
+            if (SdhciIoRead8(Host, 0, Pointer, &Data[0]) != 0) {
                 return -1;
             }
             Info->FunctionClass = Data[0];
         } else if (Code == CISTPL_FUNCE && Length >= 3u) {
             for (i = 0; i < 3u; i++) {
-                if (SdhciIoRead8(Host, 0, Ptr + i, &Data[i]) != 0) {
+                if (SdhciIoRead8(Host, 0, Pointer + i, &Data[i]) != 0) {
                     return -1;
                 }
             }
             Info->MaxBlockSize = (UINT16)((UINT16)Data[1] | ((UINT16)Data[2] << 8));
         }
-        Ptr += Length;
+        Pointer += Length;
     }
     return -1; /* 元组过多：当失败，不无限扫 */
 }
@@ -116,19 +116,19 @@ void SdioDumpCis(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT32 Count
  * 只在"指针解析不出 MANFID"时当兜底用，顺序读、每字节一次 CMD52。
  */
 UINT32 SdioScanCis(SDHCI_HOST *Host, UINT32 From, UINT32 To) {
-    UINT32 Addr;
+    UINT32 Address;
     UINT8 Prev = 0;
     UINT8 Byte;
 
     if (SdhciIoRead8(Host, 0, From, &Prev) != 0) {
         return 0;
     }
-    for (Addr = From + 1u; Addr < To; Addr++) {
-        if (SdhciIoRead8(Host, 0, Addr, &Byte) != 0) {
+    for (Address = From + 1u; Address < To; Address++) {
+        if (SdhciIoRead8(Host, 0, Address, &Byte) != 0) {
             return 0;
         }
         if (Prev == CISTPL_MANFID && Byte == 4u) {
-            return Addr - 1u;
+            return Address - 1u;
         }
         Prev = Byte;
     }
@@ -311,36 +311,36 @@ int SdioCmd5Window(SDHCI_HOST *Host) {
  */
 int CisVerify(WIFI_PROBE *P) {
     SDHCI_HOST *Host = P->Host;
-    UINT32 CommonPtr = 0;
-    UINT32 Fn1Ptr = 0;
+    UINT32 CommonPointer = 0;
+    UINT32 Fn1Pointer = 0;
     UINT32 Hit = 0;
     SDIO_CIS_INFO Fn1;
     UINT8 HostControl = SdhciRead8(Host, SDHCI_HOST_CONTROL);
     UINT32 RestoreHertz = ((P->Speed & SDIO_SPEED_EHS) != 0) ? TRANSFER_HERTZ : SD_TRANSFER_HERTZ;
 
-    P->CisCommonPtr = 0;
+    P->CisCommonPointer = 0;
     P->CisOk = -1;
     gWifiHostControl = HostControl;
     gWifiRestoreHertz = RestoreHertz;
-    if (SdioReadCisPointer(Host, 0, &CommonPtr) != 0) {
+    if (SdioReadCisPointer(Host, 0, &CommonPointer) != 0) {
         SdhciMark("WiFi: common CIS pointer (0x09-0x0B) read failed\n");
-        CommonPtr = 0;
+        CommonPointer = 0;
     }
-    if (SdioReadCisPointer(Host, 1, &Fn1Ptr) != 0) {
+    if (SdioReadCisPointer(Host, 1, &Fn1Pointer) != 0) {
         return SdioFail("CIS pointer fn1 (0x109-0x10B)");
     }
-    SdhciMarkHex("WiFi: cis ptr fn0=", CommonPtr, 6);
-    SdhciMarkHex(" fn1=", Fn1Ptr, 6);
+    SdhciMarkHex("WiFi: cis ptr fn0=", CommonPointer, 6);
+    SdhciMarkHex(" fn1=", Fn1Pointer, 6);
     SdhciMark("\n");
     /* 一次把现场抓全：fn1 的 FBR 原文 + 两个 CIS 的头 16 B */
     SdioDumpCis(Host, "WiFi: fbr1 ", 0x100u, 16u);
-    if (CommonPtr != 0) {
-        SdioDumpCis(Host, "WiFi: cis0 ", CommonPtr, 16u);
-        P->CisOk = SdioParseCis(Host, CommonPtr, &P->Cis);
+    if (CommonPointer != 0) {
+        SdioDumpCis(Host, "WiFi: cis0 ", CommonPointer, 16u);
+        P->CisOk = SdioParseCis(Host, CommonPointer, &P->Cis);
     }
-    SdioDumpCis(Host, "WiFi: cis1 ", Fn1Ptr, 16u);
-    if (SdioParseCis(Host, Fn1Ptr, &Fn1) == 0) {
-        SdioMarkCis(1, Fn1Ptr, &Fn1);
+    SdioDumpCis(Host, "WiFi: cis1 ", Fn1Pointer, 16u);
+    if (SdioParseCis(Host, Fn1Pointer, &Fn1) == 0) {
+        SdioMarkCis(1, Fn1Pointer, &Fn1);
     }
 
     if (P->CisOk != 0 || P->Cis.SawManfid == 0) {
@@ -359,12 +359,12 @@ int CisVerify(WIFI_PROBE *P) {
         SdhciMark("WiFi: no MANFID yet, retry 1-bit 400kHz\n");
         SdhciWrite8(Host, SDHCI_HOST_CONTROL, 0);
         (void)SdhciClockConfigure(Host, IDENTIFY_HERTZ);
-        CommonPtr = 0;
-        if (SdioReadCisPointer(Host, 0, &CommonPtr) == 0 && CommonPtr != 0) {
-            SdhciMarkHex("WiFi:   low cis0 ptr=", CommonPtr, 6);
+        CommonPointer = 0;
+        if (SdioReadCisPointer(Host, 0, &CommonPointer) == 0 && CommonPointer != 0) {
+            SdhciMarkHex("WiFi:   low cis0 ptr=", CommonPointer, 6);
             SdhciMark("\n");
-            SdioDumpCis(Host, "WiFi:   low cis0 ", CommonPtr, 16u);
-            if (SdioParseCis(Host, CommonPtr, &P->Cis) == 0 && P->Cis.SawManfid != 0) {
+            SdioDumpCis(Host, "WiFi:   low cis0 ", CommonPointer, 16u);
+            if (SdioParseCis(Host, CommonPointer, &P->Cis) == 0 && P->Cis.SawManfid != 0) {
                 P->CisOk = 0;
             }
         }
@@ -374,7 +374,7 @@ int CisVerify(WIFI_PROBE *P) {
         SdhciMarkHex(" clk=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
         SdhciMark("\n");
     }
-    P->CisCommonPtr = CommonPtr;
+    P->CisCommonPointer = CommonPointer;
     return 0;
 }
 
@@ -393,7 +393,7 @@ int CisReport(WIFI_PROBE *P) {
         gWifiChipVendor = P->Cis.Vendor;
         gWifiChipDevice = P->Cis.Device;
         P->CisSeen = 1;
-        SdioMarkCis(0, P->CisCommonPtr, &P->Cis);
+        SdioMarkCis(0, P->CisCommonPointer, &P->Cis);
     } else {
         SdhciMark("WiFi: no MANFID tuple, continue without module id\n");
     }
@@ -413,11 +413,11 @@ int CisReport(WIFI_PROBE *P) {
      * S5b 的 dbg mem read/write 确认就是从 fn2 0x0F 读回来的。
      */
     {
-        UINT32 Ptr2 = 0;
+        UINT32 Pointer2 = 0;
         SDIO_CIS_INFO Cis2;
-        if (SdioReadCisPointer(Host, 2, &Ptr2) == 0 &&
-            SdioParseCis(Host, Ptr2, &Cis2) == 0 && Cis2.SawManfid != 0) {
-            SdioMarkCis(2, Ptr2, &Cis2);
+        if (SdioReadCisPointer(Host, 2, &Pointer2) == 0 &&
+            SdioParseCis(Host, Pointer2, &Cis2) == 0 && Cis2.SawManfid != 0) {
+            SdioMarkCis(2, Pointer2, &Cis2);
         }
     }
     return 0;

@@ -34,18 +34,18 @@ static int AicPatchNameIs(const UINT8 *Name, const char *Want) {
  * 只做两件事：验 tag、把类型 0（AICBT_PT_INF）的地址信息取出来。
  * tag 不对就明确失败 —— 绝不"猜着用"。
  */
-int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
+int AicPatchTableParse(const UINT8 *Buffer, UINT32 Length, AIC_PATCH_INFO *Info) {
     UINT32 Off = AICBT_PT_HDR;
     UINT32 Type;
-    UINT32 EntryLen;
+    UINT32 EntryLength;
     UINT32 i;
     UINT32 Found = 0;
 
     for (i = 0; i < (UINT32)sizeof(*Info); i++) {
         ((UINT8 *)Info)[i] = 0;
     }
-    if (Buf == 0 || Len < AICBT_PT_HDR + 24u) {
-        SdhciMarkHex("WiFi: pt too short len=", Len, 4);
+    if (Buffer == 0 || Length < AICBT_PT_HDR + 24u) {
+        SdhciMarkHex("WiFi: pt too short len=", Length, 4);
         SdhciMark("\n");
         return -1;
     }
@@ -54,32 +54,32 @@ int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
      * 以前这里只比 12 B，比厂商更松。现在统一成 13 B。
      */
     for (i = 0; i < sizeof(AICBT_PT_TAG); i++) {
-        if (Buf[i] != (UINT8)AICBT_PT_TAG[i]) {
+        if (Buffer[i] != (UINT8)AICBT_PT_TAG[i]) {
             SdhciMark("WiFi: pt tag BAD (want AICBT_PT_TAG + NUL, 13B)\n");
             return -1;
         }
     }
-    while (Off < Len) {
+    while (Off < Length) {
         /* 尾部 < 24 B 不许静默丢弃（厂商 aic_bsp_driver.c:1314 是 < size 继续） */
-        if (Len - Off < 24u) {
-            SdhciMarkHex("WiFi: pt trailing bytes ", Len - Off, 4);
+        if (Length - Off < 24u) {
+            SdhciMarkHex("WiFi: pt trailing bytes ", Length - Off, 4);
             SdhciMark(" (tail < 24) -> BAD\n");
             return -1;
         }
-        Type = (UINT32)Buf[Off + 16u] | ((UINT32)Buf[Off + 17u] << 8) |
-               ((UINT32)Buf[Off + 18u] << 16) | ((UINT32)Buf[Off + 19u] << 24);
-        EntryLen = (UINT32)Buf[Off + 20u] | ((UINT32)Buf[Off + 21u] << 8) |
-                   ((UINT32)Buf[Off + 22u] << 16) | ((UINT32)Buf[Off + 23u] << 24);
+        Type = (UINT32)Buffer[Off + 16u] | ((UINT32)Buffer[Off + 17u] << 8) |
+               ((UINT32)Buffer[Off + 18u] << 16) | ((UINT32)Buffer[Off + 19u] << 24);
+        EntryLength = (UINT32)Buffer[Off + 20u] | ((UINT32)Buffer[Off + 21u] << 8) |
+                   ((UINT32)Buffer[Off + 22u] << 16) | ((UINT32)Buffer[Off + 23u] << 24);
         if (Type >= 1000u) {
-            EntryLen = 0; /* 厂商的临时兼容：类型 >=1000 时长度按 0 处理 */
+            EntryLength = 0; /* 厂商的临时兼容：类型 >=1000 时长度按 0 处理 */
         }
         /*
-         * 评审 P0-3：EntryLen 来自文件，`Off + 24 + EntryLen*8` 在 32 位下会回绕
-         * （EntryLen >= 0x20000000 时乘积为 0），随后按 8 B 步长读出缓冲区外，
+         * 评审 P0-3：EntryLength 来自文件，`Off + 24 + EntryLength*8` 在 32 位下会回绕
+         * （EntryLength >= 0x20000000 时乘积为 0），随后按 8 B 步长读出缓冲区外，
          * 拿到"对齐的野地址"。必须**先除后乘**判断，不能先乘再比。
          */
-        if (EntryLen > (Len - Off - 24u) / 8u) {
-            SdhciMarkHex("WiFi: pt entry overruns, len=", EntryLen, 4);
+        if (EntryLength > (Length - Off - 24u) / 8u) {
+            SdhciMarkHex("WiFi: pt entry overruns, len=", EntryLength, 4);
             SdhciMarkHex(" at off=", Off, 8);
             SdhciMark("\n");
             return -1;
@@ -89,20 +89,20 @@ int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
                 SdhciMark("WiFi: pt duplicate INF record\n");
                 return -1;
             }
-            if (AicPatchNameIs(&Buf[Off], "AICBT_PINF_T") == 0) {
+            if (AicPatchNameIs(&Buffer[Off], "AICBT_PINF_T") == 0) {
                 SdhciMark("WiFi: pt info tuple name BAD (want AICBT_PINF_T)\n");
                 return -1;
             }
-            Info->InfoLen = EntryLen;
-            if (EntryLen == 0u) {
+            Info->InfoLength = EntryLength;
+            if (EntryLength == 0u) {
                 SdhciMark("WiFi: pt info_len=0 (D80 requires != 0)\n");
                 return -1;
             }
             {
-                const UINT8 *D = &Buf[Off + 24u];
+                const UINT8 *D = &Buffer[Off + 24u];
                 UINT32 W[8];
                 UINT32 k;
-                UINT32 MaxW = EntryLen * 2u;
+                UINT32 MaxW = EntryLength * 2u;
                 if (MaxW > 8u) {
                     MaxW = 8u;
                 }
@@ -114,13 +114,13 @@ int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
                     W[k] = 0;
                 }
                 /* 顺序照 aicbt_patch_info_unpack：从 adid_addrinf 起连续拷进去 */
-                Info->AdidAddrInfo = W[0];
-                Info->AddrAdid = W[1];
-                Info->PatchAddrInfo = W[2];
-                Info->AddrPatch = W[3];
-                Info->ResetAddr = W[4];
-                Info->ResetVal = W[5];
-                Info->AdidFlagAddr = W[6];
+                Info->AdidAddressInfo = W[0];
+                Info->AddressAdid = W[1];
+                Info->PatchAddressInfo = W[2];
+                Info->AddressPatch = W[3];
+                Info->ResetAddress = W[4];
+                Info->ResetValue = W[5];
+                Info->AdidFlagAddress = W[6];
                 Info->AdidFlag = W[7];
             }
             /*
@@ -129,15 +129,15 @@ int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
              */
             Found = 1;
         }
-        Off += 24u + EntryLen * 8u;
+        Off += 24u + EntryLength * 8u;
     }
     if (Found == 0) {
         SdhciMark("WiFi: pt no info tuple found\n");
         return -1;
     }
-    if (Off != Len) {
+    if (Off != Length) {
         SdhciMarkHex("WiFi: pt walk ended at ", Off, 8);
-        SdhciMarkHex(" but file len=", Len, 8);
+        SdhciMarkHex(" but file len=", Length, 8);
         SdhciMark("\n");
         return -1;
     }
@@ -145,56 +145,56 @@ int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info) {
 }
 
 /* 越界检查：不许写主固件区（0x00120000 起 331348 B），不许非对齐 */
-static int AicPatchAddrOk(UINT32 Addr) {
-    if ((Addr & 3u) != 0u) {
+static int AicPatchAddressOk(UINT32 Address) {
+    if ((Address & 3u) != 0u) {
         return 0;
     }
-    if (Addr >= AIC_RAM_FMAC_FW_ADDR && Addr < AIC_RAM_FMAC_FW_ADDR + AIC_D80_FMAC_SIZE) {
+    if (Address >= AIC_RAM_FMAC_FW_ADDR && Address < AIC_RAM_FMAC_FW_ADDR + AIC_D80_FMAC_SIZE) {
         return 0;
     }
     return 1;
 }
 
 /* 把表里的 7 条记录摊平成计划（顺序 = 厂商 for 循环顺序，不重排） */
-int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
+int AicPatchBuildPlan(const UINT8 *Table, UINT32 Length, UINT32 *OutCount) {
     UINT32 Off = AICBT_PT_HDR;
     UINT32 Type;
-    UINT32 EntryLen;
+    UINT32 EntryLength;
     UINT32 i;
     UINT32 N = 0;
     UINT32 PerTypeGot[7];
     UINT32 ModeRecs = 0;
     UINT32 k2;
 
-    /* 评审 P1-5：gAicModeVal 是 static，表里 MODE 少于 9 对时会读到上一次的残留 */
+    /* 评审 P1-5：gAicModeValue 是 static，表里 MODE 少于 9 对时会读到上一次的残留 */
     for (k2 = 0; k2 < 9u; k2++) {
-        gAicModeVal[k2] = 0u;
+        gAicModeValue[k2] = 0u;
     }
     for (k2 = 0; k2 < 7u; k2++) {
         PerTypeGot[k2] = 0u;
     }
-    while (Off < Len) {
-        if (Len - Off < 24u) {
-            SdhciMarkHex("WiFi: patch plan: trailing bytes ", Len - Off, 4);
+    while (Off < Length) {
+        if (Length - Off < 24u) {
+            SdhciMarkHex("WiFi: patch plan: trailing bytes ", Length - Off, 4);
             SdhciMark(" (tail < 24)\n");
             return -1;
         }
         Type = (UINT32)Table[Off + 16u] | ((UINT32)Table[Off + 17u] << 8) |
                ((UINT32)Table[Off + 18u] << 16) | ((UINT32)Table[Off + 19u] << 24);
-        EntryLen = (UINT32)Table[Off + 20u] | ((UINT32)Table[Off + 21u] << 8) |
+        EntryLength = (UINT32)Table[Off + 20u] | ((UINT32)Table[Off + 21u] << 8) |
                    ((UINT32)Table[Off + 22u] << 16) | ((UINT32)Table[Off + 23u] << 24);
         if (Type >= 1000u) {
-            EntryLen = 0;
+            EntryLength = 0;
         }
-        /* 评审 P0-3：先除后乘，杜绝 EntryLen*8 的 32 位回绕 */
-        if (EntryLen > (Len - Off - 24u) / 8u) {
-            SdhciMarkHex("WiFi: patch plan: entry overruns, len=", EntryLen, 4);
+        /* 评审 P0-3：先除后乘，杜绝 EntryLength*8 的 32 位回绕 */
+        if (EntryLength > (Length - Off - 24u) / 8u) {
+            SdhciMarkHex("WiFi: patch plan: entry overruns, len=", EntryLength, 4);
             SdhciMarkHex(" at off=", Off, 8);
             SdhciMark("\n");
             return -1;
         }
         if (Type < 7u) {
-            PerTypeGot[Type] += EntryLen;
+            PerTypeGot[Type] += EntryLength;
         }
         if (Type == AICBT_PT_BTMODE) {
             ModeRecs++;
@@ -202,7 +202,7 @@ int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
         if (Type == AICBT_PT_VER) {
             char Ver[72];
             UINT32 k;
-            UINT32 NChars = EntryLen * 8u;
+            UINT32 NChars = EntryLength * 8u;
             if (NChars > (UINT32)sizeof(Ver) - 1u) {
                 NChars = (UINT32)sizeof(Ver) - 1u;
             }
@@ -214,16 +214,16 @@ int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
             SdhciMark("WiFi: patch ver=\"");
             SdhciMark(Ver);
             SdhciMark("\" (print only, no write)\n");
-            Off += 24u + EntryLen * 8u;
+            Off += 24u + EntryLength * 8u;
             continue;
         }
-        for (i = 0; i < EntryLen; i++) {
+        for (i = 0; i < EntryLength; i++) {
             const UINT8 *P = &Table[Off + 24u + i * 8u];
-            UINT32 Addr = (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
+            UINT32 Address = (UINT32)P[0] | ((UINT32)P[1] << 8) | ((UINT32)P[2] << 16) |
                           ((UINT32)P[3] << 24);
-            UINT32 Val = (UINT32)P[4] | ((UINT32)P[5] << 8) | ((UINT32)P[6] << 16) |
+            UINT32 Value = (UINT32)P[4] | ((UINT32)P[5] << 8) | ((UINT32)P[6] << 16) |
                          ((UINT32)P[7] << 24);
-            UINT32 Tbl = Val; /* 表里原值，覆盖后仍保留一列用于对账 */
+            UINT32 TableValue = Value; /* 表里原值，覆盖后仍保留一列用于对账 */
             UINT8 Kind = AIC_PLAN_MEM;
 
             if (Type == AICBT_PT_BTMODE) {
@@ -237,24 +237,24 @@ int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
                  * 上一版把字下标当 pair 下标，9 条整体错位（btmode 槽位写进了 0xffffffff）。
                  */
                 switch (i) {
-                case 0u: Val = 1u; break; /* hwinfo < 0 → true（hwinfo 未知） */
-                case 1u: Val = AIC_BT_HWINFO; break;
-                case 2u: Val = AIC_BT_CPMODE; break;
-                case 3u: Val = AIC_BT_BTMODE; break;
-                case 4u: Val = AIC_BT_BTPORT; break;
-                case 5u: Val = AIC_BT_BAUD; break;
-                case 6u: Val = AIC_BT_FLOWCTRL; break;
-                case 7u: Val = AIC_BT_LPM; break;
-                case 8u: Val = AIC_BT_TXPWR; break;
+                case 0u: Value = 1u; break; /* hwinfo < 0 → true（hwinfo 未知） */
+                case 1u: Value = AIC_BT_HWINFO; break;
+                case 2u: Value = AIC_BT_CPMODE; break;
+                case 3u: Value = AIC_BT_BTMODE; break;
+                case 4u: Value = AIC_BT_BTPORT; break;
+                case 5u: Value = AIC_BT_BAUD; break;
+                case 6u: Value = AIC_BT_FLOWCTRL; break;
+                case 7u: Value = AIC_BT_LPM; break;
+                case 8u: Value = AIC_BT_TXPWR; break;
                 default: break;
                 }
                 if (i < 9u) {
-                    gAicModeVal[i] = Val;
+                    gAicModeValue[i] = Value;
                 }
                 Kind = AIC_PLAN_CFG;
             }
-            if (AicPatchAddrOk(Addr) == 0) {
-                SdhciMarkHex("WiFi: patch plan: bad addr ", Addr, 8);
+            if (AicPatchAddressOk(Address) == 0) {
+                SdhciMarkHex("WiFi: patch plan: bad addr ", Address, 8);
                 SdhciMarkHex(" at entry off=", Off, 8);
                 SdhciMark("\n");
                 return -1;
@@ -265,23 +265,23 @@ int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount) {
             }
             gAicPlan[N].Kind = Kind;
             gAicPlan[N].Type = (UINT8)Type;
-            gAicPlan[N].Addr = Addr;
-            gAicPlan[N].Val = Val;
-            gAicPlan[N].Tbl = Tbl;
+            gAicPlan[N].Address = Address;
+            gAicPlan[N].Value = Value;
+            gAicPlan[N].TableValue = TableValue;
             N++;
         }
         if (Type == AICBT_PT_PWRON) {
             gAicPlan[N].Kind = AIC_PLAN_DELAY;
             gAicPlan[N].Type = (UINT8)Type;
-            gAicPlan[N].Addr = 500u;
-            gAicPlan[N].Val = 0u;
+            gAicPlan[N].Address = 500u;
+            gAicPlan[N].Value = 0u;
             N++;
         }
-        Off += 24u + EntryLen * 8u;
+        Off += 24u + EntryLength * 8u;
     }
-    if (Off != Len) {
+    if (Off != Length) {
         SdhciMarkHex("WiFi: patch plan: walk ended at ", Off, 8);
-        SdhciMarkHex(" len=", Len, 8);
+        SdhciMarkHex(" len=", Length, 8);
         SdhciMark("\n");
         return -1;
     }
@@ -337,22 +337,22 @@ const char *AicPatchTypeName(UINT32 Type) {
  *   flowctrl 只能是 0/1
  */
 int AicPatchSelfCheck(void) {
-    if (gAicModeVal[3] == 0xFFu) {
+    if (gAicModeValue[3] == 0xFFu) {
         SdhciMark("WiFi: patch plan INVALID: btmode=000000ff (AICBT_MODE_NULL)\n");
         return -1;
     }
-    if (gAicModeVal[5] == 0u) {
+    if (gAicModeValue[5] == 0u) {
         SdhciMark("WiFi: patch plan INVALID: baud=0\n");
         return -1;
     }
-    if (gAicModeVal[6] > 1u) {
-        SdhciMarkHex("WiFi: patch plan INVALID: flowctrl=", gAicModeVal[6], 8);
+    if (gAicModeValue[6] > 1u) {
+        SdhciMarkHex("WiFi: patch plan INVALID: flowctrl=", gAicModeValue[6], 8);
         SdhciMark("\n");
         return -1;
     }
-    SdhciMarkDecimal("WiFi: patch self-check ok (btmode=", gAicModeVal[3]);
-    SdhciMarkDecimal(" baud=", gAicModeVal[5]);
-    SdhciMarkDecimal(" fc=", gAicModeVal[6]);
+    SdhciMarkDecimal("WiFi: patch self-check ok (btmode=", gAicModeValue[3]);
+    SdhciMarkDecimal(" baud=", gAicModeValue[5]);
+    SdhciMarkDecimal(" fc=", gAicModeValue[6]);
     SdhciMark(")\n");
     return 0;
 }
@@ -361,7 +361,7 @@ int AicPatchSelfCheck(void) {
 void AicPatchPrintPlan(UINT32 Count) {
     UINT32 i;
     UINT32 Mem = 0;
-    UINT32 Cfg = 0;
+    UINT32 Config = 0;
     UINT32 Delay = 0;
 
     UINT32 PerType[7];
@@ -377,7 +377,7 @@ void AicPatchPrintPlan(UINT32 Count) {
             continue;
         }
         if (It->Kind == AIC_PLAN_CFG) {
-            Cfg++;
+            Config++;
         } else {
             Mem++;
         }
@@ -385,10 +385,10 @@ void AicPatchPrintPlan(UINT32 Count) {
             PerType[It->Type]++;
         }
     }
-    SdhciMarkDecimal("WiFi: patch plan: 0", Mem + Cfg);
+    SdhciMarkDecimal("WiFi: patch plan: 0", Mem + Config);
     SdhciMark(" writes, sentinels=6\n");
     SdhciMarkDecimal("WiFi: patch plan: mem=", Mem);
-    SdhciMarkDecimal(" cfg=", Cfg);
+    SdhciMarkDecimal(" cfg=", Config);
     SdhciMarkDecimal(" delay=", Delay);
     SdhciMarkDecimal(" (+14 cfg ops: rd=4 wr=10), items=", Count);
     SdhciMark("\n");
@@ -416,10 +416,10 @@ void AicPatchPrintPlan(UINT32 Count) {
         }
         SdhciMark("type=");
         SdhciMark(AicPatchTypeName(It->Type));
-        SdhciMarkHex(" addr=", It->Addr, 8);
-        SdhciMarkHex(" val=", It->Val, 8);
+        SdhciMarkHex(" addr=", It->Address, 8);
+        SdhciMarkHex(" val=", It->Value, 8);
         if (It->Kind == AIC_PLAN_CFG) {
-            SdhciMarkHex(" (table=", It->Tbl, 8);
+            SdhciMarkHex(" (table=", It->TableValue, 8);
             SdhciMark(")");
         }
         SdhciMark("\n");

@@ -31,7 +31,7 @@ int SdhciSoftwareReset(SDHCI_HOST *Host, UINT8 Mask) {
 int SdhciPhysicalAfterReset(SDHCI_HOST *Host) {
     UINT32 Area = SdhciRead32(Host, SDHCI_P_VENDOR_AREA1) & AREA1_MASK;
     UINT32 Ctrl;
-    UINT32 Cfg;
+    UINT32 Config;
 
     if (Area < 0x100u || Area + CV_PHY_CONFIG >= 0x1000u) {
         /*
@@ -50,8 +50,8 @@ int SdhciPhysicalAfterReset(SDHCI_HOST *Host) {
         Ctrl |= CV_MSHC_CTRL_SD1; /* 厂商：SD1 的 DS/HS 档也置这一位 */
     }
     SdhciWrite32(Host, Area + CV_MSHC_CTRL, Ctrl);
-    Cfg = SdhciRead32(Host, Area + CV_PHY_CONFIG);
-    SdhciWrite32(Host, Area + CV_PHY_CONFIG, Cfg | CV_PHY_TX_BPS);
+    Config = SdhciRead32(Host, Area + CV_PHY_CONFIG);
+    SdhciWrite32(Host, Area + CV_PHY_CONFIG, Config | CV_PHY_TX_BPS);
     SdhciWrite32(Host, Area + CV_PHY_TX_RX, CV_PHY_DLY_BYPASS);
     return 0;
 }

@@ -80,33 +80,33 @@ static int AicFlowCtrl(SDHCI_HOST *Host, UINT32 *OutFc) {
  * 先按 4 B 对齐，再补 TAIL_LEN(4) 个 0 并向上取整到 512 —— 不足一个块时整块补零。
  * 补齐后用**块模式**写（不掺字节模式），块数 = 补齐长度 / 512。
  */
-static int AicFifoWriteMsg(SDHCI_HOST *Host, UINT8 *Buf, UINT32 *InOutLen) {
-    UINT32 Len = *InOutLen;
+static int AicFifoWriteMessage(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 *InOutLength) {
+    UINT32 Length = *InOutLength;
     UINT32 Padded;
     UINT32 Blocks;
     UINT32 Fc = 0;
     UINT32 i;
 
     /* 4 B 对齐 */
-    if ((Len % 4u) != 0u) {
-        UINT32 Aligned = (Len + 3u) & ~3u;
-        for (i = Len; i < Aligned; i++) {
-            Buf[i] = 0;
+    if ((Length % 4u) != 0u) {
+        UINT32 Aligned = (Length + 3u) & ~3u;
+        for (i = Length; i < Aligned; i++) {
+            Buffer[i] = 0;
         }
-        Len = Aligned;
+        Length = Aligned;
     }
     /* 先算补齐长度并检查上限，再落笔填 0 —— 免得算出来超界了还在写缓冲 */
-    if ((Len % AIC_FIFO_CHUNK) != 0u) {
-        Padded = ((Len + 4u) / AIC_FIFO_CHUNK + 1u) * AIC_FIFO_CHUNK;
+    if ((Length % AIC_FIFO_CHUNK) != 0u) {
+        Padded = ((Length + 4u) / AIC_FIFO_CHUNK + 1u) * AIC_FIFO_CHUNK;
     } else {
-        Padded = Len;
+        Padded = Length;
     }
     if (Padded > AIC_MSG_MAX) {
         SdhciMark("WiFi: tx msg too long for buffer\n");
         return -1;
     }
-    for (i = Len; i < Padded; i++) {
-        Buf[i] = 0;
+    for (i = Length; i < Padded; i++) {
+        Buffer[i] = 0;
     }
     Blocks = Padded / AIC_FIFO_CHUNK;
 
@@ -128,27 +128,27 @@ static int AicFifoWriteMsg(SDHCI_HOST *Host, UINT8 *Buf, UINT32 *InOutLen) {
         SdhciMark("\n");
         return -1;
     }
-    if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, (UINT16)Blocks, AIC_FIFO_CHUNK, Buf) !=
+    if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, (UINT16)Blocks, AIC_FIFO_CHUNK, Buffer) !=
         0) {
         AicMarkXferParams(Host, "WiFi: tx block write FAIL", Padded, Blocks);
         (void)SdhciWifiBusRecover(Host);
         /* 卡若 SMB=0 就不吃多块；按同样长度退回字节模式再试一次，
            两次参数都打出来 —— "块失败/字节成功"说明是模式问题而不是门没开 */
-        if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 0, (UINT16)Padded, Buf) != 0) {
+        if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 0, (UINT16)Padded, Buffer) != 0) {
             AicMarkXferParams(Host, "WiFi: tx byte write FAIL", Padded, 0u);
             (void)SdhciWifiBusRecover(Host);
             return -1;
         }
         AicMarkXferParams(Host, "WiFi: tx byte write OK (block refused)", Padded, 0u);
     }
-    *InOutLen = Padded;
+    *InOutLength = Padded;
     return 0;
 }
 
 
-int AicSendMsgEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param,
-                        UINT16 ParamLen) {
-    UINT32 Body = 8u + (UINT32)ParamLen; /* lmac_msg 头 + 参数 */
+int AicSendMessageEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param,
+                        UINT16 ParamLength) {
+    UINT32 Body = 8u + (UINT32)ParamLength; /* lmac_msg 头 + 参数 */
     UINT32 Total = Body + 8u;            /* 再加 4 B 帧头 + 4 B dummy */
     UINT32 i;
 
@@ -156,23 +156,23 @@ int AicSendMsgEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param,
         return -1;
     }
     for (i = 0; i < Total; i++) {
-        gAicMsg[i] = 0;
+        gAicMessage[i] = 0;
     }
     /* 帧头：len 字段 = 总长 - 4（aic_bsp_driver.c:262-266） */
-    AicPut16(&gAicMsg[0], (UINT16)((Body + 4u) & 0x0FFFu));
-    gAicMsg[2] = (UINT8)AIC_TYPE_CFG_CMD_RSP;
-    gAicMsg[3] = AicCrc8(&gAicMsg[0], 3u);
-    /* gAicMsg[4..7]：厂商的 dummy word，保持 0 */
-    AicPut16(&gAicMsg[8], Id);
-    AicPut16(&gAicMsg[10], DestId);
-    AicPut16(&gAicMsg[12], (UINT16)AIC_DRV_TASK_ID);
-    AicPut16(&gAicMsg[14], ParamLen);
-    for (i = 0; i < (UINT32)ParamLen; i++) {
-        gAicMsg[16u + i] = ((const UINT8 *)Param)[i];
+    AicPut16(&gAicMessage[0], (UINT16)((Body + 4u) & 0x0FFFu));
+    gAicMessage[2] = (UINT8)AIC_TYPE_CFG_CMD_RSP;
+    gAicMessage[3] = AicCrc8(&gAicMessage[0], 3u);
+    /* gAicMessage[4..7]：厂商的 dummy word，保持 0 */
+    AicPut16(&gAicMessage[8], Id);
+    AicPut16(&gAicMessage[10], DestId);
+    AicPut16(&gAicMessage[12], (UINT16)AIC_DRV_TASK_ID);
+    AicPut16(&gAicMessage[14], ParamLength);
+    for (i = 0; i < (UINT32)ParamLength; i++) {
+        gAicMessage[16u + i] = ((const UINT8 *)Param)[i];
     }
     {
         UINT32 Wire = Total;
-        if (AicFifoWriteMsg(Host, gAicMsg, &Wire) != 0) {
+        if (AicFifoWriteMessage(Host, gAicMessage, &Wire) != 0) {
             SdhciMarkHex("WiFi: aic fifo write fail at ", Total, 4);
             SdhciMark("\n");
             return -1;
@@ -185,14 +185,14 @@ int AicSendMsgEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param,
  * 从 fn2 0x0F 收一条消息（厂商消息通道走 func_msg = fn2，aicsdio.c:1530-1545）。
  * 字节模式读取同样要求 fn1 0x07 的允许位已置，所以读之前确认一次。
  */
-int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Len) {
+int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Length) {
     UINT8 Bm = 0;
 
     if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, &Bm) == 0 && (Bm & 0x01u) == 0u) {
         (void)SdhciIoWrite8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u);
     }
-    if (SdhciIoRwExtended(Host, Fn, AIC_RD_FIFO_REG, 0, 0, 0, (UINT16)Len, Data) != 0) {
-        AicMarkXferParams(Host, "WiFi: rx read FAIL", Len, 0u);
+    if (SdhciIoRwExtended(Host, Fn, AIC_RD_FIFO_REG, 0, 0, 0, (UINT16)Length, Data) != 0) {
+        AicMarkXferParams(Host, "WiFi: rx read FAIL", Length, 0u);
         return -1;
     }
     return 0;
@@ -212,11 +212,11 @@ int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Len) {
  * 真机 10:13 的 `status=01` 就落在 **fn1 块模式 1 块 = 512 B** 这一支：
  * 芯片早就回了 512 B 在等我们读，是旧判据（只认 >120）把它判成"没消息"。
  */
-int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLen) {
+int AicWaitMessagePending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLength) {
     UINT32 Waited = 0;
     UINT8 Status = 0;
     UINT32 Masked;
-    UINT8 BmLen = 0;
+    UINT8 BmLength = 0;
     const char *Mode = "block";
 
     while (Waited < TimeoutMs) {
@@ -235,35 +235,35 @@ int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 
         if (Masked > 120u) {
             *OutFn = 2u;
             if (Masked == 127u) {
-                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLen) != 0) {
+                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
                     return -1;
                 }
-                *OutLen = (UINT32)BmLen * 4u;
+                *OutLength = (UINT32)BmLength * 4u;
                 Mode = "byte";
             } else {
-                *OutLen = (UINT32)(Status & 0x07u) * 512u;
+                *OutLength = (UINT32)(Status & 0x07u) * 512u;
             }
         } else {
             *OutFn = 1u;
             if (Status == 0x78u) {
-                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLen) != 0) {
+                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
                     return -1;
                 }
-                *OutLen = (UINT32)BmLen * 4u;
+                *OutLength = (UINT32)BmLength * 4u;
                 Mode = "byte";
             } else {
-                *OutLen = (UINT32)(Status & 0x7Fu) * 512u;
+                *OutLength = (UINT32)(Status & 0x7Fu) * 512u;
             }
         }
         SdhciMarkHex("WiFi: rx masked=", Masked, 2);
         SdhciMarkHex(" status=", Status, 2);
         SdhciMarkHex(" fn=", *OutFn, 2);
-        SdhciMarkHex(" len=", *OutLen, 4);
+        SdhciMarkHex(" len=", *OutLength, 4);
         SdhciMark(" mode=");
         SdhciMark(Mode);
         SdhciMark("\n");
-        if (*OutLen == 0u) {
-            *OutLen = 512u; /* 长度算成 0 就按一块读，宁可多读也不空转 */
+        if (*OutLength == 0u) {
+            *OutLength = 512u; /* 长度算成 0 就按一块读，宁可多读也不空转 */
         }
         return 0;
     }
@@ -287,14 +287,14 @@ int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 
 }
 
 /* 前 32 字节 hexdump：和厂商 0x400 请求逐字节比对手里就靠它 */
-void AicDumpBytes(const UINT8 *Data, UINT32 Len) {
+void AicDumpBytes(const UINT8 *Data, UINT32 Length) {
     UINT32 i;
 
-    if (Len > 32u) {
-        Len = 32u;
+    if (Length > 32u) {
+        Length = 32u;
     }
     SdhciMark("WiFi: rx dump");
-    for (i = 0; i < Len; i++) {
+    for (i = 0; i < Length; i++) {
         SdhciMarkHex(" ", Data[i], 2);
     }
     SdhciMark("\n");
@@ -305,28 +305,28 @@ void AicDumpBytes(const UINT8 *Data, UINT32 Len) {
  * aicsdio_txrxif.c:211-215），正文 ipc_e2a_msg 在 **+4**：
  *   +4 id / +6 dest / +8 src / +10 param_len / +12 参数
  */
-int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
-                             UINT32 *OutParamLen, UINT32 Tries, UINT32 TimeoutMs) {
-    UINT32 Len = 0;
+int AicRecvMessageTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
+                             UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs) {
+    UINT32 Length = 0;
     UINT32 Fn = 0;
-    UINT32 ParamLen;
+    UINT32 ParamLength;
     UINT32 i;
     UINT32 T;
 
     for (T = 0; T < Tries; T++) {
-        if (AicWaitMsgPending(Host, TimeoutMs, &Fn, &Len) != 0) {
+        if (AicWaitMessagePending(Host, TimeoutMs, &Fn, &Length) != 0) {
             SdhciMark("WiFi: aic rx: no pending message (fn1 0x04)\n");
             return -1;
         }
-        if (Len > 512u) {
-            SdhciMarkHex("WiFi: rx len>512, read first block only, len=", Len, 4);
+        if (Length > 512u) {
+            SdhciMarkHex("WiFi: rx len>512, read first block only, len=", Length, 4);
             SdhciMark("\n");
-            Len = 512u;
+            Length = 512u;
         }
-        if (AicFifoRead(Host, Fn, gAicRx, Len) != 0) {
+        if (AicFifoRead(Host, Fn, gAicRx, Length) != 0) {
             return -1;
         }
-        SdhciMarkHex("WiFi: rx len=", Len, 4);
+        SdhciMarkHex("WiFi: rx len=", Length, 4);
         SdhciMarkHex(" hdr=", (UINT32)(gAicRx[0] | (gAicRx[1] << 8) |
                                        ((UINT32)gAicRx[2] << 16) | ((UINT32)gAicRx[3] << 24)),
                      8);
@@ -338,7 +338,7 @@ int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
                               ((UINT32)gAicRx[15] << 24)),
                      8);
         SdhciMark("\n");
-        AicDumpBytes(gAicRx, Len);
+        AicDumpBytes(gAicRx, Length);
         /* 硬判据：不是 e2a 有效性戳就丢帧（评审：比 type 判断可靠） */
         {
             UINT32 Pat = (UINT32)(gAicRx[12] | (gAicRx[13] << 8) | ((UINT32)gAicRx[14] << 16) |
@@ -362,24 +362,24 @@ int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
             SdhciMark("\n");
             continue;
         }
-        ParamLen = AicGet16(&gAicRx[10]);
-        if (ParamLen > MaxParam) {
-            ParamLen = MaxParam;
+        ParamLength = AicGet16(&gAicRx[10]);
+        if (ParamLength > MaxParam) {
+            ParamLength = MaxParam;
         }
-        /* params 从 +16 起：可拷长度 = Len - 16（不是 Len - 12） */
-        if (Len < AIC_E2A_PARAM_OFF) {
-            SdhciMarkHex("WiFi: rx frame too short len=", Len, 4);
+        /* params 从 +16 起：可拷长度 = Length - 16（不是 Length - 12） */
+        if (Length < AIC_E2A_PARAM_OFF) {
+            SdhciMarkHex("WiFi: rx frame too short len=", Length, 4);
             SdhciMark("\n");
             continue;
         }
-        if (ParamLen > Len - AIC_E2A_PARAM_OFF) {
-            ParamLen = Len - AIC_E2A_PARAM_OFF;
+        if (ParamLength > Length - AIC_E2A_PARAM_OFF) {
+            ParamLength = Length - AIC_E2A_PARAM_OFF;
         }
-        if (OutParamLen != 0) {
-            *OutParamLen = ParamLen;
+        if (OutParamLength != 0) {
+            *OutParamLength = ParamLength;
         }
-        if (Param != 0 && ParamLen > 0u) {
-            for (i = 0; i < ParamLen; i++) {
+        if (Param != 0 && ParamLength > 0u) {
+            for (i = 0; i < ParamLength; i++) {
                 Param[i] = gAicRx[AIC_E2A_PARAM_OFF + i];
             }
         }
@@ -389,12 +389,12 @@ int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
 }
 
 /* 常用写法：4 次 × 500 ms = 2 s 预算 */
-int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
-                      UINT32 *OutParamLen) {
-    return AicRecvMsgTimeout(Host, WantId, Param, MaxParam, OutParamLen, 4u, AIC_CFM_TIMEOUT_MS);
+int AicRecvMessage(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
+                      UINT32 *OutParamLength) {
+    return AicRecvMessageTimeout(Host, WantId, Param, MaxParam, OutParamLength, 4u, AIC_CFM_TIMEOUT_MS);
 }
 
 /* 固定 dest=TASK_DBG 的常用写法（DBG 系列消息） */
-int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLen) {
-    return AicSendMsgEx(Host, Id, (UINT16)AIC_TASK_DBG, Param, ParamLen);
+int AicSendMessage(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLength) {
+    return AicSendMessageEx(Host, Id, (UINT16)AIC_TASK_DBG, Param, ParamLength);
 }

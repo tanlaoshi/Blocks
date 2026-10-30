@@ -17,30 +17,30 @@
  */
 static int WifiFwVersionProbe(SDHCI_HOST *Host) {
     UINT8 Cfm[64];
-    UINT32 CfmLen = 0;
+    UINT32 CfmLength = 0;
     UINT32 k;
 
     SdhciMarkHex("WiFi: msg tx id=", AIC_MM_VERSION_REQ, 4);
     SdhciMarkHex(" dest=", AIC_TASK_MM, 4);
     SdhciMarkHex(" src=", AIC_DRV_TASK_ID, 4);
     SdhciMark(" plen=0\n");
-    if (AicSendMsgEx(Host, (UINT16)AIC_MM_VERSION_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
+    if (AicSendMessageEx(Host, (UINT16)AIC_MM_VERSION_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
         SdhciMark("WiFi: ver: msg send FAILED\n");
         return -1;
     }
     /* 2 s 预算（4 × 500 ms），期间轮询 fn1 pending */
-    if (AicRecvMsgTimeout(Host, (UINT16)AIC_MM_VERSION_CFM, Cfm, sizeof(Cfm), &CfmLen, 4u,
+    if (AicRecvMessageTimeout(Host, (UINT16)AIC_MM_VERSION_CFM, Cfm, sizeof(Cfm), &CfmLength, 4u,
                           AIC_CFM_TIMEOUT_MS) != 0) {
         SdhciMark("WiFi: ver: no cfm in 2000ms  (firmware may not be running)\n");
         return -1;
     }
     SdhciMarkHex("WiFi: rx cfm id=", AIC_MM_VERSION_CFM, 4);
-    SdhciMarkHex(" plen=", CfmLen, 4);
+    SdhciMarkHex(" plen=", CfmLength, 4);
     SdhciMark("\n");
-    AicDumpBytes(Cfm, CfmLen);
+    AicDumpBytes(Cfm, CfmLength);
     /* struct mm_version_cfm 前 4 个 u32（lmac_msg.h:711-730） */
     SdhciMark("WiFi: ver");
-    for (k = 0; k + 4u <= CfmLen && k < 20u; k += 4u) {
+    for (k = 0; k + 4u <= CfmLength && k < 20u; k += 4u) {
         UINT32 V = (UINT32)Cfm[k] | ((UINT32)Cfm[k + 1] << 8) | ((UINT32)Cfm[k + 2] << 16) |
                    ((UINT32)Cfm[k + 3] << 24);
         if (k == 0u) {
@@ -56,8 +56,8 @@ static int WifiFwVersionProbe(SDHCI_HOST *Host) {
         }
     }
     SdhciMark("\n");
-    if (CfmLen < 16u) {
-        SdhciMarkHex("WiFi: ver: cfm plen<16, only ", CfmLen, 4);
+    if (CfmLength < 16u) {
+        SdhciMarkHex("WiFi: ver: cfm plen<16, only ", CfmLength, 4);
         SdhciMark(" bytes available\n");
     }
     return 0;
@@ -84,7 +84,7 @@ int SdhciWifiFwVersion(void) {
 int SdhciWifiFwMmReset(void) {
     SDHCI_HOST *Host = SdhciHostAt(1);
     UINT8 Cfm[16];
-    UINT32 CfmLen = 0;
+    UINT32 CfmLength = 0;
 
     if (Host == 0 || !SdhciWifiReady()) {
         SdhciMark("WiFi: mmreset needs a probed card (run wifiprobe first)\n");
@@ -98,17 +98,17 @@ int SdhciWifiFwMmReset(void) {
     SdhciMarkHex(" dest=", AIC_TASK_MM, 4);
     SdhciMarkHex(" src=", AIC_DRV_TASK_ID, 4);
     SdhciMark(" plen=0\n");
-    if (AicSendMsgEx(Host, (UINT16)AIC_MM_RESET_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
+    if (AicSendMessageEx(Host, (UINT16)AIC_MM_RESET_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
         SdhciMark("WiFi: mm reset: msg send FAILED\n");
         return -1;
     }
-    if (AicRecvMsgTimeout(Host, (UINT16)AIC_MM_RESET_CFM, Cfm, sizeof(Cfm), &CfmLen, 4u,
+    if (AicRecvMessageTimeout(Host, (UINT16)AIC_MM_RESET_CFM, Cfm, sizeof(Cfm), &CfmLength, 4u,
                           AIC_CFM_TIMEOUT_MS) != 0) {
         SdhciMark("WiFi: mm reset: no cfm in 2000ms\n");
         return -1;
     }
     SdhciMarkHex("WiFi: rx cfm id=", AIC_MM_RESET_CFM, 4);
-    SdhciMarkHex(" plen=", CfmLen, 4);
+    SdhciMarkHex(" plen=", CfmLength, 4);
     SdhciMark("\n");
     SdhciMark("WiFi: mm reset ok\n");
     /* 复位后必须再验一次：CFM 只证明消息通路，版本才证明固件还活着 */

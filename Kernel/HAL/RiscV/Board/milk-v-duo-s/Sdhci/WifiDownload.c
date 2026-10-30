@@ -6,7 +6,7 @@
 #include "WifiPrivate.h"
 
 /* 读 patch 表、解析、把 adid/patch 落点改成表里的值；任何一步不过就失败 */
-int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buf, UINT32 BufSize, UINT32 *OutLen) {
+int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 BufferSize, UINT32 *OutLength) {
     FAT_FILE_STAT Stat;
     UINT32 Got = 0;
     AIC_PATCH_INFO Info;
@@ -17,45 +17,45 @@ int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buf, UINT32 BufSize, UINT32 *Ou
         SdhciMark("WiFi: fw table missing " AIC_FW_PATCH_TABLE "\n");
         return -1;
     }
-    if (Stat.Size == 0u || Stat.Size > BufSize) {
+    if (Stat.Size == 0u || Stat.Size > BufferSize) {
         SdhciMarkDecimal("WiFi: fw table size out of range ", Stat.Size);
         SdhciMark("\n");
         return -1;
     }
-    if (AicFwReadChunk(AIC_FW_PATCH_TABLE, 0u, Buf, Stat.Size, &Got) != 0 || Got != Stat.Size) {
+    if (AicFwReadChunk(AIC_FW_PATCH_TABLE, 0u, Buffer, Stat.Size, &Got) != 0 || Got != Stat.Size) {
         SdhciMark("WiFi: fw table read failed\n");
         return -1;
     }
-    Rc = AicPatchTableParse(Buf, Got, &Info);
+    Rc = AicPatchTableParse(Buffer, Got, &Info);
     if (Rc != 0) {
         SdhciMark("WiFi: fw table parse FAILED (refuse to guess)\n");
         return -1;
     }
-    SdhciMarkHex("WiFi: fw table: tag ok info_len=", Info.InfoLen, 4);
-    SdhciMarkHex(" adid=", Info.AddrAdid, 8);
-    SdhciMarkHex(" patch=", Info.AddrPatch, 8);
-    SdhciMarkHex(" base=", Info.AdidAddrInfo, 8);
+    SdhciMarkHex("WiFi: fw table: tag ok info_len=", Info.InfoLength, 4);
+    SdhciMarkHex(" adid=", Info.AddressAdid, 8);
+    SdhciMarkHex(" patch=", Info.AddressPatch, 8);
+    SdhciMarkHex(" base=", Info.AdidAddressInfo, 8);
     SdhciMark("\n");
     /* B2 要用的两个按键：reset 与 adid_flag（评审 P2-2 的判据 0x40500150==1 就在这里） */
-    SdhciMarkHex("WiFi: fw table: reset=", Info.ResetAddr, 8);
-    SdhciMarkHex(":", Info.ResetVal, 8);
-    SdhciMarkHex(" adid_flag=", Info.AdidFlagAddr, 8);
+    SdhciMarkHex("WiFi: fw table: reset=", Info.ResetAddress, 8);
+    SdhciMarkHex(":", Info.ResetValue, 8);
+    SdhciMarkHex(" adid_flag=", Info.AdidFlagAddress, 8);
     SdhciMarkHex(":", Info.AdidFlag, 8);
     SdhciMark("\n");
     /* 表值优先；表里没有（0）才用兜底，并且明说是兜底 */
-    if (Info.AddrAdid != 0u) {
-        gAicStages[0].Addr = Info.AddrAdid;
+    if (Info.AddressAdid != 0u) {
+        gAicStages[0].Address = Info.AddressAdid;
     } else {
-        SdhciMarkHex("WiFi: fw table: adid addr missing, fallback=", gAicStages[0].Addr, 8);
+        SdhciMarkHex("WiFi: fw table: adid addr missing, fallback=", gAicStages[0].Address, 8);
         SdhciMark(" (fallback, table missing)\n");
     }
-    if (Info.AddrPatch != 0u) {
-        gAicStages[1].Addr = Info.AddrPatch;
+    if (Info.AddressPatch != 0u) {
+        gAicStages[1].Address = Info.AddressPatch;
     } else {
-        SdhciMarkHex("WiFi: fw table: patch addr missing, fallback=", gAicStages[1].Addr, 8);
+        SdhciMarkHex("WiFi: fw table: patch addr missing, fallback=", gAicStages[1].Address, 8);
         SdhciMark(" (fallback, table missing)\n");
     }
-    *OutLen = Got;
+    *OutLength = Got;
     return 0;
 }
 
@@ -129,23 +129,23 @@ int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size) {
     UINT32 Off = 0;
     UINT32 Got = 0;
     UINT32 InChunk;
-    UINT32 BlkIdx = 0;
-    UINT32 TotalBlk = (Size + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
+    UINT32 BlockIndex = 0;
+    UINT32 TotalBlock = (Size + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
     UINT32 Word;
     UINT32 Want;
 
     SdhciMark("WiFi: stage=");
     SdhciMark(Stage->Name);
     SdhciMarkHex(" len=", Size, 4);
-    SdhciMarkHex(" addr=", Stage->Addr, 8);
-    SdhciMarkHex(" blocks=", TotalBlk, 4);
+    SdhciMarkHex(" addr=", Stage->Address, 8);
+    SdhciMarkHex(" blocks=", TotalBlock, 4);
     SdhciMark("\n");
     while (Off < Size) {
         InChunk = Size - Off;
         if (InChunk > AIC_FW_CHUNK) {
             InChunk = AIC_FW_CHUNK;
         }
-        if (AicFwReadChunk(Stage->Path, Off, gAicFwBuf, InChunk, &Got) != 0) {
+        if (AicFwReadChunk(Stage->Path, Off, gAicFwBuffer, InChunk, &Got) != 0) {
             AicFwFail(Stage->Name, gWifiFwSent, "read");
             return -1;
         }
@@ -157,14 +157,14 @@ int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size) {
             AicFwFail(Stage->Name, gWifiFwSent, "short-read");
             return -1;
         }
-        if (AicMemBlockWrite(Host, Stage->Addr + Off, Got, gAicFwBuf) != 0) {
+        if (AicMemBlockWrite(Host, Stage->Address + Off, Got, gAicFwBuffer) != 0) {
             AicFwFail(Stage->Name, gWifiFwSent, "write");
             return -1;
         }
         /* 抽样校验：这块的首字读回来对一下（每 8 KB 一次，够抓地址/长度错） */
-        Want = (UINT32)gAicFwBuf[0] | ((UINT32)gAicFwBuf[1] << 8) |
-               ((UINT32)gAicFwBuf[2] << 16) | ((UINT32)gAicFwBuf[3] << 24);
-        if (AicMemRead(Host, Stage->Addr + Off, &Word) != 0) {
+        Want = (UINT32)gAicFwBuffer[0] | ((UINT32)gAicFwBuffer[1] << 8) |
+               ((UINT32)gAicFwBuffer[2] << 16) | ((UINT32)gAicFwBuffer[3] << 24);
+        if (AicMemRead(Host, Stage->Address + Off, &Word) != 0) {
             AicFwFail(Stage->Name, gWifiFwSent, "verify-read");
             return -1;
         }
@@ -177,12 +177,12 @@ int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size) {
         }
         Off += Got;
         gWifiFwSent = Off;
-        BlkIdx = (Off + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
-        if ((BlkIdx % 32u) == 0u || Off == Size) {
+        BlockIndex = (Off + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
+        if ((BlockIndex % 32u) == 0u || Off == Size) {
             SdhciMark("WiFi: stage=");
             SdhciMark(Stage->Name);
-            SdhciMarkHex(" blk=", BlkIdx, 4);
-            SdhciMarkHex("/", TotalBlk, 4);
+            SdhciMarkHex(" blk=", BlockIndex, 4);
+            SdhciMarkHex("/", TotalBlock, 4);
             SdhciMark(" ok\n");
         }
     }
@@ -195,10 +195,10 @@ int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size) {
 }
 
 /* DBG_START_APP_REQ：让固件从 RAM 起跑（aic_bsp_driver.c:1936-1946） */
-int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddr) {
+int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddress) {
     UINT8 Param[8];
     UINT8 Cfm[8];
-    UINT32 CfmLen = 0;
+    UINT32 CfmLength = 0;
 
     /*
      * 评审 W4：start_app 之前必须确认 patch 已应用，否则就是"固件写进去但起不来"。
@@ -210,21 +210,21 @@ int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddr) {
         return -1;
     }
 
-    AicPut16(&Param[0], (UINT16)(BootAddr & 0xFFFFu));
-    AicPut16(&Param[2], (UINT16)((BootAddr >> 16) & 0xFFFFu));
+    AicPut16(&Param[0], (UINT16)(BootAddress & 0xFFFFu));
+    AicPut16(&Param[2], (UINT16)((BootAddress >> 16) & 0xFFFFu));
     AicPut16(&Param[4], (UINT16)AIC_START_APP_AUTO);
     AicPut16(&Param[6], 0u);
-    if (AicSendMsg(Host, AIC_DBG_START_APP_REQ, Param, 8u) != 0) {
+    if (AicSendMessage(Host, AIC_DBG_START_APP_REQ, Param, 8u) != 0) {
         AicFwFail("start", 0u, "send");
         return -1;
     }
-    if (AicRecvMsg(Host, AIC_DBG_START_APP_CFM, Cfm, 8u, &CfmLen) != 0) {
+    if (AicRecvMessage(Host, AIC_DBG_START_APP_CFM, Cfm, 8u, &CfmLength) != 0) {
         AicFwFail("start", 0u, "cfm-timeout");
         return -1;
     }
     /* dbg_start_app_cfm { u32 bootstatus; } */
     SdhciMark("WiFi: stage=start");
-    SdhciMarkHex(" bootaddr=", BootAddr, 8);
+    SdhciMarkHex(" bootaddr=", BootAddress, 8);
     SdhciMarkHex(" bootstatus=", (UINT32)(Cfm[0] | (Cfm[1] << 8) | (Cfm[2] << 16) | (Cfm[3] << 24)),
                  8);
     SdhciMark("\n");
@@ -232,23 +232,23 @@ int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddr) {
 }
 
 /* 起跑后等第一条消息：只读、有上限，看不到也不算失败（可能只走 fn2/中断） */
-void AicFwWaitBootMsg(SDHCI_HOST *Host) {
+void AicFwWaitBootMessage(SDHCI_HOST *Host) {
     UINT32 Fn = 0;
-    UINT32 Len = 0;
+    UINT32 Length = 0;
 
-    if (AicWaitMsgPending(Host, 2000u, &Fn, &Len) != 0) {
+    if (AicWaitMessagePending(Host, 2000u, &Fn, &Length) != 0) {
         SdhciMark("WiFi: boot poll: no msg in 2000ms\n");
         return;
     }
     SdhciMarkHex("WiFi: boot poll fn=", Fn, 2);
-    SdhciMarkHex(" len=", Len, 4);
+    SdhciMarkHex(" len=", Length, 4);
     SdhciMark("\n");
-    if (Len > 0u && Len <= 512u) {
-        if (AicFifoRead(Host, Fn, gAicRx, Len) == 0) {
+    if (Length > 0u && Length <= 512u) {
+        if (AicFifoRead(Host, Fn, gAicRx, Length) == 0) {
             SdhciMarkHex("WiFi: boot msg type=", (UINT32)(gAicRx[2] & 0x7Fu), 2);
             SdhciMarkHex(" id=", AicGet16(&gAicRx[4]), 4);
             SdhciMark("\n");
-            AicDumpBytes(gAicRx, Len);
+            AicDumpBytes(gAicRx, Length);
         }
     }
 }

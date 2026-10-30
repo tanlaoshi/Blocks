@@ -23,7 +23,7 @@ UINT8 gSdioReadback[SDIO_SELFTEST_BYTES];
  * 两个来源不同：CMD53 走数据线（DAT0-3）批量读，CMD52 走命令线单字节读。
  * 两者一致 → 数据线读方向可信；不一致 → 直接把两边原文摆出来，不用猜。
  */
-static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT8 *Buf,
+static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT8 *Buffer,
                           UINT32 Bytes) {
     UINT8 Ref[16];
     UINT32 i;
@@ -37,7 +37,7 @@ static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UIN
     SdhciMarkHex(" cmd53@", Address, 6);
     SdhciMark(":");
     for (i = 0; i < Bytes; i++) {
-        SdhciMarkHex(" ", Buf[i], 2);
+        SdhciMarkHex(" ", Buffer[i], 2);
     }
     SdhciMark("\n");
     SdhciMark("WiFi:  cmd52 ref            :");
@@ -50,7 +50,7 @@ static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UIN
     }
     SdhciMark("\n");
     for (i = 0; i < Bytes; i++) {
-        if (Buf[i] != Ref[i]) {
+        if (Buffer[i] != Ref[i]) {
             Bad = i;
             break;
         }
@@ -59,7 +59,7 @@ static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UIN
         return 0;
     }
     SdhciMarkHex("WiFi:  mismatch +", Bad, 2);
-    SdhciMarkHex(" cmd53=", Buf[Bad], 2);
+    SdhciMarkHex(" cmd53=", Buffer[Bad], 2);
     SdhciMarkHex(" cmd52=", Ref[Bad], 2);
     SdhciMark("\n");
     return -1;
@@ -79,19 +79,19 @@ static int SdioCmpCisRead(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UIN
  */
 static int SdioDatReadCheck(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHertz) {
     UINT32 i;
-    UINT8 Buf[16];
+    UINT8 Buffer[16];
     UINT8 Low[16];
     int Rc;
 
     for (i = 0; i < 16u; i++) {
-        Buf[i] = 0;
+        Buffer[i] = 0;
     }
     /* Increment=1：CIS 是存储区，必须自增；固定地址只适合 FIFO */
-    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 1, 0, 16u, Buf) != 0) {
+    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 1, 0, 16u, Buffer) != 0) {
         SdioMarkXfer(Host, "WiFi: dat rd cmd53 fn0 cis incr=1 FAIL");
         return -1;
     }
-    Rc = SdioCmpCisRead(Host, "WiFi: dat rd", 0x1000u, Buf, 16u);
+    Rc = SdioCmpCisRead(Host, "WiFi: dat rd", 0x1000u, Buffer, 16u);
     if (Rc == 0) {
         SdhciMark("WiFi: DAT read ok (cmd53 incr=1 == cmd52, 16B)\n");
         return 0;

@@ -298,7 +298,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
     } else if (ArgEqualIgnoreCase(Argv[1], "rd")) {
         /* 只读：读回一个 RAM 字，用于真写之后对账 */
-        UINT32 Addr = 0;
+        UINT32 Address = 0;
         int Bad = 0;
         int k;
 
@@ -307,10 +307,10 @@ static void CommandWifiFw(int Argc, char **Argv) {
             return;
         }
         (void)k;
-        if (WifiParseHex(Argv[2], &Addr) == 0) {
+        if (WifiParseHex(Argv[2], &Address) == 0) {
             Bad = 1;
         }
-        if (Bad != 0 || Addr == 0u) {
+        if (Bad != 0 || Address == 0u) {
             gConsole.Write("wififw rd: bad hex address (need 4-aligned, e.g. 00201940)\n");
             return;
         }
@@ -321,7 +321,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         if (SdhciWifiMarkSink != 0) {
             SdhciWifiMarkSink(ShellProbeMark);
         }
-        gConsole.Write(SdhciWifiFwRead(Addr) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        gConsole.Write(SdhciWifiFwRead(Address) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
         if (SdhciWifiMarkSink != 0) {
             SdhciWifiMarkSink(0);
         }
@@ -356,14 +356,14 @@ static void CommandWifiFw(int Argc, char **Argv) {
         return;
     } else if (ArgEqualIgnoreCase(Argv[1], "wr")) {
         /* 诊断：单字写 + 立刻读回（同一上电周期内才有意义） */
-        UINT32 Addr = 0;
-        UINT32 Val = 0;
+        UINT32 Address = 0;
+        UINT32 Value = 0;
 
         if (Argc < 4) {
             gConsole.Write("wififw wr <hexaddr> <hexval>  (e.g. wififw wr 00201940 000ee5fd)\n");
             return;
         }
-        if (WifiParseHex(Argv[2], &Addr) == 0 || WifiParseHex(Argv[3], &Val) == 0) {
+        if (WifiParseHex(Argv[2], &Address) == 0 || WifiParseHex(Argv[3], &Value) == 0) {
             gConsole.Write("wififw wr: bad hex addr/val\n");
             return;
         }
@@ -374,7 +374,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         if (SdhciWifiMarkSink != 0) {
             SdhciWifiMarkSink(ShellProbeMark);
         }
-        gConsole.Write(SdhciWifiFwWriteDiag(Addr, Val) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        gConsole.Write(SdhciWifiFwWriteDiag(Address, Value) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
         if (SdhciWifiMarkSink != 0) {
             SdhciWifiMarkSink(0);
         }

@@ -174,7 +174,7 @@ typedef struct WIFI_PROBE {
     UINT32 Present;
     SDIO_CIS_INFO Cis;
     int CisSeen;
-    UINT32 CisCommonPtr;
+    UINT32 CisCommonPointer;
     int CisOk;
 } WIFI_PROBE;
 
@@ -208,8 +208,8 @@ int SdioChipIdentify(void);
 int SdioCmd5Window(SDHCI_HOST *Host);
 int SdioFifoTest(SDHCI_HOST *Host, int MultiBlock);
 int SdioFifoTransfer(SDHCI_HOST *Host, int Write, UINT8 *Buffer, int MultiBlock);
-int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info);
-int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *Pointer);
+int SdioParseCis(SDHCI_HOST *Host, UINT32 CisPointer, SDIO_CIS_INFO *Info);
+int SdioReadCisPointer(SDHCI_HOST *Host, UINT32 Function, UINT32 *CisPointer);
 int SdioRecoverBus(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHertz);
 void SdioDumpCis(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT32 Count);
 void SdioMarkCis(UINT32 Function, UINT32 Pointer, const SDIO_CIS_INFO *Info);

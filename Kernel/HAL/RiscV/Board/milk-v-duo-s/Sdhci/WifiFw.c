@@ -14,9 +14,9 @@
  */
 #include "WifiPrivate.h"
 
-UINT8 gAicMsg[AIC_MSG_MAX];
+UINT8 gAicMessage[AIC_MSG_MAX];
 UINT8 gAicRx[512];
-UINT8 gAicFwBuf[AIC_FW_CHUNK];
+UINT8 gAicFwBuffer[AIC_FW_CHUNK];
 
 /*
  * 落点：adid/patch 两个地址**运行期从 patch 表里取**（见 AicPatchTableParse），
@@ -35,7 +35,7 @@ AIC_FW_STAGE gAicStages[AIC_FW_STAGE_MAX] = {
     {"start", 0, AIC_RAM_FMAC_FW_ADDR, 0u, 1, AIC_STAGE_START},
 };
 
-/* 失败态：0=未跑 1=全部成功 2=失败（失败时 gWifiFwStageIdx 指向停在哪一阶段） */
+/* 失败态：0=未跑 1=全部成功 2=失败（失败时 gWifiFwStageIndex 指向停在哪一阶段） */
 UINT32 gWifiFwState;
 /*
  * patch 管线是否已实现并应用（patch_table 全量 100 条写 + patch_config_8800d80 的
@@ -49,13 +49,13 @@ UINT32 gWifiFwState;
  */
 volatile UINT32 gAicPatchReady = 1u;
 UINT32 gAicPatchState;
-UINT32 gWifiFwStageIdx;
+UINT32 gWifiFwStageIndex;
 UINT32 gWifiFwSent;
 
 
 AIC_PLAN_ITEM gAicPlan[AIC_PLAN_MAX];
 /* MODE 那 9 个 pair 的最终值（pair 下标 0..8），自检用 */
-UINT32 gAicModeVal[9];
+UINT32 gAicModeValue[9];
 
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What) {
     gWifiFwState = 2u;
@@ -78,7 +78,7 @@ static int WifiFwCheck(SDHCI_HOST *Host) {
     UINT32 Size = 0;
     int Rc;
 
-    UINT32 TableLen = 0;
+    UINT32 TableLength = 0;
 
     (void)Host;
     SdhciMarkDecimal("WiFi: fw check: buf=", AIC_FW_CHUNK);
@@ -88,7 +88,7 @@ static int WifiFwCheck(SDHCI_HOST *Host) {
      * 只读文件：把 patch 表读进来解析，好让下面 stage 行显示**表里的真实落点**。
      * 这一步不碰芯片（不发消息、不写寄存器），符合 P0-3 的"纯读检查"。
      */
-    if (AicFwLoadPatchTable(Host, gAicFwBuf, AIC_FW_CHUNK, &TableLen) != 0) {
+    if (AicFwLoadPatchTable(Host, gAicFwBuffer, AIC_FW_CHUNK, &TableLength) != 0) {
         /* 表不可用就直接停：不许用兜底地址去"猜"落点（评审 W3 的原话） */
         SdhciMark("WiFi: fw check FAILED: patch table unusable (refuse to guess addr)\n");
         return -1;
@@ -108,7 +108,7 @@ static int WifiFwCheck(SDHCI_HOST *Host) {
             continue;
         }
         if (Stage->Kind == AIC_STAGE_START) {
-            SdhciMarkHex(" bootaddr=", Stage->Addr, 8);
+            SdhciMarkHex(" bootaddr=", Stage->Address, 8);
             SdhciMark(" (msg DBG_START_APP_REQ)\n");
             continue;
         }
@@ -124,7 +124,7 @@ static int WifiFwCheck(SDHCI_HOST *Host) {
             return -1;
         }
         SdhciMarkDecimal(" size=", Size);
-        SdhciMarkHex(" -> ", Stage->Addr, 8);
+        SdhciMarkHex(" -> ", Stage->Address, 8);
         SdhciMark(Stage->Required != 0 ? " (required)\n" : " (optional)\n");
     }
     SdhciMark("WiFi: fw check done, NOTHING WRITTEN (no reg write, no msg)\n");
@@ -139,15 +139,15 @@ static int WifiFwWrite(SDHCI_HOST *Host) {
     int Rc;
 
     gWifiFwState = 0u;
-    gWifiFwStageIdx = 0u;
+    gWifiFwStageIndex = 0u;
     gWifiFwSent = 0u;
     SdhciMarkDecimal("WiFi: fw write CONFIRM buf=", AIC_FW_CHUNK);
     SdhciMark("\n");
 
     /* patch 表是必需件（D80 强制 info_len != 0）：先解析它，落点全部以表为准 */
     {
-        UINT32 TableLen = 0;
-        if (AicFwLoadPatchTable(Host, gAicFwBuf, AIC_FW_CHUNK, &TableLen) != 0) {
+        UINT32 TableLength = 0;
+        if (AicFwLoadPatchTable(Host, gAicFwBuffer, AIC_FW_CHUNK, &TableLength) != 0) {
             SdhciMark("WiFi: fw precheck failed (patch table), nothing written\n");
             gWifiFwState = 2u;
             return -1;
@@ -158,14 +158,14 @@ static int WifiFwWrite(SDHCI_HOST *Host) {
         Rc = AicFwCheckStage(&gAicStages[i], &Size);
         if (Rc < 0) {
             gWifiFwState = 2u;
-            gWifiFwStageIdx = i;
+            gWifiFwStageIndex = i;
             SdhciMark("WiFi: fw precheck failed, nothing written\n");
             return -1;
         }
     }
     for (i = 0; i < AIC_FW_STAGE_MAX; i++) {
         AIC_FW_STAGE *Stage = &gAicStages[i];
-        gWifiFwStageIdx = i;
+        gWifiFwStageIndex = i;
         gWifiFwSent = 0u;
         Rc = AicFwCheckStage(Stage, &Size);
         if (Rc == 1) {
@@ -182,26 +182,26 @@ static int WifiFwWrite(SDHCI_HOST *Host) {
              * 评审 P0-1：patch 表落地是 write confirm 的第 4 阶段。
              * 表必须整份读进来（长度 == stat 长度），读完才允许开始写。
              */
-            UINT32 TableLen = 0;
+            UINT32 TableLength = 0;
             FAT_FILE_STAT Stat;
             if (FileSystemFileStat(AIC_FW_PATCH_TABLE, &Stat) != FAT_OK || Stat.Size == 0u ||
                 Stat.Size > AIC_FW_CHUNK ||
-                AicFwReadChunk(AIC_FW_PATCH_TABLE, 0u, gAicFwBuf, Stat.Size, &TableLen) != 0 ||
-                TableLen != Stat.Size) {
+                AicFwReadChunk(AIC_FW_PATCH_TABLE, 0u, gAicFwBuffer, Stat.Size, &TableLength) != 0 ||
+                TableLength != Stat.Size) {
                 AicFwFail("patchtbl", 0u, "table-read");
                 return -1;
             }
-            if (AicPatchApply(Host, gAicFwBuf, TableLen) != 0) {
+            if (AicPatchApply(Host, gAicFwBuffer, TableLength) != 0) {
                 AicFwFail("patchtbl", 0u, "apply");
                 return -1;
             }
             continue;
         }
         if (Stage->Kind == AIC_STAGE_START) {
-            if (AicFwStartApp(Host, Stage->Addr) != 0) {
+            if (AicFwStartApp(Host, Stage->Address) != 0) {
                 return -1;
             }
-            AicFwWaitBootMsg(Host);
+            AicFwWaitBootMessage(Host);
             continue;
         }
         if (AicFwPushStage(Host, Stage, Size) != 0) {
@@ -435,7 +435,7 @@ int SdhciWifiFw(UINT32 Mode) {
             return -1;
         }
         if (WifiFwWrite(Host) != 0) {
-            SdhciMarkDecimal("WiFi: fw failed at stage ", gWifiFwStageIdx + 1u);
+            SdhciMarkDecimal("WiFi: fw failed at stage ", gWifiFwStageIndex + 1u);
             SdhciMark(", sent=");
             SdhciMarkDecimal("", gWifiFwSent);
             SdhciMark(" of current stage\n");

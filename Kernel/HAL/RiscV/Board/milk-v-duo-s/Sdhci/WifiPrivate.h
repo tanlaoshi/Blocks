@@ -132,21 +132,21 @@
 typedef struct {
     const char *Name;
     const char *Path;
-    UINT32 Addr;
+    UINT32 Address;
     UINT32 ExpectSize;
     int Required;
     UINT8 Kind;
 } AIC_FW_STAGE;
 /* patch 表里的地址信息元组（aic_bsp_driver.h:541-551 的 aicbt_patch_info_t） */
 typedef struct {
-    UINT32 InfoLen;
-    UINT32 AdidAddrInfo;
-    UINT32 AddrAdid;
-    UINT32 PatchAddrInfo;
-    UINT32 AddrPatch;
-    UINT32 ResetAddr;
-    UINT32 ResetVal;
-    UINT32 AdidFlagAddr;
+    UINT32 InfoLength;
+    UINT32 AdidAddressInfo;
+    UINT32 AddressAdid;
+    UINT32 PatchAddressInfo;
+    UINT32 AddressPatch;
+    UINT32 ResetAddress;
+    UINT32 ResetValue;
+    UINT32 AdidFlagAddress;
     UINT32 AdidFlag;
 } AIC_PATCH_INFO;
 /* 计划表：把"要写哪些字"先全部算出来（先算后写） */
@@ -158,9 +158,9 @@ typedef struct {
 typedef struct {
     UINT8 Kind;  /* mem / cfg */
     UINT8 Type;  /* AICBT_PT_* */
-    UINT32 Addr;
-    UINT32 Val;  /* 实际要写的值（MODE 已被厂商运行时值覆盖） */
-    UINT32 Tbl;  /* 表里原本的值，只用于对账打印 */
+    UINT32 Address;
+    UINT32 Value;  /* 实际要写的值（MODE 已被厂商运行时值覆盖） */
+    UINT32 TableValue;  /* 表里原本的值，只用于对账打印 */
 } AIC_PLAN_ITEM;
 /* D80 的 BT 默认值（aic_bsp_driver.h:505-517；CONFIG_SDIO_BT=n → btport=UART） */
 #define AIC_BT_HWINFO 0xFFFFFFFFu /* AICBSP_HWINFO_DEFAULT (-1)：未知 */
@@ -180,8 +180,8 @@ typedef struct {
     UINT32 ConfigBase;
     UINT32 StrBase;
     UINT32 Version;
-    UINT32 PatchAddr;
-    UINT32 PairCnt;
+    UINT32 PatchAddress;
+    UINT32 PairCount;
 } AIC_PATCH_CFG;
 
 /* 合法窗口：fmacfw 0x120000..0x170E54、patch 0x1E0000..0x1E7558、adid 0x201940..0x201FEC
@@ -198,44 +198,44 @@ typedef struct {
 #define AIC_PATCH_NOT_IMPLEMENTED (-2)
 
 /* ---- 全局状态（定义在 WifiFw.c，其余文件只读这里） ---- */
-extern UINT8 gAicMsg[AIC_MSG_MAX];
+extern UINT8 gAicMessage[AIC_MSG_MAX];
 extern UINT8 gAicRx[512];
-extern UINT8 gAicFwBuf[AIC_FW_CHUNK];
+extern UINT8 gAicFwBuffer[AIC_FW_CHUNK];
 extern AIC_FW_STAGE gAicStages[AIC_FW_STAGE_MAX];
 extern UINT32 gWifiFwState;
 extern volatile UINT32 gAicPatchReady;
 extern UINT32 gAicPatchState;
-extern UINT32 gWifiFwStageIdx;
+extern UINT32 gWifiFwStageIndex;
 extern UINT32 gWifiFwSent;
 extern AIC_PLAN_ITEM gAicPlan[AIC_PLAN_MAX];
-extern UINT32 gAicModeVal[9];
+extern UINT32 gAicModeValue[9];
 
 /* ---- 跨文件函数原型 ---- */
 UINT16 AicGet16(const UINT8 *At);
 const char *AicPatchTypeName(UINT32 Type);
-int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Len);
+int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Length);
 int AicFwCheckStage(AIC_FW_STAGE *Stage, UINT32 *OutSize);
-int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buf, UINT32 BufSize, UINT32 *OutLen);
+int AicFwLoadPatchTable(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 BufferSize, UINT32 *OutLength);
 int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size);
 int AicFwReadChunk(const char *Path, UINT32 Offset, UINT8 *Buffer, UINT32 Want, UINT32 *OutGot);
-int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddr);
+int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddress);
 int AicMemBlockWrite(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const UINT8 *Data);
 int AicMemRead(SDHCI_HOST *Host, UINT32 Address, UINT32 *Value);
 int AicMemWrite32(SDHCI_HOST *Host, UINT32 Address, UINT32 Value);
-int AicPatchApply(SDHCI_HOST *Host, const UINT8 *Table, UINT32 Len);
-int AicPatchBuildPlan(const UINT8 *Table, UINT32 Len, UINT32 *OutCount);
+int AicPatchApply(SDHCI_HOST *Host, const UINT8 *Table, UINT32 Length);
+int AicPatchBuildPlan(const UINT8 *Table, UINT32 Length, UINT32 *OutCount);
 int AicPatchDry(void);
 int AicPatchSelfCheck(void);
-int AicPatchTableParse(const UINT8 *Buf, UINT32 Len, AIC_PATCH_INFO *Info);
-int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLen);
-int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLen, UINT32 Tries, UINT32 TimeoutMs);
-int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLen);
-int AicSendMsgEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param, UINT16 ParamLen);
-int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLen);
+int AicPatchTableParse(const UINT8 *Buffer, UINT32 Length, AIC_PATCH_INFO *Info);
+int AicRecvMessage(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength);
+int AicRecvMessageTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs);
+int AicSendMessage(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLength);
+int AicSendMessageEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param, UINT16 ParamLength);
+int AicWaitMessagePending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLength);
 int AicWifiVendorPrepare(SDHCI_HOST *Host);
-void AicDumpBytes(const UINT8 *Data, UINT32 Len);
+void AicDumpBytes(const UINT8 *Data, UINT32 Length);
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What);
-void AicFwWaitBootMsg(SDHCI_HOST *Host);
+void AicFwWaitBootMessage(SDHCI_HOST *Host);
 void AicMarkR5(UINT32 R5);
 void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks);
 void AicPatchPrintPlan(UINT32 Count);

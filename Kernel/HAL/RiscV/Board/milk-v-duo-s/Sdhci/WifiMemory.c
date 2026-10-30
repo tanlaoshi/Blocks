@@ -13,21 +13,21 @@ static void AicMarkIoState(SDHCI_HOST *Host, const char *Tag) {
     UINT8 IoEx = 0;
     UINT8 IoRx = 0;
     UINT8 BmEn = 0;
-    UINT8 BmLen = 0;
+    UINT8 BmLength = 0;
     UINT8 Misc = 0;
-    UINT8 BlkL = 0;
-    UINT8 BlkH = 0;
+    UINT8 BlockL = 0;
+    UINT8 BlockH = 0;
 
     (void)SdhciIoRead8(Host, 0u, 0xF2u, &F2);
     (void)SdhciIoRead8(Host, 0u, 0x00u, &Cccr);
     (void)SdhciIoRead8(Host, 0u, 0x02u, &IoEx);
     (void)SdhciIoRead8(Host, 0u, 0x03u, &IoRx);
     (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, &BmEn);
-    (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLen);
+    (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength);
     (void)SdhciIoRead8(Host, 1u, AIC_MISC_INT_REG, &Misc);
     /* FBR 是 fn0 地址空间（0x100-0x1FF），必须 fn0 + 绝对地址，见下面 vendor init 的注释 */
-    (void)SdhciIoRead8(Host, 0u, AIC_FBR_BLKSIZE_L, &BlkL);
-    (void)SdhciIoRead8(Host, 0u, AIC_FBR_BLKSIZE_H, &BlkH);
+    (void)SdhciIoRead8(Host, 0u, AIC_FBR_BLKSIZE_L, &BlockL);
+    (void)SdhciIoRead8(Host, 0u, AIC_FBR_BLKSIZE_H, &BlockH);
 
     SdhciMark(Tag);
     SdhciMarkHex(" fn0.f2=", F2, 2);
@@ -37,9 +37,9 @@ static void AicMarkIoState(SDHCI_HOST *Host, const char *Tag) {
     SdhciMark("\n");
     SdhciMark("WiFi:  fn1.bme=");
     SdhciMarkHex("", BmEn, 2);
-    SdhciMarkHex(" blen=", BmLen, 2);
+    SdhciMarkHex(" blen=", BmLength, 2);
     SdhciMarkHex(" misc=", Misc, 2);
-    SdhciMarkHex(" fbrblk=", (UINT32)(BlkL | ((UINT32)BlkH << 8)), 4);
+    SdhciMarkHex(" fbrblk=", (UINT32)(BlockL | ((UINT32)BlockH << 8)), 4);
     SdhciMark("\n");
 }
 
@@ -65,13 +65,13 @@ void AicMarkR5(UINT32 R5) {
 }
 
 /* 写一个寄存器并读回：失败打全 cmd/arg/old/want/r5/pst/int/err */
-static int AicWriteReg(SDHCI_HOST *Host, UINT32 Fn, UINT32 Addr, UINT8 Value, const char *What) {
+static int AicWriteReg(SDHCI_HOST *Host, UINT32 Fn, UINT32 Address, UINT8 Value, const char *What) {
     UINT8 Before = 0;
     UINT8 After = 0;
 
-    (void)SdhciIoRead8(Host, Fn, Addr, &Before);
-    if (SdhciIoWrite8(Host, Fn, Addr, Value) == 0) {
-        (void)SdhciIoRead8(Host, Fn, Addr, &After);
+    (void)SdhciIoRead8(Host, Fn, Address, &Before);
+    if (SdhciIoWrite8(Host, Fn, Address, Value) == 0) {
+        (void)SdhciIoRead8(Host, Fn, Address, &After);
         SdhciMark("WiFi:  ");
         SdhciMark(What);
         SdhciMarkHex(" wrote=", Value, 2);
@@ -87,7 +87,7 @@ static int AicWriteReg(SDHCI_HOST *Host, UINT32 Fn, UINT32 Addr, UINT8 Value, co
     SdhciMark("WiFi:  ");
     SdhciMark(What);
     SdhciMark(" FAIL cmd=52");
-    SdhciMarkHex(" arg=", ((Fn & 7u) << 28) | ((Addr & 0x1FFFFu) << 9) | (UINT32)Value, 8);
+    SdhciMarkHex(" arg=", ((Fn & 7u) << 28) | ((Address & 0x1FFFFu) << 9) | (UINT32)Value, 8);
     SdhciMarkHex(" old=", Before, 2);
     SdhciMarkHex(" want=", Value, 2);
     AicMarkR5(Host->LastStatus);
@@ -173,26 +173,26 @@ void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 B
 int AicMemRead(SDHCI_HOST *Host, UINT32 Address, UINT32 *Value) {
     UINT8 Param[4];
     UINT8 Cfm[8];
-    UINT32 CfmLen = 0;
+    UINT32 CfmLength = 0;
     UINT32 k;
 
-    /* 评审 P1-1：Cfm 必须先清零。短 CFM 时 AicRecvMsg 会把长度 clamp 到 Len-12，
+    /* 评审 P1-1：Cfm 必须先清零。短 CFM 时 AicRecvMessage 会把长度 clamp 到 Length-12，
        以前会 return 0 并把栈残留当 memdata —— 直接影响 config_base/str_base/version。 */
     for (k = 0; k < sizeof(Cfm); k++) {
         Cfm[k] = 0;
     }
     AicPut16(&Param[0], (UINT16)(Address & 0xFFFFu));
     AicPut16(&Param[2], (UINT16)((Address >> 16) & 0xFFFFu));
-    if (AicSendMsg(Host, AIC_DBG_MEM_READ_REQ, Param, 4u) != 0) {
+    if (AicSendMessage(Host, AIC_DBG_MEM_READ_REQ, Param, 4u) != 0) {
         SdhciMark("WiFi: mem read send failed\n");
         return -1;
     }
-    if (AicRecvMsg(Host, AIC_DBG_MEM_READ_CFM, Cfm, 8u, &CfmLen) != 0) {
+    if (AicRecvMessage(Host, AIC_DBG_MEM_READ_CFM, Cfm, 8u, &CfmLength) != 0) {
         SdhciMark("WiFi: mem read cfm timeout\n");
         return -1;
     }
-    if (CfmLen != 8u) {
-        SdhciMarkHex("WiFi: mem read cfm short len=", CfmLen, 4);
+    if (CfmLength != 8u) {
+        SdhciMarkHex("WiFi: mem read cfm short len=", CfmLength, 4);
         SdhciMark("\n");
         return -1;
     }
@@ -221,12 +221,12 @@ int AicMemBlockWrite(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const UINT8 
         for (i = 0; i < Step; i++) {
             Param[8u + i] = Data[Done + i];
         }
-        if (AicSendMsg(Host, AIC_DBG_MEM_BLOCK_WRITE_REQ, Param, (UINT16)(8u + Step)) != 0) {
+        if (AicSendMessage(Host, AIC_DBG_MEM_BLOCK_WRITE_REQ, Param, (UINT16)(8u + Step)) != 0) {
             SdhciMarkHex("WiFi: blk write send fail addr=", Address + Done, 8);
             SdhciMark("\n");
             return -1;
         }
-        if (AicRecvMsg(Host, AIC_DBG_MEM_BLOCK_WRITE_CFM, Param, 8u, &i) != 0) {
+        if (AicRecvMessage(Host, AIC_DBG_MEM_BLOCK_WRITE_CFM, Param, 8u, &i) != 0) {
             SdhciMarkHex("WiFi: blk write cfm fail addr=", Address + Done, 8);
             SdhciMark("\n");
             return -1;
@@ -251,16 +251,16 @@ int AicMemBlockWrite(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const UINT8 
 int AicMemWrite32(SDHCI_HOST *Host, UINT32 Address, UINT32 Value) {
     UINT8 Param[8];
     UINT8 Cfm[8];
-    UINT32 CfmLen = 0;
+    UINT32 CfmLength = 0;
 
     AicPut16(&Param[0], (UINT16)(Address & 0xFFFFu));
     AicPut16(&Param[2], (UINT16)((Address >> 16) & 0xFFFFu));
     AicPut16(&Param[4], (UINT16)(Value & 0xFFFFu));
     AicPut16(&Param[6], (UINT16)((Value >> 16) & 0xFFFFu));
-    if (AicSendMsg(Host, AIC_DBG_MEM_WRITE_REQ, Param, 8u) != 0) {
+    if (AicSendMessage(Host, AIC_DBG_MEM_WRITE_REQ, Param, 8u) != 0) {
         return -1;
     }
-    if (AicRecvMsg(Host, AIC_DBG_MEM_WRITE_CFM, Cfm, 8u, &CfmLen) != 0) {
+    if (AicRecvMessage(Host, AIC_DBG_MEM_WRITE_CFM, Cfm, 8u, &CfmLength) != 0) {
         return -1;
     }
     /*
@@ -269,8 +269,8 @@ int AicMemWrite32(SDHCI_HOST *Host, UINT32 Address, UINT32 Value) {
      *   ② 块写失败退回字节模式重发，同一请求两条 CFM，同样错位。
      * 所以这里必须校验"回显长度 + 回显地址"，不匹配就是协议失步。
      */
-    if (CfmLen < 8u) {
-        SdhciMarkHex("WiFi: mem write cfm short len=", CfmLen, 4);
+    if (CfmLength < 8u) {
+        SdhciMarkHex("WiFi: mem write cfm short len=", CfmLength, 4);
         SdhciMark("\n");
         return -1;
     }

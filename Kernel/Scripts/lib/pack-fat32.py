@@ -271,6 +271,13 @@ class Fat32:
         return "".join(chars)
 
 
+# FAT32 规范要求簇数 >= 65525（否则应算 FAT16）。32MiB/512B 簇只有
+# ~64496 簇，mkfs.vfat -F 32 仍会产出 FAT32 BPB，但 OVMF 的 FAT 驱动
+# 拒绝挂载 → Boot 读不到 Kernel.elf 而落 UEFI Shell。
+# 64MiB（512B 簇约 129k 簇）稳过阈值。
+FAT32_MIN_BYTES = 64 * 1024 * 1024
+
+
 def pack(src, img):
     src = os.path.abspath(src)
     img = os.path.abspath(img)
@@ -281,7 +288,8 @@ def pack(src, img):
             if name.startswith(".") or name.endswith(".img"):
                 continue
             total += os.path.getsize(os.path.join(root, name))
-    size = max(32 * 1024 * 1024, ((total + 8 * 1024 * 1024 + 1024 * 1024 - 1) // (1024 * 1024)) * 1024 * 1024)
+    size = max(FAT32_MIN_BYTES,
+               ((total + 8 * 1024 * 1024 + 1024 * 1024 - 1) // (1024 * 1024)) * 1024 * 1024)
     with open(img, "wb") as f:
         f.truncate(size)
     subprocess.check_call(

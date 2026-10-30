@@ -4,7 +4,7 @@
 # 规格：Archive/待做/自动化功能测试.md §四。
 #
 # 沿用喂命令方式：拉起 run-split.sh --headless --smp=1，等 Blocks ready，
-# 逐条测文件系统动作，用 expect_out(buffer) 断言命令后到下一 blocks> 之间
+# 逐条测文件系统动作，用 expect_out(buffer) 断言命令后到下一 Blocks> 之间
 # 的输出含目标串。末尾 rm 清理测试文件（不断言）。
 #
 # 动作：write+cat 内容一致 / mkdir+ls 目录在 / rmdir 目录消失 / wrbig 大文件写完。
@@ -39,7 +39,7 @@ proc run_cmd {Cmd Need} {
     global CMD_TO
     send "$Cmd\r"
     expect {
-        -re "blocks>" {
+        -re "Blocks>" {
             if {[regexp -- $Need $expect_out(buffer)]} {
                 send_user "ok: $Cmd -> $Need\n"
             } else {
@@ -106,11 +106,11 @@ expect {
 set timeout $PROMPT_TO
 send "\r"
 expect {
-    -re "blocks>" {
+    -re "Blocks>" {
         send_user "ok: shell prompt\n"
     }
     timeout {
-        send_user "timeout waiting first blocks>\n"
+        send_user "timeout waiting first Blocks>\n"
         fail_dump
     }
 }
@@ -136,9 +136,9 @@ run_cmd "stat TSTDIR"                "not found"
 # ---- 清理测试文件（不断言）----
 set timeout $CMD_TO
 send "rm TST.TXT\r"
-expect { -re "blocks>" {} timeout { } }
+expect { -re "Blocks>" {} timeout { } }
 send "rm BIG.TXT\r"
-expect { -re "blocks>" {} timeout { } }
+expect { -re "Blocks>" {} timeout { } }
 
 # ---- 结束：halt 等 QEMU 退出；未退出则 kill，仍算 PASS ----
 send "halt\r"

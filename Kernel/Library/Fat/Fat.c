@@ -4,6 +4,7 @@
  */
 #include "Fat.h"
 #include "FatPrivate.h"
+#include "Block.h"
 
 /*
  * 选卷：同盘同 LBA 复用已有上下文；否则找空位新建。

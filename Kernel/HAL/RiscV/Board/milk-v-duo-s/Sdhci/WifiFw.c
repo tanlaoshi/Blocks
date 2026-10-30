@@ -22,7 +22,11 @@
 #include "FileSystem.h"
 
 /* ---- AIC 消息常量（aic_bsp_driver.h:144-215、aicsdio.h:35-64） ---- */
+#define AIC_TASK_MM 0u
 #define AIC_TASK_DBG 1u
+/* MM_VERSION_REQ = LMAC_FIRST_MSG(TASK_MM)+4，CFM 紧随其后（lmac_msg.h:136-150） */
+#define AIC_MM_VERSION_REQ 0x0004u
+#define AIC_MM_VERSION_CFM 0x0005u
 #define AIC_DRV_TASK_ID 100u
 #define AIC_MSGID(Task, Index) ((UINT16)(((UINT16)(Task) << 10) | (UINT16)(Index)))
 #define AIC_DBG_MEM_READ_REQ AIC_MSGID(AIC_TASK_DBG, 0u)
@@ -420,7 +424,11 @@ static int AicFifoWriteMsg(SDHCI_HOST *Host, UINT8 *Buf, UINT32 *InOutLen) {
     return 0;
 }
 
-static int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLen) {
+/* 固定 dest=TASK_DBG 的常用写法（先用后定义，这里先声明） */
+static int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLen);
+
+static int AicSendMsgEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param,
+                        UINT16 ParamLen) {
     UINT32 Body = 8u + (UINT32)ParamLen; /* lmac_msg 头 + 参数 */
     UINT32 Total = Body + 8u;            /* 再加 4 B 帧头 + 4 B dummy */
     UINT32 i;
@@ -437,7 +445,7 @@ static int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 Par
     gAicMsg[3] = AicCrc8(&gAicMsg[0], 3u);
     /* gAicMsg[4..7]：厂商的 dummy word，保持 0 */
     AicPut16(&gAicMsg[8], Id);
-    AicPut16(&gAicMsg[10], (UINT16)AIC_TASK_DBG);
+    AicPut16(&gAicMsg[10], DestId);
     AicPut16(&gAicMsg[12], (UINT16)AIC_DRV_TASK_ID);
     AicPut16(&gAicMsg[14], ParamLen);
     for (i = 0; i < (UINT32)ParamLen; i++) {
@@ -578,16 +586,16 @@ static void AicDumpBytes(const UINT8 *Data, UINT32 Len) {
  * aicsdio_txrxif.c:211-215），正文 ipc_e2a_msg 在 **+4**：
  *   +4 id / +6 dest / +8 src / +10 param_len / +12 参数
  */
-static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
-                      UINT32 *OutParamLen) {
-    UINT32 Tries;
+static int AicRecvMsgTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
+                             UINT32 *OutParamLen, UINT32 Tries, UINT32 TimeoutMs) {
     UINT32 Len = 0;
     UINT32 Fn = 0;
     UINT32 ParamLen;
     UINT32 i;
+    UINT32 T;
 
-    for (Tries = 0; Tries < 4u; Tries++) {
-        if (AicWaitMsgPending(Host, AIC_CFM_TIMEOUT_MS, &Fn, &Len) != 0) {
+    for (T = 0; T < Tries; T++) {
+        if (AicWaitMsgPending(Host, TimeoutMs, &Fn, &Len) != 0) {
             SdhciMark("WiFi: aic rx: no pending message (fn1 0x04)\n");
             return -1;
         }
@@ -659,6 +667,12 @@ static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxP
         return 0;
     }
     return -1;
+}
+
+/* 常用写法：4 次 × 500 ms = 2 s 预算 */
+static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
+                      UINT32 *OutParamLen) {
+    return AicRecvMsgTimeout(Host, WantId, Param, MaxParam, OutParamLen, 4u, AIC_CFM_TIMEOUT_MS);
 }
 
 /* DBG_MEM_READ_REQ：读一个 32 位字（顺带证明 fn2 消息通道通） */
@@ -1890,6 +1904,11 @@ static void AicFwWaitBootMsg(SDHCI_HOST *Host) {
     }
 }
 
+/* 固定 dest=TASK_DBG 的常用写法（DBG 系列消息） */
+static int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLen) {
+    return AicSendMsgEx(Host, Id, (UINT16)AIC_TASK_DBG, Param, ParamLen);
+}
+
 /*
  * 检查模式（评审 P0-3）：**纯读**。
  * 不写任何寄存器（不跑 vendor init）、不发任何消息（不读 chip rev），
@@ -2194,6 +2213,72 @@ int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) {
     SdhciMarkHex(" (MISMATCH, wrote ", Value, 8);
     SdhciMark(")\n");
     return -1;
+}
+
+/*
+ * `wififw ver`：发 MM_VERSION_REQ（id=0x0004, dest=TASK_MM=0, plen=0），等 MM_VERSION_CFM(0x0005)。
+ *
+ * 为什么它是"固件到底跑没跑"最干净的判据：
+ *   DBG 任务（mem read/write、start_app）**ROM 里就有**，所以 ROM 阶段也能应答；
+ *   MM 任务只有**下载进去的固件**才实现 —— 收到 version cfm 就证明 fmacfw 已经在跑。
+ *
+ * 只读：不发写消息、不改任何内存、不动 patch 状态。
+ */
+int SdhciWifiFwVersion(void) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT8 Cfm[64];
+    UINT32 CfmLen = 0;
+    UINT32 k;
+
+    if (Host == 0 || !SdhciWifiReady()) {
+        SdhciMark("WiFi: ver needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (AicWifiVendorPrepare(Host) != 0) {
+        SdhciMark("WiFi: ver: vendor prepare failed\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: msg tx id=", AIC_MM_VERSION_REQ, 4);
+    SdhciMarkHex(" dest=", AIC_TASK_MM, 4);
+    SdhciMarkHex(" src=", AIC_DRV_TASK_ID, 4);
+    SdhciMark(" plen=0\n");
+    if (AicSendMsgEx(Host, (UINT16)AIC_MM_VERSION_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
+        SdhciMark("WiFi: ver: msg send FAILED\n");
+        return -1;
+    }
+    /* 2 s 预算（4 × 500 ms），期间轮询 fn1 pending */
+    if (AicRecvMsgTimeout(Host, (UINT16)AIC_MM_VERSION_CFM, Cfm, sizeof(Cfm), &CfmLen, 4u,
+                          AIC_CFM_TIMEOUT_MS) != 0) {
+        SdhciMark("WiFi: ver: no cfm in 2000ms  (firmware may not be running)\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: rx cfm id=", AIC_MM_VERSION_CFM, 4);
+    SdhciMarkHex(" plen=", CfmLen, 4);
+    SdhciMark("\n");
+    AicDumpBytes(Cfm, CfmLen);
+    /* struct mm_version_cfm 前 4 个 u32（lmac_msg.h:711-730） */
+    SdhciMark("WiFi: ver");
+    for (k = 0; k + 4u <= CfmLen && k < 20u; k += 4u) {
+        UINT32 V = (UINT32)Cfm[k] | ((UINT32)Cfm[k + 1] << 8) | ((UINT32)Cfm[k + 2] << 16) |
+                   ((UINT32)Cfm[k + 3] << 24);
+        if (k == 0u) {
+            SdhciMarkHex(" lmac=", V, 8);
+        } else if (k == 4u) {
+            SdhciMarkHex(" machw1=", V, 8);
+        } else if (k == 8u) {
+            SdhciMarkHex(" machw2=", V, 8);
+        } else if (k == 12u) {
+            SdhciMarkHex(" phy1=", V, 8);
+        } else if (k == 16u) {
+            SdhciMarkHex(" phy2=", V, 8);
+        }
+    }
+    SdhciMark("\n");
+    if (CfmLen < 16u) {
+        SdhciMarkHex("WiFi: ver: cfm plen<16, only ", CfmLen, 4);
+        SdhciMark(" bytes available\n");
+    }
+    return 0;
 }
 
 int SdhciWifiFw(UINT32 Mode) {

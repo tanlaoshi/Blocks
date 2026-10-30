@@ -161,6 +161,8 @@ int SdhciWifiFw(UINT32 Mode);
 int SdhciWifiFwRead(UINT32 Address);
 /* 单字写诊断：写完立刻读回（同一命令内），回答"写通不通" */
 int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value);
+/* 发 MM_VERSION_REQ 看有没有 CFM：MM 任务只有下载进去的固件才实现 */
+int SdhciWifiFwVersion(void);
 /* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */
 int SdhciWifiFifoTest(void);
 #define SDHCI_WIFI_PROBE_WAKE 2u

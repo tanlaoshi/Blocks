@@ -336,6 +336,33 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 15:37 `wififw ver`：用 MM_VERSION_REQ 判断固件是否真的在跑
+
+真机 `write confirm` 5/5 阶段全绿（adid/patch/fmacfw 全部 sent==len，哨兵 6/6，patch 101/101，
+start_app CFM `bootstatus=0`），但 `boot poll: no msg in 2000ms`。厂商 `aicwifi_start_from_bootrom`
+发完 start 就 `return 0`、**并不等消息**，所以"没消息"既可能是正常也可能是没起来。
+
+判据：**DBG 任务在 ROM 里就有**（mem read/write、start_app 都是 DBG），
+**MM 任务只有下载进去的固件才实现**。所以发 `MM_VERSION_REQ` 收到 CFM = 固件在跑。
+
+实现 `wififw ver`（只读，不发写消息、不改内存）：
+
+* `AIC_MM_VERSION_REQ = 0x0004` / `AIC_MM_VERSION_CFM = 0x0005`
+  （`lmac_msg.h:136-150`：MM_RESET_REQ=0 起数，version 请求排第 5）；
+* `dest_id = TASK_MM = 0`、`src_id = DRV_TASK_ID = 100`、`plen = 0`；
+* `AicSendMsgEx()` 新增 dest 参数（原 `AicSendMsg` 固定 `TASK_DBG`，保留为包装）；
+* 2 s 预算（4 × 500 ms），超时打 `ver: no cfm in 2000ms (firmware may not be running)`；
+* 收到则按 plen 解析并打印 `lmac/machw1/machw2/phy1/phy2`（`struct mm_version_cfm`，`lmac_msg.h:711-730`）。
+
+**两处顺带核对**：
+
+1. **dest/src 与厂商一致**：`rwnx_msg_zalloc(id, TASK_DBG, DRV_TASK_ID, len)`（`aic_bsp_driver.c:365-366`）
+   → dest=`TASK_DBG`=1、src=`DRV_TASK_ID`=100；我们的 `AicSendMsg` 正是这两个值，
+   `ver` 用 dest=`TASK_MM`=0。`rwnx_set_cmd_tx` 的帧布局与我们逐字节相同（见 13:12 记录）。
+2. **`bootstatus=0` 是正常的**：厂商只做 `aicbsp_info.hwinfo_r = start_app_cfm.bootstatus & 0xFF`
+   （`aic_bsp_driver.c:1559`），**没有任何成功/失败判断**；`aic_bsp_main.c:234/240` 只判 `hwinfo_r < 0`
+   当作"不可用"，0 是合法值。所以 bootstatus=0 不代表失败，不能拿来当判据。
+
 ### 13:12 写通不通：加 `wififw wr <addr> <val>` 单字写 + 立刻读回
 
 **先纠正一个推论**：上一轮"adid 没写进去"不成立 —— 那次写在上一次上电，中间刷卡重启过，

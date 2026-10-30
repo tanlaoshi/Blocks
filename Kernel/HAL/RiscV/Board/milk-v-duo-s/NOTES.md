@@ -336,6 +336,51 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 10:51 评审 A 刀：清掉"假绿"和"说假话"
+
+按 `Archive/Duo-WiFi通道-代码Review.md` 的 P0-1…P0-3 + P1-1 + Y2 + W10 逐条改：
+
+| 项 | 原来 | 现在 |
+|---|---|---|
+| **P0-1** IORx | `read 失败 → break`，然后拿**上一轮 IOEx 残值**判 `bit1`，读失败也打 `fn1 enabled` | 读失败单独判红：`FAIL at IORx read r5=…` + `SdioFail("fn1 enable (IORx read)")`；IORx 用独立变量，绝不复用 IOEx 缓冲；`Cis` 进函数先清零 |
+| **P0-1** R5 | `LastStatus` 既存 INT_STATUS 又存 R5 | 新增 `LastR5`（`SdhciR5Check` 每次都写），R5 打印一律用 `LastR5` |
+| **P0-2** 结论 | CIS 失败也打 `enum ok (cis)`；`Ready` 什么都盖 | `sdio enum ok (cis)` / `sdio enum FAILED (no cis/manfid)` 二选一；`Ready` 只表示"总线枚举完"；结论分三档 `probe ok (cis+id)` / `(no identity)` / `(no cis, bus only)` |
+| **P0-3** 检查模式 | `wififw write`（无 confirm）仍跑 vendor init **写 5 个寄存器** + 发一条 mem read，却打 `NOTHING WRITTEN` | 纯读：只 stat 文件 + 用缓存里的身份结论，**不写任何寄存器、不发任何消息**；明说 `read-only (no register write, no msg)`，通道由 `wififw id` 单独证明 |
+| **P1-1** fifotest | 盲读 4 B、返回值恒 0 | 去掉盲读（`FIFO read skipped (poll fn1 0x04 instead, no blind read)`）、返回真实结果、结束强制 `SdioRecoverBus` + 打 `hctl=` |
+| **Y2** | `WifiFw.c` 30 处 `\\n` 打成字面 `\n`；`Wifi.c` 丢掉返回值 | 全量改回 `\n`；命令结束打 `wififw: ok` / `wififw: FAILED` |
+| **W10** | `wififw read` 只 stat | 改名 `wififw stat`（`read` 作旧名并提示），输出首行 `fw stat only (no content read)` |
+| **硬闸** | confirm 会真写 | `gAicPatchReady`（volatile，恒 0）挡住 confirm：`write refused: patch pipeline not implemented`；`start_app` 另有一道 `start_app refused: patch not applied` 前置检查 |
+
+桌面回归（假卡 + 真 Sdio.c/Io.c）：正常路径 **20/20**；新增 failmode 6（人为让 IORx 的 CMD52 返回
+`OUT_OF_RANGE`）**3/3** —— probe 必须失败、必须出现 `FAIL at IORx read`、必须**不**出现 `fn1 enabled`。
+
+### 10:29 S5b-2/S5b-3：分阶段下载 + 启动 + 防误触
+
+厂商顺序（`aic_bsp_main.c:23-33` 的 `fw_u02` 表 + `aic_bsp_driver.c:1417-1428` 上传 +
+`:1774-1790` 启动）：
+
+| 阶段 | 文件 | 落点 | 必需 |
+|---|---|---|---|
+| adid | `fw_adid.bin` | `0x00201940` | 是 |
+| patch | `fw_patch.bin`（30040 B） | `0x0020b43c` | 否（卡上没有就跳过） |
+| fmacfw | `fmacfw.bin`（331348 B） | `0x00120000` | 是 |
+| start | —（`DBG_START_APP_REQ` boottype=1） | — | 是 |
+
+**注意**：厂商**不**把 `fw_patch_table.bin` 原样上传，它是主机侧数据，由
+`aicbt_patch_table_alloc()` 解析、`aicwifi_patch_config_8800d80()` 把表项写进 RAM
+（`aic_bsp_driver.c:1517-1530`、`aic8800d80_compat.c:114+`）。这一步本版**未实现** ——
+若 adid/patch/fmacfw/start 全绿但固件没起来，下一个门就是它。
+
+安全与判据：
+
+* `wififw write` = **检查模式**（打阶段/文件/大小/落点，一个字节不写）；`wififw write confirm` 才真写；
+* **先算后写**：所有必填文件先 stat + 比对预期长度，任何一条不对就一步都不写；
+* 8 KB 分块读（`buf=8192`，复用同一缓冲，331 KB 不进内核堆），每 1 KB 一块
+  `dbg_mem_block_write` + CFM 确认，每块读回首字抽样校验；
+* 失败即停：`gWifiFwState=2`，打 `stage=<名> FAIL <啥> sent=` + `fw failed at stage N, sent=`；
+* 每步都有上限：单条消息 CFM 500 ms（4 次重试），启动后等首条消息 2000 ms；
+* 只走 RAM 下载，**不碰 flash/OTP**。
+
 ### 10:21 `status=01` 被误判成"没消息"：pending 判据三分支补齐
 
 真机 10:13：`tx fc=04`（发成功）之后 `rx poll timeout status=01 masked=0009`，然后

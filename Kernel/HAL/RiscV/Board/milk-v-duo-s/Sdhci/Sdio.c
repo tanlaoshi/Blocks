@@ -436,7 +436,7 @@ static int SdioDatReadCheck(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreH
  * `pst=03f20206`（DOING_READ + DAT_ACTIVE + DATA_INHIBIT）就是这个。
  * 所以这里只在"有消息"时才有意义；没有就是正常，收尾把总线拉回来即可。
  */
-static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
+static int SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     UINT32 i;
     UINT8 HostControl = SdhciRead8(Host, SDHCI_HOST_CONTROL);
     UINT32 RestoreHertz = Host->ActualClockHertz;
@@ -459,25 +459,21 @@ static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     if (SdioFifoTransfer(Host, 1, gSdioPattern, MultiBlock) != 0) {
         SdhciFail(Host, "WiFi: FIFO write 1536B fail");
         (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
-        return;
+        return -1;
     }
     SdhciMark("WiFi: FIFO write 1536B ok\n");
 
-    /* 读方向只探 4 B：有消息就是消息头，没有就超时退出 */
-    for (i = 0; i < 4u; i++) {
-        gSdioReadback[i] = 0;
-    }
-    if (SdhciIoRwExtended(Host, 1, AIC_RD_FIFO_ADDR_V3, 0, 0, 0, 4u, gSdioReadback) != 0) {
-        SdioMarkXfer(Host, "WiFi: FIFO read 4B");
-        SdhciMark("WiFi: FIFO read: no message pending (expect before fw download)\n");
-        (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
-        return;
-    }
-    SdhciMarkHex("WiFi: FIFO read 4B ok hdr=", gSdioReadback[0], 2);
-    SdhciMarkHex(" ", gSdioReadback[1], 2);
-    SdhciMarkHex(" ", gSdioReadback[2], 2);
-    SdhciMarkHex(" ", gSdioReadback[3], 2);
+    /*
+     * 评审 P1-1：这里**不再盲读 4 B**。芯片有没有消息只能由 fn1 0x04 的状态决定
+     * （aicsdio.c:1505-1545），盲读空 FIFO 会把 DAT 线挂住，污染后面的 wififw id。
+     * 自检只验"写得进去 + 总线还活着"，然后强制断电收尾。
+     */
+    SdhciMark("WiFi: FIFO read skipped (poll fn1 0x04 instead, no blind read)\n");
+    (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
+    SdhciMarkHex("WiFi: fifo self-test end, bus restored hctl=",
+                 SdhciRead8(Host, SDHCI_HOST_CONTROL), 2);
     SdhciMark("\n");
+    return 0;
 }
 
 /* 每条失败路径统一走这里：打一行原因 + 置失败态（避免"静默返回"查不到信息） */
@@ -685,9 +681,12 @@ int SdhciWifiFifoTest(void) {
         }
     }
     SdhciMark("WiFi: fifotest begin (explicit, not part of enum)\n");
-    SdioFifoTest(Host, (Caps & SDIO_CAP_SMB) ? 1 : 0);
-    SdhciMark("WiFi: fifotest end (state untouched)\n");
-    return 0;
+    {
+        int Rc = SdioFifoTest(Host, (Caps & SDIO_CAP_SMB) ? 1 : 0);
+        SdhciMark(Rc == 0 ? "WiFi: fifotest end ok (state untouched)\n"
+                          : "WiFi: fifotest end FAILED (state untouched)\n");
+        return Rc;
+    }
 }
 
 /* S5b 用：枚举是否成功 / 总线卡住时自救 / 身份是否 D80 */
@@ -718,7 +717,17 @@ int SdhciWifiInitialize(void) {
     UINT8 Speed;
     UINT8 Caps = 0;
     SDIO_CIS_INFO Cis;
+    int CisSeen = 0; /* Cis 是否真的被解析成功过（评审 P0-1：先初始化再判） */
     UINT32 Present;
+
+    /* 无条件先清零，避免任何"没解析就用残值"的路径（评审 P0-1） */
+    {
+        UINT8 *Raw = (UINT8 *)&Cis;
+        UINT32 k;
+        for (k = 0; k < (UINT32)sizeof(Cis); k++) {
+            Raw[k] = 0;
+        }
+    }
 
     /* 无条件第一行：证明本函数被调到、以及跑的是哪一次构建 */
     SdhciMark("WiFi: probe start build=" __DATE__ " " __TIME__ "\n");
@@ -994,23 +1003,38 @@ int SdhciWifiInitialize(void) {
         SdhciMark("\n");
         return SdioFail("fn1 enable (IOEx)");
     }
-    /* Linux func->enable_timeout 默认 500 ms（sdio_io.c:59-100） */
-    for (i = 0; i < 500u; i++) {
-        if (SdhciIoRead8(Host, 0, SDIO_CCCR_IORX, &Data) != 0) {
-            break;
+    /*
+     * Linux func->enable_timeout 默认 500 ms（sdio_io.c:59-100）。
+     * 评审 P0-1：这里以前 `read 失败 → break`，然后拿**上一轮 IOEx 的残值**继续判
+     * `bit1 != 0`，于是读失败也会打出 `fn1 enabled` —— 假绿。现在读失败单独判红，
+     * 且用独立变量接 IORx，绝不与 IOEx 复用同一个缓冲。
+     */
+    {
+        UINT8 IoRx = 0;
+        int ReadErr = 0;
+        for (i = 0; i < 500u; i++) {
+            if (SdhciIoRead8(Host, 0, SDIO_CCCR_IORX, &IoRx) != 0) {
+                ReadErr = 1;
+                break;
+            }
+            if ((IoRx & 0x02u) != 0) {
+                break;
+            }
+            SdhciDelayMilliseconds(1);
         }
-        if ((Data & 0x02u) != 0) {
-            break;
+        if (ReadErr != 0) {
+            SdhciMarkHex("WiFi:   FAIL at IORx read r5=", Host->LastR5, 8);
+            SdhciMark("\n");
+            return SdioFail("fn1 enable (IORx read)");
         }
-        SdhciDelayMilliseconds(1);
+        if ((IoRx & 0x02u) == 0) {
+            SdhciMarkHex("WiFi:   IORx=", IoRx, 2);
+            SdhciMarkHex(" waited=", i, 4);
+            SdhciMark(" ms\n");
+            return SdioFail("fn1 enable timeout (IORx)");
+        }
+        SdhciMark("WiFi: fn1 enabled\n");
     }
-    if ((Data & 0x02u) == 0) {
-        SdhciMarkHex("WiFi:   IORx=", Data, 2);
-        SdhciMarkHex(" waited=", i, 4);
-        SdhciMark(" ms\n");
-        return SdioFail("fn1 enable timeout (IORx)");
-    }
-    SdhciMark("WiFi: fn1 enabled\n");
 
     /* S3 的验收行：总线（时钟/宽度）+ fn1 都就绪之后才打 */
     SdhciMark((Speed & SDIO_SPEED_EHS) ? "WiFi: SD1 init ok clock=50MHz width=4bit\n"
@@ -1101,6 +1125,7 @@ int SdhciWifiInitialize(void) {
             SdhciMark((Cis.Vendor == 0xC8A1u) ? " (aic8800)\n" : " (unexpected, continue)\n");
             gWifiChipVendor = Cis.Vendor;
             gWifiChipDevice = Cis.Device;
+            CisSeen = 1;
             SdioMarkCis(0, CommonPtr, &Cis);
         } else {
             SdhciMark("WiFi: no MANFID tuple, continue without module id\n");
@@ -1138,7 +1163,9 @@ int SdhciWifiInitialize(void) {
      * 更要紧的是：协议还没开始就往发送 FIFO 推 1536 B 垃圾，可能污染 S5 的第一条消息。
      * 所以默认路径**不跑**，只留一句"跳过"，要跑得人工 `wififw fifotest`。
      */
-    SdhciMark("WiFi: sdio enum ok (cis)\n");
+    /* 评审 P0-2：CIS 没过就**不许**打 enum ok；Ready/身份各自独立 */
+    SdhciMark(CisSeen != 0 ? "WiFi: sdio enum ok (cis)\n"
+                           : "WiFi: sdio enum FAILED (no cis/manfid)\n");
     SdhciMark("WiFi: sdio fifo self-test skipped (run 'wififw fifotest')\n");
 
     /* fn1 0x04 杂项中断状态：本轮不轮询，只打一次，供 S4 对照 */
@@ -1147,8 +1174,20 @@ int SdhciWifiInitialize(void) {
         SdhciMark("\n");
     }
     Host->CardType = SDHCI_CARD_SDIO;
-    Host->Ready = 1;
+    Host->Ready = 1; /* Ready 只表示"总线枚举完了"，与身份无关 */
     gWifiSdioState = 1;
-    SdhciMark("WiFi: probe end ok\n");
+    /*
+     * 评审 P0-2：结论行分三档，身份真的参与验收 ——
+     *   cis+id 都有 → probe ok
+     *   只有 cis     → probe ok (no identity)（可用，但 wififw 会拒绝写）
+     *   cis 都没有   → probe ok (no cis, bus only)
+     */
+    if (CisSeen != 0 && SdhciWifiChipIsD80() != 0) {
+        SdhciMark("WiFi: probe ok (cis+id)\n");
+    } else if (CisSeen != 0) {
+        SdhciMark("WiFi: probe ok (no identity)\n");
+    } else {
+        SdhciMark("WiFi: probe ok (no cis, bus only)\n");
+    }
     return 0;
 }

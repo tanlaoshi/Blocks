@@ -197,9 +197,14 @@ static void CommandWifiProbeOnly(int Argc, char **Argv) {
 #if defined(__riscv)
 /*
  * wififw：S5b 固件阶段。参数：
- *   wififw          只读：从卡上读 adid/patch_table 并打字节数（不动芯片）
- *   wififw id       只读：读芯片版本 0x40500000，顺带证明 fn2 消息通道
- *   wififw write    写 adid + patch_table，每段写完读回校验
+ *   wififw stat     只读：只 stat 三个固件文件并打字节数（**不读内容、不碰芯片**）
+ *   wififw read     旧名，等同 stat，会多打一行提示
+ *   wififw id       只读：读芯片版本 0x40500000，顺带证明消息通道
+ *   wififw write            **检查模式**：打印将要写的阶段/文件/大小/落点，一个字节都不写
+ *   wififw write confirm    **真写**：adid → patch(可选) → fmacfw → start_app → 等首条消息
+ *   wififw fifotest  只读：显式 FIFO 回环自检（不参与枚举判定）
+ *
+ * 真写是不可逆操作，所以拆成"检查 / confirm"两段，防手滑。
  */
 static void CommandWifiFw(int Argc, char **Argv) {
     UINT32 Mode = 1u; /* SDHCI_WIFI_FW_READ */
@@ -208,10 +213,21 @@ static void CommandWifiFw(int Argc, char **Argv) {
         gConsole.Write("wifi: this board has no SDIO firmware stage\n");
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "read")) {
+        gConsole.Write("wififw: 'read' renamed to 'stat' (it only stats, never reads)\n");
+    }
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "id")) {
         Mode = 2u; /* SDHCI_WIFI_FW_ID */
     } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "write")) {
+        /*
+         * 不可逆操作，必须防误触：
+         *   wififw write            → 检查模式，只打印"将要写什么"，一个字节都不写
+         *   wififw write confirm    → 真写
+         */
         Mode = 4u; /* SDHCI_WIFI_FW_WRITE */
+        if (Argc >= 3 && ArgEqualIgnoreCase(Argv[2], "confirm")) {
+            Mode |= 8u; /* SDHCI_WIFI_FW_CONFIRM */
+        }
     } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "fifotest")) {
         /* 显式 FIFO 回环自检：只做人工诊断，不参与枚举判定 */
         extern int SdhciWifiFifoTest(void) __attribute__((weak));
@@ -227,14 +243,20 @@ static void CommandWifiFw(int Argc, char **Argv) {
             SdhciWifiMarkSink(0);
         }
         return;
-    } else if (Argc >= 2 && !ArgEqualIgnoreCase(Argv[1], "read")) {
-        gConsole.Write("wififw [read|id|write|fifotest]\n");
+    } else if (Argc >= 2 && !ArgEqualIgnoreCase(Argv[1], "read") &&
+               !ArgEqualIgnoreCase(Argv[1], "stat")) {
+        gConsole.Write("wififw [stat|id|write [confirm]|fifotest]\n");
         return;
     }
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(ShellProbeMark);
     }
-    (void)SdhciWifiFw(Mode);
+    {
+        /* 评审 Y2：返回值不许丢，成败必须落到串口上 */
+        int Rc = SdhciWifiFw(Mode);
+
+        gConsole.Write(Rc == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+    }
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(0);
     }
@@ -249,7 +271,8 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [read|id|write|fifotest]", CommandWifiFw);
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|write [confirm]|fifotest]",
+                      CommandWifiFw);
 #endif
 }
 

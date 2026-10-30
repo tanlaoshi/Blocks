@@ -25,6 +25,7 @@
 static int SdhciR5Check(SDHCI_HOST *Host) {
     UINT32 R5 = Host->Response[0];
 
+    Host->LastR5 = R5;
     if ((R5 & SDIO_R5_ERROR_MASK) == 0) {
         return 0;
     }

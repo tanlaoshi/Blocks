@@ -27,6 +27,8 @@
 #define AIC_DBG_MEM_READ_CFM AIC_MSGID(AIC_TASK_DBG, 1u)
 #define AIC_DBG_MEM_BLOCK_WRITE_REQ AIC_MSGID(AIC_TASK_DBG, 11u)
 #define AIC_DBG_MEM_BLOCK_WRITE_CFM AIC_MSGID(AIC_TASK_DBG, 12u)
+#define AIC_DBG_START_APP_REQ AIC_MSGID(AIC_TASK_DBG, 13u)  /* 0x40D */
+#define AIC_DBG_START_APP_CFM AIC_MSGID(AIC_TASK_DBG, 14u)  /* 0x40E */
 
 #define AIC_TYPE_CFG_CMD_RSP 0x11u
 #define AIC_TYPE_CFG_DATA_CFM 0x12u
@@ -65,11 +67,21 @@
 
 #define AIC_FW_DIR "/Assets/Fw/aic8800/"
 #define AIC_FW_ADID AIC_FW_DIR "fw_adid.bin"
+#define AIC_FW_PATCH AIC_FW_DIR "fw_patch.bin"
 #define AIC_FW_PATCH_TABLE AIC_FW_DIR "fw_patch_table.bin"
+#define AIC_FW_FMAC AIC_FW_DIR "fmacfw.bin"
+
+/* 下载落点（aic_bsp_driver.h:345、358-359） */
+#define AIC_RAM_FMAC_FW_ADDR 0x00120000u
+#define AIC_START_APP_AUTO 1u /* aic_bsp_driver.h:246 */
+
+/* 分块大小：**不一次性把 331 KB 读进内核堆**，按 8 KB 复用同一缓冲 */
+#define AIC_FW_CHUNK 8192u
+#define AIC_FW_STAGE_MAX 4u
 
 static UINT8 gAicMsg[AIC_MSG_MAX];
 static UINT8 gAicRx[512];
-static UINT8 gAicFwBuf[AIC_BLK_WRITE * 4u];
+static UINT8 gAicFwBuf[AIC_FW_CHUNK];
 
 /* crc8，多项式 X8+X2+X+1（0x107），初值 0 —— 照抄 aicsdio.c:2004-2027 */
 static UINT8 AicCrc8(const UINT8 *Buffer, UINT32 Size) {
@@ -655,91 +667,383 @@ static int AicMemBlockWrite(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const
     return 0;
 }
 
-/* 写完读回校验：每 1 KB 块校验首尾两个字（全量读太慢，够抓地址/长度错误） */
-static int AicVerifyBlock(SDHCI_HOST *Host, UINT32 Address, UINT32 Size, const UINT8 *Data) {
-    UINT32 Off = 0;
-    UINT32 Word;
-    UINT32 Want;
+/* ---------- S5b-2 / S5b-3：固件下载 ---------- */
 
-    while (Off < Size) {
-        Want = (UINT32)Data[Off] | ((UINT32)Data[Off + 1] << 8) | ((UINT32)Data[Off + 2] << 16) |
-               ((UINT32)Data[Off + 3] << 24);
-        if (AicMemRead(Host, Address + Off, &Word) != 0) {
-            SdhciMarkHex("WiFi: verify read fail at +", Off, 4);
-            SdhciMark("\n");
-            return -1;
-        }
-        if (Word != Want) {
-            SdhciMarkHex("WiFi: verify mismatch at +", Off, 4);
-            SdhciMarkHex(" got=", Word, 8);
-            SdhciMarkHex(" want=", Want, 8);
-            SdhciMark("\n");
-            return -1;
-        }
-        Off += AIC_BLK_WRITE;
+/*
+ * 阶段表（顺序照 aic8800_bsp/aic_bsp_main.c:23-33 的 fw_u02 表 +
+ * aic_bsp_driver.c:1417-1428 的上传顺序 + :1774-1790 的启动顺序）：
+ *
+ *   adid    → FW_RAM_ADID_BASE_ADDR_8800D80_U02
+ *   patch   → FW_RAM_PATCH_BASE_ADDR_8800D80_U02   （bt_patch = fw_patch.bin）
+ *   fmacfw  → RAM_FMAC_FW_ADDR = 0x00120000
+ *   start   → DBG_START_APP_REQ{bootaddr, boottype=1}
+ *
+ * 注意：厂商**不**把 fw_patch_table.bin 原样上传 —— 它是主机侧数据，由
+ * `aicbt_patch_table_alloc()` 解析、再由 `aicwifi_patch_config_8800d80()`
+ * 把表项写进 RAM（aic_bsp_driver.c:1517-1530、aic8800d80_compat.c:114+）。
+ * 那一步本版**未实现**，写盘/启动都成功但固件起不来的话，下一个门就是它。
+ */
+typedef struct {
+    const char *Name;
+    const char *Path;
+    UINT32 Addr;
+    UINT32 ExpectSize;
+    int Required;
+} AIC_FW_STAGE;
+
+static AIC_FW_STAGE gAicStages[AIC_FW_STAGE_MAX] = {
+    {"adid", AIC_FW_ADID, AIC_D80_U02_ADID_ADDR, 1708u, 1},
+    {"patch", AIC_FW_PATCH, AIC_D80_U02_PATCH_ADDR, 30040u, 0},
+    {"fmacfw", AIC_FW_FMAC, AIC_RAM_FMAC_FW_ADDR, 331348u, 1},
+    {"start", 0, AIC_RAM_FMAC_FW_ADDR, 0u, 1},
+};
+
+/* 失败态：0=未跑 1=全部成功 2=失败（失败时 gWifiFwStageIdx 指向停在哪一阶段） */
+static UINT32 gWifiFwState;
+/*
+ * patch 管线是否已实现并应用（patch_table 的 INF/TRAP/PWRON/PATCH_TAF 46 条写 +
+ * patch_config_8800d80 的四个运行时读）。**管线落地前恒为 0**，confirm 一律拒绝。
+ * volatile：故意让编译器不能把它折成常量，两条分支都必须留在二进制里可审查。
+ */
+static volatile UINT32 gAicPatchReady;
+/* 本次运行是否真的把 patch 应用过（start_app 的前置条件） */
+static UINT32 gAicPatchApplied;
+static UINT32 gWifiFwStageIdx;
+static UINT32 gWifiFwSent;
+
+static void AicFwFail(const char *Stage, UINT32 Sent, const char *What) {
+    gWifiFwState = 2u;
+    SdhciMark("WiFi: stage=");
+    SdhciMark(Stage);
+    SdhciMark(" FAIL ");
+    SdhciMark(What);
+    SdhciMarkHex(" sent=", Sent, 8);
+    SdhciMark("\n");
+}
+
+/*
+ * 先算后写：每个文件先 stat、比对预期长度，任何不一致立刻停，
+ * 绝不允许"写到一半才发现文件不对"。
+ */
+static int AicFwCheckStage(AIC_FW_STAGE *Stage, UINT32 *OutSize) {
+    FAT_FILE_STAT Stat;
+
+    *OutSize = 0;
+    if (Stage->Path == 0) {
+        return 0; /* start 阶段没有文件 */
     }
+    if (FileSystemFileStat(Stage->Path, &Stat) != FAT_OK) {
+        if (Stage->Required != 0) {
+            SdhciMark("WiFi:  ");
+            SdhciMark(Stage->Name);
+            SdhciMark(" missing ");
+            SdhciMark(Stage->Path);
+            SdhciMark("\n");
+            return -1;
+        }
+        return 1; /* 可选阶段缺失：跳过 */
+    }
+    if (Stage->ExpectSize != 0u && Stat.Size != Stage->ExpectSize) {
+        SdhciMark("WiFi:  ");
+        SdhciMark(Stage->Name);
+        SdhciMarkDecimal(" size mismatch have=", Stat.Size);
+        SdhciMarkDecimal(" want=", Stage->ExpectSize);
+        SdhciMark("\n");
+        return -1;
+    }
+    if (Stat.Size == 0u) {
+        SdhciMark("WiFi:  ");
+        SdhciMark(Stage->Name);
+        SdhciMark(" empty file\n");
+        return -1;
+    }
+    *OutSize = Stat.Size;
     return 0;
 }
 
-/* A 方案：从卡上分块读固件（FileSystemReadFileAt，不嵌内核） */
-static int AicFwReadFile(const char *Path, UINT8 *Buffer, UINT32 MaxSize, UINT32 *OutSize) {
-    FAT_FILE_STAT Stat;
-    UINT32 Done = 0;
+/* 把一段（≤8 KB）从卡上读进复用缓冲 */
+static int AicFwReadChunk(const char *Path, UINT32 Offset, UINT8 *Buffer, UINT32 Want,
+                          UINT32 *OutGot) {
     UINTN Got = 0;
     int Err;
 
-    if (FileSystemFileStat(Path, &Stat) != FAT_OK) {
-        SdhciMark("WiFi: fw missing ");
-        SdhciMark(Path);
+    Err = FileSystemReadFileAt(Path, Offset, Buffer, Want, &Got);
+    if (Err != FAT_OK) {
+        SdhciMarkHex("WiFi: fw read err at +", Offset, 8);
+        SdhciMarkDecimal(" err=", (UINT32)Err);
         SdhciMark("\n");
         return -1;
     }
-    if (Stat.Size == 0u || Stat.Size > MaxSize) {
-        SdhciMarkDecimal("WiFi: fw size out of range ", Stat.Size);
-        SdhciMark(" ");
-        SdhciMark(Path);
+    if (Got == 0u) {
+        SdhciMarkHex("WiFi: fw read short at +", Offset, 8);
         SdhciMark("\n");
         return -1;
     }
-    while (Done < Stat.Size) {
-        Err = FileSystemReadFileAt(Path, Done, Buffer + Done, Stat.Size - Done, &Got);
-        if (Err != FAT_OK || Got == 0u) {
-            SdhciMarkHex("WiFi: fw read fail at +", Done, 4);
-            SdhciMark(" ");
-            SdhciMark(Path);
-            SdhciMark("\n");
-            return -1;
-        }
-        Done += (UINT32)Got;
-    }
-    if (Done != Stat.Size) {
-        SdhciMarkHex("WiFi: fw size mismatch read=", Done, 4);
-        SdhciMarkHex(" stat=", Stat.Size, 4);
-        SdhciMark("\n");
-        return -1;
-    }
-    SdhciMark("WiFi: fw read ");
-    SdhciMark(Path);
-    SdhciMarkDecimal(" ", Done);
-    SdhciMark("B ok\n");
-    *OutSize = Done;
+    *OutGot = (UINT32)Got;
     return 0;
 }
 
 /*
- * 两个小文件一次读进同一块缓冲：adid 放开头，patch_table 放 2 KB 偏移处
- * （U02 的 adid 1708 B、patch_table 1048 B，加起来不到 3 KB）。
- * 主固件 fmacfw（331 KB）不在这里读，S5b-3 用 4 KB 分块边读边送。
+ * 一个阶段的落盘：8 KB 分块读 → 每 1 KB 一块 dbg_mem_block_write（带 CFM 确认）
+ * → 每块读回首字做抽样校验。块数、进度、失败点全打出来。
  */
-static int WifiFwLoadBoth(UINT32 *AdidSize, UINT32 *PatchSize) {
-    if (AicFwReadFile(AIC_FW_ADID, gAicFwBuf, AIC_BLK_WRITE * 2u, AdidSize) != 0) {
-        return -1;
+static int AicFwPushStage(SDHCI_HOST *Host, AIC_FW_STAGE *Stage, UINT32 Size) {
+    UINT32 Off = 0;
+    UINT32 Got = 0;
+    UINT32 InChunk;
+    UINT32 BlkIdx = 0;
+    UINT32 TotalBlk = (Size + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
+    UINT32 Word;
+    UINT32 Want;
+
+    SdhciMark("WiFi: stage=");
+    SdhciMark(Stage->Name);
+    SdhciMarkHex(" len=", Size, 4);
+    SdhciMarkHex(" addr=", Stage->Addr, 8);
+    SdhciMarkHex(" blocks=", TotalBlk, 4);
+    SdhciMark("\n");
+    while (Off < Size) {
+        InChunk = Size - Off;
+        if (InChunk > AIC_FW_CHUNK) {
+            InChunk = AIC_FW_CHUNK;
+        }
+        if (AicFwReadChunk(Stage->Path, Off, gAicFwBuf, InChunk, &Got) != 0) {
+            AicFwFail(Stage->Name, gWifiFwSent, "read");
+            return -1;
+        }
+        if (AicMemBlockWrite(Host, Stage->Addr + Off, Got, gAicFwBuf) != 0) {
+            AicFwFail(Stage->Name, gWifiFwSent, "write");
+            return -1;
+        }
+        /* 抽样校验：这块的首字读回来对一下（每 8 KB 一次，够抓地址/长度错） */
+        Want = (UINT32)gAicFwBuf[0] | ((UINT32)gAicFwBuf[1] << 8) |
+               ((UINT32)gAicFwBuf[2] << 16) | ((UINT32)gAicFwBuf[3] << 24);
+        if (AicMemRead(Host, Stage->Addr + Off, &Word) != 0) {
+            AicFwFail(Stage->Name, gWifiFwSent, "verify-read");
+            return -1;
+        }
+        if (Word != Want) {
+            SdhciMarkHex("WiFi: verify got=", Word, 8);
+            SdhciMarkHex(" want=", Want, 8);
+            SdhciMark("\n");
+            AicFwFail(Stage->Name, gWifiFwSent, "verify-mismatch");
+            return -1;
+        }
+        Off += Got;
+        gWifiFwSent = Off;
+        BlkIdx = (Off + AIC_BLK_WRITE - 1u) / AIC_BLK_WRITE;
+        if ((BlkIdx % 32u) == 0u || Off == Size) {
+            SdhciMark("WiFi: stage=");
+            SdhciMark(Stage->Name);
+            SdhciMarkHex(" blk=", BlkIdx, 4);
+            SdhciMarkHex("/", TotalBlk, 4);
+            SdhciMark(" ok\n");
+        }
     }
-    return AicFwReadFile(AIC_FW_PATCH_TABLE, gAicFwBuf + AIC_BLK_WRITE * 2u,
-                         AIC_BLK_WRITE * 2u, PatchSize);
+    SdhciMark("WiFi: stage=");
+    SdhciMark(Stage->Name);
+    SdhciMarkDecimal(" len=", Size);
+    SdhciMarkDecimal(" sent=", gWifiFwSent);
+    SdhciMark(" ok\n");
+    return 0;
 }
 
-/* 只读：读芯片版本（0x40500000），同时证明 fn2 消息通道可用 */
+/* DBG_START_APP_REQ：让固件从 RAM 起跑（aic_bsp_driver.c:1936-1946） */
+static int AicFwStartApp(SDHCI_HOST *Host, UINT32 BootAddr) {
+    UINT8 Param[8];
+    UINT8 Cfm[8];
+    UINT32 CfmLen = 0;
+
+    /*
+     * 评审 W4：start_app 之前必须确认 patch 已应用，否则就是"固件写进去但起不来"。
+     * patch 管线（patch_table 的 46 条写 + patch_config_8800d80）未实现，这里恒为 0。
+     */
+    if (gAicPatchApplied == 0) {
+        SdhciMark("WiFi: start_app refused: patch not applied (review W4)\n");
+        AicFwFail("start", 0u, "patch-not-applied");
+        return -1;
+    }
+
+    AicPut16(&Param[0], (UINT16)(BootAddr & 0xFFFFu));
+    AicPut16(&Param[2], (UINT16)((BootAddr >> 16) & 0xFFFFu));
+    AicPut16(&Param[4], (UINT16)AIC_START_APP_AUTO);
+    AicPut16(&Param[6], 0u);
+    if (AicSendMsg(Host, AIC_DBG_START_APP_REQ, Param, 8u) != 0) {
+        AicFwFail("start", 0u, "send");
+        return -1;
+    }
+    if (AicRecvMsg(Host, AIC_DBG_START_APP_CFM, Cfm, 8u, &CfmLen) != 0) {
+        AicFwFail("start", 0u, "cfm-timeout");
+        return -1;
+    }
+    /* dbg_start_app_cfm { u32 bootstatus; } */
+    SdhciMark("WiFi: stage=start");
+    SdhciMarkHex(" bootaddr=", BootAddr, 8);
+    SdhciMarkHex(" bootstatus=", (UINT32)(Cfm[0] | (Cfm[1] << 8) | (Cfm[2] << 16) | (Cfm[3] << 24)),
+                 8);
+    SdhciMark("\n");
+    return 0;
+}
+
+/* 起跑后等第一条消息：只读、有上限，看不到也不算失败（可能只走 fn2/中断） */
+static void AicFwWaitBootMsg(SDHCI_HOST *Host) {
+    UINT32 Fn = 0;
+    UINT32 Len = 0;
+
+    if (AicWaitMsgPending(Host, 2000u, &Fn, &Len) != 0) {
+        SdhciMark("WiFi: boot poll: no msg in 2000ms\n");
+        return;
+    }
+    SdhciMarkHex("WiFi: boot poll fn=", Fn, 2);
+    SdhciMarkHex(" len=", Len, 4);
+    SdhciMark("\n");
+    if (Len > 0u && Len <= 512u) {
+        if (AicFifoRead(Host, Fn, gAicRx, Len) == 0) {
+            SdhciMarkHex("WiFi: boot msg type=", (UINT32)(gAicRx[2] & 0x7Fu), 2);
+            SdhciMarkHex(" id=", AicGet16(&gAicRx[4]), 4);
+            SdhciMark("\n");
+            AicDumpBytes(gAicRx, Len);
+        }
+    }
+}
+
+/*
+ * 检查模式（评审 P0-3）：**纯读**。
+ * 不写任何寄存器（不跑 vendor init）、不发任何消息（不读 chip rev），
+ * 只 stat 文件 + 读缓存里的身份结论，把"将要写什么"打全。
+ * 通道是否可用由 `wififw id` 单独证明，本命令不再替它"顺手探一下"。
+ */
+static int WifiFwCheck(SDHCI_HOST *Host) {
+    UINT32 i;
+    UINT32 Size = 0;
+    int Rc;
+
+    (void)Host;
+    SdhciMarkDecimal("WiFi: fw check: buf=", AIC_FW_CHUNK);
+    SdhciMark(" blk=1024 dir=" AIC_FW_DIR "\n");
+    SdhciMark("WiFi: fw check: read-only (no register write, no msg)\n");
+    SdhciMark("WiFi: fw check: id=");
+    SdhciMark(SdhciWifiChipIsD80() != 0 ? "aic8800d80 (c8a1:0082)\n"
+                                        : "unknown (wififw write will refuse)\n");
+    for (i = 0; i < AIC_FW_STAGE_MAX; i++) {
+        AIC_FW_STAGE *Stage = &gAicStages[i];
+        SdhciMarkDecimal("WiFi:  stage ", i + 1u);
+        SdhciMark("/");
+        SdhciMarkDecimal("", AIC_FW_STAGE_MAX);
+        SdhciMark(" ");
+        SdhciMark(Stage->Name);
+        if (Stage->Path == 0) {
+            SdhciMarkHex(" bootaddr=", Stage->Addr, 8);
+            SdhciMark(" (msg DBG_START_APP_REQ)\n");
+            continue;
+        }
+        SdhciMark(" file=");
+        SdhciMark(Stage->Path);
+        Rc = AicFwCheckStage(Stage, &Size);
+        if (Rc == 1) {
+            SdhciMark(" (optional, missing -> skip)\n");
+            continue;
+        }
+        if (Rc != 0) {
+            SdhciMark(" (WOULD FAIL)\n");
+            return -1;
+        }
+        SdhciMarkDecimal(" size=", Size);
+        SdhciMarkHex(" -> ", Stage->Addr, 8);
+        SdhciMark(Stage->Required != 0 ? " (required)\n" : " (optional)\n");
+    }
+    SdhciMark("WiFi: fw check done, NOTHING WRITTEN (no reg write, no msg)\n");
+    SdhciMark("WiFi: fw check: channel not probed here, run 'wififw id' for that\n");
+    return 0;
+}
+
+/* 真写：检查 → 逐阶段写 → 启动 → 等首条消息，任一步失败即停 */
+static int WifiFwWrite(SDHCI_HOST *Host) {
+    UINT32 i;
+    UINT32 Size = 0;
+    int Rc;
+
+    gWifiFwState = 0u;
+    gWifiFwStageIdx = 0u;
+    gWifiFwSent = 0u;
+    SdhciMarkDecimal("WiFi: fw write CONFIRM buf=", AIC_FW_CHUNK);
+    SdhciMark("\n");
+
+    /* 先算后写：所有必填文件先过一遍尺寸，任何一条不对就一步都不写 */
+    for (i = 0; i < AIC_FW_STAGE_MAX; i++) {
+        Rc = AicFwCheckStage(&gAicStages[i], &Size);
+        if (Rc < 0) {
+            gWifiFwState = 2u;
+            gWifiFwStageIdx = i;
+            SdhciMark("WiFi: fw precheck failed, nothing written\n");
+            return -1;
+        }
+    }
+    for (i = 0; i < AIC_FW_STAGE_MAX; i++) {
+        AIC_FW_STAGE *Stage = &gAicStages[i];
+        gWifiFwStageIdx = i;
+        gWifiFwSent = 0u;
+        Rc = AicFwCheckStage(Stage, &Size);
+        if (Rc == 1) {
+            SdhciMark("WiFi: stage=");
+            SdhciMark(Stage->Name);
+            SdhciMark(" skipped (optional, no file)\n");
+            continue;
+        }
+        if (Rc != 0) {
+            return -1;
+        }
+        if (Stage->Path == 0) {
+            if (AicFwStartApp(Host, Stage->Addr) != 0) {
+                return -1;
+            }
+            AicFwWaitBootMsg(Host);
+            continue;
+        }
+        if (AicFwPushStage(Host, Stage, Size) != 0) {
+            return -1;
+        }
+    }
+    gWifiFwState = 1u;
+    SdhciMark("WiFi: fw state=done (all stages ok)\n");
+    return 0;
+}
+
+/*
+ * 评审 W10：这个命令以前叫 `read` 却只做 stat，名不副实。
+ * 现在叫 `stat`，并且输出里明说"仅 stat、不读内容"；
+ * 真的按字节读 + 比对留给 `write` 的分块读路径（那里每个 chunk 都有抽样校验）。
+ */
+static int WifiFwStatCheck(void) {
+    FAT_FILE_STAT Stat;
+    int Missing = 0;
+
+    SdhciMark("WiFi: fw stat only (no content read)\n");
+    if (FileSystemFileStat(AIC_FW_ADID, &Stat) == FAT_OK) {
+        SdhciMarkDecimal("WiFi:  fw_adid.bin ", Stat.Size);
+        SdhciMark("B ok\n");
+    } else {
+        SdhciMark("WiFi:  fw_adid.bin MISSING\n");
+        Missing = 1;
+    }
+    if (FileSystemFileStat(AIC_FW_PATCH_TABLE, &Stat) == FAT_OK) {
+        SdhciMarkDecimal("WiFi:  fw_patch_table.bin ", Stat.Size);
+        SdhciMark("B ok\n");
+    } else {
+        SdhciMark("WiFi:  fw_patch_table.bin MISSING\n");
+        Missing = 1;
+    }
+    if (FileSystemFileStat(AIC_FW_FMAC, &Stat) == FAT_OK) {
+        SdhciMarkDecimal("WiFi:  fmacfw.bin ", Stat.Size);
+        SdhciMark("B ok\n");
+    } else {
+        SdhciMark("WiFi:  fmacfw.bin MISSING (write confirm needs it)\n");
+        Missing = 1;
+    }
+    return (Missing != 0) ? -1 : 0;
+}
+
+/* 只读：读芯片版本（0x40500000），同时证明消息通道可用 */
 static int WifiFwChipRev(void) {
     SDHCI_HOST *Host = SdhciHostAt(1);
     UINT32 Value = 0;
@@ -766,18 +1070,14 @@ static int WifiFwChipRev(void) {
 
 int SdhciWifiFw(UINT32 Mode) {
     SDHCI_HOST *Host = SdhciHostAt(1);
-    UINT32 AdidSize = 0;
-    UINT32 PatchSize = 0;
+    int WantWrite = (Mode & (SDHCI_WIFI_FW_WRITE | SDHCI_WIFI_FW_CONFIRM)) != 0u;
 
     SdhciMark("WiFi: fw stage start\n");
 
-    if ((Mode & SDHCI_WIFI_FW_READ) != 0u) {
-        if (WifiFwLoadBoth(&AdidSize, &PatchSize) != 0) {
+    if ((Mode & SDHCI_WIFI_FW_STAT) != 0u) {
+        if (WifiFwStatCheck() != 0) {
             return -1;
         }
-        SdhciMarkDecimal("WiFi: fw sizes adid=", AdidSize);
-        SdhciMarkDecimal(" patch_table=", PatchSize);
-        SdhciMark("\n");
     }
 
     if ((Mode & SDHCI_WIFI_FW_ID) != 0u) {
@@ -786,7 +1086,7 @@ int SdhciWifiFw(UINT32 Mode) {
         }
     }
 
-    if ((Mode & SDHCI_WIFI_FW_WRITE) != 0u) {
+    if (WantWrite != 0) {
         if (Host == 0 || !SdhciWifiReady()) {
             SdhciMark("WiFi: fw needs a probed card (run wifiprobe first)\n");
             return -1;
@@ -796,29 +1096,37 @@ int SdhciWifiFw(UINT32 Mode) {
             SdhciMark("WiFi: chip is not aic8800d80, refuse to write firmware\n");
             return -1;
         }
-        /* 写之前先证明消息通道通（读一次版本号），不通就不写 */
-        if (WifiFwChipRev() != 0) {
-            SdhciMark("WiFi: no msg channel, refuse to write firmware\n");
+        if ((Mode & SDHCI_WIFI_FW_CONFIRM) == 0u) {
+            /* 检查模式：纯读，不写寄存器、不发消息（评审 P0-3） */
+            if (WifiFwCheck(Host) != 0) {
+                return -1;
+            }
+            SdhciMark("WiFi: fw stage end (checked only)\n");
+            return 0;
+        }
+        /*
+         * ---- 硬闸（评审 W3/W4 + 用户指令）----
+         * patch 管线（patch_table 的 INF/TRAP/PWRON/PATCH_TAF 写 + patch_config_8800d80）
+         * 还没实现，此时写 adid/fmacfw 再 start_app 一定是"看起来绿、芯片起不来"。
+         * 在管线落地之前，confirm 一律拒绝，绝不允许打出 done。
+         */
+        if (gAicPatchReady == 0u) {
+            SdhciMark("WiFi: write refused: patch pipeline not implemented\n");
+            SdhciMark("WiFi: need: addr_patch from patch_table + 46 writes + patch_config\n");
+            SdhciMark("WiFi: see Archive/Duo-WiFi-Review.md W3/W4\n");
+            SdhciMark("WiFi: nothing written, nothing started\n");
+            gWifiFwState = 2u;
+            SdhciMark("WiFi: fw stage end (refused)\n");
             return -1;
         }
-        if (WifiFwLoadBoth(&AdidSize, &PatchSize) != 0) {
+        if (WifiFwWrite(Host) != 0) {
+            SdhciMarkDecimal("WiFi: fw failed at stage ", gWifiFwStageIdx + 1u);
+            SdhciMark(", sent=");
+            SdhciMarkDecimal("", gWifiFwSent);
+            SdhciMark(" of current stage\n");
+            SdhciMark("WiFi: fw stage end (failed)\n");
             return -1;
         }
-        /* adid：先写后校验 */
-        if (AicMemBlockWrite(Host, AIC_D80_U02_ADID_ADDR, AdidSize, gAicFwBuf) != 0 ||
-            AicVerifyBlock(Host, AIC_D80_U02_ADID_ADDR, AdidSize, gAicFwBuf) != 0) {
-            SdhciMark("WiFi: adid FAIL\n");
-            return -1;
-        }
-        SdhciMark("WiFi: adid ok\n");
-        if (AicMemBlockWrite(Host, AIC_D80_U02_PATCH_ADDR, PatchSize,
-                             gAicFwBuf + AIC_BLK_WRITE * 2u) != 0 ||
-            AicVerifyBlock(Host, AIC_D80_U02_PATCH_ADDR, PatchSize,
-                           gAicFwBuf + AIC_BLK_WRITE * 2u) != 0) {
-            SdhciMark("WiFi: patch_table FAIL\n");
-            return -1;
-        }
-        SdhciMark("WiFi: patch_table ok\n");
     }
 
     SdhciMark("WiFi: fw stage end\n");

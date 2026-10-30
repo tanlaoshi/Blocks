@@ -38,6 +38,7 @@ typedef struct SDHCI_HOST {
     UINT32 CardType;           /* SDHCI_CARD_* */
     UINT32 Response[4];
     UINT32 LastStatus;         /* 出错时的 INT_STATUS */
+    UINT32 LastR5;             /* 最近一次 CMD52/53 的 R5 响应字（与 INT_STATUS 分开存） */
     UINT32 LastPresentState;   /* 出错时的 PRESENT_STATE */
     int HighCapacity;          /* SD：SDHC/SDXC */
     int NonRemovable;          /* 1 = 无 CD 脚（wifi-sd） */
@@ -144,9 +145,13 @@ int SdhciWifiInitialize(void);
  * 返回 0 = SDIO 枚举走通，-1 = 失败（失败原因已打在日志里）。
  */
 #define SDHCI_WIFI_PROBE_FORCE 1u
-#define SDHCI_WIFI_FW_READ 1u
+/* 只 stat 文件、不读内容（评审 W10：原名 read 名不副实，改 stat） */
+#define SDHCI_WIFI_FW_STAT 1u
+#define SDHCI_WIFI_FW_READ SDHCI_WIFI_FW_STAT /* 旧名保留，等同 stat */
 #define SDHCI_WIFI_FW_ID 2u
 #define SDHCI_WIFI_FW_WRITE 4u
+/* 与 WRITE 同时置位才真写；只给 WRITE 时是"检查模式"，一个字节都不写 */
+#define SDHCI_WIFI_FW_CONFIRM 8u
 /* S5b：固件阶段（WifiFw.c）。Mode 取上面的位或；只读的 READ/ID 可单独跑 */
 int SdhciWifiFw(UINT32 Mode);
 /* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */

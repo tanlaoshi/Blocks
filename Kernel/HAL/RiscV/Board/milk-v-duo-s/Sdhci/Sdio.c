@@ -1177,6 +1177,14 @@ int SdhciWifiInitialize(void) {
     Host->Ready = 1; /* Ready 只表示"总线枚举完了"，与身份无关 */
     gWifiSdioState = 1;
     /*
+     * 评审 P1-4：probe 成功说明"芯片重新握过手"，之前那次 patch 的结论不再可信
+     * （可能掉过电、可能被 reset）。清掉三态，允许重新走 write confirm。
+     */
+    {
+        extern void SdhciWifiPatchStateReset(void);
+        SdhciWifiPatchStateReset();
+    }
+    /*
      * 评审 P0-2：结论行分三档，身份真的参与验收 ——
      *   cis+id 都有 → probe ok
      *   只有 cis     → probe ok (no identity)（可用，但 wififw 会拒绝写）

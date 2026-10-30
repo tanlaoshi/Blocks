@@ -28,7 +28,6 @@ extern int SdhciWifiFifoTest(void) __attribute__((weak));
 #define WIFI_FW_WRITE 4u
 #define WIFI_FW_CONFIRM 8u
 #define WIFI_FW_PATCH_DRY 16u
-#define WIFI_FW_PATCH_APPLY 32u
 #endif
 
 static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
@@ -264,15 +263,18 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
     } else if (ArgEqualIgnoreCase(Argv[1], "patch")) {
         if (Argc < 3) {
-            gConsole.Write("wififw patch [dry|apply]\n");
+            gConsole.Write("wififw patch dry\n");
             return;
         }
         if (ArgEqualIgnoreCase(Argv[2], "dry")) {
             Mode = WIFI_FW_PATCH_DRY;
         } else if (ArgEqualIgnoreCase(Argv[2], "apply")) {
-            Mode = WIFI_FW_PATCH_APPLY;
+            /* 评审 P0-1：独立 apply 会绕过"固件已驻留"前置，已删除 */
+            gConsole.Write("wififw patch apply: removed (it could write with no firmware in RAM)\n");
+            gConsole.Write("use 'wififw write confirm' -- patch table is now stage 4/5\n");
+            return;
         } else {
-            gConsole.Write("wififw patch [dry|apply]\n");
+            gConsole.Write("wififw patch dry\n");
             return;
         }
     } else if (ArgEqualIgnoreCase(Argv[1], "fifotest")) {
@@ -290,7 +292,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         return;
     } else {
-        gConsole.Write("wififw [stat|id|write [confirm]|fifotest|patch [dry|apply]]\n");
+        gConsole.Write("wififw [stat|id|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -305,7 +307,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|write [confirm]|fifotest|patch]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

@@ -336,6 +336,34 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 11:52 B2 审查整改（P0-1/2/3 + P1-1/2/3/4/5/6/7）
+
+按 `Archive/Duo-WiFi-patch-B2-独立审查.md` §7 的顺序改完，**`gAicPatchReady` 仍为 0**。
+
+* **P0-3 解析加固**：`EntryLen > (Len-Off-24)/8` 先除后乘（挡 `EntryLen=0x20000000` 的
+  乘法回绕）；循环 `while (Off < Len)`，尾部 <24 B 直接失败；结束要求 `Off == Len`；
+  tag 比 13 B（含 NUL）；`AicPatchTableParse` 不再"读完 INF 就 return"，整表走完才收尾。
+* **P0-2 短读**：`AicFwPushStage` 每块校验 `Got == InChunk`；`wififw write confirm` 的
+  patchtbl 阶段要求 `TableLen == Stat.Size`；`AicPatchBuildPlan` 增加条数自检——
+  按类型小计必须等于 u02 画像 `inf4/trap19/tb4 45/mode9/pwron3/taf20/ver8`、MODE 恰好 1 条、
+  总项 101，否则 `patch plan INCOMPLETE`。
+* **P1-2 cfg 读提前**：`AicPatchCfgReads()` 作为纯读 preflight 排在 100 条写之前，
+  失败即 `0 writes done` 退出；`AicPatchCfgWrites()` 单独做 10 条写。
+* **P1-3 窗口**：`str_base/config_base/patch_buff_base` 必须 4 对齐且落在
+  `[0x00010000,0x00210000)`；`ver>06090100 && patch_buff_base==0` 直接失败（不再静默回落 0x16F800）。
+* **P1-1 CFM 回显**：写要求 `CfmLen>=8 && Cfm[0..3]==addr`（回显不符 = 协议失步）；
+  读的 `Cfm` 先清零并强制 `CfmLen==8`（短 CFM 不再把栈残留当 `config_base`）。
+* **P1-6 哨兵**：6 条读回（`40500150==1`、`001E7294==001E0000`、`20F600==F0223201`、
+  `201FC8==5`、adid 首字==文件首字、fmacfw 首字==文件首字），全绿才 `state=DONE`。
+* **P1-4 三态**：`NONE/DONE/POISONED`；失败置 POISONED（要求重新 probe）；
+  probe 成功调 `SdhciWifiPatchStateReset()` 清零；删掉调用方那次重复置位。
+* **P0-1 入口收敛**：**删除独立 `wififw patch apply`**（shell 只打迁移提示），
+  patch 表落地变成 `write confirm` 的第 4 阶段：adid→patch→fmacfw→patchtbl→start（5 阶段）。
+
+坏输入证伪（`/tmp/wfw/t.c`，直接把真实 `WifiFw.c` 包进来跑它的 static 解析器）：**22/22 通过** ——
+`len=0x20000000` → `entry overruns`；尾部 5 B → `trailing`；tag 第 13 字节改坏 → `tag 13B`；
+截断 768 B / 0x2D8 → `INCOMPLETE`；假 FAT 只回 768/1048 → `fw table read failed`。
+
 ### 11:30 真机 bug（二）：MODE 9 条整体错位（字下标当 pair 下标）
 
 真机 dry 后用户逐条对表，发现 MODE 9 条全错。根因：厂商 `aic_bsp_driver.c:1481-1493` 的

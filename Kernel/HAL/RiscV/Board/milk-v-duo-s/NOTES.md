@@ -336,6 +336,51 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 10:21 `status=01` 被误判成"没消息"：pending 判据三分支补齐
+
+真机 10:13：`tx fc=04`（发成功）之后 `rx poll timeout status=01 masked=0009`，然后
+`mem read cfm timeout`。芯片其实**早回了**，是判据只认 `>120` 把它判掉了。
+
+厂商 D80 分支（`aicsdio.c:1505-1545`）是**三分支**，不是两分支：
+
+| `masked = status|0x08` | 通道 | 长度 |
+|---|---|---|
+| `> 120` | **fn2**（msg） | `==127` 字节模式 `blen*4`；否则 `(status & 0x07)*512` |
+| 其余（`!=0`） | **fn1**（data） | `==0x78` 字节模式 `blen*4`；否则 `(status & 0x7F)*512` |
+| `== 0` | 无 | 继续轮询 |
+
+`status=01` → `masked=9` → **fn1 块模式 1 块 = 512 B**。旧实现只写 `if (Masked > 120)`
+就 return -1，把这一整支漏了。
+
+现在：三个分支都实现，打 `WiFi: rx masked=09 status=01 fn=01 len=0200 mode=block`；
+按算出的 len 从对应 fn 的 `0x0F` 读回，解析 `hdr[2]&0x7f`（0x11/0x12）、`id@+4`、`plen@+10`、
+参数@+12，并打**前 32 字节 hexdump**（`WiFi: rx dump …`）供与厂商 `0x400` 请求逐字节比对。
+`len>512` 只读首块并明示。
+
+### 10:12 发送前流控 + 消息补齐 512（"写得进但芯片不回"的根因）
+
+三条都来自厂商 `aic8800_fdrv/aicwf_sdio.c`：
+
+1. **流控 credit（:101-139 `aicwf_sdio_flow_ctrl_msg`）**：发之前读 V3 的
+   `FLOW_CTRL_Q1` = fn1 **`0x03`**，拿到可用 buffer 数；为 0 就按厂商节奏重试
+   （<30 轮 200 µs、<40 轮 2 ms、其后 10 ms，共 `FLOW_CTRL_RETRY_COUNT`=50 轮）。
+   没有 credit 就发 = 芯片 FIFO 没准备好，写进去也白写。
+2. **长度补齐（:1230-1237）**：先 4 B 对齐，再补 `TAIL_LEN`=4 个 0 并**向上取整到 512**；
+   整块时不补。厂商门槛是 `len < fc * BUFFER_SIZE`（`BUFFER_SIZE`=1536）。
+3. **块模式发送（:1240-1262 → `aicwf_sdio_send_pkt` → `sdio_writesb`）**：补齐后整块写。
+   我们走显式块模式 CMD53（Blocks = 补齐长度/512），块写被拒时按同长度退回字节模式，
+   两次参数都打出来。
+
+接收侧：超时不再只打 timeout，要打 `status= masked= pend= ctrl= blen= ioex=`
+（`status|0x08 > 120` 那套判据不变）。
+
+判读：`tx fc=` 是**芯片给的发送 credit**。`fc=0`（且重试 50 轮仍 0）= 芯片 ROM 没在监听，
+不是发送格式问题，回头查 `fn0 0xF2` 之后的时序（含那段 `#if 0` 的 pad 序列）；
+`fc>=1` 才说明消息通道活着，再看 `aic rx` 有没有回帧。
+
+补充：`sdio_writesb` 对**恰好 512 B** 走的是字节模式（`sdio_io.c:326` 要求 `size > 512`），
+所以块模式被拒时按同长度退回字节模式是对齐厂商行为的，不是退让。
+
 ### 10:07 `fbr110 OUT_OF_RANGE`：FBR 在 fn0 地址空间，不在 fn1
 
 真机：`fbr110 FAIL cmd=52 arg=10022000 ... r5=00001100 OUT_OF_RANGE`。

@@ -36,10 +36,17 @@
 #define AIC_RD_FIFO_REG 0x0Fu  /* V3：fn2 读 FIFO */
 #define AIC_WR_FIFO_REG 0x10u  /* V3：fn1 写 FIFO */
 #define AIC_MISC_INT_REG 0x04u /* V3：fn1 MISC_INT_STATUS */
+#define AIC_INTR_PENDING_REG 0x01u /* V3：fn1 INTR_PENDING */
+#define AIC_MISC_CTRL_REG 0x08u    /* V3：fn1 MISC_CTRL */
+#define AIC_FLOW_CTRL_Q2_REG 0x09u /* V3：fn1 FLOW_CTRL_Q2 */
 
 /* 帧长上限：16 B 头 + 参数；FIFO 一块 512 B，写时分块 */
 #define AIC_MSG_MAX 1600u
 #define AIC_FIFO_CHUNK 512u
+/* 厂商 aicwf_sdio.h:28/51-53：流控队列、tx 缓冲、尾补齐 */
+#define AIC_FLOW_CTRL_REG_V3 0x03u
+#define AIC_TX_BUFFER_SIZE 1536u
+#define AIC_FC_RETRY_COUNT 50u
 #define AIC_BLK_WRITE 1024u /* 厂商一块 1 KB */
 #define AIC_CFM_TIMEOUT_MS 500u
 #define AIC_CFM_POLL_MS 1u
@@ -260,102 +267,108 @@ static void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, U
 }
 
 /*
- * 往 FIFO 写一条消息。厂商用的是 sdio_writesb → 小于 512 B 走**字节模式**
- * （linux/mmc/core/sdio_io.c:352-360），所以首选字节模式。
- * 字节模式一失败就立刻改用**块模式**（补 0 到 512 的整数倍）再试一次，
- * 并把两次的参数都打出来 —— 这样"门没开"（两种都失败）和"写法不对"
- * （字节失败、块成功）一眼可分。
+ * 发消息前的流控（厂商 aicwf_sdio_flow_ctrl_msg，aicwf_sdio.c:101-139）：
+ * 读 fn1 0x03（V3 的 FLOW_CTRL_Q1）拿到可用 buffer 数，为 0 就按厂商节奏重试
+ * （<30 次 200 µs、<40 次 2 ms、其后 10 ms，共 50 轮），仍为 0 才失败。
+ * 没有 credit 就发送 = 芯片 FIFO 没准备好，写进去也是白写。
  */
+static int AicFlowCtrl(SDHCI_HOST *Host, UINT32 *OutFc) {
+    UINT32 Count = 0;
+    UINT8 Fc = 0;
+
+    for (;;) {
+        if (SdhciIoRead8(Host, 1u, AIC_FLOW_CTRL_REG_V3, &Fc) != 0) {
+            /* 读失败与"读到 0"必须分开：一个是 CMD52 不通，一个是芯片没给 credit */
+            AicMarkR5(Host->LastStatus);
+            SdhciMark("WiFi: tx fc read failed (cmd52 fn1 0x03)\n");
+            return -1;
+        }
+        if (Fc != 0u) {
+            *OutFc = Fc;
+            return 0;
+        }
+        if (Count >= AIC_FC_RETRY_COUNT) {
+            *OutFc = 0;
+            return -1;
+        }
+        Count++;
+        if (Count < 30u) {
+            SdhciDelayMicroseconds(200);
+        } else if (Count < 40u) {
+            SdhciDelayMilliseconds(2);
+        } else {
+            SdhciDelayMilliseconds(10);
+        }
+    }
+}
+
 /*
- * P2：**任何**走字节模式 CMD53 的路径，用之前都得确认 fn1 0x07 的允许位，
- * 不能只指望 vendor init 里那一次。返回 0 = 位已置（或刚置上），-1 = 置不上。
+ * 一条消息的线上长度必须补齐到 512 的整数倍（厂商 aicwf_sdio.c:1230-1237）：
+ * 先按 4 B 对齐，再补 TAIL_LEN(4) 个 0 并向上取整到 512 —— 不足一个块时整块补零。
+ * 补齐后用**块模式**写（不掺字节模式），块数 = 补齐长度 / 512。
  */
-static int AicEnsureByteMode(SDHCI_HOST *Host) {
-    UINT8 Bm = 0;
-
-    if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, &Bm) != 0) {
-        return -1;
-    }
-    if ((Bm & 0x01u) != 0u) {
-        return 0;
-    }
-    if (SdhciIoWrite8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u) != 0) {
-        SdhciMark("WiFi: byte-mode enable bit write failed\n");
-        return -1;
-    }
-    (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, &Bm);
-    SdhciMarkHex("WiFi: byte-mode bit was 0, set -> ", Bm, 2);
-    SdhciMark("\n");
-    return ((Bm & 0x01u) != 0u) ? 0 : -1;
-}
-
-static int AicFifoWrite(SDHCI_HOST *Host, const UINT8 *Data, UINT32 Len) {
-    UINT32 Done = 0;
-    UINT32 Step;
-    UINT32 Pad;
+static int AicFifoWriteMsg(SDHCI_HOST *Host, UINT8 *Buf, UINT32 *InOutLen) {
+    UINT32 Len = *InOutLen;
+    UINT32 Padded;
+    UINT32 Blocks;
+    UINT32 Fc = 0;
     UINT32 i;
-    UINT8 Caps = 0;
 
-    if (AicEnsureByteMode(Host) != 0) {
-        SdhciMark("WiFi: msg fifo write: byte mode not available\n");
-        /* 退回块模式前先看卡支不支持多块（CCCR 0x08 bit1 SMB） */
-        if (SdhciIoRead8(Host, 0u, 0x08u, &Caps) == 0 && (Caps & 0x02u) == 0u) {
-            SdhciMark("WiFi: card reports SMB=0 (no multi-block): cannot use block mode\n");
-            return -1;
+    /* 4 B 对齐 */
+    if ((Len % 4u) != 0u) {
+        UINT32 Aligned = (Len + 3u) & ~3u;
+        for (i = Len; i < Aligned; i++) {
+            Buf[i] = 0;
         }
+        Len = Aligned;
     }
-    while (Done < Len) {
-        Step = Len - Done;
-        if (Step > AIC_FIFO_CHUNK) {
-            Step = AIC_FIFO_CHUNK;
-        }
-        if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 0, Step,
-                             (UINT8 *)(Data + Done)) == 0) {
-            Done += Step;
-            continue;
-        }
-        /* 字节模式失败 */
-        AicMarkXferParams(Host, "WiFi: msg fifo byte-mode FAIL", Len - Done, 0u);
+    /* 先算补齐长度并检查上限，再落笔填 0 —— 免得算出来超界了还在写缓冲 */
+    if ((Len % AIC_FIFO_CHUNK) != 0u) {
+        Padded = ((Len + 4u) / AIC_FIFO_CHUNK + 1u) * AIC_FIFO_CHUNK;
+    } else {
+        Padded = Len;
+    }
+    if (Padded > AIC_MSG_MAX) {
+        SdhciMark("WiFi: tx msg too long for buffer\n");
+        return -1;
+    }
+    for (i = Len; i < Padded; i++) {
+        Buf[i] = 0;
+    }
+    Blocks = Padded / AIC_FIFO_CHUNK;
+
+    if (AicFlowCtrl(Host, &Fc) != 0) {
+        SdhciMark("WiFi: tx msg fc retry fail: fc=");
+        SdhciMarkHex("", Fc, 2);
+        SdhciMarkHex(" len=", Padded, 4);
+        SdhciMark("\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: tx fc=", Fc, 2);
+    SdhciMarkHex(" padded=", Padded, 4);
+    SdhciMarkHex(" blocks=", Blocks, 2);
+    SdhciMark("\n");
+    /* 厂商的判据：len < fc * 1536 才发 */
+    if (Padded >= Fc * AIC_TX_BUFFER_SIZE) {
+        SdhciMarkHex("WiFi: tx msg fc retry fail: fc=", Fc, 2);
+        SdhciMarkHex(" len=", Padded, 4);
+        SdhciMark("\n");
+        return -1;
+    }
+    if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, (UINT16)Blocks, AIC_FIFO_CHUNK, Buf) !=
+        0) {
+        AicMarkXferParams(Host, "WiFi: tx block write FAIL", Padded, Blocks);
         (void)SdhciWifiBusRecover(Host);
-        if (Len > AIC_FIFO_CHUNK) {
-            SdhciMark("WiFi: msg too long for block retry\n");
-            return -1;
-        }
-        /* 块模式重试：补 0 到 1 块 */
-        for (i = Len; i < AIC_FIFO_CHUNK; i++) {
-            gAicMsg[i] = 0;
-        }
-        Pad = AIC_FIFO_CHUNK;
-        if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 1, AIC_FIFO_CHUNK, gAicMsg) != 0) {
-            AicMarkXferParams(Host, "WiFi: msg fifo block-mode FAIL", Pad, 1u);
-            (void)SdhciWifiBusRecover(Host);
-            SdhciMark("WiFi: both byte and block write failed (gate, not format)\n");
-            return -1;
-        }
-        AicMarkXferParams(Host, "WiFi: msg fifo block-mode OK  ", Pad, 1u);
-        return 0;
-    }
-    return 0;
-}
-
-/* 从 fn2 读：先 4 B 帧头，再按长度分块读正文 */
-static int AicFifoRead(SDHCI_HOST *Host, UINT8 *Out, UINT32 Len) {
-    UINT32 Done = 0;
-    UINT32 Step;
-
-    while (Done < Len) {
-        Step = Len - Done;
-        if (Step > AIC_FIFO_CHUNK) {
-            Step = AIC_FIFO_CHUNK;
-        }
-        if (SdhciIoRwExtended(Host, 2u, AIC_RD_FIFO_REG, 0, 0, 0, Step, Out + Done) != 0) {
-            SdhciMarkHex("WiFi: aic fifo read fail at ", Done, 4);
-            SdhciMark("\n");
+        /* 卡若 SMB=0 就不吃多块；按同样长度退回字节模式再试一次，
+           两次参数都打出来 —— "块失败/字节成功"说明是模式问题而不是门没开 */
+        if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 0, (UINT16)Padded, Buf) != 0) {
+            AicMarkXferParams(Host, "WiFi: tx byte write FAIL", Padded, 0u);
             (void)SdhciWifiBusRecover(Host);
             return -1;
         }
-        Done += Step;
+        AicMarkXferParams(Host, "WiFi: tx byte write OK (block refused)", Padded, 0u);
     }
+    *InOutLen = Padded;
     return 0;
 }
 
@@ -382,22 +395,54 @@ static int AicSendMsg(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 Par
     for (i = 0; i < (UINT32)ParamLen; i++) {
         gAicMsg[16u + i] = ((const UINT8 *)Param)[i];
     }
-    return AicFifoWrite(Host, gAicMsg, Total);
+    {
+        UINT32 Wire = Total;
+        if (AicFifoWriteMsg(Host, gAicMsg, &Wire) != 0) {
+            SdhciMarkHex("WiFi: aic fifo write fail at ", Total, 4);
+            SdhciMark("\n");
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /*
- * 芯片有没有消息 —— 照 aicwf_sdio_hal_irqhandler 的 D80 分支（aicsdio.c:1505-1545）：
- *   intmaskf2 = (fn1 0x04) | 0x08；
- *   intmaskf2 > 120          → 这是 fn2（消息）的事件
- *   intmaskf2 == 127         → 字节模式，长度 = fn1 0x05 × 4
- *   否则                     → 块模式，长度 = (status & 0x07) × 512
- * 注意 bit7 不是"有消息"的标志（0x77 就没有 bit7），照厂商这么算才对。
+ * 从 fn2 0x0F 收一条消息（厂商消息通道走 func_msg = fn2，aicsdio.c:1530-1545）。
+ * 字节模式读取同样要求 fn1 0x07 的允许位已置，所以读之前确认一次。
  */
-static int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutLen) {
+static int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Len) {
+    UINT8 Bm = 0;
+
+    if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, &Bm) == 0 && (Bm & 0x01u) == 0u) {
+        (void)SdhciIoWrite8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u);
+    }
+    if (SdhciIoRwExtended(Host, Fn, AIC_RD_FIFO_REG, 0, 0, 0, (UINT16)Len, Data) != 0) {
+        AicMarkXferParams(Host, "WiFi: rx read FAIL", Len, 0u);
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * 芯片有没有消息 —— **严格**照 aicwf_sdio_hal_irqhandler 的 D80 分支
+ * （aicsdio.c:1505-1545），三分支一个不漏：
+ *
+ *   intmaskf2 = status | 0x08
+ *   intmaskf2 > 120  → **fn2**（msg 通道）事件：==127 字节模式 len=blen*4，
+ *                      否则块模式 len=(status & 0x07)*512
+ *   其余             → **fn1**（data 通道）事件：==0x78 字节模式 len=blen*4，
+ *                      否则块模式 len=(status & 0x7F)*512
+ *   status == 0      → 没消息，继续等
+ *
+ * 真机 10:13 的 `status=01` 就落在 **fn1 块模式 1 块 = 512 B** 这一支：
+ * 芯片早就回了 512 B 在等我们读，是旧判据（只认 >120）把它判成"没消息"。
+ */
+static int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLen) {
     UINT32 Waited = 0;
     UINT8 Status = 0;
     UINT32 Masked;
-    UINT8 Len = 0;
+    UINT8 BmLen = 0;
+    const char *Mode = "block";
 
     while (Waited < TimeoutMs) {
         if (SdhciIoRead8(Host, 1u, AIC_MISC_INT_REG, &Status) != 0) {
@@ -405,63 +450,124 @@ static int AicWaitMsgPending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutLen)
             Waited += AIC_CFM_POLL_MS;
             continue;
         }
+        if (Status == 0u) {
+            SdhciDelayMilliseconds(AIC_CFM_POLL_MS);
+            Waited += AIC_CFM_POLL_MS;
+            continue;
+        }
         Masked = (UINT32)Status | 0x08u;
+        Mode = "block";
         if (Masked > 120u) {
+            *OutFn = 2u;
             if (Masked == 127u) {
-                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &Len) != 0) {
+                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLen) != 0) {
                     return -1;
                 }
-                *OutLen = (UINT32)Len * 4u;
+                *OutLen = (UINT32)BmLen * 4u;
+                Mode = "byte";
             } else {
                 *OutLen = (UINT32)(Status & 0x07u) * 512u;
             }
-            if (*OutLen == 0u || *OutLen > 500u) {
-                *OutLen = 4u; /* 兜底：先读帧头再决定 */
+        } else {
+            *OutFn = 1u;
+            if (Status == 0x78u) {
+                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLen) != 0) {
+                    return -1;
+                }
+                *OutLen = (UINT32)BmLen * 4u;
+                Mode = "byte";
+            } else {
+                *OutLen = (UINT32)(Status & 0x7Fu) * 512u;
             }
-            return 0;
         }
-        SdhciDelayMilliseconds(AIC_CFM_POLL_MS);
-        Waited += AIC_CFM_POLL_MS;
+        SdhciMarkHex("WiFi: rx masked=", Masked, 2);
+        SdhciMarkHex(" status=", Status, 2);
+        SdhciMarkHex(" fn=", *OutFn, 2);
+        SdhciMarkHex(" len=", *OutLen, 4);
+        SdhciMark(" mode=");
+        SdhciMark(Mode);
+        SdhciMark("\n");
+        if (*OutLen == 0u) {
+            *OutLen = 512u; /* 长度算成 0 就按一块读，宁可多读也不空转 */
+        }
+        return 0;
+    }
+    {
+        UINT8 Pend = 0;
+        UINT8 Ctrl = 0;
+        UINT8 Blen = 0;
+        UINT8 IoEx = 0;
+        (void)SdhciIoRead8(Host, 1u, AIC_INTR_PENDING_REG, &Pend);
+        (void)SdhciIoRead8(Host, 1u, AIC_MISC_CTRL_REG, &Ctrl);
+        (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &Blen);
+        (void)SdhciIoRead8(Host, 0u, 0x02u, &IoEx);
+        SdhciMarkHex("WiFi: rx poll timeout status=", Status, 2);
+        SdhciMarkHex(" pend=", Pend, 2);
+        SdhciMarkHex(" ctrl=", Ctrl, 2);
+        SdhciMarkHex(" blen=", Blen, 2);
+        SdhciMarkHex(" ioex=", IoEx, 2);
+        SdhciMark("\n");
     }
     return -1;
 }
 
+/* 前 32 字节 hexdump：和厂商 0x400 请求逐字节比对手里就靠它 */
+static void AicDumpBytes(const UINT8 *Data, UINT32 Len) {
+    UINT32 i;
+
+    if (Len > 32u) {
+        Len = 32u;
+    }
+    SdhciMark("WiFi: rx dump");
+    for (i = 0; i < Len; i++) {
+        SdhciMarkHex(" ", Data[i], 2);
+    }
+    SdhciMark("\n");
+}
+
 /*
- * 收一条确认。RX 帧同样带 4 B 帧头（hdr[2]&0x7f == 0x11 即 CFG_CMD_RSP，
- * 见 aicsdio_txrxif.c:211-215），正文 ipc_e2a_msg 在 +4：
+ * 收一条确认。RX 帧带 4 B 帧头（hdr[2]&0x7f == 0x11 CFG_CMD_RSP / 0x12 CFG_DATA_CFM，
+ * aicsdio_txrxif.c:211-215），正文 ipc_e2a_msg 在 **+4**：
  *   +4 id / +6 dest / +8 src / +10 param_len / +12 参数
  */
 static int AicRecvMsg(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam,
                       UINT32 *OutParamLen) {
     UINT32 Tries;
     UINT32 Len = 0;
+    UINT32 Fn = 0;
     UINT32 ParamLen;
     UINT32 i;
 
     for (Tries = 0; Tries < 4u; Tries++) {
-        if (AicWaitMsgPending(Host, AIC_CFM_TIMEOUT_MS, &Len) != 0) {
-            SdhciMark("WiFi: aic rx: no pending message (fn1 0x04 / 0x05)\n");
+        if (AicWaitMsgPending(Host, AIC_CFM_TIMEOUT_MS, &Fn, &Len) != 0) {
+            SdhciMark("WiFi: aic rx: no pending message (fn1 0x04)\n");
             return -1;
         }
-        if (Len < 8u) {
-            Len = 4u;
+        if (Len > 512u) {
+            SdhciMarkHex("WiFi: rx len>512, read first block only, len=", Len, 4);
+            SdhciMark("\n");
+            Len = 512u;
         }
-        if (AicFifoRead(Host, gAicRx, Len) != 0) {
+        if (AicFifoRead(Host, Fn, gAicRx, Len) != 0) {
             return -1;
         }
-        SdhciMarkHex("WiFi: aic rx len=", Len, 4);
+        SdhciMarkHex("WiFi: rx len=", Len, 4);
         SdhciMarkHex(" hdr=", (UINT32)(gAicRx[0] | (gAicRx[1] << 8) |
                                        ((UINT32)gAicRx[2] << 16) | ((UINT32)gAicRx[3] << 24)),
                      8);
+        SdhciMarkHex(" type=", (UINT32)(gAicRx[2] & 0x7Fu), 2);
+        SdhciMarkHex(" id=", AicGet16(&gAicRx[4]), 4);
+        SdhciMarkHex(" plen=", AicGet16(&gAicRx[10]), 4);
         SdhciMark("\n");
+        AicDumpBytes(gAicRx, Len);
         if ((gAicRx[2] & 0x7Fu) != (UINT8)AIC_TYPE_CFG_CMD_RSP &&
             (gAicRx[2] & 0x7Fu) != (UINT8)AIC_TYPE_CFG_DATA_CFM) {
-            SdhciMarkHex("WiFi: aic rx skip type=", gAicRx[2], 2);
+            SdhciMarkHex("WiFi: rx skip type=", gAicRx[2], 2);
             SdhciMark("\n");
             continue;
         }
         if (AicGet16(&gAicRx[4]) != WantId) {
-            SdhciMarkHex("WiFi: aic rx id=", AicGet16(&gAicRx[4]), 4);
+            SdhciMarkHex("WiFi: rx id=", AicGet16(&gAicRx[4]), 4);
             SdhciMarkHex(" want=", WantId, 4);
             SdhciMark("\n");
             continue;

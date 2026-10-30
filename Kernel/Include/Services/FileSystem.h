@@ -82,4 +82,31 @@ int FileSystemFileSync(const char *Path);
 /* PR-F3：FAT 子目录簇扩展回归（RES 等合成卷 → ROFS/INVAL） */
 int FileSystemDirStress(const char *Path, int MaxFiles, int *OutCreated, int *OutGrew);
 
+/*
+ * 跨平台写自检（fs-selftest）：BLOCKS:FSELFT.BIN 8 KB 建→写→读回→覆写→删。
+ * 图案与 DUO 的 ksend selftest 同源，通过时 CRC 恒为 87fb2824。
+ * 三平台共用一条判据；PI 的 WriteSectors 是空桩时会在 step=2 失败。
+ */
+#define FS_WRITE_SELFTEST_STEP_CREATE    1u /* 清场：旧文件删掉且确认不存在 */
+#define FS_WRITE_SELFTEST_STEP_WRITE     2u /* 首遍 8 KB（目录项在这一步真正建立） */
+#define FS_WRITE_SELFTEST_STEP_READBACK  3u /* 首遍整文件读回、逐字节比对 */
+#define FS_WRITE_SELFTEST_STEP_OVERWRITE 4u /* 覆写第二遍并读回比对 */
+#define FS_WRITE_SELFTEST_STEP_DELETE    5u /* 删掉并确认不存在 */
+/* 失败发生在写/读/删，不是逐字节比对；FailOffset 用它表示「无偏移可报」 */
+#define FS_WRITE_SELFTEST_NO_OFFSET      0xFFFFFFFFu
+
+typedef struct {
+    UINT32 Size;       /* 通过时的字节数（8192） */
+    UINT32 Crc;        /* 覆写遍读回的 CRC32；与 ksend 判据同一个数 */
+    UINT32 Step;       /* 最后执行到的步 / 失败步（STEP_*）；0 = 还没开始 */
+    UINT32 FailOffset; /* 逐字节失配偏移；NO_OFFSET = 看返回码 */
+    UINT32 FailWant;
+    UINT32 FailGot;
+} FS_WRITE_SELFTEST;
+
+/* 跑一遍并打印 fs selftest: … / FS SELFTEST OK|FAIL …；0 = 通过 */
+int FileSystemWriteSelfTest(void);
+/* 同上但不打印（ksend 自己排版）；结构化结果写给 Out；0 = 通过，否则 FAT 错误码 */
+int FileSystemWriteSelfTestRun(FS_WRITE_SELFTEST *Out);
+
 #endif

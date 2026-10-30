@@ -8,6 +8,9 @@
 #include "Console.h"
 #include "PhysicalMemory.h"
 
+/* fs-selftest：注册口在同目录 FileSystemSelfTest.c；此处调用，不改 Commands.c */
+void ShellCommandsFsSelfTestRegister(void);
+
 /* PR-FS3：大文件写验收（默认 ~2MiB，上限 FAT_WRITE_MAX） */
 static void CommandWrbig(int Argc, char **Argv) {
     UINT32 SizeKb = 2048;
@@ -278,4 +281,6 @@ void ShellCommandsFsExtraRegister(void) {
 
     gConsole.Register2("stress", "directory", "grow subdir clusters", CommandDirStress);
     gConsole.RegisterAliasLine("dirstress", "stress", "directory");
+
+    ShellCommandsFsSelfTestRegister();
 }

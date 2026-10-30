@@ -19,6 +19,30 @@
 #define AIC_MM_RESET_CFM 0x0001u
 #define AIC_MM_VERSION_REQ 0x0004u
 #define AIC_MM_VERSION_CFM 0x0005u
+/*
+ * PR-31：配置无线电的三条（lmac_msg.h:136-146 的 mm_msg_tag，MM_START 是第 2 项；
+ * :1667-1674 的 me_msg_tag，前两条；LMAC_FIRST_MSG(task)=task<<10，TASK_ME=5）。
+ */
+#define AIC_TASK_ME 5u
+#define AIC_MM_START_REQ 0x0002u
+#define AIC_MM_START_CFM 0x0003u
+#define AIC_ME_CONFIG_REQ 0x1400u
+#define AIC_ME_CONFIG_CFM 0x1401u
+#define AIC_ME_CHAN_CONFIG_REQ 0x1402u
+#define AIC_ME_CHAN_CONFIG_CFM 0x1403u
+/*
+ * 参数长度 = 厂商 sizeof(struct ...)，逐字段核对过（报告 §1 的偏移表）。
+ * mm_start 特别说明：字段和只有 70 B，但结构体尾对齐到 4 ⇒ sizeof = 72，
+ * 厂商 rwnx_msg_zalloc(..., sizeof(struct mm_start_req)) 发的就是 72。
+ */
+#define AIC_ME_CONFIG_LENGTH 112u
+#define AIC_ME_CHAN_CONFIG_LENGTH 254u
+#define AIC_MM_START_LENGTH 72u
+#define AIC_BRINGUP_MAX_LENGTH AIC_ME_CHAN_CONFIG_LENGTH
+/* bringup 每步的 CFM 预算：4 × AIC_CFM_TIMEOUT_MS(500) = 2000 ms */
+#define AIC_BRINGUP_CFM_TRIES 4u
+/* dry 只打前 64 B（覆盖 ht_cap 32 B + vht_cap 12 B + he_cap 前 20 B，够看填错没有） */
+#define AIC_BRINGUP_DUMP_BYTES 64u
 #define AIC_DRV_TASK_ID 100u
 #define AIC_MSGID(Task, Index) ((UINT16)(((UINT16)(Task) << 10) | (UINT16)(Index)))
 #define AIC_DBG_MEM_READ_REQ AIC_MSGID(AIC_TASK_DBG, 0u)
@@ -233,6 +257,11 @@ int AicSendMessage(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamL
 int AicSendMessageEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param, UINT16 ParamLength);
 int AicWaitMessagePending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLength);
 int AicWifiVendorPrepare(SDHCI_HOST *Host);
+/* PR-31：三条配置消息的拼装（WifiConfigMessage.c）。Buffer 必须 4 B 对齐 */
+int AicBringupLayoutCheck(void);
+UINT32 AicChanConfigBuild(UINT8 *Buffer);
+UINT32 AicMeConfigBuild(UINT8 *Buffer);
+UINT32 AicMmStartBuild(UINT8 *Buffer);
 void AicDumpBytes(const UINT8 *Data, UINT32 Length);
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What);
 void AicFwWaitBootMessage(SDHCI_HOST *Host);

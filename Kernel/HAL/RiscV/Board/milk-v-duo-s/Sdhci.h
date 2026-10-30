@@ -165,6 +165,13 @@ int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value);
 int SdhciWifiFwVersion(void);
 /* MM_RESET 后自动再查版本，确认复位没把固件打死 */
 int SdhciWifiFwMmReset(void);
+/*
+ * PR-31：让固件"能配置无线电"的三连 —— ME_CONFIG → ME_CHAN_CONFIG → MM_START。
+ * 每步发一条、等自己的 CFM（2000 ms），任一步失败就停。
+ * 只发消息：不写内存、不动 patch 状态、不碰下载流程。
+ * Dry != 0：只拼包并打印每条消息的长度与前 64 B 十六进制，一个字节都不发（不需要卡）。
+ */
+int SdhciWifiBringup(int Dry);
 /* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */
 int SdhciWifiFifoTest(void);
 #define SDHCI_WIFI_PROBE_WAKE 2u

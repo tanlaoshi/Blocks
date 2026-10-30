@@ -22,6 +22,8 @@ extern int SdhciWifiFwRead(UINT32 Address) __attribute__((weak));
 extern int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) __attribute__((weak));
 extern int SdhciWifiFwVersion(void) __attribute__((weak));
 extern int SdhciWifiFwMmReset(void) __attribute__((weak));
+/* PR-31：三条配置消息（ME_CONFIG → ME_CHAN_CONFIG → MM_START）。Dry != 0 只拼包打印 */
+extern int SdhciWifiBringup(int Dry) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -220,6 +222,8 @@ static void CommandWifiProbeOnly(int Argc, char **Argv) {
  *   wififw fifotest  只读：显式 FIFO 回环自检（不参与枚举判定）
  *   wififw patch dry    只解析 patch 表并打印全部待写条目，一个字节不写、不发消息
  *   wififw patch apply  真写 patch 表（每条 mem write 等 CFM，失败即停）
+ *   wififw bringup      发 ME_CONFIG → ME_CHAN_CONFIG → MM_START，每步等 CFM（2000 ms）
+ *   wififw bringup dry  只拼包：打印三条消息的总长与前 64 B，一个字节都不发
  *
  * 真写是不可逆操作，所以拆成"检查 / confirm"两段，防手滑。
  */
@@ -233,6 +237,24 @@ static void WifiFwRun(UINT32 Mode) {
 
         gConsole.Write(Rc == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
     }
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(0);
+    }
+}
+
+/*
+ * wififw bringup [dry]：三步配置的唯一出口。
+ * dry 只拼包、不需要卡；非 dry 由板级入口自己去查卡/查消息通道。
+ */
+static void WifiFwBringup(int Dry) {
+    if (SdhciWifiBringup == 0) {
+        gConsole.Write("wifi: this board has no SDIO firmware stage\n");
+        return;
+    }
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(ShellProbeMark);
+    }
+    gConsole.Write(SdhciWifiBringup(Dry) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(0);
     }
@@ -340,6 +362,14 @@ static void CommandWifiFw(int Argc, char **Argv) {
             SdhciWifiMarkSink(0);
         }
         return;
+    } else if (ArgEqualIgnoreCase(Argv[1], "bringup")) {
+        /* PR-31：三步配置。只认 "dry" 一个后缀，多打字就回用法，不猜 */
+        if (Argc >= 3 && !ArgEqualIgnoreCase(Argv[2], "dry")) {
+            gConsole.Write("wififw bringup [dry]\n");
+            return;
+        }
+        WifiFwBringup(Argc >= 3 ? 1 : 0);
+        return;
     } else if (ArgEqualIgnoreCase(Argv[1], "ver")) {
         /* 只读：MM_VERSION_REQ → 有 CFM 就证明固件在跑 */
         if (SdhciWifiFwVersion == 0) {
@@ -410,7 +440,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -425,7 +455,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

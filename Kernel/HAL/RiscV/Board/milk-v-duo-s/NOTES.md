@@ -336,6 +336,23 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 18:06 拆 Sdio.c（1201 行 → 4 个文件，纯搬家）
+
+| 文件 | 行数 | 职责 |
+|---|---|---|
+| `Sdhci/Sdio.c` | 609 | 对外入口与主流程（Probe/FifoTest/Ready/ChipIsD80/BusRecover/Initialize + SdioFail） |
+| `Sdhci/SdioCis.c` | 292 | 卡是谁：CIS 指针/解析/扫描/打印、芯片名与身份、fn1 现场、CMD5 窗口 |
+| `Sdhci/SdioTransfer.c` | 125 | 数据怎么走：CMD53 收发、错误位解码、传输参数打印、总线恢复 |
+| `Sdhci/SdioSelfTest.c` | 175 | 通道能不能用：CIS 读比对、DAT 读校验、FIFO 1536 B 往返 |
+
+共享声明全部并进已存在的 `Sdhci/Private.h`（+60 行：SDIO/CCCR/FBR/CISTPL/AIC V3 宏、
+`SDIO_CIS_INFO`、6 个 extern、9 个跨文件原型），**没有新建第三个 Private 头**。
+`SdhciWifi*` 全部保持外部链接。
+
+**Sdio.c 609 行 > 500 硬上限，原因是 `SdhciWifiInitialize` 一个函数 494 行
+（新 Sdio.c 的 115-608 行）。** 本刀按约定不动它，文件头已写明原因与下一刀计划；
+拆完前述函数后 Sdio.c 约 115 行。原文里该函数在 707-1201 行（同样 494 行）。
+
 ### 16:05 拆文件（2406 行 → 7 个 .c，纯搬家）
 
 用户要求先做命名/行数规范，MM_START 功能开发暂缓。本刀只搬家、不改名、不动逻辑。

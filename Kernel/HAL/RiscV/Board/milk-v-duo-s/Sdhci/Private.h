@@ -156,6 +156,45 @@ typedef struct SDIO_CIS_INFO {
     int SawManfid;
 } SDIO_CIS_INFO;
 
+/*
+ * SdhciWifiInitialize 的步骤上下文：原函数的局部变量集中在这里，主函数只声明
+ * 一个、按指针传给每一步。步骤分散在 SdioInit.c / SdioTransfer.c / SdioCis.c，
+ * 所以类型放本头（不是 Sdio.c 私有）。
+ */
+typedef struct WIFI_PROBE {
+    SDHCI_HOST *Host;
+    UINT32 Ocr;
+    UINT32 Offer;
+    UINT32 NoResponse;
+    UINT16 Flags;
+    UINT16 Version;
+    UINT8 Data;
+    UINT8 Speed;
+    UINT8 Caps;
+    UINT32 Present;
+    SDIO_CIS_INFO Cis;
+    int CisSeen;
+    UINT32 CisCommonPtr;
+    int CisOk;
+} WIFI_PROBE;
+
+/*
+ * 步骤函数：0 = 继续（或本步成功），非 0 = 已失败（内部已打日志并置
+ * gWifiSdioState）。ProbePrepare 例外：1 = 上次已成功、主函数直接返回 0。
+ */
+int ProbePrepare(WIFI_PROBE *P);
+int ControllerBringUp(WIFI_PROBE *P);
+int ModulePowerOn(WIFI_PROBE *P);
+int CardEnumerate(WIFI_PROBE *P);
+int CccrConfigure(WIFI_PROBE *P);
+int SpeedSwitch(WIFI_PROBE *P);
+int BusWidthSwitch(WIFI_PROBE *P);
+int FunctionEnable(WIFI_PROBE *P);
+int CisVerify(WIFI_PROBE *P);
+int CisReport(WIFI_PROBE *P);
+int ProbeFinish(WIFI_PROBE *P);
+int SdioFail(const char *Where);
+
 extern int gWifiSdioState;
 extern UINT16 gWifiChipVendor;
 extern UINT16 gWifiChipDevice;

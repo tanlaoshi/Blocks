@@ -235,6 +235,65 @@ SdhciIoRwExtended(Host, 0, 0x1000u, 0, /*Increment=*/0, 0, 16u, Buf)
 4. 测试台补齐：假卡的固定地址读改为"同字节重复"，并新增断言
    "发往 CIS 的 CMD53 全部带地址自增" —— 把参数改回 0 会立刻挂 2 条。
 
+### S5b-1：芯片识别（只读）
+
+**厂商"认芯片"不读寄存器**：`aicwf_sdio_chipmatch(vid, did)` 比的是 `func->vendor` /
+`func->device`，也就是 CIS 里的 MANFID/PID（`aic8800_bsp/aicsdio.c:239-259`、
+`aic8800_fdrv/aicwf_sdio.c:528-552`），表在 `aicwf_sdio.h:75-80`：
+
+| 型号 | vendor | device |
+|---|---|---|
+| AIC8801 | `0x5449` | `0x0145` |
+| AIC8800DC | `0xc8a1` | `0xc08d` |
+| **AIC8800D80** | `0xc8a1` | **`0x0082`** |
+
+`chip_rev` 那个 `0x40500000` **不是寄存器读**，是 AIC 的 dbg-mem-read **消息**
+（`aic_bsp_driver.c:1876-1880`、`:1924-1929`），而且只用来在 `fw_8800d80_u01/u02` 之间选；
+SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 直接锁 u02。
+
+新增两行只读判据：
+
+- `WiFi: chip id=aic8800d80 (manfid=c8a1 pid=0082)` + `WiFi: fw profile=8800d80_u02 …`
+- `WiFi: fn1 regs ien= ipd= itd= fc1= misc= len= lenh= bme= mctl= fc2= clk=`
+  —— fn1 的 V3 寄存器快照（`aicsdio.h:35-48` 的 00..0A），不写一个字节。
+
+身份不明时只打 `WiFi: chip id=unknown …` + 厂商表，**不拦 S3 枚举**；闸放在下载命令里。
+
+### S5b-2：读取层（A 方案）+ 消息通道 + adid/patch_table
+
+固件不嵌内核，`WifiFw.c` 用 `FileSystemFileStat` + `FileSystemReadFileAt` 从卡上读：
+
+```
+/Assets/Fw/aic8800/fw_adid.bin
+/Assets/Fw/aic8800/fw_patch_table.bin
+```
+
+判据行：`WiFi: fw read /Assets/Fw/aic8800/fw_adid.bin 1708B ok`（字节数必须等于文件大小）。
+
+**AIC 消息协议**（厂商 `aic8800_bsp`）：
+
+| 项 | 值 | 出处 |
+|---|---|---|
+| 帧头 | `len(12bit)` / type `0x11` / crc8(poly 0x107) | `aic_bsp_driver.c:258-283`、`aicsdio.c:2004-2027` |
+| 帧头后 | 4 B dummy + 8 B lmac_msg 头（id/dest/src/param_len） | `aic_bsp_driver.c:268-283` |
+| 请求写 | fn1 `0x10`（FIFO，固定地址） | `aicsdio.c:742-751` |
+| 应答读 | **fn2** `0x0F`（Linux `func_msg`） | `aicsdio.c:753-780`、`aicsdio_txrxif.c:213-215` |
+| 有没有消息 | fn1 `0x04` bit7 `SDIO_OTHER_INTERRUPT` | `aicsdio.c:1458,1506-1514` |
+| 消息 id | `DBG_MEM_READ_REQ=0x400`/`CFM=0x401`、`DBG_MEM_BLOCK_WRITE_REQ=0x40B`/`CFM=0x40C` | `aic_bsp_driver.h:181-215` |
+| adid/patch 落点 | `0x00201940` / `0x0020b43c`（u02） | `aic_bsp_driver.h:358-359` |
+| 分块 | 1 KB 一块 | `aic_bsp_driver.c:1256-1266` |
+
+**fn2 不是废的**：厂商把消息/确认通道放在 fn2（`func_msg`），S3 阶段"S5 再说"的正是它。
+读应答前先轮询 fn1 `0x04` bit7 —— 这就是上次 `pst=03f20206` 那个坑的解药：**有消息才读**，不盲读。
+
+`AicCrc8` 与厂商 `crc8_ponl_107` 在全部 65536 组三字节输入上逐位一致；一帧
+`DBG_MEM_READ_REQ(0x40500000)` = `10 00 11 d5 | 00 00 00 00 | 00 04 01 00 64 00 04 00 | 00 00 50 40`，
+总长 20、len 字段 16（= 总长-4），与 `rwnx_set_cmd_tx` 的算术完全对上。
+
+命令：`wififw read`（只读盘）/ `wififw id`（只读芯片版本 0x40500000，顺带证明 fn2 通道）/
+`wififw write`（写 adid + patch_table，每 1 KB 块读回首字校验）。`write` 前强制先过
+`chip id == aic8800d80` 和 `id` 两道闸。
+
 桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
 17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
 

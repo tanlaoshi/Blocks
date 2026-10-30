@@ -9,6 +9,8 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsSystemRegisterVirtMin();
     /* Duo 等 ConsoleOnly：有网无桌面，须 net/setip/ping（否则 unknown: setip） */
     ShellCommandsNetRegister();
+    /* Duo S：wifiprobe —— 真机上重跑 SD1(wifi-sd) SDIO 探测，不用重启 */
+    ShellCommandsWifiProbeRegister();
 }
 
 void ShellCommandsRegister(void) {

@@ -55,6 +55,12 @@ typedef struct SDIO_CIS_INFO {
 } SDIO_CIS_INFO;
 
 static int gWifiSdioState; /* 0 = 未试；1 = 成功；-1 = 失败（只报一次，不重试刷屏） */
+/* S5b：CIS 里读到的 vendor/device，厂商 aicwf_sdio_chipmatch 就是拿它们认芯片的 */
+static UINT16 gWifiChipVendor;
+static UINT16 gWifiChipDevice;
+/* S5b 恢复总线用：枚举时的 HOST_CONTROL 与时钟，供 WifiFw.c 里的消息通道复用 */
+static UINT8 gWifiHostControl;
+static UINT32 gWifiRestoreHertz;
 static UINT8 gSdioPattern[SDIO_SELFTEST_BYTES];
 static UINT8 gSdioReadback[SDIO_SELFTEST_BYTES];
 
@@ -483,6 +489,79 @@ static int SdioFail(const char *Where) {
     return -1;
 }
 
+/*
+ * 厂商芯片表（aicwf_sdio.h:75-80，判定逻辑 aicsdio.c:239-259 / aicwf_sdio.c:528-552）：
+ *   AIC8801    : vendor 0x5449 / device 0x0145
+ *   AIC8800DC  : vendor 0xc8a1 / device 0xc08d
+ *   AIC8800D80 : vendor 0xc8a1 / device 0x0082   ← Duo S 板载这颗
+ * 注意：厂商"认芯片"用的是 **CIS 里的 vendor/device**，不是读某个寄存器。
+ */
+static const char *SdioChipName(UINT16 Vendor, UINT16 Device) {
+    if (Vendor == 0xC8A1u && Device == 0x0082u) {
+        return "aic8800d80";
+    }
+    if (Vendor == 0xC8A1u && Device == 0xC08Du) {
+        return "aic8800dc";
+    }
+    if (Vendor == 0x5449u && Device == 0x0145u) {
+        return "aic8801";
+    }
+    return 0;
+}
+
+static int SdioChipIdentify(void) {
+    const char *Name = SdioChipName(gWifiChipVendor, gWifiChipDevice);
+
+    if (Name == 0) {
+        SdhciMarkHex("WiFi: chip id=unknown manfid=", gWifiChipVendor, 4);
+        SdhciMarkHex(" pid=", gWifiChipDevice, 4);
+        SdhciMark("\n");
+        SdhciMark("WiFi:   vendor table: 8801=5449/0145 8800dc=c8a1/c08d 8800d80=c8a1/0082\n");
+        return -1;
+    }
+    SdhciMark("WiFi: chip id=");
+    SdhciMark(Name);
+    SdhciMarkHex(" (manfid=", gWifiChipVendor, 4);
+    SdhciMarkHex(" pid=", gWifiChipDevice, 4);
+    SdhciMark(")\n");
+    /*
+     * chip_rev（0x40500000）在 AIC 里**不是寄存器读**，要发 dbg-mem-read 消息走 msg 通道
+     * （aic_bsp_driver.c:1876-1880、1924-1929），而它只用来在 fw_8800d80_u01/u02 之间选；
+     * SDK 里 D80 只发了 u02 一套（fmacfw_8800d80_u02.bin 等），所以 S5b 直接锁 u02。
+     */
+    SdhciMark("WiFi: fw profile=8800d80_u02 (only u02 ships; chip_rev read deferred)\n");
+    return 0;
+}
+
+/*
+ * fn1 的 V3 寄存器快照（aicsdio.h:35-48 的地址表）：只读，不写一个字节。
+ * 00 INTR_ENABLE / 01 INTR_PENDING / 02 INTR_TO_DEVICE / 03 FLOW_CTRL_Q1 /
+ * 04 MISC_INT_STATUS / 05 BYTEMODE_LEN / 06 BYTEMODE_LEN_MSB / 07 BYTEMODE_ENABLE /
+ * 08 MISC_CTRL / 09 FLOW_CTRL_Q2 / 0A CLK_TEST_RESULT
+ */
+static void SdioMarkFn1Regs(SDHCI_HOST *Host) {
+    static const UINT8 Off[11] = {0x00u, 0x01u, 0x02u, 0x03u, 0x04u, 0x05u,
+                                  0x06u, 0x07u, 0x08u, 0x09u, 0x0Au};
+    static const char *const Name[11] = {"ien", "ipd", "itd", "fc1", "misc", "len",
+                                         "lenh", "bme", "mctl", "fc2", "clk"};
+    UINT32 i;
+    UINT8 Byte;
+
+    SdhciMark("WiFi: fn1 regs");
+    for (i = 0; i < 11u; i++) {
+        Byte = 0;
+        SdhciMark(" ");
+        SdhciMark(Name[i]);
+        SdhciMark("=");
+        if (SdhciIoRead8(Host, 1, Off[i], &Byte) != 0) {
+            SdhciMark("xx");
+        } else {
+            SdhciMarkHex("", Byte, 2);
+        }
+    }
+    SdhciMark("\n");
+}
+
 /* CMD5 现场：PRESENT_STATE / 原始 INT_STATUS / 高 16 位错误位 / INT_ENABLE / 时钟 */
 static void SdioMarkCmd5State(SDHCI_HOST *Host, const char *Tag) {
     UINT32 St = SdhciRead32(Host, SDHCI_INT_STATUS);
@@ -577,6 +656,22 @@ int SdhciWifiProbe(UINT32 Flags) {
         SdhciMark("WiFi: state cleared for retry\n");
     }
     return SdhciWifiInitialize();
+}
+
+/* S5b 用：枚举是否成功 / 总线卡住时自救 / 身份是否 D80 */
+int SdhciWifiReady(void) {
+    return (gWifiSdioState == 1) ? 1 : 0;
+}
+
+int SdhciWifiChipIsD80(void) {
+    return (gWifiChipVendor == 0xC8A1u && gWifiChipDevice == 0x0082u) ? 1 : 0;
+}
+
+int SdhciWifiBusRecover(SDHCI_HOST *Host) {
+    if (Host == 0) {
+        return -1;
+    }
+    return SdioRecoverBus(Host, gWifiHostControl, gWifiRestoreHertz);
 }
 
 int SdhciWifiInitialize(void) {
@@ -912,6 +1007,8 @@ int SdhciWifiInitialize(void) {
         UINT32 RestoreHertz =
             ((Speed & SDIO_SPEED_EHS) != 0) ? TRANSFER_HERTZ : SD_TRANSFER_HERTZ;
 
+        gWifiHostControl = HostControl;
+        gWifiRestoreHertz = RestoreHertz;
         if (SdioReadCisPointer(Host, 0, &CommonPtr) != 0) {
             SdhciMark("WiFi: common CIS pointer (0x09-0x0B) read failed\n");
             CommonPtr = 0;
@@ -970,12 +1067,27 @@ int SdhciWifiInitialize(void) {
             SdhciMarkHex("", Cis.Vendor, 4);
             SdhciMarkHex(" device=", Cis.Device, 4);
             SdhciMark((Cis.Vendor == 0xC8A1u) ? " (aic8800)\n" : " (unexpected, continue)\n");
+            gWifiChipVendor = Cis.Vendor;
+            gWifiChipDevice = Cis.Device;
             SdioMarkCis(0, CommonPtr, &Cis);
         } else {
             SdhciMark("WiFi: no MANFID tuple, continue without module id\n");
         }
 
-        /* fn2 的 CIS 顺手读一下（D80 上 fn2 无数据通路，只作身份对照） */
+        /*
+         * ---------- S5b-1：芯片识别（只读，不写任何寄存器） ----------
+         * 串口判据：`WiFi: chip id=aic8800d80 (manfid=c8a1 pid=0082)`。
+         * 判据不到不写固件 —— 这道闸放在下载命令（wififw）里，不拦 S3 枚举，
+         * 否则一颗身份异常但枚举正常的卡会把 S3 的验收线也一起弄挂。
+         */
+        (void)SdioChipIdentify();
+        SdioMarkFn1Regs(Host);
+
+        /*
+         * fn2 的 CIS 顺手读一下。注意：fn2 **不是**没用的 —— 厂商把消息/确认通道放在
+         * fn2（func_msg，aicwf_sdio_recv_pkt 的 msg=1 分支，aicsdio.c:766-772），
+         * S5b 的 dbg mem read/write 确认就是从 fn2 0x0F 读回来的。
+         */
         {
             UINT32 Ptr2 = 0;
             SDIO_CIS_INFO Cis2;

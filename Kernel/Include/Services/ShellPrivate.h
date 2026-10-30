@@ -11,6 +11,8 @@
 void ShellCommandsUsbRegister(void);
 void ShellCommandsBluetoothRegister(void);
 void ShellCommandsWifiRegister(void);
+/* 仅 wifiprobe（无桌面靶/串口最小集也要能重跑 SD1 探测） */
+void ShellCommandsWifiProbeRegister(void);
 void ShellCommandsNetRegister(void);
 void ShellCommandsNetAddrRegister(void);
 void ShellCommandsNetUdpRegister(void);

@@ -112,6 +112,10 @@ int SdhciIoRwExtended(SDHCI_HOST *Host, UINT32 Function, UINT32 Address, int Wri
 void SdhciFail(SDHCI_HOST *Host, const char *What);
 int SdhciControllerBringUp(SDHCI_HOST *Host, UINT32 Hertz, UINT32 IntEnable);
 int SdhciCardInitialize(SDHCI_HOST *Host);
+/* S5b：SDIO 枚举成功的握手接口（Sdio.c 导出给 WifiFw.c） */
+int SdhciWifiReady(void);
+int SdhciWifiChipIsD80(void);
+int SdhciWifiBusRecover(SDHCI_HOST *Host);
 int SdhciHostInitialize(SDHCI_HOST *Host);
 
 #endif

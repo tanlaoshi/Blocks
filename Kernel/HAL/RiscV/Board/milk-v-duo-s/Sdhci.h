@@ -144,6 +144,11 @@ int SdhciWifiInitialize(void);
  * 返回 0 = SDIO 枚举走通，-1 = 失败（失败原因已打在日志里）。
  */
 #define SDHCI_WIFI_PROBE_FORCE 1u
+#define SDHCI_WIFI_FW_READ 1u
+#define SDHCI_WIFI_FW_ID 2u
+#define SDHCI_WIFI_FW_WRITE 4u
+/* S5b：固件阶段（WifiFw.c）。Mode 取上面的位或；只读的 READ/ID 可单独跑 */
+int SdhciWifiFw(UINT32 Mode);
 #define SDHCI_WIFI_PROBE_WAKE 2u
 int SdhciWifiProbe(UINT32 Flags);
 /*

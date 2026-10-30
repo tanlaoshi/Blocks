@@ -127,5 +127,8 @@ void DesktopRefreshLabels(void);
 /* runtime-c-tick：Worker 采样 MSC/钟；Gui 画栏/图标/TTF */
 void DesktopWorkerTick(void);
 void DesktopTickClock(void);
+/* 只读探针 `desktop icons`：逐图标逻辑/物理矩形 + overlap/labelHit/
+ * labelNext/taskbar 四判据（无绘制副作用，供缩放回归用） */
+void DesktopIconsCommandRegister(void);
 
 #endif

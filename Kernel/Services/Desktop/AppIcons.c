@@ -57,6 +57,7 @@ static void ClearAppSlots(void) {
         gIcons[i].BmpPath = 0;
         gIcons[i].ExecPath = 0;
         gIcons[i].Action = DESKTOP_ACTION_NONE;
+        gIcons[i].SavedValid = 0;
         gIcons[i].AppId[0] = 0;
         gIcons[i].LabelBuf[0] = 0;
         gIcons[i].BmpPathBuf[0] = 0;
@@ -150,6 +151,7 @@ void DesktopLoadAppIcons(void) {
         Icon->Y = DESKTOP_ORIGIN_Y + (UINT32)Row * RowH;
         ClampIconPos(&Icon->X, &Icon->Y);
         SnapIconToGrid(&Icon->X, &Icon->Y);
+        DesktopRememberIconPos(Slot);
         Slot++;
         Row++;
     }

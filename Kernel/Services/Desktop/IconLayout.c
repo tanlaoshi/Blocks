@@ -155,6 +155,10 @@ void LoadIconLayout(void) {
         if (!ParseIconXy(Val, &X, &Y)) {
             continue;
         }
+        /* 先记下盘上的原始格子：150%/200% 下当前放不下时，回 100% 还能复原 */
+        gIcons[i].SavedX = X;
+        gIcons[i].SavedY = Y;
+        gIcons[i].SavedValid = 1;
         SnapIconToGrid(&X, &Y);
         gIcons[i].X = X;
         gIcons[i].Y = Y;
@@ -163,6 +167,8 @@ void LoadIconLayout(void) {
     if (Any) {
         DebugWrite("desktop: icon layout from BLOCKS.DB\n");
     }
+    /* 100% 且盘上格子放得下：一个坐标都不动；高缩放放不下才换行 */
+    DesktopEnsureIconLayout();
 }
 
 void SaveIconLayout(void) {
@@ -177,6 +183,8 @@ void SaveIconLayout(void) {
         if (!gIcons[i].Present) {
             continue;
         }
+        /* 这份坐标就是下次缩放热切要回退的格子 */
+        DesktopRememberIconPos(i);
         if (i < DESKTOP_SYS_ICON_COUNT) {
             Key = IconLayoutKey(i);
         } else {
@@ -249,5 +257,8 @@ void PlaceDesktopIcons(void) {
     gIcons[4].Y = DESKTOP_ORIGIN_Y + RowH * 4;
     gIcons[4].Present = 1;
 
+    for (i = 0; i < DESKTOP_SYS_ICON_COUNT; i++) {
+        DesktopRememberIconPos(i);
+    }
     DesktopRefreshLabels();
 }

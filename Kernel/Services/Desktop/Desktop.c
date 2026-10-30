@@ -254,8 +254,13 @@ void DesktopOnDisplayResize(void) {
         return;
     }
     gDesktopBusy = 1;
-    /* 热切：钳已存坐标，勿重置成默认竖列，否则拖过的布局丢了 */
-    ClampAllIcons();
+    /*
+     * 热切：先回最近一次保存的格子（含拖过的布局），再按新逻辑屏容量
+     * 判断是否换行。旧代码只 ClampAllIcons：150%/200% 下把行钳到同一
+     * MaxY，正是图标叠在一起的根因。
+     */
+    DesktopRestoreSavedLayout();
+    DesktopEnsureIconLayout();
     gMenuOpen = 0;
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;

@@ -3,6 +3,7 @@
  */
 #include "ShellCommands.h"
 #include "ShellPrivate.h"
+#include "Desktop.h"
 
 /*
  * ksend 的注册口在 Commands/Ksend.c。声明放这里而不是 ShellPrivate.h：
@@ -33,6 +34,7 @@ void ShellCommandsRegister(void) {
     ShellCommandsFsUiRegister();
     ShellCommandsFontProbeRegister();
     ShellCommandsGuiProbeRegister();
+    DesktopIconsCommandRegister();
     ShellCommandsAudioRegister();
     ShellCommandsThreadRegister();
     ShellCommandsKsendRegister();

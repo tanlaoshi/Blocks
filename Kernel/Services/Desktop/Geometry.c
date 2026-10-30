@@ -106,9 +106,12 @@ void ClampIconPos(UINT32 *X, UINT32 *Y) {
     UINT32 MaxY;
 
     TaskbarGeom(&BarY, &Sw, &Sh);
-    MaxX = (Sw > DESKTOP_ICON_SIZE + 4u) ? (Sw - DESKTOP_ICON_SIZE - 4u) : 0;
-    MaxY = (BarY > DESKTOP_ICON_SIZE + FontCellH() + DESKTOP_LABEL_PAD + 4u)
-               ? (BarY - DESKTOP_ICON_SIZE - FontCellH() - DESKTOP_LABEL_PAD - 4u)
+    MaxX = (Sw > DESKTOP_ICON_SIZE + DESKTOP_EDGE_MARGIN)
+               ? (Sw - DESKTOP_ICON_SIZE - DESKTOP_EDGE_MARGIN) : 0;
+    MaxY = (BarY > DESKTOP_ICON_SIZE + FontCellH() + DESKTOP_LABEL_PAD +
+                     DESKTOP_EDGE_MARGIN)
+               ? (BarY - DESKTOP_ICON_SIZE - FontCellH() - DESKTOP_LABEL_PAD -
+                  DESKTOP_EDGE_MARGIN)
                : 0;
     if (*X > MaxX) {
         *X = MaxX;

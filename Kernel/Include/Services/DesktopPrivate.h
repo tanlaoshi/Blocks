@@ -34,6 +34,8 @@
 #define DESKTOP_ORIGIN_X      36
 #define DESKTOP_ORIGIN_Y      36
 #define DESKTOP_LABEL_PAD     UI_LAYOUT_GAP
+/* 图标/标签与屏边、任务栏之间至少留的像素（原 ClampIconPos 的 4u 魔数） */
+#define DESKTOP_EDGE_MARGIN   4u
 /* QEMU 绝对指针单击常带数像素抖动；过紧会拖坏双击、过松才进拖放 */
 #define DESKTOP_DBLCLICK_SLOP 24u
 #define DESKTOP_DBLCLICK_MAX  2000000ULL
@@ -82,6 +84,10 @@ typedef struct {
     int             BmpReady;
     UINT32          X;
     UINT32          Y;
+    /* 缩放热切可回退的格子：拖放松手 / 读盘 / 默认布局时写入 */
+    UINT32          SavedX;
+    UINT32          SavedY;
+    int             SavedValid;
     int             Present; /* PR-S-bundle-desktop：0=空槽不画 */
     char            AppId[STORE_ID_MAX];
     char            LabelBuf[MENU_LABEL_MAX];
@@ -168,6 +174,13 @@ void ClearIconFootprint(UINT32 X, UINT32 Y, UINT32 W, UINT32 H);
 void ClampIconPos(UINT32 *X, UINT32 *Y);
 void SnapIconToGrid(UINT32 *X, UINT32 *Y);
 void ClampAllIcons(void);
+/* 容量感知布局：fit 就不动（100% 逐字节不变），放不下才按列换行 */
+int DesktopIconLayoutFits(void);
+void DesktopReflowIcons(void);
+void DesktopEnsureIconLayout(void);
+int DesktopIconLayoutLimited(void);
+void DesktopRestoreSavedLayout(void);
+void DesktopRememberIconPos(int Idx);
 void RedrawIconIndex(int Idx);
 void SelectIcon(int Hit, UINT32 X, UINT32 Y, UINT64 Now);
 int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,

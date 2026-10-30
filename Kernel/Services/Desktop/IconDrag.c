@@ -43,9 +43,65 @@ void DesktopIconDragUpdate(UINT32 X, UINT32 Y) {
     MoveIconTo(gIconDragIdx, Ux, Uy);
 }
 
+/* 松手后先擦旧落点、再擦吸附格；Clear 时暂藏本图标，免按新坐标画回旧脚印 */
+static void ClearDragFootprints(int Index, UINT32 OldX, UINT32 OldY,
+                                UINT32 OldW, UINT32 OldH) {
+    UINT32 ScreenW = 0;
+    UINT32 ScreenH = 0;
+    UINT32 NewX;
+    UINT32 NewY;
+    UINT32 NewW;
+    UINT32 NewH;
+    int Present;
+
+    HalVideoGetSize(&ScreenW, &ScreenH);
+    if (OldX >= DESKTOP_EDGE_MARGIN) {
+        OldX -= DESKTOP_EDGE_MARGIN;
+        OldW += DESKTOP_EDGE_MARGIN;
+    }
+    if (OldY >= DESKTOP_EDGE_MARGIN) {
+        OldY -= DESKTOP_EDGE_MARGIN;
+        OldH += DESKTOP_EDGE_MARGIN;
+    }
+    OldW += DESKTOP_EDGE_MARGIN;
+    OldH += DESKTOP_EDGE_MARGIN;
+    if (ScreenW && OldX + OldW > ScreenW) {
+        OldW = ScreenW - OldX;
+    }
+    if (ScreenH && OldY + OldH > ScreenH) {
+        OldH = ScreenH - OldY;
+    }
+    IconBounds(&gIcons[Index], &NewX, &NewY, &NewW, &NewH);
+    if (NewX >= DESKTOP_EDGE_MARGIN) {
+        NewX -= DESKTOP_EDGE_MARGIN;
+        NewW += DESKTOP_EDGE_MARGIN;
+    }
+    if (NewY >= DESKTOP_EDGE_MARGIN) {
+        NewY -= DESKTOP_EDGE_MARGIN;
+        NewH += DESKTOP_EDGE_MARGIN;
+    }
+    NewW += DESKTOP_EDGE_MARGIN;
+    NewH += DESKTOP_EDGE_MARGIN;
+    if (ScreenW && NewX + NewW > ScreenW) {
+        NewW = ScreenW - NewX;
+    }
+    if (ScreenH && NewY + NewH > ScreenH) {
+        NewH = ScreenH - NewY;
+    }
+    Present = gIcons[Index].Present;
+    gIcons[Index].Present = 0;
+    ClearIconFootprint(OldX, OldY, OldW, OldH);
+    ClearIconFootprint(NewX, NewY, NewW, NewH);
+    gIcons[Index].Present = Present;
+}
+
 void DesktopIconDragEnd(void) {
     int Idx;
     int Moved;
+    UINT32 OldX;
+    UINT32 OldY;
+    UINT32 OldW;
+    UINT32 OldH;
 
     Idx = gIconDragIdx;
     Moved = gIconDragMoved;
@@ -61,70 +117,15 @@ void DesktopIconDragEnd(void) {
     if (!Moved) {
         return;
     }
-    {
-        UINT32 Ox;
-        UINT32 Oy;
-        UINT32 Ow;
-        UINT32 Oh;
-
-        /*
-         * 必须先 Snap 再擦落点：ClearIconFootprint → DesktopDrawRect 会按
-         * gIcons 重画；若坐标仍在松手处，刚擦掉的残影会被立刻画回。
-         * 视觉归位优先于 SaveIconLayout（DB/MSC 慢时勿卡住不吸附）。
-         */
-        IconBounds(&gIcons[Idx], &Ox, &Oy, &Ow, &Oh);
-        SnapIconToGrid(&gIcons[Idx].X, &gIcons[Idx].Y);
-        /* 落点与吸附格都擦干净（含字灰边） */
-        {
-            UINT32 Sw = 0;
-            UINT32 Sh = 0;
-            UINT32 Nx;
-            UINT32 Ny;
-            UINT32 Nw;
-            UINT32 Nh;
-            int Saved = gIcons[Idx].Present;
-
-            HalVideoGetSize(&Sw, &Sh);
-            if (Ox >= 4u) {
-                Ox -= 4u;
-                Ow += 4u;
-            }
-            if (Oy >= 4u) {
-                Oy -= 4u;
-                Oh += 4u;
-            }
-            Ow += 4u;
-            Oh += 4u;
-            if (Sw && Ox + Ow > Sw) {
-                Ow = Sw - Ox;
-            }
-            if (Sh && Oy + Oh > Sh) {
-                Oh = Sh - Oy;
-            }
-            IconBounds(&gIcons[Idx], &Nx, &Ny, &Nw, &Nh);
-            if (Nx >= 4u) {
-                Nx -= 4u;
-                Nw += 4u;
-            }
-            if (Ny >= 4u) {
-                Ny -= 4u;
-                Nh += 4u;
-            }
-            Nw += 4u;
-            Nh += 4u;
-            if (Sw && Nx + Nw > Sw) {
-                Nw = Sw - Nx;
-            }
-            if (Sh && Ny + Nh > Sh) {
-                Nh = Sh - Ny;
-            }
-            gIcons[Idx].Present = 0;
-            ClearIconFootprint(Ox, Oy, Ow, Oh);
-            ClearIconFootprint(Nx, Ny, Nw, Nh);
-            gIcons[Idx].Present = Saved;
-        }
-        DrawOneIconOccluded(&gIcons[Idx], Idx == gDeskSelected);
-        HalVideoPresentFlush();
-        SaveIconLayout();
-    }
+    /*
+     * 必须先 Snap 再擦落点：ClearIconFootprint → DesktopDrawRect 会按
+     * gIcons 重画；若坐标仍在松手处，刚擦掉的残影会被立刻画回。
+     * 视觉归位优先于 SaveIconLayout（DB/MSC 慢时勿卡住不吸附）。
+     */
+    IconBounds(&gIcons[Idx], &OldX, &OldY, &OldW, &OldH);
+    SnapIconToGrid(&gIcons[Idx].X, &gIcons[Idx].Y);
+    ClearDragFootprints(Idx, OldX, OldY, OldW, OldH);
+    DrawOneIconOccluded(&gIcons[Idx], Idx == gDeskSelected);
+    HalVideoPresentFlush();
+    SaveIconLayout();
 }

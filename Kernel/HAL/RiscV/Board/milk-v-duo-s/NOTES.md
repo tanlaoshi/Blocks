@@ -294,6 +294,86 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 `wififw write`（写 adid + patch_table，每 1 KB 块读回首字校验）。`write` 前强制先过
 `chip id == aic8800d80` 和 `id` 两道闸。
 
+### 09:45 真机 `aic fifo write fail at 0000`：字节模式的门没开
+
+现场反差：probe 里**块模式** 1536 B 写成功，`wififw id` 的**字节模式** 20 B 消息第 0 字节就失败。
+
+原因是厂商下载前有一组固定动作，我们此前一条都没做（`aicwf_sdiov3_func_init`，
+`aicsdio.c:1820-1877`）：
+
+| 步 | 动作 | 出处 |
+|---|---|---|
+| 1 | `sdio_set_block_size(func, 512)` → fn1 FBR `0x110/0x111 = 0x0200` | `:1833-1840` |
+| 2 | `sdio_enable_func(func)` → CCCR `0x02` 置 fn1 位 | `:1841-1846` |
+| 3 | `sdio_f0_writeb(func, 0x7F, 0xF2)` | `:1848-1855` |
+| 4 | `aicwf_sdio_writeb(bytemode_enable_reg, 0x01)` → **fn1 `0x07 = 1`** | `:1869-1874` |
+
+第 4 步是关键：厂商把 `0x07` 写成 1（注释写"1: no byte mode"，但 Linux 的
+`sdio_writesb` 对 <512 B 恰恰走**字节模式**，`sdio_io.c:352-360`，所以这个位实际是
+"允许字节模式"）。位没置时字节模式 CMD53 直接失败，块模式不受影响 —— 与真机现象完全吻合。
+
+同时纠正两处**协议理解错误**（都会让 `id` 永远超时）：
+
+1. **"有消息"不是 fn1 `0x04` 的 bit7**。厂商 D80 分支（`aicsdio.c:1505-1545`）用的是
+   `intmaskf2 = status | 0x08`：`>120` 才是 fn2（消息）事件，`==127` 是字节模式
+   （长度 = fn1 `0x05` × 4），否则块模式（长度 = `(status & 0x07) × 512`）。
+   `0x77` 就没有 bit7 —— 照 bit7 判会永远等不到。
+2. **RX 帧带 4 B 帧头**：`hdr[2] & 0x7f == 0x11` 才是 CFG_CMD_RSP（`aicsdio_txrxif.c:211-215`），
+   `ipc_e2a_msg` 在 **+4**（id@+4、dest@+6、src@+8、param_len@+10、参数@+12）。
+   之前把 id 当在偏移 0，也是错的。
+
+### 09:59 按评审修三处（验收语义 + 日志通道）
+
+1. **L1**：`SdhciMarkHex` 不再走 `HalSerialBootMark`（SLOG_BOOT 通道，`SERIAL_BOOT=0` 时整段消失），
+   改成和明文一样经 `SdhciMark`（有 sink 走 sink、没 sink 直写 UART）。以前"明文在、Hex 没了"，
+   而 CIS/OCR/`INT_STATUS`/`PRESENT_STATE`/CCCR 全是 Hex —— 排障正好缺证据。
+2. **A1/A2**：FIFO 回环从枚举路径里**拿掉**。理由两条：1536 是固件消息补齐后的线上长度
+   （时序表 §2.6），读长度应由 fn1 `0x04` 的待收块数决定，图案回读对不上属于正常；
+   而且协议没开始就往发送 FIFO 推 1536 B 垃圾会污染 S5 的第一条消息。
+   现在默认只打 `WiFi: sdio enum ok (cis)` + `WiFi: sdio fifo self-test skipped`，
+   要跑得 `wififw fifotest`，且**成败都不改** `Host->Ready` / `gWifiSdioState`。
+   **硬门禁：S3 验收线是 `WiFi: CIS manfid=c8a1:0082`，不是 `FIFO rw ok`。**
+3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
+   vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
+
+### 10:07 `fbr110 OUT_OF_RANGE`：FBR 在 fn0 地址空间，不在 fn1
+
+真机：`fbr110 FAIL cmd=52 arg=10022000 ... r5=00001100 OUT_OF_RANGE`。
+`arg` 拆出来是 **fn1 + addr 0x110** —— 错在这里。
+
+SDIO 规范：**CCCR(0x00-0xFF)、FBR(0x100-0x1FF)、CIA(0x1000+) 全在 fn0 的地址空间**，
+用 `function=0 + 绝对地址` 访问。`0x110` 是"fn0 空间里、function 1 的 FBR 块长寄存器"；
+fn1 自己根本没有 0x110 这个地址，所以卡回 OUT_OF_RANGE。Linux 同样：
+`sdio_set_block_size() → mmc_io_rw_direct(card, 1, 0, SDIO_FBR_BASE(num)+0x10, ...)`，
+`SDIO_FBR_BASE(f)=f*0x100`。
+
+改了三处：
+
+1. FBR 读写一律 `Fn=0` + 绝对 `0x110/0x111`（`AicWriteReg`/`AicMarkIoState` 都改）；
+2. IOEx 只 `|= 0x02`（只保 fn1 位），不再写 `0x03` 顺手把 fn2 也开；
+   bit0 回读不变按"只读/保留位"处理，日志标注不可信；
+3. FBR/IOEx 变成**幂等复核**：枚举阶段（`Sdio.c:978-990`）本来就写过 FBR 和 IOEx，
+   vendor init 只确认目标值 —— 关键在 fn0，不是"先拧 IOEx"。
+
+失败时自动补一组 CCCR 快照（`fbr write failed, state:`），用来查"是否有复位把枚举态清掉"。
+
+### 09:59 vendor init 的顺序修正（真机 09:54 的直接原因）
+
+真机初值 `ioex=02` —— IOEx 的 bit(n-1) 才管 fn n（`sdio_enable_func`），所以 **fn1 一直是关的**，
+对 fn1 的 CMD52 一律被拒，`fn1 blocksize write` 在第一步就死。厂商那边 fn1 早被 probe 打开了，
+我们得自己开，而且**必须开在写 FBR 之前**。新顺序：`ioex |= 0x03` → FBR `0x110/0x111=0x0200`
+→ `fn0 0xF2=0x7F` → `fn1 0x07=0x01`，每一步都 `old=/wrote=/now=` 读回；
+失败时打 `cmd=52 arg= r5=(拆位) pst= int= err=`。
+
+另：`SdhciDriverProbe` 里 `if (Host0->Ready) return 0;` 提前返回把 SD1 探测整段跳过了 ——
+这就是"开机日志一行 `WiFi:` 都没有、只有手敲 wifiprobe 才探"的根因，已改成照样探 SD1。
+
+为此新增：`AicWifiVendorPrepare()`（上面 4 步 + 前后各打一组寄存器）、
+`AicMarkIoState()`（`fn0.f2 / cccr / ioex / iorx` + `fn1.bme / blen / misc / fbrblk`）、
+`AicMarkXferParams()`（`bytes/blocks/blksz/blkcnt/tmode/pst`）。字节模式一失败就自动改用
+块模式（补 0 到 512）重试一次，两次参数都打出来 —— "门没开"（两种都失败）与"写法不对"
+（字节失败、块成功）一眼可分。
+
 桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
 17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
 

@@ -149,6 +149,8 @@ int SdhciWifiInitialize(void);
 #define SDHCI_WIFI_FW_WRITE 4u
 /* S5b：固件阶段（WifiFw.c）。Mode 取上面的位或；只读的 READ/ID 可单独跑 */
 int SdhciWifiFw(UINT32 Mode);
+/* 显式 FIFO 自检（不参与枚举判定；失败不改 Ready/返回语义） */
+int SdhciWifiFifoTest(void);
 #define SDHCI_WIFI_PROBE_WAKE 2u
 int SdhciWifiProbe(UINT32 Flags);
 /*

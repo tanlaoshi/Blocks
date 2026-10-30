@@ -658,6 +658,38 @@ int SdhciWifiProbe(UINT32 Flags) {
     return SdhciWifiInitialize();
 }
 
+/*
+ * 显式 FIFO 自检入口（shell: wififw fifotest）。只做人工诊断用：
+ * 无论成败都不改 Host->Ready / gWifiSdioState —— 枚举成功与否只由
+ * CMD5→3→7 + CCCR + CIS 决定。
+ */
+int SdhciWifiFifoTest(void) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT8 Caps = 0;
+
+    if (Host == 0 || gWifiSdioState != 1) {
+        SdhciMark("WiFi: fifotest needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (SdhciIoRead8(Host, 0, SDIO_CCCR_CAPS, &Caps) != 0) {
+        Caps = 0;
+    }
+    /* 走字节模式的路径必须先确认 fn1 0x07 的允许位（厂商 V3 写 0x01） */
+    {
+        UINT8 Bm = 0;
+        if (SdhciIoRead8(Host, 1, AIC_BYTEMODE_ENABLE_REG_V3, &Bm) == 0 && (Bm & 0x01u) == 0) {
+            (void)SdhciIoWrite8(Host, 1, AIC_BYTEMODE_ENABLE_REG_V3, 0x01u);
+            (void)SdhciIoRead8(Host, 1, AIC_BYTEMODE_ENABLE_REG_V3, &Bm);
+            SdhciMarkHex("WiFi: fifotest set fn1 0x07 -> ", Bm, 2);
+            SdhciMark("\n");
+        }
+    }
+    SdhciMark("WiFi: fifotest begin (explicit, not part of enum)\n");
+    SdioFifoTest(Host, (Caps & SDIO_CAP_SMB) ? 1 : 0);
+    SdhciMark("WiFi: fifotest end (state untouched)\n");
+    return 0;
+}
+
 /* S5b 用：枚举是否成功 / 总线卡住时自救 / 身份是否 D80 */
 int SdhciWifiReady(void) {
     return (gWifiSdioState == 1) ? 1 : 0;
@@ -1098,8 +1130,16 @@ int SdhciWifiInitialize(void) {
         }
     }
 
-    /* ---------- S3 收尾自检：多块 + 固定地址 FIFO（时序表 §7 卡点②） ---------- */
-    SdioFifoTest(Host, (Caps & SDIO_CAP_SMB) ? 1 : 0);
+    /*
+     * ---------- S3 收尾 ----------
+     * **验收线是 CIS，不是 FIFO 回环。** 早期把"写 1536 B 图案再读回来比对"当成功判据，
+     * 那是错的：1536 是固件消息补齐后的线上长度（时序表 §2.6），读回来的长度得由
+     * fn1 0x04 的待收块数决定，图案回读对不上是正常现象。
+     * 更要紧的是：协议还没开始就往发送 FIFO 推 1536 B 垃圾，可能污染 S5 的第一条消息。
+     * 所以默认路径**不跑**，只留一句"跳过"，要跑得人工 `wififw fifotest`。
+     */
+    SdhciMark("WiFi: sdio enum ok (cis)\n");
+    SdhciMark("WiFi: sdio fifo self-test skipped (run 'wififw fifotest')\n");
 
     /* fn1 0x04 杂项中断状态：本轮不轮询，只打一次，供 S4 对照 */
     if (SdhciIoRead8(Host, 1, AIC_MISC_INT_STATUS_REG_V3, &Data) == 0) {

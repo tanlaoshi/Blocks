@@ -5,6 +5,20 @@
 #include "Console.h"
 #include "HalDevices.h"
 
+/*
+ * Duo S 的 SD1（wifi-sd）SDIO 探测在板包里（HAL/RiscV/Board/milk-v-duo-s/Sdhci）。
+ * 这里用弱引用：
+ *   - RiscV 上的其它靶（virt）没有这个符号 → 链成 NULL，命令只提示"本板没有"；
+ *   - x86/arm64 连这段都不编。
+ * 加命令的代价就是这两行，不必为它动 HAL 头。
+ */
+#if defined(__riscv)
+extern int SdhciWifiProbe(UINT32 Flags) __attribute__((weak));
+extern UINT32 SdhciWifiProbeForceFlag(void) __attribute__((weak));
+extern void SdhciWifiMarkSink(void (*Sink)(const char *Text)) __attribute__((weak));
+extern int SdhciWifiFw(UINT32 Mode) __attribute__((weak));
+#endif
+
 static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
     const char *A = Word;
     const char *B = Arg;
@@ -110,7 +124,44 @@ static void CommandWifiJoin(const char *Ssid) {
     gConsole.Write("wifi: join sent (open)\n");
 }
 
+#if defined(__riscv)
+static void ShellProbeMark(const char *Text) {
+    gConsole.Write(Text);
+}
+
+static void CommandWifiProbe(int WithWake) {
+    int Rc;
+    UINT32 Flags = 1u; /* SDHCI_WIFI_PROBE_FORCE */
+
+    if (SdhciWifiProbe == 0) {
+        gConsole.Write("wifi: this board has no SDIO/Sdhci board driver\n");
+        return;
+    }
+    gConsole.Write("wifi: SD1 SDIO probe (re-run, state cleared)\n");
+    if (WithWake != 0) {
+        Flags |= 2u; /* SDHCI_WIFI_PROBE_WAKE：PE7 拉高（一次性实验） */
+        gConsole.Write("wifi: experimental: drive GPIOE7 (wakeup) high\n");
+    }
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(ShellProbeMark);
+    }
+    Rc = SdhciWifiProbe(Flags);
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(0);
+    }
+    gConsole.Write(Rc == 0 ? "wifi: SDIO probe ok\n" : "wifi: SDIO probe FAILED (see above)\n");
+}
+#endif
+
 static void CommandWifi(int Argc, char **Argv) {
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "probe")) {
+#if defined(__riscv)
+        CommandWifiProbe(0);
+#else
+        gConsole.Write("wifi: probe only on duo-s\n");
+#endif
+        return;
+    }
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "scan")) {
         CommandWifiScan();
         return;
@@ -125,11 +176,84 @@ static void CommandWifi(int Argc, char **Argv) {
     }
     if (Argc < 2) {
         CommandWifiInfo();
+        gConsole.Write("hint: wifi probe - re-run SD1 (wifi-sd) SDIO probe\n");
         return;
     }
-    gConsole.Write("wifi [info|scan|join <ssid>]\n");
+    gConsole.Write("wifi [info|scan|join <ssid>|probe]\n");
+}
+
+#if defined(__riscv)
+/* wifiprobe：等价于 wifi probe，直接重跑 SD1 枚举（真机排障用） */
+static void CommandWifiProbeOnly(int Argc, char **Argv) {
+    int Wake = 0;
+
+    if (Argc >= 2 && Argv[1][0] == 'w' && Argv[1][1] == 'a') {
+        Wake = 1;
+    }
+    CommandWifiProbe(Wake);
+}
+#endif
+
+#if defined(__riscv)
+/*
+ * wififw：S5b 固件阶段。参数：
+ *   wififw          只读：从卡上读 adid/patch_table 并打字节数（不动芯片）
+ *   wififw id       只读：读芯片版本 0x40500000，顺带证明 fn2 消息通道
+ *   wififw write    写 adid + patch_table，每段写完读回校验
+ */
+static void CommandWifiFw(int Argc, char **Argv) {
+    UINT32 Mode = 1u; /* SDHCI_WIFI_FW_READ */
+
+    if (SdhciWifiFw == 0) {
+        gConsole.Write("wifi: this board has no SDIO firmware stage\n");
+        return;
+    }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "id")) {
+        Mode = 2u; /* SDHCI_WIFI_FW_ID */
+    } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "write")) {
+        Mode = 4u; /* SDHCI_WIFI_FW_WRITE */
+    } else if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "fifotest")) {
+        /* 显式 FIFO 回环自检：只做人工诊断，不参与枚举判定 */
+        extern int SdhciWifiFifoTest(void) __attribute__((weak));
+        if (SdhciWifiFifoTest == 0) {
+            gConsole.Write("wifi: this board has no FIFO self-test\n");
+            return;
+        }
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(ShellProbeMark);
+        }
+        (void)SdhciWifiFifoTest();
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(0);
+        }
+        return;
+    } else if (Argc >= 2 && !ArgEqualIgnoreCase(Argv[1], "read")) {
+        gConsole.Write("wififw [read|id|write|fifotest]\n");
+        return;
+    }
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(ShellProbeMark);
+    }
+    (void)SdhciWifiFw(Mode);
+    if (SdhciWifiMarkSink != 0) {
+        SdhciWifiMarkSink(0);
+    }
+}
+#endif
+
+/*
+ * 无桌面/无 FB 的板子（Duo S）走 ShellCommandsRegisterVirtMin，只挂命令最小集，
+ * 所以 wifiprobe 单独开一个注册口给那里用；桌面靶则由 ShellCommandsWifiRegister 一起挂。
+ */
+void ShellCommandsWifiProbeRegister(void) {
+#if defined(__riscv)
+    gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
+                      CommandWifiProbeOnly);
+    gConsole.Register("wififw", "firmware stage: wififw [read|id|write|fifotest]", CommandWifiFw);
+#endif
 }
 
 void ShellCommandsWifiRegister(void) {
-    gConsole.Register("wifi", "wifi [info|scan|join <ssid>]", CommandWifi);
+    gConsole.Register("wifi", "wifi [info|scan|join <ssid>|probe]", CommandWifi);
+    ShellCommandsWifiProbeRegister();
 }

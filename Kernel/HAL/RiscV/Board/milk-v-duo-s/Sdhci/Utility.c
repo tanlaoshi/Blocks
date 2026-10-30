@@ -96,14 +96,20 @@ void SdhciMark(const char *Text) {
     HalSerialWriteShell(Text);
 }
 
+/*
+ * Hex 与明文必须走**同一个出口**（评审 L1）：
+ * 以前这里用 HalSerialBootMark（SLOG_BOOT 通道），SERIAL_BOOT=0 时明文在、十六进制消失；
+ * 而 CIS/OCR/INT_STATUS/PRESENT_STATE/CCCR 这些证据行全是 Hex —— 排障正好缺这些字段。
+ * 现在统一经 SdhciMark，也就是"有 sink 走 sink，没 sink 直写 UART"。
+ */
 void SdhciMarkHex(const char *Tag, UINT32 Value, int Digits) {
     char Buffer[17];
     if (Digits < 1 || Digits > 16) {
         Digits = 8;
     }
     HalSerialFormatHex(Buffer, Value, Digits);
-    HalSerialBootMark(Tag);
-    HalSerialBootMark(Buffer);
+    SdhciMark(Tag);
+    SdhciMark(Buffer);
 }
 
 void SdhciMarkDecimal(const char *Tag, UINT32 Value) {

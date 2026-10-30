@@ -77,7 +77,14 @@ static int SdhciDriverProbe(const DRIVER *Self, void *BusContext, void **OutPriv
     }
     SdhciMark("Boot: sdhci probe enter (SD0 boot disk)\n");
     if (Host0->Ready) {
-        SdhciMark("Boot: sdhci probe skip, SD0 already ready\n");
+        /*
+         * SD0 已经就绪（启动盘早一步绑好了）——这里以前直接 return，
+         * 结果 SD1（wifi-sd）的探测在真机上**根本没跑过**，开机日志里一行
+         * `WiFi:` 都没有，只有手动 wifiprobe 才会去探。
+         * SD0 是否就绪与 SD1 无关，SD1 该探就得探。
+         */
+        SdhciMark("Boot: sdhci probe skip, SD0 already ready (SD1 still probed)\n");
+        (void)SdhciWifiInitialize();
         return 0;
     }
     Rc = SdhciHostInitialize(Host0);

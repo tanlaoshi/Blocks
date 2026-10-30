@@ -215,9 +215,160 @@ static int SdioFifoTransfer(SDHCI_HOST *Host, int Write, UINT8 *Buffer, int Mult
     return 0;
 }
 
-/* S3 的收尾自检：多块 + 固定地址（OP_CODE=0）FIFO 写读一遍 */
+/*
+ * 传输现场：BLOCK_SIZE / BLOCK_COUNT（块模式下传完会减到 0）/ TRANSFER_MODE /
+ * DATA_TIMEOUT / 原始 INT_STATUS / 错误位 / PRESENT_STATE。
+ * 块模式的 BLOCK_COUNT 是"还剩几块"，传完应为 0 —— 这是判断"模块到底回了
+ * 几块"最直接的证据（用户要求第 1 点）。
+ */
+static void SdioMarkErrBits(UINT32 Err) {
+    SdhciMark(" bits:");
+    if ((Err & 0x0001u) != 0) {
+        SdhciMark(" ADMA");
+    }
+    if ((Err & 0x0002u) != 0) {
+        SdhciMark(" AC12");
+    }
+    if ((Err & 0x0004u) != 0) {
+        SdhciMark(" CMD_END");
+    }
+    if ((Err & 0x0008u) != 0) {
+        SdhciMark(" CMD_IDX");
+    }
+    if ((Err & 0x0010u) != 0) {
+        SdhciMark(" DAT_END");
+    }
+    if ((Err & 0x0020u) != 0) {
+        SdhciMark(" DAT_CRC");
+    }
+    if ((Err & 0x0040u) != 0) {
+        SdhciMark(" DAT_TIMEOUT");
+    }
+    if ((Err & 0x0080u) != 0) {
+        SdhciMark(" CMD_TIMEOUT");
+    }
+    if (Err == 0) {
+        SdhciMark(" none");
+    }
+    SdhciMark("\n");
+}
+
+/*
+ * 传输现场的现场三行：BLOCK_SIZE/BLOCK_COUNT/TRANSFER_MODE/DATA_TIMEOUT、
+ * **复位之前**的 INT_STATUS / 错误位 / PRESENT_STATE（Host->Last* 抓的，
+ * PioAbort 会先记再复位，现场读是读不到的）、以及复位之后的当前值。
+ */
+static void SdioMarkXfer(SDHCI_HOST *Host, const char *Tag) {
+    UINT32 St = SdhciRead32(Host, SDHCI_INT_STATUS);
+    UINT32 Err = (Host->LastStatus >> 16) & 0xFFFFu;
+
+    SdhciMark(Tag);
+    SdhciMarkHex(" blksz=", SdhciRead16(Host, SDHCI_BLOCK_SIZE), 4);
+    SdhciMarkHex(" blkcnt=", SdhciRead16(Host, SDHCI_BLOCK_COUNT), 4);
+    SdhciMarkHex(" tmode=", SdhciRead16(Host, SDHCI_TRANSFER_MODE), 4);
+    SdhciMarkHex(" tmo=", SdhciRead8(Host, SDHCI_TIMEOUT_CONTROL), 2);
+    SdhciMark("\n");
+    SdhciMarkHex("WiFi:  pre-reset int=", Host->LastStatus, 8);
+    SdhciMarkHex(" err=", Err, 4);
+    SdhciMarkHex(" pst=", Host->LastPresentState, 8);
+    SdioMarkErrBits(Err);
+    SdhciMarkHex("WiFi:  now int=", St, 8);
+    SdhciMarkHex(" pst=", SdhciRead32(Host, SDHCI_PRESENT_STATE), 8);
+    SdhciMark("\n");
+}
+
+/* 把 DAT/CMD 卡住的总线拉回来：先 RESET_DAT，不行再 RESET_ALL + 重起 400k */
+static int SdioRecoverBus(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreHertz) {
+    UINT32 Pst = SdhciRead32(Host, SDHCI_PRESENT_STATE);
+    UINT8 Data;
+
+    if ((Pst & (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT)) == 0) {
+        return 0;
+    }
+    SdhciMarkHex("WiFi: bus stuck, pst=", Pst, 8);
+    SdhciMark("\n");
+    (void)SdhciSoftwareReset(Host, SDHCI_RESET_CMD | SDHCI_RESET_DATA);
+    Pst = SdhciRead32(Host, SDHCI_PRESENT_STATE);
+    if ((Pst & (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT)) == 0) {
+        SdhciMark("WiFi: bus recovered (RESET_DAT)\n");
+        return 0;
+    }
+    SdhciMark("WiFi: still stuck, RESET_ALL + 400kHz\n");
+    if (SdhciSoftwareReset(Host, SDHCI_RESET_ALL) != 0 ||
+        SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0xFFFFFFFFu) != 0) {
+        return -1;
+    }
+    SdhciWrite8(Host, SDHCI_HOST_CONTROL, HostControl);
+    (void)SdhciClockConfigure(Host, RestoreHertz);
+    if (SdhciIoRead8(Host, 0, 0x00u, &Data) != 0) {
+        return -1;
+    }
+    SdhciMarkHex("WiFi: bus recovered (RESET_ALL) CCCR00=", Data, 2);
+    SdhciMark("\n");
+    return 0;
+}
+
+/*
+ * DAT 读方向的"确定有货"验证：用 CMD53 字节模式从 fn0 的 Common CIS（0x1000）
+ * 读 16 B，再和 CMD52 逐字节读的结果比对。
+ * CIS 是卡自己的 ROM，一定回数据 —— 与模块固件在不在、FIFO 里有没有消息无关，
+ * 所以它能单独证明 DAT0-3 的读方向没问题。
+ */
+static int SdioDatReadCheck(SDHCI_HOST *Host) {
+    UINT32 i;
+    UINT8 Byte;
+
+    for (i = 0; i < 16u; i++) {
+        gSdioReadback[i] = 0;
+    }
+    if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 0, 0, 16u, gSdioReadback) != 0) {
+        SdioMarkXfer(Host, "WiFi: DAT read (CMD53 fn0 cis 16B) fail");
+        return -1;
+    }
+    for (i = 0; i < 16u; i++) {
+        if (SdhciIoRead8(Host, 0, 0x1000u + i, &Byte) != 0 || Byte != gSdioReadback[i]) {
+            break;
+        }
+    }
+    if (i == 16u) {
+        SdhciMark("WiFi: DAT read ok (CMD53 fn0 cis 16B matches CMD52)\n");
+        return 0;
+    }
+    SdhciMarkHex("WiFi: DAT read mismatch at ", i, 2);
+    SdhciMarkHex(" got=", gSdioReadback[i], 2);
+    SdhciMarkHex(" want=", Byte, 2);
+    SdhciMark("\n");
+    return -1;
+}
+
+/*
+ * DAT 方向自检（S3 收尾）。
+ *
+ * 顺序按"能确定的事先做"：
+ *   1) CMD53 fn0 CIS 读 16 B   —— 证明 DAT0-3 读方向通（与固件无关）
+ *   2) FIFO 写 1536 B          —— 证明写方向通（S5 下载固件要用）
+ *   3) FIFO 读"探一下"         —— **只读 4 B，且允许失败**
+ *
+ * 第 3 步为什么不再读 1536 B：AIC 的 fn1 FIFO 是**消息通道**，不是回环。
+ * 厂商只在芯片有消息时才读（aicwf_sdio_bus_rx → sdio_readsb，且由 flow-ctrl/中断
+ * 驱动），FIFO 空的时候去读，DAT 线永远不结束 —— 09:10 那次
+ * `pst=03f20206`（DOING_READ + DAT_ACTIVE + DATA_INHIBIT）就是这个。
+ * 所以这里只在"有消息"时才有意义；没有就是正常，收尾把总线拉回来即可。
+ */
 static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     UINT32 i;
+    UINT8 HostControl = SdhciRead8(Host, SDHCI_HOST_CONTROL);
+    UINT32 RestoreHertz = Host->ActualClockHertz;
+
+    /* fn1 的两个 FIFO 窗口是固定常量（aicsdio.c:1708-1719 按 chipid 选），
+       不需要先写什么 window/len 寄存器（用户要求第 2 点）。 */
+    SdhciMarkHex("WiFi: fn1 fifo rd=", AIC_RD_FIFO_ADDR_V3, 2);
+    SdhciMarkHex(" wr=", AIC_WR_FIFO_ADDR_V3, 2);
+    SdhciMark(" (fixed, no window reg)\n");
+
+    if (SdioDatReadCheck(Host) != 0) {
+        (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
+    }
 
     for (i = 0; i < SDIO_SELFTEST_BYTES; i++) {
         gSdioPattern[i] = (UINT8)((i * 7u + 0xA5u) & 0xFFu);
@@ -226,25 +377,25 @@ static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     SdhciMark(MultiBlock ? "WiFi: FIFO mode=block x3\n" : "WiFi: FIFO mode=byte x3\n");
     if (SdioFifoTransfer(Host, 1, gSdioPattern, MultiBlock) != 0) {
         SdhciFail(Host, "WiFi: FIFO write 1536B fail");
+        (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
         return;
     }
     SdhciMark("WiFi: FIFO write 1536B ok\n");
-    if (SdioFifoTransfer(Host, 0, gSdioReadback, MultiBlock) != 0) {
-        SdhciFail(Host, "WiFi: FIFO read 1536B fail");
+
+    /* 读方向只探 4 B：有消息就是消息头，没有就超时退出 */
+    for (i = 0; i < 4u; i++) {
+        gSdioReadback[i] = 0;
+    }
+    if (SdhciIoRwExtended(Host, 1, AIC_RD_FIFO_ADDR_V3, 0, 0, 0, 4u, gSdioReadback) != 0) {
+        SdioMarkXfer(Host, "WiFi: FIFO read 4B");
+        SdhciMark("WiFi: FIFO read: no message pending (expect before fw download)\n");
+        (void)SdioRecoverBus(Host, HostControl, RestoreHertz);
         return;
     }
-    for (i = 0; i < SDIO_SELFTEST_BYTES; i++) {
-        if (gSdioReadback[i] != gSdioPattern[i]) {
-            break;
-        }
-    }
-    if (i == SDIO_SELFTEST_BYTES) {
-        SdhciMark("WiFi: FIFO 1536B rw ok\n");
-        return;
-    }
-    SdhciMarkHex("WiFi: FIFO readback diff at ", i, 4);
-    SdhciMarkHex(" got=", gSdioReadback[i], 2);
-    SdhciMarkHex(" want=", gSdioPattern[i], 2);
+    SdhciMarkHex("WiFi: FIFO read 4B ok hdr=", gSdioReadback[0], 2);
+    SdhciMarkHex(" ", gSdioReadback[1], 2);
+    SdhciMarkHex(" ", gSdioReadback[2], 2);
+    SdhciMarkHex(" ", gSdioReadback[3], 2);
     SdhciMark("\n");
 }
 

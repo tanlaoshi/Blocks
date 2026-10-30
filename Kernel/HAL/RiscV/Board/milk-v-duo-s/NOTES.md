@@ -188,6 +188,31 @@ MANFID(0x20) 属于 **Common CIS**（fn0 的指针在 0x09-0x0B），function CI
 6. **不再判死**：真找不到 MANFID 就是 `no MANFID tuple, continue without module id`，
    后面照常走 FIFO 自检、`probe end ok`。
 
+### 09:18 真机 → FIFO 读 1536 B 卡死：那不是回环，是消息通道
+
+现场：`FIFO write 1536B ok` 之后 `FIFO read 1536B fail st=00000000 pst=03f20206`
+（`0x206` = `DOING_READ`|`DAT_LINE_ACTIVE`|`DATA_INHIBIT`：数据线一直不结束，且**没有**错误位）。
+
+根因不是驱动 bug，是**自检的假设错了**：AIC 的 fn1 FIFO 是**消息通道**，不是回环。
+厂商只在芯片有消息时才读（`aicwf_sdio_recv_pkt` → `sdio_readsb`，由 flow-ctrl /
+中断驱动，`aicsdio.c:742-751`）。FIFO 里没消息时去读，卡不回数据，DAT 线就永远挂着。
+另外 `rd_fifo_addr=0x0F`/`wr_fifo_addr=0x10` 是**固定常量**（`aicsdio.c:1708-1719` 按
+chipid 选），不需要先写什么 window/len 寄存器。
+
+改法（`SdioFifoTest`）：
+
+1. **先证读方向**：`CMD53 fn0 读 16 B @0x1000`（Common CIS，卡自己的 ROM，一定有货），
+   再和 CMD52 逐字节比对 → `WiFi: DAT read ok (CMD53 fn0 cis 16B matches CMD52)`。
+   这条与固件在不在、FIFO 有没有消息**完全无关**，所以它是 DAT0-3 读方向的干净证明。
+2. FIFO 写 1536 B 保留（S5 下载固件就靠写方向）。
+3. FIFO 读**只探 4 B**（消息头长度），失败即"没有消息"，打
+   `WiFi: FIFO read: no message pending (expect before fw download)` 后收尾 —— 不再死等 1536 B。
+4. 现场三行：`blksz/blkcnt/tmode/tmo` + **复位之前**的 `int/err/pst`（`Host->Last*`，
+   `SdhciPioAbort` 先记再复位，现场读读不到）+ 复位之后的 `now int/pst`，
+   错误位细分成 `ADMA/AC12/CMD_END/CMD_IDX/DAT_END/DAT_CRC/DAT_TIMEOUT/CMD_TIMEOUT`。
+5. 恢复阶梯（`SdioRecoverBus`）：`RESET_DAT` → 还卡就 `RESET_ALL + 400kHz` + 恢复
+   `HOST_CONTROL`/时钟 + CMD52 验活，打印 `bus recovered (RESET_DAT|RESET_ALL)`。
+
 桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
 17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
 

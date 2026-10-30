@@ -196,10 +196,10 @@ fi
 mkdir -p "$BUILDDIR"
 export BUILDDIR
 
-# virt arm64/riscv 尚无 HAL/*/LwIp/lwipopts.h；默认关 lwIP，避免误编挂掉
-if [ "$LWIP" = "1" ] && [ ! -f "HAL/$HAL_ARCH/LwIp/include/lwipopts.h" ]; then
+# virt arm64/riscv 尚无 HAL/Common/LwIp/lwipopts.h；默认关 lwIP，避免误编挂掉
+if [ "$LWIP" = "1" ] && [ ! -f "HAL/Common/LwIp/include/lwipopts.h" ]; then
     if [ "$LWIP_SET" = "1" ]; then
-        echo "error: LWIP=1 but HAL/$HAL_ARCH/LwIp/include/lwipopts.h missing (no port yet)" >&2
+        echo "error: LWIP=1 but HAL/Common/LwIp/include/lwipopts.h missing (no port yet)" >&2
         echo "  use: ./build.sh $ARCH LWIP=0" >&2
         exit 1
     fi

@@ -204,8 +204,8 @@ ifeq ($(LWIP),1)
 CFLAGS_BASE += -DLWIP_ENABLE=1
 LWIPDIR = ThirdParty/lwip/src
 LWIPINCLUDES = -I$(LWIPDIR)/include \
-               -IHAL/$(HAL_ARCH)/LwIp/include \
-               -IHAL/$(HAL_ARCH)/LwIp
+               -IHAL/Common/LwIp/include \
+               -IHAL/Common/LwIp
 LWIPCORE = \
 	$(LWIPDIR)/core/init.c \
 	$(LWIPDIR)/core/def.c \
@@ -231,21 +231,25 @@ LWIPCORE = \
 	$(LWIPDIR)/core/ipv4/dhcp.c \
 	$(LWIPDIR)/netif/ethernet.c
 LWIPOBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(LWIPCORE))
-LWIP_PORT_SRCS = HAL/$(HAL_ARCH)/LwIp/Netif.c \
-                 HAL/$(HAL_ARCH)/LwIp/Ping.c \
-                 HAL/$(HAL_ARCH)/LwIp/TcpEcho.c \
-                 HAL/$(HAL_ARCH)/LwIp/UdpQueue.c \
-                 HAL/$(HAL_ARCH)/LwIp/TcpClient.c \
-                 HAL/$(HAL_ARCH)/LwIp/TcpSocket.c
+# lwIP 端口混合形态：协议层收在 HAL/Common/LwIp；
+# Netif.c / Ping.c 是平台适配（发送路径、MAC、计时源各异），仍留 HAL/$(HAL_ARCH)/LwIp。
+LWIP_PORT_COMMON_SRCS = HAL/Common/LwIp/TcpEcho.c \
+                        HAL/Common/LwIp/UdpQueue.c \
+                        HAL/Common/LwIp/TcpClient.c \
+                        HAL/Common/LwIp/TcpSocket.c
+LWIP_PORT_ARCH_SRCS   = HAL/$(HAL_ARCH)/LwIp/Netif.c \
+                        HAL/$(HAL_ARCH)/LwIp/Ping.c
 ifneq ($(filter $(ARCH),riscv arm64),)
 # freestanding：lwIP netif.c 要 atoi（x86 有宿主 libc）
-LWIP_PORT_SRCS += HAL/$(HAL_ARCH)/LwIp/LibcStub.c
+LWIP_PORT_COMMON_SRCS += HAL/Common/LwIp/LibcStub.c
 endif
-LWIP_PORT_OBJS = $(patsubst HAL/$(HAL_ARCH)/LwIp/%.c,$(HALDIR)/LwIp/%.o,$(LWIP_PORT_SRCS))
+LWIP_PORT_SRCS = $(LWIP_PORT_COMMON_SRCS) $(LWIP_PORT_ARCH_SRCS)
+LWIP_PORT_OBJS = $(patsubst HAL/Common/LwIp/%.c,$(HALDIR)/Common/LwIp/%.o,$(LWIP_PORT_COMMON_SRCS)) \
+                 $(patsubst HAL/$(HAL_ARCH)/LwIp/%.c,$(HALDIR)/LwIp/%.o,$(LWIP_PORT_ARCH_SRCS))
 endif
 
 CFLAGS_COMMON = $(CFLAGS_BASE) $(INCLUDES_COMMON) $(LWIPINCLUDES)
-CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp
+CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp -IHAL/Common/LwIp
 # PR-UI-ttf-fpu：栅格 / 探针 TU 去掉 general-regs-only
 ifeq ($(ARCH),x86_64)
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL)) -msse2
@@ -890,6 +894,11 @@ $(HALDIR)/%.o: HAL/$(HAL_ARCH)/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 $(HALDIR)/LwIp/%.o: HAL/$(HAL_ARCH)/LwIp/%.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
+# HAL/Common/LwIp：协议层 + LibcStub（LibcStub 仅非 x64 入 LWIP_PORT_SRCS）。
+# 显式规则：上方 $(HALDIR)/Common/%.o 通用规则被 ifneq(x86_64) 包裹，x64 匹配不到。
+$(HALDIR)/Common/LwIp/%.o: HAL/Common/LwIp/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(LWIP),1)

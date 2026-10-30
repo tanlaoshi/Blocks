@@ -187,8 +187,8 @@ toy_virt_ensure_elf() {
         make clean "ARCH=$VIRT_MAKE_ARCH" "BOARD=$WantBoard" "BUILDDIR=$KERNEL_BUILD"
     fi
     VirtLwip=1
-    if [ ! -d "HAL/${VIRT_HAL_ARCH}/LwIp" ] && \
-       [ ! -d "HAL/${VIRT_HAL_ARCH}/LwIp" ]; then
+    if [ ! -d "HAL/Common/LwIp" ] && \
+       [ ! -d "HAL/Common/LwIp" ]; then
         VirtLwip=0
     fi
     if [ "$NeedBuild" = "1" ]; then

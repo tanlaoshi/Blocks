@@ -336,6 +336,27 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 3. **P2**：`AicEnsureByteMode()` 在任何字节模式 CMD53 之前确认 fn1 `0x07` 的允许位（不再只靠
    vendor init 那一次）；置不上且卡又报 `SMB=0` 就明确失败，不静默换模式。
 
+### 15:46 `wififw mmreset` + MM_START 调研
+
+真机 `ver` 成功：`lmac=06090101 machw1=0002fdfb machw2=00014047 phy1=5ee24111 phy2=01020000`
+⇒ `lmac` 6.9.1.1，**MM 任务有应答即证明 fmacfw 已接管芯片**。
+
+新增 `wififw mmreset`：`MM_RESET_REQ(0x0000)` → `MM_RESET_CFM(0x0001)`，`dest=TASK_MM=0`、`plen=0`，
+收到 CFM 后**自动再查一次版本**（`WifiFwVersionProbe` 抽成 static 复用），确认复位没把固件打死。
+超时打 `mm reset: no cfm in 2000ms`。只读，不改 patch 状态。
+
+调研文档：`Archive/Duo-WiFi-MM-START调研.md`（154 行）。关键结论：
+
+* `struct mm_start_req` = **70 B**：`phy_cfg`(16×u32) + `uapsd_timeout`(u32, 默认 300) +
+  `lp_clk_accuracy`(u16, 默认 20)；
+* **`phy_cfg` 恒为全零**：`rwnx_hw->phy.cfg` 全仓只有两处赋值且都在 `#if 0` 里
+  （`rwnx_mod_params.c:1605-1633`），`rwnx_hw` 是 kzalloc ⇒ 厂商发的也是 64 个 0，
+  我们不需要 efuse、不需要 phy 配置文件；
+* MAC 走 `MM_GET_MAC_ADDR_REQ(0x73)` 由固件读 efuse，主机不碰；
+* 顺序：`MM_RESET` → `MM_VERSION` → `ME_CONFIG(0x1400)` → `ME_CHAN_CONFIG(0x1402)` →
+  `MM_START(0x0002)`（在 netdev open 时才发）→ `MM_ADD_IF(0x0006)` → `SCANU_START(0x1000)`；
+* 失败不重下固件，只有 DBG 通道也死了才需要重下。
+
 ### 15:37 `wififw ver`：用 MM_VERSION_REQ 判断固件是否真的在跑
 
 真机 `write confirm` 5/5 阶段全绿（adid/patch/fmacfw 全部 sent==len，哨兵 6/6，patch 101/101，

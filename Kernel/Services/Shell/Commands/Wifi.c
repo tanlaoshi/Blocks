@@ -21,6 +21,7 @@ extern int SdhciWifiFifoTest(void) __attribute__((weak));
 extern int SdhciWifiFwRead(UINT32 Address) __attribute__((weak));
 extern int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) __attribute__((weak));
 extern int SdhciWifiFwVersion(void) __attribute__((weak));
+extern int SdhciWifiFwMmReset(void) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -325,6 +326,20 @@ static void CommandWifiFw(int Argc, char **Argv) {
             SdhciWifiMarkSink(0);
         }
         return;
+    } else if (ArgEqualIgnoreCase(Argv[1], "mmreset")) {
+        /* 只读诊断（复位 + 复查版本），不改 patch 状态 */
+        if (SdhciWifiFwMmReset == 0) {
+            gConsole.Write("wifi: this board has no SDIO firmware stage\n");
+            return;
+        }
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(ShellProbeMark);
+        }
+        gConsole.Write(SdhciWifiFwMmReset() == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        if (SdhciWifiMarkSink != 0) {
+            SdhciWifiMarkSink(0);
+        }
+        return;
     } else if (ArgEqualIgnoreCase(Argv[1], "ver")) {
         /* 只读：MM_VERSION_REQ → 有 CFM 就证明固件在跑 */
         if (SdhciWifiFwVersion == 0) {
@@ -395,7 +410,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -410,7 +425,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

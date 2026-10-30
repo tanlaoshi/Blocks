@@ -25,6 +25,8 @@
 #define AIC_TASK_MM 0u
 #define AIC_TASK_DBG 1u
 /* MM_VERSION_REQ = LMAC_FIRST_MSG(TASK_MM)+4，CFM 紧随其后（lmac_msg.h:136-150） */
+#define AIC_MM_RESET_REQ 0x0000u
+#define AIC_MM_RESET_CFM 0x0001u
 #define AIC_MM_VERSION_REQ 0x0004u
 #define AIC_MM_VERSION_CFM 0x0005u
 #define AIC_DRV_TASK_ID 100u
@@ -2224,20 +2226,11 @@ int SdhciWifiFwWriteDiag(UINT32 Address, UINT32 Value) {
  *
  * 只读：不发写消息、不改任何内存、不动 patch 状态。
  */
-int SdhciWifiFwVersion(void) {
-    SDHCI_HOST *Host = SdhciHostAt(1);
+static int WifiFwVersionProbe(SDHCI_HOST *Host) {
     UINT8 Cfm[64];
     UINT32 CfmLen = 0;
     UINT32 k;
 
-    if (Host == 0 || !SdhciWifiReady()) {
-        SdhciMark("WiFi: ver needs a probed card (run wifiprobe first)\n");
-        return -1;
-    }
-    if (AicWifiVendorPrepare(Host) != 0) {
-        SdhciMark("WiFi: ver: vendor prepare failed\n");
-        return -1;
-    }
     SdhciMarkHex("WiFi: msg tx id=", AIC_MM_VERSION_REQ, 4);
     SdhciMarkHex(" dest=", AIC_TASK_MM, 4);
     SdhciMarkHex(" src=", AIC_DRV_TASK_ID, 4);
@@ -2277,6 +2270,62 @@ int SdhciWifiFwVersion(void) {
     if (CfmLen < 16u) {
         SdhciMarkHex("WiFi: ver: cfm plen<16, only ", CfmLen, 4);
         SdhciMark(" bytes available\n");
+    }
+    return 0;
+}
+
+int SdhciWifiFwVersion(void) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+
+    if (Host == 0 || !SdhciWifiReady()) {
+        SdhciMark("WiFi: ver needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (AicWifiVendorPrepare(Host) != 0) {
+        SdhciMark("WiFi: ver: vendor prepare failed\n");
+        return -1;
+    }
+    return WifiFwVersionProbe(Host);
+}
+
+/*
+ * `wififw mmreset`：MM_RESET_REQ(0x0000) → MM_RESET_CFM(0x0001)，复位后自动再查一次版本。
+ * 复位后固件应当仍在跑（MM 任务属于固件），版本不变即可确认"复位没把它打死"。
+ */
+int SdhciWifiFwMmReset(void) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT8 Cfm[16];
+    UINT32 CfmLen = 0;
+
+    if (Host == 0 || !SdhciWifiReady()) {
+        SdhciMark("WiFi: mmreset needs a probed card (run wifiprobe first)\n");
+        return -1;
+    }
+    if (AicWifiVendorPrepare(Host) != 0) {
+        SdhciMark("WiFi: mmreset: vendor prepare failed\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: msg tx id=", AIC_MM_RESET_REQ, 4);
+    SdhciMarkHex(" dest=", AIC_TASK_MM, 4);
+    SdhciMarkHex(" src=", AIC_DRV_TASK_ID, 4);
+    SdhciMark(" plen=0\n");
+    if (AicSendMsgEx(Host, (UINT16)AIC_MM_RESET_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
+        SdhciMark("WiFi: mm reset: msg send FAILED\n");
+        return -1;
+    }
+    if (AicRecvMsgTimeout(Host, (UINT16)AIC_MM_RESET_CFM, Cfm, sizeof(Cfm), &CfmLen, 4u,
+                          AIC_CFM_TIMEOUT_MS) != 0) {
+        SdhciMark("WiFi: mm reset: no cfm in 2000ms\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: rx cfm id=", AIC_MM_RESET_CFM, 4);
+    SdhciMarkHex(" plen=", CfmLen, 4);
+    SdhciMark("\n");
+    SdhciMark("WiFi: mm reset ok\n");
+    /* 复位后必须再验一次：CFM 只证明消息通路，版本才证明固件还活着 */
+    if (WifiFwVersionProbe(Host) != 0) {
+        SdhciMark("WiFi: mm reset: post-reset ver FAILED\n");
+        return -1;
     }
     return 0;
 }

@@ -68,8 +68,32 @@ void SdhciWrite16(SDHCI_HOST *Host, UINT32 Offset, UINT16 Value) {
     SdhciWrite32(Host, Aligned, (Old & ~Mask) | ((UINT32)Value << Shift));
 }
 
+/*
+ * 日志出口。
+ *
+ * 原先走 HalSerialBootMark() → SLOG_BOOT 通道；该通道只在编译期 SERIAL_BOOT=1
+ * 时才会写 UART（HalSerial.c:29-41 ChannelUartOn）。真机上「驱动已 bound 但一行
+ * 都看不到」时，第一个要排除的就是这个开关，所以这里改成**直写 UART**
+ * （HalSerialWriteShell 不做通道过滤），保证日志一定出得来。
+ *
+ * shell 里重跑 probe 时，用 SdhciWifiMarkSink() 把出口换成 gConsole.Write，
+ * 这样输出和提示符/回显走同一条路径。
+ */
+static void (*gSdhciMarkSink)(const char *Text);
+
+void SdhciWifiMarkSink(void (*Sink)(const char *Text)) {
+    gSdhciMarkSink = Sink;
+}
+
 void SdhciMark(const char *Text) {
-    HalSerialBootMark(Text);
+    if (Text == 0) {
+        return;
+    }
+    if (gSdhciMarkSink != 0) {
+        gSdhciMarkSink(Text);
+        return;
+    }
+    HalSerialWriteShell(Text);
 }
 
 void SdhciMarkHex(const char *Tag, UINT32 Value, int Digits) {

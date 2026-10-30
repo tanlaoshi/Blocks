@@ -91,6 +91,103 @@ WiFi: CIS manfid=c8a1 device=0082
 排障顺序：`WiFi: TOP 0x294=…` 两位没置上 → 覆盖无效；`SD1 CMD5 no response` → 供电/pad/时钟；
 `CMD5 timeout` → 电压窗口；`CCCR read fail` 带 `r5=` → CMD52 参数或 R5 错误位。
 
+### 诊断（2026-10-30 真机"一行都没有"之后加）
+
+- `SdhciMark*` 不再走 `HalSerialBootMark`（SLOG_BOOT 通道，编译期 `SERIAL_BOOT=0` 就静默），
+  改成 `HalSerialWriteShell` **直写 UART**；shell 里重跑时用 `SdhciWifiMarkSink()` 换成
+  `gConsole.Write`，输出才和提示符对齐。
+- 三个定位点：
+  `Boot: duo-sdhci build=<日期 时间>`（`BoardSdhciRegister`，证明卡上是这次编的内核）→
+  `Boot: sdhci probe enter`（`SdhciDriverProbe`，证明 BLOCK 探测走到我们）→
+  `WiFi: probe start build=…`（`SdhciWifiInitialize` 入口，无条件打）。
+- 每条失败路径都打 `WiFi: FAIL at <阶段>` 并带上现场寄存器（`SRSI`/`clock`/`pwr`/`int`/`pst`/`r5`），
+  不再有静默 `return -1`。
+- shell：`wifiprobe`（或 `wifi probe`）清掉"只试一次"的状态重跑 SD1，不用重启板子。
+
+### 真机 CMD5 无响应（2026-10-30 第二次上板）→ 时序对齐厂商
+
+现场：`version=0005`、`clk=d547`（400 kHz，bit0/1/2 全置）、`pwr=0f`、`0x294=0300`，但 CMD5 后
+`INT=0`、`PRESENT_STATE` 不变。查厂商源码的结论（都核对到行）：
+
+| 问题 | 厂商怎么做的 | 出处 |
+|---|---|---|
+| 上电延时 | `gpio_direction_output(pwr,1); mdelay(50);` —— **就是 50 ms** | `aic8800_bsp/aicsdio.c:499-520` |
+| 复位脉冲 | **没有**（不先拉低） | 同上 |
+| wakeup-gpio(PE7) | 整树**零调用**，只 `cvi_get_wifi_wakeup_gpio()` export 出来没人用 → 不是上电使能 | `soc/cvitek/wifi_pin/cvi_wifi_pin.c:41-54` |
+| 上电后等多久 | `down_timeout(&aic_chipup_sem, 2000ms)`：给芯片 **2 s** 反应窗口 | `aicsdio.c:534` |
+| 谁去发 CMD5 | `cvi_sdio_rescan()` → `mmc_detect_change()` → 标准 `mmc_rescan` | `sdhci-cv181x.c:548-562` |
+| SD1 时钟门控 | CCF 里 `clk_axi4_sd1/clk_sd1/clk_100k_sd1` = `CLK_EN_0` bit21/22/23，带 `CLK_IS_CRITICAL`；CRG 基址 `0x03002000` | `clk-cv181x.c:551-575`、`cv181x_base.dtsi:26-28` |
+
+所以我们少了三样（都不在"延时"上）：**① 时钟门控没人开**（Linux 有 CCF，我们没有）、
+**② 模块可能被 FSBL/U-Boot 留在半初始化态**（`0x294` 在我们写之前就是 `0x300` 即为证），
+**③ 判死太早**（100 ms vs 厂商 2 s）。对应改动：
+
+1. `DuoWifiClockGate()`：读 `CLK_EN_0`，缺 bit21/22/23 就补上并回读打印。
+2. 顺序改成**先 400 kHz 时钟、再上电**（厂商也是 host 先跑起来，`aicbsp` 之后才上电）。
+3. `DuoWifiPowerOn()`：保留厂商 50 ms，前面加 **低 100 ms → 高** 的断电脉冲做一次干净 POR。
+4. CMD5 从"发一次"改成 **12 次 / ≈1.8 s 窗口**，每次打 `CMD5 #n st= pst=`；
+   注意 `SdhciCommandSend` 失败时会做 CMD/DATA 复位把 `INT_STATUS` 清掉，
+   所以要用 `Host->LastStatus`（复位前抓的），别现场再读。
+5. `DuoWifiCardDetect()` 做**极性自测**：`sw=1` 读一次、`sw=0` 读一次 PRESENT_STATE[16]，
+   谁让它变 1 就留谁；都不行就恢复原值（不门禁）。
+6. `DuoWifiWakePeek()`：**只读** GPIOE（`0x05021000`，port E 不在 `0x0302_x000` 那一排）的 DDR/DR，
+   不驱动 PE7。
+
+### 08:24 真机 → 根因：`INT_ENABLE = 0`（2026-10-30 第三次上板）
+
+现场：`CLK_EN_0=ffffffff`（门控本来就全开）、`GPIOA15` 高低都对、CD 两种极性都不进
+`PRESENT_STATE[16]`；12 次 CMD5 全是 `st=00000000 pst=03f20001`，最后 `clk=d543`。
+
+判读：`pst` bit0 = `CMD_INHIBIT` 恒 1、`INT_STATUS` 恒 0、时钟使能位(bit2)被硬件清掉 ——
+**命令进去了、卡在 FSM 里出不来**。原因在 `Sdio.c` 自己：
+
+```
+SD0：SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0xFFFFFFFFu)   ← Card.c:52
+SD1：SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0)              ← 之前这里写的是 0
+```
+
+SDHCI 的 Interrupt Status **Enable** 是状态位的总闸：闸关着 → 命令完成/超时都不进
+`INT_STATUS` → 轮询永远看不到 → 命令 FSM 等软件 W1C 应答 → `CMD_INHIBIT` 永挂，
+后面每次重发在第一道门（inhibit 等待）就返回，所以 12 次一模一样、INT 恒 0。
+SD0 一直是 `0xFFFFFFFF`，所以启动盘从没暴露这个问题。**现已改成与 SD0 一致。**
+
+配套诊断（这次一起加的）：
+
+- `WiFi: pre-CMD5 pst= int= err= ien= clk=`：`ien=` 这一栏是判决书 —— 修复前 0，修复后 `ffffffff`；
+  `err=` 取 `INT_STATUS>>16`（标准 SDHCI 的 Error Interrupt Status 就在 0x32）。
+- `CMD5 blocked by CMD_INHIBIT (cmd line busy)`：进循环前先看 inhibit，卡住就先
+  `RESET_ALL + 400k` 拽回来一次，还卡直接判死，不再白跑 12 次。
+- 每次失败后再看一次 inhibit，卡住立刻跳出重试。
+- `WiFi: pads(0=SD1 func) d3= d2= d1= d0= cmd= clk=`：只读 U-Boot `PINMUX_SDIO1/SD1_SDIO_PAD`
+  那六个焊盘（`FMUX 0x03001000` + `0xD0/0xD4/0xD8/0xDC/0xE0/0xE4`，功能号 0 = SD1）。全 0 才说明
+  焊盘切对了；不是 0 就说明 SD1 连一根线都没出去。
+- `wifiprobe wake`：一次性实验，把 PE7 驱动成输出拉高（`DuoWifiWakeDrive`）。
+  默认路径不动它 —— 厂商 `cvi_get_wifi_wakeup_gpio()` 零调用，原厂 Linux 不碰也能起。
+
+### 09:07 真机 → CIS 判死的根因：在 fn1 的 CIS 里找 MANFID
+
+`INT_ENABLE` 修好后一次就枚举成功（`CMD5 ok after #1`、`r4=20ffff00`、4-bit/50 MHz 全通），
+只剩 CIS：`cis ptr=001011 manfid=0000`。
+
+**0x1011 不是坏指针**，它是 fn1（function 自己的）CIS 的真地址。错的是我们期待那里有 MANFID：
+MANFID(0x20) 属于 **Common CIS**（fn0 的指针在 0x09-0x0B），function CIS 一般只放 FUNCE 之类
+（SDIO 规范 §16.4；Linux `drivers/mmc/core/sdio_cis.c:201` `sdio_read_common_cis` 读 fn0，
+`sdio_read_func_cis` 读 fnN，两条路分开）。
+
+所以改成：
+
+1. `SdioReadCisPointer(Host, 0, ...)` 读 **fn0 的 0x09-0x0B**（同一函数，`fn*0x100 + 0x09` 对 fn0 就是 0x09），
+   用它的 CIS 解析 MANFID/器件号 → `WiFi: module=c8a1 device=0082 (aic8800)`。
+2. fn1 的指针照旧解析，但只作函数元组参考（FUNCE 块大小），**不再要求有 MANFID**。
+3. 现场一次抓全：`WiFi: fbr1 ` / `cis0 ` / `cis1 ` 各 16 字节 hex（读失败会打 `<read fail +N>`，
+   这样"读到全 00"和"根本读不动"能分开）。
+4. 兜底 1：`SdioScanCis(0x1000..0x1400)` 扫 `20 04` 元组头，命中就打 `MANFID scan hit`。
+5. 兜底 2：还没有就退回 **1-bit / 400 kHz** 再读一次 Common CIS 对照
+   （`no MANFID yet, retry 1-bit 400kHz` → `low cis0 …` → `bus restored hctl= clk=`），
+   用完恢复 4-bit + 原速。
+6. **不再判死**：真找不到 MANFID 就是 `no MANFID tuple, continue without module id`，
+   后面照常走 FIFO 自检、`probe end ok`。
+
 桌面验证：`/tmp/sdtest/harness.c` 用假 SDHCI + 假 SDIO 卡把 `Sdio.c`/`Io.c` 编到 x86 跑，
 17 条断言（命令顺序、CMD52/53 参数、BLOCK_COUNT、CIS、1536 B 回环）全过 —— 只覆盖协议逻辑，不含电气时序。
 

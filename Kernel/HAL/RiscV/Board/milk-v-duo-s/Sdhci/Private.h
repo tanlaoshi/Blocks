@@ -30,15 +30,41 @@
 #define SDHCI_BLOCK_BYTES 512u
 #define SDHCI_BLOCK_WORDS (SDHCI_BLOCK_BYTES / 4u)
 
-/* ---- 板级（Power.c）：WiFi 上电 + 卡检测覆盖 ---- */
+/* ---- 板级（Power.c）：时钟门控 + 上电 + 卡检测 ---- */
 #define DUO_TOP_BASE 0x03000000ULL
 #define DUO_TOP_SD_CTRL_OPT 0x0294u
+/*
+ * 时钟门控（TOP CRG @0x03002000，见 cv181x_base.dtsi:26-28）：
+ * clk-cv181x.c:551-575 里 clk_axi4_sd1=bit21、clk_sd1=bit22、clk_100k_sd1=bit23，
+ * 都带 CLK_IS_CRITICAL；Linux 由 CCF 打开，我们没有 CCF，自己开。
+ */
+#define DUO_CLK_BASE 0x03002000ULL
+#define DUO_CLK_EN_0 0x000u
+#define DUO_CLK_SD1_AXI4_BIT (1u << 21)
+#define DUO_CLK_SD1_CARD_BIT (1u << 22)
+#define DUO_CLK_SD1_100K_BIT (1u << 23)
+#define DUO_PINMUX_BASE 0x03001000ULL /* FMUX GPIO；SD1_* 在 +0xD0..0xE4 */
 #define DUO_GPIOA_BASE 0x03020000ULL
+/* port E 不在 0x0302_x000 那一排：dts cv181x_base_riscv.dtsi:246 = gpio@05021000 */
+#define DUO_GPIOE_BASE 0x05021000ULL
 #define DUO_GPIO_SWPORT_DR 0x0000u
 #define DUO_GPIO_SWPORT_DDR 0x0004u
 #define DUO_WIFI_POWER_BIT (1u << 15) /* GPIOA15，dts &wifi_pin poweron-gpio */
+#define DUO_WIFI_WAKE_BIT (1u << 7)   /* PE7，dts &wifi_pin wakeup-gpio（厂商不用） */
+/* 厂商 aicsdio.c:519 mdelay(50)；断电脉冲是我们加的一次干净 POR */
+#define DUO_WIFI_POWER_DOWN_MS 100u
+#define DUO_WIFI_POWER_UP_MS 50u
+/* 厂商 aicsdio.c:534 给芯片 2000 ms 反应窗口（down_timeout 2000 ms） */
+#define DUO_WIFI_UP_WINDOW_MS 2000u
+/* CMD5 单次尝试 ≈100 ms 超时 + 50 ms 间隔 → 12 次 ≈1.8 s，落在 2 s 窗口内 */
+#define DUO_WIFI_CMD5_TRIES 12u
+#define DUO_WIFI_CMD5_GAP_MS 50u
+int DuoWifiClockGate(void);
 int DuoWifiPowerOn(void);
-int DuoWifiCardDetectOverride(void);
+int DuoWifiCardDetect(SDHCI_HOST *Host);
+void DuoWifiWakePeek(void);
+void DuoWifiPadPeek(void);
+void DuoWifiWakeDrive(int Level);
 
 /* ---- 寄存器 / 延时 / 打印 ---- */
 volatile UINT32 *SdhciRegister32(SDHCI_HOST *Host, UINT32 Offset);

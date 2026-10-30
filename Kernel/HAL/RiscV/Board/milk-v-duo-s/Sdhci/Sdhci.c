@@ -75,7 +75,9 @@ static int SdhciDriverProbe(const DRIVER *Self, void *BusContext, void **OutPriv
     if (OutPrivate) {
         *OutPrivate = 0;
     }
+    SdhciMark("Boot: sdhci probe enter (SD0 boot disk)\n");
     if (Host0->Ready) {
+        SdhciMark("Boot: sdhci probe skip, SD0 already ready\n");
         return 0;
     }
     Rc = SdhciHostInitialize(Host0);
@@ -87,6 +89,8 @@ static int SdhciDriverProbe(const DRIVER *Self, void *BusContext, void **OutPriv
      * SD1（wifi-sd）与启动盘互不影响：SD0 成败都要试一次 SD1，
      * SD1 自己的失败只打日志，不改块设备状态（gWifiSdioState 保证只试一次）。
      */
+    SdhciMark("Boot: sdhci SD0 rc=");
+    SdhciMark(Rc == 0 ? "0\n" : "-1\n");
     (void)SdhciWifiInitialize();
     return Rc;
 }
@@ -111,5 +115,10 @@ static const DRIVER gSdhciDriver = {
 };
 
 void BoardSdhciRegister(void) {
+    /*
+     * 构建指纹：真机上先看这一行。没有它 ⇒ 卡上跑的不是这次编的内核；
+     * 有它但没有 "Boot: sdhci probe enter" ⇒ BLOCK 类探测没走到这个驱动。
+     */
+    SdhciMark("Boot: duo-sdhci build=" __DATE__ " " __TIME__ " hosts=2\n");
     (void)DriverRegister(&gSdhciDriver);
 }

@@ -137,6 +137,20 @@ typedef struct SDHCI_HOST {
 
 SDHCI_HOST *SdhciHostAt(UINT32 Index);
 int SdhciWifiInitialize(void);
+/*
+ * shell 的 wifiprobe 入口。Flags：
+ *   SDHCI_WIFI_PROBE_FORCE：清掉「SD1 只试一次」的状态后重跑
+ *   SDHCI_WIFI_PROBE_WAKE ：顺手把 PE7（dts wakeup-gpio）拉高（一次性实验）
+ * 返回 0 = SDIO 枚举走通，-1 = 失败（失败原因已打在日志里）。
+ */
+#define SDHCI_WIFI_PROBE_FORCE 1u
+#define SDHCI_WIFI_PROBE_WAKE 2u
+int SdhciWifiProbe(UINT32 Flags);
+/*
+ * 日志出口切换：Sink == NULL 时直写串口（HalSerialWriteShell，不受 SERIAL_BOOT
+ * 通道掩码影响）；shell 里重跑时把它指到 gConsole.Write，输出才和提示符对齐。
+ */
+void SdhciWifiMarkSink(void (*Sink)(const char *Text));
 void BoardSdhciRegister(void);
 
 #endif

@@ -138,6 +138,50 @@ static int SdioParseCis(SDHCI_HOST *Host, UINT32 Pointer, SDIO_CIS_INFO *Info) {
     return -1; /* 元组过多：当失败，不无限扫 */
 }
 
+/* 把一段 CIS 的原始字节打出来；读失败就标出偏移，一眼能看出是"读到 00"还是"读不动" */
+static void SdioDumpCis(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT32 Count) {
+    UINT32 i;
+    UINT8 Byte;
+    int Rc;
+
+    SdhciMark(Tag);
+    for (i = 0; i < Count; i++) {
+        Rc = SdhciIoRead8(Host, 0, Address + i, &Byte);
+        if (Rc != 0) {
+            SdhciMarkHex(" <read fail +", i, 2);
+            SdhciMark(">");
+            break;
+        }
+        SdhciMarkHex(" ", Byte, 2);
+    }
+    SdhciMark("\n");
+}
+
+/*
+ * 在 [From,To) 里找 MANFID 元组头 0x20 0x04（MANFID 的 link 固定是 4，
+ * 见 sdio_cis.c 的 CIS_TUPLE(MANFID) 表）。返回元组起始地址，找不到返回 0。
+ * 只在"指针解析不出 MANFID"时当兜底用，顺序读、每字节一次 CMD52。
+ */
+static UINT32 SdioScanCis(SDHCI_HOST *Host, UINT32 From, UINT32 To) {
+    UINT32 Addr;
+    UINT8 Prev = 0;
+    UINT8 Byte;
+
+    if (SdhciIoRead8(Host, 0, From, &Prev) != 0) {
+        return 0;
+    }
+    for (Addr = From + 1u; Addr < To; Addr++) {
+        if (SdhciIoRead8(Host, 0, Addr, &Byte) != 0) {
+            return 0;
+        }
+        if (Prev == CISTPL_MANFID && Byte == 4u) {
+            return Addr - 1u;
+        }
+        Prev = Byte;
+    }
+    return 0;
+}
+
 static void SdioMarkCis(UINT32 Function, UINT32 Pointer, const SDIO_CIS_INFO *Info) {
     SdhciMarkHex("WiFi: CIS fn", Function, 1);
     SdhciMarkHex(" ptr=", Pointer, 6);
@@ -204,38 +248,160 @@ static void SdioFifoTest(SDHCI_HOST *Host, int MultiBlock) {
     SdhciMark("\n");
 }
 
+/* 每条失败路径统一走这里：打一行原因 + 置失败态（避免"静默返回"查不到信息） */
+static int SdioFail(const char *Where) {
+    SdhciMark("WiFi: FAIL at ");
+    SdhciMark(Where);
+    SdhciMark("\n");
+    gWifiSdioState = -1;
+    return -1;
+}
+
+/* CMD5 现场：PRESENT_STATE / 原始 INT_STATUS / 高 16 位错误位 / INT_ENABLE / 时钟 */
+static void SdioMarkCmd5State(SDHCI_HOST *Host, const char *Tag) {
+    UINT32 St = SdhciRead32(Host, SDHCI_INT_STATUS);
+
+    SdhciMark(Tag);
+    SdhciMarkHex(" pst=", SdhciRead32(Host, SDHCI_PRESENT_STATE), 8);
+    SdhciMarkHex(" int=", St, 8);
+    SdhciMarkHex(" err=", (St >> 16) & 0xFFFFu, 4);
+    SdhciMarkHex(" ien=", SdhciRead32(Host, SDHCI_INT_ENABLE), 8);
+    SdhciMarkHex(" clk=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+    SdhciMark("\n");
+}
+
+/*
+ * CMD5 探活窗口（厂商给芯片 2000 ms，见 aicsdio.c:534）。
+ * 两道门：
+ *   1) 进循环前先看 CMD_INHIBIT：卡住就先 RESET_ALL + 400k 把命令 FSM 拽回来，
+ *      还卡就直接判死，不白跑 12 次（08:24 那次就是这个形态）。
+ *   2) 每次失败后再看一次，一旦 inhibit 卡住立刻跳出去做同一套恢复。
+ * 返回 0 = 通了。
+ */
+static int SdioCmd5Window(SDHCI_HOST *Host) {
+    UINT16 Flags = (UINT16)SDHCI_CMD_RESP_SHORT; /* R4 无 CRC / 无 index */
+    UINT32 Pst;
+    UINT32 Round;
+    UINT32 i;
+    UINT32 Tries;
+
+    for (Round = 0; Round < 2u; Round++) {
+        Tries = (Round == 0) ? DUO_WIFI_CMD5_TRIES : 4u;
+        Pst = SdhciRead32(Host, SDHCI_PRESENT_STATE);
+        if ((Pst & SDHCI_CMD_INHIBIT) != 0) {
+            SdhciMark("WiFi: CMD5 blocked by CMD_INHIBIT (cmd line busy)\n");
+            SdioMarkCmd5State(Host, "WiFi:  ");
+            if (Round != 0) {
+                return -1;
+            }
+            SdhciMark("WiFi: recover: RESET_ALL + 400kHz\n");
+            if (SdhciSoftwareReset(Host, SDHCI_RESET_ALL) != 0 ||
+                SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0xFFFFFFFFu) != 0) {
+                return -1;
+            }
+            continue;
+        }
+        for (i = 0; i < Tries; i++) {
+            if (SdhciCommandSend(Host, 5, 0, Flags, 0) == 0) {
+                SdhciMarkDecimal("WiFi: CMD5 ok after #", i + 1u);
+                SdhciMark("\n");
+                return 0;
+            }
+            SdhciMarkDecimal("WiFi: CMD5 #", i + 1u);
+            SdhciMarkHex(" st=", Host->LastStatus, 8);
+            SdhciMarkHex(" pst=", Host->LastPresentState, 8);
+            SdhciMark("\n");
+            if ((Host->LastPresentState & SDHCI_CMD_INHIBIT) != 0) {
+                SdhciMark("WiFi: CMD_INHIBIT stuck after this try\n");
+                break;
+            }
+            SdhciDelayMilliseconds(DUO_WIFI_CMD5_GAP_MS);
+        }
+        if (Round != 0) {
+            break;
+        }
+        SdhciMark("WiFi: recover: RESET_ALL + 400kHz\n");
+        if (SdhciSoftwareReset(Host, SDHCI_RESET_ALL) != 0 ||
+            SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0xFFFFFFFFu) != 0) {
+            return -1;
+        }
+    }
+    return -1;
+}
+
+/*
+ * 供 shell 的 wifiprobe 调：Force=1 清掉"只试一次"的状态再跑。
+ * 不清 SD0 的 Ready（启动盘不受影响）。
+ */
+int SdhciWifiProbe(UINT32 Flags) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+
+    if ((Flags & SDHCI_WIFI_PROBE_WAKE) != 0) {
+        DuoWifiWakeDrive(1);
+    }
+    if ((Flags & SDHCI_WIFI_PROBE_FORCE) != 0) {
+        gWifiSdioState = 0;
+        if (Host != 0) {
+            Host->Ready = 0;
+            Host->CardType = SDHCI_CARD_NONE;
+            Host->BusWidth = 1;
+            Host->HighCapacity = 0;
+            Host->RelativeCardAddress = 0;
+        }
+        SdhciMark("WiFi: state cleared for retry\n");
+    }
+    return SdhciWifiInitialize();
+}
+
 int SdhciWifiInitialize(void) {
     SDHCI_HOST *Host = SdhciHostAt(1);
     UINT32 Ocr = 0;
     UINT32 Offer;
     UINT32 i;
+    UINT32 NoResponse = 0;
     UINT16 Flags;
+    UINT16 Version;
     UINT8 Data;
     UINT8 Speed;
     UINT8 Caps = 0;
-    UINT32 Ptr = 0;
     SDIO_CIS_INFO Cis;
     UINT32 Present;
 
+    /* 无条件第一行：证明本函数被调到、以及跑的是哪一次构建 */
+    SdhciMark("WiFi: probe start build=" __DATE__ " " __TIME__ "\n");
+
     if (gWifiSdioState != 0) {
+        SdhciMark(gWifiSdioState > 0 ? "WiFi: skip (already ok; use wifiprobe to retry)\n"
+                                     : "WiFi: skip (last=fail; use wifiprobe to retry)\n");
         return (gWifiSdioState > 0) ? 0 : -1;
     }
     if (Host == 0) {
-        gWifiSdioState = -1;
-        return -1;
+        return SdioFail("SdhciHostAt(1)==NULL");
     }
 
-    /* ---------- S1：板级上电 + 卡检测覆盖 ---------- */
-    if (DuoWifiPowerOn() != 0 || DuoWifiCardDetectOverride() != 0) {
-        gWifiSdioState = -1;
-        return -1;
+    Version = SdhciRead16(Host, SDHCI_HOST_VERSION);
+    SdhciMarkHex("WiFi: SD1 base=", (UINT32)Host->Base, 8);
+    SdhciMarkHex(" version=", Version, 4);
+    if (Version == 0x0000u || Version == 0xFFFFu) {
+        SdhciMark(" (MMIO no response: clock/power/base?)");
     }
+    SdhciMark("\n");
 
-    Host->Specification = (UINT16)(SdhciRead16(Host, SDHCI_HOST_VERSION) & 0xFFu);
+    /*
+     * ---------- S1：时钟门控（先于控制器复位） ----------
+     * Linux 由 CCF 打开 clk_axi4_sd1/clk_sd1/clk_100k_sd1，我们得自己开；
+     * 真机上 shift 前的 CLK_EN_0 就是这段要查的东西。
+     */
+    (void)DuoWifiClockGate();
+    DuoWifiPadPeek();
+
+    Host->Specification = (UINT16)(Version & 0xFFu);
     if (SdhciSoftwareReset(Host, SDHCI_RESET_ALL) != 0) {
-        SdhciMark("WiFi: SD1 softreset timeout\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   SRSI=", SdhciRead8(Host, SDHCI_SOFTWARE_RESET), 2);
+        SdhciMarkHex(" clock=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+        SdhciMarkHex(" pwr=", SdhciRead8(Host, SDHCI_POWER_CONTROL), 2);
+        SdhciMark("\n");
+        return SdioFail("software reset ALL");
     }
     SdhciMark("Duo SDHCI1 ");
     SdhciMarkHex("ver=", Host->Specification, 8);
@@ -246,18 +412,46 @@ int SdhciWifiInitialize(void) {
     SdhciMarkHex(" phy=", SdhciRead32(Host, Host->VendorArea + CV_PHY_TX_RX), 8);
     SdhciMark("\n");
 
-    if (SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0) != 0) {
-        SdhciMark("WiFi: SD1 clock id fail\n");
-        gWifiSdioState = -1;
-        return -1;
+    /*
+     * INT_ENABLE = 0xFFFFFFFF（和 SD0 的 Card.c:52 完全一样）。
+     *
+     * 这里原来是 0 —— 那是 08:24 那次真机 "CMD5 有去无回、INT_STATUS 恒 0、
+     * PRESENT_STATE[0] CMD_INHIBIT 卡死" 的根因：SDHCI 的 Interrupt Status
+     * Enable 是状态位的总闸，闸关着 -> 事件不发生 -> 命令完成/超时都看不见 ->
+     * 命令 FSM 等软件 W1C 应答等到天荒地老 -> CMD_INHIBIT 恒 1，重发全部
+     * 在第一道门就失败。SD0 一直是 0xFFFFFFFF，所以启动盘从没出过这问题。
+     */
+    if (SdhciControllerBringUp(Host, IDENTIFY_HERTZ, 0xFFFFFFFFu) != 0) {
+        SdhciMarkHex("WiFi:   clock=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+        SdhciMarkHex(" pwr=", SdhciRead8(Host, SDHCI_POWER_CONTROL), 2);
+        SdhciMarkHex(" hctl=", SdhciRead8(Host, SDHCI_HOST_CONTROL), 2);
+        SdhciMark("\n");
+        return SdioFail("clock 400kHz");
     }
+    SdhciMarkHex("WiFi: 400k ok clock=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+    SdhciMarkHex(" pwr=", SdhciRead8(Host, SDHCI_POWER_CONTROL), 2);
+    SdhciMarkHex(" hctl=", SdhciRead8(Host, SDHCI_HOST_CONTROL), 2);
+    SdhciMark("\n");
 
     /*
-     * 卡检测覆盖的验收点：TOP 0x294 写了 bit8/bit9 之后，PRESENT_STATE[16]
-     * 应为 1；[17] CARD_STABLE 是否跟着变 1 只有真机能答（时序表 §8-C 第 2 条）。
-     * 注意 Linux 在 non-removable 上根本不看这两位（sdhci.c:2438-2466 直接 return 1），
-     * 所以这里只打印、不当作继续/放弃的门禁。
+     * ---------- S1：上电（时钟已经跑起来了，厂商也是先有 400k 再给模块上电） ----------
+     * 厂商 aicsdio.c:499-520：gpio 高 → mdelay(50)；这里多一个低 100ms 的断电脉冲，
+     * 因为我们是接手 FSBL/U-Boot 留下的现场。
      */
+    if (DuoWifiPowerOn() != 0) {
+        return SdioFail("GPIOA15 power-on");
+    }
+    DuoWifiWakePeek();
+
+    /*
+     * 卡检测覆盖 + 极性自测（要控制器起来才能读 PRESENT_STATE）。
+     * Linux 在 non-removable 上根本不看这两位（sdhci.c:2438-2466 直接 return 1），
+     * 所以只打印、不当作继续/放弃的门禁。
+     */
+    if (DuoWifiCardDetect(Host) != 0) {
+        return SdioFail("TOP 0x294 card-detect override");
+    }
+
     Present = SdhciRead32(Host, SDHCI_PRESENT_STATE);
     SdhciMarkHex("SD1: present=", Present, 8);
     SdhciMark(" CARD_INSERTED=");
@@ -270,12 +464,14 @@ int SdhciWifiInitialize(void) {
     (void)SdhciCommandSend(Host, 0, 0, SDHCI_CMD_RESP_NONE, 0);
     SdhciDelayMilliseconds(1);
 
-    /* CMD5 探活：arg=0 单次（sdio_ops.c mmc_send_io_op_cond 的 "just probing"） */
+    /*
+     * ---------- S3：CMD5 探活（arg=0，sdio_ops.c mmc_send_io_op_cond 的 "just probing"） ----------
+     * 细节在 SdioCmd5Window()：先查 CMD_INHIBIT、失败就 RESET_ALL 重来、共约 2 s 窗口。
+     */
     Flags = (UINT16)SDHCI_CMD_RESP_SHORT; /* R4 无 CRC / 无 index */
-    if (SdhciCommandSend(Host, 5, 0, Flags, 0) != 0) {
-        SdhciFail(Host, "WiFi: SD1 CMD5 no response");
-        gWifiSdioState = -1;
-        return -1;
+    SdioMarkCmd5State(Host, "WiFi: pre-CMD5");
+    if (SdioCmd5Window(Host) != 0) {
+        return SdioFail("CMD5 (no response: module power / SD1 clock or pad)");
     }
     SdhciMarkHex("WiFi: CMD5 r4=", Host->Response[0], 8);
     SdhciMark("\n");
@@ -293,9 +489,19 @@ int SdhciWifiInitialize(void) {
 
     for (i = 0; i < 100u; i++) {
         if (SdhciCommandSend(Host, 5, Offer, Flags, 0) != 0) {
+            NoResponse++;
+            if (NoResponse >= 3u) {
+                /* 连发都不通了：再轮下去只是白等，直接给出寄存器现场 */
+                SdhciMarkHex("WiFi: CMD5 send-fail count=0x", NoResponse, 2);
+                SdhciMarkHex(" int=", SdhciRead32(Host, SDHCI_INT_STATUS), 8);
+                SdhciMarkHex(" pst=", SdhciRead32(Host, SDHCI_PRESENT_STATE), 8);
+                SdhciMark("\n");
+                return SdioFail("CMD5 (keeps failing, cmd line dead)");
+            }
             SdhciDelayMilliseconds(10);
             continue;
         }
+        NoResponse = 0;
         Ocr = Host->Response[0];
         if ((Ocr & 0x80000000u) != 0) {
             break;
@@ -303,19 +509,18 @@ int SdhciWifiInitialize(void) {
         SdhciDelayMilliseconds(10);
     }
     if ((Ocr & 0x80000000u) == 0) {
-        SdhciMarkHex("WiFi: SD1 CMD5 timeout ocr=", Ocr, 8);
+        SdhciMarkHex("WiFi: CMD5 responds but not ready ocr=", Ocr, 8);
+        SdhciMarkHex(" tries=", i, 2);
         SdhciMark("\n");
-        gWifiSdioState = -1;
-        return -1;
+        return SdioFail("CMD5 (ready timeout: voltage/power)");
     }
     SdhciMarkHex("WiFi: ocr=", Ocr, 8);
     SdhciMark("\n");
 
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_INDEX);
     if (SdhciCommandSend(Host, 3, 0, Flags, 0) != 0) {
-        SdhciFail(Host, "WiFi: SD1 CMD3 fail");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciFail(Host, "WiFi: CMD3 fail");
+        return SdioFail("CMD3 (RCA)");
     }
     Host->RelativeCardAddress = Host->Response[0] & 0xFFFF0000u;
     SdhciMarkHex("WiFi: rca=", Host->RelativeCardAddress >> 16, 4);
@@ -323,17 +528,15 @@ int SdhciWifiInitialize(void) {
 
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT_BUSY | SDHCI_CMD_CRC | SDHCI_CMD_INDEX);
     if (SdhciCommandSend(Host, 7, Host->RelativeCardAddress, Flags, 0) != 0) {
-        SdhciFail(Host, "WiFi: SD1 CMD7 fail");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciFail(Host, "WiFi: CMD7 fail");
+        return SdioFail("CMD7 (select)");
     }
 
     /* ---------- S3：CCCR（CMD52 读） ---------- */
     if (SdhciIoRead8(Host, 0, SDIO_CCCR_CCCR, &Data) != 0) {
-        SdhciMarkHex("WiFi: SD1 CCCR read fail r5=", Host->LastStatus, 8);
+        SdhciMarkHex("WiFi:   CMD52 00 r5=", Host->LastStatus, 8);
         SdhciMark("\n");
-        gWifiSdioState = -1;
-        return -1;
+        return SdioFail("CCCR 0x00 read (CMD52 path)");
     }
     SdhciMarkHex("WiFi: CCCR 00=", Data, 2);
     SdhciMarkDecimal(" rev=", (UINT32)(Data & 0x0Fu));
@@ -341,9 +544,9 @@ int SdhciWifiInitialize(void) {
     SdhciMark("\n");
 
     if (SdhciIoRead8(Host, 0, SDIO_CCCR_CAPS, &Caps) != 0) {
-        SdhciMark("WiFi: CCCR caps read fail\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   CMD52 08 r5=", Host->LastStatus, 8);
+        SdhciMark("\n");
+        return SdioFail("CCCR 0x08 read");
     }
     SdhciMarkHex("WiFi: CCCR caps=", Caps, 2);
     SdhciMark(" SMB=");
@@ -356,9 +559,9 @@ int SdhciWifiInitialize(void) {
 
     /* ---------- S3：High-Speed（CCCR 0x13）+ 50 MHz + HISPD ---------- */
     if (SdhciIoRead8(Host, 0, SDIO_CCCR_SPEED, &Speed) != 0) {
-        SdhciMark("WiFi: CCCR speed read fail\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   CMD52 13 r5=", Host->LastStatus, 8);
+        SdhciMark("\n");
+        return SdioFail("CCCR 0x13 read (speed)");
     }
     SdhciMarkHex("WiFi: CCCR 13=", Speed, 2);
     SdhciMark(" SHS=");
@@ -367,27 +570,25 @@ int SdhciWifiInitialize(void) {
     if ((Speed & SDIO_SPEED_SHS) != 0) {
         if (SdhciIoWrite8(Host, 0, SDIO_CCCR_SPEED, (UINT8)(Speed | SDIO_SPEED_EHS)) != 0 ||
             SdhciIoRead8(Host, 0, SDIO_CCCR_SPEED, &Speed) != 0) {
-            SdhciMark("WiFi: HS switch fail\n");
-            gWifiSdioState = -1;
-            return -1;
+            SdhciMarkHex("WiFi:   EHS write r5=", Host->LastStatus, 8);
+            SdhciMark("\n");
+            return SdioFail("CCCR 0x13 write (HS)");
         }
         SdhciMarkHex("WiFi: CCCR 13->", Speed, 2);
         SdhciMark(" EHS=");
         SdhciMark((Speed & SDIO_SPEED_EHS) ? "1" : "0");
         SdhciMark("\n");
         if ((Speed & SDIO_SPEED_EHS) == 0) {
-            SdhciMark("WiFi: HS not active\n");
-            gWifiSdioState = -1;
-            return -1;
+            return SdioFail("HS switch (card refused EHS)");
         }
     } else {
         SdhciMark("WiFi: card no HS, stay 25MHz\n");
     }
     if (SdhciClockConfigure(Host, (Speed & SDIO_SPEED_EHS) ? TRANSFER_HERTZ : SD_TRANSFER_HERTZ) !=
         0) {
-        SdhciMark("WiFi: SD1 clock xfer fail\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   clock=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+        SdhciMark("\n");
+        return SdioFail("clock 50MHz");
     }
     /* Linux sdhci.c:2338-2355：MMC_TIMING_SD_HS 时置 HOST_CONTROL[2] */
     if ((Speed & SDIO_SPEED_EHS) != 0) {
@@ -400,18 +601,18 @@ int SdhciWifiInitialize(void) {
 
     /* ---------- S3：4-bit（CCCR 0x07 先卡，HOST_CONTROL 后主机） ---------- */
     if (SdhciIoRead8(Host, 0, SDIO_CCCR_IF, &Data) != 0) {
-        SdhciMark("WiFi: CCCR 07 read fail\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   CMD52 07 r5=", Host->LastStatus, 8);
+        SdhciMark("\n");
+        return SdioFail("CCCR 0x07 read (bus if)");
     }
     if (SdhciIoWrite8(Host, 0, SDIO_CCCR_IF,
                       (UINT8)((Data & (UINT8)~SDIO_BUS_WIDTH_MASK) | SDIO_BUS_WIDTH_4BIT)) != 0 ||
         SdhciIoRead8(Host, 0, SDIO_CCCR_IF, &Data) != 0 ||
         (Data & SDIO_BUS_WIDTH_MASK) != SDIO_BUS_WIDTH_4BIT) {
-        SdhciMarkHex("WiFi: 4-bit switch fail if=", Data, 2);
+        SdhciMarkHex("WiFi: 4bit readback if=", Data, 2);
+        SdhciMarkHex(" r5=", Host->LastStatus, 8);
         SdhciMark("\n");
-        gWifiSdioState = -1;
-        return -1;
+        return SdioFail("4-bit switch");
     }
     SdhciWrite8(Host, SDHCI_HOST_CONTROL,
                 (UINT8)(SdhciRead8(Host, SDHCI_HOST_CONTROL) | SDHCI_WIDTH_4BIT));
@@ -427,18 +628,18 @@ int SdhciWifiInitialize(void) {
             SdhciIoWrite8(Host, 0, 0x101u + SDIO_FBR_BLKSIZE, 0x02) != 0 ||
             SdhciIoRead8(Host, 0, 0x100u + SDIO_FBR_BLKSIZE, &Lo) != 0 ||
             SdhciIoRead8(Host, 0, 0x101u + SDIO_FBR_BLKSIZE, &Hi) != 0) {
-            SdhciMark("WiFi: fn1 blocksize write fail\n");
-            gWifiSdioState = -1;
-            return -1;
+            SdhciMarkHex("WiFi:   fn1 blk r5=", Host->LastStatus, 8);
+            SdhciMark("\n");
+            return SdioFail("fn1 block size");
         }
         SdhciMarkHex("WiFi: fn1 blk=", (UINT32)Lo | ((UINT32)Hi << 8), 4);
         SdhciMark("\n");
     }
     if (SdhciIoRead8(Host, 0, SDIO_CCCR_IOEX, &Data) != 0 ||
         SdhciIoWrite8(Host, 0, SDIO_CCCR_IOEX, (UINT8)(Data | 0x02u)) != 0) {
-        SdhciMark("WiFi: fn1 enable write fail\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   IOEx r5=", Host->LastStatus, 8);
+        SdhciMark("\n");
+        return SdioFail("fn1 enable (IOEx)");
     }
     /* Linux func->enable_timeout 默认 500 ms（sdio_io.c:59-100） */
     for (i = 0; i < 500u; i++) {
@@ -451,10 +652,10 @@ int SdhciWifiInitialize(void) {
         SdhciDelayMilliseconds(1);
     }
     if ((Data & 0x02u) == 0) {
-        SdhciMarkHex("WiFi: fn1 enable timeout ior=", Data, 2);
-        SdhciMark("\n");
-        gWifiSdioState = -1;
-        return -1;
+        SdhciMarkHex("WiFi:   IORx=", Data, 2);
+        SdhciMarkHex(" waited=", i, 4);
+        SdhciMark(" ms\n");
+        return SdioFail("fn1 enable timeout (IORx)");
     }
     SdhciMark("WiFi: fn1 enabled\n");
 
@@ -462,27 +663,100 @@ int SdhciWifiInitialize(void) {
     SdhciMark((Speed & SDIO_SPEED_EHS) ? "WiFi: SD1 init ok clock=50MHz width=4bit\n"
                                        : "WiFi: SD1 init ok clock=25MHz width=4bit\n");
 
-    /* ---------- S3 验收：读 CIS（fn1 指针在 fn0 0x109-0x10B） ---------- */
-    if (SdioReadCisPointer(Host, 1, &Ptr) != 0 || SdioParseCis(Host, Ptr, &Cis) != 0 ||
-        Cis.SawManfid == 0) {
-        SdhciMark("WiFi: CIS fn1 read fail\n");
-        gWifiSdioState = -1;
-        return -1;
-    }
-    SdhciMark("WiFi: CIS manfid=");
-    SdhciMarkHex("", Cis.Vendor, 4);
-    SdhciMark(" device=");
-    SdhciMarkHex("", Cis.Device, 4);
-    SdhciMark("\n");
-    SdioMarkCis(1, Ptr, &Cis);
-
-    /* fn2 的 CIS 顺手读一下（D80 上 fn2 无数据通路，只作身份对照） */
+    /*
+     * ---------- S3 验收：读 CIS ----------
+     *
+     * 上一版在这里判死的根因：**MANFID(0x20) 是 Common CIS 的元组，不在 function CIS 里**
+     * （SDIO 规范 §16.4；Linux sdio_cis.c:201 的 sdio_read_common_cis 读 fn0 指针，
+     * sdio_read_func_cis 读 fnN 指针）。旧代码拿 fn1 的指针 0x1011 去解析却要求 MANFID，
+     * 那个地址是**函数自己的 CIS**（只有 FUNCE 之类的元组），所以 manfid=0000 —— 
+     * 指针没错，是找错了地方。
+     *
+     * 现在：Common CIS（fn0 指针 0x09-0x0B）拿 MANFID/器件号，
+     *       fn1 的指针（0x109-0x10B）只拿函数自己的元组（FUNCE 块大小）。
+     * 找不到 MANFID 也不再判死：打真实值、扫一遍、必要时降速重读一次，然后继续。
+     */
     {
-        UINT32 Ptr2 = 0;
-        SDIO_CIS_INFO Cis2;
-        if (SdioReadCisPointer(Host, 2, &Ptr2) == 0 && SdioParseCis(Host, Ptr2, &Cis2) == 0 &&
-            Cis2.SawManfid != 0) {
-            SdioMarkCis(2, Ptr2, &Cis2);
+        UINT32 CommonPtr = 0;
+        UINT32 Fn1Ptr = 0;
+        UINT32 Hit = 0;
+        SDIO_CIS_INFO Fn1;
+        int CisOk = -1;
+        UINT8 HostControl = SdhciRead8(Host, SDHCI_HOST_CONTROL);
+        UINT32 RestoreHertz =
+            ((Speed & SDIO_SPEED_EHS) != 0) ? TRANSFER_HERTZ : SD_TRANSFER_HERTZ;
+
+        if (SdioReadCisPointer(Host, 0, &CommonPtr) != 0) {
+            SdhciMark("WiFi: common CIS pointer (0x09-0x0B) read failed\n");
+            CommonPtr = 0;
+        }
+        if (SdioReadCisPointer(Host, 1, &Fn1Ptr) != 0) {
+            return SdioFail("CIS pointer fn1 (0x109-0x10B)");
+        }
+        SdhciMarkHex("WiFi: cis ptr fn0=", CommonPtr, 6);
+        SdhciMarkHex(" fn1=", Fn1Ptr, 6);
+        SdhciMark("\n");
+        /* 一次把现场抓全：fn1 的 FBR 原文 + 两个 CIS 的头 16 B */
+        SdioDumpCis(Host, "WiFi: fbr1 ", 0x100u, 16u);
+        if (CommonPtr != 0) {
+            SdioDumpCis(Host, "WiFi: cis0 ", CommonPtr, 16u);
+            CisOk = SdioParseCis(Host, CommonPtr, &Cis);
+        }
+        SdioDumpCis(Host, "WiFi: cis1 ", Fn1Ptr, 16u);
+        if (SdioParseCis(Host, Fn1Ptr, &Fn1) == 0) {
+            SdioMarkCis(1, Fn1Ptr, &Fn1);
+        }
+
+        if (CisOk != 0 || Cis.SawManfid == 0) {
+            /* 兜底 1：直接扫 CIS 区里的 0x20 0x04 */
+            Hit = SdioScanCis(Host, 0x1000u, 0x1400u);
+            if (Hit != 0) {
+                SdhciMarkHex("WiFi: MANFID scan hit ", Hit, 6);
+                SdhciMark("\n");
+                if (SdioParseCis(Host, Hit, &Cis) == 0 && Cis.SawManfid != 0) {
+                    CisOk = 0;
+                }
+            }
+        }
+        if (CisOk != 0 || Cis.SawManfid == 0) {
+            /* 兜底 2：退回 1-bit / 400 kHz 再读一次 Common CIS（对照 50 MHz 4-bit 的结果） */
+            SdhciMark("WiFi: no MANFID yet, retry 1-bit 400kHz\n");
+            SdhciWrite8(Host, SDHCI_HOST_CONTROL, 0);
+            (void)SdhciClockConfigure(Host, IDENTIFY_HERTZ);
+            CommonPtr = 0;
+            if (SdioReadCisPointer(Host, 0, &CommonPtr) == 0 && CommonPtr != 0) {
+                SdhciMarkHex("WiFi:   low cis0 ptr=", CommonPtr, 6);
+                SdhciMark("\n");
+                SdioDumpCis(Host, "WiFi:   low cis0 ", CommonPtr, 16u);
+                if (SdioParseCis(Host, CommonPtr, &Cis) == 0 && Cis.SawManfid != 0) {
+                    CisOk = 0;
+                }
+            }
+            SdhciWrite8(Host, SDHCI_HOST_CONTROL, HostControl);
+            (void)SdhciClockConfigure(Host, RestoreHertz);
+            SdhciMarkHex("WiFi: bus restored hctl=", SdhciRead8(Host, SDHCI_HOST_CONTROL), 2);
+            SdhciMarkHex(" clk=", SdhciRead16(Host, SDHCI_CLOCK_CONTROL), 4);
+            SdhciMark("\n");
+        }
+
+        if (CisOk == 0 && Cis.SawManfid != 0) {
+            SdhciMark("WiFi: module=");
+            SdhciMarkHex("", Cis.Vendor, 4);
+            SdhciMarkHex(" device=", Cis.Device, 4);
+            SdhciMark((Cis.Vendor == 0xC8A1u) ? " (aic8800)\n" : " (unexpected, continue)\n");
+            SdioMarkCis(0, CommonPtr, &Cis);
+        } else {
+            SdhciMark("WiFi: no MANFID tuple, continue without module id\n");
+        }
+
+        /* fn2 的 CIS 顺手读一下（D80 上 fn2 无数据通路，只作身份对照） */
+        {
+            UINT32 Ptr2 = 0;
+            SDIO_CIS_INFO Cis2;
+            if (SdioReadCisPointer(Host, 2, &Ptr2) == 0 &&
+                SdioParseCis(Host, Ptr2, &Cis2) == 0 && Cis2.SawManfid != 0) {
+                SdioMarkCis(2, Ptr2, &Cis2);
+            }
         }
     }
 
@@ -497,5 +771,6 @@ int SdhciWifiInitialize(void) {
     Host->CardType = SDHCI_CARD_SDIO;
     Host->Ready = 1;
     gWifiSdioState = 1;
+    SdhciMark("WiFi: probe end ok\n");
     return 0;
 }

@@ -158,3 +158,62 @@ int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
     SdhciMark("\n");
     return 0;
 }
+
+/*
+ * 探针：把 ARP 请求**单播**发给指定 MAC（一般是 AP 自己的 BSSID）。
+ * 动机：DHCP 要靠广播，而广播在我们这里被固件用 PTK 加密（AP 丢）。
+ * 单播走 PTK 是正确的，所以先用"单播 ARP 问 AP 自己的 IP"验证单播数据通路。
+ * 成功即证明：装密钥后 unicast 双向可通，后续可以用静态 IP 直接通信。
+ */
+int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
+                         const UINT8 *TargetIp, const UINT8 *DstMac, UINT8 VifIndex,
+                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMs) {
+    UINT32 Length;
+    UINT32 Try;
+    UINT32 Slice;
+    char TargetText[AIC_NET_IPV4_TEXT_MAX];
+
+    if (Host == 0 || Station == 0 || StationIp == 0 || TargetIp == 0 || DstMac == 0 ||
+        OutMac == 0) {
+        return -1;
+    }
+    Length = AicArpBuildRequest(sAicArpFrame, (UINT32)sizeof(sAicArpFrame), Station, StationIp,
+                                TargetIp);
+    if (Length == 0u) {
+        SdhciMark("WiFi: arp uni: build failed\n");
+        return -1;
+    }
+    /* 关键：目的 MAC 从广播改成 BSSID（单播） */
+    for (UINT32 i = 0; i < AIC_NET_MAC_LENGTH; i++) {
+        sAicArpFrame[i] = DstMac[i];
+    }
+    (void)memcpy(sAicArpTargetIp, TargetIp, AIC_NET_IPV4_LENGTH);
+    sAicArpReplySeen = 0u;
+    sAicArpActive = 1u;
+    AicNetFormatIpv4(TargetIp, TargetText);
+    Slice = BudgetMs / AIC_NET_ARP_TRIES;
+    if (Slice == 0u) {
+        Slice = 1u;
+    }
+    for (Try = 0; Try < AIC_NET_ARP_TRIES; Try++) {
+        SdhciMark("WiFi: arp uni: who-has ");
+        SdhciMark(TargetText);
+        SdhciMark(" (unicast to the AP)\n");
+        if (AicWifiDataSend(Host, sAicArpFrame, Length, VifIndex, ApIndex) != 0) {
+            sAicArpActive = 0u;
+            SdhciMark("WiFi: arp uni: tx failed\n");
+            return -1;
+        }
+        if (AicNetPollRun(Host, Slice, ArpReplyDone) == 0) {
+            break;
+        }
+    }
+    sAicArpActive = 0u;
+    if (sAicArpReplySeen == 0u) {
+        SdhciMark("WiFi: arp uni: no reply (unicast path or key is wrong)\n");
+        return -1;
+    }
+    (void)memcpy(OutMac, sAicArpTargetMac, AIC_NET_MAC_LENGTH);
+    SdhciMark("WiFi: arp uni: reply ok — unicast data path works\n");
+    return 0;
+}

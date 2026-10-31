@@ -113,6 +113,21 @@ static int HandshakeSendM4(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 Vi
     SdhciMark(" mic=");
     AicEapolMarkBytes("", Mic, WIFI_EAPOL_MIC_LENGTH);
     SdhciMark("\n");
+    /* 取证：M4 的 99 字节全量（和 Linux 成功握手的 M4 逐字段比对用） */
+    {
+        UINT32 i;
+        SdhciMark("WiFi: m4 bytes [");
+        for (i = 0u; i < Length; i++) {
+            if (i != 0u && (i % 16u) == 0u) {
+                SdhciMark("\n  ");
+            }
+            SdhciMarkHex("", (UINT32)Frame[i], 2);
+            if ((i % 2u) == 1u) {
+                SdhciMark(" ");
+            }
+        }
+        SdhciMark("]\n");
+    }
     Status = AicEapolSend(Host, Frame, Length, Target->Bssid, AicHandshakeStation(), VifIndex,
                           ApIndex);
     memset(Frame, 0, sizeof(Frame));

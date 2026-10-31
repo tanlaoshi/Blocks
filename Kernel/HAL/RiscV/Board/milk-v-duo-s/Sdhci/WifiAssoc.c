@@ -16,6 +16,7 @@
  */
 #include "WifiAssocPrivate.h"
 #include "WifiHandshakePrivate.h"
+#include "FileSystem.h"
 #include "CString.h"
 
 /* 320 B 参数 + 1600 B 整帧；UINT32 数组保证 4 B 对齐（镜像里有 UINT32 成员） */
@@ -148,6 +149,35 @@ static int JoinCancelScan(SDHCI_HOST *Host) {
     return 0;
 }
 
+
+/*
+ * join 前读 BLOCKS:probe.cfg 的探针开关（只认 m4install=0/1）。
+ * 目的：M4 的 install 位是"AP 会不会拒收"的可疑点，做成改文件就换，不用重刷。
+ */
+extern UINT32 gAicM4InstallBit;
+
+static void JoinLoadProbe(void) {
+    char Text[64];
+    UINTN Got = 0;
+    int i;
+
+    if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 || Got == 0u) {
+        return;
+    }
+    Text[Got] = 0;
+    for (i = 0; (UINTN)i + 10u < Got; i++) {
+        if (Text[i] == 'm' && Text[i + 1] == '4' && Text[i + 2] == 'i' && Text[i + 3] == 'n' &&
+            Text[i + 4] == 's' && Text[i + 5] == 't' && Text[i + 6] == 'a' && Text[i + 7] == 'l' &&
+            Text[i + 8] == 'l' && Text[i + 9] == '=') {
+            gAicM4InstallBit = (Text[i + 10] == '0') ? 0u : 1u;
+            SdhciMark("WiFi: probe: m4 install bit=");
+            SdhciMarkDecimal("", gAicM4InstallBit);
+            SdhciMark("\n");
+            return;
+        }
+    }
+}
+
 static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password) {
     UINT8 VifIndex = 0;
     UINT32 Length;
@@ -155,6 +185,7 @@ static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Pass
     if (AicJoinLayoutCheck() != 0) {
         return -1;
     }
+    JoinLoadProbe();
     if (AicScanVifEnsure(Host, &VifIndex) != 0) {
         SdhciMark("WiFi: join FAILED at step 0/2: no vif (MM_ADD_IF failed)\n");
         return -1;

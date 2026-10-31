@@ -263,6 +263,9 @@ UINT32 AicArpBuildRequest(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station,
 /* 1 = 是问 TargetIp 的 ARP reply（已填 OutMac） */
 int AicArpParseReply(const UINT8 *Payload, UINT32 Length, const UINT8 *TargetIp, UINT8 *OutMac);
 void AicArpHandlePacket(const UINT8 *Payload, UINT32 Length, UINT32 Decryption);
+int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
+                         const UINT8 *TargetIp, const UINT8 *DstMac, UINT8 VifIndex,
+                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMs);
 int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
                          const UINT8 *GatewayIp, UINT8 VifIndex, UINT8 ApIndex, UINT8 *OutMac,
                          UINT32 BudgetMs);

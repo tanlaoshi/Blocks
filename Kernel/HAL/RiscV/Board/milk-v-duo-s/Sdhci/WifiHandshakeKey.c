@@ -12,6 +12,9 @@
  *       所以这里直接复用 AicJoinRsnIe()（等于 assoc 请求里那份），不另拼一份。
  */
 #include "WifiHandshakePrivate.h"
+
+/* 探针：M4 的 install 位（1=置，与现场判据一致；0=像 wpa_supplicant 那样不置） */
+UINT32 gAicM4InstallBit = 1u;
 #include "CString.h"
 #include "WifiCrypto/WifiSha1.h"
 
@@ -188,7 +191,16 @@ UINT32 AicHandshakeM2Build(UINT8 *Frame, const AIC_HANDSHAKE_M1 *M1, const UINT8
 UINT32 AicHandshakeM4Build(UINT8 *Frame, const AIC_HANDSHAKE_M3 *M3, const UINT8 *Kck,
                            UINT8 Mic[WIFI_EAPOL_MIC_LENGTH]) {
     const UINT32 Total = AIC_EAPOL_KEY_FIXED_LENGTH;
-    UINT16 KeyInformation = (UINT16)(AIC_HANDSHAKE_M4_FLAGS | M3->KeyVersion);
+    /*
+     * install 位做成运行时开关（探针）：wpa_supplicant 2.10 不置该位（真机抓包 0x030a），
+     * 我们之前按需求置了（0x034a）。若 AP 因此丢 M4，去掉它就能通 —— 这就是本开关的用途。
+     */
+    UINT16 Flags = (UINT16)(AIC_HANDSHAKE_M4_FLAGS | M3->KeyVersion);
+    UINT16 KeyInformation;
+    if (gAicM4InstallBit == 0u) {
+        Flags = (UINT16)(Flags & (UINT16)~AIC_EAPOL_KEY_INFORMATION_INSTALL);
+    }
+    KeyInformation = Flags;
 
     memset(Frame, 0, Total);
     Frame[0] = M3->Frame[0]; /* EAPOL 版本跟 M3 */

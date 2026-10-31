@@ -254,6 +254,7 @@ static int DhcpParseMilliseconds(const char *Text, UINT32 *OutMilliseconds) {
  * 不用每试一个值就重刷内核。取值：-1（或没有该行）= 用 ap_idx；否则用给定值。
  */
 static void WifiDhcpSendEapolStart(void);
+static void WifiDhcpArpUnicastProbe(void);
 
 static void WifiDhcpLoadProbe(void) {
     char Text[64];
@@ -278,6 +279,10 @@ static void WifiDhcpLoadProbe(void) {
                 AicWifiSetMcastTid((UINT32)v);
             }
         }
+    }
+    if (Text[0] == 'a' && Text[1] == 'r' && Text[2] == 'p' && Text[3] == 'u' && Text[4] == 'n' &&
+        Text[5] == 'i' && Text[6] == '=' && Text[7] == '1') {
+        WifiDhcpArpUnicastProbe();
     }
     if (Text[0] == 's' && Text[1] == 't' && Text[2] == 'a' && Text[3] == 'r' && Text[4] == 't' &&
         Text[5] == '=' && Text[6] == '1') {
@@ -334,6 +339,26 @@ static void WifiDhcpSendEapolStart(void) {
     SdhciMarkDecimal("", Counters.KeyFrames);
     SdhciMark(Counters.KeyFrames != 0u ? " (the AP answered: it sees our unicast frames)\n"
                                        : " (no answer: the AP is not responding to us at all)\n");
+}
+
+
+/* 探针：单播 ARP 问 AP 自己（192.168.31.1），验证单播数据通路 */
+static void WifiDhcpArpUnicastProbe(void) {
+    UINT8 Station[AIC_NET_MAC_LENGTH];
+    UINT8 Bssid[AIC_NET_MAC_LENGTH];
+    UINT8 Mac[AIC_NET_MAC_LENGTH];
+    UINT8 VifIndex = 0;
+    UINT8 ApIndex = 0;
+    static const UINT8 StationIp[4] = {192u, 168u, 31u, 250u};
+    static const UINT8 TargetIp[4] = {192u, 168u, 31u, 1u};
+
+    if (AicJoinBssid(Bssid) != 0 || AicNetStationAddress(Station) != 0) {
+        SdhciMark("WiFi: arp uni: no BSSID (join first)\n");
+        return;
+    }
+    AicJoinLastIndexes(&VifIndex, &ApIndex);
+    (void)AicArpResolveUnicast(SdhciHostAt(1), Station, StationIp, TargetIp, Bssid, VifIndex,
+                               ApIndex, Mac, 2000u);
 }
 
 int SdhciWifiDhcp(const char *MsText) {

@@ -109,6 +109,21 @@ void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
 }
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 对表 X64 主槽：WiFi 出站时勿用 SMSC 线缆态把托盘打成「不通」 */
+    if (BoardWifiLinkOutputIsArmed()) {
+        if (Up) {
+            *Up = 1;
+        }
+        if (Mbps) {
+            *Mbps = 0;
+        }
+        if (FullDuplex) {
+            *FullDuplex = 1;
+        }
+        return 1;
+    }
+#endif
 #if !BOARD_IS_VIRT && BOARD_HAS_NET
     return BoardEthernetGetLink(Up, Mbps, FullDuplex);
 #else

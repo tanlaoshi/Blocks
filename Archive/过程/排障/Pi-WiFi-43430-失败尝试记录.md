@@ -690,6 +690,7 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 13 | `0x15c` | Kick 前 `LwIpInitialize`（对表 Dhcp.c） | **✅ 绿：`net-lwip-out-ok`** | CH：`lwip_out=1` `lwip_in=3` `join-ok`。**7c3 判据达成**；RUNTIME 仍 `dhcp: no offer`（属 7d） |
 | 14 | `0x15d` | 站点 MAC + F2 短喂 + `LwIpDhcpRestart` 等租约 | **✅ 绿：`net-dhcp-ok`** | CH：`dhcp_ip=3232243528`（`192.168.31.72`）`lwip_out=3` `lwip_in=6`。**7d 判据达成**；RUNTIME 另有 epoch `dhcp: no offer`（后拍，非本刀否证） |
 | 15 | `0x15e` | DHCP 后对网关 `LwIpPing` | **✅ 绿：`net-ping-ok`** | CH：`ping_ok=1` `ping_target`→`192.168.31.1` `dhcp_ip`→`192.168.31.72`。**7e / wifi-7 故事判据达成** |
+| 16 | tray | `GetLinkInfo` 武装 up + epoch 吞无线租约 bump | **✅ 绿：右下角 WiFi 标** | 手测图标出；对表 X64 `NetTray` / `PrimaryKind=1` |
 
 ### 已否证（勿再试）
 

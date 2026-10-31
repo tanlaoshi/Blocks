@@ -232,6 +232,14 @@ void AicScanReportRound(UINT32 Round) {
     sAicScanCurrentRound = Round;
 }
 
+/*
+ * mmreset 后固件的 BSS/信道上下文已失效：上一次扫描的合并表不能再当 join 的目标。
+ * Reset 已经把表项、轮次、整帧槽计数清干净，这里只给 mmreset 一个语义化入口。
+ */
+void AicScanReportClear(void) {
+    AicScanReportReset(AIC_SCAN_ROUNDS_DEFAULT, AIC_SCAN_VERBOSE_OFF);
+}
+
 void AicScanReportAdd(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength) {
     AIC_SCAN_AP Parsed[AIC_SCAN_AP_PER_FRAME];
     UINT32 Count;

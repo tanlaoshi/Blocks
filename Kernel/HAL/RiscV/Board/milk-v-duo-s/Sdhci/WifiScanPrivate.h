@@ -330,6 +330,9 @@ UINT32 AicScanReportCount(void);
 /* join 用：拿扫描时建的 vif。Cached 不问卡；Ensure 没有就补一条 MM_ADD_IF */
 int AicScanVifCached(UINT8 *OutVifIndex);
 int AicScanVifEnsure(SDHCI_HOST *Host, UINT8 *OutVifIndex);
+/* mmreset 之后固件的 vif/BSS/信道上下文已失效：只丢本模块缓存，流程不动 */
+void AicScanVifForget(void);
+void AicScanReportClear(void);
 /* Result：一帧 → 1 个传输 BSSID + 0..N 个非传输 BSSID；0 = 不是可解析的 Beacon/ProbeRsp */
 UINT32 AicScanResultParse(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength,
                           AIC_SCAN_AP *Entries, UINT32 MaxEntries);

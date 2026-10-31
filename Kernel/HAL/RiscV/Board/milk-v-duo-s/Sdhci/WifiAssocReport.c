@@ -267,6 +267,15 @@ void AicJoinLastIndexes(UINT8 *VifIndex, UINT8 *ApIndex) {
 }
 
 /*
+ * mmreset 后固件不再记得这个 sta/vif：旧 ap_idx 拿去开控制端口只会失败。
+ * 只清本文件的 static，不改 join 流程；下一次 IND 成功会重新写入。
+ */
+void AicJoinIndexesClear(void) {
+    sAicJoinApIndex = 0;
+    sAicJoinVifIndex = 0;
+}
+
+/*
  * IND 是**唯一**能判断"关联成没成"的消息：CFM 的 status 只表示"受理"。
  * 失败原因分两类，文案不同：
  *   status_code != 0 → 空口那边明确拒绝（AP 的 (Re)Assoc Response 带回来的状态码）

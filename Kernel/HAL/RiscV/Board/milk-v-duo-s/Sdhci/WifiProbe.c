@@ -1,10 +1,13 @@
 /*
  * WifiProbe.c — 固件探针：MM_VERSION_REQ 判活、MM_RESET_REQ 复位后复查
  *
- * 从 WifiFw.c 原样搬出（纯搬家，函数体逐字节不动），行为零变化。
+ * 从 WifiFw.c 原样搬出（v1 纯搬家，函数体逐字节不动）。
+ * v2：mmreset 成功后清掉本模块自己的 vif/扫描/join 缓存（见文末注释）。
  * 判据：DBG 任务 ROM 里就有，MM 任务只有下载进去的固件才实现。
  */
 #include "WifiPrivate.h"
+#include "WifiScanPrivate.h"
+#include "WifiAssocPrivate.h"
 
 /*
  * `wififw ver`：发 MM_VERSION_REQ（id=0x0004, dest=TASK_MM=0, plen=0），等 MM_VERSION_CFM(0x0005)。
@@ -111,6 +114,20 @@ int SdhciWifiFwMmReset(void) {
     SdhciMarkHex(" plen=", CfmLength, 4);
     SdhciMark("\n");
     SdhciMark("WiFi: mm reset ok\n");
+    /*
+     * 真机：mmreset → bringup → scan → join 曾必然 SM_CONNECT_CFM status=0x04。
+     * MM 复位把固件侧的 vif / BSS / channel context 清空了，而本模块还缓存着
+     * "scan 时建的 vif"、"上次关联的 ap_idx"、"上次扫描的合并表"；下一次 join
+     * 走 "add if reuse" 拿旧 vif，固件按参数拒绝（0x04）。
+     * 这里只丢缓存，不改 scan/join 流程：下一次 scan/join 重新 MM_ADD_IF，
+     * 串口上应看到 "add if" 而不是 "add if reuse"。
+     * CFM 一到就清（版本探针失败也不影响"固件已复位"这个事实）。
+     */
+    AicScanVifForget();
+    AicScanReportClear();
+    AicJoinIndexesClear();
+    SdhciMark("WiFi: mm reset: dropped vif/scan/join caches"
+              " (next scan/join re-adds the interface)\n");
     /* 复位后必须再验一次：CFM 只证明消息通路，版本才证明固件还活着 */
     if (WifiFwVersionProbe(Host) != 0) {
         SdhciMark("WiFi: mm reset: post-reset ver FAILED\n");

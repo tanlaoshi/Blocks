@@ -94,7 +94,7 @@ static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
         KsendCrc32Update(KSEND_CRC_INITIAL, sBlockBuffer, Length));
     if (Got == WantCrc) {
         Run->Dirty = 1; /* 落盘失败也可能写了半块：先记脏，失败路径必须回滚 */
-        Err = KsendFileWriteBlock(Index, sBlockBuffer, Length);
+        Err = KsendFileWriteBlock(Run->TargetPath, Index, sBlockBuffer, Length);
         if (Err == FAT_OK) {
             KsendSerialPutByte(KSEND_ACK_WRITTEN);
             AcceptBlock(Run, Index, Length, WantCrc);

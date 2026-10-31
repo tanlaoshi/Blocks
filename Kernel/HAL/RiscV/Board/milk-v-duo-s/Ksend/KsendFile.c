@@ -183,17 +183,19 @@ int KsendFileCopy(const char *Source, const char *Target, UINT32 Size,
     return FAT_OK;
 }
 
-int KsendFileWriteBlock(UINT32 Index, const UINT8 *Data, UINT32 Length) {
+int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
+                        UINT32 Length) {
     UINT32 Offset;
 
-    if (Index >= KSEND_MAX_BLOCKS || Length == 0u || Length > KSEND_BLOCK_BYTES) {
+    if (Path == 0 || Index >= KSEND_MAX_BLOCKS || Length == 0u ||
+        Length > KSEND_BLOCK_BYTES) {
         return FAT_ERR_INVAL;
     }
     Offset = Index * KSEND_BLOCK_BYTES;
     if (Offset + Length > KSEND_MAX_BYTES) {
         return FAT_ERR_FILE_TOO_BIG;
     }
-    return KsendFileWriteAt(KSEND_KERNEL_PATH, Offset, Data, Length);
+    return KsendFileWriteAt(Path, Offset, Data, Length);
 }
 
 /*

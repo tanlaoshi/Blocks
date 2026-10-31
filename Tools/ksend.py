@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""ksend.py — 把新内核增量写进 Duo S 的 SD 卡，然后让板子重启。
+"""ksend.py — 把任意文件增量写进 Duo S 的 SD 卡，然后让板子重启。
+
+默认目标仍是 BLOCKS:Kernel.elf；`--path` 可以把同一个协议指向别的文件
+（板端对应 `ksend <路径>`，不给路径就是 Kernel.elf）。
 
 协议（与板包 Ksend/ 同源；线上小端）：
-    PC  -> DUO  "ksend\\n"
+    PC  -> DUO  "ksend\\n" 或 "ksend <目标路径>\\n"（路径走板端 shell 参数）
     DUO -> PC   "KSEND READY size=<旧大小> block=4096 n=<旧块数>\\r\\n"
     DUO -> PC   n 个 u32 旧块 CRC32 + 1 字节 '\\n'
     PC  -> DUO  每块：u32 magic=0x4B53424B, u32 index, u32 len, u32 crc32, data[len]
@@ -18,7 +21,8 @@
     文件变小或末块没变时会推出错误尺寸。
 
 命令：
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --elf Kernel/Build/DUO/HAL/RiscV/Kernel.elf
+    python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
+    python3 Tools/ksend.py --port /dev/ttyUSB0 --file SNAKE.ELF --path BLOCKS:SNAKE.ELF
     python3 Tools/ksend.py --port /dev/ttyUSB0 --info
     python3 Tools/ksend.py --port /dev/ttyUSB0 --selftest
     python3 Tools/ksend.py --port /dev/ttyUSB0 --dry-run
@@ -44,6 +48,12 @@ ACK_WRITTEN = b"A"
 ACK_RETRY = b"N"
 RETRY_MAX = 3
 FAT_WRITE_MAX = 8 * 1024 * 1024
+# 板端 Ksend/Private.h 的 KSEND_PATH_BYTES 是 64（含结尾 0）；命令行还会带卷名
+TARGET_PATH_MAX = 63
+# 板端 shell 按空格切参数：只放可打印 ASCII（0x21..0x7E）
+PATH_CHAR_MIN = 0x21
+PATH_CHAR_MAX = 0x7E
+DEFAULT_TARGET_PATH = "BLOCKS:Kernel.elf"
 
 DEFAULT_ELF_CANDIDATES = (
     "Kernel/Build/DUO/HAL/RiscV/Kernel.elf",
@@ -225,12 +235,12 @@ def field_hex(fields, key):
         raise KsendError("field %s=%r is not hex" % (key, fields[key]))
 
 
-def load_elf(path):
+def load_file(path):
     try:
         with open(path, "rb") as handle:
             data = handle.read()
     except OSError as error:
-        raise LocalError("cannot read ELF %s: %s" % (path, error))
+        raise LocalError("cannot read %s: %s" % (path, error))
     if len(data) == 0:
         raise LocalError("%s is empty" % path)
     if len(data) > FAT_WRITE_MAX:
@@ -239,14 +249,36 @@ def load_elf(path):
     return data
 
 
-def resolve_elf(path):
+def resolve_file(path):
     if path:
         return path
     for candidate in DEFAULT_ELF_CANDIDATES:
         if os.path.isfile(candidate):
             return candidate
-    raise LocalError("no kernel ELF found (tried %s); pass --elf"
+    raise LocalError("no kernel ELF found (tried %s); pass --file"
                      % ", ".join(DEFAULT_ELF_CANDIDATES))
+
+
+def check_target_path(path):
+    """板端 shell 按空格切参数：路径不能含空白/控制字节，也不能超板端缓冲。"""
+    if not path:
+        raise LocalError("--path is empty")
+    if len(path) > TARGET_PATH_MAX:
+        raise LocalError("--path is %d chars, board limit is %d"
+                         % (len(path), TARGET_PATH_MAX))
+    for char in path:
+        if ord(char) < PATH_CHAR_MIN or ord(char) > PATH_CHAR_MAX:
+            raise LocalError("--path %r has a space/control/non-ASCII byte" % path)
+    if path.endswith(":"):
+        raise LocalError("--path %r has no file name" % path)
+    # 板端备份名 = 同目录 <主名>.BAK（主名换扩展名，长度不缩短）
+    name = path.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    backup_length = len(path) - len(name) + len(stem) + len(".BAK")
+    if backup_length > TARGET_PATH_MAX:
+        raise LocalError("--path %r: its .BAK name is %d chars, board limit is %d"
+                         % (path, backup_length, TARGET_PATH_MAX))
+    return path
 
 
 def block_crcs(data):
@@ -323,11 +355,11 @@ def command_info(args):
         fields = parse_fields(line)
         board_size = field_int(fields, "size")
         board_crc = field_hex(fields, "crc")
-        if args.elf:
-            data = load_elf(args.elf)
+        if args.file:
+            data = load_file(args.file)
             local_crc = whole_crc(data)
             if local_crc == board_crc and len(data) == board_size:
-                log("match: local ELF is identical to the board's Kernel.elf")
+                log("match: local file is identical to the board's Kernel.elf")
             else:
                 log("diff: board %d B crc=%08x, local %d B crc=%08x"
                     % (board_size, board_crc, len(data), local_crc))
@@ -370,18 +402,23 @@ def print_plan(plan, data, local_crcs, board_crcs, board_size):
 
 
 def command_transfer(args, dry_run):
-    elf_path = resolve_elf(args.elf)
-    data = load_elf(elf_path)
+    file_path = resolve_file(args.file)
+    target = check_target_path(args.path or DEFAULT_TARGET_PATH)
+    data = load_file(file_path)
     local_crcs = block_crcs(data)
     local_crc = whole_crc(data)
-    log("elf: %s" % elf_path)
+    log("file: %s" % file_path)
+    log("target: %s" % target)
     log("local: %d B, %d blocks, crc=%08x"
         % (len(data), len(local_crcs), local_crc))
 
     port = SerialPort(args.port, args.baud)
     try:
         log("port: %s %d 8N1" % (args.port, args.baud))
-        port.write_all(b"ksend\n", 10.0)
+        # 默认路径仍发裸 "ksend"（与旧版字节一致）；换目标时把路径当板端 shell 参数。
+        trigger = (b"ksend\n" if target == DEFAULT_TARGET_PATH
+                   else ("ksend %s\n" % target).encode("ascii"))
+        port.write_all(trigger, 10.0)
         # 备份失败时板子会在 READY 之前就回 FAIL，别干等 ready-timeout
         line, text = wait_for_line(port, [b"KSEND READY ", b"KSEND FAIL"],
                                    args.ready_timeout)
@@ -484,9 +521,13 @@ def wait_for_verdict(port, timeout):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Incremental Kernel.elf write to a Milk-V Duo S over serial")
+        description="Incremental file write to a Milk-V Duo S over serial")
     parser.add_argument("--port", required=True, help="serial device, e.g. /dev/ttyUSB0")
-    parser.add_argument("--elf", help="kernel ELF to send (default: newest known build path)")
+    # --elf 是旧名，保留为 --file 的兼容别名（同一 dest）
+    parser.add_argument("--file", "--elf", dest="file",
+                        help="local file to send (default: newest known kernel ELF path)")
+    parser.add_argument("--path", default=None,
+                        help="board-side target path (default: %s)" % DEFAULT_TARGET_PATH)
     parser.add_argument("--baud", type=int, default=115200,
                         help="serial baud (default 115200; the kernel keeps U-Boot's rate)")
     parser.add_argument("--info", action="store_true",
@@ -511,7 +552,7 @@ def main(argv):
     if sum(1 for flag in (args.info, args.selftest, args.dry_run) if flag) > 1:
         log("--info / --selftest / --dry-run are mutually exclusive")
         return EXIT_LOCAL
-    # --info 不带 --elf 时只查板子，不和本地文件比
+    # --info 不带 --file 时只查板子，不和本地文件比
     try:
         if args.info:
             return command_info(args)

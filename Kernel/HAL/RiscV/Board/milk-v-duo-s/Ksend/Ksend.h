@@ -24,9 +24,11 @@ int KsendSelftest(void);
 
 /*
  * 完整传输：备份 → 发块表 → 收差量块 → flush → 读回校验 → 重启。
+ * TargetPath = 0/空串 → 默认 BLOCKS:Kernel.elf；否则写该路径（可带卷名，
+ * 也可写裸文件名走默认卷）。备份名 = 同目录 <目标主名>.BAK。
  * 成功时打印 KSEND OK 并复位（不返回）；失败时打印 KSEND FAIL，必要时用
- * KERNEL.BAK 恢复，绝不重启。返回 0 成功、1 失败。
+ * 备份恢复，绝不重启。返回 0 成功、1 失败。
  */
-int KsendTransfer(void);
+int KsendTransfer(const char *TargetPath);
 
 #endif /* KSEND_H */

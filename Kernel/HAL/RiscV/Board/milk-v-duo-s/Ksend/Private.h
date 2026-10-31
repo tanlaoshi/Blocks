@@ -40,9 +40,13 @@
 #define KSEND_IO_CHUNK_BYTES      (64u * 1024u)
 #define KSEND_TEXT_BYTES          192u
 
-/* —— 卡上路径（卷标 BLOCKS；与 Install.c 写的 Kernel.elf 同名） —— */
+/* —— 卡上路径 ——
+ * 默认目标仍是 BLOCKS:Kernel.elf（Install.c 写的那个）；`ksend <路径>` 可换。
+ * 备份名由目标名派生：同目录、换扩展名成 .BAK、全大写（Kernel.elf → KERNEL.BAK，
+ * SNAKE.ELF → SNAKE.BAK），与 v1 的固定 KERNEL.BAK 保持同一形态。 */
 #define KSEND_KERNEL_PATH         "BLOCKS:Kernel.elf"
-#define KSEND_BACKUP_PATH         "BLOCKS:KERNEL.BAK"
+#define KSEND_PATH_BYTES          64u
+#define KSEND_BACKUP_EXTENSION    ".BAK"
 #define KSEND_SELFTEST_PATH       "BLOCKS:KSELFT.BIN"
 #define KSEND_SELFTEST_BYTES      8192u
 /* 自检第二遍的盐：两遍内容必须不同，否则「覆写已有文件」这条路径测不出来 */
@@ -91,6 +95,8 @@ typedef struct {
 
 /* 一次传输的现场：收块状态机与收尾/回滚两边共用 */
 typedef struct {
+    const char *TargetPath; /* 卡上目标（默认 BLOCKS:Kernel.elf） */
+    const char *BackupPath; /* 同目录 <目标主名>.BAK */
     UINT32 OldSize;
     UINT32 NewSize;
     UINT32 TrailerCrc;
@@ -124,7 +130,7 @@ typedef struct {
 void KsendNote(const char *Text);
 int KsendInfo(void);
 int KsendSelftest(void);
-int KsendTransfer(void);
+int KsendTransfer(const char *TargetPath);
 
 /* —— KsendSerial.c —— */
 void KsendSerialWrite(const char *Text);
@@ -184,15 +190,16 @@ int KsendFileScan(const char *Path, UINT32 Size, KSEND_IMAGE *Image);
 /* 复制并顺带算出被复制内容的图（源先读、目标先删） */
 int KsendFileCopy(const char *Source, const char *Target, UINT32 Size,
                   KSEND_IMAGE *Image);
-/* 写一块（Index*4096 起，Length 1..4096） */
-int KsendFileWriteBlock(UINT32 Index, const UINT8 *Data, UINT32 Length);
+/* 写一块（Path 的 Index*4096 起，Length 1..4096） */
+int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
+                        UINT32 Length);
 /* 把 [Offset, Offset+Length) 写成 0（FAT 无 truncate 时的兜底） */
 int KsendFileZeroRange(const char *Path, UINT32 Offset, UINT32 Length);
 /* 1=一致；0=块不符（OutBlock/Want/Got）；-1=整体 CRC 不符 */
 int KsendFileVerify(const char *Path, UINT32 Size, const KSEND_IMAGE *Expected,
                     UINT32 ExpectedCrc, UINT32 *OutBlock, UINT32 *OutWant,
                     UINT32 *OutGot);
-/* 删 Kernel.elf 再从 BAK 重写并校验（尺寸与内容都回到备份） */
+/* 删目标再从备份重写并校验（尺寸与内容都回到备份） */
 int KsendFileRestore(const char *BackupPath, const char *TargetPath,
                      const KSEND_IMAGE *Expected);
 int KsendFileSelfTest(KSEND_SELFTEST *Out);

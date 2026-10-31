@@ -151,6 +151,16 @@ int AicScanVifEnsure(SDHCI_HOST *Host, UINT8 *OutVifIndex) {
     return ScanVifAcquire(Host, OutVifIndex);
 }
 
+/*
+ * mmreset 之后调用：固件的 vif 表已被复位清空，本模块缓存里的 vif 不再存在。
+ * 只丢缓存，不改 scan/join 流程 —— 下一次 scan/join 的 ScanVifAcquire 会重新
+ * 发 MM_ADD_IF（串口上从 "add if reuse" 变回 "add if"）。
+ */
+void AicScanVifForget(void) {
+    sAicScanVifValid = 0;
+    sAicScanVifIndex = 0;
+}
+
 static int ScanStart(SDHCI_HOST *Host, UINT8 VifIndex, UINT16 *OutAckId) {
     UINT32 Length = AicScanuStartBuild((UINT8 *)sAicScanBuffer, VifIndex);
     UINT32 ParamLength = 0;

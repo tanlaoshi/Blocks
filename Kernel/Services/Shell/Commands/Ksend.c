@@ -1,11 +1,13 @@
 /*
- * Ksend.c — 壳 `ksend [info|selftest]`：串口增量写卡（Duo S 开发期工具）
+ * Ksend.c — 壳 `ksend [info|selftest|<目标路径>]`：串口增量写卡（Duo S 开发期工具）
  *
  * 实现全在板包里（Kernel/HAL/RiscV/Board/milk-v-duo-s/Ksend/）。这里只做分发，
  * 用弱引用（与 Wifi.c 的 wifiprobe 同法）：
  *   - 其它 RISC-V 靶（virt）没有这个模块 → 符号链成 NULL，只提示本板不支持；
  *   - x86_64 / arm64 连这段都不编。
  * 这样加一个命令不必为它动 HAL 头。
+ *
+ * v2：第二参数是卡上目标路径（PC 侧 --path 也走这条命令）；不给仍是 Kernel.elf。
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -13,7 +15,7 @@
 #if defined(__riscv)
 extern int KsendInfo(void) __attribute__((weak));
 extern int KsendSelftest(void) __attribute__((weak));
-extern int KsendTransfer(void) __attribute__((weak));
+extern int KsendTransfer(const char *TargetPath) __attribute__((weak));
 
 /* 子命令大小写不敏感（壳本身对一级命令就不敏感），参数不便宜 */
 static int KsendArgumentIs(const char *Argument, const char *Word) {
@@ -55,10 +57,14 @@ static void CommandKsend(int Argc, char **Argv) {
             (void)KsendSelftest();
             return;
         }
-        gConsole.Write("usage: ksend [info|selftest]\n");
+        if (Argc == 2) {
+            (void)KsendTransfer(Argv[1]);
+            return;
+        }
+        gConsole.Write("usage: ksend [info|selftest|<target path>]\n");
         return;
     }
-    (void)KsendTransfer();
+    (void)KsendTransfer(0);
 #else
     (void)Argc;
     (void)Argv;
@@ -68,6 +74,6 @@ static void CommandKsend(int Argc, char **Argv) {
 
 void ShellCommandsKsendRegister(void) {
     gConsole.Register("ksend",
-                      "ksend [info|selftest] — incremental Kernel.elf over serial (Duo S)",
+                      "ksend [info|selftest|<target path>] — incremental file over serial (Duo S)",
                       CommandKsend);
 }

@@ -187,7 +187,12 @@ toy_virt_ensure_elf() {
         make clean "ARCH=$VIRT_MAKE_ARCH" "BOARD=$WantBoard" "BUILDDIR=$KERNEL_BUILD"
     fi
     VirtLwip=1
-    if [ ! -d "HAL/Common/LwIp" ] && \
+    # 原来两行都写 HAL/Common/LwIp（复制粘贴残留）：第二个条件恒等于第一个，
+    # 架构端口目录从来没被检查过。lwIP 端口由两部分组成（Kernel/Makefile:235-247）：
+    #   HAL/<Arch>/LwIp（Netif.c / Ping.c）+ HAL/Common/LwIp（协议层）。
+    # 缺任一部分都编不出 LWIP，所以是 || 而不是 &&。当前树两部分都在，VirtLwip 仍是 1；
+    # 只有真缺目录时才降 0 —— 那正是原来那个"永不执行"分支的本意。
+    if [ ! -d "HAL/${VIRT_HAL_ARCH}/LwIp" ] || \
        [ ! -d "HAL/Common/LwIp" ]; then
         VirtLwip=0
     fi

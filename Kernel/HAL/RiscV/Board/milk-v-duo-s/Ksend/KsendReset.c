@@ -59,3 +59,8 @@ void KsendReboot(void) {
         KsendDelayMs(KSEND_RTC_PARK_MS);
     }
 }
+
+/* 供 HalCpuReboot()（shell 的 reboot 命令）走真复位，而不是停机等人拔电。 */
+void BoardCpuReboot(void) {
+    KsendRtcWarmReset();
+}

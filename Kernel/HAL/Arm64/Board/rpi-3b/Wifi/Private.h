@@ -125,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000013cu
+#define WIFI_BUILD_TAG               0x0000013du
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -252,7 +252,8 @@ int WifiVerifyDownloadPath(void);
 int WifiFirmwareSampleReadback(UINT32 DownloadBase, const UINT8 *FirmwareBlob,
                                UINT32 FirmwareBytes);
 int WifiExitDownload(void);
-int WifiWaitHtAndFunction2(void);
+int WifiWaitHighThroughput(void); /* pi-wifi-5：等 HT_AVAILABLE；超时打 csr */
+int WifiWaitHtAndFunction2(void); /* HT + F2；wifi-6 再用 */
 int WifiSdioHostCommandDataRecover(void); /* F1 abort + CMD|DATA 复位 */
 int WifiSdioBusRejoinAfterIdle(void); /* WL_ON POR+枚举+F1；延后 Claim 灌片前 */
 int WifiFirmwareLoad(void); /* 0=ok；须 FS 已挂 */

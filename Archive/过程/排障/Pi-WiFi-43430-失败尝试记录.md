@@ -642,6 +642,12 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 1 | `0x13b` | 去 early-stop；满灌+抽样；路径至探针同 `0x13a` | **红：`sram probe write fail` DTO**；`res=7fffffff` `re io=1 rst=0 pda=0`；`csr avail=48` 在探针前 | 与 0x13a 绿同态仍败 → 疑过早清 FORCE 致间歇；满灌未触达 |
 | 2 | `0x13c` | FORCE 贯穿 PMU+再复位+探针；**探针后再** `AlpRelease` 再满灌 | **✅ wifi-4 绿** | `probe=yes`→`csr avail=c8`→`fw bytes=000667d8`→`sample ok`→`wifi-4 stop before exit download`；满灌+抽样成立；HT/F2 交 wifi-5 |
 
+### 短刀试探日志（Pi · pi-wifi-5 · ARM/HT · 进行中）
+
+| # | tag | 试探 | 结果 | 备注 |
+| - | --- | ---- | ---- | ---- |
+| 1 | `0x13d` | 满灌后 `ExitDownload`（清 intstatus + ARM CoreReset）→ `WaitHighThroughput`；**停 F2 前** | **✅ wifi-5 绿** | `ARM reset ok`→`arm-after io=1 rst=0`→`HT ok csr=000000d0`→`wifi-5 stop before F2`；F2/SDPCM 交 wifi-6 |
+
 ### 已否证（勿再试）
 
 - Claim 时 **先读成功才允许写 KSO**（睡着必挂；应用 Linux 先写唤醒）

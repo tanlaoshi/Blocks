@@ -1,6 +1,6 @@
 /*
- * FirmwareLoad.c — 灌 brcmfmac bin + NVRAM（pi-wifi-4）
- * HT/F2 见 FirmwareHtBringUp.c（pi-wifi-5）。对表 Linux brcmf_sdio_download_firmware。
+ * FirmwareLoad.c — 灌 brcmfmac bin + NVRAM + 出下载（pi-wifi-5）
+ * F2/SDPCM 见 FirmwareHtBringUp / Sdpcm（pi-wifi-6）。对表 Linux brcmf_sdio_download_firmware。
  */
 #include "Wifi/Private.h"
 
@@ -200,11 +200,18 @@ int WifiFirmwareLoad(void) {
         HalSerialBootMarkForce("Boot: Pi WIFI nvram size write fail\n");
         goto Done;
     }
+    HalSerialBootMarkForce("Boot: Pi WIFI nvram ok, exit download\n");
+    if (WifiExitDownload() != 0) {
+        goto Done;
+    }
+    if (WifiWaitHighThroughput() != 0) {
+        goto Done;
+    }
     /*
-     * pi-wifi-4：镜像 + NVRAM + 抽样绿即可。
-     * ExitDownload / HT / F2 留给 pi-wifi-5；勿在此宣称 gWifiFirmwareLoaded。
+     * pi-wifi-5：HT_AVAILABLE 即收。F2 / SDPCM 留给 pi-wifi-6；
+     * 勿在此宣称 gWifiFirmwareLoaded（尚无 F2 就绪）。
      */
-    HalSerialBootMarkForce("Boot: Pi WIFI nvram ok, wifi-4 stop before exit download\n");
+    HalSerialBootMarkForce("Boot: Pi WIFI wifi-5 stop before F2\n");
     Result = 0;
 
 Done:

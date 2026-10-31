@@ -1,14 +1,15 @@
 /*
- * FirmwareHtBringUp.c — 拉 ARM 后等 HT / 开 F2（pwifi-2）
+ * FirmwareHtBringUp.c — 拉 ARM 后等 HT / 开 F2（pi-wifi-5）
  *
  * 实证：bulk 后、ARM/HT 前 CMD53 读会楔死；此文件只 CMD52 + Write32。
+ * Linux brcmf_sdio_htclk：整字节写 HT_AVAIL_REQ（0x10），非 RMW。
  */
 #include "Wifi/Private.h"
 
 /*
  * 对表 brcmf_sdio_htclk：请求 HT 是把整个字节写成 HT_AVAIL_REQ，
  * FORCE_ALP 与 ALP_AVAIL_REQ 必须一起清掉。保留 FORCE_ALP 会把 ALP 钉死，
- * 芯片永远不会切到 HT，SRAM（HT 域）随之无响应。
+ * 芯片永远不会切到 HT。
  */
 static int WifiClockRequestHighThroughput(void) {
     UINT8 ClockControl = 0;
@@ -100,11 +101,13 @@ int WifiExitDownload(void) {
     return 0;
 }
 
-int WifiWaitHtAndFunction2(void) {
+/*
+ * pi-wifi-5：固件已落地后等 HT_AVAILABLE。超时必打 csr 原文 + ARM/SOCRAM 态。
+ * 禁止在此加长超时当第一刀；F2 留给 pi-wifi-6。
+ */
+int WifiWaitHighThroughput(void) {
     UINT32 Attempt;
-    UINT8 Ready = 0;
     UINT8 Status = 0;
-    UINT32 ChipCommon = 0;
 
     if (WifiClockRequestHighThroughput() != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI HT req fail\n");
@@ -141,6 +144,17 @@ int WifiWaitHtAndFunction2(void) {
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI HT ok csr=", Status);
     HalSerialBootMarkForce("\n");
+    return 0;
+}
+
+int WifiWaitHtAndFunction2(void) {
+    UINT32 Attempt;
+    UINT8 Ready = 0;
+    UINT32 ChipCommon = 0;
+
+    if (WifiWaitHighThroughput() != 0) {
+        return -1;
+    }
 
     if (WifiBackplaneWrite32(WIFI_SDIO_INT_HOST_MASK, WIFI_HOST_MAILBOX_SOFTWARE_MASK) != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI host mask write fail\n");

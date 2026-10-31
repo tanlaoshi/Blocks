@@ -16,6 +16,8 @@ BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的�
     DUO -> PC   "KSEND OK crc=.. written=.. size=.."（随后复位）
                 或 "KSEND FAIL ..."（不复位；必要时 "KSEND RESTORED"）
     --no-reboot 时板端在 KSEND OK 后留在 shell，复位交给操作者。
+    --no-backup 时板端跳过写前 .bak（仍读旧内容算差量），串口打
+    "backup: skipped (--no-backup)"；失败不回滚。
 
 两个实现约定（板子侧同样写死，改这里必须同步改板包）：
   * CRC 用 CRC-32/ISO-HDLC，即 Python zlib.crc32；
@@ -27,6 +29,7 @@ BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的�
     python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
     python3 Tools/ksend.py --port /dev/ttyUSB0 --file SNAKE.ELF --path BLOCKS:SNAKE.ELF
     python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd
+    python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd --no-backup
     python3 Tools/ksend.py --port /dev/ttyUSB0 --info
     python3 Tools/ksend.py --port /dev/ttyUSB0 --selftest
     python3 Tools/ksend.py --port /dev/ttyUSB0 --dry-run
@@ -408,13 +411,15 @@ def print_plan(plan, data, local_crcs, board_crcs, board_size):
         print("  ... %d more" % (len(plan) - 40))
 
 
-def board_command(target, no_reboot):
-    """板端命令行；默认目标 + 默认复位时保持旧字节 'ksend\\n'。"""
-    if target == DEFAULT_TARGET_PATH and not no_reboot:
+def board_command(target, no_reboot, no_backup=False):
+    """板端命令行；默认目标 + 默认复位/备份时保持旧字节 'ksend\\n'。"""
+    if target == DEFAULT_TARGET_PATH and not no_reboot and not no_backup:
         return b"ksend\n"
     command = "ksend"
     if no_reboot:
         command += " --no-reboot"
+    if no_backup:
+        command += " --no-backup"
     if target != DEFAULT_TARGET_PATH:
         command += " " + target
     return (command + "\n").encode("ascii")
@@ -435,7 +440,10 @@ def command_transfer(args, dry_run):
     try:
         log("port: %s %d 8N1" % (args.port, args.baud))
         # 默认路径仍发裸 "ksend"（与旧版字节一致）；换目标/加 --no-reboot 才带参数。
-        trigger = board_command(target, args.no_reboot)
+        if args.no_backup:
+            log("--no-backup: board will skip %s.bak (no rollback on failure)"
+                % target)
+        trigger = board_command(target, args.no_reboot, args.no_backup)
         port.write_all(trigger, 10.0)
         # 备份失败时板子会在 READY 之前就回 FAIL，别干等 ready-timeout
         line, text = wait_for_line(port, [b"KSEND READY ", b"KSEND FAIL"],
@@ -556,6 +564,8 @@ def build_parser():
                         help="handshake and print the diff, then abort without writing")
     parser.add_argument("--no-reboot", action="store_true",
                         help="leave the board in its shell after KSEND OK (no reset)")
+    parser.add_argument("--no-backup", action="store_true",
+                        help="skip the board's pre-write .bak (no rollback on failure)")
     parser.add_argument("--ready-timeout", type=float, default=180.0,
                         help="seconds to wait for KSEND READY (backup+CRC happens first)")
     parser.add_argument("--ack-timeout", type=float, default=30.0,
@@ -572,8 +582,8 @@ def main(argv):
     if sum(1 for flag in (args.info, args.selftest, args.dry_run) if flag) > 1:
         log("--info / --selftest / --dry-run are mutually exclusive")
         return EXIT_LOCAL
-    if args.no_reboot and (args.info or args.selftest):
-        log("--no-reboot only applies to a transfer")
+    if (args.no_reboot or args.no_backup) and (args.info or args.selftest):
+        log("--no-reboot / --no-backup only apply to a transfer")
         return EXIT_LOCAL
     # --info 不带 --file 时只查板子，不和本地文件比
     try:

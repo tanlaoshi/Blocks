@@ -35,9 +35,12 @@
 /* 单文件上限取 FAT 层的 FAT_WRITE_MAX（Fat.h：8 MB）；块 CRC 表按它开静态数组 */
 #define KSEND_MAX_BYTES           (8u * 1024u * 1024u)
 #define KSEND_MAX_BLOCKS          (KSEND_MAX_BYTES / KSEND_BLOCK_BYTES)
-/* 整文件读写分块：每次 FileSystem*FileAt 都要从首簇沿 FAT 链走到偏移，
- * 4 KB 一块读 2.2 MB 是 O(n²)；64 KB 一块把链步数压到 1/16 */
-#define KSEND_IO_CHUNK_BYTES      (64u * 1024u)
+/* 整文件读写分块：每次 FileSystem*FileAt 都要从首簇沿 FAT 链走到偏移
+ *（FAT 链没有反向指针，Fat/FileWriteAt.c 的 SeekFileOffset 是 O(偏移/簇)），
+ * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。512 KB 一块把调用次数压到
+ * 1/128，配合 FAT 分配提示后 2.1 MB 的部署才真正可用。
+ * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 KsendReceive.c）。 */
+#define KSEND_IO_CHUNK_BYTES      (512u * 1024u)
 #define KSEND_TEXT_BYTES          192u
 
 /* —— 卡上路径 ——
@@ -107,6 +110,7 @@ typedef struct {
     UINT32 FailGot;
     int VolIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
     int Reboot;   /* 1=成功且校验通过后复位（默认）；0=--no-reboot 留 shell */
+    int Backup;   /* 1=写前备份 .bak（默认）；0=--no-backup 跳过，失败不回滚 */
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
     int Err;
@@ -133,7 +137,7 @@ typedef struct {
 void KsendNote(const char *Text);
 int KsendInfo(void);
 int KsendSelftest(void);
-int KsendTransfer(const char *TargetPath, int Reboot);
+int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
 
 /* —— KsendSerial.c —— */
 void KsendSerialWrite(const char *Text);
@@ -181,7 +185,7 @@ extern KSEND_IMAGE gKsendOldImage;
 /* 传输中「期望的新内容」图；info 也拿它当只打印的草稿 */
 extern KSEND_IMAGE gKsendNewImage;
 
-/* 64 KB 复用缓冲（自检也用它，省一份静态数据） */
+/* 512 KB 复用缓冲（自检/接收批写共用，省一份静态数据） */
 UINT8 *KsendFileBuffer(void);
 int KsendFileDelete(const char *Path);
 int KsendFileSize(const char *Path, UINT32 *OutSize);
@@ -193,7 +197,7 @@ int KsendFileScan(const char *Path, UINT32 Size, KSEND_IMAGE *Image);
 /* 复制并顺带算出被复制内容的图（源先读、目标先删） */
 int KsendFileCopy(const char *Source, const char *Target, UINT32 Size,
                   KSEND_IMAGE *Image);
-/* 写一块（Path 的 Index*4096 起，Length 1..4096） */
+/* 写一块（Path 的 Index*4096 起，Length 1..4096）；接收路径改为批量写 */
 int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
                         UINT32 Length);
 /* 把 [Offset, Offset+Length) 写成 0（FAT 无 truncate 时的兜底） */

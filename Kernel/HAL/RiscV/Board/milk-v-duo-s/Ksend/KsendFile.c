@@ -4,9 +4,9 @@
  * 为什么不碰 Fat/Block：铁律要求只调用现有 API；FAT 层没有 truncate，
  * 所以缩小时只能补零（见 KsendFileZeroRange 与 README 的限制一节）。
  *
- * 为什么按 64 KB 读：FileSystemReadFileAt/WriteFileAt 每次都从首簇沿 FAT 链
- * 走到偏移（Fat/FileRead.c SeekFileOffset），4 KB 一块读 2.2 MB 会走 O(n²)；
- * 64 KB 一块把链步数压到 1/16。
+ * 为什么按 512 KB 读：FileSystemReadFileAt/WriteFileAt 每次都从首簇沿 FAT 链
+ * 走到偏移（Fat/FileRead.c SeekFileOffset），4 KB 一块读 2.2 MB 会走第二层
+ * O(n²)；512 KB 一块把调用次数压到 1/128（接收路径同样按 512 KB 批量写）。
  *
  * 数据缓冲只有一份 sIoBuffer：Ksend 是同步命令，传输与自检不会并发。
  */

@@ -11,13 +11,15 @@
 # 流程：
 #   1) （默认）build riscv duo → Kernel/Build/DUO/HAL/RiscV/Kernel.elf
 #   2) mk-boot-sd.py -k <ELF> -o scripts/boot.sd（FIT 内嵌核）
-#   3) Tools/ksend.py --file boot.sd --path BOOT:boot.sd --no-reboot
-#      板端：备份 boot.sd → boot.sd.bak（写前读回校验）→ 写 → 整文件 CRC
-#      读回比对；不符从 .bak 回滚并打 KSEND RESTORED。失败绝不复位。
+#   3) Tools/ksend.py --file boot.sd --path BOOT:boot.sd --no-reboot --no-backup
+#      板端：boot.sd 由本脚本重新生成，跳过写前备份（--no-backup，串口打
+#      "backup: skipped (--no-backup)"）→ 写 → 整文件 CRC 读回比对。
+#      注意：--no-backup 失败时不回滚；重刷用读卡器/重新 deploy 即可。
 #   4) 只有 KSEND OK（板端已读回校验）才提示可复位。
 #
 # 本脚本刻意不自动复位：复位时机留给操作者（板上 reboot / 断电重上电）。
 # 最坏情况：卡上 boot.sd 损坏 → 下次上电不进内核 → 读卡器重刷（约 1 分钟）。
+# boot.sd 是 mk-boot-sd.py + 现有 ELF 的可再生产物，所以默认跳过 2.1 MB 备份。
 #
 # 禁止：对 Duo 跑 ck-pi-sd；不要删 fip.bin / boot.sd.vendor。
 set -euo pipefail
@@ -97,14 +99,16 @@ fi
 echo "deploy: boot.sd $(stat -c '%s' "$OUT") B md5=$(md5sum "$OUT" | cut -d' ' -f1)"
 
 KSEND="$BLOCKS_ROOT/Tools/ksend.py"
-KSEND_ARGS=(--port "$PORT" --baud "$BAUD" --file "$OUT" --path "$TARGET" --no-reboot)
+# boot.sd 每次都由 mk-boot-sd.py 重新生成：跳过写前 2.1 MB 备份
+KSEND_ARGS=(--port "$PORT" --baud "$BAUD" --file "$OUT" --path "$TARGET" \
+            --no-reboot --no-backup)
 if [ "$DRY_RUN" = 1 ]; then
     KSEND_ARGS+=(--dry-run)
 fi
 
 if ! python3 "$KSEND" "${KSEND_ARGS[@]}"; then
     echo "deploy: FAILED — boot.sd 未通过校验；板子未复位。" >&2
-    echo "deploy: 可重试本脚本；必要时用读卡器把 boot.sd.bak 改名回 boot.sd。" >&2
+    echo "deploy: 可重试本脚本；--no-backup 不更新 .bak，必要时用读卡器重刷 boot.sd。" >&2
     exit 1
 fi
 

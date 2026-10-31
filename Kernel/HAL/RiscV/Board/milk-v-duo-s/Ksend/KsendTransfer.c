@@ -13,6 +13,8 @@
  * 全名追加 .bak（Kernel.elf → Kernel.elf.bak，boot.sd → boot.sd.bak）。
  * v3：BOOT: 前缀写启动分区；写前 SelectVolume 选中目标卷（boot 分区默认只读），
  * 成功/失败都在返回前归还选择；--no-reboot 时校验通过后留在 shell。
+ * v4：--no-backup 跳过写前 .bak（仍扫描旧内容算差量）；失败不回滚，
+ * 串口明确打 backup: skipped (--no-backup)，不让人误以为备份成功。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -33,6 +35,7 @@ static void RunReset(KSEND_RUN *Run) {
     Run->FailGot = 0;
     Run->VolIndex = -1;
     Run->Reboot = 1;
+    Run->Backup = 1;
     Run->Dirty = 0;
     Run->Failure = KSEND_FAIL_NONE;
     Run->Err = FAT_OK;
@@ -171,13 +174,17 @@ static void ImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source) {
     }
 }
 
-/* 备份现有目标：复制 → 回读校验 → 得到 gKsendOldImage */
+/* 备份现有目标：复制 → 回读校验 → 得到 gKsendOldImage
+ * --no-backup：只读扫描旧内容（差量块表要用），不写 .bak。 */
 static int PrepareBackup(KSEND_RUN *Run) {
     UINT32 Block = 0;
     UINT32 Want = 0;
     UINT32 Got = 0;
     int Err;
 
+    if (Run->Backup == 0) {
+        KsendNote("backup: skipped (--no-backup)");
+    }
     Err = KsendFileSize(Run->TargetPath, &Run->OldSize);
     if (Err == FAT_ERR_NOENT) {
         Run->OldSize = 0;
@@ -191,6 +198,9 @@ static int PrepareBackup(KSEND_RUN *Run) {
     }
     if (Run->OldSize > KSEND_MAX_BYTES) {
         return FAT_ERR_FILE_TOO_BIG;
+    }
+    if (Run->Backup == 0) {
+        return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
     }
     Err = KsendFileCopy(Run->TargetPath, Run->BackupPath, Run->OldSize,
                         &gKsendOldImage);
@@ -281,6 +291,11 @@ static void RollBack(const KSEND_RUN *Run) {
     if (Run->Dirty == 0) {
         return;
     }
+    if (Run->Backup == 0) {
+        /* 没写 .bak：回滚不能用旧备份（可能是上一趟留下的），必须明说 */
+        KsendNote("rollback: skipped (--no-backup); target may be partial");
+        return;
+    }
     if (Run->OldSize == 0u) {
         KsendNote("no backup: target did not exist before this run");
         return;
@@ -293,13 +308,14 @@ static void RollBack(const KSEND_RUN *Run) {
     }
 }
 
-int KsendTransfer(const char *TargetPath, int Reboot) {
+int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     KSEND_RUN Run;
     int Rc;
     int Err;
 
     RunReset(&Run);
     Run.Reboot = Reboot ? 1 : 0;
+    Run.Backup = Backup ? 1 : 0;
     Err = PathsPrepare(TargetPath, &Run);
     if (Err != FAT_OK) {
         Run.Failure = KSEND_FAIL_STAT;

@@ -10,6 +10,7 @@
  * v2：第二参数是卡上目标路径（PC 侧 --path 也走这条命令）；不给仍是 Kernel.elf。
  * v3：可选 --no-reboot（放在最前）→ 校验通过后留 shell，deploy.sh 用；
  *     目标可写 BOOT:boot.sd（板端 FileSystem 按卷选择后放行写启动分区）。
+ * v4：可选 --no-backup → 跳过写前 .bak（boot.sd 这类可再生成的目标用）。
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -17,7 +18,7 @@
 #if defined(__riscv)
 extern int KsendInfo(void) __attribute__((weak));
 extern int KsendSelftest(void) __attribute__((weak));
-extern int KsendTransfer(const char *TargetPath, int Reboot)
+extern int KsendTransfer(const char *TargetPath, int Reboot, int Backup)
     __attribute__((weak));
 
 /* 子命令大小写不敏感（壳本身对一级命令就不敏感），参数不便宜 */
@@ -49,13 +50,20 @@ static void CommandKsend(int Argc, char **Argv) {
 #if defined(__riscv)
     int Index = 1;
     int Reboot = 1;
+    int Backup = 1;
 
     if (KsendInfo == 0 || KsendSelftest == 0 || KsendTransfer == 0) {
         gConsole.Write("ksend: not built for this board\n");
         return;
     }
-    if (Index < Argc && KsendArgumentIs(Argv[Index], "--no-reboot")) {
-        Reboot = 0;
+    while (Index < Argc) {
+        if (KsendArgumentIs(Argv[Index], "--no-reboot")) {
+            Reboot = 0;
+        } else if (KsendArgumentIs(Argv[Index], "--no-backup")) {
+            Backup = 0;
+        } else {
+            break;
+        }
         Index++;
     }
     if (Index < Argc) {
@@ -68,13 +76,14 @@ static void CommandKsend(int Argc, char **Argv) {
             return;
         }
         if (Index + 1 == Argc) {
-            (void)KsendTransfer(Argv[Index], Reboot);
+            (void)KsendTransfer(Argv[Index], Reboot, Backup);
             return;
         }
-        gConsole.Write("usage: ksend [--no-reboot] [info|selftest|<target path>]\n");
+        gConsole.Write("usage: ksend [--no-reboot] [--no-backup] "
+                       "[info|selftest|<target path>]\n");
         return;
     }
-    (void)KsendTransfer(0, Reboot);
+    (void)KsendTransfer(0, Reboot, Backup);
 #else
     (void)Argc;
     (void)Argv;
@@ -85,6 +94,7 @@ static void CommandKsend(int Argc, char **Argv) {
 void ShellCommandsKsendRegister(void) {
     gConsole.Register(
         "ksend",
-        "ksend [--no-reboot] [info|selftest|<target path>] — serial file (Duo S)",
+        "ksend [--no-reboot] [--no-backup] [info|selftest|<target path>] "
+        "— serial file (Duo S)",
         CommandKsend);
 }

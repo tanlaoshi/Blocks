@@ -99,7 +99,7 @@ int FatSet(UINT32 Cluster, UINT32 Value) {
         Off = Rel % SECTOR;
         for (i = 0; i < gNumFats; i++) {
             UINT32 FatLba = gFatStart + i * gSectorsPerFat + Rel / SECTOR;
-            if (!LoadSector(FatLba)) {
+                if (!LoadSector(FatLba)) {
                 return 0;
             }
             Write32(gSector + Off, Value & FAT32_ENTRY_MASK);
@@ -149,17 +149,68 @@ int FatFreeChain(UINT32 Cluster) {
     return 1;
 }
 
+/*
+ * 分配提示（hint / rover）：每卷记住「下次从这里开始找」。
+ *
+ * 不在删除时回收提示：绕回 2 号簇的整圈扫描保证任何空洞仍会被找到，
+ * 最坏只是某次分配从提示点往后找，语义（找不到才算满）不变。
+ * 提示按卷槽保存，槽换了盘/起始 LBA 时回落到 2 号簇；同一卷重挂载时
+ * 沿用旧提示——即使提示落在已用簇上，整圈扫描也照样正确。
+ */
+#define FAT_FIRST_DATA_CLUSTER 2u
+static UINT32 sFatAllocHint[FAT_VOL_MAX];
+static UINT32 sFatAllocHintStart[FAT_VOL_MAX];
+static UINT32 sFatAllocHintDrive[FAT_VOL_MAX];
+static UINT8  sFatAllocHintValid[FAT_VOL_MAX];
+
+static UINT32 FatVolumeSlot(void) {
+    UINT32 Slot;
+    for (Slot = 0; Slot < FAT_VOL_MAX; Slot++) {
+        if (&gFatVols[Slot] == gFatCur) {
+            return Slot;
+        }
+    }
+    return 0;
+}
+
+static UINT32 FatAllocHintTake(UINT32 Slot) {
+    if (!sFatAllocHintValid[Slot] ||
+        sFatAllocHintStart[Slot] != gStartLba ||
+        sFatAllocHintDrive[Slot] != gFatCur->Drive) {
+        sFatAllocHintValid[Slot] = 1;
+        sFatAllocHintStart[Slot] = gStartLba;
+        sFatAllocHintDrive[Slot] = gFatCur->Drive;
+        sFatAllocHint[Slot] = FAT_FIRST_DATA_CLUSTER;
+    }
+    if (sFatAllocHint[Slot] < FAT_FIRST_DATA_CLUSTER ||
+        sFatAllocHint[Slot] > gMaxCluster) {
+        sFatAllocHint[Slot] = FAT_FIRST_DATA_CLUSTER;
+    }
+    return sFatAllocHint[Slot];
+}
+
 UINT32 FatAllocCluster(void) {
+    UINT32 Slot;
+    UINT32 Start;
     UINT32 C;
-    for (C = 2; C <= gMaxCluster; C++) {
-        UINT32 V = FatNext(C);
-        if (V == 0) {
+
+    if (gMaxCluster < FAT_FIRST_DATA_CLUSTER) {
+        return 0;
+    }
+    Slot = FatVolumeSlot();
+    Start = FatAllocHintTake(Slot);
+    C = Start;
+    do {
+        if (FatNext(C) == 0) {
             if (!FatSet(C, EocValue())) {
                 return 0;
             }
+            sFatAllocHint[Slot] = (C >= gMaxCluster)
+                                      ? FAT_FIRST_DATA_CLUSTER : C + 1;
             return C;
         }
-    }
+        C = (C >= gMaxCluster) ? FAT_FIRST_DATA_CLUSTER : C + 1;
+    } while (C != Start);
     return 0;
 }
 const char *FatStrError(int Err) {

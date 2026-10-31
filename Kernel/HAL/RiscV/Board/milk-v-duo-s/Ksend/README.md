@@ -1,22 +1,26 @@
-# Ksend — 串口增量写任意文件（Duo S 开发期工具，v3）
+# Ksend — 串口增量写任意文件（Duo S 开发期工具，v4）
 
 目标：改完内核不用拔卡，PC 只发和卡上不一样的那几块，8 秒级一轮，写完自动复位。
 v2 起目标不再写死 `Kernel.elf`：`--file` 是本地文件，`--path` 是卡上目标，
 板端对应 `ksend <路径>`；两边都不给路径时仍是 `BLOCKS:Kernel.elf`。
 v3 起 `BOOT:` 指向启动分区（板端按卷选择后放行写只读的 boot 卷），
 `--no-reboot` 让板子校验通过后留在 shell（一键脚本用）；默认仍自动复位。
+v4 起 `--no-backup` 跳过写前 `.bak`（boot.sd 这类可再生成的目标用），
+串口明确打 `backup: skipped (--no-backup)`；跳过时失败不回滚。
 
 ```
 PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
 PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file SNAKE.ELF --path BLOCKS:SNAKE.ELF
 PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd
 PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd --no-reboot
+PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd --no-backup
 板:  blocks> ksend info               # 只读：Kernel.elf 的 size / n / 整体 CRC（行为不变）
 板:  blocks> ksend selftest           # 只写 8 KB 临时文件，判 FAT 写路径（行为不变）
 板:  blocks> ksend                    # 完整传输，写 Kernel.elf（回归）
 板:  blocks> ksend BLOCKS:SNAKE.ELF   # 完整传输，写指定文件
 板:  blocks> ksend BOOT:boot.sd       # 写启动分区上的 boot.sd
 板:  blocks> ksend --no-reboot BOOT:boot.sd   # 同上，校验通过后留 shell
+板:  blocks> ksend --no-backup BOOT:boot.sd   # 跳过写前 .bak（失败不回滚）
 ```
 
 一键（build + 生成 FIT + 传 BOOT:boot.sd + 提示可复位，不自动复位）：
@@ -34,7 +38,7 @@ deploy.sh --port /dev/ttyUSB0          # 脚本在 scripts/deploy.sh
 | 板 → PC | `KSEND READY size=<旧大小> block=4096 n=<旧块数>\r\n` |
 | 板 → PC | n 个 `u32` 旧块 CRC32，然后 1 字节 `0x0A` |
 | PC → 板 | 每个差异块：`u32 magic=0x4B53424B` `u32 index` `u32 len` `u32 crc32(data)` + data |
-| 板 → PC | `'A'` 已写卡 / `'N'` 请重发同一块（PC 最多重发 3 次） |
+| 板 → PC | `'A'` 已收进批缓冲（512 KB 一批落盘） / `'N'` 请重发同一块（PC 最多重发 3 次） |
 | PC → 板 | 收尾：`u32 magic` `u32 0xFFFFFFFF` `u32 0` `u32 新文件整体 CRC32` |
 | 板 → PC | `KSEND OK crc=… written=… size=…`（默认随后复位；`--no-reboot` 留 shell）或 `KSEND FAIL …`（不复位） |
 
@@ -43,17 +47,22 @@ CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
 ## 安全顺序（顺序不能换）
 
 1. `ksend selftest` 先过：8 KB 临时文件，新建一遍 + 覆写一遍，读回逐字节比对，删除。
-2. 真传第一步：`<目标>` → 同目录 `<目标全名>.bak`（64 KB 分块走 FileSystem API），
+2. 真传第一步：`<目标>` → 同目录 `<目标全名>.bak`（512 KB 分块走 FileSystem API），
    回读校验 size + 整体 CRC。备份不过就 `KSEND FAIL reason=backup`，一个字节都不写。
    备份名规则：目标全名追加 `.bak`（`Kernel.elf` → `Kernel.elf.bak`，
    `boot.sd` → `boot.sd.bak`），保留原大小写；boot 分区的救生圈就是它。
+   `--no-backup` 时跳过复制，只读扫描旧内容算差量块表，并打
+   `ksend: backup: skipped (--no-backup)`；失败时打 rollback: skipped，不假装回滚。
 3. 选卷：`FileSystemResolve` 解出目标卷，`FileSystemSelectVolume` 选中
    （boot/ESP 被挂载策略标成只读时，选中即放行写；用完 `SelectVolume(-1)` 归还）。
-4. 直接覆盖写目标文件（按 4 KB 块落在 `index*4096`），每块写完回 `'A'`。
+4. 直接覆盖写目标文件（PC 按 4 KB 块落在 `index*4096`）。板端把连续的块攒进
+   512 KB 批缓冲，满一批/遇到不连续/收尾帧时一次 `WriteFileAt`，然后回 `'A'`。
+   逐块 4 KB 写会让 FAT 每次从首簇走到偏移（第二层 O(n²)），批量写是必须的。
 5. 收尾：`FileSystemFileSync`（→ `BlockFlush`）后重新打开文件逐块读回，
    块 CRC 对齐预期、整体 CRC 对齐收尾帧。
 6. 只有校验通过才 `KSEND OK` 并（默认）复位；任何失败都 `KSEND FAIL`，**不复位**；
-   只要尝试过写卡（含写失败），就用备份删了重写并回读校验，打印 `KSEND RESTORED`。
+   只要尝试过写卡（含写失败）且没加 `--no-backup`，就用备份删了重写并回读校验，
+   打印 `KSEND RESTORED`；`--no-backup` 时只打 `rollback: skipped (--no-backup)`。
 
 ## v1/v2/v3 与需求文本的出入（都是刻意的）
 
@@ -82,6 +91,8 @@ CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
   下一次 `ksend info` 看到的是旧尺寸，下次传输也照常工作（多出来的块永远是 0）。
   真要精确尺寸只能整文件重写。
 - 单文件上限 `FAT_WRITE_MAX` = 8 MB（FAT 层限制）。
+- `'A'` 在 v4 起表示「已收进 512 KB 批缓冲」，不再等于「已落盘」；整文件
+  `FileSystemFileSync` + 读回 CRC 仍在校验通过前完成，失败会回滚（除非 --no-backup）。
 - 串口固定 115200：内核不重设波特率，U-Boot 设成什么就是什么。
 - 传输窗口内掉电会留下「半新半旧」的目标文件：板子自己起不来，只能读卡器
   把 `<目标全名>.bak` 改名回去。备份是唯一的救生圈，别删。

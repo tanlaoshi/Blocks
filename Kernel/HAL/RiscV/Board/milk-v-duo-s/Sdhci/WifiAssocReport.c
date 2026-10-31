@@ -255,6 +255,18 @@ static void JoinPrintIndTail(const AIC_SM_CONNECT_INDICATION *Ind, UINT32 ParamL
 }
 
 /*
+ * IND 成功后把两个索引留下来：ap_idx 是固件给这个 AP 分配的 sta_idx（0x1404 的 sta_idx、
+ * 下一刀 0x0024 的 sta_idx 都用它），vif_idx 是关联所在 vif（与扫描同一个）。
+ * 只写本文件的 static，不在失败时清零 —— 失败时调用方根本不会用。
+ */
+static UINT8 sAicJoinApIndex;
+static UINT8 sAicJoinVifIndex;
+void AicJoinLastIndexes(UINT8 *VifIndex, UINT8 *ApIndex) {
+    *VifIndex = sAicJoinVifIndex;
+    *ApIndex = sAicJoinApIndex;
+}
+
+/*
  * IND 是**唯一**能判断"关联成没成"的消息：CFM 的 status 只表示"受理"。
  * 失败原因分两类，文案不同：
  *   status_code != 0 → 空口那边明确拒绝（AP 的 (Re)Assoc Response 带回来的状态码）
@@ -281,12 +293,8 @@ int AicJoinHandleInd(const UINT8 *Param, UINT32 ParamLength) {
         SdhciMark(")\n");
         return -1;
     }
+    sAicJoinApIndex = Ind->ApIndex;
+    sAicJoinVifIndex = Ind->VifIndex;
     SdhciMark("WiFi: join ok (associated, wpa2-psk/ccmp; AP should send EAPOL M1 next)\n");
-    /*
-     * 本刀只做到"能收 EAPOL"：join 回来后立刻跑 `wififw eapol poll 3000`。
-     * 下一刀才接：发 EAPOL（数据 TX，不是 LMAC 消息）+ 装钥匙
-     * MM_KEY_ADD_REQ(0x0024)/CFM(0x0025)，sta_idx 用 Ind->ApIndex（调研文档 §5/§7）。
-     */
-    SdhciMark("WiFi: join: next = 'wififw eapol poll 3000' (M1 arrives right after assoc)\n");
     return 0;
 }

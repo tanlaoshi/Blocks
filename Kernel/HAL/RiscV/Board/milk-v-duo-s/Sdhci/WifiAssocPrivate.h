@@ -41,6 +41,25 @@
 #define AIC_MM_KEY_ADD_REQ 0x0024u
 #define AIC_MM_KEY_ADD_CFM 0x0025u
 
+/*
+ * ---- 控制端口（PR-34）----
+ * struct me_set_control_port_req（lmac_msg.h:1757-1763）只有两个 1 B 字段：
+ *   sta_idx@0、control_port_open@1（bool_l 在 lmac_types.h:51 就是 bool ⇒ 1 B）
+ * ⇒ sizeof = 2。宿主 gcc include 厂商头**编译打印**出来的实测值（报告 §1）：
+ *   sizeof(me_set_control_port_req) = 2
+ *   offsetof(sta_idx) = 0、offsetof(control_port_open) = 1
+ * CFM 没有参数（rwnx_msg_tx.c:2071 `rwnx_send_msg(..., ME_SET_CONTROL_PORT_CFM, NULL)`），
+ * 所以只认 id、不读字段。
+ */
+#define AIC_CONTROL_PORT_LENGTH 2u
+#define AIC_CONTROL_PORT_OPEN 1u
+#define AIC_CONTROL_PORT_CLOSE 0u
+
+typedef struct {
+    UINT8 StaIndex;        /* +0  用 SM_CONNECT_IND.ap_idx（lmac_msg.h:1760） */
+    UINT8 ControlPortOpen; /* +1  bool_l：1 = EAPOL 交给主机 */
+} AIC_ME_CONTROL_PORT;
+
 /* ---- 参数长度：厂商 sizeof（§2 的编译输出） ---- */
 #define AIC_SM_CONNECT_LENGTH 320u      /* ssid33 + bssid6 + chan6 + 4+2+2+2+1+1+1+1 + 2 + ie_buf256 */
 #define AIC_SM_CONNECT_CFM_LENGTH 1u    /* struct sm_connect_cfm { u8 status; } */
@@ -217,7 +236,30 @@ void AicJoinDump(const UINT8 *Data, UINT32 Length);
 void AicJoinDumpRsn(const UINT8 *Request, UINT32 RequestLength);
 /* 0 = IND status_code 为 0；-1 = 关联失败（原因已打印） */
 int AicJoinHandleInd(const UINT8 *Param, UINT32 ParamLength);
-/* 板级入口：Dry != 0 只拼包（不需要卡）；BssidText 可为 0（用扫描缓存里最强的那个） */
-int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText);
+/*
+ * IND 成功后把两个索引留下来给下一段用（WifiControlPort.c 的 sta_idx、handshake 的 vif）：
+ * ap_idx@10 = 固件分配的 sta_idx，vif_idx@9 = 关联所在 vif。**只在 status_code==0 时有效**，
+ * 失败时不清零（调用方拿到失败就不会用）。只读写本文件的 static，不碰 SDIO。
+ */
+void AicJoinLastIndexes(UINT8 *VifIndex, UINT8 *ApIndex);
+/* 板级入口：Dry != 0 只拼包（不需要卡）；BssidText 可为 0（用扫描缓存里最强的那个）；
+   Password 可为 0（只到控制端口为止，不给就继续做四次握手） */
+int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password);
+/*
+ * 控制端口（WifiControlPort.c）：sizeof/offsetof 自检 → 拼 2 B → 发 0x1404。
+ * Open = AIC_CONTROL_PORT_OPEN/CLOSE；StaIndex 用 IND.ap_idx。
+ * **等 CFM 不在这里**：0x1405 与 M1 走同一条 SDIO FIFO，谁先谁后不确定，所以由
+ * WifiHandshake.c 用同一条收包路径一起等（gAicEapolControlPortCfm）。
+ */
+int AicControlPortLayoutCheck(void);
+UINT32 AicControlPortBuild(UINT8 *Buffer, UINT8 StaIndex, UINT8 Open);
+int AicControlPortSend(SDHCI_HOST *Host, UINT8 StaIndex);
+/*
+ * 关联成功之后的固定四步：控制端口 → M1 → PTK/M2 → M3（WifiControlPort.c /
+ * WifiHandshake*.c / WifiEapolTx.c）。**本函数不关联**，只接在 join 后面。
+ * Password 为 0 时只做到控制端口为止（用于"没有密码也想看 M1 到底来不来"）。
+ */
+int AicWifiHandshakeRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
+                        UINT8 VifIndex, UINT8 ApIndex);
 
 #endif

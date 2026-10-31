@@ -17,6 +17,8 @@
 
 /* 2048 B 整帧；UINT32 数组保证 4 B 对齐（hw_rxhdr 里全是 u32） */
 static UINT32 sAicEapolFrame[(AIC_EAPOL_FRAME_MAX + 3u) / 4u];
+/* 控制端口 CFM 的"见过"标志（PR-34）：置位在下面的配置帧分支，清零在 WifiHandshake.c */
+UINT32 gAicEapolControlPortCfm;
 
 /* 25 MHz 时间基（BoardConfig.h BOARD_TIMEBASE_HZ），只用来算预算，不参与协议 */
 #define AIC_EAPOL_TIMEBASE_PER_MS (BOARD_TIMEBASE_HZ / 1000u)
@@ -135,6 +137,9 @@ static void EapolPrintConfigFrame(const UINT8 *Frame, UINT32 Length,
         SdhciMark(" (SM_DISCONNECT_IND: assoc lost before M1)");
     } else if (MessageId == AIC_SM_CONNECT_IND) {
         SdhciMark(" (SM_CONNECT_IND)");
+    } else if (MessageId == AIC_ME_SET_CONTROL_PORT_CFM) {
+        SdhciMark(" (ME_SET_CONTROL_PORT_CFM: EAPOL control port is open)");
+        gAicEapolControlPortCfm = 1u;
     }
     SdhciMark("\n");
 }
@@ -160,8 +165,12 @@ static void EapolDispatchFrame(const UINT8 *Frame, UINT32 Length,
  * 预算用 rdtime 算，不用"循环次数 × 片长"：AicWaitMessagePending 一次就等到
  * 剩余预算（没有消息时它自己按 1 ms 轮询），所以整段最多出现一条超时诊断行，
  * 不会把串口刷满。
+ *
+ * Done 是 PR-34 给四次握手加的提前退出：每解完一帧问一次，返回 1 就停。
+ * 判据放在"解完一帧之后"，M1 的打印与捕获都已经落定，不会读到半帧就收工。
  */
-static int EapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Counters) {
+int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Counters,
+                    int (*Done)(void)) {
     UINT8 *Frame = (UINT8 *)sAicEapolFrame;
     UINT64 Start = SdhciReadTime();
     UINT64 Budget = (UINT64)BudgetMs * AIC_EAPOL_TIMEBASE_PER_MS;
@@ -172,6 +181,9 @@ static int EapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *C
         UINT32 Length = 0;
         int Status;
 
+        if (Done != 0 && Done() != 0) {
+            break;
+        }
         if (Elapsed >= Budget) {
             break;
         }
@@ -248,7 +260,7 @@ int SdhciWifiEapolPoll(const char *MsText) {
     SdhciMark("WiFi: eapol poll: budget=");
     SdhciMarkDecimal("", Budget);
     SdhciMark("ms, data frames only (type&0x10==0), looking for EAPOL/0x888e\n");
-    Status = EapolPollRun(Host, Budget, &Counters);
+    Status = AicEapolPollRun(Host, Budget, &Counters, 0);
     SdhciMark("WiFi: eapol poll: done frames=");
     SdhciMarkDecimal("", Counters.Frames);
     SdhciMark(" data=");

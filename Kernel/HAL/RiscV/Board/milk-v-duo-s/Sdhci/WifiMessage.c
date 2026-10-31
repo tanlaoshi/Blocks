@@ -7,8 +7,12 @@
  */
 #include "WifiPrivate.h"
 
-/* crc8，多项式 X8+X2+X+1（0x107），初值 0 —— 照抄 aicsdio.c:2004-2027 */
-static UINT8 AicCrc8(const UINT8 *Buffer, UINT32 Size) {
+/*
+ * crc8，多项式 X8+X2+X+1（0x107），初值 0 —— 照抄 aicsdio.c:2004-2027。
+ * PR-34 起不再 static：数据 TX 的 4 B 帧头也用同一个 CRC（aicwf_sdio.c:1540-1546），
+ * 两处必须逐位一致，所以只留这一份实现。
+ */
+UINT8 AicCrc8(const UINT8 *Buffer, UINT32 Size) {
     UINT8 Crc = 0;
     UINT32 i;
     UINT8 Bit;

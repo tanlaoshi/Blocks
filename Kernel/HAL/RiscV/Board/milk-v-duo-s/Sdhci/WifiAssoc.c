@@ -2,17 +2,17 @@
  * WifiAssoc.c — `wififw join`：SM_CONNECT_REQ(0x1800) → 等 CFM(0x1801) → 等 IND(0x1802)
  *
  * 用户眼里：一条命令把"发起关联"这件事做完 —— 从扫描缓存里挑目标、用扫描时建的 vif
- *           发一条 SM_CONNECT_REQ，先看固件受不受理（CFM），再看空口成没成（IND）。
- * 从哪读：JoinRun（真发）/ JoinDry（只拼包）/ SdhciWifiJoin（入口）。
+ *           发一条 SM_CONNECT_REQ，先看固件受不受理（CFM），再看空口成没成（IND）；
+ *           给了密码就连着把控制端口与四次握手走完（JoinAfterAssoc）。
+ * 从哪读：JoinRun（真发）/ JoinDry（只拼包）/ JoinAfterAssoc（关联之后那段）/ SdhciWifiJoin。
  * 别改：**关联是 LMAC 干的**，主机不发 auth/assoc 帧，只填一条消息（见调研文档 §1）。
  *       CFM 的 status 只代表"受理"，IND 的 status_code 才代表"关联结果"。本文件不写
  *       内存、不动 patch 状态、不碰 bringup/scan 的缓存。
  *
- * 本刀（PR-33）：sm_connect_req 带上 22 B RSN IE（WPA2-PSK/CCMP）+ WPA2 的
- *       connection flags；**收 EAPOL 不在本文件**，在 WifiEapol.c（`wififw eapol poll`）。
- * TODO（下一刀）：发 EAPOL 走数据 TX（txdesc：eth dest/src/ethertype/staid/tid/vif_idx/
- *       packet_len），不是 LMAC 消息；装钥匙走 MM_KEY_ADD_REQ(0x0024)/CFM(0x0025)，
- *       sta_idx 用 IND.ap_idx。字段表见调研文档 §5。
+ * 本刀（PR-34）：IND 成功之后接 ME_SET_CONTROL_PORT_REQ(0x1404) 与四次握手；
+ *       收/发 EAPOL 都不在本文件（收在 WifiEapol.c，发在 WifiEapolTx.c，顺序在
+ *       WifiHandshake.c）。**装钥匙（MM_KEY_ADD_REQ 0x0024）仍不在本刀**，
+ *       字段表见调研文档 §5，sta_idx 已由 AicJoinLastIndexes 留下。
  */
 #include "WifiAssocPrivate.h"
 #include "CString.h"
@@ -99,7 +99,21 @@ static int JoinWaitInd(SDHCI_HOST *Host) {
  * AicScanVifEnsure 有缓存就复用，没有才补一条 MM_ADD_IF —— 所以"刚 bringup 完
  * 没扫过"也能 join（会先建 if，但目标仍然要求来自扫描缓存）。
  */
-static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target) {
+/*
+ * 关联成功之后的四步（控制端口 → M1 → PTK/M2 → M3），全部在 WifiHandshake.c。
+ * **本函数不插任何延时**：控制端口一开，AP 的 M1 就在固件 RX FIFO 里等我们读。
+ * Password 为空 = 只到控制端口为止（`control port open` 那行照打）。
+ */
+static int JoinAfterAssoc(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password) {
+    UINT8 VifIndex = 0;
+    UINT8 ApIndex = 0;
+
+    /* IND 已经打出来的两个索引：vif 用于打印，ap_idx 是 0x1404 的 sta_idx */
+    AicJoinLastIndexes(&VifIndex, &ApIndex);
+    return AicWifiHandshakeRun(Host, Target, Password, VifIndex, ApIndex);
+}
+
+static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password) {
     UINT8 VifIndex = 0;
     UINT32 Length;
 
@@ -121,7 +135,10 @@ static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target) {
     if (JoinWaitCfm(Host) != 0) {
         return -1;
     }
-    return JoinWaitInd(Host);
+    if (JoinWaitInd(Host) != 0) {
+        return -1;
+    }
+    return JoinAfterAssoc(Host, Target, Password);
 }
 
 /*
@@ -168,7 +185,7 @@ static int JoinDry(const char *Ssid, const char *BssidText) {
     return 0;
 }
 
-int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText) {
+int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password) {
     AIC_SCAN_AP Target;
     SDHCI_HOST *Host;
     int Status;
@@ -204,5 +221,5 @@ int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText) {
         SdhciMark("WiFi: join: vendor prepare failed\n");
         return -1;
     }
-    return JoinRun(Host, &Target);
+    return JoinRun(Host, &Target, Password);
 }

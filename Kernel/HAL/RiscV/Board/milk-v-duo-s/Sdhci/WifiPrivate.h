@@ -31,6 +31,16 @@
 #define AIC_ME_CHAN_CONFIG_REQ 0x1402u
 #define AIC_ME_CHAN_CONFIG_CFM 0x1403u
 /*
+ * PR-34：控制端口。me_msg_tag（lmac_msg.h:1667-1674）里 ME_SET_CONTROL_PORT_REQ 是
+ * 第 5 项（前四项 = ME_CONFIG/CFM、ME_CHAN_CONFIG/CFM）⇒ 0x1404，CFM 紧随 ⇒ 0x1405。
+ * 数值是宿主 gcc include 厂商 lmac_msg.h **编译打印**出来的（不是数的）：
+ *   ME_SET_CONTROL_PORT_REQ = 0x1404 (5124)
+ *   ME_SET_CONTROL_PORT_CFM = 0x1405 (5125)
+ * 真机厂商日志里那两条 0x1404/0x1405 就是它（`>>> rwnx_send_me_set_control_port_req()`）。
+ */
+#define AIC_ME_SET_CONTROL_PORT_REQ 0x1404u
+#define AIC_ME_SET_CONTROL_PORT_CFM 0x1405u
+/*
  * 参数长度 = 厂商 sizeof(struct ...)，逐字段核对过（报告 §1 的偏移表）。
  * mm_start 特别说明：字段和只有 70 B，但结构体尾对齐到 4 ⇒ sizeof = 72，
  * 厂商 rwnx_msg_zalloc(..., sizeof(struct mm_start_req)) 发的就是 72。
@@ -236,6 +246,8 @@ extern UINT32 gAicModeValue[9];
 
 /* ---- 跨文件函数原型 ---- */
 UINT16 AicGet16(const UINT8 *At);
+/* 消息帧头与数据帧头共用的 crc8（WifiMessage.c；PR-34 起数据 TX 也用它） */
+UINT8 AicCrc8(const UINT8 *Buffer, UINT32 Size);
 const char *AicPatchTypeName(UINT32 Type);
 int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Length);
 int AicFwCheckStage(AIC_FW_STAGE *Stage, UINT32 *OutSize);

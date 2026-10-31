@@ -152,7 +152,8 @@ static void EapolScanTail(const UINT8 *Frame, UINT32 Begin, UINT32 FrameLength,
         SdhciMark("WiFi: eapol: layout=scan off=");
         SdhciMarkHex("", Body, 4);
         SdhciMark(" (extra EAPOL behind the first frame in this block)\n");
-        AicEapolParseBody(Frame + Body, FrameLength - Body, Counters);
+        /* 裸扫的是 SDIO 块里的字节尾巴，拿不到 802.11 头 ⇒ Station 传 0 */
+        AicEapolParseBody(Frame + Body, FrameLength - Body, 0, Counters);
         Hits++;
         Index = Body + AIC_EAPOL_KEY_FIXED_LENGTH;
     }
@@ -234,6 +235,7 @@ static void EapolPrintLocation(const AIC_EAPOL_LOCATION *Location) {
  */
 void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTERS *Counters) {
     AIC_EAPOL_LOCATION Location;
+    const UINT8 *Station = 0;
     UINT32 Decryption = 0u;
     UINT32 MpduLength;
     UINT32 End = 0u;
@@ -248,6 +250,14 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
     }
     MpduLength = End - AIC_RX_HW_HEADER_LENGTH;
     EapolLocate(Frame, MpduLength, End, &Location);
+    /*
+     * addr1 = 这帧的目的 MAC；AP 单播给我们时就是本机 STA MAC（PTK 要用）。
+     * 只有 layout=80211 的命中才有 802.11 头（HeaderLength 非 0）；eth/scan 布局拿不到，
+     * 传 0 让上层自己判断"这帧没带 STA MAC"。
+     */
+    if (Location.HeaderLength != 0u) {
+        Station = Frame + AIC_RX_HW_HEADER_LENGTH + AIC_DOT11_ADDR1_OFFSET;
+    }
     if (Location.Offset == 0u) {
         SdhciMark("WiFi: eapol: no LLC/SNAP 0x888e in this data frame (see hdr/mpdu above)\n");
     } else if (Location.Offset + AIC_EAPOL_HEADER_LENGTH > End) {
@@ -255,7 +265,7 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
         Counters->BadFrames++;
     } else {
         EapolPrintLocation(&Location);
-        AicEapolParseBody(Frame + Location.Offset, End - Location.Offset, Counters);
+        AicEapolParseBody(Frame + Location.Offset, End - Location.Offset, Station, Counters);
     }
     EapolScanTail(Frame, End, FrameLength, Counters);
 }

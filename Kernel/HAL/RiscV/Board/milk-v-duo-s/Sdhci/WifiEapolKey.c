@@ -1,15 +1,20 @@
 /*
  * WifiEapolKey.c — EAPOL-Key 帧的字段解码与打印（只读，不验 MIC）
  *
- * 用户眼里：`wififw eapol rx len=… key_info=0x… replay=… nonce=… mic=…` 这两行就是这里打的。
+ * 用户眼里：`wififw eapol rx len=… key_info=0x… replay=… anonce=… mic=… msg=M1`
+ *           这两行就是这里打的。
  * 从哪读：AicEapolParseBody（EAPOL 头分流：Key / 非 Key）
  *         → EapolPrintKeyFrame（99 B 固定头 + Key Data 前 24 B）
  *         → AicEapolDumpHead（第一帧数据帧的取证 dump）。
  * 别改：字段偏移是 802.11-2016 §12.7.2 图 12-25 的字节契约；MIC@81、KeyData@99
  *       直接用公共模块 WifiCrypto/WifiEapol.h 的宏，不另立一份（改一处即两边同步）。
- * 本刀只"读"：不验 MIC、不派生 PTK、不装钥匙（下一刀）。
+ * 本文件只"读"：不验 MIC、不派生 PTK、不装钥匙。PR-34 加了一个 sink 钩子，把
+ *       解出来的 Key 帧原样交给 WifiHandshake.c（谁来用、怎么用不在这里）。
  */
 #include "WifiEapolPrivate.h"
+
+/* 唯一的 Key 帧钩子（0 = 没人接）。定义在这里，声明在 WifiEapolPrivate.h */
+AIC_EAPOL_KEY_SINK gAicEapolKeySink;
 
 /* EAPOL 的多字节字段全是大端（802.1X-2020 §11.3）；Parse 与 Key 两个文件共用 */
 UINT16 AicEapolGetBigEndian16(const UINT8 *At) {
@@ -74,7 +79,11 @@ static const char *EapolMessageName(UINT16 KeyInformation) {
     return "other";
 }
 
-/* 第一行按验收格式：len / key_info / replay / nonce / mic；其余字段放第二行 */
+/*
+ * 第一行按验收格式：len / key_info / replay / anonce / mic / msg。
+ * 收到的 Key 帧全是 AP → STA，所以 +17 的 32 B 是 **ANonce**（M2/M4 才是 SNonce，
+ * 那是我们发出去的，不会出现在这里）—— 名字写对，M2 才不会误用这个值。
+ */
 static void EapolPrintKeyFrame(const UINT8 *Body, UINT32 Available) {
     UINT16 KeyInformation = AicEapolGetBigEndian16(Body + AIC_EAPOL_KEY_INFORMATION_OFFSET);
     UINT16 MessageLength = AicEapolGetBigEndian16(Body + 2);
@@ -87,10 +96,12 @@ static void EapolPrintKeyFrame(const UINT8 *Body, UINT32 Available) {
     SdhciMarkHex("", KeyInformation, 4);
     SdhciMark(" replay=");
     AicEapolMarkBytes("", Body + AIC_EAPOL_REPLAY_OFFSET, AIC_EAPOL_REPLAY_LENGTH);
-    SdhciMark(" nonce=");
+    SdhciMark(" anonce=");
     AicEapolMarkBytes("", Body + AIC_EAPOL_NONCE_OFFSET, AIC_EAPOL_NONCE_LENGTH);
     SdhciMark(" mic=");
     AicEapolMarkBytes("", Body + WIFI_EAPOL_MIC_OFFSET, WIFI_EAPOL_MIC_LENGTH);
+    SdhciMark(" msg=");
+    SdhciMark(EapolMessageName(KeyInformation));
     SdhciMark("\n");
     SdhciMark("WiFi: eapol rx: descriptor=");
     SdhciMarkDecimal("", (UINT32)Body[AIC_EAPOL_KEY_DESCRIPTOR_OFFSET]);
@@ -135,7 +146,8 @@ static void EapolPrintKeyFrame(const UINT8 *Body, UINT32 Available) {
 }
 
 /* EAPOL 头 + Key 体：先看 version/type/length，再决定要不要解 Key 字段 */
-void AicEapolParseBody(const UINT8 *Body, UINT32 Available, AIC_EAPOL_COUNTERS *Counters) {
+void AicEapolParseBody(const UINT8 *Body, UINT32 Available, const UINT8 *Station,
+                       AIC_EAPOL_COUNTERS *Counters) {
     UINT32 Type = Body[1];
 
     if (Type != AIC_EAPOL_TYPE_KEY) {
@@ -158,4 +170,16 @@ void AicEapolParseBody(const UINT8 *Body, UINT32 Available, AIC_EAPOL_COUNTERS *
         return;
     }
     EapolPrintKeyFrame(Body, Available);
+    /* 打印之后再交给 sink：串口上先看到这帧是什么，再看到握手模块用它做了什么 */
+    if (gAicEapolKeySink != 0) {
+        gAicEapolKeySink(Body, Available, Station);
+    }
+}
+
+/*
+ * 挂/摘"接住 Key 帧"的钩子。PR-34 只允许一个（四次握手是串行的）；
+ * 传 0 就关掉，`wififw eapol poll` 与它互不影响。
+ */
+void AicEapolSetKeySink(AIC_EAPOL_KEY_SINK Sink) {
+    gAicEapolKeySink = Sink;
 }

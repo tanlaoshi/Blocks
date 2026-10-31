@@ -785,3 +785,26 @@ blocks>
 ```
 
 配方：`fatload mmc 0:1 0x81800000 Kernel.elf` → `bootelf 0x81800000`。详档见上方排障历程。
+
+## WiFi 四次握手（duo-wifi · PR-34）
+
+`wififw join <ssid> [<password>] [bssid <addr>]`：关联成功后立刻
+`ME_SET_CONTROL_PORT_REQ(0x1404)` 打开控制端口，给密码就接着 M1 → PTK → M2 → M3。
+
+- **为什么以前收不到 M1**：EAPOL 在固件眼里是受控端口上的流量，不开就只把广播帧交给主机
+  （beacon 收得到、M1 收不到）。厂商在 `sm_connect_ind` 之后也是先发这条（真机
+  `>>> rwnx_send_me_set_control_port_req()`，回 CFM 0x1405）。
+- **控制端口 CFM 与 M1 一起等**：0x1405 与数据帧走同一条 SDIO FIFO，顺序不确定；
+  `WifiHandshake.c` 用同一条 `AicEapolPollRun` 一起收，`gAicEapolControlPortCfm` 由
+  配置帧分支置位 —— 不用 `AicRecvMessageTimeout` 单独等（那会把中间的 M1 当陌生帧丢掉）。
+- **STA MAC 取自 M1 的 addr1**（`WifiEapolParse.c` 把 802.11 头 addr1 传下来）：
+  PTK 的 PRF 两边都算 (STA, BSSID)，用别的值 = AP 那边 MIC 永远不对。
+- **M2 带 22 B RSN IE**（与 assoc 同一份 `AicJoinRsnIe()`）：Apple 对没有这份 Key Data 的
+  M2 会空口 ACK 但不回 M3（X64 刀 #174 的经验）。
+- **数据 TX**（本仓第一条）：`[4 B sdio hdr][28 B txdesc_api][EAPOL][补到 4][+4 TAIL][补到 512]`，
+  块写 fn1 0x10；payload **不含**以太网头（地址/ethertype 在 txdesc，802.11+LLC 由固件补）。
+  依据 `aicwf_sdio.c:1370-1420/1530-1600`、`rwnx_tx.c:1497-1530`。
+- 宿主自检（`/tmp/hstest`，不随库提交）：PBKDF2 对 IEEE 向量、PTK/M2/MIC 对 Python
+  独立实现逐字节一致；`AicControlPortBuild` 出 `05 01`（sta_idx 在前）。
+- **未验**：真机上空口是否接受这个数据帧（M3 是判据）。若 `eapol tx` 后没有 M3，
+  先看 `WiFi: eapol tx m2 hex[…]` 与厂商 txdesc 的字节对照（ethtype 字节序、ac/staid）。

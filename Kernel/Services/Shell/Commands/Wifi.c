@@ -28,7 +28,7 @@ extern int SdhciWifiBringup(int Dry) __attribute__((weak));
 #define WIFI_SCAN_ROUNDS_MAX 8u
 extern int SdhciWifiScan(int Mode, UINT32 Rounds) __attribute__((weak));
 /* PR-32 第一刀：SM_CONNECT_REQ(0x1800) 发起关联。Dry != 0 只拼包（不需要卡） */
-extern int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText) __attribute__((weak));
+extern int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password) __attribute__((weak));
 /* PR-33：收 EAPOL（SDIO 数据帧 0x888e）。MsText=0 用板级默认预算（3000ms） */
 extern int SdhciWifiEapolPoll(const char *MsText) __attribute__((weak));
 
@@ -222,8 +222,9 @@ static void CommandWifiProbeOnly(int Argc, char **Argv) {
  *   write / write confirm  真写不可逆，所以拆成"检查 / confirm"两段，防手滑；
  *   bringup / bringup dry  三步配置；dry 只拼包；
  *   scan / scan dry        MM_ADD_IF + SCANU_START 多轮合并；dry 只拼包；
- *   join / join dry        PR-32：SM_CONNECT_REQ(0x1800) → CFM(0x1801) → IND(0x1802)，
- *                          只到"发起关联"，EAPOL/MM_KEY_ADD 不在这一刀。
+ *   join / join dry        PR-32：SM_CONNECT_REQ(0x1800) → CFM(0x1801) → IND(0x1802)；
+ *                          PR-34 起关联成功之后接着走控制端口 + 四次握手（给密码才做），
+ *                          MM_KEY_ADD 仍不在这一刀。
  */
 static void WifiFwRun(UINT32 Mode) {
     WifiMarkBegin();
@@ -308,13 +309,36 @@ static void CommandWifiFwScan(int Argc, char **Argv) {
 }
 
 /*
- * wififw join [dry] <ssid> [bssid]：多打一个词就回用法，不猜；bssid 可省。
- * 返回值只决定 "wififw: ok/FAILED"；真正的判据是板级那几行（CFM 超时 / CFM 非 0 /
- * IND 报错，三种文案不同）。
+ * wififw join [dry] <ssid> [<password>] [bssid <aa:bb:cc:dd:ee:ff>]
+ *
+ * 位置参数只有两个：ssid、password。**给了密码才做四次握手**（不给就到控制端口为止）。
+ * bssid 改成带关键字的尾巴，因为位置上的第二参数现在归密码 —— 这样"aa:bb:.. 到底是
+ * 密码还是 bssid"不用猜。
+ * 返回值只决定 "wififw: ok/FAILED"；真正的判据是板级那几行（control port open /
+ * eapol rx M1 / pbkdf2 / ptk / m2 / M3，文案各不相同）。
  */
+static void WifiFwJoinUsage(void) {
+    gConsole.Write("wififw join [dry] <ssid> [<password>] [bssid <aa:bb:cc:dd:ee:ff>]\n");
+}
+
+/*
+ * 密码用完清零。改的是 ConsoleRunLine 里 Buf 的栈副本（Argv 指向它），
+ * 清掉不影响本命令之外的东西；控制台的 gLine/历史缓冲不在本文件能碰的范围。
+ */
+static void WifiClearSecret(char *Text) {
+    while (Text != 0 && *Text != 0) {
+        *Text = 0;
+        Text++;
+    }
+}
+
 static void CommandWifiFwJoin(int Argc, char **Argv) {
+    const char *Ssid;
+    const char *Password = 0;
+    const char *Bssid = 0;
     int Dry = 0;
     int Index = 2;
+    int Rc;
 
     if (SdhciWifiJoin == 0) {
         gConsole.Write("wifi: this board has no SDIO firmware stage\n");
@@ -324,15 +348,31 @@ static void CommandWifiFwJoin(int Argc, char **Argv) {
         Dry = 1;
         Index = 3;
     }
-    if (Index >= Argc || Index + 2 < Argc) {
-        gConsole.Write("wififw join [dry] <ssid> [bssid]\n");
+    if (Index >= Argc) {
+        WifiFwJoinUsage();
+        return;
+    }
+    Ssid = Argv[Index++];
+    if (Index < Argc && ArgEqualIgnoreCase(Argv[Index], "bssid") == 0) {
+        Password = Argv[Index++];
+    }
+    if (Index < Argc) {
+        if (ArgEqualIgnoreCase(Argv[Index], "bssid") == 0 || Index + 1 >= Argc) {
+            WifiFwJoinUsage();
+            return;
+        }
+        Bssid = Argv[Index + 1];
+        Index += 2;
+    }
+    if (Index != Argc) {
+        WifiFwJoinUsage();
         return;
     }
     WifiMarkBegin();
-    gConsole.Write(SdhciWifiJoin(Dry, Argv[Index], Index + 1 < Argc ? Argv[Index + 1] : 0) == 0
-                       ? "wififw: ok\n"
-                       : "wififw: FAILED\n");
+    Rc = SdhciWifiJoin(Dry, Ssid, Bssid, Password);
+    gConsole.Write(Rc == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
     WifiMarkEnd();
+    WifiClearSecret((char *)Password);
 }
 
 /* wififw eapol poll [ms]：join 之后盯一段数据帧，把 EAPOL(0x888e) 打出来。
@@ -475,7 +515,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         WifiMarkEnd();
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [bssid]|eapol poll [ms]|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -489,7 +529,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [bssid]|eapol poll [ms]|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

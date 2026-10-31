@@ -68,6 +68,7 @@
 
 /* ---- 802.11 data 头（802.11-2016 §9.3.2.1）---- */
 #define AIC_DOT11_HEADER_LENGTH 24u
+#define AIC_DOT11_ADDR1_OFFSET 4u /* addr1（RA/DA）：AP 发给我们时就是本机 STA MAC */
 #define AIC_DOT11_QOS_LENGTH 2u  /* QoS Control：subtype bit7=1 时 +2 */
 #define AIC_DOT11_HTC_LENGTH 4u  /* Order/HTC：FC1 bit7=1 时 +4 */
 #define AIC_DOT11_ADDR4_LENGTH 6u /* ToDS+FromDS 同时置位（4 地址/WDS）时 +6 */
@@ -117,7 +118,12 @@
 /* ---- 轮询预算 ---- */
 #define AIC_EAPOL_POLL_DEFAULT_MS 3000u /* M1 在 assoc 后通常几十 ms 内到；3 s 留 AP 重传 */
 #define AIC_EAPOL_POLL_MAX_MS 60000u    /* 手打上限：再长就不像"看一眼"了 */
-#define AIC_EAPOL_POLL_MAX_FRAMES 64u   /* 防"帧源源不断 + 计时失效"时死循环 */
+/*
+ * 一次轮询最多解这么多帧。PR-34 从 64 抬到 256：四次握手要在 3 s 里从"assoc 之后的
+ * FIFO 积压"（beacon 100 ms 一发，加上广播/组播）里把 M1 捞出来 —— 64 帧在一台有广播
+ * 流量的 AP 上可能还没走到 M1 就停。真正防死循环的是预算（rdtime），帧数只是第二道闸。
+ */
+#define AIC_EAPOL_POLL_MAX_FRAMES 256u
 /* 60 B hdr + 1500 B MPDU + 4 B 对齐余量 ⇒ 2048 足够；超出部分读掉丢弃，防串包 */
 #define AIC_EAPOL_FRAME_MAX 2048u
 #define AIC_EAPOL_HEAD_DUMP 32u /* 第一帧数据帧的头部取证宽度 */
@@ -155,12 +161,40 @@ typedef struct {
 /* WifiEapol.c */
 int AicEapolLayoutCheck(void);
 int SdhciWifiEapolPoll(const char *MsText);
+/*
+ * 轮询主循环：预算内把 FIFO 里的数据帧解到 EAPOL。Done != 0 时每解完一帧就问一次，
+ * 它返回 1 就提前收工 —— 四次握手要在"收到 M1 的同一刻"停下，而不是等满 3 s。
+ * `wififw eapol poll` 传 Done=0（行为与 PR-33 完全一致）。
+ */
+int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Counters,
+                    int (*Done)(void));
 /* WifiEapolParse.c：把一帧数据帧解到 EAPOL（不认识的帧只打一行） */
 void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTERS *Counters);
 /* WifiEapolKey.c：EAPOL 头分流 + Key 字段解码 + 取证 dump（只打印/计数） */
 UINT16 AicEapolGetBigEndian16(const UINT8 *At);
 void AicEapolMarkBytes(const char *Tag, const UINT8 *Data, UINT32 Length);
 void AicEapolDumpHead(const UINT8 *Frame, UINT32 FrameLength);
-void AicEapolParseBody(const UINT8 *Body, UINT32 Available, AIC_EAPOL_COUNTERS *Counters);
+/*
+ * Station = 这帧 802.11 头的 addr1（AP 发给我们 ⇒ 本机 STA MAC）；裸扫兜底路径拿不到
+ * 802.11 头，传 0。四次握手就靠它把 PTK 的 STA 侧 MAC 校准到固件真正在用的那个。
+ */
+void AicEapolParseBody(const UINT8 *Body, UINT32 Available, const UINT8 *Station,
+                       AIC_EAPOL_COUNTERS *Counters);
+/*
+ * "接住下一帧 EAPOL-Key"的钩子：PR-34 起 WifiHandshake.c 挂一个 sink，
+ * 在 Key 帧打印完之后被调用（Body = EAPOL 帧起点，Length = 可用字节，Station 同上）。
+ * 挂 0 就是关掉，PR-33 的 `wififw eapol poll` 不受影响。
+ */
+typedef void (*AIC_EAPOL_KEY_SINK)(const UINT8 *Body, UINT32 Length, const UINT8 *Station);
+void AicEapolSetKeySink(AIC_EAPOL_KEY_SINK Sink);
+/* 定义在 WifiEapolKey.c；调用方只经 AicEapolSetKeySink 改它 */
+extern AIC_EAPOL_KEY_SINK gAicEapolKeySink;
+/*
+ * 见过 ME_SET_CONTROL_PORT_CFM(0x1405) 没有（0/1）。PR-34 用它在"开控制端口"的同时
+ * 继续走同一条收包路径 —— 因为控制端口一开，固件可能先吐排队已久的 M1、后写 CFM，
+ * 两条消息都在同一条 SDIO FIFO 上，用一个循环收才不会把 M1 当成"陌生帧"丢掉。
+ * 由 EapolPrintConfigFrame 置位，WifiHandshake.c 在发请求前清零。
+ */
+extern UINT32 gAicEapolControlPortCfm;
 
 #endif

@@ -125,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x00000150u
+#define WIFI_BUILD_TAG               0x00000152u
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -293,5 +293,6 @@ int WifiPollOnePacket(UINT8 *OutChannel, UINT32 *OutOffset, UINT32 *OutLength);
 int WifiHandleEscanEvent(const UINT8 *Event, UINT32 Length);
 int WifiAssociateOpen(const char *Ssid); /* 开放网关联 */
 int WifiJoinAfterScan(void); /* 0x150：扫到课网则 WPA2-PSK */
+int WifiNetProbeAfterJoin(void); /* 0x152：MAC 首 6B + DATA/通道眼睛 */
 
 #endif

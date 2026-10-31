@@ -676,6 +676,8 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | # | tag | 改动 | 结果 | 证据 / 否证 |
 |---|-----|------|------|-------------|
 | 1 | `0x150` | 扫到 `Apple` → cyw43 序 WPA2-PSK + 等 LINK；`WIFI-JOIN.LOG` | **✅ 绿：`join-ok`** | CH：`event_type=16`（LINK）`event_status=0`；scan 仍 `count=5` 含 Apple |
+| 2 | `0x151` | join 后读 `cur_etheraddr` + 轮询 F2 **DATA** 帧；`WIFI-NET.LOG` | **红：`net-no-data`** | CH：`mac=00:00:00:00:00:00` `data_pkts=0`；join 仍 `join-ok`。MAC 取了响应**末** 6B（占位零）；cyw43 取**首** 6B |
+| 3 | `0x152` | MAC 改首 6B + 全 0 判 `net-mac-fail`；落盘通道计数眼睛 | **✅ 绿：`net-data-ok`** | CH：`mac=b8:27:eb:17:66:ee` `mac_out=20` `data_pkts=1` `first_etype=2054`（ARP/`0x0806`）；`poll_empty=2999`。**pi-wifi-7b 判据达成** |
 
 ### 已否证（勿再试）
 

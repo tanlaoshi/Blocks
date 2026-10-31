@@ -681,6 +681,11 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 4 | `0x153` | cyw43 `send_ethernet` + ARP who-has TX（目标=被动 RX SPA） | **红：`net-no-data`** | CH：`join-ok` `mac=b8:27:eb:17:66:ee` 但 `data_pkts=0` `poll_empty=3000`——无被动 ARP 就永不 TX；0x152 偶发 1 帧不可当依赖 |
 | 5 | `0x154` | TX 与被动 RX **解耦**：MAC 后必发 who-has；有 SPA 用 SPA，无则用眼靶 IP | **两轮未到 TX** | CH×2：`WIFI-SCAN` **`load-sram-probe`**；JOIN/NET 残档 `0x153`。7c1 被灌片探针挡；非 TX 否证 |
 | 6 | `0x155` | sram 探针失败拆 stage + 树内仍含 7c1 TX（原 0x154） | **✅ 绿：灌片过 + `net-tx-ok`** | CH：`scan-ok` `join-ok`；`WIFI-NET` `transmit_ok=1` `status=net-tx-ok` `arp_target=2886994433`（`172.20.10.1` 眼靶）`arp_reply=0`。**7c1 判据达成**；本轮未踩到 load-sram-* 细分（偶发探针挂已过） |
+| 7 | `0x156` | DATA → `LwIpNetifInput`；`lwip_in`；判 `net-lwip-in-ok` | **红：`net-lwip-no-rx`** | CH：`transmit_ok=1` 但 `data_pkts=0` `lwip_in=0`——喂栈代码未跑到；空口/offload？ |
+| 8 | `0x157` | 对表 brcmf：join 后 `arp_ol=0`+`arpoe=0` 再 TX/收 | **未到 net；SCAN=`load-sram-write`** | CH：tag`0x157` **写**挂（非 read/mismatch）；JOIN/NET 残档`0x156`。7c0 眼睛有用 |
+| 9 | `0x158` | 探针写前 EnsureAwake + CMD/DATA recover + CC 探活 | **半绿** | CH：`scan-ok`/`join-ok`；`arp_ol_off=1` `transmit_ok=1` 仍 **`net-lwip-no-rx`** `data_pkts=0`。灌片稳了；关 offload 不够引出 DATA |
+| 10 | `0x159` | ARP who-has **SPA≠0**：眼靶网 `172.20.10.2→.1` | **红：仍 `net-lwip-no-rx`** | CH：`join-ok` `transmit_ok=1` `arp_ol_off=1` `data_pkts=0`——**SPA 否证** |
+| 11 | `0x15a` | 改发 **DHCP Discover**（UDP 68→67）引帧上 DATA | **✅ 绿：`net-lwip-in-ok`** | CH：`lwip_in=3` `data_pkts=3` `first_etype=2054`（ARP）`transmit_ok=1`。**7c2 判据达成**；ARP 刀否、DHCP 引出 DATA |
 
 ### 已否证（勿再试）
 

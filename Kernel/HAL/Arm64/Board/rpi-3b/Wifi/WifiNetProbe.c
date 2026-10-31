@@ -1,17 +1,13 @@
 /*
- * WifiNetProbe.c — pi-wifi-7：关联后 SDPCM TX ARP 眼睛（0x154）
- * 0x153 否证：无被动 DATA 就永不 TX。本刀 MAC 后必发 who-has；
- * 有 RX SPA 用 SPA，否则眼靶 172.20.10.1（课网 Apple 热点常见网关，仅眼睛）。
- * 本刀不接 lwIP。
+ * WifiNetProbe.c — pi-wifi-7：DATA→lwIP 眼睛（0x15a）
+ * 0x159 否证：ARP SPA≠0 仍无 DATA。本刀改发 DHCP Discover 引 OFFER。
  */
 #include "Wifi/Private.h"
-#include "FileSystem.h"
-#include "Fat.h"
 
-#define WIFI_NET_PROBE_ATTEMPTS         800u  /* 可选学 SPA；勿再 3s 卡死 */
-#define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 1500u
-/* 课网 SSID Apple（个人热点）常见网关；无被动 ARP 时的 TX 眼靶 */
-#define WIFI_NET_ARP_FALLBACK_TARGET    0xAC140A01u /* 172.20.10.1 */
+#define WIFI_NET_PROBE_ATTEMPTS         800u
+#define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 2000u
+#define WIFI_NET_ARP_FALLBACK_TARGET    0xAC140A01u /* 172.20.10.1 眼靶 */
+#define WIFI_NET_ARP_FALLBACK_SOURCE    0xAC140A02u /* 172.20.10.2 SPA（未 DHCP） */
 
 static UINT32 gWifiNetDataPacketCount;
 static UINT32 gWifiNetEventPacketCount;
@@ -23,106 +19,35 @@ static UINT32 gWifiNetMacOutBytes;
 static UINT32 gWifiNetArpTargetAddress;
 static UINT32 gWifiNetArpReplyCount;
 static UINT32 gWifiNetTransmitOk;
+static UINT32 gWifiNetArpOffloadCleared;
 static UINT8 gWifiNetMac[6];
 static int gWifiNetMacOk;
 static int gWifiNetHaveArpTarget;
 
-static void WifiNetAppendText(char *Buffer, UINTN Capacity, UINTN *Length, const char *Text) {
-    UINTN Index;
-    if (Text == 0) {
-        return;
-    }
-    for (Index = 0; Text[Index] != 0 && *Length + 1u < Capacity; Index++) {
-        Buffer[(*Length)++] = Text[Index];
-    }
+static void WifiNetPersist(const char *Status) {
+    WifiNetProbeLogWrite(Status, gWifiNetMac, gWifiNetMacOk, gWifiNetMacOutBytes,
+                         gWifiNetDataPacketCount, gWifiNetEventPacketCount,
+                         gWifiNetOtherPacketCount, gWifiNetPollEmptyCount,
+                         gWifiNetPollErrorCount, gWifiNetFirstEtherType,
+                         gWifiNetArpTargetAddress, gWifiNetTransmitOk,
+                         gWifiNetArpReplyCount, WifiNetLwIpInputCount(),
+                         gWifiNetArpOffloadCleared);
 }
 
-static void WifiNetAppendDecimal(char *Buffer, UINTN Capacity, UINTN *Length, UINT32 Value) {
-    char Digits[12];
-    UINT32 DigitCount = 0;
-    if (Value == 0u) {
-        Digits[DigitCount++] = '0';
-    } else {
-        while (Value != 0u && DigitCount < sizeof(Digits)) {
-            Digits[DigitCount++] = (char)('0' + (Value % 10u));
-            Value /= 10u;
-        }
+static int WifiNetDisableArpOffload(void) {
+    UINT8 Zero[4];
+    Zero[0] = 0;
+    Zero[1] = 0;
+    Zero[2] = 0;
+    Zero[3] = 0;
+    /* 对表 Linux brcmf_configure_arp_nd_offload(enable=false) */
+    if (WifiIoctlSetVariable("arp_ol", Zero, 4u) != 0) {
+        return -1;
     }
-    while (DigitCount > 0u && *Length + 1u < Capacity) {
-        Buffer[(*Length)++] = Digits[--DigitCount];
+    if (WifiIoctlSetVariable("arpoe", Zero, 4u) != 0) {
+        return -1;
     }
-}
-
-static void WifiNetAppendHexByte(char *Buffer, UINTN Capacity, UINTN *Length, UINT8 Value) {
-    static const char HexDigits[] = "0123456789abcdef";
-    if (*Length + 2u >= Capacity) {
-        return;
-    }
-    Buffer[(*Length)++] = HexDigits[(Value >> 4) & 0xFu];
-    Buffer[(*Length)++] = HexDigits[Value & 0xFu];
-}
-
-static void WifiNetAppendFieldDecimal(char *Buffer, UINTN Capacity, UINTN *Length,
-                                      const char *Name, UINT32 Value) {
-    WifiNetAppendText(Buffer, Capacity, Length, Name);
-    WifiNetAppendDecimal(Buffer, Capacity, Length, Value);
-    WifiNetAppendText(Buffer, Capacity, Length, "\n");
-}
-
-static void WifiNetPersistLog(const char *Status) {
-    char Buffer[640];
-    UINTN Length = 0;
-    static const char HexDigits[] = "0123456789abcdef";
-    UINT32 Tag = WIFI_BUILD_TAG;
-    INT32 Nibble;
-    UINT32 Index;
-
-    WifiNetAppendText(Buffer, sizeof(Buffer), &Length, "tag=");
-    for (Nibble = 7; Nibble >= 0; Nibble--) {
-        if (Length + 1u >= sizeof(Buffer)) {
-            break;
-        }
-        Buffer[Length++] = HexDigits[(Tag >> (UINT32)(Nibble * 4)) & 0xFu];
-    }
-    WifiNetAppendText(Buffer, sizeof(Buffer), &Length, "\nstatus=");
-    WifiNetAppendText(Buffer, sizeof(Buffer), &Length, Status ? Status : "?");
-    WifiNetAppendText(Buffer, sizeof(Buffer), &Length, "\nmac=");
-    if (gWifiNetMacOk) {
-        for (Index = 0; Index < 6u; Index++) {
-            if (Index != 0u) {
-                WifiNetAppendText(Buffer, sizeof(Buffer), &Length, ":");
-            }
-            WifiNetAppendHexByte(Buffer, sizeof(Buffer), &Length, gWifiNetMac[Index]);
-        }
-    } else {
-        WifiNetAppendText(Buffer, sizeof(Buffer), &Length, "?");
-    }
-    WifiNetAppendText(Buffer, sizeof(Buffer), &Length, "\n");
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "mac_out=", gWifiNetMacOutBytes);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "data_pkts=",
-                              gWifiNetDataPacketCount);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "event_pkts=",
-                              gWifiNetEventPacketCount);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "other_pkts=",
-                              gWifiNetOtherPacketCount);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "poll_empty=",
-                              gWifiNetPollEmptyCount);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "poll_error=",
-                              gWifiNetPollErrorCount);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "first_etype=",
-                              gWifiNetFirstEtherType);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "arp_target=",
-                              gWifiNetArpTargetAddress);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "transmit_ok=",
-                              gWifiNetTransmitOk);
-    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "arp_reply=",
-                              gWifiNetArpReplyCount);
-    Buffer[Length] = 0;
-    if (FileSystemWriteFile("WIFI-NET.LOG", Buffer, Length) != FAT_OK) {
-        HalSerialBootMarkForce("Boot: Pi WIFI net log write fail\n");
-        return;
-    }
-    (void)FileSystemFileSync("WIFI-NET.LOG");
+    return 0;
 }
 
 static int WifiNetMacIsAllZero(void) {
@@ -187,12 +112,13 @@ static void WifiNetNoteEthernetPayload(const UINT8 *Payload, UINT32 PayloadBytes
     if (gWifiNetFirstEtherType == 0u) {
         gWifiNetFirstEtherType = EtherType;
     }
+    /* 7c2：DATA → lwIP（短喂；不改 SMSC 主网卡 / linkoutput） */
+    WifiNetFeedEthernetToLwIp(Payload, PayloadBytes);
     if (EtherType != 0x0806u || PayloadBytes < 42u) {
         return;
     }
     Operation = (UINT16)(((UINT16)Payload[20] << 8) | Payload[21]);
     if (!gWifiNetHaveArpTarget && (Operation == 1u || Operation == 2u)) {
-        /* SPA @ eth+28；记 ARP 对端 IP，作 who-has 目标 */
         gWifiNetArpTargetAddress =
             ((UINT32)Payload[28] << 24) | ((UINT32)Payload[29] << 16) |
             ((UINT32)Payload[30] << 8) | (UINT32)Payload[31];
@@ -263,35 +189,42 @@ int WifiNetProbeAfterJoin(void) {
     gWifiNetArpTargetAddress = 0;
     gWifiNetArpReplyCount = 0;
     gWifiNetTransmitOk = 0;
+    gWifiNetArpOffloadCleared = 0;
     gWifiNetHaveArpTarget = 0;
     gWifiNetMacOk = 0;
     gWifiNetMac[0] = 0;
+    WifiNetLwIpFeedReset();
 
     HalSerialBootMarkForce("Boot: Pi WIFI net probe begin\n");
     if (WifiNetReadMac() != 0) {
-        WifiNetPersistLog("net-mac-fail");
+        WifiNetPersist("net-mac-fail");
         HalSerialBootMarkForce("Boot: Pi WIFI net mac fail\n");
         return -1;
     }
-    /* 短窗学 SPA（有最好）；无也不拦 TX——0x153 否证 */
+    if (WifiNetDisableArpOffload() == 0) {
+        gWifiNetArpOffloadCleared = 1;
+    } else {
+        HalSerialBootMarkForce("Boot: Pi WIFI arp offload clear fail\n");
+    }
     WifiNetProbeDataWindow(WIFI_NET_PROBE_ATTEMPTS, 0);
     if (!gWifiNetHaveArpTarget) {
         gWifiNetArpTargetAddress = WIFI_NET_ARP_FALLBACK_TARGET;
         gWifiNetHaveArpTarget = 1;
     }
-    if (WifiSdpcmSendArpWhoHas(gWifiNetMac, gWifiNetArpTargetAddress) != 0) {
-        WifiNetPersistLog("net-tx-fail");
-        HalSerialBootMarkForce("Boot: Pi WIFI net tx fail\n");
+    /* 0x15a：DHCP Discover（ARP SPA 刀已否） */
+    if (WifiSdpcmSendDhcpDiscover(gWifiNetMac) != 0) {
+        WifiNetPersist("net-tx-fail");
+        HalSerialBootMarkForce("Boot: Pi WIFI net dhcp discover fail\n");
         return -1;
     }
     gWifiNetTransmitOk = 1;
     WifiNetProbeDataWindow(WIFI_NET_TRANSMIT_POLL_ATTEMPTS, 1);
-    if (gWifiNetArpReplyCount == 0u) {
-        WifiNetPersistLog("net-tx-ok");
-        HalSerialBootMarkForce("Boot: Pi WIFI net tx ok (no arp reply)\n");
+    if (WifiNetLwIpInputCount() > 0u) {
+        WifiNetPersist("net-lwip-in-ok");
+        HalSerialBootMarkForce("Boot: Pi WIFI net lwip in ok\n");
         return 0;
     }
-    WifiNetPersistLog("net-arp-reply-ok");
-    HalSerialBootMarkForce("Boot: Pi WIFI net arp reply ok\n");
-    return 0;
+    WifiNetPersist("net-lwip-no-rx");
+    HalSerialBootMarkForce("Boot: Pi WIFI net lwip no rx\n");
+    return -1;
 }

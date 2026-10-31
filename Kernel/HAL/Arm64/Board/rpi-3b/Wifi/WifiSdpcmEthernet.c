@@ -104,7 +104,8 @@ int WifiSdpcmSendEthernet(const UINT8 *Frame, UINT32 FrameBytes) {
     return WifiSdpcmWlanWrite(gWifiSdpcmPacket, Size);
 }
 
-int WifiSdpcmSendArpWhoHas(const UINT8 SourceMac[6], UINT32 TargetProtocolAddress) {
+int WifiSdpcmSendArpWhoHas(const UINT8 SourceMac[6], UINT32 SourceProtocolAddress,
+                           UINT32 TargetProtocolAddress) {
     UINT8 Frame[42];
     UINT32 Index;
 
@@ -128,10 +129,11 @@ int WifiSdpcmSendArpWhoHas(const UINT8 SourceMac[6], UINT32 TargetProtocolAddres
     for (Index = 0; Index < 6u; Index++) {
         Frame[22u + Index] = SourceMac[Index];
     }
-    Frame[28] = 0;
-    Frame[29] = 0;
-    Frame[30] = 0;
-    Frame[31] = 0; /* SPA 未知（未 DHCP） */
+    /* 0x159：SPA 非 0（0x158 否证 SPA=0 仍无 DATA） */
+    Frame[28] = (UINT8)((SourceProtocolAddress >> 24) & 0xFFu);
+    Frame[29] = (UINT8)((SourceProtocolAddress >> 16) & 0xFFu);
+    Frame[30] = (UINT8)((SourceProtocolAddress >> 8) & 0xFFu);
+    Frame[31] = (UINT8)(SourceProtocolAddress & 0xFFu);
     for (Index = 0; Index < 6u; Index++) {
         Frame[32u + Index] = 0;
     }

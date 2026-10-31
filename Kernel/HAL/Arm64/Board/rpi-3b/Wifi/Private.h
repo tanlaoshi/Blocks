@@ -125,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000013du
+#define WIFI_BUILD_TAG               0x0000014fu
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -164,11 +164,14 @@
 #define WIFI_SDPCM_SET               2u
 #define WIFI_IOCTL_ID_SHIFT          16u
 #define WIFI_WLC_UP                  2u
+#define WIFI_WLC_GET_UP              162u /* wlioctl：GET_UP；误用 6=DUMP→BCME_UNSUPPORTED(-23) */
 #define WIFI_WLC_SET_SSID            26u
 #define WIFI_WLC_GET_VAR             262u
 #define WIFI_WLC_SET_VAR             263u
 #define WIFI_WLC_GET_CHANNEL         29u
 #define WIFI_WLC_SET_SCAN            50u /* legacy；本刀用 escan iovar */
+/* CDC status：-4 = BCME_NOTUP（0x145 CH） */
+#define WIFI_BCME_NOTUP              0xFFFFFFFCu
 #define WIFI_SCAN_RESULT_MAXIMUM     32u
 #define WIFI_SSID_MAXIMUM_BYTES      BOARD_WIFI_SSID_MAXIMUM
 
@@ -182,6 +185,7 @@ extern UINT32 gWifiBackplaneWindow;
 extern UINT8 gWifiSdpcmSequence;
 extern UINT8 gWifiSdpcmBusCredit;
 extern UINT16 gWifiIoctlRequestIdentity;
+extern UINT32 gWifiIoctlLastStatus; /* 0x145：最近一次 CDC status */
 extern UINT8 gWifiSdpcmPacket[2048];
 
 extern BOARD_WIFI_SCAN_ENTRY gWifiScanEntries[WIFI_SCAN_RESULT_MAXIMUM];
@@ -223,6 +227,7 @@ int WifiChipIdentityProbe(void);
 const char *WifiFirmwarePathForChip(void);
 const char *WifiNvramPathForChip(void);
 void WifiFirmwarePathProbe(void);
+int WifiClmLoad(void); /* 0x14b：F2 后灌 clm_blob */
 void WifiBootMarkHexadecimal32(const char *Tag, UINT32 Value);
 
 int WifiSdioSleepControlEnsureAwake(void); /* F1 SLEEPCSR KSO；灌片前必醒 */
@@ -257,11 +262,35 @@ int WifiWaitHtAndFunction2(void); /* HT + F2；wifi-6 再用 */
 int WifiSdioHostCommandDataRecover(void); /* F1 abort + CMD|DATA 复位 */
 int WifiSdioBusRejoinAfterIdle(void); /* WL_ON POR+枚举+F1；延后 Claim 灌片前 */
 int WifiFirmwareLoad(void); /* 0=ok；须 FS 已挂 */
+/* 0x148：claim-load-fail 时 CH 看具体阶段（rejoin/kso/ht/…） */
+const char *WifiFirmwareLoadFailStage(void);
 int WifiIoctl(UINT32 Kind, UINT32 Command, UINT8 *Payload, UINT32 PayloadBytes,
               UINT32 *OutPayloadBytes);
 int WifiIoctlSetVariable(const char *Name, const UINT8 *Value, UINT32 ValueBytes);
-int WifiRadioBringUp(void); /* event_msgs + WLC_UP */
+int WifiRadioBringUp(void); /* country + event_msgs + WLC_UP */
+const char *WifiRadioFailStatus(void); /* 0x147：country-fail / up-fail / getup-fail */
 int WifiScanAccessPoints(void); /* 填 gWifiScanEntries；须固件已灌 */
+/* 0x144：Scan 失败细分状态字（escan-fail / scan-empty）；成功为 0 */
+const char *WifiScanFailStatus(void);
+UINT32 WifiScanPollEmptyCount(void);
+UINT32 WifiScanPollErrorCount(void);
+UINT32 WifiScanEventPacketCount(void);
+UINT32 WifiScanEscanPartialCount(void);
+UINT32 WifiScanEtherTypeOkCount(void); /* 0x14e */
+UINT32 WifiScanFirstBdcDataOffset(void);
+UINT32 WifiScanFirstEventTypeAt2(void);
+UINT32 WifiScanFirstEventTypeAt4(void);
+UINT32 WifiScanFirstEventStatusAt6(void);
+UINT32 WifiScanFirstEventStatusAt8(void);
+UINT32 WifiScanFirstEventLength(void);
+void WifiScanPollCountersReset(void);
+void WifiScanPollEmptyBump(void);
+void WifiScanPollErrorBump(void);
+void WifiScanEventPacketBump(void);
+void WifiScanEventSampleNote(UINT8 BdcDataOffset, UINT16 EtherType, const UINT8 *Event,
+                             UINT32 EventLength); /* 0x14e：只记首包 */
+int WifiPollOnePacket(UINT8 *OutChannel, UINT32 *OutOffset, UINT32 *OutLength);
+int WifiHandleEscanEvent(const UINT8 *Event, UINT32 Length);
 int WifiAssociateOpen(const char *Ssid); /* 开放网关联 */
 
 #endif

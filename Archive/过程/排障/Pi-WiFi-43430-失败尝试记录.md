@@ -648,6 +648,29 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | - | --- | ---- | ---- | ---- |
 | 1 | `0x13d` | 满灌后 `ExitDownload`（清 intstatus + ARM CoreReset）→ `WaitHighThroughput`；**停 F2 前** | **✅ wifi-5 绿** | `ARM reset ok`→`arm-after io=1 rst=0`→`HT ok csr=000000d0`→`wifi-5 stop before F2`；F2/SDPCM 交 wifi-6 |
 
+### 短刀试探日志（Pi · pi-wifi-6 · F2/scan · 进行中）
+
+| # | tag | 试探 | 结果 | 备注 |
+| - | --- | ---- | ---- | ---- |
+| 1 | `0x13e` | HT 后 `WaitHtAndFunction2`；Claim 内 radio+escan；**BootMark `ssid=`**（不改 Shell Wifi.c） | **CH×N 落盘无 ssid** | `RUNTIME` 仅 DHCP/DWC2；疑长 Claim 期间 HCINT 冲掉 RUNTIME 环（16K 半裁） |
+| 2 | `0x13f` | Claim **只灌片**→立刻 `RuntimeLogFlush`；Worker 内再 `HalWifiScan`+Flush（Reveal 前） | **红：RUNTIME 仍无 wifi** | 12810B 几乎全是 `DWC2 HCINT`；中途 Flush 后 ready 再 Flush **整文件覆盖**，环被 HCINT 半裁后只剩 USB |
+| 3 | `0x140` | 扫完写 **`WIFI-SCAN.LOG`**；ShellOwn 后 HCINT BootMark≤8 | **红：卡上无此文件** | Scan/Persist 未到；疑 Claim 卡在 Load 或 Ready=0 |
+| 4 | `0x141` | **灌片前**就写 `WIFI-SCAN.LOG`（`status=claim-begin`…）；Sync；失败也有 status | **半绿** | `status=claim-load-ok loaded=1 count=0`——灌片通；Scan 未改写文件（卡在 radio/escan 或 radio 失败未落盘） |
+| 5 | `0x142` | Scan：`scan-begin`→`radio-up`/`radio-fail`→`scan-ok`/`scan-fail` 逐步落盘 | **红：仍 `claim-load-ok`** | 无 `scan-begin` → Worker `HalWifiScan` 未进 OpsScan |
+| 6 | `0x143` | Claim 在 `claim-load-ok` 后 **直接** `WifiOpsScan()` | **半绿→红** | CH：`status=scan-fail present=1 loaded=1 count=0`——已过 radio（非 `radio-fail`）；escan 失败或空超时未分 |
+| 7 | `0x144` | status 拆 `escan-fail`/`scan-empty`；落盘 `poll_empty`/`poll_error`/`event_pkts`/`escan_partial` | **红：`scan-empty`** | CH：`poll_empty=8000 poll_error=0 event_pkts=0 escan_partial=0`——**escan ioctl 通，F2 全程无包**；非解析错 |
+| 8 | `0x145` | 对表 cyw43：`event_msgs` 全开；escan 76B；poll 前/中 KSO；CDC status 校验 | **红：`escan-fail`** | CH：`ioctl_status=4294967292`（**-4 BCME_NOTUP**）；0x144「escan 通」实为未校 status 假通；扫从未启动 |
+| 9 | `0x146` | `country XX/rev17` + `WLC_GET_UP` 等到 up 再 escan | **红：`radio-fail`** | CH：`ioctl_status=4294967294`（**-2 BCME_BADARG**）；NVRAM `ccode=ALL`——**XX/rev17 被 CLM 拒**（卡在 country 可能性最大） |
+| 10 | `0x147` | country=`ALL`/rev=-1；radio 失败拆 `country-fail`/`up-fail`/`getup-fail` | **红：`claim-load-fail`**（偶发）/ 后 **`country-fail`** | 用户报 `status=country-fail`——**ALL/rev=-1 亦拒**；与 XX/17 一样 country iovar 不通 |
+| 11 | `0x148` | Load 失败落 `load-*` 阶段 status | （灌片偶发用） | 用户本轮已过 Load 到 country |
+| 12 | `0x149` | **跳过** country iovar（NVRAM 已 `ccode=ALL`）；保留 GET_UP | **红：`getup-fail`** | CH：`loaded=1`；`ioctl_status=4294967273`（**-23 BCME_UNSUPPORTED**）——对表 `wlioctl_defs`：**cmd 6=WLC_DUMP**，真 `WLC_GET_UP=162` |
+| 13 | `0x14a` | `WIFI_WLC_GET_UP` 改 **162**；仍跳过 country | **红：`getup-fail`** | CH：`ioctl_status=0`（opcode 对了）但 GET_UP 值一直 0；WLC_UP「成功」接口仍 down |
+| 14 | `0x14b` | F2 后灌 `brcmfmac43430-sdio.clm_blob`（`clmload`） | **半绿→红：`scan-empty`** | CH：`loaded=1` `ioctl_status=0` **`event_pkts=23`** `escan_partial=0`——CLM/UP/escan 通；事件 ethertype 到了但未认 PARTIAL（疑 event_type/status 当 LE，cyw43 为 **BE**） |
+| 15 | `0x14c` | escan 事件 `event_type`/`status` 改 **大端**解析 | **红：仍 `scan-empty`/`escan_partial=0`** | CH：`event_pkts=21`——BE 不够；cyw43 用 `buf[-2]` 对齐，线缆上 type@**+2** status@**+6** scan@**+46**（我们按结构 type@+4） |
+| 16 | `0x14d` | 事件头改线缆偏移（+2/+6/+46） | **红：仍 `escan_partial=0`** | CH：`event_pkts=14`；`-2` 可能只是对齐，wire 仍有 version@_0 → type 或仍 @+4；**未分** ethertype 是否真到 Handle |
+| 17 | `0x14e` | 装眼睛：`ethertype_ok` + 首包 type/status 双偏移 | **半绿（眼睛）** | CH：`ethertype_ok=17` `bdc_off=1` **`type_at4=69` `status_at8=8`** `type_at2=0`——证 0x14d 偏移错；Handle 用 +2 永远认不出 ESCAN |
+| 18 | `0x14f` | 解析改回 type@**4** status@**8** scan@**48**（BE） | **✅ 绿：`scan-ok` count=5** | CH：`escan_partial=20`；ssid=OPPO Find X8 a2ne / Apple / TP-LINK_7312 / 201 / Sense。**pi-wifi-6 判据（≥1 SSID）达成** |
+
 ### 已否证（勿再试）
 
 - Claim 时 **先读成功才允许写 KSO**（睡着必挂；应用 Linux 先写唤醒）

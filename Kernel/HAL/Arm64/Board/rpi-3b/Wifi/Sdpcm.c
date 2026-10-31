@@ -7,6 +7,7 @@
 UINT8 gWifiSdpcmSequence;
 UINT8 gWifiSdpcmBusCredit;
 UINT16 gWifiIoctlRequestIdentity;
+UINT32 gWifiIoctlLastStatus;
 UINT8 gWifiSdpcmPacket[2048];
 
 static void WifiPutLittle32(UINT8 *Destination, UINT32 Value) {
@@ -92,6 +93,7 @@ int WifiIoctl(UINT32 Kind, UINT32 Command, UINT8 *Payload, UINT32 PayloadBytes,
         sizeof(gWifiSdpcmPacket)) {
         return -1;
     }
+    gWifiIoctlLastStatus = 0;
     if (gWifiSdpcmBusCredit == gWifiSdpcmSequence) {
         /* 无信用：先捅邮箱再收 */
         (void)WifiBackplaneWrite32(WIFI_SDIO_TO_SB_MAILBOX, 1u << 3);
@@ -172,6 +174,11 @@ int WifiIoctl(UINT32 Kind, UINT32 Command, UINT8 *Payload, UINT32 PayloadBytes,
                             0xFFFFu);
         if (Identity != RequestIdentity) {
             continue;
+        }
+        /* 0x145：CDC status@+12；非 0 则固件拒了 IOCTL（旧码当成功 → 假通） */
+        gWifiIoctlLastStatus = WifiGetLittle32(gWifiSdpcmPacket + HeaderLength + 12);
+        if (gWifiIoctlLastStatus != 0u) {
+            return -1;
         }
         Copy = Size - (UINT32)HeaderLength - WIFI_IOCTL_HEADER_BYTES;
         if (Payload != 0 && Copy > 0) {

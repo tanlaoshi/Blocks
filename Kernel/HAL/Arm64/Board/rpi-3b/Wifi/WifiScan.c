@@ -1,15 +1,22 @@
 /*
  * WifiScan.c — radio up / escan / 开放关联（pwifi-2）
+ * 收包与 escan 事件：WifiScanPoll.c
  */
 #include "Wifi/Private.h"
 
 BOARD_WIFI_SCAN_ENTRY gWifiScanEntries[WIFI_SCAN_RESULT_MAXIMUM];
 UINT32 gWifiScanEntryCount;
 static int gWifiRadioUp;
+static const char *gWifiScanFailStatusText;
+static const char *gWifiRadioFailStatusText;
 
-#define WIFI_EVENT_ESCAN_RESULT 69u
-#define WIFI_ESCAN_STATUS_PARTIAL 8u
-#define WIFI_ESCAN_STATUS_SUCCESS 0u
+const char *WifiScanFailStatus(void) {
+    return gWifiScanFailStatusText;
+}
+
+const char *WifiRadioFailStatus(void) {
+    return gWifiRadioFailStatusText;
+}
 
 static void WifiMemorySet(void *Destination, UINT8 Value, UINT32 Bytes) {
     UINT8 *Cursor = (UINT8 *)Destination;
@@ -28,139 +35,47 @@ static void WifiMemoryCopy(void *Destination, const void *Source, UINT32 Bytes) 
     }
 }
 
-static UINT32 WifiGetLittle32(const UINT8 *Source) {
+static UINT32 WifiReadLittle32(const UINT8 *Source) {
     return (UINT32)Source[0] | ((UINT32)Source[1] << 8) | ((UINT32)Source[2] << 16) |
            ((UINT32)Source[3] << 24);
 }
 
-static UINT16 WifiGetLittle16(const UINT8 *Source) {
-    return (UINT16)Source[0] | ((UINT16)Source[1] << 8);
-}
+/* 0x146：WLC_GET_UP；1=已 up，0=未 up，-1=ioctl 失败 */
+static int WifiInterfaceGetUp(void) {
+    UINT8 Buffer[4];
+    UINT32 OutBytes = 0;
 
-static INT16 WifiGetLittleSigned16(const UINT8 *Source) {
-    return (INT16)WifiGetLittle16(Source);
-}
-
-static int WifiPollOnePacket(UINT8 *OutChannel, UINT32 *OutOffset, UINT32 *OutLength) {
-    UINT8 HeaderBytes[4];
-    UINT16 Size;
-    UINT16 SizeComplement;
-    UINT32 Aligned;
-    UINT8 Channel;
-    UINT8 HeaderLength;
-
-    if (WifiSdioCommand53Read(SDIO_FUNCTION_2, 0, HeaderBytes, 4u, 0) != 0) {
+    WifiMemorySet(Buffer, 0, sizeof(Buffer));
+    if (WifiIoctl(WIFI_SDPCM_GET, WIFI_WLC_GET_UP, Buffer, sizeof(Buffer), &OutBytes) != 0) {
         return -1;
     }
-    Size = WifiGetLittle16(HeaderBytes);
-    SizeComplement = WifiGetLittle16(HeaderBytes + 2);
-    if (Size == 0 && SizeComplement == 0) {
-        return 1; /* 空 */
-    }
-    if ((UINT16)(Size ^ SizeComplement) != 0xFFFFu || Size < WIFI_SDPCM_HEADER_BYTES) {
-        return -1;
-    }
-    Aligned = Size - 4u;
-    if (Aligned <= 8u) {
-        Aligned = (Aligned + 7u) & ~7u;
-    } else if (Aligned <= 16u) {
-        Aligned = (Aligned + 15u) & ~15u;
-    } else {
-        Aligned = (Aligned + 63u) & ~63u;
-    }
-    if (Aligned + 4u > sizeof(gWifiSdpcmPacket)) {
-        return -1;
-    }
-    if (WifiSdioCommand53Read(SDIO_FUNCTION_2, 0, gWifiSdpcmPacket + 4, Aligned, 0) != 0) {
-        return -1;
-    }
-    gWifiSdpcmPacket[0] = HeaderBytes[0];
-    gWifiSdpcmPacket[1] = HeaderBytes[1];
-    gWifiSdpcmPacket[2] = HeaderBytes[2];
-    gWifiSdpcmPacket[3] = HeaderBytes[3];
-    Channel = (UINT8)(gWifiSdpcmPacket[5] & 0x0Fu);
-    HeaderLength = gWifiSdpcmPacket[7];
-    gWifiSdpcmBusCredit = gWifiSdpcmPacket[9];
-    *OutChannel = Channel;
-    *OutOffset = HeaderLength;
-    *OutLength = Size;
-    return 0;
-}
-
-static int WifiHandleEscanEvent(const UINT8 *Event, UINT32 Length) {
-    UINT32 EventType;
-    UINT32 Status;
-    const UINT8 *Scan;
-    UINT8 SsidLength;
-    UINT32 Index;
-
-    if (Length < 48u) {
-        return 0;
-    }
-    /* cyw43_async_event：flags@2, type@4, status@8；scan_result 在 union */
-    EventType = WifiGetLittle32(Event + 4);
-    Status = WifiGetLittle32(Event + 8);
-    if (EventType != WIFI_EVENT_ESCAN_RESULT) {
-        return 0;
-    }
-    if (Status == WIFI_ESCAN_STATUS_SUCCESS) {
-        return 2; /* 扫完 */
-    }
-    if (Status != WIFI_ESCAN_STATUS_PARTIAL) {
-        return 0;
-    }
-    /* scan_result @ async_event.u；对表 cyw43_ev_scan_result_t */
-    Scan = Event + 48;
-    if (Length < 48u + 92u) {
-        return 0;
-    }
-    SsidLength = Scan[30];
-    if (SsidLength == 0 || SsidLength > WIFI_SSID_MAXIMUM_BYTES) {
-        return 0;
-    }
-    if (gWifiScanEntryCount >= WIFI_SCAN_RESULT_MAXIMUM) {
-        return 0;
-    }
-    for (Index = 0; Index < gWifiScanEntryCount; Index++) {
-        if (gWifiScanEntries[Index].SsidLength == SsidLength) {
-            UINT32 Compare;
-            int Same = 1;
-            for (Compare = 0; Compare < SsidLength; Compare++) {
-                if ((UINT8)gWifiScanEntries[Index].Ssid[Compare] != Scan[31 + Compare]) {
-                    Same = 0;
-                    break;
-                }
-            }
-            if (Same) {
-                return 0;
-            }
-        }
-    }
-    {
-        BOARD_WIFI_SCAN_ENTRY *Entry = &gWifiScanEntries[gWifiScanEntryCount];
-        Entry->SsidLength = SsidLength;
-        WifiMemoryCopy(Entry->Ssid, Scan + 31, SsidLength);
-        Entry->Ssid[SsidLength] = 0;
-        Entry->Channel = WifiGetLittle16(Scan + 83);
-        Entry->SignalRssi = (INT32)WifiGetLittleSigned16(Scan + 89);
-        gWifiScanEntryCount++;
-    }
-    return 0;
+    return (WifiReadLittle32(Buffer) != 0u) ? 1 : 0;
 }
 
 int WifiRadioBringUp(void) {
     UINT8 Buffer[48];
     UINT32 Zero = 0;
     UINT32 One = 1;
+    UINT32 Attempt;
+    int UpState;
 
     if (!gWifiFirmwareLoaded) {
+        gWifiRadioFailStatusText = "radio-fw";
         return -1;
     }
     if (gWifiRadioUp) {
+        gWifiRadioFailStatusText = 0;
         return 0;
     }
+    gWifiRadioFailStatusText = 0;
+
+    /*
+     * 跳过 country（0x149 否证：XX/ALL 皆拒；NVRAM 已 ccode=ALL）。
+     * 0x14a：GET_UP 用 cmd 162（0x149 误用 6=DUMP → -23）。
+     */
+    HalSerialBootMarkForce("Boot: Pi WIFI skip country (nvram ccode)\n");
+
     WifiMemorySet(Buffer, 0, sizeof(Buffer));
-    /* bus:txglom=0 */
     WifiMemoryCopy(Buffer, &Zero, 4);
     if (WifiIoctlSetVariable("bus:txglom", Buffer, 4u) != 0) {
         /* 非致命 */
@@ -168,51 +83,88 @@ int WifiRadioBringUp(void) {
     WifiMemoryCopy(Buffer, &One, 4);
     (void)WifiIoctlSetVariable("apsta", Buffer, 4u);
 
-    /* event_msgs：name\0 + ifindex(u32) + 19B mask；开 escan(69) */
+    /* event_msgs：mask 先全开 0xff，再关掉噪声事件（对表 cyw43） */
     WifiMemorySet(Buffer, 0, sizeof(Buffer));
-    WifiMemoryCopy(Buffer, "bsscfg:event_msgs", 17);
-    Buffer[17] = 0;
-    Buffer[22 + (WIFI_EVENT_ESCAN_RESULT / 8u)] =
-        (UINT8)(1u << (WIFI_EVENT_ESCAN_RESULT % 8u));
+    WifiMemorySet(Buffer + 22, 0xFFu, 19u);
+    Buffer[22 + (19u / 8u)] &= (UINT8) ~(1u << (19u % 8u)); /* roam */
+    Buffer[22 + (20u / 8u)] &= (UINT8) ~(1u << (20u % 8u)); /* tx fail */
+    Buffer[22 + (40u / 8u)] &= (UINT8) ~(1u << (40u % 8u)); /* radio */
+    Buffer[22 + (44u / 8u)] &= (UINT8) ~(1u << (44u % 8u)); /* probe req */
+    Buffer[22 + (54u / 8u)] &= (UINT8) ~(1u << (54u % 8u)); /* iface */
+    Buffer[22 + (71u / 8u)] &= (UINT8) ~(1u << (71u % 8u)); /* probe resp */
+    WifiMemoryCopy(Buffer, "bsscfg:event_msgs", 18); /* 含 '\\0' */
     if (WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_SET_VAR, Buffer, 18u + 4u + 19u, 0) != 0) {
+        gWifiRadioFailStatusText = "event-msgs-fail";
         HalSerialBootMarkForce("Boot: Pi WIFI event_msgs fail\n");
         return -1;
     }
     SdhciDelayMicroseconds(50000);
     if (WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_UP, 0, 0, 0) != 0) {
+        gWifiRadioFailStatusText = "up-fail";
         HalSerialBootMarkForce("Boot: Pi WIFI WLC_UP fail\n");
         return -1;
     }
-    SdhciDelayMicroseconds(50000);
+    /* 等 GET_UP=1；中途再补一次 WLC_UP（防 NOTUP 竞态） */
+    UpState = 0;
+    for (Attempt = 0; Attempt < 50u; Attempt++) {
+        SdhciDelayMicroseconds(20000);
+        UpState = WifiInterfaceGetUp();
+        if (UpState > 0) {
+            break;
+        }
+        if (Attempt == 24u) {
+            (void)WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_UP, 0, 0, 0);
+        }
+    }
+    if (UpState <= 0) {
+        gWifiRadioFailStatusText = "getup-fail";
+        HalSerialBootMarkForce("Boot: Pi WIFI GET_UP still down\n");
+        return -1;
+    }
     gWifiRadioUp = 1;
     HalSerialBootMarkForce("Boot: Pi WIFI radio up\n");
     return 0;
 }
 
 int WifiScanAccessPoints(void) {
-    UINT8 Options[72];
+    /* 对表 cyw43_wifi_scan_options_t：sizeof=76（含 channel_list） */
+    UINT8 Options[76];
     UINT32 Attempt;
     INT32 MinusOne = -1;
+    UINT32 Version = 1;
+    UINT16 Action = 1;
 
     gWifiScanEntryCount = 0;
+    gWifiScanFailStatusText = 0;
+    WifiScanPollCountersReset();
     if (WifiFirmwareLoad() != 0) {
+        gWifiScanFailStatusText = "scan-fw";
         return -1;
     }
     if (WifiRadioBringUp() != 0) {
+        gWifiScanFailStatusText = "scan-radio";
+        return -1;
+    }
+    /* cyw43 poll 前 bus_sleep(false) ≡ KSO 保醒 */
+    if (WifiSdioSleepControlEnsureAwake() != 0) {
+        gWifiScanFailStatusText = "scan-kso";
         return -1;
     }
 
     WifiMemorySet(Options, 0, sizeof(Options));
-    Options[0] = 1; /* version */
-    Options[4] = 1; /* action START */
+    WifiMemoryCopy(Options + 0, &Version, 4);
+    WifiMemoryCopy(Options + 4, &Action, 2);
     WifiMemorySet(Options + 44, 0xFF, 6); /* bssid */
     Options[50] = 2;                      /* bss_type ANY */
     WifiMemoryCopy(Options + 52, &MinusOne, 4);
     WifiMemoryCopy(Options + 56, &MinusOne, 4);
     WifiMemoryCopy(Options + 60, &MinusOne, 4);
     WifiMemoryCopy(Options + 64, &MinusOne, 4);
+    /* channel_num@68=0；channel_list@72 已清零 */
 
     if (WifiIoctlSetVariable("escan", Options, sizeof(Options)) != 0) {
+        gWifiScanFailStatusText = "escan-fail";
+        HalSerialBootMarkForce("Boot: Pi WIFI escan ioctl fail\n");
         return -1;
     }
 
@@ -222,27 +174,53 @@ int WifiScanAccessPoints(void) {
         UINT32 Length = 0;
         int Poll;
 
+        if ((Attempt & 0xFFu) == 0u) {
+            (void)WifiSdioSleepControlEnsureAwake();
+        }
         Poll = WifiPollOnePacket(&Channel, &Offset, &Length);
         if (Poll < 0) {
+            WifiScanPollErrorBump();
             SdhciDelayMicroseconds(1000);
             continue;
         }
         if (Poll > 0) {
+            WifiScanPollEmptyBump();
             SdhciDelayMicroseconds(1000);
             continue;
         }
         if (Channel == WIFI_SDPCM_EVENT_CHANNEL && Length > Offset + 28u) {
-            /* BDC(4) + eth(24) → event */
-            const UINT8 *Payload = gWifiSdpcmPacket + Offset + 4;
-            if (Payload[12] == 0x88 && Payload[13] == 0x6c) {
-                int Handled = WifiHandleEscanEvent(Payload + 24, Length - Offset - 4u - 24u);
+            /* BDC(4) + eth(24) → event；data_offset 单位是 4B 字 */
+            const UINT8 *Bdc = gWifiSdpcmPacket + Offset;
+            UINT8 BdcDataOffset = Bdc[3];
+            UINT32 BdcSkip = 4u + ((UINT32)BdcDataOffset << 2);
+            const UINT8 *Payload = gWifiSdpcmPacket + Offset + BdcSkip;
+            UINT16 EtherType;
+            UINT32 EventLength;
+
+            if (Offset + BdcSkip + 24u >= Length) {
+                WifiScanPollErrorBump();
+                continue;
+            }
+            EtherType = (UINT16)(((UINT16)Payload[12] << 8) | Payload[13]);
+            EventLength = Length - Offset - BdcSkip - 24u;
+            WifiScanEventPacketBump();
+            WifiScanEventSampleNote(BdcDataOffset, EtherType, Payload + 24, EventLength);
+            if (EtherType == 0x886Cu) {
+                int Handled = WifiHandleEscanEvent(Payload + 24, EventLength);
                 if (Handled == 2) {
+                    gWifiScanFailStatusText = 0;
                     return 0;
                 }
             }
         }
     }
-    return (gWifiScanEntryCount > 0) ? 0 : -1;
+    if (gWifiScanEntryCount > 0) {
+        gWifiScanFailStatusText = 0;
+        return 0;
+    }
+    gWifiScanFailStatusText = "scan-empty";
+    HalSerialBootMarkForce("Boot: Pi WIFI scan empty (timeout)\n");
+    return -1;
 }
 
 int WifiAssociateOpen(const char *Ssid) {

@@ -4,12 +4,17 @@
  * 中断帧见 HalFrame.c；平台元信息见 HalPlat.c（同构 x64/arm）。
  */
 #include "Hal.h"
+#include "BoardConfig.h"
 
 /*
  * OpenSBI 下内核在 S-mode：不可直接读/写 CLINT mtime（M-mode MMIO → 异常复位环）。
- * 用 rdtime + SBI set_timer；QEMU virt 常见 10MHz。
+ * 用 rdtime + SBI set_timer；QEMU virt 常见 10MHz；Duo 板用 BOARD_TIMEBASE_HZ。
  */
+#ifdef BOARD_TIMEBASE_HZ
+#define TIME_HZ ((UINT64)BOARD_TIMEBASE_HZ)
+#else
 #define TIME_HZ 10000000ULL
+#endif
 #define SSTATUS_SIE  (1ULL << 1)
 #define SSTATUS_SPIE (1ULL << 5)
 #define SSTATUS_SPP  (1ULL << 8)
@@ -73,7 +78,17 @@ void HalCpuPark(void) {
         __asm__ volatile("wfi");
     }
 }
-void HalCpuReboot(void) { HalCpuPark(); }
+/*
+ * 真复位：板级提供 BoardCpuReboot()（Duo S 走 RTC 温复位，ksend 已验证它真能重启），
+ * 未提供的板子退回"停住等人断电"。
+ */
+__attribute__((weak)) void BoardCpuReboot(void);
+void HalCpuReboot(void) {
+    if (BoardCpuReboot != 0) {
+        BoardCpuReboot();
+    }
+    HalCpuPark();
+}
 void HalCpuShutdown(void) { HalCpuPark(); }
 
 int HalPowerButtonPressed(void) {
@@ -154,6 +169,18 @@ void HalTimerStart(void) {
 
 UINT32 HalTicksPerSec(void) {
     return 1000; /* SBI timer 已按 ms 武装 */
+}
+
+UINT32 HalMilliseconds(void) {
+    return (UINT32)(ReadTime() / (TIME_HZ / 1000ULL));
+}
+
+void HalDelayMilliseconds(UINT32 Milliseconds) {
+    UINT32 Start = HalMilliseconds();
+
+    while ((UINT32)(HalMilliseconds() - Start) < Milliseconds) {
+        HalCpuRelax();
+    }
 }
 
 /* PR-A14：AP 本地开 STIE + SBI timer */

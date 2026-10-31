@@ -462,7 +462,7 @@ static int FillSlot(UINT32 Cp, int NotifyPaint) {
     }
     Slot->Cp = Cp;
     Slot->Side = Side;
-    /* FT 有真实 advance 则用之；否则拉丁半格、汉字整格 */
+    /* FT/stb 写入的真实步进；仅两者都未写时拉丁半格、汉字整格（软兜底） */
     Slot->Adv = FontFtLastAdvance();
     if (Slot->Adv < 1u) {
         Slot->Adv = (Cp < 128u) ? (Side / 2u) : Side;

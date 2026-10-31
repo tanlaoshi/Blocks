@@ -169,6 +169,9 @@ UINT64 HalCpuTicks(UINT32 Cpu); /* 每核 LAPIC/定时器原始拍 */
  * sleep / clock_ms = 拍 ×1000 / 此值；桌面双击仍用裸 HalCpuTicks。
  */
 UINT32 HalTicksPerSec(void);
+/* 单调毫秒（忙等/协议超时用；非墙钟） */
+UINT32 HalMilliseconds(void);
+void HalDelayMilliseconds(UINT32 Milliseconds);
 void HalCpuIncrementTicks(void);
 int HalSmpStartApplicationProcessors(void);
 /* Startup 记下 DTB，供 DtbCpuCount（RiscV 地址可变；Arm 可回退固定 loader 址） */

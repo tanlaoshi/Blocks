@@ -250,7 +250,7 @@ LWIP_PORT_OBJS = $(patsubst HAL/Common/LwIp/%.c,$(HALDIR)/Common/LwIp/%.o,$(LWIP
 endif
 
 CFLAGS_COMMON = $(CFLAGS_BASE) $(INCLUDES_COMMON) $(LWIPINCLUDES)
-CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp -IHAL/Common/LwIp
+CFLAGS_HAL    = $(CFLAGS_BASE) $(INCLUDES_HAL) $(LWIPINCLUDES) -IHAL/$(HAL_ARCH)/LwIp -IHAL/Common/LwIp -IHAL/Common
 # PR-UI-ttf-fpu：栅格 / 探针 TU 去掉 general-regs-only
 ifeq ($(ARCH),x86_64)
 CFLAGS_FPU    = $(filter-out -mgeneral-regs-only,$(CFLAGS_HAL)) -msse2
@@ -497,6 +497,10 @@ SHARED_VIDEO_OBJS := $(patsubst HAL/Common/Video/%.c,$(HALDIR)/Common/Video/%.o,
 WIFI_CRYPTO_SRCS := $(wildcard HAL/Common/WifiCrypto/*.c)
 WIFI_CRYPTO_OBJS := $(patsubst HAL/Common/WifiCrypto/%.c,$(HALDIR)/Common/WifiCrypto/%.o,$(WIFI_CRYPTO_SRCS))
 
+# 公共 ksend（串口差量写卡；三架构；落 HAL/Common/Ksend）
+KSEND_SRCS := $(wildcard HAL/Common/Ksend/*.c)
+KSEND_OBJS := $(patsubst HAL/Common/Ksend/%.c,$(HALDIR)/Common/Ksend/%.o,$(KSEND_SRCS))
+
 ifeq ($(ARCH),x86_64)
 EXTRA_OBJS = $(HALDIR)/User_hello_blob.o $(HALDIR)/SmpTramp_blob.o $(SHARED_VIDEO_OBJS)
 # 演示 ELF/OBJ 进 Build/User/（源在 User/Apps/）；CRT/Library 仍就地编
@@ -639,6 +643,20 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o
+ifeq ($(ARCH),arm64)
+# Pi/virt：预装 Hello + Task Manager（对表 X64 Apps/<id>/）
+USER_OUT = $(USER_VIRT_DIR)
+USER_TASKMGR_ELF = $(USER_VIRT_DIR)/taskmgr.elf
+USER_TASKMGR_OBJ = $(USER_VIRT_DIR)/taskmgr.o
+USER_LIB_GRAPHICS_OBJ = $(USER_VIRT_DIR)/lib_graphics.o
+USER_LIB_GRAPHICS_BATCH_OBJ = $(USER_VIRT_DIR)/lib_graphics_batch.o
+USER_LIB_UI_OBJ = $(USER_VIRT_DIR)/lib_ui.o
+USER_LIB_UI_WIDGETS_OBJ = $(USER_VIRT_DIR)/lib_ui_widgets.o
+USER_LIB_UI_IM_OBJ = $(USER_VIRT_DIR)/lib_ui_im.o
+USER_LIB_UI_STYLE_OBJ = $(USER_VIRT_DIR)/lib_ui_style.o
+USER_LIB_GRAPHICS_A = $(USER_VIRT_DIR)/libGraphics.a
+USER_LIB_UI_A = $(USER_VIRT_DIR)/libUi.a
+endif
 endif
 
 SCHEDULER ?= round-robin
@@ -674,7 +692,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(WIFI_CRYPTO_OBJS) $(FREETYPE_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(WIFI_CRYPTO_OBJS) $(KSEND_OBJS) $(FREETYPE_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -768,7 +786,11 @@ all: $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF) \
 endif
 else
 ifneq ($(BRINGUP),1)
+ifeq ($(ARCH),arm64)
+all: $(USER_HELLO_ELF) $(USER_TASKMGR_ELF)
+else
 all: $(USER_HELLO_ELF)
+endif
 endif
 endif
 
@@ -925,6 +947,10 @@ $(HALDIR)/Common/LwIp/%.o: HAL/Common/LwIp/%.c | $(HALDIR)
 
 # HAL/Common/WifiCrypto：公共 WPA2 算法。同上，必须写显式规则，x64 才编得到。
 $(HALDIR)/Common/WifiCrypto/%.o: HAL/Common/WifiCrypto/%.c | $(HALDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
+
+# HAL/Common/Ksend：串口差量写卡。同上，三架构都要显式规则。
+$(HALDIR)/Common/Ksend/%.o: HAL/Common/Ksend/%.c | $(HALDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_HAL) -c $< -o $@
 
 ifeq ($(LWIP),1)
@@ -1275,6 +1301,39 @@ $(USER_VIRT_DIR)/pthread.o: User/crt/pthread.c | $(USER_VIRT_DIR)
 $(USER_HELLO_ELF): $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
 	# 与 Kernel.elf 同：arm64 __sync_* 可能仍需 libgcc（与 -mno-outline-atomics 双保险）
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(LIBGCC)
+
+ifeq ($(ARCH),arm64)
+$(USER_LIB_GRAPHICS_OBJ): User/Library/Graphics/Graphics.c User/include/Graphics.h User/include/unistd.h User/include/Blocks/syscall.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Graphics/Graphics.c -o $@
+
+$(USER_LIB_GRAPHICS_BATCH_OBJ): User/Library/Graphics/Batch.c User/include/GraphicsBatch.h User/include/Graphics.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Graphics/Batch.c -o $@
+
+$(USER_LIB_UI_OBJ): User/Library/Ui/Ui.c User/Library/Ui/Private.h User/include/Ui.h User/include/Graphics.h User/include/unistd.h User/include/Blocks/syscall.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Ui.c -o $@
+
+$(USER_LIB_UI_WIDGETS_OBJ): User/Library/Ui/Widgets.c User/Library/Ui/Private.h User/include/Ui.h User/include/Graphics.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Widgets.c -o $@
+
+$(USER_LIB_UI_IM_OBJ): User/Library/Ui/Immediate.c User/include/UiImmediate.h User/include/Ui.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Immediate.c -o $@
+
+$(USER_LIB_UI_STYLE_OBJ): User/Library/Ui/Style.c User/include/UiStyle.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Style.c -o $@
+
+$(USER_LIB_GRAPHICS_A): $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) | $(USER_VIRT_DIR)
+	ar rcs $@ $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
+
+$(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) | $(USER_VIRT_DIR)
+	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
+
+$(USER_TASKMGR_OBJ): User/Apps/TaskMgr.c User/include/Ui.h User/include/Blocks/task.h User/include/stdio.h User/include/unistd.h User/include/signal.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Apps/TaskMgr.c -o $@
+
+$(USER_TASKMGR_ELF): $(USER_TASKMGR_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
+	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASKMGR_OBJ) \
+		$(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(LIBGCC)
+endif
 
 $(HALDIR)/User_hello_blob.o: $(USER_HELLO_ELF) | $(HALDIR)
 	# 固定输入名 User_hello.elf → `_binary_User_hello_elf_*`（ProcessRunDemo）

@@ -56,6 +56,13 @@ void HalSerialBootMarkChannel(int Channel, const char *Text);
 void HalSerialBootHoldMs(UINT32 Ms);
 int HalSerialDataReady(void);
 char HalSerialReadChar(void);
+/*
+ * 原始字节口（ksend 等二进制协议）：不改写 \\n，可发 0x00。
+ * 与 WriteShell 分流；不经通道过滤。
+ */
+void HalSerialPutByte(UINT8 Value);
+int HalSerialTryGetByte(UINT8 *Out); /* 1=读到；0=无数据 */
+void HalSerialDrainTransmitter(void); /* 等移位寄存器空（复位前冲 OK 行） */
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits);
 /* IoApic 后开 COM1 RX IRQ→软环；失败则 poll（CoolTerm 粘贴） */
 void HalSerialEnableRxIrq(void);

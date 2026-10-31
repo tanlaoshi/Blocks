@@ -7,7 +7,7 @@
 #ifndef KSEND_PRIVATE_H
 #define KSEND_PRIVATE_H
 
-#include "Ksend.h"
+#include "Hal/Ksend.h"
 #include "BootTypes.h"
 #include "Fat.h"
 
@@ -205,6 +205,10 @@ extern KSEND_IMAGE gKsendNewImage;
 
 /* 512 KB 复用缓冲（自检/接收批写共用，省一份静态数据） */
 UINT8 *KsendFileBuffer(void);
+/* 读满 Want 才认；短读 → FAT_ERR_IO（KsendFileVerify 与扫描共用） */
+int KsendFileReadExact(const char *Path, UINT32 Offset, UINT32 Want,
+                       UINT32 *OutGot);
+UINT32 KsendFileBlockCrcOf(const UINT8 *Data, UINT32 Length);
 int KsendFileDelete(const char *Path);
 int KsendFileSize(const char *Path, UINT32 *OutSize);
 /* 写在任意偏移（FAT 层按需扩簇；0 长度由调用方避免） */
@@ -220,6 +224,7 @@ int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
                         UINT32 Length);
 /* 把 [Offset, Offset+Length) 写成 0（FAT 无 truncate 时的兜底） */
 int KsendFileZeroRange(const char *Path, UINT32 Offset, UINT32 Length);
+/* —— KsendFileVerify.c —— */
 /* 1=一致；0=块不符（OutBlock/Want/Got）；-1=整体 CRC 不符 */
 int KsendFileVerify(const char *Path, UINT32 Size, const KSEND_IMAGE *Expected,
                     UINT32 ExpectedCrc, UINT32 *OutBlock, UINT32 *OutWant,
@@ -240,7 +245,14 @@ int KsendCacheDrop(const char *TargetPath);
 int KsendCacheSave(const char *TargetPath, const KSEND_IMAGE *Image);
 
 /* —— KsendReset.c —— */
-/* 复位（SG2000 RTC 温复位）。复位成功则不返回；返回前会打印诊断并停车 */
+/* 复位：HalCpuReboot；成功则不返回 */
 void KsendReboot(void);
+
+/* —— KsendTransferPaths.c —— */
+void KsendRunReset(KSEND_RUN *Run);
+int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run);
+void KsendVolumeRelease(KSEND_RUN *Run);
+void KsendPathsNote(const KSEND_RUN *Run);
+void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source);
 
 #endif /* KSEND_PRIVATE_H */

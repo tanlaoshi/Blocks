@@ -484,6 +484,35 @@ char HalSerialReadChar(void) {
 #endif
 }
 
+void HalSerialPutByte(UINT8 Value) {
+    UartPut((char)Value);
+}
+
+int HalSerialTryGetByte(UINT8 *Out) {
+    if (Out == 0 || HalSerialDataReady() == 0) {
+        return 0;
+    }
+    *Out = (UINT8)HalSerialReadChar();
+    return 1;
+}
+
+void HalSerialDrainTransmitter(void) {
+#if SERIAL_ENABLE && BOARD_UART_MINI
+    UartWaitTxIdle();
+#elif SERIAL_ENABLE
+    {
+        UINT32 Guard = 0;
+        /* PL011：等 TXFF 清且忙位空（FR busy bit3） */
+        while ((PL011_FR & (PL011_FR_TXFF | (1u << 3))) != 0 && Guard < 200000u) {
+            __asm__ volatile("nop");
+            Guard++;
+        }
+    }
+#else
+    (void)0;
+#endif
+}
+
 void HalSerialBootLogRewind(void) {
 }
 

@@ -14,6 +14,7 @@
 #include "HalSerial.h"
 #include "HalSerialPrivate.h"
 #include "Hal.h"
+#include "HalIo.h"
 #include "Serial/Serial.h"
 #include "Font.h"
 #include "SerialConfig.h"
@@ -198,6 +199,40 @@ char HalSerialReadChar(void) {
         return gCdcUart.ReadChar();
     }
     return SerialReadChar();
+}
+
+/*
+ * ksend 二进制：直写 COM1 硬件（不经软环 / 行改写）。
+ * FTDI/CDC 路径不在此；开发期 ksend 接主板 COM 或透传 COM1 的 USB-TTL。
+ */
+#define HAL_SERIAL_COM1 0x3F8u
+
+void HalSerialPutByte(UINT8 Value) {
+    int Timeout = 1000000;
+
+    while (Timeout-- > 0 && (HalIoRead8(HAL_SERIAL_COM1 + 5u) & 0x20u) == 0) {
+        __asm__ volatile("pause");
+    }
+    HalIoWrite8(HAL_SERIAL_COM1, Value);
+}
+
+int HalSerialTryGetByte(UINT8 *Out) {
+    if (Out == 0) {
+        return 0;
+    }
+    if ((HalIoRead8(HAL_SERIAL_COM1 + 5u) & 0x01u) == 0) {
+        return 0;
+    }
+    *Out = HalIoRead8(HAL_SERIAL_COM1);
+    return 1;
+}
+
+void HalSerialDrainTransmitter(void) {
+    int Timeout = 1000000;
+
+    while (Timeout-- > 0 && (HalIoRead8(HAL_SERIAL_COM1 + 5u) & 0x40u) == 0) {
+        __asm__ volatile("pause");
+    }
 }
 
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {

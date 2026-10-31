@@ -81,11 +81,12 @@ void FontTtfCacheDropCjkHits(void);
 /* Init 前灌的 MISS 清成 EMPTY，便于 TTF 就绪后再栅 */
 void FontTtfCacheDropMisses(void);
 int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH);
-/* 最近一次 FontFtRasterCp 成功的像素步进；未走 FT / 已 Clear 为 0 */
+/* 最近一次成功栅格的像素步进（FT 或 stb）；未写 / 已 Clear 为 0 */
 UINT32 FontFtLastAdvance(void);
 void FontFtClearLastAdvance(void);
+void FontFtSetLastAdvance(UINT32 Advance);
 const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-/* HIT 槽步进（逻辑像素）；未命中 0。拉丁约为 Side/2，汉字 Side/绘制倍数 */
+/* HIT 槽步进（逻辑像素）；未命中 0。须来自 hmtx/FT，禁止半格顶拉丁 */
 UINT32 FontTtfCacheAdvance(UINT32 Cp);
 /* 1=已栅格失败（真缺字）；绘制层走 U+FFFD/tofu，禁点阵顶中文 */
 int FontTtfCacheMissed(UINT32 Cp);

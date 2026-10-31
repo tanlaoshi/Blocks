@@ -172,6 +172,29 @@ UINT32 HalTicksPerSec(void) {
     return Cached;
 }
 
+/* 粗 TSC：课机常见 ~3GHz；仅忙等/协议超时，非墙钟 */
+#define HAL_TSC_HZ_COARSE 3000000000ULL
+
+static UINT64 HalReadTimeStampCounter(void) {
+    UINT32 Lo;
+    UINT32 Hi;
+
+    __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
+    return ((UINT64)Hi << 32) | (UINT64)Lo;
+}
+
+UINT32 HalMilliseconds(void) {
+    return (UINT32)(HalReadTimeStampCounter() / (HAL_TSC_HZ_COARSE / 1000ULL));
+}
+
+void HalDelayMilliseconds(UINT32 Milliseconds) {
+    UINT32 Start = HalMilliseconds();
+
+    while ((UINT32)(HalMilliseconds() - Start) < Milliseconds) {
+        HalCpuRelax();
+    }
+}
+
 void HalInstallUserMode(void) {
     ArchTssInstall();
 }

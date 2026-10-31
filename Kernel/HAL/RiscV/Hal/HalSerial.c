@@ -17,6 +17,7 @@
 #define UART_THR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(0)))
 #define UART_LSR   (*(volatile UINT8 *)(UART_BASE + UART_OFF(5)))
 #define UART_LSR_THRE  (1u << 5)
+#define UART_LSR_TEMT  (1u << 6)
 #define UART_LSR_DR    (1u << 0)
 
 static int gShellOwnUart;
@@ -227,4 +228,34 @@ void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {
         return;
     }
     FormatHexadecimal(Buf, Digits + 1, Value, Digits, 0, 0);
+}
+
+void HalSerialPutByte(UINT8 Value) {
+    UartPut((char)Value);
+}
+
+int HalSerialTryGetByte(UINT8 *Out) {
+#if !SERIAL_ENABLE
+    (void)Out;
+    return 0;
+#else
+    if (Out == 0 || (UART_LSR & UART_LSR_DR) == 0) {
+        return 0;
+    }
+    *Out = UART_THR;
+    return 1;
+#endif
+}
+
+void HalSerialDrainTransmitter(void) {
+#if SERIAL_ENABLE
+    UINT32 Guard = 0;
+
+    while ((UART_LSR & UART_LSR_TEMT) == 0 && Guard < 200000u) {
+        __asm__ volatile("" ::: "memory");
+        Guard++;
+    }
+#else
+    (void)0;
+#endif
 }

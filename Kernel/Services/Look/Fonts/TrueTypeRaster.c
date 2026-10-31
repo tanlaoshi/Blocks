@@ -667,6 +667,37 @@ static int FontTtfLayoutMono(stbtt_fontinfo *Info, UINT32 Cp, UINT32 CellW,
     return 0;
 }
 
+/*
+ * stb 成功后写入与 FT 同槽的像素步进。FillSlot 只认 FontFtLastAdvance()；
+ * Pi 无 FT 时若留 0，拉丁会被填成 Side/2 → Manager / 图标英文叠字。
+ * Oversample：2× 栅格的 Scale 是 2× 像素，除以 TTF_OS 收成 1× 格。
+ */
+static void FontTtfPublishStbAdvance(stbtt_fontinfo *Info, UINT32 Cp,
+                                     float Scale, UINT32 CellW,
+                                     UINT32 Oversample) {
+    int Raw;
+    int Lsb;
+    UINT32 Adv;
+
+    stbtt_GetCodepointHMetrics(Info, (int)Cp, &Raw, &Lsb);
+    (void)Lsb;
+    if (Raw <= 0) {
+        FontFtClearLastAdvance();
+        return;
+    }
+    Adv = (UINT32)((float)Raw * Scale);
+    if (Oversample > 1u) {
+        Adv /= Oversample;
+    }
+    if (Adv < 1u) {
+        Adv = (Cp < 128u) ? (CellW / 2u) : CellW;
+    }
+    if (Adv > CellW) {
+        Adv = CellW;
+    }
+    FontFtSetLastAdvance(Adv);
+}
+
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
     float Scale;
     float Shift;
@@ -793,6 +824,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
                                                   Gh, (int)OsW, Scale, Scale, 0.0f,
                                                   Shift, (int)Cp);
                 FontTtfDownsample2(Hi, OsW, OsH, Pix18, CellW, CellH);
+                FontTtfPublishStbAdvance(Info, Cp, Scale, CellW, TTF_OS);
                 HalFpuEnd();
                 return 0;
             }
@@ -812,6 +844,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         stbtt_MakeCodepointBitmapSubpixel(Info, Pix18 + Oy * (int)CellW + Ox, Gw,
                                           Gh, (int)CellW, Scale, Scale, 0.0f,
                                           Shift, (int)Cp);
+        FontTtfPublishStbAdvance(Info, Cp, Scale, CellW, 1u);
     }
     HalFpuEnd();
     return 0;

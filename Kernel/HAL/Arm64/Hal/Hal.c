@@ -254,6 +254,29 @@ UINT32 HalTicksPerSec(void) {
     return 1000; /* CNTV 已按 ms 武装 */
 }
 
+UINT32 HalMilliseconds(void) {
+    UINT64 Now;
+    UINT64 Freq;
+
+    if (gCntFreq == 0) {
+        __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(gCntFreq));
+        if (gCntFreq == 0) {
+            gCntFreq = 62500000ULL;
+        }
+    }
+    Freq = gCntFreq;
+    __asm__ volatile("mrs %0, cntvct_el0" : "=r"(Now));
+    return (UINT32)((Now * 1000ULL) / Freq);
+}
+
+void HalDelayMilliseconds(UINT32 Milliseconds) {
+    UINT32 Start = HalMilliseconds();
+
+    while ((UINT32)(HalMilliseconds() - Start) < Milliseconds) {
+        HalCpuRelax();
+    }
+}
+
 /* PR-A14：AP 在 BSP HalTimerStart 之前也可本地开 CNTV（gCntPeriod 已在 InitCpu） */
 void HalTimerStartAp(void) {
     extern void HalGicInitializeCpu(void);

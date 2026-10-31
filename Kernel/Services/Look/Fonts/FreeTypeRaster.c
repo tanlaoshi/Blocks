@@ -35,7 +35,6 @@ static int gFtMonoOk;
 static volatile int gFtLock;
 static int gFtDead;
 static UINT32 gFtOomStreak;
-static UINT32 gFtLastAdv;
 
 /* 连续 OOM 达到这个数才判 FT 不可用（单次 OOM 只降级当前字形）。 */
 #define FT_OOM_DISABLE_STREAK 64u
@@ -329,7 +328,7 @@ static int FtInitLocked(void) {
   gFtDead = 0;
   gFtOomStreak = 0;
   gMonoFace = 0;
-  gFtLastAdv = 0;
+  FontFtClearLastAdvance();
   gFtDiagSeen = 0;
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
     gFace[Slot] = 0;
@@ -393,14 +392,6 @@ static int FtInitLocked(void) {
 
 int FontFtReady(void) {
   return gFtOk ? 1 : 0;
-}
-
-UINT32 FontFtLastAdvance(void) {
-  return gFtLastAdv;
-}
-
-void FontFtClearLastAdvance(void) {
-  gFtLastAdv = 0;
 }
 
 static UINT32 gFtFailN;
@@ -499,7 +490,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   UINT32 Adv;
   UINT32 MaxPix;
 
-  gFtLastAdv = 0;
+  FontFtClearLastAdvance();
   if (gFtDead) {
     return -1;
   }
@@ -747,7 +738,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
     if (Ink == 0u) {
       FtFail(Cp, 8u);
       HalFpuEnd();
-      gFtLastAdv = 0;
+      FontFtClearLastAdvance();
       return -1;
     }
   }
@@ -758,7 +749,7 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   if (Adv > CellW) {
     Adv = CellW;
   }
-  gFtLastAdv = Adv;
+  FontFtSetLastAdvance(Adv);
   gFtOomStreak = 0;
   HalFpuEnd();
   return 0;
@@ -787,13 +778,6 @@ int FontFtInit(void) {
 
 int FontFtReady(void) {
   return 0;
-}
-
-UINT32 FontFtLastAdvance(void) {
-  return 0;
-}
-
-void FontFtClearLastAdvance(void) {
 }
 
 int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {

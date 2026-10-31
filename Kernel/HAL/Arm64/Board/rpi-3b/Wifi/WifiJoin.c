@@ -280,7 +280,7 @@ int WifiJoinAfterScan(void) {
         return -1;
     }
     WifiJoinPersistLog(gWifiJoinStatusText, gWifiJoinEventType, gWifiJoinEventStatus);
-    /* 0x152：关联成功后探 DATA 通道（DHCP 前眼睛） */
+    /* 0x154：关联后 SDPCM TX ARP 眼睛（不依赖被动 DATA） */
     (void)WifiNetProbeAfterJoin();
     return 0;
 }

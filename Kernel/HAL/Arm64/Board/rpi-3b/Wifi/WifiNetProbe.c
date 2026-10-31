@@ -1,13 +1,17 @@
 /*
- * WifiNetProbe.c — pi-wifi-7：关联后数据通道眼睛（MAC + DATA 帧计数）
- * 一变量：先证明 F2 DATA 有以太网帧，再接 lwIP/DHCP。
- * 0x152：cur_etheraddr 对表 cyw43 取响应**首** 6B（0x151 取末 6B → 全 0）。
+ * WifiNetProbe.c — pi-wifi-7：关联后 SDPCM TX ARP 眼睛（0x154）
+ * 0x153 否证：无被动 DATA 就永不 TX。本刀 MAC 后必发 who-has；
+ * 有 RX SPA 用 SPA，否则眼靶 172.20.10.1（课网 Apple 热点常见网关，仅眼睛）。
+ * 本刀不接 lwIP。
  */
 #include "Wifi/Private.h"
 #include "FileSystem.h"
 #include "Fat.h"
 
-#define WIFI_NET_PROBE_ATTEMPTS 3000u
+#define WIFI_NET_PROBE_ATTEMPTS         800u  /* 可选学 SPA；勿再 3s 卡死 */
+#define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 1500u
+/* 课网 SSID Apple（个人热点）常见网关；无被动 ARP 时的 TX 眼靶 */
+#define WIFI_NET_ARP_FALLBACK_TARGET    0xAC140A01u /* 172.20.10.1 */
 
 static UINT32 gWifiNetDataPacketCount;
 static UINT32 gWifiNetEventPacketCount;
@@ -16,8 +20,12 @@ static UINT32 gWifiNetPollEmptyCount;
 static UINT32 gWifiNetPollErrorCount;
 static UINT32 gWifiNetFirstEtherType;
 static UINT32 gWifiNetMacOutBytes;
+static UINT32 gWifiNetArpTargetAddress;
+static UINT32 gWifiNetArpReplyCount;
+static UINT32 gWifiNetTransmitOk;
 static UINT8 gWifiNetMac[6];
 static int gWifiNetMacOk;
+static int gWifiNetHaveArpTarget;
 
 static void WifiNetAppendText(char *Buffer, UINTN Capacity, UINTN *Length, const char *Text) {
     UINTN Index;
@@ -62,7 +70,7 @@ static void WifiNetAppendFieldDecimal(char *Buffer, UINTN Capacity, UINTN *Lengt
 }
 
 static void WifiNetPersistLog(const char *Status) {
-    char Buffer[512];
+    char Buffer[640];
     UINTN Length = 0;
     static const char HexDigits[] = "0123456789abcdef";
     UINT32 Tag = WIFI_BUILD_TAG;
@@ -103,6 +111,12 @@ static void WifiNetPersistLog(const char *Status) {
                               gWifiNetPollErrorCount);
     WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "first_etype=",
                               gWifiNetFirstEtherType);
+    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "arp_target=",
+                              gWifiNetArpTargetAddress);
+    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "transmit_ok=",
+                              gWifiNetTransmitOk);
+    WifiNetAppendFieldDecimal(Buffer, sizeof(Buffer), &Length, "arp_reply=",
+                              gWifiNetArpReplyCount);
     Buffer[Length] = 0;
     if (FileSystemWriteFile("WIFI-NET.LOG", Buffer, Length) != FAT_OK) {
         HalSerialBootMarkForce("Boot: Pi WIFI net log write fail\n");
@@ -129,7 +143,6 @@ static int WifiNetReadMac(void) {
     for (Index = 0; Index < sizeof(Buffer); Index++) {
         Buffer[Index] = 0;
     }
-    /* "cur_etheraddr\0" + 6B 占位；对表 cyw43_ll_wifi_get_mac → 响应**首** 6B */
     Buffer[0] = 'c';
     Buffer[1] = 'u';
     Buffer[2] = 'r';
@@ -162,10 +175,40 @@ static int WifiNetReadMac(void) {
     return 0;
 }
 
-static void WifiNetProbeDataWindow(void) {
+static void WifiNetNoteEthernetPayload(const UINT8 *Payload, UINT32 PayloadBytes, int CountReply) {
+    UINT16 EtherType;
+    UINT16 Operation;
+
+    if (PayloadBytes < 14u) {
+        return;
+    }
+    EtherType = (UINT16)(((UINT16)Payload[12] << 8) | Payload[13]);
+    gWifiNetDataPacketCount++;
+    if (gWifiNetFirstEtherType == 0u) {
+        gWifiNetFirstEtherType = EtherType;
+    }
+    if (EtherType != 0x0806u || PayloadBytes < 42u) {
+        return;
+    }
+    Operation = (UINT16)(((UINT16)Payload[20] << 8) | Payload[21]);
+    if (!gWifiNetHaveArpTarget && (Operation == 1u || Operation == 2u)) {
+        /* SPA @ eth+28；记 ARP 对端 IP，作 who-has 目标 */
+        gWifiNetArpTargetAddress =
+            ((UINT32)Payload[28] << 24) | ((UINT32)Payload[29] << 16) |
+            ((UINT32)Payload[30] << 8) | (UINT32)Payload[31];
+        if (gWifiNetArpTargetAddress != 0u) {
+            gWifiNetHaveArpTarget = 1;
+        }
+    }
+    if (CountReply && Operation == 2u) {
+        gWifiNetArpReplyCount++;
+    }
+}
+
+static void WifiNetProbeDataWindow(UINT32 Attempts, int CountArpReply) {
     UINT32 Attempt;
 
-    for (Attempt = 0; Attempt < WIFI_NET_PROBE_ATTEMPTS; Attempt++) {
+    for (Attempt = 0; Attempt < Attempts; Attempt++) {
         UINT8 Channel = 0;
         UINT32 Offset = 0;
         UINT32 Length = 0;
@@ -196,18 +239,15 @@ static void WifiNetProbeDataWindow(void) {
             const UINT8 *Bdc = gWifiSdpcmPacket + Offset;
             UINT32 BdcSkip = 4u + ((UINT32)Bdc[3] << 2);
             const UINT8 *Payload;
-            UINT16 EtherType;
+            UINT32 PayloadBytes;
 
             if (Offset + BdcSkip + 14u > Length) {
                 gWifiNetOtherPacketCount++;
                 continue;
             }
             Payload = gWifiSdpcmPacket + Offset + BdcSkip;
-            EtherType = (UINT16)(((UINT16)Payload[12] << 8) | Payload[13]);
-            gWifiNetDataPacketCount++;
-            if (gWifiNetFirstEtherType == 0u) {
-                gWifiNetFirstEtherType = EtherType;
-            }
+            PayloadBytes = Length - (Offset + BdcSkip);
+            WifiNetNoteEthernetPayload(Payload, PayloadBytes, CountArpReply);
         }
     }
 }
@@ -220,6 +260,10 @@ int WifiNetProbeAfterJoin(void) {
     gWifiNetPollErrorCount = 0;
     gWifiNetFirstEtherType = 0;
     gWifiNetMacOutBytes = 0;
+    gWifiNetArpTargetAddress = 0;
+    gWifiNetArpReplyCount = 0;
+    gWifiNetTransmitOk = 0;
+    gWifiNetHaveArpTarget = 0;
     gWifiNetMacOk = 0;
     gWifiNetMac[0] = 0;
 
@@ -229,13 +273,25 @@ int WifiNetProbeAfterJoin(void) {
         HalSerialBootMarkForce("Boot: Pi WIFI net mac fail\n");
         return -1;
     }
-    WifiNetProbeDataWindow();
-    if (gWifiNetDataPacketCount == 0u) {
-        WifiNetPersistLog("net-no-data");
-        HalSerialBootMarkForce("Boot: Pi WIFI net no data pkts\n");
+    /* 短窗学 SPA（有最好）；无也不拦 TX——0x153 否证 */
+    WifiNetProbeDataWindow(WIFI_NET_PROBE_ATTEMPTS, 0);
+    if (!gWifiNetHaveArpTarget) {
+        gWifiNetArpTargetAddress = WIFI_NET_ARP_FALLBACK_TARGET;
+        gWifiNetHaveArpTarget = 1;
+    }
+    if (WifiSdpcmSendArpWhoHas(gWifiNetMac, gWifiNetArpTargetAddress) != 0) {
+        WifiNetPersistLog("net-tx-fail");
+        HalSerialBootMarkForce("Boot: Pi WIFI net tx fail\n");
         return -1;
     }
-    WifiNetPersistLog("net-data-ok");
-    HalSerialBootMarkForce("Boot: Pi WIFI net data ok\n");
+    gWifiNetTransmitOk = 1;
+    WifiNetProbeDataWindow(WIFI_NET_TRANSMIT_POLL_ATTEMPTS, 1);
+    if (gWifiNetArpReplyCount == 0u) {
+        WifiNetPersistLog("net-tx-ok");
+        HalSerialBootMarkForce("Boot: Pi WIFI net tx ok (no arp reply)\n");
+        return 0;
+    }
+    WifiNetPersistLog("net-arp-reply-ok");
+    HalSerialBootMarkForce("Boot: Pi WIFI net arp reply ok\n");
     return 0;
 }

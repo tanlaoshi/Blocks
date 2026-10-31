@@ -164,7 +164,8 @@ int WifiFirmwareLoad(void) {
         goto Done;
     }
     if (WifiBackplaneSramProbeWrite() != 0) {
-        gWifiLoadFailStage = "load-sram-probe";
+        /* 0x155：write/read/mismatch(got) 细分，见 WifiSramProbeFailStage */
+        gWifiLoadFailStage = WifiSramProbeFailStage();
         goto Done;
     }
     if (WifiAlpReleaseForceToRequest() != 0) {

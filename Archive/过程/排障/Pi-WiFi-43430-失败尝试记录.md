@@ -678,6 +678,9 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 1 | `0x150` | 扫到 `Apple` → cyw43 序 WPA2-PSK + 等 LINK；`WIFI-JOIN.LOG` | **✅ 绿：`join-ok`** | CH：`event_type=16`（LINK）`event_status=0`；scan 仍 `count=5` 含 Apple |
 | 2 | `0x151` | join 后读 `cur_etheraddr` + 轮询 F2 **DATA** 帧；`WIFI-NET.LOG` | **红：`net-no-data`** | CH：`mac=00:00:00:00:00:00` `data_pkts=0`；join 仍 `join-ok`。MAC 取了响应**末** 6B（占位零）；cyw43 取**首** 6B |
 | 3 | `0x152` | MAC 改首 6B + 全 0 判 `net-mac-fail`；落盘通道计数眼睛 | **✅ 绿：`net-data-ok`** | CH：`mac=b8:27:eb:17:66:ee` `mac_out=20` `data_pkts=1` `first_etype=2054`（ARP/`0x0806`）；`poll_empty=2999`。**pi-wifi-7b 判据达成** |
+| 4 | `0x153` | cyw43 `send_ethernet` + ARP who-has TX（目标=被动 RX SPA） | **红：`net-no-data`** | CH：`join-ok` `mac=b8:27:eb:17:66:ee` 但 `data_pkts=0` `poll_empty=3000`——无被动 ARP 就永不 TX；0x152 偶发 1 帧不可当依赖 |
+| 5 | `0x154` | TX 与被动 RX **解耦**：MAC 后必发 who-has；有 SPA 用 SPA，无则用眼靶 IP | **两轮未到 TX** | CH×2：`WIFI-SCAN` **`load-sram-probe`**；JOIN/NET 残档 `0x153`。7c1 被灌片探针挡；非 TX 否证 |
+| 6 | `0x155` | sram 探针失败拆 stage + 树内仍含 7c1 TX（原 0x154） | **✅ 绿：灌片过 + `net-tx-ok`** | CH：`scan-ok` `join-ok`；`WIFI-NET` `transmit_ok=1` `status=net-tx-ok` `arp_target=2886994433`（`172.20.10.1` 眼靶）`arp_reply=0`。**7c1 判据达成**；本轮未踩到 load-sram-* 细分（偶发探针挂已过） |
 
 ### 已否证（勿再试）
 

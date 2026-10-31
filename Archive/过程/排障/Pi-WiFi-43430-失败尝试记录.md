@@ -671,6 +671,12 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 17 | `0x14e` | 装眼睛：`ethertype_ok` + 首包 type/status 双偏移 | **半绿（眼睛）** | CH：`ethertype_ok=17` `bdc_off=1` **`type_at4=69` `status_at8=8`** `type_at2=0`——证 0x14d 偏移错；Handle 用 +2 永远认不出 ESCAN |
 | 18 | `0x14f` | 解析改回 type@**4** status@**8** scan@**48**（BE） | **✅ 绿：`scan-ok` count=5** | CH：`escan_partial=20`；ssid=OPPO Find X8 a2ne / Apple / TP-LINK_7312 / 201 / Sense。**pi-wifi-6 判据（≥1 SSID）达成** |
 
+## wifi-7（关联 / IP）
+
+| # | tag | 改动 | 结果 | 证据 / 否证 |
+|---|-----|------|------|-------------|
+| 1 | `0x150` | 扫到 `Apple` → cyw43 序 WPA2-PSK + 等 LINK；`WIFI-JOIN.LOG` | **✅ 绿：`join-ok`** | CH：`event_type=16`（LINK）`event_status=0`；scan 仍 `count=5` 含 Apple |
+
 ### 已否证（勿再试）
 
 - Claim 时 **先读成功才允许写 KSO**（睡着必挂；应用 Linux 先写唤醒）

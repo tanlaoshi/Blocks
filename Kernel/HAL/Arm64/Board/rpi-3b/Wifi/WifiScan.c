@@ -216,6 +216,8 @@ int WifiScanAccessPoints(void) {
     }
     if (gWifiScanEntryCount > 0) {
         gWifiScanFailStatusText = 0;
+        /* 0x150：wifi-7 首刀——扫到 Apple 则 WPA2 关联并落 WIFI-JOIN.LOG */
+        (void)WifiJoinAfterScan();
         return 0;
     }
     gWifiScanFailStatusText = "scan-empty";

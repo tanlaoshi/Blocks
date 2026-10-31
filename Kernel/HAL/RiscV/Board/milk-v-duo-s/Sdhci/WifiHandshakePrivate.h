@@ -244,6 +244,7 @@ int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk);
  * M3 验过 MIC 之后的收尾：装 PTK → 从 M3 解 GTK 并装上 → 回 M4。
  * 0 = PTK 与 GTK 都装好且 M4 发出去了；失败时已打印卡在哪一步。
  */
+int AicHandshakeReinstallGtk(SDHCI_HOST *Host, UINT8 VifIndex);
 int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 VifIndex,
                             UINT8 ApIndex);
 /*

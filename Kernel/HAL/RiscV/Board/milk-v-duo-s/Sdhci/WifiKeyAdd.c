@@ -168,6 +168,24 @@ static AIC_KEY_ADD_RESULT KeyAddExchange(SDHCI_HOST *Host, UINT8 VifIndex, UINT8
         SdhciMark(")\n");
         return Result;
     }
+    /*
+     * 探针：把真正发出去的 44 字节全量打出来（4 行 × 11 字节），与厂商结构体逐字段核对。
+     * 重点：key.array 是否真的从偏移 8 开始（错位会让固件"装了个空密钥"，
+     * 但 CFM 仍然返回 status=0 —— 这正是当前 DHCP 拿不到 OFFER 的可疑点）。
+     */
+    {
+        UINT32 i;
+        SdhciMark("WiFi: key add payload len=");
+        SdhciMarkDecimal("", Length);
+        SdhciMark(" [");
+        for (i = 0u; i < Length; i++) {
+            if (i != 0u && (i % 11u) == 0u) {
+                SdhciMark("\n  ");
+            }
+            SdhciMarkHex("", (UINT32)((const UINT8 *)sAicKeyAdd)[i], 2);
+        }
+        SdhciMark("]\n");
+    }
     if (AicSendMessageEx(Host, (UINT16)AIC_MM_KEY_ADD_REQ, (UINT16)AIC_TASK_MM, sAicKeyAdd,
                          (UINT16)Length) != 0) {
         return Result;
@@ -227,6 +245,18 @@ int AicKeyAddPairwise(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex, const UI
  * cipher 用 TKIP —— **组播**是 TKIP（这个 AP 的 RSN 组播套件，真机空口实测），
  * 长度照 KDE（TKIP 是 32 B：16 B 密钥 + 16 B MIC 密钥）。
  */
+/*
+ * 运行时探针：GTK 装法有若干种可能，固件到底认哪种？一次刷机把它做成开关，
+ * 不用每试一种就重刷一次内核（短刀快探）。
+ *   0 = 现状：keyid 取 KDE、pairwise=0、cipher=TKIP、长度取 KDE
+ *   1 = keyid 强制 0（看空口 KeyID 是否跟着我们走）
+ *   2 = pairwise=1（有的固件按这个标志路由到组密钥表）
+ *   3 = cipher 用 CCMP(2)
+ *   4 = 长度截到 16 B（TKIP 只要 TK）
+ *   5 = keyid 强制 1（如果 KDE 的 KeyID 解析差一）
+ */
+UINT32 gAicGtkProbeMode;
+
 int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk) {
     AIC_KEY_ADD_RESULT Result;
 
@@ -236,9 +266,40 @@ int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk) {
         SdhciMark(" out of range (1..32), the KDE did not carry a usable key\n");
         return -1;
     }
-    Result = KeyAddExchange(Host, VifIndex, (UINT8)AIC_KEY_ADD_DEFAULT_STA_INDEX,
-                            (UINT8)AIC_KEY_ADD_NOT_PAIRWISE, Gtk->Key, Gtk->KeyLength,
-                            Gtk->KeyId, (UINT8)AIC_KEY_CIPHER_TKIP);
+    {
+        UINT8 KeyId = Gtk->KeyId;
+        UINT8 StaIndex = (UINT8)AIC_KEY_ADD_DEFAULT_STA_INDEX;
+        UINT8 Pairwise = (UINT8)AIC_KEY_ADD_NOT_PAIRWISE;
+        UINT8 Cipher = (UINT8)AIC_KEY_CIPHER_TKIP;
+        UINT32 Length = Gtk->KeyLength;
+
+        switch (gAicGtkProbeMode) {
+        case 1u: KeyId = 0u; break;
+        case 2u: Pairwise = 1u; break;
+        case 3u: Cipher = (UINT8)AIC_KEY_CIPHER_CCMP; break;
+        case 4u: Length = 16u; break;
+        case 5u: KeyId = 1u; break;
+        default: break;
+        }
+        if (Length > Gtk->KeyLength) {
+            Length = Gtk->KeyLength;
+        }
+        /*
+         * 真机发现：广播帧用 staid=ap_idx 发出去时，固件用**该 sta 的密钥**加密（KeyID 0 = PTK），
+         * AP 直接丢；而 Linux 同类帧是 KeyID 2（GTK）。所以这里把 GTK 也装成"这个 sta 的密钥"
+         * （pairwise=1、sta=ap_idx、key_idx=AP 的 keyid），让广播走 KeyID 2。
+         * 这会让单播也用它，但当前阶段只求 DHCP 能通。
+         */
+        if (gAicGtkProbeMode == 0u) {
+            StaIndex = 0u;
+            Pairwise = 1u;
+        }
+        SdhciMark("WiFi: gtk probe mode=");
+        SdhciMarkDecimal("", gAicGtkProbeMode);
+        SdhciMark(" (keyid/cipher/pairwise/len as above)\n");
+        Result = KeyAddExchange(Host, VifIndex, StaIndex, Pairwise,
+                                Gtk->Key, Length, KeyId, Cipher);
+    }
     SdhciMark("WiFi: key add: gtk sta=");
     SdhciMarkDecimal("", AIC_KEY_ADD_DEFAULT_STA_INDEX);
     SdhciMark(" keyid=");

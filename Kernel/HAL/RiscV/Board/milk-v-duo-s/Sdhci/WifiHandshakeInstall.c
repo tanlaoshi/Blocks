@@ -58,6 +58,10 @@ static const char *HandshakeGtkStatusText(int Status) {
  * 两个参数都交给公共模块：KEK = PTK[16..31]，GroupCipher 用 **RSN 编号** 0x02(TKIP)，
  * 它决定"32 B 的组钥匙要不要再切出一把 16 B 的备选钥匙"。
  */
+/* 探针用：把这次解出来的 GTK 存下来，允许"不重新关联就重装一次组密钥" */
+static WIFI_GTK sAicGtkCopy;
+static UINT32 sAicGtkCopyValid;
+
 static int HandshakeGtkExtract(const AIC_HANDSHAKE_M3 *M3, const UINT8 *Ptk, WIFI_GTK *Gtk) {
     int Status;
 
@@ -152,6 +156,10 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
     gAicEapolKeysInstalled = 1u;
     memset(&Gtk, 0, sizeof(Gtk));
     GtkReady = (HandshakeGtkExtract(M3, Ptk, &Gtk) == 0) ? 1 : 0;
+    if (GtkReady != 0) {
+        sAicGtkCopy = Gtk;
+        sAicGtkCopyValid = 1u;
+    }
     if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
         return -1;
     }
@@ -207,4 +215,16 @@ void AicHandshakeWatchData(SDHCI_HOST *Host) {
     }
     SdhciMark("WiFi: data path is alive (decr != 0 means the firmware decrypted with the key"
               " it got from us) -> next step: DHCP\n");
+}
+
+/*
+ * 探针：用已保存的 GTK 重新装一次组密钥（不需要重新关联）。
+ * 用途：把"GTK 装法"做成运行时变量，一次刷机试多种组合。返回 0 = 固件接受。
+ */
+int AicHandshakeReinstallGtk(SDHCI_HOST *Host, UINT8 VifIndex) {
+    if (sAicGtkCopyValid == 0u) {
+        SdhciMark("WiFi: gtk reinstall: no saved GTK (run join first)\n");
+        return -1;
+    }
+    return AicKeyAddGroup(Host, VifIndex, &sAicGtkCopy);
 }

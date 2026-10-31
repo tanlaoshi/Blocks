@@ -62,6 +62,24 @@
 #define AIC_TX_DESC_STA_INDEX 25u
 /* 厂商"未知 sta"约定：广播/组播帧上不了空口时用它（真机 DHCP DISCOVER 踩过） */
 #define AIC_TX_DESC_STA_INDEX_UNKNOWN 0xFFu
+/* hostdesc.tid 注释："Packet TID (0xFF if not a QoS frame)"；Linux 的 DHCP 广播就是非 QoS */
+#define AIC_TX_TID_NON_QOS 0xFFu
+/* 组播/广播用的 BCMC 站索引基数：厂商 Makefile:199 -DNX_REMOTE_STA_MAX=32，加 vif_idx */
+#define AIC_TX_DESC_BCMC_STA_BASE 32u
+/* 组播 staid 覆盖值：AUTO = 跟随 ApIndex（默认），其它值 = 强制 */
+#define AIC_TX_MCAST_STA_AUTO 0xFFFFFFFFu
+static UINT32 sAicMcastStaOverride = AIC_TX_MCAST_STA_AUTO;
+static UINT32 sAicMcastAcOverride = AIC_TX_MCAST_STA_AUTO;
+static UINT32 sAicMcastTidOverride = AIC_TX_MCAST_STA_AUTO;
+
+void AicWifiSetMcastAc(UINT32 Value) { sAicMcastAcOverride = Value; }
+void AicWifiSetMcastTid(UINT32 Value) { sAicMcastTidOverride = Value; }
+
+void AicWifiSetMcastSta(UINT32 Value) {
+    sAicMcastStaOverride = (Value == AIC_TX_MCAST_STA_AUTO) ? AIC_TX_MCAST_STA_AUTO : Value;
+    SdhciMarkHex("WiFi: probe: multicast staid -> ", Value, 2);
+    SdhciMark("\n");
+}
 #define AIC_TX_DESC_FLAGS 26u
 /*
  * hw queue 编号（rwnx_tx.h:19-22 RWNX_HWQ_BK/BE/VI/VO）。厂商把 txq->hwq->id 直接写进
@@ -142,8 +160,12 @@ static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UIN
     (void)memcpy(Desc + AIC_TX_DESC_ETH_SRC, Source, WIFI_MAC_ADDRESS_LENGTH);
     Desc[AIC_TX_DESC_ETHERTYPE] = (UINT8)(EtherType >> 8);
     Desc[AIC_TX_DESC_ETHERTYPE + 1u] = (UINT8)(EtherType & 0xFFu);
-    Desc[AIC_TX_DESC_AC] = (UINT8)AIC_TX_HWQ_BE;
-    Desc[AIC_TX_DESC_TID] = (UINT8)AIC_TX_TID_BE;
+    Desc[AIC_TX_DESC_AC] = (sAicMcastAcOverride == AIC_TX_MCAST_STA_AUTO)
+                               ? (UINT8)AIC_TX_HWQ_BE
+                               : (UINT8)sAicMcastAcOverride;
+    Desc[AIC_TX_DESC_TID] = (sAicMcastTidOverride == AIC_TX_MCAST_STA_AUTO)
+                                ? (UINT8)AIC_TX_TID_BE
+                                : (UINT8)sAicMcastTidOverride;
     Desc[AIC_TX_DESC_VIF_INDEX] = VifIndex;
     /*
      * staid：厂商在 STA vif 上取 sta.ap 的索引（rwnx_tx.c:315-323），但那是**单播**路径；
@@ -156,8 +178,26 @@ static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UIN
      * （rwnx_tx.c:304-323 的 NL80211_IFTYPE_STATION 分支），不是 0xFF。
      * 之前按"未知 sta"猜成 0xFF，空口抓包显示帧根本没发出去 —— 改回 ap_idx。
      */
-    (void)Destination;
-    Desc[AIC_TX_DESC_STA_INDEX] = ApIndex;
+    /*
+     * 组播/广播：staid 填 0xFF（ipc_shared.h 的 hostdesc 注释："0xFF if station is unknown"）。
+     * 真机证据：DA=ff:ff.. 的帧用 staid=ap_idx 发出去时，空口上是 KeyID 0（pairwise key），
+     * AP 直接丢；Linux 同类帧是 KeyID 2（GTK）。单播仍用 ap_idx。
+     */
+    /*
+     * 广播/组播必须用 **BCMC 站** 的索引：厂商 rwnx_tx.c:511-521 在 ndev_idx 等于
+     * NX_BCMC_TXQ_NDEV_IDX 时取 `sta_idx = NX_REMOTE_STA_MAX + master_vif_idx(vif)`，
+     * 而 Makefile:199 定义 NX_REMOTE_STA_MAX=32（D80）。所以组播 = 32 + vif_idx。
+     * 真机证据：用 ap_idx 发广播时空口是 KeyID 0（PTK 加密），AP 丢；Linux 同类帧 KeyID 2（GTK）。
+     * 单播仍用 ap_idx。
+     */
+    if ((Destination[0] & 0x01u) != 0u) {
+        /* 组播 staid 可由 BLOCKS:probe.cfg 覆盖（文件探针，免重刷） */
+        Desc[AIC_TX_DESC_STA_INDEX] = (sAicMcastStaOverride == AIC_TX_MCAST_STA_AUTO)
+                                           ? ApIndex
+                                           : (UINT8)sAicMcastStaOverride;
+    } else {
+        Desc[AIC_TX_DESC_STA_INDEX] = ApIndex;
+    }
     AicPut16(Desc + AIC_TX_DESC_FLAGS, 0u);
 }
 

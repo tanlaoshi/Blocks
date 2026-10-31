@@ -283,3 +283,8 @@ void AicEapolSetEtherSink(AIC_WIFI_ETHER_SINK Sink);
 extern AIC_WIFI_ETHER_SINK gAicEapolEtherSink;
 
 #endif
+
+/* 文件探针：覆盖组播帧的 txdesc staid（见 WifiDhcp.c 的 probe.cfg 解析） */
+void AicWifiSetMcastSta(UINT32 Value);
+void AicWifiSetMcastAc(UINT32 Value);
+void AicWifiSetMcastTid(UINT32 Value);

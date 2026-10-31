@@ -9,6 +9,7 @@
  *       不碰 SDIO；xid 是"这条应答是不是回给我们的"的唯一判据。只读、可重复执行。
  */
 #include "WifiNetPrivate.h"
+#include "FileSystem.h"
 #include "CString.h"
 
 /* 一次命令的帧缓冲（最大一帧 342 B，512 与 TX 块同档） */
@@ -245,6 +246,49 @@ static int DhcpParseMilliseconds(const char *Text, UINT32 *OutMilliseconds) {
  * 前置：卡已探测（wifiprobe）、join 过且钥匙已装（gAicEapolKeysInstalled）——
  * 没有钥匙时固件不会解密任何数据帧，DHCP 一定收不到应答，这里先说清楚。
  */
+/*
+ * 文件驱动探针：从 BLOCKS:probe.cfg 读一行 `mcast=<n>`，覆盖组播帧的 txdesc staid。
+ * 目的：把"组播用哪个 sta 索引"做成**改文件就换参数**（ksend 写 20 字节 ≈ 2 秒），
+ * 不用每试一个值就重刷内核。取值：-1（或没有该行）= 用 ap_idx；否则用给定值。
+ */
+static void WifiDhcpLoadProbe(void) {
+    char Text[64];
+    UINTN Got = 0;
+    int i;
+
+    if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 || Got == 0u) {
+        return;
+    }
+    Text[Got] = 0;
+    {
+        int k;
+        for (k = 0; (UINTN)k + 3u < Got; k++) {
+            if (Text[k] == 'a' && Text[k + 1] == 'c' && Text[k + 2] == '=') {
+                int v = 0; int j = k + 3;
+                while (Text[j] >= '0' && Text[j] <= '9') { v = v * 10 + (Text[j] - '0'); j++; }
+                AicWifiSetMcastAc((UINT32)v);
+            }
+            if (Text[k] == 't' && Text[k + 1] == 'i' && Text[k + 2] == 'd' && Text[k + 3] == '=') {
+                int v = 0; int j = k + 4;
+                while (Text[j] >= '0' && Text[j] <= '9') { v = v * 10 + (Text[j] - '0'); j++; }
+                AicWifiSetMcastTid((UINT32)v);
+            }
+        }
+    }
+    for (i = 0; (UINTN)i + 6u < Got; i++) {
+        if (Text[i] == 'm' && Text[i + 1] == 'c' && Text[i + 2] == 'a' &&
+            Text[i + 3] == 's' && Text[i + 4] == 't' && Text[i + 5] == '=') {
+            int Value = 0;
+            int Sign = 1;
+            int k = i + 6;
+            if (Text[k] == '-') { Sign = -1; k++; }
+            while (Text[k] >= '0' && Text[k] <= '9') { Value = Value * 10 + (Text[k] - '0'); k++; }
+            AicWifiSetMcastSta((UINT32)(Sign * Value));
+            return;
+        }
+    }
+}
+
 int SdhciWifiDhcp(const char *MsText) {
     SDHCI_HOST *Host;
     UINT8 Station[AIC_NET_MAC_LENGTH];
@@ -279,6 +323,7 @@ int SdhciWifiDhcp(const char *MsText) {
         return -1;
     }
     AicJoinLastIndexes(&VifIndex, &ApIndex);
+    WifiDhcpLoadProbe();
     SdhciMark("WiFi: dhcp: budget=");
     SdhciMarkDecimal("", Budget);
     SdhciMark("ms vif=");

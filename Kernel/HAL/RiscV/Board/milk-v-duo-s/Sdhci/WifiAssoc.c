@@ -15,6 +15,7 @@
  *       字段表见调研文档 §5，sta_idx 已由 AicJoinLastIndexes 留下。
  */
 #include "WifiAssocPrivate.h"
+#include "WifiHandshakePrivate.h"
 #include "CString.h"
 
 /* 320 B 参数 + 1600 B 整帧；UINT32 数组保证 4 B 对齐（镜像里有 UINT32 成员） */
@@ -262,4 +263,18 @@ int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *
         return -1;
     }
     return JoinRun(Host, &Target, Password);
+}
+
+/* 探针入口（给 shell 的 wififw gtk 用）：用已保存的 GTK 重装组密钥，不重新关联。 */
+int SdhciWifiGtkReinstall(void) {
+    SDHCI_HOST *Host = SdhciHostAt(1);
+    UINT8 VifIndex = 0;
+
+    if (Host == 0 || !SdhciWifiReady()) {
+        return -1;
+    }
+    if (AicScanVifEnsure(Host, &VifIndex) != 0) {
+        return -1;
+    }
+    return AicHandshakeReinstallGtk(Host, VifIndex);
 }

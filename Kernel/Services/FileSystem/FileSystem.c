@@ -72,7 +72,7 @@ int FileSystemActivate(int VolIdx) {
 
 /*
  * 解析前缀：
- *   BLOCKS:path / ESP:path / A:path / B:path
+ *   BLOCKS:path / BOOT:path / ESP:path / A:path / B:path
  *   0:path / 1:path（卷下标）
  * 无冒号 → 默认卷，整串为相对路径。
  */
@@ -110,7 +110,9 @@ int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel) {
     Pref[PrefLen] = 0;
 
     Vol = -1;
-    if (PrefLen == 1 && Pref[0] >= '0' && Pref[0] <= '9') {
+    if (StrEqIgnoreCase(Pref, "BOOT")) {
+        Vol = FsFindBootVolume();
+    } else if (PrefLen == 1 && Pref[0] >= '0' && Pref[0] <= '9') {
         Vol = Pref[0] - '0';
     } else if (PrefLen == 1 &&
                ((Pref[0] >= 'A' && Pref[0] <= 'Z') ||

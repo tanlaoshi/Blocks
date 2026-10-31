@@ -41,12 +41,13 @@
 #define KSEND_TEXT_BYTES          192u
 
 /* —— 卡上路径 ——
- * 默认目标仍是 BLOCKS:Kernel.elf（Install.c 写的那个）；`ksend <路径>` 可换。
- * 备份名由目标名派生：同目录、换扩展名成 .BAK、全大写（Kernel.elf → KERNEL.BAK，
- * SNAKE.ELF → SNAKE.BAK），与 v1 的固定 KERNEL.BAK 保持同一形态。 */
+ * 默认目标仍是 BLOCKS:Kernel.elf（Install.c 写的那个）；`ksend <路径>` 可换，
+ * 前缀支持 BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标。
+ * 备份名 = 目标全名追加 .bak（boot.sd → boot.sd.bak），同目录、不换扩展名；
+ * 保留原大小写，FAT 名字比较本来忽略大小写。 */
 #define KSEND_KERNEL_PATH         "BLOCKS:Kernel.elf"
-#define KSEND_PATH_BYTES          64u
-#define KSEND_BACKUP_EXTENSION    ".BAK"
+#define KSEND_PATH_BYTES          96u
+#define KSEND_BACKUP_EXTENSION    ".bak"
 #define KSEND_SELFTEST_PATH       "BLOCKS:KSELFT.BIN"
 #define KSEND_SELFTEST_BYTES      8192u
 /* 自检第二遍的盐：两遍内容必须不同，否则「覆写已有文件」这条路径测不出来 */
@@ -96,7 +97,7 @@ typedef struct {
 /* 一次传输的现场：收块状态机与收尾/回滚两边共用 */
 typedef struct {
     const char *TargetPath; /* 卡上目标（默认 BLOCKS:Kernel.elf） */
-    const char *BackupPath; /* 同目录 <目标主名>.BAK */
+    const char *BackupPath; /* 同目录 <目标全名>.bak */
     UINT32 OldSize;
     UINT32 NewSize;
     UINT32 TrailerCrc;
@@ -104,6 +105,8 @@ typedef struct {
     UINT32 FailBlock;
     UINT32 FailWant;
     UINT32 FailGot;
+    int VolIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
+    int Reboot;   /* 1=成功且校验通过后复位（默认）；0=--no-reboot 留 shell */
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
     int Err;
@@ -130,7 +133,7 @@ typedef struct {
 void KsendNote(const char *Text);
 int KsendInfo(void);
 int KsendSelftest(void);
-int KsendTransfer(const char *TargetPath);
+int KsendTransfer(const char *TargetPath, int Reboot);
 
 /* —— KsendSerial.c —— */
 void KsendSerialWrite(const char *Text);

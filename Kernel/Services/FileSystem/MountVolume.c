@@ -145,6 +145,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     FS_VOLUME *V;
     int Idx;
     int IsEsp;
+    int BootFw = 0;
     UINT32 Start;
     int HasId = 0;
     UINT8 Tmp[64];
@@ -177,6 +178,7 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = IsEsp ? 1 : 0;
     V->HasBlocksId = 0;
+    V->BootFw = 0;
     V->DiskGuidOk = 0;
     V->PartGuidOk = 0;
     V->Ops = FatFsOps();
@@ -209,15 +211,12 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
         V->PartGuidOk = 1;
     }
 
-    if (HasId) {
-        NameBlocksIdVol(V, Drive, Idx, BlocksVol);
-    } else if (IsEsp) {
-        NameEspSlot(V, gVolCount, Idx);
-    } else {
-        /*
-         * MBR Pi bootfs 类型是 0x0C 非 0xEF：IsEsp=0，但根上有 Kernel.elf。
-         * 立刻标 ESP，避免无 BLOCKS.ID 时被 Pick 错名成 BLOCKS。
-         */
+    /*
+     * 启动固件探测（PR-FS-vol）：BLOCKS.ID 卷不参与——BOOT: 只认真正的
+     * boot 分区。结果写入 BootFw，供 FileSystemResolve("BOOT:…") 使用；
+     * 同时保留旧行为：非 ESP 的 FAT 若只有这些文件也算 ESP/只读。
+     */
+    if (!HasId) {
         UINTN ProbeSz;
         if (gVirtualFileSystem.ReadFile("boot.scr", Tmp, sizeof(Tmp), &ProbeSz) ==
                 FAT_OK ||
@@ -229,9 +228,22 @@ void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol) {
                 FAT_OK ||
             gVirtualFileSystem.ReadFile("boot.sd", Tmp, sizeof(Tmp), &ProbeSz) ==
                 FAT_OK) {
-            NameEspSlot(V, gVolCount, Idx);
-            LogFs("FS: Named ESP by boot firmware files\n");
+            BootFw = 1;
         }
+    }
+    V->BootFw = BootFw;
+
+    if (HasId) {
+        NameBlocksIdVol(V, Drive, Idx, BlocksVol);
+    } else if (IsEsp) {
+        NameEspSlot(V, gVolCount, Idx);
+    } else if (BootFw) {
+        /*
+         * MBR Pi bootfs 类型是 0x0C 非 0xEF：IsEsp=0，但根上有 Kernel.elf。
+         * 立刻标 ESP，避免无 BLOCKS.ID 时被 Pick 错名成 BLOCKS。
+         */
+        NameEspSlot(V, gVolCount, Idx);
+        LogFs("FS: Named ESP by boot firmware files\n");
     }
 
     if (Idx == gVolCount) {
@@ -267,6 +279,7 @@ void FsMountAddResVolume(void) {
     V->Letter = (char)('A' + Idx);
     V->ReadOnly = 1;
     V->HasBlocksId = 0;
+    V->BootFw = 0;
     V->DiskGuidOk = 0;
     V->PartGuidOk = 0;
     V->Ops = ResourceFileSystemOps();

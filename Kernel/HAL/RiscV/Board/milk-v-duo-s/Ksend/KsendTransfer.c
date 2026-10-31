@@ -2,15 +2,17 @@
  * KsendTransfer.c — ksend 协议主循环（READY → 收块 → 收尾 → 校验 → OK/FAIL）
  *
  * 顺序固定，不能换：
- *   1. 先备份并校验 <目标>.BAK（旧块 CRC 顺手在复制时算出来）；
+ *   1. 先备份并校验 <目标>.bak（旧块 CRC 顺手在复制时算出来）；
  *   2. 才发 READY + 旧块 CRC 表（PC 据此只发不同的块）；
  *   3. PC 每块等 'A'；'N' 就重发同一块（PC 侧最多 3 次）；
  *   4. 收尾帧带新文件整体 CRC；文件变小要补零（FAT 无 truncate）；
- *   5. flush → 逐块读回比对 → 最后才 KSEND OK 并复位。
- * 校验不过绝不复位：先把 BAK 写回去（KSEND RESTORED）再回 shell。
+ *   5. flush → 逐块读回比对 → 最后才 KSEND OK 并（默认）复位。
+ * 校验不过绝不复位：先把 .bak 写回去（KSEND RESTORED）再回 shell。
  *
  * v2：目标不再固定 Kernel.elf —— `ksend <路径>` 传什么写什么，备份名由目标
- * 派生（Kernel.elf → KERNEL.BAK，SNAKE.ELF → SNAKE.BAK）；不传仍是 Kernel.elf。
+ * 全名追加 .bak（Kernel.elf → Kernel.elf.bak，boot.sd → boot.sd.bak）。
+ * v3：BOOT: 前缀写启动分区；写前 SelectVolume 选中目标卷（boot 分区默认只读），
+ * 成功/失败都在返回前归还选择；--no-reboot 时校验通过后留在 shell。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -29,6 +31,8 @@ static void RunReset(KSEND_RUN *Run) {
     Run->FailBlock = 0;
     Run->FailWant = 0;
     Run->FailGot = 0;
+    Run->VolIndex = -1;
+    Run->Reboot = 1;
     Run->Dirty = 0;
     Run->Failure = KSEND_FAIL_NONE;
     Run->Err = FAT_OK;
@@ -47,7 +51,7 @@ static const char *PathNameStart(const char *Path) {
     return Start;
 }
 
-/* 原样拷贝，同时挡住空名/超长（板端缓冲 KSEND_PATH_BYTES，PC 侧按 63 字符校验） */
+/* 原样拷贝，同时挡住空名/超长（板端缓冲 KSEND_PATH_BYTES） */
 static int PathCopy(const char *Source, char *Destination) {
     UINT32 Index = 0;
 
@@ -69,43 +73,22 @@ static int PathCopy(const char *Source, char *Destination) {
 }
 
 /*
- * <目标主名>.BAK：同卷同目录、最后一个 '.' 之后换成 .BAK、主名转大写。
- * Kernel.elf → KERNEL.BAK（与 v1 同名），SNAKE.ELF → SNAKE.BAK。
- * 大写是为了守住原 v1 的 8.3 形态；FAT 名字比较本来就忽略大小写。
+ * 目标全名 + .bak：boot.sd → boot.sd.bak，Kernel.elf → Kernel.elf.bak。
+ * 同卷同目录、保留原大小写；FAT 名字比较本来就忽略大小写。
  */
 static int BackupPathBuild(const char *Target, char *Backup) {
-    const char *Name = PathNameStart(Target);
-    const char *Dot = 0;
     const char *Walk;
     UINT32 Index = 0;
 
-    for (Walk = Name; *Walk != 0; Walk++) {
-        if (*Walk == '.') {
-            Dot = Walk;
-        }
-    }
-    if (Dot == Name) { /* ".hidden" 之类：没有主名 */
+    if (Target == 0 || Target[0] == 0) {
         return FAT_ERR_INVAL;
     }
-    while (Target + Index < Name) { /* 卷名 + 目录原样保留 */
+    while (Target[Index] != 0) {
         if (Index + 1u >= KSEND_PATH_BYTES) {
             return FAT_ERR_INVAL;
         }
         Backup[Index] = Target[Index];
         Index++;
-    }
-    Walk = Name;
-    while (*Walk != 0 && (Dot == 0 || Walk < Dot)) {
-        char Character = *Walk;
-
-        if (Character >= 'a' && Character <= 'z') {
-            Character = (char)(Character - 'a' + 'A');
-        }
-        if (Index + 1u >= KSEND_PATH_BYTES) {
-            return FAT_ERR_INVAL;
-        }
-        Backup[Index++] = Character;
-        Walk++;
     }
     for (Walk = KSEND_BACKUP_EXTENSION; *Walk != 0; Walk++) {
         if (Index + 1u >= KSEND_PATH_BYTES) {
@@ -117,7 +100,36 @@ static int BackupPathBuild(const char *Target, char *Backup) {
     return FAT_OK;
 }
 
-/* 选定本次的目标/备份路径；不合法的名字在写卡前就挡下（不碰卡） */
+/*
+ * 选中目标卷再写（PR-FS-vol）：boot 分区挂载时被策略标成只读，
+ * FileSystemSelectVolume() 是唯一放行入口。选卷是进程级全局状态，
+ * Ksend 只在 shell 单线程里跑；返回前 VolumeRelease() 归还。
+ */
+static int VolumePrepare(const char *Target, KSEND_RUN *Run) {
+    const char *Rel = 0;
+    int Vol = -1;
+    int Err = FileSystemResolve(Target, &Vol, &Rel);
+
+    (void)Rel;
+    if (Err != FAT_OK) {
+        return Err;
+    }
+    Err = FileSystemSelectVolume(Vol);
+    if (Err != FAT_OK) {
+        return Err;
+    }
+    Run->VolIndex = Vol;
+    return FAT_OK;
+}
+
+static void VolumeRelease(KSEND_RUN *Run) {
+    if (Run->VolIndex >= 0) {
+        (void)FileSystemSelectVolume(-1);
+        Run->VolIndex = -1;
+    }
+}
+
+/* 选定本次的目标/备份路径并选卷；不合法/卷不存在都在写卡前挡下 */
 static int PathsPrepare(const char *Requested, KSEND_RUN *Run) {
     const char *Target = Requested;
 
@@ -132,7 +144,7 @@ static int PathsPrepare(const char *Requested, KSEND_RUN *Run) {
     }
     Run->TargetPath = sKsendTargetPath;
     Run->BackupPath = sKsendBackupPath;
-    return FAT_OK;
+    return VolumePrepare(sKsendTargetPath, Run);
 }
 
 static void NotePaths(const KSEND_RUN *Run) {
@@ -281,14 +293,17 @@ static void RollBack(const KSEND_RUN *Run) {
     }
 }
 
-int KsendTransfer(const char *TargetPath) {
+int KsendTransfer(const char *TargetPath, int Reboot) {
     KSEND_RUN Run;
     int Rc;
+    int Err;
 
     RunReset(&Run);
-    if (PathsPrepare(TargetPath, &Run) != FAT_OK) {
+    Run.Reboot = Reboot ? 1 : 0;
+    Err = PathsPrepare(TargetPath, &Run);
+    if (Err != FAT_OK) {
         Run.Failure = KSEND_FAIL_STAT;
-        Run.Err = FAT_ERR_INVAL;
+        Run.Err = Err;
         KsendFailLine(Run.Failure, Run.FailBlock, Run.FailWant, Run.FailGot,
                       Run.Err);
         return 1;
@@ -297,7 +312,12 @@ int KsendTransfer(const char *TargetPath) {
     KsendSerialDrainInput(KSEND_DRAIN_QUIET_MS, KSEND_DRAIN_LIMIT_MS);
     Rc = TransferRun(&Run);
     if (Rc == 0) {
+        /* 校验已过；先归还维护卷，再打成功行，别把可写窗口拖到串口之后 */
+        VolumeRelease(&Run);
         KsendOkLine(Run.TrailerCrc, Run.Written, Run.NewSize);
+        if (Run.Reboot == 0) {
+            return 0; /* deploy.sh：复位留给操作者 */
+        }
         /* 复位前必须等发送器真的空了，否则 KSEND OK 可能被截断 */
         KsendSerialDrainTransmitter();
         KsendReboot();
@@ -309,7 +329,9 @@ int KsendTransfer(const char *TargetPath) {
         KsendFailLine(Run.Failure, Run.FailBlock, Run.FailWant, Run.FailGot,
                       Run.Err);
     }
+    /* 回滚要用选中的卷（boot 分区只读），必须排在 VolumeRelease 之前 */
     RollBack(&Run);
+    VolumeRelease(&Run);
     /* 失败后 PC 可能还在发 abort/重发块：吃掉，别让它漏进 shell 行 */
     KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MS, KSEND_FAIL_DRAIN_LIMIT_MS);
     return 1;

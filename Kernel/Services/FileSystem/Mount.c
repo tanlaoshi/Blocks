@@ -27,6 +27,8 @@ int MountAllVolumes(void) {
 
     gVolCount = 0;
     gDefaultVol = 0;
+    /* 卷下标会重排：先归还维护卷选择，避免旧下标指到新卷 */
+    (void)FileSystemSelectVolume(-1);
     gActiveVol = -1;
     gActiveOps = 0;
     gActiveDrive = 0xFFFFFFFFu;

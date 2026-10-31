@@ -23,12 +23,15 @@ int KsendInfo(void);
 int KsendSelftest(void);
 
 /*
- * 完整传输：备份 → 发块表 → 收差量块 → flush → 读回校验 → 重启。
+ * 完整传输：备份 → 发块表 → 收差量块 → flush → 读回校验 →（可选）重启。
  * TargetPath = 0/空串 → 默认 BLOCKS:Kernel.elf；否则写该路径（可带卷名，
- * 也可写裸文件名走默认卷）。备份名 = 同目录 <目标主名>.BAK。
- * 成功时打印 KSEND OK 并复位（不返回）；失败时打印 KSEND FAIL，必要时用
- * 备份恢复，绝不重启。返回 0 成功、1 失败。
+ * 也可写裸文件名走默认卷）。前缀 BLOCKS:/BOOT:/ESP:/卷字母/卷下标都可用；
+ * BOOT: 指向挂载时探到 boot.sd 的启动分区。
+ * 备份名 = 目标全名追加 .bak（boot.sd → boot.sd.bak），写前先落盘并读回校验。
+ * Reboot=1 时校验通过才打印 KSEND OK 并复位（不返回）；Reboot=0 打印 OK 后
+ * 返回 shell，复位留给操作者（deploy.sh 用）。失败时打印 KSEND FAIL，必要时
+ * 用备份恢复，绝不重启。返回 0 成功、1 失败。
  */
-int KsendTransfer(const char *TargetPath);
+int KsendTransfer(const char *TargetPath, int Reboot);
 
 #endif /* KSEND_H */

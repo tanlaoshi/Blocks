@@ -59,6 +59,18 @@ int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel);
 /* 切换 Block + FatInitialize 到指定卷；成功 FAT_OK */
 int FileSystemActivate(int VolIdx);
 
+/*
+ * 按卷选择（PR-FS-vol）：把 Idx 设为当前维护卷并激活；Idx<0 归还选择。
+ * 进程级全局状态（gSelectedVol），非线程安全：调用方负责串行，只允许从
+ * 单线程上下文（shell / ksend）调用，用完必须 SelectVolume(-1)。
+ *
+ * 选中期间该卷可写：挂载策略把 boot/ESP 标成只读时，写/删/建目录仍放行，
+ * ksend 靠它写 boot.sd。它不改变默认卷，也不改变无前缀路径的解析——
+ * 默认卷仍是 BLOCKS；显式前缀（BLOCKS: / BOOT: / A: / 1:）照旧。
+ * 卷表在 SelectVolume(-1) 后不变，只读标志也从未被改写。
+ */
+int FileSystemSelectVolume(int VolIdx);
+
 /* 带前缀的路径操作（内部 Resolve+Activate+VirtualFileSystem*；写操作拒只读卷） */
 int FileSystemListDirectory(const char *Path);
 /* PR-FB1：结构化目录枚举（供文件浏览器） */

@@ -11,6 +11,7 @@
  * 读写全走 FileSystem.h 公开 API，每个调用自带 FS 锁（PR-F5）。
  */
 #include "FileSystem.h"
+#include "FileSystemPrivate.h"
 #include "Console.h"
 
 #define FS_SELFTEST_PATH "BLOCKS:FSELFT.BIN"
@@ -280,5 +281,9 @@ int FileSystemWriteSelfTest(void) {
         return Err;
     }
     PrintOk(&Result);
-    return FAT_OK;
+    /*
+     * 多卷时顺手验「按卷选择 + 写非默认卷」（PR-FS-vol）。单卷/无安全候选
+     * 直接返回 0，输出与旧版一致；默认卷那一遍的判据始终在上面。
+     */
+    return FsWriteSelfTestSecondVolume();
 }

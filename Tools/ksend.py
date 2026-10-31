@@ -2,7 +2,9 @@
 """ksend.py — 把任意文件增量写进 Duo S 的 SD 卡，然后让板子重启。
 
 默认目标仍是 BLOCKS:Kernel.elf；`--path` 可以把同一个协议指向别的文件
-（板端对应 `ksend <路径>`，不给路径就是 Kernel.elf）。
+（板端对应 `ksend <路径>`，不给路径就是 Kernel.elf）。目标前缀支持
+BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的文件，
+例如 `--path BOOT:boot.sd`。板端写非默认卷前会按卷选择（boot 默认只读）。
 
 协议（与板包 Ksend/ 同源；线上小端）：
     PC  -> DUO  "ksend\\n" 或 "ksend <目标路径>\\n"（路径走板端 shell 参数）
@@ -13,6 +15,7 @@
     PC  -> DUO  收尾：u32 magic, u32 0xFFFFFFFF, u32 0, u32 新文件整体 CRC32
     DUO -> PC   "KSEND OK crc=.. written=.. size=.."（随后复位）
                 或 "KSEND FAIL ..."（不复位；必要时 "KSEND RESTORED"）
+    --no-reboot 时板端在 KSEND OK 后留在 shell，复位交给操作者。
 
 两个实现约定（板子侧同样写死，改这里必须同步改板包）：
   * CRC 用 CRC-32/ISO-HDLC，即 Python zlib.crc32；
@@ -23,6 +26,7 @@
 命令：
     python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
     python3 Tools/ksend.py --port /dev/ttyUSB0 --file SNAKE.ELF --path BLOCKS:SNAKE.ELF
+    python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd
     python3 Tools/ksend.py --port /dev/ttyUSB0 --info
     python3 Tools/ksend.py --port /dev/ttyUSB0 --selftest
     python3 Tools/ksend.py --port /dev/ttyUSB0 --dry-run
@@ -48,8 +52,12 @@ ACK_WRITTEN = b"A"
 ACK_RETRY = b"N"
 RETRY_MAX = 3
 FAT_WRITE_MAX = 8 * 1024 * 1024
-# 板端 Ksend/Private.h 的 KSEND_PATH_BYTES 是 64（含结尾 0）；命令行还会带卷名
-TARGET_PATH_MAX = 63
+# 板端 Ksend/Private.h 的 KSEND_PATH_BYTES 是 96（含结尾 0）。目标路径和
+# 「目标全名 + .bak」都要放得下：备份名再长也要 <= 95 字符。
+BOARD_PATH_BYTES = 96
+BACKUP_SUFFIX = ".bak"
+BACKUP_PATH_MAX = BOARD_PATH_BYTES - 1
+TARGET_PATH_MAX = BACKUP_PATH_MAX - len(BACKUP_SUFFIX)
 # 板端 shell 按空格切参数：只放可打印 ASCII（0x21..0x7E）
 PATH_CHAR_MIN = 0x21
 PATH_CHAR_MAX = 0x7E
@@ -269,15 +277,14 @@ def check_target_path(path):
     for char in path:
         if ord(char) < PATH_CHAR_MIN or ord(char) > PATH_CHAR_MAX:
             raise LocalError("--path %r has a space/control/non-ASCII byte" % path)
-    if path.endswith(":"):
-        raise LocalError("--path %r has no file name" % path)
-    # 板端备份名 = 同目录 <主名>.BAK（主名换扩展名，长度不缩短）
     name = path.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
-    stem = name.rsplit(".", 1)[0] if "." in name else name
-    backup_length = len(path) - len(name) + len(stem) + len(".BAK")
-    if backup_length > TARGET_PATH_MAX:
-        raise LocalError("--path %r: its .BAK name is %d chars, board limit is %d"
-                         % (path, backup_length, TARGET_PATH_MAX))
+    if not name:
+        raise LocalError("--path %r has no file name" % path)
+    # 板端备份名 = 目标全名追加 .bak（不换扩展名）
+    backup_length = len(path) + len(BACKUP_SUFFIX)
+    if backup_length > BACKUP_PATH_MAX:
+        raise LocalError("--path %r: its %s name is %d chars, board limit is %d"
+                         % (path, BACKUP_SUFFIX, backup_length, BACKUP_PATH_MAX))
     return path
 
 
@@ -401,6 +408,18 @@ def print_plan(plan, data, local_crcs, board_crcs, board_size):
         print("  ... %d more" % (len(plan) - 40))
 
 
+def board_command(target, no_reboot):
+    """板端命令行；默认目标 + 默认复位时保持旧字节 'ksend\\n'。"""
+    if target == DEFAULT_TARGET_PATH and not no_reboot:
+        return b"ksend\n"
+    command = "ksend"
+    if no_reboot:
+        command += " --no-reboot"
+    if target != DEFAULT_TARGET_PATH:
+        command += " " + target
+    return (command + "\n").encode("ascii")
+
+
 def command_transfer(args, dry_run):
     file_path = resolve_file(args.file)
     target = check_target_path(args.path or DEFAULT_TARGET_PATH)
@@ -415,9 +434,8 @@ def command_transfer(args, dry_run):
     port = SerialPort(args.port, args.baud)
     try:
         log("port: %s %d 8N1" % (args.port, args.baud))
-        # 默认路径仍发裸 "ksend"（与旧版字节一致）；换目标时把路径当板端 shell 参数。
-        trigger = (b"ksend\n" if target == DEFAULT_TARGET_PATH
-                   else ("ksend %s\n" % target).encode("ascii"))
+        # 默认路径仍发裸 "ksend"（与旧版字节一致）；换目标/加 --no-reboot 才带参数。
+        trigger = board_command(target, args.no_reboot)
         port.write_all(trigger, 10.0)
         # 备份失败时板子会在 READY 之前就回 FAIL，别干等 ready-timeout
         line, text = wait_for_line(port, [b"KSEND READY ", b"KSEND FAIL"],
@@ -536,6 +554,8 @@ def build_parser():
                         help="run the board's 8 KB file-system write self test")
     parser.add_argument("--dry-run", action="store_true",
                         help="handshake and print the diff, then abort without writing")
+    parser.add_argument("--no-reboot", action="store_true",
+                        help="leave the board in its shell after KSEND OK (no reset)")
     parser.add_argument("--ready-timeout", type=float, default=180.0,
                         help="seconds to wait for KSEND READY (backup+CRC happens first)")
     parser.add_argument("--ack-timeout", type=float, default=30.0,
@@ -551,6 +571,9 @@ def main(argv):
     args = build_parser().parse_args(argv)
     if sum(1 for flag in (args.info, args.selftest, args.dry_run) if flag) > 1:
         log("--info / --selftest / --dry-run are mutually exclusive")
+        return EXIT_LOCAL
+    if args.no_reboot and (args.info or args.selftest):
+        log("--no-reboot only applies to a transfer")
         return EXIT_LOCAL
     # --info 不带 --file 时只查板子，不和本地文件比
     try:

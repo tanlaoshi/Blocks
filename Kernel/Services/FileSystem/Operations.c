@@ -18,7 +18,7 @@ static int FileSystemPreparePath(const char *Path, const char **RelOut, int Need
     if (Err != FAT_OK) {
         return Err;
     }
-    if (NeedWrite && gVols[Vol].ReadOnly) {
+    if (NeedWrite && gVols[Vol].ReadOnly && !FsVolumeIsSelected(Vol)) {
         return FAT_ERR_ROFS;
     }
     Err = FileSystemActivate(Vol);

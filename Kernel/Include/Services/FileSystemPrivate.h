@@ -18,6 +18,8 @@ typedef struct {
     char   Letter;                /* 'A'+index，便于 A: 访问 */
     int    ReadOnly;
     int    HasBlocksId;
+    int    BootFw;                /* 挂载时探测到 boot.sd/boot.scr/fip.bin… */
+                                  /* BOOT: 别名指向它（见 FileSystemResolve） */
     UINT8  DiskGuid[16];          /* 所在盘 GPT DiskGUID；DiskGuidOk=0 则无 */
     int    DiskGuidOk;
     UINT8  PartGuid[16];          /* GPT 分区 Unique GUID */
@@ -79,5 +81,12 @@ static inline int StrEqIgnoreCase(const char *A, const char *B) {
 /* 串行化 FS 操作：FAT 层用全局「当前卷」指针 + 卷内缓冲，必须互斥（PR-F5）。 */
 void FileSystemLock(void);
 void FileSystemUnlock(void);
+
+/* PR-FS-vol：当前是否被 FileSystemSelectVolume 选中（可越过策略只读）。 */
+int FsVolumeIsSelected(int Idx);
+/* BOOT: 别名指向的卷下标；-1 = 没探到启动固件 */
+int FsFindBootVolume(void);
+/* `fs selftest` 末尾的第二卷写路径；<0 卷或无安全候选 → 0（不打印）。 */
+int FsWriteSelfTestSecondVolume(void);
 
 #endif

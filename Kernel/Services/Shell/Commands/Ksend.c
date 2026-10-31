@@ -1,5 +1,5 @@
 /*
- * Ksend.c — 壳 `ksend [info|selftest|<目标路径>]`：串口增量写卡（Duo S 开发期工具）
+ * Ksend.c — 壳 `ksend [--no-reboot] [info|selftest|<目标路径>]`：串口增量写卡
  *
  * 实现全在板包里（Kernel/HAL/RiscV/Board/milk-v-duo-s/Ksend/）。这里只做分发，
  * 用弱引用（与 Wifi.c 的 wifiprobe 同法）：
@@ -8,6 +8,8 @@
  * 这样加一个命令不必为它动 HAL 头。
  *
  * v2：第二参数是卡上目标路径（PC 侧 --path 也走这条命令）；不给仍是 Kernel.elf。
+ * v3：可选 --no-reboot（放在最前）→ 校验通过后留 shell，deploy.sh 用；
+ *     目标可写 BOOT:boot.sd（板端 FileSystem 按卷选择后放行写启动分区）。
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -15,7 +17,8 @@
 #if defined(__riscv)
 extern int KsendInfo(void) __attribute__((weak));
 extern int KsendSelftest(void) __attribute__((weak));
-extern int KsendTransfer(const char *TargetPath) __attribute__((weak));
+extern int KsendTransfer(const char *TargetPath, int Reboot)
+    __attribute__((weak));
 
 /* 子命令大小写不敏感（壳本身对一级命令就不敏感），参数不便宜 */
 static int KsendArgumentIs(const char *Argument, const char *Word) {
@@ -44,27 +47,34 @@ static int KsendArgumentIs(const char *Argument, const char *Word) {
 
 static void CommandKsend(int Argc, char **Argv) {
 #if defined(__riscv)
+    int Index = 1;
+    int Reboot = 1;
+
     if (KsendInfo == 0 || KsendSelftest == 0 || KsendTransfer == 0) {
         gConsole.Write("ksend: not built for this board\n");
         return;
     }
-    if (Argc >= 2) {
-        if (KsendArgumentIs(Argv[1], "info")) {
+    if (Index < Argc && KsendArgumentIs(Argv[Index], "--no-reboot")) {
+        Reboot = 0;
+        Index++;
+    }
+    if (Index < Argc) {
+        if (KsendArgumentIs(Argv[Index], "info")) {
             (void)KsendInfo();
             return;
         }
-        if (KsendArgumentIs(Argv[1], "selftest")) {
+        if (KsendArgumentIs(Argv[Index], "selftest")) {
             (void)KsendSelftest();
             return;
         }
-        if (Argc == 2) {
-            (void)KsendTransfer(Argv[1]);
+        if (Index + 1 == Argc) {
+            (void)KsendTransfer(Argv[Index], Reboot);
             return;
         }
-        gConsole.Write("usage: ksend [info|selftest|<target path>]\n");
+        gConsole.Write("usage: ksend [--no-reboot] [info|selftest|<target path>]\n");
         return;
     }
-    (void)KsendTransfer(0);
+    (void)KsendTransfer(0, Reboot);
 #else
     (void)Argc;
     (void)Argv;
@@ -73,7 +83,8 @@ static void CommandKsend(int Argc, char **Argv) {
 }
 
 void ShellCommandsKsendRegister(void) {
-    gConsole.Register("ksend",
-                      "ksend [info|selftest|<target path>] — incremental file over serial (Duo S)",
-                      CommandKsend);
+    gConsole.Register(
+        "ksend",
+        "ksend [--no-reboot] [info|selftest|<target path>] — serial file (Duo S)",
+        CommandKsend);
 }

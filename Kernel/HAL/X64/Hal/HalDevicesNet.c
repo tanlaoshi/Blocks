@@ -46,6 +46,9 @@ void HalNetGetMacAddress(UINT8 Mac[6]) {
     DriverNetGetMac(Mac);
 }
 
+void HalNetFeedAlternateReceive(void) {
+}
+
 UINT32 HalNetGetIpAddress(void) {
     return DriverNetGetIp();
 }

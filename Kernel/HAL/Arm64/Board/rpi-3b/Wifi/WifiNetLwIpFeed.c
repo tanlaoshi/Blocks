@@ -1,9 +1,10 @@
 /*
- * WifiNetLwIpFeed.c — pi-wifi-7c2：WiFi DATA 以太网 → LwIpNetifInput
- * 对表 SMSC Frame.c（gSmscLwIpReceive 时入栈）。本刀只喂 RX，不改 linkoutput/主网卡。
- * 注释：短路径、无 IrqSave 长持；勿在此 Present/整屏刷新。
+ * WifiNetLwIpFeed.c — pi-wifi-7c2/7d：WiFi DATA 以太网 → LwIpNetifInput
+ * 对表 SMSC Frame.c。武装后 HalNetFeedAlternateReceive 每拍短喂。
+ * 短路径、无 IrqSave 长持；勿在此 Present/整屏刷新。
  */
 #include "Wifi/Private.h"
+#include "Wifi.h"
 #ifdef LWIP_ENABLE
 #include "Netif.h"
 #endif
@@ -29,4 +30,36 @@ void WifiNetFeedEthernetToLwIp(const UINT8 *Frame, UINT32 FrameBytes) {
     (void)Frame;
     (void)FrameBytes;
 #endif
+}
+
+void BoardWifiPollFeedLwIp(UINT32 MaxPackets) {
+    UINT32 Fed;
+
+    if (!BoardWifiLinkOutputIsArmed() || MaxPackets == 0u) {
+        return;
+    }
+    for (Fed = 0; Fed < MaxPackets; Fed++) {
+        UINT8 Channel = 0;
+        UINT32 Offset = 0;
+        UINT32 Length = 0;
+        int Poll;
+        const UINT8 *Bdc;
+        UINT32 BdcSkip;
+        UINT32 PayloadBytes;
+
+        Poll = WifiPollOnePacket(&Channel, &Offset, &Length);
+        if (Poll != 0) {
+            return;
+        }
+        if (Channel != WIFI_SDPCM_DATA_CHANNEL || Length <= Offset + 4u) {
+            continue;
+        }
+        Bdc = gWifiSdpcmPacket + Offset;
+        BdcSkip = 4u + ((UINT32)Bdc[3] << 2);
+        if (Offset + BdcSkip + 14u > Length) {
+            continue;
+        }
+        PayloadBytes = Length - (Offset + BdcSkip);
+        WifiNetFeedEthernetToLwIp(gWifiSdpcmPacket + Offset + BdcSkip, PayloadBytes);
+    }
 }

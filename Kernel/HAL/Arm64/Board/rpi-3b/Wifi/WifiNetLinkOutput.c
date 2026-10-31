@@ -1,17 +1,16 @@
 /*
- * WifiNetLinkOutput.c — pi-wifi-7c3：lwIP linkoutput → SDPCM DATA
+ * WifiNetLinkOutput.c — pi-wifi-7c3/7d：lwIP linkoutput → SDPCM DATA
  * 武装后 BoardWifiTryLinkOutput 优先于 SMSC；未武装返回 -1（走有线）。
  * 短路径、无长 IrqSave；勿在此 Present。
  *
- * 0x15b 否证：Claim/Scan 在 NetworkInitialize，早于 LwIpInitialize；
- * dhcp_start 要求 netif_is_up → ERR_ARG → net-lwip-out-arm-fail。
- * 0x15c：Kick 前对表 Dhcp.c 先 LwIpInitialize。
+ * 0x15b 否证：Claim 早于 LwIpInitialize → dhcp_start ERR_ARG。
+ * 0x15c：Kick 前 LwIpInitialize。
+ * 0x15d：Kick 走 LwIpDhcpRestart（SyncMac 用站点 MAC）；F2 喂在 Feed 拍。
  */
 #include "Wifi/Private.h"
 #ifdef LWIP_ENABLE
 #include "Netif.h"
 #include "Services/LwIp.h"
-#include "lwip/dhcp.h"
 #include "lwip/netif.h"
 #endif
 
@@ -33,6 +32,21 @@ void BoardWifiArmNetifLinkOutput(const UINT8 StationMac[6]) {
     }
     gWifiNetLinkOutputMacOk = 1;
     gWifiNetLinkOutputArmed = 1;
+}
+
+int BoardWifiLinkOutputIsArmed(void) {
+    return gWifiNetLinkOutputArmed ? 1 : 0;
+}
+
+int BoardWifiCopyStationMacIfArmed(UINT8 Mac[6]) {
+    UINT32 Index;
+    if (!gWifiNetLinkOutputArmed || !gWifiNetLinkOutputMacOk || Mac == 0) {
+        return -1;
+    }
+    for (Index = 0; Index < 6u; Index++) {
+        Mac[Index] = gWifiNetLinkOutputMac[Index];
+    }
+    return 0;
 }
 
 UINT32 BoardWifiNetifLinkOutputCount(void) {
@@ -61,7 +75,6 @@ int BoardWifiKickDhcpDiscoverViaNetif(void) {
     if (!gWifiNetLinkOutputArmed || !gWifiNetLinkOutputMacOk) {
         return -1;
     }
-    /* 对表 Services/Net/LwIp/Dhcp.c：Join 探针可能早于 epoch 的 LwIpInitialize */
     if (!LwIpActive() && LwIpInitialize() != 0) {
         return -2;
     }
@@ -72,8 +85,8 @@ int BoardWifiKickDhcpDiscoverViaNetif(void) {
     for (Index = 0; Index < 6u; Index++) {
         Netif->hwaddr[Index] = gWifiNetLinkOutputMac[Index];
     }
-    LwIpDhcpStop();
-    if (dhcp_start(Netif) != ERR_OK) {
+    /* 对表 Dhcp.c：Enqueue→SyncMac（HalNetGetMac=站点）+ dhcp_start；Worker/探针可 Step */
+    if (LwIpDhcpRestart(12000) != 0) {
         return -3;
     }
     return 0;

@@ -688,6 +688,7 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 11 | `0x15a` | 改发 **DHCP Discover**（UDP 68→67）引帧上 DATA | **✅ 绿：`net-lwip-in-ok`** | CH：`lwip_in=3` `data_pkts=3` `first_etype=2054`（ARP）`transmit_ok=1`。**7c2 判据达成**；ARP 刀否、DHCP 引出 DATA |
 | 12 | `0x15b` | 武装 linkoutput + `dhcp_start` 眼 netif→SDPCM | **红：`net-lwip-out-arm-fail`** | CH：`lwip_in=3` `lwip_out=0` `join-ok`。Claim/Scan 在 `NetworkInitialize`，**早于** `LwIpInitialize`；`dhcp_start` 要 `netif_is_up` → ERR_ARG。**勿再 Kick 而不先起 lwIP** |
 | 13 | `0x15c` | Kick 前 `LwIpInitialize`（对表 Dhcp.c） | **✅ 绿：`net-lwip-out-ok`** | CH：`lwip_out=1` `lwip_in=3` `join-ok`。**7c3 判据达成**；RUNTIME 仍 `dhcp: no offer`（属 7d） |
+| 14 | `0x15d` | 站点 MAC + F2 短喂 + `LwIpDhcpRestart` 等租约 | **✅ 绿：`net-dhcp-ok`** | CH：`dhcp_ip=3232243528`（`192.168.31.72`）`lwip_out=3` `lwip_in=6`。**7d 判据达成**；RUNTIME 另有 epoch `dhcp: no offer`（后拍，非本刀否证） |
 
 ### 已否证（勿再试）
 

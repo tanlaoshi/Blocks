@@ -1,13 +1,14 @@
 /*
- * WifiNetProbe.c — pi-wifi-7：DATA↔lwIP 眼睛（0x15c）
- * 7c2：DHCP Discover 引 DATA→LwIpNetifInput。
- * 7c3：武装 netif linkoutput→SDPCM；Kick 前先 LwIpInitialize。
+ * WifiNetProbe.c — pi-wifi-7：DATA↔lwIP 眼睛（0x15d）
+ * 7c2/7c3：RX/TX；7d：Kick 后 WifiNetWaitDhcpLease。
  */
 #include "Wifi/Private.h"
 #include "Wifi.h"
 #ifdef LWIP_ENABLE
 #include "Services/LwIp.h"
 #endif
+
+static UINT32 gWifiNetDhcpIp;
 
 #define WIFI_NET_PROBE_ATTEMPTS         800u
 #define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 2000u
@@ -36,7 +37,8 @@ static void WifiNetPersist(const char *Status) {
                          gWifiNetPollErrorCount, gWifiNetFirstEtherType,
                          gWifiNetArpTargetAddress, gWifiNetTransmitOk,
                          gWifiNetArpReplyCount, WifiNetLwIpInputCount(),
-                         BoardWifiNetifLinkOutputCount(), gWifiNetArpOffloadCleared);
+                         BoardWifiNetifLinkOutputCount(), gWifiNetArpOffloadCleared,
+                         gWifiNetDhcpIp);
 }
 
 static int WifiNetDisableArpOffload(void) {
@@ -198,6 +200,7 @@ int WifiNetProbeAfterJoin(void) {
     gWifiNetHaveArpTarget = 0;
     gWifiNetMacOk = 0;
     gWifiNetMac[0] = 0;
+    gWifiNetDhcpIp = 0;
     WifiNetLwIpFeedReset();
 
     HalSerialBootMarkForce("Boot: Pi WIFI net probe begin\n");
@@ -254,12 +257,19 @@ int WifiNetProbeAfterJoin(void) {
 #ifdef LWIP_ENABLE
     LwIpPoll();
 #endif
-    if (BoardWifiNetifLinkOutputCount() > 0u) {
-        WifiNetPersist("net-lwip-out-ok");
-        HalSerialBootMarkForce("Boot: Pi WIFI net lwip out ok\n");
+    if (BoardWifiNetifLinkOutputCount() == 0u) {
+        WifiNetPersist("net-lwip-out-fail");
+        HalSerialBootMarkForce("Boot: Pi WIFI net lwip out fail\n");
+        return -1;
+    }
+    HalSerialBootMarkForce("Boot: Pi WIFI net lwip out ok\n");
+    /* 7d：持续 F2 喂 + DhcpStep 等租约（HalNetGetMac=站点） */
+    if (WifiNetWaitDhcpLease(&gWifiNetDhcpIp) == 0 && gWifiNetDhcpIp != 0u) {
+        WifiNetPersist("net-dhcp-ok");
+        HalSerialBootMarkForce("Boot: Pi WIFI net dhcp ok\n");
         return 0;
     }
-    WifiNetPersist("net-lwip-out-fail");
-    HalSerialBootMarkForce("Boot: Pi WIFI net lwip out fail\n");
+    WifiNetPersist("net-dhcp-fail");
+    HalSerialBootMarkForce("Boot: Pi WIFI net dhcp fail\n");
     return -1;
 }

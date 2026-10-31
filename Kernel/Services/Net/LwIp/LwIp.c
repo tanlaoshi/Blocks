@@ -101,6 +101,8 @@ void LwIpService(void) {
         return;
     }
     DriverNetPoll();
+    /* Pi WiFi 武装后 F2 DATA→lwIP（对表 SMSC Poll；短喂，勿 Present） */
+    HalNetFeedAlternateReceive();
     sys_check_timeouts();
     BLOCKS_ATOMIC_RELEASE(&gLwIpSoft);
 }

@@ -16,6 +16,9 @@
 #if !BOARD_IS_VIRT && BOARD_HAS_NET
 int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 #endif
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+#include "Wifi.h"
+#endif
 
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
 static UINT32 gNicEpoch;
@@ -72,6 +75,12 @@ void HalNetPoll(void) {
 }
 
 void HalNetGetMacAddress(UINT8 Mac[6]) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 7d：武装后 SyncMac/DHCP SA 须用站点 MAC，勿回 SMSC */
+    if (BoardWifiCopyStationMacIfArmed(Mac) == 0) {
+        return;
+    }
+#endif
     DriverNetGetMac(Mac);
 }
 
@@ -120,6 +129,11 @@ int HalNetHasNicL2(void) {
 }
 
 int HalNetPrimaryKind(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    if (BoardWifiLinkOutputIsArmed()) {
+        return 1; /* 无线出站 */
+    }
+#endif
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
     return HalNetReady() ? 0 : -1; /* 0=有线 */
 #else
@@ -149,4 +163,10 @@ UINT16 HalNetChecksum(const void *Data, UINTN Len) {
 
 void HalNetSetLwipReceive(int Enable) {
     DriverNetSetLwIpRx(Enable);
+}
+
+void HalNetFeedAlternateReceive(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    BoardWifiPollFeedLwIp(8u);
+#endif
 }

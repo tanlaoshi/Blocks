@@ -145,3 +145,6 @@ UINT16 HalNetChecksum(const void *Data, UINTN Len) {
 void HalNetSetLwipReceive(int Enable) {
     DriverNetSetLwIpRx(Enable);
 }
+
+void HalNetFeedAlternateReceive(void) {
+}

@@ -10,6 +10,8 @@
 
 /* fs-selftest：注册口在同目录 FileSystemSelfTest.c；此处调用，不改 Commands.c */
 void ShellCommandsFsSelfTestRegister(void);
+/* fs-hole：注册口在同目录 FileSystemHole.c */
+void ShellCommandsFsHoleRegister(void);
 
 /* PR-FS3：大文件写验收（默认 ~2MiB，上限 FAT_WRITE_MAX） */
 static void CommandWrbig(int Argc, char **Argv) {
@@ -283,4 +285,5 @@ void ShellCommandsFsExtraRegister(void) {
     gConsole.RegisterAliasLine("dirstress", "stress", "directory");
 
     ShellCommandsFsSelfTestRegister();
+    ShellCommandsFsHoleRegister();
 }

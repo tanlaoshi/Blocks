@@ -207,6 +207,9 @@ void ShellCommandsSystemRegisterVirtMin(void) {
     gConsole.Register2("list", "devices", "list devices + bound drivers", CommandLsdev);
     gConsole.RegisterAliasLine("lsdev", "list", "devices");
     gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
+    /* Duo 等 ConsoleOnly 板走本函数（HalConsoleOnly → 非桌面命令表），
+     * 漏挂 reboot 会让真机只有 halt；复位走 HalCpuReboot → BoardCpuReboot。 */
+    gConsole.Register("reboot", "reset CPU (Duo S: RTC warm reset)", CommandReboot);
     gConsole.Register("halt", "stop CPU", CommandHalt);
     gConsole.RegisterAlias("halt", "exit");
     gConsole.RegisterAlias("halt", "quit");

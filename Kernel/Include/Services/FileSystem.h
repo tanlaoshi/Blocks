@@ -121,4 +121,15 @@ int FileSystemWriteSelfTest(void);
 /* 同上但不打印（ksend 自己排版）；结构化结果写给 Out；0 = 通过，否则 FAT 错误码 */
 int FileSystemWriteSelfTestRun(FS_WRITE_SELFTEST *Out);
 
+/*
+ * fs-hole：验证 FAT 分配提示（下次从这里找）不会漏掉前面的洞。
+ * 步骤：写 A(1 MB) → 写 B(1 MB) → 删 A → 写 C(2 MB) → 读回 C/B。
+ * Prefix 例 "C:"；空串 = 默认卷。Rounds ≥1（场景 3 用 3 轮）。
+ * ExpectNoSpace=1 时把 C 的 FAT_ERR_NOSPC 视为通过（近满卷场景），
+ * 但仍要求 B 读回正确、A 已不在、C 没留下半截文件。
+ * 打印每一步返回码；0 = 判据通过，否则 FAT 错误码。
+ */
+#define FS_HOLE_ROUNDS_MAX 9
+int FileSystemHoleTest(const char *Prefix, int Rounds, int ExpectNoSpace);
+
 #endif

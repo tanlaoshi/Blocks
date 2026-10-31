@@ -10,6 +10,8 @@
  */
 #include "WifiNetPrivate.h"
 #include "FileSystem.h"
+#include "WifiAssocPrivate.h"
+#include "WifiEapolPrivate.h"
 #include "CString.h"
 
 /* 一次命令的帧缓冲（最大一帧 342 B，512 与 TX 块同档） */
@@ -251,6 +253,8 @@ static int DhcpParseMilliseconds(const char *Text, UINT32 *OutMilliseconds) {
  * 目的：把"组播用哪个 sta 索引"做成**改文件就换参数**（ksend 写 20 字节 ≈ 2 秒），
  * 不用每试一个值就重刷内核。取值：-1（或没有该行）= 用 ap_idx；否则用给定值。
  */
+static void WifiDhcpSendEapolStart(void);
+
 static void WifiDhcpLoadProbe(void) {
     char Text[64];
     UINTN Got = 0;
@@ -275,6 +279,10 @@ static void WifiDhcpLoadProbe(void) {
             }
         }
     }
+    if (Text[0] == 's' && Text[1] == 't' && Text[2] == 'a' && Text[3] == 'r' && Text[4] == 't' &&
+        Text[5] == '=' && Text[6] == '1') {
+        WifiDhcpSendEapolStart();
+    }
     for (i = 0; (UINTN)i + 6u < Got; i++) {
         if (Text[i] == 'm' && Text[i + 1] == 'c' && Text[i + 2] == 'a' &&
             Text[i + 3] == 's' && Text[i + 4] == 't' && Text[i + 5] == '=') {
@@ -287,6 +295,45 @@ static void WifiDhcpLoadProbe(void) {
             return;
         }
     }
+}
+
+
+/*
+ * 探针：发一条 EAPOL-Start（单播给 AP，4 字节头），然后盯 3 秒看有没有 Key 帧回来。
+ * 目的：把"AP 到底看不看得见我们"和"组播密钥"分开 ——
+ *   AP 回 M1 ⇒ 它认得我们，问题在授权/组密钥；
+ *   AP 不回  ⇒ 它完全不认我们，问题在 M4（重放/MIC/顺序）。
+ */
+static void WifiDhcpSendEapolStart(void) {
+    UINT8 Frame[4];
+    UINT8 Bssid[AIC_NET_MAC_LENGTH];
+    UINT8 Station[AIC_NET_MAC_LENGTH];
+    UINT8 VifIndex = 0;
+    UINT8 ApIndex = 0;
+    static AIC_EAPOL_COUNTERS Counters;
+
+    if (AicJoinBssid(Bssid) != 0 || AicNetStationAddress(Station) != 0) {
+        SdhciMark("WiFi: eapol-start: no BSSID/station (join first)\n");
+        return;
+    }
+    AicJoinLastIndexes(&VifIndex, &ApIndex);
+    Frame[0] = 2u;                                  /* EAPOL 版本 */
+    Frame[1] = (UINT8)AIC_EAPOL_TYPE_START;         /* type=1 EAPOL-Start */
+    Frame[2] = 0u;
+    Frame[3] = 0u;                                  /* body length = 0 */
+    if (AicEapolSend(SdhciHostAt(1), Frame, 4u, Bssid, Station, VifIndex, ApIndex) != 0) {
+        SdhciMark("WiFi: eapol-start: send failed\n");
+        return;
+    }
+    SdhciMark("WiFi: eapol-start: sent (unicast to the AP)\n");
+    memset(&Counters, 0, sizeof(Counters));
+    (void)AicEapolPollRun(SdhciHostAt(1), 3000u, &Counters, 0);
+    SdhciMark("WiFi: eapol-start: after 3000ms frames=");
+    SdhciMarkDecimal("", Counters.Frames);
+    SdhciMark(" key=");
+    SdhciMarkDecimal("", Counters.KeyFrames);
+    SdhciMark(Counters.KeyFrames != 0u ? " (the AP answered: it sees our unicast frames)\n"
+                                       : " (no answer: the AP is not responding to us at all)\n");
 }
 
 int SdhciWifiDhcp(const char *MsText) {

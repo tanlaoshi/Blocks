@@ -257,6 +257,8 @@ int AicJoinHandleInd(const UINT8 *Param, UINT32 ParamLength);
  * 失败时不清零（调用方拿到失败就不会用）。只读写本文件的 static，不碰 SDIO。
  */
 void AicJoinLastIndexes(UINT8 *VifIndex, UINT8 *ApIndex);
+int AicJoinBssid(UINT8 *Out);
+void AicJoinRememberBssid(const UINT8 *Bssid);
 /* mmreset 后固件的 sta/vif 已失效：只清两个静态索引，不改 join 流程 */
 void AicJoinIndexesClear(void);
 /* 板级入口：Dry != 0 只拼包（不需要卡）；BssidText 可为 0（用扫描缓存里最强的那个）；

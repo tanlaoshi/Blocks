@@ -179,6 +179,8 @@ static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Pass
     if (JoinWaitInd(Host) != 0) {
         return -1;
     }
+    /* 关联成功：记住 BSSID（EAPOL-Start 探针要用它做目的地址） */
+    AicJoinRememberBssid(Target->Bssid);
     return JoinAfterAssoc(Host, Target, Password);
 }
 
@@ -277,4 +279,25 @@ int SdhciWifiGtkReinstall(void) {
         return -1;
     }
     return AicHandshakeReinstallGtk(Host, VifIndex);
+}
+
+/* 本次 join 的 AP BSSID：EAPOL-Start 之类的单播帧要用它做目的地址 */
+static UINT8 sAicJoinedBssid[AIC_SCAN_MAC_LENGTH];
+static UINT32 sAicJoinedBssidValid;
+
+int AicJoinBssid(UINT8 *Out) {
+    if (sAicJoinedBssidValid == 0u) {
+        return -1;
+    }
+    for (UINT32 i = 0; i < AIC_SCAN_MAC_LENGTH; i++) {
+        Out[i] = sAicJoinedBssid[i];
+    }
+    return 0;
+}
+
+void AicJoinRememberBssid(const UINT8 *Bssid) {
+    for (UINT32 i = 0; i < AIC_SCAN_MAC_LENGTH; i++) {
+        sAicJoinedBssid[i] = Bssid[i];
+    }
+    sAicJoinedBssidValid = 1u;
 }

@@ -23,6 +23,9 @@
 #define SDIO_CCCR_IO_ABORT           0x06u /* SDIO Simplified Spec：ASx，勿置 RES */
 #define SDIO_CCCR_BUS_INTERFACE      0x07u
 #define SDIO_CCCR_HIGH_SPEED         0x13u
+/* Broadcom CCCR 厂商区：对表 brcmfmac sdio.h / probe_attach */
+#define SDIO_CCCR_BROADCOM_CARD_CONTROL                0xF1u
+#define SDIO_CCCR_BROADCOM_CARD_CONTROL_WLAN_RESET     0x02u
 #define SDIO_FBR1_BLOCK_SIZE         0x110u
 #define SDIO_FBR2_BLOCK_SIZE         0x210u
 
@@ -45,6 +48,16 @@
 #define WIFI_SDIO_SLEEP_CONTROL      0x1001Fu
 
 #define WIFI_CHIPCOMMON_BASE         0x18000000u
+/* chipcregs.pmu*；对表 bcma_driver_chipcommon.h / BCMA_CC_PMU_* */
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_CONTROL_OFFSET 0x600u
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_CONTROL_RESOURCE_RELOAD \
+    (0x2u << 13)
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_STATUS_OFFSET 0x608u
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_RESOURCE_STATUS_OFFSET 0x60Cu
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_MINIMUM_RESOURCE_MASK_OFFSET \
+    0x618u
+#define WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_MAXIMUM_RESOURCE_MASK_OFFSET \
+    0x61Cu
 /* 对表 Linux cores_check：D11 base 0x18001000 wrap 0x18101000（勿把 wrap 当 core） */
 #define WIFI_D11_CORE_BASE           0x18001000u
 #define WIFI_SDIO_CORE_BASE          0x18002000u
@@ -112,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000012du
+#define WIFI_BUILD_TAG               0x0000013au
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -215,6 +228,10 @@ void WifiBootMarkHexadecimal32(const char *Tag, UINT32 Value);
 int WifiSdioSleepControlEnsureAwake(void); /* F1 SLEEPCSR KSO；灌片前必醒 */
 int WifiAlpRequest(void); /* buscoreprep → csr 含 FORCE_ALP（0x21） */
 int WifiAlpReleaseForceToRequest(void); /* 灌片前清 FORCE → REQUEST_ALP */
+/* 对表 brcmf_sdio_probe_attach：CARDCTRL WLANRESET + PMU RES_RELOAD */
+int WifiSdioSetupResetBehavior(void);
+int WifiPowerManagementUnitForceResources(void); /* min/max←ffffffff */
+int WifiSocramResetAfterResources(void);         /* 资源齐后再 CoreReset+bankpda */
 int WifiEnterDownload(void);
 int WifiBackplaneWindowSet(UINT32 Address);
 void WifiBackplaneWindowInvalidate(void);

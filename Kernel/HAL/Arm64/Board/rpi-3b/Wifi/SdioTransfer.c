@@ -226,7 +226,11 @@ int WifiSdioCommand53Write(UINT32 Function, UINT32 RegisterAddress, const UINT8 
         Argument |= (1u << 26);
     }
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_INDEX | SDHCI_CMD_DATA);
-    TransferMode = 0; /* write */
+    /*
+     * 写：bit4=0。失败 14 / Linux ftrace（blocks=1 block_size=4）：须 BLK_CNT_EN，
+     * 否则单块数据阶段可不收尾（与 SRAM no data end 同形）。
+     */
+    TransferMode = (UINT16)SDHCI_TRNS_BLK_CNT_EN;
     /*
      * 卡刚写完上一块时 function busy，R5 只置 ERROR（无 OUT_OF_RANGE/CRC）。
      * 这是瞬态，按 Linux mmc_io_rw_extended 的语义阻塞等线空后重发，不算失败。

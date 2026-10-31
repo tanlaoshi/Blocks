@@ -8,8 +8,9 @@
 
 /*
  * 块模式写。对表 Linux brcmf_sdiod_ramrw → sdio_memcpy_toio：
- * CMD53 bit27=1，参数字节字段放**块数**，块大小由 FBR 的 0x110 决定。
- * 字节模式写 SRAM 会在第一块之后把卡挂死（R5=ERROR / DAT0 不释放）。
+ * CMD53 bit27=1（块模式），bit26=1（地址递增，memcpy 必设；缺则整块打同一
+ * 偏移，卡侧易 DAT 永不收尾——0x12d..0x12f `no data end words=10`），
+ * 参数低 9 位=块数；块大小由 FBR 0x110 决定。
  */
 int WifiSdioBlockWrite(UINT32 Function, UINT32 RegisterAddress, const UINT8 *Buffer,
                        UINT32 ByteCount, UINT32 BlockBytes) {
@@ -24,11 +25,15 @@ int WifiSdioBlockWrite(UINT32 Function, UINT32 RegisterAddress, const UINT8 *Buf
         return -1;
     }
     Blocks = ByteCount / BlockBytes;
+    /* bit31=写, bit27=块模式, bit26=地址递增（对表 sdio_memcpy_toio） */
     Argument = ((Function & 7u) << 28) | ((RegisterAddress & 0x1FFFFu) << 9) |
-               (Blocks & 0x1FFu) | (1u << 31) | (1u << 27);
+               (Blocks & 0x1FFu) | (1u << 31) | (1u << 27) | (1u << 26);
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_INDEX | SDHCI_CMD_DATA);
-    TransferMode = (UINT16)((Blocks > 1u) ? (WIFI_SDHCI_TRANSFER_MULTI | SDHCI_TRNS_BLK_CNT_EN)
-                                          : 0u);
+    /* 失败 14：Blocks=1 且 TransferMode=0 → 永不 DATA_END；始终 BLK_CNT_EN */
+    TransferMode = (UINT16)SDHCI_TRNS_BLK_CNT_EN;
+    if (Blocks > 1u) {
+        TransferMode = (UINT16)(TransferMode | WIFI_SDHCI_TRANSFER_MULTI);
+    }
 
     for (Attempt = 0; Attempt < 4u; Attempt++) {
         (void)WifiSdioWaitCardIdle();

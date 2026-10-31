@@ -57,13 +57,63 @@ int WifiAlpRequest(void) {
 }
 
 /*
- * 对表 download_firmware 前 clkctl(CLK_AVAIL)：整字节写成 ALP_AVAIL_REQ，
- * 清掉 FORCE_*，放开硬件时钟申请。仅在 bankidx / EnterDownload 之后调用。
+ * 对表 brcmf_sdio_probe_attach / Linux ftrace 灌片前：
+ *   CCCR 0xF1 |= WLANRESET；chipcommon PMUControl |= RES_RELOAD。
+ * BusRejoin 路径原先跳过；0x136 补上后再做 CLK_NONE→AVAIL / SRAM 探针。
+ */
+int WifiSdioSetupResetBehavior(void) {
+    UINT8 CardControl = 0;
+    UINT32 PowerManagementUnitControl = 0;
+
+    if (WifiSdioCommand52Read(SDIO_FUNCTION_0, SDIO_CCCR_BROADCOM_CARD_CONTROL,
+                              &CardControl) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI cardctrl read fail\n");
+        return -1;
+    }
+    CardControl = (UINT8)(CardControl | SDIO_CCCR_BROADCOM_CARD_CONTROL_WLAN_RESET);
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_CCCR_BROADCOM_CARD_CONTROL,
+                               CardControl) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI cardctrl write fail\n");
+        return -1;
+    }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI cardctrl=", CardControl);
+    HalSerialBootMarkForce("\n");
+
+    if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE +
+                                WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_CONTROL_OFFSET,
+                            &PowerManagementUnitControl) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI pmu ctl read fail\n");
+        return -1;
+    }
+    PowerManagementUnitControl |=
+        WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_CONTROL_RESOURCE_RELOAD;
+    if (WifiBackplaneWrite32(WIFI_CHIPCOMMON_BASE +
+                                 WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_CONTROL_OFFSET,
+                             PowerManagementUnitControl) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI pmu ctl write fail\n");
+        return -1;
+    }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI pmu ctl=", PowerManagementUnitControl);
+    HalSerialBootMarkForce("\n");
+    return 0;
+}
+
+/*
+ * 对表 Linux ftrace 灌片前（mmc-brcmf-trace 首笔 511×64 之前）：
+ *   CHIPCLKCSR ← 0x00（clkctl CLK_NONE）→ ← 0x08（ALP_AVAIL_REQ）→ 读回 → SBADDR=0。
+ * 0x133/0x134 只做 0x61→0x08，缺 CLK_NONE 这一跳；0x135 补上。
+ * 仅在 bankidx / EnterDownload 之后、SRAM 探针之前调用。
  */
 int WifiAlpReleaseForceToRequest(void) {
     UINT8 Status = 0;
     UINT32 Attempt;
 
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, 0) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI csr none fail\n");
+        return -1;
+    }
+    /* Linux 两笔 CMD52 间隔约 4 ms；给卡侧放下 FORCE/PLL 请求的时间 */
+    SdhciDelayMicroseconds(4000);
     if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
                                WIFI_CLOCK_REQUEST_ALP) != 0) {
         return -1;

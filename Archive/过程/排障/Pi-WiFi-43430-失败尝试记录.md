@@ -616,6 +616,25 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 | 8 | `0x12c` | poll 容 busy；attempts=20000 | **`kso wake timeout=00000001`** | KSO 粘住、**DEVON 永不回**——纯 SLEEPCSR 唤醒救不了延后 Claim |
 | 9 | `0x12d` | 灌片前 `BusRejoin`：WL_ON POR→host→enum→F1，再 KSO | **wifi-2 绿** | `rejoin ok`→`kso=03`→`cc=1541a9a6`→SOCRAM up→**`bankidx write1/3 读回一致`**。随后 `csr avail=48` 后 **`fw write fail @1e000000`** / `sram probe write fail`（`pst=01ef0006 isr=00108010 r5=00001000`）→交 **pi-wifi-3** |
 
+### 短刀试探日志（Pi · pi-wifi-3 · SRAM 别名 · 进行中）
+
+| # | tag | 试探 | 结果 | 备注 |
+| - | --- | ---- | ---- | ---- |
+| 1 | `0x12d` | 别名 `@1e000000` 64B 写（无读回） | **write fail / no data end** | 已否本别名作首刀；r5 干净、DAT 忙 |
+| 2 | `0x12e` | 别名 **`@0`**；先 `csr avail=0x48`（清 FORCE）再 64B 写 | **write fail / no data end** | 与 `@1e` 同症 → **别名不是根因**；疑过早清 FORCE |
+| 3 | `0x12f` | 保持 FORCE 再探 `@0` 64B | **同 `no data end`** | FORCE 非根因（`csr=0x61` 仍败） |
+| 4 | `0x130` | `BlockWrite` 补 CMD53 bit26 地址递增 | **仍 `no data end`** | bit26 非充分条件（保留，对表 Linux 仍要） |
+| 5 | `0x131` | 4B Write32/Read32 探 `@0`（bankidx 试探之后） | **`no data end words=1`** | 阵列写死；寄存器通 → 非块路径独有 |
+| 6 | `0x132` | 去掉 bankidx 拨号；FORCE 下 4B 探 `@0` | **仍 `no data end`** | 拨号非根因 |
+| 7 | `0x133` | 探针前 `csr←0x08`；4B `@0` | **仍 `no data end`**（`csr avail=48`） | 时钟态已对齐仍败 |
+| 8 | `0x134` | CMD53 写路径 **始终 BLK_CNT_EN**（失败 14 / Linux blocks=1） | **仍 `no data end`** | 寄存器 Write32 早已通 → 主机 BLK_CNT_EN 非阵列根因 |
+| 9 | `0x135` | 灌片前 `CHIPCLKCSR←0x00` 再 `←0x08`（对表 Linux ftrace，缺的 CLK_NONE） | **仍 `no data end`**（`csr avail=48`） | 终态与直写 0x08 相同；CLK_NONE 非根因 |
+| 10 | `0x136` | 对表 `probe_attach`：`CCCR 0xF1 |= WLANRESET` + `PMUControl \| = RES_RELOAD`（ftrace 灌片前有） | **仍 `no data end`**；`cardctrl=03` `pmu ctl=01774180` | 两笔都落地；非阵列根因 |
+| 11 | `0x137` | 探针前 SOCRAM IOCTL=`FGC\|CLK`；打满 r5/pst/isr | **仍挂**；`ioctl=3`；`r5=1000 isr=00108010 pst=01ef0006` | **isr=DTO\|ERROR\|BUF_WR**——硬件数据超时，非纯软件等；FGC 否证 |
+| 12 | `0x138` | 读 PMU；**只** `max_res_mask←ffffffff` | **仍 DTO**；`min=res=0xfcafd77` `max` 原 `0xfcefd77` | max 只抬天花板；多出的 bit18=`0x40000` 未因写 max 而点亮 |
+| 13 | `0x139` | **`min_res_mask←ffffffff`**（先 max 再 min），短等 `res_stat`，再探 | **仍 DTO**；`min set=ffffffff` `res=7fffffff` | 资源已大部点亮仍挂 →「只缺 PMU 位」不够 |
+| 14 | `0x13a` | 资源拉齐后 **再 SOCRAM CoreReset + bankpda**，读回 pda，再探 | **✅ `sram probe=yes`**；`re io=1 rst=0 pda=0`；`wifi-3 stop before full fw` | **根因：SOCRAM 在 PMU 资源未齐时复位 → 寄存器通、阵列 DTO**；须先 min/max 拉资源再 CoreReset |
+
 ### 已否证（勿再试）
 
 - Claim 时 **先读成功才允许写 KSO**（睡着必挂；应用 Linux 先写唤醒）
@@ -624,6 +643,17 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 - **仅靠 KSO poll 救延后空闲**（DEVON 不回；须 WL_ON POR + 重枚举）
 - 用 `REQUEST_ALP|AVAIL`（`0x48`）顶 `buscoreprep` 的 `FORCE_ALP|REQ`（`0x21`）
 - Claim 路径在 EnterDownload / SOCRAM up **之前**写 `SOCSRAM_BANKX_INDEX`
+- **只换 SRAM 别名**救首块 `no data end`（`@0` 与 `@1e` 同败）
+- **只靠保持 FORCE_ALP**救首块 `no data end`（`0x12f` 仍败）
+- 块模式 CMD53 **不置 bit26（固定地址）**当 memcpy——对表 Linux 必须递增（已补；**单补不够**解首块）
+- 在 43430 `bankidx=3/pda=0` 之后再 **拨 bankidx=1 做读回试探**（可能弄乱重映射；wifi-2 已收，wifi-3 勿再夹）
+- 仅靠 `csr←0x08`（与 Linux 灌片前时钟一致）救阵列写（`0x133` 仍败）
+- 仅靠 CMD53 写路径始终 `BLK_CNT_EN` 救阵列写（`0x134` 仍败；寄存器同路径已通）
+- 仅靠 `CHIPCLKCSR←0x00` 再 `←0x08`（Linux CLK_NONE→AVAIL）救阵列写（`0x135` 仍败）
+- 仅靠 `CARDCTRL WLANRESET` + `PMU RES_RELOAD`（probe_attach）救阵列写（`0x136` 仍败）
+- 仅靠 SOCRAM IOCTL 保持 `FGC|CLK`（`0x137` 仍 DTO）
+- 仅靠抬 `max_res_mask←ffffffff`（`0x138` 仍 DTO；min/res 未变）
+- 仅靠 `min_res_mask←ffffffff`（`0x139`：`res=7fffffff` 仍 DTO）
 - （修正）「永远禁止写 `0x01`」——Linux 唤醒首写就是 KSO=1，再等 DEVON
 
 ### 还要试多少次（估）

@@ -124,19 +124,31 @@ int WifiFirmwareLoad(void) {
     if (WifiEnterDownload() != 0) {
         goto Done;
     }
-    /* pi-wifi-2 判据：SOCRAM up 后 bankidx 写读回 */
-    if (WifiBackplaneWriteReadbackTest() != 0) {
+    /*
+     * 0x139：min←ffffffff → res≈7fffffff，仍 DTO。
+     * 0x13a：资源拉齐后再 SOCRAM CoreReset+bankpda（复位时阵列可能尚未上电）。
+     */
+    if (WifiSdioSetupResetBehavior() != 0) {
         goto Done;
     }
-    /* 寄存器/进下载态已在 FORCE_ALP 下完成；灌片前再清 FORCE（clkctl CLK_AVAIL） */
     if (WifiAlpReleaseForceToRequest() != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
         goto Done;
     }
-    /* 64B 探针：打 xfer；失败即停，避免 Worker Claim 连灌数百 KB 卡死桌面 */
+    if (WifiPowerManagementUnitForceResources() != 0) {
+        goto Done;
+    }
+    if (WifiSocramResetAfterResources() != 0) {
+        goto Done;
+    }
     if (WifiBackplaneSramProbeWrite() != 0) {
         goto Done;
     }
+    /*
+     * wifi-3 收口只看探针。满灌多块曾在 @0 第二块楔死——留给 wifi-4。
+     */
+    HalSerialBootMarkForce("Boot: Pi WIFI wifi-3 stop before full fw\n");
+    goto Done;
     /* cyw43：寄存器写后退窗到 ChipCommon，再灌 RAM */
     if (WifiBackplaneWindowSet(WIFI_CHIPCOMMON_BASE) != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI window home fail\n");

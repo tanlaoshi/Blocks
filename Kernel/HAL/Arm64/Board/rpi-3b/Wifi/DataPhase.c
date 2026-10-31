@@ -47,9 +47,19 @@ int WifiSdioProgrammedIoWriteBytes(const UINT8 *Buffer, UINT32 ByteCount) {
 
         while ((SdhciRead32(SDHCI_INT_STATUS) & SDHCI_INT_DATA_END) == 0) {
             if ((SdhciRead32(SDHCI_INT_STATUS) & SDHCI_INT_ERROR) != 0 || Elapsed >= 30000u) {
-                /* 数据全喂完了却没有收尾：卡侧背板写没完成 */
-                WifiBootMarkHexadecimal32("Boot: Pi WIFI no data end words=", Words);
-                HalSerialBootMarkForce("\n");
+                /* 数据全喂完了却没有收尾；0x137：isr 常见 DTO|ERROR（非纯软件超时） */
+                {
+                    UINT32 InterruptStatus = SdhciRead32(SDHCI_INT_STATUS);
+
+                    WifiBootMarkHexadecimal32("Boot: Pi WIFI no data end words=", Words);
+                    WifiBootMarkHexadecimal32(" r5=", gSdhciResponse[0]);
+                    WifiBootMarkHexadecimal32(" isr=", InterruptStatus);
+                    WifiBootMarkHexadecimal32(" pst=", SdhciRead32(SDHCI_PRESENT_STATE));
+                    if ((InterruptStatus & (1u << 20)) != 0) {
+                        HalSerialBootMarkForce(" dto");
+                    }
+                    HalSerialBootMarkForce("\n");
+                }
                 WifiSdioProgrammedIoFailCleanup();
                 return -1;
             }

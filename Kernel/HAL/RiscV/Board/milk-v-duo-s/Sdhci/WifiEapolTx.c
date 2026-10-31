@@ -1,19 +1,21 @@
 /*
- * WifiEapolTx.c — PR-34：把一帧 EAPOL 走 SDIO **数据通道**发出去（本仓第一条数据 TX）
+ * WifiEapolTx.c — PR-34/36：数据通道 TX（EAPOL 的 M2/M4 + 任意以太网帧）
  *
- * 用户眼里：`WiFi: eapol tx: fc=.. padded=.. blocks=..` 和紧随的 `eapol tx m2 …`。
- * 从哪读：AicEapolSend（整帧）→ TxBuildDescriptor（4 B 帧头 + 28 B txdesc）
+ * 用户眼里：`WiFi: eapol tx: fc=.. padded=.. blocks=..`（M2/M4）与
+ *           `WiFi: data tx: len=.. ethertype=0x.. dst=..`（DHCP/ARP，PR-36）。
+ * 从哪读：AicEapolSend（EAPOL 帧，ethertype 固定 0x888e）/ AicWifiDataSend（通用以太网帧，
+ *         从帧里取 dst/src/ethertype）→ TxBuildDescriptor（4 B 帧头 + 28 B txdesc）
  *         → TxWrite（流控 + 4 B 对齐 + TAIL + 512 对齐 + 块写）。
  * 别改：线上格式是厂商 aicwf_sdio.c:1530-1550（aggr 拼帧）+ :1370-1420（xmit）+
  *       rwnx_tx.c:1497-1530（txdesc 字段）的字节契约：
  *         [4 B sdio hdr][28 B txdesc_api][payload][补 0 到 4][补 4 B TAIL][补到 512]
  *       4 B 帧头 = len(12bit = payload+28) | type=0x01(data) | crc8；
- *       payload **不含 14 B 以太网头**（厂商 skb_pull(14)，地址与 ethertype 在 txdesc 里，
- *       802.11 头与 LLC/SNAP 由固件补）。
+ *       payload **不含 14 B 以太网头**（厂商 rwnx_tx.c:1267 skb_pull(skb, 14)，地址与
+ *       ethertype 在 txdesc 里，802.11 头与 LLC/SNAP 由固件补）。
  * 与消息通道的差别（别混）：消息是 16 B lmac_msg 头 + 参数，走 AicSendMessageEx；
  *       数据帧是 txdesc + 载荷，走这里。两条路都用 fn1 0x10 写 FIFO，块模式 512 B。
  */
-#include "WifiHandshakePrivate.h"
+#include "WifiNetPrivate.h"
 #include "CString.h"
 
 /* aicwf_sdio.c:1536-1546：sdio_header 4 B，hdr[2]=0x01 就是"数据帧" */
@@ -58,6 +60,8 @@
 #define AIC_TX_DESC_TID 23u
 #define AIC_TX_DESC_VIF_INDEX 24u
 #define AIC_TX_DESC_STA_INDEX 25u
+/* 厂商"未知 sta"约定：广播/组播帧上不了空口时用它（真机 DHCP DISCOVER 踩过） */
+#define AIC_TX_DESC_STA_INDEX_UNKNOWN 0xFFu
 #define AIC_TX_DESC_FLAGS 26u
 /*
  * hw queue 编号（rwnx_tx.h:19-22 RWNX_HWQ_BK/BE/VI/VO）。厂商把 txq->hwq->id 直接写进
@@ -67,18 +71,30 @@
 #define AIC_TX_HWQ_BE 1u
 #define AIC_TX_TID_BE 0u
 
+/*
+ * 日志前缀：同一条 TX 路径被两种帧共用，前缀跟着调用者走。
+ * `eapol tx` 是 PR-34 的既有判据（join 的输出不能变），`data tx` 是 PR-36 的判据。
+ */
+#define AIC_TX_LOG_EAPOL "eapol tx"
+#define AIC_TX_LOG_DATA "data tx"
+
+/* 以太网头在完整帧里的位置（RFC 894 §2）：dst[6] src[6] ethertype[2] */
+#define AIC_TX_ETHERTYPE_OFFSET 12u
+
 /* 4+28+121 = 153 B；UINT32 数组保证 4 B 对齐（txdesc 里有 u32 字段） */
 static UINT32 sAicEapolTxBuffer[(AIC_EAPOL_TX_MAX + 3u) / 4u];
 
 /* 数据 TX 流控：读 fn1 0x03（V3 的 FLOW_CTRL_Q1），> 2 才发；失败把读到的值带出来 */
-static int TxFlowCtrl(SDHCI_HOST *Host, UINT32 *OutCredit) {
+static int TxFlowCtrl(SDHCI_HOST *Host, UINT32 *OutCredit, const char *Tag) {
     UINT32 Try = 0;
     UINT8 Credit = 0;
 
     for (;;) {
         if (SdhciIoRead8(Host, 1u, AIC_FLOW_CTRL_REG_V3, &Credit) != 0) {
             AicMarkR5(Host->LastStatus);
-            SdhciMark("WiFi: eapol tx: fc read failed (cmd52 fn1 0x03)\n");
+            SdhciMark("WiFi: ");
+            SdhciMark(Tag);
+            SdhciMark(": fc read failed (cmd52 fn1 0x03)\n");
             return -1;
         }
         if ((UINT32)Credit >= AIC_EAPOL_TX_FC_MIN) {
@@ -102,11 +118,13 @@ static int TxFlowCtrl(SDHCI_HOST *Host, UINT32 *OutCredit) {
 
 /*
  * 4 B sdio 帧头 + 28 B txdesc。len 字段 = payload + 28（厂商 :1540 把 txdesc 算进长度）；
- * ethertype 按**网络字节序**写在内存里（厂商 :1524 直接抄 eth_t.h_proto，那 2 B 是大端），
- * 所以先写高字节 0x88 再写 0x8e —— 写成小端 0x8e88 的话固件看见的就是另一个值。
+ * ethertype 按**网络字节序**写在内存里（厂商 rwnx_tx.c:1298 直接抄 eth_t.h_proto，
+ * 那 2 B 是大端），所以先写高字节再写低字节 —— 写成小端的话固件看见的就是另一个值。
+ * EtherType 由调用者给：EAPOL 固定 0x888e（PR-34），DHCP/ARP 从以太网头里取（PR-36）。
  */
 static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UINT8 *Source,
-                              UINT8 VifIndex, UINT8 ApIndex, UINT32 PayloadLength) {
+                              UINT16 EtherType, UINT8 VifIndex, UINT8 ApIndex,
+                              UINT32 PayloadLength) {
     UINT8 *Desc = Buffer + AIC_EAPOL_TX_HEADER_LENGTH;
     UINT32 Body = AIC_EAPOL_TX_DESC_LENGTH + PayloadLength;
 
@@ -118,16 +136,23 @@ static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UIN
     AicPut16(Desc + AIC_TX_DESC_FLAGS_EXT, 0u);
     /*
      * hostid（u32）保持 0：厂商用它把 TX confirm 对回自己的 skb（rwnx_tx.c:1439），
-     * 本刀不等 confirm，AicEapolSend 已经先把 txdesc 整段清过零。
+     * 本刀不等 confirm，调用方已经先把 txdesc 整段清过零。
      */
     (void)memcpy(Desc + AIC_TX_DESC_ETH_DEST, Destination, WIFI_MAC_ADDRESS_LENGTH);
     (void)memcpy(Desc + AIC_TX_DESC_ETH_SRC, Source, WIFI_MAC_ADDRESS_LENGTH);
-    Desc[AIC_TX_DESC_ETHERTYPE] = (UINT8)(AIC_ETHERTYPE_PAE >> 8);
-    Desc[AIC_TX_DESC_ETHERTYPE + 1u] = (UINT8)(AIC_ETHERTYPE_PAE & 0xFFu);
+    Desc[AIC_TX_DESC_ETHERTYPE] = (UINT8)(EtherType >> 8);
+    Desc[AIC_TX_DESC_ETHERTYPE + 1u] = (UINT8)(EtherType & 0xFFu);
     Desc[AIC_TX_DESC_AC] = (UINT8)AIC_TX_HWQ_BE;
     Desc[AIC_TX_DESC_TID] = (UINT8)AIC_TX_TID_BE;
     Desc[AIC_TX_DESC_VIF_INDEX] = VifIndex;
-    Desc[AIC_TX_DESC_STA_INDEX] = ApIndex;
+    /*
+     * staid：厂商在 STA vif 上取 sta.ap 的索引（rwnx_tx.c:315-323），但那是**单播**路径；
+     * 广播/组播我们上不了空口（真机：data tx 正常、DHCP DISCOVER 发出去却收不到 OFFER）。
+     * 先按厂商"未知 sta"约定填 0xFF —— 位置见 rwnx_tx.h 的 txdesc 布局；
+     * 若仍不通，说明不是 staid 的事，回头查接收侧偏移。
+     */
+    Desc[AIC_TX_DESC_STA_INDEX] = (Destination[0] & 0x01u) != 0u ? AIC_TX_DESC_STA_INDEX_UNKNOWN
+                                                                 : ApIndex;
     AicPut16(Desc + AIC_TX_DESC_FLAGS, 0u);
 }
 
@@ -136,7 +161,8 @@ static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UIN
  * （aicwf_sdio.c:1225-1237 的消息路径 / :1555-1600 的数据路径是同一套算术）。
  * 写法和消息通道一致：SdhciIoRwExtended 块模式、固定地址（OP_CODE=0）写 fn1 0x10。
  */
-static int TxWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length) {
+static int TxWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length, const char *Tag,
+                   const char *FailText) {
     UINT32 Aligned = (Length + (AIC_EAPOL_TX_ALIGN - 1u)) & ~(AIC_EAPOL_TX_ALIGN - 1u);
     UINT32 Padded = Aligned;
     UINT32 Credit = 0;
@@ -150,28 +176,35 @@ static int TxWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length) {
                  AIC_EAPOL_TX_BLOCK;
     }
     if (Padded > AIC_EAPOL_TX_MAX) {
-        SdhciMarkHex("WiFi: eapol tx: frame too big for one block, len=", Padded, 4);
+        SdhciMark("WiFi: ");
+        SdhciMark(Tag);
+        SdhciMarkHex(": frame too big for one block, len=", Padded, 4);
         SdhciMark("\n");
         return -1;
     }
     for (Index = Aligned; Index < Padded; Index++) {
         Buffer[Index] = 0;
     }
-    if (TxFlowCtrl(Host, &Credit) != 0) {
-        SdhciMarkHex("WiFi: eapol tx FAILED at flow control: fc=", Credit, 2);
-        SdhciMarkHex(" need>=", AIC_EAPOL_TX_FC_MIN, 2);
+    if (TxFlowCtrl(Host, &Credit, Tag) != 0) {
+        SdhciMark("WiFi: ");
+        SdhciMark(Tag);
+        SdhciMark(" FAILED at flow control: fc=");
+        SdhciMarkHex("", Credit, 2);
+        SdhciMark(" need>=");
+        SdhciMarkHex("", AIC_EAPOL_TX_FC_MIN, 2);
         SdhciMark(" (chip has no free data buffer; nothing was written)\n");
         return -1;
     }
-    SdhciMarkHex("WiFi: eapol tx: fc=", Credit, 2);
+    SdhciMark("WiFi: ");
+    SdhciMark(Tag);
+    SdhciMarkHex(": fc=", Credit, 2);
     SdhciMarkHex(" payload=", Length, 4);
     SdhciMarkHex(" padded=", Padded, 4);
     SdhciMarkHex(" blocks=", Padded / AIC_EAPOL_TX_BLOCK, 2);
     SdhciMark("\n");
     if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, Padded / AIC_EAPOL_TX_BLOCK,
                           AIC_EAPOL_TX_BLOCK, Buffer) != 0) {
-        AicMarkXferParams(Host, "WiFi: eapol tx block write FAIL", Padded,
-                          Padded / AIC_EAPOL_TX_BLOCK);
+        AicMarkXferParams(Host, FailText, Padded, Padded / AIC_EAPOL_TX_BLOCK);
         (void)SdhciWifiBusRecover(Host);
         return -1;
     }
@@ -179,7 +212,7 @@ static int TxWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length) {
 }
 
 /*
- * 对外唯一入口：Eapol 是 121 B 的 M2（不含以太网头），Destination = AP 的 BSSID，
+ * EAPOL 入口：Eapol 是 121 B 的 M2（不含以太网头），Destination = AP 的 BSSID，
  * Source = 本机 STA MAC（必须与 PTK 里用的一致），ApIndex = SM_CONNECT_IND.ap_idx。
  * 返回 0 只代表"这一帧写进了 SDIO FIFO"，**不代表 AP 收到**——收到与否看后面的 M3。
  */
@@ -197,9 +230,52 @@ int AicEapolSend(SDHCI_HOST *Host, const UINT8 *Eapol, UINT32 Length, const UINT
     for (Index = 0; Index < Header; Index++) {
         Buffer[Index] = 0;
     }
-    TxBuildDescriptor(Buffer, Destination, Source, VifIndex, ApIndex, Length);
+    TxBuildDescriptor(Buffer, Destination, Source, AIC_ETHERTYPE_PAE, VifIndex, ApIndex, Length);
     for (Index = 0; Index < Length; Index++) {
         Buffer[Header + Index] = Eapol[Index];
     }
-    return TxWrite(Host, Buffer, Header + Length);
+    return TxWrite(Host, Buffer, Header + Length, AIC_TX_LOG_EAPOL,
+                   "WiFi: eapol tx block write FAIL");
+}
+
+/*
+ * PR-36 的通用入口：输入一整个以太网帧（dst[6] src[6] ethertype[2] payload，含 60 B 下限），
+ * txdesc 里的 packet_len/dest/src/ethertype 全部从帧里取，payload = 帧去掉 14 B 以太网头。
+ * 802.11 头与 LLC/SNAP 由固件补（与 EAPOL 同一条契约），所以这里**不碰** 802.11。
+ * 判据：`WiFi: data tx: len=… ethertype=0x… dst=…` + 紧随的 SDIO 写返回 0。
+ */
+int AicWifiDataSend(SDHCI_HOST *Host, const UINT8 *Frame, UINT32 Length, UINT8 VifIndex,
+                    UINT8 ApIndex) {
+    UINT8 *Buffer = (UINT8 *)sAicEapolTxBuffer;
+    UINT32 Header = AIC_EAPOL_TX_HEADER_LENGTH + AIC_EAPOL_TX_DESC_LENGTH;
+    UINT32 Body;
+    UINT32 Index;
+    UINT16 EtherType;
+    char Destination[AIC_SCAN_MAC_TEXT_MAX];
+
+    if (Frame == 0 || Length <= AIC_NET_ETHERNET_HEADER_LENGTH ||
+        Length > AIC_NET_ETHERNET_HEADER_LENGTH + AIC_EAPOL_TX_PAYLOAD_MAX) {
+        SdhciMarkHex("WiFi: data tx: bad frame length=", Length, 4);
+        SdhciMark("\n");
+        return -1;
+    }
+    Body = Length - AIC_NET_ETHERNET_HEADER_LENGTH;
+    EtherType = AicNetGetBe16(Frame + AIC_TX_ETHERTYPE_OFFSET);
+    for (Index = 0; Index < Header; Index++) {
+        Buffer[Index] = 0;
+    }
+    TxBuildDescriptor(Buffer, Frame, Frame + AIC_NET_MAC_LENGTH, EtherType, VifIndex, ApIndex, Body);
+    for (Index = 0; Index < Body; Index++) {
+        Buffer[Header + Index] = Frame[AIC_NET_ETHERNET_HEADER_LENGTH + Index];
+    }
+    /* 判据行放在写之前：写失败时上一行已经说明"发的是哪一帧"，便于对空口 */
+    AicScanFormatAddress(Frame, Destination);
+    SdhciMark("WiFi: data tx: len=");
+    SdhciMarkDecimal("", Body);
+    SdhciMarkHex(" ethertype=0x", (UINT32)EtherType, 4);
+    SdhciMark(" dst=");
+    SdhciMark(Destination);
+    SdhciMark("\n");
+    return TxWrite(Host, Buffer, Header + Body, AIC_TX_LOG_DATA,
+                   "WiFi: data tx block write FAIL");
 }

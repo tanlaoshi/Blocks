@@ -36,6 +36,13 @@ static UINT32 sAicM3Ok;
 static UINT32 sAicM3BadPrinted;
 static UINT8 sAicKck[WIFI_EAPOL_KCK_LENGTH];
 static UINT8 sAicKeyVersion;
+/*
+ * AP 眼里的本机 STA MAC（M1 的 addr1）：DHCP 的 chaddr/源 MAC、ARP 的 sha 都要用它。
+ * 这里**不随 HandshakeStop 清零**：握手收工时 M1 的副本必须抹掉（里面有 ANonce），
+ * 但"这条关联用哪个 MAC"在断开之前一直是事实，`wififw dhcp` 在 join 之后才执行（PR-36）。
+ */
+static UINT8 sAicStaAddress[WIFI_MAC_ADDRESS_LENGTH];
+static UINT32 sAicStaAddressValid;
 
 /*
  * Key Descriptor Version（802.11-2016 §12.7.2 图 12-25 的 Key Information bit0-2）：
@@ -51,7 +58,10 @@ static UINT8 HandshakeKeyVersion(UINT16 KeyInformation) {
     return (UINT8)AIC_HANDSHAKE_VERSION_SHA1;
 }
 
-/* 收工：摘钩子 + 把 M1/M3/ANonce/PTK/KCK 这些"用完就不该留在 RAM 里"的东西清零 */
+/*
+ * 收工：摘钩子 + 把 M1/M3/ANonce/PTK/KCK 这些"用完就不该留在 RAM 里"的东西清零。
+ * sAicStaAddress 例外（见上面的定义）：它不是密钥材料，是 DHCP/ARP 要用的本机地址。
+ */
 static void HandshakeStop(void) {
     AicEapolSetKeySink(0);
     sAicStage = AIC_HANDSHAKE_STAGE_IDLE;
@@ -115,6 +125,9 @@ static void HandshakeTakeM1(const UINT8 *Body, UINT32 Length, const UINT8 *Stati
     (void)memcpy(sAicM1.Anonce, Body + AIC_EAPOL_NONCE_OFFSET, AIC_EAPOL_NONCE_LENGTH);
     (void)memcpy(sAicM1.Replay, Body + AIC_EAPOL_REPLAY_OFFSET, AIC_EAPOL_REPLAY_LENGTH);
     (void)memcpy(sAicM1.Station, Station, WIFI_MAC_ADDRESS_LENGTH);
+    /* 同一份地址留给 join 之后的 DHCP/ARP（见 sAicStaAddress 的说明） */
+    (void)memcpy(sAicStaAddress, Station, WIFI_MAC_ADDRESS_LENGTH);
+    sAicStaAddressValid = 1u;
     sAicM1.KeyInformation = KeyInformation;
     sAicM1.KeyVersion = HandshakeKeyVersion(KeyInformation);
     sAicM1Captured = 1u;
@@ -228,6 +241,14 @@ const UINT8 *AicHandshakePtk(void) {
 
 const UINT8 *AicHandshakeStation(void) {
     return sAicM1.Station;
+}
+
+/*
+ * 关联期间的空口 STA MAC（M1 的 addr1）。HandshakeStop 之后 AicHandshakeStation()
+ * 指向的 M1 副本已经被清零，DHCP/ARP 要用这里；没握过手返回 0。
+ */
+const UINT8 *AicHandshakeStationAddress(void) {
+    return sAicStaAddressValid != 0u ? sAicStaAddress : 0;
 }
 
 const AIC_HANDSHAKE_M3 *AicHandshakeM3(void) {

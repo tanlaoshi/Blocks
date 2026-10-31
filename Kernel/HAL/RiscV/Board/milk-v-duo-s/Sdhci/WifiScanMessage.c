@@ -20,6 +20,11 @@
 static const UINT8 sAicScanStationAddress[AIC_SCAN_MAC_LENGTH] = {
     AIC_SCAN_MAC_LOCAL_UNICAST, 0u, 0u, 0u, 0u, AIC_SCAN_MAC_LAST_BYTE};
 
+/* 只读访问口：DHCP/ARP 需要"固件给 vif 的 MAC"，但别处不该改它（PR-36） */
+const UINT8 *AicScanStationAddress(void) {
+    return sAicScanStationAddress;
+}
+
 /* 布局核对表：每项是“自建镜像的实际值 vs 厂商编译出来的期望值” */
 typedef struct {
     const char *Name;

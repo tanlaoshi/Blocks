@@ -316,6 +316,8 @@ int AicScanLayoutCheck(void);
 int SdhciWifiScan(int Mode, UINT32 Rounds);
 void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength, UINT32 Index);
 void AicScanFormatAddress(const UINT8 *Address, char *Text);
+/* MM_ADD_IF 里写的本机 vif MAC（厂商 wdev.address 的替代）。只读；DHCP/ARP 拿它兜底 */
+const UINT8 *AicScanStationAddress(void);
 void AicScanMarkSigned(INT32 Value);
 /* Report：入口做一次 Reset，每轮 Start/Collect 前 Round，收帧 Add，轮末 RoundDone */
 void AicScanReportReset(UINT32 Rounds, int Verbose);

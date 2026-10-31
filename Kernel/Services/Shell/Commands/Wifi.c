@@ -31,6 +31,8 @@ extern int SdhciWifiScan(int Mode, UINT32 Rounds) __attribute__((weak));
 extern int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password) __attribute__((weak));
 /* PR-33：收 EAPOL（SDIO 数据帧 0x888e）。MsText=0 用板级默认预算（3000ms） */
 extern int SdhciWifiEapolPoll(const char *MsText) __attribute__((weak));
+/* PR-36：通用以太网 TX + DHCP 客户端。MsText=0 用板级默认预算（8000ms）；只读 */
+extern int SdhciWifiDhcp(const char *MsText) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -458,6 +460,16 @@ static void CommandWifiFw(int Argc, char **Argv) {
         CommandWifiFwJoin(Argc, Argv);
         return;
     } else if (ArgEqualIgnoreCase(Argv[1], "eapol")) { CommandWifiFwEapol(Argc, Argv); return;
+    } else if (ArgEqualIgnoreCase(Argv[1], "dhcp")) {
+        /* PR-36：数据通路 + DHCP（只读、可重复）。ms 默认 8000，见板级 SdhciWifiDhcp */
+        if (SdhciWifiDhcp == 0 || Argc > 3) {
+            gConsole.Write("wififw dhcp [ms]\n");
+            return;
+        }
+        WifiMarkBegin();
+        gConsole.Write(SdhciWifiDhcp(Argc == 3 ? Argv[2] : 0) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        WifiMarkEnd();
+        return;
     } else if (ArgEqualIgnoreCase(Argv[1], "ver")) {
         /* 只读：MM_VERSION_REQ → 有 CFM 就证明固件在跑 */
         if (SdhciWifiFwVersion == 0) {
@@ -515,7 +527,7 @@ static void CommandWifiFw(int Argc, char **Argv) {
         WifiMarkEnd();
         return;
     } else {
-        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|write [confirm]|fifotest|patch dry]\n");
+        gConsole.Write("wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|dhcp [ms]|write [confirm]|fifotest|patch dry]\n");
         return;
     }
     WifiFwRun(Mode);
@@ -529,7 +541,7 @@ void ShellCommandsWifiProbeRegister(void) {
 #if defined(__riscv)
     gConsole.Register("wifiprobe", "re-run SD1 (wifi-sd) SDIO probe; wifiprobe wake = also drive PE7",
                       CommandWifiProbeOnly);
-    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|write [confirm]|fifotest|patch dry]",
+    gConsole.Register("wififw", "firmware stage: wififw [stat|id|rd <addr>|wr <addr> <val>|ver|mmreset|bringup [dry]|scan [dry|verbose] [repeat 1..8]|join [dry] <ssid> [password] [bssid <addr>]|eapol poll [ms]|dhcp [ms]|write [confirm]|fifotest|patch dry]",
                       CommandWifiFw);
 #endif
 }

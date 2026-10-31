@@ -61,8 +61,9 @@ static int EapolLooksLikeBody(const UINT8 *At, UINT32 Available) {
     return 1;
 }
 
-/* 802.11 data 头长：24 + QoS 2 + HTC 4 + 4 地址 6。返回 0 = 不是 data 帧 */
-static UINT32 EapolDot11HeaderLength(const UINT8 *Frame, UINT32 MpduLength) {
+/* 802.11 data 头长：24 + QoS 2 + HTC 4 + 4 地址 6。返回 0 = 不是 data 帧。
+   PR-36：导出给 WifiEapolEther.c（解密帧定位 IP/ARP 时要跳同一个头）。 */
+UINT32 AicEapolDot11HeaderLength(const UINT8 *Frame, UINT32 MpduLength) {
     const UINT8 *Mpdu = Frame + AIC_RX_HW_HEADER_LENGTH;
     UINT32 Header = AIC_DOT11_HEADER_LENGTH;
 
@@ -95,7 +96,7 @@ static UINT32 EapolDot11HeaderLength(const UINT8 *Frame, UINT32 MpduLength) {
 static void EapolLocate(const UINT8 *Frame, UINT32 MpduLength, UINT32 End,
                         AIC_EAPOL_LOCATION *Location) {
     const UINT8 *Mpdu = Frame + AIC_RX_HW_HEADER_LENGTH;
-    UINT32 Header = EapolDot11HeaderLength(Frame, MpduLength);
+    UINT32 Header = AicEapolDot11HeaderLength(Frame, MpduLength);
     UINT32 Index;
 
     Location->Offset = 0u;
@@ -228,11 +229,21 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
                 SdhciMark(" decr=");
                 SdhciMarkDecimal("", Decryption);
                 SdhciMark(" (the firmware decrypted it: PTK/GTK match the AP)\n");
+                /* 诊断：把解密后帧的前 16 B 打出来，用来定位 ethertype 到底在哪个偏移
+                   （DHCP OFFER 收不到时，先看"帧有没有来"再看"偏对不对"）。 */
+                if (Counters->EncryptedFrames <= AIC_EAPOL_DATA_AFTER_KEYS_DUMP) {
+                    SdhciMark("WiFi: data after keys: bytes@60 ");
+                    AicDumpBytes(Frame + AIC_RX_HW_HEADER_LENGTH,
+                                 FrameLength > AIC_RX_HW_HEADER_LENGTH + 32u
+                                     ? 16u : (FrameLength > AIC_RX_HW_HEADER_LENGTH ? 8u : 0u));
+                }
             }
         } else {
             SdhciMarkHex("WiFi: eapol: encrypted data frame decr=", Decryption, 2);
             SdhciMark(" (no LLC/SNAP visible; keys not installed yet)\n");
         }
+        /* PR-36：解密帧里的 IP/ARP 交给 DHCP/ARP 处理（EAPOL 已在上面的分支外） */
+        AicEapolDispatchEther(Frame, End, Decryption);
         return;
     }
     MpduLength = End - AIC_RX_HW_HEADER_LENGTH;
@@ -247,6 +258,8 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
     }
     if (Location.Offset == 0u) {
         SdhciMark("WiFi: eapol: no LLC/SNAP 0x888e in this data frame (see hdr/mpdu above)\n");
+        /* 明文（decr=0）的 IP/ARP 也照样分流：开放网络/不加密的广播会走这里 */
+        AicEapolDispatchEther(Frame, End, Decryption);
     } else if (Location.Offset + AIC_EAPOL_HEADER_LENGTH > End) {
         SdhciMark("WiFi: eapol: body cut by frame end, drop\n");
         Counters->BadFrames++;

@@ -22,7 +22,12 @@
 #include "CString.h"
 
 /* 现场默认：装完 PTK/GTK 再回 M4（与判据行的顺序一致）；1 = 先回 M4 再装（见文件头） */
-#define AIC_HANDSHAKE_M4_BEFORE_KEYS 0u
+/*
+ * 真机判据把它翻成 1：装密钥后固件会把后续发出的帧加密，M4 若在装钥匙之后发就是密文，
+ * AP 读不到 → 端口永远不开 → DHCP 的 DISCOVER 被丢（真机现象：data tx 正常、无 OFFER）。
+ * 厂商 wpa_supplicant 的顺序是"先发 M4、再 install_ptk"（wpa.c:1766-1783）。
+ */
+#define AIC_HANDSHAKE_M4_BEFORE_KEYS 1u
 
 /* WifiGtkExtract 的返回码 → 串口上能读的一句话（数值仍照打，便于对拍） */
 static const char *HandshakeGtkStatusText(int Status) {
@@ -158,6 +163,14 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
         SdhciMark("WiFi: handshake: M4 is out, but the GTK is missing: group/broadcast frames"
                   " stay undecryptable (see the gtk: line above)\n");
         return -1;
+    }
+    /*
+     * 厂商在装完钥匙后**再发一次** ME_SET_CONTROL_PORT（rwnx_main.c:4606-4610 的 AUTHORIZED 分支）。
+     * 之前我们只在握手前开过；真机现象是 DHCP DISCOVER 发得出去却永远没有 OFFER，
+     * 与"受控口未随授权状态重新打开、数据帧被固件拦下"相符。这一发失败不判死。
+     */
+    if (AicControlPortSend(Host, ApIndex) == 0) {
+        SdhciMark("WiFi: control port reopened after keys (vendor order: add_key -> set_control_port)\n");
     }
     return 0;
 }

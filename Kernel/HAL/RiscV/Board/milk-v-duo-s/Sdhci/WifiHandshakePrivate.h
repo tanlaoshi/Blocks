@@ -131,6 +131,9 @@ void AicHandshakeRememberPtk(const UINT8 *Ptk);
 const UINT8 *AicHandshakeKck(void);
 const UINT8 *AicHandshakePtk(void);
 const UINT8 *AicHandshakeStation(void);
+/* 关联期间的空口 STA MAC（M1 的 addr1）；HandshakeStop 之后仍有效，没握过手返回 0。
+   DHCP 的 chaddr/源 MAC 与 ARP 的 sha 用它（PR-36） */
+const UINT8 *AicHandshakeStationAddress(void);
 const AIC_HANDSHAKE_M3 *AicHandshakeM3(void);
 
 /* ---- WifiHandshakeKey.c：PMK / SNonce / PTK / M2 / MIC ---- */
@@ -153,6 +156,13 @@ void AicHandshakePrintSnonce(const UINT8 *Snonce);
 /* ---- WifiEapolTx.c：数据 TX（本仓第一条非消息帧） ---- */
 int AicEapolSend(SDHCI_HOST *Host, const UINT8 *Eapol, UINT32 Length, const UINT8 *Destination,
                  const UINT8 *Source, UINT8 VifIndex, UINT8 ApIndex);
+/*
+ * PR-36：同一条 SDIO 数据通道发**任意以太网帧**（DHCP/ARP 用）。
+ * Frame = dst[6] src[6] ethertype[2] payload，Length 含 14 B 以太网头且至少 60 B；
+ * 802.11 头与 LLC/SNAP 仍由固件补（与 EAPOL 完全同一条 txdesc 契约）。
+ */
+int AicWifiDataSend(SDHCI_HOST *Host, const UINT8 *Frame, UINT32 Length, UINT8 VifIndex,
+                    UINT8 ApIndex);
 
 /*
  * ---- MM_KEY_ADD_REQ(0x24) / CFM(0x25) 的镜像（PR-35）----

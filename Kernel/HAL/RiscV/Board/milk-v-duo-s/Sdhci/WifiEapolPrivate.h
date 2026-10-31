@@ -70,6 +70,18 @@
 #define AIC_RX_HW_STATUS_DECR_SHIFT 2u
 #define AIC_RX_HW_STATUS_DECR_MASK 0x7u
 #define AIC_RX_HW_DECR_UNENC 0u /* RWNX_RX_HD_DECR_UNENC（rwnx_rx.h:46） */
+#define AIC_RX_HW_DECR_WEP 1u   /* RWNX_RX_HD_DECR_WEP */
+#define AIC_RX_HW_DECR_TKIP 2u  /* RWNX_RX_HD_DECR_TKIP：本 AP 的组播 GTK */
+#define AIC_RX_HW_DECR_CCMP 3u  /* RWNX_RX_HD_DECR_CCMP128：本 AP 的单播 PTK */
+#define AIC_RX_HW_DECR_WAPI 4u  /* RWNX_RX_HD_DECR_WAPI */
+/*
+ * 解密帧的 802.11 头与 LLC/SNAP 之间还留着加密头（厂商 rwnx_rx.c:2167-2186 的 pull_len：
+ * CCMP/TKIP +8、WEP +4、WAPI +18），ethertype 从 `hdr_len + 6 + 加密头长` 取
+ * （:2177 `skb->data[hdr_len + 6 + 8]`）。PR-36 定位 IP/ARP 时必须跳过它。
+ */
+#define AIC_RX_SEC_HEADER_WEP 4u
+#define AIC_RX_SEC_HEADER_CCMP_TKIP 8u
+#define AIC_RX_SEC_HEADER_WAPI 18u
 /* flags 位域（rwnx_rx.h:294-312）：bit8-15 = vif_idx、bit16-23 = sta_idx */
 #define AIC_RX_HW_FLAGS_INDEX_SHIFT 8u
 #define AIC_RX_HW_FLAGS_INDEX_MASK 0xFFu
@@ -91,6 +103,8 @@
 #define AIC_LLC_SNAP_LENGTH 8u
 #define AIC_ETH_HEADER_LENGTH 14u /* 12 B MAC + 2 B ethertype */
 #define AIC_ETHERTYPE_PAE 0x888Eu  /* ETH_P_PAE（if_ether.h:88）：EAPOL */
+/* PR-36：解密帧里找 LLC/SNAP 时最多试三个候选偏移（见 WifiEapolEther.c） */
+#define AIC_ETH_LOCATE_CANDIDATES 3u
 
 /* ---- EAPOL-Key（802.11-2016 §12.7.2 图 12-25；802.1X-2020 §11.9）---- */
 #define AIC_EAPOL_HEADER_LENGTH 4u /* version(1) type(1) length(2, BE) */
@@ -152,6 +166,8 @@
  * AP 的组播/广播一旦开始流，逐帧打会把串口刷满，所以后面只计数不打印。
  */
 #define AIC_EAPOL_DATA_AFTER_KEYS_LOG 6u
+/* 解密帧取证：前几帧额外 dump 16 B，用来定位 ethertype（DHCP OFFER 收不到时用） */
+#define AIC_EAPOL_DATA_AFTER_KEYS_DUMP 4u
 /* 60 B hdr + 1500 B MPDU + 4 B 对齐余量 ⇒ 2048 足够；超出部分读掉丢弃，防串包 */
 #define AIC_EAPOL_FRAME_MAX 2048u
 #define AIC_EAPOL_HEAD_DUMP 32u /* 第一帧数据帧的头部取证宽度 */
@@ -204,6 +220,10 @@ int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Count
                     int (*Done)(void));
 /* WifiEapolParse.c：把一帧数据帧解到 EAPOL（不认识的帧只打一行） */
 void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTERS *Counters);
+/* 802.11 data 头长（24 + QoS/HTC/4 地址）；0 = 不是 data 帧。WifiEapolEther.c 也用它 */
+UINT32 AicEapolDot11HeaderLength(const UINT8 *Frame, UINT32 MpduLength);
+/* WifiEapolEther.c：从解密帧里定位以太网载荷，按 ethertype 交给 gAicEapolEtherSink */
+void AicEapolDispatchEther(const UINT8 *Frame, UINT32 End, UINT32 Decryption);
 /* WifiEapolKey.c：EAPOL 头分流 + Key 字段解码 + 取证 dump（只打印/计数） */
 UINT16 AicEapolGetBigEndian16(const UINT8 *At);
 void AicEapolMarkBytes(const char *Tag, const UINT8 *Data, UINT32 Length);
@@ -246,5 +266,20 @@ extern UINT32 gAicEapolKeyAddHwIndex;
  * 数据帧解析据此把"加密帧"的文案从"keys not installed yet"换成"data frame after keys"。
  */
 extern UINT32 gAicEapolKeysInstalled;
+
+/*
+ * PR-36：解密数据帧的**以太网载荷分流口**。WifiEapolParse.c 在 decr != 0（固件已经解开）
+ * 的帧里定位 LLC/SNAP 的 ethertype，然后交给这个 sink：
+ *   EtherType  0x0800（IPv4）/ 0x0806（ARP）
+ *   Payload    以太网载荷（IPv4 从版本/IHL 字节开始，ARP 从 htype 开始）
+ *   Length     可用字节数（可能含以太网补齐；按报文自己声明的长度解析）
+ *   Decryption hw_rxhdr.status 的 decr：2 = TKIP（组播/GTK）、3 = CCMP（单播/PTK）
+ * DHCP/ARP 命令各自在"正在跑"时处理，其他时候 sink 为空或立即返回。
+ */
+typedef void (*AIC_WIFI_ETHER_SINK)(UINT16 EtherType, const UINT8 *Payload, UINT32 Length,
+                                    UINT32 Decryption);
+void AicEapolSetEtherSink(AIC_WIFI_ETHER_SINK Sink);
+/* 定义在 WifiEapolParse.c；调用方只经 AicEapolSetEtherSink 改它 */
+extern AIC_WIFI_ETHER_SINK gAicEapolEtherSink;
 
 #endif

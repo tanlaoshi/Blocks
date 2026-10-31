@@ -34,118 +34,6 @@ static int WifiReadFileIntoPages(const char *Path, UINT8 **OutBlob, UINTN *OutBy
     return 0;
 }
 
-static int WifiAlpRequest(void) {
-    const UINT8 Requested = (UINT8)(WIFI_CLOCK_NO_HARDWARE_REQ | WIFI_CLOCK_REQUEST_ALP);
-    UINT8 Status = 0;
-    UINT32 Attempt;
-
-    /* 对表 brcmf_sdio_buscoreprep：先写 0x28（关硬件时钟请求 + 要 ALP） */
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, Requested) != 0) {
-        return -1;
-    }
-    if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &Status) != 0) {
-        return -1;
-    }
-    /* 源码要求：回读去掉两个 AVAIL 位后必须与写入值逐位相等 */
-    if ((UINT8)(Status & (UINT8)~(WIFI_CLOCK_ALP_AVAILABLE | WIFI_CLOCK_HT_AVAILABLE)) !=
-        Requested) {
-        WifiBootMarkHexadecimal32("Boot: Pi WIFI csr wrote=28 read=", Status);
-        HalSerialBootMarkForce("\n");
-        return -1;
-    }
-    /* PMU_MAX_TRANSITION_DLY：ALP 起来最多 15 ms */
-    for (Attempt = 0; Attempt < 15u; Attempt++) {
-        if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &Status) != 0) {
-            return -1;
-        }
-        if ((Status & WIFI_CLOCK_ALP_AVAILABLE) != 0) {
-            break;
-        }
-        SdhciDelayMicroseconds(1000);
-    }
-    if ((Status & WIFI_CLOCK_ALP_AVAILABLE) == 0) {
-        WifiBootMarkHexadecimal32("Boot: Pi WIFI ALP timeout csr=", Status);
-        HalSerialBootMarkForce("\n");
-        return -1;
-    }
-    /* buscoreprep 末尾：0x21 = FORCE_HW_CLKREQ_OFF | FORCE_ALP */
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
-                               (UINT8)(WIFI_CLOCK_NO_HARDWARE_REQ | WIFI_CLOCK_FORCE_ALP)) != 0) {
-        return -1;
-    }
-    SdhciDelayMicroseconds(65);
-    /* 关掉多余的 SDIO 上拉 */
-    (void)WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_PULL_UP_CONTROL, 0);
-    /*
-     * 对表 brcmf_sdio_htclk(on)：download_firmware 之前会再调一次 clkctl(CLK_AVAIL)，
-     * 那里是整字节覆写成 ALP_AVAIL_REQ —— 会把 FORCE_ALP 和 FORCE_HW_CLKREQ_OFF 一起清掉，
-     * 从而放开芯片的硬件时钟申请。我们之前停在 0x21，等于把时钟申请这条路掐死了。
-     */
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
-                               WIFI_CLOCK_REQUEST_ALP) != 0) {
-        return -1;
-    }
-    for (Attempt = 0; Attempt < 1500u; Attempt++) {
-        if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &Status) != 0) {
-            return -1;
-        }
-        if ((Status & WIFI_CLOCK_ALP_AVAILABLE) != 0) {
-            break;
-        }
-        SdhciDelayMicroseconds(1000);
-    }
-    WifiBootMarkHexadecimal32("Boot: Pi WIFI csr=", Status);
-    HalSerialBootMarkForce("\n");
-    return 0;
-}
-
-static int WifiEnterDownload(void) {
-    /* 对表 brcmf_chip_cm3_set_passive：禁 ARM → D11 带 PHY 位复位 → SOCRAM 复位 → 关 bank 3 重映射 */
-    if (WifiCoreDisable(WIFI_ARM_WRAPPER, 0, 0) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ARM disable fail\n");
-        return -1;
-    }
-    /* A/B：resetcore 会清 RESET_CTL、把 CM3 放出来从地址 0 取指，这里重新按回去 */
-    if (WifiBackplaneWrite32(WIFI_ARM_WRAPPER + WIFI_AI_RESET_CONTROL_OFFSET, 1u) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ARM hold fail\n");
-        return -1;
-    }
-    HalSerialBootMarkForce("Boot: Pi WIFI ARM held in reset\n");
-    if (WifiCoreReset(WIFI_D11_WRAPPER, WIFI_D11_PHY_RESET | WIFI_D11_PHY_CLOCK_ENABLE,
-                      WIFI_D11_PHY_CLOCK_ENABLE, WIFI_D11_PHY_CLOCK_ENABLE) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI D11 reset fail\n");
-        return -1;
-    }
-    if (WifiCoreReset(WIFI_SOCRAM_WRAPPER, 0, 0, 0) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI SOCRAM up fail\n");
-        return -1;
-    }
-    /* A/B 已证：不复位时 rst=1、io=0、连寄存器都写不进 */
-    {
-        UINT32 IoControl = 0;
-        UINT32 ResetControl = 0;
-        UINT32 CoreInfo = 0;
-        UINT32 BankInfo = 0;
-
-        (void)WifiBackplaneRead32(WIFI_SOCRAM_WRAPPER + WIFI_AI_IO_CONTROL_OFFSET, &IoControl);
-        (void)WifiBackplaneRead32(WIFI_SOCRAM_WRAPPER + WIFI_AI_RESET_CONTROL_OFFSET,
-                                  &ResetControl);
-        (void)WifiBackplaneRead32(WIFI_SOCRAM_CORE_BASE, &CoreInfo);
-        (void)WifiBackplaneRead32(WIFI_SOCRAM_CORE_BASE + 0x40u, &BankInfo);
-        WifiBootMarkHexadecimal32("Boot: Pi WIFI socram io=", IoControl);
-        WifiBootMarkHexadecimal32(" rst=", ResetControl);
-        WifiBootMarkHexadecimal32(" core=", CoreInfo);
-        WifiBootMarkHexadecimal32(" bank=", BankInfo);
-        HalSerialBootMarkForce("\n");
-    }
-    if (WifiBackplaneWrite32(WIFI_SOCRAM_BANK_INDEX, 3u) != 0 ||
-        WifiBackplaneWrite32(WIFI_SOCRAM_BANK_PDA, 0u) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI bank remap off fail\n");
-        return -1;
-    }
-    HalSerialBootMarkForce("Boot: Pi WIFI SOCRAM up ok\n");
-    return 0;
-}
 
 int WifiFirmwareLoad(void) {
     const char *FirmwarePath;
@@ -203,11 +91,50 @@ int WifiFirmwareLoad(void) {
 
     WifiBootMarkHexadecimal32("Boot: Pi WIFI load begin tag=", WIFI_BUILD_TAG);
     HalSerialBootMarkForce("\n");
+    /*
+     * 延后 Claim：空闲后 KSO 写得成 0x01 但 DEVON 不回（0x12c）。
+     * 先 WL_ON POR + 重枚举，再对表 Linux 走 KSO。
+     */
+    if (WifiSdioBusRejoinAfterIdle() != 0) {
+        goto Done;
+    }
+    /* Linux：SLEEPCSR KSO → 再 CHIPCLK / 背板窗；见 SleepControl.c */
+    if (WifiSdioSleepControlEnsureAwake() != 0) {
+        goto Done;
+    }
     if (WifiAlpRequest() != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI ALP fail\n");
         goto Done;
     }
+    (void)WifiSdioHostCommandDataRecover();
+    /*
+     * 0x128：在 SOCRAM 未复位前写 bankidx → DAT0 楔死（与 FORCE 无关）。
+     * 进下载前只读 ChipCommon 探活；bankidx 写读回放到 EnterDownload 之后。
+     */
+    {
+        UINT32 ChipCommon = 0;
+
+        if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE, &ChipCommon) != 0) {
+            HalSerialBootMarkForce("Boot: Pi WIFI cc read fail before download\n");
+            goto Done;
+        }
+        WifiBootMarkHexadecimal32("Boot: Pi WIFI cc before download=", ChipCommon);
+        HalSerialBootMarkForce("\n");
+    }
     if (WifiEnterDownload() != 0) {
+        goto Done;
+    }
+    /* pi-wifi-2 判据：SOCRAM up 后 bankidx 写读回 */
+    if (WifiBackplaneWriteReadbackTest() != 0) {
+        goto Done;
+    }
+    /* 寄存器/进下载态已在 FORCE_ALP 下完成；灌片前再清 FORCE（clkctl CLK_AVAIL） */
+    if (WifiAlpReleaseForceToRequest() != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
+        goto Done;
+    }
+    /* 64B 探针：打 xfer；失败即停，避免 Worker Claim 连灌数百 KB 卡死桌面 */
+    if (WifiBackplaneSramProbeWrite() != 0) {
         goto Done;
     }
     /* cyw43：寄存器写后退窗到 ChipCommon，再灌 RAM */
@@ -224,10 +151,6 @@ int WifiFirmwareLoad(void) {
         }
         WifiBootMarkHexadecimal32("Boot: Pi WIFI cc before write=", ChipCommon);
         HalSerialBootMarkForce("\n");
-    }
-    if (WifiAlpRequest() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ALP re-req fail\n");
-        goto Done;
     }
     /* 对表 brcmf_sdiod_skbuff_write：长度向上取 4，尾巴清零（避免 2B 收尾） */
     while ((FirmwareBytes & 3u) != 0u && FirmwareBytes < WIFI_FIRMWARE_MAX_BYTES) {

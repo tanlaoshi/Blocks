@@ -112,7 +112,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x00000125u
+#define WIFI_BUILD_TAG               0x0000012du
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -212,6 +212,10 @@ const char *WifiNvramPathForChip(void);
 void WifiFirmwarePathProbe(void);
 void WifiBootMarkHexadecimal32(const char *Tag, UINT32 Value);
 
+int WifiSdioSleepControlEnsureAwake(void); /* F1 SLEEPCSR KSO；灌片前必醒 */
+int WifiAlpRequest(void); /* buscoreprep → csr 含 FORCE_ALP（0x21） */
+int WifiAlpReleaseForceToRequest(void); /* 灌片前清 FORCE → REQUEST_ALP */
+int WifiEnterDownload(void);
 int WifiBackplaneWindowSet(UINT32 Address);
 void WifiBackplaneWindowInvalidate(void);
 int WifiBackplaneRead32(UINT32 Address, UINT32 *OutValue);
@@ -219,6 +223,7 @@ int WifiBackplaneWrite32(UINT32 Address, UINT32 Value);
 int WifiBackplaneWriteMemory(UINT32 Address, const UINT8 *Data, UINT32 ByteCount);
 /* 对表 Linux brcmf_sdiod_ramrw：窗内偏移 | ACCESS_2_4B（0x8000） */
 int WifiBackplaneReadMemory(UINT32 Address, UINT8 *Data, UINT32 ByteCount);
+int WifiBackplaneSramProbeWrite(void); /* 64B；整包灌片前 */
 int WifiCoreDisable(UINT32 WrapperBase, UINT32 PreResetBits, UINT32 ResetBits);
 int WifiCoreReset(UINT32 WrapperBase, UINT32 PreResetBits, UINT32 ResetBits,
                   UINT32 PostResetBits);
@@ -230,6 +235,7 @@ int WifiVerifyDownloadPath(void);
 int WifiExitDownload(void);
 int WifiWaitHtAndFunction2(void);
 int WifiSdioHostCommandDataRecover(void); /* F1 abort + CMD|DATA 复位 */
+int WifiSdioBusRejoinAfterIdle(void); /* WL_ON POR+枚举+F1；延后 Claim 灌片前 */
 int WifiFirmwareLoad(void); /* 0=ok；须 FS 已挂 */
 int WifiIoctl(UINT32 Kind, UINT32 Command, UINT8 *Payload, UINT32 PayloadBytes,
               UINT32 *OutPayloadBytes);

@@ -7,20 +7,41 @@ UINT32 gWifiBackplaneWindow = 0xFFFFFFFFu;
 
 int WifiBackplaneWindowSet(UINT32 Address) {
     UINT32 Window = Address & ~(SDIO_BACKPLANE_WINDOW_SIZE - 1u);
+    UINT8 Byte0 = (UINT8)((Window >> 8) & 0xFFu);
+    UINT8 Byte1 = (UINT8)((Window >> 16) & 0xFFu);
+    UINT8 Byte2 = (UINT8)((Window >> 24) & 0xFFu);
+    UINT8 Read0 = 0;
+    UINT8 Read1 = 0;
+    UINT8 Read2 = 0;
 
     if (Window == gWifiBackplaneWindow) {
         return 0;
     }
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS,
-                               (UINT8)((Window >> 8) & 0xFFu)) != 0) {
+    /* 对表 brcmf_sdiod_set_backplane_window：SBADDRLOW..HIGH = bar0>>8 连写三字节 */
+    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS, Byte0) != 0 ||
+        WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 1u, Byte1) != 0 ||
+        WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 2u, Byte2) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI win set fail\n");
         return -1;
     }
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 1u,
-                               (UINT8)((Window >> 16) & 0xFFu)) != 0) {
+    /*
+     * 窗失败立刻停（路线图 pi-wifi-2）：CMD52 写成功不代表芯侧生效。
+     * 回读三字节；不一致则清缓存并失败，禁止继续猜 HT / 灌片。
+     */
+    if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS, &Read0) != 0 ||
+        WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 1u, &Read1) != 0 ||
+        WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 2u, &Read2) != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI win rb fail\n");
+        gWifiBackplaneWindow = 0xFFFFFFFFu;
         return -1;
     }
-    if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 2u,
-                               (UINT8)((Window >> 24) & 0xFFu)) != 0) {
+    if (Read0 != Byte0 || Read1 != Byte1 || Read2 != Byte2) {
+        WifiBootMarkHexadecimal32("Boot: Pi WIFI win set=", Window);
+        HalSerialBootMarkForce("\n");
+        WifiBootMarkHexadecimal32("Boot: Pi WIFI win rb=",
+                                  ((UINT32)Read2 << 16) | ((UINT32)Read1 << 8) | (UINT32)Read0);
+        HalSerialBootMarkForce("\n");
+        gWifiBackplaneWindow = 0xFFFFFFFFu;
         return -1;
     }
     gWifiBackplaneWindow = Window;

@@ -595,3 +595,46 @@ systemd 看门狗把板子重启了。**ALP 没就绪时访问背板 = 硬挂**�
 2. 读 Linux 的 `/sys/kernel/debug/mmc1/ios`（clock / bus width / timing spec / voltage），
    与我们按 25 MHz + default speed 的配置对照；若 Linux 是 50 MHz high-speed，改成一致再试
 3. 若仍不通，回到 Linux 侧：修正版探针模块已在文档中，用它拿「裸路径是否也挂」这一个事实
+
+---
+
+## 短刀试探日志（Pi · Claim 后延后 FirmwareLoad · 进行中 · 2026-10-31）
+
+> 现象主线：BOOT 仅枚举；RUNTIME Claim → `EnterDownload` → bankidx 写读回。  
+> 门面：`pi-wifi-1`（tag `0x125` 形状）已绿；本表专攻 **`pi-wifi-2`（窗/寄存器同序）**。  
+> 取证：`log save` → `RUNTIME.LOG`（halt 不自动 flush）。对照标准：`brcmf_sdio_buscoreprep` / `brcmf_sdio_kso_init` / `brcmf_chip_set_passive` 顺序。
+
+| # | tag | 试探 | 结果 | 备注 |
+| - | --- | ---- | ---- | ---- |
+| 1 | `0x125` | Claim 后立刻 `WifiCoreDisable(ARM)`（xfer 前） | **`arm disable fail`** | 形状 `chip/rev/fn1/f2bl/kso` 已绿；失败点 = 背板写 ARM 包装器。→ 开 `pi-wifi-2` |
+| 2 | `0x126` | 对表 Linux：先 KSO（`0x1001F`）、`AlpRequest`、再 ARM disable；FORCE 贯穿 | **挂死**（闪完后无串口推进） | KSO 写 **`0x01` 清了 DEVON(bit1)** → sleep；brcmfmac 是 **OR bit0 保 DEVON** |
+| 3 | `0x127` | KSO = `read \| WAKE`；`AlpRequest` 仍写 `0x48`；FORCE 灌片前再清 | **`bankidx=fail`**；`csr=0x48` | DAT0 卡在 bankidx；`0x48`=REQUEST_ALP\|AVAIL，**无 FORCE_ALP**，与 buscoreprep `0x21` 不符 |
+| 4 | `0x128` | `AlpRequest`→`0x21`（FORCE\|REQ）；FORCE 清挪到灌片前 | **`bankidx=fail`**；`csr=0x61` | FORCE 在仍楔死 → **根因不是 FORCE 缺位**，是 **SOCRAM 未 up 就写 bankidx**（Linux 先 `set_passive`/EnterDownload） |
+| 5 | `0x129` | Claim：先读 ChipCommon；`EnterDownload` 后再 bankidx | **`kso read fail`**（未到 CC） | BOOT 仍 `kso=0x03`；Claim 距探针很久，芯片已睡。我们**先读再写**——睡着读失败即弃。Linux `kso_control(on)`：**先写 KSO=1（AOS 唤醒）再 poll KSO\|DEVON** |
+| 6 | `0x12a` | recover→写 KSO=1→settle→poll | **`kso write fail r5=00002801`** | `R5_ERROR`+IO_STATE=TRN；`pst` 主机空闲。根因：`Command52Write` 把仅 ERROR 当死错连拒 10 次，settle 未跑；写前 abort 可能致 TRN |
+| 7 | `0x12b` | 首写容 busy；无 abort；poll 仍用严读 | **`kso read fail r5=00002801`** | 写已过；poll 把仅 ERROR 当死错，5 次即弃，等不到 DEVON |
+| 8 | `0x12c` | poll 容 busy；attempts=20000 | **`kso wake timeout=00000001`** | KSO 粘住、**DEVON 永不回**——纯 SLEEPCSR 唤醒救不了延后 Claim |
+| 9 | `0x12d` | 灌片前 `BusRejoin`：WL_ON POR→host→enum→F1，再 KSO | **wifi-2 绿** | `rejoin ok`→`kso=03`→`cc=1541a9a6`→SOCRAM up→**`bankidx write1/3 读回一致`**。随后 `csr avail=48` 后 **`fw write fail @1e000000`** / `sram probe write fail`（`pst=01ef0006 isr=00108010 r5=00001000`）→交 **pi-wifi-3** |
+
+### 已否证（勿再试）
+
+- Claim 时 **先读成功才允许写 KSO**（睡着必挂；应用 Linux 先写唤醒）
+- 唤醒前对空闲卡做 **IO_ABORT + recover**（易 TRN + 后续 R5_ERROR）
+- 用严格 `Command52Read/Write`（拒 `R5_ERROR`）当 KSO 唤醒路径——busy 会被误杀
+- **仅靠 KSO poll 救延后空闲**（DEVON 不回；须 WL_ON POR + 重枚举）
+- 用 `REQUEST_ALP|AVAIL`（`0x48`）顶 `buscoreprep` 的 `FORCE_ALP|REQ`（`0x21`）
+- Claim 路径在 EnterDownload / SOCRAM up **之前**写 `SOCSRAM_BANKX_INDEX`
+- （修正）「永远禁止写 `0x01`」——Linux 唤醒首写就是 KSO=1，再等 DEVON
+
+### 还要试多少次（估）
+
+对照 NUC FH 短刀（40+ 才收官）：本轨是 **有 Linux 同序可抄** 的窗/寄存器刀，不是盲 DMA。
+
+| 目标 | 估剩余短刀 | 说明 |
+| --- | ---: | --- |
+| **`pi-wifi-2` 绿**（寄存器同周期写读回） | **1～4** | `0x129` 若 bankidx=ok → 1 次收口；若仍 fail → 再拆「窗基 / ACCESS_2_4B / ARM wrapper 址」各 1 刀，上限约 4 |
+| **`pi-wifi-3`（SRAM 别名）** | **3～8** | 历史主痛点；三别名一次只试一个；可能再碰时钟 |
+| **`pi-wifi-4`～扫描可用** | **按刀估日，不按次** | 4/5/6 各有独立判据；勿与 wifi-2 次数混算 |
+
+**本刀下一步**：板子 RUNTIME + `log save`，看 `0x129` 是否出现 `cc=` + `EnterDownload` 日志 + `bankidx` 成败。  
+手测成本高 → **一次只动一项**；否证写入上表，禁止回头重试已否证项。

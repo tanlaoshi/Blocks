@@ -16,8 +16,9 @@ BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的�
     DUO -> PC   "KSEND OK crc=.. written=.. size=.."（随后复位）
                 或 "KSEND FAIL ..."（不复位；必要时 "KSEND RESTORED"）
     --no-reboot 时板端在 KSEND OK 后留在 shell，复位交给操作者。
-    --no-backup 时板端跳过写前 .bak（仍读旧内容算差量），串口打
-    "backup: skipped (--no-backup)"；失败不回滚。
+    --no-backup 时板端跳过写前 .bak（优先读同目录 <目标>.crc 的旧块表；
+    缺失/不自洽才整读旧内容），串口打 "backup: skipped (--no-backup)"；
+    失败不回滚。
 
 两个实现约定（板子侧同样写死，改这里必须同步改板包）：
   * CRC 用 CRC-32/ISO-HDLC，即 Python zlib.crc32；
@@ -411,6 +412,44 @@ def print_plan(plan, data, local_crcs, board_crcs, board_size):
         print("  ... %d more" % (len(plan) - 40))
 
 
+def wait_for_shell_prompt(port, timeout=8.0):
+    """发送命令前确认板子在 shell 提示符上。
+
+    真机踩过：上一次传输半路断开后，板子会在 ksend 接收态里等数据（最长 30 s）；
+    这段时间发过去的命令会被当成协议数据吃掉。先敲回车等提示符，能避开这个窗口。
+    """
+    port.buffer.clear()
+    port.write_all(b"\r", 2.0)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            port._fill(0.3)
+        except PortTimeout:
+            continue
+        tail = port.buffer[-64:]
+        if b"> " in tail or tail.endswith(b"> \r\n"):
+            port.buffer.clear()
+            return True
+    return False
+
+
+def send_board_command(port, command, chunk=8, gap=0.004):
+    """逐小块发命令行。
+
+    真机踩过：115200 下把 44 字符整行一次写出去，板端 UART 输入偶发丢字符——
+    路径 "BOOT:boot.sd" 被解析成 "BO"，差一点把备份写成 BO.bak。
+    分块 + 小块间隔几乎不增加时间（44 字符 ≈ 20 ms），但能稳定住。
+    """
+    data = command.encode("ascii") if isinstance(command, str) else command
+    # 分块只解决 UART 丢字符；命令仍必须以换行结束，否则板端 shell 永远不执行。
+    if not data.endswith(b"\n"):
+        data += b"\n"
+    for start in range(0, len(data), chunk):
+        port.write_all(data[start:start + chunk], 2.0)
+        if start + chunk < len(data):
+            time.sleep(gap)
+
+
 def board_command(target, no_reboot, no_backup=False):
     """板端命令行；默认目标 + 默认复位/备份时保持旧字节 'ksend\\n'。"""
     if target == DEFAULT_TARGET_PATH and not no_reboot and not no_backup:
@@ -443,11 +482,23 @@ def command_transfer(args, dry_run):
         if args.no_backup:
             log("--no-backup: board will skip %s.bak (no rollback on failure)"
                 % target)
+        if not wait_for_shell_prompt(port):
+            raise KsendError("board is not at a shell prompt (still in a previous "
+                             "transfer? power-cycle the board and retry)")
         trigger = board_command(target, args.no_reboot, args.no_backup)
-        port.write_all(trigger, 10.0)
+        send_board_command(port, trigger.rstrip(b"\n"))
         # 备份失败时板子会在 READY 之前就回 FAIL，别干等 ready-timeout
         line, text = wait_for_line(port, [b"KSEND READY ", b"KSEND FAIL"],
                                    args.ready_timeout)
+        # 安全闸：板端解析出来的路径必须与请求一致。串口丢字符时板端会自作主张写别的
+        # 路径（真机踩过：BOOT:boot.sd -> BO），这里当场拦住，不让它写下去。
+        for raw in text.splitlines():
+            if "ksend: target:" in raw:
+                reported = raw.split("ksend: target:", 1)[1].split(" backup:", 1)[0].strip()
+                if reported != target:
+                    raise KsendError(
+                        "board parsed a different target: %r != %r (serial input corrupted?)"
+                        % (reported, target))
         print_board(text)
         if line.startswith(b"KSEND FAIL"):
             return EXIT_BOARD_FAIL

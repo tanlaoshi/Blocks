@@ -9,6 +9,9 @@
 #
 # 默认：BLOCKS 唯一 Kernel.elf；boot 删 Kernel.elf；刷新
 # boot.sd（FIT 内嵌核，sdboot 可 bootm）、boot.scr、duo.dtb。不删 fip.bin。
+# 读卡器写入会绕过板端 ksend 的 .crc 差量缓存：写 boot.sd / Kernel.elf
+# 之前必须先删同名 .crc；删不掉就停手，否则下次部署会拿过期块表当基准
+#（只能白跑一趟慢校验，最坏是 --no-backup 那次写不完整）。
 # duo-fatload：脚本 FIT 真机失败；上电改核仍须重打 embed FIT（或待 stub）。
 #
 # 禁止：对 Duo 跑 ck-pi-sd；格式化 boot；无备份删 boot.sd。
@@ -101,6 +104,19 @@ find_duo_blocks() {
   return 1
 }
 
+# 读卡器写入绕过板端 ksend 的 .crc 差量缓存：目标一变，旧块表立刻过期。
+# 必须在外写之前删掉；删不掉就停手（留着过期块表比下次慢扫危险）。
+drop_stale_cache() {
+  local Cache=$1 Label=$2
+  [ -e "$Cache" ] || return 0
+  rm -f "$Cache"
+  if [ -e "$Cache" ]; then
+    echo "error: 无法删除过期缓存 $Cache（下次部署会拿旧块表当基准）" >&2
+    exit 1
+  fi
+  echo "  - $Label (stale cache)"
+}
+
 if [ ! -f "$ELF" ]; then
   echo "error: missing $ELF（先: build riscv BOARD=milk-v-duo-s）" >&2
   exit 1
@@ -141,6 +157,7 @@ fi
 echo "ck-duo-sd: boot=$BootMnt"
 echo "ck-duo-sd: BLOCKS=$BlocksMnt"
 
+drop_stale_cache "$BlocksMnt/Kernel.elf.crc" "BLOCKS Kernel.elf.crc"
 cp -f "$ELF" "$BlocksMnt/Kernel.elf"
 cmp -s "$ELF" "$BlocksMnt/Kernel.elf" || {
   echo "error: BLOCKS Kernel.elf 校验失败" >&2
@@ -179,6 +196,7 @@ if [ "$BLOCKS_ONLY" = 0 ]; then
     mv "$BootMnt/boot.sd" "$BootMnt/boot.sd.vendor"
     echo "  + boot.sd → boot.sd.vendor"
   fi
+  drop_stale_cache "$BootMnt/boot.sd.crc" "boot boot.sd.crc"
   cp -f "$HERE/boot.sd" "$BootMnt/boot.sd"
   echo "  + boot boot.sd ($FitNote)"
   cp -f "$HERE/boot.scr" "$BootMnt/boot.scr"

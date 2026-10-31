@@ -1,4 +1,4 @@
-# Ksend — 串口增量写任意文件（Duo S 开发期工具，v4）
+# Ksend — 串口增量写任意文件（Duo S 开发期工具，v5）
 
 目标：改完内核不用拔卡，PC 只发和卡上不一样的那几块，8 秒级一轮，写完自动复位。
 v2 起目标不再写死 `Kernel.elf`：`--file` 是本地文件，`--path` 是卡上目标，
@@ -7,6 +7,9 @@ v3 起 `BOOT:` 指向启动分区（板端按卷选择后放行写只读的 boot
 `--no-reboot` 让板子校验通过后留在 shell（一键脚本用）；默认仍自动复位。
 v4 起 `--no-backup` 跳过写前 `.bak`（boot.sd 这类可再生成的目标用），
 串口明确打 `backup: skipped (--no-backup)`；跳过时失败不回滚。
+v5 起在目标旁维护 `<目标全名>.crc` 差量表：`--no-backup` 部署时 READY 之前
+只读这张 2 KB 的表，不再整读 2 MB 目标文件（Duo 的 SDIO 是 512 B 一块，
+整读一次要几千次往返，4~10 分钟）。见下面「差量缓存」一节。
 
 ```
 PC:  python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
@@ -44,6 +47,71 @@ deploy.sh --port /dev/ttyUSB0          # 脚本在 scripts/deploy.sh
 
 CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
 
+## 差量缓存 `<目标全名>.crc`（v5）
+
+路径与目标同卷同目录，名字 = 目标全名追加 `.crc`（`BOOT:boot.sd` →
+`BOOT:boot.sd.crc`，`BLOCKS:Kernel.elf` → `BLOCKS:Kernel.elf.crc`）。内容小端，
+字段定长（`u32`）：
+
+| 偏移 | 字段 | 值 / 含义 |
+| ---- | ---- | --------- |
+| 0 | `magic` | `0x4B534352`（协议给定值，按小端写出字节为 `52 43 53 4B`） |
+| 4 | `version` | `1` |
+| 8 | `block_size` | `4096` |
+| 12 | `block_count` | `ceil(total_size / 4096)` |
+| 16 | `total_size` | 目标文件当前大小 |
+| 20 | `full_crc` | 整个文件的 CRC32（传输收尾帧里那个值） |
+| 24 | `block_crc[]` | 每 4 KB 一块的 CRC32，共 `block_count` 个 |
+
+文件大小恒为 `24 + 4 × block_count`（517 块 ≈ 2 KB）。
+
+**使用规则（READY 之前）**：
+
+1. `stat` 目标得到 `OldSize`；`stat` `.crc` 得到实际大小。
+2. 只有同时满足下面全部条件才用 `.crc` 的块表，且**不读目标文件**：
+   magic/version/block_size 对；`total_size == OldSize`；`block_count` 与
+   `total_size` 自洽；`.crc` 实际大小 == `24 + 4×block_count`；`block_count`
+   不超过上限。任何一条不满足 → 退回逐块读目标文件的慢路径（正确但慢）。
+3. 缓存只在**整文件读回校验通过之后**刷新；`KSEND FAIL`、回滚、abort 都不写。
+4. 新文件比旧文件小时，FAT 没有 truncate，目标目录项尺寸仍是旧值；此时
+   缓存既不能写「新尺寸」（永远不自洽），也不能留旧表（大小没变会被当成
+   有效表，但内容已变），所以**删掉旧缓存**（串口打
+   `cache: dropped (target keeps old size)`），下一次走慢路径。等文件不再
+   缩小时缓存会重新建立。
+5. `full_crc` 会随缓存写/读，但 READY 之前板端没有独立来源能核对它（不读
+   文件就无法确认），所以它**不参与差量判断**；改它不会让缓存失效，下一次
+   成功传输会重新写对。真正决定「发哪些块」的是 `block_crc[]`。
+
+**安全边界（必须知道）**：
+
+- `.crc` 只是**加速缓存**，不是事实来源；它**只在目标文件由 ksend 自己写过
+  （并读回校验通过）之后才可信**。任何外部写入——读卡器刷盘、`ck-duo-sd.sh`、
+  别的命令改文件——都必须让对应的 `.crc` 失效：删掉它。删掉后下次走慢路径，
+  结果不变，只是慢。
+- 不读文件时，板端能 O(1) 确认的只有 `total_size`（目标 `stat` 大小）；
+  `full_crc` 无法在不读文件的前提下与目标内容核对，只能信任「它是上次
+  校验通过后自己写的」。因此**外部写入会绕过它**：读卡器刷了卡、或别的
+  命令改了目标而 `.crc` 没变，缓存就过期了。
+- 兜底有两层：
+  1. `scripts/ck-duo-sd.sh` 在**写目标之前**调用 `drop_stale_cache`：
+     - `$BootMnt/boot.sd.crc`（boot 分区的 `BOOT:boot.sd.crc`）
+     - `$BlocksMnt/Kernel.elf.crc`（BLOCKS 分区的 `BLOCKS:Kernel.elf.crc`）
+
+     删完会检查文件确实不存在；删不掉就报错退出，绝不带着过期块表继续。
+     可操作检查：跑完 `ck-duo-sd.sh` 后，`test ! -e "$BootMnt/boot.sd.crc"`
+     与 `test ! -e "$BlocksMnt/Kernel.elf.crc"` 都应成立；串口/脚本日志里
+     会分别出现 `- boot boot.sd.crc (stale cache)` /
+     `- BLOCKS Kernel.elf.crc (stale cache)`（原本不存在则不打）。
+  2. 每次传输收尾仍会用**整文件读回**逐块比对预期。过期缓存最多让这次
+     部署 FAIL（`--no-backup` 时目标可能半新半旧，需要重刷），**不会**在
+     `KSEND OK` 的前提下把目标写错：未发送的块必须与旧表一致，发送的块
+     已被新数据覆盖；只有整份内容恰好等于 PC 的本地文件时读回校验才会过。
+     一旦这次部署失败且已经写过卡（`Dirty`），板端会删掉 `.crc`
+     （`cache: dropped (failed write; next transfer scans)`）：回滚成功也删，
+     因为无法证明旧表没被外部改过。下一次慢扫重建，慢但确定正确。
+- 如果将来去掉整文件读回校验，这个前提就破了，过期缓存会变成静默写错。
+  删 `.crc` 永远是最省事的「回到已知正确」手段。
+
 ## 安全顺序（顺序不能换）
 
 1. `ksend selftest` 先过：8 KB 临时文件，新建一遍 + 覆写一遍，读回逐字节比对，删除。
@@ -51,7 +119,8 @@ CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
    回读校验 size + 整体 CRC。备份不过就 `KSEND FAIL reason=backup`，一个字节都不写。
    备份名规则：目标全名追加 `.bak`（`Kernel.elf` → `Kernel.elf.bak`，
    `boot.sd` → `boot.sd.bak`），保留原大小写；boot 分区的救生圈就是它。
-   `--no-backup` 时跳过复制，只读扫描旧内容算差量块表，并打
+   `--no-backup` 时跳过复制：优先读同目录 `<目标全名>.crc` 的旧块表（命中则
+   不读目标文件）；缺失/不自洽才逐块读旧内容。串口打
    `ksend: backup: skipped (--no-backup)`；失败时打 rollback: skipped，不假装回滚。
 3. 选卷：`FileSystemResolve` 解出目标卷，`FileSystemSelectVolume` 选中
    （boot/ESP 被挂载策略标成只读时，选中即放行写；用完 `SelectVolume(-1)` 归还）。
@@ -59,12 +128,14 @@ CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
    512 KB 批缓冲，满一批/遇到不连续/收尾帧时一次 `WriteFileAt`，然后回 `'A'`。
    逐块 4 KB 写会让 FAT 每次从首簇走到偏移（第二层 O(n²)），批量写是必须的。
 5. 收尾：`FileSystemFileSync`（→ `BlockFlush`）后重新打开文件逐块读回，
-   块 CRC 对齐预期、整体 CRC 对齐收尾帧。
+   块 CRC 对齐预期、整体 CRC 对齐收尾帧。只有读回通过才刷新 `.crc`
+   （`cache: updated`）；失败/回滚/abort 都不碰它。
 6. 只有校验通过才 `KSEND OK` 并（默认）复位；任何失败都 `KSEND FAIL`，**不复位**；
    只要尝试过写卡（含写失败）且没加 `--no-backup`，就用备份删了重写并回读校验，
    打印 `KSEND RESTORED`；`--no-backup` 时只打 `rollback: skipped (--no-backup)`。
+   失败且写过卡时删掉 `.crc`（回滚成功也删），下一次慢扫重建。
 
-## v1/v2/v3 与需求文本的出入（都是刻意的）
+## v1–v5 与需求文本的出入（都是刻意的）
 
 1. **收尾帧没有 size 字段**，板子只能用「收到过的最大 `index*4096+len`」推新大小。
    因此 PC 侧**永远重发最后一块**（哪怕它没变）；否则「新文件变短 / 末块没变」
@@ -91,6 +162,13 @@ CRC 是 CRC-32/ISO-HDLC，和 Python `zlib.crc32` 同参。
   下一次 `ksend info` 看到的是旧尺寸，下次传输也照常工作（多出来的块永远是 0）。
   真要精确尺寸只能整文件重写。
 - 单文件上限 `FAT_WRITE_MAX` = 8 MB（FAT 层限制）。
+- `.crc` 只用 `stat` 确认「大小没变」；内容被外部改成同样大小时它在 READY
+  之前发现不了。它只对「ksend 自己写过的目标」可信，外部写入后必须删
+  `.crc`（`ck-duo-sd.sh` 已自动做）；兜底是收尾的整文件读回校验（结果会是
+  FAIL，不是 OK）。
+- v5 只去掉 READY 之前的整文件扫描；收尾仍要整文件读回校验（安全兜底），
+  所以传输总耗时仍包含一遍 2 MB 读，具体见真机日志。缓存命中时 READY 之前的
+  部分只剩读 2 KB 的 `.crc`。
 - `'A'` 在 v4 起表示「已收进 512 KB 批缓冲」，不再等于「已落盘」；整文件
   `FileSystemFileSync` + 读回 CRC 仍在校验通过前完成，失败会回滚（除非 --no-backup）。
 - 串口固定 115200：内核不重设波特率，U-Boot 设成什么就是什么。

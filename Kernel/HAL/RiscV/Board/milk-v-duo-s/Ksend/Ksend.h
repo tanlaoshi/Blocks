@@ -28,8 +28,9 @@ int KsendSelftest(void);
  * 也可写裸文件名走默认卷）。前缀 BLOCKS:/BOOT:/ESP:/卷字母/卷下标都可用；
  * BOOT: 指向挂载时探到 boot.sd 的启动分区。
  * 备份名 = 目标全名追加 .bak（boot.sd → boot.sd.bak），写前先落盘并读回校验。
- * Backup=0 时跳过这一步（--no-backup）：仍会读旧内容算差量块，但不写 .bak，
- * 失败也不回滚，串口上明确打 backup: skipped (--no-backup)。
+ * Backup=0 时跳过这一步（--no-backup）：优先读同目录 <目标全名>.crc 的旧块表，
+ * 缺失/不自洽才整读旧内容；不写 .bak，失败也不回滚，串口上明确打
+ * backup: skipped (--no-backup)。.crc 只是加速缓存，删掉即退回慢路径。
  * Reboot=1 时校验通过才打印 KSEND OK 并复位（不返回）；Reboot=0 打印 OK 后
  * 返回 shell，复位留给操作者（deploy.sh 用）。失败时打印 KSEND FAIL，必要时
  * 用备份恢复，绝不重启。返回 0 成功、1 失败。

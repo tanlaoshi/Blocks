@@ -15,6 +15,9 @@
  * 成功/失败都在返回前归还选择；--no-reboot 时校验通过后留在 shell。
  * v4：--no-backup 跳过写前 .bak（仍扫描旧内容算差量）；失败不回滚，
  * 串口明确打 backup: skipped (--no-backup)，不让人误以为备份成功。
+ * v5：--no-backup 时优先读同目录 <目标>.crc 里的旧块表，READY 之前不再整读
+ * 目标文件（SDIO 512 B 一块，2 MB 要几千次往返）。缓存缺失/不自洽才慢扫；
+ * 整文件读回校验通过后才刷新缓存，失败/回滚不改它。安全边界见 KsendCache.c。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -200,6 +203,14 @@ static int PrepareBackup(KSEND_RUN *Run) {
         return FAT_ERR_FILE_TOO_BIG;
     }
     if (Run->Backup == 0) {
+        /* 快路径：只读 2 KB 的 .crc；大小/自洽性不对就退回慢扫。
+         * 缓存过期时这次仍会整文件读回校验，不可能在「校验通过」下写错。 */
+        Err = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
+        if (Err == FAT_OK) {
+            KsendNote("cache: hit (old block table from .crc)");
+            return FAT_OK;
+        }
+        KsendNote("cache: miss (scanning old file)");
         return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
     }
     Err = KsendFileCopy(Run->TargetPath, Run->BackupPath, Run->OldSize,
@@ -213,6 +224,53 @@ static int PrepareBackup(KSEND_RUN *Run) {
     }
     KsendNote("backup: verified");
     return FAT_OK;
+}
+
+/*
+ * 只有整文件读回校验通过后才刷新 .crc；失败/回滚路径一概不写它。
+ * 文件变小时 FAT 没有 truncate，目录项仍是旧尺寸；这时既不能写「新尺寸」的
+ * 缓存（永远不自洽），也不能留着旧缓存（大小没变会被当成有效表，但内容已变），
+ * 所以直接删掉，下一次老老实实慢扫。
+ */
+static void CacheStoreAfterVerify(KSEND_RUN *Run) {
+    UINT32 Size = 0;
+
+    if (KsendFileSize(Run->TargetPath, &Size) != FAT_OK) {
+        if (KsendCacheDrop(Run->TargetPath) == FAT_OK) {
+            KsendNote("cache: dropped (stat failed)");
+        } else {
+            KsendNote("cache: drop failed after stat error");
+        }
+        return;
+    }
+    if (Size != Run->NewSize) {
+        if (KsendCacheDrop(Run->TargetPath) == FAT_OK) {
+            KsendNote("cache: dropped (target keeps old size)");
+        } else {
+            KsendNote("cache: drop failed (target keeps old size)");
+        }
+        return;
+    }
+    gKsendNewImage.Size = Run->NewSize;
+    gKsendNewImage.BlockCount =
+        (Run->NewSize + KSEND_BLOCK_BYTES - 1u) / KSEND_BLOCK_BYTES;
+    gKsendNewImage.Crc = Run->TrailerCrc;
+    if (KsendCacheSave(Run->TargetPath, &gKsendNewImage) != FAT_OK) {
+        KsendNote("cache: write failed (next transfer scans)");
+        return;
+    }
+    KsendNote("cache: updated");
+}
+
+static void CacheDropAfterFailure(const KSEND_RUN *Run) {
+    if (Run->Dirty == 0) {
+        return;
+    }
+    if (KsendCacheDrop(Run->TargetPath) == FAT_OK) {
+        KsendNote("cache: dropped (failed write; next transfer scans)");
+    } else {
+        KsendNote("cache: drop failed after write failure");
+    }
 }
 
 static int FinishImage(KSEND_RUN *Run) {
@@ -256,6 +314,7 @@ static int FinishImage(KSEND_RUN *Run) {
         Run->FailGot = Got;
         return -1;
     }
+    CacheStoreAfterVerify(Run);
     return 0;
 }
 
@@ -347,6 +406,8 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     }
     /* 回滚要用选中的卷（boot 分区只读），必须排在 VolumeRelease 之前 */
     RollBack(&Run);
+    /* 写过卡就可能有半新半旧：旧表不再可信，删掉让下次慢扫 */
+    CacheDropAfterFailure(&Run);
     VolumeRelease(&Run);
     /* 失败后 PC 可能还在发 abort/重发块：吃掉，别让它漏进 shell 行 */
     KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MS, KSEND_FAIL_DRAIN_LIMIT_MS);

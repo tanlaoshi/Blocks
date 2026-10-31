@@ -100,8 +100,11 @@ echo "deploy: boot.sd $(stat -c '%s' "$OUT") B md5=$(md5sum "$OUT" | cut -d' ' -
 
 KSEND="$BLOCKS_ROOT/Tools/ksend.py"
 # boot.sd 每次都由 mk-boot-sd.py 重新生成：跳过写前 2.1 MB 备份
+# --ready-timeout 600：v5 起板端优先读 BOOT:boot.sd.crc（2 KB）算差量，
+# READY 通常 <5 s；但缓存缺失/不自洽时仍要整读旧 boot.sd（约 2~4 分钟），
+# 默认 30 s 会在慢路径上误超时，所以保留 600 s 兜底。
 KSEND_ARGS=(--port "$PORT" --baud "$BAUD" --file "$OUT" --path "$TARGET" \
-            --no-reboot --no-backup)
+            --no-reboot --no-backup --ready-timeout 600)
 if [ "$DRY_RUN" = 1 ]; then
     KSEND_ARGS+=(--dry-run)
 fi

@@ -43,6 +43,24 @@
 #define KSEND_IO_CHUNK_BYTES      (512u * 1024u)
 #define KSEND_TEXT_BYTES          192u
 
+/* —— 差量表缓存 <目标全名>.crc（KsendCache.c）——
+ * 字段固定 6×u32 + block_count×u32（全部小端），总大小 24+4n B。
+ * magic 按协议给定数值 0x4B534352（小端写出的字节是 52 43 53 4B）。
+ * 它只是加速缓存：任何时刻删掉都必须能退回逐块读文件的慢路径。 */
+#define KSEND_CACHE_MAGIC          0x4B534352u /* "KSCR"（协议号） */
+#define KSEND_CACHE_VERSION        1u
+#define KSEND_CACHE_EXTENSION      ".crc"
+#define KSEND_CACHE_HEADER_BYTES   24u
+#define KSEND_CACHE_OFFSET_MAGIC   0u
+#define KSEND_CACHE_OFFSET_VERSION 4u
+#define KSEND_CACHE_OFFSET_BLOCK_BYTES 8u
+#define KSEND_CACHE_OFFSET_BLOCK_COUNT 12u
+#define KSEND_CACHE_OFFSET_TOTAL_SIZE  16u
+#define KSEND_CACHE_OFFSET_FULL_CRC    20u
+/* 最大 8 MB 文件 → 2048 块 → 8216 B 缓存；超过就当坏文件拒绝，不整读 */
+#define KSEND_CACHE_MAX_BYTES \
+    (KSEND_CACHE_HEADER_BYTES + KSEND_WORD_BYTES * KSEND_MAX_BLOCKS)
+
 /* —— 卡上路径 ——
  * 默认目标仍是 BLOCKS:Kernel.elf（Install.c 写的那个）；`ksend <路径>` 可换，
  * 前缀支持 BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标。
@@ -210,6 +228,16 @@ int KsendFileVerify(const char *Path, UINT32 Size, const KSEND_IMAGE *Expected,
 int KsendFileRestore(const char *BackupPath, const char *TargetPath,
                      const KSEND_IMAGE *Expected);
 int KsendFileSelfTest(KSEND_SELFTEST *Out);
+
+/* —— KsendCache.c —— */
+/* 校验并加载 <目标>.crc；命中才返回 FAT_OK（Image 完整可用），否则调用方
+ * 必须退回逐块读文件的慢路径。缓存不是事实来源，只是加速。 */
+int KsendCacheLoad(const char *TargetPath, UINT32 TargetSize,
+                   KSEND_IMAGE *Image);
+/* 让 <目标>.crc 失效；失败/回滚/缩小时用（删掉比猜测旧表是否还一致安全） */
+int KsendCacheDrop(const char *TargetPath);
+/* 整文件读回校验通过后写 <目标>.crc；失败只让下次变慢，不算本次失败 */
+int KsendCacheSave(const char *TargetPath, const KSEND_IMAGE *Image);
 
 /* —— KsendReset.c —— */
 /* 复位（SG2000 RTC 温复位）。复位成功则不返回；返回前会打印诊断并停车 */

@@ -151,8 +151,13 @@ static void TxBuildDescriptor(UINT8 *Buffer, const UINT8 *Destination, const UIN
      * 先按厂商"未知 sta"约定填 0xFF —— 位置见 rwnx_tx.h 的 txdesc 布局；
      * 若仍不通，说明不是 staid 的事，回头查接收侧偏移。
      */
-    Desc[AIC_TX_DESC_STA_INDEX] = (Destination[0] & 0x01u) != 0u ? AIC_TX_DESC_STA_INDEX_UNKNOWN
-                                                                 : ApIndex;
+    /*
+     * 厂商 STA 模式对**所有**帧（含广播/组播）都用 vif->sta.ap 的索引
+     * （rwnx_tx.c:304-323 的 NL80211_IFTYPE_STATION 分支），不是 0xFF。
+     * 之前按"未知 sta"猜成 0xFF，空口抓包显示帧根本没发出去 —— 改回 ap_idx。
+     */
+    (void)Destination;
+    Desc[AIC_TX_DESC_STA_INDEX] = ApIndex;
     AicPut16(Desc + AIC_TX_DESC_FLAGS, 0u);
 }
 

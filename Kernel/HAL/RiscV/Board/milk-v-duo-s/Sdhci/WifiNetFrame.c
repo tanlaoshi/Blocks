@@ -256,6 +256,11 @@ void AicNetStop(void) {
  * Done 每到一帧问一次。每轮只给剩余预算，且**每轮清零计数器**：AicEapolPollRun 有
  * 256 帧的硬上限，收到一屏广播就把这一轮用完了 —— 清零后下一轮重新数，预算才是真闸门。
  */
+/* 整个 dhcp 期间的累计（跨窗口），用于最后判断"AP 到底给没给我们帧" */
+static UINT32 sAicNetWindowFrames;
+static UINT32 sAicNetWindowData;
+static UINT32 sAicNetWindowDecrypted;
+
 int AicNetPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, int (*Done)(void)) {
     static AIC_EAPOL_COUNTERS Counters;
     UINT64 Start = SdhciReadTime();
@@ -281,5 +286,25 @@ int AicNetPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, int (*Done)(void)) {
         if (AicEapolPollRun(Host, LeftMs, &Counters, Done) != 0) {
             return -1;
         }
+        /*
+         * 每个窗口结束后打一行收帧统计。DHCP 拿不到 OFFER 时，它是唯一能区分
+        * "AP 什么都没给我们" 与 "给了但我们没认出来" 的证据（不依赖空口抓包）。
+         */
+        sAicNetWindowFrames += Counters.Frames;
+        sAicNetWindowData += Counters.DataFrames;
+        sAicNetWindowDecrypted += Counters.EncryptedFrames;
+        SdhciMark("WiFi: net poll: window frames=");
+        SdhciMarkDecimal("", Counters.Frames);
+        SdhciMark(" data=");
+        SdhciMarkDecimal("", Counters.DataFrames);
+        SdhciMark(" decrypted=");
+        SdhciMarkDecimal("", Counters.EncryptedFrames);
+        SdhciMark(" (total frames=");
+        SdhciMarkDecimal("", sAicNetWindowFrames);
+        SdhciMark(" data=");
+        SdhciMarkDecimal("", sAicNetWindowData);
+        SdhciMark(" decrypted=");
+        SdhciMarkDecimal("", sAicNetWindowDecrypted);
+        SdhciMark(")\n");
     }
 }

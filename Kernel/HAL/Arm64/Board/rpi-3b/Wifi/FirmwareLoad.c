@@ -1,6 +1,6 @@
 /*
- * FirmwareLoad.c — 灌 brcmfmac bin + NVRAM（pwifi-2）
- * HT/F2 见 FirmwareHtBringUp.c。对表 Linux brcmf_sdio_download_firmware。
+ * FirmwareLoad.c — 灌 brcmfmac bin + NVRAM（pi-wifi-4）
+ * HT/F2 见 FirmwareHtBringUp.c（pi-wifi-5）。对表 Linux brcmf_sdio_download_firmware。
  */
 #include "Wifi/Private.h"
 
@@ -131,10 +131,11 @@ int WifiFirmwareLoad(void) {
     if (WifiSdioSetupResetBehavior() != 0) {
         goto Done;
     }
-    if (WifiAlpReleaseForceToRequest() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
-        goto Done;
-    }
+    /*
+     * 0x13b CH：路径同 0x13a（含探针前已 csr avail=48）仍 DTO。
+     * DownloadEnter：寄存器/进下载态保持 FORCE；清 FORCE 只在整包灌片前。
+     * 0x12f 否的是「无 PMU 再复位、只靠 FORCE」——此处 FORCE 贯穿 PMU+再复位+探针。
+     */
     if (WifiPowerManagementUnitForceResources() != 0) {
         goto Done;
     }
@@ -144,11 +145,10 @@ int WifiFirmwareLoad(void) {
     if (WifiBackplaneSramProbeWrite() != 0) {
         goto Done;
     }
-    /*
-     * wifi-3 收口只看探针。满灌多块曾在 @0 第二块楔死——留给 wifi-4。
-     */
-    HalSerialBootMarkForce("Boot: Pi WIFI wifi-3 stop before full fw\n");
-    goto Done;
+    if (WifiAlpReleaseForceToRequest() != 0) {
+        HalSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
+        goto Done;
+    }
     /* cyw43：寄存器写后退窗到 ChipCommon，再灌 RAM */
     if (WifiBackplaneWindowSet(WIFI_CHIPCOMMON_BASE) != 0) {
         HalSerialBootMarkForce("Boot: Pi WIFI window home fail\n");
@@ -181,7 +181,12 @@ int WifiFirmwareLoad(void) {
         HalSerialBootMarkForce("Boot: Pi WIFI fw write fail\n");
         goto Done;
     }
+    WifiBootMarkHexadecimal32("Boot: Pi WIFI fw bytes=", (UINT32)FirmwareBytes);
+    HalSerialBootMarkForce("\n");
     if (WifiVerifyDownloadPath() != 0) {
+        goto Done;
+    }
+    if (WifiFirmwareSampleReadback(DownloadBase, FirmwareBlob, (UINT32)FirmwareBytes) != 0) {
         goto Done;
     }
     if (WifiBackplaneWriteMemory(DownloadBase + WIFI_RAM_SIZE - 4u - NvramBytes,
@@ -195,19 +200,11 @@ int WifiFirmwareLoad(void) {
         HalSerialBootMarkForce("Boot: Pi WIFI nvram size write fail\n");
         goto Done;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI nvram ok, exit download\n");
-    if (WifiExitDownload() != 0) {
-        goto Done;
-    }
-    if (WifiWaitHtAndFunction2() != 0) {
-        goto Done;
-    }
-
-    gWifiFirmwareLoaded = 1;
-    gWifiSdpcmSequence = 0;
-    gWifiSdpcmBusCredit = 1;
-    gWifiIoctlRequestIdentity = 0;
-    HalSerialBootMarkForce("Boot: Pi WIFI fw load ok\n");
+    /*
+     * pi-wifi-4：镜像 + NVRAM + 抽样绿即可。
+     * ExitDownload / HT / F2 留给 pi-wifi-5；勿在此宣称 gWifiFirmwareLoaded。
+     */
+    HalSerialBootMarkForce("Boot: Pi WIFI nvram ok, wifi-4 stop before exit download\n");
     Result = 0;
 
 Done:

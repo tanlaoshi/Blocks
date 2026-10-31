@@ -120,12 +120,12 @@
  */
 #define WIFI_BACKPLANE_BLOCKS_PER_COMMAND 511u
 /*
- * 固件下载基址。EROM 给同一块 SRAM 列了三个从端口别名：0x0 / 0x10000000 / 0x1e000000。
- * 经 0x0 写入会在第一块之后把卡挂死（背板写永不完成），改用第二个别名。
+ * 诊断用别名之一。Linux / wifi-3 探针均以 @0 为主；满灌基址由
+ * WifiSramFindAccessibleBase() 运行时选定（优先 0）。
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000013au
+#define WIFI_BUILD_TAG               0x0000013cu
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -227,7 +227,7 @@ void WifiBootMarkHexadecimal32(const char *Tag, UINT32 Value);
 
 int WifiSdioSleepControlEnsureAwake(void); /* F1 SLEEPCSR KSO；灌片前必醒 */
 int WifiAlpRequest(void); /* buscoreprep → csr 含 FORCE_ALP（0x21） */
-int WifiAlpReleaseForceToRequest(void); /* 灌片前清 FORCE → REQUEST_ALP */
+int WifiAlpReleaseForceToRequest(void); /* 探针后、整包灌片前：清 FORCE → REQUEST_ALP */
 /* 对表 brcmf_sdio_probe_attach：CARDCTRL WLANRESET + PMU RES_RELOAD */
 int WifiSdioSetupResetBehavior(void);
 int WifiPowerManagementUnitForceResources(void); /* min/max←ffffffff */
@@ -249,6 +249,8 @@ int WifiCoreIsUp(UINT32 WrapperBase);
 int WifiNvramPrepare(const UINT8 *Text, UINTN TextBytes, UINT8 *Out, UINT32 OutCapacity,
                      UINT32 *OutBytes);
 int WifiVerifyDownloadPath(void);
+int WifiFirmwareSampleReadback(UINT32 DownloadBase, const UINT8 *FirmwareBlob,
+                               UINT32 FirmwareBytes);
 int WifiExitDownload(void);
 int WifiWaitHtAndFunction2(void);
 int WifiSdioHostCommandDataRecover(void); /* F1 abort + CMD|DATA 复位 */

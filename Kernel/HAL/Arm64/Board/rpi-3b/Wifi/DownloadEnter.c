@@ -102,7 +102,7 @@ int WifiSdioSetupResetBehavior(void) {
  * 对表 Linux ftrace 灌片前（mmc-brcmf-trace 首笔 511×64 之前）：
  *   CHIPCLKCSR ← 0x00（clkctl CLK_NONE）→ ← 0x08（ALP_AVAIL_REQ）→ 读回 → SBADDR=0。
  * 0x133/0x134 只做 0x61→0x08，缺 CLK_NONE 这一跳；0x135 补上。
- * 仅在 bankidx / EnterDownload 之后、SRAM 探针之前调用。
+ * 0x13c：改在 SRAM 探针成功之后、整包 WriteMemory 之前调用（保持 FORCE 过 PMU+再复位）。
  */
 int WifiAlpReleaseForceToRequest(void) {
     UINT8 Status = 0;

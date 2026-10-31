@@ -162,13 +162,19 @@ static int FatDeleteFileOnce(const char *Path) {
     }
 
     /*
-     * 不在此 FatFreeChain：QEMU fat:rw(vvfat) 释放簇后再 commit 易断言。
-     * 只标 0xE5；真盘会有簇泄漏，课堂可接受。
+     * 先摘目录项、再释放簇链：中途失败最多漏一段链（安全），不会留下
+     * 指向已释放簇的目录项。删除不释放会让卷越删越满，分配提示也就
+     * 永远找不到「前面的洞」；fs hole 专门验这条路径。
+     * 只对真 FAT 镜像；vvfat(fat:rw) 写回有断言风险，run-split 已改真镜像。
      */
-    (void)Cluster;
     gSector[SfnOff] = 0xE5;
     if (DirtyLba != FAT_CLUSTER_INVALID) {
         if (!StoreSector(DirtyLba)) {
+            return FAT_ERR_IO;
+        }
+    }
+    if (Cluster >= 2) {
+        if (!FatFreeChain(Cluster)) {
             return FAT_ERR_IO;
         }
     }

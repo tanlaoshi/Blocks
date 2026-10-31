@@ -67,23 +67,42 @@ UINT32 ClusterBytes(void) {
     return gBytesPerSector * gSectorsPerCluster;
 }
 
+/*
+ * FAT 表访问不许借用 gSector。
+ *
+ * gSector 是「调用者正拿着的那一个扇区」：目录项读改写、BPB、FSInfo 都靠它。
+ * FatNext/FatSet 原先也走 LoadSector/StoreSector，遍历目录簇链时会把 FAT 扇区
+ * 读进 gSector，调用者手里那份目录扇区就被顶掉；FileDelete/DeleteLfnPrefix
+ * 随后把 0xE5 写进 FAT 扇区内容，再 StoreSector(目录 LBA)，整簇目录被 FAT
+ * 表覆盖（fs hole 的 B 坏掉即此）。FAT 链遍历用独立缓冲，与 gSector 解耦。
+ */
+static UINT8 sFatIo[SECTOR];
+
+static int FatLoadSector(UINT32 Lba) {
+    return BlockReadSectors(Lba, 1, sFatIo);
+}
+
+static int FatStoreSector(UINT32 Lba) {
+    return BlockWriteSectors(Lba, 1, sFatIo);
+}
+
 UINT32 FatNext(UINT32 Cluster) {
     UINT32 FatLba;
     UINT32 Off;
     if (gFatType == 32) {
         FatLba = gFatStart + (Cluster * 4) / SECTOR;
         Off = (Cluster * 4) % SECTOR;
-        if (!LoadSector(FatLba)) {
+        if (!FatLoadSector(FatLba)) {
             return FAT_CLUSTER_INVALID;
         }
-        return Read32(gSector + Off) & FAT32_ENTRY_MASK;
+        return Read32(sFatIo + Off) & FAT32_ENTRY_MASK;
     }
     FatLba = gFatStart + (Cluster * 2) / SECTOR;
     Off = (Cluster * 2) % SECTOR;
-    if (!LoadSector(FatLba)) {
+    if (!FatLoadSector(FatLba)) {
         return FAT_CLUSTER_INVALID;
     }
-    return Read16(gSector + Off);
+    return Read16(sFatIo + Off);
 }
 
 int FatSet(UINT32 Cluster, UINT32 Value) {
@@ -99,11 +118,11 @@ int FatSet(UINT32 Cluster, UINT32 Value) {
         Off = Rel % SECTOR;
         for (i = 0; i < gNumFats; i++) {
             UINT32 FatLba = gFatStart + i * gSectorsPerFat + Rel / SECTOR;
-                if (!LoadSector(FatLba)) {
+                if (!FatLoadSector(FatLba)) {
                 return 0;
             }
-            Write32(gSector + Off, Value & FAT32_ENTRY_MASK);
-            if (!StoreSector(FatLba)) {
+            Write32(sFatIo + Off, Value & FAT32_ENTRY_MASK);
+            if (!FatStoreSector(FatLba)) {
                 return 0;
             }
         }
@@ -113,11 +132,11 @@ int FatSet(UINT32 Cluster, UINT32 Value) {
     Off = Rel % SECTOR;
     for (i = 0; i < gNumFats; i++) {
         UINT32 FatLba = gFatStart + i * gSectorsPerFat + Rel / SECTOR;
-        if (!LoadSector(FatLba)) {
+        if (!FatLoadSector(FatLba)) {
             return 0;
         }
-        Write16(gSector + Off, (UINT16)Value);
-        if (!StoreSector(FatLba)) {
+        Write16(sFatIo + Off, (UINT16)Value);
+        if (!FatStoreSector(FatLba)) {
             return 0;
         }
     }

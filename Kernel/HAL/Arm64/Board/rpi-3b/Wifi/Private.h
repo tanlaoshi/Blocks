@@ -125,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000015du
+#define WIFI_BUILD_TAG               0x0000015eu
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -306,8 +306,9 @@ void WifiNetProbeLogWrite(const char *Status, const UINT8 *Mac, int MacOk, UINT3
                           UINT32 PollEmpty, UINT32 PollError, UINT32 FirstEtherType,
                           UINT32 ArpTarget, UINT32 TransmitOk, UINT32 ArpReply,
                           UINT32 LwIpInput, UINT32 LwIpOutput, UINT32 ArpOffloadCleared,
-                          UINT32 DhcpIpHostOrder);
+                          UINT32 DhcpIpHostOrder, UINT32 PingTargetHostOrder, UINT32 PingOk);
 int WifiNetWaitDhcpLease(UINT32 *OutIpHostOrder); /* 0x15d：7d 等租约 */
-int WifiNetProbeAfterJoin(void); /* 0x15d：RX/TX 眼 + DHCP 租约眼 */
+int WifiNetPingGateway(UINT32 *OutTargetHostOrder); /* 0x15e：7e */
+int WifiNetProbeAfterJoin(void); /* 0x15e：DHCP + ping 眼 */
 
 #endif

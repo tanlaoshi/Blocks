@@ -22,5 +22,11 @@ int BoardWifiScan(void);   /* 0=ok；填扫描表 */
 int BoardWifiAssociateOpen(const char *Ssid);
 UINT32 BoardWifiScanEntryCount(void);
 const BOARD_WIFI_SCAN_ENTRY *BoardWifiScanEntryAt(UINT32 Index);
+/* 7c3：join 后武装；netif linkoutput 优先 SDPCM，未武装返回 -1 */
+void BoardWifiArmNetifLinkOutput(const UINT8 StationMac[6]);
+int BoardWifiTryLinkOutput(const UINT8 *Frame, UINTN FrameLength);
+UINT32 BoardWifiNetifLinkOutputCount(void);
+/* 0=ok；-1 未武装；-2 LwIp 未起/netif down；-3 dhcp_start 败 */
+int BoardWifiKickDhcpDiscoverViaNetif(void);
 
 #endif

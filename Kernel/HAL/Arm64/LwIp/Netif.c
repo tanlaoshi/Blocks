@@ -1,8 +1,8 @@
 /*
  * Netif.c — Arm64 lwIP 以太网 netif（rnet-1；对表 RiscV net-6）
  *
- * linkoutput：virt → Virtio NetSendFrame；BOARD_HAS_NET 板 → BoardEthernetSendFrame。
- * RX：驱动在 gLwIpRx 时调 LwIpNetifInput（Pi smsc95xx / virtio）。
+ * linkoutput：virt → Virtio；Pi：WiFi 已武装则 SDPCM，否则 SMSC。
+ * RX：驱动在 gLwIpRx 时调 LwIpNetifInput（Pi smsc95xx / virtio / WiFi feed）。
  */
 #include "lwip/opt.h"
 #include "lwip/def.h"
@@ -21,6 +21,9 @@
 int NetSendFrame(const UINT8 *Frame, UINTN FrameLen);
 #elif BOARD_HAS_NET
 #include "Ethernet.h"
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+#include "Wifi.h"
+#endif
 #endif
 
 extern void *memcpy(void *Dst, const void *Src, UINTN Len);
@@ -47,6 +50,12 @@ static int PlatformSendEthernet(const UINT8 *Frame, UINTN Length) {
 #if BOARD_IS_VIRT
     return NetSendFrame(Frame, Length);
 #elif BOARD_HAS_NET
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 7c3：join 武装后走 WiFi；未武装 / 失败则 SMSC（勿默默饿死有线回退） */
+    if (BoardWifiTryLinkOutput(Frame, Length) == 0) {
+        return 0;
+    }
+#endif
     return BoardEthernetSendFrame(Frame, Length);
 #else
     (void)Frame;

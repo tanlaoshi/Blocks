@@ -1,8 +1,13 @@
 /*
- * WifiNetProbe.c — pi-wifi-7：DATA→lwIP 眼睛（0x15a）
- * 0x159 否证：ARP SPA≠0 仍无 DATA。本刀改发 DHCP Discover 引 OFFER。
+ * WifiNetProbe.c — pi-wifi-7：DATA↔lwIP 眼睛（0x15c）
+ * 7c2：DHCP Discover 引 DATA→LwIpNetifInput。
+ * 7c3：武装 netif linkoutput→SDPCM；Kick 前先 LwIpInitialize。
  */
 #include "Wifi/Private.h"
+#include "Wifi.h"
+#ifdef LWIP_ENABLE
+#include "Services/LwIp.h"
+#endif
 
 #define WIFI_NET_PROBE_ATTEMPTS         800u
 #define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 2000u
@@ -31,7 +36,7 @@ static void WifiNetPersist(const char *Status) {
                          gWifiNetPollErrorCount, gWifiNetFirstEtherType,
                          gWifiNetArpTargetAddress, gWifiNetTransmitOk,
                          gWifiNetArpReplyCount, WifiNetLwIpInputCount(),
-                         gWifiNetArpOffloadCleared);
+                         BoardWifiNetifLinkOutputCount(), gWifiNetArpOffloadCleared);
 }
 
 static int WifiNetDisableArpOffload(void) {
@@ -219,12 +224,42 @@ int WifiNetProbeAfterJoin(void) {
     }
     gWifiNetTransmitOk = 1;
     WifiNetProbeDataWindow(WIFI_NET_TRANSMIT_POLL_ATTEMPTS, 1);
-    if (WifiNetLwIpInputCount() > 0u) {
-        WifiNetPersist("net-lwip-in-ok");
-        HalSerialBootMarkForce("Boot: Pi WIFI net lwip in ok\n");
+    if (WifiNetLwIpInputCount() == 0u) {
+        WifiNetPersist("net-lwip-no-rx");
+        HalSerialBootMarkForce("Boot: Pi WIFI net lwip no rx\n");
+        return -1;
+    }
+    HalSerialBootMarkForce("Boot: Pi WIFI net lwip in ok\n");
+    /* 7c3：netif → SDPCM；未武装时 Try 返回 -1 仍走 SMSC */
+    BoardWifiArmNetifLinkOutput(gWifiNetMac);
+    {
+        int Kick = BoardWifiKickDhcpDiscoverViaNetif();
+        if (Kick != 0) {
+            const char *Status = "net-lwip-out-arm-fail";
+            if (Kick == -2) {
+                Status = "net-lwip-out-init-fail";
+            } else if (Kick == -3) {
+                Status = "net-lwip-out-dhcp-fail";
+            }
+            WifiNetPersist(Status);
+            HalSerialBootMarkForce("Boot: Pi WIFI net lwip out kick fail\n");
+            return -1;
+        }
+    }
+#ifdef LWIP_ENABLE
+    /* Discover 广播应同步打到 linkoutput；再拍超时供重传眼 */
+    LwIpPoll();
+#endif
+    WifiNetProbeDataWindow(WIFI_NET_PROBE_ATTEMPTS, 1);
+#ifdef LWIP_ENABLE
+    LwIpPoll();
+#endif
+    if (BoardWifiNetifLinkOutputCount() > 0u) {
+        WifiNetPersist("net-lwip-out-ok");
+        HalSerialBootMarkForce("Boot: Pi WIFI net lwip out ok\n");
         return 0;
     }
-    WifiNetPersist("net-lwip-no-rx");
-    HalSerialBootMarkForce("Boot: Pi WIFI net lwip no rx\n");
+    WifiNetPersist("net-lwip-out-fail");
+    HalSerialBootMarkForce("Boot: Pi WIFI net lwip out fail\n");
     return -1;
 }

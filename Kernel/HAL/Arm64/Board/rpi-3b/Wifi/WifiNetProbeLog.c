@@ -42,8 +42,8 @@ void WifiNetProbeLogWrite(const char *Status, const UINT8 *Mac, int MacOk, UINT3
                           UINT32 DataPackets, UINT32 EventPackets, UINT32 OtherPackets,
                           UINT32 PollEmpty, UINT32 PollError, UINT32 FirstEtherType,
                           UINT32 ArpTarget, UINT32 TransmitOk, UINT32 ArpReply,
-                          UINT32 LwIpInput, UINT32 ArpOffloadCleared) {
-    char Buffer[704];
+                          UINT32 LwIpInput, UINT32 LwIpOutput, UINT32 ArpOffloadCleared) {
+    char Buffer[768];
     UINTN Length = 0;
     static const char HexDigits[] = "0123456789abcdef";
     UINT32 Tag = WIFI_BUILD_TAG;
@@ -85,6 +85,7 @@ void WifiNetProbeLogWrite(const char *Status, const UINT8 *Mac, int MacOk, UINT3
     WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "transmit_ok=", TransmitOk);
     WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "arp_reply=", ArpReply);
     WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "lwip_in=", LwIpInput);
+    WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "lwip_out=", LwIpOutput);
     WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "arp_ol_off=", ArpOffloadCleared);
     Buffer[Length] = 0;
     if (FileSystemWriteFile("WIFI-NET.LOG", Buffer, Length) != FAT_OK) {

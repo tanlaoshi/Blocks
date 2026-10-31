@@ -215,8 +215,24 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
         return;
     }
     if (Decryption != AIC_RX_HW_DECR_UNENC) {
-        SdhciMarkHex("WiFi: eapol: encrypted data frame decr=", Decryption, 2);
-        SdhciMark(" (no LLC/SNAP visible; keys not installed yet)\n");
+        Counters->EncryptedFrames++;
+        /*
+         * decr != 0 = 固件已经把这一帧解开了（CCMP/TKIP）。装钥匙之前不该出现它，
+         * 出现就是"钥匙已装、数据通路活了"的硬证据 —— 这正是本刀要的那一行。
+         * 打印封顶：组播/广播一旦开始流，逐帧打会把串口刷满（后面只计数）。
+         */
+        if (gAicEapolKeysInstalled != 0u) {
+            if (Counters->EncryptedFrames <= AIC_EAPOL_DATA_AFTER_KEYS_LOG) {
+                SdhciMark("WiFi: data frame after keys: len=");
+                SdhciMarkDecimal("", FrameLength);
+                SdhciMark(" decr=");
+                SdhciMarkDecimal("", Decryption);
+                SdhciMark(" (the firmware decrypted it: PTK/GTK match the AP)\n");
+            }
+        } else {
+            SdhciMarkHex("WiFi: eapol: encrypted data frame decr=", Decryption, 2);
+            SdhciMark(" (no LLC/SNAP visible; keys not installed yet)\n");
+        }
         return;
     }
     MpduLength = End - AIC_RX_HW_HEADER_LENGTH;

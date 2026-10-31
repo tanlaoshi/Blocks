@@ -113,6 +113,20 @@
 #define AIC_EAPOL_KEY_FIXED_LENGTH 99u /* 4 + 95：Key Data 为空时的最小 EAPOL-Key 帧 */
 #define AIC_EAPOL_KEY_DATA_DUMP 24u    /* 只打 Key Data 前 24 B（PMKID KDE 够看） */
 
+/*
+ * struct mm_key_add_cfm（lmac_msg.h:814-819）：status@0、hw_key_idx@1，sizeof=2
+ * （宿主 gcc include 厂商头编译实测）。参数从 EAPOL 配置帧的 +16 起
+ * （AIC_E2A_PARAM_OFF），所以解析时是 Frame + 16 + 下面的偏移。
+ */
+#define AIC_EAPOL_KEY_ADD_CFM_LENGTH 2u
+#define AIC_EAPOL_KEY_ADD_STATUS_OFFSET 0u
+#define AIC_EAPOL_KEY_ADD_HW_INDEX_OFFSET 1u
+/*
+ * 参数不够 2 B 时给 status 填的哨兵：0 在 mm_key_add_cfm 里是"成功"，
+ * 不能让半截参数冒充成功（宁可报"没装好"，让上层打 FAILED 并留下 rc/cfm 行）。
+ */
+#define AIC_EAPOL_KEY_ADD_STATUS_SHORT 0xFFu
+
 /* Key Information 位（802.11-2016 §12.7.2 图 12-25） */
 #define AIC_EAPOL_KEY_INFORMATION_VERSION_MASK 0x0007u
 #define AIC_EAPOL_KEY_INFORMATION_PAIRWISE 0x0008u
@@ -133,6 +147,11 @@
  * 流量的 AP 上可能还没走到 M1 就停。真正防死循环的是预算（rdtime），帧数只是第二道闸。
  */
 #define AIC_EAPOL_POLL_MAX_FRAMES 256u
+/*
+ * 装完钥匙之后，只把前 6 帧"解密成功的数据帧"逐帧打出来（判据要看原文）；
+ * AP 的组播/广播一旦开始流，逐帧打会把串口刷满，所以后面只计数不打印。
+ */
+#define AIC_EAPOL_DATA_AFTER_KEYS_LOG 6u
 /* 60 B hdr + 1500 B MPDU + 4 B 对齐余量 ⇒ 2048 足够；超出部分读掉丢弃，防串包 */
 #define AIC_EAPOL_FRAME_MAX 2048u
 #define AIC_EAPOL_HEAD_DUMP 32u /* 第一帧数据帧的头部取证宽度 */
@@ -164,6 +183,9 @@ typedef struct {
     UINT32 KeyFrames;    /* 其中 EAPOL-Key（type=3）：M1..M4 的载体，判据只认它 */
     UINT32 BadFrames;    /* 帧短 / 长度自相矛盾 / fcs_err / EAPOL 太短 */
     UINT32 HeadDumped;   /* 第一帧数据帧的取证已打印（0/1） */
+    /* 固件判为"已解密"的数据帧（hw_rxhdr.status 的 decr != 0）。
+       装完 PTK/GTK 之后出现它，就是数据通路活了的证据（Arp/DHCP 广播也算）。 */
+    UINT32 EncryptedFrames;
     /* 诊断：窗口里轮询了几次、其中几次"固件没东西给"。
        polls 远大于 frames ⇒ 固件在那段时间基本不上送（问题在固件侧）。 */
     UINT32 Polls;
@@ -208,5 +230,21 @@ extern AIC_EAPOL_KEY_SINK gAicEapolKeySink;
  * 由 EapolPrintConfigFrame 置位，WifiHandshake.c 在发请求前清零。
  */
 extern UINT32 gAicEapolControlPortCfm;
+/*
+ * MM_KEY_ADD_CFM(0x25) 的"见过"标志与它带来的两个字段（WifiKeyAdd.c 装钥匙时等它）：
+ *   gAicEapolKeyAddCfm    0/1，置位在 EapolPrintConfigFrame，清零在 WifiKeyAdd.c 发请求前
+ *   gAicEapolKeyAddStatus mm_key_add_cfm.status（0 = 固件装好了；非 0 = 拒绝）
+ *   gAicEapolKeyAddHwIndex mm_key_add_cfm.hw_key_idx（固件分配的硬件钥匙号）
+ * 为什么用同一条收包路径等它而不走 AicRecvMessageTimeout：装钥匙前后正是 AP 开始
+ * 送加密数据帧的时刻，消息通道会把数据帧当"坏 pattern"直接丢掉（见 WifiMessage.c）。
+ */
+extern UINT32 gAicEapolKeyAddCfm;
+extern UINT32 gAicEapolKeyAddStatus;
+extern UINT32 gAicEapolKeyAddHwIndex;
+/*
+ * PTK 已经装进固件（WifiHandshakeInstall.c 置位、AicJoinIndexesClear 清零）。
+ * 数据帧解析据此把"加密帧"的文案从"keys not installed yet"换成"data frame after keys"。
+ */
+extern UINT32 gAicEapolKeysInstalled;
 
 #endif

@@ -179,6 +179,31 @@ UINT32 AicHandshakeM2Build(UINT8 *Frame, const AIC_HANDSHAKE_M1 *M1, const UINT8
 }
 
 /*
+ * M4（802.11-2016 §12.7.6.2 的 Msg 4；对拍对象 wpa_supplicant 2.10 wpa.c:1615-1653）：
+ *   version ← M3，type = 3(Key)，length = 95（没有 Key Data ⇒ 整帧 99 B）
+ *   descriptor ← M3，key_info = 版本 | pairwise | install | MIC | secure
+ *   key_length = 0（wpa.c:1641-1642 对 RSN 写 0），replay ← M3，nonce 全 0
+ * 组完再算 MIC（WifiEapolMic 会就地把 +81 清零再写回）。
+ */
+UINT32 AicHandshakeM4Build(UINT8 *Frame, const AIC_HANDSHAKE_M3 *M3, const UINT8 *Kck,
+                           UINT8 Mic[WIFI_EAPOL_MIC_LENGTH]) {
+    const UINT32 Total = AIC_EAPOL_KEY_FIXED_LENGTH;
+    UINT16 KeyInformation = (UINT16)(AIC_HANDSHAKE_M4_FLAGS | M3->KeyVersion);
+
+    memset(Frame, 0, Total);
+    Frame[0] = M3->Frame[0]; /* EAPOL 版本跟 M3 */
+    Frame[1] = (UINT8)AIC_EAPOL_TYPE_KEY;
+    HandshakePutBigEndian16(Frame + 2, (UINT16)(Total - AIC_EAPOL_HEADER_LENGTH));
+    Frame[AIC_EAPOL_KEY_DESCRIPTOR_OFFSET] = M3->Frame[AIC_EAPOL_KEY_DESCRIPTOR_OFFSET];
+    HandshakePutBigEndian16(Frame + AIC_EAPOL_KEY_INFORMATION_OFFSET, KeyInformation);
+    HandshakePutBigEndian16(Frame + AIC_EAPOL_KEY_LENGTH_OFFSET,
+                            (UINT16)AIC_HANDSHAKE_M4_KEY_LENGTH);
+    (void)memcpy(Frame + AIC_EAPOL_REPLAY_OFFSET, M3->Replay, AIC_EAPOL_REPLAY_LENGTH);
+    WifiEapolMic(M3->KeyVersion, Kck, Frame, Total, Mic);
+    return Total;
+}
+
+/*
  * MIC 校验：在**副本**上算（WifiEapolMic 会把 +81 清零再写回，不能动收到的帧）。
  * 帧长用 EAPOL 头里的 length 字段（不是"可用字节数"）：AP 可能把帧塞在更长的缓冲里，
  * 多算几个尾部字节 MIC 就永远对不上。长度自相矛盾时返回 0（不猜）。

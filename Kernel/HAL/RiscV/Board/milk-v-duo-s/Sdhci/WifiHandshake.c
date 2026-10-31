@@ -1,11 +1,15 @@
 /*
- * WifiHandshake.c — PR-34：join 之后的四次握手顺序（控制端口 → M1 → PTK → M2 → M3）
+ * WifiHandshake.c — PR-34/35：join 之后的四次握手顺序（控制端口 → M1 → PTK → M2 → M3
+ *                   → 装 PTK/GTK → M4 → 看数据帧）
  *
  * 用户眼里：`wififw join Apple <密码>` 之后的一整段 —— `control port open`、
  *           `eapol rx … msg=M1`、`pbkdf2 N ms`、`ptk: …`、`eapol tx m2 …`、
- *           `eapol rx … msg=M3`、最后一行 `eapol handshake ok`。
+ *           `eapol rx … msg=M3`、`key add: ptk/gtk …`、`eapol tx m4 …`，
+ *           最后一行 `eapol handshake ok (keys installed: ptk+gtk)`。
  * 从哪读：AicWifiHandshakeRun（顺序）→ AicHandshakeReceiveM1（复用 EAPOL 轮询）
- *         → HandshakeSendM2（派生 + 组帧 + 发）→ HandshakeWaitM3（验 MIC）。
+ *         → HandshakeSendM2（派生 + 组帧 + 发）→ HandshakeWaitM3（验 MIC）
+ *         → AicHandshakeInstallKeys（WifiHandshakeInstall.c：装钥匙 + M4）
+ *         → AicHandshakeWatchData（装完钥匙看解密帧）。
  * 别改：收包一律走 WifiEapol.c 的 AicEapolPollRun（本文件不另写 SDIO 收包）；
  *       M1/M3 的字段偏移来自 WifiCrypto 与 WifiEapolPrivate.h，这里不复制第二份。
  * 为什么用 sink 而不是改收包函数：M1 是"AP 什么时候发就什么时候到"的数据帧，
@@ -23,6 +27,9 @@
 #define AIC_HANDSHAKE_MAC_MULTICAST 0x01u
 
 static AIC_HANDSHAKE_M1 sAicM1;
+/* M3 与 PTK 要活到"装钥匙"那一步：GTK 从 M3 的 Key Data 解，TK/KEK 在 PTK 里 */
+static AIC_HANDSHAKE_M3 sAicM3;
+static UINT8 sAicPtk[WIFI_PTK_LENGTH];
 static UINT32 sAicStage = AIC_HANDSHAKE_STAGE_IDLE;
 static UINT32 sAicM1Captured;
 static UINT32 sAicM3Ok;
@@ -44,7 +51,7 @@ static UINT8 HandshakeKeyVersion(UINT16 KeyInformation) {
     return (UINT8)AIC_HANDSHAKE_VERSION_SHA1;
 }
 
-/* 收工：摘钩子 + 把 M1/ANonce/KCK 这些"用完就不该留在 RAM 里"的东西清零 */
+/* 收工：摘钩子 + 把 M1/M3/ANonce/PTK/KCK 这些"用完就不该留在 RAM 里"的东西清零 */
 static void HandshakeStop(void) {
     AicEapolSetKeySink(0);
     sAicStage = AIC_HANDSHAKE_STAGE_IDLE;
@@ -52,6 +59,8 @@ static void HandshakeStop(void) {
     sAicM3Ok = 0u;
     sAicM3BadPrinted = 0u;
     memset(&sAicM1, 0, sizeof(sAicM1));
+    memset(&sAicM3, 0, sizeof(sAicM3));
+    memset(sAicPtk, 0, sizeof(sAicPtk));
     memset(sAicKck, 0, sizeof(sAicKck));
     sAicKeyVersion = 0u;
 }
@@ -111,6 +120,26 @@ static void HandshakeTakeM1(const UINT8 *Body, UINT32 Length, const UINT8 *Stati
     sAicM1Captured = 1u;
 }
 
+/*
+ * M3 收下：验过 MIC 之后整帧留存 —— 装 GTK 要从 Key Data 解 KDE，回 M4 要抄 replay。
+ * 存的是**EAPOL 帧长**（头里 length + 4），不是"可用字节数"：AP 的帧可能塞在更长的
+ * 缓冲里，多出来的尾部字节会让 Key Data Length 的边界检查读到帧外。
+ */
+static void HandshakeKeepM3(const UINT8 *Body, UINT32 Length, UINT16 KeyInformation) {
+    UINT32 Total = (UINT32)AicEapolGetBigEndian16(Body + 2) + AIC_EAPOL_HEADER_LENGTH;
+
+    if (Total < AIC_EAPOL_KEY_FIXED_LENGTH || Total > Length ||
+        Total > AIC_HANDSHAKE_EAPOL_MAX) {
+        return;
+    }
+    memset(&sAicM3, 0, sizeof(sAicM3));
+    (void)memcpy(sAicM3.Frame, Body, Total);
+    sAicM3.Length = Total;
+    (void)memcpy(sAicM3.Replay, Body + AIC_EAPOL_REPLAY_OFFSET, AIC_EAPOL_REPLAY_LENGTH);
+    sAicM3.KeyInformation = KeyInformation;
+    sAicM3.KeyVersion = sAicKeyVersion;
+}
+
 /* M3 = 带 MIC 的 AP 消息；MIC 对不对就是"AP 认不认可我们的 M2"的判决 */
 static void HandshakeTakeM3(const UINT8 *Body, UINT32 Length, UINT16 KeyInformation) {
     if ((KeyInformation & AIC_EAPOL_KEY_INFORMATION_MIC) == 0u) {
@@ -121,6 +150,7 @@ static void HandshakeTakeM3(const UINT8 *Body, UINT32 Length, UINT16 KeyInformat
     }
     if (AicHandshakeMicCheck(Body, Length, sAicKeyVersion, sAicKck) != 0) {
         sAicM3Ok = 1u;
+        HandshakeKeepM3(Body, Length, KeyInformation);
         SdhciMark("WiFi: eapol rx: M3 mic ok (AP accepted our M2; PTK matches)\n");
         return;
     }
@@ -180,6 +210,30 @@ void AicHandshakeRememberKck(const UINT8 *Kck, UINT8 KeyVersion) {
     sAicKeyVersion = KeyVersion;
 }
 
+/*
+ * PTK 也留一份：装钥匙要用 TK（PTK 偏移 32）和 KEK（偏移 16，解 GTK），
+ * 而 M2 的栈缓冲在 HandshakeSendM2 里就清零了。HandshakeStop 统一清掉。
+ */
+void AicHandshakeRememberPtk(const UINT8 *Ptk) {
+    (void)memcpy(sAicPtk, Ptk, WIFI_PTK_LENGTH);
+}
+
+const UINT8 *AicHandshakeKck(void) {
+    return sAicKck;
+}
+
+const UINT8 *AicHandshakePtk(void) {
+    return sAicPtk;
+}
+
+const UINT8 *AicHandshakeStation(void) {
+    return sAicM1.Station;
+}
+
+const AIC_HANDSHAKE_M3 *AicHandshakeM3(void) {
+    return &sAicM3;
+}
+
 /* 派生 → 组帧 → 发。任何一步失败都只打一行"卡在哪"，不伪造成功 */
 static int HandshakeSendM2(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
                            UINT8 VifIndex, UINT8 ApIndex) {
@@ -195,6 +249,7 @@ static int HandshakeSendM2(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const ch
     if (Status == 0) {
         /* PTK 的前 16 B 就是 KCK（WifiCrypto/WifiPrf.h 的布局：KCK|KEK|TK） */
         AicHandshakeRememberKck(Ptk, sAicM1.KeyVersion);
+        AicHandshakeRememberPtk(Ptk);
         Length = AicHandshakeM2Build(Frame, &sAicM1, Snonce, Ptk, Mic);
         SdhciMark("WiFi: eapol tx m2 len=");
         SdhciMarkDecimal("", Length);
@@ -289,7 +344,7 @@ static int HandshakeOpenControlPort(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 ApIn
     return 0;
 }
 
-/* 密码给了才走这里：M1 → PTK/M2 → M3（M1 可能已经在开端口那一段收下了） */
+/* 密码给了才走这里：M1 → PTK/M2 → M3 → 装 PTK/GTK → M4 → 看数据帧 */
 static int HandshakeRunKeyed(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
                              UINT8 VifIndex, UINT8 ApIndex) {
     if (AicHandshakeReceiveM1(Host) != 0) {
@@ -301,7 +356,16 @@ static int HandshakeRunKeyed(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const 
     if (HandshakeWaitM3(Host) != 0) {
         return -1;
     }
-    SdhciMark("WiFi: eapol handshake ok (M3 MIC verified: the AP accepted our M2)\n");
+    /*
+     * M3 的 MIC 已过：摘掉 sink。装钥匙期间 AP 可能重传 M3（它还没收到 M4），
+     * 那些重传照旧由 WifiEapolKey.c 打印，但不该再改写上面留下的 M3 状态。
+     */
+    AicEapolSetKeySink(0);
+    if (AicHandshakeInstallKeys(Host, Target, VifIndex, ApIndex) != 0) {
+        return -1;
+    }
+    SdhciMark("WiFi: eapol handshake ok (keys installed: ptk+gtk)\n");
+    AicHandshakeWatchData(Host);
     return 0;
 }
 
@@ -312,6 +376,8 @@ int AicWifiHandshakeRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char 
     if (AicEapolLayoutCheck() != 0) {
         return -1;
     }
+    /* 新一轮 join：钥匙这件事从"未知"重新算（上一轮装过与否不该影响本轮文案） */
+    gAicEapolKeysInstalled = 0u;
     if (HandshakeOpenControlPort(Host, VifIndex, ApIndex) != 0) {
         HandshakeStop();
         return -1;

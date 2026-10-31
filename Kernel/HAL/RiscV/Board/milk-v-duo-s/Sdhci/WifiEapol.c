@@ -19,6 +19,12 @@
 static UINT32 sAicEapolFrame[(AIC_EAPOL_FRAME_MAX + 3u) / 4u];
 /* 控制端口 CFM 的"见过"标志（PR-34）：置位在下面的配置帧分支，清零在 WifiHandshake.c */
 UINT32 gAicEapolControlPortCfm;
+/* MM_KEY_ADD_CFM(0x25) 的"见过"标志与两个字段（PR-35）：清零在 WifiKeyAdd.c 发请求前 */
+UINT32 gAicEapolKeyAddCfm;
+UINT32 gAicEapolKeyAddStatus;
+UINT32 gAicEapolKeyAddHwIndex;
+/* PTK 已装进固件（WifiHandshakeInstall.c 置位）：解密帧的文案据此换挡 */
+UINT32 gAicEapolKeysInstalled;
 
 /* 25 MHz 时间基（BoardConfig.h BOARD_TIMEBASE_HZ），只用来算预算，不参与协议 */
 #define AIC_EAPOL_TIMEBASE_PER_MS (BOARD_TIMEBASE_HZ / 1000u)
@@ -119,6 +125,25 @@ static int EapolReadFrame(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT8 *Frame, UINT
     return 0;
 }
 
+/*
+ * MM_KEY_ADD_CFM(0x25) 的两个字段：status（0 = 固件装好了）、hw_key_idx（硬件钥匙号）。
+ * 只有参数够长（>= 2 B）才采信，否则只置"见过"——宁可在 rc/cfm 行上报 cfm=none，
+ * 也不把半截参数当成"装好了"。
+ */
+static void EapolRecordKeyAddCfm(const UINT8 *Frame, UINT32 Length, UINT16 ParameterLength) {
+    gAicEapolKeyAddCfm = 1u;
+    if (Length < AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_CFM_LENGTH ||
+        ParameterLength < AIC_EAPOL_KEY_ADD_CFM_LENGTH) {
+        gAicEapolKeyAddStatus = AIC_EAPOL_KEY_ADD_STATUS_SHORT;
+        gAicEapolKeyAddHwIndex = 0u;
+        return;
+    }
+    gAicEapolKeyAddStatus =
+        (UINT32)Frame[AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_STATUS_OFFSET];
+    gAicEapolKeyAddHwIndex =
+        (UINT32)Frame[AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_HW_INDEX_OFFSET];
+}
+
 /* 配置帧（0x11 CMD_RSP / 0x12 DATA_CFM / 0x13 PRINT）：不是 EAPOL，但 id 有用 */
 static void EapolPrintConfigFrame(const UINT8 *Frame, UINT32 Length,
                                   AIC_EAPOL_COUNTERS *Counters) {
@@ -140,6 +165,13 @@ static void EapolPrintConfigFrame(const UINT8 *Frame, UINT32 Length,
     } else if (MessageId == AIC_ME_SET_CONTROL_PORT_CFM) {
         SdhciMark(" (ME_SET_CONTROL_PORT_CFM: EAPOL control port is open)");
         gAicEapolControlPortCfm = 1u;
+    } else if (MessageId == AIC_MM_KEY_ADD_CFM) {
+        EapolRecordKeyAddCfm(Frame, Length, ParameterLength);
+        SdhciMark(" (MM_KEY_ADD_CFM: status=");
+        SdhciMarkDecimal("", gAicEapolKeyAddStatus);
+        SdhciMark(" hw_key_idx=");
+        SdhciMarkDecimal("", gAicEapolKeyAddHwIndex);
+        SdhciMark(")");
     }
     SdhciMark("\n");
 }

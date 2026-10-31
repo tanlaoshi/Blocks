@@ -67,21 +67,29 @@ int WifiBackplaneWrite32(UINT32 Address, UINT32 Value) {
 
 static int gWifiBlockSizeReady = 0;
 static UINT32 gWifiBackplaneBlockBytes = WIFI_BACKPLANE_BLOCK_BYTES;
+static int gWifiTransferShapeLogged = 0;
 
 /*
- * 一块窗口内的写入。对表 Linux sdio_io_rw_ext_helper：
- * 先尽量用块模式发满（单条 CMD53 上限 511 块），余数再走字节模式。
- * 这与我们之前「每包 64 字节字节模式」完全不同——那形状卡不认。
+ * 一块窗口内的写入。对表 Linux mmc1 ftrace（灌片写）：
+ * 众数 CMD53 = block_size=64 × blocks=511（bit27=1），余数也走块模式（1×64），
+ * 不要对整块余数改用字节模式 CMD53（bit27=0）——那是与 Linux 不一致的形状。
  */
 static int WifiBackplaneWriteChunk(UINT32 WindowOffset, UINT8 *Cursor, UINT32 ByteCount) {
-    if (WIFI_BACKPLANE_BLOCK_MODE != 0 && ByteCount > gWifiBackplaneBlockBytes) {
+    if (WIFI_BACKPLANE_BLOCK_MODE != 0 && ByteCount >= gWifiBackplaneBlockBytes) {
         UINT32 Blocks = ByteCount / gWifiBackplaneBlockBytes;
         UINT32 BulkBytes;
 
-        if (Blocks > 511u) {
-            Blocks = 511u;
+        if (Blocks > WIFI_BACKPLANE_BLOCKS_PER_COMMAND) {
+            Blocks = WIFI_BACKPLANE_BLOCKS_PER_COMMAND;
         }
         BulkBytes = Blocks * gWifiBackplaneBlockBytes;
+        if (gWifiTransferShapeLogged == 0) {
+            gWifiTransferShapeLogged = 1;
+            WifiBootMarkHexadecimal32("Boot: Pi WIFI xfer blk=", gWifiBackplaneBlockBytes);
+            WifiBootMarkHexadecimal32(" blocks=", Blocks);
+            WifiBootMarkHexadecimal32(" bytes=", BulkBytes);
+            HalSerialBootMarkForce("\n");
+        }
         if (WifiSdioBlockWrite(SDIO_FUNCTION_1, WindowOffset, Cursor, BulkBytes,
                                gWifiBackplaneBlockBytes) != 0) {
             return -1;
@@ -90,9 +98,13 @@ static int WifiBackplaneWriteChunk(UINT32 WindowOffset, UINT8 *Cursor, UINT32 By
         Cursor += BulkBytes;
         ByteCount -= BulkBytes;
     }
+    /* 非整块：字节模式（寄存器/尾）；整块余数上面已用块模式吃掉 */
     while (ByteCount > 0u) {
-        UINT32 Piece = (ByteCount > 64u) ? 64u : ByteCount;
+        UINT32 Piece = ByteCount;
 
+        if (Piece > 512u) {
+            Piece = 512u;
+        }
         if (WifiSdioCommand53Write(SDIO_FUNCTION_1, WindowOffset, Cursor, Piece, 1) != 0) {
             return -1;
         }
@@ -145,13 +157,25 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
         UINT32 WindowOffset =
             (Current & (SDIO_BACKPLANE_WINDOW_SIZE - 1u)) | SDIO_BACKPLANE_ACCESS_32BIT;
         UINT32 Chunk = SDIO_BACKPLANE_WINDOW_SIZE - (Current & (SDIO_BACKPLANE_WINDOW_SIZE - 1u));
+        UINT32 MaxBulk;
         int Error;
 
         if (Chunk > Remaining) {
             Chunk = Remaining;
         }
-        /* 块模式下 Chunk 由窗口大小决定（最多 32 KB）；只有字节模式才需要压到 9 位计数以内 */
-        if (WIFI_BACKPLANE_BLOCK_MODE == 0 && Chunk > 480u) {
+        /*
+         * 块模式：单笔上限对表 Linux 灌片写 511×64，勿一次吃满 0x8000 再留下
+         * 64 B 走字节模式尾巴。
+         */
+        if (WIFI_BACKPLANE_BLOCK_MODE != 0 && Write) {
+            MaxBulk = gWifiBackplaneBlockBytes * WIFI_BACKPLANE_BLOCKS_PER_COMMAND;
+            if (Chunk > MaxBulk) {
+                Chunk = MaxBulk;
+            }
+            if (Chunk >= gWifiBackplaneBlockBytes) {
+                Chunk -= (Chunk % gWifiBackplaneBlockBytes);
+            }
+        } else if (WIFI_BACKPLANE_BLOCK_MODE == 0 && Chunk > 480u) {
             Chunk = 480u;
         }
         if (Chunk > 4u && (Chunk & 3u) != 0) {

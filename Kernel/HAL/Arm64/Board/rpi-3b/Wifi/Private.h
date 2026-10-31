@@ -99,17 +99,22 @@
 #define WIFI_CHIP_ID_43455           0x4345u
 #define WIFI_CHIP_ID_43430           0xA9A6u
 #define WIFI_RAM_SIZE                (512u * 1024u)
-/* 灌片 CMD53 块长；4B@0 曾 write fail，64B+|0x8000 能灌完（HT 另查） */
+/* 灌片 CMD53 块长；对表 Linux mmc1 ftrace 众数 block_size=64 */
 #define WIFI_BACKPLANE_BLOCK_BYTES   64u
+/*
+ * 单条 CMD53 最大块数（SDIO 9-bit）。Linux brcmf 灌片写众数 = 511×64（≈32704 B），
+ * 不是 32×64（那是读侧众数）。见 Archive/过程/排障/Pi-Linux-brcmf-20261031。
+ */
+#define WIFI_BACKPLANE_BLOCKS_PER_COMMAND 511u
 /*
  * 固件下载基址。EROM 给同一块 SRAM 列了三个从端口别名：0x0 / 0x10000000 / 0x1e000000。
  * 经 0x0 写入会在第一块之后把卡挂死（背板写永不完成），改用第二个别名。
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
-/* 每改一版就 +1：串口第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x00000124u
+/* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
+#define WIFI_BUILD_TAG               0x00000125u
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
-/* 1 = 按 Linux sdio_io_rw_ext_helper 的形状：块模式批量 + 字节模式收尾 */
+/* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
 /* SDHCI 传输模式 bit5：多块（Sdhci.h 未定义，只在 Wifi 内用） */
 #define WIFI_SDHCI_TRANSFER_MULTI    (1u << 5)

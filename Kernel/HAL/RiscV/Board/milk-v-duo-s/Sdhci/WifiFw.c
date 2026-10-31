@@ -133,6 +133,37 @@ static int WifiFwCheck(SDHCI_HOST *Host) {
 }
 
 /* 真写：检查 → 逐阶段写 → 启动 → 等首条消息，任一步失败即停 */
+/*
+ * MM_SET_STACK_START_REQ(0x7B)：告诉固件"主机的协议栈起来了"。
+ * 厂商把它放在固件下载完之后的第一条（rwnx_main.c:6947），早于 MM_RESET；
+ * 我们此前一条都不发 —— 真机现象是关联成功却只上送 beacon、EAPOL 不上送，
+ * 与"固件按 BSP 模式（认为没有主机协议栈）行事"的画像一致。
+ * 补发是实验性的：CFM 拿不到只打一行，不影响后续流程。
+ */
+static void AicFwSetStackStart(SDHCI_HOST *Host) {
+    UINT8 Param[4];
+    UINT8 Cfm[16];
+    UINT32 CfmLength = 0;
+
+    Param[0] = (UINT8)AIC_MM_STACK_START_ON;
+    Param[1] = (UINT8)AIC_MM_EFUSE_INVALID;
+    Param[2] = (UINT8)AIC_MM_VENDOR_INFO_5G_BIT;
+    Param[3] = (UINT8)AIC_MM_FWTRACE_KEEP;
+    if (AicSendMessageEx(Host, (UINT16)AIC_MM_SET_STACK_START_REQ, (UINT16)AIC_TASK_MM, Param,
+                         (UINT16)sizeof(Param)) != 0) {
+        SdhciMark("WiFi: stack start: msg send FAILED\n");
+        return;
+    }
+    if (AicRecvMessageTimeout(Host, (UINT16)AIC_MM_SET_STACK_START_CFM, Cfm, sizeof(Cfm),
+                              &CfmLength, 4u, AIC_CFM_TIMEOUT_MS) != 0) {
+        SdhciMark("WiFi: stack start: no cfm (continue anyway)\n");
+        return;
+    }
+    SdhciMarkHex("WiFi: stack start ok (5g=", (UINT32)Cfm[0], 2);
+    SdhciMarkHex(" vendor=", (UINT32)(CfmLength > 1u ? Cfm[1] : 0u), 2);
+    SdhciMark(")\n");
+}
+
 static int WifiFwWrite(SDHCI_HOST *Host) {
     UINT32 i;
     UINT32 Size = 0;
@@ -210,6 +241,7 @@ static int WifiFwWrite(SDHCI_HOST *Host) {
     }
     gWifiFwState = 1u;
     SdhciMark("WiFi: fw state=done (all stages ok)\n");
+    AicFwSetStackStart(Host);
     return 0;
 }
 

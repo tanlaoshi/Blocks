@@ -107,7 +107,15 @@ typedef struct {
  * wpa_supplicant 给的就是 0x888e。本刀先把这个字段填对，等于提前声明"EAPOL 归主机"，
  * 但 flags 不置 CONTROL_PORT_HOST，所以固件这刀不会真的把 EAPOL 交给主机。
  */
-#define AIC_JOIN_CTRL_PORT_EAPOL 0x888Eu
+/*
+ * **字节序陷阱**（真机踩过）：厂商字段是 __be16，lmac_msg.h:2224 注释明写
+ * "Control port Ethertype (in network endianness)"；cfg80211 给的是 __be16 的 0x888E，
+ * 按内存字节看就是 `88 8E`。我们这里是 UINT16 小端，写 0x888E 落到内存变成 `8E 88`，
+ * 固件按 `88 8E` 认 EAPOL ⇒ 永远匹配不上，数据帧被丢、beacon 照过（真机现象）。
+ * 所以这一步先换成本机小端下内存字节为 `88 8E` 的值：0x8E88。
+ * 语义仍是"EAPOL/ETH_P_PAE 的网络序"，下面注释保留原名便于对照。
+ */
+#define AIC_JOIN_CTRL_PORT_EAPOL 0x8E88u /* 内存字节 = 88 8E = 网络序的 0x888E */
 /* 厂商默认值：listen_itv=0（rwnx_mod_params.c:59）、listen_bcmc=true ⇒ dont_wait_bcmc=!true=0
    （rwnx_msg_tx.c:2426-2427）、uapsd_queues=IEEE80211_WMM_IE_STA_QOSINFO_AC_VO=1<<0
    （rwnx_mod_params.c:66 + include/linux/ieee80211.h:281）。 */
@@ -130,6 +138,13 @@ typedef struct {
 #define AIC_JOIN_RSN_IE_LENGTH 22u      /* sizeof 元素 = 2 + 20 */
 #define AIC_JOIN_RSN_VERSION 1u
 #define AIC_JOIN_RSN_SUITE_CCMP 4u  /* OUI 00-0F-AC:4 */
+/*
+ * 组播套件必须跟 AP 的 beacon 声明一致（真机空口实测）：
+ * 这个 AP 是 WPA/WPA2 混合模式，beacon/关联响应里组播是 00-0F-AC:2(TKIP)，
+ * Linux 也跟着声明 TKIP+CCMP；我们之前硬写 CCMP(4)，AP 接受了关联却**从不开始四次握手**
+ * （空口抓包：AP 只回 assoc，之后整段没有 EAPOL）。单播仍用 CCMP。
+ */
+#define AIC_JOIN_RSN_SUITE_TKIP 2u  /* OUI 00-0F-AC:2 */
 #define AIC_JOIN_RSN_SUITE_SUBCOUNT 1u
 #define AIC_JOIN_RSN_AKM_PSK 2u /* OUI 00-0F-AC:2 */
 #define AIC_JOIN_RSN_CAPABILITIES 0u
@@ -242,6 +257,8 @@ int AicJoinHandleInd(const UINT8 *Param, UINT32 ParamLength);
  * 失败时不清零（调用方拿到失败就不会用）。只读写本文件的 static，不碰 SDIO。
  */
 void AicJoinLastIndexes(UINT8 *VifIndex, UINT8 *ApIndex);
+/* mmreset 后固件的 sta/vif 已失效：只清两个静态索引，不改 join 流程 */
+void AicJoinIndexesClear(void);
 /* 板级入口：Dry != 0 只拼包（不需要卡）；BssidText 可为 0（用扫描缓存里最强的那个）；
    Password 可为 0（只到控制端口为止，不给就继续做四次握手） */
 int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password);

@@ -85,6 +85,12 @@ static int AicFrameCheck(const UINT8 *Frame, UINT32 FrameLength, UINT32 *OutPara
     return 0;
 }
 
+/* 默认实现：什么也不做（x64 等无 WiFi 的架构也能编过） */
+__attribute__((weak)) void AicFrameUnexpected(const UINT8 *Frame, UINT32 Length) {
+    (void)Frame;
+    (void)Length;
+}
+
 int AicReceiveFrameTimeout(SDHCI_HOST *Host, UINT8 *Frame, UINT32 MaxFrame, UINT16 *OutId,
                              UINT32 *OutFrameLength, UINT32 *OutParamLength, UINT32 Tries,
                              UINT32 TimeoutMs) {
@@ -98,6 +104,8 @@ int AicReceiveFrameTimeout(SDHCI_HOST *Host, UINT8 *Frame, UINT32 MaxFrame, UINT
             return -1;
         }
         if (AicFrameCheck(Frame, FrameLength, &ParamLength) != 0) {
+            /* 不是 e2a 消息：可能正是 AP 的 EAPOL 帧，交给钩子，别静默丢 */
+            AicFrameUnexpected(Frame, FrameLength);
             continue;
         }
         if (OutId != 0) {

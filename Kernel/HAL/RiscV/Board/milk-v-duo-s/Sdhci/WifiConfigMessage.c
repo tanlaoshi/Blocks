@@ -69,7 +69,14 @@
 #define AIC_VHT_SUPPORTED 0u  /* vht_cap->vht_supported = false（rwnx_main.c:82）*/
 #define AIC_HE_SUPPORTED 0u   /* he_cap->has_he = false（rwnx_main.c:144）*/
 #define AIC_HE_UL_ON 0u       /* mod_params->he_ul_on = false（rwnx_mod_params.c:37）*/
-#define AIC_PS_ON 1u          /* mod_params->ps_on = true（rwnx_mod_params.c:62）*/
+/*
+ * R3 实验：关掉省电。
+ * 厂商默认 ps_on=1（rwnx_mod_params.c:62），Linux 驱动自己处理 PS（tim 轮询、PS-Poll）。
+ * 我们没有这套：若固件按 ps_on=1 把单播帧缓在 AP 侧等 PS-Poll，就会呈现
+ * "广播/管理帧（beacon）照走、单播数据帧（含 EAPOL M1）一律不上送"——正是真机现象。
+ * 先置 0 验证；若有效，再决定是长期关掉还是补 PS 处理。
+ */
+#define AIC_PS_ON 0u
 #define AIC_ANT_DIV_ON 1u     /* mod_params->ant_div = true（rwnx_mod_params.c:87）*/
 #define AIC_DPSM 0u           /* mod_params->dpsm = false（rwnx_mod_params.c:71）*/
 
@@ -246,4 +253,28 @@ int AicBringupLayoutCheck(void) {
         return -1;
     }
     return 0;
+}
+
+/* mm_set_coex_req（lmac_msg.h:1169-1176）：5 个 u8 之后是 u32[2]，编译器会把参数补齐到 16 B，
+   所以这里用结构体而不是手写字节，sizeof 由编译期保证。STA 用 (0,1)。 */
+typedef struct {
+    UINT8 BtOn;
+    UINT8 DisableCoexNull;
+    UINT8 EnableNullCts;
+    UINT8 EnablePeriodicTimer;
+    UINT8 CoexTimeSlotSet;
+    UINT32 CoexTimeSlot[2];
+} AIC_MM_SET_COEX_REQ_BODY;
+
+UINT32 AicCoexBuild(UINT8 *Buffer) {
+    AIC_MM_SET_COEX_REQ_BODY *Body = (AIC_MM_SET_COEX_REQ_BODY *)Buffer;
+
+    Body->BtOn = (UINT8)AIC_COEX_BT_ON;
+    Body->DisableCoexNull = (UINT8)AIC_COEX_DISABLE_NULL;
+    Body->EnableNullCts = (UINT8)AIC_COEX_ENABLE_NULLCTS;
+    Body->EnablePeriodicTimer = 0u;
+    Body->CoexTimeSlotSet = 0u;
+    Body->CoexTimeSlot[0] = 0u;
+    Body->CoexTimeSlot[1] = 0u;
+    return (UINT32)sizeof(AIC_MM_SET_COEX_REQ_BODY);
 }

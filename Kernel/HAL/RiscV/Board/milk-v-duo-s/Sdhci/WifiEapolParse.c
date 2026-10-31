@@ -131,35 +131,6 @@ static void EapolLocate(const UINT8 *Frame, UINT32 MpduLength, UINT32 End,
 }
 
 /*
- * 一个 SDIO 块里可能挤着好几帧（厂商 aicwf_process_rxframes 就是逐帧遍历）。
- * 第一帧解完之后，[End, FrameLength) 里如果还有 EAPOL，按 SNAP + EAPOL 头再扫一遍，
- * 别把 M1 丢在块尾。命中上限 2：再多就不是"漏了一帧"，而是偏移猜错了。
- */
-static void EapolScanTail(const UINT8 *Frame, UINT32 Begin, UINT32 FrameLength,
-                          AIC_EAPOL_COUNTERS *Counters) {
-    UINT32 Index = Begin;
-    UINT32 Hits = 0;
-
-    while (Index + AIC_LLC_SNAP_LENGTH + AIC_EAPOL_HEADER_LENGTH <= FrameLength &&
-           Hits < AIC_EAPOL_SCAN_MAX_HITS) {
-        UINT32 Body = Index + AIC_LLC_SNAP_LENGTH;
-
-        if (EapolMatchSnap(Frame + Index) == 0 ||
-            EapolLooksLikeBody(Frame + Body, FrameLength - Body) == 0) {
-            Index++;
-            continue;
-        }
-        SdhciMark("WiFi: eapol: layout=scan off=");
-        SdhciMarkHex("", Body, 4);
-        SdhciMark(" (extra EAPOL behind the first frame in this block)\n");
-        /* 裸扫的是 SDIO 块里的字节尾巴，拿不到 802.11 头 ⇒ Station 传 0 */
-        AicEapolParseBody(Frame + Body, FrameLength - Body, 0, Counters);
-        Hits++;
-        Index = Body + AIC_EAPOL_KEY_FIXED_LENGTH;
-    }
-}
-
-/*
  * 帧级校验：读 hw_rxhdr、打第一行、fcs 检查、把 hwvect.len 夹进本块长度。
  * 返回 0 = 可以继续（End/Decryption 已填）；-1 = 已经打印并计数，调用方直接 return。
  */
@@ -267,5 +238,8 @@ void AicEapolParseData(const UINT8 *Frame, UINT32 FrameLength, AIC_EAPOL_COUNTER
         EapolPrintLocation(&Location);
         AicEapolParseBody(Frame + Location.Offset, End - Location.Offset, Station, Counters);
     }
-    EapolScanTail(Frame, End, FrameLength, Counters);
+    /*
+     * 不再"裸扫块尾"：一个 SDIO 块里的后续帧现在由 WifiEapol.c 的 EapolDispatchBlock
+     * 按厂商的聚合帧算术逐帧解（aicwf_txrxif.c:290-350），块尾不再需要猜偏移。
+     */
 }

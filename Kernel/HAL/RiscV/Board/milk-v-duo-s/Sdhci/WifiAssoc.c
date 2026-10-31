@@ -86,10 +86,23 @@ static int JoinWaitCfm(SDHCI_HOST *Host) {
 static int JoinWaitInd(SDHCI_HOST *Host) {
     UINT32 ParamLength = 0;
 
+    const AIC_SM_CONNECT_INDICATION *Ind;
+
     if (JoinWaitId(Host, (UINT16)AIC_SM_CONNECT_IND, AIC_JOIN_IND_TRIES, &ParamLength) != 0) {
         SdhciMark("WiFi: join FAILED at step 2/2: no SM_CONNECT_IND(0x1802) in 3000ms");
         SdhciMark(" (CFM ok but auth/assoc got no answer)\n");
         return -1;
+    }
+    Ind = (const AIC_SM_CONNECT_INDICATION *)((const UINT8 *)sAicJoinFrame + AIC_E2A_PARAM_OFF);
+    /*
+     * 抢开控制端口（PR-35）：AP 的 EAPOL M1 在关联完成的一瞬间就到，而 AicJoinHandleInd
+     * 要打三四行串口（115200 下每行 5~10 ms），等它打完再开端口，M1 已在端口关着时
+     * 被固件丢掉——真机现象是"只收到 beacon，收不到 M1"。
+     * 所以：IND 一到、把 ap_idx 取出来就立刻发 0x1404，**打印全部推迟到之后**。
+     * 关联失败（status != 0）就不开，避免对不存在的 sta 发消息。
+     */
+    if (ParamLength >= (UINT32)sizeof(AIC_SM_CONNECT_INDICATION) && Ind->StatusCode == 0u) {
+        (void)AicControlPortSend(Host, Ind->ApIndex);
     }
     return AicJoinHandleInd((const UINT8 *)sAicJoinFrame + AIC_E2A_PARAM_OFF, ParamLength);
 }
@@ -113,6 +126,27 @@ static int JoinAfterAssoc(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const cha
     return AicWifiHandshakeRun(Host, Target, Password, VifIndex, ApIndex);
 }
 
+/*
+ * 停扫：SCANU_CANCEL_REQ(0x100A) → 等 CFM(0x100B)。无参数，CFM 1 字节 status。
+ * 打一行就够：失败不阻塞 join（下一步照发 SM_CONNECT，让固件自己判）。
+ */
+static int JoinCancelScan(SDHCI_HOST *Host) {
+    UINT8 Cfm[8];
+    UINT32 CfmLength = 0;
+
+    if (AicSendMessageEx(Host, (UINT16)AIC_SCANU_CANCEL_REQ, (UINT16)AIC_TASK_SCANU, 0, 0u) != 0) {
+        return -1;
+    }
+    if (AicRecvMessageTimeout(Host, (UINT16)AIC_SCANU_CANCEL_CFM, Cfm, sizeof(Cfm), &CfmLength, 2u,
+                              AIC_CFM_TIMEOUT_MS) != 0) {
+        SdhciMark("WiFi: join: scan cancel cfm timeout (continue)\n");
+        return -1;
+    }
+    SdhciMarkHex("WiFi: join: scan cancelled (status=", CfmLength > 0u ? (UINT32)Cfm[0] : 0xFFu, 2);
+    SdhciMark(")\n");
+    return 0;
+}
+
 static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password) {
     UINT8 VifIndex = 0;
     UINT32 Length;
@@ -128,6 +162,12 @@ static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Pass
     SdhciMark("WiFi: join vif=");
     SdhciMarkDecimal("", VifIndex);
     SdhciMark("\n");
+    /*
+     * 先把可能残留的扫描停掉（厂商在 connect 前若还在扫会 abort，见 rwnx_main.c:3575）。
+     * 我们连打多轮 scan 后直接 join，固件可能仍在扫：那样只会继续上送 beacon，
+     * 数据帧（含 EAPOL M1）不上送 —— 真机现象正是如此。取消失败不阻塞 join。
+     */
+    (void)JoinCancelScan(Host);
     Length = AicJoinBuild((UINT8 *)sAicJoinBuffer, Target, VifIndex);
     if (JoinSend(Host, Length) != 0) {
         return -1;

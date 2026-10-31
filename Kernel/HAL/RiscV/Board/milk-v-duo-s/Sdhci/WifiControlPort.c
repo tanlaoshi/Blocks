@@ -10,10 +10,13 @@
  * 别改：参数是厂商 lmac_msg.h:1757-1763 的逐字段镜像（sta_idx 在前、
  *       control_port_open 在后，bool_l 是 1 B）；发送前用编译出来的 sizeof/offsetof
  *       核对，排歪了就拒绝发送。
- * 为什么必须有这一刀：EAPOL 在固件眼里是"受控端口"上的流量，不开就只把广播帧交给
- *       主机（beacon 收得到、M1 收不到 —— 真机现象正是如此）。厂商在 sm_connect_ind
- *       之后立刻发这条（真机 `>>> rwnx_send_me_set_control_port_req()`，回 CFM 0x1405），
- *       我们照抄顺序：IND 成功 → 打开 → 马上盯数据帧。
+ * **这条到底管什么（2026-10-31 纠正）**：厂商唯一调用点是
+ *   `rwnx_cfg80211_change_station()` 里 `params->sta_flags_mask & AUTHORIZED` 那一支
+ *   （rwnx_main.c:4606-4610），传给它的 sta_idx 是 `ind->ap_idx`（rwnx_msg_rx.c:747-752）。
+ *   AUTHORIZED 是**四次握手之后**（装 PTK 时）才置的 ⇒ **控制端口不是 M1 上送的前提**；
+ *   早先"不开就只给广播帧"的推断没有代码支撑，留着这条只是把固件状态对齐厂商，
+ *   别再把"M1 收不到"记在它头上。M1 收不到的真正嫌疑在 SDIO 控制面（见 WifiSdioState.c：
+ *   卡睡眠/软中断没应答）与"一块多帧只解第一帧"（见 WifiEapol.c 的 EapolDispatchBlock）。
  */
 #include "WifiAssocPrivate.h"
 #include "Compiler.h" /* BLOCKS_OFFSETOF：与 join/scan/bringup 同一套布局自检 */

@@ -18,6 +18,40 @@
  *
  * 只读：不发写消息、不改任何内存、不动 patch 状态。
  */
+/*
+ * 只读：读固件的 efuse MAC（厂商 rwnx_main.c:7072 在 MM_RESET 之前就取它，
+ * 并把它用作 MM_ADD_IF 的 MAC）。我们 add_if 用的是硬编码 02:00:00:00:00:01；
+ * 若固件单播过滤按 efuse MAC 做，单播帧（含 EAPOL）会被整片丢掉、广播/管理帧照过。
+ * 这条查询就是用来判死/判活该假设的：一行日志，不需要额外动作。
+ */
+static void WifiFwMacQuery(SDHCI_HOST *Host) {
+    UINT8 Cfm[32];
+    UINT32 CfmLength = 0;
+
+    if (AicSendMessageEx(Host, (UINT16)AIC_MM_GET_MAC_ADDR_REQ, (UINT16)AIC_TASK_MM, 0, 0u) != 0) {
+        SdhciMark("WiFi: mac: msg send FAILED\n");
+        return;
+    }
+    if (AicRecvMessageTimeout(Host, (UINT16)AIC_MM_GET_MAC_ADDR_CFM, Cfm, sizeof(Cfm), &CfmLength,
+                              4u, AIC_CFM_TIMEOUT_MS) != 0) {
+        SdhciMark("WiFi: mac: no cfm (fw may not answer this id)\n");
+        return;
+    }
+    if (CfmLength < AIC_MM_GET_MAC_ADDR_LENGTH) {
+        SdhciMarkHex("WiFi: mac: cfm too short plen=", CfmLength, 4);
+        SdhciMark("\n");
+        return;
+    }
+    SdhciMark("WiFi: fw mac=");
+    SdhciMarkHex("", Cfm[0], 2);
+    SdhciMarkHex(":", (UINT32)Cfm[1], 2);
+    SdhciMarkHex(":", (UINT32)Cfm[2], 2);
+    SdhciMarkHex(":", (UINT32)Cfm[3], 2);
+    SdhciMarkHex(":", (UINT32)Cfm[4], 2);
+    SdhciMarkHex(":", (UINT32)Cfm[5], 2);
+    SdhciMark(" (add_if uses 02:00:00:00:00:01)\n");
+}
+
 static int WifiFwVersionProbe(SDHCI_HOST *Host) {
     UINT8 Cfm[64];
     UINT32 CfmLength = 0;
@@ -63,6 +97,8 @@ static int WifiFwVersionProbe(SDHCI_HOST *Host) {
         SdhciMarkHex("WiFi: ver: cfm plen<16, only ", CfmLength, 4);
         SdhciMark(" bytes available\n");
     }
+    /* 顺手读 efuse MAC（只读诊断，见 WifiFwMacQuery 的注释） */
+    WifiFwMacQuery(Host);
     return 0;
 }
 

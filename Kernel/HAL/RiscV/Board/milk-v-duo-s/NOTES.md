@@ -808,3 +808,65 @@ blocks>
   独立实现逐字节一致；`AicControlPortBuild` 出 `05 01`（sta_idx 在前）。
 - **未验**：真机上空口是否接受这个数据帧（M3 是判据）。若 `eapol tx` 后没有 M3，
   先看 `WiFi: eapol tx m2 hex[…]` 与厂商 txdesc 的字节对照（ethtype 字节序、ac/staid）。
+
+## 10-31 10:15 「2 帧后静默」：查厂商 RX 源码的结论（PR-35 刀）
+
+### 结论一：**没有"每收 N 帧回一条 DATA_CFM / 写信用计数"这回事**
+
+厂商 D80 的 RX 处理器（`aicwf_sdio.c:2002-2126`、BSP 侧 `aicsdio.c:1506-1558`）读完 FIFO
+只做 `enqueue`，**一个字节都不回写**；`rwnx_rx.c` 的整条上送路径里也没有任何
+host→device 消息（只有 DHCP 嗅探那两处 ARP offload 配置，与逐帧无关）。
+`0x12`（`SDIO_TYPE_CFG_DATA_CFM`）是**设备→主机**的帧类型，不是主机要发的确认。
+——所以"接收流控没闭环"成立，但闭环的不是逐帧信用，而是**电源/中断状态机**。
+
+### 结论二：真正要闭环的三条（都在 D80 的 fn1 寄存器上）
+
+| # | 动作 | 寄存器/值 | 我们以前 | 出处 |
+|---|---|---|---|---|
+| 1 | 设备→主机**软中断应答** | `0x04` bit7 置位 ⇒ 读 `0x01`，清 **bit0** 写回 | **完全没做** | `aicwf_sdio.c:2071-2080`、`aicsdio.c:1514-1524` |
+| 2 | **唤醒握手** | `0x02 ← 0x11`，轮询 `0x01` **bit4(0x10)** = "SDIO 活了" | **完全没做** | `aicwf_sdio.c:943-990`、`:2394-2418`（init 里写 0x11 → 等 5 ms → 验 bit4，失败打 `wakeup fail`） |
+| 3 | CCCR 0x04 卡中断使能 | 写 `0x07` | 没做 | `aicwf_sdio.c:1630-1635`（与 `sdio_claim_irq` 成对；**我们纯轮询，只读不写**，见 `WifiSdioState.c` 注释） |
+
+睡眠/唤醒的完整语义：`0x01` = `INTR_PENDING`（厂商叫 `sleep_reg`），bit4 = 醒着，
+bit0 = 设备软中断；`0x02` = `INTR_TO_DEVICE`（厂商叫 `wakeup_reg`），写 `0x11` = 叫醒。
+主机主动睡觉是往 `0x01` 写 `0x10`（`aicwf_sdio.c:1002/1014`，我们不做）。
+**"2 帧后静默、CMD52 照样通"正是睡眠态的样子**：寄存器接口活着，数据通路不给帧。
+
+### 结论三：控制端口**不是** M1 上送的前提（纠正 PR-34 的推断）
+
+厂商唯一调用点 `rwnx_cfg80211_change_station()` 的 `AUTHORIZED` 分支（`rwnx_main.c:4606-4610`），
+`sta_idx` 取 `ind->ap_idx`（`rwnx_msg_rx.c:747-752`）—— `AUTHORIZED` 是**四次握手之后**装 PTK
+时才置的，所以 M1 一定是在控制端口**关着**的时候收到的。我们传的 `sta_idx` 就是 IND 的
+`ap_idx`（真机 `ap=0`），参数没错，别再从这条路上找原因。
+
+`MM_SET_PS` / `MM_SET_FILTER` / `MM_SET_IDLE`：厂商在 join 前后**一条都不发**
+（全仓只有 `rwnx_set_ps` 那条用户触发的路径），也不构成 M1 的前提。
+
+### 结论四：一块里可能挤着好几帧，以前只解第一帧
+
+厂商 `aicwf_process_rxframes` 是 `while (aicwf_another_ptk())` 逐帧走
+（`aicwf_txrxif.c:290-350`），长度算术各不相同：
+数据帧 `60 + pkt_len`、配置帧 `align4(pkt_len) + 4`。
+一个 beacon（60+224）与一个 M1（60+~140）**正好同块** ⇒ 只解第一帧就等于把 M1 整帧丢掉，
+日志上只看到 beacon，看着像"AP 没送 M1"。
+
+### 本刀改动
+
+- 新增 `Sdhci/WifiSdioState.c`：`AicSdioWake`（0x02←0x11 + 等 bit4）、`AicSdioIntrAck`
+  （清 0x01 bit0）、`AicSdioIntPeek`（只读 CCCR 04）、`AicSdioStateDump`（11 个 fn1 寄存器
+  + CCCR + 裁决行 `awake=/devirq=/blocks=`）。
+- `WifiMessage.c`：`AicWaitMessagePending` 先保 awake、遇到 bit7 先应答再**重读**取干净块数，
+  超时改打 `AicSdioStateDump`（顺带修掉"status 读失败与读到 0 分不开"的老毛病）。
+- `WifiEapol.c`：`EapolFrameSpan` + `EapolDispatchBlock` 按厂商算术逐帧解；
+  新增判据行 `WiFi: eapol: aggregate in one block=N`。
+- `WifiEapolParse.c`：删掉"裸扫块尾"的兜底（逐帧解之后它只会误命中）。
+- `WifiMemory.c`：`AicWifiVendorPrepare` 收尾补上唤醒 + peek（厂商 func_init 的最后两步）。
+
+### 真机判据（按顺序看）
+
+1. `WiFi: sdio: cccr int_en=…` —— 有这行说明新的控制面代码在跑。
+2. `WiFi: sdio wake: fn1 0x02<-11 wrote=N pend=1x (awake)` —— 卡本来是睡的，被叫醒 ⇒ 根因 A 成立。
+   若一直是 `awake=1`（从来没睡），那静默原因要往别处找。
+3. 超时出现 `WiFi: sdio verdict: awake=… devirq=… blocks=…` ——
+   `awake=0` = 睡死；`devirq=1` 反复出现 = 有软中断没人应答（本刀已应答）。
+4. `WiFi: eapol: aggregate in one block=2` + 后面紧跟 `eapol rx … msg=M1` —— 丢帧根因（结论四）成立。

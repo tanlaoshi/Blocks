@@ -36,6 +36,15 @@
 /* 类型字节在帧内 +2（aicwf_txrxif.c:308 读的就是 data[2]） */
 #define AIC_SDIO_TYPE_OFFSET 2u
 #define AIC_SDIO_MIN_FRAME_LENGTH (AIC_SDIO_TYPE_OFFSET + 1u)
+/*
+ * 一次 CMD53 读回来的是**一串聚合帧**，不是一帧：厂商 aicwf_process_rxframes 用
+ * `while (aicwf_another_ptk())` 逐帧走（aicwf_txrxif.c:290-350），每帧按 4 B 对齐
+ * （aicwf_txrxif.h 的 RX_ALIGNMENT）。两张长度公式不一样，别共用一个：
+ *   数据帧：pkt_len + RX_HWHRD_LEN(60)          aicwf_txrxif.c:309-310
+ *   配置帧：align4(pkt_len) + 4（4 B 块头）      aicwf_txrxif.c:338-345
+ */
+#define AIC_RX_FRAME_ALIGN 4u
+#define AIC_RX_CFG_HEADER_LENGTH 4u
 
 /* ---- 数据帧的 RX 硬件头（rwnx_rx.h:230-320）----
  * 厂商 sizeof(struct hw_rxhdr) = 56（见 AicEapolLayoutCheck 的核对项），
@@ -128,7 +137,6 @@
 #define AIC_EAPOL_FRAME_MAX 2048u
 #define AIC_EAPOL_HEAD_DUMP 32u /* 第一帧数据帧的头部取证宽度 */
 #define AIC_EAPOL_MPDU_DUMP 16u /* 802.11 帧头取证宽度（看 +60 到底对不对） */
-#define AIC_EAPOL_SCAN_MAX_HITS 2u /* 同一 SDIO 块里最多再捞 2 条尾巴上的 EAPOL */
 
 /*
  * struct hw_rxhdr 的镜像：只摆到我们能引用的字段，位域用整字 + 具名偏移表达
@@ -156,6 +164,10 @@ typedef struct {
     UINT32 KeyFrames;    /* 其中 EAPOL-Key（type=3）：M1..M4 的载体，判据只认它 */
     UINT32 BadFrames;    /* 帧短 / 长度自相矛盾 / fcs_err / EAPOL 太短 */
     UINT32 HeadDumped;   /* 第一帧数据帧的取证已打印（0/1） */
+    /* 诊断：窗口里轮询了几次、其中几次"固件没东西给"。
+       polls 远大于 frames ⇒ 固件在那段时间基本不上送（问题在固件侧）。 */
+    UINT32 Polls;
+    UINT32 EmptyPolls;
 } AIC_EAPOL_COUNTERS;
 
 /* WifiEapol.c */

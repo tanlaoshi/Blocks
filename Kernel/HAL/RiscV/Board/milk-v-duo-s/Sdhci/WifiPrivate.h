@@ -19,6 +19,46 @@
 #define AIC_MM_RESET_CFM 0x0001u
 #define AIC_MM_VERSION_REQ 0x0004u
 #define AIC_MM_VERSION_CFM 0x0005u
+/* 厂商 rwnx_main.c:7072 在 MM_RESET 之前读 efuse MAC；CFM 6 B（lmac_msg.h 的
+ * mm_get_mac_addr_cfm { u8_l mac_addr[6]; }）。用来验证「固件实际用的是哪个 MAC」。 */
+#define AIC_MM_GET_MAC_ADDR_REQ 0x0073u
+#define AIC_MM_GET_MAC_ADDR_CFM 0x0074u
+#define AIC_MM_GET_MAC_ADDR_LENGTH 6u
+/*
+ * 厂商 rwnx_main.c:6947-6959：固件下载完之后发的**第一条**消息（早于 MM_RESET）。
+ * 语义"host stack started"；aicbsp 发 0、FDRV 发 1。D80 走 else 分支：
+ * {is_stack_start=1, efuse_valid=0, set_vendor_info=CO_BIT(5), fwtrace_redir=0}。
+ * 不发的后果（推断）：固件可能停在 BSP 模式，把上送策略按"没有主机协议栈"处理。
+ */
+#define AIC_MM_SET_STACK_START_REQ 0x007Bu
+#define AIC_MM_SET_STACK_START_CFM 0x007Cu
+#define AIC_MM_STACK_START_ON 1u
+#define AIC_MM_EFUSE_INVALID 0u
+#define AIC_MM_VENDOR_INFO_5G_BIT 0x20u /* CO_BIT(5)，厂商 else 分支 */
+#define AIC_MM_FWTRACE_KEEP 0u
+/*
+ * SCANU_CANCEL_REQ：扫描取消。枚举顺序（lmac_msg.h:1556-1578）：
+ * START_REQ=0x1000、START_CFM=0x1001、JOIN_REQ/CFM=0x1002/3、RESULT_IND=0x1004、
+ * FAST_REQ/CFM=0x1005/6、VENDOR_IE_REQ/CFM=0x1007/8、START_CFM_ADDTIONAL=0x1009、
+ * CANCEL_REQ=0x100A、CANCEL_CFM=0x100B。请求无参数（struct scan_cancel_req {}），
+ * CFM 带 1 字节 status（lmac_msg.h:1547-1549）。
+ * 为什么需要：我们是"连打多轮扫描后直接 join"，而厂商在 connect 前若仍在扫会 abort
+ * （rwnx_main.c:3575-3581）。固件若残留扫描状态，就会出现"关联成功但只上送 beacon"。
+ */
+#define AIC_SCANU_CANCEL_REQ 0x100Au
+#define AIC_SCANU_CANCEL_CFM 0x100Bu
+/*
+ * MM_SET_COEX_REQ / CFM：厂商在 vif up（STA 模式）时发（rwnx_main.c:974-977），
+ * 参数 struct mm_set_coex_req {bt_on=1, disable_coexnull, enable_nullcts,
+ * enable_periodic_timer=0, coex_timeslot_set=0, u32 coex_timeslot[2]}（lmac_msg.h:1169-1176）。
+ * STA 用 (0,1)。我们此前一条都不发 —— 若固件把"未配置共存"当成保守模式，
+ * 数据上送可能被压住，这正是本轮要验证的。
+ */
+#define AIC_MM_SET_COEX_REQ 0x0065u
+#define AIC_MM_SET_COEX_CFM 0x0066u
+#define AIC_COEX_BT_ON 1u
+#define AIC_COEX_DISABLE_NULL 0u
+#define AIC_COEX_ENABLE_NULLCTS 1u
 /*
  * PR-31：配置无线电的三条（lmac_msg.h:136-146 的 mm_msg_tag，MM_START 是第 2 项；
  * :1667-1674 的 me_msg_tag，前两条；LMAC_FIRST_MSG(task)=task<<10，TASK_ME=5）。
@@ -244,6 +284,12 @@ extern UINT32 gWifiFwSent;
 extern AIC_PLAN_ITEM gAicPlan[AIC_PLAN_MAX];
 extern UINT32 gAicModeValue[9];
 
+/* ---- D80 的 SDIO 控制面（WifiSdioState.c）：唤醒 / 软中断应答 / 状态现场 ---- */
+void AicSdioIntPeek(SDHCI_HOST *Host);
+int AicSdioIntrAck(SDHCI_HOST *Host, UINT8 MiscStatus);
+int AicSdioWake(SDHCI_HOST *Host);
+void AicSdioStateDump(SDHCI_HOST *Host);
+
 /* ---- 跨文件函数原型 ---- */
 UINT16 AicGet16(const UINT8 *At);
 /* 消息帧头与数据帧头共用的 crc8（WifiMessage.c；PR-34 起数据 TX 也用它） */
@@ -266,6 +312,14 @@ int AicPatchTableParse(const UINT8 *Buffer, UINT32 Length, AIC_PATCH_INFO *Info)
 int AicRecvMessage(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength);
 int AicRecvMessageTimeout(SDHCI_HOST *Host, UINT16 WantId, UINT8 *Param, UINT32 MaxParam, UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs);
 /* 变长消息（SCANU_RESULT_IND）用：把整帧原始字节交给调用方，不只拷 param */
+/*
+ * 非消息帧钩子：任何"等消息"的窗口里读到的**不是 e2a 消息**的帧，都交给它。
+ * 为什么需要：AP 的 EAPOL M1 可能在等 CFM/IND 的那一刻到达；那些窗口以前会
+ * 因为 AicFrameCheck 失败而把整帧丢掉（真机现象：只收到 beacon，收不到 M1）。
+ * 默认实现是空的；WifiEapol.c 里把它接到逐帧 EAPOL 解析上。
+ */
+void AicFrameUnexpected(const UINT8 *Frame, UINT32 Length);
+
 int AicReceiveFrameTimeout(SDHCI_HOST *Host, UINT8 *Frame, UINT32 MaxFrame, UINT16 *OutId, UINT32 *OutFrameLength, UINT32 *OutParamLength, UINT32 Tries, UINT32 TimeoutMs);
 int AicSendMessage(SDHCI_HOST *Host, UINT16 Id, const void *Param, UINT16 ParamLength);
 int AicSendMessageEx(SDHCI_HOST *Host, UINT16 Id, UINT16 DestId, const void *Param, UINT16 ParamLength);
@@ -276,6 +330,7 @@ int AicBringupLayoutCheck(void);
 UINT32 AicChanConfigBuild(UINT8 *Buffer);
 UINT32 AicMeConfigBuild(UINT8 *Buffer);
 UINT32 AicMmStartBuild(UINT8 *Buffer);
+UINT32 AicCoexBuild(UINT8 *Buffer);
 void AicDumpBytes(const UINT8 *Data, UINT32 Length);
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What);
 void AicFwWaitBootMessage(SDHCI_HOST *Host);

@@ -31,6 +31,11 @@ static const AIC_BRINGUP_STEP sAicBringupSteps[] = {
     {AIC_MM_START_REQ, AIC_MM_START_CFM, AIC_TASK_MM, "mm start", "",
      "MM_START(0x0002) got no CFM in 2000ms: it needs the two ME messages accepted first",
      AicMmStartBuild},
+    /* 厂商在 vif up（STA）时补发这条（rwnx_main.c:974-977）；我们此前没有，
+       本轮验证"未配置共存"是否压住数据上送。失败只打一行，不影响 bringup 判据。 */
+    {AIC_MM_SET_COEX_REQ, AIC_MM_SET_COEX_CFM, AIC_TASK_MM, "coex", " (sta, nullcts)",
+     "MM_SET_COEX(0x0065) got no CFM in 2000ms: coex not configured (may affect rx upload)",
+     AicCoexBuild},
 };
 
 #define AIC_BRINGUP_STEP_COUNT ((UINT32)(sizeof(sAicBringupSteps) / sizeof(sAicBringupSteps[0])))

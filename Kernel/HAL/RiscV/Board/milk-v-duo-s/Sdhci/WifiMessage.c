@@ -203,90 +203,107 @@ int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Length) {
 }
 
 /*
- * 芯片有没有消息 —— **严格**照 aicwf_sdio_hal_irqhandler 的 D80 分支
- * （aicsdio.c:1505-1545），三分支一个不漏：
+ * status 解析：**严格**照 aicwf_sdio_hal_irqhandler 的 D80 分支
+ * （aicsdio.c:1530-1548），三分支一个不漏：
  *
  *   intmaskf2 = status | 0x08
  *   intmaskf2 > 120  → **fn2**（msg 通道）事件：==127 字节模式 len=blen*4，
  *                      否则块模式 len=(status & 0x07)*512
  *   其余             → **fn1**（data 通道）事件：==0x78 字节模式 len=blen*4，
  *                      否则块模式 len=(status & 0x7F)*512
- *   status == 0      → 没消息，继续等
  *
- * 真机 10:13 的 `status=01` 就落在 **fn1 块模式 1 块 = 512 B** 这一支：
- * 芯片早就回了 512 B 在等我们读，是旧判据（只认 >120）把它判成"没消息"。
+ * 前提：传进来的 Status **不含 bit7**。bit7 是"设备→主机软中断"标志
+ * （aicsdio.c:1514 的 SDIO_OTHER_INTERRUPT），不是块数；厂商没清它，
+ * 于是 `0x81`（软中断 + 1 块 fn1 数据）会被它自己判成 fn2（时序表 §4.2 的注）。
+ * 调用方先应答再重读，拿到的就是干净的块数。
+ */
+static int AicMessageDecode(SDHCI_HOST *Host, UINT8 Status, UINT32 *OutFn, UINT32 *OutLength,
+                            const char **OutMode) {
+    UINT8 BmLength = 0;
+    UINT32 Masked = (UINT32)Status | 0x08u;
+
+    *OutMode = "block";
+    if (Masked > 120u) {
+        *OutFn = 2u;
+        if (Masked == 127u) {
+            if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
+                return -1;
+            }
+            *OutLength = (UINT32)BmLength * 4u;
+            *OutMode = "byte";
+        } else {
+            *OutLength = (UINT32)(Status & 0x07u) * 512u;
+        }
+    } else {
+        *OutFn = 1u;
+        if (Status == 0x78u) {
+            if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
+                return -1;
+            }
+            *OutLength = (UINT32)BmLength * 4u;
+            *OutMode = "byte";
+        } else {
+            *OutLength = (UINT32)(Status & 0x7Fu) * 512u;
+        }
+    }
+    SdhciMarkHex("WiFi: rx masked=", Masked, 2);
+    SdhciMarkHex(" status=", Status, 2);
+    SdhciMarkHex(" fn=", *OutFn, 2);
+    SdhciMarkHex(" len=", *OutLength, 4);
+    SdhciMark(" mode=");
+    SdhciMark(*OutMode);
+    SdhciMark("\n");
+    if (*OutLength == 0u) {
+        *OutLength = 512u; /* 长度算成 0 就按一块读，宁可多读也不空转 */
+    }
+    return 0;
+}
+
+/*
+ * 芯片有没有消息。除了三分支解码，还要把 D80 的两条**控制面**动作做掉，
+ * 否则"读得动寄存器、收不到数据"：
+ *
+ *   1. 进来先确认 awake（`fn1 0x01` bit4）；睡着就 `fn1 0x02 <- 0x11` 叫醒。
+ *      出处 WifiSdioState.c 的文件头（aicwf_sdio.c:943-990、:2394-2418）。
+ *   2. `fn1 0x04` bit7 = 设备→主机软中断：读 `fn1 0x01` 清 bit0 写回
+ *      （aicwf_sdio.c:2071-2080），然后**重读一次** `0x04` 拿干净块数。
+ *
+ * 真机 10:13 的 `status=01` 落在 **fn1 块模式 1 块 = 512 B** 这一支。
  */
 int AicWaitMessagePending(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT32 *OutFn, UINT32 *OutLength) {
     UINT32 Waited = 0;
     UINT8 Status = 0;
-    UINT32 Masked;
-    UINT8 BmLength = 0;
     const char *Mode = "block";
 
+    /*
+     * 睡着的卡不给数据：先确认 awake（醒着只多一次 CMD52 读）。
+     * **不在这里判死**：bit4 的语义还没在真机上实测过，叫不醒也照常往下轮询，
+     * 超时那条路会把整个寄存器现场打出来（AicSdioStateDump）。
+     */
+    (void)AicSdioWake(Host);
     while (Waited < TimeoutMs) {
         if (SdhciIoRead8(Host, 1u, AIC_MISC_INT_REG, &Status) != 0) {
             SdhciDelayMilliseconds(AIC_CFM_POLL_MS);
             Waited += AIC_CFM_POLL_MS;
             continue;
         }
+        if ((Status & (UINT8)AIC_MISC_OTHER_INTR) != 0u) {
+            (void)AicSdioIntrAck(Host, Status);
+            if (SdhciIoRead8(Host, 1u, AIC_MISC_INT_REG, &Status) != 0) {
+                SdhciDelayMilliseconds(AIC_CFM_POLL_MS);
+                Waited += AIC_CFM_POLL_MS;
+                continue;
+            }
+            Status = (UINT8)(Status & (UINT8)~AIC_MISC_OTHER_INTR);
+        }
         if (Status == 0u) {
             SdhciDelayMilliseconds(AIC_CFM_POLL_MS);
             Waited += AIC_CFM_POLL_MS;
             continue;
         }
-        Masked = (UINT32)Status | 0x08u;
-        Mode = "block";
-        if (Masked > 120u) {
-            *OutFn = 2u;
-            if (Masked == 127u) {
-                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
-                    return -1;
-                }
-                *OutLength = (UINT32)BmLength * 4u;
-                Mode = "byte";
-            } else {
-                *OutLength = (UINT32)(Status & 0x07u) * 512u;
-            }
-        } else {
-            *OutFn = 1u;
-            if (Status == 0x78u) {
-                if (SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &BmLength) != 0) {
-                    return -1;
-                }
-                *OutLength = (UINT32)BmLength * 4u;
-                Mode = "byte";
-            } else {
-                *OutLength = (UINT32)(Status & 0x7Fu) * 512u;
-            }
-        }
-        SdhciMarkHex("WiFi: rx masked=", Masked, 2);
-        SdhciMarkHex(" status=", Status, 2);
-        SdhciMarkHex(" fn=", *OutFn, 2);
-        SdhciMarkHex(" len=", *OutLength, 4);
-        SdhciMark(" mode=");
-        SdhciMark(Mode);
-        SdhciMark("\n");
-        if (*OutLength == 0u) {
-            *OutLength = 512u; /* 长度算成 0 就按一块读，宁可多读也不空转 */
-        }
-        return 0;
+        return AicMessageDecode(Host, Status, OutFn, OutLength, &Mode);
     }
-    {
-        UINT8 Pend = 0;
-        UINT8 Ctrl = 0;
-        UINT8 Blen = 0;
-        UINT8 IoEx = 0;
-        (void)SdhciIoRead8(Host, 1u, AIC_INTR_PENDING_REG, &Pend);
-        (void)SdhciIoRead8(Host, 1u, AIC_MISC_CTRL_REG, &Ctrl);
-        (void)SdhciIoRead8(Host, 1u, AIC_BYTEMODE_LEN_REG, &Blen);
-        (void)SdhciIoRead8(Host, 0u, 0x02u, &IoEx);
-        SdhciMarkHex("WiFi: rx poll timeout status=", Status, 2);
-        SdhciMarkHex(" pend=", Pend, 2);
-        SdhciMarkHex(" ctrl=", Ctrl, 2);
-        SdhciMarkHex(" blen=", Blen, 2);
-        SdhciMarkHex(" ioex=", IoEx, 2);
-        SdhciMark("\n");
-    }
+    AicSdioStateDump(Host);
     return -1;
 }
 

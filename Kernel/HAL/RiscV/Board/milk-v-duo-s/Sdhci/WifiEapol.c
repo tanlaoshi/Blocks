@@ -162,6 +162,66 @@ static void EapolDispatchFrame(const UINT8 *Frame, UINT32 Length,
 }
 
 /*
+ * 量一帧在 SDIO 读缓冲里占多少字节。厂商 aicwf_process_rxframes 的同一套算术
+ * （aicwf_txrxif.c:290-350）：
+ *   数据帧：总长 = 60(pkt_len 之后的硬件头) + pkt_len，对齐到 4
+ *   配置帧：总长 = align4(pkt_len) + 4 B 块头
+ * pkt_len 就是帧首 2 B（`data[0] | data[1]<<8`，:306）；为 0 表示后面没有帧了
+ * （aicwf_another_ptk 的判据，:290-300）。
+ * 返回 0 = 到此为止（空帧 / 长度越界）。
+ */
+static UINT32 EapolFrameSpan(const UINT8 *Frame, UINT32 Available, UINT32 *OutFrameLength) {
+    UINT32 PktLength = (UINT32)Frame[0] | ((UINT32)Frame[1] << 8);
+    UINT32 Span;
+
+    if (PktLength == 0u) {
+        return 0u;
+    }
+    if ((Frame[AIC_SDIO_TYPE_OFFSET] & AIC_SDIO_TYPE_CFG_MASK) == AIC_SDIO_TYPE_CFG) {
+        Span = PktLength + AIC_RX_CFG_HEADER_LENGTH;
+    } else {
+        Span = PktLength + AIC_RX_HW_HEADER_LENGTH;
+    }
+    Span = (Span + (AIC_RX_FRAME_ALIGN - 1u)) & ~(AIC_RX_FRAME_ALIGN - 1u);
+    if (Span > Available) {
+        SdhciMarkHex("WiFi: eapol: aggregate span overruns block, span=", Span, 4);
+        SdhciMarkHex(" left=", Available, 4);
+        SdhciMark(" (stop walking this block)\n");
+        return 0u;
+    }
+    *OutFrameLength = Span;
+    return Span;
+}
+
+/*
+ * 一块（一次 CMD53 读，512 B 的整数倍）里可能挤着好几帧 —— 厂商 aicwf_process_rxframes
+ * 就是 `while (aicwf_another_ptk())` 逐帧走的（aicwf_txrxif.c:290-350）。
+ * 以前这里只解**第一帧**：一个 beacon 帧 280 B + M1 180 B 正好同块 ⇒ M1 被整帧丢掉，
+ * 日志上只看到 beacon，像是"AP 没送 M1"。现在按厂商的顺序逐帧解。
+ */
+static void EapolDispatchBlock(const UINT8 *Frame, UINT32 Length, AIC_EAPOL_COUNTERS *Counters) {
+    UINT32 Offset = 0;
+    UINT32 InBlock = 0;
+
+    while (Offset + AIC_SDIO_MIN_FRAME_LENGTH <= Length) {
+        UINT32 FrameLength = 0;
+
+        if (EapolFrameSpan(Frame + Offset, Length - Offset, &FrameLength) == 0u) {
+            break;
+        }
+        EapolDispatchFrame(Frame + Offset, FrameLength, Counters);
+        Counters->Frames++;
+        Offset += FrameLength;
+        InBlock++;
+    }
+    if (InBlock > 1u) {
+        SdhciMarkHex("WiFi: eapol: aggregate in one block=", InBlock, 2);
+        SdhciMarkHex(" read=", Length, 4);
+        SdhciMark(" (vendor parses every frame; the tail used to be dropped)\n");
+    }
+}
+
+/*
  * 预算用 rdtime 算，不用"循环次数 × 片长"：AicWaitMessagePending 一次就等到
  * 剩余预算（没有消息时它自己按 1 ms 轮询），所以整段最多出现一条超时诊断行，
  * 不会把串口刷满。
@@ -169,6 +229,27 @@ static void EapolDispatchFrame(const UINT8 *Frame, UINT32 Length,
  * Done 是 PR-34 给四次握手加的提前退出：每解完一帧问一次，返回 1 就停。
  * 判据放在"解完一帧之后"，M1 的打印与捕获都已经落定，不会读到半帧就收工。
  */
+/*
+ * 非消息帧钩子（见 WifiPrivate.h）：任何"等消息"的窗口里读到的非 e2a 帧都会到这里。
+ * 用途：AP 的 EAPOL M1 可能在等 CFM/IND 的那一刻到达，以前会被 AicFrameCheck 判失败后丢掉。
+ * 现在按数据帧分流，交给逐帧 EAPOL 解析；只认数据帧（type bit4 == 0），配置/未知帧忽略。
+ */
+void AicFrameUnexpected(const UINT8 *Frame, UINT32 Length) {
+    static AIC_EAPOL_COUNTERS Counters;
+
+    if (Frame == 0 || Length < AIC_EAPOL_HEADER_LENGTH) {
+        return;
+    }
+    if ((Frame[2] & 0x10u) == 0x10u) {
+        return; /* 配置帧：不属于这里 */
+    }
+    memset(&Counters, 0, sizeof(Counters));
+    SdhciMark("WiFi: window data frame (len=");
+    SdhciMarkDecimal("", Length);
+    SdhciMark(") — parsing for EAPOL\n");
+    EapolDispatchBlock(Frame, Length, &Counters);
+}
+
 int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Counters,
                     int (*Done)(void)) {
     UINT8 *Frame = (UINT8 *)sAicEapolFrame;
@@ -191,8 +272,10 @@ int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Count
         if (LeftMs == 0u) {
             LeftMs = 1u;
         }
+        Counters->Polls++;
         Status = EapolReadFrame(Host, LeftMs, Frame, AIC_EAPOL_FRAME_MAX, &Length);
         if (Status == -1) {
+            Counters->EmptyPolls++;
             continue; /* 超时：下一圈 Elapsed >= Budget 就退出 */
         }
         if (Status != 0) {
@@ -201,8 +284,7 @@ int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Count
         if (Length == 0u) {
             continue;
         }
-        Counters->Frames++;
-        EapolDispatchFrame(Frame, Length, Counters);
+        EapolDispatchBlock(Frame, Length, Counters);
     }
     return 0;
 }
@@ -271,6 +353,10 @@ int SdhciWifiEapolPoll(const char *MsText) {
     SdhciMarkDecimal("", Counters.EapolFrames);
     SdhciMark(" key=");
     SdhciMarkDecimal("", Counters.KeyFrames);
+    SdhciMark(" polls=");
+    SdhciMarkDecimal("", Counters.Polls);
+    SdhciMark(" empty=");
+    SdhciMarkDecimal("", Counters.EmptyPolls);
     SdhciMark(" bad=");
     SdhciMarkDecimal("", Counters.BadFrames);
     SdhciMark("\n");

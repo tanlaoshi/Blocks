@@ -153,6 +153,18 @@ int AicWifiVendorPrepare(SDHCI_HOST *Host) {
         SdhciMark("WiFi: vendor init: fn1 0x07 failed\n");
         return -1;
     }
+    /*
+     * 5. 厂商 func_init 的收尾我们以前整段没有（aicwf_sdio.c:2388-2418）：
+     *    **`fn1 0x02 <- 0x11` 唤醒，然后等 `fn1 0x01` bit4** —— 这才是"SDIO 活了"的判据，
+     *    厂商在 func_init 里写 0x11、等 5 ms、验 bit4，不置就报 "wakeup fail"。
+     *    缺这一步时 CMD52 照样通、数据通路却可能停在睡眠态（= 收两帧后静默）。
+     *    CCCR 0x04 只读不写：厂商是把它和 sdio_claim_irq 一起用的（WifiSdioState.c 有说明）。
+     */
+    AicSdioIntPeek(Host);
+    if (AicSdioWake(Host) != 0) {
+        /* 不判死：这一位在真机上还没实测过，先只报（判据行由 AicSdioWake 打） */
+        SdhciMark("WiFi: vendor init: warning, card reports not awake (fn1 0x01 bit4=0)\n");
+    }
     AicMarkIoState(Host, "WiFi: vendor init after :");
     return 0;
 }

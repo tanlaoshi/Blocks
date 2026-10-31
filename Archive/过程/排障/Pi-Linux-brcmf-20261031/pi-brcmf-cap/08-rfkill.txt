@@ -1,0 +1,6 @@
+0: hci0: Bluetooth
+	Soft blocked: yes
+	Hard blocked: no
+1: phy0: Wireless LAN
+	Soft blocked: yes
+	Hard blocked: no

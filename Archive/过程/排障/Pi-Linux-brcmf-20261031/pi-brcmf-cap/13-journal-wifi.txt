@@ -1,0 +1,13 @@
+Oct 06 01:27:41 raspberrypi kernel: raspberrypi-firmware soc:firmware: Attached to firmware from 2026-09-14T14:50:41, variant start
+Oct 06 01:27:41 raspberrypi kernel: raspberrypi-firmware soc:firmware: Firmware hash is a86983925695a7e63166327d7c002d64040ed31d
+Oct 06 01:27:41 raspberrypi kernel: mmc-bcm2835 3f300000.mmcnr: mmc_debug:0 mmc_debug2:0
+Oct 06 01:27:41 raspberrypi kernel: mmc-bcm2835 3f300000.mmcnr: DMA channel allocated
+Oct 06 01:27:41 raspberrypi kernel: sdhost-bcm2835 3f202000.mmc: loaded - DMA enabled (>1)
+Oct 06 01:27:41 raspberrypi kernel: mmc1: new high speed SDIO card at address 0001
+Oct 06 01:27:41 raspberrypi systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+Oct 06 01:28:19 raspberrypi kernel: Bluetooth: hci0: BCM43430A1 'brcm/BCM43430A1.raspberrypi,3-model-b.hcd' Patch
+Oct 06 01:28:19 raspberrypi kernel: brcmfmac: F1 signature read @0x18000000=0x1541a9a6
+Oct 06 01:28:19 raspberrypi kernel: brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43430-sdio for chip BCM43430/1
+Oct 06 01:28:19 raspberrypi kernel: usbcore: registered new interface driver brcmfmac
+Oct 06 01:28:25 raspberrypi kernel: brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+Oct 06 01:28:25 raspberrypi kernel: brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43430/1 wl0: Jul 19 2021 03:24:18 version 7.45.98 (TOB) (56df937 CY) FWID 01-8e14b897

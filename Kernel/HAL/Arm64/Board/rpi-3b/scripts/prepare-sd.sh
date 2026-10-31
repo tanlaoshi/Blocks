@@ -16,7 +16,8 @@ BOARD_DIR="$(cd "$HERE/.." && pwd)"
 # Board/rpi-3b → … → Blocks（五级；勿多一级）
 BLOCKS_ROOT="$(cd "$BOARD_DIR/../../../../.." && pwd)"
 KERNEL="$BLOCKS_ROOT/Kernel"
-HALDIR="$KERNEL/Build/HAL/Arm64"
+# 与 build.sh 对齐：Pi 默认编到 Build/PI，避开 Duo 共用的 Build/
+HALDIR="$KERNEL/Build/PI/HAL/Arm64"
 ELF="$HALDIR/Kernel.elf"
 OUT=""
 DTB_SRC=""
@@ -28,10 +29,10 @@ usage: prepare-sd.sh [OUT_DIR] [--dtb=PATH] [--elf=PATH] [--bin]
 
   OUT_DIR   默认：$KERNEL/Build/rpi-3b-sd（勿用仓顶 Build/）
   --dtb=    拷入的 bcm2837-rpi-3-b.dtb（缺则只写说明，不假装有 DTB）
-  --elf=    覆盖默认 Kernel/Build/HAL/Arm64/Kernel.elf
+  --elf=    覆盖默认 Kernel/Build/PI/HAL/Arm64/Kernel.elf
   --bin     强制再跑 make kernel-bin（需交叉 objcopy）
 
-须已：build arm64 BOARD=rpi-3b（一板一编）。
+须已：build arm64 BOARD=rpi-3b（产物在 Build/PI）。
 EOF
 }
 
@@ -61,17 +62,19 @@ OUT="${OUT:-$KERNEL/Build/rpi-3b-sd}"
 
 if [ ! -f "$ELF" ]; then
     echo "error: missing $ELF" >&2
-    echo "  先: source ~/Blocks/env.sh && build arm64 BOARD=rpi-3b LWIP=1" >&2
+    echo "  先: source ~/Blocks/env.sh && build arm64 pi" >&2
+    echo "  （ELF 应在 Kernel/Build/PI/HAL/Arm64/Kernel.elf）" >&2
     exit 1
 fi
 
 STAMP=""
-if [ -f "$HALDIR/.toy_board" ]; then
-    STAMP="$(cat "$HALDIR/.toy_board")"
+STAMP_DIR="$(dirname "$ELF")"
+if [ -f "$STAMP_DIR/.toy_board" ]; then
+    STAMP="$(cat "$STAMP_DIR/.toy_board")"
 fi
 if [ -n "$STAMP" ] && [ "$STAMP" != "rpi-3b" ]; then
-    echo "error: Build/HAL/Arm64 当前板是 '$STAMP'，不是 rpi-3b" >&2
-    echo "  一板一编：build arm64 BOARD=rpi-3b LWIP=1" >&2
+    echo "error: $STAMP_DIR 当前板是 '$STAMP'，不是 rpi-3b" >&2
+    echo "  一板一编：build arm64 pi" >&2
     exit 1
 fi
 
@@ -80,7 +83,7 @@ cp -f "$ELF" "$OUT/Kernel.elf"
 
 BIN="$HALDIR/Kernel.bin"
 if [ "$FORCE_BIN" = 1 ] || [ ! -f "$BIN" ]; then
-    if (cd "$KERNEL" && make ARCH=arm64 BOARD=rpi-3b LWIP=1 kernel-bin); then
+    if (cd "$KERNEL" && make ARCH=arm64 BOARD=rpi-3b LWIP=1 BUILDDIR=Build/PI kernel-bin); then
         BIN="$HALDIR/Kernel.bin"
     else
         echo "warn: kernel-bin 失败（可稍后补）；仍摆 Kernel.elf" >&2

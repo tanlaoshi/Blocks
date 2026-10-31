@@ -1,0 +1,191 @@
+total 13136
+drwxr-xr-x  2 root root   12288 Oct  6 01:22 .
+drwxr-xr-x 22 root root    4096 Oct  6 01:22 ..
+-rw-r--r--  1 root root   30049 Oct  2  2025 BCM43430A1.hcd
+lrwxrwxrwx  1 root root      14 Oct  2  2025 BCM43430A1.raspberrypi,3-model-b.hcd -> BCM43430A1.hcd
+lrwxrwxrwx  1 root root      27 Oct  2  2025 BCM43430A1.raspberrypi,model-zero-2-w.hcd -> ../synaptics/SYN43430A1.hcd
+lrwxrwxrwx  1 root root      14 Oct  2  2025 BCM43430A1.raspberrypi,model-zero-w.hcd -> BCM43430A1.hcd
+-rw-r--r--  1 root root   44376 Oct  2  2025 BCM43430B0.hcd
+lrwxrwxrwx  1 root root      27 Oct  2  2025 BCM43430B0.raspberrypi,model-zero-2-w.hcd -> ../synaptics/SYN43430B0.hcd
+-rw-r--r--  1 root root    6746 Oct  2  2025 BCM4343A2.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4343A2.raspberrypi,0-compute-module.hcd -> BCM4343A2.hcd
+-rw-r--r--  1 root root   63806 Oct  2  2025 BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,3-model-a-plus.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,3-model-b-plus.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,4-compute-module.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,4-model-b.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,500.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,5-compute-module.hcd -> BCM4345C0.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C0.raspberrypi,5-model-b.hcd -> BCM4345C0.hcd
+-rw-r--r--  1 root root   55676 Oct  2  2025 BCM4345C5.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C5.raspberrypi,400.hcd -> BCM4345C5.hcd
+lrwxrwxrwx  1 root root      13 Oct  2  2025 BCM4345C5.raspberrypi,4-compute-module.hcd -> BCM4345C5.hcd
+-rw-r--r--  1 root root   96224 Jul 10 20:44 bcm43xx-0.fw
+-rw-r--r--  1 root root     180 Jul 10 20:44 bcm43xx_hdr-0.fw
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43012-sdio.bin -> ../cypress/cyfmac43012-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43012-sdio.clm_blob -> ../cypress/cyfmac43012-sdio.clm_blob
+-rw-r--r--  1 root root  397312 Jul 10 20:44 brcmfmac43143.bin
+-rw-r--r--  1 root root  385067 Jul 10 20:44 brcmfmac43143-sdio.bin
+-rw-r--r--  1 root root  348160 Jul 10 20:44 brcmfmac43236b.bin
+-rw-r--r--  1 root root  459988 Jul 10 20:44 brcmfmac43241b0-sdio.bin
+-rw-r--r--  1 root root    2667 Jul 10 20:44 brcmfmac43241b4-sdio.Advantech-MICA-071.txt
+-rw-r--r--  1 root root  403855 Jul 10 20:44 brcmfmac43241b4-sdio.bin
+-rw-r--r--  1 root root    2699 Jul 10 20:44 brcmfmac43241b4-sdio.Intel Corp.-VALLEYVIEW C0 PLATFORM.txt
+-rw-r--r--  1 root root  408682 Jul 10 20:44 brcmfmac43241b5-sdio.bin
+-rw-r--r--  1 root root  479232 Jul 10 20:44 brcmfmac43242a.bin
+-rw-r--r--  1 root root  253748 Jul 10 20:44 brcmfmac4329-sdio.bin
+-rw-r--r--  1 root root  223581 Jul 10 20:44 brcmfmac4330-sdio.bin
+-rw-r--r--  1 root root    1509 Jul 10 20:44 brcmfmac4330-sdio.Prowise-PT301.txt
+-rw-r--r--  1 root root    1801 Jul 10 20:44 brcmfmac43340-sdio.ASUSTeK COMPUTER INC.-TF103CE.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43340-sdio.bin -> ../cypress/cyfmac43340-sdio.bin
+-rw-r--r--  1 root root    1687 Jul 10 20:44 brcmfmac43340-sdio.Insyde-VESPA2.txt
+-rw-r--r--  1 root root    1693 Jul 10 20:44 brcmfmac43340-sdio.meegopad-t08.txt
+-rw-r--r--  1 root root    1724 Jul 10 20:44 brcmfmac43340-sdio.pov-tab-p1006w-data.txt
+-rw-r--r--  1 root root    1689 Jul 10 20:44 brcmfmac43340-sdio.predia-basic.txt
+-rw-r--r--  1 root root  451566 Jul 10 20:44 brcmfmac4334-sdio.bin
+-rw-r--r--  1 root root  569291 Jul 10 20:44 brcmfmac4335-sdio.bin
+-rw-r--r--  1 root root    1143 Jul 10 20:44 brcmfmac43362-sdio.ASUSTeK COMPUTER INC.-ME176C.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43362-sdio.bin -> ../cypress/cyfmac43362-sdio.bin
+-rw-r--r--  1 root root     803 Jul 10 20:44 brcmfmac43362-sdio.cubietech,cubietruck.txt
+lrwxrwxrwx  1 root root      28 Jul 10 20:44 brcmfmac43362-sdio.kobo,aura.txt -> brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx  1 root root      28 Jul 10 20:44 brcmfmac43362-sdio.kobo,tolino-shine2hd.txt -> brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx  1 root root      43 Jul 10 20:44 brcmfmac43362-sdio.lemaker,bananapro.txt -> brcmfmac43362-sdio.cubietech,cubietruck.txt
+-rw-r--r--  1 root root     552 Jul 10 20:44 brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx  1 root root      30 Jul 10 20:44 brcmfmac4339-sdio.bin -> ../cypress/cyfmac4339-sdio.bin
+-rw-r--r--  1 root root  382455 Jul 10 20:44 brcmfmac43430a0-sdio.bin
+-rw-r--r--  1 root root     908 Jul 10 20:44 brcmfmac43430a0-sdio.ilife-S806.txt
+-rw-r--r--  1 root root     951 Jul 10 20:44 brcmfmac43430a0-sdio.jumper-ezpad-mini3.txt
+-rw-r--r--  1 root root     989 Jul 10 20:44 brcmfmac43430a0-sdio.ONDA-V80 PLUS.txt
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436-sdio.bin
+lrwxrwxrwx  1 root root      27 Jul 10 20:44 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.clm_blob -> brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436-sdio.txt
+-rw-r--r--  1 root root     875 Jul 10 20:44 brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.beagle,beaglev-starlight-jh7100-a1.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.beagle,beaglev-starlight-jh7100-r0.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43430-sdio.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43430-sdio.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.friendlyarm,nanopi-neo4.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.friendlyarm,nanopi-r1.txt -> brcmfmac43430-sdio.AP6212.txt
+-rw-r--r--  1 root root     928 Jul 10 20:44 brcmfmac43430-sdio.Hampoo-D2D3_Vi8A1.txt
+-rw-r--r--  1 root root     951 Jul 10 20:44 brcmfmac43430-sdio.ilife-S806.txt
+-rw-r--r--  1 root root     831 Jul 10 20:44 brcmfmac43430-sdio.MUR1DX.txt
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,0-compute-module.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,0-compute-module.txt -> brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,3-model-b.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,3-model-b.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,3-model-b.txt -> brcmfmac43430-sdio.txt
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436s-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,model-zero-w.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,model-zero-w.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43430-sdio.raspberrypi,model-zero-w.txt -> brcmfmac43430-sdio.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.sinovoip,bananapi-m64.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.sinovoip,bpi-m2-plus.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.sinovoip,bpi-m2-ultra.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.sinovoip,bpi-m2-zero.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.sinovoip,bpi-m3.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43430-sdio.starfive,visionfive-v1.txt -> brcmfmac43430-sdio.AP6212.txt
+-rw-r--r--  1 root root    1121 Jul 10 20:44 brcmfmac43430-sdio.txt
+-rw-r--r--  1 root root  416101 Jul 10 20:44 brcmfmac43436-sdio.bin
+-rw-r--r--  1 root root   11209 Jul 10 20:44 brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436-sdio.bin
+lrwxrwxrwx  1 root root      27 Jul 10 20:44 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.clm_blob -> brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436-sdio.txt
+-rw-r--r--  1 root root    1706 Jul 10 20:44 brcmfmac43436-sdio.txt
+-rw-r--r--  1 root root  442211 Jul 10 20:44 brcmfmac43436s-sdio.bin
+-rw-r--r--  1 root root    1185 Jul 10 20:44 brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43436s-sdio.raspberrypi,0-compute-module.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac43436s-sdio.raspberrypi,0-compute-module.txt -> brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43436s-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx  1 root root      23 Jul 10 20:44 brcmfmac43436s-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436s-sdio.txt
+-rw-r--r--  1 root root    1185 Jul 10 20:44 brcmfmac43436s-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43439-sdio.bin -> ../cypress/cyfmac43439-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43439-sdio.clm_blob -> ../cypress/cyfmac43439-sdio.clm_blob
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43439-sdio.raspberrypi,0-compute-module.bin -> ../cypress/cyfmac43439-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43439-sdio.raspberrypi,0-compute-module.clm_blob -> ../cypress/cyfmac43439-sdio.clm_blob
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43439-sdio.raspberrypi,0-compute-module.txt -> ../cypress/cyfmac43439-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43439-sdio.txt -> ../cypress/cyfmac43439-sdio.txt
+-rw-r--r--  1 root root    1723 Jul 10 20:44 brcmfmac43455-sdio.acepc-t8.txt
+-rw-r--r--  1 root root    1475 Jul 10 20:44 brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.beagle,am5729-beagleboneai.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.khadas,vim.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+-rw-r--r--  1 root root    2510 Jul 10 20:44 brcmfmac43455-sdio.MINIX-NEO Z83-4.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,pinebook-pro.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,pinenote-v1.1.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,pinenote-v1.2.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,pinephone-pro.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,quartz64-a.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,quartz64-b.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,rockpro64-v2.0.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,rockpro64-v2.1.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,soquartz-blade.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,soquartz-cm4io.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx  1 root root      33 Jul 10 20:44 brcmfmac43455-sdio.pine64,soquartz-model-a.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+-rw-r--r--  1 root root    1911 Jul 10 20:44 brcmfmac43455-sdio.Radxa-ROCK Pi X.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-compute-module.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-compute-module.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-compute-module.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-model-b.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-model-b.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,4-model-b.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,500.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,500.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,500.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-compute-module.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-compute-module.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-compute-module.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-model-b.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-model-b.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43455-sdio.raspberrypi,5-model-b.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx  1 root root      44 Jul 10 20:44 brcmfmac43455-sdio.Raspberry Pi Foundation-Raspberry Pi 4 Model B.txt -> brcmfmac43455-sdio.raspberrypi,4-model-b.txt
+lrwxrwxrwx  1 root root      44 Jul 10 20:44 brcmfmac43455-sdio.Raspberry Pi Foundation-Raspberry Pi Compute Module 4.txt -> brcmfmac43455-sdio.raspberrypi,4-model-b.txt
+-rw-r--r--  1 root root    2074 Jul 10 20:44 brcmfmac43455-sdio.txt
+-rw-r--r--  1 root root  495898 Jul 10 20:44 brcmfmac43456-sdio.bin
+-rw-r--r--  1 root root    7163 Jul 10 20:44 brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,400.bin -> brcmfmac43456-sdio.bin
+lrwxrwxrwx  1 root root      27 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,400.clm_blob -> brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,400.txt -> brcmfmac43456-sdio.txt
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,4-compute-module.bin -> brcmfmac43456-sdio.bin
+lrwxrwxrwx  1 root root      27 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,4-compute-module.clm_blob -> brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx  1 root root      22 Jul 10 20:44 brcmfmac43456-sdio.raspberrypi,4-compute-module.txt -> brcmfmac43456-sdio.txt
+-rw-r--r--  1 root root    2053 Jul 10 20:44 brcmfmac43456-sdio.txt
+-rw-r--r--  1 root root  623304 Jul 10 20:44 brcmfmac4350c2-pcie.bin
+-rw-r--r--  1 root root  626140 Jul 10 20:44 brcmfmac4350-pcie.bin
+lrwxrwxrwx  1 root root      30 Jul 10 20:44 brcmfmac4354-sdio.bin -> ../cypress/cyfmac4354-sdio.bin
+lrwxrwxrwx  1 root root      35 Jul 10 20:44 brcmfmac4354-sdio.clm_blob -> ../cypress/cyfmac4354-sdio.clm_blob
+-rw-r--r--  1 root root    2761 Jul 10 20:44 brcmfmac4354-sdio.nvidia,p2371-2180.txt
+-rw-r--r--  1 root root  557056 Jul 10 20:44 brcmfmac43569.bin
+lrwxrwxrwx  1 root root      30 Jul 10 20:44 brcmfmac4356-pcie.bin -> ../cypress/cyfmac4356-pcie.bin
+lrwxrwxrwx  1 root root      35 Jul 10 20:44 brcmfmac4356-pcie.clm_blob -> ../cypress/cyfmac4356-pcie.clm_blob
+-rw-r--r--  1 root root    2515 Jul 10 20:44 brcmfmac4356-pcie.gpd-win-pocket.txt
+-rw-r--r--  1 root root    3095 Jul 10 20:44 brcmfmac4356-pcie.Intel Corporation-CHERRYVIEW D1 PLATFORM.txt
+-rw-r--r--  1 root root    3099 Jul 10 20:44 brcmfmac4356-pcie.Xiaomi Inc-Mipad2.txt
+-rw-r--r--  1 root root    2610 Jul 10 20:44 brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      30 Jul 10 20:44 brcmfmac4356-sdio.bin -> ../cypress/cyfmac4356-sdio.bin
+lrwxrwxrwx  1 root root      35 Jul 10 20:44 brcmfmac4356-sdio.clm_blob -> ../cypress/cyfmac4356-sdio.clm_blob
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac4356-sdio.firefly,firefly-rk3399.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac4356-sdio.friendlyarm,nanopc-t4.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac4356-sdio.friendlyarm,nanopi-m4.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac4356-sdio.khadas,vim2.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      29 Jul 10 20:44 brcmfmac4356-sdio.vamrs,rock960.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac43570-pcie.bin -> ../cypress/cyfmac43570-pcie.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac43570-pcie.clm_blob -> ../cypress/cyfmac43570-pcie.clm_blob
+-rw-r--r--  1 root root  634361 Jul 10 20:44 brcmfmac4358-pcie.bin
+-rw-r--r--  1 root root  595472 Jul 10 20:44 brcmfmac43602-pcie.ap.bin
+-rw-r--r--  1 root root  635449 Jul 10 20:44 brcmfmac43602-pcie.bin
+-rw-r--r--  1 root root 1105361 Jul 10 20:44 brcmfmac4366b-pcie.bin
+-rw-r--r--  1 root root 1120971 Jul 10 20:44 brcmfmac4366c-pcie.bin
+-rw-r--r--  1 root root  623448 Jul 10 20:44 brcmfmac4371-pcie.bin
+-rw-r--r--  1 root root  479232 Jul 10 20:44 brcmfmac4373.bin
+lrwxrwxrwx  1 root root      30 Jul 10 20:44 brcmfmac4373-sdio.bin -> ../cypress/cyfmac4373-sdio.bin
+lrwxrwxrwx  1 root root      35 Jul 10 20:44 brcmfmac4373-sdio.clm_blob -> ../cypress/cyfmac4373-sdio.clm_blob
+lrwxrwxrwx  1 root root      31 Jul 10 20:44 brcmfmac54591-pcie.bin -> ../cypress/cyfmac54591-pcie.bin
+lrwxrwxrwx  1 root root      36 Jul 10 20:44 brcmfmac54591-pcie.clm_blob -> ../cypress/cyfmac54591-pcie.clm_blob

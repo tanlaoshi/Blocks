@@ -48,9 +48,13 @@ void SdhostClockConfigure(UINT32 Clock);
 void SdhostInterfaceConfigure(UINT32 ClockHertz, int WideFourBit);
 UINT32 SdhostWaitCommandRegisterClear(UINT32 TimeoutMicroseconds);
 int SdhostWaitTransferComplete(void);
-int SdhostTransferBlockProgrammedIo(UINT8 *Buffer);
-int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UINT8 *DataBuffer);
+int SdhostTransferBlockProgrammedIoRead(UINT8 *Buffer);
+int SdhostTransferBlockProgrammedIoWrite(const UINT8 *Buffer);
+/* DataBuffer!=0 时：IsWrite=0 读（CMD17），IsWrite=1 写（CMD24） */
+int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UINT8 *DataBuffer,
+                      int IsWrite);
 int SdhostReadOneBlock(UINT32 LogicalBlockAddress, UINT8 *Buffer);
+int SdhostWriteOneBlock(UINT32 LogicalBlockAddress, const UINT8 *Buffer);
 int SdhostCardInitialize(void);
 int SdhostHostInitialize(void);
 

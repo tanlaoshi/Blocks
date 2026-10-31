@@ -1,0 +1,17 @@
+[    0.048617] raspberrypi-firmware soc:firmware: Attached to firmware from 2026-09-14T14:50:41, variant start
+[    0.052625] raspberrypi-firmware soc:firmware: Firmware hash is a86983925695a7e63166327d7c002d64040ed31d
+[    2.668727] mmc-bcm2835 3f300000.mmcnr: mmc_debug:0 mmc_debug2:0
+[    2.671007] mmc-bcm2835 3f300000.mmcnr: DMA channel allocated
+[    2.772644] sdhost-bcm2835 3f202000.mmc: loaded - DMA enabled (>1)
+[    2.818921] mmc1: new high speed SDIO card at address 0001
+[   25.752387] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[   58.787162] Bluetooth: hci0: BCM43430A1
+[   58.787174] Bluetooth: hci0: BCM43430A1 (001.002.009) build 0000
+[   63.980018] Bluetooth: hci0: BCM43430A1 'brcm/BCM43430A1.raspberrypi,3-model-b.hcd' Patch
+[   64.040349] brcmfmac: F1 signature read @0x18000000=0x1541a9a6
+[   64.070937] brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43430-sdio for chip BCM43430/1
+[   64.071544] usbcore: registered new interface driver brcmfmac
+[   64.814852] Bluetooth: hci0: BCM43438A1 37.4MHz Raspberry Pi 3-0141
+[   64.814875] Bluetooth: hci0: BCM43430A1 (001.002.009) build 0508
+[   69.782345] brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+[   69.788910] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43430/1 wl0: Jul 19 2021 03:24:18 version 7.45.98 (TOB) (56df937 CY) FWID 01-8e14b897

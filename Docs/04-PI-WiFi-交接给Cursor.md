@@ -32,7 +32,10 @@ Pi WiFi SDIO 控制器是 **Arasan @ `0x3F300000`**（`rpi-3b/Sdhci*`），µSD 
 
 ### 并行时编译
 
-同机两个 agent 同时 `build.sh` 会互踩 `Build/`（见 1030 §8.1）。并行请错开编译，或分不同 `BUILDDIR`。
+`build arm64 pi` / `BOARD=rpi-3b` **默认** `BUILDDIR=Build/PI`（即 `Kernel/Build/PI/`），
+与 Duo/riscv 用的 `Kernel/Build/` 错开，避免互清 ELF。  
+`ck-pi-sd` / `prepare-pi-sd` 默认吃 `Build/PI/HAL/Arm64/Kernel.elf`。  
+仍可用 `BUILDDIR=…` 显式覆盖。
 
 ---
 
@@ -83,17 +86,19 @@ Pi WiFi SDIO 控制器是 **Arasan @ `0x3F300000`**（`rpi-3b/Sdhci*`），µSD 
 
 判据字符串可与旧日志并存；**以 `Boot: Pi WIFI` / `WIFI_BUILD_TAG` 为准**，不必另起一套 `Pi: SD1…` 新树。
 
-### 刀 A · 与 Linux ios 对齐（一次一项）
+### 刀 A + 刀 B（已并进同一 tag，一次烧）
 
-**做**：传输钟 / HOST_CONTROL High Speed 与 `pi-mmc1-ios.txt` 一致（50 MHz + HS + 4-bit）；EHS 失败则降级并打日志。
+无多余串口时：靠**屏上 Boot 字**或落盘日志（`BOOT.LOG` / ring），不必每刀插 TTL。
 
-**判据**：串口出现明确 clock/HS 行；`sram base` 三别名探针结果相对 tag `0x122` 有无变化（原文贴出）。
+| 刀 | 做了什么 | 串口/屏上应见 |
+|---|---|---|
+| A | 50 MHz + HISPD（EHS 失败则 25 MHz） | `clock=50MHz width=4bit HS` |
+| B | WL_ON 后等待 0.5 s → **3 s** | `WL_ON cycle wait=3000ms` |
+| 共 | `WIFI_BUILD_TAG` | **`0x00000124`** |
 
-### 刀 B · 上电等待加长
+**判据**：tag=`124`；再看 `sram base` 三行相对 `0x122` 是否仍全 `no`（原文即可，屏上滚过或日志文件里搜）。
 
-**做**：仅改 WL_ON 后等待（0.5 s → 3 s），其它不动。
-
-**判据**：同上，`sram` 探针原文。
+刷卡：卡挂上后说 **CK**（`ck-pi-sd`），不要 Duo 卡。
 
 ### 刀 C · 背板「写后读回」自证（若日志尚不够硬）
 

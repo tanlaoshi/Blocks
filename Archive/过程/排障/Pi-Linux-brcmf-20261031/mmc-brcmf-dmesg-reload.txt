@@ -1,0 +1,15 @@
+[   64.071544] usbcore: registered new interface driver brcmfmac
+[   69.782345] brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+[   69.788910] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43430/1 wl0: Jul 19 2021 03:24:18 version 7.45.98 (TOB) (56df937 CY) FWID 01-8e14b897
+[  744.149420] usbcore: deregistering interface driver brcmfmac
+[  745.444743] brcmfmac: F1 signature read @0x18000000=0x1541a9a6
+[  745.449621] brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43430-sdio for chip BCM43430/1
+[  745.449863] usbcore: registered new interface driver brcmfmac
+[  745.636658] brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+[  745.637250] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43430/1 wl0: Jul 19 2021 03:24:18 version 7.45.98 (TOB) (56df937 CY) FWID 01-8e14b897
+[  781.980653] usbcore: deregistering interface driver brcmfmac
+[  783.280788] brcmfmac: F1 signature read @0x18000000=0x1541a9a6
+[  783.286202] brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43430-sdio for chip BCM43430/1
+[  783.286447] usbcore: registered new interface driver brcmfmac
+[  783.473268] brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+[  783.473880] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM43430/1 wl0: Jul 19 2021 03:24:18 version 7.45.98 (TOB) (56df937 CY) FWID 01-8e14b897

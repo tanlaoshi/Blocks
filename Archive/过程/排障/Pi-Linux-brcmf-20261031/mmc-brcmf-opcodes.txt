@@ -1,0 +1,7 @@
+  29808 opcode=0
+  12524 opcode=52
+   1610 opcode=53
+    272 opcode=55
+    265 opcode=5
+     68 opcode=1
+     66 opcode=8

@@ -71,12 +71,18 @@
 #define SDEDM_READ_THRESHOLD_SHIFT  14u
 #define SDEDM_THRESHOLD_MASK        0x1fu
 #define SDEDM_FSM_MASK        0xfu
+/* FSM 值对表 U-Boot bcm2835_sdhost.c（写错会导致写 PIO 误判失败） */
 #define SDEDM_FSM_IDENTMODE   0x0u
 #define SDEDM_FSM_DATAMODE    0x1u
 #define SDEDM_FSM_READDATA    0x2u
+#define SDEDM_FSM_WRITEDATA   0x3u
 #define SDEDM_FSM_READWAIT    0x4u
 #define SDEDM_FSM_READCRC     0x5u
+#define SDEDM_FSM_WRITECRC    0x6u
+#define SDEDM_FSM_WRITEWAIT1  0x7u
 #define SDEDM_FSM_WRITESTART1 0xau
+#define SDEDM_FSM_WRITESTART2 0xbu
+#define SDEDM_FSM_WRITEWAIT2  0xdu
 
 #define FIFO_READ_THRESHOLD  4u
 #define FIFO_WRITE_THRESHOLD 4u

@@ -1,0 +1,32 @@
+<ios 2>/dev/null || echo 'no debug ios (need root)' 
+=== mmc_host ===
+total 0
+drwxr-xr-x  2 root root 0 Oct 31 04:37 .
+drwxr-xr-x 65 root root 0 Jan  1  1970 ..
+lrwxrwxrwx  1 root root 0 Jan  1  1970 mmc0 -> ../../devices/platform/soc/3f202000.mmc/mmc_host/mmc0
+lrwxrwxrwx  1 root root 0 Jan  1  1970 mmc1 -> ../../devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1
+== /sys/class/mmc_host/mmc0
+device	power  subsystem  uevent
+== /sys/class/mmc_host/mmc1
+device	mmc1:0001  power  subsystem  uevent
+=== otp17 ===
+17:3020000a
+=== mmc1 device ===
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/mmc1:0001:1/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/mmc1:0001:1/net/wlan0/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/mmc1:0001:1/ieee80211/phy0/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/mmc1:0001:1/ieee80211/phy0/rfkill1/uevent
+/sys/devices/platform/soc/3f300000.mmcnr/mmc_host/mmc1/mmc1:0001/mmc1:0001:2/uevent
+clock:		50000000 Hz
+actual clock:	50000000 Hz
+vdd:		21 (3.3 ~ 3.4 V)
+bus mode:	2 (push-pull)
+chip select:	0 (don't care)
+power mode:	2 (on)
+bus width:	2 (4 bits)
+timing spec:	2 (sd high-speed)
+signal voltage:	0 (3.30 V)
+driver type:	0 (driver type B)
+tank@raspberrypi:~

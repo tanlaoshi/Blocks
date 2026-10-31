@@ -38,11 +38,22 @@ static int SdhostRead(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, vo
 }
 
 static int SdhostWrite(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, const void *Buffer) {
+    const UINT8 *P = (const UINT8 *)Buffer;
+    UINT32 i;
+
     (void)Drive;
-    (void)LogicalBlockAddress;
-    (void)Count;
-    (void)Buffer;
-    return 0;
+    if (!gSdhostReady || Buffer == 0 || Count == 0) {
+        return 0;
+    }
+    for (i = 0; i < Count; i++) {
+        if (SdhostWriteOneBlock(LogicalBlockAddress + i, P + (UINTN)i * 512u) != 0) {
+            (void)SdhostWaitTransferComplete();
+            SdhostMarkHexadecimal32("Boot: SDHOST write fail hsts=", gSdhostLastHostStatus);
+            HalSerialBootMark("\n");
+            return 0;
+        }
+    }
+    return 1;
 }
 
 const BLOCK_BACKEND gSdhostBackend = {

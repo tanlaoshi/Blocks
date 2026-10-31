@@ -21,15 +21,16 @@ UINT32 SdhostWaitCommandRegisterClear(UINT32 TimeoutMicroseconds) {
 int SdhostWaitTransferComplete(void) {
     UINT32 n;
 
+    /* 对表 U-Boot bcm2835_wait_transfer_complete：仅在读卡住态 FORCE */
     for (n = 0; n < 10000u; n++) {
         UINT32 Edm = SdhostRead32(SDEDM);
-        UINT32 Fsm = Edm & SDEDM_FSM_MASK;
+        UINT32 FiniteState = Edm & SDEDM_FSM_MASK;
 
-        if (Fsm == SDEDM_FSM_IDENTMODE || Fsm == SDEDM_FSM_DATAMODE) {
+        if (FiniteState == SDEDM_FSM_IDENTMODE || FiniteState == SDEDM_FSM_DATAMODE) {
             return 0;
         }
-        if (Fsm == SDEDM_FSM_READWAIT || Fsm == SDEDM_FSM_WRITESTART1 ||
-            Fsm == SDEDM_FSM_READDATA) {
+        if (FiniteState == SDEDM_FSM_READWAIT || FiniteState == SDEDM_FSM_WRITESTART1 ||
+            FiniteState == SDEDM_FSM_READDATA) {
             SdhostWrite32(SDEDM, Edm | SDEDM_FORCE_DATA_MODE);
             return 0;
         }
@@ -39,70 +40,22 @@ int SdhostWaitTransferComplete(void) {
     return -1;
 }
 
-int SdhostTransferBlockProgrammedIo(UINT8 *Buffer) {
-    UINT32 *Words = (UINT32 *)(void *)Buffer;
-    int CopyWords = 512 / 4;
-    UINT32 Hsts = 0;
-    UINT32 Spins = 0;
-
-    while (CopyWords > 0) {
-        int Burst = CopyWords < (int)SDDATA_FIFO_PIO_BURST ? CopyWords
-                                                          : (int)SDDATA_FIFO_PIO_BURST;
-        UINT32 Edm = SdhostRead32(SDEDM);
-        int Aval = (int)((Edm >> SDEDM_FIFO_FILL_SHIFT) & SDEDM_FIFO_FILL_MASK);
-        int WordsNow;
-
-        if (Aval < Burst) {
-            int Fsm = (int)(Edm & SDEDM_FSM_MASK);
-            if (Fsm != (int)SDEDM_FSM_READDATA && Fsm != (int)SDEDM_FSM_READWAIT &&
-                Fsm != (int)SDEDM_FSM_READCRC) {
-                Hsts = SdhostRead32(SDHSTS);
-                if ((Hsts & SDHSTS_ERROR_MASK) != 0) {
-                    break;
-                }
-            }
-            /* 对齐 wait_transfer_complete：约 1s 仍无字则 dump，勿空转挂死 */
-            if (++Spins > 100000u) {
-                SdhostDumpRegisters("Boot: SDHOST PIO stall");
-                return -1;
-            }
-            SdhostDelayMicroseconds(10);
-            continue;
-        }
-        Spins = 0;
-        WordsNow = Aval > CopyWords ? CopyWords : Aval;
-        CopyWords -= WordsNow;
-        while (WordsNow--) {
-            *Words++ = SdhostRead32(SDDATA);
-        }
-    }
-
-    Hsts = SdhostRead32(SDHSTS);
-    if ((Hsts & (SDHSTS_CRC16_ERROR | SDHSTS_CRC7_ERROR | SDHSTS_FIFO_ERROR)) != 0) {
-        gSdhostLastHostStatus = Hsts;
-        return -1;
-    }
-    if ((Hsts & (SDHSTS_CMD_TIME_OUT | SDHSTS_REW_TIME_OUT)) != 0) {
-        gSdhostLastHostStatus = Hsts;
-        return -1;
-    }
-    return 0;
-}
-
 /*
- * CommandIndex + 可选单块读。ResponseType=RESPONSE_*；DataBuffer!=0 → CMD17 形读 512B。
+ * CommandIndex + 可选单块数据。DataBuffer!=0 时 IsWrite 选 READ_CMD / WRITE_CMD。
  */
-int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UINT8 *DataBuffer) {
+int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UINT8 *DataBuffer,
+                      int IsWrite) {
     UINT32 Sdcmd;
-    UINT32 Sdhsts;
+    UINT32 HostStatus;
     UINT32 Edm;
-    UINT32 Fsm;
+    UINT32 FiniteState;
     int UseBusy = 0;
     int Ret;
 
     Edm = SdhostRead32(SDEDM);
-    Fsm = Edm & SDEDM_FSM_MASK;
-    if (Fsm != SDEDM_FSM_IDENTMODE && Fsm != SDEDM_FSM_DATAMODE && CommandIndex != 12) {
+    FiniteState = Edm & SDEDM_FSM_MASK;
+    if (FiniteState != SDEDM_FSM_IDENTMODE && FiniteState != SDEDM_FSM_DATAMODE &&
+        CommandIndex != 12) {
         SdhostDumpRegisters("Boot: SDHOST FSM busy");
         return -1;
     }
@@ -113,9 +66,9 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
         return -1;
     }
 
-    Sdhsts = SdhostRead32(SDHSTS);
-    if ((Sdhsts & SDHSTS_ERROR_MASK) != 0) {
-        SdhostWrite32(SDHSTS, Sdhsts);
+    HostStatus = SdhostRead32(SDHSTS);
+    if ((HostStatus & SDHSTS_ERROR_MASK) != 0) {
+        SdhostWrite32(SDHSTS, HostStatus);
     }
 
     if (DataBuffer != 0) {
@@ -138,7 +91,11 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
         }
     }
     if (DataBuffer != 0) {
-        Sdcmd |= SDCMD_READ_CMD;
+        if (IsWrite) {
+            Sdcmd |= SDCMD_WRITE_CMD;
+        } else {
+            Sdcmd |= SDCMD_READ_CMD;
+        }
     }
 
     SdhostWrite32(SDCMD, Sdcmd | SDCMD_NEW_FLAG);
@@ -151,14 +108,13 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
             return -1;
         }
         if ((Sdcmd & SDCMD_FAIL_FLAG) != 0) {
-            Sdhsts = SdhostRead32(SDHSTS);
+            HostStatus = SdhostRead32(SDHSTS);
             SdhostWrite32(SDHSTS, SDHSTS_ERROR_MASK);
             gSdhostLastCommand = Sdcmd;
-            gSdhostLastHostStatus = Sdhsts;
-            /* ACMD41/CMD1 OCR：CRC7 可忽略 */
-            if (!((Sdhsts & SDHSTS_CRC7_ERROR) != 0 &&
+            gSdhostLastHostStatus = HostStatus;
+            if (!((HostStatus & SDHSTS_CRC7_ERROR) != 0 &&
                   (CommandIndex == 41 || CommandIndex == 1) &&
-                  (Sdhsts & ~SDHSTS_CRC7_ERROR & SDHSTS_ERROR_MASK) == 0)) {
+                  (HostStatus & ~SDHSTS_CRC7_ERROR & SDHSTS_ERROR_MASK) == 0)) {
                 return -1;
             }
         }
@@ -171,16 +127,15 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
             gSdhostResponse[0] = SdhostRead32(SDRSP0);
         }
     } else {
-        /* R1b：等 BUSY_IRPT（SDHCFG_BUSY_IRPT_EN） */
         UINT32 n;
         for (n = 0; n < 10000u; n++) {
-            Sdhsts = SdhostRead32(SDHSTS);
-            if ((Sdhsts & SDHSTS_ERROR_MASK) != 0) {
+            HostStatus = SdhostRead32(SDHSTS);
+            if ((HostStatus & SDHSTS_ERROR_MASK) != 0) {
                 SdhostWrite32(SDHSTS, SDHSTS_ERROR_MASK);
-                gSdhostLastHostStatus = Sdhsts;
+                gSdhostLastHostStatus = HostStatus;
                 return -1;
             }
-            if ((Sdhsts & SDHSTS_BUSY_IRPT) != 0) {
+            if ((HostStatus & SDHSTS_BUSY_IRPT) != 0) {
                 SdhostWrite32(SDHSTS, SDHSTS_BUSY_IRPT);
                 break;
             }
@@ -200,7 +155,11 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
     }
 
     if (DataBuffer != 0) {
-        Ret = SdhostTransferBlockProgrammedIo(DataBuffer);
+        if (IsWrite) {
+            Ret = SdhostTransferBlockProgrammedIoWrite(DataBuffer);
+        } else {
+            Ret = SdhostTransferBlockProgrammedIoRead(DataBuffer);
+        }
         if (Ret != 0) {
             return Ret;
         }
@@ -208,4 +167,3 @@ int SdhostCommandSend(UINT8 CommandIndex, UINT32 Argument, int ResponseType, UIN
     }
     return 0;
 }
-

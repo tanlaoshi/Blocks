@@ -1,0 +1,5 @@
+brcmfmac_cyw           16384  0
+brcmfmac              376832  1 brcmfmac_cyw
+brcmutil               24576  1 brcmfmac
+cfg80211             1085440  2 brcmfmac_cyw,brcmfmac
+rfkill                 36864  4 bluetooth,cfg80211

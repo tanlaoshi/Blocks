@@ -1,0 +1,3 @@
+lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> 
+eth0             UP             b8:27:eb:42:33:bb <BROADCAST,MULTICAST,UP,LOWER_UP> 
+wlan0            DOWN           b8:27:eb:17:66:ee <BROADCAST,MULTICAST> 

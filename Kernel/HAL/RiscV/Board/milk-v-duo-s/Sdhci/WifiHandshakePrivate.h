@@ -261,6 +261,11 @@ extern UINT32 gAicSkipAuthorizedAfterKeys;
 extern UINT32 gAicGroupKeyBeforePairwise; /* probe gtkfirst=1；Docs/21 §1a */
 extern UINT32 gAicSkipPairwiseKeyInstall; /* probe noptk=1；Docs/21 §1c */
 extern UINT32 gAicGroupKeyAddAgainAfterBoth; /* probe gtkreadd=1；Docs/21 §1d */
+extern UINT32 gAicDeletePairwiseKeyAfterInstall; /* probe ptkdel=1；Docs/21 §1e */
+void AicKeyRememberPairwiseHardwareIndex(UINT32 HardwareKeyIndex);
+void AicKeyClearPairwiseHardwareIndex(void);
+int AicKeyDeleteByHardwareIndex(SDHCI_HOST *Host, UINT32 HardwareKeyIndex);
+int AicKeyDeletePairwiseIfProbe(SDHCI_HOST *Host);
 
 /* ---- WifiHandshakeInstall.c：装钥匙 → 发 M4 → 看数据帧 ---- */
 /*

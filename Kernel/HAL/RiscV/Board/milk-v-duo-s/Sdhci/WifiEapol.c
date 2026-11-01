@@ -13,69 +13,15 @@
  */
 #include "WifiEapolPrivate.h"
 #include "CString.h"
-#include "Compiler.h" /* BLOCKS_OFFSETOF（与 WifiAssocMessage.c 的布局自检同一套） */
 
 /* 2048 B 整帧；UINT32 数组保证 4 B 对齐（hw_rxhdr 里全是 u32） */
 static UINT32 sAicEapolFrame[(AIC_EAPOL_FRAME_MAX + 3u) / 4u];
-/* 控制端口 CFM 的"见过"标志（PR-34）：置位在下面的配置帧分支，清零在 WifiHandshake.c */
-UINT32 gAicEapolControlPortCfm;
-/* MM_KEY_ADD_CFM(0x25) 的"见过"标志与两个字段（PR-35）：清零在 WifiKeyAdd.c 发请求前 */
-UINT32 gAicEapolKeyAddCfm;
-UINT32 gAicEapolKeyAddStatus;
-UINT32 gAicEapolKeyAddHwIndex;
+/* 配置帧 CFM：WifiEapolConfigFrame.c；布局自检：WifiEapolLayout.c；shell：WifiEapolShellPoll.c */
 /* PTK 已装进固件（WifiHandshakeInstall.c 置位）：解密帧的文案据此换挡 */
 UINT32 gAicEapolKeysInstalled;
 
 /* 25 MHz 时间基（BoardConfig.h BOARD_TIMEBASE_HZ），只用来算预算，不参与协议 */
 #define AIC_EAPOL_TIMEBASE_PER_MS (BOARD_TIMEBASE_HZ / 1000u)
-
-/* 布局核对表：自建镜像的实际值 vs 厂商头文件编译出来的期望值（同 AicJoinLayoutCheck） */
-typedef struct {
-    const char *Name;
-    UINT32 Actual;
-    UINT32 Expected;
-} AIC_EAPOL_LAYOUT_ITEM;
-
-static const AIC_EAPOL_LAYOUT_ITEM sAicEapolLayout[] = {
-    {"hw_rxhdr", (UINT32)sizeof(AIC_RX_HW_HEADER), AIC_RX_HW_STRUCT_LENGTH},
-    {"hw_rxhdr.rx_vect1", (UINT32)BLOCKS_OFFSETOF(AIC_RX_HW_HEADER, Vector1), 12u},
-    {"hw_rxhdr.rx_vect2", (UINT32)BLOCKS_OFFSETOF(AIC_RX_HW_HEADER, Vector2), 28u},
-    {"hw_rxhdr.status", (UINT32)BLOCKS_OFFSETOF(AIC_RX_HW_HEADER, Status),
-     AIC_RX_HW_STATUS_OFFSET},
-    {"hw_rxhdr.flags", (UINT32)BLOCKS_OFFSETOF(AIC_RX_HW_HEADER, Flags), AIC_RX_HW_FLAGS_OFFSET},
-    {"hw_rxhdr.pattern", (UINT32)BLOCKS_OFFSETOF(AIC_RX_HW_HEADER, Pattern),
-     AIC_RX_HW_PATTERN_OFFSET},
-    /* 交叉核对：EAPOL-Key 固定头 99 B 必须等于公共模块的 Key Data 起点 */
-    {"eapol.key_data_offset", (UINT32)AIC_EAPOL_KEY_FIXED_LENGTH,
-     (UINT32)WIFI_EAPOL_KEY_DATA_OFFSET},
-};
-
-#define AIC_EAPOL_LAYOUT_COUNT ((UINT32)(sizeof(sAicEapolLayout) / sizeof(sAicEapolLayout[0])))
-
-/* 一条不匹配就停：布局对不上说明编译器把镜像排歪了，解出来的字段全是垃圾 */
-int AicEapolLayoutCheck(void) {
-    UINT32 Index;
-    int Bad = 0;
-
-    for (Index = 0; Index < AIC_EAPOL_LAYOUT_COUNT; Index++) {
-        const AIC_EAPOL_LAYOUT_ITEM *Item = &sAicEapolLayout[Index];
-
-        if (Item->Actual == Item->Expected) {
-            continue;
-        }
-        SdhciMark("WiFi: eapol struct layout BAD: ");
-        SdhciMark(Item->Name);
-        SdhciMarkHex(" got=", Item->Actual, 4);
-        SdhciMarkHex(" want=", Item->Expected, 4);
-        SdhciMark("\n");
-        Bad = 1;
-    }
-    if (Bad != 0) {
-        SdhciMark("WiFi: eapol struct layout check failed, refuse to poll\n");
-        return -1;
-    }
-    return 0;
-}
 
 /*
  * 读一整帧。返回 0 = 读到；-1 = 预算内没消息（正常，下一圈按表停）；
@@ -125,57 +71,6 @@ static int EapolReadFrame(SDHCI_HOST *Host, UINT32 TimeoutMs, UINT8 *Frame, UINT
     return 0;
 }
 
-/*
- * MM_KEY_ADD_CFM(0x25) 的两个字段：status（0 = 固件装好了）、hw_key_idx（硬件钥匙号）。
- * 只有参数够长（>= 2 B）才采信，否则只置"见过"——宁可在 rc/cfm 行上报 cfm=none，
- * 也不把半截参数当成"装好了"。
- */
-static void EapolRecordKeyAddCfm(const UINT8 *Frame, UINT32 Length, UINT16 ParameterLength) {
-    gAicEapolKeyAddCfm = 1u;
-    if (Length < AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_CFM_LENGTH ||
-        ParameterLength < AIC_EAPOL_KEY_ADD_CFM_LENGTH) {
-        gAicEapolKeyAddStatus = AIC_EAPOL_KEY_ADD_STATUS_SHORT;
-        gAicEapolKeyAddHwIndex = 0u;
-        return;
-    }
-    gAicEapolKeyAddStatus =
-        (UINT32)Frame[AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_STATUS_OFFSET];
-    gAicEapolKeyAddHwIndex =
-        (UINT32)Frame[AIC_E2A_PARAM_OFF + AIC_EAPOL_KEY_ADD_HW_INDEX_OFFSET];
-}
-
-/* 配置帧（0x11 CMD_RSP / 0x12 DATA_CFM / 0x13 PRINT）：不是 EAPOL，但 id 有用 */
-static void EapolPrintConfigFrame(const UINT8 *Frame, UINT32 Length,
-                                  AIC_EAPOL_COUNTERS *Counters) {
-    UINT16 MessageId = 0;
-    UINT16 ParameterLength = 0;
-
-    Counters->ConfigFrames++;
-    if (Length >= AIC_E2A_PARAM_OFF) {
-        MessageId = AicGet16(Frame + 4);
-        ParameterLength = AicGet16(Frame + 10);
-    }
-    SdhciMarkHex("WiFi: eapol: skip config frame type=0x", (UINT32)Frame[2], 2);
-    SdhciMarkHex(" id=0x", MessageId, 4);
-    SdhciMarkHex(" plen=", ParameterLength, 4);
-    if (MessageId == AIC_SM_DISCONNECT_IND) {
-        SdhciMark(" (SM_DISCONNECT_IND: assoc lost before M1)");
-    } else if (MessageId == AIC_SM_CONNECT_IND) {
-        SdhciMark(" (SM_CONNECT_IND)");
-    } else if (MessageId == AIC_ME_SET_CONTROL_PORT_CFM) {
-        SdhciMark(" (ME_SET_CONTROL_PORT_CFM: EAPOL control port is open)");
-        gAicEapolControlPortCfm = 1u;
-    } else if (MessageId == AIC_MM_KEY_ADD_CFM) {
-        EapolRecordKeyAddCfm(Frame, Length, ParameterLength);
-        SdhciMark(" (MM_KEY_ADD_CFM: status=");
-        SdhciMarkDecimal("", gAicEapolKeyAddStatus);
-        SdhciMark(" hw_key_idx=");
-        SdhciMarkDecimal("", gAicEapolKeyAddHwIndex);
-        SdhciMark(")");
-    }
-    SdhciMark("\n");
-}
-
 /* 分流：bit4 = 0 是数据帧（厂商 aicwf_txrxif.c:308 的判据），其余交给数据帧解析 */
 static void EapolDispatchFrame(const UINT8 *Frame, UINT32 Length,
                                AIC_EAPOL_COUNTERS *Counters) {
@@ -186,7 +81,7 @@ static void EapolDispatchFrame(const UINT8 *Frame, UINT32 Length,
         return;
     }
     if (((UINT32)Frame[AIC_SDIO_TYPE_OFFSET] & AIC_SDIO_TYPE_CFG_MASK) == AIC_SDIO_TYPE_CFG) {
-        EapolPrintConfigFrame(Frame, Length, Counters);
+        AicEapolPrintConfigFrame(Frame, Length, Counters);
         return;
     }
     Counters->DataFrames++;
@@ -317,88 +212,6 @@ int AicEapolPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, AIC_EAPOL_COUNTERS *Count
             continue;
         }
         EapolDispatchBlock(Frame, Length, Counters);
-    }
-    return 0;
-}
-
-/* 十进制毫秒；0 表示用默认值（由调用方决定）。成功 0 */
-static int EapolParseMilliseconds(const char *Text, UINT32 *OutMilliseconds) {
-    UINT32 Value = 0;
-    UINT32 Index = 0;
-
-    if (Text == 0 || Text[0] == 0) {
-        return -1;
-    }
-    while (Text[Index] != 0) {
-        char One = Text[Index];
-
-        if (One < '0' || One > '9') {
-            return -1;
-        }
-        Value = Value * 10u + (UINT32)(One - '0');
-        if (Value > AIC_EAPOL_POLL_MAX_MS) {
-            return -1;
-        }
-        Index++;
-    }
-    if (Value == 0u) {
-        return -1;
-    }
-    *OutMilliseconds = Value;
-    return 0;
-}
-
-int SdhciWifiEapolPoll(const char *MsText) {
-    SDHCI_HOST *Host;
-    AIC_EAPOL_COUNTERS Counters;
-    UINT32 Budget = AIC_EAPOL_POLL_DEFAULT_MS;
-    int Status;
-
-    if (MsText != 0 && EapolParseMilliseconds(MsText, &Budget) != 0) {
-        SdhciMark("WiFi: eapol poll: bad ms (decimal 1..60000)\n");
-        return -1;
-    }
-    Host = SdhciHostAt(1);
-    if (Host == 0 || !SdhciWifiReady()) {
-        SdhciMark("WiFi: eapol poll needs a probed card (run wifiprobe + wififw join first)\n");
-        return -1;
-    }
-    if (AicEapolLayoutCheck() != 0) {
-        return -1;
-    }
-    if (AicWifiVendorPrepare(Host) != 0) {
-        SdhciMark("WiFi: eapol poll: vendor prepare failed\n");
-        return -1;
-    }
-    memset(&Counters, 0, sizeof(Counters));
-    SdhciMark("WiFi: eapol poll: budget=");
-    SdhciMarkDecimal("", Budget);
-    SdhciMark("ms, data frames only (type&0x10==0), looking for EAPOL/0x888e\n");
-    Status = AicEapolPollRun(Host, Budget, &Counters, 0);
-    SdhciMark("WiFi: eapol poll: done frames=");
-    SdhciMarkDecimal("", Counters.Frames);
-    SdhciMark(" data=");
-    SdhciMarkDecimal("", Counters.DataFrames);
-    SdhciMark(" config=");
-    SdhciMarkDecimal("", Counters.ConfigFrames);
-    SdhciMark(" eapol=");
-    SdhciMarkDecimal("", Counters.EapolFrames);
-    SdhciMark(" key=");
-    SdhciMarkDecimal("", Counters.KeyFrames);
-    SdhciMark(" polls=");
-    SdhciMarkDecimal("", Counters.Polls);
-    SdhciMark(" empty=");
-    SdhciMarkDecimal("", Counters.EmptyPolls);
-    SdhciMark(" bad=");
-    SdhciMarkDecimal("", Counters.BadFrames);
-    SdhciMark("\n");
-    if (Status != 0) {
-        SdhciMark("WiFi: eapol poll: SDIO read failed (FIFO may be out of sync; re-run join)\n");
-        return -1;
-    }
-    if (Counters.KeyFrames == 0u) {
-        SdhciMark("WiFi: eapol poll: no EAPOL-Key seen (joined WPA2 AP? AP still at assoc?)\n");
-        return -1;
     }
     return 0;
 }

@@ -40,6 +40,9 @@
  */
 #define AIC_MM_KEY_ADD_REQ 0x0024u
 #define AIC_MM_KEY_ADD_CFM 0x0025u
+/* mm_msg_tag：KEY_DEL 紧随 KEY_ADD（lmac_msg.h:213-216）⇒ REQ 0x26 / CFM 0x27 */
+#define AIC_MM_KEY_DELETE_REQ 0x0026u
+#define AIC_MM_KEY_DELETE_CFM 0x0027u
 
 /*
  * ---- 控制端口（PR-34）----

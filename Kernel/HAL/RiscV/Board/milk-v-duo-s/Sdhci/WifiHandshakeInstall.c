@@ -217,6 +217,10 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
             }
         }
     }
+    /* Docs/21 §1e：两钥后再删 PTK（probe ptkdel=1）；异于从未装 PTK 的 noptk */
+    if (AicKeyDeletePairwiseIfProbe(Host) != 0) {
+        return -1;
+    }
     /* 至少一把钥匙已在固件：从这里起盯解密帧（decr != 0） */
     gAicEapolKeysInstalled = 1u;
     memset(&Gtk, 0, sizeof(Gtk));

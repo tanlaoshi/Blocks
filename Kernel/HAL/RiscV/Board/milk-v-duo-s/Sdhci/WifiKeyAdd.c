@@ -224,7 +224,10 @@ int AicKeyAddPairwise(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex, const UI
     if (AicKeyAddIsInstalled(&Result) == 0) {
         SdhciMark("WiFi: handshake FAILED at PTK install: the firmware did not install the"
                   " pairwise key (rc/cfm above; sta_idx must be SM_CONNECT_IND.ap_idx)\n");
+        AicKeyClearPairwiseHardwareIndex();
         return -1;
     }
+    /* Docs/21 §1e ptkdel：记住 hw_key_idx，装完两钥后可 MM_KEY_DEL */
+    AicKeyRememberPairwiseHardwareIndex(Result.HwIndex);
     return 0;
 }

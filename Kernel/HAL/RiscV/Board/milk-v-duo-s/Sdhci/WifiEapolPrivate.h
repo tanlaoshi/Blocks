@@ -261,6 +261,10 @@ extern UINT32 gAicEapolControlPortCfm;
 extern UINT32 gAicEapolKeyAddCfm;
 extern UINT32 gAicEapolKeyAddStatus;
 extern UINT32 gAicEapolKeyAddHwIndex;
+/* MM_KEY_DEL_CFM(0x27) 见过标志（WifiKeyDelete.c 发请求前清零） */
+extern UINT32 gAicEapolKeyDeleteCfm;
+/* WifiEapolConfigFrame.c：配置帧分流（控制口 / KEY_ADD / KEY_DEL CFM） */
+void AicEapolPrintConfigFrame(const UINT8 *Frame, UINT32 Length, AIC_EAPOL_COUNTERS *Counters);
 /*
  * PTK 已经装进固件（WifiHandshakeInstall.c 置位、AicJoinIndexesClear 清零）。
  * 数据帧解析据此把"加密帧"的文案从"keys not installed yet"换成"data frame after keys"。

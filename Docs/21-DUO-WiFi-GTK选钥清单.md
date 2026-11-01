@@ -107,3 +107,30 @@
 
 → **否证「末次默认钥 ADD=GTK 即可让组播首帧走 KeyID=gtk」**。有 PTK 时固件仍先发 KeyID=0。  
 下一刀勿再扫 gtkreadd；候选：装完两钥后 `MM_KEY_DEL` PTK（异于从未装 PTK 的 noptk），或另寻 default-key 绑定证据后再动 data-3。
+
+---
+
+## 1e · ptkdel=1（两钥后删 PTK）（✅ 否证「曾装再删→KeyID=gtk」）
+
+**单变量**：默认序装完 PTK+GTK 后，对 PTK 的 `hw_key_idx` 发 `MM_KEY_DEL`。  
+假说：§1c 明文是因为**从未**装过 PTK；若曾装再删，固件可能已把组播默认绑到 GTK，空口首帧 KeyID=gtk。
+
+| 探针 | `BLOCKS:probe.cfg` → `ptkdel=1`（勿叠 noptk/gtkreadd） |
+|---|---|
+| 战场 | `WifiKeyDelete.c` / `WifiHandshakeInstall.c` / `WifiJoinProbe.c` |
+| 抓包 | NUC ≤12 s → `/tmp/duo-ptkdel-nuc.pcap`；立刻回 managed |
+| 判据 | 首帧 KeyID=gtk → 绿；明文（同 §1c）或仍先 KeyID=0 → 否证 |
+
+| 步 | 真机（2026-11-01 18:14；核 build `18:02:57`） |
+|---|---|
+| probe | ✅ `ptkdel=1`；`ptkdel after both keys` |
+| key add | ✅ `ptk … cfm=0`（`hw_key_idx=16`）→ `gtk keyid=1 … cfm=0`（`hw_key_idx=1`） |
+| key del | ✅ `key delete: hw_key_idx=16` → `cfm ok` |
+| dhcp | ✅ `DISCOVER tx`；无 OFFER |
+| 空口首帧 | ❌ **明文** QoS `LLC/SNAP IPv4 DHCP Discover`（无 IV/KeyID；同 §1c） |
+
+→ **否证「装过 PTK 再 DEL 就能让组播走 KeyID=gtk」**。  
+→ **对齐 §1c**：对固件 TX 而言，「从未装 PTK」与「装完再删 PTK」同归**明文**；GTK 仍不接管加密组播首帧。  
+下一刀勿再扫 ptkdel/noptk；需另寻「有 PTK 时为何先 KeyID=0」的绑定/选钥证据（或 data-3 仅在有新证据时）。
+
+**部署备注**：`deploy.sh` 写 `BOOT:boot.sd` 后，若 reboot 串口仍见旧 `build=` / 旧 FIT `Hash value`，须再 deploy 一次并核对 `WiFi: probe start build=` 后再测（本刀首轮曾踩：旧核无 `ptkdel` 解析）。

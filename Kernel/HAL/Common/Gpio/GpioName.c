@@ -12,7 +12,7 @@
  */
 #include "HalGpio.h"
 
-/* 没有板图的板子（x64、以及还没做 G3 的 Duo） */
+/* 没有板图的板子（x64 等）；Pi/Duo 在各自 Board/.../Gpio/Gpio.c 给强符号 */
 __attribute__((weak)) const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount) {
     if (OutCount != 0) {
         *OutCount = 0u;
@@ -55,6 +55,41 @@ int HalGpioFindPin(const char *Name, UINT32 *OutPin) {
             *OutPin = Pins[Index].Pin;
             return 0;
         }
+    }
+    return -1;
+}
+
+/*
+ * 按板图把某个具名脚的【默认模式 + 默认上下拉】真正写进硬件。
+ * 起因：`gpio get BTN` 读到 0 —— 因为此前只读当前配置，板图里的"上拉"从没被应用过。
+ * 规则：只对板图里有的名字生效；纯数字没有默认值可言，返回 -1（不猜）。
+ */
+int HalGpioApplyNamedDefault(const char *Name, UINT32 *OutPin) {
+    const HAL_GPIO_BOARD_PIN *Pins;
+    UINT32 Count = 0u;
+    UINT32 Index;
+
+    if (Name == 0) {
+        return -1;
+    }
+    Pins = HalGpioBoardPins(&Count);
+    if (Pins == 0) {
+        return -1;
+    }
+    for (Index = 0u; Index < Count; Index++) {
+        if (Pins[Index].Name == 0 || !GpioNameEqual(Pins[Index].Name, Name)) {
+            continue;
+        }
+        if (HalGpioSetMode(Pins[Index].Pin, Pins[Index].DefaultMode) != 0) {
+            return -1;
+        }
+        if (HalGpioSetPull(Pins[Index].Pin, Pins[Index].DefaultPull) != 0) {
+            return -1;
+        }
+        if (OutPin != 0) {
+            *OutPin = Pins[Index].Pin;
+        }
+        return 0;
     }
     return -1;
 }

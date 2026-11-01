@@ -58,4 +58,7 @@ const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount);
 /* 名字 → 引脚号（大小写不敏感）；找不到返回 -1。实现在 HAL/Common/Gpio */
 int HalGpioFindPin(const char *Name, UINT32 *OutPin);
 
+/* 按板图应用默认模式/上下拉（纯数字没有默认值，返回 -1） */
+int HalGpioApplyNamedDefault(const char *Name, UINT32 *OutPin);
+
 #endif

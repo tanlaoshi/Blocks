@@ -74,6 +74,24 @@ static void GpioCommandSet(int Argc, char **Argv) {
     GpioPrintResult("set", HalGpioWrite(Pin, (int)Value));
 }
 
+/* init：把板图里的默认模式+上下拉写进硬件（只对具名脚有效） */
+static void GpioCommandInit(int Argc, char **Argv) {
+    const char *Text = GpioArg(Argc, Argv, GPIO_ARG_FIRST);
+    UINT32 Pin = 0u;
+
+    if (Text == 0) {
+        GpioWriteUsage();
+        return;
+    }
+    if (HalGpioApplyNamedDefault(Text, &Pin) != 0) {
+        gConsole.Write("gpio: init FAILED (unknown name, or board has no defaults)\n");
+        return;
+    }
+    gConsole.Write("gpio: init ");
+    gConsole.Write(Text);
+    gConsole.Write(" ok\n");
+}
+
 /* get：读实际电平（名字/数字都收） */
 static void GpioCommandGet(int Argc, char **Argv) {
     UINT32 Pin;
@@ -205,6 +223,8 @@ void CommandGpio(int Argc, char **Argv) {
         GpioCommandList();
     } else if (GpioTextEqual(Name, "set")) {
         GpioCommandSet(Argc, Argv);
+    } else if (GpioTextEqual(Name, "init")) {
+        GpioCommandInit(Argc, Argv);
     } else if (GpioTextEqual(Name, "get")) {
         GpioCommandGet(Argc, Argv);
     } else if (GpioTextEqual(Name, "mode")) {

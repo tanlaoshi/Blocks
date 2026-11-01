@@ -24,9 +24,6 @@ extern int  BoardWifiArmNetifFromJoin(void) __attribute__((weak));
 extern int  BoardWifiPollFeedLwIp(UINT32 MaxPackets) __attribute__((weak));
 extern UINT32 BoardWifiFeedCount(void) __attribute__((weak));
 extern UINT32 BoardWifiFeedDropCount(void) __attribute__((weak));
-extern UINT32 BoardWifiFeedPolls(void) __attribute__((weak));
-extern UINT32 BoardWifiFeedRawFrames(void) __attribute__((weak));
-extern UINT32 BoardWifiFeedSinkCalls(void) __attribute__((weak));
 
 int WifiNetBoardPresent(void);
 int WifiNetParseInteger(const char *Text, UINT32 *Out);

@@ -27,17 +27,14 @@ static int gLwIpReady;
 static volatile UINT32 gLwIpSoft;
 
 /*
- * 墙钟毫秒。旧实现每 LwIpService 自增 1，NUC 上 Halt≈4ms/拍时 TCP RTO=3000
- * 会拖到十余秒；忙泵时又会「时间飞逝」。须跟 HalCpuTicks 对齐。
+ * 墙钟毫秒。必须跟真实时间走：
+ * · 旧：每 LwIpService +1 → 忙泵「时间飞逝」/ Halt 慢拍 RTO 虚高；
+ * · 曾改 HalCpuTicks：Duo ConsoleOnly 上 tick 不推进 → DHCP 不重发 Discover，
+ *   首包 OFFER 若在 Halt 窗口被错过就整段 no offer（私有 wififw dhcp 长轮询能绿）。
+ * · 现：HalMilliseconds（RiscV timebase / Arm64 CNTV），与 Dhcp.c 非 x86 超时同钟。
  */
 u32_t sys_now(void) {
-    UINT32 Tps = HalTicksPerSec();
-    UINT64 T = HalCpuTicks(0);
-
-    if (Tps == 0) {
-        return 0;
-    }
-    return (u32_t)((T * 1000ULL) / (UINT64)Tps);
+    return (u32_t)HalMilliseconds();
 }
 
 void LwIpLock(void) {

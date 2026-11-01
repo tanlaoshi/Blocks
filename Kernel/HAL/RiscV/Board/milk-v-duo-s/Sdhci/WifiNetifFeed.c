@@ -27,7 +27,11 @@
 #include "CString.h"
 
 #define AIC_NETIF_FEED_MAX_PACKETS 8u
-#define AIC_NETIF_FEED_BUDGET_MS   2u
+/*
+ * 每拍 SDIO 轮询预算。2ms 太短；DHCP Job 期间由 HalNetFeedAlternateReceive
+ * 多轮调用。100ms 对齐「Discover 后立刻有机会捞到 OFFER」，仍远短于私有 8s。
+ */
+#define AIC_NETIF_FEED_BUDGET_MS   100u
 #define AIC_NETIF_FEED_FRAME_MIN   14u
 
 static UINT32 sAicNetifFeedLimit;

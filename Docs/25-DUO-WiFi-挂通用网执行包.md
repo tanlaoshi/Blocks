@@ -171,7 +171,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 ## 5 · 刀序详表
 
 > 协作：文首 ★ 是哪刀就只做哪刀。改序须在本节和 1101 同步注明。  
-> **当前 ★（2026-11-01 PS）**：netif-3 ✅ 全绿 → 下一刀 **`dwifi-netif-4`**（等 DS TG TS 后 JX）。
+> **当前 ★（2026-11-01 TG）**：netif-4 ✅ → 下一刀 **`dwifi-netif-5`**（通用 ping）。
 
 ### dwifi-netif-0 · 眼睛清单 ✅
 
@@ -226,8 +226,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `WifiNetDhcpWait.c`；`0x15d` |
 | **坑** | 若无 OFFER：**先查 lwIP Discover 的 BOOTP flags**（Docs/22：课网要 0）。禁止回头扫 GTK |
 | **依赖** | netif-3 |
-| **进度** | ⬜（等 netif-3 TG 后 JX） |
-| **评审** | ⬜ |
+| **进度** | ✅ **收官（2026-11-01 23:51 Cursor TG）**<br>根因：`AicEapolDispatchEther` 旧逻辑 `EtherSink==0` 直接 return → 只挂 `FrameSink` 的通用网永不到 lwIP；已修。另：`HalNetReady` 武装放行、`Dhcp` 墙钟、`sys_now=HalMilliseconds`、`dhcp_ip` 用站点 IP。<br>串口（读卡器 n4e）：未武装 `net not available`；`join`→`netif armed`→`net dhcp`→**`net-dhcp-ok dhcp_ip=192.168.31.186`**；`lwip_in=5`；`net` link up / IP 齐。 |
+| **评审** | ✅ **全绿**（2026-11-01 23:50）。FrameSink 门闩对症；判据齐。**给 DS**：★ 已推 **netif-5**；刷卡用读卡器、手测走串口；勿再改 netif-4。禁扫 GTK。 |
 
 ### dwifi-netif-5 · 通用 ping 验收
 
@@ -312,8 +312,9 @@ TG
 TS
 # 再：
 JX
-只做 1101 ★ = dwifi-netif-4
-权威：Docs/25 netif-4
+只做 1101 ★ = dwifi-netif-5
+权威：Docs/25 netif-5
+刷卡=读卡器 ck-duo-sd；手测=串口；禁 ksend 刷核
 LwIpDhcpRestart 或 net dhcp；BOOTP flags=0
 禁扫 GTK；填进度等评审，非全绿不 TG
 ```

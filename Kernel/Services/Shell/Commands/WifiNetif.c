@@ -70,13 +70,6 @@ void CommandWifiNetif(int Argc, char **Argv) {
         WifiNetWriteDecimal(BoardWifiFeedCount());
         gConsole.Write(" drop=");
         WifiNetWriteDecimal(BoardWifiFeedDropCount());
-        /* 诊断计数（netif-4 调试）；板未提供 weak=0 时打印 0 */
-        gConsole.Write(" polls=");
-        WifiNetWriteDecimal(BoardWifiFeedPolls != 0 ? BoardWifiFeedPolls() : 0u);
-        gConsole.Write(" raw=");
-        WifiNetWriteDecimal(BoardWifiFeedRawFrames != 0 ? BoardWifiFeedRawFrames() : 0u);
-        gConsole.Write(" sinks=");
-        WifiNetWriteDecimal(BoardWifiFeedSinkCalls != 0 ? BoardWifiFeedSinkCalls() : 0u);
         WifiNetPrintMac();
         gConsole.Write("\n");
     } else {

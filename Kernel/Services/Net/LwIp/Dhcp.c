@@ -30,9 +30,9 @@ typedef enum {
 
 static int gDhcpRunning;
 static volatile DHCP_JOB_STATE gJob;
+#if defined(__x86_64__)
 static UINT64 gDhcpT0;
 static UINT64 gDhcpNeed;
-#if defined(__x86_64__)
 static UINT64 DhcpTsc(void) {
     UINT32 Lo;
     UINT32 Hi;
@@ -40,6 +40,9 @@ static UINT64 DhcpTsc(void) {
     __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
     return ((UINT64)Hi << 32) | Lo;
 }
+#else
+static UINT32 gDhcpWallStartMs;
+static UINT32 gDhcpWallTimeoutMs;
 #endif
 
 void LwIpDhcpStop(void) {
@@ -90,17 +93,19 @@ static void ClearNetifAddr(struct netif *Netif) {
 
 static void FinishPrint(int Ok) {
     char Msg[80];
-    char IpBuf[16];
+    char StationIp[16];
+    char GatewayIp[16];
     int N = 0;
     const char *P;
 
     if (Ok) {
-        HalNetFormatIp(NetConfigGetIp(), IpBuf, (int)sizeof(IpBuf));
+        HalNetFormatIp(NetConfigGetIp(), StationIp, (int)sizeof(StationIp));
+        HalNetFormatIp(NetConfigGetGw(), GatewayIp, (int)sizeof(GatewayIp));
         P = "lwip dhcp: ok ip=";
         while (*P && N < 70) {
             Msg[N++] = *P++;
         }
-        P = IpBuf;
+        P = StationIp;
         while (*P && N < 70) {
             Msg[N++] = *P++;
         }
@@ -108,8 +113,7 @@ static void FinishPrint(int Ok) {
         while (*P && N < 74) {
             Msg[N++] = *P++;
         }
-        HalNetFormatIp(NetConfigGetGw(), IpBuf, (int)sizeof(IpBuf));
-        P = IpBuf;
+        P = GatewayIp;
         while (*P && N < 78) {
             Msg[N++] = *P++;
         }
@@ -118,8 +122,25 @@ static void FinishPrint(int Ok) {
         }
         Msg[N] = 0;
         gConsole.WriteToJobShell(Msg);
+        /* Docs/25 判据：稳定标签；必须用站点 IP，勿复用已被 gw 覆盖的缓冲 */
+        {
+            char Mark[48];
+            int M = 0;
+            const char *Tag = "net-dhcp-ok dhcp_ip=";
+
+            while (*Tag && M < 40) {
+                Mark[M++] = *Tag++;
+            }
+            P = StationIp;
+            while (*P && M < 44) {
+                Mark[M++] = *P++;
+            }
+            Mark[M++] = '\n';
+            Mark[M] = 0;
+            gConsole.WriteToJobShell(Mark);
+        }
         DebugWrite("lwip: dhcp ok ip=");
-        DebugWrite(IpBuf);
+        DebugWrite(StationIp);
         DebugWrite("\n");
     } else {
         gConsole.WriteToJobShell("lwip dhcp: no offer\n");
@@ -172,21 +193,11 @@ int LwIpDhcpEnqueue(int TimeoutMs) {
     gDhcpNeed = (UINT64)Ms * 3000ULL * 1000ULL;
 #else
     /*
-     * 对表 x86：墙钟超时。旧 gBudget=Ms*200 在 USB EthPoll 慢时像「卡住不动」。
-     * HalCpuTicks + HalTicksPerSec（Arm64/RiscV CNTV/timebase 经 Halt/Poll 推进）。
+     * 非 x86：只信 HalMilliseconds 墙钟（timebase/CNTV，不靠壳循环推进 tick）。
+     * 旧 HalCpuTicks 判据在 ConsoleOnly（Duo）上会永不超时 → JobHoldPrompt 扣死壳。
      */
-    {
-        UINT32 Tps = HalTicksPerSec();
-
-        if (Tps == 0) {
-            Tps = 1000u;
-        }
-        gDhcpT0 = HalCpuTicks(0);
-        gDhcpNeed = (UINT64)Ms * (UINT64)Tps / 1000ULL;
-        if (gDhcpNeed == 0) {
-            gDhcpNeed = 1;
-        }
-    }
+    gDhcpWallStartMs = HalMilliseconds();
+    gDhcpWallTimeoutMs = Ms;
 #endif
     gJob = DHCP_JOB_RUN;
     return 0;
@@ -220,7 +231,7 @@ int LwIpDhcpStep(void) {
 #if defined(__x86_64__)
     if (DhcpTsc() - gDhcpT0 >= gDhcpNeed) {
 #else
-    if (HalCpuTicks(0) - gDhcpT0 >= gDhcpNeed) {
+    if ((UINT32)(HalMilliseconds() - gDhcpWallStartMs) >= gDhcpWallTimeoutMs) {
 #endif
         LwIpDhcpStop();
         (void)LwIpApplyConfig();

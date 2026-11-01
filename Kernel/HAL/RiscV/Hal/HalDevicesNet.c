@@ -50,6 +50,15 @@ int HalNetProbeAtModuleInit(void) {
 }
 
 int HalNetReady(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /*
+     * dwifi-netif-4：Duo S 没有有线 PHY，DriverNet 后端 Probe 不过 → DriverNetReady() 恒 0，
+     * 壳 `net dhcp` 会在入口就拒绝。WiFi 武装后它本身就是可用网卡，故这里放行。
+     */
+    if (BoardWifiLinkOutputIsArmed() != 0) {
+        return 1;
+    }
+#endif
     return DriverNetReady();
 }
 
@@ -116,6 +125,21 @@ void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
 }
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 对表 Arm64：武装后链路就是 WiFi，勿被无 PHY 的 dwmac「link down」盖掉 */
+    if (BoardWifiLinkOutputIsArmed() != 0) {
+        if (Up) {
+            *Up = 1;
+        }
+        if (Mbps) {
+            *Mbps = 100u; /* 显示用；WiFi 无 MII 速率 */
+        }
+        if (FullDuplex) {
+            *FullDuplex = 1;
+        }
+        return 1;
+    }
+#endif
 #if !BOARD_IS_VIRT && BOARD_HAS_NET
     return BoardEthernetGetLink(Up, Mbps, FullDuplex);
 #else
@@ -167,7 +191,17 @@ void HalNetSetLwipReceive(int Enable) {
 
 void HalNetFeedAlternateReceive(void) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 对表 Arm64：武装后每拍短喂 WiFi 收包；未武装时函数内部直接返回 0 */
-    (void)BoardWifiPollFeedLwIp(8u);
+    /*
+     * 对表 Arm64：武装后每拍短喂。DHCP Job 忙时多喂几轮——Discover 发出后
+     * OFFER 窗口短，ConsoleOnly 一拍一 Halt 容易空过（见 WifiNetifFeed 预算注释）。
+     */
+    UINT32 Rounds = LwIpDhcpJobBusy() ? 4u : 1u;
+    UINT32 Index;
+
+    for (Index = 0u; Index < Rounds; Index++) {
+        if (BoardWifiPollFeedLwIp(8u) == 0 && Index > 0u) {
+            break;
+        }
+    }
 #endif
 }

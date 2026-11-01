@@ -140,18 +140,25 @@ static void EapolDispatchFrameSink(const UINT8 *Frame, UINT32 End, UINT32 Decryp
     gAicEapolFrameSink(sAicEtherFrame, Total, Decryption);
 }
 
-/* WifiEapolParse.c 每解完一帧调一次；没挂 sink 就是空操作（eapol poll/join 不受影响） */
+/*
+ * WifiEapolParse.c 每解完一帧调一次。
+ * EtherSink（私有 dhcp/ARP）与 FrameSink（通用 lwIP）彼此独立：
+ * 旧逻辑 `EtherSink==0` 直接 return → 只挂了 FrameSink 的 netif 喂包永不到达
+ * （通用 net dhcp TX 绿、lwip_in=0；wififw dhcp 因自带 EtherSink 反而能绿）。
+ */
 void AicEapolDispatchEther(const UINT8 *Frame, UINT32 End, UINT32 Decryption) {
     const UINT8 *Payload = 0;
     UINT32 Length = 0;
     UINT16 EtherType = 0;
 
-    if (gAicEapolEtherSink == 0 || End <= AIC_RX_HW_HEADER_LENGTH) {
+    if (End <= AIC_RX_HW_HEADER_LENGTH) {
         return;
     }
     if (EapolLocateEthernet(Frame, End, Decryption, &EtherType, &Payload, &Length) == 0) {
         return;
     }
-    gAicEapolEtherSink(EtherType, Payload, Length, Decryption);
+    if (gAicEapolEtherSink != 0) {
+        gAicEapolEtherSink(EtherType, Payload, Length, Decryption);
+    }
     EapolDispatchFrameSink(Frame, End, Decryption, EtherType, Payload, Length);
 }

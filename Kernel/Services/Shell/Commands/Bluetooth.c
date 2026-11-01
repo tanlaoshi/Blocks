@@ -1,5 +1,8 @@
 /*
  * Bluetooth.c — 壳 bt / info / scan / visible / hide（btx-3…5）
+ *
+ * Pi 诊断符号（BoardBluetoothDiagnosis / PiUartTransport*）仅 rpi-3b 提供。
+ * 用 weak：CI `build.sh arm64`（BOARD=virt）链得过；Pi 真机仍打快照。
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -126,17 +129,15 @@ static void CommandBluetoothVisible(int On) {
                       : "bt: hidden\n");
 }
 
-#if defined(__aarch64__)
-extern const char *BoardBluetoothDiagnosis(void);
-extern UINT32 BoardBluetoothAttemptMask(void);
-extern void PiUartTransportSnapshot(UINT32 Out[6]);
-extern UINT32 PiUartTransportClockHz(void);
-#endif
+const char *BoardBluetoothDiagnosis(void) __attribute__((weak));
+void PiUartTransportSnapshot(UINT32 Out[6]) __attribute__((weak));
+UINT32 PiUartTransportClockHz(void) __attribute__((weak));
 
 static void CommandBluetoothInit(void) {
     int Rc = HalBluetoothInitialize();
-#if defined(__aarch64__)
-    {
+
+    if (BoardBluetoothDiagnosis != 0 && PiUartTransportSnapshot != 0 &&
+        PiUartTransportClockHz != 0) {
         UINT32 Snapshot[6] = {0u, 0u, 0u, 0u, 0u, 0u};
 
         PiUartTransportSnapshot(Snapshot);
@@ -158,7 +159,6 @@ static void CommandBluetoothInit(void) {
         gConsole.WriteHex32(Snapshot[5]);
         gConsole.Write("\n");
     }
-#endif
 
     gConsole.Write("bt: init rc=");
     gConsole.WriteHex32((UINT32)Rc);

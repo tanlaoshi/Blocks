@@ -18,7 +18,7 @@
 
 ---
 
-## 1a · gtkfirst=1（本刀 · 串口半绿 / 空口未抓）
+## 1a · gtkfirst=1（✅ 否证）
 
 **单变量**：`MM_KEY_ADD` 顺序改为 **先 GTK、后 PTK**（材料仍先派生 PTK 再解 GTK；仅交付固件的先后）。  
 假说：固件组播选钥挂在「先装进默认槽的那把」；现序先 PTK 导致组播首帧走 KeyID=0。
@@ -26,13 +26,15 @@
 | 探针 | `BLOCKS:probe.cfg` → `gtkfirst=1` |
 |---|---|
 | 战场 | `WifiHandshakeInstall.c` / `WifiJoinProbe.c` |
+| 抓包 | NUC `wlp1s0` monitor **≤12 s** → 立刻回 managed（`/tmp/duo-gtkfirst-nuc.pcap`） |
 | 判据 | 空口首帧组播 KeyID=gtk keyid → 绿；仍先 KeyID=0 → 否证 |
 
-| 步 | 真机 |
+| 步 | 真机（2026-11-01 17:11） |
 |---|---|
 | probe | ✅ `gtkfirst=1`；`key order: gtk then ptk` |
-| key add | ✅ **先** `gtk sta=255 keyid=2 … cfm=0`，**后** `ptk … cfm=0` |
+| key add | ✅ **先** `gtk sta=255 keyid=1 … cfm=0`，**后** `ptk … cfm=0`（本轮 KDE keyid=**1**） |
 | dhcp | ✅ `data tx … mcast=1` DISCOVER 已发；仍无 OFFER / `decr=0` |
-| 空口 KeyID | ❌ **未抓**（NUC 192.168.31.47 monitor 过热掉线，短抓未取回） |
+| 空口首帧 | ❌ STA=`88:00:33:77:10:99` → `ff:ff:…` **先** QoS `IV:1 KeyID 0`，**后** 非 QoS `KeyID 1` |
 
-→ 装序变量已生效；**判据未完**，须 NUC 短抓首帧 KeyID 才能绿/否证。勿 TG。
+→ **否证「先装 GTK 就能让组播首帧走 GTK」**。装序变量已生效，空口首帧仍 KeyID=0（PTK/CCMP）。  
+下一单变量另开（勿再扫装序）。

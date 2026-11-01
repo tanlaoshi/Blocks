@@ -14,7 +14,7 @@
 | 空口常见 | 先 **QoS KeyID=0**（CCMP PN），随后非 QoS **KeyID=GTK**（TKIP IV） |
 | Docs/14 已扫 | keyid/cipher/pairwise/len、mcast staid、ac/tid → 无 OFFER |
 
-判绿：DHCP Discover（或等价组播）**首帧**空口 KeyID == 串口 `key add: gtk … keyid=`。
+~~判绿（已废）：Discover 首帧空口 KeyID=gtk。~~ → 见 **§1f**：STA ToDS 本应用 PTK KeyID=0；空口 KeyID=gtk 实为 AP FromDS 转发。
 
 ---
 
@@ -134,3 +134,36 @@
 下一刀勿再扫 ptkdel/noptk；需另寻「有 PTK 时为何先 KeyID=0」的绑定/选钥证据（或 data-3 仅在有新证据时）。
 
 **部署备注**：`deploy.sh` 写 `BOOT:boot.sd` 后，若 reboot 串口仍见旧 `build=` / 旧 FIT `Hash value`，须再 deploy 一次并核对 `WiFi: probe start build=` 后再测（本刀首轮曾踩：旧核无 `ptkdel` 解析）。
+
+---
+
+## 1f · 空口「双发」FC 重读（✅ 判据纠错；data-2 收口）
+
+**不做新探针。** 对已有 NUC pcap 按 802.11 FC 拆 ToDS/FromDS（非 tcpdump 字段语序）。
+
+### 规格（IEEE 802.11 / RSNA）
+
+| 方向 | 谁加密 | 典型 KeyID |
+|---|---|---|
+| **STA→AP（ToDS=1）** 含组播 DA | **PTK**（pairwise） | **0** |
+| **AP→BSS（FromDS=1）** 组播/广播 | **GTK** | KDE key_idx（1/2） |
+
+STA **不会**对 AP 的 ToDS 数据帧使用 GTK。此前 data-2 判绿「Discover **首帧**空口 KeyID=gtk」**对 STA TX 不成立**。
+
+### 已有 pcap（同一 STA `88:00:33:77:10:99`）
+
+| 刀 | STA→AP ToDS | 随后 AP→BSS FromDS |
+|---|---|---|
+| §1a gtkfirst | QoS **KeyID=0**（PTK） | 非 QoS **KeyID=1**，TA=AP，A3=STA |
+| §1d gtkreadd | QoS **KeyID=0** | 非 QoS **KeyID=2**，TA=AP，A3=STA |
+| §1c noptk / §1e ptkdel | QoS **明文** Discover | **无** FromDS 转发 |
+
+→ 有 PTK 时：我们只发 **一帧** ToDS KeyID=0；串口亦仅一行 `data tx`。空口上紧随的 KeyID=gtk 是 **AP 解密后的 FromDS 再广播**，不是固件「又用 GTK 重发了一次」。  
+→ AP 能 FromDS 重封 GTK ⇒ **ToDS PTK 解密已成功**；组播「选错 GTK」不是无 OFFER 的根因。  
+→ 无 PTK 时明文 ToDS 无转发，与 §1c/§1e 一致。
+
+### 收口
+
+- **否证 data-2 原判绿**（首帧 KeyID=gtk）。  
+- §1a–§1e 对各「装序/tid/只 GTK/再装 GTK/再删 PTK」变量的空口现象解释不变，但目标应改为：**ToDS 用 PTK（KeyID=0）且 AP FromDS 出现** = 802.11 组播上行已通。  
+- **下一刀**：[`dwifi-dhcp`](../Archive/路线图1101.md#dwifi-dhcp)——为何 AP 已转发 Discover 仍无 OFFER（DHCP 载荷/选项/地址池/防火墙），勿再扫 GTK `MM_KEY_ADD` 矩阵。

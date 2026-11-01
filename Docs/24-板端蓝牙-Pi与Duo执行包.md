@@ -214,18 +214,18 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 > **bt-pi-0**：把下表「Pi 结论」列填满，并落盘 [`Docs/26-PI-蓝牙UART与固件清单.md`](26-PI-蓝牙UART与固件清单.md)（**勿再写 Docs/25** — 25 已是 Duo WiFi 挂网包）。  
 > **bt-duo-0**：填「Duo 结论」；可写短节进 Docs/26 附录或 `Docs/27-DUO-蓝牙通路探针.md`。
 
-| # | 问题 | NUC / 标准锚 | Pi 结论（pi-0 填） | Duo 结论（duo-0 填） |
+| # | 问题 | NUC / 标准锚 | Pi 结论（pi-0 已填） | Duo 结论（duo-0 填） |
 |---|---|---|---|---|
-| 1 | 壳用哪根串口？ | — | | （Duo 壳现接哪根 TTL） |
-| 2 | HCI 用哪根 UART？基址？ | H4 over UART | | HS-UART 基址？ |
-| 3 | 电源 / 复位 GPIO？ | — | `BT_REG_ON`=？ | 复位脚？ |
-| 4 | 固件文件与加载序？ | — | `.hcd` 路径；对表 `hci_bcm` 步骤列表 | `fmacfwbt_*.bin` 路径；btlpm 步骤 |
-| 5 | Reset 成功判据串口串？ | `HCI Reset ok` / CC `0x0C03` | 拟用字符串 | 拟用字符串 |
-| 6 | Ready 条件？ | Reset+BD_ADDR | 同形？ | 同形或正式 skip |
-| 7 | Init 时机？ | NUC bt-defer Reveal 后 | console：建议壳可调或启动末一次；**勿挡进壳** | 同左 |
-| 8 | 与 WiFi 冲突面？ | — | SDIO/电源/串口 | **禁止改 Wifi\***；coex 仅文档 |
-| 9 | 拟新建文件名（全称、≤300）？ | — | `Bluetooth/…` 列表 | `Bluetooth/…` 列表 |
-| 10 | 手测口令？ | — | CK / CH / 串口接 Pi | 拷 elf→boot；串口接 Duo |
+| 1 | 壳用哪根串口？ | — | **UART1 mini-UART** @`0x3F215000`，GPIO14/15 ALT5，115200（`BoardConfig.h:22-25`+`NOTES.md:8-9`+dts `stdout-path=serial1`） | （Duo 壳现接哪根 TTL） |
+| 2 | HCI 用哪根 UART？基址？ | H4 over UART | **PL011 UART0** @`0x3F201000`，**GPIO32 TXD0 / GPIO33 RXD0（ALT3）**；dts `&uart0 { pinctrl-0=<&uart0_gpio32 …> }` | HS-UART 基址？ |
+| 3 | 电源 / 复位 GPIO？ | — | **非 SoC GPIO**：`&bt { shutdown-gpios=<&expgpio 0 GPIO_ACTIVE_HIGH> }` → 由 VideoCore 固件驱动，内核勿拉 | 复位脚？ |
+| 4 | 固件文件与加载序？ | — | `Assets/Firmware/brcm/BCM43430A1.hcd`；`HalDriverFileRead`（`Include/Hal/HalDriverFile.h:16`）；序：Reset→逐块写→(2 Mbps)→Read_BD_ADDR→Write_Local_Name | `fmacfwbt_*.bin` 路径；btlpm 步骤 |
+| 5 | Reset 成功判据串口串？ | `HCI Reset ok` / CC `0x0C03` | `Boot: Bluetooth UART0 up` → `HCI Reset ok` → `HCI BD_ADDR=<非零>` → `Bluetooth ready` | 拟用字符串 |
+| 6 | Ready 条件？ | Reset+BD_ADDR | 同形：Reset 的 CC status=0 **且** Read_BD_ADDR 非零 | 同形或正式 skip |
+| 7 | Init 时机？ | NUC bt-defer Reveal 后 | console-only：**启动末一次**（或壳 `bt init` 显式触发），**不挡进壳** | 同左 |
+| 8 | 与 WiFi 冲突面？ | — | **无引脚冲突**：WiFi=SDHCI(GPIO34-39)、BT=UART0(GPIO32/33)，电源均归固件；禁止为试 BT 关 WiFi 时钟 | **禁止改 `Wifi*`**；coex 仅文档 |
+| 9 | 拟新建文件名（全称、≤300）？ | — | `Bluetooth/UartTransport.c`、`FirmwareLoad.c`、`HciCommand.c`、`BringUp.c` | `Bluetooth/…` 列表 |
+| 10 | 手测口令？ | — | 串口接 GPIO14/15 → 部署 Kernel.elf（CK/ksend）→ 冷启看四条串；壳 `bt` 出 MAC+名；回归壳串口可用 | 拷 elf→`boot`；串口接 Duo |
 
 **眼睛刀判据**：表无空结论（或 Duo 整列写「本刀未开」）；**无行为代码**（或仅 `BT: eyes ok` 日志）；评审能按表找到符号/基址引用。
 
@@ -244,7 +244,8 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | **做** | 精读 §2.1 / §5；填 §6 Pi 列；新建 **`Docs/26-PI-蓝牙UART与固件清单.md`**（壳 UART / HCI UART / `BT_REG_ON` / `.hcd` 落盘 / WiFi 并存） |
 | **判据** | Docs/26 有可勾表；§6 Pi 列无空；无 Ready 谎言 |
 | **禁止** | 改 `HalBluetooth.c` 声称 Ready；改 WiFi；改壳占口 |
-| **进度** | ⬜ |
+| **进度** | 🔧 **眼睛交付完成，待评审（2026-11-02 00:20）**<br>产出 `Docs/26-PI-蓝牙UART与固件清单.md`；§6 Pi 列已填满（10 行）。<br>**关键否证**：上游 dts 证明 BT 走 **UART0/PL011 @0x3F201000、GPIO32/33 ALT3**，壳走 **UART1 mini-UART GPIO14/15** ⇒ **两者不抢口**（推翻了"BT 与壳冲突"的旧假设）。`BT_REG_ON` 是 **VideoCore expgpio 0**，不是 SoC GPIO，内核勿拉。<br>**待确认（bt-pi-1 前逐条打勾）**：`.hcd` 是否入库（现仓内 `find` 无 `*.hcd`）、GPIO32/33 改 ALT3 后壳是否受影响、BT 是否已被固件上电（HCI Reset 有 CC 即已上电）。<br>**无行为代码**（未改 `HalBluetooth.c`，未碰 WiFi/壳串口）。<br>**交接**：新建文件与结论已写进 [`Archive/协作信箱/FROM-DS.md`](../Archive/协作信箱/FROM-DS.md)（Cursor 侧通道仍是 TO-DS.md）。 |
+| **评审** | ✅ **全绿**（2026-11-02 00:20 Cursor）。抽查：`BoardConfig.h` mini-UART/`0x3F215000` 对齐；`HalDriverFileRead`/`Assets/Firmware/brcm/` 约定对齐；上游 `bcm2837-rpi-3-b.dts` 确认 **uart0→GPIO32/33 + expgpio0=BT_ON**，与 Docs/26 一致——**同意「壳与 BT 不抢口」**。无行为代码、无假 Ready。§6 Duo 列仍是提示语，眼睛刀允许后置，不挡。小债：文内「眼睛刀判据」重复字已清；仓内尚无 `*.hcd`（不挡本刀）。**给 DS**：允许 **`TG`+`TS`**（Docs/26+Docs/24 进度/§6；勿塞无关）。再 **`JX bt-pi-1`**。**.hcd**：是，下一刀开工前把 `BCM43430A1.hcd` 放进 `Assets/Firmware/brcm/`（可从本机 `/lib/firmware/brcm/` 拷，勿用 A0）；四文件名按 Docs/26 §5。GPIO32/33/上电三项留在 pi-1 真机勾。 |
 
 ### bt-pi-1 · UART 字节通路 + HCI Reset
 

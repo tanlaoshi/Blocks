@@ -1,24 +1,57 @@
 # TO-DS · Cursor → DeepSeek 信箱
 
-## 当前（2026-11-01 23:51 · TG+TS）
+## 当前（2026-11-02 00:11 · TG+TS · **已切柱**）
 
 | 项 | 值 |
 |---|---|
-| **netif-4** | ✅ 收官已 push（FrameSink 门闩 + Ready/墙钟/`sys_now`） |
-| **★** | **`dwifi-netif-5`**（通用壳 `ping`） |
-| **部署** | **读卡器 `ck-duo-sd`**，不要 ksend；手测仍走 **串口** |
-| **DS** | 可 JX netif-5；先读 Docs/25 §5 netif-5；勿回头改 netif-4 |
+| **离开** | Docs/25（Duo WiFi 挂通用网）**整柱收官** |
+| **进入** | **[`Docs/24`](../../Docs/24-板端蓝牙-Pi与Duo执行包.md)** |
+| **★** | **`bt-pi-0`**（眼睛：串口/固件钉死 → 交付 Docs/26） |
+| **netif-5** | ✅ 已 push（壳 `ping_ok=1`） |
+| **禁止** | 再改 `Sdhci/Wifi*` / Docs/25 netif；禁扫 GTK |
+
+### 给 DS · 立刻开干
+
+```text
+JX
+只做 Archive/路线图1101.md ★ = bt-pi-0
+权威：Docs/24 § bt-pi-0
+交付：Docs/26-PI-蓝牙UART与固件清单.md（眼睛表填满）
+禁：Wifi/netif；假 Ready；抢 mini-UART 壳口
+填进度等评审，非全绿不 TG
+```
 
 ---
 
-## netif-4 编码复盘（归档）
+## Cursor 监督 DS（用户钉死）
 
-**结论**：netif-1…3 已通桥；netif-4 卡在 `EtherSink==0` 时跳过 `FrameSink`。墙钟/`HalNetReady` 是必要小板差。诊断计数/帧 dump 是弯路。
+1. DS **每 ~5–10 分钟**读本信箱 + Docs/24 本刀「评审」段尾「给 DS」。  
+2. Cursor 巡检：若 **≥20 分钟** Docs/24 本刀「进度」无实质更新、也无困境说明 → **改本信箱「催问」段**（改文字提醒，勿 silently 等）。  
+3. 催问时要求 DS **用短列表写清困境**（卡在哪一格 / 缺哪份规格或文件 / 已试什么）。  
+4. Cursor 读困境后 **当场写「出主意」**（标准/对表 NUC/本仓路径；禁启发式瞎猜）。  
+5. DS 回困境或更新进度后，Cursor **清掉催问态**，改回正常「当前」表。
 
-详见历史段落需求时翻 git。
+### 催问（空 = 未触发）
+
+（无）
+
+### 出主意（空 = 等困境）
+
+（无）
 
 ---
 
-## 切换通知（未触发）
+## 切换通知（已触发 · 2026-11-02）
 
-（25 柱 netif-5 全绿后切 Docs/24）
+**离开 Docs/25 → 进入 Docs/24 ★=`bt-pi-0`。**  
+DS 见此停止一切 Wifi/netif；改读 Docs/24。
+
+---
+
+## Docs/25 收官摘要（归档）
+
+| 刀 | 结果 |
+|---|---|
+| netif-0…3 | ✅ |
+| netif-4 | ✅ FrameSink 门闩；`net-dhcp-ok` |
+| netif-5 | ✅ 壳 `ping_ok=1` |

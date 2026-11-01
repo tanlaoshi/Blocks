@@ -129,29 +129,36 @@ static void CommandPing(int Argc, char **Argv) {
             gConsole.Write("lwip: init failed\n");
             return;
         }
-        if (LwIpPing(Ip, 3000) == 0) {
+        /* Docs/25 netif-5 / Pi 0x15e：稳定标签供串口 grep；超时对表 Pi 网关探针 4s */
+        if (LwIpPing(Ip, 4000) == 0) {
             gConsole.Write("reply from ");
             gConsole.Write(Argv[1]);
             gConsole.Write("\n");
+            gConsole.Write("ping_ok=1\n");
         } else {
             gConsole.Write("no reply\n");
+            gConsole.Write("ping_ok=0\n");
         }
         return;
     }
 #else
     {
-        int Rc = HalNetPing(Argv[1], 3000);
+        int Rc = HalNetPing(Argv[1], 4000);
 
         if (Rc == 0) {
             gConsole.Write("reply from ");
             gConsole.Write(Argv[1]);
             gConsole.Write("\n");
+            gConsole.Write("ping_ok=1\n");
         } else if (Rc == -1) {
             gConsole.Write("arp fail / bad host\n");
+            gConsole.Write("ping_ok=0\n");
         } else if (Rc == -2) {
             gConsole.Write("tx fail\n");
+            gConsole.Write("ping_ok=0\n");
         } else {
             gConsole.Write("no reply\n");
+            gConsole.Write("ping_ok=0\n");
         }
     }
 #endif

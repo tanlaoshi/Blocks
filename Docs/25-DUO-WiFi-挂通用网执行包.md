@@ -171,7 +171,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 ## 5 · 刀序详表
 
 > 协作：文首 ★ 是哪刀就只做哪刀。改序须在本节和 1101 同步注明。  
-> **当前 ★（2026-11-01 TG）**：netif-4 ✅ → 下一刀 **`dwifi-netif-5`**（通用 ping）。
+> **柱状态（2026-11-02 TG+TS）**：**收官**。netif-5 ✅；已切 [`Docs/24`](24-板端蓝牙-Pi与Duo执行包.md) ★=`bt-pi-0`。本包只读归档。
 
 ### dwifi-netif-0 · 眼睛清单 ✅
 
@@ -237,6 +237,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **判据** | 真机壳 ping 通；1101 netif-5 进度可贴串口原文 |
 | **对表** | Pi `0x15e` |
 | **依赖** | netif-4 |
+| **进度** | ✅ **收官（2026-11-02 00:08 Cursor JX+手测）**<br>改动：`Net.c` 壳 `ping` 打 **`ping_ok=1`/`0`**，超时 4s。<br>真机（读卡器刷卡后）：`bringup ok(4/4)` → `scan summary: 3 APs` → `handshake ok (ptk+gtk)` → `netif armed` → **`net-dhcp-ok dhcp_ip=192.168.31.186`** → **`reply from 192.168.31.1` / `ping_ok=1`**。 |
+| **评审** | ✅ **全绿**（2026-11-02 00:08）。判据齐；路径沿用 netif-4 Feed/`LwIpPing`，本刀只钉标签。**给 DS/用户**：可 **`TG`+`TS`**；25 柱收官后切 Docs/24（写 TO-DS）。禁扫 GTK。 |
 
 ### dwifi-netif-6 ·（可选）`wifi` 门面
 

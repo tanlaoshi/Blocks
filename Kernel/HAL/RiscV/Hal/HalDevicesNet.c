@@ -10,8 +10,13 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "LwIp.h"
-/* 板级 WiFi 网桥（武装/喂包）；只有 Duo 有实现，其它 RiscV 板落到弱默认 */
+/*
+ * WifiNetif.h 只在 milk-v-duo-s（BOARD_HAS_WIFI=1）板目录；CI 默认 BOARD=virt 没有该头。
+ * 调用点已用 BOARD_HAS_WIFI 包住，include 也必须同条件，否则 riscv virt Actions 必挂。
+ */
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
 #include "WifiNetif.h"
+#endif
 #if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif

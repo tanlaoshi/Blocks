@@ -21,7 +21,9 @@
 int NetSendFrame(const UINT8 *Frame, UINTN FrameLen);
 #else
 #include "Ethernet.h"
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
 #include "WifiNetif.h"
+#endif
 #endif
 
 extern void *memcpy(void *Dst, const void *Src, UINTN Len);

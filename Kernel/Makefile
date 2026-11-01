@@ -385,6 +385,9 @@ BRINGUP_INIT_OBJS := $(patsubst BringUp/Initialize/%.c,$(BUILDDIR)/BringUp/Initi
 # 驱动回调槽（非 Modules 表）
 HAL_SLOT_SRCS := $(wildcard HAL/Common/Slots/*.c)
 HAL_SLOT_OBJS := $(patsubst HAL/Common/Slots/%.c,$(BUILDDIR)/HAL/Common/Slots/%.o,$(HAL_SLOT_SRCS))
+# GPIO 契约的弱实现（没 GPIO 的板子落到这里）；有 GPIO 的板级强符号在 BOARD_SRCS 里
+GPIO_COMMON_SRCS := $(wildcard HAL/Common/Gpio/*.c)
+GPIO_COMMON_OBJS := $(patsubst HAL/Common/Gpio/%.c,$(BUILDDIR)/HAL/Common/Gpio/%.o,$(GPIO_COMMON_SRCS))
 SERVICES_SRCS := $(wildcard Services/*.c)
 # Services/*.c 不进子目录；每个模块开目录时补一行
 SERVICES_SRCS += $(wildcard Services/Look/Locale/*.c)
@@ -692,7 +695,7 @@ $(error Unknown FS: $(FS))
 endif
 FS_OBJS := $(patsubst %.c,$(BUILDDIR)/%.o,$(FS_SRCS))
 
-OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(WIFI_CRYPTO_OBJS) $(KSEND_OBJS) $(FREETYPE_OBJS)
+OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(SERVICES_OBJS) $(LIB_OBJS) $(FONT_OBJS) $(DRIVER_OBJS) $(ARCH_OBJS) $(ARCH_ASM_OBJS) $(EXTRA_OBJS) $(HAL_SLOT_OBJS) $(GPIO_COMMON_OBJS) $(SCHED_OBJS) $(MEMORY_OBJS) $(FS_OBJS) $(LWIPOBJS) $(LWIP_PORT_OBJS) $(WIFI_CRYPTO_OBJS) $(KSEND_OBJS) $(FREETYPE_OBJS)
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
@@ -830,6 +833,10 @@ $(BUILDDIR)/BringUp/Initialize/%.o: BringUp/Initialize/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 $(BUILDDIR)/HAL/Common/Slots/%.o: HAL/Common/Slots/%.c | $(BUILDDIR)
+	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
+
+# GPIO 弱实现（没 GPIO 的板子）；有 GPIO 的板级强符号走 BOARD 规则
+$(BUILDDIR)/HAL/Common/Gpio/%.o: HAL/Common/Gpio/%.c | $(BUILDDIR)
 	@mkdir -p $(dir $@) && $(CC) $(CFLAGS_COMMON) -c $< -o $@
 
 # 须先于通用 Services/%.o，保证 CFLAGS_FPU（x86 SSE / arm64 FP 岛）

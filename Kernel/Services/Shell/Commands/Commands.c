@@ -11,6 +11,8 @@
  * 弱引用保证 link 不炸）。
  */
 void ShellCommandsKsendRegister(void);
+/* GPIO 契约自检（板级实现在 HAL/<Arch>/Board/<board>/Gpio） */
+void ShellCommandsGpioRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -21,6 +23,7 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsWifiProbeRegister();
     /* Duo S：ksend —— 串口增量写 Kernel.elf（开发期免拔卡） */
     ShellCommandsKsendRegister();
+    ShellCommandsGpioRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -38,4 +41,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsAudioRegister();
     ShellCommandsThreadRegister();
     ShellCommandsKsendRegister();
+    ShellCommandsGpioRegister();
 }

@@ -58,3 +58,27 @@
 | OFFER | ❌ 无 |
 
 → **否证「组播 tid=非 QoS 即可让首帧 KeyID=gtk」**。固件仍先发 KeyID=0，再发 KeyID=gtk。默认 tid 已回滚。
+
+---
+
+## 1c · noptk=1（只装 GTK）（✅ 半证 + 否证「首帧=gtk」）
+
+**单变量**：跳过 `MM_KEY_ADD` PTK，只装 GTK（M4 仍在装钥前发出）。  
+假说：空口双发里 KeyID=0 依赖已装 PTK；无 PTK 则首帧应为 gtk keyid。
+
+| 探针 | `BLOCKS:probe.cfg` → `noptk=1` |
+|---|---|
+| 战场 | `WifiHandshakeInstall.c` / `WifiJoinProbe.c` |
+| 抓包 | NUC ≤12 s → `/tmp/duo-noptk-nuc.pcap`；立刻回 managed |
+
+| 步 | 真机（2026-11-01 17:47） |
+|---|---|
+| probe | ✅ `noptk=1`；`ptk install skipped`；**无** `key add: ptk` |
+| key add | ✅ 仅 `gtk sta=255 keyid=2 … cfm=0` |
+| 空口首帧组播 | ❌ **不是** KeyID=gtk：QoS 明文 `LLC/SNAP IPv4 DHCP Discover`（无 IV/KeyID） |
+| KeyID=0 | ✅ **消失**（无 PTK 则不再先发 KeyID=0） |
+| OFFER | ❌ 无（AP 对关联 STA 明文数据多半丢） |
+
+→ **证实**：空口 KeyID=0 路径依赖我们装过的 PTK。  
+→ **否证**：只装 GTK **不会**让组播首帧走 KeyID=gtk；固件改为发**明文** Discover。  
+→ GTK 作「默认组播钥」在仅装 GTK 时仍未接管加密 TX。下一刀勿再扫 noptk；查「有 PTK 时为何先 pairwise 再偶发 GTK」或厂商 default-key 绑定。

@@ -22,6 +22,7 @@
 #include "CString.h"
 
 extern UINT32 gAicGroupKeyBeforePairwise;
+extern UINT32 gAicSkipPairwiseKeyInstall;
 
 /* 现场默认：装完 PTK/GTK 再回 M4（与判据行的顺序一致）；1 = 先回 M4 再装（见文件头） */
 /*
@@ -184,11 +185,15 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
         } else if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
             return -1;
         }
-        if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
+        if (gAicSkipPairwiseKeyInstall != 0u) {
+            SdhciMark("WiFi: ptk install skipped (probe noptk=1; Docs/21 §1c)\n");
+        } else if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
             return -1;
         }
     } else {
-        if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
+        if (gAicSkipPairwiseKeyInstall != 0u) {
+            SdhciMark("WiFi: ptk install skipped (probe noptk=1; Docs/21 §1c)\n");
+        } else if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
             return -1;
         }
         if (gAicSkipGroupKeyInstall != 0u) {

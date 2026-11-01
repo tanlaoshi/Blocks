@@ -117,11 +117,12 @@ typedef struct {
  */
 #define AIC_JOIN_CTRL_PORT_EAPOL 0x8E88u /* 内存字节 = 88 8E = 网络序的 0x888E */
 /* 厂商默认值：listen_itv=0（rwnx_mod_params.c:59）、listen_bcmc=true ⇒ dont_wait_bcmc=!true=0
-   （rwnx_msg_tx.c:2426-2427）、uapsd_queues=IEEE80211_WMM_IE_STA_QOSINFO_AC_VO=1<<0
-   （rwnx_mod_params.c:66 + include/linux/ieee80211.h:281）。 */
+   （rwnx_msg_tx.c:2426-2427）、uapsd_queues 厂商默认 VO=1<<0（rwnx_mod_params.c:66）。
+   Docs/20 §1i：我们无 U-APSD trigger/PS-Poll；若仍广告 UAPSD，AP 可能把单播下行缓住
+   → 空口见「TX MIC 对、AP 不回」。本刀默认 0（不声明 U-APSD），证伪后再决定是否回 VO。 */
 #define AIC_JOIN_LISTEN_INTERVAL 0u
 #define AIC_JOIN_DONT_WAIT_BCMC 0u
-#define AIC_JOIN_UAPSD_QUEUES 1u
+#define AIC_JOIN_UAPSD_QUEUES 0u
 /*
  * RSN IE：WPA2-PSK + CCMP，22 B（802.11-2016 §9.4.2.24 的元素结构）。
  * 字段出处：
@@ -264,6 +265,8 @@ void AicJoinIndexesClear(void);
 /* 板级入口：Dry != 0 只拼包（不需要卡）；BssidText 可为 0（用扫描缓存里最强的那个）；
    Password 可为 0（只到控制端口为止，不给就继续做四次握手） */
 int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *Password);
+/* WifiJoinProbe.c：join 前 probe.cfg（m4install / gtkmode / portearly / nogtk） */
+void AicWifiJoinLoadProbe(void);
 /*
  * 控制端口（WifiControlPort.c）：sizeof/offsetof 自检 → 拼 2 B → 发 0x1404。
  * Open = AIC_CONTROL_PORT_OPEN/CLOSE；StaIndex 用 IND.ap_idx。

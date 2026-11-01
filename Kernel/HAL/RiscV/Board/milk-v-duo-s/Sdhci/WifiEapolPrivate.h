@@ -288,3 +288,5 @@ extern AIC_WIFI_ETHER_SINK gAicEapolEtherSink;
 void AicWifiSetMcastSta(UINT32 Value);
 void AicWifiSetMcastAc(UINT32 Value);
 void AicWifiSetMcastTid(UINT32 Value);
+/* probe.cfg hostid=1 → SDIO 风格 hostid=0x80000001（厂商 rwnx_tx.c） */
+void AicWifiSetHostIdMode(UINT32 Value);

@@ -55,6 +55,8 @@
 static UINT32 sAicMcastStaOverride = AIC_TX_MCAST_STA_AUTO;
 static UINT32 sAicMcastAcOverride = AIC_TX_MCAST_STA_AUTO;
 static UINT32 sAicMcastTidOverride = AIC_TX_MCAST_STA_AUTO;
+/* 0=hostid 保持 0；非 0=写 (1<<31)|1，对表厂商 SDIO txdesc */
+static UINT32 sAicHostIdMode;
 
 void AicWifiSetMcastAc(UINT32 Value) { sAicMcastAcOverride = Value; }
 void AicWifiSetMcastTid(UINT32 Value) { sAicMcastTidOverride = Value; }
@@ -64,7 +66,16 @@ void AicWifiSetMcastSta(UINT32 Value) {
     SdhciMarkHex("WiFi: probe: multicast staid -> ", Value, 2);
     SdhciMark("\n");
 }
+
+void AicWifiSetHostIdMode(UINT32 Value) {
+    sAicHostIdMode = Value;
+    SdhciMark("WiFi: probe: hostid mode=");
+    SdhciMarkDecimal("", sAicHostIdMode);
+    SdhciMark("\n");
+}
+#define AIC_TX_DESC_HOST_ID 4u
 #define AIC_TX_DESC_FLAGS 26u
+#define AIC_TX_HOST_ID_SDIO_STYLE 0x80000001u
 /*
  * hw queue 编号（rwnx_tx.h:19-22 RWNX_HWQ_BK/BE/VI/VO）。厂商把 txq->hwq->id 直接写进
  * host.ac（rwnx_tx.c:608 "use ac field for hw_txq"）；TID 0 映射到 BE
@@ -105,9 +116,18 @@ static void BuildHostDescriptor(UINT8 *Buffer, const UINT8 *Destination, const U
     AicPut16(Desc + AIC_TX_DESC_PACKET_LENGTH, (UINT16)PayloadLength);
     AicPut16(Desc + AIC_TX_DESC_FLAGS_EXT, 0u);
     /*
-     * hostid（u32）保持 0：厂商用它把 TX confirm 对回自己的 skb（rwnx_tx.c:1439），
-     * 本刀不等 confirm，调用方已经先把 txdesc 整段清过零。
+     * hostid：默认 0。probe hostid=1 时写厂商 SDIO 形 (1<<31)|idx（rwnx_tx.c:642），
+     * 证伪「hostid=0 导致固件丢加密数据帧」。
      */
+    if (sAicHostIdMode != 0u) {
+        Desc[AIC_TX_DESC_HOST_ID] = (UINT8)(AIC_TX_HOST_ID_SDIO_STYLE & 0xFFu);
+        Desc[AIC_TX_DESC_HOST_ID + 1u] =
+            (UINT8)((AIC_TX_HOST_ID_SDIO_STYLE >> 8) & 0xFFu);
+        Desc[AIC_TX_DESC_HOST_ID + 2u] =
+            (UINT8)((AIC_TX_HOST_ID_SDIO_STYLE >> 16) & 0xFFu);
+        Desc[AIC_TX_DESC_HOST_ID + 3u] =
+            (UINT8)((AIC_TX_HOST_ID_SDIO_STYLE >> 24) & 0xFFu);
+    }
     (void)memcpy(Desc + AIC_TX_DESC_ETH_DEST, Destination, WIFI_MAC_ADDRESS_LENGTH);
     (void)memcpy(Desc + AIC_TX_DESC_ETH_SRC, Source, WIFI_MAC_ADDRESS_LENGTH);
     Desc[AIC_TX_DESC_ETHERTYPE] = (UINT8)(EtherType >> 8);

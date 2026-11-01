@@ -21,6 +21,8 @@
 #include "WifiHandshakePrivate.h"
 #include "CString.h"
 
+extern UINT32 gAicGroupKeyBeforePairwise;
+
 /* 现场默认：装完 PTK/GTK 再回 M4（与判据行的顺序一致）；1 = 先回 M4 再装（见文件头） */
 /*
  * 真机判据把它翻成 1：装密钥后固件会把后续发出的帧加密，M4 若在装钥匙之后发就是密文，
@@ -164,36 +166,57 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
         }
         M4Sent = 1;
     }
-    if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
-        return -1;
-    }
-    /* PTK 已经在固件里：从这里起，固件能把发给我们的加密帧解开（decr != 0） */
-    gAicEapolKeysInstalled = 1u;
     memset(&Gtk, 0, sizeof(Gtk));
     GtkReady = (HandshakeGtkExtract(M3, Ptk, &Gtk) == 0) ? 1 : 0;
     if (GtkReady != 0) {
         sAicGtkCopy = Gtk;
         sAicGtkCopyValid = 1u;
     }
-    if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
-        return -1;
+    /*
+     * 默认：PTK → GTK（厂商 set_key 常见序）。gtkfirst=1：先 GTK 再 PTK ——
+     * 证伪「组播首帧 KeyID=0 是因为默认槽被 PTK 先占」（Docs/21 §1a）。
+     * 材料仍先派生 PTK 再解 GTK（KEK）；这里只换 MM_KEY_ADD 先后。
+     */
+    if (gAicGroupKeyBeforePairwise != 0u) {
+        SdhciMark("WiFi: key order: gtk then ptk (probe gtkfirst=1)\n");
+        if (gAicSkipGroupKeyInstall != 0u) {
+            SdhciMark("WiFi: gtk install skipped (probe nogtk=1; unicast ARP uses PTK only)\n");
+        } else if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
+            return -1;
+        }
+        if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
+            return -1;
+        }
+    } else {
+        if (AicKeyAddPairwise(Host, VifIndex, ApIndex, Ptk + WIFI_TK_OFFSET) != 0) {
+            return -1;
+        }
+        if (gAicSkipGroupKeyInstall != 0u) {
+            SdhciMark("WiFi: gtk install skipped (probe nogtk=1; unicast ARP uses PTK only)\n");
+        } else if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
+            return -1;
+        }
     }
+    /* 至少一把钥匙已在固件：从这里起盯解密帧（decr != 0） */
+    gAicEapolKeysInstalled = 1u;
     memset(&Gtk, 0, sizeof(Gtk));
     if (M4Sent == 0 && HandshakeSendM4(Host, Target, VifIndex, ApIndex) != 0) {
         return -1;
     }
-    if (GtkReady == 0) {
+    if (gAicSkipGroupKeyInstall == 0u && GtkReady == 0) {
         SdhciMark("WiFi: handshake: M4 is out, but the GTK is missing: group/broadcast frames"
                   " stay undecryptable (see the gtk: line above)\n");
         return -1;
     }
     /*
-     * 厂商在装完钥匙后**再发一次** ME_SET_CONTROL_PORT（rwnx_main.c:4606-4610 的 AUTHORIZED 分支）。
-     * 之前我们只在握手前开过；真机现象是 DHCP DISCOVER 发得出去却永远没有 OFFER，
-     * 与"受控口未随授权状态重新打开、数据帧被固件拦下"相符。这一发失败不判死。
+     * 厂商：装钥后 change_station(AUTHORIZED) → ME_SET_CONTROL_PORT(open=1)。
+     * 默认 portearly=0 时这是**第一次**开；portearly=1 时是重开。失败不判死。
+     * noauthz=1：跳过，证伪 AUTHORIZED 是否反而弄坏数据面。
      */
-    if (AicControlPortSend(Host, ApIndex) == 0) {
-        SdhciMark("WiFi: control port reopened after keys (vendor order: add_key -> set_control_port)\n");
+    if (gAicSkipAuthorizedAfterKeys != 0u) {
+        SdhciMark("WiFi: AUTHORIZED skipped (probe noauthz=1)\n");
+    } else if (AicControlPortSend(Host, ApIndex) == 0) {
+        SdhciMark("WiFi: control port AUTHORIZED after keys (vendor: add_key -> set_control_port)\n");
     }
     return 0;
 }

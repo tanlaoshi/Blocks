@@ -62,7 +62,9 @@ static UINT8 HandshakeKeyVersion(UINT16 KeyInformation) {
  * 收工：摘钩子 + 把 M1/M3/ANonce/PTK/KCK 这些"用完就不该留在 RAM 里"的东西清零。
  * sAicStaAddress 例外（见上面的定义）：它不是密钥材料，是 DHCP/ARP 要用的本机地址。
  */
-static void HandshakeStop(void) {
+static void HandshakeKeySink(const UINT8 *Body, UINT32 Length, const UINT8 *Station);
+
+void AicHandshakeSessionStop(void) {
     AicEapolSetKeySink(0);
     sAicStage = AIC_HANDSHAKE_STAGE_IDLE;
     sAicM1Captured = 0u;
@@ -75,12 +77,11 @@ static void HandshakeStop(void) {
     sAicKeyVersion = 0u;
 }
 
-/*
- * 开控制端口那一段的退出判据：0x1405 到了就停（M1 是否顺带收到由 sAicM1Captured 记着，
- * 不在这个判据里 —— 收不到 CFM 才是硬失败）。
- */
-static int HandshakeControlPortDone(void) {
-    return (int)gAicEapolControlPortCfm;
+void AicHandshakeArmForM1(void) {
+    memset(&sAicM1, 0, sizeof(sAicM1));
+    sAicM1Captured = 0u;
+    sAicStage = AIC_HANDSHAKE_STAGE_M1;
+    AicEapolSetKeySink(HandshakeKeySink);
 }
 
 /* 轮询的提前退出判据：这一阶段要的东西到手就停，不等满预算 */
@@ -211,8 +212,8 @@ int AicHandshakeReceiveM1(SDHCI_HOST *Host) {
         SdhciMark("WiFi: handshake FAILED at M1: no EAPOL-Key M1 in ");
         SdhciMarkDecimal("", AIC_HANDSHAKE_M1_MS);
         SdhciMark("ms\n");
-        SdhciMark("WiFi: (control port is open, so either the AP never sent M1 or it is not"
-                  " WPA2-PSK; a beacon-only stream means the control port did not open)\n");
+        SdhciMark("WiFi: (M1 missing: AP silent, not WPA2-PSK, or CONTROL_PORT_HOST/join flags;"
+                  " early ME_SET_CONTROL_PORT is not required for M1 — see WifiControlPort.c)\n");
         return -1;
     }
     return 0;
@@ -251,58 +252,15 @@ const UINT8 *AicHandshakeStationAddress(void) {
     return sAicStaAddressValid != 0u ? sAicStaAddress : 0;
 }
 
+const AIC_HANDSHAKE_M1 *AicHandshakeM1(void) {
+    return &sAicM1;
+}
+
 const AIC_HANDSHAKE_M3 *AicHandshakeM3(void) {
     return &sAicM3;
 }
 
-/* 派生 → 组帧 → 发。任何一步失败都只打一行"卡在哪"，不伪造成功 */
-static int HandshakeSendM2(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
-                           UINT8 VifIndex, UINT8 ApIndex) {
-    UINT8 Pmk[WIFI_PMK_LENGTH];
-    UINT8 Snonce[WIFI_NONCE_LENGTH];
-    UINT8 Ptk[WIFI_PTK_LENGTH];
-    UINT8 Mic[WIFI_EAPOL_MIC_LENGTH];
-    UINT8 Frame[AIC_HANDSHAKE_EAPOL_MAX];
-    UINT32 Length = 0;
-    int Status;
-
-    Status = AicHandshakeDerive(Target, Password, &sAicM1, Pmk, Snonce, Ptk);
-    if (Status == 0) {
-        /* PTK 的前 16 B 就是 KCK（WifiCrypto/WifiPrf.h 的布局：KCK|KEK|TK） */
-        AicHandshakeRememberKck(Ptk, sAicM1.KeyVersion);
-        AicHandshakeRememberPtk(Ptk);
-        Length = AicHandshakeM2Build(Frame, &sAicM1, Snonce, Ptk, Mic);
-        SdhciMark("WiFi: eapol tx m2 len=");
-        SdhciMarkDecimal("", Length);
-        SdhciMark(" replay=");
-        AicEapolMarkBytes("", sAicM1.Replay, AIC_EAPOL_REPLAY_LENGTH);
-        SdhciMark(" mic=");
-        AicEapolMarkBytes("", Mic, WIFI_EAPOL_MIC_LENGTH);
-        SdhciMark("\n");
-        Status = AicEapolSend(Host, Frame, Length, Target->Bssid, sAicM1.Station, VifIndex,
-                              ApIndex);
-    }
-    if (Status != 0 && Length != 0u) {
-        /* 发不出去时把帧原样打出来：这段二进制的对拍对象是空口，不是我们的日志 */
-        SdhciMark("WiFi: eapol tx m2 hex[");
-        SdhciMarkDecimal("", Length);
-        SdhciMark("]");
-        AicEapolMarkBytes(" ", Frame, Length);
-        SdhciMark("\n");
-        SdhciMark("WiFi: handshake FAILED at M2 tx: data TX refused (see the tx line above)\n");
-        SdhciMark("WiFi: next = compare txdesc bytes with vendor rwnx_tx.c:1497-1530 +"
-                  " aicwf_sdio.c:1530-1550 (ethtype byte order, staid/vif_idx, hwq);"
-                  " then check whether the firmware wants hostid != 0 for a tx confirm\n");
-    }
-    /* 无论成功失败都把密钥材料清掉（PBKDF2 的 PMK、PTK、SNonce、M2 都在这些栈缓冲里） */
-    memset(Pmk, 0, sizeof(Pmk));
-    memset(Ptk, 0, sizeof(Ptk));
-    memset(Snonce, 0, sizeof(Snonce));
-    memset(Frame, 0, sizeof(Frame));
-    return Status;
-}
-
-static int HandshakeWaitM3(SDHCI_HOST *Host) {
+int AicHandshakeWaitM3(SDHCI_HOST *Host) {
     AIC_EAPOL_COUNTERS Counters;
 
     sAicM3Ok = 0u;
@@ -324,92 +282,4 @@ static int HandshakeWaitM3(SDHCI_HOST *Host) {
         return -1;
     }
     return 0;
-}
-
-/*
- * 开控制端口并等 CFM(0x1405)，**同时**收数据帧：端口一开固件可能先吐排队已久的 M1、
- * 后写 CFM，两条都在同一条 SDIO FIFO 上。用同一条轮询把它们一起收，才不会把 M1
- * 当成"陌生配置帧"丢掉（早先想用 AicRecvMessageTimeout 单独等 CFM，那会把中间的
- * 数据帧直接判死）。
- */
-static int HandshakeOpenControlPort(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 ApIndex) {
-    AIC_EAPOL_COUNTERS Counters;
-
-    if (AicControlPortSend(Host, ApIndex) != 0) {
-        return -1;
-    }
-    gAicEapolControlPortCfm = 0u;
-    memset(&sAicM1, 0, sizeof(sAicM1));
-    sAicM1Captured = 0u;
-    sAicStage = AIC_HANDSHAKE_STAGE_M1;
-    AicEapolSetKeySink(HandshakeKeySink);
-    memset(&Counters, 0, sizeof(Counters));
-    if (AicEapolPollRun(Host, AIC_HANDSHAKE_CONTROL_PORT_MS, &Counters,
-                        HandshakeControlPortDone) != 0) {
-        SdhciMark("WiFi: handshake FAILED at control port: SDIO read failed\n");
-        return -1;
-    }
-    if (gAicEapolControlPortCfm == 0u) {
-        SdhciMark("WiFi: handshake FAILED at control port: no ME_SET_CONTROL_PORT_CFM(0x1405)"
-                  " in ");
-        SdhciMarkDecimal("", AIC_HANDSHAKE_CONTROL_PORT_MS);
-        SdhciMark("ms (firmware did not accept the control port request;"
-                  " check sta_idx/ap_idx and the join flags)\n");
-        return -1;
-    }
-    SdhciMark("WiFi: control port open (vif=");
-    SdhciMarkDecimal("", VifIndex);
-    SdhciMark(" ap=");
-    SdhciMarkDecimal("", ApIndex);
-    SdhciMark(")\n");
-    return 0;
-}
-
-/* 密码给了才走这里：M1 → PTK/M2 → M3 → 装 PTK/GTK → M4 → 看数据帧 */
-static int HandshakeRunKeyed(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
-                             UINT8 VifIndex, UINT8 ApIndex) {
-    if (AicHandshakeReceiveM1(Host) != 0) {
-        return -1;
-    }
-    if (HandshakeSendM2(Host, Target, Password, VifIndex, ApIndex) != 0) {
-        return -1;
-    }
-    if (HandshakeWaitM3(Host) != 0) {
-        return -1;
-    }
-    /*
-     * M3 的 MIC 已过：摘掉 sink。装钥匙期间 AP 可能重传 M3（它还没收到 M4），
-     * 那些重传照旧由 WifiEapolKey.c 打印，但不该再改写上面留下的 M3 状态。
-     */
-    AicEapolSetKeySink(0);
-    if (AicHandshakeInstallKeys(Host, Target, VifIndex, ApIndex) != 0) {
-        return -1;
-    }
-    SdhciMark("WiFi: eapol handshake ok (keys installed: ptk+gtk)\n");
-    AicHandshakeWatchData(Host);
-    return 0;
-}
-
-int AicWifiHandshakeRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
-                        UINT8 VifIndex, UINT8 ApIndex) {
-    int Status;
-
-    if (AicEapolLayoutCheck() != 0) {
-        return -1;
-    }
-    /* 新一轮 join：钥匙这件事从"未知"重新算（上一轮装过与否不该影响本轮文案） */
-    gAicEapolKeysInstalled = 0u;
-    if (HandshakeOpenControlPort(Host, VifIndex, ApIndex) != 0) {
-        HandshakeStop();
-        return -1;
-    }
-    if (Password == 0 || Password[0] == 0) {
-        HandshakeStop();
-        SdhciMark("WiFi: join: no password, stop at control port"
-                  " (add the password to run the 4-way handshake)\n");
-        return 0;
-    }
-    Status = HandshakeRunKeyed(Host, Target, Password, VifIndex, ApIndex);
-    HandshakeStop();
-    return Status;
 }

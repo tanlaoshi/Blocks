@@ -1,12 +1,12 @@
 /*
- * WifiBringup.c — 让固件"能配置无线电"：ME_CONFIG → ME_CHAN_CONFIG → MM_START
+ * WifiBringup.c — 让固件"能配置无线电"：ME_CONFIG → CHAN → MM_START → coex
+ *                 →（D80）txpwr_lvl_v3；默认不发 MM_SET_RF_CALIB（Docs/20 §1e）
  *
- * 用户眼里：`wififw bringup` 一条命令把三步发完，每步各自等 CFM，任一步失败就停。
+ * 用户眼里：`wififw bringup` 一条命令把步骤发完，每步各自等 CFM，任一步失败就停。
  * 从哪读：BringupRun（三步循环）/ BringupDry（只拼包打印）/ SdhciWifiBringup（入口）。
- * 别改：顺序是硬契约 —— MM_START 之前必须有 ME_CONFIG + ME_CHAN_CONFIG，否则固件没有
- *       信道表（Archive/Duo-WiFi-MM-START调研.md §3）。本文件只发消息，不写内存、
- *       不动 patch 状态、不碰下载流程。
- * 结构体与取值来源见 WifiConfigMessage.c。
+ * 别改：ME 三步顺序 —— MM_START 之前必须有 ME_CONFIG + ME_CHAN_CONFIG。
+ * D80 RF：厂商 probe 为 rf_init→RESET→ME；本仓真机 RF_CALIB 无 CFM（§1b–1d），
+ *       且无 CFM 会卡 MM。§1e：默认只发 txpwr，**不发** RF_CALIB（一次一变量）。
  */
 #include "WifiPrivate.h"
 
@@ -154,6 +154,19 @@ static int BringupRun(SDHCI_HOST *Host) {
             return -1;
         }
     }
+    /*
+     * D80 RF §1e：只发 txpwr（有 CFM）。默认不发 RF_CALIB——无 CFM 的 0x69
+     * 曾卡 MM（§1c/1d）；本刀证伪「永不发 0x69 能否让单播通」。
+     */
+    if (AicWifiTransmitPowerLevelSend(Host) != 0) {
+        SdhciMark("WiFi: bringup: transmit power level skipped/failed (me/mm already ok; see line above)\n");
+    }
+    SdhciMark("WiFi: bringup: rf calibrate NOT sent (Docs/20 §1e nocalib default)\n");
+    /*
+     * Docs/20 §1f：对表厂商在 ADD_IF 前取 efuse MAC。失败则保留默认 02:..:01。
+     * 须在首次 MM_ADD_IF（scan/join）之前；本 bringup 末尾正是那个点。
+     */
+    (void)AicStationAddressLoadFromFirmware(Host);
     SdhciMark("WiFi: bringup ok (");
     SdhciMarkDecimal("", AIC_BRINGUP_STEP_COUNT);
     SdhciMark("/");

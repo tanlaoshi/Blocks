@@ -67,7 +67,10 @@ int AicControlPortLayoutCheck(void) {
     return 0;
 }
 
-/* sta_idx = 固件给这个 AP 分配的索引（SM_CONNECT_IND.ap_idx），open = 1 表示 EAPOL 归主机 */
+/*
+ * open=1 = 802.1X 端口 AUTHORIZED（厂商 change_station 装钥后才置），
+ * 不是 CONTROL_PORT_HOST（那是 join flags，管 EAPOL 是否上主机）。
+ */
 UINT32 AicControlPortBuild(UINT8 *Buffer, UINT8 StaIndex, UINT8 Open) {
     AIC_ME_CONTROL_PORT *Request = (AIC_ME_CONTROL_PORT *)Buffer;
 

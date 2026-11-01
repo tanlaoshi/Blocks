@@ -23,7 +23,7 @@
 |---|---|
 | 默认组播 staid | `ApIndex`（`probe.cfg` `mcast=` 可覆盖） |
 | GTK **厂商**默认钥 | `sta=0xFF` `pairwise=0` `cipher=TKIP` `key_idx`←KDE（`rwnx_send_key_add`） |
-| GTK **代码 mode 0**（`WifiKeyAdd.c`） | 覆盖成 `sta=0` `pairwise=1`（注释写「当 sta 钥装」）；成功行仍常印 `sta=255` → **以 payload dump / 实参为准** |
+| GTK **mode0（data-ptk 后）** | 厂商默认 `sta=0xFF` `pairwise=0`；旧盖槽实验改 `gtkmode=6`；成功行打实参 |
 | 组播 DHCP 空口 | **KeyID=0**（PTK）→ AP 丢；Linux 对照 **KeyID=2** |
 | `mcast=32` 等 | 固件常 **不发** |
 | 串口眼睛 | `WiFi: data tx: … vif=.. staid=.. ac=.. tid=.. mcast=0|1` |

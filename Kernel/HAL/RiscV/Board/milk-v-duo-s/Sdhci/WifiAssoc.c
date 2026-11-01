@@ -1,22 +1,9 @@
 /*
- * WifiAssoc.c — `wififw join`：SM_CONNECT_REQ(0x1800) → 等 CFM(0x1801) → 等 IND(0x1802)
- *
- * 用户眼里：一条命令把"发起关联"这件事做完 —— 从扫描缓存里挑目标、用扫描时建的 vif
- *           发一条 SM_CONNECT_REQ，先看固件受不受理（CFM），再看空口成没成（IND）；
- *           给了密码就连着把控制端口与四次握手走完（JoinAfterAssoc）。
- * 从哪读：JoinRun（真发）/ JoinDry（只拼包）/ JoinAfterAssoc（关联之后那段）/ SdhciWifiJoin。
- * 别改：**关联是 LMAC 干的**，主机不发 auth/assoc 帧，只填一条消息（见调研文档 §1）。
- *       CFM 的 status 只代表"受理"，IND 的 status_code 才代表"关联结果"。本文件不写
- *       内存、不动 patch 状态、不碰 bringup/scan 的缓存。
- *
- * 本刀（PR-34）：IND 成功之后接 ME_SET_CONTROL_PORT_REQ(0x1404) 与四次握手；
- *       收/发 EAPOL 都不在本文件（收在 WifiEapol.c，发在 WifiEapolTx.c，顺序在
- *       WifiHandshake.c）。**装钥匙（MM_KEY_ADD_REQ 0x0024）仍不在本刀**，
- *       字段表见调研文档 §5，sta_idx 已由 AicJoinLastIndexes 留下。
+ * WifiAssoc.c — `wififw join`：SM_CONNECT → CFM → IND，再控制口 + 握手。
+ * 关联由 LMAC 做；probe.cfg 见 WifiJoinProbe.c；装钥见 WifiKeyAdd*.c。
  */
 #include "WifiAssocPrivate.h"
 #include "WifiHandshakePrivate.h"
-#include "FileSystem.h"
 #include "CString.h"
 
 /* 320 B 参数 + 1600 B 整帧；UINT32 数组保证 4 B 对齐（镜像里有 UINT32 成员） */
@@ -97,13 +84,11 @@ static int JoinWaitInd(SDHCI_HOST *Host) {
     }
     Ind = (const AIC_SM_CONNECT_INDICATION *)((const UINT8 *)sAicJoinFrame + AIC_E2A_PARAM_OFF);
     /*
-     * 抢开控制端口（PR-35）：AP 的 EAPOL M1 在关联完成的一瞬间就到，而 AicJoinHandleInd
-     * 要打三四行串口（115200 下每行 5~10 ms），等它打完再开端口，M1 已在端口关着时
-     * 被固件丢掉——真机现象是"只收到 beacon，收不到 M1"。
-     * 所以：IND 一到、把 ap_idx 取出来就立刻发 0x1404，**打印全部推迟到之后**。
-     * 关联失败（status != 0）就不开，避免对不存在的 sta 发消息。
+     * 旧早开（portearly=1）：IND 立刻发 0x1404，避免打印期间丢 M1（PR-35 经验）。
+     * 默认 0：对表厂商 AUTHORIZED——装钥后再开；M1 靠 join flags CONTROL_PORT_HOST。
      */
-    if (ParamLength >= (UINT32)sizeof(AIC_SM_CONNECT_INDICATION) && Ind->StatusCode == 0u) {
+    if (gAicControlPortEarlyOpen != 0u &&
+        ParamLength >= (UINT32)sizeof(AIC_SM_CONNECT_INDICATION) && Ind->StatusCode == 0u) {
         (void)AicControlPortSend(Host, Ind->ApIndex);
     }
     return AicJoinHandleInd((const UINT8 *)sAicJoinFrame + AIC_E2A_PARAM_OFF, ParamLength);
@@ -150,34 +135,6 @@ static int JoinCancelScan(SDHCI_HOST *Host) {
 }
 
 
-/*
- * join 前读 BLOCKS:probe.cfg 的探针开关（只认 m4install=0/1）。
- * 目的：M4 的 install 位是"AP 会不会拒收"的可疑点，做成改文件就换，不用重刷。
- */
-extern UINT32 gAicM4InstallBit;
-
-static void JoinLoadProbe(void) {
-    char Text[64];
-    UINTN Got = 0;
-    int i;
-
-    if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 || Got == 0u) {
-        return;
-    }
-    Text[Got] = 0;
-    for (i = 0; (UINTN)i + 10u < Got; i++) {
-        if (Text[i] == 'm' && Text[i + 1] == '4' && Text[i + 2] == 'i' && Text[i + 3] == 'n' &&
-            Text[i + 4] == 's' && Text[i + 5] == 't' && Text[i + 6] == 'a' && Text[i + 7] == 'l' &&
-            Text[i + 8] == 'l' && Text[i + 9] == '=') {
-            gAicM4InstallBit = (Text[i + 10] == '0') ? 0u : 1u;
-            SdhciMark("WiFi: probe: m4 install bit=");
-            SdhciMarkDecimal("", gAicM4InstallBit);
-            SdhciMark("\n");
-            return;
-        }
-    }
-}
-
 static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password) {
     UINT8 VifIndex = 0;
     UINT32 Length;
@@ -185,7 +142,7 @@ static int JoinRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Pass
     if (AicJoinLayoutCheck() != 0) {
         return -1;
     }
-    JoinLoadProbe();
+    AicWifiJoinLoadProbe();
     if (AicScanVifEnsure(Host, &VifIndex) != 0) {
         SdhciMark("WiFi: join FAILED at step 0/2: no vif (MM_ADD_IF failed)\n");
         return -1;

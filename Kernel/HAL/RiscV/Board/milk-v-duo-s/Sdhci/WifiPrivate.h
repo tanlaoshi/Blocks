@@ -24,6 +24,8 @@
 #define AIC_MM_GET_MAC_ADDR_REQ 0x0073u
 #define AIC_MM_GET_MAC_ADDR_CFM 0x0074u
 #define AIC_MM_GET_MAC_ADDR_LENGTH 6u
+/* WifiStationAddress.c：bringup 后把 efuse MAC 写入 ADD_IF 用的本机地址 */
+int AicStationAddressLoadFromFirmware(SDHCI_HOST *Host);
 /*
  * 厂商 rwnx_main.c:6947-6959：固件下载完之后发的**第一条**消息（早于 MM_RESET）。
  * 语义"host stack started"；aicbsp 发 0、FDRV 发 1。D80 走 else 分支：
@@ -66,6 +68,12 @@
 #define AIC_TASK_ME 5u
 #define AIC_MM_START_REQ 0x0002u
 #define AIC_MM_START_CFM 0x0003u
+/* mm_msg_tag：MM_SET_RF_CALIB_REQ/CFM（lmac_msg.h 枚举 index 105/106） */
+#define AIC_MM_SET_RF_CALIBRATE_REQUEST 0x0069u
+#define AIC_MM_SET_RF_CALIBRATE_CONFIRM 0x006Au
+/* mm_msg_tag：MM_SET_TXPWR_IDX_LVL_REQ/CFM（index 119/120） */
+#define AIC_MM_SET_TRANSMIT_POWER_LEVEL_REQUEST 0x0077u
+#define AIC_MM_SET_TRANSMIT_POWER_LEVEL_CONFIRM 0x0078u
 #define AIC_ME_CONFIG_REQ 0x1400u
 #define AIC_ME_CONFIG_CFM 0x1401u
 #define AIC_ME_CHAN_CONFIG_REQ 0x1402u
@@ -330,6 +338,10 @@ int AicBringupLayoutCheck(void);
 UINT32 AicChanConfigBuild(UINT8 *Buffer);
 UINT32 AicMeConfigBuild(UINT8 *Buffer);
 UINT32 AicMmStartBuild(UINT8 *Buffer);
+/* WifiTransmitPowerLevel.c：D80 MM_SET_TXPWR_IDX_LVL（aicwf_set_rf_config_8800d80 首步） */
+int AicWifiTransmitPowerLevelSend(SDHCI_HOST *Host);
+/* WifiRfCalibrate.c：D80 MM_SET_RF_CALIB（厂商 aicwf_set_rf_config_8800d80 末步） */
+int AicWifiRfCalibrate(SDHCI_HOST *Host);
 UINT32 AicCoexBuild(UINT8 *Buffer);
 void AicDumpBytes(const UINT8 *Data, UINT32 Length);
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What);

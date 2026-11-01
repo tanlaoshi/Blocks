@@ -272,4 +272,10 @@ int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
                          const UINT8 *GatewayIp, UINT8 VifIndex, UINT8 ApIndex, UINT8 *OutMac,
                          UINT32 BudgetMilliseconds);
 
+/* ---- WifiIcmpEcho.c：单播 ICMP Echo（DA=BSSID，Docs/20 §1g） ---- */
+void AicIcmpHandlePacket(const UINT8 *Payload, UINT32 Length, UINT32 Decryption);
+int AicIcmpEchoUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
+                       const UINT8 *TargetIp, const UINT8 *DestinationMac, UINT8 VifIndex,
+                       UINT8 ApIndex, UINT32 BudgetMilliseconds);
+
 #endif

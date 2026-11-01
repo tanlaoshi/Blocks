@@ -236,6 +236,7 @@ static void NetEtherSink(UINT16 EtherType, const UINT8 *Payload, UINT32 Length,
                          UINT32 Decryption) {
     if (EtherType == AIC_NET_ETHERTYPE_IPV4) {
         AicDhcpHandlePacket(Payload, Length, Decryption);
+        AicIcmpHandlePacket(Payload, Length, Decryption);
         return;
     }
     if (EtherType == AIC_NET_ETHERTYPE_ARP) {

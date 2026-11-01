@@ -118,10 +118,18 @@ typedef struct {
     UINT8 KeyVersion;                      /* KeyInformation & 7，非 3 时按 2 走 */
 } AIC_HANDSHAKE_M3;
 
-/* ---- WifiHandshake.c：顺序编排 ---- */
+/* ---- WifiHandshake.c：M1/M2/M3 状态与收发 ---- */
+/* 挂 M1 sink、清捕获位（装钥前开控制口 / 默认 deferred 共用） */
+void AicHandshakeArmForM1(void);
+/* 摘 sink + 清密钥材料（STA MAC 例外，见 WifiHandshake.c） */
+void AicHandshakeSessionStop(void);
 /* 收 M1（内部用 EAPOL 轮询；武装之后 AP 的 M1 一到就停）。收下的东西留在模块内，
-   由 HandshakeSendM2 直接读（ANonce/STA MAC/重放计数都只在这一处，不复制第二份）。0 = 收齐 */
+   由 AicHandshakeSendM2 直接读（ANonce/STA MAC/重放计数都只在这一处，不复制第二份）。0 = 收齐 */
 int AicHandshakeReceiveM1(SDHCI_HOST *Host);
+int AicHandshakeSendM2(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,
+                       UINT8 VifIndex, UINT8 ApIndex);
+int AicHandshakeWaitM3(SDHCI_HOST *Host);
+/* ---- WifiHandshakeRun.c：控制口时机 + 整段编排 ---- */
 /* KCK 暂存（M3 验 MIC 要用；用完/失败都清零） */
 void AicHandshakeRememberKck(const UINT8 *Kck, UINT8 KeyVersion);
 /* PTK 暂存（M4 之后才装钥匙：TK 给 PTK、KEK 解 GTK；HandshakeStop 清零） */
@@ -134,6 +142,7 @@ const UINT8 *AicHandshakeStation(void);
 /* 关联期间的空口 STA MAC（M1 的 addr1）；HandshakeStop 之后仍有效，没握过手返回 0。
    DHCP 的 chaddr/源 MAC 与 ARP 的 sha 用它（PR-36） */
 const UINT8 *AicHandshakeStationAddress(void);
+const AIC_HANDSHAKE_M1 *AicHandshakeM1(void);
 const AIC_HANDSHAKE_M3 *AicHandshakeM3(void);
 
 /* ---- WifiHandshakeKey.c：PMK / SNonce / PTK / M2 / MIC ---- */
@@ -241,6 +250,15 @@ int AicKeyAddPairwise(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex, const UI
 /* GTK：sta_idx = 0xFF、key_idx = KeyID、cipher = TKIP、key/长度按 KDE、pairwise = 0。
    打印 `key add: gtk sta=255 keyid=… cipher=tkip(1) rc=… cfm=…` */
 int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk);
+/* WifiKeyAdd.c：GTK 装法探针（probe.cfg gtkmode=；0=厂商默认钥） */
+extern UINT32 gAicGtkProbeMode;
+/* 0=装钥后才开控制口（厂商 AUTHORIZED）；1=旧早开（probe.cfg portearly=1） */
+extern UINT32 gAicControlPortEarlyOpen;
+/* 1=跳过 GTK 装钥（probe.cfg nogtk=1） */
+extern UINT32 gAicSkipGroupKeyInstall;
+/* 1=跳过装钥后 AUTHORIZED（probe.cfg noauthz=1） */
+extern UINT32 gAicSkipAuthorizedAfterKeys;
+extern UINT32 gAicGroupKeyBeforePairwise; /* probe gtkfirst=1；Docs/21 §1a */
 
 /* ---- WifiHandshakeInstall.c：装钥匙 → 发 M4 → 看数据帧 ---- */
 /*

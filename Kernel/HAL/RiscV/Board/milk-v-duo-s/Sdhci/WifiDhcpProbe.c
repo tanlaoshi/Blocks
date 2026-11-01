@@ -5,7 +5,9 @@
  *   mcast=<n>  覆盖组播 hostdesc.staid（-1 = ap_idx）
  *   ac=<n> / tid=<n>  覆盖组播 ac/tid
  *   arpuni=1   单播 ARP 证伪（Docs/19 → unicast-data-ok|fail）
+ *   icmpuni=1  单播 ICMP Echo（DA=BSSID，Docs/20 §1g → unicast-icmp-ok|fail）
  *   start=1    EAPOL-Start 探针
+ *   hostid=1   TX hostdesc hostid = 0x80000001（厂商 SDIO 形）
  */
 #include "WifiNetPrivate.h"
 #include "FileSystem.h"
@@ -100,12 +102,31 @@ static void DhcpProbeArpUnicast(void) {
                                ApIndex, Mac, 2000u);
 }
 
+/* 单播 ICMP Echo 问 AP（DA=BSSID，绕过 ARP）；收口标签见 Docs/20 §1g */
+static void DhcpProbeIcmpUnicast(void) {
+    UINT8 Station[AIC_NET_MAC_LENGTH];
+    UINT8 Bssid[AIC_NET_MAC_LENGTH];
+    UINT8 VifIndex = 0;
+    UINT8 ApIndex = 0;
+    static const UINT8 StationIp[4] = {192u, 168u, 31u, 250u};
+    static const UINT8 TargetIp[4] = {192u, 168u, 31u, 1u};
+
+    if (AicJoinBssid(Bssid) != 0 || AicNetStationAddress(Station) != 0) {
+        SdhciMark("WiFi: icmp uni: no BSSID (join first)\n");
+        return;
+    }
+    AicJoinLastIndexes(&VifIndex, &ApIndex);
+    (void)AicIcmpEchoUnicast(SdhciHostAt(1), Station, StationIp, TargetIp, Bssid, VifIndex,
+                             ApIndex, 2000u);
+}
+
 void AicWifiDhcpLoadProbe(void) {
     char Text[128];
     UINTN Got = 0;
     UINTN Offset;
     int Value = 0;
     int RunArpUnicast = 0;
+    int RunIcmpUnicast = 0;
     int RunEapolStart = 0;
 
     if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 ||
@@ -129,12 +150,22 @@ void AicWifiDhcpLoadProbe(void) {
         if (ProbeMatch(Text, Got, Offset, "arpuni=1")) {
             RunArpUnicast = 1;
         }
+        if (ProbeMatch(Text, Got, Offset, "icmpuni=1")) {
+            RunIcmpUnicast = 1;
+        }
         if (ProbeMatch(Text, Got, Offset, "start=1")) {
             RunEapolStart = 1;
+        }
+        if (ProbeMatch(Text, Got, Offset, "hostid=") &&
+            ProbeParseDecimal(Text, Got, Offset + 7u, &Value)) {
+            AicWifiSetHostIdMode((UINT32)Value);
         }
     }
     if (RunArpUnicast != 0) {
         DhcpProbeArpUnicast();
+    }
+    if (RunIcmpUnicast != 0) {
+        DhcpProbeIcmpUnicast();
     }
     if (RunEapolStart != 0) {
         DhcpProbeEapolStart();

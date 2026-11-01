@@ -16,23 +16,12 @@
  *       AicRecvMessageTimeout 会把数据帧当"坏 pattern"读掉丢掉（WifiMessage.c），
  *       而 AicEapolPollRun 会照常解析它们（CFM 的识别见 WifiEapol.c 的配置帧分支）。
  */
-#include "WifiHandshakePrivate.h"
+#include "WifiKeyAddPrivate.h"
 #include "CString.h"
 #include "Compiler.h" /* BLOCKS_OFFSETOF：与 join/eapol 同一套布局自检 */
 
 /* 44 B 请求体；UINT32 数组保证 4 B 对齐（请求里 key.array 是 u32） */
 static UINT32 sAicKeyAdd[(AIC_KEY_ADD_LENGTH + 3u) / 4u];
-
-/* 发送结果：rc=0/1（有没有写进 SDIO FIFO）+ cfm（CFM.status；没等到 = NONE） */
-#define AIC_KEY_ADD_SENT_OK 0u
-#define AIC_KEY_ADD_SENT_FAILED 1u
-#define AIC_KEY_ADD_CFM_NONE 0xFFFFFFFFu
-
-typedef struct {
-    UINT32 Sent;      /* 0 = 写进了 FIFO；1 = 没写进去 */
-    UINT32 CfmStatus; /* 0 = 固件装好了；非 0 = 拒绝；NONE = 没等到 CFM */
-    UINT32 HwIndex;   /* CFM 的 hw_key_idx（固件分配的硬件钥匙号） */
-} AIC_KEY_ADD_RESULT;
 
 typedef struct {
     const char *Name;
@@ -149,9 +138,9 @@ static int KeyAddWaitCfm(SDHCI_HOST *Host, UINT32 *OutStatus, UINT32 *OutHwIndex
 }
 
 /* 拼 → 发 → 等 CFM。打印留给调用方：PTK 与 GTK 的判据行字段不同 */
-static AIC_KEY_ADD_RESULT KeyAddExchange(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex,
-                                         UINT8 Pairwise, const UINT8 *Key, UINT8 KeyLength,
-                                         UINT8 KeyIndex, UINT8 CipherSuite) {
+AIC_KEY_ADD_RESULT AicKeyAddExchange(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex,
+                                     UINT8 Pairwise, const UINT8 *Key, UINT8 KeyLength,
+                                     UINT8 KeyIndex, UINT8 CipherSuite) {
     AIC_KEY_ADD_RESULT Result;
     UINT32 Length;
 
@@ -198,7 +187,7 @@ static AIC_KEY_ADD_RESULT KeyAddExchange(SDHCI_HOST *Host, UINT8 VifIndex, UINT8
 }
 
 /* `rc=… cfm=…`：rc 是发送结果（0 = 写进 FIFO），cfm 是固件的回答（0 = 装好了） */
-static void KeyAddMarkResult(const AIC_KEY_ADD_RESULT *Result) {
+void AicKeyAddMarkResult(const AIC_KEY_ADD_RESULT *Result) {
     SdhciMark(" rc=");
     SdhciMarkDecimal("", Result->Sent);
     SdhciMark(" cfm=");
@@ -210,7 +199,7 @@ static void KeyAddMarkResult(const AIC_KEY_ADD_RESULT *Result) {
     SdhciMark("\n");
 }
 
-static int KeyAddIsInstalled(const AIC_KEY_ADD_RESULT *Result) {
+int AicKeyAddIsInstalled(const AIC_KEY_ADD_RESULT *Result) {
     /* 写进 FIFO（Sent=0）且 CFM.status 明确为 0；NONE(0xFFFFFFFF) 与非 0 都不算 */
     return (int)(Result->Sent == AIC_KEY_ADD_SENT_OK && Result->CfmStatus == 0u);
 }
@@ -222,95 +211,19 @@ static int KeyAddIsInstalled(const AIC_KEY_ADD_RESULT *Result) {
  */
 int AicKeyAddPairwise(SDHCI_HOST *Host, UINT8 VifIndex, UINT8 StaIndex, const UINT8 *Tk) {
     AIC_KEY_ADD_RESULT Result =
-        KeyAddExchange(Host, VifIndex, StaIndex, (UINT8)AIC_KEY_ADD_PAIRWISE, Tk,
-                       (UINT8)WIFI_TK_LENGTH, (UINT8)AIC_KEY_ADD_PAIRWISE_INDEX,
-                       (UINT8)AIC_KEY_CIPHER_CCMP);
+        AicKeyAddExchange(Host, VifIndex, StaIndex, (UINT8)AIC_KEY_ADD_PAIRWISE, Tk,
+                          (UINT8)WIFI_TK_LENGTH, (UINT8)AIC_KEY_ADD_PAIRWISE_INDEX,
+                          (UINT8)AIC_KEY_CIPHER_CCMP);
 
     SdhciMark("WiFi: key add: ptk sta=");
     SdhciMarkDecimal("", StaIndex);
     SdhciMark(" cipher=ccmp(");
     SdhciMarkDecimal("", AIC_KEY_CIPHER_CCMP);
     SdhciMark(")");
-    KeyAddMarkResult(&Result);
-    if (KeyAddIsInstalled(&Result) == 0) {
+    AicKeyAddMarkResult(&Result);
+    if (AicKeyAddIsInstalled(&Result) == 0) {
         SdhciMark("WiFi: handshake FAILED at PTK install: the firmware did not install the"
                   " pairwise key (rc/cfm above; sta_idx must be SM_CONNECT_IND.ap_idx)\n");
-        return -1;
-    }
-    return 0;
-}
-
-/*
- * GTK：默认钥匙（sta_idx = 0xFF），key_idx 用 M3 的 KDE 给的 KeyID，
- * cipher 用 TKIP —— **组播**是 TKIP（这个 AP 的 RSN 组播套件，真机空口实测），
- * 长度照 KDE（TKIP 是 32 B：16 B 密钥 + 16 B MIC 密钥）。
- */
-/*
- * 运行时探针：GTK 装法有若干种可能，固件到底认哪种？一次刷机把它做成开关，
- * 不用每试一种就重刷一次内核（短刀快探）。
- *   0 = 现状：keyid 取 KDE、pairwise=0、cipher=TKIP、长度取 KDE
- *   1 = keyid 强制 0（看空口 KeyID 是否跟着我们走）
- *   2 = pairwise=1（有的固件按这个标志路由到组密钥表）
- *   3 = cipher 用 CCMP(2)
- *   4 = 长度截到 16 B（TKIP 只要 TK）
- *   5 = keyid 强制 1（如果 KDE 的 KeyID 解析差一）
- */
-UINT32 gAicGtkProbeMode;
-
-int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk) {
-    AIC_KEY_ADD_RESULT Result;
-
-    if (Gtk->KeyLength == 0u || Gtk->KeyLength > AIC_KEY_SEC_KEY_LENGTH) {
-        SdhciMark("WiFi: key add: gtk length ");
-        SdhciMarkDecimal("", Gtk->KeyLength);
-        SdhciMark(" out of range (1..32), the KDE did not carry a usable key\n");
-        return -1;
-    }
-    {
-        UINT8 KeyId = Gtk->KeyId;
-        UINT8 StaIndex = (UINT8)AIC_KEY_ADD_DEFAULT_STA_INDEX;
-        UINT8 Pairwise = (UINT8)AIC_KEY_ADD_NOT_PAIRWISE;
-        UINT8 Cipher = (UINT8)AIC_KEY_CIPHER_TKIP;
-        UINT32 Length = Gtk->KeyLength;
-
-        switch (gAicGtkProbeMode) {
-        case 1u: KeyId = 0u; break;
-        case 2u: Pairwise = 1u; break;
-        case 3u: Cipher = (UINT8)AIC_KEY_CIPHER_CCMP; break;
-        case 4u: Length = 16u; break;
-        case 5u: KeyId = 1u; break;
-        default: break;
-        }
-        if (Length > Gtk->KeyLength) {
-            Length = Gtk->KeyLength;
-        }
-        /*
-         * 真机发现：广播帧用 staid=ap_idx 发出去时，固件用**该 sta 的密钥**加密（KeyID 0 = PTK），
-         * AP 直接丢；而 Linux 同类帧是 KeyID 2（GTK）。所以这里把 GTK 也装成"这个 sta 的密钥"
-         * （pairwise=1、sta=ap_idx、key_idx=AP 的 keyid），让广播走 KeyID 2。
-         * 这会让单播也用它，但当前阶段只求 DHCP 能通。
-         */
-        if (gAicGtkProbeMode == 0u) {
-            StaIndex = 0u;
-            Pairwise = 1u;
-        }
-        SdhciMark("WiFi: gtk probe mode=");
-        SdhciMarkDecimal("", gAicGtkProbeMode);
-        SdhciMark(" (keyid/cipher/pairwise/len as above)\n");
-        Result = KeyAddExchange(Host, VifIndex, StaIndex, Pairwise,
-                                Gtk->Key, Length, KeyId, Cipher);
-    }
-    SdhciMark("WiFi: key add: gtk sta=");
-    SdhciMarkDecimal("", AIC_KEY_ADD_DEFAULT_STA_INDEX);
-    SdhciMark(" keyid=");
-    SdhciMarkDecimal("", Gtk->KeyId);
-    SdhciMark(" cipher=tkip(");
-    SdhciMarkDecimal("", AIC_KEY_CIPHER_TKIP);
-    SdhciMark(")");
-    KeyAddMarkResult(&Result);
-    if (KeyAddIsInstalled(&Result) == 0) {
-        SdhciMark("WiFi: handshake FAILED at GTK install: the firmware did not install the default"
-                  " key (rc/cfm above; inst_nbr must be the join vif)\n");
         return -1;
     }
     return 0;

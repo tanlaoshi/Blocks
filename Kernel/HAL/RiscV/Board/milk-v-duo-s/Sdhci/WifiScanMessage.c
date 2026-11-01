@@ -11,20 +11,6 @@
 #include "WifiScanPrivate.h"
 #include "Compiler.h"
 
-/* 本机 STA 地址：locally administered(bit1=1) + unicast(bit0=0) = 02:..:01。
-   厂商用 cfg80211 给的 wdev.address（rwnx_msg_tx.c:524 memcpy 原始 6 B）；
-   我们没有 cfg80211，固定一个本地管理地址即可，固件只把它当 VIF 的 MAC。 */
-#define AIC_SCAN_MAC_LOCAL_UNICAST 0x02u
-#define AIC_SCAN_MAC_LAST_BYTE 0x01u
-
-static const UINT8 sAicScanStationAddress[AIC_SCAN_MAC_LENGTH] = {
-    AIC_SCAN_MAC_LOCAL_UNICAST, 0u, 0u, 0u, 0u, AIC_SCAN_MAC_LAST_BYTE};
-
-/* 只读访问口：DHCP/ARP 需要"固件给 vif 的 MAC"，但别处不该改它（PR-36） */
-const UINT8 *AicScanStationAddress(void) {
-    return sAicScanStationAddress;
-}
-
 /* 布局核对表：每项是“自建镜像的实际值 vs 厂商编译出来的期望值” */
 typedef struct {
     const char *Name;
@@ -78,8 +64,12 @@ UINT32 AicMmAddIfBuild(UINT8 *Buffer) {
 
     ScanClearBuffer(Buffer, (UINT32)sizeof(*Config));
     Config->Type = (UINT8)AIC_SCAN_IF_TYPE_STATION;
-    for (Index = 0; Index < AIC_SCAN_MAC_LENGTH; Index++) {
-        Address[Index] = sAicScanStationAddress[Index];
+    {
+        const UINT8 *Station = AicScanStationAddress();
+
+        for (Index = 0; Index < AIC_SCAN_MAC_LENGTH; Index++) {
+            Address[Index] = Station[Index];
+        }
     }
     Config->P2p = (UINT8)AIC_SCAN_P2P_OFF;
     return (UINT32)sizeof(*Config);

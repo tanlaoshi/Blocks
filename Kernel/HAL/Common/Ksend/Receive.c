@@ -1,5 +1,5 @@
 /*
- * KsendReceive.c — 收块状态机：块头 / 数据 / CRC / 批写 / 'A' 或 'N'
+ * Receive.c — 收块状态机：块头 / 数据 / CRC / 批写 / 'A' 或 'N'
  *
  * 一块的判定顺序是固定的：先看块头合法，再校验数据 CRC，最后才写卡。
  * 任何一步不过都回 'N'，让 PC 重发同一块；同一块回 'N' 超过 3 次就收手，
@@ -39,16 +39,16 @@ static void CopyBlock(UINT8 *Destination, const UINT8 *Source, UINT32 Length) {
 /* 把攒下的连续块一次写卡；失败填 Run 的失败原因与块号 */
 static int BatchFlush(KSEND_RUN *Run) {
     UINT32 Offset;
-    int Err;
+    int Error;
 
     if (sBatchBytes == 0u) {
         return 1;
     }
     Offset = sBatchFirstIndex * KSEND_BLOCK_BYTES;
-    Err = KsendFileWriteAt(Run->TargetPath, Offset, KsendFileBuffer(),
+    Error = KsendFileWriteAt(Run->TargetPath, Offset, KsendFileBuffer(),
                            sBatchBytes);
-    if (Err != FAT_OK) {
-        Run->Err = Err;
+    if (Error != FAT_OK) {
+        Run->Error = Error;
         Run->FailBlock = sBatchFirstIndex + sBatchBlocks - 1u;
         BatchReset();
         return 0;
@@ -103,8 +103,8 @@ static int ReadHeader(UINT32 *Header) {
     }
     for (Index = 0; Index < KSEND_HEADER_BYTES; Index++) {
         UINT8 Value;
-        UINT32 Timeout = (Index == 0u) ? KSEND_HEADER_TIMEOUT_MS
-                                       : KSEND_DATA_TIMEOUT_MS;
+        UINT32 Timeout = (Index == 0u) ? KSEND_HEADER_TIMEOUT_MILLISECONDS
+                                       : KSEND_DATA_TIMEOUT_MILLISECONDS;
 
         if (!KsendSerialGetByte(&Value, Timeout)) {
             return 0;
@@ -119,7 +119,7 @@ static int ReadBlockData(UINT32 Length) {
     UINT32 Index;
 
     for (Index = 0; Index < Length; Index++) {
-        if (!KsendSerialGetByte(&sBlockBuffer[Index], KSEND_DATA_TIMEOUT_MS)) {
+        if (!KsendSerialGetByte(&sBlockBuffer[Index], KSEND_DATA_TIMEOUT_MILLISECONDS)) {
             return 0;
         }
     }

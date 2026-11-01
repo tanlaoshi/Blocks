@@ -103,7 +103,7 @@ static int ArpReplyDone(void) {
  */
 int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
                          const UINT8 *GatewayIp, UINT8 VifIndex, UINT8 ApIndex, UINT8 *OutMac,
-                         UINT32 BudgetMs) {
+                         UINT32 BudgetMilliseconds) {
     UINT32 Length;
     UINT32 Try;
     UINT32 Slice;
@@ -124,7 +124,7 @@ int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
     sAicArpActive = 1u;
     AicNetFormatIpv4(GatewayIp, GatewayText);
     AicNetFormatIpv4(StationIp, StationText);
-    Slice = BudgetMs / AIC_NET_ARP_TRIES;
+    Slice = BudgetMilliseconds / AIC_NET_ARP_TRIES;
     if (Slice == 0u) {
         Slice = 1u;
     }
@@ -167,7 +167,7 @@ int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
  */
 int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
                          const UINT8 *TargetIp, const UINT8 *DstMac, UINT8 VifIndex,
-                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMs) {
+                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMilliseconds) {
     UINT32 Length;
     UINT32 Try;
     UINT32 Slice;
@@ -191,7 +191,7 @@ int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
     sAicArpReplySeen = 0u;
     sAicArpActive = 1u;
     AicNetFormatIpv4(TargetIp, TargetText);
-    Slice = BudgetMs / AIC_NET_ARP_TRIES;
+    Slice = BudgetMilliseconds / AIC_NET_ARP_TRIES;
     if (Slice == 0u) {
         Slice = 1u;
     }
@@ -201,7 +201,7 @@ int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
         SdhciMark(" (unicast to the AP)\n");
         if (AicWifiDataSend(Host, sAicArpFrame, Length, VifIndex, ApIndex) != 0) {
             sAicArpActive = 0u;
-            SdhciMark("WiFi: arp uni: tx failed\n");
+            SdhciMark("WiFi: arp uni: tx failed → unicast-data-fail\n");
             return -1;
         }
         if (AicNetPollRun(Host, Slice, ArpReplyDone) == 0) {
@@ -210,10 +210,11 @@ int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *St
     }
     sAicArpActive = 0u;
     if (sAicArpReplySeen == 0u) {
-        SdhciMark("WiFi: arp uni: no reply (unicast path or key is wrong)\n");
+        SdhciMark("WiFi: arp uni: no reply → unicast-data-fail "
+                  "(unicast path or key is wrong; see Docs/19)\n");
         return -1;
     }
     (void)memcpy(OutMac, sAicArpTargetMac, AIC_NET_MAC_LENGTH);
-    SdhciMark("WiFi: arp uni: reply ok — unicast data path works\n");
+    SdhciMark("WiFi: arp uni: reply ok → unicast-data-ok\n");
     return 0;
 }

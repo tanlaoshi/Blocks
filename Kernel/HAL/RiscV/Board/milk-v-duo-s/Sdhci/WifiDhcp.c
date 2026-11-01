@@ -9,7 +9,6 @@
  *       不碰 SDIO；xid 是"这条应答是不是回给我们的"的唯一判据。只读、可重复执行。
  */
 #include "WifiNetPrivate.h"
-#include "FileSystem.h"
 #include "WifiAssocPrivate.h"
 #include "WifiEapolPrivate.h"
 #include "CString.h"
@@ -49,7 +48,7 @@ static int DhcpReplyDone(void) {
 
 /* 这一次尝试等多久：剩余预算（25 MHz 裸计数，BOARD_TIMEBASE_HZ）按剩余次数均分（≥1 ms），
    不引入随机定时器。 */
-static UINT32 DhcpTryBudgetMs(UINT64 Deadline, UINT32 TriesLeft) {
+static UINT32 DhcpTryBudgetMilliseconds(UINT64 Deadline, UINT32 TriesLeft) {
     UINT64 Now = SdhciReadTime();
     UINT32 Slice;
 
@@ -69,6 +68,14 @@ static void DhcpMarkIpv4(const char *Tag, const UINT8 *Address) {
     AicNetFormatIpv4(Address, Text);
     SdhciMark(Tag);
     SdhciMark(Text);
+}
+
+static void DhcpMarkIpv4OrNone(UINT32 Has, const UINT8 *Address) {
+    if (Has != 0u) {
+        DhcpMarkIpv4("", Address);
+    } else {
+        SdhciMark("none");
+    }
 }
 
 /*
@@ -94,7 +101,8 @@ static int DhcpSendAndWait(SDHCI_HOST *Host, const char *Name, UINT32 Length, UI
         SdhciMarkDecimal("", Length);
         SdhciMarkHex(" xid=0x", sAicDhcpXid, 8);
         SdhciMark("\n");
-        if (AicNetPollRun(Host, DhcpTryBudgetMs(Deadline, Tries - Try), DhcpReplyDone) == 0) {
+        if (AicNetPollRun(Host, DhcpTryBudgetMilliseconds(Deadline, Tries - Try),
+                          DhcpReplyDone) == 0) {
             return 0;
         }
         if (Try + 1u >= Tries || SdhciReadTime() >= Deadline) {
@@ -159,23 +167,11 @@ static int DhcpRunRequest(SDHCI_HOST *Host, const UINT8 *Station, UINT64 Deadlin
     SdhciMark("WiFi: dhcp: ACK rx yiaddr=");
     DhcpMarkIpv4("", sAicDhcpReply.YourIp);
     SdhciMark(" mask=");
-    if (sAicDhcpReply.HasMask != 0u) {
-        DhcpMarkIpv4("", sAicDhcpReply.Mask);
-    } else {
-        SdhciMark("none");
-    }
+    DhcpMarkIpv4OrNone(sAicDhcpReply.HasMask, sAicDhcpReply.Mask);
     SdhciMark(" gw=");
-    if (sAicDhcpReply.HasRouter != 0u) {
-        DhcpMarkIpv4("", sAicDhcpReply.Router);
-    } else {
-        SdhciMark("none");
-    }
+    DhcpMarkIpv4OrNone(sAicDhcpReply.HasRouter, sAicDhcpReply.Router);
     SdhciMark(" dns=");
-    if (sAicDhcpReply.HasDns != 0u) {
-        DhcpMarkIpv4("", sAicDhcpReply.Dns);
-    } else {
-        SdhciMark("none");
-    }
+    DhcpMarkIpv4OrNone(sAicDhcpReply.HasDns, sAicDhcpReply.Dns);
     SdhciMark("\n");
     return 0;
 }
@@ -197,9 +193,10 @@ static void DhcpArpGateway(SDHCI_HOST *Host, const UINT8 *Station, UINT8 VifInde
 }
 
 /* 四步顺序（RFC 2131 §4.4.1 的 INIT → SELECTING → REQUESTING → BOUND 的简化） */
-static int DhcpExchange(SDHCI_HOST *Host, const UINT8 *Station, UINT32 BudgetMs, UINT8 VifIndex,
-                        UINT8 ApIndex) {
-    UINT64 Deadline = SdhciReadTime() + (UINT64)BudgetMs * AIC_NET_TIMEBASE_PER_MS;
+static int DhcpExchange(SDHCI_HOST *Host, const UINT8 *Station, UINT32 BudgetMilliseconds,
+                        UINT8 VifIndex, UINT8 ApIndex) {
+    UINT64 Deadline =
+        SdhciReadTime() + (UINT64)BudgetMilliseconds * AIC_NET_TIMEBASE_PER_MS;
 
     if (DhcpRunDiscover(Host, Station, Deadline, VifIndex, ApIndex) != 0) {
         return -1;
@@ -247,121 +244,9 @@ static int DhcpParseMilliseconds(const char *Text, UINT32 *OutMilliseconds) {
  * `wififw dhcp [ms]` 的板级入口。只读、可重复执行：不写 flash、不动 join 的既有状态。
  * 前置：卡已探测（wifiprobe）、join 过且钥匙已装（gAicEapolKeysInstalled）——
  * 没有钥匙时固件不会解密任何数据帧，DHCP 一定收不到应答，这里先说清楚。
+ * 探针（arpuni/mcast/…）见 WifiDhcpProbe.c / Docs/18·19。
  */
-/*
- * 文件驱动探针：从 BLOCKS:probe.cfg 读一行 `mcast=<n>`，覆盖组播帧的 txdesc staid。
- * 目的：把"组播用哪个 sta 索引"做成**改文件就换参数**（ksend 写 20 字节 ≈ 2 秒），
- * 不用每试一个值就重刷内核。取值：-1（或没有该行）= 用 ap_idx；否则用给定值。
- */
-static void WifiDhcpSendEapolStart(void);
-static void WifiDhcpArpUnicastProbe(void);
-
-static void WifiDhcpLoadProbe(void) {
-    char Text[64];
-    UINTN Got = 0;
-    int i;
-
-    if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 || Got == 0u) {
-        return;
-    }
-    Text[Got] = 0;
-    {
-        int k;
-        for (k = 0; (UINTN)k + 3u < Got; k++) {
-            if (Text[k] == 'a' && Text[k + 1] == 'c' && Text[k + 2] == '=') {
-                int v = 0; int j = k + 3;
-                while (Text[j] >= '0' && Text[j] <= '9') { v = v * 10 + (Text[j] - '0'); j++; }
-                AicWifiSetMcastAc((UINT32)v);
-            }
-            if (Text[k] == 't' && Text[k + 1] == 'i' && Text[k + 2] == 'd' && Text[k + 3] == '=') {
-                int v = 0; int j = k + 4;
-                while (Text[j] >= '0' && Text[j] <= '9') { v = v * 10 + (Text[j] - '0'); j++; }
-                AicWifiSetMcastTid((UINT32)v);
-            }
-        }
-    }
-    if (Text[0] == 'a' && Text[1] == 'r' && Text[2] == 'p' && Text[3] == 'u' && Text[4] == 'n' &&
-        Text[5] == 'i' && Text[6] == '=' && Text[7] == '1') {
-        WifiDhcpArpUnicastProbe();
-    }
-    if (Text[0] == 's' && Text[1] == 't' && Text[2] == 'a' && Text[3] == 'r' && Text[4] == 't' &&
-        Text[5] == '=' && Text[6] == '1') {
-        WifiDhcpSendEapolStart();
-    }
-    for (i = 0; (UINTN)i + 6u < Got; i++) {
-        if (Text[i] == 'm' && Text[i + 1] == 'c' && Text[i + 2] == 'a' &&
-            Text[i + 3] == 's' && Text[i + 4] == 't' && Text[i + 5] == '=') {
-            int Value = 0;
-            int Sign = 1;
-            int k = i + 6;
-            if (Text[k] == '-') { Sign = -1; k++; }
-            while (Text[k] >= '0' && Text[k] <= '9') { Value = Value * 10 + (Text[k] - '0'); k++; }
-            AicWifiSetMcastSta((UINT32)(Sign * Value));
-            return;
-        }
-    }
-}
-
-
-/*
- * 探针：发一条 EAPOL-Start（单播给 AP，4 字节头），然后盯 3 秒看有没有 Key 帧回来。
- * 目的：把"AP 到底看不看得见我们"和"组播密钥"分开 ——
- *   AP 回 M1 ⇒ 它认得我们，问题在授权/组密钥；
- *   AP 不回  ⇒ 它完全不认我们，问题在 M4（重放/MIC/顺序）。
- */
-static void WifiDhcpSendEapolStart(void) {
-    UINT8 Frame[4];
-    UINT8 Bssid[AIC_NET_MAC_LENGTH];
-    UINT8 Station[AIC_NET_MAC_LENGTH];
-    UINT8 VifIndex = 0;
-    UINT8 ApIndex = 0;
-    static AIC_EAPOL_COUNTERS Counters;
-
-    if (AicJoinBssid(Bssid) != 0 || AicNetStationAddress(Station) != 0) {
-        SdhciMark("WiFi: eapol-start: no BSSID/station (join first)\n");
-        return;
-    }
-    AicJoinLastIndexes(&VifIndex, &ApIndex);
-    Frame[0] = 2u;                                  /* EAPOL 版本 */
-    Frame[1] = (UINT8)AIC_EAPOL_TYPE_START;         /* type=1 EAPOL-Start */
-    Frame[2] = 0u;
-    Frame[3] = 0u;                                  /* body length = 0 */
-    if (AicEapolSend(SdhciHostAt(1), Frame, 4u, Bssid, Station, VifIndex, ApIndex) != 0) {
-        SdhciMark("WiFi: eapol-start: send failed\n");
-        return;
-    }
-    SdhciMark("WiFi: eapol-start: sent (unicast to the AP)\n");
-    memset(&Counters, 0, sizeof(Counters));
-    (void)AicEapolPollRun(SdhciHostAt(1), 3000u, &Counters, 0);
-    SdhciMark("WiFi: eapol-start: after 3000ms frames=");
-    SdhciMarkDecimal("", Counters.Frames);
-    SdhciMark(" key=");
-    SdhciMarkDecimal("", Counters.KeyFrames);
-    SdhciMark(Counters.KeyFrames != 0u ? " (the AP answered: it sees our unicast frames)\n"
-                                       : " (no answer: the AP is not responding to us at all)\n");
-}
-
-
-/* 探针：单播 ARP 问 AP 自己（192.168.31.1），验证单播数据通路 */
-static void WifiDhcpArpUnicastProbe(void) {
-    UINT8 Station[AIC_NET_MAC_LENGTH];
-    UINT8 Bssid[AIC_NET_MAC_LENGTH];
-    UINT8 Mac[AIC_NET_MAC_LENGTH];
-    UINT8 VifIndex = 0;
-    UINT8 ApIndex = 0;
-    static const UINT8 StationIp[4] = {192u, 168u, 31u, 250u};
-    static const UINT8 TargetIp[4] = {192u, 168u, 31u, 1u};
-
-    if (AicJoinBssid(Bssid) != 0 || AicNetStationAddress(Station) != 0) {
-        SdhciMark("WiFi: arp uni: no BSSID (join first)\n");
-        return;
-    }
-    AicJoinLastIndexes(&VifIndex, &ApIndex);
-    (void)AicArpResolveUnicast(SdhciHostAt(1), Station, StationIp, TargetIp, Bssid, VifIndex,
-                               ApIndex, Mac, 2000u);
-}
-
-int SdhciWifiDhcp(const char *MsText) {
+int SdhciWifiDhcp(const char *MillisecondsText) {
     SDHCI_HOST *Host;
     UINT8 Station[AIC_NET_MAC_LENGTH];
     UINT8 VifIndex = 0;
@@ -369,7 +254,7 @@ int SdhciWifiDhcp(const char *MsText) {
     UINT32 Budget = AIC_NET_DHCP_DEFAULT_MS;
     int Status;
 
-    if (MsText != 0 && DhcpParseMilliseconds(MsText, &Budget) != 0) {
+    if (MillisecondsText != 0 && DhcpParseMilliseconds(MillisecondsText, &Budget) != 0) {
         SdhciMark("WiFi: dhcp: bad ms (decimal 1..30000)\n");
         return -1;
     }
@@ -382,8 +267,7 @@ int SdhciWifiDhcp(const char *MsText) {
         return -1;
     }
     if (gAicEapolKeysInstalled == 0u) {
-        SdhciMark("WiFi: dhcp: keys not installed (run 'wififw join <ssid> <password>' first:\n");
-        SdhciMark("WiFi: dhcp:  the firmware only decrypts data frames after PTK/GTK are added)\n");
+        SdhciMark("WiFi: dhcp: keys not installed (join first; FW needs PTK/GTK)\n");
         return -1;
     }
     if (AicNetStationAddress(Station) != 0) {
@@ -395,7 +279,7 @@ int SdhciWifiDhcp(const char *MsText) {
         return -1;
     }
     AicJoinLastIndexes(&VifIndex, &ApIndex);
-    WifiDhcpLoadProbe();
+    AicWifiDhcpLoadProbe();
     SdhciMark("WiFi: dhcp: budget=");
     SdhciMarkDecimal("", Budget);
     SdhciMark("ms vif=");

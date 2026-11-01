@@ -39,11 +39,11 @@
  *（FAT 链没有反向指针，Fat/FileWriteAt.c 的 SeekFileOffset 是 O(偏移/簇)），
  * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。512 KB 一块把调用次数压到
  * 1/128，配合 FAT 分配提示后 2.1 MB 的部署才真正可用。
- * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 KsendReceive.c）。 */
+ * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 Receive.c）。 */
 #define KSEND_IO_CHUNK_BYTES      (512u * 1024u)
 #define KSEND_TEXT_BYTES          192u
 
-/* —— 差量表缓存 <目标全名>.crc（KsendCache.c）——
+/* —— 差量表缓存 <目标全名>.crc（Cache.c）——
  * 字段固定 6×u32 + block_count×u32（全部小端），总大小 24+4n B。
  * magic 按协议给定数值 0x4B534352（小端写出的字节是 52 43 53 4B）。
  * 它只是加速缓存：任何时刻删掉都必须能退回逐块读文件的慢路径。 */
@@ -75,19 +75,19 @@
 #define KSEND_SELFTEST_SALT       0x5Au
 #define KSEND_FAIL_OFFSET_NONE    0xFFFFFFFFu
 
-/* —— 超时（ms） —— */
+/* —— 超时（毫秒） —— */
 /* UART 没起时别把壳挂死：写每字节最多等这么久 */
-#define KSEND_TX_WAIT_MS          1000u
+#define KSEND_TRANSMIT_WAIT_MILLISECONDS          1000u
 /* READY 之前要备份 + 算 CRC，PC 侧给 180 s；这边等块头给 30 s */
-#define KSEND_HEADER_TIMEOUT_MS   30000u
-/* 115200 下一块 4 KB 约 356 ms；逐字节 5 s 足够 */
-#define KSEND_DATA_TIMEOUT_MS     5000u
-/* 发 READY 前吃掉命令行尾巴：静默 20 ms 即认为干净 */
-#define KSEND_DRAIN_QUIET_MS      20u
-#define KSEND_DRAIN_LIMIT_MS      500u
+#define KSEND_HEADER_TIMEOUT_MILLISECONDS   30000u
+/* 115200 下一块 4 KB 约 356 毫秒；逐字节 5 秒足够 */
+#define KSEND_DATA_TIMEOUT_MILLISECONDS     5000u
+/* 发 READY 前吃掉命令行尾巴：静默 20 毫秒即认为干净 */
+#define KSEND_DRAIN_QUIET_MILLISECONDS      20u
+#define KSEND_DRAIN_LIMIT_MILLISECONDS      500u
 /* 失败后可能还有 PC 的 abort / 重发块在路上，窗口放长一点 */
-#define KSEND_FAIL_DRAIN_QUIET_MS 100u
-#define KSEND_FAIL_DRAIN_LIMIT_MS 3000u
+#define KSEND_FAIL_DRAIN_QUIET_MILLISECONDS 100u
+#define KSEND_FAIL_DRAIN_LIMIT_MILLISECONDS 3000u
 
 /* —— CRC-32/ISO-HDLC（与 Python zlib.crc32 同参，反射型） —— */
 #define KSEND_CRC_POLYNOMIAL      0xEDB88320u
@@ -97,7 +97,7 @@
 
 /* —— 失败分类（KSEND FAIL reason=…） —— */
 #define KSEND_FAIL_NONE    0
-#define KSEND_FAIL_STAT    1 /* stat Kernel.elf 失败 */
+#define KSEND_FAIL_FILE_STATUS    1 /* stat Kernel.elf 失败 */
 #define KSEND_FAIL_BACKUP  2 /* BAK 复制或回读校验失败 */
 #define KSEND_FAIL_HEADER  3 /* 块头非法 / 等块超时 */
 #define KSEND_FAIL_WRITE   4 /* 落盘失败（重试超限） */
@@ -126,15 +126,15 @@ typedef struct {
     UINT32 FailBlock;
     UINT32 FailWant;
     UINT32 FailGot;
-    int VolIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
+    int VolumeIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
     int Reboot;   /* 1=成功且校验通过后复位（默认）；0=--no-reboot 留 shell */
     int Backup;   /* 1=写前备份 .bak（默认）；0=--no-backup 跳过，失败不回滚 */
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
-    int Err;
+    int Error;
 } KSEND_RUN;
 
-/* 自检结果（给 KsendSelftest 打印用） */
+/* 自检结果（给 KsendSelfTest 打印用） */
 typedef struct {
     UINT32 Size;
     UINT32 Crc;
@@ -144,7 +144,7 @@ typedef struct {
     UINT32 FailGot;
 } KSEND_SELFTEST;
 
-/* 小端文本拼装（KsendText.c） */
+/* 小端文本拼装（Text.c） */
 typedef struct {
     char *Buffer;
     int Capacity;
@@ -154,22 +154,22 @@ typedef struct {
 /* —— Ksend.c —— */
 void KsendNote(const char *Text);
 int KsendInfo(void);
-int KsendSelftest(void);
+int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
 
-/* —— KsendSerial.c —— */
+/* —— Serial.c —— */
 void KsendSerialWrite(const char *Text);
 void KsendSerialPutByte(UINT8 Value);
-int KsendSerialGetByte(UINT8 *Out, UINT32 TimeoutMs);
-/* 吃掉 RX 上没人认领的字节：静默 QuietMs 或总时长 LimitMs 到就停 */
-void KsendSerialDrainInput(UINT32 QuietMs, UINT32 LimitMs);
+int KsendSerialGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds);
+/* 吃掉接收方向上没人认领的字节：静默 QuietMilliseconds 或总时长 LimitMilliseconds 到就停 */
+void KsendSerialDrainInput(UINT32 QuietMilliseconds, UINT32 LimitMilliseconds);
 /* 等移位寄存器发空（TEMT），复位前必须调用，否则 KSEND OK 可能被截断 */
 void KsendSerialDrainTransmitter(void);
 /* 25 MHz rdtime 换算的毫秒计数 / 忙等（复位时序用） */
 UINT32 KsendMilliseconds(void);
-void KsendDelayMs(UINT32 Milliseconds);
+void KsendDelayMilliseconds(UINT32 Milliseconds);
 
-/* —— KsendText.c —— */
+/* —— Text.c —— */
 void KsendTextReset(KSEND_TEXT *Text, char *Buffer, int Capacity);
 void KsendTextPut(KSEND_TEXT *Text, const char *String);
 void KsendTextPutUnsigned(KSEND_TEXT *Text, UINT32 Value);
@@ -179,25 +179,25 @@ void KsendTextPutHexField(KSEND_TEXT *Text, const char *Key, UINT32 Value);
 void KsendTextPutSignedField(KSEND_TEXT *Text, const char *Key, int Value);
 void KsendTextFlush(KSEND_TEXT *Text);
 
-/* —— KsendCrc.c —— */
+/* —— CyclicRedundancyCheck.c —— */
 UINT32 KsendCrc32Update(UINT32 Crc, const UINT8 *Data, UINT32 Length);
 UINT32 KsendCrc32Final(UINT32 Crc);
 
-/* —— KsendReport.c（协议行 / 人话行） —— */
+/* —— Report.c（协议行 / 人话行） —— */
 void KsendPrintImage(const char *Tag, const KSEND_IMAGE *Image);
-void KsendPrintReason(const char *Tag, const char *Reason, int Err);
+void KsendPrintReason(const char *Tag, const char *Reason, int Error);
 void KsendReadyLine(const KSEND_IMAGE *Image);
 void KsendBlockTable(const KSEND_IMAGE *Image);
-void KsendOkLine(UINT32 Crc, UINT32 Written, UINT32 Size);
-void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Err);
+void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size);
+void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Error);
 void KsendAbortLine(UINT32 Written);
 void KsendRestoredLine(const KSEND_IMAGE *Image);
 
-/* —— KsendReceive.c —— */
+/* —— Receive.c —— */
 /* 收块直到收尾帧：0=收到收尾（Run->NewSize/TrailerCrc 已就绪）；-1=失败/放弃 */
 int KsendReceiveBlocks(KSEND_RUN *Run);
 
-/* —— KsendFile.c —— */
+/* —— File.c —— */
 /* 旧文件（备份）图：restore 的判据 */
 extern KSEND_IMAGE gKsendOldImage;
 /* 传输中「期望的新内容」图；info 也拿它当只打印的草稿 */
@@ -224,7 +224,7 @@ int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
                         UINT32 Length);
 /* 把 [Offset, Offset+Length) 写成 0（FAT 无 truncate 时的兜底） */
 int KsendFileZeroRange(const char *Path, UINT32 Offset, UINT32 Length);
-/* —— KsendFileVerify.c —— */
+/* —— FileVerify.c —— */
 /* 1=一致；0=块不符（OutBlock/Want/Got）；-1=整体 CRC 不符 */
 int KsendFileVerify(const char *Path, UINT32 Size, const KSEND_IMAGE *Expected,
                     UINT32 ExpectedCrc, UINT32 *OutBlock, UINT32 *OutWant,
@@ -234,7 +234,7 @@ int KsendFileRestore(const char *BackupPath, const char *TargetPath,
                      const KSEND_IMAGE *Expected);
 int KsendFileSelfTest(KSEND_SELFTEST *Out);
 
-/* —— KsendCache.c —— */
+/* —— Cache.c —— */
 /* 校验并加载 <目标>.crc；命中才返回 FAT_OK（Image 完整可用），否则调用方
  * 必须退回逐块读文件的慢路径。缓存不是事实来源，只是加速。 */
 int KsendCacheLoad(const char *TargetPath, UINT32 TargetSize,
@@ -244,11 +244,11 @@ int KsendCacheDrop(const char *TargetPath);
 /* 整文件读回校验通过后写 <目标>.crc；失败只让下次变慢，不算本次失败 */
 int KsendCacheSave(const char *TargetPath, const KSEND_IMAGE *Image);
 
-/* —— KsendReset.c —— */
+/* —— Reset.c —— */
 /* 复位：HalCpuReboot；成功则不返回 */
 void KsendReboot(void);
 
-/* —— KsendTransferPaths.c —— */
+/* —— TransferPaths.c —— */
 void KsendRunReset(KSEND_RUN *Run);
 int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run);
 void KsendVolumeRelease(KSEND_RUN *Run);

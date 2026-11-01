@@ -1,5 +1,5 @@
 /*
- * KsendReport.c — 串口上那几行：READY / 块 CRC 表 / OK / FAIL / ABORT / RESTORED
+ * Report.c — 串口上那几行：READY / 块 CRC 表 / OK / FAIL / ABORT / RESTORED
  *
  * 文案就是判据（规范 §一.8）：KSEND OK / KSEND FAIL / KSEND RESTORED 三个前缀
  * 是 PC 侧 Tools/ksend.py 的解析键，改字必须两边一起改。
@@ -9,7 +9,7 @@
 
 static const char *FailureName(int Failure) {
     switch (Failure) {
-    case KSEND_FAIL_STAT:   return "stat";
+    case KSEND_FAIL_FILE_STATUS:   return "stat";
     case KSEND_FAIL_BACKUP: return "backup";
     case KSEND_FAIL_HEADER: return "header";
     case KSEND_FAIL_WRITE:  return "write";
@@ -35,7 +35,7 @@ void KsendPrintImage(const char *Tag, const KSEND_IMAGE *Image) {
     KsendTextFlush(&Out);
 }
 
-void KsendPrintReason(const char *Tag, const char *Reason, int Err) {
+void KsendPrintReason(const char *Tag, const char *Reason, int Error) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
@@ -43,7 +43,7 @@ void KsendPrintReason(const char *Tag, const char *Reason, int Err) {
     KsendTextPut(&Out, Tag);
     KsendTextPut(&Out, " reason=");
     KsendTextPut(&Out, Reason);
-    KsendTextPutSignedField(&Out, "err", Err);
+    KsendTextPutSignedField(&Out, "err", Error);
     KsendTextFlush(&Out);
 }
 
@@ -75,7 +75,7 @@ void KsendBlockTable(const KSEND_IMAGE *Image) {
     KsendSerialPutByte(KSEND_TABLE_END);
 }
 
-void KsendOkLine(UINT32 Crc, UINT32 Written, UINT32 Size) {
+void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
@@ -87,7 +87,7 @@ void KsendOkLine(UINT32 Crc, UINT32 Written, UINT32 Size) {
     KsendTextFlush(&Out);
 }
 
-void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Err) {
+void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Error) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
@@ -104,7 +104,7 @@ void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Err) 
         if (Failure == KSEND_FAIL_WRITE) {
             KsendTextPutField(&Out, "at", Block);
         }
-        KsendTextPutSignedField(&Out, "err", Err);
+        KsendTextPutSignedField(&Out, "err", Error);
     }
     KsendTextFlush(&Out);
 }

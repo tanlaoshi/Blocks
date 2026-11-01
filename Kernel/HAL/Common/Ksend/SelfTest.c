@@ -1,5 +1,5 @@
 /*
- * KsendSelfTest.c — `ksend selftest`：转调公共文件系统写自检
+ * SelfTest.c — `ksend selftest`：转调公共文件系统写自检
  *
  * 判据、图案、CRC 全在 Services/FileSystem/SelfTest.c，与 `fs selftest` 同一套
  * （8 KB / 盐 0x5A / CRC 87fb2824）。这里只搬运字段，让 Ksend.c 继续打印原来的
@@ -16,7 +16,7 @@
 
 int KsendFileSelfTest(KSEND_SELFTEST *Out) {
     FS_WRITE_SELFTEST Result;
-    int Err = FileSystemWriteSelfTestRun(&Result);
+    int Error = FileSystemWriteSelfTestRun(&Result);
 
     Out->Size = Result.Size;
     Out->Crc = Result.Crc;
@@ -26,5 +26,5 @@ int KsendFileSelfTest(KSEND_SELFTEST *Out) {
                           : Result.FailOffset;
     Out->FailWant = Result.FailWant;
     Out->FailGot = Result.FailGot;
-    return Err;
+    return Error;
 }

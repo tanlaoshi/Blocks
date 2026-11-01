@@ -1,7 +1,7 @@
 /*
- * KsendFileVerify.c — 整文件回读校验与备份恢复
+ * FileVerify.c — 整文件回读校验与备份恢复
  *
- * 从 KsendFile.c 拆出（行数门禁 ≤300）。读缓冲仍走 KsendFileBuffer /
+ * 从 File.c 拆出（行数门禁 ≤300）。读缓冲仍走 KsendFileBuffer /
  * KsendFileReadExact，与扫描/复制同一份 sIoBuffer。
  */
 #include "Ksend/Private.h"
@@ -17,16 +17,16 @@ int KsendFileVerify(const char *Path, UINT32 Size, const KSEND_IMAGE *Expected,
         UINT32 Want = Size - Offset;
         UINT32 Got = 0;
         UINT32 Done = 0;
-        int Err;
+        int Error;
 
         if (Want > KSEND_IO_CHUNK_BYTES) {
             Want = KSEND_IO_CHUNK_BYTES;
         }
-        Err = KsendFileReadExact(Path, Offset, Want, &Got);
-        if (Err != FAT_OK) {
+        Error = KsendFileReadExact(Path, Offset, Want, &Got);
+        if (Error != FAT_OK) {
             *OutBlock = Offset / KSEND_BLOCK_BYTES;
             *OutWant = 0u;
-            *OutGot = (UINT32)Err;
+            *OutGot = (UINT32)Error;
             return 0;
         }
         while (Done < Got) {
@@ -67,15 +67,15 @@ int KsendFileRestore(const char *BackupPath, const char *TargetPath,
     UINT32 Block = 0;
     UINT32 Want = 0;
     UINT32 Got = 0;
-    int Err;
+    int Error;
 
     if (Expected->Size == 0u) {
         return FAT_ERR_INVAL;
     }
     /* 先删再写：新内核可能更大，留着原目录项尺寸就缩不回去 */
-    Err = KsendFileCopy(BackupPath, TargetPath, Expected->Size, &Check);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = KsendFileCopy(BackupPath, TargetPath, Expected->Size, &Check);
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (KsendFileVerify(TargetPath, Expected->Size, Expected, Expected->Crc,
                         &Block, &Want, &Got) != 1) {

@@ -1,7 +1,7 @@
 /*
- * KsendTransfer.c — ksend 协议主循环（READY → 收块 → 收尾 → 校验 → OK/FAIL）
+ * Transfer.c — ksend 协议主循环（READY → 收块 → 收尾 → 校验 → OK/FAIL）
  *
- * 路径/选卷见 KsendTransferPaths.c。顺序固定，不能换：
+ * 路径/选卷见 TransferPaths.c。顺序固定，不能换：
  *   备份 → READY+旧 CRC 表 → 收差量块 → flush → 读回校验 → OK（可选复位）。
  * 校验不过绝不复位；--no-backup 失败不回滚。
  */
@@ -12,18 +12,18 @@ static int PrepareBackup(KSEND_RUN *Run) {
     UINT32 Block = 0;
     UINT32 Want = 0;
     UINT32 Got = 0;
-    int Err;
+    int Error;
 
     if (Run->Backup == 0) {
         KsendNote("backup: skipped (--no-backup)");
     }
-    Err = KsendFileSize(Run->TargetPath, &Run->OldSize);
-    if (Err == FAT_ERR_NOENT) {
+    Error = KsendFileSize(Run->TargetPath, &Run->OldSize);
+    if (Error == FAT_ERR_NOENT) {
         Run->OldSize = 0;
         return FAT_OK;
     }
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (Run->OldSize == 0u) {
         return FAT_OK;
@@ -32,18 +32,18 @@ static int PrepareBackup(KSEND_RUN *Run) {
         return FAT_ERR_FILE_TOO_BIG;
     }
     if (Run->Backup == 0) {
-        Err = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
-        if (Err == FAT_OK) {
+        Error = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
+        if (Error == FAT_OK) {
             KsendNote("cache: hit (old block table from .crc)");
             return FAT_OK;
         }
         KsendNote("cache: miss (scanning old file)");
         return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
     }
-    Err = KsendFileCopy(Run->TargetPath, Run->BackupPath, Run->OldSize,
+    Error = KsendFileCopy(Run->TargetPath, Run->BackupPath, Run->OldSize,
                         &gKsendOldImage);
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (KsendFileVerify(Run->BackupPath, Run->OldSize, &gKsendOldImage,
                         gKsendOldImage.Crc, &Block, &Want, &Got) != 1) {
@@ -98,7 +98,7 @@ static int FinishImage(KSEND_RUN *Run) {
     UINT32 Block = 0;
     UINT32 Want = 0;
     UINT32 Got = 0;
-    int Err;
+    int Error;
     int Rc;
 
     if (Run->NewSize == 0u) {
@@ -106,22 +106,22 @@ static int FinishImage(KSEND_RUN *Run) {
         return -1;
     }
     if (Run->NewSize > KSEND_MAX_BYTES) {
-        Run->Failure = KSEND_FAIL_STAT;
+        Run->Failure = KSEND_FAIL_FILE_STATUS;
         return -1;
     }
     if (Run->NewSize < Run->OldSize) {
         KsendNote("note: FAT has no truncate; tail zeroed, file keeps old size");
-        Err = KsendFileZeroRange(Run->TargetPath, Run->NewSize,
+        Error = KsendFileZeroRange(Run->TargetPath, Run->NewSize,
                                  Run->OldSize - Run->NewSize);
-        if (Err != FAT_OK) {
-            Run->Err = Err;
+        if (Error != FAT_OK) {
+            Run->Error = Error;
             Run->Failure = KSEND_FAIL_SHRINK;
             return -1;
         }
     }
-    Err = FileSystemFileSync(Run->TargetPath);
-    if (Err != FAT_OK) {
-        Run->Err = Err;
+    Error = FileSystemFileSync(Run->TargetPath);
+    if (Error != FAT_OK) {
+        Run->Error = Error;
         Run->Failure = KSEND_FAIL_FLUSH;
         return -1;
     }
@@ -139,21 +139,21 @@ static int FinishImage(KSEND_RUN *Run) {
 }
 
 static int TransferRun(KSEND_RUN *Run) {
-    int Err;
+    int Error;
 
-    Err = PrepareBackup(Run);
-    if (Err == FAT_ERR_FILE_TOO_BIG) {
-        Run->Failure = KSEND_FAIL_STAT;
-        Run->Err = Err;
+    Error = PrepareBackup(Run);
+    if (Error == FAT_ERR_FILE_TOO_BIG) {
+        Run->Failure = KSEND_FAIL_FILE_STATUS;
+        Run->Error = Error;
         return -1;
     }
-    if (Err != FAT_OK) {
+    if (Error != FAT_OK) {
         Run->Failure = KSEND_FAIL_BACKUP;
-        Run->Err = Err;
+        Run->Error = Error;
         return -1;
     }
     KsendImageCopy(&gKsendNewImage, &gKsendOldImage);
-    KsendSerialDrainInput(KSEND_DRAIN_QUIET_MS, KSEND_DRAIN_LIMIT_MS);
+    KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     KsendReadyLine(&gKsendOldImage);
     KsendBlockTable(&gKsendOldImage);
     if (KsendReceiveBlocks(Run) != 0) {
@@ -163,7 +163,7 @@ static int TransferRun(KSEND_RUN *Run) {
 }
 
 static void RollBack(const KSEND_RUN *Run) {
-    int Err;
+    int Error;
 
     if (Run->Dirty == 0) {
         return;
@@ -176,36 +176,36 @@ static void RollBack(const KSEND_RUN *Run) {
         KsendNote("no backup: target did not exist before this run");
         return;
     }
-    Err = KsendFileRestore(Run->BackupPath, Run->TargetPath, &gKsendOldImage);
-    if (Err == FAT_OK) {
+    Error = KsendFileRestore(Run->BackupPath, Run->TargetPath, &gKsendOldImage);
+    if (Error == FAT_OK) {
         KsendRestoredLine(&gKsendOldImage);
     } else {
-        KsendPrintReason("KSEND RESTORE FAIL", "restore", Err);
+        KsendPrintReason("KSEND RESTORE FAIL", "restore", Error);
     }
 }
 
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     KSEND_RUN Run;
     int Rc;
-    int Err;
+    int Error;
 
     KsendRunReset(&Run);
     Run.Reboot = Reboot ? 1 : 0;
     Run.Backup = Backup ? 1 : 0;
-    Err = KsendPathsPrepare(TargetPath, &Run);
-    if (Err != FAT_OK) {
-        Run.Failure = KSEND_FAIL_STAT;
-        Run.Err = Err;
+    Error = KsendPathsPrepare(TargetPath, &Run);
+    if (Error != FAT_OK) {
+        Run.Failure = KSEND_FAIL_FILE_STATUS;
+        Run.Error = Error;
         KsendFailLine(Run.Failure, Run.FailBlock, Run.FailWant, Run.FailGot,
-                      Run.Err);
+                      Run.Error);
         return 1;
     }
     KsendPathsNote(&Run);
-    KsendSerialDrainInput(KSEND_DRAIN_QUIET_MS, KSEND_DRAIN_LIMIT_MS);
+    KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     Rc = TransferRun(&Run);
     if (Rc == 0) {
         KsendVolumeRelease(&Run);
-        KsendOkLine(Run.TrailerCrc, Run.Written, Run.NewSize);
+        KsendSuccessLine(Run.TrailerCrc, Run.Written, Run.NewSize);
         if (Run.Reboot == 0) {
             return 0;
         }
@@ -217,11 +217,11 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
         KsendAbortLine(Run.Written);
     } else {
         KsendFailLine(Run.Failure, Run.FailBlock, Run.FailWant, Run.FailGot,
-                      Run.Err);
+                      Run.Error);
     }
     RollBack(&Run);
     CacheDropAfterFailure(&Run);
     KsendVolumeRelease(&Run);
-    KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MS, KSEND_FAIL_DRAIN_LIMIT_MS);
+    KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MILLISECONDS, KSEND_FAIL_DRAIN_LIMIT_MILLISECONDS);
     return 1;
 }

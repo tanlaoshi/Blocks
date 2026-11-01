@@ -1,5 +1,5 @@
 /*
- * KsendTransferPaths.c — 目标/备份路径、选卷、旧图拷贝
+ * TransferPaths.c — 目标/备份路径、选卷、旧图拷贝
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -17,12 +17,12 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->FailBlock = 0;
     Run->FailWant = 0;
     Run->FailGot = 0;
-    Run->VolIndex = -1;
+    Run->VolumeIndex = -1;
     Run->Reboot = 1;
     Run->Backup = 1;
     Run->Dirty = 0;
     Run->Failure = KSEND_FAIL_NONE;
-    Run->Err = FAT_OK;
+    Run->Error = FAT_OK;
 }
 
 static const char *PathNameStart(const char *Path) {
@@ -84,24 +84,24 @@ static int BackupPathBuild(const char *Target, char *Backup) {
 static int VolumePrepare(const char *Target, KSEND_RUN *Run) {
     const char *Rel = 0;
     int Vol = -1;
-    int Err = FileSystemResolve(Target, &Vol, &Rel);
+    int Error = FileSystemResolve(Target, &Vol, &Rel);
 
     (void)Rel;
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
-    Err = FileSystemSelectVolume(Vol);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = FileSystemSelectVolume(Vol);
+    if (Error != FAT_OK) {
+        return Error;
     }
-    Run->VolIndex = Vol;
+    Run->VolumeIndex = Vol;
     return FAT_OK;
 }
 
 void KsendVolumeRelease(KSEND_RUN *Run) {
-    if (Run->VolIndex >= 0) {
+    if (Run->VolumeIndex >= 0) {
         (void)FileSystemSelectVolume(-1);
-        Run->VolIndex = -1;
+        Run->VolumeIndex = -1;
     }
 }
 

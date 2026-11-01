@@ -1,5 +1,5 @@
 /*
- * KsendText.c — 拼串口行（十进制 / 8 位十六进制 / key=value）
+ * Text.c — 拼串口行（十进制 / 8 位十六进制 / key=value）
  *
  * 为什么自己拼：协议行要精确到字节（KSEND READY size=… block=… n=…），
  * 而 Shell 的 gConsole.Write 会把行同时喂给帧缓冲，板包也不该依赖 Services。

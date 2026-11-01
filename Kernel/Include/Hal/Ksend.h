@@ -8,7 +8,7 @@
 #define HAL_KSEND_H
 
 int KsendInfo(void);
-int KsendSelftest(void);
+int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
 
 #endif /* HAL_KSEND_H */

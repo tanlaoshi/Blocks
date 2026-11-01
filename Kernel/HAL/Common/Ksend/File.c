@@ -1,5 +1,5 @@
 /*
- * KsendFile.c — 卡上文件的整文件 / 分块操作（只用 FileSystem.h 公开 API）
+ * File.c — 卡上文件的整文件 / 分块操作（只用 FileSystem.h 公开 API）
  *
  * 为什么不碰 Fat/Block：铁律要求只调用现有 API；FAT 层没有 truncate，
  * 所以缩小时只能补零（见 KsendFileZeroRange 与 README 的限制一节）。
@@ -27,20 +27,20 @@ UINT32 KsendFileBlockCrcOf(const UINT8 *Data, UINT32 Length) {
 }
 
 int KsendFileDelete(const char *Path) {
-    int Err = FileSystemDeleteFile(Path);
+    int Error = FileSystemDeleteFile(Path);
 
-    if (Err == FAT_OK || Err == FAT_ERR_NOENT) {
+    if (Error == FAT_OK || Error == FAT_ERR_NOENT) {
         return FAT_OK;
     }
-    return Err;
+    return Error;
 }
 
 int KsendFileSize(const char *Path, UINT32 *OutSize) {
     FAT_FILE_STAT Stat;
-    int Err = FileSystemFileStat(Path, &Stat);
+    int Error = FileSystemFileStat(Path, &Stat);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     *OutSize = Stat.Size;
     return FAT_OK;
@@ -50,10 +50,10 @@ int KsendFileSize(const char *Path, UINT32 *OutSize) {
 int KsendFileReadExact(const char *Path, UINT32 Offset, UINT32 Want,
                        UINT32 *OutGot) {
     UINTN Got = 0;
-    int Err = FileSystemReadFileAt(Path, Offset, sIoBuffer, Want, &Got);
+    int Error = FileSystemReadFileAt(Path, Offset, sIoBuffer, Want, &Got);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (Got != Want) {
         return FAT_ERR_IO;
@@ -65,10 +65,10 @@ int KsendFileReadExact(const char *Path, UINT32 Offset, UINT32 Want,
 int KsendFileWriteAt(const char *Path, UINT32 Offset, const UINT8 *Data,
                      UINT32 Length) {
     UINTN Done = 0;
-    int Err = FileSystemWriteFileAt(Path, Offset, Data, Length, &Done);
+    int Error = FileSystemWriteFileAt(Path, Offset, Data, Length, &Done);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (Done != Length) {
         return FAT_ERR_IO;
@@ -120,10 +120,10 @@ static int ImageBegin(KSEND_IMAGE *Image, UINT32 Size) {
 
 int KsendFileScan(const char *Path, UINT32 Size, KSEND_IMAGE *Image) {
     UINT32 Offset = 0;
-    int Err = ImageBegin(Image, Size);
+    int Error = ImageBegin(Image, Size);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     while (Offset < Size) {
         UINT32 Want = Size - Offset;
@@ -132,13 +132,13 @@ int KsendFileScan(const char *Path, UINT32 Size, KSEND_IMAGE *Image) {
         if (Want > KSEND_IO_CHUNK_BYTES) {
             Want = KSEND_IO_CHUNK_BYTES;
         }
-        Err = KsendFileReadExact(Path, Offset, Want, &Got);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = KsendFileReadExact(Path, Offset, Want, &Got);
+        if (Error != FAT_OK) {
+            return Error;
         }
-        Err = ImageAdd(Image, Offset, Got);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = ImageAdd(Image, Offset, Got);
+        if (Error != FAT_OK) {
+            return Error;
         }
         Offset += Got;
     }
@@ -149,15 +149,15 @@ int KsendFileScan(const char *Path, UINT32 Size, KSEND_IMAGE *Image) {
 int KsendFileCopy(const char *Source, const char *Target, UINT32 Size,
                   KSEND_IMAGE *Image) {
     UINT32 Offset = 0;
-    int Err = ImageBegin(Image, Size);
+    int Error = ImageBegin(Image, Size);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     /* 目标可能是上次更大的备份：先删，目录项尺寸才等于这次写的字节数 */
-    Err = KsendFileDelete(Target);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = KsendFileDelete(Target);
+    if (Error != FAT_OK) {
+        return Error;
     }
     while (Offset < Size) {
         UINT32 Want = Size - Offset;
@@ -166,17 +166,17 @@ int KsendFileCopy(const char *Source, const char *Target, UINT32 Size,
         if (Want > KSEND_IO_CHUNK_BYTES) {
             Want = KSEND_IO_CHUNK_BYTES;
         }
-        Err = KsendFileReadExact(Source, Offset, Want, &Got);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = KsendFileReadExact(Source, Offset, Want, &Got);
+        if (Error != FAT_OK) {
+            return Error;
         }
-        Err = ImageAdd(Image, Offset, Got);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = ImageAdd(Image, Offset, Got);
+        if (Error != FAT_OK) {
+            return Error;
         }
-        Err = WriteChunk(Target, Offset, Got);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = WriteChunk(Target, Offset, Got);
+        if (Error != FAT_OK) {
+            return Error;
         }
         Offset += Got;
     }
@@ -207,7 +207,7 @@ int KsendFileWriteBlock(const char *Path, UINT32 Index, const UINT8 *Data,
 int KsendFileZeroRange(const char *Path, UINT32 Offset, UINT32 Length) {
     UINT32 Done = 0;
     UINT32 i;
-    int Err;
+    int Error;
 
     for (i = 0; i < (UINT32)sizeof(sIoBuffer); i++) {
         sIoBuffer[i] = 0;
@@ -218,9 +218,9 @@ int KsendFileZeroRange(const char *Path, UINT32 Offset, UINT32 Length) {
         if (Take > KSEND_IO_CHUNK_BYTES) {
             Take = KSEND_IO_CHUNK_BYTES;
         }
-        Err = WriteChunk(Path, Offset + Done, Take);
-        if (Err != FAT_OK) {
-            return Err;
+        Error = WriteChunk(Path, Offset + Done, Take);
+        if (Error != FAT_OK) {
+            return Error;
         }
         Done += Take;
     }

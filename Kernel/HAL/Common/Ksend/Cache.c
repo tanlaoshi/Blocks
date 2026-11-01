@@ -1,5 +1,5 @@
 /*
- * KsendCache.c — 目标文件旁的「差量表」缓存（<目标全名>.crc）
+ * Cache.c — 目标文件旁的「差量表」缓存（<目标全名>.crc）
  *
  * 人话：把上次成功写入后每 4 KB 一块的 CRC 留在卡上，下次 READY 之前直接
  * 读这份 2 KB 表，不再把 2 MB 的目标文件整个读一遍（SDIO 512 B 一块，
@@ -65,10 +65,10 @@ static int CachePathBuild(const char *Target) {
 static int CacheReadExact(const char *Path, UINT32 Offset, UINT32 Length,
                           UINT8 *Data) {
     UINTN Got = 0;
-    int Err = FileSystemReadFileAt(Path, Offset, Data, Length, &Got);
+    int Error = FileSystemReadFileAt(Path, Offset, Data, Length, &Got);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (Got != (UINTN)Length) {
         return FAT_ERR_IO;
@@ -135,26 +135,26 @@ int KsendCacheLoad(const char *TargetPath, UINT32 TargetSize,
     UINT32 BlockCount;
     UINT32 TotalSize;
     UINT32 FullCrc;
-    int Err;
+    int Error;
 
     if (Image == 0 || TargetSize == 0u) {
         return FAT_ERR_INVAL;
     }
-    Err = CachePathBuild(TargetPath);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = CachePathBuild(TargetPath);
+    if (Error != FAT_OK) {
+        return Error;
     }
-    Err = KsendFileSize(sCachePath, &CacheSize);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = KsendFileSize(sCachePath, &CacheSize);
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (CacheSize < KSEND_CACHE_HEADER_BYTES ||
         CacheSize > KSEND_CACHE_MAX_BYTES) {
         return FAT_ERR_INVAL;
     }
-    Err = CacheReadExact(sCachePath, 0, KSEND_CACHE_HEADER_BYTES, Buffer);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = CacheReadExact(sCachePath, 0, KSEND_CACHE_HEADER_BYTES, Buffer);
+    if (Error != FAT_OK) {
+        return Error;
     }
     if (!CacheHeaderCheck(Buffer, CacheSize, TargetSize)) {
         return FAT_ERR_INVAL;
@@ -162,10 +162,10 @@ int KsendCacheLoad(const char *TargetPath, UINT32 TargetSize,
     BlockCount = CacheRead32(Buffer + KSEND_CACHE_OFFSET_BLOCK_COUNT);
     TotalSize = CacheRead32(Buffer + KSEND_CACHE_OFFSET_TOTAL_SIZE);
     FullCrc = CacheRead32(Buffer + KSEND_CACHE_OFFSET_FULL_CRC);
-    Err = CacheReadExact(sCachePath, KSEND_CACHE_HEADER_BYTES,
+    Error = CacheReadExact(sCachePath, KSEND_CACHE_HEADER_BYTES,
                          BlockCount * KSEND_WORD_BYTES, Buffer);
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     CacheFillImage(Buffer, BlockCount, TotalSize, FullCrc, Image);
     return FAT_OK;
@@ -176,10 +176,10 @@ int KsendCacheLoad(const char *TargetPath, UINT32 TargetSize,
  * 与磁盘一致，不如让下一次重新慢扫——缓存只是加速，慢路径永远正确。
  */
 int KsendCacheDrop(const char *TargetPath) {
-    int Err = CachePathBuild(TargetPath);
+    int Error = CachePathBuild(TargetPath);
 
-    if (Err != FAT_OK) {
-        return Err;
+    if (Error != FAT_OK) {
+        return Error;
     }
     return KsendFileDelete(sCachePath);
 }
@@ -194,7 +194,7 @@ int KsendCacheSave(const char *TargetPath, const KSEND_IMAGE *Image) {
     UINT32 BlockCount;
     UINT32 Bytes;
     UINT32 Index;
-    int Err;
+    int Error;
 
     if (TargetPath == 0 || Image == 0) {
         return FAT_ERR_INVAL;
@@ -220,17 +220,17 @@ int KsendCacheSave(const char *TargetPath, const KSEND_IMAGE *Image) {
                          Index * KSEND_WORD_BYTES,
                      Image->BlockCrc[Index]);
     }
-    Err = CachePathBuild(TargetPath);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = CachePathBuild(TargetPath);
+    if (Error != FAT_OK) {
+        return Error;
     }
-    Err = KsendFileDelete(sCachePath);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = KsendFileDelete(sCachePath);
+    if (Error != FAT_OK) {
+        return Error;
     }
-    Err = KsendFileWriteAt(sCachePath, 0, Buffer, Bytes);
-    if (Err != FAT_OK) {
-        return Err;
+    Error = KsendFileWriteAt(sCachePath, 0, Buffer, Bytes);
+    if (Error != FAT_OK) {
+        return Error;
     }
     return FileSystemFileSync(sCachePath);
 }

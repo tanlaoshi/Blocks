@@ -163,6 +163,9 @@ int AicEapolSend(SDHCI_HOST *Host, const UINT8 *Eapol, UINT32 Length, const UINT
  */
 int AicWifiDataSend(SDHCI_HOST *Host, const UINT8 *Frame, UINT32 Length, UINT8 VifIndex,
                     UINT8 ApIndex);
+/* WifiDataPathWrite.c：流控 + 对齐块写（EAPOL/数据共用） */
+int AicWifiDataPathWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length, const char *Tag,
+                         const char *FailText);
 
 /*
  * ---- MM_KEY_ADD_REQ(0x24) / CFM(0x25) 的镜像（PR-35）----

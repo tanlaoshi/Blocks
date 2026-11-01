@@ -255,7 +255,9 @@ int AicDhcpParseReply(const UINT8 *Payload, UINT32 Length, UINT32 Xid, UINT32 De
 
 /* ---- WifiDhcp.c：客户端状态机 + `wififw dhcp` 入口 ---- */
 void AicDhcpHandlePacket(const UINT8 *Payload, UINT32 Length, UINT32 Decryption);
-int SdhciWifiDhcp(const char *MsText);
+int SdhciWifiDhcp(const char *MillisecondsText);
+/* WifiDhcpProbe.c：读 BLOCKS:probe.cfg（arpuni/mcast/ac/tid/start） */
+void AicWifiDhcpLoadProbe(void);
 
 /* ---- WifiArpMessage.c / WifiArp.c ---- */
 UINT32 AicArpBuildRequest(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station,
@@ -265,9 +267,9 @@ int AicArpParseReply(const UINT8 *Payload, UINT32 Length, const UINT8 *TargetIp,
 void AicArpHandlePacket(const UINT8 *Payload, UINT32 Length, UINT32 Decryption);
 int AicArpResolveUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
                          const UINT8 *TargetIp, const UINT8 *DstMac, UINT8 VifIndex,
-                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMs);
+                         UINT8 ApIndex, UINT8 *OutMac, UINT32 BudgetMilliseconds);
 int AicArpResolveGateway(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *StationIp,
                          const UINT8 *GatewayIp, UINT8 VifIndex, UINT8 ApIndex, UINT8 *OutMac,
-                         UINT32 BudgetMs);
+                         UINT32 BudgetMilliseconds);
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * KsendCrc.c — CRC-32/ISO-HDLC（反射，poly 0xEDB88320，初值/终值异或全 1）
+ * CyclicRedundancyCheck.c — CRC-32/ISO-HDLC（反射，poly 0xEDB88320，初值/终值异或全 1）
  *
  * 与 PC 侧 Python zlib.crc32 同参，因此：
  *   块 CRC   = Final(Update(INITIAL, Data, Len))

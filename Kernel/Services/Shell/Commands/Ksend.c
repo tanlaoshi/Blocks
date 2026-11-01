@@ -8,7 +8,7 @@
 #include "Console.h"
 
 extern int KsendInfo(void) __attribute__((weak));
-extern int KsendSelftest(void) __attribute__((weak));
+extern int KsendSelfTest(void) __attribute__((weak));
 extern int KsendTransfer(const char *TargetPath, int Reboot, int Backup)
     __attribute__((weak));
 
@@ -40,7 +40,7 @@ static void CommandKsend(int Argc, char **Argv) {
     int Reboot = 1;
     int Backup = 1;
 
-    if (KsendInfo == 0 || KsendSelftest == 0 || KsendTransfer == 0) {
+    if (KsendInfo == 0 || KsendSelfTest == 0 || KsendTransfer == 0) {
         gConsole.Write("ksend: not built for this board\n");
         return;
     }
@@ -60,7 +60,7 @@ static void CommandKsend(int Argc, char **Argv) {
             return;
         }
         if (KsendArgumentIs(Argv[Index], "selftest")) {
-            (void)KsendSelftest();
+            (void)KsendSelfTest();
             return;
         }
         if (Index + 1 == Argc) {

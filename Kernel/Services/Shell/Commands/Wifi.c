@@ -33,6 +33,8 @@ extern int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const
 extern int SdhciWifiEapolPoll(const char *MsText) __attribute__((weak));
 /* PR-36：通用以太网 TX + DHCP 客户端。MsText=0 用板级默认预算（8000ms）；只读 */
 extern int SdhciWifiDhcp(const char *MsText) __attribute__((weak));
+/* dwifi-ping：对 DHCP 网关 ICMP；MsText=0 默认 4000ms */
+extern int SdhciWifiPing(const char *MsText) __attribute__((weak));
 
 /*
  * 板级模式位（与 Kernel/HAL/RiscV/Board/milk-v-duo-s/Sdhci.h 的 SDHCI_WIFI_FW_* 一致）。
@@ -468,6 +470,15 @@ static void CommandWifiFw(int Argc, char **Argv) {
         }
         WifiMarkBegin();
         gConsole.Write(SdhciWifiDhcp(Argc == 3 ? Argv[2] : 0) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
+        WifiMarkEnd();
+        return;
+    } else if (ArgEqualIgnoreCase(Argv[1], "ping")) {
+        if (SdhciWifiPing == 0 || Argc > 3) {
+            gConsole.Write("wififw ping [ms]\n");
+            return;
+        }
+        WifiMarkBegin();
+        gConsole.Write(SdhciWifiPing(Argc == 3 ? Argv[2] : 0) == 0 ? "wififw: ok\n" : "wififw: FAILED\n");
         WifiMarkEnd();
         return;
     } else if (ArgEqualIgnoreCase(Argv[1], "ver")) {

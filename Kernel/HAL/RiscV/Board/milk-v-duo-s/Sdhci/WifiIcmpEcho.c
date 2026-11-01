@@ -154,12 +154,12 @@ int AicIcmpEchoUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *Stat
             SdhciMark("WiFi: icmp uni: build failed\n");
             return -1;
         }
-        SdhciMark("WiFi: icmp uni: echo-request ");
+        SdhciMark("WiFi: icmp: echo-request ");
         SdhciMark(TargetText);
-        SdhciMark(" (unicast to the AP)\n");
+        SdhciMark("\n");
         if (AicWifiDataSend(Host, sAicIcmpFrame, Length, VifIndex, ApIndex) != 0) {
             sAicIcmpActive = 0u;
-            SdhciMark("WiFi: icmp uni: tx failed → unicast-icmp-fail\n");
+            SdhciMark("WiFi: icmp: tx failed → unicast-icmp-fail\n");
             return -1;
         }
         if (AicNetPollRun(Host, Slice, IcmpReplyDone) == 0) {
@@ -168,10 +168,9 @@ int AicIcmpEchoUnicast(SDHCI_HOST *Host, const UINT8 *Station, const UINT8 *Stat
     }
     sAicIcmpActive = 0u;
     if (sAicIcmpReplySeen == 0u) {
-        SdhciMark("WiFi: icmp uni: no reply → unicast-icmp-fail "
-                  "(AP silent on unicast L3; see Docs/20 §1g)\n");
+        SdhciMark("WiFi: icmp: no reply → unicast-icmp-fail\n");
         return -1;
     }
-    SdhciMark("WiFi: icmp uni: reply ok → unicast-icmp-ok\n");
+    SdhciMark("WiFi: icmp: reply ok → unicast-icmp-ok\n");
     return 0;
 }

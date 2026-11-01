@@ -260,6 +260,11 @@ void AicDhcpHandlePacket(const UINT8 *Payload, UINT32 Length, UINT32 Decryption)
 int SdhciWifiDhcp(const char *MillisecondsText);
 /* WifiDhcpProbe.c：读 BLOCKS:probe.cfg（arpuni/mcast/ac/tid/start） */
 void AicWifiDhcpLoadProbe(void);
+/* WifiDhcpLease.c：ACK 后记住租约（ping 用） */
+void AicDhcpLeaseStore(const AIC_NET_DHCP_REPLY *Reply);
+int AicDhcpLeaseGet(AIC_NET_DHCP_REPLY *OutReply);
+/* WifiPing.c：`wififw ping [ms]` → ping_ok */
+int SdhciWifiPing(const char *MillisecondsText);
 
 /* ---- WifiArpMessage.c / WifiArp.c ---- */
 UINT32 AicArpBuildRequest(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station,

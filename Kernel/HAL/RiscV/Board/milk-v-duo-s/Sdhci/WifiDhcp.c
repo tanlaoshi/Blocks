@@ -13,9 +13,8 @@
 #include "WifiEapolPrivate.h"
 #include "CString.h"
 
-/* 一次命令的帧缓冲（最大一帧 342 B，512 与 TX 块同档） */
+/* 帧缓冲（≤342 B）+ 当前等待的应答（sink 写 / Done 读） */
 static UINT8 sAicDhcpFrame[AIC_NET_FRAME_MAX];
-/* 当前等待的那条应答（sink 在收包路径里写，轮询的 Done 只读） */
 static AIC_NET_DHCP_REPLY sAicDhcpReply;
 static UINT32 sAicDhcpXid;
 static UINT32 sAicDhcpReplyReady;
@@ -207,8 +206,9 @@ static int DhcpExchange(SDHCI_HOST *Host, const UINT8 *Station, UINT32 BudgetMil
     SdhciMark("WiFi: dhcp: OK ip=");
     DhcpMarkIpv4("", sAicDhcpReply.YourIp);
     SdhciMark("\n");
-    /* DHCP 到此为止（xid 清零后迟到的 ACK 重传不会再改 Reply），接着问网关 */
+    /* xid 清零后迟到 ACK 不改 Reply；租约留给 wififw ping */
     sAicDhcpXid = 0u;
+    AicDhcpLeaseStore(&sAicDhcpReply);
     DhcpArpGateway(Host, Station, VifIndex, ApIndex);
     return 0;
 }

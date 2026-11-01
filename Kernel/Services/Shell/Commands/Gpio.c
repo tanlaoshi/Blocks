@@ -16,78 +16,9 @@
  * 别改：selftest 失败时不得打印 PASS；参数错必须回 usage。
  */
 #include "ShellPrivate.h"
+#include "GpioSyntax.h"
 #include "HalGpio.h"
 #include "Console.h"
-
-#define GPIO_ARG_COMMAND  1
-#define GPIO_ARG_FIRST    2
-#define GPIO_ARG_SECOND   3
-#define GPIO_TEXT_MAX     32
-
-static void GpioWriteUsage(void) {
-    gConsole.Write("gpio list | mode <pin> in|out | pull <pin> none|up|down | "
-                   "write <pin> 0|1 | read <pin> | selftest <pin>\n");
-}
-
-static const char *GpioArg(int Argc, char **Argv, int Index) {
-    return (Index < Argc) ? Argv[Index] : 0;
-}
-
-/* 十进制/0x 十六进制都收（板号/引脚号手输，容错一点） */
-static int GpioParseNumber(const char *Text, UINT32 *Out) {
-    UINT32 Value = 0u;
-    int Digits = 0;
-
-    if (Text == 0 || Out == 0) {
-        return -1;
-    }
-    if (Text[0] == '0' && (Text[1] == 'x' || Text[1] == 'X')) {
-        Text += 2;
-        while (*Text != 0) {
-            UINT32 Digit;
-            if (*Text >= '0' && *Text <= '9') {
-                Digit = (UINT32)(*Text - '0');
-            } else if (*Text >= 'a' && *Text <= 'f') {
-                Digit = (UINT32)(*Text - 'a') + 10u;
-            } else if (*Text >= 'A' && *Text <= 'F') {
-                Digit = (UINT32)(*Text - 'A') + 10u;
-            } else {
-                return -1;
-            }
-            Value = (Value << 4) | Digit;
-            Digits++;
-            Text++;
-        }
-    } else {
-        while (*Text >= '0' && *Text <= '9') {
-            Value = Value * 10u + (UINT32)(*Text - '0');
-            Digits++;
-            Text++;
-        }
-    }
-    if (Digits == 0 || *Text != 0) {
-        return -1;
-    }
-    *Out = Value;
-    return 0;
-}
-
-static int GpioParsePin(int Argc, char **Argv, UINT32 *OutPin) {
-    const char *Text = GpioArg(Argc, Argv, GPIO_ARG_FIRST);
-    UINT32 Pin;
-
-    if (GpioParseNumber(Text, &Pin) != 0) {
-        return -1;
-    }
-    if (Pin >= HalGpioCount()) {
-        gConsole.Write("gpio: pin out of range (count=");
-        gConsole.WriteHex32(HalGpioCount());
-        gConsole.Write(")\n");
-        return -1;
-    }
-    *OutPin = Pin;
-    return 0;
-}
 
 static void GpioPrintResult(const char *Name, int Rc) {
     gConsole.Write("gpio: ");
@@ -97,12 +28,68 @@ static void GpioPrintResult(const char *Name, int Rc) {
 
 static void GpioCommandList(void) {
     const char *Board = HalGpioBoardName();
+    const HAL_GPIO_BOARD_PIN *Pins;
+    UINT32 Count = 0u;
+    UINT32 Index;
 
     gConsole.Write("gpio: board=");
     gConsole.Write(Board != 0 ? Board : "unsupported");
     gConsole.Write(" pins=");
     gConsole.WriteHex32(HalGpioCount());
+    gConsole.Write(" named=");
+    Pins = HalGpioBoardPins(&Count);
+    gConsole.WriteHex32(Count);
     gConsole.Write("\n");
+    if (Pins == 0) {
+        return;
+    }
+    for (Index = 0u; Index < Count; Index++) {
+        gConsole.Write("  ");
+        gConsole.Write(Pins[Index].Name != 0 ? Pins[Index].Name : "?");
+        gConsole.Write(" gpio=");
+        gConsole.WriteHex32(Pins[Index].Pin);
+        gConsole.Write(" header=");
+        gConsole.WriteHex32(Pins[Index].HeaderPin);
+        gConsole.Write(Pins[Index].DefaultMode == HAL_GPIO_MODE_OUTPUT ? " out" : " in");
+        gConsole.Write(Pins[Index].DefaultPull == HAL_GPIO_PULL_UP ? " pull-up" : "");
+        gConsole.Write(Pins[Index].DefaultPull == HAL_GPIO_PULL_DOWN ? " pull-down" : "");
+        gConsole.Write("\n");
+    }
+}
+
+/* set：按板图默认模式配置后写值（最常用的一条，名字/数字都收） */
+static void GpioCommandSet(int Argc, char **Argv) {
+    UINT32 Pin;
+    UINT32 Value;
+
+    if (GpioParsePin(Argc, Argv, &Pin) != 0 ||
+        GpioParseNumber(GpioArg(Argc, Argv, GPIO_ARG_SECOND), &Value) != 0 || Value > 1u) {
+        GpioWriteUsage();
+        return;
+    }
+    if (HalGpioSetMode(Pin, HAL_GPIO_MODE_OUTPUT) != 0) {
+        gConsole.Write("gpio: set FAILED (mode)\n");
+        return;
+    }
+    GpioPrintResult("set", HalGpioWrite(Pin, (int)Value));
+}
+
+/* get：读实际电平（名字/数字都收） */
+static void GpioCommandGet(int Argc, char **Argv) {
+    UINT32 Pin;
+    int High = 0;
+
+    if (GpioParsePin(Argc, Argv, &Pin) != 0) {
+        GpioWriteUsage();
+        return;
+    }
+    if (HalGpioRead(Pin, &High) != 0) {
+        gConsole.Write("gpio: get FAILED\n");
+        return;
+    }
+    gConsole.Write("gpio: ");
+    gConsole.Write(GpioArg(Argc, Argv, GPIO_ARG_FIRST));
+    gConsole.Write(High != 0 ? " = 1\n" : " = 0\n");
 }
 
 static void GpioCommandMode(int Argc, char **Argv) {
@@ -210,22 +197,25 @@ static void GpioCommandSelfTest(int Argc, char **Argv) {
 void CommandGpio(int Argc, char **Argv) {
     const char *Name = GpioArg(Argc, Argv, GPIO_ARG_COMMAND);
 
-    (void)GPIO_TEXT_MAX;
     if (Name == 0) {
         GpioWriteUsage();
         return;
     }
-    if (Name[0] == 'l' && Name[1] == 'i') {
+    if (GpioTextEqual(Name, "list")) {
         GpioCommandList();
-    } else if (Name[0] == 'm') {
+    } else if (GpioTextEqual(Name, "set")) {
+        GpioCommandSet(Argc, Argv);
+    } else if (GpioTextEqual(Name, "get")) {
+        GpioCommandGet(Argc, Argv);
+    } else if (GpioTextEqual(Name, "mode")) {
         GpioCommandMode(Argc, Argv);
-    } else if (Name[0] == 'p') {
+    } else if (GpioTextEqual(Name, "pull")) {
         GpioCommandPull(Argc, Argv);
-    } else if (Name[0] == 'w') {
+    } else if (GpioTextEqual(Name, "write")) {
         GpioCommandWrite(Argc, Argv);
-    } else if (Name[0] == 'r') {
+    } else if (GpioTextEqual(Name, "read")) {
         GpioCommandRead(Argc, Argv);
-    } else if (Name[0] == 's') {
+    } else if (GpioTextEqual(Name, "selftest")) {
         GpioCommandSelfTest(Argc, Argv);
     } else {
         GpioWriteUsage();

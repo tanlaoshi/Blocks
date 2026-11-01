@@ -141,3 +141,23 @@ int HalGpioRead(UINT32 Pin, int *OutHigh) {
     *OutHigh = ((Value >> (Pin % RPI_GPIO_PINS_PER_REGISTER)) & 1u) != 0u ? 1 : 0;
     return 0;
 }
+
+/*
+ * 板图（G4）：只收【确定安全】的脚。
+ *   LED → GPIO17（排针 11），BTN → GPIO27（排针 13）：都是常见教学用法，默认不冲突。
+ * 刻意避开：
+ *   GPIO3  = 电源键（HAL/Arm64/Hal/Hal.c 在用）
+ *   GPIO14/15 = UART（早期初始化用）
+ * 新加名字前先确认真机上没人用这个脚。
+ */
+static const HAL_GPIO_BOARD_PIN sRpiBoardPins[] = {
+    { "LED", 17u, 11u, HAL_GPIO_MODE_OUTPUT, HAL_GPIO_PULL_NONE },
+    { "BTN", 27u, 13u, HAL_GPIO_MODE_INPUT, HAL_GPIO_PULL_UP },
+};
+
+const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount) {
+    if (OutCount != 0) {
+        *OutCount = (UINT32)(sizeof(sRpiBoardPins) / sizeof(sRpiBoardPins[0]));
+    }
+    return sRpiBoardPins;
+}

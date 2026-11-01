@@ -27,6 +27,19 @@ typedef enum {
     HAL_GPIO_PULL_DOWN = 2
 } HAL_GPIO_PULL;
 
+/*
+ * 板图里的一条：逻辑名 → 物理引脚。
+ *   HeaderPin 是排针物理脚号（0 = 没有这个概念），供人对照丝印；
+ *   命令里既可以用 Name，也可以直接用引脚号。
+ */
+typedef struct {
+    const char *Name;
+    UINT32 Pin;
+    UINT32 HeaderPin;
+    HAL_GPIO_MODE DefaultMode;
+    HAL_GPIO_PULL DefaultPull;
+} HAL_GPIO_BOARD_PIN;
+
 /* 本板可用引脚数；0 = 本板没有 GPIO（x64 等） */
 UINT32 HalGpioCount(void);
 
@@ -38,5 +51,11 @@ int HalGpioSetPull(UINT32 Pin, HAL_GPIO_PULL Pull);
 int HalGpioWrite(UINT32 Pin, int High);
 /* 读实际电平：0 = 成功并写 *OutHigh；非 0 = 失败 */
 int HalGpioRead(UINT32 Pin, int *OutHigh);
+
+/* 本板板图（弱实现返回 0 条） */
+const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount);
+
+/* 名字 → 引脚号（大小写不敏感）；找不到返回 -1。实现在 HAL/Common/Gpio */
+int HalGpioFindPin(const char *Name, UINT32 *OutPin);
 
 #endif

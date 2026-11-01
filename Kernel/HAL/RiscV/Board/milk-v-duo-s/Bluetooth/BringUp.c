@@ -1,9 +1,9 @@
 /*
  * BringUp.c — Duo S 蓝牙 bring-up（bt-duo-1）
  *
- * Docs/27 / Docs/24：UART4 → HCI_Reset → Read_BD_ADDR → Write_Local_Name("Blocks")
- * → Ready（当且仅当 Reset+读址成功）。
- * 本刀不改 Sdhci/Wifi*；不灌 fmacfwbt（若 CC 失败 → Ready=0 + 诊断，允许否证）。
+ * Docs/27 / Docs/24：fmacfwbt(SDIO) → UART4 → HCI_Reset → Read_BD_ADDR →
+ * Write_Local_Name("Blocks") → Ready（当且仅当 Reset+读址成功）。
+ * bt-duo-2：可调固件阶段选路；禁止改 WiFi 数据面 / netif。
  */
 #include "BluetoothPrivate.h"
 #include "Hal.h"
@@ -173,6 +173,13 @@ static int DuoBluetoothWriteLocalName(void) {
 
 int BoardBluetoothBringUp(void) {
     DuoBluetoothClearIdentity();
+
+    if (DuoBluetoothFirmwareLoad() != 0) {
+        sDuoBluetoothDiagnosis = "fmacfwbt load fail";
+        return -1;
+    }
+    HalDelayMilliseconds(100u);
+
     (void)DuoBluetoothUartTransportInitialize();
     HalSerialBootMarkForce("Boot: Bluetooth UART4 up\n");
 

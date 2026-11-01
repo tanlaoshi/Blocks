@@ -168,6 +168,10 @@ int AicStationAddressLoadFromFirmware(SDHCI_HOST *Host);
 #define AIC_FW_PATCH AIC_FW_DIR "fw_patch.bin"
 #define AIC_FW_PATCH_TABLE AIC_FW_DIR "fw_patch_table.bin"
 #define AIC_FW_FMAC AIC_FW_DIR "fmacfw.bin"
+/* Docs/27 / bt-duo-2：BT 共存 fmac（卡上已有；与 fmacfw.bin 同落点） */
+#define AIC_FW_FMAC_BLUETOOTH AIC_FW_DIR "fmacfwbt_8800d80_u02.bin"
+#define AIC_D80_FMAC_BLUETOOTH_SIZE 333388u
+#define AIC_FW_FMAC_STAGE_INDEX 2u
 
 /* 下载落点（aic_bsp_driver.h:345、358-359） */
 #define AIC_RAM_FMAC_FW_ADDR 0x00120000u

@@ -157,6 +157,11 @@ int SdhciWifiInitialize(void);
 #define SDHCI_WIFI_FW_PATCH_APPLY 32u
 /* S5b：固件阶段（WifiFw.c）。Mode 取上面的位或；只读的 READ/ID 可单独跑 */
 int SdhciWifiFw(UINT32 Mode);
+/*
+ * bt-duo-2：把 fmac 阶段切到 fmacfwbt 并走 write confirm（adid→patch→fmacfwbt→
+ * patchtbl→start）。不改数据面；失败返回非 0。
+ */
+int SdhciWifiWriteFirmwareBluetoothCoexistence(void);
 /* 只读诊断：读一个 RAM 字（用于真写之后对账） */
 int SdhciWifiFwRead(UINT32 Address);
 /* 单字写诊断：写完立刻读回（同一命令内），回答"写通不通" */

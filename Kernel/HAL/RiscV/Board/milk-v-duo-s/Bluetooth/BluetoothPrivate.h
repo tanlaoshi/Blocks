@@ -3,7 +3,8 @@
  *
  * Docs/27：HCI = UART4 @0x041C0000（DW-APB，reg-shift=2）；
  *   U-Boot 将 UART2 焊盘 mux 成 UART4（含 CTS/RTS）；壳仍 UART0，本目录勿碰。
- * 电源与 WiFi 共用 GPIOA15（已由 Sdhci/Power 拉高时复用；本刀不改 Wifi*）。
+ * 电源与 WiFi 共用 GPIOA15（已由 Sdhci/Power 拉高时复用）。
+ * bt-duo-2：SDIO 灌 fmacfwbt（固件阶段选路）；禁止改数据面 / netif。
  */
 #ifndef DUO_BLUETOOTH_PRIVATE_H
 #define DUO_BLUETOOTH_PRIVATE_H
@@ -60,6 +61,8 @@ int DuoBluetoothHciSendCommand(UINT16 Opcode, const UINT8 *Parameters,
                                UINT8 ParameterLength, UINT8 *OutStatus,
                                UINT8 *OutReturn, UINT8 ReturnMax,
                                UINT8 *OutReturnLength);
+
+int DuoBluetoothFirmwareLoad(void);
 
 int BoardBluetoothBringUp(void);
 int BoardBluetoothReady(void);

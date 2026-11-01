@@ -13,6 +13,8 @@
 void ShellCommandsKsendRegister(void);
 /* GPIO 契约自检（板级实现在 HAL/<Arch>/Board/<board>/Gpio） */
 void ShellCommandsGpioRegister(void);
+/* I2C 扫描/读写（板级实现在 HAL/<Arch>/Board/<board>/I2c） */
+void ShellCommandsI2cRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -24,6 +26,7 @@ void ShellCommandsRegisterVirtMin(void) {
     /* Duo S：ksend —— 串口增量写 Kernel.elf（开发期免拔卡） */
     ShellCommandsKsendRegister();
     ShellCommandsGpioRegister();
+    ShellCommandsI2cRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -42,4 +45,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsThreadRegister();
     ShellCommandsKsendRegister();
     ShellCommandsGpioRegister();
+    ShellCommandsI2cRegister();
 }

@@ -8,6 +8,7 @@
  *   icmpuni=1  单播 ICMP Echo（DA=BSSID，Docs/20 §1g → unicast-icmp-ok|fail）
  *   start=1    EAPOL-Start 探针
  *   hostid=1   TX hostdesc hostid = 0x80000001（厂商 SDIO 形）
+ *   bcast=1    BOOTP flags=0x8000（Docs/22 §1a 对照；默认 flags=0）
  */
 #include "WifiNetPrivate.h"
 #include "FileSystem.h"
@@ -129,6 +130,9 @@ void AicWifiDhcpLoadProbe(void) {
     int RunIcmpUnicast = 0;
     int RunEapolStart = 0;
 
+    /* 每次 dhcp 入口复位为课网绿路径（flags=0）；避免上一轮 bcast=1 残留 */
+    AicDhcpSetBootpBroadcastFlag(0u);
+
     if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 ||
         Got == 0u) {
         return;
@@ -159,6 +163,10 @@ void AicWifiDhcpLoadProbe(void) {
         if (ProbeMatch(Text, Got, Offset, "hostid=") &&
             ProbeParseDecimal(Text, Got, Offset + 7u, &Value)) {
             AicWifiSetHostIdMode((UINT32)Value);
+        }
+        if (ProbeMatch(Text, Got, Offset, "bcast=1")) {
+            AicDhcpSetBootpBroadcastFlag(1u);
+            SdhciMark("WiFi: probe: bcast=1 (BOOTP flags=0x8000; Docs/22 §1a)\n");
         }
     }
     if (RunArpUnicast != 0) {

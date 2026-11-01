@@ -246,6 +246,8 @@ int AicNetPollRun(SDHCI_HOST *Host, UINT32 BudgetMs, int (*Done)(void));
 
 /* ---- WifiDhcpMessage.c：DHCP 组帧与解析（纯字节，不碰 SDIO） ---- */
 UINT32 AicDhcpMakeXid(const UINT8 *Station);
+/* WantBroadcast≠0 → flags=0x8000；0 → flags=0（默认；Docs/22 §1a） */
+void AicDhcpSetBootpBroadcastFlag(UINT32 WantBroadcast);
 UINT32 AicDhcpBuildDiscover(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station, UINT32 Xid);
 UINT32 AicDhcpBuildRequest(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station, UINT32 Xid,
                            const UINT8 *RequestedIp, const UINT8 *ServerIp);

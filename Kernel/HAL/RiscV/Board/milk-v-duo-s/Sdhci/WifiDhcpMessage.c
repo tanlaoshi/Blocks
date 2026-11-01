@@ -6,12 +6,20 @@
  * 从哪读：AicDhcpBuildDiscover / AicDhcpBuildRequest（→ DhcpBuild 一个函数拼）→
  *         AicDhcpParseReply（→ DhcpReadOption 逐条选项）→ AicDhcpMakeXid（xid 字段）。
  * 别改：字段偏移与选项号来自 RFC 2131 §2 图 1、RFC 2132 §3/§9，本文件不自己发明；
- *       chaddr 是 16 B 定长字段（前 6 B = MAC，其余补 0），flags 置 0x8000 要求广播回包。
+ *       chaddr 是 16 B 定长字段（前 6 B = MAC，其余补 0）；默认 flags=0（单播应答，Docs/22 §1a）。
  * 本刀不做：租约续期（RENEW/REBIND）、RELEASE、NAK 处理 —— 只要一个能用的地址。
  * 校验和：IPv4 头由 WifiNetFrame.c 算；UDP 校验和写 0（RFC 768 对 IPv4 允许）。
  */
 #include "WifiNetPrivate.h"
 #include "CString.h"
+
+/* Docs/22 §1a：默认 flags=0；probe bcast=1 才置 0x8000（课网广播 OFFER 路径沉默） */
+static UINT16 sAicDhcpBootpFlags = 0u;
+
+void AicDhcpSetBootpBroadcastFlag(UINT32 WantBroadcast) {
+    sAicDhcpBootpFlags =
+        (WantBroadcast != 0u) ? (UINT16)AIC_NET_BOOTP_FLAG_BROADCAST : (UINT16)0u;
+}
 
 /* 写一条 DHCP 选项（RFC 2132 §2 的 code|len|value 三元组），返回写入字节数 */
 static UINT32 DhcpAddOption(UINT8 *Body, UINT32 Offset, UINT8 Code, const UINT8 *Value,
@@ -69,7 +77,7 @@ static UINT32 DhcpBuild(UINT8 *Frame, UINT32 Capacity, const UINT8 *Station, UIN
     Body[AIC_NET_DHCP_HOPS_OFFSET] = 0u;
     AicNetPutBe32(Body + AIC_NET_DHCP_XID_OFFSET, Xid);
     AicNetPutBe16(Body + AIC_NET_DHCP_SECONDS_OFFSET, 0u); /* seconds：不记已用时间 */
-    AicNetPutBe16(Body + AIC_NET_DHCP_FLAGS_OFFSET, AIC_NET_BOOTP_FLAG_BROADCAST);
+    AicNetPutBe16(Body + AIC_NET_DHCP_FLAGS_OFFSET, sAicDhcpBootpFlags);
     (void)memcpy(Body + AIC_NET_DHCP_CLIENT_HARDWARE_OFFSET, Station, AIC_NET_MAC_LENGTH);
     AicNetPutBe32(Body + AIC_NET_DHCP_MAGIC_OFFSET, AIC_NET_DHCP_MAGIC_COOKIE);
     Offset = AIC_NET_DHCP_OPTIONS_OFFSET;

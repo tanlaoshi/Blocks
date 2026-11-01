@@ -20,6 +20,8 @@
 #include "WifiNetif.h"
 #include "WifiAssocPrivate.h"
 #include "Private.h"
+#include "WifiHandshakePrivate.h" /* AicWifiDataSend */
+#include "WifiNetPrivate.h"      /* AicNetStationAddress（经 WifiNetFrame 链也可，这里显式） */
 
 #define AIC_NETIF_MAC_LENGTH     6u
 
@@ -53,11 +55,14 @@ void BoardWifiArmNetifLinkOutput(const UINT8 StationMac[AIC_NETIF_MAC_LENGTH]) {
     }
     sAicNetifArmed = 1;
     sAicNetifOkPrinted = 0;
+    /* 武装 = 开始允许 RX 喂 lwIP；sink 随武装挂上（评审红线①） */
+    BoardWifiFeedAttachSink(1);
     SdhciMark("WiFi: netif armed\n");
 }
 
 void BoardWifiDisarmNetifLinkOutput(void) {
     sAicNetifArmed = 0;
+    BoardWifiFeedAttachSink(0);
     SdhciMark("WiFi: netif disarmed\n");
 }
 

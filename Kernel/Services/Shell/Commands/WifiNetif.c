@@ -14,6 +14,7 @@
  */
 #include "ShellPrivate.h"
 #include "Console.h"
+#include "Hal.h"
 
 #if defined(__riscv)
 /*
@@ -37,8 +38,30 @@
 #define WIFINET_ARP_REQUEST   0x0001u
 #define WIFINET_DEFAULT_TARGET 0xC0A81F01u /* 192.168.31.1 课网网关 */
 
+#if defined(__riscv)
+static int WifiNetParseInteger(const char *Text, UINT32 *Out) {
+    UINT32 Value = 0u;
+    UINT32 Digits = 0u;
+
+    if (Text == 0 || Out == 0) {
+        return -1;
+    }
+    while (*Text >= '0' && *Text <= '9') {
+        Value = Value * 10u + (UINT32)(*Text - '0');
+        Digits++;
+        Text++;
+    }
+    if (Digits == 0u || *Text != 0 || Value == 0u) {
+        return -1;
+    }
+    *Out = Value;
+    return 0;
+}
+
+#endif
+
 static void WifiNetWriteUsage(void) {
-    gConsole.Write("wifinet attach | tx [ip] | status\n");
+    gConsole.Write("wifinet attach | disarm | tx [ip] | pump [ms] | status\n");
 }
 
 static const char *WifiNetArg(int Argc, char **Argv, int Index) {
@@ -119,6 +142,33 @@ static void WifiNetAttach(void) {
     gConsole.Write("wifinet: attach ok\n");
 }
 
+/* detach：解除武装（同时摘掉 RX sink）—— 用来验证"Disarm 后不再喂 lwIP" */
+static void WifiNetDetach(void) {
+    BoardWifiDisarmNetifLinkOutput();
+    gConsole.Write("wifinet: disarm requested (see WiFi: netif disarmed)\n");
+}
+
+/* pump：在给定毫秒内反复短喂，用于 netif-2 判据（lwip_in>0） */
+static void WifiNetPump(UINT32 Milliseconds) {
+    UINT32 Elapsed = 0u;
+    UINT32 Fed = 0u;
+
+    if (BoardWifiLinkOutputIsArmed() == 0) {
+        gConsole.Write("wifinet: not armed (run wifinet attach)\n");
+        return;
+    }
+    while (Elapsed < Milliseconds) {
+        Fed += (UINT32)BoardWifiPollFeedLwIp(8u);
+        HalDelayMilliseconds(1u);
+        Elapsed++;
+    }
+    gConsole.Write("wifinet: pump fed=");
+    WifiNetWriteDecimal(Fed);
+    gConsole.Write(" lwip_in=");
+    WifiNetWriteDecimal(BoardWifiFeedCount());
+    gConsole.Write("\n");
+}
+
 static void WifiNetTransmit(UINT32 TargetIp) {
     UINT8 Frame[WIFINET_ARP_FRAME];
     UINT8 Station[WIFINET_MAC_LEN];
@@ -170,6 +220,7 @@ void CommandWifiNetif(int Argc, char **Argv) {
 #if !defined(__riscv)
     (void)Name;
     gConsole.Write("wifinet: only on milk-v-duo-s\n");
+    WifiNetWriteUsage();
 #else
     if (Name == 0) {
         WifiNetWriteUsage();
@@ -183,6 +234,16 @@ void CommandWifiNetif(int Argc, char **Argv) {
             return;
         }
         WifiNetTransmit(Target);
+    } else if (Name[0] == 'd') {
+        WifiNetDetach();
+    } else if (Name[0] == 'p') {
+        UINT32 Milliseconds = 3000u;
+        const char *Text = WifiNetArg(Argc, Argv, WIFINET_ARG_TARGET);
+        if (Text != 0 && WifiNetParseInteger(Text, &Milliseconds) != 0) {
+            gConsole.Write("wifinet: bad ms\n");
+            return;
+        }
+        WifiNetPump(Milliseconds);
     } else if (Name[0] == 's') {
         gConsole.Write("wifinet: armed=");
         gConsole.WriteHex32((UINT32)BoardWifiLinkOutputIsArmed());
@@ -190,6 +251,10 @@ void CommandWifiNetif(int Argc, char **Argv) {
         WifiNetWriteDecimal(BoardWifiLinkOutputCount());
         gConsole.Write(" fail=");
         WifiNetWriteDecimal(BoardWifiLinkOutputFailCount());
+        gConsole.Write(" lwip_in=");
+        WifiNetWriteDecimal(BoardWifiFeedCount());
+        gConsole.Write(" drop=");
+        WifiNetWriteDecimal(BoardWifiFeedDropCount());
         gConsole.Write("\n");
     } else {
         WifiNetWriteUsage();
@@ -198,5 +263,5 @@ void CommandWifiNetif(int Argc, char **Argv) {
 }
 
 void ShellCommandsWifiNetifRegister(void) {
-    gConsole.Register("wifinet", "wifinet attach | tx [ip] | status", CommandWifiNetif);
+    gConsole.Register("wifinet", "wifinet attach | disarm | tx [ip] | pump [ms] | status", CommandWifiNetif);
 }

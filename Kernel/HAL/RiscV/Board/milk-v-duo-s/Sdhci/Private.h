@@ -80,6 +80,9 @@ void SdhciWrite16(SDHCI_HOST *Host, UINT32 Offset, UINT16 Value);
 void SdhciMark(const char *Text);
 void SdhciMarkHex(const char *Tag, UINT32 Value, int Digits);
 void SdhciMarkDecimal(const char *Tag, UINT32 Value);
+/* 安静窗口：喂包轮询期间关掉上面三个输出（dwifi-netif-2），命令自身输出不受影响 */
+void SdhciMarkSetQuiet(int Quiet);
+int  SdhciMarkQuietActive(void);
 int SdhciWait8(SDHCI_HOST *Host, UINT32 Offset, UINT8 Mask, int Set, UINT32 Milliseconds);
 int SdhciWait32(SDHCI_HOST *Host, UINT32 Offset, UINT32 Mask, int Set, UINT32 Milliseconds);
 

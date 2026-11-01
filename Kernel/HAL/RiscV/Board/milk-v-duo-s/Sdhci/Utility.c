@@ -85,8 +85,22 @@ void SdhciWifiMarkSink(void (*Sink)(const char *Text)) {
     gSdhciMarkSink = Sink;
 }
 
+/*
+ * 安静窗口（dwifi-netif-2）：每拍喂 lwIP 时会走 EAPOL 解码路径，那里每帧都打证据行，
+ * 不静音的话串口直接刷爆、壳也被拖慢。只影响 SdhciMark 家族，命令自身的输出不受影响。
+ */
+static int sSdhciMarkQuiet;
+
+void SdhciMarkSetQuiet(int Quiet) {
+    sSdhciMarkQuiet = Quiet;
+}
+
+int SdhciMarkQuietActive(void) {
+    return sSdhciMarkQuiet;
+}
+
 void SdhciMark(const char *Text) {
-    if (Text == 0) {
+    if (Text == 0 || sSdhciMarkQuiet != 0) {
         return;
     }
     if (gSdhciMarkSink != 0) {

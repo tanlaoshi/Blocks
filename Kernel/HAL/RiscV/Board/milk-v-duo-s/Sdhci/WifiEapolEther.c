@@ -12,8 +12,19 @@
  *       802.11 头剥掉，就退回以太网布局（ethertype 在 +12，RFC 894 §2）。
  */
 #include "WifiEapolPrivate.h"
+#include "WifiNetPrivate.h"
+#include "CString.h"
 
 AIC_WIFI_ETHER_SINK gAicEapolEtherSink;
+AIC_WIFI_FRAME_SINK gAicEapolFrameSink;
+
+#define AIC_ETHER_FRAME_MAX 1536u
+
+static UINT8 sAicEtherFrame[AIC_ETHER_FRAME_MAX];
+
+void AicEapolSetFrameSink(AIC_WIFI_FRAME_SINK Sink) {
+    gAicEapolFrameSink = Sink;
+}
 
 void AicEapolSetEtherSink(AIC_WIFI_ETHER_SINK Sink) {
     gAicEapolEtherSink = Sink;
@@ -93,6 +104,42 @@ static int EapolLocateEthernet(const UINT8 *Frame, UINT32 End, UINT32 Decryption
     return 0;
 }
 
+/*
+ * 把解出的 L3 载荷拼回完整以太网帧（dwifi-netif-2）：
+ *   · 802.11 帧（Header != 0）：dst=addr1(Mpdu+4)、src=addr2(Mpdu+10)
+ *   · 固件已剥成以太网（Header == 0）：Mpdu 前 14 B 就是以太网头，直接照抄
+ * EAPOL（0x888e）不进这个口 —— 握手仍走原路径。
+ */
+static void EapolDispatchFrameSink(const UINT8 *Frame, UINT32 End, UINT32 Decryption,
+                                   UINT16 EtherType, const UINT8 *Payload, UINT32 Length) {
+    const UINT8 *Mpdu = Frame + AIC_RX_HW_HEADER_LENGTH;
+    UINT32 MpduLength = End - AIC_RX_HW_HEADER_LENGTH;
+    UINT32 Header;
+    UINT32 Total;
+
+    if (gAicEapolFrameSink == 0 || EtherType == AIC_ETHERTYPE_PAE) {
+        return;
+    }
+    Total = AIC_ETH_HEADER_LENGTH + Length;
+    if (Total > AIC_ETHER_FRAME_MAX) {
+        return;
+    }
+    Header = AicEapolDot11HeaderLength(Frame, MpduLength);
+    if (Header == 0u) {
+        if (MpduLength < AIC_ETH_HEADER_LENGTH) {
+            return;
+        }
+        (void)memcpy(sAicEtherFrame, Mpdu, AIC_ETH_HEADER_LENGTH);
+    } else {
+        (void)memcpy(sAicEtherFrame, Mpdu + 4u, AIC_NET_MAC_LENGTH);        /* addr1 dst */
+        (void)memcpy(sAicEtherFrame + AIC_NET_MAC_LENGTH, Mpdu + 10u, AIC_NET_MAC_LENGTH);
+        sAicEtherFrame[12] = (UINT8)(EtherType >> 8);
+        sAicEtherFrame[13] = (UINT8)(EtherType & 0xFFu);
+    }
+    (void)memcpy(sAicEtherFrame + AIC_ETH_HEADER_LENGTH, Payload, Length);
+    gAicEapolFrameSink(sAicEtherFrame, Total, Decryption);
+}
+
 /* WifiEapolParse.c 每解完一帧调一次；没挂 sink 就是空操作（eapol poll/join 不受影响） */
 void AicEapolDispatchEther(const UINT8 *Frame, UINT32 End, UINT32 Decryption) {
     const UINT8 *Payload = 0;
@@ -106,4 +153,5 @@ void AicEapolDispatchEther(const UINT8 *Frame, UINT32 End, UINT32 Decryption) {
         return;
     }
     gAicEapolEtherSink(EtherType, Payload, Length, Decryption);
+    EapolDispatchFrameSink(Frame, End, Decryption, EtherType, Payload, Length);
 }

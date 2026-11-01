@@ -24,4 +24,11 @@ UINT32 BoardWifiLinkOutputFailCount(void);
 /* 从 join 现状武装（壳命令 / netif-3 自动武装共用） */
 int BoardWifiArmNetifFromJoin(void);
 
+/* RX：武装后每拍短喂（对表 Pi BoardWifiPollFeedLwIp）；返回本拍喂入的包数 */
+int BoardWifiPollFeedLwIp(UINT32 MaxPackets);
+UINT32 BoardWifiFeedCount(void);
+UINT32 BoardWifiFeedDropCount(void);
+void BoardWifiFeedReset(void);
+void BoardWifiFeedAttachSink(int Enable);
+
 #endif

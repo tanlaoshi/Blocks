@@ -283,6 +283,15 @@ extern UINT32 gAicEapolKeysInstalled;
 typedef void (*AIC_WIFI_ETHER_SINK)(UINT16 EtherType, const UINT8 *Payload, UINT32 Length,
                                     UINT32 Decryption);
 void AicEapolSetEtherSink(AIC_WIFI_ETHER_SINK Sink);
+
+/*
+ * 整帧 sink（dwifi-netif-2）：给 LwIpNetifInput 用 —— 它要的是**完整以太网帧**
+ * （dst[6] src[6] type[2] payload），而 EtherSink 只给 L3 载荷。
+ * 参数 Frame 指向本文件内部的静态缓冲，回调里不要长期保存该指针。
+ */
+typedef void (*AIC_WIFI_FRAME_SINK)(const UINT8 *Frame, UINT32 Length, UINT32 Decryption);
+void AicEapolSetFrameSink(AIC_WIFI_FRAME_SINK Sink);
+extern AIC_WIFI_FRAME_SINK gAicEapolFrameSink;
 /* 定义在 WifiEapolParse.c；调用方只经 AicEapolSetEtherSink 改它 */
 extern AIC_WIFI_ETHER_SINK gAicEapolEtherSink;
 

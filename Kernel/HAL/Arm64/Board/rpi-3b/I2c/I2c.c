@@ -128,6 +128,7 @@ static int RpiI2cWaitDone(void) {
 }
 
 static int RpiI2cStartTransfer(UINT32 Length) {
+    (void)Length; /* 长度已写进 DLEN；这里只负责发起并等完成 */
     *RpiBsc(RPI_BSC_C) |= RPI_BSC_C_ST;
     return RpiI2cWaitDone();
 }

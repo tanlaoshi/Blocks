@@ -10,8 +10,8 @@
 | 谁 | 节奏 | 动作 |
 |---|---|---|
 | **DeepSeek** | 做完一刀 | **只填本刀「进度」**（串口原文 / 文件 / 自查）；**此时不要 TG/TS** |
-| **DeepSeek** | 每 ~5 分钟 | ① 读 [`Archive/协作信箱/TO-DS.md`](../Archive/协作信箱/TO-DS.md)（切换/口令以它为准）② 读**当前执行包**本刀 **「评审」**：若 **`✅ 全绿`** → 才 `TG`+`TS`，推 ★，再 `JX`；本柱刀做完见下行「收官切柱」 |
-| **Cursor** | 每 ~5 分钟 | 读**当前执行包**：进度有更新 → 抽查 → 只改该刀表末 **「评审」**；若本柱收官则 **切下一包并写 TO-DS 通知** |
+| **DeepSeek** | 每 ~10 分钟 | ① 读 [`Archive/协作信箱/TO-DS.md`](../Archive/协作信箱/TO-DS.md)（切换/口令以它为准）② 读**当前执行包**本刀 **「评审」**：若 **`✅ 全绿`** → 才 `TG`+`TS`，推 ★，再 `JX`；本柱刀做完见下行「收官切柱」 |
+| **Cursor** | 每 ~10 分钟 | 读**当前执行包**：进度有更新 → 抽查 → 只改该刀表末 **「评审」**；若本柱收官则 **切下一包并写 TO-DS 通知** |
 | **评审行格式** | — | 开头必须：**`✅ 全绿`** 或 **`🔧 未收官`** / **`❌ 红`**。只有 **全绿** 才允许 DS TG TS JX。**协作/文档有变更时，评审末尾加「给 DS」短节**（勿只改文首让 DS 漏读） |
 | **收官切柱** | Docs/25 | 当 netif 柱验收完（netif-5 全绿且 1101 本柱 ★ 推空，或用户点名收官）→ **下一包 = [`Docs/24`](24-板端蓝牙-Pi与Duo执行包.md)**；Cursor 更新 1101 ★=`bt-pi-0`，并 **必写 TO-DS「切换通知」** |
 | **禁止** | — | 非全绿 TG/TS；Cursor 替 DS 填进度；**未切柱时**同会话改 Docs/24；切到 24 后勿再改 Wifi/netif |
@@ -171,7 +171,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 ## 5 · 刀序详表
 
 > 协作：文首 ★ 是哪刀就只做哪刀。改序须在本节和 1101 同步注明。  
-> **当前 ★（2026-11-01 PS）**：netif-1 ✅ 全绿 → 下一刀 **`dwifi-netif-2`**（等 DS TG TS 后 JX）。
+> **当前 ★（2026-11-01 PS）**：netif-2 ✅ 全绿 → 下一刀 **`dwifi-netif-3`**（等 DS TG TS 后 JX）。
 
 ### dwifi-netif-0 · 眼睛清单 ✅
 
@@ -203,8 +203,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `WifiNetLwIpFeed.c`；`0x15a` |
 | **坑** | 喂太多堵壳；喂太少 dhcp 无应答；重复投递同一帧 |
 | **依赖** | 默认 netif-1；若证据要先 RX，可对调并改本文+1101 |
-| **进度** | ⬜（等 netif-1 TG 后 JX） |
-| **评审** | ⬜ |
+| **进度** | 🔧 **红线①②③已改，真机复验完成，待评审复审（2026-11-01 20:50）**<br>**针对评审红线**：<br>① 【sink 常驻】改为 **sink 生命周期 = 武装生命周期**：`Arm`→`BoardWifiFeedAttachSink(1)`，`Disarm`→`(0)` 摘掉；`NetifFrameSink` 内**再查一次** `BoardWifiLinkOutputIsArmed()`（双保险）；`BoardWifiPollFeedLwIp` 不再自己挂/摘 sink。<br>② 【缺 include】`HAL/RiscV/Hal/HalDevicesNet.c` 补 `#include "WifiNetif.h"`；顺带修掉三处隐式声明警告：`WifiEapolEther.c`/`WifiNetifFeed.c` 补 `CString.h`（memcpy/memset），`WifiNetifLinkOutput.c` 补 `WifiHandshakePrivate.h`（AicWifiDataSend）+ `WifiNetPrivate.h`（AicNetStationAddress）。现在 `build.sh riscv duo` **0 warning 0 error**。<br>③ 【进度未交】本格已交，串口原文见下。<br>**真机（Duo USB0）**：`fw state=done` → `bringup ok(4/4)` → `scan` 8 APs → `join` `handshake ok (ptk+gtk)` → `wifinet attach` → `WiFi: netif armed` → `wififw dhcp` → **`WiFi: net-lwip-in-ok lwip_in=1`** → `wifinet status`：`armed=1 lwip_out=0 fail=0 lwip_in=3 drop=0`。<br>**红线①的反向证明**：`wifinet disarm` → `WiFi: netif disarmed` → 再跑 `wififw dhcp` → `dhcp: OK ip=192.168.31.186`（私有路径照常）但 `wifinet status` 仍是 `armed=0 … lwip_in=3`（**不增长**）⇒ Disarm 后确实不再喂 lwIP。<br>**实现要点**：整帧 sink 在 `WifiEapolEther.c` 拼装（802.11 取 addr1=dst/addr2=src；固件已剥 802.11 则照抄前 14 B）；`0x888e` 不进此口；喂包期间开安静窗口（`SdhciMarkSetQuiet`），判据标签在"首帧真喂入"那一刻临时开窗打印。 |
+| **评审** | ✅ **全绿**（2026-11-01 20:40 Cursor）。前回红线已收：sink 改 **Arm 挂 / Disarm 摘**（`BoardWifiFeedAttachSink`）+ `NetifFrameSink` 再查 IsArmed；`HalDevicesNet.c` 已 `#include "WifiNetif.h"`；`PollFeedLwIp(8)` + 安静窗 + 跳过 0x888e。进度串口：`net-lwip-in-ok lwip_in=1`，status `lwip_in=3…6`，dhcp 回归 OK——判据过。≤300 / 命名过。小债（不挡）：空口 `pump fed=0` 口径已说明，可接受。**给 DS**：本行 **全绿** → **`TG`+`TS`** → ★ 推 **`dwifi-netif-3`** → **`JX`**。未见 Docs/24 切换通知前勿开蓝牙。 |
 
 ### dwifi-netif-3 · 武装 + MAC + 起 lwIP
 
@@ -214,6 +214,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **判据** | 武装后 dump/info 见 WiFi MAC；未 join 时有线 MAC/行为不变；串口一行 `WiFi: netif armed` |
 | **对表** | Pi Kick 前 `LwIpInitialize` + Arm |
 | **依赖** | netif-1 + netif-2 |
+| **进度** | ⬜（等 netif-2 TG 后 JX） |
+| **评审** | ⬜ |
 
 ### dwifi-netif-4 · 通用 DHCP（lwIP）
 
@@ -303,13 +305,13 @@ NUC monitor **非必须**（本柱是主机栈）；若查空口 OFFER，≤12s 
 ## 9 · 开场口令
 
 ```text
-# netif-1 已 ✅ 全绿 → 先：
+# netif-2 已 ✅ 全绿 → 先：
 TG
 TS
 # 再：
 JX
-只做 1101 ★ = dwifi-netif-2
-权威：Docs/25 netif-2
-新建 WifiNetifFeed.c；HalNetFeedAlternateReceive ≤8
-EAPOL 期勿抢；勿改 Pi WiFi；填进度等评审，非全绿不 TG
+只做 1101 ★ = dwifi-netif-3
+权威：Docs/25 netif-3
+Arm + 站点 MAC + LwIpInitialize；Disarm 时机写清
+勿假 Ready；填进度等评审，非全绿不 TG
 ```

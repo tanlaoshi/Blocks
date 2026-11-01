@@ -10,6 +10,8 @@
 #include "Driver.h"
 #include "DriverNet.h"
 #include "LwIp.h"
+/* 板级 WiFi 网桥（武装/喂包）；只有 Duo 有实现，其它 RiscV 板落到弱默认 */
+#include "WifiNetif.h"
 #if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
@@ -147,4 +149,8 @@ void HalNetSetLwipReceive(int Enable) {
 }
 
 void HalNetFeedAlternateReceive(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 对表 Arm64：武装后每拍短喂 WiFi 收包；未武装时函数内部直接返回 0 */
+    (void)BoardWifiPollFeedLwIp(8u);
+#endif
 }

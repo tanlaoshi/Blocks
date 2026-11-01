@@ -23,6 +23,8 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsSystemRegisterVirtMin();
     /* Duo 等 ConsoleOnly：有网无桌面，须 net/setip/ping（否则 unknown: setip） */
     ShellCommandsNetRegister();
+    /* ConsoleOnly 无 Worker：无 bt-defer；挂 bt 才能 bt init → HalBluetoothInitialize */
+    ShellCommandsBluetoothRegister();
     /* Duo S：wifiprobe —— 真机上重跑 SD1(wifi-sd) SDIO 探测，不用重启 */
     ShellCommandsWifiProbeRegister();
     /* Duo S：ksend —— 串口增量写 Kernel.elf（开发期免拔卡） */

@@ -80,3 +80,15 @@ BT: duo path = UART4@0x041C0000
 
 文档刀：**不要求**上电验 HCI。  
 评审抽查：能按上表点开 dtsi / `cvi_board_init.c` / SDK `fmacfwbt` 路径即可。
+
+---
+
+## 6 · bt-duo-1 真机否证（2026-11-02）
+
+| 项 | 结果 |
+|---|---|
+| 部署 | ksend `BOOT:boot.sd`（本卡冷启走 FIT；仅拷 `Kernel.elf` 不够） |
+| 壳 | ConsoleOnly → 须 `VirtMin` 挂 `bt`；`bt init` → `HalBluetoothInitialize` |
+| 串口原文 | `bt: diag=HCI Reset fail (fw/UART?)`；`Ready=0` |
+| 解释 | 现网 SDIO 仍 `fmacfw.bin`（无 BT 共存字）；本刀**不灌** `fmacfwbt`、**不改** `Wifi*` |
+| Docs/24 | 走判据第二条收官；Ready=1 另刀 |

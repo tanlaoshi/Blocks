@@ -136,14 +136,17 @@ UINT32 PiUartTransportClockHz(void) __attribute__((weak));
 static void CommandBluetoothInit(void) {
     int Rc = HalBluetoothInitialize();
 
-    if (BoardBluetoothDiagnosis != 0 && PiUartTransportSnapshot != 0 &&
-        PiUartTransportClockHz != 0) {
+    if (BoardBluetoothDiagnosis != 0) {
+        gConsole.Write("bt: diag=");
+        gConsole.Write(BoardBluetoothDiagnosis());
+        gConsole.Write("\n");
+    }
+    /* Pi：附加 PL011 分频快照（Duo 无 PiUartTransport*，弱符为空则跳过） */
+    if (PiUartTransportSnapshot != 0 && PiUartTransportClockHz != 0) {
         UINT32 Snapshot[6] = {0u, 0u, 0u, 0u, 0u, 0u};
 
         PiUartTransportSnapshot(Snapshot);
-        gConsole.Write("bt: diag=");
-        gConsole.Write(BoardBluetoothDiagnosis());
-        gConsole.Write(" clk=");
+        gConsole.Write("bt: uart clk=");
         gConsole.WriteHex32(PiUartTransportClockHz());
         gConsole.Write(" ibrd/fbrd=");
         gConsole.WriteHex32(Snapshot[3]);

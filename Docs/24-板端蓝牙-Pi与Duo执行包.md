@@ -5,7 +5,7 @@
 > **背景**：NUC 课轨 **btx-1…5 已收官**（USB HCI）。Pi/Duo 门面 `HalBluetooth*` 仍 **Ready=0 stub**。  
 > **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../Archive/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
 > **前置柱**：[`Docs/25`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
-> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-duo-1`。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
+> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-duo-2`。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
 
 ### 协作闭环（与 Docs/25 同形）
 
@@ -289,7 +289,18 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | **做** | 对齐 bt-pi-1/2 **语义**；总线换 AIC 厂商流程；`HalBluetooth*` 同形 |
 | **判据** | 同 bt-pi-2；或文档否证「固件/UART 不通」并 **Ready=0** |
 | **禁止** | 半截 stub Ready；碰 WiFi 数据面 |
-| **进度** | 🔧 ★ 当前（bt-duo-0 已 TG+TS） |
+| **进度** | ✅ **收官·否证（2026-11-02 02:10 Cursor）**<br>实现：`Bluetooth/{UartTransport,HciCommand,BringUp}.c` + `HalBluetooth` + `BOARD_HAS_BLUETOOTH`；ConsoleOnly `VirtMin` 补挂 `bt`；`bt init` 打 `diag=`。<br>**未灌 `fmacfwbt`、未改 `Wifi*`**（BringUp 头注释钉死）。真机 `@ttyUSB0`（ksend `BOOT:boot.sd`）：`bt: diag=HCI Reset fail (fw/UART?)`；`init rc=0`；`bt: not ready`；**Ready=0**。<br>**判据走第二条**：文档否证「现网 `fmacfw` 下 HCI/UART 不通」+ Ready=0（非 stub 假绿）。Ready=1 / BD_ADDR 需另刀灌 `fmacfwbt`。 |
+| **评审** | ✅ **全绿（否证径）**（2026-11-02 Cursor）。串口原文齐；Ready 未撒谎；未碰 `Wifi*`/netif。**非** bt-pi-2 同形 Ready 绿。 |
+
+### bt-duo-2 · 灌 `fmacfwbt` → Reset → 址 → Ready
+
+| 项 | 内容 |
+|---|---|
+| **做** | SDIO 阶段选 `fmacfwbt_8800d80_u02.bin`（卡上 `/Assets/Fw/aic8800/` 已有）→ `write confirm` 同形管线 → UART4 HCI Reset → BD_ADDR → Ready；`Bluetooth/FirmwareLoad.c`；允许 **固件阶段选路**钩子，**禁止**改 WiFi 数据面 / netif / `btmode` 冒充 |
+| **判据** | 同 bt-pi-2：`bt: diag=ready` + 非零 `addr=` + Ready=1；失败可诊断、Ready=0 |
+| **禁止** | 半截 stub Ready；改 `Wifi*Data*` / Docs/25 netif；扫波特率 |
+| **进度** | 🔧 ★ 当前 |
+| **评审** | |
 
 ### 后排（本包明确不做）
 

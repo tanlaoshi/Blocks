@@ -38,3 +38,23 @@
 
 → **否证「先装 GTK 就能让组播首帧走 GTK」**。装序变量已生效，空口首帧仍 KeyID=0（PTK/CCMP）。  
 下一单变量另开（勿再扫装序）。
+
+---
+
+## 1b · 组播 tid=0xFF（非 QoS）（✅ 否证）
+
+**单变量**：组播 `hostdesc.tid` = `0xFF`（非 QoS；对表 Linux DHCP / ipc 注释）。  
+假说：§1a 空口先 QoS KeyID=0、后非 QoS KeyID=gtk → 默认组播改非 QoS 则首帧走 GTK。
+
+| 战场 | `WifiEapolTx.c`（曾改默认；否证后**已恢复** tid=0；复现用 `probe.cfg` `tid=255`） |
+|---|---|
+| 抓包 | NUC ≤12 s → `/tmp/duo-tidff-nuc.pcap`；立刻回 managed |
+| 判据 | 首帧 KeyID=gtk keyid → 绿；仍先 KeyID=0 → 否证 |
+
+| 步 | 真机（2026-11-01 17:24） |
+|---|---|
+| 串口 | ✅ `data tx … tid=ff mcast=1`；gtk `keyid=1` |
+| 空口首帧 | ❌ STA→`ff:ff` **先** `Data IV:1 KeyID 0`（本轮无 `+QoS` 字样），**后** `KeyID 1` |
+| OFFER | ❌ 无 |
+
+→ **否证「组播 tid=非 QoS 即可让首帧 KeyID=gtk」**。固件仍先发 KeyID=0，再发 KeyID=gtk。默认 tid 已回滚。

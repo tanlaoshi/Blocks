@@ -135,6 +135,10 @@ static void BuildHostDescriptor(UINT8 *Buffer, const UINT8 *Destination, const U
     Desc[AIC_TX_DESC_AC] = (sAicMcastAcOverride == AIC_TX_MCAST_STA_AUTO)
                                ? (UINT8)AIC_TX_HWQ_BE
                                : (UINT8)sAicMcastAcOverride;
+    /*
+     * tid 默认 BE/0。Docs/21 §1b：组播改默认 0xFF（非 QoS）串口 tid=ff 已生效，
+     * 空口首帧仍 KeyID=0 → 否证；恢复默认。probe tid=255 可复现该否证。
+     */
     Desc[AIC_TX_DESC_TID] = (sAicMcastTidOverride == AIC_TX_MCAST_STA_AUTO)
                                 ? (UINT8)AIC_TX_TID_BE
                                 : (UINT8)sAicMcastTidOverride;

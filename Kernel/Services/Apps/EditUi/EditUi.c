@@ -37,6 +37,35 @@ static void EditSaveInit(void) {
     gEditSave.Ctx = 0;
 }
 
+/*
+ * 开窗前同步栅标题/Save/底栏文案。否则首帧 CJK defer 空白，
+ * 且开窗链在 WantDrain 之前就画完 chrome（对齐 SettingsUiOpen）。
+ */
+static void EditUiPreheatLabels(void) {
+    static const MSG_ID Ids[] = {
+        MSG_APP_EDIT,
+        MSG_EDIT_SAVE,
+        MSG_EDIT_SAVED,
+        MSG_EDIT_MODIFIED,
+        MSG_EDIT_READY,
+        MSG_EDIT_NEW,
+        MSG_EDIT_NO_PATH,
+        MSG_EDIT_BAD_PATH,
+        MSG_EDIT_BUF_FULL,
+        MSG_EDIT_DIRTY_ESC,
+        MSG_EDIT_ESC,
+    };
+    UINT32 i;
+    UINT32 BlobSize = 0;
+
+    if (!FontTtfBlob(&BlobSize) || BlobSize < 12u) {
+        return;
+    }
+    for (i = 0; i < sizeof(Ids) / sizeof(Ids[0]); i++) {
+        FontTtfPreheatUtf8(LocStr(Ids[i]));
+    }
+}
+
 void EditUiOnWheel(INT8 Wheel) {
     if (Wheel == 0 || !EditUiIsFocused()) {
         return;
@@ -164,6 +193,7 @@ void EditUiOpen(const char *Path) {
     UINTN N = 0;
     int Err;
 
+    EditUiPreheatLabels();
     EditSaveInit();
     gEditLen = 0;
     gCursor = 0;

@@ -203,11 +203,12 @@ int GuiOpenEdit(const char *Path) {
     ClampWindowBox(Margin, &W, &H);
     X = Margin + 24;
     Y = Margin;
+    /* 先 Open（含 TTF 预热）再画 chrome，避免标题栏首帧 defer 空白 */
+    EditUiOpen(Path);
     InitWindowSlot(Idx, GUI_WIN_EDIT, X, Y, W, H, ThemeSettingsClientBackground(),
                    LocStr(MSG_APP_EDIT), 0);
 
     OpenChromeDefer(Idx);
-    EditUiOpen(Path);
     EditUiRepaint();
     OpenFadeIn(Idx);
     DebugWrite("Gui: open edit idx=");

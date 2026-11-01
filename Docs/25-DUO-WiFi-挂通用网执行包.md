@@ -171,7 +171,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 ## 5 · 刀序详表
 
 > 协作：文首 ★ 是哪刀就只做哪刀。改序须在本节和 1101 同步注明。  
-> **当前 ★（2026-11-01 PS）**：netif-2 ✅ 全绿 → 下一刀 **`dwifi-netif-3`**（等 DS TG TS 后 JX）。
+> **当前 ★（2026-11-01 PS）**：netif-3 ✅ 全绿 → 下一刀 **`dwifi-netif-4`**（等 DS TG TS 后 JX）。
 
 ### dwifi-netif-0 · 眼睛清单 ✅
 
@@ -204,7 +204,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **坑** | 喂太多堵壳；喂太少 dhcp 无应答；重复投递同一帧 |
 | **依赖** | 默认 netif-1；若证据要先 RX，可对调并改本文+1101 |
 | **进度** | 🔧 **红线①②③已改，真机复验完成，待评审复审（2026-11-01 20:50）**<br>**针对评审红线**：<br>① 【sink 常驻】改为 **sink 生命周期 = 武装生命周期**：`Arm`→`BoardWifiFeedAttachSink(1)`，`Disarm`→`(0)` 摘掉；`NetifFrameSink` 内**再查一次** `BoardWifiLinkOutputIsArmed()`（双保险）；`BoardWifiPollFeedLwIp` 不再自己挂/摘 sink。<br>② 【缺 include】`HAL/RiscV/Hal/HalDevicesNet.c` 补 `#include "WifiNetif.h"`；顺带修掉三处隐式声明警告：`WifiEapolEther.c`/`WifiNetifFeed.c` 补 `CString.h`（memcpy/memset），`WifiNetifLinkOutput.c` 补 `WifiHandshakePrivate.h`（AicWifiDataSend）+ `WifiNetPrivate.h`（AicNetStationAddress）。现在 `build.sh riscv duo` **0 warning 0 error**。<br>③ 【进度未交】本格已交，串口原文见下。<br>**真机（Duo USB0）**：`fw state=done` → `bringup ok(4/4)` → `scan` 8 APs → `join` `handshake ok (ptk+gtk)` → `wifinet attach` → `WiFi: netif armed` → `wififw dhcp` → **`WiFi: net-lwip-in-ok lwip_in=1`** → `wifinet status`：`armed=1 lwip_out=0 fail=0 lwip_in=3 drop=0`。<br>**红线①的反向证明**：`wifinet disarm` → `WiFi: netif disarmed` → 再跑 `wififw dhcp` → `dhcp: OK ip=192.168.31.186`（私有路径照常）但 `wifinet status` 仍是 `armed=0 … lwip_in=3`（**不增长**）⇒ Disarm 后确实不再喂 lwIP。<br>**实现要点**：整帧 sink 在 `WifiEapolEther.c` 拼装（802.11 取 addr1=dst/addr2=src；固件已剥 802.11 则照抄前 14 B）；`0x888e` 不进此口；喂包期间开安静窗口（`SdhciMarkSetQuiet`），判据标签在"首帧真喂入"那一刻临时开窗打印。 |
-| **评审** | ✅ **全绿**（2026-11-01 20:40 Cursor）。前回红线已收：sink 改 **Arm 挂 / Disarm 摘**（`BoardWifiFeedAttachSink`）+ `NetifFrameSink` 再查 IsArmed；`HalDevicesNet.c` 已 `#include "WifiNetif.h"`；`PollFeedLwIp(8)` + 安静窗 + 跳过 0x888e。进度串口：`net-lwip-in-ok lwip_in=1`，status `lwip_in=3…6`，dhcp 回归 OK——判据过。≤300 / 命名过。小债（不挡）：空口 `pump fed=0` 口径已说明，可接受。**给 DS**：本行 **全绿** → **`TG`+`TS`** → ★ 推 **`dwifi-netif-3`** → **`JX`**。未见 Docs/24 切换通知前勿开蓝牙。 |
+| **评审** | ✅ **全绿**（2026-11-01 20:40；**20:50 复审仍全绿**）。红线①②③与 Disarm 后 `lwip_in` 不增长已对上；commit **`6b163d22`** 已在 main。**给 DS**：netif-2 已可视为收官；请把进度格改成「✅ 收官 + commit」口径；**JX netif-3**（WIP 已见 `HalNetGetMac` 武装优先 / `HalNetEnsureLwIpActive` / handshake Arm——**先填 netif-3「进度」再评**）。 |
 
 ### dwifi-netif-3 · 武装 + MAC + 起 lwIP
 
@@ -214,8 +214,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **判据** | 武装后 dump/info 见 WiFi MAC；未 join 时有线 MAC/行为不变；串口一行 `WiFi: netif armed` |
 | **对表** | Pi Kick 前 `LwIpInitialize` + Arm |
 | **依赖** | netif-1 + netif-2 |
-| **进度** | ⬜（等 netif-2 TG 后 JX） |
-| **评审** | ⬜ |
+| **进度** | 🔧 **代码齐 + 真机三项判据已到，待评审（2026-11-01 21:35）**<br>**改了什么**：<br>① 自动武装：`Sdhci/WifiHandshakeRun.c` 在 `eapol handshake ok` 之后调 `BoardWifiArmNetifFromJoin()`，并 `HalNetEnsureLwIpActive()`（幂等起栈）。<br>② 新 join 前解除：在 `WifiAssoc.c` 的 join 入口（`AicWifiVendorPrepare` 之后、扫描/关联**之前**）调 `BoardWifiDisarmNetifLinkOutput()` —— 即使扫描被固件取消，也绝不会留着旧 MAC/旧索引继续喂 lwIP。<br>③ 对外 MAC：`HAL/RiscV/Hal/HalDevicesNet.c` 的 `HalNetGetMacAddress` 改为"武装时返回站点 MAC（`BoardWifiCopyStationMacIfArmed`），否则 `DriverNetGetMac`"；新增 `HalNetEnsureLwIpActive`（声明在 `Include/Hal/HalDevices.h`）。<br>④ 观测：`wifinet status` 增加 `mac=aa:bb:…`，方便"info 见 WiFi MAC"这条判据。<br>**真机（Duo USB0，串口原文）**：<br>· `wififw write confirm`→`fw state=done`；`bringup`→`ok(4/4)`；`scan`→4 APs<br>· join #1：`WiFi: eapol handshake ok (keys installed: ptk+gtk)` → **`WiFi: netif armed`**（**无需手工 attach**）<br>· `wifinet status` → `armed=1 lwip_out=0 fail=0 lwip_in=0 drop=0 mac=88:00:33:77:10:99`<br>· 武装后 `wififw dhcp` → `WiFi: net-lwip-in-ok lwip_in=1`（RX 仍喂）+ 私有路径 OK<br>· join #2：**`WiFi: netif disarmed`** 先出现（随后 `join: scan cancelled (status=00)` 是固件射频状态，与网桥无关）<br>· 解除后 `wifinet status` → `armed=0 … mac=(none)`；`net` → `mac 02:00:00:00:00:01`、`link up 100/FD`、`stack lwip (RX unified)` ⇒ **未武装时有线 MAC/行为不变**。<br>**编译**：x86_64 / arm64 rpi-3b / riscv duo 均 0 warning 0 error。<br>**负测（顺带发现，非本刀引入，留给 netif-4 看）**：未武装状态下跑壳 `net dhcp`（Duo 无有线 link、WiFi 未武装）→ 只打印 `lwip dhcp: queued` 后**壳被 hold 死**，等不到 `lwip dhcp: no offer`，需 `reboot` 恢复。怀疑 `LwIpDhcpEnqueue` 在 netif 无 link 时 worker 不推进超时（`LwIpDhcpStep` 依赖 `HalCpuTicks`），不是 netif-3 的代码路径（本条只是把现象记下来）。 |
+| **评审** | ✅ **全绿**（2026-11-01 21:40 Cursor）。握手后自动 Arm + `HalNetEnsureLwIpActive`；join 入口 Disarm；`HalNetGetMacAddress` 武装优先站点 MAC；`wifinet status` 见 `mac=`；串口 `netif armed` / 再 join `disarmed` / 未武装回有线 MAC——判据齐。命名/`WifiNetif.c`≤300 过。小债（不挡）：`HalNetEnsureLwIpActive` 仅 RiscV 实现（他架构无引用即可）；`HalNetReady` 未改（netif-4/5 若壳卡 Ready 再钉）。**给 DS**：本行全绿 → **`TG`+`TS`** → ★ **`dwifi-netif-4`** → **`JX`**（通用 dhcp；flags=0；勿扫 GTK）。 |
 
 ### dwifi-netif-4 · 通用 DHCP（lwIP）
 
@@ -226,6 +226,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `WifiNetDhcpWait.c`；`0x15d` |
 | **坑** | 若无 OFFER：**先查 lwIP Discover 的 BOOTP flags**（Docs/22：课网要 0）。禁止回头扫 GTK |
 | **依赖** | netif-3 |
+| **进度** | ⬜（等 netif-3 TG 后 JX） |
+| **评审** | ⬜ |
 
 ### dwifi-netif-5 · 通用 ping 验收
 
@@ -305,13 +307,13 @@ NUC monitor **非必须**（本柱是主机栈）；若查空口 OFFER，≤12s 
 ## 9 · 开场口令
 
 ```text
-# netif-2 已 ✅ 全绿 → 先：
+# netif-3 已 ✅ 全绿 → 先：
 TG
 TS
 # 再：
 JX
-只做 1101 ★ = dwifi-netif-3
-权威：Docs/25 netif-3
-Arm + 站点 MAC + LwIpInitialize；Disarm 时机写清
-勿假 Ready；填进度等评审，非全绿不 TG
+只做 1101 ★ = dwifi-netif-4
+权威：Docs/25 netif-4
+LwIpDhcpRestart 或 net dhcp；BOOTP flags=0
+禁扫 GTK；填进度等评审，非全绿不 TG
 ```

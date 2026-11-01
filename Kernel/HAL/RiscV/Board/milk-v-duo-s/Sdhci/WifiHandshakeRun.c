@@ -7,6 +7,8 @@
 #include "WifiHandshakePrivate.h"
 #include "WifiAssocPrivate.h"
 #include "CString.h"
+#include "WifiNetif.h"  /* Arm/Disarm 网桥（dwifi-netif-3） */
+#include "Hal.h"
 
 static int HandshakeControlPortDone(void) {
     return (int)gAicEapolControlPortCfm;
@@ -70,6 +72,13 @@ static int HandshakeRunKeyed(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const 
         return -1;
     }
     SdhciMark("WiFi: eapol handshake ok (keys installed: ptk+gtk)\n");
+    /*
+     * dwifi-netif-3：装钥成功 ⇒ 武装通用网（TX 走 AIC、RX 喂 lwIP、对外 MAC = 站点 MAC），
+     * 并确保 lwIP 起栈。未武装前（join 中/失败）一律保持有线路径不受影响。
+     */
+    if (BoardWifiArmNetifFromJoin() == 0) {
+        HalNetEnsureLwIpActive();
+    }
     AicHandshakeWatchData(Host);
     return 0;
 }
@@ -81,6 +90,8 @@ int AicWifiHandshakeRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char 
     if (AicEapolLayoutCheck() != 0) {
         return -1;
     }
+    /* 新一次 join 前先解除旧武装，避免用旧 MAC/旧索引喂新连接 */
+    BoardWifiDisarmNetifLinkOutput();
     gAicEapolKeysInstalled = 0u;
     if (HandshakeOpenControlPort(Host, VifIndex, ApIndex) != 0) {
         AicHandshakeSessionStop();

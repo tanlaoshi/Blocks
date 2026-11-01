@@ -71,7 +71,19 @@ void HalNetPoll(void) {
 }
 
 void HalNetGetMacAddress(UINT8 Mac[6]) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* dwifi-netif-3：武装后对外就是站点 MAC（lwIP DHCP 的 chaddr 靠它） */
+    if (BoardWifiCopyStationMacIfArmed(Mac) == 0) {
+        return;
+    }
+#endif
     DriverNetGetMac(Mac);
+}
+
+void HalNetEnsureLwIpActive(void) {
+    if (!LwIpActive()) {
+        (void)LwIpInitialize();
+    }
 }
 
 UINT32 HalNetGetIpAddress(void) {

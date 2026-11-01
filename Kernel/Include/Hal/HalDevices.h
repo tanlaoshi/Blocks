@@ -178,6 +178,7 @@ int HalNetInitialize(void);
  */
 int HalNetProbeAtModuleInit(void);
 int HalNetReady(void);
+void HalNetEnsureLwIpActive(void);
 /* 当前 L2 挂接次数；未挂过或本架构无此外置网卡时为 0 */
 UINT32 HalNetNicEpoch(void);
 /*

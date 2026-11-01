@@ -3,6 +3,7 @@
  * 关联由 LMAC 做；probe.cfg 见 WifiJoinProbe.c；装钥见 WifiKeyAdd*.c。
  */
 #include "WifiAssocPrivate.h"
+#include "WifiNetif.h"  /* 新 join 前 Disarm（dwifi-netif-3） */
 #include "WifiHandshakePrivate.h"
 #include "CString.h"
 
@@ -252,6 +253,11 @@ int SdhciWifiJoin(int Dry, const char *Ssid, const char *BssidText, const char *
         SdhciMark("WiFi: join: vendor prepare failed\n");
         return -1;
     }
+    /*
+     * dwifi-netif-3：**任何新 join 之前先解除旧武装**（在关联/扫描之前就做，
+     * 这样即使后面的扫描被取消，也不会留着旧 MAC/旧索引继续喂 lwIP）。
+     */
+    BoardWifiDisarmNetifLinkOutput();
     return JoinRun(Host, &Target, Password);
 }
 

@@ -134,6 +134,27 @@ static int WifiNetParseIpv4(const char *Text, UINT32 *OutIp) {
     return 0;
 }
 
+/* 打印已武装的站点 MAC（netif-3 判据：info 里要看得到 WiFi MAC） */
+static void WifiNetPrintMac(void) {
+    UINT8 Mac[WIFINET_MAC_LEN];
+    static const char Digits[] = "0123456789abcdef";
+    char Text[4];
+    UINT32 Index;
+
+    if (BoardWifiCopyStationMacIfArmed(Mac) != 0) {
+        gConsole.Write(" mac=(none)");
+        return;
+    }
+    gConsole.Write(" mac=");
+    for (Index = 0u; Index < WIFINET_MAC_LEN; Index++) {
+        Text[0] = Digits[(Mac[Index] >> 4) & 0xFu];
+        Text[1] = Digits[Mac[Index] & 0xFu];
+        Text[2] = (Index + 1u < WIFINET_MAC_LEN) ? ':' : 0;
+        Text[3] = 0;
+        gConsole.Write(Text);
+    }
+}
+
 static void WifiNetAttach(void) {
     if (BoardWifiArmNetifFromJoin() != 0) {
         gConsole.Write("wifinet: no station mac (join first)\n");
@@ -255,6 +276,7 @@ void CommandWifiNetif(int Argc, char **Argv) {
         WifiNetWriteDecimal(BoardWifiFeedCount());
         gConsole.Write(" drop=");
         WifiNetWriteDecimal(BoardWifiFeedDropCount());
+        WifiNetPrintMac();
         gConsole.Write("\n");
     } else {
         WifiNetWriteUsage();

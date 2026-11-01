@@ -18,7 +18,11 @@
 #include "ShellPrivate.h"
 #include "GpioSyntax.h"
 #include "HalGpio.h"
+#include "Hal.h"
 #include "Console.h"
+
+/* 轮询步长：5 ms —— 按键够用，又不至于把串口输出拖太久 */
+#define GPIO_WATCH_STEP_MS 5u
 
 static void GpioPrintResult(const char *Name, int Rc) {
     gConsole.Write("gpio: ");
@@ -72,6 +76,51 @@ static void GpioCommandSet(int Argc, char **Argv) {
         return;
     }
     GpioPrintResult("set", HalGpioWrite(Pin, (int)Value));
+}
+
+/*
+ * watch：轮询式边沿监视（不依赖中断框架）
+ *   为什么先做轮询：Pi 的 Arm64 侧 HalIrqRegister 还是空实现、GIC 也按 virt 布局写死，
+ *   真中断要先补一整套中断分发（另开一刀）。轮询 5 ms 足够按键用，且三架构都能跑。
+ * 输出：每次电平变化打一行；到时间打汇总。
+ */
+static void GpioCommandWatch(int Argc, char **Argv) {
+    UINT32 Pin;
+    UINT32 BudgetMs;
+    UINT32 ElapsedMs = 0u;
+    UINT32 Edges = 0u;
+    int Previous = 0;
+    int Current = 0;
+
+    if (GpioParsePin(Argc, Argv, &Pin) != 0 ||
+        GpioParseNumber(GpioArg(Argc, Argv, GPIO_ARG_SECOND), &BudgetMs) != 0 ||
+        BudgetMs == 0u) {
+        GpioWriteUsage();
+        return;
+    }
+    if (HalGpioRead(Pin, &Previous) != 0) {
+        gConsole.Write("gpio: watch FAILED (read)\n");
+        return;
+    }
+    gConsole.Write("gpio: watch start, level=");
+    gConsole.Write(Previous != 0 ? "1\n" : "0\n");
+    while (ElapsedMs < BudgetMs) {
+        HalDelayMilliseconds(GPIO_WATCH_STEP_MS);
+        ElapsedMs += GPIO_WATCH_STEP_MS;
+        if (HalGpioRead(Pin, &Current) != 0) {
+            gConsole.Write("gpio: watch aborted (read failed)\n");
+            return;
+        }
+        if (Current != Previous) {
+            Edges++;
+            gConsole.Write("gpio: edge -> ");
+            gConsole.Write(Current != 0 ? "1\n" : "0\n");
+            Previous = Current;
+        }
+    }
+    gConsole.Write("gpio: watch done, edges=");
+    gConsole.WriteHex32(Edges);
+    gConsole.Write("\n");
 }
 
 /* init：把板图里的默认模式+上下拉写进硬件（只对具名脚有效） */
@@ -223,6 +272,8 @@ void CommandGpio(int Argc, char **Argv) {
         GpioCommandList();
     } else if (GpioTextEqual(Name, "set")) {
         GpioCommandSet(Argc, Argv);
+    } else if (GpioTextEqual(Name, "watch")) {
+        GpioCommandWatch(Argc, Argv);
     } else if (GpioTextEqual(Name, "init")) {
         GpioCommandInit(Argc, Argv);
     } else if (GpioTextEqual(Name, "get")) {

@@ -3,10 +3,26 @@
  * Pi UART HCI 在 bt-pi；本刀无硬件 → Ready=0。
  */
 #include "Hal.h"
+#include "BoardConfig.h" /* BOARD_HAS_BLUETOOTH（bt-pi） */
 #include "HalBluetooth.h"
 
+#ifndef BOARD_HAS_BLUETOOTH
+#define BOARD_HAS_BLUETOOTH 0
+#endif
+
 int HalBluetoothInitialize(void) {
+#if BOARD_HAS_BLUETOOTH
+    /*
+     * bt-pi-1：只做 UART 字节通路 + HCI_Reset。
+     * Ready 仍为 0 —— Read_BD_ADDR 在 bt-pi-2，禁止空 stub 就 Ready=1。
+     */
+    {
+        int BoardBluetoothBringUpReset(void);
+        return BoardBluetoothBringUpReset() == 0 ? 1 : 0;
+    }
+#else
     return 0;
+#endif
 }
 
 int HalBluetoothReady(void) {

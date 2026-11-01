@@ -5,7 +5,7 @@
 > **背景**：NUC 课轨 **btx-1…5 已收官**（USB HCI）。Pi/Duo 门面 `HalBluetooth*` 仍 **Ready=0 stub**。  
 > **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../Archive/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
 > **前置柱**：[`Docs/25`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
-> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-pi-0`。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
+> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-pi-2`（Cursor）。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
 
 ### 协作闭环（与 Docs/25 同形）
 
@@ -251,22 +251,25 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 | 项 | 内容 |
 |---|---|
-| **做** | Board `Bluetooth/`：开电 → 下发 `.hcd`（对表 `hci_bcm`）→ 发 **HCI_Reset (`0x0C03`)** → 等 Command Complete；串口一行成功/失败 |
+| **做** | Board `Bluetooth/`：开电 → 发 **HCI_Reset (`0x0C03`)** → 等 Command Complete；串口一行成功/失败。**`.hcd` 加载不在本刀**（按 Cursor 00:40「出主意·选 1」收窄，挪到 `bt-pi-2`；本刀不建 `FirmwareLoad.c`） |
 | **判据** | 串口可 grep：`BT: HCI Reset ok`（或同形）；失败可诊断、**不卡死壳**；壳仍走 mini-UART |
 | **战场** | `HAL/Arm64/Board/rpi-3b/Bluetooth/**`；`HAL/Arm64/Hal/HalBluetooth.c` 可开始接 Initialize（Ready 仍须 0，直到 pi-2） |
 | **禁止** | 动 Duo；动 NUC XHCI BT；动 WiFi；扫波特率 |
 | **依赖** | bt-pi-0 |
 | **手测** | Pi 3B；**CK** 或 ksend；TTL 接壳口 |
+| **进度** | ✅ **收官（2026-11-02 01:18 Cursor 接手）**<br>根因：PL011 钟是 **mailbox UART=48 MHz**，不是 mini-UART 的 `core_freq=250`；旧 IBRD/FBRD=135/40 把 HCI 波特率打飞。改为 `BoardMboxGetClockHz(UART)` → **IBRD=0x1a FBRD=0x03**。<br>另：GPCLK2 keep + BT_ON=128 脉冲 + BootMark。<br>真机（ksend `@ttyUSB1`）：`bt: diag=HCI Reset ok clk=02dc6c00 ibrd/fbrd=0000001a/00000003`；`log` → `Boot: Bluetooth HCI Reset ok`。**Ready 仍 0**（pi-2）。无 `.hcd`。 |
+| **评审** | ✅ **全绿**（2026-11-02 01:18）。判据 `HCI Reset ok` 齐；壳 mini-UART 未抢；Ready=0。**给用户/DS**：可 **`TG`+`TS`** → ★ **`bt-pi-2`**（`.hcd`+BD_ADDR+Ready）。 |
 
-### bt-pi-2 · BD_ADDR + 名 + Ready
+### bt-pi-2 · 下发 .hcd + BD_ADDR + 名 + Ready
 
 | 项 | 内容 |
 |---|---|
-| **做** | `Read_BD_ADDR (0x1009)`；`Write_Local_Name (0x0C13)` = `Blocks`；`Ready=1` **当且仅当** Reset+读址成功；壳 `bt` 同 NUC 信息量 |
-| **判据** | `bt: ready name=Blocks addr=XX:…`（非全 0）；冷启可重复；未成功时 `bt: not ready …` |
-| **禁止** | Ready=1 但地址全 0；实现 scan/visible「顺便」 |
+| **做** | 对表 Docs/26 §3.3：Reset 后 **逐块下发 `BCM43430A1.hcd`** → `Read_BD_ADDR (0x1009)` → `Write_Local_Name (0x0C13)`=`Blocks`；`Ready=1` **当且仅当** Reset+读址成功；壳 `bt` 同 NUC 信息量 |
+| **判据** | `bt: ready name=Blocks addr=XX:…`（非全 0）；冷启可重复；未成功时 `bt: not ready …`；串口可 grep `HCI BD_ADDR=` / `Bluetooth ready` |
+| **禁止** | Ready=1 但地址全 0；实现 scan/visible「顺便」；扫波特率 |
 | **依赖** | bt-pi-1 |
 | **手测** | 同上；收口贴串口原文 |
+| **进度** | 🔧 ★ 当前（Cursor；TG bt-pi-1 后开干） |
 
 ### bt-duo-0 · 有无 BT（探针）
 

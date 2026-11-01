@@ -27,8 +27,10 @@ int BoardMboxGetClockHz(UINT32 ClockId, UINT32 *OutHz);
 int BoardExpanderGpioWrite(UINT32 ExpanderGpio, UINT32 State);
 
 #define BOARD_MBOX_CLOCK_EMMC 1u
+#define BOARD_MBOX_CLOCK_UART 2u /* PL011 UART0 钟（firmware 默认常 48 MHz） */
 #define BOARD_MBOX_CLOCK_CORE 4u /* SDHOST 分频母钟（bcm2835_sdhost） */
 #define BOARD_MBOX_POWER_SDHCI 0u
 #define BOARD_EXPANDER_WIRELESS_ON 129u /* 扩展脚1 + 基址128；Pi3 WiFi 上电 */
+#define BOARD_EXPANDER_BLUETOOTH_ON 128u /* 扩展脚0；Pi3 BT_ON（dts expgpio 0） */
 
 #endif /* BOARD_H */

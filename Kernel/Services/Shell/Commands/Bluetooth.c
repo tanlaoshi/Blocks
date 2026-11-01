@@ -126,7 +126,51 @@ static void CommandBluetoothVisible(int On) {
                       : "bt: hidden\n");
 }
 
+#if defined(__aarch64__)
+extern const char *BoardBluetoothDiagnosis(void);
+extern UINT32 BoardBluetoothAttemptMask(void);
+extern void PiUartTransportSnapshot(UINT32 Out[6]);
+extern UINT32 PiUartTransportClockHz(void);
+#endif
+
+static void CommandBluetoothInit(void) {
+    int Rc = HalBluetoothInitialize();
+#if defined(__aarch64__)
+    {
+        UINT32 Snapshot[6] = {0u, 0u, 0u, 0u, 0u, 0u};
+
+        PiUartTransportSnapshot(Snapshot);
+        gConsole.Write("bt: diag=");
+        gConsole.Write(BoardBluetoothDiagnosis());
+        gConsole.Write(" clk=");
+        gConsole.WriteHex32(PiUartTransportClockHz());
+        gConsole.Write(" ibrd/fbrd=");
+        gConsole.WriteHex32(Snapshot[3]);
+        gConsole.Write("/");
+        gConsole.WriteHex32(Snapshot[4]);
+        gConsole.Write(" cr/fr/lcrh=");
+        gConsole.WriteHex32(Snapshot[0]);
+        gConsole.Write("/");
+        gConsole.WriteHex32(Snapshot[1]);
+        gConsole.Write("/");
+        gConsole.WriteHex32(Snapshot[2]);
+        gConsole.Write(" gpfsel3=");
+        gConsole.WriteHex32(Snapshot[5]);
+        gConsole.Write("\n");
+    }
+#endif
+
+    gConsole.Write("bt: init rc=");
+    gConsole.WriteHex32((UINT32)Rc);
+    gConsole.Write(Rc == 1 ? " (reset ok)" : " (fail; see Boot: lines)");
+    gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready (pi-2)\n");
+}
+
 static void CommandBluetooth(int Argc, char **Argv) {
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "init")) {
+        CommandBluetoothInit();
+        return;
+    }
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "scan")) {
         CommandBluetoothScan();
         return;
@@ -143,5 +187,5 @@ static void CommandBluetooth(int Argc, char **Argv) {
 }
 
 void ShellCommandsBluetoothRegister(void) {
-    gConsole.Register("bt", "bt [info|scan|visible|hide]", CommandBluetooth);
+    gConsole.Register("bt", "bt [info|init|scan|visible|hide]", CommandBluetooth);
 }

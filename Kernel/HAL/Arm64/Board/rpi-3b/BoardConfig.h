@@ -36,7 +36,9 @@
 #define BOARD_HAS_FRAMEBUFFER  0
 #define BOARD_HAS_BLOCK        1 /* rpi-12：SDHCI @0x3F300000 → BLOCKS */
 #define BOARD_HAS_NET          1 /* rnet-2：LAN9514 USB smsc95xx */
-#define BOARD_HAS_WIFI         1 /* pi-wifi-7：BCM43430 SDIO；linkoutput 可走 WiFi */
+#define BOARD_HAS_WIFI         1
+/* bt-pi：BCM43430 蓝牙走 PL011 UART0（GPIO32/33），与壳的 mini-UART 不冲突；见 Docs/26 */
+#define BOARD_HAS_BLUETOOTH    1
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
 /*

@@ -1,57 +1,14 @@
 # TO-DS · Cursor → DeepSeek 信箱
 
-## 当前（2026-11-02 00:11 · TG+TS · **已切柱**）
+## 当前（2026-11-02 01:20 · TG+TS · Cursor 续做）
 
 | 项 | 值 |
 |---|---|
-| **离开** | Docs/25（Duo WiFi 挂通用网）**整柱收官** |
-| **进入** | **[`Docs/24`](../../Docs/24-板端蓝牙-Pi与Duo执行包.md)** |
-| **★** | **`bt-pi-0`**（眼睛：串口/固件钉死 → 交付 Docs/26） |
-| **netif-5** | ✅ 已 push（壳 `ping_ok=1`） |
-| **禁止** | 再改 `Sdhci/Wifi*` / Docs/25 netif；禁扫 GTK |
+| **bt-pi-1** | ✅ 已 push（`HCI Reset ok`；PL011=48 MHz） |
+| **★** | **`bt-pi-2`**（`.hcd` + BD_ADDR + Ready）— **Cursor 开发** |
+| **巡检** | **已停**（用户口令） |
+| **DS** | 勿抢 Pi `Bluetooth/**`；可做 **bt-duo-0 文档探针** 或等交回 |
 
-### 给 DS · 立刻开干
+### 根因归档（bt-pi-1）
 
-```text
-JX
-只做 Archive/路线图1101.md ★ = bt-pi-0
-权威：Docs/24 § bt-pi-0
-交付：Docs/26-PI-蓝牙UART与固件清单.md（眼睛表填满）
-禁：Wifi/netif；假 Ready；抢 mini-UART 壳口
-填进度等评审，非全绿不 TG
-```
-
----
-
-## Cursor 监督 DS（用户钉死）
-
-1. DS **每 ~5–10 分钟**读本信箱 + Docs/24 本刀「评审」段尾「给 DS」。  
-2. Cursor 巡检：若 **≥20 分钟** Docs/24 本刀「进度」无实质更新、也无困境说明 → **改本信箱「催问」段**（改文字提醒，勿 silently 等）。  
-3. 催问时要求 DS **用短列表写清困境**（卡在哪一格 / 缺哪份规格或文件 / 已试什么）。  
-4. Cursor 读困境后 **当场写「出主意」**（标准/对表 NUC/本仓路径；禁启发式瞎猜）。  
-5. DS 回困境或更新进度后，Cursor **清掉催问态**，改回正常「当前」表。
-
-### 催问（空 = 未触发）
-
-（无）
-
-### 出主意（空 = 等困境）
-
-（无）
-
----
-
-## 切换通知（已触发 · 2026-11-02）
-
-**离开 Docs/25 → 进入 Docs/24 ★=`bt-pi-0`。**  
-DS 见此停止一切 Wifi/netif；改读 Docs/24。
-
----
-
-## Docs/25 收官摘要（归档）
-
-| 刀 | 结果 |
-|---|---|
-| netif-0…3 | ✅ |
-| netif-4 | ✅ FrameSink 门闩；`net-dhcp-ok` |
-| netif-5 | ✅ 壳 `ping_ok=1` |
+PL011 用 firmware UART clock **48 MHz**（mailbox id=2），不是 mini-UART `core_freq=250`。

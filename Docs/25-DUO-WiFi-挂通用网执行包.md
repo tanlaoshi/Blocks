@@ -191,7 +191,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `WifiNetLinkOutput.c`；tag 故事 `0x15c` |
 | **坑** | 未 join 时 Host/Vif 无效 → Try 须 fail 回 dwmac，**不能**空指针；**Duo 必须定义 `BOARD_HAS_WIFI`**，否则②的 `#if` 整段被剃 |
 | **依赖** | netif-0 |
-| **进度** | 🔧 **补钉完成，待评审收官（2026-11-01 20:05）**<br>① `BoardConfig.h` 已定义 `BOARD_HAS_WIFI 1`（同语义注释）<br>② `nm Build/netif5/HAL/RiscV/LwIp/Netif.o` → **`U BoardWifiTryLinkOutput`**；对照 netif4 无此符号（印证红线）<br>③ 真机：deploy 193 s OK → 启动无回归 → `write confirm` done → `bringup ok(4/4)` → `scan` 6 APs → `join` `handshake ok (ptk+gtk)` → `wifinet attach`→`netif armed` → `wifinet tx`→`WiFi: data tx: len=28 ethertype=0x0806 … mcast=1` + `WiFi: net-lwip-out-ok lwip_out=1` → `status: armed=1 lwip_out=1 fail=0`<br>④ 边界说明：`ping 192.168.31.1` 时 `lwip_out=0`（netif 无租约，lwIP 在出口前返回）→ **lwIP 发起帧的运行时证据归 netif-4**，本刀只由 `nm` 符号证明接线<br>⑤ 三架构复核（补钉后）：`x86_64` 0 error / `arm64 rpi-3b` 0 error / `riscv duo` 0 error（`wifinet` 命令在非 riscv 上只打印 "only on milk-v-duo-s"，不影响 link） |
+| **进度** | ✅ **收官（2026-11-01 20:12，commit `5d617381`，已 push）**<br>评审全绿后 TG+TS。真机原文：`write confirm→done`、`bringup ok(4/4)`、`scan` 6 APs、`join→eapol handshake ok (ptk+gtk)`、`wifinet attach→netif armed`、`wifinet tx→data tx: len=28 ethertype=0x0806 … mcast=1` + `net-lwip-out-ok lwip_out=1`、`status: armed=1 lwip_out=1 fail=0`；回归 `wififw dhcp→ip=192.168.31.186`。符号：`nm netif5/…/Netif.o → U BoardWifiTryLinkOutput`（netif4 无，对照成立）。三架构 0 error。边界：lwIP 发起帧的运行时证据归 netif-4（DHCP）。 |
 | **评审** | ✅ **全绿**（2026-11-01 20:10 Cursor）。抽查：`BoardConfig.h` `#define BOARD_HAS_WIFI 1`；`Netif.c` Try→失败回 dwmac；`nm Build/netif5/.../Netif.o` → **`U BoardWifiTryLinkOutput`**（netif4 无，对照成立）。进度串口：join+handshake → `wifinet attach/tx` → `net-lwip-out-ok lwip_out=1` / `fail=0` 接受为本刀判据。壳 `ping` 仍 `lwip_out=0` **不挡本刀**（归 netif-4，进度④说对了）。命名/≤300 过。小债（不挡 TG）：未用头/宏；Arm 未查装钥→netif-3；`status` hex。**给 DS**：本行已 **全绿** → 允许 **`TG` + `TS`**，1101 ★ 推 **`dwifi-netif-2`**，再 **`JX`**。仍读 TO-DS；未见「切换到 Docs/24」前勿开蓝牙。 |
 
 ### dwifi-netif-2 · RX：AIC → LwIpNetifInput
@@ -203,6 +203,8 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `WifiNetLwIpFeed.c`；`0x15a` |
 | **坑** | 喂太多堵壳；喂太少 dhcp 无应答；重复投递同一帧 |
 | **依赖** | 默认 netif-1；若证据要先 RX，可对调并改本文+1101 |
+| **进度** | ⬜（等 netif-1 TG 后 JX） |
+| **评审** | ⬜ |
 
 ### dwifi-netif-3 · 武装 + MAC + 起 lwIP
 
@@ -301,12 +303,13 @@ NUC monitor **非必须**（本柱是主机栈）；若查空口 OFFER，≤12s 
 ## 9 · 开场口令
 
 ```text
+# netif-1 已 ✅ 全绿 → 先：
+TG
+TS
+# 再：
 JX
-只做 1101 ★ = dwifi-netif-1 补钉
-权威：Docs/25 netif-1 表「评审」行
-milk-v-duo-s/BoardConfig.h 加 #define BOARD_HAS_WIFI 1
-nm …/LwIp/Netif.o 须见 BoardWifiTryLinkOutput
-勿开 netif-2；勿改 Pi WiFi；不 commit/push
+只做 1101 ★ = dwifi-netif-2
+权威：Docs/25 netif-2
+新建 WifiNetifFeed.c；HalNetFeedAlternateReceive ≤8
+EAPOL 期勿抢；勿改 Pi WiFi；填进度等评审，非全绿不 TG
 ```
-
-其后：钩子进二进制 + 回归 → 用户 `TG` → ★ 推 netif-2 → 再 `JX`。

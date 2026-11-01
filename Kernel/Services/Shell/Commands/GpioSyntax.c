@@ -9,9 +9,12 @@
 #include "Console.h"
 
 void GpioWriteUsage(void) {
-    gConsole.Write("gpio list | set <name|pin> 0|1 | get <name|pin> | "
-                   "mode <pin> in|out | pull <pin> none|up|down | "
-                   "write <pin> 0|1 | read <pin> | selftest <name|pin>\n");
+    gConsole.Write(
+        "gpio list | set <name|pin> 0|1 | get <name|pin> | "
+        "mode <pin> in|out | pull <pin> none|up|down | "
+        "write <pin> 0|1 | read <pin> | selftest <name|pin> | "
+        "watch <name|pin> <ms> | edge <name|pin> rising|falling|both|off | "
+        "edgetake <name|pin> | edgeselftest <name|pin> [count]\n");
 }
 
 const char *GpioArg(int Argc, char **Argv, int Index) {

@@ -3,6 +3,8 @@
  *
  * 从哪读：
  *   · Synopsys DW APB GPIO：DR +0x00、DDR +0x04、EXT_PORTA +0x50（读【引脚实际电平】）
+ *   · 边沿（G5）：INTEN +0x30、INTMASK +0x34、INTTYPE_LEVEL +0x38、
+ *     INT_POLARITY +0x3C、INTSTATUS +0x40、PORTA_EOI +0x4C（写 1 清）
  *   · pinmux：`cv181x_reg_fmux_gpio.h` + `cv181x_pinlist_swconfig.h`（FUNC=3 → XGPIOA）
  *   · 基址：GPIOA `0x03020000`、FMUX `0x03001000`（与 UsbHostController/Sdhci 一致）
  *
@@ -13,6 +15,7 @@
  * 刻意避开：GPIOA15（WiFi/SPK 上电）、16/17（UART0）、30（USB PORT_SEL）、SD0 脚。
  *
  * 别改：读回一定走 EXT_PORTA；非白名单一律 -1（防改串口/SD 失联）。
+ *       BOTH 边沿照 Linux gpio-dwapb：每次取走后按当前电平翻转极性（控制器一次只盯一边）。
  */
 #include "HalGpio.h"
 
@@ -20,10 +23,17 @@
 #define DUO_PINMUX_BASE 0x03001000ULL
 #define DUO_GPIO_DATA 0x00u
 #define DUO_GPIO_DIRECTION 0x04u
+#define DUO_GPIO_INTERRUPT_ENABLE 0x30u
+#define DUO_GPIO_INTERRUPT_MASK 0x34u
+#define DUO_GPIO_INTERRUPT_TYPE_LEVEL 0x38u
+#define DUO_GPIO_INTERRUPT_POLARITY 0x3Cu
+#define DUO_GPIO_INTERRUPT_STATUS 0x40u
+#define DUO_GPIO_PORT_A_END_OF_INTERRUPT 0x4Cu
 #define DUO_GPIO_EXTERNAL_PORT 0x50u
 #define DUO_GPIOA_BANK_WIDTH 32u
 #define DUO_PINMUX_FUNCTION_MASK 7u
 #define DUO_PINMUX_FUNCTION_XGPIOA 3u
+#define DUO_GPIO_INTERRUPT_TYPE_EDGE 1u
 
 /* cv181x_reg_fmux_gpio.h */
 #define DUO_FMUX_JTAG_CPU_TMS 0x64u
@@ -152,6 +162,91 @@ int HalGpioRead(UINT32 Pin, int *OutHigh) {
     }
     Value = *DuoGpioRegister(DUO_GPIO_EXTERNAL_PORT);
     *OutHigh = ((Value >> Pin) & 1u) != 0u ? 1 : 0;
+    return 0;
+}
+
+/* 记住 BOTH：Take 后要按当前电平翻极性（见文件头注释） */
+static HAL_GPIO_EDGE sDuoEdgeMode[DUO_GPIOA_BANK_WIDTH];
+
+static void DuoGpioWriteBit(UINT32 Offset, UINT32 Pin, int Set) {
+    volatile UINT32 *Register;
+    UINT32 Value;
+    UINT32 Bit;
+
+    Register = DuoGpioRegister(Offset);
+    Bit = 1u << Pin;
+    Value = *Register;
+    if (Set != 0) {
+        Value |= Bit;
+    } else {
+        Value &= ~Bit;
+    }
+    *Register = Value;
+}
+
+static void DuoGpioClearEndOfInterrupt(UINT32 Pin) {
+    *DuoGpioRegister(DUO_GPIO_PORT_A_END_OF_INTERRUPT) = 1u << Pin;
+}
+
+static void DuoGpioSetPolarityForNextEdge(UINT32 Pin) {
+    UINT32 Level;
+    int High;
+
+    Level = *DuoGpioRegister(DUO_GPIO_EXTERNAL_PORT);
+    High = ((Level >> Pin) & 1u) != 0u ? 1 : 0;
+    /* 当前为高 → 等下降；当前为低 → 等上升（Linux dwapb_toggle_trigger） */
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_POLARITY, Pin, High == 0 ? 1 : 0);
+}
+
+int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge) {
+    if (DuoGpioFindAllow(Pin) == 0 || Edge == HAL_GPIO_EDGE_NONE ||
+        Pin >= DUO_GPIOA_BANK_WIDTH) {
+        return -1;
+    }
+    sDuoEdgeMode[Pin] = Edge;
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_TYPE_LEVEL, Pin, (int)DUO_GPIO_INTERRUPT_TYPE_EDGE);
+    if (Edge == HAL_GPIO_EDGE_RISING) {
+        DuoGpioWriteBit(DUO_GPIO_INTERRUPT_POLARITY, Pin, 1);
+    } else if (Edge == HAL_GPIO_EDGE_FALLING) {
+        DuoGpioWriteBit(DUO_GPIO_INTERRUPT_POLARITY, Pin, 0);
+    } else {
+        DuoGpioSetPolarityForNextEdge(Pin);
+    }
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_MASK, Pin, 0);
+    DuoGpioClearEndOfInterrupt(Pin);
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_ENABLE, Pin, 1);
+    return 0;
+}
+
+int HalGpioDisableEdgeDetect(UINT32 Pin) {
+    if (DuoGpioFindAllow(Pin) == 0 || Pin >= DUO_GPIOA_BANK_WIDTH) {
+        return -1;
+    }
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_ENABLE, Pin, 0);
+    DuoGpioWriteBit(DUO_GPIO_INTERRUPT_MASK, Pin, 1);
+    DuoGpioClearEndOfInterrupt(Pin);
+    sDuoEdgeMode[Pin] = HAL_GPIO_EDGE_NONE;
+    return 0;
+}
+
+int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
+    UINT32 Status;
+    UINT32 Bit;
+
+    if (OutFired == 0 || DuoGpioFindAllow(Pin) == 0 || Pin >= DUO_GPIOA_BANK_WIDTH) {
+        return -1;
+    }
+    Bit = 1u << Pin;
+    Status = *DuoGpioRegister(DUO_GPIO_INTERRUPT_STATUS);
+    if ((Status & Bit) != 0u) {
+        DuoGpioClearEndOfInterrupt(Pin);
+        if (sDuoEdgeMode[Pin] == HAL_GPIO_EDGE_BOTH) {
+            DuoGpioSetPolarityForNextEdge(Pin);
+        }
+        *OutFired = 1;
+    } else {
+        *OutFired = 0;
+    }
     return 0;
 }
 

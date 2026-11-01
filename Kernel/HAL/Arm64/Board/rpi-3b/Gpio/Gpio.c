@@ -6,6 +6,11 @@
  *   0x1C GPSET0/1     置高（写 1 生效，写 0 无效）
  *   0x28 GPCLR0/1     置低
  *   0x34 GPLEV0/1     读【引脚实际电平】（输出模式下也能读回，自检靠它）
+ *   0x40 GPEDS0/1     边沿事件状态（写 1 清）
+ *   0x4C GPREN0/1     同步上升沿检测使能（常规路径；Linux bcm2835-gpio 用它做 IRQ）
+ *   0x58 GPFEN0/1     同步下降沿检测使能
+ *   0x7C GPAREN0/1    异步上升沿（低功耗唤醒用，**不是**常规检测）
+ *   0x88 GPAFEN0/1    异步下降沿（同上）
  *   0x94 GPPUD        上下拉：0=关 1=下拉 2=上拉
  *   0x98 GPPUDCLK0/1  把 GPPUD 打到指定脚；之后必须清 GPPUD 与 GPPUDCLK
  *
@@ -13,6 +18,7 @@
  *       （同样的 150 次 nop 在 HAL/Arm64/Hal/Hal.c 的电源键代码里已用过，行为一致。）
  *
  * 别改：读回一定走 GPLEV，不要改成"读回最后一次写的值"——那样自检就没意义了。
+ *       边沿取走必须写 GPEDS 清位；Enable 前先清陈旧事件。
  */
 #include "HalGpio.h"
 #include "Hal.h"
@@ -29,6 +35,9 @@
 #define RPI_GPIO_SET_BASE             0x1Cu
 #define RPI_GPIO_CLEAR_BASE           0x28u
 #define RPI_GPIO_LEVEL_BASE           0x34u
+#define RPI_GPIO_EVENT_DETECT_STATUS_BASE 0x40u
+#define RPI_GPIO_RISING_BASE          0x4Cu
+#define RPI_GPIO_FALLING_BASE         0x58u
 #define RPI_GPIO_PULL_CONTROL         0x94u
 #define RPI_GPIO_PULL_CLOCK_BASE      0x98u
 #define RPI_GPIO_PULL_DISABLE_VALUE   0u
@@ -139,6 +148,78 @@ int HalGpioRead(UINT32 Pin, int *OutHigh) {
              (Pin / RPI_GPIO_PINS_PER_REGISTER) * sizeof(UINT32);
     Value = *RpiGpioRegister(Offset);
     *OutHigh = ((Value >> (Pin % RPI_GPIO_PINS_PER_REGISTER)) & 1u) != 0u ? 1 : 0;
+    return 0;
+}
+
+static UINT32 RpiGpioBankOffset(UINT32 Pin) {
+    return (Pin / RPI_GPIO_PINS_PER_REGISTER) * sizeof(UINT32);
+}
+
+static UINT32 RpiGpioPinBit(UINT32 Pin) {
+    return 1u << (Pin % RPI_GPIO_PINS_PER_REGISTER);
+}
+
+static void RpiGpioClearEventDetect(UINT32 Pin) {
+    *RpiGpioRegister(RPI_GPIO_EVENT_DETECT_STATUS_BASE + RpiGpioBankOffset(Pin)) =
+        RpiGpioPinBit(Pin);
+}
+
+static void RpiGpioWriteEdgeEnableBit(UINT32 Base, UINT32 Pin, int Enable) {
+    volatile UINT32 *Register;
+    UINT32 Value;
+    UINT32 Bit;
+
+    Register = RpiGpioRegister(Base + RpiGpioBankOffset(Pin));
+    Bit = RpiGpioPinBit(Pin);
+    Value = *Register;
+    if (Enable != 0) {
+        Value |= Bit;
+    } else {
+        Value &= ~Bit;
+    }
+    *Register = Value;
+}
+
+int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge) {
+    int Rising;
+    int Falling;
+
+    if (RpiGpioCheckPin(Pin) != 0 || Edge == HAL_GPIO_EDGE_NONE) {
+        return -1;
+    }
+    Rising = (Edge == HAL_GPIO_EDGE_RISING || Edge == HAL_GPIO_EDGE_BOTH) ? 1 : 0;
+    Falling = (Edge == HAL_GPIO_EDGE_FALLING || Edge == HAL_GPIO_EDGE_BOTH) ? 1 : 0;
+    RpiGpioWriteEdgeEnableBit(RPI_GPIO_RISING_BASE, Pin, Rising);
+    RpiGpioWriteEdgeEnableBit(RPI_GPIO_FALLING_BASE, Pin, Falling);
+    RpiGpioClearEventDetect(Pin);
+    return 0;
+}
+
+int HalGpioDisableEdgeDetect(UINT32 Pin) {
+    if (RpiGpioCheckPin(Pin) != 0) {
+        return -1;
+    }
+    RpiGpioWriteEdgeEnableBit(RPI_GPIO_RISING_BASE, Pin, 0);
+    RpiGpioWriteEdgeEnableBit(RPI_GPIO_FALLING_BASE, Pin, 0);
+    RpiGpioClearEventDetect(Pin);
+    return 0;
+}
+
+int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
+    volatile UINT32 *Status;
+    UINT32 Bit;
+
+    if (OutFired == 0 || RpiGpioCheckPin(Pin) != 0) {
+        return -1;
+    }
+    Status = RpiGpioRegister(RPI_GPIO_EVENT_DETECT_STATUS_BASE + RpiGpioBankOffset(Pin));
+    Bit = RpiGpioPinBit(Pin);
+    if ((*Status & Bit) != 0u) {
+        *Status = Bit;
+        *OutFired = 1;
+    } else {
+        *OutFired = 0;
+    }
     return 0;
 }
 

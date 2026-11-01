@@ -28,6 +28,18 @@ typedef enum {
 } HAL_GPIO_PULL;
 
 /*
+ * 边沿检测（G5）：硬件锁存事件，软件轮询取走。
+ *   不依赖 CPU 中断框架；真·IRQ 进 GIC/PLIC 另开一刀。
+ *   RISING / FALLING / BOTH 与 BCM2835 §6、DW APB GPIO 边沿语义对齐。
+ */
+typedef enum {
+    HAL_GPIO_EDGE_NONE = 0,
+    HAL_GPIO_EDGE_RISING = 1,
+    HAL_GPIO_EDGE_FALLING = 2,
+    HAL_GPIO_EDGE_BOTH = 3
+} HAL_GPIO_EDGE;
+
+/*
  * 板图里的一条：逻辑名 → 物理引脚。
  *   HeaderPin 是排针物理脚号（0 = 没有这个概念），供人对照丝印；
  *   命令里既可以用 Name，也可以直接用引脚号。
@@ -51,6 +63,14 @@ int HalGpioSetPull(UINT32 Pin, HAL_GPIO_PULL Pull);
 int HalGpioWrite(UINT32 Pin, int High);
 /* 读实际电平：0 = 成功并写 *OutHigh；非 0 = 失败 */
 int HalGpioRead(UINT32 Pin, int *OutHigh);
+
+/*
+ * 边沿：Enable 打开硬件检测并清掉陈旧事件；Disable 关掉检测并再清一次。
+ * TakeEdgeEvent：若锁存了事件则清掉并 *OutFired=1，否则 *OutFired=0；返回 0=调用成功。
+ */
+int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge);
+int HalGpioDisableEdgeDetect(UINT32 Pin);
+int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired);
 
 /* 本板板图（弱实现返回 0 条） */
 const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount);

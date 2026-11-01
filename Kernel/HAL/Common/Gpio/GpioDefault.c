@@ -42,3 +42,20 @@ __attribute__((weak)) int HalGpioRead(UINT32 Pin, int *OutHigh) {
     (void)OutHigh;
     return -1;
 }
+
+__attribute__((weak)) int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge) {
+    (void)Pin;
+    (void)Edge;
+    return -1;
+}
+
+__attribute__((weak)) int HalGpioDisableEdgeDetect(UINT32 Pin) {
+    (void)Pin;
+    return -1;
+}
+
+__attribute__((weak)) int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
+    (void)Pin;
+    (void)OutFired;
+    return -1;
+}

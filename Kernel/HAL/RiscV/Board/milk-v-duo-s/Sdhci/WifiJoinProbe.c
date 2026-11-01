@@ -8,6 +8,7 @@
  *   noauthz=1       gAicSkipAuthorizedAfterKeys（跳过装钥后 AUTHORIZED）
  *   gtkfirst=1      gAicGroupKeyBeforePairwise（先 GTK 再 PTK；Docs/21 §1a）
  *   noptk=1         gAicSkipPairwiseKeyInstall（跳过 PTK；Docs/21 §1c）
+ *   gtkreadd=1      gAicGroupKeyAddAgainAfterBoth（两钥后再装一次 GTK；Docs/21 §1d）
  */
 #include "WifiAssocPrivate.h"
 #include "WifiHandshakePrivate.h"
@@ -20,9 +21,10 @@ extern UINT32 gAicSkipGroupKeyInstall;
 extern UINT32 gAicSkipAuthorizedAfterKeys;
 extern UINT32 gAicGroupKeyBeforePairwise;
 extern UINT32 gAicSkipPairwiseKeyInstall;
+extern UINT32 gAicGroupKeyAddAgainAfterBoth;
 
 void AicWifiJoinLoadProbe(void) {
-    char Text[128];
+    char Text[144];
     UINTN Got = 0;
     UINTN Offset;
 
@@ -33,6 +35,7 @@ void AicWifiJoinLoadProbe(void) {
     gAicSkipAuthorizedAfterKeys = 0u;
     gAicGroupKeyBeforePairwise = 0u;
     gAicSkipPairwiseKeyInstall = 0u;
+    gAicGroupKeyAddAgainAfterBoth = 0u;
     if (FileSystemReadFileAt("BLOCKS:probe.cfg", 0, Text, sizeof(Text) - 1u, &Got) != 0 ||
         Got == 0u) {
         return;
@@ -103,6 +106,15 @@ void AicWifiJoinLoadProbe(void) {
             gAicSkipPairwiseKeyInstall = (Text[Offset + 6u] == '1') ? 1u : 0u;
             SdhciMark("WiFi: probe: noptk=");
             SdhciMarkDecimal("", gAicSkipPairwiseKeyInstall);
+            SdhciMark("\n");
+        }
+        if (Offset + 9u < Got && Text[Offset] == 'g' && Text[Offset + 1u] == 't' &&
+            Text[Offset + 2u] == 'k' && Text[Offset + 3u] == 'r' && Text[Offset + 4u] == 'e' &&
+            Text[Offset + 5u] == 'a' && Text[Offset + 6u] == 'd' && Text[Offset + 7u] == 'd' &&
+            Text[Offset + 8u] == '=') {
+            gAicGroupKeyAddAgainAfterBoth = (Text[Offset + 9u] == '1') ? 1u : 0u;
+            SdhciMark("WiFi: probe: gtkreadd=");
+            SdhciMarkDecimal("", gAicGroupKeyAddAgainAfterBoth);
             SdhciMark("\n");
         }
     }

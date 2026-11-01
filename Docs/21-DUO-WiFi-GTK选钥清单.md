@@ -82,3 +82,28 @@
 → **证实**：空口 KeyID=0 路径依赖我们装过的 PTK。  
 → **否证**：只装 GTK **不会**让组播首帧走 KeyID=gtk；固件改为发**明文** Discover。  
 → GTK 作「默认组播钥」在仅装 GTK 时仍未接管加密 TX。下一刀勿再扫 noptk；查「有 PTK 时为何先 pairwise 再偶发 GTK」或厂商 default-key 绑定。
+
+---
+
+## 1d · gtkreadd=1（两钥后再装一次 GTK）（✅ 否证）
+
+**单变量**：默认序 PTK→GTK 都成功后，**再** `MM_KEY_ADD` 一次同一 GTK。  
+厂商 `rwnx_cfg80211_set_default_key` 为空操作；假说：固件组播选钥跟「最后一次默认钥（pairwise=0）ADD」走，末次 GTK 可压过「先发 KeyID=0」。
+
+| 探针 | `BLOCKS:probe.cfg` → `gtkreadd=1`（勿叠 noptk/gtkfirst） |
+|---|---|
+| 战场 | `WifiHandshakeInstall.c` / `WifiJoinProbe.c` |
+| 抓包 | NUC ≤12 s → `/tmp/duo-gtkreadd-nuc.pcap`；立刻回 managed |
+| 判据 | 首帧 KeyID=gtk keyid → 绿；仍先 KeyID=0 → 否证 |
+
+异于 §1a：§1a 是「先 GTK 后 PTK」；本刀是「PTK、GTK、**再 GTK**」。
+
+| 步 | 真机（2026-11-01 17:57） |
+|---|---|
+| probe | ✅ `gtkreadd=1`；`gtk readd after both keys` |
+| key add | ✅ `ptk … cfm=0` → `gtk keyid=2 … cfm=0` → **再** `gtk keyid=2 … cfm=0` |
+| dhcp | ✅ `DISCOVER tx`；无 OFFER |
+| 空口首帧 | ❌ STA→`ff:ff` **先** QoS `KeyID 0`，**后** 非 QoS `KeyID 2`（`/tmp/duo-gtkreadd-nuc.pcap`） |
+
+→ **否证「末次默认钥 ADD=GTK 即可让组播首帧走 KeyID=gtk」**。有 PTK 时固件仍先发 KeyID=0。  
+下一刀勿再扫 gtkreadd；候选：装完两钥后 `MM_KEY_DEL` PTK（异于从未装 PTK 的 noptk），或另寻 default-key 绑定证据后再动 data-3。

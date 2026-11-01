@@ -260,6 +260,7 @@ extern UINT32 gAicSkipGroupKeyInstall;
 extern UINT32 gAicSkipAuthorizedAfterKeys;
 extern UINT32 gAicGroupKeyBeforePairwise; /* probe gtkfirst=1；Docs/21 §1a */
 extern UINT32 gAicSkipPairwiseKeyInstall; /* probe noptk=1；Docs/21 §1c */
+extern UINT32 gAicGroupKeyAddAgainAfterBoth; /* probe gtkreadd=1；Docs/21 §1d */
 
 /* ---- WifiHandshakeInstall.c：装钥匙 → 发 M4 → 看数据帧 ---- */
 /*

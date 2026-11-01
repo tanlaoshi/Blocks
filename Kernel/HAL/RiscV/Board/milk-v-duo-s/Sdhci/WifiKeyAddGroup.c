@@ -16,6 +16,8 @@ UINT32 gAicSkipAuthorizedAfterKeys;
 UINT32 gAicGroupKeyBeforePairwise;
 /* 1=跳过 PTK MM_KEY_ADD（probe.cfg noptk=1；Docs/21 §1c 组播选钥） */
 UINT32 gAicSkipPairwiseKeyInstall;
+/* 1=两钥装完后再 MM_KEY_ADD 一次 GTK（probe.cfg gtkreadd=1；Docs/21 §1d） */
+UINT32 gAicGroupKeyAddAgainAfterBoth;
 
 int AicKeyAddGroup(SDHCI_HOST *Host, UINT8 VifIndex, const WIFI_GTK *Gtk) {
     AIC_KEY_ADD_RESULT Result;

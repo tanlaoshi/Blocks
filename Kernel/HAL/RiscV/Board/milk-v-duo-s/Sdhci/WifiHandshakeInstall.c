@@ -23,6 +23,7 @@
 
 extern UINT32 gAicGroupKeyBeforePairwise;
 extern UINT32 gAicSkipPairwiseKeyInstall;
+extern UINT32 gAicGroupKeyAddAgainAfterBoth;
 
 /* 现场默认：装完 PTK/GTK 再回 M4（与判据行的顺序一致）；1 = 先回 M4 再装（见文件头） */
 /*
@@ -200,6 +201,20 @@ int AicHandshakeInstallKeys(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, UINT8 V
             SdhciMark("WiFi: gtk install skipped (probe nogtk=1; unicast ARP uses PTK only)\n");
         } else if (GtkReady != 0 && AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
             return -1;
+        }
+    }
+    /*
+     * gtkreadd=1：两钥都装完后再 MM_KEY_ADD 一次 GTK（厂商 set_default_key 为空操作，
+     * 用「最后一次默认钥 ADD」测组播选钥；异于 §1a 的先 GTK 后 PTK）。Docs/21 §1d。
+     */
+    if (gAicGroupKeyAddAgainAfterBoth != 0u) {
+        if (gAicSkipGroupKeyInstall != 0u || GtkReady == 0) {
+            SdhciMark("WiFi: gtk readd skipped (no GTK this round; Docs/21 §1d)\n");
+        } else {
+            SdhciMark("WiFi: gtk readd after both keys (probe gtkreadd=1; Docs/21 §1d)\n");
+            if (AicKeyAddGroup(Host, VifIndex, &Gtk) != 0) {
+                return -1;
+            }
         }
     }
     /* 至少一把钥匙已在固件：从这里起盯解密帧（decr != 0） */

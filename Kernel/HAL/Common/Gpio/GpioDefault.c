@@ -59,3 +59,9 @@ __attribute__((weak)) int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
     (void)OutFired;
     return -1;
 }
+
+__attribute__((weak)) int HalGpioEdgeSnapshot(UINT32 Pin, UINT32 Out[12]) {
+    (void)Pin;
+    (void)Out;
+    return -1;
+}

@@ -71,6 +71,8 @@ int HalGpioRead(UINT32 Pin, int *OutHigh);
 int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge);
 int HalGpioDisableEdgeDetect(UINT32 Pin);
 int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired);
+/* Duo G5 诊断：DR/DDR/INTEN/MASK/TYPE/POL/STATUS/RAW/DEB/EXT/LS_SYNC/Pin */
+int HalGpioEdgeSnapshot(UINT32 Pin, UINT32 Out[12]);
 
 /* 本板板图（弱实现返回 0 条） */
 const HAL_GPIO_BOARD_PIN *HalGpioBoardPins(UINT32 *OutCount);

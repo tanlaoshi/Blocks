@@ -168,11 +168,24 @@ void GpioCommandEdgeSelfTest(int Argc, char **Argv) {
             (void)HalGpioRead(Pin, &Ignored);
         }
         if (HalGpioTakeEdgeEvent(Pin, &Fired) != 0 || Fired == 0) {
+            UINT32 Snapshot[12];
+            UINT32 SnapshotIndex;
+
             gConsole.Write("gpio: edgeselftest FAILED at toggle=");
             gConsole.WriteHex32(Index);
             gConsole.Write(" got=");
             gConsole.WriteHex32(Got);
             gConsole.Write("\n");
+            if (HalGpioEdgeSnapshot(Pin, Snapshot) == 0) {
+                gConsole.Write("gpio: edge snap DR/DDR/INTEN/MASK/TYPE/POL/ST/RAW/DEB/EXT/LS/Pin=");
+                for (SnapshotIndex = 0u; SnapshotIndex < 12u; SnapshotIndex++) {
+                    if (SnapshotIndex != 0u) {
+                        gConsole.Write("/");
+                    }
+                    gConsole.WriteHex32(Snapshot[SnapshotIndex]);
+                }
+                gConsole.Write("\n");
+            }
             (void)HalGpioDisableEdgeDetect(Pin);
             return;
         }

@@ -28,8 +28,11 @@
 #define DUO_GPIO_INTERRUPT_TYPE_LEVEL 0x38u
 #define DUO_GPIO_INTERRUPT_POLARITY 0x3Cu
 #define DUO_GPIO_INTERRUPT_STATUS 0x40u
+#define DUO_GPIO_RAW_INTERRUPT_STATUS 0x44u /* Synopsys：未掩码锁存 */
+#define DUO_GPIO_DEBOUNCE 0x48u
 #define DUO_GPIO_PORT_A_END_OF_INTERRUPT 0x4Cu
 #define DUO_GPIO_EXTERNAL_PORT 0x50u
+/* LS_SYNC@0x60 本硅写后读回 0（无此功能或布局不同）；勿再当必配 */
 #define DUO_GPIOA_BANK_WIDTH 32u
 #define DUO_PINMUX_FUNCTION_MASK 7u
 #define DUO_PINMUX_FUNCTION_XGPIOA 3u
@@ -212,6 +215,8 @@ int HalGpioEnableEdgeDetect(UINT32 Pin, HAL_GPIO_EDGE Edge) {
     } else {
         DuoGpioSetPolarityForNextEdge(Pin);
     }
+    /* 去抖关掉：否则短翻转可能被吃掉 */
+    DuoGpioWriteBit(DUO_GPIO_DEBOUNCE, Pin, 0);
     DuoGpioWriteBit(DUO_GPIO_INTERRUPT_MASK, Pin, 0);
     DuoGpioClearEndOfInterrupt(Pin);
     DuoGpioWriteBit(DUO_GPIO_INTERRUPT_ENABLE, Pin, 1);
@@ -231,6 +236,7 @@ int HalGpioDisableEdgeDetect(UINT32 Pin) {
 
 int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
     UINT32 Status;
+    UINT32 RawStatus;
     UINT32 Bit;
 
     if (OutFired == 0 || DuoGpioFindAllow(Pin) == 0 || Pin >= DUO_GPIOA_BANK_WIDTH) {
@@ -238,7 +244,8 @@ int HalGpioTakeEdgeEvent(UINT32 Pin, int *OutFired) {
     }
     Bit = 1u << Pin;
     Status = *DuoGpioRegister(DUO_GPIO_INTERRUPT_STATUS);
-    if ((Status & Bit) != 0u) {
+    RawStatus = *DuoGpioRegister(DUO_GPIO_RAW_INTERRUPT_STATUS);
+    if (((Status | RawStatus) & Bit) != 0u) {
         DuoGpioClearEndOfInterrupt(Pin);
         if (sDuoEdgeMode[Pin] == HAL_GPIO_EDGE_BOTH) {
             DuoGpioSetPolarityForNextEdge(Pin);

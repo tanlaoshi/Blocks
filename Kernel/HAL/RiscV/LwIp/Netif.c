@@ -21,6 +21,7 @@
 int NetSendFrame(const UINT8 *Frame, UINTN FrameLen);
 #else
 #include "Ethernet.h"
+#include "WifiNetif.h"
 #endif
 
 extern void *memcpy(void *Dst, const void *Src, UINTN Len);
@@ -47,6 +48,12 @@ static int PlatformSendEthernet(const UINT8 *Frame, UINTN Length) {
 #if BOARD_IS_VIRT
     return NetSendFrame(Frame, Length);
 #else
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 对表 Arm64：武装后先走 WiFi；未武装/失败一律回退 dwmac，绝不饿死有线 */
+    if (BoardWifiTryLinkOutput(Frame, Length) == 0) {
+        return 0;
+    }
+#endif
     return BoardEthernetSendFrame(Frame, Length);
 #endif
 }

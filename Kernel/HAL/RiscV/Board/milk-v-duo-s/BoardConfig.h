@@ -30,6 +30,9 @@
 #define BOARD_HAS_FRAMEBUFFER  0
 #define BOARD_HAS_BLOCK        1
 #define BOARD_HAS_NET          1
+/* dwifi-netif-1：AIC8800D80（SDIO fn1）。定义了它，LwIp/Netif.c 的 WiFi 出口钩子才不会被剃；
+ * 未武装时 Try 返回 -1，仍回退 dwmac —— 与 Pi 的 BOARD_HAS_WIFI 同语义。 */
+#define BOARD_HAS_WIFI         1
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
 

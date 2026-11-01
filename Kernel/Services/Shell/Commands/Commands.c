@@ -15,6 +15,8 @@ void ShellCommandsKsendRegister(void);
 void ShellCommandsGpioRegister(void);
 /* I2C 扫描/读写（板级实现在 HAL/<Arch>/Board/<board>/I2c） */
 void ShellCommandsI2cRegister(void);
+/* Duo WiFi→lwIP 网桥探针（其它架构打印 only on milk-v-duo-s） */
+void ShellCommandsWifiNetifRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -27,6 +29,7 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsKsendRegister();
     ShellCommandsGpioRegister();
     ShellCommandsI2cRegister();
+    ShellCommandsWifiNetifRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -46,4 +49,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsKsendRegister();
     ShellCommandsGpioRegister();
     ShellCommandsI2cRegister();
+    ShellCommandsWifiNetifRegister();
 }

@@ -360,8 +360,27 @@ else
             *) HAL_DIR= ;;
         esac
         if [ -n "$HAL_DIR" ] && [ -d "../Runtime/RootFs/$HAL_DIR" ]; then
-            cp -f "$USER_HELLO" "../Runtime/RootFs/$HAL_DIR/HELLO.ELF"
-            echo "Copied $USER_HELLO -> ../Runtime/RootFs/$HAL_DIR/HELLO.ELF"
+            DEST="../Runtime/RootFs/$HAL_DIR"
+            USER_ARM="$BUILDDIR/HAL/$HAL_DIR/user"
+            cp -f "$USER_HELLO" "$DEST/HELLO.ELF"
+            echo "Copied $USER_HELLO -> $DEST/HELLO.ELF"
+            # 对表 X64：Apps/<id>/ + PKG.TXT（desktop=yes → 桌面图标）
+            if [ "$ARCH" = "arm64" ]; then
+                mkdir -p "$DEST/Apps/hello" "$DEST/Apps/taskmgr"
+                cp -f "$USER_ARM/hello.elf" "$DEST/Apps/hello/HELLO.ELF"
+                if [ -f "$USER_ARM/taskmgr.elf" ]; then
+                    cp -f "$USER_ARM/taskmgr.elf" "$DEST/Apps/taskmgr/TASKMGR.ELF"
+                fi
+                if [ -f ../Runtime/Store/packages/hello/PKG.TXT ]; then
+                    sed 's/^arch=.*/arch=any/' ../Runtime/Store/packages/hello/PKG.TXT \
+                        > "$DEST/Apps/hello/PKG.TXT"
+                fi
+                if [ -f ../Runtime/Store/packages/taskmgr/PKG.TXT ]; then
+                    sed 's/^arch=.*/arch=any/' ../Runtime/Store/packages/taskmgr/PKG.TXT \
+                        > "$DEST/Apps/taskmgr/PKG.TXT"
+                fi
+                echo "Synced Arm64 Apps/hello + Apps/taskmgr -> $DEST/Apps/"
+            fi
         fi
     fi
 fi

@@ -200,12 +200,19 @@ void WorkerTask(void) {
                 (void)HalIwlClaim();
                 sIwlClaimOnce = 1;
             }
-            /* pwifi-2：Pi SDIO 固件须 FS 后 Claim（X64 USB WiFi 无 Scan ops 亦可） */
+            /* pwifi-2 / pi-wifi-6：FS 后 Claim（只灌片）；立刻 Flush；再 Scan（Reveal 前） */
             {
                 static int sWifiClaimOnce;
                 if (!sWifiClaimOnce) {
                     (void)HalWifiClaim();
                     sWifiClaimOnce = 1;
+                    (void)gConsole.RuntimeLogFlush();
+                    if (HalWifiReady()) {
+                        (void)HalWifiScan();
+                        (void)gConsole.RuntimeLogFlush();
+                    } else {
+                        HalSerialBootMarkForce("Boot: Pi WIFI skip scan (not ready)\n");
+                    }
                 }
             }
         }

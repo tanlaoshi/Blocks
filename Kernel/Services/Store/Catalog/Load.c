@@ -181,9 +181,9 @@ int StoreLoadCatalog(STORE_ENTRY *Out, int Max, int *OutCount) {
     int i;
     int Hit;
     static const char Builtin[] =
-        "hello|app|1|HELLO.ELF|-|x86_64|Hello\n"
+        "hello|app|1|HELLO.ELF|-|any|Hello\n"
         "cat|app|1|CAT.ELF|-|x86_64|Cat\n"
-        "taskmgr|app|1|TASKMGR.ELF|-|x86_64|Task Manager\n"
+        "taskmgr|app|1|TASKMGR.ELF|-|any|Task Manager\n"
         "snake|app|1|SNAKE.ELF|-|x86_64|Snake\n"
         "sun8|font|1|VGA8X16.FNT|-|any|Sun 8x16 (store)\n"
         "demopack|asset|1|INFO.TXT|-|any|Demo asset pack\n";

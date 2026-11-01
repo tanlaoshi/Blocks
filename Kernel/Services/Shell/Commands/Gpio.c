@@ -230,6 +230,8 @@ void CommandGpio(int Argc, char **Argv) {
         GpioCommandEdge(Argc, Argv);
     } else if (GpioTextEqual(Name, "edgetake")) {
         GpioCommandEdgeTake(Argc, Argv);
+    } else if (GpioTextEqual(Name, "irqtest")) {
+        GpioCommandIrqTest(Argc, Argv);
     } else if (GpioTextEqual(Name, "edgeselftest")) {
         GpioCommandEdgeSelfTest(Argc, Argv);
     } else if (GpioTextEqual(Name, "init")) {

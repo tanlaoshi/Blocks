@@ -11,4 +11,6 @@ void GpioCommandEdge(int Argc, char **Argv);
 void GpioCommandEdgeTake(int Argc, char **Argv);
 void GpioCommandEdgeSelfTest(int Argc, char **Argv);
 
+void GpioCommandIrqTest(int Argc, char **Argv);
+
 #endif

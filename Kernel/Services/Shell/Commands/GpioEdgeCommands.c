@@ -183,3 +183,10 @@ void GpioCommandEdgeSelfTest(int Argc, char **Argv) {
     gConsole.WriteHex32(Got);
     gConsole.Write("\n");
 }
+
+/* Gpio.c 已挂 irqtest 子命令；真中断路径未完，先占位以免三架构 link 断 */
+void GpioCommandIrqTest(int Argc, char **Argv) {
+    (void)Argc;
+    (void)Argv;
+    gConsole.Write("gpio: irqtest not implemented (need HalIrq path)\n");
+}

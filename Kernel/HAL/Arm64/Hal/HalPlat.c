@@ -25,16 +25,17 @@ int HalPinInteractiveToBootstrap(void) {
     return 0;
 }
 
-int HalPlatformIsVirtSerialConsole(void) {
-    /*
-     * 历史名：实际门控「用 Virt 桌面模块表」。
-     * virt：始终 1。
-     * 真机板：有 FB 时也走 VirtDesktop（勿 KernelModulesRunFull / PC 驱动表）。
-     */
+int HalPlatformUseVirtDesktop(void) {
+    /* virt 恒 1；Pi 等真机有 FB → VirtDesktop（勿 RunFull / PC 驱动表） */
     if (BOARD_IS_VIRT) {
         return 1;
     }
     return HalHasFrameBuffer() ? 1 : 0;
+}
+
+int HalPlatformIsVirtSerialConsole(void) {
+    /* 仅 virt：开窗也 CoopDrain。Pi 有屏须 0，否则桌面双击冻 GUI。 */
+    return BOARD_IS_VIRT ? 1 : 0;
 }
 
 int HalCpuIsHypervisor(void) {

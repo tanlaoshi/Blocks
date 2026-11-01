@@ -13,8 +13,13 @@ int CpuInitialize(void) {
     }
     HalTimerInitialize();
     HalSyscallInitialize();
-    /* virt：仍在此挂 virtio-input；x86 真机在 file-system 前的 usb 模块（PR-H-msc-7a） */
-    if (HalPlatformIsVirtSerialConsole()) {
+    /*
+     * VirtDesktop 表无 USB 行：Pi/virt 有屏须在此挂主机（鼠/键）。
+     * IsVirtSerialConsole：无屏 virt 亦挂 virtio-input。
+     * x64 Full 走模块表 USB（两门皆 0）；勿再只认 IsVirtSerialConsole——
+     * 否则 Pi 拆 CoopDrain 后门后 DWC2 永不 Probe → 无鼠。
+     */
+    if (HalPlatformUseVirtDesktop() || HalPlatformIsVirtSerialConsole()) {
         (void)HalUsbInitialize();
     }
 

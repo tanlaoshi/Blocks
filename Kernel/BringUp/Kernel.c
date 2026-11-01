@@ -6,7 +6,7 @@
  * 三条路（勿改判定顺序；ConsoleOnly 与钉核见 input-f3-console）：
  *   1. HalConsoleOnly()
  *        → Virt 表 → VirtEnterShell：只 Shell（不 Create Gui/Worker/Input）
- *   2. HalHasFrameBuffer() && HalPlatformIsVirtSerialConsole()
+ *   2. HalHasFrameBuffer() && HalPlatformUseVirtDesktop()
  *        → VirtDesktop → Common（可按 HAL_INPUT_CPU_MIN Create Input）
  *   3. 否则 → Full → Common
  *
@@ -160,7 +160,7 @@ void KernelMain(void) {
         KernelRunPath(KernelModulesRunVirt, KernelMainVirtEnterShell);
         return;
     }
-    if (HalHasFrameBuffer() && HalPlatformIsVirtSerialConsole()) {
+    if (HalHasFrameBuffer() && HalPlatformUseVirtDesktop()) {
         KernelRunPath(KernelModulesRunVirtDesktop, KernelMainCommon);
         return;
     }

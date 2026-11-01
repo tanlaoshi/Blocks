@@ -14,7 +14,7 @@ int HalHasFrameBuffer(void) {
 /*
  * input-f3-console（riscv）：同 arm64 —
  *   ConsoleOnly=!FB → 只 Shell；Pin=0；有 FB 可按 MIN 分 Input。
- * VirtSerialConsole 另看 BOARD_IS_VIRT（模块表 VirtDesktop vs Full）。
+ * UseVirtDesktop / VirtSerialConsole：本板均只认 BOARD_IS_VIRT。
  */
 int HalConsoleOnly(void) {
     return HalHasFrameBuffer() ? 0 : 1;
@@ -24,8 +24,16 @@ int HalPinInteractiveToBootstrap(void) {
     return 0;
 }
 
+int HalPlatformUseVirtDesktop(void) {
+#if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 int HalPlatformIsVirtSerialConsole(void) {
-    /* virt 平台形状（协作调度 / 桌面模块表）；真机板包 IS_VIRT=0（PR-B3） */
+    /* 仅 virt：协作 drain；真机板包 IS_VIRT=0（PR-B3） */
 #if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     return 1;
 #else

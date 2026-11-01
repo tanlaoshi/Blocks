@@ -15,7 +15,14 @@ void HalPlatformNoteRuntimeRange(UINT64 Phys, UINT64 Size);
 int HalPlatformRuntimeRangeCount(void);
 
 /*
- * virt 平台形状（协作调度、virt 桌面模块表 vs x86 全表）。
+ * VirtDesktop 模块表（对表 Kernel.c 路 2）：virt 或真机有 FB 的 Arm 板。
+ * 与 IsVirtSerialConsole 拆开：后者只门控 CoopDrain / virt USB-early。
+ */
+int HalPlatformUseVirtDesktop(void);
+
+/*
+ * 串口协作形状：开窗 App 也 CoopDrain、定时器勿抢用户、Cpu 里挂 virtio USB。
+ * 仅 QEMU virt（及同形）为真。真机有屏桌面须为 0，否则双击 Task Manager 冻 GUI。
  * 串口子集请用 HalConsoleOnly，不要把本函数当「所有非 x86」。
  */
 int HalPlatformIsVirtSerialConsole(void);

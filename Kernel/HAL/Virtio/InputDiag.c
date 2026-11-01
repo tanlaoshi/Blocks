@@ -124,8 +124,8 @@ void VirtioInputDiagOnTimer(void) {
     UINT64 Ticks;
 
     /*
-     * 仅 QEMU virt。勿用 HalPlatformIsVirtSerialConsole()：
-     * Pi 有 FB 时该门也为 1（选 VirtDesktop 表），会误刷 virtio 计数。
+     * 仅 QEMU virt。用 HalCpuIsHypervisor，勿用 UseVirtDesktop
+     *（Pi 有 FB 也选 VirtDesktop，会误刷 virtio 计数）。
      */
     if (!HalCpuIsHypervisor()) {
         return;

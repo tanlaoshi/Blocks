@@ -90,5 +90,7 @@
 #define SDDATA_FIFO_PIO_BURST 8u
 
 void BoardSdhostRegister(void);
+/* 1=µSD 拔出已钉 BootMediumGone（Worker→HalUsbMscPollUnplug） */
+int BoardSdhostPollUnplug(void);
 
 #endif

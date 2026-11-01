@@ -64,7 +64,7 @@ void HalBootLogoBumpRegister(HAL_BOOT_LOGO_BUMP_FN Fn);
 void HalBootLogoBump(UINT32 Cap);
 /* usb-map：HotPoll 拔+插（桌面 Worker）；开机 Auto / Shell msc hot 另路 */
 int HalUsbMscRelease(void);
-int HalUsbMscPollUnplug(void); /* 1=已认领 MSC 拔出（Release）；指针忙也可 */
+int HalUsbMscPollUnplug(void); /* 1=启动介质拔出（X64 MSC / Pi µSD）；指针忙也可 */
 /* U 盘起、BootDisk 未挂：claim 前 Arm，失败后盯口 CCS 失根 */
 void HalUsbMscArmBootWatch(int On);
 int HalUsbPortEnumIsFrozen(void); /* 1=ClaimPorts 扫空/sick 已冻；EnsureSecondary 勿 Hot */

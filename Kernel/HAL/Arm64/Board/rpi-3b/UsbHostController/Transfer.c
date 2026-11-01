@@ -110,15 +110,28 @@ int ChunkMessage(UINT8 DeviceAddress, UINT8 EndpointNumber, UINT8 EndpointType, 
                 Dwc2DelayMilliseconds(2);
                 continue;
             }
-            HalSerialBootMark("Boot: DWC2 HCINT=");
-            Dwc2Hex32(Hcint);
-            HalSerialBootMark(" spl=");
-            Dwc2Hex32(*Dwc2Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)));
-            HalSerialBootMark(" hub=");
-            Dwc2Hex16(gTransferHub);
-            HalSerialBootMark("+");
-            Dwc2Hex16(gTransferPort);
-            HalSerialBootMark("\n");
+            /*
+             * ShellOwn 后 BootMark 进 RUNTIME 环；HCINT=0x22 刷屏会半裁环并盖掉 WiFi 落盘。
+             * 交互期最多打 8 条，枚举期（未 ShellOwn）仍全打。
+             */
+            {
+                static UINT32 HostChannelInterruptMarkCount;
+
+                if (!HalSerialShellOwned() || HostChannelInterruptMarkCount < 8u) {
+                    if (HalSerialShellOwned()) {
+                        HostChannelInterruptMarkCount++;
+                    }
+                    HalSerialBootMark("Boot: DWC2 HCINT=");
+                    Dwc2Hex32(Hcint);
+                    HalSerialBootMark(" spl=");
+                    Dwc2Hex32(*Dwc2Register(DWC2_HCSPLT(DWC2_HC_CHANNEL)));
+                    HalSerialBootMark(" hub=");
+                    Dwc2Hex16(gTransferHub);
+                    HalSerialBootMark("+");
+                    Dwc2Hex16(gTransferPort);
+                    HalSerialBootMark("\n");
+                }
+            }
             return Ret;
         }
         XactTries = 0;

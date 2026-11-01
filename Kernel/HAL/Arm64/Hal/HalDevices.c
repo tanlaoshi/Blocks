@@ -12,6 +12,9 @@
 #include "Virtio/BlockDevice.h"
 #include "Virtio/Input.h"
 #include "Virtio/Net/Net.h"
+#if !BOARD_IS_VIRT
+#include "Sdhost.h"
+#endif
 
 void HalDriverRegister(void) {
 #if BOARD_IS_VIRT
@@ -119,7 +122,12 @@ int HalUsbMscRelease(void) {
 }
 
 int HalUsbMscPollUnplug(void) {
+#if BOARD_IS_VIRT
     return 0;
+#else
+    /* Pi：µSD 即启动盘；对表 X64 拔 Live USB → BootMediumGone 大窗 */
+    return BoardSdhostPollUnplug();
+#endif
 }
 
 void HalUsbMscArmBootWatch(int On) {

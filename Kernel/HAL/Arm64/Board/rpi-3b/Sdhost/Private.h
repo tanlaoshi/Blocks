@@ -29,6 +29,8 @@ extern UINT32 gSdhostRelativeCardAddress;
 extern UINT32 gSdhostResponse[4];
 extern int gSdhostHighCapacity;
 extern int gSdhostReady;
+extern int gSdhostIoBusy;   /* Read/Write 进行中：PollUnplug 勿发 CMD13 */
+extern int gSdhostCardLost; /* I/O 失败或 CMD13 认拔 */
 extern UINT32 gSdhostLastCommand;
 extern UINT32 gSdhostLastHostStatus;
 extern UINT64 gSdhostCounterFrequency;

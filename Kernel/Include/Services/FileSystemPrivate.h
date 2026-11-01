@@ -52,8 +52,7 @@ void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
 int FsBootDiskHasBlocksId(void);
 void FsResolveOsTarget(int *BlocksVol);
 void FsUpdateBootMediumState(void);
-/* claim 失败盯口 CCS 掉线：BootDiskGuid 在且卷表无启动盘 → Gone */
-void FileSystemNotifyBootWatchUnplug(void);
+/* FileSystemNotifyBootWatchUnplug：见 FileSystem.h */
 int FsOsVolumeMounted(void);
 int FsVolOnOsDisk(int Idx);
 

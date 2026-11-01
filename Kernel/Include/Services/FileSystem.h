@@ -2,8 +2,9 @@
  * FileSystem.h — 文件系统模块（usb-map / story-s3 / PR-FS2 多卷）
  *
  * 开机 FileSystemInitialize；桌面 HotPoll 拔/插（UsbMsc + Clock）；Shell `msc hot`。
- * BootMediumGone：MSC 上曾挂 BootDiskGuid 卷，热拔时钉失根（大窗倒数关机；非旁路热拔）。
- * 路径：`BLOCKS:…`；链图 FileSystem.c / MountOs.c / Clock.c / UsbMsc.c 头。
+ * BootMediumGone：启动介质失根 → 大窗倒数关机（X64：MSC BootDiskGuid 热拔；
+ * Pi：µSD CMD13/I/O 失败 → FileSystemNotifyBootWatchUnplug）。旁路 U 盘热拔不关机。
+ * 路径：`BLOCKS:…`；链图 FileSystem.c / MountOs.c / Clock.c / UsbMsc.c / Sdhost CardWatch。
  */
 #ifndef FILE_SYSTEM_H
 #define FILE_SYSTEM_H
@@ -35,6 +36,11 @@ int FileSystemBootMediumGone(void);
  * 若 BootDiskGuid 卷落在 MSC 盘号上 → 钉 BootMediumGone。
  */
 void FileSystemNotifyMscUnplug(void);
+/*
+ * 启动介质失根直钉（X64 boot-watch CCS / Pi µSD PollUnplug）。
+ * 勿再要求 BootDiskGuid——缺 GUID 时仍须出大窗。
+ */
+void FileSystemNotifyBootWatchUnplug(void);
 /* Name 如 "BLOCKS"/"A"/"RES"；Flags 可选输出只读等，可为 NULL */
 int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
                       UINT32 *StartLba, int *ReadOnly);

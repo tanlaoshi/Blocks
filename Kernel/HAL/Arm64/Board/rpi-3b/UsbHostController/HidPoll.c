@@ -79,15 +79,47 @@ static void MousePollOnce(void) {
                  Ret >= 4 ? (INT8)Buffer[3] : 0);
 }
 
+static UINT8 gKeyboardReportPrevious[8];
+int gKeyboardReportPreviousValid;
+
+static int KeyboardReportSame(const UINT8 *Report8) {
+    int i;
+
+    if (!gKeyboardReportPreviousValid || !Report8) {
+        return 0;
+    }
+    for (i = 0; i < 8; i++) {
+        if (gKeyboardReportPrevious[i] != Report8[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static void KeyboardEnqueue(const UINT8 *Report8) {
-    UINT8 N = (UINT8)((gKeyboardQueueTail + 1u) % KEYBOARD_QUEUE_LENGTH);
+    UINT8 N;
     int i;
 
     if (!Report8) {
         return;
     }
+    /*
+     * 对表 X64 HidGetReport：仅状态变化入队。按住重发会灌满队列，
+     * 旧逻辑「满则丢新」再吞掉抬起 → 粘键/丢字（Pi 单核更易现）。
+     */
+    if (KeyboardReportSame(Report8)) {
+        return;
+    }
+    for (i = 0; i < 8; i++) {
+        gKeyboardReportPrevious[i] = Report8[i];
+    }
+    gKeyboardReportPreviousValid = 1;
+
+    N = (UINT8)((gKeyboardQueueTail + 1u) % KEYBOARD_QUEUE_LENGTH);
     if (N == gKeyboardQueueHead) {
-        return; /* 满：丢新保旧（同 X64 KbdPush） */
+        /* 满：丢最旧保最新（抬起必须进队；对表鼠队列） */
+        gKeyboardQueueHead =
+            (UINT8)((gKeyboardQueueHead + 1u) % KEYBOARD_QUEUE_LENGTH);
     }
     gKeyboardQueue[gKeyboardQueueTail].ModifierKeys = Report8[0];
     gKeyboardQueue[gKeyboardQueueTail].Reserved = Report8[1];
@@ -127,9 +159,10 @@ static void KeyboardPollOnce(void) {
     KeyboardEnqueue(Buffer);
 }
 
-/* 鼠优先：先鼠后键，勿让键 IN 饿死鼠 */
+/* 鼠优先：先鼠；键多抽一拍（单核 Present 慢时少丢抬起） */
 void HidPoll(void) {
     MousePollOnce();
+    KeyboardPollOnce();
     KeyboardPollOnce();
 }
 

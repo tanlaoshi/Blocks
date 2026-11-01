@@ -9,7 +9,7 @@
  *   → RTC/网托 ~5s（勿 2Hz CMOS：SMM 会令空拖规律顿）
  *   → BootMediumGone? 大窗 → HalCpuShutdown（不 Remount，勿扶旁路）
  * ```
- * 旁路 U 盘热拔：不关机。U 盘起拔启动盘：Gone → 提示后关机（usb-boot-unplug）。
+ * 旁路 U 盘热拔：不关机。启动盘失根（X64 Live USB / Pi µSD）：Gone → 大窗关机。
  * 钟/网托→栏脏；Present 仍 DesktopTickClock（指针闲才画栏）。勿 Worker 上全量 Compose。
  */
 #include "DesktopPrivate.h"

@@ -10,6 +10,8 @@ UINT32 gSdhostRelativeCardAddress;
 UINT32 gSdhostResponse[4];
 int gSdhostHighCapacity;
 int gSdhostReady;
+int gSdhostIoBusy;
+int gSdhostCardLost;
 UINT32 gSdhostLastCommand;
 UINT32 gSdhostLastHostStatus;
 UINT64 gSdhostCounterFrequency;
@@ -26,14 +28,18 @@ static int SdhostRead(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, vo
     if (!gSdhostReady || !Buffer || Count == 0) {
         return 0;
     }
+    gSdhostIoBusy++;
     for (i = 0; i < Count; i++) {
         if (SdhostReadOneBlock(LogicalBlockAddress + i, P + (UINTN)i * 512u) != 0) {
             (void)SdhostWaitTransferComplete();
             SdhostMarkHexadecimal32("Boot: SDHOST read fail hsts=", gSdhostLastHostStatus);
             HalSerialBootMark("\n");
+            gSdhostCardLost = 1;
+            gSdhostIoBusy--;
             return 0;
         }
     }
+    gSdhostIoBusy--;
     return 1;
 }
 
@@ -45,14 +51,18 @@ static int SdhostWrite(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, c
     if (!gSdhostReady || Buffer == 0 || Count == 0) {
         return 0;
     }
+    gSdhostIoBusy++;
     for (i = 0; i < Count; i++) {
         if (SdhostWriteOneBlock(LogicalBlockAddress + i, P + (UINTN)i * 512u) != 0) {
             (void)SdhostWaitTransferComplete();
             SdhostMarkHexadecimal32("Boot: SDHOST write fail hsts=", gSdhostLastHostStatus);
             HalSerialBootMark("\n");
+            gSdhostCardLost = 1;
+            gSdhostIoBusy--;
             return 0;
         }
     }
+    gSdhostIoBusy--;
     return 1;
 }
 

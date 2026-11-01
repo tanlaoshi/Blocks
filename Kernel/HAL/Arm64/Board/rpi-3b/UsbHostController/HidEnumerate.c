@@ -276,6 +276,8 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
         gKeyboardPort = Port;
         gKeyboardSplit = gTransferDoSplit;
         gKeyboardLowSpeed = Low;
+        gKeyboardQueueHead = gKeyboardQueueTail;
+        gKeyboardReportPreviousValid = 0;
         gKeyboardOk = 1;
         Bound = 1;
         HalSerialBootMark("Boot: DWC2 kbd ep=");

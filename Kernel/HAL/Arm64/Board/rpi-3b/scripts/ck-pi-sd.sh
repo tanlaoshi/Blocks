@@ -260,6 +260,12 @@ if [ -d "$ArmRoot" ]; then
       echo "  + BLOCKS $f"
     fi
   done
+  # 对表 X64：桌面/开始菜单 Apps/<id>/
+  if [ -d "$ArmRoot/Apps" ]; then
+    mkdir -p "$BlocksMnt/Apps"
+    cp -a "$ArmRoot/Apps/." "$BlocksMnt/Apps/"
+    echo "  + BLOCKS Apps/ (Arm64 RootFs)"
+  fi
 fi
 sync
 echo "CK: BLOCKS OK"

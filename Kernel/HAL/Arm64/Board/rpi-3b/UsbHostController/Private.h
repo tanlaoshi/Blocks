@@ -20,7 +20,8 @@
 #define DWC2_PHYS_TO_BUS(P) (((UINT32)(UINTN)(P) & 0x3FFFFFFFu) | 0xC0000000u)
 
 #define MOUSE_QUEUE_LENGTH 16
-#define KEYBOARD_QUEUE_LENGTH 16
+/* 单核 Pi：Present/WiFi 会拖 dequeue；略加大，仍靠「仅变化入队」限流 */
+#define KEYBOARD_QUEUE_LENGTH 32
 
 #define HUB_FEAT_PORT_RESET        4u
 #define HUB_FEAT_PORT_POWER        8u
@@ -84,6 +85,7 @@ extern int gKeyboardLowSpeed;
 extern HAL_KEYBOARD_REPORT gKeyboardQueue[KEYBOARD_QUEUE_LENGTH];
 extern UINT8 gKeyboardQueueHead;
 extern UINT8 gKeyboardQueueTail;
+extern int gKeyboardReportPreviousValid; /* HidPoll：绑定时清 */
 
 extern UINT8 gNextAddress;
 extern UINT8 gPortDone;

@@ -1,14 +1,19 @@
 # TO-DS · Cursor → DeepSeek 信箱
 
-## 当前（2026-11-02 01:20 · TG+TS · Cursor 续做）
+## 当前（2026-11-02 · TG+TS bt-pi-2 → ★ bt-duo-0）
 
 | 项 | 值 |
 |---|---|
-| **bt-pi-1** | ✅ 已 push（`HCI Reset ok`；PL011=48 MHz） |
-| **★** | **`bt-pi-2`**（`.hcd` + BD_ADDR + Ready）— **Cursor 开发** |
-| **巡检** | **已停**（用户口令） |
-| **DS** | 勿抢 Pi `Bluetooth/**`；可做 **bt-duo-0 文档探针** 或等交回 |
+| **bt-pi-2** | ✅ 已 TG+TS（Ready=`Blocks` / `B8:27:EB:E8:99:11`） |
+| **★** | **`bt-duo-0`**（Duo BT 通路文档探针） |
+| **巡检** | 已停 |
+| **DS** | 可接 **bt-duo-0**；勿回改 Pi `Bluetooth/**` |
 
-### 根因归档（bt-pi-1）
+### bt-pi-2 真机摘录（已入库）
 
-PL011 用 firmware UART clock **48 MHz**（mailbox id=2），不是 mini-UART `core_freq=250`。
+```
+Boot: Bluetooth .hcd ok
+Boot: Bluetooth HCI BD_ADDR=B8:27:EB:E8:99:11
+Boot: Bluetooth ready
+bt: ready name=Blocks addr=B8:27:EB:E8:99:11 hidden
+```

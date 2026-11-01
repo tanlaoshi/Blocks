@@ -1,12 +1,12 @@
 /*
- * BluetoothPrivate.h — Pi 3B 板级蓝牙（bt-pi-1）
+ * BluetoothPrivate.h — Pi 3B 板级蓝牙（bt-pi-1/2）
  *
  * 总线口径（Docs/26 §1/§2 已钉死）：
  *   BT HCI = PL011 UART0 @0x3F201000，GPIO32 TXD0 / GPIO33 RXD0（ALT3）
  *   壳     = UART1 mini-UART @0x3F215000，GPIO14/15（ALT5）—— 本目录不得碰
  *
- * 本刀（bt-pi-1）只做：UART 字节通路 + HCI_Reset 收 Command Complete。
- *   Ready 仍为 0（bt-pi-2 才置）；不加载 .hcd（bt-pi-2）。
+ * bt-pi-2：Reset → .hcd（Download Minidriver + 逐块）→ Read_BD_ADDR →
+ *   Write_Local_Name("Blocks") → Ready（当且仅当 Reset+读址成功）。
  */
 #ifndef RPI_BLUETOOTH_PRIVATE_H
 #define RPI_BLUETOOTH_PRIVATE_H
@@ -50,37 +50,52 @@
 #define PI_GPIO_FSEL_MASK    7u
 #define PI_GPIO_FSEL_ALT3    7u
 
-/* HCI（对表 NUC HAL/X64/.../Bluetooth/Private.h） */
-#define PI_HCI_PACKET_COMMAND        0x01u
-#define PI_HCI_PACKET_EVENT          0x04u
+/* HCI（对表 NUC HAL/X64/.../Bluetooth/Private.h + Linux btbcm） */
+#define PI_HCI_PACKET_COMMAND         0x01u
+#define PI_HCI_PACKET_EVENT           0x04u
 #define PI_HCI_EVENT_COMMAND_COMPLETE 0x0Eu
-#define PI_HCI_OPCODE_RESET          0x0C03u
-#define PI_HCI_COMMAND_PARAM_MAX     255u
-#define PI_HCI_EVENT_MAX             260u
-#define PI_BT_RESPONSE_TIMEOUT_MS    1000u
+#define PI_HCI_OPCODE_RESET           0x0C03u
+#define PI_HCI_OPCODE_WRITE_LOCAL_NAME 0x0C13u
+#define PI_HCI_OPCODE_READ_BD_ADDR    0x1009u
+#define PI_HCI_OPCODE_DOWNLOAD_MINIDRIVER 0xFC2Eu
+#define PI_HCI_LOCAL_NAME_LENGTH      248u
+#define PI_HCI_COMMAND_PARAM_MAX      255u
+#define PI_HCI_EVENT_MAX              260u
+#define PI_BT_RESPONSE_TIMEOUT_MS     2000u
+#define PI_BT_FIRMWARE_COMMAND_TIMEOUT_MS 5000u
+#define PI_BT_FIRMWARE_PATH \
+    "Assets/Firmware/brcm/BCM43430A1.hcd"
+#define PI_BT_FIRMWARE_MAX_BYTES      (64u * 1024u)
+#define PI_BT_ADDRESS_LENGTH          6u
+#define PI_BT_LOCAL_NAME_STORE        64u
 
 int PiUartTransportInitialize(void);
 int PiUartTransportInitializeWithDivisor(UINT32 IntegerDivisor, UINT32 FractionalDivisor);
 void PiUartWriteByte(UINT8 Value);
 int PiUartReadByte(UINT8 *Out, UINT32 TimeoutMs);
 int PiUartReadAvailable(UINT8 *Buffer, UINT32 MaxSize);
-
-int PiHciSendCommand(UINT16 Opcode, const UINT8 *Parameters, UINT8 ParameterLength,
-                     UINT8 *OutStatus);
-
-/* bt-pi-1 的判据入口：初始化 UART + 发 HCI_Reset */
-int BoardBluetoothBringUpReset(void);
-/* 诊断快照：[CR,FR,LCRH,IBRD,FBRD,GPFSEL3] */
 void PiUartTransportSnapshot(UINT32 Out[6]);
 UINT32 PiUartTransportClockHz(void);
-/* 最近一次 bring-up 的结论（壳可打印） */
+
+int PiHciSendCommand(UINT16 Opcode, const UINT8 *Parameters, UINT8 ParameterLength,
+                     UINT8 *OutStatus, UINT8 *OutReturn, UINT8 ReturnMax,
+                     UINT8 *OutReturnLength);
+int PiHciSendCommandWithTimeout(UINT16 Opcode, const UINT8 *Parameters,
+                                UINT8 ParameterLength, UINT8 *OutStatus,
+                                UINT8 *OutReturn, UINT8 ReturnMax,
+                                UINT8 *OutReturnLength, UINT32 TimeoutMs);
+
+int PiBluetoothFirmwareLoad(void);
+
+int BoardBluetoothBringUp(void);
+int BoardBluetoothReady(void);
+int BoardBluetoothCopyDeviceAddress(UINT8 Out[PI_BT_ADDRESS_LENGTH]);
+int BoardBluetoothCopyLocalName(char *Out, UINTN NameMax);
 const char *BoardBluetoothDiagnosis(void);
 UINT32 BoardBluetoothAttemptMask(void);
 int BoardBluetoothSelfTest(void);
 
-/* 方向 A：GPIO43 Alt0 = GPCLK2 32.768 kHz（对表 dts `gpclk2_gpio43`） */
 int PiBluetoothClock2Enable32k(void);
-/* 方向 B（A 之后再开）：BT_ON = 扩展脚 128 */
 int PiBluetoothPowerEnable(void);
 
 #endif

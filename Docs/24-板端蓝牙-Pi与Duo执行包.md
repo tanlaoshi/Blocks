@@ -5,7 +5,7 @@
 > **背景**：NUC 课轨 **btx-1…5 已收官**（USB HCI）。Pi/Duo 门面 `HalBluetooth*` 仍 **Ready=0 stub**。  
 > **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../Archive/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
 > **前置柱**：[`Docs/25`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
-> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-pi-2`（Cursor）。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
+> **当前执行包（已切柱）**：本文 Docs/24；★=`bt-duo-0`。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
 
 ### 协作闭环（与 Docs/25 同形）
 
@@ -269,7 +269,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | **禁止** | Ready=1 但地址全 0；实现 scan/visible「顺便」；扫波特率 |
 | **依赖** | bt-pi-1 |
 | **手测** | 同上；收口贴串口原文 |
-| **进度** | 🔧 ★ 当前（Cursor；TG bt-pi-1 后开干） |
+| **进度** | ✅ **收官（2026-11-02 01:31 Cursor）**<br>实现：`FirmwareLoad.c`（`0xFC2E`+逐块 `.hcd`，对表 `btbcm_patchram`）→ 再 Reset → `Read_BD_ADDR` → `Write_Local_Name(Blocks)` → Ready。<br>真机 ksend `@ttyUSB1`：`bt: diag=ready`；`bt: ready name=Blocks addr=B8:27:EB:E8:99:11 hidden`（Pi OUI）。未做 scan/visible。 |
 
 ### bt-duo-0 · 有无 BT（探针）
 
@@ -279,6 +279,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | **判据** | 二选一写死：`BT: duo path = UART@…` **或** `BT: skip (no HS-UART/fw)` + 否证段 |
 | **禁止** | skip 时 Ready=1；改 `Wifi*` / netif；对 Duo 跑 `ck-pi-sd` |
 | **依赖** | 建议 bt-pi-2 绿后；若抢时间仅允许**文档探针**与 pi-1 并行 |
+| **进度** | 🔧 ★ 当前（bt-pi-2 已 TG+TS） |
 
 ### bt-duo-1 ·（仅 duo-0 有通路）Reset → 址 → Ready
 

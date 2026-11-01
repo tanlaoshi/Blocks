@@ -162,8 +162,8 @@ static void CommandBluetoothInit(void) {
 
     gConsole.Write("bt: init rc=");
     gConsole.WriteHex32((UINT32)Rc);
-    gConsole.Write(Rc == 1 ? " (reset ok)" : " (fail; see Boot: lines)");
-    gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready (pi-2)\n");
+    gConsole.Write(Rc == 1 ? " (bring-up ok)" : " (fail; see Boot: lines)");
+    gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready\n");
 }
 
 static void CommandBluetooth(int Argc, char **Argv) {

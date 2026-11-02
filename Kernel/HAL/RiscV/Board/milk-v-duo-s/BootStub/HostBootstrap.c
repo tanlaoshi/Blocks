@@ -39,6 +39,10 @@ static int BootStubBlockRead(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Co
     return 1;
 }
 
+/*
+ * 只读装核：不写盘。返回 0 = 失败（与 Read/Block 约定一致：非 0 才成功），
+ * 避免 FAT 把「空写成功」当成已落盘。
+ */
 static int BootStubBlockWrite(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count,
                               const void *Buffer) {
     (void)Drive;

@@ -21,6 +21,8 @@ void ShellCommandsWifiNetifRegister(void);
 void ShellCommandsAudioRegistersRegister(void);
 /* Duo 音频取证（duoaudio，仅 riscv 有实现） */
 void ShellCommandsDuoAudioRegister(void);
+/* HID 鼠点测（Duo console-only 无 Gui 消费；冷插 Type-A） */
+void ShellCommandsMouseRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -41,6 +43,7 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsAudioRegister();
     /* Duo 音频取证：VirtMin 也要挂（第一次只挂到桌面表，Duo 上 unknown） */
     ShellCommandsDuoAudioRegister();
+    ShellCommandsMouseRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -63,4 +66,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsWifiNetifRegister();
     ShellCommandsAudioRegistersRegister();
     ShellCommandsDuoAudioRegister();
+    ShellCommandsMouseRegister();
 }

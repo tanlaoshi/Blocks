@@ -81,6 +81,7 @@ UINT8  gMouseDevCtx[2048] BLOCKS_ALIGNED(64);
 volatile UINT32 gMouseIntrDone;
 volatile UINT32 gIntrReportReady;
 volatile UINT32 gMouseReportReady;
+volatile UINT32 gMouseIntrHold;
 /* poll 诊断：PHOTO/桌面可看完成与推送是否在涨 */
 volatile UINT32 gStatIntrEvt;
 volatile UINT32 gStatMouseEvt;

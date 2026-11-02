@@ -16,6 +16,10 @@ void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
     (void)CursorY;
 }
 
+void HalInputMouseHoldUntilReveal(int Hold) {
+    (void)Hold;
+}
+
 void HalInputPoll(void) {
     DriverInputPoll();
 }

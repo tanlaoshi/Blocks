@@ -13,212 +13,33 @@
  * 钟/网托→栏脏；Present 仍 DesktopTickClock（指针闲才画栏）。勿 Worker 上全量 Compose。
  */
 #include "DesktopPrivate.h"
-#include "Gui.h" /* GuiCursorHide/Show；GuiDragActive */
+#include "Gui.h" /* GuiDragActive；指针闲 */
+#include "GuiPrivate.h" /* ComposeBeginEraseCursor；勿 GuiCursorHide（Hw 会 Disable=闪） */
 #include "FilesUi.h"
 #include "FileSystem.h"
 #include "Font.h"
-#include "Locale.h"
 #include "SerialLog.h"
 #include "Hal.h"
 #include "HalVideo.h"
 
-#define BOOT_GONE_SECS 10u
-
 static volatile int sClockBarNeedPaint;
 
-static void BootGonePaint(const char *Title, const char *Body,
-                          const char *CountLine) {
-    UINT32 Sw = 0;
-    UINT32 Sh = 0;
-    UINT32 BoxW;
-    UINT32 BoxH;
-    UINT32 BoxX;
-    UINT32 BoxY;
-    UINT32 CellH;
-    UINT32 Tw;
-    UINT32 Pad = 32u;
-    UINT32 Y;
-
-    HalVideoGetSize(&Sw, &Sh);
-    if (Sw < 320u || Sh < 200u) {
-        Sw = 1024;
-        Sh = 768;
-    }
-    CellH = FontCellH();
-    if (CellH < 16u) {
-        CellH = 16u;
-    }
-    BoxW = Sw * 3u / 5u;
-    if (BoxW < 400u) {
-        BoxW = Sw > 40u ? Sw - 40u : Sw;
-    }
-    if (BoxW > Sw - 40u) {
-        BoxW = Sw > 40u ? Sw - 40u : Sw;
-    }
-    BoxH = Pad * 2u + CellH * 5u + 24u;
-    BoxX = (Sw - BoxW) / 2u;
-    BoxY = (Sh - BoxH) / 2u;
-
-    HalVideoFillRect(0, 0, Sw, Sh, 0x00101018u);
-    HalVideoFillRect(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
-    HalVideoFillRect(BoxX, BoxY, BoxW, 3u, ThemeDialogBorder());
-    HalVideoFillRect(BoxX, BoxY + BoxH - 3u, BoxW, 3u, ThemeDialogBorder());
-    HalVideoFillRect(BoxX, BoxY, 3u, BoxH, ThemeDialogBorder());
-    HalVideoFillRect(BoxX + BoxW - 3u, BoxY, 3u, BoxH, ThemeDialogBorder());
-
-    Y = BoxY + Pad;
-    Tw = FontStringWidth(Title);
-    HalVideoDrawStringAt(BoxX + (BoxW - Tw) / 2u, Y, Title, ThemeText());
-    Y += CellH + 16u;
-    Tw = FontStringWidth(Body);
-    HalVideoDrawStringAt(BoxX + (BoxW - Tw) / 2u, Y, Body, ThemeTextMuted());
-    Y += CellH + 20u;
-    Tw = FontStringWidth(CountLine);
-    HalVideoDrawStringAt(BoxX + (BoxW - Tw) / 2u, Y, CountLine, ThemeText());
-    HalVideoPresent();
-}
-
-static void BootGoneBuildCount(char *Out, UINTN OutMax, UINT32 Sec) {
-    const char *Before;
-    const char *After;
-    UINTN i = 0;
-    UINTN j;
-
-    if (!Out || OutMax < 8u) {
-        return;
-    }
-    Before = LocStr(MSG_BOOT_GONE_BEFORE);
-    After = LocStr(MSG_BOOT_GONE_AFTER);
-    if (!Before) {
-        Before = "";
-    }
-    if (!After) {
-        After = "";
-    }
-    for (j = 0; Before[j] && i + 1u < OutMax; j++) {
-        Out[i++] = Before[j];
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = ' ';
-    }
-    if (Sec >= 10u && i + 1u < OutMax) {
-        Out[i++] = (char)('0' + (Sec / 10u) % 10u);
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = (char)('0' + Sec % 10u);
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = ' ';
-    }
-    for (j = 0; After[j] && i + 1u < OutMax; j++) {
-        Out[i++] = After[j];
-    }
-    Out[i] = 0;
-}
-
-/* 等 CMOS 秒跳变一次（真机 HalTicksPerSec=250 常偏慢→倒数翻倍快，勿用 LAPIC 计秒） */
-static void BootGoneWaitRtcSecond(void) {
-    UINT8 Sec0 = 0;
-    UINT8 Sec1 = 0;
-    HAL_MOUSE_REPORT Mouse;
-    HAL_KEYBOARD_REPORT Key;
-    UINT32 Guard = 0;
-    UINT32 Tps;
-    UINT64 Deadline;
-
-    if (HalRtcGetTime(0, 0, 0, 0, 0, &Sec0) != 0) {
-        /* RTC 不可用：按标称 Tps 等 1s（可能仍偏，但有兜底） */
-        Tps = HalTicksPerSec();
-        if (Tps == 0) {
-            Tps = 250;
-        }
-        Deadline = HalCpuTicks(0) + (UINT64)Tps;
-        while (HalCpuTicks(0) < Deadline) {
-            while (HalMouseDequeue(&Mouse)) {
-            }
-            while (HalKeyboardDequeue(&Key)) {
-            }
-            HalCpuRelax();
-        }
-        return;
-    }
-    for (;;) {
-        while (HalMouseDequeue(&Mouse)) {
-        }
-        while (HalKeyboardDequeue(&Key)) {
-        }
-        if (HalRtcGetTime(0, 0, 0, 0, 0, &Sec1) == 0 && Sec1 != Sec0) {
-            return;
-        }
-        HalCpuRelax();
-        /* 防 RTC 卡住：约 3s 标称拍后放弃本秒 */
-        if ((++Guard & 0xFFFFFu) == 0) {
-            return;
-        }
-    }
-}
-
-void DesktopBootMediumGoneShutdown(void) {
-    const char *Title;
-    const char *Body;
-    char CountLine[96];
-    UINT32 Left;
-    HAL_MOUSE_REPORT Mouse;
-    HAL_KEYBOARD_REPORT Key;
-
-    Title = LocStr(MSG_BOOT_GONE_TITLE);
-    Body = LocStr(MSG_BOOT_GONE_BODY);
-    if (!Title || Title[0] == 0) {
-        Title = "Boot disk removed";
-    }
-    if (!Body || Body[0] == 0) {
-        Body = "The system cannot continue.";
-    }
-
-    /*
-     * 锁输入；按 RTC 秒跳倒数（勿用 HalTicksPerSec——NUC 上 250 拍/s 与墙钟不符，
-     * 曾见 1 墙钟秒跳 2 个数）。
-     * 同步灌 TTF：关机大窗不走 Gui WantDrain；且 Gone 后门面拒 Ensure → 否则整屏方框。
-     */
-    GuiInputLock(1);
-    GuiCursorHide();
-    HalVideoClearClip();
-    FontTtfPreheatUtf8(Title);
-    FontTtfPreheatUtf8(Body);
-    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_BEFORE));
-    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_AFTER));
-
-    for (Left = BOOT_GONE_SECS; Left >= 1u; Left--) {
-        BootGoneBuildCount(CountLine, sizeof(CountLine), Left);
-        FontTtfPreheatUtf8(CountLine);
-        BootGonePaint(Title, Body, CountLine);
-        while (HalMouseDequeue(&Mouse)) {
-        }
-        while (HalKeyboardDequeue(&Key)) {
-        }
-        BootGoneWaitRtcSecond();
-    }
-
-    BootGoneBuildCount(CountLine, sizeof(CountLine), 0);
-    BootGonePaint(Title, Body, CountLine);
-    LogFs("FS: msc/4 shutdown (boot medium removed)\n");
-    HalCpuShutdown();
-    for (;;) {
-        HalCpuPark();
-    }
+void DesktopRequestTaskbarRepaint(void) {
+    /* 只抬钟栏脏；闲时 TickClock 铺底+画栏。勿 RequestRefresh→ThemeScene 叠半透。 */
+    sClockBarNeedPaint = 1;
 }
 
 void DesktopNotifyNetChanged(void) {
     /*
-     * 与 Worker 网托采样同终点：栏脏 + Mark，Gui TickClock 闲时 DrawTaskbar。
-     * DHCP Adopt / setip 后立刻可绿；勿另起托盘 API。
+     * 与 Worker 网托采样同终点：Gui TickClock 闲时 DrawTaskbar。
+     * 旧路径再 RequestRefresh：Compose 画栏后又 TickClock 再 Present → 偶发哆嗦
+     * （bug-nuc-taskbar-flicker）。托盘弹出时仍走 Refresh 快路径重画 popup。
      */
-    sClockBarNeedPaint = 1;
-    DesktopMarkTaskbar();
+    DesktopRequestTaskbarRepaint();
     if (DesktopNetTrayIsOpen()) {
         DesktopMarkNetTrayPopup();
+        RequestRefresh();
     }
-    RequestRefresh();
 }
 
 void DesktopWorkerTick(void) {
@@ -389,8 +210,14 @@ void DesktopTickClock(void) {
     if (FontTtfTakePaint()) {
         FontTtfAckPaint();
         if (FontTtfWantCount() == 0u) {
-            (void)GuiMarkDamageActiveWindows();
-            RequestRefresh();
+            /*
+             * 有窗：只脏窗。无窗若仍 RequestRefresh → Mark 空 → ThemeScene 整屏，
+             * 半透栏再 Blend 一趟＝任务栏闪一下（cjk-3 注释同片）。
+             */
+            if (GuiMarkDamageActiveWindows() > 0) {
+                RequestRefresh();
+            }
+            /* 无窗：勿借整栏重画消化 BumpPaint（半透 Present=闪） */
         }
         return;
     }
@@ -404,8 +231,11 @@ void DesktopTickClock(void) {
     }
     /*
      * 勿 BeginFront：scale≠100 时逻辑坐标直写物理 GOP → 假任务栏。
-     * 后缓冲 + Present；先擦光标再铺栏，避 Alpha/开始钮烙印。
      * 须 ClearClip：Shell 客户区 clip 会让半透底被裁、开始图标仍在。
+     *
+     * bug-nuc-taskbar-flicker：禁止 GuiCursorHide/Show——NUC 硬件光标路径
+     * Hide=CursorHwDisable，分针一跳整只光标消失再出现，看起来像栏「哆嗦」。
+     * 与 Compose 同形：EraseCursor（软才 Restore）→ 铺栏 → 软 Paint → Flush。
      */
     {
         UINT32 BarY;
@@ -414,7 +244,7 @@ void DesktopTickClock(void) {
 
         TaskbarGeom(&BarY, &Sw, &Sh);
         HalVideoClearClip();
-        GuiCursorHide();
+        ComposeBeginEraseCursor();
         DesktopFillRect(0, BarY, Sw, TASKBAR_H);
         DrawTaskbarRaw();
         if (gMenuOpen) {
@@ -426,7 +256,12 @@ void DesktopTickClock(void) {
         if (DesktopNetTrayIsOpen()) {
             DesktopNetTrayDrawPopup();
         }
-        GuiCursorShow();
-        HalVideoPresent();
+        if (!CursorHwActive()) {
+            GraphicsIrqEnter();
+            CursorPaint();
+            GraphicsIrqLeave();
+        }
+        HalVideoPresentFlush();
+        ComposeEnd();
     }
 }

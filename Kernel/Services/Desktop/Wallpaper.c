@@ -2,7 +2,8 @@
  * Wallpaper.c — 壁纸缓存 / DesktopBgAt / DesktopFillRect
  *
  * gui-wall-defer：开机不 BuildWallScreen（4K 逐像素最痛）；Worker 在
- * Reveal 后 LoadBmp+Build，Gui TickClock Consume 再刷新。未就绪时用纯色/渐变。
+ * iwl 静默后、Reveal 前 LoadBmp+Build（未露少 Poll）；Gui TickClock Consume
+ * 再刷新。未就绪时用纯色/渐变。
  */
 #include "DesktopPrivate.h"
 #include "Scheduler.h"
@@ -101,7 +102,7 @@ int DesktopWallConsumeNeedRefresh(void) {
 
 /*
  * Worker：主题开壁纸且尚未缩放到屏 —— 读盘+Build。
- * 须在光标 Reveal 之后调，避免挡进桌面/露光标。
+ * 在 iwl 静默之后、光标 Reveal 之前调（未露 IoBreath 少 Poll，不挡跟手）。
  */
 void DesktopEnsureWallpaperBuilt(void) {
     if (gDesktopBusy) {

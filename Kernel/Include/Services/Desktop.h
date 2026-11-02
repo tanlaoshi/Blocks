@@ -38,6 +38,8 @@ void DesktopNotifyAppsChanged(void);
  * Gui DesktopTickClock 闲时重画（对表 X64 钟/网托路径，勿另起门面）。
  */
 void DesktopNotifyNetChanged(void);
+/* 只脏任务栏（TickClock 闲时重画）；勿借 RequestRefresh 整屏 ThemeScene */
+void DesktopRequestTaskbarRepaint(void);
 
 void DesktopInitialize(void);
 /* PR-BOX-2：先画出 Logo；读完字体/主题后再 Finish 清屏 */

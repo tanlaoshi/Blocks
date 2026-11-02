@@ -69,6 +69,8 @@ typedef struct {
     int (*CloseAllUserWindows)(void);
     void (*WaitNoWindowClosing)(void);
     void (*ComposeThemeScene)(void);
+    /* 1=光标已 Reveal；未登记时 IoBreath 当已就绪（开机仍可 drain） */
+    int (*CursorUsbReady)(void);
 } DESKTOP_OPS;
 
 void DesktopOpsRegister(const DESKTOP_OPS *Ops);
@@ -77,6 +79,7 @@ void DesktopPollMouseMotion(void);
 int DesktopCloseAllUserWindows(void);
 void DesktopWaitNoWindowClosing(void);
 void DesktopComposeThemeScene(void);
+int DesktopCursorUsbReady(void);
 
 /* 换字。Theme 初始化时登记；没登记则只改 Library 里的当前字。 */
 void FontChoiceRegister(int (*Set)(UINT32 Id));

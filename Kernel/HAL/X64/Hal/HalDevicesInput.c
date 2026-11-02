@@ -11,6 +11,7 @@
 
 void XhciDiagFormat(char *Buf, int Max);
 void MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
+void MouseHoldUntilReveal(int Hold);
 
 void HalInputArmIrq(void) {
     InputXhciArmIrq();
@@ -29,6 +30,10 @@ void HalInputInitializeMouseDeferred(void) {
 void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
     MouseHandoffDesktop(CursorX, CursorY);
     Ps2MouseHandoffDesktop(CursorX, CursorY);
+}
+
+void HalInputMouseHoldUntilReveal(int Hold) {
+    MouseHoldUntilReveal(Hold);
 }
 
 void HalInputPoll(void) {

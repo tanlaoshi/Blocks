@@ -207,9 +207,26 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
     return 1;
 }
 
+void MouseHoldUntilReveal(int Hold) {
+    if (Hold) {
+        gMouseIntrHold = 1;
+        gMouseIntrDone = 0;
+        gMouseReportReady = 0;
+        return;
+    }
+    gMouseIntrHold = 0;
+    if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
+        QueueMouseIntr();
+    }
+}
+
 void QueueMouseIntr(void) {
     UINT32 Len;
 
+    /* Hold 期间禁止再投递；Reveal 清 Hold 后再调本函数 */
+    if (gMouseIntrHold) {
+        return;
+    }
     gMouseIntrDone = 0;
     gMouseReportReady = 0;
     /* 短包只写前 N 字节；不清零会让相对鼠被「高字节非0」启发式误判成绝对 */

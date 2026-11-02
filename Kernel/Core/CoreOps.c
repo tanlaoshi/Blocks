@@ -186,6 +186,7 @@ void DesktopOpsRegister(const DESKTOP_OPS *Ops) {
         gDesktopOps.CloseAllUserWindows = 0;
         gDesktopOps.WaitNoWindowClosing = 0;
         gDesktopOps.ComposeThemeScene = 0;
+        gDesktopOps.CursorUsbReady = 0;
         return;
     }
     gDesktopOps = *Ops;
@@ -195,6 +196,13 @@ void DesktopPollMouseMotion(void) {
     if (gDesktopOps.PollMouseMotion) {
         gDesktopOps.PollMouseMotion();
     }
+}
+
+int DesktopCursorUsbReady(void) {
+    if (gDesktopOps.CursorUsbReady) {
+        return gDesktopOps.CursorUsbReady();
+    }
+    return 1;
 }
 
 int DesktopCloseAllUserWindows(void) {

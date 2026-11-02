@@ -197,6 +197,8 @@ extern UINT8 gMouseDevCtx[2048];
 extern volatile UINT32 gMouseIntrDone;
 extern volatile UINT32 gIntrReportReady;
 extern volatile UINT32 gMouseReportReady;
+/* 1=Reveal 前：完成只丢弃、不 InterruptByClass 再投递（掐 MSI 风暴） */
+extern volatile UINT32 gMouseIntrHold;
 
 extern XHCI_TRB gBulkInRing[RING_SIZE];
 extern XHCI_TRB gBulkOutRing[RING_SIZE];

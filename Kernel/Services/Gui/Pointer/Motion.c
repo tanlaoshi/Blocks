@@ -27,6 +27,13 @@ void GuiPollMouseMotion(void) {
         return;
     }
 
+    /* 未 Reveal：只丢报告，不跟坐标、不脏 PrevBtn（handoff 会清边沿） */
+    if (!GuiCursorUsbReady()) {
+        while (HalMouseDequeue(&Raw)) {
+        }
+        return;
+    }
+
     HalVideoGetSize(&Sw, &Sh);
     if (Sw == 0) {
         Sw = gGuiWindowManager.ScreenWidth ? gGuiWindowManager.ScreenWidth : 1024;

@@ -92,6 +92,8 @@ int TryEnterDual(struct USB_CONTROLLER *Device);
 void InitMouseDeferred(void);
 /* PHOTO→桌面：清空鼠队列、重置累加坐标、Sync+Queue 键鼠 */
 void MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
+/* Desktop Ready→Reveal：Hold 掐鼠 IN 再投递；清 Hold 时 QueueMouseIntr */
+void MouseHoldUntilReveal(int Hold);
 /* dual/irq 失败时切回 poll 备份 */
 void FallbackToPoll(const char *Why);
 XHCI_IRQ_MODE IrqMode(void);

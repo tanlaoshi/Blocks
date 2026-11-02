@@ -544,7 +544,8 @@ void GuiCursorRevealAfterUsb(void) {
     gGuiWindowManager.CursorY = Cy;
     gGuiWindowManager.CursorBtn = 0;
     gGuiWindowManager.MousePrevBtn = 0;
-    /* 驱动 Abs 与 Gui 居中对齐，首动勿从慢认期积压坐标飞角 */
+    /* 先放 Hold 再投递 IN，再清空队列对齐 Abs */
+    HalInputMouseHoldUntilReveal(0);
     HalInputMouseHandoffDesktop(Cx, Cy);
     /*
      * 先试 Hw 再置 ready：避免 ready=1 后、Show 前 Compose 软画，

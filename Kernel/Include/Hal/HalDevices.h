@@ -152,6 +152,12 @@ void HalInputArmIrq(void);
 void HalInputInitializeMouseDeferred(void);
 /* 进桌面前：清空鼠队列并对齐累加坐标 */
 void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
+/*
+ * X64 真机：Desktop Ready→Reveal 前 Hold=1，鼠 IN 完成只丢弃不再投递，
+ * 防晃鼠标 MSI 饿 Worker（墙纸不出/键失灵）。Reveal 时 Hold=0 再 Queue。
+ * 其它 arch 空操作。
+ */
+void HalInputMouseHoldUntilReveal(int Hold);
 void HalInputPoll(void);
 /* 诊断串：mode= + t/i/k/m…（Shell show xhci） */
 void HalInputDiagFormat(char *Buf, int Max);

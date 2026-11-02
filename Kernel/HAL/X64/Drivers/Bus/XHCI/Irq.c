@@ -135,7 +135,8 @@ void DrainEvents(void) {
         if (gSlotId != 0 && gIntrDci != 0 && (gStatDrain & 0xFu) == 0) {
             RingDoorbell(gSlotId, gIntrDci);
         }
-        if (gMouseSlotId != 0 && gMouseIntrDci != 0 && (gStatDrain & 0x7u) == 0) {
+        if (!gMouseIntrHold && gMouseSlotId != 0 && gMouseIntrDci != 0 &&
+            (gStatDrain & 0x7u) == 0) {
             RingDoorbell(gMouseSlotId, gMouseIntrDci);
         }
     }

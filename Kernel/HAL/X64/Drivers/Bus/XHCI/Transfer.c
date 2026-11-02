@@ -21,6 +21,14 @@ void ServiceHidCompletions(void) {
     }
     if (gMouseIntrDone) {
         gMouseIntrDone = 0;
+        if (gMouseIntrHold) {
+            /*
+             * bug-nuc-mouse-btn：Reveal 前再投递会让晃鼠 MSI 占满环，
+             * Worker 到不了壁纸/静默；出光标后队列/边沿也脏。完成只清标志。
+             */
+            gMouseReportReady = 0;
+            return;
+        }
         if (gMouseReportReady) {
             gMouseReportReady = 0;
             FlushDma(gMouseBuf, sizeof(gMouseBuf));

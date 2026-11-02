@@ -168,6 +168,7 @@ void GuiDesktopInitialize(void) {
         Desk.CloseAllUserWindows = GuiCloseAllUserWindows;
         Desk.WaitNoWindowClosing = GuiWaitNoWindowClosing;
         Desk.ComposeThemeScene = GuiComposeThemeScene;
+        Desk.CursorUsbReady = GuiCursorUsbReady;
         DesktopOpsRegister(&Desk);
     }
     /*
@@ -204,6 +205,13 @@ void GuiDesktopInitialize(void) {
     if (!HalTimerUsesIrq() && HalMousePresent()) {
         GuiCursorRevealAfterUsb();
         HalSerialBootMark("Boot: cursor reveal (mouse already attached)\n");
+    } else if (!HalCpuIsHypervisor()) {
+        /*
+         * X64 真机：Desktop Ready→Worker Reveal 前掐鼠 IN 再投递。
+         * 晃鼠 MSI 不再占环（bug-nuc-mouse-btn）；键仍走 ServiceHid。
+         */
+        HalInputMouseHoldUntilReveal(1);
+        HalSerialBootMark("Boot: mouse hold until reveal\n");
     }
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();

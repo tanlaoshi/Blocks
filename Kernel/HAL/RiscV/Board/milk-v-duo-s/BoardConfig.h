@@ -18,6 +18,8 @@
 /* 与厂商 U-Boot 环境变量对齐（kernel_addr_r / fdt_addr_r） */
 #define BOARD_KERNEL_LOAD      0x80200000ULL
 #define BOARD_DTB_LOAD         0x81200000ULL
+/* BootStub FIT 第二阶段（找 BLOCKS:Kernel.elf）；躲开核/DTB/U-Boot 缓冲 */
+#define BOARD_BOOT_STUB_LOAD   0x83000000ULL
 
 /* DTB 缺失时的 DRAM fallback（U-Boot 常见 ~510MiB @0x80000000） */
 #define BOARD_RAM_BASE         0x80000000ULL

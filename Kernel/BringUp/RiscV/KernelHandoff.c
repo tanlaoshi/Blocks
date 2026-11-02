@@ -6,6 +6,7 @@
 #include "HalSerial.h"
 #include "Hal.h"
 #include "BootHandoff.h"
+#include "BlocksVersion.h"
 #include "Kernel.h"
 #include "Virtio/Dtb.h"
 #include "Virtio/Ramfb.h"
@@ -64,6 +65,9 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     (void)HartId;
 
     HalSerialInitialize();
+    HalSerialWrite("Boot: Blocks V ");
+    HalSerialWrite(BLOCKS_VERSION_STRING);
+    HalSerialWrite("\n");
     HalSerialWrite("Boot: RiscV KernelMain\n");
     HalSerialWrite("board: ");
     HalSerialWrite(BoardName());

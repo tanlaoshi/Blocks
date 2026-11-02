@@ -11,6 +11,7 @@
 #include "Hal.h"
 #include "HalVideo.h"
 #include "BootHandoff.h"
+#include "BlocksVersion.h"
 #include "Kernel.h"
 #include "Virtio/Dtb.h"
 #include "Virtio/Ramfb.h"
@@ -109,6 +110,9 @@ void KernelHandoff(UINT64 DtbPhys) {
     int FromMbox;
 
     HalSerialInitialize();
+    HalSerialBootMark("Boot: Blocks V ");
+    HalSerialBootMark(BLOCKS_VERSION_STRING);
+    HalSerialBootMark("\n");
     HalSerialBootMark("Boot: Arm64 KernelMain\n");
     HalSerialBootMark("board: ");
     HalSerialBootMark(BoardName());

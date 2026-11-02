@@ -600,6 +600,8 @@ else
 EXTRA_OBJS =
 # PR-B2：Board 包 .c（含一层子目录，如 Ethernet/*.c）；BoardConfig.h 仅 HAL -I
 BOARD_SRCS := $(sort $(wildcard $(BOARD_DIR)/*.c) $(wildcard $(BOARD_DIR)/*/*.c))
+# Duo BootStub 单独编（BootStub/build.sh），勿链进主 Kernel.elf
+BOARD_SRCS := $(filter-out $(BOARD_DIR)/BootStub/%,$(BOARD_SRCS))
 BOARD_OBJS := $(patsubst $(BOARD_DIR)/%.c,$(HALDIR)/Board/%.o,$(BOARD_SRCS))
 EXTRA_OBJS += $(BOARD_OBJS)
 # PR-R5：Arm/RiscV virtio/ramfb/DTB（HAL/Virtio）；HalVideo+绘制在 HAL/Common

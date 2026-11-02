@@ -2,17 +2,15 @@
 # ck-duo-sd.sh — Duo 刷卡：Kernel 只在 LABEL=BLOCKS（对齐 X64/Pi）
 #
 #   source ~/Blocks/env.sh && ck-duo-sd
-#   ck-duo-sd --blocks-only     # 只更新 BLOCKS/Kernel.elf（上电仍用已刷 embed FIT）
+#   ck-duo-sd --blocks-only     # 只更新 BLOCKS/Kernel.elf（上电仍用已刷 stub FIT）
+#   ck-duo-sd --embed-kernel    # 旧：FIT 整核嵌入（改核须重刷 boot.sd）
 #   ck-duo-sd --script-fit      # 试 FIT type=script（真机已证厂商 bootm 不跑脚本）
 #   ck-duo-sd --wait=120
 #   ck-duo-sd --no-eject
 #
 # 默认：BLOCKS 唯一 Kernel.elf；boot 删 Kernel.elf；刷新
-# boot.sd（FIT 内嵌核，sdboot 可 bootm）、boot.scr、duo.dtb。不删 fip.bin。
-# 读卡器写入会绕过板端 ksend 的 .crc 差量缓存：写 boot.sd / Kernel.elf
-# 之前必须先删同名 .crc；删不掉就停手，否则下次部署会拿过期块表当基准
-#（只能白跑一趟慢校验，最坏是 --no-backup 那次写不完整）。
-# duo-fatload：脚本 FIT 真机失败；上电改核仍须重打 embed FIT（或待 stub）。
+# boot.sd（FIT = BootStub @0x83000000 → 读 BLOCKS Kernel.elf）、boot.scr、duo.dtb。
+# 不删 fip.bin。读卡器写前须删同名 .crc（见下 drop_stale_cache）。
 #
 # 禁止：对 Duo 跑 ck-pi-sd；格式化 boot；无备份删 boot.sd。
 # 不 commit / 不 push。
@@ -29,17 +27,19 @@ if [ ! -d "$DUE_BUILD_DIR" ] && [ -f "$BLOCKS_ROOT/Kernel/Build/HAL/RiscV/Kernel
     DUE_BUILD_DIR="$BLOCKS_ROOT/Kernel/Build"
 fi
 ELF="${BLOCKS_KERNEL_ELF:-$DUE_BUILD_DIR/HAL/RiscV/Kernel.elf}"
+STUB_ELF="$DUE_BUILD_DIR/BootStub/BootStub.elf"
 WAIT_SEC="${CK_WAIT_SEC:-90}"
 DO_EJECT=1
 BLOCKS_ONLY=0
 SCRIPT_FIT=0
+EMBED_KERNEL=0
 
 for A in "$@"; do
   case "$A" in
     --no-eject) DO_EJECT=0 ;;
     --blocks-only) BLOCKS_ONLY=1 ;;
     --script-fit) SCRIPT_FIT=1 ;;
-    --embed-kernel) SCRIPT_FIT=0 ;; # 兼容旧口令：默认即 embed
+    --embed-kernel) EMBED_KERNEL=1 ;;
     --boot) ;; # 兼容旧口令：默认已含 boot 刷新
     --wait=*) WAIT_SEC="${A#--wait=}" ;;
     -h|--help)
@@ -187,9 +187,18 @@ if [ "$BLOCKS_ONLY" = 0 ]; then
   if [ "$SCRIPT_FIT" = 1 ]; then
     python3 "$HERE/mk-boot-sd.py" --script -o "$HERE/boot.sd"
     FitNote="FIT script (stock bootm FAILS — archaeology)"
-  else
+  elif [ "$EMBED_KERNEL" = 1 ]; then
     python3 "$HERE/mk-boot-sd.py" -k "$BlocksMnt/Kernel.elf" -o "$HERE/boot.sd"
-    FitNote="FIT embed kernel"
+    FitNote="FIT embed kernel (legacy)"
+  else
+    echo "ck-duo-sd: build BootStub"
+    bash "$BOARD_DIR/BootStub/build.sh"
+    if [ ! -f "$STUB_ELF" ]; then
+      echo "error: 缺 $STUB_ELF" >&2
+      exit 1
+    fi
+    python3 "$HERE/mk-boot-sd.py" --stub -k "$STUB_ELF" -o "$HERE/boot.sd"
+    FitNote="FIT BootStub → BLOCKS Kernel.elf"
   fi
   python3 "$HERE/mk-boot-scr.py"
   if [ ! -f "$BootMnt/boot.sd.vendor" ] && [ -f "$BootMnt/boot.sd" ]; then
@@ -213,9 +222,9 @@ fi
 
 sync
 if [ "$BLOCKS_ONLY" = 1 ]; then
-  echo "ck-duo-sd: OK — BLOCKS/Kernel.elf only（须已刷脚本 FIT；上电勿再打 FIT）"
+  echo "ck-duo-sd: OK — BLOCKS/Kernel.elf only（须已刷 stub FIT）"
 else
-  echo "ck-duo-sd: OK — Kernel.elf only on BLOCKS; boot has no Kernel.elf"
+  echo "ck-duo-sd: OK — Kernel.elf on BLOCKS; boot.sd=$FitNote"
 fi
 
 if [ "$DO_EJECT" = 1 ]; then

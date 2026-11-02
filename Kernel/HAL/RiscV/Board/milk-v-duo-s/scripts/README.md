@@ -6,29 +6,32 @@
 
 | LABEL | mmc | 内容 |
 | --- | --- | --- |
-| **boot** | `0:1` | `fip.bin`、`boot.sd`（FIT）、`duo.dtb`、`boot.scr`；**无 Kernel.elf** |
-| **BLOCKS** | `0:4` | **`Kernel.elf`**（唯一）、`BLOCKS.ID`、`HELLO.ELF`… |
+| **boot** | `0:1` | `fip.bin`、`boot.sd`（FIT=**BootStub**）、`duo.dtb`、`boot.scr`；**无 Kernel.elf** |
+| **BLOCKS** | `0:4` | **`Kernel.elf`**（唯一）、`BLOCKS.ID`、… |
 
 厂商 `bootcmd=run sdboot` → `bootm boot.sd#config-*`（不扫 `boot.scr`；ENV nowhere）。
 
-## 上电路径（duo-fatload 结论）
+## 上电路径
 
 | 路径 | 结果 |
 | --- | --- |
-| **默认 embed FIT** | ✅ 上电 `bootm` → 内嵌核（改核须重打 FIT） |
-| FIT `type=script` | ❌ 真机：认出 Script 后仍要 RISC-V Kernel Image |
-| 抢壳 `source boot.scr` | ✅ 真·`fatload mmc 0:4`（须打断 autoboot） |
-| 改 bootcmd / fip | 刻意不做 |
+| **默认 stub FIT** | ✅ `bootm` → BootStub@`0x83000000` → 读 `BLOCKS:Kernel.elf` → 跳 `0x80200000` |
+| 整核 embed FIT | ✅ 旧路径（`--embed-kernel`）；改核须重打 FIT |
+| FIT `type=script` | ❌ 真机失败 |
+| 抢壳 `source boot.scr` | ✅ `fatload mmc 0:4`（须打断 autoboot） |
 
-`ck-duo-sd` 认 **boot+fip.bin 同盘的 BLOCKS**（避开本机 nvme `LABEL=BLOCKS`）。
+日常热更：`deploy-duo` → `ksend BLOCKS:Kernel.elf`（**不必**重刷 `boot.sd`）。  
+stub 变更：`deploy-duo --refresh-stub` 或 `ck-duo-sd`。
 
 ## 一键
 
 ```bash
 source ~/Blocks/env.sh
-ck-duo-sd                 # BLOCKS/Kernel.elf + embed FIT / scr / dtb
-ck-duo-sd --blocks-only   # 只更新 BLOCKS（上电仍是旧 embed 核）
-ck-duo-sd --script-fit    # 勿用于上电；仅复现 script 失败
+ck-duo-sd                 # BLOCKS/Kernel.elf + stub FIT / scr / dtb
+ck-duo-sd --blocks-only   # 只更新 BLOCKS
+ck-duo-sd --embed-kernel  # 旧整核 FIT
+deploy-duo                # 热更 BLOCKS:Kernel.elf
+deploy-duo --refresh-stub # 重打 stub → BOOT:boot.sd
 ```
 
 ## 禁止

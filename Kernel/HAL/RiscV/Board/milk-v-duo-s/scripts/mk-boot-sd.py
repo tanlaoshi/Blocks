@@ -6,13 +6,12 @@ There is no distro boot_targets / boot.scr scan. ENV is often nowhere, so
 saveenv cannot persist a new bootcmd. Replace boot.sd with this FIT (keep the
 vendor file as boot.sd.vendor on the same FAT).
 
-Default: --embed-kernel packs Kernel.elf PT_LOAD @0x80200000 (sdboot needs
-  type=kernel; duo-autoboot proven).
+Default: packs Kernel.elf PT_LOAD @0x80200000 (legacy full-embed).
 
-Optional --script: FIT kernel= → type=script (boot.cmd). Hand-test 2026-10-26:
-  Sophgo bootm verifies script then still demands RISC-V Kernel Image —
-  'ERROR: can't get kernel image!'. Not usable on stock fip; keep for
-  archaeology. True fatload-without-FIT-rebuild needs a stub ELF or fip/bootcmd.
+Preferred: --stub packs BootStub @0x83000000；上电后 stub 读 BLOCKS:Kernel.elf
+  再跳真核。日常热更只 ksend BLOCKS:Kernel.elf，不必重打 FIT。
+
+Optional --script: FIT type=script（stock bootm 真机失败；考古保留）。
 
 No dtc/mkimage required.
 """
@@ -40,11 +39,13 @@ FDT_PROP = 3
 FDT_END = 9
 
 KERNEL_LOAD = 0x80200000
+# BootStub 第二阶段（找 BLOCKS:Kernel.elf）；与 BoardConfig BOARD_BOOT_STUB_LOAD 一致
+STUB_LOAD = 0x83000000
 
 
 def elf64_le_loads(data: bytes):
     if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
-        raise SystemExit("need ELF64 little-endian Kernel.elf")
+        raise SystemExit("need ELF64 little-endian")
     e_entry = struct.unpack_from("<Q", data, 24)[0]
     e_phoff = struct.unpack_from("<Q", data, 32)[0]
     e_phentsize, e_phnum = struct.unpack_from("<HH", data, 54)
@@ -63,22 +64,22 @@ def elf64_le_loads(data: bytes):
     return e_entry, loads
 
 
-def flat_from_elf(data: bytes) -> tuple:
+def flat_from_elf(data: bytes, expect_base: int) -> tuple:
     e_entry, loads = elf64_le_loads(data)
     loads.sort(key=lambda x: x[1])
     base = loads[0][1]
-    if base != KERNEL_LOAD:
+    if base != expect_base:
         raise SystemExit(
-            "unexpected first PT_LOAD %#x (want %#x)" % (base, KERNEL_LOAD)
+            "unexpected first PT_LOAD %#x (want %#x)" % (base, expect_base)
         )
-    if e_entry != KERNEL_LOAD:
-        raise SystemExit("unexpected entry %#x (want %#x)" % (e_entry, KERNEL_LOAD))
+    if e_entry != expect_base:
+        raise SystemExit("unexpected entry %#x (want %#x)" % (e_entry, expect_base))
     end = max(v + f for _o, v, f, _m in loads)
     blob = bytearray(end - base)
     for p_offset, p_vaddr, p_filesz, _m in loads:
         rel = p_vaddr - base
         blob[rel : rel + p_filesz] = data[p_offset : p_offset + p_filesz]
-    return bytes(blob), e_entry
+    return bytes(blob), e_entry, base
 
 
 class FitBuilder:
@@ -194,24 +195,25 @@ def build_script_fit(script_text: bytes) -> bytes:
     return b.finish()
 
 
-def build_embed_fit(kernel: bytes, entry: int, fdt: bytes) -> bytes:
+def build_embed_fit(kernel: bytes, entry: int, fdt: bytes, load: int,
+                    description: str) -> bytes:
     if len(fdt) < 8 or struct.unpack_from(">I", fdt, 0)[0] != FDT_MAGIC:
         raise SystemExit("fdt is not a DTB (bad magic)")
     b = FitBuilder()
     b.begin("")
-    b.prop_str("description", "Blocks Milk-V Duo S (embed kernel)")
+    b.prop_str("description", description)
     b.prop_u32("#address-cells", 1)
 
     b.begin("images")
     b.begin("kernel-1")
-    b.prop_str("description", "Blocks Kernel.bin")
+    b.prop_str("description", "Blocks kernel image")
     b.prop("data", kernel)
     b.prop_str("type", "kernel")
     b.prop_str("arch", "riscv")
     b.prop_str("os", "linux")
     b.prop_str("compression", "none")
-    b.prop_u32("load", KERNEL_LOAD)
-    b.prop_u32("entry", entry)
+    b.prop_u32("load", load & 0xFFFFFFFF)
+    b.prop_u32("entry", entry & 0xFFFFFFFF)
     _hash_crc(b, kernel)
     b.end()
 
@@ -263,12 +265,20 @@ def main() -> int:
         default=here / "boot.cmd",
         help="Script text for --script (default: boot.cmd)",
     )
+    default_stub = (
+        repo / "Kernel" / "Build" / "DUO" / "BootStub" / "BootStub.elf"
+    )
     ap.add_argument(
         "-k",
         "--kernel",
         type=Path,
-        default=default_elf,
-        help="Kernel.elf to embed (default)",
+        default=None,
+        help="ELF to embed (default: Kernel.elf, or BootStub.elf with --stub)",
+    )
+    ap.add_argument(
+        "--stub",
+        action="store_true",
+        help="Embed BootStub @0x83000000 (loads BLOCKS:Kernel.elf)",
     )
     ap.add_argument(
         "-d",
@@ -290,19 +300,35 @@ def main() -> int:
             % (args.output, len(fit), len(text))
         )
     else:
+        if args.kernel is None:
+            args.kernel = default_stub if args.stub else default_elf
         if not args.kernel.is_file():
             raise SystemExit(
-                "missing %s — build: ./build.sh riscv BOARD=milk-v-duo-s" % args.kernel
+                "missing %s — stub: BootStub/build.sh；核: ./build.sh riscv duo"
+                % args.kernel
             )
         if not args.dtb.is_file():
             raise SystemExit("missing %s" % args.dtb)
-        flat, entry = flat_from_elf(args.kernel.read_bytes())
+        expect = STUB_LOAD if args.stub else KERNEL_LOAD
+        flat, entry, load = flat_from_elf(args.kernel.read_bytes(), expect)
         fdt = args.dtb.read_bytes()
-        fit = build_embed_fit(flat, entry, fdt)
+        desc = (
+            "Blocks Duo S (BootStub loads BLOCKS Kernel.elf)"
+            if args.stub
+            else "Blocks Milk-V Duo S (embed kernel)"
+        )
+        fit = build_embed_fit(flat, entry, fdt, load, desc)
         args.output.write_bytes(fit)
         print(
-            "wrote %s (%d bytes FIT embed, %d bytes kernel @%#x, %d bytes dtb)"
-            % (args.output, len(fit), len(flat), entry, len(fdt))
+            "wrote %s (%d bytes FIT embed, %d bytes image @%#x, %d bytes dtb)%s"
+            % (
+                args.output,
+                len(fit),
+                len(flat),
+                entry,
+                len(fdt),
+                " [stub]" if args.stub else "",
+            )
         )
 
     print("configs: %s" % ", ".join(CONFIG_NAMES))

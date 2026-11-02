@@ -22,8 +22,9 @@
 
 - `bootdelay=1` + 部分镜像 `ENV nowhere` → **`saveenv` 常存不住**。  
 - 真机：`bootcmd=run sdboot` → **`boot.sd`**（不扫 `boot.scr`）。  
-- **duo-fatload**：FIT `type=script` 真机失败（bootm 仍要 RISC-V Kernel Image）；上电仍 **embed FIT**；抢壳 `boot.scr` 才是 fatload BLOCKS。  
-- **应用卷**：`source env.sh && ck-duo-sd` → **`Kernel.elf`→LABEL=BLOCKS**。  
+- **BootStub**：默认 FIT 嵌 stub@`0x83000000` → 读 `BLOCKS:Kernel.elf`；热更 `deploy-duo` 只写 BLOCKS。整核 embed 用 `--embed-kernel`。  
+- **duo-fatload**：FIT `type=script` 真机失败；抢壳 `boot.scr` 仍可用。  
+- **应用卷**：`ck-duo-sd` → **`Kernel.elf`→LABEL=BLOCKS**。  
 - **禁止** `ck-pi-sd`。详见 [`scripts/README.md`](scripts/README.md)。
 
 ## USB Host（duo-usb-kbd）

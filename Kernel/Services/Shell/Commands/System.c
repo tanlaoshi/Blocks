@@ -5,11 +5,52 @@
  */
 #include "ShellPrivate.h"
 #include "BootHandoff.h"
+#include "BlocksVersion.h"
 #include "Console.h"
 #include "Device.h"
 #include "Driver.h"
 #include "PhysicalMemory.h"
 #include "Hal.h"
+#include "HalGpio.h"
+
+static void CommandVersion(int Argc, char **Argv) {
+    const char *Board;
+
+    (void)Argc;
+    (void)Argv;
+    Board = HalGpioBoardName();
+    if (Board == 0 || Board[0] == 0) {
+        Board = "x64";
+    }
+    gConsole.Write("Blocks V ");
+    gConsole.Write(BLOCKS_VERSION_STRING);
+    gConsole.Write(" arch=");
+    gConsole.Write(BlocksVersionArchitectureName());
+    gConsole.Write(" board=");
+    gConsole.Write(Board);
+    gConsole.Write("\n");
+}
+
+static void CommandWho(int Argc, char **Argv) {
+    const char *Board;
+
+    (void)Argc;
+    (void)Argv;
+    Board = HalGpioBoardName();
+    if (Board == 0 || Board[0] == 0) {
+        Board = "x64";
+    }
+    gConsole.Write("Blocks — teaching OS kernel\n");
+    gConsole.Write("  arch=");
+    gConsole.Write(BlocksWhoArchitectureName());
+    gConsole.Write("\n");
+    gConsole.Write("  board=");
+    gConsole.Write(Board);
+    gConsole.Write("\n");
+    gConsole.Write("  version=V ");
+    gConsole.Write(BLOCKS_VERSION_STRING);
+    gConsole.Write("\n");
+}
 
 static void CommandInfo(int Argc, char **Argv) {
     const BOOT_HANDOFF *Info = BootHandoffGet();
@@ -207,6 +248,8 @@ void ShellCommandsSystemRegisterVirtMin(void) {
     gConsole.Register2("list", "devices", "list devices + bound drivers", CommandLsdev);
     gConsole.RegisterAliasLine("lsdev", "list", "devices");
     gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
+    gConsole.Register("version", "print Blocks kernel version", CommandVersion);
+    gConsole.Register("who", "print short self introduction (arch/board/version)", CommandWho);
     /* Duo 等 ConsoleOnly 板走本函数（HalConsoleOnly → 非桌面命令表），
      * 漏挂 reboot 会让真机只有 halt；复位走 HalCpuReboot → BoardCpuReboot。 */
     gConsole.Register("reboot", "reset CPU (Duo S: RTC warm reset)", CommandReboot);
@@ -231,6 +274,8 @@ void ShellCommandsSystemRegister(void) {
     gConsole.RegisterAliasLine("memtest", "test", "memory");
 
     gConsole.Register("log", "runtime log; log save [RUNTIME-BOOTDISK.LOG]", CommandLog);
+    gConsole.Register("version", "print Blocks kernel version", CommandVersion);
+    gConsole.Register("who", "print short self introduction (arch/board/version)", CommandWho);
     gConsole.Register("reboot", "reset CPU (QEMU display: quit+./run-split.sh)", CommandReboot);
     gConsole.Register("halt", "power off / firmware halt (Pi: then unplug, pull SD)", CommandHalt);
     gConsole.RegisterAlias("halt", "shutdown");

@@ -6,6 +6,7 @@
  */
 #include "UefiBootConfig.h"
 #include "BootHandoff.h"
+#include "BlocksVersion.h"
 #include "Kernel.h"
 #include "Hal.h"
 #include "HalSerial.h"
@@ -165,6 +166,9 @@ void KernelHandoff(UEFI_BOOT_CONFIG *BootConfig) {
 
     /* 与 Fill* 无关；尽早开串口。空 BootConfig* 已在 KernelEntry 拦下 */
     HalSerialInitialize();
+    HalSerialWrite("Boot: Blocks V ");
+    HalSerialWrite(BLOCKS_VERSION_STRING);
+    HalSerialWrite("\n");
 
     /*
      * PR-15 契约（跨 Boot/Kernel 的唯一生命周期指针）：

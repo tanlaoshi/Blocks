@@ -22,13 +22,13 @@ PR-UI-ttf-1：`ThirdParty/stb/stb_truetype.h`（public domain v1.26），仅 `Se
 
 ## FreeType
 
-`font-freetype-hook`：上游树本地检出（gitignore，同 lwIP）；移植在 `freetype-port/`（进仓）。
-版本**钉死**为 **2.13.2**（上游 tag `VER-2-13-2`），由脚本抓取并做两层校验，不手工 curl：
+`font-freetype-hook`：上游树 **`ThirdParty/freetype/` 已入库**（2.13.2 / `VER-2-13-2`，freetype-git-1）；移植在 `freetype-port/`。
+`Scripts/fetch-freetype.sh` 仅作指纹校验 / 树损坏时重下（clone 后不必再跑）：
 
 ```bash
-# 在 Kernel/ 下（bootstrap.sh 也会调用）
-Scripts/fetch-freetype.sh          # 缺则下载；已有且校验通过则跳过（幂等）
+# 在 Kernel/ 下
 Scripts/fetch-freetype.sh --check  # 只校验现有树，不联网
+Scripts/fetch-freetype.sh          # 缺则下载（幂等）
 Scripts/fetch-freetype.sh --force  # 丢弃现有树重下
 ```
 

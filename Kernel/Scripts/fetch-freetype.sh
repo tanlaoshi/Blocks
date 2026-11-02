@@ -1,9 +1,11 @@
 #!/bin/bash
-# fetch-freetype.sh — 按固定版本抓取 FreeType 上游源码（gitignore，构建前按需取）
+# fetch-freetype.sh — FreeType 2.13.2 校验 / 修复（源码已入库；本脚本保底）
 #
 # 版本钉死：FreeType 2.13.2（上游 tag VER-2-13-2）
 # 来源：https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
-# 许可：FreeType License / GPLv2 双许可（见树内 LICENSE.TXT）；只下源码，不入库。
+# 许可：FreeType License / GPLv2 双许可（见树内 LICENSE.TXT）。
+# freetype-git-1：ThirdParty/freetype/ 进 git；clone 后无需再 fetch。
+# 本脚本仍用于：--check 指纹、树损坏时 --force 重下对齐钉死版本。
 #
 # 两条校验，任一不符即失败（绝不静默换版本）：
 #   1) tarball sha256

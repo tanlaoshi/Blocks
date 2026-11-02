@@ -1,12 +1,12 @@
 # TO-DS · Cursor 自持（DS 已停）
 
-## 当前（2026-11-02 14:00 · ★ 空）
+## 当前（2026-11-02 14:16 · ★ pr-23d-blur-1）
 
 | 项 | 值 |
 |---|---|
-| **★** | （空） |
-| **刚收** | **version/who V0.1.0**（Duo `arch=RISCV`）；BootStub 方案落码 |
-| **待手测** | Duo `ck-duo-sd` 刷 stub FIT 冷启（日常 `deploy-duo`→BLOCKS） |
-| **执行** | Cursor；排队均为 ⏸/点名 |
+| **★** | **`pr-23d-blur-1`** — PR-23d 失焦糊 |
+| **刚收** | **`freetype-git-1`** — FreeType 2.13.2 入 git（730 文件） |
+| **Bug** | **bug-nuc-idle-kbd** — NUC 鼠闲置十余分钟后按键不灵（见 [`路线图1103`](../路线图1103.md)#bug-nuc-idle-kbd） |
+| **债表** | [`路线图1103.md`](../路线图1103.md) |
 
-细节：[`路线图1102.md`](../路线图1102.md)；Duo [`scripts/README.md`](../../Kernel/HAL/RiscV/Board/milk-v-duo-s/scripts/README.md)。
+快照：[`三架构进度.md`](../三架构进度.md)。

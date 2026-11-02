@@ -5,7 +5,10 @@ VirtRootFs.img
 virt-rootfs/
 virt-rootfs.img
 ThirdParty/lwip/
-ThirdParty/freetype/
+# FreeType 2.13.2 源码已入库（freetype-git-1）；仅忽略本地编遗物
+ThirdParty/freetype/objs/*
+!ThirdParty/freetype/objs/README
+!ThirdParty/freetype/objs/.gitignore
 
 # 遗留根目录产物（旧 Makefile）
 *.o

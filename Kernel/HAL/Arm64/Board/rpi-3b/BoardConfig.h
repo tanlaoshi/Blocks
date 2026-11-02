@@ -39,7 +39,7 @@
 #define BOARD_HAS_WIFI         1
 /* bt-pi：BCM43430 蓝牙走 PL011 UART0（GPIO32/33），与壳的 mini-UART 不冲突；见 Docs/26 */
 #define BOARD_HAS_BLUETOOTH    1
-/* audio-pi：AV 耳机孔 = PWM0/1（GPIO40/41 ALT0，CM_PWM 10 MHz）；见 Docs/29 §6.1 */
+/* audio-pi-1b：AV 孔 = PWM0/1（GPIO40/41 ALT0，PLLD→250 MHz + USEF）；见 Docs/29 */
 #define BOARD_HAS_AUDIO        1
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0

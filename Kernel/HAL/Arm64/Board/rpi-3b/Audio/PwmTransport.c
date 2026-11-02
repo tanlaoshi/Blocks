@@ -1,11 +1,8 @@
 /*
- * PwmTransport.c — GPIO40/41 → PWM0/1，方波发声与静音
+ * PwmTransport.c — GPIO40/41 → PWM0/1；MS tone + USEF FIFO 蜂鸣
  *
- * BCM2835 §6.1：GPIO40 = bits[2:0] of GPFSEL4，GPIO41 = bits[5:3]；ALT0(=4) = PWM0/PWM1。
- * BCM2835 §9.5-9.6：RNG1=0x10 周期，DAT1=0x14 占空，CTL=0x00（PWEN1 bit0 / PWEN2 bit8）。
- *
- * 口径：MS 模式（MODE1=0），输出高电平宽度 = DAT1/RNG1 × 周期；
- *       RNG = 10MHz/freq ⇒ 1 kHz 时 RNG=10000、DAT=5000 ⇒ 50% 方波。
+ * BCM2835 §6.1：GPIO40/41 ALT0 = PWM0/1。
+ * Circle pwmsoundbasedevice：CTL = PWEN|USEF（±MSEN）；FIFO 交织 L/R。
  */
 #include "AudioPrivate.h"
 #include "Hal.h"
@@ -34,10 +31,21 @@ static void PiPwmPinSelect(UINT32 Shift) {
     *Select = Value;
 }
 
+static void PiPwmFifoWriteBoth(UINT32 Sample) {
+    UINT32 Guard = 0u;
+
+    while ((*PiPwmRegister(PI_PWM_STA) & PI_PWM_STA_FULL1) != 0u) {
+        if (++Guard > 1000000u) {
+            return;
+        }
+    }
+    *PiPwmRegister(PI_PWM_FIF1) = Sample; /* 左 */
+    *PiPwmRegister(PI_PWM_FIF1) = Sample; /* 右（同值 → 双耳同相） */
+}
+
 int PiPwmTransportInitialize(void) {
     PiPwmPinSelect(PI_PWM_PIN40_SHIFT);
     PiPwmPinSelect(PI_PWM_PIN41_SHIFT);
-    /* 先全停：清零占空比并关两路输出 */
     *PiPwmRegister(PI_PWM_DAT1) = 0u;
     *PiPwmRegister(PI_PWM_DAT2) = 0u;
     *PiPwmRegister(PI_PWM_CTL) = 0u;
@@ -59,27 +67,66 @@ int PiPwmSetTone(UINT32 FrequencyHz, UINT32 DutyPercent) {
     *PiPwmRegister(PI_PWM_RNG2) = Period;
     *PiPwmRegister(PI_PWM_DAT1) = (Period * DutyPercent) / 100u;
     *PiPwmRegister(PI_PWM_DAT2) = (Period * DutyPercent) / 100u;
-    /*
-     * 只开 PWEN1/2（MS 模式，RNG/DAT 直接决定占空比）。
-     * MSEN 是 **Mark-Space enable**（评审 09:00/09:42 两次纠正）；FIFO 串行输出靠 **USEF**，
-     * 不是 MSEN。默认 tone 路径不置 MSEN：MS 模式由 RNG/DAT 直接决定占空比，语义最清楚。
-     */
     *PiPwmRegister(PI_PWM_CTL) = PI_PWM_CTL_PWEN1 | PI_PWM_CTL_PWEN2;
     return 0;
 }
 
 void PiPwmSilence(void) {
+    *PiPwmRegister(PI_PWM_CTL) = 0u;
     *PiPwmRegister(PI_PWM_DAT1) = 0u;
     *PiPwmRegister(PI_PWM_DAT2) = 0u;
-    *PiPwmRegister(PI_PWM_CTL) = 0u;
 }
 
 /*
- * MSEN1/2 = CTL bit7 / bit15。
- * 评审 09:00 纠正：**MSEN 是 Mark-Space enable，不是"串行器"**；
- * FIFO 串行输出要靠 MODE/USEF 位，这里不要照抄 Linux 的名字乱解释。
- * 本函数只做"打开 MSEN 位"的对照，语义按 BCM2835 §9.6 字面（M/S enable）。
+ * USEF FIFO 蜂鸣：RNG = 250 MHz / 48 kHz；每样点写 L+R；
+ * 1 kHz ⇒ 半周期 24 样点高低交替（占空 0 ↔ RNG/2）。
  */
+int PiPwmFifoTone(UINT32 FrequencyHz, UINT32 Milliseconds) {
+    UINT32 Range;
+    UINT32 HalfHigh;
+    UINT32 PeriodSamples;
+    UINT32 TotalSamples;
+    UINT32 Index;
+    UINT32 Phase;
+
+    if (FrequencyHz == 0u || Milliseconds == 0u) {
+        return -1;
+    }
+    Range = (PI_AUDIO_PWM_HZ + PI_AUDIO_SAMPLE_HZ / 2u) / PI_AUDIO_SAMPLE_HZ;
+    if (Range < 2u) {
+        return -1;
+    }
+    PeriodSamples = PI_AUDIO_SAMPLE_HZ / FrequencyHz;
+    if (PeriodSamples < 2u) {
+        PeriodSamples = 2u;
+    }
+    HalfHigh = Range / 2u;
+    TotalSamples = (PI_AUDIO_SAMPLE_HZ * Milliseconds) / 1000u;
+    if (TotalSamples == 0u) {
+        TotalSamples = PeriodSamples;
+    }
+
+    *PiPwmRegister(PI_PWM_CTL) = 0u;
+    *PiPwmRegister(PI_PWM_RNG1) = Range;
+    *PiPwmRegister(PI_PWM_RNG2) = Range;
+    *PiPwmRegister(PI_PWM_CTL) = PI_PWM_CTL_CLRF1;
+    HalDelayMilliseconds(1u);
+    *PiPwmRegister(PI_PWM_CTL) = PI_PWM_CTL_PWEN1 | PI_PWM_CTL_USEF1 |
+                                 PI_PWM_CTL_PWEN2 | PI_PWM_CTL_USEF2 |
+                                 PI_PWM_CTL_MSEN1 | PI_PWM_CTL_MSEN2;
+    HalDelayMilliseconds(2u);
+
+    Phase = 0u;
+    for (Index = 0u; Index < TotalSamples; Index++) {
+        UINT32 Duty = ((Phase % PeriodSamples) < (PeriodSamples / 2u))
+                          ? HalfHigh
+                          : 0u;
+        PiPwmFifoWriteBoth(Duty);
+        Phase++;
+    }
+    PiPwmSilence();
+    return 0;
+}
 
 int PiPwmSerialiserEnable(UINT32 Period) {
     if (Period < 2u) {
@@ -97,7 +144,5 @@ void PiPwmSerialiserPush(UINT32 Value) {
 }
 
 void PiPwmSerialiserDisable(void) {
-    *PiPwmRegister(PI_PWM_CTL) = 0u;
-    *PiPwmRegister(PI_PWM_DAT1) = 0u;
-    *PiPwmRegister(PI_PWM_DAT2) = 0u;
+    PiPwmSilence();
 }

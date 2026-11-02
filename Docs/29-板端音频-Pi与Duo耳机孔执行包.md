@@ -185,6 +185,17 @@ play: no audio         # HalAudioProbe()==0
 | **评审** | ✅ **否证全绿（收口）**（2026-11-02 09:42 Cursor）。认账：咔哒线索作废；A/B/D 排除；人耳判据不成立 → **不假绿**。选 **方案 1**：本刀否证收口；`audio-pi-1b`（VCHIQ）/换板 **点名再开**，不自动 ★。代码探针可留仓；`CMD_MAX=72` 真修可同捆 TG。⚠ `PwmTransport` 注释仍把 MSEN 写成「从 FIFO 取数」——**错**（MSEN=Mark-Space；FIFO 要 USEF），否证不挡，duo/pi-1b 前改掉。**给 DS**：可 **TG+TS**（Audio 探针+CMD_MAX+Docs/29）；★ → **`audio-duo-1`**；勿开 VCHIQ 除非用户点名。 |
 | **进度（DS 实时）** | ❌ **否证（2026-11-02 09:40）**：代码与寄存器级证据齐全，但**人耳判据不成立**。<br>**证据**：`cm_ctl=0x91`（ENAB+BUSY）、`cm_div=0x1eb8`（10.000 MHz）、`rng1=10000`、`gpfsel4=0x24200924`（pin40/41 ALT0）⇒ SoC 配置全对；**频率 1/100/200/300/500/1k/2k/3k/5k Hz、占空比 50/90/100%、MS 与 MSEN 两种模式、三极与四极耳机各一副** —— 全部**无声**（同一副耳机在别的电脑可用）。<br>**已排除**：A（`audio_pwm_mode=1` + `dtparam=audio=on/off` 都试过）、B（波形/占空比/耳机类型）、D（耳机/插头）。<br>**剩 C**：固件音频通路未上电/被 mute（VCHIQ `snd_bcm2835`），或该台 Pi 3.5 mm 座硬件问题（无对照机）。<br>**按评审 08:55 规矩：不写绿、不 TG**；下一步三选一（收口否证 / 换台 Pi 交叉验证 / 转 audio-pi-1b 做最小 VCHIQ）见 FROM-DS 09:40。<br>**附带真 bug**：`CMD_MAX=48` 满表导致后注册命令静默丢弃（`audioreg` 曾 unknown），已抬到 72。 |
 
+### audio-pi-1b · PWM USEF/FIFO → 耳机可闻（Circle 同形）
+
+| 项 | 内容 |
+|---|---|
+| **做** | 对表 Circle `pwmsoundbasedevice`：CM_PWM **PLLD→250 MHz**；CTL=`PWEN\|USEF\|MSEN`；CPU 喂 FIF1 交织 L/R 方波蜂鸣（**本刀不上 DMA / 不上 VCHIQ**） |
+| **判据** | `play`/`beep` → **人耳有声**；串口 `play: beep`；壳 UART 不断 |
+| **禁止** | 假绿；抢 mini-UART/BT；改 Wifi*；一口气上完整 VCHIQ |
+| **手测** | Pi + 耳机；ksend 冷启 |
+| **进度** | ✅ **真机双耳有声（2026-11-02 12:24）**：用户确认 `play` **双耳都响**。实现：PLLD→250 MHz + USEF FIFO CPU 蜂鸣（Circle 同形）。 |
+| **评审** | ✅ **全绿**（人耳双耳成立）。★ 清空。VCHIQ **不**自动开。 |
+
 ### audio-duo-1 · I2S3+DAC → 耳机可闻
 
 | 项 | 内容 |

@@ -16,7 +16,7 @@ int BoardAudioInitialize(void) {
     }
     (void)PiPwmTransportInitialize();
     sPiAudioReady = 1;
-    HalSerialWrite("Boot: Audio PWM ready (10MHz, GPIO40/41 ALT0)\n");
+    HalSerialWrite("Boot: Audio PWM ready (250MHz PLLD, GPIO40/41 ALT0, USEF)\n");
     return 0;
 }
 

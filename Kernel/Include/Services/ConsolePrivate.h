@@ -19,7 +19,9 @@
 #define LINE_MAX 128
 #define ARG_MAX  8
 /* builtins+Shell+FS+Db+lwip 已超 32；满表时 gConsole.Register 静默失败会丢末尾命令（如 lwip） */
-#define CMD_MAX  48
+/* 48 已不够：Register2 的二级族 + 各板命令会让后注册者被静默丢弃（只打 CMD_MAX full）。
+ * 抬到 72 留余量；满了仍会打 "console: CMD_MAX full, drop <name>"，不算隐藏失败。 */
+#define CMD_MAX  72
 #define SUB_MAX  12
 #define ALIAS_MAX 80
 #define USER_ALIAS_MAX 16

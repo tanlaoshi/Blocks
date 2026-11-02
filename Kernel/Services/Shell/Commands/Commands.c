@@ -17,6 +17,8 @@ void ShellCommandsGpioRegister(void);
 void ShellCommandsI2cRegister(void);
 /* Duo WiFi→lwIP 网桥探针（其它架构打印 only on milk-v-duo-s） */
 void ShellCommandsWifiNetifRegister(void);
+/* 音频寄存器取证（audioreg，仅 rpi-3b 有实现） */
+void ShellCommandsAudioRegistersRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -32,6 +34,7 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsGpioRegister();
     ShellCommandsI2cRegister();
     ShellCommandsWifiNetifRegister();
+    ShellCommandsAudioRegistersRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -52,4 +55,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsGpioRegister();
     ShellCommandsI2cRegister();
     ShellCommandsWifiNetifRegister();
+    ShellCommandsAudioRegistersRegister();
 }

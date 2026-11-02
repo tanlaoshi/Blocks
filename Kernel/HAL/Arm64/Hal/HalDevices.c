@@ -243,12 +243,30 @@ void HalHdaCodecInitialize(void) {
 void HalHdaStreamInitialize(void) {
 }
 
+#ifndef BOARD_HAS_AUDIO
+#define BOARD_HAS_AUDIO 0
+#endif
+
 int HalAudioProbe(void) {
+#if BOARD_HAS_AUDIO
+    {
+        int BoardAudioProbe(void);
+        return BoardAudioProbe();
+    }
+#else
     return 0;
+#endif
 }
 
 int HalAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits) {
+#if BOARD_HAS_AUDIO
+    {
+        int BoardAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
+                              UINT32 Channels, UINT32 Bits);
+        return BoardAudioPlayPcm(Samples, Bytes, RateHz, Channels, Bits);
+    }
+#endif
     (void)Samples;
     (void)Bytes;
     (void)RateHz;
@@ -258,9 +276,21 @@ int HalAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
 }
 
 void HalAudioStop(void) {
+#if BOARD_HAS_AUDIO
+    {
+        void BoardAudioStop(void);
+        BoardAudioStop();
+    }
+#endif
 }
 
 void HalAudioBeep(void) {
+#if BOARD_HAS_AUDIO
+    {
+        void BoardAudioBeep(void);
+        BoardAudioBeep();
+    }
+#endif
 }
 
 void HalIgpuGttInitialize(void) {

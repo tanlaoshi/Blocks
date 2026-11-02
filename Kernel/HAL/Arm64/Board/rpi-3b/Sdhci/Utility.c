@@ -11,9 +11,6 @@ UINT64 gSdhciCounterFrequency;
 UINT64 gSdhciLastWriteMicroseconds;
 UINT32 gSdhciTwoTicksMicroseconds = 6;
 UINT32 gSdhciBaseClockHertz = 100000000u;
-UINT32 gSdhciRelativeCardAddress;
-int gSdhciHighCapacity;
-int gSdhciReady;
 UINT32 gSdhciResponse[4];
 
 UINT64 SdhciCounterNow(void) {

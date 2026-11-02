@@ -1,20 +1,15 @@
 /*
- * Sdhci/Private.h — Pi3B Sdhci 内部（bd-pi-sd）
+ * Sdhci/Private.h — Pi3B Sdhci 内部（WiFi SDIO 宿主；µSD 块 = Sdhost）
  */
 #ifndef BOARD_SDHCI_PRIVATE_H
 #define BOARD_SDHCI_PRIVATE_H
 
 #include "../Sdhci.h"
 #include "Board.h"
-#include "Block.h"
-#include "Driver.h"
-#include "DriverBlock.h"
 #include "Hal.h"
 #include "HalSerial.h"
 #include "SerialLog.h"
 
-#define IDENTIFY_HERTZ        400000u
-#define TRANSFER_HERTZ      25000000u
 #define SPIN_MAXIMUM     2000000u
 #define WAIT_MILLISECONDS      100u
 
@@ -25,12 +20,7 @@ extern UINT64 gSdhciCounterFrequency;
 extern UINT64 gSdhciLastWriteMicroseconds;
 extern UINT32 gSdhciTwoTicksMicroseconds;
 extern UINT32 gSdhciBaseClockHertz;
-extern UINT32 gSdhciRelativeCardAddress;
-extern int gSdhciHighCapacity;
-extern int gSdhciReady;
 extern UINT32 gSdhciResponse[4];
-
-
 
 volatile UINT32 *SdhciRegister32(UINT32 Offset);
 UINT64 SdhciCounterNow(void);
@@ -48,12 +38,7 @@ void SdhciWrite16Pair(UINT32 OffsetLow, UINT16 LowHalf, UINT16 HighHalf);
 int SdhciSoftwareReset(UINT8 Mask);
 int SdhciClockConfigure(UINT32 Hertz);
 int SdhciCommandSend(UINT8 CommandIndex, UINT32 Argument, UINT16 Flags, UINT16 TransferMode);
-int SdhciProgrammedIoReadBlock(UINT8 *Buffer);
-int SdhciReadOneBlock(UINT32 LogicalBlockAddress, UINT8 *Buffer);
 void SdhciMarkHexadecimal32(const char *Tag, UINT32 Value);
-int SdhciCardInitialize(void);
 int SdhciHostPrepare(void); /* 电源/钟/版本；不含 SD 卡识别（WiFi SDIO 用） */
-int SdhciHostInitialize(void);
-
 
 #endif

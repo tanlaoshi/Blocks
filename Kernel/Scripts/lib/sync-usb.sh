@@ -310,10 +310,9 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
     fi
     echo "Assets/Icons/bmp48 -> $BLOCKS_MNT/Assets/Icons/bmp48"
   fi
-  if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
-    printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
-    echo "note: wrote $BLOCKS_MNT/BLOCKS.ID (UEFI Boot 靠它认系统盘)"
-  fi
+  # 身份：保留「Blocks root volume」（Boot/装盘认卷文案）+ 第二行 USB
+  printf "Blocks root volume\nUSB\n" > "$BLOCKS_MNT/BLOCKS.ID"
+  echo "note: stamped $BLOCKS_MNT/BLOCKS.ID (root + USB)"
   sync
   echo "=== kernel-only sync (BLOCKS only; ESP untouched) ==="
   echo "Blocks -> $BLOCKS_MNT"
@@ -431,10 +430,9 @@ elif [[ "$SKIP_ESP" -eq 0 && -d "$BLOCKS_MNT/EFI" ]]; then
   rm -rf "$BLOCKS_MNT/EFI"
 fi
 
-# 确保识别文件存在
-if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
-  printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
-fi
+# 身份：首行 Blocks root volume（勿删）+ 第二行 USB（与 SSD 区分）
+printf "Blocks root volume\nUSB\n" > "$BLOCKS_MNT/BLOCKS.ID"
+echo "note: stamped $BLOCKS_MNT/BLOCKS.ID (root + USB)"
 
 # boot-root-cfg：ESP（或单 FAT）写 ROOT.CFG 指向本 BLOCKS 分区
 if [[ "$SINGLE_FAT" -eq 1 ]]; then

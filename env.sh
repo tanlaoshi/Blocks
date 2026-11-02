@@ -161,6 +161,11 @@ deploy-duo() {
     bash "$KERNEL/HAL/RiscV/Board/milk-v-duo-s/scripts/deploy.sh" --port "${KSEND_PORT:-/dev/ttyUSB0}" "$@"
 }
 
+# NUC 热更方案 1：UEFI 第一=U 盘；ksend → 该盘 BLOCKS:Kernel.elf（须已从该盘进 Blocks）
+deploy-nuc-usb() {
+    bash "$KERNEL/Scripts/sync/deploy-nuc-usb.sh" "$@"
+}
+
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
-echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd deploy-duo repart-pi-sd"
+echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd deploy-duo deploy-nuc-usb repart-pi-sd"
 unset _BlocksEnvDir _BlocksRootCand

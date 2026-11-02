@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""ksend.py — 把任意文件增量写进 Duo S 的 SD 卡，然后让板子重启。
+"""ksend.py — 串口增量写板端 FAT 文件，可选复位。
 
-默认目标仍是 BLOCKS:Kernel.elf；`--path` 可以把同一个协议指向别的文件
-（板端对应 `ksend <路径>`，不给路径就是 Kernel.elf）。目标前缀支持
+三架构共用：Duo SD / Pi µSD / NUC U 盘（方案 1：UEFI 第一=U 盘，
+写该盘 BLOCKS:Kernel.elf）。默认目标仍是 BLOCKS:Kernel.elf；`--path`
+可指向别的文件（板端 `ksend <路径>`）。目标前缀支持
 BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的文件，
 例如 `--path BOOT:boot.sd`。板端写非默认卷前会按卷选择（boot 默认只读）。
 
@@ -69,6 +70,8 @@ DEFAULT_TARGET_PATH = "BLOCKS:Kernel.elf"
 
 DEFAULT_ELF_CANDIDATES = (
     "Kernel/Build/DUO/HAL/RiscV/Kernel.elf",
+    "Kernel/Build/PI/HAL/Arm64/Kernel.elf",
+    "Kernel/Build/HAL/X64/Kernel.elf",
     "Kernel/Build/ksend/HAL/RiscV/Kernel.elf",
     "Kernel/Build/HAL/RiscV/Kernel.elf",
 )

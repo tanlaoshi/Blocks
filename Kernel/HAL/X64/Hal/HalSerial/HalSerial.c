@@ -202,8 +202,11 @@ char HalSerialReadChar(void) {
 }
 
 /*
- * ksend 二进制：直写 COM1 硬件（不经软环 / 行改写）。
- * FTDI/CDC 路径不在此；开发期 ksend 接主板 COM 或透传 COM1 的 USB-TTL。
+ * ksend 二进制 TX：直写 COM1（不经 WriteShell 改写）。
+ * RX：必须走 Serial 软环（与 Shell/IRQ 同路）。旧实现读 RBR：一旦
+ * SerialEnableRxIrq 把字节抽进 gRxRing，TryGetByte 永远空 → IL header，
+ * 失败后软环残留被 Shell 当「unknown:」喷出（NUC 热更真机已见）。
+ * FTDI/CDC 仍不在此；开发期 ksend 接主板 COM / 透传 COM1。
  */
 #define HAL_SERIAL_COM1 0x3F8u
 
@@ -220,10 +223,13 @@ int HalSerialTryGetByte(UINT8 *Out) {
     if (Out == 0) {
         return 0;
     }
-    if ((HalIoRead8(HAL_SERIAL_COM1 + 5u) & 0x01u) == 0) {
+    if (!SerialPresent()) {
         return 0;
     }
-    *Out = HalIoRead8(HAL_SERIAL_COM1);
+    if (!SerialDataReady()) {
+        return 0;
+    }
+    *Out = (UINT8)SerialReadChar();
     return 1;
 }
 

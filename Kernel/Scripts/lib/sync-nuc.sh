@@ -278,9 +278,9 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
   sync_blocks_fw "$BLOCKS_MNT"
-  if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
-    printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
-  fi
+  # 身份：首行 Blocks root volume（勿删）+ 第二行 SSD
+  printf "Blocks root volume\nSSD\n" > "$BLOCKS_MNT/BLOCKS.ID"
+  echo "note: stamped $BLOCKS_MNT/BLOCKS.ID (root + SSD)"
   if [[ "$DO_BOOT" -eq 1 ]]; then
     if [[ "$DO_BUILD" -eq 1 && -x "$ROOT/../Boot/build.sh" ]]; then
       (cd "$ROOT/../Boot" && ./build.sh)
@@ -350,9 +350,9 @@ if [[ -d "$BLOCKS_MNT/EFI" ]]; then
   rm -rf "$BLOCKS_MNT/EFI"
 fi
 
-if [[ ! -f "$BLOCKS_MNT/BLOCKS.ID" ]]; then
-  printf "Blocks root volume\n" > "$BLOCKS_MNT/BLOCKS.ID"
-fi
+# 身份：首行 Blocks root volume（勿删）+ 第二行 SSD
+printf "Blocks root volume\nSSD\n" > "$BLOCKS_MNT/BLOCKS.ID"
+echo "note: stamped $BLOCKS_MNT/BLOCKS.ID (root + SSD)"
 
 # boot-root-cfg：ESP 可写则更新 ROOT.CFG（--boot 或日常 sync）
 if [[ -d "$ESP_BOOT_DIR" || "$DO_BOOT" -eq 1 ]]; then

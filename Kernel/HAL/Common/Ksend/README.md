@@ -10,7 +10,12 @@
 ```
 python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel.elf
 python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd --no-reboot --no-backup
-deploy.sh --port /dev/ttyUSB0   # Duo：FIT → BOOT:boot.sd
+deploy.sh --port /dev/ttyUSB0          # Duo：FIT → BOOT:boot.sd
+deploy-nuc-usb --port /dev/ttyS0       # NUC 方案1：U 盘 BLOCKS:Kernel.elf
 ```
+
+**NUC（方案 1）**：UEFI Boot Order #1 = Blocks U 盘；运行中须已从该盘启动；
+`deploy-nuc-usb` / `ksend` 只写 U 盘 `BLOCKS:Kernel.elf`；复位后须仍进 Blocks
+（进 Windows = Boot Order 未钉死）。不做 SSD/grub 链。
 
 细节与差量表 `.crc` 约定见历史 Duo README / Docs/12 §部署闭环。

@@ -1,11 +1,13 @@
 # TO-DS · Cursor 自持（DS 已停）
 
-## 当前（2026-11-02 12:24 · ★ 空）
+## 当前（2026-11-02 13:23 · ★ 空）
 
 | 项 | 值 |
 |---|---|
 | **★** | （空） |
-| **刚收** | **`audio-pi-1b`** — Pi AV 孔双耳有声（用户 12:24；Circle USEF/FIFO） |
-| **执行** | Cursor 本机；不再派 DS |
+| **刚收** | **`x64-ksend-usb-1`** — NUC U 盘热更；`TryGetByte`→软环；`KSEND OK crc=f6efe0dc` |
+| **决策** | UEFI 第一=U 盘；`deploy-nuc-usb`；`BLOCKS.ID` 次行 USB/SSD |
+| **执行** | Cursor；排队均为 ⏸/点名 |
+| **命令** | `deploy-nuc-usb --port /dev/ttyUSB0` |
 
-排队见 [`路线图1102.md`](../路线图1102.md)（均为 ⏸/点名）。可 **TG+TS**（Audio + Docs/29 + 日档）。
+细节：[`路线图1102.md`](../路线图1102.md) §D。

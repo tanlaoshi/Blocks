@@ -142,6 +142,16 @@ static void CommandVols(int Argc, char **Argv) {
             }
         }
         {
+            char DiskUuid[40];
+            if (FileSystemVolDiskGuidStr(i, DiskUuid, (int)sizeof(DiskUuid)) == 0) {
+                gConsole.Write(" disk=");
+                gConsole.Write(DiskUuid);
+            }
+        }
+        if (FileSystemVolOnBootDisk(i) == 1) {
+            gConsole.Write(" bootdisk");
+        }
+        {
             const char *N = Name;
             int IsToy = 1;
             const char *T = "BLOCKS";

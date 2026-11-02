@@ -5,6 +5,7 @@
 #include "Font.h"
 #include "FontLayout.h"
 #include "Hal.h"
+#include "HalSerial.h"
 #include "SerialLog.h"
 
 #if defined(__x86_64__) && defined(FONTS_HAVE_FREETYPE)
@@ -94,7 +95,8 @@ static char *FtPutI32(char *P, int V) {
  * 真机验收用：b/T/4 各打一行，把「位图需要多少行」与「槽里给了多少行」
  * 摆在同一条日志里。base 是格顶到基线，oy 是位图首行落在格内的 y；
  * 正常加档拉丁 oy=0（顶行贴格顶、一行不丢）；oy<0 就是削顶。
- * 只打三个码位、每次 FT 初始化后重来一遍，不刷屏。
+ * 只打三个码位、每次 FT 初始化后重来一遍；**壳已 Own 串口则禁打**
+ * （进 Blocks> 后桌面再栅字不得污染 ksend/CoolTerm）。
  */
 #define FT_GLYPH_DIAG 1
 static UINT8 gFtDiagSeen;
@@ -106,6 +108,9 @@ static void FtGlyphDiag(UINT32 Cp, const FT_Bitmap *Bm, int Top, UINT32 CellH,
   UINT32 Bit;
   int Clip;
 
+  if (HalSerialShellOwned()) {
+    return;
+  }
   if (Cp != (UINT32)'b' && Cp != (UINT32)'T' && Cp != (UINT32)'4') {
     return;
   }

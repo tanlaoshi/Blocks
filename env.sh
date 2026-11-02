@@ -153,6 +153,14 @@ ck-duo-sd() {
     bash "$KERNEL/HAL/RiscV/Board/milk-v-duo-s/scripts/ck-duo-sd.sh" "$@"
 }
 
+# Duo 免拔卡：build（可 --no-build）→ FIT boot.sd → ksend BOOT:boot.sd；成功后再板上 reboot
+#   deploy-duo                  # 全流程 @ttyUSB0
+#   deploy-duo --no-build       # 已 build 过，只传
+#   deploy-duo --port /dev/ttyUSB1
+deploy-duo() {
+    bash "$KERNEL/HAL/RiscV/Board/milk-v-duo-s/scripts/deploy.sh" --port "${KSEND_PORT:-/dev/ttyUSB0}" "$@"
+}
+
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
-echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd repart-pi-sd"
+echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd deploy-duo repart-pi-sd"
 unset _BlocksEnvDir _BlocksRootCand

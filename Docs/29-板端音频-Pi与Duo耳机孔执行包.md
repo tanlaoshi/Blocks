@@ -194,7 +194,18 @@ play: no audio         # HalAudioProbe()==0
 | **禁止** | 拉 GPIOA15「当 mute」；走错 I2S0 |
 | **手测** | Duo + **PoE HAT** + 耳机（插 HAT 孔）；**boot.sd** 部署 |
 | **进度** | ✅ **真机出声（2026-11-02 10:15，人耳判据成立）**<br>**实现**：`RiscV/Board/milk-v-duo-s/Audio/{AudioPrivate.h,I2sTransmit.c,DigitalToAnalog.c,WavePlayback.c,BringUp.c,AudioDiagnostics.c}`；`HalAudio*` 已接；`BOARD_HAS_AUDIO=1`。I2S3 主机 TX（48 kHz/16-bit/2ch）→ 片内 DAC（`CTRL0 |= TXDAC_EN|I2S_RX_EN`），CPU 写 TX FIFO 送方波。<br>**判据串口原文**（build `Nov 2 2026 10:12:45`）：`duoaudio regs` → `en1=ffffffff blk=00000003 frame=000f000f slot1=000f0f00 clk1=00100001 enable=00000001 dac_ctrl0=00000003`；`duoaudio fifo` → `before=00000000 after=00000000`；`play` → **`play: beep`**；**人耳：听到"滴滴"两声（= DUO_AUDIO_BEEPS=2）**。<br>**两个真 bug（本刀修）**：① `TX_STATUS(0x48)` 低 5 位**不是**"FIFO 剩余空位"（该寄存器只有 bit23 有文档）⇒ 原先写入循环条件恒不成立，**一帧都没写进去**；改成"每毫秒批量写 32 帧"（FIFO 深 32，1 ms 取空）。② `play` 只在桌面表注册 ⇒ Duo（VirtMin）上 `unknown`；补 `ShellCommandsAudioRegister()` 与 `ShellCommandsDuoAudioRegister()` 到 VirtMin。<br>**已知偏差**：批量 32 帧/ms 使有效采样率 32 kHz（48k 的 2/3），1 kHz 实际约 667 Hz；先求"能响"，音准留 duo-1b（DMA/正确节流）。 |
-| **评审** | ✅ **全绿**（2026-11-02 10:16 Cursor）。人耳「滴滴」+ `play: beep` + regs/FIFO 原文齐；I2S3→DAC 路径对；≤300；`ElapsedMilliseconds` 已改（禁 `Ms`）。音准 32 kHz 有效采样**明示**留 **`audio-duo-1b`**（本刀只判能响，不假 48 k）。VirtMin 挂 `play`/`duoaudio` = shell-1 最小实现，并入本刀。**给 DS**：可 **TG+TS**；★ 清空（`duo-1b` 点名再开）。 |
+| **评审** | ✅ **「能响」收官**（2026-11-02 10:16）→ ⚠ **立体声否证**（11:40 用户：右稳、左偶发）。根因对表厂商：`FS_ACT` 须半帧 + `IB_IF` 边沿；**DAC CTRL1 CIC 须配 8 kHz**（未写则欠载）。改动进 **`audio-duo-1b`**，本格不改判「立体声绿」。 |
+
+### audio-duo-1b · 立体声稳定（CIC + I2S 帧格式）
+
+| 项 | 内容 |
+|---|---|
+| **做** | 对表 `cv1835_i2s`/`cv181xdac` + DMA：`FRAME(32)\|FS_ACT(16)` + `IB_IF`；`SLOT_NUM(2)`/`SLOT2=0x03`；**CH0 一拍 32bit = `L\|(R<<16)`**（勿双写 16bit）；DAC `CTRL1=CIC_DS_64` + `AFE0=0x19`（**48 kHz**，与喂数同档） |
+| **判据** | `play` 左右都稳可重复；`duoaudio L`/`R`/`b` 分离正确 |
+| **禁止** | 启发式重试；改 Wifi*/BT；假绿 |
+| **手测** | Duo + PoE HAT；**boot.sd** |
+| **进度** | ✅ **真机立体声绿（2026-11-02 12:17）**：用户确认 `play` / `duoaudio L`/`R`/`b` **左右双耳都对**。附：壳命令 weak 化，virt CI 不再硬链板符号。 |
+| **评审** | ✅ **全绿**（人耳左右分离成立）。★ 清空。 |
 
 ### audio-shell-1 · VirtMin 挂 play/beep
 

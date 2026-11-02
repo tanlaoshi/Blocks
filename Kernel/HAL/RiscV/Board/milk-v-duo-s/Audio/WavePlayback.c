@@ -43,6 +43,41 @@ static int DuoToneMilliseconds(UINT32 FrequencyHz, UINT32 Milliseconds) {
     return 1;
 }
 
+/*
+ * 左右分离测试：LeftAmplitude/RightAmplitude 为该声道幅度，0 = 该侧静音。
+ */
+int DuoAudioPlayStereoTone(UINT32 FrequencyHz, UINT32 Milliseconds,
+                           INT16 LeftAmplitude, INT16 RightAmplitude) {
+    UINT32 PeriodFrames;
+    UINT32 Frame;
+    UINT32 ElapsedMilliseconds = 0u;
+    UINT32 Phase = 0u;
+
+    if (FrequencyHz == 0u) {
+        return 0;
+    }
+    PeriodFrames = DUO_AUDIO_RATE_HZ / FrequencyHz;
+    if (PeriodFrames < 2u) {
+        return 0;
+    }
+    (void)DuoAudioInitialize();
+    while (ElapsedMilliseconds < Milliseconds) {
+        for (Frame = 0u; Frame < DUO_AUDIO_FRAMES_PER_MS; Frame++) {
+            int High = ((Phase % PeriodFrames) < (PeriodFrames / 2u)) ? 1 : 0;
+            INT16 Left = High != 0 ? LeftAmplitude : (INT16)(-LeftAmplitude);
+            INT16 Right = High != 0 ? RightAmplitude : (INT16)(-RightAmplitude);
+
+            if (DuoI2sWriteFrame(Left, Right) != 0) {
+                return 0;
+            }
+            Phase++;
+        }
+        HalDelayMilliseconds(1u);
+        ElapsedMilliseconds++;
+    }
+    return 1;
+}
+
 int DuoAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits) {
     (void)Samples;
@@ -55,17 +90,23 @@ int DuoAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
 }
 
 void DuoAudioStop(void) {
-    DuoI2sDisable();
+    UINT32 Index;
+
+    /* 静音写 0，不关 I2S（关掉后二次 play 会哑） */
+    for (Index = 0u; Index < DUO_AUDIO_FRAMES_PER_MS; Index++) {
+        (void)DuoI2sWriteFrame(0, 0);
+    }
 }
 
 void DuoAudioBeep(void) {
     UINT32 Index;
 
+    (void)DuoAudioInitialize();
     for (Index = 0u; Index < DUO_AUDIO_BEEPS; Index++) {
         (void)DuoToneMilliseconds(DUO_AUDIO_BEEP_HZ, DUO_AUDIO_BEEP_MS);
         if (Index + 1u < DUO_AUDIO_BEEPS) {
             HalDelayMilliseconds(DUO_AUDIO_GAP_MS);
         }
     }
-    DuoI2sDisable();
+    DuoAudioStop();
 }

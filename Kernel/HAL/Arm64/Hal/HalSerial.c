@@ -255,42 +255,42 @@ static void BootHoldSpinMs(UINT32 Ms) {
 }
 
 void HalSerialBootHoldMs(UINT32 Ms) {
-    char Hex[9];
-
     if (Ms == 0) {
         return;
     }
     HalSerialBootMark("Boot: HOLD — CoolTerm expect: U-Boot then * + Blocks uart\n");
     HalSerialBootMark("Boot: HOLD — if U-Boot quiet: check GPIO14->TTL RX\n");
 #if SERIAL_ENABLE && BOARD_UART_MINI
-    HalSerialInitialize();
-    HalSerialBootMark("Boot: uart GPFSEL1=");
-    HalSerialFormatHex(Hex, *(volatile UINT32 *)(UINTN)0x3F200004ULL, 8);
-    HalSerialBootMark(Hex);
-    HalSerialBootMark(" CNTL=");
-    HalSerialFormatHex(Hex, MU_CNTL, 8);
-    HalSerialBootMark(Hex);
-    HalSerialBootMark(" LSR=");
-    HalSerialFormatHex(Hex, MU_LSR, 8);
-    HalSerialBootMark(Hex);
-    HalSerialBootMark(" LCR=");
-    HalSerialFormatHex(Hex, MU_LCR, 8);
-    HalSerialBootMark(Hex);
-    HalSerialBootMark("\n");
-    /* 慢打；仍无 UART-HOLD → TX 线/口（halt 若来自 HDMI 壳则未证明 RX） */
-    UartWriteRaw("UART-HOLD\r\n");
     {
-        UINTN N;
-        char Snap[512];
-        UINTN i;
+        char Hex[9];
+        UINTN SnapshotLength;
+        char Snapshot[512];
+        UINTN Index;
 
-        N = HalSerialBootSnapshot(Snap, sizeof(Snap));
-        for (i = 0; i < N; i++) {
+        HalSerialInitialize();
+        HalSerialBootMark("Boot: uart GPFSEL1=");
+        HalSerialFormatHex(Hex, *(volatile UINT32 *)(UINTN)0x3F200004ULL, 8);
+        HalSerialBootMark(Hex);
+        HalSerialBootMark(" CNTL=");
+        HalSerialFormatHex(Hex, MU_CNTL, 8);
+        HalSerialBootMark(Hex);
+        HalSerialBootMark(" LSR=");
+        HalSerialFormatHex(Hex, MU_LSR, 8);
+        HalSerialBootMark(Hex);
+        HalSerialBootMark(" LCR=");
+        HalSerialFormatHex(Hex, MU_LCR, 8);
+        HalSerialBootMark(Hex);
+        HalSerialBootMark("\n");
+        /* 慢打；仍无 UART-HOLD → TX 线/口（halt 若来自 HDMI 壳则未证明 RX） */
+        UartWriteRaw("UART-HOLD\r\n");
+        SnapshotLength = HalSerialBootSnapshot(Snapshot, sizeof(Snapshot));
+        for (Index = 0; Index < SnapshotLength; Index++) {
             char One[2];
-            One[0] = Snap[i];
+
+            One[0] = Snapshot[Index];
             One[1] = 0;
             UartWriteRaw(One);
-            if (Snap[i] == '\n') {
+            if (Snapshot[Index] == '\n') {
                 BootHoldSpinMs(15);
             }
         }

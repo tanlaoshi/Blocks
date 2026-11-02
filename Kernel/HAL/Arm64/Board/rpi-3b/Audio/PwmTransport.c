@@ -61,9 +61,8 @@ int PiPwmSetTone(UINT32 FrequencyHz, UINT32 DutyPercent) {
     *PiPwmRegister(PI_PWM_DAT2) = (Period * DutyPercent) / 100u;
     /*
      * 只开 PWEN1/2（MS 模式，RNG/DAT 直接决定占空比）。
-     * MSEN=1 时 PWM 从 FIFO 取数，不喂 FIFO 时输出恒 0 ⇒ 默认 tone 路径**不能**带 MSEN。
-     * （2026-11-02 09:40 更正：此前以为"加 MSEN 后咔哒消失"，用户澄清**从头到尾没有过任何声音**，
-     *  所以 MSEN 不是差异源；这条只是代码正确性要求，MSEN 仍留在 audiomsen 作对照。）
+     * MSEN 是 **Mark-Space enable**（评审 09:00/09:42 两次纠正）；FIFO 串行输出靠 **USEF**，
+     * 不是 MSEN。默认 tone 路径不置 MSEN：MS 模式由 RNG/DAT 直接决定占空比，语义最清楚。
      */
     *PiPwmRegister(PI_PWM_CTL) = PI_PWM_CTL_PWEN1 | PI_PWM_CTL_PWEN2;
     return 0;

@@ -224,24 +224,49 @@ void HalHdaCodecInitialize(void) {
 void HalHdaStreamInitialize(void) {
 }
 
+#ifndef BOARD_HAS_AUDIO
+#define BOARD_HAS_AUDIO 0
+#endif
+
+/* audio-duo-1：板级实现在 Board/milk-v-duo-s/Audio/ */
+int DuoAudioProbe(void);
+int DuoAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
+                    UINT32 Channels, UINT32 Bits);
+void DuoAudioStop(void);
+void DuoAudioBeep(void);
+
 int HalAudioProbe(void) {
+#if BOARD_HAS_AUDIO
+    return DuoAudioProbe();
+#else
     return 0;
+#endif
 }
 
 int HalAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits) {
+#if BOARD_HAS_AUDIO
+    return DuoAudioPlayPcm(Samples, Bytes, RateHz, Channels, Bits);
+#else
     (void)Samples;
     (void)Bytes;
     (void)RateHz;
     (void)Channels;
     (void)Bits;
     return 0;
+#endif
 }
 
 void HalAudioStop(void) {
+#if BOARD_HAS_AUDIO
+    DuoAudioStop();
+#endif
 }
 
 void HalAudioBeep(void) {
+#if BOARD_HAS_AUDIO
+    DuoAudioBeep();
+#endif
 }
 
 void HalIgpuGttInitialize(void) {

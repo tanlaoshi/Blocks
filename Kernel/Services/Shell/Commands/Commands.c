@@ -19,6 +19,8 @@ void ShellCommandsI2cRegister(void);
 void ShellCommandsWifiNetifRegister(void);
 /* 音频寄存器取证（audioreg，仅 rpi-3b 有实现） */
 void ShellCommandsAudioRegistersRegister(void);
+/* Duo 音频取证（duoaudio，仅 riscv 有实现） */
+void ShellCommandsDuoAudioRegister(void);
 
 void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsRegisterFs();
@@ -35,6 +37,10 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsI2cRegister();
     ShellCommandsWifiNetifRegister();
     ShellCommandsAudioRegistersRegister();
+    /* audio-shell-1：ConsoleOnly（Duo）也要能 play/beep，否则无桌面板无法触发音频 */
+    ShellCommandsAudioRegister();
+    /* Duo 音频取证：VirtMin 也要挂（第一次只挂到桌面表，Duo 上 unknown） */
+    ShellCommandsDuoAudioRegister();
 }
 
 void ShellCommandsRegister(void) {
@@ -56,4 +62,5 @@ void ShellCommandsRegister(void) {
     ShellCommandsI2cRegister();
     ShellCommandsWifiNetifRegister();
     ShellCommandsAudioRegistersRegister();
+    ShellCommandsDuoAudioRegister();
 }

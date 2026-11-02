@@ -97,9 +97,9 @@ play: no audio         # HalAudioProbe()==0
 
 | 项 | 钉死口径 |
 |---|---|
-| 物理 | Milk-V Duo S 板载 **耳机孔** |
+| 物理 | **本板无 3.5 mm**。孔在 **PoE HAT** 上：SoC DAC → 排针 `AUDIO_OUT_L` / `AUDIO_OUT_R` → HAT 座。手测须 **插着 PoE HAT**；只插主板 = 无孔可听 |
 | DAC | `dac@0300A000`，`compatible = "cvitek,cv182xadac"`，`reg = <0x0 0x0300A000 0x0 0x100>`（`cv181x_base.dtsi`） |
-| ADC（本柱不做录音） | `adc@0300A100` |
+| ADC（本柱不做录音） | `adc@0300A100`；排针另有 `AUDIO_IN_*`，**不**进 HAT 耳机座（座非麦聚合） |
 | I2S TX→DAC | **`i2s3@04130000`**：`capability = "tx"`；注释 **「I2S3 connect to internal DAC as TX」**；`dmas` 仅 write；`mclk_out = "true"` |
 | I2S0 | 注释为 internal ADC RX — **播放勿走错** |
 | 时钟 | `audio_clock` 默认 **24576000**；`i2s_mclk` / `i2s_subsys` |
@@ -192,9 +192,9 @@ play: no audio         # HalAudioProbe()==0
 | **做** | Board Audio + `HalAudio*`；对表 cvitek 初始化序 |
 | **判据** | 同 pi-1；**不**改 `Sdhci/Wifi*` / BT |
 | **禁止** | 拉 GPIOA15「当 mute」；走错 I2S0 |
-| **手测** | Duo + 耳机；**boot.sd** 部署 |
-| **进度** | |
-| **评审** | |
+| **手测** | Duo + **PoE HAT** + 耳机（插 HAT 孔）；**boot.sd** 部署 |
+| **进度** | ✅ **真机出声（2026-11-02 10:15，人耳判据成立）**<br>**实现**：`RiscV/Board/milk-v-duo-s/Audio/{AudioPrivate.h,I2sTransmit.c,DigitalToAnalog.c,WavePlayback.c,BringUp.c,AudioDiagnostics.c}`；`HalAudio*` 已接；`BOARD_HAS_AUDIO=1`。I2S3 主机 TX（48 kHz/16-bit/2ch）→ 片内 DAC（`CTRL0 |= TXDAC_EN|I2S_RX_EN`），CPU 写 TX FIFO 送方波。<br>**判据串口原文**（build `Nov 2 2026 10:12:45`）：`duoaudio regs` → `en1=ffffffff blk=00000003 frame=000f000f slot1=000f0f00 clk1=00100001 enable=00000001 dac_ctrl0=00000003`；`duoaudio fifo` → `before=00000000 after=00000000`；`play` → **`play: beep`**；**人耳：听到"滴滴"两声（= DUO_AUDIO_BEEPS=2）**。<br>**两个真 bug（本刀修）**：① `TX_STATUS(0x48)` 低 5 位**不是**"FIFO 剩余空位"（该寄存器只有 bit23 有文档）⇒ 原先写入循环条件恒不成立，**一帧都没写进去**；改成"每毫秒批量写 32 帧"（FIFO 深 32，1 ms 取空）。② `play` 只在桌面表注册 ⇒ Duo（VirtMin）上 `unknown`；补 `ShellCommandsAudioRegister()` 与 `ShellCommandsDuoAudioRegister()` 到 VirtMin。<br>**已知偏差**：批量 32 帧/ms 使有效采样率 32 kHz（48k 的 2/3），1 kHz 实际约 667 Hz；先求"能响"，音准留 duo-1b（DMA/正确节流）。 |
+| **评审** | ✅ **全绿**（2026-11-02 10:16 Cursor）。人耳「滴滴」+ `play: beep` + regs/FIFO 原文齐；I2S3→DAC 路径对；≤300；`ElapsedMilliseconds` 已改（禁 `Ms`）。音准 32 kHz 有效采样**明示**留 **`audio-duo-1b`**（本刀只判能响，不假 48 k）。VirtMin 挂 `play`/`duoaudio` = shell-1 最小实现，并入本刀。**给 DS**：可 **TG+TS**；★ 清空（`duo-1b` 点名再开）。 |
 
 ### audio-shell-1 · VirtMin 挂 play/beep
 
@@ -203,8 +203,8 @@ play: no audio         # HalAudioProbe()==0
 | **做** | `ShellCommandsRegisterVirtMin` 调 `ShellCommandsAudioRegister`；确认 alias `beep` |
 | **判据** | Duo/Pi ConsoleOnly：`help` 见 `play`；`beep` 不 `unknown`；有声（依赖 pi-1/duo-1） |
 | **禁止** | 改命令语义偏离 X64 |
-| **进度** | |
-| **评审** | |
+| **进度** | ✅ **并入 audio-duo-1**（2026-11-02）：VirtMin 已调 `ShellCommandsAudioRegister` + `ShellCommandsDuoAudioRegister`；真机 `play: beep` |
+| **评审** | ✅ **全绿**（随 duo-1；不单开） |
 
 > **刀序说明**：eyes → **建议 Pi 先于 Duo**（PWM 路径更短）；shell-1 可与 duo-1 前后，但 **无 Hal 通路时挂命令只能测到 `play: no audio`**，宜在至少一板 Probe 绿后做。允许 shell-1 与 pi-1 同会话末尾小改 Commands.c（仍一次一变量优先）。
 

@@ -217,16 +217,17 @@ gpio edgeselftest 18 4    # 仍否证 FAIL（勿变绿撒谎）
 | D-X2 | BT 后 GPIO selftest 仍 PASS | |
 | D-X3 | edgeselftest 否证仍成立 | |
 
-### 3.6 真机账（2026-11-02 · FROM-DS）
+### 3.6 真机账（2026-11-02 · FROM-DS）· **第2轮收官**
 
-| 项 | 09:20（先 WiFi confirm→bt） | 09:28（冷启→**先 bt init**→WiFi） |
+| 项 | 09:20 先 WiFi→bt | 09:28 / **09:45 复现** 冷启先 bt |
 |---|---|---|
-| GPIO / edgeselftest 否证 | ✅ / ✅ | （本趟未重跑，以 09:20 为准） |
-| WiFi bringup+scan / 挂网 | ✅ 挂网+`ping_ok=1` | ✅ bringup 4/4 + scan 5 AP（bt 后仍活） |
-| BT Ready | ❌ patch DONE / 写挂 | ✅ `addr=0B:3B:22:AC:88:20` |
-| D-X1（bt 后 WiFi） | ❌ 须 wifiprobe | ✅ 本顺序下 **不红** |
+| GPIO / edgeselftest 否证 | ✅ / ✅ | ✅ / ✅（09:45 重跑） |
+| WiFi bringup+scan | ✅ 挂网+ping | ✅ 4/4 + scan（bt 后仍活） |
+| BT Ready | ❌ | ✅ `0B:3B:22:AC:88:20`（**可复现**） |
+| 同电第 2 次 `bt init` | — | ❌ patch 非幂等（必红） |
+| D-X1 | ❌ stage3 写挂→打挂 WiFi | 视失败点：先 bt 成功路径 **不红**；仅 stage4「已 applied」时 WiFi 仍可活 |
 
-**顺序钉死（评审 09:28）**：冷启 **先 `bt init`** → Ready + WiFi 仍可用；先 WiFi `write confirm`（`AIC_PATCH_DONE`）再 bt → patchtbl **必红**。D-X1 根因含失败路径污染；stage 永久切 `fmacfwbt` → **另刀**修，勿夹 audio。Docs/28 本节即归档，**DS 不必再改 28**（除非补串口全文附件）。
+**顺序钉死**：冷启 **先 `bt init` 且本电只一次** → BT+WiFi 都绿；谁先落 patch 谁赢。D-X1 勿写成无条件。stage→`fmacfwbt` 永久切 → **另刀**。**第2轮回归结束**；串口可交 `audio-duo-1`。
 
 ---
 

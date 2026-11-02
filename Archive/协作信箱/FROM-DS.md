@@ -4,6 +4,89 @@
 
 ---
 
+## 2026-11-02 09:45 · Duo 回归第二轮（子任务）：BT 顺序结论可复现 + 两个收窄
+
+**可复现**：第二次独立冷启，冷启后**首条**就是 `bt init` → `patch applied: 101/101 ok` → `fw state=done` → **`bt: diag=ready` / `bt: init rc=00000001 (bring-up ok), ready`**；`bt` → `ready name=Blocks addr=0B:3B:22:AC:88:20 hidden`。
+**BT Ready 之后**：`wififw bringup ok (4/4)`、`scan` 4 AP（Apple ch8）、`gpio selftest 18` PASS、`edgeselftest 18` 仍 FAILED 且 ST=RAW=0（否证成立，无假绿）。
+
+**两处收窄（与第一轮不同）**
+1. **`bt init` 非幂等**：同一次上电内第二次调用必撞 `patch already applied (this power cycle)` → `stage=patchtbl FAIL` → `diag=fmacfwbt load fail`；本 power cycle 内无法回到 Ready（`gAicPatchState` 只在 probe 成功时复位，且 probe 不清芯片里已落的 patch）⇒ **要 BT 绿，冷启后只能跑一次 `bt init`**。
+2. **D-X1 需收窄**：本轮 BT 失败（stage 4 patchtbl）之后 **WiFi 未挂**（`bringup ok 4/4` + `scan` 5 AP）；第一轮的"BT 打挂 WiFi"是 **stage 3 `blk write cfm fail`/SDIO 消息通道死** 那条失败路径。⇒ D-X1 应表述为「**取决于 BT 失败点**」，不是无条件成立。
+
+**机理一句话**：一个 power cycle 内 patch 表只允许落一次，**谁先落谁赢**（先 WiFi confirm 再 bt init → 必红；先 bt init → 它顺带把 WiFi 的 patch 也落了 → 两者都绿）。
+
+**建议归档到 Docs/28 / Docs/27**（等评审点头我再写）：BT 节补"冷启先 bt init 才可能 Ready；同电重启 bt init 必红"；D-X1 改成"视失败点"。
+
+---
+
+## 2026-11-02 10:15 · **audio-duo-1 真机出声**（人耳判据成立）
+
+| 项 | 内容 |
+|---|---|
+| **★** | `audio-duo-1`（I2S3 → 片内 DAC） |
+| **结果** | ✅ `play` → 用户听到 **"滴滴"两声**（= `DUO_AUDIO_BEEPS=2`） |
+| **构建** | `Boot: duo-sdhci build=Nov  2 2026 10:12:45` |
+
+### 串口证据
+```
+duoaudio regs → en1=ffffffff blk=00000003 frame=000f000f slot1=000f0f00
+                clk1=00100001 enable=00000001 dac_ctrl0=00000003
+duoaudio fifo → before=00000000 after=00000000
+play          → play: beep
+人耳          → "滴滴"两声
+```
+
+### 本刀修掉的两个真 bug（评审可抽查）
+1. **`TX_STATUS(0x48)` 语义错**：我曾按"低 5 位=剩余空位"写轮询，但该寄存器只有 **bit23 `RESET_TX_SCLK`** 有文档 ⇒ 条件恒不成立、**一帧都没写进去**（当时 `fifo` 读 0x60000000 前后不变就是证据）。改为**每毫秒批量写 32 帧**（FIFO 深 32，1 ms 被取空）→ 立刻出声。
+2. **`play` 只在桌面表注册**：Duo 走 `ShellCommandsRegisterVirtMin` ⇒ `unknown: play`。补 `ShellCommandsAudioRegister()` 与 `ShellCommandsDuoAudioRegister()` 到 VirtMin（这正是 Docs/29 `audio-shell-1` 的最小实现）。
+
+### 已知偏差（不假绿）
+批量 32 帧/ms ⇒ 有效采样率 **32 kHz**（48k 的 2/3），1 kHz 实际约 **667 Hz**。音准/真 48k 需 DMA 或正确 FIFO 节流，留 `audio-duo-1b`。
+
+### 请求评审
+- [ ] 进度已写 Docs/29；可否判 `✅ 全绿` → 我 TG+TS（`rpi-3b/Audio` 已入库，本刀新增 `milk-v-duo-s/Audio` + VirtMin 注册 + `duoaudio` 命令）
+- [ ] 音准偏差记 duo-1b 是否同意（本刀只判"能响"）
+
+---
+
+## 2026-11-02 09:55 · Pi 回归（子任务）：Docs/28 §2 全绿 + 三条新事实
+
+**结论**：Pi 的 §2 必绿项全绿、无假绿。
+
+| 项 | 结果 |
+|---|---|
+| 2.1 壳 | `gpio/bt/wifi/net/ping/play/audioreg/audiotone` 都在；`wififw` 是 Duo-only（Pi 用 `wifi`） |
+| 2.2 GPIO | `board=rpi-3b pins=00000036 named=00000002`；`selftest 17/4/22/27` 全 PASS；`LED` set/get 一致；`edgeselftest PASS toggles=000003e8` |
+| 2.3 WiFi | `wifi: ready`；scan 4 AP（含 Apple）；`net dhcp` → `net-dhcp-ok dhcp_ip=192.168.31.72`；`ping` → `ping_ok=1`；**已核实走 WiFi 不是有线假绿**（`net` 的 `link up ?/FD` = armed 分支；SMSC `stats tx_done=0`） |
+| 2.4 BT | `bt init` → `bt: diag=ready`、`bt: init rc=00000001`、`bt: ready name=Blocks addr=B8:27:EB:E8:99:11 hidden` |
+| 2.5 交叉 | BT 后 `gpio selftest 17` 仍 PASS、`ping` 仍 `ping_ok=1` |
+
+**三条新事实（对我之前的结论有影响）**
+1. **Pi BT 是通的**：`bt: uart clk=02dc6c00`（48,000,000）+ `ibrd/fbrd=0x1a/0x03`（**26/3**）⇒ 真机 PL011 时钟是 **48 MHz**，不是我先前假设的 250 MHz（135/40）。我之前 `bt-pi-1` 记的 "no response" 与"分频假设"都在这里被修正。
+2. **`wifi scan` 显示层 bug（非阻塞）**：ch/rssi 是 Q8 定点未移位（`Apple ch=2048` 应为 8、`rssi=-5888` 应约 -23 dBm）。
+3. Docs/28 §2 无音频小节（音频在 Docs/29），子任务只附只读快照：`audioreg: cm_ctl=0x91 cm_div=0x1eb8 pwm_ctl=0 pwm_sta=0x102`（与我记录一致）。
+
+**建议**：① BT 栏把 "Pi no response/分频假设" 更正为 "48 MHz → 26/3"；② `wifi scan` 的 Q8 显示单独记一笔小债（不阻塞）。
+
+---
+
+## 2026-11-02 09:48 · Pi 音频收口执行完毕（按评审 09:42）
+
+**评审 09:42 的答复 + 我的执行**
+| 评审项 | 执行 |
+|---|---|
+| `audio-pi-1` 否证收官（方案 1） | ✅ 已由 Cursor 自动 TG：`8502c771` |
+| 可 TG+TS（Audio 探针 + `CMD_MAX=72` + Docs/29） | ✅ 同上（探针与 CMD_MAX 均在该提交内） |
+| `PwmTransport` 的 MSEN 注释错（MSEN=Mark-Space；FIFO 要 USEF） | ✅ 已改并单独提交 `e6a1fb6c`（仅注释，无行为变化） |
+| ★ → `audio-duo-1`（I2S3+DAC，部署 `boot.sd`） | ⏸ **未开**：用户当前指定主对话只做 **Pi 音频**；且 Duo 串口正被子任务 `aaf83df0` 用于回归，排期冲突在**我这边**，不叫停子任务 |
+| VCHIQ / `audio-pi-1b` 不自动开 | ✅ 遵守：未开，等你点名 |
+
+**顺手清理**：我私自在 `audiotone` 里加的"GPLEV1 采样引脚电平"实验**已撤回**（评审没要，避免未审代码进仓）。
+
+**Pi 音频当前状态**：否证收官（`8502c771`）+ 注释修正（`e6a1fb6c`），工作区无未提交的 Audio 文件。等你决定是否点名开 `audio-pi-1b`。
+
+---
+
 ## 2026-11-02 09:40 · **更正**：从头到尾没有任何声音 → audio-pi-1 记否证（按评审规矩，不假绿）
 
 ### 更正一句话

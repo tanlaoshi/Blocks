@@ -95,13 +95,16 @@ void KsendTransportDrainTransmitter(void) {
         HalSerialDrainTransmitter();
         return;
     }
+    /*
+     * 勿在超时/已 broken 时清 gSendLength：KSEND OK 若只镜像到串口、TCP 缓冲
+     * 被丢掉，主机会 exit 2（HotSend 2026-11-03：板串口 OK、TCP 无判据）。
+     * UseSerial 关套接字前还会再 FlushUntilEmpty 一次。
+     */
     if (gTransportSendBroken) {
-        gSendLength = 0;
         return;
     }
     if (TransportSendFlushUntilEmpty(TRANSPORT_DRAIN_EMPTY_MILLISECONDS) == 0) {
         gTransportSendBroken = 1;
-        gSendLength = 0;
     }
 }
 

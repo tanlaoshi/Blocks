@@ -1,15 +1,17 @@
 /*
  * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1 / rnet-1）
  *
- * virt：VirtioNetInitialize。
- * Pi：LAN9514 smsc95xx（BOARD_HAS_NET）；USB 枚举在 DWC2 hub 扫口。
- * lwIP on：Poll → LwIpService（对表 X64 / RiscV）。鼠优先见 EthPoll。
+ * Pi 契约（2026-11-03）：插线→有线；无缆→Wi‑Fi（Adopt/探网武装）。
+ * 插线 LeavePrimary；Adopt 时若 link up 则拒绝。
  */
 #include "Hal.h"
+#include "HalConsole.h"
 #include "BoardConfig.h"
 #include "Driver.h"
 #include "DriverNet.h"
 #include "LwIp.h"
+#include "NetConfig.h"
+#include "Netif.h"
 #if BOARD_IS_VIRT && BOARD_HAS_NET
 #include "Virtio/Net/Net.h"
 #endif
@@ -22,6 +24,19 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
 static UINT32 gNicEpoch;
+static int gPrimaryKind;
+static int gPrimaryPinned;
+static UINT32 gSavedWiredIp;
+static UINT32 gSavedWiredMask;
+static UINT32 gSavedWiredGateway;
+static UINT32 gSavedWiredDns;
+static int gSavedWiredValid;
+
+static int EthernetLinkIsUp(void) {
+    int LinkUp = 0;
+
+    return (BoardEthernetGetLink(&LinkUp, 0, 0) != 0 && LinkUp != 0) ? 1 : 0;
+}
 #endif
 
 int HalNetInitialize(void) {
@@ -39,7 +54,6 @@ int HalNetInitialize(void) {
 
 int HalNetProbeAtModuleInit(void) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
-    /* Pi：CNTV poll、Worker 可能饿死；LAN9514 已在 DWC2 hub 扫完 */
     return 1;
 #else
     return 0;
@@ -61,12 +75,16 @@ UINT32 HalNetNicEpoch(void) {
 void HalNetNicEpochBump(void) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
     gNicEpoch++;
-#else
-    /* virtio / 无板网：无外置 L2 epoch */
 #endif
 }
 
 void HalNetPoll(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
+    /* 插线且未 Pin：退回有线（否证 via wifi → TCP header） */
+    if (gPrimaryPinned == 0 && gPrimaryKind == 1 && EthernetLinkIsUp()) {
+        HalNetWifiLeavePrimary();
+    }
+#endif
     if (LwIpActive()) {
         LwIpService();
         return;
@@ -74,10 +92,27 @@ void HalNetPoll(void) {
     DriverNetPoll();
 }
 
+int HalNetWifiShouldOwnTransmit(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
+    /* 有线 link up：绝对 SMSC（互斥） */
+    if (EthernetLinkIsUp()) {
+        return 0;
+    }
+    if (gPrimaryKind == 1) {
+        return 1;
+    }
+    /* 无缆探网：已武装、尚未 Adopt */
+    if (BoardWifiLinkOutputIsArmed()) {
+        return 1;
+    }
+#endif
+    return 0;
+}
+
 void HalNetGetMacAddress(UINT8 Mac[6]) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 7d：武装后 SyncMac/DHCP SA 须用站点 MAC，勿回 SMSC */
-    if (BoardWifiCopyStationMacIfArmed(Mac) == 0) {
+    if (HalNetWifiShouldOwnTransmit() &&
+        BoardWifiCopyStationMacIfArmed(Mac) == 0) {
         return;
     }
 #endif
@@ -110,8 +145,7 @@ void HalNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
 
 int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 对表 X64 主槽：WiFi 出站时勿用 SMSC 线缆态把托盘打成「不通」 */
-    if (BoardWifiLinkOutputIsArmed()) {
+    if (HalNetPrimaryKind() == 1) {
         if (Up) {
             *Up = 1;
         }
@@ -136,7 +170,6 @@ int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
 
 int HalNetHasNicL2(void) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
-    /* Pi LAN9514 等：真 L2，勿走 NetConfig QEMU slirp 默认 10.0.2.15 */
     return HalNetReady() ? 1 : 0;
 #else
     return 0;
@@ -144,30 +177,81 @@ int HalNetHasNicL2(void) {
 }
 
 int HalNetPrimaryKind(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    if (BoardWifiLinkOutputIsArmed()) {
-        return 1; /* 无线出站 */
+    if (gPrimaryPinned) {
+        return gPrimaryKind;
+    }
+    /* 未 AdoptLease 前保持有线（武装不抢 TX / ip） */
+    if (gPrimaryKind == 1) {
+        return 1;
     }
 #endif
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    return HalNetReady() ? 0 : -1; /* 0=有线 */
+    return HalNetReady() ? 0 : -1;
 #else
     return -1;
 #endif
 }
 
 void HalNetPinPrimary(int Pin) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    gPrimaryPinned = Pin ? 1 : 0;
+#else
     (void)Pin;
+#endif
 }
 
 void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    if (Ip == 0u) {
+        return;
+    }
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    /* 插线不 Adopt：热更/IP 走有线 */
+    if (EthernetLinkIsUp()) {
+        HalConsoleWriteSerial("net: adopt skip (wired link up)\n");
+        return;
+    }
+#endif
+    if (Mask == 0u) {
+        Mask = 0xFFFFFF00u;
+    }
+    if (gSavedWiredValid == 0 && gPrimaryKind == 0) {
+        gSavedWiredIp = NetConfigGetIp();
+        gSavedWiredMask = NetConfigGetMask();
+        gSavedWiredGateway = NetConfigGetGw();
+        gSavedWiredDns = NetConfigGetDns();
+        gSavedWiredValid = 1;
+    }
+    NetConfigAdopt(Ip, Mask, Gw, Dns);
+    (void)LwIpApplyConfig();
+    if (gPrimaryPinned == 0) {
+        gPrimaryKind = 1;
+    }
+    gNicEpoch++;
+    LwIpNetifSyncMac();
+#else
     (void)Ip;
     (void)Mask;
     (void)Gw;
     (void)Dns;
+#endif
 }
 
 void HalNetWifiLeavePrimary(void) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+    if (gPrimaryPinned != 0) {
+        return;
+    }
+    if (gSavedWiredValid != 0 && gSavedWiredIp != 0u) {
+        NetConfigAdopt(gSavedWiredIp, gSavedWiredMask, gSavedWiredGateway,
+                       gSavedWiredDns);
+        (void)LwIpApplyConfig();
+    }
+    gPrimaryKind = 0;
+    gNicEpoch++;
+    LwIpNetifSyncMac();
+#endif
 }
 
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
@@ -196,6 +280,19 @@ void HalNetSetLwipReceive(int Enable) {
 
 void HalNetFeedAlternateReceive(void) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    BoardWifiPollFeedLwIp(8u);
+    /*
+     * 武装后每拍抽 DATA→lwIP。serve/Pin 时加大：表后首块 4KB 突发曾因
+     * 事件占满 8 槽喂不进 → reason=header（Pi 2026-11-03；1 轮否证）。
+     */
+    UINT32 Budget = 8u;
+
+    if (BoardWifiLinkOutputIsArmed()) {
+#if BOARD_HAS_NET && !BOARD_IS_VIRT
+        Budget = (gPrimaryPinned != 0) ? 32u : 16u;
+#else
+        Budget = 16u;
+#endif
+        BoardWifiPollFeedLwIp(Budget);
+    }
 #endif
 }

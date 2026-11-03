@@ -1,10 +1,4 @@
-/*
- * HalDevicesNet.c — RiscV：Net 门面（PR-S3-haldev-1 / duo-net net-4…6）
- *
- * virt：VirtioNetInitialize → DriverProbeClass(NET)。
- * Duo：板驱动已 Register；此处只 Probe/Bind，不 VirtioNetRegister。
- * net-6：lwIP on 时 Poll → LwIpService（对表 X64）。
- */
+/* HalDevicesNet.c — RiscV Net 门面；插线↔Wi‑Fi 互斥（对表 Pi） */
 #include "Hal.h"
 #include "BoardConfig.h"
 #include "Driver.h"
@@ -12,10 +6,7 @@
 #include "LwIp.h"
 #include "NetConfig.h"
 #include "Netif.h"
-/*
- * WifiNetif.h 只在 milk-v-duo-s（BOARD_HAS_WIFI=1）板目录；CI 默认 BOARD=virt 没有该头。
- * 调用点已用 BOARD_HAS_WIFI 包住，include 也必须同条件，否则 riscv virt Actions 必挂。
- */
+/* WifiNetif.h 仅 duo-s；virt 无此头，须与 BOARD_HAS_WIFI 同条件 */
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
 #include "WifiNetif.h"
 #endif
@@ -36,6 +27,12 @@ static UINT32 gSavedWiredMask;
 static UINT32 gSavedWiredGw;
 static UINT32 gSavedWiredDns;
 static int gSavedWiredValid;
+
+static int EthernetLinkIsUp(void) {
+    int LinkUp = 0;
+
+    return (BoardEthernetGetLink(&LinkUp, 0, 0) != 0 && LinkUp != 0) ? 1 : 0;
+}
 #endif
 
 int HalNetInitialize(void) {
@@ -61,10 +58,7 @@ int HalNetProbeAtModuleInit(void) {
 
 int HalNetReady(void) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /*
-     * Duo：有线 dwmac 与 Wi‑Fi 均可作 L2。Wi‑Fi 武装后也要放行壳 `net dhcp` /
-     * HalNetHasNicL2（对表 Arm64 武装语义；真机已有有线 DHCP）。
-     */
+    /* 武装后亦放行 net dhcp / HasNicL2（对表 Arm64） */
     if (BoardWifiLinkOutputIsArmed() != 0) {
         return 1;
     }
@@ -87,6 +81,11 @@ void HalNetNicEpochBump(void) {
 }
 
 void HalNetPoll(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
+    if (gPrimaryPinned == 0 && gPrimaryKind == 1 && EthernetLinkIsUp()) {
+        HalNetWifiLeavePrimary();
+    }
+#endif
     if (LwIpActive()) {
         LwIpService();
         return;
@@ -96,8 +95,8 @@ void HalNetPoll(void) {
 
 void HalNetGetMacAddress(UINT8 Mac[6]) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* dwifi-netif-3：武装后对外就是站点 MAC（lwIP DHCP 的 chaddr 靠它） */
-    if (BoardWifiCopyStationMacIfArmed(Mac) == 0) {
+    if (HalNetWifiShouldOwnTransmit() &&
+        BoardWifiCopyStationMacIfArmed(Mac) == 0) {
         return;
     }
 #endif
@@ -175,10 +174,7 @@ int HalNetPrimaryKind(void) {
     if (gPrimaryPinned) {
         return gPrimaryKind;
     }
-    /*
-     * 主槽只跟采纳/离开：未 HalNetWifiAdoptLease 前保持有线（武装不抢 TX）。
-     * 已采纳则报 Wi‑Fi，即使瞬时未武装也勿把 Wi‑Fi 址从 dwmac 送出。
-     */
+    /* 未 Adopt 保持有线；已 Adopt 报 Wi‑Fi（勿把 Wi‑Fi 址从 dwmac 送出） */
     if (gPrimaryKind == 1) {
         return 1;
     }
@@ -197,11 +193,28 @@ void HalNetPinPrimary(int Pin) {
 #endif
 }
 
+int HalNetWifiShouldOwnTransmit(void) {
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
+    if (EthernetLinkIsUp()) {
+        return 0;
+    }
+    if (gPrimaryKind == 1) {
+        return 1;
+    }
+#endif
+    return 0;
+}
+
 void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
     if (Ip == 0u) {
         return;
     }
+#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
+    if (EthernetLinkIsUp()) {
+        return;
+    }
+#endif
     if (Mask == 0u) {
         Mask = 0xFFFFFF00u; /* /24 */
     }
@@ -267,10 +280,7 @@ void HalNetSetLwipReceive(int Enable) {
 
 void HalNetFeedAlternateReceive(void) {
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /*
-     * 对表 Arm64：武装后每拍短喂。DHCP Job 忙时多喂几轮——Discover 发出后
-     * OFFER 窗口短，ConsoleOnly 一拍一 Halt 容易空过（见 WifiNetifFeed 预算注释）。
-     */
+    /* DHCP 忙时多喂（对表 Arm64；见 WifiNetifFeed） */
     UINT32 Rounds = LwIpDhcpJobBusy() ? 4u : 1u;
     UINT32 Index;
 

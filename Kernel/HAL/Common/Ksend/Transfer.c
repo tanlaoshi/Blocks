@@ -7,6 +7,8 @@
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
+#include "LwIp.h"
+#include "Scheduler.h"
 
 static int PrepareBackup(KSEND_RUN *Run) {
     UINT32 Block = 0;
@@ -167,6 +169,12 @@ static int TransferRun(KSEND_RUN *Run) {
         KsendNote("transport: stalled sending block table");
         Run->Failure = KSEND_FAIL_SEND;
         return -1;
+    }
+    /* 表 ACK 后先泵 RX：PC 可能已发首块，Wi‑Fi 帧还在 SDPCM */
+    if (LwIpActive()) {
+        LwIpService();
+        SchedulerIoBreath();
+        LwIpService();
     }
     if (KsendReceiveBlocks(Run) != 0) {
         if (KsendTransportUserAborted()) {

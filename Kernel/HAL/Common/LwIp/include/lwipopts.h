@@ -15,19 +15,20 @@
 #define SYS_LIGHTWEIGHT_PROT        0
 
 #define MEM_ALIGNMENT               4U
-#define MEM_SIZE                    (128 * 1024)
-#define MEMP_NUM_PBUF               32
+#define MEM_SIZE                    (192 * 1024)
+#define MEMP_NUM_PBUF               48
 #define MEMP_NUM_RAW_PCB            2
 #define MEMP_NUM_UDP_PCB            4
 #define MEMP_NUM_TCP_PCB            8
 #define MEMP_NUM_TCP_PCB_LISTEN     4
-#define MEMP_NUM_TCP_SEG            40
+#define MEMP_NUM_TCP_SEG            48
 #define MEMP_NUM_NETBUF             0
 #define MEMP_NUM_NETCONN            0
 #define MEMP_NUM_TCPIP_MSG_API      0
 #define MEMP_NUM_TCPIP_MSG_INPKT    0
 
-#define PBUF_POOL_SIZE              64
+/* Pi Wi‑Fi 热更：池偏小曾 pbuf_alloc fail → TCP 错位 header（2026-11-03） */
+#define PBUF_POOL_SIZE              96
 /* 一帧以太网整包进单个 pbuf，免链上 pbuf_take 边角 */
 #define PBUF_POOL_BUFSIZE           1560
 

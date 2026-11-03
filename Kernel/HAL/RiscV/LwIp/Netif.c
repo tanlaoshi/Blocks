@@ -51,11 +51,8 @@ static int PlatformSendEthernet(const UINT8 *Frame, UINTN Length) {
     return NetSendFrame(Frame, Length);
 #else
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /*
-     * 对表 X64 主槽：Wi‑Fi 主槽只走 SDIO；有线主槽只走 dwmac。
-     * 禁止「武装就抢 TX」——否则仍持有线 IP 时 TCP 回程黑洞（Duo 2026-11-03）。
-     */
-    if (HalNetPrimaryKind() == 1) {
+    /* 互斥：插线 dwmac；无缆且已 Adopt → SDIO（对表 Pi） */
+    if (HalNetWifiShouldOwnTransmit()) {
         return BoardWifiTryLinkOutput(Frame, Length) == 0 ? 0 : -1;
     }
 #endif

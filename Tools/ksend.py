@@ -67,8 +67,8 @@ PATH_CHAR_MAX = 0x7E
 DEFAULT_TARGET_PATH = "BLOCKS:Kernel.elf"
 
 DEFAULT_ELF_CANDIDATES = (
-    "Kernel/Build/DUO/HAL/RiscV/Kernel.elf",
     "Kernel/Build/PI/HAL/Arm64/Kernel.elf",
+    "Kernel/Build/DUO/HAL/RiscV/Kernel.elf",
     "Kernel/Build/HAL/X64/Kernel.elf",
     "Kernel/Build/ksend/HAL/RiscV/Kernel.elf",
     "Kernel/Build/HAL/RiscV/Kernel.elf",

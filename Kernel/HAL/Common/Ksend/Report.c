@@ -12,6 +12,7 @@ static const char *FailureName(int Failure) {
     case KSEND_FAIL_FILE_STATUS:   return "stat";
     case KSEND_FAIL_BACKUP: return "backup";
     case KSEND_FAIL_HEADER: return "header";
+    case KSEND_FAIL_DATA: return "data";
     case KSEND_FAIL_WRITE:  return "write";
     case KSEND_FAIL_VERIFY: return "verify";
     case KSEND_FAIL_FLUSH:  return "flush";

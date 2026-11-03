@@ -44,10 +44,14 @@ static int WifiSdpcmWaitForBusCredit(void) {
             (void)WifiBackplaneWrite32(WIFI_SDIO_TO_SB_MAILBOX, 1u << 3);
             (void)WifiSdioSleepControlEnsureAwake();
         }
+        /*
+         * 必须喂 DATA→lwIP：旧逻辑只取 credit 丢载荷，表发/Flush 期间
+         * 会吞掉 PC 已发的首块 → KSEND header err=1（Pi 2026-11-03）。
+         */
         Poll = WifiPollOnePacket(&Channel, &Offset, &Length);
-        (void)Offset;
-        (void)Length;
-        (void)Channel;
+        if (Poll == 0) {
+            (void)WifiNetTryFeedPolledPacket(Channel, Offset, Length);
+        }
         if (gWifiSdpcmBusCredit != gWifiSdpcmSequence) {
             return 0;
         }
@@ -71,7 +75,13 @@ int WifiSdpcmSendEthernet(const UINT8 *Frame, UINT32 FrameBytes) {
         sizeof(gWifiSdpcmPacket)) {
         return -1;
     }
+    /*
+     * credit Poll 可能收到对端 DATA：须入队，出站后再 netif_input
+     * （禁 tcp_output 栈上重入 lwIP → header err=1，Pi 2026-11-03）。
+     */
+    WifiNetReceiveDeferPush();
     if (WifiSdpcmWaitForBusCredit() != 0) {
+        WifiNetReceiveDeferPop();
         return -1;
     }
 
@@ -101,7 +111,12 @@ int WifiSdpcmSendEthernet(const UINT8 *Frame, UINT32 FrameBytes) {
         Header[WIFI_SDPCM_HEADER_BYTES + WIFI_SDPCM_DATA_PREFIX_BYTES + Index] = Frame[Index];
     }
     gWifiSdpcmSequence = (UINT8)(gWifiSdpcmSequence + 1u);
-    return WifiSdpcmWlanWrite(gWifiSdpcmPacket, Size);
+    {
+        int WriteError = WifiSdpcmWlanWrite(gWifiSdpcmPacket, Size);
+
+        WifiNetReceiveDeferPop();
+        return WriteError;
+    }
 }
 
 int WifiSdpcmSendArpWhoHas(const UINT8 SourceMac[6], UINT32 SourceProtocolAddress,

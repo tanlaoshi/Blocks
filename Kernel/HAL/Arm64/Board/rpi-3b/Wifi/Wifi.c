@@ -145,6 +145,9 @@ static int WifiOpsClaim(void) {
         const char *Stage = WifiFirmwareLoadFailStage();
 
         HalSerialBootMarkForce("Boot: Pi WIFI claim load fail\n");
+        /* 软 reboot 后芯片常脏；有线仍可用，Wi‑Fi 须拔电冷启 */
+        HalSerialBootMarkForce(
+            "Boot: Pi WIFI need cold power if after soft reboot\n");
         /* 0x148：status=load-* 阶段字，勿笼统 claim-load-fail */
         WifiPersistStatusLog(Stage && Stage[0] ? Stage : "claim-load-fail");
         return 1;

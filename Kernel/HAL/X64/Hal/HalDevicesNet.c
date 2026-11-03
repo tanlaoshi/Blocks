@@ -93,6 +93,10 @@ void HalNetPinPrimary(int Pin) {
     NetNicPinPrimary(Pin);
 }
 
+int HalNetWifiShouldOwnTransmit(void) {
+    return HalNetPrimaryKind() == 1 ? 1 : 0;
+}
+
 void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
     (void)Ip;
     (void)Mask;

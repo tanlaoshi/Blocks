@@ -51,9 +51,9 @@ static int PlatformSendEthernet(const UINT8 *Frame, UINTN Length) {
     return NetSendFrame(Frame, Length);
 #elif BOARD_HAS_NET
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 7c3：join 武装后走 WiFi；未武装 / 失败则 SMSC（勿默默饿死有线回退） */
-    if (BoardWifiTryLinkOutput(Frame, Length) == 0) {
-        return 0;
+    /* 互斥：HalNetWifiShouldOwnTransmit（插线 SMSC / 无缆 SDPCM） */
+    if (HalNetWifiShouldOwnTransmit()) {
+        return BoardWifiTryLinkOutput(Frame, Length) == 0 ? 0 : -1;
     }
 #endif
     return BoardEthernetSendFrame(Frame, Length);

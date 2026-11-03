@@ -125,7 +125,7 @@
  */
 #define WIFI_RAM_DOWNLOAD_BASE       0x1e000000u
 /* 每改一版就 +1：串口/BOOT.LOG 第一行会打出来，避免「烧的是不是新镜像」这类歧义 */
-#define WIFI_BUILD_TAG               0x0000015eu
+#define WIFI_BUILD_TAG               0x00000162u
 /* 块模式总开关：置 0 时全走字节模式（一次最多 512 字节），用来隔离“等待时间”变量 */
 /* 1 = 对表 Linux：块模式批量（≤511 块）；余数仍块模式，勿对整块走字节 CMD53 */
 #define WIFI_BACKPLANE_BLOCK_MODE    1
@@ -301,6 +301,10 @@ int WifiSdpcmSendDhcpDiscover(const UINT8 SourceMac[6]); /* 0x15a */
 void WifiNetLwIpFeedReset(void);
 UINT32 WifiNetLwIpInputCount(void);
 void WifiNetFeedEthernetToLwIp(const UINT8 *Frame, UINT32 FrameBytes);
+/* Poll 到的一帧：DATA→lwIP（TX 中则 defer）；1=已喂/入队 */
+int WifiNetTryFeedPolledPacket(UINT8 Channel, UINT32 Offset, UINT32 Length);
+void WifiNetReceiveDeferPush(void);
+void WifiNetReceiveDeferPop(void); /* 只减深度；flush 在 PollFeed depth==0 */
 void WifiNetProbeLogWrite(const char *Status, const UINT8 *Mac, int MacOk, UINT32 MacOutBytes,
                           UINT32 DataPackets, UINT32 EventPackets, UINT32 OtherPackets,
                           UINT32 PollEmpty, UINT32 PollError, UINT32 FirstEtherType,

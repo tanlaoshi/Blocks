@@ -5,14 +5,13 @@
  * 任何一步不过都回 'N'，让 PC 重发同一块；同一块回 'N' 超过 3 次就收手，
  * 交给 KsendTransfer 决定回滚。
  *
- * 为什么要批写（v4）：PC 按 4 KB 块发差量，而 FAT 没有反向链指针，
- * 每次 FileSystemWriteFileAt 都要从首簇走到偏移（O(偏移/簇)）；逐块写
- * 2.1 MB 就是第二层 O(n²)，只修分配器也还是慢。这里把连续的块攒进
- * KsendFileBuffer()，一次写 512 KB，把链步数压到 1/128。
- * 代价：'A' 的含义从「已落盘」变成「已收进批缓冲」；整文件 flush + 读回
- * 校验仍然在 KSEND OK 之前，失败照样回滚。
+ * 批写（v4）：连续块攒进 KsendFileBuffer() 再写，压 FAT 链步数；
+ * 'A'=已进批缓冲；整文件 flush+读回仍在 OK 前，失败回滚。
  */
 #include "Ksend/Private.h"
+#include "HalDevices.h"
+#include "LwIp.h"
+#include "Scheduler.h"
 
 #define KSEND_BATCH_LIMIT_BYTES KSEND_IO_CHUNK_BYTES
 
@@ -28,6 +27,14 @@ static void BatchReset(void) {
     sBatchBytes = 0;
 }
 
+/* Wi‑Fi 主槽：每块落盘，减 Sdhost PIO 饿 RX → reason=header（Pi 契约） */
+static UINT32 BatchLimitBytes(void) {
+    if (HalNetWifiShouldOwnTransmit()) {
+        return KSEND_BLOCK_BYTES;
+    }
+    return KSEND_BATCH_LIMIT_BYTES;
+}
+
 static void CopyBlock(UINT8 *Destination, const UINT8 *Source, UINT32 Length) {
     UINT32 Index;
 
@@ -36,22 +43,43 @@ static void CopyBlock(UINT8 *Destination, const UINT8 *Source, UINT32 Length) {
     }
 }
 
-/* 把攒下的连续块一次写卡；失败填 Run 的失败原因与块号 */
+/*
+ * 把攒下的连续块写卡。按 4 KB 切片并在片间 LwIpService——Pi Sdhost PIO 一次
+ * 64 KB 会饿死 Wi‑Fi/有线 RX，TCP 流错位后下一块 MAGIC 对不上 → reason=header。
+ */
 static int BatchFlush(KSEND_RUN *Run) {
     UINT32 Offset;
+    UINT32 Done;
     int Error;
 
     if (sBatchBytes == 0u) {
         return 1;
     }
     Offset = sBatchFirstIndex * KSEND_BLOCK_BYTES;
-    Error = KsendFileWriteAt(Run->TargetPath, Offset, KsendFileBuffer(),
-                           sBatchBytes);
-    if (Error != FAT_OK) {
-        Run->Error = Error;
-        Run->FailBlock = sBatchFirstIndex + sBatchBlocks - 1u;
-        BatchReset();
-        return 0;
+    Done = 0;
+    while (Done < sBatchBytes) {
+        UINT32 Take = sBatchBytes - Done;
+
+        if (Take > KSEND_BLOCK_BYTES) {
+            Take = KSEND_BLOCK_BYTES;
+        }
+        Error = KsendFileWriteAt(Run->TargetPath, Offset + Done,
+                                 KsendFileBuffer() + Done, Take);
+        if (Error != FAT_OK) {
+            Run->Error = Error;
+            Run->FailBlock = sBatchFirstIndex + sBatchBlocks - 1u;
+            BatchReset();
+            return 0;
+        }
+        Done += Take;
+        if (LwIpActive()) {
+            LwIpService();
+            SchedulerIoBreath();
+            if (HalNetWifiShouldOwnTransmit()) {
+                LwIpService();
+                SchedulerIoBreath();
+            }
+        }
     }
     BatchReset();
     return 1;
@@ -61,10 +89,11 @@ static int BatchFlush(KSEND_RUN *Run) {
  * 收一块进批缓冲。'A' 必须在本函数返回后立刻发出（见 ReceiveOneBlock），
  * 故满批/不连续时只 flush「已经 A 过的旧批」，再接纳本块；禁止在接纳本块后
  * 再同步刷盘——否则每 ~512KB 会把 ACK 拖死，Pi 串口大传必超时（2026-11-02）。
- * 短块（最后一块）仍立刻 flush，因随后就是收尾/校验。
+ * 短块（最后一块）仍立刻 flush；Wi‑Fi 主槽每满块也 flush（BatchLimitBytes）。
  */
 static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
     UINT32 At;
+    UINT32 Limit = BatchLimitBytes();
 
     if (sBatchBlocks > 0u &&
         (Index != sBatchFirstIndex + sBatchBlocks ||
@@ -73,8 +102,7 @@ static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
             return 0;
         }
     }
-    if (sBatchBlocks > 0u &&
-        (sBatchBytes + Length) > KSEND_BATCH_LIMIT_BYTES) {
+    if (sBatchBlocks > 0u && (sBatchBytes + Length) > Limit) {
         if (!BatchFlush(Run)) {
             return 0;
         }
@@ -86,7 +114,7 @@ static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
     CopyBlock(KsendFileBuffer() + At, sBlockBuffer, Length);
     sBatchBlocks++;
     sBatchBytes = At + Length;
-    if (Length != KSEND_BLOCK_BYTES) {
+    if (Length != KSEND_BLOCK_BYTES || sBatchBytes >= Limit) {
         if (!BatchFlush(Run)) {
             return 0;
         }
@@ -104,19 +132,48 @@ static void AcceptBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length, UINT32 Crc)
     }
 }
 
-/* 读满 4 个字（小端）；第一个字节给足 30 s，其余按逐字节 5 s */
+/* 读块头；滑窗对齐 MAGIC（Pi Wi‑Fi 表后杂字节） */
 static int ReadHeader(UINT32 *Header) {
     UINT32 Index;
+    UINT8 Window[4];
+    UINT32 Have = 0;
+    UINT8 MagicByte0 = (UINT8)(KSEND_MAGIC & KSEND_BYTE_MASK);
 
     for (Index = 0; Index < 4u; Index++) {
         Header[Index] = 0;
     }
-    for (Index = 0; Index < KSEND_HEADER_BYTES; Index++) {
+    for (;;) {
         UINT8 Value;
-        UINT32 Timeout = (Index == 0u) ? KSEND_HEADER_TIMEOUT_MILLISECONDS
-                                       : KSEND_DATA_TIMEOUT_MILLISECONDS;
 
-        if (!KsendSerialGetByte(&Value, Timeout)) {
+        if (!KsendSerialGetByte(&Value, KSEND_HEADER_TIMEOUT_MILLISECONDS)) {
+            return 0;
+        }
+        if (Have == 0u && Value != MagicByte0) {
+            continue;
+        }
+        Window[Have++] = Value;
+        if (Have < 4u) {
+            continue;
+        }
+        {
+            UINT32 Magic = (UINT32)Window[0] | ((UINT32)Window[1] << 8) |
+                           ((UINT32)Window[2] << 16) | ((UINT32)Window[3] << 24);
+
+            if (Magic != KSEND_MAGIC) {
+                Window[0] = Window[1];
+                Window[1] = Window[2];
+                Window[2] = Window[3];
+                Have = 3u;
+                continue;
+            }
+            Header[0] = Magic;
+        }
+        break;
+    }
+    for (Index = 4u; Index < KSEND_HEADER_BYTES; Index++) {
+        UINT8 Value;
+
+        if (!KsendSerialGetByte(&Value, KSEND_DATA_TIMEOUT_MILLISECONDS)) {
             return 0;
         }
         Header[Index / KSEND_WORD_BYTES] |=
@@ -171,7 +228,7 @@ static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
     UINT32 Got;
 
     if (!ReadBlockData(Length)) {
-        Run->Failure = KSEND_FAIL_HEADER;
+        Run->Failure = KSEND_FAIL_DATA;
         return -1;
     }
     Got = KsendCrc32Final(
@@ -214,14 +271,19 @@ int KsendReceiveBlocks(KSEND_RUN *Run) {
 
         if (!ReadHeader(Header)) {
             Run->Failure = KSEND_FAIL_HEADER;
+            Run->Error = 1; /* timeout/short → FAIL err= */
+            KsendNote("receive: header timeout/short");
             return -1;
         }
         Rc = HandleHeader(Header, Run, &Index, &Length);
         if (Rc == 0) {
-            /* 收尾帧：最后一批必须先落盘，后面的 flush/读回校验才有意义 */
             return BatchFlush(Run) ? 0 : -1;
         }
         if (Rc < 0) {
+            if (Run->Failure == KSEND_FAIL_HEADER) {
+                Run->Error = 2; /* magic/字段 */
+                KsendNote("receive: header magic/field");
+            }
             return -1;
         }
         if (RetryIndex != Index) {

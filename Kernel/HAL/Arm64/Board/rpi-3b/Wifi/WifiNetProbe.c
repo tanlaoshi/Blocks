@@ -1,9 +1,8 @@
-/*
- * WifiNetProbe.c — pi-wifi-7：DATA↔lwIP 眼睛（0x15e）
- * 7c2…7d：RX/TX/DHCP；7e：网关 LwIpPing。
- */
+/* WifiNetProbe.c — pi-wifi-7：DATA↔lwIP（DHCP/ping）；插线跳过 Adopt */
 #include "Wifi/Private.h"
 #include "Wifi.h"
+#include "HalDevices.h"
+#include "NetConfig.h"
 #ifdef LWIP_ENABLE
 #include "Services/LwIp.h"
 #endif
@@ -14,8 +13,8 @@ static UINT32 gWifiNetPingOk;
 
 #define WIFI_NET_PROBE_ATTEMPTS         800u
 #define WIFI_NET_TRANSMIT_POLL_ATTEMPTS 2000u
-#define WIFI_NET_ARP_FALLBACK_TARGET    0xAC140A01u /* 172.20.10.1 眼靶 */
-#define WIFI_NET_ARP_FALLBACK_SOURCE    0xAC140A02u /* 172.20.10.2 SPA（未 DHCP） */
+#define WIFI_NET_ARP_FALLBACK_TARGET    0xAC140A01u
+#define WIFI_NET_ARP_FALLBACK_SOURCE    0xAC140A02u
 
 static UINT32 gWifiNetDataPacketCount;
 static UINT32 gWifiNetEventPacketCount;
@@ -207,6 +206,16 @@ int WifiNetProbeAfterJoin(void) {
     gWifiNetPingOk = 0;
     WifiNetLwIpFeedReset();
 
+    /* 插线：热更走有线，跳过 Wi‑Fi DHCP/Adopt（互斥主槽） */
+    {
+        int LinkUp = 0;
+
+        if (HalNetGetLinkInfo(&LinkUp, 0, 0) != 0 && LinkUp != 0) {
+            WifiNetPersist("net-skip-wired");
+            HalSerialBootMarkForce("Boot: Pi WIFI net skip (wired link up)\n");
+            return -1;
+        }
+    }
     HalSerialBootMarkForce("Boot: Pi WIFI net probe begin\n");
     if (WifiNetReadMac() != 0) {
         WifiNetPersist("net-mac-fail");
@@ -274,6 +283,9 @@ int WifiNetProbeAfterJoin(void) {
         return -1;
     }
     HalSerialBootMarkForce("Boot: Pi WIFI net dhcp ok\n");
+    /* 双栈：租约已在 dhcp 回调进 NetConfig；再切主槽（对表 Duo AdoptLease） */
+    HalNetWifiAdoptLease(NetConfigGetIp(), NetConfigGetMask(), NetConfigGetGw(),
+                         NetConfigGetDns());
     /* 7e：对 DHCP 网关 ping（LwIpService 内已喂 F2） */
     if (WifiNetPingGateway(&gWifiNetPingTarget) == 0) {
         gWifiNetPingOk = 1;

@@ -104,7 +104,7 @@
 #define KSEND_FAIL_NONE    0
 #define KSEND_FAIL_FILE_STATUS    1 /* stat Kernel.elf 失败 */
 #define KSEND_FAIL_BACKUP  2 /* BAK 复制或回读校验失败 */
-#define KSEND_FAIL_HEADER  3 /* 块头非法 / 等块超时 */
+#define KSEND_FAIL_HEADER  3 /* 块头非法（magic/字段） */
 #define KSEND_FAIL_WRITE   4 /* 落盘失败（重试超限） */
 #define KSEND_FAIL_VERIFY  5 /* 块 CRC 或整体 CRC 不符 */
 #define KSEND_FAIL_FLUSH   6 /* FileSystemFileSync 失败 */
@@ -112,6 +112,7 @@
 #define KSEND_FAIL_EMPTY   8 /* 一个块都没收到 */
 #define KSEND_FAIL_ABORT   9 /* PC 主动放弃 */
 #define KSEND_FAIL_SEND   10 /* TCP/串口发送停滞（Wi‑Fi 表发死等） */
+#define KSEND_FAIL_DATA   11 /* 块头后数据字节超时/短读（旧码曾误报 header） */
 
 /* 一个文件的分块图：整文件 CRC + 每 4 KB 一块的 CRC */
 typedef struct {

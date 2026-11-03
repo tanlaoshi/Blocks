@@ -6,6 +6,8 @@
 #include "ShellPrivate.h"
 #include "Console.h"
 #include "BootTypes.h"
+#include "Services/Gui.h"
+#include "Hal.h"
 
 extern int KsendInfo(void) __attribute__((weak));
 extern int KsendSelfTest(void) __attribute__((weak));
@@ -88,6 +90,13 @@ static void CommandKsend(int Argc, char **Argv) {
         }
         gConsole.Write("ksend: serve (TCP; wired/wifi via lwIP). PC: "
                        "ksend.py --host <ip>\n");
+        /*
+         * Write→EchoMark 指望 Shell 环末 Present；Serve 同线程阻塞，
+         * 字停在后缓冲直到鼠动 Flush（Pi 2026-11-03）。Pause 清 coalesce 再硬刷。
+         */
+        GuiPresentDeferPause();
+        HalVideoPresent();
+        GuiPresentDeferResume();
         (void)Reboot;
         (void)Backup;
         (void)KsendServe(Port, WaitMilliseconds);

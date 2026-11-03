@@ -2,6 +2,7 @@
  * TransportReceive.c — ksend 传输接收侧：GetByte / Drain
  */
 #include "Ksend/TransportPrivate.h"
+#include "Errno.h"
 #include "Hal.h"
 #include "LwIp.h"
 #include "Scheduler.h"
@@ -52,8 +53,23 @@ int KsendTransportGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds) {
             gReceiveLength = (UINT32)Got;
             continue;
         }
+        /*
+         * Got<0：对端已关 / 硬错 → 立刻失败。
+         * 其它短错（Wi‑Fi 抖动）在总超时内重试，勿当 reason=header
+         * （Pi 2026-11-03：表绿后首块立刻 header）。
+         */
         if (Got < 0) {
-            return 0;
+            if (Got == -2 || Got == -EPIPE || Got == -ENOTCONN ||
+                Got == -ECONNRESET) {
+                return 0;
+            }
+            if (TransportElapsed(Start, TimeoutMilliseconds)) {
+                return 0;
+            }
+            LwIpService();
+            SchedulerIoBreath();
+            HalCpuRelax();
+            continue;
         }
         if (TransportElapsed(Start, TimeoutMilliseconds)) {
             return 0;

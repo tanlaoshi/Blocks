@@ -329,6 +329,8 @@ void AicScanReportIgnored(UINT16 Id, UINT32 ParamLength, const UINT8 *Frame, int
 /* join 用：在合并表里找目标 / 问"扫过没有"（WifiAssoc.c） */
 int AicScanReportFind(const char *Ssid, const UINT8 *Bssid, AIC_SCAN_AP *Out);
 UINT32 AicScanReportCount(void);
+/* HalWifiScanEntryAt：按合并表下标拷贝一份 AP */
+int AicScanReportCopyAt(UINT32 Index, AIC_SCAN_AP *Out);
 /* join 用：拿扫描时建的 vif。Cached 不问卡；Ensure 没有就补一条 MM_ADD_IF */
 int AicScanVifCached(UINT8 *OutVifIndex);
 int AicScanVifEnsure(SDHCI_HOST *Host, UINT8 *OutVifIndex);

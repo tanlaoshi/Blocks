@@ -187,5 +187,7 @@ int SdhciWifiProbe(UINT32 Flags);
  */
 void SdhciWifiMarkSink(void (*Sink)(const char *Text));
 void BoardSdhciRegister(void);
+/* Worker HalWifiClaim：探卡+灌片+bringup+扫（无 join） */
+void BoardWifiRegister(void);
 
 #endif

@@ -5,6 +5,7 @@
  * 板包用 BOARD_HAS_* 勾选；Duo S 等命令行靶不探 virtio（避免误扫 MMIO）。
  */
 #include "Hal.h"
+#include "HalDevices.h"
 #include "BoardConfig.h"
 #include "Block.h"
 #include "Driver.h"
@@ -33,10 +34,13 @@ void HalDriverRegister(void) {
     {
         void BoardSdhciRegister(void);
         void BoardEthernetRegister(void);
+        void BoardWifiRegister(void);
 
         BoardSdhciRegister();
         /* 板载网：Register；Probe/Bind 在 HalNetInitialize（BOARD_HAS_NET） */
         BoardEthernetRegister();
+        /* Duo Wi‑Fi：对表 Pi BoardWifiRegister → Worker HalWifiClaim */
+        BoardWifiRegister();
     }
 #endif
 }
@@ -157,35 +161,57 @@ int HalUsbUartReady(void) {
     return 0;
 }
 
+/* 板包 BoardWifiRegister → HalWifiSetOps；virt / 未登记 → 0 / -1 */
+static HAL_WIFI_OPS gWifiOps;
+
+void HalWifiSetOps(const HAL_WIFI_OPS *Ops) {
+    if (Ops == 0) {
+        return;
+    }
+    gWifiOps = *Ops;
+}
+
 int HalWifiClaim(void) {
-    return 0;
+    if (gWifiOps.Claim == 0) {
+        return 0;
+    }
+    return gWifiOps.Claim();
 }
 
 int HalWifiReady(void) {
-    return 0;
+    if (gWifiOps.Ready == 0) {
+        return 0;
+    }
+    return gWifiOps.Ready();
 }
 
 int HalWifiScan(void) {
-    return -1;
+    if (gWifiOps.Scan == 0) {
+        return -1;
+    }
+    return gWifiOps.Scan();
 }
 
 UINT32 HalWifiScanCount(void) {
-    return 0;
+    if (gWifiOps.ScanCount == 0) {
+        return 0;
+    }
+    return gWifiOps.ScanCount();
 }
 
 int HalWifiScanEntryAt(UINT32 Index, char *SsidOut, UINT32 SsidCapacity, INT32 *RssiOut,
                        UINT16 *ChannelOut) {
-    (void)Index;
-    (void)SsidOut;
-    (void)SsidCapacity;
-    (void)RssiOut;
-    (void)ChannelOut;
-    return -1;
+    if (gWifiOps.ScanEntryAt == 0) {
+        return -1;
+    }
+    return gWifiOps.ScanEntryAt(Index, SsidOut, SsidCapacity, RssiOut, ChannelOut);
 }
 
 int HalWifiAssociateOpen(const char *Ssid) {
-    (void)Ssid;
-    return -1;
+    if (gWifiOps.AssociateOpen == 0) {
+        return -1;
+    }
+    return gWifiOps.AssociateOpen(Ssid);
 }
 
 int HalIwlClaim(void) {

@@ -117,6 +117,14 @@ UINT32 AicScanReportCount(void) {
     return sAicScanEntryCount;
 }
 
+int AicScanReportCopyAt(UINT32 Index, AIC_SCAN_AP *Out) {
+    if (Out == 0 || Index >= sAicScanEntryCount) {
+        return -1;
+    }
+    *Out = sAicScanEntries[Index].Ap;
+    return 0;
+}
+
 /* 只有新 AP、RSSI 更强、或补上非空 SSID 才值得留一份整帧给 verbose */
 static int ScanNeedsFrame(const AIC_SCAN_AP *Ap) {
     AIC_SCAN_REPORT_ENTRY *Entry = ScanFindEntry(Ap->Bssid);

@@ -280,7 +280,6 @@ int AnyWindowsOverlap(void);
 UINT32 TopmostBelowDragPixel(UINT32 Px, UINT32 Py, int DragIdx);
 int EnsureDragDirtyBuf(UINT32 Ww, UINT32 Hh);
 int EnsureUnderDragBuf(UINT32 Ww, UINT32 Wh);
-void CaptureDragRestoreData(int DragIdx);
 void BeginDragBackups(int DragIdx);
 void StartDragBackups(int DragIdx);
 UINT32 CompositeDragPixel(UINT32 Px, UINT32 Py, int DragIdx,

@@ -76,85 +76,11 @@ int EnsureUnderDragBuf(UINT32 Ww, UINT32 Wh) {
 }
 
 
-void CaptureDragRestoreData(int DragIdx) {
-    UINT32 Pages;
-    int i;
-
-    gGuiWindowManager.ScreenSnapValid = 0;
-    gGuiWindowManager.UnderDragValid = 0;
-    if (DragIdx < 0 || DragIdx >= MAX_WINS || !gGuiWindowManager.Windows[DragIdx].Active) {
-        return;
-    }
-    if (gGuiWindowManager.ScreenWidth == 0 || gGuiWindowManager.ScreenHeight == 0) {
-        return;
-    }
-
-    gGuiWindowManager.DragStartX = gGuiWindowManager.Windows[DragIdx].X;
-    gGuiWindowManager.DragStartY = gGuiWindowManager.Windows[DragIdx].Y;
-    gGuiWindowManager.DragStartW = gGuiWindowManager.Windows[DragIdx].Width;
-    gGuiWindowManager.DragStartH = gGuiWindowManager.Windows[DragIdx].Height;
-    if (gGuiWindowManager.DragStartW == 0 || gGuiWindowManager.DragStartH == 0) {
-        return;
-    }
-
-    Pages = BackupPageCount(gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight);
-    if (gGuiWindowManager.ScreenSnap != 0 && gGuiWindowManager.ScreenSnapPages != Pages) {
-        PhysicalMemoryFreePages(gGuiWindowManager.ScreenSnap, gGuiWindowManager.ScreenSnapPages);
-        gGuiWindowManager.ScreenSnap = 0;
-        gGuiWindowManager.ScreenSnapPages = 0;
-    }
-    if (gGuiWindowManager.ScreenSnap == 0) {
-        gGuiWindowManager.ScreenSnap = (UINT32 *)PhysicalMemoryAllocatePages(Pages);
-        if (gGuiWindowManager.ScreenSnap == 0) {
-            DebugWrite("Gui: drag snap OOM — cancel\n");
-            gGuiWindowManager.ScreenSnapValid = 0;
-            return;
-        }
-        gGuiWindowManager.ScreenSnapPages = Pages;
-    }
-    /* 含被拖窗的全屏快照：非起始 footprint 露底时用 */
-    HalVideoReadRect(0, 0, gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight, gGuiWindowManager.ScreenSnap);
-    gGuiWindowManager.ScreenSnapValid = 1;
-    EnsureDragDirtyBuf(gGuiWindowManager.ScreenWidth, gGuiWindowManager.ScreenHeight);
-
-    if (!EnsureUnderDragBuf(gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH)) {
-        return;
-    }
-
-    /*
-     * 起始 footprint 的「去被拖窗」场景：暂时取消被拖窗 Active，重画桌面+其它窗，
-     * 再读入 under-drag，最后恢复 Active 并贴回被拖窗。
-     */
-    HalVideoClearClip();
-    gGuiWindowManager.Windows[DragIdx].Active = 0;
-    DesktopFillRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH);
-    DesktopDrawRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH);
-    for (i = 0; i < MAX_WINS; i++) {
-        if (!gGuiWindowManager.Windows[i].Active || i == DragIdx) {
-            continue;
-        }
-        if (RectIntersects(gGuiWindowManager.Windows[i].X, gGuiWindowManager.Windows[i].Y, gGuiWindowManager.Windows[i].Width, gGuiWindowManager.Windows[i].Height,
-                           gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH)) {
-            /* 必须贴备份（含客户区文字），禁止 DrawWindowAt 空壳 */
-            PaintWindowFromBackup(i);
-        }
-    }
-    HalVideoReadRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.DragStartW, gGuiWindowManager.DragStartH, gGuiWindowManager.UnderDrag);
-    gGuiWindowManager.UnderDragValid = 1;
-    gGuiWindowManager.Windows[DragIdx].Active = 1;
-
-    /* 贴回被拖窗（备份应在 Begin/Start 里已抓好） */
-    if (gGuiWindowManager.WinBackupValid[DragIdx] && gGuiWindowManager.WinBackup[DragIdx] != 0) {
-        HalVideoWriteRect(gGuiWindowManager.DragStartX, gGuiWindowManager.DragStartY, gGuiWindowManager.WinBackupW[DragIdx],
-                          gGuiWindowManager.WinBackupH[DragIdx], gGuiWindowManager.WinBackup[DragIdx]);
-        DrawWindowChromeAt(DragIdx);
-    } else {
-        DrawWindowAt(DragIdx);
-    }
-
-    /* 相交窗已从备份恢复，无需再 BackupWindowAt（以免读到瞬时脏 FB） */
-}
-
+/*
+ * CaptureDragRestoreData 已删（gui-drag-dead-read）：
+ * 曾用逻辑坐标 HalVideoReadRect 抓 ScreenSnap/UnderDrag，全仓无调用方；
+ * 接回会在 150% 烙字。活路：BeginDragBackups → BackupWindowAtEx → ReadRectPhys。
+ */
 
 void BeginDragBackups(int DragIdx) {
     int i;

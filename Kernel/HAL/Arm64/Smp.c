@@ -3,10 +3,12 @@
  */
 #include "Compiler.h"
 #include "Hal.h"
+#include "HalSerial.h"
 #include "BoardConfig.h"
 #include "Virtio/Dtb.h"
 #include "Scheduler.h"
 #include "SerialLog.h"
+#include "CString.h"
 
 #define SmpLog(Text)   LogSmp(Text)
 #define SmpLogHex32(V) LogSmpHex32(V)
@@ -145,9 +147,68 @@ int HalSmpStartApplicationProcessors(void) {
     }
 
 #if !BOARD_IS_VIRT
-    /* 真机：禁止对 QEMU PSCI 发 HVC；3B 本柱先单核 */
-    SmpLog("Smp: Single CPU (board, no PSCI)\n");
-    return 0;
+    /*
+     * psmp-1：真机只探针 DTB 核数 / enable-method，禁止盲发 HVC，gCpuCount 仍为 1。
+     * 串口：Boot: Pi SMP cpus=N method=…
+     */
+    {
+        char EnableMethod[48];
+        char Line[96];
+        char DigitBuffer[12];
+        int MethodOk;
+        UINT32 CpuReported;
+        UINT32 Value;
+        int DigitCount;
+        int Index;
+        UINTN Offset;
+
+        Dtb = gSmpDtbPhys;
+        Want = Dtb != 0 ? DtbCpuCount(Dtb) : 0;
+        CpuReported = (UINT32)(Want > 0 ? Want : 0);
+        MethodOk = (Dtb != 0 &&
+                    DtbCpuEnableMethod(Dtb, EnableMethod,
+                                       (int)sizeof(EnableMethod)) == 0)
+                       ? 1
+                       : 0;
+        /* 走 BootMark：与 WIFI 同行可见；LogSmp 环可能未刷进壳串口 */
+        StringCopy(Line, sizeof(Line), "Boot: Pi SMP cpus=");
+        Offset = 0;
+        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
+            Offset++;
+        }
+        Value = CpuReported;
+        DigitCount = 0;
+        do {
+            DigitBuffer[DigitCount++] = (char)('0' + (Value % 10u));
+            Value /= 10u;
+        } while (Value != 0u && DigitCount < (int)sizeof(DigitBuffer));
+        for (Index = DigitCount; Index > 0 && Offset + 1 < sizeof(Line);
+             Index--) {
+            Line[Offset++] = DigitBuffer[Index - 1];
+        }
+        StringCopy(Line + Offset, sizeof(Line) - Offset, " method=");
+        Offset = 0;
+        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
+            Offset++;
+        }
+        if (MethodOk) {
+            StringCopy(Line + Offset, sizeof(Line) - Offset, EnableMethod);
+        } else {
+            StringCopy(Line + Offset, sizeof(Line) - Offset, "(none)");
+        }
+        Offset = 0;
+        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
+            Offset++;
+        }
+        if (Offset + 1 < sizeof(Line)) {
+            Line[Offset] = '\n';
+            Line[Offset + 1] = 0;
+        }
+        HalSerialBootMark(Line);
+        HalSerialBootMark(
+            "Smp: Single CPU (board probe only, no bring-up)\n");
+        return 0;
+    }
 #endif
 
     Dtb = gSmpDtbPhys ? gSmpDtbPhys : ARM64_VIRT_DTB_ADDR;

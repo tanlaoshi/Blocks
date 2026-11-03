@@ -15,4 +15,7 @@ int DtbFwCfgBase(UINT64 DtbPhys, UINT64 *OutBase);
 /* 统计 FDT 中 cpu@* 节点数（PR-A14）；失败返回 1 */
 int DtbCpuCount(UINT64 DtbPhys);
 
+/* 首个 cpu@* 的 enable-method 字符串；成功 0，失败 -1（Out 空串） */
+int DtbCpuEnableMethod(UINT64 DtbPhys, char *Out, int Capacity);
+
 #endif

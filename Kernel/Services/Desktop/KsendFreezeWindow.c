@@ -20,7 +20,7 @@ static void KsendFreezeWindowPaint(const char *Title, const char *Body) {
     UINT32 BoxY;
     UINT32 CellHeight;
     UINT32 TextWidth;
-    UINT32 Pad = 32u;
+    UINT32 Padding = 32u;
     UINT32 Y;
 
     HalVideoGetSize(&ScreenWidth, &ScreenHeight);
@@ -39,7 +39,7 @@ static void KsendFreezeWindowPaint(const char *Title, const char *Body) {
     if (BoxWidth > ScreenWidth - 40u) {
         BoxWidth = ScreenWidth > 40u ? ScreenWidth - 40u : ScreenWidth;
     }
-    BoxHeight = Pad * 2u + CellHeight * 3u + 24u;
+    BoxHeight = Padding * 2u + CellHeight * 3u + 24u;
     BoxX = (ScreenWidth - BoxWidth) / 2u;
     BoxY = (ScreenHeight - BoxHeight) / 2u;
 
@@ -52,7 +52,7 @@ static void KsendFreezeWindowPaint(const char *Title, const char *Body) {
     HalVideoFillRect(BoxX + BoxWidth - 3u, BoxY, 3u, BoxHeight,
                      ThemeDialogBorder());
 
-    Y = BoxY + Pad;
+    Y = BoxY + Padding;
     TextWidth = FontStringWidth(Title);
     HalVideoDrawStringAt(BoxX + (BoxWidth - TextWidth) / 2u, Y, Title,
                          ThemeText());
@@ -60,7 +60,13 @@ static void KsendFreezeWindowPaint(const char *Title, const char *Body) {
     TextWidth = FontStringWidth(Body);
     HalVideoDrawStringAt(BoxX + (BoxWidth - TextWidth) / 2u, Y, Body,
                          ThemeTextMuted());
-    HalVideoPresent();
+}
+
+static void KsendFreezeWindowPaintShow(const char *Title, const char *Body) {
+    /* 对表 BootGone / boot GOP：直写 scanout + dcache，勿只 PresentFlush */
+    HalVideoDrawBeginFront();
+    KsendFreezeWindowPaint(Title, Body);
+    HalVideoDrawEndFront();
 }
 
 static void KsendFreezeWindowBegin(void) {
@@ -82,7 +88,7 @@ static void KsendFreezeWindowBegin(void) {
     FontTtfPreheatUtf8(Title);
     FontTtfPreheatUtf8(Body);
     GuiPresentDeferPause();
-    KsendFreezeWindowPaint(Title, Body);
+    KsendFreezeWindowPaintShow(Title, Body);
     GuiPresentDeferResume();
 }
 

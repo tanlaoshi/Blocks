@@ -65,14 +65,12 @@ void DesktopWorkerTick(void) {
     }
     LastCheckTick = Now;
 
-    /* 失根：指针忙也检（勿整段 return 漏大窗） */
+    /* 失根：先 Poll（可能本拍才 Notify），再画窗。勿 LogFs 抢在窗前（落盘可堵）。 */
     if (HalUsbMscPollUnplug() == 1) {
-        if (FileSystemBootMediumGone()) {
-            LogFs("FS: msc/4 halt (boot medium removed)\n");
-            DesktopBootMediumGoneShutdown();
-        }
-        /* Gone 未钉时才 Remount（旁路拔）；已 Gone 则上面不返回 */
         sRemountWant = 1;
+    }
+    if (FileSystemBootMediumGone()) {
+        DesktopBootMediumGoneShutdown();
     }
 
     /*

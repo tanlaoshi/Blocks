@@ -18,6 +18,8 @@
 #include "Gpt.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
+#include "Desktop.h"
+#include "HalSerial.h"
 
 int gSecondaryReady;
 int gOsVolIdx = -1;
@@ -545,4 +547,10 @@ void FileSystemNotifyBootWatchUnplug(void) {
     }
     gBootMediumGone = 1;
     LogFs("FS: boot medium removed (watch port)\n");
+    /*
+     * 1103 Pi：仅靠 Clock 下一拍会漏窗（串口已见 sdhost unplug，无 boot-gone）。
+     * 闩住后当场进大窗关机（不返回）；X64 拔棒同形。
+     */
+    HalSerialWriteShell("\nFS: notify → boot-gone\n");
+    DesktopBootMediumGoneShutdown();
 }

@@ -2,7 +2,8 @@
  * Slide.c — 拖帧门闩 + CopyRect 平移（gui-g8-drag）
  *
  * gDragFrame：一帧只一核写后缓冲并 Present；他核见忙 → HoldDrain。
- * GuiPresentBlocked = gDragFrame | ComposeBusy（G1 门闩表）。
+ * GuiPresentBlocked = gDragFrame | ComposeBusy | InputLocked（G1 门闩表）。
+ * InputLocked：BootGone / 热更冻结窗挡 Shell 环 Present，免盖回桌面闪。
  * GuiDragActive = DragWin|ResizeWin ≥0 — Damage 早退用这个，≠ gDragFrame。
  *
  * RedrawDragFrameSlide（Move 有备份时热路径）：
@@ -31,7 +32,8 @@ void GuiDragFrameLeave(void) {
 }
 
 int GuiPresentBlocked(void) {
-    return gDragFrame != 0 || gGuiWindowManager.ComposeBusy != 0;
+    return gDragFrame != 0 || gGuiWindowManager.ComposeBusy != 0 ||
+           gGuiWindowManager.InputLocked != 0;
 }
 
 int GuiDragActive(void) {

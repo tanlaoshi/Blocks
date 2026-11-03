@@ -60,7 +60,7 @@ void GuiPresentDeferPause(void);
 void GuiPresentDeferResume(void);
 /* 打字回显：跳过本帧 GraphicsPresent；Shell 环末合并 */
 void GuiPresentShellEchoMark(void);
-/* gDragFrame|ComposeBusy：他核/Shell 勿 Present；Blocked→HoldDrain 见 gui-g8-drag */
+/* gDragFrame|ComposeBusy|InputLocked：他核/Shell 勿 Present；Blocked→HoldDrain 见 gui-g8-drag */
 int GuiPresentBlocked(void);
 /* DragWin|ResizeWin：ComposeDamage 早退（≠ gDragFrame） */
 int GuiDragActive(void);

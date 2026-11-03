@@ -2,6 +2,8 @@
  * Sdhost.c — Pi3B µSD SDHOST 门面（bd-pi-sd）
  */
 #include "Sdhost/Private.h"
+#include "FileSystem.h"
+#include "HalSerial.h"
 
 UINT32 gSdhostMaximumClock;
 UINT32 gSdhostHostConfiguration;
@@ -25,17 +27,24 @@ static int SdhostRead(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, vo
     UINT32 i;
 
     (void)Drive;
-    if (!gSdhostReady || !Buffer || Count == 0) {
+    if (!Buffer || Count == 0) {
+        return 0;
+    }
+    if (!gSdhostReady) {
+        if (gSdhostCardLost) {
+            FileSystemNotifyBootWatchUnplug();
+        }
         return 0;
     }
     gSdhostIoBusy++;
     for (i = 0; i < Count; i++) {
         if (SdhostReadOneBlock(LogicalBlockAddress + i, P + (UINTN)i * 512u) != 0) {
             (void)SdhostWaitTransferComplete();
-            SdhostMarkHexadecimal32("Boot: SDHOST read fail hsts=", gSdhostLastHostStatus);
-            HalSerialBootMark("\n");
             gSdhostCardLost = 1;
+            gSdhostReady = 0;
             gSdhostIoBusy--;
+            HalSerialWriteShell("\nFS: sdhost read fail → unplug\n");
+            FileSystemNotifyBootWatchUnplug();
             return 0;
         }
     }
@@ -48,17 +57,24 @@ static int SdhostWrite(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count, c
     UINT32 i;
 
     (void)Drive;
-    if (!gSdhostReady || Buffer == 0 || Count == 0) {
+    if (Buffer == 0 || Count == 0) {
+        return 0;
+    }
+    if (!gSdhostReady) {
+        if (gSdhostCardLost) {
+            FileSystemNotifyBootWatchUnplug();
+        }
         return 0;
     }
     gSdhostIoBusy++;
     for (i = 0; i < Count; i++) {
         if (SdhostWriteOneBlock(LogicalBlockAddress + i, P + (UINTN)i * 512u) != 0) {
             (void)SdhostWaitTransferComplete();
-            SdhostMarkHexadecimal32("Boot: SDHOST write fail hsts=", gSdhostLastHostStatus);
-            HalSerialBootMark("\n");
             gSdhostCardLost = 1;
+            gSdhostReady = 0;
             gSdhostIoBusy--;
+            HalSerialWriteShell("\nFS: sdhost write fail → unplug\n");
+            FileSystemNotifyBootWatchUnplug();
             return 0;
         }
     }

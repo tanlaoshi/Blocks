@@ -11,7 +11,7 @@
  *
  * | 点 | 判定 | 作用 |
  * | Kernel.c KernelTrySpawnInput | Count < MIN → return | 不 Create |
- * | 本文件 YieldForPollInput | Count < MIN → HalInputPoll | 稳态 drain |
+ * | 本文件 YieldForPollInput | Count < MIN → HalInputPoll；!TimerIrq → 鼠+µSD 失根探 | 稳态 drain |
  * | Hid.c TasksPumpKeyboard | Count < MIN → HalInputPoll | 同门闩 |
  * | XHCI/Irq.c InputIrqCpu | Count ≥ MIN → dest 2 else 0 | MSI 同核 |
  * | Scheduler/Start.c 钉核 | Cpus ≥ MIN → Input@2 | 与 Create 对齐 |
@@ -49,6 +49,14 @@ void YieldForPollInput(void) {
         if (!HalTimerUsesIrq() && GuiCursorUsbReady()) {
             GuiPollMouse();
         }
+    }
+    /*
+     * Pi 有 FB：Worker 无 CNTV IRQ 易饿死（同 DHCP 挂 Shell 环）。
+     * DesktopWorkerTick→PollUnplug 不跑 → 闲置拔卡无窗；开 Settings 触盘才认。
+     * 失根探活挂 !TimerIrq 路径（内节流 ~0.5s；Notify 当场 BootGone）。
+     */
+    if (!HalTimerUsesIrq()) {
+        (void)HalUsbMscPollUnplug();
     }
     if (!HalCpuIsHypervisor()) {
         UINT32 i;

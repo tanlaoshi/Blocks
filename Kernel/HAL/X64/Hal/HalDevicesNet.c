@@ -93,6 +93,16 @@ void HalNetPinPrimary(int Pin) {
     NetNicPinPrimary(Pin);
 }
 
+void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
+    (void)Ip;
+    (void)Mask;
+    (void)Gw;
+    (void)Dns;
+}
+
+void HalNetWifiLeavePrimary(void) {
+}
+
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     E1000DumpNote(Write);
 }

@@ -160,6 +160,16 @@ void HalNetPinPrimary(int Pin) {
     (void)Pin;
 }
 
+void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
+    (void)Ip;
+    (void)Mask;
+    (void)Gw;
+    (void)Dns;
+}
+
+void HalNetWifiLeavePrimary(void) {
+}
+
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     if (Write) {
 #if !BOARD_IS_VIRT && BOARD_HAS_NET

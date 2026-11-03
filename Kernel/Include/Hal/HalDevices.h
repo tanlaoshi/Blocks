@@ -208,6 +208,13 @@ int HalNetHasNicL2(void);
 int HalNetPrimaryKind(void);
 /* 钉住当前主槽（ksend serve）；非双槽板为空操作 */
 void HalNetPinPrimary(int Pin);
+/*
+ * Duo：wififw dhcp ACK 后把租约推进 NetConfig/lwIP，并切主槽到 Wi‑Fi。
+ * 其它架构空操作。Mask/Gw/Dns 为 0 时用 /24 与「无网关/无 DNS」。
+ */
+void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns);
+/* Duo：Wi‑Fi Disarm 时恢复有线租约/主槽；其它架构空操作 */
+void HalNetWifiLeavePrimary(void);
 /* PR-N-i219-note：Intel 网卡 PCI + e1000 Bind 只读现场；Write 通常=gConsole.Write */
 void HalNetDumpNicNote(void (*Write)(const char *Text));
 int HalNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);

@@ -51,9 +51,12 @@ static int PlatformSendEthernet(const UINT8 *Frame, UINTN Length) {
     return NetSendFrame(Frame, Length);
 #else
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 对表 Arm64：武装后先走 WiFi；未武装/失败一律回退 dwmac，绝不饿死有线 */
-    if (BoardWifiTryLinkOutput(Frame, Length) == 0) {
-        return 0;
+    /*
+     * 对表 X64 主槽：Wi‑Fi 主槽只走 SDIO；有线主槽只走 dwmac。
+     * 禁止「武装就抢 TX」——否则仍持有线 IP 时 TCP 回程黑洞（Duo 2026-11-03）。
+     */
+    if (HalNetPrimaryKind() == 1) {
+        return BoardWifiTryLinkOutput(Frame, Length) == 0 ? 0 : -1;
     }
 #endif
     return BoardEthernetSendFrame(Frame, Length);

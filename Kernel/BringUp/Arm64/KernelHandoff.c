@@ -229,8 +229,21 @@ void KernelHandoff(UINT64 DtbPhys) {
 #if BOARD_IS_VIRT
     HalSmpNoteDtb(UsedDtb ? UsedDtb : ARM64_VIRT_DTB_ADDR);
 #else
-    if (UsedDtb != 0) {
-        HalSmpNoteDtb(UsedDtb);
+    /*
+     * SMP 要 cpu@*：TryDtb 因 memory=<0 0> 模板失败时 UsedDtb 仍为 0。
+     * 只要 FDT magic 在，仍 Note 给 psmp（enable-method / release-addr）。
+     */
+    {
+        UINT64 SmpDtb = UsedDtb;
+        if (SmpDtb == 0 && DtbLooksValid(DtbPhys)) {
+            SmpDtb = DtbPhys;
+        }
+        if (SmpDtb == 0 && DtbLooksValid(BOARD_DTB_LOAD)) {
+            SmpDtb = BOARD_DTB_LOAD;
+        }
+        if (SmpDtb != 0) {
+            HalSmpNoteDtb(SmpDtb);
+        }
     }
 #endif
     KernelMain();

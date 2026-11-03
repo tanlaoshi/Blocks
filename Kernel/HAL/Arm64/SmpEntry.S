@@ -1,12 +1,15 @@
 /*
- * SmpEntry.S — PR-A14：PSCI CPU_ON 入口（x0=logical cpu）
+ * SmpEntry.S — AP 入口
+ *
+ * PSCI：context 常=logical；spin-table：x0 未定义。
+ * 一律用 MPIDR_EL1 Aff0 作逻辑 CPU（Pi 3B / virt 均 Aff0=0..N-1）。
  */
     .section .text, "ax"
     .global HalApEntry
     .type HalApEntry, %function
 HalApEntry:
-    /* x0 = context_id = logical CPU（BSP 传入） */
-    mov     x19, x0
+    mrs     x19, mpidr_el1
+    and     x19, x19, #0xff
 
     adrp    x1, gApStackTop
     add     x1, x1, :lo12:gApStackTop

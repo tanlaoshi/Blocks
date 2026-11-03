@@ -24,13 +24,18 @@ extern void HalPagingEnableAp(void);
 extern void HalExceptionVectorsInstall(void);
 
 UINT64 gApStackTop[HAL_MAX_CPUS];
+/* SmpBoard.c（psmp-2）等待 / 计数 */
+volatile UINT32 gApReady[HAL_MAX_CPUS];
+volatile UINT32 gApHelloCount;
 
 static UINT8 gApStacks[HAL_MAX_CPUS][8192] BLOCKS_ALIGNED(16);
 static int gCpuCount = 1;
-static volatile UINT32 gApReady[HAL_MAX_CPUS];
-static volatile UINT32 gApHelloCount;
 static volatile UINT64 gCpuTicks[HAL_MAX_CPUS];
 static UINT64 gSmpDtbPhys;
+
+#if !BOARD_IS_VIRT
+int SmpBoardStartApplicationProcessors(UINT64 DtbPhys, int *OutCpuCount);
+#endif
 
 void HalSmpNoteDtb(UINT64 DtbPhys) {
     if (DtbPhys != 0) {
@@ -148,65 +153,17 @@ int HalSmpStartApplicationProcessors(void) {
 
 #if !BOARD_IS_VIRT
     /*
-     * psmp-1：真机只探针 DTB 核数 / enable-method，禁止盲发 HVC，gCpuCount 仍为 1。
-     * 串口：Boot: Pi SMP cpus=N method=…
+     * psmp-2：按 DTB enable-method 拉 AP（spin-table / psci）；禁盲 HVC。
+     * memory 模板坏时 SmpBoard 可回落 BOARD_DTB_LOAD 读 cpu 节点。
      */
     {
-        char EnableMethod[48];
-        char Line[96];
-        char DigitBuffer[12];
-        int MethodOk;
-        UINT32 CpuReported;
-        UINT32 Value;
-        int DigitCount;
-        int Index;
-        UINTN Offset;
+        int BoardCpuCount = 1;
 
-        Dtb = gSmpDtbPhys;
-        Want = Dtb != 0 ? DtbCpuCount(Dtb) : 0;
-        CpuReported = (UINT32)(Want > 0 ? Want : 0);
-        MethodOk = (Dtb != 0 &&
-                    DtbCpuEnableMethod(Dtb, EnableMethod,
-                                       (int)sizeof(EnableMethod)) == 0)
-                       ? 1
-                       : 0;
-        /* 走 BootMark：与 WIFI 同行可见；LogSmp 环可能未刷进壳串口 */
-        StringCopy(Line, sizeof(Line), "Boot: Pi SMP cpus=");
-        Offset = 0;
-        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
-            Offset++;
-        }
-        Value = CpuReported;
-        DigitCount = 0;
-        do {
-            DigitBuffer[DigitCount++] = (char)('0' + (Value % 10u));
-            Value /= 10u;
-        } while (Value != 0u && DigitCount < (int)sizeof(DigitBuffer));
-        for (Index = DigitCount; Index > 0 && Offset + 1 < sizeof(Line);
-             Index--) {
-            Line[Offset++] = DigitBuffer[Index - 1];
-        }
-        StringCopy(Line + Offset, sizeof(Line) - Offset, " method=");
-        Offset = 0;
-        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
-            Offset++;
-        }
-        if (MethodOk) {
-            StringCopy(Line + Offset, sizeof(Line) - Offset, EnableMethod);
-        } else {
-            StringCopy(Line + Offset, sizeof(Line) - Offset, "(none)");
-        }
-        Offset = 0;
-        while (Offset + 1 < sizeof(Line) && Line[Offset] != 0) {
-            Offset++;
-        }
-        if (Offset + 1 < sizeof(Line)) {
-            Line[Offset] = '\n';
-            Line[Offset + 1] = 0;
-        }
-        HalSerialBootMark(Line);
-        HalSerialBootMark(
-            "Smp: Single CPU (board probe only, no bring-up)\n");
+        (void)Want;
+        (void)Started;
+        (void)Dtb;
+        (void)SmpBoardStartApplicationProcessors(gSmpDtbPhys, &BoardCpuCount);
+        gCpuCount = BoardCpuCount > 0 ? BoardCpuCount : 1;
         return 0;
     }
 #endif

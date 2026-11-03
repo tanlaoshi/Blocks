@@ -157,6 +157,16 @@ static int NameIsCpuAt(const char *Name) {
     return 1;
 }
 
+int DtbLooksValid(UINT64 DtbPhys) {
+    const FDT_HEADER *Header;
+
+    if (DtbPhys == 0) {
+        return 0;
+    }
+    Header = (const FDT_HEADER *)(UINTN)DtbPhys;
+    return DtbBe32(&Header->Magic) == FDT_MAGIC ? 1 : 0;
+}
+
 int DtbCpuCount(UINT64 DtbPhys) {
     const UINT8 *Blob;
     const FDT_HEADER *Hdr;

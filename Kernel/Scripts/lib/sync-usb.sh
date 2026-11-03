@@ -299,16 +299,25 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
   sync_blocks_fw "$BLOCKS_MNT"
-  # 图标不在内核里。快同步也带上 bmp48，否则 GAME.BMP 等要等全量镜像。
-  if [[ -d "$ROOT/RootFs/X64/Assets/Icons/bmp48" ]]; then
-    mkdir -p "$BLOCKS_MNT/Assets/Icons/bmp48"
-    if command -v rsync >/dev/null 2>&1; then
-      rsync -rltD --no-owner --no-group --no-perms \
-        "$ROOT/RootFs/X64/Assets/Icons/bmp48/" "$BLOCKS_MNT/Assets/Icons/bmp48/"
-    else
-      cp -f "$ROOT/RootFs/X64/Assets/Icons/bmp48/"*.BMP "$BLOCKS_MNT/Assets/Icons/bmp48/"
+  # 图标不在内核里。快同步带上 bmp32/48/72/96（缩放档），否则 GAME.BMP 等要等全量镜像。
+  if [[ -d "$ROOT/RootFs/X64/Assets/Icons" ]]; then
+    for tier in bmp32 bmp48 bmp72 bmp96; do
+      if [[ -d "$ROOT/RootFs/X64/Assets/Icons/$tier" ]]; then
+        mkdir -p "$BLOCKS_MNT/Assets/Icons/$tier"
+        if command -v rsync >/dev/null 2>&1; then
+          rsync -rltD --no-owner --no-group --no-perms \
+            "$ROOT/RootFs/X64/Assets/Icons/$tier/" "$BLOCKS_MNT/Assets/Icons/$tier/"
+        else
+          cp -f "$ROOT/RootFs/X64/Assets/Icons/$tier/"*.BMP "$BLOCKS_MNT/Assets/Icons/$tier/"
+        fi
+        echo "Assets/Icons/$tier -> $BLOCKS_MNT/Assets/Icons/$tier"
+      fi
+    done
+    # 扁平 SHELL.BMP 等：LoadBmpPath 首选；与 bmp48 同内容
+    if compgen -G "$ROOT/RootFs/X64/Assets/Icons/*.BMP" >/dev/null; then
+      mkdir -p "$BLOCKS_MNT/Assets/Icons"
+      cp -f "$ROOT/RootFs/X64/Assets/Icons/"*.BMP "$BLOCKS_MNT/Assets/Icons/" 2>/dev/null || true
     fi
-    echo "Assets/Icons/bmp48 -> $BLOCKS_MNT/Assets/Icons/bmp48"
   fi
   # 身份：保留「Blocks root volume」（Boot/装盘认卷文案）+ 第二行 USB
   printf "Blocks root volume\nUSB\n" > "$BLOCKS_MNT/BLOCKS.ID"

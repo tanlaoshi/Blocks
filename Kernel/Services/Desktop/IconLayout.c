@@ -222,7 +222,7 @@ void PlaceDesktopIcons(void) {
     gIcons[0].Action = DESKTOP_ACTION_SHELL;
     gIcons[0].ExecPath = 0;
     gIcons[0].IconColor = COLOR_BLUE;
-    /* 扁平 Icons/X.BMP；LoadBmpPath 失败再试 bmp48/ */
+    /* 扁平 Icons/X.BMP；LoadBmpPath 按 ThemeUiScale 再试 bmpNN/ */
     gIcons[0].BmpPath = "Assets/Icons/SHELL.BMP";
     gIcons[0].X = DESKTOP_ORIGIN_X;
     gIcons[0].Y = DESKTOP_ORIGIN_Y;

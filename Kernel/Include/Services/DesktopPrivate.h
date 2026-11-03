@@ -29,7 +29,7 @@
 #define DESKTOP_SYS_ICON_COUNT 5 /* Shell/Settings/Files/Store/Devices；Snake 只经 Store */
 #define DESKTOP_APP_ICON_MAX   8
 #define DESKTOP_ICON_COUNT     (DESKTOP_SYS_ICON_COUNT + DESKTOP_APP_ICON_MAX)
-#define DESKTOP_ICON_SIZE     48 /* 与 bmp48 同大，1:1 绘制，不再放大到 64 */
+#define DESKTOP_ICON_SIZE     48 /* 逻辑边长；资产按 ThemeUiScale 选 bmp32/48/72/96 */
 #define DESKTOP_ICON_GAP      UI_LAYOUT_ICON_GAP
 #define DESKTOP_ORIGIN_X      36
 #define DESKTOP_ORIGIN_Y      36
@@ -63,7 +63,7 @@
 #define MENU_ICON_SRC_SEP     (-4)
 #define MENU_ICON_SRC_GAME    (-5)
 #define WALL_FILE_MAX         (512u * 1024u)
-#define ICON_FILE_MAX         (16u * 1024u)
+#define ICON_FILE_MAX         (48u * 1024u) /* bmp96 BI_RGB ≈ 27KiB */
 
 /* ===== 类型（从 Desktop.c 搬入；布局不变） ===== */
 typedef struct {
@@ -230,6 +230,10 @@ int BmpImageDecode(const void *Data, UINTN Size, BMP_IMAGE *Out);
 void BmpFree(BMP_IMAGE *Img);
 void LoadDesktopIcons(void);
 void DesktopIconsResetDeferred(void);
+/* ThemeUiScale → 资产边长：50→32、100→48、150→72、200→96 */
+UINT32 DesktopIconAssetPixelSize(void);
+/* 1=当前已载档与 ThemeUiScale 一致（或尚未载过） */
+int DesktopIconsAssetTierMatches(void);
 /* PR-S-bundle-desktop：扫已装 app desktop=yes 填动态槽 */
 void DesktopLoadAppIcons(void);
 UINT32 BmpSampleScaled(const BMP_IMAGE *Img, UINT32 Dx, UINT32 Dy,

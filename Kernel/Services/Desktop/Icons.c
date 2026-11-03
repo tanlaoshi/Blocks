@@ -1,10 +1,15 @@
 /*
- * Icons.c — 图标 BMP / 布局 / 拖放移动（PR-S-desktop-split-3）
+ * Icons.c — 图标延迟加载状态 / 物理像素 blit（缩放档资产见 IconBitmapLoad.c）
  *
  * PR-BOOT-fast-1：冷启动只占位；BMP/菜单由 Worker 补齐。
  * 勿在 GuiPoll→TickClock 读盘：会与 Worker iwl/FW 的 IoBreath 重入 FAT → #GP@iretq。
+ *
+ * Blit：按 HalVideoGetDrawNum/Den 写物理像素，使 bmp96@200% 等 1:1 铺满，
+ * 避免「逻辑 48 色块再被 PixelSpan 放大」发糊。
  */
 #include "DesktopPrivate.h"
+
+#define ICON_BLIT_LINE_MAX 128u
 
 /* 0=尚未加载资源；1=已加载（含失败回退纯色） */
 static int sDesktopIconsReady;
@@ -12,247 +17,6 @@ static int sDesktopIconsReady;
 static int sDesktopIconsNeedRefresh;
 /* 切语言等：菜单需重建；仅 Worker / 点开始时扫盘 */
 static int sDesktopMenuRebuildWant;
-
-int PathHasVolPrefix(const char *Path) {
-    int i;
-
-    if (!Path) {
-        return 0;
-    }
-    for (i = 0; Path[i] && i < 16; i++) {
-        if (Path[i] == ':') {
-            return 1;
-        }
-        if (Path[i] == '/' || Path[i] == '\\') {
-            return 0;
-        }
-    }
-    return 0;
-}
-
-/*
- * 扁平 ↔ bmp48：
- *   …/bmp48/X → …/X
- *   …/Icons/X → …/Icons/bmp48/X
- */
-static int BmpPathAltLayout(const char *Path, char *Out, int OutMax) {
-    const char *P;
-    const char *Leaf;
-    int o;
-
-    if (!Path || !Out || OutMax <= 1) {
-        return 0;
-    }
-    Out[0] = 0;
-    for (P = Path; P[0]; P++) {
-        if (P[0] == '/' && P[1] == 'b' && P[2] == 'm' && P[3] == 'p' &&
-            P[4] == '4' && P[5] == '8' && P[6] == '/') {
-            o = 0;
-            for (Leaf = Path; Leaf < P && o < OutMax - 1; Leaf++) {
-                Out[o++] = *Leaf;
-            }
-            for (Leaf = P + 6; *Leaf && o < OutMax - 1; Leaf++) {
-                Out[o++] = *Leaf;
-            }
-            Out[o] = 0;
-            return 1;
-        }
-    }
-    Leaf = 0;
-    for (P = Path; *P; P++) {
-        if (*P == '/') {
-            Leaf = P + 1;
-        }
-    }
-    if (!Leaf || !Leaf[0]) {
-        return 0;
-    }
-    /* 父目录名须为 Icons（Leaf 前一段） */
-    P = Leaf - 1; /* '/' */
-    if (P < Path + 5) {
-        return 0;
-    }
-    if (!(P[-5] == 'I' && P[-4] == 'c' && P[-3] == 'o' && P[-2] == 'n' &&
-          P[-1] == 's' && (P - 5 == Path || P[-6] == '/'))) {
-        return 0;
-    }
-    o = 0;
-    for (P = Path; P < Leaf && o < OutMax - 1; P++) {
-        Out[o++] = *P;
-    }
-    if (o + 6 >= OutMax) {
-        return 0;
-    }
-    Out[o++] = 'b';
-    Out[o++] = 'm';
-    Out[o++] = 'p';
-    Out[o++] = '4';
-    Out[o++] = '8';
-    Out[o++] = '/';
-    for (P = Leaf; *P && o < OutMax - 1; P++) {
-        Out[o++] = *P;
-    }
-    Out[o] = 0;
-    return 1;
-}
-
-static void BmpPathWithVol(const char *Rel, char *Out, int OutMax) {
-    int i;
-
-    if (!Rel || !Out || OutMax < 9) {
-        return;
-    }
-    Out[0] = 'B';
-    Out[1] = 'L';
-    Out[2] = 'O';
-    Out[3] = 'C';
-    Out[4] = 'K';
-    Out[5] = 'S';
-    Out[6] = ':';
-    for (i = 0; Rel[i] && i < OutMax - 8; i++) {
-        Out[7 + i] = Rel[i];
-    }
-    Out[7 + i] = 0;
-}
-
-/* 读 BI_RGB BMP；试 Path / 去 bmp48 / BLOCKS:…。失败纯色回退。 */
-int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax,
-                       const char *Tag) {
-    UINT8 *Buf;
-    UINT32 Pages;
-    UINTN Size;
-    int Err;
-    char Flat[192];
-    char Vol[192];
-    const char *TryPath;
-    int Pass;
-    int HaveFlat;
-
-    (void)Tag;
-    if (!Path || !Out || FileMax < 54) {
-        return 0;
-    }
-    BmpFree(Out);
-    Pages = (FileMax + 4095u) / 4096u;
-    Buf = (UINT8 *)PhysicalMemoryAllocatePages(Pages);
-    if (!Buf) {
-        DebugWrite(Tag);
-        DebugWrite(": alloc failed\n");
-        return 0;
-    }
-
-    HaveFlat = BmpPathAltLayout(Path, Flat, (int)sizeof(Flat));
-
-    for (Pass = 0; Pass < 4; Pass++) {
-        if (Pass == 0) {
-            TryPath = Path;
-        } else if (Pass == 1) {
-            if (!HaveFlat) {
-                continue;
-            }
-            TryPath = Flat;
-        } else if (PathHasVolPrefix(Path)) {
-            break;
-        } else if (Pass == 2) {
-            BmpPathWithVol(Path, Vol, (int)sizeof(Vol));
-            TryPath = Vol;
-        } else {
-            if (!HaveFlat) {
-                continue;
-            }
-            BmpPathWithVol(Flat, Vol, (int)sizeof(Vol));
-            TryPath = Vol;
-        }
-
-        Size = 0;
-        Err = FileSystemReadFile(TryPath, Buf, FileMax, &Size);
-        if (Err != FAT_OK || Size < 54) {
-            continue;
-        }
-        if (BmpImageDecode(Buf, Size, Out) != 0) {
-            DebugWrite(Tag);
-            DebugWrite(": decode failed ");
-            DebugWrite(TryPath);
-            DebugWrite("\n");
-            continue;
-        }
-        PhysicalMemoryFreePages(Buf, Pages);
-        DebugWrite(Tag);
-        DebugWrite(": loaded ");
-        DebugWrite(TryPath);
-        DebugWrite("\n");
-        return 1;
-    }
-
-    PhysicalMemoryFreePages(Buf, Pages);
-    DebugWrite(Tag);
-    DebugWrite(": missing ");
-    DebugWrite(Path);
-    DebugWrite(" (solid fallback)\n");
-    return 0;
-}
-
-void LoadDesktopIcons(void) {
-    int i;
-    int Ok = 0;
-    static const char *const SysTags[DESKTOP_SYS_ICON_COUNT] = {
-        "desktop: shell", "desktop: set", "desktop: files", "desktop: store",
-        "desktop: info"
-    };
-    static const char Hex[] = "0123456789abcdef";
-
-    for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
-        const char *Tag;
-
-        gIcons[i].BmpReady = 0;
-        if (!gIcons[i].Present || !gIcons[i].BmpPath) {
-            continue;
-        }
-        if (i < DESKTOP_SYS_ICON_COUNT) {
-            Tag = SysTags[i];
-        } else {
-            Tag = "desktop: app";
-        }
-        gIcons[i].BmpReady = LoadBmpPath(gIcons[i].BmpPath, &gIcons[i].Bmp,
-                                         ICON_FILE_MAX, Tag);
-        if (gIcons[i].BmpReady) {
-            Ok++;
-        }
-    }
-    gStartBmpReady = LoadBmpPath("Assets/Icons/START.BMP", &gStartBmp,
-                                 ICON_FILE_MAX, "desktop: start");
-    gPowerBmpReady = LoadBmpPath("Assets/Icons/POWER.BMP", &gPowerBmp,
-                                 ICON_FILE_MAX, "desktop: power");
-    gRebootBmpReady = LoadBmpPath("Assets/Icons/REBOOT.BMP", &gRebootBmp,
-                                  ICON_FILE_MAX, "desktop: reboot");
-    gGameBmpReady = LoadBmpPath("Assets/Icons/GAME.BMP", &gGameBmp,
-                                ICON_FILE_MAX, "desktop: game");
-    if (gStartBmpReady) {
-        Ok++;
-    }
-    /* SCREEN_LOG：一眼看加载是否全挂（曾见盘上有 BMP 仍纯色） */
-    {
-        char Msg[24];
-        Msg[0] = 'G';
-        Msg[1] = 'u';
-        Msg[2] = 'i';
-        Msg[3] = ':';
-        Msg[4] = ' ';
-        Msg[5] = 'I';
-        Msg[6] = 'c';
-        Msg[7] = 'o';
-        Msg[8] = 'n';
-        Msg[9] = 'B';
-        Msg[10] = 'm';
-        Msg[11] = 'p';
-        Msg[12] = '=';
-        Msg[13] = Hex[(Ok >> 4) & 15];
-        Msg[14] = Hex[Ok & 15];
-        Msg[15] = '\n';
-        Msg[16] = 0;
-        LogGui(Msg);
-    }
-}
 
 void DesktopIconsResetDeferred(void) {
     sDesktopIconsReady = 0;
@@ -300,11 +64,10 @@ void DesktopEnsureIconsLoaded(void) {
     gDesktopBusy = 0;
     LogGui("Boot: Desktop Icons Loaded\n");
     DebugWrite("desktop: deferred icons+menu loaded (worker)\n");
-    /* 不在此 RequestRefresh：Worker 上全量 Compose@4K 易打穿栈；交 Gui DesktopTickClock */
 }
 
 UINT32 BmpSampleScaled(const BMP_IMAGE *Img, UINT32 Dx, UINT32 Dy,
-                              UINT32 Dw, UINT32 Dh) {
+                       UINT32 Dw, UINT32 Dh) {
     UINT32 Sx;
     UINT32 Sy;
 
@@ -324,33 +87,68 @@ UINT32 BmpSampleScaled(const BMP_IMAGE *Img, UINT32 Dx, UINT32 Dy,
 }
 
 void BlitBmpScaledRaw(UINT32 X, UINT32 Y, UINT32 Dw, UINT32 Dh,
-                             const BMP_IMAGE *Img) {
+                      const BMP_IMAGE *Img) {
+    UINT32 Num;
+    UINT32 Den;
+    UINT32 PhysicalX;
+    UINT32 PhysicalY;
+    UINT32 PhysicalWidth;
+    UINT32 PhysicalHeight;
     UINT32 Row;
     UINT32 Col;
-    UINT32 Line[64];
+    UINT32 Line[ICON_BLIT_LINE_MAX];
+    UINT32 Chunk;
 
     if (!Img || !Img->Pixels || Dw == 0 || Dh == 0) {
         return;
     }
-    if (Dw > 64) {
-        Dw = 64;
+    Num = HalVideoGetDrawNum();
+    Den = HalVideoGetDrawDen();
+    if (Num == 0u) {
+        Num = 1u;
     }
-    for (Row = 0; Row < Dh; Row++) {
-        for (Col = 0; Col < Dw; Col++) {
-            Line[Col] = BmpSampleScaled(Img, Col, Row, Dw, Dh);
+    if (Den == 0u) {
+        Den = 1u;
+    }
+    PhysicalX = (UINT32)(((UINT64)X * (UINT64)Num) / (UINT64)Den);
+    PhysicalY = (UINT32)(((UINT64)Y * (UINT64)Num) / (UINT64)Den);
+    PhysicalWidth =
+        (UINT32)(((UINT64)(X + Dw) * (UINT64)Num) / (UINT64)Den) - PhysicalX;
+    PhysicalHeight =
+        (UINT32)(((UINT64)(Y + Dh) * (UINT64)Num) / (UINT64)Den) - PhysicalY;
+    if (PhysicalWidth == 0u) {
+        PhysicalWidth = 1u;
+    }
+    if (PhysicalHeight == 0u) {
+        PhysicalHeight = 1u;
+    }
+
+    for (Row = 0; Row < PhysicalHeight; Row++) {
+        for (Col = 0; Col < PhysicalWidth; Col += ICON_BLIT_LINE_MAX) {
+            Chunk = PhysicalWidth - Col;
+            if (Chunk > ICON_BLIT_LINE_MAX) {
+                Chunk = ICON_BLIT_LINE_MAX;
+            }
+            {
+                UINT32 i;
+                for (i = 0; i < Chunk; i++) {
+                    Line[i] = BmpSampleScaled(Img, Col + i, Row,
+                                              PhysicalWidth, PhysicalHeight);
+                }
+            }
+            HalVideoWriteRectPhys(PhysicalX + Col, PhysicalY + Row, Chunk, 1u,
+                                  Line);
         }
-        HalVideoWriteRect(X, Y + Row, Dw, 1, Line);
     }
 }
-
-/* BlitBmpScaledFree reserved if taskbar occlusion needs per-pixel later */
 
 void BlitIconFaceRaw(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
     if (Icon->BmpReady && Icon->Bmp.Pixels) {
         BlitBmpScaledRaw(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, &Icon->Bmp);
         return;
     }
-    GraphicsFillRectangle(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE, Icon->IconColor);
+    GraphicsFillRectangle(X, Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE,
+                          Icon->IconColor);
 }
 
 void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
@@ -372,6 +170,10 @@ void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
         if (H > 64u) {
             H = 64u;
         }
+        /*
+         * 遮挡路径仍走逻辑 WriteRect：PointOccupied 是逻辑坐标；
+         * 与窗叠边时偶发略糊可接受，主路径 BlitIconFaceRaw 已物理采样。
+         */
         for (Row = 0; Row < H; Row++) {
             InRun = 0;
             RunStart = 0;
@@ -383,8 +185,8 @@ void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
                         RunStart = Col;
                         InRun = 1;
                     } else if (!Free && InRun) {
-                        HalVideoWriteRect(X + RunStart, Y + Row, Col - RunStart, 1,
-                                          &Line[RunStart]);
+                        HalVideoWriteRect(X + RunStart, Y + Row,
+                                          Col - RunStart, 1, &Line[RunStart]);
                         InRun = 0;
                     }
                 }

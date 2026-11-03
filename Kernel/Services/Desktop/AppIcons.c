@@ -3,7 +3,7 @@
  */
 #include "DesktopPrivate.h"
 
-#define DEFAULT_APP_ICON "Assets/Icons/bmp48/HOME.BMP"
+#define DEFAULT_APP_ICON "Assets/Icons/HOME.BMP"
 
 int BmpImageDecode(const void *Data, UINTN Size, BMP_IMAGE *Out) {
     UINT32 W;

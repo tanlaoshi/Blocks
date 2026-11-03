@@ -247,7 +247,7 @@ void DesktopInitialize(void) {
      */
 }
 
-/* 热切分辨率：只重算壁纸缓存与图标坐标，不重读 BMP（防 FAT/长循环重入） */
+/* 热切分辨率：重算壁纸/坐标；缩放档变了则延后重读 BMP（Worker Ensure） */
 void DesktopOnDisplayResize(void) {
     if (gDesktopBusy) {
         DebugWrite("desktop: resize reenter ignored\n");
@@ -270,6 +270,14 @@ void DesktopOnDisplayResize(void) {
     FreeWallScreen();
     if (ThemeWallpaperEnabled() && gWallReady) {
         BuildWallScreen();
+    }
+    /*
+     * 勿在此同步读盘（Gui 路径易与 Worker FAT 重入）。档变则 Reset，
+     * Worker DesktopEnsureIconsLoaded 换 bmp32/48/72/96。
+     */
+    if (!DesktopIconsAssetTierMatches()) {
+        DesktopIconsResetDeferred();
+        DebugWrite("desktop: icon asset tier stale; reload deferred\n");
     }
     gDesktopBusy = 0;
 }

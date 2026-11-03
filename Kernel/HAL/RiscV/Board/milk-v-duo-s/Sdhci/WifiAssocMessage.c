@@ -106,12 +106,14 @@ static UINT32 JoinSsidLength(const char *Ssid) {
  *   00 00            RSN 能力位：不做 MFP / 不预认证 / 不要求 PMF
  * 不能逐字节拼错：AP 按这 22 B 决定给不给 M1（不带它 = status_code 12，
  * 真机 PR-32 第二刀已经撞过一次）。
+ * 2026-11-03：组播曾误写 TKIP → NM Hotspot（group=ccmp）回 status 0x29
+ * （WLAN_STATUS_INVALID_GROUP_CIPHER=41）；改回 CCMP 与上文表一致。
  */
 static const UINT8 sAicJoinRsnIe[AIC_JOIN_RSN_IE_LENGTH] = {
     (UINT8)AIC_JOIN_RSN_IE_ID, (UINT8)AIC_JOIN_RSN_IE_BODY_LENGTH,
     (UINT8)AIC_JOIN_RSN_VERSION, 0x00u,
-    /* 组播：跟 AP 声明一致（TKIP）；单播：CCMP */
-    0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_SUITE_TKIP,
+    /* 组播/单播：CCMP（对表现代 AP / NM Hotspot group=ccmp pairwise=ccmp） */
+    0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_SUITE_CCMP,
     (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT, 0x00u,
     0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_SUITE_CCMP,
     (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT, 0x00u,

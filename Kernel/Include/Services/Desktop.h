@@ -53,6 +53,8 @@ void DesktopBootLogoFinish(void);
  * usb-boot-unplug：启动盘已拔 — 大窗提示，5 秒倒数后 HalCpuShutdown（不返回）。
  */
 void DesktopBootMediumGoneShutdown(void);
+/* ksend 热更：登记 Gui 大窗冻结（NUC/Pi；Duo 不调） */
+void KsendFreezeWindowRegister(void);
 /* PR-BOOT-fast-1：Worker 补齐 BMP/菜单；Gui 只 Consume 后刷新（勿在 Gui 路径读盘） */
 void DesktopEnsureIconsLoaded(void);
 /* gui-wall-defer：Reveal 后 Worker 读 WALL.BMP + BuildWallScreen；Gui Consume 刷新 */

@@ -169,4 +169,6 @@ const char *const gMsgKeys[MSG_COUNT] = {
     "MSG_BOOT_GONE_BODY",
     "MSG_BOOT_GONE_BEFORE",
     "MSG_BOOT_GONE_AFTER",
+    "MSG_KSEND_UPDATING_TITLE",
+    "MSG_KSEND_UPDATING_BODY",
 };

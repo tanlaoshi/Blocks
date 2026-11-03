@@ -171,6 +171,7 @@ void GuiDesktopInitialize(void) {
         Desk.CursorUsbReady = GuiCursorUsbReady;
         DesktopOpsRegister(&Desk);
     }
+    KsendFreezeWindowRegister();
     /*
      * 首帧桌面：先停 GOP、整屏黑 sync，再一次 PresentFlush（抬高条带）。
      * 避免 U-Boot/boot 字与桌面条带撕开「底半先出任务栏」。

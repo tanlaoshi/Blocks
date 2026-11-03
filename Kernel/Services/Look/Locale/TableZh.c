@@ -169,4 +169,6 @@ const char *const gZhFallback[MSG_COUNT] = {
     "系统无法继续运行。",
     "计算机将在",
     "秒后关闭",
+    "正在热更",
+    "请稍候，勿断电",
 };

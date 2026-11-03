@@ -169,4 +169,6 @@ const char *const gEnFallback[MSG_COUNT] = {
     "The system cannot continue.",
     "Shutting down in",
     "seconds",
+    "Updating",
+    "Please wait; do not power off",
 };

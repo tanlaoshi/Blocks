@@ -6,6 +6,7 @@
  * 校验不过绝不复位；--no-backup 失败不回滚。
  */
 #include "Ksend/Private.h"
+#include "Hal/KsendFreeze.h"
 #include "FileSystem.h"
 #include "LwIp.h"
 #include "Scheduler.h"
@@ -225,14 +226,17 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
         return 1;
     }
     KsendPathsNote(&Run);
+    KsendFreezeBegin();
     KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     Rc = TransferRun(&Run);
     if (Rc == 0) {
         KsendVolumeRelease(&Run);
         KsendSuccessLine(Run.TrailerCrc, Run.Written, Run.NewSize);
         if (Run.Reboot == 0) {
+            KsendFreezeEnd();
             return 0;
         }
+        /* 复位不关窗：新核冷启会重画 */
         KsendSerialDrainTransmitter();
         KsendReboot();
         return 0;
@@ -247,5 +251,6 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     CacheDropAfterFailure(&Run);
     KsendVolumeRelease(&Run);
     KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MILLISECONDS, KSEND_FAIL_DRAIN_LIMIT_MILLISECONDS);
+    KsendFreezeEnd();
     return 1;
 }

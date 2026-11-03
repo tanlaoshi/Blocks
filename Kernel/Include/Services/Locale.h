@@ -180,6 +180,8 @@ typedef enum {
     MSG_BOOT_GONE_BODY,
     MSG_BOOT_GONE_BEFORE, /* 计算机将在 / Shutting down in */
     MSG_BOOT_GONE_AFTER,  /* 秒后关闭 / seconds */
+    MSG_KSEND_UPDATING_TITLE, /* 正在热更 */
+    MSG_KSEND_UPDATING_BODY,  /* 请稍候，勿断电 */
     MSG_COUNT
 } MSG_ID;
 

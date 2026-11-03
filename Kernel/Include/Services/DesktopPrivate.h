@@ -158,6 +158,8 @@ int RectsOverlap(UINT32 Ax, UINT32 Ay, UINT32 Aw, UINT32 Ah,
                  UINT32 Bx, UINT32 By, UINT32 Bw, UINT32 Bh);
 void IconBounds(const DESKTOP_ICON *Icon, UINT32 *X, UINT32 *Y,
                 UINT32 *W, UINT32 *H);
+void IconBoundsPadded(const DESKTOP_ICON *Icon, UINT32 Pad, UINT32 *X,
+                      UINT32 *Y, UINT32 *W, UINT32 *H);
 int PointInIcon(const DESKTOP_ICON *Icon, UINT32 X, UINT32 Y);
 void TaskbarGeom(UINT32 *BarY, UINT32 *Sw, UINT32 *Sh);
 void StartBtnGeom(UINT32 *OutX, UINT32 *OutY, UINT32 *OutW, UINT32 *OutH);

@@ -24,6 +24,13 @@ void DesktopDrawRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         }
         IconBounds(&gIcons[i], &Ix, &Iy, &Iw, &Ih);
         if (RectsOverlap(X, Y, W, H, Ix, Iy, Iw, Ih)) {
+            /*
+             * bug-gui-drag-icon-bold：拖窗擦条只清足迹，DesktopDrawRect 却整标
+             * 重画；150% Latin soft-AA 叠未清像素 → 暂粗，松手 Sync 才恢复。
+             * 对表 IconMove：先清满墨盒（含标签+AA 边）再 Occluded 画一次。
+             */
+            IconBoundsPadded(&gIcons[i], 4u, &Ix, &Iy, &Iw, &Ih);
+            DesktopFillRectFree(Ix, Iy, Iw, Ih);
             DrawOneIconOccluded(&gIcons[i], i == gDeskSelected);
         }
     }

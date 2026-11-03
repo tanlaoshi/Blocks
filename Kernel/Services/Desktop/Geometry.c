@@ -39,6 +39,47 @@ void IconBounds(const DESKTOP_ICON *Icon, UINT32 *X, UINT32 *Y,
     *H = Bottom - Icon->Y;
 }
 
+/*
+ * IconBounds 外扩 Pad（对表 IconMove）：150% 时 Latin soft-AA 会略出字格，
+ * 擦脏条未盖满再 Blend → 暂粗（bug-gui-drag-icon-bold）。
+ */
+void IconBoundsPadded(const DESKTOP_ICON *Icon, UINT32 Pad, UINT32 *X,
+                      UINT32 *Y, UINT32 *W, UINT32 *H) {
+    UINT32 ScreenWidth;
+    UINT32 ScreenHeight;
+
+    if (!Icon || !X || !Y || !W || !H) {
+        return;
+    }
+    IconBounds(Icon, X, Y, W, H);
+    if (Pad == 0u) {
+        return;
+    }
+    HalVideoGetSize(&ScreenWidth, &ScreenHeight);
+    if (*X >= Pad) {
+        *X -= Pad;
+        *W += Pad;
+    } else {
+        *W += *X;
+        *X = 0;
+    }
+    if (*Y >= Pad) {
+        *Y -= Pad;
+        *H += Pad;
+    } else {
+        *H += *Y;
+        *Y = 0;
+    }
+    *W += Pad;
+    *H += Pad;
+    if (ScreenWidth != 0u && *X + *W > ScreenWidth) {
+        *W = ScreenWidth - *X;
+    }
+    if (ScreenHeight != 0u && *Y + *H > ScreenHeight) {
+        *H = ScreenHeight - *Y;
+    }
+}
+
 int PointInIcon(const DESKTOP_ICON *Icon, UINT32 X, UINT32 Y) {
     UINT32 Ix;
     UINT32 Iy;

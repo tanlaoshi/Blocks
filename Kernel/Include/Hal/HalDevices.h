@@ -206,6 +206,8 @@ int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex);
 int HalNetHasNicL2(void);
 /* PR-N-nic-2slot：默认出站 0=有线 1=无线 -1=无外置 L2（virtio 等） */
 int HalNetPrimaryKind(void);
+/* 钉住当前主槽（ksend serve）；非双槽板为空操作 */
+void HalNetPinPrimary(int Pin);
 /* PR-N-i219-note：Intel 网卡 PCI + e1000 Bind 只读现场；Write 通常=gConsole.Write */
 void HalNetDumpNicNote(void (*Write)(const char *Text));
 int HalNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);

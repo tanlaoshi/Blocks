@@ -19,6 +19,11 @@ int TcpSocketConnect(int Sock, UINT32 DstIp, UINT16 DstPort, int TimeoutMs);
 int TcpSocketSend(int Sock, const void *Data, UINTN Len);
 /* >0 字节；0 暂无数据；-1 错；-2 对端关闭且缓冲空 */
 int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs);
+/*
+ * 等到未发/未确认段排空（snd_queuelen==0）或超时。
+ * ksend READY/表：仅把字节写入 sndbuf 不够，Wi‑Fi 上主机仍可能永远读不到行。
+ */
+int TcpSocketFlushOut(int Sock, int TimeoutMs);
 int TcpSocketClose(int Sock);
 
 #endif

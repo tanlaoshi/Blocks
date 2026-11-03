@@ -155,8 +155,24 @@ static int TransferRun(KSEND_RUN *Run) {
     KsendImageCopy(&gKsendNewImage, &gKsendOldImage);
     KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     KsendReadyLine(&gKsendOldImage);
+    /* READY：SerialWrite 已 WaitPeerAcknowledge */
+    if (!KsendTransportSendHealthy()) {
+        KsendNote("transport: stalled sending READY");
+        Run->Failure = KSEND_FAIL_SEND;
+        return -1;
+    }
     KsendBlockTable(&gKsendOldImage);
+    /* 表末：Report 内 WaitPeerAcknowledge；失败 → SendBroken */
+    if (!KsendTransportSendHealthy()) {
+        KsendNote("transport: stalled sending block table");
+        Run->Failure = KSEND_FAIL_SEND;
+        return -1;
+    }
     if (KsendReceiveBlocks(Run) != 0) {
+        if (KsendTransportUserAborted()) {
+            Run->Failure = KSEND_FAIL_ABORT;
+            KsendNote("transport: aborted (Ctrl-C)");
+        }
         return -1;
     }
     return FinishImage(Run);

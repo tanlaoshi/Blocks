@@ -57,13 +57,24 @@ static int BatchFlush(KSEND_RUN *Run) {
     return 1;
 }
 
-/* 收一块进批缓冲；不连续或末块（短块）先把前面的批 flush 掉 */
+/*
+ * 收一块进批缓冲。'A' 必须在本函数返回后立刻发出（见 ReceiveOneBlock），
+ * 故满批/不连续时只 flush「已经 A 过的旧批」，再接纳本块；禁止在接纳本块后
+ * 再同步刷盘——否则每 ~512KB 会把 ACK 拖死，Pi 串口大传必超时（2026-11-02）。
+ * 短块（最后一块）仍立刻 flush，因随后就是收尾/校验。
+ */
 static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
     UINT32 At;
 
     if (sBatchBlocks > 0u &&
         (Index != sBatchFirstIndex + sBatchBlocks ||
          Length != KSEND_BLOCK_BYTES)) {
+        if (!BatchFlush(Run)) {
+            return 0;
+        }
+    }
+    if (sBatchBlocks > 0u &&
+        (sBatchBytes + Length) > KSEND_BATCH_LIMIT_BYTES) {
         if (!BatchFlush(Run)) {
             return 0;
         }
@@ -75,8 +86,7 @@ static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
     CopyBlock(KsendFileBuffer() + At, sBlockBuffer, Length);
     sBatchBlocks++;
     sBatchBytes = At + Length;
-    if (sBatchBytes + KSEND_BLOCK_BYTES > KSEND_BATCH_LIMIT_BYTES ||
-        Length != KSEND_BLOCK_BYTES) {
+    if (Length != KSEND_BLOCK_BYTES) {
         if (!BatchFlush(Run)) {
             return 0;
         }

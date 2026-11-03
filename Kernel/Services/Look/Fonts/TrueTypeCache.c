@@ -9,6 +9,7 @@
 #include "Hal.h"
 #include "Compiler.h"
 #include "SerialLog.h"
+#include "Debug.h"
 
 #define TTF_CACHE_N 1024u
 #define TTF_PROBE   32u
@@ -38,6 +39,7 @@ typedef struct {
  * 一张表里，于是 4/7 之类的个位数停在上一张脸。下面每行日志带 font-id /
  * slot / gen，用来分辨三种可能：没清 / 清了又被写回 / 压根没进缓存。
  */
+#if KERNEL_DEBUG
 static char gDiagLine[176];
 
 static char *DiagStr(char *P, const char *S) {
@@ -71,6 +73,7 @@ static char *DiagPair(char *P, const char *Key, UINT32 V) {
     *P++ = '=';
     return DiagU32(P, V);
 }
+#endif
 
 /* 字形日志每代只打一次每个码位，免得每帧刷屏 */
 #define TTF_DIAG_N (TTF_CACHE_N / 8u)
@@ -97,8 +100,19 @@ void FontDiagRasterSrc(UINT32 Src) {
 
 static void DiagGlyph(UINT32 Cp, UINT32 Side, int FromCache, int Miss,
                       UINT32 HitGen, UINT32 Adv) {
+#if !KERNEL_DEBUG
+    (void)Cp;
+    (void)Side;
+    (void)FromCache;
+    (void)Miss;
+    (void)HitGen;
+    (void)Adv;
+#else
     char *P = gDiagLine;
 
+    if (HalSerialShellOwned()) {
+        return;
+    }
     P = DiagStr(P, "FONT glyph");
     P = DiagPair(P, "cp", Cp);
     P = DiagPair(P, "side", Side);
@@ -113,11 +127,19 @@ static void DiagGlyph(UINT32 Cp, UINT32 Side, int FromCache, int Miss,
     *P++ = '\n';
     *P = 0;
     HalSerialWriteShell(gDiagLine);
+#endif
 }
 
 static void DiagStale(UINT32 Cp, UINT32 Gen0) {
+#if !KERNEL_DEBUG
+    (void)Cp;
+    (void)Gen0;
+#else
     char *P = gDiagLine;
 
+    if (HalSerialShellOwned()) {
+        return;
+    }
     P = DiagStr(P, "FONT stale-raster");
     P = DiagPair(P, "cp", Cp);
     P = DiagPair(P, "gen0", Gen0);
@@ -127,11 +149,19 @@ static void DiagStale(UINT32 Cp, UINT32 Gen0) {
     *P++ = '\n';
     *P = 0;
     HalSerialWriteShell(gDiagLine);
+#endif
 }
 
 static void DiagDrop(UINT32 Hits, UINT32 Misses) {
+#if !KERNEL_DEBUG
+    (void)Hits;
+    (void)Misses;
+#else
     char *P = gDiagLine;
 
+    if (HalSerialShellOwned()) {
+        return;
+    }
     P = DiagStr(P, "FONT drop");
     P = DiagPair(P, "hits", Hits);
     P = DiagPair(P, "miss", Misses);
@@ -140,6 +170,7 @@ static void DiagDrop(UINT32 Hits, UINT32 Misses) {
     *P++ = '\n';
     *P = 0;
     HalSerialWriteShell(gDiagLine);
+#endif
 }
 
 static int TtfCpOk(UINT32 Cp) {

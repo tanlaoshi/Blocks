@@ -17,6 +17,8 @@ static const NIC_L2 *gNicSlot[NET_NIC_SLOTS];
 static NET_NIC_KIND gPrimaryKind = NET_NIC_KIND_WIRED;
 static UINT32 gNicEpoch;
 static int gProtoAttached;
+/* 1=禁止 SelectPrimary 换槽（ksend serve 期间钉住，防拔线抖动切走 TX） */
+static int gPrimaryPinned;
 
 static int SlotLinkUp(const NIC_L2 *Nic) {
     int Up = 0;
@@ -46,16 +48,42 @@ static void ApplyPrimary(NET_NIC_KIND Kind) {
     }
     gNicEpoch++;
     Nic->GetMac(gMac);
-    gLwIpRx = 0;
+    /*
+     * 勿清 gLwIpRx：主槽只换 L2 出站/MAC。收包是否进 lwIP 由 NetSetLwIpRx 管。
+     * 拔网线切 Wi‑Fi 时若清掉，帧进自研 IpInput，lwIP listen 变聋；
+     * ping 仍可能被自研栈应答（NUC 网热更 2026-11-02）。
+     */
     gNetOk = 1;
     NetConfigEnsure();
     DebugWrite(Kind == NET_NIC_KIND_WIFI ? "Net: primary wifi\n" : "Net: primary wired\n");
 }
 
-static void SelectPrimary(void) {
-    int WiredUp = SlotLinkUp(gNicSlot[NET_NIC_KIND_WIRED]);
-    int WifiUp = SlotLinkUp(gNicSlot[NET_NIC_KIND_WIFI]);
+void NetNicPinPrimary(int Pin) {
+    gPrimaryPinned = Pin ? 1 : 0;
+}
 
+static void SelectPrimary(void) {
+    int WiredUp;
+    int WifiUp;
+
+    if (gPrimaryPinned) {
+        return;
+    }
+    WiredUp = SlotLinkUp(gNicSlot[NET_NIC_KIND_WIRED]);
+    WifiUp = SlotLinkUp(gNicSlot[NET_NIC_KIND_WIFI]);
+
+    /*
+     * 粘滞：当前主槽仍 up 则不抢。有线 link 空上却抢走 Wi‑Fi TX 时，
+     * ksend serve 回程黑洞（主机 timeout waiting for READY，2026-11-03）。
+     */
+    if (gPrimaryKind == NET_NIC_KIND_WIFI && WifiUp) {
+        ApplyPrimary(NET_NIC_KIND_WIFI);
+        return;
+    }
+    if (gPrimaryKind == NET_NIC_KIND_WIRED && WiredUp) {
+        ApplyPrimary(NET_NIC_KIND_WIRED);
+        return;
+    }
     if (WiredUp) {
         ApplyPrimary(NET_NIC_KIND_WIRED);
         return;

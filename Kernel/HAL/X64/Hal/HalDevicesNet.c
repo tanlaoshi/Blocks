@@ -89,6 +89,10 @@ int HalNetPrimaryKind(void) {
     return NetNicPrimaryKind();
 }
 
+void HalNetPinPrimary(int Pin) {
+    NetNicPinPrimary(Pin);
+}
+
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     E1000DumpNote(Write);
 }

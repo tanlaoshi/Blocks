@@ -75,6 +75,10 @@ int LwIpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     return TcpSocketRecv(Sock, Buf, Len, TimeoutMs);
 }
 
+int LwIpSocketFlushOut(int Sock, int TimeoutMs) {
+    return TcpSocketFlushOut(Sock, TimeoutMs);
+}
+
 int LwIpSocketClose(int Sock) {
     return TcpSocketClose(Sock);
 }
@@ -164,6 +168,12 @@ int LwIpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs) {
     (void)Sock;
     (void)Buf;
     (void)Len;
+    (void)TimeoutMs;
+    return -1;
+}
+
+int LwIpSocketFlushOut(int Sock, int TimeoutMs) {
+    (void)Sock;
     (void)TimeoutMs;
     return -1;
 }

@@ -14,6 +14,8 @@
 #include "PhysicalMemory.h"
 #include "LibWrite.h"
 #include "SerialLog.h"
+#include "Debug.h"
+#include "Hal.h"
 
 #define FONT_TOYF_MAGIC   0x46594F54u /* 'TOYF' LE */
 #define FONT_TOYF_VERSION 1u
@@ -562,9 +564,10 @@ const FONT_FACE *FontGetCurrent(void) {
 }
 
 /*
- * PR-22-diag：换字体诊断（串口一行，避免 printf；内核栈只有 8KiB，缓冲放 static）。
- * 口径：id= 目标字体 / prev= 之前 / slot= UI TTF 槽 旧→新 / drop= 是否整片作废。
+ * PR-22-diag：换字体诊断（串口一行；KERNEL_DEBUG=1 才编进）。
+ * 正式构建勿刷屏——拔盘 Gone 窗栅 0-9 曾刷 FONT glyph fallback=point。
  */
+#if KERNEL_DEBUG
 static char gDiagLine[192];
 
 /* 软退点阵日志：每码位每次换字体只记一次（ASCII 只有 128 个） */
@@ -604,8 +607,6 @@ static char *DiagPair(char *P, const char *Key, UINT32 V) {
     return DiagU32(P, V);
 }
 
-
-/* UI TTF 选中却退回点阵：这正是「个别数字像 Terminus」的可见路径，必须留证 */
 static int FontDiagFallbackFirst(UINT32 Cp) {
     UINT32 Idx = Cp & 127u;
     UINT32 Bit = 1u << (Idx & 7u);
@@ -620,6 +621,9 @@ static int FontDiagFallbackFirst(UINT32 Cp) {
 static void FontDiagFallback(UINT32 Cp, UINT32 FontId, UINT32 Slot) {
     char *P = gDiagLine;
 
+    if (HalSerialShellOwned()) {
+        return;
+    }
     P = DiagStr(P, "FONT glyph");
     P = DiagPair(P, "cp", Cp);
     P = DiagPair(P, "from-cache", 0u);
@@ -629,6 +633,18 @@ static void FontDiagFallback(UINT32 Cp, UINT32 FontId, UINT32 Slot) {
     *P = 0;
     HalSerialWriteShell(gDiagLine);
 }
+#else
+static int FontDiagFallbackFirst(UINT32 Cp) {
+    (void)Cp;
+    return 0;
+}
+
+static void FontDiagFallback(UINT32 Cp, UINT32 FontId, UINT32 Slot) {
+    (void)Cp;
+    (void)FontId;
+    (void)Slot;
+}
+#endif
 
 int FontSetById(UINT32 Id) {
     UINT32 PrevId;

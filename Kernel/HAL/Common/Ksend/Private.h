@@ -40,7 +40,12 @@
  * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。512 KB 一块把调用次数压到
  * 1/128，配合 FAT 分配提示后 2.1 MB 的部署才真正可用。
  * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 Receive.c）。 */
-#define KSEND_IO_CHUNK_BYTES      (512u * 1024u)
+/*
+ * 批写上限。过大时 BatchAccept 在回 A 前同步刷旧批，Wi‑Fi+USB MSC 同 xHCI
+ * 上会把 PC 的 ACK 等穿（NUC 真机 ~128 块边界卡死，2026-11-03）。
+ * 64KiB：约 16 块一刷，落盘短，ACK 不被拖死。
+ */
+#define KSEND_IO_CHUNK_BYTES      (64u * 1024u)
 #define KSEND_TEXT_BYTES          192u
 
 /* —— 差量表缓存 <目标全名>.crc（Cache.c）——
@@ -106,6 +111,7 @@
 #define KSEND_FAIL_SHRINK  7 /* 补零失败 */
 #define KSEND_FAIL_EMPTY   8 /* 一个块都没收到 */
 #define KSEND_FAIL_ABORT   9 /* PC 主动放弃 */
+#define KSEND_FAIL_SEND   10 /* TCP/串口发送停滞（Wi‑Fi 表发死等） */
 
 /* 一个文件的分块图：整文件 CRC + 每 4 KB 一块的 CRC */
 typedef struct {
@@ -157,17 +163,35 @@ int KsendInfo(void);
 int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
 
-/* —— Serial.c —— */
+/* —— Serial.c / Transport.c —— */
 void KsendSerialWrite(const char *Text);
 void KsendSerialPutByte(UINT8 Value);
 int KsendSerialGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds);
 /* 吃掉接收方向上没人认领的字节：静默 QuietMilliseconds 或总时长 LimitMilliseconds 到就停 */
 void KsendSerialDrainInput(UINT32 QuietMilliseconds, UINT32 LimitMilliseconds);
-/* 等移位寄存器发空（TEMT），复位前必须调用，否则 KSEND OK 可能被截断 */
+/* 等移位寄存器发空（TEMT）/TCP 推入栈；复位前必须调用，否则 KSEND OK 可能被截断 */
 void KsendSerialDrainTransmitter(void);
+void KsendSerialWaitPeerAcknowledge(void);
 /* 25 MHz rdtime 换算的毫秒计数 / 忙等（复位时序用） */
 UINT32 KsendMilliseconds(void);
 void KsendDelayMilliseconds(UINT32 Milliseconds);
+void KsendTransportUseSerial(void);
+void KsendTransportUseSocket(int Socket);
+int KsendTransportSocket(void);
+void KsendTransportPutByte(UINT8 Value);
+int KsendTransportGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds);
+void KsendTransportDrainInput(UINT32 QuietMilliseconds, UINT32 LimitMilliseconds);
+/* 应用缓冲 → lwIP（中间批量用；不等对端 ACK） */
+void KsendTransportDrainTransmitter(void);
+/* 上式之后再等 snd_queuelen==0（READY/整表末尾必须；中间 512B 勿用） */
+void KsendTransportWaitPeerAcknowledge(void);
+/* 1=发送正常；0=曾排空超时（Put/Drain 已标 broken，勿再死等） */
+int KsendTransportSendHealthy(void);
+/* 1=串口收到 Ctrl-C（含 TCP serve 期间） */
+int KsendTransportUserAborted(void);
+/* —— Serve.c（TCP 一连接热更） —— */
+int KsendServe(UINT16 Port, UINT32 WaitMilliseconds);
+UINT16 KsendServeDefaultPort(void);
 
 /* —— Text.c —— */
 void KsendTextReset(KSEND_TEXT *Text, char *Buffer, int Capacity);

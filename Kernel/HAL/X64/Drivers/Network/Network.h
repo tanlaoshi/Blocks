@@ -55,6 +55,8 @@ UINT32 NetNicEpoch(void);
 int  NetNicGetLink(int *Up, UINT32 *Mbps, int *FullDuplex);
 /* 当前默认出站：0=有线 1=无线 -1=无 L2 */
 int  NetNicPrimaryKind(void);
+/* 1=钉住当前主槽（不随链路抖动切换）；0=恢复自动选主 */
+void NetNicPinPrimary(int Pin);
 /* 1=已挂过 NIC_L2；0=仅胖后端（QEMU virtio-net） */
 int  NetNicHasL2(void);
 

@@ -156,6 +156,10 @@ int HalNetPrimaryKind(void) {
 #endif
 }
 
+void HalNetPinPrimary(int Pin) {
+    (void)Pin;
+}
+
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     if (Write) {
 #if !BOARD_IS_VIRT && BOARD_HAS_NET

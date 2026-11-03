@@ -137,5 +137,8 @@ void BlockMuxRemoveMsc(void) {
     } else {
         BlockRegisterBackend(&gMuxBackend);
     }
-    LibWrite("block-mux: msc removed\n");
+    /*
+     * 启动盘失根的用户文案由 DesktopBootMediumGoneShutdown 打串口
+     * （另起一行、与大窗同文）；此处勿再打 msc removed，否则会粘在 Blocks> 后。
+     */
 }

@@ -6,8 +6,14 @@
 
 #include "Iwl/Private.h"
 
+/*
+ * 槽须装下「TX_CMD + 802.11(含 CCMP) + MSS 载荷」。
+ * 旧 512B + Len>400：以太网 ≤~340B 才出得去，lwIP MSS=1460 的 TCP 段全 -1，
+ * ksend Wi‑Fi 只剩 READY 小行、CRC 表/块体黑洞（NUC 2026-11-03）。
+ * 16×2048 = 32KiB（8 页）。
+ */
 #define IWL_AUX_SLOTS  16u
-#define IWL_AUX_SLOT   512u
+#define IWL_AUX_SLOT   2048u
 
 extern IWL_TFD *gCmdTfd;
 extern UINT64 gCmdTfdPhys;

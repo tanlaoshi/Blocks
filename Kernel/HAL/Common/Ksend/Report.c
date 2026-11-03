@@ -18,6 +18,7 @@ static const char *FailureName(int Failure) {
     case KSEND_FAIL_SHRINK: return "shrink";
     case KSEND_FAIL_EMPTY:  return "empty";
     case KSEND_FAIL_ABORT:  return "abort";
+    case KSEND_FAIL_SEND:   return "send";
     default:                return "unknown";
     }
 }
@@ -63,6 +64,7 @@ void KsendReadyLine(const KSEND_IMAGE *Image) {
 void KsendBlockTable(const KSEND_IMAGE *Image) {
     UINT32 Index;
     UINT32 Byte;
+    UINT32 PackedBytes = 0;
 
     for (Index = 0; Index < Image->BlockCount; Index++) {
         UINT32 Value = Image->BlockCrc[Index];
@@ -70,9 +72,22 @@ void KsendBlockTable(const KSEND_IMAGE *Image) {
         for (Byte = 0; Byte < KSEND_WORD_BYTES; Byte++) {
             KsendSerialPutByte(
                 (UINT8)((Value >> (Byte * KSEND_BYTE_BITS)) & KSEND_BYTE_MASK));
+            PackedBytes++;
+            /*
+             * 表中每 512 B 只 Drain（进 lwIP + tcp_output），勿 WaitPeer：
+             * 中途等 ACK 曾 stalled（NUC Wi‑Fi）。整表末再 WaitPeer。
+             * （表黑洞真因曾是 iwl Len>400 拒 MSS 段，见 IwlTxFrame。）
+             */
+            if (PackedBytes >= 512u) {
+                KsendSerialDrainTransmitter();
+                PackedBytes = 0;
+            }
         }
     }
     KsendSerialPutByte(KSEND_TABLE_END);
+    KsendSerialDrainTransmitter();
+    /* 串口无对端窗；TCP 必须等表字节对端 ACK 后再收块头 */
+    KsendSerialWaitPeerAcknowledge();
 }
 
 void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size) {

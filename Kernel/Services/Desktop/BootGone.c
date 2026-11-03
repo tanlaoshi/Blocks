@@ -1,5 +1,7 @@
 /*
- * BootGone.c — 启动盘失根大窗倒数关机（原 Clock.c 拆出）
+ * BootGone.c — 启动盘失根：大窗提示 + 串口同文，静等 10 秒后关机
+ *
+ * 不再倒数刷秒（曾栅 0–9 刷 FONT 串口；用户要「同大窗文案、不倒数」）。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h"
@@ -8,11 +10,11 @@
 #include "SerialLog.h"
 #include "Hal.h"
 #include "HalVideo.h"
+#include "HalConsole.h"
 
 #define BOOT_GONE_SECS 10u
 
-static void BootGonePaint(const char *Title, const char *Body,
-                          const char *CountLine) {
+static void BootGonePaint(const char *Title, const char *Body) {
     UINT32 Sw = 0;
     UINT32 Sh = 0;
     UINT32 BoxW;
@@ -40,7 +42,7 @@ static void BootGonePaint(const char *Title, const char *Body,
     if (BoxW > Sw - 40u) {
         BoxW = Sw > 40u ? Sw - 40u : Sw;
     }
-    BoxH = Pad * 2u + CellH * 5u + 24u;
+    BoxH = Pad * 2u + CellH * 3u + 24u;
     BoxX = (Sw - BoxW) / 2u;
     BoxY = (Sh - BoxH) / 2u;
 
@@ -57,51 +59,10 @@ static void BootGonePaint(const char *Title, const char *Body,
     Y += CellH + 16u;
     Tw = FontStringWidth(Body);
     HalVideoDrawStringAt(BoxX + (BoxW - Tw) / 2u, Y, Body, ThemeTextMuted());
-    Y += CellH + 20u;
-    Tw = FontStringWidth(CountLine);
-    HalVideoDrawStringAt(BoxX + (BoxW - Tw) / 2u, Y, CountLine, ThemeText());
     HalVideoPresent();
 }
 
-static void BootGoneBuildCount(char *Out, UINTN OutMax, UINT32 Sec) {
-    const char *Before;
-    const char *After;
-    UINTN i = 0;
-    UINTN j;
-
-    if (!Out || OutMax < 8u) {
-        return;
-    }
-    Before = LocStr(MSG_BOOT_GONE_BEFORE);
-    After = LocStr(MSG_BOOT_GONE_AFTER);
-    if (!Before) {
-        Before = "";
-    }
-    if (!After) {
-        After = "";
-    }
-    for (j = 0; Before[j] && i + 1u < OutMax; j++) {
-        Out[i++] = Before[j];
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = ' ';
-    }
-    if (Sec >= 10u && i + 1u < OutMax) {
-        Out[i++] = (char)('0' + (Sec / 10u) % 10u);
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = (char)('0' + Sec % 10u);
-    }
-    if (i + 1u < OutMax) {
-        Out[i++] = ' ';
-    }
-    for (j = 0; After[j] && i + 1u < OutMax; j++) {
-        Out[i++] = After[j];
-    }
-    Out[i] = 0;
-}
-
-/* 等 CMOS 秒跳变一次（真机 HalTicksPerSec=250 常偏慢→倒数翻倍快，勿用 LAPIC 计秒） */
+/* 等 CMOS 秒跳变一次（真机 HalTicksPerSec=250 常偏慢，勿用 LAPIC 计秒） */
 static void BootGoneWaitRtcSecond(void) {
     UINT8 Sec0 = 0;
     UINT8 Sec1 = 0;
@@ -112,7 +73,6 @@ static void BootGoneWaitRtcSecond(void) {
     UINT64 Deadline;
 
     if (HalRtcGetTime(0, 0, 0, 0, 0, &Sec0) != 0) {
-        /* RTC 不可用：按标称 Tps 等 1s（可能仍偏，但有兜底） */
         Tps = HalTicksPerSec();
         if (Tps == 0) {
             Tps = 250;
@@ -136,17 +96,28 @@ static void BootGoneWaitRtcSecond(void) {
             return;
         }
         HalCpuRelax();
-        /* 防 RTC 卡住：约 3s 标称拍后放弃本秒 */
         if ((++Guard & 0xFFFFFu) == 0) {
             return;
         }
     }
 }
 
+/* 另起一行离开 Blocks>；文案与大窗 Title/Body 一致 */
+static void BootGoneSerialNotice(const char *Title, const char *Body) {
+    HalConsoleWriteSerial("\n");
+    if (Title && Title[0] != 0) {
+        HalConsoleWriteSerial(Title);
+        HalConsoleWriteSerial("\n");
+    }
+    if (Body && Body[0] != 0) {
+        HalConsoleWriteSerial(Body);
+        HalConsoleWriteSerial("\n");
+    }
+}
+
 void DesktopBootMediumGoneShutdown(void) {
     const char *Title;
     const char *Body;
-    char CountLine[96];
     UINT32 Left;
     HAL_MOUSE_REPORT Mouse;
     HAL_KEYBOARD_REPORT Key;
@@ -160,23 +131,15 @@ void DesktopBootMediumGoneShutdown(void) {
         Body = "The system cannot continue.";
     }
 
-    /*
-     * 锁输入；按 RTC 秒跳倒数（勿用 HalTicksPerSec——NUC 上 250 拍/s 与墙钟不符，
-     * 曾见 1 墙钟秒跳 2 个数）。
-     * 同步灌 TTF：关机大窗不走 Gui WantDrain；且 Gone 后门面拒 Ensure → 否则整屏方框。
-     */
     GuiInputLock(1);
     GuiCursorHide();
     HalVideoClearClip();
     FontTtfPreheatUtf8(Title);
     FontTtfPreheatUtf8(Body);
-    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_BEFORE));
-    FontTtfPreheatUtf8(LocStr(MSG_BOOT_GONE_AFTER));
+    BootGonePaint(Title, Body);
+    BootGoneSerialNotice(Title, Body);
 
-    for (Left = BOOT_GONE_SECS; Left >= 1u; Left--) {
-        BootGoneBuildCount(CountLine, sizeof(CountLine), Left);
-        FontTtfPreheatUtf8(CountLine);
-        BootGonePaint(Title, Body, CountLine);
+    for (Left = 0; Left < BOOT_GONE_SECS; Left++) {
         while (HalMouseDequeue(&Mouse)) {
         }
         while (HalKeyboardDequeue(&Key)) {
@@ -184,8 +147,6 @@ void DesktopBootMediumGoneShutdown(void) {
         BootGoneWaitRtcSecond();
     }
 
-    BootGoneBuildCount(CountLine, sizeof(CountLine), 0);
-    BootGonePaint(Title, Body, CountLine);
     LogFs("FS: msc/4 shutdown (boot medium removed)\n");
     HalCpuShutdown();
     for (;;) {

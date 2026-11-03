@@ -22,7 +22,7 @@ int IwlSendFrameRaw(const UINT8 *Frame80211, UINTN Len) {
     UINTN i;
     UINT64 Phys;
 
-    if (!Frame80211 || Len == 0 || Len > 400 || !gAuxReady || !gAuxBuf) {
+    if (!Frame80211 || Len == 0 || !gAuxReady || !gAuxBuf) {
         return -1;
     }
     /* QoS 头是 26 字节。固件要求在头后插入 2 字节填充，并用 MH_PAD 标明。 */

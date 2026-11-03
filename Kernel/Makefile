@@ -237,7 +237,10 @@ LWIPOBJS = $(patsubst %.c,$(BUILDDIR)/%.o,$(LWIPCORE))
 LWIP_PORT_COMMON_SRCS = HAL/Common/LwIp/TcpEcho.c \
                         HAL/Common/LwIp/UdpQueue.c \
                         HAL/Common/LwIp/TcpClient.c \
-                        HAL/Common/LwIp/TcpSocket.c
+                        HAL/Common/LwIp/TcpSocket.c \
+                        HAL/Common/LwIp/TcpSocketAcceptConnect.c \
+                        HAL/Common/LwIp/TcpSocketIo.c \
+                        HAL/Common/LwIp/TcpSocketStub.c
 LWIP_PORT_ARCH_SRCS   = HAL/$(HAL_ARCH)/LwIp/Netif.c \
                         HAL/$(HAL_ARCH)/LwIp/Ping.c
 ifneq ($(filter $(ARCH),riscv arm64),)

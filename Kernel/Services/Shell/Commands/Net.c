@@ -209,10 +209,48 @@ static void CommandDns(int Argc, char **Argv) {
 }
 #endif
 
+/*
+ * 本机 IPv4：优先 NetConfig（DHCP/静态，有线或 Wi‑Fi 主口）；
+ * 无配置再回落 Hal 当前址。供网络热更：板上 `ip` → PC `ksend.py --host`。
+ */
+static void CommandIp(int Argc, char **Argv) {
+    char IpBuf[20];
+    UINT32 Address;
+    int Kind;
+
+    (void)Argc;
+    (void)Argv;
+    if (!HalNetReady()) {
+        gConsole.Write("ip none (no NIC)\n");
+        return;
+    }
+    NetConfigEnsure();
+    Address = NetConfigGetIp();
+    if (Address == 0u) {
+        Address = HalNetGetIpAddress();
+    }
+    if (Address == 0u) {
+        gConsole.Write("ip none (no address yet; try dhcp / wifi join)\n");
+        return;
+    }
+    HalNetFormatIp(Address, IpBuf, (int)sizeof(IpBuf));
+    gConsole.Write("ip ");
+    gConsole.Write(IpBuf);
+    Kind = HalNetPrimaryKind();
+    if (Kind == 1) {
+        gConsole.Write(" via wifi\n");
+    } else if (Kind == 0) {
+        gConsole.Write(" via wired\n");
+    } else {
+        gConsole.Write("\n");
+    }
+}
+
 void ShellCommandsNetRegister(void) {
     gConsole.Register2("show", "network", "network info", CommandNet);
     gConsole.Register("net", "network info; net config …", CommandNet);
     gConsole.RegisterAliasLine("network", "show", "network");
+    gConsole.Register("ip", "print local IPv4 (wired or wifi primary)", CommandIp);
     ShellCommandsNetAddrRegister();
     gConsole.Register("ping", "ICMP echo", CommandPing);
 #ifdef LWIP_ENABLE

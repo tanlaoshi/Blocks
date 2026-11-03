@@ -9,15 +9,26 @@
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
+#include "Hal.h"
 
 void KsendNote(const char *Text) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
+    /*
+     * 人话行禁止走 TCP 协议通道：`ksend:` 里的 'N' 会被 PC read_ack
+     * 当成块重传（Pi Wi‑Fi 真机 2026-11-02）。有 socket 时改走壳串口；
+     * 纯串口热更时仍与协议同口（PC 按行丢弃）。
+     */
     KsendTextReset(&Out, Line, (int)sizeof(Line));
     KsendTextPut(&Out, "ksend: ");
     KsendTextPut(&Out, Text);
-    KsendTextFlush(&Out);
+    KsendTextPut(&Out, "\n");
+    if (KsendTransportSocket() >= 0) {
+        HalSerialWriteShell(Line);
+        return;
+    }
+    KsendSerialWrite(Line);
 }
 
 /* 只读：Kernel.elf 的 size / n / 整体 CRC。PC 用它和自己的 ELF 对一下再决定传不传 */

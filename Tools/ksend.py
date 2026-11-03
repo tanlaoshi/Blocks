@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ksend.py — 串口增量写板端 FAT 文件，可选复位。
+"""ksend.py — 增量写板端 FAT 文件（串口备份 / TCP 网络主路），可选复位。
 
 三架构共用：Duo SD / Pi µSD / NUC U 盘（方案 1：UEFI 第一=U 盘，
 写该盘 BLOCKS:Kernel.elf）。默认目标仍是 BLOCKS:Kernel.elf；`--path`
@@ -8,33 +8,28 @@ BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的�
 例如 `--path BOOT:boot.sd`。板端写非默认卷前会按卷选择（boot 默认只读）。
 
 协议（与板包 Ksend/ 同源；线上小端）：
-    PC  -> DUO  "ksend\\n" 或 "ksend <目标路径>\\n"（路径走板端 shell 参数）
-    DUO -> PC   "KSEND READY size=<旧大小> block=4096 n=<旧块数>\\r\\n"
-    DUO -> PC   n 个 u32 旧块 CRC32 + 1 字节 '\\n'
-    PC  -> DUO  每块：u32 magic=0x4B53424B, u32 index, u32 len, u32 crc32, data[len]
-    DUO -> PC   'A' 已写卡 / 'N' 请重发同一块（最多重发 3 次）
-    PC  -> DUO  收尾：u32 magic, u32 0xFFFFFFFF, u32 0, u32 新文件整体 CRC32
-    DUO -> PC   "KSEND OK crc=.. written=.. size=.."（随后复位）
+    PC  -> 板  "ksend\\n" 或 "ksend <目标路径>\\n"（路径走板端 shell 参数）
+    板 -> PC   "KSEND READY size=<旧大小> block=4096 n=<旧块数>\\r\\n"
+    板 -> PC   n 个 u32 旧块 CRC32 + 1 字节 '\\n'
+    PC  -> 板  每块：u32 magic=0x4B53424B, u32 index, u32 len, u32 crc32, data[len]
+    板 -> PC   'A' 已写卡 / 'N' 请重发同一块（最多重发 3 次）
+    PC  -> 板  收尾：u32 magic, u32 0xFFFFFFFF, u32 0, u32 新文件整体 CRC32
+    板 -> PC   "KSEND OK crc=.. written=.. size=.."（随后复位）
                 或 "KSEND FAIL ..."（不复位；必要时 "KSEND RESTORED"）
     --no-reboot 时板端在 KSEND OK 后留在 shell，复位交给操作者。
     --no-backup 时板端跳过写前 .bak（优先读同目录 <目标>.crc 的旧块表；
     缺失/不自洽才整读旧内容），串口打 "backup: skipped (--no-backup)"；
     失败不回滚。
 
-两个实现约定（板子侧同样写死，改这里必须同步改板包）：
-  * CRC 用 CRC-32/ISO-HDLC，即 Python zlib.crc32；
-  * PC 永远重发**最后一块**（哪怕它没变）：收尾帧里没有 size 字段，板子
-    只能用「收到过的最大 index*4096+len」推新文件大小；少了最后一块，
-    文件变小或末块没变时会推出错误尺寸。
+传输：
+  * 串口（备份）：`--port /dev/ttyUSB0`
+  * TCP（主路；有线/Wi‑Fi 同）：板上 `ksend serve`，PC `--host <ip>`
+    （板上 `ip` 看地址；默认端口 26992）
 
 命令：
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/DUO/HAL/RiscV/Kernel.elf
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --file SNAKE.ELF --path BLOCKS:SNAKE.ELF
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --file boot.sd --path BOOT:boot.sd --no-backup
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --info
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --selftest
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --dry-run
+    python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/HAL/X64/Kernel.elf
+    python3 Tools/ksend.py --host 192.168.1.10 --file Kernel/Build/HAL/X64/Kernel.elf
+    python3 Tools/ksend.py --host 192.168.1.10 --tcp-port 26992 --info
 
 退出码：0=KSEND OK；1=KSEND FAIL；2=串口/协议错误；3=本地文件或参数错误。
 """
@@ -43,11 +38,14 @@ import argparse
 import fcntl
 import os
 import select
+import socket
 import struct
 import sys
 import termios
 import time
 import zlib
+
+DEFAULT_TCP_PORT = 26992
 
 KSEND_MAGIC = 0x4B53424B
 TRAILER_INDEX = 0xFFFFFFFF
@@ -55,7 +53,7 @@ ABORT_INDEX = 0xFFFFFFFE
 BLOCK_BYTES = 4096
 ACK_WRITTEN = b"A"
 ACK_RETRY = b"N"
-RETRY_MAX = 3
+RETRY_MAX = 8
 FAT_WRITE_MAX = 8 * 1024 * 1024
 # 板端 Ksend/Private.h 的 KSEND_PATH_BYTES 是 96（含结尾 0）。目标路径和
 # 「目标全名 + .bak」都要放得下：备份名再长也要 <= 95 字符。
@@ -158,7 +156,6 @@ class SerialPort:
             return False
         chunk = os.read(self.fd, 4096)
         if not chunk:
-            # 对端关掉（USB 拔了 / 板子复位）：当错误处理，别在 select 里空转
             raise KsendError("serial port closed (EOF)")
         self.buffer += chunk
         return True
@@ -205,6 +202,97 @@ class SerialPort:
             self._fill(min(remain, 0.2))
 
 
+class TcpPort:
+    """TCP 到板端 `ksend serve`（有线/Wi‑Fi 同端口）。读写接口与 SerialPort 对齐。"""
+
+    def __init__(self, host, tcp_port):
+        self.path = "%s:%d" % (host, tcp_port)
+        self.buffer = bytearray()
+        # NUC iwl：旧核 Len>400 拒发；新核 AUX 槽 2048 后可近 MSS。
+        # connect 前设 MAXSEG，兼容未升核板；1460 易碎时用环境变量压小。
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            import os as _os
+            Mss = int(_os.environ.get("KSEND_TCP_MSS", "1200"))
+            if Mss > 0:
+                self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, Mss)
+        except (OSError, ValueError):
+            pass
+        self.sock.settimeout(30.0)
+        self.sock.connect((host, tcp_port))
+        self.sock.settimeout(None)
+        self.fd = self.sock.fileno()
+
+    def close(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+        self.fd = -1
+
+    def _fill(self, timeout):
+        readable, _, _ = select.select([self.fd], [], [], max(0.0, timeout))
+        if not readable:
+            return False
+        chunk = self.sock.recv(4096)
+        if not chunk:
+            raise KsendError("tcp closed (EOF)")
+        self.buffer += chunk
+        return True
+
+    def write_all(self, data, timeout):
+        view = memoryview(data)
+        deadline = time.monotonic() + timeout
+        while len(view) > 0:
+            remain = deadline - time.monotonic()
+            if remain <= 0:
+                raise PortTimeout("tcp write timeout")
+            _, writable, _ = select.select([], [self.fd], [], remain)
+            if not writable:
+                raise PortTimeout("tcp write timeout")
+            try:
+                written = self.sock.send(view)
+            except BlockingIOError:
+                continue
+            if written == 0:
+                raise KsendError("tcp write returned 0")
+            view = view[written:]
+
+    def read_exact(self, count, timeout):
+        deadline = time.monotonic() + timeout
+        while len(self.buffer) < count:
+            remain = deadline - time.monotonic()
+            if remain <= 0:
+                raise PortTimeout("timeout: wanted %d B, have %d B"
+                                  % (count, len(self.buffer)))
+            self._fill(remain)
+        data = bytes(self.buffer[:count])
+        del self.buffer[:count]
+        return data
+
+    def read_line(self, timeout):
+        deadline = time.monotonic() + timeout
+        while True:
+            index = self.buffer.find(b"\n")
+            if index >= 0:
+                line = bytes(self.buffer[:index])
+                del self.buffer[:index + 1]
+                return line.rstrip(b"\r")
+            remain = deadline - time.monotonic()
+            if remain <= 0:
+                raise PortTimeout("timeout waiting for a line from the board")
+            self._fill(min(remain, 0.2))
+
+
+def open_port(args):
+    if args.host:
+        log("tcp: %s:%d" % (args.host, args.tcp_port))
+        return TcpPort(args.host, args.tcp_port)
+    if not args.port:
+        raise LocalError("need --port or --host")
+    log("port: %s %d 8N1" % (args.port, args.baud))
+    return SerialPort(args.port, args.baud)
+
 def parse_fields(line):
     """'KSEND READY size=1 block=4096 n=1' -> {'size': 1, ...}（只认 key=value）。"""
     fields = {}
@@ -219,12 +307,25 @@ def parse_fields(line):
 def wait_for_line(port, prefixes, timeout, print_unmatched=True):
     """读到以 prefixes 之一开头的行为止；其它（日志/回显）当垃圾丢掉。"""
     deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    next_heartbeat = started + 5.0
+    want = "/".join(p.decode("ascii") for p in prefixes)
     while True:
         remain = deadline - time.monotonic()
         if remain <= 0:
-            raise PortTimeout("timeout waiting for %s"
-                              % "/".join(p.decode("ascii") for p in prefixes))
-        line = port.read_line(remain)
+            raise PortTimeout("timeout waiting for %s" % want)
+        now = time.monotonic()
+        if now >= next_heartbeat:
+            elapsed = int(now - started)
+            log("waiting for %s … %ds (timeout %ds)"
+                % (want, elapsed, int(timeout)))
+            next_heartbeat = now + 5.0
+        # 短切片，好打心跳；板若已 READY 只走串口、TCP 静默时不会一直无声
+        slice_timeout = min(remain, 1.0)
+        try:
+            line = port.read_line(slice_timeout)
+        except PortTimeout:
+            continue
         text = line.decode("utf-8", "replace")
         if any(line.startswith(p) for p in prefixes):
             return line, text
@@ -325,28 +426,57 @@ def send_abort(port):
 
 
 def read_ack(port, timeout):
-    """等 'A'/'N'；中间混进来的字节（异常时的日志）丢掉。"""
+    """等孤立的 'A'/'N'。
+
+    板端人话行（`ksend: …`）也走同一条 TCP/串口时，单词里的 N/A
+    （如 kseNd）不能当应答。策略：拼到 '\\n' 的整行当日志丢掉；
+    只有行缓冲为空时出现的 A/N 才算块应答。
+    """
     deadline = time.monotonic() + timeout
-    stray = bytearray()
+    line = bytearray()
     while True:
         remain = deadline - time.monotonic()
         if remain <= 0:
             raise PortTimeout("timeout waiting for block ack")
         data = port.read_exact(1, remain)
-        if data in (ACK_WRITTEN, ACK_RETRY):
-            if stray:
-                board_line("ignored before ack: %r" % bytes(stray))
+        if data in (ACK_WRITTEN, ACK_RETRY) and len(line) == 0:
             return data
-        stray += data
-        if len(stray) > 512:
-            raise KsendError("no ack after 512 stray bytes: %r" % bytes(stray[:64]))
+        if data == b"\n":
+            if line:
+                board_line("ignored log before ack: %r" % bytes(line))
+            line.clear()
+            continue
+        if data == b"\r":
+            continue
+        line += data
+        if len(line) > 512:
+            raise KsendError("no ack after 512 stray bytes: %r" % bytes(line[:64]))
 
 
 def read_board_table(port, count, timeout):
     """n 个块 CRC + 1 字节 0x0A；n=0 时那一字节也必须吃掉，否则会错位成块头。"""
     raw = b""
     if count:
-        raw = port.read_exact(count * 4, timeout)
+        need = count * 4
+        log("reading board CRC table: %d blocks (%d B)" % (count, need))
+        deadline = time.monotonic() + timeout
+        next_report = 0
+        while len(raw) < need:
+            remain = deadline - time.monotonic()
+            if remain <= 0:
+                raise PortTimeout(
+                    "timeout reading CRC table: wanted %d B, have %d B (%d%%); "
+                    "board often already FAIL reason=header (table never fully landed)"
+                    % (need, len(raw), (100 * len(raw)) // need if need else 0))
+            chunk = port.read_exact(min(4096, need - len(raw)), remain)
+            raw += chunk
+            # 板已 FAIL 时文本会混进表流；尽早认出，别空等到 data-timeout
+            if len(raw) >= 10 and raw.startswith(b"KSEND FAIL"):
+                raise KsendError(raw.split(b"\n", 1)[0].decode("ascii", "replace"))
+            pct = (100 * len(raw)) // need
+            if pct >= next_report or len(raw) >= need:
+                log("CRC table %d/%d B (%d%%)" % (len(raw), need, pct))
+                next_report = pct + 10
     terminator = port.read_exact(1, 5.0)
     if terminator != b"\n":
         raise KsendError("block table did not end with 0x0A (got %r)"
@@ -357,9 +487,8 @@ def read_board_table(port, count, timeout):
 
 
 def command_info(args):
-    port = SerialPort(args.port, args.baud)
+    port = open_port(args)
     try:
-        log("port: %s %d 8N1" % (args.port, args.baud))
         port.write_all(b"ksend info\n", 10.0)
         line, text = wait_for_line(port, [b"KSEND INFO ", b"KSEND FAIL"],
                                    args.ready_timeout)
@@ -384,9 +513,8 @@ def command_info(args):
 
 
 def command_selftest(args):
-    port = SerialPort(args.port, args.baud)
+    port = open_port(args)
     try:
-        log("port: %s %d 8N1" % (args.port, args.baud))
         port.write_all(b"ksend selftest\n", 10.0)
         line, text = wait_for_line(
             port, [b"KSEND SELFTEST OK", b"KSEND SELFTEST FAIL"], 120.0)
@@ -478,18 +606,23 @@ def command_transfer(args, dry_run):
     log("local: %d B, %d blocks, crc=%08x"
         % (len(data), len(local_crcs), local_crc))
 
-    port = SerialPort(args.port, args.baud)
+    port = open_port(args)
     try:
-        log("port: %s %d 8N1" % (args.port, args.baud))
         # 默认路径仍发裸 "ksend"（与旧版字节一致）；换目标/加 --no-reboot 才带参数。
         if args.no_backup:
             log("--no-backup: board will skip %s.bak (no rollback on failure)"
                 % target)
-        if not wait_for_shell_prompt(port):
-            raise KsendError("board is not at a shell prompt (still in a previous "
-                             "transfer? power-cycle the board and retry)")
+        if not args.host:
+            if not wait_for_shell_prompt(port):
+                raise KsendError(
+                    "board is not at a shell prompt (still in a previous "
+                    "transfer? power-cycle the board and retry)")
         trigger = board_command(target, args.no_reboot, args.no_backup)
-        send_board_command(port, trigger.rstrip(b"\n"))
+        if args.host:
+            port.write_all(trigger if trigger.endswith(b"\n") else trigger + b"\n",
+                           10.0)
+        else:
+            send_board_command(port, trigger.rstrip(b"\n"))
         # 备份失败时板子会在 READY 之前就回 FAIL，别干等 ready-timeout
         line, text = wait_for_line(port, [b"KSEND READY ", b"KSEND FAIL"],
                                    args.ready_timeout)
@@ -543,7 +676,17 @@ def command_transfer(args, dry_run):
                 attempt = 0
                 while True:
                     port.write_all(header + chunk, args.ack_timeout)
-                    ack = read_ack(port, args.ack_timeout)
+                    try:
+                        ack = read_ack(port, args.ack_timeout)
+                    except PortTimeout:
+                        attempt += 1
+                        if attempt > RETRY_MAX:
+                            refused = ("block %d ack timeout %d times"
+                                       % (index, RETRY_MAX))
+                            break
+                        log("block %d: ack timeout, resend %d/%d"
+                            % (index, attempt, RETRY_MAX))
+                        continue
                     if ack == ACK_WRITTEN:
                         break
                     attempt += 1
@@ -556,8 +699,16 @@ def command_transfer(args, dry_run):
                 if refused:
                     break
                 sent_bytes += length
-                print("sent %d/%d blocks (%d KB)"
-                      % (position, len(plan), sent_bytes // 1024), flush=True)
+                total = len(plan)
+                pct = (100 * position) // total if total else 100
+                print("sent %d/%d blocks (%d%%, %d KB)"
+                      % (position, total, pct, sent_bytes // 1024), flush=True)
+                # 旧核批刷前才 ACK 时，给 FAT 一点空窗，降低串口/TCP 错位成 header
+                if args.pace_ms > 0:
+                    time.sleep(args.pace_ms / 1000.0)
+                # Wi‑Fi+USB 同 xHCI：每 16 块多歇，减轻批刷/固件挤死（NUC 2026-11-03）
+                if (position % 16) == 0:
+                    time.sleep(max(args.pace_ms / 1000.0, 0.5) * 4.0)
         except KeyboardInterrupt:
             log("interrupted: telling the board to abort and restore")
             send_abort(port)
@@ -601,8 +752,13 @@ def wait_for_verdict(port, timeout):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Incremental file write to a Milk-V Duo S over serial")
-    parser.add_argument("--port", required=True, help="serial device, e.g. /dev/ttyUSB0")
+        description="Incremental file write over serial or TCP (net-ksend)")
+    parser.add_argument("--port", default=None,
+                        help="serial device, e.g. /dev/ttyUSB0 (backup path)")
+    parser.add_argument("--host", default=None,
+                        help="board IPv4 for TCP (board: ksend serve; see shell ip)")
+    parser.add_argument("--tcp-port", type=int, default=DEFAULT_TCP_PORT,
+                        help="TCP port (default %d)" % DEFAULT_TCP_PORT)
     # --elf 是旧名，保留为 --file 的兼容别名（同一 dest）
     parser.add_argument("--file", "--elf", dest="file",
                         help="local file to send (default: newest known kernel ELF path)")
@@ -628,11 +784,19 @@ def build_parser():
                         help="seconds to read the block CRC table")
     parser.add_argument("--verify-timeout", type=float, default=300.0,
                         help="seconds to wait for KSEND OK after the trailer")
+    parser.add_argument("--pace-ms", type=int, default=0,
+                        help="sleep this many ms after each block ACK (old-board batch flush)")
     return parser
 
 
 def main(argv):
     args = build_parser().parse_args(argv)
+    if bool(args.port) == bool(args.host):
+        if args.port and args.host:
+            log("use either --port or --host, not both")
+        else:
+            log("need --port (serial) or --host (TCP)")
+        return EXIT_LOCAL
     if sum(1 for flag in (args.info, args.selftest, args.dry_run) if flag) > 1:
         log("--info / --selftest / --dry-run are mutually exclusive")
         return EXIT_LOCAL

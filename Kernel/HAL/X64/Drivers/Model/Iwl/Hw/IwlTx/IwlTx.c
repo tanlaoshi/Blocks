@@ -164,7 +164,7 @@ int IwlTxInit(void) {
         gFirstTbBase = (UINT8 *)Mem;
         gFirstTbPhys = (UINT64)(UINTN)Mem;
 
-        /* 刀 #83/#84：AUX TFD 环 + 16×512B 槽（数据面不 Stall） */
+        /* AUX/AP TFD 环；数据槽 IWL_AUX_SLOTS×IWL_AUX_SLOT（现 16×2048） */
         Mem = PhysicalMemoryAllocatePages(8);
         if (!Mem) {
             return 0;
@@ -179,13 +179,18 @@ int IwlTxInit(void) {
         IwlTxZero(Mem, 8 * PAGE_SIZE);
         gApTfd = (IWL_TFD *)Mem;
         gApTfdPhys = (UINT64)(UINTN)Mem;
-        Mem = PhysicalMemoryAllocatePages(2);
-        if (!Mem) {
-            return 0;
+        {
+            UINTN AuxBufPages =
+                (IWL_AUX_SLOTS * IWL_AUX_SLOT + PAGE_SIZE - 1u) / PAGE_SIZE;
+
+            Mem = PhysicalMemoryAllocatePages(AuxBufPages);
+            if (!Mem) {
+                return 0;
+            }
+            IwlTxZero(Mem, AuxBufPages * PAGE_SIZE);
+            gAuxBuf = (UINT8 *)Mem;
+            gAuxBufPhys = (UINT64)(UINTN)Mem;
         }
-        IwlTxZero(Mem, 2 * PAGE_SIZE);
-        gAuxBuf = (UINT8 *)Mem;
-        gAuxBufPhys = (UINT64)(UINTN)Mem;
         gAuxTxLog = 0;
 
         /* BC 表：31 queues × 320 × u16 ≈ 20KB → 6 页（1KB 对齐） */

@@ -7,6 +7,7 @@
 #include "Hal.h"
 #include "HalSerial.h"
 #include "SerialLog.h"
+#include "Debug.h"
 
 #if defined(__x86_64__) && defined(FONTS_HAVE_FREETYPE)
 
@@ -58,6 +59,7 @@ static void FtUnlock(void) {
   __sync_lock_release(&gFtLock);
 }
 
+#if KERNEL_DEBUG
 static char *FtPutStr(char *P, const char *S) {
   while (*S) {
     *P++ = *S++;
@@ -82,7 +84,19 @@ static char *FtPutU32(char *P, UINT32 V) {
   }
   return P;
 }
+#endif
 
+/*
+ * 真机验收用：b/T/4 各打一行；KERNEL_DEBUG=1 才编。
+ * 壳已 Own 串口则禁打（进 Blocks> 后勿污染 ksend/CoolTerm）。
+ */
+#if KERNEL_DEBUG
+#define FT_GLYPH_DIAG 1
+#else
+#define FT_GLYPH_DIAG 0
+#endif
+
+#if FT_GLYPH_DIAG
 static char *FtPutI32(char *P, int V) {
   if (V < 0) {
     *P++ = '-';
@@ -91,14 +105,6 @@ static char *FtPutI32(char *P, int V) {
   return FtPutU32(P, (UINT32)V);
 }
 
-/*
- * 真机验收用：b/T/4 各打一行，把「位图需要多少行」与「槽里给了多少行」
- * 摆在同一条日志里。base 是格顶到基线，oy 是位图首行落在格内的 y；
- * 正常加档拉丁 oy=0（顶行贴格顶、一行不丢）；oy<0 就是削顶。
- * 只打三个码位、每次 FT 初始化后重来一遍；**壳已 Own 串口则禁打**
- * （进 Blocks> 后桌面再栅字不得污染 ksend/CoolTerm）。
- */
-#define FT_GLYPH_DIAG 1
 static UINT8 gFtDiagSeen;
 
 static void FtGlyphDiag(UINT32 Cp, const FT_Bitmap *Bm, int Top, UINT32 CellH,
@@ -145,12 +151,18 @@ static void FtGlyphDiag(UINT32 Cp, const FT_Bitmap *Bm, int Top, UINT32 CellH,
   *P = 0;
   HalSerialWriteShell(Line);
 }
+#endif
 
 /*
  * 一行 arena 统计：used/peak 用来判断「稳定波动」还是「只增不减」，
  * fail 是 FT_Memory 分配失败次数，bad 是块链/坏指针自检计数（正常 0）。
  */
 static void FtArenaLog(const char *Tag, UINT32 A, UINT32 B) {
+#if !KERNEL_DEBUG
+  (void)Tag;
+  (void)A;
+  (void)B;
+#else
   char Line[192];
   char *P = Line;
   unsigned long Total;
@@ -161,6 +173,9 @@ static void FtArenaLog(const char *Tag, UINT32 A, UINT32 B) {
   unsigned long Frees;
   unsigned long Bad;
 
+  if (HalSerialShellOwned()) {
+    return;
+  }
   FtArenaStats(&Total, &Used, &Peak, &Fail);
   FtArenaOps(&Allocs, &Frees);
   Bad = FtArenaBadness();
@@ -192,6 +207,7 @@ static void FtArenaLog(const char *Tag, UINT32 A, UINT32 B) {
   *P++ = '\n';
   *P = 0;
   HalSerialWriteShell(Line);
+#endif
 }
 
 #if FT_ARENA_SELFTEST
@@ -334,7 +350,9 @@ static int FtInitLocked(void) {
   gFtOomStreak = 0;
   gMonoFace = 0;
   FontFtClearLastAdvance();
+#if FT_GLYPH_DIAG
   gFtDiagSeen = 0;
+#endif
   for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
     gFace[Slot] = 0;
   }
@@ -402,11 +420,18 @@ int FontFtReady(void) {
 static UINT32 gFtFailN;
 
 static void FtFail(UINT32 Cp, UINT32 Reason) {
+#if !KERNEL_DEBUG
+  (void)Cp;
+  (void)Reason;
+#else
   static UINT32 Seen;
   char Line[48];
   char *P = Line;
   const char *Pre = "FONT ftfail reason=";
 
+  if (HalSerialShellOwned()) {
+    return;
+  }
   if (gFtFailN >= 40u && (Seen & (1u << Reason))) {
     return;
   }
@@ -456,6 +481,7 @@ static void FtFail(UINT32 Cp, UINT32 Reason) {
   *P++ = '\n';
   *P = 0;
   HalSerialWriteShell(Line);
+#endif
 }
 
 static void FtOom(UINT32 Cp) {
@@ -491,7 +517,9 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
   int AscPx;
   int Flags;
   int SharedAsc = 0;
+#if FT_GLYPH_DIAG
   int Fit = 1;
+#endif
   UINT32 Adv;
   UINT32 MaxPix;
 
@@ -694,7 +722,9 @@ static int FtRasterBody(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
           if (Bm->pixel_mode == FT_PIXEL_MODE_GRAY && Bm->buffer) {
             Oy = SharedAsc - Slot->bitmap_top;
             ReqH = CellH;
+#if FT_GLYPH_DIAG
             Fit = 0;
+#endif
           }
         }
       }

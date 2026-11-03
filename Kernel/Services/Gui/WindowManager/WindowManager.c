@@ -197,22 +197,20 @@ void GuiDesktopInitialize(void) {
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     /*
-     * 仅 Pi（!HalTimerUsesIrq）：CNTV 无 IRQ → CondResched 切不到 Worker，
-     * 鼠已 Attach 则此处露光标，否则永不 Reveal。
-     * X64/NUC 禁止早 Reveal：一露 Gui 泵鼠，Worker 仍 Secondary/claim/iwl
-     * 会饿死 xHCI → 光标在、坐标不动（本机「already attached」后鼠死）。
-     * NUC 须等 Worker 网/iwl 静默后再 GuiCursorRevealAfterUsb。
+     * X64：Hold 至 Worker 静默后 Reveal。
+     * Pi CNTV-poll：Worker 易卡 Secondary/DHCP continue → 永不露标、网托
+     * 也不刷新（2026-11-04 手测：Hold-only / 仅 Net 后 Reveal 均无光标）。
+     * 无定时器 IRQ 则 Desktop Ready 即 Reveal；网好前可能暂不能动，绿后可拖
+     * （用户认可用）。WifiClaim 仍在 Worker 文末。
      */
-    if (!HalTimerUsesIrq() && HalMousePresent()) {
-        GuiCursorRevealAfterUsb();
-        HalSerialBootMark("Boot: cursor reveal (mouse already attached)\n");
-    } else if (!HalCpuIsHypervisor()) {
-        /*
-         * X64 真机：Desktop Ready→Worker Reveal 前掐鼠 IN 再投递。
-         * 晃鼠 MSI 不再占环（bug-nuc-mouse-btn）；键仍走 ServiceHid。
-         */
-        HalInputMouseHoldUntilReveal(1);
-        HalSerialBootMark("Boot: mouse hold until reveal\n");
+    if (!HalCpuIsHypervisor()) {
+        if (!HalTimerUsesIrq()) {
+            GuiCursorRevealAfterUsb();
+            HalSerialBootMark("Boot: cursor reveal (pi poll timer)\n");
+        } else {
+            HalInputMouseHoldUntilReveal(1);
+            HalSerialBootMark("Boot: mouse hold until reveal\n");
+        }
     }
     HalSerialBootMark("Boot: save BOOT.LOG\n");
     BootLogFlush();

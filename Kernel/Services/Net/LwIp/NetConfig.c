@@ -57,11 +57,20 @@ void NetConfigEnsure(void) {
     if (UseQemuSlirp()) {
         ApplyQemuSlirp();
     } else {
-        /* 真机不预置地址，等当前 L2 上的 DHCP */
-        gIp = 0;
+        UINT32 Existing;
+
+        /*
+         * 真机不预置课默认址。但勿 HalNetSetIpAddress(0) 清掉驱动已有租约：
+         * 托盘 NetConfigGetIp→Ensure 若抢在 Adopt 前，会把壳 `ip` 还能读到的
+         * 地址抹掉，且 gIp 一直 0 → 托盘红（Pi 2026-11-04）。
+         */
+        Existing = HalNetGetIpAddress();
+        gIp = Existing;
         gGw = 0;
         gDns = 0;
-        HalNetSetIpAddress(gIp);
+        if (Existing == 0u) {
+            HalNetSetIpAddress(0);
+        }
     }
     gReady = 1;
 }

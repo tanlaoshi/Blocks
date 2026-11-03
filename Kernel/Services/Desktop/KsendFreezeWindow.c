@@ -7,7 +7,9 @@
 #include "Gui.h"
 #include "Font.h"
 #include "Locale.h"
+#include "Theme.h"
 #include "Hal.h"
+#include "HalDevices.h"
 #include "HalVideo.h"
 #include "Hal/KsendFreeze.h"
 
@@ -82,23 +84,52 @@ static void KsendFreezeWindowBegin(void) {
         Body = "请稍候，勿断电";
     }
 
+    /*
+     * 对表 BootGone：InputLock + DeferPush（勿 DeferPause——Pause 清 Defer=0
+     * 会放行 Present，冻窗刚画就被桌面刷掉，2026-11-04）。
+     * 勿 GuiCursorHide→GraphicsPresent：局部 Present 会在冻窗上留下右下角
+     * 彩斑/脏条；整屏 BeginFront 铺底即可盖掉软光标。
+     */
     GuiInputLock(1);
-    GuiCursorHide();
     HalVideoClearClip();
     FontTtfPreheatUtf8(Title);
     FontTtfPreheatUtf8(Body);
-    GuiPresentDeferPause();
+    GuiPresentDeferPush();
     KsendFreezeWindowPaintShow(Title, Body);
-    GuiPresentDeferResume();
+}
+
+static void KsendFreezeWindowDrainKeyboard(void) {
+    HAL_KEYBOARD_REPORT Report;
+
+    while (HalKeyboardDequeue(&Report)) {
+    }
 }
 
 static void KsendFreezeWindowEnd(void) {
+    UINT32 ScreenWidth = 0;
+    UINT32 ScreenHeight = 0;
+
+    /*
+     * 勿同步 GuiRedraw。仍持 Lock 时 BeginFront 盖冻窗；排空键队列再解锁，
+     * 避免堆积 Enter 灌进 Shell；Pop Defer 后 Mark+Refresh 闲时合成桌面。
+     */
+    HalVideoGetSize(&ScreenWidth, &ScreenHeight);
+    if (ScreenWidth < 320u || ScreenHeight < 200u) {
+        ScreenWidth = 1024;
+        ScreenHeight = 768;
+    }
+    GuiCursorHide();
+    HalVideoDrawBeginFront();
+    HalVideoFillRect(0, 0, ScreenWidth, ScreenHeight, ThemeDesktopBackground());
+    HalVideoDrawEndFront();
+    KsendFreezeWindowDrainKeyboard();
+    GuiPresentDeferPop();
     GuiInputLock(0);
-    GuiCursorShow();
-    GuiPresentDeferPause();
-    GuiRefreshDesktop();
-    HalVideoPresent();
-    GuiPresentDeferResume();
+    GuiMarkDamage(0, 0, ScreenWidth, ScreenHeight);
+    RequestRefresh();
+    if (GuiCursorUsbReady()) {
+        GuiCursorShow();
+    }
 }
 
 void KsendFreezeWindowRegister(void) {

@@ -27,6 +27,11 @@ void GuiRefreshDesktop(void) {
     int CtxOpen;
     int TrayOpen;
 
+    /* 热更/失根冻窗：禁止合成把 BeginFront 大窗盖掉 */
+    if (gGuiWindowManager.InputLocked) {
+        return;
+    }
+
     Open = DesktopStartMenuIsOpen();
     CtxOpen = DesktopContextMenuIsOpen();
     TrayOpen = DesktopNetTrayIsOpen();

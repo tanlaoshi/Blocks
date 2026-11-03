@@ -37,6 +37,7 @@ UINT32 WorkerLoopCount(void) {
  *   6 FontTtfWantDrain      — 同上
  *   7 HalNetInitialize（一次；boot-net-defer 有线 Probe）
  *   8 HalIwlClaim（一次）
+ *   8b （WifiClaim 不在此 — 见 15，防 Claim 挡露标 / 早露僵鼠）
  *   9 StoreJobStep          — story-s4；busy → continue（挡网/ready）
  *  10 HalIwlBgPump          — busy → continue
  *  11 DHCP restart / Step   — busy → continue
@@ -44,14 +45,27 @@ UINT32 WorkerLoopCount(void) {
  *  13 DesktopEnsureWallpaperBuilt — gui-wall-defer；静默后、Reveal 前 Build（4K）
  *     （未露时 IoBreath 少 Poll；先壁纸再露，避免「无墙纸+鼠僵」）
  *  14 GuiCursorRevealAfterUsb → AnnounceBootReady
- *     （光标须在网/iwl/壁纸之后：一露就必须流畅）
- *  15 HalBluetoothInitialize — bt-defer；Reveal 后一次（不挡进桌面）
- *  16 halt
+ *     （光标须在网/iwl/壁纸之后：一露就必须流畅；Pi 勿 Desktop Ready 早露）
+ *  15 HalWifiClaim/Scan — Reveal 后一次
+ *  16 HalBluetoothInitialize — bt-defer；Reveal 后一次（不挡进桌面）
+ *  17 halt
  * 窗/Shell 只 Enqueue；Step 在此。勿在 GuiPollMouse→StoreUiPump 里 Step。
  */
 void WorkerTask(void) {
     for (;;) {
         gWorkerCount++;
+        /*
+         * Pi：Secondary/DHCP 前再兜一次 Reveal（Desktop Ready 已露则 once 早退）。
+         * 防仅 Hold 路径又被某刀改回后永不露标。
+         */
+        if (!HalTimerUsesIrq()) {
+            static int sRevealPiWorkerOnce;
+
+            if (!sRevealPiWorkerOnce) {
+                GuiCursorRevealAfterUsb();
+                sRevealPiWorkerOnce = 1;
+            }
+        }
         DesktopWorkerTick();
         /*
          * PR-BOOT-fast-1 / gui-icons-defer：图标/菜单在 Worker、先于 Secondary/iwl。
@@ -111,21 +125,20 @@ void WorkerTask(void) {
                 (void)HalIwlClaim();
                 sIwlClaimOnce = 1;
             }
-            /* pwifi-2 / pi-wifi-6：FS 后 Claim（只灌片）；立刻 Flush；再 Scan（Reveal 前） */
-            {
-                static int sWifiClaimOnce;
-                if (!sWifiClaimOnce) {
-                    (void)HalWifiClaim();
-                    sWifiClaimOnce = 1;
-                    (void)gConsole.RuntimeLogFlush();
-                    if (HalWifiReady()) {
-                        (void)HalWifiScan();
-                        (void)gConsole.RuntimeLogFlush();
-                    } else {
-                        HalSerialBootMarkForce("Boot: Pi WIFI skip scan (not ready)\n");
-                    }
+            /*
+             * Pi CNTV-poll：DHCP/Store continue 曾挡文末 Reveal → 无光标且
+             * 未露时 Gui 不 HalTimerPoll → 网托 5s 采样也不走（2026-11-04）。
+             * 有线 Init 后先露一刀（Hold 仍在 Desktop Ready）；WifiClaim 仍文末。
+             */
+            if (!HalTimerUsesIrq()) {
+                static int sRevealAfterNetOnce;
+
+                if (!sRevealAfterNetOnce) {
+                    GuiCursorRevealAfterUsb();
+                    sRevealAfterNetOnce = 1;
                 }
             }
+            /* WifiClaim/Scan：文末 Reveal 之后 */
         }
         if (StoreJobUiIsBusy()) {
             (void)StoreJobStep();
@@ -188,6 +201,22 @@ void WorkerTask(void) {
         GuiCursorRevealAfterUsb();
         gConsole.AnnounceBootReady();
         (void)gConsole.RuntimeLogFlush(); /* ready 后 Log → RUNTIME.LOG */
+        /* pwifi：露标后再 Claim/Scan（防灌固件拖死首露） */
+        {
+            static int sWifiClaimOnce;
+            if (!sWifiClaimOnce) {
+                (void)HalWifiClaim();
+                sWifiClaimOnce = 1;
+                (void)gConsole.RuntimeLogFlush();
+                if (HalWifiReady()) {
+                    (void)HalWifiScan();
+                    (void)gConsole.RuntimeLogFlush();
+                } else {
+                    HalSerialBootMarkForce("Boot: WIFI skip scan (not ready)\n");
+                }
+                SchedulerIoBreath();
+            }
+        }
         /*
          * bt-defer：桌面+光标已出再配 HCI / Reset。Hci 等待窗内仍 ServiceHid。
          * 须晚于 boot MSC claim（claim 前 Address 邻口曾假 Gone）。

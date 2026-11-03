@@ -703,12 +703,12 @@ def command_transfer(args, dry_run):
                 pct = (100 * position) // total if total else 100
                 print("sent %d/%d blocks (%d%%, %d KB)"
                       % (position, total, pct, sent_bytes // 1024), flush=True)
-                # 旧核批刷前才 ACK 时，给 FAT 一点空窗，降低串口/TCP 错位成 header
+                # 旧核批刷 / NUC Wi‑Fi+USB 同 xHCI：须显式 --pace-ms；默认 0 不睡
+                # （曾无条件每 16×4K≈64KB 硬睡 2s，有线 TCP 被拖死）
                 if args.pace_ms > 0:
                     time.sleep(args.pace_ms / 1000.0)
-                # Wi‑Fi+USB 同 xHCI：每 16 块多歇，减轻批刷/固件挤死（NUC 2026-11-03）
-                if (position % 16) == 0:
-                    time.sleep(max(args.pace_ms / 1000.0, 0.5) * 4.0)
+                    if (position % 16) == 0:
+                        time.sleep(max(args.pace_ms / 1000.0, 0.5) * 4.0)
         except KeyboardInterrupt:
             log("interrupted: telling the board to abort and restore")
             send_abort(port)
@@ -785,7 +785,8 @@ def build_parser():
     parser.add_argument("--verify-timeout", type=float, default=300.0,
                         help="seconds to wait for KSEND OK after the trailer")
     parser.add_argument("--pace-ms", type=int, default=0,
-                        help="sleep this many ms after each block ACK (old-board batch flush)")
+                        help="opt-in: ms sleep after each ACK; also every 16 blocks "
+                             "extra max(pace,500)*4 ms (NUC Wi‑Fi/xHCI). Default 0=no sleep")
     return parser
 
 

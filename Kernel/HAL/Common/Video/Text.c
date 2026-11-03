@@ -11,6 +11,7 @@ void VideoClearScreen(UINT32 Color) {
     gScreen.CursorX = 0;
     gScreen.CursorY = 0;
     gBackground = Color;
+    VideoAdvanceStackClear();
 }
 
 static void ScrollClip(void) {
@@ -149,6 +150,7 @@ void VideoNewLine(void) {
     if ((!gFront && !gBack) || gScreen.Height == 0 || gScreen.Width == 0) {
         return;
     }
+    VideoAdvanceStackClear();
 
     if (gClipOn) {
         if (gClipH <= LineHeight) {
@@ -236,11 +238,13 @@ void VideoDrawCodepoint(UINT32 Cp, UINT32 Color) {
     }
 
     VideoDrawCodepointAt(gScreen.CursorX, gScreen.CursorY, Cp, Color);
+    VideoAdvanceStackPush(Adv);
     gScreen.CursorX += Adv;
 }
 
 void VideoEraseLastChar(void) {
-    UINT32 Step = FontAdvanceX();
+    /* 与 Draw 同宽；缺栈时退 FontAdvanceX（非交互重画路径） */
+    UINT32 Step = VideoAdvanceStackPopOr(FontAdvanceX());
     UINT32 MinX = gClipOn ? gClipX : 0;
 
     if (gScreen.CursorX < MinX + Step) {

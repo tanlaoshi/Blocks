@@ -211,6 +211,11 @@ static inline UINT32 CodepointAdvance(UINT32 Cp) {
     return FontCodepointAdvance(Cp);
 }
 
+/* Text 退格擦宽（VideoAdvanceStack.c） */
+void VideoAdvanceStackClear(void);
+void VideoAdvanceStackPush(UINT32 Advance);
+UINT32 VideoAdvanceStackPopOr(UINT32 Fallback);
+
 /* Scale / 逻辑分辨率（Scale.c） */
 UINT32 NormalizeUiScale(UINT32 Percent);
 void ApplyLogicalFromPhys(void);

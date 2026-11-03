@@ -91,7 +91,12 @@ void GuiTask(void) {
             /*
              * 勿泵鼠；仍跑 TickClock：Worker 已 Ensure 的图标 NeedRefresh
              * 须在 Reveal 前 Consume，否则 BMP 要等网/iwl 完才出（观感更慢）。
+             * Pi !TimerIrq：未露也须 HalTimerPoll，否则 tick 不走、网托 5s
+             * 采样卡死、有 ip 仍一直红（2026-11-04）。
              */
+            if (!HalTimerUsesIrq()) {
+                HalTimerPoll();
+            }
             DesktopTickClock();
             for (i = 0; i < 400; i++) {
                 HalCpuRelax();

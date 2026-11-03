@@ -98,25 +98,33 @@ static void OnBackspaceEx(int FromSerial) {
     if (!FromSerial || GuiShellAcceptsInput()) {
         ConsoleSbEnsureLive();
     }
-    gLen--;
-    if (!FromSerial || GuiShellAcceptsInput()) {
-        ConsoleSbBackspace();
-    }
-    if (HalConsoleVideoReady() && GuiShellAcceptsInput()) {
-        GuiFrameBufferBegin();
-        GuiFocusApplyClip();
-        /* 与 DrawChar 同：Latin 点阵步进；退格脏矩形用 FontAdvanceX */
-        HalConsoleEraseLastChar();
-        {
-            UINT32 X;
-            UINT32 Y;
+    {
+        UINT32 ErasedAdvance;
 
-            HalConsoleGetTextCursor(&X, &Y);
-            GuiBackupSyncRect(X, Y, FontAdvanceX(), FontCellH());
+        ErasedAdvance = FontCodepointAdvance((UINT32)(UINT8)gLine[gLen - 1]);
+        gLen--;
+        if (!FromSerial || GuiShellAcceptsInput()) {
+            ConsoleSbBackspace();
         }
-        GuiFocusSyncCursor();
-        GuiPresentShellEchoMark();
-        GuiFrameBufferEnd();
+        if (HalConsoleVideoReady() && GuiShellAcceptsInput()) {
+            GuiFrameBufferBegin();
+            GuiFocusApplyClip();
+            /* 擦宽须与画时 CodepointAdvance 同（TTF 拉丁 > FontAdvanceX） */
+            HalConsoleEraseLastChar();
+            {
+                UINT32 X;
+                UINT32 Y;
+
+                HalConsoleGetTextCursor(&X, &Y);
+                if (ErasedAdvance == 0u) {
+                    ErasedAdvance = FontAdvanceX();
+                }
+                GuiBackupSyncRect(X, Y, ErasedAdvance, FontCellH());
+            }
+            GuiFocusSyncCursor();
+            GuiPresentShellEchoMark();
+            GuiFrameBufferEnd();
+        }
     }
     HalConsoleBackspaceSerial();
 }

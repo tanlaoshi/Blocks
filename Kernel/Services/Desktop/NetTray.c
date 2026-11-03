@@ -34,11 +34,20 @@ static int ShowIpEnabled(void) {
 }
 
 UINT32 DesktopNetTrayCurrentIp(void) {
+    UINT32 Ip;
+
     /*
-     * 只信 NetConfig（真机未 DHCP=0；QEMU Ensure 后为 10.0.2.15）。
-     * 勿回落 HalNetGetIpAddress：后端默认常残留 SLIRP 10.0.2.15，
-     * NUC 上会误判「通」并配上 Wi‑Fi 图标。
+     * 真机先读 HalNet（与壳回落同口径），再 NetConfig。
+     * 避免仅走 NetConfigGetIp→Ensure 的时序坑；QEMU 仍只信 NetConfig
+     * （防 SLIRP 残留误绿）。
      */
+    if (HalCpuIsHypervisor()) {
+        return NetConfigGetIp();
+    }
+    Ip = HalNetGetIpAddress();
+    if (Ip != 0u) {
+        return Ip;
+    }
     return NetConfigGetIp();
 }
 
@@ -47,30 +56,30 @@ NET_TRAY_KIND DesktopNetTrayDetectKind(void) {
     UINT32 Mbps = 0;
     int Fd = 0;
     int Primary;
+    UINT32 Ip;
 
-    /* 不通：无 NIC / link down / 尚无真实地址 → 不通图标 */
+    /* 先地址（与壳 `ip` 同形）；有址即绿，勿被 Ready/MII 假象刷红 */
+    Ip = DesktopNetTrayCurrentIp();
+    if (Ip != 0u) {
+        Primary = HalNetPrimaryKind();
+        if (Primary == 1) {
+            return NET_TRAY_WIFI;
+        }
+        if (Primary == 0) {
+            return NET_TRAY_WIRED;
+        }
+        if (HalIwlAssociated() || HalWifiReady()) {
+            return NET_TRAY_WIFI;
+        }
+        return NET_TRAY_WIRED;
+    }
     if (!HalNetReady()) {
         return NET_TRAY_NONE;
     }
     if (HalNetGetLinkInfo(&Up, &Mbps, &Fd) && !Up) {
         return NET_TRAY_NONE;
     }
-    /* GetIp → Ensure：QEMU virtio 会在这里补上 10.0.2.15 */
-    if (DesktopNetTrayCurrentIp() == 0) {
-        return NET_TRAY_NONE;
-    }
-    /* 双槽：图标跟默认出站（有线优先）；无外置 L2（virtio）→ 有线绿标 */
-    Primary = HalNetPrimaryKind();
-    if (Primary == 1) {
-        return NET_TRAY_WIFI;
-    }
-    if (Primary == 0) {
-        return NET_TRAY_WIRED;
-    }
-    if (HalIwlAssociated() || HalWifiReady()) {
-        return NET_TRAY_WIFI;
-    }
-    return NET_TRAY_WIRED;
+    return NET_TRAY_NONE;
 }
 
 void DesktopNetTrayMakePrefixed(char *Out, int Max, const char *Prefix, UINT32 Ip) {

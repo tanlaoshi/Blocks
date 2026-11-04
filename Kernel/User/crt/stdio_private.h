@@ -6,8 +6,9 @@
 
 #include <stddef.h>
 
-#define FF_READ  1u
-#define FF_WRITE 2u
+#define FF_READ   1u
+#define FF_WRITE  2u
+#define FF_STATIC 4u /* stdin/out/err：勿 free / 勿关 fd */
 #define STDIO_BUF_SIZE 256
 
 struct ToyFile {

@@ -137,9 +137,14 @@ int fclose(FILE *fp) {
         return EOF;
     }
     if (StdioFlushWrite(fp) < 0) {
-        FileClose(fp->fd);
-        free(fp);
+        if ((fp->flags & FF_STATIC) == 0) {
+            FileClose(fp->fd);
+            free(fp);
+        }
         return EOF;
+    }
+    if (fp->flags & FF_STATIC) {
+        return 0;
     }
     Rc = FileClose(fp->fd);
     free(fp);

@@ -14,6 +14,10 @@
 
 typedef struct ToyFile FILE;
 
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+
 int printf(const char *fmt, ...);
 int vprintf(const char *fmt, va_list ap);
 int sprintf(char *buf, const char *fmt, ...);
@@ -27,6 +31,10 @@ int fprintf(FILE *fp, const char *fmt, ...);
 int vfprintf(FILE *fp, const char *fmt, va_list ap);
 int fputc(int c, FILE *fp);
 int fputs(const char *s, FILE *fp);
+int fgetc(FILE *fp);
+int getchar(void);
+char *fgets(char *s, int size, FILE *fp);
+int sscanf(const char *str, const char *fmt, ...);
 
 /* fopen("w") 不截断（内核忽略 O_TRUNC）；写侧行缓冲，见 fflush/ungetc */
 FILE *fopen(const char *path, const char *mode);

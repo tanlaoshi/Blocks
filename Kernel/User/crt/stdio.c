@@ -1,24 +1,32 @@
 /*
- * stdio.c — PR-A-libc：无缓冲 fopen / fread / fwrite / fseek
+ * stdio.c — fopen / fflush / fclose / fseek / ungetc（libc-stdio-buf）
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #include <Blocks/File.h>
-#include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
+#include "stdio_private.h"
 
-#define FF_READ  1u
-#define FF_WRITE 2u
+int StdioFlushWrite(FILE *fp) {
+    size_t Off = 0;
+    ssize_t N;
 
-struct ToyFile {
-    int fd;
-    unsigned flags;
-    int eof;
-    int err;
-};
+    if (!fp || fp->wlen == 0) {
+        return 0;
+    }
+    while (Off < fp->wlen) {
+        N = FileWrite(fp->fd, fp->wbuf + Off, fp->wlen - Off);
+        if (N <= 0) {
+            fp->err = 1;
+            return -1;
+        }
+        Off += (size_t)N;
+    }
+    fp->wlen = 0;
+    return 0;
+}
 
 static int ParseMode(const char *mode, unsigned *OutFlags, int *OutAppend, int *OutExist) {
     unsigned Flags = 0;
@@ -105,11 +113,20 @@ FILE *fopen(const char *path, const char *mode) {
         errno = ENOMEM;
         return 0;
     }
+    memset(Fp, 0, sizeof(*Fp));
     Fp->fd = Fd;
     Fp->flags = Flags;
-    Fp->eof = 0;
-    Fp->err = 0;
     return Fp;
+}
+
+int fflush(FILE *fp) {
+    if (!fp) {
+        return 0;
+    }
+    if (StdioFlushWrite(fp) < 0) {
+        return EOF;
+    }
+    return 0;
 }
 
 int fclose(FILE *fp) {
@@ -119,64 +136,14 @@ int fclose(FILE *fp) {
         errno = EINVAL;
         return EOF;
     }
+    if (StdioFlushWrite(fp) < 0) {
+        FileClose(fp->fd);
+        free(fp);
+        return EOF;
+    }
     Rc = FileClose(fp->fd);
     free(fp);
     return Rc;
-}
-
-size_t fread(void *ptr, size_t size, size_t nmemb, FILE *fp) {
-    size_t Bytes;
-    ssize_t N;
-
-    if (!fp || !ptr || size == 0 || nmemb == 0) {
-        return 0;
-    }
-    if ((fp->flags & FF_READ) == 0) {
-        fp->err = 1;
-        errno = EINVAL;
-        return 0;
-    }
-    if (size != 0 && nmemb > ((size_t)-1) / size) {
-        fp->err = 1;
-        errno = EINVAL;
-        return 0;
-    }
-    Bytes = size * nmemb;
-    N = FileRead(fp->fd, ptr, Bytes);
-    if (N < 0) {
-        fp->err = 1;
-        return 0;
-    }
-    if ((size_t)N < Bytes) {
-        fp->eof = 1;
-    }
-    return (size_t)N / size;
-}
-
-size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *fp) {
-    size_t Bytes;
-    ssize_t N;
-
-    if (!fp || !ptr || size == 0 || nmemb == 0) {
-        return 0;
-    }
-    if ((fp->flags & FF_WRITE) == 0) {
-        fp->err = 1;
-        errno = EINVAL;
-        return 0;
-    }
-    if (size != 0 && nmemb > ((size_t)-1) / size) {
-        fp->err = 1;
-        errno = EINVAL;
-        return 0;
-    }
-    Bytes = size * nmemb;
-    N = FileWrite(fp->fd, ptr, Bytes);
-    if (N < 0) {
-        fp->err = 1;
-        return 0;
-    }
-    return (size_t)N / size;
 }
 
 int fseek(FILE *fp, long offset, int whence) {
@@ -184,6 +151,10 @@ int fseek(FILE *fp, long offset, int whence) {
         errno = EINVAL;
         return -1;
     }
+    if (StdioFlushWrite(fp) < 0) {
+        return -1;
+    }
+    fp->has_unget = 0;
     if (FileSeek(fp->fd, (off_t)offset, whence) < 0) {
         fp->err = 1;
         return -1;
@@ -199,12 +170,28 @@ long ftell(FILE *fp) {
         errno = EINVAL;
         return -1;
     }
+    if (StdioFlushWrite(fp) < 0) {
+        return -1;
+    }
     Pos = FileSeek(fp->fd, 0, SEEK_CUR);
     if (Pos < 0) {
         fp->err = 1;
         return -1;
     }
+    if (fp->has_unget && Pos > 0) {
+        return (long)Pos - 1;
+    }
     return (long)Pos;
+}
+
+int ungetc(int c, FILE *fp) {
+    if (!fp || c == EOF || fp->has_unget) {
+        return EOF;
+    }
+    fp->unget = (unsigned char)c;
+    fp->has_unget = 1;
+    fp->eof = 0;
+    return (int)fp->unget;
 }
 
 int feof(FILE *fp) {

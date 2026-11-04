@@ -12,7 +12,7 @@
 | 堆 | `malloc` / `calloc` / `realloc` / `free`（brk） |
 | 字符串 | 上列 + `memmove` / `strrchr` / `strncat` / `strtok` / `strerror` |
 | 标准库杂项 | `atoi` / `qsort` / `exit` / `abs`；`strtol`/`strtoul`/`strtod`；`limits.h` |
-| FILE* | 无缓冲 `fopen` / `fread` / `fwrite` / `fclose` / `fseek` / `ftell`（底层走 `File*`） |
+| FILE* | `fopen`/`fread`/`fwrite`/`fclose`/`fseek`/`ftell`；写侧行缓冲 + `fflush`/`ungetc`（底层 `File*`） |
 | 信号（教学） | `signal` 薄封装（非完整 POSIX 信号） |
 | 断言 / errno | `errno`、常见 `E*` |
 | 头文件 | `stdbool.h` / `stdint.h`；`ctype.h` ASCII 分类+大小写；`sys/types.h` 经 `stdint` |
@@ -23,7 +23,7 @@
 
 | 优先级 | 缺口 | 说明 |
 | --- | --- | --- |
-| P0 | 更完整的 `stdio` | ✅ fmt 族；缓冲/`ungetc`→PR5；`fscanf`/宽字符后置 |
+| P0 | 更完整的 `stdio` | ✅ fmt + 行缓冲/`fflush`/`ungetc`；`fscanf`/宽字符后置 |
 | P0 | `stdlib` 解析 | ✅ `strtol`/`strtoul`/`strtod`；`getenv`/`setenv` 后置 |
 | P1 | `string.h` 补全 | ✅ libc-string（`memmove` 原有） |
 | P1 | `ctype.h` / `stdbool.h` / `stdint.h` | ✅ libc-headers |

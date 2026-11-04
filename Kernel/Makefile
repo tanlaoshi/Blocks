@@ -591,7 +591,7 @@ USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/malloc.o \
 	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/signal.o \
-	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_fmt.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
+	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
@@ -652,7 +652,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
-	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/socket.o \
+	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o
 ifeq ($(ARCH),arm64)
@@ -1298,8 +1298,11 @@ $(USER_VIRT_DIR)/signal.o: User/crt/signal.c | $(USER_VIRT_DIR)
 $(USER_VIRT_DIR)/dirent.o: User/crt/dirent.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/dirent.c -o $@
 
-$(USER_VIRT_DIR)/stdio.o: User/crt/stdio.c | $(USER_VIRT_DIR)
+$(USER_VIRT_DIR)/stdio.o: User/crt/stdio.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/stdio.c -o $@
+
+$(USER_VIRT_DIR)/stdio_rw.o: User/crt/stdio_rw.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/stdio_rw.c -o $@
 
 $(USER_VIRT_DIR)/stdio_fmt.o: User/crt/stdio_fmt.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/stdio_fmt.c -o $@

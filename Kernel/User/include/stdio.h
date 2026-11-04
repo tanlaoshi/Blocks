@@ -28,9 +28,11 @@ int vfprintf(FILE *fp, const char *fmt, va_list ap);
 int fputc(int c, FILE *fp);
 int fputs(const char *s, FILE *fp);
 
-/* PR-A-libc：无缓冲 FILE*；fopen("w") 不截断（内核忽略 O_TRUNC） */
+/* fopen("w") 不截断（内核忽略 O_TRUNC）；写侧行缓冲，见 fflush/ungetc */
 FILE *fopen(const char *path, const char *mode);
 int fclose(FILE *fp);
+int fflush(FILE *fp);
+int ungetc(int c, FILE *fp);
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *fp);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *fp);
 int fseek(FILE *fp, long offset, int whence);

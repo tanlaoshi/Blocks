@@ -589,7 +589,7 @@ USER_LIB_UI_A = User/Library/Ui/libUi.a
 USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
-USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_float.o User/crt/malloc.o \
+USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_format.o User/crt/printf_float.o User/crt/malloc.o \
 	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
@@ -648,7 +648,7 @@ endif
 USER_HELLO_ELF = $(USER_VIRT_DIR)/hello.elf
 USER_HELLO_OBJ = $(USER_VIRT_DIR)/hello.o
 USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
-	$(USER_VIRT_DIR)/string.o $(USER_VIRT_DIR)/string_extra.o $(USER_VIRT_DIR)/printf.o $(USER_VIRT_DIR)/printf_float.o \
+	$(USER_VIRT_DIR)/string.o $(USER_VIRT_DIR)/string_extra.o $(USER_VIRT_DIR)/printf.o $(USER_VIRT_DIR)/printf_format.o $(USER_VIRT_DIR)/printf_float.o \
 	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/errno.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o \
@@ -1276,8 +1276,11 @@ $(USER_VIRT_DIR)/string.o: User/crt/string.c | $(USER_VIRT_DIR)
 $(USER_VIRT_DIR)/string_extra.o: User/crt/string_extra.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/string_extra.c -o $@
 
-$(USER_VIRT_DIR)/printf.o: User/crt/printf.c | $(USER_VIRT_DIR)
+$(USER_VIRT_DIR)/printf.o: User/crt/printf.c User/crt/printf_private.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/printf.c -o $@
+
+$(USER_VIRT_DIR)/printf_format.o: User/crt/printf_format.c User/crt/printf_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/printf_format.c -o $@
 
 $(USER_VIRT_DIR)/printf_float.o: User/crt/printf_float.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/printf_float.c -o $@

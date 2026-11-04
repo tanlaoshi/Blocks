@@ -10,26 +10,23 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**PR3 `libc-stdlib-parse`** — `strtol` / `strtoul` / `strtod`。  
-> **本刀**：开干（`getenv`/`setenv` 本刀后置）。  
-> **排队**：PR4 stdio-fmt → … → PR9 atexit。  
-> **刚 TG**：PR2 `libc-string`（`string_extra.c`；`perror`→`strerror`）。
+> **当前 ★**：**PR4 `libc-stdio-fmt`** — `fprintf` / `vfprintf` / `fputs` / `fputc`。  
+> **本刀**：开干。  
+> **排队**：PR5 stdio-buf → … → PR9 atexit。  
+> **刚 TG**：PR3 `libc-stdlib-parse`（`strtol`/`strtoul`/`strtod`；`limits.h`；`ERANGE`）。
 
 | # | PR | 范围 | 验收 | 状态 |
 |---|-----|------|------|------|
-| 0 | `libc-rename` | `libBlocks.a`→`libc.a` | SDK 链 Hello | ✅ |
-| 1 | `libc-headers` | `stdbool` / `stdint` / `ctype` | 头可单编 | ✅ |
-| 2 | `libc-string` | `strerror` / `strtok` / `strrchr` / `strncat` | LibcDemo 绿 | ✅ |
-| 3 | `libc-stdlib-parse` | `strtol` / `strtoul` / `strtod`；env 后置 | 解析用例 | ★ |
-| 4 | `libc-stdio-fmt` | `fprintf` / `vfprintf` / `fputs` / `fputc` | 写 FILE* 绿 | 排队 |
+| 0–2 | rename / headers / string | — | — | ✅ |
+| 3 | `libc-stdlib-parse` | `strtol` / `strtoul` / `strtod`；env 后置 | 解析链绿 | ✅ |
+| 4 | `libc-stdio-fmt` | `fprintf` / `vfprintf` / `fputs` / `fputc` | 写 FILE* 绿 | ★ |
 | 5 | `libc-stdio-buf` | 缓冲 + `fflush` / `ungetc` | 旧范例不破 | 排队 |
 | 6 | `libc-setjmp` | `setjmp.h` + arch 汇编（x64 先） | 跳转烟测 | 排队 |
 | 7 | `libc-time` | 薄 `time.h` | 头+符号 | 排队 |
 | 8 | `libc-math` | 裁剪 `math.h` | 子集进 Gaps | 排队 |
 | 9 | `libc-atexit` | `atexit` / `abort` | 退出钩子烟测 | 排队 |
 
-**不做（本柱）**：`locale`/`wchar`；musl；假 POSIX 公开脸；对齐 Linux syscall 号。  
-**自举门槛**：PR0～PR6（P0/P1）收口后再谈 Guest 内编译（sh-6）。
+**不做（本柱）**：`locale`/`wchar`；musl；假 POSIX 公开脸；对齐 Linux syscall 号。
 
 ---
 
@@ -37,9 +34,10 @@
 
 | PR | 状态 | 说明 |
 |----|------|------|
-| PR0 `libc-rename` | ✅ | `User/Library/Libc/libc.a` |
+| PR0 `libc-rename` | ✅ | `Libc/libc.a` |
 | PR1 `libc-headers` | ✅ | CRT 1.6.0 |
-| PR2 `libc-string` | ✅ | `string_extra.c`；`perror` 用 `strerror` |
+| PR2 `libc-string` | ✅ | `string_extra.c` |
+| PR3 `libc-stdlib-parse` | ✅ | `stdlib_parse.c`；`limits.h`；env 后置 |
 
 ---
 
@@ -47,7 +45,7 @@
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-04 | **TG** PR3；★→PR4 |
 | 2026-11-04 | **TG** PR2；★→PR3 |
-| 2026-11-04 | **TG** PR1；★→PR2；约定无手测连 TG+JX |
-| 2026-11-04 | **TG** PR0；★→PR1 |
-| 2026-11-04 | 自 1104 待点名迁出；拆 PR0～9 |
+| 2026-11-04 | **TG** PR1；约定无手测连 TG+JX |
+| 2026-11-04 | **TG** PR0 |

@@ -21,6 +21,7 @@
 #define ENOSPC          28
 #define ESPIPE          29
 #define EPIPE           32
+#define ERANGE          34
 #define ENOSYS          38
 #define ECHILD          10
 #define EBADF            9

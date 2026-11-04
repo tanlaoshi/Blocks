@@ -14,6 +14,9 @@ int abs(int x);
 long labs(long x);
 int atoi(const char *s);
 long atol(const char *s);
+long strtol(const char *nptr, char **endptr, int base);
+unsigned long strtoul(const char *nptr, char **endptr, int base);
+double strtod(const char *nptr, char **endptr);
 void qsort(void *base, size_t nmemb, size_t size,
            int (*compar)(const void *, const void *));
 

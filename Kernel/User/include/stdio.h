@@ -49,6 +49,8 @@ int fseek(FILE *fp, long offset, int whence);
 long ftell(FILE *fp);
 int feof(FILE *fp);
 int ferror(FILE *fp);
+void clearerr(FILE *fp);
+void rewind(FILE *fp);
 int fileno(FILE *fp);
 int remove(const char *path);
 int rename(const char *old_path, const char *new_path);

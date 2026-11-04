@@ -224,6 +224,22 @@ int ferror(FILE *Stream) {
     return Stream ? Stream->Error : 1;
 }
 
+void clearerr(FILE *Stream) {
+    if (!Stream) {
+        return;
+    }
+    Stream->EndOfFile = 0;
+    Stream->Error = 0;
+}
+
+void rewind(FILE *Stream) {
+    if (!Stream) {
+        return;
+    }
+    (void)fseek(Stream, 0, SEEK_SET);
+    clearerr(Stream);
+}
+
 int fileno(FILE *Stream) {
     if (!Stream) {
         errno = EINVAL;

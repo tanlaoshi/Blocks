@@ -9,9 +9,9 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**L3 `stdio-clearerr-rewind`** — `clearerr` / `rewind`。  
-> **排队**：L4 string 补缺 → L5 time 补缺 → L6 缺口表收口标版。  
-> **刚 TG**：L2 malloc freelist。
+> **当前 ★**：**L4 `string-span-memchr`** — `memchr` / `strspn` / `strcspn` / `strpbrk`。  
+> **排队**：L5 time 补缺 → L6 缺口表收口标版。  
+> **刚 TG**：L3 clearerr / rewind。
 
 | # | 刀 | 状态 |
 |---|-----|------|
@@ -19,8 +19,8 @@
 | R1～R6 | 展览级可读性 | ✅ |
 | L1 | fopen `"w"` 截断语义 | ✅ |
 | L2 | malloc freelist | ✅ |
-| L3 | clearerr / rewind | ★ |
-| L4 | memchr / strspn / strcspn / strpbrk | 排队 |
+| L3 | clearerr / rewind | ✅ |
+| L4 | memchr / strspn / strcspn / strpbrk | ★ |
 | L5 | localtime / mktime / difftime + strftime 星期 | 排队 |
 | L6 | LibcGaps 已知缩水表 + CRT 标版 | 排队 |
 

@@ -63,9 +63,6 @@ blocks_load_config() {
     elif [ -f "$Root/Kernel/Scripts/Config.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Kernel/Scripts/Config.txt"
-    elif [ -f "$Root/Kernel/OpenBox/Config.txt" ]; then
-        # shellcheck disable=SC1090
-        . "$Root/Kernel/OpenBox/Config.txt"
     fi
     if [ -f "$Root/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
@@ -73,9 +70,6 @@ blocks_load_config() {
     elif [ -f "$Root/Kernel/Scripts/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Kernel/Scripts/Config.local.txt"
-    elif [ -f "$Root/Kernel/OpenBox/Scripts/Config.local.txt" ]; then
-        # shellcheck disable=SC1090
-        . "$Root/Kernel/OpenBox/Scripts/Config.local.txt"
     elif [ -f "$Root/Config.local.txt" ]; then
         # shellcheck disable=SC1090
         . "$Root/Config.local.txt"
@@ -87,8 +81,6 @@ blocks_scripts_dir() {
     local Root="$1"
     if [ -d "$Root/Kernel/Scripts/lib" ]; then
         printf '%s\n' "$Root/Kernel/Scripts"
-    elif [ -d "$Root/Kernel/OpenBox/Scripts/lib" ]; then
-        printf '%s\n' "$Root/Kernel/OpenBox/Scripts"
     elif [ -f "$Root/Scripts/build.sh" ]; then
         printf '%s\n' "$Root/Scripts"
     else

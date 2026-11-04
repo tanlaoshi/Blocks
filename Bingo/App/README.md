@@ -10,9 +10,9 @@
 | [`Guide.md`](Guide.md) | 上手：CRT / UI / Net / 打包 |
 | [`API.md`](API.md) | 一页 API 表 |
 | [`ABI.md`](ABI.md) | 开课冻结：承诺 / 不承诺 |
-| [`LibcGaps.md`](LibcGaps.md) | ISO C 加厚缺口 |
-| [`libc加厚.md`](libc加厚.md) | libc 定名 + 加厚 PR 活档（只认该文 ★） |
 | [`UI/`](UI/) | 布局文件、多页面、拖控件设计器 |
+
+libc 缺口 / 加厚活档（过程）→ [`Archive/项目/LibcGaps.md`](../../Archive/项目/LibcGaps.md)。
 
 **工具链**：`cd Kernel && ./Tools/build-sdk.sh` → `Build/BlocksSDK`；离树 `make BLOCKS_SDK=…`。  
 **课设 / Class / Store**：[`Kernel/User/Apps/README.md`](../../Kernel/User/Apps/README.md)。  

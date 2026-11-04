@@ -28,8 +28,9 @@ AR        ?= ar
 
 USER_INC  := $(BLOCKS_KERNEL)/User/include
 USER_LD   := $(BLOCKS_KERNEL)/User/user.ld
-START_DIR := $(BLOCKS_KERNEL)/User/Library/Libc/start
-LIB_DIR   := $(BLOCKS_KERNEL)/User/Library/Libc
+START_DIR := $(BLOCKS_KERNEL)/User/Library/Blocks/start
+LIBC_DIR  := $(BLOCKS_KERNEL)/User/Library/Libc
+BLOCKS_DIR := $(BLOCKS_KERNEL)/User/Library/Blocks
 
 # c99-1/5：课外模板与内核自有树同锁 ISO C99 + -pedantic
 USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
@@ -37,12 +38,14 @@ USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fn
 	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I$(BLOCKS_KERNEL)/Include/Abi -I.
 
 # 链入用绝对路径；ensure-crt 调根 Makefile 须用相对目标名
-CRT0_OBJ    := $(START_DIR)/crt0.o
-SYSCALL_OBJ := $(START_DIR)/syscall.o
-LIBC_A      := $(LIB_DIR)/libc.a
-CRT0_REL    := User/Library/Libc/start/crt0.o
-SYSCALL_REL := User/Library/Libc/start/syscall.o
-LIBC_REL    := User/Library/Libc/libc.a
+CRT0_OBJ     := $(START_DIR)/crt0.o
+SYSCALL_OBJ  := $(START_DIR)/syscall.o
+LIBC_A       := $(LIBC_DIR)/libc.a
+BLOCKS_A      := $(BLOCKS_DIR)/libblocks.a
+CRT0_REL     := User/Library/Blocks/start/crt0.o
+SYSCALL_REL  := User/Library/Blocks/start/syscall.o
+LIBC_REL     := User/Library/Libc/libc.a
+BLOCKS_REL    := User/Library/Blocks/libblocks.a
 
 OBJS := $(addprefix $(BUILDDIR)/,$(SRCS:.c=.o))
 
@@ -60,7 +63,7 @@ ENSURE_LIBS = $(patsubst $(BLOCKS_KERNEL)/%,%,$(EXTRA_LIBS))
 all: ensure-crt $(ELF)
 
 ensure-crt:
-	@$(MAKE) -C $(BLOCKS_KERNEL) $(CRT0_REL) $(SYSCALL_REL) $(LIBC_REL) $(ENSURE_LIBS)
+	@$(MAKE) -C $(BLOCKS_KERNEL) $(CRT0_REL) $(SYSCALL_REL) $(LIBC_REL) $(BLOCKS_REL) $(ENSURE_LIBS)
 
 $(BUILDDIR):
 	mkdir -p $@
@@ -75,9 +78,9 @@ endif
 $(BUILDDIR)/%.o: %.c | $(BUILDDIR)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(ELF): $(OBJS) $(CRT0_OBJ) $(SYSCALL_OBJ) $(LIBC_A) $(USER_LD) $(EXTRA_OBJS) $(EXTRA_LIBS)
+$(ELF): $(OBJS) $(CRT0_OBJ) $(SYSCALL_OBJ) $(LIBC_A) $(BLOCKS_A) $(USER_LD) $(EXTRA_OBJS) $(EXTRA_LIBS)
 	$(LD) -nostdlib -static -T $(USER_LD) -o $@ $(OBJS) $(EXTRA_OBJS) \
-		$(EXTRA_LIBS) $(LIBC_A) $(CRT0_OBJ) $(SYSCALL_OBJ)
+		$(EXTRA_LIBS) $(LIBC_A) $(BLOCKS_A) $(CRT0_OBJ) $(SYSCALL_OBJ)
 
 clean:
 	rm -rf $(BUILDDIR)

@@ -1,6 +1,6 @@
 # Blocks Hosted libc · Code Review（1105 `libc-review`）
 
-> **范围**：CRT **1.9.6**（`Kernel/User/crt` + ISO 头）；对表 `Bingo/App/libc加厚.md` / `LibcGaps.md`；近列 L1～L6 / R1～R6。  
+> **范围**：CRT **1.9.6**（`Kernel/User/crt` + ISO 头）；对表 `Archive/项目/libc加厚.md` / `LibcGaps.md`；近列 L1～L6 / R1～R6。  
 > **命名口径**：公开符号跟 ISO；**实现侧展览全称是课用可读性的刻意选择**（非误套 Kernel 铁律、也非待清债务）。对照 musl 短名只作「业界习惯」备注，**不**据此要求回炉。  
 > **日期**：2026-11-04（口径按作者说明修订同日）。
 

@@ -590,15 +590,39 @@ USER_LIB_UI_A = User/Library/Ui/libUi.a
 USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
-# 全部在 Library/Libc/：ISO 按头分目录；start/ 为 _start+syscall+call_main（非 ISO，打进 libc.a）
+USER_BLOCKS_A = User/Library/Blocks/libblocks.a
+# Libc = ISO C；Blocks = start + 自有门面（不做 POSIX 双轨）
 USER_LIBC_ROOT = User/Library/Libc
-USER_LIBC_OBJS = 	$(USER_LIBC_ROOT)/string/string.o $(USER_LIBC_ROOT)/string/string_extra.o 	$(USER_LIBC_ROOT)/stdio/printf.o $(USER_LIBC_ROOT)/stdio/printf_format.o $(USER_LIBC_ROOT)/stdio/printf_float.o 	$(USER_LIBC_ROOT)/stdio/stdio.o $(USER_LIBC_ROOT)/stdio/stdio_rw.o $(USER_LIBC_ROOT)/stdio/stdio_fmt.o 	$(USER_LIBC_ROOT)/stdio/stdio_streams.o $(USER_LIBC_ROOT)/stdio/stdio_scan.o 	$(USER_LIBC_ROOT)/stdio/stdio_scan_token.o $(USER_LIBC_ROOT)/stdio/stdio_scan_format.o 	$(USER_LIBC_ROOT)/stdio/stdio_path.o 	$(USER_LIBC_ROOT)/stdlib/malloc.o $(USER_LIBC_ROOT)/stdlib/stdlib.o 	$(USER_LIBC_ROOT)/stdlib/stdlib_parse.o $(USER_LIBC_ROOT)/stdlib/stdlib_search.o 	$(USER_LIBC_ROOT)/stdlib/environ.o $(USER_LIBC_ROOT)/stdlib/atexit.o 	$(USER_LIBC_ROOT)/errno/errno.o 	$(USER_LIBC_ROOT)/unistd/unistd.o $(USER_LIBC_ROOT)/unistd/sleep.o $(USER_LIBC_ROOT)/unistd/cwd.o 	$(USER_LIBC_ROOT)/signal/signal.o 	$(USER_LIBC_ROOT)/dirent/dirent.o 	$(USER_LIBC_ROOT)/sys/socket.o $(USER_LIBC_ROOT)/sys/stat.o $(USER_LIBC_ROOT)/sys/proc.o 	$(USER_LIBC_ROOT)/sched/sched.o 	$(USER_LIBC_ROOT)/pthread/threadroot.o $(USER_LIBC_ROOT)/pthread/pthread.o 	$(USER_LIBC_ROOT)/setjmp/setjmp.o 	$(USER_LIBC_ROOT)/time/time.o $(USER_LIBC_ROOT)/time/time_convert.o 	$(USER_LIBC_ROOT)/math/math.o $(USER_LIBC_ROOT)/math/math_trig.o $(USER_LIBC_ROOT)/math/math_exp.o 	$(USER_LIBC_ROOT)/start/call_main.o
+USER_BLOCKS_ROOT = User/Library/Blocks
+USER_LIBC_OBJS = \
+	$(USER_LIBC_ROOT)/string/string.o $(USER_LIBC_ROOT)/string/string_extra.o \
+	$(USER_LIBC_ROOT)/stdio/printf.o $(USER_LIBC_ROOT)/stdio/printf_format.o $(USER_LIBC_ROOT)/stdio/printf_float.o \
+	$(USER_LIBC_ROOT)/stdio/stdio.o $(USER_LIBC_ROOT)/stdio/stdio_rw.o $(USER_LIBC_ROOT)/stdio/stdio_fmt.o \
+	$(USER_LIBC_ROOT)/stdio/stdio_streams.o $(USER_LIBC_ROOT)/stdio/stdio_scan.o \
+	$(USER_LIBC_ROOT)/stdio/stdio_scan_token.o $(USER_LIBC_ROOT)/stdio/stdio_scan_format.o \
+	$(USER_LIBC_ROOT)/stdio/stdio_path.o \
+	$(USER_LIBC_ROOT)/stdlib/malloc.o $(USER_LIBC_ROOT)/stdlib/stdlib.o \
+	$(USER_LIBC_ROOT)/stdlib/stdlib_parse.o $(USER_LIBC_ROOT)/stdlib/stdlib_search.o \
+	$(USER_LIBC_ROOT)/stdlib/environ.o $(USER_LIBC_ROOT)/stdlib/atexit.o \
+	$(USER_LIBC_ROOT)/errno/errno.o \
+	$(USER_LIBC_ROOT)/signal/signal.o \
+	$(USER_LIBC_ROOT)/setjmp/setjmp.o \
+	$(USER_LIBC_ROOT)/time/time.o $(USER_LIBC_ROOT)/time/time_convert.o \
+	$(USER_LIBC_ROOT)/math/math.o $(USER_LIBC_ROOT)/math/math_trig.o $(USER_LIBC_ROOT)/math/math_exp.o
+USER_BLOCKS_OBJS = \
+	$(USER_BLOCKS_ROOT)/start/call_main.o \
+	$(USER_BLOCKS_ROOT)/host/unistd.o $(USER_BLOCKS_ROOT)/host/sleep.o $(USER_BLOCKS_ROOT)/host/cwd.o \
+	$(USER_BLOCKS_ROOT)/host/proc.o \
+	$(USER_BLOCKS_ROOT)/dir/dir.o \
+	$(USER_BLOCKS_ROOT)/socket/socket.o $(USER_BLOCKS_ROOT)/stat/stat.o \
+	$(USER_BLOCKS_ROOT)/thread/sched.o \
+	$(USER_BLOCKS_ROOT)/thread/threadroot.o $(USER_BLOCKS_ROOT)/thread/pthread.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone -IUser/include -IInclude -IInclude/Abi
 USER_ASFLAGS = -IUser/include -IInclude -IInclude/Abi
-USER_CRT_OBJS = $(USER_LIBC_ROOT)/start/crt0.o $(USER_LIBC_ROOT)/start/syscall.o $(USER_LIBC_OBJS)
+USER_CRT_OBJS = $(USER_BLOCKS_ROOT)/start/crt0.o $(USER_BLOCKS_ROOT)/start/syscall.o $(USER_LIBC_OBJS) $(USER_BLOCKS_OBJS)
 else
 EXTRA_OBJS =
 # PR-B2：Board 包 .c（含一层子目录，如 Ethernet/*.c）；BoardConfig.h 仅 HAL -I
@@ -629,13 +653,13 @@ endif
 USER_VIRT_DIR = $(HALDIR)/user
 ifeq ($(ARCH),arm64)
 USER_LD = User/user-arm64.ld
-USER_CRT0_SRC = User/Library/Libc/start/crt0_aarch64.S
-USER_SYSCALL_SRC = User/Library/Libc/start/syscall_aarch64.S
+USER_CRT0_SRC = User/Library/Blocks/start/crt0_aarch64.S
+USER_SYSCALL_SRC = User/Library/Blocks/start/syscall_aarch64.S
 USER_LDFLAGS = -z noexecstack
 else
 USER_LD = User/user-riscv.ld
-USER_CRT0_SRC = User/Library/Libc/start/crt0_riscv.S
-USER_SYSCALL_SRC = User/Library/Libc/start/syscall_riscv.S
+USER_CRT0_SRC = User/Library/Blocks/start/crt0_riscv.S
+USER_SYSCALL_SRC = User/Library/Blocks/start/syscall_riscv.S
 USER_LDFLAGS = -m elf64lriscv -z noexecstack
 endif
 # 用户态允许 FPU（libc float/%f）；勿带内核的 -mgeneral-regs-only
@@ -653,7 +677,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/call_main.o $(USER_VIRT_DIR)/errno.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o $(USER_VIRT_DIR)/stdlib_search.o $(USER_VIRT_DIR)/environ.o \
-	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
+	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dir.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/stdio_scan_token.o $(USER_VIRT_DIR)/stdio_scan_format.o $(USER_VIRT_DIR)/stdio_path.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o \
@@ -797,7 +821,7 @@ all: $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF) \
 	$(USER_EXECDEMO_ELF) $(USER_PIPEDEMO_ELF) $(USER_BRKDEMO_ELF) $(USER_MMAPDEMO_ELF) $(USER_KILLDEMO_ELF) \
 	$(USER_SIGDEMO_ELF) \
 	$(USER_LIBCDEMO_ELF) $(USER_SLEEPDEMO_ELF) $(USER_THREADSMOKE_ELF) $(USER_PTHREADSMOKE_ELF) $(USER_THREADDEMO_ELF) $(USER_SNAKE_ELF) $(USER_TASKMGR_ELF) $(USER_DIRDEMO_ELF) $(USER_CWDDEMO_ELF) \
-	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIBC_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
+	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIBC_A) $(USER_BLOCKS_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
 endif
 else
 ifneq ($(BRINGUP),1)
@@ -998,13 +1022,16 @@ $(HALDIR)/SmpTramp_blob.o: $(HALDIR)/SmpTramp.bin
 $(USER_HELLO_OBJ): User/Apps/Hello.c User/include/stdio.h User/include/stdlib.h User/include/string.h User/include/stddef.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Hello.c -o $@
 
-User/Library/Libc/start/%.o: User/Library/Libc/start/%.c
+User/Library/Blocks/start/%.o: User/Library/Blocks/start/%.c
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-User/Library/Libc/start/%.o: User/Library/Libc/start/%.S
+User/Library/Blocks/start/%.o: User/Library/Blocks/start/%.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 
 User/Library/Libc/%.o: User/Library/Libc/%.c
+	$(CC) $(USER_CFLAGS) -c $< -o $@
+
+User/Library/Blocks/%.o: User/Library/Blocks/%.c
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
 ifeq ($(ARCH),arm64)
@@ -1110,6 +1137,10 @@ $(USER_LIB_FSUTIL_A): $(USER_LIB_FSUTIL_OBJ)
 $(USER_LIBC_A): $(USER_LIBC_OBJS)
 	mkdir -p $(dir $@)
 	ar rcs $@ $(USER_LIBC_OBJS)
+
+$(USER_BLOCKS_A): $(USER_BLOCKS_OBJS)
+	mkdir -p $(dir $@)
+	ar rcs $@ $(USER_BLOCKS_OBJS)
 
 $(USER_LIBCDEMO_OBJ): User/Apps/Demos/LibcDemo.c User/include/stdio.h User/include/stdlib.h User/include/string.h User/include/signal.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/LibcDemo.c -o $@
@@ -1300,17 +1331,17 @@ $(USER_VIRT_DIR)/printf_float.o: User/Library/Libc/stdio/printf_float.c | $(USER
 $(USER_VIRT_DIR)/malloc.o: User/Library/Libc/stdlib/malloc.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/malloc.c -o $@
 
-$(USER_VIRT_DIR)/call_main.o: User/Library/Libc/start/call_main.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/start/call_main.c -o $@
+$(USER_VIRT_DIR)/call_main.o: User/Library/Blocks/start/call_main.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/start/call_main.c -o $@
 
 $(USER_VIRT_DIR)/errno.o: User/Library/Libc/errno/errno.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/errno/errno.c -o $@
 
-$(USER_VIRT_DIR)/unistd.o: User/Library/Libc/unistd/unistd.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/unistd.c -o $@
+$(USER_VIRT_DIR)/unistd.o: User/Library/Blocks/host/unistd.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/host/unistd.c -o $@
 
-$(USER_VIRT_DIR)/sleep.o: User/Library/Libc/unistd/sleep.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/sleep.c -o $@
+$(USER_VIRT_DIR)/sleep.o: User/Library/Blocks/host/sleep.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/host/sleep.c -o $@
 
 $(USER_VIRT_DIR)/stdlib.o: User/Library/Libc/stdlib/stdlib.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/stdlib.c -o $@
@@ -1327,8 +1358,8 @@ $(USER_VIRT_DIR)/stdlib_search.o: User/Library/Libc/stdlib/stdlib_search.c | $(U
 $(USER_VIRT_DIR)/signal.o: User/Library/Libc/signal/signal.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/signal/signal.c -o $@
 
-$(USER_VIRT_DIR)/dirent.o: User/Library/Libc/dirent/dirent.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/dirent/dirent.c -o $@
+$(USER_VIRT_DIR)/dir.o: User/Library/Blocks/dir/dir.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/dir/dir.c -o $@
 
 $(USER_VIRT_DIR)/stdio.o: User/Library/Libc/stdio/stdio.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio.c -o $@
@@ -1354,26 +1385,26 @@ $(USER_VIRT_DIR)/stdio_scan_format.o: User/Library/Libc/stdio/stdio_scan_format.
 $(USER_VIRT_DIR)/stdio_path.o: User/Library/Libc/stdio/stdio_path.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_path.c -o $@
 
-$(USER_VIRT_DIR)/socket.o: User/Library/Libc/sys/socket.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/socket.c -o $@
+$(USER_VIRT_DIR)/socket.o: User/Library/Blocks/socket/socket.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/socket/socket.c -o $@
 
-$(USER_VIRT_DIR)/cwd.o: User/Library/Libc/unistd/cwd.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/cwd.c -o $@
+$(USER_VIRT_DIR)/cwd.o: User/Library/Blocks/host/cwd.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/host/cwd.c -o $@
 
-$(USER_VIRT_DIR)/sched.o: User/Library/Libc/sched/sched.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sched/sched.c -o $@
+$(USER_VIRT_DIR)/sched.o: User/Library/Blocks/thread/sched.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/thread/sched.c -o $@
 
-$(USER_VIRT_DIR)/proc.o: User/Library/Libc/sys/proc.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/proc.c -o $@
+$(USER_VIRT_DIR)/proc.o: User/Library/Blocks/host/proc.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/host/proc.c -o $@
 
-$(USER_VIRT_DIR)/stat.o: User/Library/Libc/sys/stat.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/stat.c -o $@
+$(USER_VIRT_DIR)/stat.o: User/Library/Blocks/stat/stat.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/stat/stat.c -o $@
 
-$(USER_VIRT_DIR)/threadroot.o: User/Library/Libc/pthread/threadroot.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/pthread/threadroot.c -o $@
+$(USER_VIRT_DIR)/threadroot.o: User/Library/Blocks/thread/threadroot.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/thread/threadroot.c -o $@
 
-$(USER_VIRT_DIR)/pthread.o: User/Library/Libc/pthread/pthread.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Library/Libc/pthread/pthread.c -o $@
+$(USER_VIRT_DIR)/pthread.o: User/Library/Blocks/thread/pthread.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Blocks/thread/pthread.c -o $@
 
 ifeq ($(ARCH),arm64)
 USER_SETJMP_SRC = User/Library/Libc/setjmp/setjmp_aarch64.S
@@ -1465,7 +1496,7 @@ ifeq ($(ARCH),x86_64)
 	rm -f $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) \
 		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) \
 		$(USER_LIB_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
-	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIBC_A)
+	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIBC_A) $(USER_BLOCKS_A)
 	rm -f $(USER_CRT_OBJS)
 	rm -f $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF)
 	rm -f $(USER_LIBTOY_SO) $(USER_DYNDEMO_ELF) $(USER_CAT_ELF) $(USER_WRITE_ELF)

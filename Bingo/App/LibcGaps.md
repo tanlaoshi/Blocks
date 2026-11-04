@@ -10,7 +10,7 @@
 | --- | --- |
 | 格式化输出 | `printf` / `snprintf` / `vsnprintf` / `puts` / `putchar` |
 | 堆 | `malloc` / `calloc` / `realloc` / `free`（brk） |
-| 字符串 | `strlen` / `memcpy` / `memcmp` / `strcmp` / `strncmp` / `strcpy` / `strncpy` / `strstr` / `strchr` / `strdup` 等子集 |
+| 字符串 | 上列 + `memmove` / `strrchr` / `strncat` / `strtok` / `strerror` |
 | 标准库杂项 | `atoi` / `qsort` / `exit` / `abs` 等子集 |
 | FILE* | 无缓冲 `fopen` / `fread` / `fwrite` / `fclose` / `fseek` / `ftell`（底层走 `File*`） |
 | 信号（教学） | `signal` 薄封装（非完整 POSIX 信号） |
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | P0 | 更完整的 `stdio` | 缓冲、`fprintf`/`fscanf` 族、`ungetc`、宽字符流 |
 | P0 | `stdlib` 解析 | `strtol`/`strtoul`/`strtod`、`getenv`/`setenv`（若自举脚本需要） |
-| P1 | `string.h` 补全 | `memmove`/`strerror`/`strtok`/`strrchr`/`strncat` 等 |
+| P1 | `string.h` 补全 | ✅ libc-string（`memmove` 原有） |
 | P1 | `ctype.h` / `stdbool.h` / `stdint.h` | ✅ libc-headers |
 | P1 | `setjmp` / `longjmp` | 编译器运行时 / 错误恢复常要 |
 | P2 | `time.h` | `time`/`clock`/`strftime`（可先薄封装 `clock_ms`） |

@@ -10,19 +10,19 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**PR2 `libc-string`** — `strerror` / `strtok` / `strrchr` / `strncat`。  
-> **本刀**：开干。  
-> **排队**：PR3 stdlib-parse → … → PR9 atexit。  
-> **刚 TG**：PR1 `libc-headers`（`stdbool`/`stdint`/`ctype`；CRT **1.6.0**）。
+> **当前 ★**：**PR3 `libc-stdlib-parse`** — `strtol` / `strtoul` / `strtod`。  
+> **本刀**：开干（`getenv`/`setenv` 本刀后置）。  
+> **排队**：PR4 stdio-fmt → … → PR9 atexit。  
+> **刚 TG**：PR2 `libc-string`（`string_extra.c`；`perror`→`strerror`）。
 
 | # | PR | 范围 | 验收 | 状态 |
 |---|-----|------|------|------|
 | 0 | `libc-rename` | `libBlocks.a`→`libc.a` | SDK 链 Hello | ✅ |
-| 1 | `libc-headers` | `stdbool` / `stdint` / `ctype`；`types` 走 `stdint` | 头可单编；LibcDemo 绿 | ✅ |
-| 2 | `libc-string` | `strerror` / `strtok` / `strrchr` / `strncat` | LibcGaps P1 string；`LibcDemo` 绿 | ★ |
-| 3 | `libc-stdlib-parse` | `strtol` / `strtoul` / `strtod`；`getenv`/`setenv` 可后置 | 解析用例 | 排队 |
+| 1 | `libc-headers` | `stdbool` / `stdint` / `ctype` | 头可单编 | ✅ |
+| 2 | `libc-string` | `strerror` / `strtok` / `strrchr` / `strncat` | LibcDemo 绿 | ✅ |
+| 3 | `libc-stdlib-parse` | `strtol` / `strtoul` / `strtod`；env 后置 | 解析用例 | ★ |
 | 4 | `libc-stdio-fmt` | `fprintf` / `vfprintf` / `fputs` / `fputc` | 写 FILE* 绿 | 排队 |
-| 5 | `libc-stdio-buf` | 缓冲 + `fflush` / `ungetc`；宽字符**不做** | 旧范例不破 | 排队 |
+| 5 | `libc-stdio-buf` | 缓冲 + `fflush` / `ungetc` | 旧范例不破 | 排队 |
 | 6 | `libc-setjmp` | `setjmp.h` + arch 汇编（x64 先） | 跳转烟测 | 排队 |
 | 7 | `libc-time` | 薄 `time.h` | 头+符号 | 排队 |
 | 8 | `libc-math` | 裁剪 `math.h` | 子集进 Gaps | 排队 |
@@ -38,7 +38,8 @@
 | PR | 状态 | 说明 |
 |----|------|------|
 | PR0 `libc-rename` | ✅ | `User/Library/Libc/libc.a` |
-| PR1 `libc-headers` | ✅ | `stdbool`/`stdint`/`ctype`；CRT 1.6.0 |
+| PR1 `libc-headers` | ✅ | CRT 1.6.0 |
+| PR2 `libc-string` | ✅ | `string_extra.c`；`perror` 用 `strerror` |
 
 ---
 
@@ -46,6 +47,7 @@
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-04 | **TG** PR2；★→PR3 |
 | 2026-11-04 | **TG** PR1；★→PR2；约定无手测连 TG+JX |
 | 2026-11-04 | **TG** PR0；★→PR1 |
 | 2026-11-04 | 自 1104 待点名迁出；拆 PR0～9 |

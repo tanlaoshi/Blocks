@@ -247,7 +247,6 @@ void perror(const char *s) {
         OutStr(&O, s);
         OutStr(&O, ": ");
     }
-    OutStr(&O, "errno=");
-    OutInt(&O, (long)errno);
+    OutStr(&O, strerror(errno));
     OutChar(&O, '\n');
 }

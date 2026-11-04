@@ -22,4 +22,10 @@ double strtod(const char *nptr, char **endptr);
 void qsort(void *base, size_t nmemb, size_t size,
            int (*compar)(const void *, const void *));
 
+extern char **environ;
+char *getenv(const char *name);
+int setenv(const char *name, const char *value, int overwrite);
+int unsetenv(const char *name);
+
 #endif
+

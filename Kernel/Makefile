@@ -590,7 +590,7 @@ USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_format.o User/crt/printf_float.o User/crt/malloc.o \
-	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/signal.o \
+	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/environ.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
 	User/crt/setjmp.o User/crt/time.o User/crt/math.o User/crt/atexit.o
@@ -651,7 +651,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/string.o $(USER_VIRT_DIR)/string_extra.o $(USER_VIRT_DIR)/printf.o $(USER_VIRT_DIR)/printf_format.o $(USER_VIRT_DIR)/printf_float.o \
 	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/errno.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
-	$(USER_VIRT_DIR)/stdlib_parse.o \
+	$(USER_VIRT_DIR)/stdlib_parse.o $(USER_VIRT_DIR)/environ.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
@@ -1302,6 +1302,9 @@ $(USER_VIRT_DIR)/stdlib.o: User/crt/stdlib.c | $(USER_VIRT_DIR)
 
 $(USER_VIRT_DIR)/stdlib_parse.o: User/crt/stdlib_parse.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/stdlib_parse.c -o $@
+
+$(USER_VIRT_DIR)/environ.o: User/crt/environ.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/environ.c -o $@
 
 $(USER_VIRT_DIR)/signal.o: User/crt/signal.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/signal.c -o $@

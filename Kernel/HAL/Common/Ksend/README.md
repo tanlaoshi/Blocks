@@ -4,16 +4,18 @@
 
 - **实现**：本目录；门面 `Include/Hal/Ksend.h`
 - **壳**：`Services/Shell/Commands/Ksend.c`（弱引用）
-- **PC**：`Tools/ksend.py`
+- **PC 日常**：`~/HotSend`（`hotsend` / `hotsend-gui`）
+- **PC 金样/应急**：`Tools/Scripts/ksend.py`（已归档；协议对照）
 - **传输**：串口（备份）或 TCP（网络热更主路，`Transport.c` / `Serve.c`）；有线/Wi‑Fi 同 listen
 - **板差**：串口 `HalSerial*`；复位 `HalCpuReboot`（Duo RTC 见 `BoardReboot.c`）
 
 ```
-# 串口（备份）
-python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel.elf
+# 日常（推荐）
+hotsend --host 192.168.1.10 --file Kernel.elf
 
-# 网络主路：板上先有 IP（壳 `ip`），再 `ksend serve`；PC：
-python3 Tools/ksend.py --host 192.168.1.10 --file Kernel.elf
+# 金样/应急
+python3 Tools/Scripts/ksend.py --port /dev/ttyUSB0 --file Kernel.elf
+python3 Tools/Scripts/ksend.py --host 192.168.1.10 --file Kernel.elf
 
 deploy.sh --port /dev/ttyUSB0          # Duo 串口热更
 deploy-nuc-usb --port /dev/ttyS0       # NUC 串口热更 U 盘

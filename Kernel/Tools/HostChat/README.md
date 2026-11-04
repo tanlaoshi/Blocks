@@ -1,6 +1,7 @@
 # HostChat
 
-宿主机对端，给 Guest `CHAT.ELF` 测半双工。
+宿主机对端，给 Guest `CHAT.ELF` 测半双工。  
+**保留**：后续做 GUI 版宿主对端；现网仍可用本目录 `chatd` 或 `nc -l 9090`。
 
 ```bash
 cc -O2 -o chatd chatd.c

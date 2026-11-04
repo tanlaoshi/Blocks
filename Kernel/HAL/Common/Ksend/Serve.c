@@ -89,7 +89,7 @@ static int ParseServeCommand(char *Line, const char **TargetPath, int *Reboot,
             Cursor++;
         }
         if (!SawKsend) {
-            /* PC Tools/ksend.py 发 ksend；板端壳名 HotSend 亦可 */
+            /* PC Tools/Scripts/ksend.py 发 ksend；板端壳名 HotSend 亦可 */
             if (!ArgumentIs(Token, "ksend") && !ArgumentIs(Token, "hotsend")) {
                 return -1;
             }

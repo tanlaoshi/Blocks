@@ -135,7 +135,7 @@ if [ "$NO_REBOOT" = 1 ]; then
   EXTRA+=(--no-reboot)
 fi
 
-python3 "$BLOCKS_ROOT/Tools/ksend.py" \
+python3 "$BLOCKS_ROOT/Tools/Scripts/ksend.py" \
   --port "$PORT" \
   --baud "$BAUD" \
   --file "$ELF" \

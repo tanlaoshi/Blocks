@@ -2,7 +2,7 @@
  * Report.c — 串口上那几行：READY / 块 CRC 表 / OK / FAIL / ABORT / RESTORED
  *
  * 文案就是判据（规范 §一.8）：KSEND OK / KSEND FAIL / KSEND RESTORED 三个前缀
- * 是 PC 侧 Tools/ksend.py 的解析键，改字必须两边一起改。
+ * 是 PC 侧 Tools/Scripts/ksend.py 的解析键，改字必须两边一起改。
  * 块 CRC 表是二进制（小端），所以走 KsendSerialPutByte 而不是文本行。
  */
 #include "Ksend/Private.h"

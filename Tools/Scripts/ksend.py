@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""ksend.py — 增量写板端 FAT 文件（串口备份 / TCP 网络主路），可选复位。
+"""ksend.py — 增量写板端 FAT（协议金样 / 应急；已归档 Tools/Scripts/）。
+
+日常热更请用 ~/HotSend（hotsend / hotsend-gui）；本脚本仅对照与应急。
 
 三架构共用：Duo SD / Pi µSD / NUC U 盘（方案 1：UEFI 第一=U 盘，
 写该盘 BLOCKS:Kernel.elf）。默认目标仍是 BLOCKS:Kernel.elf；`--path`
@@ -27,9 +29,9 @@ BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标；BOOT: 指向 boot 分区上的�
     （板上 `ip` 看地址；默认端口 26992）
 
 命令：
-    python3 Tools/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/HAL/X64/Kernel.elf
-    python3 Tools/ksend.py --host 192.168.1.10 --file Kernel/Build/HAL/X64/Kernel.elf
-    python3 Tools/ksend.py --host 192.168.1.10 --tcp-port 26992 --info
+    python3 Tools/Scripts/ksend.py --port /dev/ttyUSB0 --file Kernel/Build/HAL/X64/Kernel.elf
+    python3 Tools/Scripts/ksend.py --host 192.168.1.10 --file Kernel/Build/HAL/X64/Kernel.elf
+    python3 Tools/Scripts/ksend.py --host 192.168.1.10 --tcp-port 26992 --info
 
 退出码：0=KSEND OK；1=KSEND FAIL；2=串口/协议错误；3=本地文件或参数错误。
 """

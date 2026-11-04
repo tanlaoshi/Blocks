@@ -80,7 +80,7 @@ if [ -f "$STAMP" ]; then
 fi
 unset _Board
 
-KSEND="$BLOCKS_ROOT/Tools/ksend.py"
+KSEND="$BLOCKS_ROOT/Tools/Scripts/ksend.py"
 MK="$HERE/mk-boot-sd.py"
 
 if [ "$REFRESH_STUB" = 1 ] || [ "$EMBED_KERNEL" = 1 ]; then

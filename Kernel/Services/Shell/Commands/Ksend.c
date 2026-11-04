@@ -2,7 +2,7 @@
  * Ksend.c — 壳增量写卡：板端命令名 HotSend（ksend 别名）；TCP/串口协议不变
  *
  * 实现在 HAL/Common/Ksend/；弱引用（无链入时提示 not built）。
- * 勿改 ~/HotSend 宿主机工具；PC 仍用 Tools/ksend.py（协议词 KSEND）。
+ * 勿改 ~/HotSend 宿主机工具；PC 日常 HotSend，金样/应急 Tools/Scripts/ksend.py（协议词 KSEND）。
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -90,7 +90,7 @@ static void CommandHotSend(int Argc, char **Argv) {
             WaitMilliseconds = ParseDecimal(Argv[Index]);
         }
         gConsole.Write("HotSend: serve (TCP; wired/wifi via lwIP). PC: "
-                       "ksend.py --host <ip>\n");
+                       "hotsend --host <ip>\n");
         /*
          * Write→EchoMark 指望 Shell 环末 Present；Serve 同线程阻塞，
          * 字停在后缓冲直到鼠动 Flush（Pi 2026-11-03）。Pause 清 coalesce 再硬刷。

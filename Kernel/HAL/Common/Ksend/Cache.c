@@ -6,7 +6,7 @@
  * 整读一次要几千次往返）。缓存只是加速；删掉它随时退回慢路径。
  * 从哪读：KsendCacheLoad（PrepareBackup 的 --no-backup 分支）
  *         → KsendCacheSave（整文件读回校验通过之后）。
- * 别改：字段布局/大小（Tools/ksend.py 与 README 同步描述）：
+ * 别改：字段布局/大小（Tools/Scripts/ksend.py 与 README 同步描述）：
  *   u32 magic=0x4B534352, version=1, block_size=4096, block_count,
  *   total_size, full_crc，随后 block_crc[block_count]（全部小端 u32）。
  *

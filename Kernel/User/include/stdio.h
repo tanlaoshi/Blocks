@@ -35,6 +35,8 @@ int fgetc(FILE *fp);
 int getchar(void);
 char *fgets(char *s, int size, FILE *fp);
 int sscanf(const char *str, const char *fmt, ...);
+int scanf(const char *fmt, ...);
+int fscanf(FILE *fp, const char *fmt, ...);
 
 /* fopen("w") 不截断（内核忽略 O_TRUNC）；写侧行缓冲，见 fflush/ungetc */
 FILE *fopen(const char *path, const char *mode);

@@ -11,7 +11,7 @@
 
 | 面 | 版本 | 头文件 / 库 | 说明 |
 | -- | ---- | ----------- | ---- |
-| CRT / ISO C | **1.9.3** | freestanding 七头齐 + 教学子集；`Blocks/version.h`；`libc.a` | **Blocks Hosted**（非 Linux 对标；无 wchar/locale）；exec 继承 environ；与 `CRT_VERSION_*` 对齐 |
+| CRT / ISO C | **1.9.4** | freestanding 七头齐 + 教学子集；`Blocks/version.h`；`libc.a` | **Blocks Hosted**（非 Linux 对标；无 wchar/locale）；scanf/math 加厚；与 `CRT_VERSION_*` 对齐 |
 | Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |

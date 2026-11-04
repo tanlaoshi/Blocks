@@ -1,11 +1,13 @@
 /*
- * stdio_scan.c — fgetc / fgets / getchar / sscanf 最小（hosted-stdio-scan）
+ * stdio_scan.c — fgetc / fgets / getchar / sscanf / scanf / fscanf
  */
-#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+
+#include "stdio_private.h"
+
+int BlocksVsscanf(const char *String, const char *Format, va_list Arguments);
 
 int fgetc(FILE *fp) {
     unsigned char Ch;
@@ -51,99 +53,48 @@ char *fgets(char *s, int size, FILE *fp) {
 }
 
 int sscanf(const char *str, const char *fmt, ...) {
-    va_list Ap;
-    const char *S = str;
-    const char *F = fmt;
-    int Count = 0;
+    va_list Arguments;
+    int Count;
 
     if (!str || !fmt) {
         return EOF;
     }
-    va_start(Ap, fmt);
-    while (*F) {
-        if (*F == '%') {
-            F++;
-            if (*F == 'd' || *F == 'i' || *F == 'u') {
-                char *End = 0;
-                while (isspace((unsigned char)*S)) {
-                    S++;
-                }
-                if (*F == 'u') {
-                    unsigned long V = strtoul(S, &End, 10);
-                    unsigned *Out = va_arg(Ap, unsigned *);
+    va_start(Arguments, fmt);
+    Count = BlocksVsscanf(str, fmt, Arguments);
+    va_end(Arguments);
+    return Count;
+}
 
-                    if (End == S) {
-                        break;
-                    }
-                    if (Out) {
-                        *Out = (unsigned)V;
-                    }
-                    S = End;
-                } else {
-                    long V = strtol(S, &End, 10);
-                    int *Out = va_arg(Ap, int *);
+int scanf(const char *fmt, ...) {
+    char Line[256];
+    va_list Arguments;
+    int Count;
 
-                    if (End == S) {
-                        break;
-                    }
-                    if (Out) {
-                        *Out = (int)V;
-                    }
-                    S = End;
-                }
-                Count++;
-                F++;
-                continue;
-            }
-            if (*F == 's') {
-                char *Out = va_arg(Ap, char *);
-                size_t N = 0;
-
-                while (isspace((unsigned char)*S)) {
-                    S++;
-                }
-                if (!*S) {
-                    break;
-                }
-                while (*S && !isspace((unsigned char)*S)) {
-                    if (Out) {
-                        Out[N] = *S;
-                    }
-                    N++;
-                    S++;
-                }
-                if (Out) {
-                    Out[N] = 0;
-                }
-                Count++;
-                F++;
-                continue;
-            }
-            if (*F == '%') {
-                if (*S != '%') {
-                    break;
-                }
-                S++;
-                F++;
-                continue;
-            }
-            break;
-        }
-        if (isspace((unsigned char)*F)) {
-            while (isspace((unsigned char)*F)) {
-                F++;
-            }
-            while (isspace((unsigned char)*S)) {
-                S++;
-            }
-            continue;
-        }
-        if (*S != *F) {
-            break;
-        }
-        S++;
-        F++;
+    if (!fmt) {
+        return EOF;
     }
-    va_end(Ap);
+    if (!fgets(Line, (int)sizeof(Line), stdin)) {
+        return EOF;
+    }
+    va_start(Arguments, fmt);
+    Count = BlocksVsscanf(Line, fmt, Arguments);
+    va_end(Arguments);
+    return Count;
+}
+
+int fscanf(FILE *fp, const char *fmt, ...) {
+    char Line[256];
+    va_list Arguments;
+    int Count;
+
+    if (!fp || !fmt) {
+        return EOF;
+    }
+    if (!fgets(Line, (int)sizeof(Line), fp)) {
+        return EOF;
+    }
+    va_start(Arguments, fmt);
+    Count = BlocksVsscanf(Line, fmt, Arguments);
+    va_end(Arguments);
     return Count;
 }

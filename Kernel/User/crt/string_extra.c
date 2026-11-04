@@ -1,8 +1,74 @@
 /*
- * string_extra.c — strrchr / strncat / strtok / strerror（展览级命名）
+ * string_extra.c — strrchr / strncat / strtok / strerror / span 族（展览级命名）
  */
 #include <errno.h>
 #include <string.h>
+
+void *memchr(const void *Block, int Character, size_t ByteCount) {
+    const unsigned char *Cursor = (const unsigned char *)Block;
+    unsigned char Wanted = (unsigned char)Character;
+    size_t Index;
+
+    if (!Block) {
+        return 0;
+    }
+    for (Index = 0; Index < ByteCount; Index++) {
+        if (Cursor[Index] == Wanted) {
+            return (void *)(Cursor + Index);
+        }
+    }
+    return 0;
+}
+
+static int CharacterInSet(char Character, const char *Set) {
+    if (!Set) {
+        return 0;
+    }
+    while (*Set != 0) {
+        if (*Set == Character) {
+            return 1;
+        }
+        Set++;
+    }
+    return 0;
+}
+
+size_t strspn(const char *String, const char *Accept) {
+    size_t Length = 0;
+
+    if (!String) {
+        return 0;
+    }
+    while (String[Length] != 0 && CharacterInSet(String[Length], Accept)) {
+        Length++;
+    }
+    return Length;
+}
+
+size_t strcspn(const char *String, const char *Reject) {
+    size_t Length = 0;
+
+    if (!String) {
+        return 0;
+    }
+    while (String[Length] != 0 && !CharacterInSet(String[Length], Reject)) {
+        Length++;
+    }
+    return Length;
+}
+
+char *strpbrk(const char *String, const char *Accept) {
+    if (!String) {
+        return 0;
+    }
+    while (*String != 0) {
+        if (CharacterInSet(*String, Accept)) {
+            return (char *)String;
+        }
+        String++;
+    }
+    return 0;
+}
 
 char *strrchr(const char *String, int Character) {
     const char *LastMatch = 0;

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <Blocks/File.h>
+#include <Blocks/syscall.h>
 #include <errno.h>
 #include <dirent.h>
 #include "stdio_private.h"
@@ -30,14 +31,15 @@ int StdioFlushWrite(FILE *Stream) {
 }
 
 static int ParseMode(const char *Mode, unsigned *FlagsOut, int *AppendOut,
-                     int *MustExistOut) {
+                     int *MustExistOut, int *TruncateOut) {
     unsigned Flags = 0;
     int Append = 0;
     int Plus = 0;
     char Primary = 0;
     const char *Cursor;
 
-    if (!Mode || Mode[0] == 0 || !FlagsOut || !AppendOut || !MustExistOut) {
+    if (!Mode || Mode[0] == 0 || !FlagsOut || !AppendOut || !MustExistOut ||
+        !TruncateOut) {
         return -1;
     }
     for (Cursor = Mode; *Cursor != 0; Cursor++) {
@@ -74,6 +76,8 @@ static int ParseMode(const char *Mode, unsigned *FlagsOut, int *AppendOut,
     *FlagsOut = Flags;
     *AppendOut = Append;
     *MustExistOut = (Primary == 'r');
+    /* FAT 无 truncate："w"/"w+" 先 unlink 再 open，缺文件仍可写创建 */
+    *TruncateOut = (Primary == 'w');
     return 0;
 }
 
@@ -81,11 +85,12 @@ FILE *fopen(const char *Path, const char *Mode) {
     unsigned Flags;
     int Append;
     int MustExist;
+    int Truncate;
     int FileDescriptor;
     FILE *Stream;
     FS_FILE_STAT Status;
 
-    if (ParseMode(Mode, &Flags, &Append, &MustExist) < 0 || !Path ||
+    if (ParseMode(Mode, &Flags, &Append, &MustExist, &Truncate) < 0 || !Path ||
         Path[0] == 0) {
         errno = EINVAL;
         return 0;
@@ -98,6 +103,15 @@ FILE *fopen(const char *Path, const char *Mode) {
         if (Status.Attr & FS_ATTR_DIR) {
             errno = EINVAL;
             return 0;
+        }
+    }
+    if (Truncate) {
+        if (FileStat(Path, &Status) == 0) {
+            if (Status.Attr & FS_ATTR_DIR) {
+                errno = EINVAL;
+                return 0;
+            }
+            (void)blocks_unlink(Path);
         }
     }
     FileDescriptor = FileOpen(Path);

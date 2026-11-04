@@ -14,7 +14,6 @@ Kernel/Scripts/
   README.md           # 本文件
   lib/                # 真实现（扁平，被入口 exec）
   sync/ run/ smoke/ test/ usb/ measure/
-  archive/            # 一次性迁移工具（勿当日常）
 ```
 
 ## 功能分类（入口）
@@ -28,7 +27,7 @@ Kernel/Scripts/
 | 测试 | `test/` | test-enosys、test-mod-verify… | expect 自动化 |
 | U 盘 | `usb/` | make-usb-stick | 首次分区；之后 sync-usb |
 | 测量 | `measure/` | measure boot | 开机计时 |
-| 其它 | 本目录根 | bootstrap、fetch-freetype、desktop、store、pack、check-smells | 专项 |
+| 其它 | 本目录根 | bootstrap、fetch-freetype、desktop | 专项 |
 
 ## 能否再合并？
 
@@ -36,4 +35,3 @@ Kernel/Scripts/
 | --- | --- |
 | 与 `Runtime/*.sh` 合成一套 | **不合并**。Runtime = QEMU 双盘日常；本目录 = 真机/virt/expect 工具箱。短名 `env.sh` 已分流。 |
 | 薄入口 + `lib/` | **保留**。入口按功能分夹；实现仍扁平。 |
-| `migrate` / `trim-edk2` / `install-to-root` | **已进 archive/**。日常勿跑。 |

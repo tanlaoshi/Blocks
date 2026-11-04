@@ -133,7 +133,7 @@ const UINT8 *FontGlyph(char C);
 
 /*
  * UTF-8：解析一个码点，返回消费字节数；非法序列返回 0。
- * 汉字 GUI 只走 FontGlyphCp→TTF；FontCjk32Lookup 仅遗留/工具，勿顶 UI 中文。
+ * 汉字 GUI 只走 FontGlyphCp→TTF（禁点阵顶中文）。
  */
 UINTN Utf8Decode(const char *S, UINT32 *OutCp);
 /* UI TTF 选中：ASCII+汉字同文件 TTF；否则 ASCII→点阵，汉字只 TTF（Deferred；禁点阵顶中文） */
@@ -142,11 +142,8 @@ const UINT8 *FontGlyphCp(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
 int FontGlyphCpDeferred(void);
 /* 最近一次 FontGlyphCp 的位深（ASCII=1，TTF=8） */
 UINT32 FontGlyphCpBpp(void);
-const UINT8 *FontCjk32Lookup(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-const UINT8 *FontCjk16Lookup(UINT32 Cp, UINT32 *OutW, UINT32 *OutH);
-/* PR-UI-cjk-gray：CJK 点阵位深（1 或 4）；ASCII 仍 1bpp */
+/* 缺字框 / 度量兜底用的历史 CJK 点阵边长与位深（实现见 Library/Fonts/CjkMetrics.c） */
 UINT32 FontCjkBitsPerPixel(void);
-/* 当前 CJK 原生边长（与 gen --dim 一致） */
 UINT32 FontCjkDim(void);
 /* 仅 Face->Scale；不再为凑行高整数拉高字形 */
 UINT32 FontGlyphStretch(UINT32 GlyphH);

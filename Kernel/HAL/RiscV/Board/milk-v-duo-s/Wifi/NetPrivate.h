@@ -210,8 +210,8 @@ typedef struct {
     UINT32 Decryption;  /* hw_rxhdr.status 的 decr：2 = TKIP/GTK、3 = CCMP/PTK */
 } AIC_NET_DHCP_REPLY;
 
-/* ---- WifiNetFrame.c：帧公共层 ---- */
-/* DHCP/ARP 都要用的固定地址（定义在 WifiNetFrame.c，只读） */
+/* ---- NetFrame.c / NetFramePoll.c：帧公共层 + 收包分流 ---- */
+/* DHCP/ARP 都要用的固定地址（定义在 NetFrame.c，只读） */
 extern const UINT8 gAicNetBroadcastMac[AIC_NET_MAC_LENGTH];
 extern const UINT8 gAicNetBroadcastIp[AIC_NET_IPV4_LENGTH];
 extern const UINT8 gAicNetZeroIp[AIC_NET_IPV4_LENGTH];

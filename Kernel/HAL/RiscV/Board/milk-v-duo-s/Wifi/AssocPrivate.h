@@ -240,13 +240,13 @@ typedef struct {
     UINT32 AcParam[4];             /* +836  AC_MAX = 4，每项一个 u32 EDCA 参数 */
 } AIC_SM_CONNECT_INDICATION;
 
-/* ---- 跨文件原型（WifiAssocMessage.c / WifiAssocReport.c / WifiAssoc.c） ---- */
+/* ---- 跨文件原型（AssocMessage / AssocReport / AssocReportIndication / Assoc） ---- */
 /* Message：拼包 + 布局自检 */
 UINT32 AicJoinBuild(UINT8 *Buffer, const AIC_SCAN_AP *Target, UINT8 VifIndex);
 int AicJoinLayoutCheck(void);
 /* 22 B WPA2-PSK/CCMP RSN IE（只读；AicJoinBuild 逐字节抄进 ie_buf） */
 const UINT8 *AicJoinRsnIe(void);
-/* Report：目标解析/打印、IND 解析/打印（只打印，不改状态） */
+/* Report：目标解析/打印；Indication：IND 解析/打印与索引 */
 int AicJoinResolve(const char *Ssid, const char *BssidText, AIC_SCAN_AP *Out);
 void AicJoinPlaceholder(const char *Ssid, AIC_SCAN_AP *Out);
 void AicJoinPrintTarget(const AIC_SCAN_AP *Target);

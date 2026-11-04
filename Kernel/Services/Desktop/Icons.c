@@ -10,6 +10,8 @@
 #include "DesktopPrivate.h"
 
 #define ICON_BLIT_LINE_MAX 128u
+/* 圆角底板外填色；blit 跳过，露出壁纸（字形勿用纯黑） */
+#define ICON_BITMAP_KEY_COLOR 0x00000000u
 
 /* 0=尚未加载资源；1=已加载（含失败回退纯色） */
 static int sDesktopIconsReady;
@@ -124,20 +126,42 @@ void BlitBmpScaledRaw(UINT32 X, UINT32 Y, UINT32 Dw, UINT32 Dh,
     }
 
     for (Row = 0; Row < PhysicalHeight; Row++) {
-        for (Col = 0; Col < PhysicalWidth; Col += ICON_BLIT_LINE_MAX) {
-            Chunk = PhysicalWidth - Col;
-            if (Chunk > ICON_BLIT_LINE_MAX) {
-                Chunk = ICON_BLIT_LINE_MAX;
+        UINT32 RunStart = 0;
+        int InRun = 0;
+
+        for (Col = 0; Col <= PhysicalWidth; Col++) {
+            int Opaque = 0;
+
+            if (Col < PhysicalWidth) {
+                UINT32 Color = BmpSampleScaled(Img, Col, Row, PhysicalWidth,
+                                               PhysicalHeight);
+                Opaque = (Color != ICON_BITMAP_KEY_COLOR) ? 1 : 0;
             }
-            {
-                UINT32 i;
-                for (i = 0; i < Chunk; i++) {
-                    Line[i] = BmpSampleScaled(Img, Col + i, Row,
-                                              PhysicalWidth, PhysicalHeight);
+            if (Opaque && !InRun) {
+                RunStart = Col;
+                InRun = 1;
+            } else if (!Opaque && InRun) {
+                UINT32 Off = RunStart;
+
+                while (Off < Col) {
+                    Chunk = Col - Off;
+                    if (Chunk > ICON_BLIT_LINE_MAX) {
+                        Chunk = ICON_BLIT_LINE_MAX;
+                    }
+                    {
+                        UINT32 i;
+                        for (i = 0; i < Chunk; i++) {
+                            Line[i] = BmpSampleScaled(Img, Off + i, Row,
+                                                      PhysicalWidth,
+                                                      PhysicalHeight);
+                        }
+                    }
+                    HalVideoWriteRectPhys(PhysicalX + Off, PhysicalY + Row,
+                                          Chunk, 1u, Line);
+                    Off += Chunk;
                 }
+                InRun = 0;
             }
-            HalVideoWriteRectPhys(PhysicalX + Col, PhysicalY + Row, Chunk, 1u,
-                                  Line);
         }
     }
 }
@@ -178,17 +202,18 @@ void BlitIconFaceFree(UINT32 X, UINT32 Y, const DESKTOP_ICON *Icon) {
             InRun = 0;
             RunStart = 0;
             for (Col = 0; Col < W; Col++) {
-                Line[Col] = BmpSampleScaled(&Icon->Bmp, Col, Row, W, H);
-                {
-                    int Free = !PointOccupied(X + Col, Y + Row);
-                    if (Free && !InRun) {
-                        RunStart = Col;
-                        InRun = 1;
-                    } else if (!Free && InRun) {
-                        HalVideoWriteRect(X + RunStart, Y + Row,
-                                          Col - RunStart, 1, &Line[RunStart]);
-                        InRun = 0;
-                    }
+                UINT32 Color = BmpSampleScaled(&Icon->Bmp, Col, Row, W, H);
+                int Free = !PointOccupied(X + Col, Y + Row) &&
+                           (Color != ICON_BITMAP_KEY_COLOR);
+
+                Line[Col] = Color;
+                if (Free && !InRun) {
+                    RunStart = Col;
+                    InRun = 1;
+                } else if (!Free && InRun) {
+                    HalVideoWriteRect(X + RunStart, Y + Row, Col - RunStart, 1,
+                                      &Line[RunStart]);
+                    InRun = 0;
                 }
             }
             if (InRun) {

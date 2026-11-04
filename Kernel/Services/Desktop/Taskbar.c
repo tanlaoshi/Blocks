@@ -207,25 +207,30 @@ static void DrawFlyoutBox(UINT32 Fx, UINT32 Fy, UINT32 Fw, UINT32 Fh,
         IconX = Fx + 6;
         IconY = Iy + (MENU_ITEM_H > MENU_ICON_SZ ? (MENU_ITEM_H - MENU_ICON_SZ) / 2 : 0);
         TextX = Fx + 10;
-        if (R->IconSrc >= 0 && R->IconSrc < DESKTOP_ICON_COUNT &&
-            gIcons[R->IconSrc].BmpReady) {
-            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
-                             &gIcons[R->IconSrc].Bmp);
-            TextX = IconX + MENU_ICON_SZ + 6u;
+        if (R->IconSrc >= 0 && R->IconSrc < DESKTOP_ICON_COUNT) {
+            const BMP_IMAGE *Face = MenuIconFace(R->IconSrc);
+
+            if (Face) {
+                BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, Face);
+                TextX = IconX + MENU_ICON_SZ + 6u;
+            }
         } else if (IconIdx == MENU_ICON_SRC_GAME && gGameBmpReady) {
             BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, &gGameBmp);
             TextX = IconX + MENU_ICON_SZ + 6u;
         } else if (IconIdx == MENU_ICON_SRC_GAME) {
             GraphicsFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, 0x00907020u);
             TextX = IconX + MENU_ICON_SZ + 6u;
-        } else if (UseIcon && gIcons[IconIdx].BmpReady) {
-            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
-                             &gIcons[IconIdx].Bmp);
-            TextX = IconX + MENU_ICON_SZ + 6u;
         } else if (UseIcon) {
-            GraphicsFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
-                            gIcons[IconIdx].IconColor);
-            TextX = IconX + MENU_ICON_SZ + 6u;
+            const BMP_IMAGE *Face = MenuIconFace(IconIdx);
+
+            if (Face) {
+                BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, Face);
+                TextX = IconX + MENU_ICON_SZ + 6u;
+            } else {
+                GraphicsFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
+                                gIcons[IconIdx].IconColor);
+                TextX = IconX + MENU_ICON_SZ + 6u;
+            }
         }
         HalVideoDrawStringAt(TextX,
                              Iy + (MENU_ITEM_H > FontCellH()

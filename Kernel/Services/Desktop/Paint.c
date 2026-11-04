@@ -89,17 +89,9 @@ void DrawOneIconRaw(const DESKTOP_ICON *Icon, int Selected) {
     UINT32 LabelX;
     UINT32 LabelY;
     UINT32 LabelW;
-    UINT32 Border;
 
+    /* 圆角底板自带外形；不再画 ThemeIconBorder 方框 */
     BlitIconFaceRaw(Icon->X, Icon->Y, Icon);
-    Border = Selected ? ThemeIconSelect() : ThemeIconBorder();
-    GraphicsDrawRectangle(Icon->X, Icon->Y, DESKTOP_ICON_SIZE, DESKTOP_ICON_SIZE,
-                    Border);
-    if (Selected) {
-        GraphicsDrawRectangle(Icon->X + 1, Icon->Y + 1,
-                        DESKTOP_ICON_SIZE - 2, DESKTOP_ICON_SIZE - 2,
-                        ThemeIconSelect());
-    }
 
     LabelW = Icon->Label ? FontStringWidth(Icon->Label) : 0;
     LabelX = Icon->X;
@@ -117,21 +109,8 @@ void DrawOneIconOccluded(const DESKTOP_ICON *Icon, int Selected) {
     UINT32 LabelX;
     UINT32 LabelY;
     UINT32 LabelW;
-    UINT32 Border;
 
     BlitIconFaceFree(Icon->X, Icon->Y, Icon);
-    Border = Selected ? ThemeIconSelect() : ThemeIconBorder();
-    FillRectFree(Icon->X, Icon->Y, DESKTOP_ICON_SIZE, 1, Border);
-    FillRectFree(Icon->X, Icon->Y + DESKTOP_ICON_SIZE - 1, DESKTOP_ICON_SIZE, 1,
-                 Border);
-    FillRectFree(Icon->X, Icon->Y, 1, DESKTOP_ICON_SIZE, Border);
-    FillRectFree(Icon->X + DESKTOP_ICON_SIZE - 1, Icon->Y, 1, DESKTOP_ICON_SIZE,
-                 Border);
-    if (Selected) {
-        FillRectFree(Icon->X + 1, Icon->Y + 1, DESKTOP_ICON_SIZE - 2, 1, Border);
-        FillRectFree(Icon->X + 1, Icon->Y + DESKTOP_ICON_SIZE - 2,
-                     DESKTOP_ICON_SIZE - 2, 1, Border);
-    }
 
     LabelW = Icon->Label ? FontStringWidth(Icon->Label) : 0;
     LabelX = Icon->X;

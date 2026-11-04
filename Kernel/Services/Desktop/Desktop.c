@@ -49,6 +49,8 @@ BMP_IMAGE gRebootBmp;
 int gRebootBmpReady;
 BMP_IMAGE gGameBmp;
 int gGameBmpReady;
+BMP_IMAGE gMenuSysBmp[DESKTOP_SYS_ICON_COUNT];
+int gMenuSysBmpReady[DESKTOP_SYS_ICON_COUNT];
 int gMenuOpen;
 UINT32 gMenuCoverX;
 UINT32 gMenuCoverY;

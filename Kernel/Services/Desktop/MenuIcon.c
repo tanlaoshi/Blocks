@@ -1,10 +1,45 @@
 /*
- * MenuIcon.c — 开始菜单行图标（关机/重启专用 BMP）
+ * MenuIcon.c — 开始菜单行图标（关机/重启专用 BMP；系统项用 menu/ 原版）
  */
 #include "DesktopPrivate.h"
 
+static const char *const MenuSysPaths[DESKTOP_SYS_ICON_COUNT] = {
+    "Assets/Icons/menu/SHELL.BMP", "Assets/Icons/menu/SET.BMP",
+    "Assets/Icons/menu/FILES.BMP", "Assets/Icons/menu/STORE.BMP",
+    "Assets/Icons/menu/INFO.BMP"
+};
+
+void DesktopLoadMenuSysIcons(void) {
+    int i;
+    static const char *const Tags[DESKTOP_SYS_ICON_COUNT] = {
+        "menu: shell", "menu: set", "menu: files", "menu: store", "menu: info"
+    };
+
+    for (i = 0; i < DESKTOP_SYS_ICON_COUNT; i++) {
+        gMenuSysBmpReady[i] = 0;
+        BmpFree(&gMenuSysBmp[i]);
+        gMenuSysBmpReady[i] =
+            LoadBmpPath(MenuSysPaths[i], &gMenuSysBmp[i], ICON_FILE_MAX, Tags[i]);
+    }
+}
+
+/* 系统槽优先 menu/；其它仍用桌面 Bmp */
+const BMP_IMAGE *MenuIconFace(int IconSrc) {
+    if (IconSrc >= 0 && IconSrc < DESKTOP_SYS_ICON_COUNT &&
+        gMenuSysBmpReady[IconSrc]) {
+        return &gMenuSysBmp[IconSrc];
+    }
+    if (IconSrc >= 0 && IconSrc < DESKTOP_ICON_COUNT &&
+        gIcons[IconSrc].BmpReady) {
+        return &gIcons[IconSrc].Bmp;
+    }
+    return 0;
+}
+
 /* 返回 1 已画图标（调用方右移文字） */
 int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
+    const BMP_IMAGE *Face;
+
     if (!R) {
         return 0;
     }
@@ -36,9 +71,9 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
         return 1;
     }
     if (R->IconSrc >= 0 && R->IconSrc < DESKTOP_ICON_COUNT) {
-        if (gIcons[R->IconSrc].BmpReady) {
-            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
-                             &gIcons[R->IconSrc].Bmp);
+        Face = MenuIconFace(R->IconSrc);
+        if (Face) {
+            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, Face);
         } else {
             GraphicsFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             gIcons[R->IconSrc].IconColor);
@@ -47,9 +82,9 @@ int DrawMenuRowIcon(const MENU_ROW *R, UINT32 IconX, UINT32 IconY) {
     }
     if (R->Action == DESKTOP_ACTION_EXEC) {
         /* IconSrc<0：无桌面槽时勿回落 Shell，用 Store 作通用应用标 */
-        if (gIcons[3].BmpReady) {
-            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
-                             &gIcons[3].Bmp);
+        Face = MenuIconFace(3);
+        if (Face) {
+            BlitBmpScaledRaw(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ, Face);
         } else {
             GraphicsFillRectangle(IconX, IconY, MENU_ICON_SZ, MENU_ICON_SZ,
                             gIcons[3].IconColor);

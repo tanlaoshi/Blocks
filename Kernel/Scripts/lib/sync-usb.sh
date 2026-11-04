@@ -299,9 +299,9 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
   fi
   cp -f "$SRC" "$BLOCKS_MNT/Kernel.elf"
   sync_blocks_fw "$BLOCKS_MNT"
-  # 图标不在内核里。快同步带上 bmp32/48/72/96（缩放档），否则 GAME.BMP 等要等全量镜像。
+  # 图标不在内核里。快同步带上 bmpNN + menu/（开始菜单原版），否则 GAME.BMP 等要等全量镜像。
   if [[ -d "$ROOT/RootFs/X64/Assets/Icons" ]]; then
-    for tier in bmp32 bmp48 bmp72 bmp96; do
+    for tier in bmp32 bmp48 bmp72 bmp96 menu; do
       if [[ -d "$ROOT/RootFs/X64/Assets/Icons/$tier" ]]; then
         mkdir -p "$BLOCKS_MNT/Assets/Icons/$tier"
         if command -v rsync >/dev/null 2>&1; then
@@ -319,6 +319,7 @@ if [[ "$KERNEL_ONLY" -eq 1 ]]; then
       cp -f "$ROOT/RootFs/X64/Assets/Icons/"*.BMP "$BLOCKS_MNT/Assets/Icons/" 2>/dev/null || true
     fi
   fi
+
   # 身份：保留「Blocks root volume」（Boot/装盘认卷文案）+ 第二行 USB
   printf "Blocks root volume\nUSB\n" > "$BLOCKS_MNT/BLOCKS.ID"
   echo "note: stamped $BLOCKS_MNT/BLOCKS.ID (root + USB)"

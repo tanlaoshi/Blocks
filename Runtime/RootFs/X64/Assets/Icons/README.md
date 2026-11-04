@@ -1,6 +1,13 @@
 # Blocks 桌面 / UI 图标
 
-HotSend 同系风格：钢蓝方底板（`#20608C`）+ 白 / 浅青几何字形；BI_RGB BMP（满幅底板，无圆形描边）。
+圆角矩形底板 + 白色几何字形；**每种桌面图标不同底板色**（Shell 钢蓝 / Files 绿 / Store 青 / …）便于分辨。  
+BI_RGB 无透明：圆角外填纯黑 `0x000000`，桌面 blit 色键跳过；无方框描边。
+
+**开始菜单留手**（勿用桌面新风格覆盖）：
+
+- 任务栏开始钮：代码九宫格 `DrawStartMark`
+- `START` / `POWER` / `REBOOT` / `GAME`：迁入原版
+- `menu/SHELL|SET|FILES|STORE|INFO.BMP`：菜单行系统项原版；桌面槽用 `bmpNN/` 新图
 
 ## 来源与许可
 

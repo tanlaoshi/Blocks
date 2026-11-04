@@ -131,6 +131,9 @@ extern BMP_IMAGE gRebootBmp;
 extern int gRebootBmpReady;
 extern BMP_IMAGE gGameBmp;
 extern int gGameBmpReady;
+/* 开始菜单行：系统项用 menu/ 原版，与桌面新风格脱钩 */
+extern BMP_IMAGE gMenuSysBmp[DESKTOP_SYS_ICON_COUNT];
+extern int gMenuSysBmpReady[DESKTOP_SYS_ICON_COUNT];
 
 extern int gMenuOpen;
 extern UINT32 gMenuCoverX;
@@ -231,6 +234,8 @@ int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax, const char *Ta
 int BmpImageDecode(const void *Data, UINTN Size, BMP_IMAGE *Out);
 void BmpFree(BMP_IMAGE *Img);
 void LoadDesktopIcons(void);
+void DesktopLoadMenuSysIcons(void);
+const BMP_IMAGE *MenuIconFace(int IconSrc);
 void DesktopIconsResetDeferred(void);
 /* ThemeUiScale → 资产边长：50→32、100→48、150→72、200→96 */
 UINT32 DesktopIconAssetPixelSize(void);

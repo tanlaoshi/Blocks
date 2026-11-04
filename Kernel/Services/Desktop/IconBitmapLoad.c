@@ -243,6 +243,10 @@ void LoadDesktopIcons(void) {
             Ok++;
         }
     }
+    /*
+     * 开始菜单资产：START/POWER/REBOOT/GAME 为既定设计（九宫格钮见
+     * DrawStartMark；菜单行用下列 BMP）。勿与桌面 SHELL/SET… 新风格混改。
+     */
     gStartBmpReady = LoadBmpPath("Assets/Icons/START.BMP", &gStartBmp,
                                  ICON_FILE_MAX, "desktop: start");
     gPowerBmpReady = LoadBmpPath("Assets/Icons/POWER.BMP", &gPowerBmp,
@@ -251,6 +255,7 @@ void LoadDesktopIcons(void) {
                                   ICON_FILE_MAX, "desktop: reboot");
     gGameBmpReady = LoadBmpPath("Assets/Icons/GAME.BMP", &gGameBmp,
                                 ICON_FILE_MAX, "desktop: game");
+    DesktopLoadMenuSysIcons();
     if (gStartBmpReady) {
         Ok++;
     }

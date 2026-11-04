@@ -115,6 +115,8 @@ HAL_ELF_RELOC_KIND HalElfRelocKind(UINT32 Type);
 void HalSyncICache(void *Addr, UINTN Size);
 /* Arm64：dc civac 范围；真机 FB/DMA 写后须调用，否则 VC/设备见脏 cache */
 void HalDcacheCleanInvalidateRange(void *Va, UINTN Len);
+/* Arm64：dc ivac；读 AP 关 cache 写入的共享字前丢本地脏/干净行 */
+void HalDcacheInvalidateRange(void *Va, UINTN Len);
 
 /*
  * PR-A12：virt 无抢占时，从内核任务协作进入用户帧并在 exit 时返回。

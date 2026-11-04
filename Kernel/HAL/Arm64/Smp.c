@@ -27,6 +27,8 @@ UINT64 gApStackTop[HAL_MAX_CPUS];
 /* SmpBoard.c（psmp-2）等待 / 计数 */
 volatile UINT32 gApReady[HAL_MAX_CPUS];
 volatile UINT32 gApHelloCount;
+/* SmpEntry 入口极早写入；供 spin-table timeout 诊断 */
+volatile UINT32 gApEntered[HAL_MAX_CPUS];
 
 static UINT8 gApStacks[HAL_MAX_CPUS][8192] BLOCKS_ALIGNED(16);
 static int gCpuCount = 1;
@@ -75,12 +77,21 @@ void HalApMain(UINT32 Logical) {
     HalExceptionVectorsInstall();
     HalTimerStartAp();
 
+    /*
+     * 先 ready / hello 计数，再碰串口。Pi mini-UART 非 SMP 安全：若在
+     * gApReady 前 SmpLog，AP 与 BSP（正 WaitApReady）互抢 → 双方死等，
+     * 现场 APs=0 hellos=0（el2drop 刀后仍红，2026-11-04）。
+     */
+    gApHelloCount++;
+    __asm__ volatile("" ::: "memory");
+    /* 对表 Linux write_pen_release：写后 flush，BSP 即使未 snoop 也能见 */
+    gApReady[Logical] = SMP_READY_MAGIC;
+    HalDcacheCleanInvalidateRange((void *)(UINTN)&gApReady[Logical],
+                                  sizeof(gApReady[Logical]));
+
     SmpLog("Smp: Hello CPU=");
     SmpLogHex32(Logical);
     SmpLog("\n");
-    gApHelloCount++;
-    __asm__ volatile("" ::: "memory");
-    gApReady[Logical] = SMP_READY_MAGIC;
 
     while (!SchedulerIsOnline()) {
         HalCpuHalt();
@@ -147,6 +158,7 @@ int HalSmpStartApplicationProcessors(void) {
     for (i = 0; i < HAL_MAX_CPUS; i++) {
         gCpuTicks[i] = 0;
         gApReady[i] = 0;
+        gApEntered[i] = 0;
         gApStackTop[i] =
             (UINT64)(UINTN)(gApStacks[i] + sizeof(gApStacks[i]));
     }

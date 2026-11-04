@@ -39,6 +39,16 @@ void HalSyncICache(void *Addr, UINTN Size) {
     (void)Size;
 }
 
+void HalDcacheCleanInvalidateRange(void *Va, UINTN Len) {
+    (void)Va;
+    (void)Len;
+}
+
+void HalDcacheInvalidateRange(void *Va, UINTN Len) {
+    (void)Va;
+    (void)Len;
+}
+
 void HalDebugWrite(const char *Text) {
     HalSerialWrite(Text);
 }

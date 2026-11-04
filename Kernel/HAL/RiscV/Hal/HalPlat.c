@@ -108,6 +108,11 @@ void HalDcacheCleanInvalidateRange(void *Va, UINTN Len) {
 #endif
 }
 
+void HalDcacheInvalidateRange(void *Va, UINTN Len) {
+    /* C906 无单独 ivac 门面；与 civac 同形即可满足链接与可见性。 */
+    HalDcacheCleanInvalidateRange(Va, Len);
+}
+
 void HalSyncICache(void *Addr, UINTN Size) {
 #if defined(BOARD_IS_VIRT) && BOARD_IS_VIRT
     (void)Addr;

@@ -67,6 +67,9 @@ void VfsServiceOpsRegister(const VFS_SERVICE_OPS *Ops) {
         gVfsServiceOps.FileStat = 0;
         gVfsServiceOps.ReadFileAt = 0;
         gVfsServiceOps.WriteFileAt = 0;
+        gVfsServiceOps.DeleteFile = 0;
+        gVfsServiceOps.RemoveDirectory = 0;
+        gVfsServiceOps.Rename = 0;
         return;
     }
     gVfsServiceOps = *Ops;
@@ -112,6 +115,27 @@ int VfsServiceWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UI
         return FAT_ERR_INVAL;
     }
     return gVfsServiceOps.WriteFileAt(Path, Offset, Buffer, Len, OutN);
+}
+
+int VfsServiceDeleteFile(const char *Path) {
+    if (!gVfsServiceOps.DeleteFile) {
+        return FAT_ERR_IO;
+    }
+    return gVfsServiceOps.DeleteFile(Path);
+}
+
+int VfsServiceRemoveDirectory(const char *Path) {
+    if (!gVfsServiceOps.RemoveDirectory) {
+        return FAT_ERR_IO;
+    }
+    return gVfsServiceOps.RemoveDirectory(Path);
+}
+
+int VfsServiceRename(const char *OldPath, const char *NewPath) {
+    if (!gVfsServiceOps.Rename) {
+        return FAT_ERR_IO;
+    }
+    return gVfsServiceOps.Rename(OldPath, NewPath);
 }
 
 void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops) {

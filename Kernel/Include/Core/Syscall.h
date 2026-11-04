@@ -27,6 +27,8 @@
 /* SYS_MEMORY_UNMAP：rdi=addr rsi=len → 0；失败 -1 */
 /* SYS_GRAPHICS_DAMAGE_RECT：rdi=wid rsi=GRAPHICS_DAMAGE_RECT* → 0；失败 -1（PR-G-desk-3） */
 /* SYS_FILE_SEEK：rdi=fd rsi=signed off rdx=whence(0=SET/1=CUR/2=END) → 新 Pos；管道/套接字 -ESPIPE */
+/* SYS_FILE_UNLINK：rdi=path → 0；失败 -1（文件 Delete；目录空则 Rmdir） */
+/* SYS_FILE_RENAME：rdi=old rsi=new → 0；失败 -1 */
 /* SYS_TIME_SLEEP：rdi=ms（上限 60000）；课堂 1 tick≈1ms；成功返回 0 */
 /* SYS_CLOCK_MS：无参；返回 BSP 定时器 tick（与 sleep 同尺） */
 /* SYS_TIME_WALL：无参；UTC Unix 秒（自 1970-01-01）；无 RTC → -1 */

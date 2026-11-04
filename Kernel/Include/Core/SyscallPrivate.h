@@ -27,6 +27,8 @@ int SysFileStat(UINT64 UserPath, UINT64 UserOut);
 int SysFstat(int Fd, UINT64 UserOut);
 int SysOpenDirectory(UINT64 UserPath);
 int SysReadDirectory(int Fd, UINT64 UserOut);
+int SysFileUnlink(UINT64 UserPath);
+int SysFileRename(UINT64 UserOldPath, UINT64 UserNewPath);
 int SysSocket(int Domain, int Type, UINT64 Protocol);
 int SysConnect(int Fd, UINT32 Ip, UINT16 Port);
 int SysBind(int Fd, UINT32 Ip, UINT16 Port);

@@ -439,6 +439,9 @@ int FileSystemInitialize(void) {
     Svc.FileStat = FileSystemFileStat;
     Svc.ReadFileAt = FileSystemReadFileAt;
     Svc.WriteFileAt = FileSystemWriteFileAt;
+    Svc.DeleteFile = FileSystemDeleteFile;
+    Svc.RemoveDirectory = FileSystemRemoveDirectory;
+    Svc.Rename = FileSystemRename;
     VfsServiceOpsRegister(&Svc);
     LogFs("FS: Ready\n");
     /*

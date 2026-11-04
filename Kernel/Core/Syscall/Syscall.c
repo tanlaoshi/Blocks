@@ -62,6 +62,14 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
             (INT64)HalFrameGetArgument1(Frame),
             (int)HalFrameGetArgument2(Frame)));
         break;
+    case SYS_FILE_UNLINK:
+        HalFrameSetReturn(Frame, (UINT64)(long)SysFileUnlink(
+            HalFrameGetArgument0(Frame)));
+        break;
+    case SYS_FILE_RENAME:
+        HalFrameSetReturn(Frame, (UINT64)(long)SysFileRename(
+            HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
+        break;
     case SYS_PROCESS_FORK:
         Ret = SchedulerFork(Frame);
         break;

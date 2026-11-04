@@ -48,5 +48,7 @@ long ftell(FILE *fp);
 int feof(FILE *fp);
 int ferror(FILE *fp);
 int fileno(FILE *fp);
+int remove(const char *path);
+int rename(const char *old_path, const char *new_path);
 
 #endif

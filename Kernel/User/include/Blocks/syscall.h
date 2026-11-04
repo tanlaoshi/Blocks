@@ -47,6 +47,14 @@ static inline long blocks_lseek(long fd, long offset, long whence) {
     return blocks_syscall(SYS_FILE_SEEK, fd, offset, whence);
 }
 
+static inline long blocks_unlink(const char *path) {
+    return blocks_syscall(SYS_FILE_UNLINK, (long)path, 0, 0);
+}
+
+static inline long blocks_rename(const char *old_path, const char *new_path) {
+    return blocks_syscall(SYS_FILE_RENAME, (long)old_path, (long)new_path, 0);
+}
+
 /* PR-U-sched-yield：实现迁至 User/crt/sched.c 的 sched_yield；保留旧名为宏别名 */
 #define blocks_yield() sched_yield()
 

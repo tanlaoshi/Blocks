@@ -35,6 +35,10 @@ typedef struct {
     /* PR-U-stream-1；可为 NULL */
     int (*ReadFileAt)(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
     int (*WriteFileAt)(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
+    /* Hosted remove/rename；可为 NULL → FAT_ERR_IO */
+    int (*DeleteFile)(const char *Path);
+    int (*RemoveDirectory)(const char *Path);
+    int (*Rename)(const char *OldPath, const char *NewPath);
 } VFS_SERVICE_OPS;
 
 void VfsServiceOpsRegister(const VFS_SERVICE_OPS *Ops);
@@ -44,6 +48,9 @@ int VfsServiceListEntries(const char *Path, FAT_DIRECTORY_ENTRY *Out, int Max, i
 int VfsServiceFileStat(const char *Path, FAT_FILE_STAT *Out);
 int VfsServiceReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
 int VfsServiceWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
+int VfsServiceDeleteFile(const char *Path);
+int VfsServiceRemoveDirectory(const char *Path);
+int VfsServiceRename(const char *OldPath, const char *NewPath);
 
 /* 标准输出按长度写、标准输入取一字。控制台启动时登记；没登记则写出走串口，读入失败。 */
 typedef struct {

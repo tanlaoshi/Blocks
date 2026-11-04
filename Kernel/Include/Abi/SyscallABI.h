@@ -60,7 +60,9 @@
 #define SYS_FILE_WRITE        352
 #define SYS_FILE_CLOSE        353
 #define SYS_FILE_SEEK         354
-/* 355-399 预留 */
+#define SYS_FILE_UNLINK       355 /* 删文件；目录则空目录 RemoveDirectory */
+#define SYS_FILE_RENAME       356 /* rdi=old rsi=new */
+/* 357-399 预留 */
 
 /* ============================================================
  * 段 400-499：文件高级

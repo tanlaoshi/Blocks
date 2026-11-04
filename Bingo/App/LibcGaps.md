@@ -2,7 +2,7 @@
 
 > **方言**：实现 **C99**（`-std=c99 -pedantic`）。  
 > **目标**：**Blocks Hosted**（非 Linux 对标）。不做 `wchar`/`locale`/`complex`。  
-> **CRT**：**1.9.1**。活档 [`libc加厚.md`](libc加厚.md)。
+> **CRT**：**1.9.2**。活档 [`libc加厚.md`](libc加厚.md)。
 
 ## Freestanding 七头
 
@@ -19,7 +19,7 @@
 | assert/bsearch/rand | ✅ |
 | raise/kill | ✅ 教学信号 |
 | 墙上钟 | ✅ H5（`SYS_TIME_WALL` → `time()`） |
-| remove/rename | ★ H6（需 unlink/rename syscall） |
+| remove/rename | ✅ H6（`SYS_FILE_UNLINK`/`RENAME`） |
 
 ## 仍缺（非本柱优先）
 

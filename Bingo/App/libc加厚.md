@@ -9,17 +9,17 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**R3 `exhibit-unistd-stdio`** — unistd / stdio 薄封装全称命名。  
-> **排队**：R4 printf_format 铺平 → R5 scan_format 铺平 → R6 余下 crt。  
-> **刚 TG**：R1 string*；R2 stdlib*/malloc/atexit。
+> **当前 ★**：**R4 `exhibit-printf-format`** — `printf_format.c` 铺平嵌套 + 全称。  
+> **排队**：R5 scan_format 铺平 → R6 余下 crt。  
+> **刚 TG**：R1～R3 展览命名（string / stdlib / unistd·stdio）。
 
 | # | 刀 | 状态 |
 |---|-----|------|
 | H/X | Hosted 功能柱 | ✅ |
 | R1 | string* 展览命名 | ✅ |
 | R2 | stdlib* 展览命名 | ✅ |
-| R3 | unistd / stdio 薄封装 | 排队 |
-| R4 | printf_format 铺平 | 排队 |
+| R3 | unistd / stdio 薄封装 | ✅ |
+| R4 | printf_format 铺平 | ★ |
 | R5 | scan_format 铺平 | 排队 |
 | R6 | 余下 crt（time/environ/malloc…） | 排队 |
 

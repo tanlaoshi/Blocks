@@ -1,74 +1,73 @@
 /*
- * stdio_fmt.c — fprintf / fputs / fputc / putchar（libc-stdio-fmt）
+ * stdio_fmt.c — fprintf / fputs / fputc / putchar（展览级命名）
  */
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <Blocks/syscall.h>
 
-int putchar(int c) {
-    unsigned char Byte = (unsigned char)c;
+int putchar(int Character) {
+    unsigned char Byte = (unsigned char)Character;
 
-    /* 经 stdout 缓冲，避免逐字 syscall */
     if (fputc((int)Byte, stdout) == EOF) {
         return EOF;
     }
     return (int)Byte;
 }
 
-int fputc(int c, FILE *fp) {
-    unsigned char Ch = (unsigned char)c;
+int fputc(int Character, FILE *Stream) {
+    unsigned char Byte = (unsigned char)Character;
 
-    if (!fp) {
+    if (!Stream) {
         return EOF;
     }
-    if (fwrite(&Ch, 1, 1, fp) != 1) {
+    if (fwrite(&Byte, 1, 1, Stream) != 1) {
         return EOF;
     }
-    return (int)Ch;
+    return (int)Byte;
 }
 
-int fputs(const char *s, FILE *fp) {
-    size_t N;
+int fputs(const char *String, FILE *Stream) {
+    size_t Length;
 
-    if (!fp || !s) {
+    if (!Stream || !String) {
         return EOF;
     }
-    N = strlen(s);
-    if (N > 0 && fwrite(s, 1, N, fp) != N) {
+    Length = strlen(String);
+    if (Length > 0 && fwrite(String, 1, Length, Stream) != Length) {
         return EOF;
     }
     return 0;
 }
 
-int vfprintf(FILE *fp, const char *fmt, va_list ap) {
-    char Buf[512];
-    int N;
-    size_t W;
+int vfprintf(FILE *Stream, const char *Format, va_list Arguments) {
+    char Buffer[512];
+    int Printed;
+    size_t WriteCount;
 
-    if (!fp || !fmt) {
+    if (!Stream || !Format) {
         return -1;
     }
-    N = vsnprintf(Buf, sizeof(Buf), fmt, ap);
-    if (N < 0) {
-        return N;
+    Printed = vsnprintf(Buffer, sizeof(Buffer), Format, Arguments);
+    if (Printed < 0) {
+        return Printed;
     }
-    W = (size_t)N;
-    if (W >= sizeof(Buf)) {
-        W = sizeof(Buf) - 1u;
+    WriteCount = (size_t)Printed;
+    if (WriteCount >= sizeof(Buffer)) {
+        WriteCount = sizeof(Buffer) - 1u;
     }
-    if (W > 0 && fwrite(Buf, 1, W, fp) != W) {
+    if (WriteCount > 0 && fwrite(Buffer, 1, WriteCount, Stream) != WriteCount) {
         return -1;
     }
-    return N;
+    return Printed;
 }
 
-int fprintf(FILE *fp, const char *fmt, ...) {
-    va_list Ap;
-    int N;
+int fprintf(FILE *Stream, const char *Format, ...) {
+    va_list Arguments;
+    int Printed;
 
-    va_start(Ap, fmt);
-    N = vfprintf(fp, fmt, Ap);
-    va_end(Ap);
-    return N;
+    va_start(Arguments, Format);
+    Printed = vfprintf(Stream, Format, Arguments);
+    va_end(Arguments);
+    return Printed;
 }

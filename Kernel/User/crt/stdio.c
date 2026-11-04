@@ -1,5 +1,5 @@
 /*
- * stdio.c — fopen / fflush / fclose / fseek / ungetc（libc-stdio-buf）
+ * stdio.c — fopen / fflush / fclose / fseek / ungetc（展览级命名）
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,53 +9,55 @@
 #include <dirent.h>
 #include "stdio_private.h"
 
-int StdioFlushWrite(FILE *fp) {
-    size_t Off = 0;
-    ssize_t N;
+int StdioFlushWrite(FILE *Stream) {
+    size_t Offset = 0;
+    ssize_t Written;
 
-    if (!fp || fp->wlen == 0) {
+    if (!Stream || Stream->wlen == 0) {
         return 0;
     }
-    while (Off < fp->wlen) {
-        N = FileWrite(fp->fd, fp->wbuf + Off, fp->wlen - Off);
-        if (N <= 0) {
-            fp->err = 1;
+    while (Offset < Stream->wlen) {
+        Written = FileWrite(Stream->fd, Stream->wbuf + Offset,
+                            Stream->wlen - Offset);
+        if (Written <= 0) {
+            Stream->err = 1;
             return -1;
         }
-        Off += (size_t)N;
+        Offset += (size_t)Written;
     }
-    fp->wlen = 0;
+    Stream->wlen = 0;
     return 0;
 }
 
-static int ParseMode(const char *mode, unsigned *OutFlags, int *OutAppend, int *OutExist) {
+static int ParseMode(const char *Mode, unsigned *FlagsOut, int *AppendOut,
+                     int *MustExistOut) {
     unsigned Flags = 0;
     int Append = 0;
     int Plus = 0;
     char Primary = 0;
-    const char *P;
+    const char *Cursor;
 
-    if (!mode || !mode[0] || !OutFlags || !OutAppend || !OutExist) {
+    if (!Mode || Mode[0] == 0 || !FlagsOut || !AppendOut || !MustExistOut) {
         return -1;
     }
-    for (P = mode; *P; P++) {
-        if (*P == 'b') {
+    for (Cursor = Mode; *Cursor != 0; Cursor++) {
+        if (*Cursor == 'b') {
             continue;
         }
-        if (*P == '+') {
+        if (*Cursor == '+') {
             Plus = 1;
             continue;
         }
-        if (*P == 'r' || *P == 'w' || *P == 'a') {
-            if (Primary) {
+        if (*Cursor == 'r' || *Cursor == 'w' || *Cursor == 'a') {
+            if (Primary != 0) {
                 return -1;
             }
-            Primary = *P;
+            Primary = *Cursor;
             continue;
         }
         return -1;
     }
-    if (!Primary) {
+    if (Primary == 0) {
         return -1;
     }
     if (Primary == 'r') {
@@ -69,148 +71,149 @@ static int ParseMode(const char *mode, unsigned *OutFlags, int *OutAppend, int *
     if (Plus) {
         Flags = FF_READ | FF_WRITE;
     }
-    *OutFlags = Flags;
-    *OutAppend = Append;
-    *OutExist = (Primary == 'r');
+    *FlagsOut = Flags;
+    *AppendOut = Append;
+    *MustExistOut = (Primary == 'r');
     return 0;
 }
 
-FILE *fopen(const char *path, const char *mode) {
+FILE *fopen(const char *Path, const char *Mode) {
     unsigned Flags;
     int Append;
     int MustExist;
-    int Fd;
-    FILE *Fp;
-    FS_FILE_STAT St;
+    int FileDescriptor;
+    FILE *Stream;
+    FS_FILE_STAT Status;
 
-    if (ParseMode(mode, &Flags, &Append, &MustExist) < 0 || !path || !path[0]) {
+    if (ParseMode(Mode, &Flags, &Append, &MustExist) < 0 || !Path ||
+        Path[0] == 0) {
         errno = EINVAL;
         return 0;
     }
     if (MustExist) {
-        if (FileStat(path, &St) < 0) {
+        if (FileStat(Path, &Status) < 0) {
             errno = ENOENT;
             return 0;
         }
-        if (St.Attr & FS_ATTR_DIR) {
+        if (Status.Attr & FS_ATTR_DIR) {
             errno = EINVAL;
             return 0;
         }
     }
-    Fd = FileOpen(path);
-    if (Fd < 0) {
+    FileDescriptor = FileOpen(Path);
+    if (FileDescriptor < 0) {
         return 0;
     }
     if (Append) {
-        if (FileSeek(Fd, 0, SEEK_END) < 0) {
-            FileClose(Fd);
+        if (FileSeek(FileDescriptor, 0, SEEK_END) < 0) {
+            FileClose(FileDescriptor);
             return 0;
         }
     }
-    Fp = (FILE *)malloc(sizeof(*Fp));
-    if (!Fp) {
-        FileClose(Fd);
+    Stream = (FILE *)malloc(sizeof(*Stream));
+    if (!Stream) {
+        FileClose(FileDescriptor);
         errno = ENOMEM;
         return 0;
     }
-    memset(Fp, 0, sizeof(*Fp));
-    Fp->fd = Fd;
-    Fp->flags = Flags;
-    return Fp;
+    memset(Stream, 0, sizeof(*Stream));
+    Stream->fd = FileDescriptor;
+    Stream->flags = Flags;
+    return Stream;
 }
 
-int fflush(FILE *fp) {
-    if (!fp) {
+int fflush(FILE *Stream) {
+    if (!Stream) {
         return 0;
     }
-    if (StdioFlushWrite(fp) < 0) {
+    if (StdioFlushWrite(Stream) < 0) {
         return EOF;
     }
     return 0;
 }
 
-int fclose(FILE *fp) {
-    int Rc;
+int fclose(FILE *Stream) {
+    int CloseResult;
 
-    if (!fp) {
+    if (!Stream) {
         errno = EINVAL;
         return EOF;
     }
-    if (StdioFlushWrite(fp) < 0) {
-        if ((fp->flags & FF_STATIC) == 0) {
-            FileClose(fp->fd);
-            free(fp);
+    if (StdioFlushWrite(Stream) < 0) {
+        if ((Stream->flags & FF_STATIC) == 0) {
+            FileClose(Stream->fd);
+            free(Stream);
         }
         return EOF;
     }
-    if (fp->flags & FF_STATIC) {
+    if (Stream->flags & FF_STATIC) {
         return 0;
     }
-    Rc = FileClose(fp->fd);
-    free(fp);
-    return Rc;
+    CloseResult = FileClose(Stream->fd);
+    free(Stream);
+    return CloseResult;
 }
 
-int fseek(FILE *fp, long offset, int whence) {
-    if (!fp) {
+int fseek(FILE *Stream, long Offset, int Whence) {
+    if (!Stream) {
         errno = EINVAL;
         return -1;
     }
-    if (StdioFlushWrite(fp) < 0) {
+    if (StdioFlushWrite(Stream) < 0) {
         return -1;
     }
-    fp->has_unget = 0;
-    if (FileSeek(fp->fd, (off_t)offset, whence) < 0) {
-        fp->err = 1;
+    Stream->has_unget = 0;
+    if (FileSeek(Stream->fd, (off_t)Offset, Whence) < 0) {
+        Stream->err = 1;
         return -1;
     }
-    fp->eof = 0;
+    Stream->eof = 0;
     return 0;
 }
 
-long ftell(FILE *fp) {
-    off_t Pos;
+long ftell(FILE *Stream) {
+    off_t Position;
 
-    if (!fp) {
+    if (!Stream) {
         errno = EINVAL;
         return -1;
     }
-    if (StdioFlushWrite(fp) < 0) {
+    if (StdioFlushWrite(Stream) < 0) {
         return -1;
     }
-    Pos = FileSeek(fp->fd, 0, SEEK_CUR);
-    if (Pos < 0) {
-        fp->err = 1;
+    Position = FileSeek(Stream->fd, 0, SEEK_CUR);
+    if (Position < 0) {
+        Stream->err = 1;
         return -1;
     }
-    if (fp->has_unget && Pos > 0) {
-        return (long)Pos - 1;
+    if (Stream->has_unget && Position > 0) {
+        return (long)Position - 1;
     }
-    return (long)Pos;
+    return (long)Position;
 }
 
-int ungetc(int c, FILE *fp) {
-    if (!fp || c == EOF || fp->has_unget) {
+int ungetc(int Character, FILE *Stream) {
+    if (!Stream || Character == EOF || Stream->has_unget) {
         return EOF;
     }
-    fp->unget = (unsigned char)c;
-    fp->has_unget = 1;
-    fp->eof = 0;
-    return (int)fp->unget;
+    Stream->unget = (unsigned char)Character;
+    Stream->has_unget = 1;
+    Stream->eof = 0;
+    return (int)Stream->unget;
 }
 
-int feof(FILE *fp) {
-    return fp ? fp->eof : 0;
+int feof(FILE *Stream) {
+    return Stream ? Stream->eof : 0;
 }
 
-int ferror(FILE *fp) {
-    return fp ? fp->err : 1;
+int ferror(FILE *Stream) {
+    return Stream ? Stream->err : 1;
 }
 
-int fileno(FILE *fp) {
-    if (!fp) {
+int fileno(FILE *Stream) {
+    if (!Stream) {
         errno = EINVAL;
         return -1;
     }
-    return fp->fd;
+    return Stream->fd;
 }

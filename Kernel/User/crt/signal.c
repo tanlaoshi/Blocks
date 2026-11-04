@@ -1,34 +1,35 @@
 /*
- * signal.c — signal / raise → SYS_PROCESS_SIGNAL（教学子集；C99）
+ * signal.c — signal / raise / kill（展览级命名；教学信号子集）
  */
 #include <errno.h>
 #include <signal.h>
 #include <Blocks/Process.h>
 #include <Blocks/syscall.h>
 
-sighandler_t signal(int sig, sighandler_t handler) {
-    long r;
+sighandler_t signal(int SignalNumber, sighandler_t Handler) {
+    long Result;
 
-    if (sig != SIGINT && sig != SIGKILL && sig != SIGTERM) {
+    if (SignalNumber != SIGINT && SignalNumber != SIGKILL &&
+        SignalNumber != SIGTERM) {
         errno = EINVAL;
         return SIG_ERR;
     }
-    if (sig == SIGKILL && handler != SIG_DFL) {
+    if (SignalNumber == SIGKILL && Handler != SIG_DFL) {
         errno = EINVAL;
         return SIG_ERR;
     }
-    r = blocks_signal((long)sig, (long)handler);
-    if (r < 0) {
+    Result = blocks_signal((long)SignalNumber, (long)Handler);
+    if (Result < 0) {
         errno = EINVAL;
         return SIG_ERR;
     }
-    return (sighandler_t)r;
+    return (sighandler_t)Result;
 }
 
-int kill(pid_t pid, int sig) {
-    return ProcessKill(pid, sig);
+int kill(pid_t ProcessId, int SignalNumber) {
+    return ProcessKill(ProcessId, SignalNumber);
 }
 
-int raise(int sig) {
-    return kill(ProcessGetPid(), sig);
+int raise(int SignalNumber) {
+    return kill(ProcessGetPid(), SignalNumber);
 }

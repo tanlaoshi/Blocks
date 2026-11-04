@@ -1,18 +1,18 @@
 /*
- * stdio_path.c — remove / rename（SYS_FILE_UNLINK / SYS_FILE_RENAME）
+ * stdio_path.c — remove / rename（展览级命名）
  */
 #include <errno.h>
 #include <stdio.h>
 #include <Blocks/syscall.h>
 
-int remove(const char *path) {
+int remove(const char *Path) {
     long Result;
 
-    if (!path || !path[0]) {
+    if (!Path || Path[0] == 0) {
         errno = EINVAL;
         return -1;
     }
-    Result = blocks_unlink(path);
+    Result = blocks_unlink(Path);
     if (Result < 0) {
         errno = EIO;
         return -1;
@@ -20,14 +20,14 @@ int remove(const char *path) {
     return 0;
 }
 
-int rename(const char *old_path, const char *new_path) {
+int rename(const char *OldPath, const char *NewPath) {
     long Result;
 
-    if (!old_path || !old_path[0] || !new_path || !new_path[0]) {
+    if (!OldPath || OldPath[0] == 0 || !NewPath || NewPath[0] == 0) {
         errno = EINVAL;
         return -1;
     }
-    Result = blocks_rename(old_path, new_path);
+    Result = blocks_rename(OldPath, NewPath);
     if (Result < 0) {
         errno = EIO;
         return -1;

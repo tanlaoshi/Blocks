@@ -1,5 +1,5 @@
 /*
- * unistd.c — File / Process / MemoryMap + brk（selfhost）
+ * unistd.c — File / Process / MemoryMap / brk（展览级命名；Blocks 门面）
  */
 #include <errno.h>
 #include <signal.h>
@@ -8,218 +8,228 @@
 #include <sys/mman.h>
 #include <Blocks/syscall.h>
 
-int FileOpen(const char *path) {
-    long r;
+static int ErrnoFromNegated(long Result, int Fallback) {
+    int Code = (int)(-Result);
 
-    if (!path || !path[0]) {
+    return (Code >= 1 && Code < 256) ? Code : Fallback;
+}
+
+int FileOpen(const char *Path) {
+    long Result;
+
+    if (!Path || Path[0] == 0) {
         errno = EINVAL;
         return -1;
     }
-    r = blocks_open(path);
-    if (r < 0) {
+    Result = blocks_open(Path);
+    if (Result < 0) {
         errno = ENOENT;
         return -1;
     }
-    return (int)r;
+    return (int)Result;
 }
 
-ssize_t FileRead(int fd, void *buf, size_t count) {
-    long r;
+ssize_t FileRead(int FileDescriptor, void *Buffer, size_t ByteCount) {
+    long Result;
 
-    if (fd < 0 || !buf) {
+    if (FileDescriptor < 0 || !Buffer) {
         errno = EINVAL;
         return -1;
     }
-    r = (long)blocks_read(fd, buf, count);
-    if (r < 0) {
-        int E = (int)(-r);
-        errno = (E >= 1 && E < 256) ? E : EIO;
+    Result = (long)blocks_read(FileDescriptor, Buffer, ByteCount);
+    if (Result < 0) {
+        errno = ErrnoFromNegated(Result, EIO);
         return -1;
     }
-    return (ssize_t)r;
+    return (ssize_t)Result;
 }
 
-ssize_t FileWrite(int fd, const void *buf, size_t count) {
-    long r;
+ssize_t FileWrite(int FileDescriptor, const void *Buffer, size_t ByteCount) {
+    long Result;
 
-    if (fd < 0 || (!buf && count > 0)) {
+    if (FileDescriptor < 0 || (!Buffer && ByteCount > 0)) {
         errno = EINVAL;
         return -1;
     }
-    r = (long)blocks_write(fd, buf, count);
-    if (r < 0) {
-        int E = (int)(-r);
-        errno = (E >= 1 && E < 256) ? E : EIO;
+    Result = (long)blocks_write(FileDescriptor, Buffer, ByteCount);
+    if (Result < 0) {
+        errno = ErrnoFromNegated(Result, EIO);
         return -1;
     }
-    return (ssize_t)r;
+    return (ssize_t)Result;
 }
 
-int FileClose(int fd) {
-    long r;
+int FileClose(int FileDescriptor) {
+    long Result;
 
-    if (fd < 0) {
+    if (FileDescriptor < 0) {
         errno = EBADF;
         return -1;
     }
-    r = blocks_close(fd);
-    if (r < 0) {
+    Result = blocks_close(FileDescriptor);
+    if (Result < 0) {
         errno = EBADF;
         return -1;
     }
     return 0;
 }
 
-off_t FileSeek(int fd, off_t offset, int whence) {
-    long r;
+off_t FileSeek(int FileDescriptor, off_t Offset, int Whence) {
+    long Result;
 
-    if (fd < 0 || (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)) {
+    if (FileDescriptor < 0 ||
+        (Whence != SEEK_SET && Whence != SEEK_CUR && Whence != SEEK_END)) {
         errno = EINVAL;
         return (off_t)-1;
     }
-    r = blocks_lseek(fd, (long)offset, (long)whence);
-    if (r < 0) {
-        int E = (int)(-r);
-        errno = (E >= 1 && E < 256) ? E : EINVAL;
+    Result = blocks_lseek(FileDescriptor, (long)Offset, (long)Whence);
+    if (Result < 0) {
+        errno = ErrnoFromNegated(Result, EINVAL);
         return (off_t)-1;
     }
-    return (off_t)r;
+    return (off_t)Result;
 }
 
-int ProcessExec(const char *path, char *const argv[], char *const envp[]) {
-    long r;
+int ProcessExec(const char *Path, char *const ArgumentVector[],
+                char *const EnvironmentVector[]) {
+    long Result;
 
-    if (!path || !path[0]) {
+    if (!Path || Path[0] == 0) {
         errno = EINVAL;
         return -1;
     }
-    r = blocks_execve(path, argv, envp);
-    errno = (r < 0) ? ENOENT : EIO;
+    Result = blocks_execve(Path, ArgumentVector, EnvironmentVector);
+    errno = (Result < 0) ? ENOENT : EIO;
     return -1;
 }
 
-int ProcessPipe(int pipefd[2]) {
-    long r;
+int ProcessPipe(int PipeEnds[2]) {
+    long Result;
 
-    if (!pipefd) {
+    if (!PipeEnds) {
         errno = EINVAL;
         return -1;
     }
-    r = blocks_pipe(pipefd);
-    if (r < 0) {
+    Result = blocks_pipe(PipeEnds);
+    if (Result < 0) {
         errno = EMFILE;
         return -1;
     }
     return 0;
 }
 
-int ProcessDup(int fd) {
-    long r;
+int ProcessDup(int FileDescriptor) {
+    long Result;
 
-    if (fd < 0) {
+    if (FileDescriptor < 0) {
         errno = EBADF;
         return -1;
     }
-    r = blocks_dup(fd);
-    if (r < 0) {
+    Result = blocks_dup(FileDescriptor);
+    if (Result < 0) {
         errno = EBADF;
         return -1;
     }
-    return (int)r;
+    return (int)Result;
 }
 
 long ProcessFork(void) {
-    long r = blocks_fork();
-    if (r < 0) {
+    long Result = blocks_fork();
+
+    if (Result < 0) {
         errno = EAGAIN;
         return -1;
     }
-    return r;
+    return Result;
 }
 
-long ProcessWait(int *status) {
-    BLOCKS_RET2 r = blocks_syscall2(SYS_PROCESS_WAIT, 0, 0, 0);
-    if (r.A < 0) {
+long ProcessWait(int *StatusOut) {
+    BLOCKS_RET2 Result = blocks_syscall2(SYS_PROCESS_WAIT, 0, 0, 0);
+
+    if (Result.A < 0) {
         errno = ECHILD;
         return -1;
     }
-    if (status) {
-        *status = ((int)r.B & 0xff) << 8;
+    if (StatusOut) {
+        *StatusOut = ((int)Result.B & 0xff) << 8;
     }
-    return r.A;
+    return Result.A;
 }
 
-void *brk(void *addr) {
-    long r = blocks_brk((long)addr);
-    if (r < 0) {
+void *brk(void *Address) {
+    long Result = blocks_brk((long)Address);
+
+    if (Result < 0) {
         errno = ENOMEM;
         return (void *)(long)-1;
     }
-    return (void *)r;
+    return (void *)Result;
 }
 
-void *MemoryMap(void *addr, size_t length, int prot, int flags, int fd,
-                off_t offset) {
-    long r;
+void *MemoryMap(void *Address, size_t Length, int Protection, int Flags,
+                int FileDescriptor, off_t Offset) {
+    long Result;
     long PackedFlags;
 
-    if (addr != 0 || length == 0) {
+    if (Address != 0 || Length == 0) {
         errno = EINVAL;
         return MAP_FAILED;
     }
-    if ((prot & (PROT_READ | PROT_WRITE)) == 0) {
+    if ((Protection & (PROT_READ | PROT_WRITE)) == 0) {
         errno = EINVAL;
         return MAP_FAILED;
     }
-    if (flags & MAP_SHARED) {
+    if (Flags & MAP_SHARED) {
         errno = EINVAL;
         return MAP_FAILED;
     }
 
-    if (flags & MAP_ANONYMOUS) {
-        PackedFlags = (long)(flags & 0xffff);
-        (void)fd;
-        (void)offset;
+    if (Flags & MAP_ANONYMOUS) {
+        PackedFlags = (long)(Flags & 0xffff);
+        (void)FileDescriptor;
+        (void)Offset;
     } else {
-        if ((flags & MAP_PRIVATE) == 0 || fd < 0 || offset != 0) {
+        if ((Flags & MAP_PRIVATE) == 0 || FileDescriptor < 0 || Offset != 0) {
             errno = EINVAL;
             return MAP_FAILED;
         }
-        PackedFlags = (long)((flags & 0xffff) | (((unsigned)fd & 0xffffu) << 16));
+        PackedFlags = (long)((Flags & 0xffff) |
+                             (((unsigned)FileDescriptor & 0xffffu) << 16));
     }
 
-    r = blocks_mmap((long)length, (long)prot, PackedFlags);
-    if (r < 0) {
+    Result = blocks_mmap((long)Length, (long)Protection, PackedFlags);
+    if (Result < 0) {
         errno = ENOMEM;
         return MAP_FAILED;
     }
-    return (void *)r;
+    return (void *)Result;
 }
 
-int MemoryUnmap(void *addr, size_t length) {
-    long r;
+int MemoryUnmap(void *Address, size_t Length) {
+    long Result;
 
-    if (!addr || length == 0) {
+    if (!Address || Length == 0) {
         errno = EINVAL;
         return -1;
     }
-    r = blocks_munmap((long)addr, (long)length);
-    if (r < 0) {
+    Result = blocks_munmap((long)Address, (long)Length);
+    if (Result < 0) {
         errno = EINVAL;
         return -1;
     }
     return 0;
 }
 
-int ProcessKill(pid_t pid, int sig) {
-    long r;
+int ProcessKill(pid_t ProcessId, int Signal) {
+    long Result;
 
-    if (pid <= 0 || (sig != SIGKILL && sig != SIGTERM && sig != SIGINT)) {
+    if (ProcessId <= 0 ||
+        (Signal != SIGKILL && Signal != SIGTERM && Signal != SIGINT)) {
         errno = EINVAL;
         return -1;
     }
-    r = blocks_kill(pid, sig);
-    if (r < 0) {
+    Result = blocks_kill(ProcessId, Signal);
+    if (Result < 0) {
         errno = ESRCH;
         return -1;
     }

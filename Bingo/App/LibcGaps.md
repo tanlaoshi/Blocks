@@ -6,21 +6,28 @@
 
 ## Freestanding 七头
 
-全部 ✅（`float`/`iso646`/`limits`/`stdarg`/`stdbool`/`stddef`/`stdint`；字面量、无 GNU `__INT*_TYPE__`）。
+全部 ✅。
 
-## Blocks Hosted 进度
+## Blocks Hosted 主列
 
 | 项 | 状态 |
 | --- | --- |
 | printf 长度/`%f` | ✅ |
 | stdin/out/err | ✅ |
 | fgets/sscanf 最小 | ✅ |
-| getenv/setenv | ✅ CRT 表 |
+| getenv/setenv | ✅ |
 | assert/bsearch/rand | ✅ |
-| raise/kill | ✅ 教学信号 |
-| 墙上钟 | ✅ H5（`SYS_TIME_WALL` → `time()`） |
-| remove/rename | ✅ H6（`SYS_FILE_UNLINK`/`RENAME`） |
+| raise/kill | ✅ |
+| 墙上钟 | ✅ |
+| remove/rename | ✅ |
 
-## 仍缺（非本柱优先）
+## 表外加厚（本轮）
 
-math 加厚、`scanf` 全族、virt setjmp、exec 继承 environ。
+| 项 | 状态 |
+| --- | --- |
+| virt setjmp（aarch64/riscv） | ★ X1 |
+| exec 继承 environ | X2 |
+| scanf 加厚（scanf/fscanf + 常用转换） | X3 |
+| math 加厚（trig/exp/log） | X4 |
+
+仍不做：`wchar`/`locale`/`complex`、完整 ISO Hosted 全库。

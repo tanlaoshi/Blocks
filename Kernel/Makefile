@@ -656,7 +656,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/stdio_path.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o \
-	$(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/atexit.o
+	$(USER_VIRT_DIR)/setjmp.o $(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/atexit.o
 ifeq ($(ARCH),arm64)
 # Pi/virt：预装 Hello + Task Manager（对表 X64 Apps/<id>/）
 USER_OUT = $(USER_VIRT_DIR)
@@ -1003,8 +1003,16 @@ User/crt/%.o: User/crt/%.c
 User/crt/%.o: User/crt/%.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 
+ifeq ($(ARCH),arm64)
+User/crt/setjmp.o: User/crt/setjmp_aarch64.S
+	$(CC) $(USER_ASFLAGS) -c $< -o $@
+else ifeq ($(ARCH),riscv)
+User/crt/setjmp.o: User/crt/setjmp_riscv.S
+	$(CC) $(USER_ASFLAGS) -c $< -o $@
+else
 User/crt/setjmp.o: User/crt/setjmp_x86_64.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
+endif
 
 $(USER_COUNT_OBJ): User/Apps/Assembly/Count.S | $(USER_OUT)
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
@@ -1353,6 +1361,17 @@ $(USER_VIRT_DIR)/threadroot.o: User/crt/threadroot.c | $(USER_VIRT_DIR)
 
 $(USER_VIRT_DIR)/pthread.o: User/crt/pthread.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/pthread.c -o $@
+
+ifeq ($(ARCH),arm64)
+USER_SETJMP_SRC = User/crt/setjmp_aarch64.S
+else ifeq ($(ARCH),riscv)
+USER_SETJMP_SRC = User/crt/setjmp_riscv.S
+else
+USER_SETJMP_SRC = User/crt/setjmp_x86_64.S
+endif
+
+$(USER_VIRT_DIR)/setjmp.o: $(USER_SETJMP_SRC) | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c $(USER_SETJMP_SRC) -o $@
 
 $(USER_VIRT_DIR)/time.o: User/crt/time.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/time.c -o $@

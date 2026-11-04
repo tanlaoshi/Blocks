@@ -1,10 +1,9 @@
 /*
- * stdlib.c — atoi / qsort / abs（PR-L2）；exit（自 malloc.c 迁入）；malloc 仍在 malloc.c
+ * stdlib.c — atoi / qsort / abs（PR-L2）；malloc 仍在 malloc.c；exit 在 atexit.c
  */
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Blocks/syscall.h>
 
 int abs(int x) {
     return x < 0 ? -x : x;
@@ -72,8 +71,3 @@ void qsort(void *base, size_t nmemb, size_t size,
     }
 }
 
-void exit(int status) {
-    blocks_exit(status);
-    for (;;) {
-    }
-}

@@ -9,6 +9,8 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *p, size_t n);
 void free(void *p);
 void exit(int status);
+int atexit(void (*func)(void));
+void abort(void);
 
 int abs(int x);
 long labs(long x);

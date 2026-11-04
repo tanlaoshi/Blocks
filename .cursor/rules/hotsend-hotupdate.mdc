@@ -1,0 +1,20 @@
+---
+description: 板端热更一律用 HotSend（有线>Wi‑Fi>串口）；勿再默认 Tools/ksend.py
+alwaysApply: true
+---
+
+# 热更 · HotSend
+
+日常把核/文件热传到板：**用 HotSend**，不要默认跑 `Blocks/Tools/ksend.py`。
+
+| 侧 | 用法 |
+|---|---|
+| **主机** | `~/HotSend`：`Build/meson/Code/hotsend`（CLI）或 `hotsend-gui`；配置 `hotsend.conf` / `$HOTSEND_CONFIG` |
+| **板端** | 壳 `HotSend serve`（`ksend serve` 仍为别名）；协议字仍是 `KSEND*` |
+| **优先级** | **有线 > Wi‑Fi > 串口**；串口仅备份 |
+
+要点：
+
+1. 先 `ip` 看地址与 `via wired|wifi`，再 serve，再主机 `--host <ip>`（或 conf 里 host）。
+2. `Tools/ksend.py` 只作协议对照/应急；用户未点名 py 时勿当主路。
+3. HotSend 是**独立仓**（`~/HotSend`），勿改进 Blocks 树当子目录；也不要动用户说「他对话」的 HotSend ★。

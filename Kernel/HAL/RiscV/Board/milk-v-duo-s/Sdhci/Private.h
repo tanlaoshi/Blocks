@@ -1,5 +1,5 @@
 /*
- * Sdhci/Private.h — Duo SDHCI 内部（bd-duo-sd / duo-wifi-sdio）
+ * Sdhci/Private.h — Duo SDHCI 内部（bd-duo-sd；WiFi 功能层在 ../Wifi/）
  *
  * 所有寄存器访问都吃 SDHCI_HOST*；不再有单实例全局量（PR-30 S1）。
  */

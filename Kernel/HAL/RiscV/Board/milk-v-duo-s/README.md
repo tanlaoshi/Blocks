@@ -111,7 +111,8 @@ go ${kernel_addr_r}
 | `README.md` | 本文件 |
 | `BoardConfig.h` | UART / 加载地址 / 能力勾选 |
 | `Board.h` / `Board.c` | `BoardName()` |
-| `Sdhci.h` / `Sdhci.c` | µSD SDHCI PIO 读写 → 块设备 |
+| `Sdhci.h` · `Sdhci/` | SDHCI 主机：SD0 µSD 块 + SD1 SDIO 总线（无 AIC 业务） |
+| `Wifi/` · `WifiNetif.h` | AIC8800D80（SD1）：固件/扫联/EAPOL/netif；对表 Pi `Wifi/` |
 | `Ethernet.h` / `Ethernet.c` | 板载以太网（`BoardEthernetRegister` / Probe；duo-net net-4） |
 | `NOTES.md` | 真机踩坑与验证边界 |
 | `scripts/boot.cmd` · `boot.scr` | duo-boot：fatload+bootelf；`mk-boot-scr.py` |

@@ -1,31 +1,31 @@
 /*
- * stdlib_search.c — bsearch / qsort 已在 stdlib.c；本文件 bsearch + rand（C99）
+ * stdlib_search.c — bsearch / srand / rand（展览级命名；C99）
  */
 #include <stdlib.h>
 
 void *bsearch(
-    const void *key,
-    const void *base,
-    size_t nmemb,
-    size_t size,
-    int (*compar)(const void *, const void *)
+    const void *Key,
+    const void *Base,
+    size_t ElementCount,
+    size_t ElementSize,
+    int (*Compare)(const void *, const void *)
 ) {
     size_t Low = 0;
-    size_t High = nmemb;
-    const unsigned char *Bytes = (const unsigned char *)base;
+    size_t High = ElementCount;
+    const unsigned char *Bytes = (const unsigned char *)Base;
 
-    if (!key || !base || !compar || size == 0) {
+    if (!Key || !Base || !Compare || ElementSize == 0) {
         return 0;
     }
     while (Low < High) {
-        size_t Mid = Low + (High - Low) / 2;
-        const void *Element = Bytes + Mid * size;
-        int Cmp = compar(key, Element);
+        size_t Middle = Low + (High - Low) / 2;
+        const void *Element = Bytes + Middle * ElementSize;
+        int Order = Compare(Key, Element);
 
-        if (Cmp < 0) {
-            High = Mid;
-        } else if (Cmp > 0) {
-            Low = Mid + 1;
+        if (Order < 0) {
+            High = Middle;
+        } else if (Order > 0) {
+            Low = Middle + 1;
         } else {
             return (void *)Element;
         }
@@ -33,14 +33,14 @@ void *bsearch(
     return 0;
 }
 
-static unsigned long gRandState = 1ul;
+static unsigned long gRandomState = 1ul;
 
-void srand(unsigned int seed) {
-    gRandState = (unsigned long)seed;
+void srand(unsigned int Seed) {
+    gRandomState = (unsigned long)Seed;
 }
 
 int rand(void) {
-    /* 数值配方：Park–Miller 型；结果落入 0..32767 */
-    gRandState = gRandState * 1103515245ul + 12345ul;
-    return (int)((gRandState / 65536ul) % 32768ul);
+    /* Park–Miller 型；结果落入 0..32767 */
+    gRandomState = gRandomState * 1103515245ul + 12345ul;
+    return (int)((gRandomState / 65536ul) % 32768ul);
 }

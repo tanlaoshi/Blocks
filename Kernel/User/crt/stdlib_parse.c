@@ -1,238 +1,239 @@
 /*
- * stdlib_parse.c — strtol / strtoul / strtod（libc-stdlib-parse）
+ * stdlib_parse.c — strtol / strtoul / strtod（展览级命名）
  */
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 
-static int DigitValue(int C, int Base) {
-    int V;
+static int DigitValue(int Character, int Base) {
+    int Value;
 
-    if (C >= '0' && C <= '9') {
-        V = C - '0';
-    } else if (C >= 'a' && C <= 'z') {
-        V = C - 'a' + 10;
-    } else if (C >= 'A' && C <= 'Z') {
-        V = C - 'A' + 10;
+    if (Character >= '0' && Character <= '9') {
+        Value = Character - '0';
+    } else if (Character >= 'a' && Character <= 'z') {
+        Value = Character - 'a' + 10;
+    } else if (Character >= 'A' && Character <= 'Z') {
+        Value = Character - 'A' + 10;
     } else {
         return -1;
     }
-    if (V >= Base) {
+    if (Value >= Base) {
         return -1;
     }
-    return V;
+    return Value;
 }
 
 static unsigned long ParseUnsigned(
-    const char *Nptr,
-    char **Endptr,
+    const char *Text,
+    char **EndPointer,
     int Base,
-    int *NegOut,
-    int *AnyOut
+    int *NegativeOut,
+    int *ConvertedOut
 ) {
-    const char *S = Nptr;
-    const char *StartDigits;
-    unsigned long Acc = 0;
-    int Neg = 0;
-    int Any = 0;
+    const char *Cursor = Text;
+    unsigned long Accumulator = 0;
+    int Negative = 0;
+    int Converted = 0;
     int Digit;
     unsigned long Cutoff;
-    unsigned long Cutlim;
+    unsigned long CutLimit;
 
-    if (NegOut) {
-        *NegOut = 0;
+    if (NegativeOut) {
+        *NegativeOut = 0;
     }
-    if (AnyOut) {
-        *AnyOut = 0;
+    if (ConvertedOut) {
+        *ConvertedOut = 0;
     }
-    if (!S) {
-        if (Endptr) {
-            *Endptr = (char *)Nptr;
+    if (!Cursor) {
+        if (EndPointer) {
+            *EndPointer = (char *)Text;
         }
         return 0;
     }
-    while (isspace((unsigned char)*S)) {
-        S++;
+    while (isspace((unsigned char)*Cursor)) {
+        Cursor++;
     }
-    if (*S == '+' || *S == '-') {
-        Neg = (*S == '-');
-        S++;
+    if (*Cursor == '+' || *Cursor == '-') {
+        Negative = (*Cursor == '-');
+        Cursor++;
     }
     if (Base == 0) {
-        if (S[0] == '0' && (S[1] == 'x' || S[1] == 'X')) {
+        if (Cursor[0] == '0' && (Cursor[1] == 'x' || Cursor[1] == 'X')) {
             Base = 16;
-        } else if (S[0] == '0') {
+        } else if (Cursor[0] == '0') {
             Base = 8;
         } else {
             Base = 10;
         }
     }
-    if (Base == 16 && S[0] == '0' && (S[1] == 'x' || S[1] == 'X')) {
-        S += 2;
+    if (Base == 16 && Cursor[0] == '0' &&
+        (Cursor[1] == 'x' || Cursor[1] == 'X')) {
+        Cursor += 2;
     }
     if (Base < 2 || Base > 36) {
         errno = EINVAL;
-        if (Endptr) {
-            *Endptr = (char *)Nptr;
+        if (EndPointer) {
+            *EndPointer = (char *)Text;
         }
         return 0;
     }
 
     Cutoff = ULONG_MAX / (unsigned long)Base;
-    Cutlim = ULONG_MAX % (unsigned long)Base;
-    StartDigits = S;
+    CutLimit = ULONG_MAX % (unsigned long)Base;
     for (;;) {
-        Digit = DigitValue((unsigned char)*S, Base);
+        Digit = DigitValue((unsigned char)*Cursor, Base);
         if (Digit < 0) {
             break;
         }
-        if (Acc > Cutoff || (Acc == Cutoff && (unsigned long)Digit > Cutlim)) {
-            Any = 1;
-            Acc = ULONG_MAX;
+        if (Accumulator > Cutoff ||
+            (Accumulator == Cutoff && (unsigned long)Digit > CutLimit)) {
+            Converted = 1;
+            Accumulator = ULONG_MAX;
             errno = ERANGE;
-            S++;
-            while (DigitValue((unsigned char)*S, Base) >= 0) {
-                S++;
+            Cursor++;
+            while (DigitValue((unsigned char)*Cursor, Base) >= 0) {
+                Cursor++;
             }
             break;
         }
-        Acc = Acc * (unsigned long)Base + (unsigned long)Digit;
-        Any = 1;
-        S++;
+        Accumulator =
+            Accumulator * (unsigned long)Base + (unsigned long)Digit;
+        Converted = 1;
+        Cursor++;
     }
-    if (!Any) {
-        if (Endptr) {
-            *Endptr = (char *)Nptr;
+    if (!Converted) {
+        if (EndPointer) {
+            *EndPointer = (char *)Text;
         }
         return 0;
     }
-    if (Endptr) {
-        *Endptr = (char *)S;
+    if (EndPointer) {
+        *EndPointer = (char *)Cursor;
     }
-    if (NegOut) {
-        *NegOut = Neg;
+    if (NegativeOut) {
+        *NegativeOut = Negative;
     }
-    if (AnyOut) {
-        *AnyOut = Any;
+    if (ConvertedOut) {
+        *ConvertedOut = Converted;
     }
-    (void)StartDigits;
-    return Acc;
+    return Accumulator;
 }
 
-unsigned long strtoul(const char *nptr, char **endptr, int base) {
-    int Neg = 0;
-    unsigned long Acc;
+unsigned long strtoul(const char *Text, char **EndPointer, int Base) {
+    int Negative = 0;
+    unsigned long Accumulator;
 
-    Acc = ParseUnsigned(nptr, endptr, base, &Neg, 0);
-    if (Neg) {
-        return (unsigned long)(-(long)Acc);
+    Accumulator = ParseUnsigned(Text, EndPointer, Base, &Negative, 0);
+    if (Negative) {
+        return (unsigned long)(-(long)Accumulator);
     }
-    return Acc;
+    return Accumulator;
 }
 
-long strtol(const char *nptr, char **endptr, int base) {
-    int Neg = 0;
-    unsigned long Acc;
-    int Any = 0;
+long strtol(const char *Text, char **EndPointer, int Base) {
+    int Negative = 0;
+    unsigned long Accumulator;
+    int Converted = 0;
 
-    Acc = ParseUnsigned(nptr, endptr, base, &Neg, &Any);
-    if (!Any) {
+    Accumulator = ParseUnsigned(Text, EndPointer, Base, &Negative, &Converted);
+    if (!Converted) {
         return 0;
     }
-    if (Neg) {
-        if (Acc > (unsigned long)LONG_MAX + 1ul) {
+    if (Negative) {
+        if (Accumulator > (unsigned long)LONG_MAX + 1ul) {
             errno = ERANGE;
             return LONG_MIN;
         }
-        return -(long)Acc;
+        return -(long)Accumulator;
     }
-    if (Acc > (unsigned long)LONG_MAX) {
+    if (Accumulator > (unsigned long)LONG_MAX) {
         errno = ERANGE;
         return LONG_MAX;
     }
-    return (long)Acc;
+    return (long)Accumulator;
 }
 
-double strtod(const char *nptr, char **endptr) {
-    const char *S = nptr;
-    int Neg = 0;
-    double Acc = 0.0;
-    double Frac = 0.0;
+double strtod(const char *Text, char **EndPointer) {
+    const char *Cursor = Text;
+    int Negative = 0;
+    double Accumulator = 0.0;
+    double Fraction = 0.0;
     double Place = 0.1;
-    int Any = 0;
-    int Exp = 0;
-    int ExpNeg = 0;
-    int ExpAny = 0;
-    int E;
+    int Converted = 0;
+    int Exponent = 0;
+    int ExponentNegative = 0;
+    int ExponentConverted = 0;
+    int Step;
     double Scale;
 
-    if (!S) {
-        if (endptr) {
-            *endptr = (char *)nptr;
+    if (!Cursor) {
+        if (EndPointer) {
+            *EndPointer = (char *)Text;
         }
         return 0.0;
     }
-    while (isspace((unsigned char)*S)) {
-        S++;
+    while (isspace((unsigned char)*Cursor)) {
+        Cursor++;
     }
-    if (*S == '+' || *S == '-') {
-        Neg = (*S == '-');
-        S++;
+    if (*Cursor == '+' || *Cursor == '-') {
+        Negative = (*Cursor == '-');
+        Cursor++;
     }
-    while (isdigit((unsigned char)*S)) {
-        Acc = Acc * 10.0 + (double)(*S - '0');
-        Any = 1;
-        S++;
+    while (isdigit((unsigned char)*Cursor)) {
+        Accumulator = Accumulator * 10.0 + (double)(*Cursor - '0');
+        Converted = 1;
+        Cursor++;
     }
-    if (*S == '.') {
-        S++;
-        while (isdigit((unsigned char)*S)) {
-            Frac += Place * (double)(*S - '0');
+    if (*Cursor == '.') {
+        Cursor++;
+        while (isdigit((unsigned char)*Cursor)) {
+            Fraction += Place * (double)(*Cursor - '0');
             Place *= 0.1;
-            Any = 1;
-            S++;
+            Converted = 1;
+            Cursor++;
         }
     }
-    Acc += Frac;
-    if (*S == 'e' || *S == 'E') {
-        const char *ExpMark = S;
-        S++;
-        if (*S == '+' || *S == '-') {
-            ExpNeg = (*S == '-');
-            S++;
+    Accumulator += Fraction;
+    if (*Cursor == 'e' || *Cursor == 'E') {
+        const char *ExponentMark = Cursor;
+
+        Cursor++;
+        if (*Cursor == '+' || *Cursor == '-') {
+            ExponentNegative = (*Cursor == '-');
+            Cursor++;
         }
-        while (isdigit((unsigned char)*S)) {
-            Exp = Exp * 10 + (*S - '0');
-            ExpAny = 1;
-            S++;
+        while (isdigit((unsigned char)*Cursor)) {
+            Exponent = Exponent * 10 + (*Cursor - '0');
+            ExponentConverted = 1;
+            Cursor++;
         }
-        if (!ExpAny) {
-            S = ExpMark;
-        } else if (ExpNeg) {
-            Exp = -Exp;
+        if (!ExponentConverted) {
+            Cursor = ExponentMark;
+        } else if (ExponentNegative) {
+            Exponent = -Exponent;
         }
     }
-    if (!Any) {
-        if (endptr) {
-            *endptr = (char *)nptr;
+    if (!Converted) {
+        if (EndPointer) {
+            *EndPointer = (char *)Text;
         }
         return 0.0;
     }
     Scale = 1.0;
-    if (Exp > 0) {
-        for (E = 0; E < Exp; E++) {
+    if (Exponent > 0) {
+        for (Step = 0; Step < Exponent; Step++) {
             Scale *= 10.0;
         }
-        Acc *= Scale;
-    } else if (Exp < 0) {
-        for (E = 0; E < -Exp; E++) {
+        Accumulator *= Scale;
+    } else if (Exponent < 0) {
+        for (Step = 0; Step < -Exponent; Step++) {
             Scale *= 10.0;
         }
-        Acc /= Scale;
+        Accumulator /= Scale;
     }
-    if (endptr) {
-        *endptr = (char *)S;
+    if (EndPointer) {
+        *EndPointer = (char *)Cursor;
     }
-    return Neg ? -Acc : Acc;
+    return Negative ? -Accumulator : Accumulator;
 }

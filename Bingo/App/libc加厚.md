@@ -9,15 +9,15 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**R1 `exhibit-string`** — `string.c` / `string_extra.c` 全称命名 + 可读性。  
-> **排队**：R2 stdlib* → R3 unistd/stdio 薄封装 → R4 printf_format 铺平 → R5 scan_format 铺平 → R6 余下 crt。  
-> **刚 TG**：P1 硬化；CRT 1.9.5。
+> **当前 ★**：**R3 `exhibit-unistd-stdio`** — unistd / stdio 薄封装全称命名。  
+> **排队**：R4 printf_format 铺平 → R5 scan_format 铺平 → R6 余下 crt。  
+> **刚 TG**：R1 string*；R2 stdlib*/malloc/atexit。
 
 | # | 刀 | 状态 |
 |---|-----|------|
 | H/X | Hosted 功能柱 | ✅ |
-| R1 | string* 展览命名 | ★ |
-| R2 | stdlib* 展览命名 | 排队 |
+| R1 | string* 展览命名 | ✅ |
+| R2 | stdlib* 展览命名 | ✅ |
 | R3 | unistd / stdio 薄封装 | 排队 |
 | R4 | printf_format 铺平 | 排队 |
 | R5 | scan_format 铺平 | 排队 |

@@ -1,19 +1,19 @@
 /*
- * atexit.c — atexit / abort（libc-atexit）
+ * atexit.c — atexit / exit / abort（展览级命名）
  */
 #include <stdlib.h>
 #include <Blocks/syscall.h>
 
-#define ATEXIT_MAX 32
+#define ATEXIT_HANDLER_MAX 32
 
-static void (*gHandlers[ATEXIT_MAX])(void);
-static int gCount;
+static void (*gExitHandlers[ATEXIT_HANDLER_MAX])(void);
+static int gExitHandlerCount;
 
-int atexit(void (*func)(void)) {
-    if (!func || gCount >= ATEXIT_MAX) {
+int atexit(void (*Handler)(void)) {
+    if (!Handler || gExitHandlerCount >= ATEXIT_HANDLER_MAX) {
         return -1;
     }
-    gHandlers[gCount++] = func;
+    gExitHandlers[gExitHandlerCount++] = Handler;
     return 0;
 }
 
@@ -23,12 +23,12 @@ void abort(void) {
     }
 }
 
-void exit(int status) {
-    while (gCount > 0) {
-        gCount--;
-        gHandlers[gCount]();
+void exit(int Status) {
+    while (gExitHandlerCount > 0) {
+        gExitHandlerCount--;
+        gExitHandlers[gExitHandlerCount]();
     }
-    blocks_exit(status);
+    blocks_exit(Status);
     for (;;) {
     }
 }

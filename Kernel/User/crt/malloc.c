@@ -1,84 +1,87 @@
 /*
- * malloc.c — PR-P3：经 SYS_MEMORY_BRK 扩展堆；PR-A-libc：块头记录 size 供 realloc
+ * malloc.c — 经 SYS_MEMORY_BRK 的 bump 堆（展览级命名）
+ *
+ * 块头记下用户请求大小，供 realloc 拷贝；free 教学省略回收。
  */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 typedef struct {
-    size_t size;
-} MALLOC_HDR;
+    size_t UserSize;
+} MallocHeader;
 
-void *malloc(size_t n) {
-    size_t Align = 8;
+void *malloc(size_t ByteCount) {
+    size_t Alignment = 8;
     size_t Need;
-    void *Old;
-    void *Neu;
-    MALLOC_HDR *Hdr;
+    void *OldBreak;
+    void *NewBreak;
+    MallocHeader *Header;
 
-    if (n == 0) {
+    if (ByteCount == 0) {
         return 0;
     }
-    Need = sizeof(MALLOC_HDR) + ((n + Align - 1) & ~(Align - 1));
-    Old = brk((void *)0);
-    if (Old == (void *)(long)-1) {
+    Need = sizeof(MallocHeader) +
+           ((ByteCount + Alignment - 1) & ~(Alignment - 1));
+    OldBreak = brk((void *)0);
+    if (OldBreak == (void *)(long)-1) {
         return 0;
     }
-    Neu = (void *)((char *)Old + Need);
-    if (brk(Neu) != Neu) {
+    NewBreak = (void *)((char *)OldBreak + Need);
+    if (brk(NewBreak) != NewBreak) {
         return 0;
     }
-    Hdr = (MALLOC_HDR *)Old;
-    Hdr->size = n;
-    return Hdr + 1;
+    Header = (MallocHeader *)OldBreak;
+    Header->UserSize = ByteCount;
+    return Header + 1;
 }
 
-void *calloc(size_t nmemb, size_t size) {
-    size_t N;
-    void *P;
+void *calloc(size_t ElementCount, size_t ElementSize) {
+    size_t ByteCount;
+    void *Block;
 
-    if (nmemb == 0 || size == 0) {
+    if (ElementCount == 0 || ElementSize == 0) {
         return 0;
     }
-    if (size != 0 && nmemb > ((size_t)-1) / size) {
+    if (ElementSize != 0 && ElementCount > ((size_t)-1) / ElementSize) {
         return 0;
     }
-    N = nmemb * size;
-    P = malloc(N);
-    if (P) {
-        memset(P, 0, N);
+    ByteCount = ElementCount * ElementSize;
+    Block = malloc(ByteCount);
+    if (Block) {
+        memset(Block, 0, ByteCount);
     }
-    return P;
+    return Block;
 }
 
-void *realloc(void *p, size_t n) {
-    MALLOC_HDR *Hdr;
-    void *Q;
-    size_t Old;
+void *realloc(void *Block, size_t ByteCount) {
+    MallocHeader *Header;
+    void *NewBlock;
+    size_t OldSize;
 
-    if (!p) {
-        return malloc(n);
+    if (!Block) {
+        return malloc(ByteCount);
     }
-    if (n == 0) {
-        free(p);
+    if (ByteCount == 0) {
+        free(Block);
         return 0;
     }
-    Hdr = (MALLOC_HDR *)p - 1;
-    Old = Hdr->size;
-    if (n <= Old) {
-        Hdr->size = n;
-        return p;
+    Header = (MallocHeader *)Block - 1;
+    OldSize = Header->UserSize;
+    if (ByteCount <= OldSize) {
+        Header->UserSize = ByteCount;
+        return Block;
     }
-    Q = malloc(n);
-    if (!Q) {
+    NewBlock = malloc(ByteCount);
+    if (!NewBlock) {
         return 0;
     }
-    memcpy(Q, p, Old);
-    free(p);
-    return Q;
+    memcpy(NewBlock, Block, OldSize);
+    free(Block);
+    return NewBlock;
 }
 
-void free(void *p) {
-    (void)p;
-    /* bump：CRT 不回收；可 brk 收缩但教学省略 */
+void free(void *Block) {
+    (void)Block;
+    /* bump 堆：CRT 不回收；可 brk 收缩但教学省略 */
 }

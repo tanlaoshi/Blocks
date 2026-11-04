@@ -1,73 +1,76 @@
 /*
- * stdlib.c — atoi / qsort / abs（PR-L2）；malloc 仍在 malloc.c；exit 在 atexit.c
+ * stdlib.c — abs / labs / atoi / atol / qsort（展览级命名）
+ * malloc → malloc.c；exit → atexit.c；bsearch/rand → stdlib_search.c
  */
 #include <ctype.h>
 #include <stdlib.h>
-#include <string.h>
 
-int abs(int x) {
-    return x < 0 ? -x : x;
+int abs(int Value) {
+    return Value < 0 ? -Value : Value;
 }
 
-long labs(long x) {
-    return x < 0 ? -x : x;
+long labs(long Value) {
+    return Value < 0 ? -Value : Value;
 }
 
-int atoi(const char *s) {
-    return (int)atol(s);
+int atoi(const char *String) {
+    return (int)atol(String);
 }
 
-long atol(const char *s) {
-    long sign = 1;
-    long v = 0;
+long atol(const char *String) {
+    long Sign = 1;
+    long Value = 0;
 
-    if (!s) {
+    if (!String) {
         return 0;
     }
-    while (isspace((unsigned char)*s)) {
-        s++;
+    while (isspace((unsigned char)*String)) {
+        String++;
     }
-    if (*s == '+' || *s == '-') {
-        if (*s == '-') {
-            sign = -1;
+    if (*String == '+' || *String == '-') {
+        if (*String == '-') {
+            Sign = -1;
         }
-        s++;
+        String++;
     }
-    while (isdigit((unsigned char)*s)) {
-        v = v * 10 + (*s - '0');
-        s++;
+    while (isdigit((unsigned char)*String)) {
+        Value = Value * 10 + (*String - '0');
+        String++;
     }
-    return sign * v;
+    return Sign * Value;
 }
 
-static void SwapBytes(unsigned char *a, unsigned char *b, size_t n) {
-    size_t i;
-    for (i = 0; i < n; i++) {
-        unsigned char t = a[i];
-        a[i] = b[i];
-        b[i] = t;
+static void SwapBytes(unsigned char *Left, unsigned char *Right, size_t ByteCount) {
+    size_t Index;
+
+    for (Index = 0; Index < ByteCount; Index++) {
+        unsigned char Temporary = Left[Index];
+
+        Left[Index] = Right[Index];
+        Right[Index] = Temporary;
     }
 }
 
-void qsort(void *base, size_t nmemb, size_t size,
-           int (*compar)(const void *, const void *)) {
-    unsigned char *b;
-    size_t i, j;
+void qsort(void *Base, size_t ElementCount, size_t ElementSize,
+           int (*Compare)(const void *, const void *)) {
+    unsigned char *Bytes;
+    size_t Outer;
+    size_t Inner;
 
-    if (!base || !compar || nmemb < 2 || size == 0) {
+    if (!Base || !Compare || ElementCount < 2 || ElementSize == 0) {
         return;
     }
-    b = (unsigned char *)base;
-    /* 教学用插入排序：稳、短，不依赖递归栈 */
-    for (i = 1; i < nmemb; i++) {
-        for (j = i; j > 0; j--) {
-            unsigned char *left = b + (j - 1) * size;
-            unsigned char *right = b + j * size;
-            if (compar(left, right) <= 0) {
+    Bytes = (unsigned char *)Base;
+    /* 教学用插入排序：稳定、无递归栈 */
+    for (Outer = 1; Outer < ElementCount; Outer++) {
+        for (Inner = Outer; Inner > 0; Inner--) {
+            unsigned char *Left = Bytes + (Inner - 1) * ElementSize;
+            unsigned char *Right = Bytes + Inner * ElementSize;
+
+            if (Compare(Left, Right) <= 0) {
                 break;
             }
-            SwapBytes(left, right, size);
+            SwapBytes(Left, Right, ElementSize);
         }
     }
 }
-

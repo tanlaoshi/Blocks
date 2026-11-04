@@ -1,8 +1,9 @@
 /*
- * signal.c — PR-U-sig：signal() → SYS_PROCESS_SIGNAL（教学级用户 handler）
+ * signal.c — signal / raise → SYS_PROCESS_SIGNAL（教学子集；C99）
  */
 #include <errno.h>
 #include <signal.h>
+#include <Blocks/Process.h>
 #include <Blocks/syscall.h>
 
 sighandler_t signal(int sig, sighandler_t handler) {
@@ -22,4 +23,12 @@ sighandler_t signal(int sig, sighandler_t handler) {
         return SIG_ERR;
     }
     return (sighandler_t)r;
+}
+
+int kill(pid_t pid, int sig) {
+    return ProcessKill(pid, sig);
+}
+
+int raise(int sig) {
+    return kill(ProcessGetPid(), sig);
 }

@@ -18,6 +18,7 @@ typedef void (*sighandler_t)(int);
  * 自定义 handler：内核改用户帧进入，ret 回中断点。
  */
 sighandler_t signal(int sig, sighandler_t handler);
+int raise(int sig);
 int kill(pid_t pid, int sig);
 
 #endif

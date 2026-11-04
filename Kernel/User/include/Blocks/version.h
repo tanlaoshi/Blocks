@@ -6,9 +6,9 @@
 #define CRT_VERSION_H
 
 #define CRT_VERSION_MAJOR 1
-#define CRT_VERSION_MINOR 8
+#define CRT_VERSION_MINOR 9
 #define CRT_VERSION_PATCH 0
 
-#define CRT_VERSION_STRING "1.8.0"
+#define CRT_VERSION_STRING "1.9.0"
 
 #endif

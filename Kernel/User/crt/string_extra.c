@@ -1,90 +1,98 @@
 /*
- * string_extra.c — strrchr / strncat / strtok / strerror（libc-string）
+ * string_extra.c — strrchr / strncat / strtok / strerror（展览级命名）
  */
 #include <errno.h>
 #include <string.h>
 
-char *strrchr(const char *s, int c) {
-    const char *Last = 0;
-    unsigned char Ch = (unsigned char)c;
+char *strrchr(const char *String, int Character) {
+    const char *LastMatch = 0;
+    unsigned char Wanted = (unsigned char)Character;
 
-    if (!s) {
+    if (!String) {
         return 0;
     }
     do {
-        if ((unsigned char)*s == Ch) {
-            Last = s;
+        if ((unsigned char)*String == Wanted) {
+            LastMatch = String;
         }
-    } while (*s++);
-    return (char *)Last;
+    } while (*String++ != 0);
+    return (char *)LastMatch;
 }
 
-char *strncat(char *dst, const char *src, size_t n) {
-    char *D = dst;
+char *strncat(char *Destination, const char *Source, size_t MaxLength) {
+    char *Cursor = Destination;
 
-    if (!dst) {
-        return dst;
+    if (!Destination) {
+        return Destination;
     }
-    if (!src) {
-        src = "";
+    if (!Source) {
+        Source = "";
     }
-    while (*D) {
-        D++;
+    while (*Cursor != 0) {
+        Cursor++;
     }
-    while (n > 0 && *src) {
-        *D++ = *src++;
-        n--;
+    while (MaxLength > 0 && *Source != 0) {
+        *Cursor++ = *Source++;
+        MaxLength--;
     }
-    *D = 0;
-    return dst;
+    *Cursor = 0;
+    return Destination;
 }
 
-char *strtok(char *s, const char *delim) {
-    static char *Save;
-    char *Start;
-    const char *D;
+char *strtok(char *String, const char *Delimiters) {
+    static char *NextToken;
+    char *TokenStart;
+    const char *DelimiterCursor;
+    int IsDelimiter;
 
-    if (!delim) {
-        delim = "";
+    if (!Delimiters) {
+        Delimiters = "";
     }
-    if (!s) {
-        s = Save;
+    if (!String) {
+        String = NextToken;
     }
-    if (!s) {
+    if (!String) {
         return 0;
     }
-    while (*s) {
-        for (D = delim; *D; D++) {
-            if (*s == *D) {
+
+    /* 跳过前导分隔符 */
+    while (*String != 0) {
+        IsDelimiter = 0;
+        for (DelimiterCursor = Delimiters; *DelimiterCursor != 0;
+             DelimiterCursor++) {
+            if (*String == *DelimiterCursor) {
+                IsDelimiter = 1;
                 break;
             }
         }
-        if (!*D) {
+        if (!IsDelimiter) {
             break;
         }
-        s++;
+        String++;
     }
-    if (!*s) {
-        Save = 0;
+    if (*String == 0) {
+        NextToken = 0;
         return 0;
     }
-    Start = s;
-    while (*s) {
-        for (D = delim; *D; D++) {
-            if (*s == *D) {
-                *s = 0;
-                Save = s + 1;
-                return Start;
+
+    TokenStart = String;
+    while (*String != 0) {
+        for (DelimiterCursor = Delimiters; *DelimiterCursor != 0;
+             DelimiterCursor++) {
+            if (*String == *DelimiterCursor) {
+                *String = 0;
+                NextToken = String + 1;
+                return TokenStart;
             }
         }
-        s++;
+        String++;
     }
-    Save = 0;
-    return Start;
+    NextToken = 0;
+    return TokenStart;
 }
 
-char *strerror(int errnum) {
-    switch (errnum) {
+char *strerror(int ErrorNumber) {
+    switch (ErrorNumber) {
     case 0:
         return "Success";
     case EPERM:

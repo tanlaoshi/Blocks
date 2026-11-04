@@ -1,24 +1,27 @@
 # libc 加厚 · Blocks Hosted
 
 > **方言铁律**：实现必须 **`-std=c99 -pedantic`**；禁止 GNU `__*` 类型预定义散落。  
+> **展览级**：原地写美（全称命名、分支铺平、契约注释）；**不**再抽空门面层。  
 > **约定**：无手测 → TG+JX。细表 [`LibcGaps.md`](LibcGaps.md)。  
-> **CRT**：**1.9.5**。
+> **CRT**：**1.9.5**（本柱推进中）。
 
 ---
 
 ## ★ 当前与排队
 
-> **当前 ★**：（空）  
-> **排队**：（空）  
-> **刚 TG**：libc 全量自查修 P1（scanf 流式/进制、math 归约、printf LONG_MIN/`snprintf(…,0)`、拆 scan）；CRT → **1.9.5**。
+> **当前 ★**：**R1 `exhibit-string`** — `string.c` / `string_extra.c` 全称命名 + 可读性。  
+> **排队**：R2 stdlib* → R3 unistd/stdio 薄封装 → R4 printf_format 铺平 → R5 scan_format 铺平 → R6 余下 crt。  
+> **刚 TG**：P1 硬化；CRT 1.9.5。
 
 | # | 刀 | 状态 |
 |---|-----|------|
-| H1～H8 | Hosted 主列 | ✅ |
-| X1 | virt setjmp | ✅ |
-| X2 | exec 继承 environ | ✅ |
-| X3 | scanf 加厚 | ✅ |
-| X4 | math 加厚 | ✅ |
+| H/X | Hosted 功能柱 | ✅ |
+| R1 | string* 展览命名 | ★ |
+| R2 | stdlib* 展览命名 | 排队 |
+| R3 | unistd / stdio 薄封装 | 排队 |
+| R4 | printf_format 铺平 | 排队 |
+| R5 | scan_format 铺平 | 排队 |
+| R6 | 余下 crt（time/environ/malloc…） | 排队 |
 
 ---
 
@@ -26,6 +29,5 @@
 
 | 日期 | 说明 |
 | ---- | ---- |
-| 2026-11-04 | X3～X4 TG；CRT 1.9.4；★空；表外仍缺收完 |
-| 2026-11-04 | X1～X2 TG；CRT 1.9.3 |
-| 2026-11-04 | H6 remove/rename；CRT 1.9.2 |
+| 2026-11-04 | 展览级可读性柱 R1～R6；★→R1 |
+| 2026-11-04 | P1 自查硬化；CRT 1.9.5 |

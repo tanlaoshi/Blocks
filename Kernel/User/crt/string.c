@@ -1,196 +1,209 @@
-#include <string.h>
+/*
+ * string.c — 核心 C 字符串 / 内存块（展览级命名；函数名仍为 ISO）
+ */
 #include <stdlib.h>
+#include <string.h>
 
-size_t strlen(const char *s) {
-    size_t n = 0;
-    if (!s) {
+size_t strlen(const char *String) {
+    size_t Length = 0;
+
+    if (!String) {
         return 0;
     }
-    while (s[n]) {
-        n++;
+    while (String[Length] != 0) {
+        Length++;
     }
-    return n;
+    return Length;
 }
 
-int strcmp(const char *a, const char *b) {
-    if (!a) {
-        a = "";
+int strcmp(const char *Left, const char *Right) {
+    if (!Left) {
+        Left = "";
     }
-    if (!b) {
-        b = "";
+    if (!Right) {
+        Right = "";
     }
-    while (*a && *a == *b) {
-        a++;
-        b++;
+    while (*Left != 0 && *Left == *Right) {
+        Left++;
+        Right++;
     }
-    return (unsigned char)*a - (unsigned char)*b;
+    return (unsigned char)*Left - (unsigned char)*Right;
 }
 
-int strncmp(const char *a, const char *b, size_t n) {
-    size_t i;
-    if (!a) {
-        a = "";
+int strncmp(const char *Left, const char *Right, size_t MaxLength) {
+    size_t Index;
+
+    if (!Left) {
+        Left = "";
     }
-    if (!b) {
-        b = "";
+    if (!Right) {
+        Right = "";
     }
-    for (i = 0; i < n; i++) {
-        unsigned char ca = (unsigned char)a[i];
-        unsigned char cb = (unsigned char)b[i];
-        if (ca != cb || ca == 0) {
-            return ca - cb;
+    for (Index = 0; Index < MaxLength; Index++) {
+        unsigned char LeftByte = (unsigned char)Left[Index];
+        unsigned char RightByte = (unsigned char)Right[Index];
+
+        if (LeftByte != RightByte || LeftByte == 0) {
+            return LeftByte - RightByte;
         }
     }
     return 0;
 }
 
-char *strcpy(char *dst, const char *src) {
-    char *d = dst;
-    if (!dst) {
-        return dst;
+char *strcpy(char *Destination, const char *Source) {
+    char *Cursor;
+
+    if (!Destination) {
+        return Destination;
     }
-    if (!src) {
-        *d = 0;
-        return dst;
+    Cursor = Destination;
+    if (!Source) {
+        *Cursor = 0;
+        return Destination;
     }
-    while ((*d++ = *src++) != 0) {
+    while ((*Cursor++ = *Source++) != 0) {
     }
-    return dst;
+    return Destination;
 }
 
-char *strncpy(char *dst, const char *src, size_t n) {
-    size_t i;
-    if (!dst) {
-        return dst;
+char *strncpy(char *Destination, const char *Source, size_t MaxLength) {
+    size_t Index;
+
+    if (!Destination) {
+        return Destination;
     }
-    if (!src) {
-        src = "";
+    if (!Source) {
+        Source = "";
     }
-    for (i = 0; i < n && src[i]; i++) {
-        dst[i] = src[i];
+    for (Index = 0; Index < MaxLength && Source[Index] != 0; Index++) {
+        Destination[Index] = Source[Index];
     }
-    for (; i < n; i++) {
-        dst[i] = 0;
+    for (; Index < MaxLength; Index++) {
+        Destination[Index] = 0;
     }
-    return dst;
+    return Destination;
 }
 
-char *strcat(char *dst, const char *src) {
-    char *D;
+char *strcat(char *Destination, const char *Source) {
+    char *Cursor;
 
-    if (!dst) {
-        return dst;
+    if (!Destination) {
+        return Destination;
     }
-    D = dst;
-    while (*D) {
-        D++;
+    Cursor = Destination;
+    while (*Cursor != 0) {
+        Cursor++;
     }
-    if (!src) {
-        *D = 0;
-        return dst;
+    if (!Source) {
+        *Cursor = 0;
+        return Destination;
     }
-    while ((*D++ = *src++) != 0) {
+    while ((*Cursor++ = *Source++) != 0) {
     }
-    return dst;
+    return Destination;
 }
 
-char *strdup(const char *s) {
-    size_t N;
-    char *D;
+char *strdup(const char *String) {
+    size_t ByteCount;
+    char *Copy;
 
-    if (!s) {
+    if (!String) {
         return 0;
     }
-    N = strlen(s) + 1;
-    D = (char *)malloc(N);
-    if (!D) {
+    ByteCount = strlen(String) + 1;
+    Copy = (char *)malloc(ByteCount);
+    if (!Copy) {
         return 0;
     }
-    memcpy(D, s, N);
-    return D;
+    memcpy(Copy, String, ByteCount);
+    return Copy;
 }
 
-char *strchr(const char *s, int c) {
-    unsigned char Ch = (unsigned char)c;
+char *strchr(const char *String, int Character) {
+    unsigned char Wanted = (unsigned char)Character;
 
-    if (!s) {
+    if (!String) {
         return 0;
     }
     for (;;) {
-        if ((unsigned char)*s == Ch) {
-            return (char *)s;
+        if ((unsigned char)*String == Wanted) {
+            return (char *)String;
         }
-        if (*s == 0) {
+        if (*String == 0) {
             return 0;
         }
-        s++;
+        String++;
     }
 }
 
-char *strstr(const char *haystack, const char *needle) {
-    size_t Nlen;
-    size_t i;
+char *strstr(const char *Haystack, const char *Needle) {
+    size_t NeedleLength;
+    size_t Index;
 
-    if (!haystack) {
+    if (!Haystack) {
         return 0;
     }
-    if (!needle || !needle[0]) {
-        return (char *)haystack;
+    if (!Needle || Needle[0] == 0) {
+        return (char *)Haystack;
     }
-    Nlen = strlen(needle);
-    for (i = 0; haystack[i]; i++) {
-        if (strncmp(haystack + i, needle, Nlen) == 0) {
-            return (char *)(haystack + i);
+    NeedleLength = strlen(Needle);
+    for (Index = 0; Haystack[Index] != 0; Index++) {
+        if (strncmp(Haystack + Index, Needle, NeedleLength) == 0) {
+            return (char *)(Haystack + Index);
         }
     }
     return 0;
 }
 
-void *memcpy(void *dst, const void *src, size_t n) {
-    unsigned char *D = (unsigned char *)dst;
-    const unsigned char *S = (const unsigned char *)src;
-    size_t i;
-    for (i = 0; i < n; i++) {
-        D[i] = S[i];
+void *memcpy(void *Destination, const void *Source, size_t ByteCount) {
+    unsigned char *DestinationBytes = (unsigned char *)Destination;
+    const unsigned char *SourceBytes = (const unsigned char *)Source;
+    size_t Index;
+
+    for (Index = 0; Index < ByteCount; Index++) {
+        DestinationBytes[Index] = SourceBytes[Index];
     }
-    return dst;
+    return Destination;
 }
 
-void *memmove(void *dst, const void *src, size_t n) {
-    unsigned char *D = (unsigned char *)dst;
-    const unsigned char *S = (const unsigned char *)src;
-    size_t i;
-    if (D == S || n == 0) {
-        return dst;
+void *memmove(void *Destination, const void *Source, size_t ByteCount) {
+    unsigned char *DestinationBytes = (unsigned char *)Destination;
+    const unsigned char *SourceBytes = (const unsigned char *)Source;
+    size_t Index;
+
+    if (DestinationBytes == SourceBytes || ByteCount == 0) {
+        return Destination;
     }
-    if (D < S) {
-        for (i = 0; i < n; i++) {
-            D[i] = S[i];
+    if (DestinationBytes < SourceBytes) {
+        for (Index = 0; Index < ByteCount; Index++) {
+            DestinationBytes[Index] = SourceBytes[Index];
         }
     } else {
-        for (i = n; i > 0; i--) {
-            D[i - 1] = S[i - 1];
+        for (Index = ByteCount; Index > 0; Index--) {
+            DestinationBytes[Index - 1] = SourceBytes[Index - 1];
         }
     }
-    return dst;
+    return Destination;
 }
 
-void *memset(void *dst, int c, size_t n) {
-    unsigned char *D = (unsigned char *)dst;
-    size_t i;
-    for (i = 0; i < n; i++) {
-        D[i] = (unsigned char)c;
+void *memset(void *Destination, int ByteValue, size_t ByteCount) {
+    unsigned char *DestinationBytes = (unsigned char *)Destination;
+    size_t Index;
+
+    for (Index = 0; Index < ByteCount; Index++) {
+        DestinationBytes[Index] = (unsigned char)ByteValue;
     }
-    return dst;
+    return Destination;
 }
 
-int memcmp(const void *a, const void *b, size_t n) {
-    const unsigned char *A = (const unsigned char *)a;
-    const unsigned char *B = (const unsigned char *)b;
-    size_t i;
-    for (i = 0; i < n; i++) {
-        if (A[i] != B[i]) {
-            return A[i] - B[i];
+int memcmp(const void *Left, const void *Right, size_t ByteCount) {
+    const unsigned char *LeftBytes = (const unsigned char *)Left;
+    const unsigned char *RightBytes = (const unsigned char *)Right;
+    size_t Index;
+
+    for (Index = 0; Index < ByteCount; Index++) {
+        if (LeftBytes[Index] != RightBytes[Index]) {
+            return LeftBytes[Index] - RightBytes[Index];
         }
     }
     return 0;

@@ -592,7 +592,8 @@ USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/malloc.o \
 	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
-	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o User/crt/setjmp.o
+	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
+	User/crt/setjmp.o User/crt/time.o User/crt/math.o User/crt/atexit.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
@@ -654,7 +655,8 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
-	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o
+	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o \
+	$(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/atexit.o
 ifeq ($(ARCH),arm64)
 # Pi/virt：预装 Hello + Task Manager（对表 X64 Apps/<id>/）
 USER_OUT = $(USER_VIRT_DIR)
@@ -1330,6 +1332,15 @@ $(USER_VIRT_DIR)/threadroot.o: User/crt/threadroot.c | $(USER_VIRT_DIR)
 
 $(USER_VIRT_DIR)/pthread.o: User/crt/pthread.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/pthread.c -o $@
+
+$(USER_VIRT_DIR)/time.o: User/crt/time.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/time.c -o $@
+
+$(USER_VIRT_DIR)/math.o: User/crt/math.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/math.c -o $@
+
+$(USER_VIRT_DIR)/atexit.o: User/crt/atexit.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/atexit.c -o $@
 
 $(USER_HELLO_ELF): $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
 	# 与 Kernel.elf 同：arm64 __sync_* 可能仍需 libgcc（与 -mno-outline-atomics 双保险）

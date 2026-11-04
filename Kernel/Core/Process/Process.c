@@ -17,8 +17,6 @@
 #include "PhysicalMemory.h"
 #include "Fat.h"
 
-#define EXEC_ARGV_MAX 8
-#define EXEC_ARG_LEN  64
 #define EXEC_PATH_MAX 63
 
 extern char _binary_User_hello_elf_start[];
@@ -145,68 +143,6 @@ static void StyleTaskName(char *Name) {
     }
 }
 
-/*
- * 在新用户栈顶构造：argc | argv[] | NULL | envp NULL | 字符串区
- * 返回新 rsp（指向 argc；16 字节对齐，供 AAPCS64 / SysV CRT）
- */
-static int ProcessSetupArgvStack(VIRTUAL_ADDRESS_SPACE *Space, UINT64 StackTop,
-                                 char ArgBuf[][EXEC_ARG_LEN], int Argc,
-                                 UINT64 *OutRsp) {
-    UINT64 Sp = StackTop;
-    UINT64 StrPtrs[EXEC_ARGV_MAX];
-    UINT64 PtrSlot;
-    UINT64 ArgcSlot;
-    UINT64 Need;
-    int i;
-    UINTN Len;
-
-    if (!Space || !OutRsp || Argc < 0 || Argc > EXEC_ARGV_MAX) {
-        return -1;
-    }
-
-    /* 经 Space 页表写物理页，不 mov CR3——避免与定时器抢占互相踩页表 */
-    for (i = Argc - 1; i >= 0; i--) {
-        Len = 0;
-        while (ArgBuf[i][Len] && Len + 1 < EXEC_ARG_LEN) {
-            Len++;
-        }
-        Len++; /* NUL */
-        Sp = (Sp - Len) & ~7ULL;
-        if (VirtualMemoryCopyToSpace(Space, Sp, ArgBuf[i], Len) < 0) {
-            return -1;
-        }
-        StrPtrs[i] = Sp;
-    }
-
-    /* argc + argv[]+NULL + envp NULL；整体 16 对齐 */
-    Need = 8ULL * (UINT64)(Argc + 3);
-    Sp = (Sp - Need) & ~0xFULL;
-    ArgcSlot = Sp;
-    PtrSlot = Sp + 8;
-    {
-        UINT64 Ac = (UINT64)(UINT32)Argc;
-        UINT64 Z = 0;
-
-        if (VirtualMemoryCopyToSpace(Space, ArgcSlot, &Ac, 8) < 0) {
-            return -1;
-        }
-        for (i = 0; i < Argc; i++) {
-            if (VirtualMemoryCopyToSpace(Space, PtrSlot + 8ULL * (UINT64)i, &StrPtrs[i],
-                                        8) < 0) {
-                return -1;
-            }
-        }
-        if (VirtualMemoryCopyToSpace(Space, PtrSlot + 8ULL * (UINT64)Argc, &Z, 8) < 0 ||
-            VirtualMemoryCopyToSpace(Space, PtrSlot + 8ULL * (UINT64)(Argc + 1), &Z, 8) <
-                0) {
-            return -1;
-        }
-    }
-
-    *OutRsp = ArgcSlot;
-    return 0;
-}
-
 int ProcessExec(const char *Path) {
     VIRTUAL_ADDRESS_SPACE *Space;
     ELF_LOAD_RESULT Info;
@@ -221,7 +157,8 @@ int ProcessExec(const char *Path) {
         return -1;
     }
     /* CRT _start 读 (%rsp)=argc；须把 rsp 落到已映射栈页内（与 execve 一致） */
-    if (ProcessSetupArgvStack(Space, Info.StackTop, Dummy, 0, &NewRsp) != 0) {
+    if (ProcessSetupArgEnvStack(Space, Info.StackTop, Dummy, 0, 0, 0, &NewRsp) !=
+        0) {
         VirtualMemorySpaceDestroy(Space);
         LogMisc("exec: argv stack failed\n");
         return -1;
@@ -279,19 +216,19 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
     VIRTUAL_ADDRESS_SPACE *NewSpace;
     ELF_LOAD_RESULT Info;
     char ArgBuf[EXEC_ARGV_MAX][EXEC_ARG_LEN];
+    char EnvBuf[EXEC_ENV_MAX][EXEC_ARG_LEN];
     int Argc = 0;
+    int Envc = 0;
     int i;
     UINT64 NewRsp;
     char Name[16];
-
-    (void)UserEnvp;
 
     T = SchedulerCurrent();
     if (!T || !T->IsUser || !T->UserSpace || !Frame || !Path || !Path[0]) {
         return -1;
     }
 
-    /* 先从旧地址空间拷出 argv（再销毁页表） */
+    /* 先从旧地址空间拷出 argv/envp（再销毁页表） */
     VirtualMemoryLoadPageTable(T->PageRoot);
     if (UserArgv != 0) {
         for (i = 0; i < EXEC_ARGV_MAX; i++) {
@@ -308,6 +245,22 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
             Argc++;
         }
     }
+    if (UserEnvp != 0) {
+        for (i = 0; i < EXEC_ENV_MAX; i++) {
+            UINT64 Ptr = 0;
+            if (VirtualMemoryCopyFromUser(&Ptr, UserEnvp + 8ULL * (UINT64)i, 8) <
+                0) {
+                break;
+            }
+            if (Ptr == 0) {
+                break;
+            }
+            if (CopyUserCString(EnvBuf[i], EXEC_ARG_LEN, Ptr) != 0) {
+                break;
+            }
+            Envc++;
+        }
+    }
     VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
 
     if (Argc == 0) {
@@ -319,10 +272,11 @@ int ProcessExecve(struct HAL_INTERRUPT_FRAME *Frame, const char *Path,
         return -1;
     }
 
-    if (ProcessSetupArgvStack(NewSpace, Info.StackTop, ArgBuf, Argc, &NewRsp) != 0) {
+    if (ProcessSetupArgEnvStack(NewSpace, Info.StackTop, ArgBuf, Argc, EnvBuf,
+                                Envc, &NewRsp) != 0) {
         VirtualMemoryLoadPageTable(VirtualMemoryKernelRoot());
         VirtualMemorySpaceDestroy(NewSpace);
-        LogMisc("execve: argv stack failed\n");
+        LogMisc("execve: argv/env stack failed\n");
         return -1;
     }
 
@@ -387,7 +341,8 @@ int ProcessRunDemo(void) {
         return -1;
     }
     /* StackTop 为映射区开区间上沿；不铺栈则 _start 的 mov (%rsp) 必 #PF */
-    if (ProcessSetupArgvStack(Space, Info.StackTop, Dummy, 0, &NewRsp) != 0) {
+    if (ProcessSetupArgEnvStack(Space, Info.StackTop, Dummy, 0, 0, 0, &NewRsp) !=
+        0) {
         VirtualMemorySpaceDestroy(Space);
         LogMisc("user: argv stack failed\n");
         return -1;

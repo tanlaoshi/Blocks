@@ -590,7 +590,7 @@ USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_format.o User/crt/printf_float.o User/crt/malloc.o \
-	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/stdlib_search.o User/crt/environ.o User/crt/signal.o \
+	User/crt/crt_start.o User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/stdlib_search.o User/crt/environ.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/stdio_path.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
 	User/crt/setjmp.o User/crt/time.o User/crt/math.o User/crt/atexit.o
@@ -649,7 +649,7 @@ USER_HELLO_ELF = $(USER_VIRT_DIR)/hello.elf
 USER_HELLO_OBJ = $(USER_VIRT_DIR)/hello.o
 USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/string.o $(USER_VIRT_DIR)/string_extra.o $(USER_VIRT_DIR)/printf.o $(USER_VIRT_DIR)/printf_format.o $(USER_VIRT_DIR)/printf_float.o \
-	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/errno.o \
+	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/crt_start.o $(USER_VIRT_DIR)/errno.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o $(USER_VIRT_DIR)/stdlib_search.o $(USER_VIRT_DIR)/environ.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
@@ -1295,6 +1295,9 @@ $(USER_VIRT_DIR)/printf_float.o: User/crt/printf_float.c | $(USER_VIRT_DIR)
 
 $(USER_VIRT_DIR)/malloc.o: User/crt/malloc.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/malloc.c -o $@
+
+$(USER_VIRT_DIR)/crt_start.o: User/crt/crt_start.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/crt_start.c -o $@
 
 $(USER_VIRT_DIR)/errno.o: User/crt/errno.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/errno.c -o $@

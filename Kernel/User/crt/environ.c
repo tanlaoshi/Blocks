@@ -1,5 +1,7 @@
 /*
  * environ.c — environ / getenv / setenv / unsetenv（hosted-getenv；C99）
+ *
+ * exec 可把 environ 指到栈上 envp；首次 setenv/unsetenv 时拷入本 CRT 表再改。
  */
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +22,40 @@ static void EnvironEnsure(void) {
         environ = gSlots;
     }
     gReady = 1;
+}
+
+static int EnvironAdoptLocal(void) {
+    char **Source;
+    int Count;
+    size_t Length;
+    char *Copy;
+
+    EnvironEnsure();
+    if (environ == gSlots) {
+        return 0;
+    }
+    Source = environ;
+    Count = 0;
+    if (Source) {
+        for (; *Source && Count < ENV_MAX; Source++) {
+            Length = strlen(*Source);
+            Copy = (char *)malloc(Length + 1);
+            if (!Copy) {
+                while (Count > 0) {
+                    Count--;
+                    free(gSlots[Count]);
+                    gSlots[Count] = 0;
+                }
+                return -1;
+            }
+            memcpy(Copy, *Source, Length + 1);
+            gSlots[Count] = Copy;
+            Count++;
+        }
+    }
+    gSlots[Count] = 0;
+    environ = gSlots;
+    return 0;
 }
 
 static char *FindVar(const char *Name, size_t NameLen) {
@@ -66,7 +102,9 @@ int setenv(const char *name, const char *value, int overwrite) {
     if (!value) {
         value = "";
     }
-    EnvironEnsure();
+    if (EnvironAdoptLocal() != 0) {
+        return -1;
+    }
     NameLen = strlen(name);
     ValueLen = strlen(value);
     Entry = FindVar(name, NameLen);
@@ -97,11 +135,6 @@ int setenv(const char *name, const char *value, int overwrite) {
         free(Built);
         return -1;
     }
-    if (environ != gSlots) {
-        /* 外部 environ：教学简化，只支持本 CRT 表 */
-        free(Built);
-        return -1;
-    }
     gSlots[Count] = Built;
     gSlots[Count + 1] = 0;
     return 0;
@@ -115,8 +148,7 @@ int unsetenv(const char *name) {
     if (!name || !name[0] || strchr(name, '=') != 0) {
         return -1;
     }
-    EnvironEnsure();
-    if (environ != gSlots) {
+    if (EnvironAdoptLocal() != 0) {
         return -1;
     }
     NameLen = strlen(name);

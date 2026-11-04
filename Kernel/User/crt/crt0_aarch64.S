@@ -1,15 +1,14 @@
-/* User/crt/crt0_aarch64.S — PR-A12：_start → main → exit(SVC)
+/* User/crt/crt0_aarch64.S — _start → BlocksCrtCallMain → exit(SVC)
  * 号段重排后 SYS_PROCESS_EXIT=50（勿再写死 0）
  */
 #include <Blocks/syscall.h>
 	.section .text
 	.global _start
-	.extern main
+	.extern BlocksCrtCallMain
 _start:
 	ldr	x0, [sp]
 	add	x1, sp, #8
-	bl	main
-	/* x0 = main 返回值作退出码；x8 = SYS_PROCESS_EXIT */
+	bl	BlocksCrtCallMain
 	mov	x8, #SYS_PROCESS_EXIT
 	mov	x1, xzr
 	mov	x2, xzr

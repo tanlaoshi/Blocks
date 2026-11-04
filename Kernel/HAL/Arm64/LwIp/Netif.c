@@ -163,7 +163,15 @@ void LwIpNetifInput(const UINT8 *Frame, UINTN Len) {
     if (Len < 14 || Len > 1518) {
         return;
     }
-    P = pbuf_alloc(PBUF_RAW, (u16_t)Len, PBUF_RAM);
+    /*
+     * 先 PBUF_POOL（lwipopts 已为 Pi Wi‑Fi 热更加到 96）：避免 RX 抢 MEM
+     * 堆导致 tcp_write/READY 也 pbuf_alloc fail（串口刷屏 + stalled READY，
+     * 2026-11-04）。池空再退 PBUF_RAM（对表 X64 store 路径）。
+     */
+    P = pbuf_alloc(PBUF_RAW, (u16_t)Len, PBUF_POOL);
+    if (P == NULL) {
+        P = pbuf_alloc(PBUF_RAW, (u16_t)Len, PBUF_RAM);
+    }
     if (P == NULL) {
         HalConsoleWriteSerial("netif: pbuf_alloc fail\n");
         return;

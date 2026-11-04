@@ -27,8 +27,11 @@
 #define MEMP_NUM_TCPIP_MSG_API      0
 #define MEMP_NUM_TCPIP_MSG_INPKT    0
 
-/* Pi Wi‑Fi 热更：池偏小曾 pbuf_alloc fail → TCP 错位 header（2026-11-03） */
-#define PBUF_POOL_SIZE              96
+/*
+ * Pi Wi‑Fi 热更：Arm64 Netif RX 优先 PBUF_POOL（见 Netif.c）。
+ * 池偏小曾 pbuf_alloc fail → READY 发不出 / TCP 错位 header（2026-11-03/04）。
+ */
+#define PBUF_POOL_SIZE              128
 /* 一帧以太网整包进单个 pbuf，免链上 pbuf_take 边角 */
 #define PBUF_POOL_BUFSIZE           1560
 

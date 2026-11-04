@@ -11,7 +11,11 @@
 #include "Netif.h"
 #endif
 
-#define WIFI_NET_DEFER_SLOTS 8u
+/*
+ * credit-wait / tcp_output 期间入队；满则静默丢 → TCP 错位 header err=1。
+ * 8 槽在表后首块突发不够（Pi 2026-11-04）；32≈一窗突发余量。
+ */
+#define WIFI_NET_DEFER_SLOTS 32u
 #define WIFI_NET_DEFER_BYTES 1518u
 
 static UINT32 gWifiNetLwIpInputCount;
@@ -49,7 +53,7 @@ static void WifiNetFeedEthernetDirect(const UINT8 *Frame, UINT32 FrameBytes) {
 }
 
 static void WifiNetFlushDeferredToLwIp(void) {
-    while (gWifiNetDeferCount > 0u) {
+    while (gWifiNetDeferCount > 0u && gWifiNetDeferDepth == 0) {
         UINT32 Slot = gWifiNetDeferRead;
         UINT16 Length = gWifiNetDeferLength[Slot];
 

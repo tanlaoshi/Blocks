@@ -3,7 +3,7 @@
 > **给执行者（DeepSeek）**：按 ★ **一刀**做；一次一变量；未过判据 **不 TG / 不 push**。  
 > **给评审（Cursor）**：对表 §8 红线；填本刀表末行 **评审**（与 25-DUO-WiFi-挂通用网执行包.md 同形）。  
 > **背景**：NUC 课轨 **btx-1…5 已收官**（USB HCI）。Pi/Duo 门面 `HalBluetooth*` 仍 **Ready=0 stub**。  
-> **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../Archive/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
+> **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../../项目/进展/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
 > **前置柱**：[`25-DUO-WiFi-挂通用网执行包.md`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
 > **当前执行包**：本文 24-板端蓝牙-Pi与Duo执行包.md **蓝牙柱收官**（bt-duo-2 Ready 绿）。活 ★ 见 [`路线图1102`](../Archive/路线图1102.md) GPIO。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
 

@@ -7,7 +7,7 @@
 | [`Onboarding.md`](Onboarding.md) | 接手：文档地图、坑、命令、同步清单 |
 | [`Coding.md`](Coding.md) | 编码规范**指针**（正本在 [`Archive/规范/编码规范.md`](../../Archive/规范/编码规范.md)） |
 
-**排期 / ★**：不在 Manual —— 见 [`Archive/路线图1023.md`](../../Archive/路线图1023.md)。  
+**排期 / ★**：不在 Manual —— 见 [`Archive/项目/进展/路线图1023.md`](../../Archive/项目/进展/路线图1023.md)。  
 **协作暗号**：路线图「〇」。**上机**：[`../BINGO.md`](../BINGO.md)。
 
 改用户可见 ABI 时同步顺序：头文件 → [`../App/ABI.md`](../App/ABI.md) → [`../Course/CheatSheet.md`](../Course/CheatSheet.md) → [`../App/API.md`](../App/API.md) → [`../App/Guide.md`](../App/Guide.md) →（必要时）技术手册。

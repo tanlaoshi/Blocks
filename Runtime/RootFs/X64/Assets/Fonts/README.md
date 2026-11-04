@@ -12,7 +12,7 @@ Guest 路径：
 
 旧名兼容：`CJK.TTF`→UMing、`CJK2.TTF`→Droid（仅旧 SD；新镜像用上表名）。
 
-内核：`TrueTypeLoad` → `UMING.TTF` / `DROID.TTF` / `MONO.TTF`。短名单见 `Archive/路线图1027.md` [cjk-0](#)。**禁止**用点阵 FNT 顶中文。
+内核：`TrueTypeLoad` → `UMING.TTF` / `DROID.TTF` / `MONO.TTF`。短名单见 `Archive/项目/进展/路线图1027.md` [cjk-0](#)。**禁止**用点阵 FNT 顶中文。
 
 **CJK** = Chinese / Japanese / Korean（中日韩表意文字合称）；仓内用具体字体文件名，避免笼统 `CJK*.TTF`。
 

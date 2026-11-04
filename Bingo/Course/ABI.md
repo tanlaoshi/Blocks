@@ -53,6 +53,6 @@
 | 内核树 | `Kernel/` |
 | 用户态 | `Kernel/User/`（CRT/库）；示例 `Bingo/App/{Template,Examples}` |
 | Shell | Guest：`blocks>` |
-| 还债剧本 | [`路线图1024 · selfhost`](../../Archive/路线图1024.md#selfhost) |
+| 还债剧本 | [`路线图1024 · selfhost`](../../Archive/项目/进展/路线图1024.md#selfhost) |
 
 更细 API：[`API.md`](../App/API.md)。上手：[`Guide.md`](../App/Guide.md)。

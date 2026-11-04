@@ -3,7 +3,7 @@
 > **目的**：冷启动链路 + 稳态四环 +「先骨后肉」读法；并标出**每步与硬件沟通的关键点**（错过就难以理解黑盒）。  
 > **目录地图**：[`Tree.md`](Tree.md)。  
 > **权威代码**：`Boot/BootPkg/`、`BringUp/`、`BringUp/Modules.c`、`Services/Tasks/`、`Core/Scheduler/Start.c`。  
-> **活 ★**：[`路线图1023.md`](../../Archive/路线图1023.md)（日档）。已收日档 → [`项目/进展/`](../../Archive/项目/进展/README.md)。
+> **活 ★**：[`路线图1023.md`](../../Archive/项目/进展/路线图1023.md)（日档）。已收日档 → [`项目/进展/`](../../Archive/项目/进展/README.md)。
 
 ---
 

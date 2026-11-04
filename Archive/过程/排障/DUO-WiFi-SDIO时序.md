@@ -62,7 +62,7 @@
 | wifi-sd 控制器 | **SD1**，基址 `0x04320000`，窗口 64 KiB（`0x0432FFFF`） | TRM p.2364「0x04320000 / 0x0432FFFF / SD1 控制寄存器」；dts `reg = <0x0 0x4320000 0x0 0x1000>`（`cv181x_base.dtsi:535`） |
 | compatible | `cvitek,cv181x-sdio` | `cv181x_base.dtsi:533`；真机 `/proc/device-tree/wifi*/compatible` 也是它 |
 | 相邻控制器 | SD0 `0x04310000`（µSD，我们已在用）；DMA `0x04330000` | TRM p.2355-2370 |
-| **中断号** | **PLIC 线 38**，`IRQ_TYPE_LEVEL_HIGH` | dts `cv181x_base_riscv.dtsi:341-343`（`interrupts = <38 ...>`）；**真机已确认**：`/proc/interrupts` → `25: 9328 T-Head PLIC 38 mmc2`（`Archive/路线图1030.md:200`） |
+| **中断号** | **PLIC 线 38**，`IRQ_TYPE_LEVEL_HIGH` | dts `cv181x_base_riscv.dtsi:341-343`（`interrupts = <38 ...>`）；**真机已确认**：`/proc/interrupts` → `25: 9328 T-Head PLIC 38 mmc2`（`Archive/项目/进展/路线图1030.md:200`） |
 | PLIC 控制器 | `0x70000000`，`riscv,ndev = <101>`，`max-priority = <7>` | dts `cv181x_base_riscv.dtsi:69-79` |
 | 控制器能力 quirk（厂商） | `SDHCI_QUIRK_BROKEN_ADMA`、`QUIRK2_NO_1_8_V`、`QUIRK2_BROKEN_64_BIT_DMA`、`QUIRK_CAP_CLOCK_BASE_BROKEN` | `sdhci-cv181x.c:1222-1226` |
 | 基钟 | **375 MHz**（`src-frequency`），与 µSD 同 | dts `cv181x_base.dtsi:537`；我们已按 375 MHz 分频（`Sdhci/Private.h:18`） |

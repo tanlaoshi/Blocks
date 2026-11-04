@@ -14,7 +14,7 @@ Blocks/
 | ------ | ---- |
 | **上手 / 写代码 / 读手册** | [`Bingo/`](Bingo/README.md) · [`Bingo/BINGO.md`](Bingo/BINGO.md) |
 | **写 App（毛坯）** | [`Bingo/App/`](Bingo/App/) |
-| 日档 ★ / 排期 | [`Archive/路线图1026.md`](Archive/路线图1026.md) |
+| 日档 ★ / 排期 | [`Archive/项目/进展/路线图1026.md`](Archive/项目/进展/路线图1026.md) |
 | 从 OVMF 逐段学 | [`Archive/原则与学习记录.md`](Archive/原则与学习记录.md) |
 | 换机 / 工具链细表 | [`Archive/同步.md`](Archive/同步.md) |
 | GitHub | `git@github.com:tanlaoshi/Blocks.git` |

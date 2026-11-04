@@ -1,8 +1,8 @@
-# ISO C / libBlocks 缺口表（selfhost · sh-5）
+# ISO C / libc 缺口表（selfhost · sh-5）
 
-> **用途**：自举加厚时按表补，不靠猜。  
+> **用途**：自举加厚时按表补，不靠猜。活档排刀见 [`libc加厚.md`](libc加厚.md)。  
 > **口径**：保留 ISO C99 原名；非 ISO 的 Unix 脸见 Blocks API（`File*` / `Process*` / `Thread*` / `Net*`）。  
-> **实现目录**：`Kernel/User/crt/` + `Kernel/User/include/`。
+> **实现目录**：`Kernel/User/crt/` + `Kernel/User/include/`；产物 `User/Library/Libc/libc.a`。
 
 ## 已有（课用够用）
 
@@ -39,10 +39,10 @@
 
 ## 加厚时验收
 
-1. 新符号进 `libBlocks.a`，头在 `User/include`，Manual 本表勾选。  
+1. 新符号进 `libc.a`，头在 `User/include`，Manual 本表勾选。  
 2. `LibcDemo` / Chat / 主范例仍能编。  
 3. 不借机恢复假 POSIX 公开脸。
 
 ## 与 sh-6
 
-Guest 自举门槛（编译器 + 头 + `libBlocks` → 最小 ELF）依赖本表 P0/P1 收口后再开（远期）。
+Guest 自举门槛（编译器 + 头 + `libc` → 最小 ELF）依赖本表 P0/P1 收口后再开（远期）。

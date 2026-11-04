@@ -32,7 +32,7 @@ USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fn
 
 CRT0_OBJ     := $(LIB_DIR)/crt0.o
 SYSCALL_OBJ  := $(LIB_DIR)/syscall.o
-LIBBLOCKS_A  := $(LIB_DIR)/libBlocks.a
+LIBC_A       := $(LIB_DIR)/libc.a
 
 OBJS := $(addprefix $(BUILDDIR)/,$(SRCS:.c=.o))
 
@@ -46,9 +46,9 @@ $(BUILDDIR):
 $(BUILDDIR)/%.o: %.c | $(BUILDDIR)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(ELF): $(OBJS) $(CRT0_OBJ) $(SYSCALL_OBJ) $(LIBBLOCKS_A) $(USER_LD) $(EXTRA_OBJS) $(EXTRA_LIBS)
+$(ELF): $(OBJS) $(CRT0_OBJ) $(SYSCALL_OBJ) $(LIBC_A) $(USER_LD) $(EXTRA_OBJS) $(EXTRA_LIBS)
 	$(LD) -nostdlib -static -T $(USER_LD) -o $@ $(OBJS) $(EXTRA_OBJS) \
-		$(EXTRA_LIBS) $(LIBBLOCKS_A) $(CRT0_OBJ) $(SYSCALL_OBJ)
+		$(EXTRA_LIBS) $(LIBC_A) $(CRT0_OBJ) $(SYSCALL_OBJ)
 
 clean:
 	rm -rf $(BUILDDIR)

@@ -11,6 +11,7 @@
 | [`API.md`](API.md) | 一页 API 表 |
 | [`ABI.md`](ABI.md) | 开课冻结：承诺 / 不承诺 |
 | [`LibcGaps.md`](LibcGaps.md) | ISO C 加厚缺口 |
+| [`libc加厚.md`](libc加厚.md) | libc 定名 + 加厚 PR 活档（只认该文 ★） |
 | [`UI/`](UI/) | 布局文件、多页面、拖控件设计器 |
 
 **工具链**：`cd Kernel && ./Tools/build-sdk.sh` → `Build/BlocksSDK`；离树 `make BLOCKS_SDK=…`。  

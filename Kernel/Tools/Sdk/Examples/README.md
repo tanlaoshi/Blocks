@@ -2,7 +2,7 @@
 
 | 目录 | 产物 | 依赖 |
 | --- | --- | --- |
-| `Hello/` | `MYAPP.ELF` | CRT / libBlocks |
+| `Hello/` | `MYAPP.ELF` | CRT / libc |
 | `Gui/` | `MYGUI.ELF` | + libUi + libGraphics |
 | `Net/` | `MYNET.ELF` | + libNet（Guest：`lwip on`） |
 

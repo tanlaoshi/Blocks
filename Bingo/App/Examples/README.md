@@ -6,7 +6,7 @@
 
 | 目录 | 产物 | 依赖 | 备注 |
 | --- | --- | --- | --- |
-| `Hello/` | `MYAPP.ELF` | libBlocks | |
+| `Hello/` | `MYAPP.ELF` | libc | |
 | `Gui/` | `MYGUI.ELF` | + libUi + libGraphics | `PKG.TXT` 已 `window=yes` |
 | `Net/` | `MYNET.ELF` | + libNet | Guest 先 `lwip on` |
 | `Batch/` | `BATCH.ELF` | + Ui + Graphics | |

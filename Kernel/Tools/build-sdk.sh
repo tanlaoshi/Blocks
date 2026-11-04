@@ -18,11 +18,11 @@ echo "==> 确保 CRT / 用户库（ARCH=$ARCH）"
 make -C "$ROOT" \
     User/crt/crt0.o \
     User/crt/syscall.o \
-    User/Library/Blocks/libBlocks.a \
+    User/Library/Libc/libc.a \
     User/Library/Graphics/libGraphics.a \
     User/Library/Ui/libUi.a \
     User/Library/Net/libNet.a \
-    User/Library/FsUtil/libFsUtil.a
+    User/Library/VolumePath/libVolumePath.a
 
 echo "==> 暂存 $OUT"
 rm -rf "$OUT"
@@ -37,11 +37,11 @@ cp -f \
     "$OUT/Include/Abi/"
 
 cp -f "$ROOT/User/crt/crt0.o" "$ROOT/User/crt/syscall.o" "$OUT/Lib/"
-cp -f "$ROOT/User/Library/Blocks/libBlocks.a" "$OUT/Lib/"
+cp -f "$ROOT/User/Library/Libc/libc.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Graphics/libGraphics.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Ui/libUi.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Net/libNet.a" "$OUT/Lib/"
-cp -f "$ROOT/User/Library/FsUtil/libFsUtil.a" "$OUT/Lib/"
+cp -f "$ROOT/User/Library/VolumePath/libVolumePath.a" "$OUT/Lib/"
 cp -f "$ROOT/User/user.ld" "$OUT/Link/user.ld"
 
 cp -f "$SDK_SRC/VERSION" "$SDK_SRC/README.md" "$SDK_SRC/BlocksSdk.mk" \

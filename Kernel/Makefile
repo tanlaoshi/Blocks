@@ -588,8 +588,8 @@ USER_LIB_GRAPHICS_A = User/Library/Graphics/libGraphics.a
 USER_LIB_UI_A = User/Library/Ui/libUi.a
 USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
-USER_LIB_BLOCKS_A = User/Library/Blocks/libBlocks.a
-USER_LIB_BLOCKS_OBJS = User/crt/string.o User/crt/printf.o User/crt/malloc.o \
+USER_LIBC_A = User/Library/Libc/libc.a
+USER_LIBC_OBJS = User/crt/string.o User/crt/printf.o User/crt/malloc.o \
 	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o
@@ -598,7 +598,7 @@ USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone -IUser/include -IInclude -IInclude/Abi
 USER_ASFLAGS = -IUser/include -IInclude -IInclude/Abi
-USER_CRT_OBJS = User/crt/crt0.o User/crt/syscall.o $(USER_LIB_BLOCKS_OBJS)
+USER_CRT_OBJS = User/crt/crt0.o User/crt/syscall.o $(USER_LIBC_OBJS)
 else
 EXTRA_OBJS =
 # PR-B2：Board 包 .c（含一层子目录，如 Ethernet/*.c）；BoardConfig.h 仅 HAL -I
@@ -793,7 +793,7 @@ all: $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF) \
 	$(USER_EXECDEMO_ELF) $(USER_PIPEDEMO_ELF) $(USER_BRKDEMO_ELF) $(USER_MMAPDEMO_ELF) $(USER_KILLDEMO_ELF) \
 	$(USER_SIGDEMO_ELF) \
 	$(USER_LIBCDEMO_ELF) $(USER_SLEEPDEMO_ELF) $(USER_THREADSMOKE_ELF) $(USER_PTHREADSMOKE_ELF) $(USER_THREADDEMO_ELF) $(USER_SNAKE_ELF) $(USER_TASKMGR_ELF) $(USER_DIRDEMO_ELF) $(USER_CWDDEMO_ELF) \
-	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIB_BLOCKS_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
+	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIBC_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
 endif
 else
 ifneq ($(BRINGUP),1)
@@ -1088,11 +1088,10 @@ $(USER_LIB_FSUTIL_A): $(USER_LIB_FSUTIL_OBJ)
 	mkdir -p $(dir $@)
 	ar rcs $@ $(USER_LIB_FSUTIL_OBJ)
 
-# PR-L1：CRT C 部分打成 libBlocks.a，供 User/Package 课外链接
-$(USER_LIB_BLOCKS_A): $(USER_LIB_BLOCKS_OBJS)
-	@mkdir -p User/Library/Blocks
+# PR-L1 / libc-rename：CRT C 部分打成 libc.a，供 SDK / 课外链接
+$(USER_LIBC_A): $(USER_LIBC_OBJS)
 	mkdir -p $(dir $@)
-	ar rcs $@ $(USER_LIB_BLOCKS_OBJS)
+	ar rcs $@ $(USER_LIBC_OBJS)
 
 $(USER_LIBCDEMO_OBJ): User/Apps/Demos/LibcDemo.c User/include/stdio.h User/include/stdlib.h User/include/string.h User/include/signal.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Demos/LibcDemo.c -o $@
@@ -1379,7 +1378,7 @@ ifeq ($(ARCH),x86_64)
 	rm -f $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) \
 		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) \
 		$(USER_LIB_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
-	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIB_BLOCKS_A)
+	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIBC_A)
 	rm -f $(USER_CRT_OBJS)
 	rm -f $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF)
 	rm -f $(USER_LIBTOY_SO) $(USER_DYNDEMO_ELF) $(USER_CAT_ELF) $(USER_WRITE_ELF)

@@ -1,6 +1,6 @@
 /*
  * 毛坯 main — 复制本目录后改这里。
- * 只要 libBlocks：printf / 文件 / 进程…
+ * 只要 libc：printf / 文件 / 进程…
  * 开窗 → 看 Examples/Gui；TCP → 看 Examples/Net。
  */
 #include <stdio.h>

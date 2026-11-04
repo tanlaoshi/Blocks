@@ -9,7 +9,7 @@
 
 | 用途 | 头文件 | 库 |
 | ---- | ------ | --- |
-| ISO C | `<stdio.h>` `<stdlib.h>` `<string.h>` … | `libBlocks.a` |
+| ISO C | `<stdio.h>` `<stdlib.h>` `<string.h>` … | `libc.a` |
 | Syscall | `<Blocks/syscall.h>` | （内联） |
 | 文件 / 目录 | `<Blocks/File.h>` `<Blocks/Dir.h>` | CRT |
 | 进程 | `<Blocks/Process.h>` | CRT |

@@ -9,7 +9,7 @@
 
 ## 一、你在改什么
 
-用户程序是 **静态链接的 ELF**，链 `libBlocks.a`（及需要的 `libUi` / `libGraphics` / `libNet` / `libVolumePath`），经 syscall 进内核。  
+用户程序是 **静态链接的 ELF**，链 `libc.a`（及需要的 `libUi` / `libGraphics` / `libNet` / `libVolumePath`），经 syscall 进内核。  
 **不要**链宿主 libc，**不要** `-pie`，**不要**再写 `sockaddr`/`toy_*` 课设路径。
 
 推荐入口（均在本 `Bingo/App/` 下）：

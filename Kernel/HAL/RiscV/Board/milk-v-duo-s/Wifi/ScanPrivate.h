@@ -309,11 +309,44 @@ typedef struct {
     UINT8 Frame[AIC_SCAN_FRAME_MAX];
 } AIC_SCAN_RECORD;
 
-/* ---- 跨文件原型（WifiScanMessage.c / WifiScanResult.c / WifiScanDump.c / WifiScanReport.c） ---- */
+/* ---- 合并表项（ScanReport.c 定义；ScanReportFinish.c 排版只读） ---- */
+typedef struct {
+    AIC_SCAN_AP Ap;
+    UINT16 RecordIndex; /* AIC_SCAN_RECORD_INDEX_NONE = 没有可 dump 的帧 */
+    UINT32 LastRound;
+} AIC_SCAN_REPORT_ENTRY;
+
+extern AIC_SCAN_REPORT_ENTRY sAicScanEntries[AIC_SCAN_AP_MAX];
+extern UINT32 sAicScanEntryCount;
+extern UINT32 sAicScanDropped;
+extern AIC_SCAN_RECORD sAicScanRecords[AIC_SCAN_RESULT_KEEP_MAX];
+extern UINT32 sAicScanRecordCount;
+extern UINT8 sAicScanRecordDumped[AIC_SCAN_RESULT_KEEP_MAX];
+extern UINT32 sAicScanRoundsDone;
+extern UINT32 sAicScanRoundCounts[AIC_SCAN_ROUNDS_MAX];
+extern UINT32 sAicScanTotalFrames;
+extern UINT32 sAicScanTotalElapsed;
+extern UINT32 sAicScanUnparsed;
+extern int sAicScanVerbose;
+extern int sAicScanAnyDone;
+extern int sAicScanLastEnd;
+
+/* ---- 跨文件原型（Scan* / ScanMessage / ScanDump） ---- */
 UINT32 AicMmAddIfBuild(UINT8 *Buffer);
 UINT32 AicScanuStartBuild(UINT8 *Buffer, UINT8 VifIndex);
 int AicScanLayoutCheck(void);
 int SdhciWifiScan(int Mode, UINT32 Rounds);
+/* Scan.c ↔ ScanVirtualInterface.c */
+UINT32 ScanNowMilliseconds(void);
+void ScanPrintTransmit(const char *Name, UINT32 Length, const char *Note);
+void ScanDumpBytes(const UINT8 *Data, UINT32 Length);
+int ScanWaitConfirm(SDHCI_HOST *Host, UINT16 WantId, UINT16 AlternateId, UINT16 *OutId,
+                    UINT32 *OutParamLength);
+UINT8 *ScanFrameBuffer(void);
+UINT32 *ScanRequestBuffer(void);
+int ScanVirtualInterfaceAcquire(SDHCI_HOST *Host, UINT8 *OutVifIndex);
+int ScanVirtualInterfaceIsCached(void);
+void ScanVirtualInterfaceInvalidate(void);
 void AicScanDumpVerbose(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLength, UINT32 Index);
 void AicScanFormatAddress(const UINT8 *Address, char *Text);
 /* 本机 vif MAC：默认 02:..:01；bringup 后可换成 efuse（WifiStationAddress.c） */
@@ -342,5 +375,8 @@ UINT32 AicScanResultParse(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLe
                           AIC_SCAN_AP *Entries, UINT32 MaxEntries);
 void AicScanResultPrintAp(const AIC_SCAN_AP *Entry, UINT32 Index);
 void AicScanResultPrintMbssidFailure(const AIC_SCAN_AP *Entry);
+/* ScanResult.c ↔ ScanResultMultipleBssid.c */
+UINT32 ScanAppendProfiles(const UINT8 *Frame, UINT32 MbssidOffset, UINT32 MbssidLength,
+                          AIC_SCAN_AP *Entries, UINT32 MaxEntries, UINT32 Count);
 
 #endif

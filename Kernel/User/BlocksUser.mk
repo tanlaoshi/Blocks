@@ -28,7 +28,7 @@ AR        ?= ar
 
 USER_INC  := $(BLOCKS_KERNEL)/User/include
 USER_LD   := $(BLOCKS_KERNEL)/User/user.ld
-CRT_DIR   := $(BLOCKS_KERNEL)/User/crt
+START_DIR := $(BLOCKS_KERNEL)/User/Library/Libc/start
 LIB_DIR   := $(BLOCKS_KERNEL)/User/Library/Libc
 
 # c99-1/5：课外模板与内核自有树同锁 ISO C99 + -pedantic
@@ -37,11 +37,11 @@ USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fn
 	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I$(BLOCKS_KERNEL)/Include/Abi -I.
 
 # 链入用绝对路径；ensure-crt 调根 Makefile 须用相对目标名
-CRT0_OBJ    := $(CRT_DIR)/crt0.o
-SYSCALL_OBJ := $(CRT_DIR)/syscall.o
+CRT0_OBJ    := $(START_DIR)/crt0.o
+SYSCALL_OBJ := $(START_DIR)/syscall.o
 LIBC_A      := $(LIB_DIR)/libc.a
-CRT0_REL    := User/crt/crt0.o
-SYSCALL_REL := User/crt/syscall.o
+CRT0_REL    := User/Library/Libc/start/crt0.o
+SYSCALL_REL := User/Library/Libc/start/syscall.o
 LIBC_REL    := User/Library/Libc/libc.a
 
 OBJS := $(addprefix $(BUILDDIR)/,$(SRCS:.c=.o))

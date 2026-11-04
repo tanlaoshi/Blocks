@@ -12,7 +12,7 @@
 
 #define EOF (-1)
 
-typedef struct ToyFile FILE;
+typedef struct toy_file FILE;
 
 extern FILE *stdin;
 extern FILE *stdout;

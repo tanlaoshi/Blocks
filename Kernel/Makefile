@@ -590,17 +590,15 @@ USER_LIB_UI_A = User/Library/Ui/libUi.a
 USER_LIB_NET_A = User/Library/Net/libNet.a
 USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
-USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_format.o User/crt/printf_float.o User/crt/malloc.o \
-	User/crt/crt_start.o User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/stdlib_search.o User/crt/environ.o User/crt/signal.o \
-	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/stdio_scan_token.o User/crt/stdio_scan_format.o User/crt/stdio_path.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
-	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
-	User/crt/setjmp.o User/crt/time.o User/crt/time_convert.o User/crt/math.o User/crt/math_trig.o User/crt/math_exp.o User/crt/atexit.o
+# 全部在 Library/Libc/：ISO 按头分目录；start/ 为 _start+syscall+call_main（非 ISO，打进 libc.a）
+USER_LIBC_ROOT = User/Library/Libc
+USER_LIBC_OBJS = 	$(USER_LIBC_ROOT)/string/string.o $(USER_LIBC_ROOT)/string/string_extra.o 	$(USER_LIBC_ROOT)/stdio/printf.o $(USER_LIBC_ROOT)/stdio/printf_format.o $(USER_LIBC_ROOT)/stdio/printf_float.o 	$(USER_LIBC_ROOT)/stdio/stdio.o $(USER_LIBC_ROOT)/stdio/stdio_rw.o $(USER_LIBC_ROOT)/stdio/stdio_fmt.o 	$(USER_LIBC_ROOT)/stdio/stdio_streams.o $(USER_LIBC_ROOT)/stdio/stdio_scan.o 	$(USER_LIBC_ROOT)/stdio/stdio_scan_token.o $(USER_LIBC_ROOT)/stdio/stdio_scan_format.o 	$(USER_LIBC_ROOT)/stdio/stdio_path.o 	$(USER_LIBC_ROOT)/stdlib/malloc.o $(USER_LIBC_ROOT)/stdlib/stdlib.o 	$(USER_LIBC_ROOT)/stdlib/stdlib_parse.o $(USER_LIBC_ROOT)/stdlib/stdlib_search.o 	$(USER_LIBC_ROOT)/stdlib/environ.o $(USER_LIBC_ROOT)/stdlib/atexit.o 	$(USER_LIBC_ROOT)/errno/errno.o 	$(USER_LIBC_ROOT)/unistd/unistd.o $(USER_LIBC_ROOT)/unistd/sleep.o $(USER_LIBC_ROOT)/unistd/cwd.o 	$(USER_LIBC_ROOT)/signal/signal.o 	$(USER_LIBC_ROOT)/dirent/dirent.o 	$(USER_LIBC_ROOT)/sys/socket.o $(USER_LIBC_ROOT)/sys/stat.o $(USER_LIBC_ROOT)/sys/proc.o 	$(USER_LIBC_ROOT)/sched/sched.o 	$(USER_LIBC_ROOT)/pthread/threadroot.o $(USER_LIBC_ROOT)/pthread/pthread.o 	$(USER_LIBC_ROOT)/setjmp/setjmp.o 	$(USER_LIBC_ROOT)/time/time.o $(USER_LIBC_ROOT)/time/time_convert.o 	$(USER_LIBC_ROOT)/math/math.o $(USER_LIBC_ROOT)/math/math_trig.o $(USER_LIBC_ROOT)/math/math_exp.o 	$(USER_LIBC_ROOT)/start/call_main.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone -IUser/include -IInclude -IInclude/Abi
 USER_ASFLAGS = -IUser/include -IInclude -IInclude/Abi
-USER_CRT_OBJS = User/crt/crt0.o User/crt/syscall.o $(USER_LIBC_OBJS)
+USER_CRT_OBJS = $(USER_LIBC_ROOT)/start/crt0.o $(USER_LIBC_ROOT)/start/syscall.o $(USER_LIBC_OBJS)
 else
 EXTRA_OBJS =
 # PR-B2：Board 包 .c（含一层子目录，如 Ethernet/*.c）；BoardConfig.h 仅 HAL -I
@@ -631,13 +629,13 @@ endif
 USER_VIRT_DIR = $(HALDIR)/user
 ifeq ($(ARCH),arm64)
 USER_LD = User/user-arm64.ld
-USER_CRT0_SRC = User/crt/crt0_aarch64.S
-USER_SYSCALL_SRC = User/crt/syscall_aarch64.S
+USER_CRT0_SRC = User/Library/Libc/start/crt0_aarch64.S
+USER_SYSCALL_SRC = User/Library/Libc/start/syscall_aarch64.S
 USER_LDFLAGS = -z noexecstack
 else
 USER_LD = User/user-riscv.ld
-USER_CRT0_SRC = User/crt/crt0_riscv.S
-USER_SYSCALL_SRC = User/crt/syscall_riscv.S
+USER_CRT0_SRC = User/Library/Libc/start/crt0_riscv.S
+USER_SYSCALL_SRC = User/Library/Libc/start/syscall_riscv.S
 USER_LDFLAGS = -m elf64lriscv -z noexecstack
 endif
 # 用户态允许 FPU（libc float/%f）；勿带内核的 -mgeneral-regs-only
@@ -652,7 +650,7 @@ USER_HELLO_ELF = $(USER_VIRT_DIR)/hello.elf
 USER_HELLO_OBJ = $(USER_VIRT_DIR)/hello.o
 USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/string.o $(USER_VIRT_DIR)/string_extra.o $(USER_VIRT_DIR)/printf.o $(USER_VIRT_DIR)/printf_format.o $(USER_VIRT_DIR)/printf_float.o \
-	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/crt_start.o $(USER_VIRT_DIR)/errno.o \
+	$(USER_VIRT_DIR)/malloc.o $(USER_VIRT_DIR)/call_main.o $(USER_VIRT_DIR)/errno.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o $(USER_VIRT_DIR)/stdlib_search.o $(USER_VIRT_DIR)/environ.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
@@ -1000,20 +998,23 @@ $(HALDIR)/SmpTramp_blob.o: $(HALDIR)/SmpTramp.bin
 $(USER_HELLO_OBJ): User/Apps/Hello.c User/include/stdio.h User/include/stdlib.h User/include/string.h User/include/stddef.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Hello.c -o $@
 
-User/crt/%.o: User/crt/%.c
+User/Library/Libc/start/%.o: User/Library/Libc/start/%.c
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-User/crt/%.o: User/crt/%.S
+User/Library/Libc/start/%.o: User/Library/Libc/start/%.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 
+User/Library/Libc/%.o: User/Library/Libc/%.c
+	$(CC) $(USER_CFLAGS) -c $< -o $@
+
 ifeq ($(ARCH),arm64)
-User/crt/setjmp.o: User/crt/setjmp_aarch64.S
+User/Library/Libc/setjmp/setjmp.o: User/Library/Libc/setjmp/setjmp_aarch64.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 else ifeq ($(ARCH),riscv)
-User/crt/setjmp.o: User/crt/setjmp_riscv.S
+User/Library/Libc/setjmp/setjmp.o: User/Library/Libc/setjmp/setjmp_riscv.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 else
-User/crt/setjmp.o: User/crt/setjmp_x86_64.S
+User/Library/Libc/setjmp/setjmp.o: User/Library/Libc/setjmp/setjmp_x86_64.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 endif
 
@@ -1281,127 +1282,127 @@ $(USER_VIRT_DIR)/crt0.o: $(USER_CRT0_SRC) | $(USER_VIRT_DIR)
 $(USER_VIRT_DIR)/syscall.o: $(USER_SYSCALL_SRC) | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c $(USER_SYSCALL_SRC) -o $@
 
-$(USER_VIRT_DIR)/string.o: User/crt/string.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/string.c -o $@
+$(USER_VIRT_DIR)/string.o: User/Library/Libc/string/string.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/string/string.c -o $@
 
-$(USER_VIRT_DIR)/string_extra.o: User/crt/string_extra.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/string_extra.c -o $@
+$(USER_VIRT_DIR)/string_extra.o: User/Library/Libc/string/string_extra.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/string/string_extra.c -o $@
 
-$(USER_VIRT_DIR)/printf.o: User/crt/printf.c User/crt/printf_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/printf.c -o $@
+$(USER_VIRT_DIR)/printf.o: User/Library/Libc/stdio/printf.c User/Library/Libc/stdio/printf_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/printf.c -o $@
 
-$(USER_VIRT_DIR)/printf_format.o: User/crt/printf_format.c User/crt/printf_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/printf_format.c -o $@
+$(USER_VIRT_DIR)/printf_format.o: User/Library/Libc/stdio/printf_format.c User/Library/Libc/stdio/printf_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/printf_format.c -o $@
 
-$(USER_VIRT_DIR)/printf_float.o: User/crt/printf_float.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/printf_float.c -o $@
+$(USER_VIRT_DIR)/printf_float.o: User/Library/Libc/stdio/printf_float.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/printf_float.c -o $@
 
-$(USER_VIRT_DIR)/malloc.o: User/crt/malloc.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/malloc.c -o $@
+$(USER_VIRT_DIR)/malloc.o: User/Library/Libc/stdlib/malloc.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/malloc.c -o $@
 
-$(USER_VIRT_DIR)/crt_start.o: User/crt/crt_start.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/crt_start.c -o $@
+$(USER_VIRT_DIR)/call_main.o: User/Library/Libc/start/call_main.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/start/call_main.c -o $@
 
-$(USER_VIRT_DIR)/errno.o: User/crt/errno.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/errno.c -o $@
+$(USER_VIRT_DIR)/errno.o: User/Library/Libc/errno/errno.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/errno/errno.c -o $@
 
-$(USER_VIRT_DIR)/unistd.o: User/crt/unistd.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/unistd.c -o $@
+$(USER_VIRT_DIR)/unistd.o: User/Library/Libc/unistd/unistd.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/unistd.c -o $@
 
-$(USER_VIRT_DIR)/sleep.o: User/crt/sleep.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/sleep.c -o $@
+$(USER_VIRT_DIR)/sleep.o: User/Library/Libc/unistd/sleep.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/sleep.c -o $@
 
-$(USER_VIRT_DIR)/stdlib.o: User/crt/stdlib.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdlib.c -o $@
+$(USER_VIRT_DIR)/stdlib.o: User/Library/Libc/stdlib/stdlib.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/stdlib.c -o $@
 
-$(USER_VIRT_DIR)/stdlib_parse.o: User/crt/stdlib_parse.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdlib_parse.c -o $@
+$(USER_VIRT_DIR)/stdlib_parse.o: User/Library/Libc/stdlib/stdlib_parse.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/stdlib_parse.c -o $@
 
-$(USER_VIRT_DIR)/environ.o: User/crt/environ.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/environ.c -o $@
+$(USER_VIRT_DIR)/environ.o: User/Library/Libc/stdlib/environ.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/environ.c -o $@
 
-$(USER_VIRT_DIR)/stdlib_search.o: User/crt/stdlib_search.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdlib_search.c -o $@
+$(USER_VIRT_DIR)/stdlib_search.o: User/Library/Libc/stdlib/stdlib_search.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/stdlib_search.c -o $@
 
-$(USER_VIRT_DIR)/signal.o: User/crt/signal.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/signal.c -o $@
+$(USER_VIRT_DIR)/signal.o: User/Library/Libc/signal/signal.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/signal/signal.c -o $@
 
-$(USER_VIRT_DIR)/dirent.o: User/crt/dirent.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/dirent.c -o $@
+$(USER_VIRT_DIR)/dirent.o: User/Library/Libc/dirent/dirent.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/dirent/dirent.c -o $@
 
-$(USER_VIRT_DIR)/stdio.o: User/crt/stdio.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio.c -o $@
+$(USER_VIRT_DIR)/stdio.o: User/Library/Libc/stdio/stdio.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio.c -o $@
 
-$(USER_VIRT_DIR)/stdio_rw.o: User/crt/stdio_rw.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_rw.c -o $@
+$(USER_VIRT_DIR)/stdio_rw.o: User/Library/Libc/stdio/stdio_rw.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_rw.c -o $@
 
-$(USER_VIRT_DIR)/stdio_fmt.o: User/crt/stdio_fmt.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_fmt.c -o $@
+$(USER_VIRT_DIR)/stdio_fmt.o: User/Library/Libc/stdio/stdio_fmt.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_fmt.c -o $@
 
-$(USER_VIRT_DIR)/stdio_streams.o: User/crt/stdio_streams.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_streams.c -o $@
+$(USER_VIRT_DIR)/stdio_streams.o: User/Library/Libc/stdio/stdio_streams.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_streams.c -o $@
 
-$(USER_VIRT_DIR)/stdio_scan.o: User/crt/stdio_scan.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan.c -o $@
+$(USER_VIRT_DIR)/stdio_scan.o: User/Library/Libc/stdio/stdio_scan.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_scan.c -o $@
 
-$(USER_VIRT_DIR)/stdio_scan_token.o: User/crt/stdio_scan_token.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan_token.c -o $@
+$(USER_VIRT_DIR)/stdio_scan_token.o: User/Library/Libc/stdio/stdio_scan_token.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_scan_token.c -o $@
 
-$(USER_VIRT_DIR)/stdio_scan_format.o: User/crt/stdio_scan_format.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan_format.c -o $@
+$(USER_VIRT_DIR)/stdio_scan_format.o: User/Library/Libc/stdio/stdio_scan_format.c User/Library/Libc/stdio/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_scan_format.c -o $@
 
-$(USER_VIRT_DIR)/stdio_path.o: User/crt/stdio_path.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stdio_path.c -o $@
+$(USER_VIRT_DIR)/stdio_path.o: User/Library/Libc/stdio/stdio_path.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdio/stdio_path.c -o $@
 
-$(USER_VIRT_DIR)/socket.o: User/crt/socket.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/socket.c -o $@
+$(USER_VIRT_DIR)/socket.o: User/Library/Libc/sys/socket.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/socket.c -o $@
 
-$(USER_VIRT_DIR)/cwd.o: User/crt/cwd.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/cwd.c -o $@
+$(USER_VIRT_DIR)/cwd.o: User/Library/Libc/unistd/cwd.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/unistd/cwd.c -o $@
 
-$(USER_VIRT_DIR)/sched.o: User/crt/sched.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/sched.c -o $@
+$(USER_VIRT_DIR)/sched.o: User/Library/Libc/sched/sched.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sched/sched.c -o $@
 
-$(USER_VIRT_DIR)/proc.o: User/crt/proc.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/proc.c -o $@
+$(USER_VIRT_DIR)/proc.o: User/Library/Libc/sys/proc.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/proc.c -o $@
 
-$(USER_VIRT_DIR)/stat.o: User/crt/stat.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/stat.c -o $@
+$(USER_VIRT_DIR)/stat.o: User/Library/Libc/sys/stat.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/sys/stat.c -o $@
 
-$(USER_VIRT_DIR)/threadroot.o: User/crt/threadroot.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/threadroot.c -o $@
+$(USER_VIRT_DIR)/threadroot.o: User/Library/Libc/pthread/threadroot.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/pthread/threadroot.c -o $@
 
-$(USER_VIRT_DIR)/pthread.o: User/crt/pthread.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/pthread.c -o $@
+$(USER_VIRT_DIR)/pthread.o: User/Library/Libc/pthread/pthread.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/pthread/pthread.c -o $@
 
 ifeq ($(ARCH),arm64)
-USER_SETJMP_SRC = User/crt/setjmp_aarch64.S
+USER_SETJMP_SRC = User/Library/Libc/setjmp/setjmp_aarch64.S
 else ifeq ($(ARCH),riscv)
-USER_SETJMP_SRC = User/crt/setjmp_riscv.S
+USER_SETJMP_SRC = User/Library/Libc/setjmp/setjmp_riscv.S
 else
-USER_SETJMP_SRC = User/crt/setjmp_x86_64.S
+USER_SETJMP_SRC = User/Library/Libc/setjmp/setjmp_x86_64.S
 endif
 
 $(USER_VIRT_DIR)/setjmp.o: $(USER_SETJMP_SRC) | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c $(USER_SETJMP_SRC) -o $@
 
-$(USER_VIRT_DIR)/time.o: User/crt/time.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/time.c -o $@
+$(USER_VIRT_DIR)/time.o: User/Library/Libc/time/time.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/time/time.c -o $@
 
-$(USER_VIRT_DIR)/time_convert.o: User/crt/time_convert.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/time_convert.c -o $@
+$(USER_VIRT_DIR)/time_convert.o: User/Library/Libc/time/time_convert.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/time/time_convert.c -o $@
 
-$(USER_VIRT_DIR)/math.o: User/crt/math.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/math.c -o $@
+$(USER_VIRT_DIR)/math.o: User/Library/Libc/math/math.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/math/math.c -o $@
 
-$(USER_VIRT_DIR)/math_trig.o: User/crt/math_trig.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/math_trig.c -o $@
+$(USER_VIRT_DIR)/math_trig.o: User/Library/Libc/math/math_trig.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/math/math_trig.c -o $@
 
-$(USER_VIRT_DIR)/math_exp.o: User/crt/math_exp.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/math_exp.c -o $@
+$(USER_VIRT_DIR)/math_exp.o: User/Library/Libc/math/math_exp.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/math/math_exp.c -o $@
 
-$(USER_VIRT_DIR)/atexit.o: User/crt/atexit.c | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/crt/atexit.c -o $@
+$(USER_VIRT_DIR)/atexit.o: User/Library/Libc/stdlib/atexit.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Libc/stdlib/atexit.c -o $@
 
 $(USER_HELLO_ELF): $(USER_HELLO_OBJ) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
 	# 与 Kernel.elf 同：arm64 __sync_* 可能仍需 libgcc（与 -mno-outline-atomics 双保险）

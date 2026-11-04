@@ -1,17 +1,19 @@
 # libc 加厚 · Blocks Hosted
 
 > **方言铁律**：实现必须 **`-std=c99 -pedantic`**；禁止 GNU `__*` 类型预定义散落。  
-> **展览级**：原地写美（全称命名、分支铺平、契约注释）；**不**再抽空门面层。  
+> **树**：`Kernel/User/Library/Libc/`（**无** `User/crt/`）。ISO 按头分目录；`start/` 仅 `_start`/syscall/`call_main`（非 ISO）。  
+> **命名**：公开 ISO 名；实现侧**全称 + 下划线**（可读；非 PascalCase）。  
+> **可读**：分支铺平、契约注释；**不**再抽空门面层。  
 > **约定**：无手测 → TG+JX。细表 [`LibcGaps.md`](LibcGaps.md)。  
-> **CRT**：**1.9.6**。
+> **CRT**：**1.9.6**。Review：[`Blocks-Hosted-libc-CodeReview-1105.md`](../../Archive/过程/审查/Blocks-Hosted-libc-CodeReview-1105.md)。
 
 ---
 
 ## ★ 当前与排队
 
-> **当前 ★**：（空）功能柱 L1～L6 已收。  
+> **当前 ★**：（空）功能柱 L1～L6 已收；1105 Code Review 已记档。  
 > **排队**：无。  
-> **刚 TG**：L6 缺口表收口 + CRT 1.9.6。
+> **刚收**：L6 + Review（功能可留；展览风按可读性保留；缺口补记）。
 
 | # | 刀 | 状态 |
 |---|-----|------|

@@ -48,5 +48,11 @@
 | scanf/printf | 无字段宽 / `%*` / 左对齐等完整 flags |
 | aarch64 setjmp | 未保存浮点寄存器 |
 | FAT | 无内核 truncate；CRT 用 unlink 模拟 `"w"` |
+| `fflush(NULL)` | 不刷全部流，直接成功返回 |
+| 字符串 NULL | `strlen`/`strcmp` 等软化；严格 C99 为 UB |
+| `mktime` | 按 UTC；无完整越界字段归一 |
+| `FILE` | 头里 `typedef struct ToyFile FILE`（名泄漏） |
 
 仍不做：`wchar`/`locale`/`complex`、完整 ISO Hosted 全库。
+
+> **Review（1105）**：[`Archive/过程/审查/Blocks-Hosted-libc-CodeReview-1105.md`](../../Archive/过程/审查/Blocks-Hosted-libc-CodeReview-1105.md) — 功能柱可留；实现侧展览全称是课用可读性约定，保留。

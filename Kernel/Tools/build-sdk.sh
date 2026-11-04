@@ -16,8 +16,8 @@ fi
 
 echo "==> 确保 CRT / 用户库（ARCH=$ARCH）"
 make -C "$ROOT" \
-    User/crt/crt0.o \
-    User/crt/syscall.o \
+    User/Library/Libc/start/crt0.o \
+    User/Library/Libc/start/syscall.o \
     User/Library/Libc/libc.a \
     User/Library/Graphics/libGraphics.a \
     User/Library/Ui/libUi.a \
@@ -36,7 +36,7 @@ cp -f \
     "$ROOT/Include/Abi/Compiler.h" \
     "$OUT/Include/Abi/"
 
-cp -f "$ROOT/User/crt/crt0.o" "$ROOT/User/crt/syscall.o" "$OUT/Lib/"
+cp -f "$ROOT/User/Library/Libc/start/crt0.o" "$ROOT/User/Library/Libc/start/syscall.o" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Libc/libc.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Graphics/libGraphics.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Ui/libUi.a" "$OUT/Lib/"

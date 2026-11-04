@@ -27,7 +27,7 @@
 | P0 | `stdlib` 解析 | ✅ `strtol`/`strtoul`/`strtod`；`getenv`/`setenv` 后置 |
 | P1 | `string.h` 补全 | ✅ libc-string（`memmove` 原有） |
 | P1 | `ctype.h` / `stdbool.h` / `stdint.h` | ✅ libc-headers |
-| P1 | `setjmp` / `longjmp` | 编译器运行时 / 错误恢复常要 |
+| P1 | `setjmp` / `longjmp` | ✅ x86_64；virt 后置 |
 | P2 | `time.h` | `time`/`clock`/`strftime`（可先薄封装 `clock_ms`） |
 | P2 | `math.h` | 软浮点或裁剪子集（视工具链） |
 | P2 | 本地化 / 宽字符 | `locale`/`wchar`：**默认可不做** |

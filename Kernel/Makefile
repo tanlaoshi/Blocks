@@ -592,7 +592,7 @@ USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/malloc.o \
 	User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
-	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o
+	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o User/crt/setjmp.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
@@ -999,6 +999,9 @@ User/crt/%.o: User/crt/%.c
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
 User/crt/%.o: User/crt/%.S
+	$(CC) $(USER_ASFLAGS) -c $< -o $@
+
+User/crt/setjmp.o: User/crt/setjmp_x86_64.S
 	$(CC) $(USER_ASFLAGS) -c $< -o $@
 
 $(USER_COUNT_OBJ): User/Apps/Assembly/Count.S | $(USER_OUT)

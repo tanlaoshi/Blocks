@@ -15,8 +15,8 @@ size_t fread(void *Buffer, size_t ElementSize, size_t ElementCount, FILE *Stream
     if (!Stream || !Buffer || ElementSize == 0 || ElementCount == 0) {
         return 0;
     }
-    if ((Stream->flags & FF_READ) == 0) {
-        Stream->err = 1;
+    if ((Stream->Flags & FILE_FLAG_READ) == 0) {
+        Stream->Error = 1;
         errno = EINVAL;
         return 0;
     }
@@ -24,27 +24,27 @@ size_t fread(void *Buffer, size_t ElementSize, size_t ElementCount, FILE *Stream
         return 0;
     }
     if (ElementSize != 0 && ElementCount > ((size_t)-1) / ElementSize) {
-        Stream->err = 1;
+        Stream->Error = 1;
         errno = EINVAL;
         return 0;
     }
     ByteCount = ElementSize * ElementCount;
     Output = (unsigned char *)Buffer;
-    if (Stream->has_unget && ByteCount > 0) {
-        Output[0] = Stream->unget;
-        Stream->has_unget = 0;
+    if (Stream->HasUngotten && ByteCount > 0) {
+        Output[0] = Stream->Ungotten;
+        Stream->HasUngotten = 0;
         Got = 1;
         Output++;
         ByteCount--;
     }
     if (ByteCount > 0) {
-        ReadCount = FileRead(Stream->fd, Output, ByteCount);
+        ReadCount = FileRead(Stream->FileDescriptor, Output, ByteCount);
         if (ReadCount < 0) {
-            Stream->err = 1;
+            Stream->Error = 1;
             return Got / ElementSize;
         }
         if ((size_t)ReadCount < ByteCount) {
-            Stream->eof = 1;
+            Stream->EndOfFile = 1;
         }
         Got += (size_t)ReadCount;
     }
@@ -60,20 +60,20 @@ size_t fwrite(const void *Buffer, size_t ElementSize, size_t ElementCount,
     if (!Stream || !Buffer || ElementSize == 0 || ElementCount == 0) {
         return 0;
     }
-    if ((Stream->flags & FF_WRITE) == 0) {
-        Stream->err = 1;
+    if ((Stream->Flags & FILE_FLAG_WRITE) == 0) {
+        Stream->Error = 1;
         errno = EINVAL;
         return 0;
     }
     if (ElementSize != 0 && ElementCount > ((size_t)-1) / ElementSize) {
-        Stream->err = 1;
+        Stream->Error = 1;
         errno = EINVAL;
         return 0;
     }
     ByteCount = ElementSize * ElementCount;
     Input = (const unsigned char *)Buffer;
     while (Done < ByteCount) {
-        size_t Room = STDIO_BUF_SIZE - Stream->wlen;
+        size_t Room = STDIO_BUFFER_SIZE - Stream->WriteLength;
         size_t Chunk = ByteCount - Done;
         size_t Index;
 
@@ -81,7 +81,7 @@ size_t fwrite(const void *Buffer, size_t ElementSize, size_t ElementCount,
             if (StdioFlushWrite(Stream) < 0) {
                 return Done / ElementSize;
             }
-            Room = STDIO_BUF_SIZE;
+            Room = STDIO_BUFFER_SIZE;
         }
         if (Chunk > Room) {
             Chunk = Room;
@@ -89,7 +89,7 @@ size_t fwrite(const void *Buffer, size_t ElementSize, size_t ElementCount,
         for (Index = 0; Index < Chunk; Index++) {
             unsigned char Byte = Input[Done + Index];
 
-            Stream->wbuf[Stream->wlen++] = Byte;
+            Stream->WriteBuffer[Stream->WriteLength++] = Byte;
             if (Byte == '\n') {
                 if (StdioFlushWrite(Stream) < 0) {
                     return (Done + Index + 1) / ElementSize;

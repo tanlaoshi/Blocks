@@ -1,5 +1,5 @@
 /*
- * environ.c — environ / getenv / setenv / unsetenv（hosted-getenv；C99）
+ * environ.c — environ / getenv / setenv / unsetenv（展览级命名）
  *
  * exec 可把 environ 指到栈上 envp；首次 setenv/unsetenv 时拷入本 CRT 表再改。
  */
@@ -8,155 +8,157 @@
 
 char **environ;
 
-#define ENV_MAX 64
+#define ENVIRONMENT_MAX_ENTRIES 64
 
-static char *gSlots[ENV_MAX + 1];
-static int gReady;
+static char *LocalEnvironmentSlots[ENVIRONMENT_MAX_ENTRIES + 1];
+static int LocalEnvironmentReady;
 
-static void EnvironEnsure(void) {
-    if (gReady) {
+static void EnsureEnvironReady(void) {
+    if (LocalEnvironmentReady) {
         return;
     }
-    gSlots[0] = 0;
+    LocalEnvironmentSlots[0] = 0;
     if (!environ) {
-        environ = gSlots;
+        environ = LocalEnvironmentSlots;
     }
-    gReady = 1;
+    LocalEnvironmentReady = 1;
 }
 
-static int EnvironAdoptLocal(void) {
+static int AdoptEnvironIntoLocalTable(void) {
     char **Source;
     int Count;
     size_t Length;
     char *Copy;
 
-    EnvironEnsure();
-    if (environ == gSlots) {
+    EnsureEnvironReady();
+    if (environ == LocalEnvironmentSlots) {
         return 0;
     }
     Source = environ;
     Count = 0;
     if (Source) {
-        for (; *Source && Count < ENV_MAX; Source++) {
+        for (; *Source && Count < ENVIRONMENT_MAX_ENTRIES; Source++) {
             Length = strlen(*Source);
             Copy = (char *)malloc(Length + 1);
             if (!Copy) {
                 while (Count > 0) {
                     Count--;
-                    free(gSlots[Count]);
-                    gSlots[Count] = 0;
+                    free(LocalEnvironmentSlots[Count]);
+                    LocalEnvironmentSlots[Count] = 0;
                 }
                 return -1;
             }
             memcpy(Copy, *Source, Length + 1);
-            gSlots[Count] = Copy;
+            LocalEnvironmentSlots[Count] = Copy;
             Count++;
         }
     }
-    gSlots[Count] = 0;
-    environ = gSlots;
+    LocalEnvironmentSlots[Count] = 0;
+    environ = LocalEnvironmentSlots;
     return 0;
 }
 
-static char *FindVar(const char *Name, size_t NameLen) {
-    char **P;
+static char *FindEnvironmentEntry(const char *Name, size_t NameLength) {
+    char **Cursor;
 
-    EnvironEnsure();
+    EnsureEnvironReady();
     if (!environ || !Name) {
         return 0;
     }
-    for (P = environ; *P; P++) {
-        if (strncmp(*P, Name, NameLen) == 0 && (*P)[NameLen] == '=') {
-            return *P;
+    for (Cursor = environ; *Cursor; Cursor++) {
+        if (strncmp(*Cursor, Name, NameLength) == 0 &&
+            (*Cursor)[NameLength] == '=') {
+            return *Cursor;
         }
     }
     return 0;
 }
 
-char *getenv(const char *name) {
-    size_t N;
+char *getenv(const char *Name) {
+    size_t NameLength;
     char *Entry;
 
-    if (!name || !name[0]) {
+    if (!Name || !Name[0]) {
         return 0;
     }
-    N = strlen(name);
-    Entry = FindVar(name, N);
+    NameLength = strlen(Name);
+    Entry = FindEnvironmentEntry(Name, NameLength);
     if (!Entry) {
         return 0;
     }
-    return Entry + N + 1;
+    return Entry + NameLength + 1;
 }
 
-int setenv(const char *name, const char *value, int overwrite) {
-    size_t NameLen;
-    size_t ValueLen;
+int setenv(const char *Name, const char *Value, int Overwrite) {
+    size_t NameLength;
+    size_t ValueLength;
     char *Entry;
     char *Built;
-    char **P;
+    char **Cursor;
     int Count;
 
-    if (!name || !name[0] || strchr(name, '=') != 0) {
+    if (!Name || !Name[0] || strchr(Name, '=') != 0) {
         return -1;
     }
-    if (!value) {
-        value = "";
+    if (!Value) {
+        Value = "";
     }
-    if (EnvironAdoptLocal() != 0) {
+    if (AdoptEnvironIntoLocalTable() != 0) {
         return -1;
     }
-    NameLen = strlen(name);
-    ValueLen = strlen(value);
-    Entry = FindVar(name, NameLen);
-    if (Entry && !overwrite) {
+    NameLength = strlen(Name);
+    ValueLength = strlen(Value);
+    Entry = FindEnvironmentEntry(Name, NameLength);
+    if (Entry && !Overwrite) {
         return 0;
     }
-    Built = (char *)malloc(NameLen + 1 + ValueLen + 1);
+    Built = (char *)malloc(NameLength + 1 + ValueLength + 1);
     if (!Built) {
         return -1;
     }
-    memcpy(Built, name, NameLen);
-    Built[NameLen] = '=';
-    memcpy(Built + NameLen + 1, value, ValueLen + 1);
+    memcpy(Built, Name, NameLength);
+    Built[NameLength] = '=';
+    memcpy(Built + NameLength + 1, Value, ValueLength + 1);
     if (Entry) {
-        for (P = environ; *P; P++) {
-            if (*P == Entry) {
+        for (Cursor = environ; *Cursor; Cursor++) {
+            if (*Cursor == Entry) {
                 free(Entry);
-                *P = Built;
+                *Cursor = Built;
                 return 0;
             }
         }
     }
     Count = 0;
-    for (P = environ; *P; P++) {
+    for (Cursor = environ; *Cursor; Cursor++) {
         Count++;
     }
-    if (Count >= ENV_MAX) {
+    if (Count >= ENVIRONMENT_MAX_ENTRIES) {
         free(Built);
         return -1;
     }
-    gSlots[Count] = Built;
-    gSlots[Count + 1] = 0;
+    LocalEnvironmentSlots[Count] = Built;
+    LocalEnvironmentSlots[Count + 1] = 0;
     return 0;
 }
 
-int unsetenv(const char *name) {
-    size_t NameLen;
-    char **P;
-    char **Q;
+int unsetenv(const char *Name) {
+    size_t NameLength;
+    char **Cursor;
+    char **Shift;
 
-    if (!name || !name[0] || strchr(name, '=') != 0) {
+    if (!Name || !Name[0] || strchr(Name, '=') != 0) {
         return -1;
     }
-    if (EnvironAdoptLocal() != 0) {
+    if (AdoptEnvironIntoLocalTable() != 0) {
         return -1;
     }
-    NameLen = strlen(name);
-    for (P = gSlots; *P; P++) {
-        if (strncmp(*P, name, NameLen) == 0 && (*P)[NameLen] == '=') {
-            free(*P);
-            for (Q = P; *Q; Q++) {
-                *Q = *(Q + 1);
+    NameLength = strlen(Name);
+    for (Cursor = LocalEnvironmentSlots; *Cursor; Cursor++) {
+        if (strncmp(*Cursor, Name, NameLength) == 0 &&
+            (*Cursor)[NameLength] == '=') {
+            free(*Cursor);
+            for (Shift = Cursor; *Shift; Shift++) {
+                *Shift = *(Shift + 1);
             }
             return 0;
         }

@@ -1,218 +1,216 @@
 /*
- * printf_float.c — 教学用 %f / %e / %g（libc-printf-float）
+ * printf_float.c — 教学用 %f / %e / %g（展览级命名）
  */
 #include <float.h>
 #include <stddef.h>
 
-static void PutChar(char *Dst, size_t Cap, size_t *Pos, char C) {
-    if (Dst && Cap > 0 && *Pos + 1 < Cap) {
-        Dst[*Pos] = C;
+static void PutCharacter(char *Destination, size_t Capacity, size_t *Position,
+                         char Character) {
+    if (Destination && Capacity > 0 && *Position + 1 < Capacity) {
+        Destination[*Position] = Character;
     }
-    (*Pos)++;
+    (*Position)++;
 }
 
-static void PutStr(char *Dst, size_t Cap, size_t *Pos, const char *S) {
-    while (*S) {
-        PutChar(Dst, Cap, Pos, *S++);
+static void PutString(char *Destination, size_t Capacity, size_t *Position,
+                      const char *String) {
+    while (*String != 0) {
+        PutCharacter(Destination, Capacity, Position, *String++);
     }
 }
 
-static void PutUInt(char *Dst, size_t Cap, size_t *Pos, unsigned long V) {
-    char Buf[32];
-    int I = 0;
+static void PutUnsignedLong(char *Destination, size_t Capacity, size_t *Position,
+                            unsigned long Value) {
+    char Digits[32];
+    int DigitCount = 0;
 
-    if (V == 0) {
-        PutChar(Dst, Cap, Pos, '0');
+    if (Value == 0) {
+        PutCharacter(Destination, Capacity, Position, '0');
         return;
     }
-    while (V > 0 && I < (int)sizeof(Buf)) {
-        Buf[I++] = (char)('0' + (V % 10ul));
-        V /= 10ul;
+    while (Value > 0 && DigitCount < (int)sizeof(Digits)) {
+        Digits[DigitCount++] = (char)('0' + (Value % 10ul));
+        Value /= 10ul;
     }
-    while (I > 0) {
-        PutChar(Dst, Cap, Pos, Buf[--I]);
+    while (DigitCount > 0) {
+        PutCharacter(Destination, Capacity, Position, Digits[--DigitCount]);
     }
 }
 
-static int IsNan(double X) {
-    return X != X;
+static int IsNotANumber(double Value) {
+    return Value != Value;
 }
 
-static int IsInf(double X) {
-    return (X > DBL_MAX) || (X < -DBL_MAX);
+static int IsInfinity(double Value) {
+    return (Value > DBL_MAX) || (Value < -DBL_MAX);
 }
 
-static double Abs(double X) {
-    return X < 0.0 ? -X : X;
+static double AbsoluteValue(double Value) {
+    return Value < 0.0 ? -Value : Value;
 }
 
-static double Pow10(int E) {
-    double R = 1.0;
-    int I;
+static double PowerOfTen(int Exponent) {
+    double Result = 1.0;
+    int Index;
 
-    if (E >= 0) {
-        for (I = 0; I < E; I++) {
-            R *= 10.0;
+    if (Exponent >= 0) {
+        for (Index = 0; Index < Exponent; Index++) {
+            Result *= 10.0;
         }
     } else {
-        for (I = 0; I < -E; I++) {
-            R /= 10.0;
+        for (Index = 0; Index < -Exponent; Index++) {
+            Result /= 10.0;
         }
     }
-    return R;
+    return Result;
 }
 
 /* 写入定点数（无指数）；返回已逻辑写入长度 */
-static size_t FormatFixed(
-    char *Dst,
-    size_t Cap,
-    double Value,
-    int Prec,
-    int *OutExp
-) {
-    size_t Pos = 0;
-    double A;
-    unsigned long Ip;
-    double Frac;
-    int I;
+static size_t FormatFixed(char *Destination, size_t Capacity, double Value,
+                          int Precision, int *OutExponent) {
+    size_t Position = 0;
+    double Absolute;
+    unsigned long IntegerPart;
+    double Fraction;
+    int Index;
 
-    if (OutExp) {
-        *OutExp = 0;
+    if (OutExponent) {
+        *OutExponent = 0;
     }
     if (Value < 0.0) {
-        PutChar(Dst, Cap, &Pos, '-');
+        PutCharacter(Destination, Capacity, &Position, '-');
         Value = -Value;
     }
-    A = Value;
-    if (A < 1.0 && A > 0.0) {
-        /* 仍按 fixed：0.xxx */
-    }
-    Ip = (unsigned long)A;
-    Frac = A - (double)Ip;
-    PutUInt(Dst, Cap, &Pos, Ip);
-    if (Prec > 0) {
-        PutChar(Dst, Cap, &Pos, '.');
-        Frac *= Pow10(Prec);
-        /* 简单四舍五入 */
-        Frac += 0.5;
-        {
-            unsigned long Fp = (unsigned long)Frac;
-            char Digs[32];
-            int N = Prec;
+    Absolute = Value;
+    IntegerPart = (unsigned long)Absolute;
+    Fraction = Absolute - (double)IntegerPart;
+    PutUnsignedLong(Destination, Capacity, &Position, IntegerPart);
+    if (Precision > 0) {
+        unsigned long FractionPart;
+        char FractionDigits[32];
+        int DigitCount = Precision;
 
-            if (N > (int)sizeof(Digs)) {
-                N = (int)sizeof(Digs);
-            }
-            for (I = N - 1; I >= 0; I--) {
-                Digs[I] = (char)('0' + (Fp % 10ul));
-                Fp /= 10ul;
-            }
-            for (I = 0; I < N; I++) {
-                PutChar(Dst, Cap, &Pos, Digs[I]);
-            }
+        PutCharacter(Destination, Capacity, &Position, '.');
+        Fraction *= PowerOfTen(Precision);
+        Fraction += 0.5; /* 简单四舍五入 */
+        FractionPart = (unsigned long)Fraction;
+        if (DigitCount > (int)sizeof(FractionDigits)) {
+            DigitCount = (int)sizeof(FractionDigits);
+        }
+        for (Index = DigitCount - 1; Index >= 0; Index--) {
+            FractionDigits[Index] = (char)('0' + (FractionPart % 10ul));
+            FractionPart /= 10ul;
+        }
+        for (Index = 0; Index < DigitCount; Index++) {
+            PutCharacter(Destination, Capacity, &Position, FractionDigits[Index]);
         }
     }
-    return Pos;
+    return Position;
 }
 
-static size_t FormatSci(char *Dst, size_t Cap, double Value, int Prec) {
-    size_t Pos = 0;
-    int Exp = 0;
-    double M;
-    int NegExp = 0;
+static size_t FormatScientific(char *Destination, size_t Capacity, double Value,
+                               int Precision) {
+    size_t Position = 0;
+    int Exponent = 0;
+    double Mantissa;
+    char MantissaBuffer[64];
+    size_t MantissaLength;
+    size_t Index;
 
     if (Value < 0.0) {
-        PutChar(Dst, Cap, &Pos, '-');
+        PutCharacter(Destination, Capacity, &Position, '-');
         Value = -Value;
     }
     if (Value == 0.0) {
-        PutChar(Dst, Cap, &Pos, '0');
-        if (Prec > 0) {
-            PutChar(Dst, Cap, &Pos, '.');
-            while (Prec-- > 0) {
-                PutChar(Dst, Cap, &Pos, '0');
+        PutCharacter(Destination, Capacity, &Position, '0');
+        if (Precision > 0) {
+            PutCharacter(Destination, Capacity, &Position, '.');
+            while (Precision-- > 0) {
+                PutCharacter(Destination, Capacity, &Position, '0');
             }
         }
-        PutStr(Dst, Cap, &Pos, "e+00");
-        return Pos;
+        PutString(Destination, Capacity, &Position, "e+00");
+        return Position;
     }
-    M = Value;
-    while (M >= 10.0) {
-        M /= 10.0;
-        Exp++;
+    Mantissa = Value;
+    while (Mantissa >= 10.0) {
+        Mantissa /= 10.0;
+        Exponent++;
     }
-    while (M < 1.0) {
-        M *= 10.0;
-        Exp--;
+    while (Mantissa < 1.0) {
+        Mantissa *= 10.0;
+        Exponent--;
     }
-    {
-        char Mant[64];
-        size_t MantLen = FormatFixed(Mant, sizeof(Mant), M, Prec, 0);
-        size_t I;
-
-        for (I = 0; I < MantLen; I++) {
-            PutChar(Dst, Cap, &Pos, Mant[I]);
-        }
+    MantissaLength =
+        FormatFixed(MantissaBuffer, sizeof(MantissaBuffer), Mantissa, Precision,
+                    0);
+    for (Index = 0; Index < MantissaLength; Index++) {
+        PutCharacter(Destination, Capacity, &Position, MantissaBuffer[Index]);
     }
-    PutChar(Dst, Cap, &Pos, 'e');
-    if (Exp < 0) {
-        PutChar(Dst, Cap, &Pos, '-');
-        NegExp = 1;
-        Exp = -Exp;
+    PutCharacter(Destination, Capacity, &Position, 'e');
+    if (Exponent < 0) {
+        PutCharacter(Destination, Capacity, &Position, '-');
+        Exponent = -Exponent;
     } else {
-        PutChar(Dst, Cap, &Pos, '+');
+        PutCharacter(Destination, Capacity, &Position, '+');
     }
-    if (Exp < 10) {
-        PutChar(Dst, Cap, &Pos, '0');
+    if (Exponent < 10) {
+        PutCharacter(Destination, Capacity, &Position, '0');
     }
-    PutUInt(Dst, Cap, &Pos, (unsigned long)Exp);
-    (void)NegExp;
-    return Pos;
+    PutUnsignedLong(Destination, Capacity, &Position, (unsigned long)Exponent);
+    return Position;
 }
 
 /*
- * Spec: 'f'/'F'/'e'/'E'/'g'/'G'
- * Prec: <0 → 默认 6
- * 返回写入长度（不含 NUL）；Dst 可 NULL 仅计量
+ * Specifier: 'f'/'F'/'e'/'E'/'g'/'G'
+ * Precision: <0 → 默认 6
+ * 返回写入长度（不含 NUL）；Destination 可 NULL 仅计量
  */
-size_t PrintfFormatDouble(char *Dst, size_t Cap, double Value, int Spec, int Prec) {
-    size_t Pos = 0;
-    int Lower = (Spec == 'f' || Spec == 'e' || Spec == 'g');
+size_t PrintfFormatDouble(char *Destination, size_t Capacity, double Value,
+                          int Specifier, int Precision) {
+    size_t Position = 0;
+    int Lowercase =
+        (Specifier == 'f' || Specifier == 'e' || Specifier == 'g');
 
-    if (Prec < 0) {
-        Prec = 6;
+    if (Precision < 0) {
+        Precision = 6;
     }
-    if (IsNan(Value)) {
-        PutStr(Dst, Cap, &Pos, Lower ? "nan" : "NAN");
-    } else if (IsInf(Value)) {
+    if (IsNotANumber(Value)) {
+        PutString(Destination, Capacity, &Position, Lowercase ? "nan" : "NAN");
+    } else if (IsInfinity(Value)) {
         if (Value < 0.0) {
-            PutChar(Dst, Cap, &Pos, '-');
+            PutCharacter(Destination, Capacity, &Position, '-');
         }
-        PutStr(Dst, Cap, &Pos, Lower ? "inf" : "INF");
-    } else if (Spec == 'f' || Spec == 'F') {
-        Pos = FormatFixed(Dst, Cap, Value, Prec, 0);
-    } else if (Spec == 'e' || Spec == 'E') {
-        Pos = FormatSci(Dst, Cap, Value, Prec);
-        if (!Lower && Dst && Cap > 0) {
-            size_t I;
-            for (I = 0; I < Pos && I + 1 < Cap; I++) {
-                if (Dst[I] == 'e') {
-                    Dst[I] = 'E';
+        PutString(Destination, Capacity, &Position, Lowercase ? "inf" : "INF");
+    } else if (Specifier == 'f' || Specifier == 'F') {
+        Position = FormatFixed(Destination, Capacity, Value, Precision, 0);
+    } else if (Specifier == 'e' || Specifier == 'E') {
+        Position = FormatScientific(Destination, Capacity, Value, Precision);
+        if (!Lowercase && Destination && Capacity > 0) {
+            size_t Index;
+
+            for (Index = 0; Index < Position && Index + 1 < Capacity; Index++) {
+                if (Destination[Index] == 'e') {
+                    Destination[Index] = 'E';
                 }
             }
         }
     } else {
-        /* %g：|Value| 很大或很小时用 e，否则 f；去尾零简化为固定 6 位 f */
-        double A = Abs(Value);
-        if (A != 0.0 && (A < 1e-4 || A >= Pow10(Prec))) {
-            Pos = FormatSci(Dst, Cap, Value, Prec > 0 ? Prec - 1 : 0);
+        /* %g：|Value| 很大或很小时用 e，否则 f；去尾零简化为固定精度 f */
+        double Absolute = AbsoluteValue(Value);
+
+        if (Absolute != 0.0 &&
+            (Absolute < 1e-4 || Absolute >= PowerOfTen(Precision))) {
+            Position = FormatScientific(Destination, Capacity, Value,
+                                        Precision > 0 ? Precision - 1 : 0);
         } else {
-            Pos = FormatFixed(Dst, Cap, Value, Prec, 0);
+            Position = FormatFixed(Destination, Capacity, Value, Precision, 0);
         }
     }
-    if (Dst && Cap > 0) {
-        size_t End = (Pos < Cap) ? Pos : Cap - 1;
-        Dst[End] = 0;
+    if (Destination && Capacity > 0) {
+        size_t End = (Position < Capacity) ? Position : Capacity - 1;
+
+        Destination[End] = 0;
     }
-    return Pos;
+    return Position;
 }

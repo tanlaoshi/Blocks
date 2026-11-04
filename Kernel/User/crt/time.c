@@ -1,5 +1,5 @@
 /*
- * time.c — clock / time / 最小 gmtime/asctime/strftime（libc-time）
+ * time.c — clock / time / 最小 gmtime/asctime/strftime（展览级命名）
  *
  * time()：SYS_TIME_WALL → UTC Unix 秒；失败 (time_t)-1（C99）。
  * clock()：仍用单调 SYS_CLOCK_MS。
@@ -15,158 +15,168 @@ clock_t clock(void) {
     return (clock_t)clock_ms();
 }
 
-time_t time(time_t *t) {
-    long Wall = blocks_time_wall();
+time_t time(time_t *Out) {
+    long WallSeconds = blocks_time_wall();
     time_t Now;
 
-    if (Wall < 0) {
+    if (WallSeconds < 0) {
         return (time_t)-1;
     }
-    Now = (time_t)Wall;
-    if (t) {
-        *t = Now;
+    Now = (time_t)WallSeconds;
+    if (Out) {
+        *Out = Now;
     }
     return Now;
 }
 
-static struct tm gBroken;
-static char gAsc[32];
+static struct tm BrokenTime;
+static char AsctimeBuffer[32];
 
-struct tm *gmtime(const time_t *timer) {
-    time_t T;
+struct tm *gmtime(const time_t *Timer) {
+    time_t Instant;
     long Days;
-    long Secs;
+    long SecondsOfDay;
     int Year;
-    int Yday;
-    static const int Md[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    int M;
-    int Leap;
+    int YearLength;
+    static const int MonthDays[12] = {
+        31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    };
+    int Month;
+    int LeapYear;
+    int DaysInMonth;
 
-    if (!timer) {
+    if (!Timer) {
         return 0;
     }
-    T = *timer;
-    if (T < 0) {
-        T = 0;
+    Instant = *Timer;
+    if (Instant < 0) {
+        Instant = 0;
     }
-    Days = T / 86400L;
-    Secs = T % 86400L;
-    gBroken.tm_hour = (int)(Secs / 3600L);
-    gBroken.tm_min = (int)((Secs % 3600L) / 60L);
-    gBroken.tm_sec = (int)(Secs % 60L);
-    gBroken.tm_wday = (int)((Days + 4) % 7); /* 1970-01-01 Thursday */
+    Days = Instant / 86400L;
+    SecondsOfDay = Instant % 86400L;
+    BrokenTime.tm_hour = (int)(SecondsOfDay / 3600L);
+    BrokenTime.tm_min = (int)((SecondsOfDay % 3600L) / 60L);
+    BrokenTime.tm_sec = (int)(SecondsOfDay % 60L);
+    BrokenTime.tm_wday = (int)((Days + 4) % 7); /* 1970-01-01 Thursday */
     Year = 1970;
     for (;;) {
-        Leap = ((Year % 4 == 0 && Year % 100 != 0) || (Year % 400 == 0));
-        Yday = Leap ? 366 : 365;
-        if (Days < Yday) {
+        LeapYear =
+            ((Year % 4 == 0 && Year % 100 != 0) || (Year % 400 == 0));
+        YearLength = LeapYear ? 366 : 365;
+        if (Days < YearLength) {
             break;
         }
-        Days -= Yday;
+        Days -= YearLength;
         Year++;
     }
-    gBroken.tm_year = Year - 1900;
-    gBroken.tm_yday = (int)Days;
-    Leap = ((Year % 4 == 0 && Year % 100 != 0) || (Year % 400 == 0));
-    for (M = 0; M < 12; M++) {
-        int Dim = Md[M];
-        if (M == 1 && Leap) {
-            Dim = 29;
+    BrokenTime.tm_year = Year - 1900;
+    BrokenTime.tm_yday = (int)Days;
+    LeapYear = ((Year % 4 == 0 && Year % 100 != 0) || (Year % 400 == 0));
+    for (Month = 0; Month < 12; Month++) {
+        DaysInMonth = MonthDays[Month];
+        if (Month == 1 && LeapYear) {
+            DaysInMonth = 29;
         }
-        if (Days < Dim) {
+        if (Days < DaysInMonth) {
             break;
         }
-        Days -= Dim;
+        Days -= DaysInMonth;
     }
-    gBroken.tm_mon = M;
-    gBroken.tm_mday = (int)Days + 1;
-    gBroken.tm_isdst = 0;
-    return &gBroken;
+    BrokenTime.tm_mon = Month;
+    BrokenTime.tm_mday = (int)Days + 1;
+    BrokenTime.tm_isdst = 0;
+    return &BrokenTime;
 }
 
-char *asctime(const struct tm *tm) {
-    static const char *Wday[] = {
+char *asctime(const struct tm *Broken) {
+    static const char *WeekdayNames[] = {
         "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
     };
-    static const char *Mon[] = {
+    static const char *MonthNames[] = {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     };
-    int W;
-    int Mo;
+    int Weekday;
+    int Month;
 
-    if (!tm) {
+    if (!Broken) {
         return 0;
     }
-    W = tm->tm_wday;
-    Mo = tm->tm_mon;
-    if (W < 0 || W > 6) {
-        W = 0;
+    Weekday = Broken->tm_wday;
+    Month = Broken->tm_mon;
+    if (Weekday < 0 || Weekday > 6) {
+        Weekday = 0;
     }
-    if (Mo < 0 || Mo > 11) {
-        Mo = 0;
+    if (Month < 0 || Month > 11) {
+        Month = 0;
     }
-    snprintf(gAsc, sizeof(gAsc), "%s %s %2d %02d:%02d:%02d %d\n",
-             Wday[W], Mon[Mo], tm->tm_mday,
-             tm->tm_hour, tm->tm_min, tm->tm_sec,
-             tm->tm_year + 1900);
-    return gAsc;
+    snprintf(AsctimeBuffer, sizeof(AsctimeBuffer),
+             "%s %s %2d %02d:%02d:%02d %d\n", WeekdayNames[Weekday],
+             MonthNames[Month], Broken->tm_mday, Broken->tm_hour,
+             Broken->tm_min, Broken->tm_sec, Broken->tm_year + 1900);
+    return AsctimeBuffer;
 }
 
-size_t strftime(char *s, size_t max, const char *fmt, const struct tm *tm) {
+size_t strftime(char *Destination, size_t Capacity, const char *Format,
+                const struct tm *Broken) {
     /* 最小：只认 %Y %m %d %H %M %S %%；其余原样 */
-    size_t Out = 0;
-    const char *P;
+    size_t Written = 0;
+    const char *Cursor;
 
-    if (!s || !fmt || !tm || max == 0) {
+    if (!Destination || !Format || !Broken || Capacity == 0) {
         return 0;
     }
-    for (P = fmt; *P && Out + 1 < max; P++) {
-        if (*P != '%') {
-            s[Out++] = *P;
+    for (Cursor = Format; *Cursor != 0 && Written + 1 < Capacity; Cursor++) {
+        char Field[16];
+        int FieldLength = 0;
+
+        if (*Cursor != '%') {
+            Destination[Written++] = *Cursor;
             continue;
         }
-        P++;
-        if (!*P) {
+        Cursor++;
+        if (*Cursor == 0) {
             break;
         }
-        if (*P == '%') {
-            s[Out++] = '%';
+        if (*Cursor == '%') {
+            Destination[Written++] = '%';
             continue;
         }
-        {
-            char Tmp[16];
-            int N = 0;
-            if (*P == 'Y') {
-                N = snprintf(Tmp, sizeof(Tmp), "%d", tm->tm_year + 1900);
-            } else if (*P == 'm') {
-                N = snprintf(Tmp, sizeof(Tmp), "%02d", tm->tm_mon + 1);
-            } else if (*P == 'd') {
-                N = snprintf(Tmp, sizeof(Tmp), "%02d", tm->tm_mday);
-            } else if (*P == 'H') {
-                N = snprintf(Tmp, sizeof(Tmp), "%02d", tm->tm_hour);
-            } else if (*P == 'M') {
-                N = snprintf(Tmp, sizeof(Tmp), "%02d", tm->tm_min);
-            } else if (*P == 'S') {
-                N = snprintf(Tmp, sizeof(Tmp), "%02d", tm->tm_sec);
-            } else {
-                if (Out + 2 >= max) {
-                    break;
-                }
-                s[Out++] = '%';
-                s[Out++] = *P;
-                continue;
-            }
-            if (N < 0) {
+        if (*Cursor == 'Y') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%d", Broken->tm_year + 1900);
+        } else if (*Cursor == 'm') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%02d", Broken->tm_mon + 1);
+        } else if (*Cursor == 'd') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%02d", Broken->tm_mday);
+        } else if (*Cursor == 'H') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%02d", Broken->tm_hour);
+        } else if (*Cursor == 'M') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%02d", Broken->tm_min);
+        } else if (*Cursor == 'S') {
+            FieldLength =
+                snprintf(Field, sizeof(Field), "%02d", Broken->tm_sec);
+        } else {
+            if (Written + 2 >= Capacity) {
                 break;
             }
-            if (Out + (size_t)N >= max) {
-                break;
-            }
-            memcpy(s + Out, Tmp, (size_t)N);
-            Out += (size_t)N;
+            Destination[Written++] = '%';
+            Destination[Written++] = *Cursor;
+            continue;
         }
+        if (FieldLength < 0) {
+            break;
+        }
+        if (Written + (size_t)FieldLength >= Capacity) {
+            break;
+        }
+        memcpy(Destination + Written, Field, (size_t)FieldLength);
+        Written += (size_t)FieldLength;
     }
-    s[Out] = 0;
-    return Out;
+    Destination[Written] = 0;
+    return Written;
 }

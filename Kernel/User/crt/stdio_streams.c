@@ -1,22 +1,22 @@
 /*
- * stdio_streams.c — stdin / stdout / stderr（hosted-stdio-streams）
+ * stdio_streams.c — stdin / stdout / stderr（展览级命名）
  */
 #include <stdio.h>
 #include "stdio_private.h"
 
-static FILE gStdIn = {
-    .fd = 0,
-    .flags = FF_READ | FF_STATIC
+static FILE StandardInputStream = {
+    .FileDescriptor = 0,
+    .Flags = FILE_FLAG_READ | FILE_FLAG_STATIC
 };
-static FILE gStdOut = {
-    .fd = 1,
-    .flags = FF_WRITE | FF_STATIC
+static FILE StandardOutputStream = {
+    .FileDescriptor = 1,
+    .Flags = FILE_FLAG_WRITE | FILE_FLAG_STATIC
 };
-static FILE gStdErr = {
-    .fd = 2,
-    .flags = FF_WRITE | FF_STATIC
+static FILE StandardErrorStream = {
+    .FileDescriptor = 2,
+    .Flags = FILE_FLAG_WRITE | FILE_FLAG_STATIC
 };
 
-FILE *stdin = &gStdIn;
-FILE *stdout = &gStdOut;
-FILE *stderr = &gStdErr;
+FILE *stdin = &StandardInputStream;
+FILE *stdout = &StandardOutputStream;
+FILE *stderr = &StandardErrorStream;

@@ -9,9 +9,9 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**R6 `exhibit-crt-rest`** — printf_float / time / environ / malloc / ToyFile 字段全称。  
-> **排队**：无（本柱收口后 ★ 空）。  
-> **刚 TG**：R1～R5（含 scan_format 铺平）。
+> **当前 ★**：（空）展览级可读性柱 R1～R6 已收。  
+> **排队**：无。  
+> **刚 TG**：R6 printf_float / time / environ / ToyFile 字段全称。
 
 | # | 刀 | 状态 |
 |---|-----|------|
@@ -21,7 +21,7 @@
 | R3 | unistd / stdio 薄封装 | ✅ |
 | R4 | printf_format 铺平 | ✅ |
 | R5 | scan_format 铺平 | ✅ |
-| R6 | 余下 crt（time/environ/malloc…） | ★ |
+| R6 | 余下 crt（time/environ/ToyFile…） | ✅ |
 
 ---
 

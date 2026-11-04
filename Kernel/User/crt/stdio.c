@@ -13,19 +13,19 @@ int StdioFlushWrite(FILE *Stream) {
     size_t Offset = 0;
     ssize_t Written;
 
-    if (!Stream || Stream->wlen == 0) {
+    if (!Stream || Stream->WriteLength == 0) {
         return 0;
     }
-    while (Offset < Stream->wlen) {
-        Written = FileWrite(Stream->fd, Stream->wbuf + Offset,
-                            Stream->wlen - Offset);
+    while (Offset < Stream->WriteLength) {
+        Written = FileWrite(Stream->FileDescriptor, Stream->WriteBuffer + Offset,
+                            Stream->WriteLength - Offset);
         if (Written <= 0) {
-            Stream->err = 1;
+            Stream->Error = 1;
             return -1;
         }
         Offset += (size_t)Written;
     }
-    Stream->wlen = 0;
+    Stream->WriteLength = 0;
     return 0;
 }
 
@@ -61,15 +61,15 @@ static int ParseMode(const char *Mode, unsigned *FlagsOut, int *AppendOut,
         return -1;
     }
     if (Primary == 'r') {
-        Flags = FF_READ;
+        Flags = FILE_FLAG_READ;
     } else if (Primary == 'w') {
-        Flags = FF_WRITE;
+        Flags = FILE_FLAG_WRITE;
     } else {
-        Flags = FF_WRITE;
+        Flags = FILE_FLAG_WRITE;
         Append = 1;
     }
     if (Plus) {
-        Flags = FF_READ | FF_WRITE;
+        Flags = FILE_FLAG_READ | FILE_FLAG_WRITE;
     }
     *FlagsOut = Flags;
     *AppendOut = Append;
@@ -117,8 +117,8 @@ FILE *fopen(const char *Path, const char *Mode) {
         return 0;
     }
     memset(Stream, 0, sizeof(*Stream));
-    Stream->fd = FileDescriptor;
-    Stream->flags = Flags;
+    Stream->FileDescriptor = FileDescriptor;
+    Stream->Flags = Flags;
     return Stream;
 }
 
@@ -140,16 +140,16 @@ int fclose(FILE *Stream) {
         return EOF;
     }
     if (StdioFlushWrite(Stream) < 0) {
-        if ((Stream->flags & FF_STATIC) == 0) {
-            FileClose(Stream->fd);
+        if ((Stream->Flags & FILE_FLAG_STATIC) == 0) {
+            FileClose(Stream->FileDescriptor);
             free(Stream);
         }
         return EOF;
     }
-    if (Stream->flags & FF_STATIC) {
+    if (Stream->Flags & FILE_FLAG_STATIC) {
         return 0;
     }
-    CloseResult = FileClose(Stream->fd);
+    CloseResult = FileClose(Stream->FileDescriptor);
     free(Stream);
     return CloseResult;
 }
@@ -162,12 +162,12 @@ int fseek(FILE *Stream, long Offset, int Whence) {
     if (StdioFlushWrite(Stream) < 0) {
         return -1;
     }
-    Stream->has_unget = 0;
-    if (FileSeek(Stream->fd, (off_t)Offset, Whence) < 0) {
-        Stream->err = 1;
+    Stream->HasUngotten = 0;
+    if (FileSeek(Stream->FileDescriptor, (off_t)Offset, Whence) < 0) {
+        Stream->Error = 1;
         return -1;
     }
-    Stream->eof = 0;
+    Stream->EndOfFile = 0;
     return 0;
 }
 
@@ -181,33 +181,33 @@ long ftell(FILE *Stream) {
     if (StdioFlushWrite(Stream) < 0) {
         return -1;
     }
-    Position = FileSeek(Stream->fd, 0, SEEK_CUR);
+    Position = FileSeek(Stream->FileDescriptor, 0, SEEK_CUR);
     if (Position < 0) {
-        Stream->err = 1;
+        Stream->Error = 1;
         return -1;
     }
-    if (Stream->has_unget && Position > 0) {
+    if (Stream->HasUngotten && Position > 0) {
         return (long)Position - 1;
     }
     return (long)Position;
 }
 
 int ungetc(int Character, FILE *Stream) {
-    if (!Stream || Character == EOF || Stream->has_unget) {
+    if (!Stream || Character == EOF || Stream->HasUngotten) {
         return EOF;
     }
-    Stream->unget = (unsigned char)Character;
-    Stream->has_unget = 1;
-    Stream->eof = 0;
-    return (int)Stream->unget;
+    Stream->Ungotten = (unsigned char)Character;
+    Stream->HasUngotten = 1;
+    Stream->EndOfFile = 0;
+    return (int)Stream->Ungotten;
 }
 
 int feof(FILE *Stream) {
-    return Stream ? Stream->eof : 0;
+    return Stream ? Stream->EndOfFile : 0;
 }
 
 int ferror(FILE *Stream) {
-    return Stream ? Stream->err : 1;
+    return Stream ? Stream->Error : 1;
 }
 
 int fileno(FILE *Stream) {
@@ -215,5 +215,5 @@ int fileno(FILE *Stream) {
         errno = EINVAL;
         return -1;
     }
-    return Stream->fd;
+    return Stream->FileDescriptor;
 }

@@ -21,7 +21,12 @@ int snprintf(char *buf, size_t size, const char *fmt, ...);
 int vsprintf(char *buf, const char *fmt, va_list ap);
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list ap);
 int puts(const char *s);
+int putchar(int c);
 void perror(const char *s);
+int fprintf(FILE *fp, const char *fmt, ...);
+int vfprintf(FILE *fp, const char *fmt, va_list ap);
+int fputc(int c, FILE *fp);
+int fputs(const char *s, FILE *fp);
 
 /* PR-A-libc：无缓冲 FILE*；fopen("w") 不截断（内核忽略 O_TRUNC） */
 FILE *fopen(const char *path, const char *mode);

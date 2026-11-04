@@ -8,7 +8,7 @@
 
 | 域 | 现状 |
 | --- | --- |
-| 格式化输出 | `printf` / `snprintf` / `vsnprintf` / `puts` / `putchar` |
+| 格式化输出 | `printf` / `snprintf` / `vsnprintf` / `puts` / `putchar`；`fprintf`/`vfprintf`/`fputs`/`fputc` |
 | 堆 | `malloc` / `calloc` / `realloc` / `free`（brk） |
 | 字符串 | 上列 + `memmove` / `strrchr` / `strncat` / `strtok` / `strerror` |
 | 标准库杂项 | `atoi` / `qsort` / `exit` / `abs`；`strtol`/`strtoul`/`strtod`；`limits.h` |
@@ -23,7 +23,7 @@
 
 | 优先级 | 缺口 | 说明 |
 | --- | --- | --- |
-| P0 | 更完整的 `stdio` | 缓冲、`fprintf`/`fscanf` 族、`ungetc`、宽字符流 |
+| P0 | 更完整的 `stdio` | ✅ fmt 族；缓冲/`ungetc`→PR5；`fscanf`/宽字符后置 |
 | P0 | `stdlib` 解析 | ✅ `strtol`/`strtoul`/`strtod`；`getenv`/`setenv` 后置 |
 | P1 | `string.h` 补全 | ✅ libc-string（`memmove` 原有） |
 | P1 | `ctype.h` / `stdbool.h` / `stdint.h` | ✅ libc-headers |

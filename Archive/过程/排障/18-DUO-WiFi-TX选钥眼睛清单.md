@@ -1,7 +1,7 @@
 # 18 · DUO WiFi TX 选钥眼睛清单（dwifi-data-0）
 
 > 只读对齐厂商 + 手测 checklist。**不改选钥行为**。  
-> 战场：`WifiEapolTx.c` / `WifiKeyAdd.c` / Docs/14。抓包机：NUC monitor ≤30 s。
+> 战场：`WifiEapolTx.c` / `WifiKeyAdd.c` / ../交接/14-DUO-WiFi数据通路交接.md。抓包机：NUC monitor ≤30 s。
 
 ---
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 2 · Blocks 现状（基线，Docs/14 + 读码）
+## 2 · Blocks 现状（基线，../交接/14-DUO-WiFi数据通路交接.md + 读码）
 
 | 项 | 值 |
 |---|---|
@@ -28,7 +28,7 @@
 | `mcast=32` 等 | 固件常 **不发** |
 | 串口眼睛 | `WiFi: data tx: … vif=.. staid=.. ac=.. tid=.. mcast=0|1` |
 
-> 眼睛结论：Docs/14 基线「cfm=0 仍 KeyID=0」在 **非厂商默认装法** 下也成立 → data-2 须一次一变量，优先对照「恢复 0xFF/pairwise=0」与「当前 mode0」的空口差，禁止再盲扫矩阵。
+> 眼睛结论：../交接/14-DUO-WiFi数据通路交接.md 基线「cfm=0 仍 KeyID=0」在 **非厂商默认装法** 下也成立 → data-2 须一次一变量，优先对照「恢复 0xFF/pairwise=0」与「当前 mode0」的空口差，禁止再盲扫矩阵。
 
 ---
 
@@ -39,6 +39,6 @@
 3. 串口抄一行：`data tx: … staid=<ap_idx> mcast=1`（staid 应等于 connect 的 ap_idx，**不是** 32）。  
 4. NUC 短抓：同帧 802.11 头 **KeyID=0** → 基线仍在；若偶然 KeyID=2 → 记条件（禁止当启发式改超时）。  
 5. （可选）`BLOCKS:probe.cfg` 写 `mcast=32` → 预期 **不上空气**（否证 BCMC 捷径）。  
-6. （可选）`arpuni=1`（可与 `mcast=` 同文件）→ 单播 ARP 空口 KeyID / AP 是否回 → Docs/19 / data-1。
+6. （可选）`arpuni=1`（可与 `mcast=` 同文件）→ 单播 ARP 空口 KeyID / AP 是否回 → 19-DUO-WiFi-单播ARP证伪清单.md / data-1。
 
 **本刀绿**：文档/注释与上表一致；串口眼睛字段齐；手测能复述「STA 组播 staid=ap、空口 KeyID=0」。

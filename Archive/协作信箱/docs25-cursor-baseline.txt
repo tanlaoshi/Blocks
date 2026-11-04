@@ -1,0 +1,6 @@
+# Cursor poll baseline
+star=dwifi-netif-5-done-await-TG
+netif5_progress=✅ 收官 ping_ok=1 00:08
+netif5_review=✅ 全绿 00:08
+last_check=2026-11-02T00:10+0800
+note=tick22: no change; await TG+TS then cut ../过程/柱归档/24-板端蓝牙-Pi与Duo执行包.md

@@ -1,0 +1,8 @@
+# Cursor ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md poll baseline (do not TG)
+active_package=../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md
+star=audio-duo-1
+poll_interval_sec=600
+progress_snip=Audio/ 五文件已现；VirtMin 挂 play；无人耳
+review_snip=🔧 **未收官**（09:49）等 boot.sd+人耳；ElapsedMs 宜改全称
+last_check=2026-11-02T09:49+0800
+note=FROM-DS 尚无 duo-1 交付段

@@ -1,12 +1,12 @@
 # 27 · Duo S 蓝牙通路探针（bt-duo-0 眼睛交付）
 
-> 交付对象：[`Docs/24`](24-板端蓝牙-Pi与Duo执行包.md) § bt-duo-0。  
+> 交付对象：[`../柱归档/24-板端蓝牙-Pi与Duo执行包.md`](24-板端蓝牙-Pi与Duo执行包.md) § bt-duo-0。  
 > 性质：**只读调查结论**，不含行为代码；`HalBluetoothReady` 保持 0。  
 > 引用一律给到文件/行或 SDK dts / pinmux，**无一处靠猜**。
 
 ---
 
-## 0 · 一句话判据（Docs/24 二选一）
+## 0 · 一句话判据（../柱归档/24-板端蓝牙-Pi与Duo执行包.md 二选一）
 
 ```text
 BT: duo path = UART4@0x041C0000
@@ -15,11 +15,11 @@ BT: duo path = UART4@0x041C0000
 **不是** `BT: skip (no HS-UART/fw)`。  
 板级有独立 HCI UART（UART4）、模组电源脚、SDK 内 `fmacfwbt_*.bin` 与 `aic8800_btlpm`；Blocks 现网尚未接线，但**通路存在**。
 
-> 术语澄清：Docs/24 / 1030 写的「HS-UART」在 CV181x/SG2000 上即 **DW-APB `uart4`**（与壳 UART0 同族 IP），不是另一套神秘控制器。
+> 术语澄清：../柱归档/24-板端蓝牙-Pi与Duo执行包.md / 1030 写的「HS-UART」在 CV181x/SG2000 上即 **DW-APB `uart4`**（与壳 UART0 同族 IP），不是另一套神秘控制器。
 
 ---
 
-## 1 · 十问十答（对表 Docs/24 §6 Duo 列）
+## 1 · 十问十答（对表 ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §6 Duo 列）
 
 | # | 问题 | 结论 | 证据 |
 |---|---|---|---|
@@ -27,12 +27,12 @@ BT: duo path = UART4@0x041C0000
 | 2 | HCI 用哪根 UART？基址？ | **UART4** @ **`0x041C0000`**（同族 DW-APB）。U-Boot 把 **UART2 焊盘**复用成 **UART4 功能**（含 CTS/RTS） | 基址：`build/boards/default/dts/cv181x/cv181x_base.dtsi:293-300` `uart4: serial@041C0000`；pinmux：`…/sg2000_milkv_duos_musl_riscv64_sd/u-boot/cvi_board_init.c:44-49` `// WIFI/BT` → `UART2_{RX,TX,CTS,RTS} → UART4_*`；板 dts `&uart4 { status="okay"; }`（同目录 `sg2000_milkv_duos_musl_riscv64_sd.dts:107-109`） |
 | 3 | 电源 / 复位 GPIO？ | **模组上电与 WiFi 共用**：`poweron-gpio = GPIOA15`（ACTIVE_HIGH）。另有 `wakeup-gpio = PORTE7`（LPM / host wake，给 `aic8800_btlpm`） | dts `&wifi_pin`：`…/sg2000_milkv_duos_musl_riscv64_sd.dts:84-88`；Blocks 已用：`Sdhci/Private.h` `DUO_WIFI_POWER_BIT`、`Sdhci/Power.c` |
 | 4 | 固件文件与加载序？ | SDK 有 **`fmacfwbt_8800d80_u02.bin`**（333 388 B）。AIC：**经 SDIO 灌 BT 共存 WiFi 固件**（`wl_fw=fmacfwbt_…`），再由 **UART H4** 跑 HCI。波特率/流控写进 patch 表：`btport=UART`、`baud=1500000`、`flowctrl=1` | 文件：`Source/DUO/sdk/…/rootfs_overlay/duos/mnt/system/firmware/aic8800/fmacfwbt_8800d80_u02.bin`；表：`aic_bsp_main.c`（`wl_fw = "fmacfwbt_8800d80_u02.bin"`）；默认：`aic_bsp_driver.h` `AICBT_BTPORT_UART` / `AICBT_UART_BAUD_1_5M` / `FLOWCTRL_ENABLE`；Blocks 现灌 **`fmacfw.bin`（无 BT 字）**：`Sdhci/WifiPrivate.h:170`、`WifiFw.c` — duo-1 须改路径或另拷 `fmacfwbt` 入 `Assets/Fw/aic8800/` |
-| 5 | Reset 成功判据串口串？ | 拟与 Pi/NUC 同形：`Boot: Bluetooth UART4 up` → `HCI Reset ok` → `HCI BD_ADDR=…` → `Bluetooth ready`（duo-1 落地） | Docs/24 §3；本刀不发 HCI |
+| 5 | Reset 成功判据串口串？ | 拟与 Pi/NUC 同形：`Boot: Bluetooth UART4 up` → `HCI Reset ok` → `HCI BD_ADDR=…` → `Bluetooth ready`（duo-1 落地） | ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §3；本刀不发 HCI |
 | 6 | Ready 条件？ | **同形**：Reset CC status=0 **且** `Read_BD_ADDR` 非全 0。本刀 Ready **保持 0** | `HalBluetooth.h`；现网 `HAL/RiscV/Hal/HalBluetooth.c` stub |
-| 7 | Init 时机？ | console-only：**启动末一次**或壳 `bt init`；**不挡进壳** | Docs/24 §6 #7；对表 Pi |
-| 8 | 与 WiFi 冲突面？ | 同模组：**SDIO=WiFi 数据**，**UART4=BT HCI**；电源脚共享 GPIOA15。**禁止**在 `WifiPatchTable.c` 里改 `btmode` 冒充 HCI 驱动；**禁止**为试 BT 关 SDIO/关 WiFi 时钟 | Docs/24 §2.2；`WifiPrivate.h:247-255` 的 `AIC_BT_*` = coex/patch 常量 |
-| 9 | 拟新建文件名（≤300）？ | `HAL/RiscV/Board/milk-v-duo-s/Bluetooth/`：`UartTransport.c`（UART4+pinmux/RTSCTS）、`FirmwareLoad.c`（或复用 WiFi 灌 `fmacfwbt` 的文档步骤）、`HciCommand.c`、`BringUp.c`；**与 `Sdhci/` 分树** | Docs/24 §5.3 |
-| 10 | 手测口令？ | 串口仍接 **UART0**；部署只拷 `Kernel.elf`→LABEL=`boot`（**禁止** `ck-pi-sd`）；duo-1 后冷启看四条 Boot 串 + 壳 `bt` | Docs/24 §2.2 部署行 |
+| 7 | Init 时机？ | console-only：**启动末一次**或壳 `bt init`；**不挡进壳** | ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §6 #7；对表 Pi |
+| 8 | 与 WiFi 冲突面？ | 同模组：**SDIO=WiFi 数据**，**UART4=BT HCI**；电源脚共享 GPIOA15。**禁止**在 `WifiPatchTable.c` 里改 `btmode` 冒充 HCI 驱动；**禁止**为试 BT 关 SDIO/关 WiFi 时钟 | ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §2.2；`WifiPrivate.h:247-255` 的 `AIC_BT_*` = coex/patch 常量 |
+| 9 | 拟新建文件名（≤300）？ | `HAL/RiscV/Board/milk-v-duo-s/Bluetooth/`：`UartTransport.c`（UART4+pinmux/RTSCTS）、`FirmwareLoad.c`（或复用 WiFi 灌 `fmacfwbt` 的文档步骤）、`HciCommand.c`、`BringUp.c`；**与 `Sdhci/` 分树** | ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §5.3 |
+| 10 | 手测口令？ | 串口仍接 **UART0**；部署只拷 `Kernel.elf`→LABEL=`boot`（**禁止** `ck-pi-sd`）；duo-1 后冷启看四条 Boot 串 + 壳 `bt` | ../柱归档/24-板端蓝牙-Pi与Duo执行包.md §2.2 部署行 |
 
 ---
 
@@ -60,7 +60,7 @@ BT: duo path = UART4@0x041C0000
 
 ---
 
-## 4 · 加载序草稿（duo-1，对表 AIC + Docs/24）
+## 4 · 加载序草稿（duo-1，对表 AIC + ../柱归档/24-板端蓝牙-Pi与Duo执行包.md）
 
 ```text
 ① 保持 / 确认模组上电（GPIOA15；WiFi 已通则可复用）
@@ -91,4 +91,4 @@ BT: duo path = UART4@0x041C0000
 | 壳 | ConsoleOnly → 须 `VirtMin` 挂 `bt`；`bt init` → `HalBluetoothInitialize` |
 | 串口原文 | `bt: diag=HCI Reset fail (fw/UART?)`；`Ready=0` |
 | 解释 | 现网 SDIO 仍 `fmacfw.bin`（无 BT 共存字）；本刀**不灌** `fmacfwbt`、**不改** `Wifi*` |
-| Docs/24 | 走判据第二条收官；Ready=1 另刀 |
+| ../柱归档/24-板端蓝牙-Pi与Duo执行包.md | 走判据第二条收官；Ready=1 另刀 |

@@ -15,7 +15,7 @@
 | tid=255 | 仍 fail | tid≠根因 |
 | hostid=1 | 仍 fail | SDIO hostid 形≠根因 |
 | noauthz=1 | `AUTHORIZED skipped`；仍 fail | AUTHORIZED≠弄坏唯一根因 |
-| M4_BEFORE→0 | **不做** | Docs/14·15 已否：先装后发 M4 密文 AP 收不到 |
+| M4_BEFORE→0 | **不做** | ../交接/14-DUO-WiFi数据通路交接.md·15 已否：先装后发 M4 密文 AP 收不到 |
 | nocalib（停发 0x69） | 仍 fail | RF_CALIB 软失败≠单播根因；默认继续不发 |
 | ADD_IF MAC=厂商（efuse / dflt） | 仍 fail | 本机 MAC≠单播根因；efuse 全 0→`88:00:33:77:10:99` |
 | 空口 PN=重传（§1g） | IV:1×3 带 Retry | **否证 PN 重用** |
@@ -23,7 +23,7 @@
 | icmpuni=1（§1h） | `unicast-icmp-fail` | **否证「仅 ARP 特例」**；AP 对单播 L3 亦沉默 |
 | uapsd=0（§1i） | 仍 `unicast-data-fail` | **否证 UAPSD 广告**；默认保留 0（无 trigger） |
 
-观察：从未 `decr≠0`；PTK `hw_key_idx=16` GTK `=2` cfm=0；组播空口曾 KeyID=0（Docs/14）。  
+观察：从未 `decr≠0`；PTK `hw_key_idx=16` GTK `=2` cfm=0；组播空口曾 KeyID=0（../交接/14-DUO-WiFi数据通路交接.md）。  
 **收口判断**：单播 TX 密文已证对（§1g），AP 对 ARP/ICMP 均不回（§1h/§1i）。本课网下 `unicast-data-ok` **无法再靠 PTK/控制口刀刷绿**——须组播 GTK（data-2）拿 DHCP，再验单播。
 
 ---

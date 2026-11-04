@@ -1,6 +1,6 @@
 # 21 · DUO WiFi GTK 选钥（dwifi-data-2）
 
-> 承接 Docs/20：单播 TX MIC 已证伪；★ 转组播空口 **KeyID = 已装 GTK 的 key_idx**（课网常为 1 或 2，勿写死 2）。  
+> 承接 20-DUO-WiFi-PTK数据面清单.md：单播 TX MIC 已证伪；★ 转组播空口 **KeyID = 已装 GTK 的 key_idx**（课网常为 1 或 2，勿写死 2）。  
 > 一次一变量。未通 → **不 TG**。
 
 ---
@@ -12,7 +12,7 @@
 | 组播 staid | `ap_idx`（厂商 STA 分支） |
 | GTK 装法 mode0 | `sta=0xFF` `pairwise=0` `cipher=TKIP` `key_idx`←KDE |
 | 空口常见 | 先 **QoS KeyID=0**（CCMP PN），随后非 QoS **KeyID=GTK**（TKIP IV） |
-| Docs/14 已扫 | keyid/cipher/pairwise/len、mcast staid、ac/tid → 无 OFFER |
+| ../交接/14-DUO-WiFi数据通路交接.md 已扫 | keyid/cipher/pairwise/len、mcast staid、ac/tid → 无 OFFER |
 
 ~~判绿（已废）：Discover 首帧空口 KeyID=gtk。~~ → 见 **§1f**：STA ToDS 本应用 PTK KeyID=0；空口 KeyID=gtk 实为 AP FromDS 转发。
 

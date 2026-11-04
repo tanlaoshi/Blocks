@@ -15,7 +15,7 @@
 
 **机理一句话**：一个 power cycle 内 patch 表只允许落一次，**谁先落谁赢**（先 WiFi confirm 再 bt init → 必红；先 bt init → 它顺带把 WiFi 的 patch 也落了 → 两者都绿）。
 
-**建议归档到 Docs/28 / Docs/27**（等评审点头我再写）：BT 节补"冷启先 bt init 才可能 Ready；同电重启 bt init 必红"；D-X1 改成"视失败点"。
+**建议归档到 ../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md / ../过程/排障/27-DUO-蓝牙通路探针.md**（等评审点头我再写）：BT 节补"冷启先 bt init 才可能 Ready；同电重启 bt init 必红"；D-X1 改成"视失败点"。
 
 ---
 
@@ -58,18 +58,18 @@ play          → play: beep
 
 ### 本刀修掉的两个真 bug（评审可抽查）
 1. **`TX_STATUS(0x48)` 语义错**：我曾按"低 5 位=剩余空位"写轮询，但该寄存器只有 **bit23 `RESET_TX_SCLK`** 有文档 ⇒ 条件恒不成立、**一帧都没写进去**（当时 `fifo` 读 0x60000000 前后不变就是证据）。改为**每毫秒批量写 32 帧**（FIFO 深 32，1 ms 被取空）→ 立刻出声。
-2. **`play` 只在桌面表注册**：Duo 走 `ShellCommandsRegisterVirtMin` ⇒ `unknown: play`。补 `ShellCommandsAudioRegister()` 与 `ShellCommandsDuoAudioRegister()` 到 VirtMin（这正是 Docs/29 `audio-shell-1` 的最小实现）。
+2. **`play` 只在桌面表注册**：Duo 走 `ShellCommandsRegisterVirtMin` ⇒ `unknown: play`。补 `ShellCommandsAudioRegister()` 与 `ShellCommandsDuoAudioRegister()` 到 VirtMin（这正是 ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md `audio-shell-1` 的最小实现）。
 
 ### 已知偏差（不假绿）
 批量 32 帧/ms ⇒ 有效采样率 **32 kHz**（48k 的 2/3），1 kHz 实际约 **667 Hz**。音准/真 48k 需 DMA 或正确 FIFO 节流，留 `audio-duo-1b`。
 
 ### 请求评审
-- [ ] 进度已写 Docs/29；可否判 `✅ 全绿` → 我 TG+TS（`rpi-3b/Audio` 已入库，本刀新增 `milk-v-duo-s/Audio` + VirtMin 注册 + `duoaudio` 命令）
+- [ ] 进度已写 ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md；可否判 `✅ 全绿` → 我 TG+TS（`rpi-3b/Audio` 已入库，本刀新增 `milk-v-duo-s/Audio` + VirtMin 注册 + `duoaudio` 命令）
 - [ ] 音准偏差记 duo-1b 是否同意（本刀只判"能响"）
 
 ---
 
-## 2026-11-02 09:55 · Pi 回归（子任务）：Docs/28 §2 全绿 + 三条新事实
+## 2026-11-02 09:55 · Pi 回归（子任务）：../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md §2 全绿 + 三条新事实
 
 **结论**：Pi 的 §2 必绿项全绿、无假绿。
 
@@ -84,7 +84,7 @@ play          → play: beep
 **三条新事实（对我之前的结论有影响）**
 1. **Pi BT 是通的**：`bt: uart clk=02dc6c00`（48,000,000）+ `ibrd/fbrd=0x1a/0x03`（**26/3**）⇒ 真机 PL011 时钟是 **48 MHz**，不是我先前假设的 250 MHz（135/40）。我之前 `bt-pi-1` 记的 "no response" 与"分频假设"都在这里被修正。
 2. **`wifi scan` 显示层 bug（非阻塞）**：ch/rssi 是 Q8 定点未移位（`Apple ch=2048` 应为 8、`rssi=-5888` 应约 -23 dBm）。
-3. Docs/28 §2 无音频小节（音频在 Docs/29），子任务只附只读快照：`audioreg: cm_ctl=0x91 cm_div=0x1eb8 pwm_ctl=0 pwm_sta=0x102`（与我记录一致）。
+3. ../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md §2 无音频小节（音频在 ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md），子任务只附只读快照：`audioreg: cm_ctl=0x91 cm_div=0x1eb8 pwm_ctl=0 pwm_sta=0x102`（与我记录一致）。
 
 **建议**：① BT 栏把 "Pi no response/分频假设" 更正为 "48 MHz → 26/3"；② `wifi scan` 的 Q8 显示单独记一笔小债（不阻塞）。
 
@@ -96,7 +96,7 @@ play          → play: beep
 | 评审项 | 执行 |
 |---|---|
 | `audio-pi-1` 否证收官（方案 1） | ✅ 已由 Cursor 自动 TG：`8502c771` |
-| 可 TG+TS（Audio 探针 + `CMD_MAX=72` + Docs/29） | ✅ 同上（探针与 CMD_MAX 均在该提交内） |
+| 可 TG+TS（Audio 探针 + `CMD_MAX=72` + ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md） | ✅ 同上（探针与 CMD_MAX 均在该提交内） |
 | `PwmTransport` 的 MSEN 注释错（MSEN=Mark-Space；FIFO 要 USEF） | ✅ 已改并单独提交 `e6a1fb6c`（仅注释，无行为变化） |
 | ★ → `audio-duo-1`（I2S3+DAC，部署 `boot.sd`） | ⏸ **未开**：用户当前指定主对话只做 **Pi 音频**；且 Duo 串口正被子任务 `aaf83df0` 用于回归，排期冲突在**我这边**，不叫停子任务 |
 | VCHIQ / `audio-pi-1b` 不自动开 | ✅ 遵守：未开，等你点名 |
@@ -128,7 +128,7 @@ play          → play: beep
 - **`audio-pi-1` 记否证**：寄存器级证据齐全，但**人耳判据不成立**，不写绿、不 TG。
 
 ### 请评审/用户选下一步（三选一）
-1. **收口否证**：`audio-pi-1` 记为"PWM 已配置、模拟通路未验证（否证）"，Docs/29 收此刀，声音留待 pi-1b；
+1. **收口否证**：`audio-pi-1` 记为"PWM 已配置、模拟通路未验证（否证）"，../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md 收此刀，声音留待 pi-1b；
 2. **换台 Pi 3B 交叉验证**（排除单机硬件/座子）；
 3. **转 `audio-pi-1b`**：做最小 VCHIQ 音频（固件音频服务）——工作量大，需单独立柱。
 
@@ -173,7 +173,7 @@ bt             → 仍 ready（addr 不变）
 
 ### 请求评审归档（对应你 09:1x 的三条答复）
 - [x] 第 1 条：冷启先 bt init 已验证（本条即证据，原文已在上面）
-- [ ] 第 2 条：按此在 `Docs/28` / `Docs/27` 加一句顺序约束——**要我现在写吗？**
+- [ ] 第 2 条：按此在 `../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md` / `../过程/排障/27-DUO-蓝牙通路探针.md` 加一句顺序约束——**要我现在写吗？**
 - [ ] 第 3 条：D-X1 短刀（保存/恢复 fmac stage + bt 不污染 WiFi）**排队**，本柱不改 `Wifi*`
 
 **Pi 音频**：卡已刷（`dtparam=audio=on` + `audio_pwm_mode=1`），等用户插回后跑 `audiotone 1 6000 50`（转插头验 D）→ `audiotone 1000 2000 50`（验 A）。咔哒不算绿，只有连续音才算。
@@ -195,7 +195,7 @@ bt             → 仍 ready（addr 不变）
 
 ---
 
-## 2026-11-02 09:20 · Duo 回归结果（Docs/28 §3，子任务实测）
+## 2026-11-02 09:20 · Duo 回归结果（../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md §3，子任务实测）
 
 **结论一句话**：Duo 的 **GPIO / WiFi 必绿全绿**；**BT 红**（D-B1/D-B2、D-X1），且 **BT 会把 WiFi 打挂**；否证项**无假绿**。
 
@@ -217,12 +217,12 @@ bt             → 仍 ready（addr 不变）
 ### 子任务给的根因线索（只读代码，未改）
 1. `WifiFirmwareBluetooth.c` 把**全局 stage 永久改成 fmacfwbt**，之后本进程内 `wififw write confirm` 也一直写 fmacfwbt。
 2. `WifiPatchApply.c:215` 对 `AIC_PATCH_DONE` **直接 return -1**；而 `AIC_PATCH_DONE` 由任何一次成功 `write confirm` 置位（只有 probe 成功时 `SdioInit.c:177` 才 reset）。
-   ⇒ **按 Docs/28 §3 的顺序（先 WiFi write confirm 再 bt init），bt init 的 patchtbl 阶段必撞 "patch already applied"**。
+   ⇒ **按 ../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md §3 的顺序（先 WiFi write confirm 再 bt init），bt init 的 patchtbl 阶段必撞 "patch already applied"**。
 3. 04:20 那次 Ready 绿（02:20）可能是**冷启后先 `bt init`** 才成立 —— 本次未验证（需第 2 次 reboot，子任务按配额只重启 1 次）。
 
 ### 需要评审/用户决定
 - [ ] 是否允许**再冷启一次**，按"**先 bt init、后 wififw write confirm**"的顺序验证 BT 能否 Ready？（这一条能定性上面第 3 点）
-- [ ] `bt-duo-*` 是否按"已知红 + 上述顺序约束"记进 Docs/28 / Docs/27，而不是当回归失败？
+- [ ] `bt-duo-*` 是否按"已知红 + 上述顺序约束"记进 ../过程/排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md / ../过程/排障/27-DUO-蓝牙通路探针.md，而不是当回归失败？
 - [ ] D-X1（BT 打挂 WiFi 后需 wifiprobe 才恢复）要不要单开一刀修（例如 bt init 前保存/恢复 stage，或 probe 后强制 reset patch 状态）？
 
 ---
@@ -309,13 +309,13 @@ bt             → 仍 ready（addr 不变）
 ### 需要评审回答
 - [ ] 允许我改卡上的 `config.txt`（加 `audio_pwm_mode=1`）吗？（改的是部署介质，不是仓库）
 - [ ] 若最终硬件确无声，`audio-pi-1` 是「判据降级」还是「转 audio-pi-1b（VCHIQ/固件音频）」？
-- [ ] 这条排障记录要不要同步进 `Docs/29` 的进度格（我现在只写了一句）？
+- [ ] 这条排障记录要不要同步进 `../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md` 的进度格（我现在只写了一句）？
 
 ---
 
 ## 2026-11-02 08:45 · 收到 10 MHz 更正（认账）+ audio-pi-1 开工
 
-**认账**：Pi PWM 时钟按评审 = **10 MHz**（`bcm283x.dtsi:418`）；我在 §6.1#3 写 50 MHz 是**反更正**，已确认 Docs/29 三处（:81 / :252 / 结语 :268）现在都是 10 MHz，我不再改回。
+**认账**：Pi PWM 时钟按评审 = **10 MHz**（`bcm283x.dtsi:418`）；我在 §6.1#3 写 50 MHz 是**反更正**，已确认 ../过程/柱归档/29-板端音频-Pi与Duo耳机孔执行包.md 三处（:81 / :252 / 结语 :268）现在都是 10 MHz，我不再改回。
 
 **我为什么会错（供以后避坑）**：我用 `curl` 取的是 `raspberrypi/linux **rpi-6.6.y**` 分支的 `bcm283x.dtsi`，那行在我抓到的版本里显示 `assigned-clock-rates = <50000000>`；而项目口径（你在板级/驱动侧核的）是 `<10000000>`。**教训**：`assigned-clock-rates` 这类"DT 请求值"在不同内核分支会变，**不能当硬件常数**；写驱动时应由 `PwmClock.c` 显式选源 + 分频（目标 10 MHz），而不是假定开机值。
 

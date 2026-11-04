@@ -2,41 +2,21 @@
 set -e
 cd "$(dirname "$0")"
 
-# Blocks 单仓：产物始终 ./Build（旁挂 Boot/Runtime，不再回写 Blocks Build）。
-# 旧 Blocks 树根探测已去掉，避免 BLOCKS_ROOT 把成品拐走。
-blocks_pick_root_for_build() {
-    return 1
-}
-
+# 产物口径（钉）：
+#   对外只认 Runtime/（+ 文档表）；Boot→Boot/Build/；Kernel→Kernel/Build/。
+#   无仓级统一 Build/，无回写仓根 Build/ToyKernel。
 # PR-16：两份 UefiBootConfig.h 一致性检查（各留一份可编，但不许语义漂移）
 if [ -f "$PWD/Scripts/lib/check-uefi-boot-config.py" ]; then
     python3 "$PWD/Scripts/lib/check-uefi-boot-config.py" "$PWD/.."
 fi
 
-# 默认 ./Build；可用 BUILDDIR=… 覆盖。BOARD=rpi-3b 默认改到 Build/PI，
-# 与 Duo/riscv 共用的 Build/ 错开（1030 §8.1 并行互清）。
+# 默认 Kernel/Build；可用 BUILDDIR=… 覆盖。
+# 板默认错开（1030 §8.1）：rpi-3b→Build/PI，duo→Build/DUO；virt/x64 共用 Build/，
+# 靠 HAL/<Arch>/ 分槽 + Makefile 换 ARCH 不删兄弟槽。
 BUILDDIR="${BUILDDIR:-Build}"
 BUILDDIR_SET=0
 if [ "$BUILDDIR" != "Build" ]; then
     BUILDDIR_SET=1
-fi
-if Root="$(blocks_pick_root_for_build)"; then
-    export BLOCKS_ROOT="$Root"
-    # 去掉旧仓内 Build 符号链接 / 真目录（有内容则迁到树根）
-    if [ -L Build ]; then
-        rm -f Build
-    elif [ -d Build ]; then
-        mkdir -p "$Root/Build/ToyKernel"
-        if [ "$(ls -A Build 2>/dev/null)" ]; then
-            cp -a Build/. "$Root/Build/ToyKernel"/ 2>/dev/null || true
-        fi
-        rm -rf Build
-    fi
-    if [ "$BUILDDIR_SET" = 0 ]; then
-        BUILDDIR="$Root/Build/ToyKernel"
-    fi
-    mkdir -p "$BUILDDIR"
-    echo "BUILDDIR=$BUILDDIR"
 fi
 export BUILDDIR
 
@@ -187,10 +167,7 @@ case "$ARCH" in
         ;;
 esac
 
-# Pi 与 Duo 并行：未显式 BUILDDIR= 时，按板分开，互不清对方产物（1030 §8.1）
-#   rpi-3b       → Build/PI
-#   milk-v-duo-s → Build/DUO
-# 其余（virt / x86_64 默认）保持 Build/，行为不变。
+# 板槽隔离；virt/X64 默认 Build/（成品在 Build/HAL/<Arch>/，互不 rm）
 if [ "$BUILDDIR_SET" = 0 ]; then
     case "$BOARD" in
         rpi-3b)       BUILDDIR=Build/PI ;;

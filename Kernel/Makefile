@@ -321,19 +321,20 @@ LDFLAGS = -nostdlib -static -z noexecstack -T $(LDSCRIPT) -e KernelEntry $(LDFLA
 # SpinLock 的 __sync_* 需要 libgcc（如 __aarch64_swp4_sync）
 LIBGCC := $(shell $(CC) $(ARCH_CFLAGS) -print-libgcc-file-name 2>/dev/null)
 
-# 产物树：Common、Services、Library、Core、User、Fonts 与 HAL 同级；HAL 下按 Arch 分目录。
-# 有 Blocks 树时由 build.sh 传入 BUILDDIR=$BLOCKS_ROOT/Build/ToyKernel；单仓默认 ./Build。
-# 各 Arch 的 Kernel.elf / HAL .o 留在 $(BUILDDIR)/HAL/<Arch>/，换架构不删其它 Arch 成品。
+# 产物树（包内 Kernel/Build，对外只认 Runtime/）：
+#   镜像源树：BringUp/ Core/ Library/ Services/ User/ 与 HAL/<Arch>/ 同级。
+#   成品 ELF：$(BUILDDIR)/HAL/<Arch>/Kernel.elf — 换 ARCH 只清本 Arch + 共享 .o，
+#   不得 rm 整个 HAL/（否则冲掉其它架构成品；1030/并行协作血泪）。
 BUILDDIR ?= Build
 HALDIR = $(BUILDDIR)/HAL/$(HAL_ARCH)
 
-# Common / Services / Library / Core / User / Fonts 的 .o 跨 Arch 共用路径：换 ARCH 时若仍用旧 .o 会链错格式
-# （如 EM:62 x86_64 → aarch64/riscv）。勿只清 Common。
+# Core/Library/Services/… 的 .o 跨 Arch 共用路径：换 ARCH 须重编这些，否则链错
+# EM（x86_64↔aarch64）。只清 $(HALDIR)，保留兄弟 HAL/<其它Arch>/Kernel.elf。
 ARCH_STAMP := $(BUILDDIR)/.toy_arch
 _STAMP_ARCH := $(shell cat $(ARCH_STAMP) 2>/dev/null)
 ifneq ($(_STAMP_ARCH),$(ARCH))
-$(info ARCH: stale '$(_STAMP_ARCH)' → '$(ARCH)'; cleaning $(BUILDDIR)/{CodeA–E,lwip})
-$(shell rm -rf '$(BUILDDIR)/HAL' '$(BUILDDIR)/Library' \
+$(info ARCH: stale '$(_STAMP_ARCH)' → '$(ARCH)'; cleaning shared objs + $(HALDIR))
+$(shell rm -rf '$(HALDIR)' '$(BUILDDIR)/Library' \
 	'$(BUILDDIR)/Core' '$(BUILDDIR)/BringUp' '$(BUILDDIR)/Services' '$(BUILDDIR)/User' \
 	'$(BUILDDIR)/ThirdParty/lwip' '$(BUILDDIR)/lwip')
 endif
@@ -1447,13 +1448,11 @@ endif
 endif
 
 clean:
-	# 只清当前 Arch 的 HAL 产物；共享 Code* 产物 .o 必须清（随 ARCH 重编）
+	# 只清当前 Arch 的 HAL 槽 + 本 BUILDDIR 共享 .o；勿删兄弟 HAL/<Arch>/
 	rm -rf $(HALDIR)
-	rm -rf $(BUILDDIR)/HAL $(BUILDDIR)/Library $(BUILDDIR)/Core $(BUILDDIR)/Services $(BUILDDIR)/User $(BUILDDIR)/ThirdParty/lwip $(BUILDDIR)/lwip
-	# 旧布局残留
-	rm -rf Build/arm64 Build/riscv
-	rm -f Build/Kernel.elf Build/SmpTramp.bin Build/SmpTramp_blob.o \
-		Build/SmpTrampoline_low.elf Build/SmpTrampoline_low.o Build/User_hello_blob.o
+	rm -rf $(BUILDDIR)/Library $(BUILDDIR)/Core $(BUILDDIR)/BringUp \
+		$(BUILDDIR)/Services $(BUILDDIR)/User $(BUILDDIR)/ThirdParty/lwip $(BUILDDIR)/lwip
+	rm -f $(BUILDDIR)/.toy_arch
 ifeq ($(ARCH),x86_64)
 	rm -rf $(USER_OUT)
 	rm -f $(USER_HELLO_OBJ) $(USER_COUNT_OBJ) $(USER_FORK_OBJ) $(USER_WAITNH_OBJ)

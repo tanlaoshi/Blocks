@@ -25,8 +25,17 @@ Blocks/                    # git 根；GitHub: tanlaoshi/Blocks
 | **Kernel** | OS 怎么写、怎么编 |
 | **Runtime** | 编出来怎么摆盘、怎么跑 |
 
-浏览序：`Boot` → `Kernel` → `Runtime`。  
-**无**顶层统一 `Build/`：产物在 `Boot/Build/`、`Kernel/Build/`；Runtime 只收同步结果。
+浏览序：`Boot` → `Kernel` → `Runtime`。
+
+**产物口径（钉）**
+
+| 层 | 认哪里 |
+| -- | ------ |
+| **对外**（摆盘 / QEMU / 真机 / sync） | 只认 **`Runtime/`**（+ 文档表） |
+| **Boot 包内** | `Boot/Build/`（如 `BOOTX64.EFI`） |
+| **Kernel 包内** | `Kernel/Build/`（镜像源树：`BringUp/` `Core/` `HAL/<Arch>/` …） |
+
+**无**仓级统一 `Build/`，**无** `Build/ToyKernel`。CRT/SDK 等仍可在包内子目录产出，同步进 Runtime 后才对外。
 
 ---
 
@@ -60,8 +69,19 @@ Kernel/
   Scripts/     # 真机 sync / virt / smoke / expect（lib/）
   Include/     # 分层契约头
   ThirdParty/  # lwIP 等（肉）
-  Build/       # 产物：HAL/<Arch>/Kernel.elf、User/*.elf
-  Makefile  build.sh  README.md
+  Build/       # 包内产物（对外不认这里，认 Runtime/）
+```
+
+`Kernel/Build/` 按源树组织；**各架构成品分槽，换编不互删**：
+
+```text
+Kernel/Build/
+  HAL/X64/Kernel.elf      # 桌面 / OVMF
+  HAL/Arm64/Kernel.elf    # virt aarch64（BOARD=virt）
+  HAL/RiscV/Kernel.elf    # virt riscv
+  Core/ Library/ …        # 当前 ARCH 的共享 .o（换 ARCH 会重编这些，但不删兄弟 HAL/<Arch>/）
+  PI/                     # BOARD=rpi-3b 整树（与上并列，并行互不清）
+  DUO/                    # BOARD=milk-v-duo-s 整树
 ```
 
 **依赖（只允许向下）**：`User → Services → Core → Library → HAL → Boot(交棒)`。  

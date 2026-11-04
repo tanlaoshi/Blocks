@@ -1,11 +1,11 @@
 # 29 · 板端音频（Pi + Duo 耳机孔）— DeepSeek 执行包
 
 > **给执行者（DeepSeek）**：按 ★ **一刀**做；一次一变量；未过判据 **不 TG / 不 push**（用户已授权刀绿后 Cursor 可自动 TG+TS，DS 仍须等评审 ✅）。  
-> **给评审（Cursor）**：对表 §8 红线；填本刀表末 **评审**（与 Docs/24/25 同形）。  
+> **给评审（Cursor）**：对表 §8 红线；填本刀表末 **评审**（与 24-板端蓝牙-Pi与Duo执行包.md/25 同形）。  
 > **目标**：三架构同形 `HalAudio*`；**Pi / Duo 3.5 mm 耳机孔能听见**蜂鸣 / `play`。  
 > **标杆**：X64 Intel HDA 柱已收官（[`声卡驱动-HDA`](../Archive/过程/柱归档/声卡驱动-HDA.md)；`play`/`beep`/`BEEP.WAV`）。  
 > **活 ★**：[`路线图1102`](../Archive/路线图1102.md) = **`audio-eyes-0`**。信箱：[`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。  
-> **回归总表**：[`Docs/28`](28-PI-DUO-WiFi-BT-GPIO回归计划.md)（本柱绿后补「声音」节）。
+> **回归总表**：[`../排障/28-PI-DUO-WiFi-BT-GPIO回归计划.md`](28-PI-DUO-WiFi-BT-GPIO回归计划.md)（本柱绿后补「声音」节）。
 
 ### 协作闭环
 
@@ -171,7 +171,7 @@ play: no audio         # HalAudioProbe()==0
 | **禁止** | 扫 PWM/DAC；改 Wifi/BT；假 Probe=1 |
 | **手测** | 不要求有声；文档抽查即可 |
 | **进度** | ✅ **收官（2026-11-02 08:20 DS → 08:35 Cursor 纠时钟）**：§6.1/§6.2 填满；无行为代码。评审纠回 Pi `assigned-clock-rates`=**10 MHz**（非 50）。 |
-| **评审** | ✅ **全绿**（2026-11-02 08:35 Cursor）。抽查：Duo I2S3/DAC/mute/audio_clock 行号齐；Pi 基址/ALT0/CM_PWMCTL 齐。**红点已纠**：`bcm283x.dtsi:418` 实为 `<10000000>`（**10 MHz**），DS「改成 50 MHz」是反更正——§6.1#3 与结语已改回。`bcm2837-rpi-3-b.dts` `&pwm` 实为 **:121-125**（非 115-118）。人耳/VirtMin/Probe 本刀不适用。**给 DS**：可 **TG+TS**（仅 Docs/29 + 信箱/1102 ★）；再 **`JX audio-pi-1`**，四文件按 §3.2（`PwmClock`/`PwmTransport`/`WavePlayback`/`BringUp`）；时钟按 **10 MHz** 编程。 |
+| **评审** | ✅ **全绿**（2026-11-02 08:35 Cursor）。抽查：Duo I2S3/DAC/mute/audio_clock 行号齐；Pi 基址/ALT0/CM_PWMCTL 齐。**红点已纠**：`bcm283x.dtsi:418` 实为 `<10000000>`（**10 MHz**），DS「改成 50 MHz」是反更正——§6.1#3 与结语已改回。`bcm2837-rpi-3-b.dts` `&pwm` 实为 **:121-125**（非 115-118）。人耳/VirtMin/Probe 本刀不适用。**给 DS**：可 **TG+TS**（仅 29-板端音频-Pi与Duo耳机孔执行包.md + 信箱/1102 ★）；再 **`JX audio-pi-1`**，四文件按 §3.2（`PwmClock`/`PwmTransport`/`WavePlayback`/`BringUp`）；时钟按 **10 MHz** 编程。 |
 
 ### audio-pi-1 · PWM → 耳机可闻
 
@@ -182,7 +182,7 @@ play: no audio         # HalAudioProbe()==0
 | **禁止** | 抢 GPIO14/15；动 BT UART；空桩假绿 |
 | **手测** | Pi + 耳机；ksend 后冷启 |
 | **进度** | ✅ **否证收官（2026-11-02 09:40）**：用户澄清**从未有任何声/咔哒**；扫频/占空/on·off/三极四极耳机全无声；SoC 寄存器齐。 |
-| **评审** | ✅ **否证全绿（收口）**（2026-11-02 09:42 Cursor）。认账：咔哒线索作废；A/B/D 排除；人耳判据不成立 → **不假绿**。选 **方案 1**：本刀否证收口；`audio-pi-1b`（VCHIQ）/换板 **点名再开**，不自动 ★。代码探针可留仓；`CMD_MAX=72` 真修可同捆 TG。⚠ `PwmTransport` 注释仍把 MSEN 写成「从 FIFO 取数」——**错**（MSEN=Mark-Space；FIFO 要 USEF），否证不挡，duo/pi-1b 前改掉。**给 DS**：可 **TG+TS**（Audio 探针+CMD_MAX+Docs/29）；★ → **`audio-duo-1`**；勿开 VCHIQ 除非用户点名。 |
+| **评审** | ✅ **否证全绿（收口）**（2026-11-02 09:42 Cursor）。认账：咔哒线索作废；A/B/D 排除；人耳判据不成立 → **不假绿**。选 **方案 1**：本刀否证收口；`audio-pi-1b`（VCHIQ）/换板 **点名再开**，不自动 ★。代码探针可留仓；`CMD_MAX=72` 真修可同捆 TG。⚠ `PwmTransport` 注释仍把 MSEN 写成「从 FIFO 取数」——**错**（MSEN=Mark-Space；FIFO 要 USEF），否证不挡，duo/pi-1b 前改掉。**给 DS**：可 **TG+TS**（Audio 探针+CMD_MAX+29-板端音频-Pi与Duo耳机孔执行包.md）；★ → **`audio-duo-1`**；勿开 VCHIQ 除非用户点名。 |
 | **进度（DS 实时）** | ❌ **否证（2026-11-02 09:40）**：代码与寄存器级证据齐全，但**人耳判据不成立**。<br>**证据**：`cm_ctl=0x91`（ENAB+BUSY）、`cm_div=0x1eb8`（10.000 MHz）、`rng1=10000`、`gpfsel4=0x24200924`（pin40/41 ALT0）⇒ SoC 配置全对；**频率 1/100/200/300/500/1k/2k/3k/5k Hz、占空比 50/90/100%、MS 与 MSEN 两种模式、三极与四极耳机各一副** —— 全部**无声**（同一副耳机在别的电脑可用）。<br>**已排除**：A（`audio_pwm_mode=1` + `dtparam=audio=on/off` 都试过）、B（波形/占空比/耳机类型）、D（耳机/插头）。<br>**剩 C**：固件音频通路未上电/被 mute（VCHIQ `snd_bcm2835`），或该台 Pi 3.5 mm 座硬件问题（无对照机）。<br>**按评审 08:55 规矩：不写绿、不 TG**；下一步三选一（收口否证 / 换台 Pi 交叉验证 / 转 audio-pi-1b 做最小 VCHIQ）见 FROM-DS 09:40。<br>**附带真 bug**：`CMD_MAX=48` 满表导致后注册命令静默丢弃（`audioreg` 曾 unknown），已抬到 72。 |
 
 ### audio-pi-1b · PWM USEF/FIFO → 耳机可闻（Circle 同形）
@@ -298,7 +298,7 @@ Duo = **I2S3@0x04130000 TX → DAC@0x0300A000 + audio_clock 24.576 MHz**（无 m
 ### 禁止
 
 - 空 `HalAudioProbe!=0` 却无硬件路径  
-- 改 `Wifi*` / `Bluetooth/**` / Docs/25 netif「顺便」  
+- 改 `Wifi*` / `Bluetooth/**` / 25-DUO-WiFi-挂通用网执行包.md netif「顺便」  
 - Duo 误跑 `ck-pi-sd`；只拷 elf 不更新 `boot.sd` 当部署完成  
 - 抢壳 UART / BT UART / WiFi 电源脚  
 - 单文件 >300；禁缩写顶全称  
@@ -319,29 +319,29 @@ Duo = **I2S3@0x04130000 TX → DAC@0x0300A000 + audio_clock 24.576 MHz**（无 m
 
 ```text
 JX
-只做 Docs/29 ★ = audio-eyes-0
-权威：Docs/29 §2+§6；路线图1102 §C
+只做 29-板端音频-Pi与Duo耳机孔执行包.md ★ = audio-eyes-0
+权威：29-板端音频-Pi与Duo耳机孔执行包.md §2+§6；路线图1102 §C
 填 Pi/Duo 对表表；无行为代码（或仅 Audio: eyes ok）
 禁改 Wifi/BT；禁扫寄存器
 ```
 
 ```text
 JX
-只做 Docs/29 ★ = audio-pi-1
+只做 29-板端音频-Pi与Duo耳机孔执行包.md ★ = audio-pi-1
 HalAudio* + rpi-3b/Audio；beep 耳机可闻
 禁抢 mini-UART / BT 脚
 ```
 
 ```text
 JX
-只做 Docs/29 ★ = audio-duo-1
+只做 29-板端音频-Pi与Duo耳机孔执行包.md ★ = audio-duo-1
 I2S3+DAC@0x0300A000；beep 耳机可闻
 禁改 Wifi*；部署 boot.sd
 ```
 
 ```text
 JX
-只做 Docs/29 ★ = audio-shell-1
+只做 29-板端音频-Pi与Duo耳机孔执行包.md ★ = audio-shell-1
 VirtMin 注册 play/beep；help 可见；三架构编过
 ```
 
@@ -357,7 +357,7 @@ VirtMin 注册 play/beep；help 可见；三架构编过
 | `bcm283x.dtsi` / `bcm2837-rpi-3-b.dts` | Pi PWM |
 | `cv181x_base.dtsi` i2s3 / dac@0300A000 | Duo 通路 |
 | `linux …/sound/soc/cvitek/cv181xdac.c` | Duo 厂商序 |
-| Docs/24/25 | 执行包体例与协作闭环 |
+| 24-板端蓝牙-Pi与Duo执行包.md/25 | 执行包体例与协作闭环 |
 
 ---
 

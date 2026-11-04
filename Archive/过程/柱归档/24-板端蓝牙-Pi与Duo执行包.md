@@ -1,22 +1,22 @@
 # 24 · 板端蓝牙（Pi + Duo）— DeepSeek 执行包
 
 > **给执行者（DeepSeek）**：按 ★ **一刀**做；一次一变量；未过判据 **不 TG / 不 push**。  
-> **给评审（Cursor）**：对表 §8 红线；填本刀表末行 **评审**（与 Docs/25 同形）。  
+> **给评审（Cursor）**：对表 §8 红线；填本刀表末行 **评审**（与 25-DUO-WiFi-挂通用网执行包.md 同形）。  
 > **背景**：NUC 课轨 **btx-1…5 已收官**（USB HCI）。Pi/Duo 门面 `HalBluetooth*` 仍 **Ready=0 stub**。  
 > **权威锚**：门面 `Include/Hal/HalBluetooth.h`；NUC `HAL/X64/.../XHCI/Bluetooth/`；[`路线图1027`](../Archive/路线图1027.md) §bt-pi/duo；[`1030`](../Archive/项目/进展/路线图1030.md) §7.5。  
-> **前置柱**：[`Docs/25`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
-> **当前执行包**：本文 Docs/24 **蓝牙柱收官**（bt-duo-2 Ready 绿）。活 ★ 见 [`路线图1102`](../Archive/路线图1102.md) GPIO。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
+> **前置柱**：[`25-DUO-WiFi-挂通用网执行包.md`](25-DUO-WiFi-挂通用网执行包.md) Duo WiFi 挂网 — **已收官（2026-11-02）**。  
+> **当前执行包**：本文 24-板端蓝牙-Pi与Duo执行包.md **蓝牙柱收官**（bt-duo-2 Ready 绿）。活 ★ 见 [`路线图1102`](../Archive/路线图1102.md) GPIO。详见 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)。
 
-### 协作闭环（与 Docs/25 同形）
+### 协作闭环（与 25-DUO-WiFi-挂通用网执行包.md 同形）
 
 | 谁 | 动作 |
 |---|---|
 | **DeepSeek** | 填「进度」→ 等「评审」**`✅ 全绿`** → 才 TG+TS → JX；每 ~5 分钟读 [`TO-DS.md`](../Archive/协作信箱/TO-DS.md)；**评审读到段尾「给 DS」** |
 | **Cursor** | 进度更新 → 填「评审」；协作/文档变更写进评审 **「给 DS」**；切柱时写 TO-DS |
-| **开刀条件** | 仅当 TO-DS / 1101 ★ 写明 **当前执行包=Docs/24**（通常在 Docs/25 收官后） |
-| **第一刀** | `bt-pi-0`（眼睛 → 交付 Docs/26）；表须有 **进度** + **评审** 行 |
+| **开刀条件** | 仅当 TO-DS / 1101 ★ 写明 **当前执行包=24-板端蓝牙-Pi与Duo执行包.md**（通常在 25-DUO-WiFi-挂通用网执行包.md 收官后） |
+| **第一刀** | `bt-pi-0`（眼睛 → 交付 ../排障/26-PI-蓝牙UART与固件清单.md）；表须有 **进度** + **评审** 行 |
 
-> **切换时**：Cursor 会在 TO-DS 写「离开 Docs/25 → 进入 Docs/24 ★=bt-pi-0」；DS 见后停止改 Wifi/netif，改读本文。
+> **切换时**：Cursor 会在 TO-DS 写「离开 25-DUO-WiFi-挂通用网执行包.md → 进入 24-板端蓝牙-Pi与Duo执行包.md ★=bt-pi-0」；DS 见后停止改 Wifi/netif，改读本文。
 
 ---
 
@@ -26,7 +26,7 @@
 |---|---|
 | 三架构 **同形** `HalBluetooth*`：`Initialize` / `Ready` / `GetDeviceAddress` / `GetLocalName`；（可选后刀）`Discoverable` / `Scan` 与 NUC 同语义 | 空 stub 却 `Ready=1`；假 BD_ADDR |
 | Pi：**UART HCI** + 厂商 `.hcd` → HCI Reset → 读 BD_ADDR → Ready；壳 `bt` 打出地址/名 | 抢走现网 **壳用 mini-UART**；未钉 UART 分工就写驱动 |
-| Duo：先 **探针有无 BT 通路**；有则 HS-UART + AIC BT 固件 → 同形 Ready；无则串口明确 `BT: skip (no …)` 且 Ready=0 | 改 `Sdhci/Wifi*.c`「顺便」；为 BT 重开 dwifi / 碰 Docs/25 netif |
+| Duo：先 **探针有无 BT 通路**；有则 HS-UART + AIC BT 固件 → 同形 Ready；无则串口明确 `BT: skip (no …)` 且 Ready=0 | 改 `Sdhci/Wifi*.c`「顺便」；为 BT 重开 dwifi / 碰 25-DUO-WiFi-挂通用网执行包.md netif |
 | 命名写全、单文件 ≤300（新写/大改自有 `.c/.h`） | `Hc`/`Cfg`/`Init`/`Tx`/`Rx`/`Reg` 等禁缩写顶全称 |
 | **标准 / 厂商驱动 / 本仓 NUC 行为** 三选一作主参考 | 猜波特率狂扫、启发式狂重试、瞎缩超时 |
 
@@ -73,7 +73,7 @@ bt: not ready (no HCI / Reset / BD_ADDR yet)
 | 对照驱动 | Linux `hci_uart` + `hci_bcm.c`（下发 `.hcd` 流程）；HCI **命令语义**对表本仓 NUC `Bluetooth/Hci.c` + `Private.h` |
 | 部署 | 真机 **CK**（`ck-pi-sd`）或现网 `ksend`/`deploy-pi`；口令见协作暗号 |
 
-**bt-pi-0 必须先填的表（写入 Docs/26，见下）**：
+**bt-pi-0 必须先填的表（写入 ../排障/26-PI-蓝牙UART与固件清单.md，见下）**：
 
 | # | 问题 | 必须有答案 |
 |---|---|---|
@@ -92,7 +92,7 @@ bt: not ready (no HCI / Reset / BD_ADDR yet)
 | 与 WiFi | 同模组不同核。`WifiPrivate.h` 里 `AIC_BT_*` / `AICBT_PT_*` 是 **WiFi 侧 patch/coex 表**，**不是** HCI bring-up API — **禁止**在 `WifiPatchTable.c` 里「改 btmode 当蓝牙驱动」 |
 | 刀 0 | 只探针：时钟/GPIO/UART 是否出字、固件是否可读；无通路 → **正式 skip**，Ready 保持 0 |
 | 部署 | Duo：**只**拷 `Kernel.elf`→LABEL=`boot`；**禁止**对 Duo 跑 `ck-pi-sd` |
-| WiFi 柱 | Docs/25 `dwifi-netif-*` 进行中时：**BT 会话勿改** `Sdhci/Wifi*` / `LwIp/Netif.c` / `HalDevicesNet.c` |
+| WiFi 柱 | 25-DUO-WiFi-挂通用网执行包.md `dwifi-netif-*` 进行中时：**BT 会话勿改** `Sdhci/Wifi*` / `LwIp/Netif.c` / `HalDevicesNet.c` |
 
 ### 2.3 NUC 对表（只抄契约，不抄 USB）
 
@@ -195,7 +195,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | `…/Sdhci/WifiPrivate.h` | **只读参考** coex/波特率注释；勿当 BT 驱动入口 |
 | SDK `fmacfwbt_8800d80_u02.bin` + `aic8800_btlpm` | bt-duo-0 对表抄基址/GPIO/加载序 |
 | **新建** `HAL/RiscV/Board/milk-v-duo-s/Bluetooth/*.c`（或板级等价树） | 与 WiFi `Sdhci/` **分树** |
-| `…/Sdhci/Wifi*.c` | **禁止改**（除非用户点名且与 Docs/25 ★ 无关） |
+| `…/Sdhci/Wifi*.c` | **禁止改**（除非用户点名且与 25-DUO-WiFi-挂通用网执行包.md ★ 无关） |
 
 ### 5.4 禁止碰（本柱）
 
@@ -203,7 +203,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 |---|---|
 | `HAL/X64/Drivers/Bus/XHCI/Bluetooth/**` | NUC 已绿课轨 |
 | `HAL/Arm64/Board/rpi-3b/Wifi/**` | WiFi 隔离 |
-| `HAL/RiscV/Board/milk-v-duo-s/Sdhci/Wifi*` | Duo WiFi / Docs/25 |
+| `HAL/RiscV/Board/milk-v-duo-s/Sdhci/Wifi*` | Duo WiFi / 25-DUO-WiFi-挂通用网执行包.md |
 | `HAL/RiscV/LwIp/**`、`HalDevicesNet.c` | netif 柱 |
 | 抽公共「UART-HCI 大框架」跨 Pi/Duo | **两板都 Ready 后再议** |
 
@@ -211,10 +211,10 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 ## 6 · 对表表（bt-pi-0 / bt-duo-0 眼睛交付）
 
-> **bt-pi-0**：把下表「Pi 结论」列填满，并落盘 [`Docs/26-PI-蓝牙UART与固件清单.md`](26-PI-蓝牙UART与固件清单.md)（**勿再写 Docs/25** — 25 已是 Duo WiFi 挂网包）。  
-> **bt-duo-0**：填「Duo 结论」；可写短节进 Docs/26 附录或 `Docs/27-DUO-蓝牙通路探针.md`。
+> **bt-pi-0**：把下表「Pi 结论」列填满，并落盘 [`../排障/26-PI-蓝牙UART与固件清单.md`](26-PI-蓝牙UART与固件清单.md)（**勿再写 25-DUO-WiFi-挂通用网执行包.md** — 25 已是 Duo WiFi 挂网包）。  
+> **bt-duo-0**：填「Duo 结论」；可写短节进 ../排障/26-PI-蓝牙UART与固件清单.md 附录或 `../排障/27-DUO-蓝牙通路探针.md`。
 
-| # | 问题 | NUC / 标准锚 | Pi 结论（pi-0 已填） | Duo 结论（duo-0 ✅ [`Docs/27`](27-DUO-蓝牙通路探针.md)） |
+| # | 问题 | NUC / 标准锚 | Pi 结论（pi-0 已填） | Duo 结论（duo-0 ✅ [`../排障/27-DUO-蓝牙通路探针.md`](27-DUO-蓝牙通路探针.md)） |
 |---|---|---|---|---|
 | 1 | 壳用哪根串口？ | — | **UART1 mini-UART** @`0x3F215000`，GPIO14/15 ALT5，115200（`BoardConfig.h:22-25`+`NOTES.md:8-9`+dts `stdout-path=serial1`） | **UART0** @`0x04140000`，DW-APB，`reg-shift=2`，115200（`BoardConfig.h:13-16`） |
 | 2 | HCI 用哪根 UART？基址？ | H4 over UART | **PL011 UART0** @`0x3F201000`，**GPIO32 TXD0 / GPIO33 RXD0（ALT3）**；dts `&uart0 { pinctrl-0=<&uart0_gpio32 …> }` | **`BT: duo path = UART4@0x041C0000`**（DW-APB）；U-Boot 将 UART2 焊盘 mux→UART4（含 CTS/RTS）；`cv181x_base.dtsi:293` + `cvi_board_init.c:44-49` |
@@ -235,17 +235,17 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 > 协作：活档文首 ★ 是哪刀就只做哪刀。改序须在本节与日档同步。  
 > **推荐序：先 Pi 再 Duo**。允许 **bt-duo-0 文档探针** 与 **bt-pi-1** 分会话并行；**禁止**同一会话同时大改两板代码。  
-> **与 Docs/25**：netif ★ 占用时，本柱 ★ 勿与用户抢同一执行会话改 Duo。
+> **与 25-DUO-WiFi-挂通用网执行包.md**：netif ★ 占用时，本柱 ★ 勿与用户抢同一执行会话改 Duo。
 
 ### bt-pi-0 · 串口与固件钉死（眼睛）
 
 | 项 | 内容 |
 |---|---|
-| **做** | 精读 §2.1 / §5；填 §6 Pi 列；新建 **`Docs/26-PI-蓝牙UART与固件清单.md`**（壳 UART / HCI UART / `BT_REG_ON` / `.hcd` 落盘 / WiFi 并存） |
-| **判据** | Docs/26 有可勾表；§6 Pi 列无空；无 Ready 谎言 |
+| **做** | 精读 §2.1 / §5；填 §6 Pi 列；新建 **`../排障/26-PI-蓝牙UART与固件清单.md`**（壳 UART / HCI UART / `BT_REG_ON` / `.hcd` 落盘 / WiFi 并存） |
+| **判据** | ../排障/26-PI-蓝牙UART与固件清单.md 有可勾表；§6 Pi 列无空；无 Ready 谎言 |
 | **禁止** | 改 `HalBluetooth.c` 声称 Ready；改 WiFi；改壳占口 |
-| **进度** | ✅ **收官（2026-11-02 00:26，commit `cbed21d4`，已 push）**<br>产出 `Docs/26-PI-蓝牙UART与固件清单.md`；§6 Pi 列 10 行填满。关键否证：上游 dts 证明 BT=UART0/PL011 `0x3F201000` GPIO32/33 ALT3、壳=UART1 mini-UART `0x3F215000` GPIO14/15 ⇒ **不抢口**；`BT_REG_ON` 归 VideoCore expgpio 0。评审 ✅ 全绿（00:20 Cursor）。<br>**另**：`.hcd` 已入库 `Runtime/Assets/Firmware/brcm/BCM43430A1.hcd`（30,049 B，A1；来源 Ubuntu `bluez-firmware` 包，头 `4c fc 46 10`）。 |
-| **评审** | ✅ **全绿**（2026-11-02 00:20 Cursor）。抽查：`BoardConfig.h` mini-UART/`0x3F215000` 对齐；`HalDriverFileRead`/`Assets/Firmware/brcm/` 约定对齐；上游 `bcm2837-rpi-3-b.dts` 确认 **uart0→GPIO32/33 + expgpio0=BT_ON**，与 Docs/26 一致——**同意「壳与 BT 不抢口」**。无行为代码、无假 Ready。§6 Duo 列仍是提示语，眼睛刀允许后置，不挡。小债：文内「眼睛刀判据」重复字已清；仓内尚无 `*.hcd`（不挡本刀）。**给 DS**：允许 **`TG`+`TS`**（Docs/26+Docs/24 进度/§6；勿塞无关）。再 **`JX bt-pi-1`**。**.hcd**：是，下一刀开工前把 `BCM43430A1.hcd` 放进 `Assets/Firmware/brcm/`（可从本机 `/lib/firmware/brcm/` 拷，勿用 A0）；四文件名按 Docs/26 §5。GPIO32/33/上电三项留在 pi-1 真机勾。 |
+| **进度** | ✅ **收官（2026-11-02 00:26，commit `cbed21d4`，已 push）**<br>产出 `../排障/26-PI-蓝牙UART与固件清单.md`；§6 Pi 列 10 行填满。关键否证：上游 dts 证明 BT=UART0/PL011 `0x3F201000` GPIO32/33 ALT3、壳=UART1 mini-UART `0x3F215000` GPIO14/15 ⇒ **不抢口**；`BT_REG_ON` 归 VideoCore expgpio 0。评审 ✅ 全绿（00:20 Cursor）。<br>**另**：`.hcd` 已入库 `Runtime/Assets/Firmware/brcm/BCM43430A1.hcd`（30,049 B，A1；来源 Ubuntu `bluez-firmware` 包，头 `4c fc 46 10`）。 |
+| **评审** | ✅ **全绿**（2026-11-02 00:20 Cursor）。抽查：`BoardConfig.h` mini-UART/`0x3F215000` 对齐；`HalDriverFileRead`/`Assets/Firmware/brcm/` 约定对齐；上游 `bcm2837-rpi-3-b.dts` 确认 **uart0→GPIO32/33 + expgpio0=BT_ON**，与 ../排障/26-PI-蓝牙UART与固件清单.md 一致——**同意「壳与 BT 不抢口」**。无行为代码、无假 Ready。§6 Duo 列仍是提示语，眼睛刀允许后置，不挡。小债：文内「眼睛刀判据」重复字已清；仓内尚无 `*.hcd`（不挡本刀）。**给 DS**：允许 **`TG`+`TS`**（../排障/26-PI-蓝牙UART与固件清单.md+24-板端蓝牙-Pi与Duo执行包.md 进度/§6；勿塞无关）。再 **`JX bt-pi-1`**。**.hcd**：是，下一刀开工前把 `BCM43430A1.hcd` 放进 `Assets/Firmware/brcm/`（可从本机 `/lib/firmware/brcm/` 拷，勿用 A0）；四文件名按 ../排障/26-PI-蓝牙UART与固件清单.md §5。GPIO32/33/上电三项留在 pi-1 真机勾。 |
 
 ### bt-pi-1 · UART 字节通路 + HCI Reset
 
@@ -264,7 +264,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 | 项 | 内容 |
 |---|---|
-| **做** | 对表 Docs/26 §3.3：Reset 后 **逐块下发 `BCM43430A1.hcd`** → `Read_BD_ADDR (0x1009)` → `Write_Local_Name (0x0C13)`=`Blocks`；`Ready=1` **当且仅当** Reset+读址成功；壳 `bt` 同 NUC 信息量 |
+| **做** | 对表 ../排障/26-PI-蓝牙UART与固件清单.md §3.3：Reset 后 **逐块下发 `BCM43430A1.hcd`** → `Read_BD_ADDR (0x1009)` → `Write_Local_Name (0x0C13)`=`Blocks`；`Ready=1` **当且仅当** Reset+读址成功；壳 `bt` 同 NUC 信息量 |
 | **判据** | `bt: ready name=Blocks addr=XX:…`（非全 0）；冷启可重复；未成功时 `bt: not ready …`；串口可 grep `HCI BD_ADDR=` / `Bluetooth ready` |
 | **禁止** | Ready=1 但地址全 0；实现 scan/visible「顺便」；扫波特率 |
 | **依赖** | bt-pi-1 |
@@ -279,7 +279,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 | **判据** | 二选一写死：`BT: duo path = UART@…` **或** `BT: skip (no HS-UART/fw)` + 否证段 |
 | **禁止** | skip 时 Ready=1；改 `Wifi*` / netif；对 Duo 跑 `ck-pi-sd` |
 | **依赖** | 建议 bt-pi-2 绿后；若抢时间仅允许**文档探针**与 pi-1 并行 |
-| **进度** | ✅ **收官（2026-11-02 01:40 Cursor JX）**<br>产出 [`Docs/27-DUO-蓝牙通路探针.md`](27-DUO-蓝牙通路探针.md)；§6 Duo 列填满。<br>**判据**：**`BT: duo path = UART4@0x041C0000`**（非 skip）。证据：`cv181x_base.dtsi` uart4；`cvi_board_init.c` WIFI/BT pinmux UART2→UART4；SDK `fmacfwbt_8800d80_u02.bin`；`aic8800_btlpm`=LPM 非 HCI。无行为代码、Ready 仍 0。 |
+| **进度** | ✅ **收官（2026-11-02 01:40 Cursor JX）**<br>产出 [`../排障/27-DUO-蓝牙通路探针.md`](27-DUO-蓝牙通路探针.md)；§6 Duo 列填满。<br>**判据**：**`BT: duo path = UART4@0x041C0000`**（非 skip）。证据：`cv181x_base.dtsi` uart4；`cvi_board_init.c` WIFI/BT pinmux UART2→UART4；SDK `fmacfwbt_8800d80_u02.bin`；`aic8800_btlpm`=LPM 非 HCI。无行为代码、Ready 仍 0。 |
 | **评审** | ✅ **全绿**（2026-11-02 Cursor）。判据串写死；§6 Duo 列可对表 dtsi/pinmux/SDK 文件；无 Ready 谎言、未碰 `Wifi*`。 |
 
 ### bt-duo-1 ·（仅 duo-0 有通路）Reset → 址 → Ready
@@ -298,7 +298,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 |---|---|
 | **做** | SDIO 阶段选 `fmacfwbt_8800d80_u02.bin`（卡上 `/Assets/Fw/aic8800/` 已有）→ `write confirm` 同形管线 → UART4 HCI Reset → BD_ADDR → Ready；`Bluetooth/FirmwareLoad.c`；允许 **固件阶段选路**钩子，**禁止**改 WiFi 数据面 / netif / `btmode` 冒充 |
 | **判据** | 同 bt-pi-2：`bt: diag=ready` + 非零 `addr=` + Ready=1；失败可诊断、Ready=0 |
-| **禁止** | 半截 stub Ready；改 `Wifi*Data*` / Docs/25 netif；扫波特率 |
+| **禁止** | 半截 stub Ready；改 `Wifi*Data*` / 25-DUO-WiFi-挂通用网执行包.md netif；扫波特率 |
 | **进度** | ✅ **收官（2026-11-02 02:20 Cursor）**<br>`FirmwareLoad.c` + `SdhciWifiWriteFirmwareBluetoothCoexistence`（阶段切 `fmacfwbt_8800d80_u02.bin` 333388 B → 现网 write confirm）。真机 `@ttyUSB0`：`fmacfwbt … sent=333388 ok` → `fw state=done` → `bt: diag=ready`；`bt: ready name=Blocks addr=0B:3B:22:AC:88:20 hidden`。未改数据面/netif。 |
 | **评审** | ✅ **全绿**（2026-11-02 Cursor）。判据同 bt-pi-2；Ready=1 + 非零址。自动 TG+TS。 |
 
@@ -317,7 +317,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 ### 禁止
 
 - 改 NUC `XHCI/Bluetooth/**`「参考实现」顺手重构  
-- 改 Pi/Duo **WiFi** 目录或 Docs/25 netif 代码  
+- 改 Pi/Duo **WiFi** 目录或 25-DUO-WiFi-挂通用网执行包.md netif 代码  
 - 未钉串口分工就占用 **mini-UART**（壳）  
 - 空实现 `Ready=1`；全 0 BD_ADDR 当成功  
 - 猜波特率 / 狂重试 / 与注释对着干（Pi `BoardConfig` / NOTES）  
@@ -334,7 +334,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 - [ ] 行为是否与 `HalBluetooth.h` 语义同形（仅总线不同）？  
 - [ ] 命名 / 行数自查是否过？  
 - [ ] 手测板与口令（CK / 拷 elf / TTL 接哪台）是否写清？  
-- [ ] 眼睛刀是否交付 Docs/26（而非误写 Docs/25）？  
+- [ ] 眼睛刀是否交付 ../排障/26-PI-蓝牙UART与固件清单.md（而非误写 25-DUO-WiFi-挂通用网执行包.md）？  
 
 ---
 
@@ -342,7 +342,7 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 | 交付 | 说明 |
 |---|---|
-| 代码或文档 | 眼睛刀：Docs/26 + §6 表；代码刀：Board + Hal 接线 |
+| 代码或文档 | 眼睛刀：../排障/26-PI-蓝牙UART与固件清单.md + §6 表；代码刀：Board + Hal 接线 |
 | 串口原文 | 可 grep：`HCI Reset ok` / `addr=` / `bt: ready` / `BT: skip` |
 | 自查 | 命名写全；碰过的 `.c/.h` ≤300 |
 | 否证 | 走不通写清变量与现象，**停**，勿连开三刀硬闯 |
@@ -356,9 +356,9 @@ Initialize 成功 ≠ Ready（门面可挂、控制器未起）
 
 ```text
 JX
-只做 Docs/24 ★ = bt-pi-0
-权威：Docs/24 §6 + 交付 Docs/26-PI-蓝牙UART与固件清单.md
-勿改 WiFi / Docs/25 netif；勿改 NUC BT；不 commit/push
+只做 24-板端蓝牙-Pi与Duo执行包.md ★ = bt-pi-0
+权威：24-板端蓝牙-Pi与Duo执行包.md §6 + 交付 ../排障/26-PI-蓝牙UART与固件清单.md
+勿改 WiFi / 25-DUO-WiFi-挂通用网执行包.md netif；勿改 NUC BT；不 commit/push
 壳串口保持 mini-UART；HCI 口必须另钉
 填完 §6 Pi 列后收口，等 PS
 ```
@@ -367,8 +367,8 @@ JX
 
 ```text
 JX
-只做 Docs/24 ★ = bt-pi-1
-权威：Docs/24 §7 bt-pi-1 + Docs/26 已钉 UART/固件
+只做 24-板端蓝牙-Pi与Duo执行包.md ★ = bt-pi-1
+权威：24-板端蓝牙-Pi与Duo执行包.md §7 bt-pi-1 + ../排障/26-PI-蓝牙UART与固件清单.md 已钉 UART/固件
 新建 Board/rpi-3b/Bluetooth/；HCI_Reset 0x0C03
 禁止扫波特率；禁止动 Duo / WiFi
 ```
@@ -377,7 +377,7 @@ JX
 
 ```text
 JX
-只做 Docs/24 ★ = bt-duo-0
+只做 24-板端蓝牙-Pi与Duo执行包.md ★ = bt-duo-0
 只读 SDK + 探针日志；禁止改 Sdhci/Wifi*
 无通路则 BT: skip，Ready 保持 0
 ```

@@ -1,6 +1,6 @@
 # 23 · DUO WiFi ping（dwifi-ping）
 
-> 承接 Docs/22：dhcp 绿（`flags=0`）。对表 Pi wifi-7e：壳级 ping 网关。  
+> 承接 22-DUO-WiFi-DHCP租约清单.md：dhcp 绿（`flags=0`）。对表 Pi wifi-7e：壳级 ping 网关。  
 > 判据：串口 `ping_ok` / `ping_ok=1`。
 
 ---

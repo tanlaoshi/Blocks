@@ -16,7 +16,7 @@
 | **OFFER** | Discover 之后 **无** FromDS `RA=STA`，也 **无** FromDS `RA=ff:ff`∧`A3=ff:ff` 的 DHCP 体量帧 |
 
 → 不是「OFFER 上了空口但我们 RX `decr=0` 看不见」；**课网在本 STA 的 Discover 之后根本没把 OFFER 送上 WiFi**。  
-→ 与 Docs/14「KeyID=0 ⇒ AP 丢 Discover」**已否**（§1f + 本表）。
+→ 与 ../交接/14-DUO-WiFi数据通路交接.md「KeyID=0 ⇒ AP 丢 Discover」**已否**（§1f + 本表）。
 
 ### 载荷（`ptkdel` 明文 Discover 片段，RFC 2131/2132）
 

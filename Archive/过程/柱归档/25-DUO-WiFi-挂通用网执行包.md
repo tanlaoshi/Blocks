@@ -13,11 +13,11 @@
 | **DeepSeek** | 每 ~10 分钟 | ① 读 [`Archive/协作信箱/TO-DS.md`](../Archive/协作信箱/TO-DS.md)（切换/口令以它为准）② 读**当前执行包**本刀 **「评审」**：若 **`✅ 全绿`** → 才 `TG`+`TS`，推 ★，再 `JX`；本柱刀做完见下行「收官切柱」 |
 | **Cursor** | 每 ~10 分钟 | 读**当前执行包**：进度有更新 → 抽查 → 只改该刀表末 **「评审」**；若本柱收官则 **切下一包并写 TO-DS 通知** |
 | **评审行格式** | — | 开头必须：**`✅ 全绿`** 或 **`🔧 未收官`** / **`❌ 红`**。只有 **全绿** 才允许 DS TG TS JX。**协作/文档有变更时，评审末尾加「给 DS」短节**（勿只改文首让 DS 漏读） |
-| **收官切柱** | Docs/25 | 当 netif 柱验收完（netif-5 全绿且 1101 本柱 ★ 推空，或用户点名收官）→ **下一包 = [`Docs/24`](24-板端蓝牙-Pi与Duo执行包.md)**；Cursor 更新 1101 ★=`bt-pi-0`，并 **必写 TO-DS「切换通知」** |
-| **禁止** | — | 非全绿 TG/TS；Cursor 替 DS 填进度；**未切柱时**同会话改 Docs/24；切到 24 后勿再改 Wifi/netif |
+| **收官切柱** | 25-DUO-WiFi-挂通用网执行包.md | 当 netif 柱验收完（netif-5 全绿且 1101 本柱 ★ 推空，或用户点名收官）→ **下一包 = [`24-板端蓝牙-Pi与Duo执行包.md`](24-板端蓝牙-Pi与Duo执行包.md)**；Cursor 更新 1101 ★=`bt-pi-0`，并 **必写 TO-DS「切换通知」** |
+| **禁止** | — | 非全绿 TG/TS；Cursor 替 DS 填进度；**未切柱时**同会话改 24-板端蓝牙-Pi与Duo执行包.md；切到 24 后勿再改 Wifi/netif |
 
 > **当前模式**：JX → 填进度 → 评审 →（仅全绿）TG TS → JX。  
-> **当前执行包**：本文 Docs/25。**排队下一包**：Docs/24 蓝牙（25 收官后由 Cursor 通知切换）。
+> **当前执行包**：本文 25-DUO-WiFi-挂通用网执行包.md。**排队下一包**：24-板端蓝牙-Pi与Duo执行包.md 蓝牙（25 收官后由 Cursor 通知切换）。
 
 ---
 
@@ -56,7 +56,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 → WiFi: dhcp: OK ip=… / WiFi: ping_ok=1
 ```
 
-课网：SSID `Apple`，网关常 `192.168.31.1`；DHCP 须 BOOTP **flags=0**（见 Docs/22）。
+课网：SSID `Apple`，网关常 `192.168.31.1`；DHCP 须 BOOTP **flags=0**（见 ../排障/22-DUO-WiFi-DHCP租约清单.md）。
 
 ---
 
@@ -141,7 +141,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | 8 | 壳 `ping` 链？ | `Net.c:98 CommandPing` → `LwIpPing` | 同壳：`LWIP_ENABLE` 时走 `LwIpPing`（`Services/Net/LwIp/LwIp.c:114`），否则 `HalNetPing` | **Duo 构建 LWIP=1，已有 lwIP ping**；无 IP 时报 `no reply`。netif-4 后自然通 |
 | 9 | 壳 `wifi`？ | `HalWifiSetOps`（`HAL/Arm64/Hal/HalDevices.c:160`） | **RiscV 无 `HalWifiSetOps`**（grep 空） | `unknown: wifi`；netif-6 可选补 |
 | 10 | 主网卡冲突？ | SMSC vs WiFi，先 WiFi 后回退 | **dwmac**（`Ethernet/Backend.c` `DriverNetAttach`）vs WiFi | 武装后顺序：Try WiFi → 失败回退 dwmac；未武装不碰 dwmac |
-| 11 | lwIP DHCP BOOTP flags？ | 项目封装 `Services/Net/LwIp/Dhcp.c`（`LwIpDhcpRestart`）；lwIP 底层 `Kernel/ThirdParty/lwip/src/core/ipv4/dhcp.c:1945` 显式 `msg_out->flags = 0`（刀 #184 注释） | 自研 `WifiDhcpMessage.c:16` 默认 flags=0（Docs/22 §1a） | **两边默认一致（flags=0）**；若 OFFER 沉默先查 flags，禁回头扫 GTK |
+| 11 | lwIP DHCP BOOTP flags？ | 项目封装 `Services/Net/LwIp/Dhcp.c`（`LwIpDhcpRestart`）；lwIP 底层 `Kernel/ThirdParty/lwip/src/core/ipv4/dhcp.c:1945` 显式 `msg_out->flags = 0`（刀 #184 注释） | 自研 `WifiDhcpMessage.c:16` 默认 flags=0（../排障/22-DUO-WiFi-DHCP租约清单.md §1a） | **两边默认一致（flags=0）**；若 OFFER 沉默先查 flags，禁回头扫 GTK |
 | 12 | EAPOL 与 Feed 如何分期？ | join 完成后 Kick，之后才武装 | 现收帧只进 `WifiEapol`，门控 `gAicEapolKeysInstalled` | Feed 规则：**未装钥不喂**；装钥后按 ethertype 分流（`0x888e` 仍交 EAPOL），避免抢死握手 |
 
 **拟新建文件（netif-1/2/3 用，均 ≤300 行）**
@@ -171,7 +171,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 ## 5 · 刀序详表
 
 > 协作：文首 ★ 是哪刀就只做哪刀。改序须在本节和 1101 同步注明。  
-> **柱状态（2026-11-02 TG+TS）**：**收官**。netif-5 ✅；已切 [`Docs/24`](24-板端蓝牙-Pi与Duo执行包.md) ★=`bt-pi-0`。本包只读归档。
+> **柱状态（2026-11-02 TG+TS）**：**收官**。netif-5 ✅；已切 [`24-板端蓝牙-Pi与Duo执行包.md`](24-板端蓝牙-Pi与Duo执行包.md) ★=`bt-pi-0`。本包只读归档。
 
 ### dwifi-netif-0 · 眼睛清单 ✅
 
@@ -192,7 +192,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **坑** | 未 join 时 Host/Vif 无效 → Try 须 fail 回 dwmac，**不能**空指针；**Duo 必须定义 `BOARD_HAS_WIFI`**，否则②的 `#if` 整段被剃 |
 | **依赖** | netif-0 |
 | **进度** | ✅ **收官（2026-11-01 20:12，commit `5d617381`，已 push）**<br>评审全绿后 TG+TS。真机原文：`write confirm→done`、`bringup ok(4/4)`、`scan` 6 APs、`join→eapol handshake ok (ptk+gtk)`、`wifinet attach→netif armed`、`wifinet tx→data tx: len=28 ethertype=0x0806 … mcast=1` + `net-lwip-out-ok lwip_out=1`、`status: armed=1 lwip_out=1 fail=0`；回归 `wififw dhcp→ip=192.168.31.186`。符号：`nm netif5/…/Netif.o → U BoardWifiTryLinkOutput`（netif4 无，对照成立）。三架构 0 error。边界：lwIP 发起帧的运行时证据归 netif-4（DHCP）。 |
-| **评审** | ✅ **全绿**（2026-11-01 20:10 Cursor）。抽查：`BoardConfig.h` `#define BOARD_HAS_WIFI 1`；`Netif.c` Try→失败回 dwmac；`nm Build/netif5/.../Netif.o` → **`U BoardWifiTryLinkOutput`**（netif4 无，对照成立）。进度串口：join+handshake → `wifinet attach/tx` → `net-lwip-out-ok lwip_out=1` / `fail=0` 接受为本刀判据。壳 `ping` 仍 `lwip_out=0` **不挡本刀**（归 netif-4，进度④说对了）。命名/≤300 过。小债（不挡 TG）：未用头/宏；Arm 未查装钥→netif-3；`status` hex。**给 DS**：本行已 **全绿** → 允许 **`TG` + `TS`**，1101 ★ 推 **`dwifi-netif-2`**，再 **`JX`**。仍读 TO-DS；未见「切换到 Docs/24」前勿开蓝牙。 |
+| **评审** | ✅ **全绿**（2026-11-01 20:10 Cursor）。抽查：`BoardConfig.h` `#define BOARD_HAS_WIFI 1`；`Netif.c` Try→失败回 dwmac；`nm Build/netif5/.../Netif.o` → **`U BoardWifiTryLinkOutput`**（netif4 无，对照成立）。进度串口：join+handshake → `wifinet attach/tx` → `net-lwip-out-ok lwip_out=1` / `fail=0` 接受为本刀判据。壳 `ping` 仍 `lwip_out=0` **不挡本刀**（归 netif-4，进度④说对了）。命名/≤300 过。小债（不挡 TG）：未用头/宏；Arm 未查装钥→netif-3；`status` hex。**给 DS**：本行已 **全绿** → 允许 **`TG` + `TS`**，1101 ★ 推 **`dwifi-netif-2`**，再 **`JX`**。仍读 TO-DS；未见「切换到 24-板端蓝牙-Pi与Duo执行包.md」前勿开蓝牙。 |
 
 ### dwifi-netif-2 · RX：AIC → LwIpNetifInput
 
@@ -224,7 +224,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **做** | 武装后：`LwIpDhcpRestart(…)` 或壳 `net dhcp`；循环 `LwIpService` + `HalNetFeedAlternateReceive`；等 `netif` 有 IP；打 **`net-dhcp-ok`** / `dhcp_ip=a.b.c.d` |
 | **判据** | **不依赖** `wififw dhcp` 拿到课网 IP |
 | **对表** | Pi `WifiNetDhcpWait.c`；`0x15d` |
-| **坑** | 若无 OFFER：**先查 lwIP Discover 的 BOOTP flags**（Docs/22：课网要 0）。禁止回头扫 GTK |
+| **坑** | 若无 OFFER：**先查 lwIP Discover 的 BOOTP flags**（../排障/22-DUO-WiFi-DHCP租约清单.md：课网要 0）。禁止回头扫 GTK |
 | **依赖** | netif-3 |
 | **进度** | ✅ **收官（2026-11-01 23:51 Cursor TG）**<br>根因：`AicEapolDispatchEther` 旧逻辑 `EtherSink==0` 直接 return → 只挂 `FrameSink` 的通用网永不到 lwIP；已修。另：`HalNetReady` 武装放行、`Dhcp` 墙钟、`sys_now=HalMilliseconds`、`dhcp_ip` 用站点 IP。<br>串口（读卡器 n4e）：未武装 `net not available`；`join`→`netif armed`→`net dhcp`→**`net-dhcp-ok dhcp_ip=192.168.31.186`**；`lwip_in=5`；`net` link up / IP 齐。 |
 | **评审** | ✅ **全绿**（2026-11-01 23:50）。FrameSink 门闩对症；判据齐。**给 DS**：★ 已推 **netif-5**；刷卡用读卡器、手测走串口；勿再改 netif-4。禁扫 GTK。 |
@@ -238,7 +238,7 @@ wififw write confirm → bringup → scan → join Apple <密码> → dhcp → p
 | **对表** | Pi `0x15e` |
 | **依赖** | netif-4 |
 | **进度** | ✅ **收官（2026-11-02 00:08 Cursor JX+手测）**<br>改动：`Net.c` 壳 `ping` 打 **`ping_ok=1`/`0`**，超时 4s。<br>真机（读卡器刷卡后）：`bringup ok(4/4)` → `scan summary: 3 APs` → `handshake ok (ptk+gtk)` → `netif armed` → **`net-dhcp-ok dhcp_ip=192.168.31.186`** → **`reply from 192.168.31.1` / `ping_ok=1`**。 |
-| **评审** | ✅ **全绿**（2026-11-02 00:08）。判据齐；路径沿用 netif-4 Feed/`LwIpPing`，本刀只钉标签。**给 DS/用户**：可 **`TG`+`TS`**；25 柱收官后切 Docs/24（写 TO-DS）。禁扫 GTK。 |
+| **评审** | ✅ **全绿**（2026-11-02 00:08）。判据齐；路径沿用 netif-4 Feed/`LwIpPing`，本刀只钉标签。**给 DS/用户**：可 **`TG`+`TS`**；25 柱收官后切 24-板端蓝牙-Pi与Duo执行包.md（写 TO-DS）。禁扫 GTK。 |
 
 ### dwifi-netif-6 ·（可选）`wifi` 门面
 
@@ -288,7 +288,7 @@ NUC monitor **非必须**（本柱是主机栈）；若查空口 OFFER，≤12s 
 ### 禁止
 
 - 改 `HAL/Arm64/Board/rpi-3b/Wifi/**`  
-- 开 Docs/24 蓝牙刀 / 改 BT stub「顺便」  
+- 开 24-板端蓝牙-Pi与Duo执行包.md 蓝牙刀 / 改 BT stub「顺便」  
 - 为 dhcp 再扫 `MM_KEY_ADD` / KeyID / noptk  
 - 对 Duo 跑 `ck-pi-sd`  
 - 未口令 commit/push  
@@ -300,7 +300,7 @@ NUC monitor **非必须**（本柱是主机栈）；若查空口 OFFER，≤12s 
 - [ ] Try 失败是否回落有线（非直接 ERR）？  
 - [ ] Feed 是否限制每拍包数？EAPOL 期是否未抢握手？  
 - [ ] 武装后 `HalNetGetMac` 是否站点 MAC（lwIP dhcp 需要）？  
-- [ ] 无 OFFER 时是否查了 **flags**（Docs/22）？  
+- [ ] 无 OFFER 时是否查了 **flags**（../排障/22-DUO-WiFi-DHCP租约清单.md）？  
 - [ ] 判据串口原文是否写入 1101 对应刀进度？  
 - [ ] 命名 / 行数自查是否过？  
 
@@ -315,7 +315,7 @@ TS
 # 再：
 JX
 只做 1101 ★ = dwifi-netif-5
-权威：Docs/25 netif-5
+权威：25-DUO-WiFi-挂通用网执行包.md netif-5
 刷卡=读卡器 ck-duo-sd；手测=串口；禁 ksend 刷核
 LwIpDhcpRestart 或 net dhcp；BOOTP flags=0
 禁扫 GTK；填进度等评审，非全绿不 TG

@@ -2,7 +2,7 @@
 
 > **用途**：真机手测总表（2026-11-02 柱收官后）。照本节跑完 = WiFi / BT / GPIO 现网基线仍绿（含已钉否证）。  
 > **串口现状（可改）**：Duo `@ttyUSB0` · Pi `@ttyUSB1` · 115200 8N1。换线先确认 `Blocks>`。  
-> **参照**：Docs/24（BT）、Docs/25（Duo WiFi）、Docs/26–27（眼睛）、路线图 1102（GPIO）、1031（Pi WiFi）。
+> **参照**：../柱归档/24-板端蓝牙-Pi与Duo执行包.md（BT）、../柱归档/25-DUO-WiFi-挂通用网执行包.md（Duo WiFi）、26-PI-蓝牙UART与固件清单.md–27（眼睛）、路线图 1102（GPIO）、1031（Pi WiFi）。
 
 ---
 
@@ -13,7 +13,7 @@
 | 固件 | 与 `origin/main` 对齐后刷卡 / ksend；冷启看 build 戳（Duo：`Boot: duo-sdhci build=`） |
 | Duo 部署 | 冷启走 **FIT `boot.sd`**：`ksend … --path BOOT:boot.sd` 或读卡器写 `boot`；**仅拷 `Kernel.elf` 不够** |
 | Pi 部署 | `ksend … --path BLOCKS:Kernel.elf`（或 CK `ck-pi-sd`）；**禁止对 Duo 跑 `ck-pi-sd`** |
-| 课网 | SSID **`Apple`** + 课密；网关 **`192.168.31.1`**（与 Docs/25 一致） |
+| 课网 | SSID **`Apple`** + 课密；网关 **`192.168.31.1`**（与 ../柱归档/25-DUO-WiFi-挂通用网执行包.md 一致） |
 | Assets | Duo：`/Assets/Fw/aic8800/` 含 `fmacfw.bin` **与** `fmacfwbt_8800d80_u02.bin`；Pi：`BCM43430A1.hcd` 在固件约定路径 |
 | 顺序建议 | **每板**：GPIO（快）→ WiFi → BT（Duo BT 会重灌 fmacfwbt，数分钟）→ **再扫一眼 GPIO/WiFi**（交叉回归） |
 | 记录 | 每节贴 **串口原文**（或 grep 命中行）；否证项只验「仍失败且 Ready/假绿未撒谎」 |
@@ -155,7 +155,7 @@ gpio edgeselftest 18 8
 | D-G2 | 15/16 拒绝 | |
 | D-G3 | edgeselftest 同脚仍否证 FAIL | |
 
-### 3.3 WiFi → 通用网（Docs/25）
+### 3.3 WiFi → 通用网（../柱归档/25-DUO-WiFi-挂通用网执行包.md）
 
 ```text
 wifiprobe                 # 可选；卡已在则可跳
@@ -175,7 +175,7 @@ ping 192.168.31.1         # 期望：reply … 且 ping_ok=1
 | D-W3 | join + armed | |
 | D-W4 | dhcp + ping_ok=1 | |
 
-### 3.4 蓝牙（Docs/24 bt-duo-2）
+### 3.4 蓝牙（../柱归档/24-板端蓝牙-Pi与Duo执行包.md bt-duo-2）
 
 ```text
 bt
@@ -247,7 +247,7 @@ gpio edgeselftest 18 4    # 仍否证 FAIL（勿变绿撒谎）
 
 - 为过 edgeselftest **改 WiFi / 假 Ready / 软件伪造边沿**  
 - Duo 误跑 `ck-pi-sd`；Pi/Duo 串口对错板  
-- 扫波特率；改 Docs/25 数据面「顺便」修 BT  
+- 扫波特率；改 ../柱归档/25-DUO-WiFi-挂通用网执行包.md 数据面「顺便」修 BT  
 - 白名单外 Duo GPIO（15/16 等）当正常脚猛拧  
 - 未记录串口原文就改判「绿」
 

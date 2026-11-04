@@ -1,0 +1,6 @@
+# Cursor poll baseline (../过程/柱归档/24-板端蓝牙-Pi与Duo执行包.md)
+star=bt-pi-1-done-await-TG
+progress=✅ HCI Reset ok 01:18
+review=✅ 全绿 01:18
+last_check=2026-11-02T01:20+0800
+note=tick29: no change; await user TG+TS

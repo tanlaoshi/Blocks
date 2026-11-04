@@ -137,6 +137,8 @@ int BoardEthernetProbe(void);
 void BoardEthernetRegister(void);
 /* 1=写出 link 信息；0=无 PHY */
 int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
+/* 1=已 bind 且线缆 up（供 WiFi Claim 有线 skip；MDIO 瞬时失败时偏保守） */
+int BoardEthernetCableIsUp(void);
 /* L2 发帧（lwIP linkoutput / 自研栈） */
 int BoardEthernetSendFrame(const UINT8 *Frame, UINTN FrameLength);
 

@@ -186,8 +186,10 @@ int SdhciWifiProbe(UINT32 Flags);
  * 通道掩码影响）；shell 里重跑时把它指到 gConsole.Write，输出才和提示符对齐。
  */
 void SdhciWifiMarkSink(void (*Sink)(const char *Text));
+/* 0=全量 WiFi 日志；非 0=只重点行（默认 brief） */
+void SdhciMarkSetQuiet(int Quiet);
 void BoardSdhciRegister(void);
-/* Worker HalWifiClaim：探卡+灌片+bringup+扫（无 join） */
+/* Worker HalWifiClaim：探卡+灌片+bringup+扫；无有线则课网 join+DHCP */
 void BoardWifiRegister(void);
 
 #endif

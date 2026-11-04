@@ -14,6 +14,7 @@
 extern int SdhciWifiProbe(UINT32 Flags) __attribute__((weak));
 extern UINT32 SdhciWifiProbeForceFlag(void) __attribute__((weak));
 extern void SdhciWifiMarkSink(void (*Sink)(const char *Text)) __attribute__((weak));
+extern void SdhciMarkSetQuiet(int Quiet) __attribute__((weak));
 extern int SdhciWifiFw(UINT32 Mode) __attribute__((weak));
 extern int SdhciWifiFifoTest(void) __attribute__((weak));
 extern int SdhciWifiFwRead(UINT32 Address) __attribute__((weak));
@@ -162,6 +163,9 @@ static void ShellProbeMark(const char *Text) {
  * 原来这段 3 行在文件里重复了 20 次（10 组 begin/end），收成两个函数，行为不变。
  */
 static void WifiMarkBegin(void) {
+    if (SdhciMarkSetQuiet != 0) {
+        SdhciMarkSetQuiet(0); /* 壳调试要全量证据行 */
+    }
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(ShellProbeMark);
     }
@@ -170,6 +174,9 @@ static void WifiMarkBegin(void) {
 static void WifiMarkEnd(void) {
     if (SdhciWifiMarkSink != 0) {
         SdhciWifiMarkSink(0);
+    }
+    if (SdhciMarkSetQuiet != 0) {
+        SdhciMarkSetQuiet(1); /* 回到冷启 brief */
     }
 }
 

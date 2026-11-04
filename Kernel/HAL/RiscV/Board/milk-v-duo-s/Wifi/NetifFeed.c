@@ -13,8 +13,7 @@
  * 三条铁律（评审红线）：
  *   ① 未武装不喂 —— 否则会把 AP 的广播当成本机网卡的数据；
  *   ② 每拍限量（≤8 包，对表 Pi）—— 喂太多会把壳饿死；
- *   ③ 喂的时候开"安静窗口"（SdhciMarkSetQuiet）—— EAPOL 解码每帧都打证据行，
- *      不静音每拍刷屏，壳直接卡死。
+ *   ③ 喂的时候 Quiet=brief —— EAPOL 每帧证据行被过滤；net-lwip-in-ok 仍放行。
  *
  * 握手期为何安全：join/handshake 自己调 AicEapolPollRun，且此处要求"已武装"才喂；
  * 武装发生在装钥之后（netif-3），所以 EAPOL 阶段不会与本文件抢帧。
@@ -58,16 +57,11 @@ static void NetifFrameSink(const UINT8 *Frame, UINT32 Length, UINT32 Decryption)
     sAicNetifFeedTotal++;
     sAicNetifFeedThisPoll++;
     if (sAicNetifFeedOkPrinted == 0) {
-        /*
-         * 判据标签必须在"第一帧真的喂进 lwIP"的这一刻打印：
-         * 此时通常处于安静窗口内（喂包轮询），所以临时开窗打印再关回去。
-         */
+        /* brief 白名单含 net-lwip，喂包窗 Quiet 下仍会出这一行 */
         sAicNetifFeedOkPrinted = 1;
-        SdhciMarkSetQuiet(0);
         SdhciMark("WiFi: net-lwip-in-ok lwip_in=");
         SdhciMarkDecimal("", sAicNetifFeedTotal);
         SdhciMark("\n");
-        SdhciMarkSetQuiet(1);
     }
 }
 
@@ -86,7 +80,7 @@ int BoardWifiPollFeedLwIp(UINT32 MaxPackets) {
      */
     SdhciMarkSetQuiet(1);
     (void)AicEapolPollRun(SdhciHostAt(1), AIC_NETIF_FEED_BUDGET_MS, &Counters, NetifFeedDone);
-    SdhciMarkSetQuiet(0);
+    /* 保持 brief（默认 Quiet=1）；勿 Quiet(0) 把冷启又打回全量刷屏 */
     return (int)sAicNetifFeedThisPoll;
 }
 

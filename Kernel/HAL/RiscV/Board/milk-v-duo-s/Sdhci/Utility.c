@@ -86,28 +86,123 @@ void SdhciWifiMarkSink(void (*Sink)(const char *Text)) {
 }
 
 /*
- * 安静窗口（dwifi-netif-2）：每拍喂 lwIP 时会走 EAPOL 解码路径，那里每帧都打证据行，
- * 不静音的话串口直接刷爆、壳也被拖慢。只影响 SdhciMark 家族，命令自身的输出不受影响。
+ * Quiet：0=全量；非 0=只放行重点行（组行后匹配）。
+ * 默认 brief：冷启 Claim/扫网不再刷 tx/rx/sdio state。
+ * NetifFeed 喂包窗也靠 brief 吞掉 EAPOL 每帧证据行。
+ * 壳 wififw/wifiprobe 调试：WifiMarkBegin 里 SetQuiet(0) 临时全开。
  */
-static int sSdhciMarkQuiet;
+static int sSdhciMarkQuiet = 1;
+static char sSdhciMarkLine[192];
+static UINT32 sSdhciMarkLineLength;
 
 void SdhciMarkSetQuiet(int Quiet) {
     sSdhciMarkQuiet = Quiet;
+    if (Quiet == 0) {
+        sSdhciMarkLineLength = 0;
+    }
 }
 
 int SdhciMarkQuietActive(void) {
     return sSdhciMarkQuiet;
 }
 
-void SdhciMark(const char *Text) {
-    if (Text == 0 || sSdhciMarkQuiet != 0) {
-        return;
-    }
+static void SdhciMarkEmit(const char *Text) {
     if (gSdhciMarkSink != 0) {
         gSdhciMarkSink(Text);
         return;
     }
     HalSerialWriteShell(Text);
+}
+
+static int SdhciMarkTextContains(const char *Haystack, const char *Needle) {
+    UINT32 NeedleLength;
+    UINT32 Index;
+
+    if (Haystack == 0 || Needle == 0 || Needle[0] == 0) {
+        return 0;
+    }
+    for (NeedleLength = 0; Needle[NeedleLength] != 0; NeedleLength++) {
+    }
+    for (Index = 0; Haystack[Index] != 0; Index++) {
+        UINT32 Match;
+
+        for (Match = 0; Match < NeedleLength; Match++) {
+            if (Haystack[Index + Match] != Needle[Match]) {
+                break;
+            }
+        }
+        if (Match == NeedleLength) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* brief 白名单：成败/扫表摘要/join/握手/netif/dhcp/probe·fw 收口 */
+static int SdhciMarkLineIsKey(const char *Line) {
+    static const char *const Keys[] = {
+        "FAIL", "fail", "error", "Error",
+        "scan summary",
+        "join ", "join:", "join ok", "join target", "join cfm", "join vif",
+        "handshake",
+        "netif",
+        "net-lwip",
+        "net skip",
+        "WIFI claim",
+        "probe ok", "probe fail", "probe start",
+        "fw state=", "fw stage end", "stack start ok",
+        "SD1 init ok",
+        "control port AUTHORIZED",
+        "keys installed",
+        "dhcp",
+        "Adopt",
+    };
+    UINT32 Index;
+
+    for (Index = 0; Index < (UINT32)(sizeof(Keys) / sizeof(Keys[0])); Index++) {
+        if (SdhciMarkTextContains(Line, Keys[Index]) != 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void SdhciMarkFlushLine(void) {
+    if (sSdhciMarkLineLength == 0) {
+        return;
+    }
+    sSdhciMarkLine[sSdhciMarkLineLength] = 0;
+    if (SdhciMarkLineIsKey(sSdhciMarkLine) != 0) {
+        SdhciMarkEmit(sSdhciMarkLine);
+        SdhciMarkEmit("\n");
+    }
+    sSdhciMarkLineLength = 0;
+}
+
+void SdhciMark(const char *Text) {
+    if (Text == 0) {
+        return;
+    }
+    if (sSdhciMarkQuiet == 0) {
+        SdhciMarkEmit(Text);
+        return;
+    }
+    /* brief：拼到换行再过滤（Mark/Hex/Decimal 是碎片段） */
+    while (*Text != 0) {
+        char Character = *Text++;
+
+        if (Character == '\r') {
+            continue;
+        }
+        if (Character == '\n') {
+            SdhciMarkFlushLine();
+            continue;
+        }
+        if (sSdhciMarkLineLength + 1u >= (UINT32)sizeof(sSdhciMarkLine)) {
+            SdhciMarkFlushLine();
+        }
+        sSdhciMarkLine[sSdhciMarkLineLength++] = Character;
+    }
 }
 
 /*

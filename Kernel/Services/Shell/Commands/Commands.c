@@ -31,8 +31,12 @@ void ShellCommandsRegisterVirtMin(void) {
     ShellCommandsNetRegister();
     /* ConsoleOnly 无 Worker：无 bt-defer；挂 bt 才能 bt init → HalBluetoothInitialize */
     ShellCommandsBluetoothRegister();
-    /* Duo S：wifiprobe —— 真机上重跑 SD1(wifi-sd) SDIO 探测，不用重启 */
-    ShellCommandsWifiProbeRegister();
+    /*
+     * Duo S：须挂完整 wifi（info/scan/join）+ wifiprobe/wififw。
+     * 只挂 ProbeRegister 时壳上 `wifi` → unknown（Claim/扫表已绿仍像没网）。
+     * WifiRegister 内已含 ProbeRegister。
+     */
+    ShellCommandsWifiRegister();
     /* Duo S：ksend —— 串口增量写 Kernel.elf（开发期免拔卡） */
     ShellCommandsKsendRegister();
     ShellCommandsGpioRegister();

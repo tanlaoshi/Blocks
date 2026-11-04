@@ -80,6 +80,26 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
     return 1;
 }
 
+int BoardEthernetCableIsUp(void) {
+    UINT16 BasicStatus;
+    UINT32 Attempt;
+
+    /* WiFi Claim 有线 skip：须已 bind（对表 Stack），再读 BMSR */
+    if (!gDuoBound || !gDuoPhysicalOk) {
+        return 0;
+    }
+    for (Attempt = 0; Attempt < 3u; Attempt++) {
+        if (DuoPhysicalReadBasicStatus(gDuoPhysicalAddress, &BasicStatus) == 0) {
+            return (BasicStatus & DUO_PHYSICAL_BASIC_STATUS_LINK) != 0;
+        }
+    }
+    /*
+     * Claim 窗 SDIO 忙时 MDIO 可能连读失败。已 bind 的有线热更路径按 up，
+     * 避免误判无网线去扫、卡死出壳。
+     */
+    return 1;
+}
+
 int BoardEthernetProbe(void) {
     UINT32 SoftReset;
     UINT32 ClockEnableBefore;

@@ -165,7 +165,15 @@ void HalSerialReplayUsb(void) {
 }
 
 void HalSerialBootMarkForce(const char *Text) {
-    (void)Text;
+    /*
+     * 对表 Arm64：Force 须出串口（Claim/net skip 验收靠它）。
+     * 一律 WriteShell：与 SdhciMark 同直写 UART，不经 SLOG_* 通道开关。
+     * （走 SLOG_USB 时若通道宏与真机串口路径不一致，会静默丢 mark。）
+     */
+    if (Text == 0) {
+        return;
+    }
+    HalSerialWriteShell(Text);
 }
 
 void HalSerialWrite(const char *Text) {

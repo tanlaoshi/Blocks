@@ -171,7 +171,7 @@ static int BringUpSpinTable(UINT64 DtbPhys, int Want) {
         BootMarkHex32((UINT32)ReleasePhys);
         HalSerialBootMark(" entry=");
         BootMarkHex32((UINT32)EntryPhys);
-        HalSerialBootMark(" width=64 linux-vis\n");
+        HalSerialBootMark(" width=64 ap-poc\n");
 
         PublishSharedUint32(&gApReady[Logical], 0);
         PublishSharedUint32(&gApEntered[Logical], 0);

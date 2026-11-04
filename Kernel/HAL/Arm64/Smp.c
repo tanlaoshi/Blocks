@@ -72,8 +72,15 @@ void HalApMain(UINT32 Logical) {
     if (Logical >= HAL_MAX_CPUS) {
         Logical = HAL_MAX_CPUS - 1;
     }
+    /* entered 阶段：4=入 C；5=MMU 后；供 cpu2/3 timeout 定位 */
+    gApEntered[Logical] = 4;
+    HalDcacheCleanInvalidateRange((void *)(UINTN)&gApEntered[Logical],
+                                  sizeof(gApEntered[Logical]));
     SetCpuId(Logical);
     HalPagingEnableAp();
+    gApEntered[Logical] = 5;
+    HalDcacheCleanInvalidateRange((void *)(UINTN)&gApEntered[Logical],
+                                  sizeof(gApEntered[Logical]));
     HalExceptionVectorsInstall();
     HalTimerStartAp();
 
@@ -162,6 +169,16 @@ int HalSmpStartApplicationProcessors(void) {
         gApStackTop[i] =
             (UINT64)(UINTN)(gApStacks[i] + sizeof(gApStacks[i]));
     }
+    /*
+     * AP 在 HalPagingEnableAp 前关 D-cache 用栈；BSP 写的栈顶/BSS 须落 PoC，
+     * 否则仅 cpu1 偶发绿、cpu2/3 entered 后死（linux-vis 现场，2026-11-04）。
+     */
+    HalDcacheCleanInvalidateRange((void *)(UINTN)gApStacks, sizeof(gApStacks));
+    HalDcacheCleanInvalidateRange((void *)(UINTN)gApStackTop,
+                                  sizeof(gApStackTop));
+    HalDcacheCleanInvalidateRange((void *)(UINTN)gApReady, sizeof(gApReady));
+    HalDcacheCleanInvalidateRange((void *)(UINTN)gApEntered,
+                                  sizeof(gApEntered));
 
 #if !BOARD_IS_VIRT
     /*

@@ -54,6 +54,12 @@ HalApEntry:
     msr     sp_el1, x2
     msr     spsel, #1
 
+    /* entered=2：栈顶已装，即将 eret（关 cache 写 DRAM） */
+    adrp    x0, gApEntered
+    add     x0, x0, :lo12:gApEntered
+    mov     w1, #2
+    str     w1, [x0, x19, lsl #2]
+
     adr     x0, 20f
     msr     elr_el2, x0
     mov     x0, #0x3c5
@@ -66,6 +72,12 @@ HalApEntry:
     add     x1, x1, :lo12:gApStackTop
     ldr     x2, [x1, x19, lsl #3]
     mov     sp, x2
+
+    /* entered=3：已在 EL1 且 SP 已设 */
+    adrp    x0, gApEntered
+    add     x0, x0, :lo12:gApEntered
+    mov     w1, #3
+    str     w1, [x0, x19, lsl #2]
 
     mov     x0, x19
     bl      HalApMain

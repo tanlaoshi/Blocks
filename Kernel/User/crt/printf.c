@@ -1,11 +1,13 @@
 /*
- * printf.c — printf / sprintf / snprintf（%s %d %u %x %c %%）（PR-L2）
+ * printf.c — printf / sprintf / snprintf（%s %d %u %x %c %f… %%）
  */
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <Blocks/syscall.h>
+
+size_t PrintfFormatDouble(char *Dst, size_t Cap, double Value, int Spec, int Prec);
 
 typedef struct {
     char *Buf;
@@ -81,10 +83,11 @@ static int Format(FmtOut *O, const char *fmt, va_list ap) {
         if (!*p) {
             break;
         }
-        /* 可选 0 填充宽度：%02x %08x（忽略非 0 的宽度标志数字串） */
+        /* 可选 0 宽、.精度：%02x %08x %.2f（教学子集） */
         {
             int ZeroPad = 0;
             int Width = 0;
+            int Prec = -1;
 
             if (*p == '0') {
                 ZeroPad = 1;
@@ -93,6 +96,14 @@ static int Format(FmtOut *O, const char *fmt, va_list ap) {
             while (*p >= '0' && *p <= '9') {
                 Width = Width * 10 + (*p - '0');
                 p++;
+            }
+            if (*p == '.') {
+                Prec = 0;
+                p++;
+                while (*p >= '0' && *p <= '9') {
+                    Prec = Prec * 10 + (*p - '0');
+                    p++;
+                }
             }
             if (!*p) {
                 break;
@@ -113,6 +124,19 @@ static int Format(FmtOut *O, const char *fmt, va_list ap) {
             case 'u':
                 OutUInt(O, (unsigned long)va_arg(ap, unsigned), 10, 0);
                 break;
+            case 'f':
+            case 'F':
+            case 'e':
+            case 'E':
+            case 'g':
+            case 'G': {
+                char Fbuf[96];
+                double V = va_arg(ap, double);
+
+                PrintfFormatDouble(Fbuf, sizeof(Fbuf), V, *p, Prec);
+                OutStr(O, Fbuf);
+                break;
+            }
             case 'x':
             case 'X': {
                 unsigned long V = (unsigned long)va_arg(ap, unsigned);

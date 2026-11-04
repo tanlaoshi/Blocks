@@ -29,6 +29,7 @@
 /* SYS_FILE_SEEK：rdi=fd rsi=signed off rdx=whence(0=SET/1=CUR/2=END) → 新 Pos；管道/套接字 -ESPIPE */
 /* SYS_TIME_SLEEP：rdi=ms（上限 60000）；课堂 1 tick≈1ms；成功返回 0 */
 /* SYS_CLOCK_MS：无参；返回 BSP 定时器 tick（与 sleep 同尺） */
+/* SYS_TIME_WALL：无参；UTC Unix 秒（自 1970-01-01）；无 RTC → -1 */
 /* SYS_NET_SOCKET：rdi=domain(AF_INET=2) rsi=type rdx=protocol
  *   type=SOCK_STREAM(1)：rdx 忽略 → fd
  *   type=NET_SOCK_RESOLVE(0x100)：rdx=NET_DNS_QUERY* → 0；失败 -errno

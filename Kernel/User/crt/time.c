@@ -1,19 +1,28 @@
 /*
  * time.c — clock / time / 最小 gmtime/asctime/strftime（libc-time）
+ *
+ * time()：SYS_TIME_WALL → UTC Unix 秒；失败 (time_t)-1（C99）。
+ * clock()：仍用单调 SYS_CLOCK_MS。
  */
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <Blocks/syscall.h>
 
 clock_t clock(void) {
     return (clock_t)clock_ms();
 }
 
 time_t time(time_t *t) {
-    time_t Now = (time_t)(clock_ms() / 1000ul);
+    long Wall = blocks_time_wall();
+    time_t Now;
 
+    if (Wall < 0) {
+        return (time_t)-1;
+    }
+    Now = (time_t)Wall;
     if (t) {
         *t = Now;
     }

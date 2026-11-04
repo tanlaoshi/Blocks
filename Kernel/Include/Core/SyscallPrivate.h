@@ -43,6 +43,7 @@ int SysGetPid(void);
 int SysGetTid(void);
 int SysGetPpid(void);
 int SysTaskSnap(UINT64 UserOut, UINTN Cap);
+INT64 SysTimeWall(void);
 
 /* Process.c */
 int SysExecve(HAL_INTERRUPT_FRAME *Frame, UINT64 UserPath, UINT64 UserArgv,

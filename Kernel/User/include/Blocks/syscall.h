@@ -150,6 +150,10 @@ static inline long blocks_clock_ms(void) {
     return blocks_syscall(SYS_CLOCK_MS, 0, 0, 0);
 }
 
+static inline long blocks_time_wall(void) {
+    return blocks_syscall(SYS_TIME_WALL, 0, 0, 0);
+}
+
 static inline long blocks_socket(long domain, long type, long protocol) {
     return blocks_syscall(SYS_NET_SOCKET, domain, type, protocol);
 }

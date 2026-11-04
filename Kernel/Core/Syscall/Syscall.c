@@ -207,6 +207,9 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
             HalFrameSetReturn(Frame, HalCpuTicks(0) * 1000ULL / (UINT64)Tps);
         }
         break;
+    case SYS_TIME_WALL:
+        HalFrameSetReturn(Frame, (UINT64)SysTimeWall());
+        break;
     case SYS_TASK_SNAP:
         HalFrameSetReturn(Frame, (UINT64)(long)SysTaskSnap(
             HalFrameGetArgument0(Frame), (UINTN)HalFrameGetArgument1(Frame)));

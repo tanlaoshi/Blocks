@@ -1,5 +1,6 @@
 /*
- * time.h — 薄封装（libc-time；垫 clock_ms）
+ * time.h — 薄封装（libc-time）
+ * clock()：单调 SYS_CLOCK_MS；time()：SYS_TIME_WALL（UTC Unix 秒）
  */
 #ifndef TIME_H
 #define TIME_H

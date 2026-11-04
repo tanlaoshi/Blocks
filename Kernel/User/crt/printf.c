@@ -1,5 +1,5 @@
 /*
- * printf.c — printf / sprintf / snprintf / puts / perror
+ * printf.c — printf / sprintf / snprintf / puts / perror（展览级命名）
  *
  * 写 stdout 一律整段 write，避免逐字 SYS_FILE_WRITE→PresentFlush。
  */
@@ -10,114 +10,115 @@
 #include <Blocks/syscall.h>
 #include "printf_private.h"
 
-int vprintf(const char *fmt, va_list ap) {
-    char Buf[512];
-    int N;
-    size_t W;
+int vprintf(const char *Format, va_list Arguments) {
+    char Buffer[512];
+    int Printed;
+    size_t WriteCount;
 
-    N = vsnprintf(Buf, sizeof(Buf), fmt, ap);
-    if (N < 0) {
-        return N;
+    Printed = vsnprintf(Buffer, sizeof(Buffer), Format, Arguments);
+    if (Printed < 0) {
+        return Printed;
     }
-    W = (size_t)N;
-    if (W >= sizeof(Buf)) {
-        W = sizeof(Buf) - 1u;
+    WriteCount = (size_t)Printed;
+    if (WriteCount >= sizeof(Buffer)) {
+        WriteCount = sizeof(Buffer) - 1u;
     }
-    if (W > 0) {
-        blocks_write(1, Buf, W);
+    if (WriteCount > 0) {
+        blocks_write(1, Buffer, WriteCount);
     }
-    return N;
+    return Printed;
 }
 
-int printf(const char *fmt, ...) {
+int printf(const char *Format, ...) {
     va_list Arguments;
-    int N;
+    int Printed;
 
-    va_start(Arguments, fmt);
-    N = vprintf(fmt, Arguments);
+    va_start(Arguments, Format);
+    Printed = vprintf(Format, Arguments);
     va_end(Arguments);
-    return N;
+    return Printed;
 }
 
-int vsnprintf(char *buf, size_t size, const char *fmt, va_list ap) {
+int vsnprintf(char *Buffer, size_t Capacity, const char *Format,
+              va_list Arguments) {
     FmtOut Output;
-    int N;
+    int Printed;
 
-    Output.Buf = buf;
-    Output.Cap = size;
-    Output.Pos = 0;
-    Output.ToFd = 0;
-    N = PrintfFormat(&Output, fmt, ap);
-    if (buf && size > 0) {
-        size_t End = (Output.Pos < size) ? Output.Pos : size - 1;
+    Output.Buffer = Buffer;
+    Output.Capacity = Capacity;
+    Output.Position = 0;
+    Output.WriteToDescriptor = 0;
+    Printed = PrintfFormat(&Output, Format, Arguments);
+    if (Buffer && Capacity > 0) {
+        size_t End =
+            (Output.Position < Capacity) ? Output.Position : Capacity - 1;
 
-        buf[End] = 0;
+        Buffer[End] = 0;
     }
-    return N;
+    return Printed;
 }
 
-int snprintf(char *buf, size_t size, const char *fmt, ...) {
+int snprintf(char *Buffer, size_t Capacity, const char *Format, ...) {
     va_list Arguments;
-    int N;
+    int Printed;
 
-    va_start(Arguments, fmt);
-    N = vsnprintf(buf, size, fmt, Arguments);
+    va_start(Arguments, Format);
+    Printed = vsnprintf(Buffer, Capacity, Format, Arguments);
     va_end(Arguments);
-    return N;
+    return Printed;
 }
 
-int vsprintf(char *buf, const char *fmt, va_list ap) {
+int vsprintf(char *Buffer, const char *Format, va_list Arguments) {
     FmtOut Output;
-    int N;
+    int Printed;
 
-    /* 无上界：课用 sprintf；Cap 极大使 Pos+1 < Cap 在实用长度内恒真 */
-    Output.Buf = buf;
-    Output.Cap = (size_t)-1;
-    Output.Pos = 0;
-    Output.ToFd = 0;
-    N = PrintfFormat(&Output, fmt, ap);
-    if (buf) {
-        buf[Output.Pos] = 0;
+    Output.Buffer = Buffer;
+    Output.Capacity = (size_t)-1;
+    Output.Position = 0;
+    Output.WriteToDescriptor = 0;
+    Printed = PrintfFormat(&Output, Format, Arguments);
+    if (Buffer) {
+        Buffer[Output.Position] = 0;
     }
-    return N;
+    return Printed;
 }
 
-int sprintf(char *buf, const char *fmt, ...) {
+int sprintf(char *Buffer, const char *Format, ...) {
     va_list Arguments;
-    int N;
+    int Printed;
 
-    va_start(Arguments, fmt);
-    N = vsprintf(buf, fmt, Arguments);
+    va_start(Arguments, Format);
+    Printed = vsprintf(Buffer, Format, Arguments);
     va_end(Arguments);
-    return N;
+    return Printed;
 }
 
-int puts(const char *s) {
-    char Buf[512];
-    int N;
+int puts(const char *String) {
+    char Buffer[512];
+    int Printed;
 
-    N = snprintf(Buf, sizeof(Buf), "%s\n", s ? s : "(null)");
-    if (N < 0) {
-        return N;
+    Printed = snprintf(Buffer, sizeof(Buffer), "%s\n", String ? String : "(null)");
+    if (Printed < 0) {
+        return Printed;
     }
-    if (N > 0) {
-        size_t W = (size_t)N;
+    if (Printed > 0) {
+        size_t WriteCount = (size_t)Printed;
 
-        if (W >= sizeof(Buf)) {
-            W = sizeof(Buf) - 1u;
+        if (WriteCount >= sizeof(Buffer)) {
+            WriteCount = sizeof(Buffer) - 1u;
         }
-        blocks_write(1, Buf, W);
+        blocks_write(1, Buffer, WriteCount);
     }
-    return N;
+    return Printed;
 }
 
-void perror(const char *s) {
-    char Buf[512];
+void perror(const char *Prefix) {
+    char Buffer[512];
 
-    if (s && s[0]) {
-        snprintf(Buf, sizeof(Buf), "%s: %s\n", s, strerror(errno));
+    if (Prefix && Prefix[0] != 0) {
+        snprintf(Buffer, sizeof(Buffer), "%s: %s\n", Prefix, strerror(errno));
     } else {
-        snprintf(Buf, sizeof(Buf), "%s\n", strerror(errno));
+        snprintf(Buffer, sizeof(Buffer), "%s\n", strerror(errno));
     }
-    blocks_write(1, Buf, strlen(Buf));
+    blocks_write(1, Buffer, strlen(Buffer));
 }

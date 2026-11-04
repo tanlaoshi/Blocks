@@ -9,9 +9,9 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**R4 `exhibit-printf-format`** — `printf_format.c` 铺平嵌套 + 全称。  
-> **排队**：R5 scan_format 铺平 → R6 余下 crt。  
-> **刚 TG**：R1～R3 展览命名（string / stdlib / unistd·stdio）。
+> **当前 ★**：**R5 `exhibit-scan-format`** — `stdio_scan_format.c` 铺平嵌套 + 全称。  
+> **排队**：R6 余下 crt（time/environ/malloc/printf_float…）。  
+> **刚 TG**：R1～R4（含 printf_format 铺平）。
 
 | # | 刀 | 状态 |
 |---|-----|------|
@@ -19,8 +19,8 @@
 | R1 | string* 展览命名 | ✅ |
 | R2 | stdlib* 展览命名 | ✅ |
 | R3 | unistd / stdio 薄封装 | ✅ |
-| R4 | printf_format 铺平 | ★ |
-| R5 | scan_format 铺平 | 排队 |
+| R4 | printf_format 铺平 | ✅ |
+| R5 | scan_format 铺平 | ★ |
 | R6 | 余下 crt（time/environ/malloc…） | 排队 |
 
 ---

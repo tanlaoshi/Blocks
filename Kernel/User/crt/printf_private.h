@@ -8,14 +8,14 @@
 #include <stddef.h>
 
 typedef struct {
-    char *Buf;
-    size_t Cap;
-    size_t Pos;
-    int ToFd;
+    char *Buffer;
+    size_t Capacity;
+    size_t Position;
+    int WriteToDescriptor; /* 1：逐字写 fd 1（puts 等已改缓冲路径后少用） */
 } FmtOut;
 
-void PrintfOutChar(FmtOut *O, char C);
-void PrintfOutStr(FmtOut *O, const char *S);
-int PrintfFormat(FmtOut *O, const char *fmt, va_list ap);
+void PrintfOutChar(FmtOut *Output, char Character);
+void PrintfOutStr(FmtOut *Output, const char *String);
+int PrintfFormat(FmtOut *Output, const char *Format, va_list Arguments);
 
 #endif

@@ -1,13 +1,13 @@
 /*
- * unistd.h — sleep / cwd / brk（selfhost：文件/进程见 Blocks/File.h · Process.h）
+ * Host/UnixStandard.h — sleep / cwd / brk（selfhost：文件/进程见 Blocks/File.h · Process.h）
  */
 #ifndef UNISTD_H
 #define UNISTD_H
 
-#include <sys/types.h>
+#include <System/Types.h>
 #include <Blocks/File.h>
 #include <Blocks/Process.h>
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 
 void *brk(void *addr);
 char *getcwd(char *buf, size_t size);

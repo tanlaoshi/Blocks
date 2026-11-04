@@ -3,7 +3,7 @@
  */
 #include <errno.h>
 #include <stdio.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 #define BAD_SYS 9999
 

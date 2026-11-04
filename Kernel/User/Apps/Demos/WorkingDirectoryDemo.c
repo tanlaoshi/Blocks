@@ -4,7 +4,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 
 int main(void) {
     char Buf[64];

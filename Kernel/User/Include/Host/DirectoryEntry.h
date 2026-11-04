@@ -1,5 +1,5 @@
 /*
- * dirent.h — 转 <Blocks/Dir.h>（selfhost）
+ * Host/DirectoryEntry.h — 转 <Blocks/Dir.h>（selfhost）
  */
 #ifndef DIRENT_H
 #define DIRENT_H

@@ -1,14 +1,14 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 #include <Blocks/Process.h>
 /*
  * SigDemo.c — PR-U-sig：子进程安装 SIGTERM handler，父 kill 后 handler 运行并退出
  */
 #include "stdio.h"
 #include "stdlib.h"
-#include "unistd.h"
+#include "Host/UnixStandard.h"
 #include "signal.h"
-#include <sched.h>
-#include <Blocks/syscall.h>
+#include <Host/Schedule.h>
+#include <Blocks/Syscall.h>
 
 static volatile int gGot;
 

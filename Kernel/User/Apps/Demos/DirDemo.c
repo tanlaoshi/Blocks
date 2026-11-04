@@ -2,7 +2,7 @@
  * DirDemo.c — PR-F4：DirOpen / DirRead / FileStat 冒烟
  */
 #include <stdio.h>
-#include <dirent.h>
+#include <Host/DirectoryEntry.h>
 #include <string.h>
 
 int main(void) {

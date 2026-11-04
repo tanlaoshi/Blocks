@@ -5,7 +5,7 @@
  */
 #include <stdarg.h>
 #include <stdint.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 #include "printf_private.h"
 
 size_t printf_format_double(char *destination, size_t capacity, double value,

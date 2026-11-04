@@ -2,7 +2,7 @@
 
 > **Bingo 正本**：本文件在`Bingo/` 下维护。  
 > **身份**：Blocks 是全新系统，**不当 Linux 兼容层**（见 [README §0.1](../App/README.md)）。课上只教 **ISO C + Blocks API**。  
-> **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/include/*.h`、`lib*.a`。  
+> **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/Include/*.h`、`lib*.a`。  
 > **卡纸**：[`../Course/CheatSheet.md`](../Course/CheatSheet.md)。  
 > Shell：`blocks>` · 卷：`BLOCKS:`。
 
@@ -13,12 +13,12 @@
 | 面 | 版本 | 头文件 / 库 | 说明 |
 | -- | ---- | ----------- | ---- |
 | CRT / ISO C | **1.9.0** | freestanding 七头齐 + Blocks Hosted 子集；`libc.a` | 非 Linux 对标；无 wchar/locale |
-| Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
+| Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/Syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |
 | Net | **3.0.0** | `Net.h`；`libNet.a` | **只教** `NetConnect`/`NetBind`（主机序）+ `socket`/`send`/`recv` |
 | 文件 / 目录 | Blocks | `Blocks/File.h`、`Blocks/Dir.h`；`VolumePath.h` | `FileOpen`/`FileRead`…；`DirOpen`/`DirRead`…；`FsUtil*` |
-| 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
+| 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/Thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
 
 **破坏性变更**：对应 `*_ABI_VERSION_MAJOR`（或 `CRT_VERSION_MAJOR`）必须 +1，并改本表 + 速查卡 + 示例。
 

@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 #include "printf_private.h"
 
 int vprintf(const char *format, va_list arguments) {

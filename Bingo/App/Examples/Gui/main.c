@@ -2,8 +2,8 @@
  * Gui — 开窗 + 按钮；链 libUi + libGraphics
  */
 #include <stdio.h>
-#include <Ui.h>
-#include <Blocks/thread.h>
+#include <Ui/Ui.h>
+#include <Blocks/Thread.h>
 
 int main(void) {
     int Wid;

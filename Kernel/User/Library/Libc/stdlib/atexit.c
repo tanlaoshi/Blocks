@@ -2,7 +2,7 @@
  * atexit.c — atexit / exit / abort（全称下划线）
  */
 #include <stdlib.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 #define ATEXIT_HANDLER_MAX 32
 

@@ -17,7 +17,7 @@ include $(BLOCKS_KERNEL)/User/BlocksUser.mk
 LAYOUT_O  := $(BUILDDIR)/UiLayout.o
 EXTRA_OBJS = $(LAYOUT_O)
 
-$(LAYOUT_O): $(LAYOUT_C) $(BLOCKS_KERNEL)/User/include/UiLayout.h | $(BUILDDIR)
+$(LAYOUT_O): $(LAYOUT_C) $(BLOCKS_KERNEL)/User/Include/UiLayout.h | $(BUILDDIR)
 	$(CC) $(USER_CFLAGS) -c $(LAYOUT_C) -o $@
 
 $(BUILDDIR)/main.o $(BUILDDIR)/UiActions.o: $(UIH)

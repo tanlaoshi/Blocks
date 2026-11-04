@@ -1,18 +1,18 @@
 /*
- * Ui.h — 用户态控件薄库（libUi）
+ * Ui/Ui.h — 用户态控件薄库（libUi）
  *
  * ABI：改签名 / 删已有事件语义须递增 UI_ABI_VERSION_MAJOR。
  * 1.0.0：窗 / 标签 / 底栏按钮 0..3 / Poll。
  * 1.1.0：+ 复选框 / 列表 / 输入框（用户态绘制；客户区点击经 Poll 分发）。
  * 1.2.0：+ 键盘入窗（焦点 USER 时 Poll 返回 KEY=300+HID）。
  * 2.0.0：API `Ui*` / `UI_*`（原 ToyUi*）。
- * 3.0.0：头/目录/库去 Toy（`#include <Ui.h>` / `libUi.a`）。
+ * 3.0.0：头/目录/库去 Toy（`#include <Ui/Ui.h>` / `libUi.a`）。
  * 依赖 libGraphics + 窗口 syscall；不链接内核 UI.c。
  */
 #ifndef UI_H
 #define UI_H
 
-#include <Graphics.h>
+#include <Graphics/Graphics.h>
 
 #define UI_ABI_VERSION_MAJOR 3
 #define UI_ABI_VERSION_MINOR 0

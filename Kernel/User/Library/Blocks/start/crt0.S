@@ -2,7 +2,7 @@
  * 栈布局：[rsp]=argc, [rsp+8]=argv…|NULL|envp…|NULL
  * 号段重排后 SYS_PROCESS_EXIT=50（勿再写死 0）
  */
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
     .intel_syntax noprefix
     .section .text
     .global _start

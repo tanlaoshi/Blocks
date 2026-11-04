@@ -1,12 +1,12 @@
 /* ChatNet.c — peer=BLOCKS.DB + 行发送 */
-#include "Net.h"
+#include "Net/Net.h"
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 #include <Blocks/File.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <Net.h>
+#include <Host/FileControl.h>
+#include <System/Socket.h>
+#include <Net/Net.h>
 
 static int ReadDec(const char **Pp, unsigned *Out) {
     const char *P = *Pp;

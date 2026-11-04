@@ -1,5 +1,5 @@
 /*
- * Blocks/thread.h — 线程子集（selfhost：Thread* 本位名）
+ * Blocks/Thread.h — 线程子集（selfhost：Thread* 本位名）
  */
 #ifndef BLOCKS_THREAD_H
 #define BLOCKS_THREAD_H
@@ -7,7 +7,7 @@
 #ifndef __ASSEMBLER__
 
 #include <stddef.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 void ToyThreadRoot(void *(*Start)(void *), void *Arg);
 

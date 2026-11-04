@@ -2,10 +2,10 @@
  * UiText — .uitxt 编译期布局模板（见 Bingo/App/UI/布局文件格式.md）
  */
 #include <stdio.h>
-#include <unistd.h>
-#include <Ui.h>
-#include <UiLayout.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Ui/Ui.h>
+#include <Ui/UiLayout.h>
+#include <Blocks/Syscall.h>
 #include "MyAppUi.h"
 
 void UiDispatch(int Wid, int Ev);

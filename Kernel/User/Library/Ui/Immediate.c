@@ -5,7 +5,7 @@
  * Title/Label 仅在变化时 SetLabel（避免每帧 damage 闪屏）；
  * 应用每帧末须 sched_yield（勿只在 Idle 时让出）。
  */
-#include <UiImmediate.h>
+#include <Ui/UiImmediate.h>
 #include <string.h>
 
 #define UI_IM_CHK_X  16u

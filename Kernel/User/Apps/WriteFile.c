@@ -4,9 +4,9 @@
  * 旧 int 0x80 汇编见 WriteFile.S
  */
 #include "errno.h"
-#include "fcntl.h"
+#include "Host/FileControl.h"
 #include "stdio.h"
-#include "unistd.h"
+#include "Host/UnixStandard.h"
 
 int main(void) {
     static const char msg[] = "from ring3!\n";

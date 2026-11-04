@@ -1,4 +1,4 @@
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 /* user/LibToy.S — 共享库：导出 blocks_hello，打印 from.so */
     .intel_syntax noprefix
     .section .rodata

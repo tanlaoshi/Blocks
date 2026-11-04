@@ -5,7 +5,7 @@
 > **树**：  
 > - ISO → [`Kernel/User/Library/Libc/`](../../Kernel/User/Library/Libc/)  
 > - 自有门面 → [`Kernel/User/Library/Blocks/`](../../Kernel/User/Library/Blocks/)（`start/` + `host/` `dir/` `thread/` …）  
-> - 头 → [`Kernel/User/include/`](../../Kernel/User/include/)  
+> - 头 → [`Kernel/User/Include/`](../../Kernel/User/Include/)  
 > **CRT**：**1.9.6**。活档 [`libc加厚.md`](libc加厚.md)。
 
 ---
@@ -16,7 +16,7 @@
 | --- | --- |
 | `Library/Libc/` | 仅 ISO C 实现：`errno` `math` `setjmp` `signal` `stdio` `stdlib` `string` `time` |
 | `Library/Blocks/` | **Blocks 自有**：`start/` · `host/` · `dir/` · `thread/` · `socket/` · `stat/` |
-| `User/include/` | 头（含 freestanding 七头；含历史名的 `<unistd.h>` 等包装，**不是**对标 Linux） |
+| `User/Include/` | 仅子目录：`Libc/`（ISO）· `Blocks/` · `System/` · `Host/` · `Graphics/` · `Ui/` · `Net/` · `VolumePath/`（**不是**对标 Linux） |
 
 链接：`crt0.o` + `syscall.o` + `libc.a` + `libblocks.a`。
 

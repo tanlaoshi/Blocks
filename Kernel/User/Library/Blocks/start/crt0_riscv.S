@@ -1,7 +1,7 @@
 /* User/crt/crt0_riscv.S — _start → blocks_call_main → exit(ecall)
  * 号段重排后 SYS_PROCESS_EXIT=50（勿再写死 0）
  */
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 	.section .text
 	.global _start
 	.extern blocks_call_main

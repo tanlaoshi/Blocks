@@ -5,7 +5,7 @@
  * CRT printf 仅 %s %d %u %x %c（无 %lu）
  */
 #include <stdio.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 
 int main(void) {
     unsigned T0;

@@ -1,7 +1,7 @@
 # 开课 ABI 冻结（课用面）
 
 > **身份**：Blocks 是全新系统，**不当 Linux 兼容层**（见 [`身份.md`](身份.md)）。课上只教 **ISO C + Blocks API**。  
-> **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/include/*.h`、`lib*.a`。  
+> **实现真源**：`Kernel/Include/Abi/SyscallABI.h`、`Kernel/User/Include/*.h`、`lib*.a`。  
 > Shell：`blocks>` · 卷：`BLOCKS:`。  
 > 本文件在 `Bingo/App/`。
 
@@ -11,14 +11,14 @@
 
 | 面 | 版本 | 头文件 / 库 | 说明 |
 | -- | ---- | ----------- | ---- |
-| CRT / ISO C | **1.9.6** | freestanding 七头齐 + 教学子集；`Blocks/version.h`；`libc.a` | **Blocks Hosted**（非 Linux 对标；无 wchar/locale）；与 `CRT_VERSION_*` 对齐 |
-| Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
+| CRT / ISO C | **1.9.6** | freestanding 七头齐 + 教学子集；`Blocks/Version.h`；`libc.a` | **Blocks Hosted**（非 Linux 对标；无 wchar/locale）；与 `CRT_VERSION_*` 对齐 |
+| Syscall 号 | 以头文件为准 | `Abi/SyscallABI.h`、`Blocks/Syscall.h` | **禁止**手写魔法数字；未知号 → **`-ENOSYS`（-38）** |
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |
 | Net | **3.0.0** | `Net.h`；`libNet.a` | **只教** `NetConnect`/`NetBind`（主机序）+ `socket`/`send`/`recv` |
 | FsUtil | **2.0.0** | `VolumePath.h`；`libFsUtil.a` | `FsUtilBlocksPath` / `FsUtilListDir`… |
 | 文件 / 目录 | Blocks | `Blocks/File.h`、`Blocks/Dir.h` | `FileOpen`/`FileRead`…；`DirOpen`/`DirRead`… |
-| 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
+| 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/Thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
 
 **破坏性变更**：对应 `*_ABI_VERSION_MAJOR`（或 `CRT_VERSION_MAJOR`）必须 +1，并改本表 + 速查卡 + 示例。
 

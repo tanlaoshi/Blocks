@@ -6,5 +6,5 @@
 4. 填 `UiActions.c`  
 5. 部署见 [`../../Deploy.md`](../../Deploy.md)
 
-依赖：`uitxt2h`、`User/include/UiLayout.h`、`User/Library/Ui/Layout.c`（树内）。  
+依赖：`uitxt2h`、`User/Include/UiLayout.h`、`User/Library/Ui/Layout.c`（树内）。  
 说明：[`../../UI/拖控件设计器.md`](../../UI/拖控件设计器.md)。

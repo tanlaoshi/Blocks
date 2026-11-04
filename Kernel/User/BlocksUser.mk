@@ -26,8 +26,8 @@ CC        ?= gcc
 LD        ?= ld
 AR        ?= ar
 
-USER_INC  := $(BLOCKS_KERNEL)/User/include
-USER_LD   := $(BLOCKS_KERNEL)/User/user.ld
+USER_INC  := $(BLOCKS_KERNEL)/User/Include
+USER_LD   := $(BLOCKS_KERNEL)/User/user-x86_64.ld
 START_DIR := $(BLOCKS_KERNEL)/User/Library/Blocks/start
 LIBC_DIR  := $(BLOCKS_KERNEL)/User/Library/Libc
 BLOCKS_DIR := $(BLOCKS_KERNEL)/User/Library/Blocks
@@ -35,7 +35,7 @@ BLOCKS_DIR := $(BLOCKS_KERNEL)/User/Library/Blocks
 # c99-1/5：课外模板与内核自有树同锁 ISO C99 + -pedantic
 USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone \
-	-I$(USER_INC) -I$(BLOCKS_KERNEL)/Include -I$(BLOCKS_KERNEL)/Include/Abi -I.
+	-I$(USER_INC) -I$(USER_INC)/Libc -I$(BLOCKS_KERNEL)/Include -I$(BLOCKS_KERNEL)/Include/Abi -I.
 
 # 链入用绝对路径；ensure-crt 调根 Makefile 须用相对目标名
 CRT0_OBJ     := $(START_DIR)/crt0.o

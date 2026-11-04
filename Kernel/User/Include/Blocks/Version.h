@@ -1,5 +1,5 @@
 /*
- * Blocks/version.h — CRT / libc 版本（PR-L1）
+ * Blocks/Version.h — CRT / libc 版本（PR-L1）
  * 与 syscall 号无关；改 ABI 时递增 MINOR，破坏性改 MAJOR。
  */
 #ifndef CRT_VERSION_H

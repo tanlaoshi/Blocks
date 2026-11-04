@@ -1,6 +1,6 @@
 # Library/Libc · ISO C 实现
 
-**只放 ISO C。** 头在 `User/include/`；此处为有 `.c`/`.S` 的实现。
+**只放 ISO C。** 头在 `User/Include/`；此处为有 `.c`/`.S` 的实现。
 
 | 目录 | 头 |
 | --- | --- |

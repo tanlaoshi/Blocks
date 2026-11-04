@@ -1,8 +1,8 @@
 /*
  * sleep.c — sleep / usleep / msleep / clock_ms（全称下划线）
  */
-#include <unistd.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Syscall.h>
 
 unsigned long clock_ms(void) {
     return (unsigned long)blocks_clock_ms();

@@ -4,7 +4,7 @@
 #ifndef BLOCKS_PROCESS_H
 #define BLOCKS_PROCESS_H
 
-#include <sys/types.h>
+#include <System/Types.h>
 
 #ifndef WEXITSTATUS
 #define WEXITSTATUS(s) (((s) >> 8) & 0xff)

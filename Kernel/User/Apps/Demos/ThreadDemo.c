@@ -2,11 +2,11 @@
 /*
  * ThreadDemo.c — thr-5：§0.1 三条故事 + 多线程 fork 失败 / 单线程 fork 回归
  */
-#include <pthread.h>
+#include <Host/PortableThread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <Blocks/thread.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Thread.h>
 
 #define LOOPS 3000
 #define BUF_N 8

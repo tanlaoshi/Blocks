@@ -29,7 +29,7 @@ echo "==> 暂存 $OUT"
 rm -rf "$OUT"
 mkdir -p "$OUT/Include/Abi" "$OUT/Lib" "$OUT/Link" "$OUT/Docs"
 
-cp -a "$ROOT/User/include/." "$OUT/Include/"
+cp -a "$ROOT/User/Include/." "$OUT/Include/"
 cp -f \
     "$ROOT/Include/Abi/SyscallABI.h" \
     "$ROOT/Include/Abi/TaskSnap.h" \
@@ -44,7 +44,7 @@ cp -f "$ROOT/User/Library/Graphics/libGraphics.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Ui/libUi.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/Net/libNet.a" "$OUT/Lib/"
 cp -f "$ROOT/User/Library/VolumePath/libVolumePath.a" "$OUT/Lib/"
-cp -f "$ROOT/User/user.ld" "$OUT/Link/user.ld"
+cp -f "$ROOT/User/user-x86_64.ld" "$OUT/Link/user-x86_64.ld"
 
 cp -f "$SDK_SRC/VERSION" "$SDK_SRC/README.md" "$SDK_SRC/BlocksSdk.mk" \
     "$SDK_SRC/Makefile.template" "$OUT/"

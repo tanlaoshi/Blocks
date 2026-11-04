@@ -1,11 +1,11 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 /*
  * GuiIm — UiIm Label/Check/Button 范例（PR-UI-im-1，≈ GuiDemo）
  */
 #include <stdio.h>
-#include <sched.h>
-#include <Ui.h>
-#include <UiImmediate.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
+#include <Ui/UiImmediate.h>
 
 int main(void) {
     int Wid;

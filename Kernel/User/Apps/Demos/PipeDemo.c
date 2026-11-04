@@ -3,7 +3,7 @@
  * PipeDemo.c — PR-P2：pipe + fork；子写父读
  */
 #include "stdio.h"
-#include "unistd.h"
+#include "Host/UnixStandard.h"
 #include "string.h"
 
 int main(void) {

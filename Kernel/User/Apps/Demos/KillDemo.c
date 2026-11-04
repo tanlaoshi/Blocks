@@ -3,7 +3,7 @@
  * KillDemo.c — PR-P4：fork 后父进程 ProcessKill(SIGTERM)，再 wait 收尸
  */
 #include "stdio.h"
-#include "unistd.h"
+#include "Host/UnixStandard.h"
 #include "signal.h"
 
 int main(void) {

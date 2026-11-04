@@ -1,11 +1,11 @@
 /*
  * PthreadSmoke.c — thr-4：ThreadCreate/Join + 自旋 mutex 冒烟
  */
-#include <pthread.h>
+#include <Host/PortableThread.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 #include <Blocks/Process.h>
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 
 #define LOOPS 2000
 

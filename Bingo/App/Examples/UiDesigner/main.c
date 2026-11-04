@@ -2,10 +2,10 @@
  * UiDesigner 模板 — 布局编译期生成（见 Bingo/App/UI/拖控件设计器.md）
  */
 #include <stdio.h>
-#include <unistd.h>
-#include <Ui.h>
-#include <UiLayout.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Ui/Ui.h>
+#include <Ui/UiLayout.h>
+#include <Blocks/Syscall.h>
 #include "MyAppUi.h"
 
 void UiDispatch(int Wid, int Ev);

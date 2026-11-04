@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 int putchar(int character) {
     unsigned char byte = (unsigned char)character;

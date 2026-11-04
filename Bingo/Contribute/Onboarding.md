@@ -9,7 +9,7 @@
 ## 0. 三句话
 
 1. **活 ★ / 日档**认当日 `Archive/路线图MMDD.md` 文首（协作暗号见路线图「〇」）；月进展写 [`../项目/进展/`](../../Archive/项目/进展/)。  
-2. **用户可见 ABI**只认 [`开课ABI冻结.md`](../App/ABI.md) + `Kernel/User/include/` 宏；syscall 号只认 [`SyscallABI.h`](../../Kernel/Include/Abi/SyscallABI.h)。  
+2. **用户可见 ABI**只认 [`开课ABI冻结.md`](../App/ABI.md) + `Kernel/User/Include/` 宏；syscall 号只认 [`SyscallABI.h`](../../Kernel/Include/Abi/SyscallABI.h)。  
 3. **写新代码**守 [`编码规范.md`](../../Archive/规范/编码规范.md)；驱动/USB 等先查标准（见 `.cursor/rules/standards-first`）。
 
 ---
@@ -19,7 +19,7 @@
 | 你要做的事 | 先读 | 再读 |
 | ---------- | ---- | ---- |
 | 写用户应用 / 作业 | [`应用开发指南.md`](../App/Guide.md) | [`学生速查卡.md`](../Course/CheatSheet.md)、[`API速查.md`](../App/API.md) |
-| 查函数一眼 | [`API速查.md`](../App/API.md) | `Kernel/User/include/` |
+| 查函数一眼 | [`API速查.md`](../App/API.md) | `Kernel/User/Include/` |
 | 印大纲 / 对版本 | [`开课ABI冻结.md`](../App/ABI.md) | 头文件 `*_ABI_VERSION_*` / `CRT_VERSION_*` |
 | 仓库树 / 启动 | [`仓库与启动/Blocks目录结构.md`](../System/Tree.md) | [`仓库与启动/Blocks开机流程.md`](../System/Boot.md) |
 | 写驱动 | [`驱动开发指南.md`](../Driver/Guide.md) | 技术手册、规格书 |
@@ -33,7 +33,7 @@
 
 | 组件 | 版本 | 核对 |
 | ---- | ---- | ---- |
-| CRT | **1.5.0** | `Blocks/version.h` → `CRT_VERSION_STRING` |
+| CRT | **1.5.0** | `Blocks/Version.h` → `CRT_VERSION_STRING` |
 | UI | **3.0.0** | `Ui.h` → `UI_ABI_VERSION_*`；API `Ui*`；`libUi.a` |
 | Graphics | **3.0.0** | `Graphics.h`；`Graphics*`；`libGraphics.a` |
 | Net | **3.0.0** | `Net.h`；API **`Net*`**；`libNet.a` |
@@ -42,13 +42,13 @@
 
 ```bash
 cd "$BLOCKS_ROOT/Kernel"   # 或 source ~/Blocks/env.sh 后用 $KERNEL
-rg -n 'VERSION_STRING|_ABI_VERSION_STRING' User/include/Blocks/version.h \
-  User/include/Ui.h User/include/Graphics.h User/include/Net.h User/include/VolumePath.h
+rg -n 'VERSION_STRING|_ABI_VERSION_STRING' User/Include/Blocks/Version.h \
+  User/Include/Ui.h User/Include/Graphics.h User/Include/Net/Net.h User/Include/VolumePath.h
 ```
 
 ### 2.1 Syscall（易错）
 
-- 权威：`Include/Abi/SyscallABI.h`；用户侧 `#include <Blocks/syscall.h>`。  
+- 权威：`Include/Abi/SyscallABI.h`；用户侧 `#include <Blocks/Syscall.h>`。  
 - GUI 用 **1000+** / `Ui*` / `Graphics*`；**禁止**旧号 18–21。  
 - 未知号 → **`-ENOSYS`（-38）**。
 
@@ -152,7 +152,7 @@ cd "$BLOCKS_ROOT/Kernel" && ./build.sh
 
 ## 8. 改接口时的文档同步清单
 
-1. `User/include/` 宏 / `SyscallABI.h` / `Errno.h`  
+1. `User/Include/` 宏 / `SyscallABI.h` / `Errno.h`  
 2. [`开课ABI冻结.md`](../App/ABI.md)  
 3. [`学生速查卡.md`](../Course/CheatSheet.md)  
 4. [`API速查.md`](../App/API.md)  

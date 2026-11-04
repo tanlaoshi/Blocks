@@ -4,7 +4,7 @@
 #ifndef UI_PRIVATE_H
 #define UI_PRIVATE_H
 
-#include <Ui.h>
+#include <Ui/Ui.h>
 
 #define UI_WIN_MAX 6
 #define UI_CLICK_PACK_BASE 400

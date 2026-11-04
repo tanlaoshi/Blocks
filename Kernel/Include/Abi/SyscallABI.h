@@ -8,7 +8,7 @@
  *      不是 Linux 号表，也不再按「POSIX 子段」叙事
  *
  * 本头纯 #define；内核 Include/Core/Syscall.h 与
- * 用户 User/include/Blocks/syscall.h 共享。
+ * 用户 User/Include/Blocks/Syscall.h 共享。
  */
 #ifndef SYSCALL_ABI_H
 #define SYSCALL_ABI_H
@@ -142,7 +142,7 @@
 /* ============================================================
  * 段 1200-1299：系统信息
  * ============================================================ */
-#define SYS_TASK_SNAP         1200 /* 任务快照（ps 同源；见 Blocks/task.h） */
+#define SYS_TASK_SNAP         1200 /* 任务快照（ps 同源；见 Blocks/Task.h） */
 /* 1201-1299 预留 */
 
 /* ============================================================

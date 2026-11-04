@@ -1,5 +1,5 @@
 /*
- * Blocks/syscall.h — 系统调用号与薄封装（PR-L1；原 blocks_syscall.h）
+ * Blocks/Syscall.h — 系统调用号与薄封装（PR-L1；原 blocks_syscall.h）
  * 与内核 Include/Syscall.h 编号一致；用户程序勿包含内核头。
  * 汇编（User/Apps 下 .S）可 include 本头只取 SYS_*（见 __ASSEMBLER__）。
  */
@@ -11,9 +11,9 @@
 
 #ifndef __ASSEMBLER__
 
-#include <sys/types.h>
-#include <Blocks/version.h>
-#include <sched.h>
+#include <System/Types.h>
+#include <Blocks/Version.h>
+#include <Host/Schedule.h>
 
 long blocks_syscall(long n, long a, long b, long c);
 /* 与 blocks_syscall 同一条指令；第二返回值在 rdx / x1 / a1（wait 退出码） */

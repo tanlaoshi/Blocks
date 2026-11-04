@@ -1,5 +1,5 @@
 /*
- * Graphics.h — 用户态绘图薄库（libGraphics；旧名 ToyGfx/Gfx）
+ * Graphics/Graphics.h — 用户态绘图薄库（libGraphics；旧名 ToyGfx/Gfx）
  *
  * ABI：改签名 / 删符号须递增 GRAPHICS_ABI_VERSION_MAJOR。
  * 1.1.0：+ GraphicsDamageRect（SYS_GRAPHICS_DAMAGE_RECT 像素 blit）。
@@ -9,7 +9,7 @@
 #ifndef USER_GRAPHICS_H
 #define USER_GRAPHICS_H
 
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 #include "GraphicsDamage.h"
 
 #define GRAPHICS_ABI_VERSION_MAJOR 3

@@ -2,8 +2,8 @@
  * pthread.c — thr-4：pthread_* 薄封装 + 自旋 mutex
  */
 #include <errno.h>
-#include <pthread.h>
-#include <Blocks/thread.h>
+#include <Host/PortableThread.h>
+#include <Blocks/Thread.h>
 #include "Atomic.h"
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr,

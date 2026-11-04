@@ -4,9 +4,9 @@
  * 旧 int 0x80 汇编见 CatFile.S
  */
 #include "errno.h"
-#include "fcntl.h"
+#include "Host/FileControl.h"
 #include "stdio.h"
-#include "unistd.h"
+#include "Host/UnixStandard.h"
 
 int main(void) {
     char buf[64];

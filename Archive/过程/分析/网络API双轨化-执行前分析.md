@@ -93,7 +93,7 @@
 ```
 应用课写法:
   #include <sys/socket.h>     /* POSIX connect/bind + sockaddr */
-  #include <Net.h>         /* NetConnect / NetIpv4 / Resolve … */
+  #include <Net/Net.h>         /* NetConnect / NetIpv4 / Resolve … */
 
 sys/socket.h
   类型 sockaddr / sockaddr_in / in_addr

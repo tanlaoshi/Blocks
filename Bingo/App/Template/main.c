@@ -4,7 +4,7 @@
  * 开窗 → 看 Examples/Gui；TCP → 看 Examples/Net。
  */
 #include <stdio.h>
-#include <Blocks/version.h>
+#include <Blocks/Version.h>
 
 int main(void) {
     printf("Bingo/App Template (CRT %s)\n", CRT_VERSION_STRING);

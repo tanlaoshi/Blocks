@@ -1,7 +1,7 @@
 /*
  * Errno.h — 内核与用户态约定的错误码数值（PR-N-dns）
  *
- * 数值对齐常见 Linux/x86；用户头 User/include/errno.h 须保持同号。
+ * 数值对齐常见 Linux/x86；用户头 User/Include/Libc/errno.h 须保持同号。
  * 系统调用失败可返回 -(Errno)，CRT 再置 errno。
  */
 #ifndef ABI_ERRNO_H

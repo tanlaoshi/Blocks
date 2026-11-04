@@ -1,4 +1,4 @@
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 /* user/SysHello.S — Ring 3：用 syscall/sysret 路径 write + exit（对照 HELLO.ELF 的 int 0x80） */
     .intel_syntax noprefix
     .section .text

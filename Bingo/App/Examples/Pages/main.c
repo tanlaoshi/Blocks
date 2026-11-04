@@ -1,10 +1,10 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 /*
  * Pages — 2 页 App（PR-UI-page-1：页面表 + 导航 9000 + Destroy/Create）
  */
 #include <stdio.h>
-#include <sched.h>
-#include <Ui.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
 #include "Route.h"
 
 int main(void) {

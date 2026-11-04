@@ -13,7 +13,7 @@
 #ifndef UI_IM_H
 #define UI_IM_H
 
-#include <Ui.h>
+#include <Ui/Ui.h>
 
 #define UI_IM_BTN_MAX (UI_BUTTON_ID_MAX - UI_BUTTON_ID_MIN + 1)
 #define UI_IM_CHK_MAX (UI_CHECK_ID_MAX + 1)

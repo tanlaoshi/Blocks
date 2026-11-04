@@ -2,7 +2,7 @@
  * Net — TCP 客户端；Guest 需 lwip on；宿主机 nc -l -p 8888
  */
 #include <stdio.h>
-#include <Net.h>
+#include <Net/Net.h>
 #include <Blocks/File.h>
 
 int main(void) {

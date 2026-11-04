@@ -3,8 +3,8 @@
  * ThreadSmoke.c — thr-3：create / join / gettid 冒烟
  */
 #include <stdio.h>
-#include <unistd.h>
-#include <Blocks/thread.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Thread.h>
 
 static volatile int GFlag;
 

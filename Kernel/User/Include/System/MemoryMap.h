@@ -1,10 +1,10 @@
 /*
- * sys/mman.h — MemoryMap / MemoryUnmap（selfhost）
+ * System/MemoryMap.h — MemoryMap / MemoryUnmap（selfhost）
  */
 #ifndef SYS_MMAN_H
 #define SYS_MMAN_H
 
-#include <sys/types.h>
+#include <System/Types.h>
 
 #define PROT_READ  0x1
 #define PROT_WRITE 0x2

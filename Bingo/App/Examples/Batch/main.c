@@ -1,12 +1,12 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 /*
  * Batch — GraphicsBatch 范例（PR-GFX-batch-0）
  * 排空开窗竞态后画一帧；点 Redraw 重画。
  */
 #include <stdio.h>
-#include <sched.h>
-#include <Ui.h>
-#include <GraphicsBatch.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
+#include <Graphics/GraphicsBatch.h>
 
 static void Draw(int Wid) {
     GraphicsBatchBegin(Wid);

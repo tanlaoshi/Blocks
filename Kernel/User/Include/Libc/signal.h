@@ -4,8 +4,8 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include <sys/types.h>
-#include <Blocks/syscall.h>
+#include <System/Types.h>
+#include <Blocks/Syscall.h>
 
 typedef void (*sighandler_t)(int);
 

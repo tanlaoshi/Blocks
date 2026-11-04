@@ -3,10 +3,10 @@
  */
 #include <errno.h>
 #include <string.h>
-#include <Net.h>
-#include <unistd.h>
+#include <Net/Net.h>
+#include <Host/UnixStandard.h>
 #include <Blocks/File.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 /* syscall 返回 -(errno) 时贯通；-1 仍映射 EIO */
 static void NetFail(long R) {

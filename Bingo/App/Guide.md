@@ -62,7 +62,7 @@ readelf -h build/HELLO.ELF
 
 ```c
 #include <stdio.h>
-#include <Blocks/version.h>
+#include <Blocks/Version.h>
 
 int main(void) {
     printf("hello Blocks CRT %s\n", CRT_VERSION_STRING);
@@ -75,8 +75,8 @@ int main(void) {
 ### 进程
 
 ```c
-#include <unistd.h>
-#include <sys/wait.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Process.h>
 #include <stdio.h>
 
 int main(void) {
@@ -108,12 +108,12 @@ FILE *f = fopen("NOTE.TXT", "w");
 卷路径助手（FsUtil **2.0**）：
 
 ```c
-#include <VolumePath.h>
+#include <VolumePath/VolumePath.h>
 char Path[FS_PATH_MAX];
 FsUtilBlocksPath(Path, sizeof Path, "NOTE.TXT");  /* → BLOCKS:NOTE.TXT */
 ```
 
-目录：`<dirent.h>` 的 `OpenDirectory` / `ReadDirectory`，或 `FsUtilListDir`。
+目录：`<Host/DirectoryEntry.h>` 的 `OpenDirectory` / `ReadDirectory`，或 `FsUtilListDir`。
 
 ---
 
@@ -123,9 +123,9 @@ FsUtilBlocksPath(Path, sizeof Path, "NOTE.TXT");  /* → BLOCKS:NOTE.TXT */
 
 ```c
 #include <stdio.h>
-#include <unistd.h>
-#include <sched.h>
-#include <Ui.h>
+#include <Host/UnixStandard.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
 
 int main(void) {
     int Wid = UiCreateWindow("MyGui", 400, 240);
@@ -165,7 +165,7 @@ Guest 先：`lwip on`。宿主机可 `nc -l -p 8888`。
 
 ```c
 #include <stdio.h>
-#include <Net.h>
+#include <Net/Net.h>
 #include <Blocks/File.h>
 
 int main(void) {
@@ -193,11 +193,11 @@ int main(void) {
 ## 六、线程子集（Blocks）
 
 ```c
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 ```
 
 自测（镜像含 Demo 时）：`blocks> exec THREADDEMO.ELF`。  
-任务列表：`#include <Blocks/task.h>` → `blocks_task_snap`。
+任务列表：`#include <Blocks/Task.h>` → `blocks_task_snap`。
 
 ---
 

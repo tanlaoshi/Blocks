@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Syscall.h>
 
 clock_t clock(void) {
     return (clock_t)clock_ms();

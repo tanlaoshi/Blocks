@@ -4,7 +4,7 @@
 #ifndef UI_LAYOUT_H
 #define UI_LAYOUT_H
 
-#include "Ui.h"
+#include "Ui/Ui.h"
 
 typedef enum {
     UI_WIDGET_LABEL,

@@ -1,7 +1,7 @@
 /*
  * UiStyle.c — 用户态样式表实现（PR-UI-style-0）
  */
-#include <UiStyle.h>
+#include <Ui/UiStyle.h>
 
 static UI_STYLE s_Style;
 static int s_Init;

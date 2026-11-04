@@ -5,7 +5,7 @@
 **人手入口在仓库** [`Bingo/App/`](../../../Bingo/App/)（毛坯 / 样例 / 红线 / 部署）。本目录是打进 tar 的工具链与同源 Examples。
 
 - 包号：见根目录 `VERSION`（开课冻结 `1.0.0-course`）
-- CRT：头文件 `Blocks/version.h`（与仓库同步打进本包）
+- CRT：头文件 `Blocks/Version.h`（与仓库同步打进本包）
 
 ## 快速开始
 
@@ -28,7 +28,7 @@ make -C myapp
 | --- | --- |
 | `Include/` | 用户态头（+ `Include/Abi/`：SyscallABI / TaskSnap / …） |
 | `Lib/` | `crt0.o` `syscall.o` `libc.a` 及可选 `libUi` / `libGraphics` / `libNet` / `libVolumePath` |
-| `Link/user.ld` | x86_64 用户链接脚本（入口 `0x40000000`） |
+| `Link/user-x86_64.ld` | x86_64 用户链接脚本（入口 `0x40000000`） |
 | `BlocksSdk.mk` | 共用编译规则（`-std=c99 -pedantic -nostdlib`） |
 | `Examples/` | Hello / Gui / Net |
 

@@ -7,8 +7,8 @@
 #ifndef BLOCKS_NET_H
 #define BLOCKS_NET_H
 
-#include <sys/types.h>
-#include <sys/socket.h> /* AF_INET / socket / send / recv */
+#include <System/Types.h>
+#include <System/Socket.h> /* AF_INET / socket / send / recv */
 
 #define NET_ABI_VERSION_MAJOR 3
 #define NET_ABI_VERSION_MINOR 0

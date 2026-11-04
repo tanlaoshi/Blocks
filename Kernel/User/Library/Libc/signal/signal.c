@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <Blocks/Process.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 sighandler_t signal(int signal_number, sighandler_t handler) {
     long result;

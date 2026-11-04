@@ -5,7 +5,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 
 typedef struct malloc_header {
     size_t capacity;                 /* 对齐后的用户可用字节 */

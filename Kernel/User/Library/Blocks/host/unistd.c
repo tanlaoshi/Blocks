@@ -5,8 +5,8 @@
 #include <signal.h>
 #include <Blocks/File.h>
 #include <Blocks/Process.h>
-#include <sys/mman.h>
-#include <Blocks/syscall.h>
+#include <System/MemoryMap.h>
+#include <Blocks/Syscall.h>
 
 static int errno_from_negated(long result, int fallback) {
     int code = (int)(-result);

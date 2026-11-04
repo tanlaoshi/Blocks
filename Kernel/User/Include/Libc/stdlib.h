@@ -2,7 +2,7 @@
 #define STDLIB_H
 
 #include <stddef.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 void *malloc(size_t n);
 void *calloc(size_t nmemb, size_t size);

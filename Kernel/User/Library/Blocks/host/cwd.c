@@ -3,8 +3,8 @@
  */
 #include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Blocks/Syscall.h>
 
 char *getcwd(char *buffer, size_t capacity) {
     if (!buffer || capacity < 2) {

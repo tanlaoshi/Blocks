@@ -18,7 +18,7 @@
 | `ProcessExec(path, argv, envp)` | 不返回 | `-1` |
 | `exit(status)` | — | ISO C |
 | `ProcessGetPid()` / `ProcessGetPpid()` | Id | |
-| `ThreadYield()` | `0` | `<Blocks/thread.h>` |
+| `ThreadYield()` | `0` | `<Blocks/Thread.h>` |
 | `sleep` / `usleep` | 0 | 按调度节拍 |
 
 ```c
@@ -27,7 +27,7 @@ if (p == 0) { exit(7); }
 int st; ProcessWait(&st); /* WEXITSTATUS(st)==7 */
 ```
 
-## 线程（`<Blocks/thread.h>`）
+## 线程（`<Blocks/Thread.h>`）
 
 | 签名 | 注意 |
 | ---- | ---- |
@@ -45,7 +45,7 @@ int st; ProcessWait(&st); /* WEXITSTATUS(st)==7 */
 | `FileClose` / `FileSeek` | `0` / 新偏 | `-1` |
 | `FILE *fopen(path,mode)` | 非 NULL | ISO C；**`"w"` 不截断**→先 `remove` |
 | `printf` / `snprintf` | 字符数 | 焦点在用户窗时多走**串口** |
-| `FsUtilBlocksPath` 等 | 0 | `<VolumePath.h>`；FsUtil **2.0.0** |
+| `FsUtilBlocksPath` 等 | 0 | `<VolumePath/VolumePath.h>`；FsUtil **2.0.0** |
 
 ```c
 remove("A.TXT");
@@ -69,7 +69,7 @@ fwrite("hi", 1, 2, f); fclose(f);
 
 | 签名 | 注意 |
 | ---- | ---- |
-| `int blocks_task_snap(TASK_SNAP *out)` | `<Blocks/task.h>`；成功 `0`；与 `ps` 同源 |
+| `int blocks_task_snap(TASK_SNAP *out)` | `<Blocks/Task.h>`；成功 `0`；与 `ps` 同源 |
 | 演示 | `exec TASKMGR.ELF`；见课堂作业「如何写一个任务管理器」 |
 
 ---
@@ -78,10 +78,10 @@ fwrite("hi", 1, 2, f); fclose(f);
 
 | 签名 | 注意 |
 | ---- | ---- |
-| `UiCreateWindow(title,w,h)` | 成功 `wid≥0`；`<Ui.h>` |
+| `UiCreateWindow(title,w,h)` | 成功 `wid≥0`；`<Ui/Ui.h>` |
 | `UiSetLabel` / `UiAddButton(wid,id,label)` | `id` ∈ **0..3** |
 | `UiPoll(wid)` | 见下表；非阻塞 |
-| `GraphicsDamageText` / `GraphicsDamageRect` | `<Graphics.h>`；Rect 有尺寸上限 |
+| `GraphicsDamageText` / `GraphicsDamageRect` | `<Graphics/Graphics.h>`；Rect 有尺寸上限 |
 
 | `UiPoll` | 含义 |
 | -------- | ---- |
@@ -109,7 +109,7 @@ for (;;) {
 
 | 签名 | 注意 |
 | ---- | ---- |
-| `socket` + `NetConnect`/`NetBind` | **主机序**；`<Net.h>`；不教 `sockaddr` |
+| `socket` + `NetConnect`/`NetBind` | **主机序**；`<Net/Net.h>`；不教 `sockaddr` |
 | `NetResolve(name, &ip)` | 点分 / `localhost` / 域名 |
 | `send` / `recv` | 字节数；失败负 / `-1` |
 

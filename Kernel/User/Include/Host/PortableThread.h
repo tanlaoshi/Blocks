@@ -1,12 +1,12 @@
 /*
- * pthread.h — 教学自旋 mutex + 薄封装（selfhost：线程主路径用 Thread*）
+ * Host/PortableThread.h — 教学自旋 mutex + 薄封装（selfhost：线程主路径用 Thread*）
  * create/join/exit 转 Thread*；非 Linux ABI；勿链宿主 libpthread。
  */
 #ifndef PTHREAD_H
 #define PTHREAD_H
 
 #include <stddef.h>
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 
 typedef long pthread_t;
 typedef struct {

@@ -13,7 +13,7 @@
 | 层 | 做什么 | 本范例落点 |
 | -- | ------ | ---------- |
 | **产品** | 用户可见的窗口程序 | 标题「任务管理器」/ `Task Manager`；按钮 刷新 / 下一项 / 结束 |
-| **数据** | 用户态读不到内核 `gTasks[]`，必须 syscall | `SYS_TASK_SNAP`（1200）+ `<Blocks/task.h>` |
+| **数据** | 用户态读不到内核 `gTasks[]`，必须 syscall | `SYS_TASK_SNAP`（1200）+ `<Blocks/Task.h>` |
 | **UI** | 链 `libUi.a`（再链图形库） | `UiCreateWindow` / `UiSetLabel` / `UiAddButton` / `UiPoll` |
 | **构建** | Makefile 出 ELF，`build.sh` 同步 RootFs | `Build/User/taskmgr.elf` → `TASKMGR.ELF` + `Apps/taskmgr/TASKMGR.ELF` |
 | **发现** | 开始菜单 Apps / `exec` / 商店 catalog | catalog：`taskmgr\|…\|Task Manager` |
@@ -49,7 +49,7 @@ Shell 里敲 `ps`（别名；正统名 `list tasks`）——实现：`Services/S
 用户态**禁止** `#include` 内核 `Scheduler.h`。要把 `ps` 数据交给 App，只能：
 
 1. 在 **`Include/Abi/SyscallABI.h`** 占号（本范例 **`SYS_TASK_SNAP = 1200`**）。  
-2. **稳定布局**：`Include/Abi/TaskSnap.h`（内核与用户共用 `TASK_SNAP` / `TASK_ENTRY`）；用户包装头 `User/include/Blocks/task.h`（`blocks_task_snap()`）。  
+2. **稳定布局**：`Include/Abi/TaskSnap.h`（内核与用户共用 `TASK_SNAP` / `TASK_ENTRY`）；用户包装头 `User/Include/Blocks/Task.h`（`blocks_task_snap()`）。  
 3. 内核实现：`SysTaskSnap`（`Core/Syscall/Process.c`），在 `SyscallDispatch`（`Core/Syscall/Syscall.c`）里分发。  
 4. **同步文档**：开课 ABI / API 速查 / 本指南（改字段须升 `TASK_SNAP_VER`）。
 
@@ -70,7 +70,7 @@ Pid / Parent / SelfPid：与 Shell ps、kill 相同（槽位+1）
 ### 2.2 调用形态
 
 ```c
-#include <Blocks/task.h>
+#include <Blocks/Task.h>
 
 TASK_SNAP Snap;
 if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
@@ -87,11 +87,11 @@ if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
 
 | 需求 | 库 | 头 |
 | ---- | -- | -- |
-| 窗口 / 按钮 / 标签 / 事件 | **libUi** | `<Ui.h>` |
+| 窗口 / 按钮 / 标签 / 事件 | **libUi** | `<Ui/Ui.h>` |
 | （Ui 依赖）图形 | libGraphics（或现网等价 `.a`） | 一般不必直接 include |
 | printf / snprintf | CRT | `<stdio.h>` |
-| yield / kill | CRT | `<sched.h>` `<signal.h>` |
-| 任务快照 | （无 .a，仅头+syscall） | `<Blocks/task.h>` |
+| yield / kill | CRT | `<Host/Schedule.h>` `<signal.h>` |
+| 任务快照 | （无 .a，仅头+syscall） | `<Blocks/Task.h>` |
 
 链接：`taskmgr.o` → `libUi.a` → 图形库 → CRT（见 `Makefile` 中 `USER_TASKMGR_*`）。
 
@@ -168,7 +168,7 @@ blocks> exec TASKMGR.ELF
 | ---- | ------ |
 | `User/Apps/TaskMgr.c` + 内核 `Makefile` | **仓库内示范 / 开课镜像自带** |
 | `Bingo/App/Template` · `Examples` | 学生课外独立工程（复制开干） |
-| `Tools/build-sdk.sh` → `Build/BlocksSDK` | 离树 SDK；头里应有 `Blocks/task.h` / `TaskSnap.h` |
+| `Tools/build-sdk.sh` → `Build/BlocksSDK` | 离树 SDK；头里应有 `Blocks/Task.h` / `TaskSnap.h` |
 
 ---
 
@@ -189,7 +189,7 @@ blocks> exec TASKMGR.ELF
 | 角色 | 路径 |
 | ---- | ---- |
 | App | `User/Apps/TaskMgr.c` |
-| 用户包装头 | `User/include/Blocks/task.h` |
+| 用户包装头 | `User/Include/Blocks/Task.h` |
 | 布局（核/用户共用） | `Include/Abi/TaskSnap.h` |
 | 号段 | `Include/Abi/SyscallABI.h` |
 | 内核实现 | `Core/Syscall/Process.c` → `SysTaskSnap` |

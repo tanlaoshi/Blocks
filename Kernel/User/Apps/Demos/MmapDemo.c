@@ -2,11 +2,11 @@
 /*
  * MmapDemo.c — PR-U-mmap 匿名 + PR-U-mmap2 文件私有映射
  */
-#include "fcntl.h"
+#include "Host/FileControl.h"
 #include "stdio.h"
 #include "string.h"
-#include "unistd.h"
-#include <sys/mman.h>
+#include "Host/UnixStandard.h"
+#include <System/MemoryMap.h>
 
 #define ANON_LEN (8 * 1024)
 

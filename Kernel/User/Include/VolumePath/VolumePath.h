@@ -2,14 +2,14 @@
  * VolumePath.h — 用户态卷路径 / 列目录（libVolumePath）
  *
  * 底层仍是 F4：OpenDirectory / ReadDirectory / FileStat。
- * 不改变 syscall 号；不替代 <dirent.h> / open。
+ * 不改变 syscall 号；不替代 <Host/DirectoryEntry.h> / open。
  *
  * 破坏性变更升 FS_UTIL_ABI_VERSION_MAJOR。
  */
 #ifndef FS_UTIL_H
 #define FS_UTIL_H
 
-#include <dirent.h>
+#include <Host/DirectoryEntry.h>
 
 #define FS_UTIL_ABI_VERSION_MAJOR 2
 #define FS_UTIL_ABI_VERSION_MINOR 0

@@ -3,8 +3,8 @@
  * 收集一帧命令，End 时统一回放至既有 Graphics*（64×64 分块由 Graphics 自带）。
  * 不改 Graphics.h ABI；≤300 行。
  */
-#include <GraphicsBatch.h>
-#include <Graphics.h>
+#include <Graphics/GraphicsBatch.h>
+#include <Graphics/Graphics.h>
 
 static GRAPHICS_BATCH_CMD s_Cmd[GRAPHICS_BATCH_CMD_MAX];
 static int s_N;

@@ -3,9 +3,9 @@
  *
  * 从 Ui.c 原样搬家；不改语义。
  */
-#include <Ui.h>
-#include <Graphics.h>
-#include <UiStyle.h>
+#include <Ui/Ui.h>
+#include <Graphics/Graphics.h>
+#include <Ui/UiStyle.h>
 
 #include "Private.h"
 

@@ -1,12 +1,12 @@
 /*
- * Blocks/task.h — 任务快照（SYS_TASK_SNAP；与 Shell `ps` 同源字段）
+ * Blocks/Task.h — 任务快照（SYS_TASK_SNAP；与 Shell `ps` 同源字段）
  *
  * 布局钉死：改字段须升 TASK_SNAP_VER，并改开课 ABI / 应用开发指南。
  */
 #ifndef BLOCKS_TASK_H
 #define BLOCKS_TASK_H
 
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 #include "TaskSnap.h"
 
 /* 成功 0（Out 已填）；失败 -1 */

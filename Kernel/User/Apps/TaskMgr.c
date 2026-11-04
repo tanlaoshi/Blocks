@@ -1,4 +1,4 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 #include <Blocks/Process.h>
 /*
  * 任务管理器。文字跟系统语言：读 BLOCKS.DB 的 lang=（缺省汉语，与内核一致）。
@@ -6,11 +6,11 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sched.h>
+#include <Host/UnixStandard.h>
+#include <Host/Schedule.h>
 #include <signal.h>
-#include <Ui.h>
-#include <Blocks/task.h>
+#include <Ui/Ui.h>
+#include <Blocks/Task.h>
 
 static TASK_SNAP gSnap;
 static int gIndex;

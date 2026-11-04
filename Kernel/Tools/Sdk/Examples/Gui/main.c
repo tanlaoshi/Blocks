@@ -1,12 +1,12 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 /*
  * BlocksSDK Examples/Gui — 链 libUi + libGraphics
  */
 #include <stdio.h>
-#include <unistd.h>
-#include <sched.h>
-#include <Ui.h>
-#include <Blocks/syscall.h>
+#include <Host/UnixStandard.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
+#include <Blocks/Syscall.h>
 
 int main(void) {
     int Wid;

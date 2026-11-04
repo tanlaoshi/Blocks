@@ -1,6 +1,6 @@
 # Include/ — 内核公开契约头（按域分子目录）
 
-> **用户态头不在这里**，在 [`User/include/`](../User/include/)。应用 / CRT / SDK 只碰 `User/include/`；跨界契约仅 `Abi/SyscallABI.h`（由 `Blocks/syscall.h` 与 `Tools/build-sdk.sh` 引入）。
+> **用户态头不在这里**，在 [`User/Include/`](../User/Include/)。应用 / CRT / SDK 只碰 `User/Include/`；跨界契约仅 `Abi/SyscallABI.h`（由 `Blocks/Syscall.h` 与 `Tools/build-sdk.sh` 引入）。
 
 ## 分层
 

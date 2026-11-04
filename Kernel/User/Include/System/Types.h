@@ -1,5 +1,5 @@
 /*
- * sys/types.h — 用户态基础类型（PR-L1 + 刀 C socklen）
+ * System/Types.h — 用户态基础类型（PR-L1 + 刀 C socklen）
  */
 #ifndef SYS_TYPES_H
 #define SYS_TYPES_H

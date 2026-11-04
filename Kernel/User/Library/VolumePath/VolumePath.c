@@ -2,8 +2,8 @@
  * VolumePath.c — 用户态卷路径 / 列目录
  */
 #include <errno.h>
-#include <VolumePath.h>
-#include <dirent.h>
+#include <VolumePath/VolumePath.h>
+#include <Host/DirectoryEntry.h>
 
 static unsigned CopyCap(char *Dst, unsigned Cap, const char *Src) {
     unsigned I;

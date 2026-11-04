@@ -3,7 +3,7 @@
  */
 #include <errno.h>
 #include <stdio.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 int remove(const char *path) {
     long result;

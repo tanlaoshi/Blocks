@@ -2,10 +2,10 @@
  * stat.c — FileStat / fstat 薄封装（PR-U-stat）
  * stat → FileStat（SYS_FILE_STAT）；fstat → SYS_FILE_FSTAT（451）。
  */
-#include <sys/stat.h>
-#include <dirent.h>
+#include <System/FileStatus.h>
+#include <Host/DirectoryEntry.h>
 #include <errno.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 static void fill_from_fs_stat(struct stat *st, const FS_FILE_STAT *T) {
     st->st_mode = (T->Attr & FS_ATTR_DIR) ? S_IFDIR : S_IFREG;

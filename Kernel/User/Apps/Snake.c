@@ -2,9 +2,9 @@
  * Snake.c — 教学贪吃蛇（方向键或 WASD；节拍用 msleep）
  * Shell：exec SNAKE.ELF
  */
-#include <Ui.h>
+#include <Ui/Ui.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 
 #define COLS 16
 #define ROWS 12

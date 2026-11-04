@@ -5,8 +5,8 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <Net.h>
+#include <Host/UnixStandard.h>
+#include <Net/Net.h>
 
 int main(void) {
     int Fd;

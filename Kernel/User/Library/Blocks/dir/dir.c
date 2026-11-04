@@ -4,7 +4,7 @@
 #include <Blocks/Dir.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 
 struct FsDirectory {
     int file_descriptor;

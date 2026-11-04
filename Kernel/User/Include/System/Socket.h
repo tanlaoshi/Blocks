@@ -1,12 +1,12 @@
 /*
- * sys/socket.h — 套接字常量与 socket/send/recv…（selfhost：无 sockaddr 轨）
+ * System/Socket.h — 套接字常量与 socket/send/recv…（selfhost：无 sockaddr 轨）
  *
- * connect/bind 课设路径已废；用 <Net.h> 的 NetConnect/NetBind（主机序）。
+ * connect/bind 课设路径已废；用 <Net/Net.h> 的 NetConnect/NetBind（主机序）。
  */
 #ifndef SYS_SOCKET_H
 #define SYS_SOCKET_H
 
-#include <sys/types.h>
+#include <System/Types.h>
 #include <stddef.h>
 
 #define AF_INET      2

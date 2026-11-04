@@ -10,13 +10,13 @@
 | 用途 | 头文件 | 库 |
 | ---- | ------ | --- |
 | ISO C | `<stdio.h>` `<stdlib.h>` `<string.h>` … | `libc.a` |
-| Syscall | `<Blocks/syscall.h>` | （内联） |
+| Syscall | `<Blocks/Syscall.h>` | （内联） |
 | 文件 / 目录 | `<Blocks/File.h>` `<Blocks/Dir.h>` | CRT |
 | 进程 | `<Blocks/Process.h>` | CRT |
-| 线程 | `<Blocks/thread.h>` | CRT |
-| UI / Graphics | `<Ui.h>` `<Graphics.h>` | `libUi` / `libGraphics` |
-| Net | `<Net.h>` | `libNet.a` |
-| 卷路径 | `<VolumePath.h>` | `libFsUtil.a` |
+| 线程 | `<Blocks/Thread.h>` | CRT |
+| UI / Graphics | `<Ui/Ui.h>` `<Graphics/Graphics.h>` | `libUi` / `libGraphics` |
+| Net | `<Net/Net.h>` | `libNet.a` |
+| 卷路径 | `<VolumePath/VolumePath.h>` | `libFsUtil.a` |
 
 ---
 
@@ -39,7 +39,7 @@
 | --- | ---- |
 | `FileOpen` / `FileRead` / `FileWrite` / `FileClose` / `FileSeek` | 路径 `BLOCKS:NAME` 或相对名 |
 | `DirOpen` / `DirRead` / `DirClose` / `FileStat` | 目录；`FS_DIR` / `FS_DIR_ENT` |
-| `MemoryMap` / `MemoryUnmap` | `<sys/mman.h>`；匿名或文件私有映射 |
+| `MemoryMap` / `MemoryUnmap` | `<System/MemoryMap.h>`；匿名或文件私有映射 |
 | `FsUtilJoin` / `FsUtilListDir` / `FsUtilBlocksPath` | `VolumePath.h` |
 
 ---

@@ -4,8 +4,8 @@
  * 人话：给 .uitxt 生成的控件表装窗；和 Ui 同属 User/Library。
  * 只由 Pkg EXTRA_OBJS 链进应用，不进 Kernel.elf。
  */
-#include "UiLayout.h"
-#include "Blocks/syscall.h"
+#include "Ui/UiLayout.h"
+#include "Blocks/Syscall.h"
 
 int UiScreenWidth(void) {
     int W = 0;

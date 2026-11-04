@@ -1,8 +1,8 @@
 /*
  * Graphics.c — libGraphics
  */
-#include <Graphics.h>
-#include <Blocks/syscall.h>
+#include <Graphics/Graphics.h>
+#include <Blocks/Syscall.h>
 
 #define GRAPHICS_TILE 64u
 

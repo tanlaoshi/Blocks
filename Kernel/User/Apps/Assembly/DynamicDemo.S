@@ -1,4 +1,4 @@
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 /* user/DynDemo.S — 动态链接演示：调用 LIBTOY.SO 中的 blocks_hello */
     .intel_syntax noprefix
     .section .text

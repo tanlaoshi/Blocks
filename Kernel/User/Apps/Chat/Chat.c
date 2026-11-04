@@ -1,15 +1,15 @@
 /* Chat.c — GUI 半双工聊天（壳式 chat>，无 TextField/按钮）
  * 客户区只用 DamageText（系统字），交互仿 Shell 行编辑。
  */
-#include "Net.h"
+#include "Net/Net.h"
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <Host/UnixStandard.h>
 #include <errno.h>
-#include <sys/socket.h>
-#include <Net.h>
-#include <Ui.h>
-#include <Blocks/thread.h>
+#include <System/Socket.h>
+#include <Net/Net.h>
+#include <Ui/Ui.h>
+#include <Blocks/Thread.h>
 
 #define CHAT_LOG_MAX  4
 #define CHAT_LOG_COLS 28

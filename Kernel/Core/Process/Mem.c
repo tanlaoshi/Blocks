@@ -89,7 +89,7 @@ UINT64 ProcessBrk(UINT64 NewBrk) {
     return NewBrk;
 }
 
-/* PROT_* / MAP_* 与 User/include/sys/mman.h 一致（教学子集） */
+/* PROT_* / MAP_* 与 User/Include/System/MemoryMap.h 一致（教学子集） */
 #define TOY_PROT_READ  0x1
 #define TOY_PROT_WRITE 0x2
 #define TOY_MAP_SHARED    0x01

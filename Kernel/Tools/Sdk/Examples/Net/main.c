@@ -2,8 +2,8 @@
  * BlocksSDK Examples/Net — 链 libNet（Guest 需 lwip on）
  */
 #include <stdio.h>
-#include <unistd.h>
-#include <Net.h>
+#include <Host/UnixStandard.h>
+#include <Net/Net.h>
 
 int main(void) {
     int Fd = socket(AF_INET, SOCK_STREAM, 0);

@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <Blocks/File.h>
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 #include <errno.h>
-#include <dirent.h>
+#include <Host/DirectoryEntry.h>
 #include "stdio_private.h"
 
 int stdio_flush_write(FILE *stream) {

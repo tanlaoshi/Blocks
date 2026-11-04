@@ -22,13 +22,13 @@ CC        ?= gcc
 LD        ?= ld
 
 USER_INC  := $(BLOCKS_SDK)/Include
-USER_LD   := $(BLOCKS_SDK)/Link/user.ld
+USER_LD   := $(BLOCKS_SDK)/Link/user-x86_64.ld
 LIB_DIR   := $(BLOCKS_SDK)/Lib
 
 # 与内核自有树同锁 ISO C99 + pedantic；勿链宿主 libc / -pie
 USER_CFLAGS ?= -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
 	-fno-builtin -fno-pie -fno-pic -m64 -mno-red-zone \
-	-I$(USER_INC) -I$(USER_INC)/Abi -I.
+	-I$(USER_INC) -I$(USER_INC)/Libc -I$(USER_INC)/Abi -I.
 
 CRT0_OBJ     := $(LIB_DIR)/crt0.o
 SYSCALL_OBJ  := $(LIB_DIR)/syscall.o

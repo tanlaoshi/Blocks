@@ -1,4 +1,4 @@
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 /* user/Fork.S — fork + 阻塞 wait：父打印 P，子打印 C，父 wait 后再 done */
     .intel_syntax noprefix
     .section .text

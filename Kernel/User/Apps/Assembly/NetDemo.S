@@ -1,4 +1,4 @@
-#include <Blocks/syscall.h>
+#include <Blocks/Syscall.h>
 /* user/NetDemo.S — socket/connect/write/read/close via syscalls (needs LWIP=1) */
     .intel_syntax noprefix
     .section .text

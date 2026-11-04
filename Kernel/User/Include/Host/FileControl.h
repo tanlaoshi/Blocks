@@ -1,5 +1,5 @@
 /*
- * fcntl.h — 打开标志（selfhost：用 FileOpen，无 open()）
+ * Host/FileControl.h — 打开标志（selfhost：用 FileOpen，无 open()）
  */
 #ifndef FCNTL_H
 #define FCNTL_H

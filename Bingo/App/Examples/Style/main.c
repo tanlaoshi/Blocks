@@ -1,12 +1,12 @@
-#include <Blocks/thread.h>
+#include <Blocks/Thread.h>
 /*
  * Style — UiStyle 范例（PR-UI-style-0）
  * 切换样式表，复选框颜色跟着变。
  */
 #include <stdio.h>
-#include <sched.h>
-#include <Ui.h>
-#include <UiStyle.h>
+#include <Host/Schedule.h>
+#include <Ui/Ui.h>
+#include <Ui/UiStyle.h>
 
 static int On;
 static int UseDark;

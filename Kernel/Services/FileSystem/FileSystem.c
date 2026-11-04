@@ -441,6 +441,14 @@ int FileSystemInitialize(void) {
     Svc.WriteFileAt = FileSystemWriteFileAt;
     VfsServiceOpsRegister(&Svc);
     LogFs("FS: Ready\n");
+    /*
+     * ksend-rollback：Duo BootStub 每启递增 BLOCKS:boot.try；超限改载 .bak。
+     * 能走到 FS Ready 即视为试跑成功，清零计数（缺文件/他板无 stub 无害）。
+     */
+    {
+        UINT8 Zero = 0;
+        (void)FileSystemWriteFile("B:boot.try", &Zero, 1);
+    }
     if (!AnyVolumeHasBlocksId()) {
         LogFs("FS: WARN No BLOCKS.ID On Any Volume\n");
     }

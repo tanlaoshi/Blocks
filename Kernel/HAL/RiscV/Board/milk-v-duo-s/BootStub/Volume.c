@@ -1,15 +1,11 @@
 /*
- * Volume.c — GPT 扫 FAT，认 BLOCKS.ID，读 Kernel.elf 到高地址缓冲
+ * Volume.c — GPT 扫 FAT，认 BLOCKS.ID（装核见 SelectKernelImage.c）
  */
 #include "Block.h"
 #include "BoardConfig.h"
 #include "BootTypes.h"
 #include "Fat.h"
 #include "Gpt.h"
-
-/* 真核装载前暂存 ELF；躲开 stub @0x83000000 */
-#define BOOT_STUB_ELF_BUFFER 0x84000000ULL
-#define BOOT_STUB_ELF_BUFFER_MAX (12u * 1024u * 1024u)
 
 extern void BootStubSerialWrite(const char *Text);
 
@@ -43,31 +39,4 @@ int BootStubFindBlocksVolumeStart(UINT32 *OutStartLogicalBlockAddress) {
     }
     BootStubSerialWrite("stub: BLOCKS.ID not found\n");
     return -1;
-}
-
-int BootStubReadKernelExecutable(void **OutImage, UINTN *OutSize) {
-    UINT32 StartLogicalBlockAddress;
-    UINTN Got = 0;
-    int Result;
-
-    if (OutImage == 0 || OutSize == 0) {
-        return -1;
-    }
-    if (BootStubFindBlocksVolumeStart(&StartLogicalBlockAddress) != 0) {
-        return -1;
-    }
-    if (FatInitialize(StartLogicalBlockAddress) != FAT_OK) {
-        BootStubSerialWrite("stub: FatInitialize fail\n");
-        return -1;
-    }
-    Result = FatReadFile("Kernel.elf", (void *)(UINTN)BOOT_STUB_ELF_BUFFER,
-                         BOOT_STUB_ELF_BUFFER_MAX, &Got);
-    if (Result != FAT_OK || Got < 64u) {
-        BootStubSerialWrite("stub: Kernel.elf read fail\n");
-        return -1;
-    }
-    *OutImage = (void *)(UINTN)BOOT_STUB_ELF_BUFFER;
-    *OutSize = Got;
-    BootStubSerialWrite("stub: Kernel.elf loaded\n");
-    return 0;
 }

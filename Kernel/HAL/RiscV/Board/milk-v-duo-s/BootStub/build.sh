@@ -56,6 +56,7 @@ STUB_SRCS=(
   "$HERE/Serial.c"
   "$HERE/HostBootstrap.c"
   "$HERE/Volume.c"
+  "$HERE/SelectKernelImage.c"
   "$HERE/ExecutableAndLinkableFormat.c"
 )
 SDHCI_SRCS=(
@@ -73,6 +74,9 @@ LIB_SRCS=(
   "$KERNEL/Library/Fat/Fat.c"
   "$KERNEL/Library/Fat/File.c"
   "$KERNEL/Library/Fat/FileRead.c"
+  "$KERNEL/Library/Fat/FileWrite.c"
+  "$KERNEL/Library/Fat/FileWriteExist.c"
+  "$KERNEL/Library/Fat/FileWriteNew.c"
   "$KERNEL/Library/Fat/InputOutput.c"
   "$KERNEL/Library/Fat/Path.c"
   "$KERNEL/Library/Fat/PathName.c"

@@ -349,6 +349,11 @@ int AicWifiRfCalibrate(SDHCI_HOST *Host);
 UINT32 AicCoexBuild(UINT8 *Buffer);
 void AicDumpBytes(const UINT8 *Data, UINT32 Length);
 void AicFwFail(const char *Stage, UINT32 Sent, const char *What);
+/* WifiFw 拆：检查 / 真写 / 文件 stat / 芯片版本（入口仍在 WifiFw.c） */
+int WifiFirmwareCheck(SDHCI_HOST *Host);
+int WifiFirmwareWrite(SDHCI_HOST *Host);
+int WifiFirmwareStatCheck(void);
+int WifiFirmwareChipRevision(void);
 void AicFwWaitBootMessage(SDHCI_HOST *Host);
 void AicMarkR5(UINT32 R5);
 void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks);

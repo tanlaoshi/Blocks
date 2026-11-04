@@ -40,16 +40,26 @@ static int BootStubBlockRead(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Co
 }
 
 /*
- * 只读装核：不写盘。返回 0 = 失败（与 Read/Block 约定一致：非 0 才成功），
- * 避免 FAT 把「空写成功」当成已落盘。
+ * ksend-rollback：须能写 boot.try（试跑计数）。
+ * 约定与 Read 相同：非 0 = 成功。
  */
 static int BootStubBlockWrite(UINT32 Drive, UINT32 LogicalBlockAddress, UINT32 Count,
                               const void *Buffer) {
+    const UINT8 *Pointer = (const UINT8 *)Buffer;
+    UINT32 Index;
+
     (void)Drive;
-    (void)LogicalBlockAddress;
-    (void)Count;
-    (void)Buffer;
-    return 0;
+    if (!gBootStubHosts[0].Ready || Buffer == 0 || Count == 0) {
+        return 0;
+    }
+    for (Index = 0; Index < Count; Index++) {
+        if (SdhciWriteOneBlock(&gBootStubHosts[0], LogicalBlockAddress + Index,
+                               Pointer + (UINTN)Index * 512u) != 0) {
+            (void)SdhciSoftwareReset(&gBootStubHosts[0], SDHCI_RESET_CMD | SDHCI_RESET_DATA);
+            return 0;
+        }
+    }
+    return 1;
 }
 
 static const BLOCK_BACKEND gBootStubBlockBackend = {

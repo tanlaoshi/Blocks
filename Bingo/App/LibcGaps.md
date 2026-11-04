@@ -2,7 +2,7 @@
 
 > **方言**：实现 **C99**（`-std=c99 -pedantic`）。  
 > **目标**：**Blocks Hosted**（非 Linux 对标）。不做 `wchar`/`locale`/`complex`。  
-> **CRT**：**1.9.4**。活档 [`libc加厚.md`](libc加厚.md)。
+> **CRT**：**1.9.5**。活档 [`libc加厚.md`](libc加厚.md)。
 
 ## Freestanding 七头
 

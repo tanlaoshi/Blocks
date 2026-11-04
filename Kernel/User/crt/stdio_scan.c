@@ -3,98 +3,127 @@
  */
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "stdio_private.h"
 
-int BlocksVsscanf(const char *String, const char *Format, va_list Arguments);
+typedef struct {
+    const char *Cursor;
+    const char *Begin;
+} ScanStringContext;
+
+static int ScanStringGetCharacter(void *Context) {
+    ScanStringContext *State = (ScanStringContext *)Context;
+
+    if (!State || !State->Cursor || !*State->Cursor) {
+        return EOF;
+    }
+    return (unsigned char)*State->Cursor++;
+}
+
+static void ScanStringUngetCharacter(void *Context, int Character) {
+    ScanStringContext *State = (ScanStringContext *)Context;
+
+    (void)Character;
+    if (!State || !State->Cursor || State->Cursor <= State->Begin) {
+        return;
+    }
+    State->Cursor--;
+}
+
+static int ScanFileGetCharacter(void *Context) {
+    return fgetc((FILE *)Context);
+}
+
+static void ScanFileUngetCharacter(void *Context, int Character) {
+    if (Character != EOF) {
+        (void)ungetc(Character, (FILE *)Context);
+    }
+}
 
 int fgetc(FILE *fp) {
-    unsigned char Ch;
-    size_t N;
+    unsigned char Byte;
+    size_t Got;
 
     if (!fp) {
         return EOF;
     }
-    N = fread(&Ch, 1, 1, fp);
-    if (N != 1) {
+    Got = fread(&Byte, 1, 1, fp);
+    if (Got != 1) {
         return EOF;
     }
-    return (int)Ch;
+    return (int)Byte;
 }
 
 int getchar(void) {
     return fgetc(stdin);
 }
 
-char *fgets(char *s, int size, FILE *fp) {
-    int I;
-    int C;
+char *fgets(char *Buffer, int Size, FILE *File) {
+    int Index;
+    int Character;
 
-    if (!s || size <= 0 || !fp) {
+    if (!Buffer || Size <= 0 || !File) {
         return 0;
     }
-    for (I = 0; I < size - 1; I++) {
-        C = fgetc(fp);
-        if (C == EOF) {
-            if (I == 0) {
+    for (Index = 0; Index < Size - 1; Index++) {
+        Character = fgetc(File);
+        if (Character == EOF) {
+            if (Index == 0) {
                 return 0;
             }
             break;
         }
-        s[I] = (char)C;
-        if (C == '\n') {
-            I++;
+        Buffer[Index] = (char)Character;
+        if (Character == '\n') {
+            Index++;
             break;
         }
     }
-    s[I] = 0;
-    return s;
+    Buffer[Index] = 0;
+    return Buffer;
 }
 
-int sscanf(const char *str, const char *fmt, ...) {
+int sscanf(const char *String, const char *Format, ...) {
     va_list Arguments;
-    int Count;
+    ScanStringContext State;
+    int Assigned;
 
-    if (!str || !fmt) {
+    if (!String || !Format) {
         return EOF;
     }
-    va_start(Arguments, fmt);
-    Count = BlocksVsscanf(str, fmt, Arguments);
+    State.Begin = String;
+    State.Cursor = String;
+    va_start(Arguments, Format);
+    Assigned = BlocksScanFormat(ScanStringGetCharacter, ScanStringUngetCharacter,
+                                &State, Format, Arguments);
     va_end(Arguments);
-    return Count;
+    return Assigned;
 }
 
-int scanf(const char *fmt, ...) {
-    char Line[256];
+int scanf(const char *Format, ...) {
     va_list Arguments;
-    int Count;
+    int Assigned;
 
-    if (!fmt) {
+    if (!Format) {
         return EOF;
     }
-    if (!fgets(Line, (int)sizeof(Line), stdin)) {
-        return EOF;
-    }
-    va_start(Arguments, fmt);
-    Count = BlocksVsscanf(Line, fmt, Arguments);
+    va_start(Arguments, Format);
+    Assigned = BlocksScanFormat(ScanFileGetCharacter, ScanFileUngetCharacter,
+                                stdin, Format, Arguments);
     va_end(Arguments);
-    return Count;
+    return Assigned;
 }
 
-int fscanf(FILE *fp, const char *fmt, ...) {
-    char Line[256];
+int fscanf(FILE *File, const char *Format, ...) {
     va_list Arguments;
-    int Count;
+    int Assigned;
 
-    if (!fp || !fmt) {
+    if (!File || !Format) {
         return EOF;
     }
-    if (!fgets(Line, (int)sizeof(Line), fp)) {
-        return EOF;
-    }
-    va_start(Arguments, fmt);
-    Count = BlocksVsscanf(Line, fmt, Arguments);
+    va_start(Arguments, Format);
+    Assigned = BlocksScanFormat(ScanFileGetCharacter, ScanFileUngetCharacter, File,
+                                Format, Arguments);
     va_end(Arguments);
-    return Count;
+    return Assigned;
 }

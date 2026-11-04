@@ -1,86 +1,92 @@
 /*
- * math.c — 教学软浮点子集（libc-math）
+ * math.c — fabs / floor / ceil / sqrt / pow / fmod（教学软浮点）
+ *
+ * floor/ceil/fmod 不用 long 截断（大数与 LONG_MIN 边界会翻车）。
  */
 #include <math.h>
 
-double fabs(double x) {
-    return x < 0.0 ? -x : x;
+static double TruncateTowardZero(double Value) {
+    if (Value >= 0.0) {
+        return (double)(unsigned long long)Value;
+    }
+    return -(double)(unsigned long long)(-Value);
 }
 
-double floor(double x) {
-    long N;
-
-    if (x >= 0.0) {
-        N = (long)x;
-        return (double)N;
-    }
-    N = (long)x;
-    if ((double)N == x) {
-        return x;
-    }
-    return (double)(N - 1);
+double fabs(double Value) {
+    return Value < 0.0 ? -Value : Value;
 }
 
-double ceil(double x) {
-    long N;
+double floor(double Value) {
+    double Truncated = TruncateTowardZero(Value);
 
-    if (x <= 0.0) {
-        N = (long)x;
-        return (double)N;
+    if (Value < 0.0 && Truncated != Value) {
+        return Truncated - 1.0;
     }
-    N = (long)x;
-    if ((double)N == x) {
-        return x;
-    }
-    return (double)(N + 1);
+    return Truncated;
 }
 
-double fmod(double x, double y) {
-    long Q;
+double ceil(double Value) {
+    double Truncated = TruncateTowardZero(Value);
 
-    if (y == 0.0) {
+    if (Value > 0.0 && Truncated != Value) {
+        return Truncated + 1.0;
+    }
+    return Truncated;
+}
+
+double fmod(double Dividend, double Divisor) {
+    double Quotient;
+
+    if (Divisor == 0.0) {
         return 0.0;
     }
-    Q = (long)(x / y);
-    return x - (double)Q * y;
+    Quotient = TruncateTowardZero(Dividend / Divisor);
+    return Dividend - Quotient * Divisor;
 }
 
-double sqrt(double x) {
-    double G;
-    int I;
+double sqrt(double Value) {
+    double Guess;
+    int Step;
 
-    if (x < 0.0) {
+    if (Value < 0.0) {
         return 0.0;
     }
-    if (x == 0.0) {
+    if (Value == 0.0) {
         return 0.0;
     }
-    G = x;
-    if (G < 1.0) {
-        G = 1.0;
+    Guess = Value;
+    if (Guess < 1.0) {
+        Guess = 1.0;
     }
-    for (I = 0; I < 32; I++) {
-        G = 0.5 * (G + x / G);
+    for (Step = 0; Step < 32; Step++) {
+        Guess = 0.5 * (Guess + Value / Guess);
     }
-    return G;
+    return Guess;
 }
 
-double pow(double x, double y) {
-    int Exp;
-    int I;
-    double Acc;
+double pow(double Base, double Exponent) {
+    int Steps;
+    int Index;
+    double Product;
+    int NegativeExponent = 0;
 
-    if (y == 0.0) {
+    if (Exponent == 0.0) {
         return 1.0;
     }
-    Exp = (int)y;
-    if ((double)Exp != y || Exp < 0) {
-        /* 非整数指数：教学简化，只支持整数 */
+    Steps = (int)Exponent;
+    if ((double)Steps != Exponent) {
         return 0.0;
     }
-    Acc = 1.0;
-    for (I = 0; I < Exp; I++) {
-        Acc *= x;
+    if (Steps < 0) {
+        NegativeExponent = 1;
+        Steps = -Steps;
     }
-    return Acc;
+    Product = 1.0;
+    for (Index = 0; Index < Steps; Index++) {
+        Product *= Base;
+    }
+    if (NegativeExponent) {
+        return (Product == 0.0) ? 0.0 : (1.0 / Product);
+    }
+    return Product;
 }

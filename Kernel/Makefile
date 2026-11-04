@@ -591,7 +591,7 @@ USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
 USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o User/crt/printf_format.o User/crt/printf_float.o User/crt/malloc.o \
 	User/crt/crt_start.o User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/stdlib_search.o User/crt/environ.o User/crt/signal.o \
-	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/stdio_scan_format.o User/crt/stdio_path.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
+	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/stdio_scan_token.o User/crt/stdio_scan_format.o User/crt/stdio_path.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
 	User/crt/setjmp.o User/crt/time.o User/crt/math.o User/crt/math_trig.o User/crt/math_exp.o User/crt/atexit.o
 USER_LD = User/user.ld
@@ -639,8 +639,10 @@ USER_CRT0_SRC = User/crt/crt0_riscv.S
 USER_SYSCALL_SRC = User/crt/syscall_riscv.S
 USER_LDFLAGS = -m elf64lriscv -z noexecstack
 endif
+# 用户态允许 FPU（libc float/%f）；勿带内核的 -mgeneral-regs-only
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
-	-fno-builtin -fno-pie -fno-pic $(ARCH_CFLAGS) -IUser/include -IInclude -IInclude/Abi
+	-fno-builtin -fno-pie -fno-pic $(filter-out -mgeneral-regs-only,$(ARCH_CFLAGS)) \
+	-IUser/include -IInclude -IInclude/Abi
 ifeq ($(ARCH),arm64)
 # pthread __sync_*：内联原子，避免裸链依赖 __aarch64_swp4_sync（libgcc）
 USER_CFLAGS += -mno-outline-atomics
@@ -653,7 +655,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/unistd.o $(USER_VIRT_DIR)/sleep.o $(USER_VIRT_DIR)/stdlib.o \
 	$(USER_VIRT_DIR)/stdlib_parse.o $(USER_VIRT_DIR)/stdlib_search.o $(USER_VIRT_DIR)/environ.o \
 	$(USER_VIRT_DIR)/signal.o $(USER_VIRT_DIR)/dirent.o \
-	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/stdio_scan_format.o $(USER_VIRT_DIR)/stdio_path.o $(USER_VIRT_DIR)/socket.o \
+	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/stdio_scan_token.o $(USER_VIRT_DIR)/stdio_scan_format.o $(USER_VIRT_DIR)/stdio_path.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o \
 	$(USER_VIRT_DIR)/setjmp.o $(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/math_trig.o $(USER_VIRT_DIR)/math_exp.o $(USER_VIRT_DIR)/atexit.o
@@ -1341,7 +1343,10 @@ $(USER_VIRT_DIR)/stdio_streams.o: User/crt/stdio_streams.c User/crt/stdio_privat
 $(USER_VIRT_DIR)/stdio_scan.o: User/crt/stdio_scan.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan.c -o $@
 
-$(USER_VIRT_DIR)/stdio_scan_format.o: User/crt/stdio_scan_format.c | $(USER_VIRT_DIR)
+$(USER_VIRT_DIR)/stdio_scan_token.o: User/crt/stdio_scan_token.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan_token.c -o $@
+
+$(USER_VIRT_DIR)/stdio_scan_format.o: User/crt/stdio_scan_format.c User/crt/stdio_private.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/stdio_scan_format.c -o $@
 
 $(USER_VIRT_DIR)/stdio_path.o: User/crt/stdio_path.c | $(USER_VIRT_DIR)

@@ -1,59 +1,63 @@
 /*
- * stdio_scan_format.c — vsscanf 教学子集
- * 认：%d %i %u %ld %lu %x %X %o %c %s %f %lf %%；空白匹配；字面量
+ * stdio_scan_format.c — 流式 scan 格式分派（教学子集）
+ *
+ * 认：%d %i %u %ld %lu %x %X %o %c %s %f %lf %%；空白；字面量。
+ * 词法收集见 stdio_scan_token.c；按字符取还，可跨行、可留下半行。
  */
 #include <ctype.h>
-#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-static int MatchLiteral(const char **StringCursor, char Expected) {
-    if (**StringCursor != Expected) {
-        return 0;
-    }
-    (*StringCursor)++;
-    return 1;
-}
+#include "stdio_private.h"
 
-static void SkipSpaces(const char **StringCursor) {
-    while (isspace((unsigned char)**StringCursor)) {
-        (*StringCursor)++;
-    }
-}
-
-int BlocksVsscanf(const char *String, const char *Format, va_list Arguments) {
-    const char *S = String;
-    const char *F = Format;
-    int Count = 0;
+int BlocksScanFormat(BlocksScanGetCharacter GetCharacter,
+                     BlocksScanUngetCharacter UngetCharacter, void *Context,
+                     const char *Format, va_list Arguments) {
+    const char *FormatCursor = Format;
+    int Assigned = 0;
     int LengthLong;
+    char Token[128];
+    int Base;
 
-    if (!String || !Format) {
+    if (!GetCharacter || !UngetCharacter || !Format) {
         return -1;
     }
-    while (*F) {
-        if (*F == '%') {
-            F++;
+    while (*FormatCursor) {
+        if (*FormatCursor == '%') {
+            FormatCursor++;
             LengthLong = 0;
-            if (*F == 'l') {
+            if (*FormatCursor == 'l') {
                 LengthLong = 1;
-                F++;
+                FormatCursor++;
             }
-            if (*F == 'd' || *F == 'i' || *F == 'u' || *F == 'x' || *F == 'X' ||
-                *F == 'o') {
+            if (*FormatCursor == 'd' || *FormatCursor == 'i' ||
+                *FormatCursor == 'u' || *FormatCursor == 'x' ||
+                *FormatCursor == 'X' || *FormatCursor == 'o') {
                 char *End = 0;
-                int Base = 10;
 
-                SkipSpaces(&S);
-                if (*F == 'x' || *F == 'X') {
+                BlocksScanSkipSpaces(GetCharacter, UngetCharacter, Context);
+                if (*FormatCursor == 'x' || *FormatCursor == 'X') {
                     Base = 16;
-                } else if (*F == 'o') {
+                } else if (*FormatCursor == 'o') {
                     Base = 8;
+                } else if (*FormatCursor == 'i') {
+                    Base = 0;
+                } else if (*FormatCursor == 'u') {
+                    Base = 10;
+                } else {
+                    Base = 10;
                 }
-                if (*F == 'u' || *F == 'x' || *F == 'X' || *F == 'o') {
-                    unsigned long Value = strtoul(S, &End, Base);
+                if (!BlocksScanCollectIntegerToken(GetCharacter, UngetCharacter,
+                                                   Context, Token, sizeof(Token),
+                                                   Base)) {
+                    return Assigned == 0 ? -1 : Assigned;
+                }
+                if (*FormatCursor == 'u' || *FormatCursor == 'x' ||
+                    *FormatCursor == 'X' || *FormatCursor == 'o') {
+                    unsigned long Value = strtoul(Token, &End, Base == 0 ? 0 : Base);
 
-                    if (End == S) {
-                        break;
+                    if (End == Token) {
+                        return Assigned == 0 ? -1 : Assigned;
                     }
                     if (LengthLong) {
                         unsigned long *Out = va_arg(Arguments, unsigned long *);
@@ -68,12 +72,11 @@ int BlocksVsscanf(const char *String, const char *Format, va_list Arguments) {
                             *Out = (unsigned)Value;
                         }
                     }
-                    S = End;
                 } else {
-                    long Value = strtol(S, &End, Base);
+                    long Value = strtol(Token, &End, Base);
 
-                    if (End == S) {
-                        break;
+                    if (End == Token) {
+                        return Assigned == 0 ? -1 : Assigned;
                     }
                     if (LengthLong) {
                         long *Out = va_arg(Arguments, long *);
@@ -88,20 +91,23 @@ int BlocksVsscanf(const char *String, const char *Format, va_list Arguments) {
                             *Out = (int)Value;
                         }
                     }
-                    S = End;
                 }
-                Count++;
-                F++;
+                Assigned++;
+                FormatCursor++;
                 continue;
             }
-            if (*F == 'f') {
+            if (*FormatCursor == 'f') {
                 char *End = 0;
                 double Value;
 
-                SkipSpaces(&S);
-                Value = strtod(S, &End);
-                if (End == S) {
-                    break;
+                BlocksScanSkipSpaces(GetCharacter, UngetCharacter, Context);
+                if (!BlocksScanCollectFloatToken(GetCharacter, UngetCharacter,
+                                                 Context, Token, sizeof(Token))) {
+                    return Assigned == 0 ? -1 : Assigned;
+                }
+                Value = strtod(Token, &End);
+                if (End == Token) {
+                    return Assigned == 0 ? -1 : Assigned;
                 }
                 if (LengthLong) {
                     double *Out = va_arg(Arguments, double *);
@@ -116,67 +122,83 @@ int BlocksVsscanf(const char *String, const char *Format, va_list Arguments) {
                         *Out = (float)Value;
                     }
                 }
-                S = End;
-                Count++;
-                F++;
+                Assigned++;
+                FormatCursor++;
                 continue;
             }
-            if (*F == 'c') {
+            if (*FormatCursor == 'c') {
                 char *Out = va_arg(Arguments, char *);
+                int Character = GetCharacter(Context);
 
-                if (!*S) {
-                    break;
+                if (Character == EOF) {
+                    return Assigned == 0 ? -1 : Assigned;
                 }
                 if (Out) {
-                    *Out = *S;
+                    *Out = (char)Character;
                 }
-                S++;
-                Count++;
-                F++;
+                Assigned++;
+                FormatCursor++;
                 continue;
             }
-            if (*F == 's') {
+            if (*FormatCursor == 's') {
                 char *Out = va_arg(Arguments, char *);
-                size_t N = 0;
+                size_t Length = 0;
+                int Character;
 
-                SkipSpaces(&S);
-                if (!*S) {
-                    break;
+                BlocksScanSkipSpaces(GetCharacter, UngetCharacter, Context);
+                Character = GetCharacter(Context);
+                if (Character == EOF) {
+                    return Assigned == 0 ? -1 : Assigned;
                 }
-                while (*S && !isspace((unsigned char)*S)) {
+                while (Character != EOF && !isspace((unsigned char)Character)) {
                     if (Out) {
-                        Out[N] = *S;
+                        Out[Length] = (char)Character;
                     }
-                    N++;
-                    S++;
+                    Length++;
+                    Character = GetCharacter(Context);
+                }
+                if (Character != EOF) {
+                    UngetCharacter(Context, Character);
                 }
                 if (Out) {
-                    Out[N] = 0;
+                    Out[Length] = 0;
                 }
-                Count++;
-                F++;
+                Assigned++;
+                FormatCursor++;
                 continue;
             }
-            if (*F == '%') {
-                if (!MatchLiteral(&S, '%')) {
-                    break;
+            if (*FormatCursor == '%') {
+                int Character = GetCharacter(Context);
+
+                if (Character != '%') {
+                    if (Character != EOF) {
+                        UngetCharacter(Context, Character);
+                    }
+                    return Assigned;
                 }
-                F++;
+                FormatCursor++;
                 continue;
             }
-            break;
+            return Assigned;
         }
-        if (isspace((unsigned char)*F)) {
-            while (isspace((unsigned char)*F)) {
-                F++;
+        if (isspace((unsigned char)*FormatCursor)) {
+            while (isspace((unsigned char)*FormatCursor)) {
+                FormatCursor++;
             }
-            SkipSpaces(&S);
+            BlocksScanSkipSpaces(GetCharacter, UngetCharacter, Context);
             continue;
         }
-        if (!MatchLiteral(&S, *F)) {
-            break;
+        {
+            int Character = GetCharacter(Context);
+
+            if (Character != (unsigned char)*FormatCursor) {
+                if (Character != EOF) {
+                    UngetCharacter(Context, Character);
+                }
+                return Assigned == 0 && Character == EOF ? -1 : Assigned;
+            }
         }
-        F++;
+        FormatCursor++;
     }
-    return Count;
+    return Assigned;
 }

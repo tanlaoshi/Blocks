@@ -14,10 +14,9 @@ void PrintfOutChar(FmtOut *O, char C) {
         O->Pos++;
         return;
     }
-    if (O->Cap == 0 || O->Pos + 1 < O->Cap) {
-        if (O->Buf) {
-            O->Buf[O->Pos] = C;
-        }
+    /* Cap==0：只计数不写（snprintf(..., 0)）；勿把 0 当成「无限缓冲」 */
+    if (O->Buf && O->Cap > 0 && O->Pos + 1 < O->Cap) {
+        O->Buf[O->Pos] = C;
     }
     O->Pos++;
 }
@@ -52,12 +51,17 @@ static void OutUInt(FmtOut *O, unsigned long V, unsigned Base, int Upper) {
     }
 }
 
-static void OutInt(FmtOut *O, long V) {
-    if (V < 0) {
+static void OutInt(FmtOut *O, long Value) {
+    unsigned long Magnitude;
+
+    if (Value < 0) {
         PrintfOutChar(O, '-');
-        V = -V;
+        /* 先转 unsigned 再取负：避开 LONG_MIN 的符号取反 UB */
+        Magnitude = -(unsigned long)Value;
+    } else {
+        Magnitude = (unsigned long)Value;
     }
-    OutUInt(O, (unsigned long)V, 10, 0);
+    OutUInt(O, Magnitude, 10, 0);
 }
 
 static void OutULongLong(FmtOut *O, unsigned long long V, unsigned Base, int Upper) {
@@ -81,12 +85,16 @@ static void OutULongLong(FmtOut *O, unsigned long long V, unsigned Base, int Upp
     }
 }
 
-static void OutLongLong(FmtOut *O, long long V) {
-    if (V < 0) {
+static void OutLongLong(FmtOut *O, long long Value) {
+    unsigned long long Magnitude;
+
+    if (Value < 0) {
         PrintfOutChar(O, '-');
-        V = -V;
+        Magnitude = -(unsigned long long)Value;
+    } else {
+        Magnitude = (unsigned long long)Value;
     }
-    OutULongLong(O, (unsigned long long)V, 10, 0);
+    OutULongLong(O, Magnitude, 10, 0);
 }
 
 static void OutUIntPad(

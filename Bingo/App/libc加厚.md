@@ -2,7 +2,7 @@
 
 > **方言铁律**：实现必须 **`-std=c99 -pedantic`**；禁止 GNU `__*` 类型预定义散落。  
 > **约定**：无手测 → TG+JX。细表 [`LibcGaps.md`](LibcGaps.md)。  
-> **CRT**：**1.9.4**。
+> **CRT**：**1.9.5**。
 
 ---
 
@@ -10,8 +10,7 @@
 
 > **当前 ★**：（空）  
 > **排队**：（空）  
-> **刚 TG**：X3 scanf 加厚；X4 math 加厚（trig/exp/log）；CRT → **1.9.4**。  
-> （X1 virt setjmp、X2 exec environ 已入树。）
+> **刚 TG**：libc 全量自查修 P1（scanf 流式/进制、math 归约、printf LONG_MIN/`snprintf(…,0)`、拆 scan）；CRT → **1.9.5**。
 
 | # | 刀 | 状态 |
 |---|-----|------|

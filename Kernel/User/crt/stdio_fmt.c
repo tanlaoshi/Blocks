@@ -7,12 +7,13 @@
 #include <Blocks/syscall.h>
 
 int putchar(int c) {
-    char Ch = (char)c;
+    unsigned char Byte = (unsigned char)c;
 
-    if (blocks_write(1, &Ch, 1) != 1) {
+    /* 经 stdout 缓冲，避免逐字 syscall */
+    if (fputc((int)Byte, stdout) == EOF) {
         return EOF;
     }
-    return (unsigned char)Ch;
+    return (int)Byte;
 }
 
 int fputc(int c, FILE *fp) {

@@ -1,5 +1,7 @@
 /*
  * printf.c — printf / sprintf / snprintf / puts / perror
+ *
+ * 写 stdout 一律整段 write，避免逐字 SYS_FILE_WRITE→PresentFlush。
  */
 #include <errno.h>
 #include <stdarg.h>
@@ -13,9 +15,6 @@ int vprintf(const char *fmt, va_list ap) {
     int N;
     size_t W;
 
-    /*
-     * 整段一次 write：避免逐字 SYS_FILE_WRITE→Shell PresentFlush（关中断下会卡死）。
-     */
     N = vsnprintf(Buf, sizeof(Buf), fmt, ap);
     if (N < 0) {
         return N;
@@ -31,82 +30,94 @@ int vprintf(const char *fmt, va_list ap) {
 }
 
 int printf(const char *fmt, ...) {
-    va_list Ap;
+    va_list Arguments;
     int N;
 
-    va_start(Ap, fmt);
-    N = vprintf(fmt, Ap);
-    va_end(Ap);
+    va_start(Arguments, fmt);
+    N = vprintf(fmt, Arguments);
+    va_end(Arguments);
     return N;
 }
 
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list ap) {
-    FmtOut O;
+    FmtOut Output;
     int N;
 
-    O.Buf = buf;
-    O.Cap = size;
-    O.Pos = 0;
-    O.ToFd = 0;
-    N = PrintfFormat(&O, fmt, ap);
-    if (buf) {
-        if (size == 0) {
-            buf[O.Pos] = 0;
-        } else {
-            size_t End = (O.Pos < size) ? O.Pos : size - 1;
-            buf[End] = 0;
-        }
+    Output.Buf = buf;
+    Output.Cap = size;
+    Output.Pos = 0;
+    Output.ToFd = 0;
+    N = PrintfFormat(&Output, fmt, ap);
+    if (buf && size > 0) {
+        size_t End = (Output.Pos < size) ? Output.Pos : size - 1;
+
+        buf[End] = 0;
     }
     return N;
 }
 
 int snprintf(char *buf, size_t size, const char *fmt, ...) {
-    va_list Ap;
+    va_list Arguments;
     int N;
 
-    va_start(Ap, fmt);
-    N = vsnprintf(buf, size, fmt, Ap);
-    va_end(Ap);
+    va_start(Arguments, fmt);
+    N = vsnprintf(buf, size, fmt, Arguments);
+    va_end(Arguments);
     return N;
 }
 
 int vsprintf(char *buf, const char *fmt, va_list ap) {
-    return vsnprintf(buf, 0, fmt, ap);
+    FmtOut Output;
+    int N;
+
+    /* 无上界：课用 sprintf；Cap 极大使 Pos+1 < Cap 在实用长度内恒真 */
+    Output.Buf = buf;
+    Output.Cap = (size_t)-1;
+    Output.Pos = 0;
+    Output.ToFd = 0;
+    N = PrintfFormat(&Output, fmt, ap);
+    if (buf) {
+        buf[Output.Pos] = 0;
+    }
+    return N;
 }
 
 int sprintf(char *buf, const char *fmt, ...) {
-    va_list Ap;
+    va_list Arguments;
     int N;
 
-    va_start(Ap, fmt);
-    N = vsprintf(buf, fmt, Ap);
-    va_end(Ap);
+    va_start(Arguments, fmt);
+    N = vsprintf(buf, fmt, Arguments);
+    va_end(Arguments);
     return N;
 }
 
 int puts(const char *s) {
-    FmtOut O;
+    char Buf[512];
+    int N;
 
-    O.Buf = 0;
-    O.Cap = 0;
-    O.Pos = 0;
-    O.ToFd = 1;
-    PrintfOutStr(&O, s);
-    PrintfOutChar(&O, '\n');
-    return (int)O.Pos;
+    N = snprintf(Buf, sizeof(Buf), "%s\n", s ? s : "(null)");
+    if (N < 0) {
+        return N;
+    }
+    if (N > 0) {
+        size_t W = (size_t)N;
+
+        if (W >= sizeof(Buf)) {
+            W = sizeof(Buf) - 1u;
+        }
+        blocks_write(1, Buf, W);
+    }
+    return N;
 }
 
 void perror(const char *s) {
-    FmtOut O;
+    char Buf[512];
 
-    O.Buf = 0;
-    O.Cap = 0;
-    O.Pos = 0;
-    O.ToFd = 1;
     if (s && s[0]) {
-        PrintfOutStr(&O, s);
-        PrintfOutStr(&O, ": ");
+        snprintf(Buf, sizeof(Buf), "%s: %s\n", s, strerror(errno));
+    } else {
+        snprintf(Buf, sizeof(Buf), "%s\n", strerror(errno));
     }
-    PrintfOutStr(&O, strerror(errno));
-    PrintfOutChar(&O, '\n');
+    blocks_write(1, Buf, strlen(Buf));
 }

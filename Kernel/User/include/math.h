@@ -7,6 +7,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+/* 与实现 MATH_PI 同值；课上可用 M_PI */
 
 double fabs(double x);
 double floor(double x);

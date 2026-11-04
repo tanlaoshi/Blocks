@@ -88,6 +88,11 @@ struct tm *gmtime(const time_t *Timer) {
     return &BrokenTime;
 }
 
+struct tm *localtime(const time_t *Timer) {
+    /* 无 TZ / locale：墙上钟已是 UTC，localtime 与 gmtime 同形 */
+    return gmtime(Timer);
+}
+
 char *asctime(const struct tm *Broken) {
     static const char *WeekdayNames[] = {
         "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -119,12 +124,29 @@ char *asctime(const struct tm *Broken) {
 
 size_t strftime(char *Destination, size_t Capacity, const char *Format,
                 const struct tm *Broken) {
-    /* 最小：只认 %Y %m %d %H %M %S %%；其余原样 */
+    /* 认：%Y %m %d %H %M %S %a %b %w %%；其余原样 */
+    static const char *WeekdayShort[] = {
+        "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+    };
+    static const char *MonthShort[] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    };
     size_t Written = 0;
     const char *Cursor;
+    int Weekday;
+    int Month;
 
     if (!Destination || !Format || !Broken || Capacity == 0) {
         return 0;
+    }
+    Weekday = Broken->tm_wday;
+    Month = Broken->tm_mon;
+    if (Weekday < 0 || Weekday > 6) {
+        Weekday = 0;
+    }
+    if (Month < 0 || Month > 11) {
+        Month = 0;
     }
     for (Cursor = Format; *Cursor != 0 && Written + 1 < Capacity; Cursor++) {
         char Field[16];
@@ -160,6 +182,12 @@ size_t strftime(char *Destination, size_t Capacity, const char *Format,
         } else if (*Cursor == 'S') {
             FieldLength =
                 snprintf(Field, sizeof(Field), "%02d", Broken->tm_sec);
+        } else if (*Cursor == 'a') {
+            FieldLength = snprintf(Field, sizeof(Field), "%s", WeekdayShort[Weekday]);
+        } else if (*Cursor == 'b') {
+            FieldLength = snprintf(Field, sizeof(Field), "%s", MonthShort[Month]);
+        } else if (*Cursor == 'w') {
+            FieldLength = snprintf(Field, sizeof(Field), "%d", Weekday);
         } else {
             if (Written + 2 >= Capacity) {
                 break;

@@ -26,8 +26,12 @@ struct tm {
 
 clock_t clock(void);
 time_t time(time_t *t);
+double difftime(time_t time1, time_t time0);
 char *asctime(const struct tm *tm);
 struct tm *gmtime(const time_t *timer);
+/* Blocks 无时区库：localtime ≡ gmtime（UTC） */
+struct tm *localtime(const time_t *timer);
+time_t mktime(struct tm *tm);
 size_t strftime(char *s, size_t max, const char *fmt, const struct tm *tm);
 
 #endif

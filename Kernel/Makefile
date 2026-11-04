@@ -593,7 +593,7 @@ USER_LIBC_OBJS = User/crt/string.o User/crt/string_extra.o User/crt/printf.o Use
 	User/crt/crt_start.o User/crt/errno.o User/crt/unistd.o User/crt/sleep.o User/crt/stdlib.o User/crt/stdlib_parse.o User/crt/stdlib_search.o User/crt/environ.o User/crt/signal.o \
 	User/crt/dirent.o User/crt/stdio.o User/crt/stdio_rw.o User/crt/stdio_fmt.o User/crt/stdio_streams.o User/crt/stdio_scan.o User/crt/stdio_scan_token.o User/crt/stdio_scan_format.o User/crt/stdio_path.o User/crt/socket.o User/crt/cwd.o User/crt/sched.o \
 	User/crt/proc.o User/crt/stat.o User/crt/threadroot.o User/crt/pthread.o \
-	User/crt/setjmp.o User/crt/time.o User/crt/math.o User/crt/math_trig.o User/crt/math_exp.o User/crt/atexit.o
+	User/crt/setjmp.o User/crt/time.o User/crt/time_convert.o User/crt/math.o User/crt/math_trig.o User/crt/math_exp.o User/crt/atexit.o
 USER_LD = User/user.ld
 USER_LDFLAGS = -z noexecstack
 USER_CFLAGS = -std=c99 -pedantic -ffreestanding -nostdlib -O2 -Wall -Wextra -fno-stack-protector \
@@ -658,7 +658,7 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 	$(USER_VIRT_DIR)/stdio.o $(USER_VIRT_DIR)/stdio_rw.o $(USER_VIRT_DIR)/stdio_fmt.o $(USER_VIRT_DIR)/stdio_streams.o $(USER_VIRT_DIR)/stdio_scan.o $(USER_VIRT_DIR)/stdio_scan_token.o $(USER_VIRT_DIR)/stdio_scan_format.o $(USER_VIRT_DIR)/stdio_path.o $(USER_VIRT_DIR)/socket.o \
 	$(USER_VIRT_DIR)/cwd.o $(USER_VIRT_DIR)/sched.o $(USER_VIRT_DIR)/proc.o \
 	$(USER_VIRT_DIR)/stat.o $(USER_VIRT_DIR)/threadroot.o $(USER_VIRT_DIR)/pthread.o \
-	$(USER_VIRT_DIR)/setjmp.o $(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/math_trig.o $(USER_VIRT_DIR)/math_exp.o $(USER_VIRT_DIR)/atexit.o
+	$(USER_VIRT_DIR)/setjmp.o $(USER_VIRT_DIR)/time.o $(USER_VIRT_DIR)/time_convert.o $(USER_VIRT_DIR)/math.o $(USER_VIRT_DIR)/math_trig.o $(USER_VIRT_DIR)/math_exp.o $(USER_VIRT_DIR)/atexit.o
 ifeq ($(ARCH),arm64)
 # Pi/virt：预装 Hello + Task Manager（对表 X64 Apps/<id>/）
 USER_OUT = $(USER_VIRT_DIR)
@@ -1386,6 +1386,9 @@ $(USER_VIRT_DIR)/setjmp.o: $(USER_SETJMP_SRC) | $(USER_VIRT_DIR)
 
 $(USER_VIRT_DIR)/time.o: User/crt/time.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/time.c -o $@
+
+$(USER_VIRT_DIR)/time_convert.o: User/crt/time_convert.c | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/crt/time_convert.c -o $@
 
 $(USER_VIRT_DIR)/math.o: User/crt/math.c | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/crt/math.c -o $@

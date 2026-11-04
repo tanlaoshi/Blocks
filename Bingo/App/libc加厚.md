@@ -9,9 +9,9 @@
 
 ## ★ 当前与排队
 
-> **当前 ★**：**R5 `exhibit-scan-format`** — `stdio_scan_format.c` 铺平嵌套 + 全称。  
-> **排队**：R6 余下 crt（time/environ/malloc/printf_float…）。  
-> **刚 TG**：R1～R4（含 printf_format 铺平）。
+> **当前 ★**：**R6 `exhibit-crt-rest`** — printf_float / time / environ / malloc / ToyFile 字段全称。  
+> **排队**：无（本柱收口后 ★ 空）。  
+> **刚 TG**：R1～R5（含 scan_format 铺平）。
 
 | # | 刀 | 状态 |
 |---|-----|------|
@@ -20,8 +20,8 @@
 | R2 | stdlib* 展览命名 | ✅ |
 | R3 | unistd / stdio 薄封装 | ✅ |
 | R4 | printf_format 铺平 | ✅ |
-| R5 | scan_format 铺平 | ★ |
-| R6 | 余下 crt（time/environ/malloc…） | 排队 |
+| R5 | scan_format 铺平 | ✅ |
+| R6 | 余下 crt（time/environ/malloc…） | ★ |
 
 ---
 

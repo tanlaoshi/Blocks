@@ -15,17 +15,17 @@ int WifiVerifyDownloadPath(void) {
     }
     if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL,
                                (UINT8)(WIFI_CLOCK_REQUEST_ALP | WIFI_CLOCK_FORCE_ALP)) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ALP re-req fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI ALP re-req fail\n");
         return -1;
     }
     SdhciDelayMicroseconds(2000);
     if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_CHIP_CLOCK_CONTROL, &ClockStatus) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI F1 CMD52 dead after write\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI F1 CMD52 dead after write\n");
         return -1;
     }
     /* 0x49 = FORCE_ALP|ALP_REQ|ALP_AVAIL：写路径与 ALP 都还活着 */
     WifiBootMarkHexadecimal32("Boot: Pi WIFI csr after write=", ClockStatus);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     return 0;
 }
 
@@ -56,15 +56,15 @@ int WifiFirmwareSampleReadback(UINT32 DownloadBase, const UINT8 *FirmwareBlob,
         if (WifiBackplaneRead32(DownloadBase + WordIndex * 4u, &Got) != 0) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI sample read fail @",
                                       DownloadBase + WordIndex * 4u);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             return -1;
         }
         WifiBootMarkHexadecimal32("Boot: Pi WIFI sample@", DownloadBase + WordIndex * 4u);
         WifiBootMarkHexadecimal32(" got=", Got);
         WifiBootMarkHexadecimal32(" want=", Expected);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         if (Got != Expected) {
-            HalSerialBootMarkForce("Boot: Pi WIFI sample mismatch\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI sample mismatch\n");
             return -1;
         }
         if (Got != 0u) {
@@ -72,9 +72,9 @@ int WifiFirmwareSampleReadback(UINT32 DownloadBase, const UINT8 *FirmwareBlob,
         }
     }
     if (NonZero == 0u) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sample all zero\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sample all zero\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI sample ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI sample ok\n");
     return 0;
 }

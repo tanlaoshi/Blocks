@@ -212,20 +212,20 @@ int WifiNetProbeAfterJoin(void) {
 
         if (HalNetGetLinkInfo(&LinkUp, 0, 0) != 0 && LinkUp != 0) {
             WifiNetPersist("net-skip-wired");
-            HalSerialBootMarkForce("Boot: Pi WIFI net skip (wired link up)\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI net skip (wired link up)\n");
             return -1;
         }
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI net probe begin\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI net probe begin\n");
     if (WifiNetReadMac() != 0) {
         WifiNetPersist("net-mac-fail");
-        HalSerialBootMarkForce("Boot: Pi WIFI net mac fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net mac fail\n");
         return -1;
     }
     if (WifiNetDisableArpOffload() == 0) {
         gWifiNetArpOffloadCleared = 1;
     } else {
-        HalSerialBootMarkForce("Boot: Pi WIFI arp offload clear fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI arp offload clear fail\n");
     }
     WifiNetProbeDataWindow(WIFI_NET_PROBE_ATTEMPTS, 0);
     if (!gWifiNetHaveArpTarget) {
@@ -235,17 +235,17 @@ int WifiNetProbeAfterJoin(void) {
     /* 0x15a：DHCP Discover（ARP SPA 刀已否） */
     if (WifiSdpcmSendDhcpDiscover(gWifiNetMac) != 0) {
         WifiNetPersist("net-tx-fail");
-        HalSerialBootMarkForce("Boot: Pi WIFI net dhcp discover fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net dhcp discover fail\n");
         return -1;
     }
     gWifiNetTransmitOk = 1;
     WifiNetProbeDataWindow(WIFI_NET_TRANSMIT_POLL_ATTEMPTS, 1);
     if (WifiNetLwIpInputCount() == 0u) {
         WifiNetPersist("net-lwip-no-rx");
-        HalSerialBootMarkForce("Boot: Pi WIFI net lwip no rx\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net lwip no rx\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI net lwip in ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI net lwip in ok\n");
     /* 7c3：netif → SDPCM；未武装时 Try 返回 -1 仍走 SMSC */
     BoardWifiArmNetifLinkOutput(gWifiNetMac);
     {
@@ -258,7 +258,7 @@ int WifiNetProbeAfterJoin(void) {
                 Status = "net-lwip-out-dhcp-fail";
             }
             WifiNetPersist(Status);
-            HalSerialBootMarkForce("Boot: Pi WIFI net lwip out kick fail\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI net lwip out kick fail\n");
             return -1;
         }
     }
@@ -272,17 +272,17 @@ int WifiNetProbeAfterJoin(void) {
 #endif
     if (BoardWifiNetifLinkOutputCount() == 0u) {
         WifiNetPersist("net-lwip-out-fail");
-        HalSerialBootMarkForce("Boot: Pi WIFI net lwip out fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net lwip out fail\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI net lwip out ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI net lwip out ok\n");
     /* 7d：持续 F2 喂 + DhcpStep 等租约（HalNetGetMac=站点） */
     if (WifiNetWaitDhcpLease(&gWifiNetDhcpIp) != 0 || gWifiNetDhcpIp == 0u) {
         WifiNetPersist("net-dhcp-fail");
-        HalSerialBootMarkForce("Boot: Pi WIFI net dhcp fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net dhcp fail\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI net dhcp ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI net dhcp ok\n");
     /* 双栈：租约已在 dhcp 回调进 NetConfig；再切主槽（对表 Duo AdoptLease） */
     HalNetWifiAdoptLease(NetConfigGetIp(), NetConfigGetMask(), NetConfigGetGw(),
                          NetConfigGetDns());
@@ -290,10 +290,10 @@ int WifiNetProbeAfterJoin(void) {
     if (WifiNetPingGateway(&gWifiNetPingTarget) == 0) {
         gWifiNetPingOk = 1;
         WifiNetPersist("net-ping-ok");
-        HalSerialBootMarkForce("Boot: Pi WIFI net ping ok\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net ping ok\n");
         return 0;
     }
     WifiNetPersist("net-ping-fail");
-    HalSerialBootMarkForce("Boot: Pi WIFI net ping fail\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI net ping fail\n");
     return -1;
 }

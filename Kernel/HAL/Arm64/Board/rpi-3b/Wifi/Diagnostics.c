@@ -47,9 +47,9 @@
 static void WifiDiagnosticsPrintHexadecimal(const char *Name, UINT32 Value, int Digits) {
     char Buffer[17];
 
-    HalSerialBootMarkForce(Name);
+    WifiSerialBootMarkForce(Name);
     HalSerialFormatHex(Buffer, Value, Digits);
-    HalSerialBootMarkForce(Buffer);
+    WifiSerialBootMarkForce(Buffer);
 }
 
 static int WifiEromDescriptorRead(UINT32 *Address, UINT32 *OutValue, UINT8 *OutType) {
@@ -229,28 +229,28 @@ void WifiBringUpDiagnosticsPrint(void) {
                                              WIFI_CLOCK_MANAGER_GP2_DIVIDER_OFFSET);
     RevisionReadOk = (WifiSdioCoreRevisionRead(&SdioRevision) == 0);
 
-    HalSerialBootMarkForce("Boot: Pi WIFI kso=");
+    WifiSerialBootMarkForce("Boot: Pi WIFI kso=");
     if (SleepReadOk) {
         WifiDiagnosticsPrintHexadecimal("0x", SleepStatus, 2);
     } else {
-        HalSerialBootMarkForce("read-fail");
+        WifiSerialBootMarkForce("read-fail");
     }
-    HalSerialBootMarkForce(" gp2=");
+    WifiSerialBootMarkForce(" gp2=");
     WifiDiagnosticsPrintHexadecimal("0x", Gp2Control, 8);
-    HalSerialBootMarkForce(" gp2div=");
+    WifiSerialBootMarkForce(" gp2div=");
     WifiDiagnosticsPrintHexadecimal("0x", Gp2Divider, 8);
-    HalSerialBootMarkForce(" sdioRev=");
+    WifiSerialBootMarkForce(" sdioRev=");
     if (RevisionReadOk) {
         WifiDiagnosticsPrintHexadecimal("0x", SdioRevision, 2);
         if (SdioRevision < WIFI_SDIO_CORE_REVISION_WITH_KSO) {
-            HalSerialBootMarkForce(" (<12 no KSO)");
+            WifiSerialBootMarkForce(" (<12 no KSO)");
         } else {
-            HalSerialBootMarkForce(" (>=12 needs KSO)");
+            WifiSerialBootMarkForce(" (>=12 needs KSO)");
         }
     } else {
-        HalSerialBootMarkForce("read-fail");
+        WifiSerialBootMarkForce("read-fail");
     }
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }
 
 /* 存储阵列探针：先读、再写读回，把「读不通」与「只有写不通」分开 */
@@ -259,23 +259,23 @@ void WifiDiagnosticsSramAccessProbe(void) {
     UINT32 ProbeAddress = WIFI_RAM_DOWNLOAD_BASE + 0x100u;
 
     if (WifiBackplaneWindowSet(WIFI_RAM_DOWNLOAD_BASE) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI window set fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI window set fail\n");
         return;
     }
     if (WifiBackplaneRead32(ProbeAddress, &ProbeValue) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram read32 fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram read32 fail\n");
         return;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI sram read first=", ProbeValue);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if (WifiBackplaneWrite32(ProbeAddress, 0xBEEF1234u) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram write32 fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram write32 fail\n");
         return;
     }
     if (WifiBackplaneRead32(ProbeAddress, &ProbeValue) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram read back fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram read back fail\n");
         return;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI sram probe=", ProbeValue);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }

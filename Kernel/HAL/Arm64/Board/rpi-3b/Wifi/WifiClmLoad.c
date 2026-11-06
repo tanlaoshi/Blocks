@@ -118,10 +118,10 @@ int WifiClmLoad(void) {
         return 0;
     }
     if (WifiClmReadBlob(&Blob, &Bytes) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI clm miss\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI clm miss\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI clm load begin\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI clm load begin\n");
     while (Offset < Bytes) {
         UINT32 Chunk = WIFI_CLM_CHUNK_BYTES;
         UINT16 Flag = (UINT16)WIFI_CLM_DOWNLOAD_HANDLER_VERSION;
@@ -134,16 +134,16 @@ int WifiClmLoad(void) {
             Flag = (UINT16)(Flag | WIFI_CLM_DOWNLOAD_END);
         }
         if (WifiClmSendChunk(Blob + Offset, Chunk, Flag) != 0) {
-            HalSerialBootMarkForce("Boot: Pi WIFI clm chunk fail\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI clm chunk fail\n");
             goto Done;
         }
         Offset += Chunk;
     }
     if (WifiClmCheckStatus() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI clm status fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI clm status fail\n");
         goto Done;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI clm ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI clm ok\n");
     Result = 0;
 
 Done:

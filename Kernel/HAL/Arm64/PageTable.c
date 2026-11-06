@@ -187,10 +187,14 @@ int HalPageKernelSetup(UINTN IdentityMegabytes) {
 #if BOARD_IS_VIRT
             Attr = (g == 0) ? ATTR_DEVICE : ATTR_NORMAL;
 #else
-            /* 真机：外设窗 Device，其余当 RAM（含内核 @BOARD_KERNEL_LOAD） */
-            Attr = (Pa >= PeriBase && Pa < PeriBase + 0x01000000ULL)
-                       ? ATTR_DEVICE
-                       : ATTR_NORMAL;
+            /*
+             * 真机 Device：
+             *   0x3F000000 起 ARM 外设窗；
+             *   0x40000000 起 BCM2836/7 local intc（psmp-3a CNTV IRQ）。
+             * 旧只盖 16MiB 会把 0x40000000 标成 Normal → MMIO 错属性。
+             */
+            Attr = (Pa >= PeriBase && Pa < 0x40200000ULL) ? ATTR_DEVICE
+                                                          : ATTR_NORMAL;
 #endif
             BlockBase = DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | Attr;
             L2[b] = Pa | BlockBase;

@@ -63,10 +63,10 @@ static void WifiGpioClock2Enable32k(void) {
 
     Status = *Control;
     WifiBootMarkHexadecimal32("Boot: Pi WIFI GPCLK2 ctl0=", Status);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if ((Status & (WIFI_CLOCK_MANAGER_ENABLE | WIFI_CLOCK_MANAGER_BUSY)) ==
         (WIFI_CLOCK_MANAGER_ENABLE | WIFI_CLOCK_MANAGER_BUSY)) {
-        HalSerialBootMarkForce("Boot: Pi WIFI GPCLK2 keep\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI GPCLK2 keep\n");
         return;
     }
 
@@ -90,11 +90,11 @@ static void WifiGpioClock2Enable32k(void) {
     SdhciDelayMicroseconds(1000);
     Status = *Control;
     WifiBootMarkHexadecimal32("Boot: Pi WIFI GPCLK2 ctl1=", Status);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if ((Status & WIFI_CLOCK_MANAGER_BUSY) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI GPCLK2 32k\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI GPCLK2 32k\n");
     } else {
-        HalSerialBootMarkForce("Boot: Pi WIFI GPCLK2 fail (no BUSY)\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI GPCLK2 fail (no BUSY)\n");
     }
 }
 
@@ -129,7 +129,7 @@ int WifiWirelessPowerOn(void) {
     (void)BoardExpanderGpioWrite(BOARD_EXPANDER_WIRELESS_ON, 0u);
     SdhciDelayMicroseconds(100000u);
     if (BoardExpanderGpioWrite(BOARD_EXPANDER_WIRELESS_ON, 1u) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI WL_ON mbox fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI WL_ON mbox fail\n");
         return -1;
     }
     /*
@@ -137,6 +137,6 @@ int WifiWirelessPowerOn(void) {
      * 与刀 A（50 MHz HS）同镜像一次烧，靠屏/BOOT.LOG 看 tag=0x124。
      */
     SdhciDelayMicroseconds(3000000u);
-    HalSerialBootMark("Boot: Pi WIFI WL_ON cycle wait=3000ms\n");
+    WifiSerialBootMark("Boot: Pi WIFI WL_ON cycle wait=3000ms\n");
     return 0;
 }

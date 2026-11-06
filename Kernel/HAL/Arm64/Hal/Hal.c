@@ -1,25 +1,12 @@
 /*
- * HAL/Arm64/Hal/Hal.c — PR-S3-hal-arm-1：CPU / IRQ / Timer / 用户地址布局
+ * HAL/Arm64/Hal/Hal.c — CPU / 电源 / IRQ 门闩 / 用户地址布局
  *
- * 中断帧见 HalFrame.c；平台元信息见 HalPlat.c（同构 x64）。
+ * 定时器与 IRQ 派发见 HalTimer.c；中断帧 HalFrame.c；平台元信息 HalPlat.c。
  */
 #include "Hal.h"
-#include "Scheduler.h"
 #include "BoardConfig.h"
 
-static UINT64 gCntLast;
-static UINT64 gCntFreq;
-static UINT64 gCntPeriod;
-static UINT32 gTimerMs = 10;
-static int gTimerReady;
-static int gTimerIrq;
-
 extern void HalExceptionVectorsInstall(void);
-extern void HalUserEnter(struct HAL_INTERRUPT_FRAME *Frame);
-extern void HalGicInitialize(void);
-extern UINT32 HalGicAck(void);
-extern void HalGicEoi(UINT32 IntId);
-extern int HalGicIsTimer(UINT32 IntId);
 
 int HalInitialize(void) {
     /* PR-A14：BSP 逻辑 CPU=0（TPIDR_EL1） */
@@ -27,17 +14,6 @@ int HalInitialize(void) {
     return 0;
 }
 
-void HalCpuHalt(void) {
-    /* PR-A13：开 IRQ + WFI，由 CNTV/GIC 唤醒（对齐 x86 sti;hlt;cli） */
-    if (gTimerIrq) {
-        HalIrqEnable();
-        __asm__ volatile("wfi" ::: "memory");
-        HalIrqDisable();
-        return;
-    }
-    HalTimerPoll();
-    HalCpuRelax();
-}
 void HalCpuPark(void) {
     for (;;) {
         __asm__ volatile("wfi");
@@ -60,17 +36,18 @@ void HalCpuPark(void) {
 
 static void PmWatchdogReset(int HaltFirmware) {
     UINT32 Rstc;
+    UINT32 Rsts;
 
     if (HaltFirmware) {
-        UINT32 Rsts = *PM_RSTS;
-        Rsts |= PM_PASS;
-        Rsts |= PM_RSTS_RASPBERRYPI_HALT;
-        *PM_RSTS = Rsts;
+        /* 对表 Linux/U-Boot：清分区位再置 0x555，同写带 PASSWORD */
+        Rsts = *PM_RSTS;
+        Rsts = (Rsts & ~0xfffffaaau) | PM_RSTS_RASPBERRYPI_HALT;
+        *PM_RSTS = PM_PASS | Rsts;
     }
     Rstc = *PM_RSTC;
     Rstc &= ~PM_RSTC_WRCFG_MASK;
     Rstc |= PM_RSTC_WRCFG_FULL_RESET;
-    *PM_WDOG = PM_PASS | 1u;
+    *PM_WDOG = PM_PASS | 10u;
     *PM_RSTC = PM_PASS | Rstc;
     __asm__ volatile("dsb sy" ::: "memory");
 }
@@ -103,8 +80,8 @@ void HalCpuShutdown(void) {
 
 /*
  * Pi 3B 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown / 课堂线）。
- * BCM2835 ARM Peripherals §6：输入 + 上拉，电平 0 为按下；下降沿触发一次（对表
- * X64 PM1 写清 STS）。virt 无此脚。
+ * BCM2835 §6：输入+上拉，电平 0=按下。每次轮询重申输入（防 I2C ALT0 抢脚）。
+ * 边沿或持续低电平都算按下（短接错过下降沿时仍能关机）。
  */
 int HalPowerButtonPressed(void) {
 #if BOARD_IS_VIRT
@@ -119,18 +96,18 @@ int HalPowerButtonPressed(void) {
 #define GPIO3_BIT     (1u << 3)
 
     static int sReady;
-    static int sPrevHigh = 1;
+    static int sPullDone;
     UINT32 Lev;
     UINT32 Sel;
     volatile UINT32 i;
     int High;
-    int Edge;
 
-    if (!sReady) {
-        Sel = *GPFSEL0;
-        Sel &= ~(7u << GPIO3_FSEL_SHIFT); /* input */
-        *GPFSEL0 = Sel;
-        /* 上拉：BCM2835 §6.1 GPPUD=2 → 等 → GPPUDCLK → 等 → 清 */
+    /* 每拍强制 GPIO 输入：I2C1 默认占 GPIO2/3 ALT0，会吃掉电源键 */
+    Sel = *GPFSEL0;
+    Sel &= ~(7u << GPIO3_FSEL_SHIFT);
+    *GPFSEL0 = Sel;
+
+    if (!sPullDone) {
         *GPPUD = 2u;
         for (i = 0; i < 150u; i++) {
             __asm__ volatile("nop");
@@ -142,16 +119,17 @@ int HalPowerButtonPressed(void) {
         *GPPUD = 0;
         *GPPUDCLK0 = 0;
         __asm__ volatile("dsb sy" ::: "memory");
-        sPrevHigh = ((*GPLEV0 & GPIO3_BIT) != 0) ? 1 : 0;
-        sReady = 1;
-        return 0; /* 首拍只武装，避免上电已短接立刻关机 */
+        sPullDone = 1;
     }
 
     Lev = *GPLEV0;
     High = (Lev & GPIO3_BIT) != 0 ? 1 : 0;
-    Edge = (sPrevHigh && !High) ? 1 : 0;
-    sPrevHigh = High;
-    return Edge;
+    if (!sReady) {
+        sReady = 1;
+        return 0; /* 首拍只武装，避免上电已短接立刻关机 */
+    }
+    /* 低电平即按下（含持续短接）；不单靠下降沿 */
+    return High ? 0 : 1;
 #undef GPIO_BASE
 #undef GPFSEL0
 #undef GPLEV0
@@ -181,155 +159,23 @@ void HalCpuRelax(void) {
     __asm__ volatile("yield" ::: "memory");
 }
 void HalIrqVectorSet(UINT32 Vector, void *Handler, UINT8 Type) {
-    (void)Vector; (void)Handler; (void)Type;
+    (void)Vector;
+    (void)Handler;
+    (void)Type;
 }
 void HalIrqRegister(UINT32 Vector, void (*Handler)(void)) {
-    (void)Vector; (void)Handler;
+    (void)Vector;
+    (void)Handler;
 }
 void HalIrqNotifyRegister(UINT32 Vector, void (*Handler)(void)) {
-    (void)Vector; (void)Handler;
+    (void)Vector;
+    (void)Handler;
 }
-void HalIrqUnregister(UINT32 Vector) { (void)Vector; }
-void HalIrqEoi(UINT32 Vector) {
-    HalGicEoi(Vector);
-}
-
-static void ArmTimerArm(void) {
-    __asm__ volatile("msr cntv_tval_el0, %0" ::"r"(gCntPeriod) : "memory");
-    __asm__ volatile("msr cntv_ctl_el0, %0" ::"r"(1ULL) : "memory");
-    __asm__ volatile("isb" ::: "memory");
-}
-
-void HalTimerInitialize(void) {
-    __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(gCntFreq));
-    if (gCntFreq == 0) {
-        gCntFreq = 62500000ULL; /* QEMU virt 常见缺省 */
-    }
-    gCntPeriod = gCntFreq / 100; /* ~10ms */
-    if (gCntPeriod == 0) {
-        gCntPeriod = 1;
-    }
-    __asm__ volatile("mrs %0, cntvct_el0" : "=r"(gCntLast));
-    gTimerReady = 1;
-}
-
-void HalTimerSetInterval(UINT32 Milliseconds) {
-    if (Milliseconds == 0) {
-        Milliseconds = 10;
-    }
-    gTimerMs = Milliseconds;
-    if (gCntFreq == 0) {
-        return;
-    }
-    gCntPeriod = (gCntFreq * (UINT64)Milliseconds) / 1000ULL;
-    if (gCntPeriod == 0) {
-        gCntPeriod = 1;
-    }
-}
-
-void HalTimerAck(void) {
-    ArmTimerArm();
-}
-
-void HalTimerStart(void) {
-    if (!gTimerReady) {
-        HalTimerInitialize();
-    }
-    HalExceptionVectorsInstall();
-#if BOARD_IS_VIRT
-    HalGicInitialize();
-    HalTimerSetInterval(gTimerMs);
-    ArmTimerArm();
-    gTimerIrq = 1;
-    HalSerialWrite("timer: Arm64 CNTV+GIC irq\n");
-#else
-    /* 真机尚无板级 GIC 基址；轮询 CNTV（HalTimerPoll），勿写 virt@0x08000000 */
-    HalTimerSetInterval(gTimerMs);
-    gTimerIrq = 0;
-    /* 勿 HalSerialWrite：常落在 blocks> 前后刷屏；需要时看 BootMark/调试 */
-#endif
-}
-
-UINT32 HalTicksPerSec(void) {
-    return 1000; /* CNTV 已按 ms 武装 */
-}
-
-UINT32 HalMilliseconds(void) {
-    UINT64 Now;
-    UINT64 Freq;
-
-    if (gCntFreq == 0) {
-        __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(gCntFreq));
-        if (gCntFreq == 0) {
-            gCntFreq = 62500000ULL;
-        }
-    }
-    Freq = gCntFreq;
-    __asm__ volatile("mrs %0, cntvct_el0" : "=r"(Now));
-    return (UINT32)((Now * 1000ULL) / Freq);
-}
-
-void HalDelayMilliseconds(UINT32 Milliseconds) {
-    UINT32 Start = HalMilliseconds();
-
-    while ((UINT32)(HalMilliseconds() - Start) < Milliseconds) {
-        HalCpuRelax();
-    }
-}
-
-/* PR-A14：AP 在 BSP HalTimerStart 之前也可本地开 CNTV（gCntPeriod 已在 InitializeCpu） */
-void HalTimerStartAp(void) {
-    extern void HalGicInitializeCpu(void);
-
-    if (!gTimerReady) {
-        HalTimerInitialize();
-    }
-    HalExceptionVectorsInstall();
-    HalGicInitializeCpu();
-    ArmTimerArm();
-    gTimerIrq = 1;
-}
-
-void HalTimerPoll(void) {
-    UINT64 Now;
-    UINT64 Delta;
-
-    if (!gTimerReady || gTimerIrq) {
-        return;
-    }
-    __asm__ volatile("mrs %0, cntvct_el0" : "=r"(Now));
-    Delta = Now - gCntLast;
-    while (Delta >= gCntPeriod) {
-        HalCpuIncrementTicks();
-        gCntLast += gCntPeriod;
-        Delta -= gCntPeriod;
-    }
-}
-
-int HalTimerUsesIrq(void) {
-    return gTimerIrq ? 1 : 0;
-}
-
-/* PR-A13 / PR-V-input-fix：IRQ 帧上 tick + SchedulerOnTimer（对齐 x86） */
-UINT64 HalExceptionIrqDispatch(HAL_INTERRUPT_FRAME *Frame) {
-    UINT32 Id = HalGicAck();
-    UINT64 Ret = 0;
-
-    if (HalGicIsTimer(Id)) {
-        HalCpuIncrementTicks();
-        HalTimerAck();
-        HalGicEoi(Id);
-        if (SchedulerIsOnline() && Frame) {
-            Ret = SchedulerOnTimer(Frame);
-        }
-        return Ret;
-    }
-    HalGicEoi(Id);
-    return 0;
+void HalIrqUnregister(UINT32 Vector) {
+    (void)Vector;
 }
 
 void HalInstallUserMode(void) {
-    /* EL0 入口前确保向量表；SP_EL1 由当前内核栈承担 */
     HalExceptionVectorsInstall();
 }
 

@@ -53,40 +53,40 @@ int WifiBackplaneSramProbeWrite(void) {
 
     gWifiSramProbeFailStage[0] = 0;
     WifiBootMarkHexadecimal32("Boot: Pi WIFI sram probe base=", WIFI_SRAM_PROBE_BASE);
-    HalSerialBootMarkForce(" dword\n");
+    WifiSerialBootMarkForce(" dword\n");
     /*
      * 0x157 CH：status=load-sram-write。PMU+SOCRAM 复位后偶发 F1 写挂；
      * 对表灌片前序：先醒 KSO，再 recover，再探 ChipCommon 活着。
      */
     if (WifiSdioSleepControlEnsureAwake() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram probe kso fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram probe kso fail\n");
         WifiSramProbeCopyStage("load-sram-kso");
         return -1;
     }
     (void)WifiSdioHostCommandDataRecover();
     if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE, &ChipCommon) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram probe cc fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram probe cc fail\n");
         WifiSramProbeCopyStage("load-sram-cc");
         return -1;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI sram probe cc=", ChipCommon);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if (WifiBackplaneWrite32(WIFI_SRAM_PROBE_BASE, WIFI_SRAM_PROBE_PATTERN) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram probe write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram probe write fail\n");
         WifiSramProbeCopyStage("load-sram-write");
         return -1;
     }
     if (WifiBackplaneRead32(WIFI_SRAM_PROBE_BASE, &ReadBack) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI sram probe read fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI sram probe read fail\n");
         WifiSramProbeCopyStage("load-sram-read");
         return -1;
     }
     if (ReadBack != WIFI_SRAM_PROBE_PATTERN) {
         WifiBootMarkHexadecimal32("Boot: Pi WIFI sram probe=no got=", ReadBack);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         WifiSramProbeSetMismatchStage(ReadBack);
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI sram probe=yes\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI sram probe=yes\n");
     return 0;
 }

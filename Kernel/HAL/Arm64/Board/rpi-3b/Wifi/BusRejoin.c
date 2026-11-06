@@ -10,23 +10,23 @@
 #include "Wifi/Private.h"
 
 int WifiSdioBusRejoinAfterIdle(void) {
-    HalSerialBootMarkForce("Boot: Pi WIFI bus rejoin\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI bus rejoin\n");
     if (WifiWirelessPowerOn() != 0) {
         return -1;
     }
     if (WifiSdioHostBringUp() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI rejoin host fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI rejoin host fail\n");
         return -1;
     }
     if (WifiSdioEnumerate() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI rejoin enum fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI rejoin enum fail\n");
         return -1;
     }
     if (WifiSdioEnableFunction1() != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI rejoin F1 fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI rejoin F1 fail\n");
         return -1;
     }
     WifiBackplaneWindowInvalidate();
-    HalSerialBootMarkForce("Boot: Pi WIFI bus rejoin ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI bus rejoin ok\n");
     return 0;
 }

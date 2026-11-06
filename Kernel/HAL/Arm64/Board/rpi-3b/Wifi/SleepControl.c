@@ -22,13 +22,13 @@
 #define WIFI_SDIO_SLEEP_R5_HARD_MASK 0xC700u
 
 static void WifiSdioSleepControlReportFailure(const char *Stage) {
-    HalSerialBootMarkForce("Boot: Pi WIFI kso ");
-    HalSerialBootMarkForce(Stage);
+    WifiSerialBootMarkForce("Boot: Pi WIFI kso ");
+    WifiSerialBootMarkForce(Stage);
     WifiBootMarkHexadecimal32(" r5=", gSdhciResponse[0]);
     WifiBootMarkHexadecimal32(" isr=", gSdhciLastCommandStatus);
     WifiBootMarkHexadecimal32(" pst=", gSdhciLastPresentState);
     WifiBootMarkHexadecimal32(" clk=", SdhciRead16(SDHCI_CLOCK_CONTROL));
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }
 
 static int WifiSdioSleepControlCommand52Direct(int Write, UINT8 DataByte, UINT8 *OutData) {
@@ -82,7 +82,7 @@ int WifiSdioSleepControlEnsureAwake(void) {
             AccessErrors = 0;
             if ((Status & WIFI_SDIO_SLEEP_AWAKE_MASK) == WIFI_SDIO_SLEEP_AWAKE_MASK) {
                 WifiBootMarkHexadecimal32("Boot: Pi WIFI kso wake=", Status);
-                HalSerialBootMarkForce("\n");
+                WifiSerialBootMarkForce("\n");
                 WifiBackplaneWindowInvalidate();
                 return 0;
             }
@@ -91,6 +91,6 @@ int WifiSdioSleepControlEnsureAwake(void) {
         SdhciDelayMicroseconds(WIFI_SDIO_SLEEP_WAKE_GAP_MICROSECONDS);
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI kso wake timeout=", Status);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     return -1;
 }

@@ -91,7 +91,9 @@
 ## 网（rnet-2）
 
 - 板载 **LAN9514**：hub=`0424:9514`，以太网功能=`0424:ec00`（hub 口1 HS，勿当 HID skip）。  
-- `Ethernet.c` smsc95xx；串口应见 `Boot: DWC2 ETH vid=…ec00` → `SMSC ID_REV=` → `SMSC eth ok mac=` → **`Boot: Mod Network` 前** `SMSC ETH bind`（`HalNetProbeAtModuleInit`；勿等 Worker——Pi CNTV 无 IRQ 切不过去）。  
+- `Ethernet.c` smsc95xx；串口应见 `Boot: DWC2 ETH vid=…ec00` → `SMSC ID_REV=` → `SMSC eth ok mac=` → **`Boot: Mod Network` 前** `SMSC ETH bind`（`HalNetProbeAtModuleInit`）。  
+- **psmp-3a**：`Boot: Pi CNTV local IRQ`；BCM2836/7 local intc @`0x40000000` 接每核 CNTV（禁 virt GIC）；页表 Device 须盖到 `0x40000000`。  
+
 - `blocks> net` 见 mac + `link up`；`lwip on` 在 bind 后应可。  
 - **rnet-3 ✅**：真机勿出现 `10.0.2.15`（`HalNetHasNicL2`）；`setip`/`setgw`/`lwip on`/`ping` 网关通。  
 - **rnet-4**：对表 X64/Duo — `ShellTask`/`SerialRun` 泵 `LwIpDhcpStep`；Bind→`HalNetNicEpochBump`；`Adopt`→`DesktopNotifyNetChanged`（钟栏网托）。  

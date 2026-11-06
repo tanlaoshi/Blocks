@@ -239,22 +239,22 @@ static int WifiJoinAssociateWpa2Psk(const char *Ssid, const char *Password) {
     }
     if (WifiJoinConfigureWpa2Psk(Password, PasswordBytes) != 0) {
         gWifiJoinStatusText = "join-cfg-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI join cfg fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI join cfg fail\n");
         return -1;
     }
     if (WifiJoinSendSetSsid(Ssid, SsidBytes) != 0) {
         gWifiJoinStatusText = "join-ssid-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI join SET_SSID fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI join SET_SSID fail\n");
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI join SET_SSID ok, wait link\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI join SET_SSID ok, wait link\n");
     if (WifiJoinWaitAssociated() != 0) {
         gWifiJoinStatusText = "join-wait-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI join wait fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI join wait fail\n");
         return -1;
     }
     gWifiJoinStatusText = "join-ok";
-    HalSerialBootMarkForce("Boot: Pi WIFI join ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI join ok\n");
     return 0;
 }
 

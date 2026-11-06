@@ -21,7 +21,7 @@ int WifiSdioProgrammedIoWriteBytes(const UINT8 *Buffer, UINT32 ByteCount) {
                 /* 卡不收数据：打出停在第几个字，区分「一开始就堵」和「写到一半堵」 */
                 WifiBootMarkHexadecimal32("Boot: Pi WIFI fifo stall word=", Index);
                 WifiBootMarkHexadecimal32("/", Words);
-                HalSerialBootMarkForce("\n");
+                WifiSerialBootMarkForce("\n");
                 WifiSdioProgrammedIoFailCleanup();
                 return -1;
             }
@@ -56,9 +56,9 @@ int WifiSdioProgrammedIoWriteBytes(const UINT8 *Buffer, UINT32 ByteCount) {
                     WifiBootMarkHexadecimal32(" isr=", InterruptStatus);
                     WifiBootMarkHexadecimal32(" pst=", SdhciRead32(SDHCI_PRESENT_STATE));
                     if ((InterruptStatus & (1u << 20)) != 0) {
-                        HalSerialBootMarkForce(" dto");
+                        WifiSerialBootMarkForce(" dto");
                     }
-                    HalSerialBootMarkForce("\n");
+                    WifiSerialBootMarkForce("\n");
                 }
                 WifiSdioProgrammedIoFailCleanup();
                 return -1;

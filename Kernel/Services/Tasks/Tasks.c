@@ -21,6 +21,7 @@
 #include "Tasks.h"
 #include "TasksPrivate.h"
 #include "Hal.h"
+#include "HalConsole.h"
 #include "HalDevices.h"
 #include "Gui.h"
 #include "Desktop.h"
@@ -61,7 +62,7 @@ void YieldForPollInput(void) {
     if (!HalCpuIsHypervisor()) {
         UINT32 i;
         if (HalPowerButtonPressed()) {
-            LogBoot("Boot: Power Button -> Shutdown\n");
+            HalConsoleWriteSerial("Boot: Power Button -> Shutdown\n");
             HalCpuShutdown();
         }
         /* 真机 poll-USB：勿 hlt 等 tick，否则光标锁 ~10ms+ */
@@ -98,6 +99,10 @@ void GuiTask(void) {
                 HalTimerPoll();
             }
             DesktopTickClock();
+            if (!HalCpuIsHypervisor() && HalPowerButtonPressed()) {
+                HalConsoleWriteSerial("Boot: Power Button -> Shutdown\n");
+                HalCpuShutdown();
+            }
             for (i = 0; i < 400; i++) {
                 HalCpuRelax();
             }
@@ -125,6 +130,10 @@ void InputTask(void) {
             HalIrqDisable(); /* drain 期关中断：勿在深调用中被抢 */
             HalInputPoll();
             HalIrqEnable(); /* pause 期开中断：浅栈处可被定时器抢 → ticks>0 */
+        }
+        if (!HalCpuIsHypervisor() && HalPowerButtonPressed()) {
+            HalConsoleWriteSerial("Boot: Power Button -> Shutdown\n");
+            HalCpuShutdown();
         }
         {
             UINT32 i;

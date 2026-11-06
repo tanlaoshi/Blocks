@@ -12,11 +12,16 @@ void WifiSdioResetWaitReport(void) {
 }
 
 void WifiBootMarkHexadecimal32(const char *Tag, UINT32 Value) {
+#if BOARD_WIFI_SERIAL_LOG
     char Buffer[9];
 
-    HalSerialBootMarkForce(Tag);
+    WifiSerialBootMarkForce(Tag);
     HalSerialFormatHex(Buffer, Value, 8);
-    HalSerialBootMarkForce(Buffer);
+    WifiSerialBootMarkForce(Buffer);
+#else
+    (void)Tag;
+    (void)Value;
+#endif
 }
 
 static UINT32 WifiSdioDirectArgument(int Write, UINT32 Function, UINT32 RegisterAddress,
@@ -71,12 +76,12 @@ void WifiSdioProgrammedIoFailCleanup(void) {
 
 /* 读失败必须说清是「哪个阶段、看到什么」：命令级/数据级/收尾级是三条不同的路 */
 static void WifiSdioReportReadFailure(const char *Stage) {
-    HalSerialBootMarkForce("Boot: Pi WIFI sb read ");
-    HalSerialBootMarkForce(Stage);
+    WifiSerialBootMarkForce("Boot: Pi WIFI sb read ");
+    WifiSerialBootMarkForce(Stage);
     WifiBootMarkHexadecimal32(" r5=", gSdhciResponse[0]);
     WifiBootMarkHexadecimal32(" isr=", SdhciRead32(SDHCI_INT_STATUS));
     WifiBootMarkHexadecimal32(" pst=", SdhciRead32(SDHCI_PRESENT_STATE));
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }
 
 static int WifiSdioProgrammedIoReadBytes(UINT8 *Buffer, UINT32 ByteCount) {
@@ -167,7 +172,7 @@ int WifiSdioCommand53Read(UINT32 Function, UINT32 RegisterAddress, UINT8 *Buffer
         /* 卡侧拒收时必须把 R5 打出来，否则「立刻失败」和「挂住」分不清 */
         WifiBootMarkHexadecimal32("Boot: Pi WIFI sb read r5=", gSdhciResponse[0]);
         WifiBootMarkHexadecimal32(" reg=", RegisterAddress);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         WifiSdioProgrammedIoFailCleanup();
         return -1;
     }
@@ -241,11 +246,11 @@ int WifiSdioCommand53Write(UINT32 Function, UINT32 RegisterAddress, const UINT8 
         if (Waited >= 0 && gWifiSdioWaitReported < 6) {
             gWifiSdioWaitReported++;
             WifiBootMarkHexadecimal32("Boot: Pi WIFI dat0 idle ms=", (UINT32)Waited);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
         }
         if (Waited < 0) {
             gWifiSdioWaitReported++;
-            HalSerialBootMarkForce("Boot: Pi WIFI dat0 busy over 3000ms\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI dat0 busy over 3000ms\n");
             break;
         }
         if (Attempt != 0) {

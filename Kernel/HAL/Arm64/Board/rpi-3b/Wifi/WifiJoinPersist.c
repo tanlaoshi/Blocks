@@ -56,7 +56,7 @@ void WifiJoinPersistLog(const char *Status, UINT32 EventType, UINT32 EventStatus
     WifiJoinPersistAppendText(Buffer, sizeof(Buffer), &Length, "\n");
     Buffer[Length] = 0;
     if (FileSystemWriteFile("WIFI-JOIN.LOG", Buffer, Length) != FAT_OK) {
-        HalSerialBootMarkForce("Boot: Pi WIFI join log write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI join log write fail\n");
         return;
     }
     (void)FileSystemFileSync("WIFI-JOIN.LOG");

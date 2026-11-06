@@ -97,7 +97,7 @@ extern UINT8 gMac[6];
 extern UINT32 gIp;
 extern UINT32 gNetHdrLen;
 extern ARP_ENTRY gArpCache[ARP_CACHE_SIZE];
-extern UINT8 *gReceiveBuffer[RX_BUF_COUNT];
+extern UINT8 *gVirtioNetReceiveBuffer[RX_BUF_COUNT];
 extern UINT8 *gTxBuf;
 extern UINT16 gPingSeq;
 extern int gPingWait;

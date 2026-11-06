@@ -27,7 +27,7 @@ UINT8 gMac[6];
 UINT32 gIp = HAL_NET_IP_DEFAULT;
 UINT32 gNetHdrLen = VIRTIO_NET_HDR_LEGACY;
 ARP_ENTRY gArpCache[ARP_CACHE_SIZE];
-UINT8 *gReceiveBuffer[RX_BUF_COUNT];
+UINT8 *gVirtioNetReceiveBuffer[RX_BUF_COUNT];
 UINT8 *gTxBuf;
 UINT16 gPingSeq;
 int gPingWait;
@@ -91,7 +91,7 @@ static int VirtioNetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPriv
         return -1;
     }
     for (i = 0; i < RX_BUF_COUNT; i++) {
-        gReceiveBuffer[i] = Page + (UINTN)i * PAGE_SIZE;
+        gVirtioNetReceiveBuffer[i] = Page + (UINTN)i * PAGE_SIZE;
     }
     gTxBuf = Page + (UINTN)RX_BUF_COUNT * PAGE_SIZE;
 

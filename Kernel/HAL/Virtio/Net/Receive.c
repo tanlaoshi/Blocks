@@ -37,7 +37,7 @@ void ReceiveRefillAll(void) {
         N = RX_BUF_COUNT;
     }
     for (i = 0; i < N; i++) {
-        ReceiveRefillOne(i, gReceiveBuffer[i]);
+        ReceiveRefillOne(i, gVirtioNetReceiveBuffer[i]);
     }
     VirtioMmioNotifyQueue(&gReceive, RX_QUEUE_ID);
 }
@@ -62,8 +62,8 @@ void NetProcessReceive(void) {
                 IpInput(Pkt, PktLen);
             }
         }
-        if (Id < RX_BUF_COUNT && gReceiveBuffer[Id]) {
-            ReceiveRefillOne(Id, gReceiveBuffer[Id]);
+        if (Id < RX_BUF_COUNT && gVirtioNetReceiveBuffer[Id]) {
+            ReceiveRefillOne(Id, gVirtioNetReceiveBuffer[Id]);
         }
         gReceive.LastUsed = (UINT16)(gReceive.LastUsed + 1);
     }

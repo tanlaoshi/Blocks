@@ -28,15 +28,15 @@ int WifiPowerManagementUnitForceResources(void) {
             WIFI_CHIPCOMMON_BASE +
                 WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_MAXIMUM_RESOURCE_MASK_OFFSET,
             &MaximumResourceMask) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI pmu res read fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI pmu res read fail\n");
         return -1;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI pmu stat=", PowerManagementStatus);
     WifiBootMarkHexadecimal32(" res=", ResourceStatus);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     WifiBootMarkHexadecimal32("Boot: Pi WIFI pmu min=", MinimumResourceMask);
     WifiBootMarkHexadecimal32(" max=", MaximumResourceMask);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     /* 先抬 max，再抬 min——否则 min 位可能被 max 裁掉 */
     if (WifiBackplaneWrite32(
             WIFI_CHIPCOMMON_BASE +
@@ -46,7 +46,7 @@ int WifiPowerManagementUnitForceResources(void) {
             WIFI_CHIPCOMMON_BASE +
                 WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_MINIMUM_RESOURCE_MASK_OFFSET,
             0xFFFFFFFFu) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI pmu min/max set fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI pmu min/max set fail\n");
         return -1;
     }
     for (Attempt = 0; Attempt < 50u; Attempt++) {
@@ -54,7 +54,7 @@ int WifiPowerManagementUnitForceResources(void) {
                 WIFI_CHIPCOMMON_BASE +
                     WIFI_CHIPCOMMON_POWER_MANAGEMENT_UNIT_RESOURCE_STATUS_OFFSET,
                 &ResourceStatus) != 0) {
-            HalSerialBootMarkForce("Boot: Pi WIFI pmu res poll fail\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI pmu res poll fail\n");
             return -1;
         }
         if (ResourceStatus == 0xFFFFFFFFu) {
@@ -70,7 +70,7 @@ int WifiPowerManagementUnitForceResources(void) {
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI pmu min set=", MinimumResourceMask);
     WifiBootMarkHexadecimal32(" res=", ResourceStatus);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     return 0;
 }
 
@@ -83,16 +83,16 @@ int WifiSocramResetAfterResources(void) {
     UINT32 BankPda = 0;
 
     if (WifiCoreReset(WIFI_SOCRAM_WRAPPER, 0, 0, 0) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI SOCRAM re-reset fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI SOCRAM re-reset fail\n");
         return -1;
     }
     if (WifiBackplaneWrite32(WIFI_SOCRAM_BANK_INDEX, 3u) != 0 ||
         WifiBackplaneWrite32(WIFI_SOCRAM_BANK_PDA, 0u) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI bank remap re-off fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI bank remap re-off fail\n");
         return -1;
     }
     if (WifiBackplaneRead32(WIFI_SOCRAM_BANK_PDA, &BankPda) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI bankpda rb fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI bankpda rb fail\n");
         return -1;
     }
     (void)WifiBackplaneRead32(WIFI_SOCRAM_WRAPPER + WIFI_AI_IO_CONTROL_OFFSET, &IoControl);
@@ -101,6 +101,6 @@ int WifiSocramResetAfterResources(void) {
     WifiBootMarkHexadecimal32("Boot: Pi WIFI socram re io=", IoControl);
     WifiBootMarkHexadecimal32(" rst=", ResetControl);
     WifiBootMarkHexadecimal32(" pda=", BankPda);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     return 0;
 }

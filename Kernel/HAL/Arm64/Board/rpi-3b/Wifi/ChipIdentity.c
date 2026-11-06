@@ -52,7 +52,7 @@ int WifiChipIdentityProbe(void) {
     (void)WifiClockForceActiveLowPower();
 
     if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE, &Signature) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI chip read fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI chip read fail\n");
         return -1;
     }
     ChipIdentity = Signature & 0xFFFFu;
@@ -61,24 +61,24 @@ int WifiChipIdentityProbe(void) {
 
     {
         char Buffer[9];
-        HalSerialBootMark("Boot: Pi WIFI chip=");
+        WifiSerialBootMark("Boot: Pi WIFI chip=");
         HalSerialFormatHex(Buffer, ChipIdentity, 4);
-        HalSerialBootMark(Buffer);
-        HalSerialBootMark(" rev=");
+        WifiSerialBootMark(Buffer);
+        WifiSerialBootMark(" rev=");
         HalSerialFormatHex(Buffer, gWifiChipRevision, 1);
-        HalSerialBootMark(Buffer);
-        HalSerialBootMark(" sig=");
+        WifiSerialBootMark(Buffer);
+        WifiSerialBootMark(" sig=");
         HalSerialFormatHex(Buffer, Signature, 8);
-        HalSerialBootMark(Buffer);
-        HalSerialBootMark("\n");
+        WifiSerialBootMark(Buffer);
+        WifiSerialBootMark("\n");
     }
 
     if (ChipIdentity == WIFI_CHIP_ID_43455) {
-        HalSerialBootMark("Boot: Pi WIFI name=BCM43455\n");
+        WifiSerialBootMark("Boot: Pi WIFI name=BCM43455\n");
     } else if (ChipIdentity == WIFI_CHIP_ID_43430) {
-        HalSerialBootMark("Boot: Pi WIFI name=BCM43430\n");
+        WifiSerialBootMark("Boot: Pi WIFI name=BCM43430\n");
     } else {
-        HalSerialBootMark("Boot: Pi WIFI chip unsupported\n");
+        WifiSerialBootMark("Boot: Pi WIFI chip unsupported\n");
         return -1;
     }
     gWifiChipProbed = 1;
@@ -119,18 +119,18 @@ void WifiFirmwarePathProbe(void) {
     gWifiFirmwarePresent = 0;
     Path = WifiFirmwarePathForChip();
     if (Path == 0) {
-        HalSerialBootMark("Boot: Pi WIFI fw path unknown chip\n");
+        WifiSerialBootMark("Boot: Pi WIFI fw path unknown chip\n");
         return;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI fw=");
-    HalSerialBootMarkForce(Path);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI fw=");
+    WifiSerialBootMarkForce(Path);
+    WifiSerialBootMarkForce("\n");
 
     Error = HalDriverFileRead(Path, Probe, sizeof(Probe), &Size);
     if (Error != 0 || Size == 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI fw miss (place on BLOCKS)\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI fw miss (place on BLOCKS)\n");
         return;
     }
     gWifiFirmwarePresent = 1;
-    HalSerialBootMarkForce("Boot: Pi WIFI fw present\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI fw present\n");
 }

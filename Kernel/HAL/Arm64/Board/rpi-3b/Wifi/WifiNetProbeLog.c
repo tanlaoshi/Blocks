@@ -93,7 +93,7 @@ void WifiNetProbeLogWrite(const char *Status, const UINT8 *Mac, int MacOk, UINT3
     WifiNetLogAppendField(Buffer, sizeof(Buffer), &Length, "ping_ok=", PingOk);
     Buffer[Length] = 0;
     if (FileSystemWriteFile("WIFI-NET.LOG", Buffer, Length) != FAT_OK) {
-        HalSerialBootMarkForce("Boot: Pi WIFI net log write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI net log write fail\n");
         return;
     }
     (void)FileSystemFileSync("WIFI-NET.LOG");

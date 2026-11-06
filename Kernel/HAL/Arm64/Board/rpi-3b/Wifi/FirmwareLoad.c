@@ -68,7 +68,7 @@ int WifiFirmwareLoad(void) {
     NvramPath = WifiNvramPathForChip();
     if (FirmwarePath == 0 || NvramPath == 0) {
         gWifiLoadFailStage = "load-path";
-        HalSerialBootMarkForce("Boot: Pi WIFI load path unknown\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI load path unknown\n");
         return -1;
     }
     /* 路径探测只在 Claim 做一次；此处勿再 PathProbe（会双打 fw present） */
@@ -79,13 +79,13 @@ int WifiFirmwareLoad(void) {
     if (WifiReadFileIntoPages(FirmwarePath, &FirmwareBlob, &FirmwareBytes,
                               WIFI_FIRMWARE_MAX_BYTES) != 0) {
         gWifiLoadFailStage = "load-fw-read";
-        HalSerialBootMarkForce("Boot: Pi WIFI fw read fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI fw read fail\n");
         return -1;
     }
     if (WifiReadFileIntoPages(NvramPath, &NvramText, &NvramTextBytes, WIFI_NVRAM_MAX_BYTES) !=
         0) {
         gWifiLoadFailStage = "load-nvram-read";
-        HalSerialBootMarkForce("Boot: Pi WIFI nvram miss\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI nvram miss\n");
         goto Done;
     }
     NvramPages = (WIFI_NVRAM_MAX_BYTES + PAGE_SIZE - 1u) / PAGE_SIZE;
@@ -98,12 +98,12 @@ int WifiFirmwareLoad(void) {
                          &NvramBytes) != 0 ||
         NvramBytes < 4u) {
         gWifiLoadFailStage = "load-nvram-prep";
-        HalSerialBootMarkForce("Boot: Pi WIFI nvram prep fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI nvram prep fail\n");
         goto Done;
     }
 
     WifiBootMarkHexadecimal32("Boot: Pi WIFI load begin tag=", WIFI_BUILD_TAG);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     /*
      * 延后 Claim：空闲后 KSO 写得成 0x01 但 DEVON 不回（0x12c）。
      * 先 WL_ON POR + 重枚举，再对表 Linux 走 KSO。
@@ -119,7 +119,7 @@ int WifiFirmwareLoad(void) {
     }
     if (WifiAlpRequest() != 0) {
         gWifiLoadFailStage = "load-alp";
-        HalSerialBootMarkForce("Boot: Pi WIFI ALP fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI ALP fail\n");
         goto Done;
     }
     (void)WifiSdioHostCommandDataRecover();
@@ -132,11 +132,11 @@ int WifiFirmwareLoad(void) {
 
         if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE, &ChipCommon) != 0) {
             gWifiLoadFailStage = "load-cc-pre";
-            HalSerialBootMarkForce("Boot: Pi WIFI cc read fail before download\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI cc read fail before download\n");
             goto Done;
         }
         WifiBootMarkHexadecimal32("Boot: Pi WIFI cc before download=", ChipCommon);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
     }
     if (WifiEnterDownload() != 0) {
         gWifiLoadFailStage = "load-enter";
@@ -170,13 +170,13 @@ int WifiFirmwareLoad(void) {
     }
     if (WifiAlpReleaseForceToRequest() != 0) {
         gWifiLoadFailStage = "load-alp-rel";
-        HalSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI ALP avail fail\n");
         goto Done;
     }
     /* cyw43：寄存器写后退窗到 ChipCommon，再灌 RAM */
     if (WifiBackplaneWindowSet(WIFI_CHIPCOMMON_BASE) != 0) {
         gWifiLoadFailStage = "load-win-home";
-        HalSerialBootMarkForce("Boot: Pi WIFI window home fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI window home fail\n");
         goto Done;
     }
     {
@@ -184,11 +184,11 @@ int WifiFirmwareLoad(void) {
 
         if (WifiBackplaneRead32(WIFI_CHIPCOMMON_BASE, &ChipCommon) != 0) {
             gWifiLoadFailStage = "load-cc-write";
-            HalSerialBootMarkForce("Boot: Pi WIFI F1 dead before write\n");
+            WifiSerialBootMarkForce("Boot: Pi WIFI F1 dead before write\n");
             goto Done;
         }
         WifiBootMarkHexadecimal32("Boot: Pi WIFI cc before write=", ChipCommon);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
     }
     /* 对表 brcmf_sdiod_skbuff_write：长度向上取 4，尾巴清零（避免 2B 收尾） */
     while ((FirmwareBytes & 3u) != 0u && FirmwareBytes < WIFI_FIRMWARE_MAX_BYTES) {
@@ -199,18 +199,18 @@ int WifiFirmwareLoad(void) {
     DownloadBase = WifiSramFindAccessibleBase();
     if (DownloadBase == 0xFFFFFFFFu) {
         gWifiLoadFailStage = "load-sram-base";
-        HalSerialBootMarkForce("Boot: Pi WIFI no writable sram window\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI no writable sram window\n");
         goto Done;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI ram base=", DownloadBase);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if (WifiBackplaneWriteMemory(DownloadBase, FirmwareBlob, (UINT32)FirmwareBytes) != 0) {
         gWifiLoadFailStage = "load-fw-write";
-        HalSerialBootMarkForce("Boot: Pi WIFI fw write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI fw write fail\n");
         goto Done;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI fw bytes=", (UINT32)FirmwareBytes);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     if (WifiVerifyDownloadPath() != 0) {
         gWifiLoadFailStage = "load-verify";
         goto Done;
@@ -222,17 +222,17 @@ int WifiFirmwareLoad(void) {
     if (WifiBackplaneWriteMemory(DownloadBase + WIFI_RAM_SIZE - 4u - NvramBytes,
                              NvramBlob, NvramBytes) != 0) {
         gWifiLoadFailStage = "load-nvram-write";
-        HalSerialBootMarkForce("Boot: Pi WIFI nvram write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI nvram write fail\n");
         goto Done;
     }
     WordCount = NvramBytes / 4u;
     SizeWord = ((~WordCount & 0xFFFFu) << 16) | (WordCount & 0xFFFFu);
     if (WifiBackplaneWrite32(DownloadBase + WIFI_RAM_SIZE - 4u, SizeWord) != 0) {
         gWifiLoadFailStage = "load-nvram-size";
-        HalSerialBootMarkForce("Boot: Pi WIFI nvram size write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI nvram size write fail\n");
         goto Done;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI nvram ok, exit download\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI nvram ok, exit download\n");
     if (WifiExitDownload() != 0) {
         gWifiLoadFailStage = "load-exit";
         goto Done;
@@ -254,7 +254,7 @@ int WifiFirmwareLoad(void) {
         goto Done;
     }
     gWifiFirmwareLoaded = 1;
-    HalSerialBootMarkForce("Boot: Pi WIFI fw load ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI fw load ok\n");
     Result = 0;
     gWifiLoadFailStage = 0;
 

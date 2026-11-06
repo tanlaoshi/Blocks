@@ -21,7 +21,7 @@ int WifiBackplaneWindowSet(UINT32 Address) {
     if (WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS, Byte0) != 0 ||
         WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 1u, Byte1) != 0 ||
         WifiSdioCommand52Write(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 2u, Byte2) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI win set fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI win set fail\n");
         return -1;
     }
     /*
@@ -31,16 +31,16 @@ int WifiBackplaneWindowSet(UINT32 Address) {
     if (WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS, &Read0) != 0 ||
         WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 1u, &Read1) != 0 ||
         WifiSdioCommand52Read(SDIO_FUNCTION_1, SDIO_BACKPLANE_ADDRESS + 2u, &Read2) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI win rb fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI win rb fail\n");
         gWifiBackplaneWindow = 0xFFFFFFFFu;
         return -1;
     }
     if (Read0 != Byte0 || Read1 != Byte1 || Read2 != Byte2) {
         WifiBootMarkHexadecimal32("Boot: Pi WIFI win set=", Window);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         WifiBootMarkHexadecimal32("Boot: Pi WIFI win rb=",
                                   ((UINT32)Read2 << 16) | ((UINT32)Read1 << 8) | (UINT32)Read0);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         gWifiBackplaneWindow = 0xFFFFFFFFu;
         return -1;
     }
@@ -109,7 +109,7 @@ static int WifiBackplaneWriteChunk(UINT32 WindowOffset, UINT8 *Cursor, UINT32 By
             WifiBootMarkHexadecimal32("Boot: Pi WIFI xfer blk=", gWifiBackplaneBlockBytes);
             WifiBootMarkHexadecimal32(" blocks=", Blocks);
             WifiBootMarkHexadecimal32(" bytes=", BulkBytes);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
         }
         if (WifiSdioBlockWrite(SDIO_FUNCTION_1, WindowOffset, Cursor, BulkBytes,
                                gWifiBackplaneBlockBytes) != 0) {
@@ -163,11 +163,11 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
         (void)WifiSdioSetFunctionBlockSize(64u);
         ReadBack = WifiSdioReadFunctionBlockSize();
         WifiBootMarkHexadecimal32("Boot: Pi WIFI fbr readback=", (UINT32)ReadBack);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         gWifiBackplaneBlockBytes = (ReadBack == 512) ? 512u : 64u;
         gWifiBlockSizeReady = 1;
         WifiBootMarkHexadecimal32("Boot: Pi WIFI fbr blk=", gWifiBackplaneBlockBytes);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
     }
     /*
      * 对表 Linux brcmf_sdiod_ramrw（Pi Arasan）：窗内偏移 | ACCESS_2_4B（0x8000）。
@@ -204,7 +204,7 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
         }
         if (WifiBackplaneWindowSet(Current) != 0) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw window fail @", Current);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             return -1;
         }
         if (Write) {
@@ -216,13 +216,13 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
             WifiBootMarkHexadecimal32(
                 Write ? "Boot: Pi WIFI fw write fail @" : "Boot: Pi WIFI fw read fail @",
                 Current);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw pst=", gSdhciLastPresentState);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw isr=", gSdhciLastCommandStatus);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw r5=", gSdhciResponse[0]);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             return -1;
         }
         Current += Chunk;
@@ -235,7 +235,7 @@ static int WifiBackplaneMemoryTransfer(UINT32 Address, UINT8 *Data, UINT32 ByteC
         }
         if (Write && (Done & 0xFFFFu) == 0u) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI fw bytes=", Done);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
         }
     }
     return 0;
@@ -262,11 +262,11 @@ int WifiBackplaneWriteReadbackTest(void) {
         WifiBackplaneRead32(WIFI_SOCRAM_BANK_INDEX, &First) != 0 ||
         WifiBackplaneWrite32(WIFI_SOCRAM_BANK_INDEX, 3u) != 0 ||
         WifiBackplaneRead32(WIFI_SOCRAM_BANK_INDEX, &Second) != 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI bankidx roundtrip fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI bankidx roundtrip fail\n");
         return -1;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI bankidx write1 read=", First);
     WifiBootMarkHexadecimal32(" write3 read=", Second);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     return 0;
 }

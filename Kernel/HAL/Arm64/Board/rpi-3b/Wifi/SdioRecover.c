@@ -63,9 +63,9 @@ int WifiSdioHostCommandDataRecover(void) {
     }
     SdhciDelayMicroseconds(1000);
     if (Reset != 0 || Cleared == 0) {
-        HalSerialBootMarkForce("Boot: Pi WIFI host recover fail");
+        WifiSerialBootMarkForce("Boot: Pi WIFI host recover fail");
         WifiBootMarkHexadecimal32(" pst=", SdhciRead32(SDHCI_PRESENT_STATE));
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
         return -1;
     }
     return 0;

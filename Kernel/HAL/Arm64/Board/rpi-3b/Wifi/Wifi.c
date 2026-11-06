@@ -44,13 +44,13 @@ static void WifiBootMarkScanResults(void) {
     UINT32 Index;
 
     WifiBootMarkHexadecimal32("Boot: Pi WIFI scan count=", gWifiScanEntryCount);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     for (Index = 0; Index < gWifiScanEntryCount; Index++) {
-        HalSerialBootMarkForce("Boot: Pi WIFI ssid=");
-        HalSerialBootMarkForce(gWifiScanEntries[Index].Ssid);
+        WifiSerialBootMarkForce("Boot: Pi WIFI ssid=");
+        WifiSerialBootMarkForce(gWifiScanEntries[Index].Ssid);
         WifiBootMarkHexadecimal32(" rssi=", (UINT32)(INT32)gWifiScanEntries[Index].SignalRssi);
         WifiBootMarkHexadecimal32(" ch=", gWifiScanEntries[Index].Channel);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
     }
 }
 
@@ -116,13 +116,13 @@ static void WifiPersistStatusLog(const char *Status) {
     }
     Buffer[Length] = 0;
     if (FileSystemWriteFile("WIFI-SCAN.LOG", Buffer, Length) != FAT_OK) {
-        HalSerialBootMarkForce("Boot: Pi WIFI scan log write fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI scan log write fail\n");
         return;
     }
     (void)FileSystemFileSync("WIFI-SCAN.LOG");
-    HalSerialBootMarkForce("Boot: Pi WIFI scan log written status=");
-    HalSerialBootMarkForce(Status ? Status : "?");
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI scan log written status=");
+    WifiSerialBootMarkForce(Status ? Status : "?");
+    WifiSerialBootMarkForce("\n");
 }
 
 static int WifiOpsClaim(void) {
@@ -144,15 +144,15 @@ static int WifiOpsClaim(void) {
     if (WifiFirmwareLoad() != 0) {
         const char *Stage = WifiFirmwareLoadFailStage();
 
-        HalSerialBootMarkForce("Boot: Pi WIFI claim load fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI claim load fail\n");
         /* 软 reboot 后芯片常脏；有线仍可用，Wi‑Fi 须拔电冷启 */
-        HalSerialBootMarkForce(
+        WifiSerialBootMarkForce(
             "Boot: Pi WIFI need cold power if after soft reboot\n");
         /* 0x148：status=load-* 阶段字，勿笼统 claim-load-fail */
         WifiPersistStatusLog(Stage && Stage[0] ? Stage : "claim-load-fail");
         return 1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI claim load ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI claim load ok\n");
     WifiPersistStatusLog("claim-load-ok");
     /*
      * 0x143：0x142 CH 仍停在 claim-load-ok、无 scan-begin → Worker 里
@@ -199,7 +199,7 @@ static int WifiOpsScan(void) {
     if (WifiRadioBringUp() != 0) {
         const char *Detail = WifiRadioFailStatus();
 
-        HalSerialBootMarkForce("Boot: Pi WIFI radio bring-up fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI radio bring-up fail\n");
         /* 0x147：country-fail / up-fail / getup-fail，勿笼统 radio-fail */
         WifiPersistStatusLog(Detail && Detail[0] ? Detail : "radio-fail");
         return -1;
@@ -208,7 +208,7 @@ static int WifiOpsScan(void) {
     if (WifiScanAccessPoints() != 0) {
         const char *Detail = WifiScanFailStatus();
 
-        HalSerialBootMarkForce("Boot: Pi WIFI scan fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI scan fail\n");
         WifiBootMarkScanResults();
         /* 0x144：勿再笼统 scan-fail；CH 看 escan-fail vs scan-empty + poll_* */
         WifiPersistStatusLog(Detail && Detail[0] ? Detail : "scan-fail");
@@ -216,7 +216,7 @@ static int WifiOpsScan(void) {
     }
     WifiBootMarkScanResults();
     WifiPersistStatusLog("scan-ok");
-    HalSerialBootMarkForce("Boot: Pi WIFI wifi-6 scan ok\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI wifi-6 scan ok\n");
     return 0;
 }
 
@@ -275,9 +275,9 @@ static int WifiProbeOnce(void) {
     WifiBringUpDiagnosticsPrint();
     {
         const char *Path = WifiFirmwarePathForChip();
-        HalSerialBootMark("Boot: Pi WIFI fw path=");
-        HalSerialBootMark(Path ? Path : "(none)");
-        HalSerialBootMark(" (load after FS)\n");
+        WifiSerialBootMark("Boot: Pi WIFI fw path=");
+        WifiSerialBootMark(Path ? Path : "(none)");
+        WifiSerialBootMark(" (load after FS)\n");
     }
     return 0;
 }
@@ -294,9 +294,9 @@ void BoardWifiRegister(void) {
 
     HalWifiSetOps(&Ops);
     if (WifiProbeOnce() != 0) {
-        HalSerialBootMark("Boot: Pi WIFI probe fail (Ready=0)\n");
+        WifiSerialBootMark("Boot: Pi WIFI probe fail (Ready=0)\n");
         gWifiChipProbed = 0;
         return;
     }
-    HalSerialBootMark("Boot: Pi WIFI ok\n");
+    WifiSerialBootMark("Boot: Pi WIFI ok\n");
 }

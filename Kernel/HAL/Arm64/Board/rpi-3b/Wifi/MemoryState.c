@@ -18,19 +18,19 @@ void WifiDiagnosticsSocramState(void) {
     UINT32 Index;
     UINT32 Value;
 
-    HalSerialBootMarkForce("Boot: Pi WIFI memregs");
+    WifiSerialBootMarkForce("Boot: Pi WIFI memregs");
     for (Index = 0; Index < 5u; Index++) {
         Value = 0;
         (void)WifiBackplaneRead32(WIFI_SOCRAM_CORE_BASE + Registers[Index], &Value);
         WifiBootMarkHexadecimal32(" ", Value);
     }
-    HalSerialBootMarkForce("\nBoot: Pi WIFI ioctl");
+    WifiSerialBootMarkForce("\nBoot: Pi WIFI ioctl");
     for (Index = 0; Index < 5u; Index++) {
         Value = 0;
         (void)WifiBackplaneRead32(Wrappers[Index] + WIFI_AI_IO_CONTROL_OFFSET, &Value);
         WifiBootMarkHexadecimal32(" ", Value);
     }
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
     /*
      * bwalloc 在正常芯片上是 0（无窗口分配），实测却是 e5e5e5e5。
      * 先回读确认它可写，再置 0——若存储窗口解码依赖它，这一步就能放开阵列访问。
@@ -42,7 +42,7 @@ void WifiDiagnosticsSocramState(void) {
     (void)WifiBackplaneWrite32(WIFI_SOCRAM_CORE_BASE + 0x14u, 0u);
     (void)WifiBackplaneRead32(WIFI_SOCRAM_CORE_BASE + 0x14u, &Value);
     WifiBootMarkHexadecimal32(" standby set0 read=", Value);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }
 
 /* LPO：GPCLK2 的控制/分频寄存器，读一下就知道 32.768 kHz 到底在不在 */
@@ -54,7 +54,7 @@ void WifiDiagnosticsClockState(void) {
 
     WifiBootMarkHexadecimal32("Boot: Pi WIFI lpo ctl=", *Control);
     WifiBootMarkHexadecimal32(" div=", *Divider);
-    HalSerialBootMarkForce("\n");
+    WifiSerialBootMarkForce("\n");
 }
 
 /*
@@ -71,11 +71,11 @@ UINT32 WifiSramFindAccessibleBase(void) {
         if (WifiBackplaneRead32(Candidates[Index] + 0x100u, &Value) == 0) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI sram base ok=", Candidates[Index]);
             WifiBootMarkHexadecimal32(" value=", Value);
-            HalSerialBootMarkForce("\n");
+            WifiSerialBootMarkForce("\n");
             return Candidates[Index];
         }
         WifiBootMarkHexadecimal32("Boot: Pi WIFI sram base no=", Candidates[Index]);
-        HalSerialBootMarkForce("\n");
+        WifiSerialBootMarkForce("\n");
     }
     return 0xFFFFFFFFu;
 }

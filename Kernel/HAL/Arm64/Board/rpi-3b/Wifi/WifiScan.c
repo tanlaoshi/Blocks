@@ -73,7 +73,7 @@ int WifiRadioBringUp(void) {
      * 跳过 country（0x149 否证：XX/ALL 皆拒；NVRAM 已 ccode=ALL）。
      * 0x14a：GET_UP 用 cmd 162（0x149 误用 6=DUMP → -23）。
      */
-    HalSerialBootMarkForce("Boot: Pi WIFI skip country (nvram ccode)\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI skip country (nvram ccode)\n");
 
     WifiMemorySet(Buffer, 0, sizeof(Buffer));
     WifiMemoryCopy(Buffer, &Zero, 4);
@@ -95,13 +95,13 @@ int WifiRadioBringUp(void) {
     WifiMemoryCopy(Buffer, "bsscfg:event_msgs", 18); /* 含 '\\0' */
     if (WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_SET_VAR, Buffer, 18u + 4u + 19u, 0) != 0) {
         gWifiRadioFailStatusText = "event-msgs-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI event_msgs fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI event_msgs fail\n");
         return -1;
     }
     SdhciDelayMicroseconds(50000);
     if (WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_UP, 0, 0, 0) != 0) {
         gWifiRadioFailStatusText = "up-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI WLC_UP fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI WLC_UP fail\n");
         return -1;
     }
     /* 等 GET_UP=1；中途再补一次 WLC_UP（防 NOTUP 竞态） */
@@ -118,11 +118,11 @@ int WifiRadioBringUp(void) {
     }
     if (UpState <= 0) {
         gWifiRadioFailStatusText = "getup-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI GET_UP still down\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI GET_UP still down\n");
         return -1;
     }
     gWifiRadioUp = 1;
-    HalSerialBootMarkForce("Boot: Pi WIFI radio up\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI radio up\n");
     return 0;
 }
 
@@ -164,7 +164,7 @@ int WifiScanAccessPoints(void) {
 
     if (WifiIoctlSetVariable("escan", Options, sizeof(Options)) != 0) {
         gWifiScanFailStatusText = "escan-fail";
-        HalSerialBootMarkForce("Boot: Pi WIFI escan ioctl fail\n");
+        WifiSerialBootMarkForce("Boot: Pi WIFI escan ioctl fail\n");
         return -1;
     }
 
@@ -221,7 +221,7 @@ int WifiScanAccessPoints(void) {
         return 0;
     }
     gWifiScanFailStatusText = "scan-empty";
-    HalSerialBootMarkForce("Boot: Pi WIFI scan empty (timeout)\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI scan empty (timeout)\n");
     return -1;
 }
 
@@ -253,6 +253,6 @@ int WifiAssociateOpen(const char *Ssid) {
     if (WifiIoctl(WIFI_SDPCM_SET, WIFI_WLC_SET_SSID, Buffer, 36u, 0) != 0) {
         return -1;
     }
-    HalSerialBootMarkForce("Boot: Pi WIFI assoc open sent\n");
+    WifiSerialBootMarkForce("Boot: Pi WIFI assoc open sent\n");
     return 0;
 }

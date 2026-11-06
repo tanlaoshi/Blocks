@@ -9,7 +9,7 @@ static void WifiSdioDumpResetState(const char *Tag) {
     WifiBootMarkHexadecimal32(Tag, SdhciRead8(SDHCI_SOFTWARE_RESET));
     WifiBootMarkHexadecimal32(" pst=", SdhciRead32(SDHCI_PRESENT_STATE));
     WifiBootMarkHexadecimal32(" clk=", SdhciRead16(SDHCI_CLOCK_CONTROL));
-    HalSerialBootMark("\n");
+    WifiSerialBootMark("\n");
 }
 
 /*
@@ -23,7 +23,7 @@ static int WifiSdioResetWithClock(void) {
             WifiSdioDumpResetState("Boot: Pi WIFI RESET_ALL stuck sr=");
             return -1;
         }
-        HalSerialBootMark("Boot: Pi WIFI RESET_ALL ok\n");
+        WifiSerialBootMark("Boot: Pi WIFI RESET_ALL ok\n");
         return 1; /* 调用方须重配钟 */
     }
     if (SdhciSoftwareReset(SDHCI_RESET_DATA) != 0) {
@@ -32,7 +32,7 @@ static int WifiSdioResetWithClock(void) {
             WifiSdioDumpResetState("Boot: Pi WIFI RESET_ALL stuck sr=");
             return -1;
         }
-        HalSerialBootMark("Boot: Pi WIFI RESET_ALL ok\n");
+        WifiSerialBootMark("Boot: Pi WIFI RESET_ALL ok\n");
         return 1;
     }
     return 0;
@@ -54,15 +54,15 @@ int WifiSdioHostBringUp(void) {
     SdhciWrite32(SDHCI_SIGNAL_ENABLE, 0);
     gSdhciTwoTicksMicroseconds = ((2u * 1000000u) / WIFI_IDENTIFY_HERTZ) + 1u;
     if (SdhciClockConfigure(WIFI_IDENTIFY_HERTZ) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI clock id fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI clock id fail\n");
         return -1;
     }
     SdhciDelayMicroseconds(2000);
 
-    HalSerialBootMark("Boot: Pi WIFI SDIO reset\n");
+    WifiSerialBootMark("Boot: Pi WIFI SDIO reset\n");
     ResetKind = WifiSdioResetWithClock();
     if (ResetKind < 0) {
-        HalSerialBootMark("Boot: Pi WIFI softreset timeout\n");
+        WifiSerialBootMark("Boot: Pi WIFI softreset timeout\n");
         return -1;
     }
     if (ResetKind > 0) {
@@ -74,7 +74,7 @@ int WifiSdioHostBringUp(void) {
         SdhciWrite32(SDHCI_INT_ENABLE, 0xFFFFFFFFu);
         SdhciWrite32(SDHCI_SIGNAL_ENABLE, 0);
         if (SdhciClockConfigure(WIFI_IDENTIFY_HERTZ) != 0) {
-            HalSerialBootMark("Boot: Pi WIFI clock after ALL fail\n");
+            WifiSerialBootMark("Boot: Pi WIFI clock after ALL fail\n");
             return -1;
         }
         SdhciDelayMicroseconds(2000);
@@ -95,7 +95,7 @@ int WifiSdioEnumerate(void) {
     Flags = SDHCI_CMD_RESP_SHORT; /* R4：无 CRC */
     if (SdhciCommandSend((UINT8)SDIO_COMMAND_IO_SEND_OP_COND, 0, Flags, 0) != 0) {
         WifiBootMarkHexadecimal32("Boot: Pi WIFI CMD5 fail st=", gSdhciLastCommandStatus);
-        HalSerialBootMark("\n");
+        WifiSerialBootMark("\n");
         return -1;
     }
     Ocr = gSdhciResponse[0];
@@ -108,28 +108,28 @@ int WifiSdioEnumerate(void) {
                              0) != 0) {
             WifiBootMarkHexadecimal32("Boot: Pi WIFI CMD5 retry fail st=",
                                       gSdhciLastCommandStatus);
-            HalSerialBootMark("\n");
+            WifiSerialBootMark("\n");
             return -1;
         }
         Ocr = gSdhciResponse[0];
     }
     if ((Ocr & SDIO_OCR_CARD_READY) == 0) {
-        HalSerialBootMark("Boot: Pi WIFI CMD5 timeout\n");
+        WifiSerialBootMark("Boot: Pi WIFI CMD5 timeout\n");
         return -1;
     }
     WifiBootMarkHexadecimal32("Boot: Pi WIFI OCR=", Ocr);
-    HalSerialBootMark("\n");
+    WifiSerialBootMark("\n");
 
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_INDEX);
     if (SdhciCommandSend(3, 0, Flags, 0) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI CMD3 fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI CMD3 fail\n");
         return -1;
     }
     gWifiRelativeAddress = gSdhciResponse[0] & 0xFFFF0000u;
 
     Flags = (UINT16)(SDHCI_CMD_RESP_SHORT_BUSY | SDHCI_CMD_CRC | SDHCI_CMD_INDEX);
     if (SdhciCommandSend(7, gWifiRelativeAddress, Flags, 0) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI CMD7 fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI CMD7 fail\n");
         return -1;
     }
     return 0;
@@ -160,10 +160,10 @@ int WifiSdioEnableFunction1(void) {
         TransferHertz = WIFI_TRANSFER_HERTZ;
         HostControl = (UINT8)(SDHCI_WIDTH_4BIT | SDHCI_HIGH_SPEED);
     } else {
-        HalSerialBootMark("Boot: Pi WIFI no HS, stay 25MHz\n");
+        WifiSerialBootMark("Boot: Pi WIFI no HS, stay 25MHz\n");
     }
     if (WifiSdioOrByte(SDIO_FUNCTION_0, SDIO_CCCR_BUS_INTERFACE, 2u) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI bus width fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI bus width fail\n");
         return -1;
     }
     SdhciWrite8(SDHCI_HOST_CONTROL, HostControl);
@@ -172,20 +172,20 @@ int WifiSdioEnableFunction1(void) {
         gSdhciTwoTicksMicroseconds = 2u;
     }
     if (SdhciClockConfigure(TransferHertz) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI clock xfer fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI clock xfer fail\n");
         return -1;
     }
-    HalSerialBootMark(HighSpeedOk ? "Boot: Pi WIFI clock=50MHz width=4bit HS\n"
+    WifiSerialBootMark(HighSpeedOk ? "Boot: Pi WIFI clock=50MHz width=4bit HS\n"
                                    : "Boot: Pi WIFI clock=25MHz width=4bit\n");
 
     if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR1_BLOCK_SIZE, 64u) != 0 ||
         WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR1_BLOCK_SIZE + 1u, 0) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI FBR1 blk fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI FBR1 blk fail\n");
         return -1;
     }
     if (WifiSdioOrByte(SDIO_FUNCTION_0, SDIO_CCCR_IO_ENABLE, (UINT8)(1u << SDIO_FUNCTION_1)) !=
         0) {
-        HalSerialBootMark("Boot: Pi WIFI IO_ENABLE fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI IO_ENABLE fail\n");
         return -1;
     }
     (void)WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_CCCR_INT_ENABLE, 0);
@@ -195,12 +195,12 @@ int WifiSdioEnableFunction1(void) {
             return -1;
         }
         if ((Ready & (1u << SDIO_FUNCTION_1)) != 0) {
-            HalSerialBootMark("Boot: Pi WIFI F1 ready\n");
+            WifiSerialBootMark("Boot: Pi WIFI F1 ready\n");
             return 0;
         }
         SdhciDelayMicroseconds(100000u);
     }
-    HalSerialBootMark("Boot: Pi WIFI F1 not ready\n");
+    WifiSerialBootMark("Boot: Pi WIFI F1 not ready\n");
     return -1;
 }
 
@@ -211,7 +211,7 @@ int WifiSdioEnableFunction2(void) {
                                (UINT8)(WIFI_WLAN_BLOCK_BYTES & 0xFFu)) != 0 ||
         WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_FBR2_BLOCK_SIZE + 1u,
                                (UINT8)((WIFI_WLAN_BLOCK_BYTES >> 8) & 0xFFu)) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI FBR2 blk fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI FBR2 blk fail\n");
         return -1;
     }
     if (WifiSdioCommand52Read(SDIO_FUNCTION_0, SDIO_CCCR_IO_ENABLE, &Value) != 0) {
@@ -219,7 +219,7 @@ int WifiSdioEnableFunction2(void) {
     }
     Value = (UINT8)(Value | (1u << SDIO_FUNCTION_1) | (1u << SDIO_FUNCTION_2));
     if (WifiSdioCommand52Write(SDIO_FUNCTION_0, SDIO_CCCR_IO_ENABLE, Value) != 0) {
-        HalSerialBootMark("Boot: Pi WIFI F2 enable fail\n");
+        WifiSerialBootMark("Boot: Pi WIFI F2 enable fail\n");
         return -1;
     }
     return 0;

@@ -79,7 +79,7 @@ void KeyboardPush(void) {
     if (N == gKeyboardTail) {
         return;
     }
-    gKeyboardQueue[gKeyboardHead] = gKeyboardCurrent;
+    gVirtioKeyboardQueue[gKeyboardHead] = gKeyboardCurrent;
     gKeyboardHead = N;
     VirtioInputDiagNoteKeyboardPush();
 }

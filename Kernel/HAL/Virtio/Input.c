@@ -21,7 +21,7 @@ VIRTIO_MMIO_DEV gTab;
 int gKeyboardOn;
 int gTabOn;
 
-HAL_KEYBOARD_REPORT gKeyboardQueue[KBD_Q_SIZE];
+HAL_KEYBOARD_REPORT gVirtioKeyboardQueue[KBD_Q_SIZE];
 UINT32 gKeyboardHead;
 UINT32 gKeyboardTail;
 HAL_KEYBOARD_REPORT gKeyboardCurrent;
@@ -128,7 +128,7 @@ static int VirtioInputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     if (!Report || gKeyboardTail == gKeyboardHead) {
         return 0;
     }
-    *Report = gKeyboardQueue[gKeyboardTail];
+    *Report = gVirtioKeyboardQueue[gKeyboardTail];
     gKeyboardTail = (gKeyboardTail + 1) % KBD_Q_SIZE;
     VirtioInputDiagNoteKeyboardDequeue();
     return 1;

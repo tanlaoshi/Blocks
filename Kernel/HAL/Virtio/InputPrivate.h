@@ -45,7 +45,7 @@ extern VIRTIO_MMIO_DEV gKeyboard;
 extern VIRTIO_MMIO_DEV gTab;
 extern int gKeyboardOn;
 extern int gTabOn;
-extern HAL_KEYBOARD_REPORT gKeyboardQueue[KBD_Q_SIZE];
+extern HAL_KEYBOARD_REPORT gVirtioKeyboardQueue[KBD_Q_SIZE];
 extern UINT32 gKeyboardHead;
 extern UINT32 gKeyboardTail;
 extern HAL_KEYBOARD_REPORT gKeyboardCurrent;

@@ -13,6 +13,21 @@
 #include "PhysicalMemory.h"
 #include "SerialLog.h"
 
+/*
+ * Wi‑Fi 串口默认关：Bring-up 刷屏会淹没 CNTV/SMP（psmp-3a）。
+ * 排障时：CFLAGS 加 -DBOARD_WIFI_SERIAL_LOG=1 或改下面默认。
+ */
+#ifndef BOARD_WIFI_SERIAL_LOG
+#define BOARD_WIFI_SERIAL_LOG 0
+#endif
+#if BOARD_WIFI_SERIAL_LOG
+#define WifiSerialBootMark(Text) HalSerialBootMark(Text)
+#define WifiSerialBootMarkForce(Text) HalSerialBootMarkForce(Text)
+#else
+#define WifiSerialBootMark(Text) ((void)(Text))
+#define WifiSerialBootMarkForce(Text) ((void)(Text))
+#endif
+
 /* SDIO CCCR / FBR（SDIO Simplified Spec） */
 #define SDIO_FUNCTION_0              0u
 #define SDIO_FUNCTION_1              1u

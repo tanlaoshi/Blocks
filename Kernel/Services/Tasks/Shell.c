@@ -23,6 +23,7 @@
 #include "Tasks.h"
 #include "TasksPrivate.h"
 #include "Hal.h"
+#include "HalConsole.h"
 #include "HalVideo.h"
 #include "HIDKeyboard.h"
 #include "Console.h"
@@ -175,7 +176,7 @@ void ShellTask(void) {
         TcpPoll();
 #endif
         if (HalPowerButtonPressed()) {
-            LogBoot("Boot: Power Button -> Shutdown\n");
+            HalConsoleWriteSerial("Boot: Power Button -> Shutdown\n");
             HalCpuShutdown();
         }
         {

@@ -118,6 +118,17 @@ case "${DISK:-ide}" in
             -device nvme,serial=toyroot,drive=toyroot,logical_block_size=512,physical_block_size=512,bootindex=1
         )
         ;;
+    nvme4k|NVME4K|nvme-4k)
+        # ESP 仍 512（OVMF 读 FAT）；BLOCKS 根盘 4KiB LBA → 驱动内 512e 翻译。
+        # 勿把 ESP 也改成 4K：固件认不出 vvfat/GPT，进不了 Kernel。
+        toy_qemu_info "qemu: disk=nvme4k (ESP 512 + root 4KiB LBA)"
+        DISK_ARGS=(
+            -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64
+            -device nvme,serial=toyesp,drive=toyesp,logical_block_size=512,physical_block_size=512,bootindex=0
+            -drive if=none,id=toyroot,format=raw,file=RootFs/X64.img
+            -device nvme,serial=toyroot,drive=toyroot,logical_block_size=4096,physical_block_size=4096,bootindex=1
+        )
+        ;;
     *)
         DISK_ARGS=(
             -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64

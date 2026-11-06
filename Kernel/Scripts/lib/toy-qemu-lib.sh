@@ -81,6 +81,7 @@ Env:
   NO_HOSTFWD=1  Skip hostfwd (smoke/CI; avoids port bind failures)
   DISK=ahci     Use ich9-ahci instead of IDE (PR-H1 AHCI Block)
   DISK=nvme     Use PCIe NVMe instead of IDE (PR-H5 NVMe Block)
+  DISK=nvme4k   NVMe with 4KiB logical LBA (driver 512e translate)
   NET=e1000     Use Intel e1000 instead of virtio-net (PR-H4)
   QEMU_XRES/YRES  Override VGA edid (else RootFs/X64/THEME.CFG mode=)
   CLEAN_NVRAM=1     Same as --clean-nvram

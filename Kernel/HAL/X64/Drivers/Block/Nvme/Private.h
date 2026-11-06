@@ -78,7 +78,7 @@ typedef struct {
     UINT8 IocqPhase;
     UINT16 NextCid;
     UINT32 NsId;
-    UINT32 LbaShift; /* 9=512B, 12=4KiB */
+    UINT32 LbaShift; /* Identify LBADS：9=512B；>9 时 Command 内 512e 翻译 */
     int Ready;
 } NVME_CTRL;
 

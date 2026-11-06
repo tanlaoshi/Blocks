@@ -1,8 +1,9 @@
 /*
  * Nvme.c — 最小 NVMe 读写（PR-H5）
  *
- * 同步轮询、Admin + 单 IO 队列、512B LBA、单页 PRP bounce；无中断。
- * QEMU `-device nvme` / 真机 PCIe NVMe；FAT/VFS 不动。
+ * 同步轮询、Admin + 单 IO 队列、单页 PRP bounce；无中断。
+ * Block 见 512B；NS 4KiB LBA 时在 Command 内翻译（勿改 GPT/FAT）。
+ * QEMU `-device nvme` / `DISK=nvme4k` / 真机 PCIe NVMe。
  */
 
 #include "Nvme.h"

@@ -1,5 +1,8 @@
 /*
  * Command.c — Admin/IO 命令与扇区传送（PR-S-nvme-1）
+ *
+ * Block 层 LBA/Count 恒为 512B。NS LBADS=9 直通；LBADS>9（常见 12=4KiB）
+ * 在本文件折算 DeviceLba，非整设备块写走读改写。勿改 GPT/FAT。
  */
 #include "Nvme.h"
 #include "Private.h"
@@ -75,56 +78,125 @@ static int IoCmd(NVME_CTRL *C, NVME_SQE *Cmd) {
     return WaitCqe(C, C->Iocq, &C->IocqHead, &C->IocqPhase, Cid, 1);
 }
 
-int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+/*
+ * 以设备 LBA 为单位：Bounce 已填好（写）或读入 Bounce（读）。
+ * DeviceCount * 设备扇区 ≤ PAGE_SIZE。
+ */
+static int NvmeIssueDeviceIo(NVME_CTRL *C, UINT32 DeviceLba, UINT32 DeviceCount,
+                             int Write) {
+    NVME_SQE Cmd;
+    UINT32 DeviceBytes = 1u << C->LbaShift;
+
+    if (DeviceCount == 0 || DeviceCount * DeviceBytes > PAGE_SIZE) {
+        return 0;
+    }
+    ZeroMemory(&Cmd, sizeof(Cmd));
+    Cmd.Cdw0 = Write ? NVME_OPC_WRITE : NVME_OPC_READ;
+    Cmd.Nsid = C->NsId;
+    Cmd.Prp1 = (UINT64)(UINTN)C->Bounce;
+    Cmd.Cdw10 = DeviceLba;
+    Cmd.Cdw11 = 0;
+    Cmd.Cdw12 = DeviceCount - 1u;
+    return IoCmd(C, &Cmd);
+}
+
+/* LBADS=9：Host LBA 即设备 LBA；Bounce 一次最多 NVME_BOUNCE_SECTORS。 */
+static int NvmeTransferNative512(NVME_CTRL *C, UINT32 Lba, UINT32 Count,
+                                 void *Buffer, int Write) {
     UINT8 *Data = (UINT8 *)Buffer;
     UINT32 Done = 0;
-    UINT64 BouncePhys;
-    UINT32 SecShift;
-    UINT32 SecBytes;
-
-    if (!C || !C->Ready || !Buffer || Count == 0) {
-        return 0;
-    }
-
-    /* Block 层始终 512B；若 NS 为 4KiB LBA 则拒（课堂 QEMU 用 512） */
-    if (C->LbaShift != 9) {
-        DebugWrite("nvme: only 512B LBA supported\n");
-        return 0;
-    }
-    SecShift = C->LbaShift;
-    SecBytes = 1u << SecShift;
-    BouncePhys = (UINT64)(UINTN)C->Bounce;
+    UINT32 SectorBytes = BLOCK_SECTOR_SIZE;
 
     while (Done < Count) {
-        NVME_SQE Cmd;
         UINT32 Chunk = Count - Done;
         UINT32 Bytes;
 
         if (Chunk > NVME_BOUNCE_SECTORS) {
             Chunk = NVME_BOUNCE_SECTORS;
         }
-        Bytes = Chunk * SecBytes;
-
+        Bytes = Chunk * SectorBytes;
         if (Write) {
-            CopyMemory(C->Bounce, Data + (UINTN)Done * SecBytes, Bytes);
+            CopyMemory(C->Bounce, Data + (UINTN)Done * SectorBytes, Bytes);
         }
-
-        ZeroMemory(&Cmd, sizeof(Cmd));
-        Cmd.Cdw0 = Write ? NVME_OPC_WRITE : NVME_OPC_READ;
-        Cmd.Nsid = C->NsId;
-        Cmd.Prp1 = BouncePhys;
-        Cmd.Cdw10 = Lba + Done; /* SLBA low */
-        Cmd.Cdw11 = 0;
-        Cmd.Cdw12 = Chunk - 1u; /* NLB 0-based */
-
-        if (!IoCmd(C, &Cmd)) {
+        if (!NvmeIssueDeviceIo(C, Lba + Done, Chunk, Write)) {
             return 0;
         }
         if (!Write) {
-            CopyMemory(Data + (UINTN)Done * SecBytes, C->Bounce, Bytes);
+            CopyMemory(Data + (UINTN)Done * SectorBytes, C->Bounce, Bytes);
         }
         Done += Chunk;
-        (void)SecShift;
     }
     return 1;
+}
+
+/*
+ * LBADS>9：按设备块折算。Host 扇区落在设备块内偏移时，写路径先读整块再合并。
+ */
+static int NvmeTransferTranslate(NVME_CTRL *C, UINT32 HostLba, UINT32 HostCount,
+                                 void *Buffer, int Write) {
+    UINT8 *Data = (UINT8 *)Buffer;
+    UINT32 HostDone = 0;
+    UINT32 DeviceBytes = 1u << C->LbaShift;
+    UINT32 HostPerDevice = DeviceBytes / BLOCK_SECTOR_SIZE;
+
+    if (HostPerDevice == 0 || (DeviceBytes % BLOCK_SECTOR_SIZE) != 0) {
+        return 0;
+    }
+    if (DeviceBytes > PAGE_SIZE) {
+        DebugWrite("nvme: device LBA larger than bounce\n");
+        return 0;
+    }
+
+    while (HostDone < HostCount) {
+        UINT32 CurHostLba = HostLba + HostDone;
+        UINT32 DeviceLba = CurHostLba / HostPerDevice;
+        UINT32 HostOffsetInDevice = CurHostLba % HostPerDevice;
+        UINT32 HostRemainInDevice = HostPerDevice - HostOffsetInDevice;
+        UINT32 HostChunk = HostCount - HostDone;
+        UINT32 ByteOffset;
+        UINT32 ByteCount;
+        int Partial;
+
+        if (HostChunk > HostRemainInDevice) {
+            HostChunk = HostRemainInDevice;
+        }
+        ByteOffset = HostOffsetInDevice * BLOCK_SECTOR_SIZE;
+        ByteCount = HostChunk * BLOCK_SECTOR_SIZE;
+        Partial = (HostOffsetInDevice != 0) || (HostChunk != HostPerDevice);
+
+        if (Write) {
+            if (Partial) {
+                if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 0)) {
+                    return 0;
+                }
+            }
+            CopyMemory(C->Bounce + ByteOffset, Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE,
+                       ByteCount);
+            if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 1)) {
+                return 0;
+            }
+        } else {
+            if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 0)) {
+                return 0;
+            }
+            CopyMemory(Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE, C->Bounce + ByteOffset,
+                       ByteCount);
+        }
+        HostDone += HostChunk;
+    }
+    return 1;
+}
+
+int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+    if (!C || !C->Ready || !Buffer || Count == 0) {
+        return 0;
+    }
+    if (C->LbaShift < 9 || C->LbaShift > 12) {
+        DebugWrite("nvme: unsupported LbaShift\n");
+        return 0;
+    }
+    if (C->LbaShift == 9) {
+        return NvmeTransferNative512(C, Lba, Count, Buffer, Write);
+    }
+    return NvmeTransferTranslate(C, Lba, Count, Buffer, Write);
 }

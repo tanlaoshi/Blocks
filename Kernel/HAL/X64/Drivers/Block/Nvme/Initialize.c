@@ -66,6 +66,18 @@ static int IdentifyNs(NVME_CTRL *C) {
     }
     C->NsId = 1;
     C->LbaShift = Lbads;
+    if (Lbads != 9) {
+        LogFs("nvme: NS LBADS=");
+        {
+            static const char Hex[] = "0123456789abcdef";
+            char Digit[2];
+
+            Digit[0] = Hex[Lbads & 0xf];
+            Digit[1] = 0;
+            LogFs(Digit);
+        }
+        LogFs(" (512e translate)\n");
+    }
     return 1;
 }
 

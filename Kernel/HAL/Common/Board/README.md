@@ -105,4 +105,4 @@ booti ${kernel_addr_r} - ${fdt_addr_r}
 | **B2 ✅** | `BOARD=` 选中 `HAL/<Arch>/Board/<board>`；默认已收 `virt` |
 | **B3 ✅** | Duo S：`HAL/RiscV/Board/milk-v-duo-s/`；厂商 U-Boot + SoC UART hello |
 
-手机 SoC **明确不做**（不进 B/H）。
+手机开两块 Arm64 板：**Pixel 8**（USB-Cereal UART；`PR-PIXEL8-0` ✅ 已见 bootloader/内核字，步骤见 [`路线图1107.md`](../../../../Archive/路线图1107.md)）和 **小米 MIX 2**（splash 控制台，同档候补）。不进 x86 的 H 柱，也不写进 Pi / Duo 目录。其它手机不做。屏、触摸、UFS、USB 主机没有公开寄存器手册就不开。政策见 [`Archive/项目/路线图.md`](../../../../Archive/项目/路线图.md) §D。

@@ -3,6 +3,7 @@
  *
  * - virt：PL011
  * - Pi3BPlus 等 BOARD_UART_MINI=1：BCM AUX mini-UART
+ * - Pixel 8 等 BOARD_UART_SAMSUNG=1：Exynos/S3C UART（HalSerial/SamsungUart.c）
  * - 屏上滚：HalSerial/HalSerialGop.c（与 X64 同形，勿 stub）
  *
  * SERIAL_ENABLE=0：不碰 UART；SCREEN_LOG=0：Gop 横幅/通道全关。
@@ -17,10 +18,14 @@
 #ifndef BOARD_UART_MINI
 #define BOARD_UART_MINI 0
 #endif
+#ifndef BOARD_UART_SAMSUNG
+#define BOARD_UART_SAMSUNG 0
+#endif
 
+#if BOARD_UART_SAMSUNG
+#include "HalSerial/SamsungUart.h"
+#elif BOARD_UART_MINI
 #define UART_BASE  ((UINTN)BOARD_UART_BASE)
-
-#if BOARD_UART_MINI
 /* AUX @0x3F215000；mini-UART 寄存器窗 @+0x40（BCM2835 §2.2） */
 #define MU_IO      (*(volatile UINT32 *)(UART_BASE + 0x40))
 #define MU_LSR     (*(volatile UINT32 *)(UART_BASE + 0x54))
@@ -32,6 +37,7 @@
 #define MU_CNTL_RXEN       (1u << 0)
 #define MU_CNTL_TXEN       (1u << 1)
 #else
+#define UART_BASE  ((UINTN)BOARD_UART_BASE)
 #define PL011_DR    (*(volatile UINT32 *)(UART_BASE + 0x00))
 #define PL011_FR    (*(volatile UINT32 *)(UART_BASE + 0x18))
 #define PL011_FR_TXFF  (1u << 5)
@@ -119,7 +125,9 @@ static int ChannelGopOn(int Channel) {
 
 static void UartPut(char C) {
 #if SERIAL_ENABLE
-#if BOARD_UART_MINI
+#if BOARD_UART_SAMSUNG
+    SamsungUartPutByte((UINT8)C);
+#elif BOARD_UART_MINI
     while ((MU_LSR & MU_LSR_TX_EMPTY) == 0) {
     }
     MU_IO = (UINT32)(UINT8)C;
@@ -218,7 +226,9 @@ static void GopMirrorLine(const char *Text) {
 #endif
 
 void HalSerialInitialize(void) {
-#if SERIAL_ENABLE && BOARD_UART_MINI
+#if SERIAL_ENABLE && BOARD_UART_SAMSUNG
+    SamsungUartInitialize();
+#elif SERIAL_ENABLE && BOARD_UART_MINI
     /*
      * GPIO14/15 → ALT5（mini-UART）。BCM2835 §6 GPFSEL1：
      * FSEL14 bits[14:12]、FSEL15 bits[17:15]；ALT5=0b010。
@@ -463,6 +473,8 @@ void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
 int HalSerialDataReady(void) {
 #if !SERIAL_ENABLE
     return 0;
+#elif BOARD_UART_SAMSUNG
+    return SamsungUartDataReady();
 #elif BOARD_UART_MINI
     return (MU_LSR & MU_LSR_DATA_READY) ? 1 : 0;
 #else
@@ -473,6 +485,8 @@ int HalSerialDataReady(void) {
 char HalSerialReadChar(void) {
 #if !SERIAL_ENABLE
     return 0;
+#elif BOARD_UART_SAMSUNG
+    return SamsungUartReadByte();
 #elif BOARD_UART_MINI
     while (!HalSerialDataReady()) {
     }
@@ -497,7 +511,9 @@ int HalSerialTryGetByte(UINT8 *Out) {
 }
 
 void HalSerialDrainTransmitter(void) {
-#if SERIAL_ENABLE && BOARD_UART_MINI
+#if SERIAL_ENABLE && BOARD_UART_SAMSUNG
+    SamsungUartDrainTransmitter();
+#elif SERIAL_ENABLE && BOARD_UART_MINI
     UartWaitTransmitIdle();
 #elif SERIAL_ENABLE
     {

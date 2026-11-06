@@ -2,16 +2,41 @@
  * KernelEntry.S — Arm64 入口（保留 x0=DTB）
  *
  * rpi-8：U-Boot 常停 EL2；按 ARM ARM / Linux init_kernel_el 降到 EL1。
- * 曾挂（仅 '*' 无 '+'）：SCTLR RES1 已写但仍死 → 缺 msr SP_EL1
- * （EL1h 用 SP_EL1，EL2 的 sp 是 SP_EL2；见 Arm Community CA53 帖）。
- * 本刀只降 EL；MMU 仍 skip（rpi-9）。
+ * Pixel 8：ABL 已在 EL1；BOARD_LINUX_IMAGE_HEADER=1 时文首为 Linux Image 头。
  */
 #include "BoardConfig.h"
+
+#ifndef BOARD_LINUX_IMAGE_HEADER
+#define BOARD_LINUX_IMAGE_HEADER 0
+#endif
+#ifndef BOARD_UART_SAMSUNG
+#define BOARD_UART_SAMSUNG 0
+#endif
+#ifndef BOARD_UART_MINI
+#define BOARD_UART_MINI 0
+#endif
 
     .section .text.boot, "ax"
     .global KernelEntry
     .type KernelEntry, %function
 KernelEntry:
+#if BOARD_LINUX_IMAGE_HEADER
+    /*
+     * Linux aarch64 Image header（Documentation/arch/arm64/booting.rst）。
+     * code0 = 跳过本头；text_offset=0x80000；image_size=2MiB 上限占位。
+     */
+    b       5f
+    .long   0
+    .quad   0x80000
+    .quad   0x200000
+    .quad   0x9
+    .quad   0
+    .quad   0
+    .quad   0
+    .long   0x644d5241
+    .long   0
+5:
+#endif
     mov     x19, x0
 
 #if BOARD_UART_MINI
@@ -36,6 +61,20 @@ KernelEntry:
     b.ne    10b
 11: mov     w1, #'*'
     str     w1, [x0, #0x40]
+#endif
+
+#if BOARD_UART_SAMSUNG
+    /* Exynos UART @BOARD_UART_BASE：UTRSTAT TXE 后写 UTXH='*'（ABL 已配钟） */
+    movz    x0, #0x0000
+    movk    x0, #0x1087, lsl #16
+    mov     w2, #0x10000
+14: ldr     w1, [x0, #0x10]
+    tbz     w1, #2, 15f
+    b       16f
+15: subs    w2, w2, #1
+    b.ne    14b
+16: mov     w1, #'*'
+    str     w1, [x0, #0x20]
 #endif
 
     /*
@@ -117,6 +156,19 @@ KernelEntry:
     b.ne    12b
 13: mov     w1, #'+'
     str     w1, [x0, #0x40]
+#endif
+
+#if BOARD_UART_SAMSUNG
+    movz    x0, #0x0000
+    movk    x0, #0x1087, lsl #16
+    mov     w2, #0x10000
+17: ldr     w1, [x0, #0x10]
+    tbz     w1, #2, 18f
+    b       19f
+18: subs    w2, w2, #1
+    b.ne    17b
+19: mov     w1, #'+'
+    str     w1, [x0, #0x20]
 #endif
 
     mov     x0, x19

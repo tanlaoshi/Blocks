@@ -29,12 +29,23 @@ extern char __kernel_end[];
 
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
+    /*
+     * 先串口（MMU off：Pixel 已证 '*'/'+' / Blocks uart 通），再开恒等页表。
+     * 须 WriteShell/BootMark：build 默认 SERIAL_MISC=0，HalSerialWrite 会被滤掉。
+     */
     HalSerialInitialize();
-    HalSerialWrite("Boot: Arm64 Hello\n");
-    HalSerialWrite("board: ");
-    HalSerialWrite(BoardName());
-    HalSerialWrite("\n");
-    HalCpuHalt();
+    HalSerialWriteShell("Boot: Arm64 Hello\r\n");
+    HalSerialWriteShell("board: ");
+    HalSerialWriteShell(BoardName());
+    HalSerialWriteShell("\r\n");
+    HalSerialWriteShell("blocks>\r\n");
+#if defined(BOARD_BRINGUP_IDENTITY_MAP) && BOARD_BRINGUP_IDENTITY_MAP
+    if (BoardBringUpIdentityMapEnable() == 0) {
+        HalSerialWriteShell("mmu: on\r\n");
+        HalSerialWriteShell("blocks>\r\n");
+    }
+#endif
+    HalCpuPark();
 }
 
 #else

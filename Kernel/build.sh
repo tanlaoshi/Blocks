@@ -144,6 +144,10 @@ for Arg in "$@"; do
             BOARD=milk-v-duo-s
             if [ "$ARCH_SET" = 0 ]; then ARCH=riscv; ARCH_SET=1; fi
             ;;
+        pixel|pixel8|pixel-8|shiba)
+            BOARD=pixel-8
+            if [ "$ARCH_SET" = 0 ]; then ARCH=arm64; ARCH_SET=1; fi
+            ;;
         virt) BOARD=virt ;;
         *)
             echo "error: unknown build arg: $Arg" >&2
@@ -172,6 +176,7 @@ if [ "$BUILDDIR_SET" = 0 ]; then
     case "$BOARD" in
         rpi-3b)       BUILDDIR=Build/PI ;;
         milk-v-duo-s) BUILDDIR=Build/DUO ;;
+        pixel-8)      BUILDDIR=Build/PIXEL8 ;;
     esac
 fi
 mkdir -p "$BUILDDIR"

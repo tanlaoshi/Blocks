@@ -104,7 +104,11 @@ endif
 endif
 ifeq ($(ARCH),arm64)
 HAL_ARCH = Arm64
+# Pixel 等：BoardConfig 可要求 armv8-a（禁 LSE）；默认仍仅 -mgeneral-regs-only
 ARCH_CFLAGS = -mgeneral-regs-only
+ifeq ($(BOARD),pixel-8)
+ARCH_CFLAGS += -march=armv8-a -mno-outline-atomics
+endif
 USER_BLOB_FMT = elf64-littleaarch64
 LDFLAGS_ARCH =
 ifneq ($(wildcard $(TOOLS_ROOT)/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc),)
@@ -736,15 +740,19 @@ OBJS = $(BRINGUP_ARCH_OBJS) $(BRINGUP_OBJS) $(BRINGUP_INIT_OBJS) $(CORE_OBJS) $(
 TARGET = $(HALDIR)/Kernel.elf
 
 ifeq ($(BRINGUP),1)
-# PR-A6：BringUp Entry/Handoff* + HalSerial + Hal（Halt），不链 Common
+# PR-A6：BringUp Entry/Handoff* + HalSerial + Hal，不链 Common / GOP
 # PR-B2：仍链 Board.o（横幅 BoardName；HalSerial 用 BoardConfig）
 # X64 KernelHandoff（含 FillHandoff/FillMemory/FillHalPlatform）在 BRINGUP_ARCH_OBJS
+# HalSerialGop 依赖 Font/Video — BRINGUP 剔除；FormatHex 用 Text.o
+BRINGUP_HAL_SERIAL_SRCS := $(filter-out %/HalSerialGop.c,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c))
 OBJS = $(BRINGUP_ARCH_OBJS) \
-       $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c)) \
+       $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(BRINGUP_HAL_SERIAL_SRCS)) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/%.c,$(HALDIR)/Hal/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial.c)) \
        $(HALDIR)/Hal/Hal.o \
+       $(BUILDDIR)/Library/Text.o \
        $(BOARD_OBJS)
 EXTRA_OBJS =
+# Arm64：Gop/Font 空实现（HalSerialBringUpStubs 在 BRINGUP_ARCH_SRCS 通配内）
 endif
 
 # 汇编用同一 BRINGUP（KernelEntry → KernelHandoff）

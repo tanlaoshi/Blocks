@@ -22,8 +22,14 @@ OVMF_VARS.fd
 # 本机 stash / 临时
 .boot-stash/
 *.log
+*.LOG
 *.tmp
 .DS_Store
+
+# 真机/运行随时写（串口/卡读；勿入库）
+RootFs/**/BOOT*.LOG
+RootFs/**/RUNTIME*.LOG
+RootFs/**/boot.try
 
 # 测试残留（Scripts/test-fs.sh 等运行产生；不进库）
 RootFs/X64/TST.TXT

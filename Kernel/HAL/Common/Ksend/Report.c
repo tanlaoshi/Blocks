@@ -6,6 +6,7 @@
  * 块 CRC 表是二进制（小端），所以走 KsendSerialPutByte 而不是文本行。
  */
 #include "Ksend/Private.h"
+#include "HalDevices.h"
 
 static const char *FailureName(int Failure) {
     switch (Failure) {
@@ -49,15 +50,30 @@ void KsendPrintReason(const char *Tag, const char *Reason, int Error) {
     KsendTextFlush(&Out);
 }
 
+static UINT32 ReadyWindowBlocks(void) {
+    if (KsendTransportSocket() < 0) {
+        return KSEND_WINDOW_SERIAL;
+    }
+    if (HalNetWifiShouldOwnTransmit()) {
+        return KSEND_WINDOW_WIFI;
+    }
+    return KSEND_WINDOW_WIRED_TCP;
+}
+
 void KsendReadyLine(const KSEND_IMAGE *Image) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
+    UINT32 Window = ReadyWindowBlocks();
 
+    if (Window == 0u || Window > KSEND_WINDOW_MAX) {
+        Window = 1u;
+    }
     KsendTextReset(&Out, Line, (int)sizeof(Line));
     KsendTextPut(&Out, "KSEND READY");
     KsendTextPutField(&Out, "size", Image->Size);
     KsendTextPutField(&Out, "block", KSEND_BLOCK_BYTES);
     KsendTextPutField(&Out, "n", Image->BlockCount);
+    KsendTextPutField(&Out, "win", Window);
     KsendTextFlush(&Out);
 }
 

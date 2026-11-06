@@ -6,13 +6,15 @@
 #include "Hal.h"
 #include "HalDevices.h"
 #include "HIDKeyboard.h"
+#include "Gui.h"
 #include "LwIp.h"
 #include "ShellCommands.h"
 
 static void SerialFeedChar(char C, int *SkipLf) {
     int Skip;
 
-    if (gConsole.StdinUserHold()) {
+    if (gConsole.StdinUserHold() &&
+        !(GuiShellAcceptsInput() && GuiUserWindowAlive())) {
         /* 仍回显：CoolTerm 常关 Local Echo；Hold 时静默像死机 */
         if (C >= 32 && C <= 126) {
             HalConsolePutChar(C);
@@ -137,7 +139,8 @@ static void SerialRun(void) {
                  * 与 Tasks/Hid.c FeedHid 同形：exec 占 stdin 时键进环，
                  * 勿走 shell 行（否则退格 gLen=0 空操作，像「没处理」）。
                  */
-                if (gConsole.StdinUserHold()) {
+                if (gConsole.StdinUserHold() &&
+                    !(GuiShellAcceptsInput() && GuiUserWindowAlive())) {
                     if (Key == HID_KEY_ENTER) {
                         gConsole.StdinPut('\n');
                     } else if (Key == HID_KEY_BACKSPACE || Key == HID_KEY_DELETE) {

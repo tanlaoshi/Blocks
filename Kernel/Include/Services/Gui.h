@@ -114,6 +114,8 @@ int GuiBackupRoundTripDiff(UINT32 *OutWp, UINT32 *OutHp, UINT32 *OutDiff,
                            UINT32 *OutRows);
 void GuiFocusClearClient(void);
 int GuiShellAcceptsInput(void);
+/* 任一 GUI_WIN_USER 仍 Active（Guest Chat 等）；与 SchedulerLiveUserApps 互补 */
+int GuiUserWindowAlive(void);
 void GuiFocusHome(void);
 void GuiPollMouse(void);
 /* 长 IO（Store 拷贝）期间：只挪光标、吞按键边沿，避免点按卡死到操作结束 */

@@ -48,8 +48,9 @@ static int ConsoleEnsureShell(int FromSerial) {
 static void OnCharEx(char C, int FromSerial) {
     int Ensured;
 
-    if (gConsole.StdinUserHold()) {
-        /* 误入 shell 行缓冲：改送用户 stdin（串口路径本不应到此） */
+    if (gConsole.StdinUserHold() &&
+        !(!FromSerial && GuiShellAcceptsInput() && GuiUserWindowAlive())) {
+        /* 误入 shell 行缓冲：改送用户 stdin；壳焦点+Guest GUI 除外 */
         gConsole.StdinPut(C);
         return;
     }
@@ -181,8 +182,9 @@ static void OnEnterEx(int FromSerial) {
     /* USB 路径无 SerialFeedChar 清 IgnoreRx；防历史后粘住 */
     gConsole.HistClearIgnoreReceive();
 
-    /* 用户 ELF 占 stdin：误入勿当 shell 命令（chat> HI → unknown） */
-    if (gConsole.StdinUserHold()) {
+    /* 用户 ELF 占 stdin：误入勿当 shell 命令；壳焦点+Guest GUI 可敲壳 */
+    if (gConsole.StdinUserHold() &&
+        !(!FromSerial && GuiShellAcceptsInput() && GuiUserWindowAlive())) {
         gLen = 0;
         return;
     }

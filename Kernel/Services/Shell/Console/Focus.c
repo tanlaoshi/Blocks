@@ -33,10 +33,11 @@ static void FocusLoad(void) {
         GuiConsolePull(gLine, &gLen, &gWaitPrompt);
     }
     /*
-     * Compose/切窗会把窗内 WaitPrompt 清 0 再 Pull，导致 exec 中 shell 抢串口
-     * （chat> 下 HI → unknown: HI）。有活用户时保持占 stdin。
+     * Compose/切窗会把窗内 WaitPrompt 清 0 再 Pull，导致控制台 Guest 下
+     * shell 抢串口（chat> HI → unknown）。仅无 Guest GUI 窗时保持占 stdin；
+     * Chat 等 USER 窗仍活且点回 Shell 时勿强行 WaitPrompt，否则壳键全死。
      */
-    if (Hold && gWaitPrompt == 0) {
+    if (Hold && gWaitPrompt == 0 && !GuiUserWindowAlive()) {
         gWaitPrompt = 1;
     }
     if (Idx >= 0 && GuiShellWindowActive(Idx)) {

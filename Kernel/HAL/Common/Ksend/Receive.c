@@ -1,126 +1,12 @@
 /*
- * Receive.c — 收块状态机：块头 / 数据 / CRC / 批写 / 'A' 或 'N'
+ * Receive.c — 收块状态机：块头 / 数据 / CRC / 'A' 或 'N'（批写见 ReceiveBatch）
  *
- * 一块的判定顺序是固定的：先看块头合法，再校验数据 CRC，最后才写卡。
- * 任何一步不过都回 'N'，让 PC 重发同一块；同一块回 'N' 超过 3 次就收手，
- * 交给 KsendTransfer 决定回滚。
- *
- * 批写（v4）：连续块攒进 KsendFileBuffer() 再写，压 FAT 链步数；
- * 'A'=已进批缓冲；整文件 flush+读回仍在 OK 前，失败回滚。
+ * 一块：先块头合法，再数据 CRC，再进批缓冲。不过回 'N'；超限交给 Transfer 回滚。
+ * TCP 滑窗（nuc-1）：'N' 后丢弃其它 index 载荷（不回 A），直至重收到该块。
  */
 #include "Ksend/Private.h"
-#include "HalDevices.h"
-#include "LwIp.h"
-#include "Scheduler.h"
-
-#define KSEND_BATCH_LIMIT_BYTES KSEND_IO_CHUNK_BYTES
 
 static UINT8 sBlockBuffer[KSEND_BLOCK_BYTES];
-/* 批缓冲里连续块的起点/块数/字节数；0 块表示空 */
-static UINT32 sBatchFirstIndex;
-static UINT32 sBatchBlocks;
-static UINT32 sBatchBytes;
-
-static void BatchReset(void) {
-    sBatchFirstIndex = 0;
-    sBatchBlocks = 0;
-    sBatchBytes = 0;
-}
-
-/* Wi‑Fi 主槽：每块落盘，减 Sdhost PIO 饿 RX → reason=header（Pi 契约） */
-static UINT32 BatchLimitBytes(void) {
-    if (HalNetWifiShouldOwnTransmit()) {
-        return KSEND_BLOCK_BYTES;
-    }
-    return KSEND_BATCH_LIMIT_BYTES;
-}
-
-static void CopyBlock(UINT8 *Destination, const UINT8 *Source, UINT32 Length) {
-    UINT32 Index;
-
-    for (Index = 0; Index < Length; Index++) {
-        Destination[Index] = Source[Index];
-    }
-}
-
-/*
- * 把攒下的连续块写卡。按 4 KB 切片并在片间 LwIpService——Pi Sdhost PIO 一次
- * 64 KB 会饿死 Wi‑Fi/有线 RX，TCP 流错位后下一块 MAGIC 对不上 → reason=header。
- */
-static int BatchFlush(KSEND_RUN *Run) {
-    UINT32 Offset;
-    UINT32 Done;
-    int Error;
-
-    if (sBatchBytes == 0u) {
-        return 1;
-    }
-    Offset = sBatchFirstIndex * KSEND_BLOCK_BYTES;
-    Done = 0;
-    while (Done < sBatchBytes) {
-        UINT32 Take = sBatchBytes - Done;
-
-        if (Take > KSEND_BLOCK_BYTES) {
-            Take = KSEND_BLOCK_BYTES;
-        }
-        Error = KsendFileWriteAt(Run->TargetPath, Offset + Done,
-                                 KsendFileBuffer() + Done, Take);
-        if (Error != FAT_OK) {
-            Run->Error = Error;
-            Run->FailBlock = sBatchFirstIndex + sBatchBlocks - 1u;
-            BatchReset();
-            return 0;
-        }
-        Done += Take;
-        if (LwIpActive()) {
-            LwIpService();
-            SchedulerIoBreath();
-            if (HalNetWifiShouldOwnTransmit()) {
-                LwIpService();
-                SchedulerIoBreath();
-            }
-        }
-    }
-    BatchReset();
-    return 1;
-}
-
-/*
- * 收一块进批缓冲。'A' 必须在本函数返回后立刻发出（见 ReceiveOneBlock），
- * 故满批/不连续时只 flush「已经 A 过的旧批」，再接纳本块；禁止在接纳本块后
- * 再同步刷盘——否则每 ~512KB 会把 ACK 拖死，Pi 串口大传必超时（2026-11-02）。
- * 短块（最后一块）仍立刻 flush；Wi‑Fi 主槽每满块也 flush（BatchLimitBytes）。
- */
-static int BatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length) {
-    UINT32 At;
-    UINT32 Limit = BatchLimitBytes();
-
-    if (sBatchBlocks > 0u &&
-        (Index != sBatchFirstIndex + sBatchBlocks ||
-         Length != KSEND_BLOCK_BYTES)) {
-        if (!BatchFlush(Run)) {
-            return 0;
-        }
-    }
-    if (sBatchBlocks > 0u && (sBatchBytes + Length) > Limit) {
-        if (!BatchFlush(Run)) {
-            return 0;
-        }
-    }
-    if (sBatchBlocks == 0u) {
-        sBatchFirstIndex = Index;
-    }
-    At = (Index - sBatchFirstIndex) * KSEND_BLOCK_BYTES;
-    CopyBlock(KsendFileBuffer() + At, sBlockBuffer, Length);
-    sBatchBlocks++;
-    sBatchBytes = At + Length;
-    if (Length != KSEND_BLOCK_BYTES || sBatchBytes >= Limit) {
-        if (!BatchFlush(Run)) {
-            return 0;
-        }
-    }
-    return 1;
-}
 
 static void AcceptBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length, UINT32 Crc) {
     UINT32 End = Index * KSEND_BLOCK_BYTES + Length;
@@ -234,10 +120,8 @@ static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
     Got = KsendCrc32Final(
         KsendCrc32Update(KSEND_CRC_INITIAL, sBlockBuffer, Length));
     if (Got == WantCrc) {
-        /* 批写失败也先记脏：已经 flush 的块可能只写了一部分，失败路径要回滚 */
         Run->Dirty = 1;
-        if (!BatchAccept(Run, Index, Length)) {
-            /* 失败的是「已经回 A 的批」或本块：重发同一块补不回来，直接收手 */
+        if (!KsendReceiveBatchAccept(Run, Index, Length, sBlockBuffer)) {
             Run->Failure = KSEND_FAIL_WRITE;
             KsendSerialPutByte(KSEND_ACK_RETRY);
             return -1;
@@ -262,36 +146,51 @@ int KsendReceiveBlocks(KSEND_RUN *Run) {
     UINT32 Header[4];
     UINT32 Retry = 0;
     UINT32 RetryIndex = KSEND_MAX_BLOCKS;
+    UINT32 ExpectRetransmit = KSEND_MAX_BLOCKS;
 
-    BatchReset();
+    KsendReceiveBatchReset();
     for (;;) {
         UINT32 Index = 0;
         UINT32 Length = 0;
         int Rc;
+        int BlockRc;
 
         if (!ReadHeader(Header)) {
             Run->Failure = KSEND_FAIL_HEADER;
-            Run->Error = 1; /* timeout/short → FAIL err= */
+            Run->Error = 1;
             KsendNote("receive: header timeout/short");
             return -1;
         }
         Rc = HandleHeader(Header, Run, &Index, &Length);
         if (Rc == 0) {
-            return BatchFlush(Run) ? 0 : -1;
+            return KsendReceiveBatchFlush(Run) ? 0 : -1;
         }
         if (Rc < 0) {
             if (Run->Failure == KSEND_FAIL_HEADER) {
-                Run->Error = 2; /* magic/字段 */
+                Run->Error = 2;
                 KsendNote("receive: header magic/field");
             }
             return -1;
+        }
+        if (ExpectRetransmit < KSEND_MAX_BLOCKS && Index != ExpectRetransmit) {
+            if (!ReadBlockData(Length)) {
+                Run->Failure = KSEND_FAIL_DATA;
+                return -1;
+            }
+            continue;
         }
         if (RetryIndex != Index) {
             RetryIndex = Index;
             Retry = 0;
         }
-        if (ReceiveOneBlock(Run, Index, Length, Header[3], &Retry) < 0) {
+        BlockRc = ReceiveOneBlock(Run, Index, Length, Header[3], &Retry);
+        if (BlockRc < 0) {
             return -1;
         }
+        if (BlockRc == 0) {
+            ExpectRetransmit = Index;
+            continue;
+        }
+        ExpectRetransmit = KSEND_MAX_BLOCKS;
     }
 }

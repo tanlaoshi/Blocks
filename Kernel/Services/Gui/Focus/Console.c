@@ -112,6 +112,17 @@ int GuiShellAcceptsInput(void) {
            !WindowOccludedByOther(gGuiWindowManager.FocusWin);
 }
 
+int GuiUserWindowAlive(void) {
+    int Index;
+
+    for (Index = 0; Index < MAX_WINS; Index++) {
+        if (gGuiWindowManager.Windows[Index].Active &&
+            gGuiWindowManager.Windows[Index].Kind == GUI_WIN_USER) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 int GuiShellWindowActive(int Idx) {
     return Idx >= 0 && Idx < MAX_WINS && gGuiWindowManager.Windows[Idx].Active &&

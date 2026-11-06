@@ -181,7 +181,8 @@ static void OnHistArrow(int Down, int FromSerial) {
     int P;
     int i;
 
-    if (gConsole.StdinUserHold()) {
+    if (gConsole.StdinUserHold() &&
+        !(!FromSerial && GuiShellAcceptsInput() && GuiUserWindowAlive())) {
         return;
     }
     if (!HalConsoleOnly() && !GuiShellAcceptsInput() && !FromSerial) {

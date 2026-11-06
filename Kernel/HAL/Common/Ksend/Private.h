@@ -41,11 +41,16 @@
  * 1/128，配合 FAT 分配提示后 2.1 MB 的部署才真正可用。
  * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 Receive.c）。 */
 /*
- * 批写上限。过大时 BatchAccept 在回 A 前同步刷旧批，Wi‑Fi+USB MSC 同 xHCI
+ * 有线批写上限。过大时 BatchAccept 在回 A 前同步刷满批，Wi‑Fi+USB MSC 同 xHCI
  * 上会把 PC 的 ACK 等穿（NUC 真机 ~128 块边界卡死，2026-11-03）。
- * 64KiB：约 16 块一刷，落盘短，ACK 不被拖死。
+ * 有线 128KiB；Wi‑Fi 主槽仍每块刷（Receive BatchLimitBytes）。
  */
-#define KSEND_IO_CHUNK_BYTES      (64u * 1024u)
+#define KSEND_IO_CHUNK_BYTES      (128u * 1024u)
+/* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1） */
+#define KSEND_WINDOW_SERIAL       1u
+#define KSEND_WINDOW_WIFI         1u
+#define KSEND_WINDOW_WIRED_TCP    8u
+#define KSEND_WINDOW_MAX          16u
 #define KSEND_TEXT_BYTES          192u
 
 /* —— 差量表缓存 <目标全名>.crc（Cache.c）——
@@ -221,6 +226,10 @@ void KsendRestoredLine(const KSEND_IMAGE *Image);
 /* —— Receive.c —— */
 /* 收块直到收尾帧：0=收到收尾（Run->NewSize/TrailerCrc 已就绪）；-1=失败/放弃 */
 int KsendReceiveBlocks(KSEND_RUN *Run);
+void KsendReceiveBatchReset(void);
+int KsendReceiveBatchFlush(KSEND_RUN *Run);
+int KsendReceiveBatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
+                            const UINT8 *Data);
 
 /* —— File.c —— */
 /* 旧文件（备份）图：restore 的判据 */

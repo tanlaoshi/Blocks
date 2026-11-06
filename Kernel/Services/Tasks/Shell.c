@@ -83,7 +83,8 @@ void ShellTask(void) {
                  * exec 中：勿喂 shell，泄进 stdin 环供 read(0)；
                  * 若直接跳过不抽 RX，CoolTerm 粘贴同样会丢字。
                  */
-                if (gConsole.StdinUserHold()) {
+                if (gConsole.StdinUserHold() &&
+                    !(GuiShellAcceptsInput() && GuiUserWindowAlive())) {
                     gConsole.StdinPut(C);
                     continue;
                 }

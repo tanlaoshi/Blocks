@@ -315,8 +315,13 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
             continue;
         }
 
-        /* exec 中 CHAT 等：键盘进 stdin 环，勿进 shell（否则 HI→unknown / HELP→真 help） */
-        if (gConsole.StdinUserHold()) {
+        /*
+         * exec 占 stdin：默认可打印进 stdin 环（控制台 Guest）。
+         * Guest 已有 GUI 窗且焦点在 Shell：键还给壳（切回 Shell 可打字；
+         * Chat 焦点仍走上方 GUI_WIN_USER）。
+         */
+        if (gConsole.StdinUserHold() &&
+            !(GuiShellAcceptsInput() && GuiUserWindowAlive())) {
             if (Key == HID_KEY_ENTER) {
                 gConsole.StdinPut('\n');
                 continue;

@@ -1,6 +1,12 @@
 #include <Blocks/Syscall.h>
-/* user/LibToy.S — 共享库：导出 blocks_hello，打印 from.so */
+/* user/LibToy.S — 共享库：blocks_hello + blocks_answer（供 R_*_COPY） */
     .intel_syntax noprefix
+    .section .data
+    .global blocks_answer
+    .type blocks_answer, @object
+    .size blocks_answer, 8
+blocks_answer:
+    .quad 42
     .section .rodata
 blocks_msg:
     .ascii "from.so\n"

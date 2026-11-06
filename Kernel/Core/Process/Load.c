@@ -84,7 +84,7 @@ int ProcessStartElf(VIRTUAL_ADDRESS_SPACE *Space, const ELF_LOAD_RESULT *Info,
     DebugWrite("\n");
     if (SchedulerCreateUser(Name, Info->Entry, Info->StackTop,
                         VirtualMemorySpaceRoot(Space), Space, Info->BrkBase,
-                        StdoutSerialOnly) < 0) {
+                        StdoutSerialOnly, Info->TlsBase) < 0) {
         LogMisc("process: no task slot\n");
         return -1;
     }
@@ -247,6 +247,8 @@ int ProcessLoadPath(const char *Path, VIRTUAL_ADDRESS_SPACE **OutSpace,
         Sos[i].Size = 0;
     }
 
+    OutInfo->TlsBase = 0;
+
     /* 不切换 CR3：LoadNeeded 只改 Space 页表；重定位经 CopyToSpace 写物理页 */
     if (ProcessLoadNeeded(Space, Buf, Size, Sos, &SoCount) != 0) {
         ProcessFreeSos(Sos, SoCount);
@@ -263,6 +265,14 @@ int ProcessLoadPath(const char *Path, VIRTUAL_ADDRESS_SPACE **OutSpace,
             PhysicalMemoryFreePages(Buf, Pages);
             return -1;
         }
+    }
+
+    if (ElfInstallMainTls(Space, Buf, Size, &OutInfo->TlsBase) != 0) {
+        LogMisc("exec: TLS install failed\n");
+        ProcessFreeSos(Sos, SoCount);
+        VirtualMemorySpaceDestroy(Space);
+        PhysicalMemoryFreePages(Buf, Pages);
+        return -1;
     }
 
     ProcessFreeSos(Sos, SoCount);

@@ -54,6 +54,9 @@ int VirtualMemoryCopyToUser(UINT64 UserDst, const void *Src, UINTN Len);
 /* 经 Space->Root 写用户页（不切换 CR3；供 exec 装栈/重定位） */
 int VirtualMemoryCopyToSpace(VIRTUAL_ADDRESS_SPACE *Space, UINT64 UserDst, const void *Src,
                              UINTN Len);
+/* 经 Space->Root 读用户页（COPY 重定位自 SO 拷对象） */
+int VirtualMemoryCopyFromSpace(VIRTUAL_ADDRESS_SPACE *Space, void *Dst, UINT64 UserSrc,
+                               UINTN Len);
 
 VIRTUAL_ADDRESS_SPACE *VirtualMemorySpaceClone(VIRTUAL_ADDRESS_SPACE *Src);
 

@@ -134,14 +134,15 @@ int SchedulerThreadEnsureTls(TASK *T) {
     if (!T || !T->IsUser || !T->UserSpace) {
         return -1;
     }
-    if (T->TlsBase != 0) {
-        return 0;
-    }
-    Base = MapAnonRun(T, THREAD_TLS_PAGES);
+    /* 已有 TP（PT_TLS 或曾映）：Tid@TP+0；Variant II 负偏移仍是 .tdata */
+    Base = T->TlsBase;
     if (Base == 0) {
-        return -1;
+        Base = MapAnonRun(T, THREAD_TLS_PAGES);
+        if (Base == 0) {
+            return -1;
+        }
+        T->TlsBase = Base;
     }
-    T->TlsBase = Base;
     Tid = (UINT64)T->Id;
     if (VirtualMemoryCopyToSpace(T->UserSpace, Base, &Tid, sizeof(Tid)) < 0) {
         return -1;

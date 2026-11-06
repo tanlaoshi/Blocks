@@ -12,6 +12,7 @@
 #define PT_LOAD     1
 #define PT_DYNAMIC  2
 #define PT_INTERP   3
+#define PT_TLS      7
 #define PF_X        1
 #define PF_W        2
 #define PF_R        4
@@ -120,6 +121,8 @@ typedef struct {
     UINT64 Entry;
     UINT64 StackTop;
     UINT64 BrkBase; /* 末尾 PT_LOAD 结束址（堆起点；PR-P3） */
+    /* 主 ELF PT_TLS：Variant II TP（x86 FS / Arm TPIDR）；0=无 TLS，EnsureTls 映空页 */
+    UINT64 TlsBase;
 } ELF_LOAD_RESULT;
 
 typedef struct {
@@ -141,8 +144,15 @@ int ElfCollectNeeded(const void *Image, UINTN Size, char Names[][16], int Max);
 int ElfLoadShared(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
                   UINT64 Base, ELF_SO_INFO *Info);
 
-/* 解析主 ELF 的 RELA/JMPREL，用已装载 SO 解析 JUMP_SLOT/GLOB_DAT/RELATIVE */
+/* 解析主 ELF 的 RELA/JMPREL，用已装载 SO 解析 JUMP_SLOT/GLOB_DAT/COPY/RELATIVE */
 int ElfRelocateProgram(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
                        const ELF_SO_INFO *Sos, int SoCount);
+
+/*
+ * 主 ELF PT_TLS → 用户态 TLS 块 + TCB（Tid @ TP+0）；*OutTlsBase = TP。
+ * 无 PT_TLS：*OutTlsBase=0。
+ */
+int ElfInstallMainTls(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Size,
+                      UINT64 *OutTlsBase);
 
 #endif

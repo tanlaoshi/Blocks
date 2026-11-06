@@ -5,13 +5,19 @@
 #include "CString.h"
 #include "SerialLog.h"
 
-static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
-                              const char *Name) {
+int ElfLookupSymbolInfo(const ELF_SO_INFO *Sos, int SoCount, const char *Name,
+                        UINT64 *OutValue, UINT64 *OutSize) {
     int S;
     UINTN I;
 
+    if (OutValue) {
+        *OutValue = 0;
+    }
+    if (OutSize) {
+        *OutSize = 0;
+    }
     if (!Name || !Name[0]) {
-        return 0;
+        return -1;
     }
     for (S = 0; S < SoCount; S++) {
         const ELF_SO_INFO *So = &Sos[S];
@@ -35,11 +41,27 @@ static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
             }
             SymName = So->DynStr + Sym->st_name;
             if (StringEqual(SymName, Name)) {
-                return So->Base + Sym->st_value;
+                if (OutValue) {
+                    *OutValue = So->Base + Sym->st_value;
+                }
+                if (OutSize) {
+                    *OutSize = Sym->st_size;
+                }
+                return 0;
             }
         }
     }
-    return 0;
+    return -1;
+}
+
+static UINT64 ElfLookupSymbol(const ELF_SO_INFO *Sos, int SoCount,
+                              const char *Name) {
+    UINT64 Value;
+
+    if (ElfLookupSymbolInfo(Sos, SoCount, Name, &Value, 0) != 0) {
+        return 0;
+    }
+    return Value;
 }
 
 static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, UINTN Size,
@@ -126,8 +148,49 @@ static int ElfApplyRelaTable(VIRTUAL_ADDRESS_SPACE *Space, const UINT8 *Bytes, U
                 }
                 break;
             case ELF_RELOC_COPY:
-                LogMem("elf: COPY reloc unsupported\n");
-                return -1;
+                /*
+                 * R_*_COPY：主 ELF BSS/数据槽 ← SO 里同名对象字节。
+                 * 写指针不够；须按 st_size 整段拷（课用 ≤256）。
+                 */
+                if (!HaveSym) {
+                    LogMem("elf: COPY needs symtab\n");
+                    return -1;
+                }
+                {
+                    const Elf64_Sym *Sym;
+                    const char *Name;
+                    UINT64 Src;
+                    UINT64 CopySize;
+                    UINT8 Scratch[256];
+
+                    if (SymOff + (SymIdx + 1) * SymEnt > Size) {
+                        return -1;
+                    }
+                    Sym = (const Elf64_Sym *)(Bytes + SymOff + SymIdx * SymEnt);
+                    Name = (const char *)(Bytes + StrOff + Sym->st_name);
+                    if (ElfLookupSymbolInfo(Sos, SoCount, Name, &Src, &CopySize) != 0) {
+                        LogMem("elf: COPY unresolved ");
+                        LogMem(Name);
+                        LogMem("\n");
+                        return -1;
+                    }
+                    if (CopySize == 0) {
+                        CopySize = Sym->st_size;
+                    }
+                    if (CopySize == 0 || CopySize > sizeof(Scratch)) {
+                        LogMem("elf: COPY size bad\n");
+                        return -1;
+                    }
+                    if (VirtualMemoryCopyFromSpace(Space, Scratch, Src, (UINTN)CopySize) < 0) {
+                        LogMem("elf: COPY read so failed\n");
+                        return -1;
+                    }
+                    if (VirtualMemoryCopyToSpace(Space, Dest, Scratch, (UINTN)CopySize) < 0) {
+                        LogMem("elf: COPY write failed\n");
+                        return -1;
+                    }
+                    continue;
+                }
             default:
                 LogMem("elf: unsupported reloc\n");
                 return -1;

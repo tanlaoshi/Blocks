@@ -113,7 +113,7 @@ int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx) {
 
 int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoot,
                     VIRTUAL_ADDRESS_SPACE *Space, UINT64 BrkBase,
-                    int StdoutSerialOnly) {
+                    int StdoutSerialOnly, UINT64 InitialTlsBase) {
     TASK *Cur;
 
     SpinLockAcquire(&gSchedulerLock);
@@ -137,7 +137,7 @@ int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoo
         gTasks[i].GroupId = (INT32)gTasks[i].Id; /* 新进程：自为组主 */
         gTasks[i].LeaderId = (INT32)gTasks[i].Id;
         gTasks[i].IsThread = 0;
-        gTasks[i].TlsBase = 0;
+        gTasks[i].TlsBase = InitialTlsBase;
         gTasks[i].JoinerSlot = -1;
         gTasks[i].JoinTid = -1;
         gTasks[i].ExitCode = 0;

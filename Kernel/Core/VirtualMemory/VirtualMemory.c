@@ -249,6 +249,38 @@ int VirtualMemoryCopyToSpace(VIRTUAL_ADDRESS_SPACE *Space, UINT64 UserDst, const
     return (int)Len;
 }
 
+int VirtualMemoryCopyFromSpace(VIRTUAL_ADDRESS_SPACE *Space, void *Dst, UINT64 UserSrc,
+                               UINTN Len) {
+    UINT8 *D = (UINT8 *)Dst;
+    UINTN i;
+
+    if (!Space || !Dst) {
+        return -1;
+    }
+    if (Len == 0) {
+        return 0;
+    }
+    if (UserSrc < USER_CODE_VIRT || UserSrc + Len > USER_VIRT_END ||
+        UserSrc + Len < UserSrc) {
+        return -1;
+    }
+
+    for (i = 0; i < Len; i++) {
+        UINT64 Va = UserSrc + i;
+        UINT64 Pte = HalPageGetEntry(Space->Root, Va);
+        UINT64 Phys;
+        const UINT8 *Src;
+
+        if (!(Pte & HAL_PAGE_PRESENT) || !(Pte & HAL_PAGE_USER)) {
+            return -1;
+        }
+        Phys = Pte & 0x000FFFFFFFFFF000ULL;
+        Src = (const UINT8 *)(UINTN)(Phys + (Va & (PAGE_SIZE - 1)));
+        D[i] = *Src;
+    }
+    return (int)Len;
+}
+
 static int gVirtualMemoryEnabled;
 
 void VirtualMemoryEnable(void) {

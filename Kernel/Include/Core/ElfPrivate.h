@@ -22,5 +22,7 @@ int ElfVaToFileOff(const Elf64_Phdr *Ph, UINT16 N, UINT64 Va, UINT64 Bias,
 const Elf64_Dyn *ElfFindDynamic(const UINT8 *Bytes, UINTN Size,
                                 const Elf64_Phdr *Ph, UINT16 N,
                                 UINT64 *DynBytes);
+int ElfLookupSymbolInfo(const ELF_SO_INFO *Sos, int SoCount, const char *Name,
+                        UINT64 *OutValue, UINT64 *OutSize);
 
 #endif

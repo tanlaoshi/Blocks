@@ -97,6 +97,7 @@ int ElfLoadFromMemory(VIRTUAL_ADDRESS_SPACE *Space, const void *Image, UINTN Siz
         Out->Entry = Hdr->e_entry;
         Out->StackTop = USER_STACK_VIRT + USER_STACK_SIZE;
         Out->BrkBase = BrkBase;
+        Out->TlsBase = 0;
     }
     return 0;
 }

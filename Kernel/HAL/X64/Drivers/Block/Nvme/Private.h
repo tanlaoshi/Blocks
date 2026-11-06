@@ -1,5 +1,5 @@
 /*
- * Private.h — 寄存器、队列与控制器态（PR-S-nvme-1）
+ * Private.h — 寄存器、队列、控制器与命名空间（PR-S-nvme-1 / 多 NS）
  */
 #ifndef NVME_PRIVATE_H
 #define NVME_PRIVATE_H
@@ -10,7 +10,7 @@
 #include "Block.h"
 
 #define NVME_PCI_CLASS        0x010802u
-#define NVME_MAX_CTRL         BLOCK_MAX_DRIVES
+#define NVME_MAX_CTRL         2
 #define NVME_QSIZE            16u
 #define NVME_BOUNCE_SECTORS   8u
 
@@ -33,7 +33,9 @@
 #define NVME_OPC_WRITE        0x01u
 #define NVME_OPC_READ         0x02u
 
-#define NVME_CNS_NS           0x00u
+#define NVME_CNS_NS                0x00u /* Identify Namespace */
+#define NVME_CNS_CONTROLLER        0x01u /* Identify Controller */
+#define NVME_CNS_NS_ACTIVE_LIST    0x02u /* Active Namespace ID list */
 
 typedef struct {
     UINT32 Cdw0;
@@ -59,6 +61,7 @@ typedef struct {
     UINT16 StatusPhase; /* low bit = phase; status = bits[15:1] */
 } BLOCKS_PACKED NVME_CQE;
 
+/* 一台 PCI 控制器：队列 / Bounce 共用；多 NS 共享。 */
 typedef struct {
     volatile UINT8 *Bar;
     UINT64 BarPhys;
@@ -77,13 +80,21 @@ typedef struct {
     UINT8 AcqPhase;
     UINT8 IocqPhase;
     UINT16 NextCid;
-    UINT32 NsId;
-    UINT32 LbaShift; /* Identify LBADS：9=512B；>9 时 Command 内 512e 翻译 */
     int Ready;
 } NVME_CTRL;
 
-extern NVME_CTRL gCtrl[NVME_MAX_CTRL];
-extern int gCtrlCount;
+/* 一个命名空间 = 一个 Block drive（LocalDrive）。 */
+typedef struct {
+    NVME_CTRL *Controller;
+    UINT32 NamespaceId;
+    UINT32 LbaShift; /* Identify LBADS；>9 时 Command 内 512e */
+    int Ready;
+} NVME_NAMESPACE;
+
+extern NVME_CTRL gControllers[NVME_MAX_CTRL];
+extern int gControllerCount;
+extern NVME_NAMESPACE gNamespaces[BLOCK_MAX_DRIVES];
+extern int gNamespaceCount;
 
 static inline UINT32 MmioR32(volatile UINT8 *Bar, UINT32 Off) {
     return *(volatile UINT32 *)(Bar + Off);
@@ -125,6 +136,12 @@ static inline void Fence(void) {
 int AdminCmd(NVME_CTRL *C, NVME_SQE *Cmd);
 int CtrlInitialize(NVME_CTRL *C, UINT64 Bar);
 int PciBar0(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 *BarOut);
-int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write);
+/* 列活动 NSID；失败则回落 OutIds[0]=1。返回个数。 */
+int NvmeFetchActiveNamespaceIds(NVME_CTRL *C, UINT32 *OutIds, UINT32 MaxCount);
+/* Identify 指定 NS → LBADS；NSZE=0 失败。 */
+int NvmeIdentifyNamespaceLbaShift(NVME_CTRL *C, UINT32 NamespaceId,
+                                  UINT32 *OutLbaShift);
+int NvmeTransfer(NVME_NAMESPACE *Namespace, UINT32 Lba, UINT32 Count, void *Buffer,
+                 int Write);
 
 #endif

@@ -129,6 +129,25 @@ case "${DISK:-ide}" in
             -device nvme,serial=toyroot,drive=toyroot,logical_block_size=4096,physical_block_size=4096,bootindex=1
         )
         ;;
+    nvmemulti|NVMEMULTI|nvme-ns)
+        # ESP 单 NS；根控制器 nvme-subsys 两 NS（RootFs + 空白第二盘）→ 驱动多 drive
+        NVME_NS2_IMG="${NVME_NS2_IMG:-/tmp/blocks-nvme-ns2.img}"
+        if [ ! -f "$NVME_NS2_IMG" ]; then
+            toy_qemu_info "qemu: create $NVME_NS2_IMG (64MiB empty NS2)"
+            qemu-img create -f raw "$NVME_NS2_IMG" 64M >/dev/null
+        fi
+        toy_qemu_info "qemu: disk=nvmemulti (ESP + root NS1/NS2)"
+        DISK_ARGS=(
+            -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64
+            -device nvme,serial=toyesp,drive=toyesp,logical_block_size=512,physical_block_size=512,bootindex=0
+            -device nvme-subsys,id=nvmesub
+            -device nvme,id=nvmeroot,serial=toyroot,subsys=nvmesub,bootindex=1
+            -drive if=none,id=nvmen1,format=raw,file=RootFs/X64.img
+            -device nvme-ns,drive=nvmen1,bus=nvmeroot,nsid=1,logical_block_size=512,physical_block_size=512
+            -drive if=none,id=nvmen2,format=raw,file="$NVME_NS2_IMG"
+            -device nvme-ns,drive=nvmen2,bus=nvmeroot,nsid=2,logical_block_size=512,physical_block_size=512
+        )
+        ;;
     *)
         DISK_ARGS=(
             -drive if=none,id=toyesp,format=raw,file=fat:rw:Esp/X64

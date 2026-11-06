@@ -1,5 +1,5 @@
 /*
- * Initialize.c — 控制器初始化与 PCI BAR（PR-S-nvme-1）
+ * Initialize.c — 控制器初始化、Identify NS 列表（PR-S-nvme-1 / 多 NS）
  */
 #include "Nvme.h"
 #include "Private.h"
@@ -38,23 +38,26 @@ static int CtrlEnable(NVME_CTRL *C) {
     return WaitCsts(C, NVME_CSTS_RDY, NVME_CSTS_RDY, C->TimeoutLoops);
 }
 
-static int IdentifyNs(NVME_CTRL *C) {
+int NvmeIdentifyNamespaceLbaShift(NVME_CTRL *C, UINT32 NamespaceId,
+                                  UINT32 *OutLbaShift) {
     NVME_SQE Cmd;
     UINT8 *Id = C->Ident;
     UINT8 Flbas;
     UINT8 Lbads;
 
+    if (!C || !OutLbaShift || NamespaceId == 0) {
+        return 0;
+    }
     ZeroMemory(&Cmd, sizeof(Cmd));
     Cmd.Cdw0 = NVME_OPC_IDENTIFY;
-    Cmd.Nsid = 1;
+    Cmd.Nsid = NamespaceId;
     Cmd.Prp1 = (UINT64)(UINTN)Id;
     Cmd.Cdw10 = NVME_CNS_NS;
     ZeroMemory(Id, PAGE_SIZE);
     if (!AdminCmd(C, &Cmd)) {
         return 0;
     }
-
-    /* NSZE == 0 → 无命名空间 */
+    /* NSZE == 0 → 无此命名空间 */
     if (*(UINT64 *)(UINTN)Id == 0) {
         return 0;
     }
@@ -64,21 +67,41 @@ static int IdentifyNs(NVME_CTRL *C) {
     if (Lbads < 9 || Lbads > 12) {
         Lbads = 9;
     }
-    C->NsId = 1;
-    C->LbaShift = Lbads;
-    if (Lbads != 9) {
-        LogFs("nvme: NS LBADS=");
-        {
-            static const char Hex[] = "0123456789abcdef";
-            char Digit[2];
-
-            Digit[0] = Hex[Lbads & 0xf];
-            Digit[1] = 0;
-            LogFs(Digit);
-        }
-        LogFs(" (512e translate)\n");
-    }
+    *OutLbaShift = Lbads;
     return 1;
+}
+
+int NvmeFetchActiveNamespaceIds(NVME_CTRL *C, UINT32 *OutIds, UINT32 MaxCount) {
+    NVME_SQE Cmd;
+    UINT8 *Id = C->Ident;
+    UINT32 Count = 0;
+    UINT32 i;
+
+    if (!C || !OutIds || MaxCount == 0) {
+        return 0;
+    }
+    ZeroMemory(&Cmd, sizeof(Cmd));
+    Cmd.Cdw0 = NVME_OPC_IDENTIFY;
+    Cmd.Nsid = 0;
+    Cmd.Prp1 = (UINT64)(UINTN)Id;
+    Cmd.Cdw10 = NVME_CNS_NS_ACTIVE_LIST;
+    ZeroMemory(Id, PAGE_SIZE);
+    if (AdminCmd(C, &Cmd)) {
+        for (i = 0; i < MaxCount; i++) {
+            UINT32 NamespaceId = *(UINT32 *)(UINTN)(Id + i * 4u);
+
+            if (NamespaceId == 0) {
+                break;
+            }
+            OutIds[Count++] = NamespaceId;
+        }
+    }
+    if (Count == 0) {
+        /* 旧控制器 / 列表空：回落 NSID=1 */
+        OutIds[0] = 1;
+        Count = 1;
+    }
+    return (int)Count;
 }
 
 static int CreateIoQueues(NVME_CTRL *C) {
@@ -166,11 +189,6 @@ int CtrlInitialize(NVME_CTRL *C, UINT64 Bar) {
 
     if (!CtrlEnable(C)) {
         DebugWrite("nvme: enable timeout\n");
-        return 0;
-    }
-
-    if (!IdentifyNs(C)) {
-        DebugWrite("nvme: identify ns fail\n");
         return 0;
     }
     if (!CreateIoQueues(C)) {

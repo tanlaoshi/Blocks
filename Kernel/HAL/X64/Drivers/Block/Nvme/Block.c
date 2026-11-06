@@ -1,7 +1,7 @@
 /*
  * Block.c — NVMe 块设备经 Driver Block 类注册（PR-H5）
  *
- * 注册在 AHCI 之后；HalBlockInitialize 再 Probe 时若 NVMe 在场则覆盖 AHCI/ATA。
+ * 注册在 AHCI 之后；与 AHCI/ATA 经 Block Fan 并存。多 NS → 多 LocalDrive。
  */
 #include "Block.h"
 #include "DriverBoot.h"

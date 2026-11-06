@@ -82,27 +82,34 @@ static int IoCmd(NVME_CTRL *C, NVME_SQE *Cmd) {
  * 以设备 LBA 为单位：Bounce 已填好（写）或读入 Bounce（读）。
  * DeviceCount * 设备扇区 ≤ PAGE_SIZE。
  */
-static int NvmeIssueDeviceIo(NVME_CTRL *C, UINT32 DeviceLba, UINT32 DeviceCount,
-                             int Write) {
+static int NvmeIssueDeviceIo(NVME_NAMESPACE *Namespace, UINT32 DeviceLba,
+                             UINT32 DeviceCount, int Write) {
+    NVME_CTRL *Controller;
     NVME_SQE Cmd;
-    UINT32 DeviceBytes = 1u << C->LbaShift;
+    UINT32 DeviceBytes;
 
+    if (!Namespace || !Namespace->Controller) {
+        return 0;
+    }
+    Controller = Namespace->Controller;
+    DeviceBytes = 1u << Namespace->LbaShift;
     if (DeviceCount == 0 || DeviceCount * DeviceBytes > PAGE_SIZE) {
         return 0;
     }
     ZeroMemory(&Cmd, sizeof(Cmd));
     Cmd.Cdw0 = Write ? NVME_OPC_WRITE : NVME_OPC_READ;
-    Cmd.Nsid = C->NsId;
-    Cmd.Prp1 = (UINT64)(UINTN)C->Bounce;
+    Cmd.Nsid = Namespace->NamespaceId;
+    Cmd.Prp1 = (UINT64)(UINTN)Controller->Bounce;
     Cmd.Cdw10 = DeviceLba;
     Cmd.Cdw11 = 0;
     Cmd.Cdw12 = DeviceCount - 1u;
-    return IoCmd(C, &Cmd);
+    return IoCmd(Controller, &Cmd);
 }
 
 /* LBADS=9：Host LBA 即设备 LBA；Bounce 一次最多 NVME_BOUNCE_SECTORS。 */
-static int NvmeTransferNative512(NVME_CTRL *C, UINT32 Lba, UINT32 Count,
+static int NvmeTransferNative512(NVME_NAMESPACE *Namespace, UINT32 Lba, UINT32 Count,
                                  void *Buffer, int Write) {
+    NVME_CTRL *Controller = Namespace->Controller;
     UINT8 *Data = (UINT8 *)Buffer;
     UINT32 Done = 0;
     UINT32 SectorBytes = BLOCK_SECTOR_SIZE;
@@ -116,13 +123,13 @@ static int NvmeTransferNative512(NVME_CTRL *C, UINT32 Lba, UINT32 Count,
         }
         Bytes = Chunk * SectorBytes;
         if (Write) {
-            CopyMemory(C->Bounce, Data + (UINTN)Done * SectorBytes, Bytes);
+            CopyMemory(Controller->Bounce, Data + (UINTN)Done * SectorBytes, Bytes);
         }
-        if (!NvmeIssueDeviceIo(C, Lba + Done, Chunk, Write)) {
+        if (!NvmeIssueDeviceIo(Namespace, Lba + Done, Chunk, Write)) {
             return 0;
         }
         if (!Write) {
-            CopyMemory(Data + (UINTN)Done * SectorBytes, C->Bounce, Bytes);
+            CopyMemory(Data + (UINTN)Done * SectorBytes, Controller->Bounce, Bytes);
         }
         Done += Chunk;
     }
@@ -132,11 +139,12 @@ static int NvmeTransferNative512(NVME_CTRL *C, UINT32 Lba, UINT32 Count,
 /*
  * LBADS>9：按设备块折算。Host 扇区落在设备块内偏移时，写路径先读整块再合并。
  */
-static int NvmeTransferTranslate(NVME_CTRL *C, UINT32 HostLba, UINT32 HostCount,
-                                 void *Buffer, int Write) {
+static int NvmeTransferTranslate(NVME_NAMESPACE *Namespace, UINT32 HostLba,
+                                 UINT32 HostCount, void *Buffer, int Write) {
+    NVME_CTRL *Controller = Namespace->Controller;
     UINT8 *Data = (UINT8 *)Buffer;
     UINT32 HostDone = 0;
-    UINT32 DeviceBytes = 1u << C->LbaShift;
+    UINT32 DeviceBytes = 1u << Namespace->LbaShift;
     UINT32 HostPerDevice = DeviceBytes / BLOCK_SECTOR_SIZE;
 
     if (HostPerDevice == 0 || (DeviceBytes % BLOCK_SECTOR_SIZE) != 0) {
@@ -166,37 +174,39 @@ static int NvmeTransferTranslate(NVME_CTRL *C, UINT32 HostLba, UINT32 HostCount,
 
         if (Write) {
             if (Partial) {
-                if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 0)) {
+                if (!NvmeIssueDeviceIo(Namespace, DeviceLba, 1, 0)) {
                     return 0;
                 }
             }
-            CopyMemory(C->Bounce + ByteOffset, Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE,
-                       ByteCount);
-            if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 1)) {
+            CopyMemory(Controller->Bounce + ByteOffset,
+                       Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE, ByteCount);
+            if (!NvmeIssueDeviceIo(Namespace, DeviceLba, 1, 1)) {
                 return 0;
             }
         } else {
-            if (!NvmeIssueDeviceIo(C, DeviceLba, 1, 0)) {
+            if (!NvmeIssueDeviceIo(Namespace, DeviceLba, 1, 0)) {
                 return 0;
             }
-            CopyMemory(Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE, C->Bounce + ByteOffset,
-                       ByteCount);
+            CopyMemory(Data + (UINTN)HostDone * BLOCK_SECTOR_SIZE,
+                       Controller->Bounce + ByteOffset, ByteCount);
         }
         HostDone += HostChunk;
     }
     return 1;
 }
 
-int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
-    if (!C || !C->Ready || !Buffer || Count == 0) {
+int NvmeTransfer(NVME_NAMESPACE *Namespace, UINT32 Lba, UINT32 Count, void *Buffer,
+                 int Write) {
+    if (!Namespace || !Namespace->Ready || !Namespace->Controller ||
+        !Namespace->Controller->Ready || !Buffer || Count == 0) {
         return 0;
     }
-    if (C->LbaShift < 9 || C->LbaShift > 12) {
+    if (Namespace->LbaShift < 9 || Namespace->LbaShift > 12) {
         DebugWrite("nvme: unsupported LbaShift\n");
         return 0;
     }
-    if (C->LbaShift == 9) {
-        return NvmeTransferNative512(C, Lba, Count, Buffer, Write);
+    if (Namespace->LbaShift == 9) {
+        return NvmeTransferNative512(Namespace, Lba, Count, Buffer, Write);
     }
-    return NvmeTransferTranslate(C, Lba, Count, Buffer, Write);
+    return NvmeTransferTranslate(Namespace, Lba, Count, Buffer, Write);
 }

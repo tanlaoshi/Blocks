@@ -76,7 +76,7 @@ static void LogCtrl(UHCI_CTRL *C, int Index) {
     BootMarkUsb(Line);
 }
 
-int UhciInitOne(UHCI_CTRL *C, int Index) {
+int UhciInitializeOne(UHCI_CTRL *C, int Index) {
     UINT32 *Fl;
     UINT32 i;
     int Spin;

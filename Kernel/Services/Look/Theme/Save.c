@@ -27,8 +27,8 @@ int ThemeSave(void) {
      * 但分辨率只在 DB，故 DB 每次都写。
      */
     DbSt = ThemeSaveWriteDb(&Vals);
-    N = ThemeSaveBuildCfg(Buf, sizeof(Buf), &Vals);
-    CfgSt = ThemeSaveWriteCfg(Buf, N);
+    N = ThemeSaveBuildConfig(Buf, sizeof(Buf), &Vals);
+    CfgSt = ThemeSaveWriteConfig(Buf, N);
     sBusy = 0;
     if (DbSt < 0 && CfgSt < 0) {
         return -1;

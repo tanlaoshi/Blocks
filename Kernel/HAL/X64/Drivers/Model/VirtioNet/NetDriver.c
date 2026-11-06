@@ -33,11 +33,11 @@ static int NetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
         }
         return 0;
     }
-    /* BAR Map 必须在 VMM Enable 之后（InitDriver 的 ProbeAll 会跳过） */
+    /* BAR Map 必须在 VMM Enable 之后（InitializeDriver 的 ProbeAll 会跳过） */
     if (!VirtualMemoryEnabled()) {
         return -1;
     }
-    gLwIpRx = 0;
+    gLwIpReceive = 0;
     if (!VirtioFindNet(&Bus, &Dev, &Fn, &Bar)) {
         LogNet("Net: virtio-net not found\n");
         return -1;
@@ -68,7 +68,7 @@ int NetPing(const char *Host, int TimeoutMs);
 void NetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
 int NetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
 UINT16 NetChecksum(const void *Data, UINTN Len);
-void NetSetLwIpRx(int Enable);
+void NetSetLwIpReceive(int Enable);
 
 static const NET_BACKEND gNetBackend = {
     .Ready = NetReady,
@@ -82,7 +82,7 @@ static const NET_BACKEND gNetBackend = {
     .GetStats = NetGetStats,
     .SendIp = NetSendIp,
     .Checksum = NetChecksum,
-    .SetLwIpRx = NetSetLwIpRx,
+    .SetLwIpReceive = NetSetLwIpReceive,
 };
 
 static int NetDriverBind(DRIVER_INSTANCE *Inst) {

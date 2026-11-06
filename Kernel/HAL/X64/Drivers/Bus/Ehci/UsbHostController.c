@@ -33,9 +33,9 @@ static int SubmitControl(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, UINT32 Le
         Address = Controller->DevAddr;
     } else if (Controller->MscOk) {
         Address = Controller->MscAddr;
-        EndpointMax = Controller->MscEpMax0 != 0 ? Controller->MscEpMax0 : 64;
+        EndpointMax = Controller->MscEndpointMax0 != 0 ? Controller->MscEndpointMax0 : 64;
     }
-    return ControlTransfer(Controller, Address, EndpointMax,
+    return EhciControlTransfer(Controller, Address, EndpointMax,
                             (const USB_SETUP_PACKET *)Setup, Data);
 }
 
@@ -58,24 +58,24 @@ static int QueueInterrupt(USB_PIPE *Pipe, void *Buf, UINT32 Len, void (*Done)(vo
     return -1;
 }
 
-static int BulkTransfer(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
+static int PipeBulkTransfer(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
     EHCI_CTRL *Controller = gEhciMscCtrl;
 
     (void)Pipe;
     if (Controller == 0 || !Controller->MscOk) {
         return -1;
     }
-    Controller->XferSpeed = Controller->MscSpeed;
-    Controller->XferHubAddr = Controller->MscHubAddr;
-    Controller->XferHubPort = Controller->MscHubPort;
+    Controller->TransferSpeed = Controller->MscSpeed;
+    Controller->TransferHubAddress = Controller->MscHubAddr;
+    Controller->TransferHubPort = Controller->MscHubPort;
     if (Out) {
-        return BulkXfer(Controller, Controller->MscAddr, Controller->MscEpOut,
-                             Controller->MscMpsOut, Controller->MscSpeed,
+        return EhciBulkTransfer(Controller, Controller->MscAddr, Controller->MscEndpointOut,
+                             Controller->MscMaxPacketSizeOut, Controller->MscSpeed,
                              Controller->MscHubAddr, Controller->MscHubPort, 0,
                              Buf, Len, &Controller->MscDtOut);
     }
-    return BulkXfer(Controller, Controller->MscAddr, Controller->MscEpIn,
-                         Controller->MscMpsIn, Controller->MscSpeed,
+    return EhciBulkTransfer(Controller, Controller->MscAddr, Controller->MscEndpointIn,
+                         Controller->MscMaxPacketSizeIn, Controller->MscSpeed,
                          Controller->MscHubAddr, Controller->MscHubPort, 1,
                          Buf, Len, &Controller->MscDtIn);
 }
@@ -83,7 +83,7 @@ static int BulkTransfer(USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out) {
 static const USB_HOST_CONTROLLER_OPERATIONS gOperations = {
     .Control = SubmitControl,
     .InterruptQueue = QueueInterrupt,
-    .Bulk = BulkTransfer,
+    .Bulk = PipeBulkTransfer,
 };
 
 void Offer(void) {

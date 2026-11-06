@@ -96,7 +96,7 @@ void WorkerTask(void) {
          * cjk-3 / 鼠优先：光标已露且指针刚动过 → 本圈跳过 Preheat/WantDrain
          *（FT/stb 栅格会饿 xHCI）。闲时再泵；不 continue，后面网/iwl 仍走。
          */
-        if (!(GuiCursorUsbReady() && !GuiPointerIdleForMs(400u))) {
+        if (!(GuiCursorUsbReady() && !GuiPointerIdleForMilliseconds(400u))) {
             /*
              * PR-UI-ttf-3：zh 目录分片预热（每圈 1 条）。不 continue：
              * 与 iwl/DHCP 同圈交替，勿挡 Gui/鼠标。

@@ -3,7 +3,7 @@
  */
 #include "LocalePrivate.h"
 
-const char *const gEnFallback[MSG_COUNT] = {
+const char *const gEnFallback[MESSAGE_COUNT] = {
     "Blocks Shell",
     "Settings",
     "Files",

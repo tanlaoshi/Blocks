@@ -67,50 +67,50 @@ int SchedStart(EHCI_CTRL *C) {
 
     /*
      * page0: 帧表
-     * page1+: AsyncHead(128) CtrlQh(128) IntrQh(128) | qTD×5(64) | bufs
+     * page1+: AsyncHead(128) CtrlQh(128) InterruptQueueHead(128) | qTD×5(64) | bufs
      */
     C->FrameList = (UINT32 *)(UINTN)Mem;
     C->AsyncHead = (EHCI_QH *)(UINTN)(Mem + PAGE_SIZE);
     C->CtrlQh = (EHCI_QH *)(UINTN)(Mem + PAGE_SIZE + 128);
-    C->IntrQh = (EHCI_QH *)(UINTN)(Mem + PAGE_SIZE + 256);
+    C->InterruptQueueHead = (EHCI_QH *)(UINTN)(Mem + PAGE_SIZE + 256);
     C->Qtds = (EHCI_QTD *)(UINTN)(Mem + PAGE_SIZE + 512);
-    C->SetupBuf = Mem + PAGE_SIZE + 512 + 5 * 64;
-    C->CtrlBuf = C->SetupBuf + 64;
-    C->ReportBuf = C->CtrlBuf + 512;
-    C->BulkBuf = C->ReportBuf + 64; /* 512B BOT bounce */
+    C->SetupBuffer = Mem + PAGE_SIZE + 512 + 5 * 64;
+    C->ControlBuffer = C->SetupBuffer + 64;
+    C->ReportBuf = C->ControlBuffer + 512;
+    C->BulkBuffer = C->ReportBuf + 64; /* 512B BOT bounce */
 
     ZeroQh(C->AsyncHead);
     ZeroQh(C->CtrlQh);
-    ZeroQh(C->IntrQh);
+    ZeroQh(C->InterruptQueueHead);
 
     /* reclaim 头：H=1，overlay Halted，永不执行传输 */
     C->AsyncHead->Horiz =
-        (UINT32)PtrPhys(C->CtrlQh) | EHCI_LINK_TYPE_QH;
-    C->AsyncHead->EpChar = (1u << 15) | (8u << 16) | (2u << 12);
-    C->AsyncHead->EpCap = 1u << 30;
+        (UINT32)PointerPhysical(C->CtrlQh) | EHCI_LINK_TYPE_QH;
+    C->AsyncHead->EndpointChar = (1u << 15) | (8u << 16) | (2u << 12);
+    C->AsyncHead->EndpointCap = 1u << 30;
     C->AsyncHead->Next = EHCI_LINK_TERMINATE;
     C->AsyncHead->AltNext = EHCI_LINK_TERMINATE;
     C->AsyncHead->Token = EHCI_QTD_HALTED;
 
     /* 工作 CtrlQH：无 H；HS；DTC；RL（C 位仅 FS/LS） */
     C->CtrlQh->Horiz =
-        (UINT32)PtrPhys(C->AsyncHead) | EHCI_LINK_TYPE_QH;
-    C->CtrlQh->EpChar = (64u << 16) | (2u << 12) | (1u << 14) | (0xFu << 28);
-    C->CtrlQh->EpCap = 1u << 30;
+        (UINT32)PointerPhysical(C->AsyncHead) | EHCI_LINK_TYPE_QH;
+    C->CtrlQh->EndpointChar = (64u << 16) | (2u << 12) | (1u << 14) | (0xFu << 28);
+    C->CtrlQh->EndpointCap = 1u << 30;
     C->CtrlQh->Next = EHCI_LINK_TERMINATE;
     C->CtrlQh->AltNext = EHCI_LINK_TERMINATE;
     C->CtrlQh->Token = 0;
 
-    C->IntrQh->Horiz = EHCI_LINK_TERMINATE;
-    C->IntrQh->EpChar = (8u << 16) | (2u << 12);
-    C->IntrQh->EpCap = (1u << 30) | 0xFFu;
-    C->IntrQh->Next = EHCI_LINK_TERMINATE;
-    C->IntrQh->AltNext = EHCI_LINK_TERMINATE;
-    C->IntrQh->Token = 0;
+    C->InterruptQueueHead->Horiz = EHCI_LINK_TERMINATE;
+    C->InterruptQueueHead->EndpointChar = (8u << 16) | (2u << 12);
+    C->InterruptQueueHead->EndpointCap = (1u << 30) | 0xFFu;
+    C->InterruptQueueHead->Next = EHCI_LINK_TERMINATE;
+    C->InterruptQueueHead->AltNext = EHCI_LINK_TERMINATE;
+    C->InterruptQueueHead->Token = 0;
 
     for (i = 0; i < EHCI_FRAME_ENTRIES; i++) {
         C->FrameList[i] =
-            (UINT32)PtrPhys(C->IntrQh) | EHCI_LINK_TYPE_QH;
+            (UINT32)PointerPhysical(C->InterruptQueueHead) | EHCI_LINK_TYPE_QH;
     }
 
     Hcc = R32(C->Cap, EHCI_HCCPARAMS);
@@ -118,7 +118,7 @@ int SchedStart(EHCI_CTRL *C) {
     W32(C->Op, EHCI_CTRLDSSEGMENT, 0);
     W32(C->Op, EHCI_PERIODICLISTBASE, (UINT32)Phys);
     /* ASE=0 时写 ASYNCLISTADDR → reclaim 头 */
-    W32(C->Op, EHCI_ASYNCLISTADDR, (UINT32)PtrPhys(C->AsyncHead));
+    W32(C->Op, EHCI_ASYNCLISTADDR, (UINT32)PointerPhysical(C->AsyncHead));
     W32(C->Op, EHCI_FRINDEX, 0);
 
     if (EHCI_HCC_64ADDR(Hcc)) {

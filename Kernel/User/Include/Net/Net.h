@@ -43,10 +43,10 @@ static inline unsigned NetIpv4(unsigned A, unsigned B, unsigned C, unsigned D) {
 int NetConnect(int fd, unsigned ip, unsigned short port);
 int NetBind(int fd, unsigned ip, unsigned short port);
 
-void NetAddrIn(NET_SOCK_ADDR_IN *Sa, unsigned Ip, unsigned Port);
+void NetAddressIn(NET_SOCK_ADDR_IN *Sa, unsigned Ip, unsigned Port);
 int NetConnectIn(int Fd, const NET_SOCK_ADDR_IN *Sa);
 int NetBindIn(int Fd, const NET_SOCK_ADDR_IN *Sa);
-int NetGetAddrIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port);
+int NetGetAddressIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port);
 /* 点分 IPv4 / localhost 本地解析；其它名字走内核 lwIP DNS */
 int NetResolve(const char *Name, unsigned *OutIp);
 

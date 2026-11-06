@@ -109,7 +109,7 @@ static int ReadBar0(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 *BarOut) {
     return 1;
 }
 
-int IgpuMmioInit(void) {
+int IgpuMmioInitialize(void) {
     UINT8 Bus;
     UINT8 Dev;
     UINT8 Fn;
@@ -132,7 +132,7 @@ int IgpuMmioInit(void) {
     }
 
     Bus = IgpuPciBus();
-    Dev = IgpuPciDev();
+    Dev = IgpuPciDevice();
     Fn = IgpuPciFn();
     if (!ReadBar0(Bus, Dev, Fn, &Bar)) {
         LogDrv("Boot: igpu mmio no BAR0\n");

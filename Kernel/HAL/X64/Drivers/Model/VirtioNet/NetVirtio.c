@@ -13,13 +13,13 @@
 
 UINT8 gVirtQueueRxMemory[4 * PAGE_SIZE] BLOCKS_ALIGNED(4096);
 UINT8 gVirtQueueTxMemory[4 * PAGE_SIZE] BLOCKS_ALIGNED(4096);
-UINT8 gRxBufData[RX_BUF_COUNT][PAGE_SIZE] BLOCKS_ALIGNED(4096);
+UINT8 gReceiveBufferData[RX_BUF_COUNT][PAGE_SIZE] BLOCKS_ALIGNED(4096);
 static UINT8 gTxBufData[PAGE_SIZE] BLOCKS_ALIGNED(4096);
 UINT8 *gTxBuf = gTxBufData;
 
 volatile VIRTIO_COMMON_CFG *gCommon;
-volatile VIRTIO_NET_CFG *gDevCfg;
-VIRTQ gRxQ;
+volatile VIRTIO_NET_CFG *gDeviceConfig;
+VIRTQ gReceiveQueue;
 VIRTQ gTxQ;
 volatile UINT8 *gIsr;
 UINT16 gIoPort;
@@ -128,7 +128,7 @@ static void VirtQueueSubmitAvailable(VIRTQ *Q, UINT16 Head) {
     __asm__ volatile("" ::: "memory");
     Q->AvailIdx++;
     Q->Avail->Idx = Q->AvailIdx;
-    VirtQueueKick(Q, Q == &gRxQ ? RX_QUEUE_ID : TX_QUEUE_ID);
+    VirtQueueKick(Q, Q == &gReceiveQueue ? RX_QUEUE_ID : TX_QUEUE_ID);
 }
 
 int VirtQueuePopUsed(VIRTQ *Q, UINT16 *Head, UINT32 *Len) {
@@ -163,7 +163,7 @@ void ReceiveRefillOne(VIRTQ *Q, UINT8 *Buf) {
 void ReceiveRefillAll(void) {
     int i;
     for (i = 0; i < RX_BUF_COUNT; i++) {
-        ReceiveRefillOne(&gRxQ, gRxBufData[i]);
+        ReceiveRefillOne(&gReceiveQueue, gReceiveBufferData[i]);
     }
 }
 int VirtioFindNet(UINT8 *Bus, UINT8 *Dev, UINT8 *Fn, UINT64 *BarOut) {

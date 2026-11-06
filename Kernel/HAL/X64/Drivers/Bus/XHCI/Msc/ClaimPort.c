@@ -18,10 +18,10 @@ int ForceUntilPed(UINT32 P, int *Force) {
     int NeedForce;
 
     *Force = 0;
-    if (gXhciPortEnumFreeze) {
+    if (gXhciPortEnumerateFreeze) {
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     NeedForce = (gPortNeedForcePr & (1u << P)) != 0;
     if (!NeedForce && (Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
         BootLogHexV("Boot: MSC claim try PED port=", P, 2);
@@ -42,21 +42,21 @@ int ForceUntilPed(UINT32 P, int *Force) {
                 BootLogHexV("Boot: MSC claim Force retry port=", P, 2);
                 /* 丢 CCS 后等设备重新出现（Force 过猛常见） */
                 for (W = 0; W < 30; W++) {
-                    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+                    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
                     if (Ps & PORTSC_CCS) {
                         break;
                     }
-                    StallMs(15);
+                    StallMilliseconds(15);
                 }
             }
             if (!ResetPortEx(P, 1)) {
-                Ps = ReadMmio32(gOperationalBase + PortReg(P));
+                Ps = ReadMmio32(gOperationalBase + PortRegister(P));
                 if ((Ps & PORTSC_CCS) && !(Ps & PORTSC_PED)) {
                     int W;
                     /* PRC 已到但 PED 慢：再等一会，勿立刻放弃 */
                     for (W = 0; W < 8; W++) {
-                        StallMs(15);
-                        Ps = ReadMmio32(gOperationalBase + PortReg(P));
+                        StallMilliseconds(15);
+                        Ps = ReadMmio32(gOperationalBase + PortRegister(P));
                         if ((Ps & PORTSC_PED) && (Ps & PORTSC_CCS)) {
                             Ready = 1;
                             BootLogHexV("Boot: MSC claim late PED port=", P, 2);
@@ -75,21 +75,21 @@ int ForceUntilPed(UINT32 P, int *Force) {
             }
             Ready = 1;
             if (!HalCpuIsHypervisor()) {
-                StallMs(50);
+                StallMilliseconds(50);
             }
         }
     }
     gDiagQuiet = QuietSave;
     if (!Ready) {
-        Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        Ps = ReadMmio32(gOperationalBase + PortRegister(P));
         BootLogHex("Boot: XHCI port reset fail=", P, 2);
         BootLogHex("Boot: XHCI reset fail PORTSC=", Ps, 8);
-        if (gEnumWhy != 0) {
-            BootLog(gEnumWhy);
+        if (gEnumerateWhy != 0) {
+            BootLog(gEnumerateWhy);
         }
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     if (!(Ps & PORTSC_PED) || !(Ps & PORTSC_CCS)) {
         BootLogHex("Boot: XHCI port not PED=", P, 2);
         return 0;
@@ -106,7 +106,7 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
     UINT32 QuietSave;
     UINT32 Ps;
 
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     *Speed = PortSpeed(Ps);
     QuietSave = gDiagQuiet;
     gDiagQuiet = 1;
@@ -136,8 +136,8 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
         }
         BootLogHex("Boot: MSC claim addr retry Force port=", P, 2);
         if (ResetPortEx(P, 1)) {
-            StallMs(50);
-            *Speed = PortSpeed(ReadMmio32(gOperationalBase + PortReg(P)));
+            StallMilliseconds(50);
+            *Speed = PortSpeed(ReadMmio32(gOperationalBase + PortRegister(P)));
             AddrOk = AddressDeviceOnPort(P, *Speed, &gMscScanSlot, gMscScanDevCtx,
                                          0, 0, 0, 0, 0);
             if (!AddrOk && gMscScanSlot != 0) {
@@ -154,10 +154,10 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
             DisableSlot(gMscScanSlot);
             gMscScanSlot = 0;
         }
-        StallMs(40);
+        StallMilliseconds(40);
         if (ResetPortEx(P, 1)) {
-            StallMs(100);
-            *Speed = PortSpeed(ReadMmio32(gOperationalBase + PortReg(P)));
+            StallMilliseconds(100);
+            *Speed = PortSpeed(ReadMmio32(gOperationalBase + PortRegister(P)));
             AddrOk = AddressDeviceOnPort(P, *Speed, &gMscScanSlot, gMscScanDevCtx,
                                          0, 0, 0, 0, 0);
             if (!AddrOk && gMscScanSlot != 0) {
@@ -178,7 +178,7 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
         return 0;
     }
     if (gMscScanSlot <= DCBAA_SLOTS) {
-        gSlotEp0UsesKbdRing[gMscScanSlot] = 0;
+        gSlotEndpoint0UsesKeyboardRing[gMscScanSlot] = 0;
     }
     gPortNeedForcePr &= ~(1u << P);
     gMscRoute = 0;
@@ -192,27 +192,27 @@ int AddressPort(UINT32 P, int Force, UINT8 *Speed) {
  * 非 hub：返回 -1（继续 FinishClaim）。其它：返回 0（continue）。
  */
 int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
-    int Hubish = IsHubDeviceDesc() || (gCtrlBuf[4] == 0x09);
+    int Hubish = IsHubDeviceDesc() || (gControlBuffer[4] == 0x09);
 
-    if (!Hubish && gCtrlBuf[4] == 0) {
+    if (!Hubish && gControlBuffer[4] == 0) {
         UINT16 Total;
 
-        if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gMscCfgBuf) == 0) {
-            Total = (UINT16)(gMscCfgBuf[2] | (gMscCfgBuf[3] << 8));
+        if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gMscConfigBuffer) == 0) {
+            Total = (UINT16)(gMscConfigBuffer[2] | (gMscConfigBuffer[3] << 8));
             if (Total < 9) {
                 Total = 9;
             }
-            if (Total > sizeof(gMscCfgBuf)) {
-                Total = (UINT16)sizeof(gMscCfgBuf);
+            if (Total > sizeof(gMscConfigBuffer)) {
+                Total = (UINT16)sizeof(gMscConfigBuffer);
             }
-            if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gMscCfgBuf) == 0 &&
-                ConfigHasHubIface(gMscCfgBuf, Total)) {
+            if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gMscConfigBuffer) == 0 &&
+                ConfigHasHubInterface(gMscConfigBuffer, Total)) {
                 Hubish = 1;
                 BootLogHex("Boot: MSC claim hub iface root=", P, 2);
             }
         } else {
-            RecoverEp0(gMscScanSlot);
-            gXferSlot = gMscScanSlot;
+            RecoverEndpoint0(gMscScanSlot);
+            gTransferSlot = gMscScanSlot;
         }
     }
 
@@ -250,7 +250,7 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok) {
         }
         if (ClaimHubOnRootPort(P, Speed, Was)) {
             if (!HalCpuIsHypervisor()) {
-                StallMs(80); /* PR-BOOT-fast-2：原 150 */
+                StallMilliseconds(80); /* PR-BOOT-fast-2：原 150 */
             }
             /* Enumerate 内部已有第二遍。外面再整轮扫会把空口等待再乘一遍。 */
             if (EnumerateHubChildren()) {

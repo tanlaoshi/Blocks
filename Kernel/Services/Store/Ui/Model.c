@@ -10,13 +10,13 @@
 const char *StoreBtnLabel(int I) {
     switch (I) {
     case 0:
-        return LocStr(MSG_STORE_INSTALL);
+        return LocaleString(MESSAGE_STORE_INSTALL);
     case 1:
-        return LocStr(MSG_STORE_REMOVE);
+        return LocaleString(MESSAGE_STORE_REMOVE);
     case 2:
-        return LocStr(MSG_STORE_SYNC);
+        return LocaleString(MESSAGE_STORE_SYNC);
     case 3:
-        return LocStr(MSG_STORE_REPO);
+        return LocaleString(MESSAGE_STORE_REPO);
     default:
         return "?";
     }
@@ -25,15 +25,15 @@ const char *StoreBtnLabel(int I) {
 const char *StoreCatLabel(int C) {
     switch (C) {
     case STORE_CAT_ALL:
-        return LocStr(MSG_STORE_CAT_ALL);
+        return LocaleString(MESSAGE_STORE_CAT_ALL);
     case STORE_CAT_APP:
-        return LocStr(MSG_STORE_CAT_APP);
+        return LocaleString(MESSAGE_STORE_CAT_APP);
     case STORE_CAT_FONT:
-        return LocStr(MSG_STORE_CAT_FONT);
+        return LocaleString(MESSAGE_STORE_CAT_FONT);
     case STORE_CAT_ASSET:
-        return LocStr(MSG_STORE_CAT_ASSET);
+        return LocaleString(MESSAGE_STORE_CAT_ASSET);
     case STORE_CAT_INSTALLED:
-        return LocStr(MSG_STORE_CAT_INST);
+        return LocaleString(MESSAGE_STORE_CAT_INST);
     default:
         return "?";
     }

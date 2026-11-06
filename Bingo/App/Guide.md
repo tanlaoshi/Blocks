@@ -105,15 +105,15 @@ FILE *f = fopen("NOTE.TXT", "w");
 /* … */
 ```
 
-卷路径助手（FsUtil **2.0**）：
+卷路径助手（VolumePath **2.0**）：
 
 ```c
 #include <VolumePath/VolumePath.h>
 char Path[FS_PATH_MAX];
-FsUtilBlocksPath(Path, sizeof Path, "NOTE.TXT");  /* → BLOCKS:NOTE.TXT */
+VolumePathBlocks(Path, sizeof Path, "NOTE.TXT");  /* → BLOCKS:NOTE.TXT */
 ```
 
-目录：`<Host/DirectoryEntry.h>` 的 `OpenDirectory` / `ReadDirectory`，或 `FsUtilListDir`。
+目录：`<Host/DirectoryEntry.h>` 的 `OpenDirectory` / `ReadDirectory`，或 `VolumePathListDirectory`。
 
 ---
 

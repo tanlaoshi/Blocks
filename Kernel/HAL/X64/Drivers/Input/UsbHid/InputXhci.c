@@ -154,7 +154,7 @@ int TryXhciAt(UINT64 Base, USB_CONTROLLER *Dev) {
         }
         return 0;
     }
-    PublishControllerInit();
+    PublishControllerInitialize();
     if (gXhciOperations.Init == 0 || !gXhciOperations.Init(Base)) {
         if (RealPc) {
             HalSerialGopMute(0);
@@ -204,7 +204,7 @@ void InputXhciRegister(void) {
     (void)DriverRegister(&gXhciInputDriver);
 }
 
-int InputXhciInit(void) {
+int InputXhciInitialize(void) {
     (void)DriverProbeClass(DRIVER_CLASS_INPUT);
     return DriverInputReady() ? 0 : -1;
 }

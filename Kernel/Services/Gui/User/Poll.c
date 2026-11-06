@@ -62,6 +62,20 @@ int GuiPollUserInput(int Wid) {
         }
         return 400 + (int)Cx + ((int)Cy << 10);
     }
+    /* 3 = UI_EVENT_PAINT：客户区被刷底后通知 Guest 重绘 */
+    if (Prefer >= 0 && Prefer < MAX_WINS &&
+        gGuiWindowManager.UserSlot[Prefer].NeedPaint) {
+        gGuiWindowManager.UserSlot[Prefer].NeedPaint = 0;
+        return 3;
+    }
+    for (I = 0; I < MAX_WINS; I++) {
+        if (gGuiWindowManager.Windows[I].Active &&
+            gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER &&
+            gGuiWindowManager.UserSlot[I].NeedPaint) {
+            gGuiWindowManager.UserSlot[I].NeedPaint = 0;
+            return 3;
+        }
+    }
     for (I = 0; I < MAX_WINS; I++) {
         if (gGuiWindowManager.Windows[I].Active && gGuiWindowManager.Windows[I].Kind == GUI_WIN_USER) {
             return 0;

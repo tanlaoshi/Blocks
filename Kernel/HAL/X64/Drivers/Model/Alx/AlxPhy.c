@@ -140,7 +140,7 @@ static int PollLink(UINT32 *MbpsOut, int *FullOut, int Tries, UINT32 GapMs) {
         if (Rc < 0) {
             SawMdioFail = 1;
         }
-        AlxStallMs(GapMs);
+        AlxStallMilliseconds(GapMs);
     }
     return SawMdioFail ? -1 : 0;
 }
@@ -176,7 +176,7 @@ int AlxWaitLink(UINT32 *MbpsOut, int *FullOut) {
         LogPhyDump();
         return 0;
     }
-    AlxStallMs(200);
+    AlxStallMilliseconds(200);
 
     Rc = PollLink(MbpsOut, FullOut, 80, 50);
     if (Rc > 0) {

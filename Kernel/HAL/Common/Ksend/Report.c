@@ -77,7 +77,7 @@ void KsendBlockTable(const KSEND_IMAGE *Image) {
             /*
              * 表中每 512 B 只 Drain（进 lwIP + tcp_output），勿 WaitPeer：
              * 中途等 ACK 曾 stalled（NUC Wi‑Fi）。整表末再 WaitPeer。
-             * （表黑洞真因曾是 iwl Len>400 拒 MSS 段，见 IwlTxFrame。）
+             * （表黑洞真因曾是 iwl Len>400 拒 MSS 段，见 IwlTransmitFrame。）
              */
             if (PackedBytes >= 512u) {
                 KsendSerialDrainTransmitter();

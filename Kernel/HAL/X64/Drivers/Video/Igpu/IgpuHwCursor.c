@@ -58,11 +58,11 @@ static UINT32 gCurCtl;
 static UINT32 gCurBase;
 static UINT32 gCurPos;
 static UINT32 gCurFbc;
-static UINT32 gCurBufCfg;
+static UINT32 gCurrentBufferConfig;
 static UINT32 gCurWm0;
 static UINT32 gPlaneBufReg;
 static UINT32 gPlaneWm0Reg;
-static UINT32 gSavedBufCfg;
+static UINT32 gSavedBufferConfig;
 static UINT32 gSavedWm0;
 static UINT32 gOrigPlaneBuf;
 static int gCarved;
@@ -71,7 +71,7 @@ static void PickCursorRegs(void) {
     UINT32 SurfReg;
     UINT32 PipeOff;
 
-    SurfReg = IgpuGttSurfReg();
+    SurfReg = IgpuGttSurfRegister();
     if (SurfReg == IGPU_REG_PLANE_SURF_B) {
         PipeOff = 0x1000u;
     } else if (SurfReg == IGPU_REG_PLANE_SURF_C) {
@@ -83,7 +83,7 @@ static void PickCursorRegs(void) {
     gCurBase = IGPU_REG_CUR_BASE_A + PipeOff;
     gCurPos = IGPU_REG_CUR_POS_A + PipeOff;
     gCurFbc = IGPU_REG_CUR_FBC_CTL_A + PipeOff;
-    gCurBufCfg = IGPU_REG_CUR_BUF_CFG_A + PipeOff;
+    gCurrentBufferConfig = IGPU_REG_CUR_BUF_CFG_A + PipeOff;
     gCurWm0 = IGPU_REG_CUR_WM_A0 + PipeOff;
     gPlaneBufReg = IGPU_REG_PLANE_BUF_1_A + PipeOff;
     gPlaneWm0Reg = IGPU_REG_PLANE_WM_1_A0 + PipeOff;
@@ -93,7 +93,7 @@ static void ArmPlaneSurf(void) {
     UINT32 SurfReg;
     UINT32 Surf;
 
-    SurfReg = IgpuGttSurfReg();
+    SurfReg = IgpuGttSurfRegister();
     Surf = IgpuMmioRead32(SurfReg);
     IgpuMmioWrite32(SurfReg, Surf);
 }
@@ -104,7 +104,7 @@ static int CursorDdbWmOkQuiet(void) {
     UINT32 Start;
     UINT32 End;
 
-    Cfg = IgpuMmioRead32(gCurBufCfg);
+    Cfg = IgpuMmioRead32(gCurrentBufferConfig);
     Wm0 = IgpuMmioRead32(gCurWm0);
     Start = Cfg & BUF_START_MASK;
     End = (Cfg >> BUF_END_SHIFT) & BUF_END_MASK;
@@ -114,7 +114,7 @@ static int CursorDdbWmOkQuiet(void) {
     if ((Wm0 & CUR_WM_EN) == 0) {
         return 0;
     }
-    gSavedBufCfg = Cfg;
+    gSavedBufferConfig = Cfg;
     gSavedWm0 = Wm0;
     return 1;
 }
@@ -124,7 +124,7 @@ static int CursorDdbWmOkQuiet(void) {
  * CUR_WM：固件已有值 | EN（NUC 曾见 wm0=0x4007）；blocks 超分配则软退。
  */
 static int CarveCursorDdb(void) {
-    UINT32 PlaneCfg;
+    UINT32 PlaneConfig;
     UINT32 PlaneWm;
     UINT32 CurWm;
     UINT32 PStart;
@@ -135,16 +135,16 @@ static int CarveCursorDdb(void) {
     UINT32 NewPEnd;
     UINT32 CStart;
     UINT32 CEnd;
-    UINT32 NewPlaneCfg;
+    UINT32 NewPlaneConfig;
 
-    PlaneCfg = IgpuMmioRead32(gPlaneBufReg);
+    PlaneConfig = IgpuMmioRead32(gPlaneBufReg);
     PlaneWm = IgpuMmioRead32(gPlaneWm0Reg);
     CurWm = IgpuMmioRead32(gCurWm0);
-    PStart = PlaneCfg & BUF_START_MASK;
-    PEnd = (PlaneCfg >> BUF_END_SHIFT) & BUF_END_MASK;
+    PStart = PlaneConfig & BUF_START_MASK;
+    PEnd = (PlaneConfig >> BUF_END_SHIFT) & BUF_END_MASK;
     if (PEnd <= PStart) {
         LogDrv("Boot: igpu hw cursor soft (plane ddb empty) cfg=");
-        LogDrvHex32(PlaneCfg);
+        LogDrvHex32(PlaneConfig);
         LogDrv("\n");
         return 0;
     }
@@ -177,14 +177,14 @@ static int CarveCursorDdb(void) {
     NewPEnd = PEnd - IGPU_CUR_DDB_BLOCKS;
     CStart = NewPEnd + 1u;
     CEnd = PEnd;
-    NewPlaneCfg = (NewPEnd << BUF_END_SHIFT) | PStart;
-    gOrigPlaneBuf = PlaneCfg;
-    gSavedBufCfg = (CEnd << BUF_END_SHIFT) | CStart;
+    NewPlaneConfig = (NewPEnd << BUF_END_SHIFT) | PStart;
+    gOrigPlaneBuf = PlaneConfig;
+    gSavedBufferConfig = (CEnd << BUF_END_SHIFT) | CStart;
     gSavedWm0 = CurWm | CUR_WM_EN;
 
-    IgpuMmioWrite32(gPlaneBufReg, NewPlaneCfg);
+    IgpuMmioWrite32(gPlaneBufReg, NewPlaneConfig);
     ArmPlaneSurf();
-    IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
+    IgpuMmioWrite32(gCurrentBufferConfig, gSavedBufferConfig);
     IgpuMmioWrite32(gCurWm0, gSavedWm0);
     /* CUR 尚未 Enable；BASE 武装留到 Enable / SetPos */
     IgpuMmioWrite32(gCurFbc, 0);
@@ -193,11 +193,11 @@ static int CarveCursorDdb(void) {
 
     gCarved = 1;
     LogDrv("Boot: igpu hw cursor ddb carve plane=");
-    LogDrvHex32(PlaneCfg);
+    LogDrvHex32(PlaneConfig);
     LogDrv("->");
-    LogDrvHex32(NewPlaneCfg);
+    LogDrvHex32(NewPlaneConfig);
     LogDrv(" cur=");
-    LogDrvHex32(gSavedBufCfg);
+    LogDrvHex32(gSavedBufferConfig);
     LogDrv(" wm0=");
     LogDrvHex32(gSavedWm0);
     LogDrv("\n");
@@ -236,7 +236,7 @@ static void RestorePlaneDdb(void) {
     }
     IgpuMmioWrite32(gCurFbc, 0);
     IgpuMmioWrite32(gCurCtl, 0);
-    IgpuMmioWrite32(gCurBufCfg, 0);
+    IgpuMmioWrite32(gCurrentBufferConfig, 0);
     IgpuMmioWrite32(gCurWm0, gSavedWm0 & ~CUR_WM_EN);
     IgpuMmioWrite32(gCurBase, (UINT32)IGPU_CUR_GTT_OFF);
     IgpuMmioWrite32(gPlaneBufReg, gOrigPlaneBuf);
@@ -343,7 +343,7 @@ static void CopyGlyph(const UINT32 *Src, UINT32 W, UINT32 H, UINT32 *Dst) {
     }
 }
 
-static int EnsureBuf(void) {
+static int EnsureBuffer(void) {
     UINT64 Flags;
     UINT32 i;
 
@@ -419,7 +419,7 @@ static void LogToPhys(UINT32 Lx, UINT32 Ly, UINT32 *Px, UINT32 *Py) {
 }
 
 static void ArmCursor(UINT32 Ctl, UINT32 Pos) {
-    IgpuMmioWrite32(gCurBufCfg, gSavedBufCfg);
+    IgpuMmioWrite32(gCurrentBufferConfig, gSavedBufferConfig);
     IgpuMmioWrite32(gCurWm0, gSavedWm0);
     /*
      * IVB+ CUR_FBC_CTL 的 HEIGHT 字段会在方 cursors 之外限制扫描行数：
@@ -467,7 +467,7 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
     if (gOn) {
         HalVideoHwCursorDisable();
     }
-    if (!EnsureBuf()) {
+    if (!EnsureBuffer()) {
         FailLatch();
         LogDrv("Boot: igpu hw cursor fail (buf)\n");
         return 0;
@@ -514,7 +514,7 @@ int HalVideoHwCursorEnable(const UINT32 *Argb, UINT32 Width, UINT32 Height,
     LogDrv(" pte3=");
     LogDrvHex32((UINT32)IgpuGsmPteRead(IGPU_CUR_GTT_OFF + 3ull * 4096ull));
     LogDrv(" cfg=");
-    LogDrvHex32(gSavedBufCfg);
+    LogDrvHex32(gSavedBufferConfig);
     LogDrv("\n");
     return 1;
 }

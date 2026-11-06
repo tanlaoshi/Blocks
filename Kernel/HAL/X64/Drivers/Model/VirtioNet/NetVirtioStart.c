@@ -114,7 +114,7 @@ int VirtioNetStart(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 BarPhys) {
         return -1;
     }
     gCommon = Common;
-    gDevCfg = DevCfg;
+    gDeviceConfig = DevCfg;
 
     Common->DeviceStatus = 0;
     __asm__ volatile("mfence" ::: "memory");
@@ -129,7 +129,7 @@ int VirtioNetStart(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 BarPhys) {
         DebugWrite("Net: FEATURES_OK rejected\n");
         return -1;
     }
-    if (VirtQueueSetup(&gRxQ, RX_QUEUE_ID, Common, NotifyBase, NotifyMult) != 0) {
+    if (VirtQueueSetup(&gReceiveQueue, RX_QUEUE_ID, Common, NotifyBase, NotifyMult) != 0) {
         DebugWrite("Net: rx queue setup failed\n");
         return -1;
     }
@@ -139,9 +139,9 @@ int VirtioNetStart(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 BarPhys) {
     }
 
     /* Spec: configure + enable virtqueues before DRIVER_OK. */
-    VirtQueueEnable(&gRxQ, RX_QUEUE_ID);
+    VirtQueueEnable(&gReceiveQueue, RX_QUEUE_ID);
     VirtQueueEnable(&gTxQ, TX_QUEUE_ID);
-    gRxQ.LastUsedIdx = gRxQ.Used->Idx;
+    gReceiveQueue.LastUsedIdx = gReceiveQueue.Used->Idx;
     gTxQ.LastUsedIdx = gTxQ.Used->Idx;
     ReceiveRefillAll();
 
@@ -150,12 +150,12 @@ int VirtioNetStart(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 BarPhys) {
     __asm__ volatile("mfence" ::: "memory");
 
     /* Device ignores notifies until DRIVER_OK — kick RX again so buffers are live. */
-    VirtQueueKick(&gRxQ, RX_QUEUE_ID);
+    VirtQueueKick(&gReceiveQueue, RX_QUEUE_ID);
     VirtQueueKick(&gTxQ, TX_QUEUE_ID);
 
     NetMemCpy(gMac, (const void *)DevCfg->Mac, 6);
     DebugWrite("Net: qsz rx=");
-    DebugHex32(gRxQ.Size);
+    DebugHex32(gReceiveQueue.Size);
     DebugWrite(" tx=");
     DebugHex32(gTxQ.Size);
     DebugWrite(" bar4=");

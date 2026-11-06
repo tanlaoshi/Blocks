@@ -280,10 +280,10 @@ int AlxResetMac(void);
 void AlxResetPhy(void);
 void AlxDisableAspm(void);
 void AlxClearWol(void);
-void AlxSetMacAddr(const UINT8 Mac[6]);
+void AlxSetMacAddress(const UINT8 Mac[6]);
 void AlxConfigureBasic(void);
 void AlxStartMac(void);
-void AlxStallMs(UINT32 Ms);
+void AlxStallMilliseconds(UINT32 Milliseconds);
 
 int AlxMdioRead(UINT16 Reg, UINT16 *Out);
 int AlxMdioWrite(UINT16 Reg, UINT16 Val);

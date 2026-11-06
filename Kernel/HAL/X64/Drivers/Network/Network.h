@@ -35,8 +35,8 @@ UINT16 NetChecksum(const void *Data, UINTN Len);
 
 /* lwIP：发送原始以太网帧；开启后 RX 交给 lwIP */
 int  NetSendEthernet(const UINT8 *Frame, UINTN Len);
-void NetSetLwIpRx(int Enable);
-int  NetLwIpRx(void);
+void NetSetLwIpReceive(int Enable);
+int  NetLwIpReceive(void);
 
 /* PR-H4 / PR-N-nic：L2 回调 / Bind 挂栈 */
 void NetInputFrame(const UINT8 *Pkt, UINTN Len);

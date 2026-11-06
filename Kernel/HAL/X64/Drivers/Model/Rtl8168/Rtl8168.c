@@ -9,30 +9,30 @@
 #include "SerialLog.h"
 
 static RTL_DESC *gTxDesc;
-static RTL_DESC *gRxDesc;
-static UINT8 *gTxBufs;
-static UINT8 *gRxBufs;
+static RTL_DESC *gReceiveDescriptor;
+static UINT8 *gTransmitBuffers;
+static UINT8 *gReceiveBuffers;
 static UINT64 gRingPhys;
-static UINT16 gTxIdx;
-static UINT16 gRxIdx;
+static UINT16 gTransmitIndex;
+static UINT16 gReceiveIndex;
 UINT32 gRtlLinkMbps;
 int gRtlLinkFull;
 
-static UINT64 TxBufPhys(UINT16 Idx) {
+static UINT64 TransmitBufferPhysical(UINT16 Idx) {
     return gRingPhys + 2u * PAGE_SIZE + (UINT64)Idx * RTL_BUF_SIZE;
 }
 
-static UINT64 RxBufPhys(UINT16 Idx) {
+static UINT64 ReceiveBufferPhysical(UINT16 Idx) {
     return gRingPhys + 2u * PAGE_SIZE +
            (UINT64)RTL_RING_COUNT * RTL_BUF_SIZE + (UINT64)Idx * RTL_BUF_SIZE;
 }
 
-static void InitDescs(void) {
+static void InitializeDescs(void) {
     UINT32 i;
     UINT32 Opts;
 
-    gTxIdx = 0;
-    gRxIdx = 0;
+    gTransmitIndex = 0;
+    gReceiveIndex = 0;
     for (i = 0; i < RTL_RING_COUNT; i++) {
         Opts = RTL_BUF_SIZE;
         if (i + 1u == RTL_RING_COUNT) {
@@ -40,15 +40,15 @@ static void InitDescs(void) {
         }
         gTxDesc[i].Opts1 = Opts;
         gTxDesc[i].Opts2 = 0;
-        gTxDesc[i].Addr = TxBufPhys((UINT16)i);
+        gTxDesc[i].Addr = TransmitBufferPhysical((UINT16)i);
 
         Opts = RTL_DESC_OWN | RTL_BUF_SIZE;
         if (i + 1u == RTL_RING_COUNT) {
             Opts |= RTL_DESC_EOR;
         }
-        gRxDesc[i].Opts1 = Opts;
-        gRxDesc[i].Opts2 = 0;
-        gRxDesc[i].Addr = RxBufPhys((UINT16)i);
+        gReceiveDescriptor[i].Opts1 = Opts;
+        gReceiveDescriptor[i].Opts2 = 0;
+        gReceiveDescriptor[i].Addr = ReceiveBufferPhysical((UINT16)i);
     }
     RtlFence();
 }
@@ -78,11 +78,11 @@ int RtlBringUp(void) {
     RtlZero(Mem, (UINTN)Pages * PAGE_SIZE);
     gRingPhys = (UINT64)(UINTN)Mem;
     gTxDesc = (RTL_DESC *)(UINTN)Mem;
-    gRxDesc = (RTL_DESC *)(UINTN)(Mem + PAGE_SIZE);
-    gTxBufs = Mem + 2u * PAGE_SIZE;
-    gRxBufs = gTxBufs + RTL_RING_COUNT * RTL_BUF_SIZE;
+    gReceiveDescriptor = (RTL_DESC *)(UINTN)(Mem + PAGE_SIZE);
+    gTransmitBuffers = Mem + 2u * PAGE_SIZE;
+    gReceiveBuffers = gTransmitBuffers + RTL_RING_COUNT * RTL_BUF_SIZE;
 
-    InitDescs();
+    InitializeDescs();
     RtlHwConfigure(gRingPhys, gRingPhys + PAGE_SIZE);
 
     if (!RtlHwLinkUp(&Mbps, &Full)) {
@@ -113,7 +113,7 @@ int RtlSendFrame(const UINT8 *Frame, UINTN Len) {
         Wire = 60;
     }
 
-    D = &gTxDesc[gTxIdx];
+    D = &gTxDesc[gTransmitIndex];
     Spin = 100000;
     while (Spin-- > 0 && (D->Opts1 & RTL_DESC_OWN)) {
         HalCpuRelax();
@@ -122,12 +122,12 @@ int RtlSendFrame(const UINT8 *Frame, UINTN Len) {
         return -2;
     }
 
-    Buf = gTxBufs + (UINTN)gTxIdx * RTL_BUF_SIZE;
+    Buf = gTransmitBuffers + (UINTN)gTransmitIndex * RTL_BUF_SIZE;
     RtlZero(Buf, Wire);
     RtlCopy(Buf, Frame, Len);
-    D->Addr = TxBufPhys(gTxIdx);
+    D->Addr = TransmitBufferPhysical(gTransmitIndex);
     Opts = RTL_DESC_OWN | RTL_DESC_FS | RTL_DESC_LS | (UINT32)Wire;
-    if (gTxIdx + 1u == RTL_RING_COUNT) {
+    if (gTransmitIndex + 1u == RTL_RING_COUNT) {
         Opts |= RTL_DESC_EOR;
     }
     D->Opts2 = 0;
@@ -135,21 +135,21 @@ int RtlSendFrame(const UINT8 *Frame, UINTN Len) {
     D->Opts1 = Opts;
     RtlFence();
     RtlMmioW8(RTL_TXPOLL, RTL_TXPOLL_NPQ);
-    gTxIdx = (UINT16)((gTxIdx + 1u) % RTL_RING_COUNT);
+    gTransmitIndex = (UINT16)((gTransmitIndex + 1u) % RTL_RING_COUNT);
     return 0;
 }
 
 void RtlPoll(void) {
     int Left = (int)RTL_RING_COUNT + 2;
 
-    if (!gRtlReady || !gRxDesc) {
+    if (!gRtlReady || !gReceiveDescriptor) {
         return;
     }
     (void)RtlMmioR16(RTL_INTRSTATUS);
     RtlMmioW16(RTL_INTRSTATUS, 0xFFFFu);
 
     while (Left-- > 0) {
-        RTL_DESC *D = &gRxDesc[gRxIdx];
+        RTL_DESC *D = &gReceiveDescriptor[gReceiveIndex];
         UINT32 Opts1;
         UINT32 PktLen;
         UINT32 ReOwn;
@@ -160,19 +160,19 @@ void RtlPoll(void) {
         }
         PktLen = Opts1 & RTL_DESC_LEN_MASK;
         if (PktLen > RTL_ETH_FCS_LEN + 14u && PktLen <= RTL_BUF_SIZE) {
-            UINT8 *Buf = gRxBufs + (UINTN)gRxIdx * RTL_BUF_SIZE;
+            UINT8 *Buf = gReceiveBuffers + (UINTN)gReceiveIndex * RTL_BUF_SIZE;
             NetInputFrame(Buf, (UINTN)(PktLen - RTL_ETH_FCS_LEN));
         }
 
         ReOwn = RTL_DESC_OWN | RTL_BUF_SIZE;
-        if (gRxIdx + 1u == RTL_RING_COUNT) {
+        if (gReceiveIndex + 1u == RTL_RING_COUNT) {
             ReOwn |= RTL_DESC_EOR;
         }
-        D->Addr = RxBufPhys(gRxIdx);
+        D->Addr = ReceiveBufferPhysical(gReceiveIndex);
         D->Opts2 = 0;
         RtlFence();
         D->Opts1 = ReOwn;
-        gRxIdx = (UINT16)((gRxIdx + 1u) % RTL_RING_COUNT);
+        gReceiveIndex = (UINT16)((gReceiveIndex + 1u) % RTL_RING_COUNT);
     }
 }
 

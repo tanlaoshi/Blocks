@@ -16,7 +16,7 @@
 | 线程 | `<Blocks/Thread.h>` | CRT |
 | UI / Graphics | `<Ui/Ui.h>` `<Graphics/Graphics.h>` | `libUi` / `libGraphics` |
 | Net | `<Net/Net.h>` | `libNet.a` |
-| 卷路径 | `<VolumePath/VolumePath.h>` | `libFsUtil.a` |
+| 卷路径 | `<VolumePath/VolumePath.h>` | `libVolumePath.a` |
 
 ---
 
@@ -40,7 +40,7 @@
 | `FileOpen` / `FileRead` / `FileWrite` / `FileClose` / `FileSeek` | 路径 `BLOCKS:NAME` 或相对名 |
 | `DirOpen` / `DirRead` / `DirClose` / `FileStat` | 目录；`FS_DIR` / `FS_DIR_ENT` |
 | `MemoryMap` / `MemoryUnmap` | `<System/MemoryMap.h>`；匿名或文件私有映射 |
-| `FsUtilJoin` / `FsUtilListDir` / `FsUtilBlocksPath` | `VolumePath.h` |
+| `VolumePathJoin` / `VolumePathListDirectory` / `VolumePathBlocks` | `VolumePath.h` |
 
 ---
 

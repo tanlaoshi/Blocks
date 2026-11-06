@@ -98,15 +98,15 @@ UINT64 ReadTsc(void) {
 
 /* 真机忙等，按 ~3GHz 估算。QEMU 不要用长 Stall。
  * 每 ~1ms Drain 一次事件环，避免 Reset/claim 长 Stall 把 HID 饿死。 */
-void StallMs(UINT32 Ms) {
+void StallMilliseconds(UINT32 Milliseconds) {
     UINT64 T0;
     UINT64 Need;
     UINT64 NextDrain;
 
-    if (Ms == 0) {
+    if (Milliseconds == 0) {
         return;
     }
-    Need = (UINT64)Ms * 3000000ULL;
+    Need = (UINT64)Milliseconds * 3000000ULL;
     T0 = ReadTsc();
     NextDrain = T0;
     while (ReadTsc() - T0 < Need) {
@@ -120,7 +120,7 @@ void StallMs(UINT32 Ms) {
     }
 }
 
-int WaitSetMs(UINT64 Addr, UINT32 Mask, UINT32 Ms) {
+int WaitSetMilliseconds(UINT64 Addr, UINT32 Mask, UINT32 Ms) {
     UINT64 T0;
     UINT64 Need;
 
@@ -137,7 +137,7 @@ int WaitSetMs(UINT64 Addr, UINT32 Mask, UINT32 Ms) {
     }
 }
 
-int WaitClearMs(UINT64 Addr, UINT32 Mask, UINT32 Ms) {
+int WaitClearMilliseconds(UINT64 Addr, UINT32 Mask, UINT32 Ms) {
     UINT64 T0;
     UINT64 Need;
 

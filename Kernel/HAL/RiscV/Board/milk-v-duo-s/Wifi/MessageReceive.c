@@ -12,7 +12,7 @@ int AicFifoRead(SDHCI_HOST *Host, UINT32 Fn, UINT8 *Data, UINT32 Length) {
         (void)SdhciIoWrite8(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u);
     }
     if (SdhciIoRwExtended(Host, Fn, AIC_RD_FIFO_REG, 0, 0, 0, (UINT16)Length, Data) != 0) {
-        AicMarkXferParams(Host, "WiFi: rx read FAIL", Length, 0u);
+        AicMarkTransferParams(Host, "WiFi: rx read FAIL", Length, 0u);
         return -1;
     }
     return 0;

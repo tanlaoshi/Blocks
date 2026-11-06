@@ -102,7 +102,7 @@ int BluetoothBringUpIdentity(void) {
     }
     /* Reset 后控制器再就绪；过短连发下一条易丢事件（Intel USB HCI） */
     if (!HalCpuIsHypervisor()) {
-        StallMs(50);
+        StallMilliseconds(50);
     }
     if (!ReadBdAddress()) {
         return 0;

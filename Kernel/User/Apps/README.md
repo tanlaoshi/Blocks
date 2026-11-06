@@ -11,7 +11,7 @@
 | `Cat.c` | **Kernel 编** | `catfile.elf` → Store `cat` | 无窗 |
 | `WriteFile.c` | **Kernel 编** | `writefile.elf` → **仅 Build**（不预装） | 自拷 Class/`exec` |
 | `Snake.c` | **Kernel 编** | Store `snake`（`window=yes`） | **不**预装 Apps/；`store install` |
-| `TaskMgr.c` | **Kernel 编** | Store `taskmgr`；预装 `Apps/taskmgr/`（`window=yes`） | |
+| `TaskManager.c` | **Kernel 编** | Store `taskmgr`；预装 `Apps/taskmgr/`（`window=yes`） | |
 | `Chat/` | **Kernel 编** | Store `chat`（`window=yes`） | 不预装桌面 |
 | `Demos/*.c` | **Kernel 编** | 见下「Demo 分列」 | 勿迁 Bingo |
 | `Assembly/*.S`（表内） | **Kernel 编** | Class / Build | 裸 syscall 课 |
@@ -19,7 +19,7 @@
 | Bingo `Examples/Hello|Gui|Net|…` | **Bingo Example** | 本地 `build/` + SDK | 课外模板；**不是** Class 源 |
 | Bingo `Examples/UiText|UiDesigner` | **Bingo Example** | 树内 `BlocksUser.mk` | 待 `uitxt2h` 回仓 |
 
-**不迁 Bingo**：Snake / Chat / TaskMgr / 全套 Demos·Assembly（跟核 `Makefile`·`build.sh` 绑死）。  
+**不迁 Bingo**：Snake / Chat / TaskManager / 全套 Demos·Assembly（跟核 `Makefile`·`build.sh` 绑死）。  
 **不删（保留 Kernel）**：上表「Kernel 编」行。
 
 ## Demo / Assembly 分列（Kernel 编）

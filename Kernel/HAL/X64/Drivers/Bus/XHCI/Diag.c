@@ -8,8 +8,8 @@
 
 
 /* PR-H-xhci-split-2：诊断相关全局（定义在本文件） */
-const char *gEnumWhy;
-UINT32 gDiagXferLogged;
+const char *gEnumerateWhy;
+UINT32 gDiagTransferLogged;
 UINT32 gDiagQuiet;
 UINT32 gDiagIntrCcLogged;
 UINT32 gCtrlFailLogged;
@@ -63,8 +63,8 @@ void BootMarkV(const char *Text) {
     }
 }
 
-void EnumWhy(const char *Why) {
-    gEnumWhy = Why;
+void EnumerateWhy(const char *Why) {
+    gEnumerateWhy = Why;
     /* gDiagQuiet：探测重试中的 Why= 不刷屏；字串仍留给最终失败路径 */
     if (gDiagQuiet) {
         return;

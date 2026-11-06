@@ -88,7 +88,7 @@ static void AnnounceBootReady(void) {
         return;
     }
     gBootReadyAnnounced = 1;
-    HalConsoleWriteSerial(LocStr(MSG_CON_READY));
+    HalConsoleWriteSerial(LocaleString(MESSAGE_CON_READY));
     HalConsoleWriteSerial("\n");
     HalConsoleWriteSerial("hint: type commands in THIS terminal (not QEMU window)\n");
     Prompt();

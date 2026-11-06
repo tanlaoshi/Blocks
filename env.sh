@@ -11,6 +11,7 @@
 #   build arm64 BOARD=rpi-3b        # 仍可用全名
 #   boot                            # Boot → BOOTX64.EFI
 #   sync / sync usb|nuc|kernel
+#   serve chat [port]               # HostChat 中继（默认 :9090）
 #   run / smoke                     # x64 QEMU
 #   run-virt-arm --headless         # Arm64 virt（须先 build arm64）
 #   run-virt-riscv
@@ -166,6 +167,37 @@ deploy-nuc-usb() {
     bash "$KERNEL/Scripts/sync/deploy-nuc-usb.sh" "$@"
 }
 
+# HostChat 中继：本机 GUI（hostchat-gui）与 Guest Chat / chatd 都连这里
+#   serve chat          # :9090 前台；Ctrl-C 停
+#   serve chat 9090
+serve() {
+    case "${1:-}" in
+        chat)
+            local Port="${2:-9090}"
+            local Dir="$KERNEL/Tools/HostChat"
+            local Bin="$Dir/Build/meson/chat-serve"
+            if [ ! -x "$Bin" ]; then
+                if ! command -v meson >/dev/null 2>&1; then
+                    echo "error: 缺少 meson，无法编 HostChat" >&2
+                    return 1
+                fi
+                meson setup "$Dir/Build/meson" "$Dir" >/dev/null
+                meson compile -C "$Dir/Build/meson" chat-serve || return 1
+            fi
+            echo "serve chat: $Bin $Port  （GUI: $Dir/Build/meson/hostchat-gui）"
+            "$Bin" "$Port"
+            ;;
+        -h|--help|help|"")
+            echo "usage: serve chat [port]   # HostChat 中继，默认 9090" >&2
+            return 0
+            ;;
+        *)
+            echo "error: unknown serve target: $1 (try: serve chat)" >&2
+            return 1
+            ;;
+    esac
+}
+
 echo "BLOCKS_ROOT=$BLOCKS_ROOT KERNEL=$KERNEL RUNTIME=$RUNTIME KERNEL_BUILD=$KERNEL_BUILD"
-echo "短名: build boot sync|sync usb run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd deploy-duo deploy-nuc-usb repart-pi-sd"
+echo "短名: build boot sync|sync usb serve chat run smoke run-virt-arm|riscv boards kernel-bin prepare-pi-sd ck-pi-sd ck-duo-sd deploy-duo deploy-nuc-usb repart-pi-sd"
 unset _BlocksEnvDir _BlocksRootCand

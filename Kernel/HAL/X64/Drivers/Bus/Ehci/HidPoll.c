@@ -5,12 +5,12 @@
 #include "Hal.h"
 #include "HalVideo.h"
 
-#define EHCI_KBD_Q 8
+#define EHCI_KEYBOARD_QUEUE 8
 #define EHCI_MOUSE_Q 8
 
-static UINT8 gKbdQ[EHCI_KBD_Q][8];
-static UINT8 gKbdHead;
-static UINT8 gKbdTail;
+static UINT8 gKeyboardQueue[EHCI_KEYBOARD_QUEUE][8];
+static UINT8 gKeyboardHead;
+static UINT8 gKeyboardTail;
 static UINT32 gMx[EHCI_MOUSE_Q];
 static UINT32 gMy[EHCI_MOUSE_Q];
 static UINT8 gMb[EHCI_MOUSE_Q];
@@ -22,21 +22,21 @@ static int gMouseAbsY;
 static int gMouseAbsInit;
 
 void HidResetQueues(void) {
-    gKbdHead = gKbdTail = 0;
+    gKeyboardHead = gKeyboardTail = 0;
     gMHead = gMTail = 0;
     gMouseAbsInit = 0;
 }
 
-static void PushKbd(const UINT8 R[8]) {
-    UINT8 N = (UINT8)((gKbdTail + 1) % EHCI_KBD_Q);
+static void PushKeyboard(const UINT8 R[8]) {
+    UINT8 N = (UINT8)((gKeyboardTail + 1) % EHCI_KEYBOARD_QUEUE);
     int i;
-    if (N == gKbdHead) {
+    if (N == gKeyboardHead) {
         return;
     }
     for (i = 0; i < 8; i++) {
-        gKbdQ[gKbdTail][i] = R[i];
+        gKeyboardQueue[gKeyboardTail][i] = R[i];
     }
-    gKbdTail = N;
+    gKeyboardTail = N;
 }
 
 static void PushMouse(INT8 Dx, INT8 Dy, UINT8 Btn, INT8 Wheel) {
@@ -91,7 +91,7 @@ void HidPoll(void) {
         EHCI_CTRL *C = &gEhci[i];
         EHCI_QTD *T;
         UINT32 Tok;
-        UINT16 Mps;
+        UINT16 MaxPacketSize;
         UINT32 Remain;
         UINT32 Got;
 
@@ -109,20 +109,20 @@ void HidPoll(void) {
             HidArmIntr(C);
             continue;
         }
-        Mps = C->HidMaxPkt;
-        if (Mps > 64) {
-            Mps = 8;
+        MaxPacketSize = C->HidMaxPkt;
+        if (MaxPacketSize > 64) {
+            MaxPacketSize = 8;
         }
         Remain = (Tok >> 16) & 0x7FFFu;
-        if (Remain > Mps) {
-            Remain = Mps;
+        if (Remain > MaxPacketSize) {
+            Remain = MaxPacketSize;
         }
-        Got = (UINT32)Mps - Remain;
+        Got = (UINT32)MaxPacketSize - Remain;
         gEhciIntrDt = (UINT8)(gEhciIntrDt ? 0 : 1);
         Flush(C->ReportBuf, 64);
         if (Got >= 3) {
             if (C->HidProto == 1) {
-                PushKbd(C->ReportBuf);
+                PushKeyboard(C->ReportBuf);
             } else if (C->HidProto == 2) {
                 INT8 Dx = (INT8)C->ReportBuf[1];
                 INT8 Dy = (INT8)C->ReportBuf[2];
@@ -140,13 +140,13 @@ void HidPoll(void) {
 
 int HidKeyboardDequeue(UINT8 Out[8]) {
     int i;
-    if (gKbdHead == gKbdTail || !Out) {
+    if (gKeyboardHead == gKeyboardTail || !Out) {
         return 0;
     }
     for (i = 0; i < 8; i++) {
-        Out[i] = gKbdQ[gKbdHead][i];
+        Out[i] = gKeyboardQueue[gKeyboardHead][i];
     }
-    gKbdHead = (UINT8)((gKbdHead + 1) % EHCI_KBD_Q);
+    gKeyboardHead = (UINT8)((gKeyboardHead + 1) % EHCI_KEYBOARD_QUEUE);
     return 1;
 }
 

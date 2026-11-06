@@ -5,14 +5,14 @@
 #include "UsbHid/Private.h"
 
 int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                       UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval) {
+                       UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval) {
     UINT16 Off = 0;
     UINT8 CurScore = 0;
     UINT8 BestScore = 0;
-    UINT8 CurIface = 0;
-    *Iface = 0;
-    *EpAddr = 0;
-    *Mps = 8;
+    UINT8 CurInterface = 0;
+    *Interface = 0;
+    *EndpointAddress = 0;
+    *MaxPacketSize = 8;
     *Interval = 10;
 
     while (Off + 2 <= Total) {
@@ -34,15 +34,15 @@ int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
             } else if (Class == 3 && Sub != 1) {
                 CurScore = 1;
             }
-            CurIface = Cfg[Off + 2];
+            CurInterface = Cfg[Off + 2];
         } else if (Type == 5 && Len >= 7 && CurScore) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
             if ((Addr & 0x80) && ((Attr & 0x03) == 0x03) && CurScore > BestScore) {
                 BestScore = CurScore;
-                *Iface = CurIface;
-                *EpAddr = Addr;
-                *Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+                *Interface = CurInterface;
+                *EndpointAddress = Addr;
+                *MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
                 *Interval = Cfg[Off + 6];
                 (void)Speed;
                 if (BestScore == 3) {
@@ -52,7 +52,7 @@ int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
         }
         Off = (UINT16)(Off + Len);
     }
-    gKbdParseScore = BestScore;
+    gKeyboardParseScore = BestScore;
     return BestScore != 0;
 }
 
@@ -60,19 +60,19 @@ int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
  * 真机：罗技 G102 等游戏鼠常带额外 HID（媒体/宏，3/0/x 或 3/1/0），
  * 旧逻辑会当成「键盘」占 slot，再把同设备 boot 鼠绑成 composite →
  * 真键盘口永远轮不到，且假键盘 k=0、鼠却丝滑。
- * 若本设备「键盘分」<3 且已有像样鼠标接口 → 不当键盘，留给 InitMouseOnPort。
+ * 若本设备「键盘分」<3 且已有像样鼠标接口 → 不当键盘，留给 MousePortInitialize。
  */
 int RealPcRejectMouseExtraAsKeyboard(UINT16 Total, UINT8 Speed) {
-    UINT8 MIface = 0, MEp = 0, MIv = 10;
-    UINT16 MMps = 8;
+    UINT8 MIface = 0, MouseEndpoint = 0, MIv = 10;
+    UINT16 MouseMaxPacketSize = 8;
 
     if (HalCpuIsHypervisor()) {
         return 0;
     }
-    if (gKbdParseScore >= 3) {
+    if (gKeyboardParseScore >= 3) {
         return 0;
     }
-    if (!ParseConfigMouse(gCtrlBuf, Total, Speed, &MIface, &MEp, &MMps, &MIv)) {
+    if (!ParseConfigMouse(gControlBuffer, Total, Speed, &MIface, &MouseEndpoint, &MouseMaxPacketSize, &MIv)) {
         return 0;
     }
     if (gMouseParseScore < 2) {
@@ -86,7 +86,7 @@ int RealPcRejectMouseExtraAsKeyboard(UINT16 Total, UINT8 Speed) {
         while (*P && n < 24) {
             Line[n++] = *P++;
         }
-        Line[n++] = (char)('0' + (gKbdParseScore % 10));
+        Line[n++] = (char)('0' + (gKeyboardParseScore % 10));
         P = " mouse-score=";
         while (*P && n < 40) {
             Line[n++] = *P++;
@@ -100,22 +100,22 @@ int RealPcRejectMouseExtraAsKeyboard(UINT16 Total, UINT8 Speed) {
 }
 
 int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                            UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval) {
+                            UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval) {
     UINT16 Off = 0;
-    UINT8 FoundIface = 0;
+    UINT8 FoundInterface = 0;
     UINT8 BestScore = 0;
-    UINT8 BestIface = 0;
-    UINT8 BestEp = 0;
-    UINT16 BestMps = 8;
+    UINT8 BestInterface = 0;
+    UINT8 BestEndpoint = 0;
+    UINT16 BestMaxPacketSize = 8;
     UINT8 BestInterval = 10;
     UINT8 BestProto = 0xFF;
     UINT8 CurProto = 0;
     UINT8 CurSub = 0;
     UINT8 CurScore = 0;
 
-    *Iface = 0;
-    *EpAddr = 0;
-    *Mps = 8;
+    *Interface = 0;
+    *EndpointAddress = 0;
+    *MaxPacketSize = 8;
     *Interval = 10;
 
     /*
@@ -133,10 +133,10 @@ int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
             CurSub = Cfg[Off + 6];
             CurProto = Cfg[Off + 7];
             CurScore = 0;
-            FoundIface = 0;
+            FoundInterface = 0;
             if (Class == 3 && CurProto != 1) {
-                FoundIface = 1;
-                *Iface = Cfg[Off + 2];
+                FoundInterface = 1;
+                *Interface = Cfg[Off + 2];
                 if (CurSub == 1 && CurProto == 2) {
                     CurScore = 3;
                 } else if (CurSub == 1) {
@@ -145,15 +145,15 @@ int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
                     CurScore = 1;
                 }
             }
-        } else if (Type == 5 && Len >= 7 && FoundIface && CurScore != 0) {
+        } else if (Type == 5 && Len >= 7 && FoundInterface && CurScore != 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
             if ((Addr & 0x80) && ((Attr & 0x03) == 0x03) && CurScore > BestScore) {
                 BestScore = CurScore;
                 BestProto = CurProto;
-                BestIface = *Iface;
-                BestEp = Addr;
-                BestMps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+                BestInterface = *Interface;
+                BestEndpoint = Addr;
+                BestMaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
                 BestInterval = Cfg[Off + 6];
                 if (BestScore == 3) {
                     break;
@@ -166,11 +166,11 @@ int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
     if (BestScore == 0) {
         return 0;
     }
-    *Iface = BestIface;
-    *EpAddr = BestEp;
-    *Mps = BestMps;
+    *Interface = BestInterface;
+    *EndpointAddress = BestEndpoint;
+    *MaxPacketSize = BestMaxPacketSize;
     *Interval = BestInterval;
-    gMouseIfaceProto = BestProto;
+    gMouseInterfaceProto = BestProto;
     gMouseParseScore = BestScore;
     gMouseAbsolute = (BestProto != 2 && HalCpuIsHypervisor()) ? 1 : 0;
     return 1;

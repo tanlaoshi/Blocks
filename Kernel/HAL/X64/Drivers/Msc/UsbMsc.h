@@ -10,7 +10,7 @@
 
 #include "BootTypes.h"
 
-int UsbMscInit(void);
+int UsbMscInitialize(void);
 int UsbMscReady(void);
 int UsbMscScan(void);
 int UsbMscClaim(void);

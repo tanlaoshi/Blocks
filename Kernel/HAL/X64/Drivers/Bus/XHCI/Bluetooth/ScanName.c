@@ -228,7 +228,7 @@ void BluetoothScanFetchRemoteNames(void) {
             continue;
         }
         if (!HalCpuIsHypervisor()) {
-            StallMs(20);
+            StallMilliseconds(20);
         }
         (void)TryRemoteName(I, 1);
     }

@@ -2,7 +2,7 @@
  * Event.c — PR-H-xhci-msc-split-2：事件环 ProcessEvents*
  * PR-H-xhci-evt-excl-1：独占窗 API（门铃/Wait 同消费者）
  * PR-H-xhci-evt-excl-2：gEvtConsumerLock + ProcessEventsLocked
- * PR-F-xhci-3：Transfer 分发见 EventXfer.c
+ * PR-F-xhci-3：Transfer 分发见 EventTransfer.c
  *
  * DMA/环全局仍在 Xhci.c（勿迁 BSS）。
  */

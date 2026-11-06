@@ -9,7 +9,7 @@
  *         （WifiHandshakeKey.c，算法与组帧）→ AicHandshakeInstallKeys /
  *         AicHandshakeWatchData（WifiHandshakeInstall.c，装钥匙 + M4 + 看数据帧）
  *         → AicKeyAddPairwise / AicKeyAddGroup（WifiKeyAdd.c，MM_KEY_ADD_REQ）
- *         → AicEapolSend（WifiEapolTx.c，数据 TX）。
+ *         → AicEapolSend（WifiEapolTransmit.c，数据 TX）。
  * 别改：EAPOL-Key 的字段偏移（MIC@81 / KeyDataLen@97 / KeyData@99）来自公共模块
  *       WifiCrypto/WifiEapol.h，本文件不另立一份；nonce/PTK 长度来自 WifiCrypto/WifiPrf.h；
  *       MM_KEY_ADD 的字段顺序/宽度来自厂商 lmac_msg.h，偏移由 AicKeyAddLayoutCheck
@@ -162,7 +162,7 @@ UINT32 AicHandshakeM4Build(UINT8 *Frame, const AIC_HANDSHAKE_M3 *M3, const UINT8
 void AicHandshakePrintPtk(const UINT8 *Ptk);
 void AicHandshakePrintSnonce(const UINT8 *Snonce);
 
-/* ---- WifiEapolTx.c：数据 TX（本仓第一条非消息帧） ---- */
+/* ---- WifiEapolTransmit.c：数据 TX（本仓第一条非消息帧） ---- */
 int AicEapolSend(SDHCI_HOST *Host, const UINT8 *Eapol, UINT32 Length, const UINT8 *Destination,
                  const UINT8 *Source, UINT8 VifIndex, UINT8 ApIndex);
 /*

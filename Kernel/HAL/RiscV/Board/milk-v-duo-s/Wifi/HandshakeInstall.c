@@ -7,7 +7,7 @@
  *           再往下是 `data frame after keys: len=… decr=…`（数据通路活了的证据）。
  * 从哪读：AicHandshakeInstallKeys（顺序）→ HandshakeGtkExtract（M3 Key Data → GTK）
  *         → AicKeyAddPairwise / AicKeyAddGroup（WifiKeyAdd.c，MM_KEY_ADD_REQ）
- *         → HandshakeSendM4（组帧在 WifiHandshakeKey.c，发送走 WifiEapolTx.c）
+ *         → HandshakeSendM4（组帧在 WifiHandshakeKey.c，发送走 WifiEapolTransmit.c）
  *         → AicHandshakeWatchData（装完钥匙后盯解密帧）。
  * 别改：GTK 的解析一律用公共模块 WifiGtkExtract（MP3 对拍过：KDE 解析 + RFC 3394
  *       + KeyID/长度），本文件不再写第二份；M4 的 99 B 与 Key Information 位见

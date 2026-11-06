@@ -77,7 +77,7 @@ void DesktopWorkerTick(void) {
      * 空拖优先：指针刚动过则让路热插 Scan/HubGetPortStatus、CMOS/SMM、
      * 网托脏）。否则约 5s 一拍会让 Present cli 饿死 HID → 先顿再只闪不动。
      */
-    if (!GuiPointerIdleForMs(400)) {
+    if (!GuiPointerIdleForMilliseconds(400)) {
         return;
     }
 
@@ -147,56 +147,52 @@ void DesktopTickClock(void) {
         return;
     }
 
-    /* Worker/首帧 Ensure 已加载图标则只刷新；勿在 Gui 路径读盘 */
+    /*
+     * Worker/首帧 Ensure 已加载图标则只刷图标带。
+     * 勿 RequestRefresh→ThemeScene：整屏会 DrawTaskbarRaw（装卸 Chat 栏闪），
+     * 且大脏区回退全屏时标签未预热会空一帧。对表：只铺壁纸块+图标+字。
+     */
     if (DesktopIconsConsumeNeedRefresh()) {
         int i;
         int Any = 0;
-        UINT32 X0 = 0;
-        UINT32 Y0 = 0;
-        UINT32 X1 = 0;
-        UINT32 Y1 = 0;
 
+        /*
+         * 装卸后补刷：须避窗（FillRectFree + Occluded）。
+         * 旧路径整块 DesktopFillRect+Raw：商店窗压在图标带上时，壁纸砸穿客户区
+         * （左边缺一块 + 桌面烙印），且 Chat 画在窗里随后被 Backup 盖掉 → 装完像没装。
+         */
+        ComposeBeginEraseCursor();
+        HalVideoClearClip();
         for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
-            UINT32 R;
-            UINT32 B;
+            UINT32 Ix;
+            UINT32 Iy;
+            UINT32 Iw;
+            UINT32 Ih;
 
             if (!gIcons[i].Present) {
                 continue;
             }
-            R = gIcons[i].X + DESKTOP_ICON_SIZE;
-            B = gIcons[i].Y + DESKTOP_ICON_SIZE + DESKTOP_LABEL_PAD + 64u;
-            if (!Any) {
-                X0 = gIcons[i].X;
-                Y0 = gIcons[i].Y;
-                X1 = R;
-                Y1 = B;
-                Any = 1;
-            } else {
-                if (gIcons[i].X < X0) {
-                    X0 = gIcons[i].X;
-                }
-                if (gIcons[i].Y < Y0) {
-                    Y0 = gIcons[i].Y;
-                }
-                if (R > X1) {
-                    X1 = R;
-                }
-                if (B > Y1) {
-                    Y1 = B;
-                }
+            IconBoundsPadded(&gIcons[i], 4u, &Ix, &Iy, &Iw, &Ih);
+            DesktopFillRectFree(Ix, Iy, Iw, Ih);
+            DrawOneIconOccluded(&gIcons[i], i == gDeskSelected);
+            Any = 1;
+        }
+        if (Any) {
+            if (!CursorHwActive()) {
+                GraphicsIrqEnter();
+                CursorPaint();
+                GraphicsIrqLeave();
             }
+            HalVideoPresentFlush();
         }
-        if (Any && X1 > X0 && Y1 > Y0) {
-            GuiMarkDamage(X0, Y0, X1 - X0, Y1 - Y0);
-        }
-        RequestRefresh();
+        ComposeEnd();
         return;
     }
 
     /*
      * 拖窗/改大小/空拖刚动：不重画任务栏。全栏 Present 带 cli 条带会饿死 xHCI。
      */
-    if (GuiDragActive() || DesktopIconDragActive() || !GuiPointerIdleForMs(400)) {
+    if (GuiDragActive() || DesktopIconDragActive() || !GuiPointerIdleForMilliseconds(400)) {
         return;
     }
 

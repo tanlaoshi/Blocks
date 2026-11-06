@@ -4,7 +4,7 @@
 #include "Private.h"
 #include "HalSerial.h"
 
-void IwlEapolM1CtxInit(IWL_EAPOL_M1_CTX *C) {
+void IwlEapolM1ContextInitialize(IWL_EAPOL_M1_CTX *C) {
     UINTN Si;
 
     C->RxMpdu = 0;
@@ -40,7 +40,7 @@ void IwlEapolM1SendStart(IWL_EAPOL_M1_CTX *C) {
     char Hex[12];
     int Hn = 0;
     const char *Hp = "hold=";
-    UINT8 Hc = IwlRxHoldCount();
+    UINT8 Hc = IwlReceiveHoldCount();
 
     while (*Hp) {
         Hline[Hn++] = *Hp++;
@@ -51,7 +51,7 @@ void IwlEapolM1SendStart(IWL_EAPOL_M1_CTX *C) {
     Hline[Hn] = 0;
     IwlLogStage(Hline);
     if (Hc) {
-        IwlRxHoldFlush();
+        IwlReceiveHoldFlush();
         IwlLogStage("hold=flush");
     }
     if (IwlSendEapol(C->Start, 4) == 0) {

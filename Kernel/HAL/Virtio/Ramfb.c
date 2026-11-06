@@ -82,20 +82,20 @@ static int StrEq56(const char *A, const char *B) {
     return 1;
 }
 
-static void FwCfgSelect(UINT64 Base, UINT16 Key) {
+static void FirmwareConfigSelect(UINT64 Base, UINT16 Key) {
     /* 选择器 MMIO 要求 16-bit 访问（BE） */
     *(volatile UINT16 *)(UINTN)(Base + 8) = (UINT16)((Key << 8) | (Key >> 8));
 }
 
-static UINT8 FwCfgRead8(UINT64 Base) {
+static UINT8 FirmwareConfigRead8(UINT64 Base) {
     return *(volatile UINT8 *)(UINTN)Base;
 }
 
-static void FwCfgReadBytes(UINT64 Base, void *Buf, UINT32 Len) {
+static void FirmwareConfigReadBytes(UINT64 Base, void *Buf, UINT32 Len) {
     UINT8 *P = (UINT8 *)Buf;
     UINT32 i;
     for (i = 0; i < Len; i++) {
-        P[i] = FwCfgRead8(Base);
+        P[i] = FirmwareConfigRead8(Base);
     }
 }
 
@@ -106,7 +106,7 @@ static void FwCfgReadBytes(UINT64 Base, void *Buf, UINT32 Len) {
  *  这里按「寄存器存 BE 字节」用 bswap 后的 32-bit 写，兼容两种建模）。
  * 写低 32 位（+0x14）触发传输。
  */
-static int FwCfgDmaWrite(UINT64 Base, UINT16 Sel, const void *Buf, UINT32 Len) {
+static int FirmwareConfigDmaWrite(UINT64 Base, UINT16 Sel, const void *Buf, UINT32 Len) {
     static FW_CFG_DMA_ACCESS Access;
     UINT64 AccessPhys;
     UINT32 Ctrl;
@@ -141,7 +141,7 @@ static int FwCfgDmaWrite(UINT64 Base, UINT16 Sel, const void *Buf, UINT32 Len) {
     return -1;
 }
 
-static int FwCfgFindFile(UINT64 Base, const char *Name, UINT16 *OutSelect,
+static int FirmwareConfigFindFile(UINT64 Base, const char *Name, UINT16 *OutSelect,
                          UINT32 *OutSize) {
     UINT8 DirHead[4];
     UINT32 Count;
@@ -150,14 +150,14 @@ static int FwCfgFindFile(UINT64 Base, const char *Name, UINT16 *OutSelect,
     UINT16 Sel;
     UINT32 Size;
 
-    FwCfgSelect(Base, FW_CFG_FILE_DIR);
-    FwCfgReadBytes(Base, DirHead, 4);
+    FirmwareConfigSelect(Base, FW_CFG_FILE_DIR);
+    FirmwareConfigReadBytes(Base, DirHead, 4);
     Count = ReadBe32(DirHead);
     if (Count > 256) {
         Count = 256;
     }
     for (i = 0; i < Count; i++) {
-        FwCfgReadBytes(Base, Entry, 64);
+        FirmwareConfigReadBytes(Base, Entry, 64);
         Size = ReadBe32(Entry);
         Sel = ReadBe16(Entry + 4);
         if (StrEq56((const char *)(Entry + 8), Name)) {
@@ -189,14 +189,14 @@ int RamfbSetup(BOOT_HANDOFF *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
         return -1;
     }
 
-    FwCfgSelect(FwCfgBase, FW_CFG_SIGNATURE);
-    FwCfgReadBytes(FwCfgBase, Sig, 4);
+    FirmwareConfigSelect(FwCfgBase, FW_CFG_SIGNATURE);
+    FirmwareConfigReadBytes(FwCfgBase, Sig, 4);
     if (Sig[0] != 'Q' || Sig[1] != 'E' || Sig[2] != 'M' || Sig[3] != 'U') {
         LogDrv("Boot: FW_CFG Signature Missing\n");
         return -1;
     }
 
-    if (FwCfgFindFile(FwCfgBase, "etc/ramfb", &Sel, &FileSize) != 0) {
+    if (FirmwareConfigFindFile(FwCfgBase, "etc/ramfb", &Sel, &FileSize) != 0) {
         LogDrv("Boot: etc/RamFB missing (need -device ramfb)\n");
         return -1;
     }
@@ -227,7 +227,7 @@ int RamfbSetup(BOOT_HANDOFF *Info, UINT64 FwCfgBase, UINT64 *FreeStart,
     StoreBe32(&Cfg.Height, H);
     StoreBe32(&Cfg.Stride, Stride);
 
-    if (FwCfgDmaWrite(FwCfgBase, Sel, &Cfg, (UINT32)sizeof(Cfg)) != 0) {
+    if (FirmwareConfigDmaWrite(FwCfgBase, Sel, &Cfg, (UINT32)sizeof(Cfg)) != 0) {
         LogDrv("Boot: RamFB fw_cfg DMA write failed\n");
         return -1;
     }

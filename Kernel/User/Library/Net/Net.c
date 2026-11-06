@@ -111,7 +111,7 @@ ssize_t recv(int fd, void *buf, size_t len, int flags) {
     return FileRead(fd, buf, len);
 }
 
-void NetAddrIn(NET_SOCK_ADDR_IN *Sa, unsigned Ip, unsigned Port) {
+void NetAddressIn(NET_SOCK_ADDR_IN *Sa, unsigned Ip, unsigned Port) {
     if (!Sa) {
         return;
     }
@@ -136,7 +136,7 @@ int NetBindIn(int Fd, const NET_SOCK_ADDR_IN *Sa) {
     return NetBind(Fd, Sa->Addr, (unsigned short)Sa->Port);
 }
 
-int NetGetAddrIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port) {
+int NetGetAddressIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port) {
     unsigned Ip;
 
     if (!Sa) {
@@ -146,7 +146,7 @@ int NetGetAddrIn(NET_SOCK_ADDR_IN *Sa, const char *Name, unsigned Port) {
     if (NetResolve(Name, &Ip) != 0) {
         return -1;
     }
-    NetAddrIn(Sa, Ip, Port);
+    NetAddressIn(Sa, Ip, Port);
     return 0;
 }
 

@@ -9,13 +9,17 @@
 
 #include "BootTypes.h"
 
-#define STORE_DIR            "Store"
+/*
+ * 须钉 OsTarget 卷（BLOCKS:）。默认浏览卷常是 ESP（A:*），相对 Store/
+ * 会读空 → 回落 Builtin（曾漏 chat）→ 商店不见 chat。
+ */
+#define STORE_DIR            "BLOCKS:Store"
 #define STORE_CATALOG_PATH   STORE_DIR "/catalog.txt"
 #define STORE_PACKAGES_DIR   STORE_DIR "/packages"
 #define STORE_REMOTE_CAT     STORE_DIR "/remote.cat" /* sync 仅目录，非 ELF 缓存 */
-#define STORE_APPS_DIR       "Apps"
-#define STORE_FONTS_DIR      "Assets/Fonts"
-#define STORE_PACKS_DIR      "Assets/Packs"
+#define STORE_APPS_DIR       "BLOCKS:Apps"
+#define STORE_FONTS_DIR      "BLOCKS:Assets/Fonts"
+#define STORE_PACKS_DIR      "BLOCKS:Assets/Packs"
 #define STORE_SRC_LOCAL      0
 #define STORE_SRC_NET        1
 #define STORE_ID_MAX         32

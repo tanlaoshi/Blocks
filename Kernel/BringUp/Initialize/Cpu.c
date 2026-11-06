@@ -29,7 +29,7 @@ int CpuInitialize(void) {
      */
     LogBoot("Boot: COM1 after Cpu\n");
     HalSerialRetryIfMissing();
-    HalSerialEnableRxIrq();
+    HalSerialEnableReceiveIrq();
     if (HalSerialPresent()) {
         LogBoot("Boot: COM1 Ready\n");
     } else {

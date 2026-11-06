@@ -75,6 +75,8 @@ void PaintUserClient(int Idx) {
     if (!W->Active || W->Kind != GUI_WIN_USER) {
         return;
     }
+    /* 底色刷完后 Guest 须重画；否则拖动/Damage 后 Chat 等自绘内容空白 */
+    gGuiWindowManager.UserSlot[Idx].NeedPaint = 1;
     if (W->Width <= 2 + GUI_CLIENT_PAD * 2 ||
         W->Height <= TITLE_HEIGHT + 1 + GUI_CLIENT_PAD * 2) {
         return;
@@ -111,7 +113,7 @@ void PaintUserClient(int Idx) {
         int Li;
 
         /*
-         * 支持 '\\n' 多行（TaskMgr 等长文案）；单行仍走原路径语义。
+         * 支持 '\\n' 多行（TaskManager 等长文案）；单行仍走原路径语义。
          * 行高按当前系统字 FontAdvanceY。有底栏按钮时，字停在按钮上方。
          */
         TextBottom = Cy + Ch;
@@ -173,10 +175,10 @@ int GuiDamageUser(int Wid, const char *Text) {
     }
     /*
      * 同步栅整段：避免「用」已是 TTF、「户」仍点阵再等 Want 泵
-     *（TaskMgr 类型列等双汉字）。同 SettingsUi / Store 预热契约。
+     *（TaskManager 类型列等双汉字）。同 SettingsUi / Store 预热契约。
      */
     FontTtfPreheatUtf8(Text);
-    CopyTitleBuf(gGuiWindowManager.Windows[Idx].ClientText, sizeof(gGuiWindowManager.Windows[Idx].ClientText),
+    CopyTitleBuffer(gGuiWindowManager.Windows[Idx].ClientText, sizeof(gGuiWindowManager.Windows[Idx].ClientText),
                  Text);
     RepaintUserWindow(Idx);
     return 0;

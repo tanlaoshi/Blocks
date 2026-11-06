@@ -4,7 +4,7 @@
  *           随后是 `WiFi: arp: reply …`（拿到地址后再问一次网关）。
  * 从哪读：SdhciWifiDhcp（入口）→ DhcpExchange（顺序）→ DhcpRunDiscover / DhcpRunRequest
  *         → DhcpSendAndWait → AicDhcpBuildDiscover / AicDhcpParseReply（WifiDhcpMessage.c）
- *         → AicWifiDataSend（WifiEapolTx.c 的通用以太网 TX）。
+ *         → AicWifiDataSend（WifiEapolTransmit.c 的通用以太网 TX）。
  * 别改：收包**复用** WifiEapol.c 的逐帧轮询（AicNetPollRun → AicEapolPollRun），本文件
  *       不碰 SDIO；xid 是"这条应答是不是回给我们的"的唯一判据。只读、可重复执行。
  */

@@ -21,7 +21,7 @@ void DcbaaFlush(void) {
     FlushDma(gDcbaaLive, sizeof(UINT64) * (gDcbaaMaxSlot + 1));
 }
 
-void InitRing(XHCI_TRB *Ring, RING_STATE *St, UINT32 Size) {
+void RingInitialize(XHCI_TRB *Ring, RING_STATE *St, UINT32 Size) {
     if (Size < 2) {
         Size = RING_SIZE;
     }
@@ -58,7 +58,7 @@ UINT32 TrbType(UINT32 Control) {
 
 /*
  * CRCR 是 dequeue，不是环基址。在同页扫 LINK：Parameter→基址，LINK 下标→长度。
- * 成功则沿用固件环（勿 InitRing 从 dequeue 起当基址清掉）。
+ * 成功则沿用固件环（勿 RingInitialize 从 dequeue 起当基址清掉）。
  */
 int ResolveFwCmdRing(UINT64 DeqPhys, UINT32 Rcs,
                             XHCI_TRB **BaseOut, UINT32 *SizeOut,

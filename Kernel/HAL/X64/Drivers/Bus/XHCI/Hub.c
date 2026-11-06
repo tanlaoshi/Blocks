@@ -25,8 +25,8 @@ int HubCtrl(UINT8 BmReq, UINT8 Req, UINT16 Value, UINT16 Index,
         .wIndex = Index,
         .wLength = Len
     };
-    gXferSlot = gHubSlotId;
-    return ControlXfer(&Setup, Data);
+    gTransferSlot = gHubSlotId;
+    return ControlTransfer(&Setup, Data);
 }
 
 int FinishHubSetup(UINT8 *OutNumPorts) {
@@ -34,10 +34,10 @@ int FinishHubSetup(UINT8 *OutNumPorts) {
     UINT8 Nports = 4;
     UINT8 ConfigVal = 1;
 
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gCtrlBuf) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gControlBuffer) < 0) {
         return 0;
     }
-    ConfigVal = gCtrlBuf[5] ? gCtrlBuf[5] : 1;
+    ConfigVal = gControlBuffer[5] ? gControlBuffer[5] : 1;
     if (SetConfig(ConfigVal) < 0) {
         return 0;
     }
@@ -78,17 +78,17 @@ int HubGetPortStatus(UINT8 Port, UINT32 *OutSt) {
     return 0;
 }
 
-int HubSetPortFeat(UINT8 Port, UINT16 Feat) {
+int HubSetPortFeature(UINT8 Port, UINT16 Feature) {
     USB_SETUP Setup;
 
-    PortFeatureSetup(&Setup, Port, Feat, 1);
+    PortFeatureSetup(&Setup, Port, Feature, 1);
     return HubCtrlSetup(&Setup, 0);
 }
 
-int HubClearPortFeat(UINT8 Port, UINT16 Feat) {
+int HubClearPortFeature(UINT8 Port, UINT16 Feature) {
     USB_SETUP Setup;
 
-    PortFeatureSetup(&Setup, Port, Feat, 0);
+    PortFeatureSetup(&Setup, Port, Feature, 0);
     return HubCtrlSetup(&Setup, 0);
 }
 
@@ -145,15 +145,15 @@ UINT8 HubPortSpeed(UINT32 St) {
 }
 
 int IsHubDeviceDesc(void) {
-    /* GET_DESCRIPTOR device 已在 gCtrlBuf */
-    if (gCtrlBuf[4] == 0x09) {
+    /* GET_DESCRIPTOR device 已在 gControlBuffer */
+    if (gControlBuffer[4] == 0x09) {
         return 1;
     }
     return 0;
 }
 
 /* 配置描述符中是否有 Hub Interface（bDeviceClass=0 的常见 hub） */
-int ConfigHasHubIface(UINT8 *Cfg, UINT16 Total) {
+int ConfigHasHubInterface(UINT8 *Cfg, UINT16 Total) {
     UINT16 Off = 0;
 
     while (Off + 9 <= Total) {
@@ -172,7 +172,7 @@ int ConfigHasHubIface(UINT8 *Cfg, UINT16 Total) {
 
 /*
  * 认领根口 hub：SetConfig + hub desc；USB2 再 Evaluate Hub/MTT。
- * ExistingSlot：InitMouseOnPort 已 Address 的 hub，保留 slot 勿 Disable+重 Address
+ * ExistingSlot：MousePortInitialize 已 Address 的 hub，保留 slot 勿 Disable+重 Address
  * （重 Address 带 Hub 位常 cc=0x11；USB3 hub 亦不可设 Hub 位）。
  * 不碰 gSlotId（键盘已绑定时可安全认领另一根口上的 hub）。
  */
@@ -189,15 +189,15 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
     BootLogV("Boot: XHCI claim hub\n");
     gHubRootPort = RootPort;
     gHubSpeed = Speed;
-    /* Device Desc 多已在 gCtrlBuf；没有则补读再判 MTT */
-    if (gCtrlBuf[4] != 0x09) {
-        gXferSlot = ExistingSlot ? ExistingSlot : 0;
+    /* Device Desc 多已在 gControlBuffer；没有则补读再判 MTT */
+    if (gControlBuffer[4] != 0x09) {
+        gTransferSlot = ExistingSlot ? ExistingSlot : 0;
         if (ExistingSlot != 0) {
-            gEp0Mps = SpeedMps(Speed);
+            gEndpoint0MaxPacketSize = SpeedMaxPacketSize(Speed);
             (void)GetDeviceDesc();
         }
     }
-    HubNoteMttFromDevDesc(Speed);
+    HubNoteMttFromDeviceDescriptor(Speed);
 
     if (ExistingSlot != 0) {
         BootLogV("Boot: XHCI hub adopt slot\n");
@@ -224,27 +224,27 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
             }
         }
         gHubSlotId = ExistingSlot;
-        gXferSlot = ExistingSlot;
-        gEp0Mps = SpeedMps(Speed);
+        gTransferSlot = ExistingSlot;
+        gEndpoint0MaxPacketSize = SpeedMaxPacketSize(Speed);
         /* 该 slot 先前按 mouse/msc 环 Address；迁到 hub 专用环 */
-        RecoverEp0(gHubSlotId);
+        RecoverEndpoint0(gHubSlotId);
         if (!FinishHubSetup(&Nports)) {
             DisableSlot(gHubSlotId);
             gHubSlotId = 0;
-            EnumWhy("Boot: Why=hub cfg\n");
+            EnumerateWhy("Boot: Why=hub cfg\n");
             return 0;
         }
         /* USB2/SS 均须 Hub+端口数；SS 无 TT 也要 ConfigEP，否则子口 Address 挂死 */
         if (!EvaluateHubSlot(gHubSlotId, RootPort, Speed, Nports)) {
             DisableSlot(gHubSlotId);
             gHubSlotId = 0;
-            EnumWhy("Boot: Why=hub eval\n");
+            EnumerateWhy("Boot: Why=hub eval\n");
             return 0;
         }
         if (!HubSetDepth(0)) {
             DisableSlot(gHubSlotId);
             gHubSlotId = 0;
-            EnumWhy("Boot: Why=hub depth\n");
+            EnumerateWhy("Boot: Why=hub depth\n");
             return 0;
         }
         BootLogHexV("Boot: XHCI hub spd=", Speed, 1);
@@ -254,16 +254,16 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
         return 1;
     }
 
-    gEp0Mps = SpeedMps(Speed);
+    gEndpoint0MaxPacketSize = SpeedMaxPacketSize(Speed);
     if (!AddressDeviceOnPort(RootPort, Speed, &gHubSlotId, gHubDevCtx,
                              0, 0, 0, Usb2Hub ? 1 : 0, Usb2Hub ? 4 : 0)) {
         gHubSlotId = 0;
-        EnumWhy("Boot: Why=hub addr\n");
+        EnumerateWhy("Boot: Why=hub addr\n");
         return 0;
     }
     /* Address 后才有 Device Desc → 再定 MTT，随后 Evaluate 写入 */
     if (GetDeviceDesc() == 0) {
-        HubNoteMttFromDevDesc(Speed);
+        HubNoteMttFromDeviceDescriptor(Speed);
     }
     if (!FinishHubSetup(&Nports)) {
         DisableSlot(gHubSlotId);
@@ -274,13 +274,13 @@ int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot) {
         /* SS 无 Hub+ports 时子口 Address 会挂命令环；失败则整颗 hub 放弃 */
         DisableSlot(gHubSlotId);
         gHubSlotId = 0;
-        EnumWhy("Boot: Why=hub eval\n");
+        EnumerateWhy("Boot: Why=hub eval\n");
         return 0;
     }
     if (!HubSetDepth(0)) {
         DisableSlot(gHubSlotId);
         gHubSlotId = 0;
-        EnumWhy("Boot: Why=hub depth\n");
+        EnumerateWhy("Boot: Why=hub depth\n");
         return 0;
     }
     return 1;
@@ -295,7 +295,7 @@ int TryHubOnRootPort(UINT32 RootPort, UINT8 Speed) {
     if (!ClaimHubOnRootPort(RootPort, Speed, 0)) {
         return 0;
     }
-    if (EnumHubChildrenForKeyboard()) {
+    if (EnumerateHubChildrenForKeyboard()) {
         return 1;
     }
     return 0;

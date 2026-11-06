@@ -34,7 +34,7 @@ typedef struct {
     char Heard[9];
 } IWL_SCAN_COLLECT_CTX;
 
-void IwlScanCollectCtxInit(IWL_SCAN_COLLECT_CTX *C);
+void IwlScanCollectContextInitialize(IWL_SCAN_COLLECT_CTX *C);
 int IwlScanCollectOnPkt(IWL_SCAN_COLLECT_CTX *C, IWL_RX_PKT *Pkt, UINTN Len,
                         UINT32 LoopI);
 void IwlScanCollectLogFail(const IWL_SCAN_COLLECT_CTX *C);

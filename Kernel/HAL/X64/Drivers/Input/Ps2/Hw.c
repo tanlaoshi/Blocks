@@ -121,7 +121,7 @@ int Ps2AuxWrite(UINT8 Data) {
     return 0;
 }
 
-void Ps2KbdPortEnable(int On) {
+void Ps2KeyboardPortEnable(int On) {
     Ps2CtrlCmd(On ? 0xAEu : 0xADu);
 }
 
@@ -145,7 +145,7 @@ static void ConfigureCcb(int EnableAuxClock) {
     Ps2DataWrite(Ccb);
 }
 
-static int InitKeyboardDevice(void) {
+static int InitializeKeyboardDevice(void) {
     UINT8 Ack = 0;
 
     Ps2DataWrite(0xFF);
@@ -164,7 +164,7 @@ static int InitKeyboardDevice(void) {
     return 1;
 }
 
-int Ps2InitHw(void) {
+int Ps2HardwareInitialize(void) {
     UINT8 Ack = 0;
 
     gPs2AuxReady = 0;
@@ -183,7 +183,7 @@ int Ps2InitHw(void) {
     ConfigureCcb(1);
     /* 先 Aux（键盘口仍 AD），再开键盘——避免扫码抢走 Aux ACK */
     Ps2CtrlCmd(0xA8);
-    if (Ps2AuxInitDevice()) {
+    if (Ps2AuxInitializeDevice()) {
         gPs2AuxReady = 1;
         BootMarkUsb("Boot: PS2-AUX Mouse (Stream)\n");
     } else {
@@ -191,7 +191,7 @@ int Ps2InitHw(void) {
     }
 
     Ps2CtrlCmd(0xAE);
-    if (!InitKeyboardDevice()) {
+    if (!InitializeKeyboardDevice()) {
         return 0;
     }
     if (Ps2StatusLooksDead(HalIoRead8(PS2_STATUS))) {

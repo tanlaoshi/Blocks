@@ -6,7 +6,7 @@
 #include "Theme.h"
 #include "ThemePrivate.h"
 
-int ThemeLoadFromCfg(void) {
+int ThemeLoadFromConfig(void) {
     static char Buf[256];
     UINTN Size = 0;
     UINTN i;
@@ -39,7 +39,7 @@ int ThemeLoadFromCfg(void) {
  * 旧卷：DB 有其它键但还没有 mode= 时，从 THEME.CFG 迁一次进 DB。
  * 正常路径分辨率只认 BLOCKS.DB。
  */
-int ThemeMigrateModeFromCfg(void) {
+int ThemeMigrateModeFromConfig(void) {
     static char Buf[256];
     UINTN Size = 0;
     UINTN i;
@@ -100,7 +100,7 @@ int ThemeLoad(void) {
              ApplyDbKey("theme.effects");
     ModeFromDb = ApplyDbKey("mode");
     if (FromDb == 0 && ModeFromDb == 0) {
-        if (ThemeLoadFromCfg() != 0) {
+        if (ThemeLoadFromConfig() != 0) {
             return -1;
         }
         /* 库空：CFG 可能带旧 mode=，立刻落到 DB，供 Boot/QEMU */
@@ -115,7 +115,7 @@ int ThemeLoad(void) {
         LogGui("Theme: Loaded THEME.CFG\n");
     } else {
         if (ModeFromDb == 0) {
-            (void)ThemeMigrateModeFromCfg();
+            (void)ThemeMigrateModeFromConfig();
         }
         LogGui("Theme: Loaded ");
         LogGui(DbLoadedName());

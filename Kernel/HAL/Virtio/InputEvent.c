@@ -74,13 +74,13 @@ UINT8 LinuxModBit(UINT16 Code) {
     }
 }
 
-void KbdPush(void) {
-    UINT32 N = (gKbdHead + 1) % KBD_Q_SIZE;
-    if (N == gKbdTail) {
+void KeyboardPush(void) {
+    UINT32 N = (gKeyboardHead + 1) % KBD_Q_SIZE;
+    if (N == gKeyboardTail) {
         return;
     }
-    gKbdQ[gKbdHead] = gKbdCur;
-    gKbdHead = N;
+    gKeyboardQueue[gKeyboardHead] = gKeyboardCurrent;
+    gKeyboardHead = N;
     VirtioInputDiagNoteKeyboardPush();
 }
 
@@ -130,11 +130,11 @@ void ApplyKey(UINT16 Code, INT32 Value) {
 
     if (Mod) {
         if (Value) {
-            gKbdCur.ModifierKeys |= Mod;
+            gKeyboardCurrent.ModifierKeys |= Mod;
         } else {
-            gKbdCur.ModifierKeys &= (UINT8)~Mod;
+            gKeyboardCurrent.ModifierKeys &= (UINT8)~Mod;
         }
-        KbdPush();
+        KeyboardPush();
         return;
     }
     Hid = LinuxKeyToHid(Code);
@@ -143,29 +143,29 @@ void ApplyKey(UINT16 Code, INT32 Value) {
     }
     if (Value) {
         for (i = 0; i < 6; i++) {
-            if (gKbdCur.KeyCode[i] == Hid) {
+            if (gKeyboardCurrent.KeyCode[i] == Hid) {
                 return;
             }
         }
         for (i = 0; i < 6; i++) {
-            if (gKbdCur.KeyCode[i] == 0) {
-                gKbdCur.KeyCode[i] = Hid;
+            if (gKeyboardCurrent.KeyCode[i] == 0) {
+                gKeyboardCurrent.KeyCode[i] = Hid;
                 break;
             }
         }
     } else {
         for (i = 0; i < 6; i++) {
-            if (gKbdCur.KeyCode[i] == Hid) {
+            if (gKeyboardCurrent.KeyCode[i] == Hid) {
                 int j;
                 for (j = i; j < 5; j++) {
-                    gKbdCur.KeyCode[j] = gKbdCur.KeyCode[j + 1];
+                    gKeyboardCurrent.KeyCode[j] = gKeyboardCurrent.KeyCode[j + 1];
                 }
-                gKbdCur.KeyCode[5] = 0;
+                gKeyboardCurrent.KeyCode[5] = 0;
                 break;
             }
         }
     }
-    KbdPush();
+    KeyboardPush();
 }
 
 void RefillQueue(VIRTIO_MMIO_DEV *Dev, VIRTIO_INPUT_EVENT *Buf, UINT16 Count) {
@@ -183,7 +183,7 @@ void RefillQueue(VIRTIO_MMIO_DEV *Dev, VIRTIO_INPUT_EVENT *Buf, UINT16 Count) {
     VirtioMmioNotify(Dev);
 }
 
-UINT16 DrainDev(VIRTIO_MMIO_DEV *Dev, VIRTIO_INPUT_EVENT *Buf, int IsTab) {
+UINT16 DrainDevice(VIRTIO_MMIO_DEV *Dev, VIRTIO_INPUT_EVENT *Buf, int IsTab) {
     UINT16 Used;
     UINT16 Events = 0;
 

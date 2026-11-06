@@ -75,7 +75,7 @@ int GuiCursorUsbReady(void);
 void GuiCursorRevealAfterUsb(void);
 /* 空拖保鼠：有位移时记时；Idle 后才允许钟栏 Present / Worker HotPoll+RTC */
 void GuiPointerNoteActivity(void);
-int GuiPointerIdleForMs(UINT32 Ms);
+int GuiPointerIdleForMilliseconds(UINT32 Ms);
 void GuiOnMouse(const GUI_MOUSE_STATE *Mouse);
 /* 右键：桌面弹出菜单；点在窗口上则收起 */
 void GuiRightClickPlaceholder(UINT32 X, UINT32 Y);
@@ -145,6 +145,7 @@ int GuiDamageUser(int Wid, const char *Text);
 /* PR-G-desk-3：客户区相对坐标像素 blit（0x00RRGGBB）；成功 0 */
 int GuiDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                       const UINT32 *Pixels);
+int GuiDrawStringUser(int Wid, UINT32 X, UINT32 Y, UINT32 Color, const char *Text);
 /* PR-G15：用户窗按钮；ButtonId 0..3；成功 0 */
 int GuiUserAddButton(int Wid, int ButtonId, const char *Label);
 /* 0=无 / 1=关 / 100+id=按钮 / 300+HID=键 / 400+=客户区点 */

@@ -74,7 +74,7 @@ int ConsoleSbLineCount(void) {
     return gSbCount;
 }
 
-int ConsoleSbAccLen(void) {
+int ConsoleSbAccLength(void) {
     return gAccLen;
 }
 

@@ -15,8 +15,8 @@
  */
 int BringUp(void) {
     if (!gMscBulkRingsInited) {
-        InitRing(gBulkInRing, &gBulkIn, RING_SIZE);
-        InitRing(gBulkOutRing, &gBulkOut, RING_SIZE);
+        RingInitialize(gBulkInRing, &gBulkIn, RING_SIZE);
+        RingInitialize(gBulkOutRing, &gBulkOut, RING_SIZE);
         FlushDma(gBulkInRing, sizeof(gBulkInRing));
         FlushDma(gBulkOutRing, sizeof(gBulkOutRing));
         gMscBulkRingsInited = 1;
@@ -53,7 +53,7 @@ static int ScanPorts(void) {
     BootLog("Boot: MSC scan begin (portsc only)\n");
 
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
-        UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(P));
         UINT8 Speed;
 
         if (!(Ps & PORTSC_CCS)) {
@@ -75,7 +75,7 @@ static int ScanPorts(void) {
             for (Hp = 1; MaxP != 0 && Hp <= MaxP; Hp++) {
                 UINT32 St = 0;
 
-                if ((gKbdRoute & 0xFu) == (UINT32)Hp && gSlotId != 0) {
+                if ((gKeyboardRoute & 0xFu) == (UINT32)Hp && gSlotId != 0) {
                     continue;
                 }
                 if ((gMouseRoute & 0xFu) == (UINT32)Hp && gMouseSlotId != 0) {
@@ -175,7 +175,7 @@ static int Present(void) {
             if (gMscPort == 0 || gMscPort > gMaxPorts) {
                 return 1;
             }
-            Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
+            Ps = ReadMmio32(gOperationalBase + PortRegister(gMscPort));
             return (Ps & PORTSC_CCS) ? 1 : 0;
         }
         /*
@@ -193,7 +193,7 @@ static int Present(void) {
              * boot-watch 后拔 hub 永不 Gone）。
              */
             if (gMscPort != 0 && gMscPort <= gMaxPorts) {
-                Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
+                Ps = ReadMmio32(gOperationalBase + PortRegister(gMscPort));
                 if (!(Ps & PORTSC_CCS)) {
                     return 0;
                 }
@@ -206,7 +206,7 @@ static int Present(void) {
     if (gMscPort == 0 || gMscPort > gMaxPorts) {
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(gMscPort));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(gMscPort));
     return (Ps & PORTSC_CCS) ? 1 : 0;
 }
 

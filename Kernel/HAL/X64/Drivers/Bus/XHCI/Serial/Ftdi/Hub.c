@@ -28,22 +28,22 @@ static int TryHubChildren(void) {
         MaxP = 8;
     }
     for (Port = 1; Port <= MaxP; Port++) {
-        (void)HubSetPortFeat(Port, HUB_FEAT_PORT_POWER);
+        (void)HubSetPortFeature(Port, HUB_FEAT_PORT_POWER);
     }
-    StallMs(HalCpuIsHypervisor() ? 20 : 200);
+    StallMilliseconds(HalCpuIsHypervisor() ? 20 : 200);
     for (Port = 1; Port <= MaxP; Port++) {
         int t;
 
         if (HubGetPortStatus(Port, &St) < 0 || !(St & HUB_PORT_CONNECTION)) {
             continue;
         }
-        if ((gKbdRoute & 0xF) == (UINT32)Port && gSlotId != 0) {
+        if ((gKeyboardRoute & 0xF) == (UINT32)Port && gSlotId != 0) {
             continue;
         }
         if ((gMouseRoute & 0xF) == (UINT32)Port && gMouseSlotId != 0) {
             continue;
         }
-        if (HubSetPortFeat(Port, HUB_FEAT_PORT_RESET) < 0) {
+        if (HubSetPortFeature(Port, HUB_FEAT_PORT_RESET) < 0) {
             continue;
         }
         for (t = 0; t < 80; t++) {
@@ -51,10 +51,10 @@ static int TryHubChildren(void) {
                 break;
             }
             if (St & HUB_C_PORT_RESET) {
-                (void)HubClearPortFeat(Port, HUB_FEAT_C_PORT_RESET);
+                (void)HubClearPortFeature(Port, HUB_FEAT_C_PORT_RESET);
                 break;
             }
-            StallMs(5);
+            StallMilliseconds(5);
         }
         for (t = 0; t < 80; t++) {
             if (HubGetPortStatus(Port, &St) < 0) {
@@ -63,7 +63,7 @@ static int TryHubChildren(void) {
             if (St & HUB_PORT_ENABLE) {
                 break;
             }
-            StallMs(5);
+            StallMilliseconds(5);
         }
         if (!(St & HUB_PORT_ENABLE)) {
             continue;
@@ -85,7 +85,7 @@ static int TryHubChildren(void) {
             continue;
         }
         if (gFtdiSlot <= DCBAA_SLOTS) {
-            gSlotEp0UsesKbdRing[gFtdiSlot] = 0;
+            gSlotEndpoint0UsesKeyboardRing[gFtdiSlot] = 0;
         }
         if (gFtdi.FinishClaim && gFtdi.FinishClaim(gHubRootPort, Speed)) {
             return 1;

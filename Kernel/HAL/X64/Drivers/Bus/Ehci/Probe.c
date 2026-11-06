@@ -57,7 +57,7 @@ int Setup(void) {
         gEhci[0].CcsMask = 0;
         gEhci[0].Cap = 0;
         gEhci[0].Op = 0;
-        if (InitOne(&gEhci[0], 0)) {
+        if (InitializeOne(&gEhci[0], 0)) {
             OrMask |= gEhci[0].CcsMask;
             Ok = 1;
         }

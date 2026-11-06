@@ -66,6 +66,6 @@ static inline void UhciW32(UINT16 Base, UINT16 Off, UINT32 V) {
 
 void UhciDelay(int Loops);
 void UhciSurveyCcs(UHCI_CTRL *C);
-int UhciInitOne(UHCI_CTRL *C, int Index);
+int UhciInitializeOne(UHCI_CTRL *C, int Index);
 
 #endif

@@ -1,15 +1,15 @@
 /*
  * MousePort.c — PR-F-xhci-4：其它根口绑鼠标（编排）
  *
- * Claim / FinishEp 见 MousePortClaim.c。鼠标全局仍在 Xhci.c。
+ * Claim / FinishEndpoint 见 MousePortClaim.c。鼠标全局仍在 Xhci.c。
  */
 #include "UsbHid/Private.h"
 
-int InitMouseOnPort(UINT32 Port1) {
+int MousePortInitialize(UINT32 Port1) {
     UINT8 Speed = 0;
     int Claim;
 
-    Claim = InitMouseClaimPort(Port1, &Speed);
+    Claim = MouseClaimPortInitialize(Port1, &Speed);
     if (Claim >= 0) {
         return Claim;
     }
@@ -24,9 +24,9 @@ int InitMouseOnPort(UINT32 Port1) {
             gMouseSlotId = 0;
             if (ResetPortEx(Port1, 1)) {
                 if (!HalCpuIsHypervisor()) {
-                    StallMs(20);
+                    StallMilliseconds(20);
                 }
-                Speed = PortSpeed(ReadMmio32(gOperationalBase + PortReg(Port1)));
+                Speed = PortSpeed(ReadMmio32(gOperationalBase + PortRegister(Port1)));
                 if (AddressDeviceOnPort(Port1, Speed, &gMouseSlotId, gMouseDevCtx,
                                         0, 0, 0, 0, 0) &&
                     SetupHidDevice(gMouseSlotId, gMouseDevCtx, Speed, ParseConfigMouse, 1)) {
@@ -49,5 +49,5 @@ int InitMouseOnPort(UINT32 Port1) {
         }
     }
 
-    return InitMouseFinishEp(Port1, Speed);
+    return MouseFinishEndpointInitialize(Port1, Speed);
 }

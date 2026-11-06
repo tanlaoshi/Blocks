@@ -29,7 +29,7 @@ int gNeedFontReload;
  * FatSetIoBreath(StoreIoBreath) 仍有效；勿删本符号。
  */
 void StoreMenuRegister(void) {
-    DesktopMenuRegister(DESKTOP_ACTION_STORE, MSG_ICON_STORE, "Store", 3, 1);
+    DesktopMenuRegister(DESKTOP_ACTION_STORE, MESSAGE_ICON_STORE, "Store", 3, 1);
 }
 
 void StoreIoBreath(void) {

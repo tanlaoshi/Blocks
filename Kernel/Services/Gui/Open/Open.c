@@ -1,7 +1,7 @@
 /*
  * Open.c — 开窗辅助 / 槽位（story-s1 / S1.3）
  *
- * InitWindowSlot / ClampWindowBox：Apps.c·Devices.c·Terminal.c 共用槽位样板。
+ * WindowSlotInitialize / ClampWindowBox：Apps.c·Devices.c·Terminal.c 共用槽位样板。
  * OpenChromeDefer：Push Defer → 画 chrome → 调用方填客户区 → OpenFadeIn=Pop。
  * 必须配对 Pop，否则全局禁 Present（半帧/卡死）。门闩总表 Compose.c（gui-g1）。
  * FocusExistingKind：单例应用前置。应用入口 Apps.c；关窗 Close.c。
@@ -93,7 +93,7 @@ void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H) {
     }
 }
 
-void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
+void WindowSlotInitialize(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
                     UINT32 H, UINT32 Background, const char *Title,
                     int PromptShown) {
     GUI_WINDOW *Win;

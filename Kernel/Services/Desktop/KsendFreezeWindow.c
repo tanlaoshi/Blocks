@@ -75,8 +75,8 @@ static void KsendFreezeWindowBegin(void) {
     const char *Title;
     const char *Body;
 
-    Title = LocStr(MSG_KSEND_UPDATING_TITLE);
-    Body = LocStr(MSG_KSEND_UPDATING_BODY);
+    Title = LocaleString(MESSAGE_KSEND_UPDATING_TITLE);
+    Body = LocaleString(MESSAGE_KSEND_UPDATING_BODY);
     if (Title == 0 || Title[0] == 0) {
         Title = "正在热更";
     }

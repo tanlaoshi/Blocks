@@ -45,7 +45,7 @@ int st; ProcessWait(&st); /* WEXITSTATUS(st)==7 */
 | `FileClose` / `FileSeek` | `0` / 新偏 | `-1` |
 | `FILE *fopen(path,mode)` | 非 NULL | ISO C；**`"w"` 不截断**→先 `remove` |
 | `printf` / `snprintf` | 字符数 | 焦点在用户窗时多走**串口** |
-| `FsUtilBlocksPath` 等 | 0 | `<VolumePath/VolumePath.h>`；FsUtil **2.0.0** |
+| `VolumePathBlocks` 等 | 0 | `<VolumePath/VolumePath.h>`；VolumePath **2.0.0** |
 
 ```c
 remove("A.TXT");

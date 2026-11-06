@@ -11,7 +11,7 @@ typedef struct {
      * Init：政策侧初始化
      *   - 默认 Bitmap 政策：空实现
      *   - 学生政策：初始化自己的数据结构
-     *   - 调用时机：PmmSegmentInit 之后
+     *   - 调用时机：PmmSegmentInitialize 之后
      */
     void (*Init)(void);
 

@@ -51,8 +51,8 @@ int FontUiTtfSelected(void);
 /* 1=最近一次 FontGlyphCp 交出的是 UI TTF 拉丁灰图（绘制用软 AA，勿汉字硬 crisp） */
 int FontGlyphCrispLatin(void);
 const UINT8 *FontTtfMonoBlob(UINT32 *OutSize);
-int FontTtfInit(void);
-int FontTtfMonoInit(void);
+int FontTtfInitialize(void);
+int FontTtfMonoInitialize(void);
 /* 1=stbtt 已 Init（可栅格）；0=未加载/无 FPU */
 int FontTtfReady(void);
 int FontTtfMonoReady(void);
@@ -72,7 +72,7 @@ UINT32 FontTtfPixel(void);
 UINT32 FontTtfCell(void);
 int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18);
 /* FreeType：Worker 懒启；Raster 未就绪/失败软退 stb */
-int FontFtInit(void);
+int FontFtInitialize(void);
 int FontFtReady(void);
 /* 丢全部 HIT（慎用，易风暴） */
 void FontTtfCacheDropHits(void);

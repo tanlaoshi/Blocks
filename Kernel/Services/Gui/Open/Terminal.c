@@ -1,7 +1,7 @@
 /*
  * Terminal.c — 串口会话窗开窗（PR-GUI-tty-win / S1.3）
  *
- * 槽位：InitWindowSlot / ClampWindowBox（Open.c）。
+ * 槽位：WindowSlotInitialize / ClampWindowBox（Open.c）。
  */
 #include "GuiPrivate.h"
 #include "Theme.h"
@@ -31,8 +31,8 @@ int GuiOpenTty(void) {
     ClampWindowBox(Margin, &W, &H);
     X = Margin + 24;
     Y = Margin + 48;
-    InitWindowSlot(Idx, GUI_WIN_TTY, X, Y, W, H, ThemeShellClientBackground(),
-                   LocStr(MSG_APP_TTY), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_TTY, X, Y, W, H, ThemeShellClientBackground(),
+                   LocaleString(MESSAGE_APP_TTY), 0);
 
     OpenChromeDefer(Idx);
     TtyUiOpen();

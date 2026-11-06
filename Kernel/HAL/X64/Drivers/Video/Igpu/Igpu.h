@@ -26,11 +26,11 @@ void IgpuDriverRegister(void);
 int IgpuProbed(void);
 UINT16 IgpuPciDid(void);
 UINT8 IgpuPciBus(void);
-UINT8 IgpuPciDev(void);
+UINT8 IgpuPciDevice(void);
 UINT8 IgpuPciFn(void);
 
 /* PR-G-igpu-1：VMM 后映 BAR0 */
-int IgpuMmioInit(void);
+int IgpuMmioInitialize(void);
 int IgpuMmioOk(void);
 UINT64 IgpuMmioBarPhys(void);
 volatile UINT8 *IgpuMmioBase(void);
@@ -40,22 +40,22 @@ void IgpuMmioWrite32(UINT32 Off, UINT32 Val);
 void IgpuStallUs(UINT32 Us);
 
 /* PR-G-igpu-2：观察固件 scanout（不写 PTE） */
-int IgpuGttInit(void);
+int IgpuGttInitialize(void);
 int IgpuGttOk(void);
 UINT32 IgpuGttSurf(void);
-UINT32 IgpuGttSurfReg(void); /* PLANE_SURF_* MMIO 偏移 */
+UINT32 IgpuGttSurfRegister(void); /* PLANE_SURF_* MMIO 偏移 */
 
 /* PR-G-igpu-3：forcewake / GSM / BCS ring */
-int IgpuForcewakeInit(void);
+int IgpuForcewakeInitialize(void);
 int IgpuForcewakeGet(void);
 int IgpuForcewakeOk(void);
-int IgpuGsmInit(void);
+int IgpuGsmInitialize(void);
 int IgpuGsmOk(void);
 int IgpuGsmMap(UINT64 GttOff, UINT64 Phys);
 int IgpuGsmMapQuiet(UINT64 GttOff, UINT64 Phys); /* 批量映；末尾 IgpuGsmFlush */
 void IgpuGsmFlush(void);
 UINT64 IgpuGsmPteRead(UINT64 GttOff);
-int IgpuBlitInit(void);
+int IgpuBlitInitialize(void);
 int IgpuBlitColorTest(void); /* 桌面就绪后调用：右上角品红块 */
 int IgpuBlitOk(void);
 int IgpuBlitEmit(const UINT32 *Words, UINT32 Count);
@@ -74,7 +74,7 @@ UINT64 IgpuBackGttOff(void);
 UINT64 IgpuFrontGttBase(void);
 int IgpuFrontMapEnsure(UINT64 PhysBase, UINTN Bytes);
 int IgpuBackMap(UINT64 PhysBase, UINTN Bytes);
-int IgpuSrcCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
+int IgpuSourceCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
                     UINT32 W, UINT32 H, UINT32 SrcPitchB, UINT32 DstPitchB,
                     UINT64 SrcGtt, UINT64 DstGtt);
 /* 1=光标脏：live 时只双缓冲 blit，禁止整页 WaitVblank（甩鼠 AABB 大会顿） */
@@ -90,7 +90,7 @@ int IgpuScanoutOk(void);
 int IgpuScanoutShown(void);
 int IgpuScanoutGeometryMatches(UINT32 Width, UINT32 Height, UINT32 PitchPx);
 int IgpuScanoutLive(void); /* 1=已改 PLANE_SURF 到翻页缓冲 */
-int IgpuScanoutInit(void);
+int IgpuScanoutInitialize(void);
 void IgpuScanoutInvalidate(void);
 int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx);
 /* LivePatch：只补正在扫的那页（双页各 WaitHead 会拖死空拖）。整页翻页另走 Present。 */

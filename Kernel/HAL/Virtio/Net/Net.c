@@ -20,22 +20,22 @@
 #include "Netif.h"
 #endif
 
-VIRTIO_MMIO_DEV gRx;
+VIRTIO_MMIO_DEV gReceive;
 VIRTIO_MMIO_DEV gTx;
 int gNetOk;
 UINT8 gMac[6];
 UINT32 gIp = HAL_NET_IP_DEFAULT;
 UINT32 gNetHdrLen = VIRTIO_NET_HDR_LEGACY;
 ARP_ENTRY gArpCache[ARP_CACHE_SIZE];
-UINT8 *gRxBuf[RX_BUF_COUNT];
+UINT8 *gReceiveBuffer[RX_BUF_COUNT];
 UINT8 *gTxBuf;
 UINT16 gPingSeq;
 int gPingWait;
 UINT32 gPingTarget;
 UINT16 gPingId;
 UINT32 gTxDone;
-UINT32 gRxFrames;
-int gLwIpRx;
+UINT32 gReceiveFrames;
+int gLwIpReceive;
 int gTxBusy;
 
 static void NetFindCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
@@ -60,13 +60,13 @@ static int VirtioNetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPriv
         }
         return 0;
     }
-    gLwIpRx = 0;
+    gLwIpReceive = 0;
     VirtioMmioScan(NetFindCb, &Base);
     if (Base == 0) {
         return -1;
     }
 
-    if (VirtioMmioNegotiate(&gRx, Base, VIRTIO_DEV_NET, VIRTIO_NET_F_MAC) != 0) {
+    if (VirtioMmioNegotiate(&gReceive, Base, VIRTIO_DEV_NET, VIRTIO_NET_F_MAC) != 0) {
         LogNet("Boot: VirtIO-Net Negotiate Failed\n");
         return -1;
     }
@@ -77,7 +77,7 @@ static int VirtioNetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPriv
     gTx.Base = Base;
     gTx.DeviceId = VIRTIO_DEV_NET;
 
-    if (VirtioMmioSetupOneQueue(&gRx, RX_QUEUE_ID, RX_BUF_COUNT) != 0) {
+    if (VirtioMmioSetupOneQueue(&gReceive, RX_QUEUE_ID, RX_BUF_COUNT) != 0) {
         LogNet("Boot: VirtIO-Net RX Queue Failed\n");
         return -1;
     }
@@ -91,13 +91,13 @@ static int VirtioNetDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPriv
         return -1;
     }
     for (i = 0; i < RX_BUF_COUNT; i++) {
-        gRxBuf[i] = Page + (UINTN)i * PAGE_SIZE;
+        gReceiveBuffer[i] = Page + (UINTN)i * PAGE_SIZE;
     }
     gTxBuf = Page + (UINTN)RX_BUF_COUNT * PAGE_SIZE;
 
     /* DRIVER_OK 后再挂 RX，避免设备过早消费空环 */
-    VirtioMmioDriverOk(&gRx);
-    RxRefillAll();
+    VirtioMmioDriverOk(&gReceive);
+    ReceiveRefillAll();
 
     Cfg = (volatile VIRTIO_NET_CFG *)(UINTN)(Base + VIRTIO_NET_CFG_OFF);
     for (i = 0; i < 6; i++) {
@@ -120,7 +120,7 @@ static UINT32 VirtioNetGetIp(void);
 static void VirtioNetSetIp(UINT32 Ip);
 static void VirtioNetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
 static UINT16 VirtioNetChecksum(const void *Data, UINTN Len);
-static void VirtioNetSetLwIpRx(int Enable);
+static void VirtioNetSetLwIpReceive(int Enable);
 
 static const NET_BACKEND gNetBackend = {
     .Ready = VirtioNetReady,
@@ -134,7 +134,7 @@ static const NET_BACKEND gNetBackend = {
     .GetStats = VirtioNetGetStats,
     .SendIp = VirtioNetSendIp,
     .Checksum = VirtioNetChecksum,
-    .SetLwIpRx = VirtioNetSetLwIpRx,
+    .SetLwIpReceive = VirtioNetSetLwIpReceive,
 };
 
 static int VirtioNetDriverBind(DRIVER_INSTANCE *Inst) {
@@ -173,10 +173,10 @@ void VirtioNetPoll(void) {
     if (!gNetOk) {
         return;
     }
-    VirtioMmioAckInterrupt(&gRx);
+    VirtioMmioAckInterrupt(&gReceive);
     VirtioMmioAckInterrupt(&gTx);
-    TxDrain();
-    NetProcessRx();
+    TransmitDrain();
+    NetProcessReceive();
 }
 
 static void VirtioNetGetMac(UINT8 Mac[6]) {
@@ -196,7 +196,7 @@ static void VirtioNetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
         *TxDone = gTxDone;
     }
     if (RxFrames) {
-        *RxFrames = gRxFrames;
+        *RxFrames = gReceiveFrames;
     }
 }
 
@@ -204,7 +204,7 @@ static UINT16 VirtioNetChecksum(const void *Data, UINTN Len) {
     return Sum16((const UINT8 *)Data, Len);
 }
 
-static void VirtioNetSetLwIpRx(int Enable) {
-    gLwIpRx = Enable ? 1 : 0;
+static void VirtioNetSetLwIpReceive(int Enable) {
+    gLwIpReceive = Enable ? 1 : 0;
 }
 

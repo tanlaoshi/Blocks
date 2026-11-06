@@ -65,7 +65,7 @@ static int MapPhysRw(UINT64 Phys, UINTN Bytes) {
                                  PTE_PRESENT | PTE_WRITABLE);
 }
 
-static int MapPtrSpan(const void *Ptr, UINTN Span) {
+static int MapPointerSpan(const void *Ptr, UINTN Span) {
     if (Ptr == 0) {
         return -1;
     }
@@ -126,15 +126,15 @@ static int VideoGopSyncIfAlready(UINT32 Width, UINT32 Height) {
         return -1;
     }
     Gop = (TOY_GOP *)(UINTN)Info->GopProtocol;
-    if (MapPtrSpan(Gop, sizeof(TOY_GOP) + 0x1000) != 0 || !Gop->Mode) {
+    if (MapPointerSpan(Gop, sizeof(TOY_GOP) + 0x1000) != 0 || !Gop->Mode) {
         return -1;
     }
     Mode = Gop->Mode;
-    if (MapPtrSpan(Mode, sizeof(TOY_GOP_MODE) + 0x1000) != 0 || !Mode->Info) {
+    if (MapPointerSpan(Mode, sizeof(TOY_GOP_MODE) + 0x1000) != 0 || !Mode->Info) {
         return -1;
     }
     Mi = Mode->Info;
-    if (MapPtrSpan(Mi, sizeof(TOY_GOP_MODE_INFO) + 0x1000) != 0) {
+    if (MapPointerSpan(Mi, sizeof(TOY_GOP_MODE_INFO) + 0x1000) != 0) {
         return -1;
     }
     if (Mi->HorizontalResolution != Width || Mi->VerticalResolution != Height) {

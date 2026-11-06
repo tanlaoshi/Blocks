@@ -27,7 +27,7 @@ typedef struct {
     /* 从 BLOCKS.DB 加载 al.* 用户别名（须在命令表注册之后） */
     void (*UserAliasLoad)(void);
     void (*Write)(const char *Text);
-    void (*WriteLen)(const char *Data, UINTN Len);
+    void (*WriteLength)(const char *Data, UINTN Len);
     void (*WriteHex32)(UINT32 Value);
     void (*WriteHex64)(UINT64 Value);
     void (*OnChar)(char C);
@@ -45,8 +45,8 @@ typedef struct {
     void (*HistApplyNavToLine)(void);
     void (*HistOnEdit)(void);
     int (*HistIsBusy)(void);
-    int (*HistIgnoreRx)(void);
-    void (*HistClearIgnoreRx)(void);
+    int (*HistIgnoreReceive)(void);
+    void (*HistClearIgnoreReceive)(void);
     void (*CancelInput)(void);
     /* 丢弃输入行缓冲（不擦屏）；listen 中断后防 Enter 重跑旧命令 */
     void (*DiscardInput)(void);

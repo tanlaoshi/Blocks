@@ -66,7 +66,7 @@ static void MenuAddRow(DESKTOP_ACTION Act, const char *Label, const char *Path,
 
 typedef struct {
     DESKTOP_ACTION Action;
-    MSG_ID Msg;
+    MESSAGE_ID Msg;
     const char *Fallback;
     int IconSrc;
     int Enabled;
@@ -79,10 +79,10 @@ static int gMenuRegCount;
 
 /* Apps、Game、重启、关机仍留在桌面。顺序看这张表。 */
 static const MENU_SYS_ROW gMenuSysRows[] = {
-    { DESKTOP_ACTION_APPS, MSG_ICON_APPS, "Apps", 3, 1 },
-    { DESKTOP_ACTION_GAME, MSG_ICON_GAME, "Game", MENU_ICON_SRC_GAME, 1 },
-    { DESKTOP_ACTION_REBOOT, MSG_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT, 1 },
-    { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
+    { DESKTOP_ACTION_APPS, MESSAGE_ICON_APPS, "Apps", 3, 1 },
+    { DESKTOP_ACTION_GAME, MESSAGE_ICON_GAME, "Game", MENU_ICON_SRC_GAME, 1 },
+    { DESKTOP_ACTION_REBOOT, MESSAGE_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT, 1 },
+    { DESKTOP_ACTION_SHUTDOWN, MESSAGE_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER, 1 },
 };
 
 void DesktopMenuRegister(DESKTOP_ACTION Action, int Msg, const char *Fallback,
@@ -98,7 +98,7 @@ void DesktopMenuRegister(DESKTOP_ACTION Action, int Msg, const char *Fallback,
         }
     }
     gMenuReg[gMenuRegCount].Action = Action;
-    gMenuReg[gMenuRegCount].Msg = (MSG_ID)Msg;
+    gMenuReg[gMenuRegCount].Msg = (MESSAGE_ID)Msg;
     gMenuReg[gMenuRegCount].Fallback = Fallback;
     gMenuReg[gMenuRegCount].IconSrc = IconSrc;
     gMenuReg[gMenuRegCount].Enabled = Enabled ? 1 : 0;
@@ -117,13 +117,13 @@ void RebuildStartMenu(void) {
     for (i = 0; i < gMenuRegCount; i++) {
         const MENU_SYS_ROW *Row = &gMenuReg[i];
 
-        L = LocStr(Row->Msg);
+        L = LocaleString(Row->Msg);
         MenuAddRow(Row->Action, L ? L : Row->Fallback, 0, Row->Enabled, Row->IconSrc);
     }
     for (i = 0; i < (int)(sizeof(gMenuSysRows) / sizeof(gMenuSysRows[0])); i++) {
         const MENU_SYS_ROW *Row = &gMenuSysRows[i];
 
-        L = LocStr(Row->Msg);
+        L = LocaleString(Row->Msg);
         MenuAddRow(Row->Action, L ? L : Row->Fallback, 0, Row->Enabled, Row->IconSrc);
         if (Row->Action == DESKTOP_ACTION_GAME) {
             /* Game 行用 GAME.BMP。二级紧跟在 Game 行之后，再列 Apps。 */

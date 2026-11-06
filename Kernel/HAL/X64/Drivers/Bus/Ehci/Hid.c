@@ -13,36 +13,36 @@ UINT8 gEhciIntrDt;
 
 void HidArmIntr(EHCI_CTRL *C) {
     EHCI_QTD *T = &C->Qtds[4];
-    UINT32 EpChar;
-    UINT32 EpCap;
-    UINT16 Mps = C->HidMaxPkt;
+    UINT32 EndpointChar;
+    UINT32 EndpointCap;
+    UINT16 MaxPacketSize = C->HidMaxPkt;
     UINT8 Sp = C->DevSpeed;
     UINT32 i;
 
-    if (Mps > 64) {
-        Mps = 8;
+    if (MaxPacketSize > 64) {
+        MaxPacketSize = 8;
     }
     if (Sp > EHCI_SPEED_HS) {
         Sp = EHCI_SPEED_HS;
     }
-    EpChar = ((UINT32)Mps << 16) | ((UINT32)Sp << 12) | ((UINT32)C->HidEp << 8) |
+    EndpointChar = ((UINT32)MaxPacketSize << 16) | ((UINT32)Sp << 12) | ((UINT32)C->HidEndpoint << 8) |
              (UINT32)C->DevAddr;
     /* DTC=1：DT 以 qTD 为准，由 gEhciIntrDt 维护 */
-    EpChar |= (1u << 14);
+    EndpointChar |= (1u << 14);
     if (Sp != EHCI_SPEED_HS && C->HubAddr) {
-        EpCap = ((UINT32)C->HubAddr << 16) | ((UINT32)C->HubPort << 23) |
+        EndpointCap = ((UINT32)C->HubAddr << 16) | ((UINT32)C->HubPort << 23) |
                 (0xFCu << 8) | 0x01u;
     } else {
-        EpCap = 0xFFu;
+        EndpointCap = 0xFFu;
     }
-    C->IntrQh->EpChar = EpChar;
-    C->IntrQh->EpCap = EpCap;
-    C->IntrQh->Current = 0;
-    C->IntrQh->AltNext = EHCI_LINK_TERMINATE;
-    C->IntrQh->Token = 0;
+    C->InterruptQueueHead->EndpointChar = EndpointChar;
+    C->InterruptQueueHead->EndpointCap = EndpointCap;
+    C->InterruptQueueHead->Current = 0;
+    C->InterruptQueueHead->AltNext = EHCI_LINK_TERMINATE;
+    C->InterruptQueueHead->Token = 0;
     for (i = 0; i < 5; i++) {
-        C->IntrQh->Buf[i] = 0;
-        C->IntrQh->BufHi[i] = 0;
+        C->InterruptQueueHead->Buf[i] = 0;
+        C->InterruptQueueHead->BufHi[i] = 0;
     }
 
     for (i = 0; i < 64 && i < 8; i++) {
@@ -51,14 +51,14 @@ void HidArmIntr(EHCI_CTRL *C) {
     T->Next = EHCI_LINK_TERMINATE;
     T->AltNext = EHCI_LINK_TERMINATE;
     T->Token = EHCI_QTD_ACTIVE | (3u << 10) | (EHCI_QTD_PID_IN << 8) |
-               ((UINT32)Mps << 16) | (gEhciIntrDt ? EHCI_QTD_DT : 0);
-    T->Buf[0] = (UINT32)PtrPhys(C->ReportBuf);
+               ((UINT32)MaxPacketSize << 16) | (gEhciIntrDt ? EHCI_QTD_DT : 0);
+    T->Buf[0] = (UINT32)PointerPhysical(C->ReportBuf);
     T->Buf[1] = T->Buf[2] = T->Buf[3] = T->Buf[4] = 0;
     T->BufHi[0] = T->BufHi[1] = T->BufHi[2] = T->BufHi[3] = T->BufHi[4] = 0;
     Flush(T, sizeof(*T));
     Flush(C->ReportBuf, 64);
-    C->IntrQh->Next = (UINT32)PtrPhys(T);
-    Flush(C->IntrQh, sizeof(*C->IntrQh));
+    C->InterruptQueueHead->Next = (UINT32)PointerPhysical(T);
+    Flush(C->InterruptQueueHead, sizeof(*C->InterruptQueueHead));
     SchedEnablePeriodic(C);
 }
 
@@ -116,7 +116,7 @@ int HidBringup(void) {
         if (!SchedStart(&gEhci[i])) {
             continue;
         }
-        if (EnumHid(&gEhci[i])) {
+        if (EnumerateHid(&gEhci[i])) {
             HidArmIntr(&gEhci[i]);
             if (!gHidCtrl) {
                 gHidCtrl = &gEhci[i];

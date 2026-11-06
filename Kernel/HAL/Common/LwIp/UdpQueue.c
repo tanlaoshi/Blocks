@@ -17,27 +17,27 @@ extern void *memcpy(void *Dst, const void *Src, UINTN Len);
 static struct udp_pcb *gListenPcb;
 static struct udp_pcb *gSendPcb;
 static UINT16 gBindPort;
-static UDP_DATAGRAM gRxQ[UDP_RX_QUEUE];
-static int gRxHead;
-static int gRxTail;
-static int gRxCount;
+static UDP_DATAGRAM gReceiveQueue[UDP_RX_QUEUE];
+static int gReceiveHead;
+static int gReceiveTail;
+static int gReceiveCount;
 
 static void UdpEnqueue(UINT32 SrcIp, UINT16 SrcPort, UINT16 DstPort,
                        const u8_t *Data, UINTN Len) {
     if (Len > UDP_PAYLOAD_MAX) {
         Len = UDP_PAYLOAD_MAX;
     }
-    if (gRxCount >= UDP_RX_QUEUE) {
-        gRxHead = (gRxHead + 1) % UDP_RX_QUEUE;
-        gRxCount--;
+    if (gReceiveCount >= UDP_RX_QUEUE) {
+        gReceiveHead = (gReceiveHead + 1) % UDP_RX_QUEUE;
+        gReceiveCount--;
     }
-    gRxQ[gRxTail].SrcIp = SrcIp;
-    gRxQ[gRxTail].SrcPort = SrcPort;
-    gRxQ[gRxTail].DstPort = DstPort;
-    gRxQ[gRxTail].Len = (UINT16)Len;
-    memcpy(gRxQ[gRxTail].Data, Data, Len);
-    gRxTail = (gRxTail + 1) % UDP_RX_QUEUE;
-    gRxCount++;
+    gReceiveQueue[gReceiveTail].SrcIp = SrcIp;
+    gReceiveQueue[gReceiveTail].SrcPort = SrcPort;
+    gReceiveQueue[gReceiveTail].DstPort = DstPort;
+    gReceiveQueue[gReceiveTail].Len = (UINT16)Len;
+    memcpy(gReceiveQueue[gReceiveTail].Data, Data, Len);
+    gReceiveTail = (gReceiveTail + 1) % UDP_RX_QUEUE;
+    gReceiveCount++;
 }
 
 static void UdpRecvCallback(void *Arg, struct udp_pcb *Pcb, struct pbuf *P,
@@ -85,7 +85,7 @@ int LwIpUdpBind(UINT16 Port) {
     }
     udp_recv(gListenPcb, UdpRecvCallback, NULL);
     gBindPort = Port;
-    gRxHead = gRxTail = gRxCount = 0;
+    gReceiveHead = gReceiveTail = gReceiveCount = 0;
     return 0;
 }
 
@@ -133,12 +133,12 @@ int LwIpUdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len) {
 }
 
 int LwIpUdpRecv(UDP_DATAGRAM *Out) {
-    if (Out == NULL || gRxCount == 0) {
+    if (Out == NULL || gReceiveCount == 0) {
         return 0;
     }
-    *Out = gRxQ[gRxHead];
-    gRxHead = (gRxHead + 1) % UDP_RX_QUEUE;
-    gRxCount--;
+    *Out = gReceiveQueue[gReceiveHead];
+    gReceiveHead = (gReceiveHead + 1) % UDP_RX_QUEUE;
+    gReceiveCount--;
     return 1;
 }
 

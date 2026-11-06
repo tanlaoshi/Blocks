@@ -162,7 +162,7 @@ int Capacity(void) {
 
         for (Try = 0; Try < 3; Try++) {
             if (Try > 0) {
-                StallMs(HalCpuIsHypervisor() ? 20u : 40u);
+                StallMilliseconds(HalCpuIsHypervisor() ? 20u : 40u);
             }
             ZeroMemory(Cdb, sizeof(Cdb));
             Cdb[0] = 0x25; /* READ CAPACITY(10) */

@@ -161,13 +161,13 @@ static int EnableStream(void) {
     return 1;
 }
 
-int Ps2AuxInitDevice(void) {
+int Ps2AuxInitializeDevice(void) {
     UINT8 Bat = 0;
     int GotReset = 0;
 
     gPs2LastRx = 0;
     gPs2DevId = 0xFF;
-    Ps2KbdPortEnable(0);
+    Ps2KeyboardPortEnable(0);
     Ps2DrainOb(64);
     BusyDelay(100000);
 
@@ -202,7 +202,7 @@ int Ps2AuxInitDevice(void) {
         (void)Ps2AuxWrite(0xF6);
         BusyDelay(80000);
         if (EnableStream()) {
-            Ps2KbdPortEnable(1);
+            Ps2KeyboardPortEnable(1);
             return 1;
         }
     }
@@ -212,10 +212,10 @@ int Ps2AuxInitDevice(void) {
     Ps2DrainOb(32);
     BusyDelay(100000);
     if (EnableStream()) {
-        Ps2KbdPortEnable(1);
+        Ps2KeyboardPortEnable(1);
         return 1;
     }
 
-    Ps2KbdPortEnable(1);
+    Ps2KeyboardPortEnable(1);
     return 0;
 }

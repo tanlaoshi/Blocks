@@ -58,7 +58,7 @@ static int IwlScratchEnsure(void) {
     return 1;
 }
 
-static int IwlWaitFhTx(UINT32 TimeoutMs) {
+static int IwlWaitFhTransmit(UINT32 TimeoutMs) {
     UINT32 i;
     for (i = 0; i < TimeoutMs; i++) {
         UINT32 Int = IwlMmioR32(IWL_CSR_INT);
@@ -68,7 +68,7 @@ static int IwlWaitFhTx(UINT32 TimeoutMs) {
             IwlMmioW32(IWL_CSR_INT, IWL_CSR_INT_FH_TX);
             return 1;
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     return 0;
 }
@@ -97,7 +97,7 @@ static int IwlLoadChunk(UINT32 Dst, UINT64 Phys, UINT32 ByteCnt) {
                IWL_FH_TCSR_ENABLE | IWL_FH_TCSR_CREDIT_DISABLE
                | IWL_FH_TCSR_CIRQ_ENDTFD);
     Cfg = IwlMmioR32(IWL_FH_TCSR_CONFIG_9);
-    if (!IwlFhAliveVal(Cfg) || (Cfg & IWL_FH_TCSR_ENABLE) == 0) {
+    if (!IwlFhAliveValue(Cfg) || (Cfg & IWL_FH_TCSR_ENABLE) == 0) {
         gFhFailWhy = 2;
         gFhFailTcsr = Cfg;
         gFhFailTssr = IwlMmioR32(IWL_FH_TSSR_TX_STATUS);
@@ -105,7 +105,7 @@ static int IwlLoadChunk(UINT32 Dst, UINT64 Phys, UINT32 ByteCnt) {
         return 0;
     }
     IwlNicUnlock();
-    if (!IwlWaitFhTx(2000)) {
+    if (!IwlWaitFhTransmit(2000)) {
         gFhFailWhy = 2;
         if (IwlNicLock()) {
             gFhFailTcsr = IwlMmioR32(IWL_FH_TCSR_CONFIG_9);

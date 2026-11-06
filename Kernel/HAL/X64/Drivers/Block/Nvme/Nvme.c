@@ -65,7 +65,7 @@ int NvmeSetup(void) {
     Index = gCtrlCount;
     C = &gCtrl[Index];
     ZeroMemory(C, sizeof(*C));
-    if (!CtrlInit(C, gBar)) {
+    if (!CtrlInitialize(C, gBar)) {
         DebugWrite("nvme: ctrl init fail\n");
         return 0;
     }
@@ -104,12 +104,12 @@ int NvmeReadSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer) {
     if (!gReady || Drive >= (UINT32)gCtrlCount) {
         return 0;
     }
-    return Xfer(&gCtrl[Drive], Lba, Count, Buffer, 0);
+    return NvmeTransfer(&gCtrl[Drive], Lba, Count, Buffer, 0);
 }
 
 int NvmeWriteSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer) {
     if (!gReady || Drive >= (UINT32)gCtrlCount) {
         return 0;
     }
-    return Xfer(&gCtrl[Drive], Lba, Count, (void *)Buffer, 1);
+    return NvmeTransfer(&gCtrl[Drive], Lba, Count, (void *)Buffer, 1);
 }

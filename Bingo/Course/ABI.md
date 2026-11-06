@@ -17,7 +17,7 @@
 | UI | **3.0.0** | `Ui.h`；`libUi.a` | `UiCreateWindow` / `UiPoll`… |
 | Graphics | **3.0.0** | `Graphics.h`；`libGraphics.a` | `GraphicsDamage*` / `GraphicsDraw*` |
 | Net | **3.0.0** | `Net.h`；`libNet.a` | **只教** `NetConnect`/`NetBind`（主机序）+ `socket`/`send`/`recv` |
-| 文件 / 目录 | Blocks | `Blocks/File.h`、`Blocks/Dir.h`；`VolumePath.h` | `FileOpen`/`FileRead`…；`DirOpen`/`DirRead`…；`FsUtil*` |
+| 文件 / 目录 | Blocks | `Blocks/File.h`、`Blocks/Dir.h`；`VolumePath.h` | `FileOpen`/`FileRead`…；`DirOpen`/`DirRead`…；`VolumePath*` |
 | 进程 / 线程 | Blocks | `Blocks/Process.h`、`Blocks/Thread.h` | `ProcessFork`/`ProcessWait`…；`ThreadCreate`… |
 
 **破坏性变更**：对应 `*_ABI_VERSION_MAJOR`（或 `CRT_VERSION_MAJOR`）必须 +1，并改本表 + 速查卡 + 示例。
@@ -27,7 +27,7 @@
 ## 二、承诺（课上可教、可考）
 
 1. **ISO C**：stdio / 堆 / `fopen` 族；路径可用 `BLOCKS:NAME` 或默认卷相对名。  
-2. **文件 / 目录（Blocks）**：`FileOpen` / `FileRead` / `FileWrite` / `FileClose`；`DirOpen` / `DirRead` / `DirClose`；或 `FsUtilListDir`。  
+2. **文件 / 目录（Blocks）**：`FileOpen` / `FileRead` / `FileWrite` / `FileClose`；`DirOpen` / `DirRead` / `DirClose`；或 `VolumePathListDirectory`。  
 3. **进程 / 线程（Blocks）**：`ProcessFork` / `ProcessWait` / `ProcessExec`；`ThreadCreate` / `ThreadJoin`（教学子集，非完整 pthread）。  
 4. **UI 3.x / Graphics 3.x**：见头文件。  
 5. **Net 3.x**（内核 `LWIP=1` 且 Guest `lwip on`）：`socket` + **`NetConnect`/`NetBind`**（主机序，`NetIpv4`）。**不教** `sockaddr` / `htons` 课设路径。  

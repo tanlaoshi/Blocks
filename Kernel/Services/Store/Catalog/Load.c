@@ -185,6 +185,7 @@ int StoreLoadCatalog(STORE_ENTRY *Out, int Max, int *OutCount) {
         "cat|app|1|CAT.ELF|-|x86_64|Cat\n"
         "taskmgr|app|1|TASKMGR.ELF|-|any|Task Manager\n"
         "snake|app|1|SNAKE.ELF|-|x86_64|Snake\n"
+        "chat|app|1|CHAT.ELF|-|x86_64|Chat\n"
         "sun8|font|1|VGA8X16.FNT|-|any|Sun 8x16 (store)\n"
         "demopack|asset|1|INFO.TXT|-|any|Demo asset pack\n";
     const char *P;

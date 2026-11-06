@@ -36,7 +36,7 @@ void NormalizeBspFirst(UINT8 BspId, int Count) {
     }
 }
 
-/* AP 入口：ArchApInit + 本核 LAPIC timer，tick 空转（不进调度） */
+/* AP 入口：ArchApInitialize + 本核 LAPIC timer，tick 空转（不进调度） */
 
 void SmpApEntry(void) {
     SMP_BOOT_PARAM *Param = (SMP_BOOT_PARAM *)(UINTN)SMP_PARAM_PHYS;
@@ -47,7 +47,7 @@ void SmpApEntry(void) {
         Logical = HAL_MAX_CPUS - 1;
     }
 
-    ArchApInit(Logical);
+    ArchApInitialize(Logical);
     TimerStart();
     /* AP 验证用慢定时器，避免 QEMU 下高频 IRQ 拖死启动路径 */
     *(volatile UINT32 *)(UINTN)(LAPIC_BASE + 0x380) = 5000000u;
@@ -151,7 +151,7 @@ int HalSmpStartApplicationProcessors(void) {
         return 0;
     }
     /* 电源与 MADT 解耦：MADT 失败仍应能短按关机；BootLog 以便 PHOTO 尾能抄到 */
-    if (AcpiPowerInit(Rsdp) == 0) {
+    if (AcpiPowerInitialize(Rsdp) == 0) {
         HalSerialBootMark("Boot: ACPI Power Ready\n");
     } else {
         HalSerialBootMark("Boot: ACPI Power N/A\n");

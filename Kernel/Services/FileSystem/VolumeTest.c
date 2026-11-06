@@ -43,7 +43,7 @@ static void PrintUnsigned(UINT32 Value) {
     }
     while (Count > 0) {
         Count--;
-        gConsole.WriteLen(&Digits[Count], 1);
+        gConsole.WriteLength(&Digits[Count], 1);
     }
 }
 

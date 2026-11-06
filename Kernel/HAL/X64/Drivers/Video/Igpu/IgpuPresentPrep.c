@@ -2,7 +2,7 @@
  * IgpuPresentPrep.c — 启动期映后缓冲 + 屏外 SRC_COPY 探针（igpu-4 / igpu-6）
  *
  * igpu-6：scratch 页 XY_SRC_COPY，CPU 读回成功才置 PresentCopyOk。
- * igpu-7：CopyOk 后调 IgpuScanoutInit；失败仍脏矩形 SRC_COPY（不改 CopyOk）。
+ * igpu-7：CopyOk 后调 IgpuScanoutInitialize；失败仍脏矩形 SRC_COPY（不改 CopyOk）。
  */
 #include "Igpu.h"
 #include "Hal.h"
@@ -144,7 +144,7 @@ static int ProbeMapPage(UINT64 GttOff, UINT64 Phys) {
     return 1;
 }
 
-static int ProbeSrcCopyOffscreen(void) {
+static int ProbeSourceCopyOffscreen(void) {
     void *SrcPage;
     void *DstPage;
     volatile UINT32 *Src;
@@ -218,7 +218,7 @@ static int ProbeSrcCopyOffscreen(void) {
         return 0;
     }
 
-    if (!IgpuSrcCopyRect(0, 0, 0, 0, IGPU_PROBE_W, IGPU_PROBE_H,
+    if (!IgpuSourceCopyRect(0, 0, 0, 0, IGPU_PROBE_W, IGPU_PROBE_H,
                          IGPU_PROBE_PITCH_B, IGPU_PROBE_PITCH_B,
                          IGPU_PROBE_GTT_SRC, IGPU_PROBE_GTT_DST)) {
         LogDrv("Boot: igpu copy soft (emit)\n");
@@ -281,12 +281,12 @@ void IgpuPresentPrepare(void) {
     LogDrvHex32((UINT32)Back);
     LogDrv("\n");
 
-    if (!ProbeSrcCopyOffscreen()) {
+    if (!ProbeSourceCopyOffscreen()) {
         LogDrv("Boot: igpu present cpu fallback (probe miss)\n");
         return;
     }
     gPresentCopyOk = 1;
     LogDrv("Boot: igpu present copy ok\n");
     /* 翻页失败保持 CopyOk：Present 仍走脏矩形 SRC_COPY → gtt0 */
-    (void)IgpuScanoutInit();
+    (void)IgpuScanoutInitialize();
 }

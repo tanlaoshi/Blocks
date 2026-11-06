@@ -31,9 +31,9 @@ void IwlPhyZero(void *P, UINTN N);
 void IwlPhyCopy(void *D, const void *S, UINTN N);
 void IwlPhyPut16(UINT8 *P, UINT16 V);
 void IwlPhyPut32(UINT8 *P, UINT32 V);
-int IwlPhySendCfg(UINT32 UcodeType);
+int IwlPhySendConfig(UINT32 UcodeType);
 int IwlPhySendAnt(void);
 void IwlPhyStoreSection(UINT16 Type, const UINT8 *Data, UINT16 Len);
-void IwlPhyHandleRx(IWL_RX_PKT *Pkt, UINTN Len, int *GotInit);
+void IwlPhyHandleReceive(IWL_RX_PKT *Pkt, UINTN Len, int *GotInit);
 int IwlPhyDbSendOne(UINT16 Type, const UINT8 *Data, UINT16 Len);
 #endif

@@ -1,7 +1,7 @@
 /*
  * Device.c — 平台无关设备表（PR-DEV-1）
  *
- * 不 include Hal.h；HalDeviceEnumerate 仅前向声明，定义在各 Arch DeviceEnum.c。
+ * 不 include Hal.h；HalDeviceEnumerate 仅前向声明，定义在各 Arch DeviceEnumerate.c。
  */
 #include "Device.h"
 #include "CString.h"
@@ -13,7 +13,7 @@
 static DEVICE_NODE gDevices[DEVICE_MAX];
 static int gDeviceCount;
 
-/* 前向：各 Arch DeviceEnum.c；本文件禁止再出现其它 Hal* */
+/* 前向：各 Arch DeviceEnumerate.c；本文件禁止再出现其它 Hal* */
 void HalDeviceEnumerate(void);
 
 static void ZeroNode(DEVICE_NODE *N) {

@@ -7,7 +7,7 @@
 
 static volatile int gRoundRobinHome;
 
-static void RoundRobinInit(void)
+static void RoundRobinInitialize(void)
 {
     gRoundRobinHome = 0;
 }
@@ -63,7 +63,7 @@ static UINT32 RoundRobinPickHome(const TASK *T)
 const SCHEDULER_OPS *SchedulerRoundRobinOps(void)
 {
     static const SCHEDULER_OPS Ops = {
-        RoundRobinInit,
+        RoundRobinInitialize,
         RoundRobinEnqueue,
         RunQueueRemove,
         RoundRobinPickHome,

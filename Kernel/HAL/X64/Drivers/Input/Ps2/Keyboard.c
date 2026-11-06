@@ -144,7 +144,7 @@ static void OnBreak(UINT8 Sc) {
     PushReport();
 }
 
-void Ps2KbdResetState(void) {
+void Ps2KeyboardResetState(void) {
     int i;
     gRd = gWr = 0;
     gMods = 0;
@@ -155,7 +155,7 @@ void Ps2KbdResetState(void) {
     }
 }
 
-void Ps2KbdFeed(UINT8 B) {
+void Ps2KeyboardFeed(UINT8 B) {
     if (B == 0xFA || B == 0xAA || B == 0xFE || B == 0xEE || B == 0x00 || B == 0xFF) {
         return;
     }
@@ -185,7 +185,7 @@ void Ps2KbdFeed(UINT8 B) {
     }
 }
 
-int Ps2KbdDequeue(HAL_KEYBOARD_REPORT *Report) {
+int Ps2KeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     if (!Report || !gPs2Ready || gRd == gWr) {
         return 0;
     }

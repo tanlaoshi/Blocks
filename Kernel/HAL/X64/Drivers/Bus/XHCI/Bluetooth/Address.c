@@ -51,7 +51,7 @@ static int BluetoothDeviceLooksLikeHci(UINT8 DeviceClass) {
     if (DeviceClass == USB_CLASS_WIRELESS) {
         return 1;
     }
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gBluetoothConfigBuffer) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gBluetoothConfigBuffer) < 0) {
         return 0;
     }
     Total = (UINT16)(gBluetoothConfigBuffer[2] |
@@ -62,7 +62,7 @@ static int BluetoothDeviceLooksLikeHci(UINT8 DeviceClass) {
     if (Total > BLUETOOTH_CONFIG_MAX) {
         Total = BLUETOOTH_CONFIG_MAX;
     }
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gBluetoothConfigBuffer) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gBluetoothConfigBuffer) < 0) {
         return 0;
     }
     return BluetoothConfigHasHci(gBluetoothConfigBuffer, Total);
@@ -76,14 +76,14 @@ int BluetoothFinishProbe(UINT32 RootPort, UINT8 Speed) {
     if (gBluetoothSlot == 0) {
         return 0;
     }
-    gXferSlot = gBluetoothSlot;
+    gTransferSlot = gBluetoothSlot;
     if (GetDeviceDesc() < 0) {
         BluetoothReleaseSlot();
         return 0;
     }
-    DeviceClass = gCtrlBuf[4];
-    VendorId = (UINT16)(gCtrlBuf[8] | (gCtrlBuf[9] << 8));
-    ProductId = (UINT16)(gCtrlBuf[10] | (gCtrlBuf[11] << 8));
+    DeviceClass = gControlBuffer[4];
+    VendorId = (UINT16)(gControlBuffer[8] | (gControlBuffer[9] << 8));
+    ProductId = (UINT16)(gControlBuffer[10] | (gControlBuffer[11] << 8));
     if (!BluetoothDeviceLooksLikeHci(DeviceClass)) {
         BootLogHex("Boot: Bluetooth skip class=", DeviceClass, 2);
         BootLogHex(" port=", RootPort, 2);
@@ -161,7 +161,7 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut) {
     int Force = 0;
     UINT32 FreezeSave;
 
-    PortStatus = ReadMmio32(gOperationalBase + PortReg(Port));
+    PortStatus = ReadMmio32(gOperationalBase + PortRegister(Port));
     if (!(PortStatus & PORTSC_CCS)) {
         return 0;
     }
@@ -174,16 +174,16 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut) {
      * 一次 ForceUntilPed = 规格 Port Reset；禁 HotPoll/NeedForce 循环。
      * freeze 短暂放下：claim 空后 freeze 挡 MSC Force，不挡认 HCI。
      */
-    FreezeSave = gXhciPortEnumFreeze;
-    gXhciPortEnumFreeze = 0;
+    FreezeSave = gXhciPortEnumerateFreeze;
+    gXhciPortEnumerateFreeze = 0;
     if (!ForceUntilPed(Port, &Force)) {
-        gXhciPortEnumFreeze = FreezeSave;
+        gXhciPortEnumerateFreeze = FreezeSave;
         BootLogHex("Boot: Bluetooth enable-fail port=", Port, 2);
         return 0;
     }
-    gXhciPortEnumFreeze = FreezeSave;
+    gXhciPortEnumerateFreeze = FreezeSave;
 
-    PortStatus = ReadMmio32(gOperationalBase + PortReg(Port));
+    PortStatus = ReadMmio32(gOperationalBase + PortRegister(Port));
     if (!(PortStatus & PORTSC_CCS) || !(PortStatus & PORTSC_PED)) {
         BootLogHex("Boot: Bluetooth not PED port=", Port, 2);
         return 0;
@@ -197,7 +197,7 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut) {
         return 0;
     }
     if (gBluetoothSlot <= DCBAA_SLOTS) {
-        gSlotEp0UsesKbdRing[gBluetoothSlot] = 0;
+        gSlotEndpoint0UsesKeyboardRing[gBluetoothSlot] = 0;
     }
     if (Force) {
         BootLogHex("Boot: Bluetooth enabled port=", Port, 2);

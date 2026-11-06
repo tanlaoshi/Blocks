@@ -136,7 +136,7 @@ static void UartPut(char C) {
 
 #if BOARD_UART_MINI && SERIAL_ENABLE
 /* 行末等到移位器空：mini-UART 无流控，暴打时 CoolTerm/FTDI 易丢字 */
-static void UartWaitTxIdle(void) {
+static void UartWaitTransmitIdle(void) {
     UINT32 Guard = 0;
     while ((MU_LSR & MU_LSR_TX_IDLE) == 0 && Guard < 200000u) {
         __asm__ volatile("nop");
@@ -163,7 +163,7 @@ static void UartWriteRaw(const char *Text) {
             UartPut('\n');
             Text += 2;
 #if BOARD_UART_MINI
-            UartWaitTxIdle();
+            UartWaitTransmitIdle();
 #endif
             continue;
         }
@@ -172,7 +172,7 @@ static void UartWriteRaw(const char *Text) {
             UartPut('\n');
             Text++;
 #if BOARD_UART_MINI
-            UartWaitTxIdle();
+            UartWaitTransmitIdle();
 #endif
             continue;
         }
@@ -244,7 +244,7 @@ void HalSerialInitialize(void) {
 #endif
 }
 
-static void BootHoldSpinMs(UINT32 Ms) {
+static void BootHoldSpinMilliseconds(UINT32 Ms) {
     UINT32 m;
     for (m = 0; m < Ms; m++) {
         volatile UINT32 i;
@@ -254,7 +254,7 @@ static void BootHoldSpinMs(UINT32 Ms) {
     }
 }
 
-void HalSerialBootHoldMs(UINT32 Ms) {
+void HalSerialBootHoldMilliseconds(UINT32 Ms) {
     if (Ms == 0) {
         return;
     }
@@ -291,19 +291,19 @@ void HalSerialBootHoldMs(UINT32 Ms) {
             One[1] = 0;
             UartWriteRaw(One);
             if (Snapshot[Index] == '\n') {
-                BootHoldSpinMs(15);
+                BootHoldSpinMilliseconds(15);
             }
         }
     }
 #endif
-    BootHoldSpinMs(Ms);
+    BootHoldSpinMilliseconds(Ms);
     HalSerialBootMark("Boot: HOLD end\n");
 }
 
 void HalSerialRetryIfMissing(void) {
 }
 
-void HalSerialEnableRxIrq(void) {
+void HalSerialEnableReceiveIrq(void) {
 }
 
 int HalSerialPresent(void) {
@@ -314,7 +314,7 @@ int HalSerialPresent(void) {
 #endif
 }
 
-void HalSerialRxPump(void) {
+void HalSerialReceivePump(void) {
 }
 
 void HalSerialBootFontApply(void) {
@@ -498,7 +498,7 @@ int HalSerialTryGetByte(UINT8 *Out) {
 
 void HalSerialDrainTransmitter(void) {
 #if SERIAL_ENABLE && BOARD_UART_MINI
-    UartWaitTxIdle();
+    UartWaitTransmitIdle();
 #elif SERIAL_ENABLE
     {
         UINT32 Guard = 0;

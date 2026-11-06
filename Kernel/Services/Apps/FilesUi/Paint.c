@@ -92,14 +92,14 @@ void PaintView(void) {
     }
 
     Title[0] = 0;
-    StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_VIEW));
+    StringCopy(Title, sizeof(Title), LocaleString(MESSAGE_FILES_VIEW));
     ti = 0;
     while (Title[ti]) {
         ti++;
     }
     StringCopy(Title + ti, (int)sizeof(Title) - ti, gViewTitle);
     DrawLine(X + 8, Y + 8, Title, ThemeText());
-    DrawLine(X + 8, Y + 8 + LineH, LocStr(MSG_FILES_ESC_BACK), ThemeTextMuted());
+    DrawLine(X + 8, Y + 8 + LineH, LocaleString(MESSAGE_FILES_ESC_BACK), ThemeTextMuted());
 
     CurY = Y + 8 + LineH * 2 + 4;
     {
@@ -151,7 +151,7 @@ void PaintConfirm(void) {
     if (gSelected >= 0 && gSelected < gCount) {
         Name = gEnts[gSelected].Name;
     }
-    StringCopy(Line2, sizeof(Line2), LocStr(MSG_FILES_DEL_PRE));
+    StringCopy(Line2, sizeof(Line2), LocaleString(MESSAGE_FILES_DEL_PRE));
     {
         int n = 0;
         while (Line2[n]) {
@@ -165,7 +165,7 @@ void PaintConfirm(void) {
         StringCopy(Line2 + n, (int)sizeof(Line2) - n, " ?");
     }
     PaintList();
-    PaintOverlay(LocStr(MSG_FILES_DEL_TITLE), Line2, LocStr(MSG_FILES_DEL_HINT));
+    PaintOverlay(LocaleString(MESSAGE_FILES_DEL_TITLE), Line2, LocaleString(MESSAGE_FILES_DEL_HINT));
 }
 
 void PaintPrompt(void) {
@@ -174,11 +174,11 @@ void PaintPrompt(void) {
     int i;
 
     if (gPromptKind == FILES_PROMPT_MKDIR) {
-        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_NEW_DIR));
+        StringCopy(Title, sizeof(Title), LocaleString(MESSAGE_FILES_NEW_DIR));
     } else if (gPromptKind == FILES_PROMPT_NEWFILE) {
-        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_NEW_FILE));
+        StringCopy(Title, sizeof(Title), LocaleString(MESSAGE_FILES_NEW_FILE));
     } else {
-        StringCopy(Title, sizeof(Title), LocStr(MSG_FILES_RENAME));
+        StringCopy(Title, sizeof(Title), LocaleString(MESSAGE_FILES_RENAME));
     }
     Line2[0] = '>';
     Line2[1] = ' ';
@@ -188,7 +188,7 @@ void PaintPrompt(void) {
     Line2[2 + i] = '_';
     Line2[3 + i] = 0;
     PaintList();
-    PaintOverlay(Title, Line2, LocStr(MSG_FILES_PROMPT_HINT));
+    PaintOverlay(Title, Line2, LocaleString(MESSAGE_FILES_PROMPT_HINT));
 }
 
 void Paint(void) {

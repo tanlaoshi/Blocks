@@ -80,7 +80,7 @@ int IgpuGsmMap(UINT64 GttOff, UINT64 Phys) {
     return 1;
 }
 
-int IgpuGsmInit(void) {
+int IgpuGsmInitialize(void) {
     UINT64 Pte0;
     UINTN Map;
 

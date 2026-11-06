@@ -55,7 +55,7 @@ static void Paint(void) {
              gEditDirty ? "* dirty   Esc=hint  Ctrl+S=save" : "  clean   Esc=hint  Ctrl+S=save",
              ThemeTextMuted());
 
-    gEditSave.Button.Text = LocStr(MSG_EDIT_SAVE);
+    gEditSave.Button.Text = LocaleString(MESSAGE_EDIT_SAVE);
     {
         UINT32 Tw = FontStringWidth(gEditSave.Button.Text);
 

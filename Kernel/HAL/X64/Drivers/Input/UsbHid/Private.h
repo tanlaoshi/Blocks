@@ -20,7 +20,7 @@
 #define USB_WVALUE_DT_HUB     0x2900u
 #define USB_HID_REPORT_IN     0x0100u
 #define PORTSC_CCS            (1u << 0)
-#define KBD_Q 16
+#define KEYBOARD_QUEUE 16
 #define MOUSE_Q 32
 #define DCBAA_SLOTS 16
 #define HUB_PORT_CONNECTION   (1u << 0)
@@ -60,18 +60,18 @@ extern UINT32 gMaxPorts;
 extern UINT32 gPort1;
 extern UINT8 gSpeed;
 extern UINT32 gSlotId;
-extern UINT32 gXferSlot;
+extern UINT32 gTransferSlot;
 extern UINT32 gIntrDci;
-extern UINT8 gKbdIface;
-extern UINT8 gKbdParseScore;
-extern UINT8 gKbdEpAddr;
-extern UINT16 gKbdMps;
-extern UINT8 gKbdEpInterval;
-extern UINT8 gKbdPollReport;
-extern UINT32 gKbdRoute;
-extern UINT8 gKbdHubSlot;
-extern UINT8 gKbdTtPort;
-extern USB_KEYBOARD_REPORT gKbdQ[KBD_Q];
+extern UINT8 gKeyboardInterface;
+extern UINT8 gKeyboardParseScore;
+extern UINT8 gKeyboardEndpointAddress;
+extern UINT16 gKeyboardMaxPacketSize;
+extern UINT8 gKeyboardEndpointInterval;
+extern UINT8 gKeyboardPollReport;
+extern UINT32 gKeyboardRoute;
+extern UINT8 gKeyboardHubSlot;
+extern UINT8 gKeyboardTransactionTranslatorPort;
+extern USB_KEYBOARD_REPORT gKeyboardQueue[KEYBOARD_QUEUE];
 extern volatile UINT32 gKeyboardWriteIndex;
 extern volatile UINT32 gKeyboardReadIndex;
 
@@ -81,13 +81,13 @@ extern UINT32 gMouseRoute;
 extern UINT8 gMouseHubSlot;
 extern UINT8 gMouseTtPort;
 extern UINT32 gMouseIntrDci;
-extern UINT8 gMouseIface;
-extern UINT8 gMouseIfaceProto;
+extern UINT8 gMouseInterface;
+extern UINT8 gMouseInterfaceProto;
 extern UINT8 gMouseParseScore;
 extern UINT8 gMouseAbsolute;
-extern UINT8 gMouseEpAddr;
+extern UINT8 gMouseEndpointAddress;
 extern UINT8 gMouseReportLen;
-extern UINT8 gMouseXferLen;
+extern UINT8 gMouseTransferLength;
 extern UINT8 gMouseBuf[8];
 extern int gMouseAbsX;
 extern int gMouseAbsY;
@@ -99,7 +99,7 @@ extern volatile UINT32 gMouseReportReady;
 
 extern UINT8 gDevCtx[2048];
 extern UINT8 gInCtx[2048];
-extern UINT8 gCtrlBuf[256];
+extern UINT8 gControlBuffer[256];
 extern UINT8 gReportBuf[8];
 extern USB_MOUSE_REPORT gMouseQ[MOUSE_Q];
 extern volatile UINT32 gMouseWriteIndex;
@@ -109,28 +109,28 @@ extern UINT32 gHubRootPort;
 extern UINT8 gHubNumPorts;
 extern UINT32 gPortNoHid;
 extern UINT32 gPortNeedForcePr;
-extern UINT8 gSlotEp0UsesKbdRing[DCBAA_SLOTS + 1];
+extern UINT8 gSlotEndpoint0UsesKeyboardRing[DCBAA_SLOTS + 1];
 extern UINT32 gCmdCode;
 extern volatile UINT32 gIntrDone;
-extern UINT8 gKbdReportPrev[8];
+extern UINT8 gKeyboardReportPrevious[8];
 extern volatile UINT32 gGetReportBusy;
 extern UINT8 gGetReportFails;
 extern UINT8 gUseGetReport;
-extern UINT8 gXferFast;
+extern UINT8 gTransferFast;
 extern volatile UINT32 gStatIntrEvt;
-extern volatile UINT32 gStatKbdPush;
+extern volatile UINT32 gStatKeyboardPush;
 extern SPIN_LOCK gHidQueueLock;
 
 void BootLog(const char *Text);
 void BootLogHex(const char *Prefix, UINT64 Value, int Digits);
 void BootLogV(const char *Text);
 void BootLogHexV(const char *Prefix, UINT64 Value, int Digits);
-void EnumWhy(const char *Why);
+void EnumerateWhy(const char *Why);
 UINT32 ReadMmio32(UINT64 Addr);
 void DcbaaSet(UINT32 Slot, UINT64 Phys);
 void DcbaaFlush(void);
 int ResetPortEx(UINT32 Port1, int Force);
-int ControlXfer(USB_SETUP *Setup, void *Data);
+int ControlTransfer(USB_SETUP *Setup, void *Data);
 int GetDeviceDesc(void);
 void DrainEvents(void);
 int UsesIrq(void);
@@ -138,16 +138,16 @@ void FlushDma(const void *Ptr, UINTN Size);
 void ZeroMemory(void *Ptr, UINTN Size);
 void CopyMemory(void *Dst, const void *Src, UINTN Size);
 UINT64 PointerToPhysical(const void *Ptr);
-void StallMs(UINT32 Ms);
+void StallMilliseconds(UINT32 Milliseconds);
 
 int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut);
-int GetDesc(UINT16 TypeIndex, UINT16 Index, UINT16 Length, void *Buf);
+int GetDescriptor(UINT16 TypeIndex, UINT16 Index, UINT16 Length, void *Buf);
 int SetConfig(UINT8 Config);
-int SetInterface(UINT8 Iface, UINT8 Alt);
-int SetIdle(UINT8 Iface);
-int SetProtocolBoot(UINT8 Iface);
+int SetInterface(UINT8 Interface, UINT8 Alt);
+int SetIdle(UINT8 Interface);
+int SetProtocolBoot(UINT8 Interface);
 void DisableSlot(UINT32 SlotId);
-void RecoverEp0(UINT32 SlotId);
+void RecoverEndpoint0(UINT32 SlotId);
 int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
                         UINT8 *DevCtx, UINT32 RouteString,
                         UINT8 ParentHubSlot, UINT8 TtPort,
@@ -157,57 +157,57 @@ int SetupHidDevice(UINT32 SlotId, UINT8 *DevCtx, UINT8 Speed,
                                   UINT16 *, UINT8 *),
                    int UseBootProto);
 int IsHubDeviceDesc(void);
-int ConfigHasHubIface(UINT8 *Cfg, UINT16 Total);
+int ConfigHasHubInterface(UINT8 *Cfg, UINT16 Total);
 int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot);
 int TryHubOnRootPort(UINT32 RootPort, UINT8 Speed);
-UINT32 PortReg(UINT32 Port1);
+UINT32 PortRegister(UINT32 Port1);
 UINT8 PortSpeed(UINT32 Portsc);
 int ResetPort(UINT32 Port1);
 
 int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval);
+                UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval);
 int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                     UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval);
+                     UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval);
 int RealPcRejectMouseExtraAsKeyboard(UINT16 Total, UINT8 Speed);
-int ConfigureIntr(UINT8 EpAddr, UINT16 Mps, UINT8 BInterval, UINT8 Speed,
-                  UINT8 MouseEpAddr, UINT16 MouseMps, UINT8 MouseBInterval);
-int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
+int ConfigureInterrupt(UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval, UINT8 Speed,
+                  UINT8 MouseEndpointAddress, UINT16 MouseMaxPacketSize, UINT8 MouseBInterval);
+int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval,
                        UINT8 Speed);
 void QueueIntr(void);
 void QueueMouseIntr(void);
 int SyncKeyboardIntr(void);
-int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
-                       UINT8 *MouseEp, UINT16 *MouseMps, UINT8 *MouseIv);
+int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KeyboardInterface, UINT8 KeyboardEndpoint,
+                       UINT8 *MouseEndpoint, UINT16 *MouseMaxPacketSize, UINT8 *MouseIv);
 int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
                               UINT8 ConfigVal);
-int HidGetInputReport(UINT8 Iface, void *Data, UINT16 Length);
-void PollKbdGetReport(void);
+int HidGetInputReport(UINT8 Interface, void *Data, UINT16 Length);
+void PollKeyboardGetReport(void);
 int HubCtrl(UINT8 BmReq, UINT8 Req, UINT16 Value, UINT16 Index,
             UINT16 Len, void *Data);
 int FinishHubSetup(UINT8 *OutNumPorts);
 int HubGetPortStatus(UINT8 Port, UINT32 *OutSt);
-int HubSetPortFeat(UINT8 Port, UINT16 Feat);
-int HubClearPortFeat(UINT8 Port, UINT16 Feat);
+int HubSetPortFeature(UINT8 Port, UINT16 Feature);
+int HubClearPortFeature(UINT8 Port, UINT16 Feature);
 UINT8 HubPortSpeed(UINT32 St);
 int TryConfigureKeyboardSlot(UINT8 Speed);
-int EnumHubChildrenForKeyboard(void);
-int EnumHubChildrenForMouse(void);
-int InitMouseOnPort(UINT32 Port1);
-int InitMouseOnKeyboardSlot(void);
-int InitMouseClaimPort(UINT32 Port1, UINT8 *SpeedOut);
-int InitMouseFinishEp(UINT32 Port1, UINT8 Speed);
-void InitMouseDeferred(void);
+int EnumerateHubChildrenForKeyboard(void);
+int EnumerateHubChildrenForMouse(void);
+int MousePortInitialize(UINT32 Port1);
+int MouseKeyboardSlotInitialize(void);
+int MouseClaimPortInitialize(UINT32 Port1, UINT8 *SpeedOut);
+int MouseFinishEndpointInitialize(UINT32 Port1, UINT8 Speed);
+void MouseDeferredInitialize(void);
 void MousePush(void);
 int MousePresent(void);
 void MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
 int DequeueMouse(USB_MOUSE_REPORT *Report);
-void KbdPush(void);
+void KeyboardPush(void);
 int DequeueKeyboard(USB_KEYBOARD_REPORT *Report);
 int KeyboardSetLeds(UINT8 Leds);
 int HidKeyboardReady(void);
 UINT8 KeyboardInterface(void);
 
-void PublishControllerInit(void);
+void PublishControllerInitialize(void);
 int EnableIrq(USB_CONTROLLER *Device);
 
 #endif

@@ -36,7 +36,7 @@ static void CopyStrUnescape(char *Dst, UINTN DstMax, const char *Src) {
 static void ResetToFallback(void) {
     UINT32 i;
 
-    for (i = 0; i < (UINT32)MSG_COUNT; i++) {
+    for (i = 0; i < (UINT32)MESSAGE_COUNT; i++) {
         CopyStrUnescape(gEn[i], LOCALE_STR_MAX, gEnFallback[i]);
         CopyStrUnescape(gZh[i], LOCALE_STR_MAX, gZhFallback[i]);
     }
@@ -45,8 +45,8 @@ static void ResetToFallback(void) {
 static int KeyToId(const char *Key) {
     UINT32 i;
 
-    for (i = 0; i < (UINT32)MSG_COUNT; i++) {
-        const char *K = gMsgKeys[i];
+    for (i = 0; i < (UINT32)MESSAGE_COUNT; i++) {
+        const char *K = gMessageKeys[i];
         UINTN j;
         for (j = 0; K[j] && Key[j] && K[j] == Key[j]; j++) {
         }

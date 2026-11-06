@@ -70,7 +70,7 @@ static int VolOnBootDisk(const FS_VOLUME *V) {
     return GuidEq16(V->DiskGuid, Info->BootDiskGuid);
 }
 
-static int ParseRootCfg(const char *Buf, UINTN Len, UINT8 Disk[16], UINT8 Part[16]) {
+static int ParseRootConfig(const char *Buf, UINTN Len, UINT8 Disk[16], UINT8 Part[16]) {
     UINTN i = 0;
     int HaveDisk = 0;
     int HavePart = 0;
@@ -125,7 +125,7 @@ static int ParseRootCfg(const char *Buf, UINTN Len, UINT8 Disk[16], UINT8 Part[1
     return HaveDisk && HavePart;
 }
 
-static int TryRootCfgFromVol(int VolIdx, UINT8 Disk[16], UINT8 Part[16]) {
+static int TryRootConfigFromVolume(int VolIdx, UINT8 Disk[16], UINT8 Part[16]) {
     char Buf[256];
     UINTN Sz = 0;
 
@@ -141,7 +141,7 @@ static int TryRootCfgFromVol(int VolIdx, UINT8 Disk[16], UINT8 Part[16]) {
         }
     }
     Buf[Sz] = 0;
-    return ParseRootCfg(Buf, Sz, Disk, Part);
+    return ParseRootConfig(Buf, Sz, Disk, Part);
 }
 
 static int FindVolByDiskPart(const UINT8 Disk[16], const UINT8 Part[16]) {
@@ -262,7 +262,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             if (!VolIsEspName(&gVols[i]) || !VolOnBootDisk(&gVols[i])) {
                 continue;
             }
-            if (TryRootCfgFromVol(i, Disk, Part)) {
+            if (TryRootConfigFromVolume(i, Disk, Part)) {
                 FromCfg = 1;
                 LogFs("FS: ROOT.CFG loaded (boot disk ESP)\n");
                 break;
@@ -276,7 +276,7 @@ void FsResolveOsTarget(int *BlocksVol) {
             if (!VolIsEspName(&gVols[i])) {
                 continue;
             }
-            if (TryRootCfgFromVol(i, Disk, Part)) {
+            if (TryRootConfigFromVolume(i, Disk, Part)) {
                 FromCfg = 1;
                 LogFs("FS: ROOT.CFG loaded\n");
                 break;

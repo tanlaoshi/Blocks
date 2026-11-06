@@ -84,7 +84,7 @@ void HalSerialInitialize(void) {
 void HalSerialRetryIfMissing(void) {
 }
 
-void HalSerialEnableRxIrq(void) {
+void HalSerialEnableReceiveIrq(void) {
 }
 
 int HalSerialPresent(void) {
@@ -95,7 +95,7 @@ int HalSerialPresent(void) {
 #endif
 }
 
-void HalSerialRxPump(void) {
+void HalSerialReceivePump(void) {
 }
 
 void HalSerialGopEnable(void) {
@@ -227,7 +227,7 @@ void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
-void HalSerialBootHoldMs(UINT32 Ms) {
+void HalSerialBootHoldMilliseconds(UINT32 Ms) {
     (void)Ms;
 }
 

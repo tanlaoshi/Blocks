@@ -69,7 +69,7 @@ int IoApicReady(void) {
     return gReady;
 }
 
-int IoApicInit(void) {
+int IoApicInitialize(void) {
     ACPI_IOAPIC_INFO Io[ACPI_IOAPIC_MAX];
     int IoCount = 0;
     UINT64 Rsdp;

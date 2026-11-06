@@ -119,7 +119,7 @@ void VideoSetBackbuffer(UINT32 *Buf, UINT32 Pages) {
     gBackOn = 1;
     /*
      * 不从 GOP 全屏拷：后缓冲内容以后续绘制为准。
-     * PR-K-log-cont：InitVideo 不再 ClearScreen+Present 抹掉 boot 上滚。
+     * PR-K-log-cont：InitializeVideo 不再 ClearScreen+Present 抹掉 boot 上滚。
      */
     gDirty = 0;
     gCurDirty = 0;

@@ -18,7 +18,7 @@
 #include "EditUi.h"
 
 
-int EnsureDragDirtyBuf(UINT32 Ww, UINT32 Hh) {
+int EnsureDragDirtyBuffer(UINT32 Ww, UINT32 Hh) {
     UINT64 Need;
     UINT32 Pages;
 
@@ -52,7 +52,7 @@ int EnsureDragDirtyBuf(UINT32 Ww, UINT32 Hh) {
 }
 
 
-int EnsureUnderDragBuf(UINT32 Ww, UINT32 Wh) {
+int EnsureUnderDragBuffer(UINT32 Ww, UINT32 Wh) {
     UINT32 Pages = BackupPageCount(Ww, Wh);
 
     if (Pages == 0) {
@@ -94,7 +94,7 @@ void BeginDragBackups(int DragIdx) {
     if (DragIdx < 0 || DragIdx >= MAX_WINS || !gGuiWindowManager.Windows[DragIdx].Active) {
         return;
     }
-    if (!EnsureWindowBackupBuf(DragIdx)) {
+    if (!EnsureWindowBackupBuffer(DragIdx)) {
         DebugWrite("Gui: drag backup alloc failed\n");
         return;
     }
@@ -103,7 +103,7 @@ void BeginDragBackups(int DragIdx) {
         if (!gGuiWindowManager.Windows[i].Active) {
             continue;
         }
-        EnsureWindowBackupBuf(i);
+        EnsureWindowBackupBuffer(i);
         /*
          * ForceFull 只对「帧缓冲上可见」的窗：已被上层盖住时整窗 ReadRect
          * 会把前景烙进 gGuiWindowManager.WinBackup，ClearOld 露底时出现拖动烙印。

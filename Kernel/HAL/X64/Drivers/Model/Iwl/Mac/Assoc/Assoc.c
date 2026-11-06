@@ -27,7 +27,7 @@ int IwlAssocRun(void) {
     gIwlAid = 0;
     gIwlStaRsnLen = 0;
 
-    (void)IwlPhyCtxtTune(gIwlTarget.Chan);
+    (void)IwlPhyContextTune(gIwlTarget.Chan);
 
     {
         int EverAuth = 0;
@@ -165,7 +165,7 @@ int IwlAssocRun(void) {
     for (i = 0; i < 80; i++) {
         int Took = 0;
 
-        IwlRxPoll();
+        IwlReceivePoll();
         while (Took < 32 && IwlAssocTake(&Pkt, &Len)) {
             const UINT8 *Dot;
             UINTN PayLen;
@@ -177,10 +177,10 @@ int IwlAssocRun(void) {
             Dot = Pkt->Data + 4;
             PayLen = Len - sizeof(IWL_CMD_HDR) - 4;
             if (PayLen >= 24 && ((Dot[0] >> 2) & 0x3u) == 0x2u) {
-                IwlRxHoldMpdu(Pkt, Len);
+                IwlReceiveHoldMpdu(Pkt, Len);
             }
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     return 1;
 }

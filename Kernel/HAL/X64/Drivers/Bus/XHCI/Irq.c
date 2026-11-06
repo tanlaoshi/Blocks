@@ -35,7 +35,7 @@ void Irq(void) {
         }
         return;
     }
-    /* 环推进自带 gEvtConsumerLock。KbdPush 自己拿 gHidQueueLock，这里不要再套一层。 */
+    /* 环推进自带 gEvtConsumerLock。KeyboardPush 自己拿 gHidQueueLock，这里不要再套一层。 */
     if (RealPc) {
         ProcessEventsRealPc();
     } else {
@@ -120,7 +120,7 @@ void DrainEvents(void) {
 
     /*
      * excl-2：每轮先 ProcessEvents*（gEvtConsumerLock），再 ServiceHidCompletions。
-     * KbdPush 自己拿 gHidQueueLock。两锁不同时持有；禁止持 HID 锁调 ProcessEvents / ControlXfer。
+     * KeyboardPush 自己拿 gHidQueueLock。两锁不同时持有；禁止持 HID 锁调 ProcessEvents / ControlTransfer。
      */
     for (i = 0; i < Passes; i++) {
         if (RealPc) {
@@ -144,7 +144,7 @@ void DrainEvents(void) {
         ImClearPending();
     }
     if (RealPc) {
-        PollKbdGetReport();
+        PollKeyboardGetReport();
     }
 }
 
@@ -232,18 +232,18 @@ int EnableIrq(USB_CONTROLLER *Device) {
     /* PHOTO / show xhci：Arm 后计数清零 */
     gStatIntrEvt = 0;
     gStatMouseEvt = 0;
-    gStatKbdPush = 0;
+    gStatKeyboardPush = 0;
     gStatMousePush = 0;
-    gStatXferAny = 0;
+    gStatTransferAny = 0;
     gStatUnmatched = 0;
     gStatEvtRing = 0;
     gStatDrain = 0;
     gStatLastCc = 0;
     gStatLastSlot = 0;
-    gStatLastEp = 0;
+    gStatLastEndpoint = 0;
     gStatIrq = 0;
     gStatIrqSkipped = 0;
-    gDiagXferLogged = 0;
+    gDiagTransferLogged = 0;
     gDiagIntrCcLogged = 0;
     DiagLogArms();
 
@@ -259,15 +259,15 @@ int EnableIrq(USB_CONTROLLER *Device) {
     /* Queue 产生的 Stopped 勿计入 PHOTO */
     gStatIntrEvt = 0;
     gStatMouseEvt = 0;
-    gStatKbdPush = 0;
+    gStatKeyboardPush = 0;
     gStatMousePush = 0;
-    gStatXferAny = 0;
+    gStatTransferAny = 0;
     gStatUnmatched = 0;
     gStatEvtRing = 0;
     gStatDrain = 0;
     gStatLastCc = 0;
     gStatLastSlot = 0;
-    gStatLastEp = 0;
+    gStatLastEndpoint = 0;
 
     HalIrqNotifyRegister(VEC_XHCI, Irq);
 

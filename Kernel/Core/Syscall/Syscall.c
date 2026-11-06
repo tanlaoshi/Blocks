@@ -138,6 +138,10 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
         HalFrameSetReturn(Frame, (UINT64)(long)SysDamageRect(
             (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
         break;
+    case SYS_GRAPHICS_DRAW_STRING:
+        HalFrameSetReturn(Frame, (UINT64)(long)SysDrawString(
+            (int)HalFrameGetArgument0(Frame), HalFrameGetArgument1(Frame)));
+        break;
     case SYS_WINDOW_POLL:
         HalFrameSetReturn(Frame, (UINT64)(long)SysPollInput(
             (int)HalFrameGetArgument0(Frame)));
@@ -187,7 +191,7 @@ UINT64 SyscallDispatch(HAL_INTERRUPT_FRAME *Frame) {
         Ret = SchedulerSignal(Frame);
         break;
     case SYS_TIME_SLEEP:
-        Ret = SchedulerSleepMs(Frame, (UINT32)HalFrameGetArgument0(Frame));
+        Ret = SchedulerSleepMilliseconds(Frame, (UINT32)HalFrameGetArgument0(Frame));
         break;
     case SYS_PATH_GETCWD:
         HalFrameSetReturn(Frame, (UINT64)(long)SysGetcwd(

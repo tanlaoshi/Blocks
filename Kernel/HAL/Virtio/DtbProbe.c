@@ -5,7 +5,7 @@
 #include "DtbPrivate.h"
 #include "CString.h"
 
-static int NameIsFwCfg(const char *Name) {
+static int NameIsFirmwareConfig(const char *Name) {
     /* "fw-cfg" 或 "fw-cfg@..." */
     if (!Name) {
         return 0;
@@ -17,7 +17,7 @@ static int NameIsFwCfg(const char *Name) {
     return Name[6] == 0 || Name[6] == '@';
 }
 
-int DtbFwCfgBase(UINT64 DtbPhys, UINT64 *OutBase) {
+int DtbFirmwareConfigBase(UINT64 DtbPhys, UINT64 *OutBase) {
     const UINT8 *Blob;
     const FDT_HEADER *Hdr;
     UINT32 Total;
@@ -72,7 +72,7 @@ int DtbFwCfgBase(UINT64 DtbPhys, UINT64 *OutBase) {
             }
             Off = DtbAlign4(Off + Len + 1);
             Depth++;
-            InFwCfg = NameIsFwCfg(Name) ? 1 : 0;
+            InFwCfg = NameIsFirmwareConfig(Name) ? 1 : 0;
             continue;
         }
         if (Token == FDT_END_NODE) {

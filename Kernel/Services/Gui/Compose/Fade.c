@@ -62,7 +62,7 @@ static int CaptureUnderNoPresent(int Idx, UINT32 *Under, UINT32 Rw, UINT32 Rh,
      * 尺寸取窗备份的物理宽高——BlendFrame 把 Under 与备份当同 stride 的
      * 平铺图逐像素混，两者必须严格同尺寸。
      */
-    HalVideoReadRectPhys(GuiPhysX(Win->X), GuiPhysY(Win->Y), Wp, Hp, Under);
+    HalVideoReadRectPhys(GuiPhysicalX(Win->X), GuiPhysicalY(Win->Y), Wp, Hp, Under);
     return 1;
 }
 
@@ -139,8 +139,8 @@ void GuiAnimateWindowFade(int Idx, int FadeIn) {
     }
 
     /* PR-23d：缓冲按物理像素开；Under/Frame 与窗备份同尺寸同 stride */
-    Xp = GuiPhysX(Win->X);
-    Yp = GuiPhysY(Win->Y);
+    Xp = GuiPhysicalX(Win->X);
+    Yp = GuiPhysicalY(Win->Y);
     Wp = gGuiWindowManager.WinBackupWp[Idx];
     Hp = gGuiWindowManager.WinBackupHp[Idx];
     if (Wp == 0 || Hp == 0) {

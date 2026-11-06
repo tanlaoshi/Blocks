@@ -15,7 +15,7 @@
 /*
  * PR-N-i219-tx：I219 写 TXDCTL。NUC 2026-09-22：仍 TDT↑ TDH=0 / last_rc=-3 → 假说失败，保留无害。
  */
-void E1000ApplyI219TxDctl(void) {
+void E1000ApplyI219TransmitDctl(void) {
     if (gPciDid != E1000_DID_I219_LM) {
         return;
     }
@@ -63,7 +63,7 @@ static void FillPciBars(USB_CONTROLLER *Dev) {
     }
 }
 
-int TryEnableMsiRx(void) {
+int TryEnableMsiReceive(void) {
     USB_CONTROLLER Dev;
 
     ZeroMemory(&Dev, sizeof(Dev));
@@ -103,7 +103,7 @@ int WaitLinkUp(void) {
 
     __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
     T0 = ((UINT64)Hi << 32) | Lo;
-    Limit = T0 + 200ULL * 3000000ULL; /* 与 RtlStallMs 同粗校 */
+    Limit = T0 + 200ULL * 3000000ULL; /* 与 RtlStallMilliseconds 同粗校 */
     for (;;) {
         if (MmioR32(E1000_REG_STATUS) & E1000_STATUS_LU) {
             return 1;

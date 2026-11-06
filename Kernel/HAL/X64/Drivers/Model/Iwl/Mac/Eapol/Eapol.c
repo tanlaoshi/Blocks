@@ -22,7 +22,7 @@ int IwlEapolRun(void) {
         IwlLogStage("wpa2=nocfg");
         return 0;
     }
-    if (!IwlEapolWaitMsg1(Eapol, &EapLen, Anonce, Replay, &KeyDesc)) {
+    if (!IwlEapolWaitMessage1(Eapol, &EapLen, Anonce, Replay, &KeyDesc)) {
         return 0;
     }
     return IwlEapolFinishHandshake(Eapol, EapLen, Anonce, Replay, KeyDesc);

@@ -14,6 +14,8 @@ typedef struct {
     int Count;
 } STORE_LIST_CTX;
 
+static void ClearSiOrphan(const char *Id);
+
 static int ListInstalledCb(const char *Key, const char *Value, void *Ctx) {
     STORE_LIST_CTX *C = (STORE_LIST_CTX *)Ctx;
     STORE_INSTALLED *E;
@@ -86,6 +88,8 @@ static void StoreAdoptDiskApps(void) {
 
 int StoreListInstalled(STORE_INSTALLED *Out, int Max, int *OutCount) {
     STORE_LIST_CTX Ctx;
+    int i;
+    int Keep;
 
     if (!Out || Max <= 0 || !OutCount) {
         return FAT_ERR_INVAL;
@@ -95,6 +99,26 @@ int StoreListInstalled(STORE_INSTALLED *Out, int Max, int *OutCount) {
     Ctx.Max = Max;
     Ctx.Count = 0;
     (void)DbForEach(ListInstalledCb, &Ctx);
+    /*
+     * 孤儿 si（DB 有、Apps 无）：菜单仍会灰显并回落商店图标。
+     * BLOCKS: 曾误指 NVMe 时 Adopt 写过 U 盘 DB；与 StoreIsInstalled 对齐清掉。
+     */
+    Keep = 0;
+    for (i = 0; i < Ctx.Count; i++) {
+        STORE_INSTALLED *E = &Out[i];
+        int IsApp = (E->Type[0] == 'a' && E->Type[1] == 'p' && E->Type[2] == 'p' &&
+                     E->Type[3] == 0);
+
+        if (IsApp && E->File[0] && !StoreAppElfExists(E->Id, E->File)) {
+            ClearSiOrphan(E->Id);
+            continue;
+        }
+        if (Keep != i) {
+            Out[Keep] = *E;
+        }
+        Keep++;
+    }
+    Ctx.Count = Keep;
     *OutCount = Ctx.Count;
     return FAT_OK;
 }

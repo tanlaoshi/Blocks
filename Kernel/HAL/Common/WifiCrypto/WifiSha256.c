@@ -92,7 +92,7 @@ static void Sha256Block(UINT32 S[WIFI_SHA256_STATE_WORDS],
     S[4] += E; S[5] += F; S[6] += G; S[7] += H;
 }
 
-static void Sha256Init(UINT32 S[WIFI_SHA256_STATE_WORDS])
+static void Sha256Initialize(UINT32 S[WIFI_SHA256_STATE_WORDS])
 {
     S[0] = 0x6a09e667u; S[1] = 0xbb67ae85u; S[2] = 0x3c6ef372u; S[3] = 0xa54ff53au;
     S[4] = 0x510e527fu; S[5] = 0x9b05688cu; S[6] = 0x1f83d9abu; S[7] = 0x5be0cd19u;
@@ -143,7 +143,7 @@ static void Sha256Digest(const UINT8 *Data, UINTN Length,
     UINTN I;
     UINTN N;
 
-    Sha256Init(S);
+    Sha256Initialize(S);
     Offset = 0;
     while (Offset + WIFI_SHA256_BLOCK_LENGTH <= Length) {
         Sha256Block(S, Data + Offset);
@@ -192,7 +192,7 @@ static void HmacSha256(const UINT8 *Key, UINTN KeyLength,
     for (I = 0; I < UsedKeyLength; I++) {
         KeyPad[I] = UsedKey[I];
     }
-    Sha256Init(S);
+    Sha256Initialize(S);
     for (I = 0; I < WIFI_SHA256_BLOCK_LENGTH; I++) {
         Block[I] = (UINT8)(KeyPad[I] ^ WIFI_SHA256_IPAD);
     }

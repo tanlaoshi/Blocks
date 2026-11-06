@@ -4,19 +4,19 @@
 #include "XHCI/Private.h"
 
 /* 配置描述符中找 MSC Bulk IN/OUT（偏好 BOT；允许 UASP；兜底任一对 Bulk） */
-int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
-                 UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut) {
+int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutInterface,
+                 UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn, UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut) {
     UINT16 Off = 0;
-    UINT8 CurIface = 0xFF;
+    UINT8 CurInterface = 0xFF;
     UINT8 CurAlt = 0;
-    UINT8 IfaceClass = 0;
-    UINT8 IfaceSub = 0;
-    UINT8 IfaceProto = 0;
-    UINT8 BestIface = 0xFF;
+    UINT8 InterfaceClass = 0;
+    UINT8 InterfaceSub = 0;
+    UINT8 InterfaceProto = 0;
+    UINT8 BestInterface = 0xFF;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
     int BestScore = -1;
 
     while (Off + 2 <= Total) {
@@ -27,15 +27,15 @@ int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
             break;
         }
         if (Type == 4 && Len >= 9) {
-            CurIface = Cfg[Off + 2];
+            CurInterface = Cfg[Off + 2];
             CurAlt = Cfg[Off + 3];
-            IfaceClass = Cfg[Off + 5];
-            IfaceSub = Cfg[Off + 6];
-            IfaceProto = Cfg[Off + 7];
-        } else if (Type == 5 && Len >= 7 && CurIface != 0xFF && CurAlt == 0) {
+            InterfaceClass = Cfg[Off + 5];
+            InterfaceSub = Cfg[Off + 6];
+            InterfaceProto = Cfg[Off + 7];
+        } else if (Type == 5 && Len >= 7 && CurInterface != 0xFF && CurAlt == 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
             int Score;
 
             if ((Attr & 0x03) != 2) {
@@ -43,12 +43,12 @@ int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
                 continue;
             }
             /* class8 BOT/UASP 优先；其它 iface 仅作兜底（score 0） */
-            if (IfaceClass == 0x08) {
+            if (InterfaceClass == 0x08) {
                 Score = 10;
-                if (IfaceSub == 0x06) {
+                if (InterfaceSub == 0x06) {
                     Score += 2;
                 }
-                if (IfaceProto == 0x50 || IfaceProto == 0x62) {
+                if (InterfaceProto == 0x50 || InterfaceProto == 0x62) {
                     Score += 4;
                 }
             } else {
@@ -60,21 +60,21 @@ int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
             }
             if (Score > BestScore) {
                 BestScore = Score;
-                BestIface = CurIface;
+                BestInterface = CurInterface;
                 BestIn = 0;
                 BestOut = 0;
-                BestInMps = 0;
-                BestOutMps = 0;
-            } else if (CurIface != BestIface) {
+                BestInMaxPacketSize = 0;
+                BestOutMaxPacketSize = 0;
+            } else if (CurInterface != BestInterface) {
                 Off = (UINT16)(Off + Len);
                 continue;
             }
             if (Addr & 0x80) {
                 BestIn = Addr;
-                BestInMps = Mps ? Mps : 64;
+                BestInMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
             } else {
                 BestOut = Addr;
-                BestOutMps = Mps ? Mps : 64;
+                BestOutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
             }
         }
         Off = (UINT16)(Off + Len);
@@ -88,20 +88,20 @@ int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
         return 0;
     }
     /* 无 class8 时仅当找到成对 Bulk 才接受（score 0） */
-    if (OutIface) {
-        *OutIface = BestIface;
+    if (OutInterface) {
+        *OutInterface = BestInterface;
     }
-    if (EpIn) {
-        *EpIn = BestIn;
+    if (EndpointIn) {
+        *EndpointIn = BestIn;
     }
-    if (MpsIn) {
-        *MpsIn = BestInMps;
+    if (MaxPacketSizeIn) {
+        *MaxPacketSizeIn = BestInMaxPacketSize;
     }
-    if (EpOut) {
-        *EpOut = BestOut;
+    if (EndpointOut) {
+        *EndpointOut = BestOut;
     }
-    if (MpsOut) {
-        *MpsOut = BestOutMps;
+    if (MaxPacketSizeOut) {
+        *MaxPacketSizeOut = BestOutMaxPacketSize;
     }
     return 1;
 }

@@ -61,7 +61,7 @@ static int PlanInstallRec(const char *Id, int Depth,
              * 否则改仓库元数据（desktop=yes 等）永不落盘。
              */
             if (LookupPackageKind(Id) == STORE_KIND_APP) {
-                (void)StoreInstallBundleExtras(Id);
+                (void)StoreInstallBundleExtras(Id, 1);
             }
             return FAT_OK;
         }

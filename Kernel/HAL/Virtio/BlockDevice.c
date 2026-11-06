@@ -39,7 +39,7 @@ static void HexU32(UINT32 V) {
     LogFs(Buf);
 }
 
-static int BlkXfer(UINT32 Type, UINT32 Lba, UINT32 Count, void *Buffer) {
+static int BlockTransfer(UINT32 Type, UINT32 Lba, UINT32 Count, void *Buffer) {
     UINT16 D0;
     UINT16 D1;
     UINT16 D2;
@@ -120,24 +120,24 @@ static int BlkXfer(UINT32 Type, UINT32 Lba, UINT32 Count, void *Buffer) {
     return 1;
 }
 
-static int BlkProbe(UINT32 Drive) {
+static int BlockProbe(UINT32 Drive) {
     return (Drive == 0 && gBlkReady) ? 1 : 0;
 }
 
-static int BlkRead(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer) {
+static int BlockRead(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer) {
     (void)Drive;
-    return BlkXfer(VIRTIO_BLK_T_IN, Lba, Count, Buffer);
+    return BlockTransfer(VIRTIO_BLK_T_IN, Lba, Count, Buffer);
 }
 
-static int BlkWrite(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer) {
+static int BlockWrite(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer) {
     (void)Drive;
-    return BlkXfer(VIRTIO_BLK_T_OUT, Lba, Count, (void *)Buffer);
+    return BlockTransfer(VIRTIO_BLK_T_OUT, Lba, Count, (void *)Buffer);
 }
 
 static const BLOCK_BACKEND gBlkBackend = {
-    .Probe = BlkProbe,
-    .ReadSectors = BlkRead,
-    .WriteSectors = BlkWrite,
+    .Probe = BlockProbe,
+    .ReadSectors = BlockRead,
+    .WriteSectors = BlockWrite,
     .Flush = 0,
 };
 
@@ -145,7 +145,7 @@ typedef struct {
     UINT64 FoundBase;
 } BLK_SCAN_CTX;
 
-static void BlkScanCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
+static void BlockScanCallback(UINT64 Base, UINT32 DeviceId, void *Ctx) {
     BLK_SCAN_CTX *S = (BLK_SCAN_CTX *)Ctx;
     if (DeviceId == VIRTIO_DEV_BLOCK && S->FoundBase == 0) {
         S->FoundBase = Base;
@@ -166,7 +166,7 @@ static int VirtioBlockDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPr
     }
 
     Ctx.FoundBase = 0;
-    VirtioMmioScan(BlkScanCb, &Ctx);
+    VirtioMmioScan(BlockScanCallback, &Ctx);
     if (Ctx.FoundBase == 0) {
         return -1;
     }
@@ -218,7 +218,7 @@ void VirtioBlockRegister(void) {
     (void)DriverRegister(&gVirtioBlockDriver);
 }
 
-int VirtioBlockInit(void) {
+int VirtioBlockInitialize(void) {
     (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
     if (!BlockBackendReady()) {
         return 0;

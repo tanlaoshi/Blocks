@@ -3,7 +3,7 @@
  *
  * ```
  * UsbMscClaim|AutoBeforeFs|Hot → ClaimPorts
- *   入口：若 freeze 则直接 return 0（Hot 须先 XhciPortEnumUnfreeze）
+ *   入口：若 freeze 则直接 return 0（Hot 须先 XhciPortEnumerateUnfreeze）
  *   若 cmd sick：Recover + QueueIntr/QueueMouseIntr（保持 Dual MSI，勿 FallbackToPoll）
  *   → HubEnumerate | ClaimPort(ForceUntilPed→Address) → FinishClaim
  *   跳过：kbd/mouse/hub 根口、已认 FTDI/CDC 口
@@ -12,7 +12,7 @@
  *   扫空 → freeze=1；勿重 Queue HID（IN 仍挂着）
  *   sick → freeze=1 + Recover + 重武装 HID
  * ```
- * 保鼠要点：WaitCommand 内仍 ServiceHidCompletions；sick 后勿 RecoverEp0；
+ * 保鼠要点：WaitCommand 内仍 ServiceHidCompletions；sick 后勿 RecoverEndpoint0；
  * 无 sick 收口勿再 QueueIntr/QueueMouseIntr（secondary 扫空双投递会打死挂起的 IN）。
  * AddressDeviceOnPort/ForceUntilPed 见 freeze 则拒。Wifi/FTDI/CDC claim 入口亦早退。
  * Force/Address：ClaimPort.c；全局 BSS：Xhci.c。
@@ -31,7 +31,7 @@ static void NoteMouseRootDropped(void) {
     if (gMouseSlotId == 0 || gMousePort == 0 || gMouseHubSlot != 0) {
         return;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(gMousePort));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(gMousePort));
     if ((Ps & PORTSC_CCS) && (Ps & PORTSC_PED)) {
         return;
     }
@@ -39,12 +39,12 @@ static void NoteMouseRootDropped(void) {
     DisableSlot(gMouseSlotId);
 }
 
-void XhciPortEnumUnfreeze(void) {
-    gXhciPortEnumFreeze = 0;
+void XhciPortEnumerateUnfreeze(void) {
+    gXhciPortEnumerateFreeze = 0;
 }
 
-int XhciPortEnumIsFrozen(void) {
-    return gXhciPortEnumFreeze ? 1 : 0;
+int XhciPortEnumerateIsFrozen(void) {
+    return gXhciPortEnumerateFreeze ? 1 : 0;
 }
 
 int ClaimPorts(void) {
@@ -60,7 +60,7 @@ int ClaimPorts(void) {
      * 扫空/sick 后 freeze：勿在此清零。Worker HotPoll~5s 若每次解开再 Address，
      * 桌面期持续抢命令环 → 空拖假死。Shell msc hot 先 Unfreeze。
      */
-    if (gXhciPortEnumFreeze) {
+    if (gXhciPortEnumerateFreeze) {
         return 0;
     }
     if (gMscClaimed && gMscScanSlot != 0) {
@@ -75,7 +75,7 @@ int ClaimPorts(void) {
         UINT32 Sp;
 
         for (Sp = 1; Sp <= gMaxPorts && Sp <= 32u; Sp++) {
-            UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(Sp));
+            UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(Sp));
 
             if (!(Ps & PORTSC_CCS)) {
                 continue;
@@ -150,7 +150,7 @@ int ClaimPorts(void) {
                 if (Pass == 1 && !(gPortNeedForcePr & (1u << P))) {
                     continue;
                 }
-                Ps = ReadMmio32(gOperationalBase + PortReg(P));
+                Ps = ReadMmio32(gOperationalBase + PortRegister(P));
                 if (!(Ps & PORTSC_CCS)) {
                     continue;
                 }
@@ -206,7 +206,7 @@ int ClaimPorts(void) {
                     continue;
                 }
 
-                gXferSlot = gMscScanSlot;
+                gTransferSlot = gMscScanSlot;
                 if (GetDeviceDesc() < 0) {
                     BootLogHex("Boot: MSC claim desc fail port=", P, 2);
                     gPortNeedForcePr |= (1u << P);
@@ -256,7 +256,7 @@ done:
         gXhciCmdWaitMs = 0;
         gXhciCmdAttempts = 0;
         /* 冻结后续 UART/WiFi 等根口 Force，避免再超时把鼠打卡 */
-        gXhciPortEnumFreeze = 1;
+        gXhciPortEnumerateFreeze = 1;
         BootLog("Boot: XHCI port enum freeze (keep mouse)\n");
         if (!HalCpuIsHypervisor()) {
             int i;
@@ -267,7 +267,7 @@ done:
             ServiceHidCompletions();
         }
         NoteMouseRootDropped();
-        /* 勿 RecoverEp0：sick 后再发 Stop/ResetEP 会二次超时（见最新串口） */
+        /* 勿 RecoverEndpoint0：sick 后再发 Stop/ResetEP 会二次超时（见最新串口） */
         if (gSlotId != 0 && gIntrDci != 0) {
             QueueIntr();
         }
@@ -283,7 +283,7 @@ done:
      * sick 路径上方已 Recover 后重武装；此处只 freeze，勿碰 HID 环。
      */
     if (!Ok) {
-        gXhciPortEnumFreeze = 1;
+        gXhciPortEnumerateFreeze = 1;
         BootLog("Boot: XHCI port enum freeze (msc empty, keep mouse)\n");
     }
     return Ok;

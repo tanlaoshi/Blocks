@@ -11,12 +11,12 @@
 #define LOCALE_STR_MAX   96
 #define LOCALE_FILE_MAX  (24u * 1024u)
 
-extern LOC_LANG gLang;
-extern char gEn[MSG_COUNT][LOCALE_STR_MAX];
-extern char gZh[MSG_COUNT][LOCALE_STR_MAX];
-extern const char *const gMsgKeys[MSG_COUNT];
-extern const char *const gEnFallback[MSG_COUNT];
-extern const char *const gZhFallback[MSG_COUNT];
+extern LOCALE_LANGUAGE gLang;
+extern char gEn[MESSAGE_COUNT][LOCALE_STR_MAX];
+extern char gZh[MESSAGE_COUNT][LOCALE_STR_MAX];
+extern const char *const gMessageKeys[MESSAGE_COUNT];
+extern const char *const gEnFallback[MESSAGE_COUNT];
+extern const char *const gZhFallback[MESSAGE_COUNT];
 
 void LocaleRegistryReset(void);
 /* 已有代码返回下标。新代码在还有空位时追加，文案先清空（缺键走英文）。失败 -1 */

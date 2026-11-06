@@ -46,7 +46,7 @@ void ArpLearn(UINT32 Ip, const UINT8 Mac[6]) {
     gArpCache[Slot].Valid = 1;
 }
 
-void TxDrain(void) {
+void TransmitDrain(void) {
     UINT16 Used = *gTx.UsedIdx;
     while (gTx.LastUsed != Used) {
         gTx.LastUsed = (UINT16)(gTx.LastUsed + 1);
@@ -70,7 +70,7 @@ int NetSendFrame(const UINT8 *Frame, UINTN FrameLen) {
 
     Wait = 100000;
     while (gTxBusy && Wait-- > 0) {
-        TxDrain();
+        TransmitDrain();
         VirtioMmioAckInterrupt(&gTx);
     }
     if (gTxBusy) {

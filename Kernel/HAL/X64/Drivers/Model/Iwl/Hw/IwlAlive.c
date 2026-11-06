@@ -50,12 +50,12 @@ static void IwlParseAlivePayload(const UINT8 *P, UINTN PayLen) {
     }
 }
 
-void IwlRxDrain(void) {
+void IwlReceiveDrain(void) {
     IWL_RX_PKT *Pkt;
     UINTN Len;
     UINT32 Guard = 0;
 
-    while (IwlRxTake(&Pkt, &Len) && Guard < 512) {
+    while (IwlReceiveTake(&Pkt, &Len) && Guard < 512) {
         if (Pkt->Hdr.Code == IWL_ALIVE) {
             UINTN Pay = Len > 4 + sizeof(IWL_CMD_HDR)
                       ? Len - 4 - sizeof(IWL_CMD_HDR) : 0;
@@ -85,7 +85,7 @@ int IwlWaitAlive(void) {
                 IwlMmioW32(IWL_CSR_FH_INT_STATUS, 0x00FFFFFFu);
             }
         }
-        while (IwlRxTake(&Pkt, &Len)) {
+        while (IwlReceiveTake(&Pkt, &Len)) {
             if (Pkt->Hdr.Code == IWL_ALIVE) {
                 UINTN Pay = Len > 4 + sizeof(IWL_CMD_HDR)
                           ? Len - 4 - sizeof(IWL_CMD_HDR) : 0;
@@ -99,19 +99,19 @@ int IwlWaitAlive(void) {
                 if (Status == IWL_ALIVE_OK || Status == 0 || GotCsr) {
                     gIwlAlive = 1;
                     /* 再吸干净同批通知 */
-                    IwlRxDrain();
+                    IwlReceiveDrain();
                     return 1;
                 }
             }
         }
         if (GotCsr) {
             /* CSR 已到：再等片刻吸 RX 里的 ALIVE 解析 scd_base */
-            IwlStallMs(20);
-            IwlRxDrain();
+            IwlStallMilliseconds(20);
+            IwlReceiveDrain();
             gIwlAlive = 1;
             return 1;
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     IwlDumpSbCpu();
     return 0;

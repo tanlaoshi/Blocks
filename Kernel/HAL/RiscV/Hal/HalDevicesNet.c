@@ -48,7 +48,7 @@ int HalNetInitialize(void) {
 #endif
 }
 
-int HalNetProbeAtModuleInit(void) {
+int HalNetProbeAtModuleInitialize(void) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
     return 1;
 #else
@@ -275,7 +275,7 @@ UINT16 HalNetChecksum(const void *Data, UINTN Len) {
 }
 
 void HalNetSetLwipReceive(int Enable) {
-    DriverNetSetLwIpRx(Enable);
+    DriverNetSetLwIpReceive(Enable);
 }
 
 void HalNetFeedAlternateReceive(void) {

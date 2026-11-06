@@ -172,13 +172,13 @@ static int FontTtfIceil(float X) {
 #include "stb_truetype.h"
 
 static stbtt_fontinfo gInfo[FONT_TTF_UI_MAX];
-static UINT32 gInitMask;
+static UINT32 gInitializeMask;
 static stbtt_fontinfo gMonoInfo;
 static int gMonoInit;
 static int gMonoNest;
 static UINT32 gMonoAdv;
 
-int FontTtfInit(void) {
+int FontTtfInitialize(void) {
     const UINT8 *Blob;
     UINT32 Size;
     UINT32 Slot;
@@ -186,7 +186,7 @@ int FontTtfInit(void) {
     int Any = 0;
 
     gInit = 0;
-    gInitMask = 0;
+    gInitializeMask = 0;
     if (!HalFpuOk()) {
         LogDrv("Boot: ttf init skip\n");
         return -1;
@@ -204,7 +204,7 @@ int FontTtfInit(void) {
         gArenaUsed = 0;
         Ok = stbtt_InitFont(&gInfo[Slot], Blob, 0);
         if (Ok) {
-            gInitMask |= (1u << Slot);
+            gInitializeMask |= (1u << Slot);
             Any = 1;
         }
     }
@@ -217,12 +217,12 @@ int FontTtfInit(void) {
     /* SESSION 早预热可能灌满 MISS；清掉才能在就绪后再栅 */
     FontTtfCacheDropMisses();
     LogDrv("Boot: ttf init ok slots=");
-    LogDrvHex32(gInitMask);
+    LogDrvHex32(gInitializeMask);
     LogDrv("\n");
     return 0;
 }
 
-int FontTtfMonoInit(void) {
+int FontTtfMonoInitialize(void) {
     const UINT8 *Blob;
     UINT32 Size;
     int Ok;
@@ -295,20 +295,20 @@ UINT32 FontTtfMonoAdvance(void) {
     return gMonoAdv;
 }
 
-static stbtt_fontinfo *FontTtfCur(void) {
+static stbtt_fontinfo *FontTtfCurrent(void) {
     UINT32 Slot;
 
     if (FontTtfMonoActive()) {
         return &gMonoInfo;
     }
     Slot = FontTtfUiActiveSlot();
-    if (Slot >= FONT_TTF_UI_MAX || (gInitMask & (1u << Slot)) == 0u) {
+    if (Slot >= FONT_TTF_UI_MAX || (gInitializeMask & (1u << Slot)) == 0u) {
         Slot = 0;
     }
-    if ((gInitMask & (1u << Slot)) == 0u) {
+    if ((gInitializeMask & (1u << Slot)) == 0u) {
         /* 兜底：任一已 Init 槽 */
         for (Slot = 0; Slot < FONT_TTF_UI_MAX; Slot++) {
-            if (gInitMask & (1u << Slot)) {
+            if (gInitializeMask & (1u << Slot)) {
                 break;
             }
         }
@@ -351,7 +351,7 @@ int FontTtfCellBaseline(UINT32 CellH) {
     if (!gInit || CellH == 0u || FontTtfMonoActive()) {
         return -1;
     }
-    Info = FontTtfCur();
+    Info = FontTtfCurrent();
     if (!Info) {
         return -1;
     }
@@ -776,7 +776,7 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
         return -1;
     }
     {
-        stbtt_fontinfo *Info = FontTtfCur();
+        stbtt_fontinfo *Info = FontTtfCurrent();
 
         if (Mono) {
             /* 1× + 共用基线；过采样会搅乱 Oy，mono 先保证整齐 */
@@ -852,12 +852,12 @@ int FontTtfRasterCp(UINT32 Cp, UINT8 *Pix18) {
 
 #else
 
-int FontTtfInit(void) {
+int FontTtfInitialize(void) {
     LogDrv("Boot: ttf init skip\n");
     return -1;
 }
 
-int FontTtfMonoInit(void) {
+int FontTtfMonoInitialize(void) {
     return -1;
 }
 

@@ -41,7 +41,7 @@ static void SurveyRootCcs(const char *Tag) {
         return;
     }
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
-        UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(P));
 
         if (!(Ps & PORTSC_CCS)) {
             continue;
@@ -86,7 +86,7 @@ static int CompanionScanOnce(UINT32 SavedHub) {
         if (CompanionPortOwned(P)) {
             continue;
         }
-        Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        Ps = ReadMmio32(gOperationalBase + PortRegister(P));
         if (!(Ps & PORTSC_CCS)) {
             continue;
         }
@@ -108,15 +108,15 @@ static int CompanionScanOnce(UINT32 SavedHub) {
             }
             continue;
         }
-        gXferSlot = gMscScanSlot;
+        gTransferSlot = gMscScanSlot;
         if (GetDeviceDesc() < 0) {
             BootLogHex("Boot: MSC claim companion desc-fail port=", P, 2);
             DisableSlot(gMscScanSlot);
             gMscScanSlot = 0;
             continue;
         }
-        if (!IsHubDeviceDesc() && gCtrlBuf[4] != 0x09) {
-            BootLogHex("Boot: MSC claim companion not-hub class=", gCtrlBuf[4],
+        if (!IsHubDeviceDesc() && gControlBuffer[4] != 0x09) {
+            BootLogHex("Boot: MSC claim companion not-hub class=", gControlBuffer[4],
                        2);
             DisableSlot(gMscScanSlot);
             gMscScanSlot = 0;
@@ -152,11 +152,11 @@ int ProbeCompanionRootHubs(void) {
     for (Round = 0; Round < 10; Round++) {
         if (Round > 0) {
             if (!HalCpuIsHypervisor()) {
-                StallMs(50);
+                StallMilliseconds(50);
             }
             SurveyRootCcs("Boot: MSC claim companion wait");
         } else if (!HalCpuIsHypervisor()) {
-            StallMs(50);
+            StallMilliseconds(50);
         }
         if (CompanionScanOnce(SavedHub)) {
             return 1;
@@ -180,7 +180,7 @@ int ProbeRootStorageAfterHub(void) {
     BootLog("Boot: MSC claim root storage after hub begin\n");
     for (Round = 0; Round < 4; Round++) {
         if (Round > 0 && !HalCpuIsHypervisor()) {
-            StallMs(50);
+            StallMilliseconds(50);
         }
         SurveyRootCcs("Boot: MSC claim rootstg");
         for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
@@ -190,7 +190,7 @@ int ProbeRootStorageAfterHub(void) {
             if (CompanionPortOwned(P)) {
                 continue;
             }
-            Ps = ReadMmio32(gOperationalBase + PortReg(P));
+            Ps = ReadMmio32(gOperationalBase + PortRegister(P));
             if (!(Ps & PORTSC_CCS)) {
                 continue;
             }
@@ -207,13 +207,13 @@ int ProbeRootStorageAfterHub(void) {
                 }
                 continue;
             }
-            gXferSlot = gMscScanSlot;
+            gTransferSlot = gMscScanSlot;
             if (GetDeviceDesc() < 0) {
                 DisableSlot(gMscScanSlot);
                 gMscScanSlot = 0;
                 continue;
             }
-            if (IsHubDeviceDesc() || gCtrlBuf[4] == 0x09) {
+            if (IsHubDeviceDesc() || gControlBuffer[4] == 0x09) {
                 DisableSlot(gMscScanSlot);
                 gMscScanSlot = 0;
                 continue;

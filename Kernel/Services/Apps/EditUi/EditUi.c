@@ -23,12 +23,12 @@ static void EditSaveAction(void *Ctx) {
     EditUiSave();
 }
 
-static void EditSaveInit(void) {
+static void EditSaveInitialize(void) {
     gEditSave.Button.X = 0;
     gEditSave.Button.Y = 0;
     gEditSave.Button.W = 72;
     gEditSave.Button.H = 24;
-    gEditSave.Button.Text = LocStr(MSG_EDIT_SAVE);
+    gEditSave.Button.Text = LocaleString(MESSAGE_EDIT_SAVE);
     gEditSave.Button.Enabled = 0;
     gEditSave.Button.Visible = 0;
     gEditSave.Button.m_State = UI_BUTTON_STATE_NORMAL;
@@ -42,18 +42,18 @@ static void EditSaveInit(void) {
  * 且开窗链在 WantDrain 之前就画完 chrome（对齐 SettingsUiOpen）。
  */
 static void EditUiPreheatLabels(void) {
-    static const MSG_ID Ids[] = {
-        MSG_APP_EDIT,
-        MSG_EDIT_SAVE,
-        MSG_EDIT_SAVED,
-        MSG_EDIT_MODIFIED,
-        MSG_EDIT_READY,
-        MSG_EDIT_NEW,
-        MSG_EDIT_NO_PATH,
-        MSG_EDIT_BAD_PATH,
-        MSG_EDIT_BUF_FULL,
-        MSG_EDIT_DIRTY_ESC,
-        MSG_EDIT_ESC,
+    static const MESSAGE_ID Ids[] = {
+        MESSAGE_APP_EDIT,
+        MESSAGE_EDIT_SAVE,
+        MESSAGE_EDIT_SAVED,
+        MESSAGE_EDIT_MODIFIED,
+        MESSAGE_EDIT_READY,
+        MESSAGE_EDIT_NEW,
+        MESSAGE_EDIT_NO_PATH,
+        MESSAGE_EDIT_BAD_PATH,
+        MESSAGE_EDIT_BUF_FULL,
+        MESSAGE_EDIT_DIRTY_ESC,
+        MESSAGE_EDIT_ESC,
     };
     UINT32 i;
     UINT32 BlobSize = 0;
@@ -62,7 +62,7 @@ static void EditUiPreheatLabels(void) {
         return;
     }
     for (i = 0; i < sizeof(Ids) / sizeof(Ids[0]); i++) {
-        FontTtfPreheatUtf8(LocStr(Ids[i]));
+        FontTtfPreheatUtf8(LocaleString(Ids[i]));
     }
 }
 
@@ -141,7 +141,7 @@ int InsertChar(char C) {
     UINTN i;
 
     if (gEditLen + 1 >= EDIT_BUF_MAX) {
-        EditSetStatus(LocStr(MSG_EDIT_BUF_FULL));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_BUF_FULL));
         return 0;
     }
     for (i = gEditLen; i > gCursor; i--) {
@@ -152,7 +152,7 @@ int InsertChar(char C) {
     gCursor++;
     gBuf[gEditLen] = 0;
     gEditDirty = 1;
-    EditSetStatus(LocStr(MSG_EDIT_MODIFIED));
+    EditSetStatus(LocaleString(MESSAGE_EDIT_MODIFIED));
     return 1;
 }
 
@@ -168,14 +168,14 @@ void DeleteAt(UINTN Pos) {
     gEditLen--;
     gBuf[gEditLen] = 0;
     gEditDirty = 1;
-    EditSetStatus(LocStr(MSG_EDIT_MODIFIED));
+    EditSetStatus(LocaleString(MESSAGE_EDIT_MODIFIED));
 }
 
 void EditUiSave(void) {
     int Err;
 
     if (gPath[0] == 0) {
-        EditSetStatus(LocStr(MSG_EDIT_NO_PATH));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_NO_PATH));
         EditUiRepaint();
         return;
     }
@@ -184,7 +184,7 @@ void EditUiSave(void) {
         EditSetStatus(FatStrError(Err));
     } else {
         gEditDirty = 0;
-        EditSetStatus(LocStr(MSG_EDIT_SAVED));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_SAVED));
     }
     EditUiRepaint();
 }
@@ -194,7 +194,7 @@ void EditUiOpen(const char *Path) {
     int Err;
 
     EditUiPreheatLabels();
-    EditSaveInit();
+    EditSaveInitialize();
     gEditLen = 0;
     gCursor = 0;
     gScrollLine = 0;
@@ -204,7 +204,7 @@ void EditUiOpen(const char *Path) {
     EditSetStatus("");
 
     if (!Path || !Path[0]) {
-        EditSetStatus(LocStr(MSG_EDIT_BAD_PATH));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_BAD_PATH));
         return;
     }
     StringCopy(gPath, sizeof(gPath), Path);
@@ -212,12 +212,12 @@ void EditUiOpen(const char *Path) {
     if (Err == FAT_OK) {
         gEditLen = N;
         gBuf[gEditLen] = 0;
-        EditSetStatus(LocStr(MSG_EDIT_READY));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_READY));
     } else if (Err == FAT_ERR_NOENT) {
         gEditLen = 0;
         gBuf[0] = 0;
         gEditDirty = 1;
-        EditSetStatus(LocStr(MSG_EDIT_NEW));
+        EditSetStatus(LocaleString(MESSAGE_EDIT_NEW));
     } else {
         EditSetStatus(FatStrError(Err));
     }

@@ -10,7 +10,7 @@
 #include "Acpi.h"
 
 int HalInitialize(void) {
-    return ArchInit();
+    return ArchInitialize();
 }
 
 void HalCpuHalt(void) {
@@ -205,8 +205,8 @@ void HalSyscallInitialize(void) {
     /* legacy：IDT 0x80，DPL=3（不进 Common） */
     ArchIdtSetGate(VEC_SYSCALL, (UINTN)Isr128, 0xEE);
     DebugWrite("syscall: vector 0x80 (DPL=3) ready\n");
-    /* 快速路径 MSR（BSP）；AP 在 ArchApInit 中各自初始化 */
-    ArchSyscallMsrInit(0);
+    /* 快速路径 MSR（BSP）；AP 在 ArchApInitialize 中各自初始化 */
+    ArchSyscallMsrInitialize(0);
     DebugWrite("syscall: SYSCALL/SYSRET MSR ready\n");
 }
 

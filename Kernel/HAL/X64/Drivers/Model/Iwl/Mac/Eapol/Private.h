@@ -28,10 +28,10 @@ typedef struct {
     UINT8 KeyDesc;
 } IWL_EAPOL_M1_CTX;
 
-void IwlEapolM1CtxInit(IWL_EAPOL_M1_CTX *C);
+void IwlEapolM1ContextInitialize(IWL_EAPOL_M1_CTX *C);
 void IwlEapolM1SendStart(IWL_EAPOL_M1_CTX *C);
 /* 1 = 收到 deauth/disassoc，应结束等待；0 = 继续 */
-int IwlEapolM1DrainRx(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
+int IwlEapolM1DrainReceive(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
                       UINT8 *Anonce, UINT8 *Replay, UINT32 LoopI);
 void IwlEapolM1LogTimeout(const IWL_EAPOL_M1_CTX *C);
 

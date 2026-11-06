@@ -193,7 +193,7 @@ static void CommandLang(int Argc, char **Argv) {
     if (Argc < 2) {
         WriteLangList(Line, (int)sizeof(Line), "usage: lang ", "reload\n");
         gConsole.Write(Line);
-        gConsole.Write(LocStr(MSG_LANG_NOW));
+        gConsole.Write(LocaleString(MESSAGE_LANG_NOW));
         gConsole.Write(LocaleCode());
         gConsole.Write("\n");
         return;
@@ -210,7 +210,7 @@ static void CommandLang(int Argc, char **Argv) {
         gConsole.Write(Line);
         return;
     }
-    gConsole.Write(LocStr(MSG_LANG_SET));
+    gConsole.Write(LocaleString(MESSAGE_LANG_SET));
 }
 
 void ShellCommandsFsUiRegister(void) {

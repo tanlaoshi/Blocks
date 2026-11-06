@@ -29,8 +29,8 @@ typedef struct {
     UINT16 *RefCount;
 } PMM_SEGMENT;
 
-void PmmSegmentInit(const BOOT_HANDOFF *Info);
-void PmmPhysLockInit(void);
+void PmmSegmentInitialize(const BOOT_HANDOFF *Info);
+void PmmPhysLockInitialize(void);
 PMM_SEGMENT *PmmSegment(UINT32 Index);
 /* 框架：Phys → 段 + 页下标；政策可调用，勿再加锁 */
 PMM_SEGMENT *PmmLookup(UINT64 Phys, UINT32 *Idx);

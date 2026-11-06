@@ -78,7 +78,7 @@ static inline UINT32 NetToHost32(UINT32 V) {
     return HostToNet32(V);
 }
 
-static inline void BufCopy(void *Dst, const void *Src, UINTN Len) {
+static inline void BufferCopy(void *Dst, const void *Src, UINTN Len) {
     UINT8 *D = (UINT8 *)Dst;
     const UINT8 *S = (const UINT8 *)Src;
     UINTN i;

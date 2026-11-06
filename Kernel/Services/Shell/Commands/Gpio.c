@@ -76,7 +76,7 @@ static void GpioCommandSet(int Argc, char **Argv) {
 }
 
 /* init：把板图里的默认模式+上下拉写进硬件（只对具名脚有效） */
-static void GpioCommandInit(int Argc, char **Argv) {
+static void GpioCommandInitialize(int Argc, char **Argv) {
     const char *Text = GpioArg(Argc, Argv, GPIO_ARG_FIRST);
     UINT32 Pin = 0u;
 
@@ -235,7 +235,7 @@ void CommandGpio(int Argc, char **Argv) {
     } else if (GpioTextEqual(Name, "edgeselftest")) {
         GpioCommandEdgeSelfTest(Argc, Argv);
     } else if (GpioTextEqual(Name, "init")) {
-        GpioCommandInit(Argc, Argv);
+        GpioCommandInitialize(Argc, Argv);
     } else if (GpioTextEqual(Name, "get")) {
         GpioCommandGet(Argc, Argv);
     } else if (GpioTextEqual(Name, "mode")) {

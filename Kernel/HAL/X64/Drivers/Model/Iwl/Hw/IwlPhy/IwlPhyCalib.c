@@ -47,7 +47,7 @@ void IwlPhyStoreSection(UINT16 Type, const UINT8 *Data, UINT16 Len) {
     }
 }
 
-void IwlPhyHandleRx(IWL_RX_PKT *Pkt, UINTN Len, int *GotInit) {
+void IwlPhyHandleReceive(IWL_RX_PKT *Pkt, UINTN Len, int *GotInit) {
     UINT8 Code = Pkt->Hdr.Code;
     UINTN HdrSz = Pkt->Hdr.Flags ? sizeof(IWL_CMD_HDR_WIDE)
                                   : sizeof(IWL_CMD_HDR);
@@ -72,7 +72,7 @@ void IwlPhyHandleRx(IWL_RX_PKT *Pkt, UINTN Len, int *GotInit) {
     }
 }
 
-int IwlPhyInitCalib(void) {
+int IwlPhyInitializeCalib(void) {
     UINT32 i;
     UINT32 Idle = 0;
     IWL_RX_PKT *Pkt;
@@ -99,7 +99,7 @@ int IwlPhyInitCalib(void) {
     if (!IwlPhySendAnt()) {
         IwlLogStage("initant=fail");
     }
-    if (!IwlPhySendCfg(IWL_UCODE_TYPE_INIT)) {
+    if (!IwlPhySendConfig(IWL_UCODE_TYPE_INIT)) {
         IwlLogStage("initphy=fail");
         return 0;
     }
@@ -111,9 +111,9 @@ int IwlPhyInitCalib(void) {
      */
     for (i = 0; i < 3000; i++) {
         int Hit = 0;
-        IwlRxPoll();
-        while (IwlRxTake(&Pkt, &Len)) {
-            IwlPhyHandleRx(Pkt, Len, &GotInit);
+        IwlReceivePoll();
+        while (IwlReceiveTake(&Pkt, &Len)) {
+            IwlPhyHandleReceive(Pkt, Len, &GotInit);
             Hit = 1;
             Idle = 0;
         }
@@ -123,7 +123,7 @@ int IwlPhyInitCalib(void) {
         if (GotInit && gPhyCfgLen && Idle >= 80u) {
             break;
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
 
     P = "initcal n=";

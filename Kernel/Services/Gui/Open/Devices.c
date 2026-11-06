@@ -2,7 +2,7 @@
  * Devices.c — 设备管理器开窗（story-s1 / PR-DEV-6 / S1.3）
  *
  * 与 Apps.c 同链：Action→GuiOpenDevices→OpenChromeDefer→DevicesUiOpen→OpenFadeIn。
- * 槽位：InitWindowSlot / ClampWindowBox（Open.c）。单例 FocusExistingKind。
+ * 槽位：WindowSlotInitialize / ClampWindowBox（Open.c）。单例 FocusExistingKind。
  */
 #include "GuiPrivate.h"
 #include "Theme.h"
@@ -32,8 +32,8 @@ int GuiOpenDevices(void) {
     ClampWindowBox(Margin, &W, &H);
     X = Margin;
     Y = Margin + 24;
-    InitWindowSlot(Idx, GUI_WIN_DEVICES, X, Y, W, H, ThemeSettingsClientBackground(),
-                   LocStr(MSG_APP_DEVICES), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_DEVICES, X, Y, W, H, ThemeSettingsClientBackground(),
+                   LocaleString(MESSAGE_APP_DEVICES), 0);
 
     OpenChromeDefer(Idx);
     DevicesUiOpen();

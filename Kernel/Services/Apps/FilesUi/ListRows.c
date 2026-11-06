@@ -8,8 +8,8 @@
 void PaintListDrawHeader(UINT32 Cx, UINT32 Y, UINT32 LineH, UINT32 Cw) {
     UINT32 ListW;
     UINT32 Pad;
-    const char *Hint1 = LocStr(MSG_FILES_HINT1);
-    const char *Hint2 = LocStr(MSG_FILES_HINT2);
+    const char *Hint1 = LocaleString(MESSAGE_FILES_HINT1);
+    const char *Hint2 = LocaleString(MESSAGE_FILES_HINT2);
     char PathShow[FILES_PATH_MAX + 8];
     int n;
 
@@ -17,7 +17,7 @@ void PaintListDrawHeader(UINT32 Cx, UINT32 Y, UINT32 LineH, UINT32 Cw) {
     Pad = UI_LAYOUT_PAD;
     ListW = Cw > gPrevW ? Cw - gPrevW : Cw;
     PathShow[0] = 0;
-    StringCopy(PathShow, sizeof(PathShow), LocStr(MSG_FILES_PATH));
+    StringCopy(PathShow, sizeof(PathShow), LocaleString(MESSAGE_FILES_PATH));
     n = 0;
     while (PathShow[n]) {
         n++;
@@ -128,10 +128,10 @@ void PaintListDrawRows(UINT32 ListX, UINT32 ListW, UINT32 Y, UINT32 H, UINT32 Li
         if (BoxW > 8 && BoxH > LineH + 8) {
             GraphicsFillRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogFace());
             GraphicsDrawRectangle(BoxX, BoxY, BoxW, BoxH, ThemeDialogBorder());
-            DrawLine(BoxX + 12, BoxY + LineH, LocStr(MSG_FILES_EMPTY), ThemeTextMuted());
+            DrawLine(BoxX + 12, BoxY + LineH, LocaleString(MESSAGE_FILES_EMPTY), ThemeTextMuted());
             if (BoxH >= LineH * 3) {
                 DrawLine(BoxX + 12, BoxY + LineH * 2 + 4,
-                         LocStr(MSG_FILES_EMPTY_HINT), ThemeTextMuted());
+                         LocaleString(MESSAGE_FILES_EMPTY_HINT), ThemeTextMuted());
             }
         }
     }

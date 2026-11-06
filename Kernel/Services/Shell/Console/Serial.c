@@ -25,13 +25,13 @@ static void SerialFeedChar(char C, int *SkipLf) {
         return;
     }
     Skip = (SkipLf != 0) ? *SkipLf : 0;
-    if (gConsole.HistIgnoreRx()) {
+    if (gConsole.HistIgnoreReceive()) {
         if (C == '\r') {
             if (SkipLf) {
                 *SkipLf = 1;
             }
             gConsole.OnEnterEx(1);
-            gConsole.HistClearIgnoreRx();
+            gConsole.HistClearIgnoreReceive();
         } else if (C == '\n') {
             if (Skip) {
                 if (SkipLf) {
@@ -39,10 +39,10 @@ static void SerialFeedChar(char C, int *SkipLf) {
                 }
             } else {
                 gConsole.OnEnterEx(1);
-                gConsole.HistClearIgnoreRx();
+                gConsole.HistClearIgnoreReceive();
             }
         } else if (C == 3) {
-            gConsole.HistClearIgnoreRx();
+            gConsole.HistClearIgnoreReceive();
             ShellOnInterrupt();
         } else {
             (void)gConsole.HistFeedAnsi(C, 1);

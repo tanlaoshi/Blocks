@@ -21,7 +21,7 @@ typedef struct {
     UINTN  Max;
 } BUF;
 
-static void BufInit(BUF *B, char *P, UINTN Max) {
+static void BufferInitialize(BUF *B, char *P, UINTN Max) {
     B->P = P;
     B->N = 0;
     B->Max = Max;
@@ -30,32 +30,32 @@ static void BufInit(BUF *B, char *P, UINTN Max) {
     }
 }
 
-static void BufFin(BUF *B) {
+static void BufferFinalize(BUF *B) {
     UINTN I = B->N < B->Max ? B->N : B->Max - 1;
     B->P[I] = '\0';
 }
 
-static void BufCh(BUF *B, char C) {
+static void BufferCharacter(BUF *B, char C) {
     if (B->N + 1 < B->Max) {
         B->P[(B->N)++] = C;
     }
 }
 
-static void BufStr(BUF *B, const char *S) {
+static void BufferString(BUF *B, const char *S) {
     if (!S) {
         return;
     }
     while (*S) {
-        BufCh(B, *S++);
+        BufferCharacter(B, *S++);
     }
 }
 
-static void BufDec64(BUF *B, UINT64 V) {
+static void BufferDecimal64(BUF *B, UINT64 V) {
     char Tmp[24];
     int  I = 0;
 
     if (V == 0) {
-        BufCh(B, '0');
+        BufferCharacter(B, '0');
         return;
     }
     while (V > 0 && I < (int)sizeof(Tmp)) {
@@ -63,7 +63,7 @@ static void BufDec64(BUF *B, UINT64 V) {
         V /= 10u;
     }
     while (I > 0) {
-        BufCh(B, Tmp[--I]);
+        BufferCharacter(B, Tmp[--I]);
     }
 }
 
@@ -101,28 +101,28 @@ void DevicesUiFillSummary(DEVICES_UI_SUMMARY *Out) {
             Ready++;
         }
     }
-    BufInit(&Disk, Out->Disk, sizeof(Out->Disk));
+    BufferInitialize(&Disk, Out->Disk, sizeof(Out->Disk));
     if (Ready > 0) {
-        BufDec64(&Disk, (UINT64)Ready);
-        BufCh(&Disk, ' ');
-        BufStr(&Disk, LocStr(MSG_DEV_READY));
+        BufferDecimal64(&Disk, (UINT64)Ready);
+        BufferCharacter(&Disk, ' ');
+        BufferString(&Disk, LocaleString(MESSAGE_DEV_READY));
     } else {
-        BufCh(&Disk, '-');
+        BufferCharacter(&Disk, '-');
     }
-    BufFin(&Disk);
+    BufferFinalize(&Disk);
 
     /* 显示器：BootHandoff 帧缓冲宽高；无 FB 则「-」 */
-    BufInit(&Disp, Out->Display, sizeof(Out->Display));
+    BufferInitialize(&Disp, Out->Display, sizeof(Out->Display));
     Bi = BootHandoffGet();
     if (HalHasFrameBuffer() && Bi &&
         Bi->HorizontalResolution && Bi->VerticalResolution) {
-        BufDec64(&Disp, (UINT64)Bi->HorizontalResolution);
-        BufCh(&Disp, 'x');
-        BufDec64(&Disp, (UINT64)Bi->VerticalResolution);
+        BufferDecimal64(&Disp, (UINT64)Bi->HorizontalResolution);
+        BufferCharacter(&Disp, 'x');
+        BufferDecimal64(&Disp, (UINT64)Bi->VerticalResolution);
     } else {
-        BufCh(&Disp, '-');
+        BufferCharacter(&Disp, '-');
     }
-    BufFin(&Disp);
+    BufferFinalize(&Disp);
 }
 
 /* ---- DEBUG 自检：填结构体并串口打一行 ---- */
@@ -133,27 +133,27 @@ void DevicesUiSummarySelfCheck(void) {
     char Line[192];
 
     DevicesUiFillSummary(&S);
-    BufInit(&L, Line, sizeof(Line));
-    BufStr(&L, "summary: os=");
-    BufStr(&L, S.OsVersion ? S.OsVersion : "-");
-    BufStr(&L, " arch=");
-    BufStr(&L, S.Arch ? S.Arch : "-");
-    BufStr(&L, " cpu=");
-    BufStr(&L, S.CpuInfo ? S.CpuInfo : "-");
-    BufStr(&L, " x");
-    BufDec64(&L, (UINT64)S.CpuCount);
-    BufStr(&L, " mem=");
-    BufDec64(&L, S.MemFreeMiB);
-    BufCh(&L, '/');
-    BufDec64(&L, S.MemTotalMiB);
-    BufStr(&L, "MiB disk=");
-    BufStr(&L, S.Disk);
-    BufStr(&L, " disp=");
-    BufStr(&L, S.Display);
-    BufStr(&L, " pci=");
-    BufDec64(&L, (UINT64)S.PciCount);
-    BufCh(&L, '\n');
-    BufFin(&L);
+    BufferInitialize(&L, Line, sizeof(Line));
+    BufferString(&L, "summary: os=");
+    BufferString(&L, S.OsVersion ? S.OsVersion : "-");
+    BufferString(&L, " arch=");
+    BufferString(&L, S.Arch ? S.Arch : "-");
+    BufferString(&L, " cpu=");
+    BufferString(&L, S.CpuInfo ? S.CpuInfo : "-");
+    BufferString(&L, " x");
+    BufferDecimal64(&L, (UINT64)S.CpuCount);
+    BufferString(&L, " mem=");
+    BufferDecimal64(&L, S.MemFreeMiB);
+    BufferCharacter(&L, '/');
+    BufferDecimal64(&L, S.MemTotalMiB);
+    BufferString(&L, "MiB disk=");
+    BufferString(&L, S.Disk);
+    BufferString(&L, " disp=");
+    BufferString(&L, S.Display);
+    BufferString(&L, " pci=");
+    BufferDecimal64(&L, (UINT64)S.PciCount);
+    BufferCharacter(&L, '\n');
+    BufferFinalize(&L);
     DebugWrite(Line);
 }
 
@@ -187,60 +187,60 @@ static void SumDrawRow(UINT32 LblX, UINT32 ValX, UINT32 Right, UINT32 *Ty, UINT3
 static void SumComposeOs(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
 
-    BufInit(&B, Out, Max);
-    BufStr(&B, S->OsVersion ? S->OsVersion : "-");
+    BufferInitialize(&B, Out, Max);
+    BufferString(&B, S->OsVersion ? S->OsVersion : "-");
     if (S->Arch && S->Arch[0]) {
-        BufCh(&B, ' ');
-        BufCh(&B, '(');
-        BufStr(&B, S->Arch);
-        BufCh(&B, ')');
+        BufferCharacter(&B, ' ');
+        BufferCharacter(&B, '(');
+        BufferString(&B, S->Arch);
+        BufferCharacter(&B, ')');
     }
-    BufFin(&B);
+    BufferFinalize(&B);
 }
 static void SumComposeCpu(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
-    BufInit(&B, Out, Max);
-    BufStr(&B, S->CpuInfo ? S->CpuInfo : "-");
-    BufStr(&B, " x");
-    BufDec64(&B, (UINT64)(S->CpuCount > 0 ? S->CpuCount : 1));
-    BufFin(&B);
+    BufferInitialize(&B, Out, Max);
+    BufferString(&B, S->CpuInfo ? S->CpuInfo : "-");
+    BufferString(&B, " x");
+    BufferDecimal64(&B, (UINT64)(S->CpuCount > 0 ? S->CpuCount : 1));
+    BufferFinalize(&B);
 }
 
-static void BufMemNum(BUF *B, UINT64 MiB, int AsGib) {
+static void BufferMemoryNumber(BUF *B, UINT64 MiB, int AsGib) {
     if (!AsGib) {
-        BufDec64(B, MiB);
+        BufferDecimal64(B, MiB);
         return;
     }
-    BufDec64(B, MiB / 1024u);
-    BufCh(B, '.');
-    BufCh(B, (char)('0' + (MiB % 1024u) * 10u / 1024u));
+    BufferDecimal64(B, MiB / 1024u);
+    BufferCharacter(B, '.');
+    BufferCharacter(B, (char)('0' + (MiB % 1024u) * 10u / 1024u));
 }
 
 static void SumComposeMem(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
     int AsGib = S->MemTotalMiB > 1024u;
-    BufInit(&B, Out, Max);
-    BufMemNum(&B, S->MemFreeMiB, AsGib);
-    BufCh(&B, '/');
-    BufMemNum(&B, S->MemTotalMiB, AsGib);
-    BufCh(&B, ' ');
-    BufStr(&B, AsGib ? "GiB" : "MiB");
-    BufFin(&B);
+    BufferInitialize(&B, Out, Max);
+    BufferMemoryNumber(&B, S->MemFreeMiB, AsGib);
+    BufferCharacter(&B, '/');
+    BufferMemoryNumber(&B, S->MemTotalMiB, AsGib);
+    BufferCharacter(&B, ' ');
+    BufferString(&B, AsGib ? "GiB" : "MiB");
+    BufferFinalize(&B);
 }
 
 static void SumComposeHyper(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
-    BufInit(&B, Out, Max);
-    BufStr(&B, S->Hypervisor ? LocStr(MSG_DEV_YES) : LocStr(MSG_DEV_NO));
-    BufFin(&B);
+    BufferInitialize(&B, Out, Max);
+    BufferString(&B, S->Hypervisor ? LocaleString(MESSAGE_DEV_YES) : LocaleString(MESSAGE_DEV_NO));
+    BufferFinalize(&B);
 }
 
 static void SumComposePci(char *Out, UINTN Max, const DEVICES_UI_SUMMARY *S) {
     BUF B;
 
-    BufInit(&B, Out, Max);
-    BufDec64(&B, (UINT64)S->PciCount);
-    BufFin(&B);
+    BufferInitialize(&B, Out, Max);
+    BufferDecimal64(&B, (UINT64)S->PciCount);
+    BufferFinalize(&B);
 }
 
 static UINT32 SumMax(UINT32 A, UINT32 B) {
@@ -274,13 +274,13 @@ void DevicesUiPaintSummary(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     LblX = X + 14;
     /* 测量最长标签，值列起点跟着走，避免标签/值重叠 */
     MaxLblW = 0;
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_OS)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_CPU)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_MEMORY)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_DISKS)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_DISPLAY)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_HYPERVISOR)));
-    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocStr(MSG_DEV_PCI_COUNT)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_OS)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_CPU)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_MEMORY)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_DISKS)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_DISPLAY)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_HYPERVISOR)));
+    MaxLblW = SumMax(MaxLblW, FontStringWidth(LocaleString(MESSAGE_DEV_PCI_COUNT)));
     ValX = LblX + MaxLblW + 12;
     if (ValX > X + W - 60) {
         ValX = X + W - 60;
@@ -290,21 +290,21 @@ void DevicesUiPaintSummary(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
 
     /* 标题 */
     if (Ty + LineH <= MaxY) {
-        HalVideoDrawStringAt(LblX, Ty, LocStr(MSG_DEV_ABOUT), ThemeTextAccent());
+        HalVideoDrawStringAt(LblX, Ty, LocaleString(MESSAGE_DEV_ABOUT), ThemeTextAccent());
         Ty += LineH + 6;
     }
 
     SumComposeOs(Val, sizeof(Val), &S);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_OS), Val);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_OS), Val);
     SumComposeCpu(Val, sizeof(Val), &S);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_CPU), Val);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_CPU), Val);
     SumComposeMem(Val, sizeof(Val), &S);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_MEMORY), Val);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_DISKS), S.Disk);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_DISPLAY),
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_MEMORY), Val);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_DISKS), S.Disk);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_DISPLAY),
                S.Display);
     SumComposeHyper(Val, sizeof(Val), &S);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_HYPERVISOR), Val);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_HYPERVISOR), Val);
     SumComposePci(Val, sizeof(Val), &S);
-    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocStr(MSG_DEV_PCI_COUNT), Val);
+    SumDrawRow(LblX, ValX, X + W - 8u, &Ty, MaxY, LineH, LocaleString(MESSAGE_DEV_PCI_COUNT), Val);
 }

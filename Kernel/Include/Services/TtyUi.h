@@ -19,7 +19,7 @@ void TtyUiOnEnter(void);
 void TtyUiOnBackspace(void);
 void TtyUiOnEscape(void);
 /* 串口 RX（TasksShell 焦点路由） */
-void TtyUiOnRxChar(char C);
+void TtyUiOnReceiveCharacter(char C);
 int TtyUiIsFocused(void);
 
 #endif

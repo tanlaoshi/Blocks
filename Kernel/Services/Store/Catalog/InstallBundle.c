@@ -136,55 +136,41 @@ static int CopyOneFile(const char *Src, const char *Dst) {
     return StoreInstallCopySync(Src, Dst, STORE_CHECK_NONE);
 }
 
-static int CopyDirTree(const char *SrcDir, const char *DstDir, int Depth) {
-    static FAT_DIRECTORY_ENTRY Ents[FAT_LIST_MAX];
+/*
+ * Assets 一般是一层小文件（icon.bmp 等）。旧 CopyDirTree 每拷一项就
+ * break 重扫目录，U 盘上会把 install 拖很久。扁平一次 List 再拷。
+ */
+static int CopyFlatFiles(const char *SrcDir, const char *DstDir) {
+    FAT_DIRECTORY_ENTRY Ents[FAT_LIST_MAX];
     char SrcChild[BUNDLE_PATH_MAX];
     char DstChild[BUNDLE_PATH_MAX];
-    FAT_FILE_STAT St;
-    int N;
+    int N = 0;
     int i;
     int Err;
-    int Pass;
-    int Progress;
 
-    (void)St;
-    if (Depth > 8) {
-        return FAT_ERR_INVAL;
-    }
     Err = FileSystemMakePath(DstDir);
     if (Err != FAT_OK) {
         return Err;
     }
-    for (Pass = 0; Pass < FAT_LIST_MAX * 8 + 4; Pass++) {
-        N = 0;
-        Err = FileSystemListEntries(SrcDir, Ents, FAT_LIST_MAX, &N);
+    Err = FileSystemListEntries(SrcDir, Ents, FAT_LIST_MAX, &N);
+    if (Err != FAT_OK) {
+        return Err;
+    }
+    for (i = 0; i < N; i++) {
+        const char *Name = Ents[i].Name;
+
+        if (!Name[0] || (Name[0] == '.' && Name[1] == 0) ||
+            (Name[0] == '.' && Name[1] == '.' && Name[2] == 0)) {
+            continue;
+        }
+        if (Ents[i].Attr & FAT_ATTR_DIR) {
+            continue;
+        }
+        JoinPath(SrcChild, (int)sizeof(SrcChild), SrcDir, Name);
+        JoinPath(DstChild, (int)sizeof(DstChild), DstDir, Name);
+        Err = CopyOneFile(SrcChild, DstChild);
         if (Err != FAT_OK) {
             return Err;
-        }
-        Progress = 0;
-        for (i = 0; i < N; i++) {
-            const char *Name = Ents[i].Name;
-            int IsDir = (Ents[i].Attr & FAT_ATTR_DIR) ? 1 : 0;
-
-            if (!Name[0] || (Name[0] == '.' && Name[1] == 0) ||
-                (Name[0] == '.' && Name[1] == '.' && Name[2] == 0)) {
-                continue;
-            }
-            JoinPath(SrcChild, (int)sizeof(SrcChild), SrcDir, Name);
-            JoinPath(DstChild, (int)sizeof(DstChild), DstDir, Name);
-            if (IsDir) {
-                Err = CopyDirTree(SrcChild, DstChild, Depth + 1);
-            } else {
-                Err = CopyOneFile(SrcChild, DstChild);
-            }
-            if (Err != FAT_OK) {
-                return Err;
-            }
-            Progress = 1;
-            break; /* 递归覆写 static Ents；一项后重扫 */
-        }
-        if (!Progress) {
-            break;
         }
     }
     return FAT_OK;
@@ -214,19 +200,54 @@ int StoreInstallBundlePrepare(const char *Id, const char *File, char *DstElf,
     return FAT_OK;
 }
 
-int StoreInstallBundleExtras(const char *Id) {
+int StoreInstallBundleExtras(const char *Id, int CopyElf) {
+    STORE_ENTRY *Tab = gStoreTab;
     char PkgDir[BUNDLE_PATH_MAX];
     char Src[BUNDLE_PATH_MAX];
     char Dst[BUNDLE_PATH_MAX];
     char Bundle[BUNDLE_PATH_MAX];
     FAT_FILE_STAT St;
     int Err;
+    int Count = 0;
+    int i;
 
     if (!Id || !Id[0]) {
         return FAT_ERR_INVAL;
     }
     StoreAppBundleDir(Bundle, (int)sizeof(Bundle), Id);
+    Err = FileSystemMakePath(Bundle);
+    if (Err != FAT_OK) {
+        return Err;
+    }
     JoinPath(PkgDir, (int)sizeof(PkgDir), STORE_PACKAGES_DIR, Id);
+
+    /*
+     * CopyElf=1：已装再装才重拷 ELF。
+     * Pump 刚写完又 CopyElf=1 → 65KB×2 + 同步呼吸，卡死在 install: id (1/1)。
+     */
+    if (CopyElf) {
+        Err = StoreLoadCatalog(Tab, STORE_ENTRIES_MAX, &Count);
+        if (Err >= 0 && Count > 0) {
+            for (i = 0; i < Count; i++) {
+                if (!StringEqual(Tab[i].Id, Id)) {
+                    continue;
+                }
+                if (EntryKind(Tab[i].Type) != STORE_KIND_APP || !Tab[i].File[0]) {
+                    break;
+                }
+                JoinPath(Src, (int)sizeof(Src), PkgDir, Tab[i].File);
+                if (FileSystemFileStat(Src, &St) == FAT_OK &&
+                    !(St.Attr & FAT_ATTR_DIR)) {
+                    JoinPath(Dst, (int)sizeof(Dst), Bundle, Tab[i].File);
+                    Err = CopyOneFile(Src, Dst);
+                    if (Err != FAT_OK) {
+                        return Err;
+                    }
+                }
+                break;
+            }
+        }
+    }
 
     JoinPath(Src, (int)sizeof(Src), PkgDir, "PKG.TXT");
     if (FileSystemFileStat(Src, &St) == FAT_OK && !(St.Attr & FAT_ATTR_DIR)) {
@@ -237,12 +258,17 @@ int StoreInstallBundleExtras(const char *Id) {
         }
     }
 
+    /*
+     * Assets：仅目标缺失时扁平拷。勿再 CopyDirTree 每文件重扫。
+     */
     JoinPath(Src, (int)sizeof(Src), PkgDir, "Assets");
     if (FileSystemFileStat(Src, &St) == FAT_OK && (St.Attr & FAT_ATTR_DIR)) {
         JoinPath(Dst, (int)sizeof(Dst), Bundle, "Assets");
-        Err = CopyDirTree(Src, Dst, 0);
-        if (Err != FAT_OK) {
-            return Err;
+        if (FileSystemFileStat(Dst, &St) != FAT_OK) {
+            Err = CopyFlatFiles(Src, Dst);
+            if (Err != FAT_OK) {
+                return Err;
+            }
         }
     }
     return FAT_OK;

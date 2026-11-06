@@ -38,7 +38,7 @@ static int JoinWaitId(SDHCI_HOST *Host, UINT16 WantId, UINT32 Tries, UINT32 *Out
 }
 
 static int JoinSend(SDHCI_HOST *Host, UINT32 Length) {
-    AicJoinPrintTx(Length);
+    AicJoinPrintTransmit(Length);
     if (AicSendMessageEx(Host, (UINT16)AIC_SM_CONNECT_REQ, (UINT16)AIC_TASK_SM,
                          sAicJoinBuffer, (UINT16)Length) != 0) {
         SdhciMark("WiFi: join FAILED at step 1/2: SM_CONNECT_REQ(0x1800) send failed (SDIO tx)\n");
@@ -209,7 +209,7 @@ static int JoinDry(const char *Ssid, const char *BssidText) {
     SdhciMarkDecimal("", VifIndex);
     SdhciMark("\n");
     Length = AicJoinBuild((UINT8 *)sAicJoinBuffer, &Target, VifIndex);
-    AicJoinPrintTx(Length);
+    AicJoinPrintTransmit(Length);
     AicJoinDump((const UINT8 *)sAicJoinBuffer, Length);
     /* ie_buf 在 +64，落在上面 64 B dump 之外，所以单独打；本刀唯一新填的就是它 */
     AicJoinDumpRsn((const UINT8 *)sAicJoinBuffer, Length);

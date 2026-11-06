@@ -12,7 +12,7 @@ const NET_BACKEND gEthernetBackend = {
     .GetStats = DuoEthernetGetStats,
     .SendIp = DuoEthernetSendIp,
     .Checksum = DuoEthernetChecksum,
-    .SetLwIpRx = DuoEthernetSetLwIpReceive,
+    .SetLwIpReceive = DuoEthernetSetLwIpReceive,
 };
 
 int EthernetDriverProbe(const DRIVER *Self, void *BusContext,

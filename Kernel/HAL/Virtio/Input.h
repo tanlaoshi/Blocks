@@ -7,6 +7,6 @@
 /* PR-D3：向 Driver 注册描述符（不 Probe） */
 void VirtioInputRegister(void);
 /* Probe Input 类；有键鼠返回 0，否则 -1 */
-int VirtioInputInit(void);
+int VirtioInputInitialize(void);
 
 #endif

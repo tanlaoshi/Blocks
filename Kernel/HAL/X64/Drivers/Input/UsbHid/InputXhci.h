@@ -5,7 +5,7 @@
 #define INPUT_XHCI_H
 
 void InputXhciRegister(void);
-int InputXhciInit(void);
+int InputXhciInitialize(void);
 void InputXhciArmIrq(void);
 
 #endif

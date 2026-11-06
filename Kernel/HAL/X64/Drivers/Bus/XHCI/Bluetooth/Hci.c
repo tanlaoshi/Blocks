@@ -30,13 +30,13 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
 }
 
 void BluetoothHciArmEvent(void) {
-    UINT32 Len = gBluetoothEventMps ? gBluetoothEventMps : 16u;
+    UINT32 Len = gBluetoothEventMaxPacketSize ? gBluetoothEventMaxPacketSize : 16u;
 
     if (Len > BLUETOOTH_EVENT_MAX) {
         Len = BLUETOOTH_EVENT_MAX;
     }
     /*
-     * 勿每次 InitRing：ConfigEP 已钉 dequeue；Reset 后再 Init 会与 HC
+     * 勿每次 RingInitialize：ConfigEP 已钉 dequeue；Reset 后再 Init 会与 HC
      * 失步 → 后续命令等不到事件 → Ready=0（对表 HID QueueIntr）。
      * 长度跟 MPS：Inquiry Result 小包稳；过大 TD 真机易 babble。
      */
@@ -112,8 +112,8 @@ int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
     Setup.wIndex = gBluetoothInterface;
     Setup.wLength = (UINT16)Total;
     FlushDma(gBluetoothCommandBuffer, Total);
-    gXferSlot = gBluetoothSlot;
-    if (ControlXfer(&Setup, gBluetoothCommandBuffer) < 0) {
+    gTransferSlot = gBluetoothSlot;
+    if (ControlTransfer(&Setup, gBluetoothCommandBuffer) < 0) {
         return -1;
     }
     return 0;

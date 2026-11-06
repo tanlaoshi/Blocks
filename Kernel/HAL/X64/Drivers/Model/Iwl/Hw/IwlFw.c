@@ -169,7 +169,7 @@ int IwlFwParseAndLoad(void) {
         return -1;
     }
     /* Load 时停了 RX：重绑环再等 ALIVE */
-    if (!IwlRxInit()) {
+    if (!IwlReceiveInitialize()) {
         return -1;
     }
     IwlFwEnableAliveInts();
@@ -178,7 +178,7 @@ int IwlFwParseAndLoad(void) {
     }
     /* 刀 #57：INIT 上跑校准，收 phy_db 段，供 RT SCAN_CFG 前下发 */
     if (IwlPostAlive()) {
-        if (!IwlPhyInitCalib()) {
+        if (!IwlPhyInitializeCalib()) {
             IwlLogStage("initcal=miss");
         }
     } else {
@@ -186,7 +186,7 @@ int IwlFwParseAndLoad(void) {
     }
 
     gIwlAlive = 0;
-    if (IwlHwStart() != 1 || !IwlNicInit()) {
+    if (IwlHwStart() != 1 || !IwlNicInitialize()) {
         return -1;
     }
 
@@ -194,7 +194,7 @@ int IwlFwParseAndLoad(void) {
     if (!IwlLoadUcode8000(&gIwlImgRt)) {
         return -1;
     }
-    if (!IwlRxInit()) {
+    if (!IwlReceiveInitialize()) {
         return -1;
     }
     IwlFwEnableAliveInts();
@@ -205,7 +205,7 @@ int IwlFwParseAndLoad(void) {
         return 0;
     }
     /* 刀 #39：OpenBSD 在 post_alive 后立刻 paging，再发业务命令 */
-    if (!IwlPagingInit(&gIwlImgRt)) {
+    if (!IwlPagingInitialize(&gIwlImgRt)) {
         IwlLogStage("page=earlyfail");
         /* 软失败：仍试后续，对照日志 */
     }

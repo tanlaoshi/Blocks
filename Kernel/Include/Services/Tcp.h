@@ -1,7 +1,7 @@
 /*
  * Tcp.h — 单连接演示栈
  *
- * 和 lwIP 并存。lwIP 打开时收包仍走 gLwIpRx，本栈不收包。
+ * 和 lwIP 并存。lwIP 打开时收包仍走 gLwIpReceive，本栈不收包。
  * 未打开时由 Shell 的 tcp listen / tcp connect 使用。
  * 不再扩展多连接或拥塞控制。
  */

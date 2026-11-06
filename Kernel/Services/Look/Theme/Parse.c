@@ -9,7 +9,7 @@ int IsSpace(char C) {
     return C == ' ' || C == '\t' || C == '\r' || C == '\n';
 }
 
-int HexVal(char C) {
+int HexValue(char C) {
     if (C >= '0' && C <= '9') {
         return C - '0';
     }
@@ -37,7 +37,7 @@ int ParseHexU32(const char *S, UINT32 *Out) {
         S += 2;
     }
     while (*S) {
-        D = HexVal(*S);
+        D = HexValue(*S);
         if (D < 0) {
             break;
         }

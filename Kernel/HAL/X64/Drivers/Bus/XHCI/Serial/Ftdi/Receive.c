@@ -8,7 +8,7 @@
 #define FTDI_STATUS 2
 
 UINT32 gFtdiBulkInDci;
-UINT16 gFtdiBulkInMps;
+UINT16 gFtdiBulkInMaxPacketSize;
 XHCI_TRB gFtdiBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gFtdiBulkIn;
 
@@ -19,11 +19,11 @@ static UINT32 gFtdiRxW;
 static volatile UINT32 gFtdiInDone;
 static volatile UINT32 gFtdiInCode;
 static volatile UINT32 gFtdiInRemain;
-static UINT32 gFtdiInXferLen;
+static UINT32 gFtdiInTransferLength;
 static int gFtdiInArmed;
 static int gFtdiRxBusy;
 
-static void RxPush(char C) {
+static void ReceivePush(char C) {
     UINT32 Next = (gFtdiRxW + 1u) % FTDI_RX_Q;
 
     if (Next == gFtdiRxR) {
@@ -59,21 +59,21 @@ static int OnComplete(UINT32 Code, UINT32 Remain) {
  * ConfigEP：Bulk IN + OUT（ftdi-1 OUT + ftdi-2 IN 一次配齐）。
  */
 static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                       UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
-    UINT8 InNum = EpIn & 0x0F;
-    UINT8 OutNum = EpOut & 0x0F;
+                       UINT8 EndpointIn, UINT16 MaxPacketSizeIn, UINT8 EndpointOut, UINT16 MaxPacketSizeOut) {
+    UINT8 InNum = EndpointIn & 0x0F;
+    UINT8 OutNum = EndpointOut & 0x0F;
     UINT32 InDci = (UINT32)InNum * 2 + 1;
     UINT32 OutDci = (UINT32)OutNum * 2 + 0;
     UINT32 CtxEntries = InDci > OutDci ? InDci : OutDci;
     UINT32 *Slot;
-    UINT32 *Ep;
+    UINT32 *Endpoint;
     UINT64 Deq;
 
-    if (MpsIn == 0 || MpsIn > 512) {
-        MpsIn = 64;
+    if (MaxPacketSizeIn == 0 || MaxPacketSizeIn > 512) {
+        MaxPacketSizeIn = 64;
     }
-    if (MpsOut == 0 || MpsOut > 512) {
-        MpsOut = 64;
+    if (MaxPacketSizeOut == 0 || MaxPacketSizeOut > 512) {
+        MaxPacketSizeOut = 64;
     }
 
     ZeroMemory(gInCtx, sizeof(gInCtx));
@@ -86,24 +86,24 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
         Slot[2] = (UINT32)gFtdiHubSlot | ((UINT32)gFtdiTtPort << 8);
     }
 
-    InitRing(gFtdiBulkInRing, &gFtdiBulkIn, RING_SIZE);
-    InitRing(gFtdiBulkOutRing, &gFtdiBulkOut, RING_SIZE);
+    RingInitialize(gFtdiBulkInRing, &gFtdiBulkIn, RING_SIZE);
+    RingInitialize(gFtdiBulkOutRing, &gFtdiBulkOut, RING_SIZE);
 
-    Ep = (UINT32 *)(void *)InEp(InDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (6u << 3) | ((UINT32)MpsIn << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(InDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (6u << 3) | ((UINT32)MaxPacketSizeIn << 16);
     Deq = PointerToPhysical(gFtdiBulkInRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsIn;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeIn;
 
-    Ep = (UINT32 *)(void *)InEp(OutDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (2u << 3) | ((UINT32)MpsOut << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(OutDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (2u << 3) | ((UINT32)MaxPacketSizeOut << 16);
     Deq = PointerToPhysical(gFtdiBulkOutRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsOut;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeOut;
 
     FlushDma(gInCtx, sizeof(gInCtx));
     FlushDma(gFtdiBulkInRing, sizeof(gFtdiBulkInRing));
@@ -111,25 +111,25 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     FlushDma(gFtdiDevCtx, sizeof(gFtdiDevCtx));
     if (Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) <
         0) {
-        BootLog("Boot: USB-UART Cfg Ep Fail\n");
+        BootLog("Boot: USB-UART Cfg Endpoint Fail\n");
         return 0;
     }
     gFtdiBulkInDci = InDci;
     gFtdiBulkOutDci = OutDci;
-    gFtdiBulkInMps = MpsIn;
-    gFtdiBulkOutMps = MpsOut;
+    gFtdiBulkInMaxPacketSize = MaxPacketSizeIn;
+    gFtdiBulkOutMaxPacketSize = MaxPacketSizeOut;
     gFtdiInArmed = 0;
     gFtdiInDone = 0;
     return 1;
 }
 
 static void QueueBulkIn(void) {
-    UINT32 Len = gFtdiBulkInMps ? gFtdiBulkInMps : 64;
+    UINT32 Len = gFtdiBulkInMaxPacketSize ? gFtdiBulkInMaxPacketSize : 64;
 
     if (Len > sizeof(gFtdiRxDma)) {
         Len = (UINT32)sizeof(gFtdiRxDma);
     }
-    gFtdiInXferLen = Len;
+    gFtdiInTransferLength = Len;
     gFtdiInDone = 0;
     gFtdiInCode = 0;
     gFtdiInRemain = 0;
@@ -155,7 +155,7 @@ static void DrainInCompletion(void) {
     if (gFtdiInCode != CC_SUCCESS && gFtdiInCode != CC_SHORT_PACKET) {
         return;
     }
-    Got = gFtdiInXferLen;
+    Got = gFtdiInTransferLength;
     if (gFtdiInRemain <= Got) {
         Got = Got - gFtdiInRemain;
     }
@@ -163,7 +163,7 @@ static void DrainInCompletion(void) {
     /* FTDI：前 2 字节状态；仅状态包时 Got==2 → 无载荷 */
     if (Got > FTDI_STATUS) {
         for (i = FTDI_STATUS; i < Got; i++) {
-            RxPush((char)gFtdiRxDma[i]);
+            ReceivePush((char)gFtdiRxDma[i]);
         }
     }
 }

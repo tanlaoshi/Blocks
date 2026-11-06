@@ -4,7 +4,7 @@
 #include "IwlMvmInternal.h"
 #include "HalSerial.h"
 
-int IwlMvmScanCfg(void) {
+int IwlMvmScanConfig(void) {
     /*
      * 刀 #70：#69 证 scfg TX 通、0xC 要靠 ant3 撞出，撞出后 ant3 卡死。
      * scfg∥ant3 Kick → 等 0x0C → Unwedge 推 RDPTR → ant4 金丝雀。
@@ -72,8 +72,8 @@ int IwlMvmScanCfg(void) {
     for (i = 0; i < 2500; i++) {
         IWL_RX_PKT *Pkt;
         UINTN Len;
-        IwlRxPoll();
-        while (IwlRxTake(&Pkt, &Len)) {
+        IwlReceivePoll();
+        while (IwlReceiveTake(&Pkt, &Len)) {
             if (!(Pkt->Hdr.Qid & 0x80u) && Pkt->Hdr.Code == IWL_CMD_SCAN_CFG) {
                 GotScfg = 1;
             }
@@ -87,7 +87,7 @@ int IwlMvmScanCfg(void) {
         if (GotScfg) {
             break;
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     if (GotScfg) { IwlLogVerb("scfg=got"); } else { IwlLogStage("scfg=miss"); }
     IwlCmdqSnap();
@@ -150,26 +150,26 @@ int IwlMvmAntCanary(void) {
 }
 
 int IwlMvmPostAlive(void) {
-    IwlRxDrain();
+    IwlReceiveDrain();
     /*
      * 刀 #76：phy→aux→MCC→scfg∥ant3→unwedge→ant4（OpenBSD：LAR MCC 在 scfg 前）。
      */
     IwlLogVerb("mvm=v83");
     if (!IwlPhyDbSend()) {
     }
-    if (!IwlPhyCfgRt()) {
+    if (!IwlPhyConfigRt()) {
     }
     if (!IwlMvmAntCanary()) {
     }
     if (!IwlMvmDqaEnable()) {
     }
-    if (!IwlMvmPhyCtxt()) {
+    if (!IwlMvmPhyContext()) {
     }
     if (!IwlMvmAuxSta()) {
     }
     if (!IwlMvmMcc()) {
     }
-    if (!IwlMvmScanCfg()) {
+    if (!IwlMvmScanConfig()) {
         return 0;
     }
     IwlLogStage("mvm=ok");

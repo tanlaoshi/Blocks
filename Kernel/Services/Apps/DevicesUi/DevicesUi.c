@@ -6,7 +6,7 @@
 #include "Desktop.h"
 
 void DevicesMenuRegister(void) {
-    DesktopMenuRegister(DESKTOP_ACTION_DEVICES, MSG_ICON_DEVICES, "Devices", 4, 1);
+    DesktopMenuRegister(DESKTOP_ACTION_DEVICES, MESSAGE_ICON_DEVICES, "Devices", 4, 1);
 }
 
 int gDevUiSel;

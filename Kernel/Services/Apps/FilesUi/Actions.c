@@ -87,7 +87,7 @@ void BeginConfirmDelete(void) {
     }
     /* 商店托管 ELF：直接提示，不进确认框 */
     if (!(gEnts[gSelected].Attr & FAT_ATTR_DIR) && StoreIsManagedPayload(Path)) {
-        SetStatus(LocStr(MSG_FILES_STORE_MANAGED));
+        SetStatus(LocaleString(MESSAGE_FILES_STORE_MANAGED));
         Paint();
         return;
     }
@@ -114,7 +114,7 @@ void BeginPrompt(FILES_PROMPT_KIND Kind) {
         }
         if (JoinPath(Path, sizeof(Path), gCwd, gEnts[gSelected].Name) &&
             StoreIsManagedPayload(Path)) {
-            SetStatus(LocStr(MSG_FILES_STORE_MANAGED));
+            SetStatus(LocaleString(MESSAGE_FILES_STORE_MANAGED));
             Paint();
             return;
         }
@@ -146,7 +146,7 @@ void DoDelete(void) {
     Err = IsDir ? FileSystemRemoveDirectory(Path) : FileSystemDeleteFile(Path);
     gMode = FILES_MODE_LIST;
     if (Err == FAT_ERR_STORE) {
-        SetStatus(LocStr(MSG_FILES_STORE_MANAGED));
+        SetStatus(LocaleString(MESSAGE_FILES_STORE_MANAGED));
     } else if (Err != FAT_OK) {
         SetStatus(FatStrError(Err));
     } else {
@@ -189,7 +189,7 @@ void DoPromptCommit(void) {
         }
         Err = FileSystemRename(OldPath, Path);
         if (Err == FAT_ERR_STORE) {
-            SetStatus(LocStr(MSG_FILES_STORE_MANAGED));
+            SetStatus(LocaleString(MESSAGE_FILES_STORE_MANAGED));
         } else {
             SetStatus(Err == FAT_OK ? "renamed" : FatStrError(Err));
         }

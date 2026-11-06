@@ -77,7 +77,7 @@ int SysWrite(int Fd, UINT64 UserBuf, UINTN Len) {
             if (VirtualMemoryCopyFromUser(Buf, UserBuf + Done, Chunk) < 0) {
                 return Done > 0 ? (int)Done : -1;
             }
-            ConsoleIoWriteLen(Buf, Chunk);
+            ConsoleIoWriteLength(Buf, Chunk);
             Done += Chunk;
         }
         return (int)Len;

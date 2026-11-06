@@ -10,7 +10,7 @@
 #define FS_TREE_PATH_MAX 192
 #define FS_TREE_DEPTH_MAX 16
 
-static int PathLen(const char *S) {
+static int PathLength(const char *S) {
     int N = 0;
     if (!S) {
         return 0;
@@ -36,7 +36,7 @@ static void PathCopy(char *Dst, int Max, const char *Src, int N) {
 }
 
 /* 返回前缀长度（含冒号）；无前缀 → 0 */
-static int VolPrefixLen(const char *Path) {
+static int VolPrefixLength(const char *Path) {
     int i;
     if (!Path) {
         return 0;
@@ -71,8 +71,8 @@ static int JoinUnder(char *Out, int OutMax, const char *Dir, const char *Name) {
     if (!Out || OutMax <= 0 || !Name || !Name[0]) {
         return FAT_ERR_INVAL;
     }
-    Dl = Dir ? PathLen(Dir) : 0;
-    Nl = PathLen(Name);
+    Dl = Dir ? PathLength(Dir) : 0;
+    Nl = PathLength(Name);
     if (Dl + 1 + Nl + 1 > OutMax) {
         return FAT_ERR_NAMETOOLONG;
     }
@@ -103,12 +103,12 @@ int FileSystemMakePath(const char *Path) {
     if (!Path || !Path[0]) {
         return FAT_ERR_INVAL;
     }
-    Pref = VolPrefixLen(Path);
+    Pref = VolPrefixLength(Path);
     Rel = Path + Pref;
     while (*Rel == '/' || *Rel == '\\') {
         Rel++;
     }
-    RelLen = PathLen(Rel);
+    RelLen = PathLength(Rel);
     if (RelLen <= 0) {
         return FAT_OK;
     }

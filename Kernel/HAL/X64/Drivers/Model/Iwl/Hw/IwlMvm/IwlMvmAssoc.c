@@ -43,7 +43,7 @@ int IwlSendLq(UINT8 StaId) {
 }
 
 /* 刀 #162：AP 站建站时 tid_disable_tx=0xffff。数据改走这站之前先清掉。 */
-int IwlStaEnableTx(UINT8 StaId) {
+int IwlStaEnableTransmit(UINT8 StaId) {
     UINT8 Sta[IWL_ADD_STA_CMD_SIZE];
 
     IwlMvmZero(Sta, sizeof(Sta));
@@ -71,12 +71,12 @@ int IwlMacCtxtAssoc(void) {
         (void)IwlCmdqUnwedge();
     }
     if (ApOk) {
-        if (!IwlEnableApTxq()) {
+        if (!IwlEnableApTransmitQueue()) {
             IwlLogStage("apqhw=soft");
-            IwlAuxTxLogReset();
+            IwlAuxTransmitLogReset();
         }
         IwlLogStage(IwlSendLq((UINT8)IWL_AP_STA_ID) ? "lq=ok" : "lq=fail");
-        IwlLogStage(IwlStaEnableTx((UINT8)IWL_AP_STA_ID) ? "tid=ok" : "tid=fail");
+        IwlLogStage(IwlStaEnableTransmit((UINT8)IWL_AP_STA_ID) ? "tid=ok" : "tid=fail");
     }
     return 1;
 }

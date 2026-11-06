@@ -48,11 +48,11 @@ void HalDriverRegister(void) {
 }
 
 int HalUsbInitialize(void) {
-    return InputXhciInit();
+    return InputXhciInitialize();
 }
 
 int HalUsbMscInitialize(void) {
-    return UsbMscInit();
+    return UsbMscInitialize();
 }
 
 int HalUsbMscReady(void) {
@@ -119,8 +119,8 @@ void HalUsbMscArmBootWatch(int On) {
     UsbMscArmBootWatch(On);
 }
 
-int HalUsbPortEnumIsFrozen(void) {
-    return XhciPortEnumIsFrozen();
+int HalUsbPortEnumerateIsFrozen(void) {
+    return XhciPortEnumerateIsFrozen();
 }
 
 int HalUsbMscHotPoll(void) {
@@ -129,7 +129,7 @@ int HalUsbMscHotPoll(void) {
 
 int HalUsbMscHot(void) {
     /* HotPoll 不解冻；仅显式 msc hot 允许再 Address */
-    XhciPortEnumUnfreeze();
+    XhciPortEnumerateUnfreeze();
     return UsbMscHot();
 }
 
@@ -256,19 +256,19 @@ UINT64 HalIwlLogTsc(void) {
 }
 
 int HalIgpuMmioInitialize(void) {
-    return IgpuMmioInit();
+    return IgpuMmioInitialize();
 }
 
 void HalHdaMmioInitialize(void) {
-    (void)HdaMmioInit();
+    (void)HdaMmioInitialize();
 }
 
 void HalHdaCodecInitialize(void) {
-    (void)HdaCodecInit();
+    (void)HdaCodecInitialize();
 }
 
 void HalHdaStreamInitialize(void) {
-    (void)HdaStreamInit();
+    (void)HdaStreamInitialize();
 }
 
 int HalAudioProbe(void) {
@@ -289,15 +289,15 @@ void HalAudioBeep(void) {
 }
 
 void HalIgpuGttInitialize(void) {
-    (void)IgpuGttInit();
+    (void)IgpuGttInitialize();
 }
 
 void HalIgpuForcewakeInitialize(void) {
-    (void)IgpuForcewakeInit();
+    (void)IgpuForcewakeInitialize();
 }
 
 void HalIgpuBlitInitialize(void) {
-    (void)IgpuBlitInit();
+    (void)IgpuBlitInitialize();
 }
 
 void HalIgpuBlitColorTest(void) {

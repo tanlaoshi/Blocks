@@ -91,7 +91,7 @@ int IgpuForcewakeGet(void) {
     return 1;
 }
 
-int IgpuForcewakeInit(void) {
+int IgpuForcewakeInitialize(void) {
     UINT32 Ts;
 
     if (gIgpuFwOk) {

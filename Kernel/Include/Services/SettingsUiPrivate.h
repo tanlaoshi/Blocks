@@ -34,7 +34,7 @@ typedef enum {
 } SETTINGS_CAT;
 
 typedef struct {
-    MSG_ID Msg;
+    MESSAGE_ID Msg;
     UINT32 Color;
 } SETTINGS_COLOR;
 

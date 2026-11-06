@@ -4,19 +4,19 @@
 #include "AlxPrivate.h"
 #include "Hal.h"
 
-void AlxStallMs(UINT32 Ms) {
+void AlxStallMilliseconds(UINT32 Milliseconds) {
     UINT32 Lo;
     UINT32 Hi;
     UINT64 T0;
     UINT64 Need;
     UINT64 Now;
 
-    if (Ms == 0) {
+    if (Milliseconds == 0) {
         return;
     }
     __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
     T0 = ((UINT64)Hi << 32) | Lo;
-    Need = (UINT64)Ms * 3000000ULL;
+    Need = (UINT64)Milliseconds * 3000000ULL;
     for (;;) {
         __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
         Now = ((UINT64)Hi << 32) | Lo;
@@ -39,7 +39,7 @@ void AlxClearWol(void) {
     AlxMmioW32(ALX_WOL0, 0);
 }
 
-void AlxSetMacAddr(const UINT8 Mac[6]) {
+void AlxSetMacAddress(const UINT8 Mac[6]) {
     UINT32 Stad0;
     UINT32 Stad1;
 
@@ -67,10 +67,10 @@ void AlxResetPhy(void) {
     Val |= ALX_PHY_CTRL_RST_ANALOG | ALX_PHY_CTRL_HIB_PULSE |
            ALX_PHY_CTRL_HIB_EN;
     AlxMmioW32(ALX_PHY_CTRL, Val);
-    AlxStallMs(1);
+    AlxStallMilliseconds(1);
     AlxMmioW32(ALX_PHY_CTRL, Val | ALX_PHY_CTRL_DSPRST_OUT);
     for (i = 0; i < 80; i++) {
-        AlxStallMs(1);
+        AlxStallMilliseconds(1);
     }
 
     /* 关 EEE，减少 AN 怪异 */
@@ -160,7 +160,7 @@ void AlxConfigureBasic(void) {
     UINT32 Val;
     UINT32 Mtu = 1514u; /* ETH_HLEN+1500+FCS 量级；jumbo 不做 */
 
-    AlxSetMacAddr(gAlxMac);
+    AlxSetMacAddress(gAlxMac);
     AlxMmioW32(ALX_CLK_GATE, ALX_CLK_GATE_ALL);
     AlxMmioW32(ALX_HASH_TBL0, 0);
     AlxMmioW32(ALX_HASH_TBL1, 0);

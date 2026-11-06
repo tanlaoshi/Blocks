@@ -104,8 +104,8 @@ int SmscMacInitialize(void) {
         return -1;
     }
 
-    (void)SmscMiiRead(PHY_INT_SRC, 0);
-    if (SmscMiiWrite(PHY_INT_MASK, PHY_INT_MASK_DEFAULT) != 0) {
+    (void)SmscMediaIndependentInterfaceRead(PHY_INT_SRC, 0);
+    if (SmscMediaIndependentInterfaceWrite(PHY_INT_MASK, PHY_INT_MASK_DEFAULT) != 0) {
         return -1;
     }
     if (SmscReadRegister(INT_EP_CTL, &V) != 0) {

@@ -136,7 +136,7 @@ int BytesQueue(const void *Data, UINTN Len) {
     if (gTcp.SndBufLen + Len > TCP_SND_BUF) {
         return -1;
     }
-    BufCopy(gTcp.SndBuf + gTcp.SndBufLen, Data, Len);
+    BufferCopy(gTcp.SndBuf + gTcp.SndBufLen, Data, Len);
     gTcp.SndBufLen += (UINT32)Len;
     return 0;
 }

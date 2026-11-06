@@ -12,7 +12,7 @@
 FAT_VOL gFatVols[FAT_VOL_MAX];
 FAT_VOL *gFatCur = &gFatVols[0];
 
-FAT_DIR_CTX FatRootCtx(void) {
+FAT_DIR_CTX FatRootContext(void) {
     FAT_DIR_CTX C;
     if (gFatType == 16) {
         C.IsFat16Root = 1;

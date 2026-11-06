@@ -232,10 +232,10 @@ int HdaAudioProbe(void) {
     if (gHdaStreamOk) {
         return 1;
     }
-    return HdaStreamInit();
+    return HdaStreamInitialize();
 }
 
-int HdaStreamInit(void) {
+int HdaStreamInitialize(void) {
     UINT16 Gcap;
     UINT8 Iss, Afg;
 
@@ -245,7 +245,7 @@ int HdaStreamInit(void) {
     if (!HdaCodecOk()) {
         return 0;
     }
-    gCad = HdaCodecAddr();
+    gCad = HdaCodecAddress();
     Afg = HdaCodecAfg();
     gPin = 0;
     gCvt = 0;

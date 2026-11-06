@@ -131,7 +131,7 @@ int E1000Setup(void) {
      * PR-N-i219-tx8：I219 保持 poll（tx7 已是 Flush NoDD，MSI 非主因；
      * 仍禁用以免多变量）。QEMU e1000e 照旧 MSI。
      */
-    if (gPciDid != E1000_DID_I219_LM && TryEnableMsiRx()) {
+    if (gPciDid != E1000_DID_I219_LM && TryEnableMsiReceive()) {
         if (gPciDid == E1000_DID_82574L) {
             LogNet("Boot: E1000E IRQ=MSI\n");
         } else {

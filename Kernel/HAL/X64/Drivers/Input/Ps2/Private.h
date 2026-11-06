@@ -33,19 +33,19 @@ void Ps2DrainOb(int Max);
 int Ps2ExpectAck(void);
 int Ps2AuxWrite(UINT8 Data);
 int Ps2AuxReadByte(UINT8 *Out);
-int Ps2InitHw(void);
-void Ps2KbdPortEnable(int On);
+int Ps2HardwareInitialize(void);
+void Ps2KeyboardPortEnable(int On);
 
-void Ps2KbdResetState(void);
-void Ps2KbdFeed(UINT8 B);
-int Ps2KbdDequeue(HAL_KEYBOARD_REPORT *Report);
+void Ps2KeyboardResetState(void);
+void Ps2KeyboardFeed(UINT8 B);
+int Ps2KeyboardDequeue(HAL_KEYBOARD_REPORT *Report);
 
 void Ps2AuxResetState(void);
 void Ps2AuxFeed(UINT8 B);
 int Ps2AuxPresent(void);
 int Ps2AuxDequeue(HAL_MOUSE_REPORT *Report);
 void Ps2AuxHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
-int Ps2AuxInitDevice(void);
+int Ps2AuxInitializeDevice(void);
 void Ps2DiagFormat(char *Buf, int Max);
 int Ps2AuxRetry(void);
 UINT32 Ps2AuxPktCount(void);

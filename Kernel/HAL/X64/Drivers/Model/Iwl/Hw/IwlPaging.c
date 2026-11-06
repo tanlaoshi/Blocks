@@ -161,7 +161,7 @@ static int IwlPagingSendOne(UINT32 Flags) {
         Cmd[Off + 2] = (UINT8)(Addr >> 16);
         Cmd[Off + 3] = (UINT8)(Addr >> 24);
     }
-    IwlRxDrain();
+    IwlReceiveDrain();
     return IwlSendCmd(IWL_CMD_ID(IWL_FW_PAGING_BLOCK_CMD, IWL_LONG_GROUP, 0),
                       Cmd, (UINT32)sizeof(Cmd), 1) == 0;
 }
@@ -174,7 +174,7 @@ static int IwlPagingSend(void) {
     return 0;
 }
 
-int IwlPagingInit(const IWL_FW_IMG *Img) {
+int IwlPagingInitialize(const IWL_FW_IMG *Img) {
     if (!Img || Img->PagingMemSize == 0) {
         IwlLogVerb("page=skip");
         return 1;

@@ -22,7 +22,7 @@ static void IwlPutHex8(char *Line, int *N, UINT32 V) {
     Line[(*N)++] = Hex[9];
 }
 
-int IwlFhAliveVal(UINT32 V) {
+int IwlFhAliveValue(UINT32 V) {
     return ((V & ~0xFu) != 0xA5A5A5A0u) && ((V & ~0xFu) != 0x5A5A5A50u);
 }
 
@@ -59,17 +59,17 @@ void IwlFhProbeAccess(const char *Tag) {
     IwlPutHex8(Line, &n, FhLo);
     Line[n++] = ' '; Line[n++] = 'c'; Line[n++] = '=';
     IwlPutHex8(Line, &n, Tcsr);
-    if (!IwlFhAliveVal(FhLo) || !IwlFhAliveVal(Tcsr)) {
+    if (!IwlFhAliveValue(FhLo) || !IwlFhAliveValue(Tcsr)) {
         Line[n++] = ' '; Line[n++] = 'd'; Line[n++] = 'e';
         Line[n++] = 'a'; Line[n++] = 'd';
     }
-    if (IwlFhAliveVal(Hbus) && !IwlFhAliveVal(FhLo)) {
+    if (IwlFhAliveValue(Hbus) && !IwlFhAliveValue(FhLo)) {
         Line[n++] = ' '; Line[n++] = 'f'; Line[n++] = 'h';
         Line[n++] = 'g'; Line[n++] = 'a'; Line[n++] = 't'; Line[n++] = 'e';
     }
     Line[n] = 0;
     /* #129：FH 探针仅异常时亮黄字 */
-    if (!IwlFhAliveVal(FhLo) || !IwlFhAliveVal(Tcsr) || !IwlFhAliveVal(Hbus)) {
+    if (!IwlFhAliveValue(FhLo) || !IwlFhAliveValue(Tcsr) || !IwlFhAliveValue(Hbus)) {
         IwlLogStage(Line);
     } else {
         IwlLogVerb(Line);

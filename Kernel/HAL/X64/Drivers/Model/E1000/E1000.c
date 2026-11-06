@@ -50,7 +50,7 @@ void E1000FlushI219Rings(void) {
 
     Tctl = MmioR32(E1000_REG_TCTL);
     MmioW32(E1000_REG_TCTL, Tctl | E1000_TCTL_EN);
-    E1000ApplyI219TxDctl();
+    E1000ApplyI219TransmitDctl();
 
     D = &gE1000TxRing[0];
     ZeroMemory(gE1000TxBuf, 512);

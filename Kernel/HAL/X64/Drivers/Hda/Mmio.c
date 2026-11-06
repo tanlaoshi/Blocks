@@ -134,7 +134,7 @@ static int ReadBar0(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 *BarOut) {
     return 1;
 }
 
-int HdaMmioInit(void) {
+int HdaMmioInitialize(void) {
     UINT8 Bus;
     UINT8 Dev;
     UINT8 Fn;
@@ -160,7 +160,7 @@ int HdaMmioInit(void) {
     }
 
     Bus = HdaPciBus();
-    Dev = HdaPciDev();
+    Dev = HdaPciDevice();
     Fn = HdaPciFn();
     if (!ReadBar0(Bus, Dev, Fn, &Bar)) {
         LogBoot("Boot: hda mmio no BAR0\n");

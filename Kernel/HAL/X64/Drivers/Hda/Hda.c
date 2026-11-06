@@ -28,7 +28,7 @@ UINT8 HdaPciBus(void) {
     return gHdaBus;
 }
 
-UINT8 HdaPciDev(void) {
+UINT8 HdaPciDevice(void) {
     return gHdaDev;
 }
 

@@ -20,7 +20,7 @@ typedef struct {
     void (*GetStats)(UINT32 *TxDone, UINT32 *RxFrames);
     int (*SendIp)(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
     UINT16 (*Checksum)(const void *Data, UINTN Len);
-    void (*SetLwIpRx)(int Enable);
+    void (*SetLwIpReceive)(int Enable);
 } NET_BACKEND;
 
 int DriverNetAttach(const NET_BACKEND *Backend);
@@ -36,6 +36,6 @@ int DriverNetPing(const char *Host, int TimeoutMs);
 void DriverNetGetStats(UINT32 *TxDone, UINT32 *RxFrames);
 int DriverNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload, UINTN PayloadLen);
 UINT16 DriverNetChecksum(const void *Data, UINTN Len);
-void DriverNetSetLwIpRx(int Enable);
+void DriverNetSetLwIpReceive(int Enable);
 
 #endif

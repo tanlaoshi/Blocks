@@ -57,10 +57,10 @@ void IwlStallUs(UINT32 Us) {
     }
 }
 
-void IwlStallMs(UINT32 Ms) {
+void IwlStallMilliseconds(UINT32 Milliseconds) {
     UINT32 i;
 
-    for (i = 0; i < Ms; i++) {
+    for (i = 0; i < Milliseconds; i++) {
         IwlStallUs(1000);
         /* 刀 #117：每 ms 呼吸，WiFi 后台关联时桌面键鼠仍能动 */
         HalDriverIoBreath();
@@ -154,7 +154,7 @@ static void IwlPciForceD0(UINT8 Bus, UINT8 Dev, UINT8 Fn) {
             UINT32 Pmcsr = PciReadConfig(Bus, Dev, Fn, Cap + 4);
             if ((Pmcsr & 0x3u) != 0) {
                 PciWriteConfig(Bus, Dev, Fn, Cap + 4, Pmcsr & ~0x3u);
-                IwlStallMs(10);
+                IwlStallMilliseconds(10);
             }
             break;
         }
@@ -196,7 +196,7 @@ static int IwlPrepareCard(void) {
             IwlStallUs(200);
             T += 200;
         }
-        IwlStallMs(25);
+        IwlStallMilliseconds(25);
     }
     return 0;
 }
@@ -206,7 +206,7 @@ static void IwlApmConfig(void) {
     IwlMmioSet(IWL_CSR_GIO_REG, IWL_CSR_GIO_L0S_ENABLED);
 }
 
-static int IwlApmInit(void) {
+static int IwlApmInitialize(void) {
     IwlMmioSet(IWL_CSR_GIO_CHICKEN, IWL_CSR_GIO_L1A_NO_L0S_RX);
     IwlMmioSet(IWL_CSR_DBG_HPET, IWL_CSR_DBG_HPET_VAL);
     IwlMmioSet(IWL_CSR_HW_IF_CONFIG, IWL_CSR_HW_IF_HAP_WAKE_L1A);
@@ -238,11 +238,11 @@ int IwlHwStart(void) {
     }
     /* Linux sw_reset：set_bit SW_RESET 后 usleep，再 prepare 夺回 OWN */
     IwlMmioSet(IWL_CSR_RESET, IWL_CSR_RESET_SW);
-    IwlStallMs(5);
+    IwlStallMilliseconds(5);
     if (!IwlPrepareCard()) {
         return -1;
     }
-    if (!IwlApmInit()) {
+    if (!IwlApmInitialize()) {
         return -2;
     }
     gIwlHwRev = (UINT16)IwlMmioR32(IWL_CSR_HW_REV);

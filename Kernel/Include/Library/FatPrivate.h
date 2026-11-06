@@ -102,7 +102,7 @@ extern FAT_VOL *gFatCur;
 
 
 /* —— InputOutput.c —— */
-FAT_DIR_CTX FatRootCtx(void);
+FAT_DIR_CTX FatRootContext(void);
 UINT16 Read16(const UINT8 *P);
 UINT32 Read32(const UINT8 *P);
 void Write16(UINT8 *P, UINT16 V);

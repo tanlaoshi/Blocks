@@ -113,7 +113,7 @@ int GuiBackupRoundTripDiff(UINT32 *OutWp, UINT32 *OutHp, UINT32 *OutDiff,
     if (Lw == 0u || Lh == 0u) {
         return -1;
     }
-    GuiPhysRect(Lx, Ly, Lw, Lh, &Xp, &Yp, &Wp, &Hp);
+    GuiPhysicalRect(Lx, Ly, Lw, Lh, &Xp, &Yp, &Wp, &Hp);
     if (Wp == 0u || Hp == 0u) {
         return -1;
     }

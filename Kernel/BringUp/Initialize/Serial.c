@@ -11,7 +11,7 @@
 
 int SerialModuleInitialize(void) {
     HalSerialInitialize();
-    HalSerialEnableRxIrq();
+    HalSerialEnableReceiveIrq();
     LibWriteRegister(HalSerialWrite);
     return 0;
 }

@@ -12,44 +12,44 @@
 static ALX_TPD *gTpd;
 static ALX_RFD *gRfd;
 static ALX_RRD *gRrd;
-static UINT8 *gRxBufs;
-static UINT8 *gTxBufs;
+static UINT8 *gReceiveBuffers;
+static UINT8 *gTransmitBuffers;
 static UINT64 gDescPhys;
 static UINT16 gTxWrite;
-static UINT16 gRxWrite;
-static UINT16 gRxRead;
+static UINT16 gReceiveWrite;
+static UINT16 gReceiveRead;
 static UINT16 gRrdRead;
 static UINT32 gAlxRxOk;
 static UINT32 gAlxRxDrop;
 
-static UINT64 RxBufPhys(UINT16 Idx) {
+static UINT64 ReceiveBufferPhysical(UINT16 Idx) {
     return gDescPhys + 2u * PAGE_SIZE + (UINT64)Idx * ALX_BUF_SIZE;
 }
 
-static void RefillRx(void) {
+static void RefillReceive(void) {
     UINT16 Next;
     UINT16 Count = 0;
 
-    Next = (UINT16)((gRxWrite + 1u) % ALX_RING_COUNT);
-    while (Next != gRxRead) {
-        gRfd[Next].Addr = RxBufPhys(Next);
-        gRxWrite = Next;
-        Next = (UINT16)((gRxWrite + 1u) % ALX_RING_COUNT);
+    Next = (UINT16)((gReceiveWrite + 1u) % ALX_RING_COUNT);
+    while (Next != gReceiveRead) {
+        gRfd[Next].Addr = ReceiveBufferPhysical(Next);
+        gReceiveWrite = Next;
+        Next = (UINT16)((gReceiveWrite + 1u) % ALX_RING_COUNT);
         Count++;
     }
     if (Count) {
         AlxFence();
-        AlxMmioW16(ALX_RFD_PIDX, gRxWrite);
+        AlxMmioW16(ALX_RFD_PIDX, gReceiveWrite);
     }
 }
 
-static void InitRingPtrs(void) {
+static void InitializeRingPtrs(void) {
     UINT32 Hi = (UINT32)(gDescPhys >> 32);
     UINT32 i;
 
     gTxWrite = 0;
-    gRxWrite = 0;
-    gRxRead = 0;
+    gReceiveWrite = 0;
+    gReceiveRead = 0;
     gRrdRead = 0;
 
     AlxMmioW32(ALX_TX_BASE_ADDR_HI, Hi);
@@ -68,11 +68,11 @@ static void InitRingPtrs(void) {
     }
     /* 留一空位：填 0..N-2 */
     for (i = 0; i < ALX_RING_COUNT - 1u; i++) {
-        gRfd[i].Addr = RxBufPhys((UINT16)i);
-        gRxWrite = (UINT16)i;
+        gRfd[i].Addr = ReceiveBufferPhysical((UINT16)i);
+        gReceiveWrite = (UINT16)i;
     }
     AlxFence();
-    AlxMmioW16(ALX_RFD_PIDX, gRxWrite);
+    AlxMmioW16(ALX_RFD_PIDX, gReceiveWrite);
 }
 
 int AlxBringUp(void) {
@@ -95,7 +95,7 @@ int AlxBringUp(void) {
         return 0;
     }
     /* MAC 复位会清 STAD：写回永久址 */
-    AlxSetMacAddr(gAlxMac);
+    AlxSetMacAddress(gAlxMac);
 
     /* TPD页 + RFD/RRD页 + RX环 + TX环（每槽一缓冲，免单缓冲 DMA 未完就覆盖） */
     Pages = 1u + 1u + 6u + 6u;
@@ -109,10 +109,10 @@ int AlxBringUp(void) {
     gTpd = (ALX_TPD *)(UINTN)Mem;
     gRfd = (ALX_RFD *)(UINTN)(Mem + PAGE_SIZE);
     gRrd = (ALX_RRD *)(UINTN)(Mem + PAGE_SIZE + 256u);
-    gRxBufs = Mem + 2u * PAGE_SIZE;
-    gTxBufs = Mem + 8u * PAGE_SIZE;
+    gReceiveBuffers = Mem + 2u * PAGE_SIZE;
+    gTransmitBuffers = Mem + 8u * PAGE_SIZE;
 
-    InitRingPtrs();
+    InitializeRingPtrs();
     AlxConfigureBasic();
 
     if (!AlxWaitLink(&Mbps, &Full)) {
@@ -153,7 +153,7 @@ int AlxSendFrame(const UINT8 *Frame, UINTN Len) {
     }
 
     {
-        UINT8 *Tx = gTxBufs + (UINTN)gTxWrite * ALX_BUF_SIZE;
+        UINT8 *Tx = gTransmitBuffers + (UINTN)gTxWrite * ALX_BUF_SIZE;
         AlxZero(Tx, Wire);
         AlxCopy(Tx, Frame, Len);
         D = &gTpd[gTxWrite];
@@ -207,7 +207,7 @@ void AlxPoll(void) {
                   (1u << RRD_ERR_TRUNC_SHIFT) | (1u << RRD_ERR_LEN_SHIFT);
         if (Nor == 1 && Si < ALX_RING_COUNT && (Word3 & HardErr) == 0 &&
             PktLen > ALX_ETH_FCS_LEN + 14u) {
-            UINT8 *Buf = gRxBufs + (UINTN)Si * ALX_BUF_SIZE;
+            UINT8 *Buf = gReceiveBuffers + (UINTN)Si * ALX_BUF_SIZE;
             UINTN Pay = (UINTN)(PktLen - ALX_ETH_FCS_LEN);
 
             AlxDmaInv(Buf, Pay);
@@ -220,13 +220,13 @@ void AlxPoll(void) {
             }
         }
 
-        gRxRead = (UINT16)((Si + (Nor ? Nor : 1u)) % ALX_RING_COUNT);
+        gReceiveRead = (UINT16)((Si + (Nor ? Nor : 1u)) % ALX_RING_COUNT);
         gRrdRead = (UINT16)((gRrdRead + 1u) % ALX_RING_COUNT);
-        RefillRx();
+        RefillReceive();
     }
 }
 
-void AlxGetRxStats(UINT32 *OkOut, UINT32 *DropOut) {
+void AlxGetReceiveStats(UINT32 *OkOut, UINT32 *DropOut) {
     if (OkOut) {
         *OkOut = gAlxRxOk;
     }

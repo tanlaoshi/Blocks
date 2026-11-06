@@ -60,7 +60,7 @@ void EditUiOnEscape(void) {
     if (!EditUiIsFocused()) {
         return;
     }
-    EditSetStatus(gEditDirty ? LocStr(MSG_EDIT_DIRTY_ESC) : LocStr(MSG_EDIT_ESC));
+    EditSetStatus(gEditDirty ? LocaleString(MESSAGE_EDIT_DIRTY_ESC) : LocaleString(MESSAGE_EDIT_ESC));
     EditUiRepaint();
 }
 

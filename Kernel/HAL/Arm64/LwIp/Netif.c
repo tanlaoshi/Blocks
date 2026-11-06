@@ -2,7 +2,7 @@
  * Netif.c — Arm64 lwIP 以太网 netif（rnet-1；对表 RiscV net-6）
  *
  * linkoutput：virt → Virtio；Pi：WiFi 已武装则 SDPCM，否则 SMSC。
- * RX：驱动在 gLwIpRx 时调 LwIpNetifInput（Pi smsc95xx / virtio / WiFi feed）。
+ * RX：驱动在 gLwIpReceive 时调 LwIpNetifInput（Pi smsc95xx / virtio / WiFi feed）。
  */
 #include "lwip/opt.h"
 #include "lwip/def.h"
@@ -83,7 +83,7 @@ static err_t LwIpNetifOutput(struct netif *Netif, struct pbuf *P) {
     return PlatformSendEthernet(Frame, Off) == 0 ? ERR_OK : ERR_IF;
 }
 
-static err_t LwIpNetifInit(struct netif *Netif) {
+static err_t LwIpNetifInitialize(struct netif *Netif) {
     UINT8 Mac[6];
 
     HalNetGetMacAddress(Mac);
@@ -111,7 +111,7 @@ int LwIpNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     ToyHostIpToLwIp(Mask, &NetMask);
     ToyHostIpToLwIp(Gw, &GwAddr);
     if (netif_add(&gLwIpNetif, &IpAddr, &NetMask, &GwAddr, NULL,
-                  LwIpNetifInit, ethernet_input) == NULL) {
+                  LwIpNetifInitialize, ethernet_input) == NULL) {
         return -1;
     }
     netif_set_default(&gLwIpNetif);
@@ -121,7 +121,7 @@ int LwIpNetifAdd(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     return 0;
 }
 
-int LwIpNetifSetAddr(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
+int LwIpNetifSetAddress(UINT32 Ip, UINT32 Mask, UINT32 Gw) {
     ip4_addr_t IpAddr;
     ip4_addr_t NetMask;
     ip4_addr_t GwAddr;

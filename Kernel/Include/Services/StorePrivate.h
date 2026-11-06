@@ -80,7 +80,8 @@ int StoreAppBundleReady(const char *Id);
 int StoreResolveAppPath(const char *Id, const char *File, char *Out, int OutMax);
 int StoreInstallBundlePrepare(const char *Id, const char *File, char *DstElf,
                               int DstMax);
-int StoreInstallBundleExtras(const char *Id);
+/* CopyElf：1=已装刷新重拷 ELF；0=Pump 刚写过 ELF，只刷 PKG/Assets */
+int StoreInstallBundleExtras(const char *Id, int CopyElf);
 int StoreRemoveAppPayload(const char *Id, const char *File);
 
 static inline void JoinPath(char *Dst, int DstMax, const char *A, const char *B) {

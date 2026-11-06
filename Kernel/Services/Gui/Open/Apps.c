@@ -2,7 +2,7 @@
  * Apps.c — Shell / Settings / Store / Files / Edit 开窗（story-s1 / story-s4 / S1.3）
  *
  * 链：ClickDesktop Action → 这里 GuiOpen* → OpenChromeDefer →（填内容）→ OpenFadeIn。
- * 槽位字段：InitWindowSlot / ClampWindowBox（Open.c）。
+ * 槽位字段：WindowSlotInitialize / ClampWindowBox（Open.c）。
  * Store：StoreUiOpen defer → Worker StoreUiEnsureOpenLoad；Job 见 StoreJob*。
  * Defer/Fade：Open.c；关窗：Close.c。单例：Settings/Store/Edit/Files。
  */
@@ -33,8 +33,8 @@ int GuiOpenShell(void) {
     }
     PlaceNewWindow(Idx, &X, &Y, &W, &H);
     /* PromptShown=1：避免 FocusApply→FocusLoad 抢画；OnShellOpened 再画欢迎语 */
-    InitWindowSlot(Idx, GUI_WIN_SHELL, X, Y, W, H, ThemeShellClientBackground(),
-                   LocStr(MSG_APP_SHELL), 1);
+    WindowSlotInitialize(Idx, GUI_WIN_SHELL, X, Y, W, H, ThemeShellClientBackground(),
+                   LocaleString(MESSAGE_APP_SHELL), 1);
 
     OpenChromeDefer(Idx);
     GuiFocusSave();
@@ -72,8 +72,8 @@ int GuiOpenSettings(void) {
             ? (gGuiWindowManager.ScreenWidth - W - Margin)
             : Margin;
     Y = Margin;
-    InitWindowSlot(Idx, GUI_WIN_SETTINGS, X, Y, W, H,
-                   ThemeSettingsClientBackground(), LocStr(MSG_APP_SETTINGS), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_SETTINGS, X, Y, W, H,
+                   ThemeSettingsClientBackground(), LocaleString(MESSAGE_APP_SETTINGS), 0);
 
     OpenChromeDefer(Idx);
     SettingsUiOpen();
@@ -118,8 +118,8 @@ int GuiOpenStore(void) {
     ClampWindowBox(Margin, &W, &H);
     X = Margin;
     Y = Margin + 24;
-    InitWindowSlot(Idx, GUI_WIN_STORE, X, Y, W, H, ThemeSettingsClientBackground(),
-                   LocStr(MSG_APP_STORE), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_STORE, X, Y, W, H, ThemeSettingsClientBackground(),
+                   LocaleString(MESSAGE_APP_STORE), 0);
 
     OpenChromeDefer(Idx);
     StoreUiOpen();
@@ -156,8 +156,8 @@ int GuiOpenFiles(void) {
     Y = (gGuiWindowManager.ScreenHeight > H + Margin)
             ? (gGuiWindowManager.ScreenHeight - H - Margin)
             : Margin;
-    InitWindowSlot(Idx, GUI_WIN_FILES, X, Y, W, H, ThemeSettingsClientBackground(),
-                   LocStr(MSG_APP_FILES), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_FILES, X, Y, W, H, ThemeSettingsClientBackground(),
+                   LocaleString(MESSAGE_APP_FILES), 0);
 
     OpenChromeDefer(Idx);
     FilesUiOpen();
@@ -205,8 +205,8 @@ int GuiOpenEdit(const char *Path) {
     Y = Margin;
     /* 先 Open（含 TTF 预热）再画 chrome，避免标题栏首帧 defer 空白 */
     EditUiOpen(Path);
-    InitWindowSlot(Idx, GUI_WIN_EDIT, X, Y, W, H, ThemeSettingsClientBackground(),
-                   LocStr(MSG_APP_EDIT), 0);
+    WindowSlotInitialize(Idx, GUI_WIN_EDIT, X, Y, W, H, ThemeSettingsClientBackground(),
+                   LocaleString(MESSAGE_APP_EDIT), 0);
 
     OpenChromeDefer(Idx);
     EditUiRepaint();

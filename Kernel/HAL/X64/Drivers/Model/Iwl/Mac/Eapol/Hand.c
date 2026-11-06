@@ -132,8 +132,8 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
             IwlLogStage(Kd ? "wpa2=m2r" : "wpa2=m2");
         }
 
-        gIwlTxRsp = 0;
-        gIwlRxCode = 0;
+        gIwlTransmitResponse = 0;
+        gIwlReceiveCode = 0;
         {
             UINT32 RxMpdu = 0;
             UINT32 RxData = 0;
@@ -144,8 +144,8 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
                 if (i == 1000u || i == 2000u) {
                     (void)IwlSendEapol(M2, Total);
                 }
-                IwlRxPoll();
-                while (!Got3 && IwlRxDrainForEapol(Eapol, &EapLen, 256u,
+                IwlReceivePoll();
+                while (!Got3 && IwlReceiveDrainForEapol(Eapol, &EapLen, 256u,
                                                    &RxMpdu, &RxData, &RxUni,
                                                    &RxBeacon)) {
                     UINT8 Calc[16];
@@ -218,7 +218,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
                     Got3 = 1;
                 }
                 if (!Got3) {
-                    IwlStallMs(1);
+                    IwlStallMilliseconds(1);
                 }
             }
             if (!Got3) {
@@ -226,7 +226,7 @@ int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLenIn, UINT8 *Anonce, UINT8 *
                 char Hex[12];
                 int n = 0;
                 const char *P = "wpa2=m3to e=";
-                if (!gIwlTxRsp) {
+                if (!gIwlTransmitResponse) {
                     IwlLogApQ();
                     IwlLogStage("txa=none");
                 }

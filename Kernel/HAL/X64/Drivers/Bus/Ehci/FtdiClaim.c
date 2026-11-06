@@ -26,13 +26,13 @@ UINT8 gEhciFtdiAddr;
 UINT8 gEhciFtdiSpeed;
 UINT8 gEhciFtdiHubAddr;
 UINT8 gEhciFtdiHubPort;
-UINT8 gEhciFtdiEpIn;
-UINT8 gEhciFtdiEpOut;
-UINT16 gEhciFtdiMpsIn;
-UINT16 gEhciFtdiMpsOut;
+UINT8 gEhciFtdiEndpointIn;
+UINT8 gEhciFtdiEndpointOut;
+UINT16 gEhciFtdiMaxPacketSizeIn;
+UINT16 gEhciFtdiMaxPacketSizeOut;
 UINT8 gEhciFtdiDtIn;
 UINT8 gEhciFtdiDtOut;
-UINT8 gEhciFtdiEpMax0;
+UINT8 gEhciFtdiEndpointMax0;
 int gEhciFtdiOk;
 
 static int IsFtdiPid(UINT16 Pid) {
@@ -40,7 +40,7 @@ static int IsFtdiPid(UINT16 Pid) {
            Pid == FTDI_PID_FT231X;
 }
 
-static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
+static int GetDescriptor(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT16 TypeIndex,
                    UINT16 Len, void *Out) {
     USB_SETUP_PACKET S;
 
@@ -49,10 +49,10 @@ static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return ControlTransfer(C, Addr, EpMax, &S, Out);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, Out);
 }
 
-static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
+static int SetAddress(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EndpointMaxPacketSize) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -60,10 +60,10 @@ static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, 0, EpMax, &S, 0);
+    return EhciControlTransfer(C, 0, EndpointMaxPacketSize, &S, 0);
 }
 
-static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
+static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT8 Cfg) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -71,7 +71,7 @@ static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, Addr, EpMax, &S, 0);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, 0);
 }
 
 static int FtdiVendor(EHCI_CTRL *C, UINT8 Req, UINT16 Value, UINT16 Index) {
@@ -82,21 +82,21 @@ static int FtdiVendor(EHCI_CTRL *C, UINT8 Req, UINT16 Value, UINT16 Index) {
     S.wValue = Value;
     S.wIndex = Index;
     S.wLength = 0;
-    C->XferSpeed = gEhciFtdiSpeed;
-    C->XferHubAddr = gEhciFtdiHubAddr;
-    C->XferHubPort = gEhciFtdiHubPort;
-    return ControlTransfer(C, gEhciFtdiAddr, gEhciFtdiEpMax0 ? gEhciFtdiEpMax0 : 8,
+    C->TransferSpeed = gEhciFtdiSpeed;
+    C->TransferHubAddress = gEhciFtdiHubAddr;
+    C->TransferHubPort = gEhciFtdiHubPort;
+    return EhciControlTransfer(C, gEhciFtdiAddr, gEhciFtdiEndpointMax0 ? gEhciFtdiEndpointMax0 : 8,
                            &S, 0);
 }
 
-static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
-                         UINT8 *EpOut, UINT16 *MpsOut, UINT8 *CfgVal) {
+static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn,
+                         UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut, UINT8 *CfgVal) {
     UINT16 Off = 0;
     UINT8 CurAlt = 0;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
 
     *CfgVal = 1;
     while (Off + 2 <= Total) {
@@ -113,15 +113,15 @@ static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
         } else if (Type == 5 && Len >= 7 && CurAlt == 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
 
             if ((Attr & 0x03) == 2) {
                 if (Addr & 0x80) {
                     BestIn = Addr;
-                    BestInMps = Mps ? Mps : 64;
+                    BestInMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 } else {
                     BestOut = Addr;
-                    BestOutMps = Mps ? Mps : 64;
+                    BestOutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 }
             }
         }
@@ -130,35 +130,35 @@ static int ParseFtdiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
     if (BestIn == 0 || BestOut == 0) {
         return 0;
     }
-    *EpIn = BestIn;
-    *MpsIn = BestInMps;
-    *EpOut = BestOut;
-    *MpsOut = BestOutMps;
+    *EndpointIn = BestIn;
+    *MaxPacketSizeIn = BestInMaxPacketSize;
+    *EndpointOut = BestOut;
+    *MaxPacketSizeOut = BestOutMaxPacketSize;
     return 1;
 }
 
 static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 Cfg[256];
-    UINT8 EpMax = 8;
+    UINT8 EndpointMaxPacketSize = 8;
     UINT8 Addr;
-    UINT8 EpIn;
-    UINT8 EpOut;
-    UINT16 MpsIn;
-    UINT16 MpsOut;
+    UINT8 EndpointIn;
+    UINT8 EndpointOut;
+    UINT16 MaxPacketSizeIn;
+    UINT16 MaxPacketSizeOut;
     UINT8 CfgVal;
     UINT16 CfgLen;
 
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
 
-    if (GetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+    if (GetDescriptor(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
         BootMarkUsb("Boot: EHCI FTDI GetDesc8 Fail\n");
         return 0;
     }
-    EpMax = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
-    if (GetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    EndpointMaxPacketSize = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
+    if (GetDescriptor(C, 0, EndpointMaxPacketSize, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         BootMarkUsb("Boot: EHCI FTDI GetDesc18 Fail\n");
         return 0;
     }
@@ -170,15 +170,15 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         gEhciNextAddr = 2;
     }
     Addr = gEhciNextAddr++;
-    if (SetAddr(C, Addr, EpMax) != 0) {
-        BootMarkUsb("Boot: EHCI FTDI SetAddr Fail\n");
+    if (SetAddress(C, Addr, EndpointMaxPacketSize) != 0) {
+        BootMarkUsb("Boot: EHCI FTDI SetAddress Fail\n");
         return 0;
     }
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
     Delay(100000);
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         BootMarkUsb("Boot: EHCI FTDI Cfg9 Fail\n");
         return 0;
     }
@@ -186,15 +186,15 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
         CfgLen = 64;
     }
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
         BootMarkUsb("Boot: EHCI FTDI Cfg Fail\n");
         return 0;
     }
-    if (!ParseFtdiBulk(Cfg, CfgLen, &EpIn, &MpsIn, &EpOut, &MpsOut, &CfgVal)) {
+    if (!ParseFtdiBulk(Cfg, CfgLen, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut, &CfgVal)) {
         BootMarkUsb("Boot: EHCI FTDI No Bulk\n");
         return 0;
     }
-    if (SetConfig(C, Addr, EpMax, CfgVal) != 0) {
+    if (SetConfig(C, Addr, EndpointMaxPacketSize, CfgVal) != 0) {
         BootMarkUsb("Boot: EHCI FTDI SetCfg Fail\n");
         return 0;
     }
@@ -204,13 +204,13 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     gEhciFtdiSpeed = Speed;
     gEhciFtdiHubAddr = HubAddr;
     gEhciFtdiHubPort = HubPort;
-    gEhciFtdiEpIn = EpIn;
-    gEhciFtdiEpOut = EpOut;
-    gEhciFtdiMpsIn = MpsIn ? MpsIn : 64;
-    gEhciFtdiMpsOut = MpsOut ? MpsOut : 64;
+    gEhciFtdiEndpointIn = EndpointIn;
+    gEhciFtdiEndpointOut = EndpointOut;
+    gEhciFtdiMaxPacketSizeIn = MaxPacketSizeIn ? MaxPacketSizeIn : 64;
+    gEhciFtdiMaxPacketSizeOut = MaxPacketSizeOut ? MaxPacketSizeOut : 64;
     gEhciFtdiDtIn = 0;
     gEhciFtdiDtOut = 0;
-    gEhciFtdiEpMax0 = EpMax;
+    gEhciFtdiEndpointMax0 = EndpointMaxPacketSize;
     gEhciFtdiOk = 0; /* baud 成功后再置 */
 
     if (FtdiVendor(C, FTDI_REQ_RESET, 0, 0) != 0 ||
@@ -226,7 +226,7 @@ static int FinishFtdi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     {
         char Probe[] = "ftdi-tx\r\n";
         gEhciFtdiDtOut = 0;
-        if (BulkXfer(C, gEhciFtdiAddr, gEhciFtdiEpOut, gEhciFtdiMpsOut,
+        if (EhciBulkTransfer(C, gEhciFtdiAddr, gEhciFtdiEndpointOut, gEhciFtdiMaxPacketSizeOut,
                          gEhciFtdiSpeed, gEhciFtdiHubAddr, gEhciFtdiHubPort, 0,
                          Probe, 8, &gEhciFtdiDtOut) < 0) {
             BootMarkUsb("Boot: EHCI FTDI Tx Fail ");
@@ -256,7 +256,7 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
         return 0;
     }
     if (Ch & HUB_STAT_CONNECT) {
-        (void)MscHubClearFeat(C, HubAddr, P, 16u); /* C_PORT_CONNECTION */
+        (void)MscHubClearFeature(C, HubAddr, P, 16u); /* C_PORT_CONNECTION */
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
@@ -280,14 +280,14 @@ int FtdiClaimViaHub(EHCI_CTRL *C) {
     if (!HubAddr) {
         return 0;
     }
-    if (MscHubGetDesc(C, HubAddr, Desc, 9)) {
+    if (MscHubGetDescriptor(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 6;
         if (NPorts > 14) {
             NPorts = 14;
         }
     }
     for (P = 1; P <= NPorts; P++) {
-        (void)MscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)MscHubSetFeature(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
     Delay(500000);
     for (P = 1; P <= NPorts; P++) {

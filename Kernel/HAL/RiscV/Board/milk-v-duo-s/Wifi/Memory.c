@@ -65,7 +65,7 @@ void AicMarkR5(UINT32 R5) {
 }
 
 /* 写一个寄存器并读回：失败打全 cmd/arg/old/want/r5/pst/int/err */
-static int AicWriteReg(SDHCI_HOST *Host, UINT32 Fn, UINT32 Address, UINT8 Value, const char *What) {
+static int AicWriteRegister(SDHCI_HOST *Host, UINT32 Fn, UINT32 Address, UINT8 Value, const char *What) {
     UINT8 Before = 0;
     UINT8 After = 0;
 
@@ -126,7 +126,7 @@ int AicWifiVendorPrepare(SDHCI_HOST *Host) {
         return -1;
     }
     if ((IoEx & 0x02u) == 0u) {
-        if (AicWriteReg(Host, 0u, 0x02u, (UINT8)(IoEx | 0x02u), "ioex") != 0) {
+        if (AicWriteRegister(Host, 0u, 0x02u, (UINT8)(IoEx | 0x02u), "ioex") != 0) {
             SdhciMark("WiFi: vendor init: fn1 enable failed\n");
             return -1;
         }
@@ -135,8 +135,8 @@ int AicWifiVendorPrepare(SDHCI_HOST *Host) {
         SdhciMark(" (idempotent)\n");
     }
     /* 2. fn1 FBR 块大小 512：**fn0 + 绝对地址 0x110/0x111**，两次单字节写 */
-    if (AicWriteReg(Host, 0u, AIC_FBR_BLKSIZE_L, 0x00u, "fbr110") != 0 ||
-        AicWriteReg(Host, 0u, AIC_FBR_BLKSIZE_H, 0x02u, "fbr111") != 0) {
+    if (AicWriteRegister(Host, 0u, AIC_FBR_BLKSIZE_L, 0x00u, "fbr110") != 0 ||
+        AicWriteRegister(Host, 0u, AIC_FBR_BLKSIZE_H, 0x02u, "fbr111") != 0) {
         SdhciMark("WiFi: vendor init: fn1 blocksize failed\n");
         /* 失败时把"写 FBR 前后的 CCCR 快照"补上，供判断是否有复位把枚举态清掉 */
         AicMarkIoState(Host, "WiFi: fbr write failed, state:");
@@ -144,12 +144,12 @@ int AicWifiVendorPrepare(SDHCI_HOST *Host) {
     }
     AicMarkIoState(Host, "WiFi: after fbr   :");
     /* 3. fn0 0xF2 = 0x7F（厂商 aicsdio.c:1850-1856） */
-    if (AicWriteReg(Host, 0u, 0xF2u, 0x7Fu, "f0.f2") != 0) {
+    if (AicWriteRegister(Host, 0u, 0xF2u, 0x7Fu, "f0.f2") != 0) {
         SdhciMark("WiFi: vendor init: fn0 0xF2 failed\n");
         return -1;
     }
     /* 4. fn1 0x07 = 0x01：允许字节模式（厂商 aicsdio.c:1869-1874） */
-    if (AicWriteReg(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u, "fn1.bme") != 0) {
+    if (AicWriteRegister(Host, 1u, AIC_BYTEMODE_ENABLE_REG, 0x01u, "fn1.bme") != 0) {
         SdhciMark("WiFi: vendor init: fn1 0x07 failed\n");
         return -1;
     }
@@ -170,7 +170,7 @@ int AicWifiVendorPrepare(SDHCI_HOST *Host) {
 }
 
 /* 失败时把 CMD53 的四个参数摊开：blksz / blkcnt / tmode / pst */
-void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks) {
+void AicMarkTransferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks) {
     SdhciMark(Tag);
     SdhciMarkHex(" bytes=", Bytes, 4);
     SdhciMarkHex(" blocks=", Blocks, 2);

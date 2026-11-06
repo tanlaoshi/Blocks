@@ -8,7 +8,7 @@
 #include "PCIe.h"
 
 /* 解析 MADT、映 MMIO、掩全部 RTE；无 MADT 时默认 0xFEC00000。返回 0=就绪 */
-int IoApicInit(void);
+int IoApicInitialize(void);
 
 int IoApicReady(void);
 

@@ -48,7 +48,7 @@ void HalDriverRegister(void) {
 int HalBlockInitialize(void) {
 #if BOARD_IS_VIRT
 #if BOARD_HAS_BLOCK
-    return VirtioBlockInit();
+    return VirtioBlockInitialize();
 #else
     return 0;
 #endif
@@ -64,7 +64,7 @@ int HalBlockInitialize(void) {
 
 int HalUsbInitialize(void) {
 #if BOARD_IS_VIRT && BOARD_HAS_FRAMEBUFFER
-    return VirtioInputInit();
+    return VirtioInputInitialize();
 #elif !BOARD_IS_VIRT
     /* Duo S：DWC2 host + HID boot 键（duo-usb-kbd）；无设备软成功 */
     {
@@ -141,7 +141,7 @@ void HalUsbMscArmBootWatch(int On) {
     (void)On;
 }
 
-int HalUsbPortEnumIsFrozen(void) {
+int HalUsbPortEnumerateIsFrozen(void) {
     return 0;
 }
 

@@ -89,8 +89,11 @@ int StoreUiActDispatch(int Btn, int Pressed, int Hit);
 /* ===== StoreUiInput.c ===== */
 void StoreUiDoButton(int Btn);
 
-/* ===== StoreUiPaint.c ===== */
+/* ===== StoreUiPaint.c / Hover.c ===== */
 void StorePaintList(void);
+void StorePaintHoverDelta(int OldSide, int NewSide, int OldRow, int NewRow,
+                          int OldBtn, int NewBtn);
+void StorePaintStatusOnly(void);
 
 /* ===== StoreJobStatus.c ===== */
 void StoreJobStatusWithId(const char *Verb, const char *Id);

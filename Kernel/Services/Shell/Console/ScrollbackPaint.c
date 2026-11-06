@@ -26,7 +26,7 @@ void ConsoleSbRepaint(void) {
     int i;
     int Count = ConsoleSbLineCount();
     int ViewOff = ConsoleSbViewOff();
-    int AccLen = ConsoleSbAccLen();
+    int AccLen = ConsoleSbAccLength();
     const char *Acc = ConsoleSbAcc();
 
     if (!GuiFocusClient(&Cx, &Cy, &Cw, &Ch, &Bg) || Ch == 0) {

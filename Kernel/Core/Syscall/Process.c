@@ -12,6 +12,7 @@
 #include "Hal.h"
 #include "Font.h"
 #include "GraphicsDamage.h"
+#include "GraphicsDrawString.h"
 #include "TaskSnap.h"
 #include "Debug.h"
 
@@ -85,6 +86,20 @@ int SysDamage(int Wid, UINT64 UserText) {
  * 像素上限 GUI_BLIT_MAX_PIXELS，避免大块拷贝撑爆栈。
  */
 #define DAMAGE_RECT_MAX_PX    4096u
+
+int SysDrawString(int Wid, UINT64 UserDesc) {
+    GRAPHICS_DRAW_STRING Desc;
+    TASK *T = SchedulerCurrent();
+
+    if (!T || !T->IsUser || Wid < 0 || UserDesc == 0) {
+        return -1;
+    }
+    if (VirtualMemoryCopyFromUser(&Desc, UserDesc, sizeof(Desc)) < 0) {
+        return -1;
+    }
+    Desc.Text[GRAPHICS_DRAW_STRING_TEXT_MAX - 1] = 0;
+    return WindowDrawStringUser(Wid, Desc.X, Desc.Y, Desc.Color, Desc.Text);
+}
 
 int SysDamageRect(int Wid, UINT64 UserDesc) {
     GRAPHICS_DAMAGE_RECT Desc;

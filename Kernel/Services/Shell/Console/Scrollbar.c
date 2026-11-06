@@ -148,7 +148,7 @@ void ConsoleSbBarAfterWrite(void) {
         End = Total;
     }
     VisRows = Vis;
-    if (ConsoleSbViewOff() == 0 && ConsoleSbAccLen() > 0) {
+    if (ConsoleSbViewOff() == 0 && ConsoleSbAccLength() > 0) {
         VisRows = Vis - 1;
     }
     if (VisRows < 1) {
@@ -204,7 +204,7 @@ static void OnClick(UINT32 X, UINT32 Y) {
     }
     MaxOff = ConsoleSbMaxOff(Vis);
     VisRows = Vis;
-    if (ConsoleSbAccLen() > 0 && NextFirst + Vis > ConsoleSbLineCount()) {
+    if (ConsoleSbAccLength() > 0 && NextFirst + Vis > ConsoleSbLineCount()) {
         VisRows = Vis - 1;
     }
     if (VisRows < 1) {

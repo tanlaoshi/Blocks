@@ -261,7 +261,7 @@ static void Write(const char *Text) {
      */
     if (GuiFocusKind() != GUI_WIN_SHELL) {
         /*
-         * 用户窗（Snake/TaskMgr…）焦点在 USER：stdout 不进教学串口、也不 Feed Shell。
+         * 用户窗（Snake/TaskManager…）焦点在 USER：stdout 不进教学串口、也不 Feed Shell。
          * 旧逻辑「只走串口」会把 snake: 打进宿主 blocks>，看起来像占住终端。
          */
         if (GuiFocusKind() == GUI_WIN_USER) {
@@ -301,7 +301,7 @@ static void Write(const char *Text) {
 }
 
 /* 按长度输出（SYS_FILE_WRITE 用；UTF-8 按码点画，不因中间的 NUL 截断） */
-static void WriteLen(const char *Data, UINTN Len) {
+static void WriteLength(const char *Data, UINTN Len) {
     UINTN i;
 
     if (Data == 0 || Len == 0) {
@@ -309,7 +309,7 @@ static void WriteLen(const char *Data, UINTN Len) {
     }
     /*
      * 整段持锁：逐码点 Write 时勿让 Prompt 插队（见 Console.c Prompt）。
-     * Write 自身也加锁 → 此处不锁，改由外层包住会嵌套死锁；故 WriteLen
+     * Write 自身也加锁 → 此处不锁，改由外层包住会嵌套死锁；故 WriteLength
      * 直接调 gConsole.Write 前依赖 Write 内锁。逐字间隙仍会被 Prompt 插入。
      * 用一次「合并写」：先拼到栈缓冲再单次 Write。
      */
@@ -386,7 +386,7 @@ static void WriteHex64(UINT64 Value) {
 
 void ConsolePublishWrite(CONSOLE_OPS *Ops) {
     Ops->Write = Write;
-    Ops->WriteLen = WriteLen;
+    Ops->WriteLength = WriteLength;
     /* CoopUserOut* 经 CoreOps CONSOLE_IO_OPS 登记，见 Focus.c */
     Ops->WriteHex32 = WriteHex32;
     Ops->WriteHex64 = WriteHex64;

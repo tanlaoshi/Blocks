@@ -3,7 +3,7 @@
  */
 #include "LocalePrivate.h"
 
-const char *const gZhFallback[MSG_COUNT] = {
+const char *const gZhFallback[MESSAGE_COUNT] = {
     "Blocks 外壳",
     "设置",
     "文件",

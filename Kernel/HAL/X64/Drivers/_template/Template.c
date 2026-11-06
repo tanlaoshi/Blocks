@@ -17,7 +17,7 @@ static int gTemplateReady;
 static void TemplatePoll(void) {
 }
 
-static int TemplateKbdDequeue(HAL_KEYBOARD_REPORT *R) {
+static int TemplateKeyboardDequeue(HAL_KEYBOARD_REPORT *R) {
     (void)R;
     return 0;
 }
@@ -33,7 +33,7 @@ static int TemplateMouseDequeue(HAL_MOUSE_REPORT *R) {
 
 static const INPUT_BACKEND gTemplateBackend = {
     .Poll = TemplatePoll,
-    .KeyboardDequeue = TemplateKbdDequeue,
+    .KeyboardDequeue = TemplateKeyboardDequeue,
     .KeyboardSetLeds = 0,
     .MousePresent = TemplateMousePresent,
     .MouseDequeue = TemplateMouseDequeue,

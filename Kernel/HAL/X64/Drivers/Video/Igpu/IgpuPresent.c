@@ -94,7 +94,7 @@ int IgpuBackMap(UINT64 PhysBase, UINTN Bytes) {
     return 1;
 }
 
-int IgpuSrcCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
+int IgpuSourceCopyRect(UINT32 SrcX, UINT32 SrcY, UINT32 DstX, UINT32 DstY,
                     UINT32 W, UINT32 H, UINT32 SrcPitchB, UINT32 DstPitchB,
                     UINT64 SrcGtt, UINT64 DstGtt) {
     UINT32 Words[10];
@@ -189,7 +189,7 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
             return 1;
         }
         if (gLivePatchOnly) {
-            return IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
+            return IgpuSourceCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
                                    gBackGtt, DstGtt);
         }
     } else if (IgpuScanoutPresent(gBackGtt, BackPitchPx)) {
@@ -203,7 +203,7 @@ int IgpuPresentRect(const UINT32 *Back, UINT32 BackPitchPx, UINT32 FrontPitchPx,
         IgpuLogX((UINT32)DstGtt);
         IgpuLogS("\n");
     }
-    return IgpuSrcCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
+    return IgpuSourceCopyRect(X0, Y0, X0, Y0, W, H, PitchB, FrontPitchB,
                            gBackGtt, DstGtt);
 }
 
@@ -234,6 +234,6 @@ int IgpuCopyRectBack(const UINT32 *Back, UINT32 PitchPx, UINT32 BufH,
     }
     PitchB = PitchPx * 4u;
     __asm__ volatile ("mfence" ::: "memory");
-    return IgpuSrcCopyRect(SrcX, SrcY, DstX, DstY, W, H, PitchB, PitchB,
+    return IgpuSourceCopyRect(SrcX, SrcY, DstX, DstY, W, H, PitchB, PitchB,
                            gBackGtt, gBackGtt);
 }

@@ -4,7 +4,7 @@
  * 用户眼里：`wififw dhcp` 打出来的 DISCOVER/OFFER/REQUEST/ACK、最终 IP，以及随后
  *           `WiFi: arp: reply …`（双向数据通路活了的证据）。
  * 从哪读：SdhciWifiDhcp（WifiDhcp.c，顺序）→ DhcpBuildDiscover / DhcpParseReply
- *         （WifiDhcpMessage.c，RFC 2131/2132 的字段）→ AicWifiDataSend（WifiEapolTx.c）
+ *         （WifiDhcpMessage.c，RFC 2131/2132 的字段）→ AicWifiDataSend（WifiEapolTransmit.c）
  *         → AicEapolParseData 的解密帧分流（WifiEapolParse.c）→ 本文件声明的 sink。
  * 别改：以太网/IPv4/UDP/DHCP/ARP 的字段偏移由 RFC 定死（每条常量都写了出处）；
  *       AicNetLayoutCheck 在发第一帧之前核对 sizeof/offsetof，排歪了就拒绝发送。

@@ -8,7 +8,7 @@
 
 static SPIN_LOCK gPhysLock;
 
-void PmmPhysLockInit(void)
+void PmmPhysLockInitialize(void)
 {
     SpinLockInitialize(&gPhysLock);
 }

@@ -94,7 +94,7 @@ static int DiagFirst(UINT32 Cp, UINT8 *Seen) {
 }
 
 static UINT32 gDiagRasterSrc; /* 1=stb 2=FreeType；0=未记录 */
-void FontDiagRasterSrc(UINT32 Src) {
+void FontDiagRasterSource(UINT32 Src) {
     gDiagRasterSrc = Src;
 }
 
@@ -356,7 +356,7 @@ const UINT8 *FontTtfCacheGet(UINT32 Cp, UINT32 *OutW, UINT32 *OutH) {
             /*
              * 真缺字勿再 Want：否则 Drain→Bump→ThemeScene 死循环叠半透栏
              * （开 Settings 等字多的窗时栏很抖）。Init 前灌的 MISS 由
-             * FontTtfCacheDropMisses（FontTtfInit 后）清掉再画。
+             * FontTtfCacheDropMisses（FontTtfInitialize 后）清掉再画。
              */
             if (DiagFirst(Cp, gDiagSeen)) {
                 DiagGlyph(Cp, S->Side, 0, 1, S->Gen, S->Adv);
@@ -571,7 +571,7 @@ void FontTtfPreheatUtf8(const char *S) {
         UINT32 Cp;
         UINTN N;
 
-        /* 多行客户区（TaskMgr 表）须整段灌；勿在首个 \\n 停掉 */
+        /* 多行客户区（TaskManager 表）须整段灌；勿在首个 \\n 停掉 */
         if (*S == '\n' || *S == '\r' || *S == '\t') {
             S++;
             continue;

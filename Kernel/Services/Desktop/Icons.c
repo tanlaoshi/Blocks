@@ -19,10 +19,36 @@ static int sDesktopIconsReady;
 static int sDesktopIconsNeedRefresh;
 /* 切语言等：菜单需重建；仅 Worker / 点开始时扫盘 */
 static int sDesktopMenuRebuildWant;
+/* 商店装卸后：即使 Ensure 正忙也要再扫一轮 Apps 图标 */
+static int sDesktopAppsReloadPending;
 
 void DesktopIconsResetDeferred(void) {
     sDesktopIconsReady = 0;
     sDesktopIconsNeedRefresh = 0;
+}
+
+void DesktopRequestAppsReload(void) {
+    sDesktopAppsReloadPending = 1;
+    sDesktopIconsReady = 0;
+}
+
+void DesktopNotifyAppsChanged(void) {
+    int AppsWasOpen = gMenuAppsOpen;
+
+    gMenuAppsOpen = 0;
+    gMenuGameOpen = 0;
+    /* 对表开机 TaskManager：盘上有 Apps/<id>/ 后须 Ensure 扫进桌面/菜单 */
+    DesktopRequestAppsReload();
+    DesktopEnsureIconsLoaded();
+    /*
+     * 商店装完若开始→应用正开着：Rebuild 已写入新行，须重新打开 flyout 并刷新，
+     * 否则用户仍盯着装之前的空/旧二级菜单。
+     */
+    if (DesktopStartMenuIsOpen() && AppsWasOpen) {
+        gMenuAppsOpen = 1;
+        DesktopMarkMenuArea();
+        RequestRefresh();
+    }
 }
 
 int DesktopIconsConsumeNeedRefresh(void) {
@@ -52,17 +78,41 @@ int DesktopIconsLoaded(void) {
 }
 
 void DesktopEnsureIconsLoaded(void) {
-    if (sDesktopIconsReady || gDesktopBusy) {
+    int i;
+
+    if (gDesktopBusy) {
+        return;
+    }
+    if (sDesktopIconsReady && !sDesktopAppsReloadPending) {
         return;
     }
     gDesktopBusy = 1;
-    DesktopLoadAppIcons();
-    LoadIconLayout();
-    LoadDesktopIcons();
-    RebuildStartMenu();
-    sDesktopMenuRebuildWant = 0;
+    do {
+        sDesktopAppsReloadPending = 0;
+        DesktopLoadAppIcons();
+        LoadIconLayout();
+        LoadDesktopIcons();
+        RebuildStartMenu();
+        sDesktopMenuRebuildWant = 0;
+        /*
+         * 对表开机 PlaceDesktopIcons：系统项 Label 钉 LocaleString。
+         * 菜单 Rebuild 会再 LocaleString 其它串；装卸后须重钉，且预热图标字
+         *（与 RebuildStartMenu 预热菜单同形），否则首帧 Theme/脏区空标签。
+         */
+        DesktopRefreshLabels();
+        for (i = 0; i < DESKTOP_ICON_COUNT; i++) {
+            if (gIcons[i].Present && gIcons[i].Label && gIcons[i].Label[0]) {
+                FontTtfPreheatUtf8(gIcons[i].Label);
+                (void)FontStringWidth(gIcons[i].Label);
+            }
+        }
+        sDesktopIconsNeedRefresh = 1;
+        /*
+         * 装卸 Notify 可能在本轮扫盘中途到达：pending 再置位则重扫，
+         * 避免旧 Ensure 收尾把 ready=1 钉死、新装 desktop=yes 不上桌面。
+         */
+    } while (sDesktopAppsReloadPending);
     sDesktopIconsReady = 1;
-    sDesktopIconsNeedRefresh = 1;
     gDesktopBusy = 0;
     LogGui("Boot: Desktop Icons Loaded\n");
     DebugWrite("desktop: deferred icons+menu loaded (worker)\n");

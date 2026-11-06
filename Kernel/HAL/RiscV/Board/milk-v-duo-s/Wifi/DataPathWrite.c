@@ -1,5 +1,5 @@
 /*
- * WifiDataPathWrite.c — 数据通道流控 + 对齐块写（从 WifiEapolTx.c 拆出，≤300）
+ * WifiDataPathWrite.c — 数据通道流控 + 对齐块写（从 WifiEapolTransmit.c 拆出，≤300）
  *
  * 厂商：aicwf_sdio 流控门槛与 4/TAIL/512 对齐算术；写 fn1 0x10 块模式。
  */
@@ -92,7 +92,7 @@ int AicWifiDataPathWrite(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 Length, const c
     SdhciMark("\n");
     if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, Padded / AIC_DATA_PATH_BLOCK,
                           AIC_DATA_PATH_BLOCK, Buffer) != 0) {
-        AicMarkXferParams(Host, FailText, Padded, Padded / AIC_DATA_PATH_BLOCK);
+        AicMarkTransferParams(Host, FailText, Padded, Padded / AIC_DATA_PATH_BLOCK);
         (void)SdhciWifiBusRecover(Host);
         return -1;
     }

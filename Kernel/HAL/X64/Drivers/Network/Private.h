@@ -192,10 +192,10 @@ void HandleIcmp(const IP_HDR *Ip, const UINT8 *Payload, UINTN PayloadLen);
 
 /* 队列态在 NetVirtio.c */
 extern volatile VIRTIO_COMMON_CFG *gCommon;
-extern volatile VIRTIO_NET_CFG *gDevCfg;
-extern VIRTQ gRxQ;
+extern volatile VIRTIO_NET_CFG *gDeviceConfig;
+extern VIRTQ gReceiveQueue;
 extern VIRTQ gTxQ;
-extern UINT8 gRxBufData[RX_BUF_COUNT][PAGE_SIZE];
+extern UINT8 gReceiveBufferData[RX_BUF_COUNT][PAGE_SIZE];
 extern UINT8 *gTxBuf;
 extern volatile UINT8 *gIsr;
 extern UINT16 gIoPort;
@@ -205,8 +205,8 @@ extern const NIC_L2 *gNicL2;
 extern UINT8 gMac[6];
 extern UINT32 gIp;
 extern UINT32 gTxDone;
-extern UINT32 gRxFrames;
-extern int gLwIpRx;
+extern UINT32 gReceiveFrames;
+extern int gLwIpReceive;
 
 void NetMemSet(void *Dst, UINT8 Val, UINTN Len);
 void NetMemCpy(void *Dst, const void *Src, UINTN Len);

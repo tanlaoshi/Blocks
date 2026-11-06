@@ -6,7 +6,7 @@
 | ---- | ---- |
 | [`CheatSheet.md`](CheatSheet.md) | A4 速查卡（红字必背） |
 | [`ABI.md`](ABI.md) | 开课冻结（与 [`../App/ABI.md`](../App/ABI.md) 同文） |
-| [`Homework/`](Homework/) | 调度器 / 分配器 / FS / TaskMgr |
+| [`Homework/`](Homework/) | 调度器 / 分配器 / FS / TaskManager |
 
 **写 App 作业**还要看：[`../App/Guide.md`](../App/Guide.md)。  
 **上机**：[`../BINGO.md`](../BINGO.md)。  

@@ -60,17 +60,17 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         /* 空态：垂直居中一行标题 + 一行弱提示 */
         Ty = Y + (H > LineH * 2u + Gap ? (H - LineH * 2u - Gap) / 2u : Pad);
         MaxY = Y + H - Pad;
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_DEV_DETAIL),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_DEV_DETAIL),
                              ThemeText());
         Ty += Gap;
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_CLICK_APPLY),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_CLICK_APPLY),
                              ThemeTextMuted());
         return;
     }
 
     Ty = Y + Pad;
     MaxY = Y + H - Pad;
-    (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_DEV_DETAIL),
+    (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_DEV_DETAIL),
                          ThemeText());
     Ty += Gap;
     (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, CatLabel(gCat),
@@ -108,13 +108,13 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     }
 
     if (gCat == SETTINGS_CAT_FONT && Ty + Step <= MaxY) {
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_FONT_SAMPLE),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_FONT_SAMPLE),
                              ThemeText());
         Ty += Gap;
     } else if (gCat == SETTINGS_CAT_DISPLAY) {
         (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step,
-                             LocStr(HalCpuIsHypervisor() ? MSG_SET_DISP_QEMU
-                                                         : MSG_SET_DISP_PC),
+                             LocaleString(HalCpuIsHypervisor() ? MESSAGE_SET_DISP_QEMU
+                                                         : MESSAGE_SET_DISP_PC),
                              ThemeTextMuted());
         FormatNowDisplay(Line, sizeof(Line));
         (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, Line, ThemeTextMuted());
@@ -130,14 +130,14 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
             if (PrefW != NowW || PrefH != NowH) {
                 (void)DrawDetailText(
                     X + Pad, &Ty, MaxY, MaxTextW, Step,
-                    LocStr(HalCpuIsHypervisor() ? MSG_SET_PREF_DIFF : MSG_SET_PREF_DIFF_PC),
+                    LocaleString(HalCpuIsHypervisor() ? MESSAGE_SET_PREF_DIFF : MESSAGE_SET_PREF_DIFF_PC),
                     ThemeTextAccent());
             }
         }
     } else if (gCat == SETTINGS_CAT_SCALE && Ty + Step * 2u <= MaxY) {
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_SCALE_HINT1),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_SCALE_HINT1),
                              ThemeTextMuted());
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_SCALE_HINT2),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_SCALE_HINT2),
                              ThemeTextMuted());
         Ty += Gap;
         FormatNowDisplay(Line, sizeof(Line));
@@ -146,28 +146,28 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, Line, ThemeTextMuted());
         Ty += Gap;
     } else if (gCat == SETTINGS_CAT_THEME && Ty + Step * 2u <= MaxY) {
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_THEME_HINT),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_THEME_HINT),
                              ThemeTextMuted());
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_LIVE_DB),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_LIVE_DB),
                              ThemeTextMuted());
         Ty += Gap;
     } else if (gCat == SETTINGS_CAT_EFFECTS && Ty + Step * 2u <= MaxY) {
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_EFFECTS_HINT),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_EFFECTS_HINT),
                              ThemeTextMuted());
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_LIVE_DB),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_LIVE_DB),
                              ThemeTextMuted());
         Ty += Gap;
     }
 
     if (gDisplayHint == 2) {
-        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_APPLIED_LIVE),
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_APPLIED_LIVE),
                              ThemeTextAccent());
     } else if (gDisplayHint == 1) {
         (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step,
-                             LocStr(HalCpuIsHypervisor() ? MSG_SET_SAVED : MSG_SET_SAVED_PC),
+                             LocaleString(HalCpuIsHypervisor() ? MESSAGE_SET_SAVED : MESSAGE_SET_SAVED_PC),
                              ThemeTextAccent());
     }
-    (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocStr(MSG_SET_CLICK_APPLY),
+    (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_CLICK_APPLY),
                          ThemeTextMuted());
 }
 
@@ -330,7 +330,7 @@ void PaintMenu(void) {
             GraphicsFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
-        HalVideoDrawStringAt(Cx + Pad, TitleY, LocStr(MSG_SET_TITLE), ThemeText());
+        HalVideoDrawStringAt(Cx + Pad, TitleY, LocaleString(MESSAGE_SET_TITLE), ThemeText());
         for (i = 0; i < SETTINGS_CAT_COUNT; i++) {
             UiDrawListRow(Cx + Pad, gSetSideRow0 + (UINT32)i * LineH, RowW, LineH,
                           CatLabel((SETTINGS_CAT)i),

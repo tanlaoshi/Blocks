@@ -251,7 +251,7 @@ void ShellCommandsNetRegister(void) {
     gConsole.Register("net", "network info; net config …", CommandNet);
     gConsole.RegisterAliasLine("network", "show", "network");
     gConsole.Register("ip", "print local IPv4 (wired or wifi primary)", CommandIp);
-    ShellCommandsNetAddrRegister();
+    ShellCommandsNetAddressRegister();
     gConsole.Register("ping", "ICMP echo", CommandPing);
 #ifdef LWIP_ENABLE
     gConsole.Register("dns", "DNS A / IPv4 literal (PR-N-dns)", CommandDns);

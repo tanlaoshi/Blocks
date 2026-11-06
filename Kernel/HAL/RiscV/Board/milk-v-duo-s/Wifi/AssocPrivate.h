@@ -250,7 +250,7 @@ const UINT8 *AicJoinRsnIe(void);
 int AicJoinResolve(const char *Ssid, const char *BssidText, AIC_SCAN_AP *Out);
 void AicJoinPlaceholder(const char *Ssid, AIC_SCAN_AP *Out);
 void AicJoinPrintTarget(const AIC_SCAN_AP *Target);
-void AicJoinPrintTx(UINT32 Length);
+void AicJoinPrintTransmit(UINT32 Length);
 void AicJoinDump(const UINT8 *Data, UINT32 Length);
 void AicJoinDumpRsn(const UINT8 *Request, UINT32 RequestLength);
 /* 0 = IND status_code 为 0；-1 = 关联失败（原因已打印） */
@@ -281,7 +281,7 @@ UINT32 AicControlPortBuild(UINT8 *Buffer, UINT8 StaIndex, UINT8 Open);
 int AicControlPortSend(SDHCI_HOST *Host, UINT8 StaIndex);
 /*
  * 关联成功之后的固定四步：控制端口 → M1 → PTK/M2 → M3（WifiControlPort.c /
- * WifiHandshake*.c / WifiEapolTx.c）。**本函数不关联**，只接在 join 后面。
+ * WifiHandshake*.c / WifiEapolTransmit.c）。**本函数不关联**，只接在 join 后面。
  * Password 为 0 时只做到控制端口为止（用于"没有密码也想看 M1 到底来不来"）。
  */
 int AicWifiHandshakeRun(SDHCI_HOST *Host, const AIC_SCAN_AP *Target, const char *Password,

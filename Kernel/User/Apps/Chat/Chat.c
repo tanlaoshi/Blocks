@@ -1,293 +1,211 @@
-/* Chat.c — GUI 半双工聊天（壳式 chat>，无 TextField/按钮）
- * 客户区只用 DamageText（系统字），交互仿 Shell 行编辑。
+/*
+ * Chat.c — Guest 聊天：左会话列表 / 右消息 / 底栏输入框（对齐 Files·宿主）
  */
-#include "Net/Net.h"
 #include <stdio.h>
 #include <string.h>
-#include <Host/UnixStandard.h>
 #include <errno.h>
+#include <Host/UnixStandard.h>
 #include <System/Socket.h>
 #include <Net/Net.h>
 #include <Ui/Ui.h>
 #include <Blocks/Thread.h>
+#include <Blocks/File.h>
+#include "ChatPeer.h"
+#include "ChatView.h"
 
-#define CHAT_LOG_MAX  4
-#define CHAT_LOG_COLS 28
-#define CHAT_DRAFT_MAX 48
+static int WindowId = -1;
+static int SocketDescriptor = -1;
+static char ReceiveLine[CHAT_LINE_MAXIMUM + 4];
+static int ReceiveLength;
+static unsigned PeerIp;
+static unsigned short PeerPort;
 
-static char gLog[CHAT_LOG_MAX][CHAT_LOG_COLS];
-static int gLogN;
-static int gWid = -1;
-static int gSock = -1;
-static int gWaitPeer;
-static char gDraft[CHAT_DRAFT_MAX];
-static int gDraftN;
-static char gRx[CHAT_LINE_MAX + 4];
-static int gRxN;
-
-/* USB HID → ASCII（无 Shift；与 Ui 子集对齐） */
-static char HidAscii(int Hid) {
-    if (Hid >= 0x04 && Hid <= 0x1D) {
-        return (char)('a' + (Hid - 0x04));
-    }
-    if (Hid >= 0x1E && Hid <= 0x26) {
-        return (char)('1' + (Hid - 0x1E));
-    }
-    if (Hid == 0x27) {
-        return '0';
-    }
-    if (Hid == 0x2C) {
-        return ' ';
-    }
-    if (Hid == 0x37) {
-        return '.';
-    }
-    if (Hid == 0x36) {
-        return ',';
-    }
-    if (Hid == 0x2D) {
-        return '-';
-    }
-    if (Hid == 0x38) {
-        return '/';
-    }
-    return 0;
+static void Paint(void) {
+    /* 只在内容/暴露时整窗重画；打字由 UiApplyKeyToField 只刷输入框 */
+    ChatViewPaint(WindowId, SocketDescriptor >= 0);
 }
 
-static void LogPush(const char *Who, const char *Msg) {
-    char Line[CHAT_LOG_COLS];
-    int I;
-    int N = 0;
+static int TrySend(void) {
+    char Draft[UI_TEXT_MAX];
 
-    while (Who[N] && N < 4) {
-        Line[N] = Who[N];
-        N++;
-    }
-    Line[N++] = ' ';
-    I = 0;
-    while (Msg[I] && N + 1 < CHAT_LOG_COLS) {
-        Line[N++] = Msg[I++];
-    }
-    Line[N] = 0;
-    if (gLogN >= CHAT_LOG_MAX) {
-        for (I = 1; I < CHAT_LOG_MAX; I++) {
-            memcpy(gLog[I - 1], gLog[I], CHAT_LOG_COLS);
-        }
-        gLogN = CHAT_LOG_MAX - 1;
-    }
-    memcpy(gLog[gLogN], Line, CHAT_LOG_COLS);
-    gLogN++;
-}
-
-/* 仿 Shell：日志 + 当前「chat> 草稿」画在客户区（≤ ClientText 128） */
-static void UiPaint(void) {
-    char Buf[128];
-    int I;
-    int Off = 0;
-
-    for (I = 0; I < gLogN && Off + 2 < (int)sizeof(Buf); I++) {
-        int J = 0;
-        if (I > 0) {
-            Buf[Off++] = '\n';
-        }
-        while (gLog[I][J] && Off + 1 < (int)sizeof(Buf)) {
-            Buf[Off++] = gLog[I][J++];
-        }
-    }
-    if (Off + 2 < (int)sizeof(Buf)) {
-        if (Off > 0) {
-            Buf[Off++] = '\n';
-        }
-        if (gWaitPeer) {
-            const char *H = "…waiting peer";
-            I = 0;
-            while (H[I] && Off + 1 < (int)sizeof(Buf)) {
-                Buf[Off++] = H[I++];
-            }
-        } else {
-            const char *P = "chat> ";
-            I = 0;
-            while (P[I] && Off + 1 < (int)sizeof(Buf)) {
-                Buf[Off++] = P[I++];
-            }
-            I = 0;
-            while (I < gDraftN && Off + 1 < (int)sizeof(Buf)) {
-                Buf[Off++] = gDraft[I++];
-            }
-        }
-    }
-    Buf[Off] = 0;
-    if (gWid >= 0) {
-        UiSetLabel(gWid, Buf[0] ? Buf : "chat>");
-    }
-}
-
-static int TrySendDraft(void) {
-    if (gWaitPeer || gSock < 0) {
-        return 0;
-    }
-    if (gDraftN == 0) {
-        return 0;
-    }
-    gDraft[gDraftN] = 0;
-    if (strcmp(gDraft, "/quit") == 0) {
-        return -2;
-    }
-    if (ChatSendLine(gSock, gDraft, (size_t)gDraftN) != 0) {
-        LogPush("--", "send fail");
-        gDraftN = 0;
-        UiPaint();
+    if (SocketDescriptor < 0 || WindowId < 0) {
+        ChatViewSetStatus("未连接：先点「连接」");
+        Paint();
         return -1;
     }
-    LogPush("me>", gDraft);
-    gDraftN = 0;
-    gWaitPeer = 1;
-    gRxN = 0;
-    UiPaint();
+    if (UiGetTextField(WindowId, 0, Draft, sizeof(Draft)) != 0 || Draft[0] == 0) {
+        return 0;
+    }
+    if (strcmp(Draft, "/quit") == 0) {
+        return -2;
+    }
+    if (ChatSendLine(SocketDescriptor, Draft, strlen(Draft)) != 0) {
+        ChatViewSetStatus("发送失败");
+        ChatViewLogPush("--", "send fail");
+        Paint();
+        return -1;
+    }
+    ChatViewLogPush("我:", Draft);
+    UiSetTextField(WindowId, 0, "");
+    ChatViewSetStatus("已发送");
+    Paint();
     return 0;
 }
 
-static void OnKey(int Hid) {
-    char C;
-
-    if (gWaitPeer) {
-        return;
-    }
-    if (Hid == 0x2A) { /* Backspace */
-        if (gDraftN > 0) {
-            gDraftN--;
-            UiPaint();
-        }
-        return;
-    }
-    C = HidAscii(Hid);
-    if (!C) {
-        return;
-    }
-    if (gDraftN + 1 >= CHAT_DRAFT_MAX) {
-        return;
-    }
-    gDraft[gDraftN++] = C;
-    UiPaint();
-}
-
-/* 1=完成 0=继续 -1=错 -2=EOF */
-static int PollPeerLine(void) {
+static int PollPeer(void) {
     for (;;) {
-        char C;
-        ssize_t R = recv(gSock, &C, 1, MSG_DONTWAIT);
-        if (R < 0) {
-            if (errno == EAGAIN) {
-                return 0;
-            }
-            return -1;
+        char Byte;
+        ssize_t Received;
+
+        if (SocketDescriptor < 0) {
+            return 0;
         }
-        if (R == 0) {
+        Received = recv(SocketDescriptor, &Byte, 1, MSG_DONTWAIT);
+        if (Received < 0) {
+            return (errno == EAGAIN) ? 0 : -1;
+        }
+        if (Received == 0) {
             return -2;
         }
-        if (C == '\n') {
-            if (gRxN > 0 && gRx[gRxN - 1] == '\r') {
-                gRx[--gRxN] = 0;
+        if (Byte == '\n') {
+            if (ReceiveLength > 0 && ReceiveLine[ReceiveLength - 1] == '\r') {
+                ReceiveLine[--ReceiveLength] = 0;
             }
-            gRx[gRxN] = 0;
-            if (gRxN == 0) {
+            ReceiveLine[ReceiveLength] = 0;
+            if (ReceiveLength == 0) {
                 continue;
             }
-            LogPush("peer", gRx);
-            gWaitPeer = 0;
-            gRxN = 0;
-            UiPaint();
+            ChatViewLogPush("对方:", ReceiveLine);
+            ReceiveLength = 0;
+            ChatViewSetStatus("收到消息");
+            Paint();
             return 1;
         }
-        if (gRxN + 1 < (int)sizeof(gRx) && gRxN < CHAT_LINE_MAX) {
-            gRx[gRxN++] = C;
+        if (ReceiveLength + 1 < (int)sizeof(ReceiveLine) &&
+            ReceiveLength < CHAT_LINE_MAXIMUM) {
+            ReceiveLine[ReceiveLength++] = Byte;
         }
     }
+}
+
+static int ConnectPeer(void) {
+    char Hint[CHAT_STATUS_MAXIMUM];
+
+    if (SocketDescriptor >= 0) {
+        FileClose(SocketDescriptor);
+        SocketDescriptor = -1;
+    }
+    SocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+    if (SocketDescriptor < 0) {
+        ChatViewSetStatus("socket 失败");
+        Paint();
+        return -1;
+    }
+    snprintf(Hint, sizeof(Hint), "连接中 %u.%u.%u.%u:%u …",
+             (PeerIp >> 24) & 0xffu, (PeerIp >> 16) & 0xffu,
+             (PeerIp >> 8) & 0xffu, PeerIp & 0xffu, (unsigned)PeerPort);
+    ChatViewSetStatus(Hint);
+    Paint();
+    ThreadYield();
+    if (NetConnect(SocketDescriptor, PeerIp, PeerPort) != 0) {
+        snprintf(Hint, sizeof(Hint), "连接失败 %u.%u.%u.%u:%u",
+                 (PeerIp >> 24) & 0xffu, (PeerIp >> 16) & 0xffu,
+                 (PeerIp >> 8) & 0xffu, PeerIp & 0xffu, (unsigned)PeerPort);
+        ChatViewSetStatus(Hint);
+        FileClose(SocketDescriptor);
+        SocketDescriptor = -1;
+        Paint();
+        printf("chat: connect fail — 宿主先 serve chat；"
+               "chat.peer=宿主局域网:9090\n");
+        return -1;
+    }
+    ChatViewSetStatus("已连接中继，在下方输入后发送");
+    Paint();
+    return 0;
 }
 
 int main(void) {
-    unsigned Ip;
-    unsigned short Port;
-    int Ev;
+    int Event;
+    char PeerHint[CHAT_STATUS_MAXIMUM];
+    unsigned FieldX;
+    unsigned FieldWidth;
 
-    if (ChatLoadPeer(&Ip, &Port) != 0) {
+    if (ChatLoadPeer(&PeerIp, &PeerPort) != 0) {
         return 1;
     }
-    printf("chat: peer %u.%u.%u.%u:%u\n",
-           (Ip >> 24) & 0xffu, (Ip >> 16) & 0xffu,
-           (Ip >> 8) & 0xffu, Ip & 0xffu, (unsigned)Port);
+    printf("chat: peer %u.%u.%u.%u:%u (host relay)\n",
+           (PeerIp >> 24) & 0xffu, (PeerIp >> 16) & 0xffu, (PeerIp >> 8) & 0xffu,
+           PeerIp & 0xffu, (unsigned)PeerPort);
 
     if (GraphicsInitialize() != 0) {
-        printf("chat: gfx init fail\n");
         return 1;
     }
-    /* 无底栏按钮：客户区整页给日志 + chat> */
-    gWid = UiCreateWindow("Chat", 420, 260);
-    if (gWid < 0) {
-        printf("chat: window fail\n");
+    WindowId = UiCreateWindow("Chat", CHAT_WINDOW_WIDTH, CHAT_WINDOW_HEIGHT);
+    if (WindowId < 0) {
+        return 1;
+    }
+    if (UiAddButton(WindowId, 0, "连接") != 0 ||
+        UiAddButton(WindowId, 1, "发送") != 0) {
         return 1;
     }
 
-    gSock = socket(AF_INET, SOCK_STREAM, 0);
-    if (gSock < 0) {
-        LogPush("--", "socket fail");
-        UiPaint();
-        return 1;
+    /* 会话行由 ChatView 自绘（通用 List 黑边会在绿底上划穿「Host」） */
+    FieldX = CHAT_SIDE_WIDTH + CHAT_SEPARATOR_WIDTH + CHAT_PAD;
+    FieldWidth = CHAT_WINDOW_WIDTH - FieldX - CHAT_PAD * 2u;
+    if (FieldWidth < 160u) {
+        FieldWidth = 160u;
     }
-    LogPush("--", "connecting…");
-    UiPaint();
-    /* 先让出一拍：开窗 Present 后立刻堵在 connect 会叠饿键鼠 */
-    ThreadYield();
-    printf("chat: NetConnect %u.%u.%u.%u:%u …\n",
-           (Ip >> 24) & 0xffu, (Ip >> 16) & 0xffu,
-           (Ip >> 8) & 0xffu, Ip & 0xffu, (unsigned)Port);
-    if (NetConnect(gSock, Ip, Port) != 0) {
-        LogPush("--", "connect fail");
-        UiPaint();
-        printf("chat: connect fail (host: nc -l 9090 / ./Tools/HostChat/chatd)\n");
-        FileClose(gSock);
-        gSock = -1;
-        /* 留窗可见错误；勿立刻 exit（关窗路径另测） */
-    } else {
-        LogPush("--", "connected");
-        gDraftN = 0;
-        UiPaint();
-        printf("chat: connected\n");
-    }
+    UiAddTextField(WindowId, 0, FieldX, CHAT_COMPOSE_TOP, FieldWidth,
+                   CHAT_FIELD_HEIGHT);
+    UiFocusTextField(WindowId, 0);
+
+    snprintf(PeerHint, sizeof(PeerHint), "目标 %u.%u.%u.%u:%u",
+             (PeerIp >> 24) & 0xffu, (PeerIp >> 16) & 0xffu,
+             (PeerIp >> 8) & 0xffu, PeerIp & 0xffu, (unsigned)PeerPort);
+    ChatViewSetStatus(PeerHint);
+    Paint();
 
     for (;;) {
-        if (gWaitPeer) {
-            int Rc = PollPeerLine();
-            if (Rc == -2) {
-                LogPush("--", "peer closed");
-                UiPaint();
-                break;
+        int Result = PollPeer();
+
+        if (Result == -2) {
+            ChatViewSetStatus("对方断开");
+            if (SocketDescriptor >= 0) {
+                FileClose(SocketDescriptor);
+                SocketDescriptor = -1;
             }
-            if (Rc < 0) {
-                LogPush("--", "recv fail");
-                UiPaint();
-                break;
-            }
+            Paint();
+        } else if (Result < 0) {
+            ChatViewSetStatus("接收失败");
+            Paint();
         }
-        Ev = UiPoll(gWid);
-        if (Ev == UI_EVENT_CLOSE || Ev < 0) {
+        Event = UiPoll(WindowId);
+        if (Event == UI_EVENT_CLOSE || Event < 0) {
             break;
         }
-        if (UI_IS_KEY(Ev)) {
-            int Hid = UI_KEY_CODE(Ev);
-            if (Hid == 0x28) {
-                int Rc = TrySendDraft();
-                if (Rc == -2 || Rc < 0) {
-                    break;
-                }
-            } else {
-                OnKey(Hid);
+        if (Event == UI_BUTTON_EVENT(0)) {
+            (void)ConnectPeer();
+        } else if (Event == UI_BUTTON_EVENT(1) ||
+                   (UI_IS_KEY(Event) && UI_KEY_CODE(Event) == 0x28)) {
+            if (TrySend() == -2) {
+                break;
             }
+        } else if (Event == UI_EVENT_PAINT) {
+            /*
+             * 仅内核 PaintUserClient 刷底后（拖动/置顶/Damage）整窗重画。
+             * 普通点击/打字不必：点已由控件局部重绘；刷底会再投递 PAINT。
+             */
+            Paint();
+        } else if (UI_IS_KEY(Event) || Event == UI_EVENT_CLICK ||
+                   Event == UI_TEXT_EVENT(0)) {
+            /* 忽略：键/点输入框已局部刷新；空白点若刷了底会跟 PAINT */
+        } else if (Event == UI_EVENT_NONE) {
+            ThreadYield();
         }
         usleep(5000);
     }
-    if (gSock >= 0) {
-        FileClose(gSock);
+    if (SocketDescriptor >= 0) {
+        FileClose(SocketDescriptor);
     }
     return 0;
 }

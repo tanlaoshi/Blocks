@@ -71,7 +71,7 @@ static void CommandNetConfig(int Argc, char **Argv) {
 }
 
 /* set ip|gw|dns <addr>：Argv[0]=二级词 */
-static void CommandSetAddr(int Argc, char **Argv) {
+static void CommandSetAddress(int Argc, char **Argv) {
     const char *Key;
     UINT32 Ip;
     int Rc;
@@ -109,12 +109,12 @@ static void CommandNetNote(int Argc, char **Argv) {
     HalNetDumpNicNote(gConsole.Write);
 }
 
-void ShellCommandsNetAddrRegister(void) {
+void ShellCommandsNetAddressRegister(void) {
     gConsole.Register2("net", "config", "show/set ip gw dns mask", CommandNetConfig);
     gConsole.Register2("net", "note", "e1000/I219 field note (read-only)", CommandNetNote);
-    gConsole.Register2("set", "ip", "set IPv4 address", CommandSetAddr);
-    gConsole.Register2("set", "gw", "set default gateway", CommandSetAddr);
-    gConsole.Register2("set", "dns", "set DNS server", CommandSetAddr);
+    gConsole.Register2("set", "ip", "set IPv4 address", CommandSetAddress);
+    gConsole.Register2("set", "gw", "set default gateway", CommandSetAddress);
+    gConsole.Register2("set", "dns", "set DNS server", CommandSetAddress);
     gConsole.RegisterAliasLine("setip", "set", "ip");
     gConsole.RegisterAliasLine("setgw", "set", "gw");
     gConsole.RegisterAliasLine("setdns", "set", "dns");

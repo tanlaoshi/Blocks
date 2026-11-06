@@ -49,7 +49,7 @@ static void ApplyPrimary(NET_NIC_KIND Kind) {
     gNicEpoch++;
     Nic->GetMac(gMac);
     /*
-     * 勿清 gLwIpRx：主槽只换 L2 出站/MAC。收包是否进 lwIP 由 NetSetLwIpRx 管。
+     * 勿清 gLwIpReceive：主槽只换 L2 出站/MAC。收包是否进 lwIP 由 NetSetLwIpReceive 管。
      * 拔网线切 Wi‑Fi 时若清掉，帧进自研 IpInput，lwIP listen 变聋；
      * ping 仍可能被自研栈应答（NUC 网热更 2026-11-02）。
      */

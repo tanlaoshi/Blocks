@@ -115,8 +115,14 @@ int StoreJobStep(void) {
             gJobInStep = 0;
             return 0;
         }
-        StoreJobStatusProgress(gJobKind == STORE_JOB_INSTALL ? "install" : "remove",
-                               gJobPlan[gJobPlanI], gJobPlanI + 1, gJobPlanN);
+        /*
+         * 仅开新包时刷 install: id (1/1)。Pump 忙时每圈重刷会盖掉
+         * copy/write/extras，看起来像一直卡在 install。
+         */
+        if (gJobKind != STORE_JOB_INSTALL || !StoreInstallPumpBusy()) {
+            StoreJobStatusProgress(gJobKind == STORE_JOB_INSTALL ? "install" : "remove",
+                                   gJobPlan[gJobPlanI], gJobPlanI + 1, gJobPlanN);
+        }
         if (gJobKind == STORE_JOB_INSTALL) {
             if (!StoreInstallPumpBusy()) {
                 HalConsoleWriteSerial("store combo: +");
@@ -136,7 +142,14 @@ int StoreJobStep(void) {
                     return 0;
                 }
                 StoreInstallPumpProgress(&Got, &Sz);
-                StoreJobStatusCopy(gJobPlan[gJobPlanI], Got, Sz);
+                /*
+                 * 读完后 Got==Sz，其实在 WriteFile/extras；勿一直显示 copy 64K/64K。
+                 */
+                if (Sz > 0 && Got >= Sz) {
+                    StoreSetStatus("write/extras...");
+                } else {
+                    StoreJobStatusCopy(gJobPlan[gJobPlanI], Got, Sz);
+                }
                 StoreJobBusyRepaint();
                 gJobInStep = 0;
                 return 0;
@@ -181,7 +194,10 @@ int StoreJobStep(void) {
         Reload();
         GuiPollMouseMotion();
         DesktopNotifyAppsChanged();
-        StoreJobBusyRepaint();
+        /* Inst* / 底钮恢复：整窗一次；BusyRepaint 只刷状态行不够 */
+        if (StoreUiIsFocused()) {
+            StoreUiRepaint();
+        }
         gJobPhase = JP_FINISH;
         gJobInStep = 0;
         return 0;
@@ -189,7 +205,9 @@ int StoreJobStep(void) {
     case JP_FINISH:
         gJobLastErr = gJobErr;
         StoreJobFinishStatus(gJobKind, gJobErr, gJobPlanN);
-        StoreJobBusyRepaint();
+        if (StoreUiIsFocused()) {
+            StoreUiRepaint();
+        }
         gJobRunning = 0;
         gJobPhase = JP_IDLE;
         gJobKind = STORE_JOB_NONE;

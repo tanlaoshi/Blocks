@@ -7,6 +7,8 @@
  * 1.2.0：+ 键盘入窗（焦点 USER 时 Poll 返回 KEY=300+HID）。
  * 2.0.0：API `Ui*` / `UI_*`（原 ToyUi*）。
  * 3.0.0：头/目录/库去 Toy（`#include <Ui/Ui.h>` / `libUi.a`）。
+ * 3.1.0：`UI_TEXT_MAX` 24→64（输入框；Chat 对齐宿主长句）。
+ * 3.2.0：列表/输入框字素；`UiFocusTextField`；列表点选不再冲输入框。
  * 依赖 libGraphics + 窗口 syscall；不链接内核 UI.c。
  */
 #ifndef UI_H
@@ -15,13 +17,14 @@
 #include <Graphics/Graphics.h>
 
 #define UI_ABI_VERSION_MAJOR 3
-#define UI_ABI_VERSION_MINOR 0
+#define UI_ABI_VERSION_MINOR 2
 #define UI_ABI_VERSION_PATCH 0
-#define UI_ABI_VERSION_STRING "3.0.0"
+#define UI_ABI_VERSION_STRING "3.2.0"
 
 #define UI_EVENT_NONE          0
 #define UI_EVENT_CLOSE         1
 #define UI_EVENT_CLICK         2  /* 客户区点击未命中控件 */
+#define UI_EVENT_PAINT         3  /* 内核刷了客户区底，Guest 须重画自绘内容 */
 #define UI_EVENT_BUTTON_BASE 100
 #define UI_BUTTON_EVENT(Id) (UI_EVENT_BUTTON_BASE + (Id))
 #define UI_EVENT_CHECK_BASE 200
@@ -45,7 +48,7 @@
 #define UI_LIST_ID_MAX   0
 #define UI_TEXT_ID_MAX   0
 #define UI_LIST_ITEM_MAX 4
-#define UI_TEXT_MAX      24
+#define UI_TEXT_MAX      64
 
 /* 成功返回 wid（>=0）；失败 -1 */
 int UiCreateWindow(const char *Title, unsigned Width, unsigned Height);
@@ -70,9 +73,12 @@ int UiListAddItem(int WindowId, int ListId, const char *Text);
 int UiListSetSelected(int WindowId, int ListId, int Index);
 int UiListGetSelected(int WindowId, int ListId);
 
+/* H=0 则用默认行高 */
 int UiAddTextField(int WindowId, int FieldId, unsigned X, unsigned Y,
-                      unsigned W);
+                      unsigned W, unsigned H);
 int UiSetTextField(int WindowId, int FieldId, const char *Text);
 int UiGetTextField(int WindowId, int FieldId, char *Buf, unsigned Cap);
+int UiFocusTextField(int WindowId, int FieldId);
+void UiRefresh(int WindowId);
 
 #endif

@@ -28,7 +28,7 @@ static void ClampResizeSize(const GUI_WINDOW *W, UINT32 *OutW, UINT32 *OutH) {
     Nw = *OutW;
     Nh = *OutH;
     /*
-     * 已小于课设最小的窗（如 TaskMgr 高 200）：勿一碰拖拽就撑到 360（≈两倍）。
+     * 已小于课设最小的窗（如 TaskManager 高 200）：勿一碰拖拽就撑到 360（≈两倍）。
      * 地板取「当前尺寸」与绝对下限 160×100 之间。
      */
     if (W->Width < MinW) {

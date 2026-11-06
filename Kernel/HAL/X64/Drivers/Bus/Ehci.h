@@ -40,7 +40,7 @@ int FtdiClaim(void);
 void FtdiInvalidate(void);
 int FtdiReady(void);
 int FtdiWrite(const char *Text); /* 0=ok；<0 失败 */
-void FtdiPollRx(void);
+void FtdiPollReceive(void);
 int FtdiDataReady(void);
 char FtdiReadChar(void);
 

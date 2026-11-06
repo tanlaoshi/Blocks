@@ -51,7 +51,7 @@ static int DuoI2cReadPin(UINT32 Pin) {
     return High;
 }
 
-static void DuoI2cBusInit(void) {
+static void DuoI2cBusInitialize(void) {
     DuoI2cRelease(DUO_I2C_SDA_PIN);
     DuoI2cRelease(DUO_I2C_SCL_PIN);
     DuoI2cDelay();
@@ -176,7 +176,7 @@ int HalI2cProbe(UINT8 Address) {
     if (Address > DUO_I2C_ADDRESS_MAX) {
         return -1;
     }
-    DuoI2cBusInit();
+    DuoI2cBusInitialize();
     DuoI2cStart();
     Status = DuoI2cWriteByte((UINT8)(Address << 1));
     DuoI2cStop();
@@ -189,7 +189,7 @@ int HalI2cWrite(UINT8 Address, UINT8 Register, const UINT8 *Buffer, UINT32 Lengt
     if (Buffer == 0 || Length == 0u || Address > DUO_I2C_ADDRESS_MAX) {
         return -1;
     }
-    DuoI2cBusInit();
+    DuoI2cBusInitialize();
     DuoI2cStart();
     if (DuoI2cWriteByte((UINT8)(Address << 1)) != 0 || DuoI2cWriteByte(Register) != 0) {
         DuoI2cStop();
@@ -211,7 +211,7 @@ int HalI2cRead(UINT8 Address, UINT8 Register, UINT8 *Buffer, UINT32 Length) {
     if (Buffer == 0 || Length == 0u || Address > DUO_I2C_ADDRESS_MAX) {
         return -1;
     }
-    DuoI2cBusInit();
+    DuoI2cBusInitialize();
     /* 写寄存器号（无 Stop）→ 重复 Start → 读 */
     DuoI2cStart();
     if (DuoI2cWriteByte((UINT8)(Address << 1)) != 0 || DuoI2cWriteByte(Register) != 0) {
@@ -249,7 +249,7 @@ int HalI2cLineLevels(int *OutSdaHigh, int *OutSclHigh) {
     if (OutSdaHigh == 0 || OutSclHigh == 0) {
         return -1;
     }
-    DuoI2cBusInit();
+    DuoI2cBusInitialize();
     *OutSdaHigh = DuoI2cReadPin(DUO_I2C_SDA_PIN);
     *OutSclHigh = DuoI2cReadPin(DUO_I2C_SCL_PIN);
     return 0;

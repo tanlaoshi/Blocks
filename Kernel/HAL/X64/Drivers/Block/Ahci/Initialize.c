@@ -42,7 +42,7 @@ static int PortStart(volatile AHCI_PORT *Port) {
     return 1;
 }
 
-int PortInit(volatile AHCI_PORT *Port, AHCI_DRIVE *Drive) {
+int PortInitialize(volatile AHCI_PORT *Port, AHCI_DRIVE *Drive) {
     UINT8 *Mem;
     UINT64 Phys;
 

@@ -145,7 +145,7 @@ int DbSave(void) {
 /*
  * 若库空且存在 THEME.CFG，导入 desktop/shell/font/mode（不覆盖已有键）。
  */
-void ImportThemeCfgIfEmpty(void) {
+void ImportThemeConfigIfEmpty(void) {
     static char Buf[256];
     UINTN Size = 0;
     UINTN i;

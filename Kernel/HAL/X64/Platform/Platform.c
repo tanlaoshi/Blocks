@@ -70,7 +70,7 @@ void HalPlatformMapMmio(void) {
     int i;
 
     MapIdentityRange(0xFEE00000ULL, 0x100000ULL); /* LAPIC */
-    MapIdentityRange(0xFEC00000ULL, 0x1000ULL);   /* IOAPIC 默认；MADT 另址时 IoApicInit 再映 */
+    MapIdentityRange(0xFEC00000ULL, 0x1000ULL);   /* IOAPIC 默认；MADT 另址时 IoApicInitialize 再映 */
     if (gXhciFallback != 0) {
         MapIdentityRange(gXhciFallback, 0x1000000ULL);
     }

@@ -277,7 +277,7 @@ void HalDelayMilliseconds(UINT32 Milliseconds) {
     }
 }
 
-/* PR-A14：AP 在 BSP HalTimerStart 之前也可本地开 CNTV（gCntPeriod 已在 InitCpu） */
+/* PR-A14：AP 在 BSP HalTimerStart 之前也可本地开 CNTV（gCntPeriod 已在 InitializeCpu） */
 void HalTimerStartAp(void) {
     extern void HalGicInitializeCpu(void);
 

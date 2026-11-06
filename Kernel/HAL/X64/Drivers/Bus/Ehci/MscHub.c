@@ -54,10 +54,10 @@ int MscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
     S.wValue = 0;
     S.wIndex = Port;
     S.wLength = 4;
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    if (ControlTransfer(C, HubAddr, 64, &S, Buf) != 0) {
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    if (EhciControlTransfer(C, HubAddr, 64, &S, Buf) != 0) {
         return 0;
     }
     *Status = (UINT16)(Buf[0] | ((UINT16)Buf[1] << 8));
@@ -65,35 +65,35 @@ int MscHubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
     return 1;
 }
 
-int MscHubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+int MscHubSetFeature(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feature) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x23;
     S.bRequest = 0x03;
-    S.wValue = Feat;
+    S.wValue = Feature;
     S.wIndex = Port;
     S.wLength = 0;
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-int MscHubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+int MscHubClearFeature(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feature) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x23;
     S.bRequest = 0x01;
-    S.wValue = Feat;
+    S.wValue = Feature;
     S.wIndex = Port;
     S.wLength = 0;
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-int MscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
+int MscHubGetDescriptor(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0xA0;
@@ -101,10 +101,10 @@ int MscHubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     S.wValue = USB_WVALUE_DT_HUB;
     S.wIndex = 0;
     S.wLength = Len;
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, Out) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, Out) == 0;
 }
 
 static UINT8 PortSpeed(UINT16 St) {
@@ -122,7 +122,7 @@ int MscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut) {
     UINT16 Ch;
     int Spin;
 
-    if (!MscHubSetFeat(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
+    if (!MscHubSetFeature(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
         return 0;
     }
     Spin = 1000000;
@@ -135,8 +135,8 @@ int MscHubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut) {
         }
         HalCpuRelax();
     }
-    (void)MscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
-    (void)MscHubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
+    (void)MscHubClearFeature(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
+    (void)MscHubClearFeature(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
     Delay(500000);
     if (!MscHubGetStatus(C, HubAddr, Port, &St, &Ch)) {
         return 0;
@@ -165,7 +165,7 @@ static int TryHubPortMsc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
         return 0;
     }
     if (Ch & HUB_STAT_CONNECT) {
-        (void)MscHubClearFeat(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
+        (void)MscHubClearFeature(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
@@ -204,14 +204,14 @@ int MscClaimViaHub(EHCI_CTRL *C) {
     }
     /* 扫口会 Reset 子设备；作废先前 EHCI FTDI claim（ehci-4） */
     FtdiInvalidate();
-    if (MscHubGetDesc(C, HubAddr, Desc, 9)) {
+    if (MscHubGetDescriptor(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 4;
         if (NPorts > 14) {
             NPorts = 14;
         }
     }
     for (P = 1; P <= NPorts; P++) {
-        (void)MscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)MscHubSetFeature(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
     Delay(800000);
 

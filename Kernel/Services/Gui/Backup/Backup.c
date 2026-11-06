@@ -32,7 +32,7 @@ UINT32 BackupPageCount(UINT32 Ww, UINT32 Wh) {
 }
 
 
-int EnsureWindowBackupBuf(int Idx) {
+int EnsureWindowBackupBuffer(int Idx) {
     UINT32 Pages;
     UINT32 Wp;
     UINT32 Hp;
@@ -47,7 +47,7 @@ int EnsureWindowBackupBuf(int Idx) {
      * PR-23d：缓冲按物理像素开（150% 下 1.5×1.5 = 2.25 倍像素），否则
      * 整窗只能存一份「每个逻辑格一个采样点」的缩略图，贴回时文字必糊。
      */
-    GuiPhysRect(gGuiWindowManager.Windows[Idx].X, gGuiWindowManager.Windows[Idx].Y,
+    GuiPhysicalRect(gGuiWindowManager.Windows[Idx].X, gGuiWindowManager.Windows[Idx].Y,
                 gGuiWindowManager.Windows[Idx].Width,
                 gGuiWindowManager.Windows[Idx].Height, 0, 0, &Wp, &Hp);
     Pages = BackupPageCount(Wp, Hp);
@@ -78,7 +78,7 @@ void PreallocWindowBackups(void) {
 
     for (i = 0; i < MAX_WINS; i++) {
         if (gGuiWindowManager.Windows[i].Active) {
-            EnsureWindowBackupBuf(i);
+            EnsureWindowBackupBuffer(i);
         }
     }
 }
@@ -102,10 +102,10 @@ static void BackupVisiblePixels(int Idx, UINT32 Rw, UINT32 Rh, UINT32 Xp,
 
         for (Col = 0; Col < Rw; Col++) {
             UINT32 Px = Win->X + Col;
-            UINT32 Bx = GuiPhysX(Px) - Xp;
-            UINT32 By = GuiPhysY(Py) - Yp;
-            UINT32 Ex = GuiPhysX(Px + 1u) - Xp;
-            UINT32 Ey = GuiPhysY(Py + 1u) - Yp;
+            UINT32 Bx = GuiPhysicalX(Px) - Xp;
+            UINT32 By = GuiPhysicalY(Py) - Yp;
+            UINT32 Ex = GuiPhysicalX(Px + 1u) - Xp;
+            UINT32 Ey = GuiPhysicalY(Py + 1u) - Yp;
             int Covered = PixelCoveredByHigherWindow(Idx, Px, Py);
             UINT32 Sy;
 
@@ -170,12 +170,12 @@ void BackupWindowAtEx(int Idx, int ForceFull) {
         return;
     }
 
-    GuiPhysRect(Win->X, Win->Y, Rw, Rh, &Xp, &Yp, &Wp, &Hp);
+    GuiPhysicalRect(Win->X, Win->Y, Rw, Rh, &Xp, &Yp, &Wp, &Hp);
     HadValid = gGuiWindowManager.WinBackupValid[Idx];
     OldBuf = gGuiWindowManager.WinBackup[Idx];
     OldWp = gGuiWindowManager.WinBackupWp[Idx];
     OldHp = gGuiWindowManager.WinBackupHp[Idx];
-    if (!EnsureWindowBackupBuf(Idx)) {
+    if (!EnsureWindowBackupBuffer(Idx)) {
         gGuiWindowManager.WinBackupValid[Idx] = 0;
         return;
     }
@@ -248,7 +248,7 @@ void PaintWindowFromBackup(int Idx) {
     }
     if (gGuiWindowManager.WinBackupValid[Idx] && gGuiWindowManager.WinBackup[Idx] != 0) {
         /* PR-23d：逐物理像素贴回，150% 下与抓的时候像素一致（不铺块） */
-        HalVideoWriteRectPhys(GuiPhysX(Win->X), GuiPhysY(Win->Y),
+        HalVideoWriteRectPhys(GuiPhysicalX(Win->X), GuiPhysicalY(Win->Y),
                               gGuiWindowManager.WinBackupWp[Idx],
                               gGuiWindowManager.WinBackupHp[Idx],
                               gGuiWindowManager.WinBackup[Idx]);
@@ -306,9 +306,9 @@ void PaintWindowFromBackupClipped(int Idx, UINT32 X, UINT32 Y, UINT32 W, UINT32 
     Iw = Right - Ix;
     Ih = Bottom - Iy;
     /* 裁剪框换物理，再逐物理行贴回（源偏移按窗原点算） */
-    GuiPhysRect(Ix, Iy, Iw, Ih, &Cxp, &Cyp, &Cwp, &Chp);
-    Bx = GuiPhysX(Ix) - GuiPhysX(Win->X);
-    By = GuiPhysY(Iy) - GuiPhysY(Win->Y);
+    GuiPhysicalRect(Ix, Iy, Iw, Ih, &Cxp, &Cyp, &Cwp, &Chp);
+    Bx = GuiPhysicalX(Ix) - GuiPhysicalX(Win->X);
+    By = GuiPhysicalY(Iy) - GuiPhysicalY(Win->Y);
     if (Bx >= Bw || By >= Bh) {
         return;
     }

@@ -16,7 +16,7 @@ int ChunkMessage(UINT8 DeviceAddress, UINT8 EndpointNumber, UINT8 EndpointType, 
     }
 
     for (;;) {
-        UINT32 Xfer;
+        UINT32 ChunkLength;
         UINT32 Npkts;
         UINT32 Actual = 0;
         int Ret;
@@ -25,12 +25,12 @@ int ChunkMessage(UINT8 DeviceAddress, UINT8 EndpointNumber, UINT8 EndpointType, 
         UINT32 Spl;
 
         if (Length == 0) {
-            Xfer = 0;
+            ChunkLength = 0;
             Npkts = 1;
         } else {
-            Xfer = (UINT32)(Length - Done);
-            if (Xfer > MaxPacketSize) {
-                Xfer = MaxPacketSize;
+            ChunkLength = (UINT32)(Length - Done);
+            if (ChunkLength > MaxPacketSize) {
+                ChunkLength = MaxPacketSize;
             }
             Npkts = 1;
         }
@@ -66,7 +66,7 @@ int ChunkMessage(UINT8 DeviceAddress, UINT8 EndpointNumber, UINT8 EndpointType, 
         Dwc2Spin(gTransferLowSpeed ? 16000u : 8000u); /* LS 多 settle */
         Ret = TransferChunk(PacketId, In,
                             Length ? (void *)((UINT8 *)Buffer + Done) : gStatusBuffer,
-                            Npkts, Xfer, &Actual, Odd);
+                            Npkts, ChunkLength, &Actual, Odd);
         Hcint = *Dwc2Register(DWC2_HCINT(DWC2_HC_CHANNEL));
 
         if (CompleteSplit) {
@@ -142,7 +142,7 @@ int ChunkMessage(UINT8 DeviceAddress, UINT8 EndpointNumber, UINT8 EndpointType, 
         if (Length == 0) {
             break;
         }
-        if (Actual < Xfer) {
+        if (Actual < ChunkLength) {
             break;
         }
         if (Done >= Length) {

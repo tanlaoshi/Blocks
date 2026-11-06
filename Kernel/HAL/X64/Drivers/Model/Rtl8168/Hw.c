@@ -4,19 +4,19 @@
 #include "Private.h"
 #include "Hal.h"
 
-void RtlStallMs(UINT32 Ms) {
+void RtlStallMilliseconds(UINT32 Milliseconds) {
     UINT32 Lo;
     UINT32 Hi;
     UINT64 T0;
     UINT64 Need;
     UINT64 Now;
 
-    if (Ms == 0) {
+    if (Milliseconds == 0) {
         return;
     }
     __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
     T0 = ((UINT64)Hi << 32) | Lo;
-    Need = (UINT64)Ms * 3000000ULL;
+    Need = (UINT64)Milliseconds * 3000000ULL;
     for (;;) {
         __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
         Now = ((UINT64)Hi << 32) | Lo;
@@ -35,7 +35,7 @@ int RtlHwReset(void) {
         if ((RtlMmioR8(RTL_CHIPCMD) & RTL_CMD_RESET) == 0) {
             return 1;
         }
-        RtlStallMs(1);
+        RtlStallMilliseconds(1);
     }
     return 0;
 }
@@ -109,7 +109,7 @@ int RtlHwLinkUp(UINT32 *MbpsOut, int *FullOut) {
             }
             return 1;
         }
-        RtlStallMs(50);
+        RtlStallMilliseconds(50);
     }
     if (MbpsOut) {
         *MbpsOut = 0;

@@ -28,7 +28,7 @@ UINT8 IgpuPciBus(void) {
     return gIgpuBus;
 }
 
-UINT8 IgpuPciDev(void) {
+UINT8 IgpuPciDevice(void) {
     return gIgpuDev;
 }
 

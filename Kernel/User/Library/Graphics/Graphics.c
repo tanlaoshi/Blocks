@@ -167,3 +167,22 @@ int GraphicsDrawRect(int WindowId, unsigned X, unsigned Y, unsigned W, unsigned 
     }
     return 0;
 }
+
+int GraphicsDrawString(int WindowId, unsigned X, unsigned Y, unsigned Color,
+                       const char *Text) {
+    GRAPHICS_DRAW_STRING Desc;
+    unsigned Index = 0;
+
+    if (WindowId < 0 || !Text) {
+        return -1;
+    }
+    Desc.X = X;
+    Desc.Y = Y;
+    Desc.Color = Color;
+    while (Text[Index] != 0 && Index + 1 < GRAPHICS_DRAW_STRING_TEXT_MAX) {
+        Desc.Text[Index] = Text[Index];
+        Index++;
+    }
+    Desc.Text[Index] = 0;
+    return (int)blocks_draw_string(WindowId, &Desc);
+}

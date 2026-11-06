@@ -18,7 +18,7 @@ static int EnsureStoreDir(void) {
     return Err;
 }
 
-static int ParseRepoVal(const char *Val) {
+static int ParseRepoValue(const char *Val) {
     UINT32 Ip;
     UINT32 Port = STORE_REPO_DEFAULT_PORT;
     const char *Colon;
@@ -66,7 +66,7 @@ void StoreRepoLoadFromDb(void) {
     gRepoIp = StoreRepoDefaultIp();
     gRepoPort = (UINT16)STORE_REPO_DEFAULT_PORT;
     if (DbGet("store.repo", Val, sizeof(Val)) == DB_OK) {
-        (void)ParseRepoVal(Val);
+        (void)ParseRepoValue(Val);
     }
 }
 
@@ -74,7 +74,7 @@ int StoreRepoSet(const char *IpPort) {
     char Val[64];
     int i = 0;
 
-    if (ParseRepoVal(IpPort) != 0) {
+    if (ParseRepoValue(IpPort) != 0) {
         return -1;
     }
     while (IpPort[i] && i + 1 < (int)sizeof(Val)) {

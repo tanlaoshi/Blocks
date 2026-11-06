@@ -39,10 +39,10 @@ static int HubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
 
     PortStatusSetup(&Filled, Port);
     CopySetup(&S, &Filled);
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    if (ControlTransfer(C, HubAddr, 64, &S, Buf) != 0) {
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    if (EhciControlTransfer(C, HubAddr, 64, &S, Buf) != 0) {
         return 0;
     }
     *Status = (UINT16)(Buf[0] | ((UINT16)Buf[1] << 8));
@@ -50,40 +50,40 @@ static int HubGetStatus(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 *Status,
     return 1;
 }
 
-static int HubSetFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+static int HubSetFeature(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feature) {
     USB_SETUP_PACKET S;
     USB_SETUP Filled;
 
-    PortFeatureSetup(&Filled, Port, Feat, 1);
+    PortFeatureSetup(&Filled, Port, Feature, 1);
     CopySetup(&S, &Filled);
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-static int HubClearFeat(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feat) {
+static int HubClearFeature(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT16 Feature) {
     USB_SETUP_PACKET S;
     USB_SETUP Filled;
 
-    PortFeatureSetup(&Filled, Port, Feat, 0);
+    PortFeatureSetup(&Filled, Port, Feature, 0);
     CopySetup(&S, &Filled);
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, 0) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, 0) == 0;
 }
 
-static int HubGetDesc(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
+static int HubGetDescriptor(EHCI_CTRL *C, UINT8 HubAddr, UINT8 *Out, UINT16 Len) {
     USB_SETUP_PACKET S;
     USB_SETUP Filled;
 
     DescriptorSetup(&Filled, Len);
     CopySetup(&S, &Filled);
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    return ControlTransfer(C, HubAddr, 64, &S, Out) == 0;
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    return EhciControlTransfer(C, HubAddr, 64, &S, Out) == 0;
 }
 
 static UINT8 PortSpeed(UINT16 St) {
@@ -115,7 +115,7 @@ static int HubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut
     UINT16 Ch;
     int Spin;
 
-    if (!HubSetFeat(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
+    if (!HubSetFeature(C, HubAddr, Port, HUB_FEAT_PORT_RESET)) {
         return 0;
     }
     Spin = 1000000;
@@ -128,8 +128,8 @@ static int HubResetPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 Port, UINT8 *SpeedOut
         }
         HalCpuRelax();
     }
-    (void)HubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
-    (void)HubClearFeat(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
+    (void)HubClearFeature(C, HubAddr, Port, HUB_FEAT_C_PORT_RESET);
+    (void)HubClearFeature(C, HubAddr, Port, HUB_FEAT_C_PORT_ENABLE);
     Delay(500000);
     if (!HubGetStatus(C, HubAddr, Port, &St, &Ch)) {
         return 0;
@@ -164,7 +164,7 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
     BootMarkUsb("\n");
 
     if (Ch & HUB_STAT_CONNECT) {
-        (void)HubClearFeat(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
+        (void)HubClearFeature(C, HubAddr, P, HUB_FEAT_C_PORT_CONNECTION);
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
@@ -179,10 +179,10 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
         BootMarkUsb(SpName);
         BootMarkUsb("\n");
     }
-    return EnumDevice(C, Sp, HubAddr, P);
+    return EnumerateDevice(C, Sp, HubAddr, P);
 }
 
-int EnumHub(EHCI_CTRL *C) {
+int EnumerateHub(EHCI_CTRL *C) {
     UINT8 HubAddr = C->HubAddr;
     UINT8 Desc[16];
     UINT8 NPorts = 4;
@@ -200,7 +200,7 @@ int EnumHub(EHCI_CTRL *C) {
         Seen[i] = 0;
     }
 
-    if (HubGetDesc(C, HubAddr, Desc, 9)) {
+    if (HubGetDescriptor(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 4;
         if (NPorts > 14) {
             NPorts = 14;
@@ -223,7 +223,7 @@ int EnumHub(EHCI_CTRL *C) {
     }
 
     for (P = 1; P <= NPorts; P++) {
-        (void)HubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)HubSetFeature(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
     /* 外接口上电常比内置 BT/摄像头慢 */
     Delay(1500000);

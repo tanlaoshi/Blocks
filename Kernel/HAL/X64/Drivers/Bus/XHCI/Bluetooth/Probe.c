@@ -97,7 +97,7 @@ static void BluetoothSurveyRoots(void) {
 
     BootLog("Boot: Bluetooth survey begin\n");
     for (Port = 1; Port <= gMaxPorts && Port <= 32u; Port++) {
-        UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(Port));
+        UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(Port));
 
         if (!(Ps & PORTSC_CCS)) {
             continue;

@@ -129,7 +129,7 @@ UINT64 SchedulerExitUser(HAL_INTERRUPT_FRAME *Frame);
 UINT64 SchedulerFork(HAL_INTERRUPT_FRAME *Frame);
 UINT64 SchedulerWait(HAL_INTERRUPT_FRAME *Frame);
 UINT64 SchedulerYield(HAL_INTERRUPT_FRAME *Frame);
-UINT64 SchedulerSleepMs(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms);
+UINT64 SchedulerSleepMilliseconds(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms);
 void SchedulerWakeSleepers(void);
 /* PR-P4：rdi=pid rsi=sig；杀内核/idle 失败。非当前任务返回 0；杀自身则切走 */
 UINT64 SchedulerKill(HAL_INTERRUPT_FRAME *Frame);

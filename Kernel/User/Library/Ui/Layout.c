@@ -155,7 +155,7 @@ int UiLoadWindow(const char *Title, int DesignW, int DesignH,
         case UI_WIDGET_TEXTBOX:
             if (Wgt->Id >= 0 && Wgt->Id <= UI_TEXT_ID_MAX) {
                 UiAddTextField(Wid, Wgt->Id, (unsigned)X, (unsigned)Y,
-                                  (unsigned)W);
+                                  (unsigned)W, (H > 0) ? (unsigned)H : 0);
                 if (Wgt->Text) {
                     UiSetTextField(Wid, Wgt->Id, Wgt->Text);
                 }

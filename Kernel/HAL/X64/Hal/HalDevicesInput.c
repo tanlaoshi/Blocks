@@ -23,7 +23,7 @@ void HalInputInitializeMouseDeferred(void) {
      * 枚举期已绑则此处为空操作；仅漏绑时补一次（少见）。
      */
     if (!MousePresent()) {
-        InitMouseDeferred();
+        MouseDeferredInitialize();
     }
 }
 

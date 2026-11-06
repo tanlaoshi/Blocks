@@ -37,7 +37,7 @@ int ResolvePathAsDir(const char *Path, FAT_DIR_CTX *OutDir) {
     char Comp[FAT_NAME_MAX + 1];
     const char *P = Path ? Path : "";
 
-    Stack[0] = FatRootCtx();
+    Stack[0] = FatRootContext();
     while (CopyPathComponent(&P, Comp, sizeof(Comp))) {
         UINT32 SubCluster = 0;
         UINT32 SubSize = 0;
@@ -81,7 +81,7 @@ int ResolvePathParentLeaf(const char *Path, FAT_DIR_CTX *OutParent, char *Leaf) 
     if (!Path || !Path[0]) {
         return 0;
     }
-    Stack[0] = FatRootCtx();
+    Stack[0] = FatRootContext();
     Last[0] = 0;
     while (CopyPathComponent(&P, Comp, sizeof(Comp))) {
         if (!*P || (*P == '/' && P[1] == 0)) {

@@ -99,6 +99,10 @@ static inline long blocks_damage_rect(long wid, const void *desc) {
     return blocks_syscall(SYS_GRAPHICS_DAMAGE_RECT, wid, (long)desc, 0);
 }
 
+static inline long blocks_draw_string(long wid, const void *desc) {
+    return blocks_syscall(SYS_GRAPHICS_DRAW_STRING, wid, (long)desc, 0);
+}
+
 static inline long blocks_poll_input(long wid) {
     return blocks_syscall(SYS_WINDOW_POLL, wid, 0, 0);
 }

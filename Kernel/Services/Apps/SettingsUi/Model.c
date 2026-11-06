@@ -7,14 +7,14 @@
 const char *CatLabel(SETTINGS_CAT C) {
     /* 三分栏左侧短名（locale 已去掉「N.」与括号说明） */
     switch (C) {
-    case SETTINGS_CAT_DESKTOP:  return LocStr(MSG_SET_DESKTOP_BG);
-    case SETTINGS_CAT_SHELL:    return LocStr(MSG_SET_SHELL_BG);
-    case SETTINGS_CAT_FONT:     return LocStr(MSG_SET_FONT);
-    case SETTINGS_CAT_DISPLAY:  return LocStr(MSG_SET_DISPLAY);
-    case SETTINGS_CAT_LANGUAGE: return LocStr(MSG_SET_LANGUAGE);
-    case SETTINGS_CAT_SCALE:    return LocStr(MSG_SET_SCALE);
-    case SETTINGS_CAT_THEME:    return LocStr(MSG_SET_THEME);
-    case SETTINGS_CAT_EFFECTS:  return LocStr(MSG_SET_EFFECTS);
+    case SETTINGS_CAT_DESKTOP:  return LocaleString(MESSAGE_SET_DESKTOP_BG);
+    case SETTINGS_CAT_SHELL:    return LocaleString(MESSAGE_SET_SHELL_BG);
+    case SETTINGS_CAT_FONT:     return LocaleString(MESSAGE_SET_FONT);
+    case SETTINGS_CAT_DISPLAY:  return LocaleString(MESSAGE_SET_DISPLAY);
+    case SETTINGS_CAT_LANGUAGE: return LocaleString(MESSAGE_SET_LANGUAGE);
+    case SETTINGS_CAT_SCALE:    return LocaleString(MESSAGE_SET_SCALE);
+    case SETTINGS_CAT_THEME:    return LocaleString(MESSAGE_SET_THEME);
+    case SETTINGS_CAT_EFFECTS:  return LocaleString(MESSAGE_SET_EFFECTS);
     default:                    return "?";
     }
 }
@@ -91,10 +91,10 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
     }
     switch (gCat) {
     case SETTINGS_CAT_DESKTOP:
-        StringCopy(Out, OutMax, LocStr(gDesktopColors[Idx].Msg));
+        StringCopy(Out, OutMax, LocaleString(gDesktopColors[Idx].Msg));
         break;
     case SETTINGS_CAT_SHELL:
-        StringCopy(Out, OutMax, LocStr(gShellColors[Idx].Msg));
+        StringCopy(Out, OutMax, LocaleString(gShellColors[Idx].Msg));
         break;
     case SETTINGS_CAT_FONT:
         /* cjk-4：UMing 标（中英）；Sun/Terminus 标（仅英文） */
@@ -102,7 +102,7 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
         break;
     case SETTINGS_CAT_DISPLAY:
         if (Idx == 0) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_DISP_AUTO));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_DISP_AUTO));
         } else {
             StringCopy(Out, OutMax, gModes[Idx - 1].Label);
         }
@@ -147,22 +147,22 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
         break;
     case SETTINGS_CAT_THEME:
         if (Idx == 0) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_DEFAULT));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_THEME_DEFAULT));
         } else if (Idx == 1) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_MODERN));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_THEME_MODERN));
         } else {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_THEME_TECH));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_THEME_TECH));
         }
         break;
     case SETTINGS_CAT_EFFECTS:
         if (Idx == 0) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_MINIMAL));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_EFFECTS_MINIMAL));
         } else if (Idx == 1) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_LOW));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_EFFECTS_LOW));
         } else if (Idx == 2) {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_MEDIUM));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_EFFECTS_MEDIUM));
         } else {
-            StringCopy(Out, OutMax, LocStr(MSG_SET_EFFECTS_HIGH));
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_EFFECTS_HIGH));
         }
         break;
     default:

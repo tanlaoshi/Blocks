@@ -19,7 +19,7 @@
 #include "SerialLog.h"
 #include "Debug.h"
 #include "Hal.h"
-#include "XHCI.h" /* XhciPortEnumIsFrozen：freeze 时勿 Scan 抢鼠 */
+#include "XHCI.h" /* XhciPortEnumerateIsFrozen：freeze 时勿 Scan 抢鼠 */
 
 /* Services：Release 前判启动盘；勿在 RemoveMsc 之后调（盘号 KIND 已清） */
 void FileSystemNotifyMscUnplug(void);
@@ -37,7 +37,7 @@ void BlockMscInstall(void); /* BlockMsc.c */
 static int gMscAuto = MSC_AUTO_DEFAULT;
 static int gMscBe = 0; /* MSC_HOST_XHCI / MSC_HOST_EHCI / 0 */
 
-static const MSC_HOST *CurHost(void) {
+static const MSC_HOST *CurrentHost(void) {
     if (!gMscBe) {
         return 0;
     }
@@ -45,12 +45,12 @@ static const MSC_HOST *CurHost(void) {
 }
 
 static int BeReady(void) {
-    const MSC_HOST *H = CurHost();
+    const MSC_HOST *H = CurrentHost();
 
     return (H && H->Ready()) ? 1 : 0;
 }
 
-int UsbMscInit(void) {
+int UsbMscInitialize(void) {
     UINTN i;
 
     for (i = 0; i < UsbMscHostCount(); i++) {
@@ -295,7 +295,7 @@ int UsbMscAutoBeforeFs(void) {
 }
 
 int UsbMscRelease(void) {
-    const MSC_HOST *H = CurHost();
+    const MSC_HOST *H = CurrentHost();
 
     BlockMuxRemoveMsc();
     if (H && H->Release) {
@@ -339,7 +339,7 @@ int UsbMscPollUnplug(void) {
      */
     if (XhciMscBootWatchCcsLost(&WatchPort)) {
         if (UsbMscReady()) {
-            H = CurHost();
+            H = CurrentHost();
             Present = (H && H->Present) ? H->Present() : 0;
             if (Present) {
                 LogFs("FS: msc/4 watch CCS glitch ignored port=");
@@ -363,7 +363,7 @@ int UsbMscPollUnplug(void) {
     if (!UsbMscReady()) {
         return 0;
     }
-    H = CurHost();
+    H = CurrentHost();
     Present = (H && H->Present) ? H->Present() : 0;
     {
         static UINT32 sAbsentStreak;
@@ -410,7 +410,7 @@ int UsbMscHotPoll(void) {
      * freeze 后 Claim 必拒：再 Scan（含 HubGetPortStatus）只抢鼠环。
      * 插盘用 Shell `msc hot`（Unfreeze）。
      */
-    if (XhciPortEnumIsFrozen()) {
+    if (XhciPortEnumerateIsFrozen()) {
         return 0;
     }
     Now = HalCpuTicks(0);
@@ -459,7 +459,7 @@ int UsbMscHot(void) {
     const MSC_HOST *H;
 
     if (UsbMscReady()) {
-        H = CurHost();
+        H = CurrentHost();
         Present = (H && H->Present) ? H->Present() : 0;
         if (Present) {
             return 0;

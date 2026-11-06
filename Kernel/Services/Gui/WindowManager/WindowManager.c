@@ -72,19 +72,19 @@ void GuiRefreshTitles(void) {
             continue;
         }
         if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SHELL) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_SHELL);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_SHELL);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_SETTINGS) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_SETTINGS);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_SETTINGS);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_STORE) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_STORE);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_STORE);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_DEVICES) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_DEVICES);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_DEVICES);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_FILES) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_FILES);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_FILES);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_EDIT) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_EDIT);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_EDIT);
         } else if (gGuiWindowManager.Windows[i].Kind == GUI_WIN_TTY) {
-            gGuiWindowManager.Windows[i].Title = LocStr(MSG_APP_TTY);
+            gGuiWindowManager.Windows[i].Title = LocaleString(MESSAGE_APP_TTY);
         }
     }
     SyncWindowVisualsEx(1);
@@ -157,6 +157,7 @@ void GuiDesktopInitialize(void) {
         Ops.OpenUser = GuiOpenUser;
         Ops.DamageUser = GuiDamageUser;
         Ops.DamageRectUser = GuiDamageRectUser;
+        Ops.DrawStringUser = GuiDrawStringUser;
         Ops.PollUserInput = GuiPollUserInput;
         Ops.AddButton = GuiUserAddButton;
         WindowOpsRegister(&Ops);
@@ -178,7 +179,7 @@ void GuiDesktopInitialize(void) {
      * SCREEN_LOG：盖屏前 HOLD，方便读 DWC2/串口诊断行。
      */
 #if SCREEN_LOG
-    HalSerialBootHoldMs(8000u);
+    HalSerialBootHoldMilliseconds(8000u);
 #endif
     HalSerialGopMirror(0);
     HalSerialGopMute(1);
@@ -193,7 +194,7 @@ void GuiDesktopInitialize(void) {
     HalVideoSetPresentChunkRows(16384u);
     GuiRedraw();
     HalVideoSetPresentChunkRows(0);
-    /* #117：仅漏绑时补鼠（InitMouseDeferred 内部已绑则跳过）；坐标对齐一次即可 */
+    /* #117：仅漏绑时补鼠（MouseDeferredInitialize 内部已绑则跳过）；坐标对齐一次即可 */
     HalInputInitializeMouseDeferred();
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     /*
@@ -249,13 +250,13 @@ int GuiInitialize(void) {
     (void)DbInitialize();
     (void)FontLoadAssets();
     (void)FontTtfLoad();
-    (void)FontTtfInit();
-    (void)FontTtfMonoInit();
+    (void)FontTtfInitialize();
+    (void)FontTtfMonoInitialize();
     /*
      * FT 须在 Locale 预热前：否则开机 stb HIT 占槽，Worker 再 Init 也
      * DropCjkHits 风暴 → 鼠死；不 Drop 则汉字永远旧 stb。
      */
-    (void)FontFtInit();
+    (void)FontFtInitialize();
     /* cjk-4：UMING/DROID 进字体表，供设置→字体 / Theme font= 名 */
     FontNotifyTtfReady();
     PollInput();

@@ -6,7 +6,7 @@
 #include "PhysicalMemoryPrivate.h"
 #include "Debug.h"
 
-static void BitmapInit(void) { }
+static void BitmapInitialize(void) { }
 
 static UINT32 SegmentFindFreeRange(PMM_SEGMENT *Seg, UINT32 Count)
 {
@@ -169,7 +169,7 @@ static void BitmapReleasePageLocked(void *Page)
 const MEMORY_OPS *MemoryBitmapOps(void)
 {
     static const MEMORY_OPS Ops = {
-        BitmapInit,
+        BitmapInitialize,
         BitmapAllocPagesLocked,
         BitmapFreePagesLocked,
         BitmapRetainPageLocked,

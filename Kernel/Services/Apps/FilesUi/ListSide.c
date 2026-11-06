@@ -27,7 +27,7 @@ void PaintListDrawSide(UINT32 X, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 SideW)
         GraphicsFillRectangle(X + SideW - UI_LAYOUT_SEP_W, Y, UI_LAYOUT_SEP_W, H,
                          ThemePanelSeparator());
     }
-    DrawLine(X + Pad, Y + Pad, LocStr(MSG_FILES_VOLUMES), ThemeText());
+    DrawLine(X + Pad, Y + Pad, LocaleString(MESSAGE_FILES_VOLUMES), ThemeText());
     for (i = 0; i < gPlaceCount; i++) {
         UiDrawListRow(X + Pad, gSideRow0 + (UINT32)i * LineH, RowW, LineH,
                       gPlaces[i].Label,

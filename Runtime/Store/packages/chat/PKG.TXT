@@ -1,10 +1,11 @@
 name=chat
 type=app
-version=1
+version=7
 file=CHAT.ELF
 sha256=-
 arch=x86_64
 title=Chat
-desktop=no
-taskbar=no
+desktop=yes
+taskbar=yes
 window=yes
+icon=Assets/icon.bmp

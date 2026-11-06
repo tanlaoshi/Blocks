@@ -164,7 +164,7 @@ void TtyUiOnEscape(void) {
     TtyUiRepaint();
 }
 
-void TtyUiOnRxChar(char C) {
+void TtyUiOnReceiveCharacter(char C) {
     if (C == '\r') {
         TtyAppend('\n');
     } else if (C == '\n') {

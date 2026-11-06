@@ -12,7 +12,7 @@ int HalNetInitialize(void) {
     return NetInitialize();
 }
 
-int HalNetProbeAtModuleInit(void) {
+int HalNetProbeAtModuleInitialize(void) {
     /* 仍 boot-net-defer：有 Worker + 定时器 IRQ */
     return 0;
 }
@@ -120,5 +120,5 @@ UINT16 HalNetChecksum(const void *Data, UINTN Len) {
 }
 
 void HalNetSetLwipReceive(int Enable) {
-    DriverNetSetLwIpRx(Enable);
+    DriverNetSetLwIpReceive(Enable);
 }

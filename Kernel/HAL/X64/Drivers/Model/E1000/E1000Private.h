@@ -169,10 +169,10 @@ static inline void CopyMemory(void *Dst, const void *Src, UINTN Len) {
 }
 
 void ReadMac(void);
-void E1000ApplyI219TxDctl(void); /* PR-N-i219-tx：已试 ❌ */
+void E1000ApplyI219TransmitDctl(void); /* PR-N-i219-tx：已试 ❌ */
 void E1000ApplyI219Tarc(void);   /* PR-N-i219-tx2：已试 ❌ */
 void E1000FlushI219Rings(void);  /* PR-N-i219-tx3：单假说 ring flush */
-int TryEnableMsiRx(void);
+int TryEnableMsiReceive(void);
 int WaitLinkUp(void);
 
 #endif

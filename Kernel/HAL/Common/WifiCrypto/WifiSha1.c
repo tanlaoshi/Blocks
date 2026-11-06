@@ -80,7 +80,7 @@ static void Sha1Block(UINT32 H[WIFI_SHA1_STATE_WORDS], const UINT8 Block[WIFI_SH
     H[0] += A; H[1] += B; H[2] += C; H[3] += D; H[4] += E;
 }
 
-static void Sha1Init(UINT32 H[WIFI_SHA1_STATE_WORDS])
+static void Sha1Initialize(UINT32 H[WIFI_SHA1_STATE_WORDS])
 {
     H[0] = WIFI_SHA1_INIT_0;
     H[1] = WIFI_SHA1_INIT_1;
@@ -133,7 +133,7 @@ void WifiSha1Digest(const UINT8 *Data, UINTN Length,
     UINTN I;
     UINTN N;
 
-    Sha1Init(H);
+    Sha1Initialize(H);
     Offset = 0;
     while (Offset + WIFI_SHA1_BLOCK_LENGTH <= Length) {
         Sha1Block(H, Data + Offset);
@@ -184,7 +184,7 @@ void WifiSha1Hmac(const UINT8 *Key, UINTN KeyLength,
     }
 
     /* inner = SHA1((K ^ ipad) || Data) */
-    Sha1Init(H);
+    Sha1Initialize(H);
     for (I = 0; I < WIFI_SHA1_BLOCK_LENGTH; I++) {
         Block[I] = (UINT8)(KeyPad[I] ^ WIFI_SHA1_IPAD);
     }

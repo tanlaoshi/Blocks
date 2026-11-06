@@ -5,7 +5,7 @@
 #include "FatPrivate.h"
 #include "Block.h"
 
-static void ZeroBuf(UINT8 *P, UINTN N) {
+static void ZeroBuffer(UINT8 *P, UINTN N) {
     UINTN i;
     for (i = 0; i < N; i++) {
         P[i] = 0;
@@ -31,7 +31,7 @@ static void PutLabel(UINT8 *Dst11, const char *Label) {
 
 static int WriteZeroSectors(UINT32 Lba, UINT32 Count) {
     UINT32 i;
-    ZeroBuf(gSector, SECTOR);
+    ZeroBuffer(gSector, SECTOR);
     for (i = 0; i < Count; i++) {
         if (!BlockWriteSectors(Lba + i, 1, gSector)) {
             return 0;
@@ -81,7 +81,7 @@ int FatFormatFat32(UINT32 StartLba, UINT32 SectorCount, const char *Label) {
     DataLba = FatLba + NumFats * FatSz;
 
     /* BPB / VBR */
-    ZeroBuf(gSector, SECTOR);
+    ZeroBuffer(gSector, SECTOR);
     gSector[0] = 0xEB;
     gSector[1] = 0x58;
     gSector[2] = 0x90;
@@ -134,7 +134,7 @@ int FatFormatFat32(UINT32 StartLba, UINT32 SectorCount, const char *Label) {
     }
 
     /* FSInfo */
-    ZeroBuf(gSector, SECTOR);
+    ZeroBuffer(gSector, SECTOR);
     Write32(gSector + 0, FAT_FSINFO_LEAD_SIG);
     Write32(gSector + 484, FAT_FSINFO_STRUC_SIG);
     Write32(gSector + 488, Clusters - 1);
@@ -154,7 +154,7 @@ int FatFormatFat32(UINT32 StartLba, UINT32 SectorCount, const char *Label) {
         if (!WriteZeroSectors(Base, FatSz)) {
             return FAT_ERR_IO;
         }
-        ZeroBuf(gSector, SECTOR);
+        ZeroBuffer(gSector, SECTOR);
         /* cluster 0 media, 1 EOC, 2 root EOC */
         Write32(gSector + 0, FAT32_EOC);
         Write32(gSector + 4, FAT32_ENTRY_MASK);

@@ -1,7 +1,7 @@
 /*
  * Device.h — 设备管理器（平台无关）
  *
- * 只管理设备列表；设备来源由 HAL/<Arch>/DeviceEnum.c 提供。
+ * 只管理设备列表；设备来源由 HAL/<Arch>/DeviceEnumerate.c 提供。
  * Core 不 include 任何 HAL 私有头。
  */
 #ifndef DEVICE_H

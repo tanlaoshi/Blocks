@@ -22,7 +22,7 @@ UINT64 GasAnyAddress(const UINT8 *Gas) {
     return *(UINT64 *)(void *)(Gas + 4);
 }
 
-void PowerStallMs(UINT32 Ms) {
+void PowerStallMilliseconds(UINT32 Milliseconds) {
     UINT32 Lo;
     UINT32 Hi;
     UINT64 T0;
@@ -32,7 +32,7 @@ void PowerStallMs(UINT32 Ms) {
     __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
     T0 = ((UINT64)Hi << 32) | Lo;
     /* NUC ~3GHz；偏大无妨，仅用于等 SCI_EN */
-    Need = (UINT64)Ms * 3000000ULL;
+    Need = (UINT64)Milliseconds * 3000000ULL;
     for (;;) {
         __asm__ volatile("rdtsc" : "=a"(Lo), "=d"(Hi));
         Now = ((UINT64)Hi << 32) | Lo;

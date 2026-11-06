@@ -17,12 +17,12 @@ int gIwlWpa2Ok;
 int gDatTxLogged;
 int gDatRxLogged;
 int gDtxLogged;
-int gRxMicLogged;
-int gRxMicU;
-int gRxDiscLogged;
-int gRxOffLogged;
-int gRxLlcLogged;
-int gRxStLogged;
+int gReceiveMicLogged;
+int gReceiveMicU;
+int gReceiveDiscLogged;
+int gReceiveOffsetLogged;
+int gReceiveLlcLogged;
+int gReceiveStatusLogged;
 UINT16 gIwlDid;
 UINT8 gIwlBus;
 UINT8 gIwlDev;
@@ -37,7 +37,7 @@ UINT8 gIwlGtkId;
 UINT8 gIwlGtkAltOk;
 UINT8 gIwlGtkLen;
 UINT8 gIwlGroupCipher = 0x04; /* 默认 CCMP */
-UINT8 gIwlTxStaId = IWL_AUX_STA_ID;
+UINT8 gIwlTransmitStationId = IWL_AUX_STA_ID;
 
 static void IwlMakeLocalMac(void) {
     /* NVM 读后续补；先用本地管理地址避免全 0 */
@@ -66,7 +66,7 @@ static int IwlBringUpSta(void) {
         return 0;
     }
     /* Linux：nic_init（RX）在灌固件前，ALIVE 走 RX 通知 */
-    if (!IwlNicInit()) {
+    if (!IwlNicInitialize()) {
         IwlLogStage("nic=fail");
         return 0;
     }
@@ -83,7 +83,7 @@ static int IwlBringUpSta(void) {
             return 0;
         }
     }
-    if (!IwlCfgLoad()) {
+    if (!IwlConfigLoad()) {
         IwlLogStage("cfg=miss");
         return 0;
     }

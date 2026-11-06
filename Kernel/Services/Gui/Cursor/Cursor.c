@@ -258,7 +258,7 @@ void DrawCursorAt(UINT32 X, UINT32 Y) {
  * 偏半格 —— 光标画在 1.5X、存却在 2X，移开时把旁边区域盖回来，表现为
  * 150% 下残留一枚光标箭头。
  */
-static void CursorPhysRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+static void CursorPhysicalRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                            UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp) {
     UINT32 Num = HalVideoGetDrawNum();
     UINT32 Den = HalVideoGetDrawDen();
@@ -310,7 +310,7 @@ void CursorRestore(void) {
      */
     if (gGuiWindowManager.SaveWidth > 0 && gGuiWindowManager.SaveHeight > 0 &&
         gGuiWindowManager.SaveWidth <= (UINT32)CURSOR_BOX && gGuiWindowManager.SaveHeight <= (UINT32)CURSOR_BOX) {
-        CursorPhysRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
+        CursorPhysicalRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
                        gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight,
                        &Xp, &Yp, &Wp, &Hp);
         HalVideoCursorOverlayBegin();
@@ -347,7 +347,7 @@ void CursorPaint(void) {
         gGuiWindowManager.SaveWidth > (UINT32)CURSOR_BOX || gGuiWindowManager.SaveHeight > (UINT32)CURSOR_BOX) {
         return;
     }
-    CursorPhysRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
+    CursorPhysicalRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
                    gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight,
                    &Xp, &Yp, &Wp, &Hp);
     HalVideoCursorOverlayBegin();
@@ -501,7 +501,7 @@ void GuiPointerNoteActivity(void) {
     gPointerActivityTick = HalCpuTicks(0);
 }
 
-int GuiPointerIdleForMs(UINT32 Ms) {
+int GuiPointerIdleForMilliseconds(UINT32 Ms) {
     UINT64 Now;
     UINT32 Tps;
     UINT64 Need;

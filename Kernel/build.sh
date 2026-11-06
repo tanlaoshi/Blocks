@@ -279,12 +279,19 @@ if [ "$ARCH" = "x86_64" ] && [ "$BRINGUP" = "0" ] && [ -d ../Runtime/RootFs/X64 
         cp -f "$USER_OUT/hello.elf" "$DEST/Class/MYAPP.ELF"
     fi
 
-    # 课堂预装目录包（非扁平）；仍禁止 Apps/*.ELF。Snake 不预装，须 store install。
+    # 课堂预装目录包（非扁平）；仍禁止 Apps/*.ELF。
+    # hello/taskmgr 预装须带 PKG（desktop=yes→桌面，taskbar=yes→开始→应用）。
+    # Chat/Snake 不预装 Apps/，须 store install（User/Apps/README）。
     mkdir -p "$DEST/Apps/hello" "$DEST/Apps/taskmgr"
     cp -f "$USER_OUT/hello.elf" "$DEST/Apps/hello/HELLO.ELF"
     cp -f "$USER_OUT/taskmgr.elf" "$DEST/Apps/taskmgr/TASKMGR.ELF"
+    for Id in hello taskmgr; do
+        if [ -f "$IMAGE_STORE/packages/$Id/PKG.TXT" ]; then
+            cp -f "$IMAGE_STORE/packages/$Id/PKG.TXT" "$DEST/Apps/$Id/PKG.TXT"
+        fi
+    done
     rm -f "$DEST/Apps/TASKMGR.ELF" "$DEST/Apps/CAT.ELF" "$DEST/Apps/SNAKE.ELF"
-    rm -rf "$DEST/Apps/snake" "$DEST/Apps/guidemo"
+    rm -rf "$DEST/Apps/snake" "$DEST/Apps/guidemo" "$DEST/Apps/chat"
 
     PackStore() {
         local Id="$1" Src="$2" File="$3"

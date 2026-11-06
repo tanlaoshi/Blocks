@@ -28,7 +28,7 @@ UINT32 IgpuGttSurf(void) {
     return gIgpuSurf;
 }
 
-UINT32 IgpuGttSurfReg(void) {
+UINT32 IgpuGttSurfRegister(void) {
     return gIgpuSurfReg;
 }
 
@@ -69,7 +69,7 @@ static UINT32 PickSurf(UINT32 *CtlOut) {
     return 0xFFFFFFFFu; /* 无启用 plane */
 }
 
-int IgpuGttInit(void) {
+int IgpuGttInitialize(void) {
     UINT32 Surf;
     UINT32 Ctl;
     UINT64 Fb;

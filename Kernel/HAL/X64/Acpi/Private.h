@@ -78,7 +78,7 @@ ACPI_SDT_HEADER *FindFacp(UINT64 RsdpPhys);
 
 UINT64 GasIoAddress(const UINT8 *Gas);
 UINT64 GasAnyAddress(const UINT8 *Gas);
-void PowerStallMs(UINT32 Ms);
+void PowerStallMilliseconds(UINT32 Milliseconds);
 void PowerBootLine(const char *Text);
 void PowerBootHex(const char *Prefix, UINT32 Value);
 void ParseSlpTypFromFacp(UINT64 RsdpPhys, ACPI_SDT_HEADER *Facp, UINT8 *P);

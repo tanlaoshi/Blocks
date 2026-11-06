@@ -1,5 +1,5 @@
 /*
- * Architecture.c — x86-64 GDT/TSS/SYSCALL 与 ArchInit（PR-S3-arch-1）
+ * Architecture.c — x86-64 GDT/TSS/SYSCALL 与 ArchInitialize（PR-S3-arch-1）
  *
  * 中断 IDT/PIC/LAPIC/分发见 Dispatch.c。
  */
@@ -77,7 +77,7 @@ static UINT64 Rdmsr(UINT32 Msr) {
  * STAR：kernel CS=0x08（SS=0x10）；user base=0x13 → SYSRET CS=0x23 SS=0x1B
  * （依赖 GDT：1=kcode 2=kdata 3=udata 4=ucode）
  */
-void ArchSyscallMsrInit(UINT32 LogicalCpu) {
+void ArchSyscallMsrInitialize(UINT32 LogicalCpu) {
     UINT64 Efer;
     UINT64 Star;
     UINT64 Local;
@@ -179,14 +179,14 @@ void ArchTssInstall(void) {
 }
 
 /* 完整 CPU 中断环境初始化；自 IPI 测试成功返回 0 */
-int ArchInit(void) {
+int ArchInitialize(void) {
     HalFpuEnableThisCpu();
     GdtLoad();
     ArchTssInstall();
     ArchPicMaskAll();
     ArchLapicEnable();
     ArchIdtLoad();
-    (void)IoApicInit(); /* PR-H-ioapic：掩 RTE；设备路由在驱动里 */
+    (void)IoApicInitialize(); /* PR-H-ioapic：掩 RTE；设备路由在驱动里 */
     __asm__ volatile ("sti");
     ArchLapicSelfIpi(VEC_XHCI);
     for (volatile int i = 0; i < 1000000; i++) {
@@ -205,7 +205,7 @@ int ArchInit(void) {
  * AP 初始化（PR-S2/S4）：
  * 切到共享 gGdt（含每核 TSS），ltr 本核 TSS，再 lidt + 开 LAPIC。
  */
-void ArchApInit(UINT32 LogicalCpu) {
+void ArchApInitialize(UINT32 LogicalCpu) {
     DT_PTR Ptr;
 
     if (LogicalCpu >= HAL_MAX_CPUS) {
@@ -242,7 +242,7 @@ void ArchApInit(UINT32 LogicalCpu) {
 
     ArchIdtLidt();
     ArchLapicEnable();
-    ArchSyscallMsrInit(LogicalCpu);
+    ArchSyscallMsrInitialize(LogicalCpu);
     HalPatApplyWc(); /* 与 BSP 同形：PA1=WC，LFB WC 映射对其它核也生效 */
     HalFpuEnableThisCpu();
 }

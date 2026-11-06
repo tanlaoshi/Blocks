@@ -181,7 +181,7 @@ void VideoGetPhysicalSize(UINT32 *Width, UINT32 *Height) {
 }
 
 /*
- * 改 UI 缩放并重算逻辑分辨率；释放后缓冲（调用方再 InitBackbuffer）。
+ * 改 UI 缩放并重算逻辑分辨率；释放后缓冲（调用方再 InitializeBackbuffer）。
  * Percent 归到 50/100/150/200。
  */
 int VideoSetUiScale(UINT32 Percent) {

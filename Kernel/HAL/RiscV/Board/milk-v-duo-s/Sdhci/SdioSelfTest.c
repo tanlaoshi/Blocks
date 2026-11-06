@@ -88,7 +88,7 @@ static int SdioDatReadCheck(SDHCI_HOST *Host, UINT8 HostControl, UINT32 RestoreH
     }
     /* Increment=1：CIS 是存储区，必须自增；固定地址只适合 FIFO */
     if (SdhciIoRwExtended(Host, 0, 0x1000u, 0, 1, 0, 16u, Buffer) != 0) {
-        SdioMarkXfer(Host, "WiFi: dat rd cmd53 fn0 cis incr=1 FAIL");
+        SdioMarkTransfer(Host, "WiFi: dat rd cmd53 fn0 cis incr=1 FAIL");
         return -1;
     }
     Rc = SdioCmpCisRead(Host, "WiFi: dat rd", 0x1000u, Buffer, 16u);

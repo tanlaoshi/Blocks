@@ -27,7 +27,7 @@ int VirtioNetSendIp(UINT32 DstIp, UINT8 Proto, const void *Payload,
     if (!gNetOk || Payload == 0 || PayloadLen > 1400) {
         return -1;
     }
-    if (gLwIpRx) {
+    if (gLwIpReceive) {
         return -1;
     }
     if (NetResolve(DstIp, DstMac, 2000) != 0) {
@@ -68,7 +68,7 @@ int VirtioNetPing(const char *Host, int TimeoutMs) {
     if (!gNetOk) {
         return -1;
     }
-    if (gLwIpRx) {
+    if (gLwIpReceive) {
         return -1;
     }
     if (VirtioNetParseIp(Host, &Target) != 0) {

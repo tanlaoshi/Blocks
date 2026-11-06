@@ -41,7 +41,7 @@ void SchedulerWakeSleepers(void) {
     SpinLockRelease(&gSchedulerLock);
 }
 
-UINT64 SchedulerSleepMs(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms) {
+UINT64 SchedulerSleepMilliseconds(HAL_INTERRUPT_FRAME *Frame, UINT32 Ms) {
     TASK *Self;
     UINT64 Now;
     UINT64 Wake;

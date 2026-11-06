@@ -37,7 +37,7 @@
 | UI | **3.0.0** | `Ui.h` → `UI_ABI_VERSION_*`；API `Ui*`；`libUi.a` |
 | Graphics | **3.0.0** | `Graphics.h`；`Graphics*`；`libGraphics.a` |
 | Net | **3.0.0** | `Net.h`；API **`Net*`**；`libNet.a` |
-| FsUtil | **2.0.0** | `VolumePath.h` → `FS_UTIL_*`；`libVolumePath.a` |
+| VolumePath | **2.0.0** | `VolumePath.h` → `VOLUME_PATH_ABI_*`；`libVolumePath.a` |
 | SDK 包 | 见 `Tools/Sdk/VERSION` | 与上表独立 |
 
 ```bash

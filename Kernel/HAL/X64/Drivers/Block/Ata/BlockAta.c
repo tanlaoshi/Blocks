@@ -54,7 +54,7 @@ void AtaDriverRegister(void) {
 int HalBlockInitialize(void) {
     /*
      * VMM 之后再 Probe Block 类：
-     * - ATA 多在 InitDriver 已绑（PIO，无需 MMIO）
+     * - ATA 多在 InitializeDriver 已绑（PIO，无需 MMIO）
      * - AHCI（H1）/ NVMe（H5）需 MMIO，早 Probe 跳过，此处绑上并覆盖后端
      */
     (void)DriverProbeClass(DRIVER_CLASS_BLOCK);

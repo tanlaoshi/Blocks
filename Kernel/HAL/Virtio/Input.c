@@ -16,15 +16,15 @@
 #include "SerialLog.h"
 #include "InputPrivate.h"
 
-VIRTIO_MMIO_DEV gKbd;
+VIRTIO_MMIO_DEV gKeyboard;
 VIRTIO_MMIO_DEV gTab;
-int gKbdOn;
+int gKeyboardOn;
 int gTabOn;
 
-HAL_KEYBOARD_REPORT gKbdQ[KBD_Q_SIZE];
-UINT32 gKbdHead;
-UINT32 gKbdTail;
-HAL_KEYBOARD_REPORT gKbdCur;
+HAL_KEYBOARD_REPORT gKeyboardQueue[KBD_Q_SIZE];
+UINT32 gKeyboardHead;
+UINT32 gKeyboardTail;
+HAL_KEYBOARD_REPORT gKeyboardCurrent;
 
 HAL_MOUSE_REPORT gMouseQ[MOUSE_Q_SIZE];
 UINT32 gMouseHead;
@@ -39,7 +39,7 @@ UINT8 gButtons;
 INT8 gWheelAcc; /* PR-I1：EV_REL REL_WHEEL 累加，SYN/按钮时随报告送出 */
 int gHaveAbs;
 
-VIRTIO_INPUT_EVENT *gKbdEvBuf;
+VIRTIO_INPUT_EVENT *gKeyboardEventBuffer;
 VIRTIO_INPUT_EVENT *gTabEvBuf;
 
 /* Linux KEY_* → HID Usage（子集） */
@@ -63,7 +63,7 @@ static void ReadAbsInfo(UINT64 Base, UINT8 Axis, INT32 *Min, INT32 *Max) {
 }
 
 typedef struct {
-    UINT64 KbdBase;
+    UINT64 KeyboardBase;
     UINT64 TabBase;
 } IN_SCAN;
 
@@ -85,11 +85,11 @@ static void InScanCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
     }
     Name[i] = 0;
     /* QEMU：名含 Keyboard / Tablet */
-    if (S->KbdBase == 0) {
+    if (S->KeyboardBase == 0) {
         for (i = 0; Name[i]; i++) {
             if ((Name[i] == 'K' || Name[i] == 'k') && Name[i + 1] == 'e' &&
                 Name[i + 2] == 'y') {
-                S->KbdBase = Base;
+                S->KeyboardBase = Base;
                 return;
             }
         }
@@ -104,9 +104,9 @@ static void InScanCb(UINT64 Base, UINT32 DeviceId, void *Ctx) {
         }
     }
     /* 无名时按发现顺序：先键盘后 tablet */
-    if (S->KbdBase == 0) {
-        S->KbdBase = Base;
-    } else if (S->TabBase == 0 && Base != S->KbdBase) {
+    if (S->KeyboardBase == 0) {
+        S->KeyboardBase = Base;
+    } else if (S->TabBase == 0 && Base != S->KeyboardBase) {
         S->TabBase = Base;
     }
 }
@@ -115,21 +115,21 @@ static void VirtioInputPoll(void) {
     UINT16 KeyboardEvents = 0;
     UINT16 TabletEvents = 0;
 
-    if (gKbdOn) {
-        KeyboardEvents = DrainDev(&gKbd, gKbdEvBuf, 0);
+    if (gKeyboardOn) {
+        KeyboardEvents = DrainDevice(&gKeyboard, gKeyboardEventBuffer, 0);
     }
     if (gTabOn) {
-        TabletEvents = DrainDev(&gTab, gTabEvBuf, 1);
+        TabletEvents = DrainDevice(&gTab, gTabEvBuf, 1);
     }
     VirtioInputDiagNotePoll(KeyboardEvents, TabletEvents);
 }
 
 static int VirtioInputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
-    if (!Report || gKbdTail == gKbdHead) {
+    if (!Report || gKeyboardTail == gKeyboardHead) {
         return 0;
     }
-    *Report = gKbdQ[gKbdTail];
-    gKbdTail = (gKbdTail + 1) % KBD_Q_SIZE;
+    *Report = gKeyboardQueue[gKeyboardTail];
+    gKeyboardTail = (gKeyboardTail + 1) % KBD_Q_SIZE;
     VirtioInputDiagNoteKeyboardDequeue();
     return 1;
 }
@@ -162,14 +162,14 @@ static int VirtioInputDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPr
 
     (void)Self;
     (void)BusCtx;
-    if (gKbdOn || gTabOn) {
+    if (gKeyboardOn || gTabOn) {
         if (OutPrivate) {
             *OutPrivate = 0;
         }
         return 0;
     }
 
-    S.KbdBase = 0;
+    S.KeyboardBase = 0;
     S.TabBase = 0;
     VirtioMmioScan(InScanCb, &S);
 
@@ -177,13 +177,13 @@ static int VirtioInputDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPr
     if (!Page) {
         return -1;
     }
-    gKbdEvBuf = (VIRTIO_INPUT_EVENT *)(UINTN)Page;
+    gKeyboardEventBuffer = (VIRTIO_INPUT_EVENT *)(UINTN)Page;
     gTabEvBuf = (VIRTIO_INPUT_EVENT *)(UINTN)(Page + PAGE_SIZE);
 
-    if (S.KbdBase) {
-        if (VirtioMmioSetupQueue(&gKbd, S.KbdBase, VIRTIO_DEV_INPUT, 8, 0) == 0) {
-            RefillQueue(&gKbd, gKbdEvBuf, gKbd.QueueSize);
-            gKbdOn = 1;
+    if (S.KeyboardBase) {
+        if (VirtioMmioSetupQueue(&gKeyboard, S.KeyboardBase, VIRTIO_DEV_INPUT, 8, 0) == 0) {
+            RefillQueue(&gKeyboard, gKeyboardEventBuffer, gKeyboard.QueueSize);
+            gKeyboardOn = 1;
             LogDrv("Boot: VirtIO-Input Keyboard\n");
         }
     }
@@ -196,10 +196,10 @@ static int VirtioInputDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPr
             LogDrv("Boot: VirtIO-Input Tablet\n");
         }
     }
-    if (!(gKbdOn || gTabOn)) {
+    if (!(gKeyboardOn || gTabOn)) {
         return -1;
     }
-    VirtioInputDiagSetPresent(gKbdOn, gTabOn);
+    VirtioInputDiagSetPresent(gKeyboardOn, gTabOn);
     if (OutPrivate) {
         *OutPrivate = 0;
     }
@@ -213,7 +213,7 @@ static int VirtioInputDriverBind(DRIVER_INSTANCE *Inst) {
 
 static void VirtioInputDriverRemove(DRIVER_INSTANCE *Inst) {
     (void)Inst;
-    gKbdOn = 0;
+    gKeyboardOn = 0;
     gTabOn = 0;
 }
 
@@ -230,7 +230,7 @@ void VirtioInputRegister(void) {
     (void)DriverRegister(&gVirtioInputDriver);
 }
 
-int VirtioInputInit(void) {
+int VirtioInputInitialize(void) {
     (void)DriverProbeClass(DRIVER_CLASS_INPUT);
     return DriverInputReady() ? 0 : -1;
 }

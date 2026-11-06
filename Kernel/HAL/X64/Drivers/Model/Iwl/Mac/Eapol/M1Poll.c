@@ -3,7 +3,7 @@
  */
 #include "Private.h"
 
-int IwlEapolM1DrainRx(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
+int IwlEapolM1DrainReceive(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
                       UINT8 *Anonce, UINT8 *Replay, UINT32 LoopI) {
     int Took = 0;
 
@@ -22,8 +22,8 @@ int IwlEapolM1DrainRx(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
             break;
         }
         Took++;
-        if (IwlRxTakeHeld(&Pkt, &Len)) {
-        } else if (!IwlRxTake(&Pkt, &Len)) {
+        if (IwlReceiveTakeHeld(&Pkt, &Len)) {
+        } else if (!IwlReceiveTake(&Pkt, &Len)) {
             break;
         }
         if (Pkt->Hdr.Code != IWL_RX_MPDU_CMD || Len < 8) {
@@ -69,7 +69,7 @@ int IwlEapolM1DrainRx(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
         if (ToUs) {
             C->RxUni++;
             if (!C->UniSnapOk) {
-                UINTN H = IwlDot11DataHdrLen(Fc);
+                UINTN H = IwlDot11DataHeaderLength(Fc);
                 C->UniFc0 = Mutable[0];
                 C->UniFc1 = Mutable[1];
                 for (K = 0; K < 8 && H + K < FLen; K++) {

@@ -90,22 +90,22 @@ typedef struct {
     int Valid;
 } ARP_ENTRY;
 
-extern VIRTIO_MMIO_DEV gRx;
+extern VIRTIO_MMIO_DEV gReceive;
 extern VIRTIO_MMIO_DEV gTx;
 extern int gNetOk;
 extern UINT8 gMac[6];
 extern UINT32 gIp;
 extern UINT32 gNetHdrLen;
 extern ARP_ENTRY gArpCache[ARP_CACHE_SIZE];
-extern UINT8 *gRxBuf[RX_BUF_COUNT];
+extern UINT8 *gReceiveBuffer[RX_BUF_COUNT];
 extern UINT8 *gTxBuf;
 extern UINT16 gPingSeq;
 extern int gPingWait;
 extern UINT32 gPingTarget;
 extern UINT16 gPingId;
 extern UINT32 gTxDone;
-extern UINT32 gRxFrames;
-extern int gLwIpRx;
+extern UINT32 gReceiveFrames;
+extern int gLwIpReceive;
 extern int gTxBusy;
 
 static inline void MemSet(void *Dst, UINT8 Val, UINTN Len) {
@@ -149,14 +149,14 @@ static inline UINT16 Sum16(const UINT8 *Data, UINTN Len) {
     return (UINT16)~Sum;
 }
 
-void RxRefillOne(UINT16 DescId, UINT8 *Buf);
-void RxRefillAll(void);
-void TxDrain(void);
+void ReceiveRefillOne(UINT16 DescId, UINT8 *Buf);
+void ReceiveRefillAll(void);
+void TransmitDrain(void);
 int NetSendFrame(const UINT8 *Frame, UINTN FrameLen);
 void ArpLearn(UINT32 Ip, const UINT8 Mac[6]);
 void HandleArp(const ARP_PKT *Arp);
 void HandleIcmp(const IP_HDR *Ip, const UINT8 *Payload, UINTN PayloadLen);
-void NetProcessRx(void);
+void NetProcessReceive(void);
 int NetResolve(UINT32 TargetIp, UINT8 Mac[6], int TimeoutMs);
 void VirtioNetPoll(void);
 void VirtioNetFormatIp(UINT32 Ip, char *Buf, int BufLen);

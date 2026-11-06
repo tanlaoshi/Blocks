@@ -37,7 +37,7 @@ static void StubAsync(void *Ctx) {
     gStubAsyncHit = 1;
 }
 
-static void StubInit(UI_BUTTON_ACTION *Act, UI_ACTION_KIND Kind,
+static void StubInitialize(UI_BUTTON_ACTION *Act, UI_ACTION_KIND Kind,
                      UI_ACTION_FN Fn) {
     Act->Button.X = 0;
     Act->Button.Y = 0;
@@ -65,19 +65,19 @@ void UiActionSelfCheck(void) {
     gStubSyncHit = 0;
     gStubAsyncHit = 0;
 
-    StubInit(&Sync, UI_ACTION_SYNC, StubSync);
+    StubInitialize(&Sync, UI_ACTION_SYNC, StubSync);
     (void)UiActionDispatch(&Sync, 1, 1); /* press hit */
     (void)UiActionDispatch(&Sync, 0, 1); /* release hit → Fn */
     SyncOk = gStubSyncHit;
 
-    StubInit(&Async, UI_ACTION_ASYNC, StubAsync);
+    StubInitialize(&Async, UI_ACTION_ASYNC, StubAsync);
     (void)UiActionDispatch(&Async, 1, 1);
     (void)UiActionDispatch(&Async, 0, 1);
     AsyncOk = gStubAsyncHit;
 
     /* 松开未命中：不得调 Fn */
     gStubSyncHit = 0;
-    StubInit(&Miss, UI_ACTION_SYNC, StubSync);
+    StubInitialize(&Miss, UI_ACTION_SYNC, StubSync);
     (void)UiActionDispatch(&Miss, 1, 1);
     (void)UiActionDispatch(&Miss, 0, 0); /* release miss */
     MissFired = gStubSyncHit;

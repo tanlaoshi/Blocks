@@ -204,7 +204,7 @@ void ApplyItem(int Idx) {
         return;
     case SETTINGS_CAT_LANGUAGE:
         if (Idx >= 0 && Idx < LocaleCount()) {
-            (void)LocaleSet((LOC_LANG)Idx);
+            (void)LocaleSet((LOCALE_LANGUAGE)Idx);
         }
         break;
     case SETTINGS_CAT_SCALE:

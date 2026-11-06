@@ -43,7 +43,7 @@ int InterruptByClass(UINT8 Class, UINT8 Subclass, UINT8 Protocol);
 int BulkOn(UINT8 Kind, USB_PIPE *Pipe, void *Buf, UINT32 Len, int Out);
 
 extern USB_HOST_CONTROLLER_OPERATIONS gXhciOperations;
-void PublishControllerInit(void);
+void PublishControllerInitialize(void);
 
 /* 枚举记录。认领按接口类在这张表里找。 */
 #define USB_DEVICE_MAX    8

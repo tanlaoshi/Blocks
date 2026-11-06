@@ -9,6 +9,6 @@
 /* PR-D2：向 Driver 注册描述符（不 Probe） */
 void VirtioBlockRegister(void);
 /* Probe Block 类 + BlockInitialize；成功返回可用盘数 */
-int VirtioBlockInit(void);
+int VirtioBlockInitialize(void);
 
 #endif

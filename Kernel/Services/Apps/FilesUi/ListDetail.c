@@ -29,8 +29,8 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
     gPrevX = Px;
     GraphicsFillRectangle(Px, Y, 2, H, ThemePanelSeparator());
     GraphicsFillRectangle(Px + 2, Y, Pw > 2 ? Pw - 2 : Pw, H, ThemePanelDetailBackground());
-    DrawLine(Px + 10, Py, LocStr(MSG_FILES_PREVIEW), ThemeText());
-    DrawLine(Px + 10, Py + LineH, gViewTitle[0] ? gViewTitle : LocStr(MSG_FILES_NONE),
+    DrawLine(Px + 10, Py, LocaleString(MESSAGE_FILES_PREVIEW), ThemeText());
+    DrawLine(Px + 10, Py + LineH, gViewTitle[0] ? gViewTitle : LocaleString(MESSAGE_FILES_NONE),
              ThemeTextMuted());
     /* 同名卷：启动卷/启动盘 + DiskGUID（两行，避免撑破预览栏） */
     {
@@ -39,10 +39,10 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
         UINT32 Adv;
 
         if (gVolIsBoot) {
-            DrawLine(Px + 10, MetaY, LocStr(MSG_FILES_BOOT_VOL), ThemeTextAccent());
+            DrawLine(Px + 10, MetaY, LocaleString(MESSAGE_FILES_BOOT_VOL), ThemeTextAccent());
             MetaY += LineH;
         } else if (gVolOnBootDisk) {
-            DrawLine(Px + 10, MetaY, LocStr(MSG_FILES_BOOT_DISK), ThemeTextAccent());
+            DrawLine(Px + 10, MetaY, LocaleString(MESSAGE_FILES_BOOT_DISK), ThemeTextAccent());
             MetaY += LineH;
         }
         if (gVolDiskGuid[0]) {
@@ -95,19 +95,19 @@ void PaintListDrawPreview(UINT32 Cx, UINT32 Y, UINT32 H, UINT32 LineH, UINT32 Cw
                             InnerW, InnerH > LineH * 4 ? LineH * 4 : InnerH,
                             ThemePanelSeparator());
             DrawLine(InnerX + 10, InnerY + LineH,
-                     LocStr(MSG_FILES_EMPTY), ThemeTextMuted());
+                     LocaleString(MESSAGE_FILES_EMPTY), ThemeTextMuted());
         }
     } else if (gPrevKind == PREV_DIR) {
-        DrawLine(InnerX, InnerY, LocStr(MSG_FILES_DIR), ThemeTextAccent());
-        DrawLine(InnerX, InnerY + LineH, LocStr(MSG_FILES_ENTER_OPEN), ThemeTextMuted());
+        DrawLine(InnerX, InnerY, LocaleString(MESSAGE_FILES_DIR), ThemeTextAccent());
+        DrawLine(InnerX, InnerY + LineH, LocaleString(MESSAGE_FILES_ENTER_OPEN), ThemeTextMuted());
     } else if (gPrevKind == PREV_ELF) {
-        DrawLine(InnerX, InnerY, LocStr(MSG_FILES_ELF), ThemeTextAccent());
-        DrawLine(InnerX, InnerY + LineH, LocStr(MSG_FILES_ENTER_RUN), ThemeTextMuted());
+        DrawLine(InnerX, InnerY, LocaleString(MESSAGE_FILES_ELF), ThemeTextAccent());
+        DrawLine(InnerX, InnerY + LineH, LocaleString(MESSAGE_FILES_ENTER_RUN), ThemeTextMuted());
     } else if (gPrevKind == PREV_ERR) {
-        DrawLine(InnerX, InnerY, LocStr(MSG_FILES_CANT_READ), ThemeTextAccent());
+        DrawLine(InnerX, InnerY, LocaleString(MESSAGE_FILES_CANT_READ), ThemeTextAccent());
     } else if (gPrevKind == PREV_BIN) {
-        DrawLine(InnerX, InnerY, LocStr(MSG_FILES_BINARY), ThemeTextAccent());
-        DrawLine(InnerX, InnerY + LineH, LocStr(MSG_FILES_HEX), ThemeTextMuted());
+        DrawLine(InnerX, InnerY, LocaleString(MESSAGE_FILES_BINARY), ThemeTextAccent());
+        DrawLine(InnerX, InnerY + LineH, LocaleString(MESSAGE_FILES_HEX), ThemeTextMuted());
     } else if (gPrevKind == PREV_TEXT && InnerH > LineH) {
         char Row[72];
         int Col = 0;

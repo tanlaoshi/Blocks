@@ -64,7 +64,7 @@ static UINT64 LogoTsc(void) {
 #endif
 }
 
-static void LogoSpinMs(UINT32 Ms) {
+static void LogoSpinMilliseconds(UINT32 Ms) {
     UINT64 Need = (UINT64)Ms * LOGO_TSC_PER_MS;
     UINT64 Start = LogoTsc();
 
@@ -256,7 +256,7 @@ void DesktopBootLogoBump(UINT32 Cap) {
     }
     PaintPieces(Next);
     LogoPresentFlush();
-    LogoSpinMs(LOGO_FRAME_MS);
+    LogoSpinMilliseconds(LOGO_FRAME_MS);
 }
 
 void DesktopBootLogoShow(void) {
@@ -275,7 +275,7 @@ void DesktopBootLogoShow(void) {
         return;
     }
 
-    LogoSpinMs(LOGO_SHOW_DELAY_MS);
+    LogoSpinMilliseconds(LOGO_SHOW_DELAY_MS);
 
     /* 新一次开机：丢掉上一次的布局缓存；几何只由物理分辨率决定 */
     gLayoutW = 0;
@@ -307,7 +307,7 @@ void DesktopBootLogoSet(UINT32 Pct) {
         Cur++;
         PaintPieces(Cur);
         LogoPresentFlush();
-        LogoSpinMs(LOGO_FRAME_MS);
+        LogoSpinMilliseconds(LOGO_FRAME_MS);
         HalInputPoll();
     }
 }

@@ -88,7 +88,7 @@ static int AlreadyHasFile(const char *File) {
     return 0;
 }
 
-static int IconSrcForAppId(const char *Id) {
+static int IconSourceForAppId(const char *Id) {
     int i;
 
     if (!Id || !Id[0]) {
@@ -193,10 +193,16 @@ void FillStartMenuAppRows(int AppCap) {
             if (HavePkg && Meta.CategoryGame) {
                 continue;
             }
-            if (HavePkg && !Meta.TaskbarYes) {
+            /*
+             * 有 PKG：taskbar / desktop / window 任一 yes 即进「应用」
+             * （Chat 半截 PKG 曾只有 window=yes → 旧逻辑整项丢掉；Snake 走游戏不踩坑）。
+             * 无 PKG 旧扁平包仍可列（见下方扫 Apps）。
+             */
+            if (HavePkg && !Meta.TaskbarYes && !Meta.DesktopYes &&
+                !Meta.WindowYes) {
                 continue;
             }
-            IconSrc = IconSrcForAppId(In->Id);
+            IconSrc = IconSourceForAppId(In->Id);
             if (StoreResolveAppPath(In->Id, In->File, Path,
                                     (int)sizeof(Path)) == FAT_OK) {
                 if (AlreadyHasPath(Path) || AlreadyHasFile(In->File)) {

@@ -12,7 +12,7 @@
 #include "Theme.h"
 #include "Font.h"
 
-void CopyTitleBuf(char *Dst, UINTN Cap, const char *Src) {
+void CopyTitleBuffer(char *Dst, UINTN Cap, const char *Src) {
     UINTN i;
 
     if (!Dst || Cap == 0) {
@@ -179,7 +179,7 @@ int UserButtonHit(int Idx, UINT32 X, UINT32 Y) {
 }
 
 
-/* 固定布局 USER 窗：不可拖边改大小（Snake 棋盘 / TaskMgr 标签） */
+/* 固定布局 USER 窗：不可拖边改大小（Snake 棋盘 / TaskManager 标签） */
 static int TitleEq(const char *Title, const char *Name) {
     int i;
 
@@ -233,7 +233,7 @@ int GuiOpenUser(const char *Title, UINT32 W, UINT32 H) {
     gGuiWindowManager.Windows[Idx].Height = H;
     gGuiWindowManager.Windows[Idx].Background = ThemeSettingsClientBackground();
     FontTtfPreheatUtf8(Title);
-    CopyTitleBuf(gGuiWindowManager.Windows[Idx].TitleBuf, sizeof(gGuiWindowManager.Windows[Idx].TitleBuf), Title);
+    CopyTitleBuffer(gGuiWindowManager.Windows[Idx].TitleBuf, sizeof(gGuiWindowManager.Windows[Idx].TitleBuf), Title);
     gGuiWindowManager.Windows[Idx].Title = gGuiWindowManager.Windows[Idx].TitleBuf;
     gGuiWindowManager.Windows[Idx].ClientText[0] = 0;
     gGuiWindowManager.Windows[Idx].ClosePending = 0;
@@ -296,7 +296,7 @@ int GuiUserAddButton(int Wid, int ButtonId, const char *Label) {
     }
     gGuiWindowManager.UserSlot[Idx].UserButtonUsed[ButtonId] = 1;
     FontTtfPreheatUtf8(Label);
-    CopyTitleBuf(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId],
+    CopyTitleBuffer(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId],
                  sizeof(gGuiWindowManager.UserSlot[Idx].UserButtonLabel[ButtonId]), Label);
     RepaintUserWindow(Idx);
     return 0;

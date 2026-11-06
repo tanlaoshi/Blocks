@@ -7,21 +7,21 @@
 
 /* ConfigEP：Bulk IN + Bulk OUT（EP Type 6/2）；带回 Route/TT */
 static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                            UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
-    UINT8 InNum = EpIn & 0x0F;
-    UINT8 OutNum = EpOut & 0x0F;
+                            UINT8 EndpointIn, UINT16 MaxPacketSizeIn, UINT8 EndpointOut, UINT16 MaxPacketSizeOut) {
+    UINT8 InNum = EndpointIn & 0x0F;
+    UINT8 OutNum = EndpointOut & 0x0F;
     UINT32 InDci = (UINT32)InNum * 2 + 1;
     UINT32 OutDci = (UINT32)OutNum * 2 + 0;
     UINT32 CtxEntries = InDci > OutDci ? InDci : OutDci;
     UINT32 *Slot;
-    UINT32 *Ep;
+    UINT32 *Endpoint;
     UINT64 Deq;
 
-    if (MpsIn == 0 || MpsIn > 1024) {
-        MpsIn = 512;
+    if (MaxPacketSizeIn == 0 || MaxPacketSizeIn > 1024) {
+        MaxPacketSizeIn = 512;
     }
-    if (MpsOut == 0 || MpsOut > 1024) {
-        MpsOut = 512;
+    if (MaxPacketSizeOut == 0 || MaxPacketSizeOut > 1024) {
+        MaxPacketSizeOut = 512;
     }
 
     ZeroMemory(gInCtx, sizeof(gInCtx));
@@ -37,24 +37,24 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     if (!gMscBulkRingsInited) {
         (void)BringUp();
     }
-    InitRing(gBulkInRing, &gBulkIn, RING_SIZE);
-    InitRing(gBulkOutRing, &gBulkOut, RING_SIZE);
+    RingInitialize(gBulkInRing, &gBulkIn, RING_SIZE);
+    RingInitialize(gBulkOutRing, &gBulkOut, RING_SIZE);
 
-    Ep = (UINT32 *)(void *)InEp(InDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (6u << 3) | ((UINT32)MpsIn << 16); /* Bulk IN */
+    Endpoint = (UINT32 *)(void *)InEndpoint(InDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (6u << 3) | ((UINT32)MaxPacketSizeIn << 16); /* Bulk IN */
     Deq = PointerToPhysical(gBulkInRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsIn;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeIn;
 
-    Ep = (UINT32 *)(void *)InEp(OutDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (2u << 3) | ((UINT32)MpsOut << 16); /* Bulk OUT */
+    Endpoint = (UINT32 *)(void *)InEndpoint(OutDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (2u << 3) | ((UINT32)MaxPacketSizeOut << 16); /* Bulk OUT */
     Deq = PointerToPhysical(gBulkOutRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsOut;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeOut;
 
     FlushDma(gInCtx, sizeof(gInCtx));
     FlushDma(gBulkInRing, sizeof(gBulkInRing));
@@ -68,8 +68,8 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
 
     gMscBulkInDci = InDci;
     gMscBulkOutDci = OutDci;
-    gMscBulkInMps = MpsIn;
-    gMscBulkOutMps = MpsOut;
+    gMscBulkInMaxPacketSize = MaxPacketSizeIn;
+    gMscBulkOutMaxPacketSize = MaxPacketSizeOut;
     return 1;
 }
 
@@ -78,11 +78,11 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
  * 成功置 gMscClaimed；失败 Disable slot。
  */
 int FinishClaim(UINT32 RootPort, UINT8 Speed) {
-    UINT8 EpIn = 0;
-    UINT8 EpOut = 0;
-    UINT8 Iface = 0;
-    UINT16 MpsIn = 64;
-    UINT16 MpsOut = 64;
+    UINT8 EndpointIn = 0;
+    UINT8 EndpointOut = 0;
+    UINT8 Interface = 0;
+    UINT16 MaxPacketSizeIn = 64;
+    UINT16 MaxPacketSizeOut = 64;
     UINT16 Total;
     UINT8 ConfigVal = 1;
     UINT8 DevClass;
@@ -90,15 +90,15 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     if (gMscScanSlot == 0) {
         return 0;
     }
-    gXferSlot = gMscScanSlot;
+    gTransferSlot = gMscScanSlot;
     if (GetDeviceDesc() < 0) {
         BootLog("Boot: MSC claim desc fail\n");
         goto fail;
     }
-    DevClass = gCtrlBuf[4];
+    DevClass = gControlBuffer[4];
     BootLogHexV("Boot: MSC claim dclass=", DevClass, 2);
     {
-        UINT16 Vid = (UINT16)(gCtrlBuf[8] | (gCtrlBuf[9] << 8));
+        UINT16 Vid = (UINT16)(gControlBuffer[8] | (gControlBuffer[9] << 8));
 
         /* 勿把 FT232 当 MSC（厂商 Bulk）；留给 usb-uart */
         if (Vid == 0x0403u) {
@@ -123,38 +123,38 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
         goto skip_not_msc;
     }
 
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gMscCfgBuf) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gMscConfigBuffer) < 0) {
         BootLog("Boot: MSC claim cfg9 fail\n");
         goto fail;
     }
-    Total = (UINT16)(gMscCfgBuf[2] | (gMscCfgBuf[3] << 8));
+    Total = (UINT16)(gMscConfigBuffer[2] | (gMscConfigBuffer[3] << 8));
     if (Total < 9) {
         Total = 9;
     }
-    if (Total > sizeof(gMscCfgBuf)) {
+    if (Total > sizeof(gMscConfigBuffer)) {
         BootLogHex("Boot: MSC claim cfg trunc want=", Total, 4);
-        Total = (UINT16)sizeof(gMscCfgBuf);
+        Total = (UINT16)sizeof(gMscConfigBuffer);
     }
-    ConfigVal = gMscCfgBuf[5] ? gMscCfgBuf[5] : 1;
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gMscCfgBuf) < 0) {
-        RecoverEp0(gMscScanSlot);
-        gXferSlot = gMscScanSlot;
-        if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gMscCfgBuf) < 0) {
+    ConfigVal = gMscConfigBuffer[5] ? gMscConfigBuffer[5] : 1;
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gMscConfigBuffer) < 0) {
+        RecoverEndpoint0(gMscScanSlot);
+        gTransferSlot = gMscScanSlot;
+        if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gMscConfigBuffer) < 0) {
             BootLog("Boot: MSC claim cfg fail\n");
             goto fail;
         }
     }
     BootLogHexV("Boot: MSC claim cfg len=", Total, 4);
 
-    if (ConfigHasHubIface(gMscCfgBuf, Total)) {
+    if (ConfigHasHubInterface(gMscConfigBuffer, Total)) {
         /* 根口应在 ClaimPorts 已认领；子口嵌套 hub 跳过 */
         BootLogHex("Boot: MSC claim cfg hub iface port=", RootPort, 2);
         goto fail;
     }
 
-    if (!ParseBulk(gMscCfgBuf, Total, &Iface, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseBulk(gMscConfigBuffer, Total, &Interface, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut)) {
         BootLogHex("Boot: MSC claim no bulk port=", RootPort, 2);
-        LogConfigInterfaces(gMscCfgBuf, Total);
+        LogConfigInterfaces(gMscConfigBuffer, Total);
         goto fail;
     }
 
@@ -163,7 +163,7 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
         goto fail;
     }
 
-    if (!ConfigureBulk(gMscScanSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
+    if (!ConfigureBulk(gMscScanSlot, RootPort, Speed, EndpointIn, MaxPacketSizeIn, EndpointOut, MaxPacketSizeOut)) {
         goto fail;
     }
 
@@ -171,9 +171,9 @@ int FinishClaim(UINT32 RootPort, UINT8 Speed) {
     gMscClaimed = 1;
     BootLogHex("Boot: MSC claim ok port=", RootPort, 2);
     BootLogHexV("Boot: MSC claim slot=", gMscScanSlot, 2);
-    BootLogHexV("Boot: MSC claim iface=", Iface, 2);
-    BootLogHexV("Boot: MSC claim epin=", EpIn, 2);
-    BootLogHexV("Boot: MSC claim epout=", EpOut, 2);
+    BootLogHexV("Boot: MSC claim iface=", Interface, 2);
+    BootLogHexV("Boot: MSC claim epin=", EndpointIn, 2);
+    BootLogHexV("Boot: MSC claim epout=", EndpointOut, 2);
     BootLogHexV("Boot: MSC claim route=", gMscRoute, 2);
     return 1;
 

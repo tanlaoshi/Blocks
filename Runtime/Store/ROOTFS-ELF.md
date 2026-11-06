@@ -24,7 +24,7 @@
 | `HELLO.ELF` | `Apps/Hello.c` | catalog；`Apps/hello/`+StoreCache+根 | **入店** + **根白名单** | `hello` | sample：补 `packages/hello/`；根留捷径 |
 | `GUIDEMO.ELF` | `Apps/GuiDemo.c` | catalog；包缺 ELF；`Apps/guidemo/` | **入店** | `guidemo` | sample：包内带 ELF；可产品菜单 |
 | `CAT.ELF` | `Apps/Cat.c` | catalog；扁平 `Apps/CAT.ELF` | **入店** | `cat` | sample；去掉扁平 |
-| `TASKMGR.ELF` | `Apps/TaskMgr.c` | ✅ packages+catalog；`Apps/taskmgr/` | **入店**（产品） | `taskmgr` | 扁平已废 |
+| `TASKMGR.ELF` | `Apps/TaskManager.c` | ✅ packages+catalog；`Apps/taskmgr/` | **入店**（产品） | `taskmgr` | 扁平已废 |
 | `SNAKE.ELF` | `Apps/Snake.c` | ✅ packages+catalog | **入店**（产品） | `snake` | |
 | `WINDEMO.ELF` | `Apps/WinDemo.c` | ✅ packages+catalog | **入店**（教学 GUI） | `windemo` | |
 | `BLITDEMO.ELF` | `Apps/BlitDemo.c` | ✅ packages+catalog | **入店**（教学 GUI） | `blitdemo` | |

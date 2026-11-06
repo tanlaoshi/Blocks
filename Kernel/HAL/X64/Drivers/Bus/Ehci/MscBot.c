@@ -8,25 +8,25 @@
 #include "SerialLog.h"
 #include "Msc/Private.h"
 
-static int ClearHalt(EHCI_CTRL *C, UINT8 EpAddr) {
+static int ClearHalt(EHCI_CTRL *C, UINT8 EndpointAddress) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x02;
     S.bRequest = 0x01; /* CLEAR_FEATURE */
     S.wValue = 0;      /* ENDPOINT_HALT */
-    S.wIndex = EpAddr;
+    S.wIndex = EndpointAddress;
     S.wLength = 0;
-    C->XferSpeed = C->MscSpeed;
-    C->XferHubAddr = C->MscHubAddr;
-    C->XferHubPort = C->MscHubPort;
-    return ControlTransfer(C, C->MscAddr, C->MscEpMax0 ? C->MscEpMax0 : 64, &S,
+    C->TransferSpeed = C->MscSpeed;
+    C->TransferHubAddress = C->MscHubAddr;
+    C->TransferHubPort = C->MscHubPort;
+    return EhciControlTransfer(C, C->MscAddr, C->MscEndpointMax0 ? C->MscEndpointMax0 : 64, &S,
                            0) == 0;
 }
 
 static void BulkRecover(EHCI_CTRL *C, int DataIn) {
-    UINT8 Ep = DataIn ? C->MscEpIn : C->MscEpOut;
+    UINT8 Endpoint = DataIn ? C->MscEndpointIn : C->MscEndpointOut;
 
-    (void)ClearHalt(C, Ep);
+    (void)ClearHalt(C, Endpoint);
     if (DataIn) {
         C->MscDtIn = 0;
     } else {
@@ -57,9 +57,9 @@ int MscBot(EHCI_CTRL *C, UINT8 *CbwCb, UINT8 CbLen, UINT32 DataLen,
     gEhciMscTag++;
     CommandFill(Cbw, gEhciMscTag, CbwCb, CbLen, DataLen, DataIn);
 
-    C->XferSpeed = C->MscSpeed;
-    C->XferHubAddr = C->MscHubAddr;
-    C->XferHubPort = C->MscHubPort;
+    C->TransferSpeed = C->MscSpeed;
+    C->TransferHubAddress = C->MscHubAddr;
+    C->TransferHubPort = C->MscHubPort;
 
     if (BulkOn(USB_HOST_CONTROLLER_EHCI, 0, Cbw, 31, 1) < 0) {
         BootMarkUsb("Boot: EHCI MSC cbw fail ");
@@ -165,7 +165,7 @@ int MscCapacity(void) {
     return 0;
 }
 
-static int XferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+static int TransferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     EHCI_CTRL *C = gEhciMscCtrl;
     UINT8 Bounce[512];
     UINT8 *Ptr = (UINT8 *)Buffer;
@@ -207,11 +207,11 @@ static int XferSectors(UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
 }
 
 int MscReadSectors(UINT32 Lba, UINT32 Count, void *Buffer) {
-    return XferSectors(Lba, Count, Buffer, 0);
+    return TransferSectors(Lba, Count, Buffer, 0);
 }
 
 int MscWriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer) {
-    return XferSectors(Lba, Count, (void *)Buffer, 1);
+    return TransferSectors(Lba, Count, (void *)Buffer, 1);
 }
 
 int MscFlush(void) {

@@ -7,21 +7,21 @@
 
 UINT32 gSlotId;
 UINT32 gIntrDci;
-UINT8  gKbdIface;
-UINT8  gKbdParseScore;
-UINT8  gKbdEpAddr;
-UINT16 gKbdMps;
-UINT8  gKbdEpInterval;
+UINT8  gKeyboardInterface;
+UINT8  gKeyboardParseScore;
+UINT8  gKeyboardEndpointAddress;
+UINT16 gKeyboardMaxPacketSize;
+UINT8  gKeyboardEndpointInterval;
 UINT8  gUseGetReport;
-UINT8  gKbdPollReport;
-UINT8  gKbdReportPrev[8];
+UINT8  gKeyboardPollReport;
+UINT8  gKeyboardReportPrevious[8];
 volatile UINT32 gGetReportBusy;
 UINT8  gGetReportFails;
-UINT32 gKbdRoute;
-UINT8  gKbdHubSlot;
-UINT8  gKbdTtPort;
+UINT32 gKeyboardRoute;
+UINT8  gKeyboardHubSlot;
+UINT8  gKeyboardTransactionTranslatorPort;
 
-USB_KEYBOARD_REPORT gKbdQ[KBD_Q];
+USB_KEYBOARD_REPORT gKeyboardQueue[KEYBOARD_QUEUE];
 volatile UINT32 gKeyboardWriteIndex;
 volatile UINT32 gKeyboardReadIndex;
 

@@ -10,11 +10,11 @@
 #include "Gui.h"
 #include "Debug.h"
 
-LOC_LANG gLang = LOC_LANG_ZH; /* 默认汉语；切英文便宜 */
-char gEn[MSG_COUNT][LOCALE_STR_MAX];
-char gZh[MSG_COUNT][LOCALE_STR_MAX];
+LOCALE_LANGUAGE gLang = LOCALE_LANGUAGE_ZH; /* 默认汉语；切英文便宜 */
+char gEn[MESSAGE_COUNT][LOCALE_STR_MAX];
+char gZh[MESSAGE_COUNT][LOCALE_STR_MAX];
 
-/* 代码、当前文案、内建回落。en、zh 在前，和 LOC_LANG_EN / LOC_LANG_ZH 的序号一致。 */
+/* 代码、当前文案、内建回落。en、zh 在前，和 LOCALE_LANGUAGE_EN / LOCALE_LANGUAGE_ZH 的序号一致。 */
 #define LOCALE_EXTRA_MAX 4
 #define LOCALE_CODE_MAX  8
 
@@ -24,7 +24,7 @@ typedef struct {
     const char *const *Builtin;
 } LOCALE_ENTRY;
 
-static char gExtra[LOCALE_EXTRA_MAX][MSG_COUNT][LOCALE_STR_MAX];
+static char gExtra[LOCALE_EXTRA_MAX][MESSAGE_COUNT][LOCALE_STR_MAX];
 static char gExtraCode[LOCALE_EXTRA_MAX][LOCALE_CODE_MAX];
 static LOCALE_ENTRY gLocale[2 + LOCALE_EXTRA_MAX];
 static int gLocaleCount;
@@ -96,7 +96,7 @@ int LocaleOffer(const char *Code) {
     for (i = 0; i <= n; i++) {
         gExtraCode[Extra][i] = Code[i];
     }
-    for (i = 0; i < (int)MSG_COUNT; i++) {
+    for (i = 0; i < (int)MESSAGE_COUNT; i++) {
         gExtra[Extra][i][0] = 0;
     }
     gLocale[gLocaleCount].Code = gExtraCode[Extra];
@@ -139,35 +139,40 @@ void LocaleTtfPreheatUi(void) {
     if (!FontTtfBlob(&BlobSize) || BlobSize < 12u) {
         return;
     }
-    for (i = 0; i < (UINT32)MSG_COUNT; i++) {
+    for (i = 0; i < (UINT32)MESSAGE_COUNT; i++) {
         FontTtfPreheatUtf8(Strings[i]);
     }
 }
 
 /* gui-ttf-preheat-defer：首屏 Start/图标/设置侧栏同步栅，避免进桌面 defer 空白 */
 static void LocaleTtfPreheatCritical(void) {
-    static const MSG_ID Crit[] = {
-        MSG_START,
-        MSG_ICON_SHELL,
-        MSG_ICON_SETTINGS,
-        MSG_ICON_FILES,
-        MSG_ICON_STORE,
-        MSG_ICON_DEVICES,
-        MSG_ICON_APPS,
-        MSG_ICON_GAME,
-        MSG_ICON_SNAKE,
-        MSG_ICON_SHUTDOWN,
-        MSG_ICON_REBOOT,
-        MSG_MENU_EMPTY,
-        MSG_SET_TITLE,
-        MSG_SET_DESKTOP_BG,
-        MSG_SET_SHELL_BG,
-        MSG_SET_FONT,
-        MSG_SET_DISPLAY,
-        MSG_SET_LANGUAGE,
-        MSG_SET_SCALE,
-        MSG_SET_THEME,
-        MSG_SET_EFFECTS,
+    static const MESSAGE_ID Crit[] = {
+        MESSAGE_START,
+        MESSAGE_ICON_SHELL,
+        MESSAGE_ICON_SETTINGS,
+        MESSAGE_ICON_FILES,
+        MESSAGE_ICON_STORE,
+        MESSAGE_ICON_DEVICES,
+        MESSAGE_ICON_APPS,
+        MESSAGE_ICON_GAME,
+        MESSAGE_ICON_SNAKE,
+        MESSAGE_ICON_SHUTDOWN,
+        MESSAGE_ICON_REBOOT,
+        MESSAGE_MENU_EMPTY,
+        MESSAGE_SET_TITLE,
+        MESSAGE_SET_DESKTOP_BG,
+        MESSAGE_SET_SHELL_BG,
+        MESSAGE_SET_FONT,
+        MESSAGE_SET_DISPLAY,
+        MESSAGE_SET_LANGUAGE,
+        MESSAGE_SET_SCALE,
+        MESSAGE_SET_THEME,
+        MESSAGE_SET_EFFECTS,
+        /* 失根大窗：盘没了禁再 Preheat；须开机灌格，否则只剩英文 ASCII */
+        MESSAGE_BOOT_GONE_TITLE,
+        MESSAGE_BOOT_GONE_BODY,
+        MESSAGE_KSEND_UPDATING_TITLE,
+        MESSAGE_KSEND_UPDATING_BODY,
     };
     UINT32 i;
     UINT32 BlobSize = 0;
@@ -179,7 +184,7 @@ static void LocaleTtfPreheatCritical(void) {
     for (i = 0; i < sizeof(Crit) / sizeof(Crit[0]); i++) {
         UINT32 Id = (UINT32)Crit[i];
 
-        if (Id < (UINT32)MSG_COUNT) {
+        if (Id < (UINT32)MESSAGE_COUNT) {
             FontTtfPreheatUtf8(Strings[Id]);
         }
     }
@@ -194,13 +199,13 @@ int LocaleTtfPreheatStep(void) {
     if (!gTtfPreheatWant) {
         return 0;
     }
-    if (gTtfPreheatIdx >= (UINT32)MSG_COUNT) {
+    if (gTtfPreheatIdx >= (UINT32)MESSAGE_COUNT) {
         gTtfPreheatWant = 0;
         return 0;
     }
     FontTtfPreheatUtf8(CurrentStrings()[gTtfPreheatIdx]);
     gTtfPreheatIdx++;
-    if (gTtfPreheatIdx >= (UINT32)MSG_COUNT) {
+    if (gTtfPreheatIdx >= (UINT32)MESSAGE_COUNT) {
         gTtfPreheatWant = 0;
         /* 整批静默预热完：一次合成，补上仍 defer 的中文 */
         FontTtfBumpPaint();
@@ -214,11 +219,11 @@ void LocaleInitialize(void) {
 
     LocaleLoadCatalogs();
     /* 缺省 / 表里没有的值 → 汉语 */
-    gLang = LOC_LANG_ZH;
+    gLang = LOCALE_LANGUAGE_ZH;
     if (DbGet("lang", Val, sizeof(Val)) == DB_OK) {
         int Found = FindCode(Val);
         if (Found >= 0) {
-            gLang = (LOC_LANG)Found;
+            gLang = (LOCALE_LANGUAGE)Found;
         }
     }
     DebugWrite("locale: ");
@@ -226,7 +231,7 @@ void LocaleInitialize(void) {
     DebugWrite("\n");
     /*
      * gui-ttf-preheat-defer：FT 已在 GuiInitialize。首屏只栅关键文案，
-     * 其余 Worker PreheatStep（Reveal 后），勿开机全量 MSG_COUNT。
+     * 其余 Worker PreheatStep（Reveal 后），勿开机全量 MESSAGE_COUNT。
      */
     LocaleTtfPreheatCritical();
     LocaleTtfPreheatRequest();
@@ -244,12 +249,12 @@ void LocaleReload(void) {
     Prev[i] = 0;
     LocaleLoadCatalogs();
     Found = FindCode(Prev);
-    gLang = (Found >= 0) ? (LOC_LANG)Found : LOC_LANG_ZH;
+    gLang = (Found >= 0) ? (LOCALE_LANGUAGE)Found : LOCALE_LANGUAGE_ZH;
     LocaleTtfPreheatUi();
     LocaleApplyUi();
 }
 
-LOC_LANG LocaleGet(void) {
+LOCALE_LANGUAGE LocaleGet(void) {
     return gLang;
 }
 
@@ -284,7 +289,7 @@ int LocaleSetCode(const char *Code) {
     if (Found < 0) {
         return -1;
     }
-    (void)LocaleSet((LOC_LANG)Found);
+    (void)LocaleSet((LOCALE_LANGUAGE)Found);
     return 0;
 }
 
@@ -299,7 +304,7 @@ int LocaleDbFlushStep(void) {
     return 0;
 }
 
-int LocaleSet(LOC_LANG Lang) {
+int LocaleSet(LOCALE_LANGUAGE Lang) {
     int Rc;
 
     if ((int)Lang < 0 || (int)Lang >= gLocaleCount) {
@@ -316,15 +321,15 @@ int LocaleSet(LOC_LANG Lang) {
     return Rc == DB_OK ? 0 : -1;
 }
 
-const char *LocStr(MSG_ID Id) {
+const char *LocaleString(MESSAGE_ID Id) {
     const char *Text;
 
-    if ((UINT32)Id >= (UINT32)MSG_COUNT) {
+    if ((UINT32)Id >= (UINT32)MESSAGE_COUNT) {
         return "";
     }
     Text = gLocale[gLang].Live[Id];
     if (Text[0] == 0) {
-        Text = gLocale[LOC_LANG_EN].Builtin[Id];
+        Text = gLocale[LOCALE_LANGUAGE_EN].Builtin[Id];
     }
     return Text != 0 ? Text : "";
 }

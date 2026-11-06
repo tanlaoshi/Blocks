@@ -46,7 +46,7 @@ UINT64 IgpuScanoutShownGtt(void) {
     return (UINT64)IgpuGttSurf();
 }
 
-static int MapBuf(UINT64 GttBase, UINT64 PhysBase, UINTN Bytes) {
+static int MapBuffer(UINT64 GttBase, UINT64 PhysBase, UINTN Bytes) {
     UINTN Pages;
     UINTN i;
 
@@ -91,13 +91,13 @@ static int AllocOne(int Idx, UINT64 GttOff) {
     if (VirtualMemoryMapRange(gPhys[Idx], gPhys[Idx], gBytes, Flags) != 0) {
         return 0;
     }
-    if (!MapBuf(GttOff, gPhys[Idx], gBytes)) {
+    if (!MapBuffer(GttOff, gPhys[Idx], gBytes)) {
         return 0;
     }
     return 1;
 }
 
-int IgpuScanoutInit(void) {
+int IgpuScanoutInitialize(void) {
     UINT64 Stride;
     const BOOT_HANDOFF *Info;
 
@@ -119,7 +119,7 @@ int IgpuScanoutInit(void) {
     }
     Stride = (UINT64)gPitchPx * (UINT64)gHeight * 4ull;
     gBytes = (UINTN)Stride;
-    gSurfReg = IgpuGttSurfReg();
+    gSurfReg = IgpuGttSurfRegister();
     gOrigFb = HalVideoFrameBufferBase();
     gOrigFront = (UINT32 *)(UINTN)gOrigFb;
     gOrigPitch = gPitchPx;
@@ -198,7 +198,7 @@ int IgpuScanoutBlitRect(UINT64 SrcGtt, UINT32 SrcPitchPx, UINT32 X, UINT32 Y,
      */
     PitchB = SrcPitchPx * 4u;
     Dst = gScanLive ? gGtt[gShown] : gGtt[0];
-    return IgpuSrcCopyRect(X, Y, X, Y, W, H, PitchB, gPitchPx * 4u, SrcGtt, Dst);
+    return IgpuSourceCopyRect(X, Y, X, Y, W, H, PitchB, gPitchPx * 4u, SrcGtt, Dst);
 }
 
 int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx) {
@@ -221,7 +221,7 @@ int IgpuScanoutPresent(UINT64 BackGtt, UINT32 BackPitchPx) {
     FrontPitchB = gPitchPx * 4u;
     __asm__ volatile ("mfence" ::: "memory");
     /* 整屏一次：隐藏缓冲始终是完整帧，翻页无残缺 */
-    if (!IgpuSrcCopyRect(0, 0, 0, 0, gWidth, gHeight, PitchB, FrontPitchB,
+    if (!IgpuSourceCopyRect(0, 0, 0, 0, gWidth, gHeight, PitchB, FrontPitchB,
                          BackGtt, gGtt[Hidden])) {
         return 0;
     }

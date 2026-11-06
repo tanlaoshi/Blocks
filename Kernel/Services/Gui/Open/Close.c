@@ -5,7 +5,7 @@
  *   轻量（USER + Files/Edit/Settings/Store/Devices/Shell/TTY）—
  *          与拖动脚印同一套：擦矩形 → RestoreWindowsInFootprint（贴他窗 Backup）
  *          → 桌面图标 → 影 → 任务栏 → Present（非 Flush；同 OpenUser）。
- *          禁止 Busy 内对相交窗整窗 PaintShellWindow/Repaint（TaskMgr 撞 Shell
+ *          禁止 Busy 内对相交窗整窗 PaintShellWindow/Repaint（TaskManager 撞 Shell
  *          → PresentBlocked 饿 xHCI）。无 Backup 也不回退重画，只脚印+补影。
  *          禁止 GuiComposeThemeScene（高分全屏数秒 → 鼠假死）。
  *   USER 另置 ClosePending；ExitUser 勿再 ThemeScene（二次 Flush 饿 xHCI）。
@@ -155,7 +155,7 @@ void CloseWindow(int Idx) {
         DesktopDrawRect(X, Y, Ww, Wh);
         /*
          * 只补影。Busy 内禁 PaintShellWindow/SettingsUiRepaint 等整窗重画
-         * （TaskMgr 720×600 居中必撞 Shell → SbRepaint+Backup 饿死 xHCI）。
+         * （TaskManager 720×600 居中必撞 Shell → SbRepaint+Backup 饿死 xHCI）。
          * 无 Backup 时脚印里已是桌面底；缺块等下次自然刷新，勿在此回退重画。
          */
         for (i = 0; i < MAX_WINS; i++) {

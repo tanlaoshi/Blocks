@@ -65,7 +65,7 @@ static void IwlPciBmOn(UINT8 B, UINT8 D, UINT8 F) {
     PciWriteConfig(B, D, F, 0x04, Cmd | 0x06u);
 }
 
-static void IwlPciAspmOffDev(UINT8 B, UINT8 D, UINT8 F) {
+static void IwlPciAspmOffDevice(UINT8 B, UINT8 D, UINT8 F) {
     int Cap = PciFindCap(B, D, F, 0x10);
     UINT32 Lnk;
     if (Cap <= 0) {
@@ -82,7 +82,7 @@ void IwlPciPathPrep(void) {
     int F;
 
     IwlPciBmOn(gIwlBus, gIwlDev, gIwlFn);
-    IwlPciAspmOffDev(gIwlBus, gIwlDev, gIwlFn);
+    IwlPciAspmOffDevice(gIwlBus, gIwlDev, gIwlFn);
     for (B = 0; B < 256; B++) {
         for (D = 0; D < 32; D++) {
             for (F = 0; F < 8; F++) {
@@ -104,7 +104,7 @@ void IwlPciPathPrep(void) {
                 Sub = (UINT8)((Br >> 16) & 0xFFu);
                 if (Sec <= gIwlBus && gIwlBus <= Sub) {
                     IwlPciBmOn((UINT8)B, (UINT8)D, (UINT8)F);
-                    IwlPciAspmOffDev((UINT8)B, (UINT8)D, (UINT8)F);
+                    IwlPciAspmOffDevice((UINT8)B, (UINT8)D, (UINT8)F);
                 }
             }
         }

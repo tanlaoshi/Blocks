@@ -58,15 +58,15 @@ static UINT32 PopupWidth(UINT32 Sw) {
     if (Lw > W) {
         W = Lw;
     }
-    Lw = FontStringWidth(LocStr(MSG_NET_LINK_UP));
+    Lw = FontStringWidth(LocaleString(MESSAGE_NET_LINK_UP));
     if (Lw > W) {
         W = Lw;
     }
-    Lw = FontStringWidth(LocStr(MSG_NET_LINK_DOWN));
+    Lw = FontStringWidth(LocaleString(MESSAGE_NET_LINK_DOWN));
     if (Lw > W) {
         W = Lw;
     }
-    Lw = FontStringWidth(LocStr(MSG_NET_LINK_NA));
+    Lw = FontStringWidth(LocaleString(MESSAGE_NET_LINK_NA));
     if (Lw > W) {
         W = Lw;
     }
@@ -143,14 +143,14 @@ void DesktopNetTrayDrawPopup(void) {
     Ty += FontCellH();
 
     if (!HalNetReady()) {
-        HalVideoDrawStringAt(Px + NET_POP_PAD, Ty, LocStr(MSG_NET_LINK_NA),
+        HalVideoDrawStringAt(Px + NET_POP_PAD, Ty, LocaleString(MESSAGE_NET_LINK_NA),
                              ThemeTextMuted());
     } else if (HalNetGetLinkInfo(&Up, &Mbps, &Fd)) {
         HalVideoDrawStringAt(Px + NET_POP_PAD, Ty,
-                             Up ? LocStr(MSG_NET_LINK_UP) : LocStr(MSG_NET_LINK_DOWN),
+                             Up ? LocaleString(MESSAGE_NET_LINK_UP) : LocaleString(MESSAGE_NET_LINK_DOWN),
                              ThemeTextMuted());
     } else {
-        HalVideoDrawStringAt(Px + NET_POP_PAD, Ty, LocStr(MSG_NET_LINK_NA),
+        HalVideoDrawStringAt(Px + NET_POP_PAD, Ty, LocaleString(MESSAGE_NET_LINK_NA),
                              ThemeTextMuted());
     }
 }

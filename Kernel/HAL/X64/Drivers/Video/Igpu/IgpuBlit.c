@@ -147,7 +147,7 @@ static int SubmitNoops(void) {
     return 1;
 }
 
-int IgpuBlitInit(void) {
+int IgpuBlitInitialize(void) {
     if (gIgpuRingOk) {
         return 1;
     }
@@ -159,7 +159,7 @@ int IgpuBlitInit(void) {
         LogDrv("Boot: igpu blit soft (need fw)\n");
         return 0;
     }
-    if (!IgpuGsmInit()) {
+    if (!IgpuGsmInitialize()) {
         return 0;
     }
     if (!ArmRing()) {

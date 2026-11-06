@@ -109,8 +109,9 @@ void StoreJobStatusCopy(const char *Id, UINTN Got, UINTN Size) {
 }
 
 void StoreJobBusyRepaint(void) {
+    /* 装卸步进高频：只刷状态行，勿整窗 PresentFlush */
     if (StoreUiIsFocused()) {
-        StoreUiRepaint();
+        StorePaintStatusOnly();
     }
 }
 

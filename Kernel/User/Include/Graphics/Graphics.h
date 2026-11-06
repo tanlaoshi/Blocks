@@ -5,17 +5,19 @@
  * 1.1.0：+ GraphicsDamageRect（SYS_GRAPHICS_DAMAGE_RECT 像素 blit）。
  * 1.2.0：+ 点 / 线 / 填充矩形 / 矩形框（底层仍 DamageRect；单次 ≤64×64）。
  * 1.3.0：+ GraphicsInitialize / GraphicsSystemFontRoot（方案 C：系统字体约定）。
+ * 3.1.0：+ GraphicsDrawString（客户区相对坐标画字；Files 式 Guest 布局）。
  */
 #ifndef USER_GRAPHICS_H
 #define USER_GRAPHICS_H
 
 #include <Host/UnixStandard.h>
 #include "GraphicsDamage.h"
+#include "GraphicsDrawString.h"
 
 #define GRAPHICS_ABI_VERSION_MAJOR 3
-#define GRAPHICS_ABI_VERSION_MINOR 0
+#define GRAPHICS_ABI_VERSION_MINOR 1
 #define GRAPHICS_ABI_VERSION_PATCH 0
-#define GRAPHICS_ABI_VERSION_STRING "3.0.0"
+#define GRAPHICS_ABI_VERSION_STRING "3.1.0"
 
 /* 0x00RRGGBB，与内核 UI 色值习惯一致 */
 #define GRAPHICS_COLOR_BLACK       0x00000000u
@@ -59,5 +61,12 @@ int GraphicsFillRect(int WindowId, unsigned X, unsigned Y, unsigned W, unsigned 
                    unsigned Color);
 int GraphicsDrawRect(int WindowId, unsigned X, unsigned Y, unsigned W, unsigned H,
                    unsigned Color);
+
+/*
+ * GraphicsDrawString — 客户区相对坐标画字（系统当前字体）
+ * 成功 0；失败 -1
+ */
+int GraphicsDrawString(int WindowId, unsigned X, unsigned Y, unsigned Color,
+                       const char *Text);
 
 #endif

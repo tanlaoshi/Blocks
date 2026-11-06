@@ -12,7 +12,8 @@
 
 #define PUMP_IDLE    0
 #define PUMP_COPY    1
-#define PUMP_MARK    2
+#define PUMP_EXTRAS  2
+#define PUMP_MARK    3
 
 typedef struct {
     int Active;
@@ -31,7 +32,7 @@ static STORE_PUMP_CTX sPump;
 static int StoreMarkInstalled(const char *Id, const char *Type, const char *File,
                               const char *Depends);
 
-static int ResolveInstallSrc(const char *Id, const char *File, char *Out, int OutMax) {
+static int ResolveInstallSource(const char *Id, const char *File, char *Out, int OutMax) {
     char Src[128];
     char Pkg[160];
     FAT_FILE_STAT St;
@@ -55,7 +56,7 @@ static int ResolveInstallSrc(const char *Id, const char *File, char *Out, int Ou
 }
 
 /* 本地无包：HTTP 直写入 Dst（不落 StoreCache） */
-static int FetchInstallToDst(const char *File, const char *Sha, const char *Dst) {
+static int FetchInstallToDestination(const char *File, const char *Sha, const char *Dst) {
     char Url[96];
     int n = 0;
     int j = 0;
@@ -148,9 +149,9 @@ int StoreInstallPump(const char *Id) {
                 JoinPath(sPump.Dst, (int)sizeof(sPump.Dst), STORE_PACKS_DIR, Tab[i].File);
                 sPump.Check = STORE_CHECK_NONE;
             }
-            Err = ResolveInstallSrc(Tab[i].Id, Tab[i].File, Src, (int)sizeof(Src));
+            Err = ResolveInstallSource(Tab[i].Id, Tab[i].File, Src, (int)sizeof(Src));
             if (Err != FAT_OK) {
-                Err = FetchInstallToDst(Tab[i].File, Tab[i].Sha256, sPump.Dst);
+                Err = FetchInstallToDestination(Tab[i].File, Tab[i].Sha256, sPump.Dst);
                 if (Err != 0) {
                     HalConsoleWriteSerial("store: install fetch failed\n");
                     return Err;
@@ -158,7 +159,7 @@ int StoreInstallPump(const char *Id) {
                 sPump.Active = 1;
                 sPump.Phase = PUMP_MARK;
                 if (sPump.Kind == STORE_KIND_APP) {
-                    Err = StoreInstallBundleExtras(sPump.Id);
+                    Err = StoreInstallBundleExtras(sPump.Id, 0);
                     if (Err != FAT_OK) {
                         HalConsoleWriteSerial("store: bundle extras skipped\n");
                     }
@@ -192,14 +193,21 @@ int StoreInstallPump(const char *Id) {
             return Err;
         }
         if (sPump.Kind == STORE_KIND_APP) {
-            Err = StoreInstallBundleExtras(sPump.Id);
-            if (Err != FAT_OK) {
-                HalConsoleWriteSerial("store: bundle extras skipped\n");
-                Err = FAT_OK;
-            }
+            /* 让出一圈：状态离开 copy 64K/64K，再跑 PKG/Assets */
+            sPump.Phase = PUMP_EXTRAS;
+            return 1;
         }
         sPump.Phase = PUMP_MARK;
-        /* fall through same Step：登记很快 */
+    }
+
+    if (sPump.Phase == PUMP_EXTRAS) {
+        Err = StoreInstallBundleExtras(sPump.Id, 0);
+        if (Err != FAT_OK) {
+            HalConsoleWriteSerial("store: bundle extras skipped\n");
+            Err = FAT_OK;
+        }
+        sPump.Phase = PUMP_MARK;
+        /* fall through：登记 */
     }
 
     if (sPump.Kind == STORE_KIND_FONT) {

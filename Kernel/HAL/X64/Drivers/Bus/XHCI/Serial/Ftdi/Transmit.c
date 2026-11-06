@@ -9,7 +9,7 @@ static volatile UINT32 gFtdiBulkDone;
 static volatile UINT32 gFtdiBulkCode;
 static int gFtdiTxBusy;
 
-static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+static int MatchTransfer(UINT32 EvtSlot, UINT32 Endpoint, UINT64 TrbPtr, UINT32 Code,
                            UINT32 Remain) {
     UINT64 OutLo;
     UINT64 OutHi;
@@ -24,13 +24,13 @@ static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
     InLo = PointerToPhysical(gFtdiBulkInRing);
     InHi = InLo + sizeof(gFtdiBulkInRing);
 
-    if ((gFtdiBulkOutDci != 0 && Ep == gFtdiBulkOutDci) ||
+    if ((gFtdiBulkOutDci != 0 && Endpoint == gFtdiBulkOutDci) ||
         (TrbPtr >= OutLo && TrbPtr < OutHi)) {
         gFtdiBulkCode = Code;
         gFtdiBulkDone = 1;
         return 1;
     }
-    if ((gFtdiBulkInDci != 0 && Ep == gFtdiBulkInDci) ||
+    if ((gFtdiBulkInDci != 0 && Endpoint == gFtdiBulkInDci) ||
         (TrbPtr >= InLo && TrbPtr < InHi)) {
         return gFtdi.OnComplete ? gFtdi.OnComplete(Code, Remain) : 0;
     }
@@ -72,7 +72,7 @@ static int WaitBulk(void) {
 }
 
 static void Write(const char *Text) {
-    UINT32 Mps;
+    UINT32 MaxPacketSize;
     UINT32 N;
 
     if (!Text || !gFtdiClaimed || gFtdiSlot == 0 || gFtdiBulkOutDci == 0) {
@@ -82,14 +82,14 @@ static void Write(const char *Text) {
         return;
     }
     gFtdiTxBusy = 1;
-    Mps = gFtdiBulkOutMps ? gFtdiBulkOutMps : 64;
-    if (Mps > sizeof(gFtdiTxBuf)) {
-        Mps = (UINT32)sizeof(gFtdiTxBuf);
+    MaxPacketSize = gFtdiBulkOutMaxPacketSize ? gFtdiBulkOutMaxPacketSize : 64;
+    if (MaxPacketSize > sizeof(gFtdiTxBuf)) {
+        MaxPacketSize = (UINT32)sizeof(gFtdiTxBuf);
     }
 
     while (*Text) {
         N = 0;
-        while (Text[N] && N < Mps) {
+        while (Text[N] && N < MaxPacketSize) {
             gFtdiTxBuf[N] = (UINT8)Text[N];
             N++;
         }

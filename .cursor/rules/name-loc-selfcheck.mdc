@@ -11,9 +11,10 @@ alwaysApply: true
 
 就两条，文件名、函数名、变量名（含参数）全算：
 
-1. **名字写全** — 不砍字。禁 `Hc`/`Init`/`Cfg`/`Xfer`/`Msg`/`Rx`/`Tx`/`Mps`/`Buf`/`Addr`/`Kbd`/`Mii`/`Phy`/`Util`/`Enum`/`Feat`/`Dev`/`Reg`/`Ms`/`Lan` 这类缩写顶全称。  
-   要写：`HostChannelInitialize`、`Utility`、`Physical`、`MediaIndependentInterface`、`Enumerate…`、`MaxPacketSize`…  
-   （`BoardDwc2*` 公开符号仅 bd-name 那刀改；本刀新冒出来的内部名不得再简写。）
+1. **名字写全** — 不砍字。禁 `Hc`/`Init`/`Cfg`/`Xfer`/`Msg`/`Rx`/`Tx`/`Mps`/`Buf`/`Addr`/`Kbd`/`Mii`/`Phy`/`Util`/`Enum`/`Feat`/`Dev`/`Reg`/`Ms`/`Lan`/`Loc` 这类缩写顶全称。  
+   要写：`HostChannelInitialize`、`Utility`、`Physical`、`MediaIndependentInterface`、`Enumerate…`、`MaxPacketSize`、`LocaleString`…  
+   **反例（已废，禁止再写）**：`LocStr` → 必须 `LocaleString`；`MSG_ID` → `MESSAGE_ID`；`StallMs` → `StallMilliseconds`。  
+   （`BoardDwc2*` 公开符号仅 bd-name 那刀改；本刀新冒出来的内部名不得再简写。第三方 API 如 `stbtt_InitFont` 勿擅自改。）
 2. **单文件 ≤300 行** — 将满先拆再写（1 核心 + 多辅助；辅助文件名也不简写、不重复模块目录名）。
 
 ## 收口门禁（板债 / 新代码一律）
@@ -24,4 +25,4 @@ alwaysApply: true
 - [ ] 有没有 `.c` >300？有 → **先拆**再报  
 - [ ] 自查没过就报收口 = 违规
 
-用户不应再为「`HcInit` / `Util.c` / `Mii.c`」这类基本问题回炉。
+用户不应再为「`LocStr` / `HcInit` / `Util.c` / `Mii.c`」这类基本问题回炉。

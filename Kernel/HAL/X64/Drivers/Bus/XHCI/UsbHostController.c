@@ -11,8 +11,8 @@ static int HostControllerControl(USB_PIPE *Pipe, USB_SETUP *Setup, void *Data, U
     if (Setup == 0 || !gXhciStarted || gSlotId == 0) {
         return -1;
     }
-    gXferSlot = gSlotId;
-    return ControlXfer((USB_SETUP_PACKET *)Setup, Data);
+    gTransferSlot = gSlotId;
+    return ControlTransfer((USB_SETUP_PACKET *)Setup, Data);
 }
 
 static int HostControllerInterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len,
@@ -24,15 +24,15 @@ static int HostControllerInterruptQueue(USB_PIPE *Pipe, void *Buf, UINT32 Len,
         return -1;
     }
     {
-        USB_INTERFACE *Iface = Pipe->HostControllerPrivate;
-        if (Iface->Class == 3 && Iface->Protocol == 1) {
+        USB_INTERFACE *Interface = Pipe->HostControllerPrivate;
+        if (Interface->Class == 3 && Interface->Protocol == 1) {
             if (gSlotId == 0 || gIntrDci == 0) {
                 return -1;
             }
             QueueIntr();
             return 0;
         }
-        if (Iface->Class == 3) {
+        if (Interface->Class == 3) {
             if (gMouseSlotId == 0 || gMouseIntrDci == 0) {
                 return -1;
             }

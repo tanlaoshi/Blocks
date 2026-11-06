@@ -11,7 +11,7 @@
 #include "PhysicalMemoryPrivate.h"
 #include "Debug.h"
 
-static void BestFitInit(void) { }
+static void BestFitInitialize(void) { }
 
 /* 能放下 Count 的空洞里选最短者；没有则 -1。 */
 static UINT32 SegmentFindFreeRange(PMM_SEGMENT *Seg, UINT32 Count)
@@ -181,7 +181,7 @@ static void BestFitReleasePageLocked(void *Page)
 const MEMORY_OPS *MemoryBestFitOps(void)
 {
     static const MEMORY_OPS Ops = {
-        BestFitInit,
+        BestFitInitialize,
         BestFitAllocPagesLocked,
         BestFitFreePagesLocked,
         BestFitRetainPageLocked,

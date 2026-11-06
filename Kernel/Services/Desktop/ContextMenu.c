@@ -16,23 +16,23 @@ static UINT32 gCtxCoverH;
 
 static const struct {
     DESKTOP_ACTION Action;
-    MSG_ID Msg;
+    MESSAGE_ID Msg;
     const char *Fallback;
     int IconSrc;
 } gCtxRows[CTX_ROWS] = {
-    { DESKTOP_ACTION_SETTINGS, MSG_ICON_SETTINGS, "Settings", 1 },
-    { DESKTOP_ACTION_SHUTDOWN, MSG_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER },
-    { DESKTOP_ACTION_REBOOT, MSG_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT },
+    { DESKTOP_ACTION_SETTINGS, MESSAGE_ICON_SETTINGS, "Settings", 1 },
+    { DESKTOP_ACTION_SHUTDOWN, MESSAGE_ICON_SHUTDOWN, "Shutdown", MENU_ICON_SRC_POWER },
+    { DESKTOP_ACTION_REBOOT, MESSAGE_ICON_REBOOT, "Reboot", MENU_ICON_SRC_REBOOT },
 };
 
-static void CtxGeom(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
+static void ContextGeometry(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H) {
     *X = gCtxX;
     *Y = gCtxY;
     *W = MENU_W;
     *H = MENU_ITEM_H * CTX_ROWS;
 }
 
-static void CtxPlace(UINT32 X, UINT32 Y) {
+static void ContextPlace(UINT32 X, UINT32 Y) {
     UINT32 Sw;
     UINT32 Sh;
     UINT32 BarY;
@@ -78,7 +78,7 @@ void DesktopContextMenuOpen(UINT32 X, UINT32 Y) {
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
     DesktopNetTrayClose();
-    CtxPlace(X, Y);
+    ContextPlace(X, Y);
     gCtxOpen = 1;
     DesktopMarkTaskbar();
     RequestRefresh();
@@ -116,7 +116,7 @@ void DesktopDrawContextMenu(void) {
     if (!gCtxOpen) {
         return;
     }
-    CtxGeom(&Mx, &My, &Mw, &Mh);
+    ContextGeometry(&Mx, &My, &Mw, &Mh);
     GraphicsFillRectangle(Mx, My, Mw, Mh, ThemeControlFace());
     GraphicsDrawRectangle(Mx, My, Mw, Mh, ThemeMenuBorder());
     for (i = 0; i < CTX_ROWS; i++) {
@@ -136,7 +136,7 @@ void DesktopDrawContextMenu(void) {
         if (DrawMenuRowIcon(&Row, IconX, IconY)) {
             TextX = IconX + MENU_ICON_SZ + 6u;
         }
-        Lab = LocStr(gCtxRows[i].Msg);
+        Lab = LocaleString(gCtxRows[i].Msg);
         if (!Lab || !Lab[0]) {
             Lab = gCtxRows[i].Fallback;
         }
@@ -165,7 +165,7 @@ int DesktopContextMenuHandleClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction)
     if (!gCtxOpen) {
         return 0;
     }
-    CtxGeom(&Mx, &My, &Mw, &Mh);
+    ContextGeometry(&Mx, &My, &Mw, &Mh);
     DesktopMarkContextMenuArea();
     DesktopMarkRect(Mx, My, Mw, Mh);
     gCtxOpen = 0;
@@ -189,7 +189,7 @@ int DesktopContextMenuSample(UINT32 X, UINT32 Y, UINT32 *Out) {
     if (!gCtxOpen || !Out) {
         return 0;
     }
-    CtxGeom(&Mx, &My, &Mw, &Mh);
+    ContextGeometry(&Mx, &My, &Mw, &Mh);
     if (X < Mx || Y < My || X >= Mx + Mw || Y >= My + Mh) {
         return 0;
     }
@@ -206,7 +206,7 @@ void DesktopContextMenuDrawIfHit(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     if (!gCtxOpen || W == 0 || H == 0) {
         return;
     }
-    CtxGeom(&Mx, &My, &Mw, &Mh);
+    ContextGeometry(&Mx, &My, &Mw, &Mh);
     if (RectsOverlap(X, Y, W, H, Mx, My, Mw, Mh)) {
         DesktopDrawContextMenu();
     }

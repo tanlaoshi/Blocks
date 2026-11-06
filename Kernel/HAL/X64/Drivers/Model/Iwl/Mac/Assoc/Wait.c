@@ -12,7 +12,7 @@ int IwlAssocWaitAuth(UINT32 *RxN, UINT8 *FirstFc) {
     UINT32 BeaconN = 0;
 
     for (i = 0; i < 1500 && !GotAuth; i++) {
-        IwlRxPoll();
+        IwlReceivePoll();
         while (IwlAssocTake(&Pkt, &Len)) {
             const UINT8 *Dot;
             UINTN PayLen;
@@ -31,7 +31,7 @@ int IwlAssocWaitAuth(UINT32 *RxN, UINT8 *FirstFc) {
             }
             if ((Dot[0] & 0x0Cu) != 0) {
                 if (((Dot[0] >> 2) & 0x3u) == 0x2u) {
-                    IwlRxHoldMpdu(Pkt, Len);
+                    IwlReceiveHoldMpdu(Pkt, Len);
                 }
                 continue;
             }
@@ -43,7 +43,7 @@ int IwlAssocWaitAuth(UINT32 *RxN, UINT8 *FirstFc) {
                 GotAuth = 1;
             }
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     if (!GotAuth) {
         char Line[32];
@@ -72,7 +72,7 @@ int IwlAssocWaitAuth(UINT32 *RxN, UINT8 *FirstFc) {
         IwlLogStage(Line);
         if (*RxN == 0) {
             (void)IwlCmdqUnwedge();
-            (void)IwlPhyCtxtTune(gIwlTarget.Chan);
+            (void)IwlPhyContextTune(gIwlTarget.Chan);
         }
         return 0;
     }
@@ -92,7 +92,7 @@ int IwlAssocWaitResp(UINT32 *RxN, UINT8 *FirstFc, int *GotAssoc) {
         if (i == 2000u) {
             RxLate = *RxN;
         }
-        IwlRxPoll();
+        IwlReceivePoll();
         while (Took < 32 && IwlAssocTake(&Pkt, &Len)) {
             const UINT8 *Dot;
             UINTN PayLen;
@@ -113,7 +113,7 @@ int IwlAssocWaitResp(UINT32 *RxN, UINT8 *FirstFc, int *GotAssoc) {
             }
             if ((Dot[0] & 0x0Cu) != 0) {
                 if (((Dot[0] >> 2) & 0x3u) == 0x2u) {
-                    IwlRxHoldMpdu(Pkt, Len);
+                    IwlReceiveHoldMpdu(Pkt, Len);
                 }
                 continue;
             }
@@ -168,7 +168,7 @@ int IwlAssocWaitResp(UINT32 *RxN, UINT8 *FirstFc, int *GotAssoc) {
             Line[n] = 0;
             IwlLogStage(Line);
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     if (!*GotAssoc) {
         char Line[32];
@@ -198,7 +198,7 @@ int IwlAssocWaitResp(UINT32 *RxN, UINT8 *FirstFc, int *GotAssoc) {
         if (*RxN == 0 || *RxN == RxLate) {
             IwlLogStage("assoc=rxstall");
             (void)IwlCmdqUnwedge();
-            (void)IwlPhyCtxtTune(gIwlTarget.Chan);
+            (void)IwlPhyContextTune(gIwlTarget.Chan);
         }
         return 0;
     }

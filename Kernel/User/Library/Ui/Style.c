@@ -6,7 +6,7 @@
 static UI_STYLE s_Style;
 static int s_Init;
 
-static void InitDefault(void) {
+static void InitializeDefault(void) {
     UI_STYLE *S = &s_Style;
     S->CheckBorder     = 0x00202020u;
     S->CheckFillOn     = 0x00208040u;
@@ -36,7 +36,7 @@ UI_STYLE UiStyleDefault(void) {
 
 void UiSetStyle(const UI_STYLE *Style) {
     if (!Style) {
-        InitDefault();
+        InitializeDefault();
         return;
     }
     s_Style = *Style;
@@ -45,7 +45,7 @@ void UiSetStyle(const UI_STYLE *Style) {
 
 const UI_STYLE *UiStyleCurrent(void) {
     if (!s_Init) {
-        InitDefault();
+        InitializeDefault();
     }
     return &s_Style;
 }

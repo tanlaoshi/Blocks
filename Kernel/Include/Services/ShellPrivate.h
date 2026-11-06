@@ -14,7 +14,7 @@ void ShellCommandsWifiRegister(void);
 /* 仅 wifiprobe（无桌面靶/串口最小集也要能重跑 SD1 探测） */
 void ShellCommandsWifiProbeRegister(void);
 void ShellCommandsNetRegister(void);
-void ShellCommandsNetAddrRegister(void);
+void ShellCommandsNetAddressRegister(void);
 void ShellCommandsNetUdpRegister(void);
 void ShellCommandsNetTcpRegister(void);
 void ShellCommandsNetLwipRegister(void);

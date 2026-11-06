@@ -24,7 +24,7 @@ static unsigned CopyCap(char *Dst, unsigned Cap, const char *Src) {
     return I;
 }
 
-int FsUtilHasVolume(const char *Path) {
+int VolumePathHasVolume(const char *Path) {
     unsigned I;
 
     if (!Path) {
@@ -41,7 +41,7 @@ int FsUtilHasVolume(const char *Path) {
     return 0;
 }
 
-int FsUtilJoin(char *Out, unsigned Cap, const char *Dir, const char *Name) {
+int VolumePathJoin(char *Out, unsigned Cap, const char *Dir, const char *Name) {
     unsigned N;
     unsigned I;
     int NeedSep;
@@ -56,7 +56,7 @@ int FsUtilJoin(char *Out, unsigned Cap, const char *Dir, const char *Name) {
     if (!Name) {
         Name = "";
     }
-    if (FsUtilHasVolume(Name) || Dir[0] == 0) {
+    if (VolumePathHasVolume(Name) || Dir[0] == 0) {
         N = CopyCap(Out, Cap, Name);
         if (Name[N] != 0) {
             errno = EINVAL;
@@ -109,7 +109,7 @@ int FsUtilJoin(char *Out, unsigned Cap, const char *Dir, const char *Name) {
     return 0;
 }
 
-int FsUtilVolumePath(char *Out, unsigned Cap, const char *Vol, const char *Rel) {
+int VolumePathCompose(char *Out, unsigned Cap, const char *Vol, const char *Rel) {
     unsigned N;
     unsigned I;
     char VolBuf[16];
@@ -121,8 +121,8 @@ int FsUtilVolumePath(char *Out, unsigned Cap, const char *Vol, const char *Rel) 
     if (!Rel) {
         Rel = "";
     }
-    if (FsUtilHasVolume(Rel)) {
-        return FsUtilJoin(Out, Cap, "", Rel);
+    if (VolumePathHasVolume(Rel)) {
+        return VolumePathJoin(Out, Cap, "", Rel);
     }
     I = 0;
     while (Vol[I] != 0 && Vol[I] != ':' && I + 1u < sizeof(VolBuf)) {
@@ -159,11 +159,11 @@ int FsUtilVolumePath(char *Out, unsigned Cap, const char *Vol, const char *Rel) 
     return 0;
 }
 
-int FsUtilBlocksPath(char *Out, unsigned Cap, const char *Rel) {
-    return FsUtilVolumePath(Out, Cap, FS_VOL_BLOCKS, Rel);
+int VolumePathBlocks(char *Out, unsigned Cap, const char *Rel) {
+    return VolumePathCompose(Out, Cap, FS_VOL_BLOCKS, Rel);
 }
 
-int FsUtilListDir(const char *Path, FS_DIR_ENT *Out, int Max) {
+int VolumePathListDirectory(const char *Path, FS_DIR_ENT *Out, int Max) {
     FS_DIR *Dir;
     int Count;
     int Rc;
@@ -192,14 +192,14 @@ int FsUtilListDir(const char *Path, FS_DIR_ENT *Out, int Max) {
     return Count;
 }
 
-int FsUtilStat(const char *Path, FS_FILE_STAT *Out) {
+int VolumePathStat(const char *Path, FS_FILE_STAT *Out) {
     return FileStat(Path ? Path : "", Out);
 }
 
-int FsUtilIsDir(const char *Path) {
+int VolumePathIsDirectory(const char *Path) {
     FS_FILE_STAT St;
 
-    if (FsUtilStat(Path, &St) != 0) {
+    if (VolumePathStat(Path, &St) != 0) {
         return -1;
     }
     return (St.Attr & FS_ATTR_DIR) ? 1 : 0;

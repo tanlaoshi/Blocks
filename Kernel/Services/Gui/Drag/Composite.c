@@ -136,7 +136,7 @@ void CompositeDragDirtyRegion(int DragIdx, UINT32 OldX, UINT32 OldY,
     if (DuW == 0 || DuH == 0) {
         return;
     }
-    if (EnsureDragDirtyBuf(DuW, DuH)) {
+    if (EnsureDragDirtyBuffer(DuW, DuH)) {
         for (Row = 0; Row < DuH; Row++) {
             UINT32 Py = DuY + Row;
             UINT32 Col;

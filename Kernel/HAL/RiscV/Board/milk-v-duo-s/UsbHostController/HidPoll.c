@@ -10,10 +10,10 @@ static void HidGoneNote(const char *Msg) {
     if (!Msg) {
         return;
     }
-    ConsoleIoWriteLen("\n", 1);
+    ConsoleIoWriteLength("\n", 1);
     for (L = 0; Msg[L] != 0; L++) {
     }
-    ConsoleIoWriteLen(Msg, L);
+    ConsoleIoWriteLength(Msg, L);
     ConsoleIoShowPrompt();
 }
 
@@ -125,7 +125,7 @@ static void KeyboardEnqueue(const UINT8 *Report8) {
         }
     }
     if (N == gKeyboardQueueHead) {
-        return; /* 满：丢新保旧（同 X64 KbdPush） */
+        return; /* 满：丢新保旧（同 X64 KeyboardPush） */
     }
     gKeyboardQueue[gKeyboardQueueTail].ModifierKeys = Report8[0];
     gKeyboardQueue[gKeyboardQueueTail].Reserved = Report8[1];

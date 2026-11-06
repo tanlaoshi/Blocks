@@ -26,6 +26,7 @@
  * 非匿名时 flags 高 16 位 = fd；offset 教学固定 0 */
 /* SYS_MEMORY_UNMAP：rdi=addr rsi=len → 0；失败 -1 */
 /* SYS_GRAPHICS_DAMAGE_RECT：rdi=wid rsi=GRAPHICS_DAMAGE_RECT* → 0；失败 -1（PR-G-desk-3） */
+/* SYS_GRAPHICS_DRAW_STRING：rdi=wid rsi=GRAPHICS_DRAW_STRING* → 0；失败 -1 */
 /* SYS_FILE_SEEK：rdi=fd rsi=signed off rdx=whence(0=SET/1=CUR/2=END) → 新 Pos；管道/套接字 -ESPIPE */
 /* SYS_FILE_UNLINK：rdi=path → 0；失败 -1（文件 Delete；目录空则 Rmdir） */
 /* SYS_FILE_RENAME：rdi=old rsi=new → 0；失败 -1 */

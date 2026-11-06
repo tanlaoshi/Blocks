@@ -108,16 +108,16 @@ void HalSerialRetryIfMissing(void) {
     SerialRetryIfMissing();
 }
 
-void HalSerialEnableRxIrq(void) {
-    SerialEnableRxIrq();
+void HalSerialEnableReceiveIrq(void) {
+    SerialEnableReceiveIrq();
 }
 
 int HalSerialPresent(void) {
     return SerialPresent();
 }
 
-void HalSerialRxPump(void) {
-    SerialRxPump();
+void HalSerialReceivePump(void) {
+    SerialReceivePump();
 }
 
 void HalSerialGopEnable(void) {
@@ -175,7 +175,7 @@ int HalSerialDataReady(void) {
     if (gFtdiUart.DataReady && gFtdiUart.DataReady()) {
         return 1;
     }
-    FtdiPollRx();
+    FtdiPollReceive();
     if (FtdiDataReady()) {
         return 1;
     }
@@ -204,7 +204,7 @@ char HalSerialReadChar(void) {
 /*
  * ksend 二进制 TX：直写 COM1（不经 WriteShell 改写）。
  * RX：必须走 Serial 软环（与 Shell/IRQ 同路）。旧实现读 RBR：一旦
- * SerialEnableRxIrq 把字节抽进 gRxRing，TryGetByte 永远空 → IL header，
+ * SerialEnableReceiveIrq 把字节抽进 gReceiveRing，TryGetByte 永远空 → IL header，
  * 失败后软环残留被 Shell 当「unknown:」喷出（NUC 热更真机已见）。
  * FTDI/CDC 仍不在此；开发期 ksend 接主板 COM / 透传 COM1。
  */

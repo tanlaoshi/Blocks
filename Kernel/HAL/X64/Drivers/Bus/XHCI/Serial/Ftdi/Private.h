@@ -9,7 +9,7 @@
 
 #include "XHCI/Private.h"
 
-extern UINT16 gFtdiBulkOutMps;
+extern UINT16 gFtdiBulkOutMaxPacketSize;
 extern UINT32 gFtdiRoute;
 extern UINT8 gFtdiHubSlot;
 extern UINT8 gFtdiTtPort;

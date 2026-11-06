@@ -45,7 +45,7 @@ int SmscReadRegister(UINT32 Index, UINT32 *OutValue) {
     return 0;
 }
 
-static int MiiWait(void) {
+static int MediaIndependentInterfaceWait(void) {
     UINT32 V;
     UINT32 T;
 
@@ -61,15 +61,15 @@ static int MiiWait(void) {
     return -1;
 }
 
-int SmscMiiRead(int Index, UINT16 *OutValue) {
+int SmscMediaIndependentInterfaceRead(int Index, UINT16 *OutValue) {
     UINT32 Addr;
     UINT32 Value;
 
-    if (MiiWait() != 0) {
+    if (MediaIndependentInterfaceWait() != 0) {
         return -1;
     }
     Addr = ((UINT32)SMSC_PHY_ID << 11) | ((UINT32)Index << 6) | MII_BUSY;
-    if (SmscWriteRegister(MII_ADDR, Addr) != 0 || MiiWait() != 0) {
+    if (SmscWriteRegister(MII_ADDR, Addr) != 0 || MediaIndependentInterfaceWait() != 0) {
         return -1;
     }
     if (SmscReadRegister(MII_DATA, &Value) != 0) {
@@ -81,10 +81,10 @@ int SmscMiiRead(int Index, UINT16 *OutValue) {
     return 0;
 }
 
-int SmscMiiWrite(int Index, UINT16 Value) {
+int SmscMediaIndependentInterfaceWrite(int Index, UINT16 Value) {
     UINT32 Addr;
 
-    if (MiiWait() != 0) {
+    if (MediaIndependentInterfaceWait() != 0) {
         return -1;
     }
     if (SmscWriteRegister(MII_DATA, Value) != 0) {
@@ -95,7 +95,7 @@ int SmscMiiWrite(int Index, UINT16 Value) {
     if (SmscWriteRegister(MII_ADDR, Addr) != 0) {
         return -1;
     }
-    return MiiWait();
+    return MediaIndependentInterfaceWait();
 }
 
 int SmscEepromRead(UINT32 Offset, UINT8 *Destination, UINT32 Length) {

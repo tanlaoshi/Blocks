@@ -4,10 +4,10 @@
  */
 #include "XHCI/Private.h"
 
-int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
+int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval,
                               UINT8 Speed) {
-    UINT8 EpNum = EpAddr & 0x0F;
-    UINT8 In = (EpAddr & 0x80) ? 1 : 0;
+    UINT8 EndpointNum = EndpointAddress & 0x0F;
+    UINT8 In = (EndpointAddress & 0x80) ? 1 : 0;
     UINT32 CtxEntries;
     UINT32 Route = 0;
     UINT32 RootPort;
@@ -16,13 +16,13 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
     int Composite;
     int AddOnly;
 
-    gMouseIntrDci = (UINT32)EpNum * 2 + In;
-    gMouseEpAddr = EpAddr;
-    if (Mps == 0 || Mps > 64) {
-        Mps = 8;
+    gMouseIntrDci = (UINT32)EndpointNum * 2 + In;
+    gMouseEndpointAddress = EndpointAddress;
+    if (MaxPacketSize == 0 || MaxPacketSize > 64) {
+        MaxPacketSize = 8;
     }
     /* 与键盘一致：TRB 长度用 8+ISP；gMouseReportLen 仅作解析上限 */
-    gMouseReportLen = (UINT8)(Mps > 8 ? 8 : Mps);
+    gMouseReportLen = (UINT8)(MaxPacketSize > 8 ? 8 : MaxPacketSize);
     if (gMouseReportLen < 3) {
         gMouseReportLen = 3;
     }
@@ -41,10 +41,10 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
         if (gIntrDci > CtxEntries) {
             CtxEntries = gIntrDci;
         }
-        Route = gKbdRoute & 0xFFFFFu;
+        Route = gKeyboardRoute & 0xFFFFFu;
         RootPort = gPort1;
-        HubSlot = gKbdHubSlot;
-        TtPort = gKbdTtPort;
+        HubSlot = gKeyboardHubSlot;
+        TtPort = gKeyboardTransactionTranslatorPort;
         Speed = gSpeed;
         AddOnly = 1;
     } else {
@@ -74,55 +74,55 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
         Slot[2] = (UINT32)HubSlot | ((UINT32)TtPort << 8);
     }
 
-    /* Drop+Add 回退路径才重填键盘 EP；Add-only 保持首次 ConfigureIntr 的上下文 */
+    /* Drop+Add 回退路径才重填键盘 EP；Add-only 保持首次 ConfigureInterrupt 的上下文 */
     if (Composite && gIntrDci != 0 && !AddOnly) {
-        UINT32 *KbdEp = (UINT32 *)(void *)InEp(gIntrDci);
-        UINT8 KbdIv;
-        UINT16 KbdMps;
-        UINT64 KbdDeq;
+        UINT32 *KeyboardEndpoint = (UINT32 *)(void *)InEndpoint(gIntrDci);
+        UINT8 KeyboardInterval;
+        UINT16 KeyboardMaxPacketSize;
+        UINT64 KeyboardDequeue;
 
-        KbdMps = gKbdMps;
-        if (KbdMps == 0 || KbdMps > 64) {
-            KbdMps = 8;
+        KeyboardMaxPacketSize = gKeyboardMaxPacketSize;
+        if (KeyboardMaxPacketSize == 0 || KeyboardMaxPacketSize > 64) {
+            KeyboardMaxPacketSize = 8;
         }
-        KbdIv = gKbdEpInterval;
-        if (KbdIv == 0) {
-            KbdIv = (Speed >= 3) ? 3 : FsInterval(10);
+        KeyboardInterval = gKeyboardEndpointInterval;
+        if (KeyboardInterval == 0) {
+            KeyboardInterval = (Speed >= 3) ? 3 : FsInterval(10);
         }
-        InitRing(gIntrRing, &gIntr, RING_SIZE);
-        KbdEp[0] = (UINT32)KbdIv << 16;
-        KbdEp[1] = (3u << 1) | (7u << 3) | ((UINT32)KbdMps << 16);
-        KbdDeq = PointerToPhysical(gIntrRing) | 1;
-        KbdEp[2] = (UINT32)KbdDeq;
-        KbdEp[3] = (UINT32)(KbdDeq >> 32);
-        KbdEp[4] = (UINT32)KbdMps | ((UINT32)KbdMps << 16);
+        RingInitialize(gIntrRing, &gIntr, RING_SIZE);
+        KeyboardEndpoint[0] = (UINT32)KeyboardInterval << 16;
+        KeyboardEndpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)KeyboardMaxPacketSize << 16);
+        KeyboardDequeue = PointerToPhysical(gIntrRing) | 1;
+        KeyboardEndpoint[2] = (UINT32)KeyboardDequeue;
+        KeyboardEndpoint[3] = (UINT32)(KeyboardDequeue >> 32);
+        KeyboardEndpoint[4] = (UINT32)KeyboardMaxPacketSize | ((UINT32)KeyboardMaxPacketSize << 16);
         FlushDma(gIntrRing, sizeof(gIntrRing));
     }
 
-    InitRing(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-    UINT32 *Ep = (UINT32 *)(void *)InEp(gMouseIntrDci);
+    RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
+    UINT32 *Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
     UINT8 Interval = (Speed >= 3) ? (UINT8)((BInterval > 0) ? (BInterval - 1) : 0)
                                   : FsInterval(BInterval);
-    Ep[0] = (UINT32)Interval << 16;
-    Ep[1] = (3u << 1) | (7u << 3) | ((UINT32)Mps << 16);
+    Endpoint[0] = (UINT32)Interval << 16;
+    Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
     UINT64 Deq = PointerToPhysical(gMouseIntrRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)Mps | ((UINT32)Mps << 16);
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
 
     FlushDma(gInCtx, sizeof(gInCtx));
     FlushDma(gMouseIntrRing, sizeof(gMouseIntrRing));
 
     if (Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) < 0) {
         if (Composite && AddOnly && gIntrDci != 0) {
-            UINT32 EpField = (gIntrDci & 0x1Fu) << 16;
+            UINT32 EndpointField = (gIntrDci & 0x1Fu) << 16;
 
             /*
              * Running 时 Add 失败：再试 Stop 后 Add-only（旧 NUC 经验）。
              * 仍失败才 Drop+Add（保鼠标，键盘可能 k=0）。
              */
             BootLog("Boot: XHCI mouse add-run fail, try stop+add\n");
-            (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(SlotId) | EpField, 0);
+            (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(SlotId) | EndpointField, 0);
             ProcessEvents();
             if (!HalCpuIsHypervisor()) {
                 ProcessEventsRealPc();
@@ -136,14 +136,14 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
             if (HubSlot != 0 && Speed < 3) {
                 Slot[2] = (UINT32)HubSlot | ((UINT32)TtPort << 8);
             }
-            InitRing(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-            Ep = (UINT32 *)(void *)InEp(gMouseIntrDci);
-            Ep[0] = (UINT32)Interval << 16;
-            Ep[1] = (3u << 1) | (7u << 3) | ((UINT32)Mps << 16);
+            RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
+            Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
+            Endpoint[0] = (UINT32)Interval << 16;
+            Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
             Deq = PointerToPhysical(gMouseIntrRing) | 1;
-            Ep[2] = (UINT32)Deq;
-            Ep[3] = (UINT32)(Deq >> 32);
-            Ep[4] = (UINT32)Mps | ((UINT32)Mps << 16);
+            Endpoint[2] = (UINT32)Deq;
+            Endpoint[3] = (UINT32)(Deq >> 32);
+            Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
             FlushDma(gInCtx, sizeof(gInCtx));
             FlushDma(gMouseIntrRing, sizeof(gMouseIntrRing));
             if (Command(PointerToPhysical(gInCtx),
@@ -165,29 +165,29 @@ int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
                 Slot[2] = (UINT32)HubSlot | ((UINT32)TtPort << 8);
             }
             {
-                UINT32 *KbdEp = (UINT32 *)(void *)InEp(gIntrDci);
-                UINT8 KbdIv = gKbdEpInterval ? gKbdEpInterval
+                UINT32 *KeyboardEndpoint = (UINT32 *)(void *)InEndpoint(gIntrDci);
+                UINT8 KeyboardInterval = gKeyboardEndpointInterval ? gKeyboardEndpointInterval
                                              : (UINT8)((Speed >= 3) ? 3 : FsInterval(10));
-                UINT16 KbdMps = (gKbdMps && gKbdMps <= 64) ? gKbdMps : 8;
-                UINT64 KbdDeq;
+                UINT16 KeyboardMaxPacketSize = (gKeyboardMaxPacketSize && gKeyboardMaxPacketSize <= 64) ? gKeyboardMaxPacketSize : 8;
+                UINT64 KeyboardDequeue;
 
-                InitRing(gIntrRing, &gIntr, RING_SIZE);
-                KbdEp[0] = (UINT32)KbdIv << 16;
-                KbdEp[1] = (3u << 1) | (7u << 3) | ((UINT32)KbdMps << 16);
-                KbdDeq = PointerToPhysical(gIntrRing) | 1;
-                KbdEp[2] = (UINT32)KbdDeq;
-                KbdEp[3] = (UINT32)(KbdDeq >> 32);
-                KbdEp[4] = (UINT32)KbdMps | ((UINT32)KbdMps << 16);
+                RingInitialize(gIntrRing, &gIntr, RING_SIZE);
+                KeyboardEndpoint[0] = (UINT32)KeyboardInterval << 16;
+                KeyboardEndpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)KeyboardMaxPacketSize << 16);
+                KeyboardDequeue = PointerToPhysical(gIntrRing) | 1;
+                KeyboardEndpoint[2] = (UINT32)KeyboardDequeue;
+                KeyboardEndpoint[3] = (UINT32)(KeyboardDequeue >> 32);
+                KeyboardEndpoint[4] = (UINT32)KeyboardMaxPacketSize | ((UINT32)KeyboardMaxPacketSize << 16);
                 FlushDma(gIntrRing, sizeof(gIntrRing));
             }
-            InitRing(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-            Ep = (UINT32 *)(void *)InEp(gMouseIntrDci);
-            Ep[0] = (UINT32)Interval << 16;
-            Ep[1] = (3u << 1) | (7u << 3) | ((UINT32)Mps << 16);
+            RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
+            Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
+            Endpoint[0] = (UINT32)Interval << 16;
+            Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
             Deq = PointerToPhysical(gMouseIntrRing) | 1;
-            Ep[2] = (UINT32)Deq;
-            Ep[3] = (UINT32)(Deq >> 32);
-            Ep[4] = (UINT32)Mps | ((UINT32)Mps << 16);
+            Endpoint[2] = (UINT32)Deq;
+            Endpoint[3] = (UINT32)(Deq >> 32);
+            Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
             FlushDma(gInCtx, sizeof(gInCtx));
             FlushDma(gMouseIntrRing, sizeof(gMouseIntrRing));
             if (Command(PointerToPhysical(gInCtx),

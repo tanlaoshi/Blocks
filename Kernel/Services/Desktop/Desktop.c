@@ -1,15 +1,6 @@
 /*
- * 人话：你开机后看见的桌面——图标、底栏任务栏、「开始」菜单、壁纸。
- *       开窗：双击图标，或点任务栏「开始」。
- *
- * 从哪读：DesktopInitialize（占位+布局，不读 BMP）→ Worker
- *       DesktopEnsureIconsLoaded → TickClock 补刷 → DesktopDraw。
- *
- * 别改：图标坐标松手后写 BLOCKS.DB，下次开机 LoadIconLayout 读回来。
- *       开始菜单里 Apps 列表认已装清单 + 盘上 ELF，勿只扫半边。
- *       DesktopInitialize 与 OnDisplayResize 勿重入（gDesktopBusy）。
- *
- * 想照着做：暂无短文；绘制细节在 Paint.c，点击在 GuiClickDesktop。
+ * 桌面宿主：图标/任务栏/开始菜单。Initialize 占位 → Worker Ensure → TickClock 补刷。
+ * 图标坐标写 BLOCKS.DB；Apps 认已装+盘上 ELF。Initialize/OnDisplayResize 勿重入。
  */
 #include "DesktopPrivate.h"
 #include "Gui.h" /* GuiCursorHide/Show：时钟重绘任务栏勿穿光标 */
@@ -121,11 +112,8 @@ void DesktopDraw(void) {
     /* 开始菜单不在此画：须叠在窗之上，见 DesktopDrawStartMenu */
 }
 
-void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
+void DesktopDrawIconsInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     int i;
-    UINT32 BarY;
-    UINT32 Sw;
-    UINT32 Sh;
 
     if (W == 0 || H == 0) {
         return;
@@ -142,7 +130,18 @@ void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
             DrawOneIconRaw(&gIcons[i], i == gDeskSelected);
         }
     }
+}
+
+void DesktopDrawInRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
+    UINT32 BarY;
+    UINT32 Sw;
+    UINT32 Sh;
+
+    DesktopDrawIconsInRect(X, Y, W, H);
     TaskbarGeom(&BarY, &Sw, &Sh);
+    if (W == 0 || H == 0) {
+        return;
+    }
     if (BarY < Y + H && Y < Sh && X < Sw && 0 < X + W) {
         DrawTaskbarRaw();
     }
@@ -187,14 +186,6 @@ int DesktopClickOnTaskbar(UINT32 X, UINT32 Y) {
     (void)X;
     TaskbarGeom(&BarY, &Sw, &Sh);
     return (Y >= BarY && Y < Sh) ? 1 : 0;
-}
-
-void DesktopNotifyAppsChanged(void) {
-    gMenuAppsOpen = 0;
-    gMenuGameOpen = 0;
-    /* 装卸后重扫；Ensure 内 Rebuild + RequestRefresh */
-    DesktopIconsResetDeferred();
-    DesktopEnsureIconsLoaded();
 }
 
 void DesktopInitialize(void) {
@@ -285,11 +276,11 @@ void DesktopOnDisplayResize(void) {
 }
 
 void DesktopRefreshLabels(void) {
-    gIcons[0].Label = LocStr(MSG_ICON_SHELL);
-    gIcons[1].Label = LocStr(MSG_ICON_SETTINGS);
-    gIcons[2].Label = LocStr(MSG_ICON_FILES);
-    gIcons[3].Label = LocStr(MSG_ICON_STORE);
-    gIcons[4].Label = LocStr(MSG_ICON_DEVICES);
+    gIcons[0].Label = LocaleString(MESSAGE_ICON_SHELL);
+    gIcons[1].Label = LocaleString(MESSAGE_ICON_SETTINGS);
+    gIcons[2].Label = LocaleString(MESSAGE_ICON_FILES);
+    gIcons[3].Label = LocaleString(MESSAGE_ICON_STORE);
+    gIcons[4].Label = LocaleString(MESSAGE_ICON_DEVICES);
     /*
      * 勿在 Gui/Settings 点击路径 Rebuild（扫 Store/Apps + 测宽会卡死鼠标）。
      * 标脏交给 Worker；点开始时若仍脏再同步补一次。

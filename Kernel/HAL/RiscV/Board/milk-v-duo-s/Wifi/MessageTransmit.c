@@ -89,14 +89,14 @@ static int AicFifoWriteMessage(SDHCI_HOST *Host, UINT8 *Buffer, UINT32 *InOutLen
     }
     if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, (UINT16)Blocks, AIC_FIFO_CHUNK, Buffer) !=
         0) {
-        AicMarkXferParams(Host, "WiFi: tx block write FAIL", Padded, Blocks);
+        AicMarkTransferParams(Host, "WiFi: tx block write FAIL", Padded, Blocks);
         (void)SdhciWifiBusRecover(Host);
         if (SdhciIoRwExtended(Host, 1u, AIC_WR_FIFO_REG, 1, 0, 0, (UINT16)Padded, Buffer) != 0) {
-            AicMarkXferParams(Host, "WiFi: tx byte write FAIL", Padded, 0u);
+            AicMarkTransferParams(Host, "WiFi: tx byte write FAIL", Padded, 0u);
             (void)SdhciWifiBusRecover(Host);
             return -1;
         }
-        AicMarkXferParams(Host, "WiFi: tx byte write OK (block refused)", Padded, 0u);
+        AicMarkTransferParams(Host, "WiFi: tx byte write OK (block refused)", Padded, 0u);
     }
     *InOutLength = Padded;
     return 0;

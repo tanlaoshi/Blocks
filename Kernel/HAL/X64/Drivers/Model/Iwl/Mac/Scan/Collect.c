@@ -10,15 +10,15 @@ int IwlScanCollect(void) {
     UINTN Len;
     IWL_SCAN_COLLECT_CTX Ctx;
 
-    IwlScanCollectCtxInit(&Ctx);
+    IwlScanCollectContextInitialize(&Ctx);
     for (I = 0; I < 8000; I++) {
-        IwlRxPoll();
-        while (IwlRxTake(&Pkt, &Len)) {
+        IwlReceivePoll();
+        while (IwlReceiveTake(&Pkt, &Len)) {
             if (IwlScanCollectOnPkt(&Ctx, Pkt, Len, I)) {
                 return 1;
             }
         }
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
         if (Ctx.StopAt >= 0 && (int)I >= Ctx.StopAt) {
             break;
         }

@@ -98,7 +98,7 @@ void KernelHandoff(UINT64 HartId, UINT64 DtbPhys) {
     }
 
 #if BOARD_HAS_FRAMEBUFFER
-    if (FromDtb && DtbPhys != 0 && DtbFwCfgBase(DtbPhys, &FwCfg) != 0) {
+    if (FromDtb && DtbPhys != 0 && DtbFirmwareConfigBase(DtbPhys, &FwCfg) != 0) {
         FwCfg = 0;
     }
     if (FwCfg == 0) {

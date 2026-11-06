@@ -5,7 +5,7 @@
  */
 #include "XHCI/Private.h"
 
-UINT32 PortReg(UINT32 Port1) {
+UINT32 PortRegister(UINT32 Port1) {
     return 0x400 + (Port1 - 1) * 0x10;
 }
 
@@ -42,7 +42,7 @@ void PowerConnectedPorts(void) {
     UINT32 DumpLimit;
 
     for (p = 1; p <= gMaxPorts && p <= 32; p++) {
-        UINT64 Ps = gOperationalBase + PortReg(p);
+        UINT64 Ps = gOperationalBase + PortRegister(p);
         UINT32 Val = ReadMmio32(Ps);
         if (Val & PORTSC_CCS) {
             Surveyed++;
@@ -54,7 +54,7 @@ void PowerConnectedPorts(void) {
     if (Surveyed > 0) {
         /* NUC/工控：口上已有设备，保持原短等待 */
         if (RealPc) {
-            StallMs(50);
+            StallMilliseconds(50);
         } else {
             volatile int D;
             for (D = 0; D < 50000; D++) {
@@ -66,7 +66,7 @@ void PowerConnectedPorts(void) {
     BootLog("Boot: XHCI CCS=0, PP all\n");
     BootLogHex("Boot: XHCI maxports=", gMaxPorts, 2);
     for (p = 1; p <= gMaxPorts && p <= 32; p++) {
-        UINT64 Ps = gOperationalBase + PortReg(p);
+        UINT64 Ps = gOperationalBase + PortRegister(p);
         UINT32 Val = ReadMmio32(Ps);
         if (!(Val & PORTSC_PP)) {
             WriteMmio32(Ps, PortscNeutral(Val) | PORTSC_PP);
@@ -82,10 +82,10 @@ void PowerConnectedPorts(void) {
 
     /* 仅无 CCS：加长等待（USB3 口挂 USB2 鼠常见） */
     for (Round = 0; Round < 8; Round++) {
-        StallMs(100);
+        StallMilliseconds(100);
         Surveyed = 0;
         for (p = 1; p <= gMaxPorts && p <= 32; p++) {
-            UINT64 Ps = gOperationalBase + PortReg(p);
+            UINT64 Ps = gOperationalBase + PortRegister(p);
             UINT32 Val = ReadMmio32(Ps);
             if (!(Val & PORTSC_PP)) {
                 WriteMmio32(Ps, PortscNeutral(Val) | PORTSC_PP);
@@ -107,7 +107,7 @@ void PowerConnectedPorts(void) {
         DumpLimit = 8;
     }
     for (p = 1; p <= DumpLimit; p++) {
-        UINT32 Val = ReadMmio32(gOperationalBase + PortReg(p));
+        UINT32 Val = ReadMmio32(gOperationalBase + PortRegister(p));
         char Pref[32];
         int n = 0;
         const char *S = "Boot: XHCI PORTSC";
@@ -144,7 +144,7 @@ void PowerConnectedPorts(void) {
  * Force=1：DisableSlot / soft Address USBTE 后须复位到 Default（否则 cc=0x04）。
  */
 int ResetPortEx(UINT32 Port1, int Force) {
-    UINT64 Ps = gOperationalBase + PortReg(Port1);
+    UINT64 Ps = gOperationalBase + PortRegister(Port1);
     UINT32 Val = ReadMmio32(Ps);
     UINT32 SpeedHint = PortSpeed(Val);
     UINT32 Speed;
@@ -172,11 +172,11 @@ int ResetPortEx(UINT32 Port1, int Force) {
     /* 端口上电（勿在已连接时清 PED） */
     if (!(Val & PORTSC_PP)) {
         WriteMmio32(Ps, PortscNeutral(Val) | PORTSC_PP);
-        Ok = RealPc ? WaitSetMs(Ps, PORTSC_PP, 50) : WaitSet(Ps, PORTSC_PP, 30000);
+        Ok = RealPc ? WaitSetMilliseconds(Ps, PORTSC_PP, 50) : WaitSet(Ps, PORTSC_PP, 30000);
         Val = ReadMmio32(Ps);
         DiagChk("ResetPort.PP", Ok && (Val & PORTSC_PP), "PP=1", Val, 8);
         if (!Ok) {
-            EnumWhy("Boot: Why=PP timeout\n");
+            EnumerateWhy("Boot: Why=PP timeout\n");
             return 0;
         }
     }
@@ -184,7 +184,7 @@ int ResetPortEx(UINT32 Port1, int Force) {
     if (!(Val & PORTSC_CCS)) {
         if (RealPc) {
             for (i = 0; i < 50; i++) {
-                StallMs(10);
+                StallMilliseconds(10);
                 Val = ReadMmio32(Ps);
                 if (Val & PORTSC_CCS) {
                     break;
@@ -216,21 +216,21 @@ int ResetPortEx(UINT32 Port1, int Force) {
         WriteMmio32(Ps, PortscNeutral(Val) | ResetBit | PORTSC_PP);
         Fence();
         for (t = 0; t < 500 && (ReadMmio32(Ps) & PORTSC_PED); t++) {
-            StallMs(1);
+            StallMilliseconds(1);
         }
         /* 等 PR/WPR 自清，避免第二记叠在第一记上 */
         for (t = 0; t < 100 && (ReadMmio32(Ps) & ResetBit); t++) {
-            StallMs(1);
+            StallMilliseconds(1);
         }
         Val = ReadMmio32(Ps);
         DiagChk("ResetPort.knock", !(Val & PORTSC_PED) && !!(Val & PORTSC_CCS),
                 "!PED+CCS", Val, 8);
         if (Val & PORTSC_PED) {
-            EnumWhy("Boot: Why=force still PED\n");
+            EnumerateWhy("Boot: Why=force still PED\n");
             return 0;
         }
         if (!(Val & PORTSC_CCS)) {
-            EnumWhy("Boot: Why=lost CCS\n");
+            EnumerateWhy("Boot: Why=lost CCS\n");
             return 0;
         }
         SpeedHint = SpdSave; /* Polling 时 Speed 不可靠 */
@@ -240,7 +240,7 @@ int ResetPortEx(UINT32 Port1, int Force) {
     if (RealPc && !(Val & PORTSC_PED) && (Val & PORTSC_CHANGE)) {
         WriteMmio32(Ps, PortscNeutral(Val) | (Val & PORTSC_CHANGE) | PORTSC_PP);
         Fence();
-        StallMs(5);
+        StallMilliseconds(5);
         Val = ReadMmio32(Ps);
         DiagChk("ResetPort.clrSticky", !(Val & PORTSC_PRC), "PRC=0", Val, 8);
     }
@@ -265,31 +265,31 @@ int ResetPortEx(UINT32 Port1, int Force) {
          * 照片：PED OK → afterClr → Polling。成功后 leavePRC。
          * 现已保证写 PR 前 PED=0 且 sticky 已清，可等 PRC|WRC 边沿。
          */
-        Ok = WaitSetMs(Ps, PORTSC_PRC | PORTSC_WRC, 500);
+        Ok = WaitSetMilliseconds(Ps, PORTSC_PRC | PORTSC_WRC, 500);
         Val = ReadMmio32(Ps);
         DiagChk("ResetPort.PRC", Ok, "PRC|WRC", Val, 8);
         if (!Ok) {
-            EnumWhy("Boot: Why=reset timeout\n");
+            EnumerateWhy("Boot: Why=reset timeout\n");
             return 0;
         }
         if (!(Val & PORTSC_PED)) {
-            Ok = WaitSetMs(Ps, PORTSC_PED, Force ? 2000 : 1000);
+            Ok = WaitSetMilliseconds(Ps, PORTSC_PED, Force ? 2000 : 1000);
             Val = ReadMmio32(Ps);
         }
         DiagChk("ResetPort.PED", (Val & PORTSC_PED) && (Val & PORTSC_CCS),
                 "PED+CCS", Val, 8);
         if (!(Val & PORTSC_PED) || !(Val & PORTSC_CCS)) {
             if (!(Val & PORTSC_CCS)) {
-                EnumWhy("Boot: Why=lost CCS\n");
+                EnumerateWhy("Boot: Why=lost CCS\n");
             } else {
-                EnumWhy("Boot: Why=not PED\n");
+                EnumerateWhy("Boot: Why=not PED\n");
             }
             return 0;
         }
         DiagChk("ResetPort.leavePRC", 1, "sticky PRC", Val, 8);
         Speed = PortSpeed(Val);
         DiagChk("ResetPort.done", 1, "enabled", Speed, 2);
-        StallMs(50);
+        StallMilliseconds(50);
         return 1;
     }
 

@@ -8,7 +8,7 @@
 #include "Desktop.h"
 
 void FilesMenuRegister(void) {
-    DesktopMenuRegister(DESKTOP_ACTION_FILES, MSG_ICON_FILES, "Files", 2, 1);
+    DesktopMenuRegister(DESKTOP_ACTION_FILES, MESSAGE_ICON_FILES, "Files", 2, 1);
 }
 
 static void PaintOneFileRow(int Idx, UINT32 ListX, UINT32 Pad, UINT32 Bg) {

@@ -133,7 +133,7 @@ const char *BoardBluetoothDiagnosis(void) __attribute__((weak));
 void PiUartTransportSnapshot(UINT32 Out[6]) __attribute__((weak));
 UINT32 PiUartTransportClockHz(void) __attribute__((weak));
 
-static void CommandBluetoothInit(void) {
+static void CommandBluetoothInitialize(void) {
     int Rc = HalBluetoothInitialize();
 
     if (BoardBluetoothDiagnosis != 0) {
@@ -171,7 +171,7 @@ static void CommandBluetoothInit(void) {
 
 static void CommandBluetooth(int Argc, char **Argv) {
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "init")) {
-        CommandBluetoothInit();
+        CommandBluetoothInitialize();
         return;
     }
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "scan")) {

@@ -1,6 +1,6 @@
 /*
  * StoreNetHttpLwip.c — HTTP/1.0 GET via lwIP socket（lwip on 后必走此路）
- * 自研 Tcp 在 gLwIpRx=1 时 NetSendIp 直接失败 → 旧 HttpGet 会 tcp syn fail。
+ * 自研 Tcp 在 gLwIpReceive=1 时 NetSendIp 直接失败 → 旧 HttpGet 会 tcp syn fail。
  */
 #include "StoreNetPrivate.h"
 #include "LwIp.h"

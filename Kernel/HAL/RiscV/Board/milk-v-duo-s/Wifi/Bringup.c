@@ -50,7 +50,7 @@ static UINT32 sAicBringupBuffer[(AIC_BRINGUP_MAX_LENGTH + 3u) / 4u];
    缓冲只是给收包函数一个落点，宁可小也不能是空指针 */
 static UINT8 sAicBringupConfirm[16];
 
-static void BringupPrintTx(const AIC_BRINGUP_STEP *Step, UINT32 Length) {
+static void BringupPrintTransmit(const AIC_BRINGUP_STEP *Step, UINT32 Length) {
     SdhciMark("WiFi: ");
     SdhciMark(Step->Name);
     SdhciMark(" tx len=");
@@ -78,7 +78,7 @@ static void BringupDump(const UINT8 *Data, UINT32 Length) {
 static int BringupSendStep(SDHCI_HOST *Host, const AIC_BRINGUP_STEP *Step, UINT32 Length) {
     UINT32 ConfirmLength = 0;
 
-    BringupPrintTx(Step, Length);
+    BringupPrintTransmit(Step, Length);
     if (AicSendMessageEx(Host, Step->RequestId, Step->TaskId, (const void *)sAicBringupBuffer,
                         (UINT16)Length) != 0) {
         SdhciMark("WiFi: ");
@@ -113,7 +113,7 @@ static int BringupDry(void) {
         const AIC_BRINGUP_STEP *Step = &sAicBringupSteps[Index];
 
         Length = Step->Build((UINT8 *)sAicBringupBuffer);
-        BringupPrintTx(Step, Length);
+        BringupPrintTransmit(Step, Length);
         BringupDump((const UINT8 *)sAicBringupBuffer, Length);
     }
     SdhciMark("WiFi: bringup dry ok (");

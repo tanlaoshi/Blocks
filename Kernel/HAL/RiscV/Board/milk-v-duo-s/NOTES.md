@@ -362,7 +362,7 @@ SDK 里 D80 只发了 u02 一套（`fmacfw_8800d80_u02.bin` 等），所以 S5b 
 |---|---|---|
 | `Sdhci/WifiFw.c` | 449 | 全局状态定义 + `AicFwFail` + 7 个对外入口 |
 | `Sdhci/WifiMessage.c` | 400 | crc8/Put16/Get16、流控、FIFO 读写、收发、轮询、dump |
-| `Sdhci/WifiMemory.c` | 288 | 现场打印、`AicWriteReg`、venor prepare、mem read/write/block write |
+| `Sdhci/WifiMemory.c` | 288 | 现场打印、`AicWriteRegister`、venor prepare、mem read/write/block write |
 | `Sdhci/WifiPatchTable.c` | 439 | 表解析、名字匹配、写计划、自检、清单打印、状态复位 |
 | `Sdhci/WifiPatchApply.c` | 286 | cfg 4 读 10 写、100 条写、哨兵、dry、apply |
 | `Sdhci/WifiDownload.c` | 254 | 分块读、阶段检查、1 KB 块写、start_app、启动轮询 |
@@ -732,7 +732,7 @@ fn1 自己根本没有 0x110 这个地址，所以卡回 OUT_OF_RANGE。Linux �
 
 改了三处：
 
-1. FBR 读写一律 `Fn=0` + 绝对 `0x110/0x111`（`AicWriteReg`/`AicMarkIoState` 都改）；
+1. FBR 读写一律 `Fn=0` + 绝对 `0x110/0x111`（`AicWriteRegister`/`AicMarkIoState` 都改）；
 2. IOEx 只 `|= 0x02`（只保 fn1 位），不再写 `0x03` 顺手把 fn2 也开；
    bit0 回读不变按"只读/保留位"处理，日志标注不可信；
 3. FBR/IOEx 变成**幂等复核**：枚举阶段（`Sdio.c:978-990`）本来就写过 FBR 和 IOEx，

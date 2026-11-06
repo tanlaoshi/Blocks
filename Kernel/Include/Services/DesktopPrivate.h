@@ -243,6 +243,7 @@ UINT32 DesktopIconAssetPixelSize(void);
 int DesktopIconsAssetTierMatches(void);
 /* PR-S-bundle-desktop：扫已装 app desktop=yes 填动态槽 */
 void DesktopLoadAppIcons(void);
+void DesktopRequestAppsReload(void);
 UINT32 BmpSampleScaled(const BMP_IMAGE *Img, UINT32 Dx, UINT32 Dy,
                        UINT32 Dw, UINT32 Dh);
 void BlitBmpScaledRaw(UINT32 X, UINT32 Y, UINT32 Dw, UINT32 Dh,

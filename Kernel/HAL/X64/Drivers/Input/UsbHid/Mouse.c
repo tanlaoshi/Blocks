@@ -7,7 +7,7 @@
 #include "UsbHostController.h"
 
 /* 真机 PHOTO 后再绑鼠标，避免复合/hub 扫描踩键盘 EP */
-void InitMouseDeferred(void) {
+void MouseDeferredInitialize(void) {
     if (HalCpuIsHypervisor()) {
         return;
     }
@@ -16,23 +16,23 @@ void InitMouseDeferred(void) {
     }
     LogUsb("Boot: XHCI mouse deferred start\n");
     if (gHubSlotId != 0) {
-        (void)EnumHubChildrenForMouse();
+        (void)EnumerateHubChildrenForMouse();
     }
     if (gMouseSlotId == 0) {
         for (UINT32 p = 1; p <= gMaxPorts; p++) {
             if (gSlotId != 0 && p == gPort1) {
                 continue;
             }
-            if (InitMouseOnPort(p)) {
+            if (MousePortInitialize(p)) {
                 break;
             }
         }
     }
     if (gMouseSlotId == 0) {
-        (void)InitMouseOnKeyboardSlot(); /* 回退：保鼠标 */
+        (void)MouseKeyboardSlotInitialize(); /* 回退：保鼠标 */
     }
     if (gMouseSlotId == 0 && gHubSlotId != 0) {
-        (void)EnumHubChildrenForMouse();
+        (void)EnumerateHubChildrenForMouse();
     }
     if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
         (void)InterruptByClass(3, 0, 0);
@@ -62,7 +62,7 @@ void MousePush(void) {
     USB_MOUSE_REPORT *R = &gMouseQ[gMouseWriteIndex];
     R->Wheel = 0;
     R->Absolute = 0;
-    ParseLen = gMouseXferLen ? gMouseXferLen : gMouseReportLen;
+    ParseLen = gMouseTransferLength ? gMouseTransferLength : gMouseReportLen;
     if (ParseLen < 3) {
         ParseLen = 3;
     }
@@ -80,7 +80,7 @@ void MousePush(void) {
      * 当成 16-bit 绝对坐标，Gui 再 /32767 → 光标钉死在角上（PHOTO m 涨、桌面不动）。
      */
     UseAbsolute = 0;
-    if (gMouseAbsolute && gMouseIfaceProto != 2) {
+    if (gMouseAbsolute && gMouseInterfaceProto != 2) {
         if (ParseLen >= 5 && X0 <= 32767 && Y0 <= 32767) {
             UseAbsolute = 1;
         } else if (ParseLen >= 6 && gMouseBuf[0] != 0 && X1 <= 32767 &&

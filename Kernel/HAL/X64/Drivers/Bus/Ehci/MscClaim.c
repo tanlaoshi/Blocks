@@ -5,7 +5,7 @@
 #include "SerialLog.h"
 #include "Hal.h"
 
-static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
+static int GetDescriptor(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT16 TypeIndex,
                    UINT16 Len, void *Out) {
     USB_SETUP_PACKET S;
     S.bmRequestType = 0x80;
@@ -13,10 +13,10 @@ static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return ControlTransfer(C, Addr, EpMax, &S, Out);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, Out);
 }
 
-static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
+static int SetAddress(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EndpointMaxPacketSize) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -24,10 +24,10 @@ static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, 0, EpMax, &S, 0);
+    return EhciControlTransfer(C, 0, EndpointMaxPacketSize, &S, 0);
 }
 
-static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
+static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT8 Cfg) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -35,23 +35,23 @@ static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, Addr, EpMax, &S, 0);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, 0);
 }
 
-static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
-                        UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut,
+static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutInterface, UINT8 *EndpointIn,
+                        UINT16 *MaxPacketSizeIn, UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut,
                         UINT8 *CfgVal) {
     UINT16 Off = 0;
-    UINT8 CurIface = 0xFF;
+    UINT8 CurInterface = 0xFF;
     UINT8 CurAlt = 0;
-    UINT8 IfaceClass = 0;
-    UINT8 IfaceSub = 0;
-    UINT8 IfaceProto = 0;
-    UINT8 BestIface = 0xFF;
+    UINT8 InterfaceClass = 0;
+    UINT8 InterfaceSub = 0;
+    UINT8 InterfaceProto = 0;
+    UINT8 BestInterface = 0xFF;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
     int BestScore = -1;
 
     *CfgVal = 1;
@@ -65,27 +65,27 @@ static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
         if (Type == 0x02 && Len >= 9) {
             *CfgVal = Cfg[Off + 5];
         } else if (Type == 4 && Len >= 9) {
-            CurIface = Cfg[Off + 2];
+            CurInterface = Cfg[Off + 2];
             CurAlt = Cfg[Off + 3];
-            IfaceClass = Cfg[Off + 5];
-            IfaceSub = Cfg[Off + 6];
-            IfaceProto = Cfg[Off + 7];
-        } else if (Type == 5 && Len >= 7 && CurIface != 0xFF && CurAlt == 0) {
+            InterfaceClass = Cfg[Off + 5];
+            InterfaceSub = Cfg[Off + 6];
+            InterfaceProto = Cfg[Off + 7];
+        } else if (Type == 5 && Len >= 7 && CurInterface != 0xFF && CurAlt == 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
             int Score;
 
             if ((Attr & 0x03) != 2) {
                 Off = (UINT16)(Off + Len);
                 continue;
             }
-            if (IfaceClass == 0x08) {
+            if (InterfaceClass == 0x08) {
                 Score = 10;
-                if (IfaceSub == 0x06) {
+                if (InterfaceSub == 0x06) {
                     Score += 2;
                 }
-                if (IfaceProto == 0x50 || IfaceProto == 0x62) {
+                if (InterfaceProto == 0x50 || InterfaceProto == 0x62) {
                     Score += 4;
                 }
             } else {
@@ -97,21 +97,21 @@ static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
             }
             if (Score > BestScore) {
                 BestScore = Score;
-                BestIface = CurIface;
+                BestInterface = CurInterface;
                 BestIn = 0;
                 BestOut = 0;
-                BestInMps = 0;
-                BestOutMps = 0;
-            } else if (CurIface != BestIface) {
+                BestInMaxPacketSize = 0;
+                BestOutMaxPacketSize = 0;
+            } else if (CurInterface != BestInterface) {
                 Off = (UINT16)(Off + Len);
                 continue;
             }
             if (Addr & 0x80) {
                 BestIn = Addr;
-                BestInMps = Mps;
+                BestInMaxPacketSize = MaxPacketSize;
             } else {
                 BestOut = Addr;
-                BestOutMps = Mps;
+                BestOutMaxPacketSize = MaxPacketSize;
             }
         }
         Off = (UINT16)(Off + Len);
@@ -119,42 +119,42 @@ static int ParseMscBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface, UINT8 *EpIn,
     if (BestIn == 0 || BestOut == 0 || BestScore < 10) {
         return 0; /* 须 class8；勿误认 HID/BT */
     }
-    *OutIface = BestIface;
-    *EpIn = BestIn;
-    *MpsIn = BestInMps;
-    *EpOut = BestOut;
-    *MpsOut = BestOutMps;
+    *OutInterface = BestInterface;
+    *EndpointIn = BestIn;
+    *MaxPacketSizeIn = BestInMaxPacketSize;
+    *EndpointOut = BestOut;
+    *MaxPacketSizeOut = BestOutMaxPacketSize;
     return 1;
 }
 
 int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 Cfg[256];
-    UINT8 EpMax = 64;
+    UINT8 EndpointMaxPacketSize = 64;
     UINT8 Addr;
-    UINT8 Iface;
-    UINT8 EpIn;
-    UINT8 EpOut;
-    UINT16 MpsIn;
-    UINT16 MpsOut;
+    UINT8 Interface;
+    UINT8 EndpointIn;
+    UINT8 EndpointOut;
+    UINT16 MaxPacketSizeIn;
+    UINT16 MaxPacketSizeOut;
     UINT8 CfgVal;
     UINT16 CfgLen;
 
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
 
-    if (GetDesc(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
+    if (GetDescriptor(C, 0, (Speed == EHCI_SPEED_HS) ? 64 : 8, USB_WVALUE_DT_DEVICE, 8, &Dev) !=
         0) {
-        if (GetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+        if (GetDescriptor(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
             BootMarkUsb("Boot: EHCI MSC getdesc fail\n");
             return 0;
         }
-        EpMax = 8;
+        EndpointMaxPacketSize = 8;
     } else {
-        EpMax = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
+        EndpointMaxPacketSize = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
     }
-    if (GetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    if (GetDescriptor(C, 0, EndpointMaxPacketSize, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         return 0;
     }
     MscMarkHex4("Boot: EHCI MSC vid=", Dev.idVendor);
@@ -166,7 +166,7 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         gEhciLastErr = "msc nested hub";
         return 0;
     }
-    /* FT232→ehci-4；勿 SetAddr */
+    /* FT232→ehci-4；勿 SetAddress */
     if (Dev.idVendor == 0x0403u &&
         (Dev.idProduct == 0x6001u || Dev.idProduct == 0x6014u ||
          Dev.idProduct == 0x6015u)) {
@@ -177,30 +177,30 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         gEhciNextAddr = 2;
     }
     Addr = gEhciNextAddr++;
-    if (SetAddr(C, Addr, EpMax) != 0) {
+    if (SetAddress(C, Addr, EndpointMaxPacketSize) != 0) {
         return 0;
     }
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
     Delay(100000);
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         return 0;
     }
     CfgLen = (UINT16)(Cfg[2] | ((UINT16)Cfg[3] << 8));
     if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
         CfgLen = 64;
     }
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
         return 0;
     }
-    if (!ParseMscBulk(Cfg, CfgLen, &Iface, &EpIn, &MpsIn, &EpOut, &MpsOut,
+    if (!ParseMscBulk(Cfg, CfgLen, &Interface, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut,
                       &CfgVal)) {
         gEhciLastErr = "no msc iface";
         BootMarkUsb("Boot: EHCI no msc iface\n");
         return 0;
     }
-    if (SetConfig(C, Addr, EpMax, CfgVal) != 0) {
+    if (SetConfig(C, Addr, EndpointMaxPacketSize, CfgVal) != 0) {
         return 0;
     }
     Delay(200000);
@@ -210,31 +210,31 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         S.bmRequestType = 0xA1;
         S.bRequest = 0xFE;
         S.wValue = 0;
-        S.wIndex = Iface;
+        S.wIndex = Interface;
         S.wLength = 1;
-        C->XferSpeed = Speed;
-        C->XferHubAddr = HubAddr;
-        C->XferHubPort = HubPort;
-        (void)ControlTransfer(C, Addr, EpMax, &S, &Lun);
+        C->TransferSpeed = Speed;
+        C->TransferHubAddress = HubAddr;
+        C->TransferHubPort = HubPort;
+        (void)EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, &Lun);
     }
     C->MscAddr = Addr;
     C->MscSpeed = Speed;
     C->MscHubAddr = HubAddr;
     C->MscHubPort = HubPort;
-    C->MscIface = Iface;
-    C->MscEpIn = EpIn;
-    C->MscEpOut = EpOut;
-    if (MpsIn == 0) {
-        MpsIn = (Speed == EHCI_SPEED_HS) ? 512 : 64;
+    C->MscInterface = Interface;
+    C->MscEndpointIn = EndpointIn;
+    C->MscEndpointOut = EndpointOut;
+    if (MaxPacketSizeIn == 0) {
+        MaxPacketSizeIn = (Speed == EHCI_SPEED_HS) ? 512 : 64;
     }
-    if (MpsOut == 0) {
-        MpsOut = (Speed == EHCI_SPEED_HS) ? 512 : 64;
+    if (MaxPacketSizeOut == 0) {
+        MaxPacketSizeOut = (Speed == EHCI_SPEED_HS) ? 512 : 64;
     }
-    C->MscMpsIn = MpsIn;
-    C->MscMpsOut = MpsOut;
+    C->MscMaxPacketSizeIn = MaxPacketSizeIn;
+    C->MscMaxPacketSizeOut = MaxPacketSizeOut;
     C->MscDtIn = 0;
     C->MscDtOut = 0;
-    C->MscEpMax0 = EpMax;
+    C->MscEndpointMax0 = EndpointMaxPacketSize;
     C->MscOk = 1;
     C->MscCapacityOk = 0;
     C->MscBlockCount = 0;
@@ -247,24 +247,24 @@ int MscFinishClaim(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
 
 int MscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
     USB_DEVICE_DESCRIPTOR Dev;
-    UINT8 EpMax = 64;
+    UINT8 EndpointMaxPacketSize = 64;
     UINT8 HubAddr;
 
     if (!PortReset(C, Port)) {
         return 0;
     }
-    C->XferSpeed = EHCI_SPEED_HS;
-    C->XferHubAddr = 0;
-    C->XferHubPort = 0;
-    if (GetDesc(C, 0, 64, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
-        if (GetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+    C->TransferSpeed = EHCI_SPEED_HS;
+    C->TransferHubAddress = 0;
+    C->TransferHubPort = 0;
+    if (GetDescriptor(C, 0, 64, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+        if (GetDescriptor(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
             return 0;
         }
-        EpMax = 8;
+        EndpointMaxPacketSize = 8;
     } else {
-        EpMax = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 64;
+        EndpointMaxPacketSize = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 64;
     }
-    if (GetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    if (GetDescriptor(C, 0, EndpointMaxPacketSize, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         return 0;
     }
     if (Dev.bDeviceClass == 0x09u) {
@@ -272,14 +272,14 @@ int MscEnsureHub(EHCI_CTRL *C, UINT8 Port) {
             gEhciNextAddr = 2;
         }
         HubAddr = gEhciNextAddr++;
-        if (SetAddr(C, HubAddr, EpMax) != 0) {
+        if (SetAddress(C, HubAddr, EndpointMaxPacketSize) != 0) {
             return 0;
         }
-        C->XferSpeed = EHCI_SPEED_HS;
-        C->XferHubAddr = 0;
-        C->XferHubPort = 0;
+        C->TransferSpeed = EHCI_SPEED_HS;
+        C->TransferHubAddress = 0;
+        C->TransferHubPort = 0;
         Delay(100000);
-        if (SetConfig(C, HubAddr, EpMax, 1) != 0) {
+        if (SetConfig(C, HubAddr, EndpointMaxPacketSize, 1) != 0) {
             return 0;
         }
         C->HubAddr = HubAddr;

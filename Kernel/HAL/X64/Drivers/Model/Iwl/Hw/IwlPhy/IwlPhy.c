@@ -46,7 +46,7 @@ void IwlPhyPut16(UINT8 *P, UINT16 V) {
     P[1] = (UINT8)(V >> 8);
 }
 
-int IwlPhySendCfg(UINT32 UcodeType) {
+int IwlPhySendConfig(UINT32 UcodeType) {
     UINT8 Cmd[12];
     UINT32 Flow = gIwlCalibFlow[UcodeType];
     UINT32 Event = gIwlCalibEvent[UcodeType];
@@ -71,8 +71,8 @@ int IwlPhySendAnt(void) {
 }
 
 
-int IwlPhyCfgRt(void) {
-    if (!IwlPhySendCfg(IWL_UCODE_TYPE_REGULAR)) {
+int IwlPhyConfigRt(void) {
+    if (!IwlPhySendConfig(IWL_UCODE_TYPE_REGULAR)) {
         IwlLogStage("phyrt=fail");
         return 0;
     }

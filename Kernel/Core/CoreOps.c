@@ -16,6 +16,7 @@ void WindowOpsRegister(const WINDOW_OPS *Ops) {
         gWindowOps.OpenUser = 0;
         gWindowOps.DamageUser = 0;
         gWindowOps.DamageRectUser = 0;
+        gWindowOps.DrawStringUser = 0;
         gWindowOps.PollUserInput = 0;
         gWindowOps.AddButton = 0;
         return;
@@ -43,6 +44,14 @@ int WindowDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
         return -1;
     }
     return gWindowOps.DamageRectUser(Wid, X, Y, W, H, Pixels);
+}
+
+int WindowDrawStringUser(int Wid, UINT32 X, UINT32 Y, UINT32 Color,
+                         const char *Text) {
+    if (!gWindowOps.DrawStringUser || !Text) {
+        return -1;
+    }
+    return gWindowOps.DrawStringUser(Wid, X, Y, Color, Text);
 }
 
 int WindowPollUserInput(int Wid) {
@@ -140,7 +149,7 @@ int VfsServiceRename(const char *OldPath, const char *NewPath) {
 
 void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops) {
     if (!Ops) {
-        gConsoleIo.WriteLen = 0;
+        gConsoleIo.WriteLength = 0;
         gConsoleIo.ReadChar = 0;
         gConsoleIo.ShowPrompt = 0;
         gConsoleIo.CoopUserOutClear = 0;
@@ -162,15 +171,15 @@ void ConsoleIoCoopUserOutFlush(void) {
     }
 }
 
-void ConsoleIoWriteLen(const char *Data, UINTN Len) {
+void ConsoleIoWriteLength(const char *Data, UINTN Len) {
     char Buf[128];
     UINTN Off;
 
     if (!Data || Len == 0) {
         return;
     }
-    if (gConsoleIo.WriteLen) {
-        gConsoleIo.WriteLen(Data, Len);
+    if (gConsoleIo.WriteLength) {
+        gConsoleIo.WriteLength(Data, Len);
         return;
     }
     Off = 0;

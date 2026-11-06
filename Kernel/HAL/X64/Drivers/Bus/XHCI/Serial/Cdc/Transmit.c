@@ -10,21 +10,21 @@ static volatile UINT32 gCdcBulkCode;
 static int gCdcTxBusy;
 
 static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                      UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut) {
-    UINT8 InNum = EpIn & 0x0F;
-    UINT8 OutNum = EpOut & 0x0F;
+                      UINT8 EndpointIn, UINT16 MaxPacketSizeIn, UINT8 EndpointOut, UINT16 MaxPacketSizeOut) {
+    UINT8 InNum = EndpointIn & 0x0F;
+    UINT8 OutNum = EndpointOut & 0x0F;
     UINT32 InDci = (UINT32)InNum * 2 + 1;
     UINT32 OutDci = (UINT32)OutNum * 2 + 0;
     UINT32 CtxEntries = InDci > OutDci ? InDci : OutDci;
     UINT32 *Slot;
-    UINT32 *Ep;
+    UINT32 *Endpoint;
     UINT64 Deq;
 
-    if (MpsIn == 0 || MpsIn > 512) {
-        MpsIn = 64;
+    if (MaxPacketSizeIn == 0 || MaxPacketSizeIn > 512) {
+        MaxPacketSizeIn = 64;
     }
-    if (MpsOut == 0 || MpsOut > 512) {
-        MpsOut = 64;
+    if (MaxPacketSizeOut == 0 || MaxPacketSizeOut > 512) {
+        MaxPacketSizeOut = 64;
     }
 
     ZeroMemory(gInCtx, sizeof(gInCtx));
@@ -37,24 +37,24 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
         Slot[2] = (UINT32)gCdcHubSlot | ((UINT32)gCdcTtPort << 8);
     }
 
-    InitRing(gCdcBulkInRing, &gCdcBulkIn, RING_SIZE);
-    InitRing(gCdcBulkOutRing, &gCdcBulkOut, RING_SIZE);
+    RingInitialize(gCdcBulkInRing, &gCdcBulkIn, RING_SIZE);
+    RingInitialize(gCdcBulkOutRing, &gCdcBulkOut, RING_SIZE);
 
-    Ep = (UINT32 *)(void *)InEp(InDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (6u << 3) | ((UINT32)MpsIn << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(InDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (6u << 3) | ((UINT32)MaxPacketSizeIn << 16);
     Deq = PointerToPhysical(gCdcBulkInRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsIn;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeIn;
 
-    Ep = (UINT32 *)(void *)InEp(OutDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (2u << 3) | ((UINT32)MpsOut << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(OutDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (2u << 3) | ((UINT32)MaxPacketSizeOut << 16);
     Deq = PointerToPhysical(gCdcBulkOutRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)MpsOut;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)MaxPacketSizeOut;
 
     FlushDma(gInCtx, sizeof(gInCtx));
     FlushDma(gCdcBulkInRing, sizeof(gCdcBulkInRing));
@@ -62,17 +62,17 @@ static int ConfigureBulk(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     FlushDma(gCdcDevCtx, sizeof(gCdcDevCtx));
     if (Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) <
         0) {
-        BootLog("Boot: USB-UART CDC Cfg Ep Fail\n");
+        BootLog("Boot: USB-UART CDC Cfg Endpoint Fail\n");
         return 0;
     }
     gCdcBulkInDci = InDci;
     gCdcBulkOutDci = OutDci;
-    gCdcBulkInMps = MpsIn;
-    gCdcBulkOutMps = MpsOut;
+    gCdcBulkInMaxPacketSize = MaxPacketSizeIn;
+    gCdcBulkOutMaxPacketSize = MaxPacketSizeOut;
     return 1;
 }
 
-static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+static int MatchTransfer(UINT32 EvtSlot, UINT32 Endpoint, UINT64 TrbPtr, UINT32 Code,
                           UINT32 Remain) {
     UINT64 OutLo;
     UINT64 OutHi;
@@ -86,13 +86,13 @@ static int MatchTransfer(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
     OutHi = OutLo + sizeof(gCdcBulkOutRing);
     InLo = PointerToPhysical(gCdcBulkInRing);
     InHi = InLo + sizeof(gCdcBulkInRing);
-    if ((gCdcBulkOutDci != 0 && Ep == gCdcBulkOutDci) ||
+    if ((gCdcBulkOutDci != 0 && Endpoint == gCdcBulkOutDci) ||
         (TrbPtr >= OutLo && TrbPtr < OutHi)) {
         gCdcBulkCode = Code;
         gCdcBulkDone = 1;
         return 1;
     }
-    if ((gCdcBulkInDci != 0 && Ep == gCdcBulkInDci) ||
+    if ((gCdcBulkInDci != 0 && Endpoint == gCdcBulkInDci) ||
         (TrbPtr >= InLo && TrbPtr < InHi)) {
         return gCdc.OnComplete ? gCdc.OnComplete(Code, Remain) : 0;
     }
@@ -134,7 +134,7 @@ static int WaitBulk(void) {
 }
 
 static void Write(const char *Text) {
-    UINT32 Mps;
+    UINT32 MaxPacketSize;
     UINT32 N;
 
     if (!Text || !gCdcClaimed || gCdcSlot == 0 || gCdcBulkOutDci == 0) {
@@ -144,14 +144,14 @@ static void Write(const char *Text) {
         return;
     }
     gCdcTxBusy = 1;
-    Mps = gCdcBulkOutMps ? gCdcBulkOutMps : 64;
-    if (Mps > sizeof(gCdcTxBuf)) {
-        Mps = (UINT32)sizeof(gCdcTxBuf);
+    MaxPacketSize = gCdcBulkOutMaxPacketSize ? gCdcBulkOutMaxPacketSize : 64;
+    if (MaxPacketSize > sizeof(gCdcTxBuf)) {
+        MaxPacketSize = (UINT32)sizeof(gCdcTxBuf);
     }
 
     while (*Text) {
         N = 0;
-        while (Text[N] && N < Mps) {
+        while (Text[N] && N < MaxPacketSize) {
             gCdcTxBuf[N] = (UINT8)Text[N];
             N++;
         }

@@ -141,7 +141,7 @@ INCLUDES_COMMON = -IInclude \
                   -IHAL/$(HAL_ARCH)/PageTable \
                   -IHAL/$(HAL_ARCH)/PCIe \
                   -IHAL/$(HAL_ARCH)/IoApic \
-                  -IHAL/$(HAL_ARCH)/DeviceEnum \
+                  -IHAL/$(HAL_ARCH)/DeviceEnumerate \
                   -IHAL/$(HAL_ARCH)/SmpBoot \
                   -IHAL/$(HAL_ARCH)/Platform \
                   -IHAL/$(HAL_ARCH)/Acpi \
@@ -480,7 +480,7 @@ ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Architecture/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PageTable/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/PCIe/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/IoApic/*.c)
-ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/DeviceEnum/*.c)
+ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/DeviceEnumerate/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/SmpBoot/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Platform/*.c)
 ARCH_SRCS     += $(wildcard HAL/$(HAL_ARCH)/Hal/*.c)
@@ -539,7 +539,7 @@ USER_THREADSMOKE_ELF = $(USER_OUT)/threadsmoke.elf
 USER_PTHREADSMOKE_ELF = $(USER_OUT)/pthreadsmoke.elf
 USER_THREADDEMO_ELF = $(USER_OUT)/threaddemo.elf
 USER_SNAKE_ELF = $(USER_OUT)/snake.elf
-USER_TASKMGR_ELF = $(USER_OUT)/taskmgr.elf
+USER_TASK_MANAGER_ELF = $(USER_OUT)/taskmgr.elf
 USER_DIRDEMO_ELF = $(USER_OUT)/dirdemo.elf
 USER_CWDDEMO_ELF = $(USER_OUT)/cwddemo.elf
 USER_NETLIB_ELF = $(USER_OUT)/netlibdemo.elf
@@ -570,7 +570,7 @@ USER_THREADSMOKE_OBJ = $(USER_OUT)/threadsmoke.o
 USER_PTHREADSMOKE_OBJ = $(USER_OUT)/pthreadsmoke.o
 USER_THREADDEMO_OBJ = $(USER_OUT)/threaddemo.o
 USER_SNAKE_OBJ = $(USER_OUT)/snake.o
-USER_TASKMGR_OBJ = $(USER_OUT)/taskmgr.o
+USER_TASK_MANAGER_OBJ = $(USER_OUT)/taskmgr.o
 USER_DIRDEMO_OBJ = $(USER_OUT)/dirdemo.o
 USER_CWDDEMO_OBJ = $(USER_OUT)/cwddemo.o
 USER_NETLIB_OBJ = $(USER_OUT)/netlibdemo.o
@@ -581,14 +581,15 @@ USER_LIB_GRAPHICS_OBJ = User/Library/Graphics/Graphics.o
 USER_LIB_GRAPHICS_BATCH_OBJ = User/Library/Graphics/Batch.o
 USER_LIB_UI_OBJ = User/Library/Ui/Ui.o
 USER_LIB_UI_WIDGETS_OBJ = User/Library/Ui/Widgets.o
+USER_LIB_UI_WIDGETS_KEYBOARD_OBJ = User/Library/Ui/WidgetsKeyboard.o
 USER_LIB_UI_IM_OBJ = User/Library/Ui/Immediate.o
 USER_LIB_UI_STYLE_OBJ = User/Library/Ui/Style.o
 USER_LIB_NET_OBJ = User/Library/Net/Net.o
-USER_LIB_FSUTIL_OBJ = User/Library/VolumePath/VolumePath.o
+USER_LIB_VOLUME_PATH_OBJ = User/Library/VolumePath/VolumePath.o
 USER_LIB_GRAPHICS_A = User/Library/Graphics/libGraphics.a
 USER_LIB_UI_A = User/Library/Ui/libUi.a
 USER_LIB_NET_A = User/Library/Net/libNet.a
-USER_LIB_FSUTIL_A = User/Library/VolumePath/libVolumePath.a
+USER_LIB_VOLUME_PATH_A = User/Library/VolumePath/libVolumePath.a
 USER_LIBC_A = User/Library/Libc/libc.a
 USER_BLOCKS_A = User/Library/Blocks/libblocks.a
 # Libc = ISO C；Blocks = start + 自有门面（不做 POSIX 双轨）
@@ -685,8 +686,8 @@ USER_CRT_OBJS = $(USER_VIRT_DIR)/crt0.o $(USER_VIRT_DIR)/syscall.o \
 ifeq ($(ARCH),arm64)
 # Pi/virt：预装 Hello + Task Manager（对表 X64 Apps/<id>/）
 USER_OUT = $(USER_VIRT_DIR)
-USER_TASKMGR_ELF = $(USER_VIRT_DIR)/taskmgr.elf
-USER_TASKMGR_OBJ = $(USER_VIRT_DIR)/taskmgr.o
+USER_TASK_MANAGER_ELF = $(USER_VIRT_DIR)/taskmgr.elf
+USER_TASK_MANAGER_OBJ = $(USER_VIRT_DIR)/taskmgr.o
 USER_LIB_GRAPHICS_OBJ = $(USER_VIRT_DIR)/lib_graphics.o
 USER_LIB_GRAPHICS_BATCH_OBJ = $(USER_VIRT_DIR)/lib_graphics_batch.o
 USER_LIB_UI_OBJ = $(USER_VIRT_DIR)/lib_ui.o
@@ -820,13 +821,13 @@ all: $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF) \
 	$(USER_NETDEMO_ELF) $(USER_NETSRV_ELF) $(USER_SYSHELLO_ELF) $(USER_SYSFORK_ELF) \
 	$(USER_EXECDEMO_ELF) $(USER_PIPEDEMO_ELF) $(USER_BRKDEMO_ELF) $(USER_MMAPDEMO_ELF) $(USER_KILLDEMO_ELF) \
 	$(USER_SIGDEMO_ELF) \
-	$(USER_LIBCDEMO_ELF) $(USER_SLEEPDEMO_ELF) $(USER_THREADSMOKE_ELF) $(USER_PTHREADSMOKE_ELF) $(USER_THREADDEMO_ELF) $(USER_SNAKE_ELF) $(USER_TASKMGR_ELF) $(USER_DIRDEMO_ELF) $(USER_CWDDEMO_ELF) \
-	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIBC_A) $(USER_BLOCKS_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A)
+	$(USER_LIBCDEMO_ELF) $(USER_SLEEPDEMO_ELF) $(USER_THREADSMOKE_ELF) $(USER_PTHREADSMOKE_ELF) $(USER_THREADDEMO_ELF) $(USER_SNAKE_ELF) $(USER_TASK_MANAGER_ELF) $(USER_DIRDEMO_ELF) $(USER_CWDDEMO_ELF) \
+	$(USER_NETLIB_ELF) $(USER_SOCKDEMO_ELF) $(USER_CHAT_ELF) $(USER_ENOSYS_ELF) $(USER_LIBC_A) $(USER_BLOCKS_A) $(USER_LIB_NET_A) $(USER_LIB_VOLUME_PATH_A)
 endif
 else
 ifneq ($(BRINGUP),1)
 ifeq ($(ARCH),arm64)
-all: $(USER_HELLO_ELF) $(USER_TASKMGR_ELF)
+all: $(USER_HELLO_ELF) $(USER_TASK_MANAGER_ELF)
 else
 all: $(USER_HELLO_ELF)
 endif
@@ -1103,6 +1104,10 @@ $(USER_LIB_UI_WIDGETS_OBJ): User/Library/Ui/Widgets.c \
 		User/Library/Ui/Private.h User/Include/Ui/Ui.h User/Include/Graphics/Graphics.h
 	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Widgets.c -o $@
 
+$(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ): User/Library/Ui/WidgetsKeyboard.c \
+		User/Library/Ui/Private.h User/Include/Ui/Ui.h
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/WidgetsKeyboard.c -o $@
+
 $(USER_LIB_UI_IM_OBJ): User/Library/Ui/Immediate.c \
 		User/Include/Ui/UiImmediate.h User/Include/Ui/Ui.h
 	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Immediate.c -o $@
@@ -1114,8 +1119,10 @@ $(USER_LIB_UI_STYLE_OBJ): User/Library/Ui/Style.c \
 $(USER_LIB_GRAPHICS_A): $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
 	ar rcs $@ $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
 
-$(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
-	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
+$(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ) \
+		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
+	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ) \
+		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
 
 $(USER_LIB_NET_OBJ): User/Library/Net/Net.c User/Include/Net/Net.h \
 		User/Include/Host/UnixStandard.h User/Include/Libc/errno.h User/Include/Libc/string.h \
@@ -1126,12 +1133,12 @@ $(USER_LIB_NET_A): $(USER_LIB_NET_OBJ)
 	mkdir -p $(dir $@)
 	ar rcs $@ $(USER_LIB_NET_OBJ)
 
-$(USER_LIB_FSUTIL_OBJ): User/Library/VolumePath/VolumePath.c User/Include/VolumePath/VolumePath.h User/Include/Host/DirectoryEntry.h User/Include/Libc/errno.h 
+$(USER_LIB_VOLUME_PATH_OBJ): User/Library/VolumePath/VolumePath.c User/Include/VolumePath/VolumePath.h User/Include/Host/DirectoryEntry.h User/Include/Libc/errno.h 
 	$(CC) $(USER_CFLAGS) -c User/Library/VolumePath/VolumePath.c -o $@
 
-$(USER_LIB_FSUTIL_A): $(USER_LIB_FSUTIL_OBJ)
+$(USER_LIB_VOLUME_PATH_A): $(USER_LIB_VOLUME_PATH_OBJ)
 	mkdir -p $(dir $@)
-	ar rcs $@ $(USER_LIB_FSUTIL_OBJ)
+	ar rcs $@ $(USER_LIB_VOLUME_PATH_OBJ)
 
 # PR-L1 / libc-rename：CRT C 部分打成 libc.a，供 SDK / 课外链接
 $(USER_LIBC_A): $(USER_LIBC_OBJS)
@@ -1176,11 +1183,11 @@ $(USER_SNAKE_ELF): $(USER_SNAKE_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(U
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_SNAKE_OBJ) \
 		$(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
-$(USER_TASKMGR_OBJ): User/Apps/TaskMgr.c User/Include/Ui/Ui.h User/Include/Blocks/Task.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h User/Include/Libc/signal.h | $(USER_OUT)
-	$(CC) $(USER_CFLAGS) -c User/Apps/TaskMgr.c -o $@
+$(USER_TASK_MANAGER_OBJ): User/Apps/TaskManager.c User/Include/Ui/Ui.h User/Include/Blocks/Task.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h User/Include/Libc/signal.h | $(USER_OUT)
+	$(CC) $(USER_CFLAGS) -c User/Apps/TaskManager.c -o $@
 
-$(USER_TASKMGR_ELF): $(USER_TASKMGR_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
-	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASKMGR_OBJ) \
+$(USER_TASK_MANAGER_ELF): $(USER_TASK_MANAGER_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASK_MANAGER_OBJ) \
 		$(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_DIRDEMO_OBJ): User/Apps/Demos/DirDemo.c User/Include/Libc/stdio.h User/Include/Host/DirectoryEntry.h User/Include/Libc/string.h | $(USER_OUT)
@@ -1209,15 +1216,19 @@ $(USER_SOCKDEMO_ELF): $(USER_SOCKDEMO_OBJ) $(USER_LIB_NET_A) $(USER_CRT_OBJS) $(
 	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_SOCKDEMO_OBJ) \
 		$(USER_LIB_NET_A) $(USER_CRT_OBJS)
 
-$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/Net.h User/Include/Net/Net.h User/Include/Ui/Ui.h User/Include/Graphics/Graphics.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h | $(USER_OUT)
+$(USER_CHAT_OBJ): User/Apps/Chat/Chat.c User/Apps/Chat/ChatPeer.h User/Apps/Chat/ChatView.h User/Include/Net/Net.h User/Include/Ui/Ui.h User/Include/Graphics/Graphics.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h | $(USER_OUT)
 	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Chat.c -o $@
 
 USER_CHAT_NET_OBJ = $(USER_OUT)/chat_net.o
-$(USER_CHAT_NET_OBJ): User/Apps/Chat/Net.c User/Apps/Chat/Net.h User/Include/Net/Net.h | $(USER_OUT)
-	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/Net.c -o $@
+$(USER_CHAT_NET_OBJ): User/Apps/Chat/ChatPeer.c User/Apps/Chat/ChatPeer.h User/Include/Net/Net.h | $(USER_OUT)
+	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/ChatPeer.c -o $@
 
-$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_LIB_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
-	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) \
+USER_CHAT_VIEW_OBJ = $(USER_OUT)/chat_view.o
+$(USER_CHAT_VIEW_OBJ): User/Apps/Chat/ChatView.c User/Apps/Chat/ChatView.h User/Include/Ui/Ui.h | $(USER_OUT)
+	$(CC) $(USER_CFLAGS) -c User/Apps/Chat/ChatView.c -o $@
+
+$(USER_CHAT_ELF): $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_CHAT_VIEW_OBJ) $(USER_LIB_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_OUT)
+	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_CHAT_VIEW_OBJ) \
 		$(USER_LIB_NET_A) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS)
 
 $(USER_ENOSYS_OBJ): User/Apps/Demos/EnosysDemo.c User/Include/Libc/stdio.h User/Include/Libc/errno.h User/Include/Blocks/Syscall.h | $(USER_OUT)
@@ -1452,6 +1463,9 @@ $(USER_LIB_UI_OBJ): User/Library/Ui/Ui.c User/Library/Ui/Private.h User/Include/
 $(USER_LIB_UI_WIDGETS_OBJ): User/Library/Ui/Widgets.c User/Library/Ui/Private.h User/Include/Ui/Ui.h User/Include/Graphics/Graphics.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Widgets.c -o $@
 
+$(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ): User/Library/Ui/WidgetsKeyboard.c User/Library/Ui/Private.h User/Include/Ui/Ui.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Library/Ui/WidgetsKeyboard.c -o $@
+
 $(USER_LIB_UI_IM_OBJ): User/Library/Ui/Immediate.c User/Include/Ui/UiImmediate.h User/Include/Ui/Ui.h | $(USER_VIRT_DIR)
 	$(CC) $(USER_CFLAGS) -c User/Library/Ui/Immediate.c -o $@
 
@@ -1461,14 +1475,16 @@ $(USER_LIB_UI_STYLE_OBJ): User/Library/Ui/Style.c User/Include/Ui/UiStyle.h | $(
 $(USER_LIB_GRAPHICS_A): $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) | $(USER_VIRT_DIR)
 	ar rcs $@ $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ)
 
-$(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) | $(USER_VIRT_DIR)
-	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
+$(USER_LIB_UI_A): $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ) \
+		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) | $(USER_VIRT_DIR)
+	ar rcs $@ $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) $(USER_LIB_UI_WIDGETS_KEYBOARD_OBJ) \
+		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ)
 
-$(USER_TASKMGR_OBJ): User/Apps/TaskMgr.c User/Include/Ui/Ui.h User/Include/Blocks/Task.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h User/Include/Libc/signal.h | $(USER_VIRT_DIR)
-	$(CC) $(USER_CFLAGS) -c User/Apps/TaskMgr.c -o $@
+$(USER_TASK_MANAGER_OBJ): User/Apps/TaskManager.c User/Include/Ui/Ui.h User/Include/Blocks/Task.h User/Include/Libc/stdio.h User/Include/Host/UnixStandard.h User/Include/Libc/signal.h | $(USER_VIRT_DIR)
+	$(CC) $(USER_CFLAGS) -c User/Apps/TaskManager.c -o $@
 
-$(USER_TASKMGR_ELF): $(USER_TASKMGR_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
-	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASKMGR_OBJ) \
+$(USER_TASK_MANAGER_ELF): $(USER_TASK_MANAGER_OBJ) $(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(USER_LD) | $(USER_VIRT_DIR)
+	$(LD) -nostdlib -static $(USER_LDFLAGS) -T $(USER_LD) -o $@ $(USER_TASK_MANAGER_OBJ) \
 		$(USER_LIB_UI_A) $(USER_LIB_GRAPHICS_A) $(USER_CRT_OBJS) $(LIBGCC)
 endif
 
@@ -1492,11 +1508,11 @@ ifeq ($(ARCH),x86_64)
 	rm -f $(USER_NETDEMO_OBJ) $(USER_NETSRV_OBJ) $(USER_SYSHELLO_OBJ) $(USER_SYSFORK_OBJ)
 	rm -f $(USER_EXECDEMO_OBJ) $(USER_PIPEDEMO_OBJ) $(USER_BRKDEMO_OBJ) $(USER_MMAPDEMO_OBJ) $(USER_KILLDEMO_OBJ) $(USER_SIGDEMO_OBJ)
 	rm -f $(USER_LIBCDEMO_OBJ) $(USER_SLEEPDEMO_OBJ) $(USER_THREADSMOKE_OBJ) $(USER_PTHREADSMOKE_OBJ) $(USER_THREADDEMO_OBJ) $(USER_SNAKE_OBJ) $(USER_DIRDEMO_OBJ) $(USER_CWDDEMO_OBJ)
-	rm -f $(USER_NETLIB_OBJ) $(USER_SOCKDEMO_OBJ) $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_ENOSYS_OBJ)
+	rm -f $(USER_NETLIB_OBJ) $(USER_SOCKDEMO_OBJ) $(USER_CHAT_OBJ) $(USER_CHAT_NET_OBJ) $(USER_CHAT_VIEW_OBJ) $(USER_ENOSYS_OBJ)
 	rm -f $(USER_LIB_GRAPHICS_OBJ) $(USER_LIB_GRAPHICS_BATCH_OBJ) $(USER_LIB_UI_OBJ) $(USER_LIB_UI_WIDGETS_OBJ) \
 		$(USER_LIB_UI_IM_OBJ) $(USER_LIB_UI_STYLE_OBJ) \
-		$(USER_LIB_NET_OBJ) $(USER_LIB_FSUTIL_OBJ)
-	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_FSUTIL_A) $(USER_LIBC_A) $(USER_BLOCKS_A)
+		$(USER_LIB_NET_OBJ) $(USER_LIB_VOLUME_PATH_OBJ)
+	rm -f $(USER_LIB_GRAPHICS_A) $(USER_LIB_UI_A) $(USER_LIB_NET_A) $(USER_LIB_VOLUME_PATH_A) $(USER_LIBC_A) $(USER_BLOCKS_A)
 	rm -f $(USER_CRT_OBJS)
 	rm -f $(USER_HELLO_ELF) $(USER_COUNT_ELF) $(USER_FORK_ELF) $(USER_WAITNH_ELF)
 	rm -f $(USER_LIBTOY_SO) $(USER_DYNDEMO_ELF) $(USER_CAT_ELF) $(USER_WRITE_ELF)

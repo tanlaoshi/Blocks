@@ -16,45 +16,45 @@
 #include "Netif.h"
 #endif
 
-void RxRefillOne(UINT16 DescId, UINT8 *Buf) {
+void ReceiveRefillOne(UINT16 DescId, UINT8 *Buf) {
     UINT16 A;
 
-    gRx.Desc[DescId].Addr = (UINT64)(UINTN)Buf;
-    gRx.Desc[DescId].Len = RX_BUF_SIZE;
-    gRx.Desc[DescId].Flags = VRING_DESC_F_WRITE;
-    gRx.Desc[DescId].Next = 0;
-    A = gRx.NextAvail;
-    gRx.AvailRing[A % gRx.QueueSize] = DescId;
+    gReceive.Desc[DescId].Addr = (UINT64)(UINTN)Buf;
+    gReceive.Desc[DescId].Len = RX_BUF_SIZE;
+    gReceive.Desc[DescId].Flags = VRING_DESC_F_WRITE;
+    gReceive.Desc[DescId].Next = 0;
+    A = gReceive.NextAvail;
+    gReceive.AvailRing[A % gReceive.QueueSize] = DescId;
     BLOCKS_ATOMIC_FENCE();
-    *gRx.AvailIdx = (UINT16)(A + 1);
-    gRx.NextAvail = (UINT16)(A + 1);
+    *gReceive.AvailIdx = (UINT16)(A + 1);
+    gReceive.NextAvail = (UINT16)(A + 1);
 }
 
-void RxRefillAll(void) {
+void ReceiveRefillAll(void) {
     UINT16 i;
-    UINT16 N = gRx.QueueSize;
+    UINT16 N = gReceive.QueueSize;
     if (N > RX_BUF_COUNT) {
         N = RX_BUF_COUNT;
     }
     for (i = 0; i < N; i++) {
-        RxRefillOne(i, gRxBuf[i]);
+        ReceiveRefillOne(i, gReceiveBuffer[i]);
     }
-    VirtioMmioNotifyQueue(&gRx, RX_QUEUE_ID);
+    VirtioMmioNotifyQueue(&gReceive, RX_QUEUE_ID);
 }
 
-void NetProcessRx(void) {
-    UINT16 Used = *gRx.UsedIdx;
+void NetProcessReceive(void) {
+    UINT16 Used = *gReceive.UsedIdx;
 
-    while (gRx.LastUsed != Used) {
-        UINT16 Id = (UINT16)gRx.UsedRing[gRx.LastUsed % gRx.QueueSize].Id;
-        UINT32 Len = gRx.UsedRing[gRx.LastUsed % gRx.QueueSize].Len;
-        UINT8 *Buf = (UINT8 *)(UINTN)gRx.Desc[Id].Addr;
+    while (gReceive.LastUsed != Used) {
+        UINT16 Id = (UINT16)gReceive.UsedRing[gReceive.LastUsed % gReceive.QueueSize].Id;
+        UINT32 Len = gReceive.UsedRing[gReceive.LastUsed % gReceive.QueueSize].Len;
+        UINT8 *Buf = (UINT8 *)(UINTN)gReceive.Desc[Id].Addr;
 
         if (Buf && Len > gNetHdrLen + ETH_HDR_LEN) {
             const UINT8 *Pkt = Buf + gNetHdrLen;
             UINTN PktLen = Len - gNetHdrLen;
 #ifdef LWIP_ENABLE
-            if (gLwIpRx) {
+            if (gLwIpReceive) {
                 LwIpNetifInput(Pkt, PktLen);
             } else
 #endif
@@ -62,10 +62,10 @@ void NetProcessRx(void) {
                 IpInput(Pkt, PktLen);
             }
         }
-        if (Id < RX_BUF_COUNT && gRxBuf[Id]) {
-            RxRefillOne(Id, gRxBuf[Id]);
+        if (Id < RX_BUF_COUNT && gReceiveBuffer[Id]) {
+            ReceiveRefillOne(Id, gReceiveBuffer[Id]);
         }
-        gRx.LastUsed = (UINT16)(gRx.LastUsed + 1);
+        gReceive.LastUsed = (UINT16)(gReceive.LastUsed + 1);
     }
-    VirtioMmioNotifyQueue(&gRx, RX_QUEUE_ID);
+    VirtioMmioNotifyQueue(&gReceive, RX_QUEUE_ID);
 }

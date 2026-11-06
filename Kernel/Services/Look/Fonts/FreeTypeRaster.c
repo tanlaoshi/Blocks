@@ -315,18 +315,18 @@ static int FtArenaSelfTest(void) {
 }
 #endif
 
-static int FtInitLocked(void);
+static int FtInitializeLocked(void);
 
-int FontFtInit(void) {
+int FontFtInitialize(void) {
   int Rc;
 
   FtLock();
-  Rc = FtInitLocked();
+  Rc = FtInitializeLocked();
   FtUnlock();
   return Rc;
 }
 
-static int FtInitLocked(void) {
+static int FtInitializeLocked(void) {
   const UINT8 *Blob;
   UINT32 Size;
   UINT32 Slot;
@@ -807,7 +807,7 @@ int FontFtRasterCp(UINT32 Cp, UINT8 *Pix, UINT32 CellW, UINT32 CellH) {
 
 #else
 
-int FontFtInit(void) {
+int FontFtInitialize(void) {
   return -1;
 }
 

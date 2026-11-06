@@ -21,7 +21,7 @@ int Ps2AuxRetry(void) {
     for (i = 0; i < 200000; i++) {
         HalCpuRelax();
     }
-    if (!Ps2AuxInitDevice()) {
+    if (!Ps2AuxInitializeDevice()) {
         gPs2AuxReady = 0;
         return 0;
     }

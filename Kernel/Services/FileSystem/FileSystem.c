@@ -11,6 +11,8 @@
  *   5. 桌面后 FileSystemEnsureSecondaryVolumes → SecondaryReady（旁路第二盘）
  *
  * 多份 BLOCKS.ID：皆名 BLOCKS；默认卷跟 OsTarget（ROOT.CFG 可跨盘）。
+ * `BLOCKS:` 前缀也必须解析到 OsTarget，禁止卷表里「第一个叫 BLOCKS 的」
+ * （U 盘起时常是先挂上的 NVMe）——否则 Store 装到 SSD、BLOCKS.DB 却写 U 盘。
  * 返回：0 成功（可无 BLOCKS.ID，仅 WARN）；-1 注册失败或最终仍无任何卷。
  */
 #include "FileSystemPrivate.h"
@@ -128,10 +130,21 @@ int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel) {
             }
         }
     } else {
-        for (i = 0; i < gVolCount; i++) {
-            if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
-                Vol = i;
-                break;
+        /*
+         * 同名卷取 OsTarget（BLOCKS），勿 first-match。
+         * U 盘启动：NVMe BLOCKS 常先入表，BLOCKS:Apps 曾误打到 SSD。
+         */
+        int Os = FileSystemOsVol();
+
+        if (StrEqIgnoreCase(Pref, "BLOCKS") && Os >= 0 && Os < gVolCount &&
+            StrEqIgnoreCase(gVols[Os].Name, Pref)) {
+            Vol = Os;
+        } else {
+            for (i = 0; i < gVolCount; i++) {
+                if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
+                    Vol = i;
+                    break;
+                }
             }
         }
     }
@@ -474,7 +487,7 @@ void FileSystemEnsureSecondaryVolumes(void) {
      */
     if (HalUsbMscReady()) {
         LogFs("FS: msc/3 secondary skip hot (msc ready)\n");
-    } else if (HalUsbPortEnumIsFrozen()) {
+    } else if (HalUsbPortEnumerateIsFrozen()) {
         LogFs("FS: msc/3 secondary skip hot (port enum freeze, keep mouse)\n");
     } else {
         HotRc = HalUsbMscHot();

@@ -4,7 +4,7 @@
 #include "Private.h"
 #include "HalSerial.h"
 
-void IwlScanCollectCtxInit(IWL_SCAN_COLLECT_CTX *C) {
+void IwlScanCollectContextInitialize(IWL_SCAN_COLLECT_CTX *C) {
     C->Ncode = 0;
     C->GotAck = 1;
     C->GotDone = 0;

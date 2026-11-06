@@ -54,8 +54,8 @@ int WaitCommand(int Timeout) {
 
 /*
  * 命令超时恢复：CA 中止命令环，排空事件，再同步 enqueue。
- * excl-4：CA→排空→重建 全程独占（含 WaitClearMs，避免 StallMs 抢环）。
- * 私有环可 InitRing；固件环只按 CRCR dequeue 重解析，勿盲目清环/切软环。
+ * excl-4：CA→排空→重建 全程独占（含 WaitClearMilliseconds，避免 StallMilliseconds 抢环）。
+ * 私有环可 RingInitialize；固件环只按 CRCR dequeue 重解析，勿盲目清环/切软环。
  */
 void RecoverCommandRing(void) {
     UINT64 Cr;
@@ -83,7 +83,7 @@ void RecoverCommandRing(void) {
         WriteMmio64(gOperationalBase + 0x18, Ptr | (UINT64)(Rcs & 1u) | CRCR_CA);
         Fence();
         if (!HalCpuIsHypervisor()) {
-            (void)WaitClearMs(gOperationalBase + 0x18, CRCR_CRR, 200);
+            (void)WaitClearMilliseconds(gOperationalBase + 0x18, CRCR_CRR, 200);
         } else {
             (void)WaitClear(gOperationalBase + 0x18, CRCR_CRR, 100000);
         }
@@ -99,7 +99,7 @@ void RecoverCommandRing(void) {
     Rcs = (UINT32)(Cr & 1u);
 
     if (gCmdRingLive == gCmdRing) {
-        InitRing(gCmdRing, &gCmd, RING_SIZE);
+        RingInitialize(gCmdRing, &gCmd, RING_SIZE);
         FlushDma(gCmdRing, RING_SIZE * sizeof(XHCI_TRB));
         WriteMmio64(gOperationalBase + 0x18, PointerToPhysical(gCmdRing) | 1ULL);
         Fence();

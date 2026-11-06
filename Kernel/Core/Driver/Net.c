@@ -10,7 +10,7 @@ int DriverNetAttach(const NET_BACKEND *Backend) {
     if (!Backend || !Backend->Ready || !Backend->Poll || !Backend->GetMac ||
         !Backend->GetIp || !Backend->SetIp || !Backend->FormatIp ||
         !Backend->ParseIp || !Backend->Ping || !Backend->GetStats ||
-        !Backend->SendIp || !Backend->Checksum || !Backend->SetLwIpRx) {
+        !Backend->SendIp || !Backend->Checksum || !Backend->SetLwIpReceive) {
         DebugWrite("drv-net: bad backend\n");
         return -1;
     }
@@ -101,8 +101,8 @@ UINT16 DriverNetChecksum(const void *Data, UINTN Len) {
     return gNetBackend->Checksum(Data, Len);
 }
 
-void DriverNetSetLwIpRx(int Enable) {
-    if (gNetBackend && gNetBackend->SetLwIpRx) {
-        gNetBackend->SetLwIpRx(Enable);
+void DriverNetSetLwIpReceive(int Enable) {
+    if (gNetBackend && gNetBackend->SetLwIpReceive) {
+        gNetBackend->SetLwIpReceive(Enable);
     }
 }

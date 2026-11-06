@@ -70,7 +70,7 @@ void ShellTask(void) {
          * COM1 RX → Shell / 用户 stdin 环（CoolTerm 遥控）。
          * 必须在 HalVideoPresent 之前抽：Present 可达数 ms，16550 FIFO(16)
          * 在 115200 下约 1.4ms 就满；旧序 Present→RX 时粘贴 dbset 必截断。
-         * MaxRx 仍限一轮喂 shell 量；HW→软环由 SerialRxPump（定时器）兜底。
+         * MaxRx 仍限一轮喂 shell 量；HW→软环由 SerialReceivePump（定时器）兜底。
          */
         {
             int n = 0;
@@ -134,7 +134,7 @@ void ShellTask(void) {
                     continue;
                 }
                 if (TtyUiIsFocused()) {
-                    TtyUiOnRxChar(C);
+                    TtyUiOnReceiveCharacter(C);
                     continue;
                 }
                 gConsole.SerialFeedChar(C, &gSerialSkipLf);

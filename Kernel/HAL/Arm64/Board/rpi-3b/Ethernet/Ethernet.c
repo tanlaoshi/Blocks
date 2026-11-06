@@ -220,7 +220,7 @@ static const NET_BACKEND gBackend = {
     .GetStats = GetStats,
     .SendIp = SendIp,
     .Checksum = Checksum,
-    .SetLwIpRx = SetLwIpReceive,
+    .SetLwIpReceive = SetLwIpReceive,
 };
 
 static int DriverProbe(const DRIVER *Self, void *Bus, void **OutValue) {
@@ -281,10 +281,10 @@ int BoardEthernetGetLink(int *Up, UINT32 *Mbps, int *FullDuplex) {
      * IEEE 802.3 BMSR.Link Status 是锁存低：掉线后保持 0 直到读一次。
      * 只读一次会把「曾掉线」当成当前 down。标准：读两次，以第二次为准。
      */
-    if (SmscMiiRead(MII_BMSR, &Bmsr) != 0) {
+    if (SmscMediaIndependentInterfaceRead(MII_BMSR, &Bmsr) != 0) {
         return 0;
     }
-    if (SmscMiiRead(MII_BMSR, &Bmsr) != 0) {
+    if (SmscMediaIndependentInterfaceRead(MII_BMSR, &Bmsr) != 0) {
         return 0;
     }
     if (Up) {

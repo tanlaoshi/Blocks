@@ -20,7 +20,7 @@ static void DrawButtons(void) {
             if (i == 0) {
                 UINT32 Face = (gHoverBtn == 0) ? ThemeControlAccent() : ThemeControlFace();
                 UINT32 Fg = (gHoverBtn == 0) ? ThemeTextOnAccent() : ThemeText();
-                UiDrawButtonEx(Bx, gBtnY, gBtnW, STORE_BTN_H, LocStr(MSG_STORE_CANCEL), Fg, Face,
+                UiDrawButtonEx(Bx, gBtnY, gBtnW, STORE_BTN_H, LocaleString(MESSAGE_STORE_CANCEL), Fg, Face,
                                gHoverBtn == 0, gPressBtn == 0);
             } else {
                 UiDrawButtonEx(Bx, gBtnY, gBtnW, STORE_BTN_H, StoreBtnLabel(i), ThemeTextMuted(),
@@ -71,29 +71,29 @@ static void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
     Ty = Y + 8;
     MaxY = Y + H - 4;
     MaxW = W > 20u ? W - 20u : W;
-    Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, LocStr(MSG_DEV_DETAIL), ThemeText());
+    Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, LocaleString(MESSAGE_DEV_DETAIL), ThemeText());
     Ty += 4;
 
     E = SelectedEntry();
     MapIdx = (gSel >= 0 && gSel < gFiltCount) ? gMap[gSel] : -1;
     if (!E) {
-        (void)UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, LocStr(MSG_STORE_NO_SEL),
+        (void)UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, LocaleString(MESSAGE_STORE_NO_SEL),
                              ThemeTextMuted());
         return;
     }
     Inst = CachedInstalled(MapIdx);
     Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, E->Title[0] ? E->Title : E->Id,
                         ThemeText());
-    PutPrefixed(Line, (int)sizeof(Line), LocStr(MSG_STORE_ID), E->Id);
+    PutPrefixed(Line, (int)sizeof(Line), LocaleString(MESSAGE_STORE_ID), E->Id);
     Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, Line, ThemeTextMuted());
-    PutPrefixed(Line, (int)sizeof(Line), LocStr(MSG_STORE_TYPE), E->Type);
+    PutPrefixed(Line, (int)sizeof(Line), LocaleString(MESSAGE_STORE_TYPE), E->Type);
     Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, Line, ThemeTextMuted());
     if (E->Arch[0]) {
-        PutPrefixed(Line, (int)sizeof(Line), LocStr(MSG_STORE_ARCH), E->Arch);
+        PutPrefixed(Line, (int)sizeof(Line), LocaleString(MESSAGE_STORE_ARCH), E->Arch);
         Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, Line, ThemeTextMuted());
     }
     if (E->File[0]) {
-        PutPrefixed(Line, (int)sizeof(Line), LocStr(MSG_STORE_FILE), E->File);
+        PutPrefixed(Line, (int)sizeof(Line), LocaleString(MESSAGE_STORE_FILE), E->File);
         Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, Line, ThemeTextMuted());
     }
     {
@@ -102,7 +102,7 @@ static void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
         Ty = UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH, Repo, ThemeTextMuted());
     }
     (void)UiDrawTextWrap(X + 10, Ty, MaxW, MaxY, LineH,
-                         Inst ? LocStr(MSG_STORE_INSTALLED) : LocStr(MSG_STORE_NOT_INST),
+                         Inst ? LocaleString(MESSAGE_STORE_INSTALLED) : LocaleString(MESSAGE_STORE_NOT_INST),
                          Inst ? ThemeTextAccent() : ThemeTextMuted());
 }
 
@@ -254,7 +254,7 @@ void StorePaintList(void) {
             GraphicsFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
-        HalVideoDrawStringAt(Cx + Pad, TitleY, LocStr(MSG_APP_STORE), ThemeText());
+        HalVideoDrawStringAt(Cx + Pad, TitleY, LocaleString(MESSAGE_APP_STORE), ThemeText());
         for (i = 0; i < STORE_CAT_COUNT; i++) {
             UiDrawListRow(Cx + Pad, gStoreUiSideRow0 + (UINT32)i * LineH, RowW, LineH,
                           StoreCatLabel(i), i == gStoreUiCat, i == gHoverSide);
@@ -298,16 +298,16 @@ void StorePaintList(void) {
     StoreColumns(&ColSrc, &ColId, &ColName, &ColNeed);
     TextY = HeaderY + (LineH > FontCellH() ? (LineH - FontCellH()) / 2u : 0);
     StoreDrawField(ContentX + Pad, TextY, ColSrc > 4u ? ColSrc - 4u : ColSrc,
-                   LocStr(MSG_STORE_COL_MARK), ThemeTextMuted());
+                   LocaleString(MESSAGE_STORE_COL_MARK), ThemeTextMuted());
     StoreDrawField(ContentX + Pad + ColSrc, TextY,
                    (ColId > ColSrc + 4u) ? ColId - ColSrc - 4u : 0,
-                   LocStr(MSG_STORE_COL_SRC), ThemeTextMuted());
+                   LocaleString(MESSAGE_STORE_COL_SRC), ThemeTextMuted());
     StoreDrawField(ContentX + Pad + ColId, TextY,
                    (ColName > ColId + 4u) ? ColName - ColId - 4u : 0,
-                   LocStr(MSG_STORE_COL_ID), ThemeTextMuted());
+                   LocaleString(MESSAGE_STORE_COL_ID), ThemeTextMuted());
     StoreDrawField(ContentX + Pad + ColName, TextY,
                    (gStoreUiListRowW > ColName + 4u) ? gStoreUiListRowW - ColName : 0,
-                   LocStr(MSG_STORE_COL_NAME), ThemeTextMuted());
+                   LocaleString(MESSAGE_STORE_COL_NAME), ThemeTextMuted());
     if (gStoreUiListRowW > 0) {
         GraphicsFillRectangle(ContentX + Pad, HeaderY + LineH - 1u, gStoreUiListRowW, 1u,
                         ThemePanelSeparator());
@@ -325,8 +325,8 @@ void StorePaintList(void) {
                       Fi == gSel, Fi == gHoverRow);
         Fg = (Fi == gSel) ? ThemeTextOnAccent() : ThemeText();
         TextY = RowY + (LineH > FontCellH() ? (LineH - FontCellH()) / 2u : 0);
-        Src = (Tab[Ci].Origin == STORE_SRC_NET) ? LocStr(MSG_STORE_SRC_NET)
-                                                : LocStr(MSG_STORE_SRC_LOCAL);
+        Src = (Tab[Ci].Origin == STORE_SRC_NET) ? LocaleString(MESSAGE_STORE_SRC_NET)
+                                                : LocaleString(MESSAGE_STORE_SRC_LOCAL);
         StoreDrawField(ContentX + Pad, TextY, ColSrc > 4u ? ColSrc - 4u : ColSrc,
                        Inst ? "*" : "", Fg);
         StoreDrawField(ContentX + Pad + ColSrc, TextY,
@@ -343,7 +343,7 @@ void StorePaintList(void) {
                         gStoreUiListVisible, gFiltCount);
     }
     if (gFiltCount == 0) {
-        HalVideoDrawStringAt(ContentX + Pad, gStoreUiListTop + 4, LocStr(MSG_STORE_EMPTY),
+        HalVideoDrawStringAt(ContentX + Pad, gStoreUiListTop + 4, LocaleString(MESSAGE_STORE_EMPTY),
                              ThemeTextMuted());
     }
 

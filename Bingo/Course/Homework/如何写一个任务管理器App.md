@@ -1,7 +1,7 @@
 # 如何写一个任务管理器 App（端到端范例）
 
 > **目标读者**：会 C、第一次在 **Blocks** 上做带窗口的应用。  
-> **成品**：`TASKMGR.ELF`（源码 `Kernel/User/Apps/TaskMgr.c`）——窗内显示与 Shell `ps` / `list tasks` **同源**的任务表；可 Refresh、翻页（按钮或上下键）、Kill 用户任务；文案跟 `BLOCKS.DB` 的 `lang=`。  
+> **成品**：`TASKMGR.ELF`（源码 `Kernel/User/Apps/TaskManager.c`）——窗内显示与 Shell `ps` / `list tasks` **同源**的任务表；可 Refresh、翻页（按钮或上下键）、Kill 用户任务；文案跟 `BLOCKS.DB` 的 `lang=`。  
 > **配套**：[`Guide.md`](../../App/Guide.md)；ABI [`ABI.md`](../ABI.md)；[`API.md`](../../App/API.md)。
 
 本文按「想清楚 → 开接口 → 写 App → 编进盘 → 跑通 → 进菜单」顺序写，路径均相对 **`Blocks/Kernel`**（单仓）。
@@ -81,7 +81,7 @@ if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
 
 ---
 
-## 3. 写 App：`User/Apps/TaskMgr.c`
+## 3. 写 App：`User/Apps/TaskManager.c`
 
 ### 3.1 依赖库怎么选
 
@@ -93,7 +93,7 @@ if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
 | yield / kill | CRT | `<Host/Schedule.h>` `<signal.h>` |
 | 任务快照 | （无 .a，仅头+syscall） | `<Blocks/Task.h>` |
 
-链接：`taskmgr.o` → `libUi.a` → 图形库 → CRT（见 `Makefile` 中 `USER_TASKMGR_*`）。
+链接：`taskmgr.o` → `libUi.a` → 图形库 → CRT（见 `Makefile` 中 `USER_TASK_MANAGER_*`）。
 
 ### 3.2 UI 结构（跟现网范例）
 
@@ -121,7 +121,7 @@ if (blocks_task_snap(&Snap) != 0) { /* 失败 */ }
 
 仓库内示范**已挂好**；自己加同类 App 时对照：
 
-1. **`Makefile`**：`USER_TASKMGR_OBJ` / `USER_TASKMGR_ELF`，`all` 依赖，链接 Ui+Gfx+CRT。  
+1. **`Makefile`**：`USER_TASK_MANAGER_OBJ` / `USER_TASK_MANAGER_ELF`，`all` 依赖，链接 Ui+Gfx+CRT。  
 2. **`build.sh`（x86 同步盘）**：拷到 `Runtime/RootFs/X64/TASKMGR.ELF`，并 `Apps/taskmgr/TASKMGR.ELF`（包目录）。  
 3. **商店 catalog**（`Services/Store/Catalog/Load.c` Builtin）：  
    `taskmgr|app|1|TASKMGR.ELF|-|x86_64|Task Manager`
@@ -166,7 +166,7 @@ blocks> exec TASKMGR.ELF
 
 | 路径 | 何时用 |
 | ---- | ------ |
-| `User/Apps/TaskMgr.c` + 内核 `Makefile` | **仓库内示范 / 开课镜像自带** |
+| `User/Apps/TaskManager.c` + 内核 `Makefile` | **仓库内示范 / 开课镜像自带** |
 | `Bingo/App/Template` · `Examples` | 学生课外独立工程（复制开干） |
 | `Tools/build-sdk.sh` → `Build/BlocksSDK` | 离树 SDK；头里应有 `Blocks/Task.h` / `TaskSnap.h` |
 
@@ -188,7 +188,7 @@ blocks> exec TASKMGR.ELF
 
 | 角色 | 路径 |
 | ---- | ---- |
-| App | `User/Apps/TaskMgr.c` |
+| App | `User/Apps/TaskManager.c` |
 | 用户包装头 | `User/Include/Blocks/Task.h` |
 | 布局（核/用户共用） | `Include/Abi/TaskSnap.h` |
 | 号段 | `Include/Abi/SyscallABI.h` |

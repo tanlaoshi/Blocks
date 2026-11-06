@@ -19,7 +19,7 @@
 
 static volatile int gPriorityHome;
 
-static void PriorityInit(void)
+static void PriorityInitialize(void)
 {
     gPriorityHome = 0;
 }
@@ -79,7 +79,7 @@ const SCHEDULER_OPS *SchedulerPriorityOps(void)
 {
     /* Remove / PickNext 是框架排队与取下一个，不是学生政策。 */
     static const SCHEDULER_OPS Ops = {
-        PriorityInit,
+        PriorityInitialize,
         PriorityEnqueue,
         RunQueueRemove,
         PriorityPickHome,

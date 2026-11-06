@@ -3,9 +3,9 @@ description: 板端热更一律用 HotSend（有线>Wi‑Fi>串口）；勿再�
 alwaysApply: true
 ---
 
-# 热更 · HotSend
+# 热更 · 核传（HotSend）
 
-日常把核/文件热传到板：**用 HotSend**，不要默认跑 `Blocks/Tools/Scripts/ksend.py`。
+协作口令 **核传**（`KernelSend`；旧无缩写）。日常把核/文件热传到板：**用 HotSend**，不要默认跑 `Blocks/Tools/Scripts/ksend.py`。
 
 | 侧 | 用法 |
 |---|---|

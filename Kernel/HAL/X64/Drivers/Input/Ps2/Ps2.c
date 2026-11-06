@@ -28,16 +28,16 @@ static void Ps2Poll(void) {
             Ps2AuxFeed(B);
             continue;
         }
-        Ps2KbdFeed(B);
+        Ps2KeyboardFeed(B);
     }
     SpinLockRelease(&gPs2Lock);
 }
 
-static int Ps2KeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
+static int Ps2InputKeyboardDequeue(HAL_KEYBOARD_REPORT *Report) {
     int Ok;
 
     SpinLockAcquire(&gPs2Lock);
-    Ok = Ps2KbdDequeue(Report);
+    Ok = Ps2KeyboardDequeue(Report);
     SpinLockRelease(&gPs2Lock);
     return Ok;
 }
@@ -57,7 +57,7 @@ static int Ps2MouseDequeue(HAL_MOUSE_REPORT *Report) {
 
 static const INPUT_BACKEND gPs2Backend = {
     .Poll = Ps2Poll,
-    .KeyboardDequeue = Ps2KeyboardDequeue,
+    .KeyboardDequeue = Ps2InputKeyboardDequeue,
     .KeyboardSetLeds = 0,
     .MousePresent = Ps2MousePresent,
     .MouseDequeue = Ps2MouseDequeue,
@@ -75,11 +75,11 @@ static int Ps2DriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) {
         }
         return 0;
     }
-    if (!Ps2InitHw()) {
+    if (!Ps2HardwareInitialize()) {
         return -1;
     }
     gPs2Ready = 1;
-    Ps2KbdResetState();
+    Ps2KeyboardResetState();
     if (OutPrivate) {
         *OutPrivate = 0;
     }

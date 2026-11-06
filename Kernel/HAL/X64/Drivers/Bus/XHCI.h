@@ -89,7 +89,7 @@ int EnableIrq(struct USB_CONTROLLER *Device);
 int TryEnterDual(struct USB_CONTROLLER *Device);
 /* PR-H-xhci-irq：仅当 gStatIrq 已证明投递后，Drain 内懒升为轻量 IRQ 模式 */
 /* 真机：PHOTO 后再枚举鼠标，避免踩键盘 IN */
-void InitMouseDeferred(void);
+void MouseDeferredInitialize(void);
 /* PHOTO→桌面：清空鼠队列、重置累加坐标、Sync+Queue 键鼠 */
 void MouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
 /* Desktop Ready→Reveal：Hold 掐鼠 IN 再投递；清 Hold 时 QueueMouseIntr */
@@ -145,7 +145,7 @@ UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
-void XhciPortEnumUnfreeze(void);
-int XhciPortEnumIsFrozen(void);
+void XhciPortEnumerateUnfreeze(void);
+int XhciPortEnumerateIsFrozen(void);
 
 #endif

@@ -54,7 +54,7 @@ void AcpiPowerOff(void) {
         Typ = Order[i];
         Pm1WriteSleep(gPm1aCnt, Typ);
         Pm1WriteSleep(gPm1bCnt, Typ);
-        PowerStallMs(50);
+        PowerStallMilliseconds(50);
     }
 }
 
@@ -64,9 +64,9 @@ static void Cf9Pulse(UINT8 Code) {
 
     Cf9 = (UINT8)(HalIoRead8(0xCF9) & (UINT8)~Code);
     HalIoWrite8(0xCF9, (UINT8)(Cf9 | 0x02));
-    PowerStallMs(1);
+    PowerStallMilliseconds(1);
     HalIoWrite8(0xCF9, (UINT8)(Cf9 | Code));
-    PowerStallMs(15);
+    PowerStallMilliseconds(15);
 }
 
 static void ResetWriteIo(UINT16 Port, UINT8 Access, UINT8 Value) {
@@ -104,7 +104,7 @@ void AcpiReset(void) {
                 Cf9Pulse(gResetValue);
             } else if (gResetAddr <= 0xFFFFull) {
                 ResetWriteIo((UINT16)gResetAddr, gResetAccess, gResetValue);
-                PowerStallMs(15);
+                PowerStallMilliseconds(15);
             }
         } else if (gResetSpace == 0) {
             if (MapPhys(gResetAddr, 8) == 0) {
@@ -116,10 +116,10 @@ void AcpiReset(void) {
                     *(volatile UINT8 *)(UINTN)gResetAddr = gResetValue;
                 }
             }
-            PowerStallMs(15);
+            PowerStallMilliseconds(15);
         } else if (gResetSpace == 2) {
             ResetWritePci(gResetAddr, gResetValue);
-            PowerStallMs(15);
+            PowerStallMilliseconds(15);
         }
     }
 }

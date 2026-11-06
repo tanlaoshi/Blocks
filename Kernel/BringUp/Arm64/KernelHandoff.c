@@ -158,7 +158,7 @@ void KernelHandoff(UINT64 DtbPhys) {
     }
 
 #if BOARD_IS_VIRT
-    if (UsedDtb != 0 && DtbFwCfgBase(UsedDtb, &FwCfg) != 0) {
+    if (UsedDtb != 0 && DtbFirmwareConfigBase(UsedDtb, &FwCfg) != 0) {
         FwCfg = 0;
     }
     if (FwCfg == 0) {

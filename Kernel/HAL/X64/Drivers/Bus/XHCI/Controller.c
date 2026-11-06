@@ -174,7 +174,7 @@ int StartController(UINT32 MaxSlots) {
         gCmdRingLive = gCmdRing;
         gEvtRingLive = gEvtRing;
         gEvtRingSize = EVT_SIZE;
-        InitRing(gCmdRing, &gCmd, RING_SIZE);
+        RingInitialize(gCmdRing, &gCmd, RING_SIZE);
         FlushDma(gCmdRing, sizeof(gCmdRing));
         (void)MapXhciDma(PointerToPhysical(gCmdRing), sizeof(gCmdRing));
         WriteMmio64(gOperationalBase + 0x18, PointerToPhysical(gCmdRing) | 1ULL);
@@ -250,7 +250,7 @@ int StartController(UINT32 MaxSlots) {
     WriteMmio64(gOperationalBase + 0x30, PointerToPhysical(gDcbaa));
 
     BootLogV("Boot: XHCI prog CRCR\n");
-    InitRing(gCmdRing, &gCmd, RING_SIZE);
+    RingInitialize(gCmdRing, &gCmd, RING_SIZE);
     FlushDma(gCmdRing, sizeof(gCmdRing));
     WriteMmio64(gOperationalBase + 0x18, PointerToPhysical(gCmdRing) | 1);
 

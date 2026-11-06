@@ -17,7 +17,7 @@ static void *gKernCtx[MAX_TASKS];
 static void (*gPendFn)(void *);
 static void *gPendCtx;
 
-static void KernelCtxEntry(void) {
+static void KernelContextEntry(void) {
     TASK *T = CurrentTask();
     int Id = (int)(T - gTasks);
     void (*Fn)(void *) = 0;
@@ -46,7 +46,7 @@ int SchedulerCreate(const char *Name, void (*Entry)(void)) {
         PendCtx = gPendCtx;
         gPendFn = 0;
         gPendCtx = 0;
-        Use = KernelCtxEntry;
+        Use = KernelContextEntry;
     }
     for (int i = 0; i < MAX_TASKS; i++) {
         if (gTasks[i].State != TASK_UNUSED) {
@@ -108,7 +108,7 @@ int SchedulerCreateKernel(const char *Name, void (*Fn)(void *), void *Ctx) {
     }
     gPendFn = Fn;
     gPendCtx = Ctx;
-    return SchedulerCreate(Name, KernelCtxEntry);
+    return SchedulerCreate(Name, KernelContextEntry);
 }
 
 int SchedulerCreateUser(const char *Name, UINT64 Rip, UINT64 Rsp, UINT64 PageRoot,

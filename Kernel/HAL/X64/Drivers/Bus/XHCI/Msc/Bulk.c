@@ -52,24 +52,24 @@ static int WaitBulk(void) {
 
 /* 门铃之后失败：复位这只批量端点，取环从头对齐。不改 gMscClaimed。 */
 static void ResetBulkEndpoint(UINT32 Dci, XHCI_TRB *Ring, RING_STATE *St) {
-    UINT32 EpField;
+    UINT32 EndpointField;
     UINT64 Deq;
     UINT32 QuietSave;
 
     if (gMscScanSlot == 0 || Dci == 0 || Ring == 0 || St == 0) {
         return;
     }
-    EpField = (Dci & 0x1Fu) << 16;
+    EndpointField = (Dci & 0x1Fu) << 16;
     QuietSave = gDiagQuiet;
     gDiagQuiet = 1;
-    (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(gMscScanSlot) | EndpointField, 0);
     ProcessEvents();
-    (void)Command(0, TRB_TYPE(TRB_RESET_EP) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    (void)Command(0, TRB_TYPE(TRB_RESET_EP) | TRB_SLOT(gMscScanSlot) | EndpointField, 0);
     ProcessEvents();
-    InitRing(Ring, St, RING_SIZE);
+    RingInitialize(Ring, St, RING_SIZE);
     FlushDma(Ring, RING_SIZE * sizeof(XHCI_TRB));
     Deq = PointerToPhysical(Ring) | 1u;
-    (void)Command(Deq, TRB_TYPE(TRB_SET_TR_DEQ) | TRB_SLOT(gMscScanSlot) | EpField, 0);
+    (void)Command(Deq, TRB_TYPE(TRB_SET_TR_DEQ) | TRB_SLOT(gMscScanSlot) | EndpointField, 0);
     ProcessEvents();
     gDiagQuiet = QuietSave;
 }

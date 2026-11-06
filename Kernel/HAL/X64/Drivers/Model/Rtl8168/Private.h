@@ -124,7 +124,7 @@ static inline void RtlCopy(void *Dst, const void *Src, UINTN Len) {
 
 int RtlReadMac(UINT8 Mac[6]);
 
-void RtlStallMs(UINT32 Ms);
+void RtlStallMilliseconds(UINT32 Milliseconds);
 int RtlHwReset(void);
 void RtlHwSetMac(const UINT8 Mac[6]);
 void RtlHwConfigure(UINT64 TxDescPhys, UINT64 RxDescPhys);

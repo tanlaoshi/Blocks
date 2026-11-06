@@ -92,7 +92,7 @@ static int CreateIoQueues(NVME_CTRL *C) {
     return 1;
 }
 
-int CtrlInit(NVME_CTRL *C, UINT64 Bar) {
+int CtrlInitialize(NVME_CTRL *C, UINT64 Bar) {
     UINT64 Cap;
     UINT32 To;
     UINT8 *Mem;

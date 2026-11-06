@@ -30,7 +30,7 @@ int XhciMscBootWatchCcsLost(UINT32 *OutPort) {
         sSawConnected = 0;
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(gMscBootWatchPort));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(gMscBootWatchPort));
     if (Ps & PORTSC_CCS) {
         sLostStreak = 0;
         sSawConnected = 1;
@@ -86,7 +86,7 @@ void XhciMscBootWatchAfterClaim(int Ok) {
         gMscBootWatchArm = 0;
         return;
     }
-    WatchPs = ReadMmio32(gOperationalBase + PortReg(WatchPort));
+    WatchPs = ReadMmio32(gOperationalBase + PortRegister(WatchPort));
     if (WatchPs & PORTSC_CCS) {
         gMscBootWatchPort = WatchPort;
         BootLogHex("Boot: MSC boot-watch port=", gMscBootWatchPort, 2);

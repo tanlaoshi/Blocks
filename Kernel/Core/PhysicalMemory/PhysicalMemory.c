@@ -17,8 +17,8 @@ int PhysicalMemoryInitialize(void) {
     if (Info == 0 || Info->RegionCount == 0) {
         return -1;
     }
-    PmmPhysLockInit();
-    PmmSegmentInit(Info);
+    PmmPhysLockInitialize();
+    PmmSegmentInitialize(Info);
 #ifdef MEM_BESTFIT
     MemoryOpsRegister(MemoryBestFitOps());
 #else

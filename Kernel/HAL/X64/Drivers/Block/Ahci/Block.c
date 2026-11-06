@@ -47,7 +47,7 @@ static int AhciDriverProbe(const DRIVER *Self, void *BusCtx, void **OutPrivate) 
         }
         return 0;
     }
-    /* HBA BAR 映射必须在 VMM Enable 之后（InitDriver 早 Probe 会跳过） */
+    /* HBA BAR 映射必须在 VMM Enable 之后（InitializeDriver 早 Probe 会跳过） */
     if (!VirtualMemoryEnabled()) {
         return -1;
     }

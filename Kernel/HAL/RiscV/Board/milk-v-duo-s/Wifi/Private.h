@@ -354,7 +354,7 @@ int WifiFirmwareStatCheck(void);
 int WifiFirmwareChipRevision(void);
 void AicFwWaitBootMessage(SDHCI_HOST *Host);
 void AicMarkR5(UINT32 R5);
-void AicMarkXferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks);
+void AicMarkTransferParams(SDHCI_HOST *Host, const char *Tag, UINT32 Bytes, UINT32 Blocks);
 void AicPatchPrintPlan(UINT32 Count);
 void AicPut16(UINT8 *At, UINT16 Value);
 

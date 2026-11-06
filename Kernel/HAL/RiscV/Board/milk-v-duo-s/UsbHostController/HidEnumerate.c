@@ -22,9 +22,9 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
     int Ret;
     UINT16 Ep0;
     int WantMouse;
-    int WantKbd;
+    int WantKeyboard;
     int GotMouse;
-    int GotKbd;
+    int GotKeyboard;
     int Bound = 0;
 
     /*
@@ -35,8 +35,8 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
         return 0;
     }
     WantMouse = !gMouseOk;
-    WantKbd = !gKeyboardOk;
-    if (!WantMouse && !WantKbd) {
+    WantKeyboard = !gKeyboardOk;
+    if (!WantMouse && !WantKeyboard) {
         return 0;
     }
     /*
@@ -216,19 +216,19 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
     }
 
     GotMouse = ParseBootMouse(Config, CfgLen, &MIface, &MEp, &MMps, &MScore);
-    GotKbd = ParseBootKeyboard(Config, CfgLen, &KIface, &KEp, &KMps, &KScore);
+    GotKeyboard = ParseBootKeyboard(Config, CfgLen, &KIface, &KEp, &KMps, &KScore);
     /* 弱键分 + 像样鼠 = 鼠附加 HID，不当键盘（NUC G102 教训） */
-    if (GotKbd && KScore < 3 && GotMouse && MScore >= 2) {
+    if (GotKeyboard && KScore < 3 && GotMouse && MScore >= 2) {
         HalSerialBootMark("Boot: DWC2 skip mouse+extraHID as kbd\n");
-        GotKbd = 0;
+        GotKeyboard = 0;
     }
     /*
      * LS boot 键（CASUE 2a7a:939f 等）：配置读不全时，USB boot 惯例 iface0 + EP1 IN。
      * 仅在已 SET_ADDR、cfg8 有 bConfigurationValue、且本口只要键时启用。
      */
-    if (Low && WantKbd && !GotKbd && CfgHdr[0] >= 8) {
+    if (Low && WantKeyboard && !GotKeyboard && CfgHdr[0] >= 8) {
         HalSerialBootMark("Boot: DWC2 LS kbd boot-fallback ep1\n");
-        GotKbd = 1;
+        GotKeyboard = 1;
         KIface = 0;
         KEp = 0x81;
         KMps = 8;
@@ -237,10 +237,10 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
     if (!WantMouse) {
         GotMouse = 0;
     }
-    if (!WantKbd) {
-        GotKbd = 0;
+    if (!WantKeyboard) {
+        GotKeyboard = 0;
     }
-    if (!GotMouse && !GotKbd) {
+    if (!GotMouse && !GotKeyboard) {
         HalSerialBootMark("Boot: DWC2 no boot hid\n");
         return 0;
     }
@@ -272,7 +272,7 @@ int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus) {
         Dwc2Hex16(gMouseEndpoint);
         HalSerialBootMark(" ok\n");
     }
-    if (GotKbd) {
+    if (GotKeyboard) {
         HidSetBootIdle(Address, KIface);
         gKeyboardAddress = Address;
         gKeyboardEndpoint = (UINT8)(KEp & 0x0Fu);

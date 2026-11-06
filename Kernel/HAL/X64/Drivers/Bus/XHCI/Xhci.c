@@ -19,9 +19,9 @@ int gXhciDmar = -2; /* -2未查 -1坏 0无 1有 */
 int gXhciTe = -2;   /* -2未做 -1失败 0无DRHD 1本关 2已关 */
 UINT32 gPort1;
 UINT8  gSpeed;
-UINT32 gXferSlot;
-UINT16 gEp0Mps;
-UINT8  gXferFast; /* GET_REPORT 用短超时，避免拖死鼠标 */
+UINT32 gTransferSlot;
+UINT16 gEndpoint0MaxPacketSize;
+UINT8  gTransferFast; /* GET_REPORT 用短超时，避免拖死鼠标 */
 UINT8  gUseIrq;
 /* 真机默认 POLL；DUAL 见 TryEnterDual（EnableIrq / Arm） */
 XHCI_IRQ_MODE gIrqMode = XHCI_IRQ_MODE_POLL;
@@ -32,13 +32,13 @@ UINT32 gMouseRoute;   /* hub 子设备 Route String；根口设备为 0 */
 UINT8  gMouseHubSlot; /* TT：父 hub slot；根口为 0 */
 UINT8  gMouseTtPort;
 UINT32 gMouseIntrDci;
-UINT8  gMouseIface;
-UINT8  gMouseIfaceProto; /* bInterfaceProtocol：2=boot 相对；0=tablet 等绝对 */
+UINT8  gMouseInterface;
+UINT8  gMouseInterfaceProto; /* bInterfaceProtocol：2=boot 相对；0=tablet 等绝对 */
 UINT8  gMouseParseScore; /* ParseConfigMouse 评分：3=boot鼠 2=boot子类 1=其它HID */
 UINT8  gMouseAbsolute;   /* 1：报告为绝对坐标（QEMU usb-tablet） */
-UINT8  gMouseEpAddr;
+UINT8  gMouseEndpointAddress;
 UINT8  gMouseReportLen;
-UINT8  gMouseXferLen; /* 最近一次中断 IN 实际字节（短包后 < MPS） */
+UINT8  gMouseTransferLength; /* 最近一次中断 IN 实际字节（短包后 < MPS） */
 UINT8  gMouseBuf[8] BLOCKS_ALIGNED(64);
 /* boot 相对鼠：在驱动内累加成屏坐标；PHOTO→桌面时重置到光标 */
 int    gMouseAbsX = 512;
@@ -46,17 +46,17 @@ int    gMouseAbsY = 384;
 int    gMouseAbsInit;
 XHCI_TRB gMouseIntrRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gMouseIntr;
-/* PR-H-msc-2：Bulk 静态环（仅 InitRing；不配 EP、不门铃、不扫口） */
+/* PR-H-msc-2：Bulk 静态环（仅 RingInitialize；不配 EP、不门铃、不扫口） */
 XHCI_TRB gBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
 XHCI_TRB gBulkOutRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gBulkIn;
 RING_STATE gBulkOut;
 int gMscBulkRingsInited;
-/* PR-H-msc-3/4：scan 临时 / claim 常驻 slot，独立 EP0，勿 InitRing 键盘 gEp0 */
+/* PR-H-msc-3/4：scan 临时 / claim 常驻 slot，独立 EP0，勿 RingInitialize 键盘 gEndpoint0 */
 UINT32 gMscScanSlot;
 UINT8  gMscScanDevCtx[2048] BLOCKS_ALIGNED(64);
-XHCI_TRB gMscScanEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
-RING_STATE gMscScanEp0;
+XHCI_TRB gMscScanEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+RING_STATE gMscScanEndpoint0;
 UINT32 gMscPort;          /* PR-H-msc-4：claim 时根口（hub 子设备亦记 hub 根口） */
 UINT32 gMscRoute;
 UINT8  gMscHubSlot;
@@ -64,8 +64,8 @@ UINT8  gMscTtPort;
 UINT32 gMscProbeHubSlot;
 UINT32 gMscBulkInDci;
 UINT32 gMscBulkOutDci;
-UINT16 gMscBulkInMps;
-UINT16 gMscBulkOutMps;
+UINT16 gMscBulkInMaxPacketSize;
+UINT16 gMscBulkOutMaxPacketSize;
 int    gMscClaimed;       /* 1：已 SetConfig + Bulk EP */
 UINT32 gMscBootWatchPort; /* U 盘起 claim 失败时盯 PORTSC；0=关 */
 int    gMscBootWatchArm;  /* FS：BootDisk 未挂时 Arm，成功 claim 后清 */
@@ -76,7 +76,7 @@ int    gMscCapacityOk;
 volatile UINT32 gBulkDone;
 volatile UINT32 gBulkCode;
 volatile UINT32 gBulkRemain;
-UINT8  gMscCfgBuf[1024] BLOCKS_ALIGNED(64); /* 配置描述符；勿用 256 截断 */
+UINT8  gMscConfigBuffer[1024] BLOCKS_ALIGNED(64); /* 配置描述符；勿用 256 截断 */
 UINT8  gMouseDevCtx[2048] BLOCKS_ALIGNED(64);
 volatile UINT32 gMouseIntrDone;
 volatile UINT32 gIntrReportReady;
@@ -85,14 +85,14 @@ volatile UINT32 gMouseIntrHold;
 /* poll 诊断：PHOTO/桌面可看完成与推送是否在涨 */
 volatile UINT32 gStatIntrEvt;
 volatile UINT32 gStatMouseEvt;
-volatile UINT32 gStatKbdPush;
+volatile UINT32 gStatKeyboardPush;
 volatile UINT32 gStatMousePush;
 volatile UINT32 gStatLastCc;
 volatile UINT32 gStatDrain;
-volatile UINT32 gStatXferAny;   /* 任意 Transfer Event */
+volatile UINT32 gStatTransferAny;   /* 任意 Transfer Event */
 volatile UINT32 gStatEvtRing;   /* 事件环弹出次数（含命令完成） */
 volatile UINT32 gStatLastSlot;
-volatile UINT32 gStatLastEp;
+volatile UINT32 gStatLastEndpoint;
 volatile UINT32 gStatUnmatched; /* Transfer 且未匹配键鼠 DCI */
 volatile UINT32 gStatIrq;       /* PR-H-xhci-stat：Irq 进入次数 */
 volatile UINT32 gStatIrqSkipped; /* excl-1：独占窗内 IRQ 跳过环推进 */
@@ -105,9 +105,9 @@ SPIN_LOCK gHidQueueLock; /* PR-S-ap：IRQ 入队 vs AP 出队 */
 SPIN_LOCK gEvtConsumerLock; /* excl-2：事件环消费串行 */
 
 XHCI_TRB gCmdRing[RING_SIZE] BLOCKS_ALIGNED(64);
-XHCI_TRB gEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
-XHCI_TRB gHubEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);   /* hub 专用：勿与键鼠共环 */
-XHCI_TRB gMouseEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64); /* 独立鼠/子设备专用 */
+XHCI_TRB gEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+XHCI_TRB gHubEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);   /* hub 专用：勿与键鼠共环 */
+XHCI_TRB gMouseEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64); /* 独立鼠/子设备专用 */
 XHCI_TRB gIntrRing[RING_SIZE] BLOCKS_ALIGNED(64);
 XHCI_TRB gEvtRing[EVT_SIZE] BLOCKS_ALIGNED(64);
 /* 真机可指向固件环（IOMMU 已映射）；QEMU 用上面静态缓冲 */
@@ -116,9 +116,9 @@ XHCI_TRB *gEvtRingLive = gEvtRing;
 UINT32 gEvtRingSize = EVT_SIZE;
 
 RING_STATE gCmd;
-RING_STATE gEp0;
-RING_STATE gHubEp0;
-RING_STATE gMouseEp0;
+RING_STATE gEndpoint0;
+RING_STATE gHubEndpoint0;
+RING_STATE gMouseEndpoint0;
 RING_STATE gIntr;
 UINT32 gEvtDeq;
 UINT32 gEvtCcs;
@@ -155,7 +155,7 @@ UINT8  gScratchBuf[XHCI_SCRATCH_MAX][4096] BLOCKS_ALIGNED(4096);
 UINT8  gDevCtx[2048] BLOCKS_ALIGNED(64);
 UINT8  gHubDevCtx[2048] BLOCKS_ALIGNED(64); /* PR-H-hub */
 UINT8  gInCtx[2048] BLOCKS_ALIGNED(64);
-UINT8  gCtrlBuf[256] BLOCKS_ALIGNED(64);
+UINT8  gControlBuffer[256] BLOCKS_ALIGNED(64);
 UINT8  gErst[16] BLOCKS_ALIGNED(64);
 
 UINT32 gHubSlotId;
@@ -166,27 +166,27 @@ UINT8  gHubMtt; /* bDeviceProtocol==2 才置 MTT；误置单 TT hub 会导致子
 UINT8  gHubTtt; /* Hub Desc wHubCharacteristics[6:5] → Slot TT Think Time */
 UINT32 gPortNoHid; /* 键盘 pass 已判非 HID 的根口（如前面 U 盘） */
 UINT32 gPortNeedForcePr; /* 本轮已 Address+Disable，再扫须强制 PR */
-/* Address 走 gEp0 的 slot：claim 成鼠标后仍须用 gEp0，勿切 gMouseEp0 */
-UINT8  gSlotEp0UsesKbdRing[DCBAA_SLOTS + 1];
+/* Address 走 gEndpoint0 的 slot：claim 成鼠标后仍须用 gEndpoint0，勿切 gMouseEndpoint0 */
+UINT8  gSlotEndpoint0UsesKeyboardRing[DCBAA_SLOTS + 1];
 
 volatile UINT32 gCmdDone;
 UINT32 gCmdCode;
 UINT32 gCmdSlot;
 UINT32 gXhciCmdSick; /* 命令环超时未恢复：禁再发命令 */
-UINT32 gXhciPortEnumFreeze; /* MSC claim sick 后：禁再 Force/Address 根口（保鼠） */
+UINT32 gXhciPortEnumerateFreeze; /* MSC claim sick 后：禁再 Force/Address 根口（保鼠） */
 UINT32 gXhciCmdWaitMs; /* 0=800ms；HubEnumerate SS 子口可缩短 */
 UINT32 gXhciCmdAttempts; /* 0=2；HubEnumerate SS 子口可 1 */
 UINT32 gXhciCmdWaiting; /* 1：WaitCommand 中，Drain/Irq 勿碰事件环 */
-volatile UINT32 gXferDone;
-UINT32 gXferCode;
-UINT32 gXferRemain;
+volatile UINT32 gTransferDone;
+UINT32 gTransferCode;
+UINT32 gTransferRemain;
 volatile UINT32 gIntrDone;
 
 UINT8 *InSlot(void) {
     return gInCtx + gCtxSize;
 }
 
-UINT8 *InEp(UINT32 Dci) {
+UINT8 *InEndpoint(UINT32 Dci) {
     return gInCtx + gCtxSize * (Dci + 1);
 }
 
@@ -197,14 +197,14 @@ void UsbHostControllerRetract(void);
 static int Start(UINT64 BaseAddress) {
     FtdiPublish();
     CdcPublish();
-    if (!InitHw(BaseAddress)) {
+    if (!HardwareInitialize(BaseAddress)) {
         return 0;
     }
     UsbHostControllerOffer();
-    return EnumAndBind();
+    return EnumerateAndBind();
 }
 
-void PublishControllerInit(void) {
+void PublishControllerInitialize(void) {
     gXhciOperations.Init = Start;
 }
 
@@ -213,7 +213,7 @@ int HidKeyboardReady(void) {
 }
 
 UINT8 KeyboardInterface(void) {
-    return gKbdIface;
+    return gKeyboardInterface;
 }
 
 /*

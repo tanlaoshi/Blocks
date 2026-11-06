@@ -123,8 +123,8 @@ static inline void Fence(void) {
 }
 
 int AdminCmd(NVME_CTRL *C, NVME_SQE *Cmd);
-int CtrlInit(NVME_CTRL *C, UINT64 Bar);
+int CtrlInitialize(NVME_CTRL *C, UINT64 Bar);
 int PciBar0(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 *BarOut);
-int Xfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write);
+int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write);
 
 #endif

@@ -4,24 +4,24 @@
 #include "Iwl/Private.h"
 #include "HalSerial.h"
 
-int gIwlTxRsp;
+int gIwlTransmitResponse;
 
-int gIwlRxCode;
+int gIwlReceiveCode;
 
-void IwlLogTxRsp(const IWL_RX_PKT *Pkt, UINTN Len) {
+void IwlLogTransmitResponse(const IWL_RX_PKT *Pkt, UINTN Len) {
     char Line[40];
     char Hex[12];
     int n = 0;
     const char *P = "txa=l=";
     UINT8 Count = 0;
 
-    if (gIwlTxRsp || !Pkt || Pkt->Hdr.Code != IWL_CMD_TX) {
+    if (gIwlTransmitResponse || !Pkt || Pkt->Hdr.Code != IWL_CMD_TX) {
         return;
     }
     if (Len >= sizeof(IWL_CMD_HDR) + 1u) {
         Count = Pkt->Data[0];
     }
-    gIwlTxRsp = 1;
+    gIwlTransmitResponse = 1;
     while (*P) {
         Line[n++] = *P++;
     }
@@ -57,7 +57,7 @@ void IwlLogTxRsp(const IWL_RX_PKT *Pkt, UINTN Len) {
     IwlLogStage(Line);
 }
 
-void IwlLogRxCode(const IWL_RX_PKT *Pkt, UINTN Len) {
+void IwlLogReceiveCode(const IWL_RX_PKT *Pkt, UINTN Len) {
     char Line[36];
     char Hex[12];
     int n = 0;
@@ -65,10 +65,10 @@ void IwlLogRxCode(const IWL_RX_PKT *Pkt, UINTN Len) {
     UINTN Pay;
     UINTN i;
 
-    if (gIwlRxCode || !Pkt) {
+    if (gIwlReceiveCode || !Pkt) {
         return;
     }
-    gIwlRxCode = 1;
+    gIwlReceiveCode = 1;
     while (*P) {
         Line[n++] = *P++;
     }
@@ -105,9 +105,9 @@ void IwlLogRxCode(const IWL_RX_PKT *Pkt, UINTN Len) {
 /*
  * 抽干 Hold+live RX；找到 EAPOL 返回 1。
  * 刀 #175：顺带累计 n=MPDU d=data u=单播-to-us b=beacon（可为 NULL）。
- * 旧版只 IwlRxTake，M2 的 TX 回执同步期间进 Hold 的 M3 会被漏掉 → m3to e=00。
+ * 旧版只 IwlReceiveTake，M2 的 TX 回执同步期间进 Hold 的 M3 会被漏掉 → m3to e=00。
  */
-int IwlRxDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
+int IwlReceiveDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
                               UINT32 *MpduN, UINT32 *DataN, UINT32 *UniN,
                               UINT32 *BeaconN) {
     IWL_RX_PKT *Pkt;
@@ -122,17 +122,17 @@ int IwlRxDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
         UINTN k;
         UINT16 Fc;
 
-        if (IwlRxTakeHeld(&Pkt, &Len)) {
-        } else if (!IwlRxTake(&Pkt, &Len)) {
+        if (IwlReceiveTakeHeld(&Pkt, &Len)) {
+        } else if (!IwlReceiveTake(&Pkt, &Len)) {
             break;
         }
         Took++;
         if (Pkt->Hdr.Code == IWL_CMD_TX) {
-            IwlLogTxRsp(Pkt, Len);
+            IwlLogTransmitResponse(Pkt, Len);
             continue;
         }
         if (Pkt->Hdr.Code != IWL_RX_MPDU_CMD) {
-            IwlLogRxCode(Pkt, Len);
+            IwlLogReceiveCode(Pkt, Len);
             continue;
         }
         if (Len < 8) {

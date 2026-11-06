@@ -18,11 +18,11 @@ UINT8 gEhciWifiAddr;
 UINT8 gEhciWifiSpeed;
 UINT8 gEhciWifiHubAddr;
 UINT8 gEhciWifiHubPort;
-UINT8 gEhciWifiEpIn;
-UINT8 gEhciWifiEpOut;
-UINT16 gEhciWifiMpsIn;
-UINT16 gEhciWifiMpsOut;
-UINT8 gEhciWifiEpMax0;
+UINT8 gEhciWifiEndpointIn;
+UINT8 gEhciWifiEndpointOut;
+UINT16 gEhciWifiMaxPacketSizeIn;
+UINT16 gEhciWifiMaxPacketSizeOut;
+UINT8 gEhciWifiEndpointMax0;
 int gEhciWifiOk;
 
 int WirelessReady(void) {
@@ -33,7 +33,7 @@ UINT16 WifiPid(void) {
     return gEhciWifiPid;
 }
 
-static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
+static int GetDescriptor(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT16 TypeIndex,
                    UINT16 Len, void *Out) {
     USB_SETUP_PACKET S;
 
@@ -42,10 +42,10 @@ static int GetDesc(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT16 TypeIndex,
     S.wValue = TypeIndex;
     S.wIndex = 0;
     S.wLength = Len;
-    return ControlTransfer(C, Addr, EpMax, &S, Out);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, Out);
 }
 
-static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
+static int SetAddress(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EndpointMaxPacketSize) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -53,10 +53,10 @@ static int SetAddr(EHCI_CTRL *C, UINT8 NewAddr, UINT8 EpMax) {
     S.wValue = NewAddr;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, 0, EpMax, &S, 0);
+    return EhciControlTransfer(C, 0, EndpointMaxPacketSize, &S, 0);
 }
 
-static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
+static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EndpointMaxPacketSize, UINT8 Cfg) {
     USB_SETUP_PACKET S;
 
     S.bmRequestType = 0x00;
@@ -64,17 +64,17 @@ static int SetConfig(EHCI_CTRL *C, UINT8 Addr, UINT8 EpMax, UINT8 Cfg) {
     S.wValue = Cfg;
     S.wIndex = 0;
     S.wLength = 0;
-    return ControlTransfer(C, Addr, EpMax, &S, 0);
+    return EhciControlTransfer(C, Addr, EndpointMaxPacketSize, &S, 0);
 }
 
-static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
-                         UINT8 *EpOut, UINT16 *MpsOut, UINT8 *CfgVal) {
+static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn,
+                         UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut, UINT8 *CfgVal) {
     UINT16 Off = 0;
     UINT8 CurAlt = 0;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
 
     *CfgVal = 1;
     while (Off + 2 <= Total) {
@@ -91,15 +91,15 @@ static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
         } else if (Type == 5 && Len >= 7 && CurAlt == 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
 
             if ((Attr & 0x03) == 2) {
                 if (Addr & 0x80) {
                     BestIn = Addr;
-                    BestInMps = Mps ? Mps : 64;
+                    BestInMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 } else {
                     BestOut = Addr;
-                    BestOutMps = Mps ? Mps : 64;
+                    BestOutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 }
             }
         }
@@ -108,34 +108,34 @@ static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
     if (BestIn == 0 || BestOut == 0) {
         return 0;
     }
-    *EpIn = BestIn;
-    *MpsIn = BestInMps;
-    *EpOut = BestOut;
-    *MpsOut = BestOutMps;
+    *EndpointIn = BestIn;
+    *MaxPacketSizeIn = BestInMaxPacketSize;
+    *EndpointOut = BestOut;
+    *MaxPacketSizeOut = BestOutMaxPacketSize;
     return 1;
 }
 
 static int FinishWifi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     USB_DEVICE_DESCRIPTOR Dev;
     UINT8 Cfg[256];
-    UINT8 EpMax = 8;
+    UINT8 EndpointMaxPacketSize = 8;
     UINT8 Addr;
-    UINT8 EpIn;
-    UINT8 EpOut;
-    UINT16 MpsIn;
-    UINT16 MpsOut;
+    UINT8 EndpointIn;
+    UINT8 EndpointOut;
+    UINT16 MaxPacketSizeIn;
+    UINT16 MaxPacketSizeOut;
     UINT8 CfgVal;
     UINT16 CfgLen;
 
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
 
-    if (GetDesc(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
+    if (GetDescriptor(C, 0, 8, USB_WVALUE_DT_DEVICE, 8, &Dev) != 0) {
         return 0;
     }
-    EpMax = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
-    if (GetDesc(C, 0, EpMax, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
+    EndpointMaxPacketSize = Dev.bMaxPacketSize0 ? Dev.bMaxPacketSize0 : 8;
+    if (GetDescriptor(C, 0, EndpointMaxPacketSize, USB_WVALUE_DT_DEVICE, 18, &Dev) != 0) {
         return 0;
     }
     if (Dev.idVendor != WIFI_RTL_VID || !WifiIs8188EuPid(Dev.idProduct)) {
@@ -145,27 +145,27 @@ static int FinishWifi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
         gEhciNextAddr = 2;
     }
     Addr = gEhciNextAddr++;
-    if (SetAddr(C, Addr, EpMax) != 0) {
+    if (SetAddress(C, Addr, EndpointMaxPacketSize) != 0) {
         return 0;
     }
-    C->XferSpeed = Speed;
-    C->XferHubAddr = HubAddr;
-    C->XferHubPort = HubPort;
+    C->TransferSpeed = Speed;
+    C->TransferHubAddress = HubAddr;
+    C->TransferHubPort = HubPort;
     Delay(100000);
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, 9, Cfg) != 0) {
         return 0;
     }
     CfgLen = (UINT16)(Cfg[2] | ((UINT16)Cfg[3] << 8));
     if (CfgLen < 9 || CfgLen > sizeof(Cfg)) {
         CfgLen = 64;
     }
-    if (GetDesc(C, Addr, EpMax, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
+    if (GetDescriptor(C, Addr, EndpointMaxPacketSize, USB_WVALUE_DT_CONFIG, CfgLen, Cfg) != 0) {
         return 0;
     }
-    if (!ParseWifiBulk(Cfg, CfgLen, &EpIn, &MpsIn, &EpOut, &MpsOut, &CfgVal)) {
+    if (!ParseWifiBulk(Cfg, CfgLen, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut, &CfgVal)) {
         return 0;
     }
-    if (SetConfig(C, Addr, EpMax, CfgVal) != 0) {
+    if (SetConfig(C, Addr, EndpointMaxPacketSize, CfgVal) != 0) {
         return 0;
     }
 
@@ -174,11 +174,11 @@ static int FinishWifi(EHCI_CTRL *C, UINT8 Speed, UINT8 HubAddr, UINT8 HubPort) {
     gEhciWifiSpeed = Speed;
     gEhciWifiHubAddr = HubAddr;
     gEhciWifiHubPort = HubPort;
-    gEhciWifiEpIn = EpIn;
-    gEhciWifiEpOut = EpOut;
-    gEhciWifiMpsIn = MpsIn ? MpsIn : 64;
-    gEhciWifiMpsOut = MpsOut ? MpsOut : 64;
-    gEhciWifiEpMax0 = EpMax;
+    gEhciWifiEndpointIn = EndpointIn;
+    gEhciWifiEndpointOut = EndpointOut;
+    gEhciWifiMaxPacketSizeIn = MaxPacketSizeIn ? MaxPacketSizeIn : 64;
+    gEhciWifiMaxPacketSizeOut = MaxPacketSizeOut ? MaxPacketSizeOut : 64;
+    gEhciWifiEndpointMax0 = EndpointMaxPacketSize;
     gEhciWifiPid = Dev.idProduct;
     gEhciWifiOk = 1;
     return 1;
@@ -202,7 +202,7 @@ static int TryHubPort(EHCI_CTRL *C, UINT8 HubAddr, UINT8 P) {
         return 0;
     }
     if (Ch & HUB_STAT_CONNECT) {
-        (void)MscHubClearFeat(C, HubAddr, P, 16u);
+        (void)MscHubClearFeature(C, HubAddr, P, 16u);
     }
     if ((St & HUB_STAT_CONNECT) == 0) {
         return 0;
@@ -222,14 +222,14 @@ int WifiClaimViaHub(EHCI_CTRL *C) {
     if (!HubAddr) {
         return 0;
     }
-    if (MscHubGetDesc(C, HubAddr, Desc, 9)) {
+    if (MscHubGetDescriptor(C, HubAddr, Desc, 9)) {
         NPorts = Desc[2] ? Desc[2] : 6;
         if (NPorts > 14) {
             NPorts = 14;
         }
     }
     for (P = 1; P <= NPorts; P++) {
-        (void)MscHubSetFeat(C, HubAddr, P, HUB_FEAT_PORT_POWER);
+        (void)MscHubSetFeature(C, HubAddr, P, HUB_FEAT_PORT_POWER);
     }
     Delay(500000);
     for (P = 1; P <= NPorts; P++) {

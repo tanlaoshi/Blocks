@@ -131,7 +131,7 @@ static void LogCtrl(EHCI_CTRL *C, int Index) {
     BootMarkUsb(Line);
 }
 
-int InitOne(EHCI_CTRL *C, int Index) {
+int InitializeOne(EHCI_CTRL *C, int Index) {
     UINT64 Bar;
     UINT32 Hcs;
     UINT32 Cmd;

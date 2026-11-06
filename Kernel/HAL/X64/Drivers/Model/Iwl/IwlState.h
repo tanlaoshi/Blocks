@@ -37,16 +37,16 @@ extern char gIwlSsid[IWL_SSID_MAX + 1];
 extern char gIwlPsk[IWL_PSK_MAX + 1];
 extern UINT8 gIwlPmk[32];
 extern int gIwlPmkOk;
-extern UINT8 gIwlTxStaId;
+extern UINT8 gIwlTransmitStationId;
 extern int gDatTxLogged;
 extern int gDatRxLogged;
 extern int gDtxLogged;
-extern int gRxMicLogged;
-extern int gRxMicU;
-extern int gRxDiscLogged;
-extern int gRxOffLogged;
-extern int gRxLlcLogged;
-extern int gRxStLogged;
+extern int gReceiveMicLogged;
+extern int gReceiveMicU;
+extern int gReceiveDiscLogged;
+extern int gReceiveOffsetLogged;
+extern int gReceiveLlcLogged;
+extern int gReceiveStatusLogged;
 
 #ifndef IWL_LOG_VERBOSE
 #define IWL_LOG_VERBOSE 0 /* 1=成功里程碑/FH/rxraw/cmdq 等全开黄字 */

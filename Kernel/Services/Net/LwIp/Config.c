@@ -41,7 +41,7 @@ int LwIpApplyConfig(void) {
     /* 静态后设覆盖 DHCP */
     LwIpDhcpStop();
     IrqFlags = HalIrqSave();
-    if (LwIpNetifSetAddr(NetConfigGetIp(), NetConfigGetMask(),
+    if (LwIpNetifSetAddress(NetConfigGetIp(), NetConfigGetMask(),
                         NetConfigGetGw()) != 0) {
         HalIrqRestore(IrqFlags);
         return -1;

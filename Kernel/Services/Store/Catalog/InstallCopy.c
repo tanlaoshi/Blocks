@@ -11,7 +11,13 @@
 #include "HalConsole.h"
 
 #define STORE_COPY_MAX         FAT_WRITE_MAX
-#define STORE_IO_BREATH_BYTES  4096u
+/*
+ * 读切片：Chat~65KB 一次读完即可。更大包再分片让 Gui。
+ * 卡在「64KB/64KB」多半是读完后的整文件 WriteFile+FatSetIoBreath，
+ * 小文件写时勿按簇呼吸（见 COPY_WRITE）。
+ */
+#define STORE_IO_BREATH_BYTES      (128u * 1024u)
+#define STORE_WRITE_NO_BREATH_MAX  (512u * 1024u)
 
 #define COPY_IDLE   0
 #define COPY_READ   1
@@ -146,11 +152,19 @@ int StoreInstallCopyStep(void) {
         }
     }
     (void)StoreDeleteManagedFile(sCopy.Dst);
-    StoreIoBreath();
-    FatSetIoBreath(StoreIoBreath);
-    Err = FileSystemWriteFile(sCopy.Dst, sCopy.Buf, sCopy.Got);
-    FatSetIoBreath(0);
-    StoreIoBreath();
+    /*
+     * 进度已到 Size 后状态行停在「64K/64K」：其实在写盘。
+     * 小包（Chat 等）整写很快；FatSetIoBreath 按簇让出反而拖成数秒假死。
+     */
+    if (sCopy.Got > STORE_WRITE_NO_BREATH_MAX) {
+        StoreIoBreath();
+        FatSetIoBreath(StoreIoBreath);
+        Err = FileSystemWriteFile(sCopy.Dst, sCopy.Buf, sCopy.Got);
+        FatSetIoBreath(0);
+        StoreIoBreath();
+    } else {
+        Err = FileSystemWriteFile(sCopy.Dst, sCopy.Buf, sCopy.Got);
+    }
     if (Err != FAT_OK) {
         HalConsoleWriteSerial("store: write failed\n");
         (void)StoreDeleteManagedFile(sCopy.Dst);

@@ -3,10 +3,10 @@
  *
  * 上屏：HalVideoDrawBeginFront → 画 → EndFront（直写 scanout + dcache；
  * 对表 boot GOP）。禁 FontTtfPreheat / GuiCursorHide→GraphicsPresent（失根后
- * 读盘或 Present 可堵死）。
+ * Present 可堵死；汉字绘制只 Lookup，未预热则方框）。
  *
- * 屏上只用 ASCII：失根后 TTF 再栅格会触盘 → 方框（手测仅「启」有缓存）。
- * 串口仍打 LocStr 中文。
+ * 文案：LocaleString（跟系统语言）。MSG_BOOT_GONE_* 在 LocaleTtfPreheatCritical
+ * 开机灌格——失根后勿再 Preheat。
  *
  * 等待：须 HalDelayMilliseconds（CNTVCT）。禁 HalCpuTicks——Pi 无定时 IRQ 时
  * gCpuTicks 不涨 → 死等不关机（1103 手测）。
@@ -124,8 +124,8 @@ void DesktopBootMediumGoneShutdown(void) {
     /* 最先串口：与是否读盘/Present 无关 */
     HalSerialWriteShell("\nFS: boot-gone window\n");
 
-    Title = LocStr(MSG_BOOT_GONE_TITLE);
-    Body = LocStr(MSG_BOOT_GONE_BODY);
+    Title = LocaleString(MESSAGE_BOOT_GONE_TITLE);
+    Body = LocaleString(MESSAGE_BOOT_GONE_BODY);
     if (!Title || Title[0] == 0) {
         Title = "启动盘已拔出";
     }
@@ -141,8 +141,8 @@ void DesktopBootMediumGoneShutdown(void) {
      * Push 吞 GraphicsPresent；InputLocked 进 PresentBlocked 挡 Shell Present。
      */
     GuiPresentDeferPush();
-    /* 屏 ASCII，勿 TTF 触盘；勿 GuiCursorHide */
-    BootGonePaint("Boot medium removed", "System cannot continue.");
+    /* LocaleString；字已在 Critical 预热。勿再 FontTtfPreheat；勿 GuiCursorHide */
+    BootGonePaint(Title, Body);
     BootGoneWaitSeconds(BOOT_GONE_SECS);
 
     HalSerialWriteShell("FS: boot-gone shutdown\n");

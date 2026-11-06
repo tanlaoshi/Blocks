@@ -84,7 +84,7 @@ static void AdoptFromNetif(struct netif *Netif) {
     NetConfigAdopt(Ip, Mask, Gw, Dns);
 }
 
-static void ClearNetifAddr(struct netif *Netif) {
+static void ClearNetifAddress(struct netif *Netif) {
     ip4_addr_t Any;
 
     ip4_addr_set_any(&Any);
@@ -178,7 +178,7 @@ int LwIpDhcpEnqueue(int TimeoutMs) {
     /* WiFi 覆盖有线后 epoch 重启 DHCP：须换 SA，否则 Offer 对不上 */
     LwIpNetifSyncMac();
     LwIpDhcpStop();
-    ClearNetifAddr(Netif);
+    ClearNetifAddress(Netif);
     Err = dhcp_start(Netif);
     if (Err != ERR_OK) {
         DebugWrite("lwip: dhcp_start fail\n");

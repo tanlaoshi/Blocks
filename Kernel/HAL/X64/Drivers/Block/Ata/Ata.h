@@ -9,7 +9,7 @@
 #include "BootTypes.h"
 
 int AtaProbe(UINT32 Drive);
-int AtaInit(void);
+int AtaInitialize(void);
 int AtaReadSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer);
 int AtaWriteSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer);
 

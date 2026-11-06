@@ -41,7 +41,7 @@ int IwlPhyDbSend(void) {
             return 0;
         }
         Sent++;
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     for (g = 0; g < IWL_NUM_CH_GROUPS; g++) {
         if (gTxpLen[g] == 0) {
@@ -52,7 +52,7 @@ int IwlPhyDbSend(void) {
             return 0;
         }
         Sent++;
-        IwlStallMs(1);
+        IwlStallMilliseconds(1);
     }
     {
         char Line[24];

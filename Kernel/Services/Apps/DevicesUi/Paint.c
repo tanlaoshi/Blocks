@@ -14,12 +14,12 @@ static void PutHex8(char *Dst, UINTN *N, UINTN Max, UINT32 V) {
 
 static const char *FiltLabel(int Filt) {
     if (Filt == DEVUI_FILT_BOUND) {
-        return LocStr(MSG_DEV_BOUND);
+        return LocaleString(MESSAGE_DEV_BOUND);
     }
     if (Filt == DEVUI_FILT_FREE) {
-        return LocStr(MSG_DEV_FREE);
+        return LocaleString(MESSAGE_DEV_FREE);
     }
-    return LocStr(MSG_DEV_ALL);
+    return LocaleString(MESSAGE_DEV_ALL);
 }
 
 static int DrawLine(UINT32 X, UINT32 *Ty, UINT32 MaxY, UINT32 MaxW, const char *S,
@@ -41,7 +41,7 @@ static int DrawLine(UINT32 X, UINT32 *Ty, UINT32 MaxY, UINT32 MaxW, const char *
     return 1;
 }
 
-static const char *DevTitle(const DEVICE_NODE *Dev) {
+static const char *DeviceTitle(const DEVICE_NODE *Dev) {
     if (!Dev) {
         return "pci";
     }
@@ -75,19 +75,19 @@ static void DrawDetail(UINT32 Dx, UINT32 Dy, UINT32 Dw, UINT32 Dh) {
     MaxY = Dy + Dh - 4;
     MaxW = Dw > 20u ? Dw - 20u : Dw;
     if (gDevUiFiltCount <= 0) {
-        DrawLine(Dx + 10, &Ty, MaxY, MaxW, LocStr(MSG_DEV_EMPTY), ThemeText());
+        DrawLine(Dx + 10, &Ty, MaxY, MaxW, LocaleString(MESSAGE_DEV_EMPTY), ThemeText());
         return;
     }
     Dev = DeviceGet(gDevUiSel);
     if (!Dev) {
         return;
     }
-    DrawLine(Dx + 10, &Ty, MaxY, MaxW, LocStr(MSG_DEV_DETAIL), ThemeTextAccent());
+    DrawLine(Dx + 10, &Ty, MaxY, MaxW, LocaleString(MESSAGE_DEV_DETAIL), ThemeTextAccent());
     DevicesUiFormatPci(Dev, Line, sizeof(Line));
     DrawLine(Dx + 10, &Ty, MaxY, MaxW, Line, ThemeText());
     DevicesUiFormatIds(Dev, Line, sizeof(Line));
     DrawLine(Dx + 10, &Ty, MaxY, MaxW, Line, ThemeText());
-    DrawLine(Dx + 10, &Ty, MaxY, MaxW, DevTitle(Dev), ThemeText());
+    DrawLine(Dx + 10, &Ty, MaxY, MaxW, DeviceTitle(Dev), ThemeText());
     Bound = (Dev->Bound && Dev->Driver && Dev->Driver->Name) ? Dev->Driver->Name
                                                              : "-";
     DrawLine(Dx + 10, &Ty, MaxY, MaxW, Bound, ThemeText());
@@ -178,14 +178,14 @@ void DevicesUiPaint(void) {
             GraphicsFillRectangle(Cx + SideW - UI_LAYOUT_SEP_W, Cy, UI_LAYOUT_SEP_W, Ch,
                              ThemePanelSeparator());
         }
-        HalVideoDrawStringAt(Cx + UI_LAYOUT_PAD, Cy + UI_LAYOUT_PAD, LocStr(MSG_APP_DEVICES),
+        HalVideoDrawStringAt(Cx + UI_LAYOUT_PAD, Cy + UI_LAYOUT_PAD, LocaleString(MESSAGE_APP_DEVICES),
                              ThemeText());
         for (i = 0; i < DEVUI_FILT_N + 1; i++) {
             const char *Lbl;
             int Sel;
 
             if (i == 0) {
-                Lbl = LocStr(MSG_DEV_SUMMARY);
+                Lbl = LocaleString(MESSAGE_DEV_SUMMARY);
                 Sel = gDevUiSummary;
             } else {
                 Lbl = FiltLabel(i - 1);
@@ -231,7 +231,7 @@ void DevicesUiPaint(void) {
 
     if (gDevUiFiltCount <= 0) {
         HalVideoDrawStringAt(gDevUiListX + 8, gDevUiListY + 8,
-                             LocStr(MSG_DEV_EMPTY), ThemeText());
+                             LocaleString(MESSAGE_DEV_EMPTY), ThemeText());
     } else {
         for (Row = 0; Row < gDevUiVisible; Row++) {
             Fi = gDevUiScroll + Row;
@@ -258,7 +258,7 @@ void DevicesUiPaint(void) {
             if (N + 1 < sizeof(Line)) {
                 Line[N++] = ' ';
             }
-            Nm = DevTitle(Dev);
+            Nm = DeviceTitle(Dev);
             for (k = 0; Nm[k] && N + 1 < sizeof(Line); k++) {
                 Line[N++] = Nm[k];
             }

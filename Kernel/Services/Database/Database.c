@@ -236,7 +236,7 @@ int DbInitialize(void) {
     ClearAll();
     Err = DbLoad();
     if (Err == DB_NOENT) {
-        ImportThemeCfgIfEmpty();
+        ImportThemeConfigIfEmpty();
     }
     /*
      * 只在真的读到了（或确认不存在）时才闩上「已初始化」。

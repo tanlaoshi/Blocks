@@ -12,7 +12,7 @@ void IpInput(const UINT8 *Pkt, UINTN Len) {
     UINTN IpLen;
     UINTN IpHdrLen;
 
-    gRxFrames++;
+    gReceiveFrames++;
     if (Len < ETH_HDR_LEN) {
         return;
     }

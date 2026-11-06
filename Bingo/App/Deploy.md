@@ -2,7 +2,7 @@
 
 编出 `build/*.ELF` 之后，按**是否开窗**选路径。选错会 CoopDrain 钉死桌面（关不了窗、下次 run 也像卡死）。
 
-## 开窗 App（Gui / Chat / TaskMgr…）— 必用包目录
+## 开窗 App（Gui / Chat / TaskManager…）— 必用包目录
 
 **禁止** `Apps/MYGUI.ELF` 这种扁平文件；`ExtractAppsId` 要 `Apps/<id>/…`。
 

@@ -1,0 +1,192 @@
+/*
+ * HubEnumerateKeyboard.c — PR-S-xhcihub-1：hub 子口键盘枚举
+ *
+ * 从 Hub.c 原样搬家；不改语义。Hub 口帮手去掉 static，声明在 Internal.h。
+ */
+#include "UsbHid/Private.h"
+#include "UsbHostController.h"
+
+int TryConfigureKeyboardSlot(UINT8 Speed) {
+    UINT8 EndpointAddress = 0, Interval = 10;
+    UINT16 MaxPacketSize = 8;
+    UINT8 ConfigVal = 1;
+    int HaveIntr = 0;
+    UINT16 Total;
+
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gControlBuffer) < 0) {
+        return 0;
+    }
+    Total = (UINT16)(gControlBuffer[2] | (gControlBuffer[3] << 8));
+    if (Total < 9) {
+        Total = 9;
+    }
+    if (Total > sizeof(gControlBuffer)) {
+        Total = (UINT16)sizeof(gControlBuffer);
+    }
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gControlBuffer) < 0) {
+        return 0;
+    }
+    ConfigVal = gControlBuffer[5];
+    if (ConfigVal == 0) {
+        ConfigVal = 1;
+    }
+    HaveIntr = ParseConfig(gControlBuffer, Total, Speed, &gKeyboardInterface, &EndpointAddress, &MaxPacketSize, &Interval);
+    if (!HaveIntr) {
+        EnumerateWhy("Boot: Why=no hid ep\n");
+        return 0;
+    }
+    if (RealPcRejectMouseExtraAsKeyboard(Total, Speed)) {
+        if (ClaimAddressedSlotAsMouse(gHubRootPort ? gHubRootPort : gPort1, Speed, Total,
+                                      ConfigVal)) {
+            /* gSlotId 已清；调用方 DisableSlot(0) 为空操作 */
+            return 0;
+        }
+        return 0;
+    }
+    if (SetConfig(ConfigVal) < 0) {
+        return 0;
+    }
+    (void)SetProtocolBoot(gKeyboardInterface);
+    SetIdle(gKeyboardInterface);
+    {
+        UINT8 Addr = gDevCtx[12];
+        if (Addr == 0 && gSlotId != 0) {
+            Addr = (UINT8)gSlotId;
+        }
+        UsbDeviceNote(Addr, gControlBuffer, Total);
+    }
+    {
+        UINT8 MouseEndpoint = 0, MIv = 10;
+        UINT16 MouseMaxPacketSize = 8;
+        int WantMouse;
+
+        /*
+         * 真机 v6：复合键鼠上 Add 鼠标后即便 Sync ok 仍 k=0。
+         * 对照实验：只配键盘、不 Prep/Add 鼠标（避免 Stall 与二次 Config）。
+         * 独立口鼠标仍可由 MousePortInitialize 绑定。
+         */
+        WantMouse = HalCpuIsHypervisor() &&
+                    PrepCompositeMouse(Total, Speed, gKeyboardInterface, EndpointAddress, &MouseEndpoint, &MouseMaxPacketSize, &MIv);
+        if (!HalCpuIsHypervisor()) {
+            if (!ConfigureInterrupt(EndpointAddress, MaxPacketSize, Interval, Speed, 0, 0, 0)) {
+                return 0;
+            }
+            ZeroMemory(gReportBuf, 8);
+            (void)InterruptByClass(3, 1, 1);
+            BootLog("Boot: XHCI kbd-only then bind mouse ports\n");
+            BootLog("Boot: XHCI kbd-fix=v8\n");
+        } else if (WantMouse) {
+            (void)SetInterface(gKeyboardInterface, 0);
+            (void)SetProtocolBoot(gKeyboardInterface);
+            SetIdle(gKeyboardInterface);
+            if (!ConfigureInterrupt(EndpointAddress, MaxPacketSize, Interval, Speed, MouseEndpoint, MouseMaxPacketSize, MIv)) {
+                return 0;
+            }
+            ZeroMemory(gReportBuf, 8);
+            (void)InterruptByClass(3, 1, 1);
+            (void)InterruptByClass(3, 0, 0);
+            BootLog("Boot: XHCI-HID Mouse (Composite)\n");
+        } else {
+            if (!ConfigureInterrupt(EndpointAddress, MaxPacketSize, Interval, Speed, 0, 0, 0)) {
+                return 0;
+            }
+            ZeroMemory(gReportBuf, 8);
+            (void)InterruptByClass(3, 1, 1);
+        }
+    }
+    gUseGetReport = 0;
+    return 1;
+}
+
+int EnumerateHubChildrenForKeyboard(void) {
+    UINT8 Port;
+    UINT8 MaxP = gHubNumPorts;
+    volatile int D;
+
+    if (MaxP == 0 || MaxP > 15) {
+        MaxP = 8;
+    }
+    for (Port = 1; Port <= MaxP; Port++) {
+        UINT32 St = 0;
+        UINT8 Speed;
+        int t;
+
+        if (HubSetPortFeature(Port, HUB_FEAT_PORT_POWER) < 0) {
+            continue;
+        }
+        if (!HalCpuIsHypervisor()) {
+            StallMilliseconds(100);
+        } else {
+            for (D = 0; D < 80000; D++) {
+            }
+        }
+        if (HubGetPortStatus(Port, &St) < 0) {
+            continue;
+        }
+        if (!(St & HUB_PORT_CONNECTION)) {
+            continue;
+        }
+        /* 鼠已占子口：勿 Reset（mouse-only 后再扫键时保鼠） */
+        if (gMouseSlotId != 0 && (gMouseRoute & 0xFu) == (UINT32)Port) {
+            continue;
+        }
+        BootLog("Boot: XHCI hub port connect\n");
+        if (HubSetPortFeature(Port, HUB_FEAT_PORT_RESET) < 0) {
+            continue;
+        }
+        for (t = 0; t < (HalCpuIsHypervisor() ? 50000 : 40); t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                break;
+            }
+            if (St & HUB_C_PORT_RESET) {
+                (void)HubClearPortFeature(Port, HUB_FEAT_C_PORT_RESET);
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMilliseconds(5);
+            }
+        }
+        for (t = 0; t < (HalCpuIsHypervisor() ? 20000 : 40); t++) {
+            if (HubGetPortStatus(Port, &St) < 0) {
+                break;
+            }
+            if (St & HUB_C_PORT_CONNECTION) {
+                (void)HubClearPortFeature(Port, HUB_FEAT_C_PORT_CONNECTION);
+            }
+            if (St & HUB_PORT_ENABLE) {
+                break;
+            }
+            if (!HalCpuIsHypervisor()) {
+                StallMilliseconds(5);
+            }
+        }
+        if (!(St & HUB_PORT_ENABLE)) {
+            continue;
+        }
+        Speed = HubPortSpeed(St);
+        gSpeed = Speed;
+        gPort1 = gHubRootPort;
+        if (!AddressDeviceOnPort(gHubRootPort, Speed, &gSlotId, gDevCtx,
+                                 (UINT32)Port, (UINT8)gHubSlotId, Port, 0, 0)) {
+            DisableSlot(gSlotId);
+            continue;
+        }
+        if (GetDeviceDesc() < 0) {
+            DisableSlot(gSlotId);
+            continue;
+        }
+        if (IsHubDeviceDesc()) {
+            /* 不做二层 hub */
+            DisableSlot(gSlotId);
+            continue;
+        }
+        if (!TryConfigureKeyboardSlot(Speed)) {
+            DisableSlot(gSlotId);
+            continue;
+        }
+        BootLog("Boot: XHCI-HID Via Hub\n");
+        return 1;
+    }
+    return 0;
+}
+

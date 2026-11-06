@@ -38,7 +38,7 @@ void HalDriverRegister(void) {
 
 int HalBlockInitialize(void) {
 #if BOARD_IS_VIRT
-    return VirtioBlockInit();
+    return VirtioBlockInitialize();
 #else
     /* Pi3B：bcm-sdhost（µSD）→ DriverBlockAttach → BlockInitialize */
     (void)DriverProbeClass(DRIVER_CLASS_BLOCK);
@@ -51,7 +51,7 @@ int HalBlockInitialize(void) {
 
 int HalUsbInitialize(void) {
 #if BOARD_IS_VIRT
-    return VirtioInputInit();
+    return VirtioInputInitialize();
 #else
     /*
      * Pi3B：rpi-7 探针 DWC2（GSNPSID / host / HPRT）。
@@ -134,7 +134,7 @@ void HalUsbMscArmBootWatch(int On) {
     (void)On;
 }
 
-int HalUsbPortEnumIsFrozen(void) {
+int HalUsbPortEnumerateIsFrozen(void) {
     return 0;
 }
 

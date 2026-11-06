@@ -27,7 +27,7 @@ static void MemCpy(UINT8 *D, const UINT8 *S, UINTN N)
     }
 }
 
-static void XorBlk(UINT8 *D, const UINT8 *S, UINTN N)
+static void XorBlock(UINT8 *D, const UINT8 *S, UINTN N)
 {
     UINTN I;
     for (I = 0; I < N; I++) {
@@ -139,14 +139,14 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
     for (I = 0; I < AadLen; I++) {
         B[Off++] = Aad[I];
         if (Off == 16) {
-            XorBlk(X, B, 16);
+            XorBlock(X, B, 16);
             WifiAesEncrypt(Key, X, X);
             MemClr(B, 16);
             Off = 0;
         }
     }
     if (Off) {
-        XorBlk(X, B, 16);
+        XorBlock(X, B, 16);
         WifiAesEncrypt(Key, X, X);
     }
 
@@ -166,7 +166,7 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
         if (Encrypt) {
             MemClr(B, 16);
             MemCpy(B, Body + Off, N);
-            XorBlk(X, B, 16);
+            XorBlock(X, B, 16);
             WifiAesEncrypt(Key, X, X);
             A[14] = (UINT8)(Ctr >> 8);
             A[15] = (UINT8)Ctr;
@@ -183,7 +183,7 @@ static void CcmAuthCrypt(const UINT8 Key[16], const UINT8 *Aad, UINTN AadLen,
             }
             MemClr(B, 16);
             MemCpy(B, Body + Off, N);
-            XorBlk(X, B, 16);
+            XorBlock(X, B, 16);
             WifiAesEncrypt(Key, X, X);
         }
         Off += N;

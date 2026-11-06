@@ -4,12 +4,12 @@
  */
 #include "Private.h"
 
-int IwlEapolWaitMsg1(UINT8 *Eapol, UINTN *EapLen, UINT8 *Anonce, UINT8 *Replay,
+int IwlEapolWaitMessage1(UINT8 *Eapol, UINTN *EapLen, UINT8 *Anonce, UINT8 *Replay,
                      UINT8 *KeyDescOut) {
     IWL_EAPOL_M1_CTX Ctx;
     UINT32 I;
 
-    IwlEapolM1CtxInit(&Ctx);
+    IwlEapolM1ContextInitialize(&Ctx);
     IwlEapolM1SendStart(&Ctx);
 
     for (I = 0; I < 4000; I++) {
@@ -20,12 +20,12 @@ int IwlEapolWaitMsg1(UINT8 *Eapol, UINTN *EapLen, UINT8 *Anonce, UINT8 *Replay,
             (void)IwlSendEapol(Ctx.Start, 4);
         }
 
-        IwlRxPoll();
-        if (IwlEapolM1DrainRx(&Ctx, Eapol, EapLen, Anonce, Replay, I)) {
+        IwlReceivePoll();
+        if (IwlEapolM1DrainReceive(&Ctx, Eapol, EapLen, Anonce, Replay, I)) {
             break;
         }
         if (!Ctx.Got1 || I < Ctx.M1At + 100u) {
-            IwlStallMs(1);
+            IwlStallMilliseconds(1);
         }
     }
     if (!Ctx.Got1) {

@@ -118,11 +118,11 @@ static int HistIsBusy(void) {
     return gReplacing;
 }
 
-static int HistIgnoreRx(void) {
+static int HistIgnoreReceive(void) {
     return gIgnoreRx;
 }
 
-static void HistClearIgnoreRx(void) {
+static void HistClearIgnoreReceive(void) {
     gIgnoreRx = 0;
 }
 
@@ -268,6 +268,6 @@ void ConsolePublishHistory(CONSOLE_OPS *Ops) {
     Ops->HistApplyNavToLine = HistApplyNavToLine;
     Ops->HistOnEdit = HistOnEdit;
     Ops->HistIsBusy = HistIsBusy;
-    Ops->HistIgnoreRx = HistIgnoreRx;
-    Ops->HistClearIgnoreRx = HistClearIgnoreRx;
+    Ops->HistIgnoreReceive = HistIgnoreReceive;
+    Ops->HistClearIgnoreReceive = HistClearIgnoreReceive;
 }

@@ -98,7 +98,7 @@
 #define CC_STOPPED          26 /* Stop EP 取消挂起传输 */
 #define CC_STOPPED_LEN      27
 #define CC_STOPPED_SHORT    28
-#define KBD_Q 16
+#define KEYBOARD_QUEUE 16
 #ifndef XHCI_DIAG_VERBOSE
 #define XHCI_DIAG_VERBOSE 0
 #endif
@@ -149,28 +149,28 @@ extern int gXhciTe;
 extern UINT32 gPort1;
 extern UINT8 gSpeed;
 extern UINT32 gSlotId;
-extern UINT32 gXferSlot;
+extern UINT32 gTransferSlot;
 extern UINT32 gIntrDci;
-extern UINT16 gEp0Mps;
-extern UINT8 gKbdIface;
-extern UINT8 gKbdParseScore;
-extern UINT8 gKbdEpAddr;
-extern UINT16 gKbdMps;
-extern UINT8 gKbdEpInterval;
+extern UINT16 gEndpoint0MaxPacketSize;
+extern UINT8 gKeyboardInterface;
+extern UINT8 gKeyboardParseScore;
+extern UINT8 gKeyboardEndpointAddress;
+extern UINT16 gKeyboardMaxPacketSize;
+extern UINT8 gKeyboardEndpointInterval;
 extern UINT8 gUseGetReport;
-extern UINT8 gKbdPollReport;
-extern UINT8 gKbdReportPrev[8];
+extern UINT8 gKeyboardPollReport;
+extern UINT8 gKeyboardReportPrevious[8];
 extern volatile UINT32 gGetReportBusy;
 extern UINT8 gGetReportFails;
-extern UINT8 gXferFast;
+extern UINT8 gTransferFast;
 extern UINT8 gUseIrq;
 extern XHCI_IRQ_MODE gIrqMode;
-extern UINT32 gKbdRoute;
-extern UINT8 gKbdHubSlot;
-extern UINT8 gKbdTtPort;
-extern const char *gEnumWhy;
+extern UINT32 gKeyboardRoute;
+extern UINT8 gKeyboardHubSlot;
+extern UINT8 gKeyboardTransactionTranslatorPort;
+extern const char *gEnumerateWhy;
 
-extern USB_KEYBOARD_REPORT gKbdQ[KBD_Q];
+extern USB_KEYBOARD_REPORT gKeyboardQueue[KEYBOARD_QUEUE];
 extern volatile UINT32 gKeyboardWriteIndex;
 extern volatile UINT32 gKeyboardReadIndex;
 
@@ -180,13 +180,13 @@ extern UINT32 gMouseRoute;
 extern UINT8 gMouseHubSlot;
 extern UINT8 gMouseTtPort;
 extern UINT32 gMouseIntrDci;
-extern UINT8 gMouseIface;
-extern UINT8 gMouseIfaceProto;
+extern UINT8 gMouseInterface;
+extern UINT8 gMouseInterfaceProto;
 extern UINT8 gMouseParseScore;
 extern UINT8 gMouseAbsolute;
-extern UINT8 gMouseEpAddr;
+extern UINT8 gMouseEndpointAddress;
 extern UINT8 gMouseReportLen;
-extern UINT8 gMouseXferLen;
+extern UINT8 gMouseTransferLength;
 extern UINT8 gMouseBuf[8];
 extern int gMouseAbsX;
 extern int gMouseAbsY;
@@ -209,19 +209,19 @@ extern int gMscBulkRingsInited;
 /* PR-H-msc-3：scan 临时 slot（文档 §3.4 补全） */
 extern UINT32 gMscScanSlot;
 extern UINT8 gMscScanDevCtx[2048];
-extern XHCI_TRB gMscScanEp0Ring[RING_SIZE];
-extern RING_STATE gMscScanEp0;
+extern XHCI_TRB gMscScanEndpoint0Ring[RING_SIZE];
+extern RING_STATE gMscScanEndpoint0;
 /* PR-H-msc-4：claim 状态 */
 extern UINT32 gMscPort;
 extern UINT32 gMscRoute;
 extern UINT8 gMscHubSlot;
 extern UINT8 gMscTtPort;
-/* 临时第二根口 hub（MSC probe）：Ep0 走 gMscScanEp0Ring，勿抢 HID gHubEp0Ring */
+/* 临时第二根口 hub（MSC probe）：Endpoint0 走 gMscScanEndpoint0Ring，勿抢 HID gHubEndpoint0Ring */
 extern UINT32 gMscProbeHubSlot;
 extern UINT32 gMscBulkInDci;
 extern UINT32 gMscBulkOutDci;
-extern UINT16 gMscBulkInMps;
-extern UINT16 gMscBulkOutMps;
+extern UINT16 gMscBulkInMaxPacketSize;
+extern UINT16 gMscBulkOutMaxPacketSize;
 extern int gMscClaimed;
 extern UINT32 gMscBootWatchPort;
 extern int gMscBootWatchArm;
@@ -236,9 +236,9 @@ extern int gMscCapacityOk;
 extern volatile UINT32 gBulkDone;
 extern volatile UINT32 gBulkCode;
 extern volatile UINT32 gBulkRemain;
-extern UINT8 gMscCfgBuf[1024];
+extern UINT8 gMscConfigBuffer[1024];
 
-/* PR-H-usb-uart-ftdi-1：独立 slot（定义在 FtdiClaim.c / Rx.c） */
+/* PR-H-usb-uart-ftdi-1：独立 slot（定义在 FtdiClaim.c / Receive.c） */
 extern UINT32 gFtdiSlot;
 extern UINT32 gFtdiPort;
 extern UINT32 gFtdiRoute;
@@ -265,18 +265,18 @@ extern int gWifiXhciOk;
 
 extern volatile UINT32 gStatIntrEvt;
 extern volatile UINT32 gStatMouseEvt;
-extern volatile UINT32 gStatKbdPush;
+extern volatile UINT32 gStatKeyboardPush;
 extern volatile UINT32 gStatMousePush;
 extern volatile UINT32 gStatLastCc;
 extern volatile UINT32 gStatDrain;
-extern volatile UINT32 gStatXferAny;
+extern volatile UINT32 gStatTransferAny;
 extern volatile UINT32 gStatEvtRing;
 extern volatile UINT32 gStatLastSlot;
-extern volatile UINT32 gStatLastEp;
+extern volatile UINT32 gStatLastEndpoint;
 extern volatile UINT32 gStatUnmatched;
 extern volatile UINT32 gStatIrq;
 extern volatile UINT32 gStatIrqSkipped; /* excl-1：独占窗跳过 */
-extern UINT32 gDiagXferLogged;
+extern UINT32 gDiagTransferLogged;
 extern UINT32 gDiagQuiet;
 extern UINT32 gDiagIntrCcLogged;
 extern UINT32 gCtrlFailLogged;
@@ -288,18 +288,18 @@ extern SPIN_LOCK gHidQueueLock;
 extern SPIN_LOCK gEvtConsumerLock; /* excl-2：仅保护 ProcessEvents* */
 
 extern XHCI_TRB gCmdRing[RING_SIZE];
-extern XHCI_TRB gEp0Ring[RING_SIZE];
-extern XHCI_TRB gHubEp0Ring[RING_SIZE];
-extern XHCI_TRB gMouseEp0Ring[RING_SIZE];
+extern XHCI_TRB gEndpoint0Ring[RING_SIZE];
+extern XHCI_TRB gHubEndpoint0Ring[RING_SIZE];
+extern XHCI_TRB gMouseEndpoint0Ring[RING_SIZE];
 extern XHCI_TRB gIntrRing[RING_SIZE];
 extern XHCI_TRB gEvtRing[EVT_SIZE];
 extern XHCI_TRB *gCmdRingLive;
 extern XHCI_TRB *gEvtRingLive;
 extern UINT32 gEvtRingSize;
 extern RING_STATE gCmd;
-extern RING_STATE gEp0;
-extern RING_STATE gHubEp0;
-extern RING_STATE gMouseEp0;
+extern RING_STATE gEndpoint0;
+extern RING_STATE gHubEndpoint0;
+extern RING_STATE gMouseEndpoint0;
 extern RING_STATE gIntr;
 extern UINT32 gEvtDeq;
 extern UINT32 gEvtCcs;
@@ -322,7 +322,7 @@ extern UINT8 gScratchBuf[XHCI_SCRATCH_MAX][4096];
 extern UINT8 gDevCtx[2048];
 extern UINT8 gHubDevCtx[2048];
 extern UINT8 gInCtx[2048];
-extern UINT8 gCtrlBuf[256];
+extern UINT8 gControlBuffer[256];
 extern UINT8 gReportBuf[8];
 extern UINT8 gErst[16];
 
@@ -334,7 +334,7 @@ extern UINT8 gHubMtt;
 extern UINT8 gHubTtt;
 extern UINT32 gPortNoHid;
 extern UINT32 gPortNeedForcePr;
-extern UINT8 gSlotEp0UsesKbdRing[DCBAA_SLOTS + 1];
+extern UINT8 gSlotEndpoint0UsesKeyboardRing[DCBAA_SLOTS + 1];
 
 extern volatile UINT32 gCmdDone;
 extern UINT32 gCmdCode;
@@ -343,17 +343,17 @@ extern UINT32 gXhciCmdSick;
 /*
  * usb-hid-keep / usb-map：MSC claim sick 或扫空后置 1。
  * AddressDeviceOnPort / ForceUntilPed 见 1 则拒；ClaimPorts 见 1 则 skip（不清零）。
- * Shell msc hot：XhciPortEnumUnfreeze 后再 Claim。Worker HotPoll 勿解冻。
+ * Shell msc hot：XhciPortEnumerateUnfreeze 后再 Claim。Worker HotPoll 勿解冻。
  * 置位方：ClaimPorts done；消费方：Device/ClaimPort + Wifi/FTDI/CDC claim 早退。
  */
-extern UINT32 gXhciPortEnumFreeze;
-void XhciPortEnumUnfreeze(void);
+extern UINT32 gXhciPortEnumerateFreeze;
+void XhciPortEnumerateUnfreeze(void);
 extern UINT32 gXhciCmdWaitMs; /* 0=默认 800ms；SS hub 子口 Address 可缩短 */
 extern UINT32 gXhciCmdAttempts; /* 0=默认 2；SS hub 子口可 1 次快退 */
 extern UINT32 gXhciCmdWaiting; /* WaitCommand 中：Drain/Irq 勿碰事件环 */
-extern volatile UINT32 gXferDone;
-extern UINT32 gXferCode;
-extern UINT32 gXferRemain;
+extern volatile UINT32 gTransferDone;
+extern UINT32 gTransferCode;
+extern UINT32 gTransferRemain;
 extern volatile UINT32 gIntrDone;
 
 /* ---- 共享函数（实现分布于 Drivers/XHCI/ 各 .c） ---- */
@@ -367,14 +367,14 @@ void CopyMemory(void *Dst, const void *Src, UINTN Size);
 UINT64 PointerToPhysical(const void *Ptr);
 void Fence(void);
 UINT64 ReadTsc(void);
-void StallMs(UINT32 Ms);
+void StallMilliseconds(UINT32 Milliseconds);
 int WaitClear(UINT64 Addr, UINT32 Mask, int Timeout);
 int WaitSet(UINT64 Addr, UINT32 Mask, int Timeout);
-int WaitSetMs(UINT64 Addr, UINT32 Mask, UINT32 Ms);
-int WaitClearMs(UINT64 Addr, UINT32 Mask, UINT32 Ms);
+int WaitSetMilliseconds(UINT64 Addr, UINT32 Mask, UINT32 Ms);
+int WaitClearMilliseconds(UINT64 Addr, UINT32 Mask, UINT32 Ms);
 int MapXhciDma(UINT64 Phys, UINTN Bytes);
 
-void InitRing(XHCI_TRB *Ring, RING_STATE *St, UINT32 Size);
+void RingInitialize(XHCI_TRB *Ring, RING_STATE *St, UINT32 Size);
 void Enqueue(XHCI_TRB *Ring, RING_STATE *St, UINT64 Param, UINT32 Status, UINT32 Control);
 UINT32 TrbType(UINT32 Control);
 void ProcessEventsLocked(void); /* excl-2：无锁环逻辑 */
@@ -395,17 +395,17 @@ int ResolveFwCmdRing(UINT64 DeqPhys, UINT32 Rcs,
                      UINT32 *EnqOut, UINT32 *PcsOut);
 
 UINT8 *InSlot(void);
-UINT8 *InEp(UINT32 Dci);
-int InitHw(UINT64 BaseAddress);
-int EnumAndBind(void);
+UINT8 *InEndpoint(UINT32 Dci);
+int HardwareInitialize(UINT64 BaseAddress);
+int EnumerateAndBind(void);
 /* PR-F-xhci-1 */
-int EnumTryRootPort(UINT32 P);
-void EnumBindMouseAfterKbd(void);
+int EnumerateTryRootPort(UINT32 P);
+void EnumerateBindMouseAfterKeyboard(void);
 /* PR-F-xhci-2 */
-void InitHwRealPcDmar(void);
-int InitHwMapCap(UINT64 BaseAddress, int RealPc, char *B);
-int InitHwStartCtrl(UINT32 MaxSlots, int RealPc);
-void InitHwSurveyPorts(void);
+void HardwareInitializeRealPcDmar(void);
+int HardwareInitializeMapCapability(UINT64 BaseAddress, int RealPc, char *B);
+int HardwareInitializeStartController(UINT32 MaxSlots, int RealPc);
+void HardwareInitializeSurveyPorts(void);
 
 void TakeLegacy(void);
 void HaltControllerQuiet(void);
@@ -419,7 +419,7 @@ int WaitCommand(int Timeout);
 int WaitTransfer(int Timeout);
 void ServiceHidCompletions(void);
 
-UINT32 PortReg(UINT32 Port1);
+UINT32 PortRegister(UINT32 Port1);
 UINT8 PortSpeed(UINT32 Portsc);
 UINT32 PortscNeutral(UINT32 State);
 void PortscClearChange(UINT64 Ps);
@@ -427,43 +427,43 @@ void PowerConnectedPorts(void);
 int ResetPortEx(UINT32 Port1, int Force);
 int ResetPort(UINT32 Port1);
 
-UINT16 SpeedMps(UINT8 Speed);
-void Ep0RingForSlot(UINT32 SlotId, XHCI_TRB **RingOut, RING_STATE **StOut);
-void Ep0RingForSlotOut(UINT32 *SlotOut, XHCI_TRB **RingOut, RING_STATE **StOut);
+UINT16 SpeedMaxPacketSize(UINT8 Speed);
+void Endpoint0RingForSlot(UINT32 SlotId, XHCI_TRB **RingOut, RING_STATE **StOut);
+void Endpoint0RingForSlotOut(UINT32 *SlotOut, XHCI_TRB **RingOut, RING_STATE **StOut);
 int AddressDeviceOnPort(UINT32 RootPort, UINT8 Speed, UINT32 *SlotOut,
                         UINT8 *DevCtx, UINT32 RouteString,
                         UINT8 ParentHubSlot, UINT8 TtPort,
                         int HubDevice, UINT8 HubNumPorts);
 int AddressDevice(UINT32 Port1, UINT8 Speed);
-int ControlXfer(USB_SETUP_PACKET *Setup, void *Data);
-int GetDesc(UINT16 TypeIndex, UINT16 Index, UINT16 Length, void *Buf);
+int ControlTransfer(USB_SETUP_PACKET *Setup, void *Data);
+int GetDescriptor(UINT16 TypeIndex, UINT16 Index, UINT16 Length, void *Buf);
 int EvaluateHubSlot(UINT32 SlotId, UINT32 RootPort, UINT8 Speed, UINT8 NumPorts);
-void HubNoteMttFromDevDesc(UINT8 Speed);
-int EvaluateEp0(UINT32 SlotId, UINT16 Mps);
+void HubNoteMttFromDeviceDescriptor(UINT8 Speed);
+int EvaluateEndpoint0(UINT32 SlotId, UINT16 MaxPacketSize);
 int GetDeviceDesc(void);
 int SetConfig(UINT8 Config);
-int SetInterface(UINT8 Iface, UINT8 Alt);
-int SetIdle(UINT8 Iface);
-int SetProtocolBoot(UINT8 Iface);
-int SetReportOutput(UINT8 Iface, void *Data, UINT16 Length);
+int SetInterface(UINT8 Interface, UINT8 Alt);
+int SetIdle(UINT8 Interface);
+int SetProtocolBoot(UINT8 Interface);
+int SetReportOutput(UINT8 Interface, void *Data, UINT16 Length);
 void DisableSlot(UINT32 SlotId);
-void RecoverEp0(UINT32 SlotId);
+void RecoverEndpoint0(UINT32 SlotId);
 
 int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval);
+                UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval);
 int ParseConfigMouse(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
-                     UINT8 *Iface, UINT8 *EpAddr, UINT16 *Mps, UINT8 *Interval);
-int ConfigureIntr(UINT8 EpAddr, UINT16 Mps, UINT8 BInterval, UINT8 Speed,
-                  UINT8 MouseEpAddr, UINT16 MouseMps, UINT8 MouseBInterval);
-int ConfigureMouseIntr(UINT32 SlotId, UINT8 EpAddr, UINT16 Mps, UINT8 BInterval,
+                     UINT8 *Interface, UINT8 *EndpointAddress, UINT16 *MaxPacketSize, UINT8 *Interval);
+int ConfigureInterrupt(UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval, UINT8 Speed,
+                  UINT8 MouseEndpointAddress, UINT16 MouseMaxPacketSize, UINT8 MouseBInterval);
+int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval,
                        UINT8 Speed);
 void QueueIntr(void);
 void QueueMouseIntr(void);
 UINT8 FsInterval(UINT8 BInterval);
-int HidGetInputReport(UINT8 Iface, void *Data, UINT16 Length);
+int HidGetInputReport(UINT8 Interface, void *Data, UINT16 Length);
 int SyncIntrDequeue(UINT32 Slot, UINT32 Dci, XHCI_TRB *Ring, RING_STATE *St, UINTN RingBytes);
-int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
-                       UINT8 *MouseEp, UINT16 *MouseMps, UINT8 *MouseIv);
+int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KeyboardInterface, UINT8 KeyboardEndpoint,
+                       UINT8 *MouseEndpoint, UINT16 *MouseMaxPacketSize, UINT8 *MouseIv);
 int RealPcRejectMouseExtraAsKeyboard(UINT16 Total, UINT8 Speed);
 int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
                               UINT8 ConfigVal);
@@ -476,17 +476,17 @@ int HubCtrl(UINT8 BmReq, UINT8 Req, UINT16 Value, UINT16 Index,
             UINT16 Len, void *Data);
 int FinishHubSetup(UINT8 *OutNumPorts);
 int HubGetPortStatus(UINT8 Port, UINT32 *OutSt);
-int HubSetPortFeat(UINT8 Port, UINT16 Feat);
-int HubClearPortFeat(UINT8 Port, UINT16 Feat);
+int HubSetPortFeature(UINT8 Port, UINT16 Feature);
+int HubClearPortFeature(UINT8 Port, UINT16 Feature);
 int HubSetDepth(UINT16 Depth);
 UINT8 HubPortSpeed(UINT32 St);
 int IsHubDeviceDesc(void);
-int ConfigHasHubIface(UINT8 *Cfg, UINT16 Total);
+int ConfigHasHubInterface(UINT8 *Cfg, UINT16 Total);
 int TryConfigureKeyboardSlot(UINT8 Speed);
 int ClaimHubOnRootPort(UINT32 RootPort, UINT8 Speed, UINT32 ExistingSlot);
 int TryHubOnRootPort(UINT32 RootPort, UINT8 Speed);
-int EnumHubChildrenForKeyboard(void);
-int EnumHubChildrenForMouse(void);
+int EnumerateHubChildrenForKeyboard(void);
+int EnumerateHubChildrenForMouse(void);
 int EnumerateHubChildren(void);
 /*
  * 已有 HID hub 时：外接第二颗根口 hub（带 U 盘）勿 ClaimHubOnRootPort
@@ -504,8 +504,8 @@ int Capacity(void);
 int ReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
 int WriteSectors(UINT32 Lba, UINT32 Count, const void *Buffer);
 int Synchronize(void);
-int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutIface,
-                 UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut);
+int ParseBulk(UINT8 *Cfg, UINT16 Total, UINT8 *OutInterface,
+                 UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn, UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut);
 void LogConfigInterfaces(UINT8 *Cfg, UINT16 Total);
 int ForceUntilPed(UINT32 P, int *Force);
 int AddressPort(UINT32 P, int Force, UINT8 *Speed);
@@ -514,12 +514,12 @@ int TryHubOnRoot(UINT32 P, UINT8 Speed, int *Ok);
 /* 串口内部入口。对外六件事在 gFtdiUart / gCdcUart。 */
 typedef struct {
     void (*EndpointZeroRing)(XHCI_TRB **RingOut, RING_STATE **StateOut);
-    int (*MatchTransfer)(UINT32 EvtSlot, UINT32 Ep, UINT64 TrbPtr, UINT32 Code,
+    int (*MatchTransfer)(UINT32 EvtSlot, UINT32 Endpoint, UINT64 TrbPtr, UINT32 Code,
                          UINT32 Remain);
     int (*FinishClaim)(UINT32 RootPort, UINT8 Speed);
     int (*TryHubChildren)(void);
     int (*ConfigureBulk)(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                         UINT8 EpIn, UINT16 MpsIn, UINT8 EpOut, UINT16 MpsOut);
+                         UINT8 EndpointIn, UINT16 MaxPacketSizeIn, UINT8 EndpointOut, UINT16 MaxPacketSizeOut);
     void (*ArmReceive)(void);
     int (*OnComplete)(UINT32 Code, UINT32 Remain);
 } SERIAL_OPS;
@@ -537,21 +537,21 @@ void CdcFillTransmit(void);
 int XhciWifiClaim(void);
 int XhciWifiReady(void);
 UINT16 XhciWifiPid(void);
-void WifiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
-void BluetoothEp0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut);
+void WifiEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
+void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
 int WifiFinishClaim(UINT32 RootPort, UINT8 Speed);
 int WifiTryHubChildren(void);
 
-int InitMouseOnPort(UINT32 Port1);
+int MousePortInitialize(UINT32 Port1);
 /* PR-F-xhci-4 */
-int InitMouseClaimPort(UINT32 Port1, UINT8 *SpeedOut);
-int InitMouseFinishEp(UINT32 Port1, UINT8 Speed);
-int InitMouseOnKeyboardSlot(void);
+int MouseClaimPortInitialize(UINT32 Port1, UINT8 *SpeedOut);
+int MouseFinishEndpointInitialize(UINT32 Port1, UINT8 Speed);
+int MouseKeyboardSlotInitialize(void);
 void MousePush(void);
-void KbdPush(void);
-/* InitMouseDeferred / Mouse* 对外见 XHCI.h */
+void KeyboardPush(void);
+/* MouseDeferredInitialize / Mouse* 对外见 XHCI.h */
 
 void EnableHostInterrupts(void);
 void ImClearPending(void);
@@ -561,12 +561,12 @@ void BootLogHex(const char *Prefix, UINT64 Value, int Digits);
 void BootLogV(const char *Text);
 void BootLogHexV(const char *Prefix, UINT64 Value, int Digits);
 void BootMarkV(const char *Text);
-void EnumWhy(const char *Why);
+void EnumerateWhy(const char *Why);
 int DiagVerbose(void);
 void DiagChk(const char *Step, int Ok, const char *Want, UINT64 Got, int Digits);
 void DiagChkStr(const char *Step, int Ok, const char *Want, const char *Got);
 const char *CmdTrbName(UINT32 Control);
-void PollKbdGetReport(void);
+void PollKeyboardGetReport(void);
 
 
 #endif /* XHCI_INTERNAL_H */

@@ -192,7 +192,7 @@ const DRIVER_INSTANCE *DriverInstanceGet(UINTN Index) {
 int DriverInitialize(void) {
     /*
      * 只 Probe Block：ATA PIO / AHCI / NVMe 在 VMM 后可绑 MMIO。
-     * 勿 ProbeAll：ps2-kbd 会跑 Ps2InitHw；真机无 8042 时 STATUS 浮空 → 死循环。
+     * 勿 ProbeAll：ps2-kbd 会跑 Ps2HardwareInitialize；真机无 8042 时 STATUS 浮空 → 死循环。
      * Input / Net 仍由后续 usb / network 模块 Probe。
      */
     DeviceInitialize();

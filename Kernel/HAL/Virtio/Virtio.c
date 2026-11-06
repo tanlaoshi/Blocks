@@ -106,7 +106,7 @@ static void WireRingPtrs(VIRTIO_MMIO_DEV *Dev, UINT64 DescPa, UINT64 AvailPa,
 int VirtioMmioNegotiate(VIRTIO_MMIO_DEV *Dev, UINT64 Base, UINT32 DeviceId,
                         UINT64 DriverFeatures) {
     UINT32 Ver;
-    UINT32 FeatLo;
+    UINT32 FeatureLo;
 
     if (!Dev || Base == 0) {
         return -1;
@@ -121,19 +121,19 @@ int VirtioMmioNegotiate(VIRTIO_MMIO_DEV *Dev, UINT64 Base, UINT32 DeviceId,
                       VIRTIO_STATUS_ACK | VIRTIO_STATUS_DRIVER);
 
     VirtioMmioWrite32(Base, VIRTIO_MMIO_DEVICE_FEATURES_SEL, 0);
-    FeatLo = VirtioMmioRead32(Base, VIRTIO_MMIO_DEVICE_FEATURES);
+    FeatureLo = VirtioMmioRead32(Base, VIRTIO_MMIO_DEVICE_FEATURES);
     {
-        UINT32 Take = FeatLo & (UINT32)DriverFeatures;
+        UINT32 Take = FeatureLo & (UINT32)DriverFeatures;
         VirtioMmioWrite32(Base, VIRTIO_MMIO_DRIVER_FEATURES_SEL, 0);
         VirtioMmioWrite32(Base, VIRTIO_MMIO_DRIVER_FEATURES, Take);
     }
     if (Ver >= 2) {
-        UINT32 FeatHi;
+        UINT32 FeatureHi;
         VirtioMmioWrite32(Base, VIRTIO_MMIO_DEVICE_FEATURES_SEL, 1);
-        FeatHi = VirtioMmioRead32(Base, VIRTIO_MMIO_DEVICE_FEATURES);
+        FeatureHi = VirtioMmioRead32(Base, VIRTIO_MMIO_DEVICE_FEATURES);
         VirtioMmioWrite32(Base, VIRTIO_MMIO_DRIVER_FEATURES_SEL, 1);
         VirtioMmioWrite32(Base, VIRTIO_MMIO_DRIVER_FEATURES,
-                          FeatHi & (UINT32)(VIRTIO_F_VERSION_1 >> 32));
+                          FeatureHi & (UINT32)(VIRTIO_F_VERSION_1 >> 32));
         VirtioMmioWrite32(Base, VIRTIO_MMIO_STATUS,
                           VIRTIO_STATUS_ACK | VIRTIO_STATUS_DRIVER |
                               VIRTIO_STATUS_FEATURES_OK);

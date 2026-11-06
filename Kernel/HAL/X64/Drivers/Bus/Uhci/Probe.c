@@ -54,7 +54,7 @@ int UhciSetup(void) {
         gUhci[0].CcsMask = 0;
         gUhci[0].IoBase = 0;
         gUhci[0].FrameList = 0;
-        if (UhciInitOne(&gUhci[0], 0)) {
+        if (UhciInitializeOne(&gUhci[0], 0)) {
             OrMask |= gUhci[0].CcsMask;
             Ok = 1;
         }

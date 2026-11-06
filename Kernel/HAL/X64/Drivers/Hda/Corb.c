@@ -177,7 +177,7 @@ static int ResetCorbRp(void) {
     return 1;
 }
 
-int HdaCorbInit(void) {
+int HdaCorbInitialize(void) {
     UINT8 *Dma;
     UINT64 Phys;
     UINT16 Entries;

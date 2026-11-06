@@ -161,7 +161,7 @@ typedef struct SDIO_CIS_INFO {
 
 /*
  * SdhciWifiInitialize 的步骤上下文：原函数的局部变量集中在这里，主函数只声明
- * 一个、按指针传给每一步。步骤分散在 SdioInit.c / SdioTransfer.c / SdioCis.c，
+ * 一个、按指针传给每一步。步骤分散在 SdioInitialize.c / SdioTransfer.c / SdioCis.c，
  * 所以类型放本头（不是 Sdio.c 私有）。
  */
 typedef struct WIFI_PROBE {
@@ -218,6 +218,6 @@ void SdioDumpCis(SDHCI_HOST *Host, const char *Tag, UINT32 Address, UINT32 Count
 void SdioMarkCis(UINT32 Function, UINT32 Pointer, const SDIO_CIS_INFO *Info);
 void SdioMarkCmd5State(SDHCI_HOST *Host, const char *Tag);
 void SdioMarkFn1Regs(SDHCI_HOST *Host);
-void SdioMarkXfer(SDHCI_HOST *Host, const char *Tag);
+void SdioMarkTransfer(SDHCI_HOST *Host, const char *Tag);
 
 #endif

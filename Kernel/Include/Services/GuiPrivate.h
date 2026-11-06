@@ -88,6 +88,8 @@ typedef struct {
     UINT32   UserClickY;
     UINT8    UserKeyQ[GUI_USER_KEY_Q];
     UINT8    UserKeyCount;
+    /* PaintUserClient 刷底后置 1；Poll 回 3 让 Guest 重画自绘内容 */
+    int      NeedPaint;
 } GUI_USER_SLOT;
 
 /* 窗口、光标、拖动、焦点。定义在 GuiWindowManager.c。 */
@@ -231,15 +233,15 @@ int WindowOccludedByOtherOrShadow(int Idx);
 int AllActiveWindowsHaveValidBackup(void);
 UINT32 BackupPageCount(UINT32 Ww, UINT32 Wh);
 /*
- * PR-23d：逻辑坐标 → 物理像素（起点下取整；末端用 GuiPhysRect 上取整）。
+ * PR-23d：逻辑坐标 → 物理像素（起点下取整；末端用 GuiPhysicalRect 上取整）。
  * 100%=恒等，150%=3/2。窗备份/拖动 under 的缓冲一律按物理像素存，
  * 逻辑坐标只留在窗口模型里，换算只在读写处做（与 PR-23c 光标同口径）。
  */
-UINT32 GuiPhysX(UINT32 X);
-UINT32 GuiPhysY(UINT32 Y);
-void GuiPhysRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+UINT32 GuiPhysicalX(UINT32 X);
+UINT32 GuiPhysicalY(UINT32 Y);
+void GuiPhysicalRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                  UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp);
-int EnsureWindowBackupBuf(int Idx);
+int EnsureWindowBackupBuffer(int Idx);
 void PreallocWindowBackups(void);
 void BackupWindowAtEx(int Idx, int ForceFull);
 void BackupWindowAt(int Idx);
@@ -278,8 +280,8 @@ int CursorHwActive(void);
 void ResetDragState(void);
 int AnyWindowsOverlap(void);
 UINT32 TopmostBelowDragPixel(UINT32 Px, UINT32 Py, int DragIdx);
-int EnsureDragDirtyBuf(UINT32 Ww, UINT32 Hh);
-int EnsureUnderDragBuf(UINT32 Ww, UINT32 Wh);
+int EnsureDragDirtyBuffer(UINT32 Ww, UINT32 Hh);
+int EnsureUnderDragBuffer(UINT32 Ww, UINT32 Wh);
 void BeginDragBackups(int DragIdx);
 void StartDragBackups(int DragIdx);
 UINT32 CompositeDragPixel(UINT32 Px, UINT32 Py, int DragIdx,
@@ -331,7 +333,7 @@ int AllocWindowSlot(void);
 void PlaceNewWindow(int Idx, UINT32 *OutX, UINT32 *OutY, UINT32 *OutW, UINT32 *OutH);
 /* S1.3：槽位字段 / 尺寸夹紧（Open.c）；Apps/Devices/Terminal 共用 */
 void ClampWindowBox(UINT32 Margin, UINT32 *W, UINT32 *H);
-void InitWindowSlot(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
+void WindowSlotInitialize(int Idx, GUI_WIN_KIND Kind, UINT32 X, UINT32 Y, UINT32 W,
                     UINT32 H, UINT32 Background, const char *Title,
                     int PromptShown);
 /* 开窗辅助。定义在 Open.c */
@@ -340,7 +342,7 @@ void OpenFadeIn(int Idx);
 int FocusExistingKind(GUI_WIN_KIND Kind, void (*Repaint)(void), const char *LogTag);
 
 /* User helpers */
-void CopyTitleBuf(char *Dst, UINTN Cap, const char *Src);
+void CopyTitleBuffer(char *Dst, UINTN Cap, const char *Src);
 void PaintUserClient(int Idx);
 /* Raise 挪槽后用户态 wid 可能过期：解析到当前 USER 槽 */
 int ResolveUserWindowIndex(int Wid);

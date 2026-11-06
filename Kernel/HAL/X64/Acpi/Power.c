@@ -25,7 +25,7 @@ UINT64 gResetAddr;
 UINT8  gResetValue;
 UINT8  gResetAccess; /* GAS AccessSize：1=byte 2=word 3=dword */
 
-int AcpiPowerInit(UINT64 RsdpPhys) {
+int AcpiPowerInitialize(UINT64 RsdpPhys) {
     ACPI_SDT_HEADER *Facp;
     UINT8 *P;
     UINT32 Pm1aEvt;
@@ -147,14 +147,14 @@ int AcpiPowerInit(UINT64 RsdpPhys) {
             if (HalIoRead16(gPm1aCnt) & PM1_SCI_EN) {
                 break;
             }
-            PowerStallMs(1);
+            PowerStallMilliseconds(1);
         }
     }
     Cnt = HalIoRead16(gPm1aCnt);
     if ((Cnt & PM1_SCI_EN) == 0) {
         /* 部分 PCH 允许直接置位；写了无效也无害 */
         HalIoWrite16(gPm1aCnt, (UINT16)(Cnt | PM1_SCI_EN));
-        PowerStallMs(1);
+        PowerStallMilliseconds(1);
     }
 
     Pm1EnablePowerButton(gPm1aEvt, gPm1aEn);

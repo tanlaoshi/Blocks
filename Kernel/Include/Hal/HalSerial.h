@@ -53,7 +53,7 @@ void HalSerialBootMark(const char *Text);
 void HalSerialBootMarkForce(const char *Text);
 void HalSerialBootMarkChannel(int Channel, const char *Text);
 /* 桌面盖屏前暂停：屏上可读；并再打一串 UART 心跳供 CoolTerm */
-void HalSerialBootHoldMs(UINT32 Ms);
+void HalSerialBootHoldMilliseconds(UINT32 Ms);
 int HalSerialDataReady(void);
 char HalSerialReadChar(void);
 /*
@@ -65,8 +65,8 @@ int HalSerialTryGetByte(UINT8 *Out); /* 1=读到；0=无数据 */
 void HalSerialDrainTransmitter(void); /* 等移位寄存器空（复位前冲 OK 行） */
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits);
 /* IoApic 后开 COM1 RX IRQ→软环；失败则 poll（CoolTerm 粘贴） */
-void HalSerialEnableRxIrq(void);
+void HalSerialEnableReceiveIrq(void);
 /* Present 条带间抽 RX→软环（无 IRQ 时）；非 x86 可为空操作 */
-void HalSerialRxPump(void);
+void HalSerialReceivePump(void);
 
 #endif

@@ -45,14 +45,25 @@ void UiRedrawWin(int WindowId, UI_WIN *St) {
             }
             GraphicsDrawRect(WindowId, St->List.X, RowY, St->List.W,
                            UI_LIST_ROW - 2, S->ListRowBorder);
+            if (St->List.Items[I][0] != 0) {
+                GraphicsDrawString(WindowId, St->List.X + 4u, RowY + 2u,
+                                   0x00000000u, St->List.Items[I]);
+            }
         }
     }
     if (St->Field.Used) {
+        unsigned FieldH = St->Field.H ? St->Field.H : UI_FIELD_H;
+        unsigned TextY = St->Field.Y + (FieldH > 16u ? (FieldH - 16u) / 2u : 3u);
+
         GraphicsFillRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
-                       UI_FIELD_H, S->FieldBg);
+                       FieldH, S->FieldBg);
         GraphicsDrawRect(WindowId, St->Field.X, St->Field.Y, St->Field.W,
-                       UI_FIELD_H,
+                       FieldH,
                        St->Field.Focus ? S->FieldBorderFocus : S->FieldBorder);
+        if (St->Field.Text[0] != 0) {
+            GraphicsDrawString(WindowId, St->Field.X + 4u, TextY,
+                               0x00000000u, St->Field.Text);
+        }
     }
 }
 
@@ -80,15 +91,14 @@ int UiHitWidgets(int WindowId, unsigned X, unsigned Y) {
             if (UiInRect(X, Y, St->List.X, RowY, St->List.W,
                             UI_LIST_ROW - 2)) {
                 St->List.Selected = I;
-                UiCopyCap(St->Field.Text, sizeof(St->Field.Text),
-                             St->List.Items[I]);
                 UiRedrawWin(WindowId, St);
                 return UI_LIST_EVENT(0);
             }
         }
     }
     if (St->Field.Used &&
-        UiInRect(X, Y, St->Field.X, St->Field.Y, St->Field.W, UI_FIELD_H)) {
+        UiInRect(X, Y, St->Field.X, St->Field.Y, St->Field.W,
+                    St->Field.H ? St->Field.H : UI_FIELD_H)) {
         St->Field.Focus = 1;
         UiRedrawWin(WindowId, St);
         return UI_TEXT_EVENT(0);
@@ -202,7 +212,7 @@ int UiListGetSelected(int WindowId, int ListId) {
 }
 
 int UiAddTextField(int WindowId, int FieldId, unsigned X, unsigned Y,
-                      unsigned W) {
+                      unsigned W, unsigned H) {
     UI_WIN *St;
 
     St = UiWinState(WindowId);
@@ -213,6 +223,7 @@ int UiAddTextField(int WindowId, int FieldId, unsigned X, unsigned Y,
     St->Field.X = X;
     St->Field.Y = Y;
     St->Field.W = W;
+    St->Field.H = H ? H : UI_FIELD_H;
     St->Field.Focus = 0;
     St->Field.Text[0] = 0;
     UiRedrawWin(WindowId, St);
@@ -242,56 +253,18 @@ int UiGetTextField(int WindowId, int FieldId, char *Buf, unsigned Cap) {
     return 0;
 }
 
-/* 无 Shift：字母小写、数字与空白；供焦点输入框 */
-static char UiHidAscii(int Hid) {
-    if (Hid >= UI_HID_A && Hid <= 0x1D) {
-        return (char)('a' + (Hid - UI_HID_A));
+int UiFocusTextField(int WindowId, int FieldId) {
+    UI_WIN *St;
+
+    St = UiWinState(WindowId);
+    if (!St || FieldId != 0 || !St->Field.Used) {
+        return -1;
     }
-    if (Hid >= 0x1E && Hid <= 0x26) {
-        return (char)('1' + (Hid - 0x1E));
-    }
-    if (Hid == 0x27) {
-        return '0';
-    }
-    if (Hid == UI_HID_SPACE) {
-        return ' ';
-    }
+    St->Field.Focus = 1;
+    UiRedrawWin(WindowId, St);
     return 0;
 }
 
-int UiApplyKeyToField(int WindowId, int Hid) {
-    UI_WIN *St;
-    char C;
-    unsigned Len;
-
-    St = UiWinState(WindowId);
-    if (!St || !St->Field.Used || !St->Field.Focus) {
-        return 0;
-    }
-    if (Hid == UI_HID_BACKSPACE) {
-        Len = 0;
-        while (St->Field.Text[Len]) {
-            Len++;
-        }
-        if (Len > 0) {
-            St->Field.Text[Len - 1] = 0;
-            UiRedrawWin(WindowId, St);
-        }
-        return 1;
-    }
-    C = UiHidAscii(Hid);
-    if (!C) {
-        return 0;
-    }
-    Len = 0;
-    while (St->Field.Text[Len]) {
-        Len++;
-    }
-    if (Len + 1 >= UI_TEXT_MAX) {
-        return 1;
-    }
-    St->Field.Text[Len] = C;
-    St->Field.Text[Len + 1] = 0;
-    UiRedrawWin(WindowId, St);
-    return 1;
+void UiRefresh(int WindowId) {
+    UiRedrawWin(WindowId, UiWinState(WindowId));
 }

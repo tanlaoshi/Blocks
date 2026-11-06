@@ -16,19 +16,19 @@ typedef struct {
 } BLOCKS_PACKED UDP_HDR;
 
 static UINT16 gBindPort;
-static UDP_DATAGRAM gRxQ[UDP_RX_QUEUE];
-static int gRxHead;
-static int gRxTail;
-static int gRxCount;
+static UDP_DATAGRAM gReceiveQueue[UDP_RX_QUEUE];
+static int gReceiveHead;
+static int gReceiveTail;
+static int gReceiveCount;
 
 void UdpInitialize(void) {
     gBindPort = 0;
-    gRxHead = gRxTail = gRxCount = 0;
+    gReceiveHead = gReceiveTail = gReceiveCount = 0;
 }
 
 int UdpBind(UINT16 Port) {
     gBindPort = Port;
-    gRxHead = gRxTail = gRxCount = 0;
+    gReceiveHead = gReceiveTail = gReceiveCount = 0;
     return 0;
 }
 
@@ -62,12 +62,12 @@ int UdpSend(UINT32 DstIp, UINT16 DstPort, const void *Data, UINTN Len) {
 }
 
 int UdpRecv(UDP_DATAGRAM *Out) {
-    if (!Out || gRxCount == 0) {
+    if (!Out || gReceiveCount == 0) {
         return 0;
     }
-    *Out = gRxQ[gRxHead];
-    gRxHead = (gRxHead + 1) % UDP_RX_QUEUE;
-    gRxCount--;
+    *Out = gReceiveQueue[gReceiveHead];
+    gReceiveHead = (gReceiveHead + 1) % UDP_RX_QUEUE;
+    gReceiveCount--;
     return 1;
 }
 
@@ -96,20 +96,20 @@ void UdpInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len) {
     if (DataLen > UDP_PAYLOAD_MAX) {
         DataLen = UDP_PAYLOAD_MAX;
     }
-    if (gRxCount >= UDP_RX_QUEUE) {
-        gRxHead = (gRxHead + 1) % UDP_RX_QUEUE;
-        gRxCount--;
+    if (gReceiveCount >= UDP_RX_QUEUE) {
+        gReceiveHead = (gReceiveHead + 1) % UDP_RX_QUEUE;
+        gReceiveCount--;
     }
-    gRxQ[gRxTail].SrcIp = SrcIp;
-    gRxQ[gRxTail].SrcPort = SrcPort;
-    gRxQ[gRxTail].DstPort = DstPort;
-    gRxQ[gRxTail].Len = (UINT16)DataLen;
+    gReceiveQueue[gReceiveTail].SrcIp = SrcIp;
+    gReceiveQueue[gReceiveTail].SrcPort = SrcPort;
+    gReceiveQueue[gReceiveTail].DstPort = DstPort;
+    gReceiveQueue[gReceiveTail].Len = (UINT16)DataLen;
     {
         UINTN i;
         for (i = 0; i < DataLen; i++) {
-            gRxQ[gRxTail].Data[i] = Payload[UDP_HDR_LEN + i];
+            gReceiveQueue[gReceiveTail].Data[i] = Payload[UDP_HDR_LEN + i];
         }
     }
-    gRxTail = (gRxTail + 1) % UDP_RX_QUEUE;
-    gRxCount++;
+    gReceiveTail = (gReceiveTail + 1) % UDP_RX_QUEUE;
+    gReceiveCount++;
 }

@@ -29,7 +29,7 @@ static void FocusLoad(void) {
      * ↑↓ 回填期间勿 Pull：EnsureShell/Raise 会 FocusLoad，
      * 否则窗槽旧行盖住 gLine，串口已回显与缓冲分叉（BOX-1）。
      */
-    if (!gConsole.HistIsBusy() && !gConsole.HistIgnoreRx()) {
+    if (!gConsole.HistIsBusy() && !gConsole.HistIgnoreReceive()) {
         GuiConsolePull(gLine, &gLen, &gWaitPrompt);
     }
     /*
@@ -54,7 +54,7 @@ static void FocusLoad(void) {
              * 或空窗：须再打 blocks>。有 scrollback 时勿再打欢迎语。
              */
             if (!ConsoleSbHasContent()) {
-                ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+                ConsoleWriteShellScreen(LocaleString(MESSAGE_CON_WELCOME));
                 ConsoleWriteShellScreen("\n");
             } else {
                 ConsoleSbRepaint();
@@ -74,7 +74,7 @@ static void FocusLoad(void) {
     if (GuiConsoleNeedsPrompt()) {
         if (!ConsoleSbHasContent()) {
             GuiFocusHome();
-            ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+            ConsoleWriteShellScreen(LocaleString(MESSAGE_CON_WELCOME));
             ConsoleWriteShellScreen("\n");
         }
         PromptScreen();
@@ -100,7 +100,7 @@ static void Initialize(void) {
     {
         CONSOLE_IO_OPS Io;
 
-        Io.WriteLen = gConsole.WriteLen;
+        Io.WriteLength = gConsole.WriteLength;
         Io.ReadChar = gConsole.StdinGetChar;
         Io.ShowPrompt = gConsole.ShowPrompt;
         Io.CoopUserOutClear = ConsoleCoopUserOutClear;
@@ -171,7 +171,7 @@ static void PaintShellWindow(int Idx) {
     ConsoleSbReset();
     GuiFocusClearClient();
     GuiFocusHome();
-    ConsoleWriteShellScreen(LocStr(MSG_CON_WELCOME));
+    ConsoleWriteShellScreen(LocaleString(MESSAGE_CON_WELCOME));
     ConsoleWriteShellScreen("\n");
     PromptScreen();
     GuiConsoleMarkPrompt();

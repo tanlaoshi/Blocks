@@ -3,7 +3,7 @@
  */
 #include "DesktopPrivate.h"
 
-static int IconSrcForGameId(const char *Id) {
+static int IconSourceForGameId(const char *Id) {
     int i;
 
     if (!Id || !Id[0]) {
@@ -66,7 +66,7 @@ void FillStartMenuGameRows(void) {
         Gr = &gMenuGameRows[gMenuGameCount++];
         Gr->Action = DESKTOP_ACTION_EXEC;
         Gr->Enabled = 1;
-        Gr->IconSrc = IconSrcForGameId(In->Id);
+        Gr->IconSrc = IconSourceForGameId(In->Id);
         if (HavePkg && Meta.Title[0]) {
             StringCopy(Gr->Label, sizeof(Gr->Label), Meta.Title);
         } else {

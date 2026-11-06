@@ -116,7 +116,7 @@ UINT32 ThemeCompactFontId(void);
 
 /* Parse.c */
 int IsSpace(char C);
-int HexVal(char C);
+int HexValue(char C);
 int ParseHexU32(const char *S, UINT32 *Out);
 int ParseDecU32(const char *S, UINT32 *Out, const char **End);
 int ParseModeValue(const char *S, UINT32 *W, UINT32 *H);
@@ -127,8 +127,8 @@ int ApplyDbKey(const char *Key);
 /* Save.c / Config.c / SaveFormat.c */
 void PutHex6(char *Dst, UINT32 Color);
 void PutDec(char *Dst, UINT32 V, UINTN *Len);
-int ThemeLoadFromCfg(void);
-int ThemeMigrateModeFromCfg(void);
+int ThemeLoadFromConfig(void);
+int ThemeMigrateModeFromConfig(void);
 
 /* PR-F-theme-1：ThemeSave 拆分 */
 typedef struct THEME_SAVE_VALS {
@@ -141,8 +141,8 @@ typedef struct THEME_SAVE_VALS {
 } THEME_SAVE_VALS;
 
 void ThemeSaveFillVals(THEME_SAVE_VALS *V);
-UINTN ThemeSaveBuildCfg(char *Buf, UINTN Cap, const THEME_SAVE_VALS *V);
-int ThemeSaveWriteCfg(const char *Buf, UINTN N);
+UINTN ThemeSaveBuildConfig(char *Buf, UINTN Cap, const THEME_SAVE_VALS *V);
+int ThemeSaveWriteConfig(const char *Buf, UINTN N);
 int ThemeSaveWriteDb(const THEME_SAVE_VALS *V);
 
 #endif

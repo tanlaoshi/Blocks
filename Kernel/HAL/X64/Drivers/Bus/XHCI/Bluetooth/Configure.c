@@ -6,8 +6,8 @@
  */
 #include "XHCI/Bluetooth/Private.h"
 
-XHCI_TRB gBluetoothEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
-RING_STATE gBluetoothEp0;
+XHCI_TRB gBluetoothEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+RING_STATE gBluetoothEndpoint0;
 XHCI_TRB gBluetoothEventRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gBluetoothEvent;
 XHCI_TRB gBluetoothAclInRing[RING_SIZE] BLOCKS_ALIGNED(64);
@@ -21,32 +21,32 @@ UINT8 gBluetoothInterface;
 UINT32 gBluetoothEventDci;
 UINT32 gBluetoothAclInDci;
 UINT32 gBluetoothAclOutDci;
-UINT16 gBluetoothEventMps;
-UINT16 gBluetoothAclInMps;
-UINT16 gBluetoothAclOutMps;
+UINT16 gBluetoothEventMaxPacketSize;
+UINT16 gBluetoothAclInMaxPacketSize;
+UINT16 gBluetoothAclOutMaxPacketSize;
 int gBluetoothConfigured;
 int gBluetoothHciResetOk;
 volatile UINT32 gBluetoothEventDone;
 volatile UINT32 gBluetoothEventCode;
 
-void BluetoothEp0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut) {
-    *RingOut = gBluetoothEp0Ring;
-    *StateOut = &gBluetoothEp0;
+void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut) {
+    *RingOut = gBluetoothEndpoint0Ring;
+    *StateOut = &gBluetoothEndpoint0;
 }
 
-static int ParseHciEndpoints(UINT8 *Config, UINT16 Total, UINT8 *IfaceOut,
-                             UINT8 *EventEp, UINT16 *EventMps, UINT8 *EventIv,
-                             UINT8 *AclInEp, UINT16 *AclInMps, UINT8 *AclOutEp,
-                             UINT16 *AclOutMps) {
+static int ParseHciEndpoints(UINT8 *Config, UINT16 Total, UINT8 *InterfaceOut,
+                             UINT8 *EventEndpoint, UINT16 *EventMaxPacketSize, UINT8 *EventIv,
+                             UINT8 *AclInEndpoint, UINT16 *AclInMaxPacketSize, UINT8 *AclOutEndpoint,
+                             UINT16 *AclOutMaxPacketSize) {
     UINT16 Offset = 0;
     int InHci = 0;
-    UINT8 Iface = 0;
+    UINT8 Interface = 0;
     UINT8 Ev = 0;
     UINT8 In = 0;
     UINT8 Out = 0;
-    UINT16 EvMps = 16;
-    UINT16 InMps = 64;
-    UINT16 OutMps = 64;
+    UINT16 EvMaxPacketSize = 16;
+    UINT16 InMaxPacketSize = 64;
+    UINT16 OutMaxPacketSize = 64;
     UINT8 EvIv = 1;
 
     while (Offset + 2u <= Total) {
@@ -63,26 +63,26 @@ static int ParseHciEndpoints(UINT8 *Config, UINT16 Total, UINT8 *IfaceOut,
                 Config[Offset + 6u] == USB_BLUETOOTH_SUBCLASS &&
                 Config[Offset + 7u] == USB_BLUETOOTH_PROTOCOL_HCI) {
                 InHci = 1;
-                Iface = Config[Offset + 2u];
+                Interface = Config[Offset + 2u];
             }
         } else if (Type == 0x05u && Length >= 7u && InHci) {
             UINT8 Addr = Config[Offset + 2u];
             UINT8 Attr = Config[Offset + 3u] & 0x03u;
-            UINT16 Mps = (UINT16)(Config[Offset + 4u] |
+            UINT16 MaxPacketSize = (UINT16)(Config[Offset + 4u] |
                                   (Config[Offset + 5u] << 8));
             UINT8 Iv = Config[Offset + 6u];
 
             if (Attr == 3u && (Addr & 0x80u) && Ev == 0) {
                 Ev = Addr;
-                EvMps = Mps ? Mps : 16;
+                EvMaxPacketSize = MaxPacketSize ? MaxPacketSize : 16;
                 EvIv = Iv ? Iv : 1;
             } else if (Attr == 2u) {
                 if ((Addr & 0x80u) && In == 0) {
                     In = Addr;
-                    InMps = Mps ? Mps : 64;
+                    InMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 } else if (!(Addr & 0x80u) && Out == 0) {
                     Out = Addr;
-                    OutMps = Mps ? Mps : 64;
+                    OutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 }
             }
         }
@@ -91,30 +91,30 @@ static int ParseHciEndpoints(UINT8 *Config, UINT16 Total, UINT8 *IfaceOut,
     if (Ev == 0 || In == 0 || Out == 0) {
         return 0;
     }
-    *IfaceOut = Iface;
-    *EventEp = Ev;
-    *EventMps = EvMps;
+    *InterfaceOut = Interface;
+    *EventEndpoint = Ev;
+    *EventMaxPacketSize = EvMaxPacketSize;
     *EventIv = EvIv;
-    *AclInEp = In;
-    *AclInMps = InMps;
-    *AclOutEp = Out;
-    *AclOutMps = OutMps;
+    *AclInEndpoint = In;
+    *AclInMaxPacketSize = InMaxPacketSize;
+    *AclOutEndpoint = Out;
+    *AclOutMaxPacketSize = OutMaxPacketSize;
     return 1;
 }
 
 static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
-                                 UINT8 EventEp, UINT16 EventMps, UINT8 EventIv,
-                                 UINT8 AclInEp, UINT16 AclInMps, UINT8 AclOutEp,
-                                 UINT16 AclOutMps) {
-    UINT8 EvNum = EventEp & 0x0Fu;
-    UINT8 InNum = AclInEp & 0x0Fu;
-    UINT8 OutNum = AclOutEp & 0x0Fu;
+                                 UINT8 EventEndpoint, UINT16 EventMaxPacketSize, UINT8 EventIv,
+                                 UINT8 AclInEndpoint, UINT16 AclInMaxPacketSize, UINT8 AclOutEndpoint,
+                                 UINT16 AclOutMaxPacketSize) {
+    UINT8 EvNum = EventEndpoint & 0x0Fu;
+    UINT8 InNum = AclInEndpoint & 0x0Fu;
+    UINT8 OutNum = AclOutEndpoint & 0x0Fu;
     UINT32 EvDci = (UINT32)EvNum * 2u + 1u;
     UINT32 InDci = (UINT32)InNum * 2u + 1u;
     UINT32 OutDci = (UINT32)OutNum * 2u;
     UINT32 CtxEntries = EvDci;
     UINT32 *Slot;
-    UINT32 *Ep;
+    UINT32 *Endpoint;
     UINT64 Deq;
     UINT8 Interval;
 
@@ -124,14 +124,14 @@ static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     if (OutDci > CtxEntries) {
         CtxEntries = OutDci;
     }
-    if (EventMps == 0 || EventMps > BLUETOOTH_EVENT_MAX) {
-        EventMps = 16;
+    if (EventMaxPacketSize == 0 || EventMaxPacketSize > BLUETOOTH_EVENT_MAX) {
+        EventMaxPacketSize = 16;
     }
-    if (AclInMps == 0 || AclInMps > 1024) {
-        AclInMps = 64;
+    if (AclInMaxPacketSize == 0 || AclInMaxPacketSize > 1024) {
+        AclInMaxPacketSize = 64;
     }
-    if (AclOutMps == 0 || AclOutMps > 1024) {
-        AclOutMps = 64;
+    if (AclOutMaxPacketSize == 0 || AclOutMaxPacketSize > 1024) {
+        AclOutMaxPacketSize = 64;
     }
 
     ZeroMemory(gInCtx, sizeof(gInCtx));
@@ -142,35 +142,35 @@ static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     Slot[0] = (CtxEntries << 27) | ((UINT32)Speed << 20);
     Slot[1] = (UINT32)RootPort << 16;
 
-    InitRing(gBluetoothEventRing, &gBluetoothEvent, RING_SIZE);
-    InitRing(gBluetoothAclInRing, &gBluetoothAclIn, RING_SIZE);
-    InitRing(gBluetoothAclOutRing, &gBluetoothAclOut, RING_SIZE);
+    RingInitialize(gBluetoothEventRing, &gBluetoothEvent, RING_SIZE);
+    RingInitialize(gBluetoothAclInRing, &gBluetoothAclIn, RING_SIZE);
+    RingInitialize(gBluetoothAclOutRing, &gBluetoothAclOut, RING_SIZE);
 
     Interval = (Speed >= 3) ? (UINT8)((EventIv > 0) ? (EventIv - 1) : 0)
                             : FsInterval(EventIv);
-    Ep = (UINT32 *)(void *)InEp(EvDci);
-    Ep[0] = (UINT32)Interval << 16;
-    Ep[1] = (3u << 1) | (7u << 3) | ((UINT32)EventMps << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(EvDci);
+    Endpoint[0] = (UINT32)Interval << 16;
+    Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)EventMaxPacketSize << 16);
     Deq = PointerToPhysical(gBluetoothEventRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)EventMps | ((UINT32)EventMps << 16);
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)EventMaxPacketSize | ((UINT32)EventMaxPacketSize << 16);
 
-    Ep = (UINT32 *)(void *)InEp(InDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (6u << 3) | ((UINT32)AclInMps << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(InDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (6u << 3) | ((UINT32)AclInMaxPacketSize << 16);
     Deq = PointerToPhysical(gBluetoothAclInRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)AclInMps;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)AclInMaxPacketSize;
 
-    Ep = (UINT32 *)(void *)InEp(OutDci);
-    Ep[0] = 0;
-    Ep[1] = (3u << 1) | (2u << 3) | ((UINT32)AclOutMps << 16);
+    Endpoint = (UINT32 *)(void *)InEndpoint(OutDci);
+    Endpoint[0] = 0;
+    Endpoint[1] = (3u << 1) | (2u << 3) | ((UINT32)AclOutMaxPacketSize << 16);
     Deq = PointerToPhysical(gBluetoothAclOutRing) | 1;
-    Ep[2] = (UINT32)Deq;
-    Ep[3] = (UINT32)(Deq >> 32);
-    Ep[4] = (UINT32)AclOutMps;
+    Endpoint[2] = (UINT32)Deq;
+    Endpoint[3] = (UINT32)(Deq >> 32);
+    Endpoint[4] = (UINT32)AclOutMaxPacketSize;
 
     FlushDma(gInCtx, sizeof(gInCtx));
     FlushDma(gBluetoothEventRing, sizeof(gBluetoothEventRing));
@@ -187,29 +187,29 @@ static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     gBluetoothEventDci = EvDci;
     gBluetoothAclInDci = InDci;
     gBluetoothAclOutDci = OutDci;
-    gBluetoothEventMps = EventMps;
-    gBluetoothAclInMps = AclInMps;
-    gBluetoothAclOutMps = AclOutMps;
+    gBluetoothEventMaxPacketSize = EventMaxPacketSize;
+    gBluetoothAclInMaxPacketSize = AclInMaxPacketSize;
+    gBluetoothAclOutMaxPacketSize = AclOutMaxPacketSize;
     return 1;
 }
 
 int BluetoothConfigure(UINT32 RootPort, UINT8 Speed) {
     UINT16 Total;
     UINT8 ConfigVal = 1;
-    UINT8 Iface = 0;
-    UINT8 EventEp = 0;
-    UINT8 AclInEp = 0;
-    UINT8 AclOutEp = 0;
-    UINT16 EventMps = 16;
-    UINT16 AclInMps = 64;
-    UINT16 AclOutMps = 64;
+    UINT8 Interface = 0;
+    UINT8 EventEndpoint = 0;
+    UINT8 AclInEndpoint = 0;
+    UINT8 AclOutEndpoint = 0;
+    UINT16 EventMaxPacketSize = 16;
+    UINT16 AclInMaxPacketSize = 64;
+    UINT16 AclOutMaxPacketSize = 64;
     UINT8 EventIv = 1;
 
     if (gBluetoothSlot == 0) {
         return 0;
     }
-    gXferSlot = gBluetoothSlot;
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gBluetoothConfigBuffer) < 0) {
+    gTransferSlot = gBluetoothSlot;
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gBluetoothConfigBuffer) < 0) {
         BootLog("Boot: Bluetooth cfg9 fail\n");
         return 0;
     }
@@ -222,13 +222,13 @@ int BluetoothConfigure(UINT32 RootPort, UINT8 Speed) {
         Total = BLUETOOTH_CONFIG_MAX;
     }
     ConfigVal = gBluetoothConfigBuffer[5] ? gBluetoothConfigBuffer[5] : 1;
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gBluetoothConfigBuffer) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gBluetoothConfigBuffer) < 0) {
         BootLog("Boot: Bluetooth cfg fail\n");
         return 0;
     }
-    if (!ParseHciEndpoints(gBluetoothConfigBuffer, Total, &Iface, &EventEp,
-                           &EventMps, &EventIv, &AclInEp, &AclInMps, &AclOutEp,
-                           &AclOutMps)) {
+    if (!ParseHciEndpoints(gBluetoothConfigBuffer, Total, &Interface, &EventEndpoint,
+                           &EventMaxPacketSize, &EventIv, &AclInEndpoint, &AclInMaxPacketSize, &AclOutEndpoint,
+                           &AclOutMaxPacketSize)) {
         BootLog("Boot: Bluetooth no HCI endpoints\n");
         return 0;
     }
@@ -236,17 +236,17 @@ int BluetoothConfigure(UINT32 RootPort, UINT8 Speed) {
         BootLog("Boot: Bluetooth setcfg fail\n");
         return 0;
     }
-    if (!ConfigureHciEndpoints(gBluetoothSlot, RootPort, Speed, EventEp,
-                               EventMps, EventIv, AclInEp, AclInMps, AclOutEp,
-                               AclOutMps)) {
+    if (!ConfigureHciEndpoints(gBluetoothSlot, RootPort, Speed, EventEndpoint,
+                               EventMaxPacketSize, EventIv, AclInEndpoint, AclInMaxPacketSize, AclOutEndpoint,
+                               AclOutMaxPacketSize)) {
         return 0;
     }
     gBluetoothSpeed = Speed;
-    gBluetoothInterface = Iface;
+    gBluetoothInterface = Interface;
     gBluetoothConfigured = 1;
-    BootLogHex("Boot: Bluetooth cfg ok iface=", Iface, 2);
-    BootLogHex(" event=", EventEp, 2);
-    BootLogHex(" acl-in=", AclInEp, 2);
-    BootLogHex(" acl-out=", AclOutEp, 2);
+    BootLogHex("Boot: Bluetooth cfg ok iface=", Interface, 2);
+    BootLogHex(" event=", EventEndpoint, 2);
+    BootLogHex(" acl-in=", AclInEndpoint, 2);
+    BootLogHex(" acl-out=", AclOutEndpoint, 2);
     return 1;
 }

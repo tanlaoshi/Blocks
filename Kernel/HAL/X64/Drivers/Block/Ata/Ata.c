@@ -65,7 +65,7 @@ int AtaProbe(UINT32 Drive) {
     return WaitNotBusy(100000) ? 1 : 0;
 }
 
-int AtaInit(void) {
+int AtaInitialize(void) {
     if (!AtaProbe(0)) {
         DebugWrite("ATA: primary master missing\n");
         return 0;

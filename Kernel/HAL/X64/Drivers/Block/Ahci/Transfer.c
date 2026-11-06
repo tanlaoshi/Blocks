@@ -12,7 +12,7 @@
 #include "HalSerial.h"
 #include "SerialLog.h"
 
-int PortXfer(AHCI_DRIVE *Drive, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+int PortTransfer(AHCI_DRIVE *Drive, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     volatile AHCI_PORT *Port;
     AHCI_CMD_TABLE *Ct;
     UINT8 *Fis;

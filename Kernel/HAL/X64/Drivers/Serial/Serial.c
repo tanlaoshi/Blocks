@@ -23,37 +23,37 @@ static int gSerialIrqOn;
 static volatile INT32 gSerialExcOwner = -1;
 
 #define SERIAL_RX_RING 512u
-static char gRxRing[SERIAL_RX_RING];
-static volatile UINT32 gRxHead; /* ISR / poll producer */
-static volatile UINT32 gRxTail; /* Shell consumer */
-static volatile INT32 gRxLock;  /* 仅 poll 路径；IRQ 开后不用 */
+static char gReceiveRing[SERIAL_RX_RING];
+static volatile UINT32 gReceiveHead; /* ISR / poll producer */
+static volatile UINT32 gReceiveTail; /* Shell consumer */
+static volatile INT32 gReceiveLock;  /* 仅 poll 路径；IRQ 开后不用 */
 
-static int SerialRxTryLock(void) {
-    return BLOCKS_ATOMIC_TAS(&gRxLock, 1) == 0;
+static int SerialReceiveTryLock(void) {
+    return BLOCKS_ATOMIC_TAS(&gReceiveLock, 1) == 0;
 }
 
-static void SerialRxUnlock(void) {
-    BLOCKS_ATOMIC_RELEASE(&gRxLock);
+static void SerialReceiveUnlock(void) {
+    BLOCKS_ATOMIC_RELEASE(&gReceiveLock);
 }
 
-static void SerialRxPush(char C) {
-    UINT32 Head = gRxHead;
+static void SerialReceivePush(char C) {
+    UINT32 Head = gReceiveHead;
     UINT32 Next = (Head + 1u) % SERIAL_RX_RING;
 
-    if (Next == gRxTail) {
+    if (Next == gReceiveTail) {
         /* 环满：丢最旧，保最新（粘贴尾部常含 CR） */
-        gRxTail = (gRxTail + 1u) % SERIAL_RX_RING;
+        gReceiveTail = (gReceiveTail + 1u) % SERIAL_RX_RING;
     }
-    gRxRing[Head] = C;
+    gReceiveRing[Head] = C;
     BLOCKS_ATOMIC_FENCE();
-    gRxHead = Next;
+    gReceiveHead = Next;
 }
 
-static void SerialRxDrainHw(void) {
+static void SerialReceiveDrainHardware(void) {
     int N = 0;
 
     while ((HalIoRead8(COM1 + 5) & 0x01) != 0 && N < 64) {
-        SerialRxPush((char)HalIoRead8(COM1));
+        SerialReceivePush((char)HalIoRead8(COM1));
         N++;
     }
 }
@@ -63,19 +63,19 @@ void SerialIrq(void) {
     if (!gSerialOk) {
         return;
     }
-    SerialRxDrainHw();
+    SerialReceiveDrainHardware();
 }
 
-void SerialRxPump(void) {
+void SerialReceivePump(void) {
     if (!gSerialOk || gSerialIrqOn) {
         /* IRQ 模式下 HW 只由 SerialIrq 读，避免与 ISR 抢 RBR */
         return;
     }
-    if (!SerialRxTryLock()) {
+    if (!SerialReceiveTryLock()) {
         return;
     }
-    SerialRxDrainHw();
-    SerialRxUnlock();
+    SerialReceiveDrainHardware();
+    SerialReceiveUnlock();
 }
 
 static int ProbeCom1(void) {
@@ -123,10 +123,10 @@ void SerialInitialize(void) {
 }
 
 /*
- * ArchInit / IoApic 之后调用：ISA IRQ4 → VEC_COM1 → BSP，开 ERBFI。
- * 失败则保持 poll（SerialRxPump）。
+ * ArchInitialize / IoApic 之后调用：ISA IRQ4 → VEC_COM1 → BSP，开 ERBFI。
+ * 失败则保持 poll（SerialReceivePump）。
  */
-void SerialEnableRxIrq(void) {
+void SerialEnableReceiveIrq(void) {
 #if !SERIAL_ENABLE
     return;
 #else
@@ -140,7 +140,7 @@ void SerialEnableRxIrq(void) {
     if (IoApicRouteIsaIrq(4, (UINT8)VEC_COM1, HalCpuApicId(0)) != 0) {
         return;
     }
-    SerialRxDrainHw(); /* 清残留，避免一开 IER 就风暴 */
+    SerialReceiveDrainHardware(); /* 清残留，避免一开 IER 就风暴 */
     HalIrqNotifyRegister(VEC_COM1, SerialIrq);
     HalIoWrite8(COM1 + 1, 0x01); /* ERBFI：收到数据可中断 */
     gSerialIrqOn = 1;
@@ -185,9 +185,9 @@ int SerialDataReady(void) {
         return 0;
     }
     if (!gSerialIrqOn) {
-        SerialRxPump();
+        SerialReceivePump();
     }
-    return gRxHead != gRxTail;
+    return gReceiveHead != gReceiveTail;
 }
 
 char SerialReadChar(void) {
@@ -200,31 +200,31 @@ char SerialReadChar(void) {
     if (!gSerialIrqOn) {
         UINT32 Spins = 0;
 
-        while (!SerialRxTryLock()) {
+        while (!SerialReceiveTryLock()) {
             __asm__ volatile ("pause");
             if (++Spins > 100000u) {
                 return 0;
             }
         }
-        SerialRxDrainHw();
-        if (gRxHead == gRxTail) {
-            SerialRxUnlock();
+        SerialReceiveDrainHardware();
+        if (gReceiveHead == gReceiveTail) {
+            SerialReceiveUnlock();
             return 0;
         }
-        Tail = gRxTail;
-        C = gRxRing[Tail];
-        gRxTail = (Tail + 1u) % SERIAL_RX_RING;
-        SerialRxUnlock();
+        Tail = gReceiveTail;
+        C = gReceiveRing[Tail];
+        gReceiveTail = (Tail + 1u) % SERIAL_RX_RING;
+        SerialReceiveUnlock();
         return C;
     }
     /* IRQ 模式：只消费软环，不碰 HW */
-    if (gRxHead == gRxTail) {
+    if (gReceiveHead == gReceiveTail) {
         return 0;
     }
-    Tail = gRxTail;
-    C = gRxRing[Tail];
+    Tail = gReceiveTail;
+    C = gReceiveRing[Tail];
     BLOCKS_ATOMIC_FENCE();
-    gRxTail = (Tail + 1u) % SERIAL_RX_RING;
+    gReceiveTail = (Tail + 1u) % SERIAL_RX_RING;
     return C;
 }
 

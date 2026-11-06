@@ -106,7 +106,7 @@ void StartBtnGeom(UINT32 *OutX, UINT32 *OutY, UINT32 *OutW, UINT32 *OutH) {
     const char *Start;
 
     TaskbarGeom(&BarY, &Sw, &Sh);
-    Start = LocStr(MSG_START);
+    Start = LocaleString(MESSAGE_START);
     Tw = FontStringWidth(Start ? Start : "Start");
     IconSlot = START_ICON_SZ + 6u; /* BMP 或纯色占位 */
     *OutW = Tw + START_BTN_PAD_X * 2 + IconSlot;

@@ -15,6 +15,8 @@ typedef struct {
     int (*DamageUser)(int Wid, const char *Text);
     int (*DamageRectUser)(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                           const UINT32 *Pixels);
+    int (*DrawStringUser)(int Wid, UINT32 X, UINT32 Y, UINT32 Color,
+                          const char *Text);
     int (*PollUserInput)(int Wid);
     int (*AddButton)(int Wid, int ButtonId, const char *Label);
 } WINDOW_OPS;
@@ -24,6 +26,8 @@ int WindowOpenUser(const char *Title, UINT32 W, UINT32 H);
 int WindowDamageUser(int Wid, const char *Text);
 int WindowDamageRectUser(int Wid, UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
                          const UINT32 *Pixels);
+int WindowDrawStringUser(int Wid, UINT32 X, UINT32 Y, UINT32 Color,
+                         const char *Text);
 int WindowPollUserInput(int Wid);
 int WindowAddButton(int Wid, int ButtonId, const char *Label);
 
@@ -54,7 +58,7 @@ int VfsServiceRename(const char *OldPath, const char *NewPath);
 
 /* 标准输出按长度写、标准输入取一字。控制台启动时登记；没登记则写出走串口，读入失败。 */
 typedef struct {
-    void (*WriteLen)(const char *Data, UINTN Len);
+    void (*WriteLength)(const char *Data, UINTN Len);
     char (*ReadChar)(void);
     void (*ShowPrompt)(void);
     /* CoopDrain 期间用户 printf 缓冲；Drain 后由宿主 Shell 刷屏（免 syscall 内 Present） */
@@ -63,7 +67,7 @@ typedef struct {
 } CONSOLE_IO_OPS;
 
 void ConsoleIoRegister(const CONSOLE_IO_OPS *Ops);
-void ConsoleIoWriteLen(const char *Data, UINTN Len);
+void ConsoleIoWriteLength(const char *Data, UINTN Len);
 int ConsoleIoReadChar(char *Out);
 void ConsoleIoShowPrompt(void);
 void ConsoleIoCoopUserOutClear(void);

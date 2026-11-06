@@ -55,7 +55,7 @@ const USB_HOST_CONTROLLER_OPERATIONS *HostOperations(void) {
 
 int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol) {
     int DevIndex;
-    int IfaceIndex;
+    int InterfaceIndex;
 
     if (Pipe == 0) {
         return -1;
@@ -65,25 +65,25 @@ int ClaimInterface(USB_PIPE *Pipe, UINT8 Class, UINT8 Subclass, UINT8 Protocol) 
         if (Dev->Address == 0) {
             continue;
         }
-        for (IfaceIndex = 0; IfaceIndex < Dev->InterfaceCount; IfaceIndex++) {
-            USB_INTERFACE *Iface = &Dev->Interface[IfaceIndex];
-            if (Iface->Class != Class) {
+        for (InterfaceIndex = 0; InterfaceIndex < Dev->InterfaceCount; InterfaceIndex++) {
+            USB_INTERFACE *Interface = &Dev->Interface[InterfaceIndex];
+            if (Interface->Class != Class) {
                 continue;
             }
             /* 3,0,0：鼠标或 tablet，跳过 boot 键盘 */
             if (Class == 3 && Subclass == 0 && Protocol == 0) {
-                if (Iface->Protocol == 1) {
+                if (Interface->Protocol == 1) {
                     continue;
                 }
             } else {
-                if (Subclass != 0xFF && Iface->Subclass != Subclass) {
+                if (Subclass != 0xFF && Interface->Subclass != Subclass) {
                     continue;
                 }
-                if (Protocol != 0xFF && Iface->Protocol != Protocol) {
+                if (Protocol != 0xFF && Interface->Protocol != Protocol) {
                     continue;
                 }
             }
-            Pipe->HostControllerPrivate = Iface;
+            Pipe->HostControllerPrivate = Interface;
             Pipe->DoneContext = 0;
             return 0;
         }
@@ -147,7 +147,7 @@ void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total) {
     while (Off + 2 <= Total) {
         UINT8 Len = Config[Off];
         UINT8 Type = Config[Off + 1];
-        USB_INTERFACE *Iface;
+        USB_INTERFACE *Interface;
 
         if (Len < 2 || (UINT16)(Off + Len) > Total) {
             break;
@@ -156,20 +156,20 @@ void UsbDeviceNote(UINT8 Address, const UINT8 *Config, UINT16 Total) {
             if (Dev->InterfaceCount >= USB_INTERFACE_MAX) {
                 break;
             }
-            Iface = &Dev->Interface[Dev->InterfaceCount];
-            Iface->Class = Config[Off + 5];
-            Iface->Subclass = Config[Off + 6];
-            Iface->Protocol = Config[Off + 7];
-            Iface->EndpointCount = 0;
+            Interface = &Dev->Interface[Dev->InterfaceCount];
+            Interface->Class = Config[Off + 5];
+            Interface->Subclass = Config[Off + 6];
+            Interface->Protocol = Config[Off + 7];
+            Interface->EndpointCount = 0;
             Dev->InterfaceCount++;
         } else if (Type == 5 && Len >= 7 && Dev->InterfaceCount > 0) {
-            Iface = &Dev->Interface[Dev->InterfaceCount - 1];
-            if (Iface->EndpointCount < USB_ENDPOINT_MAX) {
-                USB_ENDPOINT *Ep = &Iface->Endpoint[Iface->EndpointCount];
-                Ep->Address = Config[Off + 2];
-                Ep->Attributes = Config[Off + 3];
-                Ep->MaxPacket = (UINT16)(Config[Off + 4] | (Config[Off + 5] << 8));
-                Iface->EndpointCount++;
+            Interface = &Dev->Interface[Dev->InterfaceCount - 1];
+            if (Interface->EndpointCount < USB_ENDPOINT_MAX) {
+                USB_ENDPOINT *Endpoint = &Interface->Endpoint[Interface->EndpointCount];
+                Endpoint->Address = Config[Off + 2];
+                Endpoint->Attributes = Config[Off + 3];
+                Endpoint->MaxPacket = (UINT16)(Config[Off + 4] | (Config[Off + 5] << 8));
+                Interface->EndpointCount++;
             }
         }
         Off = (UINT16)(Off + Len);

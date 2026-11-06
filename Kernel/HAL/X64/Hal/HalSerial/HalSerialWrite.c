@@ -350,7 +350,7 @@ void HalSerialBootMark(const char *Text) {
     HalSerialBootMarkChannel(SLOG_BOOT, Text);
 }
 
-void HalSerialBootHoldMs(UINT32 Ms) {
+void HalSerialBootHoldMilliseconds(UINT32 Ms) {
     /* X64：桌面盖屏不强制停；真机看串口即可 */
     (void)Ms;
 }

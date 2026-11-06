@@ -20,9 +20,9 @@ void SerialClaimException(void);
 int SerialDataReady(void);
 char SerialReadChar(void);
 /* IRQ 模式由 SerialIrq 抽 HW；poll 模式 Present/Shell 可调 */
-void SerialRxPump(void);
+void SerialReceivePump(void);
 /* IoApic 就绪后：ISA IRQ4 → 软环；失败则保持 poll */
-void SerialEnableRxIrq(void);
+void SerialEnableReceiveIrq(void);
 /* 中断分发调用 */
 void SerialIrq(void);
 void SerialHexFormat(char *Buf, UINT64 Value, int Digits);

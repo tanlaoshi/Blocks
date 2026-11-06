@@ -46,6 +46,6 @@ static inline int KeyOk(const char *K) {
 int FindSlot(const char *Key);
 int AllocSlot(void);
 void ClearAll(void);
-void ImportThemeCfgIfEmpty(void);
+void ImportThemeConfigIfEmpty(void);
 
 #endif

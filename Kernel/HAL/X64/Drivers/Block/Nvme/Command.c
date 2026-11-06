@@ -75,7 +75,7 @@ static int IoCmd(NVME_CTRL *C, NVME_SQE *Cmd) {
     return WaitCqe(C, C->Iocq, &C->IocqHead, &C->IocqPhase, Cid, 1);
 }
 
-int Xfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
+int NvmeTransfer(NVME_CTRL *C, UINT32 Lba, UINT32 Count, void *Buffer, int Write) {
     UINT8 *Data = (UINT8 *)Buffer;
     UINT32 Done = 0;
     UINT64 BouncePhys;

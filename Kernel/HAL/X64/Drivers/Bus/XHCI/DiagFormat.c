@@ -27,9 +27,9 @@ void XhciDiagFormat(char *Buf, int Max) {
     while (*Mode && N + 1 < Max) {
         Buf[N++] = *Mode++;
     }
-    V[0] = gStatXferAny;
+    V[0] = gStatTransferAny;
     V[1] = gStatIntrEvt + gStatMouseEvt;
-    V[2] = gStatKbdPush;
+    V[2] = gStatKeyboardPush;
     V[3] = gStatMousePush;
     V[4] = gStatUnmatched;
     V[5] = gStatLastCc;
@@ -56,7 +56,7 @@ void XhciDiagFormat(char *Buf, int Max) {
             }
             Buf[N++] = '.';
             {
-                UINT32 E = gStatLastEp;
+                UINT32 E = gStatLastEndpoint;
                 if (E >= 100) {
                     E = 99;
                 }

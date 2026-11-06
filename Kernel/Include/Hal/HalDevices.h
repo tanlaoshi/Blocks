@@ -37,7 +37,7 @@ typedef struct {
 } HAL_MOUSE_REPORT;
 
 int HalBlockInitialize(void);
-/* PR-D2：注册平台驱动描述符（ATA / virtio-blk 等）；InitDriver 内调用 */
+/* PR-D2：注册平台驱动描述符（ATA / virtio-blk 等）；InitializeDriver 内调用 */
 void HalDriverRegister(void);
 
 int HalUsbInitialize(void);
@@ -67,7 +67,7 @@ int HalUsbMscRelease(void);
 int HalUsbMscPollUnplug(void); /* 1=启动介质拔出（X64 MSC / Pi µSD）；指针忙也可 */
 /* U 盘起、BootDisk 未挂：claim 前 Arm，失败后盯口 CCS 失根 */
 void HalUsbMscArmBootWatch(int On);
-int HalUsbPortEnumIsFrozen(void); /* 1=ClaimPorts 扫空/sick 已冻；EnsureSecondary 勿 Hot */
+int HalUsbPortEnumerateIsFrozen(void); /* 1=ClaimPorts 扫空/sick 已冻；EnsureSecondary 勿 Hot */
 int HalUsbMscHotPoll(void); /* 1=需 Remount（拔 Release 或插 Claim/Mount） */
 int HalUsbMscHot(void);     /* 拔则卸；未认则 claim→mount；Shell msc hot */
 /* PR-H-usb-uart-ftdi-1：xHCI 上认 FT232；非 x86 空操作 */
@@ -182,7 +182,7 @@ int HalNetInitialize(void);
  * 1 → Network 模块表里立刻 Probe（真机板网；CNTV 无 IRQ 时 Worker 可能切不过来）。
  * 0 → 仍 boot-net-defer，交给 Worker（X64 / virt）。
  */
-int HalNetProbeAtModuleInit(void);
+int HalNetProbeAtModuleInitialize(void);
 int HalNetReady(void);
 void HalNetEnsureLwIpActive(void);
 /* 当前 L2 挂接次数；未挂过或本架构无此外置网卡时为 0 */

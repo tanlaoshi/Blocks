@@ -42,7 +42,7 @@ int HdaCodecOk(void) {
     return gHdaCodecOk;
 }
 
-UINT8 HdaCodecAddr(void) {
+UINT8 HdaCodecAddress(void) {
     return gCodecCad;
 }
 
@@ -225,7 +225,7 @@ static int ScoreProbe(const HDA_CODEC_PROBE *P) {
     return S;
 }
 
-int HdaCodecInit(void) {
+int HdaCodecInitialize(void) {
     UINT16 Sts;
     UINT8 Cad;
     HDA_CODEC_PROBE Best;
@@ -235,7 +235,7 @@ int HdaCodecInit(void) {
     if (gHdaCodecOk) {
         return 1;
     }
-    if (!HdaCorbInit()) {
+    if (!HdaCorbInitialize()) {
         return 0;
     }
 

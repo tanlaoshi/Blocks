@@ -9,7 +9,7 @@
 #include "CString.h"
 #include "Compiler.h" /* BLOCKS_OFFSETOF：dry 要在真 buffer 里定位 ie_buf */
 
-void AicJoinPrintTx(UINT32 Length) {
+void AicJoinPrintTransmit(UINT32 Length) {
     SdhciMark("WiFi: sm_connect_req tx len=");
     SdhciMarkDecimal("", Length);
     SdhciMark(" (auth=wpa2-psk(WLAN_AUTH_OPEN=");

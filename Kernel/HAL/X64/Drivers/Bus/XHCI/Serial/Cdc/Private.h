@@ -8,8 +8,8 @@
 
 #include "XHCI/Private.h"
 
-extern UINT16 gCdcBulkOutMps;
-extern UINT16 gCdcBulkInMps;
+extern UINT16 gCdcBulkOutMaxPacketSize;
+extern UINT16 gCdcBulkInMaxPacketSize;
 extern UINT32 gCdcRoute;
 extern UINT8 gCdcHubSlot;
 extern UINT8 gCdcTtPort;

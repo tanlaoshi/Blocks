@@ -5,7 +5,7 @@
 #include "HalSerial.h"
 #include "Network/Network.h"
 
-void IwlLogDataTx(const IWL_RX_PKT *Pkt, UINTN Len) {
+void IwlLogDataTransmit(const IWL_RX_PKT *Pkt, UINTN Len) {
     char Line[16];
     char Hex[12];
     UINT16 St;
@@ -37,10 +37,10 @@ void IwlPoll(void) {
     if (!gIwlAlive) {
         return;
     }
-    IwlRxPoll();
+    IwlReceivePoll();
     {
     int Took = 0;
-    while (Took < 24 && IwlRxTake(&Pkt, &Len)) {
+    while (Took < 24 && IwlReceiveTake(&Pkt, &Len)) {
         UINT8 Code;
         const UINT8 *Payload;
         UINTN PayLen;
@@ -54,7 +54,7 @@ void IwlPoll(void) {
         }
         Code = Pkt->Hdr.Code;
         if (Code == IWL_CMD_TX) {
-            IwlLogDataTx(Pkt, Len);
+            IwlLogDataTransmit(Pkt, Len);
         }
         Payload = Pkt->Data;
         PayLen = Len - sizeof(IWL_CMD_HDR);
@@ -85,13 +85,13 @@ void IwlPoll(void) {
             for (i = 0; i < FLen; i++) {
                 Mutable[i] = Payload[4 + i];
             }
-            if (gIwlWpa2Ok && !gRxStLogged && FLen >= 24u
+            if (gIwlWpa2Ok && !gReceiveStatusLogged && FLen >= 24u
                 && (Mutable[1] & 0x40u) != 0) {
                 char Line[20];
                 char Hex[12];
                 int n = 0;
                 const char *P = "rx=st=";
-                gRxStLogged = 1;
+                gReceiveStatusLogged = 1;
                 while (*P) {
                     Line[n++] = *P++;
                 }
@@ -111,7 +111,7 @@ void IwlPoll(void) {
                 IwlLogStage(Line);
             }
             if (gIwlWpa2Ok) {
-                IwlRxDataToNet(Mutable, FLen, St);
+                IwlReceiveDataToNet(Mutable, FLen, St);
             }
         }
         (void)Code;

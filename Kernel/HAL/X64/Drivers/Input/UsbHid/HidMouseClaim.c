@@ -7,39 +7,39 @@
 
 /*
  * 在首次 ConfigEP 前：从当前配置描述符认领复合鼠标 iface（SetInterface/Protocol/Idle）。
- * 成功则写出 EP 参数供 ConfigureIntr 一次 Add。
+ * 成功则写出 EP 参数供 ConfigureInterrupt 一次 Add。
  */
-int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
-                              UINT8 *EpOut, UINT16 *MpsOut, UINT8 *IvOut) {
-    UINT8 Iface = 0, EpAddr = 0, Interval = 10;
-    UINT16 Mps = 8;
+int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KeyboardInterface, UINT8 KeyboardEndpoint,
+                              UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut, UINT8 *IvOut) {
+    UINT8 Interface = 0, EndpointAddress = 0, Interval = 10;
+    UINT16 MaxPacketSize = 8;
     UINT8 CurAlt = 0, BestAlt = 0;
     UINT16 Off;
 
-    if (!ParseConfigMouse(gCtrlBuf, Total, Speed, &Iface, &EpAddr, &Mps, &Interval)) {
+    if (!ParseConfigMouse(gControlBuffer, Total, Speed, &Interface, &EndpointAddress, &MaxPacketSize, &Interval)) {
         return 0;
     }
     if (!HalCpuIsHypervisor() && gMouseParseScore < 2) {
         return 0;
     }
-    if (Iface == KbdIface) {
+    if (Interface == KeyboardInterface) {
         return 0;
     }
-    if ((EpAddr & 0x0F) == (KbdEp & 0x0F) && ((EpAddr ^ KbdEp) & 0x80) == 0) {
+    if ((EndpointAddress & 0x0F) == (KeyboardEndpoint & 0x0F) && ((EndpointAddress ^ KeyboardEndpoint) & 0x80) == 0) {
         return 0;
     }
 
     Off = 0;
     while (Off + 9 <= Total) {
-        UINT8 Len = gCtrlBuf[Off];
-        UINT8 Type = gCtrlBuf[Off + 1];
+        UINT8 Len = gControlBuffer[Off];
+        UINT8 Type = gControlBuffer[Off + 1];
         if (Len < 2 || Off + Len > Total) {
             break;
         }
         if (Type == 4 && Len >= 9) {
-            CurAlt = gCtrlBuf[Off + 3];
-            if (gCtrlBuf[Off + 2] == Iface && gCtrlBuf[Off + 5] == 3 &&
-                gCtrlBuf[Off + 7] != 1) {
+            CurAlt = gControlBuffer[Off + 3];
+            if (gControlBuffer[Off + 2] == Interface && gControlBuffer[Off + 5] == 3 &&
+                gControlBuffer[Off + 7] != 1) {
                 BestAlt = CurAlt;
             }
         }
@@ -47,15 +47,15 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
     }
 
     gMousePort = gPort1;
-    gMouseIface = Iface;
-    (void)SetInterface(Iface, BestAlt);
-    if (gMouseIfaceProto == 1 || gMouseIfaceProto == 2) {
-        (void)SetProtocolBoot(Iface);
+    gMouseInterface = Interface;
+    (void)SetInterface(Interface, BestAlt);
+    if (gMouseInterfaceProto == 1 || gMouseInterfaceProto == 2) {
+        (void)SetProtocolBoot(Interface);
     }
-    (void)SetIdle(Iface);
+    (void)SetIdle(Interface);
 
-    *EpOut = EpAddr;
-    *MpsOut = Mps;
+    *EndpointOut = EndpointAddress;
+    *MaxPacketSizeOut = MaxPacketSize;
     *IvOut = Interval;
     {
         char Line[72];
@@ -65,7 +65,7 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
         while (*P && n < 28) {
             Line[n++] = *P++;
         }
-        HalSerialFormatHex(Hex, Iface, 2);
+        HalSerialFormatHex(Hex, Interface, 2);
         P = Hex;
         while (*P && n < 40) {
             Line[n++] = *P++;
@@ -74,7 +74,7 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
         while (*P && n < 44) {
             Line[n++] = *P++;
         }
-        HalSerialFormatHex(Hex, gMouseIfaceProto, 2);
+        HalSerialFormatHex(Hex, gMouseInterfaceProto, 2);
         P = Hex;
         while (*P && n < 48) {
             Line[n++] = *P++;
@@ -83,7 +83,7 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
         while (*P && n < 54) {
             Line[n++] = *P++;
         }
-        HalSerialFormatHex(Hex, EpAddr, 2);
+        HalSerialFormatHex(Hex, EndpointAddress, 2);
         P = Hex;
         while (*P && n < 58) {
             Line[n++] = *P++;
@@ -92,7 +92,7 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
         while (*P && n < 64) {
             Line[n++] = *P++;
         }
-        HalSerialFormatHex(Hex, Mps, 2);
+        HalSerialFormatHex(Hex, MaxPacketSize, 2);
         P = Hex;
         while (*P && n < 68) {
             Line[n++] = *P++;
@@ -105,20 +105,20 @@ int PrepCompositeMouse(UINT16 Total, UINT8 Speed, UINT8 KbdIface, UINT8 KbdEp,
 }
 
 /*
- * v8：G102 等被 skip-as-kbd 时，slot 已 Address 在 gDevCtx/gEp0。
+ * v8：G102 等被 skip-as-kbd 时，slot 已 Address 在 gDevCtx/gEndpoint0。
  * 勿 Disable+再 Address（真机常 cc=0x04 / Reset 超时 → m=0）。
  * 直接把当前 slot 认领为独立鼠标。
  */
 int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
                                      UINT8 ConfigVal) {
-    UINT8 Iface = 0, EpAddr = 0, Interval = 10;
-    UINT16 Mps = 8;
+    UINT8 Interface = 0, EndpointAddress = 0, Interval = 10;
+    UINT16 MaxPacketSize = 8;
     UINT32 Slot;
 
     if (HalCpuIsHypervisor() || gSlotId == 0 || gMouseSlotId != 0) {
         return 0;
     }
-    if (!ParseConfigMouse(gCtrlBuf, Total, Speed, &Iface, &EpAddr, &Mps, &Interval)) {
+    if (!ParseConfigMouse(gControlBuffer, Total, Speed, &Interface, &EndpointAddress, &MaxPacketSize, &Interval)) {
         return 0;
     }
     if (gMouseParseScore < 2) {
@@ -133,21 +133,21 @@ int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
 
     gMouseSlotId = Slot;
     gMousePort = RootPort;
-    gMouseRoute = gKbdRoute & 0xFFFFFu;
-    gMouseHubSlot = gKbdHubSlot;
-    gMouseTtPort = gKbdTtPort;
-    gMouseIface = Iface;
+    gMouseRoute = gKeyboardRoute & 0xFFFFFu;
+    gMouseHubSlot = gKeyboardHubSlot;
+    gMouseTtPort = gKeyboardTransactionTranslatorPort;
+    gMouseInterface = Interface;
     gMouseAbsolute = 0;
-    /* gSlotEp0UsesKbdRing[Slot] 保持 1：EP0 仍用 Address 时的 gEp0 */
+    /* gSlotEndpoint0UsesKeyboardRing[Slot] 保持 1：EP0 仍用 Address 时的 gEndpoint0 */
 
     gSlotId = 0;
     gIntrDci = 0;
-    gKbdIface = 0;
-    gKbdRoute = 0;
-    gKbdHubSlot = 0;
-    gKbdTtPort = 0;
+    gKeyboardInterface = 0;
+    gKeyboardRoute = 0;
+    gKeyboardHubSlot = 0;
+    gKeyboardTransactionTranslatorPort = 0;
 
-    gXferSlot = gMouseSlotId;
+    gTransferSlot = gMouseSlotId;
     if (ConfigVal == 0) {
         ConfigVal = 1;
     }
@@ -157,13 +157,13 @@ int ClaimAddressedSlotAsMouse(UINT32 RootPort, UINT8 Speed, UINT16 Total,
         gMouseSlotId = 0;
         return 0;
     }
-    if (gMouseIfaceProto == 1 || gMouseIfaceProto == 2) {
-        (void)SetProtocolBoot(Iface);
+    if (gMouseInterfaceProto == 1 || gMouseInterfaceProto == 2) {
+        (void)SetProtocolBoot(Interface);
     }
-    if (gMouseIfaceProto == 1 || gMouseIfaceProto == 2 || gMouseIfaceProto == 0xFF) {
-        SetIdle(Iface);
+    if (gMouseInterfaceProto == 1 || gMouseInterfaceProto == 2 || gMouseInterfaceProto == 0xFF) {
+        SetIdle(Interface);
     }
-    if (!ConfigureMouseIntr(gMouseSlotId, EpAddr, Mps, Interval, Speed)) {
+    if (!ConfigureMouseInterrupt(gMouseSlotId, EndpointAddress, MaxPacketSize, Interval, Speed)) {
         BootLog("Boot: XHCI mouse claim ConfigEP fail\n");
         DisableSlot(gMouseSlotId);
         gMouseSlotId = 0;

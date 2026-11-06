@@ -34,10 +34,10 @@ extern UINT8 gIwlGroupCipher; /* RSN suite 末字节：2=TKIP 4=CCMP */
 extern UINT8 gIwlStaRsn[32];
 extern UINT8 gIwlStaRsnLen;
 extern IWL_BSS gIwlTarget;
-extern int gIwlTxRsp;
-extern int gIwlRxCode;
+extern int gIwlTransmitResponse;
+extern int gIwlReceiveCode;
 
-int IwlCfgLoad(void);
+int IwlConfigLoad(void);
 int IwlPmkPrepare(void);
 int IwlScanRun(void);
 int IwlAssocRun(void);
@@ -46,18 +46,18 @@ int IwlEapolRun(void);
 void IwlEapolZero(void *P, UINTN N);
 void IwlEapolCopyN(UINT8 *D, const UINT8 *S, UINTN N);
 int IwlEapolMemCmp(const UINT8 *A, const UINT8 *B, UINTN N);
-UINTN IwlDot11DataHdrLen(UINT16 Fc);
+UINTN IwlDot11DataHeaderLength(UINT16 Fc);
 int IwlFindEapol(UINT8 *Dot11, UINTN FLen, UINT8 **OutEap, UINTN *OutLen);
 int IwlAddr1IsUs(const UINT8 *Dot11);
 UINT16 IwlBe16(const UINT8 *P);
 void IwlPutBe16(UINT8 *P, UINT16 V);
 /* PTK / MIC 已搬到 HAL/Common/WifiCrypto；这里只剩 GTK 安装胶水（串口 + gIwlGtk*）。 */
 void IwlInstallGtk(const UINT8 *Eapol, UINTN EapLen, const UINT8 Kek[16]);
-int IwlRxDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
+int IwlReceiveDrainForEapol(UINT8 *EapOut, UINTN *EapLenOut, UINTN Cap,
                        UINT32 *MpduN, UINT32 *DataN, UINT32 *UniN,
                        UINT32 *BeaconN);
 int IwlSendEapol(const UINT8 *Eapol, UINTN EapolLen);
-int IwlEapolWaitMsg1(UINT8 *Eapol, UINTN *EapLen, UINT8 *Anonce, UINT8 *Replay,
+int IwlEapolWaitMessage1(UINT8 *Eapol, UINTN *EapLen, UINT8 *Anonce, UINT8 *Replay,
                      UINT8 *KeyDescOut);
 int IwlEapolFinishHandshake(UINT8 *Eapol, UINTN EapLen, UINT8 *Anonce, UINT8 *Replay,
                             UINT8 KeyDesc);

@@ -25,8 +25,8 @@ int gNetOk;
 UINT8 gMac[6];
 UINT32 gIp = NET_IP_DEFAULT;
 UINT32 gTxDone;
-UINT32 gRxFrames;
-int gLwIpRx;
+UINT32 gReceiveFrames;
+int gLwIpReceive;
 
 void NetMemSet(void *Dst, UINT8 Val, UINTN Len) {
     UINT8 *P = (UINT8 *)Dst;
@@ -110,12 +110,12 @@ int NetSendEthernet(const UINT8 *Frame, UINTN Len) {
     return NetSendFrame(Frame, Len);
 }
 
-void NetSetLwIpRx(int Enable) {
-    gLwIpRx = Enable ? 1 : 0;
+void NetSetLwIpReceive(int Enable) {
+    gLwIpReceive = Enable ? 1 : 0;
 }
 
-int NetLwIpRx(void) {
-    return gLwIpRx;
+int NetLwIpReceive(void) {
+    return gLwIpReceive;
 }
 
 UINT16 NetChecksum(const void *Data, UINTN Len) {
@@ -137,7 +137,7 @@ void NetGetStats(UINT32 *TxDone, UINT32 *RxFrames) {
         *TxDone = gTxDone;
     }
     if (RxFrames) {
-        *RxFrames = gRxFrames;
+        *RxFrames = gReceiveFrames;
     }
 }
 

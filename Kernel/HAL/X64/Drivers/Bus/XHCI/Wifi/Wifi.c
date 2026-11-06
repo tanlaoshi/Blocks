@@ -17,20 +17,20 @@ UINT32 gWifiRoute;
 UINT8 gWifiHubSlot;
 UINT8 gWifiTtPort;
 UINT16 gWifiXhciPid;
-UINT8 gWifiEpIn;
-UINT8 gWifiEpOut;
-UINT16 gWifiMpsIn;
-UINT16 gWifiMpsOut;
+UINT8 gWifiEndpointIn;
+UINT8 gWifiEndpointOut;
+UINT16 gWifiMaxPacketSizeIn;
+UINT16 gWifiMaxPacketSizeOut;
 int gWifiXhciOk;
 
 UINT8 gWifiDevCtx[2048] BLOCKS_ALIGNED(64);
-XHCI_TRB gWifiEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
-RING_STATE gWifiEp0;
-static UINT8 gWifiCfgBuf[WIFI_CFG_MAX] BLOCKS_ALIGNED(64);
+XHCI_TRB gWifiEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+RING_STATE gWifiEndpoint0;
+static UINT8 gWifiConfigBuffer[WIFI_CFG_MAX] BLOCKS_ALIGNED(64);
 
-void WifiEp0Ring(XHCI_TRB **RingOut, RING_STATE **StOut) {
-    *RingOut = gWifiEp0Ring;
-    *StOut = &gWifiEp0;
+void WifiEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StOut) {
+    *RingOut = gWifiEndpoint0Ring;
+    *StOut = &gWifiEndpoint0;
 }
 
 int XhciWifiReady(void) {
@@ -41,14 +41,14 @@ UINT16 XhciWifiPid(void) {
     return gWifiXhciPid;
 }
 
-static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
-                         UINT8 *EpOut, UINT16 *MpsOut) {
+static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn,
+                         UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut) {
     UINT16 Off = 0;
     UINT8 CurAlt = 0;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
 
     while (Off + 2 <= Total) {
         UINT8 Len = Cfg[Off];
@@ -62,15 +62,15 @@ static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
         } else if (Type == 5 && Len >= 7 && CurAlt == 0) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
 
             if ((Attr & 0x03) == 2) {
                 if (Addr & 0x80) {
                     BestIn = Addr;
-                    BestInMps = Mps ? Mps : 64;
+                    BestInMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 } else {
                     BestOut = Addr;
-                    BestOutMps = Mps ? Mps : 64;
+                    BestOutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 }
             }
         }
@@ -79,26 +79,26 @@ static int ParseWifiBulk(UINT8 *Cfg, UINT16 Total, UINT8 *EpIn, UINT16 *MpsIn,
     if (BestIn == 0 || BestOut == 0) {
         return 0;
     }
-    if (EpIn) {
-        *EpIn = BestIn;
+    if (EndpointIn) {
+        *EndpointIn = BestIn;
     }
-    if (MpsIn) {
-        *MpsIn = BestInMps;
+    if (MaxPacketSizeIn) {
+        *MaxPacketSizeIn = BestInMaxPacketSize;
     }
-    if (EpOut) {
-        *EpOut = BestOut;
+    if (EndpointOut) {
+        *EndpointOut = BestOut;
     }
-    if (MpsOut) {
-        *MpsOut = BestOutMps;
+    if (MaxPacketSizeOut) {
+        *MaxPacketSizeOut = BestOutMaxPacketSize;
     }
     return 1;
 }
 
 int WifiFinishClaim(UINT32 RootPort, UINT8 Speed) {
-    UINT8 EpIn = 0;
-    UINT8 EpOut = 0;
-    UINT16 MpsIn = 64;
-    UINT16 MpsOut = 64;
+    UINT8 EndpointIn = 0;
+    UINT8 EndpointOut = 0;
+    UINT16 MaxPacketSizeIn = 64;
+    UINT16 MaxPacketSizeOut = 64;
     UINT16 Total;
     UINT8 ConfigVal = 1;
     UINT16 Vid;
@@ -108,40 +108,40 @@ int WifiFinishClaim(UINT32 RootPort, UINT8 Speed) {
     if (gWifiSlot == 0) {
         return 0;
     }
-    gXferSlot = gWifiSlot;
+    gTransferSlot = gWifiSlot;
     if (GetDeviceDesc() < 0) {
         goto fail;
     }
-    Vid = (UINT16)(gCtrlBuf[8] | (gCtrlBuf[9] << 8));
-    Pid = (UINT16)(gCtrlBuf[10] | (gCtrlBuf[11] << 8));
+    Vid = (UINT16)(gControlBuffer[8] | (gControlBuffer[9] << 8));
+    Pid = (UINT16)(gControlBuffer[10] | (gControlBuffer[11] << 8));
     if (Vid != WIFI_RTL_VID || !WifiIs8188EuPid(Pid)) {
         goto fail;
     }
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gWifiCfgBuf) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gWifiConfigBuffer) < 0) {
         goto fail;
     }
-    Total = (UINT16)(gWifiCfgBuf[2] | (gWifiCfgBuf[3] << 8));
+    Total = (UINT16)(gWifiConfigBuffer[2] | (gWifiConfigBuffer[3] << 8));
     if (Total < 9) {
         Total = 9;
     }
-    if (Total > sizeof(gWifiCfgBuf)) {
-        Total = (UINT16)sizeof(gWifiCfgBuf);
+    if (Total > sizeof(gWifiConfigBuffer)) {
+        Total = (UINT16)sizeof(gWifiConfigBuffer);
     }
-    ConfigVal = gWifiCfgBuf[5] ? gWifiCfgBuf[5] : 1;
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gWifiCfgBuf) < 0) {
+    ConfigVal = gWifiConfigBuffer[5] ? gWifiConfigBuffer[5] : 1;
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gWifiConfigBuffer) < 0) {
         goto fail;
     }
-    if (!ParseWifiBulk(gWifiCfgBuf, Total, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseWifiBulk(gWifiConfigBuffer, Total, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut)) {
         goto fail;
     }
     if (SetConfig(ConfigVal) < 0) {
         goto fail;
     }
     gWifiPort = RootPort;
-    gWifiEpIn = EpIn;
-    gWifiEpOut = EpOut;
-    gWifiMpsIn = MpsIn;
-    gWifiMpsOut = MpsOut;
+    gWifiEndpointIn = EndpointIn;
+    gWifiEndpointOut = EndpointOut;
+    gWifiMaxPacketSizeIn = MaxPacketSizeIn;
+    gWifiMaxPacketSizeOut = MaxPacketSizeOut;
     gWifiXhciPid = Pid;
     gWifiXhciOk = 1;
     return 1;
@@ -158,7 +158,7 @@ static int WifiAddressRoot(UINT32 P, UINT8 *Speed) {
     UINT32 Ps;
     int Force = 0;
 
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     if (gMscClaimed) {
         if (!(Ps & PORTSC_CCS) || !(Ps & PORTSC_PED)) {
             return 0;
@@ -166,7 +166,7 @@ static int WifiAddressRoot(UINT32 P, UINT8 *Speed) {
     } else if (!ForceUntilPed(P, &Force)) {
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     *Speed = PortSpeed(Ps);
     if (gWifiSlot != 0) {
         DisableSlot(gWifiSlot);
@@ -183,7 +183,7 @@ static int WifiAddressRoot(UINT32 P, UINT8 *Speed) {
         return 0;
     }
     if (gWifiSlot <= DCBAA_SLOTS) {
-        gSlotEp0UsesKbdRing[gWifiSlot] = 0;
+        gSlotEndpoint0UsesKeyboardRing[gWifiSlot] = 0;
     }
     return 1;
 }
@@ -201,7 +201,7 @@ int XhciWifiClaim(void) {
         return 1;
     }
     /* usb-hid-keep：MSC sick/扫空已 freeze → 勿再 Address（AddressDev 也会拒，此处早退少日志噪声） */
-    if (gXhciPortEnumFreeze) {
+    if (gXhciPortEnumerateFreeze) {
         BootLog("Boot: Wifi claim skip (port enum freeze, keep mouse)\n");
         return 0;
     }
@@ -216,7 +216,7 @@ int XhciWifiClaim(void) {
         goto armed;
     }
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
-        UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(P));
 
         if (!(Ps & PORTSC_CCS)) {
             continue;

@@ -155,7 +155,7 @@ static int TaskFitsCpu(const TASK *T, UINT32 Cpu) {
 }
 
 /* PR-K-preempt-enter-5a：T 必须落在 gTasks[] 槽 */
-static int TaskPtrOk(const TASK *T) {
+static int TaskPointerOk(const TASK *T) {
     UINTN Base = (UINTN)&gTasks[0];
     UINTN End = (UINTN)&gTasks[MAX_TASKS];
     UINTN P = (UINTN)T;
@@ -176,7 +176,7 @@ static int TaskPtrOk(const TASK *T) {
     return T == &gTasks[Idx];
 }
 
-static void PickNextBadPtr(UINT32 Cpu, const char *Where, const TASK *T) {
+static void PickNextBadPointer(UINT32 Cpu, const char *Where, const TASK *T) {
     LogSmp("sched: PickNext bad ");
     LogSmp(Where);
     LogSmp(" cpu=");
@@ -195,12 +195,12 @@ TASK *PickNext(UINT32 Cpu) {
 
     /*
      * 5c ❌（NUC）：全程 cli → 拖窗不跟手 + remove 卡死（饿 MSI/xHCI）。
-     * 5d：去掉外层 cli；保留 TaskPtrOk（5a）。
+     * 5d：去掉外层 cli；保留 TaskPointerOk（5a）。
      * 5k：idle 经槽位取址，不再读易腐 gIdleTask*。
      */
     Idle = IdleTaskForCpu(Cpu);
-    if (Idle && !TaskPtrOk(Idle)) {
-        PickNextBadPtr(Cpu, "idle", Idle);
+    if (Idle && !TaskPointerOk(Idle)) {
+        PickNextBadPointer(Cpu, "idle", Idle);
         if (Cpu < HAL_MAX_CPUS) {
             gIdleSlot[Cpu] = -1;
         }
@@ -214,8 +214,8 @@ TASK *PickNext(UINT32 Cpu) {
         if (!T) {
             break;
         }
-        if (!TaskPtrOk(T)) {
-            PickNextBadPtr(Cpu, "deq", T);
+        if (!TaskPointerOk(T)) {
+            PickNextBadPointer(Cpu, "deq", T);
             continue;
         }
         if (TaskFitsCpu(T, Cpu)) {
@@ -242,8 +242,8 @@ TASK *PickNext(UINT32 Cpu) {
         if (!T) {
             continue;
         }
-        if (!TaskPtrOk(T)) {
-            PickNextBadPtr(Cpu, "steal", T);
+        if (!TaskPointerOk(T)) {
+            PickNextBadPointer(Cpu, "steal", T);
             continue;
         }
         if (TaskFitsCpu(T, Cpu)) {

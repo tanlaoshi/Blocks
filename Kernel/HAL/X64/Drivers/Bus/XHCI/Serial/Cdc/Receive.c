@@ -13,11 +13,11 @@ static UINT32 gCdcRxW;
 static volatile UINT32 gCdcInDone;
 static volatile UINT32 gCdcInCode;
 static volatile UINT32 gCdcInRemain;
-static UINT32 gCdcInXferLen;
+static UINT32 gCdcInTransferLength;
 static int gCdcInArmed;
 static int gCdcRxBusy;
 
-static void RxPush(char C) {
+static void ReceivePush(char C) {
     UINT32 Next = (gCdcRxW + 1u) % CDC_RX_Q;
 
     if (Next == gCdcRxR) {
@@ -50,12 +50,12 @@ static int OnComplete(UINT32 Code, UINT32 Remain) {
 }
 
 static void QueueBulkIn(void) {
-    UINT32 Len = gCdcBulkInMps ? gCdcBulkInMps : 64;
+    UINT32 Len = gCdcBulkInMaxPacketSize ? gCdcBulkInMaxPacketSize : 64;
 
     if (Len > sizeof(gCdcRxDma)) {
         Len = (UINT32)sizeof(gCdcRxDma);
     }
-    gCdcInXferLen = Len;
+    gCdcInTransferLength = Len;
     gCdcInDone = 0;
     gCdcInCode = 0;
     gCdcInRemain = 0;
@@ -81,14 +81,14 @@ static void DrainInCompletion(void) {
     if (gCdcInCode != CC_SUCCESS && gCdcInCode != CC_SHORT_PACKET) {
         return;
     }
-    Got = gCdcInXferLen;
+    Got = gCdcInTransferLength;
     if (gCdcInRemain <= Got) {
         Got = Got - gCdcInRemain;
     }
     FlushDma(gCdcRxDma, Got ? Got : 1);
     /* CDC-ACM：整包都是载荷（无 FTDI 那 2 字节状态） */
     for (i = 0; i < Got; i++) {
-        RxPush((char)gCdcRxDma[i]);
+        ReceivePush((char)gCdcRxDma[i]);
     }
 }
 

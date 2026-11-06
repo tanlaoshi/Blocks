@@ -8,7 +8,7 @@
  * 刀 #64：#63 证等 FH idle 无效（scfg=to，ACK 仍被 scan 撞出）。
  * OpenBSD 在 scfg 前有 phy_ctxt ADD；补最小 2.4G ch1 上下文。
  */
-int IwlMvmPhyCtxt(void) {
+int IwlMvmPhyContext(void) {
     UINT8 Cmd[36];
     UINT32 RxChain;
     UINT32 Ant = IWL_ANT_AB;
@@ -75,7 +75,7 @@ int IwlMvmAuxSta(void) {
         return 0;
     }
     IwlLogVerb("auxsta=ok");
-    if (!IwlEnableAuxTxq()) {
+    if (!IwlEnableAuxTransmitQueue()) {
         IwlLogStage("auxhw=fail");
         return 0;
     }
@@ -84,7 +84,7 @@ int IwlMvmAuxSta(void) {
 
 /*
  * 刀 #125：#124 改 BSS_CLIENT q4 → 又 cmdto o=18 / n=00。
- * 回退 #123 已过的 **仅 q5** v10 ADD_STA；保留 gIwlTxStaId=AP + macmod。
+ * 回退 #123 已过的 **仅 q5** v10 ADD_STA；保留 gIwlTransmitStationId=AP + macmod。
  * 刀 #128：SCD 仍 MCAST（#127 改 VO 未达）；EnableApTxq 挪到 macmod 后。
  */
 int IwlAddApSta(void) {
@@ -94,7 +94,7 @@ int IwlAddApSta(void) {
     UINT32 Qid = IWL_DQA_BSS_CLIENT_QUEUE;
     UINT32 Flg = IWL_STA_FLG_CLASS_AUTH | IWL_STA_FLG_CLASS_ASSOC;
 
-    if (!IwlPrepareApTxq()) {
+    if (!IwlPrepareApTransmitQueue()) {
         IwlLogStage("apq=nobind");
         return 0;
     }
@@ -132,14 +132,14 @@ int IwlAddApSta(void) {
         (void)IwlCmdqUnwedge();
         return 0;
     }
-    gIwlTxStaId = (UINT8)IWL_AP_STA_ID;
-    IwlAuxTxLogReset();
+    gIwlTransmitStationId = (UINT8)IWL_AP_STA_ID;
+    IwlAuxTransmitLogReset();
     IwlLogStage("apsta=ok");
     return 1;
 }
 
 /* 刀 #89：phy 从扫到的信道 MODIFY（旧死钉 ch1 → 收不到他信道 EAPOL） */
-int IwlPhyCtxtTune(UINT8 Chan) {
+int IwlPhyContextTune(UINT8 Chan) {
     UINT8 Cmd[36];
     UINT32 RxChain;
     UINT32 Ant = IWL_ANT_AB;

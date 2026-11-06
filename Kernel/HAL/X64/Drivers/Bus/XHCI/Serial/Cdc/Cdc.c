@@ -7,26 +7,26 @@ UINT32 gCdcPort;
 UINT32 gCdcRoute;
 UINT8 gCdcHubSlot;
 UINT8 gCdcTtPort;
-UINT8 gCdcCommIface;
+UINT8 gCdcCommInterface;
 UINT32 gCdcBulkOutDci;
-UINT16 gCdcBulkOutMps;
+UINT16 gCdcBulkOutMaxPacketSize;
 UINT32 gCdcBulkInDci;
-UINT16 gCdcBulkInMps;
+UINT16 gCdcBulkInMaxPacketSize;
 int gCdcClaimed;
 
 UINT8 gCdcDevCtx[2048] BLOCKS_ALIGNED(64);
-XHCI_TRB gCdcEp0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
-RING_STATE gCdcEp0;
+XHCI_TRB gCdcEndpoint0Ring[RING_SIZE] BLOCKS_ALIGNED(64);
+RING_STATE gCdcEndpoint0;
 XHCI_TRB gCdcBulkOutRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gCdcBulkOut;
 XHCI_TRB gCdcBulkInRing[RING_SIZE] BLOCKS_ALIGNED(64);
 RING_STATE gCdcBulkIn;
-static UINT8 gCdcCfgBuf[512] BLOCKS_ALIGNED(64);
+static UINT8 gCdcConfigBuffer[512] BLOCKS_ALIGNED(64);
 static UINT8 gCdcLineCoding[7] BLOCKS_ALIGNED(64);
 
 static void EndpointZeroRing(XHCI_TRB **RingOut, RING_STATE **StOut) {
-    *RingOut = gCdcEp0Ring;
-    *StOut = &gCdcEp0;
+    *RingOut = gCdcEndpoint0Ring;
+    *StOut = &gCdcEndpoint0;
 }
 
 static int Ready(void) {
@@ -34,20 +34,20 @@ static int Ready(void) {
 }
 
 /* Comm iface + Data Bulk IN/OUT；不对则 0 */
-static int ParseAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
-                       UINT8 *EpIn, UINT16 *MpsIn, UINT8 *EpOut, UINT16 *MpsOut) {
+static int ParseAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommInterface,
+                       UINT8 *EndpointIn, UINT16 *MaxPacketSizeIn, UINT8 *EndpointOut, UINT16 *MaxPacketSizeOut) {
     UINT16 Off = 0;
-    UINT8 CurIface = 0xFF;
+    UINT8 CurInterface = 0xFF;
     UINT8 CurAlt = 0;
     UINT8 CurClass = 0;
     UINT8 CurSub = 0;
     UINT8 CurProto = 0;
     UINT8 BestComm = 0xFF;
-    UINT8 DataIface = 0xFF;
+    UINT8 DataInterface = 0xFF;
     UINT8 BestIn = 0;
     UINT8 BestOut = 0;
-    UINT16 BestInMps = 0;
-    UINT16 BestOutMps = 0;
+    UINT16 BestInMaxPacketSize = 0;
+    UINT16 BestOutMaxPacketSize = 0;
 
     while (Off + 2 <= Total) {
         UINT8 Len = Cfg[Off];
@@ -57,31 +57,31 @@ static int ParseAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
             break;
         }
         if (Type == 4 && Len >= 9) {
-            CurIface = Cfg[Off + 2];
+            CurInterface = Cfg[Off + 2];
             CurAlt = Cfg[Off + 3];
             CurClass = Cfg[Off + 5];
             CurSub = Cfg[Off + 6];
             CurProto = Cfg[Off + 7];
             if (CurClass == 0x02 && CurSub == 0x02 && CurProto == 0x01 &&
                 BestComm == 0xFF) {
-                BestComm = CurIface;
+                BestComm = CurInterface;
             }
-            if (CurClass == 0x0A && DataIface == 0xFF) {
-                DataIface = CurIface;
+            if (CurClass == 0x0A && DataInterface == 0xFF) {
+                DataInterface = CurInterface;
             }
-        } else if (Type == 5 && Len >= 7 && CurIface != 0xFF && CurAlt == 0 &&
-                   CurIface == DataIface && CurClass == 0x0A) {
+        } else if (Type == 5 && Len >= 7 && CurInterface != 0xFF && CurAlt == 0 &&
+                   CurInterface == DataInterface && CurClass == 0x0A) {
             UINT8 Addr = Cfg[Off + 2];
             UINT8 Attr = Cfg[Off + 3];
-            UINT16 Mps = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
+            UINT16 MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
 
             if ((Attr & 0x03) == 2) {
                 if (Addr & 0x80) {
                     BestIn = Addr;
-                    BestInMps = Mps ? Mps : 64;
+                    BestInMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 } else {
                     BestOut = Addr;
-                    BestOutMps = Mps ? Mps : 64;
+                    BestOutMaxPacketSize = MaxPacketSize ? MaxPacketSize : 64;
                 }
             }
         }
@@ -90,25 +90,25 @@ static int ParseAcm(UINT8 *Cfg, UINT16 Total, UINT8 *CommIface,
     if (BestComm == 0xFF || BestIn == 0 || BestOut == 0) {
         return 0;
     }
-    if (CommIface) {
-        *CommIface = BestComm;
+    if (CommInterface) {
+        *CommInterface = BestComm;
     }
-    if (EpIn) {
-        *EpIn = BestIn;
+    if (EndpointIn) {
+        *EndpointIn = BestIn;
     }
-    if (MpsIn) {
-        *MpsIn = BestInMps;
+    if (MaxPacketSizeIn) {
+        *MaxPacketSizeIn = BestInMaxPacketSize;
     }
-    if (EpOut) {
-        *EpOut = BestOut;
+    if (EndpointOut) {
+        *EndpointOut = BestOut;
     }
-    if (MpsOut) {
-        *MpsOut = BestOutMps;
+    if (MaxPacketSizeOut) {
+        *MaxPacketSizeOut = BestOutMaxPacketSize;
     }
     return 1;
 }
 
-static int SetLine(UINT8 CommIface) {
+static int SetLine(UINT8 CommInterface) {
     USB_SETUP_PACKET Setup;
 
     /* dwDTERate=115200 LE, 1 stop, no parity, 8 bits */
@@ -122,56 +122,56 @@ static int SetLine(UINT8 CommIface) {
     Setup.bmRequestType = 0x21;
     Setup.bRequest = 0x20; /* SET_LINE_CODING */
     Setup.wValue = 0;
-    Setup.wIndex = CommIface;
+    Setup.wIndex = CommInterface;
     Setup.wLength = 7;
-    if (ControlXfer(&Setup, gCdcLineCoding) < 0) {
+    if (ControlTransfer(&Setup, gCdcLineCoding) < 0) {
         return -1;
     }
     Setup.bRequest = 0x22; /* SET_CONTROL_LINE_STATE */
     Setup.wValue = USB_CDC_DTR_RTS; /* DTR|RTS */
     Setup.wLength = 0;
-    (void)ControlXfer(&Setup, 0);
+    (void)ControlTransfer(&Setup, 0);
     return 0;
 }
 
 static int Finish(UINT32 RootPort, UINT8 Speed) {
-    UINT8 EpIn = 0;
-    UINT8 EpOut = 0;
+    UINT8 EndpointIn = 0;
+    UINT8 EndpointOut = 0;
     UINT8 Comm = 0;
-    UINT16 MpsIn = 64;
-    UINT16 MpsOut = 64;
+    UINT16 MaxPacketSizeIn = 64;
+    UINT16 MaxPacketSizeOut = 64;
     UINT16 Total;
     UINT8 ConfigVal = 1;
 
     if (gCdcSlot == 0) {
         return 0;
     }
-    gXferSlot = gCdcSlot;
+    gTransferSlot = gCdcSlot;
     if (GetDeviceDesc() < 0) {
         goto fail;
     }
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, 9, gCdcCfgBuf) < 0) {
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, 9, gCdcConfigBuffer) < 0) {
         goto fail;
     }
-    Total = (UINT16)(gCdcCfgBuf[2] | (gCdcCfgBuf[3] << 8));
+    Total = (UINT16)(gCdcConfigBuffer[2] | (gCdcConfigBuffer[3] << 8));
     if (Total < 9) {
         Total = 9;
     }
-    if (Total > sizeof(gCdcCfgBuf)) {
-        Total = (UINT16)sizeof(gCdcCfgBuf);
+    if (Total > sizeof(gCdcConfigBuffer)) {
+        Total = (UINT16)sizeof(gCdcConfigBuffer);
     }
-    ConfigVal = gCdcCfgBuf[5] ? gCdcCfgBuf[5] : 1;
-    if (GetDesc(USB_WVALUE_DT_CONFIG, 0, Total, gCdcCfgBuf) < 0) {
+    ConfigVal = gCdcConfigBuffer[5] ? gCdcConfigBuffer[5] : 1;
+    if (GetDescriptor(USB_WVALUE_DT_CONFIG, 0, Total, gCdcConfigBuffer) < 0) {
         goto fail;
     }
-    if (!ParseAcm(gCdcCfgBuf, Total, &Comm, &EpIn, &MpsIn, &EpOut, &MpsOut)) {
+    if (!ParseAcm(gCdcConfigBuffer, Total, &Comm, &EndpointIn, &MaxPacketSizeIn, &EndpointOut, &MaxPacketSizeOut)) {
         goto fail;
     }
     if (SetConfig(ConfigVal) < 0) {
         goto fail;
     }
-    gCdcCommIface = Comm;
-    if (!gCdc.ConfigureBulk(gCdcSlot, RootPort, Speed, EpIn, MpsIn, EpOut, MpsOut)) {
+    gCdcCommInterface = Comm;
+    if (!gCdc.ConfigureBulk(gCdcSlot, RootPort, Speed, EndpointIn, MaxPacketSizeIn, EndpointOut, MaxPacketSizeOut)) {
         goto fail;
     }
     if (SetLine(Comm) < 0) {
@@ -180,9 +180,9 @@ static int Finish(UINT32 RootPort, UINT8 Speed) {
     }
     /* QEMU usb-serial：Config/Line 后需短暂就绪，否则首包 Bulk OUT 易超时 */
     if (HalCpuIsHypervisor()) {
-        StallMs(20);
+        StallMilliseconds(20);
     } else {
-        StallMs(50);
+        StallMilliseconds(50);
     }
     gCdcPort = RootPort;
     gCdcClaimed = 1;
@@ -203,7 +203,7 @@ static int AddressRoot(UINT32 P, UINT8 *Speed) {
     UINT32 Ps;
     int Force = 0;
 
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     if (gMscClaimed) {
         if (!(Ps & PORTSC_CCS) || !(Ps & PORTSC_PED)) {
             return 0;
@@ -211,7 +211,7 @@ static int AddressRoot(UINT32 P, UINT8 *Speed) {
     } else if (!ForceUntilPed(P, &Force)) {
         return 0;
     }
-    Ps = ReadMmio32(gOperationalBase + PortReg(P));
+    Ps = ReadMmio32(gOperationalBase + PortRegister(P));
     *Speed = PortSpeed(Ps);
     if (gCdcSlot != 0) {
         DisableSlot(gCdcSlot);
@@ -228,7 +228,7 @@ static int AddressRoot(UINT32 P, UINT8 *Speed) {
         return 0;
     }
     if (gCdcSlot <= DCBAA_SLOTS) {
-        gSlotEp0UsesKbdRing[gCdcSlot] = 0;
+        gSlotEndpoint0UsesKeyboardRing[gCdcSlot] = 0;
     }
     return 1;
 }
@@ -249,13 +249,13 @@ static int Claim(void) {
         return 1;
     }
     /* usb-hid-keep：MSC sick/扫空 freeze 后勿再 Address */
-    if (gXhciPortEnumFreeze) {
+    if (gXhciPortEnumerateFreeze) {
         BootLog("Boot: CDC claim skip (port enum freeze, keep mouse)\n");
         return 0;
     }
 
     for (P = 1; P <= gMaxPorts && P <= 32u; P++) {
-        UINT32 Ps = ReadMmio32(gOperationalBase + PortReg(P));
+        UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(P));
 
         if (!(Ps & PORTSC_CCS)) {
             continue;

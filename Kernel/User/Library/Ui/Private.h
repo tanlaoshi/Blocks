@@ -47,6 +47,7 @@ typedef struct {
     unsigned X;
     unsigned Y;
     unsigned W;
+    unsigned H;
     int Focus;
     char Text[UI_TEXT_MAX];
 } UI_FIELD;

@@ -115,13 +115,17 @@ void SettingsUiOnPointer(UINT32 X, UINT32 Y, UINT8 Buttons) {
         Need = 1;
     }
     sPrevBtn = Buttons;
-    if (Need) {
-        SettingsUiRepaint();
-    }
+    /*
+     * 左/中栏绘制不看 Press；悬停已走 PaintHoverDelta。
+     * 点选前再整窗 Present = 下部连闪（Fill 客户区 AABB）。
+     * 分类切换：只 Present 一次；条目 Apply 自 PaintMenu。
+     */
     if (FireKind == 0) {
         SelectCategory((SETTINGS_CAT)FireIdx);
         SettingsUiRepaint();
     } else if (FireKind == 1) {
         ApplyItem(FireIdx);
+    } else if (Need) {
+        SettingsUiRepaint();
     }
 }

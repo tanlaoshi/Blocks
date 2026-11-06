@@ -75,7 +75,7 @@ static void SdioMarkErrBits(UINT32 Err) {
  * **复位之前**的 INT_STATUS / 错误位 / PRESENT_STATE（Host->Last* 抓的，
  * PioAbort 会先记再复位，现场读是读不到的）、以及复位之后的当前值。
  */
-void SdioMarkXfer(SDHCI_HOST *Host, const char *Tag) {
+void SdioMarkTransfer(SDHCI_HOST *Host, const char *Tag) {
     UINT32 St = SdhciRead32(Host, SDHCI_INT_STATUS);
     UINT32 Err = (Host->LastStatus >> 16) & 0xFFFFu;
 

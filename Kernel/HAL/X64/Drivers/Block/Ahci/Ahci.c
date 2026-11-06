@@ -96,7 +96,7 @@ int AhciSetup(void) {
                 continue;
             }
         }
-        if (!PortInit(P, &gDrives[gDriveCount])) {
+        if (!PortInitialize(P, &gDrives[gDriveCount])) {
             DebugWrite("ahci: port init fail\n");
             continue;
         }
@@ -140,12 +140,12 @@ int AhciReadSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, void *Buffer) {
     if (!gReady || Drive >= (UINT32)gDriveCount) {
         return 0;
     }
-    return PortXfer(&gDrives[Drive], Lba, Count, Buffer, 0);
+    return PortTransfer(&gDrives[Drive], Lba, Count, Buffer, 0);
 }
 
 int AhciWriteSectors(UINT32 Drive, UINT32 Lba, UINT32 Count, const void *Buffer) {
     if (!gReady || Drive >= (UINT32)gDriveCount) {
         return 0;
     }
-    return PortXfer(&gDrives[Drive], Lba, Count, (void *)Buffer, 1);
+    return PortTransfer(&gDrives[Drive], Lba, Count, (void *)Buffer, 1);
 }

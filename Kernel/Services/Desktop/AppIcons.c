@@ -103,8 +103,9 @@ void DesktopLoadAppIcons(void) {
     int i;
     UINT32 RowH = DESKTOP_ICON_SIZE + DESKTOP_LABEL_PAD + FontCellH() +
                   DESKTOP_ICON_GAP;
-    UINT32 ColX = DESKTOP_ORIGIN_X + DESKTOP_ICON_SIZE + DESKTOP_ICON_GAP + 24u;
-    int Row = 0;
+    UINT32 ColX = DESKTOP_ORIGIN_X;
+    /* 接系统列往下；旧第二列压在商店窗下。换列交给 EnsureIconLayout / ix.<id>。 */
+    int Row = DESKTOP_SYS_ICON_COUNT;
 
     ClearAppSlots();
     if (StoreListInstalled(Inst, STORE_INSTALLED_MAX, &InstN) != FAT_OK) {
@@ -119,8 +120,14 @@ void DesktopLoadAppIcons(void) {
               Inst[i].Type[2] == 'p' && Inst[i].Type[3] == 0)) {
             continue;
         }
+        /*
+         * desktop=yes → 桌面。开窗 App 缺 desktop 键时 PackageMetadata 已补默认。
+         * 无任何 PKG 时：仍上桌面（已装 ELF），避免 Chat 只有 ELF、无 PKG 时隐身。
+         */
         if (StoreReadAppDesktopMeta(Inst[i].Id, &Meta) != FAT_OK) {
-            continue;
+            Meta.DesktopYes = 1;
+            Meta.Title[0] = 0;
+            Meta.IconRel[0] = 0;
         }
         if (!Meta.DesktopYes) {
             continue;

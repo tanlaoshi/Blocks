@@ -141,7 +141,7 @@ void ConsolePublishScrollback(CONSOLE_OPS *Ops);
 void ConsolePublishLog(CONSOLE_OPS *Ops);
 /* 视图度量 / 滚动条（Scrollbar.c）；行缓冲读口给 ScrollbackPaint.c */
 int ConsoleSbLineCount(void);
-int ConsoleSbAccLen(void);
+int ConsoleSbAccLength(void);
 const char *ConsoleSbAcc(void);
 int ConsoleSbViewOff(void);
 int ConsoleSbMaxOff(int Vis);

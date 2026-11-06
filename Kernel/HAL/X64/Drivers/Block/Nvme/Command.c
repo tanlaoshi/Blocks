@@ -28,6 +28,10 @@ static UINT16 AllocCid(NVME_CTRL *C) {
     return Id;
 }
 
+/*
+ * 消费 CQ：同步路径始终 poll（MSI 备份）。IRQ 不抢 Head/Phase。
+ * UseInterrupt 时仍靠 phase 位；MSI 仅加速「CQE 已到内存」的可见路径。
+ */
 static int WaitCqe(NVME_CTRL *C, NVME_CQE *Cq, UINT16 *Head, UINT8 *Phase, UINT16 WantCid, int Io) {
     int Spin = (int)C->TimeoutLoops;
     while (Spin-- > 0) {

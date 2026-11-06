@@ -104,14 +104,16 @@ int NvmeFetchActiveNamespaceIds(NVME_CTRL *C, UINT32 *OutIds, UINT32 MaxCount) {
     return (int)Count;
 }
 
-static int CreateIoQueues(NVME_CTRL *C) {
+static int CreateIoQueues(NVME_CTRL *C, int InterruptsEnabled) {
     NVME_SQE Cmd;
 
     ZeroMemory(&Cmd, sizeof(Cmd));
     Cmd.Cdw0 = NVME_OPC_CREATE_CQ;
     Cmd.Prp1 = (UINT64)(UINTN)C->Iocq;
     Cmd.Cdw10 = ((NVME_QSIZE - 1u) << 16) | 1u; /* QSIZE | QID=1 */
-    Cmd.Cdw11 = 1u; /* PC=1, IEN=0 */
+    /* PC | IEN；IV=0 对齐单 MSI / MSI-X entry0 */
+    Cmd.Cdw11 = NVME_CREATE_CQ_PC |
+                (InterruptsEnabled ? NVME_CREATE_CQ_IEN : 0u);
     if (!AdminCmd(C, &Cmd)) {
         return 0;
     }
@@ -191,9 +193,14 @@ int CtrlInitialize(NVME_CTRL *C, UINT64 Bar) {
         DebugWrite("nvme: enable timeout\n");
         return 0;
     }
-    if (!CreateIoQueues(C)) {
-        DebugWrite("nvme: create ioq fail\n");
-        return 0;
+    /* 先 MSI，再 Create CQ IEN=1；失败则 IEN=0 纯 poll */
+    {
+        int InterruptsEnabled = NvmeArmMessageSignaledInterrupt(C);
+
+        if (!CreateIoQueues(C, InterruptsEnabled)) {
+            DebugWrite("nvme: create ioq fail\n");
+            return 0;
+        }
     }
 
     C->Ready = 1;

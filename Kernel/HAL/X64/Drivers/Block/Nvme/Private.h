@@ -15,11 +15,17 @@
 #define NVME_BOUNCE_SECTORS   8u
 
 #define NVME_REG_CAP          0x00u
+#define NVME_REG_INTMS        0x0Cu /* Interrupt Mask Set */
+#define NVME_REG_INTMC        0x10u /* Interrupt Mask Clear */
 #define NVME_REG_CC           0x14u
 #define NVME_REG_CSTS         0x1Cu
 #define NVME_REG_AQA          0x24u
 #define NVME_REG_ASQ          0x28u
 #define NVME_REG_ACQ          0x30u
+
+/* Create I/O Completion Queue CDW11 */
+#define NVME_CREATE_CQ_PC     (1u << 0)
+#define NVME_CREATE_CQ_IEN    (1u << 1)
 
 #define NVME_CC_EN            (1u << 0)
 #define NVME_CC_IOSQES_SHIFT  16
@@ -65,6 +71,9 @@ typedef struct {
 typedef struct {
     volatile UINT8 *Bar;
     UINT64 BarPhys;
+    UINT8 Bus;
+    UINT8 Device;
+    UINT8 Function;
     UINT32 Dstrd;
     UINT32 TimeoutLoops;
     NVME_SQE *Asq;
@@ -80,6 +89,7 @@ typedef struct {
     UINT8 AcqPhase;
     UINT8 IocqPhase;
     UINT16 NextCid;
+    int UseInterrupt; /* MSI 武装成功；WaitCqe 仍 poll */
     int Ready;
 } NVME_CTRL;
 
@@ -136,6 +146,9 @@ static inline void Fence(void) {
 int AdminCmd(NVME_CTRL *C, NVME_SQE *Cmd);
 int CtrlInitialize(NVME_CTRL *C, UINT64 Bar);
 int PciBar0(UINT8 Bus, UINT8 Dev, UINT8 Fn, UINT64 *BarOut);
+/* PCI MSI/MSI-X → VEC_NVME；失败则保持 IEN=0 轮询。 */
+int NvmeArmMessageSignaledInterrupt(NVME_CTRL *Controller);
+void NvmeInterrupt(void);
 /* 列活动 NSID；失败则回落 OutIds[0]=1。返回个数。 */
 int NvmeFetchActiveNamespaceIds(NVME_CTRL *C, UINT32 *OutIds, UINT32 MaxCount);
 /* Identify 指定 NS → LBADS；NSZE=0 失败。 */

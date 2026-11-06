@@ -19,6 +19,7 @@ extern void Isr64(void);
 extern void Isr65(void);
 extern void Isr66(void);
 extern void Isr67(void);
+extern void Isr68(void);
 extern void Isr255(void);
 void SerialClaimException(void);
 void SerialWrite(const char *Text);
@@ -94,6 +95,7 @@ void ArchIdtLoad(void) {
     IdtSet(VEC_TIMER, (UINTN)Isr65);
     IdtSet(VEC_E1000, (UINTN)Isr66);
     IdtSet(VEC_COM1, (UINTN)Isr67);
+    IdtSet(VEC_NVME, (UINTN)Isr68);
     IdtSet(255, (UINTN)Isr255);
     ArchIdtLidt();
 }
@@ -268,7 +270,8 @@ UINT64 InterruptDispatch(HAL_INTERRUPT_FRAME *F) {
         }
         ExceptionHalt(F);
     }
-    if (F->Vector == VEC_XHCI || F->Vector == VEC_E1000 || F->Vector == VEC_COM1) {
+    if (F->Vector == VEC_XHCI || F->Vector == VEC_E1000 || F->Vector == VEC_COM1 ||
+        F->Vector == VEC_NVME) {
         if (F->Vector == VEC_XHCI) {
             gArchIrqCount++;
         }

@@ -1,7 +1,7 @@
 /*
- * Nvme.c — NVMe 块设备（PR-H5 / 多 NS）
+ * Nvme.c — NVMe 块设备（PR-H5 / 多 NS / MSI）
  *
- * 同步轮询、Admin + 单 IO 队列、单页 PRP bounce；无中断。
+ * Admin + 单 IO 队列、单页 PRP bounce。CQ 可 IEN=1 + PCI MSI；WaitCqe 仍 poll。
  * Identify 活动 NS 列表 → 各映 Block drive；4KiB LBA 在 Command 内 512e。
  * QEMU `-device nvme` / `DISK=nvme4k` / `DISK=nvmemulti`。
  */
@@ -118,6 +118,9 @@ int NvmeSetup(void) {
     Index = gControllerCount;
     Controller = &gControllers[Index];
     ZeroMemory(Controller, sizeof(*Controller));
+    Controller->Bus = gPciBus;
+    Controller->Device = gPciDev;
+    Controller->Function = gPciFn;
     if (!CtrlInitialize(Controller, gBar)) {
         DebugWrite("nvme: ctrl init fail\n");
         return 0;
@@ -127,15 +130,15 @@ int NvmeSetup(void) {
         Controller->Ready = 0;
         return 0;
     }
-    DebugWrite("nvme: ctrl ");
-    DebugHex32((UINT32)Index);
-    DebugWrite(" bar=");
-    DebugHex32((UINT32)gBar);
-    DebugWrite("\n");
     gControllerCount = Index + 1;
     gReady = 1;
     LogFs("Boot: NVMe Drives=");
     LogHexDigit((UINT32)gNamespaceCount & 0xf);
+    if (Controller->UseInterrupt) {
+        LogFs(" IRQ=MSI");
+    } else {
+        LogFs(" IRQ=poll");
+    }
     LogFs("\n");
     return 1;
 }

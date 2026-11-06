@@ -1,8 +1,8 @@
 /*
  * Block.c — AHCI 块设备经 Driver Block 类注册（PR-H1）
  *
- * 注册顺序在 Ata 之前；HalBlockInitialize 在 VMM 后再 Probe，AHCI 绑定时
- * DriverBlockAttach 覆盖 ATA（真机无 IDE 时 ATA 本就不会绑）。
+ * 注册顺序在 Ata 之前；HalBlockInitialize 在 VMM 后再 Probe。
+ * 与 ATA/NVMe 并存时 Block 累积后端（Fan），勿再互相覆盖。
  */
 #include "Block.h"
 #include "DriverBoot.h"

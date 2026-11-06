@@ -27,6 +27,8 @@ int MountAllVolumes(void) {
 
     gVolCount = 0;
     gDefaultVol = 0;
+    /* Remount 后盘号可能换：GUID 缓存须重读，勿沿用旧 Drive→GUID */
+    FsMountClearDriveGuidCache();
     /* 卷下标会重排：先归还维护卷选择，避免旧下标指到新卷 */
     (void)FileSystemSelectVolume(-1);
     gActiveVol = -1;

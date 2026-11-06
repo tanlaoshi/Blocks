@@ -129,22 +129,50 @@ int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel) {
                 break;
             }
         }
-    } else {
+    } else if (StrEqIgnoreCase(Pref, "BLOCKS")) {
         /*
-         * 同名卷取 OsTarget（BLOCKS），勿 first-match。
-         * U 盘启动：NVMe BLOCKS 常先入表，BLOCKS:Apps 曾误打到 SSD。
+         * 同名卷取 OsTarget，其次启动盘，再次 OsDisk；有 BootDiskGuid 时
+         * 禁止 first-match（U 盘起 NVMe 常先入表，BLOCKS: 曾误打到 SSD）。
          */
         int Os = FileSystemOsVol();
+        const BOOT_HANDOFF *Info = BootHandoffGet();
+        int BootGuidOk = (Info && Info->BootDiskGuidOk) ? 1 : 0;
 
-        if (StrEqIgnoreCase(Pref, "BLOCKS") && Os >= 0 && Os < gVolCount &&
+        if (Os >= 0 && Os < gVolCount &&
             StrEqIgnoreCase(gVols[Os].Name, Pref)) {
             Vol = Os;
-        } else {
+        }
+        if (Vol < 0) {
+            for (i = 0; i < gVolCount; i++) {
+                if (StrEqIgnoreCase(Pref, gVols[i].Name) &&
+                    FileSystemVolOnBootDisk(i) == 1) {
+                    Vol = i;
+                    break;
+                }
+            }
+        }
+        if (Vol < 0) {
+            for (i = 0; i < gVolCount; i++) {
+                if (StrEqIgnoreCase(Pref, gVols[i].Name) &&
+                    FsVolOnOsDisk(i)) {
+                    Vol = i;
+                    break;
+                }
+            }
+        }
+        if (Vol < 0 && !BootGuidOk) {
             for (i = 0; i < gVolCount; i++) {
                 if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
                     Vol = i;
                     break;
                 }
+            }
+        }
+    } else {
+        for (i = 0; i < gVolCount; i++) {
+            if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
+                Vol = i;
+                break;
             }
         }
     }

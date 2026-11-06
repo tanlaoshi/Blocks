@@ -32,8 +32,6 @@ static const BLOCK_BACKEND gMuxBackend = {
     .Flush = MuxFlush,
 };
 
-extern const BLOCK_BACKEND *BlockPeekBackend(void);
-
 static int MuxProbe(UINT32 Drive) {
     if (Drive >= BLOCK_MAX_DRIVES) {
         return 0;
@@ -109,13 +107,13 @@ void BlockMuxInstallMsc(const BLOCK_BACKEND *Msc) {
         return;
     }
     if (!gPrimary) {
-        gPrimary = BlockPeekBackend();
+        gPrimary = BlockPeekPrimaryBackend();
         if (gPrimary == &gMuxBackend) {
             gPrimary = 0;
         }
     }
     gMsc = Msc;
-    BlockRegisterBackend(&gMuxBackend);
+    BlockRegisterOuterBackend(&gMuxBackend);
     LibWrite("block-mux: msc installed\n");
 }
 
@@ -132,11 +130,7 @@ void BlockMuxRemoveMsc(void) {
             gKind[i] = KIND_NONE;
         }
     }
-    if (gPrimary) {
-        BlockRegisterBackend(gPrimary);
-    } else {
-        BlockRegisterBackend(&gMuxBackend);
-    }
+    BlockRegisterOuterBackend(0);
     /*
      * 启动盘失根的用户文案由 DesktopBootMediumGoneShutdown 打串口
      * （另起一行、与大窗同文）；此处勿再打 msc removed，否则会粘在 Blocks> 后。

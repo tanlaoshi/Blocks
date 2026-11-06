@@ -45,6 +45,7 @@ int MountAllVolumes(void);
 int FileSystemPathBlocked(const char *Path);
 
 /* PR-F-fs-1：单卷 / 默认卷（MountVolume.c / MountPick.c） */
+void FsMountClearDriveGuidCache(void);
 void FsMountOneFatPart(UINT32 Drive, const GPT_FAT_PART *Part, int *BlocksVol);
 void FsMountAddResVolume(void);
 void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);

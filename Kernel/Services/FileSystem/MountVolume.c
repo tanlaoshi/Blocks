@@ -6,7 +6,6 @@
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"
-#include "BlockMux.h"
 #include "Gpt.h"
 #include "BootHandoff.h"
 #include "VirtualFileSystem.h"
@@ -15,6 +14,14 @@
 #define BOOT_GUID_CACHE 16
 static UINT8 sDriveGuid[BOOT_GUID_CACHE][16];
 static UINT8 sDriveGuidOk[BOOT_GUID_CACHE];
+
+void FsMountClearDriveGuidCache(void) {
+    UINT32 Drive;
+
+    for (Drive = 0; Drive < BOOT_GUID_CACHE; Drive++) {
+        sDriveGuidOk[Drive] = 0;
+    }
+}
 
 static int GuidEq16(const UINT8 *A, const UINT8 *B) {
     int i;
@@ -80,15 +87,14 @@ static void NameEspSlot(FS_VOLUME *V, int BeforeCount, int SkipIdx) {
 }
 
 static void NameBlocksIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *BlocksVol) {
-    int Msc = BlockDriveIsMsc(Drive);
     int Take = 0;
     int NewMatch;
 
     V->HasBlocksId = 1;
     /*
-     * 分区名保留 BLOCKS（与 GPT 名 / 卷身份一致）；多份并存不改名 USB。
-     * 默认卷用 BootDiskGuid（DiskGUID）区分；旧 Boot 无 GUID 时偏内置盘。
-     * Files 侧栏撞名时靠盘号 dN / 字母路径区分。
+     * 分区名保留 BLOCKS；多份并存不改名。
+     * 默认跟 BootDiskGuid / OsTarget；勿「内置压过 MSC」（U 盘起 NVMe 先入表会抢默认）。
+     * Files 侧栏撞名靠盘号 dN / 字母路径。
      */
     StringCopy(V->Name, FS_VOL_NAME_MAX, "BLOCKS");
     NewMatch = CacheBootDiskMatch(Drive);
@@ -99,13 +105,8 @@ static void NameBlocksIdVol(FS_VOLUME *V, UINT32 Drive, int Idx, int *BlocksVol)
         LogFs("FS: Default BLOCKS = Boot Disk\n");
     } else if (NewMatch == 0) {
         LogFs("FS: Other Disk Also BLOCKS\n");
-    } else if (!Msc && BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
-        Take = 1;
-        LogFs("FS: Prefer Internal BLOCKS As Default\n");
-    } else if (Msc && !BlockDriveIsMsc(gVols[*BlocksVol].Drive)) {
-        LogFs("FS: USB BLOCKS Not Default\n");
     }
-    /* 其余歧义：保留先挂上的为默认 */
+    /* 其余歧义：保留先挂上的；OsTarget 稍后校正 */
     if (Take) {
         *BlocksVol = Idx;
     }

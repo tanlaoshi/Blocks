@@ -21,8 +21,14 @@ typedef struct {
 } BLOCK_BACKEND;
 
 void BlockRegisterBackend(const BLOCK_BACKEND *Backend);
-/* 当前后端指针（Mux 包装 MSC 时读取 Primary；PR-H-msc） */
+/*
+ * Mux 等外层包装：不进多后端表；传 NULL 卸外层，active 回到 Primary/Fan。
+ */
+void BlockRegisterOuterBackend(const BLOCK_BACKEND *Backend);
+/* 当前 active（可能是 Mux）；装 MSC 前请用 PeekPrimary */
 const BLOCK_BACKEND *BlockPeekBackend(void);
+/* 内置盘侧：单后端或 Fan（AHCI+NVMe 并存）；不含 Mux */
+const BLOCK_BACKEND *BlockPeekPrimaryBackend(void);
 
 int BlockSelect(UINT32 Drive);
 UINT32 BlockSelectedDrive(void);

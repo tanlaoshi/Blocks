@@ -1,7 +1,7 @@
 /*
  * Db.h — 轻量 KV 库（PR-DB1）
  *
- * 卷上文件 BLOCKS.DB（默认卷）：每行 key=value；# 注释。
+ * 卷上文件 BLOCKS:BLOCKS.DB（跟 OsTarget，勿落默认卷/旁路 SSD）：每行 key=value。
  * Theme 的 desktop/shell/font/mode 经此持久化；仍可从 THEME.CFG 导入。
  */
 #ifndef DB_H
@@ -9,7 +9,7 @@
 
 #include "BootTypes.h"
 
-#define DB_PATH       "BLOCKS.DB"
+#define DB_PATH       "BLOCKS:BLOCKS.DB"
 #define DB_KEY_MAX    48
 #define DB_VAL_MAX    64
 #define DB_MAX_RECORDS 64

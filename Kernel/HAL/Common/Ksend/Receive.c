@@ -1,8 +1,8 @@
 /*
  * Receive.c — 收块状态机：块头 / 数据 / CRC / 'A' 或 'N'（批写见 ReceiveBatch）
  *
- * 一块：先块头合法，再数据 CRC，再进批缓冲。不过回 'N'；超限交给 Transfer 回滚。
- * TCP 滑窗（nuc-1）：'N' 后丢弃其它 index 载荷（不回 A），直至重收到该块。
+ * 一块：头合法 → 数据 CRC → Accept（已落盘）→ 再 'A'。CRC 错回 'N'。
+ * TCP 滑窗：'N' 后丢弃其它 index 载荷（不回 A），直至重收到该块。
  */
 #include "Ksend/Private.h"
 
@@ -108,7 +108,7 @@ static int HandleHeader(const UINT32 *Header, KSEND_RUN *Run, UINT32 *OutIndex,
     return 1;
 }
 
-/* 1=已收进批缓冲（回 'A'）；0=已回 'N' 等重发；-1=重试超限/超时 */
+/* 1=已落盘并回 'A'；0=已回 'N' 等重发；-1=重试超限/超时/写失败 */
 static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
                            UINT32 WantCrc, UINT32 *InOutRetry) {
     UINT32 Got;
@@ -121,6 +121,7 @@ static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
         KsendCrc32Update(KSEND_CRC_INITIAL, sBlockBuffer, Length));
     if (Got == WantCrc) {
         Run->Dirty = 1;
+        /* Accept 内已写卡；失败时 FailBlock/Error 由其填写 */
         if (!KsendReceiveBatchAccept(Run, Index, Length, sBlockBuffer)) {
             Run->Failure = KSEND_FAIL_WRITE;
             KsendSerialPutByte(KSEND_ACK_RETRY);

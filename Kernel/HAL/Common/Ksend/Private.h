@@ -37,13 +37,11 @@
 #define KSEND_MAX_BLOCKS          (KSEND_MAX_BYTES / KSEND_BLOCK_BYTES)
 /* 整文件读写分块：每次 FileSystem*FileAt 都要从首簇沿 FAT 链走到偏移
  *（FAT 链没有反向指针，Fat/FileWriteAt.c 的 SeekFileOffset 是 O(偏移/簇)），
- * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。512 KB 一块把调用次数压到
- * 1/128，配合 FAT 分配提示后 2.1 MB 的部署才真正可用。
- * 同一块缓冲在接收期间兼作 4 KB 块批写缓冲（见 Receive.c）。 */
+ * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。大 chunk 把调用次数压下去。
+ * 接收路径与扫描/备份共用本缓冲（见 File.c / ReceiveBatch.c）。 */
 /*
- * 有线批写上限。过大时 BatchAccept 在回 A 前同步刷满批，Wi‑Fi+USB MSC 同 xHCI
- * 上会把 PC 的 ACK 等穿（NUC 真机 ~128 块边界卡死，2026-11-03）。
- * 有线 128KiB；Wi‑Fi 主槽仍每块刷（Receive BatchLimitBytes）。
+ * IO 复用缓冲（扫描/备份/单块落盘）。有线批写刀：Accept 每块即刷，'A' 仅在
+ * 落盘后发。跨块 RAM 攒批 + 延迟 A 留给「有线吞吐」刀（须对齐 win=）。
  */
 #define KSEND_IO_CHUNK_BYTES      (128u * 1024u)
 /* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1） */
@@ -237,7 +235,7 @@ extern KSEND_IMAGE gKsendOldImage;
 /* 传输中「期望的新内容」图；info 也拿它当只打印的草稿 */
 extern KSEND_IMAGE gKsendNewImage;
 
-/* 512 KB 复用缓冲（自检/接收批写共用，省一份静态数据） */
+/* KSEND_IO_CHUNK_BYTES 复用缓冲（自检/接收落盘共用） */
 UINT8 *KsendFileBuffer(void);
 /* 读满 Want 才认；短读 → FAT_ERR_IO（KsendFileVerify 与扫描共用） */
 int KsendFileReadExact(const char *Path, UINT32 Offset, UINT32 Want,

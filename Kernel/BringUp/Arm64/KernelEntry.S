@@ -23,13 +23,16 @@ KernelEntry:
 #if BOARD_LINUX_IMAGE_HEADER
     /*
      * Linux aarch64 Image header（Documentation/arch/arm64/booting.rst）。
-     * code0 = 跳过本头；text_offset=0x80000；image_size=2MiB 上限占位。
+     * code0 = 跳过本头；text_offset 板可覆；flags bit3=可任意放置。
      */
+#ifndef BOARD_LINUX_IMAGE_TEXT_OFFSET
+#define BOARD_LINUX_IMAGE_TEXT_OFFSET 0x80000
+#endif
     b       5f
     .long   0
-    .quad   0x80000
+    .quad   BOARD_LINUX_IMAGE_TEXT_OFFSET
     .quad   0x200000
-    .quad   0x9
+    .quad   0xa
     .quad   0
     .quad   0
     .quad   0

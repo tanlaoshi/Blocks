@@ -29,6 +29,16 @@ extern char __kernel_end[];
 
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
+#if defined(BOARD_BRINGUP_SPLASH) && BOARD_BRINGUP_SPLASH
+    /*
+     * MIX 2：无板上 UART。先开恒等页表再画一次（勿 MMU 前后各画：会叠花）。
+     * 验收：顶一条彩条 + 「Blocks ready」（见路线图 PR-MIX2-2）。
+     */
+#if defined(BOARD_BRINGUP_IDENTITY_MAP) && BOARD_BRINGUP_IDENTITY_MAP
+    (void)BoardBringUpIdentityMapEnable();
+#endif
+    (void)BoardBringUpSplashPaint("Blocks ready");
+#else
     /*
      * 先串口（MMU off：Pixel 已证 '*'/'+' / Blocks uart 通），再开恒等页表。
      * 须 WriteShell/BootMark：build 默认 SERIAL_MISC=0，HalSerialWrite 会被滤掉。
@@ -44,6 +54,7 @@ void KernelHandoff(UINT64 DtbPhys) {
         HalSerialWriteShell("mmu: on\r\n");
         HalSerialWriteShell("blocks>\r\n");
     }
+#endif
 #endif
     HalCpuPark();
 }

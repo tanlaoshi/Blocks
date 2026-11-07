@@ -148,10 +148,14 @@ for Arg in "$@"; do
             BOARD=pixel-8
             if [ "$ARCH_SET" = 0 ]; then ARCH=arm64; ARCH_SET=1; fi
             ;;
+        mix2|mix-2|chiron)
+            BOARD=mix-2
+            if [ "$ARCH_SET" = 0 ]; then ARCH=arm64; ARCH_SET=1; fi
+            ;;
         virt) BOARD=virt ;;
         *)
             echo "error: unknown build arg: $Arg" >&2
-            echo "  arch: x86_64|arm64|riscv   board: pi|duo|virt|BOARD=…" >&2
+            echo "  arch: x86_64|arm64|riscv   board: pi|duo|virt|pixel-8|mix-2|BOARD=…" >&2
             exit 1
             ;;
     esac
@@ -177,6 +181,7 @@ if [ "$BUILDDIR_SET" = 0 ]; then
         rpi-3b)       BUILDDIR=Build/PI ;;
         milk-v-duo-s) BUILDDIR=Build/DUO ;;
         pixel-8)      BUILDDIR=Build/PIXEL8 ;;
+        mix-2)        BUILDDIR=Build/MIX2 ;;
     esac
 fi
 mkdir -p "$BUILDDIR"

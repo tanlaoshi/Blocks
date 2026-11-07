@@ -109,6 +109,9 @@ ARCH_CFLAGS = -mgeneral-regs-only
 ifeq ($(BOARD),pixel-8)
 ARCH_CFLAGS += -march=armv8-a -mno-outline-atomics
 endif
+ifeq ($(BOARD),mix-2)
+ARCH_CFLAGS += -march=armv8-a -mno-outline-atomics
+endif
 USER_BLOB_FMT = elf64-littleaarch64
 LDFLAGS_ARCH =
 ifneq ($(wildcard $(TOOLS_ROOT)/xpack-aarch64-none-elf-gcc-*/bin/aarch64-none-elf-gcc),)

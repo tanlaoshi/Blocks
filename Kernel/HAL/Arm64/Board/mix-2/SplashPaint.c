@@ -140,8 +140,8 @@ static void FillRectangle(UINT64 SplashBase, UINT32 X0, UINT32 Y0, UINT32 Width,
     }
 }
 
-static void DrawGlyph(UINT64 SplashBase, UINT32 Left, UINT32 Top, char Character,
-                      UINT32 Color) {
+static void DrawGlyphScaled(UINT64 SplashBase, UINT32 Left, UINT32 Top,
+                            char Character, UINT32 Color, UINT32 Scale) {
     const UINT8 *Rows;
     UINT32 Row;
     UINT32 Column;
@@ -149,20 +149,23 @@ static void DrawGlyph(UINT64 SplashBase, UINT32 Left, UINT32 Top, char Character
     UINT32 ScaleX;
     UINT32 Index;
 
+    if (Scale == 0) {
+        Scale = 1;
+    }
     if (Character < 0x20 || Character > 0x7E) {
         Character = '?';
     }
     Index = (UINT32)(UINT8)Character - 0x20u;
     Rows = sGlyphBitmap[Index];
     for (Row = 0; Row < GLYPH_HEIGHT; Row++) {
-        for (ScaleY = 0; ScaleY < TEXT_SCALE; ScaleY++) {
+        for (ScaleY = 0; ScaleY < Scale; ScaleY++) {
             for (Column = 0; Column < GLYPH_WIDTH; Column++) {
                 if ((Rows[Row] & (0x80u >> Column)) == 0) {
                     continue;
                 }
-                for (ScaleX = 0; ScaleX < TEXT_SCALE; ScaleX++) {
-                    UINT32 X = Left + Column * TEXT_SCALE + ScaleX;
-                    UINT32 Y = Top + Row * TEXT_SCALE + ScaleY;
+                for (ScaleX = 0; ScaleX < Scale; ScaleX++) {
+                    UINT32 X = Left + Column * Scale + ScaleX;
+                    UINT32 Y = Top + Row * Scale + ScaleY;
                     if (X < BOARD_FRAMEBUFFER_WIDTH && Y < BOARD_FRAMEBUFFER_HEIGHT) {
                         *PixelAt(SplashBase, X, Y) = Color;
                     }
@@ -172,14 +175,14 @@ static void DrawGlyph(UINT64 SplashBase, UINT32 Left, UINT32 Top, char Character
     }
 }
 
-static void DrawString(UINT64 SplashBase, UINT32 Left, UINT32 Top, const char *Text,
-                       UINT32 Color) {
+static void DrawStringScaled(UINT64 SplashBase, UINT32 Left, UINT32 Top,
+                             const char *Text, UINT32 Color, UINT32 Scale) {
     UINT32 X = Left;
     const char *Cursor;
 
     for (Cursor = Text; Cursor != 0 && *Cursor != '\0'; Cursor++) {
-        DrawGlyph(SplashBase, X, Top, *Cursor, Color);
-        X += GLYPH_WIDTH * TEXT_SCALE + TEXT_SCALE;
+        DrawGlyphScaled(SplashBase, X, Top, *Cursor, Color, Scale);
+        X += GLYPH_WIDTH * Scale + Scale;
     }
 }
 
@@ -198,7 +201,7 @@ static void PaintOne(UINT64 SplashBase, const char *Text) {
 
     FillRectangle(SplashBase, 16, BarHeight + 16u, BOARD_FRAMEBUFFER_WIDTH - 32u,
                   GLYPH_HEIGHT * TEXT_SCALE + 24u, COLOR_TEXT_BACK);
-    DrawString(SplashBase, 32, BarHeight + 24u, Text, COLOR_TEXT);
+    DrawStringScaled(SplashBase, 32, BarHeight + 24u, Text, COLOR_TEXT, TEXT_SCALE);
 }
 
 int BoardBringUpSplashPaint(const char *Text) {
@@ -211,9 +214,33 @@ int BoardBringUpSplashPaint(const char *Text) {
     return 0;
 }
 
+/*
+ * 状态行：小字（scale=2）贴在彩条标题正下方，避免大字裁切 / 出 logo 可视带。
+ */
+int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text) {
+    UINT64 SplashBase = BOARD_SPLASH_PHYSICAL_BASE;
+    UINT32 Scale = 2u;
+    UINT32 LineHeight;
+
+    if (Text == 0) {
+        return -1;
+    }
+    LineHeight = GLYPH_HEIGHT * Scale + 12u;
+    FillRectangle(SplashBase, 16, Top, BOARD_FRAMEBUFFER_WIDTH - 32u, LineHeight,
+                  COLOR_TEXT_BACK);
+    DrawStringScaled(SplashBase, 24, Top + 4u, Text, COLOR_TEXT, Scale);
+    return 0;
+}
+
 #else
 
 int BoardBringUpSplashPaint(const char *Text) {
+    (void)Text;
+    return -1;
+}
+
+int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text) {
+    (void)Top;
     (void)Text;
     return -1;
 }

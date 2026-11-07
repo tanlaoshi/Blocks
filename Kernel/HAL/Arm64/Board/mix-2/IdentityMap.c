@@ -1,7 +1,7 @@
 /*
  * IdentityMap.c — MIX 2 BRINGUP 最小恒等页表
  *
- * GiB2（0x80000000）：内核窗 Normal + splash@0x9D400000 Device。
+ * GiB0：DWC3 @0xA800000 Device；GiB2：内核 Normal + splash Device。
  * 静态表；不碰 GIC / PhysicalMemory。
  */
 #include "Board.h"
@@ -35,9 +35,13 @@
     ((UINTN)((BOARD_SPLASH_PHYSICAL_BASE - GIGABYTE2_BASE) >> 21))
 #define SPLASH_BLOCK_COUNT \
     ((UINTN)(BOARD_SPLASH_PHYSICAL_SIZE >> 21))
+/* DWC3 @0xA800000 → 2MiB block index 0x54；映射 0xA000000..0xBFFFFF */
+#define USB_DEVICE_BLOCK_INDEX  0x50u
+#define USB_DEVICE_BLOCK_COUNT  16u
 
 static UINT64 sLevel0[512] __attribute__((aligned(4096)));
 static UINT64 sLevel1[512] __attribute__((aligned(4096)));
+static UINT64 sLevel2Gigabyte0[512] __attribute__((aligned(4096)));
 static UINT64 sLevel2Gigabyte2[512] __attribute__((aligned(4096)));
 
 static void TableClear(UINT64 *Table) {
@@ -67,10 +71,21 @@ int BoardBringUpIdentityMapEnable(void) {
 
     TableClear(sLevel0);
     TableClear(sLevel1);
+    TableClear(sLevel2Gigabyte0);
     TableClear(sLevel2Gigabyte2);
 
     sLevel0[0] = ((UINT64)(UINTN)sLevel1) | TABLE_FLAGS;
+    sLevel1[0] = ((UINT64)(UINTN)sLevel2Gigabyte0) | TABLE_FLAGS;
     sLevel1[2] = ((UINT64)(UINTN)sLevel2Gigabyte2) | TABLE_FLAGS;
+
+    for (BlockIndex = 0; BlockIndex < USB_DEVICE_BLOCK_COUNT; BlockIndex++) {
+        UINTN TableIndex = USB_DEVICE_BLOCK_INDEX + BlockIndex;
+        UINT64 Physical = ((UINT64)TableIndex) << 21;
+        if (TableIndex >= 512u) {
+            break;
+        }
+        sLevel2Gigabyte0[TableIndex] = Physical | BLOCK_DEVICE;
+    }
 
     for (BlockIndex = 0; BlockIndex < KERNEL_BLOCK_COUNT; BlockIndex++) {
         UINT64 Physical = GIGABYTE2_BASE + (((UINT64)BlockIndex) << 21);
@@ -103,6 +118,7 @@ int BoardBringUpIdentityMapEnable(void) {
 
     CleanDataCachePage(sLevel0);
     CleanDataCachePage(sLevel1);
+    CleanDataCachePage(sLevel2Gigabyte0);
     CleanDataCachePage(sLevel2Gigabyte2);
 
     Root = (UINT64)(UINTN)sLevel0;

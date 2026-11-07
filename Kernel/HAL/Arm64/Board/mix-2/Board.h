@@ -15,5 +15,8 @@ int BoardFbSetup(BOOT_HANDOFF *Info);
 int BoardBringUpIdentityMapEnable(void);
 /* BRINGUP：在已映射的 splash 上画字 / 彩条 */
 int BoardBringUpSplashPaint(const char *Text);
+int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text);
+/* PR-MIX2-USB-1：DWC3 MMIO 可读并切 Host */
+int BoardMix2UsbHostProbe(void);
 
 #endif /* BOARD_H */

@@ -5,6 +5,40 @@
 #include "FatPrivate.h"
 #include "Block.h"
 
+/*
+ * 顺序写缓存：HotSend 按偏移连续 WriteAt 时避免每次从首簇 Seek（O(偏移/簇)）。
+ * 非连续偏移或换文件（FirstCluster 变）则回退全链走。
+ */
+static UINT32 sSequentialFirstCluster;
+static UINT32 sSequentialNextOffset;
+static UINT32 sSequentialCluster;
+static UINT32 sSequentialOffInCluster;
+static int sSequentialValid;
+
+static void SequentialWriteInvalidate(void) {
+    sSequentialValid = 0;
+}
+
+static int SeekWriteOffset(UINT32 FirstCluster, UINTN Offset, UINT32 *OutCluster,
+                           UINT32 *OutOffInCluster) {
+    if (sSequentialValid && sSequentialFirstCluster == FirstCluster &&
+        (UINT32)Offset == sSequentialNextOffset) {
+        *OutCluster = sSequentialCluster;
+        *OutOffInCluster = sSequentialOffInCluster;
+        return 1;
+    }
+    return SeekFileOffset(FirstCluster, Offset, OutCluster, OutOffInCluster);
+}
+
+static void SequentialWriteRemember(UINT32 FirstCluster, UINT32 NextOffset,
+                                    UINT32 Cluster, UINT32 OffInCluster) {
+    sSequentialFirstCluster = FirstCluster;
+    sSequentialNextOffset = NextOffset;
+    sSequentialCluster = Cluster;
+    sSequentialOffInCluster = OffInCluster;
+    sSequentialValid = 1;
+}
+
 /* 保证从 First 起至少有 NeedClusters 个簇；可扩展。成功更新 *InOutFirst */
 static int EnsureClusterCount(UINT32 *InOutFirst, UINT32 NeedClusters) {
     UINT32 First = *InOutFirst;
@@ -185,14 +219,17 @@ int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len
         return FAT_ERR_NOSPC;
     }
 
-    if (!SeekFileOffset(FirstCluster, Offset, &Cl, &OffInCl)) {
+    if (!SeekWriteOffset(FirstCluster, Offset, &Cl, &OffInCl)) {
+        SequentialWriteInvalidate();
         return FAT_ERR_IO;
     }
     while (Done < Len) {
         UINT32 Chunk;
         UINT32 i;
+        UINT32 StartOff = OffInCl;
 
         if (!LoadCluster(Cl)) {
+            SequentialWriteInvalidate();
             return FAT_ERR_IO;
         }
         Chunk = Cb - OffInCl;
@@ -203,16 +240,32 @@ int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len
             gCluster[OffInCl + i] = Src[Done + i];
         }
         if (!StoreCluster(Cl)) {
+            SequentialWriteInvalidate();
             return FAT_ERR_IO;
         }
         FatIoBreath();
         Done += Chunk;
-        OffInCl = 0;
+        OffInCl = StartOff + Chunk;
         if (Done >= Len) {
+            if (OffInCl >= Cb) {
+                UINT32 Neu = FatNext(Cl);
+
+                if (Neu == FAT_CLUSTER_INVALID || ClusterEnd(Neu) || Neu < 2) {
+                    SequentialWriteInvalidate();
+                } else {
+                    SequentialWriteRemember(FirstCluster, (UINT32)(Offset + Done), Neu,
+                                           0);
+                }
+            } else {
+                SequentialWriteRemember(FirstCluster, (UINT32)(Offset + Done), Cl,
+                                       OffInCl);
+            }
             break;
         }
         Cl = FatNext(Cl);
+        OffInCl = 0;
         if (Cl == FAT_CLUSTER_INVALID || ClusterEnd(Cl) || Cl < 2) {
+            SequentialWriteInvalidate();
             return FAT_ERR_IO;
         }
     }

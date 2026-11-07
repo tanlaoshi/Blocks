@@ -7,6 +7,26 @@
 #include "LwIp.h"
 #include "Scheduler.h"
 
+int KsendTransportInputPending(void) {
+    int Got;
+
+    if (gReceivePosition < gReceiveLength) {
+        return 1;
+    }
+    if (gTransportSocket < 0) {
+        return 0;
+    }
+    gReceivePosition = 0;
+    gReceiveLength = 0;
+    Got = LwIpSocketRecv(gTransportSocket, gReceiveBuffer, TRANSPORT_RECEIVE_BYTES,
+                         0);
+    if (Got > 0) {
+        gReceiveLength = (UINT32)Got;
+        return 1;
+    }
+    return 0;
+}
+
 int KsendTransportGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds) {
     UINT32 Start;
     int Got;

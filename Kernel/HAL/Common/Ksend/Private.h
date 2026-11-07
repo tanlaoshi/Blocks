@@ -40,8 +40,8 @@
  * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。大 chunk 把调用次数压下去。
  * 接收路径与扫描/备份共用本缓冲（见 File.c / ReceiveBatch.c）。 */
 /*
- * IO 复用缓冲（扫描/备份/单块落盘）。有线批写刀：Accept 每块即刷，'A' 仅在
- * 落盘后发。跨块 RAM 攒批 + 延迟 A 留给「有线吞吐」刀（须对齐 win=）。
+ * IO 复用缓冲（扫描/备份/收块攒批）。有线吞吐：按 win 攒批一次 WriteAt，
+ * 落盘后再齐发 'A'（仍 ≤ win，避免假进度）。
  */
 #define KSEND_IO_CHUNK_BYTES      (128u * 1024u)
 /* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1） */
@@ -215,6 +215,7 @@ UINT32 KsendCrc32Final(UINT32 Crc);
 void KsendPrintImage(const char *Tag, const KSEND_IMAGE *Image);
 void KsendPrintReason(const char *Tag, const char *Reason, int Error);
 void KsendReadyLine(const KSEND_IMAGE *Image);
+UINT32 KsendReadyWindowBlocks(void);
 void KsendBlockTable(const KSEND_IMAGE *Image);
 void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size);
 void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Error);
@@ -226,8 +227,20 @@ void KsendRestoredLine(const KSEND_IMAGE *Image);
 int KsendReceiveBlocks(KSEND_RUN *Run);
 void KsendReceiveBatchReset(void);
 int KsendReceiveBatchFlush(KSEND_RUN *Run);
+/*
+ * Accept：1=本块已入批（可能刚 flush）；2=须先发 Ack 表再以同块重入；0=失败。
+ * OutAckCount = 最近一次 flush 的块数。
+ */
 int KsendReceiveBatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
-                            const UINT8 *Data);
+                            const UINT8 *Data, UINT32 BlockCrc,
+                            UINT32 *OutAckCount);
+UINT32 KsendReceiveBatchAckCount(void);
+int KsendReceiveBatchAckAt(UINT32 Slot, UINT32 *OutIndex, UINT32 *OutLength,
+                           UINT32 *OutCrc);
+UINT32 KsendReceiveBatchPendingBlocks(void);
+
+/* 1=接收方向仍有未读字节（TCP 缓冲或应用缓冲） */
+int KsendTransportInputPending(void);
 
 /* —— File.c —— */
 /* 旧文件（备份）图：restore 的判据 */

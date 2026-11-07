@@ -1,8 +1,8 @@
 /*
- * Receive.c — 收块状态机：块头 / 数据 / CRC / 'A' 或 'N'（批写见 ReceiveBatch）
+ * Receive.c — 收块状态机：块头 / 数据 / CRC / 批写落盘 / 'A' 或 'N'
  *
- * 一块：头合法 → 数据 CRC → Accept（已落盘）→ 再 'A'。CRC 错回 'N'。
- * TCP 滑窗：'N' 后丢弃其它 index 载荷（不回 A），直至重收到该块。
+ * 一块：头合法 → CRC → Accept（按 win 攒批）→ 落盘后的 Ack 表逐发 'A'。
+ * TCP 滑窗：'N' 后丢弃其它 index 载荷，直至重收到该块。
  */
 #include "Ksend/Private.h"
 
@@ -15,6 +15,22 @@ static void AcceptBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length, UINT32 Crc)
     Run->Written++;
     if (End > Run->NewSize) {
         Run->NewSize = End;
+    }
+}
+
+static void EmitAcks(KSEND_RUN *Run, UINT32 AckCount) {
+    UINT32 Slot;
+
+    for (Slot = 0; Slot < AckCount; Slot++) {
+        UINT32 Index = 0;
+        UINT32 Length = 0;
+        UINT32 Crc = 0;
+
+        if (!KsendReceiveBatchAckAt(Slot, &Index, &Length, &Crc)) {
+            break;
+        }
+        KsendSerialPutByte(KSEND_ACK_WRITTEN);
+        AcceptBlock(Run, Index, Length, Crc);
     }
 }
 
@@ -108,10 +124,13 @@ static int HandleHeader(const UINT32 *Header, KSEND_RUN *Run, UINT32 *OutIndex,
     return 1;
 }
 
-/* 1=已落盘并回 'A'；0=已回 'N' 等重发；-1=重试超限/超时/写失败 */
+/* 1=本块已处理；0=已回 'N' 等重发；-1=失败 */
 static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
                            UINT32 WantCrc, UINT32 *InOutRetry) {
     UINT32 Got;
+    UINT32 AckCount = 0;
+    int AcceptRc;
+    int Guard;
 
     if (!ReadBlockData(Length)) {
         Run->Failure = KSEND_FAIL_DATA;
@@ -119,28 +138,50 @@ static int ReceiveOneBlock(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
     }
     Got = KsendCrc32Final(
         KsendCrc32Update(KSEND_CRC_INITIAL, sBlockBuffer, Length));
-    if (Got == WantCrc) {
-        Run->Dirty = 1;
-        /* Accept 内已写卡；失败时 FailBlock/Error 由其填写 */
-        if (!KsendReceiveBatchAccept(Run, Index, Length, sBlockBuffer)) {
+    if (Got != WantCrc) {
+        /* 先落盘并 ACK 已攒好的好块，再 N 本块 */
+        if (KsendReceiveBatchPendingBlocks() > 0u) {
+            if (!KsendReceiveBatchFlush(Run)) {
+                Run->Failure = KSEND_FAIL_WRITE;
+                KsendSerialPutByte(KSEND_ACK_RETRY);
+                return -1;
+            }
+            EmitAcks(Run, KsendReceiveBatchAckCount());
+        }
+        KsendSerialPutByte(KSEND_ACK_RETRY);
+        (*InOutRetry)++;
+        if (*InOutRetry > KSEND_RETRY_MAX) {
+            Run->Failure = KSEND_FAIL_VERIFY;
+            Run->FailBlock = Index;
+            Run->FailWant = WantCrc;
+            Run->FailGot = Got;
+            return -1;
+        }
+        return 0;
+    }
+
+    Run->Dirty = 1;
+    for (Guard = 0; Guard < 3; Guard++) {
+        AckCount = 0;
+        AcceptRc = KsendReceiveBatchAccept(Run, Index, Length, sBlockBuffer,
+                                           WantCrc, &AckCount);
+        if (AcceptRc == 0) {
             Run->Failure = KSEND_FAIL_WRITE;
             KsendSerialPutByte(KSEND_ACK_RETRY);
             return -1;
         }
-        KsendSerialPutByte(KSEND_ACK_WRITTEN);
-        AcceptBlock(Run, Index, Length, WantCrc);
-        return 1;
+        if (AckCount > 0u) {
+            EmitAcks(Run, AckCount);
+        }
+        if (AcceptRc == 1) {
+            return 1;
+        }
+        /* 2：旧批已刷，以同块再入批 */
     }
-    KsendSerialPutByte(KSEND_ACK_RETRY);
-    (*InOutRetry)++;
-    if (*InOutRetry > KSEND_RETRY_MAX) {
-        Run->Failure = (Got == WantCrc) ? KSEND_FAIL_WRITE : KSEND_FAIL_VERIFY;
-        Run->FailBlock = Index;
-        Run->FailWant = WantCrc;
-        Run->FailGot = Got;
-        return -1;
-    }
-    return 0;
+    Run->Failure = KSEND_FAIL_WRITE;
+    Run->Error = FAT_ERR_INVAL;
+    Run->FailBlock = Index;
+    return -1;
 }
 
 int KsendReceiveBlocks(KSEND_RUN *Run) {
@@ -164,7 +205,12 @@ int KsendReceiveBlocks(KSEND_RUN *Run) {
         }
         Rc = HandleHeader(Header, Run, &Index, &Length);
         if (Rc == 0) {
-            return KsendReceiveBatchFlush(Run) ? 0 : -1;
+            if (!KsendReceiveBatchFlush(Run)) {
+                Run->Failure = KSEND_FAIL_WRITE;
+                return -1;
+            }
+            EmitAcks(Run, KsendReceiveBatchAckCount());
+            return 0;
         }
         if (Rc < 0) {
             if (Run->Failure == KSEND_FAIL_HEADER) {

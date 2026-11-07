@@ -50,7 +50,7 @@ void KsendPrintReason(const char *Tag, const char *Reason, int Error) {
     KsendTextFlush(&Out);
 }
 
-static UINT32 ReadyWindowBlocks(void) {
+UINT32 KsendReadyWindowBlocks(void) {
     if (KsendTransportSocket() < 0) {
         return KSEND_WINDOW_SERIAL;
     }
@@ -63,7 +63,7 @@ static UINT32 ReadyWindowBlocks(void) {
 void KsendReadyLine(const KSEND_IMAGE *Image) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
-    UINT32 Window = ReadyWindowBlocks();
+    UINT32 Window = KsendReadyWindowBlocks();
 
     if (Window == 0u || Window > KSEND_WINDOW_MAX) {
         Window = 1u;

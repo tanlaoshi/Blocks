@@ -9,6 +9,9 @@
 #include "DriverNic.h"
 #include "Debug.h"
 #include "NetConfig.h"
+#ifdef LWIP_ENABLE
+#include "Netif.h"
+#endif
 
 #define NET_NIC_SLOTS 2
 
@@ -53,6 +56,10 @@ static void ApplyPrimary(NET_NIC_KIND Kind) {
      * 拔网线切 Wi‑Fi 时若清掉，帧进自研 IpInput，lwIP listen 变聋；
      * ping 仍可能被自研栈应答（NUC 网热更 2026-11-02）。
      */
+#ifdef LWIP_ENABLE
+    /* 拔线切 Wi‑Fi：netif SA 须跟主槽，否则 ARP 用有线 MAC 回、对端 INCOMPLETE */
+    LwIpNetifSyncMac();
+#endif
     gNetOk = 1;
     NetConfigEnsure();
     DebugWrite(Kind == NET_NIC_KIND_WIFI ? "Net: primary wifi\n" : "Net: primary wired\n");

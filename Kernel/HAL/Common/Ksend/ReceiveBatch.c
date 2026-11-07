@@ -181,13 +181,23 @@ int KsendReceiveBatchAccept(KSEND_RUN *Run, UINT32 Index, UINT32 Length,
     sBatchBlocks++;
     sBatchBytes = At + Length;
 
-    if (Length != KSEND_BLOCK_BYTES || sBatchBlocks >= LimitBlocks ||
-        !KsendTransportInputPending()) {
-        if (!KsendReceiveBatchFlush(Run)) {
-            return 0;
+    /*
+     * 有线 win>1：对端暂时无后续字节则刷（对齐主机窗末等 ACK）。
+     * Wi‑Fi/串口 win=1：每块必刷，不抢有线攒批。
+     */
+    {
+        int ShouldFlush = (Length != KSEND_BLOCK_BYTES || sBatchBlocks >= LimitBlocks);
+
+        if (!ShouldFlush && LimitBlocks > 1u && !KsendTransportInputPending()) {
+            ShouldFlush = 1;
         }
-        if (OutAckCount != 0) {
-            *OutAckCount = KsendReceiveBatchAckCount();
+        if (ShouldFlush) {
+            if (!KsendReceiveBatchFlush(Run)) {
+                return 0;
+            }
+            if (OutAckCount != 0) {
+                *OutAckCount = KsendReceiveBatchAckCount();
+            }
         }
     }
     return 1;

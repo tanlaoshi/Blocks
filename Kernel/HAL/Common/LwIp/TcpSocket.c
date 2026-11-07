@@ -15,6 +15,7 @@
 #include "SerialLog.h"
 #include "Scheduler.h"
 #include "lwip/tcp.h"
+#include "lwip/ip.h"
 #include "lwip/pbuf.h"
 
 
@@ -227,6 +228,11 @@ int TcpSocketBind(int Sock, UINT32 Ip, UINT16 Port) {
     } else {
         Pcb = S->Pcb;
     }
+    /*
+     * HotSend serve 反复 listen：无 REUSEADDR 时上轮 TIME_WAIT 会 bind fail
+     *（NUC 2026-11-08）。与 httpd 等同 lwIP 惯例。
+     */
+    ip_set_option(Pcb, SOF_REUSEADDR);
     if (Ip == 0) {
         Err = tcp_bind(Pcb, IP_ANY_TYPE, Port);
     } else {

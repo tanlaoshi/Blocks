@@ -77,6 +77,8 @@ static int IwlTagAlert(const char *Tag) {
         "=norsn", "=wpa3", "=to", "=skip", "gtk=no", "bar=novm",
         /* 手测：TKIP/组播/DHCP Offer（Bound 一行不够验收） */
         "rx=tkip", "rx=mic", "rx=off", "gtk=", "assoc=gc=",
+        /* 单播数据面：曾被安静默认滤掉，ARP/ping 红时无眼睛 */
+        "rx=u", "rx=llc", "rx=oth", "rx=0800", "rx=st=", "dat=fw",
         0
     };
     int i;

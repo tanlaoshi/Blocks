@@ -31,7 +31,14 @@ void IwlReceiveDataToNet(UINT8 *Frame, UINTN FLen, UINT32 St) {
     Qos = ((Fc & 0x008Cu) == 0x0088u);
     ToDs = (Fc & 0x0100u) != 0;
     FromDs = (Fc & 0x0200u) != 0;
-    FwDec = (St & IWL_RX_MPDU_MIC_OK) != 0 && (St & IWL_RX_MPDU_DEC_DONE) != 0;
+    /*
+     * 刀 #184：MAC 上下文 FwDecrypt=0（DIS_DECRYPT|DIS_GRP）。
+     * ADD_STA_KEY 仍把 PTK 交给固件做 TX；RX 状态字偶发带 DEC_DONE/MIC_OK，
+     * 若信 FwDec 会跳过主机解、把密文当 LLC → 单播 ARP/ICMP 静默死
+     *（组播 DHCP Offer 走 TKIP 主机解仍绿，托盘也绿）。
+     */
+    (void)St;
+    FwDec = 0;
     HdrLen = 24u;
     if ((Fc & 0x0300u) == 0x0300u) {
         HdrLen += 6u;

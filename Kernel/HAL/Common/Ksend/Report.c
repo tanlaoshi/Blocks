@@ -64,9 +64,18 @@ void KsendReadyLine(const KSEND_IMAGE *Image) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
     UINT32 Window = KsendReadyWindowBlocks();
+    const char *Via;
 
     if (Window == 0u || Window > KSEND_WINDOW_MAX) {
         Window = 1u;
+    }
+    /* nuc-2：主机按 via= 分 pace；Wi‑Fi 永不报有线窗 */
+    if (KsendTransportSocket() < 0) {
+        Via = "serial";
+    } else if (HalNetWifiShouldOwnTransmit()) {
+        Via = "wifi";
+    } else {
+        Via = "wired";
     }
     KsendTextReset(&Out, Line, (int)sizeof(Line));
     KsendTextPut(&Out, "KSEND READY");
@@ -74,6 +83,8 @@ void KsendReadyLine(const KSEND_IMAGE *Image) {
     KsendTextPutField(&Out, "block", KSEND_BLOCK_BYTES);
     KsendTextPutField(&Out, "n", Image->BlockCount);
     KsendTextPutField(&Out, "win", Window);
+    KsendTextPut(&Out, " via=");
+    KsendTextPut(&Out, Via);
     KsendTextFlush(&Out);
 }
 

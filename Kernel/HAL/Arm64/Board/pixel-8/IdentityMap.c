@@ -1,11 +1,12 @@
 /*
  * IdentityMap.c — Pixel 8 BRINGUP 最小恒等页表
  *
- * 映射：UART 窗 @0x10800000 Device（GiB0）+ 内核窗 @0x90600000 Normal（GiB2）。
- * 静态表，不碰 PhysicalMemory / GIC。对表 ARM ARM EL1 TTBR0 4K / 2MiB block。
+ * UART @0x10800000 Device（GiB0 / L2）；内核用 L1 1GiB 块 @0x80000000（盖 0x90701000）。
+ * 真机打点：prep/tables/ttbr 过、开 M 后死 → 本版简化 walk + 开 M 后内联写 UART。
  */
 #include "Board.h"
 #include "BoardConfig.h"
+#include "HalSerial.h"
 
 #ifndef BOARD_BRINGUP_IDENTITY_MAP
 #define BOARD_BRINGUP_IDENTITY_MAP 0
@@ -18,21 +19,21 @@
 #define DESC_BLOCK   (0ULL << 1)
 #define AF_BIT       (1ULL << 10)
 #define UXN_BIT      (1ULL << 54)
+#define PXN_BIT      (1ULL << 53)
 #define SH_INNER     (3ULL << 8)
 #define AP_EL1_RW    (0ULL << 6)
 #define ATTR_NORMAL  (0ULL << 2)
 #define ATTR_DEVICE  (1ULL << 2)
 
-#define TABLE_FLAGS (DESC_VALID | DESC_TABLE | AF_BIT | ATTR_NORMAL | SH_INNER | AP_EL1_RW)
+#define TABLE_FLAGS (DESC_VALID | DESC_TABLE)
 #define BLOCK_NORMAL \
-    (DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | ATTR_NORMAL)
+    (DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | ATTR_NORMAL)
 #define BLOCK_DEVICE \
     (DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | ATTR_DEVICE)
 
 static UINT64 sLevel0[512] __attribute__((aligned(4096)));
 static UINT64 sLevel1[512] __attribute__((aligned(4096)));
 static UINT64 sLevel2Low[512] __attribute__((aligned(4096)));
-static UINT64 sLevel2High[512] __attribute__((aligned(4096)));
 
 static void TableClear(UINT64 *Table) {
     UINTN Index;
@@ -42,7 +43,6 @@ static void TableClear(UINT64 *Table) {
     }
 }
 
-/* MMU off 时写表在 cache；开 M+C 前须 clean 到 PoC，否则 walk 读到旧零页 */
 static void CleanDataCachePage(void *Page) {
     UINT64 Address = (UINT64)(UINTN)Page;
     UINT64 Offset;
@@ -53,39 +53,63 @@ static void CleanDataCachePage(void *Page) {
     __asm__ volatile("dsb ish" ::: "memory");
 }
 
+static void ForceMmuAndCachesOff(void) {
+    /* Linux INIT_SCTLR_EL1_MMU_OFF：勿 RMW 留 ABL 杂质 */
+    UINT64 SystemControl = 0x30d00800ULL;
+
+    __asm__ volatile("msr sctlr_el1, %0\nisb" ::"r"(SystemControl) : "memory");
+    __asm__ volatile(
+        "tlbi vmalle1\n"
+        "dsb ish\n"
+        "isb\n" ::: "memory");
+}
+
+static void WriteUartChar(char Value) {
+    volatile UINT32 *Status = (volatile UINT32 *)(UINTN)0x10870010ULL;
+    volatile UINT32 *Holding = (volatile UINT32 *)(UINTN)0x10870020ULL;
+    UINT32 Guard = 0;
+
+    while (((*Status) & (1u << 2)) == 0 && Guard < 200000u) {
+        Guard++;
+    }
+    *Holding = (UINT32)(UINT8)Value;
+    __asm__ volatile("dsb sy" ::: "memory");
+}
+
 int BoardBringUpIdentityMapEnable(void) {
     UINT64 Root;
     UINT64 Mair;
     UINT64 Tcr;
-    UINT64 Sctlr;
-    UINTN BlockIndex;
+    UINT64 SystemControl;
+
+    HalSerialWriteShell("mmu: prep\r\n");
+    ForceMmuAndCachesOff();
 
     TableClear(sLevel0);
     TableClear(sLevel1);
     TableClear(sLevel2Low);
-    TableClear(sLevel2High);
 
     sLevel0[0] = ((UINT64)(UINTN)sLevel1) | TABLE_FLAGS;
-    /* GiB0：UART；GiB2：内核 @0x90701000 */
+    /* GiB0：L2 表（UART）；GiB2：1GiB Normal 块（整窗 0x80000000） */
     sLevel1[0] = ((UINT64)(UINTN)sLevel2Low) | TABLE_FLAGS;
-    sLevel1[2] = ((UINT64)(UINTN)sLevel2High) | TABLE_FLAGS;
+    sLevel1[2] = (0x80000000ULL) | BLOCK_NORMAL;
 
     sLevel2Low[0x84u] = (0x10800000ULL) | BLOCK_DEVICE;
 
-    /* 0x90600000..0x91000000：5×2MiB Normal（含 Image + BSS + 栈） */
-    for (BlockIndex = 0x83u; BlockIndex < 0x88u; BlockIndex++) {
-        UINT64 Physical = (2ULL << 30) + (((UINT64)BlockIndex) << 21);
-        sLevel2High[BlockIndex] = Physical | BLOCK_NORMAL;
-    }
-
+    HalSerialWriteShell("mmu: tables\r\n");
     CleanDataCachePage(sLevel0);
     CleanDataCachePage(sLevel1);
     CleanDataCachePage(sLevel2Low);
-    CleanDataCachePage(sLevel2High);
 
     Root = (UINT64)(UINTN)sLevel0;
+    /* Attr0=Normal WB；Attr1=Device nGnRnE */
     Mair = (0xFFULL) | (0x00ULL << 8);
-    Tcr = (16ULL) | (0ULL << 14) | (1ULL << 8) | (1ULL << 10) | (3ULL << 12) | (2ULL << 32);
+    /*
+     * T0SZ=16；TG0=4K；Inner/Outer WB；Inner-shareable；IPS=40-bit；
+     * EPD1=1：禁用 TTBR1，避免高半址乱走。
+     */
+    Tcr = (16ULL) | (0ULL << 14) | (1ULL << 8) | (1ULL << 10) | (3ULL << 12) |
+          (1ULL << 23) | (2ULL << 32);
 
     __asm__ volatile("msr mair_el1, %0" ::"r"(Mair));
     __asm__ volatile("msr tcr_el1, %0" ::"r"(Tcr));
@@ -96,14 +120,21 @@ int BoardBringUpIdentityMapEnable(void) {
         "dsb ish\n"
         "isb\n" ::: "memory");
 
-    /*
-     * 先只开 M+I（不开 C）：表已 clean，取指走 I；UART Device 不依赖 D-cache。
-     * 避免脏 D$ 与 walk 打架。
-     */
-    __asm__ volatile("mrs %0, sctlr_el1" : "=r"(Sctlr));
-    Sctlr |= (1ULL << 0) | (1ULL << 12);
-    Sctlr &= ~((1ULL << 2) | (1ULL << 19));
-    __asm__ volatile("msr sctlr_el1, %0\nisb\n" ::"r"(Sctlr) : "memory");
+    HalSerialWriteShell("mmu: ttbr\r\n");
+    WriteUartChar('T');
+
+    SystemControl = 0x30d00801ULL; /* MMU_OFF 模板 + M */
+    __asm__ volatile(
+        "msr sctlr_el1, %0\n"
+        "isb\n"
+        :
+        : "r"(SystemControl)
+        : "memory");
+
+    /* 若能取指到此：开 M 成功；勿先调 C（防栈/PLT 变量） */
+    WriteUartChar('M');
+
+    HalSerialWriteShell("\r\nmmu: m\r\n");
     return 0;
 }
 

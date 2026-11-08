@@ -14,5 +14,7 @@ int BoardFbSetup(BOOT_HANDOFF *Info);
 
 /* BRINGUP：打开最小恒等 MMU；其它板可空实现返回 0 */
 int BoardBringUpIdentityMapEnable(void);
+/* PR-PIXEL8-USB-1：DWC3 MMIO 可读并切 Host（串口报 id/host；保 Cereal） */
+int BoardPixel8UsbHostProbe(void);
 
 #endif /* BOARD_H */

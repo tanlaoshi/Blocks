@@ -136,6 +136,18 @@ KernelEntry:
     eret
 
 20:
+    /*
+     * 已在 EL1（Pixel ABL）：仍须 SCTLR_EL1 MMU/cache off。
+     * 降 EL2→EL1 路径已写过；直入 EL1 若跳过会带着 ABL 页表进 IdentityMap。
+     */
+    movz    x0, #0x0800
+    movk    x0, #0x30d0, lsl #16
+    msr     sctlr_el1, x0
+    isb
+    tlbi    vmalle1
+    dsb     ish
+    isb
+
     adrp    x0, gBootStack
     add     x0, x0, :lo12:gBootStack
     add     sp, x0, #65536

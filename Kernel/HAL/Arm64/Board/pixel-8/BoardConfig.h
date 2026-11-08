@@ -37,7 +37,15 @@
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
 
-/* BRINGUP：静态恒等页表（内核窗 + UART Device） */
+/* BRINGUP：静态恒等页表（内核窗 + UART Device + DWC3） */
 #define BOARD_BRINGUP_IDENTITY_MAP 1
+
+/*
+ * PR-PIXEL8-USB-1：Tensor G3 DWC3 Host 探测。
+ * 证据：device/google/zuma init.zuma.usb.rc → sys.usb.controller=11210000.dwc3
+ */
+/* 真机：开探测/DWC3 映射后首个 blocks> 即复位；暂关，先稳住串口 BRINGUP */
+#define BOARD_PIXEL8_USB_HOST_BRINGUP 0
+#define BOARD_USB_DWC3_PHYSICAL_BASE  0x11210000ULL
 
 #endif /* BOARD_CONFIG_H */

@@ -173,10 +173,10 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 项 | MIX 2 | Pixel 8 |
 |---|---|---|
-| SoC USB IP | **MSM8998 `snps,dwc3` @`0xA800000`**（线刷 DT `dwc3@a800000` / 父 `ssusb@a800000` `qcom,dwc-usb3-msm`） | Tensor G3 · DWC3/xHCI（待钉） |
-| PHY | `qusb@c012000` `qcom,qusb2phy-v2`（后刀） | 待钉 |
-| 公开材料 | 线刷 DT + Synopsys DWC3 GCTL/GSNPSID；Linux dwc3 `PrtCapDir=Host` | DT / 公开内核驱动行为 |
-| Host 线材 | Type-C 坞 + **充电口接电**；§7.0 先 boot 再插坞 | 另备；Cereal 与 Host 是否互斥 |
+| SoC USB IP | **MSM8998 `snps,dwc3` @`0xA800000`**（线刷 DT `dwc3@a800000` / 父 `ssusb@a800000` `qcom,dwc-usb3-msm`） | **Tensor G3 `snps,dwc3` @`0x11210000`**（`device/google/zuma` `sys.usb.controller=11210000.dwc3`） |
+| PHY | `qusb@c012000` `qcom,qusb2phy-v2`（后刀） | Samsung/Exynos 风格 glue（后刀）；本刀不碰 |
+| 公开材料 | 线刷 DT + Synopsys DWC3 GCTL/GSNPSID；Linux dwc3 `PrtCapDir=Host` | zuma init.rc 控制器名 + Synopsys GSNPSID/GCTL；Cereal=SBU UART，与 DWC3 数据面分离 |
+| Host 线材 | Type-C 坞 + **充电口接电**；§7.0 先 boot 再插坞 | Cereal 占 SBU 调试；Host 走 Type-C 数据脚（另备坞；USB-1 勿改 mux） |
 | 键盘 | HID Boot；插坞 **USB-A**；无 IME | 同左 |
 | 现网坞 | 绿联 **15375**：QUSB+QSCRATCH 后仍 `p*:200`；ssusb `extcon=pdphy` → 须 **SPMI Type-C/DFP**（非再拧 xHCI） | — |
 
@@ -197,6 +197,7 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-09 | PIXEL8-USB-1：钉 `0x11210000`（`11210000.dwc3`）；串口 `usb: id`/`host`；保 Cereal |
 | 2026-11-09 | MIX2 树回 USB-2（`e a1`）；USB-3 半程归档；★→PIXEL8-USB-1（后增键需求让路） |
 | 2026-11-08 | 挂试错史；§8 手测快查；USB-3 在测（`e a1` 后盯 `k`） |
 | 2026-11-08 | USB-2 开干：xHCI 起环 + `wait dock` 热插扫；待手测 `hub` |

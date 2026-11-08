@@ -57,6 +57,10 @@ void KernelHandoff(UINT64 DtbPhys) {
     if (BoardBringUpIdentityMapEnable() == 0) {
         HalSerialWriteShell("mmu: on\r\n");
         HalSerialWriteShell("blocks>\r\n");
+#if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
+        (void)BoardPixel8UsbHostProbe();
+        HalSerialWriteShell("blocks>\r\n");
+#endif
     }
 #endif
 #endif

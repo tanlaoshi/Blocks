@@ -1,6 +1,6 @@
 # 柱规格 · 手机 USB 键盘（Pixel 8 / MIX 2）
 
-> **状态**：政策已放行；**活 ★ = Pixel USB-1**。MIX2：最初 splash ✅；USB-2 hub ✅；USB-3（后增）半程 ⏸，树回 `e a1`。  
+> **状态**：政策已放行；**活 ★ = Pixel USB-2 hub**。PIXEL8-USB-1 ✅（`usb: host`；id-odd 已记）。MIX2：splash/USB-2 ✅；USB-3 ⏸。  
 > **活排期**：[`路线图1108.md`](../路线图1108.md)。无输入法：HID Boot 键码直通壳即可。  
 > **MIX2 试错史**：[`过程/排障/MIX2-USB键盘试错历程.md`](../过程/排障/MIX2-USB键盘试错历程.md)（半程归档；有串口证据后再回灌）。  
 > **史**：bringup [`进展/路线图1107.md`](../项目/进展/路线图1107.md)；MIX2-2 ✅；USB-1/2 ✅。  
@@ -94,8 +94,8 @@
 
 | PR | 内容 | 验收 | 估 |
 |---|---|---|---|
-| **PR-PIXEL8-USB-1** | Tensor USB **Host 模式**最小（对表 DT；Cereal 保留） | 串口 `usb: host`；Cereal 仍可用 | ★ 3–5 |
-| **PR-PIXEL8-USB-2** | hub 枚举 | 同 MIX2-USB-2 | 2–3 |
+| **PR-PIXEL8-USB-1** | Tensor USB **Host 模式**最小（对表 DT；Cereal 保留） | 串口 `usb: host`；Cereal 仍可用 | ✅ |
+| **PR-PIXEL8-USB-2** | hub 枚举 | 同 MIX2-USB-2 | ★ 2–3 |
 | **PR-PIXEL8-USB-3** | HID 键盘 → 串口壳 | 键入出现在 `blocks>` 会话 | 2–3 |
 
 ### 收口
@@ -197,7 +197,8 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 日期 | 说明 |
 | ---- | ---- |
-| 2026-11-09 | PIXEL8-USB-1：钉 `0x11210000`（`11210000.dwc3`）；串口 `usb: id`/`host`；保 Cereal |
+| 2026-11-09 | **PIXEL8-USB-1 ✅**：`gctl` Device→Host `0x00011004`；`id=0x33313130`（非 5533，GCTL 活）；Cereal 通；★→USB-2 |
+| 2026-11-09 | PIXEL8-USB-1：钉 `0x11210000`（`11210000.dwc3`）；MMU 先过；保 Cereal |
 | 2026-11-09 | MIX2 树回 USB-2（`e a1`）；USB-3 半程归档；★→PIXEL8-USB-1（后增键需求让路） |
 | 2026-11-08 | 挂试错史；§8 手测快查；USB-3 在测（`e a1` 后盯 `k`） |
 | 2026-11-08 | USB-2 开干：xHCI 起环 + `wait dock` 热插扫；待手测 `hub` |

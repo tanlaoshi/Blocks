@@ -1,8 +1,8 @@
 /*
  * IdentityMap.c — Pixel 8 BRINGUP 最小恒等页表
  *
- * UART @0x10800000 Device（GiB0 / L2）；内核用 L1 1GiB 块 @0x80000000（盖 0x90701000）。
- * 真机打点：prep/tables/ttbr 过、开 M 后死 → 本版简化 walk + 开 M 后内联写 UART。
+ * UART @0x10800000 Device（GiB0 / L2）；内核 L1 1GiB @0x80000000；
+ * USB-1：DWC3 @0x11200000 Device（同 GiB0 L2）。
  */
 #include "Board.h"
 #include "BoardConfig.h"
@@ -19,7 +19,6 @@
 #define DESC_BLOCK   (0ULL << 1)
 #define AF_BIT       (1ULL << 10)
 #define UXN_BIT      (1ULL << 54)
-#define PXN_BIT      (1ULL << 53)
 #define SH_INNER     (3ULL << 8)
 #define AP_EL1_RW    (0ULL << 6)
 #define ATTR_NORMAL  (0ULL << 2)
@@ -95,6 +94,10 @@ int BoardBringUpIdentityMapEnable(void) {
     sLevel1[2] = (0x80000000ULL) | BLOCK_NORMAL;
 
     sLevel2Low[0x84u] = (0x10800000ULL) | BLOCK_DEVICE;
+#if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
+    /* zuma snps,dwc3 @0x11210000 → 2MiB 块 0x11200000 */
+    sLevel2Low[0x89u] = (0x11200000ULL) | BLOCK_DEVICE;
+#endif
 
     HalSerialWriteShell("mmu: tables\r\n");
     CleanDataCachePage(sLevel0);

@@ -10,8 +10,8 @@
 | **固件** | Android ABL；`oem uart enable` 后 earlycon |
 | **加载** | Linux Image 头 + Android `boot.img`；物理址以 `BoardConfig.h` 为准（`0x90701000`） |
 | **串口** | Exynos/S3C UART @ `0x10870000`（ttySAC0），115200；主机 USB-Cereal `/dev/ttyUSB0` **1.8V** |
-| **USB** | Tensor G3 `snps,dwc3` @`0x11210000`（`11210000.dwc3`）；★ USB-1 Host 探测 |
-| **能力** | `BRINGUP=1` 串口 `blocks>` + `usb: id`/`usb: host`；无 FB / 块 / 网 |
+| **USB** | Tensor G3 @`0x11210000`（`11210000.dwc3`）；USB-1 ✅ Host；★ USB-2 hub |
+| **能力** | `BRINGUP=1`：`mmu: on` + `usb: host`（id-odd 已记）；无 FB / 块 / 网 |
 
 ---
 

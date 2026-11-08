@@ -44,8 +44,8 @@
  * PR-PIXEL8-USB-1：Tensor G3 DWC3 Host 探测。
  * 证据：device/google/zuma init.zuma.usb.rc → sys.usb.controller=11210000.dwc3
  */
-/* 真机：开探测/DWC3 映射后首个 blocks> 即复位；暂关，先稳住串口 BRINGUP */
-#define BOARD_PIXEL8_USB_HOST_BRINGUP 0
+/* MMU 已绿；开 DWC3 映射 + Host 探测（Cereal SBU 勿碰） */
+#define BOARD_PIXEL8_USB_HOST_BRINGUP 1
 #define BOARD_USB_DWC3_PHYSICAL_BASE  0x11210000ULL
 
 #endif /* BOARD_CONFIG_H */

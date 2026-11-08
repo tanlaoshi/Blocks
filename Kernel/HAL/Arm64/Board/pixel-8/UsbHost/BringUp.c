@@ -1,10 +1,11 @@
 /*
  * UsbHost/BringUp.c — PR-PIXEL8-USB-1：Tensor G3 DWC3 最小 Host 探测
  *
- * 证据：device/google/zuma `init.zuma.usb.rc` → `sys.usb.controller=11210000.dwc3`
- * （Linux OF 名 = reg 基址 + 结点名；即 snps,dwc3 @0x11210000）。
- * 对表 Synopsys DWC3：GSNPSID@0xC120、GCTL@0xC110 PrtCapDir=Host。
- * 本刀只证 MMIO 可读并切 Host；不碰 Type-C/PHY（Cereal SBU 串口须保留）。
+ * 证据：zuma `sys.usb.controller=11210000.dwc3`；真机 MMIO：
+ *   gctl=0x00012004 gsts=0x7e800000 id=0x33313130 guid=0x0d036fff
+ *   （gs101@0x11110000 全 0 → 基址对、钟/核在 11210000）
+ * GSNPSID 非 0x5533，但 GCTL 位形同 DWC3（PrtCapDir 等）；本刀以 GCTL 读回 Host 为准。
+ * 不碰 Type-C/PHY（Cereal SBU 保留）。
  */
 #include "Board.h"
 #include "BoardConfig.h"
@@ -16,16 +17,18 @@
 
 #if BOARD_PIXEL8_USB_HOST_BRINGUP
 
-#define DWC3_REGISTER_BASE        0x11210000ULL
 #define DWC3_GCTL_OFFSET          0xC110u
+#define DWC3_GSTS_OFFSET          0xC118u
 #define DWC3_GSNPSID_OFFSET       0xC120u
+#define DWC3_GUID_OFFSET          0xC12Cu
 #define DWC3_GCTL_PRTCAPDIR_MASK  (3u << 12)
 #define DWC3_GCTL_PRTCAP_HOST     (1u << 12)
+#define DWC3_GCTL_PRTCAP_DEVICE   (2u << 12)
 #define DWC3_GCTL_CORESOFTRESET   (1u << 11)
 #define DWC3_GSNPSID_SYNOPSYS     0x55330000u
 
 static volatile UINT32 *Dwc3Register(UINT32 Offset) {
-    return (volatile UINT32 *)(UINTN)(DWC3_REGISTER_BASE + (UINT64)Offset);
+    return (volatile UINT32 *)(UINTN)(BOARD_USB_DWC3_PHYSICAL_BASE + (UINT64)Offset);
 }
 
 static void FormatHexadecimal32(char *Out, UINT32 Value) {
@@ -40,7 +43,7 @@ static void FormatHexadecimal32(char *Out, UINT32 Value) {
     Out[10] = '\0';
 }
 
-static void WriteProbeLine(const char *Prefix, UINT32 Value) {
+static void WriteLabeledHex(const char *Prefix, UINT32 Value) {
     char Hex[12];
 
     FormatHexadecimal32(Hex, Value);
@@ -52,38 +55,68 @@ static void WriteProbeLine(const char *Prefix, UINT32 Value) {
 int BoardPixel8UsbHostProbe(void) {
     UINT32 SynopsysId;
     UINT32 GlobalControl;
+    UINT32 GlobalStatus;
+    UINT32 UserId;
+    UINT32 PortCapability;
     UINTN Guard;
 
     HalSerialWriteShell("usb: probe\r\n");
 
+    GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
+    GlobalStatus = *Dwc3Register(DWC3_GSTS_OFFSET);
     SynopsysId = *Dwc3Register(DWC3_GSNPSID_OFFSET);
-    WriteProbeLine("usb: id ", SynopsysId);
+    UserId = *Dwc3Register(DWC3_GUID_OFFSET);
 
-    if ((SynopsysId & 0xFFFF0000u) != DWC3_GSNPSID_SYNOPSYS) {
-        HalSerialWriteShell("usb: no dwc3\r\n");
+    WriteLabeledHex("usb: gctl ", GlobalControl);
+    WriteLabeledHex("usb: gsts ", GlobalStatus);
+    WriteLabeledHex("usb: id ", SynopsysId);
+    WriteLabeledHex("usb: guid ", UserId);
+
+    if (GlobalControl == 0u && GlobalStatus == 0u) {
+        HalSerialWriteShell("usb: dead mmio\r\n");
         return -1;
     }
 
-    GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
-    GlobalControl |= DWC3_GCTL_CORESOFTRESET;
-    *Dwc3Register(DWC3_GCTL_OFFSET) = GlobalControl;
-    for (Guard = 0; Guard < 100000u; Guard++) {
-        __asm__ volatile("yield" ::: "memory");
-    }
-    GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
-    GlobalControl &= ~DWC3_GCTL_CORESOFTRESET;
-    *Dwc3Register(DWC3_GCTL_OFFSET) = GlobalControl;
-    for (Guard = 0; Guard < 100000u; Guard++) {
-        __asm__ volatile("yield" ::: "memory");
+    if ((SynopsysId & 0xFFFF0000u) != DWC3_GSNPSID_SYNOPSYS) {
+        HalSerialWriteShell("usb: id-odd (GCTL live)\r\n");
     }
 
+    PortCapability = GlobalControl & DWC3_GCTL_PRTCAPDIR_MASK;
+    if (PortCapability == DWC3_GCTL_PRTCAP_DEVICE) {
+        HalSerialWriteShell("usb: was device\r\n");
+    }
+
+    /*
+     * id-odd 时跳过 CoreSoftReset（未证复位语义）；只改 PrtCapDir=Host。
+     * 对表 dwc3 core：GCTL[13:12] 1=Host / 2=Device / 3=OTG。
+     */
+    if ((SynopsysId & 0xFFFF0000u) == DWC3_GSNPSID_SYNOPSYS) {
+        HalSerialWriteShell("usb: rst\r\n");
+        GlobalControl |= DWC3_GCTL_CORESOFTRESET;
+        *Dwc3Register(DWC3_GCTL_OFFSET) = GlobalControl;
+        for (Guard = 0; Guard < 100000u; Guard++) {
+            __asm__ volatile("yield" ::: "memory");
+        }
+        GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
+        GlobalControl &= ~DWC3_GCTL_CORESOFTRESET;
+        *Dwc3Register(DWC3_GCTL_OFFSET) = GlobalControl;
+        for (Guard = 0; Guard < 100000u; Guard++) {
+            __asm__ volatile("yield" ::: "memory");
+        }
+    }
+
+    HalSerialWriteShell("usb: cap\r\n");
     GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
     GlobalControl &= ~DWC3_GCTL_PRTCAPDIR_MASK;
     GlobalControl |= DWC3_GCTL_PRTCAP_HOST;
     *Dwc3Register(DWC3_GCTL_OFFSET) = GlobalControl;
 
     GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
-    WriteProbeLine("usb: host ", GlobalControl);
+    WriteLabeledHex("usb: host ", GlobalControl);
+    if ((GlobalControl & DWC3_GCTL_PRTCAPDIR_MASK) != DWC3_GCTL_PRTCAP_HOST) {
+        HalSerialWriteShell("usb: host-fail\r\n");
+        return -1;
+    }
     return 0;
 }
 

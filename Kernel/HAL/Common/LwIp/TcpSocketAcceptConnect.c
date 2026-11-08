@@ -6,6 +6,7 @@
 #if LWIP_TCP
 
 #include "TcpSocketPrivate.h"
+#include "Tasks.h"
 
 int TcpSocketAccept(int Sock, int TimeoutMs) {
     TOY_SOCK *S = SockGet(Sock);
@@ -14,22 +15,36 @@ int TcpSocketAccept(int Sock, int TimeoutMs) {
     int Forever;
     UINT32 WaitStart;
     UINT32 WaitLimitMilliseconds;
+    UINT32 LastNetMilliseconds;
 
     if (S == NULL || S->Phase != 4) {
         return -1;
     }
     /*
-     * 勿 HalCpuHalt：iwl 等 poll 网卡靠 LwIpService→NetPoll；Halt 只等 IRQ
-     * 会饿死 SYN 收包（与 TcpSocketSend sndbuf 同病，2026-11-03）。
-     * TimeoutMs 按墙钟毫秒，不再当 Halt 次数。
+     * 勿 HalCpuHalt：网卡靠 LwIpService→NetPoll；Halt 只等 IRQ 会饿死 SYN
+     * （与 TcpSocketSend sndbuf 同病，2026-11-03）。TimeoutMs=墙钟毫秒。
+     *
+     * Accept 空等（HotSend serve 可达数分钟）— 三架构同契约：
+     *   · 禁 SchedulerIoBreath：长 IO 旁路无条件 drain，与稳态分域打架。
+     *   · 禁每圈 LwIpService：Pi 单 DWC2 上 SMSC bulk 会饿死 HID
+     *     （2026-11-08：狂泵 → 鼠死+ping 死）。
+     *   · 墙钟 ~8ms 泵网（ARP/SYN）+ YieldForPollInput（Shell 稳态让步：
+     *     Pi VirtDesktop 代泵鼠；X64 有 InputTask 则只 CondResched）。
+     * Connect 仍可 IoBreath（短等）；勿抄回此处。
      */
     Forever = (TimeoutMs <= 0);
     WaitStart = HalMilliseconds();
     WaitLimitMilliseconds = Forever ? 0u : (UINT32)TimeoutMs;
+    LastNetMilliseconds = 0u;
     while (S->PendingCount == 0 && S->Phase == 4) {
-        LwIpService();
-        SchedulerIoBreath();
-        HalCpuRelax();
+        UINT32 NowMilliseconds = HalMilliseconds();
+
+        if (LastNetMilliseconds == 0u ||
+            (UINT32)(NowMilliseconds - LastNetMilliseconds) >= 8u) {
+            LastNetMilliseconds = NowMilliseconds;
+            LwIpService();
+        }
+        YieldForPollInput();
         if (!Forever &&
             (UINT32)(HalMilliseconds() - WaitStart) >= WaitLimitMilliseconds) {
             break;

@@ -8,10 +8,12 @@
 #include "LwIp.h"
 #include "Hal.h"
 #include "Scheduler.h"
+#include "Tasks.h"
 
 #define KSEND_TCP_PORT_DEFAULT 26992u
 #define KSEND_SERVE_LINE_BYTES 128u
-#define KSEND_ACCEPT_SLICE_MILLISECONDS 250u
+/* 短切片：Accept 内已泵网+Yield；外圈 Ctrl-C / 再 Yield */
+#define KSEND_ACCEPT_SLICE_MILLISECONDS 50u
 
 static int ArgumentIs(const char *Argument, const char *Word) {
     if (Argument == 0 || Word == 0) {
@@ -186,8 +188,12 @@ int KsendServe(UINT16 Port, UINT32 WaitMilliseconds) {
             HalNetPinPrimary(0);
             return 1;
         }
+        /*
+         * 禁 IoBreath。Accept 切片内已墙钟泵网；外圈再一拍网 + YieldForPollInput
+         * （Pi 代泵鼠；X64 InputTask 分域只 CondResched）。
+         */
         LwIpService();
-        SchedulerIoBreath();
+        YieldForPollInput();
     }
     (void)LwIpSocketClose(ListenSocket);
 

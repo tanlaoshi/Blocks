@@ -93,8 +93,13 @@ void LwIpService(void) {
         DriverNetPoll();
         return;
     }
+    /*
+     * 抢不到锁：本拍跳过（上头注释）。勿 SchedulerIoBreath——
+     * Accept/HotSend serve 空等会经此旁路 HalInputPoll，与 HID 主人双泵；
+     * 且跳过 NetPoll → ARP 饿死（Pi 2026-11-08：serve 后鼠活 ping 死）。
+     * 键鼠仍由 Gui/Input/调用方 CondResched 保活。
+     */
     if (BLOCKS_ATOMIC_TAS(&gLwIpSoft, 1u)) {
-        SchedulerIoBreath();
         return;
     }
     DriverNetPoll();

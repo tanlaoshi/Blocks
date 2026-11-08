@@ -7,7 +7,7 @@
 #include "Tasks.h"
 #include "HalDevices.h"
 
-void YieldForPollInput(void);
+/* YieldForPollInput → Tasks.h（Accept/Serve 亦调） */
 void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous);
 /* 用户态 poll/sleep 间也可抽键：不依赖 ShellTask 同核轮转 */
 void TasksPumpKeyboard(void);

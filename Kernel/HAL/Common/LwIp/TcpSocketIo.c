@@ -251,4 +251,37 @@ int TcpSocketClose(int Sock) {
     return 0;
 }
 
+int TcpSocketAbort(int Sock) {
+    TOY_SOCK *S = SockGet(Sock);
+    int Pending[TCP_SOCK_PENDING];
+    int Count;
+    int i;
+
+    if (S == NULL) {
+        return -1;
+    }
+    LwIpLock();
+    if (S->IsListen) {
+        Count = S->PendingCount;
+        for (i = 0; i < Count; i++) {
+            Pending[i] = S->Pending[i];
+        }
+        S->PendingCount = 0;
+        LwIpUnlock();
+        for (i = 0; i < Count; i++) {
+            (void)TcpSocketAbort(Pending[i]);
+        }
+        LwIpLock();
+        SockAbortPcb(S);
+    } else {
+        SockAbortPcb(S);
+    }
+    S->Used = 0;
+    S->Phase = 0;
+    S->RxLen = 0;
+    S->IsListen = 0;
+    LwIpUnlock();
+    return 0;
+}
+
 #endif /* LWIP_TCP */

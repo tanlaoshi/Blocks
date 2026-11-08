@@ -6,7 +6,9 @@
  * 块 CRC 表是二进制（小端），所以走 KsendSerialPutByte 而不是文本行。
  */
 #include "Ksend/Private.h"
+#include "Hal.h"
 #include "HalDevices.h"
+#include "HalPlatform.h"
 
 static const char *FailureName(int Failure) {
     switch (Failure) {
@@ -56,6 +58,13 @@ UINT32 KsendReadyWindowBlocks(void) {
     }
     if (HalNetWifiShouldOwnTransmit()) {
         return KSEND_WINDOW_WIFI;
+    }
+    /*
+     * Pi VirtDesktop：SMSC 与 µSD 同机；有线 win=8 攒批落盘仍会打挂
+     *（2026-11-08：UMING block8 后 ping/串口皆死）。NUC alx 仍用 8。
+     */
+    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+        return KSEND_WINDOW_SERIAL;
     }
     return KSEND_WINDOW_WIRED_TCP;
 }

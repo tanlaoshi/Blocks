@@ -83,6 +83,10 @@ int LwIpSocketClose(int Sock) {
     return TcpSocketClose(Sock);
 }
 
+int LwIpSocketAbort(int Sock) {
+    return TcpSocketAbort(Sock);
+}
+
 /* PR-N-dns：点分字面量或 lwIP DNS A 记录；成功 0 且 *OutIp 主机序 */
 int LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs) {
     err_t Err;
@@ -179,6 +183,11 @@ int LwIpSocketFlushOut(int Sock, int TimeoutMs) {
 }
 
 int LwIpSocketClose(int Sock) {
+    (void)Sock;
+    return -1;
+}
+
+int LwIpSocketAbort(int Sock) {
     (void)Sock;
     return -1;
 }

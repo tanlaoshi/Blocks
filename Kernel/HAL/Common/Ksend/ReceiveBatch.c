@@ -5,6 +5,7 @@
  * 上限 = READY win=（有线 8；串口/Wi‑Fi 1）。整批一次 WriteAt。
  */
 #include "Ksend/Private.h"
+#include "Ksend/TransportPrivate.h"
 #include "LwIp.h"
 #include "Scheduler.h"
 
@@ -58,7 +59,12 @@ static void BreathWhileWired(void) {
         return;
     }
     LwIpService();
+    /*
+     * 落盘长圈也须泵网：否则 win=8 写 SD 时 TCP 饿死，主机卡在早期 block retry
+     *（Pi 2026-11-08：UMING 4.5MB block 5）。IoBreath 兼采串口 Ctrl-C。
+     */
     SchedulerIoBreath();
+    (void)TransportPollUserAbort();
 }
 
 static void PublishAcksFromBatch(void) {
@@ -108,15 +114,40 @@ int KsendReceiveBatchFlush(KSEND_RUN *Run) {
         sBatchBytes = 0;
         return 0;
     }
-    Error = KsendFileWriteAt(Run->TargetPath, Offset, KsendFileBuffer(),
-                             sBatchBytes);
-    if (Error != FAT_OK) {
-        Run->Error = Error;
-        Run->FailBlock = sBatchFirstIndex;
-        sBatchFirstIndex = 0;
-        sBatchBlocks = 0;
-        sBatchBytes = 0;
-        return 0;
+    /*
+     * 整批一次 WriteAt 会长时间不泵 lwIP。按块写并夹 Breath（有线大文件）。
+     */
+    {
+        UINT32 Done = 0;
+
+        while (Done < sBatchBytes) {
+            UINT32 Take = sBatchBytes - Done;
+
+            if (Take > KSEND_BLOCK_BYTES) {
+                Take = KSEND_BLOCK_BYTES;
+            }
+            BreathWhileWired();
+            if (KsendTransportUserAborted()) {
+                Run->Failure = KSEND_FAIL_ABORT;
+                Run->Error = FAT_ERR_IO;
+                Run->FailBlock = sBatchFirstIndex + (Done / KSEND_BLOCK_BYTES);
+                sBatchFirstIndex = 0;
+                sBatchBlocks = 0;
+                sBatchBytes = 0;
+                return 0;
+            }
+            Error = KsendFileWriteAt(Run->TargetPath, Offset + Done,
+                                     KsendFileBuffer() + Done, Take);
+            if (Error != FAT_OK) {
+                Run->Error = Error;
+                Run->FailBlock = sBatchFirstIndex + (Done / KSEND_BLOCK_BYTES);
+                sBatchFirstIndex = 0;
+                sBatchBlocks = 0;
+                sBatchBytes = 0;
+                return 0;
+            }
+            Done += Take;
+        }
     }
     BreathWhileWired();
     PublishAcksFromBatch();

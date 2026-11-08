@@ -175,6 +175,8 @@ void SockSetupConnected(TOY_SOCK *S, struct tcp_pcb *Pcb) {
     S->Phase = 1;
     S->IsListen = 0;
     S->RxLen = 0;
+    /* 与 listen 同 REUSE，避免 TIME_WAIT 挡再 bind（配 SO_REUSE） */
+    ip_set_option(Pcb, SOF_REUSEADDR);
     tcp_arg(Pcb, S);
     tcp_recv(Pcb, SockRecvCb);
     tcp_err(Pcb, SockErrCb);

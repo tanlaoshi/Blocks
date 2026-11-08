@@ -53,6 +53,7 @@ int  LwIpSocketSend(int Sock, const void *Data, UINTN Len);
 int  LwIpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs);
 int  LwIpSocketFlushOut(int Sock, int TimeoutMs);
 int  LwIpSocketClose(int Sock);
+int  LwIpSocketAbort(int Sock);
 /* PR-N-dns：字面量或 DNS A；成功 0；失败负 errno */
 int  LwIpDnsLookup(const char *Name, UINT32 *OutIp, int TimeoutMs);
 

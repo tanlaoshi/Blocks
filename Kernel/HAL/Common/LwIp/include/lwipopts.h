@@ -83,4 +83,10 @@
 /* DNS/TCP/UDP 随机端口；sys_now 原型在 arch/cc.h */
 #define LWIP_RAND()                 ((u32_t)(sys_now() ^ 0xA5A5A5A5u))
 
+/*
+ * HotSend serve 反复 listen：对端走后本地 TIME_WAIT 仍占口。
+ * 无本宏则 ip_set_option(SOF_REUSEADDR) 无效 → bind fail（Pi 2026-11-08）。
+ */
+#define SO_REUSE                    1
+
 #endif

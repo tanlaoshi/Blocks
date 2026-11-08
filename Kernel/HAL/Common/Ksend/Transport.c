@@ -126,7 +126,11 @@ int TransportSendFlushUntilEmpty(UINT32 LimitMilliseconds) {
 void KsendTransportUseSerial(void) {
     if (gTransportSocket >= 0) {
         (void)TransportSendFlushUntilEmpty(TRANSPORT_DRAIN_EMPTY_MILLISECONDS);
-        (void)LwIpSocketClose(gTransportSocket);
+        /*
+         * 勿只 Close：TIME_WAIT 占 listen 口 → 再 serve bind fail
+         *（Pi 2026-11-08；对表 SO_REUSE + Abort）。
+         */
+        (void)LwIpSocketAbort(gTransportSocket);
         gTransportSocket = -1;
     }
     gReceiveLength = 0;

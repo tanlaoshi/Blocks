@@ -64,4 +64,9 @@ int TcpSocketClose(int Sock) {
     return -1;
 }
 
+int TcpSocketAbort(int Sock) {
+    (void)Sock;
+    return -1;
+}
+
 #endif /* !LWIP_TCP */

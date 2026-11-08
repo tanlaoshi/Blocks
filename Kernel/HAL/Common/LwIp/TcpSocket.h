@@ -25,5 +25,7 @@ int TcpSocketRecv(int Sock, void *Buf, UINTN Len, int TimeoutMs);
  */
 int TcpSocketFlushOut(int Sock, int TimeoutMs);
 int TcpSocketClose(int Sock);
+/* 立即拆 PCB（无 TIME_WAIT）；HotSend serve 收口后再 listen 用 */
+int TcpSocketAbort(int Sock);
 
 #endif

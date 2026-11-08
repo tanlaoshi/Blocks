@@ -32,7 +32,7 @@ void KernelHandoff(UINT64 DtbPhys) {
 #if defined(BOARD_BRINGUP_SPLASH) && BOARD_BRINGUP_SPLASH
     /*
      * MIX 2：无板上 UART。先开恒等页表再画一次（勿 MMU 前后各画：会叠花）。
-     * 验收：顶一条彩条 + 「Blocks ready」；USB-1 再画 usb: 行。
+     * 验收：彩条 + Blocks ready；USB-1 id/host；USB-2 wait dock→hub。
      */
 #if defined(BOARD_BRINGUP_IDENTITY_MAP) && BOARD_BRINGUP_IDENTITY_MAP
     (void)BoardBringUpIdentityMapEnable();
@@ -40,6 +40,7 @@ void KernelHandoff(UINT64 DtbPhys) {
     (void)BoardBringUpSplashPaint("Blocks ready");
 #if defined(BOARD_MIX2_USB_HOST_BRINGUP) && BOARD_MIX2_USB_HOST_BRINGUP
     (void)BoardMix2UsbHostProbe();
+    BoardMix2UsbHubWatch();
 #endif
 #else
     /*

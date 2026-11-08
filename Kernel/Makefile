@@ -376,6 +376,10 @@ BRINGUP_SRCS  := $(wildcard BringUp/*.c)
 BRINGUP_OBJS  := $(patsubst BringUp/%.c,$(BUILDDIR)/BringUp/%.o,$(BRINGUP_SRCS))
 BRINGUP_ARCH_SRCS := $(wildcard BringUp/$(HAL_ARCH)/*.c)
 BRINGUP_ARCH_ASM  := $(wildcard BringUp/$(HAL_ARCH)/*.S)
+# *BringUpStubs 仅 BRINGUP=1（Pixel/MIX 串口 hello）；完整核链真 Hal/Font，勿进 OBJS
+ifneq ($(BRINGUP),1)
+BRINGUP_ARCH_SRCS := $(filter-out %BringUpStubs.c,$(BRINGUP_ARCH_SRCS))
+endif
 BRINGUP_ARCH_OBJS := $(patsubst BringUp/$(HAL_ARCH)/%.c,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_SRCS)) \
                      $(patsubst BringUp/$(HAL_ARCH)/%.S,$(BUILDDIR)/BringUp/$(HAL_ARCH)/%.o,$(BRINGUP_ARCH_ASM))
 # Core：内核机制；模块表胶水在 BringUp/Initialize；业务 Init 在 Services/Core 主文件

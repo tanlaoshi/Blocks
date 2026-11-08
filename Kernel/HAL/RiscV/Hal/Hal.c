@@ -193,7 +193,10 @@ void HalTimerStartAp(void) {
     HalTrapVectorInstall();
     __asm__ volatile("csrs sie, %0" ::"r"(SIE_STIE) : "memory");
     RiscvTimerArm();
-    gTimerIrq = 1;
+    /*
+     * 勿在此置 gTimerIrq（对表 Arm64）：AP 早于 BSP SchedulerStart，
+     * 全局 UsesIrq 会让桌面 Ready 误 Hold。只由 BSP HalTimerStart 置位。
+     */
 }
 
 void HalTimerPoll(void) {

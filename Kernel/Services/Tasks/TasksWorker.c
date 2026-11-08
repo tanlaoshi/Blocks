@@ -6,6 +6,7 @@
 #include "Tasks.h"
 #include "TasksPrivate.h"
 #include "Hal.h"
+#include "HalPlatform.h"
 #include "HalDevices.h"
 #include "HalBluetooth.h"
 #include "Console.h"
@@ -56,11 +57,19 @@ void WorkerTask(void) {
         gWorkerCount++;
         /*
          * Pi：Secondary/DHCP 前再兜一次 Reveal（Desktop Ready 已露则 once 早退）。
-         * 防仅 Hold 路径又被某刀改回后永不露标。
+         * 勿再绑 !UsesIrq：psmp 后 IRQ 已开时仍须兜底，否则 Hold+DHCP continue
+         * → 进桌面鼠死（2026-11-08）。壁纸只 Ensure 一次，勿每圈 Load/Build。
          */
-        if (!HalTimerUsesIrq()) {
+        /* Pi VirtDesktop：UseVirtDesktop=1；勿 ! 取反（同 WindowManager） */
+        if (!HalCpuIsHypervisor() && HalHasFrameBuffer() &&
+            HalPlatformUseVirtDesktop()) {
             static int sRevealPiWorkerOnce;
+            static int sWallpaperPiOnce;
 
+            if (!sWallpaperPiOnce) {
+                DesktopEnsureWallpaperBuilt();
+                sWallpaperPiOnce = 1;
+            }
             if (!sRevealPiWorkerOnce) {
                 GuiCursorRevealAfterUsb();
                 sRevealPiWorkerOnce = 1;
@@ -75,19 +84,50 @@ void WorkerTask(void) {
         DesktopEnsureIconsLoaded();
         /* 切语言后扫盘重建菜单 / 落盘 lang=：必须在 Worker */
         DesktopEnsureMenuRebuilt();
-        /* fs-msc-defer：桌面后慢认旁路 U 盘；光标仍等网/iwl 静默后再 Reveal */
+        /*
+         * boot-net-defer / PR-BOOT-fast-3：桌面后先 Probe 有线，再 Claim iwl。
+         * Pi：有线须在 Secondary/MSC Hot 之前——旁路盘占 DWC2 会饿死 HID，
+         * 且 DHCP 被拖到 Secondary 后 → 托盘红+鼠不动（2026-11-08）。
+         */
         {
-            static int sSecondaryOnce;
+            static int sNetOnce;
+            static int sIwlClaimOnce;
+            static int sRevealAfterNetOnce;
+            int PiDesktop;
 
-            if (!sSecondaryOnce) {
-                FileSystemEnsureSecondaryVolumes();
-                FilesUiRefresh();
-                /* boot-hda-defer：旁路盘后认声卡（不挡进桌面） */
-                HalHdaMmioInitialize();
-                HalHdaCodecInitialize();
-                HalHdaStreamInitialize();
-                sSecondaryOnce = 1;
+            PiDesktop = (!HalCpuIsHypervisor() && HalHasFrameBuffer() &&
+                         HalPlatformUseVirtDesktop())
+                            ? 1
+                            : 0;
+            if (!sNetOnce) {
+                (void)HalNetInitialize();
+                sNetOnce = 1;
             }
+            if (PiDesktop && !sRevealAfterNetOnce) {
+                GuiCursorRevealAfterUsb();
+                sRevealAfterNetOnce = 1;
+            }
+            /*
+             * Pi：开机 hub 3 轮鼠常未 CONNECT；桌面后补扫一次（不动 SMSC）。
+             * 无鼠时 GuiPollMouse 早退曾导致网托永不刷新（同刀已修 TickClock）。
+             */
+            if (PiDesktop) {
+                static int sHidRescanOnce;
+
+                if (!sHidRescanOnce) {
+                    void BoardUsbHostControllerRescanHid(void);
+
+                    if (!HalMousePresent()) {
+                        BoardUsbHostControllerRescanHid();
+                    }
+                    sHidRescanOnce = 1;
+                }
+            }
+            if (!sIwlClaimOnce) {
+                (void)HalIwlClaim();
+                sIwlClaimOnce = 1;
+            }
+            /* WifiClaim/Scan：文末 Reveal 之后 */
         }
         /* 商店开窗：catalog/已装探测勿堵 Gui 点击路径 */
         StoreUiEnsureOpenLoad();
@@ -109,37 +149,6 @@ void WorkerTask(void) {
                 SchedulerIoBreath();
             }
         }
-        /*
-         * boot-net-defer / PR-BOOT-fast-3：桌面后先 Probe 有线，再 Claim iwl。
-         * 模块表 Network 不再 HalNetInitialize，避免拖长进桌面。
-         */
-        {
-            static int sNetOnce;
-            static int sIwlClaimOnce;
-
-            if (!sNetOnce) {
-                (void)HalNetInitialize();
-                sNetOnce = 1;
-            }
-            if (!sIwlClaimOnce) {
-                (void)HalIwlClaim();
-                sIwlClaimOnce = 1;
-            }
-            /*
-             * Pi CNTV-poll：DHCP/Store continue 曾挡文末 Reveal → 无光标且
-             * 未露时 Gui 不 HalTimerPoll → 网托 5s 采样也不走（2026-11-04）。
-             * 有线 Init 后先露一刀（Hold 仍在 Desktop Ready）；WifiClaim 仍文末。
-             */
-            if (!HalTimerUsesIrq()) {
-                static int sRevealAfterNetOnce;
-
-                if (!sRevealAfterNetOnce) {
-                    GuiCursorRevealAfterUsb();
-                    sRevealAfterNetOnce = 1;
-                }
-            }
-            /* WifiClaim/Scan：文末 Reveal 之后 */
-        }
         if (StoreJobUiIsBusy()) {
             (void)StoreJobStep();
             SchedulerIoBreath();
@@ -156,6 +165,24 @@ void WorkerTask(void) {
             (void)LwIpDhcpStep();
             SchedulerIoBreath();
             continue;
+        }
+        /*
+         * fs-msc-defer：DHCP 静默后再旁路 U 盘。
+         * 旧序 Secondary 在 Net/DHCP 前 → Pi DWC2 被 MSC Hot 占满，
+         * HID 无报告、租约晚到 → 鼠死+托盘红（2026-11-08）。
+         */
+        {
+            static int sSecondaryOnce;
+
+            if (!sSecondaryOnce) {
+                FileSystemEnsureSecondaryVolumes();
+                FilesUiRefresh();
+                /* boot-hda-defer：旁路盘后认声卡（不挡进桌面） */
+                HalHdaMmioInitialize();
+                HalHdaCodecInitialize();
+                HalHdaStreamInitialize();
+                sSecondaryOnce = 1;
+            }
         }
         /*
          * DHCP 打完后 iwl 还可能再打一行 rx=mic（组播解密，不在 BgBusy 里）。

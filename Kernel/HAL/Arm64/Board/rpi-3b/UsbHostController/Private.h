@@ -48,6 +48,7 @@ extern UINT8 gStatusBuffer[64];
 extern UINT32 gRootSpeed;
 extern UINT16 gEndpoint0MaxPacketSize;
 extern UINT8 gHubAddress;
+extern UINT8 gHubPortCount;
 extern UINT8 gTransferHub;
 extern UINT8 gTransferPort;
 extern int gTransferDoSplit;

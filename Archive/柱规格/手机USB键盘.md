@@ -177,6 +177,7 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 | 公开材料 | 线刷 DT + Synopsys DWC3 GCTL/GSNPSID；Linux dwc3 `PrtCapDir=Host` | DT / 公开内核驱动行为 |
 | Host 线材 | Type-C 坞 + **充电口接电**；§7.0 先 boot 再插坞 | 另备；Cereal 与 Host 是否互斥 |
 | 键盘 | HID Boot；插坞 **USB-A**；无 IME | 同左 |
+| 现网坞 | 绿联 **15375**：QUSB+QSCRATCH 后仍 `p*:200`；ssusb `extcon=pdphy` → 须 **SPMI Type-C/DFP**（非再拧 xHCI） | — |
 
 ---
 
@@ -184,6 +185,7 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-08 | USB-2 开干：xHCI 起环 + `wait dock` 热插扫；待手测 `hub` |
 | 2026-11-08 | **USB-1 ✅**：真机 splash 见 `id`/`host`；★→USB-2 hub 热插 |
 | 2026-11-08 | 推星 MIX 优先；USB-0：DT 钉 `dwc3@a800000`；开干 USB-1 Host 探测 |
 | 2026-11-08 | 登记 MIX 现网 Type-C 坞（双 C + 充电 C + 双 A + HDMI + RJ45 + 读卡）；验收只钉 A 口键盘+充电供电 |

@@ -1,8 +1,8 @@
 /*
  * IdentityMap.c — MIX 2 BRINGUP 最小恒等页表
  *
- * GiB0：DWC3 @0xA800000 Device；GiB2：内核 Normal + splash Device。
- * 静态表；不碰 GIC / PhysicalMemory。
+ * GiB0：DWC3/QUSB/TCSR + SPMI arb（Type-C）Device；
+ * GiB2：内核 Normal + splash Device。静态表；不碰 GIC / PhysicalMemory。
  */
 #include "Board.h"
 #include "BoardConfig.h"
@@ -35,9 +35,17 @@
     ((UINTN)((BOARD_SPLASH_PHYSICAL_BASE - GIGABYTE2_BASE) >> 21))
 #define SPLASH_BLOCK_COUNT \
     ((UINTN)(BOARD_SPLASH_PHYSICAL_SIZE >> 21))
-/* DWC3 @0xA800000 → 2MiB block index 0x54；映射 0xA000000..0xBFFFFF */
+/* DWC3@0xA800000 + QUSB@0xC012000 → 0xA000000..0xC3FFFFF */
 #define USB_DEVICE_BLOCK_INDEX  0x50u
-#define USB_DEVICE_BLOCK_COUNT  16u
+#define USB_DEVICE_BLOCK_COUNT  18u
+/* tcsr_clamp_dig_n_1p8 @0x1FCB24C → 2MiB @0x1E00000 */
+#define TCSR_CLAMP_BLOCK_INDEX  0x0Fu
+/* SPMI：core/cnfg @0x8000000；chnls @0x8400000（8×2MiB）；obsrvr 头 4MiB @0x9400000 */
+#define SPMI_CORE_BLOCK_INDEX     0x40u
+#define SPMI_CHANNELS_BLOCK_INDEX 0x42u
+#define SPMI_CHANNELS_BLOCK_COUNT 8u
+#define SPMI_OBSERVER_BLOCK_INDEX 0x4Au
+#define SPMI_OBSERVER_BLOCK_COUNT 2u
 
 static UINT64 sLevel0[512] __attribute__((aligned(4096)));
 static UINT64 sLevel1[512] __attribute__((aligned(4096)));
@@ -85,6 +93,20 @@ int BoardBringUpIdentityMapEnable(void) {
             break;
         }
         sLevel2Gigabyte0[TableIndex] = Physical | BLOCK_DEVICE;
+    }
+    sLevel2Gigabyte0[TCSR_CLAMP_BLOCK_INDEX] =
+        (((UINT64)TCSR_CLAMP_BLOCK_INDEX) << 21) | BLOCK_DEVICE;
+    sLevel2Gigabyte0[SPMI_CORE_BLOCK_INDEX] =
+        (((UINT64)SPMI_CORE_BLOCK_INDEX) << 21) | BLOCK_DEVICE;
+    for (BlockIndex = 0; BlockIndex < SPMI_CHANNELS_BLOCK_COUNT; BlockIndex++) {
+        UINTN TableIndex = SPMI_CHANNELS_BLOCK_INDEX + BlockIndex;
+        sLevel2Gigabyte0[TableIndex] =
+            (((UINT64)TableIndex) << 21) | BLOCK_DEVICE;
+    }
+    for (BlockIndex = 0; BlockIndex < SPMI_OBSERVER_BLOCK_COUNT; BlockIndex++) {
+        UINTN TableIndex = SPMI_OBSERVER_BLOCK_INDEX + BlockIndex;
+        sLevel2Gigabyte0[TableIndex] =
+            (((UINT64)TableIndex) << 21) | BLOCK_DEVICE;
     }
 
     for (BlockIndex = 0; BlockIndex < KERNEL_BLOCK_COUNT; BlockIndex++) {

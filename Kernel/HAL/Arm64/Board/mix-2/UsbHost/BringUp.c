@@ -1,5 +1,5 @@
 /*
- * UsbHostBringUp.c — PR-MIX2-USB-1：MSM8998 DWC3 最小 Host 探测
+ * UsbHost/BringUp.c — PR-MIX2-USB-1：MSM8998 DWC3 最小 Host 探测
  *
  * 证据：线刷 DT `dwc3@a800000` / `snps,dwc3`（ssusb@a800000）。
  * 对表 Synopsys DWC3：GSNPSID@0xC120、GCTL@0xC110 PrtCapDir=Host。
@@ -62,17 +62,17 @@ int BoardMix2UsbHostProbe(void) {
     char Hex[12];
     UINTN Guard;
 
-    /* 紧贴 Blocks ready 下：小字行高约 28，避免出 logo 可视带 */
-    BoardBringUpSplashPaintLine(108, "usb probe");
+    /* 紧贴 Blocks ready 下：大字 ~48px 行距 */
+    BoardBringUpSplashPaintLine(112, "usb probe");
 
     SynopsysId = *Dwc3Register(DWC3_GSNPSID_OFFSET);
     FormatHexadecimal32(Hex, SynopsysId);
     CopyText(Line, "id ", sizeof(Line));
     AppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(108, Line);
+    BoardBringUpSplashPaintLine(112, Line);
 
     if ((SynopsysId & 0xFFFF0000u) != DWC3_GSNPSID_SYNOPSYS) {
-        BoardBringUpSplashPaintLine(136, "no dwc3");
+        BoardBringUpSplashPaintLine(160, "no dwc3");
         return -1;
     }
 
@@ -98,7 +98,7 @@ int BoardMix2UsbHostProbe(void) {
     FormatHexadecimal32(Hex, GlobalControl);
     CopyText(Line, "host ", sizeof(Line));
     AppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(136, Line);
+    BoardBringUpSplashPaintLine(160, Line);
     return 0;
 }
 

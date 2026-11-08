@@ -13,6 +13,7 @@ UINT8 gStatusBuffer[64] __attribute__((aligned(64)));
 UINT32 gRootSpeed; /* HPRT PRTSPD_* */
 UINT16 gEndpoint0MaxPacketSize = 64;
 UINT8 gHubAddress;
+UINT8 gHubPortCount;
 /* 当前控制/中断目标：FS/LS 在 HS 根口后须 SPLIT */
 UINT8 gTransferHub;
 UINT8 gTransferPort;

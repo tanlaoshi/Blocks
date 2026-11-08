@@ -14,15 +14,20 @@ int HalHasFrameBuffer(void) {
 /*
  * input-f3-console（arm64）：
  *   ConsoleOnly = !FB → KernelMainVirt（只 Shell；不 Create Input/Gui）
- *   Pin = 0（解钉）；若改 1，Boot 将 Interactive/Input 全钉 0（盖过 F2 门槛）
- * 有 FB 时走 VirtDesktop + KernelMainCommon（可按 MIN Create Input@CPU2）。
+ *   Pin：Pi 真机钉 BSP（见下）；virt 解钉可按 MIN 分 Input@CPU2。
+ * 有 FB 时走 VirtDesktop + KernelMainCommon。
  */
 int HalConsoleOnly(void) {
     return HalHasFrameBuffer() ? 0 : 1;
 }
 
 int HalPinInteractiveToBootstrap(void) {
-    return 0;
+    /*
+     * Pi DWC2 单控制器：Shell/Gui 若钉 CPU1、Worker@0，HidPoll∥MSC Hot
+     * 跨核并触 → 光标在、鼠不动，旁路盘还挡 DHCP → 托盘红（2026-11-08）。
+     * 钉 BSP 与 Worker 同核协作；virt 仍 0。
+     */
+    return BOARD_IS_VIRT ? 0 : 1;
 }
 
 int HalPlatformUseVirtDesktop(void) {

@@ -144,7 +144,12 @@ void HalTimerStartAp(void) {
     HalLocalInterruptControllerInitializeCpu();
 #endif
     ArmTimerArm();
-    gTimerIrq = 1;
+    /*
+     * 勿在此置 gTimerIrq：Smp 模块拉 AP 早于 Gui Desktop Ready。
+     * 全局 UsesIrq=1 会让 Ready 走 Hold，且 Worker 早露标被跳过；
+     * Secondary/DHCP continue 一卡 → 进桌面鼠死（Pi 2026-11-08）。
+     * IRQ 策略位只由 BSP HalTimerStart（SchedulerStart）置位。
+     */
 }
 
 void HalTimerPoll(void) {

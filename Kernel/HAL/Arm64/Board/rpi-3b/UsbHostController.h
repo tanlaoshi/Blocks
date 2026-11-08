@@ -122,6 +122,8 @@
 
 /* 探针 / 主机 + hub + SPLIT HID mouse；成功 0。 */
 int BoardUsbHostControllerProbe(void);
+/* 桌面后补扫 HID（不清 gPortDone，不动已绑网口） */
+void BoardUsbHostControllerRescanHid(void);
 /* Reveal/换分辨率：驱动 Abs 与 Gui 光标对齐（同 X64 MouseHandoffDesktop） */
 void BoardUsbHostControllerMouseHandoff(UINT32 CursorX, UINT32 CursorY);
 

@@ -10,7 +10,7 @@
 | **Arch** | `Arm64` |
 | **固件** | Qualcomm aboot；控制台 = cont_splash |
 | **加载** | gzip 后的 Linux Image + `boot-chiron.img`；phys `0x80008000` |
-| **显示** | splash `0x9D600000`；32bpp；stride **4320** |
+| **显示** | splash `0x9D600000`；1080×2160；stride **4320**；相位 X **+592** ✅ / Y **0**（勿用 4352） |
 | **USB** | DWC3 `@0xA800000`（`PR-MIX2-USB-1` 探测） |
 | **能力** | `BRINGUP=1` 彩条 + 字；无板上 UART；无 IME（HID Boot 直通） |
 
@@ -50,7 +50,18 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 | `id 0x5533….` | Synopsys GSNPSID |
 | `host 0x….` | GCTL `PrtCapDir=Host` |
 
-**✅ 2026-11-08**。下一刀 USB-2：boot 后再插坞（柱规格 §7.0）。
+**✅ 2026-11-08**。
+
+---
+
+## 手测 · `PR-MIX2-USB-2`（hub 热插 · 本刀）
+
+彩条相位已 ✅，**同一次 boot 直接测坞**（勿再为像素单刷）：
+
+1. `fastboot boot …\boot-chiron.img` → 彩条齐 + `id` / `host` / `ports` / **`wait dock`**  
+2. **拔电脑线** → 插 Type-C 坞；**充电口接墙充**；USB-A 可先不插键盘  
+3. 绿：splash **`hub 0x00000001`**（或 `hub 0x1` 形）  
+4. 红：`p1:200 p2:200` + `ls 0x… typec?` → **Type-C/PMI 未把 D+/D- 交给 Host**（已排除 QUSB/QSCRATCH）；`rst|slot|addr|desc fail` 才是枚举红
 
 ---
 
@@ -62,6 +73,13 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 | `Board.c` / `Board.h` | 板名；Dram/Fb stub；USB 门面 |
 | `IdentityMap.c` | GiB0 DWC3 Device + GiB2 内核/splash |
 | `SplashPaint.c` | 彩条 + 点阵；`PaintLine` |
-| `UsbHostBringUp.c` | DWC3 GSNPSID / GCTL Host |
+| `UsbHost/BringUp.c` | DWC3 GSNPSID / GCTL Host |
+| `UsbHost/QusbPhy.c` | QUSB2 DT init-seq + PLL ready |
+| `UsbHost/Qscratch.c` | QSCRATCH UTMI-as-PIPE + Host VBUS override |
+| `UsbHost/SpmiPmicArbiter.c` | SPMI PMIC arbiter v2 读写 |
+| `UsbHost/TypeCForceHost.c` | PMI8998 Type-C DFP（`0x1368`） |
+| `UsbHost/Private.h` · `Utility.c` | USB 共用 |
+| `UsbHost/XhciStart.c` · `XhciTransfer.c` · `XhciControl.c` | xHCI 起环 / 命令 / EP0 |
+| `UsbHost/HubWatch.c` | 根口热插 + hub 编址 |
 | `link.ld` | `0x80008000` |
 | `scripts/pack-boot-image.*` | `Kernel.bin` → `boot-chiron.img` |

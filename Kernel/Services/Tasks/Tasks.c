@@ -21,6 +21,7 @@
 #include "Tasks.h"
 #include "TasksPrivate.h"
 #include "Hal.h"
+#include "HalPlatform.h"
 #include "HalConsole.h"
 #include "HalDevices.h"
 #include "Gui.h"
@@ -28,35 +29,56 @@
 #include "Scheduler.h"
 #include "SerialLog.h"
 
+/* Pi VirtDesktop：无 Input 专核，Yield/Hid 自 drain（对表 KernelTrySpawnInput） */
+static int TasksInputDrainHere(void) {
+    if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
+        return 1;
+    }
+    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+        return 1;
+    }
+    return 0;
+}
+
 /*
  * 稳态让步 +（按核数）drain（runtime-f-input）。
  *
  * 门槛 HAL_INPUT_CPU_MIN（现 4）：够分 0=Worker / 1=Shell·Gui / 2=Input，
  * 并按 1/2/4 核产品对齐；不是「板子必须 N 核」。Input 仍钉 2，CPU3+ 多 idle。
  *
- * 稳态 HalInputPoll 分域（禁止双路径抢 xHCI）：
+ * 稳态 HalInputPoll 分域（禁止双路径抢 xHCI；Pi DWC2 例外见下）：
  *   Count < MIN — 无 InputTask；此处 drain（Hid 同门闩）
  *   Count ≥ MIN — 仅 InputTask@CPU2 drain；此处只 pause/hlt
+ *   Pi VirtDesktop — 不 Create Input；此处仍 drain（单 DWC2，避跨核并触）
  * 长 Store IO：IoBreath 自带 drain（非稳态）。钉核表 sched-pin-doc。
  * 真机：勿纯 hlt 等 tick（光标锁 ~10ms+）；短自旋 + 偶发 hlt。
  */
 void YieldForPollInput(void) {
-    if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
+    if (TasksInputDrainHere()) {
         HalInputPoll();
         /*
          * Pi CNTV-poll：无定时器 IRQ 时 CondResched 无法切到 GuiTask，
-         * Shell 环代泵鼠（仅 !UsesIrq；x64/virt 仍只 GuiTask 泵）。
+         * Shell 环须代泵鼠。
+         * psmp 后 UsesIrq=1：Gui 与 Shell 同核（Pin BSP）时仍易被
+         * HalNetPoll/LwIp 长圈饿死 → 光标不跟、TickClock 不跑、托盘红
+         * 而壳 `ip` 有址（2026-11-08）。Pi VirtDesktop 有 IRQ 也代泵。
+         * x64/virt：仍只 GuiTask 泵（!UsesIrq 才进此枝的旧条件保留给非 Pi）。
          */
-        if (!HalTimerUsesIrq() && GuiCursorUsbReady()) {
-            GuiPollMouse();
+        if (GuiCursorUsbReady()) {
+            if (!HalTimerUsesIrq() ||
+                (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop())) {
+                GuiPollMouse();
+            }
         }
     }
     /*
-     * Pi 有 FB：Worker 无 CNTV IRQ 易饿死（同 DHCP 挂 Shell 环）。
-     * DesktopWorkerTick→PollUnplug 不跑 → 闲置拔卡无窗；开 Settings 触盘才认。
-     * 失根探活挂 !TimerIrq 路径（内节流 ~0.5s；Notify 当场 BootGone）。
+     * Pi µSD 失根：Notify→大窗在 PollUnplug 内。
+     * 无 IRQ 时 Worker 易饿 → 须 Shell 代探。
+     * 有 IRQ 后若仍只挂 !UsesIrq：Pin BSP 下 Shell 长圈网泵仍饿 Worker →
+     * 拔卡无提示（2026-11-08）。Pi VirtDesktop 有 IRQ 也代探。
      */
-    if (!HalTimerUsesIrq()) {
+    if (!HalTimerUsesIrq() ||
+        (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop())) {
         (void)HalUsbMscPollUnplug();
     }
     if (!HalCpuIsHypervisor()) {

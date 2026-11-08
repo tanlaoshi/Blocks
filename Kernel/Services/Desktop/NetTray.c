@@ -38,17 +38,20 @@ UINT32 DesktopNetTrayCurrentIp(void) {
 
     /*
      * 真机先读 HalNet（与壳回落同口径），再 NetConfig。
-     * 避免仅走 NetConfigGetIp→Ensure 的时序坑；QEMU 仍只信 NetConfig
-     * （防 SLIRP 残留误绿）。
+     * NetConfigEnsure 会从 lwIP netif 回填（DHCP 已写 netif 未 Adopt 时）。
+     * QEMU 仍只信 NetConfig（防 SLIRP 残留误绿）。
      */
     if (HalCpuIsHypervisor()) {
         return NetConfigGetIp();
     }
-    Ip = HalNetGetIpAddress();
+    /*
+     * 先 Ensure：把 netif 租约推回 gSmscIp，再读 Hal，避免托盘红而 ping 通。
+     */
+    Ip = NetConfigGetIp();
     if (Ip != 0u) {
         return Ip;
     }
-    return NetConfigGetIp();
+    return HalNetGetIpAddress();
 }
 
 NET_TRAY_KIND DesktopNetTrayDetectKind(void) {

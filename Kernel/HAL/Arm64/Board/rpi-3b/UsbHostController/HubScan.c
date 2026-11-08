@@ -2,6 +2,7 @@
  * HubScan.c — hub 多轮扫口（bd-pi-usb）
  */
 #include "UsbHostController/Private.h"
+#include "HalConsole.h"
 
 void HubScanPortsOnce(UINT8 Hub, UINT8 PortCount, UINT8 Pass) {
     UINT8 P;
@@ -104,6 +105,7 @@ void HubScanPorts(UINT8 Hub) {
     if (PortCount > 8) {
         PortCount = 8;
     }
+    gHubPortCount = PortCount;
     PwrGood = HubDesc[5];
     if (PwrGood == 0) {
         PwrGood = 50;
@@ -152,6 +154,38 @@ void HubScanPorts(UINT8 Hub) {
             HalSerialBootMark(" (mouse ok)");
         }
         HalSerialBootMark("\n");
+    }
+}
+
+/*
+ * 桌面后补扫 HID：勿清 gPortDone、勿再 SET_CFG（免弄死已绑 SMSC）。
+ * 只扫尚未成功的口；鼠慢 CONNECT 时开机 3 轮不够（2026-11-08）。
+ */
+void BoardUsbHostControllerRescanHid(void) {
+    UINT8 Pass;
+    UINT8 Ports;
+
+    if (gMouseOk) {
+        return;
+    }
+    if (gHubAddress == 0 || gHubPortCount == 0) {
+        return;
+    }
+    Ports = gHubPortCount;
+    HalConsoleWriteSerial("Boot: DWC2 HID rescan\n");
+    for (Pass = 1; Pass <= 2; Pass++) {
+        HubScanPortsOnce(gHubAddress, Ports, Pass);
+        if (gMouseOk) {
+            break;
+        }
+        if (Pass < 2) {
+            Dwc2DelayMilliseconds(300);
+        }
+    }
+    if (gMouseOk || gKeyboardOk) {
+        if (DriverInputAttach(&gInputBackend) == 0 && gMouseOk) {
+            HalConsoleWriteSerial("Boot: DWC2 HID rescan mouse ok\n");
+        }
     }
 }
 

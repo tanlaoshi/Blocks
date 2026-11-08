@@ -34,13 +34,19 @@
 #define BOARD_IS_VIRT          0
 
 /*
- * fb0（PR-MIX2-1）：bpp=32 stride=4352（1088×4）。
- * aboot splash 用 4352 会整幅往右下斜 → 改 width×4=4320（真机对表）。
+ * 面板：1080×2160。cont_splash stride=4320（=宽×4）；fb0 的 4352 会右下斜，勿混用。
+ *
+ * 水平相位（真机 ✅ 2026-11-08）：PHASE_X=592；左右缘无串色。
+ *   链记：56→580→596（过）→590（欠）→592。非半屏对调。
+ * 纵向：PHASE_Y=0。上缘~30mm 留白属 aboot/可视带；勿行 wrap（1684→全黑）。
+ * 逻辑 (0,0)=缓冲左上（彩条贴缓冲顶）。
  */
 #define BOARD_FRAMEBUFFER_WIDTH           1080
 #define BOARD_FRAMEBUFFER_HEIGHT          2160
 #define BOARD_FRAMEBUFFER_BITS_PER_PIXEL  32
 #define BOARD_FRAMEBUFFER_STRIDE_BYTES    4320
+#define BOARD_FRAMEBUFFER_PHASE_X         592
+#define BOARD_FRAMEBUFFER_PHASE_Y         0
 
 /*
  * splash：

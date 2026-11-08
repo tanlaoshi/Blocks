@@ -64,6 +64,12 @@ void GuiPollMouse(void) {
     int NeedMove;
 
     if (!HalMousePresent()) {
+        /*
+         * 无鼠仍须 TickClock：否则 Worker/DHCP 已抬网托脏位，
+         * Gui 永不画栏 → 壳 `ip` 有址、托盘一直红（Pi 2026-11-08）。
+         */
+        DesktopTickClock();
+        StoreUiPump();
         return;
     }
 

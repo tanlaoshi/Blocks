@@ -6,6 +6,12 @@
 #include "HalDevices.h"
 #include "LwIp.h"
 #include "Desktop.h"
+#ifdef LWIP_ENABLE
+#include "lwip/dns.h"
+#include "lwip/netif.h"
+#include "Netif.h"
+#include "Ip.h"
+#endif
 
 #define NET_CFG_IP_QEMU      0x0A00020FU  /* 10.0.2.15 */
 #define NET_CFG_MASK_DEFAULT 0xFFFFFF00U  /* /24 */
@@ -39,6 +45,53 @@ static int UseQemuSlirp(void) {
     return 0;
 }
 
+/*
+ * DHCP 可能只写了 lwIP netif（Service 推进），Worker 未 Adopt →
+ * NetConfig/gSmscIp 仍 0、托盘红，但 ping 已通（Pi 2026-11-08）。
+ * 此处回填配置表与驱动镜像；勿调 HalNetGetIpAddress（防与 Ensure 互递归）。
+ */
+static UINT32 HealFromLwIpNetif(void) {
+#ifdef LWIP_ENABLE
+    struct netif *Netif;
+    UINT32 Ip;
+    UINT32 Mask;
+    UINT32 Gateway;
+    UINT32 Dns;
+    const ip_addr_t *DnsServer;
+
+    if (!LwIpActive()) {
+        return 0;
+    }
+    Netif = LwIpNetifGet();
+    if (Netif == 0) {
+        return 0;
+    }
+    Ip = ToyLwIpToHost(netif_ip4_addr(Netif));
+    if (Ip == 0u) {
+        return 0;
+    }
+    Mask = ToyLwIpToHost(netif_ip4_netmask(Netif));
+    Gateway = ToyLwIpToHost(netif_ip4_gw(Netif));
+    Dns = 0;
+    DnsServer = dns_getserver(0);
+    if (DnsServer != 0 && !ip_addr_isany(DnsServer)) {
+        Dns = ToyLwIpToHost(ip_2_ip4(DnsServer));
+    }
+    if (Mask == 0u) {
+        Mask = NET_CFG_MASK_DEFAULT;
+    }
+    gIp = Ip;
+    gMask = Mask;
+    gGw = Gateway;
+    gDns = Dns;
+    HalNetSetIpAddress(Ip);
+    DesktopNotifyNetChanged();
+    return Ip;
+#else
+    return 0;
+#endif
+}
+
 void NetConfigEnsure(void) {
     if (gReady) {
         /*
@@ -48,9 +101,20 @@ void NetConfigEnsure(void) {
             ApplyQemuSlirp();
             return;
         }
-        /* Attach 晚于首次 Ensure、或 Hal 后端曾空写：把配置表推回驱动 */
-        if (gIp != 0 && HalNetGetIpAddress() != gIp) {
-            HalNetSetIpAddress(gIp);
+        if (gIp == 0u) {
+            (void)HealFromLwIpNetif();
+            return;
+        }
+        /*
+         * 配置表有址：仅在驱动镜像不一致时推回（勿每拍 SetIp，
+         * 托盘/壳 Ensure 很勤）。
+         */
+        {
+            UINT32 DriverIp = HalNetGetIpAddress();
+
+            if (DriverIp != gIp) {
+                HalNetSetIpAddress(gIp);
+            }
         }
         return;
     }
@@ -64,15 +128,24 @@ void NetConfigEnsure(void) {
          * 托盘 NetConfigGetIp→Ensure 若抢在 Adopt 前，会把壳 `ip` 还能读到的
          * 地址抹掉，且 gIp 一直 0 → 托盘红（Pi 2026-11-04）。
          */
+        /*
+         * 只读驱动镜像，勿经 NetConfig 回落（Hal 若再调 GetIp→Ensure 会递归）。
+         */
         Existing = HalNetGetIpAddress();
         gIp = Existing;
         gGw = 0;
         gDns = 0;
         if (Existing == 0u) {
-            HalNetSetIpAddress(0);
+            /* 驱动空：先试 lwIP 已有租约，再决定是否保持 0 */
+            if (HealFromLwIpNetif() == 0u) {
+                HalNetSetIpAddress(0);
+            }
         }
     }
     gReady = 1;
+    if (gIp == 0u && !UseQemuSlirp()) {
+        (void)HealFromLwIpNetif();
+    }
 }
 
 UINT32 NetConfigGetIp(void) {

@@ -7,6 +7,7 @@
 #include "Tasks.h"
 #include "TasksPrivate.h"
 #include "Hal.h"
+#include "HalPlatform.h"
 #include "HalVideo.h"
 #include "HIDKeyboard.h"
 #include "Console.h"
@@ -123,9 +124,11 @@ void TasksPumpKeyboard(void) {
 
     /*
      * Count≥HAL_INPUT_CPU_MIN：HalInputPoll 归 InputTask；此处只 dequeue。
+     * Pi VirtDesktop：无 Input 专核，与 Yield 同门闩自 drain。
      * 用户态 sleep 钉 BSP 且不抢占时，Shell 同核转不到 → 须在 poll 路径自抽。
      */
-    if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
+    if (HalCpuCount() < HAL_INPUT_CPU_MIN ||
+        (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop())) {
         HalInputPoll();
     }
     while (HalKeyboardDequeue(&Report)) {

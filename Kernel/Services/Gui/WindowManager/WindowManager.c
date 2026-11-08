@@ -13,6 +13,7 @@
 #include "HalVideo.h"
 #include "HalSerial.h"
 #include "Hal.h"
+#include "HalPlatform.h"
 #include "Debug.h"
 #include "Theme.h"
 #include "Desktop.h"
@@ -199,15 +200,19 @@ void GuiDesktopInitialize(void) {
     HalInputMouseHandoffDesktop(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     /*
      * X64：Hold 至 Worker 静默后 Reveal。
-     * Pi CNTV-poll：Worker 易卡 Secondary/DHCP continue → 永不露标、网托
-     * 也不刷新（2026-11-04 手测：Hold-only / 仅 Net 后 Reveal 均无光标）。
-     * 无定时器 IRQ 则 Desktop Ready 即 Reveal；网好前可能暂不能动，绿后可拖
-     * （用户认可用）。WifiClaim 仍在 Worker 文末。
+     * Pi：有 FB 且走 VirtDesktop（UseVirtDesktop=1）→ Desktop Ready 即 Reveal。
+     * 勿写 !UseVirtDesktop：真机有屏恰为 1，取反后永远进不了本枝，
+     * 只剩 poll timer；Worker 壁纸/早露也同死（2026-11-08 串口：poll timer）。
+     * 旧判 UsesIrq 不可靠——Smp AP 曾误置 gTimerIrq → Hold+早露跳过 → 鼠死。
+     * WifiClaim 仍在 Worker 文末。
      */
     if (!HalCpuIsHypervisor()) {
-        if (!HalTimerUsesIrq()) {
+        if (HalHasFrameBuffer() && HalPlatformUseVirtDesktop()) {
             GuiCursorRevealAfterUsb();
-            HalSerialBootMark("Boot: cursor reveal (pi poll timer)\n");
+            HalSerialBootMark("Boot: cursor reveal (pi desktop)\n");
+        } else if (!HalTimerUsesIrq()) {
+            GuiCursorRevealAfterUsb();
+            HalSerialBootMark("Boot: cursor reveal (poll timer)\n");
         } else {
             HalInputMouseHoldUntilReveal(1);
             HalSerialBootMark("Boot: mouse hold until reveal\n");

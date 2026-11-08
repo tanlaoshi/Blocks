@@ -1,7 +1,8 @@
 /*
  * SplashPaint.c — BRINGUP：往 cont_splash 画彩条 + 「Blocks ready」
  *
- * 格式：XRGB8888，stride=BOARD_FRAMEBUFFER_STRIDE_BYTES（PR-MIX2-1）。
+ * 格式：XRGB8888，stride=BOARD_FRAMEBUFFER_STRIDE_BYTES。
+ * 水平相位 PHASE_X=592（真机左右缘干净）；纵向 PHASE_Y=0。非半屏对调。
  * 8×8 点阵仅覆盖打印 ASCII；不碰 MDSS / DSI。
  */
 #include "Board.h"
@@ -122,10 +123,22 @@ static const UINT8 sGlyphBitmap[95][8] = {
     {0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00},
 };
 
+/* 视觉 x/y → 缓冲：相位 wrap */
+static UINT32 MapFramebufferX(UINT32 VisualX) {
+    return (VisualX + BOARD_FRAMEBUFFER_PHASE_X) % BOARD_FRAMEBUFFER_WIDTH;
+}
+
+static UINT32 MapFramebufferY(UINT32 VisualY) {
+    return (VisualY + BOARD_FRAMEBUFFER_PHASE_Y) % BOARD_FRAMEBUFFER_HEIGHT;
+}
+
 static volatile UINT32 *PixelAt(UINT64 SplashBase, UINT32 X, UINT32 Y) {
     UINT8 *Base = (UINT8 *)(UINTN)SplashBase;
-    return (volatile UINT32 *)(Base + (UINTN)Y * BOARD_FRAMEBUFFER_STRIDE_BYTES +
-                               (UINTN)X * 4u);
+    UINT32 BufferX = MapFramebufferX(X);
+    UINT32 BufferY = MapFramebufferY(Y);
+
+    return (volatile UINT32 *)(Base + (UINTN)BufferY * BOARD_FRAMEBUFFER_STRIDE_BYTES +
+                               (UINTN)BufferX * 4u);
 }
 
 static void FillRectangle(UINT64 SplashBase, UINT32 X0, UINT32 Y0, UINT32 Width,
@@ -188,19 +201,23 @@ static void DrawStringScaled(UINT64 SplashBase, UINT32 Left, UINT32 Top,
 
 static void PaintOne(UINT64 SplashBase, const char *Text) {
     UINT32 BarHeight = 48u;
+    UINT32 StatusPanelHeight = 360u;
+    UINT32 Quarter = BOARD_FRAMEBUFFER_WIDTH / 4u;
 
-    FillRectangle(SplashBase, 0, 0, BOARD_FRAMEBUFFER_WIDTH / 4u, BarHeight,
-                  COLOR_BAR_RED);
-    FillRectangle(SplashBase, BOARD_FRAMEBUFFER_WIDTH / 4u, 0,
-                  BOARD_FRAMEBUFFER_WIDTH / 4u, BarHeight, COLOR_BAR_GREEN);
-    FillRectangle(SplashBase, BOARD_FRAMEBUFFER_WIDTH / 2u, 0,
-                  BOARD_FRAMEBUFFER_WIDTH / 4u, BarHeight, COLOR_BAR_BLUE);
-    FillRectangle(SplashBase, (BOARD_FRAMEBUFFER_WIDTH * 3u) / 4u, 0,
-                  BOARD_FRAMEBUFFER_WIDTH - (BOARD_FRAMEBUFFER_WIDTH * 3u) / 4u,
-                  BarHeight, COLOR_BAR_WHITE);
+    FillRectangle(SplashBase, 0, 0, BOARD_FRAMEBUFFER_WIDTH, StatusPanelHeight,
+                  COLOR_TEXT_BACK);
 
-    FillRectangle(SplashBase, 16, BarHeight + 16u, BOARD_FRAMEBUFFER_WIDTH - 32u,
-                  GLYPH_HEIGHT * TEXT_SCALE + 24u, COLOR_TEXT_BACK);
+    /* 左→右：红 | 绿 | 蓝 | 白（各 270px） */
+    FillRectangle(SplashBase, 0, 0, Quarter, BarHeight, COLOR_BAR_RED);
+    FillRectangle(SplashBase, Quarter, 0, Quarter, BarHeight, COLOR_BAR_GREEN);
+    FillRectangle(SplashBase, Quarter * 2u, 0, Quarter, BarHeight, COLOR_BAR_BLUE);
+    FillRectangle(SplashBase, Quarter * 3u, 0, Quarter, BarHeight, COLOR_BAR_WHITE);
+    DrawStringScaled(SplashBase, Quarter / 2u - 8u, 12u, "R", COLOR_TEXT_BACK, 2u);
+    DrawStringScaled(SplashBase, Quarter + Quarter / 2u - 8u, 12u, "G", COLOR_TEXT_BACK, 2u);
+    DrawStringScaled(SplashBase, Quarter * 2u + Quarter / 2u - 8u, 12u, "B", COLOR_TEXT_BACK, 2u);
+    DrawStringScaled(SplashBase, Quarter * 3u + Quarter / 2u - 8u, 12u, "W", COLOR_TEXT_BACK, 2u);
+
+    /* 标题在彩条下方黑底上（不在红格里面）——这是刻意排版，不是错位 */
     DrawStringScaled(SplashBase, 32, BarHeight + 24u, Text, COLOR_TEXT, TEXT_SCALE);
 }
 
@@ -215,11 +232,11 @@ int BoardBringUpSplashPaint(const char *Text) {
 }
 
 /*
- * 状态行：小字（scale=2）贴在彩条标题正下方，避免大字裁切 / 出 logo 可视带。
+ * 状态行：与标题同级 scale=4（真机可读）；调用方须按 ~48px 行距排 Y。
  */
 int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text) {
     UINT64 SplashBase = BOARD_SPLASH_PHYSICAL_BASE;
-    UINT32 Scale = 2u;
+    UINT32 Scale = TEXT_SCALE;
     UINT32 LineHeight;
 
     if (Text == 0) {

@@ -17,6 +17,8 @@
 #include "BootHandoff.h"
 #include "SerialLog.h"
 #include "Hal.h"
+#include "HalPlatform.h"
+#include "HalConsole.h"
 #include "HalSerial.h"
 #include "Scheduler.h"
 #include "KernelModules.h"
@@ -45,6 +47,16 @@ static void KernelSpawnOrPark(const char *Name, void (*Entry)(void)) {
  */
 static void KernelTrySpawnInput(void) {
     if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
+        return;
+    }
+    /*
+     * Pi VirtDesktop：DWC2 单控制器。Input@CPU2 与 Worker@0 并触 →
+     * 光标 Reveal 后队列空、鼠不动（2026-11-08）。HID 改由 Gui/Shell
+     * Yield 同核 drain（Tasks.c / Hid.c 同门闩）。
+     */
+    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+        /* SchedulerStart 后 BootMark 不占口；用 Console 才能在 CoolTerm 见 */
+        HalConsoleWriteSerial("Boot: Input skip (pi dwc2 same-controller)\n");
         return;
     }
     if (SchedulerCreate("Input", InputTask) < 0) {

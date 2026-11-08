@@ -18,5 +18,7 @@ int BoardBringUpSplashPaint(const char *Text);
 int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text);
 /* PR-MIX2-USB-1：DWC3 MMIO 可读并切 Host */
 int BoardMix2UsbHostProbe(void);
+/* PR-MIX2-USB-2：xHCI 起环后热插扫坞 hub（不返回） */
+void BoardMix2UsbHubWatch(void);
 
 #endif /* BOARD_H */

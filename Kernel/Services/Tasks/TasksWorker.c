@@ -8,6 +8,10 @@
 #include "Hal.h"
 #include "HalPlatform.h"
 #include "HalDevices.h"
+
+/* Pi 板强符号覆盖；X64/Duo/virt 无此入口时走空弱桩（否则 x86 链失败） */
+__attribute__((weak)) void BoardUsbHostControllerRescanHid(void) {
+}
 #include "HalBluetooth.h"
 #include "Console.h"
 #include "Gui.h"

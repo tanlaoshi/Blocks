@@ -6,6 +6,8 @@
  */
 #include "Ksend/Private.h"
 #include "Ksend/TransportPrivate.h"
+#include "Hal.h"
+#include "HalPlatform.h"
 #include "LwIp.h"
 #include "Scheduler.h"
 
@@ -60,10 +62,17 @@ static void BreathWhileWired(void) {
     }
     LwIpService();
     /*
-     * 落盘长圈也须泵网：否则 win=8 写 SD 时 TCP 饿死，主机卡在早期 block retry
-     *（Pi 2026-11-08：UMING 4.5MB block 5）。IoBreath 兼采串口 Ctrl-C。
+     * 落盘长圈须泵网（Pi win 攒批写 SD 曾饿死 TCP）。
+     * Pi VirtDesktop：无 InputTask → IoBreath 代泵 HID + Ctrl-C。
+     * X64：禁 IoBreath（InputTask 主人；双泵饿 xHCI/网 —— NUC 2026-11-08
+     * 首窗 8 块后 hotsend exit2，像复制了 Pi 大文件问题）。
      */
-    SchedulerIoBreath();
+    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+        SchedulerIoBreath();
+    } else {
+        SchedulerSetNeedResched();
+        (void)SchedulerCondResched();
+    }
     (void)TransportPollUserAbort();
 }
 

@@ -40,6 +40,7 @@ static UINT8 sTypeCStatus1Byte;
 static UINT8 sTypeCStatus2Byte;
 static UINT8 sTypeCStatus4Byte;
 static UINT8 sAttachPhyKickDone;
+static UINT8 sAttachMaintainSettled;
 static int sTypeCLastResult = -1;
 
 int UsbHostTypeCLastResult(void) {
@@ -121,7 +122,8 @@ static int WriteTypeCHostControl(void) {
 }
 
 /*
- * 插坞后轮询：cc attach → 软件 VCONN（Rd/Ra 时）+ 保 CMD_OTG + 一次 PHY 重踢。
+ * 插坞后：VCONN/OTG/analog/PHY **只收一次**。
+ * 反例：每秒重写 gpio59/60 与 CMD_OTG → 复位 chirp 卡 Polling（e10e1）。
  */
 void UsbHostTypeCMaintainAfterAttach(void) {
     UINT8 Status4;
@@ -132,6 +134,10 @@ void UsbHostTypeCMaintainAfterAttach(void) {
     Status2 = UsbHostTypeCStatus2Byte();
     if ((Status4 & TYPE_C_STATUS_ATTACHED_BIT) == 0) {
         sAttachPhyKickDone = 0;
+        sAttachMaintainSettled = 0;
+        return;
+    }
+    if (sAttachMaintainSettled != 0) {
         return;
     }
 
@@ -165,6 +171,7 @@ void UsbHostTypeCMaintainAfterAttach(void) {
         (void)UsbHostQusbPhyAttachKick();
         (void)UsbHostQscratchConfigureForHost();
     }
+    sAttachMaintainSettled = 1;
 }
 
 int UsbHostTypeCForceHost(void) {
@@ -176,7 +183,7 @@ int UsbHostTypeCForceHost(void) {
     sTypeCStatus1Byte = 0;
     sTypeCStatus2Byte = 0;
     sTypeCStatus4Byte = 0;
-    sAttachPhyKickDone = 0;
+    /* 保留 sAttachPhyKickDone：重复 ForceHost 时勿再踢 PHY */
     if (UsbHostSpmiArbiterProbe() != 0) {
         sTypeCLastResult = -1;
         return sTypeCLastResult;

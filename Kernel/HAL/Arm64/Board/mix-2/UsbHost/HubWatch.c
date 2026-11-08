@@ -28,8 +28,8 @@ void BoardMix2UsbHubWatch(void) {
         }
     }
 
+    /* XhciStart 内已 ForceHost+OTG；此处勿再 ForceHost（会关 boost → os0） */
     (void)BoardBringUpSplashPaint("usb hub");
-    (void)UsbHostTypeCForceHost();
 
     PortCount = UsbHostXhciMaxPorts();
     if (PortCount == 0) {
@@ -49,32 +49,43 @@ void BoardMix2UsbHubWatch(void) {
     UsbHostEnumerateStatusCodeClear();
 
     for (;;) {
+        UINT32 EnumerateAttempted = SawConnect; /* 同一次插着只枚举一回 */
+
         UsbHostTypeCMaintainAfterAttach();
 
-        for (PortIndex = 1; PortIndex <= PortCount; PortIndex++) {
-            UINT32 State = UsbHostRootPortStatus(PortIndex);
-            UINT32 Stable = State & PORT_STATUS_STABLE_MASK;
+        {
+            UINT32 Usb2Mask = UsbHostXhciUsb2PortBitMask();
+            UINT32 PreferUsb2Port = 0;
+            UINT32 AnyConnectPort = 0;
+            UINT32 AnyConnect = 0;
 
-            LastStable[PortIndex] = Stable;
+            for (PortIndex = 1; PortIndex <= PortCount; PortIndex++) {
+                UINT32 State = UsbHostRootPortStatus(PortIndex);
+                UINT32 Stable = State & PORT_STATUS_STABLE_MASK;
 
-            if ((Stable & PORT_STATUS_CONNECT) != 0 && HubAddress == 0) {
-                if (UsbHostEnumerateHubOnPort(PortIndex, &HubAddress) == 0) {
-                    SawConnect = 1;
+                LastStable[PortIndex] = Stable;
+                if ((Stable & PORT_STATUS_CONNECT) == 0) {
+                    continue;
                 }
-            } else if ((Stable & PORT_STATUS_CONNECT) == 0 && SawConnect != 0) {
-                UINT32 AnyConnect = 0;
-                UINT32 Check;
-                for (Check = 1; Check <= PortCount; Check++) {
-                    if ((LastStable[Check] & PORT_STATUS_CONNECT) != 0) {
-                        AnyConnect = 1;
-                        break;
-                    }
+                AnyConnect = 1;
+                if (AnyConnectPort == 0) {
+                    AnyConnectPort = PortIndex;
                 }
-                if (AnyConnect == 0) {
-                    HubAddress = 0;
-                    SawConnect = 0;
-                    UsbHostEnumerateStatusCodeClear();
+                if ((Usb2Mask & (1u << PortIndex)) != 0) {
+                    PreferUsb2Port = PortIndex;
                 }
+            }
+
+            if (HubAddress == 0 && EnumerateAttempted == 0 &&
+                AnyConnectPort != 0) {
+                UINT32 Target =
+                    (PreferUsb2Port != 0) ? PreferUsb2Port : AnyConnectPort;
+                SawConnect = 1;
+                (void)UsbHostEnumerateHubOnPort(Target, &HubAddress);
+            } else if (AnyConnect == 0 && SawConnect != 0) {
+                HubAddress = 0;
+                SawConnect = 0;
+                UsbHostEnumerateStatusCodeClear();
             }
         }
 

@@ -43,10 +43,11 @@ void DesktopNotifyNetChanged(void) {
 }
 
 void DesktopWorkerTick(void) {
-    static UINT32 LastCheckMilliseconds;
-    static UINT32 LastRtcNetMilliseconds;
+    static UINT64 LastCheckTick;
+    static UINT64 LastRtcNetTick;
     static int sRemountWant;
-    UINT32 NowMilliseconds;
+    UINT64 Now;
+    UINT32 Tps;
     UINT8 Hour = 0;
     UINT8 Minute = 0;
     int Ok;
@@ -54,16 +55,22 @@ void DesktopWorkerTick(void) {
     int Hot;
 
     /*
-     * 墙钟用 HalMilliseconds（CNTVCT），勿绑 HalCpuTicks：
-     * Pi 软 tick 若与 IRQ 不同步，Last* 节流卡死 → 栏钟永不跳（2026-11-08）。
+     * 节流必须用 HalCpuTicks，勿改 HalMilliseconds。
+     * Arm64 CNTV IRQ 默认 10ms → 软 tick≈100Hz，而 HalTicksPerSec()=1000：
+     * 名不副实。绿基线靠这套「偏慢」节流；改成真毫秒后 HotPoll≈0.5s 一拍，
+     * Pi 单控 DWC2 闲置十余分钟会饿死 HID（2026-11-08）。
+     * 墙钟本身仍走 SoftRtc（HalRtcGetTime/CNTVCT）。
      */
-    NowMilliseconds = HalMilliseconds();
-    /* HotPoll 入口仍 ~2Hz（内部拔检/热插已 5s 节流） */
-    if (LastCheckMilliseconds != 0 &&
-        (UINT32)(NowMilliseconds - LastCheckMilliseconds) < 500u) {
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    /* HotPoll 入口仍 ~2Hz（名义；实墙钟更疏，见上） */
+    if (LastCheckTick != 0 && (Now - LastCheckTick) < (UINT64)(Tps / 2u)) {
         return;
     }
-    LastCheckMilliseconds = NowMilliseconds;
+    LastCheckTick = Now;
 
     /* 失根：先 Poll（可能本拍才 Notify），再画窗。勿 LogFs 抢在窗前（落盘可堵）。 */
     if (HalUsbMscPollUnplug() == 1) {
@@ -104,13 +111,12 @@ void DesktopWorkerTick(void) {
 
     /*
      * CMOS/网托勿跟 2Hz：UIP~1Hz + 真机 CMOS 可能进 SMM，空拖规律 0.5s 一顿。
-     * 钟栏 HH:MM / 网标 ~5s 看一次足够。
+     * 钟栏 HH:MM / 网标 ~5s 看一次足够（名义 Tps*5；实墙钟更疏，见函首注释）。
      */
-    if (LastRtcNetMilliseconds != 0 &&
-        (UINT32)(NowMilliseconds - LastRtcNetMilliseconds) < 5000u) {
+    if (LastRtcNetTick != 0 && (Now - LastRtcNetTick) < (UINT64)Tps * 5u) {
         return;
     }
-    LastRtcNetMilliseconds = NowMilliseconds;
+    LastRtcNetTick = Now;
 
     NeedPaint = 0;
     Ok = (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) ? 1 : 0;
@@ -130,36 +136,11 @@ void DesktopWorkerTick(void) {
 
 void DesktopTickClock(void) {
     int NeedPaint;
-    static UINT32 sGuiRtcSampleMilliseconds;
-
-    /*
-     * Gui 侧墙钟采样：Pi 同核时 Worker 若被 SHELL 档饿死，栏钟永不跳。
-     * 与 WorkerTick 同判据；HalMilliseconds=CNTVCT，不绑软 tick。
-     */
-    {
-        UINT32 NowMilliseconds;
-        UINT8 Hour = 0;
-        UINT8 Minute = 0;
-
-        NowMilliseconds = HalMilliseconds();
-        if (sGuiRtcSampleMilliseconds == 0u ||
-            (UINT32)(NowMilliseconds - sGuiRtcSampleMilliseconds) >= 1000u) {
-            sGuiRtcSampleMilliseconds = NowMilliseconds;
-            if (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) {
-                if (!(gClockValid && Hour == gClockHour &&
-                      Minute == gClockMinute)) {
-                    sClockBarNeedPaint = 1;
-                }
-            }
-            if (DesktopNetTrayLabelChanged()) {
-                sClockBarNeedPaint = 1;
-            }
-        }
-    }
 
     /*
      * 图标/壁纸补刷优先于「鼠未闲就 return」：否则 BMP 已加载仍一直纯色占位。
      * 拖窗/栏钟仍要闲下来再画（全栏 Present 饿 xHCI）。
+     * 钟/网托采样只在 WorkerTick（勿 Gui 1Hz SoftRtc：会密 Present/读托盘）。
      */
     /* gui-wall-defer：Worker 建完壁纸后整桌刷新（勿在 Gui 路径 Build） */
     if (DesktopWallConsumeNeedRefresh()) {

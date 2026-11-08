@@ -208,12 +208,12 @@ int UsbHostOtgVbusEnable(void) {
     UINT8 LimitCode;
     int StepResult;
 
-    sOtgConfigurationByte = 0;
-    sOtgStatusByte = 0;
-    sCommandOtgByte = 0;
-    sUsbinCommandByte = 0;
-    sOtgEngineeringByte = 0;
-    sOtgInterruptStatusByte = 0;
+    RefreshOtgDiagnostics();
+    /* 已 softstart 则勿再 CMD_OTG=0；二次 ForceHost 曾把 os a 打成 os 0 */
+    if (SoftstartDone() != 0 &&
+        (sCommandOtgByte & COMMAND_OTG_ENABLE) != 0) {
+        return 0;
+    }
 
     StepResult = SuspendUsbinForBoost();
     if (StepResult != 0) {
@@ -237,12 +237,8 @@ int UsbHostOtgVbusEnable(void) {
         }
     }
 
-    (void)UsbHostSpmiWriteByte(PMI8998_SLAVE_IDENTIFIER,
-                               OTG_CURRENT_LIMIT_CONFIGURATION_ADDRESS, 0);
-    (void)UsbHostSpmiWriteByte(PMI8998_SLAVE_IDENTIFIER, COMMAND_OTG_ADDRESS,
-                               COMMAND_OTG_ENABLE);
     RefreshOtgDiagnostics();
-    return 0;
+    return -12;
 }
 
 #else

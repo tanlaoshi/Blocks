@@ -494,25 +494,36 @@ void GuiCursorShow(void) {
     GraphicsPresent();
 }
 
-/* 最近一次指针位移；供钟栏/HotPoll 让路（墙钟毫秒，勿绑软 tick） */
-static UINT32 gPointerActivityMilliseconds;
-static int gPointerActivitySeen;
+/*
+ * 最近一次指针位移（HalCpuTicks）；供钟栏/HotPoll 让路。
+ * 勿改 HalMilliseconds：Arm64 软 tick≈100Hz 而 HalTicksPerSec=1000，
+ * 绿基线闲置门限名义 400ms、实约数秒；真毫秒会过早放行 HotPoll/栏 Present，
+ * Pi DWC2 闲置十余分钟鼠死（2026-11-08）。
+ */
+static UINT64 gPointerActivityTick;
 
 void GuiPointerNoteActivity(void) {
-    gPointerActivityMilliseconds = HalMilliseconds();
-    gPointerActivitySeen = 1;
+    gPointerActivityTick = HalCpuTicks(0);
 }
 
 int GuiPointerIdleForMilliseconds(UINT32 Ms) {
-    UINT32 Now;
-    UINT32 Elapsed;
+    UINT64 Now;
+    UINT32 Tps;
+    UINT64 Need;
 
-    if (!gPointerActivitySeen) {
+    if (gPointerActivityTick == 0) {
         return 1;
     }
-    Now = HalMilliseconds();
-    Elapsed = (UINT32)(Now - gPointerActivityMilliseconds);
-    return Elapsed >= Ms ? 1 : 0;
+    Now = HalCpuTicks(0);
+    Tps = HalTicksPerSec();
+    if (Tps == 0) {
+        Tps = 250;
+    }
+    Need = ((UINT64)Tps * (UINT64)Ms) / 1000ull;
+    if (Need == 0) {
+        Need = 1;
+    }
+    return (Now - gPointerActivityTick) >= Need ? 1 : 0;
 }
 
 int GuiCursorUsbReady(void) {

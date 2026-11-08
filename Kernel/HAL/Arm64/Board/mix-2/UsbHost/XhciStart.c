@@ -70,9 +70,20 @@ static void Dwc3PrepareHost(void) {
     GlobalControl |= DWC3_GCTL_PRTCAP_HOST;
     UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GCTL_OFFSET, GlobalControl);
 
-    /* HS-only（DT maximum-speed=high-speed）：退出 USB2 PHY suspend */
+    /*
+     * HS UTMI host（DT phy_type=utmi / maximum-speed=high-speed）：
+     * 清 ULPI 选、SUSPHY、ENBLSLPM、U2_FREECLK；USBTRDTIM=9（8-bit）。
+     * 缺这步 → 根口复位 chirp 卡 Polling（真机 e10e1）。
+     */
     Usb2Phy = UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET);
-    Usb2Phy &= ~((1u << 6) | DWC3_PHY_SOFTWARE_RESET); /* SUSPENDUSB20 */
+    Usb2Phy &= ~(DWC3_PHY_SOFTWARE_RESET | DWC3_GUSB2PHYCFG_ULPI_UTMI |
+                 DWC3_GUSB2PHYCFG_SUSPEND_USB20 |
+                 DWC3_GUSB2PHYCFG_ENABLE_SLEEP_MODE |
+                 DWC3_GUSB2PHYCFG_U2_FREE_CLOCK_EXISTS |
+                 (1u << DWC3_GUSB2PHYCFG_PHYSICAL_INTERFACE_SHIFT) |
+                 DWC3_GUSB2PHYCFG_USB_TURNAROUND_MASK);
+    Usb2Phy |= (DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT
+                << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT);
     UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET, Usb2Phy);
     UsbHostStallYield(50000u);
 }
@@ -144,8 +155,12 @@ int UsbHostXhciStart(void) {
         return -1;
     }
 
+    (void)UsbHostXhciProtocolPortsProbe(sCapabilityBase, sMaxPorts);
+
+    /* 开中断使能（事件仍轮询环）；INTE + IMAN.IE */
+    UsbHostWriteMmio32(RuntimeBase + 0x20u, 0x2u);
     __asm__ volatile("dsb sy" ::: "memory");
-    UsbHostWriteMmio32(sOperationalBase, USB_COMMAND_RUN_STOP);
+    UsbHostWriteMmio32(sOperationalBase, USB_COMMAND_RUN_STOP | (1u << 2));
     if (!WaitClear(sOperationalBase + 4u, USB_STATUS_HOST_CONTROLLER_HALTED,
                    1000000u)) {
         return -1;

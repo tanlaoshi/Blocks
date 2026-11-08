@@ -27,11 +27,25 @@
 #define PORT_STATUS_CONNECT          (1u << 0)
 #define PORT_STATUS_ENABLE           (1u << 1)
 #define PORT_STATUS_RESET            (1u << 4)
+#define PORT_STATUS_LINK_STATE_SHIFT 5
+#define PORT_STATUS_LINK_STATE_MASK  (0xFu << PORT_STATUS_LINK_STATE_SHIFT)
+#define PORT_STATUS_LINK_STATE_RECEIVE_DETECT 5u
+#define PORT_STATUS_LINK_STATE_WRITE_STROBE (1u << 16)
 #define PORT_STATUS_POWER            (1u << 9)
 #define PORT_STATUS_SPEED_SHIFT      10
 #define PORT_STATUS_CONNECT_CHANGE   (1u << 17)
 #define PORT_STATUS_ENABLE_CHANGE    (1u << 18)
 #define PORT_STATUS_RESET_CHANGE     (1u << 21)
+
+/* DWC3 GUSB2PHYCFG：对表 torvalds dwc3/core.h（UTMI 8-bit host） */
+#define DWC3_GUSB2PHYCFG_ULPI_UTMI           (1u << 4)
+#define DWC3_GUSB2PHYCFG_SUSPEND_USB20       (1u << 6)
+#define DWC3_GUSB2PHYCFG_ENABLE_SLEEP_MODE   (1u << 8)
+#define DWC3_GUSB2PHYCFG_PHYSICAL_INTERFACE_SHIFT 3
+#define DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT 10
+#define DWC3_GUSB2PHYCFG_USB_TURNAROUND_MASK (0xFu << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT)
+#define DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT 9u
+#define DWC3_GUSB2PHYCFG_U2_FREE_CLOCK_EXISTS (1u << 30)
 #define PORT_STATUS_READ_ONLY \
     (PORT_STATUS_CONNECT | (1u << 3) | (0xFu << PORT_STATUS_SPEED_SHIFT) | (1u << 30))
 #define PORT_STATUS_READ_WRITE_SET \
@@ -153,6 +167,9 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable);
 int UsbHostXhciStart(void);
 UINT32 UsbHostXhciMaxPorts(void);
 UINT64 UsbHostXhciPortStatusAddress(UINT32 PortIndexOneBased);
+int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts);
+UINT32 UsbHostXhciUsb2PortBitMask(void);
+UINT32 UsbHostXhciUsb3PortBitMask(void);
 
 int UsbHostRootPortPower(UINT32 PortIndexOneBased);
 int UsbHostRootPortReset(UINT32 PortIndexOneBased);

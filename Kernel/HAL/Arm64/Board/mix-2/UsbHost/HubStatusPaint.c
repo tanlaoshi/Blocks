@@ -40,11 +40,15 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
         UsbHostAppendText(Line, Piece, sizeof(Line));
         AppendCompactHex(Line, sizeof(Line), LastStable[PortIndex]);
     }
-    /* e=枚举粘性码（A1=hub）；q=QSCRATCH general（勿另起 PaintLine 叠字） */
+    /* e=枚举；q=QSCRATCH；u2/u3=协议口位图（bitN=口N） */
     UsbHostAppendText(Line, " e", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostEnumerateStatusCode());
     UsbHostAppendText(Line, " q", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostQscratchGeneralConfiguration());
+    UsbHostAppendText(Line, " u", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2PortBitMask());
+    UsbHostAppendText(Line, "/", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb3PortBitMask());
     BoardBringUpSplashPaintLine(160, Line);
 
     LineState = UsbHostQusbLineStateRead();

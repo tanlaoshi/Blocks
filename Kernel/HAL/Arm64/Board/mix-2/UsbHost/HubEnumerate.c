@@ -58,13 +58,35 @@ int UsbHostRootPortPower(UINT32 PortIndexOneBased) {
     return (State & PORT_STATUS_POWER) ? 0 : -1;
 }
 
+static void ConfigureUsb2PhyForHostChirp(void) {
+    UINT32 Usb2PhyConfiguration;
+
+    Usb2PhyConfiguration =
+        UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET);
+    Usb2PhyConfiguration &=
+        ~(DWC3_PHY_SOFTWARE_RESET | DWC3_GUSB2PHYCFG_ULPI_UTMI |
+          DWC3_GUSB2PHYCFG_SUSPEND_USB20 | DWC3_GUSB2PHYCFG_ENABLE_SLEEP_MODE |
+          DWC3_GUSB2PHYCFG_U2_FREE_CLOCK_EXISTS |
+          (1u << DWC3_GUSB2PHYCFG_PHYSICAL_INTERFACE_SHIFT) |
+          DWC3_GUSB2PHYCFG_USB_TURNAROUND_MASK);
+    Usb2PhyConfiguration |= (DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT
+                             << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT);
+    UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET,
+                       Usb2PhyConfiguration);
+}
+
 /*
- * 清变更 → 置 PR（保 PP）→ 等 PR 清 → 等 PRC → 清变更 → 恢复窗 → PED。
+ * 对表 xHCI USB2：清变更 → PR → 等 PRC → 轮询 PED。
+ * 禁止对 USB2 口写 PLS+LWS（RxDetect 属 SS）；真机 e10e1 疑被此写坏。
  */
 int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
     UINT64 Address = UsbHostXhciPortStatusAddress(PortIndexOneBased);
     UINT32 State;
     UINTN Guard;
+
+    ConfigureUsb2PhyForHostChirp();
+    (void)UsbHostQscratchConfigureForHost();
+    UsbHostStallYield(200000u);
 
     State = UsbHostReadMmio32(Address);
     if ((State & PORT_STATUS_CONNECT) == 0) {
@@ -96,12 +118,19 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
     }
 
     UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_CHANGE_BITS);
-    UsbHostStallYield(500000u);
-    State = UsbHostReadMmio32(Address);
-    return ((State & PORT_STATUS_CONNECT) != 0 &&
-            (State & PORT_STATUS_ENABLE) != 0)
-               ? 0
-               : -1;
+
+    /* HS chirp：Polling→U0+PED，可到数百 ms */
+    for (Guard = 0; Guard < 400u; Guard++) {
+        State = UsbHostReadMmio32(Address);
+        if ((State & PORT_STATUS_CONNECT) == 0) {
+            return -1;
+        }
+        if ((State & PORT_STATUS_ENABLE) != 0) {
+            return 0;
+        }
+        UsbHostStallYield(5000u);
+    }
+    return -1;
 }
 
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {

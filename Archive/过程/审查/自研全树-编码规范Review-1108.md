@@ -4,7 +4,7 @@
 > **纪律**：**只记文档，不改代码**（本文件与扫描脚本结果；无行为/无改名/无拆分）。  
 > **统计时点**：2026-11-08。  
 > **前轮**：[`近30提交-命名行数.md`](近30提交-命名行数.md)、[`第三次代码审查.md`](第三次代码审查.md)（门槛曾用 ≤300 / 函数 ≤200；**本轮改认现行两档 60·300 / 80·500**）。  
-> **排期**：不进 [`路线图1108.md`](../../路线图1108.md) 文首 ★；拆刀须另点名，路过再改。
+> **排期**：PR 表见本文 [§7](#pr-norm-split)；索引在 [`路线图1108.md`](../../路线图1108.md)「候补 · 编码规范债」。**不进文首 ★**；待选，点名再刀做。
 
 ---
 
@@ -283,23 +283,78 @@
 
 ---
 
-## 7 · 建议拆刀队列（仅文档；未点名勿做）
+## 7 · PR 拆分（待选） <a id="pr-norm-split"></a>
 
-> 形态固定：**1 核心 + 多辅助**；刀内**纯搬家、不改名**；改名另刀。
+> **状态**：只落文档；**未点名 = 勿刀做**。索引见 [`路线图1108.md`](../../路线图1108.md)「候补 · 编码规范债」。  
+> **纪律**（每刀）：① **纯搬家**，函数体逐字不动；② **本刀不改名**；③ 每搬一个就编一次；④ 对外 API / BootMark / 鼠优先语义不变；⑤ 收口报要不要手测。  
+> **验收底线**：目标文件 ≤300（硬线 ≤500）；本刀抽出的函数尽量 ≤60（硬线 ≤80）。三架构能编的编。  
+> **改名 / 人话文件头 / `Buf`→`Buffer` / `__attribute__`→垫片**：不进下表；路过收，或另开 `PR-NORM-name-*`（未建）。
 
-| 优先级 | 建议项 | 依据 |
-| --- | --- | --- |
-| P0 | `Services/FileSystem/{FileSystem,MountOs}.c` 拆 | 双文件 >550 |
-| P0 | `Services/Gui/Cursor/{Cursor,Shape}.c` 拆 | 双文件 >500；与鼠优先路径相关，拆时勿改行为 |
-| P0 | `Services/Shell/Commands/Wifi.c` 拆 | 569；命令表 + 实现分离 |
-| P0 | `HAL/Arm64/Hal/HalSerial.c` → 对齐 X64 `HalSerial/` | 560；已有姊妹结构可抄 |
-| P0 | `HAL/X64/.../IgpuHwCursor.c` 拆 | 537 |
-| P1 | 函数巨无：`EnumerateHidOnPort`（Pi/Duo）、`FeedHid`、`GuiPollMouse`、`HttpGet`、`ClaimPorts`… | >200 行；可随文件拆带走 |
-| P1 | XHCI / Iwl 长函数带 | 密度最高的 HAL 桶 |
-| P2 | 301–500 且职责混杂者（HalVideo、UsbMsc、Sdio*、Store/Paint…） | 容忍线；混杂再拆 |
-| 路过 | `Len`/`Buf`/… 局部短名；人话文件头；`__attribute__`→垫片 | 点到再收 |
-| 另议 | `Glyph.c` / Look Fonts | 字柱；勿与上表搅 |
-| 不做 | User libc 文件名改 PascalCase；lwIP 风格同化 | 例外 |
+### 7.1 总序（推荐）
+
+```text
+PR-NORM-0 → 1 → 2 → 3 → 4 → 5 → 6
+        → 7 → 8 → 9 → 10 → 11 → 12
+        → 13 → 14 → 15 → 16
+```
+
+- **0–6**：⛔ `.c`>500（Glyph 除外，另议）。先 FS / Shell / HalSerial / iGPU，**后** Gui Cursor（鼠路径，拆完须手测空拖）。  
+- **7–12**：函数巨石与密度桶（可随文件拆带走则合并进同模块刀，勿重复拆）。  
+- **13–16**：🟡 301–500 且职责已混杂者。
+
+### 7.2 波 A · P0 文件硬拆（>500）
+
+| PR | 对象（行·约） | 一句话 | 形态示意 | 手测 |
+| --- | --- | --- | --- | --- |
+| **PR-NORM-0** | `Services/FileSystem/FileSystem.c`（552） | 核心瘦到编排；IO/路径/卷辅助外搬 | `FileSystem/` 下 1 核心 + 辅助 | 公司编；挂载/列目录冒烟 |
+| **PR-NORM-1** | `Services/FileSystem/MountOs.c`（556） | MountOs 按阶段拆；勿与 NORM-0 同刀改行为 | 同目录辅助，不重复 `FileSystem` 词 | 公司编；OS 盘挂载冒烟 |
+| **PR-NORM-2** | `Services/Shell/Commands/Wifi.c`（569） | 命令表薄包装；子命令实现外搬 | `Commands/Wifi/` 或同级 `Wifi*.c` | 公司编；`wifi`/`wififw` 帮助与一两条只读命令 |
+| **PR-NORM-3** | `HAL/Arm64/Hal/HalSerial.c`（560） | **对齐** X64 `HAL/X64/Hal/HalSerial/` 目录形态 | `HalSerial.c` + Write/Gop/… | Arm64 编；Pi 串口 boot mark 不回退 |
+| **PR-NORM-4** | `HAL/X64/.../Igpu/IgpuHwCursor.c`（537） | HW cursor 探测/装载/热路径分文件 | `Igpu/` 下辅助，不重复模块名 | X64 编；有 iGPU 则光标形状/移动冒烟 |
+| **PR-NORM-5** | `Services/Gui/Cursor/Cursor.c`（558） | 光标状态机与绘制分家；**禁止**改泵鼠/Reveal 契约 | 同目录辅助 | **手测**：露光标后空拖不顿 |
+| **PR-NORM-6** | `Services/Gui/Cursor/Shape.c`（510） | 形状/热斑/缓存外搬；接 NORM-5 | 同目录辅助 | 随 NORM-5；换形状冒烟 |
+
+ℹ️ **`HAL/Common/Video/Glyph.c`（622）**：字柱另议，**不**发 `PR-NORM-*`。
+
+### 7.3 波 B · P1 长函数 / 密度（可随模块合并）
+
+| PR | 对象 | 一句话 | 手测 |
+| --- | --- | --- | --- |
+| **PR-NORM-7** | `Services/Tasks/Hid.c` · `FeedHid`（~246） | 键位翻译 / 修饰 / 投递拆辅助；文件已 395 | 键入 Shell；合成键不回退 |
+| **PR-NORM-8** | `Services/Gui/Pointer/Pointer.c` · `GuiPollMouse`（~227） | 文件已 ≤300，**只抽函数**；勿半截关泵鼠 | 露光标前后拖鼠；对表鼠优先铁律 |
+| **PR-NORM-9** | `Services/Store/Net/Http.c` · `HttpGet`（~253） | 文件已 ≤300，解析/读体/收尾拆辅助 | Store 下一包或 `HttpGet` 探针 |
+| **PR-NORM-10** | Pi/Duo `UsbHostController/HidEnumerate.c` · `EnumerateHidOnPort`（~279/289） | 两板**各一刀或同刀双板镜像搬家**；描述符阶段分文件 | 对应板：键鼠枚举绿 |
+| **PR-NORM-11** | XHCI 长函数带（`ClaimPorts` / `StartController` / `ResetPortEx` / `EventHandleTransfer` / `ConfigureMouseInterrupt`…） | **只拆函数/辅助文件**；不改环消费与鼠优先 | X64：键鼠+MSC 冒烟 |
+| **PR-NORM-12** | Iwl 长函数带（`IwlEapolFinishHandshake` / `IwlAssocRun` / `IwlScanCollectOnPkt`…） | 接已有 iwl 拆目录；纯搬家 | NUC：关联/EAPOL 不回退（点名才真机） |
+
+### 7.4 波 C · P2 容忍线（职责混杂再拆）
+
+| PR | 对象（行·约） | 一句话 | 手测 |
+| --- | --- | --- | --- |
+| **PR-NORM-13** | `HAL/Common/HalVideo.c`（444） | 与 Glyph/Blit 边界对齐；混杂再拆 | 三架构编；简单 Present |
+| **PR-NORM-14** | `HAL/X64/Drivers/Msc/UsbMsc.c`（484） | BOT/SCSI 阶段分文件 | MSC 挂载读 |
+| **PR-NORM-15** | Duo `Sdhci/SdioCis.c`（424）+ `SdioTransfer.c`（393） | CIS / 传输若仍两件事缠在一起再拆；已分文件则只收长函数 | Duo SDIO/WiFi 枚举不回退 |
+| **PR-NORM-16** | Store/Gui/Shell 301–400 混杂件（`Store/.../Paint`、`Backup`、`Console`、`Query`…） | **按痛点点名**，不一次翻完；一 PR 一模块 | 对应该 UI/命令冒烟 |
+
+### 7.5 不做 / 另册
+
+| 项 | 处置 |
+| --- | --- |
+| `Glyph.c` / `Services/Look/Fonts/**` | 字柱另议 |
+| User libc / Blocks hosted / lwIP 端口文件名与风格 | 例外；见 libc Review |
+| 全库 `Len`→`Length` 翻名 | 禁止单柱；路过 |
+| 全库补「人话」文件头 | 禁止单柱；新文件必须写 |
+| 全库收 `__attribute__` | 禁止单柱；路过改垫片 |
+| `PR-NORM-name-*`（Ctxt/Initialize* 等） | **未建**；与搬家刀分开 |
+
+### 7.6 依赖与冲突
+
+| 约束 | 说明 |
+| --- | --- |
+| NORM-5/6 与手机/核传 ★ | 勿并行乱改鼠路径；Cursor 刀须空窗 |
+| NORM-10 与手机 USB 柱 | Duo/Pi HID 枚举 ≠ Mix2 DWC3；别搅同一 diff |
+| NORM-11/12 | 纯搬家默认可公司编；真机仅点名 |
+| 与旧 `PR-S-split-cont` / board-debt | 板 1.7k 主角已瘦；本表接 **Services/共享 HAL** 新超标 |
 
 ---
 
@@ -319,4 +374,5 @@
 
 | 日 | 记 |
 | --- | --- |
+| 2026-11-08 | §7 拆成 `PR-NORM-0…16`；1108 候补索引。仍只文档、不改代码。 |
 | 2026-11-08 | 首版：全树扫描 + 只读归档；不改代码。 |

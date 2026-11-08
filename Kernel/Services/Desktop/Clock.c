@@ -43,27 +43,27 @@ void DesktopNotifyNetChanged(void) {
 }
 
 void DesktopWorkerTick(void) {
-    static UINT64 LastCheckTick;
-    static UINT64 LastRtcNetTick;
+    static UINT32 LastCheckMilliseconds;
+    static UINT32 LastRtcNetMilliseconds;
     static int sRemountWant;
-    UINT64 Now;
-    UINT32 Tps;
+    UINT32 NowMilliseconds;
     UINT8 Hour = 0;
     UINT8 Minute = 0;
     int Ok;
     int NeedPaint;
     int Hot;
 
-    Now = HalCpuTicks(0);
-    Tps = HalTicksPerSec();
-    if (Tps == 0) {
-        Tps = 250;
-    }
+    /*
+     * 墙钟用 HalMilliseconds（CNTVCT），勿绑 HalCpuTicks：
+     * Pi 软 tick 若与 IRQ 不同步，Last* 节流卡死 → 栏钟永不跳（2026-11-08）。
+     */
+    NowMilliseconds = HalMilliseconds();
     /* HotPoll 入口仍 ~2Hz（内部拔检/热插已 5s 节流） */
-    if (LastCheckTick != 0 && (Now - LastCheckTick) < (UINT64)(Tps / 2u)) {
+    if (LastCheckMilliseconds != 0 &&
+        (UINT32)(NowMilliseconds - LastCheckMilliseconds) < 500u) {
         return;
     }
-    LastCheckTick = Now;
+    LastCheckMilliseconds = NowMilliseconds;
 
     /* 失根：先 Poll（可能本拍才 Notify），再画窗。勿 LogFs 抢在窗前（落盘可堵）。 */
     if (HalUsbMscPollUnplug() == 1) {
@@ -106,10 +106,11 @@ void DesktopWorkerTick(void) {
      * CMOS/网托勿跟 2Hz：UIP~1Hz + 真机 CMOS 可能进 SMM，空拖规律 0.5s 一顿。
      * 钟栏 HH:MM / 网标 ~5s 看一次足够。
      */
-    if (LastRtcNetTick != 0 && (Now - LastRtcNetTick) < (UINT64)Tps * 5u) {
+    if (LastRtcNetMilliseconds != 0 &&
+        (UINT32)(NowMilliseconds - LastRtcNetMilliseconds) < 5000u) {
         return;
     }
-    LastRtcNetTick = Now;
+    LastRtcNetMilliseconds = NowMilliseconds;
 
     NeedPaint = 0;
     Ok = (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) ? 1 : 0;
@@ -129,6 +130,32 @@ void DesktopWorkerTick(void) {
 
 void DesktopTickClock(void) {
     int NeedPaint;
+    static UINT32 sGuiRtcSampleMilliseconds;
+
+    /*
+     * Gui 侧墙钟采样：Pi 同核时 Worker 若被 SHELL 档饿死，栏钟永不跳。
+     * 与 WorkerTick 同判据；HalMilliseconds=CNTVCT，不绑软 tick。
+     */
+    {
+        UINT32 NowMilliseconds;
+        UINT8 Hour = 0;
+        UINT8 Minute = 0;
+
+        NowMilliseconds = HalMilliseconds();
+        if (sGuiRtcSampleMilliseconds == 0u ||
+            (UINT32)(NowMilliseconds - sGuiRtcSampleMilliseconds) >= 1000u) {
+            sGuiRtcSampleMilliseconds = NowMilliseconds;
+            if (HalRtcGetTime(0, 0, 0, &Hour, &Minute, 0) == 0) {
+                if (!(gClockValid && Hour == gClockHour &&
+                      Minute == gClockMinute)) {
+                    sClockBarNeedPaint = 1;
+                }
+            }
+            if (DesktopNetTrayLabelChanged()) {
+                sClockBarNeedPaint = 1;
+            }
+        }
+    }
 
     /*
      * 图标/壁纸补刷优先于「鼠未闲就 return」：否则 BMP 已加载仍一直纯色占位。
@@ -184,6 +211,9 @@ void DesktopTickClock(void) {
                 GraphicsIrqLeave();
             }
             HalVideoPresentFlush();
+            if (!CursorHwActive()) {
+                HalVideoPresentCursor();
+            }
         }
         ComposeEnd();
         return;
@@ -256,6 +286,10 @@ void DesktopTickClock(void) {
             GraphicsIrqLeave();
         }
         HalVideoPresentFlush();
+        /* Pi 软光标：栏 Present 后须再刷光标脏，否则闲置一跳钟箭头消失 */
+        if (!CursorHwActive()) {
+            HalVideoPresentCursor();
+        }
         ComposeEnd();
     }
 }

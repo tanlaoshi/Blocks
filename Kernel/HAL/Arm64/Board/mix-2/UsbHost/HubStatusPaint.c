@@ -40,12 +40,20 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
         UsbHostAppendText(Line, Piece, sizeof(Line));
         AppendCompactHex(Line, sizeof(Line), LastStable[PortIndex]);
     }
-    BoardBringUpSplashPaintLine(208, Line);
+    /* e=枚举粘性码（A1=hub）；q=QSCRATCH general（勿另起 PaintLine 叠字） */
+    UsbHostAppendText(Line, " e", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostEnumerateStatusCode());
+    UsbHostAppendText(Line, " q", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostQscratchGeneralConfiguration());
+    BoardBringUpSplashPaintLine(160, Line);
 
     LineState = UsbHostQusbLineStateRead();
     TypeCResult = UsbHostTypeCLastResult();
     UsbHostCopyText(Line, "ls ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), LineState);
+    /* cl=tcsr_clamp_dig_n：期望 1（解钳） */
+    UsbHostAppendText(Line, " cl", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostQusbClampByte());
     UsbHostAppendText(Line, " tc", sizeof(Line));
     if (TypeCResult < 0) {
         UsbHostAppendText(Line, "-", sizeof(Line));
@@ -55,17 +63,28 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
     }
     UsbHostAppendText(Line, "/", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCControlByte());
-    /* cc=STATUS_4：bit0 attach、bit4 debounce、bit6 vbus、bit7 dfp */
+    /* cc=STATUS_4；c2=DFP Rd；挤在可视带内 */
     UsbHostAppendText(Line, " cc", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCStatus4Byte());
-    BoardBringUpSplashPaintLine(256, Line);
-
-    /* og=OTG_CFG（bit1 须为 0=软件控）；c2=STATUS_2（DFP Rd 探测） */
-    UsbHostCopyText(Line, "og ", sizeof(Line));
-    AppendCompactHex(Line, sizeof(Line), UsbHostOtgConfigurationByte());
     UsbHostAppendText(Line, " c2 ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCStatus2Byte());
-    BoardBringUpSplashPaintLine(304, Line);
+    BoardBringUpSplashPaintLine(280, Line);
+
+    /* os bit3=softstart；of bit0=fail；en=ENG halt 回读 */
+    UsbHostCopyText(Line, "os ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostOtgStatusByte());
+    UsbHostAppendText(Line, " oe ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostCommandOtgByte());
+    UsbHostAppendText(Line, " il ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostUsbinCommandByte());
+    UsbHostAppendText(Line, " en ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostOtgEngineeringByte());
+    UsbHostAppendText(Line, " of ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostOtgInterruptStatusByte());
+    /* a=WCD USBC analog OUT：bit0=en1 bit1=en2n；USB idle 期望 a=2 */
+    UsbHostAppendText(Line, " a ", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostTypeCAnalogSwitchByte());
+    BoardBringUpSplashPaintLine(400, Line);
 }
 
 #else

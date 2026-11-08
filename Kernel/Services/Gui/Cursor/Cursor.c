@@ -494,31 +494,25 @@ void GuiCursorShow(void) {
     GraphicsPresent();
 }
 
-/* 最近一次指针位移（HalCpuTicks）；供钟栏/HotPoll 让路 */
-static UINT64 gPointerActivityTick;
+/* 最近一次指针位移；供钟栏/HotPoll 让路（墙钟毫秒，勿绑软 tick） */
+static UINT32 gPointerActivityMilliseconds;
+static int gPointerActivitySeen;
 
 void GuiPointerNoteActivity(void) {
-    gPointerActivityTick = HalCpuTicks(0);
+    gPointerActivityMilliseconds = HalMilliseconds();
+    gPointerActivitySeen = 1;
 }
 
 int GuiPointerIdleForMilliseconds(UINT32 Ms) {
-    UINT64 Now;
-    UINT32 Tps;
-    UINT64 Need;
+    UINT32 Now;
+    UINT32 Elapsed;
 
-    if (gPointerActivityTick == 0) {
+    if (!gPointerActivitySeen) {
         return 1;
     }
-    Now = HalCpuTicks(0);
-    Tps = HalTicksPerSec();
-    if (Tps == 0) {
-        Tps = 250;
-    }
-    Need = ((UINT64)Tps * (UINT64)Ms) / 1000ull;
-    if (Need == 0) {
-        Need = 1;
-    }
-    return (Now - gPointerActivityTick) >= Need ? 1 : 0;
+    Now = HalMilliseconds();
+    Elapsed = (UINT32)(Now - gPointerActivityMilliseconds);
+    return Elapsed >= Ms ? 1 : 0;
 }
 
 int GuiCursorUsbReady(void) {

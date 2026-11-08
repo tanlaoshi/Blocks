@@ -88,8 +88,6 @@ int UsbHostXhciStart(void) {
     UINT32 ContextSizeBytes;
     UINT64 DoorbellBase;
     UINT64 RuntimeBase;
-    char Line[40];
-    char Hex[12];
 
     (void)UsbHostQusbPhyInitialize();
     /* DT maximum-speed=high-speed：先 QSCRATCH UTMI-as-PIPE，再松 DWC3 PHY reset */
@@ -101,13 +99,9 @@ int UsbHostXhciStart(void) {
     sCapabilityBase = DWC3_REGISTER_BASE;
     Capability = UsbHostReadMmio32(sCapabilityBase);
     CapabilityLength = Capability & 0xFFu;
-    UsbHostFormatHexadecimal32(Hex, Capability);
-    UsbHostCopyText(Line, "cap ", sizeof(Line));
-    UsbHostAppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(208, Line);
 
-    if (Capability == 0xFFFFFFFFu || CapabilityLength < 0x20u || CapabilityLength == 0xFFu) {
-        BoardBringUpSplashPaintLine(256, "xhci bad");
+    if (Capability == 0xFFFFFFFFu || CapabilityLength < 0x20u ||
+        CapabilityLength == 0xFFu) {
         return -1;
     }
 
@@ -127,40 +121,35 @@ int UsbHostXhciStart(void) {
     Structural2 = UsbHostReadMmio32(sCapabilityBase + 0x08);
     ScratchpadCount = (((Structural2 >> 21) & 0x1Fu) << 5) | ((Structural2 >> 27) & 0x1Fu);
     if (ScratchpadCount > SCRATCHPAD_BUFFER_COUNT_MAX) {
-        BoardBringUpSplashPaintLine(256, "scratch");
         return -1;
     }
 
     UsbHostWriteMmio32(sOperationalBase, 0);
-    if (!WaitSet(sOperationalBase + 4u, USB_STATUS_HOST_CONTROLLER_HALTED, 1000000u)) {
-        BoardBringUpSplashPaintLine(256, "halt to");
+    if (!WaitSet(sOperationalBase + 4u, USB_STATUS_HOST_CONTROLLER_HALTED,
+                 1000000u)) {
         return -1;
     }
     UsbHostWriteMmio32(sOperationalBase, USB_COMMAND_HOST_CONTROLLER_RESET);
-    if (!WaitClear(sOperationalBase, USB_COMMAND_HOST_CONTROLLER_RESET, 1000000u) ||
-        !WaitClear(sOperationalBase + 4u, USB_STATUS_CONTROLLER_NOT_READY, 1000000u)) {
-        BoardBringUpSplashPaintLine(256, "rst to");
+    if (!WaitClear(sOperationalBase, USB_COMMAND_HOST_CONTROLLER_RESET,
+                   1000000u) ||
+        !WaitClear(sOperationalBase + 4u, USB_STATUS_CONTROLLER_NOT_READY,
+                   1000000u)) {
         return -1;
     }
 
-    if (UsbHostXhciTransferInitialize(sCapabilityBase, sOperationalBase, DoorbellBase,
-                                      RuntimeBase, ContextSizeBytes, SlotLimit,
+    if (UsbHostXhciTransferInitialize(sCapabilityBase, sOperationalBase,
+                                      DoorbellBase, RuntimeBase,
+                                      ContextSizeBytes, SlotLimit,
                                       ScratchpadCount) != 0) {
-        BoardBringUpSplashPaintLine(256, "ring fail");
         return -1;
     }
 
     __asm__ volatile("dsb sy" ::: "memory");
     UsbHostWriteMmio32(sOperationalBase, USB_COMMAND_RUN_STOP);
-    if (!WaitClear(sOperationalBase + 4u, USB_STATUS_HOST_CONTROLLER_HALTED, 1000000u)) {
-        BoardBringUpSplashPaintLine(256, "run to");
+    if (!WaitClear(sOperationalBase + 4u, USB_STATUS_HOST_CONTROLLER_HALTED,
+                   1000000u)) {
         return -1;
     }
-
-    UsbHostFormatHexadecimal32(Hex, sMaxPorts);
-    UsbHostCopyText(Line, "ports ", sizeof(Line));
-    UsbHostAppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(208, Line);
     return 0;
 }
 

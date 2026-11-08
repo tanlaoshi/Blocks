@@ -115,13 +115,17 @@ void UsbHostBindEndpointZeroRing(UINT32 SlotId);
 void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical);
 UINT64 UsbHostEndpointZeroRingPhysical(void);
 
-/* 线刷 DT qusb@c012000 + Linux qusb2phy-v2/msm8998 公开 power-on */
+/* 线刷 DT qusb@c012000 + phy-msm-qusb-v2 power-on（clamp_dig_n=1） */
 int UsbHostQusbPhyInitialize(void);
-/* 厂商 phy-msm-qusb：PORT_UTMI_STATUS@0xF4，bit0=DP bit1=DM */
+/* CC attach 后重踢：解钳 + init-seq + 清 GUSB2 suspend */
+int UsbHostQusbPhyAttachKick(void);
+/* 厂商非 v2：PORT_UTMI_STATUS@0xF4；v2 仅对照 */
 UINT8 UsbHostQusbLineStateRead(void);
+UINT8 UsbHostQusbClampByte(void);
 
 /* ssusb reg[1] QSCRATCH@0xC016000：HS UTMI-as-PIPE + Host VBUS override */
 int UsbHostQscratchConfigureForHost(void);
+UINT32 UsbHostQscratchGeneralConfiguration(void);
 
 /* SPMI PMIC arbiter v2 + PMI8998 Type-C DFP */
 int UsbHostSpmiArbiterProbe(void);
@@ -129,11 +133,21 @@ UINT32 UsbHostSpmiArbiterVersion(void);
 int UsbHostSpmiReadByte(UINT8 SlaveIdentifier, UINT16 Address, UINT8 *ValueOut);
 int UsbHostSpmiWriteByte(UINT8 SlaveIdentifier, UINT16 Address, UINT8 Value);
 int UsbHostTypeCForceHost(void);
+void UsbHostTypeCMaintainAfterAttach(void);
+int UsbHostTypeCAnalogSwitchForceUsb(void);
+UINT8 UsbHostTypeCAnalogSwitchByte(void);
 int UsbHostTypeCLastResult(void);
 UINT8 UsbHostTypeCControlByte(void);
+UINT8 UsbHostTypeCStatus1Byte(void);
 UINT8 UsbHostTypeCStatus2Byte(void);
 UINT8 UsbHostTypeCStatus4Byte(void);
 UINT8 UsbHostOtgConfigurationByte(void);
+UINT8 UsbHostOtgStatusByte(void);
+UINT8 UsbHostCommandOtgByte(void);
+UINT8 UsbHostUsbinCommandByte(void);
+UINT8 UsbHostOtgEngineeringByte(void);
+UINT8 UsbHostOtgInterruptStatusByte(void);
+int UsbHostOtgVbusEnable(void);
 void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable);
 
 int UsbHostXhciStart(void);
@@ -144,5 +158,8 @@ int UsbHostRootPortPower(UINT32 PortIndexOneBased);
 int UsbHostRootPortReset(UINT32 PortIndexOneBased);
 UINT32 UsbHostRootPortStatus(UINT32 PortIndexOneBased);
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut);
+/* 枚举粘性码：0=idle；A1=hub ok；10xx=rst|PORTSC；20=slot 30=addr 40=desc 5x=class */
+UINT32 UsbHostEnumerateStatusCode(void);
+void UsbHostEnumerateStatusCodeClear(void);
 
 #endif /* USB_HOST_PRIVATE_H */

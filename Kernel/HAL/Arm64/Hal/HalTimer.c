@@ -3,6 +3,8 @@
  */
 #include "Hal.h"
 #include "HalConsole.h"
+#include "HalSerial.h"
+#include "Console.h"
 #include "Scheduler.h"
 #include "BoardConfig.h"
 #if !BOARD_IS_VIRT
@@ -99,10 +101,15 @@ void HalTimerStart(void) {
     ArmTimerArm();
     gTimerIrq = 1;
     /*
-     * SchedulerStart 在 Announce/ShellOwn 之后：BootMark 已不占 UART。
-     * 用 ConsoleWriteSerial 才能在 CoolTerm 看见验收行。
+     * Announce 已 ShellOwn：走 gConsole.Write 更新 gAtLineStart，再 ShowPrompt，
+     * 避免「Blocks> Boot:…」粘行或多余空行（对表 Console PromptCommon）。
      */
-    HalConsoleWriteSerial("Boot: Pi CNTV local IRQ\n");
+    if (HalSerialShellOwned() && gConsole.Write && gConsole.ShowPrompt) {
+        gConsole.Write("\nBoot: Pi CNTV local IRQ\n");
+        gConsole.ShowPrompt();
+    } else {
+        HalConsoleWriteSerial("Boot: Pi CNTV local IRQ\n");
+    }
 #endif
 }
 

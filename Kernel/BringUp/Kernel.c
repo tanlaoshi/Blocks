@@ -132,15 +132,10 @@ static void KernelAfterModules(void) {
     (void)FontSetById(ThemeFontId());
     HalSerialGopMirror(0);
     /*
-     * 真机桌面：模块表已含 Network；Worker 还要 Secondary MSC 等，可能很久。
-     * 若等 Worker 末才 Announce → 串口要回车才见 blocks>（OnEnter→Prompt）。
-     * 此处先 ready+ShellOwn；Worker 再调 once 为空。virt 仍等 Worker（网/iwl 静默）。
-     * ConsoleOnly：勿在此 Announce——SerialRun 先打 banner 再 ready+Blocks>；
-     * 否则会先 Blocks> 再粘上「serial shell …」（Duo 真机）。
+     * 真机桌面 ready+Blocks> 改到 KernelMainCommon：须在 Input skip 等晚 Boot
+     * 行之后再 Announce，否则会粘成「Blocks> Boot: …」（2026-11-08）。
+     * ConsoleOnly / virt 仍不在此 Announce。
      */
-    if (!HalCpuIsHypervisor() && !HalConsoleOnly() && gConsole.AnnounceBootReady) {
-        gConsole.AnnounceBootReady();
-    }
 }
 
 static void KernelRunOrPark(int (*RunModules)(void)) {
@@ -164,6 +159,13 @@ static void KernelMainCommon(void) {
     KernelSpawnOrPark("Worker", WorkerTask);
     KernelTaskDemoStart(); /* 默认关；见 KERNEL_TASK_DEMO */
     KernelTrySpawnInput();
+    /*
+     * 真机：Input skip 等行打完再 ready+Blocks>。Worker 再调 Announce 为 once。
+     * virt 仍等 Worker（网/iwl 静默）才 Announce。
+     */
+    if (!HalCpuIsHypervisor() && !HalConsoleOnly() && gConsole.AnnounceBootReady) {
+        gConsole.AnnounceBootReady();
+    }
     SchedulerStart();
 }
 

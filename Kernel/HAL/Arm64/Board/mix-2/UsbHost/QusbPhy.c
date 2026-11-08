@@ -1,8 +1,9 @@
 /*
- * UsbHost/QusbPhy.c — MSM8998 QUSB2：线刷 DT init-seq + Linux v2 power-on
+ * UsbHost/QusbPhy.c — MSM8998 QUSB2：线刷 DT init-seq + phy-msm-qusb-v2
  *
- * 证据：chiron DT `qcom,qusb2phy-v2` @0xC012000；`qcom,qusb-phy-init-seq`；
- * 对表 torvalds phy-qcom-qusb2.c（msm8998 regs / CORE_READY）。
+ * 证据：chiron DT `qcom,qusb2phy-v2` @0xC012000；`qcom,qusb-phy-init-seq`。
+ * 对表 phy-msm-qusb-v2：`tcsr_clamp_dig_n_1p8` 连线写 1 解钳、写 0 钳住漏电；
+ * 真机 `a2` 仍 `ls80`/`p*:200` → 先前误写 0，D+/D- 数字域被钳。
  */
 #include "UsbHost/Private.h"
 
@@ -14,15 +15,13 @@
 
 #define QUSB_PHY_BASE                 0x0C012000ULL
 #define QUSB_TCSR_CLAMP_ADDRESS       0x01FCB24CULL
-#define QUSB_TCSR_USB3_DP_PHYMODE     0x01FCB248ULL /* ssphy reg-names tcsr_usb3_dp_phymode */
+#define QUSB_TCSR_USB3_DP_PHYMODE     0x01FCB248ULL
 #define QUSB_PORT_POWERDOWN_OFFSET    0x210u
-#define QUSB_PORT_UTMI_STATUS_OFFSET  0x0F4u
+#define QUSB_PORT_UTMI_STATUS_OFFSET  0x0F4u /* 非 v2 线态；刷屏对照用 */
 #define QUSB_PLL_STATUS_OFFSET        0x1A0u
-#define QUSB_PLL_CORE_INPUT_OVERRIDE  0x0A8u
 #define QUSB_POWER_DOWN_BIT           (1u << 0)
 #define QUSB_CORE_READY_STATUS_BIT    (1u << 0)
-#define QUSB_PLL_CORE_OVERRIDE_CORE_READY_EN (1u << 0)
-#define QUSB_PLL_CORE_OVERRIDE_CORE_RESET    (1u << 1)
+#define QUSB_TCSR_CLAMP_DEASSERT      1u /* _n：1=解钳（连线），0=钳住 */
 
 /*
  * DT `qcom,qusb-phy-init-seq`：成对 <value offset>（字节写）。
@@ -53,24 +52,8 @@ static void QusbClearBits(UINT32 Offset, UINT8 Bits) {
     QusbWriteByte(Offset, (UINT8)(QusbReadByte(Offset) & (UINT8)(~Bits)));
 }
 
-UINT8 UsbHostQusbLineStateRead(void) {
-    return QusbReadByte(QUSB_PORT_UTMI_STATUS_OFFSET);
-}
-
-int UsbHostQusbPhyInitialize(void) {
+static void QusbWriteInitSequence(void) {
     UINTN PairIndex;
-    UINT8 Status;
-    UINTN Guard;
-    char Line[40];
-    char Hex[12];
-
-    /* 释放 dig clamp（第二 reg tcsr_clamp_dig_n_1p8）；公开惯例写 0 */
-    UsbHostWriteMmio32(QUSB_TCSR_CLAMP_ADDRESS, 0);
-    /* 选 USB3 而非 DP（phy-msm-ssusb-qmp：writel 0） */
-    UsbHostWriteMmio32(QUSB_TCSR_USB3_DP_PHYMODE, 0);
-
-    /* 先置 POWER_DOWN，再灌 DT 表，再清 POWER_DOWN（Linux qusb2_phy_init） */
-    QusbSetBits(QUSB_PORT_POWERDOWN_OFFSET, QUSB_POWER_DOWN_BIT);
 
     for (PairIndex = 0; PairIndex + 1u < sizeof(sInitSequence) / sizeof(sInitSequence[0]);
          PairIndex += 2u) {
@@ -78,40 +61,66 @@ int UsbHostQusbPhyInitialize(void) {
         UINT32 Offset = (UINT32)sInitSequence[PairIndex + 1u];
         QusbWriteByte(Offset, Value);
     }
+}
 
-    QusbClearBits(QUSB_PORT_POWERDOWN_OFFSET, QUSB_POWER_DOWN_BIT);
+static int QusbWaitCoreReady(void) {
+    UINT8 Status;
+    UINTN Guard;
+
     UsbHostStallYield(200000u);
-
-    /* msm8998/v2：has_pll_override → 脉冲 CORE_RESET 再等 CORE_READY */
-    QusbSetBits(QUSB_PLL_CORE_INPUT_OVERRIDE,
-                QUSB_PLL_CORE_OVERRIDE_CORE_READY_EN | QUSB_PLL_CORE_OVERRIDE_CORE_RESET);
-    UsbHostStallYield(50000u);
-    QusbClearBits(QUSB_PLL_CORE_INPUT_OVERRIDE, QUSB_PLL_CORE_OVERRIDE_CORE_RESET);
-    UsbHostStallYield(200000u);
-
     Status = QusbReadByte(QUSB_PLL_STATUS_OFFSET);
-    UsbHostFormatHexadecimal32(Hex, Status);
-    UsbHostCopyText(Line, "phy ", sizeof(Line));
-    UsbHostAppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(208, Line);
-
-    if ((Status & QUSB_CORE_READY_STATUS_BIT) == 0) {
-        BoardBringUpSplashPaintLine(256, "phy unlocked");
-        /* 仍继续：aboot 可能已锁过；让根口继续扫 */
-        for (Guard = 0; Guard < 10u; Guard++) {
-            UsbHostStallYield(100000u);
-            Status = QusbReadByte(QUSB_PLL_STATUS_OFFSET);
-            if ((Status & QUSB_CORE_READY_STATUS_BIT) != 0) {
-                break;
-            }
-        }
-    }
-
     if ((Status & QUSB_CORE_READY_STATUS_BIT) != 0) {
-        BoardBringUpSplashPaintLine(208, "phy ready");
         return 0;
     }
+    for (Guard = 0; Guard < 10u; Guard++) {
+        UsbHostStallYield(100000u);
+        Status = QusbReadByte(QUSB_PLL_STATUS_OFFSET);
+        if ((Status & QUSB_CORE_READY_STATUS_BIT) != 0) {
+            return 0;
+        }
+    }
     return -1;
+}
+
+UINT8 UsbHostQusbLineStateRead(void) {
+    return QusbReadByte(QUSB_PORT_UTMI_STATUS_OFFSET);
+}
+
+UINT8 UsbHostQusbClampByte(void) {
+    return (UINT8)(UsbHostReadMmio32(QUSB_TCSR_CLAMP_ADDRESS) & 0xFFu);
+}
+
+static int QusbPowerOnWithSequence(void) {
+    /* 先解钳，再松 POWER_DOWN（phy-msm-qusb-v2 连线路径） */
+    UsbHostWriteMmio32(QUSB_TCSR_CLAMP_ADDRESS, QUSB_TCSR_CLAMP_DEASSERT);
+    UsbHostWriteMmio32(QUSB_TCSR_USB3_DP_PHYMODE, 0);
+
+    QusbSetBits(QUSB_PORT_POWERDOWN_OFFSET, QUSB_POWER_DOWN_BIT);
+    QusbWriteInitSequence();
+    QusbClearBits(QUSB_PORT_POWERDOWN_OFFSET, QUSB_POWER_DOWN_BIT);
+    return QusbWaitCoreReady();
+}
+
+int UsbHostQusbPhyInitialize(void) {
+    /* 勿 PaintLine：hub 监视清屏后仍会被 AttachKick 路径叠到状态行 */
+    return QusbPowerOnWithSequence();
+}
+
+/*
+ * CC attach 后轻踢：只保解钳 + 清 GUSB2 suspend。
+ * 禁止再 POWER_DOWN 整表重灌——会抖断已 CCS 的 hub，根口复位见 e10。
+ */
+int UsbHostQusbPhyAttachKick(void) {
+    UINT32 Usb2PhyConfiguration;
+
+    UsbHostWriteMmio32(QUSB_TCSR_CLAMP_ADDRESS, QUSB_TCSR_CLAMP_DEASSERT);
+    Usb2PhyConfiguration =
+        UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET);
+    Usb2PhyConfiguration &= ~((1u << 6) | DWC3_PHY_SOFTWARE_RESET);
+    UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET,
+                       Usb2PhyConfiguration);
+    UsbHostStallYield(50000u);
+    return 0;
 }
 
 #else
@@ -120,7 +129,15 @@ UINT8 UsbHostQusbLineStateRead(void) {
     return 0;
 }
 
+UINT8 UsbHostQusbClampByte(void) {
+    return 0;
+}
+
 int UsbHostQusbPhyInitialize(void) {
+    return -1;
+}
+
+int UsbHostQusbPhyAttachKick(void) {
     return -1;
 }
 

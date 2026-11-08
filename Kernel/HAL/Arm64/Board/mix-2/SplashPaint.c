@@ -199,13 +199,35 @@ static void DrawStringScaled(UINT64 SplashBase, UINT32 Left, UINT32 Top,
     }
 }
 
-static void PaintOne(UINT64 SplashBase, const char *Text) {
-    UINT32 BarHeight = 48u;
-    UINT32 StatusPanelHeight = 360u;
-    UINT32 Quarter = BOARD_FRAMEBUFFER_WIDTH / 4u;
+static void ClearSplashBuffer(UINT64 PhysicalBase) {
+    volatile UINT32 *Pixels = (volatile UINT32 *)(UINTN)PhysicalBase;
+    UINTN WordCount;
+    UINTN Index;
 
-    FillRectangle(SplashBase, 0, 0, BOARD_FRAMEBUFFER_WIDTH, StatusPanelHeight,
-                  COLOR_TEXT_BACK);
+    WordCount = ((UINTN)BOARD_FRAMEBUFFER_HEIGHT *
+                 (UINTN)BOARD_FRAMEBUFFER_STRIDE_BYTES) /
+                sizeof(UINT32);
+    for (Index = 0; Index < WordCount; Index++) {
+        Pixels[Index] = COLOR_TEXT_BACK;
+    }
+}
+
+/*
+ * 整帧清黑：按 stride 线性写。主缓冲 0x9D600000（去 MIX/Android logo）。
+ * 顶栏锁标：aboot 平面，主缓冲 Y=0 已在锁下方；另清 ALT 试是否同层残影。
+ * 不在 ALT 上画彩条/字（双扫会花屏）。
+ */
+int BoardBringUpSplashClear(void) {
+    ClearSplashBuffer(BOARD_SPLASH_PHYSICAL_BASE);
+#if defined(BOARD_SPLASH_PHYSICAL_BASE_ALT)
+    ClearSplashBuffer(BOARD_SPLASH_PHYSICAL_BASE_ALT);
+#endif
+    return 0;
+}
+
+static void PaintChrome(UINT64 SplashBase, const char *Text) {
+    UINT32 BarHeight = 48u;
+    UINT32 Quarter = BOARD_FRAMEBUFFER_WIDTH / 4u;
 
     /* 左→右：红 | 绿 | 蓝 | 白（各 270px） */
     FillRectangle(SplashBase, 0, 0, Quarter, BarHeight, COLOR_BAR_RED);
@@ -214,8 +236,10 @@ static void PaintOne(UINT64 SplashBase, const char *Text) {
     FillRectangle(SplashBase, Quarter * 3u, 0, Quarter, BarHeight, COLOR_BAR_WHITE);
     DrawStringScaled(SplashBase, Quarter / 2u - 8u, 12u, "R", COLOR_TEXT_BACK, 2u);
     DrawStringScaled(SplashBase, Quarter + Quarter / 2u - 8u, 12u, "G", COLOR_TEXT_BACK, 2u);
-    DrawStringScaled(SplashBase, Quarter * 2u + Quarter / 2u - 8u, 12u, "B", COLOR_TEXT_BACK, 2u);
-    DrawStringScaled(SplashBase, Quarter * 3u + Quarter / 2u - 8u, 12u, "W", COLOR_TEXT_BACK, 2u);
+    DrawStringScaled(SplashBase, Quarter * 2u + Quarter / 2u - 8u, 12u, "B",
+                     COLOR_TEXT_BACK, 2u);
+    DrawStringScaled(SplashBase, Quarter * 3u + Quarter / 2u - 8u, 12u, "W",
+                     COLOR_TEXT_BACK, 2u);
 
     /* 标题在彩条下方黑底上（不在红格里面）——这是刻意排版，不是错位 */
     DrawStringScaled(SplashBase, 32, BarHeight + 24u, Text, COLOR_TEXT, TEXT_SCALE);
@@ -227,7 +251,8 @@ int BoardBringUpSplashPaint(const char *Text) {
     }
 
     /* 只画 aboot cont_splash @0x9D600000；勿再画 0x9D400000（与前者重叠会出双条/花屏） */
-    PaintOne(BOARD_SPLASH_PHYSICAL_BASE, Text);
+    (void)BoardBringUpSplashClear();
+    PaintChrome(BOARD_SPLASH_PHYSICAL_BASE, Text);
     return 0;
 }
 
@@ -242,14 +267,19 @@ int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text) {
     if (Text == 0) {
         return -1;
     }
-    LineHeight = GLYPH_HEIGHT * Scale + 12u;
-    FillRectangle(SplashBase, 16, Top, BOARD_FRAMEBUFFER_WIDTH - 32u, LineHeight,
+    /* 行高留余量，避免 scale4 与邻行/旧字叠影 */
+    LineHeight = GLYPH_HEIGHT * Scale + 24u;
+    FillRectangle(SplashBase, 0, Top, BOARD_FRAMEBUFFER_WIDTH, LineHeight,
                   COLOR_TEXT_BACK);
     DrawStringScaled(SplashBase, 24, Top + 4u, Text, COLOR_TEXT, Scale);
     return 0;
 }
 
 #else
+
+int BoardBringUpSplashClear(void) {
+    return -1;
+}
 
 int BoardBringUpSplashPaint(const char *Text) {
     (void)Text;

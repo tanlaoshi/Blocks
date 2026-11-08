@@ -55,11 +55,15 @@ static void QscratchEnableHostVbusOverride(void) {
                     UTMI_OTG_VBUS_VALID | SOFTWARE_SESSION_VALID_SELECT);
 }
 
+static UINT32 sQscratchGeneralConfiguration;
+
+UINT32 UsbHostQscratchGeneralConfiguration(void) {
+    return sQscratchGeneralConfiguration;
+}
+
 int UsbHostQscratchConfigureForHost(void) {
     UINT32 General;
     UINT32 HighSpeed;
-    char Line[40];
-    char Hex[12];
 
     /* HS-only：无可用 PIPE 时钟时用 UTMI 顶上（与 maximum-speed=high-speed 同义） */
     QscratchSelectUtmiAsPipeClock();
@@ -67,22 +71,23 @@ int UsbHostQscratchConfigureForHost(void) {
 
     General = UsbHostReadMmio32(QSCRATCH_REGISTER_BASE + QSCRATCH_GENERAL_CFG_OFFSET);
     HighSpeed = UsbHostReadMmio32(QSCRATCH_REGISTER_BASE + QSCRATCH_HS_PHY_CTRL_OFFSET);
-    UsbHostFormatHexadecimal32(Hex, General);
-    UsbHostCopyText(Line, "qsc ", sizeof(Line));
-    UsbHostAppendText(Line, Hex, sizeof(Line));
-    BoardBringUpSplashPaintLine(208, Line);
+    sQscratchGeneralConfiguration = General;
+    /* 勿 PaintLine：会与 HubStatus 状态行抢 Y、叠字 */
 
     if ((General & (PIPE_UTMI_CLOCK_SELECT | PIPE3_PHY_STATUS_SOFTWARE)) !=
             (PIPE_UTMI_CLOCK_SELECT | PIPE3_PHY_STATUS_SOFTWARE) ||
         (HighSpeed & (UTMI_OTG_VBUS_VALID | SOFTWARE_SESSION_VALID_SELECT)) !=
             (UTMI_OTG_VBUS_VALID | SOFTWARE_SESSION_VALID_SELECT)) {
-        BoardBringUpSplashPaintLine(256, "qsc bad");
         return -1;
     }
     return 0;
 }
 
 #else
+
+UINT32 UsbHostQscratchGeneralConfiguration(void) {
+    return 0;
+}
 
 int UsbHostQscratchConfigureForHost(void) {
     return -1;

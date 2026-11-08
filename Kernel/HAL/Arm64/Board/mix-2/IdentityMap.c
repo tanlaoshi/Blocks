@@ -1,7 +1,7 @@
 /*
  * IdentityMap.c — MIX 2 BRINGUP 最小恒等页表
  *
- * GiB0：DWC3/QUSB/TCSR + SPMI arb（Type-C）Device；
+ * GiB0：DWC3/QUSB/TCSR/TLMM(WEST) + SPMI arb（Type-C）Device；
  * GiB2：内核 Normal + splash Device。静态表；不碰 GIC / PhysicalMemory。
  */
 #include "Board.h"
@@ -40,6 +40,8 @@
 #define USB_DEVICE_BLOCK_COUNT  18u
 /* tcsr_clamp_dig_n_1p8 @0x1FCB24C → 2MiB @0x1E00000 */
 #define TCSR_CLAMP_BLOCK_INDEX  0x0Fu
+/* TLMM WEST gpio59/60（WCD USBC analog）@0x353B000 → 2MiB @0x3400000 */
+#define TLMM_WEST_BLOCK_INDEX   0x1Au
 /* SPMI：core/cnfg @0x8000000；chnls @0x8400000（8×2MiB）；obsrvr 头 4MiB @0x9400000 */
 #define SPMI_CORE_BLOCK_INDEX     0x40u
 #define SPMI_CHANNELS_BLOCK_INDEX 0x42u
@@ -96,6 +98,8 @@ int BoardBringUpIdentityMapEnable(void) {
     }
     sLevel2Gigabyte0[TCSR_CLAMP_BLOCK_INDEX] =
         (((UINT64)TCSR_CLAMP_BLOCK_INDEX) << 21) | BLOCK_DEVICE;
+    sLevel2Gigabyte0[TLMM_WEST_BLOCK_INDEX] =
+        (((UINT64)TLMM_WEST_BLOCK_INDEX) << 21) | BLOCK_DEVICE;
     sLevel2Gigabyte0[SPMI_CORE_BLOCK_INDEX] =
         (((UINT64)SPMI_CORE_BLOCK_INDEX) << 21) | BLOCK_DEVICE;
     for (BlockIndex = 0; BlockIndex < SPMI_CHANNELS_BLOCK_COUNT; BlockIndex++) {

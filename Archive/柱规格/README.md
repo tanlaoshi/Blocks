@@ -5,6 +5,7 @@
 | 文件 | 说明 |
 | ---- | ---- |
 | [手机USB键盘.md](手机USB键盘.md) | Pixel 8 / MIX 2：USB Host→hub→键盘；政策已放行；PR 已拆；待选 |
+| [蓝牙鼠-罗技MXMaster.md](蓝牙鼠-罗技MXMaster.md) | X64：初代 MX Master BLE HOGP（无接收器）；`PR-BTM-0…10`；候补未进 ★ |
 | [集成开发环境.md](集成开发环境.md) | Blocks IDE：VSCodium 外壳。串口等会话收进同一窗口，仍调现成脚本。规格，还没改代码 |
 | [局域网商店与聊天.md](局域网商店与聊天.md) | LAN Store + Chat |
 | [UI颜值与布局.md](UI颜值与布局.md) | 桌面观感柱 |

@@ -144,3 +144,17 @@ void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source) {
         Destination->BlockCrc[Index] = Source->BlockCrc[Index];
     }
 }
+
+void KsendImageClear(KSEND_IMAGE *Image) {
+    UINT32 Index;
+
+    if (Image == 0) {
+        return;
+    }
+    Image->Size = 0;
+    Image->BlockCount = 0;
+    Image->Crc = KSEND_CRC_INITIAL;
+    for (Index = 0; Index < KSEND_MAX_BLOCKS; Index++) {
+        Image->BlockCrc[Index] = 0;
+    }
+}

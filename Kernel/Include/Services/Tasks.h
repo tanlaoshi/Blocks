@@ -20,6 +20,12 @@ UINT32 WorkerLoopCount(void);
  * 非 SchedulerIoBreath（长 IO 旁路）。HotSend Accept 须走此路，禁狂打 NetPoll。
  */
 void YieldForPollInput(void);
+/*
+ * 1 = 无 Input 专核（Count<MIN 或 Pi VirtDesktop）→ 调用方须自 drain / 长 IO 用 IoBreath。
+ * 0 = InputTask 独占 HalInputPoll → 长 IO 禁 IoBreath（防双泵）。
+ * HotSend 有线 win / 落盘 Breath 对表此门闩（Duo 跟 Pi，NUC 跟专核）。
+ */
+int TasksCallerDrainsInput(void);
 /* 焦点 USER 时：dequeue → FeedHid（供 GuiPollUserInput，不靠 Shell 同核） */
 void TasksPumpKeyboard(void);
 

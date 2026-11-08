@@ -4,6 +4,7 @@
 #include "Ksend/TransportPrivate.h"
 #include "Errno.h"
 #include "Hal.h"
+#include "HalPlatform.h"
 #include "LwIp.h"
 #include "Scheduler.h"
 
@@ -87,8 +88,15 @@ int KsendTransportGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds) {
                 return 0;
             }
             LwIpService();
-            SchedulerIoBreath();
-            HalCpuRelax();
+            /*
+             * Pi VirtDesktop：IoBreath 代泵鼠。Duo：勿 CondResched→Worker Halt
+             * 饿死本圈收字节（同 BreathWhileWired，2026-11-09）。
+             */
+            if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+                SchedulerIoBreath();
+            } else {
+                HalCpuRelax();
+            }
             continue;
         }
         if (TransportElapsed(Start, TimeoutMilliseconds)) {
@@ -98,8 +106,11 @@ int KsendTransportGetByte(UINT8 *Out, UINT32 TimeoutMilliseconds) {
             TransportSendFlush(20u);
         }
         LwIpService();
-        SchedulerIoBreath();
-        HalCpuRelax();
+        if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+            SchedulerIoBreath();
+        } else {
+            HalCpuRelax();
+        }
     }
 }
 

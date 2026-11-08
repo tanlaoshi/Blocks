@@ -8,7 +8,7 @@
 #include "Ksend/Private.h"
 #include "Hal.h"
 #include "HalDevices.h"
-#include "HalPlatform.h"
+#include "Tasks.h"
 
 static const char *FailureName(int Failure) {
     switch (Failure) {
@@ -60,10 +60,11 @@ UINT32 KsendReadyWindowBlocks(void) {
         return KSEND_WINDOW_WIFI;
     }
     /*
-     * Pi VirtDesktop：SMSC 与 µSD 同机；有线 win=8 攒批落盘仍会打挂
-     *（2026-11-08：UMING block8 后 ping/串口皆死）。NUC alx 仍用 8。
+     * 无 Input 专核（Pi VirtDesktop / Duo 单核）：有线 win=8 攒批落盘打挂
+     *（Pi UMING block8；Duo 2026-11-08 block24 data / 1 块 header 超时）。
+     * 有 InputTask 的 NUC alx 仍用 8。门闩 TasksCallerDrainsInput。
      */
-    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+    if (TasksCallerDrainsInput()) {
         return KSEND_WINDOW_SERIAL;
     }
     return KSEND_WINDOW_WIRED_TCP;

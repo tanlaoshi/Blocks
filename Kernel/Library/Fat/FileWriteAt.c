@@ -77,6 +77,7 @@ static int EnsureClusterCount(UINT32 *InOutFirst, UINT32 NeedClusters) {
                     FatFreeChain(First);
                     return 0;
                 }
+                FatIoBreath(); /* 扩链清簇：与写循环同钩（HotSend 挂泵网） */
             }
         }
         if (!FatSet(Prev, EocValue())) {
@@ -115,6 +116,7 @@ static int EnsureClusterCount(UINT32 *InOutFirst, UINT32 NeedClusters) {
                 if (!StoreCluster(Neu)) {
                     return 0;
                 }
+                FatIoBreath(); /* 扩链清簇：与写循环同钩（HotSend 挂泵网） */
                 Cl = Neu;
                 if (!FatSet(Cl, EocValue())) {
                     return 0;

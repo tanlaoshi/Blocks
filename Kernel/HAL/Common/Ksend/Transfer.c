@@ -7,9 +7,29 @@
  */
 #include "Ksend/Private.h"
 #include "Hal/KsendFreeze.h"
+#include "Hal.h"
+#include "HalPlatform.h"
 #include "FileSystem.h"
+#include "Fat.h"
 #include "LwIp.h"
 #include "Scheduler.h"
+#include "Ksend/TransportPrivate.h"
+
+/*
+ * 挂到 FatSetIoBreath：WriteAt/扩链清簇时泵 ETH，避免 Duo 浅 RX 环在落盘
+ * 静默期被广播占满后 HotSend 下一块 data 超时（串口 2MiB 已证 FAT 本身 OK）。
+ */
+static void KsendFatIoBreath(void) {
+    if (LwIpActive()) {
+        LwIpService();
+    }
+    if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+        SchedulerIoBreath();
+    } else {
+        HalCpuRelax();
+    }
+    (void)TransportPollUserAbort();
+}
 
 static int PrepareBackup(KSEND_RUN *Run) {
     UINT32 Block = 0;
@@ -23,12 +43,14 @@ static int PrepareBackup(KSEND_RUN *Run) {
     Error = KsendFileSize(Run->TargetPath, &Run->OldSize);
     if (Error == FAT_ERR_NOENT) {
         Run->OldSize = 0;
+        KsendImageClear(&gKsendOldImage);
         return FAT_OK;
     }
     if (Error != FAT_OK) {
         return Error;
     }
     if (Run->OldSize == 0u) {
+        KsendImageClear(&gKsendOldImage);
         return FAT_OK;
     }
     if (Run->OldSize > KSEND_MAX_BYTES) {
@@ -174,7 +196,10 @@ static int TransferRun(KSEND_RUN *Run) {
     /* 表 ACK 后先泵 RX：PC 可能已发首块，Wi‑Fi 帧还在 SDPCM */
     if (LwIpActive()) {
         LwIpService();
-        SchedulerIoBreath();
+        /* Duo：勿 IoBreath→Worker Halt（见 ReceiveBatch BreathWhileWired） */
+        if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
+            SchedulerIoBreath();
+        }
         LwIpService();
     }
     if (KsendReceiveBlocks(Run) != 0) {
@@ -227,8 +252,10 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     }
     KsendPathsNote(&Run);
     KsendFreezeBegin();
+    FatSetIoBreath(KsendFatIoBreath);
     KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     Rc = TransferRun(&Run);
+    FatSetIoBreath(0);
     if (Rc == 0) {
         KsendVolumeRelease(&Run);
         KsendSuccessLine(Run.TrailerCrc, Run.Written, Run.NewSize);

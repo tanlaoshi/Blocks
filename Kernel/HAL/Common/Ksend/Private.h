@@ -299,5 +299,7 @@ int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run);
 void KsendVolumeRelease(KSEND_RUN *Run);
 void KsendPathsNote(const KSEND_RUN *Run);
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source);
+/* 目标不存在 / OldSize=0：须清空，勿沿用上次 READY 表（Duo 曾假 size=98304） */
+void KsendImageClear(KSEND_IMAGE *Image);
 
 #endif /* KSEND_PRIVATE_H */

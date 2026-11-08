@@ -77,7 +77,8 @@
 #define DUO_ETHERNET_RECEIVE_BUFFER1_SIZE_MASK         0x7FFu
 #define DUO_ETHERNET_RECEIVE_END_RING                  (1u << 25)
 
-#define DUO_ETHERNET_DMA_RING_COUNT   4u
+/* 4 过浅：FAT 落盘静默期 LAN 广播灌满 → HotSend 下一块 TCP 丢段（2026-11-09） */
+#define DUO_ETHERNET_DMA_RING_COUNT   16u
 #define DUO_ETHERNET_DMA_BUFFER_SIZE  1536u
 
 /* dwmac1000：MII Address / Data（协议名 MII 保留） */

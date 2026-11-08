@@ -29,8 +29,11 @@
 #include "Scheduler.h"
 #include "SerialLog.h"
 
-/* Pi VirtDesktop：无 Input 专核，Yield/Hid 自 drain（对表 KernelTrySpawnInput） */
-static int TasksInputDrainHere(void) {
+/*
+ * 无 Input 专核时调用方自 drain（对表 KernelTrySpawnInput）。
+ * Count<MIN（Duo 单核等）与 Pi VirtDesktop 同枝；有专核（NUC）返回 0。
+ */
+int TasksCallerDrainsInput(void) {
     if (HalCpuCount() < HAL_INPUT_CPU_MIN) {
         return 1;
     }
@@ -38,6 +41,10 @@ static int TasksInputDrainHere(void) {
         return 1;
     }
     return 0;
+}
+
+static int TasksInputDrainHere(void) {
+    return TasksCallerDrainsInput();
 }
 
 /*

@@ -10,6 +10,7 @@
 #include "HalPlatform.h"
 #include "LwIp.h"
 #include "Scheduler.h"
+#include "Tasks.h"
 
 static UINT32 sBatchFirstIndex;
 static UINT32 sBatchBlocks;
@@ -63,12 +64,16 @@ static void BreathWhileWired(void) {
     LwIpService();
     /*
      * 落盘长圈须泵网（Pi win 攒批写 SD 曾饿死 TCP）。
-     * Pi VirtDesktop：无 InputTask → IoBreath 代泵 HID + Ctrl-C。
-     * X64：禁 IoBreath（InputTask 主人；双泵饿 xHCI/网 —— NUC 2026-11-08
-     * 首窗 8 块后 hotsend exit2，像复制了 Pi 大文件问题）。
+     * Pi VirtDesktop：IoBreath（CNTV + Gui 代泵鼠）。
+     * Duo 单核：禁 IoBreath/CondResched——让出后 Worker Halt 等 tick，
+     * 收包路径饿死 → ~100KB data 超时（2026-11-09）；只 HalInputPoll。
+     * NUC（有 InputTask）：CondResched，禁 IoBreath（双泵饿 xHCI）。
      */
     if (!HalCpuIsHypervisor() && HalPlatformUseVirtDesktop()) {
         SchedulerIoBreath();
+    } else if (TasksCallerDrainsInput()) {
+        HalInputPoll();
+        HalCpuRelax();
     } else {
         SchedulerSetNeedResched();
         (void)SchedulerCondResched();

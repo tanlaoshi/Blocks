@@ -76,23 +76,32 @@ static void ConfigureUsb2PhyForHostChirp(void) {
 }
 
 /*
- * 对表 xHCI USB2：清变更 → PR → 等 PRC → 轮询 PED。
- * 禁止对 USB2 口写 PLS+LWS（RxDetect 属 SS）；真机 e10e1 疑被此写坏。
+ * 对表 xHCI USB2 + X64 Port.c 真机：
+ *   PED=0 时清 sticky → PR → 等 PRC → 等 PED；
+ *   **成功后 leavePRC**（PED 后再 W1C CHANGE → 真机打回 Polling / Address USBTE）；
+ *   再等 USB2 T_RSTRCY（≥10ms；X64 用 50ms）才允许 Address。
+ * 禁止 USB2 写 PLS+LWS；禁止复位路径再 CLOCK_DISABLE。
  */
 int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
     UINT64 Address = UsbHostXhciPortStatusAddress(PortIndexOneBased);
     UINT32 State;
     UINTN Guard;
+    UINT32 SawResetChange;
 
     ConfigureUsb2PhyForHostChirp();
-    (void)UsbHostQscratchConfigureForHost();
+    (void)UsbHostQscratchEnsureHostSessionOverride();
     UsbHostStallYield(200000u);
 
     State = UsbHostReadMmio32(Address);
     if ((State & PORT_STATUS_CONNECT) == 0) {
         return -1;
     }
-    UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_CHANGE_BITS);
+    /* 仅 PED=0 时清变更（对表 X64 ResetPort.clrSticky） */
+    if ((State & PORT_STATUS_ENABLE) == 0 &&
+        (State & PORT_STATUS_CHANGE_BITS) != 0) {
+        UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_CHANGE_BITS);
+        UsbHostStallYield(50000u);
+    }
 
     State = UsbHostReadMmio32(Address);
     UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_POWER |
@@ -109,23 +118,28 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
         return -1;
     }
 
+    SawResetChange = 0;
     for (Guard = 0; Guard < 200000u; Guard++) {
         State = UsbHostReadMmio32(Address);
         if ((State & PORT_STATUS_RESET_CHANGE) != 0) {
+            SawResetChange = 1;
             break;
         }
         UsbHostStallYield(50u);
     }
+    if (SawResetChange == 0) {
+        return -1;
+    }
 
-    UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_CHANGE_BITS);
-
-    /* HS chirp：Polling→U0+PED，可到数百 ms */
+    /* 勿在此处 W1C CHANGE：leavePRC（X64 真机血泪） */
     for (Guard = 0; Guard < 400u; Guard++) {
         State = UsbHostReadMmio32(Address);
         if ((State & PORT_STATUS_CONNECT) == 0) {
             return -1;
         }
         if ((State & PORT_STATUS_ENABLE) != 0) {
+            /* USB2 复位恢复；对表 X64 StallMilliseconds(50) */
+            UsbHostStallYield(2000000u);
             return 0;
         }
         UsbHostStallYield(5000u);
@@ -148,20 +162,23 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
     UINT32 MaxPacketSize;
 
     sEnumerateStatusCode = 1u;
-    State = UsbHostRootPortStatus(PortIndexOneBased);
-    PortSpeed = (State >> PORT_STATUS_SPEED_SHIFT) & 0xFu;
     if (UsbHostRootPortReset(PortIndexOneBased) != 0) {
         State = UsbHostRootPortStatus(PortIndexOneBased);
         sEnumerateStatusCode = 0x1000u | (State & 0xFFu);
         return -1;
     }
+    /* 速度以复位后 PORTSC 为准（xHCI：复位前 Speed 未定义） */
+    State = UsbHostRootPortStatus(PortIndexOneBased);
+    PortSpeed = (State >> PORT_STATUS_SPEED_SHIFT) & 0xFu;
 
     Command.Parameter = 0;
     Command.Status = 0;
-    Command.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_ENABLE_SLOT);
+    /* xHCI §4.6.3：双协议 HC 须填 Protocol Slot Type（USB2 口） */
+    Command.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_ENABLE_SLOT) |
+                      ((UsbHostXhciUsb2ProtocolSlotType() & 0x1Fu) << 16);
     if (UsbHostXhciSubmitCommand(&Command, &CompletionCode, &SlotId) != 0 ||
         CompletionCode != COMPLETION_CODE_SUCCESS || SlotId == 0) {
-        sEnumerateStatusCode = 0x20u | (CompletionCode & 0x0Fu);
+        sEnumerateStatusCode = 0x200u | (CompletionCode & 0xFFu);
         return -1;
     }
 
@@ -175,18 +192,24 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
         Output[Index] = 0;
     }
 
+    /*
+     * 对表 X64 AddressDeviceOnPort（根口 RouteString=0）：
+     * 禁把口号写进 Route String（曾 |1 → Address USBTE）。
+     * EP0 dword1：CErr|Type=Control(4)|MPS（同 Device.c）。
+     */
     WriteLittleEndian32(Input + 4u, (1u << 0) | (1u << 1));
     WriteLittleEndian32(Input + ContextSize + 0u,
-                        (1u << 27) | (PortSpeed << 20) | (1u << 0));
+                        (1u << 27) | (PortSpeed << 20));
     WriteLittleEndian32(Input + ContextSize + 4u, (PortIndexOneBased & 0xFFu) << 16);
 
     UsbHostBindEndpointZeroRing(SlotId);
     Dequeue = UsbHostEndpointZeroRingPhysical() | 1ULL;
     MaxPacketSize = EndpointZeroMaxPacketSize(PortSpeed);
-    WriteLittleEndian32(Input + ContextSize * 2u + 0u, (3u << 1));
-    WriteLittleEndian32(Input + ContextSize * 2u + 4u, (MaxPacketSize << 16) | 4u);
+    WriteLittleEndian32(Input + ContextSize * 2u + 4u,
+                        (3u << 1) | (4u << 3) | (MaxPacketSize << 16));
     WriteLittleEndian32(Input + ContextSize * 2u + 8u, (UINT32)Dequeue);
     WriteLittleEndian32(Input + ContextSize * 2u + 12u, (UINT32)(Dequeue >> 32));
+    WriteLittleEndian32(Input + ContextSize * 2u + 16u, 8u);
 
     UsbHostSetDeviceContextBase(SlotId, (UINT64)(UINTN)Output);
     UsbHostCacheCleanRange(Input, ContextSize * 33u);
@@ -198,7 +221,7 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
                       (SlotId << TRANSFER_REQUEST_BLOCK_SLOT_SHIFT);
     if (UsbHostXhciSubmitCommand(&Command, &CompletionCode, 0) != 0 ||
         CompletionCode != COMPLETION_CODE_SUCCESS) {
-        sEnumerateStatusCode = 0x30u | (CompletionCode & 0x0Fu);
+        sEnumerateStatusCode = 0x300u | (CompletionCode & 0xFFu);
         return -1;
     }
 

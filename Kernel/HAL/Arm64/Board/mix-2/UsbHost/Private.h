@@ -46,11 +46,11 @@
 #define DWC3_GUSB2PHYCFG_USB_TURNAROUND_MASK (0xFu << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT)
 #define DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT 9u
 #define DWC3_GUSB2PHYCFG_U2_FREE_CLOCK_EXISTS (1u << 30)
+/* 对表 Linux XHCI_PORT_RO / XHCI_PORT_RWS：禁把 PED(RW1CS) 放进 RWS */
 #define PORT_STATUS_READ_ONLY \
     (PORT_STATUS_CONNECT | (1u << 3) | (0xFu << PORT_STATUS_SPEED_SHIFT) | (1u << 30))
 #define PORT_STATUS_READ_WRITE_SET \
-    (PORT_STATUS_ENABLE | (1u << 5) | (1u << 6) | (1u << 7) | (1u << 8) | \
-     PORT_STATUS_POWER | (1u << 14) | (1u << 15) | (1u << 16) | (0x1Fu << 24))
+    (PORT_STATUS_LINK_STATE_MASK | PORT_STATUS_POWER | (0x3u << 14) | (0x7u << 25))
 #define PORT_STATUS_CHANGE_BITS \
     (PORT_STATUS_CONNECT_CHANGE | PORT_STATUS_ENABLE_CHANGE | PORT_STATUS_RESET_CHANGE | \
      (1u << 19) | (1u << 20) | (1u << 22) | (1u << 23))
@@ -137,8 +137,10 @@ int UsbHostQusbPhyAttachKick(void);
 UINT8 UsbHostQusbLineStateRead(void);
 UINT8 UsbHostQusbClampByte(void);
 
-/* ssusb reg[1] QSCRATCH@0xC016000：HS UTMI-as-PIPE + Host VBUS override */
+/* ssusb reg[1] QSCRATCH@0xC016000：HS UTMI-as-PIPE（一次）+ Host VBUS override */
 int UsbHostQscratchConfigureForHost(void);
+/* Attach/复位：只刷 VBUS/SESSVLD，勿再 CLOCK_DISABLE */
+int UsbHostQscratchEnsureHostSessionOverride(void);
 UINT32 UsbHostQscratchGeneralConfiguration(void);
 
 /* SPMI PMIC arbiter v2 + PMI8998 Type-C DFP */
@@ -170,12 +172,14 @@ UINT64 UsbHostXhciPortStatusAddress(UINT32 PortIndexOneBased);
 int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts);
 UINT32 UsbHostXhciUsb2PortBitMask(void);
 UINT32 UsbHostXhciUsb3PortBitMask(void);
+/* Supported Protocol · USB2 Protocol Slot Type → Enable Slot bits16..20 */
+UINT32 UsbHostXhciUsb2ProtocolSlotType(void);
 
 int UsbHostRootPortPower(UINT32 PortIndexOneBased);
 int UsbHostRootPortReset(UINT32 PortIndexOneBased);
 UINT32 UsbHostRootPortStatus(UINT32 PortIndexOneBased);
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut);
-/* 枚举粘性码：0=idle；A1=hub ok；10xx=rst|PORTSC；20=slot 30=addr 40=desc 5x=class */
+/* 枚举粘性码：0=idle；A1=hub ok；10xx=rst|PORTSC；2xx=slot|cc；3xx=addr|cc；40=desc；5x=class */
 UINT32 UsbHostEnumerateStatusCode(void);
 void UsbHostEnumerateStatusCodeClear(void);
 

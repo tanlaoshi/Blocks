@@ -24,8 +24,11 @@
 #define XHCI_PROTOCOL_PORT_COUNT_SHIFT         8
 #define XHCI_PROTOCOL_PORT_COUNT_MASK          0xFFu
 
+#define XHCI_PROTOCOL_SLOT_TYPE_MASK 0x1Fu
+
 static UINT32 sUsb2PortBitMask;
 static UINT32 sUsb3PortBitMask;
+static UINT32 sUsb2ProtocolSlotType;
 
 UINT32 UsbHostXhciUsb2PortBitMask(void) {
     return sUsb2PortBitMask;
@@ -33,6 +36,10 @@ UINT32 UsbHostXhciUsb2PortBitMask(void) {
 
 UINT32 UsbHostXhciUsb3PortBitMask(void) {
     return sUsb3PortBitMask;
+}
+
+UINT32 UsbHostXhciUsb2ProtocolSlotType(void) {
+    return sUsb2ProtocolSlotType;
 }
 
 int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts) {
@@ -43,6 +50,7 @@ int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts) {
 
     sUsb2PortBitMask = 0;
     sUsb3PortBitMask = 0;
+    sUsb2ProtocolSlotType = 0;
     if (MaxPorts == 0 || MaxPorts > 31u) {
         return -1;
     }
@@ -70,9 +78,11 @@ int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts) {
 
         if (Identifier == XHCI_PROTOCOL_CAPABILITY_IDENTIFIER) {
             UINT32 PortWord = UsbHostReadMmio32(CapabilityAddress + 8u);
+            UINT32 SlotTypeWord = UsbHostReadMmio32(CapabilityAddress + 12u);
             UINT32 PortOffset = PortWord & XHCI_PROTOCOL_PORT_OFFSET_MASK;
             UINT32 PortCount = (PortWord >> XHCI_PROTOCOL_PORT_COUNT_SHIFT) &
                                XHCI_PROTOCOL_PORT_COUNT_MASK;
+            UINT32 ProtocolSlotType = SlotTypeWord & XHCI_PROTOCOL_SLOT_TYPE_MASK;
             UINT32 EndPort;
 
             if (PortOffset != 0 && PortCount != 0) {
@@ -84,6 +94,7 @@ int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts) {
                      PortIndex++) {
                     if (MajorRevision == 2u) {
                         sUsb2PortBitMask |= (1u << PortIndex);
+                        sUsb2ProtocolSlotType = ProtocolSlotType;
                     } else if (MajorRevision == 3u) {
                         sUsb3PortBitMask |= (1u << PortIndex);
                     }
@@ -112,6 +123,10 @@ UINT32 UsbHostXhciUsb2PortBitMask(void) {
 }
 
 UINT32 UsbHostXhciUsb3PortBitMask(void) {
+    return 0;
+}
+
+UINT32 UsbHostXhciUsb2ProtocolSlotType(void) {
     return 0;
 }
 

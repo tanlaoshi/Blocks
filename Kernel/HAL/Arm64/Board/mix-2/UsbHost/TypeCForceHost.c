@@ -169,7 +169,8 @@ void UsbHostTypeCMaintainAfterAttach(void) {
     if (sAttachPhyKickDone == 0) {
         sAttachPhyKickDone = 1;
         (void)UsbHostQusbPhyAttachKick();
-        (void)UsbHostQscratchConfigureForHost();
+        /* 勿再 SelectUtmi（含 CLOCK_DISABLE）；只保 session override */
+        (void)UsbHostQscratchEnsureHostSessionOverride();
     }
     sAttachMaintainSettled = 1;
 }

@@ -111,6 +111,7 @@ static UINT32 ScanAppendOneProfile(const UINT8 *Frame, UINT32 Position, UINT8 Su
     Entry->Frequency = Entries[0].Frequency;
     Entry->Rssi = Entries[0].Rssi;
     Entry->Channel = Entries[0].Channel;
+    Entry->RsnGroupSuite = Entries[0].RsnGroupSuite;
     Entry->MbssidIndex = Index;
     Entry->MbssidErrorOffset = FailOffset;
     for (ByteIndex = 0; ByteIndex < AIC_SCAN_SSID_TEXT_MAX; ByteIndex++) {

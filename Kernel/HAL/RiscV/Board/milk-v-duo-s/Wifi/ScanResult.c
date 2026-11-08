@@ -61,13 +61,27 @@ static void ScanCopySsid(const UINT8 *Body, UINT32 BodyLength, char *Text, UINT3
     Text[CopyLength] = 0;
 }
 
+static UINT8 ScanParseRsnGroupSuite(const UINT8 *Body, UINT8 ElementLength) {
+    if (ElementLength < AIC_RSN_GROUP_SUITE_MIN) {
+        return 0;
+    }
+    if (Body[AIC_RSN_VERSION_LENGTH] != AIC_RSN_SUITE_OUI0 ||
+        Body[AIC_RSN_VERSION_LENGTH + 1u] != AIC_RSN_SUITE_OUI1 ||
+        Body[AIC_RSN_VERSION_LENGTH + 2u] != AIC_RSN_SUITE_OUI2) {
+        return 0;
+    }
+    return Body[AIC_RSN_VERSION_LENGTH + 3u];
+}
+
 static void ScanParseInformationElements(const UINT8 *Frame, UINT32 FrameLength, char *SsidText,
-                                         UINT32 SsidTextSize, UINT32 *OutChannel) {
+                                         UINT32 SsidTextSize, UINT32 *OutChannel,
+                                         UINT8 *OutRsnGroupSuite) {
     UINT32 Index = AIC_DOT11_IE_OFFSET;
     int SsidFound = 0;
 
     SsidText[0] = 0;
     *OutChannel = 0;
+    *OutRsnGroupSuite = 0;
     while (Index + AIC_IE_HEADER_LENGTH <= FrameLength) {
         UINT8 ElementId = Frame[Index];
         UINT8 ElementLength = Frame[Index + 1u];
@@ -81,6 +95,8 @@ static void ScanParseInformationElements(const UINT8 *Frame, UINT32 FrameLength,
             SsidFound = 1;
         } else if (ElementId == AIC_IE_DS_PARAMETER && ElementLength >= 1u) {
             *OutChannel = Frame[Body];
+        } else if (ElementId == AIC_IE_RSN && *OutRsnGroupSuite == 0u) {
+            *OutRsnGroupSuite = ScanParseRsnGroupSuite(&Frame[Body], ElementLength);
         }
         Index = Body + ElementLength;
     }
@@ -121,11 +137,13 @@ UINT32 AicScanResultParse(const UINT8 *Frame, UINT32 FrameLength, UINT32 ParamLe
     Entries[0].Rssi = Result->Rssi;
     Entries[0].MbssidIndex = 0;
     Entries[0].MbssidErrorOffset = AIC_SCAN_MBSSID_ERROR_NONE;
+    Entries[0].RsnGroupSuite = 0;
     for (ByteIndex = 0; ByteIndex < AIC_SCAN_MAC_LENGTH; ByteIndex++) {
         Entries[0].Bssid[ByteIndex] = Payload[AIC_DOT11_ADDRESS3_OFFSET + ByteIndex];
     }
     ScanParseInformationElements(Payload, Length, Entries[0].Ssid,
-                                 (UINT32)sizeof(Entries[0].Ssid), &Channel);
+                                 (UINT32)sizeof(Entries[0].Ssid), &Channel,
+                                 &Entries[0].RsnGroupSuite);
     if (Channel == 0u) {
         Channel = ScanFrequencyToChannel(Result->CenterFrequency);
     }

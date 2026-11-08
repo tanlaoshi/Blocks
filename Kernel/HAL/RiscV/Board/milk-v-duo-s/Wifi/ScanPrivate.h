@@ -161,6 +161,13 @@
 #define AIC_IE_HEADER_LENGTH 2u
 #define AIC_IE_SSID 0u
 #define AIC_IE_DS_PARAMETER 3u
+#define AIC_IE_RSN 48u /* WLAN_EID_RSN：组播套件在 version 后 4 B（末字节 2=TKIP / 4=CCMP） */
+#define AIC_RSN_VERSION_LENGTH 2u
+#define AIC_RSN_SUITE_LENGTH 4u
+#define AIC_RSN_GROUP_SUITE_MIN (AIC_RSN_VERSION_LENGTH + AIC_RSN_SUITE_LENGTH)
+#define AIC_RSN_SUITE_OUI0 0x00u
+#define AIC_RSN_SUITE_OUI1 0x0Fu
+#define AIC_RSN_SUITE_OUI2 0xACu
 #define AIC_SSID_PRINTABLE_MIN 0x20u
 #define AIC_SSID_PRINTABLE_MAX 0x7Eu
 
@@ -209,6 +216,11 @@ typedef struct {
     UINT8 Channel;
     UINT8 MbssidIndex;       /* 0 = 传输 BSSID；1.. = 非传输，打印 (mbssid idx=N) */
     UINT16 MbssidErrorOffset; /* 0xFFFF = 没出错；否则是 profile 解析失败的帧内偏移 */
+    /*
+     * Beacon RSN 组播套件末字节：2=TKIP、4=CCMP；0=未见 RSN（join 默认 CCMP）。
+     * 课网 Apple=WPA1/WPA2 混合 → TKIP；硬写 CCMP 会 assoc 成功却永不发 M1。
+     */
+    UINT8 RsnGroupSuite;
 } AIC_SCAN_AP;
 
 /*

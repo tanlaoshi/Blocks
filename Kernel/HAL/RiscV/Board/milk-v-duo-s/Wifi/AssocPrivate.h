@@ -127,27 +127,16 @@ typedef struct {
 #define AIC_JOIN_DONT_WAIT_BCMC 0u
 #define AIC_JOIN_UAPSD_QUEUES 0u
 /*
- * RSN IE：WPA2-PSK + CCMP，22 B（802.11-2016 §9.4.2.24 的元素结构）。
- * 字段出处：
- *   元素 id 48          WLAN_EID_RSN（linux_5.10/include/linux/ieee80211.h:2731）
- *   版本 1              RSN 元素版本号（§9.4.2.24.1）
- *   组播套件 00-0F-AC:4 WLAN_CIPHER_SUITE_CCMP（ieee80211.h:3386，SUITE 在 :3379）
- *   单播套件 00-0F-AC:4 同上（本刀只要 CCMP）
- *   AKM 00-0F-AC:2      WLAN_AKM_SUITE_PSK（ieee80211.h:3400）
- *   能力位 0x0000       不做 MFP、不预认证、不是 PMF 必需（§9.4.2.24.6）
- * 与 X64 的 IwlBuildStaRsn（Mac/Assoc/Rsn.c:130-151，Caps=0 时）逐字节一致。
+ * RSN IE：WPA2-PSK，22 B（802.11-2016 §9.4.2.24）。单播固定 CCMP；
+ * 组播跟扫描缓存 AIC_SCAN_AP.RsnGroupSuite（beacon RSN 套件末字节）。
+ * 课网 Apple=WPA1/WPA2 → TKIP(2)；硬写 CCMP → assoc 绿但无 M1。
+ * NM Hotspot group=ccmp → CCMP(4)；硬写 TKIP → status 0x29。
  */
 #define AIC_JOIN_RSN_IE_ID 48u          /* WLAN_EID_RSN */
 #define AIC_JOIN_RSN_IE_BODY_LENGTH 20u /* 2+4+2+4+2+4+2 = 20，不含 id/len */
 #define AIC_JOIN_RSN_IE_LENGTH 22u      /* sizeof 元素 = 2 + 20 */
 #define AIC_JOIN_RSN_VERSION 1u
 #define AIC_JOIN_RSN_SUITE_CCMP 4u  /* OUI 00-0F-AC:4 */
-/*
- * 组播套件必须跟 AP 的 beacon 声明一致（真机空口实测）：
- * 这个 AP 是 WPA/WPA2 混合模式，beacon/关联响应里组播是 00-0F-AC:2(TKIP)，
- * Linux 也跟着声明 TKIP+CCMP；我们之前硬写 CCMP(4)，AP 接受了关联却**从不开始四次握手**
- * （空口抓包：AP 只回 assoc，之后整段没有 EAPOL）。单播仍用 CCMP。
- */
 #define AIC_JOIN_RSN_SUITE_TKIP 2u  /* OUI 00-0F-AC:2 */
 #define AIC_JOIN_RSN_SUITE_SUBCOUNT 1u
 #define AIC_JOIN_RSN_AKM_PSK 2u /* OUI 00-0F-AC:2 */

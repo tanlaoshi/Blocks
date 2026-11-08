@@ -157,5 +157,13 @@ void AicJoinPrintTarget(const AIC_SCAN_AP *Target) {
     SdhciMarkDecimal("", Target->Channel);
     SdhciMark(" rssi=");
     AicScanMarkSigned((INT32)Target->Rssi);
+    SdhciMark(" rsn_group=");
+    if (Target->RsnGroupSuite == AIC_JOIN_RSN_SUITE_TKIP) {
+        SdhciMark("tkip");
+    } else if (Target->RsnGroupSuite == AIC_JOIN_RSN_SUITE_CCMP) {
+        SdhciMark("ccmp");
+    } else {
+        SdhciMark("default-ccmp");
+    }
     SdhciMark("\n");
 }

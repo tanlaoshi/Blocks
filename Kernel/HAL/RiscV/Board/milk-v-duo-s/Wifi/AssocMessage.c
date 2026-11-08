@@ -94,32 +94,44 @@ static UINT32 JoinSsidLength(const char *Ssid) {
 }
 
 /*
- * 22 B RSN IE：WPA2-PSK + CCMP。逐行对照 802.11-2016 §9.4.2.24 的元素结构，
- * 每个字节的含义与出处见 WifiAssocPrivate.h 的 AIC_JOIN_RSN_* 注释：
- *   30 14            元素 id=48(RSN) / 长度=20
- *   01 00            版本 1
- *   00 0f ac 04      组播套件 CCMP（00-0F-AC:4）
- *   01 00            单播套件数 1
- *   00 0f ac 04      单播套件 CCMP
- *   01 00            AKM 套件数 1
- *   00 0f ac 02      AKM PSK（00-0F-AC:2）
- *   00 00            RSN 能力位：不做 MFP / 不预认证 / 不要求 PMF
- * 不能逐字节拼错：AP 按这 22 B 决定给不给 M1（不带它 = status_code 12，
- * 真机 PR-32 第二刀已经撞过一次）。
- * 2026-11-03：组播曾误写 TKIP → NM Hotspot（group=ccmp）回 status 0x29
- * （WLAN_STATUS_INVALID_GROUP_CIPHER=41）；改回 CCMP 与上文表一致。
+ * 22 B RSN IE：WPA2-PSK；组播跟 beacon，单播固定 CCMP。
+ * 课网 Apple（WPA1/WPA2）beacon 组播=TKIP：硬写 CCMP → assoc 绿但永不发 M1。
+ * NM Hotspot group=ccmp：硬写 TKIP → status 0x29。故按扫描缓存 RsnGroupSuite 填。
+ * 布局见 WifiAssocPrivate.h AIC_JOIN_RSN_*。
  */
-static const UINT8 sAicJoinRsnIe[AIC_JOIN_RSN_IE_LENGTH] = {
-    (UINT8)AIC_JOIN_RSN_IE_ID, (UINT8)AIC_JOIN_RSN_IE_BODY_LENGTH,
-    (UINT8)AIC_JOIN_RSN_VERSION, 0x00u,
-    /* 组播/单播：CCMP（对表现代 AP / NM Hotspot group=ccmp pairwise=ccmp） */
-    0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_SUITE_CCMP,
-    (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT, 0x00u,
-    0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_SUITE_CCMP,
-    (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT, 0x00u,
-    0x00u, 0x0Fu, 0xACu, (UINT8)AIC_JOIN_RSN_AKM_PSK,
-    (UINT8)(AIC_JOIN_RSN_CAPABILITIES & 0xFFu), (UINT8)(AIC_JOIN_RSN_CAPABILITIES >> 8)
-};
+static UINT8 sAicJoinRsnIe[AIC_JOIN_RSN_IE_LENGTH];
+
+static UINT8 JoinRsnGroupSuite(UINT8 FromScan) {
+    if (FromScan == AIC_JOIN_RSN_SUITE_TKIP || FromScan == AIC_JOIN_RSN_SUITE_CCMP) {
+        return FromScan;
+    }
+    return (UINT8)AIC_JOIN_RSN_SUITE_CCMP;
+}
+
+static void JoinFillRsnIe(UINT8 GroupSuite) {
+    sAicJoinRsnIe[0] = (UINT8)AIC_JOIN_RSN_IE_ID;
+    sAicJoinRsnIe[1] = (UINT8)AIC_JOIN_RSN_IE_BODY_LENGTH;
+    sAicJoinRsnIe[2] = (UINT8)AIC_JOIN_RSN_VERSION;
+    sAicJoinRsnIe[3] = 0x00u;
+    sAicJoinRsnIe[4] = 0x00u;
+    sAicJoinRsnIe[5] = 0x0Fu;
+    sAicJoinRsnIe[6] = 0xACu;
+    sAicJoinRsnIe[7] = GroupSuite;
+    sAicJoinRsnIe[8] = (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT;
+    sAicJoinRsnIe[9] = 0x00u;
+    sAicJoinRsnIe[10] = 0x00u;
+    sAicJoinRsnIe[11] = 0x0Fu;
+    sAicJoinRsnIe[12] = 0xACu;
+    sAicJoinRsnIe[13] = (UINT8)AIC_JOIN_RSN_SUITE_CCMP;
+    sAicJoinRsnIe[14] = (UINT8)AIC_JOIN_RSN_SUITE_SUBCOUNT;
+    sAicJoinRsnIe[15] = 0x00u;
+    sAicJoinRsnIe[16] = 0x00u;
+    sAicJoinRsnIe[17] = 0x0Fu;
+    sAicJoinRsnIe[18] = 0xACu;
+    sAicJoinRsnIe[19] = (UINT8)AIC_JOIN_RSN_AKM_PSK;
+    sAicJoinRsnIe[20] = (UINT8)(AIC_JOIN_RSN_CAPABILITIES & 0xFFu);
+    sAicJoinRsnIe[21] = (UINT8)(AIC_JOIN_RSN_CAPABILITIES >> 8);
+}
 
 const UINT8 *AicJoinRsnIe(void) {
     return sAicJoinRsnIe;
@@ -163,6 +175,7 @@ UINT32 AicJoinBuild(UINT8 *Buffer, const AIC_SCAN_AP *Target, UINT8 VifIndex) {
     Config->Flags = AIC_JOIN_FLAGS_WPA2;
     Config->CtrlPortEthertype = (UINT16)AIC_JOIN_CTRL_PORT_EAPOL;
     Config->IeLength = (UINT16)AIC_JOIN_RSN_IE_LENGTH;
+    JoinFillRsnIe(JoinRsnGroupSuite(Target->RsnGroupSuite));
     /* ie_buf 是 u32[64]；按字节写，和厂商 memcpy(req->ie_buf, sme->ie, ie_len) 等价 */
     for (Index = 0; Index < AIC_JOIN_RSN_IE_LENGTH; Index++) {
         IeBytes[Index] = sAicJoinRsnIe[Index];

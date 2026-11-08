@@ -167,6 +167,9 @@ static void ScanMerge(const AIC_SCAN_AP *Ap, UINT16 RecordIndex) {
                 Entry->RecordIndex = RecordIndex;
             }
         }
+        if (Entry->Ap.RsnGroupSuite == 0u && Ap->RsnGroupSuite != 0u) {
+            Entry->Ap.RsnGroupSuite = Ap->RsnGroupSuite;
+        }
         if (Ap->MbssidIndex != 0u) {
             Entry->Ap.MbssidIndex = Ap->MbssidIndex;
         }

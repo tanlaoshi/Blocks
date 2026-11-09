@@ -12,20 +12,7 @@
 
 #if BOARD_PIXEL8_USB_HOST_BRINGUP
 
-/*
- * 下半屏：1080×2400；行距 64。
- * p* / eu·c / ph·cm / tc 各占一行，避免 cm 被 ba 挤出屏外。
- */
-#define SPLASH_STATUS_LINE_STRIDE 64u
-#define SPLASH_STATUS_LINE_PORTS  1200u
-#define SPLASH_STATUS_LINE_REPEATER                                        \
-    (SPLASH_STATUS_LINE_PORTS + SPLASH_STATUS_LINE_STRIDE)
-#define SPLASH_STATUS_LINE_PHYSICAL_BASE                                   \
-    (SPLASH_STATUS_LINE_REPEATER + SPLASH_STATUS_LINE_STRIDE)
-#define SPLASH_STATUS_LINE_PHYSICAL_COMMON                                 \
-    (SPLASH_STATUS_LINE_PHYSICAL_BASE + SPLASH_STATUS_LINE_STRIDE)
-#define SPLASH_STATUS_LINE_TYPE_C                                          \
-    (SPLASH_STATUS_LINE_PHYSICAL_COMMON + SPLASH_STATUS_LINE_STRIDE)
+/* 行位见 Private.h USB_HOST_SPLASH_LINE_*（标题下 → p1…tc → KEY/k） */
 
 static void AppendCompactHex(char *Line, UINT32 Capacity, UINT32 Value) {
     char Hex[12];
@@ -71,7 +58,7 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2PortBitMask());
     UsbHostAppendText(Line, " s", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2ProtocolSlotType());
-    BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PORTS, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_PORTS, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 
@@ -94,7 +81,7 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     UsbHostAppendText(Line, " ua", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line),
                      UsbHostRepeaterLowPowerUartPort1Byte());
-    BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_REPEATER, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_REPEATER, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 
@@ -113,7 +100,7 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalLineState());
     UsbHostAppendText(Line, " pd", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalUtmiPullDown());
-    BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PHYSICAL_BASE, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_PHYSICAL_BASE, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 
@@ -133,7 +120,7 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     UsbHostAppendText(Line, " ac", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line),
                      UsbHostAliveClockPowerManagerLastResultCode());
-    BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PHYSICAL_COMMON, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_PHYSICAL_COMMON, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 
@@ -151,7 +138,7 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     /* vb＝buck-boost@0x69 源模（期望 a）；ee＝I2C 写失败 */
     UsbHostAppendText(Line, " vb", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCBuckBoostByte());
-    BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_TYPE_C, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_TYPE_C, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 }

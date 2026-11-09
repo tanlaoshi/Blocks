@@ -62,7 +62,7 @@
 #define BOARD_BRINGUP_SPLASH       1
 
 /*
- * USB Host：★=USB-2 hub；屏上看端口/e/a；坞直插 Type-C（不经 Cereal）。
+ * USB Host：★=USB-3 HID 键；屏上看 e/a + k + KEY>；坞直插 Type-C（不经 Cereal）。
  * 证据：device/google/zuma sys.usb.controller=11210000.dwc3
  */
 #define BOARD_PIXEL8_USB_HOST_BRINGUP 1

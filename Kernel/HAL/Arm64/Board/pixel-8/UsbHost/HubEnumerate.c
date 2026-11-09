@@ -30,6 +30,9 @@ static UINT32 EndpointZeroMaxPacketSize(UINT32 PortSpeed) {
 }
 
 static UINT32 sEnumerateStatusCode;
+static UINT32 sHubSlotId;
+static UINT32 sHubRootPortIndex;
+static UINT32 sHubPortSpeed;
 
 UINT32 UsbHostEnumerateStatusCode(void) {
     return sEnumerateStatusCode;
@@ -41,6 +44,18 @@ void UsbHostEnumerateStatusCodeClear(void) {
 
 void UsbHostEnumerateStatusCodeSet(UINT32 Code) {
     sEnumerateStatusCode = Code;
+}
+
+UINT32 UsbHostHubSlotId(void) {
+    return sHubSlotId;
+}
+
+UINT32 UsbHostHubRootPortIndex(void) {
+    return sHubRootPortIndex;
+}
+
+UINT32 UsbHostHubPortSpeed(void) {
+    return sHubPortSpeed;
 }
 
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
@@ -58,6 +73,9 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
     UINT32 MaxPacketSize;
 
     sEnumerateStatusCode = 1u;
+    sHubSlotId = 0;
+    sHubRootPortIndex = 0;
+    sHubPortSpeed = 0;
     if (UsbHostRootPortReset(PortIndexOneBased) != 0) {
         if (sEnumerateStatusCode < 0x1000u) {
             State = UsbHostRootPortStatus(PortIndexOneBased);
@@ -130,7 +148,7 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
                         (PortIndexOneBased & 0xFFu) << 16);
 
     UsbHostBindEndpointZeroRing(SlotId);
-    Dequeue = UsbHostEndpointZeroRingPhysical() | 1ULL;
+    Dequeue = UsbHostEndpointZeroRingPhysical(SlotId) | 1ULL;
     MaxPacketSize = EndpointZeroMaxPacketSize(PortSpeed);
     WriteLittleEndian32(Input + ContextSize * 2u + 4u,
                         (3u << 1) | (4u << 3) | (MaxPacketSize << 16));
@@ -151,6 +169,7 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
     if (UsbHostXhciSubmitCommand(&Command, &CompletionCode, 0) != 0 ||
         CompletionCode != COMPLETION_CODE_SUCCESS) {
         sEnumerateStatusCode = 0x310u | (CompletionCode & 0xFFu);
+        (void)UsbHostXhciDisableSlot(SlotId);
         return -1;
     }
 
@@ -169,6 +188,7 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
         sEnumerateStatusCode =
             0x300u | ((UsbHostPhysicalLineState() & 0x3u) << 8) |
             (CompletionCode & 0xFFu);
+        (void)UsbHostXhciDisableSlot(SlotId);
         return -1;
     }
 
@@ -178,13 +198,18 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut) {
     if (UsbHostXhciControlTransfer(SlotId, 0x80u, 6u, 0x0100u, 0, Descriptor, 18u) !=
         0) {
         sEnumerateStatusCode = 0x40u;
+        (void)UsbHostXhciDisableSlot(SlotId);
         return -1;
     }
     if (Descriptor[4] != USB_DEVICE_CLASS_HUB) {
         sEnumerateStatusCode = 0x50u | (Descriptor[4] & 0x0Fu);
+        (void)UsbHostXhciDisableSlot(SlotId);
         return -1;
     }
 
+    sHubSlotId = SlotId;
+    sHubRootPortIndex = PortIndexOneBased;
+    sHubPortSpeed = PortSpeed;
     if (HubAddressOut != 0) {
         *HubAddressOut = USB_HUB_ADDRESS;
     }
@@ -209,6 +234,18 @@ void UsbHostEnumerateStatusCodeClear(void) {
 
 void UsbHostEnumerateStatusCodeSet(UINT32 Code) {
     (void)Code;
+}
+
+UINT32 UsbHostHubSlotId(void) {
+    return 0;
+}
+
+UINT32 UsbHostHubRootPortIndex(void) {
+    return 0;
+}
+
+UINT32 UsbHostHubPortSpeed(void) {
+    return 0;
 }
 
 #endif

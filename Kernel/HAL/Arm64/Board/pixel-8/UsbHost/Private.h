@@ -1,9 +1,4 @@
-/*
- * UsbHost/Private.h — Pixel 8 DWC3/xHCI bringup 私有（PR-PIXEL8-USB-2）
- *
- * 对表：xHCI 1.1；DWC3 Host 窗 = BOARD_USB_DWC3_PHYSICAL_BASE +0。
- * 板差：无 QUSB/QSCRATCH/SPMI；Host 已由 USB-1 GCTL 切好。
- */
+/* UsbHost/Private.h — Pixel 8 DWC3/xHCI bringup（对表 xHCI 1.1） */
 #ifndef USB_HOST_PRIVATE_H
 #define USB_HOST_PRIVATE_H
 
@@ -84,6 +79,7 @@
      (1u << 19) | (1u << 20) | (1u << 22) | (1u << 23))
 
 #define TRANSFER_REQUEST_BLOCK_CYCLE (1u << 0)
+#define TRANSFER_REQUEST_BLOCK_CHAIN (1u << 4) /* Control TD：Setup/Data 须 CH=1 */
 #define TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION (1u << 5)
 #define TRANSFER_REQUEST_BLOCK_IMMEDIATE_DATA (1u << 6)
 #define TRANSFER_REQUEST_BLOCK_TYPE_SHIFT 10
@@ -95,18 +91,42 @@
 #define TRANSFER_REQUEST_BLOCK_STATUS 4u
 #define TRANSFER_REQUEST_BLOCK_LINK 6u
 #define TRANSFER_REQUEST_BLOCK_ENABLE_SLOT 9u
+#define TRANSFER_REQUEST_BLOCK_DISABLE_SLOT 10u
 #define TRANSFER_REQUEST_BLOCK_ADDRESS_DEVICE 11u
+#define TRANSFER_REQUEST_BLOCK_CONFIGURE_ENDPOINT 12u
+#define TRANSFER_REQUEST_BLOCK_EVALUATE_CONTEXT 13u
+#define TRANSFER_REQUEST_BLOCK_RESET_ENDPOINT 14u
+#define TRANSFER_REQUEST_BLOCK_STOP_ENDPOINT 15u
+#define TRANSFER_REQUEST_BLOCK_SET_TR_DEQUEUE 16u
 /* Address Device TRB bit9：BSR=1 不发 SET_ADDRESS（§4.6.5 / §6.4.3.4） */
 #define TRANSFER_REQUEST_BLOCK_BLOCK_SET_ADDRESS_REQUEST (1u << 9)
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT 32u
 #define TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION 33u
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_TYPE_IN (3u << 16)
 #define TRANSFER_REQUEST_BLOCK_DIRECTION_IN (1u << 16)
+#define TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_SHORT_PACKET (1u << 2)
 #define COMPLETION_CODE_SUCCESS 1u
 #define COMPLETION_CODE_SHORT_PACKET 13u
 
 #define USB_DEVICE_CLASS_HUB 0x09u
+#define USB_DEVICE_CLASS_HID 0x03u
+#define USB_HID_BOOT_SUBCLASS 1u
+#define USB_INTERFACE_PROTOCOL_BOOT_KEYBOARD 1u
 #define USB_HUB_ADDRESS 1u
+#define USB_CONTROL_DATA_CAPACITY 256u
+
+/* USB2 hub wPortStatus / features（对表 X64 Private.h） */
+#define HUB_PORT_CONNECTION (1u << 0)
+#define HUB_PORT_ENABLE (1u << 1)
+#define HUB_PORT_RESET (1u << 4)
+#define HUB_PORT_POWER (1u << 8)
+#define HUB_PORT_LOW_SPEED (1u << 9)
+#define HUB_PORT_HIGH_SPEED (1u << 10)
+#define HUB_FEATURE_PORT_RESET 4u
+#define HUB_FEATURE_PORT_POWER 8u
+#define HUB_FEATURE_CONNECTION_CHANGE 16u
+#define HUB_FEATURE_RESET_CHANGE 20u
+#define TRANSFER_REQUEST_BLOCK_ENDPOINT_SHIFT 16
 
 #define COMMAND_RING_TRANSFER_REQUEST_BLOCK_COUNT 32u
 #define EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT 32u
@@ -146,19 +166,35 @@ int UsbHostXhciTransferInitialize(UINT64 CapabilityBase, UINT64 OperationalBase,
                                   UINT32 ScratchpadCount);
 int UsbHostXhciSubmitCommand(TransferRequestBlock *Command, UINT32 *CompletionCode,
                              UINT32 *SlotIdOut);
-void UsbHostEndpointZeroEnqueue(const TransferRequestBlock *Block);
+void UsbHostEndpointZeroEnqueue(UINT32 SlotId, const TransferRequestBlock *Block);
 int UsbHostWaitTransferEvent(UINT32 *CompletionCode);
+int UsbHostWaitTransferEventLimited(UINT32 *CompletionCode, UINTN GuardLimit,
+                                    UINT32 EndpointIdOrZero);
 void UsbHostRingEndpointZeroDoorbell(UINT32 SlotId);
+void UsbHostRingDoorbell(UINT32 SlotId, UINT32 EndpointTarget);
 UINT8 *UsbHostSetupPacketBuffer(void);
 UINT8 *UsbHostControlDataBuffer(void);
 int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
                                UINT16 Value, UINT16 Index, void *Data, UINT16 Length);
+UINT32 UsbHostXhciControlLastCompletionCode(void);
 UINT8 *UsbHostDeviceContextSlot(UINT32 SlotId);
 UINT8 *UsbHostInputContextBuffer(void);
 UINT32 UsbHostContextSizeBytes(void);
 void UsbHostBindEndpointZeroRing(UINT32 SlotId);
 void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical);
-UINT64 UsbHostEndpointZeroRingPhysical(void);
+UINT64 UsbHostEndpointZeroRingPhysical(UINT32 SlotId);
+int UsbHostXhciDisableSlot(UINT32 SlotId);
+int UsbHostXhciConfigureEndpoint(UINT32 SlotId);
+void UsbHostRecoverEndpointZero(UINT32 SlotId);
+int UsbHostEndpointZeroSync(UINT32 SlotId, UINT32 *StopCompletionOut,
+                            UINT32 *ResetCompletionOut,
+                            UINT32 *DequeueCompletionOut);
+void UsbHostInterruptRingInitialize(UINT32 SlotId, UINT32 DeviceContextIndex,
+                                    UINT32 TransferLength);
+UINT64 UsbHostInterruptRingPhysical(void);
+UINT8 *UsbHostInterruptReportBuffer(void);
+int UsbHostInterruptSubmitOnceDetailed(UINT32 *CompletionCodeOut);
+void UsbHostDrainTransferEvents(void);
 
 void UsbHostPrepareUsb2PhysicalInterface(void);
 int UsbHostXhciStart(void);
@@ -176,9 +212,64 @@ int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut);
 UINT32 UsbHostEnumerateStatusCode(void);
 void UsbHostEnumerateStatusCodeClear(void);
 void UsbHostEnumerateStatusCodeSet(UINT32 Code);
+UINT32 UsbHostHubSlotId(void);
+UINT32 UsbHostHubRootPortIndex(void);
+UINT32 UsbHostHubPortSpeed(void);
+UINT32 UsbHostKeyboardStatusCode(void);
+UINT32 UsbHostKeyboardStatusLogCount(void);
+UINT32 UsbHostKeyboardStatusLogAt(UINT32 Index);
+void UsbHostKeyboardStatusCodeClear(void);
+void UsbHostKeyboardLogFreeze(void);
+
+int UsbHostFinishHubSetup(UINT32 HubSlotId, UINT32 RootPortIndex, UINT32 PortSpeed,
+                          UINT32 *PortCountOut);
+int UsbHostHubGetPortStatus(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT32 *StatusOut);
+int UsbHostHubSetPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
+int UsbHostHubClearPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
+int UsbHostFindBootKeyboardBehindHub(UINT32 HubSlotId, UINT32 RootPortIndex,
+                                     UINT32 HubPortSpeedValue, UINT32 HubPortCount,
+                                     UINT32 *KeyboardSlotOut);
+/* IssueSetAddress≠0：BSR1→BSR0；＝0：只 BSR1（嵌套口先 addr0 GetDesc） */
+int UsbHostAddressKeyboardOnHubPort(UINT32 HubSlotId, UINT32 RootPort,
+                                    UINT32 ParentRouteString, UINT32 HubPortOneBased,
+                                    UINT32 DeviceSpeed, UINT32 IssueSetAddress,
+                                    UINT32 *KeyboardSlotOut);
+int UsbHostChildSetAddress(UINT32 SlotId, UINT32 DeviceSpeed,
+                           UINT32 EndpointZeroMaxPacket);
+int UsbHostProbeChildSlot(UINT32 SlotId, UINT32 RootPort, UINT32 HubSlotId,
+                          UINT32 HubPort, UINT32 DeviceSpeed);
+void UsbHostProbeTierSet(UINT32 Tier);
+UINT32 UsbHostChildSlotSpeed(UINT32 HubPortStatus);
+int UsbHostHidBootKeyboardConfigure(UINT32 KeyboardSlotId, UINT32 RootPort,
+                                    UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                    UINT32 DeviceSpeed);
+int UsbHostParseBootKeyboardEndpoint(const UINT8 *Configuration, UINT16 Total,
+                                     UINT8 *InterfaceOut, UINT8 *EndpointAddressOut,
+                                     UINT16 *MaxPacketSizeOut, UINT8 *IntervalOut);
+char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier);
+int UsbHostHidBootKeyboardPoll(void);
+void UsbHostPaintKeyboardStatus(void);
+void UsbHostKeyboardStatusCodeSet(UINT32 Code);
 
 void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
                            UINT32 HubAddress);
+
+/*
+ * splash 行位：112＝阶段；176 起 p1…tc（×5）；其后 KEY / k。
+ * 行距 64（PaintLine 清高 ≈56）。
+ */
+#define USB_HOST_SPLASH_LINE_STRIDE 64u
+#define USB_HOST_SPLASH_LINE_PORTS 176u
+#define USB_HOST_SPLASH_LINE_REPEATER                                      \
+    (USB_HOST_SPLASH_LINE_PORTS + USB_HOST_SPLASH_LINE_STRIDE)
+#define USB_HOST_SPLASH_LINE_PHYSICAL_BASE                                 \
+    (USB_HOST_SPLASH_LINE_REPEATER + USB_HOST_SPLASH_LINE_STRIDE)
+#define USB_HOST_SPLASH_LINE_PHYSICAL_COMMON                               \
+    (USB_HOST_SPLASH_LINE_PHYSICAL_BASE + USB_HOST_SPLASH_LINE_STRIDE)
+#define USB_HOST_SPLASH_LINE_TYPE_C                                        \
+    (USB_HOST_SPLASH_LINE_PHYSICAL_COMMON + USB_HOST_SPLASH_LINE_STRIDE)
+#define USB_HOST_SPLASH_LINE_KEYBOARD                                      \
+    (USB_HOST_SPLASH_LINE_TYPE_C + USB_HOST_SPLASH_LINE_STRIDE)
 
 int UsbHostHighSpeedInterIntegratedCircuitWrite(UINT8 DeviceAddress,
                                                   const UINT8 *Bytes,

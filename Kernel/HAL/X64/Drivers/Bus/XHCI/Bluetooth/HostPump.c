@@ -85,6 +85,7 @@ static void ApplyNumberOfCompletedPackets(const UINT8 *Event, UINT32 Length) {
         }
         Completed = (UINT16)(Event[Offset + 2u] | (Event[Offset + 3u] << 8));
         gBluetoothAclPacketsCompleted += Completed;
+        BluetoothAclCreditReturn(Completed);
         Offset = (UINT8)(Offset + 4u);
     }
 }
@@ -192,6 +193,7 @@ int BluetoothHostPumpStart(void) {
     }
     EventQueueReset();
     BluetoothHostPumpAclInReset();
+    BluetoothAclFlowReset();
     gBluetoothAclPacketsCompleted = 0;
     gBluetoothHostPumpActive = BLUETOOTH_HOST_PUMP_ON;
     BluetoothHostArmEventEndpoint();
@@ -199,6 +201,8 @@ int BluetoothHostPumpStart(void) {
         BluetoothHostArmAclIn();
     }
     BootLog("bt: host pump\n");
+    /* PR-BTM-2：泵起来后再读额度，命令走 WaitTake 与泵并行 */
+    (void)BluetoothAclFlowInitialize();
     return 0;
 }
 
@@ -206,4 +210,5 @@ void BluetoothHostPumpStop(void) {
     gBluetoothHostPumpActive = 0;
     EventQueueReset();
     BluetoothHostPumpAclInReset();
+    BluetoothAclFlowReset();
 }

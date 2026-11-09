@@ -80,3 +80,18 @@ int HalBluetoothSetDiscoverable(int On) {
 
 void HalBluetoothHostPump(void) {
 }
+
+int HalBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
+                               UINT16 *PacketsFreeOut) {
+    if (PacketLengthOut) {
+        *PacketLengthOut = 0;
+    }
+    if (PacketsFreeOut) {
+        *PacketsFreeOut = 0;
+    }
+    return -1;
+}
+
+int HalBluetoothAclOutTest(void) {
+    return -1;
+}

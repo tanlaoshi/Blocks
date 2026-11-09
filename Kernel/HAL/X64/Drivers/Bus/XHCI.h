@@ -144,6 +144,9 @@ UINT16 XhciBluetoothVendorId(void);
 UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */
 void XhciBluetoothHostPump(void); /* PR-BTM-1；未 Start 早退 */
+int XhciBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
+                                UINT16 *PacketsFreeOut); /* PR-BTM-2 */
+int XhciBluetoothAclOutTest(void);
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

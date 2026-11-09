@@ -1,5 +1,5 @@
 ---
-description: 板端热更一律用 HotSend（有线>Wi‑Fi>串口）；勿再默认 Tools/Scripts/ksend.py
+description: 板端热更一律用 HotSend（有线>串口>Wi‑Fi）；勿再默认 Tools/Scripts/ksend.py
 alwaysApply: true
 ---
 
@@ -11,10 +11,10 @@ alwaysApply: true
 |---|---|
 | **主机** | `~/HotSend`：`Build/meson/Code/hotsend`（CLI）或 `hotsend-gui`；配置 `hotsend.conf` / `$HOTSEND_CONFIG` |
 | **板端** | 壳 `HotSend serve`（`ksend serve` 仍为别名）；协议字仍是 `KSEND*` |
-| **优先级** | **有线 > Wi‑Fi > 串口**；串口仅备份 |
+| **优先级（铁律）** | **有线 > 串口 > Wi‑Fi**。有线能通绝不用串口；串口不通才 Wi‑Fi。 |
 
 要点：
 
-1. 先 `ip` 看地址与 `via wired|wifi`，再 serve，再主机 `--host <ip>`（或 conf 里 host）。
+1. 先 `ip` 看有线地址（`via wired`），有则 `--host <ip>`；无有线再串口 `--port`；最后才 Wi‑Fi。
 2. `Tools/Scripts/ksend.py` 只作协议对照/应急；用户未点名 py 时勿当主路。
 3. HotSend 是**独立仓**（`~/HotSend`），勿改进 Blocks 树当子目录；也不要动用户说「他对话」的 HotSend ★。

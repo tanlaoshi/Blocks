@@ -26,7 +26,7 @@ alwaysApply: true
 | **卡刷Duo** | `CardFlashDuo` | CK Duo | Duo：`ck-duo-sd`（可 `--blocks-only`）→ LABEL=`BLOCKS`；**禁止**对 Duo 跑 `ck-pi-sd`；勿只拷 `boot/` |
 | **卡读** | `CardRead` | CH / 插回 | 手测后卡插回 PC：等挂载 → 读 `RUNTIME.LOG` / `BOOT*.LOG` → 对表判绿/红 |
 | **档收** | `DocArchive` | GD | 只改路线图归档布局；不写功能代码；不 commit/push |
-| **核传** | `KernelSend` | （新；HotSend） | 热更：主机 `~/HotSend`；板 `HotSend serve`；有线 > Wi‑Fi > 串口；勿默认 `ksend.py` |
+| **核传** | `KernelSend` | （新；HotSend） | 热更：主机 `~/HotSend`；板 `HotSend serve`；**有线 > 串口 > Wi‑Fi**；勿默认 `ksend.py` |
 | **待选** | `PendingPick` | 待选 | 未点名；勿当刀做 |
 
 硬约束：

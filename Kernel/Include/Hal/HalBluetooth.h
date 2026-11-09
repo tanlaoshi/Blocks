@@ -52,4 +52,9 @@ int HalBluetoothSetDiscoverable(int On);
 /* PR-BTM-1：HCI 常驻泵切片；未 Ready / 非 X64 USB HCI → 空操作 */
 void HalBluetoothHostPump(void);
 
+/* PR-BTM-2：ACL 流控查询；未 Ready → -1 */
+int HalBluetoothAclCreditQuery(UINT16 *PacketLengthOut, UINT16 *PacketsFreeOut);
+/* 发一帧测试 ACL OUT（无连接句柄亦可）；成功 → 0 */
+int HalBluetoothAclOutTest(void);
+
 #endif

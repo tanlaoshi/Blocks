@@ -169,6 +169,35 @@ static void CommandBluetoothInitialize(void) {
     gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready\n");
 }
 
+static void CommandBluetoothAclTest(void) {
+    UINT16 PacketLength = 0;
+    UINT16 PacketsFree = 0;
+
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    if (HalBluetoothAclCreditQuery(&PacketLength, &PacketsFree) != 0) {
+        gConsole.Write("bt: acl credit fail\n");
+        return;
+    }
+    gConsole.Write("bt: acl mtu=");
+    gConsole.WriteHex32(PacketLength);
+    gConsole.Write(" credit=");
+    gConsole.WriteHex32(PacketsFree);
+    gConsole.Write("\n");
+    if (HalBluetoothAclOutTest() != 0) {
+        gConsole.Write("bt: acltest fail\n");
+        return;
+    }
+    if (HalBluetoothAclCreditQuery(&PacketLength, &PacketsFree) == 0) {
+        gConsole.Write("bt: acl after credit=");
+        gConsole.WriteHex32(PacketsFree);
+        gConsole.Write("\n");
+    }
+    gConsole.Write("bt: acltest ok\n");
+}
+
 static void CommandBluetooth(int Argc, char **Argv) {
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "init")) {
         CommandBluetoothInitialize();
@@ -186,9 +215,14 @@ static void CommandBluetooth(int Argc, char **Argv) {
         CommandBluetoothVisible(0);
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "acltest")) {
+        CommandBluetoothAclTest();
+        return;
+    }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
-    gConsole.Register("bt", "bt [info|init|scan|visible|hide]", CommandBluetooth);
+    gConsole.Register("bt", "bt [info|init|scan|visible|hide|acltest]",
+                      CommandBluetooth);
 }

@@ -33,6 +33,7 @@
 #define HCI_OPCODE_WRITE_CLASS_OF_DEVICE 0x0C24u
 #define HCI_OPCODE_WRITE_INQUIRY_MODE 0x0C45u
 #define HCI_OPCODE_WRITE_EXTENDED_INQUIRY_RESPONSE 0x0C52u
+#define HCI_OPCODE_READ_BUFFER_SIZE 0x1005u
 #define HCI_OPCODE_READ_BD_ADDR 0x1009u
 #define HCI_EVENT_INQUIRY_COMPLETE 0x01u
 #define HCI_EVENT_INQUIRY_RESULT 0x02u
@@ -142,5 +143,12 @@ int BluetoothHostPumpWaitTakeEvent(void);
 void BluetoothHostPump(void);
 int BluetoothHostPumpStart(void);
 void BluetoothHostPumpStop(void);
+void BluetoothAclFlowReset(void);
+int BluetoothAclFlowInitialize(void);
+void BluetoothAclCreditReturn(UINT16 CompletedPackets);
+int BluetoothAclCreditQuery(UINT16 *PacketLengthOut, UINT16 *PacketsFreeOut);
+int BluetoothAclOutSend(UINT16 ConnectionHandle, const UINT8 *Payload,
+                        UINT16 PayloadLength);
+int BluetoothAclOutTest(void);
 
 #endif

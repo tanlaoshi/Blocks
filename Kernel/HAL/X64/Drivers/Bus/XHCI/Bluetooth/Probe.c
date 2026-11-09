@@ -33,6 +33,15 @@ void XhciBluetoothHostPump(void) {
     BluetoothHostPump();
 }
 
+int XhciBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
+                                UINT16 *PacketsFreeOut) {
+    return BluetoothAclCreditQuery(PacketLengthOut, PacketsFreeOut);
+}
+
+int XhciBluetoothAclOutTest(void) {
+    return BluetoothAclOutTest();
+}
+
 int XhciBluetoothCopyAddress(UINT8 Out[6]) {
     UINT32 I;
 

@@ -105,6 +105,41 @@ static void DropNewTable(UINT64 *Parent, UINT64 Index, UINT64 *Table,
     PhysicalMemoryFreePage(Table);
 }
 
+/*
+ * 把 L1 上的 2MiB megapage 拆成 L0（512×4KiB），保留原 leaf 属性。
+ * 对齐 Arm64 SplitBlockL2：Create 遇 megapage 须拆表，否则 MapIdentity(FB) 永挂
+ *（HalPageKernelSetup 用 2MiB 恒等，ramfb 落在 DRAM 内必撞 leaf）。
+ */
+static UINT64 *SplitMegapageL1(UINT64 *L1, UINT64 Index1,
+                               HalPageAllocateFunction Alloc, void *Ctx) {
+    UINT64 Old;
+    UINT64 PaBase;
+    UINT64 Attr;
+    UINT64 *L0;
+    UINTN i;
+
+    Old = L1[Index1];
+    if (!IsLeaf(Old)) {
+        return (UINT64 *)(UINTN)(((Old >> PTE_PPN_SHIFT) << 12));
+    }
+    L0 = Alloc ? (UINT64 *)Alloc(Ctx) : (UINT64 *)PageAllocTable();
+    if (!L0) {
+        return 0;
+    }
+    if (!Alloc) {
+        PageZero(L0, PAGE_SIZE);
+    }
+    /* Sv39 2MiB leaf：PPN 指向 2MiB 对齐 PA；低 9 位 PPN 须为 0 */
+    PaBase = (Old >> PTE_PPN_SHIFT) << 12;
+    Attr = Old & ((1ULL << PTE_PPN_SHIFT) - 1ULL); /* V/R/W/X/U/G/A/D/RSW */
+    Attr |= Old & 0xF800000000000000ULL;           /* T-Head MAEE [63:59] */
+    for (i = 0; i < 512; i++) {
+        L0[i] = Attr | (((PaBase + ((UINT64)i << 12)) >> 12) << PTE_PPN_SHIFT);
+    }
+    L1[Index1] = PTE_V | ((PagePhys(L0) >> 12) << PTE_PPN_SHIFT);
+    return L0;
+}
+
 /* Sv39：3 级 VPN[2:0] */
 UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
                         HalPageAllocateFunction Alloc, void *Ctx) {
@@ -129,6 +164,7 @@ UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
         L2[i2] = PTE_V | ((PagePhys(L1) >> 12) << PTE_PPN_SHIFT);
         MadeL1 = 1;
     } else if (IsLeaf(L2[i2])) {
+        /* 本柱不用 1GiB L2 leaf；遇则拒 */
         return 0;
     }
     L1 = (UINT64 *)(UINTN)(((L2[i2] >> PTE_PPN_SHIFT) << 12));
@@ -149,10 +185,17 @@ UINT64 *PageWalk(UINT64 *L2, UINT64 Virt, int Create,
         }
         L1[i1] = PTE_V | ((PagePhys(L0) >> 12) << PTE_PPN_SHIFT);
     } else if (IsLeaf(L1[i1])) {
-        if (MadeL1) {
-            DropNewTable(L2, i2, L1, Alloc, Ctx);
+        if (!Create) {
+            return 0;
         }
-        return 0;
+        L0 = SplitMegapageL1(L1, i1, Alloc, Ctx);
+        if (!L0) {
+            if (MadeL1) {
+                DropNewTable(L2, i2, L1, Alloc, Ctx);
+            }
+            return 0;
+        }
+        return &L0[i0];
     }
     L0 = (UINT64 *)(UINTN)(((L1[i1] >> PTE_PPN_SHIFT) << 12));
     return &L0[i0];

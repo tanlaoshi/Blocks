@@ -2,9 +2,7 @@
  * HalTimer.c — Arm64 CNTV 定时器 + IRQ 派发（virt=GIC；Pi=local intc / psmp-3a）
  */
 #include "Hal.h"
-#include "HalConsole.h"
 #include "HalSerial.h"
-#include "Console.h"
 #include "Scheduler.h"
 #include "BoardConfig.h"
 #if !BOARD_IS_VIRT
@@ -101,15 +99,11 @@ void HalTimerStart(void) {
     ArmTimerArm();
     gTimerIrq = 1;
     /*
-     * Announce 已 ShellOwn：走 gConsole.Write 更新 gAtLineStart，再 ShowPrompt，
-     * 避免「Blocks> Boot:…」粘行或多余空行（对表 Console PromptCommon）。
+     * 真机桌面：Announce 已在 SchedulerStart 前 ShellOwn。
+     * HalSerialWrite → ring + RUNTIME*.LOG，不占 UART；勿再 ShowPrompt
+     * （旧路径多打一次 Blocks>；对表 X64 DebugWrite / Duo HalSerialWrite）。
      */
-    if (HalSerialShellOwned() && gConsole.Write && gConsole.ShowPrompt) {
-        gConsole.Write("\nBoot: Pi CNTV local IRQ\n");
-        gConsole.ShowPrompt();
-    } else {
-        HalConsoleWriteSerial("Boot: Pi CNTV local IRQ\n");
-    }
+    HalSerialWrite("Boot: Pi CNTV local IRQ\n");
 #endif
 }
 

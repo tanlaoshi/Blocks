@@ -188,5 +188,50 @@ void BluetoothSmpFillRandom(UINT8 Out[16]);
 int BluetoothSmpStartEncryption(UINT16 Handle, const UINT8 ShortTermKey[16]);
 int BluetoothSmpWaitEncryptionChange(UINT16 Handle, UINT32 TimeoutMs);
 int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs);
+UINT16 BluetoothAttMaximumTransmissionUnitGet(void);
+void BluetoothAttMaximumTransmissionUnitReset(void);
+int BluetoothAttSend(UINT16 Handle, const UINT8 *AttributeProtocolDataUnit,
+                     UINT16 Length);
+int BluetoothAttTake(UINT8 *AttributeProtocolDataUnitOut, UINT16 Capacity,
+                     UINT16 *LengthOut, UINT32 TimeoutMs);
+int BluetoothAttExpect(UINT8 WantOpcode, UINT8 *AttributeProtocolDataUnitOut,
+                       UINT16 Capacity, UINT16 *LengthOut, UINT32 TimeoutMs,
+                       UINT16 Stage);
+int BluetoothAttExchangeMaximumTransmissionUnit(UINT16 Handle,
+                                                UINT16 ClientReceiveMaximum,
+                                                UINT32 TimeoutMs);
+int BluetoothAttFindByTypeValue(UINT16 Handle, UINT16 StartHandle,
+                                UINT16 EndHandle, UINT16 TypeUuid,
+                                const UINT8 *Value, UINT16 ValueLength,
+                                UINT8 *ResponseOut, UINT16 ResponseCapacity,
+                                UINT16 *ResponseLengthOut, UINT32 TimeoutMs,
+                                UINT16 Stage);
+int BluetoothAttReadByType(UINT16 Handle, UINT16 StartHandle, UINT16 EndHandle,
+                           UINT16 TypeUuid, UINT8 *ResponseOut,
+                           UINT16 ResponseCapacity, UINT16 *ResponseLengthOut,
+                           UINT32 TimeoutMs, UINT16 Stage);
+int BluetoothAttFindInformation(UINT16 Handle, UINT16 StartHandle,
+                                UINT16 EndHandle, UINT8 *ResponseOut,
+                                UINT16 ResponseCapacity,
+                                UINT16 *ResponseLengthOut, UINT32 TimeoutMs,
+                                UINT16 Stage);
+int BluetoothAttWriteRequest(UINT16 Handle, UINT16 AttributeHandle,
+                             const UINT8 *Value, UINT16 ValueLength,
+                             UINT32 TimeoutMs, UINT16 Stage);
+void BluetoothAttHidDiscoveryClear(void);
+int BluetoothAttHidDiscoveryGet(UINT16 *ServiceStartOut, UINT16 *ServiceEndOut,
+                                UINT16 *ReportMapHandleOut,
+                                UINT16 *ReportCountOut,
+                                const UINT16 **ReportValueHandlesOut);
+int BluetoothAttHidFindService(UINT16 ConnectionHandle, UINT32 TimeoutMs,
+                               UINT16 *ServiceStartOut, UINT16 *ServiceEndOut);
+int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
+                               UINT16 ServiceEnd, UINT32 TimeoutMs,
+                               UINT16 *ReportMapValueHandleOut,
+                               UINT16 *ReportCountOut,
+                               UINT16 *ReportValueHandles,
+                               UINT16 *ReportClientConfigurationHandles,
+                               UINT16 ReportCapacity);
+int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs);
 
 #endif

@@ -93,4 +93,10 @@ void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
  */
 int HalBluetoothSmpJustWorks(UINT32 TimeoutMs);
 
+/*
+ * PR-BTM-6：ATT 发现 HID Service + Report；订 Notify（须已连接，宜已 SMP）。
+ * TimeoutMs=0 → 约 15s。成功 → 0（串口 `bt: hogp discover ok`）。
+ */
+int HalBluetoothAttHidDiscover(UINT32 TimeoutMs);
+
 #endif

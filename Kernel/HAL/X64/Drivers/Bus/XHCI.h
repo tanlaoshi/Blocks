@@ -151,6 +151,7 @@ int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-4 *
 int XhciBluetoothLeDisconnect(void);
 void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs); /* PR-BTM-5 */
+int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs); /* PR-BTM-6 */
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

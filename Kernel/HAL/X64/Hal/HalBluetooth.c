@@ -134,3 +134,7 @@ void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
 int HalBluetoothSmpJustWorks(UINT32 TimeoutMs) {
     return XhciBluetoothSmpJustWorks(TimeoutMs);
 }
+
+int HalBluetoothAttHidDiscover(UINT32 TimeoutMs) {
+    return XhciBluetoothAttHidDiscover(TimeoutMs);
+}

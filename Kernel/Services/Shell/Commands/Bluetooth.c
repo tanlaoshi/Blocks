@@ -286,12 +286,16 @@ static void CommandBluetooth(int Argc, char **Argv) {
         ShellBluetoothSmpJustWorks();
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "hogp")) {
+        ShellBluetoothAttHidDiscover();
+        return;
+    }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
     gConsole.Register(
         "bt",
-        "bt [info|init|scan|lescan|connect|smp|disconnect|visible|hide|acltest]",
+        "bt [info|init|scan|lescan|connect|smp|hogp|disconnect|visible|hide|acltest]",
         CommandBluetooth);
 }

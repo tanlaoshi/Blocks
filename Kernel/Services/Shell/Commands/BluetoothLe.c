@@ -1,5 +1,5 @@
 /*
- * BluetoothLe.c — 壳 lescan / connect / disconnect（PR-BTM-3/4）
+ * BluetoothLe.c — 壳 lescan / connect / smp / hogp（PR-BTM-3…6）
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -144,4 +144,26 @@ void ShellBluetoothSmpJustWorks(void) {
         return;
     }
     gConsole.Write("bt: smp ok\n");
+}
+
+void ShellBluetoothAttHidDiscover(void) {
+    UINT16 Stage = 0;
+    UINT8 Status = 0;
+
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    gConsole.Write("bt: hogp discover...\n");
+    if (HalBluetoothAttHidDiscover(0) != 0) {
+        HalBluetoothLeLastError(&Stage, &Status);
+        gConsole.Write("bt: hogp fail stage=");
+        WriteHexByte((UINT8)((Stage >> 8) & 0xFFu));
+        WriteHexByte((UINT8)(Stage & 0xFFu));
+        gConsole.Write(" status=");
+        WriteHexByte(Status);
+        gConsole.Write("\n");
+        return;
+    }
+    gConsole.Write("bt: hogp ok\n");
 }

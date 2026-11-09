@@ -649,7 +649,10 @@ INCLUDES_HAL += -IHAL/X64/Drivers -IHAL/X64/Drivers/Input -IHAL/X64/Drivers/Bloc
 VIRT_SRCS := $(filter-out HAL/Virtio/HelloBlob.c,$(wildcard HAL/Virtio/*.c))
 VIRT_SRCS += $(wildcard HAL/Virtio/Net/*.c)
 VIRT_OBJS := $(patsubst HAL/Virtio/%.c,$(HALDIR)/Virtio/%.o,$(VIRT_SRCS))
-FB_HAL_OBJS := $(HALDIR)/Common/HalVideo.o
+# 对齐 X64 HalVideo / HalVideoDraw / HalVideoFb 三分法（PR-NORM-13）
+FB_HAL_OBJS := $(HALDIR)/Common/HalVideo.o \
+               $(HALDIR)/Common/HalVideoDraw.o \
+               $(HALDIR)/Common/HalVideoFb.o
 EXTRA_OBJS += $(VIRT_OBJS) $(SHARED_VIDEO_OBJS) $(FB_HAL_OBJS)
 EXTRA_OBJS += $(HALDIR)/Drivers/Network/IpInput.o
 ifneq ($(BRINGUP),1)

@@ -111,21 +111,23 @@ EOF
 fi
 
 python3 - "$ROOT" "$IMG" <<'PY'
-import os, struct, subprocess, pathlib, sys
+import struct, subprocess, pathlib, sys
 
 src = pathlib.Path(sys.argv[1])
 img = pathlib.Path(sys.argv[2])
-size = 16 * 1024 * 1024
+# virt 冒烟盘（仅 QEMU 镜像，非真机卡）；16G 稀疏 FAT32
+size = 16 * 1024 * 1024 * 1024
+EOC = 0x0FFFFFFF
 
 with open(img, "wb") as f:
     f.truncate(size)
 subprocess.check_call(
-    ["mkfs.fat", "-F", "16", "-n", "BLOCKS", str(img)],
+    ["mkfs.fat", "-F", "32", "-n", "BLOCKS", str(img)],
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
 )
 
-class Fat16:
+class Fat32:
     def __init__(self, path):
         self.f = open(path, "r+b")
         b = self.f.read(512)
@@ -133,25 +135,31 @@ class Fat16:
         self.spc = b[13]
         self.rsv = struct.unpack_from("<H", b, 14)[0]
         self.nfats = b[16]
-        self.root_ents = struct.unpack_from("<H", b, 17)[0]
-        self.spf = struct.unpack_from("<H", b, 22)[0]
+        spf16 = struct.unpack_from("<H", b, 22)[0]
+        self.spf = spf16 if spf16 != 0 else struct.unpack_from("<I", b, 36)[0]
+        self.root_cl = struct.unpack_from("<I", b, 44)[0]
         self.fat_off = self.rsv * self.bps
-        self.root_off = self.fat_off + self.nfats * self.spf * self.bps
-        self.root_size = self.root_ents * 32
-        self.data_off = self.root_off + self.root_size
+        self.data_off = self.fat_off + self.nfats * self.spf * self.bps
         self.f.seek(self.fat_off)
         self.fat = bytearray(self.f.read(self.spf * self.bps))
+        self._next_free = 2
 
     def fat_get(self, cl):
-        return struct.unpack_from("<H", self.fat, cl * 2)[0]
+        return struct.unpack_from("<I", self.fat, cl * 4)[0] & 0x0FFFFFFF
 
     def fat_set(self, cl, val):
-        struct.pack_into("<H", self.fat, cl * 2, val)
+        cur = struct.unpack_from("<I", self.fat, cl * 4)[0]
+        struct.pack_into("<I", self.fat, cl * 4, (cur & 0xF0000000) | (val & 0x0FFFFFFF))
 
     def alloc_cluster(self):
-        for cl in range(2, len(self.fat) // 2):
+        n = len(self.fat) // 4
+        for _ in range(n - 2):
+            if self._next_free >= n:
+                self._next_free = 2
+            cl = self._next_free
+            self._next_free += 1
             if self.fat_get(cl) == 0:
-                self.fat_set(cl, 0xFFFF)
+                self.fat_set(cl, EOC)
                 return cl
         raise RuntimeError("FAT full")
 
@@ -164,49 +172,35 @@ class Fat16:
     def cluster_off(self, cl):
         return self.data_off + (cl - 2) * self.spc * self.bps
 
-    def _read_dir(self, dir_cl):
-        """dir_cl=0 → FAT16 root; else directory cluster chain start."""
-        if dir_cl == 0:
-            self.f.seek(self.root_off)
-            return bytearray(self.f.read(self.root_size)), 0
-        clsz = self.spc * self.bps
-        data = bytearray()
-        cl = dir_cl
+    def _chain(self, start):
+        clusters = []
+        cl = start
         seen = set()
-        while cl >= 2 and cl < 0xFFF8:
+        while 2 <= cl < 0x0FFFFFF8:
             if cl in seen:
                 break
             seen.add(cl)
+            clusters.append(cl)
+            cl = self.fat_get(cl)
+        return clusters
+
+    def _read_dir(self, dir_cl):
+        clsz = self.spc * self.bps
+        data = bytearray()
+        for cl in self._chain(dir_cl):
             self.f.seek(self.cluster_off(cl))
             data.extend(self.f.read(clsz))
-            cl = self.fat_get(cl)
-        return data, dir_cl
+        return data
 
     def _write_dir(self, dir_cl, data):
-        if dir_cl == 0:
-            if len(data) > self.root_size:
-                raise RuntimeError("root full")
-            buf = bytearray(self.root_size)
-            buf[: len(data)] = data
-            self.f.seek(self.root_off)
-            self.f.write(buf)
-            return
         clsz = self.spc * self.bps
-        # grow chain if needed
-        need = (len(data) + clsz - 1) // clsz
-        clusters = []
-        cl = dir_cl
-        while cl >= 2 and cl < 0xFFF8:
-            clusters.append(cl)
-            nxt = self.fat_get(cl)
-            if nxt >= 0xFFF8:
-                break
-            cl = nxt
+        need = max(1, (len(data) + clsz - 1) // clsz)
+        clusters = self._chain(dir_cl)
         while len(clusters) < need:
             ncl = self.alloc_cluster()
             self.fat_set(clusters[-1], ncl)
             clusters.append(ncl)
-        self.fat_set(clusters[-1], 0xFFFF)
+        self.fat_set(clusters[-1], EOC)
         pad = bytearray(need * clsz)
         pad[: len(data)] = data
         for i, c in enumerate(clusters[:need]):
@@ -215,10 +209,8 @@ class Fat16:
 
     def _find_slot(self, data):
         for i in range(0, len(data), 32):
-            c = data[i]
-            if c == 0 or c == 0xE5:
+            if data[i] in (0, 0xE5):
                 return i
-        # append (extend directory)
         data.extend(b"\x00" * 32)
         return len(data) - 32
 
@@ -228,18 +220,23 @@ class Fat16:
         ext = p.suffix.upper()[1:4]
         return stem.ljust(8) + (ext.ljust(3) if ext else "   ")
 
+    def _clust_from_ent(self, e, off):
+        lo = struct.unpack_from("<H", e, off + 26)[0]
+        hi = struct.unpack_from("<H", e, off + 20)[0]
+        return (hi << 16) | lo
+
+    def _clust_to_ent(self, e, off, cl):
+        struct.pack_into("<H", e, off + 26, cl & 0xFFFF)
+        struct.pack_into("<H", e, off + 20, (cl >> 16) & 0xFFFF)
+
     def _lookup(self, dir_cl, name83):
-        data, _ = self._read_dir(dir_cl)
+        data = self._read_dir(dir_cl)
         target = name83.encode("ascii")
         for i in range(0, len(data), 32):
-            if data[i] in (0, 0xE5):
-                continue
-            if data[i + 11] == 0x0F:
+            if data[i] in (0, 0xE5) or data[i + 11] == 0x0F:
                 continue
             if data[i : i + 11] == target:
-                cl = struct.unpack_from("<H", data, i + 26)[0]
-                attr = data[i + 11]
-                return cl, attr
+                return self._clust_from_ent(data, i), data[i + 11]
         return None, None
 
     def add_dir(self, parent_cl, name):
@@ -251,29 +248,25 @@ class Fat16:
             return existing
         cl = self.alloc_cluster()
         clsz = self.spc * self.bps
-        # empty dir with . and ..
         ent = bytearray(clsz)
-        # .
         ent[0:11] = b".          "
         ent[11] = 0x10
-        struct.pack_into("<H", ent, 26, cl)
-        # ..
+        self._clust_to_ent(ent, 0, cl)
         ent[32:43] = b"..         "
         ent[43] = 0x10
-        struct.pack_into("<H", ent, 32 + 26, parent_cl)
+        self._clust_to_ent(ent, 32, 0 if parent_cl == self.root_cl else parent_cl)
         self.f.seek(self.cluster_off(cl))
         self.f.write(ent)
 
-        data, _ = self._read_dir(parent_cl)
+        data = self._read_dir(parent_cl)
         slot = self._find_slot(data)
         if slot + 32 > len(data):
             data.extend(b"\x00" * 32)
         e = bytearray(32)
         e[0:11] = name83.encode("ascii")
         e[11] = 0x10
-        struct.pack_into("<H", e, 26, cl)
+        self._clust_to_ent(e, 0, cl)
         data[slot : slot + 32] = e
-        # trim trailing zeros but keep at least through slot
         end = max(slot + 32, next((i for i in range(len(data) - 1, -1, -1) if data[i]), 0) + 1)
         end = (end + 31) // 32 * 32
         self._write_dir(parent_cl, data[:end])
@@ -300,11 +293,10 @@ class Fat16:
                     break
             for a, b_ in zip(clusters, clusters[1:]):
                 self.fat_set(a, b_)
-            self.fat_set(clusters[-1], 0xFFFF)
+            self.fat_set(clusters[-1], EOC)
             first = clusters[0]
 
-        dir_data, _ = self._read_dir(parent_cl)
-        # replace existing file entry if present
+        dir_data = self._read_dir(parent_cl)
         target = name83.encode("ascii")
         slot = None
         for i in range(0, len(dir_data), 32):
@@ -324,7 +316,7 @@ class Fat16:
         e = bytearray(32)
         e[0:11] = target
         e[11] = 0x20
-        struct.pack_into("<H", e, 26, first)
+        self._clust_to_ent(e, 0, first)
         struct.pack_into("<I", e, 28, len(data_bytes))
         dir_data[slot : slot + 32] = e
         end = max(slot + 32, next((i for i in range(len(dir_data) - 1, -1, -1) if dir_data[i]), 0) + 1)
@@ -335,11 +327,10 @@ class Fat16:
         self.write_fat()
         self.f.close()
 
-def pack_tree(fat: Fat16, host: pathlib.Path, parent_cl: int):
+def pack_tree(fat: Fat32, host: pathlib.Path, parent_cl: int):
     for p in sorted(host.iterdir()):
         if p.name.startswith("."):
             continue
-        # 勿把产出镜像打进自身
         if p.suffix.lower() == ".img":
             continue
         if p.is_dir():
@@ -348,10 +339,10 @@ def pack_tree(fat: Fat16, host: pathlib.Path, parent_cl: int):
         elif p.is_file():
             fat.add_file(parent_cl, p.name, p.read_bytes())
 
-fat = Fat16(img)
-pack_tree(fat, src, 0)
+fat = Fat32(img)
+pack_tree(fat, src, fat.root_cl)
 fat.close()
-print(f"Packed {img} from {src}/")
+print(f"Packed {img} from {src}/ (FAT32 16G sparse)")
 PY
 
 echo "Prepared $ROOT + $IMG:"

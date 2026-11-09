@@ -22,6 +22,10 @@ void BluetoothAclInboundPush(const UINT8 *Payload, UINT16 Length) {
         BluetoothAttNotifyQueuePushAcl(Payload, Length);
         return;
     }
+    /* L2CAP LE 信号：Conn Param Update 立即应答，勿进业务队列 */
+    if (BluetoothLeLinkL2capSignalPush(Payload, Length)) {
+        return;
+    }
     if (sInboundCount >= BLUETOOTH_ACL_INBOUND_DEPTH) {
         return;
     }

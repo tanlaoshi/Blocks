@@ -294,12 +294,16 @@ static void CommandBluetooth(int Argc, char **Argv) {
         ShellBluetoothAttHidSubscribe();
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "mouse")) {
+        ShellBluetoothMouseConnect(Argc, Argv);
+        return;
+    }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
     gConsole.Register(
         "bt",
-        "bt [info|init|scan|lescan|connect|smp|hogp|notify|disconnect|visible|hide|acltest]",
+        "bt [info|init|scan|lescan|connect|smp|hogp|notify|mouse|disconnect|visible|hide|acltest]",
         CommandBluetooth);
 }

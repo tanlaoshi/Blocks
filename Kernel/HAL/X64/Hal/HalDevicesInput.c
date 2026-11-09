@@ -30,6 +30,7 @@ void HalInputInitializeMouseDeferred(void) {
 void HalInputMouseHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
     MouseHandoffDesktop(CursorX, CursorY);
     Ps2MouseHandoffDesktop(CursorX, CursorY);
+    XhciBluetoothHidInputHandoffDesktop(CursorX, CursorY);
 }
 
 void HalInputMouseHoldUntilReveal(int Hold) {

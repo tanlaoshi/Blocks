@@ -142,3 +142,13 @@ int HalBluetoothAttHidDiscover(UINT32 TimeoutMs) {
 int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
     return XhciBluetoothAttHidSubscribe(TimeoutMs);
 }
+
+int HalBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
+    return XhciBluetoothMouseConnect(OneBasedIndex, TimeoutMs);
+}
+
+int HalBluetoothLeScanFindAddress(
+    const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH],
+    UINTN *OneBasedIndexOut) {
+    return XhciBluetoothLeScanFindAddress(Address, OneBasedIndexOut);
+}

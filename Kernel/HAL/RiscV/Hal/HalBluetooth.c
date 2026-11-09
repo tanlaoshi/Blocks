@@ -165,3 +165,19 @@ int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
     (void)TimeoutMs;
     return -1;
 }
+
+int HalBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
+    (void)OneBasedIndex;
+    (void)TimeoutMs;
+    return -1;
+}
+
+int HalBluetoothLeScanFindAddress(
+    const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH],
+    UINTN *OneBasedIndexOut) {
+    (void)Address;
+    if (OneBasedIndexOut != 0) {
+        *OneBasedIndexOut = 0;
+    }
+    return -1;
+}

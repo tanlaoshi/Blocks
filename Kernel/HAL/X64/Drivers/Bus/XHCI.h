@@ -153,6 +153,10 @@ void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs); /* PR-BTM-5 */
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs); /* PR-BTM-6 */
 int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs); /* PR-BTM-7 */
+int XhciBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-8 */
+int XhciBluetoothLeScanFindAddress(const UINT8 Address[6],
+                                   UINTN *OneBasedIndexOut);
+void XhciBluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

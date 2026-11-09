@@ -117,17 +117,20 @@ void BluetoothHostArmEventEndpoint(void) {
 }
 
 void BluetoothHostPumpConsumeEvent(void) {
+    static int sEventConsuming;
     UINT32 Requested;
     UINT32 Got;
     UINT32 Length;
 
-    if (!gBluetoothEventDone) {
+    if (sEventConsuming || !gBluetoothEventDone) {
         return;
     }
+    sEventConsuming = 1;
     if (!(gBluetoothEventCode == CC_SUCCESS ||
           gBluetoothEventCode == CC_SHORT_PACKET)) {
         gBluetoothEventDone = 0;
         BluetoothHostArmEventEndpoint();
+        sEventConsuming = 0;
         return;
     }
     Requested = gBluetoothEventMaxPacketSize ? gBluetoothEventMaxPacketSize
@@ -148,10 +151,13 @@ void BluetoothHostPumpConsumeEvent(void) {
         gBluetoothEventBuffer[0] == HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS) {
         ApplyNumberOfCompletedPackets(gBluetoothEventBuffer, Length);
     } else {
+        /* 稳态也要收 Disconnection / Remote Param，勿只丢进无人 Take 的队列 */
+        BluetoothLeLinkEventDemux(gBluetoothEventBuffer, Length);
         (void)EventQueuePush(gBluetoothEventBuffer, Length);
     }
     gBluetoothEventDone = 0;
     BluetoothHostArmEventEndpoint();
+    sEventConsuming = 0;
 }
 
 /*
@@ -179,6 +185,8 @@ int BluetoothHostPumpWaitTakeEvent(void) {
 }
 
 void BluetoothHostPump(void) {
+    static UINT32 sAclConsumeSkip;
+
     if (!BluetoothHostPumpIsActive() || !gBluetoothConfigured) {
         return;
     }
@@ -189,11 +197,25 @@ void BluetoothHostPump(void) {
     /*
      * 鼠优先：先/后只 ServiceHidCompletions（完成后再武装）。
      * 勿 QueueMouseIntr——双投递打死有线鼠（ClaimPorts）；勿丢弃 Notify（BTM-8 要报告）。
+     * HOGP 订住后 ACL Notify 洪泛：DrainEvents 每轮可泵数十次，若每次都 ConsumeAclIn
+     * 会把 xHCI 带宽吃光 → 有线鼠死。订窗口内 4 次泵只吃 1 次 ACL，其余专供 HID。
      */
     ServiceHidCompletions();
     BluetoothHostPumpConsumeEvent();
+    if (BluetoothAttNotifyAcceptGet()) {
+        sAclConsumeSkip++;
+        if ((sAclConsumeSkip & 3u) != 0u) {
+            ServiceHidCompletions();
+            /* Conn Param 延后应答仍须跑；勿跟 ACL 节流一起饿死 */
+            BluetoothLeLinkMaintainService();
+            return;
+        }
+    } else {
+        sAclConsumeSkip = 0;
+    }
     BluetoothHostPumpConsumeAclIn();
     ServiceHidCompletions();
+    BluetoothLeLinkMaintainService();
 }
 
 int BluetoothHostPumpStart(void) {

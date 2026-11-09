@@ -184,15 +184,15 @@ static int SendCreateConnection(const UINT8 Address[6], UINT8 AddressType) {
         Params[6u + Byte] = Address[Byte];
     }
     Params[12] = 0x00u; /* own public */
-    /* Conn interval 7.5–15ms；latency 0；supervision 5s */
+    /* Conn interval 7.5–15ms；latency 0；supervision 20s（5s 空闲易被鼠侧判死） */
     Params[13] = 0x06u;
     Params[14] = 0x00u;
     Params[15] = 0x0Cu;
     Params[16] = 0x00u;
     Params[17] = 0x00u;
     Params[18] = 0x00u;
-    Params[19] = 0xF4u;
-    Params[20] = 0x01u;
+    Params[19] = 0xD0u;
+    Params[20] = 0x07u;
     Params[21] = 0x00u;
     Params[22] = 0x00u;
     Params[23] = 0x00u;

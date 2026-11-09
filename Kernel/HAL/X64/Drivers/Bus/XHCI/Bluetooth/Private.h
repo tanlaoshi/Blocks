@@ -266,7 +266,14 @@ void BluetoothAttHidRecoverWiredHid(void);
 void BluetoothAttHidDisarmClientConfiguration(UINT16 ConnectionHandle,
                                               const UINT16 *ConfigurationHandles,
                                               UINT16 Count);
+void BluetoothHidInputNoteArmed(UINT16 ReportValueHandle, UINT8 ReportId);
+int BluetoothHidInputAttach(void);
+void BluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs);
 int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs);
+int XhciBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
+void BluetoothLeLinkEventDemux(const UINT8 *Event, UINT32 Length);
+int BluetoothLeLinkL2capSignalPush(const UINT8 *AclPayload, UINT16 Length);
+void BluetoothLeLinkMaintainService(void);
 
 #endif

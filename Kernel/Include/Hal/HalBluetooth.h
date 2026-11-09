@@ -105,4 +105,13 @@ int HalBluetoothAttHidDiscover(UINT32 TimeoutMs);
  */
 int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs);
 
+/*
+ * PR-BTM-8：一键 lescan 序号 → 连/SMP/HOGP/Notify/挂第二 Input 后端。
+ * TimeoutMs=0 → 约 20s。成功 → 0（`bt: mouse ok`）；失败 → -1。
+ */
+int HalBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
+/* 在最近一次 lescan 表里按地址找 1-based 序号；未找到 → -1 */
+int HalBluetoothLeScanFindAddress(const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH],
+                                  UINTN *OneBasedIndexOut);
+
 #endif

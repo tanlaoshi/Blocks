@@ -58,7 +58,8 @@ static int FindReportReference(UINT16 ConnectionHandle, UINT16 StartHandle,
     return -1;
 }
 static int ReportIsInput(UINT16 ConnectionHandle, UINT16 ValueHandle,
-                         UINT16 ServiceEnd, UINT32 TimeoutMs, int *IsInputOut) {
+                         UINT16 ServiceEnd, UINT32 TimeoutMs, int *IsInputOut,
+                         UINT8 *ReportIdOut) {
     UINT16 ReferenceHandle = 0;
     UINT8 Value[4];
     UINT16 ValueLength = 0;
@@ -67,6 +68,9 @@ static int ReportIsInput(UINT16 ConnectionHandle, UINT16 ValueHandle,
         return -1;
     }
     *IsInputOut = 0;
+    if (ReportIdOut != 0) {
+        *ReportIdOut = 0;
+    }
     if (SearchEnd > ServiceEnd) {
         SearchEnd = ServiceEnd;
     }
@@ -79,6 +83,9 @@ static int ReportIsInput(UINT16 ConnectionHandle, UINT16 ValueHandle,
                                 ATT_STAGE_ENABLE_NOTIFY) < 0 ||
         ValueLength < 2u) {
         return -1;
+    }
+    if (ReportIdOut != 0) {
+        *ReportIdOut = Value[0];
     }
     if (Value[1] == ATT_REPORT_TYPE_INPUT) {
         *IsInputOut = 1;
@@ -179,17 +186,20 @@ static int TryInputNotifications(UINT16 ConnectionHandle, UINT32 TimeoutMs) {
         UINT16 ValueHandle = ReportValueHandles[Index];
         int IsInput = 0;
         int ReferenceResult;
+        UINT8 ReportId = 0;
         UINT8 Enable[2];
         if (ConfigurationHandle == 0u) {
             continue;
         }
-        ReferenceResult = ReportIsInput(ConnectionHandle, ValueHandle, ServiceEnd,
-                                        TimeoutMs, &IsInput);
+        ReferenceResult =
+            ReportIsInput(ConnectionHandle, ValueHandle, ServiceEnd, TimeoutMs,
+                          &IsInput, &ReportId);
         if (ReferenceResult < 0) {
             continue;
         }
         if (ReferenceResult == 1) {
             IsInput = 1;
+            ReportId = 0;
         }
         if (!IsInput) {
             continue;
@@ -210,6 +220,7 @@ static int TryInputNotifications(UINT16 ConnectionHandle, UINT32 TimeoutMs) {
         BluetoothAttNotifyAcceptSet(1);
         BluetoothRequeueHid();
         if (WaitFirstNotification(ATT_NOTIFY_TRY_MS) == 0) {
+            BluetoothHidInputNoteArmed(ValueHandle, ReportId);
             return 0;
         }
         DisarmInputNotifications(ConnectionHandle);
@@ -233,6 +244,7 @@ int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
     BluetoothLeLastErrorSet(0, 0);
     sReportMapLength = 0;
     sEnabledClientConfigurationCount = 0;
+    BluetoothHidInputNoteArmed(0, 0);
     BluetoothAttNotifyAcceptSet(0);
     BluetoothAttNotifyQueueFlush();
     if (BluetoothLeConnectionHandleGet(&ConnectionHandle) < 0) {

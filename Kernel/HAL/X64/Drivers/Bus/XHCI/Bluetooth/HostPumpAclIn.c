@@ -39,18 +39,25 @@ void BluetoothHostArmAclIn(void) {
 }
 
 void BluetoothHostPumpConsumeAclIn(void) {
+    static int sAclInConsuming;
     UINT32 Requested;
     UINT32 Got;
     UINT32 Index;
     UINT32 Need;
 
-    if (!gBluetoothAclInDone) {
+    /*
+     * AclOutSend 等待窗会再调 HostPump；若此处无门闩，会二次吃同一 Done、
+     * 双 Arm ACL IN → 环坏，有线+BT 鼠一起死。
+     */
+    if (sAclInConsuming || !gBluetoothAclInDone) {
         return;
     }
+    sAclInConsuming = 1;
     if (!(gBluetoothAclInCode == CC_SUCCESS ||
           gBluetoothAclInCode == CC_SHORT_PACKET)) {
         gBluetoothAclInDone = 0;
         BluetoothHostArmAclIn();
+        sAclInConsuming = 0;
         return;
     }
     Requested = gBluetoothAclInMaxPacketSize ? gBluetoothAclInMaxPacketSize
@@ -82,6 +89,8 @@ void BluetoothHostPumpConsumeAclIn(void) {
         /* 完整 HCI ACL：头 4 + 载荷；SMP 取 L2CAP 体 */
         if (Need > 4u) {
             BluetoothAclInboundPush(&sAclAssemble[4], (UINT16)(Need - 4u));
+            /* 每帧 HCI 后切片 HID，避免一缓冲多 Notify 饿死有线鼠 */
+            ServiceHidCompletions();
         }
         for (Index = Need; Index < sAclAssembleBytes; Index++) {
             sAclAssemble[Index - Need] = sAclAssemble[Index];
@@ -92,4 +101,5 @@ void BluetoothHostPumpConsumeAclIn(void) {
     /* 先按完成再武装 HID，再臂下一笔 BT ACL IN（勿 Queue* 双投递） */
     ServiceHidCompletions();
     BluetoothHostArmAclIn();
+    sAclInConsuming = 0;
 }

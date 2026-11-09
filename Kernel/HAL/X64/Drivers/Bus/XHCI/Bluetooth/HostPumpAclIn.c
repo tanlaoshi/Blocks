@@ -89,5 +89,7 @@ void BluetoothHostPumpConsumeAclIn(void) {
         sAclAssembleBytes -= Need;
     }
     gBluetoothAclInDone = 0;
+    /* 先按完成再武装 HID，再臂下一笔 BT ACL IN（勿 Queue* 双投递） */
+    ServiceHidCompletions();
     BluetoothHostArmAclIn();
 }

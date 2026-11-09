@@ -1,5 +1,5 @@
 /*
- * BluetoothLe.c — 壳 lescan / connect / smp / hogp（PR-BTM-3…6）
+ * BluetoothLe.c — 壳 lescan / connect / smp / hogp / notify（PR-BTM-3…7）
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -140,6 +140,9 @@ void ShellBluetoothSmpJustWorks(void) {
         WriteHexByte((UINT8)(Stage & 0xFFu));
         gConsole.Write(" status=");
         WriteHexByte(Status);
+        if (Stage == 0x0001u && Status == 0xFDu) {
+            gConsole.Write(" (need bt connect first)");
+        }
         gConsole.Write("\n");
         return;
     }
@@ -166,4 +169,27 @@ void ShellBluetoothAttHidDiscover(void) {
         return;
     }
     gConsole.Write("bt: hogp ok\n");
+}
+
+void ShellBluetoothAttHidSubscribe(void) {
+    UINT16 Stage = 0;
+    UINT8 Status = 0;
+
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    /* BootLog 进文件/串口环，壳上看不见；提示必须走 Console */
+    gConsole.Write("bt: notify subscribe — keep moving MX Master\n");
+    if (HalBluetoothAttHidSubscribe(0) != 0) {
+        HalBluetoothLeLastError(&Stage, &Status);
+        gConsole.Write("bt: notify fail stage=");
+        WriteHexByte((UINT8)((Stage >> 8) & 0xFFu));
+        WriteHexByte((UINT8)(Stage & 0xFFu));
+        gConsole.Write(" status=");
+        WriteHexByte(Status);
+        gConsole.Write("\n");
+        return;
+    }
+    gConsole.Write("bt: notify ok (subscribed)\n");
 }

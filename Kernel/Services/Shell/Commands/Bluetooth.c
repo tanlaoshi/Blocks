@@ -290,12 +290,16 @@ static void CommandBluetooth(int Argc, char **Argv) {
         ShellBluetoothAttHidDiscover();
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "notify")) {
+        ShellBluetoothAttHidSubscribe();
+        return;
+    }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
     gConsole.Register(
         "bt",
-        "bt [info|init|scan|lescan|connect|smp|hogp|disconnect|visible|hide|acltest]",
+        "bt [info|init|scan|lescan|connect|smp|hogp|notify|disconnect|visible|hide|acltest]",
         CommandBluetooth);
 }

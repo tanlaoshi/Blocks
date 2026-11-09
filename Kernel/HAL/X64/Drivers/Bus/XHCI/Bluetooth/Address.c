@@ -6,13 +6,13 @@
  */
 #include "XHCI/Bluetooth/Private.h"
 
+/*
+ * 热路径鼠优先：只消化完成并按完成再武装（ServiceHid→InterruptByClass）。
+ * 禁止无条件 QueueIntr/QueueMouseIntr——双投递 HC 不完成 → 鼠死
+ * （ClaimPorts.c usb-hid-keep；与 Linux「完成后再 submit URB」同形）。
+ */
 void BluetoothRequeueHid(void) {
-    if (gSlotId != 0 && gIntrDci != 0) {
-        QueueIntr();
-    }
-    if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-        QueueMouseIntr();
-    }
+    ServiceHidCompletions();
 }
 
 void BluetoothReleaseSlot(void) {

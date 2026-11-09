@@ -17,6 +17,11 @@ void BluetoothAclInboundPush(const UINT8 *Payload, UINT16 Length) {
     if (Payload == 0 || Length == 0u || Length > BLUETOOTH_ACL_INBOUND_MAX) {
         return;
     }
+    /* ATT Notify/Indicate 进专用环，勿堵 SMP/ATT 应答队列 */
+    if (BluetoothAttNotifyQueueIsAttributeNotification(Payload, Length)) {
+        BluetoothAttNotifyQueuePushAcl(Payload, Length);
+        return;
+    }
     if (sInboundCount >= BLUETOOTH_ACL_INBOUND_DEPTH) {
         return;
     }

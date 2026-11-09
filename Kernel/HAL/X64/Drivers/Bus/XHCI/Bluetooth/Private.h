@@ -218,20 +218,55 @@ int BluetoothAttFindInformation(UINT16 Handle, UINT16 StartHandle,
 int BluetoothAttWriteRequest(UINT16 Handle, UINT16 AttributeHandle,
                              const UINT8 *Value, UINT16 ValueLength,
                              UINT32 TimeoutMs, UINT16 Stage);
+int BluetoothAttWriteCommand(UINT16 Handle, UINT16 AttributeHandle,
+                             const UINT8 *Value, UINT16 ValueLength);
+int BluetoothAttReadRequest(UINT16 ConnectionHandle, UINT16 AttributeHandle,
+                            UINT8 *ValueOut, UINT16 ValueCapacity,
+                            UINT16 *ValueLengthOut, UINT32 TimeoutMs,
+                            UINT16 Stage);
+int BluetoothAttReadBlobRequest(UINT16 ConnectionHandle, UINT16 AttributeHandle,
+                                UINT16 ValueOffset, UINT8 *ValueOut,
+                                UINT16 ValueCapacity, UINT16 *ValueLengthOut,
+                                UINT32 TimeoutMs, UINT16 Stage);
+int BluetoothAttReadLong(UINT16 ConnectionHandle, UINT16 AttributeHandle,
+                         UINT8 *ValueOut, UINT16 ValueCapacity,
+                         UINT16 *ValueLengthOut, UINT32 TimeoutMs,
+                         UINT16 Stage);
+void BluetoothAttNotifyQueueFlush(void);
+void BluetoothAttNotifyAcceptSet(int Accept);
+int BluetoothAttNotifyAcceptGet(void);
+UINT32 BluetoothAttNotifyDroppedGet(void);
+int BluetoothAttNotifyQueueIsAttributeNotification(const UINT8 *AclPayload,
+                                                   UINT16 Length);
+void BluetoothAttNotifyQueuePushAcl(const UINT8 *AclPayload, UINT16 Length);
+int BluetoothAttNotifyQueueTake(UINT8 *AttributeProtocolDataUnitOut,
+                                UINT16 Capacity, UINT16 *LengthOut);
 void BluetoothAttHidDiscoveryClear(void);
 int BluetoothAttHidDiscoveryGet(UINT16 *ServiceStartOut, UINT16 *ServiceEndOut,
                                 UINT16 *ReportMapHandleOut,
                                 UINT16 *ReportCountOut,
                                 const UINT16 **ReportValueHandlesOut);
+int BluetoothAttHidDiscoveryGetClientConfiguration(
+    UINT16 *ServiceStartOut, UINT16 *ServiceEndOut, UINT16 *ReportCountOut,
+    const UINT16 **ReportValueHandlesOut,
+    const UINT16 **ClientConfigurationHandlesOut);
+int BluetoothAttHidDiscoveryGetProtocolMode(UINT16 *ProtocolModeHandleOut);
 int BluetoothAttHidFindService(UINT16 ConnectionHandle, UINT32 TimeoutMs,
                                UINT16 *ServiceStartOut, UINT16 *ServiceEndOut);
 int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
                                UINT16 ServiceEnd, UINT32 TimeoutMs,
                                UINT16 *ReportMapValueHandleOut,
+                               UINT16 *ProtocolModeValueHandleOut,
                                UINT16 *ReportCountOut,
                                UINT16 *ReportValueHandles,
                                UINT16 *ReportClientConfigurationHandles,
                                UINT16 ReportCapacity);
+int BluetoothAttHidReportMapGet(const UINT8 **DataOut, UINT16 *LengthOut);
+void BluetoothAttHidRecoverWiredHid(void);
+void BluetoothAttHidDisarmClientConfiguration(UINT16 ConnectionHandle,
+                                              const UINT16 *ConfigurationHandles,
+                                              UINT16 Count);
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs);
+int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs);
 
 #endif

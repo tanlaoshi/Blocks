@@ -160,3 +160,8 @@ int HalBluetoothAttHidDiscover(UINT32 TimeoutMs) {
     (void)TimeoutMs;
     return -1;
 }
+
+int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
+    (void)TimeoutMs;
+    return -1;
+}

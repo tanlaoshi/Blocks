@@ -186,6 +186,11 @@ void BluetoothHostPump(void) {
     if (EventIsExclusive()) {
         return;
     }
+    /*
+     * 鼠优先：先/后只 ServiceHidCompletions（完成后再武装）。
+     * 勿 QueueMouseIntr——双投递打死有线鼠（ClaimPorts）；勿丢弃 Notify（BTM-8 要报告）。
+     */
+    ServiceHidCompletions();
     BluetoothHostPumpConsumeEvent();
     BluetoothHostPumpConsumeAclIn();
     ServiceHidCompletions();

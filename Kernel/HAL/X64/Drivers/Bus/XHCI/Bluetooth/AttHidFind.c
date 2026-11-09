@@ -11,6 +11,7 @@
 #define ATT_UUID_HID_SERVICE 0x1812u
 #define ATT_UUID_REPORT 0x2A4Du
 #define ATT_UUID_REPORT_MAP 0x2A4Bu
+#define ATT_UUID_PROTOCOL_MODE 0x2A4Eu
 #define ATT_UUID_CLIENT_CHARACTERISTIC_CONFIGURATION 0x2902u
 #define ATT_PROPERTY_NOTIFY 0x10u
 #define ATT_ERROR_ATTRIBUTE_NOT_FOUND 0x0Au
@@ -167,6 +168,7 @@ int BluetoothAttHidFindService(UINT16 ConnectionHandle, UINT32 TimeoutMs,
 int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
                                UINT16 ServiceEnd, UINT32 TimeoutMs,
                                UINT16 *ReportMapValueHandleOut,
+                               UINT16 *ProtocolModeValueHandleOut,
                                UINT16 *ReportCountOut,
                                UINT16 *ReportValueHandles,
                                UINT16 *ReportClientConfigurationHandles,
@@ -178,6 +180,9 @@ int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
         return -1;
     }
     *ReportMapValueHandleOut = 0;
+    if (ProtocolModeValueHandleOut != 0) {
+        *ProtocolModeValueHandleOut = 0;
+    }
     *ReportCountOut = 0;
     while (Cursor != 0u && Cursor <= ServiceEnd) {
         UINT8 Response[48];
@@ -224,6 +229,12 @@ int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
                 *ReportMapValueHandleOut = ValueHandle;
                 BootLogHex("bt: hid report-map handle=", ValueHandle, 4);
             }
+            if (Uuid16 == ATT_UUID_PROTOCOL_MODE) {
+                if (ProtocolModeValueHandleOut != 0) {
+                    *ProtocolModeValueHandleOut = ValueHandle;
+                }
+                BootLogHex("bt: hid protocol-mode handle=", ValueHandle, 4);
+            }
             if (Uuid16 == ATT_UUID_REPORT && *ReportCountOut < ReportCapacity) {
                 UINT16 Index = *ReportCountOut;
                 ReportValueHandles[Index] = ValueHandle;
@@ -232,11 +243,11 @@ int BluetoothAttHidFindReports(UINT16 ConnectionHandle, UINT16 ServiceStart,
                 BootLogHex(" prop=", Properties, 2);
                 /*
                  * 只记 CCCD 句柄，不写 Enable——订阅属 BTM-7。
-                 * 本刀若打开 Notify，MX 报告洪泛 ACL，易饿死有线/接收器键盘。
+                 * 描述符序常为 value → Report Reference → CCCD，窗要放到 +4。
                  */
                 if ((Properties & ATT_PROPERTY_NOTIFY) != 0u) {
                     UINT16 ConfigurationHandle = 0;
-                    UINT16 SearchEnd = (UINT16)(ValueHandle + 2u);
+                    UINT16 SearchEnd = (UINT16)(ValueHandle + 4u);
                     if (SearchEnd > ServiceEnd) {
                         SearchEnd = ServiceEnd;
                     }

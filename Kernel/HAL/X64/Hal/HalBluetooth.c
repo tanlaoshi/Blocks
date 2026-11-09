@@ -138,3 +138,7 @@ int HalBluetoothSmpJustWorks(UINT32 TimeoutMs) {
 int HalBluetoothAttHidDiscover(UINT32 TimeoutMs) {
     return XhciBluetoothAttHidDiscover(TimeoutMs);
 }
+
+int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
+    return XhciBluetoothAttHidSubscribe(TimeoutMs);
+}

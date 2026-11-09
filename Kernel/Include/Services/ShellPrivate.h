@@ -15,6 +15,7 @@ void ShellBluetoothLeConnect(int Argc, char **Argv);
 void ShellBluetoothLeDisconnect(void);
 void ShellBluetoothSmpJustWorks(void);
 void ShellBluetoothAttHidDiscover(void);
+void ShellBluetoothAttHidSubscribe(void);
 void ShellCommandsWifiRegister(void);
 /* 仅 wifiprobe（无桌面靶/串口最小集也要能重跑 SD1 探测） */
 void ShellCommandsWifiProbeRegister(void);

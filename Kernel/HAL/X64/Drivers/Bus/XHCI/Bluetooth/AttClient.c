@@ -16,6 +16,7 @@
 #define ATT_READ_BY_TYPE_RESPONSE 0x09u
 #define ATT_WRITE_REQUEST 0x12u
 #define ATT_WRITE_RESPONSE 0x13u
+#define ATT_WRITE_COMMAND 0x52u
 #define ATT_HANDLE_VALUE_NOTIFICATION 0x1Bu
 #define ATT_HANDLE_VALUE_INDICATION 0x1Du
 #define ATT_SLICE_MS 50u
@@ -266,4 +267,20 @@ int BluetoothAttWriteRequest(UINT16 Handle, UINT16 AttributeHandle,
     }
     return BluetoothAttExpect(ATT_WRITE_RESPONSE, Response, sizeof(Response),
                               &ResponseLength, TimeoutMs, Stage);
+}
+/* 无响应；洪泛下卸 CCCD 必须走这条，勿等 Write Response */
+int BluetoothAttWriteCommand(UINT16 Handle, UINT16 AttributeHandle,
+                             const UINT8 *Value, UINT16 ValueLength) {
+    UINT8 Request[24];
+    UINT16 Index;
+    if (Value == 0 || ValueLength == 0u || ValueLength + 3u > sizeof(Request)) {
+        return -1;
+    }
+    Request[0] = ATT_WRITE_COMMAND;
+    Request[1] = (UINT8)(AttributeHandle & 0xFFu);
+    Request[2] = (UINT8)((AttributeHandle >> 8) & 0xFFu);
+    for (Index = 0; Index < ValueLength; Index++) {
+        Request[3u + Index] = Value[Index];
+    }
+    return BluetoothAttSend(Handle, Request, (UINT16)(3u + ValueLength));
 }

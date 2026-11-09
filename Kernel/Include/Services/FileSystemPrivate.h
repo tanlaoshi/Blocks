@@ -35,11 +35,38 @@ extern UINT32 gActiveDrive;
 extern UINT32 gActiveLba;
 extern const FS_OPS *gActiveOps;
 
-/* fs-msc-defer：OsTarget / SecondaryReady（MountOs.c） */
+/* fs-msc-defer：OsTarget / SecondaryReady（MountOs.c + OsTargetResolve / BootMediumWatch） */
 extern int gSecondaryReady;
 extern int gOsVolIdx;
 extern UINT8 gOsDiskGuid[16];
 extern int gOsDiskOk;
+extern UINT8 gOsPartGuid[16];
+extern int gOsPartOk;
+extern int gOsTargetPinned;
+extern int gBootDiskSeen;
+extern int gBootMediumGone;
+extern UINT8 gMscDiskGuid[16];
+extern int gMscDiskGuidOk;
+extern int gMscIsBootDisk;
+
+static inline int GuidEqual16(const UINT8 *A, const UINT8 *B) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (A[i] != B[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static inline void CopyGuid16(UINT8 *Destination, const UINT8 *Source) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        Destination[i] = Source[i];
+    }
+}
 
 int MountAllVolumes(void);
 int FileSystemPathBlocked(const char *Path);
@@ -53,6 +80,10 @@ void FsMountPickDefault(int BlocksVol, UINT8 *Tmp, UINTN TmpSz);
 int FsBootDiskHasBlocksId(void);
 void FsResolveOsTarget(int *BlocksVol);
 void FsUpdateBootMediumState(void);
+/* OsTargetRootConfig.c */
+int ParseRootConfig(const char *Text, UINTN Length, UINT8 Disk[16],
+                    UINT8 Part[16]);
+int TryRootConfigFromVolume(int VolumeIndex, UINT8 Disk[16], UINT8 Part[16]);
 /* FileSystemNotifyBootWatchUnplug：见 FileSystem.h */
 int FsOsVolumeMounted(void);
 int FsVolOnOsDisk(int Idx);

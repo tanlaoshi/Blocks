@@ -14,7 +14,15 @@ int BoardFbSetup(BOOT_HANDOFF *Info);
 
 /* BRINGUP：打开最小恒等 MMU；其它板可空实现返回 0 */
 int BoardBringUpIdentityMapEnable(void);
-/* PR-PIXEL8-USB-1：DWC3 MMIO 可读并切 Host（串口报 id/host；保 Cereal） */
+/* BRINGUP：重开 DECON0 TRIG_CON（ABL 关触发后屏才刷新） */
+int BoardBringUpDeconTriggerEnable(void);
+/* BRINGUP：在已映射的 ABL splash 上画字 / 彩条 */
+int BoardBringUpSplashClear(void);
+int BoardBringUpSplashPaint(const char *Text);
+int BoardBringUpSplashPaintLine(UINT32 Top, const char *Text);
+/* PR-PIXEL8-USB-1：DWC3 MMIO 可读并切 Host（串口报 id/host） */
 int BoardPixel8UsbHostProbe(void);
+/* PR-PIXEL8-USB-2：xHCI 起环后热插扫 hub（屏/串口 e/a；不返回） */
+void BoardPixel8UsbHubWatch(void);
 
 #endif /* BOARD_H */

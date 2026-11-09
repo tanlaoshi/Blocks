@@ -1,6 +1,6 @@
 # 柱规格 · 手机 USB 键盘（Pixel 8 / MIX 2）
 
-> **状态**：政策已放行；**活 ★ = Pixel USB-2 hub**。PIXEL8-USB-1 ✅（`usb: host`；id-odd 已记）。MIX2：splash/USB-2 ✅；USB-3 ⏸。  
+> **状态**：政策已放行；**活 ★ = `PR-PIXEL8-USB-2` hub（屏反馈）**。PIXEL8-2 splash ✅；USB-1 ✅。MIX2：splash/USB-2 ✅；USB-3 ⏸。  
 > **活排期**：[`路线图1108.md`](../路线图1108.md)。无输入法：HID Boot 键码直通壳即可。  
 > **MIX2 试错史**：[`过程/排障/MIX2-USB键盘试错历程.md`](../过程/排障/MIX2-USB键盘试错历程.md)（半程归档；有串口证据后再回灌）。  
 > **史**：bringup [`进展/路线图1107.md`](../项目/进展/路线图1107.md)；MIX2-2 ✅；USB-1/2 ✅。  
@@ -15,9 +15,9 @@
 | 机 | 已有输出 | 本柱输入 | 验收 |
 |---|---|---|---|
 | **MIX 2** | splash 彩条 + `Blocks ready` | USB hub 键盘 | 键入可见于 splash 行缓冲或等价回显 |
-| **Pixel 8** | USB-Cereal 串口 `blocks>` | 同上 | 键入出现在串口壳（与现 `blocks>` 同路） |
+| **Pixel 8** | ★ splash（同 MIX2）；Cereal 仅备份 | 同上 | 键入可见于 splash；不依赖 Cereal |
 
-**不在本柱**：点亮/重配 DSI、触摸、UFS、网、完整桌面、刷入 boot 分区（仍只 `fastboot boot`）。
+**不在本柱**：重配/初始化 DSI 面板驱动、触摸、UFS、网、完整桌面、刷入 boot 分区（仍只 `fastboot boot`）。**可写 ABL 已扫 splash**。
 
 ---
 
@@ -67,7 +67,7 @@
 
 - **板包**：控制器基址、IRQ/轮询、Host 模式、根端口供电。  
 - **Common/现网**：hub、HID 报告、壳回显——**尽量复用**，禁止另起缩水 API。  
-- **MIX 输出**：键回显可先画在 splash（或后接串口若另开）；**Pixel** 回显走已有 UART 壳。
+- **输出**：两台键回显都画在 splash；Pixel Cereal UART 仅备份排障。
 
 ---
 
@@ -90,13 +90,14 @@
 | **PR-MIX2-USB-2** | 枚举 **外置 hub**；**热插拔**（boot 后再插坞须能看见） | 按 §7.0 换线后见 hub addr | 2–3 |
 | **PR-MIX2-USB-3** | hub 下 **HID Boot 键盘** → 壳（**后增**；半程 ⏸） | splash 见字符；现回 USB-2 树 | ⏸ |
 
-### Pixel 8（串口已绿 · **活 ★**）
+### Pixel 8（splash ✅ · hub **活 ★**）
 
 | PR | 内容 | 验收 | 估 |
 |---|---|---|---|
-| **PR-PIXEL8-USB-1** | Tensor USB **Host 模式**最小（对表 DT；Cereal 保留） | 串口 `usb: host`；Cereal 仍可用 | ✅ |
-| **PR-PIXEL8-USB-2** | hub 枚举 | 同 MIX2-USB-2 | ★ 2–3 |
-| **PR-PIXEL8-USB-3** | HID 键盘 → 串口壳 | 键入出现在 `blocks>` 会话 | 2–3 |
+| **PR-PIXEL8-USB-1** | Tensor USB **Host 模式**最小（对表 DT） | 串口 `usb: host` | ✅ |
+| **PR-PIXEL8-2** | ABL splash + DECON TRIG；彩条 + `Blocks ready` | ✅ 左上彩条+字 | ✅ |
+| **PR-PIXEL8-USB-2** | hub 枚举；状态画 splash | 坞直插；屏见 `e…a1` | ★ |
+| **PR-PIXEL8-USB-3** | HID 键盘 → splash 回显 | 敲键出字 | 2–3 |
 
 ### 收口
 
@@ -197,7 +198,9 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 日期 | 说明 |
 | ---- | ---- |
-| 2026-11-09 | **PIXEL8-USB-1 ✅**：`gctl` Device→Host `0x00011004`；`id=0x33313130`（非 5533，GCTL 活）；Cereal 通；★→USB-2 |
+| 2026-11-09 | **PIXEL8-2 ✅**：左上彩条+字；TRIG_CON@`0x19470030`；★→USB-2 |
+| 2026-11-09 | **重拆**：Cereal 透传无 CCS → ★=`PR-PIXEL8-2` splash；USB-2 ⏸ 待屏+坞 |
+| 2026-11-09 | **PIXEL8-USB-1 ✅**：`gctl` Device→Host `0x00011004`；`id=0x33313130`（非 5533，GCTL 活）；Cereal 通；曾→USB-2 |
 | 2026-11-09 | PIXEL8-USB-1：钉 `0x11210000`（`11210000.dwc3`）；MMU 先过；保 Cereal |
 | 2026-11-09 | MIX2 树回 USB-2（`e a1`）；USB-3 半程归档；★→PIXEL8-USB-1（后增键需求让路） |
 | 2026-11-08 | 挂试错史；§8 手测快查；USB-3 在测（`e a1` 后盯 `k`） |

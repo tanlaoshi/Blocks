@@ -29,40 +29,43 @@ extern char __kernel_end[];
 
 void KernelHandoff(UINT64 DtbPhys) {
     (void)DtbPhys;
-#if defined(BOARD_BRINGUP_SPLASH) && BOARD_BRINGUP_SPLASH
     /*
-     * MIX 2：无板上 UART。先开恒等页表再画一次（勿 MMU 前后各画：会叠花）。
-     * 验收：彩条 + Blocks ready；USB-1 id/host；USB-2 wait dock→hub。
+     * 有 Samsung UART 的板（Pixel）：先串口再 MMU；splash / USB 可选。
+     * 无 UART 的板（MIX 2）：只 MMU → splash → USB。
+     * 勿 MMU 前后各画 splash（叠花）。
      */
-#if defined(BOARD_BRINGUP_IDENTITY_MAP) && BOARD_BRINGUP_IDENTITY_MAP
-    (void)BoardBringUpIdentityMapEnable();
-#endif
-    (void)BoardBringUpSplashPaint("Blocks ready");
-#if defined(BOARD_MIX2_USB_HOST_BRINGUP) && BOARD_MIX2_USB_HOST_BRINGUP
-    (void)BoardMix2UsbHostProbe();
-    BoardMix2UsbHubWatch();
-#endif
-#else
-    /*
-     * 先串口（MMU off：Pixel 已证 '*'/'+' / Blocks uart 通），再开恒等页表。
-     * 须 WriteShell/BootMark：build 默认 SERIAL_MISC=0，HalSerialWrite 会被滤掉。
-     */
+#if defined(BOARD_UART_SAMSUNG) && BOARD_UART_SAMSUNG
     HalSerialInitialize();
     HalSerialWriteShell("Boot: Arm64 Hello\r\n");
     HalSerialWriteShell("board: ");
     HalSerialWriteShell(BoardName());
     HalSerialWriteShell("\r\n");
     HalSerialWriteShell("blocks>\r\n");
+#endif
 #if defined(BOARD_BRINGUP_IDENTITY_MAP) && BOARD_BRINGUP_IDENTITY_MAP
     if (BoardBringUpIdentityMapEnable() == 0) {
+#if defined(BOARD_UART_SAMSUNG) && BOARD_UART_SAMSUNG
         HalSerialWriteShell("mmu: on\r\n");
-        HalSerialWriteShell("blocks>\r\n");
-#if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
-        (void)BoardPixel8UsbHostProbe();
-        HalSerialWriteShell("blocks>\r\n");
 #endif
     }
 #endif
+#if defined(BOARD_BRINGUP_SPLASH) && BOARD_BRINGUP_SPLASH
+    /* ABL 关 DECON 触发 → 先 TRIG_CON=0x3061 再画，否则停在 Google logo */
+    (void)BoardBringUpDeconTriggerEnable();
+    (void)BoardBringUpSplashPaint("Blocks ready");
+#if defined(BOARD_UART_SAMSUNG) && BOARD_UART_SAMSUNG
+    HalSerialWriteShell("splash: painted\r\n");
+    HalSerialWriteShell("blocks>\r\n");
+#endif
+#endif
+#if defined(BOARD_MIX2_USB_HOST_BRINGUP) && BOARD_MIX2_USB_HOST_BRINGUP
+    (void)BoardMix2UsbHostProbe();
+    BoardMix2UsbHubWatch();
+#endif
+#if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
+    (void)BoardPixel8UsbHostProbe();
+    HalSerialWriteShell("blocks>\r\n");
+    BoardPixel8UsbHubWatch();
 #endif
     HalCpuPark();
 }

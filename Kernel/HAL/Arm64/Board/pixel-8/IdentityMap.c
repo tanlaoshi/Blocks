@@ -1,8 +1,9 @@
 /*
  * IdentityMap.c — Pixel 8 BRINGUP 最小恒等页表
  *
- * UART @0x10800000 Device（GiB0 / L2）；内核 L1 1GiB @0x80000000；
- * USB-1：DWC3 @0x11200000 Device（同 GiB0 L2）。
+ * GiB0 L2：UART @0x10800000；DECON0 @0x19400000；可选 DWC3 @0x11200000。
+ * GiB2 L1：内核 1GiB Normal @0x80000000。
+ * GiB3 L2：ABL splash @BOARD_SPLASH_PHYSICAL_BASE Device（2MiB 块）。
  */
 #include "Board.h"
 #include "BoardConfig.h"
@@ -30,9 +31,16 @@
 #define BLOCK_DEVICE \
     (DESC_VALID | DESC_BLOCK | AF_BIT | SH_INNER | AP_EL1_RW | UXN_BIT | ATTR_DEVICE)
 
+#define GIGABYTE3_BASE 0xC0000000ULL
+#define SPLASH_BLOCK_INDEX \
+    ((UINTN)((BOARD_SPLASH_PHYSICAL_BASE - GIGABYTE3_BASE) >> 21))
+#define SPLASH_BLOCK_COUNT \
+    ((UINTN)(BOARD_SPLASH_PHYSICAL_SIZE >> 21))
+
 static UINT64 sLevel0[512] __attribute__((aligned(4096)));
 static UINT64 sLevel1[512] __attribute__((aligned(4096)));
 static UINT64 sLevel2Low[512] __attribute__((aligned(4096)));
+static UINT64 sLevel2Splash[512] __attribute__((aligned(4096)));
 
 static void TableClear(UINT64 *Table) {
     UINTN Index;
@@ -80,6 +88,7 @@ int BoardBringUpIdentityMapEnable(void) {
     UINT64 Mair;
     UINT64 Tcr;
     UINT64 SystemControl;
+    UINTN BlockIndex;
 
     HalSerialWriteShell("mmu: prep\r\n");
     ForceMmuAndCachesOff();
@@ -87,22 +96,37 @@ int BoardBringUpIdentityMapEnable(void) {
     TableClear(sLevel0);
     TableClear(sLevel1);
     TableClear(sLevel2Low);
+    TableClear(sLevel2Splash);
 
     sLevel0[0] = ((UINT64)(UINTN)sLevel1) | TABLE_FLAGS;
-    /* GiB0：L2 表（UART）；GiB2：1GiB Normal 块（整窗 0x80000000） */
+    /* GiB0：L2（UART[/DWC3]）；GiB2：1GiB 内核；GiB3：L2 splash */
     sLevel1[0] = ((UINT64)(UINTN)sLevel2Low) | TABLE_FLAGS;
     sLevel1[2] = (0x80000000ULL) | BLOCK_NORMAL;
+    sLevel1[3] = ((UINT64)(UINTN)sLevel2Splash) | TABLE_FLAGS;
 
     sLevel2Low[0x84u] = (0x10800000ULL) | BLOCK_DEVICE;
+    /* zuma DECON0 TRIG_CON @0x19470030 → 2MiB 块 0x19400000（index 0xCA） */
+    sLevel2Low[0xCAu] = (0x19400000ULL) | BLOCK_DEVICE;
 #if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
     /* zuma snps,dwc3 @0x11210000 → 2MiB 块 0x11200000 */
     sLevel2Low[0x89u] = (0x11200000ULL) | BLOCK_DEVICE;
 #endif
 
+    for (BlockIndex = 0; BlockIndex < SPLASH_BLOCK_COUNT; BlockIndex++) {
+        UINTN TableIndex = SPLASH_BLOCK_INDEX + BlockIndex;
+        UINT64 Physical =
+            BOARD_SPLASH_PHYSICAL_BASE + (((UINT64)BlockIndex) << 21);
+        if (TableIndex >= 512u) {
+            break;
+        }
+        sLevel2Splash[TableIndex] = Physical | BLOCK_DEVICE;
+    }
+
     HalSerialWriteShell("mmu: tables\r\n");
     CleanDataCachePage(sLevel0);
     CleanDataCachePage(sLevel1);
     CleanDataCachePage(sLevel2Low);
+    CleanDataCachePage(sLevel2Splash);
 
     Root = (UINT64)(UINTN)sLevel0;
     /* Attr0=Normal WB；Attr1=Device nGnRnE */

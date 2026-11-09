@@ -1,12 +1,14 @@
 /*
- * FileSystem.c — 卷激活、路径解析和开机挂卷（story-s3 / PR-S-filesystem-1）
+ * FileSystem.c — 卷激活与开机挂卷编排（story-s3 / PR-S-filesystem-1）
  *
  * 稳态 S3：开机挂卷在此；拔出 Remount 在 Mount.c（Worker→HotPoll 仅拔出）。
- * 桌面不自动 Claim；晚插 U 盘用 Shell `msc hot`。路径：Operations.c；挂卷：Mount*。
+ * 桌面不自动 Claim；晚插 U 盘用 Shell `msc hot`。
+ * 路径读写：Operations.c；挂卷：Mount*；前缀解析：PathResolve.c；
+ * 卷查询：VolumeQuery.c；MSC auto：MassStorageAutoPolicy.c。
  *
  * 开机（fs-msc-defer）：
  *   1. HalBlockInitialize → MountAllVolumes（读 ROOT.CFG → OsTarget）
- *   2. MscAutoApplyPolicy：MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
+ *   2. MassStorageAutoApplyPolicy：MSC.OFF/msc=0 → 有 BLOCKS 才关 auto
  *   3–4. 启动盘已有 BLOCKS 则 skip MSC；启动盘未挂（U 盘起）必 claim
  *   5. 桌面后 FileSystemEnsureSecondaryVolumes → SecondaryReady（旁路第二盘）
  *
@@ -17,8 +19,6 @@
  */
 #include "FileSystemPrivate.h"
 #include "Block.h"
-#include "Gpt.h"
-#include "BootHandoff.h"
 #include "VirtualFileSystem.h"
 #include "SerialLog.h"
 #include "Atomic.h"
@@ -72,203 +72,6 @@ int FileSystemActivate(int VolIdx) {
     return FAT_OK;
 }
 
-/*
- * 解析前缀：
- *   BLOCKS:path / BOOT:path / ESP:path / A:path / B:path
- *   0:path / 1:path（卷下标）
- * 无冒号 → 默认卷，整串为相对路径。
- */
-int FileSystemResolve(const char *Path, int *OutVol, const char **OutRel) {
-    const char *Colon;
-    char Pref[FS_VOL_NAME_MAX];
-    int PrefLen;
-    int i;
-    int Vol;
-
-    if (!Path || !OutVol || !OutRel) {
-        return FAT_ERR_INVAL;
-    }
-    if (gVolCount <= 0) {
-        return FAT_ERR_IO;
-    }
-
-    Colon = Path;
-    while (*Colon && *Colon != ':') {
-        Colon++;
-    }
-    if (*Colon != ':') {
-        *OutVol = gDefaultVol;
-        *OutRel = Path;
-        return FAT_OK;
-    }
-
-    PrefLen = (int)(Colon - Path);
-    if (PrefLen <= 0 || PrefLen >= FS_VOL_NAME_MAX) {
-        return FAT_ERR_INVAL;
-    }
-    for (i = 0; i < PrefLen; i++) {
-        Pref[i] = Path[i];
-    }
-    Pref[PrefLen] = 0;
-
-    Vol = -1;
-    if (StrEqIgnoreCase(Pref, "BOOT")) {
-        Vol = FsFindBootVolume();
-    } else if (PrefLen == 1 && Pref[0] >= '0' && Pref[0] <= '9') {
-        Vol = Pref[0] - '0';
-    } else if (PrefLen == 1 &&
-               ((Pref[0] >= 'A' && Pref[0] <= 'Z') ||
-                (Pref[0] >= 'a' && Pref[0] <= 'z'))) {
-        char L = Pref[0];
-        if (L >= 'a') {
-            L = (char)(L - 'a' + 'A');
-        }
-        for (i = 0; i < gVolCount; i++) {
-            if (gVols[i].Letter == L) {
-                Vol = i;
-                break;
-            }
-        }
-    } else if (StrEqIgnoreCase(Pref, "BLOCKS")) {
-        /*
-         * 同名卷取 OsTarget，其次启动盘，再次 OsDisk；有 BootDiskGuid 时
-         * 禁止 first-match（U 盘起 NVMe 常先入表，BLOCKS: 曾误打到 SSD）。
-         */
-        int Os = FileSystemOsVol();
-        const BOOT_HANDOFF *Info = BootHandoffGet();
-        int BootGuidOk = (Info && Info->BootDiskGuidOk) ? 1 : 0;
-
-        if (Os >= 0 && Os < gVolCount &&
-            StrEqIgnoreCase(gVols[Os].Name, Pref)) {
-            Vol = Os;
-        }
-        if (Vol < 0) {
-            for (i = 0; i < gVolCount; i++) {
-                if (StrEqIgnoreCase(Pref, gVols[i].Name) &&
-                    FileSystemVolOnBootDisk(i) == 1) {
-                    Vol = i;
-                    break;
-                }
-            }
-        }
-        if (Vol < 0) {
-            for (i = 0; i < gVolCount; i++) {
-                if (StrEqIgnoreCase(Pref, gVols[i].Name) &&
-                    FsVolOnOsDisk(i)) {
-                    Vol = i;
-                    break;
-                }
-            }
-        }
-        if (Vol < 0 && !BootGuidOk) {
-            for (i = 0; i < gVolCount; i++) {
-                if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
-                    Vol = i;
-                    break;
-                }
-            }
-        }
-    } else {
-        for (i = 0; i < gVolCount; i++) {
-            if (StrEqIgnoreCase(Pref, gVols[i].Name)) {
-                Vol = i;
-                break;
-            }
-        }
-    }
-    if (Vol < 0 || Vol >= gVolCount) {
-        return FAT_ERR_NOENT;
-    }
-
-    *OutVol = Vol;
-    *OutRel = Colon + 1;
-    if (**OutRel == '/' || **OutRel == '\\') {
-        (*OutRel)++;
-    }
-    return FAT_OK;
-}
-
-int FileSystemVolCount(void) {
-    return gVolCount;
-}
-
-int FileSystemDefaultVol(void) {
-    return gDefaultVol;
-}
-
-int FileSystemVolInfo(int Idx, char *Name, int NameMax, UINT32 *Drive,
-                      UINT32 *StartLba, int *ReadOnly) {
-    if (Idx < 0 || Idx >= gVolCount) {
-        return -1;
-    }
-    if (Name && NameMax > 0) {
-        StringCopy(Name, NameMax, gVols[Idx].Name);
-    }
-    if (Drive) {
-        *Drive = gVols[Idx].Drive;
-    }
-    if (StartLba) {
-        *StartLba = gVols[Idx].StartLba;
-    }
-    if (ReadOnly) {
-        *ReadOnly = gVols[Idx].ReadOnly;
-    }
-    return 0;
-}
-
-int FileSystemVolDiskGuidStr(int Idx, char *Buf, int BufMax) {
-    char Uuid[37];
-
-    if (Idx < 0 || Idx >= gVolCount || !Buf || BufMax < 37) {
-        return -1;
-    }
-    if (!gVols[Idx].DiskGuidOk) {
-        return -1;
-    }
-    GptFormatGuidUuid(gVols[Idx].DiskGuid, Uuid);
-    StringCopy(Buf, BufMax, Uuid);
-    return 0;
-}
-
-int FileSystemVolOnBootDisk(int Idx) {
-    const BOOT_HANDOFF *Info;
-    int i;
-
-    if (Idx < 0 || Idx >= gVolCount || !gVols[Idx].DiskGuidOk) {
-        return -1;
-    }
-    Info = BootHandoffGet();
-    if (!Info || !Info->BootDiskGuidOk) {
-        return -1;
-    }
-    for (i = 0; i < 16; i++) {
-        if (gVols[Idx].DiskGuid[i] != Info->BootDiskGuid[i]) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int FileSystemVolHasBlocksId(int Idx) {
-    if (Idx < 0 || Idx >= gVolCount) {
-        return 0;
-    }
-    return gVols[Idx].HasBlocksId ? 1 : 0;
-}
-
-/* PR-F3：后端名（如 fat / res）；Out 可 NULL */
-int FileSystemVolBackend(int Idx, const char **OutName) {
-    const FS_OPS *Ops;
-    if (Idx < 0 || Idx >= gVolCount) {
-        return -1;
-    }
-    Ops = gVols[Idx].Ops ? gVols[Idx].Ops : FatFsOps();
-    if (OutName) {
-        *OutName = Ops->Name ? Ops->Name : "?";
-    }
-    return 0;
-}
-
 static int (*gPathBlocked)(const char *Path);
 
 void FileSystemRegisterPathGuard(int (*Blocked)(const char *Path)) {
@@ -280,93 +83,6 @@ int FileSystemPathBlocked(const char *Path) {
         return 0;
     }
     return gPathBlocked(Path);
-}
-
-/* PR-H-msc-7b：默认卷上 MSC.OFF 或 THEME.CFG 含 msc=0 → 倾向关 auto */
-static int MscPolicySaysOff(void) {
-    UINT8 Buf[512];
-    UINTN Sz = 0;
-    UINTN i;
-
-    if (FileSystemReadFile("MSC.OFF", Buf, 1, &Sz) == FAT_OK) {
-        return 1;
-    }
-    Sz = 0;
-    if (FileSystemReadFile("THEME.CFG", Buf, sizeof(Buf) - 1, &Sz) != FAT_OK) {
-        return 0;
-    }
-    Buf[Sz] = 0;
-    for (i = 0; i + 5 <= Sz; i++) {
-        if (Buf[i] == 'm' && Buf[i + 1] == 's' && Buf[i + 2] == 'c' &&
-            Buf[i + 3] == '=' && Buf[i + 4] == '0') {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int AnyVolumeHasBlocksId(void) {
-    int i;
-
-    for (i = 0; i < gVolCount; i++) {
-        if (gVols[i].HasBlocksId) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-/*
- * 第一轮挂卷成功后：读盘上 MSC.OFF / msc=0（序 2）。
- * 无第一轮卷时不读盘（与旧分支一致）。
- */
-static int MscAutoApplyPolicy(int Auto, int HasBlocks) {
-    if (!Auto || !MscPolicySaysOff()) {
-        return Auto;
-    }
-    if (HasBlocks) {
-        HalUsbMscAutoSet(0);
-        LogBoot("Boot: MSC Auto Off (MSC=0/MSC.OFF)\n");
-        return 0;
-    }
-    LogBoot("Boot: MSC Auto Keep (No BLOCKS.ID; Ignore MSC=0)\n");
-    return Auto;
-}
-
-/*
- * 序 3–4：仅当「启动盘上」已有 Os/BLOCKS 才 skip MSC。
- * 坑：U 盘起时 NVMe 常先挂上 BLOCKS/ROOT.CFG → 旧逻辑当 Os 已挂而跳过 claim，
- * 启动棒永不进 Mux，Files 只剩 NUC 分区；旁路依赖桌面 Hot 也易空。
- * 启动盘尚无卷（BootDiskHasBlocksId==0）→ 必须 claim。旁路第二只盘仍桌面 Secondary。
- */
-static int MscAutoResolveClaim(int Auto, int HasBlocks) {
-    int BootHas;
-
-    if (!HasBlocks && !Auto) {
-        HalUsbMscAutoSet(1);
-        LogBoot("Boot: MSC Auto Force (Need BLOCKS)\n");
-        return 1;
-    }
-    if (!Auto) {
-        return 0;
-    }
-    BootHas = FsBootDiskHasBlocksId();
-    /* 序码供 BOOT.LOG 对表：1=策略 2=开机claim 3=桌面secondary 4=热插拔 */
-    if (BootHas == 1) {
-        LogBoot("FS: msc/1 skip (boot disk has BLOCKS — expect NUC/SSD path)\n");
-        return 0;
-    }
-    if (BootHas == 0) {
-        LogBoot("FS: msc/1 claim (boot disk not mounted — expect USB-stick path)\n");
-        return 1;
-    }
-    /* 旧 Boot 无 DiskGUID：回退「任意 Os 已挂则 skip」 */
-    if (FsOsVolumeMounted()) {
-        LogBoot("FS: msc/1 skip (OS volume mounted, no BootDiskGuid)\n");
-        return 0;
-    }
-    LogBoot("FS: msc/1 claim (need OS volume)\n");
-    return 1;
 }
 
 int FileSystemInitialize(void) {
@@ -396,11 +112,11 @@ int FileSystemInitialize(void) {
     if (HalBlockInitialize() > 0 && MountAllVolumes()) {
         HaveVols = 1;
         HasBlocks = AnyVolumeHasBlocksId();
-        Auto = MscAutoApplyPolicy(Auto, HasBlocks);
+        Auto = MassStorageAutoApplyPolicy(Auto, HasBlocks);
     } else {
         LogFs("FS: No Primary Volumes Yet (Live USB Path Ok)\n");
     }
-    Auto = MscAutoResolveClaim(Auto, HasBlocks);
+    Auto = MassStorageAutoResolveClaim(Auto, HasBlocks);
 
     if (Auto) {
         int MscRc;

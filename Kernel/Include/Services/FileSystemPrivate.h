@@ -82,6 +82,11 @@ static inline int StrEqIgnoreCase(const char *A, const char *B) {
 void FileSystemLock(void);
 void FileSystemUnlock(void);
 
+/* MassStorageAutoPolicy.c — 开机 MSC auto（FileSystemInitialize 编排调用） */
+int AnyVolumeHasBlocksId(void);
+int MassStorageAutoApplyPolicy(int Auto, int HasBlocks);
+int MassStorageAutoResolveClaim(int Auto, int HasBlocks);
+
 /* PR-FS-vol：当前是否被 FileSystemSelectVolume 选中（可越过策略只读）。 */
 int FsVolumeIsSelected(int Idx);
 /* BOOT: 别名指向的卷下标；-1 = 没探到启动固件 */

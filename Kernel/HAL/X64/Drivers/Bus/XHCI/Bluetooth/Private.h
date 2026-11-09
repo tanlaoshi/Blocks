@@ -23,6 +23,11 @@
 #define HCI_OPCODE_REMOTE_NAME_CANCEL 0x041Au
 #define HCI_OPCODE_RESET 0x0C03u
 #define HCI_OPCODE_WRITE_LOCAL_NAME 0x0C13u
+/* Intel 厂商：冷启常在 bootloader，标准 Reset 会 CC status=0x01；须灌 .sfi */
+#define HCI_OPCODE_INTEL_RESET 0xFC01u
+#define HCI_OPCODE_INTEL_VERSION 0xFC05u
+#define HCI_OPCODE_INTEL_SECURE_SEND 0xFC09u
+#define HCI_OPCODE_INTEL_BOOT_PARAMETERS 0xFC0Du
 #define HCI_OPCODE_WRITE_SCAN_ENABLE 0x0C1Au
 #define HCI_OPCODE_WRITE_PAGE_TIMEOUT 0x0C18u
 #define HCI_OPCODE_WRITE_CLASS_OF_DEVICE 0x0C24u
@@ -62,6 +67,8 @@ extern UINT8 gBluetoothAddress[6];
 extern char gBluetoothLocalName[64];
 extern volatile UINT32 gBluetoothEventDone;
 extern volatile UINT32 gBluetoothEventCode;
+extern volatile UINT32 gBluetoothAclOutDone;
+extern volatile UINT32 gBluetoothAclOutCode;
 
 extern XHCI_TRB gBluetoothEndpoint0Ring[RING_SIZE];
 extern RING_STATE gBluetoothEndpoint0;
@@ -83,9 +90,26 @@ int BluetoothHciReset(void);
 void BluetoothHciArmEvent(void);
 int BluetoothHciWaitArmed(UINT32 TimeoutMs);
 int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen);
+/* bootloader 下 0xFC09 须 Bulk OUT（对表 btusb_send_frame_intel） */
+int BluetoothHciSendBulk(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen);
 int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
                         UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
                         UINT8 *ReturnLenOut);
+int BluetoothHciCommandTimeout(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                               UINT8 *StatusOut, UINT8 *ReturnData,
+                               UINT8 ReturnMax, UINT8 *ReturnLenOut,
+                               UINT32 TimeoutMilliseconds);
+int BluetoothIntelSecureSend(UINT8 FragmentType, const UINT8 *Data,
+                             UINT32 Length);
+int BluetoothIntelSecureSendRsaHeader(const UINT8 *Firmware,
+                                      UINTN FirmwareBytes);
+int BluetoothIntelSecureSendPayload(const UINT8 *Firmware,
+                                    UINTN FirmwareBytes);
+int BluetoothIntelBuildFirmwarePath(char *Out, UINTN Cap, UINT8 HardwareVariant,
+                                    UINT16 DeviceRevisionId);
+int BluetoothIntelReadFirmwareBlob(const char *Path, UINT8 **OutBlob,
+                                   UINTN *OutBytes, UINT32 *OutPages);
+int BluetoothIntelFirmwareLoad(void);
 int BluetoothBringUpIdentity(void);
 int BluetoothSetDiscoverable(int On);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,

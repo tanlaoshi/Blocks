@@ -1,10 +1,11 @@
 # 柱规格 · X64 蓝牙鼠（罗技 MX Master 初代 · BLE）
 
-> **状态**：方案稿；**未进 ★**（候补；接收器丢失 → 只走蓝牙直连）。  
-> **活排期**：待选入 [`路线图1108.md`](../路线图1108.md) 或后续日档；刀做勿擅开。  
+> **状态**：**规格钉死**（`PR-BTM-0` ✅）；活 ★ 见 [`路线图1109.md`](../路线图1109.md)。  
+> **活排期**：[`路线图1109.md`](../路线图1109.md)（`PR-BTM-1…10` 排队）。  
 > **前置**：NUC 课轨 `btx-1…5` ✅（USB HCI / Reset / BD_ADDR / 经典 Inquiry / visible）。  
 > **靶机**：X64 NUC 板载 HCI（NOTES：`8087:0A2B`）；靶鼠：**罗技 MX Master 初代**（无 2S/3/3S 后缀）。  
-> **产品名**：Blocks。口令同全表。
+> **产品名**：Blocks。口令同全表。  
+> **接收器**：已丢失 → **只走蓝牙直连**（本柱不接 Unifying/Bolt）。
 
 ---
 
@@ -93,6 +94,34 @@ HAL 现门面（`HalBluetooth.h`）：无 Connect / LE / HID。本柱按刀扩�
 - **Board/总线**：仅 NUC USB HCI；不改 Pi UART / Duo SDIO。  
 - **禁止**：把 BLE 鼠塞进 `UsbHid/Mouse.c` 中断环；禁止与经典 Inquiry 共用「单次等一包」阻塞泵当常驻主机。
 
+### 落点目录（钉死）
+
+| 层 | 路径 | 说明 |
+|---|---|---|
+| USB HCI 运输 / 常驻泵 | `Kernel/HAL/X64/Drivers/Bus/XHCI/Bluetooth/` | 扩现有；新泵文件名写全（如 `HostPump.c`） |
+| LE / SMP / ATT / HOGP | 同目录下分子文件；单文件 ≤300 行 | 不另起 `Drivers/Bluetooth/` 逃板债 |
+| Hal 门面 | `Kernel/Include/Hal/HalBluetooth.h` + `Kernel/HAL/X64/Hal/HalBluetooth.c` | 按刀扩 API；禁空 stub 谎 Ready |
+| 壳 | `Kernel/Services/Shell/Commands/Bluetooth.c` | 加 `lescan` / `mouse` / `disconnect` |
+| 输入后端 | 与现 `INPUT_BACKEND` 同形新建 | **不**占 USB 鼠槽 |
+
+Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
+
+### 壳命令面（钉死）
+
+| 命令 | 自刀 | 行为 |
+|---|---|---|
+| `bt` / `bt info` | 已有 | Ready / 名 / 可见性 |
+| `bt scan` | 已有 | **经典** Inquiry（保留；本鼠扫不到属正常） |
+| `bt visible` / `bt hide` | 已有 | 本机可被发现 |
+| `bt lescan` | BTM-3 | LE 扫；列表序号+地址+名 |
+| `bt mouse <addr\|#>` | BTM-8 | 一键：连 → SMP → HOGP → 挂后端 |
+| `bt disconnect` | BTM-10 | 断当前 LE 鼠连接 |
+
+### 双指针策略（钉死）
+
+**USB 鼠与 BT 鼠并存**；两者均可 `MousePush`；**后到报告驱动光标**（与多 USB 鼠同形）。  
+不卸 USB 后端、不互抢槽位。手测须同时晃有线鼠确认未冻。
+
 ---
 
 ## 5. PR 拆分（建议序）
@@ -152,12 +181,12 @@ HAL 现门面（`HalBluetooth.h`）：无 Connect / LE / HID。本柱按刀扩�
 2. **鼠优先**：任何扫/连/通知循环必须切片 `ServiceHidCompletions`；禁止整秒 `IrqSave` / 堵 xHCI。  
 3. **有注释先看**：`bt-defer`、USB HID keep、Visible「不做 HID-over-BT」——本柱**更新注释**说明 HOGP 已开，禁止默默删旧注释。  
 4. **命名写全**；单文件 ≤300 行（HCI / SMP / ATT / HOGP 分目录）。  
-5. **Hal 契约**：未 Ready / 未加密不得 `Ready` 冒充已连鼠；壳失败打短因。  
-6. **双指针**：BT 与 USB 鼠同时在线时行为写死（建议：后连覆盖坐标源，或 BT 独占相对位移）；验收写明。
+5. **Hal 契约**：未 Ready / 未加密不得冒充已连鼠；壳失败打短因。  
+6. **双指针**：见 §4「双指针策略」——并存、后到驱动光标。
 
 ---
 
-## 7. 手测硬件
+## 7. 手测硬件与验收清单
 
 | 项 | 钉死 |
 |---|---|
@@ -167,13 +196,21 @@ HAL 现门面（`HalBluetooth.h`）：无 Connect / LE / HID。本柱按刀扩�
 | 有线 | 手测全程保留 USB 键鼠，用于回归「不饿死」 |
 | 接收器 | **不依赖**（已丢失） |
 
-**推荐节拍**
+**柱通验收节拍（BTM-8+）**
 
 1. 桌面已露光标（BT 已 `bt-defer` 初始化）。  
 2. `bt info` → ready。  
 3. 鼠进配对态 → `bt lescan` 见设备。  
 4. `bt mouse <n>` → 串口 `smp ok` / `hogp ok`。  
 5. 拖动 / 左键；同时晃 USB 鼠确认未冻。
+
+**`PR-BTM-0` 验收（本文档刀 · 无代码）**
+
+- [x] 靶鼠 = 初代 MX Master；链路 = BLE + HOGP；配对 = Just Works 本会话  
+- [x] 课机 = NUC USB HCI；Pi/Duo / Unifying / 经典 HIDP 进红线  
+- [x] PR 序 `0…10`、壳命令面、落点目录、双指针策略已钉  
+- [x] 手测硬件表 + 通验收节拍进本 §7  
+- [x] 活档 ★ 推至 `PR-BTM-1`
 
 ---
 
@@ -192,4 +229,7 @@ HAL 现门面（`HalBluetooth.h`）：无 Connect / LE / HID。本柱按刀扩�
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-09 | **`PR-BTM-1` 码**：`HostPump`/`HostPumpAclIn`；事件队列 + ACL IN + NCP 记账；`bt: host pump`；待 NUC 手测 |
+| 2026-11-09 | **`PR-BTM-0` 收**：规格钉死（落点/壳命令/双指针/§7 勾选）；★→`PR-BTM-1` |
+| 2026-11-09 | 排期迁 [`路线图1109.md`](../路线图1109.md)；候补推星排队（`PR-BTM-0…10`） |
 | 2026-11-08 | 立项：初代 MX Master、无接收器 → BLE HOGP；拆 `PR-BTM-0…10`；不进 ★ |

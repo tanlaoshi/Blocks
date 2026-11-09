@@ -77,6 +77,9 @@
 #define KSEND_KERNEL_PATH         "BLOCKS:Kernel.elf"
 #define KSEND_PATH_BYTES          96u
 #define KSEND_BACKUP_EXTENSION    ".bak"
+/* 覆写已有目标时先落到同目录 <目标>.new（空文件全量收），校验后再改名替换；
+ * 避免对正在跑的 Kernel.elf 做 WriteAt（有线大文件覆写会挂，新建同尺寸则通）。 */
+#define KSEND_STAGING_EXTENSION   ".new"
 #define KSEND_SELFTEST_PATH       "BLOCKS:KSELFT.BIN"
 #define KSEND_SELFTEST_BYTES      8192u
 /* 自检第二遍的盐：两遍内容必须不同，否则「覆写已有文件」这条路径测不出来 */
@@ -129,6 +132,7 @@ typedef struct {
 typedef struct {
     const char *TargetPath; /* 卡上目标（默认 BLOCKS:Kernel.elf） */
     const char *BackupPath; /* 同目录 <目标全名>.bak */
+    const char *WritePath;  /* 实际落盘路径；覆写时为 Target.new，否则同 Target */
     UINT32 OldSize;
     UINT32 NewSize;
     UINT32 TrailerCrc;
@@ -298,8 +302,21 @@ void KsendRunReset(KSEND_RUN *Run);
 int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run);
 void KsendVolumeRelease(KSEND_RUN *Run);
 void KsendPathsNote(const KSEND_RUN *Run);
+/* 1=本次写入走 Target.new（须 READY 空表全量收） */
+int KsendRunUsesStaging(const KSEND_RUN *Run);
+/* OldSize>0：删并指向 Target.new；否则 WritePath=Target */
+int KsendStagingPrepare(KSEND_RUN *Run);
+/* 校验通过后：删 Target，把 WritePath 改名为 Target */
+int KsendStagingInstall(KSEND_RUN *Run);
+/* 失败时丢掉未安装的 .new（Target 未动则不必 restore） */
+void KsendStagingDiscard(const KSEND_RUN *Run);
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source);
 /* 目标不存在 / OldSize=0：须清空，勿沿用上次 READY 表（Duo 曾假 size=98304） */
 void KsendImageClear(KSEND_IMAGE *Image);
+
+/* —— TransferFinish.c —— */
+int KsendFinishImage(KSEND_RUN *Run);
+void KsendRollBack(const KSEND_RUN *Run);
+void KsendCacheDropAfterFailure(const KSEND_RUN *Run);
 
 #endif /* KSEND_PRIVATE_H */

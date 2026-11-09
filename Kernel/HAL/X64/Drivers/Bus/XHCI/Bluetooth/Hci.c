@@ -1,29 +1,37 @@
 /*
- * Hci.c — HCI 命令 / 事件（btx-2…4）
+ * Hci.c — HCI 事件臂/等 + 命令完整事务（btx-2…4）
  *
- * Class Control 发命令；先投 Interrupt IN 再发。
+ * 发送见 HciSend.c。Intel bootloader 0xFC09 走 Bulk（对表 btusb）。
  * 等待窗 ProcessEvents + ServiceHidCompletions（鼠优先）。
  */
 #include "XHCI/Bluetooth/Private.h"
 
-static UINT8 gBluetoothCommandBuffer[BLUETOOTH_COMMAND_MAX] BLOCKS_ALIGNED(64);
-
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain) {
-    UINT64 Lo;
-    UINT64 Hi;
+    UINT64 EventLo;
+    UINT64 EventHi;
+    UINT64 AclOutLo;
+    UINT64 AclOutHi;
 
     (void)Remain;
     if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
         EventSlot != gBluetoothSlot) {
         return 0;
     }
-    Lo = PointerToPhysical(gBluetoothEventRing);
-    Hi = Lo + sizeof(gBluetoothEventRing);
+    EventLo = PointerToPhysical(gBluetoothEventRing);
+    EventHi = EventLo + sizeof(gBluetoothEventRing);
     if ((gBluetoothEventDci != 0 && Endpoint == gBluetoothEventDci) ||
-        (TransferRing >= Lo && TransferRing < Hi)) {
+        (TransferRing >= EventLo && TransferRing < EventHi)) {
         gBluetoothEventCode = Code;
         gBluetoothEventDone = 1;
+        return 1;
+    }
+    AclOutLo = PointerToPhysical(gBluetoothAclOutRing);
+    AclOutHi = AclOutLo + sizeof(gBluetoothAclOutRing);
+    if ((gBluetoothAclOutDci != 0 && Endpoint == gBluetoothAclOutDci) ||
+        (TransferRing >= AclOutLo && TransferRing < AclOutHi)) {
+        gBluetoothAclOutCode = Code;
+        gBluetoothAclOutDone = 1;
         return 1;
     }
     return 0;
@@ -38,7 +46,6 @@ void BluetoothHciArmEvent(void) {
     /*
      * 勿每次 RingInitialize：ConfigEP 已钉 dequeue；Reset 后再 Init 会与 HC
      * 失步 → 后续命令等不到事件 → Ready=0（对表 HID QueueIntr）。
-     * 长度跟 MPS：Inquiry Result 小包稳；过大 TD 真机易 babble。
      */
     ZeroMemory(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
@@ -87,53 +94,33 @@ int BluetoothHciWaitArmed(UINT32 TimeoutMs) {
     return Result;
 }
 
-int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
-    USB_SETUP_PACKET Setup;
-    UINT32 Total;
-    UINT8 I;
-
-    if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
-        gBluetoothEventDci == 0) {
-        return -1;
-    }
-    Total = 3u + (UINT32)ParamLen;
-    if (Total > BLUETOOTH_COMMAND_MAX) {
-        return -1;
-    }
-    gBluetoothCommandBuffer[0] = (UINT8)(Opcode & 0xFFu);
-    gBluetoothCommandBuffer[1] = (UINT8)((Opcode >> 8) & 0xFFu);
-    gBluetoothCommandBuffer[2] = ParamLen;
-    for (I = 0; I < ParamLen; I++) {
-        gBluetoothCommandBuffer[3u + I] = Params ? Params[I] : 0;
-    }
-    Setup.bmRequestType = 0x20;
-    Setup.bRequest = 0x00;
-    Setup.wValue = 0;
-    Setup.wIndex = gBluetoothInterface;
-    Setup.wLength = (UINT16)Total;
-    FlushDma(gBluetoothCommandBuffer, Total);
-    gTransferSlot = gBluetoothSlot;
-    if (ControlTransfer(&Setup, gBluetoothCommandBuffer) < 0) {
-        return -1;
-    }
-    return 0;
-}
-
-int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
-                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
-                        UINT8 *ReturnLenOut) {
+int BluetoothHciCommandTimeout(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                               UINT8 *StatusOut, UINT8 *ReturnData,
+                               UINT8 ReturnMax, UINT8 *ReturnLenOut,
+                               UINT32 TimeoutMilliseconds) {
     UINT8 I;
     UINT16 GotOpcode;
     UINT8 ParameterLength;
     UINT8 Status;
     UINT8 RetLen;
+    UINT32 WaitMs = TimeoutMilliseconds ? TimeoutMilliseconds : 2000u;
 
     BluetoothHciArmEvent();
-    if (BluetoothHciSendRaw(Opcode, Params, ParamLen) < 0) {
+    /*
+     * Intel bootloader：0xFC09 必须 Bulk OUT（control 会送出但无 CC）。
+     * 0xFC01 Intel Reset：设备不回 CC，调用方勿走本函数等 CC。
+     */
+    if (Opcode == HCI_OPCODE_INTEL_SECURE_SEND) {
+        if (BluetoothHciSendBulk(Opcode, Params, ParamLen) < 0) {
+            BootLog("Boot: Bluetooth Intel FC09 bulk fail\n");
+            BluetoothRequeueHid();
+            return -1;
+        }
+    } else if (BluetoothHciSendRaw(Opcode, Params, ParamLen) < 0) {
         BluetoothRequeueHid();
         return -1;
     }
-    if (BluetoothHciWaitArmed(2000u) < 0) {
+    if (BluetoothHciWaitArmed(WaitMs) < 0) {
         BootLogHex("Boot: Bluetooth HCI cmd timeout op=", Opcode, 4);
         BootLogHex(" xfer-cc=", gBluetoothEventCode, 2);
         BluetoothRequeueHid();
@@ -181,22 +168,74 @@ int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
     return 0;
 }
 
+int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
+                        UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,
+                        UINT8 *ReturnLenOut) {
+    return BluetoothHciCommandTimeout(Opcode, Params, ParamLen, StatusOut,
+                                      ReturnData, ReturnMax, ReturnLenOut,
+                                      2000u);
+}
+
+/*
+ * 8087:0A2B = Linux BTUSB_INTEL_NEW。冷启多在 bootloader：
+ * 标准 HCI_Reset → CC status=0x01；厂商 0xFC05 仍可用。
+ */
+static void BluetoothProbeIntelVersion(void) {
+    UINT8 Status = 0xFFu;
+    UINT8 Ver[12];
+    UINT8 RetLen = 0;
+    UINT32 I;
+
+    ZeroMemory(Ver, sizeof(Ver));
+    if (BluetoothHciCommand(HCI_OPCODE_INTEL_VERSION, 0, 0, &Status, Ver,
+                            sizeof(Ver), &RetLen) < 0) {
+        BootLog("Boot: Bluetooth Intel ver send/event fail\n");
+        return;
+    }
+    BootLogHex("Boot: Bluetooth Intel ver status=", Status, 2);
+    BootLogHex(" retlen=", RetLen, 2);
+    for (I = 0; I < RetLen && I < sizeof(Ver); I++) {
+        BootLogHex(" v=", Ver[I], 2);
+    }
+    if (Status == 0 && RetLen >= 4u) {
+        BootLogHex("Boot: Bluetooth Intel fw_variant=", Ver[3], 2);
+        if (Ver[3] == 0x06u) {
+            BootLog("Boot: Bluetooth Intel mode=bootloader (need fw)\n");
+        } else if (Ver[3] == 0x23u) {
+            BootLog("Boot: Bluetooth Intel mode=operational\n");
+        } else {
+            BootLog("Boot: Bluetooth Intel mode=other\n");
+        }
+    }
+}
+
 int BluetoothHciReset(void) {
     UINT8 Status = 0xFF;
+    int Attempt;
 
     gBluetoothHciResetOk = 0;
     gBluetoothReady = 0;
-    if (BluetoothHciCommand(HCI_OPCODE_RESET, 0, 0, &Status, 0, 0, 0) < 0) {
-        BootLog("Boot: Bluetooth HCI Reset send/event fail\n");
-        return 0;
+    for (Attempt = 0; Attempt < 2; Attempt++) {
+        Status = 0xFF;
+        if (BluetoothHciCommand(HCI_OPCODE_RESET, 0, 0, &Status, 0, 0, 0) < 0) {
+            BootLog("Boot: Bluetooth HCI Reset send/event fail\n");
+        } else {
+            BootLogHex("Boot: Bluetooth CC opcode=", HCI_OPCODE_RESET, 4);
+            BootLogHex(" status=", Status, 2);
+            if (Status == 0) {
+                gBluetoothHciResetOk = 1;
+                BootLog("Boot: Bluetooth HCI Reset ok\n");
+                return 1;
+            }
+            BootLog("Boot: Bluetooth HCI Reset bad status\n");
+        }
+        if (Attempt == 0) {
+            if (!BluetoothIntelFirmwareLoad()) {
+                BluetoothProbeIntelVersion();
+                return 0;
+            }
+        }
     }
-    BootLogHex("Boot: Bluetooth CC opcode=", HCI_OPCODE_RESET, 4);
-    BootLogHex(" status=", Status, 2);
-    if (Status != 0) {
-        BootLog("Boot: Bluetooth HCI Reset bad status\n");
-        return 0;
-    }
-    gBluetoothHciResetOk = 1;
-    BootLog("Boot: Bluetooth HCI Reset ok\n");
-    return 1;
+    BluetoothProbeIntelVersion();
+    return 0;
 }

@@ -150,7 +150,7 @@ int KsendReceiveBatchFlush(KSEND_RUN *Run) {
                 sBatchBytes = 0;
                 return 0;
             }
-            Error = KsendFileWriteAt(Run->TargetPath, Offset + Done,
+            Error = KsendFileWriteAt(Run->WritePath, Offset + Done,
                                      KsendFileBuffer() + Done, Take);
             if (Error != FAT_OK) {
                 Run->Error = Error;

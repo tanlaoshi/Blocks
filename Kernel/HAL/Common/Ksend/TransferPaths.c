@@ -6,10 +6,12 @@
 
 static char sKsendTargetPath[KSEND_PATH_BYTES];
 static char sKsendBackupPath[KSEND_PATH_BYTES];
+static char sKsendWritePath[KSEND_PATH_BYTES];
 
 void KsendRunReset(KSEND_RUN *Run) {
     Run->TargetPath = 0;
     Run->BackupPath = 0;
+    Run->WritePath = 0;
     Run->OldSize = 0;
     Run->NewSize = 0;
     Run->TrailerCrc = 0;
@@ -57,28 +59,37 @@ static int PathCopy(const char *Source, char *Destination) {
     return FAT_OK;
 }
 
-static int BackupPathBuild(const char *Target, char *Backup) {
+static int PathAppendExtension(const char *Target, const char *Extension,
+                               char *Out) {
     const char *Walk;
     UINT32 Index = 0;
 
-    if (Target == 0 || Target[0] == 0) {
+    if (Target == 0 || Target[0] == 0 || Extension == 0) {
         return FAT_ERR_INVAL;
     }
     while (Target[Index] != 0) {
         if (Index + 1u >= KSEND_PATH_BYTES) {
             return FAT_ERR_INVAL;
         }
-        Backup[Index] = Target[Index];
+        Out[Index] = Target[Index];
         Index++;
     }
-    for (Walk = KSEND_BACKUP_EXTENSION; *Walk != 0; Walk++) {
+    for (Walk = Extension; *Walk != 0; Walk++) {
         if (Index + 1u >= KSEND_PATH_BYTES) {
             return FAT_ERR_INVAL;
         }
-        Backup[Index++] = *Walk;
+        Out[Index++] = *Walk;
     }
-    Backup[Index] = 0;
+    Out[Index] = 0;
     return FAT_OK;
+}
+
+static int BackupPathBuild(const char *Target, char *Backup) {
+    return PathAppendExtension(Target, KSEND_BACKUP_EXTENSION, Backup);
+}
+
+static int StagingPathBuild(const char *Target, char *Staging) {
+    return PathAppendExtension(Target, KSEND_STAGING_EXTENSION, Staging);
 }
 
 static int VolumePrepare(const char *Target, KSEND_RUN *Run) {
@@ -119,6 +130,7 @@ int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run) {
     }
     Run->TargetPath = sKsendTargetPath;
     Run->BackupPath = sKsendBackupPath;
+    Run->WritePath = sKsendTargetPath;
     return VolumePrepare(sKsendTargetPath, Run);
 }
 
@@ -129,9 +141,70 @@ void KsendPathsNote(const KSEND_RUN *Run) {
     KsendTextReset(&Out, Line, (int)sizeof(Line));
     KsendTextPut(&Out, "target: ");
     KsendTextPut(&Out, Run->TargetPath);
+    KsendTextPut(&Out, " write: ");
+    KsendTextPut(&Out, Run->WritePath != 0 ? Run->WritePath : "-");
     KsendTextPut(&Out, " backup: ");
     KsendTextPut(&Out, Run->BackupPath);
     KsendNote(Line);
+}
+
+int KsendRunUsesStaging(const KSEND_RUN *Run) {
+    if (Run == 0 || Run->WritePath == 0 || Run->TargetPath == 0) {
+        return 0;
+    }
+    return Run->WritePath != Run->TargetPath ? 1 : 0;
+}
+
+int KsendStagingPrepare(KSEND_RUN *Run) {
+    int Error;
+
+    if (Run == 0 || Run->TargetPath == 0) {
+        return FAT_ERR_INVAL;
+    }
+    if (Run->OldSize == 0u) {
+        Run->WritePath = Run->TargetPath;
+        return FAT_OK;
+    }
+    if (StagingPathBuild(Run->TargetPath, sKsendWritePath) != FAT_OK) {
+        return FAT_ERR_INVAL;
+    }
+    Error = KsendFileDelete(sKsendWritePath);
+    if (Error != FAT_OK) {
+        return Error;
+    }
+    Run->WritePath = sKsendWritePath;
+    KsendNote("staging: write via .new (full new-file replace)");
+    return FAT_OK;
+}
+
+int KsendStagingInstall(KSEND_RUN *Run) {
+    int Error;
+
+    if (!KsendRunUsesStaging(Run)) {
+        return FAT_OK;
+    }
+    Error = KsendFileDelete(Run->TargetPath);
+    if (Error != FAT_OK) {
+        return Error;
+    }
+    Error = FileSystemRename(Run->WritePath, Run->TargetPath);
+    if (Error != FAT_OK) {
+        return Error;
+    }
+    Run->WritePath = Run->TargetPath;
+    KsendNote("staging: installed .new over target");
+    return FAT_OK;
+}
+
+void KsendStagingDiscard(const KSEND_RUN *Run) {
+    if (!KsendRunUsesStaging(Run)) {
+        return;
+    }
+    if (KsendFileDelete(Run->WritePath) == FAT_OK) {
+        KsendNote("staging: discarded .new");
+    } else {
+        KsendNote("staging: discard .new failed");
+    }
 }
 
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source) {

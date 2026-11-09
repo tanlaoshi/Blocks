@@ -28,6 +28,8 @@ int gBluetoothConfigured;
 int gBluetoothHciResetOk;
 volatile UINT32 gBluetoothEventDone;
 volatile UINT32 gBluetoothEventCode;
+volatile UINT32 gBluetoothAclOutDone;
+volatile UINT32 gBluetoothAclOutCode;
 
 void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut) {
     *RingOut = gBluetoothEndpoint0Ring;

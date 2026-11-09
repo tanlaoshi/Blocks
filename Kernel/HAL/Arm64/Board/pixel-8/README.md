@@ -36,9 +36,10 @@ make ARCH=arm64 BOARD=pixel-8 BRINGUP=1 BUILDDIR=Build/PIXEL8 kernel-bin
 
 ## 手测 · `PR-PIXEL8-USB-2`（hub ★）
 
-1. `fastboot boot` → 彩条齐。  
-2. **拔电脑线** → 插 Type-C 坞（外供电）。  
-3. 绿：屏状态行见 CONNECT / **`e…a1`**。
+1. `fastboot boot …/boot.img` → 彩条 + `id` / `host` / **`wait dock`**。  
+2. **拔电脑线** → 插 Type-C 坞（外供电；不经 Cereal）。  
+3. 绿：状态行 `p*:…` 出 CONNECT，随后 **`e… a1`**。  
+4. 红：一直 `p*:200` → Type-C/PHY/VBUS 未把数据交给 Host（下一刀对表 DT）。
 
 ---
 

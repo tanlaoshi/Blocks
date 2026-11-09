@@ -62,10 +62,10 @@
 #define BOARD_BRINGUP_SPLASH       1
 
 /*
- * USB Host：USB-1 ✅ 已证；本刀 ★=splash，HubWatch ⏸（Cereal 透传测 CONNECT 无效）。
- * 证据：device/google/zuma → 11210000.dwc3
+ * USB Host：★=USB-2 hub；屏上看端口/e/a；坞直插 Type-C（不经 Cereal）。
+ * 证据：device/google/zuma sys.usb.controller=11210000.dwc3
  */
-#define BOARD_PIXEL8_USB_HOST_BRINGUP 0
+#define BOARD_PIXEL8_USB_HOST_BRINGUP 1
 #define BOARD_USB_DWC3_PHYSICAL_BASE  0x11210000ULL
 
 #endif /* BOARD_CONFIG_H */

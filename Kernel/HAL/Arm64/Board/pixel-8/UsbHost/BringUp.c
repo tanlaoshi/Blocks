@@ -3,9 +3,7 @@
  *
  * 证据：zuma `sys.usb.controller=11210000.dwc3`；真机 MMIO：
  *   gctl=0x00012004 gsts=0x7e800000 id=0x33313130 guid=0x0d036fff
- *   （gs101@0x11110000 全 0 → 基址对、钟/核在 11210000）
- * GSNPSID 非 0x5533，但 GCTL 位形同 DWC3（PrtCapDir 等）；本刀以 GCTL 读回 Host 为准。
- * 不碰 Type-C/PHY（Cereal SBU 保留）。
+ * GSNPSID 非 0x5533，以 GCTL 读回 Host 为准。状态同步画 splash。
  */
 #include "Board.h"
 #include "BoardConfig.h"
@@ -52,6 +50,28 @@ static void WriteLabeledHex(const char *Prefix, UINT32 Value) {
     HalSerialWriteShell("\r\n");
 }
 
+static void CopyText(char *Destination, const char *Source, UINT32 Capacity) {
+    UINTN Index;
+
+    if (Capacity == 0) {
+        return;
+    }
+    for (Index = 0; Index + 1u < Capacity && Source[Index] != '\0'; Index++) {
+        Destination[Index] = Source[Index];
+    }
+    Destination[Index] = '\0';
+}
+
+static void AppendText(char *Destination, const char *Source, UINT32 Capacity) {
+    UINTN Length;
+
+    Length = 0;
+    while (Destination[Length] != '\0' && Length + 1u < Capacity) {
+        Length++;
+    }
+    CopyText(Destination + Length, Source, Capacity - (UINT32)Length);
+}
+
 int BoardPixel8UsbHostProbe(void) {
     UINT32 SynopsysId;
     UINT32 GlobalControl;
@@ -59,8 +79,11 @@ int BoardPixel8UsbHostProbe(void) {
     UINT32 UserId;
     UINT32 PortCapability;
     UINTN Guard;
+    char Line[48];
+    char Hex[12];
 
     HalSerialWriteShell("usb: probe\r\n");
+    BoardBringUpSplashPaintLine(112, "usb probe");
 
     GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
     GlobalStatus = *Dwc3Register(DWC3_GSTS_OFFSET);
@@ -72,8 +95,14 @@ int BoardPixel8UsbHostProbe(void) {
     WriteLabeledHex("usb: id ", SynopsysId);
     WriteLabeledHex("usb: guid ", UserId);
 
+    FormatHexadecimal32(Hex, SynopsysId);
+    CopyText(Line, "id ", sizeof(Line));
+    AppendText(Line, Hex, sizeof(Line));
+    BoardBringUpSplashPaintLine(112, Line);
+
     if (GlobalControl == 0u && GlobalStatus == 0u) {
         HalSerialWriteShell("usb: dead mmio\r\n");
+        BoardBringUpSplashPaintLine(160, "dead mmio");
         return -1;
     }
 
@@ -113,8 +142,13 @@ int BoardPixel8UsbHostProbe(void) {
 
     GlobalControl = *Dwc3Register(DWC3_GCTL_OFFSET);
     WriteLabeledHex("usb: host ", GlobalControl);
+    FormatHexadecimal32(Hex, GlobalControl);
+    CopyText(Line, "host ", sizeof(Line));
+    AppendText(Line, Hex, sizeof(Line));
+    BoardBringUpSplashPaintLine(160, Line);
     if ((GlobalControl & DWC3_GCTL_PRTCAPDIR_MASK) != DWC3_GCTL_PRTCAP_HOST) {
         HalSerialWriteShell("usb: host-fail\r\n");
+        BoardBringUpSplashPaintLine(160, "host-fail");
         return -1;
     }
     return 0;

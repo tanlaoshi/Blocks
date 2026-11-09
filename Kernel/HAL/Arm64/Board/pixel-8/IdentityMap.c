@@ -1,7 +1,8 @@
 /*
  * IdentityMap.c — Pixel 8 BRINGUP 最小恒等页表
  *
- * GiB0 L2：UART @0x10800000；DECON0 @0x19400000；可选 DWC3 @0x11200000。
+ * GiB0 L2：UART @0x10800000；DECON0 @0x19400000；HSI2C @0x10C00000；
+ * 可选 DWC3 @0x11200000。
  * GiB2 L1：内核 1GiB Normal @0x80000000。
  * GiB3 L2：ABL splash @BOARD_SPLASH_PHYSICAL_BASE Device（2MiB 块）。
  */
@@ -108,8 +109,14 @@ int BoardBringUpIdentityMapEnable(void) {
     /* zuma DECON0 TRIG_CON @0x19470030 → 2MiB 块 0x19400000（index 0xCA） */
     sLevel2Low[0xCAu] = (0x19400000ULL) | BLOCK_DEVICE;
 #if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
+    /* zuma HSI2C @0x10cb0000（max77759 TCPC）→ 2MiB 块 0x10C00000 */
+    sLevel2Low[0x86u] = (0x10C00000ULL) | BLOCK_DEVICE;
     /* zuma snps,dwc3 @0x11210000 → 2MiB 块 0x11200000 */
     sLevel2Low[0x89u] = (0x11200000ULL) | BLOCK_DEVICE;
+    /* eUSB2 PHY 候选 @0x111c0000（对表 Exynos2200 相对 DWC3）→ 0x11000000 */
+    sLevel2Low[0x88u] = (0x11000000ULL) | BLOCK_DEVICE;
+    /* Exynos2200 同形回退 @0x10ab0000 → 0x10a00000 */
+    sLevel2Low[0x85u] = (0x10A00000ULL) | BLOCK_DEVICE;
 #endif
 
     for (BlockIndex = 0; BlockIndex < SPLASH_BLOCK_COUNT; BlockIndex++) {

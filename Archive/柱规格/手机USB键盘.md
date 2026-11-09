@@ -117,7 +117,8 @@
 4. **加载**：只 `fastboot boot`；Windows 共享可继续用 `\\ASUS\Users\Tank\mix2\`。  
 5. **供电**：MIX 现网坞用 **Type-C 充电口接墙充**；勿依赖手机 lone 口供电。  
 6. **未点名外设**（触摸/UFS/面板 init；本坞 HDMI/RJ45/读卡器）仍禁止借车。  
-7. **键盘只认 USB-A**：不把「插在坞 Type-C 口的键盘」当验收路径（除非后补 PR 写明）。
+7. **键盘只认 USB-A**：不把「插在坞 Type-C 口的键盘」当验收路径（除非后补 PR 写明）。  
+8. **电源键**：短按勿关机以便手测 — 见 [`路线图1109.md`](../路线图1109.md) `PR-PHONE-PWR-0`（已推星；先 MIX2）。
 
 ---
 
@@ -198,6 +199,8 @@ Pixel 若 Cereal 占调试、Type-C 另口 Host，可减少换线；仍建议支
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-09 | USB-2：TCPC `tc1 r5 sw9` 已通；插 Hub 仍 `p*:200` → 下一环 eUSB repeater `11-003e`（同 `10cb`） |
+| 2026-11-09 | USB-2 坞测：`p*:200 e0 a0` → 须 max77759 TCPC DFP（HSI2C `10cb0000`）；非再拧 xHCI |
 | 2026-11-09 | **PIXEL8-2 ✅**：左上彩条+字；TRIG_CON@`0x19470030`；★→USB-2 |
 | 2026-11-09 | **重拆**：Cereal 透传无 CCS → ★=`PR-PIXEL8-2` splash；USB-2 ⏸ 待屏+坞 |
 | 2026-11-09 | **PIXEL8-USB-1 ✅**：`gctl` Device→Host `0x00011004`；`id=0x33313130`（非 5533，GCTL 活）；Cereal 通；曾→USB-2 |

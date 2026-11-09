@@ -40,5 +40,7 @@ void HalSerialBootCapture(const char *Text);
 void RingAppend(const char *Text);
 void GopBannerOnce(void);
 void GopWrite(const char *Text);
+/* HalSerial.c → HalSerialWrite.c（BootHold / WriteChannel） */
+void UartWriteRaw(const char *Text);
 
 #endif

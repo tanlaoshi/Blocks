@@ -754,7 +754,6 @@ ifeq ($(BRINGUP),1)
 BRINGUP_HAL_SERIAL_SRCS := $(filter-out %/HalSerialGop.c,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial/*.c))
 OBJS = $(BRINGUP_ARCH_OBJS) \
        $(patsubst HAL/$(HAL_ARCH)/Hal/HalSerial/%.c,$(HALDIR)/Hal/HalSerial/%.o,$(BRINGUP_HAL_SERIAL_SRCS)) \
-       $(patsubst HAL/$(HAL_ARCH)/Hal/%.c,$(HALDIR)/Hal/%.o,$(wildcard HAL/$(HAL_ARCH)/Hal/HalSerial.c)) \
        $(HALDIR)/Hal/Hal.o \
        $(BUILDDIR)/Library/Text.o \
        $(BOARD_OBJS)

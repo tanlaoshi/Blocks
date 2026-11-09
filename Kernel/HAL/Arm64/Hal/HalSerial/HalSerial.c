@@ -1,15 +1,16 @@
 /*
- * HalSerial.c — aarch64 串口 + GOP 镜像门面
+ * HalSerial.c — aarch64 串口 + GOP 镜像门面（PR-NORM-3：对齐 X64 HalSerial/）
  *
  * - virt：PL011
  * - Pi3BPlus 等 BOARD_UART_MINI=1：BCM AUX mini-UART
- * - Pixel 8 等 BOARD_UART_SAMSUNG=1：Exynos/S3C UART（HalSerial/SamsungUart.c）
- * - 屏上滚：HalSerial/HalSerialGop.c（与 X64 同形，勿 stub）
+ * - Pixel 8 等 BOARD_UART_SAMSUNG=1：Exynos/S3C UART（SamsungUart.c）
+ * - 屏上滚：HalSerialGop.c（与 X64 同形，勿 stub）
+ * - 通道写出：HalSerialWrite.c
  *
  * SERIAL_ENABLE=0：不碰 UART；SCREEN_LOG=0：Gop 横幅/通道全关。
  */
 #include "HalSerial.h"
-#include "HalSerial/HalSerialPrivate.h"
+#include "HalSerialPrivate.h"
 #include "Text.h"
 #include "BoardConfig.h"
 #include "SerialConfig.h"
@@ -23,7 +24,7 @@
 #endif
 
 #if BOARD_UART_SAMSUNG
-#include "HalSerial/SamsungUart.h"
+#include "SamsungUart.h"
 #elif BOARD_UART_MINI
 #define UART_BASE  ((UINTN)BOARD_UART_BASE)
 /* AUX @0x3F215000；mini-UART 寄存器窗 @+0x40（BCM2835 §2.2） */
@@ -44,34 +45,8 @@
 #define PL011_FR_RXFE  (1u << 4)
 #endif
 
-static int gShellOwnUart;
 static char gRing[GOP_RING];
 static UINTN gRingLen;
-static char gBootSnap[GOP_RING];
-static UINTN gBootSnapLen;
-/* 对齐 X64：ShellOwn 后 Log* → 缓冲 → RUNTIME*.LOG，不再占 UART */
-#define RT_LOG_MAX 16384u
-static char gRtLog[RT_LOG_MAX];
-static UINTN gRtLen;
-static int gRtDirty;
-
-static void RtAppend(const char *Text) {
-    if (!gShellOwnUart || !Text) {
-        return;
-    }
-    while (*Text) {
-        if (gRtLen + 1 >= RT_LOG_MAX) {
-            UINTN Keep = RT_LOG_MAX / 2u;
-            UINTN i;
-            for (i = 0; i < Keep; i++) {
-                gRtLog[i] = gRtLog[gRtLen - Keep + i];
-            }
-            gRtLen = Keep;
-        }
-        gRtLog[gRtLen++] = *Text++;
-        gRtDirty = 1;
-    }
-}
 
 int gVideoUp;
 int gGopBanner;
@@ -82,46 +57,6 @@ char gHalSerialLine[BOOT_LOG_LINE_MAX];
 UINTN gLineLen;
 char gBootVis[BOOT_VIS_MAX][BOOT_LOG_LINE_MAX];
 UINT32 gBootVisN;
-
-static int ChannelUartOn(int Channel) {
-#if !SERIAL_ENABLE
-    (void)Channel;
-    return 0;
-#else
-    switch (Channel) {
-    case SLOG_BOOT: return SERIAL_BOOT;
-    case SLOG_USB:  return SERIAL_USB;
-    case SLOG_SMP:  return SERIAL_SMP;
-    case SLOG_GUI:  return SERIAL_GUI;
-    case SLOG_NET:  return SERIAL_NET;
-    case SLOG_FS:   return SERIAL_FS;
-    case SLOG_MEM:  return SERIAL_MEM;
-    case SLOG_DRV:  return SERIAL_DRV;
-    case SLOG_MISC:
-    default:            return SERIAL_MISC;
-    }
-#endif
-}
-
-static int ChannelGopOn(int Channel) {
-#if !SCREEN_LOG
-    (void)Channel;
-    return 0;
-#else
-    switch (Channel) {
-    case SLOG_BOOT: return SCREEN_LOG_BOOT;
-    case SLOG_USB:  return SCREEN_LOG_USB;
-    case SLOG_SMP:  return SCREEN_LOG_SMP;
-    case SLOG_GUI:  return SCREEN_LOG_GUI;
-    case SLOG_NET:  return SCREEN_LOG_NET;
-    case SLOG_FS:   return SCREEN_LOG_FS;
-    case SLOG_MEM:  return SCREEN_LOG_MEM;
-    case SLOG_DRV:  return SCREEN_LOG_DRV;
-    case SLOG_MISC:
-    default:            return SCREEN_LOG_MISC;
-    }
-#endif
-}
 
 static void UartPut(char C) {
 #if SERIAL_ENABLE
@@ -153,7 +88,7 @@ static void UartWaitTransmitIdle(void) {
 }
 #endif
 
-static void UartWriteRaw(const char *Text) {
+void UartWriteRaw(const char *Text) {
 #if !SERIAL_ENABLE
     (void)Text;
 #else
@@ -189,15 +124,6 @@ static void UartWriteRaw(const char *Text) {
 #endif
 }
 
-void HalSerialBootCapture(const char *Text) {
-    while (Text && *Text) {
-        if (gBootSnapLen + 1 >= sizeof(gBootSnap)) {
-            break;
-        }
-        gBootSnap[gBootSnapLen++] = *Text++;
-    }
-}
-
 void RingAppend(const char *Text) {
     HalSerialBootCapture(Text);
     while (Text && *Text) {
@@ -211,13 +137,6 @@ void RingAppend(const char *Text) {
         }
         gRing[gRingLen++] = *Text++;
     }
-}
-
-static void GopMirrorLine(const char *Text) {
-    if (!Text || !gGopMirror || !gVideoUp || gGopMute) {
-        return;
-    }
-    GopWrite(Text);
 }
 
 #if BOARD_UART_MINI
@@ -252,62 +171,6 @@ void HalSerialInitialize(void) {
     /* 最早心跳：此时尚无 FB dcache；CoolTerm 若仍无字 → 线/口问题 */
     UartWriteRaw("Blocks uart\r\n");
 #endif
-}
-
-static void BootHoldSpinMilliseconds(UINT32 Ms) {
-    UINT32 m;
-    for (m = 0; m < Ms; m++) {
-        volatile UINT32 i;
-        for (i = 0; i < 80000u; i++) {
-            __asm__ volatile("nop");
-        }
-    }
-}
-
-void HalSerialBootHoldMilliseconds(UINT32 Ms) {
-    if (Ms == 0) {
-        return;
-    }
-    HalSerialBootMark("Boot: HOLD — CoolTerm expect: U-Boot then * + Blocks uart\n");
-    HalSerialBootMark("Boot: HOLD — if U-Boot quiet: check GPIO14->TTL RX\n");
-#if SERIAL_ENABLE && BOARD_UART_MINI
-    {
-        char Hex[9];
-        UINTN SnapshotLength;
-        char Snapshot[512];
-        UINTN Index;
-
-        HalSerialInitialize();
-        HalSerialBootMark("Boot: uart GPFSEL1=");
-        HalSerialFormatHex(Hex, *(volatile UINT32 *)(UINTN)0x3F200004ULL, 8);
-        HalSerialBootMark(Hex);
-        HalSerialBootMark(" CNTL=");
-        HalSerialFormatHex(Hex, MU_CNTL, 8);
-        HalSerialBootMark(Hex);
-        HalSerialBootMark(" LSR=");
-        HalSerialFormatHex(Hex, MU_LSR, 8);
-        HalSerialBootMark(Hex);
-        HalSerialBootMark(" LCR=");
-        HalSerialFormatHex(Hex, MU_LCR, 8);
-        HalSerialBootMark(Hex);
-        HalSerialBootMark("\n");
-        /* 慢打；仍无 UART-HOLD → TX 线/口（halt 若来自 HDMI 壳则未证明 RX） */
-        UartWriteRaw("UART-HOLD\r\n");
-        SnapshotLength = HalSerialBootSnapshot(Snapshot, sizeof(Snapshot));
-        for (Index = 0; Index < SnapshotLength; Index++) {
-            char One[2];
-
-            One[0] = Snapshot[Index];
-            One[1] = 0;
-            UartWriteRaw(One);
-            if (Snapshot[Index] == '\n') {
-                BootHoldSpinMilliseconds(15);
-            }
-        }
-    }
-#endif
-    BootHoldSpinMilliseconds(Ms);
-    HalSerialBootMark("Boot: HOLD end\n");
 }
 
 void HalSerialRetryIfMissing(void) {
@@ -366,108 +229,6 @@ const char *HalSerialLogText(void) {
     }
     gRing[gRingLen] = '\0';
     return gRing;
-}
-
-void HalSerialWriteChannel(int Channel, const char *Text) {
-    if (!Text) {
-        return;
-    }
-    RingAppend(Text);
-    RtAppend(Text);
-    /*
-     * 对齐 X64：ShellOwn 后 UART 只留给 WriteShell（blocks> / 回显）；
-     * Log* 进 ring + RUNTIME 缓冲，Worker 末 RuntimeLogFlush 落盘。
-     */
-    if (!gShellOwnUart && ChannelUartOn(Channel)) {
-        UartWriteRaw(Text);
-    }
-    if (!gShellOwnUart && ChannelGopOn(Channel)) {
-        GopMirrorLine(Text);
-    }
-}
-
-void HalSerialShellOwn(void) {
-    gShellOwnUart = 1;
-}
-
-int HalSerialShellOwned(void) {
-    return gShellOwnUart;
-}
-
-void HalSerialWriteShell(const char *Text) {
-    UartWriteRaw(Text);
-}
-
-int HalSerialRuntimeDirty(void) {
-    return gRtDirty;
-}
-
-void HalSerialRuntimeMarkSaved(void) {
-    gRtDirty = 0;
-}
-
-UINTN HalSerialRuntimeSnapshot(char *Dst, UINTN Max) {
-    UINTN N;
-    UINTN i;
-
-    if (!Dst || Max == 0) {
-        return 0;
-    }
-    N = gRtLen;
-    if (N >= Max) {
-        N = Max - 1;
-    }
-    for (i = 0; i < N; i++) {
-        Dst[i] = gRtLog[i];
-    }
-    Dst[N] = 0;
-    return N;
-}
-
-UINTN HalSerialBootSnapshot(char *Dst, UINTN Max) {
-    UINTN N;
-    UINTN i;
-
-    if (!Dst || Max == 0) {
-        return 0;
-    }
-    N = gBootSnapLen;
-    if (N >= Max) {
-        N = Max - 1;
-    }
-    for (i = 0; i < N; i++) {
-        Dst[i] = gBootSnap[i];
-    }
-    Dst[N] = 0;
-    return N;
-}
-
-void HalSerialReplayUsb(void) {
-}
-
-void HalSerialBootMarkForce(const char *Text) {
-    if (!Text) {
-        return;
-    }
-    HalSerialBootMarkChannel(SLOG_USB, Text);
-}
-
-void HalSerialWrite(const char *Text) {
-    HalSerialWriteChannel(SLOG_MISC, Text);
-}
-
-void HalSerialWriteChannelHex32(int Channel, UINT32 Value) {
-    char Buf[12];
-
-    HalSerialFormatHex(Buf, Value, 8);
-    HalSerialWriteChannel(Channel, Buf);
-}
-
-void HalSerialWriteChannelHex64(int Channel, UINT64 Value) {
-    char Buf[20];
-
-    HalSerialFormatHex(Buf, Value, 16);
-    HalSerialWriteChannel(Channel, Buf);
 }
 
 int HalSerialDataReady(void) {
@@ -532,29 +293,7 @@ void HalSerialDrainTransmitter(void) {
 void HalSerialBootLogRewind(void) {
 }
 
-void HalSerialBootMarkChannel(int Channel, const char *Text) {
-    if (!Text) {
-        return;
-    }
-    RingAppend(Text);
-    RtAppend(Text);
-    /* 对齐 X64：ShellOwn 后不再占 UART；屏仍认 Mirror */
-    if (!gShellOwnUart && ChannelUartOn(Channel)) {
-        UartWriteRaw(Text);
-    }
-    /* Mute 期间也上屏（对齐 X64 BootMark）；Mirror=0 后停 */
-    if (ChannelGopOn(Channel) && gGopMirror && gVideoUp) {
-        GopWrite(Text);
-    }
-}
-
-void HalSerialBootMark(const char *Text) {
-    HalSerialBootMarkChannel(SLOG_BOOT, Text);
-}
-
 void HalSerialFormatHex(char *Buf, UINT64 Value, int Digits) {
-    if (Buf == 0 || Digits <= 0 || Digits > 16) {
-        return;
-    }
+    if (Buf == 0 || Digits <= 0 || Digits > 16) return;
     FormatHexadecimal(Buf, Digits + 1, Value, Digits, 0, 0);
 }

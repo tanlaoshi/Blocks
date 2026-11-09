@@ -6,7 +6,7 @@
  * 行追加：隔几行再 FbDcacheSync（Pi VC）；勿每行全 FB clean + 假延时成「PPT」。
  */
 #include "HalSerial.h"
-#include "HalSerial/HalSerialPrivate.h"
+#include "HalSerialPrivate.h"
 #include "HalVideo.h"
 #include "Hal.h"
 #include "Font.h"

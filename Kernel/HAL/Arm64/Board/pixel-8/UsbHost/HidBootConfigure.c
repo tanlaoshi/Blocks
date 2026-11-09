@@ -130,7 +130,6 @@ int UsbHostHidBootKeyboardConfigure(UINT32 KeyboardSlotId, UINT32 RootPort,
     UINT32 SlotDword0;
 
     (void)RootPort;
-    (void)HubSlotId;
     /*
      * Probe 已把完整配置描述符放进 ControlData。勿再 GetConfig（SetConfig 后重取
      * 曾无 sticky 失败）。先 parse → SetConfig → ConfigEP；Route/TT 原样拷 Output。
@@ -204,6 +203,9 @@ int UsbHostHidBootKeyboardConfigure(UINT32 KeyboardSlotId, UINT32 RootPort,
         return -1;
     }
     UsbHostKeyboardStatusCodeSet(0xA2u);
+    /* 只登记槽/接口；勿在此 SET_REPORT（真机立刻发 → 2711） */
+    UsbHostHidBootKeyboardLedsBind(KeyboardSlotId, Interface, HubSlotId,
+                                   HubPortOneBased);
     return 0;
 }
 

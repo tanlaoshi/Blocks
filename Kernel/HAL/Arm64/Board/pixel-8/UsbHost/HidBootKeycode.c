@@ -31,8 +31,23 @@
 
 static UINT8 sCapsLockOn;
 static UINT8 sScrollLockOn;
-/* 开机默认开：与 Configure 里 SET_REPORT Num 灯一致 */
+/* 开机默认开；灯在锁键翻转时再 SET_REPORT（见 HidBootKeyboardLeds） */
 static UINT8 sNumLockOn = 1u;
+
+UINT8 UsbHostHidBootKeyboardLedOutputByte(void) {
+    UINT8 LedByte = 0;
+
+    if (sNumLockOn != 0) {
+        LedByte |= (1u << 0);
+    }
+    if (sCapsLockOn != 0) {
+        LedByte |= (1u << 1);
+    }
+    if (sScrollLockOn != 0) {
+        LedByte |= (1u << 2);
+    }
+    return LedByte;
+}
 
 char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier) {
     int Shift = ((Modifier & (HID_MODIFIER_LEFT_SHIFT | HID_MODIFIER_RIGHT_SHIFT)) != 0);
@@ -40,14 +55,17 @@ char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier) {
 
     if (Usage == HID_USAGE_CAPS_LOCK) {
         sCapsLockOn ^= 1u;
+        UsbHostHidBootKeyboardLedsPush();
         return 0;
     }
     if (Usage == HID_USAGE_KEYPAD_NUM_LOCK) {
         sNumLockOn ^= 1u;
+        UsbHostHidBootKeyboardLedsPush();
         return 0;
     }
     if (Usage == HID_USAGE_SCROLL_LOCK) {
         sScrollLockOn ^= 1u;
+        UsbHostHidBootKeyboardLedsPush();
         return 0;
     }
 
@@ -139,6 +157,10 @@ char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier) {
 }
 
 #else
+
+UINT8 UsbHostHidBootKeyboardLedOutputByte(void) {
+    return 0;
+}
 
 char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier) {
     (void)Usage;

@@ -254,6 +254,10 @@ int UsbHostParseBootKeyboardEndpoint(const UINT8 *Configuration, UINT16 Total,
                                      UINT8 *InterfaceOut, UINT8 *EndpointAddressOut,
                                      UINT16 *MaxPacketSizeOut, UINT8 *IntervalOut);
 char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier);
+UINT8 UsbHostHidBootKeyboardLedOutputByte(void);
+void UsbHostHidBootKeyboardLedsBind(UINT32 KeyboardSlotId, UINT8 Interface,
+                                    UINT32 HubSlotId, UINT32 HubPortOneBased);
+void UsbHostHidBootKeyboardLedsPush(void);
 int UsbHostHidBootKeyboardPoll(void);
 void UsbHostPaintKeyboardStatus(void);
 void UsbHostKeyboardStatusCodeSet(UINT32 Code);

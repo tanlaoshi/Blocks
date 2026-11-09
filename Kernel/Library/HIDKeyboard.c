@@ -64,15 +64,52 @@ static const HID_KEYCODE_MAP US_ASCII_MAP[] = {
 };
 
 static int gCapsLock;
-static UINT8 gLedState;
+static int gNumLock = 1; /* 与手机柱默认一致：开机 Num 开 */
+static int gScrollLock;
+static UINT8 gLedState = HID_LED_NUM_LOCK;
+
+static void SyncLedState(void) {
+    gLedState = 0;
+    if (gNumLock) {
+        gLedState |= HID_LED_NUM_LOCK;
+    }
+    if (gCapsLock) {
+        gLedState |= HID_LED_CAPS_LOCK;
+    }
+    if (gScrollLock) {
+        gLedState |= HID_LED_SCROLL_LOCK;
+    }
+}
 
 void HIDKeyboardToggleCapsLock(void) {
     gCapsLock = !gCapsLock;
-    if (gCapsLock) {
-        gLedState |= HID_LED_CAPS_LOCK;
-    } else {
-        gLedState &= ~HID_LED_CAPS_LOCK;
+    SyncLedState();
+}
+
+void HIDKeyboardToggleNumLock(void) {
+    gNumLock = !gNumLock;
+    SyncLedState();
+}
+
+void HIDKeyboardToggleScrollLock(void) {
+    gScrollLock = !gScrollLock;
+    SyncLedState();
+}
+
+int HIDKeyboardApplyLockKey(UINT8 KeyCode) {
+    if (KeyCode == HID_KEY_CAPSLOCK) {
+        HIDKeyboardToggleCapsLock();
+        return 1;
     }
+    if (KeyCode == HID_KEY_NUMLOCK) {
+        HIDKeyboardToggleNumLock();
+        return 1;
+    }
+    if (KeyCode == HID_KEY_SCROLLLOCK) {
+        HIDKeyboardToggleScrollLock();
+        return 1;
+    }
+    return 0;
 }
 
 UINT8 HIDKeyboardGetLeds(void) {

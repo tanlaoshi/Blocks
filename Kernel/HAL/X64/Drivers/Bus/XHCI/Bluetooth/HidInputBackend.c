@@ -1,9 +1,9 @@
 /*
- * HidInputBackend.c — HOGP Notify → HAL_MOUSE_REPORT（PR-BTM-8）
+ * HidInputBackend.c — HOGP Notify → HAL_MOUSE_REPORT（PR-BTM-8/9）
  *
  * 第二 INPUT_BACKEND：与 USB 鼠并存、后到驱动光标；不占 USB 槽。
  * DrainEvents/Worker 已 HostPump——本 Poll 只消化 Notify，禁止再泵 ACL（双跑抢环）。
- * 解析：Boot 8 位或 16 位 LE；有/无 Report Id 都试（Master 细表留 BTM-9）。
+ * 轴解析见 HidReportParse（Master 12 位打包，BTM-9）。
  */
 #include "XHCI/Bluetooth/Private.h"
 #include "XHCI.h"
@@ -38,6 +38,7 @@ void BluetoothHidInputNoteArmed(UINT16 ReportValueHandle, UINT8 ReportId) {
     }
     BootLogHex("bt: hid armed handle=", ReportValueHandle, 4);
     BootLogHex(" id=", ReportId, 2);
+    BluetoothHidReportLayoutRefresh();
 }
 
 void BluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY) {
@@ -116,43 +117,15 @@ static void LogFirstReport(const UINT8 *Value, UINT16 ValueLength) {
     BootLog(ValueLength > Show ? "...\n" : "\n");
 }
 
-/*
- * Payload = 报告体（已去掉 ATT 头）。
- * Master HOGP：buttons + X16 + Y16 [+wheel][+pan]。
- * 旧启发式「高字节=0/0xFF → 当 8 位」会在小位移时把 Dy 读成 X 高字节（≈0），
- * 表现为左右正常、上下极慢。Length≥5 一律 16 位；÷32 对齐有线（细表 BTM-9）。
- */
-#define BLUETOOTH_HID_AXIS_16_DIVISOR 32
-
-static int PayloadLooksLikeAxis16(const UINT8 *Payload, UINT16 Length) {
-    (void)Payload;
-    return (Length >= 5u) ? 1 : 0;
-}
-
 static void PushFromPayload(const UINT8 *Payload, UINT16 Length) {
-    UINT8 Buttons;
-    int DeltaX;
-    int DeltaY;
+    UINT8 Buttons = 0;
+    int DeltaX = 0;
+    int DeltaY = 0;
     INT8 Wheel = 0;
 
-    if (Payload == 0 || Length < 3u) {
+    if (BluetoothHidReportParsePayload(Payload, Length, &Buttons, &DeltaX,
+                                       &DeltaY, &Wheel) < 0) {
         return;
-    }
-    Buttons = Payload[0];
-    if (PayloadLooksLikeAxis16(Payload, Length)) {
-        DeltaX = (int)(INT16)(Payload[1] | ((UINT16)Payload[2] << 8));
-        DeltaY = (int)(INT16)(Payload[3] | ((UINT16)Payload[4] << 8));
-        DeltaX /= BLUETOOTH_HID_AXIS_16_DIVISOR;
-        DeltaY /= BLUETOOTH_HID_AXIS_16_DIVISOR;
-        if (Length >= 6u) {
-            Wheel = (INT8)Payload[5];
-        }
-    } else {
-        DeltaX = (int)(INT8)Payload[1];
-        DeltaY = (int)(INT8)Payload[2];
-        if (Length >= 4u) {
-            Wheel = (INT8)Payload[3];
-        }
     }
     PushRelative(DeltaX, DeltaY, Buttons, Wheel);
 }
@@ -177,7 +150,7 @@ static void ParseAndPush(const UINT8 *Value, UINT16 ValueLength) {
 static void DrainNotifications(void) {
     UINT8 AttributeProtocolDataUnit[32];
     UINT16 Length = 0;
-    UINT32 Guard = 16u;
+    UINT32 Guard = 32u;
 
     while (Guard-- > 0u) {
         UINT16 AttributeHandle;
@@ -206,6 +179,19 @@ static void DrainNotifications(void) {
     }
 }
 
+/*
+ * HostPump 泵尾调用：ACL 刚入队就灌鼠队列，勿等下一轮 InputPoll（拖动卡顿）。
+ * 禁止再 HostPump（重入抢环）。
+ */
+void BluetoothHidInputServiceNotifications(void) {
+    if (!sBackendAttached || !sNotifyArmed) {
+        return;
+    }
+    SpinLockAcquire(&sBluetoothHidLock);
+    DrainNotifications();
+    SpinLockRelease(&sBluetoothHidLock);
+}
+
 static void BluetoothHidInputPoll(void) {
     if (!sBackendAttached || !sNotifyArmed) {
         return;
@@ -218,9 +204,7 @@ static void BluetoothHidInputPoll(void) {
      * 此处再泵 = 与 Drain 双跑抢 ACL 组装态，有线鼠与 BT 报告一起死。
      */
     BluetoothRequeueHid();
-    SpinLockAcquire(&sBluetoothHidLock);
-    DrainNotifications();
-    SpinLockRelease(&sBluetoothHidLock);
+    BluetoothHidInputServiceNotifications();
 }
 
 static int BluetoothHidMousePresent(void) {

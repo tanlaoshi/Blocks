@@ -185,8 +185,6 @@ int BluetoothHostPumpWaitTakeEvent(void) {
 }
 
 void BluetoothHostPump(void) {
-    static UINT32 sAclConsumeSkip;
-
     if (!BluetoothHostPumpIsActive() || !gBluetoothConfigured) {
         return;
     }
@@ -195,26 +193,18 @@ void BluetoothHostPump(void) {
         return;
     }
     /*
-     * 鼠优先：先/后只 ServiceHidCompletions（完成后再武装）。
-     * 勿 QueueMouseIntr——双投递打死有线鼠（ClaimPorts）；勿丢弃 Notify（BTM-8 要报告）。
-     * HOGP 订住后 ACL Notify 洪泛：DrainEvents 每轮可泵数十次，若每次都 ConsumeAclIn
-     * 会把 xHCI 带宽吃光 → 有线鼠死。订窗口内 4 次泵只吃 1 次 ACL，其余专供 HID。
+     * 鼠优先：先/后 ServiceHidCompletions（完成后再武装）。
+     * 勿 QueueMouseIntr——双投递打死有线鼠。
+     * 订窗口内勿再 4:1 跳过 ConsumeAclIn——不重臂 ACL IN → Notify 成团/空窗，
+     * BT 拖动卡顿。ACL 帧间已切 ServiceHid（HostPumpAclIn）；泵尾再灌鼠队列。
      */
     ServiceHidCompletions();
     BluetoothHostPumpConsumeEvent();
-    if (BluetoothAttNotifyAcceptGet()) {
-        sAclConsumeSkip++;
-        if ((sAclConsumeSkip & 3u) != 0u) {
-            ServiceHidCompletions();
-            /* Conn Param 延后应答仍须跑；勿跟 ACL 节流一起饿死 */
-            BluetoothLeLinkMaintainService();
-            return;
-        }
-    } else {
-        sAclConsumeSkip = 0;
-    }
     BluetoothHostPumpConsumeAclIn();
     ServiceHidCompletions();
+    if (BluetoothAttNotifyAcceptGet()) {
+        BluetoothHidInputServiceNotifications();
+    }
     BluetoothLeLinkMaintainService();
 }
 

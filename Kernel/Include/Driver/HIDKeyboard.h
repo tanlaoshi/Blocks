@@ -31,6 +31,8 @@
 #define HID_KEY_DOT         0x37
 #define HID_KEY_SLASH       0x38
 #define HID_KEY_CAPSLOCK    0x39
+#define HID_KEY_SCROLLLOCK  0x47
+#define HID_KEY_NUMLOCK     0x53
 
 #define HID_KEY_LEFT        0x50
 #define HID_KEY_RIGHT       0x4F
@@ -53,6 +55,10 @@
 
 char HIDKeyCodeToASCII(UINT8 KeyCode, UINT8 ModifierKeys);
 void HIDKeyboardToggleCapsLock(void);
+void HIDKeyboardToggleNumLock(void);
+void HIDKeyboardToggleScrollLock(void);
+/* 1=已翻转锁态（调用方再 HalKeyboardSetLeds）；0=非锁键 */
+int HIDKeyboardApplyLockKey(UINT8 KeyCode);
 UINT8 HIDKeyboardGetLeds(void);
 const char* HIDKeyCodeToName(UINT8 KeyCode);
 

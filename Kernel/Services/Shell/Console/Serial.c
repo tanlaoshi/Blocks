@@ -145,8 +145,7 @@ static void SerialRun(void) {
                         gConsole.StdinPut('\n');
                     } else if (Key == HID_KEY_BACKSPACE || Key == HID_KEY_DELETE) {
                         gConsole.StdinPut('\b');
-                    } else if (Key == HID_KEY_CAPSLOCK) {
-                        HIDKeyboardToggleCapsLock();
+                    } else if (HIDKeyboardApplyLockKey(Key)) {
                         (void)HalKeyboardSetLeds(HIDKeyboardGetLeds());
                     } else if (Key == HID_KEY_C &&
                                (Report.ModifierKeys &
@@ -166,9 +165,8 @@ static void SerialRun(void) {
                     gConsole.OnBackspace();
                 } else if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
                     gConsole.OnHistHid(Key, 0);
-                } else if (Key == HID_KEY_CAPSLOCK) {
-                    /* ConsoleOnly 无 Input 任务，须在此切 Caps + 灯 */
-                    HIDKeyboardToggleCapsLock();
+                } else if (HIDKeyboardApplyLockKey(Key)) {
+                    /* ConsoleOnly 无 Input 任务，须在此切锁态 + 灯 */
                     (void)HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 } else if (Key == HID_KEY_C &&
                            (Report.ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL)) != 0) {

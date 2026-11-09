@@ -3,7 +3,7 @@
  * 分流避免 Notify 洪泛堵死 AttExpect；深度有限、满则丢最旧。
  */
 #include "XHCI/Bluetooth/Private.h"
-#define ATT_NOTIFY_QUEUE_DEPTH 16u
+#define ATT_NOTIFY_QUEUE_DEPTH 32u
 #define ATT_NOTIFY_QUEUE_MAX 32u
 #define L2CAP_CID_ATTRIBUTE 0x0004u
 #define ATT_HANDLE_VALUE_NOTIFICATION 0x1Bu

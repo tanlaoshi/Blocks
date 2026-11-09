@@ -221,8 +221,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
                 EditUiSave();
                 continue;
             }
-            if (Key == HID_KEY_CAPSLOCK) {
-                HIDKeyboardToggleCapsLock();
+            if (HIDKeyboardApplyLockKey(Key)) {
                 HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 continue;
             }
@@ -249,8 +248,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
                 TtyUiOnBackspace();
                 continue;
             }
-            if (Key == HID_KEY_CAPSLOCK) {
-                HIDKeyboardToggleCapsLock();
+            if (HIDKeyboardApplyLockKey(Key)) {
                 HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 continue;
             }
@@ -293,8 +291,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
                 FilesUiOnDeleteKey();
                 continue;
             }
-            if (Key == HID_KEY_CAPSLOCK) {
-                HIDKeyboardToggleCapsLock();
+            if (HIDKeyboardApplyLockKey(Key)) {
                 HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 continue;
             }
@@ -309,8 +306,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
 
         /* 用户态窗：焦点路由 HID → Poll（300+code）；勿进 Shell 行缓冲 */
         if (GuiFocusKind() == GUI_WIN_USER) {
-            if (Key == HID_KEY_CAPSLOCK) {
-                HIDKeyboardToggleCapsLock();
+            if (HIDKeyboardApplyLockKey(Key)) {
                 HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 continue;
             }
@@ -333,8 +329,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
                 gConsole.StdinPut('\b');
                 continue;
             }
-            if (Key == HID_KEY_CAPSLOCK) {
-                HIDKeyboardToggleCapsLock();
+            if (HIDKeyboardApplyLockKey(Key)) {
                 HalKeyboardSetLeds(HIDKeyboardGetLeds());
                 continue;
             }
@@ -376,8 +371,7 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
             }
             continue;
         }
-        if (Key == HID_KEY_CAPSLOCK) {
-            HIDKeyboardToggleCapsLock();
+        if (HIDKeyboardApplyLockKey(Key)) {
             HalKeyboardSetLeds(HIDKeyboardGetLeds());
             continue;
         }

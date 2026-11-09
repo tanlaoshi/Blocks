@@ -269,6 +269,11 @@ void BluetoothAttHidDisarmClientConfiguration(UINT16 ConnectionHandle,
 void BluetoothHidInputNoteArmed(UINT16 ReportValueHandle, UINT8 ReportId);
 int BluetoothHidInputAttach(void);
 void BluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
+void BluetoothHidInputServiceNotifications(void);
+void BluetoothHidReportLayoutRefresh(void);
+int BluetoothHidReportParsePayload(const UINT8 *Payload, UINT16 Length,
+                                   UINT8 *ButtonsOut, int *DeltaXOut,
+                                   int *DeltaYOut, INT8 *WheelOut);
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs);
 int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs);
 int XhciBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);

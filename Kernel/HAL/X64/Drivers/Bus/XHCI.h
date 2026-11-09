@@ -124,13 +124,11 @@ extern USB_UART_OPS gFtdiEhci;
 void FtdiPublish(void);
 void CdcPublish(void);
 
-/* PR-N-wifi-1：RTL8188EU USB */
-int XhciWifiClaim(void); /* 1 ok；0 无棒；-1 无 HC */
-int XhciWifiReady(void);
-UINT16 XhciWifiPid(void);
-
 /* btx-1…5：板载 USB HCI；Inquiry / 可被发现 */
 int XhciBluetoothProbe(void); /* 1 见过；0 无；-1 无 HC */
+int XhciBluetoothProbeRetry(void); /* 未 Ready 再探；Busy 拒 */
+int XhciBluetoothProbeDone(void); /* 1=首探已结束（非 Busy） */
+int XhciBluetoothWaitReady(UINT32 TimeoutMilliseconds); /* 等 Worker 首探 */
 int XhciBluetoothSeen(void);
 int XhciBluetoothHciResetOk(void);
 int XhciBluetoothReady(void);
@@ -149,6 +147,9 @@ int XhciBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
 int XhciBluetoothAclOutTest(void);
 int XhciBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                         UINT32 TimeoutMs); /* PR-BTM-3 */
+int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-4 */
+int XhciBluetoothLeDisconnect(void);
+void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

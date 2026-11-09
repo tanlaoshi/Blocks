@@ -279,10 +279,4 @@ void FtdiPollReceive(void);
 int FtdiDataReady(void);
 char FtdiReadChar(void);
 
-/* PR-N-wifi-1 */
-int WifiClaimViaHub(EHCI_CTRL *C);
-int WifiClaim(void);
-int WirelessReady(void);
-UINT16 WifiPid(void);
-
 #endif

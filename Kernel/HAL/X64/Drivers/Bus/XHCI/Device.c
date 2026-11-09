@@ -44,8 +44,6 @@ void Endpoint0RingForSlot(UINT32 SlotId, XHCI_TRB **RingOut, RING_STATE **StOut)
         if (gCdc.EndpointZeroRing) {
             gCdc.EndpointZeroRing(RingOut, StOut);
         }
-    } else if (SlotId != 0 && SlotId == gWifiSlot) {
-        WifiEndpoint0Ring(RingOut, StOut);
     } else if (SlotId != 0 && SlotId == gBluetoothSlot) {
         BluetoothEndpoint0Ring(RingOut, StOut);
     } else if (SlotId != 0 && SlotId <= DCBAA_SLOTS && gSlotEndpoint0UsesKeyboardRing[SlotId]) {
@@ -79,8 +77,6 @@ void Endpoint0RingForSlotOut(UINT32 *SlotOut, XHCI_TRB **RingOut, RING_STATE **S
         if (gCdc.EndpointZeroRing) {
             gCdc.EndpointZeroRing(RingOut, StOut);
         }
-    } else if (SlotOut == &gWifiSlot) {
-        WifiEndpoint0Ring(RingOut, StOut);
     } else if (SlotOut == &gBluetoothSlot) {
         BluetoothEndpoint0Ring(RingOut, StOut);
     } else {

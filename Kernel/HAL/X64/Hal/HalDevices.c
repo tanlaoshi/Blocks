@@ -156,7 +156,7 @@ int HalUsbUartReady(void) {
             (gCdcUart.Ready && gCdcUart.Ready())) ? 1 : 0;
 }
 
-/* PR-N-wifi-1：USB 8188EU；先 xHCI 再 EHCI；无棒 0 */
+/* HalWifi*：板包 BoardWifiRegister 填 Ops（Pi/Duo）；未登记 → 0/-1 */
 static HAL_WIFI_OPS gWifiOps;
 
 void HalWifiSetOps(const HAL_WIFI_OPS *Ops) {

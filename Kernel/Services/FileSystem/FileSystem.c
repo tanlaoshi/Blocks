@@ -173,7 +173,7 @@ int FileSystemInitialize(void) {
     /*
      * boot-usbuart-demote：勿在此 UsbUartInitialize；串口 App 按需 Claim。
      * PR-BOOT-fast-3 / boot-net-defer：勿 HalIwlClaim / Probe NET（Worker）。
-     * 勿 HalWifiClaim（USB 8188EU）：会踩已认 MSC hub。
+     * 勿 HalWifiClaim：板级 Wi‑Fi Claim 可能踩已认 MSC hub。
      */
 
     if (!HaveVols && !MuxOk) {

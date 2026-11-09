@@ -1,6 +1,6 @@
 # Iwl
 
-Intel 8265/8275 无线驱动（PCIe `8086:24FD`）。灌 `FW/IWL8265.UCODE`，读 `FW/WIFI.CFG`，关联后由 `NetIwl` 上网。与 USB `Rtl8188eu/` 无关。
+Intel 8265/8275 无线驱动（PCIe `8086:24FD`）。灌 `FW/IWL8265.UCODE`，读 `FW/WIFI.CFG`，关联后由 `NetIwl` 上网。
 
 目录按 Linux 的分法：`Hw/` 对芯片侧 `iwlwifi`/`iwlmvm`，`Mac/` 对 `mac80211` 里扫、关联、四次握手那一层。Blocks 只分目录，不另做全核无线栈。
 

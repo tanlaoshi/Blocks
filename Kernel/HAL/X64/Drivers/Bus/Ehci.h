@@ -44,9 +44,4 @@ void FtdiPollReceive(void);
 int FtdiDataReady(void);
 char FtdiReadChar(void);
 
-/* PR-N-wifi-1：RTL8188EU */
-int WifiClaim(void);
-int WirelessReady(void);
-UINT16 WifiPid(void);
-
 #endif

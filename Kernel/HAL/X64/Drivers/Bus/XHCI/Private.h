@@ -258,11 +258,7 @@ extern int gCdcClaimed;
 extern UINT32 gCdcBulkInDci;
 extern UINT32 gCdcBulkOutDci;
 
-/* PR-N-wifi-1 */
-extern UINT32 gWifiSlot;
 extern UINT32 gBluetoothSlot;
-extern UINT32 gWifiPort;
-extern int gWifiXhciOk;
 
 extern volatile UINT32 gStatIntrEvt;
 extern volatile UINT32 gStatMouseEvt;
@@ -345,7 +341,7 @@ extern UINT32 gXhciCmdSick;
  * usb-hid-keep / usb-map：MSC claim sick 或扫空后置 1。
  * AddressDeviceOnPort / ForceUntilPed 见 1 则拒；ClaimPorts 见 1 则 skip（不清零）。
  * Shell msc hot：XhciPortEnumerateUnfreeze 后再 Claim。Worker HotPoll 勿解冻。
- * 置位方：ClaimPorts done；消费方：Device/ClaimPort + Wifi/FTDI/CDC claim 早退。
+ * 置位方：ClaimPorts done；消费方：Device/ClaimPort + FTDI/CDC/BT claim 早退。
  */
 extern UINT32 gXhciPortEnumerateFreeze;
 void XhciPortEnumerateUnfreeze(void);
@@ -536,17 +532,10 @@ void FtdiFillTransmit(void);
 void CdcFillReceive(void);
 void CdcFillTransmit(void);
 
-/* PR-N-wifi-1 */
-int XhciWifiClaim(void);
-int XhciWifiReady(void);
-UINT16 XhciWifiPid(void);
-void WifiEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
 void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
 void BluetoothHostPump(void); /* PR-BTM-1；未 Ready/未 Start 早退 */
-int WifiFinishClaim(UINT32 RootPort, UINT8 Speed);
-int WifiTryHubChildren(void);
 
 int MousePortInitialize(UINT32 Port1);
 /* PR-F-xhci-4 */

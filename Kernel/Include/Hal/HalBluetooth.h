@@ -20,10 +20,23 @@ typedef struct {
     char Name[HAL_BLUETOOTH_NAME_MAX];
 } HAL_BLUETOOTH_SCAN_ENTRY;
 
-/* 0=门面已挂（可无控制器）；不表示 Ready */
+/*
+ * 起机 / 壳 bt init。
+ * 返回 1=Ready；0=未 Ready（无 HCI / Reset / BD_ADDR 失败）。
+ * 已 Ready → 1；未首探 → 探一次；已探失败 → 再探一次。
+ */
 int HalBluetoothInitialize(void);
 /* 1=HCI 可用；无硬件 / 未枚举必须 0 */
 int HalBluetoothReady(void);
+/* 等 Worker 首探结束或超时；返回 Ready（1/0） */
+int HalBluetoothWaitReady(UINT32 TimeoutMilliseconds);
+/*
+ * 壳诊断：ProbeDone / UsbSeen / HciResetOk / VendorId / ProductId / RootPort。
+ * 指针可空。
+ */
+void HalBluetoothBringUpStatus(int *ProbeDoneOut, int *UsbSeenOut,
+                               int *HciResetOkOut, UINT16 *VendorIdOut,
+                               UINT16 *ProductIdOut, UINT32 *RootPortOut);
 
 /*
  * 读设备地址（6 字节，HCI 线序：LSB first；规格名 BD_ADDR）。
@@ -63,5 +76,15 @@ int HalBluetoothAclOutTest(void);
  */
 int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                        UINT32 TimeoutMs);
+
+/*
+ * PR-BTM-4：按最近一次 lescan 的 1-based 序号连；TimeoutMs=0 → 约 15s。
+ * 成功 → 0 且串口 `bt: le connected handle=`；失败 → -1。
+ */
+int HalBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
+/* 断当前 LE；无连接 → 0 */
+int HalBluetoothLeDisconnect(void);
+/* 最近一次 LE 命令失败：Opcode / HCI Status（0xFE=等 CC 失败） */
+void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 
 #endif

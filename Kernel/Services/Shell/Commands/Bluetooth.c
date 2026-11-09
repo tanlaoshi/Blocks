@@ -18,12 +18,12 @@ static void WriteHexByte(UINT8 Value) {
     gConsole.Write(Hex);
 }
 
-static void WriteAddress(const UINT8 Addr[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
-    int I;
+static void WriteAddress(const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
+    int Index;
 
-    for (I = 5; I >= 0; I--) {
-        WriteHexByte(Addr[I]);
-        if (I > 0) {
+    for (Index = 5; Index >= 0; Index--) {
+        WriteHexByte(Address[Index]);
+        if (Index > 0) {
             gConsole.Write(":");
         }
     }
@@ -55,12 +55,58 @@ static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
     return *A == 0 && *B == 0;
 }
 
+static void WriteBringUpStatus(void) {
+    int ProbeDone = 0;
+    int UsbSeen = 0;
+    int HciResetOk = 0;
+    UINT16 VendorId = 0;
+    UINT16 ProductId = 0;
+    UINT32 RootPort = 0;
+
+    HalBluetoothBringUpStatus(&ProbeDone, &UsbSeen, &HciResetOk, &VendorId,
+                              &ProductId, &RootPort);
+    gConsole.Write("bt: not ready probed=");
+    gConsole.Write(ProbeDone ? "1" : "0");
+    gConsole.Write(" seen=");
+    gConsole.Write(UsbSeen ? "1" : "0");
+    gConsole.Write(" reset=");
+    gConsole.Write(HciResetOk ? "1" : "0");
+    gConsole.Write(" vid=");
+    gConsole.WriteHex32(VendorId);
+    gConsole.Write(" pid=");
+    gConsole.WriteHex32(ProductId);
+    gConsole.Write(" port=");
+    gConsole.WriteHex32(RootPort);
+    if (UsbSeen && !HciResetOk) {
+        gConsole.Write(" (Intel fw/Reset fail; bt init; else cold power)\n");
+    } else {
+        gConsole.Write(" (bt init to retry)\n");
+    }
+}
+
 static void CommandBluetoothInfo(void) {
     UINT8 Addr[HAL_BLUETOOTH_ADDRESS_LENGTH];
     char Name[HAL_BLUETOOTH_NAME_MAX];
+    int ProbeDone = 0;
+    int UsbSeen = 0;
 
+    /* AnnounceBootReady 早于 Worker HCI；先等首探再报 */
     if (!HalBluetoothReady()) {
-        gConsole.Write("bt: not ready (no HCI / Reset / BD_ADDR yet)\n");
+        (void)HalBluetoothWaitReady(5000u);
+    }
+    /*
+     * seen 但 reset=0：Worker 首探灌固件失败。裸 bt 再探一次（等同 bt init），
+     * 仍挂则多半软 reboot 后 Intel Interrupt 哑火 → 须断电冷启。
+     */
+    if (!HalBluetoothReady()) {
+        HalBluetoothBringUpStatus(&ProbeDone, &UsbSeen, 0, 0, 0, 0);
+        if (ProbeDone && UsbSeen) {
+            gConsole.Write("bt: retry init (seen, reset fail)...\n");
+            (void)HalBluetoothInitialize();
+        }
+    }
+    if (!HalBluetoothReady()) {
+        WriteBringUpStatus();
         return;
     }
     if (HalBluetoothGetDeviceAddress(Addr) != 0) {
@@ -165,47 +211,12 @@ static void CommandBluetoothInitialize(void) {
 
     gConsole.Write("bt: init rc=");
     gConsole.WriteHex32((UINT32)Rc);
-    gConsole.Write(Rc == 1 ? " (bring-up ok)" : " (fail; see Boot: lines)");
-    gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready\n");
-}
-
-static void CommandBluetoothLeScan(void) {
-    HAL_BLUETOOTH_SCAN_ENTRY Table[HAL_BLUETOOTH_SCAN_MAX];
-    int N;
-    int I;
-
-    if (!HalBluetoothReady()) {
-        gConsole.Write("bt: not ready\n");
-        return;
-    }
-    gConsole.Write("bt: lescan (~8s)...\n");
-    N = HalBluetoothLeScan(Table, HAL_BLUETOOTH_SCAN_MAX, 0);
-    if (N < 0) {
-        gConsole.Write("bt: lescan fail\n");
-        return;
-    }
-    if (N == 0) {
-        gConsole.Write("bt: lescan no devices (Master pairing mode?)\n");
-        return;
-    }
-    for (I = 0; I < N; I++) {
-        char Line[8];
-        int D = I + 1;
-
-        gConsole.Write("bt: ");
-        Line[0] = (char)('0' + (D / 10));
-        Line[1] = (char)('0' + (D % 10));
-        Line[2] = 0;
-        if (D < 10) {
-            gConsole.Write(&Line[1]);
-        } else {
-            gConsole.Write(Line);
-        }
-        gConsole.Write(" ");
-        WriteAddress(Table[I].Address);
-        gConsole.Write(" ");
-        gConsole.Write(Table[I].Name[0] ? Table[I].Name : "(no name)");
+    gConsole.Write(Rc == 1 ? " (bring-up ok)" : " (fail)");
+    if (HalBluetoothReady()) {
+        gConsole.Write(", ready\n");
+    } else {
         gConsole.Write("\n");
+        WriteBringUpStatus();
     }
 }
 
@@ -260,14 +271,23 @@ static void CommandBluetooth(int Argc, char **Argv) {
         return;
     }
     if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "lescan")) {
-        CommandBluetoothLeScan();
+        ShellBluetoothLeScan();
+        return;
+    }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "connect")) {
+        ShellBluetoothLeConnect(Argc, Argv);
+        return;
+    }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "disconnect")) {
+        ShellBluetoothLeDisconnect();
         return;
     }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
-    gConsole.Register("bt",
-                      "bt [info|init|scan|lescan|visible|hide|acltest]",
-                      CommandBluetooth);
+    gConsole.Register(
+        "bt",
+        "bt [info|init|scan|lescan|connect|disconnect|visible|hide|acltest]",
+        CommandBluetooth);
 }

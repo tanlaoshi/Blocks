@@ -170,8 +170,11 @@ int BluetoothHostPumpWaitTakeEvent(void) {
         ZeroMemory(gBluetoothEventBuffer + Length,
                    BLUETOOTH_EVENT_MAX - Length);
     }
-    gBluetoothEventDone = 1;
-    gBluetoothEventCode = CC_SUCCESS;
+    /*
+     * 勿置 gBluetoothEventDone：这是软件从队列取出的副本，不是 USB 完成。
+     * 若置 1，下次 Consume 会把同一缓冲当新完成再 Push，并叠 Arm → 二次
+     * lescan 等 CC 易 FE（op=200B）。
+     */
     return 1;
 }
 

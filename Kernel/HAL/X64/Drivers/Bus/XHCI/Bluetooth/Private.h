@@ -37,9 +37,13 @@
 #define HCI_OPCODE_WRITE_LE_HOST_SUPPORTED 0x0C6Du
 #define HCI_OPCODE_READ_BUFFER_SIZE 0x1005u
 #define HCI_OPCODE_READ_BD_ADDR 0x1009u
+#define HCI_OPCODE_DISCONNECT 0x0406u
 #define HCI_OPCODE_LE_SET_EVENT_MASK 0x2001u
+#define HCI_OPCODE_LE_CREATE_CONNECTION 0x200Du
+#define HCI_OPCODE_LE_CREATE_CONNECTION_CANCEL 0x200Eu
 #define HCI_OPCODE_LE_SET_SCAN_PARAMETERS 0x200Bu
 #define HCI_OPCODE_LE_SET_SCAN_ENABLE 0x200Cu
+#define HCI_EVENT_DISCONNECTION_COMPLETE 0x05u
 #define HCI_EVENT_INQUIRY_COMPLETE 0x01u
 #define HCI_EVENT_INQUIRY_RESULT 0x02u
 #define HCI_EVENT_REMOTE_NAME_COMPLETE 0x07u
@@ -151,6 +155,12 @@ void BluetoothHostPump(void);
 int BluetoothHostPumpStart(void);
 void BluetoothHostPumpStop(void);
 int BluetoothLeHostSupportApply(void);
+int BluetoothLeScanEntryGet(UINTN OneBasedIndex, UINT8 Address[6],
+                            UINT8 *AddressTypeOut);
+int BluetoothLeConnectionHandleGet(UINT16 *Out);
+void BluetoothLeAbortPending(void);
+void BluetoothLeLastErrorSet(UINT16 Opcode, UINT8 Status);
+void BluetoothLeLastErrorGet(UINT16 *OpcodeOut, UINT8 *StatusOut);
 void BluetoothAclFlowReset(void);
 int BluetoothAclFlowInitialize(void);
 void BluetoothAclCreditReturn(UINT16 CompletedPackets);

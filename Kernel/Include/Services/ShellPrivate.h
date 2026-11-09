@@ -10,6 +10,9 @@
 
 void ShellCommandsUsbRegister(void);
 void ShellCommandsBluetoothRegister(void);
+void ShellBluetoothLeScan(void);
+void ShellBluetoothLeConnect(int Argc, char **Argv);
+void ShellBluetoothLeDisconnect(void);
 void ShellCommandsWifiRegister(void);
 /* 仅 wifiprobe（无桌面靶/串口最小集也要能重跑 SD1 探测） */
 void ShellCommandsWifiProbeRegister(void);

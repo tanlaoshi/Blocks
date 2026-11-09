@@ -16,6 +16,7 @@ UINT16 gBluetoothVendorId;
 UINT16 gBluetoothProductId;
 UINT32 gBluetoothRootPort;
 static int gBluetoothProbeDone;
+static int gBluetoothBringUpBusy;
 
 int XhciBluetoothSeen(void) {
     return gBluetoothUsbSeen ? 1 : 0;
@@ -26,6 +27,58 @@ int XhciBluetoothHciResetOk(void) {
 }
 
 int XhciBluetoothReady(void) {
+    return gBluetoothReady ? 1 : 0;
+}
+
+int XhciBluetoothProbeDone(void) {
+    return (gBluetoothProbeDone && !gBluetoothBringUpBusy) ? 1 : 0;
+}
+
+/*
+ * 壳 bt init：未 Ready 时清一次标记再探。
+ * BringUpBusy 时拒重入（Worker 首探中）。
+ */
+int XhciBluetoothProbeRetry(void) {
+    if (gBluetoothReady) {
+        return 1;
+    }
+    if (gBluetoothBringUpBusy) {
+        return 0;
+    }
+    BluetoothHostPumpStop();
+    BluetoothReleaseSlot();
+    gBluetoothConfigured = 0;
+    gBluetoothHciResetOk = 0;
+    gBluetoothReady = 0;
+    gBluetoothUsbSeen = 0;
+    gBluetoothVendorId = 0;
+    gBluetoothProductId = 0;
+    gBluetoothRootPort = 0;
+    gBluetoothProbeDone = 0;
+    return XhciBluetoothProbe();
+}
+
+int XhciBluetoothWaitReady(UINT32 TimeoutMilliseconds) {
+    UINT64 Start;
+    UINT64 Need;
+
+    if (gBluetoothReady) {
+        return 1;
+    }
+    if (TimeoutMilliseconds == 0u) {
+        TimeoutMilliseconds = 5000u;
+    }
+    Start = ReadTsc();
+    Need = (UINT64)TimeoutMilliseconds * 3000000ULL;
+    while (!gBluetoothReady) {
+        if (gBluetoothProbeDone && !gBluetoothBringUpBusy) {
+            break;
+        }
+        StallMilliseconds(50);
+        if (ReadTsc() - Start >= Need) {
+            break;
+        }
+    }
     return gBluetoothReady ? 1 : 0;
 }
 
@@ -113,7 +166,14 @@ static void BluetoothSurveyRoots(void) {
 int XhciBluetoothProbe(void) {
     UINT32 Port;
     UINT8 Speed;
+    int Found = 0;
 
+    if (gBluetoothReady) {
+        return 1;
+    }
+    if (gBluetoothBringUpBusy) {
+        return gBluetoothUsbSeen ? 1 : 0;
+    }
     if (gBluetoothProbeDone) {
         return gBluetoothUsbSeen ? 1 : 0;
     }
@@ -121,6 +181,7 @@ int XhciBluetoothProbe(void) {
         return -1;
     }
 
+    gBluetoothBringUpBusy = 1;
     gBluetoothProbeDone = 1;
     BluetoothSurveyRoots();
     for (Port = 1; Port <= gMaxPorts && Port <= 32u; Port++) {
@@ -131,17 +192,21 @@ int XhciBluetoothProbe(void) {
             if (gXhciCmdSick) {
                 BootLog("Boot: Bluetooth probe abort (cmd sick)\n");
                 BluetoothRequeueHid();
+                gBluetoothBringUpBusy = 0;
                 return 0;
             }
             continue;
         }
         (void)Speed;
         if (BluetoothFinishProbe(Port, Speed)) {
-            BluetoothRequeueHid();
-            return 1;
+            Found = 1;
+            break;
         }
     }
-    BootLog("Boot: Bluetooth HCI not found\n");
+    if (!Found) {
+        BootLog("Boot: Bluetooth HCI not found\n");
+    }
     BluetoothRequeueHid();
-    return 0;
+    gBluetoothBringUpBusy = 0;
+    return Found;
 }

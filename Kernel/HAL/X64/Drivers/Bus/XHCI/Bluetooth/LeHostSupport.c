@@ -6,18 +6,42 @@
  */
 #include "XHCI/Bluetooth/Private.h"
 
+static UINT16 sLeLastOpcode;
+static UINT8 sLeLastStatus;
+
+void BluetoothLeLastErrorSet(UINT16 Opcode, UINT8 Status) {
+    sLeLastOpcode = Opcode;
+    sLeLastStatus = Status;
+}
+
+void BluetoothLeLastErrorGet(UINT16 *OpcodeOut, UINT8 *StatusOut) {
+    if (OpcodeOut != 0) {
+        *OpcodeOut = sLeLastOpcode;
+    }
+    if (StatusOut != 0) {
+        *StatusOut = sLeLastStatus;
+    }
+}
+
+void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
+    BluetoothLeLastErrorGet(OpcodeOut, StatusOut);
+}
+
 static int LeHostCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
                          int SoftFail) {
     UINT8 Status = 0xFFu;
 
+    /* FE=等 CC 超时：不可 SoftFail 吞掉，否则后续 200B 连环挂 */
     if (BluetoothHciCommand(Opcode, Params, ParamLen, &Status, 0, 0, 0) < 0) {
+        BluetoothLeLastErrorSet(Opcode, 0xFEu);
         BootLogHex("bt: le-host cmd fail op=", Opcode, 4);
-        return SoftFail ? 0 : -1;
+        return -1;
     }
     if (Status != 0) {
+        BluetoothLeLastErrorSet(Opcode, Status);
         BootLogHex("bt: le-host status=", Status, 2);
         BootLogHex(" op=", Opcode, 4);
-        /* Unknown Command / Disallowed：新固件可能已默认开 LE */
+        /* SoftFail 只放过 Unknown/Disallowed 等状态字，不放过超时 */
         if (SoftFail) {
             return 0;
         }
@@ -55,7 +79,8 @@ int BluetoothLeHostSupportApply(void) {
         LeMask[Index] = 0;
     }
     LeMask[0] = 0x1Fu; /* Adv Report 等 */
-    if (LeHostCommand(HCI_OPCODE_LE_SET_EVENT_MASK, LeMask, 8, 0) < 0) {
+    /* SoftFail：部分固件拒重复 Set；真正开扫由 Set Scan Parameters 判 */
+    if (LeHostCommand(HCI_OPCODE_LE_SET_EVENT_MASK, LeMask, 8, 1) < 0) {
         return -1;
     }
     return 0;

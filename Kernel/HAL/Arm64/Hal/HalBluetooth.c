@@ -33,6 +33,34 @@ int HalBluetoothReady(void) {
 #endif
 }
 
+int HalBluetoothWaitReady(UINT32 TimeoutMilliseconds) {
+    (void)TimeoutMilliseconds;
+    return HalBluetoothReady();
+}
+
+void HalBluetoothBringUpStatus(int *ProbeDoneOut, int *UsbSeenOut,
+                               int *HciResetOkOut, UINT16 *VendorIdOut,
+                               UINT16 *ProductIdOut, UINT32 *RootPortOut) {
+    if (ProbeDoneOut != 0) {
+        *ProbeDoneOut = 1;
+    }
+    if (UsbSeenOut != 0) {
+        *UsbSeenOut = HalBluetoothReady();
+    }
+    if (HciResetOkOut != 0) {
+        *HciResetOkOut = HalBluetoothReady();
+    }
+    if (VendorIdOut != 0) {
+        *VendorIdOut = 0;
+    }
+    if (ProductIdOut != 0) {
+        *ProductIdOut = 0;
+    }
+    if (RootPortOut != 0) {
+        *RootPortOut = 0;
+    }
+}
+
 int HalBluetoothGetDeviceAddress(UINT8 Out[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
 #if BOARD_HAS_BLUETOOTH
     return BoardBluetoothCopyDeviceAddress(Out);
@@ -102,4 +130,23 @@ int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
     (void)OutMax;
     (void)TimeoutMs;
     return -1;
+}
+
+int HalBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
+    (void)OneBasedIndex;
+    (void)TimeoutMs;
+    return -1;
+}
+
+int HalBluetoothLeDisconnect(void) {
+    return -1;
+}
+
+void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
+    if (OpcodeOut != 0) {
+        *OpcodeOut = 0;
+    }
+    if (StatusOut != 0) {
+        *StatusOut = 0;
+    }
 }

@@ -196,6 +196,8 @@ int BluetoothHciCommandTimeout(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLe
             GotComplete = 1;
             break;
         }
+        /* 成功匹配后清软件残留，避免下次 Consume 误叠 Arm */
+        gBluetoothEventDone = 0;
         if (!GotComplete) {
             UINT32 *EventEndpointContext;
             UINT32 EndpointState = 0xFFu;

@@ -10,12 +10,56 @@
 #include "XHCI.h"
 
 int HalBluetoothInitialize(void) {
-    (void)XhciBluetoothProbe();
-    return 0;
+    if (XhciBluetoothReady()) {
+        return 1;
+    }
+    if (!XhciBluetoothProbeDone()) {
+        (void)XhciBluetoothProbe();
+    } else {
+        (void)XhciBluetoothProbeRetry();
+    }
+    return XhciBluetoothReady() ? 1 : 0;
 }
 
 int HalBluetoothReady(void) {
     return XhciBluetoothReady();
+}
+
+int HalBluetoothWaitReady(UINT32 TimeoutMilliseconds) {
+    if (XhciBluetoothWaitReady(TimeoutMilliseconds)) {
+        return 1;
+    }
+    /*
+     * Worker 仍卡在 iwl 静默/Wifi：壳 bt 到时仍未首探。
+     * 由壳拉一把；Busy 时 Probe 早退。
+     */
+    if (!XhciBluetoothProbeDone()) {
+        (void)XhciBluetoothProbe();
+    }
+    return XhciBluetoothReady() ? 1 : 0;
+}
+
+void HalBluetoothBringUpStatus(int *ProbeDoneOut, int *UsbSeenOut,
+                               int *HciResetOkOut, UINT16 *VendorIdOut,
+                               UINT16 *ProductIdOut, UINT32 *RootPortOut) {
+    if (ProbeDoneOut != 0) {
+        *ProbeDoneOut = XhciBluetoothProbeDone();
+    }
+    if (UsbSeenOut != 0) {
+        *UsbSeenOut = XhciBluetoothSeen();
+    }
+    if (HciResetOkOut != 0) {
+        *HciResetOkOut = XhciBluetoothHciResetOk();
+    }
+    if (VendorIdOut != 0) {
+        *VendorIdOut = XhciBluetoothVendorId();
+    }
+    if (ProductIdOut != 0) {
+        *ProductIdOut = XhciBluetoothProductId();
+    }
+    if (RootPortOut != 0) {
+        *RootPortOut = XhciBluetoothRootPort();
+    }
 }
 
 int HalBluetoothGetDeviceAddress(UINT8 Out[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
@@ -73,4 +117,16 @@ int HalBluetoothAclOutTest(void) {
 int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                        UINT32 TimeoutMs) {
     return XhciBluetoothLeScan(Out, OutMax, TimeoutMs);
+}
+
+int HalBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
+    return XhciBluetoothLeConnect(OneBasedIndex, TimeoutMs);
+}
+
+int HalBluetoothLeDisconnect(void) {
+    return XhciBluetoothLeDisconnect();
+}
+
+void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
+    XhciBluetoothLeLastError(OpcodeOut, StatusOut);
 }

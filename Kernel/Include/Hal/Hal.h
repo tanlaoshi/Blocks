@@ -23,8 +23,10 @@ void HalCpuHalt(void);
 void HalCpuPark(void);
 void HalCpuReboot(void);
 void HalCpuShutdown(void);
-/* 真机：ACPI 电源键短按（需 AcpiPowerInitialize）；1=应关机 */
+/* 真机：电源键短按；1=应关机/板级已约定动作。板可强符号 BoardPowerButtonPressed */
 int HalPowerButtonPressed(void);
+/* 弱默认 -1＝走 Hal 内建；≥0 则 HalPowerButtonPressed 直接返回该值 */
+int BoardPowerButtonPressed(void);
 
 #include "HalIrq.h"
 void HalCpuRelax(void); /* 自旋等待提示（x86：pause） */

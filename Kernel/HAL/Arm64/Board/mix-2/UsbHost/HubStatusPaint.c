@@ -49,6 +49,9 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2PortBitMask());
     UsbHostAppendText(Line, "/", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb3PortBitMask());
+    /* pon=RT_STS；fail 时高位 → 屏上见大数 / 按键 bit0 应变 */
+    UsbHostAppendText(Line, " pon", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostPowerOnStatusDiagnostic());
     BoardBringUpSplashPaintLine(160, Line);
 
     LineState = UsbHostQusbLineStateRead();

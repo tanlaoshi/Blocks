@@ -43,6 +43,8 @@
 #define BOARD_HAS_AUDIO        1
 #define BOARD_CONSOLE_ONLY     1
 #define BOARD_IS_VIRT          0
+/* 排针 GPIO3 电源键（HalPowerButtonPressed BCM 路径） */
+#define BOARD_POWER_BUTTON_BCM_GPIO3 1
 /*
  * VC scanout 默认 RGB（低字节=R）；UI 为 0x00RRGGBB（低字节=B）。
  * mailbox SET_PIXORD 常被忽略 → HalVideoSet 开软件 R/B 对调。

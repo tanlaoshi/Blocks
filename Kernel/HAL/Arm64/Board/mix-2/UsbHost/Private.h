@@ -99,9 +99,14 @@ typedef struct {
 void UsbHostFormatHexadecimal32(char *Out, UINT32 Value);
 void UsbHostCopyText(char *Destination, const char *Source, UINTN Capacity);
 void UsbHostAppendText(char *Destination, const char *Source, UINTN Capacity);
+/* 纯 yield：SPMI WaitDone 等路径用；禁止在此泵电源键（会嵌套 SPMI） */
 void UsbHostStallYield(UINTN Iterations);
+/* 分段 yield 并泵 PON：HubWatch / 根口复位等长等路径用 */
+void UsbHostStallYieldPumpPower(UINTN Iterations);
 void UsbHostCacheCleanRange(void *Address, UINTN Size);
 void UsbHostCacheCleanInvalidateRange(void *Address, UINTN Size);
+/* splash：最近一次 PON RT_STS；bit31=SPMI 失败 */
+UINT32 UsbHostPowerOnStatusDiagnostic(void);
 
 volatile UINT32 *UsbHostMmio32(UINT64 Address);
 UINT32 UsbHostReadMmio32(UINT64 Address);

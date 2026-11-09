@@ -46,6 +46,25 @@ void UsbHostStallYield(UINTN Iterations) {
     }
 }
 
+void UsbHostStallYieldPumpPower(UINTN Iterations) {
+    static UINTN sYieldsSincePowerPoll;
+    UINTN Index;
+    const UINTN PowerPollEvery = 20000u;
+
+    /*
+     * 按累计 yield 泵键：复位紧循环里 Stall(50) 也会采到短按，
+     * 又不会每 50 次就打一次 SPMI（会拖死 chirp / hub）。
+     */
+    for (Index = 0; Index < Iterations; Index++) {
+        __asm__ volatile("yield" ::: "memory");
+        sYieldsSincePowerPoll++;
+        if (sYieldsSincePowerPoll >= PowerPollEvery) {
+            sYieldsSincePowerPoll = 0;
+            (void)BoardPowerButtonPressed();
+        }
+    }
+}
+
 void UsbHostCacheCleanRange(void *Address, UINTN Size) {
     UINT64 Cursor = (UINT64)(UINTN)Address & ~63ULL;
     UINT64 End = (UINT64)(UINTN)Address + Size;
@@ -107,6 +126,10 @@ void UsbHostAppendText(char *Destination, const char *Source, UINTN Capacity) {
 }
 
 void UsbHostStallYield(UINTN Iterations) {
+    (void)Iterations;
+}
+
+void UsbHostStallYieldPumpPower(UINTN Iterations) {
     (void)Iterations;
 }
 

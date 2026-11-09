@@ -79,14 +79,27 @@ void HalCpuShutdown(void) {
 }
 
 /*
- * Pi 3B 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown / 课堂线）。
- * BCM2835 §6：输入+上拉，电平 0=按下。每次轮询重申输入（防 I2C ALT0 抢脚）。
- * 边沿或持续低电平都算按下（短接错过下降沿时仍能关机）。
+ * 板级可覆盖：MIX2 等强符号探测 PON；返回 ≥0 则不再走内建 GPIO。
+ * 弱默认 -1 → 仅 Pi（BOARD_POWER_BUTTON_BCM_GPIO3）走 BCM GPIO3。
  */
+__attribute__((weak)) int BoardPowerButtonPressed(void) {
+    return -1;
+}
+
 int HalPowerButtonPressed(void) {
+    int BoardResult;
+
+    BoardResult = BoardPowerButtonPressed();
+    if (BoardResult >= 0) {
+        return BoardResult;
+    }
 #if BOARD_IS_VIRT
     return 0;
-#else
+#elif defined(BOARD_POWER_BUTTON_BCM_GPIO3) && BOARD_POWER_BUTTON_BCM_GPIO3
+    /*
+     * Pi 3B 排针 5=GPIO3、9=GND：短接 = 电源键（对表 Linux gpio-shutdown）。
+     * BCM2835 §6：输入+上拉，电平 0=按下。
+     */
 #define GPIO_BASE     0x3F200000ULL
 #define GPFSEL0       ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x00u))
 #define GPLEV0        ((volatile UINT32 *)(UINTN)(GPIO_BASE + 0x34u))
@@ -102,7 +115,6 @@ int HalPowerButtonPressed(void) {
     volatile UINT32 i;
     int High;
 
-    /* 每拍强制 GPIO 输入：I2C1 默认占 GPIO2/3 ALT0，会吃掉电源键 */
     Sel = *GPFSEL0;
     Sel &= ~(7u << GPIO3_FSEL_SHIFT);
     *GPFSEL0 = Sel;
@@ -126,9 +138,8 @@ int HalPowerButtonPressed(void) {
     High = (Lev & GPIO3_BIT) != 0 ? 1 : 0;
     if (!sReady) {
         sReady = 1;
-        return 0; /* 首拍只武装，避免上电已短接立刻关机 */
+        return 0;
     }
-    /* 低电平即按下（含持续短接）；不单靠下降沿 */
     return High ? 0 : 1;
 #undef GPIO_BASE
 #undef GPFSEL0
@@ -137,6 +148,9 @@ int HalPowerButtonPressed(void) {
 #undef GPPUDCLK0
 #undef GPIO3_FSEL_SHIFT
 #undef GPIO3_BIT
+#else
+    /* 手机等：无板级符号时勿误踩 Pi GPIO MMIO */
+    return 0;
 #endif
 }
 

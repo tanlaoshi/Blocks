@@ -52,7 +52,7 @@ int UsbHostRootPortPower(UINT32 PortIndexOneBased) {
 
     if ((State & PORT_STATUS_POWER) == 0) {
         UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_POWER);
-        UsbHostStallYield(200000u);
+        UsbHostStallYieldPumpPower(200000u);
         State = UsbHostReadMmio32(Address);
     }
     return (State & PORT_STATUS_POWER) ? 0 : -1;
@@ -90,7 +90,7 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
 
     ConfigureUsb2PhyForHostChirp();
     (void)UsbHostQscratchEnsureHostSessionOverride();
-    UsbHostStallYield(200000u);
+    UsbHostStallYieldPumpPower(200000u);
 
     State = UsbHostReadMmio32(Address);
     if ((State & PORT_STATUS_CONNECT) == 0) {
@@ -100,7 +100,7 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
     if ((State & PORT_STATUS_ENABLE) == 0 &&
         (State & PORT_STATUS_CHANGE_BITS) != 0) {
         UsbHostWriteMmio32(Address, PortStatusNeutral(State) | PORT_STATUS_CHANGE_BITS);
-        UsbHostStallYield(50000u);
+        UsbHostStallYieldPumpPower(50000u);
     }
 
     State = UsbHostReadMmio32(Address);
@@ -112,7 +112,7 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
         if ((State & PORT_STATUS_RESET) == 0) {
             break;
         }
-        UsbHostStallYield(50u);
+        UsbHostStallYieldPumpPower(50u);
     }
     if ((State & PORT_STATUS_RESET) != 0) {
         return -1;
@@ -125,7 +125,7 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
             SawResetChange = 1;
             break;
         }
-        UsbHostStallYield(50u);
+        UsbHostStallYieldPumpPower(50u);
     }
     if (SawResetChange == 0) {
         return -1;
@@ -139,10 +139,10 @@ int UsbHostRootPortReset(UINT32 PortIndexOneBased) {
         }
         if ((State & PORT_STATUS_ENABLE) != 0) {
             /* USB2 复位恢复；对表 X64 StallMilliseconds(50) */
-            UsbHostStallYield(2000000u);
+            UsbHostStallYieldPumpPower(2000000u);
             return 0;
         }
-        UsbHostStallYield(5000u);
+        UsbHostStallYieldPumpPower(5000u);
     }
     return -1;
 }

@@ -54,7 +54,7 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ---
 
-## 手测 · `PR-MIX2-USB-2`（hub 热插 · 本刀）
+## 手测 · `PR-MIX2-USB-2`（hub 热插 ✅）
 
 彩条相位已 ✅，**同一次 boot 直接测坞**（勿再为像素单刷）：
 
@@ -65,15 +65,28 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ---
 
+## 手测 · `PR-PHONE-PWR-0`（短按 → fastboot · 本刀）
+
+电脑可仍占 Type-C（不要求插坞）：
+
+1. `fastboot boot …\boot-chiron.img` → 彩条 + USB 字；须见 **`usb hub`** + 状态行含 **`pon…`**。  
+2. 空闲看 `pon`：正常小值（常 `0`）；若像 `80000000`＝PON SPMI 读失败。  
+3. **按住**电源看 `pon` bit0 是否变 1；松手回 0。变了再短按应出 **`pwr fastboot`** → `fastboot devices`。  
+4. **长按**仍硬关。  
+5. hub：拔电脑线→插坞+墙充；绿仍 **`e a1`**（与 USB-2 同）。
+
+---
+
 ## 本包文件
 
 | 文件 | 作用 |
 |------|------|
 | `BoardConfig.h` | 加载址 / splash / bpp / stride / USB 开关 |
 | `Board.c` / `Board.h` | 板名；Dram/Fb stub；USB 门面 |
-| `IdentityMap.c` | GiB0 DWC3 Device + GiB2 内核/splash |
+| `IdentityMap.c` | GiB0 DWC3/SPMI/PS_HOLD Device + GiB2 内核/splash |
 | `SplashPaint.c` | 彩条 + 点阵；`PaintLine` |
 | `UsbHost/BringUp.c` | DWC3 GSNPSID / GCTL Host |
+| `UsbHost/PonPowerButton.c` | PM8998 PON：短按 → reboot cookie + PS_HOLD |
 | `UsbHost/QusbPhy.c` | QUSB2 DT init-seq + PLL ready |
 | `UsbHost/Qscratch.c` | QSCRATCH UTMI-as-PIPE + Host VBUS override |
 | `UsbHost/SpmiPmicArbiter.c` | SPMI PMIC arbiter v2 读写 |

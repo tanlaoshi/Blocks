@@ -168,7 +168,6 @@ UINT32 UsbHostSpmiArbiterVersion(void) {
 int UsbHostSpmiArbiterProbe(void) {
     UINT32 Version;
 
-    sLastApplicationIdentifier = 0;
     Version = UsbHostSpmiArbiterVersion();
     /* v2/v3 同 offset；拒 v1 与 ≥v5（APID 模型不同） */
     if (Version < SPMI_ARBITER_VERSION_V2_MIN ||

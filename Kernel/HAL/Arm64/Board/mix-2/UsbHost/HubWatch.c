@@ -24,7 +24,8 @@ void BoardMix2UsbHubWatch(void) {
 
     if (UsbHostXhciStart() != 0) {
         for (;;) {
-            UsbHostStallYield(1000000u);
+            /* MIX2 不进 Tasks：起环失败也须轮询电源键 */
+            UsbHostStallYieldPumpPower(1000000u);
         }
     }
 
@@ -51,6 +52,11 @@ void BoardMix2UsbHubWatch(void) {
     for (;;) {
         UINT32 EnumerateAttempted = SawConnect; /* 同一次插着只枚举一回 */
 
+        /*
+         * PR-PHONE-PWR-0：Handoff 停在本循环；StallYieldPumpPower 已泵 PON。
+         * 此处再采一次，保证 paint 前 RT_STS 新鲜。
+         */
+        (void)BoardPowerButtonPressed();
         UsbHostTypeCMaintainAfterAttach();
 
         {
@@ -90,7 +96,7 @@ void BoardMix2UsbHubWatch(void) {
         }
 
         UsbHostPaintHubStatus(PortCount, LastStable);
-        UsbHostStallYield(1000000u);
+        UsbHostStallYieldPumpPower(200000u);
     }
 #undef PORT_STATUS_STABLE_MASK
 }

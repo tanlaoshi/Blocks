@@ -6,6 +6,7 @@
 #if LWIP_TCP
 
 #include "TcpSocketPrivate.h"
+#include "HalDevices.h"
 
 int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
     TOY_SOCK *S = SockGet(Sock);
@@ -17,7 +18,12 @@ int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
      * 整次传输出 Transport 的 DRAIN/Retry 封顶（曾 60s 卡死壳 2026-11-03）。
      */
     UINT32 WaitStart = HalMilliseconds();
-    const UINT32 WaitLimitMilliseconds = 2000u;
+    /*
+     * 堵 sndbuf 时单次放弃：有线短、Wi‑Fi 长（对表 ksend via=）。
+     * 短写由上层重试。
+     */
+    const UINT32 WaitLimitMilliseconds =
+        HalNetWifiShouldOwnTransmit() ? 2000u : 100u;
 
     if (S == NULL || Data == NULL) {
         return -EINVAL;
@@ -27,7 +33,7 @@ int TcpSocketSend(int Sock, const void *Data, UINTN Len) {
         u16_t Avail;
         int Phase;
 
-        /* 有进度就重算墙钟，避免慢 Wi‑Fi 上「总耗时>2s」被误截成短写 */
+        /* 有进度就重算墙钟，避免慢链路上「总耗时>限额」被误截成短写 */
         if ((UINT32)(HalMilliseconds() - WaitStart) >= WaitLimitMilliseconds) {
             break;
         }

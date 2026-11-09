@@ -35,7 +35,11 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
     UINT16 Partner;
     int Link;
 
-    if (!gDuoPhysicalOk) {
+    /*
+     * 与 CableIsUp 同门禁：未 bind / PHY 未就绪 → 无链路。
+     * 勿在 MDIO 忙窗臆造 up（假有线会驱 HalNetPoll LeavePrimary）。
+     */
+    if (!gDuoBound || !gDuoPhysicalOk) {
         return 0;
     }
     Link = DuoPhysicalLinkUp();
@@ -81,23 +85,19 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex) {
 }
 
 int BoardEthernetCableIsUp(void) {
-    UINT16 BasicStatus;
+    int LinkUp = 0;
     UINT32 Attempt;
 
-    /* WiFi Claim 有线 skip：须已 bind（对表 Stack），再读 BMSR */
-    if (!gDuoBound || !gDuoPhysicalOk) {
-        return 0;
-    }
+    /*
+     * WiFi Claim 有线 skip：与 GetLink 同口径（bind + BMSR 双读）。
+     * MDIO 连读失败 → down，勿臆造 up（旧 return 1 → 无网线 skip 课网）。
+     */
     for (Attempt = 0; Attempt < 3u; Attempt++) {
-        if (DuoPhysicalReadBasicStatus(gDuoPhysicalAddress, &BasicStatus) == 0) {
-            return (BasicStatus & DUO_PHYSICAL_BASIC_STATUS_LINK) != 0;
+        if (BoardEthernetGetLink(&LinkUp, 0, 0) != 0) {
+            return LinkUp != 0 ? 1 : 0;
         }
     }
-    /*
-     * Claim 窗 SDIO 忙时 MDIO 可能连读失败。已 bind 的有线热更路径按 up，
-     * 避免误判无网线去扫、卡死出壳。
-     */
-    return 1;
+    return 0;
 }
 
 int BoardEthernetProbe(void) {

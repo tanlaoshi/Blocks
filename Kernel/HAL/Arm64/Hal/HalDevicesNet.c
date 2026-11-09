@@ -1,11 +1,9 @@
 /*
  * HalDevicesNet.c — Arm64：Net 门面（PR-S3-haldev-1 / rnet-1）
  *
- * Pi 契约（2026-11-03）：插线→有线；无缆→Wi‑Fi（Adopt/探网武装）。
- * 插线 LeavePrimary；Adopt 时若 link up 则拒绝。
+ * Pi 契约：插线→有线；无缆→Wi‑Fi。主槽见 HalDevicesNetWifiPrimary.c。
  */
 #include "Hal.h"
-#include "HalConsole.h"
 #include "BoardConfig.h"
 #include "Driver.h"
 #include "DriverNet.h"
@@ -22,22 +20,8 @@ int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 #include "Wifi.h"
 #endif
 
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-static UINT32 gNicEpoch;
-static int gPrimaryKind;
-static int gPrimaryPinned;
-static UINT32 gSavedWiredIp;
-static UINT32 gSavedWiredMask;
-static UINT32 gSavedWiredGateway;
-static UINT32 gSavedWiredDns;
-static int gSavedWiredValid;
-
-static int EthernetLinkIsUp(void) {
-    int LinkUp = 0;
-
-    return (BoardEthernetGetLink(&LinkUp, 0, 0) != 0 && LinkUp != 0) ? 1 : 0;
-}
-#endif
+void HalNetPollWiredOverWifi(void);
+int HalNetPrimaryIsPinned(void);
 
 int HalNetInitialize(void) {
 #if BOARD_HAS_NET
@@ -64,49 +48,13 @@ int HalNetReady(void) {
     return DriverNetReady();
 }
 
-UINT32 HalNetNicEpoch(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    return gNicEpoch;
-#else
-    return 0;
-#endif
-}
-
-void HalNetNicEpochBump(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    gNicEpoch++;
-#endif
-}
-
 void HalNetPoll(void) {
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
-    /* 插线且未 Pin：退回有线（否证 via wifi → TCP header） */
-    if (gPrimaryPinned == 0 && gPrimaryKind == 1 && EthernetLinkIsUp()) {
-        HalNetWifiLeavePrimary();
-    }
-#endif
+    HalNetPollWiredOverWifi();
     if (LwIpActive()) {
         LwIpService();
         return;
     }
     DriverNetPoll();
-}
-
-int HalNetWifiShouldOwnTransmit(void) {
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
-    /* 有线 link up：绝对 SMSC（互斥） */
-    if (EthernetLinkIsUp()) {
-        return 0;
-    }
-    if (gPrimaryKind == 1) {
-        return 1;
-    }
-    /* 无缆探网：已武装、尚未 Adopt */
-    if (BoardWifiLinkOutputIsArmed()) {
-        return 1;
-    }
-#endif
-    return 0;
 }
 
 void HalNetGetMacAddress(UINT8 Mac[6]) {
@@ -176,84 +124,6 @@ int HalNetHasNicL2(void) {
 #endif
 }
 
-int HalNetPrimaryKind(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    if (gPrimaryPinned) {
-        return gPrimaryKind;
-    }
-    /* 未 AdoptLease 前保持有线（武装不抢 TX / ip） */
-    if (gPrimaryKind == 1) {
-        return 1;
-    }
-#endif
-    return HalNetReady() ? 0 : -1;
-#else
-    return -1;
-#endif
-}
-
-void HalNetPinPrimary(int Pin) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    gPrimaryPinned = Pin ? 1 : 0;
-#else
-    (void)Pin;
-#endif
-}
-
-void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (Ip == 0u) {
-        return;
-    }
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    /* 插线不 Adopt：热更/IP 走有线 */
-    if (EthernetLinkIsUp()) {
-        HalConsoleWriteSerial("net: adopt skip (wired link up)\n");
-        return;
-    }
-#endif
-    if (Mask == 0u) {
-        Mask = 0xFFFFFF00u;
-    }
-    if (gSavedWiredValid == 0 && gPrimaryKind == 0) {
-        gSavedWiredIp = NetConfigGetIp();
-        gSavedWiredMask = NetConfigGetMask();
-        gSavedWiredGateway = NetConfigGetGw();
-        gSavedWiredDns = NetConfigGetDns();
-        gSavedWiredValid = 1;
-    }
-    NetConfigAdopt(Ip, Mask, Gw, Dns);
-    (void)LwIpApplyConfig();
-    if (gPrimaryPinned == 0) {
-        gPrimaryKind = 1;
-    }
-    gNicEpoch++;
-    LwIpNetifSyncMac();
-#else
-    (void)Ip;
-    (void)Mask;
-    (void)Gw;
-    (void)Dns;
-#endif
-}
-
-void HalNetWifiLeavePrimary(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (gPrimaryPinned != 0) {
-        return;
-    }
-    if (gSavedWiredValid != 0 && gSavedWiredIp != 0u) {
-        NetConfigAdopt(gSavedWiredIp, gSavedWiredMask, gSavedWiredGateway,
-                       gSavedWiredDns);
-        (void)LwIpApplyConfig();
-    }
-    gPrimaryKind = 0;
-    gNicEpoch++;
-    LwIpNetifSyncMac();
-#endif
-}
-
 void HalNetDumpNicNote(void (*Write)(const char *Text)) {
     if (Write) {
 #if !BOARD_IS_VIRT && BOARD_HAS_NET
@@ -288,7 +158,7 @@ void HalNetFeedAlternateReceive(void) {
 
     if (BoardWifiLinkOutputIsArmed()) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
-        Budget = (gPrimaryPinned != 0) ? 32u : 16u;
+        Budget = (HalNetPrimaryIsPinned() != 0) ? 32u : 16u;
 #else
         Budget = 16u;
 #endif

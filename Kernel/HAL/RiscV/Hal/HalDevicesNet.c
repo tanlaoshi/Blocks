@@ -1,4 +1,4 @@
-/* HalDevicesNet.c — RiscV Net 门面；插线↔Wi‑Fi 互斥（对表 Pi） */
+/* HalDevicesNet.c — RiscV Net 门面；主槽见 HalDevicesNetWifiPrimary.c */
 #include "Hal.h"
 #include "BoardConfig.h"
 #include "Driver.h"
@@ -6,7 +6,6 @@
 #include "LwIp.h"
 #include "NetConfig.h"
 #include "Netif.h"
-/* WifiNetif.h 仅 duo-s；virt 无此头，须与 BOARD_HAS_WIFI 同条件 */
 #if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
 #include "WifiNetif.h"
 #endif
@@ -17,23 +16,7 @@
 int BoardEthernetGetLink(int *Up, UINT32 *Megabits, int *FullDuplex);
 #endif
 
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-static UINT32 gNicEpoch;
-/* 对表 X64 Nic.c：0=有线 1=无线；Pin 期间禁止自动切 */
-static int gPrimaryKind;
-static int gPrimaryPinned;
-static UINT32 gSavedWiredIp;
-static UINT32 gSavedWiredMask;
-static UINT32 gSavedWiredGw;
-static UINT32 gSavedWiredDns;
-static int gSavedWiredValid;
-
-static int EthernetLinkIsUp(void) {
-    int LinkUp = 0;
-
-    return (BoardEthernetGetLink(&LinkUp, 0, 0) != 0 && LinkUp != 0) ? 1 : 0;
-}
-#endif
+void HalNetPollWiredOverWifi(void);
 
 int HalNetInitialize(void) {
 #if BOARD_HAS_NET
@@ -66,26 +49,8 @@ int HalNetReady(void) {
     return DriverNetReady();
 }
 
-UINT32 HalNetNicEpoch(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    return gNicEpoch;
-#else
-    return 0;
-#endif
-}
-
-void HalNetNicEpochBump(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    gNicEpoch++;
-#endif
-}
-
 void HalNetPoll(void) {
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (gPrimaryPinned == 0 && gPrimaryKind == 1 && EthernetLinkIsUp()) {
-        HalNetWifiLeavePrimary();
-    }
-#endif
+    HalNetPollWiredOverWifi();
     if (LwIpActive()) {
         LwIpService();
         return;
@@ -165,94 +130,6 @@ int HalNetHasNicL2(void) {
     return HalNetReady() ? 1 : 0;
 #else
     return 0;
-#endif
-}
-
-int HalNetPrimaryKind(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    if (gPrimaryPinned) {
-        return gPrimaryKind;
-    }
-    /* 未 Adopt 保持有线；已 Adopt 报 Wi‑Fi（勿把 Wi‑Fi 址从 dwmac 送出） */
-    if (gPrimaryKind == 1) {
-        return 1;
-    }
-#endif
-    return DriverNetReady() ? 0 : (HalNetReady() ? 0 : -1);
-#else
-    return -1;
-#endif
-}
-
-void HalNetPinPrimary(int Pin) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    gPrimaryPinned = Pin ? 1 : 0;
-#else
-    (void)Pin;
-#endif
-}
-
-int HalNetWifiShouldOwnTransmit(void) {
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI && BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (EthernetLinkIsUp()) {
-        return 0;
-    }
-    if (gPrimaryKind == 1) {
-        return 1;
-    }
-#endif
-    return 0;
-}
-
-void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (Ip == 0u) {
-        return;
-    }
-#if defined(BOARD_HAS_WIFI) && BOARD_HAS_WIFI
-    if (EthernetLinkIsUp()) {
-        return;
-    }
-#endif
-    if (Mask == 0u) {
-        Mask = 0xFFFFFF00u; /* /24 */
-    }
-    /* 第一次切 Wi‑Fi 前记住有线租约，Disarm 后可回切 */
-    if (gSavedWiredValid == 0 && gPrimaryKind == 0) {
-        gSavedWiredIp = NetConfigGetIp();
-        gSavedWiredMask = NetConfigGetMask();
-        gSavedWiredGw = NetConfigGetGw();
-        gSavedWiredDns = NetConfigGetDns();
-        gSavedWiredValid = 1;
-    }
-    NetConfigAdopt(Ip, Mask, Gw, Dns);
-    (void)LwIpApplyConfig();
-    if (gPrimaryPinned == 0) {
-        gPrimaryKind = 1;
-    }
-    gNicEpoch++;
-    LwIpNetifSyncMac();
-#else
-    (void)Ip;
-    (void)Mask;
-    (void)Gw;
-    (void)Dns;
-#endif
-}
-
-void HalNetWifiLeavePrimary(void) {
-#if BOARD_HAS_NET && !BOARD_IS_VIRT
-    if (gPrimaryPinned != 0) {
-        return;
-    }
-    if (gSavedWiredValid != 0 && gSavedWiredIp != 0u) {
-        NetConfigAdopt(gSavedWiredIp, gSavedWiredMask, gSavedWiredGw, gSavedWiredDns);
-        (void)LwIpApplyConfig();
-    }
-    gPrimaryKind = 0;
-    gNicEpoch++;
-    LwIpNetifSyncMac();
 #endif
 }
 

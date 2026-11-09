@@ -80,8 +80,11 @@ static void ConsumeBootReport(const UINT8 *Report, const char *Prefix) {
         if (sPreviousReportValid != 0 && UsageWasPressed(sPreviousReport, Usage) != 0) {
             continue;
         }
+        /* Caps/NumLock 等开关键回 0：勿填 '#' */
         Ascii = UsbHostHidBootUsageToAscii(Usage, Modifier);
-        AppendAscii(Ascii != 0 ? Ascii : '#');
+        if (Ascii != 0) {
+            AppendAscii(Ascii);
+        }
     }
     for (Index = 0; Index < 8u; Index++) {
         sPreviousReport[Index] = Report[Index];

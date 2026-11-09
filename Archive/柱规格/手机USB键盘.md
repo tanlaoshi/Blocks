@@ -1,6 +1,6 @@
 # 柱规格 · 手机 USB 键盘（Pixel 8 / MIX 2）
 
-> **状态**：政策已放行；**`PR-PIXEL8-USB-3` ✅**（`k a2` + `KEY>`）。PIXEL8-2 splash ✅；USB-1/2 ✅。MIX2：splash/USB-2 ✅；USB-3 ⏸。活 ★（手机）空 → [`路线图1108.md`](../路线图1108.md)。  
+> **状态**：政策已放行；**`PR-PIXEL8-USB-3/3a` ✅**（`k a2` + `KEY>`；Caps/小键盘）。PIXEL8-2 splash ✅；USB-1/2 ✅。MIX2：splash/USB-2 ✅；USB-3 ⏸。活 ★（手机）空 → [`路线图1108.md`](../路线图1108.md)。  
 > **活排期**：[`路线图1108.md`](../路线图1108.md)。无输入法：HID Boot 键码直通壳即可。  
 > **Pixel 试错史**：[`过程/排障/Pixel8-USB-hub枚举试错历程.md`](../过程/排障/Pixel8-USB-hub枚举试错历程.md)。  
 > **MIX2 试错史**：[`过程/排障/MIX2-USB键盘试错历程.md`](../过程/排障/MIX2-USB键盘试错历程.md)（半程归档；有串口证据后再回灌）。  

@@ -129,6 +129,20 @@ int ParseBootMouse(UINT8 *Config, UINT16 Total, UINT8 *InterfaceIndex, UINT8 *En
 int ParseBootKeyboard(UINT8 *Config, UINT16 Total, UINT8 *InterfaceIndex, UINT8 *Endpoint,
                       UINT16 *MaxPacketSize, UINT8 *ScoreOut);
 void HidSetBootIdle(UINT8 Address, UINT8 InterfaceIndex);
+int HidEnumerateFetchDeviceAndAddress(UINT8 Hub, UINT8 Port, int LowSpeed,
+                                      UINT16 *Endpoint0MaxPacketSize,
+                                      UINT8 DeviceDescriptor[18],
+                                      int *DeviceDescriptorBytes, UINT8 *AddressOut);
+int HidEnumerateFetchConfiguration(UINT8 Hub, UINT8 Port, int LowSpeed, UINT8 Address,
+                                   UINT16 Endpoint0MaxPacketSize,
+                                   UINT8 ConfigurationHeader[9], UINT8 Configuration[256],
+                                   UINT16 *ConfigurationLengthOut);
+int HidEnumerateBindBootInterfaces(UINT8 Hub, UINT8 Port, int LowSpeed, UINT8 Address,
+                                   UINT16 Endpoint0MaxPacketSize, UINT8 ConfigurationValue,
+                                   int GotMouse, UINT8 MouseInterface, UINT8 MouseEndpoint,
+                                   UINT16 MouseMaxPacketSize, int GotKeyboard,
+                                   UINT8 KeyboardInterface, UINT8 KeyboardEndpoint,
+                                   UINT16 KeyboardMaxPacketSize);
 int EnumerateHidOnPort(UINT8 Hub, UINT8 Port, UINT16 PortStatus);
 void HidPoll(void);
 int EnumerateRootHub(void);

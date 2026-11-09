@@ -57,4 +57,11 @@ int HalBluetoothAclCreditQuery(UINT16 *PacketLengthOut, UINT16 *PacketsFreeOut);
 /* 发一帧测试 ACL OUT（无连接句柄亦可）；成功 → 0 */
 int HalBluetoothAclOutTest(void);
 
+/*
+ * PR-BTM-3：LE 扫描；TimeoutMs=0 → 默认约 8s。鼠优先分片。
+ * 成功 → 条数；未 Ready / 无 LE → -1。
+ */
+int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                       UINT32 TimeoutMs);
+
 #endif

@@ -149,23 +149,60 @@ int BluetoothHciCommandTimeout(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLe
             return -1;
         }
     } else {
+        UINT64 WaitStart;
+        UINT64 WaitNeed;
+        int GotComplete = 0;
+
         BluetoothHciArmEvent();
         if (BluetoothHciSendRaw(Opcode, Params, ParamLen) < 0) {
             BluetoothRequeueHid();
             return -1;
         }
-        if (BluetoothHciWaitArmed(WaitMs) < 0) {
+        /*
+         * 泵队列可能先吐厂商/LE Meta 等非 CC。须等到本 opcode 的
+         * Command Complete；勿把首个事件当失败（lescan 曾因此假红）。
+         */
+        WaitStart = ReadTsc();
+        WaitNeed = (UINT64)WaitMs * 3000000ULL;
+        while (ReadTsc() - WaitStart < WaitNeed) {
+            UINT64 Elapsed = ReadTsc() - WaitStart;
+            UINT32 SliceMs;
+
+            if (Elapsed >= WaitNeed) {
+                break;
+            }
+            SliceMs = (UINT32)((WaitNeed - Elapsed) / 3000000ULL);
+            if (SliceMs < 1u) {
+                SliceMs = 1u;
+            }
+            if (BluetoothHciWaitArmed(SliceMs) < 0) {
+                continue;
+            }
+            if (gBluetoothEventBuffer[0] != HCI_EVENT_COMMAND_COMPLETE) {
+                BootLogHex("Boot: Bluetooth HCI skip evt=",
+                           gBluetoothEventBuffer[0], 2);
+                continue;
+            }
+            ParameterLength = gBluetoothEventBuffer[1];
+            if (ParameterLength < 3u) {
+                continue;
+            }
+            GotOpcode = (UINT16)(gBluetoothEventBuffer[3] |
+                                 (gBluetoothEventBuffer[4] << 8));
+            if (GotOpcode != Opcode) {
+                BootLogHex("Boot: Bluetooth HCI skip CC op=", GotOpcode, 4);
+                continue;
+            }
+            GotComplete = 1;
+            break;
+        }
+        if (!GotComplete) {
             UINT32 *EventEndpointContext;
             UINT32 EndpointState = 0xFFu;
             UINT32 Unmatched = gStatUnmatched;
             UINT64 Dequeue = 0;
             UINT64 Armed = PointerToPhysical(gBluetoothEventRing);
 
-            /*
-             * 取证：Output Context Event EP。
-             * st=1 Running + dequeue 仍停在武装 TRB + unmatched=0
-             * → HC 在等设备；设备没往 Interrupt IN 吐 HCI 事件。
-             */
             if (gBluetoothSlot != 0 && gBluetoothEventDci != 0 && gCtxSize != 0) {
                 FlushDma(gBluetoothDeviceContext,
                          gCtxSize * (gBluetoothEventDci + 1u));
@@ -188,21 +225,8 @@ int BluetoothHciCommandTimeout(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLe
             return -1;
         }
     }
-    if (gBluetoothEventBuffer[0] != HCI_EVENT_COMMAND_COMPLETE) {
-        BootLogHex("Boot: Bluetooth event code=", gBluetoothEventBuffer[0], 2);
-        BootLogHex(" want-op=", Opcode, 4);
-        BluetoothRequeueHid();
-        return -1;
-    }
     ParameterLength = gBluetoothEventBuffer[1];
     if (ParameterLength < 3u) {
-        BluetoothRequeueHid();
-        return -1;
-    }
-    GotOpcode = (UINT16)(gBluetoothEventBuffer[3] |
-                         (gBluetoothEventBuffer[4] << 8));
-    if (GotOpcode != Opcode) {
-        BootLogHex("Boot: Bluetooth CC opcode=", GotOpcode, 4);
         BluetoothRequeueHid();
         return -1;
     }

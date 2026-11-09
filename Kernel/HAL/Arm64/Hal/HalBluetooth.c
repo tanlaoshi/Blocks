@@ -95,3 +95,11 @@ int HalBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
 int HalBluetoothAclOutTest(void) {
     return -1;
 }
+
+int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                       UINT32 TimeoutMs) {
+    (void)Out;
+    (void)OutMax;
+    (void)TimeoutMs;
+    return -1;
+}

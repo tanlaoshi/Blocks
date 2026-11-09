@@ -169,6 +169,46 @@ static void CommandBluetoothInitialize(void) {
     gConsole.Write(HalBluetoothReady() ? ", ready\n" : ", not ready\n");
 }
 
+static void CommandBluetoothLeScan(void) {
+    HAL_BLUETOOTH_SCAN_ENTRY Table[HAL_BLUETOOTH_SCAN_MAX];
+    int N;
+    int I;
+
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    gConsole.Write("bt: lescan (~8s)...\n");
+    N = HalBluetoothLeScan(Table, HAL_BLUETOOTH_SCAN_MAX, 0);
+    if (N < 0) {
+        gConsole.Write("bt: lescan fail\n");
+        return;
+    }
+    if (N == 0) {
+        gConsole.Write("bt: lescan no devices (Master pairing mode?)\n");
+        return;
+    }
+    for (I = 0; I < N; I++) {
+        char Line[8];
+        int D = I + 1;
+
+        gConsole.Write("bt: ");
+        Line[0] = (char)('0' + (D / 10));
+        Line[1] = (char)('0' + (D % 10));
+        Line[2] = 0;
+        if (D < 10) {
+            gConsole.Write(&Line[1]);
+        } else {
+            gConsole.Write(Line);
+        }
+        gConsole.Write(" ");
+        WriteAddress(Table[I].Address);
+        gConsole.Write(" ");
+        gConsole.Write(Table[I].Name[0] ? Table[I].Name : "(no name)");
+        gConsole.Write("\n");
+    }
+}
+
 static void CommandBluetoothAclTest(void) {
     UINT16 PacketLength = 0;
     UINT16 PacketsFree = 0;
@@ -219,10 +259,15 @@ static void CommandBluetooth(int Argc, char **Argv) {
         CommandBluetoothAclTest();
         return;
     }
+    if (Argc >= 2 && ArgEqualIgnoreCase(Argv[1], "lescan")) {
+        CommandBluetoothLeScan();
+        return;
+    }
     CommandBluetoothInfo();
 }
 
 void ShellCommandsBluetoothRegister(void) {
-    gConsole.Register("bt", "bt [info|init|scan|visible|hide|acltest]",
+    gConsole.Register("bt",
+                      "bt [info|init|scan|lescan|visible|hide|acltest]",
                       CommandBluetooth);
 }

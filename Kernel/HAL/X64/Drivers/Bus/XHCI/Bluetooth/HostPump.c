@@ -67,6 +67,10 @@ int BluetoothHostEventTake(UINT8 *Out, UINT32 Capacity, UINT32 *OutLength) {
     return 1;
 }
 
+void BluetoothHostEventQueueFlush(void) {
+    EventQueueReset();
+}
+
 static void ApplyNumberOfCompletedPackets(const UINT8 *Event, UINT32 Length) {
     UINT8 HandleCount;
     UINT8 Offset;

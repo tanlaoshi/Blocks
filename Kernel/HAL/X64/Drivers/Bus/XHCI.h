@@ -147,6 +147,8 @@ void XhciBluetoothHostPump(void); /* PR-BTM-1；未 Start 早退 */
 int XhciBluetoothAclCreditQuery(UINT16 *PacketLengthOut,
                                 UINT16 *PacketsFreeOut); /* PR-BTM-2 */
 int XhciBluetoothAclOutTest(void);
+int XhciBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
+                        UINT32 TimeoutMs); /* PR-BTM-3 */
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

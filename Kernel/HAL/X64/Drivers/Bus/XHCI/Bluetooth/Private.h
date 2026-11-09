@@ -33,8 +33,13 @@
 #define HCI_OPCODE_WRITE_CLASS_OF_DEVICE 0x0C24u
 #define HCI_OPCODE_WRITE_INQUIRY_MODE 0x0C45u
 #define HCI_OPCODE_WRITE_EXTENDED_INQUIRY_RESPONSE 0x0C52u
+#define HCI_OPCODE_SET_EVENT_MASK 0x0C01u
+#define HCI_OPCODE_WRITE_LE_HOST_SUPPORTED 0x0C6Du
 #define HCI_OPCODE_READ_BUFFER_SIZE 0x1005u
 #define HCI_OPCODE_READ_BD_ADDR 0x1009u
+#define HCI_OPCODE_LE_SET_EVENT_MASK 0x2001u
+#define HCI_OPCODE_LE_SET_SCAN_PARAMETERS 0x200Bu
+#define HCI_OPCODE_LE_SET_SCAN_ENABLE 0x200Cu
 #define HCI_EVENT_INQUIRY_COMPLETE 0x01u
 #define HCI_EVENT_INQUIRY_RESULT 0x02u
 #define HCI_EVENT_REMOTE_NAME_COMPLETE 0x07u
@@ -43,6 +48,7 @@
 #define HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS 0x13u
 #define HCI_EVENT_INQUIRY_RESULT_RSSI 0x22u
 #define HCI_EVENT_EXTENDED_INQUIRY_RESULT 0x2Fu
+#define HCI_EVENT_LE_META 0x3Eu
 #define HCI_EIR_NAME_SHORT 0x08u
 #define HCI_EIR_NAME_COMPLETE 0x09u
 /*
@@ -139,10 +145,12 @@ void BluetoothHostPumpConsumeEvent(void);
 void BluetoothHostPumpConsumeAclIn(void);
 void BluetoothHostPumpAclInReset(void);
 int BluetoothHostEventTake(UINT8 *Out, UINT32 Capacity, UINT32 *OutLength);
+void BluetoothHostEventQueueFlush(void);
 int BluetoothHostPumpWaitTakeEvent(void);
 void BluetoothHostPump(void);
 int BluetoothHostPumpStart(void);
 void BluetoothHostPumpStop(void);
+int BluetoothLeHostSupportApply(void);
 void BluetoothAclFlowReset(void);
 int BluetoothAclFlowInitialize(void);
 void BluetoothAclCreditReturn(UINT16 CompletedPackets);

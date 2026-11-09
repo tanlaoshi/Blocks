@@ -9,14 +9,16 @@
  *   主函数（本文件末尾，36 行）只按顺序调用，不含寄存器/延时/循环/打印；
  *   ProbePrepare / ControllerBringUp / ModulePowerOn / ProbeFinish → SdioInitialize.c
  *   CardEnumerate / CccrConfigure / SpeedSwitch / BusWidthSwitch / FunctionEnable
- *                                                               → SdioTransfer.c
- *   CisVerify / CisReport                                       → SdioCis.c
+ *                                                               → SdioEnumerate.c
+ *   CisVerify / CisReport                                       → SdioCisVerify.c
  * 步骤间上下文 WIFI_PROBE 定义在 Private.h（多文件共用）。
  * 其余按职责拆到同目录：
- *   SdioInitialize.c     probe 生命周期 + 控制器/电源起步
- *   SdioCis.c      卡是谁（CIS 解析、身份判定、fn1 现场）
- *   SdioTransfer.c 枚举/总线配置、CMD53 收发、错误位、总线恢复
- *   SdioSelfTest.c 通道能不能用（自检查询）
+ *   SdioInitialize.c  probe 生命周期 + 控制器/电源起步
+ *   SdioCis.c         卡是谁（CIS 解析、身份判定、fn1 现场）
+ *   SdioCisVerify.c   CIS 验收 + 身份报告
+ *   SdioEnumerate.c   CMD0/5/3/7 + CCCR/HS/4-bit/fn1 使能
+ *   SdioTransfer.c    CMD53/错误位/总线恢复 + CMD5 探活
+ *   SdioSelfTest.c    通道能不能用（自检查询）
  *
  * 时序全部对照 Archive/DUO-WiFi-SDIO时序.md §2 与厂商驱动。
  *

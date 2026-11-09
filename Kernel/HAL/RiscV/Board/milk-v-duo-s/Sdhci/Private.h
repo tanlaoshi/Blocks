@@ -121,7 +121,7 @@ int SdhciWifiChipIsD80(void);
 int SdhciWifiBusRecover(SDHCI_HOST *Host);
 int SdhciHostInitialize(SDHCI_HOST *Host);
 
-/* ---- SDIO 枚举（Sdio.c / SdioCis.c / SdioTransfer.c / SdioSelfTest.c） ---- */
+/* ---- SDIO 枚举（Sdio.c / SdioInitialize.c / SdioCis*.c / SdioEnumerate.c / SdioTransfer.c / SdioSelfTest.c） ---- */
 /* CCCR / FBR 偏移（include/linux/mmc/sdio.h） */
 #define SDIO_CCCR_CCCR 0x00u
 #define SDIO_CCCR_IOEX 0x02u
@@ -161,7 +161,7 @@ typedef struct SDIO_CIS_INFO {
 
 /*
  * SdhciWifiInitialize 的步骤上下文：原函数的局部变量集中在这里，主函数只声明
- * 一个、按指针传给每一步。步骤分散在 SdioInitialize.c / SdioTransfer.c / SdioCis.c，
+ * 一个、按指针传给每一步。步骤分散在 SdioInitialize / SdioEnumerate / SdioCisVerify，
  * 所以类型放本头（不是 Sdio.c 私有）。
  */
 typedef struct WIFI_PROBE {

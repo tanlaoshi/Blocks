@@ -158,9 +158,17 @@ int BluetoothLeHostSupportApply(void);
 int BluetoothLeScanEntryGet(UINTN OneBasedIndex, UINT8 Address[6],
                             UINT8 *AddressTypeOut);
 int BluetoothLeConnectionHandleGet(UINT16 *Out);
+int BluetoothLePeerAddressGet(UINT8 Out[6], UINT8 *AddressTypeOut);
+int BluetoothLeIsConnected(void);
+void BluetoothLeConnectionStateClear(void);
+void BluetoothLeConnectionStateSet(UINT16 Handle, const UINT8 Address[6],
+                                   UINT8 AddressType);
 void BluetoothLeAbortPending(void);
 void BluetoothLeLastErrorSet(UINT16 Opcode, UINT8 Status);
 void BluetoothLeLastErrorGet(UINT16 *OpcodeOut, UINT8 *StatusOut);
+void BluetoothAclInboundFlush(void);
+void BluetoothAclInboundPush(const UINT8 *Payload, UINT16 Length);
+int BluetoothAclInboundTake(UINT8 *Out, UINT16 Capacity, UINT16 *OutLength);
 void BluetoothAclFlowReset(void);
 int BluetoothAclFlowInitialize(void);
 void BluetoothAclCreditReturn(UINT16 CompletedPackets);
@@ -168,5 +176,17 @@ int BluetoothAclCreditQuery(UINT16 *PacketLengthOut, UINT16 *PacketsFreeOut);
 int BluetoothAclOutSend(UINT16 ConnectionHandle, const UINT8 *Payload,
                         UINT16 PayloadLength);
 int BluetoothAclOutTest(void);
+int BluetoothSmpAesE(const UINT8 Key[16], const UINT8 Plain[16], UINT8 Out[16]);
+int BluetoothSmpC1(const UINT8 Key[16], const UINT8 Random[16],
+                   const UINT8 PairingRequest[7],
+                   const UINT8 PairingResponse[7], UINT8 InitiatorAddressType,
+                   const UINT8 InitiatorAddress[6], UINT8 ResponderAddressType,
+                   const UINT8 ResponderAddress[6], UINT8 Out[16]);
+int BluetoothSmpS1(const UINT8 Key[16], const UINT8 Random1[16],
+                   const UINT8 Random2[16], UINT8 Out[16]);
+void BluetoothSmpFillRandom(UINT8 Out[16]);
+int BluetoothSmpStartEncryption(UINT16 Handle, const UINT8 ShortTermKey[16]);
+int BluetoothSmpWaitEncryptionChange(UINT16 Handle, UINT32 TimeoutMs);
+int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs);
 
 #endif

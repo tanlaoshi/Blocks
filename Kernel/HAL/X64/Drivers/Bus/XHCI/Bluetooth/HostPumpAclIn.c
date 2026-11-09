@@ -79,6 +79,10 @@ void BluetoothHostPumpConsumeAclIn(void) {
         if (sAclAssembleBytes < Need) {
             break;
         }
+        /* 完整 HCI ACL：头 4 + 载荷；SMP 取 L2CAP 体 */
+        if (Need > 4u) {
+            BluetoothAclInboundPush(&sAclAssemble[4], (UINT16)(Need - 4u));
+        }
         for (Index = Need; Index < sAclAssembleBytes; Index++) {
             sAclAssemble[Index - Need] = sAclAssemble[Index];
         }

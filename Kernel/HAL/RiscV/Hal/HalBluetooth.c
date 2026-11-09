@@ -150,3 +150,8 @@ void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
         *StatusOut = 0;
     }
 }
+
+int HalBluetoothSmpJustWorks(UINT32 TimeoutMs) {
+    (void)TimeoutMs;
+    return -1;
+}

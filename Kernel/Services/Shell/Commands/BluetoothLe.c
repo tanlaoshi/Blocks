@@ -123,3 +123,25 @@ void ShellBluetoothLeDisconnect(void) {
     }
     gConsole.Write("bt: le disconnected\n");
 }
+
+void ShellBluetoothSmpJustWorks(void) {
+    UINT16 Stage = 0;
+    UINT8 Status = 0;
+
+    if (!HalBluetoothReady()) {
+        gConsole.Write("bt: not ready\n");
+        return;
+    }
+    gConsole.Write("bt: smp pairing...\n");
+    if (HalBluetoothSmpJustWorks(0) != 0) {
+        HalBluetoothLeLastError(&Stage, &Status);
+        gConsole.Write("bt: smp fail stage=");
+        WriteHexByte((UINT8)((Stage >> 8) & 0xFFu));
+        WriteHexByte((UINT8)(Stage & 0xFFu));
+        gConsole.Write(" status=");
+        WriteHexByte(Status);
+        gConsole.Write("\n");
+        return;
+    }
+    gConsole.Write("bt: smp ok\n");
+}

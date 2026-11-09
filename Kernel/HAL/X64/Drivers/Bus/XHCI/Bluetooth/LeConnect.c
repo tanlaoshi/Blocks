@@ -6,19 +6,7 @@
 #define LE_CONNECT_DEFAULT_MS 15000u
 #define LE_DISCONNECT_DEFAULT_MS 5000u
 #define HCI_REASON_REMOTE_USER_TERMINATED 0x13u
-static UINT16 sLeConnectionHandle;
-static int sLeConnected;
 static int sLeCreatePending;
-int BluetoothLeConnectionHandleGet(UINT16 *Out) {
-    if (Out == 0 || !sLeConnected || sLeConnectionHandle == 0u) {
-        if (Out != 0) {
-            *Out = 0;
-        }
-        return -1;
-    }
-    *Out = sLeConnectionHandle;
-    return 0;
-}
 static void LeConnectPumpSlice(void) {
     if (HalCpuIsHypervisor()) {
         ProcessEvents();
@@ -55,10 +43,12 @@ static int WaitCommandStatus(UINT16 Opcode, UINT32 TimeoutMs) {
     return -1;
 }
 static int ParseConnectionComplete(const UINT8 *Event, UINT32 Length,
-                                   UINT16 *HandleOut, UINT8 *StatusOut) {
+                                   UINT16 *HandleOut, UINT8 *StatusOut,
+                                   UINT8 *PeerTypeOut, UINT8 PeerAddressOut[6]) {
     UINT16 Handle;
+    UINT32 Byte;
     /* 0x3E plen sub=01 status handle[2] role peer_type addr[6] … */
-    if (Length < 12u || Event[0] != HCI_EVENT_LE_META ||
+    if (Length < 14u || Event[0] != HCI_EVENT_LE_META ||
         Event[2] != HCI_LE_SUBEVENT_CONNECTION_COMPLETE) {
         return 0;
     }
@@ -70,9 +60,18 @@ static int ParseConnectionComplete(const UINT8 *Event, UINT32 Length,
     if (HandleOut != 0) {
         *HandleOut = Handle;
     }
+    if (PeerTypeOut != 0) {
+        *PeerTypeOut = Event[7];
+    }
+    if (PeerAddressOut != 0) {
+        for (Byte = 0; Byte < 6u; Byte++) {
+            PeerAddressOut[Byte] = Event[8u + Byte];
+        }
+    }
     return 1;
 }
-static int WaitConnectionComplete(UINT32 TimeoutMs, UINT16 *HandleOut) {
+static int WaitConnectionComplete(UINT32 TimeoutMs, UINT16 *HandleOut,
+                                  UINT8 *PeerTypeOut, UINT8 PeerAddressOut[6]) {
     UINT64 Start = ReadTsc();
     UINT64 Need = (UINT64)TimeoutMs * 3000000ULL;
     while (ReadTsc() - Start < Need) {
@@ -82,7 +81,8 @@ static int WaitConnectionComplete(UINT32 TimeoutMs, UINT16 *HandleOut) {
         while (BluetoothHostEventTake(Event, BLUETOOTH_EVENT_MAX, &Length)) {
             UINT8 Status = 0xFFu;
             UINT16 Handle = 0;
-            if (ParseConnectionComplete(Event, Length, &Handle, &Status)) {
+            if (ParseConnectionComplete(Event, Length, &Handle, &Status,
+                                        PeerTypeOut, PeerAddressOut)) {
                 if (Status != 0u) {
                     BootLogHex("bt: le Connection Complete status=", Status, 2);
                     return -1;
@@ -141,7 +141,8 @@ static void DrainConnectionComplete(UINT32 TimeoutMs) {
         while (BluetoothHostEventTake(Event, BLUETOOTH_EVENT_MAX, &Length)) {
             UINT8 Status = 0xFFu;
             UINT16 Handle = 0;
-            if (ParseConnectionComplete(Event, Length, &Handle, &Status)) {
+            if (ParseConnectionComplete(Event, Length, &Handle, &Status, 0,
+                                        0)) {
                 (void)Handle;
                 (void)Status;
                 return;
@@ -163,7 +164,7 @@ static int CancelCreateConnection(void) {
     return 0;
 }
 void BluetoothLeAbortPending(void) {
-    if (sLeConnected != 0) {
+    if (BluetoothLeIsConnected() != 0) {
         (void)XhciBluetoothLeDisconnect();
     }
     /* 无未完成 Create 时勿发 Cancel——Intel 上易搅乱后续 LE 命令 */
@@ -210,16 +211,14 @@ static int SendCreateConnection(const UINT8 Address[6], UINT8 AddressType) {
 }
 int XhciBluetoothLeDisconnect(void) {
     UINT8 Params[3];
-    UINT16 Handle;
-    if (!sLeConnected || sLeConnectionHandle == 0u) {
+    UINT16 Handle = 0;
+    if (BluetoothLeConnectionHandleGet(&Handle) < 0) {
         return 0;
     }
     if (!gBluetoothReady || !BluetoothHostPumpIsActive()) {
-        sLeConnected = 0;
-        sLeConnectionHandle = 0;
+        BluetoothLeConnectionStateClear();
         return -1;
     }
-    Handle = sLeConnectionHandle;
     Params[0] = (UINT8)(Handle & 0xFFu);
     Params[1] = (UINT8)((Handle >> 8) & 0x0Fu);
     Params[2] = HCI_REASON_REMOTE_USER_TERMINATED;
@@ -235,8 +234,7 @@ int XhciBluetoothLeDisconnect(void) {
         BluetoothRequeueHid();
         return -1;
     }
-    sLeConnected = 0;
-    sLeConnectionHandle = 0;
+    BluetoothLeConnectionStateClear();
     BootLog("bt: le disconnected\n");
     BluetoothRequeueHid();
     return 0;
@@ -244,7 +242,10 @@ int XhciBluetoothLeDisconnect(void) {
 int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
     UINT8 Address[6];
     UINT8 AddressType = 0;
+    UINT8 PeerAddress[6];
+    UINT8 PeerType = 0;
     UINT16 Handle = 0;
+    UINT32 Byte;
     int Result = -1;
     if (!gBluetoothReady || !BluetoothHostPumpIsActive()) {
         BootLog("bt: le connect need host pump\n");
@@ -257,7 +258,7 @@ int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
     if (TimeoutMs == 0u) {
         TimeoutMs = LE_CONNECT_DEFAULT_MS;
     }
-    if (sLeConnected) {
+    if (BluetoothLeIsConnected() != 0) {
         (void)XhciBluetoothLeDisconnect();
     }
     if (BluetoothLeHostSupportApply() < 0) {
@@ -269,14 +270,18 @@ int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
         BluetoothRequeueHid();
         return -1;
     }
-    if (WaitConnectionComplete(TimeoutMs, &Handle) < 0) {
+    for (Byte = 0; Byte < 6u; Byte++) {
+        PeerAddress[Byte] = Address[Byte];
+    }
+    PeerType = AddressType;
+    if (WaitConnectionComplete(TimeoutMs, &Handle, &PeerType, PeerAddress) <
+        0) {
         (void)CancelCreateConnection();
         BluetoothRequeueHid();
         return -1;
     }
     sLeCreatePending = 0;
-    sLeConnectionHandle = Handle;
-    sLeConnected = 1;
+    BluetoothLeConnectionStateSet(Handle, PeerAddress, PeerType);
     BootLogHex("bt: le connected handle=", Handle, 4);
     BootLog("\n");
     Result = 0;

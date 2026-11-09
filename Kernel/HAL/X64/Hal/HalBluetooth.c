@@ -130,3 +130,7 @@ int HalBluetoothLeDisconnect(void) {
 void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
     XhciBluetoothLeLastError(OpcodeOut, StatusOut);
 }
+
+int HalBluetoothSmpJustWorks(UINT32 TimeoutMs) {
+    return XhciBluetoothSmpJustWorks(TimeoutMs);
+}

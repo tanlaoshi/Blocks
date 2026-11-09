@@ -87,4 +87,10 @@ int HalBluetoothLeDisconnect(void);
 /* 最近一次 LE 命令失败：Opcode / HCI Status（0xFE=等 CC 失败） */
 void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 
+/*
+ * PR-BTM-5：SMP Just Works（须已 LE 连接）；TimeoutMs=0 → 约 20s。
+ * 成功 → 0（串口 `bt: smp ok`）；失败 → -1。
+ */
+int HalBluetoothSmpJustWorks(UINT32 TimeoutMs);
+
 #endif

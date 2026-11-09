@@ -46,19 +46,32 @@ int BluetoothAclFlowInitialize(void) {
         return 0;
     }
     ZeroMemory(ReturnData, sizeof(ReturnData));
-    if (BluetoothHciCommand(HCI_OPCODE_READ_BUFFER_SIZE, 0, 0, &Status,
-                            ReturnData, sizeof(ReturnData), &ReturnLength) < 0) {
-        BootLog("bt: acl Read_Buffer_Size fail\n");
-        return -1;
+    /* LE 连接优先 LE Read Buffer Size（0x2002）；失败再经典 Read_Buffer_Size */
+    if (BluetoothHciCommand(0x2002u, 0, 0, &Status, ReturnData,
+                            sizeof(ReturnData), &ReturnLength) == 0 &&
+        Status == 0 && ReturnLength >= 3u) {
+        sAclPacketLengthMax =
+            (UINT16)(ReturnData[0] | ((UINT16)ReturnData[1] << 8));
+        sAclPacketsTotal = ReturnData[2];
+    } else {
+        Status = 0xFFu;
+        ReturnLength = 0;
+        ZeroMemory(ReturnData, sizeof(ReturnData));
+        if (BluetoothHciCommand(HCI_OPCODE_READ_BUFFER_SIZE, 0, 0, &Status,
+                                ReturnData, sizeof(ReturnData),
+                                &ReturnLength) < 0) {
+            BootLog("bt: acl Read_Buffer_Size fail\n");
+            return -1;
+        }
+        if (Status != 0 || ReturnLength < 7u) {
+            BootLogHex("bt: acl Read_Buffer_Size status=", Status, 2);
+            return -1;
+        }
+        sAclPacketLengthMax =
+            (UINT16)(ReturnData[0] | ((UINT16)ReturnData[1] << 8));
+        sAclPacketsTotal =
+            (UINT16)(ReturnData[3] | ((UINT16)ReturnData[4] << 8));
     }
-    if (Status != 0 || ReturnLength < 7u) {
-        BootLogHex("bt: acl Read_Buffer_Size status=", Status, 2);
-        return -1;
-    }
-    sAclPacketLengthMax =
-        (UINT16)(ReturnData[0] | ((UINT16)ReturnData[1] << 8));
-    sAclPacketsTotal =
-        (UINT16)(ReturnData[3] | ((UINT16)ReturnData[4] << 8));
     if (sAclPacketLengthMax == 0u) {
         sAclPacketLengthMax = 27u;
     }
@@ -160,8 +173,11 @@ int BluetoothAclOutSend(UINT16 ConnectionHandle, const UINT8 *Payload,
         __asm__ volatile("pause");
     }
 
-    /* PB=10 start non-auto-flushable；BC=00 point-to-point */
-    Header = (UINT16)((ConnectionHandle & 0x0FFFu) | (0x2u << 12));
+    /*
+     * LE-U：PB=00 First non-auto-flushable（对表 BlueZ HCI_ACL_START_NO_FLUSH）。
+     * PB=10 易导致对端不收 L2CAP/SMP。
+     */
+    Header = (UINT16)((ConnectionHandle & 0x0FFFu) | (0x0u << 12));
     sAclOutDmaBuffer[0] = (UINT8)(Header & 0xFFu);
     sAclOutDmaBuffer[1] = (UINT8)((Header >> 8) & 0xFFu);
     sAclOutDmaBuffer[2] = (UINT8)(PayloadLength & 0xFFu);

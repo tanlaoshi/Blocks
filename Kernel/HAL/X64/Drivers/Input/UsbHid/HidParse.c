@@ -45,7 +45,13 @@ int ParseConfig(UINT8 *Cfg, UINT16 Total, UINT8 Speed,
                 *MaxPacketSize = (UINT16)(Cfg[Off + 4] | (Cfg[Off + 5] << 8));
                 *Interval = Cfg[Off + 6];
                 (void)Speed;
+                /*
+                 * 早退前必须写 gKeyboardParseScore。旧逻辑 BestScore==3 直接 return，
+                 * 分数仍为 0 → RealPcRejectMouseExtraAsKeyboard 把真 Boot 键+鼠棒
+                 *（如 CX 2.4G）误判成「鼠+弱 HID」，整设备只认鼠、键永 00/00。
+                 */
                 if (BestScore == 3) {
+                    gKeyboardParseScore = 3;
                     return 1;
                 }
             }

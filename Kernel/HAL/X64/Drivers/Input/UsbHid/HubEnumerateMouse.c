@@ -14,6 +14,14 @@ int EnumerateHubChildrenForMouse(void) {
     if (gHubSlotId == 0 || gMouseSlotId != 0) {
         return 0;
     }
+    /*
+     * MSC 已认：禁止再对 hub 子口 Reset/Address（与根口 deferred / Wifi 同纪律）。
+     * hub EP0 与盘争用 → 同样可打出 bulk cc=0x04。
+     */
+    if (gMscClaimed || XhciPortEnumerateIsFrozen()) {
+        BootLog("Boot: XHCI hub mouse skip (msc claimed or freeze)\n");
+        return 0;
+    }
     if (MaxP == 0 || MaxP > 15) {
         MaxP = 8;
     }
@@ -22,6 +30,11 @@ int EnumerateHubChildrenForMouse(void) {
         UINT8 Speed;
         volatile int D;
 
+        /* 跳过已认 MSC 子口（同 hub） */
+        if (gMscHubSlot != 0 && gMscHubSlot == (UINT8)gHubSlotId &&
+            Port == gMscTtPort) {
+            continue;
+        }
         (void)HubSetPortFeature(Port, HUB_FEAT_PORT_POWER);
         if (!HalCpuIsHypervisor()) {
             StallMilliseconds(100);

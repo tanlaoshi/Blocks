@@ -401,6 +401,8 @@ int EnumerateAndBind(void);
 /* PR-F-xhci-1 */
 int EnumerateTryRootPort(UINT32 P);
 void EnumerateBindMouseAfterKeyboard(void);
+/* 根口已有键/鼠/hub/MSC/boot-watch/FTDI/CDC/BT 主人 → 禁再 Reset/Address */
+int XhciRootPortIsOwned(UINT32 Port);
 /* PR-F-xhci-2 */
 void HardwareInitializeRealPcDmar(void);
 int HardwareInitializeMapCapability(UINT64 BaseAddress, int RealPc, char *B);

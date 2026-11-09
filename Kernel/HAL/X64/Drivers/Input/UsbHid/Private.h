@@ -109,6 +109,13 @@ extern UINT32 gHubRootPort;
 extern UINT8 gHubNumPorts;
 extern UINT32 gPortNoHid;
 extern UINT32 gPortNeedForcePr;
+extern UINT32 gMscPort;
+extern int gMscClaimed;
+extern UINT8 gMscHubSlot;
+extern UINT8 gMscTtPort;
+
+int XhciRootPortIsOwned(UINT32 Port);
+int XhciPortEnumerateIsFrozen(void);
 extern UINT8 gSlotEndpoint0UsesKeyboardRing[DCBAA_SLOTS + 1];
 extern UINT32 gCmdCode;
 extern volatile UINT32 gIntrDone;

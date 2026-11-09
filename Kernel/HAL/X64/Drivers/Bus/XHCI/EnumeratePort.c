@@ -183,15 +183,24 @@ void EnumerateBindMouseAfterKeyboard(void) {
             if (P == gPort1) {
                 continue;
             }
+            /* 占用门闩在 MouseClaimPortInitialize → XhciRootPortIsOwned */
             if (MousePortInitialize(P)) {
                 BootLog("Boot: XHCI mouse on other port\n");
                 break;
             }
         }
     }
+    /*
+     * 真机：禁止同 slot 复合加鼠。CX 2.4G 等 Boot 键+鼠棒无独立鼠口时，
+     * 旧 fallback 会弄死键 IN（k=0）；保键优先。QEMU 仍可 composite。
+     */
     if (gMouseSlotId == 0) {
-        BootLog("Boot: XHCI mouse fallback composite-on-kbd\n");
-        (void)MouseKeyboardSlotInitialize();
+        if (HalCpuIsHypervisor()) {
+            BootLog("Boot: XHCI mouse fallback composite-on-kbd\n");
+            (void)MouseKeyboardSlotInitialize();
+        } else if (gSlotId != 0 && gIntrDci != 0) {
+            BootLog("Boot: XHCI skip composite-on-kbd (keep kbd)\n");
+        }
     }
     if (gMouseSlotId == 0 && gHubSlotId != 0) {
         (void)EnumerateHubChildrenForMouse();

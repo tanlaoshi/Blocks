@@ -6,7 +6,16 @@
 #include "UsbHid/Private.h"
 #include "UsbHostController.h"
 
-/* 真机 PHOTO 后再绑鼠标，避免复合/hub 扫描踩键盘 EP */
+/*
+ * 真机 PHOTO 后再绑鼠标，避免复合/hub 扫描踩键盘 EP。
+ *
+ * 保盘纪律（勿糊弄成「MSC 已认就永不补鼠」）：
+ * - freeze：禁一切 Address（与 Wifi/FTDI 同）。
+ * - MSC 已认：仍可补绑**其它根口**独立鼠；门闩 XhciRootPortIsOwned 禁碰盘口；
+ *   且 Claim 内禁止 Force PR（避免 NeedForce 拧盘口）。
+ * - hub 子口：MSC 已认则整段跳过（hub EP0 与盘争用，见 HubEnumerateMouse）。
+ * - 真机仍禁止 composite-on-kbd（保键）。
+ */
 void MouseDeferredInitialize(void) {
     if (HalCpuIsHypervisor()) {
         return;
@@ -15,25 +24,32 @@ void MouseDeferredInitialize(void) {
         return;
     }
     LogUsb("Boot: XHCI mouse deferred start\n");
-    if (gHubSlotId != 0) {
+    if (XhciPortEnumerateIsFrozen()) {
+        LogUsb("Boot: XHCI mouse deferred skip (port enum freeze)\n");
+        goto Rearm;
+    }
+    if (gMscClaimed) {
+        LogUsb("Boot: XHCI mouse deferred root-only (msc live, owned-gated)\n");
+    } else if (gHubSlotId != 0) {
         (void)EnumerateHubChildrenForMouse();
     }
     if (gMouseSlotId == 0) {
-        for (UINT32 p = 1; p <= gMaxPorts; p++) {
-            if (gSlotId != 0 && p == gPort1) {
+        for (UINT32 Port = 1; Port <= gMaxPorts; Port++) {
+            if (gSlotId != 0 && Port == gPort1) {
                 continue;
             }
-            if (MousePortInitialize(p)) {
+            if (MousePortInitialize(Port)) {
                 break;
             }
         }
     }
-    if (gMouseSlotId == 0) {
-        (void)MouseKeyboardSlotInitialize(); /* 回退：保鼠标 */
+    if (gMouseSlotId == 0 && gSlotId != 0 && gIntrDci != 0) {
+        LogUsb("Boot: XHCI deferred skip composite-on-kbd\n");
     }
-    if (gMouseSlotId == 0 && gHubSlotId != 0) {
+    if (gMouseSlotId == 0 && gHubSlotId != 0 && !gMscClaimed) {
         (void)EnumerateHubChildrenForMouse();
     }
+Rearm:
     if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
         (void)InterruptByClass(3, 0, 0);
     }

@@ -9,17 +9,30 @@
  * ≥0 = 已结束（0 失败 / 1 成功，含 hub 子口）。
  */
 int MouseClaimPortInitialize(UINT32 Port1, UINT8 *SpeedOut) {
-    UINT32 Ps = ReadMmio32(gOperationalBase + PortRegister(Port1));
+    UINT32 Ps;
     UINT16 Total;
     UINT32 WasSlot;
     int Force;
     UINT8 Speed;
     UINT8 DevClass;
 
+    /*
+     * usb-hid-keep：与 Wifi/FTDI/CDC 同门闩。
+     * freeze 或根口已有主人（含 MSC / boot-watch）→ 禁 Reset/Address。
+     */
+    if (XhciPortEnumerateIsFrozen()) {
+        BootLogHexV("Boot: XHCI mouse skip freeze port=", Port1, 2);
+        return 0;
+    }
+    if (XhciRootPortIsOwned(Port1)) {
+        BootLogHexV("Boot: XHCI mouse skip owned port=", Port1, 2);
+        return 0;
+    }
     if (gPortNoHid & (1u << Port1)) {
         BootLogHexV("Boot: XHCI mouse skip port=", Port1, 2);
         return 0;
     }
+    Ps = ReadMmio32(gOperationalBase + PortRegister(Port1));
     BootLogHexV("Boot: XHCI mouse try port=", Port1, 2);
     if (!(Ps & PORTSC_CCS)) {
         return 0;
@@ -27,8 +40,12 @@ int MouseClaimPortInitialize(UINT32 Port1, UINT8 *SpeedOut) {
     /*
      * 仅对「本轮已 Address 再 Disable」的口强制 PR（否则 cc=0x04）。
      * 全口 Force PR + 长超时会空转很久，短按电源失效。
+     * MSC 已认：禁止 Force——NeedForce 位常来自早先误探盘口，再 Force 会踩盘。
      */
     Force = (gPortNeedForcePr & (1u << Port1)) ? 1 : 0;
+    if (gMscClaimed) {
+        Force = 0;
+    }
     if (!ResetPortEx(Port1, Force)) {
         return 0;
     }

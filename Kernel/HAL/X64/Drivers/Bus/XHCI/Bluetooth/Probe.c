@@ -67,28 +67,8 @@ UINT32 XhciBluetoothRootPort(void) {
 }
 
 static int BluetoothPortOwned(UINT32 Port) {
-    if (gSlotId != 0 && Port == gPort1) {
-        return 1;
-    }
-    if (gMouseSlotId != 0 && gMouseHubSlot == 0 && Port == gMousePort) {
-        return 1;
-    }
-    if (gHubSlotId != 0 && Port == gHubRootPort) {
-        return 1;
-    }
-    if (gMscPort != 0 && Port == gMscPort) {
-        return 1;
-    }
-    if (gMscBootWatchPort != 0 && Port == gMscBootWatchPort) {
-        return 1;
-    }
-    if (gFtdiClaimed && Port == gFtdiPort) {
-        return 1;
-    }
-    if (gCdcClaimed && Port == gCdcPort) {
-        return 1;
-    }
-    return 0;
+    /* 与鼠/Wifi 共用 XhciRootPortIsOwned；BT 自身口未写入该表前可探 */
+    return XhciRootPortIsOwned(Port);
 }
 
 static void BluetoothSurveyRoots(void) {

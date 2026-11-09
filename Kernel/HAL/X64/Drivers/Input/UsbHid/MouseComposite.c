@@ -7,8 +7,8 @@
 #include "UsbHostController.h"
 
 /*
- * 真机常见：USB 键鼠复合设备（同一 slot 上键盘 Proto=1 + 鼠标 Proto=2）。
- * 旧逻辑只扫「其它根口」，同口第二接口永远绑不上 → arms mouse=00/00。
+ * QEMU：USB 键鼠复合设备（同一 slot 上键盘 Proto=1 + 鼠标 Proto=2）。
+ * 真机：键已 ConfigEP 后禁止再走本函数（同 slot 加鼠 → k=0；见 EnumerateBindMouseAfterKeyboard）。
  */
 int MouseKeyboardSlotInitialize(void) {
     UINT8 EndpointAddress = 0, Interval = 10, Interface = 0;
@@ -19,6 +19,11 @@ int MouseKeyboardSlotInitialize(void) {
     UINT16 Off;
 
     if (gSlotId == 0 || gMouseSlotId != 0) {
+        return 0;
+    }
+    /* 门禁：真机键 IN 已武装则拒，防漏网调用方再踩坑 */
+    if (!HalCpuIsHypervisor() && gIntrDci != 0) {
+        BootLog("Boot: XHCI composite-on-kbd refused (kbd armed)\n");
         return 0;
     }
 

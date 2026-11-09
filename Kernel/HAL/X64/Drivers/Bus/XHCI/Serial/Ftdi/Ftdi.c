@@ -256,16 +256,7 @@ static int Claim(void) {
         if (!(Ps & PORTSC_CCS)) {
             continue;
         }
-        if (gSlotId != 0 && P == gPort1) {
-            continue;
-        }
-        if (gMouseSlotId != 0 && P == gMousePort) {
-            continue;
-        }
-        if (gHubSlotId != 0 && P == gHubRootPort) {
-            continue;
-        }
-        if (gMscClaimed && gMscPort == P) {
+        if (XhciRootPortIsOwned(P)) {
             continue;
         }
         if (!AddressRoot(P, &Speed)) {

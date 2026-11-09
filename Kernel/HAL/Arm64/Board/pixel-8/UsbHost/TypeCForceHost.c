@@ -1,8 +1,6 @@
 /*
- * UsbHost/TypeCForceHost.c — max77759 TCPCI 强制 DFP + 开 USB 数据开关
- *
- * 证据：TCPCI ROLE Rp + Look4Connection；Maxim USBSW@0x93=0x09。
- * 真机：`tc1 r5 cc11 ps0c` → I2C 已通；cc 仍像对墙上电坞呈 sink 视界。
+ * UsbHost/TypeCForceHost.c — max77759 DFP + USBSW@0x93=0x09 + buck-boost VBUS
+ * 对表 max_tcpci_set_vbus：@0x69 reg0xb9=0x0a（真机 ls0：TCPC 0x77 不够）。
  */
 #include "UsbHost/Private.h"
 
@@ -13,6 +11,7 @@
 #if BOARD_PIXEL8_USB_HOST_BRINGUP
 
 #define TYPE_C_PORT_CONTROLLER_DEVICE_ADDRESS 0x25u
+#define TYPE_C_BUCK_BOOST_DEVICE_ADDRESS 0x69u
 
 #define TCPC_VENDOR_IDENTIFIER_REGISTER       0x00u
 #define TCPC_PRODUCT_IDENTIFIER_REGISTER      0x02u
@@ -36,12 +35,17 @@
 #define TCPC_COMMAND_LOOK_FOR_CONNECTION      0x99u
 #define TCPC_VENDOR_USB_SWITCH_ENABLE_DATA    0x09u
 
+/* 对表 tcpci_maxim max_tcpci_set_vbus（Pixel WAR） */
+#define TYPE_C_BUCK_BOOST_OPERATION_REGISTER 0xB9u
+#define TYPE_C_BUCK_BOOST_SOURCE_VALUE 0x0Au
+
 static UINT8 sTypeCLastResultCode;
 static UINT8 sTypeCVendorIdentifierLow;
 static UINT8 sTypeCCcStatus;
 static UINT8 sTypeCPowerStatus;
 static UINT8 sTypeCRoleControl;
 static UINT8 sTypeCUsbSwitch;
+static UINT8 sTypeCBuckBoost;
 
 UINT8 UsbHostTypeCLastResultCode(void) {
     return sTypeCLastResultCode;
@@ -63,6 +67,10 @@ UINT8 UsbHostTypeCUsbSwitchByte(void) {
     return sTypeCUsbSwitch;
 }
 
+UINT8 UsbHostTypeCBuckBoostByte(void) {
+    return sTypeCBuckBoost;
+}
+
 static int WritePortControllerRegister(UINT8 RegisterAddress, UINT8 Value) {
     UINT8 Bytes[2];
 
@@ -70,6 +78,15 @@ static int WritePortControllerRegister(UINT8 RegisterAddress, UINT8 Value) {
     Bytes[1] = Value;
     return UsbHostHighSpeedInterIntegratedCircuitWrite(
         TYPE_C_PORT_CONTROLLER_DEVICE_ADDRESS, Bytes, 2u);
+}
+
+static int WriteBuckBoostSource(void) {
+    UINT8 Bytes[2];
+
+    Bytes[0] = TYPE_C_BUCK_BOOST_OPERATION_REGISTER;
+    Bytes[1] = TYPE_C_BUCK_BOOST_SOURCE_VALUE;
+    return UsbHostHighSpeedInterIntegratedCircuitWrite(
+        TYPE_C_BUCK_BOOST_DEVICE_ADDRESS, Bytes, 2u);
 }
 
 static int ReadPortControllerRegister(UINT8 RegisterAddress, UINT8 *Value) {
@@ -89,8 +106,6 @@ static void PaintTypeCStatusLine(void) {
 
     UsbHostCopyText(Line, "tc", sizeof(Line));
     AppendByteHex(Line, sizeof(Line), sTypeCLastResultCode);
-    UsbHostAppendText(Line, " id", sizeof(Line));
-    AppendByteHex(Line, sizeof(Line), sTypeCVendorIdentifierLow);
     UsbHostAppendText(Line, " r", sizeof(Line));
     AppendByteHex(Line, sizeof(Line), sTypeCRoleControl);
     UsbHostAppendText(Line, " cc", sizeof(Line));
@@ -99,7 +114,8 @@ static void PaintTypeCStatusLine(void) {
     AppendByteHex(Line, sizeof(Line), sTypeCPowerStatus);
     UsbHostAppendText(Line, " sw", sizeof(Line));
     AppendByteHex(Line, sizeof(Line), sTypeCUsbSwitch);
-    /* 最终 HubStatusPaint 下半屏；失败时也落到同区便于读 */
+    UsbHostAppendText(Line, " vb", sizeof(Line));
+    AppendByteHex(Line, sizeof(Line), sTypeCBuckBoost);
     BoardBringUpSplashPaintLine(1392, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
@@ -151,6 +167,7 @@ int UsbHostTypeCForceHost(void) {
     sTypeCPowerStatus = 0;
     sTypeCRoleControl = 0;
     sTypeCUsbSwitch = 0;
+    sTypeCBuckBoost = 0;
 
     BoardBringUpSplashPaintLine(1392, "tc probe");
     HalSerialWriteShell("tc: probe\r\n");
@@ -212,8 +229,22 @@ int UsbHostTypeCForceHost(void) {
         PaintTypeCStatusLine();
         return -1;
     }
+    /* 呈 Rp 后再 Look4（TCPCI：按当前 ROLE 开始找连接） */
+    (void)WritePortControllerRegister(TCPC_COMMAND_REGISTER,
+                                      TCPC_COMMAND_LOOK_FOR_CONNECTION);
+    UsbHostStallYield(50000u);
+
     (void)WritePortControllerRegister(TCPC_COMMAND_REGISTER,
                                       TCPC_COMMAND_SOURCE_VBUS_DEFAULT);
+    /* 真 5V：buck-boost@0x69；TCPC 0x77  alone 不够（真机 ls0） */
+    if (WriteBuckBoostSource() != 0) {
+        sTypeCBuckBoost = 0xEEu;
+        sTypeCLastResultCode = 0x33u;
+        UsbHostTypeCRefreshStatusBytes();
+        PaintTypeCStatusLine();
+        return -1;
+    }
+    sTypeCBuckBoost = TYPE_C_BUCK_BOOST_SOURCE_VALUE;
     UsbHostStallYield(30000u);
 
     if (WritePortControllerRegister(TCPC_VENDOR_USB_SWITCH_CONTROL,
@@ -253,6 +284,10 @@ UINT8 UsbHostTypeCRoleControlByte(void) {
 }
 
 UINT8 UsbHostTypeCUsbSwitchByte(void) {
+    return 0;
+}
+
+UINT8 UsbHostTypeCBuckBoostByte(void) {
     return 0;
 }
 

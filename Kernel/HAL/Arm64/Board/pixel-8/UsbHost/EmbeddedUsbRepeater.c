@@ -3,9 +3,14 @@
  *
  * 证据：dmesg `eusb-repeater 11-003e: Enter Disabled mode, reg = 40`；
  * sepolicy `10cb0000.hsi2c/i2c-11/11-0025` → 与 TCPC 同控制器。
- * TI TUSB2E221：REV_ID@0xB0=0x03；GLOBAL_CONFIG@0xB2 bit6=DISABLE_P1 → Android
- * `reg=40`；清 DISABLE 后仍 DEFAULT，须 SoC eUSB 发 Host Mode Enable（CONFIG_PORT
- * HOST_DEVICE≠0）。
+ * TI TUSB2E221：REV_ID@0xB0；GLOBAL_CONFIG@0xB2 bit6=DISABLE_P1 → Android
+ * `reg=40`。对表 eusb_repeater_ctrl：只清 DISABLE_P1。
+ * 真机 `c8`+`pd3`+`ls0`：Host 下拉已到 dig，线仍 SE0 → 疑 GPIO1 进
+ * Carkit UART（datasheet 8.4.3）。LOPWR@0x50（Table 9-14）：
+ *   bit1=0 选寄存器、bit0=0 关 UART（禁误置 bit1——1＝走 GPIO1）；
+ *   清 bit6 HOST_FRAME_LP / bit4 IDLE_LP（默认 OTP 开；μSOF 低功耗可致
+ *   PED/chirp 绿而 HS SET_ADDRESS USBTE，§8.4.10）。
+ * 验收 `c`＝CONFIG_PORT1@0x60（Android debugfs 盯 P1；勿只盯 PORT0@0x20）。
  */
 #include "UsbHost/Private.h"
 
@@ -16,15 +21,23 @@
 #if BOARD_PIXEL8_USB_HOST_BRINGUP
 
 #define EMBEDDED_USB_REPEATER_DEVICE_ADDRESS 0x3Eu
+#define EMBEDDED_USB_REPEATER_LOW_POWER_UART_PORT1_REGISTER 0x50u
 #define EMBEDDED_USB_REPEATER_CONFIGURATION_PORT0_REGISTER 0x20u
+#define EMBEDDED_USB_REPEATER_CONFIGURATION_PORT1_REGISTER 0x60u
 #define EMBEDDED_USB_REPEATER_REVISION_REGISTER 0xB0u
 #define EMBEDDED_USB_REPEATER_GLOBAL_CONFIGURATION_REGISTER 0xB2u
-#define EMBEDDED_USB_REPEATER_DISABLE_PORT0 (1u << 5)
 #define EMBEDDED_USB_REPEATER_DISABLE_PORT1 (1u << 6)
+#define EMBEDDED_USB_REPEATER_UART_MODE_ENABLE (1u << 0)
+/* Table 9-14 bit1：0＝寄存器选源；1＝GPIO1 选源（勿当「by reg」置 1） */
+#define EMBEDDED_USB_REPEATER_UART_SELECT_GPIO_PIN (1u << 1)
+#define EMBEDDED_USB_REPEATER_IDLE_LOW_POWER_ENABLE (1u << 4)
+#define EMBEDDED_USB_REPEATER_HOST_FRAME_LOW_POWER_ENABLE (1u << 6)
 
 static UINT8 sRepeaterRevision;
 static UINT8 sRepeaterGlobalConfiguration;
 static UINT8 sRepeaterConfigurationPort0;
+static UINT8 sRepeaterConfigurationPort1;
+static UINT8 sRepeaterLowPowerUartPort1;
 static UINT8 sRepeaterLastResultCode;
 
 UINT8 UsbHostRepeaterLastResultCode(void) {
@@ -43,6 +56,14 @@ UINT8 UsbHostRepeaterPort0ConfigurationByte(void) {
     return sRepeaterConfigurationPort0;
 }
 
+UINT8 UsbHostRepeaterPort1ConfigurationByte(void) {
+    return sRepeaterConfigurationPort1;
+}
+
+UINT8 UsbHostRepeaterLowPowerUartPort1Byte(void) {
+    return sRepeaterLowPowerUartPort1;
+}
+
 void UsbHostRepeaterRefreshStatusBytes(void) {
     (void)UsbHostHighSpeedInterIntegratedCircuitWriteThenRead(
         EMBEDDED_USB_REPEATER_DEVICE_ADDRESS,
@@ -52,6 +73,14 @@ void UsbHostRepeaterRefreshStatusBytes(void) {
         EMBEDDED_USB_REPEATER_DEVICE_ADDRESS,
         EMBEDDED_USB_REPEATER_CONFIGURATION_PORT0_REGISTER,
         &sRepeaterConfigurationPort0, 1u);
+    (void)UsbHostHighSpeedInterIntegratedCircuitWriteThenRead(
+        EMBEDDED_USB_REPEATER_DEVICE_ADDRESS,
+        EMBEDDED_USB_REPEATER_CONFIGURATION_PORT1_REGISTER,
+        &sRepeaterConfigurationPort1, 1u);
+    (void)UsbHostHighSpeedInterIntegratedCircuitWriteThenRead(
+        EMBEDDED_USB_REPEATER_DEVICE_ADDRESS,
+        EMBEDDED_USB_REPEATER_LOW_POWER_UART_PORT1_REGISTER,
+        &sRepeaterLowPowerUartPort1, 1u);
 }
 
 static int WriteRepeaterRegister(UINT8 RegisterAddress, UINT8 Value) {
@@ -82,7 +111,7 @@ static void PaintRepeaterStatusLine(void) {
     UsbHostFormatHexadecimal32(Hex, sRepeaterGlobalConfiguration);
     UsbHostAppendText(Line, Hex + 8, sizeof(Line));
     UsbHostAppendText(Line, " c", sizeof(Line));
-    UsbHostFormatHexadecimal32(Hex, sRepeaterConfigurationPort0);
+    UsbHostFormatHexadecimal32(Hex, sRepeaterConfigurationPort1);
     UsbHostAppendText(Line, Hex + 8, sizeof(Line));
     /* 最终 HubStatusPaint 下半屏重画；此处只串口 */
     HalSerialWriteShell(Line);
@@ -98,6 +127,8 @@ int UsbHostRepeaterEnableHost(void) {
     sRepeaterRevision = 0;
     sRepeaterGlobalConfiguration = 0;
     sRepeaterConfigurationPort0 = 0;
+    sRepeaterConfigurationPort1 = 0;
+    sRepeaterLowPowerUartPort1 = 0;
 
     HalSerialWriteShell("eu: probe\r\n");
 
@@ -121,9 +152,8 @@ int UsbHostRepeaterEnableHost(void) {
         return -1;
     }
 
-    GlobalConfiguration &=
-        (UINT8) ~(EMBEDDED_USB_REPEATER_DISABLE_PORT0 |
-                  EMBEDDED_USB_REPEATER_DISABLE_PORT1);
+    /* 对表 eusb_repeater_ctrl(true)：只清 DISABLE_P1 */
+    GlobalConfiguration &= (UINT8)~EMBEDDED_USB_REPEATER_DISABLE_PORT1;
     if (WriteRepeaterRegister(
             EMBEDDED_USB_REPEATER_GLOBAL_CONFIGURATION_REGISTER,
             GlobalConfiguration) != 0) {
@@ -131,7 +161,52 @@ int UsbHostRepeaterEnableHost(void) {
         PaintRepeaterStatusLine();
         return -1;
     }
-    UsbHostStallYield(20000u);
+    /* 对表 eusb_repeater_power_on：Exit Disabled 后 mdelay(3)（须真 µs） */
+    {
+        UINT64 Frequency;
+        UINT64 Start;
+        UINT64 Delta;
+
+        __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(Frequency));
+        if (Frequency == 0u) {
+            UsbHostStallYield(300000u);
+        } else {
+            __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Start));
+            Delta = (Frequency * 3000ull) / 1000000ull;
+            for (;;) {
+                UINT64 Now;
+                __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Now));
+                if ((Now - Start) >= Delta) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /*
+     * TI Table 9-14 / §8.4.3 / §8.4.10：
+     * bit1=0+bit0=0 → 寄存器关 UART（勿 OR bit1；1 反而是 GPIO1）；
+     * 清 HOST_FRAME_LP+IDLE_LP，避免帧内休眠吞 HS 包。
+     */
+    {
+        UINT8 LowPowerUart = 0;
+        if (ReadRepeaterRegister(
+                EMBEDDED_USB_REPEATER_LOW_POWER_UART_PORT1_REGISTER,
+                &LowPowerUart) == 0) {
+            LowPowerUart &= (UINT8)~(EMBEDDED_USB_REPEATER_UART_SELECT_GPIO_PIN |
+                                     EMBEDDED_USB_REPEATER_UART_MODE_ENABLE |
+                                     EMBEDDED_USB_REPEATER_IDLE_LOW_POWER_ENABLE |
+                                     EMBEDDED_USB_REPEATER_HOST_FRAME_LOW_POWER_ENABLE);
+            if (WriteRepeaterRegister(
+                    EMBEDDED_USB_REPEATER_LOW_POWER_UART_PORT1_REGISTER,
+                    LowPowerUart) != 0) {
+                sRepeaterLastResultCode = 0x32u;
+                UsbHostRepeaterRefreshStatusBytes();
+                PaintRepeaterStatusLine();
+                return -1;
+            }
+        }
+    }
 
     UsbHostRepeaterRefreshStatusBytes();
     sRepeaterLastResultCode = 1u;
@@ -157,6 +232,14 @@ UINT8 UsbHostRepeaterGlobalConfigurationByte(void) {
 }
 
 UINT8 UsbHostRepeaterPort0ConfigurationByte(void) {
+    return 0;
+}
+
+UINT8 UsbHostRepeaterPort1ConfigurationByte(void) {
+    return 0;
+}
+
+UINT8 UsbHostRepeaterLowPowerUartPort1Byte(void) {
     return 0;
 }
 

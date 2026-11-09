@@ -1,6 +1,8 @@
 /*
- * UsbHost/EmbeddedUsbPhysical.c — zuma eUSB CON
- * ba11100+cm8000432＝USBCON 假 RPTR；探针须 RPTR+ENABLE 双粘。
+ * UsbHost/EmbeddedUsbPhysical.c — zuma eUSB CON@0x11110000
+ *
+ * 对表 phy_exynos_eusb_initiate：ENABLE→T4/T5→放 utmi；ref 19.2MHz。
+ * 状态字见 EmbeddedUsbPhysicalStatus.c。
  */
 #include "UsbHost/Private.h"
 
@@ -10,66 +12,35 @@
 
 #if BOARD_PIXEL8_USB_HOST_BRINGUP
 
-#define EMBEDDED_USB_CONTROL_PHYSICAL_BASE 0x11110000ULL /* 真机 ba≈11110；cm433 */
-
+#define EMBEDDED_USB_CONTROL_PHYSICAL_BASE 0x11110000ULL
 #define EMBEDDED_USB_RESET_CONTROL_REGISTER 0x00u
 #define EMBEDDED_USB_COMMON_CONTROL_REGISTER 0x04u
 #define EMBEDDED_USB_PLL_CONFIGURATION0_REGISTER 0x08u
 #define EMBEDDED_USB_PLL_CONFIGURATION1_REGISTER 0x0Cu
-#define EMBEDDED_USB_UTMI_REGISTER 0x1Cu
+#define EMBEDDED_USB_TRANSMIT_TUNE_REGISTER 0x14u
 #define EMBEDDED_USB_TEST_REGISTER 0x20u
-#define EMBEDDED_USB_UTMI_DM_PULLDOWN (1u << 1)
-#define EMBEDDED_USB_UTMI_DM_PULLDOWN_OVERRIDE (1u << 2)
-#define EMBEDDED_USB_UTMI_DP_PULLDOWN (1u << 3)
-#define EMBEDDED_USB_UTMI_DP_PULLDOWN_OVERRIDE (1u << 4)
-
+#define EMBEDDED_USB_PHYSICAL_DIGITAL_BASE 0x11120000ULL
+#define EMBEDDED_USB_STATE_JUMP_DEBUG_OUT_REGISTER 0x15Cu
+#define EMBEDDED_USB_FULL_SPEED_VOLTAGE_REFERENCE_TUNE_MASK (3u << 1)
 #define EMBEDDED_USB_PHY_RESET (1u << 0)
 #define EMBEDDED_USB_PHY_RESET_OVERRIDE_ENABLE (1u << 1)
 #define EMBEDDED_USB_UTMI_PORT_RESET (1u << 4)
 #define EMBEDDED_USB_UTMI_PORT_RESET_OVERRIDE_ENABLE (1u << 5)
-
 #define EMBEDDED_USB_ENABLE (1u << 0)
 #define EMBEDDED_USB_RETENTION_ENABLE_NOT (1u << 1)
 #define EMBEDDED_USB_FREQUENCY_SELECT_MASK (0x7u << 4)
-#define EMBEDDED_USB_FREQUENCY_SELECT_26MHZ (0x3u << 4)
+#define EMBEDDED_USB_FREQUENCY_SELECT_19200KHZ (0x0u << 4)
 #define EMBEDDED_USB_REPEATER_MODE (1u << 10)
 #define EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_MASK (0xFFFu << 8)
-#define EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_26MHZ (263u << 8)
+#define EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_19200KHZ (368u << 8)
+#define EMBEDDED_USB_PLL_CHARGE_PUMP_BIAS_MASK 0x7Fu
+#define EMBEDDED_USB_PLL_CHARGE_PUMP_BIAS_19200KHZ 1u
+#define EMBEDDED_USB_PLL_REFERENCE_DIVIDER_MASK 0xFu
 #define EMBEDDED_USB_TEST_IDDQ (1u << 6)
 
 #define EMBEDDED_USB_STRAP_VALUE                                                 \
-    (EMBEDDED_USB_RETENTION_ENABLE_NOT | EMBEDDED_USB_FREQUENCY_SELECT_26MHZ |  \
+    (EMBEDDED_USB_RETENTION_ENABLE_NOT | EMBEDDED_USB_FREQUENCY_SELECT_19200KHZ | \
      EMBEDDED_USB_REPEATER_MODE)
-
-static UINT8 sPhysicalLastResultCode;
-static UINT32 sPhysicalCommonControl;
-static UINT32 sPhysicalStrapControl;
-static UINT32 sPhysicalFoundBasePage;
-
-UINT8 UsbHostPhysicalLastResultCode(void) {
-    return sPhysicalLastResultCode;
-}
-
-UINT32 UsbHostPhysicalCommonControl(void) {
-    return sPhysicalCommonControl;
-}
-
-UINT32 UsbHostPhysicalStrapControl(void) {
-    return sPhysicalStrapControl;
-}
-
-UINT32 UsbHostPhysicalFoundBasePage(void) {
-    return sPhysicalFoundBasePage;
-}
-
-void UsbHostPhysicalRefreshCommonControl(void) {
-    if (sPhysicalFoundBasePage == 0u) {
-        return;
-    }
-    sPhysicalCommonControl = UsbHostReadMmio32(
-        (((UINT64)sPhysicalFoundBasePage) << 12) +
-        EMBEDDED_USB_COMMON_CONTROL_REGISTER);
-}
 
 static void StallMicroseconds(UINT32 Microseconds) {
     UINT64 Frequency;
@@ -158,69 +129,62 @@ static int ProbeEmbeddedUsbEnableSticky(UINT64 Base, UINT32 *StrapOut,
 static void InitializeEmbeddedUsbAtBase(UINT64 Base) {
     UINT32 ResetControl;
     UINT32 CommonControl;
+    UINT32 Strap;
 
+    /* 持 phy+utmi reset → strap/PLL → enable=0 → 放 phy → enable=1 → T4/T5 → 放 utmi */
     ResetControl = EMBEDDED_USB_PHY_RESET | EMBEDDED_USB_PHY_RESET_OVERRIDE_ENABLE |
                    EMBEDDED_USB_UTMI_PORT_RESET |
                    EMBEDDED_USB_UTMI_PORT_RESET_OVERRIDE_ENABLE;
     UsbHostWriteMmio32(Base + EMBEDDED_USB_RESET_CONTROL_REGISTER, ResetControl);
-
     UsbHostWriteMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER,
                        EMBEDDED_USB_STRAP_VALUE);
-    sPhysicalStrapControl =
-        UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
-
+    Strap = UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
     WriteMasked(Base, EMBEDDED_USB_PLL_CONFIGURATION0_REGISTER,
-                EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_MASK,
-                EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_26MHZ);
-    WriteMasked(Base, EMBEDDED_USB_PLL_CONFIGURATION1_REGISTER, 0xFu, 0u);
+                EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_MASK |
+                    EMBEDDED_USB_PLL_CHARGE_PUMP_BIAS_MASK,
+                EMBEDDED_USB_PLL_FEEDBACK_DIVIDER_19200KHZ |
+                    EMBEDDED_USB_PLL_CHARGE_PUMP_BIAS_19200KHZ);
+    WriteMasked(Base, EMBEDDED_USB_PLL_CONFIGURATION1_REGISTER,
+                EMBEDDED_USB_PLL_REFERENCE_DIVIDER_MASK, 0u);
+    /* 对表 phy_exynos_eusb_initiate：fsls_vref_tune=0；勿强灌 UTMI pulldown */
+    WriteMasked(Base, EMBEDDED_USB_TRANSMIT_TUNE_REGISTER,
+                EMBEDDED_USB_FULL_SPEED_VOLTAGE_REFERENCE_TUNE_MASK, 0u);
     WriteMasked(Base, EMBEDDED_USB_TEST_REGISTER, EMBEDDED_USB_TEST_IDDQ, 0u);
+    CommonControl =
+        UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
+    CommonControl &= ~EMBEDDED_USB_ENABLE;
+    UsbHostWriteMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER,
+                       CommonControl);
     StallMicroseconds(10u);
-
     ResetControl =
         UsbHostReadMmio32(Base + EMBEDDED_USB_RESET_CONTROL_REGISTER);
     ResetControl &= ~EMBEDDED_USB_PHY_RESET;
     UsbHostWriteMmio32(Base + EMBEDDED_USB_RESET_CONTROL_REGISTER, ResetControl);
     StallMicroseconds(10u);
-
-    /* Host：DP/DM pulldown（对表 eUSB CON UTMI） */
-    WriteMasked(Base, EMBEDDED_USB_UTMI_REGISTER,
-                EMBEDDED_USB_UTMI_DM_PULLDOWN |
-                    EMBEDDED_USB_UTMI_DM_PULLDOWN_OVERRIDE |
-                    EMBEDDED_USB_UTMI_DP_PULLDOWN |
-                    EMBEDDED_USB_UTMI_DP_PULLDOWN_OVERRIDE,
-                EMBEDDED_USB_UTMI_DM_PULLDOWN |
-                    EMBEDDED_USB_UTMI_DM_PULLDOWN_OVERRIDE |
-                    EMBEDDED_USB_UTMI_DP_PULLDOWN |
-                    EMBEDDED_USB_UTMI_DP_PULLDOWN_OVERRIDE);
-
     CommonControl =
         UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
     CommonControl |= EMBEDDED_USB_ENABLE | EMBEDDED_USB_REPEATER_MODE |
                      EMBEDDED_USB_RETENTION_ENABLE_NOT;
     CommonControl = (CommonControl & ~EMBEDDED_USB_FREQUENCY_SELECT_MASK) |
-                    EMBEDDED_USB_FREQUENCY_SELECT_26MHZ;
+                    EMBEDDED_USB_FREQUENCY_SELECT_19200KHZ;
     UsbHostWriteMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER,
                        CommonControl);
-
-    /* 对表 phy-snps-eusb2：ENABLE 后即放 UTMI；再等 ESE1/HME */
+    StallMicroseconds(1000u);
+    StallMicroseconds(28u);
+    StallMicroseconds(2500u);
     ResetControl =
         UsbHostReadMmio32(Base + EMBEDDED_USB_RESET_CONTROL_REGISTER);
     ResetControl &= ~(EMBEDDED_USB_UTMI_PORT_RESET |
                       EMBEDDED_USB_UTMI_PORT_RESET_OVERRIDE_ENABLE);
     UsbHostWriteMmio32(Base + EMBEDDED_USB_RESET_CONTROL_REGISTER, ResetControl);
-    StallMicroseconds(1000u);
-    StallMicroseconds(28u);
-    StallMicroseconds(2500u);
-
+    StallMicroseconds(100u);
     CommonControl =
         UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
-    CommonControl |= EMBEDDED_USB_ENABLE | EMBEDDED_USB_REPEATER_MODE;
-    UsbHostWriteMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER,
-                       CommonControl);
-    StallMicroseconds(100u);
-
-    sPhysicalCommonControl =
-        UsbHostReadMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER);
+    UsbHostPhysicalStatusSetStrapAndCommon(Strap, CommonControl);
+    UsbHostPhysicalStatusSetEmbeddedUsbState((UINT8)(UsbHostReadMmio32(
+        EMBEDDED_USB_PHYSICAL_DIGITAL_BASE +
+        EMBEDDED_USB_STATE_JUMP_DEBUG_OUT_REGISTER) &
+                                                     0xFFu));
 }
 
 int UsbHostPhysicalEnableRepeaterMode(void) {
@@ -228,16 +192,14 @@ int UsbHostPhysicalEnableRepeaterMode(void) {
     UINT32 Strap = 0;
     UINT32 Common = 0;
 
-    sPhysicalLastResultCode = 0;
-    sPhysicalCommonControl = 0;
-    sPhysicalStrapControl = 0;
-    sPhysicalFoundBasePage = 0;
+    UsbHostPhysicalStatusClear();
 
-    HalSerialWriteShell("ph: ess\r\n");
-    UsbHostEssentialControlLinkInitialize();
+    HalSerialWriteShell("ph: dr\r\n");
+    (void)UsbHostDualRoleDevicePhysicalInitialize();
 
     if (ProbeEmbeddedUsbEnableSticky(Chosen, &Strap, &Common) != 0) {
         static const UINT64 Fallback[] = {
+            0x110F0000ULL, /* 社区 gs201 MEM1 eusb_ctrl 候选 */
             0x11111000ULL, 0x111c0000ULL, 0x10ab0000ULL, 0x11120000ULL,
         };
         UINTN Index;
@@ -252,40 +214,21 @@ int UsbHostPhysicalEnableRepeaterMode(void) {
         }
     }
     if (Chosen == 0) {
-        sPhysicalLastResultCode = 0x13u;
+        UsbHostPhysicalStatusSetResultCode(0x13u);
         HalSerialWriteShell("ph: no en\r\n");
         return -1;
     }
 
-    sPhysicalFoundBasePage = (UINT32)(Chosen >> 12);
-    sPhysicalStrapControl = Strap;
-    sPhysicalCommonControl = Common;
+    UsbHostPhysicalStatusSetFoundBasePage((UINT32)(Chosen >> 12));
+    UsbHostPhysicalStatusSetStrapAndCommon(Strap, Common);
     HalSerialWriteShell("ph: init\r\n");
     InitializeEmbeddedUsbAtBase(Chosen);
-    sPhysicalLastResultCode = 1u;
+    UsbHostPhysicalStatusSetResultCode(1u);
+    UsbHostPhysicalRefreshCommonControl();
     return 0;
 }
 
 #else
-
-UINT8 UsbHostPhysicalLastResultCode(void) {
-    return 0;
-}
-
-UINT32 UsbHostPhysicalCommonControl(void) {
-    return 0;
-}
-
-UINT32 UsbHostPhysicalStrapControl(void) {
-    return 0;
-}
-
-UINT32 UsbHostPhysicalFoundBasePage(void) {
-    return 0;
-}
-
-void UsbHostPhysicalRefreshCommonControl(void) {
-}
 
 int UsbHostPhysicalEnableRepeaterMode(void) {
     return -1;

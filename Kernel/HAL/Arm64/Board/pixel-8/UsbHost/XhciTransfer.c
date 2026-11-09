@@ -94,7 +94,7 @@ static int WaitEvent(UINT32 WantedType, UINT32 *CompletionCode, UINT32 *SlotIdOu
         Control = Event->Control;
         Cycle = Control & 1u;
         if (Cycle != sEventConsumerCycleState) {
-            UsbHostStallYield(100u);
+            UsbHostStallMilliseconds(1u);
             continue;
         }
         if (((Control >> TRANSFER_REQUEST_BLOCK_TYPE_SHIFT) & 0x3Fu) == WantedType) {
@@ -184,8 +184,9 @@ int UsbHostXhciSubmitCommand(TransferRequestBlock *Command, UINT32 *CompletionCo
     RingEnqueue(sCommandRing, &sCommandRingState, Command);
     __asm__ volatile("dsb sy" ::: "memory");
     UsbHostWriteMmio32(sDoorbellBase, 0);
+    /* 真 ms；Address/SET_ADDRESS 可数百 ms */
     return WaitEvent(TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION, CompletionCode, SlotIdOut,
-                     2000000u);
+                     5000u);
 }
 
 void UsbHostEndpointZeroEnqueue(const TransferRequestBlock *Block) {
@@ -193,7 +194,7 @@ void UsbHostEndpointZeroEnqueue(const TransferRequestBlock *Block) {
 }
 
 int UsbHostWaitTransferEvent(UINT32 *CompletionCode) {
-    return WaitEvent(TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT, CompletionCode, 0, 2000000u);
+    return WaitEvent(TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT, CompletionCode, 0, 5000u);
 }
 
 void UsbHostRingEndpointZeroDoorbell(UINT32 SlotId) {

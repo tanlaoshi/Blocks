@@ -28,18 +28,16 @@ void BoardPixel8UsbHubWatch(void) {
     BoardBringUpSplashPaintLine(112, "tc then xhci");
     HalSerialWriteShell("usb: hub watch\r\n");
     /*
-     * TCPC → 清 repeater DISABLE → eUSB initiate（ESE1/HME）→
-     * 再清 DISABLE（HME 窗口后再醒一次）→ xHCI
+     * 真机：initiate→xhci→再 initiate 会把 PORT1 拧成 Device（c10）；
+     * 曾绿的是 c8=Host。保：Prepare→repeater→initiate→xhci→只脉冲 enable，勿整段重 initiate。
+     * TCPC 已 tc1/r5/cc9/ps8/sw9；勿在 HME 后再 Open/Look4 打乱附着。
      */
+    (void)UsbHostAliveClockPowerManagerEnableEmbeddedUsbRails();
     (void)UsbHostTypeCForceHost();
     (void)UsbHostClockEnableEmbeddedUsb();
+    UsbHostPrepareUsb2PhysicalInterface();
     (void)UsbHostRepeaterEnableHost();
     (void)UsbHostPhysicalEnableRepeaterMode();
-    /* repeater 已醒后再脉冲一次 ENABLE→HME */
-    UsbHostPhysicalRetriggerHostModeEnable();
-    UsbHostStallYield(500000u);
-    (void)UsbHostRepeaterEnableHost();
-    UsbHostRepeaterRefreshStatusBytes();
     if (UsbHostXhciStart() != 0) {
         BoardBringUpSplashPaintLine(112, "xhci fail");
         HalSerialWriteShell("usb: xhci fail\r\n");
@@ -47,6 +45,9 @@ void BoardPixel8UsbHubWatch(void) {
             UsbHostStallYield(1000000u);
         }
     }
+    UsbHostPhysicalRetriggerHostModeEnable();
+    (void)UsbHostRepeaterEnableHost();
+    UsbHostRepeaterRefreshStatusBytes();
 
     PortCount = UsbHostXhciMaxPorts();
     if (PortCount == 0) {
@@ -99,6 +100,7 @@ void BoardPixel8UsbHubWatch(void) {
         if (HubAddress == 0 && EnumerateAttempted == 0 && AnyConnectPort != 0) {
             UINT32 Target =
                 (PreferUsb2Port != 0) ? PreferUsb2Port : AnyConnectPort;
+            /* 同插单次枚举（对表 Mix2）；失败勿狂重试耗槽 */
             SawConnect = 1;
             BoardBringUpSplashPaintLine(112, "usb enum");
             HalSerialWriteShell("usb: enum\r\n");
@@ -115,7 +117,7 @@ void BoardPixel8UsbHubWatch(void) {
             StatusPaintCount = 0;
             UsbHostPaintHubStatus(PortCount, LastStable, HubAddress);
         }
-        UsbHostStallYield(1000000u);
+        UsbHostStallMilliseconds(500u);
     }
 #undef PORT_STATUS_STABLE_MASK
 }

@@ -40,8 +40,27 @@ static int WaitSet(UINT64 Address, UINT32 Mask, UINTN GuardLimit) {
     return 0;
 }
 
-static void ConfigureUsb2PhyForHost(void) {
+/*
+ * 须在 eUSB initiate 前清 PHYSOFTRST：否则 CON FSM 可活（es≠0）但 UTMI/HME 被掐。
+ * 对表 zuma DT + dwc3_exynos_core_init：
+ *   清 FREECLK；adj-sof-accuracy=1 → 清 SOFITPSYNC（勿再置）；
+ *   GFLADJ=0x20 + 19.2MHz 域；GUCTL：REFCLKPER=0x34、SPRS、NOEXTRDL、HSTINAUTO。
+ * 屏证：e304+ls0 → 线态已排除；旧「须置 SOFITPSYNC」与 Android 相反。
+ */
+void UsbHostPrepareUsb2PhysicalInterface(void) {
     UINT32 Usb2Phy;
+    UINT32 GlobalControl;
+    UINT32 GlobalUserControl;
+    UINT32 FrameLengthAdjustment;
+    UINT64 Frequency;
+    UINT64 Start;
+    UINT64 Delta;
+
+    GlobalControl = UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GCTL_OFFSET);
+    GlobalControl &= ~DWC3_GCTL_PRTCAPDIR_MASK;
+    GlobalControl &= ~DWC3_GCTL_SOFTWARE_ITP_SYNCHRONIZE;
+    GlobalControl |= DWC3_GCTL_PRTCAP_HOST;
+    UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GCTL_OFFSET, GlobalControl);
 
     Usb2Phy = UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET);
     Usb2Phy &= ~(DWC3_PHY_SOFTWARE_RESET | DWC3_GUSB2PHYCFG_ULPI_UTMI |
@@ -53,7 +72,48 @@ static void ConfigureUsb2PhyForHost(void) {
     Usb2Phy |= (DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT
                 << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT);
     UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GUSB2PHYCFG_OFFSET, Usb2Phy);
-    UsbHostStallYield(50000u);
+
+    GlobalUserControl =
+        UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GLOBAL_USER_CONTROL_OFFSET);
+    GlobalUserControl &= ~DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_MASK;
+    GlobalUserControl |=
+        (DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_19200KHZ
+         << DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_SHIFT) |
+        DWC3_GLOBAL_USER_CONTROL_HOST_IN_AUTO_RETRY |
+        DWC3_GLOBAL_USER_CONTROL_SPARSE_CONTROL_TRANSFER_ENABLE |
+        DWC3_GLOBAL_USER_CONTROL_NO_EXTRA_DELAY;
+    UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GLOBAL_USER_CONTROL_OFFSET,
+                       GlobalUserControl);
+
+    FrameLengthAdjustment = UsbHostReadMmio32(
+        DWC3_REGISTER_BASE + DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_OFFSET);
+    FrameLengthAdjustment &= ~(DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_MASK |
+                               DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_REFERENCE_CLOCK_MASK |
+                               DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_MASK);
+    FrameLengthAdjustment |=
+        DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_VALUE |
+        DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_SIDEBAND_SELECT |
+        DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_REFERENCE_CLOCK_LOW_POWER_SELECT |
+        DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_VALUE |
+        DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_PLUS_ONE;
+    UsbHostWriteMmio32(
+        DWC3_REGISTER_BASE + DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_OFFSET,
+        FrameLengthAdjustment);
+
+    __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(Frequency));
+    if (Frequency == 0u) {
+        UsbHostStallYield(50000u);
+        return;
+    }
+    __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Start));
+    Delta = (Frequency * 100ull) / 1000000ull;
+    for (;;) {
+        UINT64 Now;
+        __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Now));
+        if ((Now - Start) >= Delta) {
+            break;
+        }
+    }
 }
 
 int UsbHostXhciStart(void) {
@@ -67,13 +127,8 @@ int UsbHostXhciStart(void) {
     UINT32 ContextSizeBytes;
     UINT64 DoorbellBase;
     UINT64 RuntimeBase;
-    UINT32 GlobalControl;
 
-    GlobalControl = UsbHostReadMmio32(DWC3_REGISTER_BASE + DWC3_GCTL_OFFSET);
-    GlobalControl &= ~DWC3_GCTL_PRTCAPDIR_MASK;
-    GlobalControl |= DWC3_GCTL_PRTCAP_HOST;
-    UsbHostWriteMmio32(DWC3_REGISTER_BASE + DWC3_GCTL_OFFSET, GlobalControl);
-    ConfigureUsb2PhyForHost();
+    UsbHostPrepareUsb2PhysicalInterface();
 
     sCapabilityBase = DWC3_REGISTER_BASE;
     Capability = UsbHostReadMmio32(sCapabilityBase);
@@ -197,6 +252,9 @@ UINT64 UsbHostXhciPortStatusAddress(UINT32 PortIndexOneBased) {
 }
 
 #else
+
+void UsbHostPrepareUsb2PhysicalInterface(void) {
+}
 
 int UsbHostXhciStart(void) {
     return -1;

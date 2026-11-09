@@ -2,7 +2,7 @@
  * IdentityMap.c — Pixel 8 BRINGUP 最小恒等页表
  *
  * GiB0 L2：UART @0x10800000；DECON0 @0x19400000；HSI2C @0x10C00000；
- * 可选 DWC3 @0x11200000。
+ * usbdrd/DWC3 @0x11200000；PMU @0x18000000；ACPM mailbox/SRAM。
  * GiB2 L1：内核 1GiB Normal @0x80000000。
  * GiB3 L2：ABL splash @BOARD_SPLASH_PHYSICAL_BASE Device（2MiB 块）。
  */
@@ -111,10 +111,16 @@ int BoardBringUpIdentityMapEnable(void) {
 #if defined(BOARD_PIXEL8_USB_HOST_BRINGUP) && BOARD_PIXEL8_USB_HOST_BRINGUP
     /* zuma HSI2C @0x10cb0000（max77759 TCPC）→ 2MiB 块 0x10C00000 */
     sLevel2Low[0x86u] = (0x10C00000ULL) | BLOCK_DEVICE;
-    /* zuma snps,dwc3 @0x11210000 → 2MiB 块 0x11200000 */
+    /* zuma usbdrd phy@0x11200000 + dwc3@0x11210000 → 2MiB 块 0x11200000 */
     sLevel2Low[0x89u] = (0x11200000ULL) | BLOCK_DEVICE;
-    /* eUSB2 PHY 候选 @0x111c0000（对表 Exynos2200 相对 DWC3）→ 0x11000000 */
+    /* CMU_HSI0@0x11000000 + PCS@0x11100000 + eUSB CON@0x11110000 */
     sLevel2Low[0x88u] = (0x11000000ULL) | BLOCK_DEVICE;
+    /* PMU system-controller@0x18060000（USB PHY isol @+0x3EB0） */
+    sLevel2Low[0xC0u] = (0x18000000ULL) | BLOCK_DEVICE;
+    /* ACPM mailbox@0x15110000 → 2MiB 块 0x15000000 */
+    sLevel2Low[0xA8u] = (0x15000000ULL) | BLOCK_DEVICE;
+    /* ACPM SRAM@0x15700000 size 0x58000 → 2MiB 块 0x15600000 */
+    sLevel2Low[0xABu] = (0x15600000ULL) | BLOCK_DEVICE;
     /* Exynos2200 同形回退 @0x10ab0000 → 0x10a00000 */
     sLevel2Low[0x85u] = (0x10A00000ULL) | BLOCK_DEVICE;
 #endif

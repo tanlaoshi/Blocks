@@ -66,6 +66,11 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     AppendCompactHex(Line, sizeof(Line), UsbHostEnumerateStatusCode());
     UsbHostAppendText(Line, " a", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), HubAddress);
+    /* u2＝USB2 口位图；st＝Protocol Slot Type（Address 排障） */
+    UsbHostAppendText(Line, " u", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2PortBitMask());
+    UsbHostAppendText(Line, " s", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2ProtocolSlotType());
     BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PORTS, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
@@ -78,9 +83,17 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     UsbHostAppendText(Line, " g", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line),
                      UsbHostRepeaterGlobalConfigurationByte());
+    /* c＝PORT1 HOST_DEVICE（对表 Android debugfs）；附 p0 对照 */
     UsbHostAppendText(Line, " c", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line),
+                     UsbHostRepeaterPort1ConfigurationByte());
+    UsbHostAppendText(Line, " p0", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
                      UsbHostRepeaterPort0ConfigurationByte());
+    /* ua＝LOPWR_UART_P1；bit1=寄存器选源 bit0=UART 开（期望 ua≥2 且偶） */
+    UsbHostAppendText(Line, " ua", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
+                     UsbHostRepeaterLowPowerUartPort1Byte());
     BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_REPEATER, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
@@ -93,17 +106,33 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalFoundBasePage());
     UsbHostAppendText(Line, " cs", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalStrapControl());
+    UsbHostAppendText(Line, " es", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalEmbeddedUsbState());
+    /* ls＝dig LineState；pd＝UTMI dp/dm pulldown 位图（bit0=DP bit1=DM） */
+    UsbHostAppendText(Line, " ls", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalLineState());
+    UsbHostAppendText(Line, " pd", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalUtmiPullDown());
     BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PHYSICAL_BASE, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
 
     Line[0] = '\0';
+    /* ck 已绿过；本行盯 DualRole + ACPM：dr / u / k / ac=LDO */
     UsbHostAppendText(Line, "cm", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalCommonControl());
-    UsbHostAppendText(Line, " ba", sizeof(Line));
-    AppendCompactHex(Line, sizeof(Line), UsbHostPhysicalFoundBasePage());
-    UsbHostAppendText(Line, " ck", sizeof(Line));
-    AppendCompactHex(Line, sizeof(Line), UsbHostClockEnableStatusByte());
+    UsbHostAppendText(Line, " dr", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
+                     UsbHostDualRoleDevicePhysicalLastResultCode());
+    UsbHostAppendText(Line, " u", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
+                     UsbHostDualRoleDevicePhysicalUtmi() & 0xFFu);
+    UsbHostAppendText(Line, " k", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
+                     UsbHostDualRoleDevicePhysicalClockReset() & 0xFFu);
+    UsbHostAppendText(Line, " ac", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line),
+                     UsbHostAliveClockPowerManagerLastResultCode());
     BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_PHYSICAL_COMMON, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");
@@ -119,6 +148,9 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCPowerStatusByte());
     UsbHostAppendText(Line, " sw", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCUsbSwitchByte());
+    /* vb＝buck-boost@0x69 源模（期望 a）；ee＝I2C 写失败 */
+    UsbHostAppendText(Line, " vb", sizeof(Line));
+    AppendCompactHex(Line, sizeof(Line), UsbHostTypeCBuckBoostByte());
     BoardBringUpSplashPaintLine(SPLASH_STATUS_LINE_TYPE_C, Line);
     HalSerialWriteShell(Line);
     HalSerialWriteShell("\r\n");

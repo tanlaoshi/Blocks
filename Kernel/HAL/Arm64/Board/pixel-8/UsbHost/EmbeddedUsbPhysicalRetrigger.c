@@ -13,7 +13,8 @@
 #define EMBEDDED_USB_ENABLE (1u << 0)
 #define EMBEDDED_USB_RETENTION_ENABLE_NOT (1u << 1)
 #define EMBEDDED_USB_FREQUENCY_SELECT_MASK (0x7u << 4)
-#define EMBEDDED_USB_FREQUENCY_SELECT_26MHZ (0x3u << 4)
+/* 对表 zuma-usb.dtsi phy_ref_clock=19200000；勿再用 26MHz（会打坏 HME） */
+#define EMBEDDED_USB_FREQUENCY_SELECT_19200KHZ (0x0u << 4)
 #define EMBEDDED_USB_REPEATER_MODE (1u << 10)
 
 static void StallMicroseconds(UINT32 Microseconds) {
@@ -56,7 +57,7 @@ void UsbHostPhysicalRetriggerHostModeEnable(void) {
     CommonControl |= EMBEDDED_USB_ENABLE | EMBEDDED_USB_REPEATER_MODE |
                      EMBEDDED_USB_RETENTION_ENABLE_NOT;
     CommonControl = (CommonControl & ~EMBEDDED_USB_FREQUENCY_SELECT_MASK) |
-                    EMBEDDED_USB_FREQUENCY_SELECT_26MHZ;
+                    EMBEDDED_USB_FREQUENCY_SELECT_19200KHZ;
     UsbHostWriteMmio32(Base + EMBEDDED_USB_COMMON_CONTROL_REGISTER,
                        CommonControl);
     StallMicroseconds(1000u);

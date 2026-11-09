@@ -13,12 +13,41 @@
 
 #define DWC3_REGISTER_BASE           BOARD_USB_DWC3_PHYSICAL_BASE
 #define DWC3_GCTL_OFFSET             0xC110u
+#define DWC3_GLOBAL_USER_CONTROL_OFFSET 0xC12Cu
 #define DWC3_GUSB2PHYCFG_OFFSET      0xC200u
 #define DWC3_GUSB3PIPECTL_OFFSET     0xC2C0u
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_OFFSET 0xC630u
 #define DWC3_GCTL_PRTCAPDIR_MASK     (3u << 12)
 #define DWC3_GCTL_PRTCAP_HOST        (1u << 12)
 #define DWC3_GCTL_CORESOFTRESET      (1u << 11)
+/*
+ * GCTL.SOFITPSYNC：仅 freeclk quirk 时常置；zuma `adj-sof-accuracy=1`
+ * 在 dwc3_exynos_core_init 里会清掉（覆盖 quirk）。须保持清。
+ */
+#define DWC3_GCTL_SOFTWARE_ITP_SYNCHRONIZE (1u << 10)
 #define DWC3_PHY_SOFTWARE_RESET      (1u << 31)
+/* GUCTL：对表 dwc3-exynos + ATF usb_dwc3_regs.h；19.2MHz → REFCLKPER=0x34 */
+#define DWC3_GLOBAL_USER_CONTROL_HOST_IN_AUTO_RETRY (1u << 14)
+#define DWC3_GLOBAL_USER_CONTROL_SPARSE_CONTROL_TRANSFER_ENABLE (1u << 17)
+#define DWC3_GLOBAL_USER_CONTROL_NO_EXTRA_DELAY (1u << 21)
+#define DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_SHIFT 22
+#define DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_MASK \
+    (0x3FFu << DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_SHIFT)
+#define DWC3_GLOBAL_USER_CONTROL_REFERENCE_CLOCK_PERIOD_19200KHZ 0x34u
+/* 对表 snps,quirk-frame-length-adjustment=<0x20> + 19.2MHz ref */
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_MASK 0x3Fu
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_VALUE 0x20u
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_30MHZ_SIDEBAND_SELECT (1u << 7)
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_REFERENCE_CLOCK_MASK \
+    (0x3FFFu << 8)
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_REFERENCE_CLOCK_LOW_POWER_SELECT \
+    (1u << 23)
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_MASK \
+    (0x7Fu << 24)
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_VALUE \
+    (0x0Cu << 24)
+#define DWC3_GLOBAL_FRAME_LENGTH_ADJUSTMENT_240MHZ_DECREMENT_PLUS_ONE \
+    (1u << 31)
 
 #define USB_COMMAND_RUN_STOP         (1u << 0)
 #define USB_COMMAND_HOST_CONTROLLER_RESET (1u << 1)
@@ -67,6 +96,8 @@
 #define TRANSFER_REQUEST_BLOCK_LINK 6u
 #define TRANSFER_REQUEST_BLOCK_ENABLE_SLOT 9u
 #define TRANSFER_REQUEST_BLOCK_ADDRESS_DEVICE 11u
+/* Address Device TRB bit9：BSR=1 不发 SET_ADDRESS（§4.6.5 / §6.4.3.4） */
+#define TRANSFER_REQUEST_BLOCK_BLOCK_SET_ADDRESS_REQUEST (1u << 9)
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT 32u
 #define TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION 33u
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_TYPE_IN (3u << 16)
@@ -99,6 +130,7 @@ void UsbHostFormatHexadecimal32(char *Out, UINT32 Value);
 void UsbHostCopyText(char *Destination, const char *Source, UINTN Capacity);
 void UsbHostAppendText(char *Destination, const char *Source, UINTN Capacity);
 void UsbHostStallYield(UINTN Iterations);
+void UsbHostStallMilliseconds(UINT32 Milliseconds);
 void UsbHostCacheCleanRange(void *Address, UINTN Size);
 void UsbHostCacheCleanInvalidateRange(void *Address, UINTN Size);
 
@@ -128,6 +160,7 @@ void UsbHostBindEndpointZeroRing(UINT32 SlotId);
 void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical);
 UINT64 UsbHostEndpointZeroRingPhysical(void);
 
+void UsbHostPrepareUsb2PhysicalInterface(void);
 int UsbHostXhciStart(void);
 UINT32 UsbHostXhciMaxPorts(void);
 UINT64 UsbHostXhciPortStatusAddress(UINT32 PortIndexOneBased);
@@ -142,6 +175,7 @@ UINT32 UsbHostRootPortStatus(UINT32 PortIndexOneBased);
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut);
 UINT32 UsbHostEnumerateStatusCode(void);
 void UsbHostEnumerateStatusCodeClear(void);
+void UsbHostEnumerateStatusCodeSet(UINT32 Code);
 
 void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
                            UINT32 HubAddress);
@@ -164,6 +198,7 @@ UINT8 UsbHostTypeCCcStatusByte(void);
 UINT8 UsbHostTypeCPowerStatusByte(void);
 UINT8 UsbHostTypeCRoleControlByte(void);
 UINT8 UsbHostTypeCUsbSwitchByte(void);
+UINT8 UsbHostTypeCBuckBoostByte(void);
 
 int UsbHostRepeaterEnableHost(void);
 void UsbHostRepeaterRefreshStatusBytes(void);
@@ -171,14 +206,31 @@ UINT8 UsbHostRepeaterLastResultCode(void);
 UINT8 UsbHostRepeaterRevisionByte(void);
 UINT8 UsbHostRepeaterGlobalConfigurationByte(void);
 UINT8 UsbHostRepeaterPort0ConfigurationByte(void);
+UINT8 UsbHostRepeaterPort1ConfigurationByte(void);
+UINT8 UsbHostRepeaterLowPowerUartPort1Byte(void);
 
 int UsbHostClockEnableEmbeddedUsb(void);
 UINT8 UsbHostClockEnableStatusByte(void);
-void UsbHostEssentialControlLinkInitialize(void);
+int UsbHostDualRoleDevicePhysicalInitialize(void);
+UINT8 UsbHostDualRoleDevicePhysicalLastResultCode(void);
+UINT32 UsbHostDualRoleDevicePhysicalClockReset(void);
+UINT32 UsbHostDualRoleDevicePhysicalUtmi(void);
+UINT32 UsbHostDualRoleDevicePhysicalPowerManagement(void);
+int UsbHostAliveClockPowerManagerEnableEmbeddedUsbRails(void);
+UINT8 UsbHostAliveClockPowerManagerLastResultCode(void);
+UINT32 UsbHostAliveClockPowerManagerStatusBits(void);
 int UsbHostPhysicalEnableRepeaterMode(void);
 void UsbHostPhysicalRetriggerHostModeEnable(void);
 void UsbHostPhysicalRefreshCommonControl(void);
+void UsbHostPhysicalStatusClear(void);
+void UsbHostPhysicalStatusSetResultCode(UINT8 ResultCode);
+void UsbHostPhysicalStatusSetFoundBasePage(UINT32 Page);
+void UsbHostPhysicalStatusSetStrapAndCommon(UINT32 Strap, UINT32 Common);
+void UsbHostPhysicalStatusSetEmbeddedUsbState(UINT8 State);
 UINT8 UsbHostPhysicalLastResultCode(void);
+UINT8 UsbHostPhysicalEmbeddedUsbState(void);
+UINT8 UsbHostPhysicalLineState(void);
+UINT8 UsbHostPhysicalUtmiPullDown(void);
 UINT32 UsbHostPhysicalCommonControl(void);
 UINT32 UsbHostPhysicalStrapControl(void);
 UINT32 UsbHostPhysicalFoundBasePage(void);

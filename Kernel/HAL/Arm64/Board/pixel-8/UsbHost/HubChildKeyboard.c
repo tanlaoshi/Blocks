@@ -175,7 +175,7 @@ static int FindBootKeyboardBehindHubRouted(UINT32 HubSlotId, UINT32 RootPortInde
             continue;
         }
         DeviceSpeed = UsbHostChildSlotSpeed(Status);
-        /* FS 在 Address 内一步 BSR0；HS 一律 BSR1→BSR0（勿再嵌套 addr0 后再 BSR0） */
+        /* 一层/二级均一步 BSR0（真机 BSR1 独发后槽停 4410 Default，ConfigEP 非法） */
         if (UsbHostAddressKeyboardOnHubPort(
                 HubSlotId, RootPortIndex, ParentRouteString, HubPort, DeviceSpeed, 1u,
                 &KeyboardSlot) != 0) {

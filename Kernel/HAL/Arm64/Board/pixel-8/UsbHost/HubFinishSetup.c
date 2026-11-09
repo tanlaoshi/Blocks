@@ -146,6 +146,16 @@ int UsbHostHubClearPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 
     return HubControl(HubSlotId, 0x23u, 1u, Feature, (UINT16)HubPortOneBased, 0, 0);
 }
 
+int UsbHostHubClearTransactionTranslatorBuffer(UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                               UINT32 DeviceAddress,
+                                               UINT32 EndpointNumber, UINT32 EndpointIn) {
+    UINT16 Value;
+
+    Value = (UINT16)(((DeviceAddress & 0x7Fu) << 8) | (EndpointNumber & 0x0Fu) |
+                     (EndpointIn != 0 ? 0x80u : 0u));
+    return HubControl(HubSlotId, 0x23u, 8u, Value, (UINT16)HubPortOneBased, 0, 0);
+}
+
 #else
 
 int UsbHostFinishHubSetup(UINT32 HubSlotId, UINT32 RootPortIndex, UINT32 PortSpeed,
@@ -175,6 +185,17 @@ int UsbHostHubClearPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 
     (void)HubSlotId;
     (void)HubPortOneBased;
     (void)Feature;
+    return -1;
+}
+
+int UsbHostHubClearTransactionTranslatorBuffer(UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                               UINT32 DeviceAddress,
+                                               UINT32 EndpointNumber, UINT32 EndpointIn) {
+    (void)HubSlotId;
+    (void)HubPortOneBased;
+    (void)DeviceAddress;
+    (void)EndpointNumber;
+    (void)EndpointIn;
     return -1;
 }
 

@@ -78,17 +78,33 @@ static UINT32 ProbeFailSticky(UINT32 Kind, UINT32 HubPort, UINT32 DeviceSpeed) {
 int UsbHostProbeChildSlot(UINT32 KeyboardSlotId, UINT32 RootPort, UINT32 HubSlotId,
                              UINT32 HubPort, UINT32 DeviceSpeed) {
     UINT8 *ControlData = UsbHostControlDataBuffer();
-    UINT16 Total;
+    UINT16 Total = 0;
     UINT8 MaxPacketSize0;
     /* 与 Address / HubEnumerate 初值一致：HS/FS=64，LS=8 */
     UINT32 AddressMps = (DeviceSpeed == 3u || DeviceSpeed == 1u) ? 64u : 8u;
 
-    /* Address 已完成（FS 一步 BSR0 / HS BSR1→BSR0）；此处只 GetDesc→SetConfig */
+    /*
+     * Address 已一步 BSR0。坞内二级：Clear_TT_Buffer（USB2 §11.24.2.3；真机 37a4 后仍
+     * 直取 18 字节→341044）。对表 X64 DeviceControl GetDeviceDesc：先 8 拿
+     * bMaxPacketSize0 → Evaluate → 再 18。
+     */
+    if (sProbeStickyTier != 0) {
+        UINT8 *Output = UsbHostDeviceContextSlot(KeyboardSlotId);
+        UINT32 DeviceAddress;
+
+        UsbHostCacheCleanInvalidateRange(Output, UsbHostContextSizeBytes() * 32u);
+        DeviceAddress = (UINT32)Output[12] & 0xFFu;
+        UsbHostClearTransactionTranslator(HubSlotId, HubPort, DeviceAddress);
+        if (DeviceAddress != 0u) {
+            UsbHostClearTransactionTranslator(HubSlotId, HubPort, 0u);
+        }
+        UsbHostKeyboardStatusCodeSet(0x37A0u | (HubPort & 0xFu));
+    }
     UsbHostStallMilliseconds(50u);
     UsbHostKeyboardStatusCodeSet(
         ((sProbeStickyTier != 0) ? 0x3770u : 0x2770u) | (HubPort & 0xFu));
     if (UsbHostXhciControlTransfer(KeyboardSlotId, 0x80u, 6u, 0x0100u, 0, ControlData,
-                                   18u) != 0) {
+                                   8u) != 0) {
         UsbHostKeyboardStatusCodeSet(ProbeFailSticky(0x24u, HubPort, DeviceSpeed));
         return -1;
     }
@@ -99,6 +115,20 @@ int UsbHostProbeChildSlot(UINT32 KeyboardSlotId, UINT32 RootPort, UINT32 HubSlot
         MaxPacketSize0 != 64u) {
         MaxPacketSize0 = (UINT8)AddressMps;
     }
+    if (MaxPacketSize0 != AddressMps) {
+        if (EvaluateEndpointZeroRing(KeyboardSlotId, MaxPacketSize0) != 0) {
+            UsbHostKeyboardStatusCodeSet(ProbeFailSticky(0x27u, HubPort, DeviceSpeed));
+            return -1;
+        }
+        AddressMps = MaxPacketSize0;
+    }
+    if (UsbHostXhciControlTransfer(KeyboardSlotId, 0x80u, 6u, 0x0100u, 0, ControlData,
+                                   18u) != 0) {
+        UsbHostKeyboardStatusCodeSet(ProbeFailSticky(0x28u, HubPort, DeviceSpeed));
+        return -1;
+    }
+    UsbHostKeyboardStatusCodeSet(
+        ((sProbeStickyTier != 0) ? 0x37D0u : 0x27D0u) | (HubPort & 0xFu));
     if (ControlData[4] == USB_DEVICE_CLASS_HUB) {
         UsbHostKeyboardStatusCodeSet(0x260u | (HubPort & 0xFu));
         return 1;
@@ -180,6 +210,9 @@ int UsbHostProbeChildSlot(UINT32 KeyboardSlotId, UINT32 RootPort, UINT32 HubSlot
             }
         ProbeConfigureKeyboard:
             UsbHostKeyboardStatusCodeSet(0x2B00u | ConfigurationIndex);
+            if (sProbeStickyTier != 0) {
+                UsbHostKeyboardStatusCodeSet(0x37C0u | (HubPort & 0xFu));
+            }
             return UsbHostHidBootKeyboardConfigure(KeyboardSlotId, RootPort, HubSlotId,
                                                    HubPort, DeviceSpeed);
         }

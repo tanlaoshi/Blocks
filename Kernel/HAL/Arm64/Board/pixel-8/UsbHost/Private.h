@@ -185,6 +185,7 @@ void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical);
 UINT64 UsbHostEndpointZeroRingPhysical(UINT32 SlotId);
 int UsbHostXhciDisableSlot(UINT32 SlotId);
 int UsbHostXhciConfigureEndpoint(UINT32 SlotId);
+UINT32 UsbHostXhciConfigureEndpointCompletionCode(void);
 void UsbHostRecoverEndpointZero(UINT32 SlotId);
 int UsbHostEndpointZeroSync(UINT32 SlotId, UINT32 *StopCompletionOut,
                             UINT32 *ResetCompletionOut,
@@ -226,10 +227,14 @@ int UsbHostFinishHubSetup(UINT32 HubSlotId, UINT32 RootPortIndex, UINT32 PortSpe
 int UsbHostHubGetPortStatus(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT32 *StatusOut);
 int UsbHostHubSetPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
 int UsbHostHubClearPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
+/* USB2 §11.24.2.3 CLEAR_TT_BUFFER（对表 Pi/Duo HubClearTtBuffer） */
+int UsbHostHubClearTransactionTranslatorBuffer(UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                               UINT32 DeviceAddress,
+                                               UINT32 EndpointNumber, UINT32 EndpointIn);
 int UsbHostFindBootKeyboardBehindHub(UINT32 HubSlotId, UINT32 RootPortIndex,
                                      UINT32 HubPortSpeedValue, UINT32 HubPortCount,
                                      UINT32 *KeyboardSlotOut);
-/* IssueSetAddress≠0：BSR1→BSR0；＝0：只 BSR1（嵌套口先 addr0 GetDesc） */
+/* FS 一步 BSR0；HS BSR1→BSR0。IssueSetAddress 保留形参（现一层/二级均发地址） */
 int UsbHostAddressKeyboardOnHubPort(UINT32 HubSlotId, UINT32 RootPort,
                                     UINT32 ParentRouteString, UINT32 HubPortOneBased,
                                     UINT32 DeviceSpeed, UINT32 IssueSetAddress,
@@ -240,6 +245,8 @@ int UsbHostProbeChildSlot(UINT32 SlotId, UINT32 RootPort, UINT32 HubSlotId,
                           UINT32 HubPort, UINT32 DeviceSpeed);
 void UsbHostProbeTierSet(UINT32 Tier);
 UINT32 UsbHostChildSlotSpeed(UINT32 HubPortStatus);
+void UsbHostClearTransactionTranslator(UINT32 HubSlotId, UINT32 HubPort,
+                                       UINT32 DeviceAddress);
 int UsbHostHidBootKeyboardConfigure(UINT32 KeyboardSlotId, UINT32 RootPort,
                                     UINT32 HubSlotId, UINT32 HubPortOneBased,
                                     UINT32 DeviceSpeed);

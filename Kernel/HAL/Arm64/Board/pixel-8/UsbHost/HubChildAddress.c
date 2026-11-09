@@ -20,6 +20,11 @@ static void WriteLittleEndian32(UINT8 *Destination, UINT32 Value) {
     Destination[3] = (UINT8)((Value >> 24) & 0xFFu);
 }
 
+static UINT32 ReadLittleEndian32(const UINT8 *Source) {
+    return (UINT32)Source[0] | ((UINT32)Source[1] << 8) | ((UINT32)Source[2] << 16) |
+           ((UINT32)Source[3] << 24);
+}
+
 UINT32 UsbHostChildSlotSpeed(UINT32 HubPortStatus) {
     if ((HubPortStatus & HUB_PORT_HIGH_SPEED) != 0) {
         return 3u;
@@ -116,9 +121,10 @@ int UsbHostAddressKeyboardOnHubPort(UINT32 HubSlotId, UINT32 RootPort,
     UsbHostCacheCleanRange(Output, ContextSize * 32u);
 
     /*
-     * FS/LS：一步 BSR=0（对表 X64；初值 MPS 仍 64，避免旧 341034 Babble）。
-     * HS：BSR1→BSR0（现网一层 hub/MSC）。SS：同 §4.6.5 BSR1→BSR0。
+     * FS/LS：一步 BSR=0（对表 X64；真机独 BSR1 后槽停 4410，ConfigEP 要 Addressed）。
+     * HS：BSR1→BSR0。SS：同 §4.6.5。
      */
+    (void)IssueSetAddress;
     Command.Parameter = (UINT64)(UINTN)Input;
     Command.Status = 0;
     if (DeviceSpeed < 3u) {
@@ -144,22 +150,29 @@ int UsbHostAddressKeyboardOnHubPort(UINT32 HubSlotId, UINT32 RootPort,
             UsbHostKeyboardStatusCodeSet(0x310u | (CompletionCode & 0xFFu));
             return -1;
         }
-        if (IssueSetAddress != 0) {
-            UsbHostCacheCleanRange(Input, ContextSize * 33u);
-            UsbHostCacheCleanRange(Output, ContextSize * 32u);
-            Command.Parameter = (UINT64)(UINTN)Input;
-            Command.Status = 0;
-            Command.Control =
-                TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_ADDRESS_DEVICE) |
-                TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION |
-                (SlotId << TRANSFER_REQUEST_BLOCK_SLOT_SHIFT);
-            if (UsbHostXhciSubmitCommand(&Command, &CompletionCode, 0) != 0 ||
-                CompletionCode != COMPLETION_CODE_SUCCESS) {
-                (void)UsbHostXhciDisableSlot(SlotId);
-                UsbHostKeyboardStatusCodeSet(0x300u | (CompletionCode & 0xFFu));
-                return -1;
-            }
+        UsbHostCacheCleanRange(Input, ContextSize * 33u);
+        UsbHostCacheCleanRange(Output, ContextSize * 32u);
+        Command.Parameter = (UINT64)(UINTN)Input;
+        Command.Status = 0;
+        Command.Control =
+            TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_ADDRESS_DEVICE) |
+            TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION |
+            (SlotId << TRANSFER_REQUEST_BLOCK_SLOT_SHIFT);
+        if (UsbHostXhciSubmitCommand(&Command, &CompletionCode, 0) != 0 ||
+            CompletionCode != COMPLETION_CODE_SUCCESS) {
+            (void)UsbHostXhciDisableSlot(SlotId);
+            UsbHostKeyboardStatusCodeSet(0x300u | (CompletionCode & 0xFFu));
+            return -1;
         }
+    }
+    {
+        UINT32 SlotDword3 = 0;
+
+        UsbHostCacheCleanInvalidateRange(Output, ContextSize * 32u);
+        SlotDword3 = ReadLittleEndian32(Output + 12u);
+        /* 442x＝Addressed；4410＝仍 Default（曾 BSR1 独发） */
+        UsbHostKeyboardStatusCodeSet(0x4400u | (((SlotDword3 >> 27) & 0x1Fu) << 4) |
+                                     (SlotDword3 & 0xFu));
     }
     if (KeyboardSlotOut != 0) {
         *KeyboardSlotOut = SlotId;

@@ -68,6 +68,7 @@
 #define TRB_C               (1u << 0)
 #define TRB_TC              (1u << 1)
 #define TRB_ISP             (1u << 2) /* 短包也要完成事件（鼠标常见） */
+#define TRB_CHAIN           (1u << 4) /* Normal TD 跨 MPS 时链下一 TRB */
 #define TRB_IOC             (1u << 5)
 #define TRB_IDT             (1u << 6)
 #define TRB_TYPE(t)         ((UINT32)(t) << 10)

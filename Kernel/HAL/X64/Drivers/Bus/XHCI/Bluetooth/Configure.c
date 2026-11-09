@@ -28,6 +28,8 @@ int gBluetoothConfigured;
 int gBluetoothHciResetOk;
 volatile UINT32 gBluetoothEventDone;
 volatile UINT32 gBluetoothEventCode;
+volatile UINT32 gBluetoothAclInDone;
+volatile UINT32 gBluetoothAclInCode;
 volatile UINT32 gBluetoothAclOutDone;
 volatile UINT32 gBluetoothAclOutCode;
 
@@ -120,6 +122,11 @@ static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     UINT64 Deq;
     UINT8 Interval;
 
+    /*
+     * Event + ACL IN + ACL OUT 全配。
+     * bootloader 0xFC09：命令 Bulk OUT、事件 Bulk IN（对表 btusb）；
+     * 常态 HCI：命令 Control、事件 Interrupt IN。
+     */
     if (InDci > CtxEntries) {
         CtxEntries = InDci;
     }
@@ -192,6 +199,10 @@ static int ConfigureHciEndpoints(UINT32 SlotId, UINT32 RootPort, UINT8 Speed,
     gBluetoothEventMaxPacketSize = EventMaxPacketSize;
     gBluetoothAclInMaxPacketSize = AclInMaxPacketSize;
     gBluetoothAclOutMaxPacketSize = AclOutMaxPacketSize;
+    BootLogHex("Boot: Bluetooth ep speed=", Speed, 2);
+    BootLogHex(" event-dci=", EvDci, 2);
+    BootLogHex(" interval=", Interval, 2);
+    BootLogHex(" event-mps=", EventMaxPacketSize, 4);
     return 1;
 }
 
@@ -236,6 +247,11 @@ int BluetoothConfigure(UINT32 RootPort, UINT8 Speed) {
     }
     if (SetConfig(ConfigVal) < 0) {
         BootLog("Boot: Bluetooth setcfg fail\n");
+        return 0;
+    }
+    /* 对表 EnumeratePort HID：复合 iface 显式 SET_INTERFACE(alt=0) */
+    if (SetInterface(Interface, 0) < 0) {
+        BootLogHex("Boot: Bluetooth setiface fail iface=", Interface, 2);
         return 0;
     }
     if (!ConfigureHciEndpoints(gBluetoothSlot, RootPort, Speed, EventEndpoint,

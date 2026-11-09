@@ -173,7 +173,30 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut) {
      * 本机口8：CCS+!PED（0x6E1）→ 纯软探永远 not found。
      * 一次 ForceUntilPed = 规格 Port Reset；禁 HotPoll/NeedForce 循环。
      * freeze 短暂放下：claim 空后 freeze 挡 MSC Force，不挡认 HCI。
+     *
+     * Intel 8087:0A2B：FC09 失败后软 reboot 常卡成「Control 通、Interrupt 无 CC」。
+     * 对表 btusb cmd_timeout → 硬复位：先掉 PORTSC.PP 再上电，再 ForceUntilPed。
      */
+    {
+        UINT64 PortStatusRegister = gOperationalBase + PortRegister(Port);
+        UINT32 Neutral;
+
+        /* 掉电：清 PP，保留 RO/RWS Neutral（勿瞎清 CHANGE） */
+        PortStatus = ReadMmio32(PortStatusRegister);
+        Neutral = PortscNeutral(PortStatus);
+        WriteMmio32(PortStatusRegister, Neutral & ~PORTSC_PP);
+        Fence();
+        StallMilliseconds(150);
+        /* 上电 */
+        PortStatus = ReadMmio32(PortStatusRegister);
+        Neutral = PortscNeutral(PortStatus);
+        WriteMmio32(PortStatusRegister, Neutral | PORTSC_PP);
+        Fence();
+        StallMilliseconds(100);
+        BootLogHex("Boot: Bluetooth pp-cycle portsc=",
+                   ReadMmio32(PortStatusRegister), 8);
+    }
+
     FreezeSave = gXhciPortEnumerateFreeze;
     gXhciPortEnumerateFreeze = 0;
     if (!ForceUntilPed(Port, &Force)) {
@@ -189,6 +212,8 @@ int BluetoothAddressRoot(UINT32 Port, UINT8 *SpeedOut) {
         return 0;
     }
     *SpeedOut = PortSpeed(PortStatus);
+    BootLogHex("Boot: Bluetooth post-ped portsc=", PortStatus, 8);
+    BootLogHex(" spd=", *SpeedOut, 2);
     BluetoothReleaseSlot();
     if (!AddressDeviceOnPort(Port, *SpeedOut, &gBluetoothSlot,
                              gBluetoothDeviceContext, 0, 0, 0, 0, 0)) {

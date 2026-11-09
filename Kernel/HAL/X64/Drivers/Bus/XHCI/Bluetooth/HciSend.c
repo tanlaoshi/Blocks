@@ -1,5 +1,7 @@
 /*
  * HciSend.c — HCI 命令发送：Control（常态）/ Bulk OUT（Intel 0xFC09）
+ *
+ * bootloader 0xFC09：Bulk OUT 发命令，Bulk IN 收事件（对表 btusb）。
  */
 #include "XHCI/Bluetooth/Private.h"
 
@@ -43,9 +45,97 @@ int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
     FlushDma(gBluetoothCommandBuffer, Total);
     gTransferSlot = gBluetoothSlot;
     if (ControlTransfer(&Setup, gBluetoothCommandBuffer) < 0) {
+        BootLogHex("Boot: Bluetooth HCI control fail op=", Opcode, 4);
         return -1;
     }
     return 0;
+}
+
+void BluetoothHciArmAclIn(void) {
+    UINT32 Len = gBluetoothAclInMaxPacketSize ? gBluetoothAclInMaxPacketSize
+                                              : 64u;
+
+    if (!gBluetoothConfigured || gBluetoothAclInDci == 0) {
+        return;
+    }
+    if (Len > BLUETOOTH_EVENT_MAX) {
+        Len = BLUETOOTH_EVENT_MAX;
+    }
+    ZeroMemory(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
+    FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
+    gBluetoothAclInDone = 0;
+    gBluetoothAclInCode = 0;
+    gBluetoothEventDone = 0;
+    gBluetoothEventCode = 0;
+    Enqueue(gBluetoothAclInRing, &gBluetoothAclIn,
+            PointerToPhysical(gBluetoothEventBuffer), Len,
+            TRB_TYPE(TRB_NORMAL) | TRB_IOC | TRB_ISP);
+    FlushDma(gBluetoothAclInRing, sizeof(gBluetoothAclInRing));
+    RingDoorbell(gBluetoothSlot, gBluetoothAclInDci);
+}
+
+int BluetoothHciWaitAclIn(UINT32 TimeoutMs) {
+    UINT64 Start = ReadTsc();
+    UINT64 Need = (UINT64)TimeoutMs * 3000000ULL;
+    int Own = 0;
+    int Result = -1;
+
+    if (!EventIsExclusive()) {
+        EventEnterExclusive();
+        Own = 1;
+    }
+    for (;;) {
+        if (HalCpuIsHypervisor()) {
+            ProcessEvents();
+        } else {
+            ProcessEventsRealPc();
+        }
+        ServiceHidCompletions();
+        if (gBluetoothAclInDone) {
+            Result = (gBluetoothAclInCode == CC_SUCCESS ||
+                      gBluetoothAclInCode == CC_SHORT_PACKET)
+                         ? 0
+                         : -1;
+            gBluetoothEventDone = 1;
+            gBluetoothEventCode = gBluetoothAclInCode;
+            break;
+        }
+        if (ReadTsc() - Start >= Need) {
+            break;
+        }
+        __asm__ volatile("pause");
+    }
+    if (Own) {
+        EventLeaveExclusive();
+    }
+    FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
+    return Result;
+}
+
+static void BluetoothHciEnqueueBulkOut(UINT64 Physical, UINT32 Total) {
+    UINT32 MaxPacketSize =
+        gBluetoothAclOutMaxPacketSize ? gBluetoothAclOutMaxPacketSize : 64u;
+    UINT32 Offset = 0;
+
+    if (MaxPacketSize == 0u) {
+        MaxPacketSize = 64u;
+    }
+    while (Offset < Total) {
+        UINT32 Take = Total - Offset;
+        UINT32 Control;
+
+        if (Take > MaxPacketSize) {
+            Take = MaxPacketSize;
+        }
+        if (Offset + Take < Total) {
+            Control = TRB_TYPE(TRB_NORMAL) | TRB_CHAIN;
+        } else {
+            Control = TRB_TYPE(TRB_NORMAL) | TRB_IOC;
+        }
+        Enqueue(gBluetoothAclOutRing, &gBluetoothAclOut, Physical + Offset, Take,
+                Control);
+        Offset += Take;
+    }
 }
 
 int BluetoothHciSendBulk(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
@@ -69,13 +159,12 @@ int BluetoothHciSendBulk(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen) {
         EventEnterExclusive();
         Own = 1;
     }
-    Enqueue(gBluetoothAclOutRing, &gBluetoothAclOut,
-            PointerToPhysical(gBluetoothCommandBuffer), Total,
-            TRB_TYPE(TRB_NORMAL) | TRB_IOC);
+    BluetoothHciEnqueueBulkOut(PointerToPhysical(gBluetoothCommandBuffer),
+                               Total);
     FlushDma(gBluetoothAclOutRing, sizeof(gBluetoothAclOutRing));
     RingDoorbell(gBluetoothSlot, gBluetoothAclOutDci);
     Start = ReadTsc();
-    Need = 2000ULL * 3000000ULL;
+    Need = 5000ULL * 3000000ULL;
     for (;;) {
         if (HalCpuIsHypervisor()) {
             ProcessEvents();

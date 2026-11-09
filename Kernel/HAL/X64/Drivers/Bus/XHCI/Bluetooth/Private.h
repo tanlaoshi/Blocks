@@ -67,6 +67,8 @@ extern UINT8 gBluetoothAddress[6];
 extern char gBluetoothLocalName[64];
 extern volatile UINT32 gBluetoothEventDone;
 extern volatile UINT32 gBluetoothEventCode;
+extern volatile UINT32 gBluetoothAclInDone;
+extern volatile UINT32 gBluetoothAclInCode;
 extern volatile UINT32 gBluetoothAclOutDone;
 extern volatile UINT32 gBluetoothAclOutCode;
 
@@ -89,8 +91,10 @@ int BluetoothConfigure(UINT32 RootPort, UINT8 Speed);
 int BluetoothHciReset(void);
 void BluetoothHciArmEvent(void);
 int BluetoothHciWaitArmed(UINT32 TimeoutMs);
+void BluetoothHciArmAclIn(void);
+int BluetoothHciWaitAclIn(UINT32 TimeoutMs);
 int BluetoothHciSendRaw(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen);
-/* bootloader 下 0xFC09 须 Bulk OUT（对表 btusb_send_frame_intel） */
+/* bootloader 下 0xFC09：Bulk OUT 发、Bulk IN 收事件（对表 btusb） */
 int BluetoothHciSendBulk(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen);
 int BluetoothHciCommand(UINT16 Opcode, const UINT8 *Params, UINT8 ParamLen,
                         UINT8 *StatusOut, UINT8 *ReturnData, UINT8 ReturnMax,

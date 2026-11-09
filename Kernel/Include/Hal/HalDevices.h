@@ -6,6 +6,7 @@
 
 #include "BootTypes.h"
 
+/* QEMU user/slirp 课默认（10.0.2.15）。仅 Virtio / ApplyQemuSlirp；真机驱动勿作初值 */
 #define HAL_NET_IP_DEFAULT  0x0A00020FULL
 #define HAL_IP_PROTO_ICMP   1
 #define HAL_IP_PROTO_TCP    6

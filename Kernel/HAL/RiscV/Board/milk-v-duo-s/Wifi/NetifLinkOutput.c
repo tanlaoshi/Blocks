@@ -63,9 +63,8 @@ void BoardWifiArmNetifLinkOutput(const UINT8 StationMac[AIC_NETIF_MAC_LENGTH]) {
 void BoardWifiDisarmNetifLinkOutput(void) {
     /*
      * 只撤武装，勿 LeavePrimary。join/握手中途 Disarm 再 Arm 是常态
-     * （Assoc/Handshake）；Leave 会把主槽打回有线，并 Adopt 进 QEMU 占位
-     * 10.0.2.15（假有线）。插真网线退 Wi‑Fi 只走 HalNetPoll（对表 Pi：
-     * Disarm 不碰 primary；X64 Nic 粘滞同语义）。
+     * （Assoc/Handshake）；Leave 会把主槽打回有线。插真网线退 Wi‑Fi
+     * 只走 HalNetPoll（对表 Pi：Disarm 不碰 primary；X64 Nic 粘滞同语义）。
      */
     sAicNetifArmed = 0;
     BoardWifiFeedAttachSink(0);

@@ -23,7 +23,8 @@
 
 int gNetOk;
 UINT8 gMac[6];
-UINT32 gIp = NET_IP_DEFAULT;
+/* 真机 0；QEMU slirp 由 NetConfigEnsure→ApplyQemuSlirp 写入（勿静态 10.0.2.15） */
+UINT32 gIp;
 UINT32 gTxDone;
 UINT32 gReceiveFrames;
 int gLwIpReceive;

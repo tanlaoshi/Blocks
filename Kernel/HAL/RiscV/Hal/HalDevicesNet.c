@@ -126,7 +126,7 @@ int HalNetGetLinkInfo(int *Up, UINT32 *Mbps, int *FullDuplex) {
 
 int HalNetHasNicL2(void) {
 #if BOARD_HAS_NET && !BOARD_IS_VIRT
-    /* Duo dwmac 等：真 L2，勿走 NetConfig QEMU slirp 默认 10.0.2.15 */
+    /* Duo dwmac 等：真 L2 → UseQemuSlirp 为假，Ensure 不套课默认 */
     return HalNetReady() ? 1 : 0;
 #else
     return 0;

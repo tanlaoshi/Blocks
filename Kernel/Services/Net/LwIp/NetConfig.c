@@ -13,13 +13,18 @@
 #include "Ip.h"
 #endif
 
-#define NET_CFG_IP_QEMU      0x0A00020FU  /* 10.0.2.15 */
+/*
+ * 10.0.2.15 / .2 / .3 只活在 ApplyQemuSlirp（QEMU user/slirp）。
+ * 真机三架构主路：gIp 初值必须 0，禁止静态预置课默认（否则
+ * HalNetGetIpAddress 回读 Ensure → 假有线租约，2026-11-09）。
+ */
+#define NET_CFG_IP_QEMU      0x0A00020FU  /* 10.0.2.15 — QEMU only */
 #define NET_CFG_MASK_DEFAULT 0xFFFFFF00U  /* /24 */
-#define NET_CFG_GW_QEMU      0x0A000202U  /* 10.0.2.2 */
-#define NET_CFG_DNS_QEMU     0x0A000203U  /* 10.0.2.3 */
+#define NET_CFG_GW_QEMU      0x0A000202U  /* 10.0.2.2 — QEMU only */
+#define NET_CFG_DNS_QEMU     0x0A000203U  /* 10.0.2.3 — QEMU only */
 
 static int gReady;
-static UINT32 gIp = NET_CFG_IP_QEMU;
+static UINT32 gIp; /* 0 until Ensure / Adopt / QEMU Apply */
 static UINT32 gMask = NET_CFG_MASK_DEFAULT;
 static UINT32 gGw;
 static UINT32 gDns;

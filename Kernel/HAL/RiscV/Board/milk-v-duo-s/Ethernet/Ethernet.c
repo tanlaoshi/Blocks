@@ -15,7 +15,8 @@ int gDuoDmaOk;
 int gDuoBound;
 UINT32 gDuoPhysicalAddress;
 UINT8 gDuoMac[6];
-UINT32 gDuoIp = HAL_NET_IP_DEFAULT;
+/* 真机无预置址；10.0.2.15 只属于 QEMU（NetConfig ApplyQemuSlirp / Virtio） */
+UINT32 gDuoIp;
 UINT32 gDuoTransmitIndex;
 UINT32 gDuoReceiveIndex;
 UINT32 gDuoTransmitDone;

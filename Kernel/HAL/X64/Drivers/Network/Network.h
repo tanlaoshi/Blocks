@@ -7,7 +7,8 @@
 #include "BootTypes.h"
 #include "DriverNic.h"
 
-#define NET_IP_DEFAULT  0x0A00020FULL  /* 10.0.2.15 (QEMU user netdev) */
+/* QEMU user/slirp only；真机 Network.c gIp 初值 0 */
+#define NET_IP_DEFAULT  0x0A00020FULL
 #define NET_IP_PROTO_ICMP 1
 #define NET_IP_PROTO_TCP  6
 #define NET_IP_PROTO_UDP  17

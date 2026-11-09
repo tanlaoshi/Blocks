@@ -123,14 +123,14 @@ void HalNetWifiAdoptLease(UINT32 Ip, UINT32 Mask, UINT32 Gw, UINT32 Dns) {
         Mask = 0xFFFFFF00u;
     }
     /*
-     * 只在有线 link 真 up 且址不是 QEMU slirp 占位时记租约（对表 RiscV）。
-     * 否则 LeavePrimary 会打成 10.0.2.15 via wired。
+     * 只在有线 link 真 up 且已有非零租约时记一份（对表 RiscV）。
+     * 真机初值 0；勿在主路特判 10.0.2.15（QEMU 只进 ApplyQemuSlirp）。
      */
     if (gSavedWiredValid == 0 && gPrimaryKind == 0 && EthernetLinkIsUp()) {
-        UINT32 Candidate = NetConfigGetIp();
+        UINT32 WiredLeaseIp = NetConfigGetIp();
 
-        if (Candidate != 0u && Candidate != (UINT32)HAL_NET_IP_DEFAULT) {
-            gSavedWiredIp = Candidate;
+        if (WiredLeaseIp != 0u) {
+            gSavedWiredIp = WiredLeaseIp;
             gSavedWiredMask = NetConfigGetMask();
             gSavedWiredGateway = NetConfigGetGw();
             gSavedWiredDns = NetConfigGetDns();

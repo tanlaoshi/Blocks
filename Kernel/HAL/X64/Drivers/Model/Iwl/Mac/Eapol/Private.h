@@ -35,4 +35,16 @@ int IwlEapolM1DrainReceive(IWL_EAPOL_M1_CTX *C, UINT8 *Eapol, UINTN *EapLen,
                       UINT8 *Anonce, UINT8 *Replay, UINT32 LoopI);
 void IwlEapolM1LogTimeout(const IWL_EAPOL_M1_CTX *C);
 
+/* PR-NORM-12：FinishHandshake 分 M2/M3/M4 */
+int IwlEapolHandSendMessage2(UINT8 *Eapol, UINT8 *Anonce, UINT8 *Replay, UINT8 KeyDesc,
+                             UINT8 *KeyVersionOut, UINT8 *EapolVersionOut, UINT8 *KeyConfirmationKey,
+                             UINT8 *PairwiseTransientKey, UINT8 *Message2Out,
+                             UINTN *Message2LengthOut);
+int IwlEapolHandWaitMessage3(UINT8 *Eapol, UINTN *EapolLengthInOut, UINT8 *Replay,
+                             UINT8 KeyVersion, UINT8 *KeyConfirmationKey, UINT8 *Message2,
+                             UINTN Message2Length);
+int IwlEapolHandSendMessage4(UINT8 *Eapol, UINTN Message3Length, UINT8 *Replay,
+                             UINT8 KeyDesc, UINT8 KeyVersion, UINT8 EapolVersion,
+                             UINT8 *KeyConfirmationKey, UINT8 *PairwiseTransientKey);
+
 #endif /* IWL_EAPOL_INTERNAL_H */

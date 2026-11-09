@@ -38,4 +38,7 @@ void IwlScanCollectContextInitialize(IWL_SCAN_COLLECT_CTX *C);
 int IwlScanCollectOnPkt(IWL_SCAN_COLLECT_CTX *C, IWL_RX_PKT *Pkt, UINTN Len,
                         UINT32 LoopI);
 void IwlScanCollectLogFail(const IWL_SCAN_COLLECT_CTX *C);
+void IwlScanCollectLogEarlyPacket(IWL_RX_PKT *Packet, UINTN Length, int IsNotification);
+void IwlScanCollectLogScanAcknowledge(const UINT8 *Raw, UINTN Length);
+void IwlScanCollectLogScanError(const UINT8 *Payload, UINTN PayloadLength);
 #endif

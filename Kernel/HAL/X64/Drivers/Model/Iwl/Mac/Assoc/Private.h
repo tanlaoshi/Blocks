@@ -11,4 +11,7 @@ int IwlAssocTake(IWL_RX_PKT **Pkt, UINTN *Len);
 UINTN IwlBuildStaRsn(UINT8 *Out, UINTN Cap);
 int IwlAssocWaitAuth(UINT32 *RxN, UINT8 *FirstFc);
 int IwlAssocWaitResp(UINT32 *RxN, UINT8 *FirstFc, int *GotAssoc);
+int IwlAssocBuildRequestPayload(UINT8 *Payload, UINTN PayloadCapacity,
+                                UINTN *PayloadLengthOut, int Attempt);
+void IwlAssocLogInformationElements(void);
 #endif

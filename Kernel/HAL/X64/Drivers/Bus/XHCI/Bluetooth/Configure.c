@@ -32,6 +32,7 @@ volatile UINT32 gBluetoothAclInDone;
 volatile UINT32 gBluetoothAclInCode;
 volatile UINT32 gBluetoothAclOutDone;
 volatile UINT32 gBluetoothAclOutCode;
+/* Remain / HostPump Active 定义在 HostPump.c（魔数门闩） */
 
 void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut) {
     *RingOut = gBluetoothEndpoint0Ring;
@@ -262,6 +263,8 @@ int BluetoothConfigure(UINT32 RootPort, UINT8 Speed) {
     gBluetoothSpeed = Speed;
     gBluetoothInterface = Interface;
     gBluetoothConfigured = 1;
+    /* 新 ConfigEP：泵门闩清零，待 Ready 后再 Start */
+    BluetoothHostPumpStop();
     BootLogHex("Boot: Bluetooth cfg ok iface=", Interface, 2);
     BootLogHex(" event=", EventEndpoint, 2);
     BootLogHex(" acl-in=", AclInEndpoint, 2);

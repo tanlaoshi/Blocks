@@ -143,6 +143,7 @@ int XhciBluetoothSetDiscoverable(int On); /* 0 ok；-1 fail */
 UINT16 XhciBluetoothVendorId(void);
 UINT16 XhciBluetoothProductId(void);
 UINT32 XhciBluetoothRootPort(void); /* 0=未见；MSC claim 须跳过该口 */
+void XhciBluetoothHostPump(void); /* PR-BTM-1；未 Start 早退 */
 
 /* usb-hid-keep：Shell msc hot 解开 ClaimPorts 扫空/sick 冻结后再 Address */
 void XhciPortEnumerateUnfreeze(void);

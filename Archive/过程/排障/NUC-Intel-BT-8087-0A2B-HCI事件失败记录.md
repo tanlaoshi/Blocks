@@ -33,7 +33,7 @@ RUNTIME：`FC05` → bootloader `fw_variant=0x06` → `.sfi` 分片灌完 → Re
 | **Interrupt 收 HCI 事件** | ✅ 冷启后 | `FC05` 有 CC；软 reboot 曾 `xfer-cc=0` |
 | Intel 固件灌完 → operational | ✅ 冷启后 | `fw download begin` → `fragments=0x0100…` → Ready |
 | Ready / `bt info` | ✅ | `bt: ready name=Blocks addr=94:B8:6D:F4:C5:EE visible` |
-| HostPump | ❌ | 代码不在树；★ 仍是泵 |
+| HostPump | ✅ | Ready 后 Start；NUC `log` 见 `bt: host pump`；有线顺；`bt scan` 绿 |
 
 手测口令：`HotSend serve` → 主机 `hotsend` → `reboot` → `bt info` → `print D:RUNTIME-BOOTDISK.LOG`（串口长命令须 **echo 校验逐字**，否则易吞字母）。
 
@@ -233,7 +233,7 @@ Boot: Bluetooth post-ped portsc=0x00200603
 | `XHCI/Bluetooth/Hci.c` | Arm/Wait、MatchTransfer、Command、Reset/Intel 分支 |
 | `XHCI/Bluetooth/HciSend.c` | Control SendRaw；FC09 Bulk（可 CHAIN） |
 | `XHCI/Bluetooth/IntelFirmware*.c` | `.sfi` 读盘、FC05/FC09/FC01 |
-| `XHCI/Bluetooth/HostPump.c` | **曾实现，现从树挪走备份** `/tmp/HostPump.c.btm1.bak`；Ready 前勿 Start |
+| `XHCI/Bluetooth/HostPump.c` + `HostPumpAclIn.c` | **已挂回**；魔数 `BLUETOOTH_HOST_PUMP_ON`；Ready 前勿 Start |
 | `XHCI/EventTransfer.c` | Transfer 分发 → `BluetoothMatchTransfer` |
 | `Runtime/.../FW/ibt-12-16.sfi` | WsP 固件 |
 

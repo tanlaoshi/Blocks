@@ -123,5 +123,7 @@ int BluetoothBringUpIdentity(void) {
     BootLog("Boot: Bluetooth Ready\n");
     /* btx-5：默认可被发现，课堂手机可搜到 Blocks */
     (void)BluetoothSetDiscoverable(1);
+    /* PR-BTM-1：仅 Ready 后挂常驻泵；固件/Reset 仍单缓冲 Arm/Wait */
+    (void)BluetoothHostPumpStart();
     return 1;
 }

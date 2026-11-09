@@ -15,7 +15,6 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
     UINT64 AclOutLo;
     UINT64 AclOutHi;
 
-    (void)Remain;
     if (!gBluetoothConfigured || gBluetoothSlot == 0 ||
         EventSlot != gBluetoothSlot) {
         return 0;
@@ -25,6 +24,7 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
     if ((gBluetoothEventDci != 0 && Endpoint == gBluetoothEventDci) ||
         (TransferRing >= EventLo && TransferRing < EventHi)) {
         gBluetoothEventCode = Code;
+        gBluetoothEventRemain = Remain;
         gBluetoothEventDone = 1;
         return 1;
     }
@@ -33,6 +33,7 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
     if ((gBluetoothAclInDci != 0 && Endpoint == gBluetoothAclInDci) ||
         (TransferRing >= AclInLo && TransferRing < AclInHi)) {
         gBluetoothAclInCode = Code;
+        gBluetoothAclInRemain = Remain;
         gBluetoothAclInDone = 1;
         return 1;
     }
@@ -50,6 +51,13 @@ int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRin
 void BluetoothHciArmEvent(void) {
     UINT32 Len = gBluetoothEventMaxPacketSize ? gBluetoothEventMaxPacketSize : 16u;
 
+    /*
+     * 泵已常驻武装：勿叠枪。同步命令走 WaitTake（Exclusive 窗内入队）。
+     * Ready 前泵未开，仍单缓冲 Arm/Wait（固件路径）。
+     */
+    if (BluetoothHostPumpIsActive()) {
+        return;
+    }
     if (Len > BLUETOOTH_EVENT_MAX) {
         Len = BLUETOOTH_EVENT_MAX;
     }
@@ -61,6 +69,7 @@ void BluetoothHciArmEvent(void) {
     FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     gBluetoothEventDone = 0;
     gBluetoothEventCode = 0;
+    gBluetoothEventRemain = 0;
     Enqueue(gBluetoothEventRing, &gBluetoothEvent,
             PointerToPhysical(gBluetoothEventBuffer), Len,
             TRB_TYPE(TRB_NORMAL) | TRB_IOC | TRB_ISP);
@@ -85,7 +94,12 @@ int BluetoothHciWaitArmed(UINT32 TimeoutMs) {
             ProcessEventsRealPc();
         }
         ServiceHidCompletions();
-        if (gBluetoothEventDone) {
+        if (BluetoothHostPumpIsActive()) {
+            if (BluetoothHostPumpWaitTakeEvent()) {
+                Result = 0;
+                break;
+            }
+        } else if (gBluetoothEventDone) {
             Result = (gBluetoothEventCode == CC_SUCCESS ||
                       gBluetoothEventCode == CC_SHORT_PACKET)
                          ? 0

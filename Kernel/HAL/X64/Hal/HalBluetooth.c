@@ -56,3 +56,7 @@ int HalBluetoothDiscoverable(void) {
 int HalBluetoothSetDiscoverable(int On) {
     return XhciBluetoothSetDiscoverable(On);
 }
+
+void HalBluetoothHostPump(void) {
+    XhciBluetoothHostPump();
+}

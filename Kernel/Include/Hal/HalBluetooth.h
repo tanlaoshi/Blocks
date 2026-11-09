@@ -49,4 +49,7 @@ int HalBluetoothDiscoverable(void);
 /* On≠0 开可见（名 Blocks）；0 关闭。成功 → 0；失败 → -1 */
 int HalBluetoothSetDiscoverable(int On);
 
+/* PR-BTM-1：HCI 常驻泵切片；未 Ready / 非 X64 USB HCI → 空操作 */
+void HalBluetoothHostPump(void);
+
 #endif

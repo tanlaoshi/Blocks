@@ -42,6 +42,7 @@ void Irq(void) {
         ProcessEvents();
     }
     ServiceHidCompletions();
+    BluetoothHostPump(); /* PR-BTM-1：Exclusive 已在上方跳过；泵内再守一次 */
     if (gRuntimeBase != 0) {
         ImClearPending();
     }
@@ -129,6 +130,7 @@ void DrainEvents(void) {
             ProcessEvents();
         }
         ServiceHidCompletions();
+        BluetoothHostPump();
     }
     /* PHOTO：门铃轻推即可，勿走 EP0 兜底 */
     if (RealPc) {

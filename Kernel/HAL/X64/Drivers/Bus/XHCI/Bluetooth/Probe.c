@@ -29,6 +29,10 @@ int XhciBluetoothReady(void) {
     return gBluetoothReady ? 1 : 0;
 }
 
+void XhciBluetoothHostPump(void) {
+    BluetoothHostPump();
+}
+
 int XhciBluetoothCopyAddress(UINT8 Out[6]) {
     UINT32 I;
 

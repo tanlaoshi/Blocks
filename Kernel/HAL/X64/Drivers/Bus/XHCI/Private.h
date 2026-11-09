@@ -544,6 +544,7 @@ void WifiEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StOut);
 void BluetoothEndpoint0Ring(XHCI_TRB **RingOut, RING_STATE **StateOut);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
+void BluetoothHostPump(void); /* PR-BTM-1；未 Ready/未 Start 早退 */
 int WifiFinishClaim(UINT32 RootPort, UINT8 Speed);
 int WifiTryHubChildren(void);
 

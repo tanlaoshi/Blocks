@@ -1,7 +1,7 @@
 # 柱规格 · X64 蓝牙鼠（罗技 MX Master 初代 · BLE）
 
 > **状态**：**规格钉死**（`PR-BTM-0` ✅）；活 ★ 见 [`路线图1109.md`](../路线图1109.md)。  
-> **活排期**：[`路线图1109.md`](../路线图1109.md)（`PR-BTM-1…10` 排队）。  
+> **活排期**：[`路线图1109.md`](../路线图1109.md)（★=`PR-BTM-2`；`PR-BTM-1` ✅）。  
 > **前置**：NUC 课轨 `btx-1…5` ✅（USB HCI / Reset / BD_ADDR / 经典 Inquiry / visible）。  
 > **靶机**：X64 NUC 板载 HCI（NOTES：`8087:0A2B`）；靶鼠：**罗技 MX Master 初代**（无 2S/3/3S 后缀）。  
 > **产品名**：Blocks。口令同全表。  
@@ -212,6 +212,12 @@ Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
 - [x] 手测硬件表 + 通验收节拍进本 §7  
 - [x] 活档 ★ 推至 `PR-BTM-1`
 
+**`PR-BTM-1` 验收**
+
+- [x] `log` 见 `bt: host pump`（Ready 后）  
+- [x] 有线鼠拖动不卡  
+- [x] 经典 `bt scan` 不回归  
+
 ---
 
 ## 8. 风险与否证
@@ -229,7 +235,7 @@ Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
 
 | 日期 | 说明 |
 | ---- | ---- |
-| 2026-11-09 | **`PR-BTM-1` 码**：`HostPump`/`HostPumpAclIn`；事件队列 + ACL IN + NCP 记账；`bt: host pump`；待 NUC 手测 |
+| 2026-11-09 | **`PR-BTM-1` 收**：`HostPump`/`HostPumpAclIn`；NUC `bt: host pump` + 有线顺 + `bt scan`；★→`PR-BTM-2` |
 | 2026-11-09 | **`PR-BTM-0` 收**：规格钉死（落点/壳命令/双指针/§7 勾选）；★→`PR-BTM-1` |
 | 2026-11-09 | 排期迁 [`路线图1109.md`](../路线图1109.md)；候补推星排队（`PR-BTM-0…10`） |
 | 2026-11-08 | 立项：初代 MX Master、无接收器 → BLE HOGP；拆 `PR-BTM-0…10`；不进 ★ |

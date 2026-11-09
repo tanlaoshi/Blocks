@@ -39,10 +39,16 @@
 #define HCI_EVENT_REMOTE_NAME_COMPLETE 0x07u
 #define HCI_EVENT_COMMAND_COMPLETE 0x0Eu
 #define HCI_EVENT_COMMAND_STATUS 0x0Fu
+#define HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS 0x13u
 #define HCI_EVENT_INQUIRY_RESULT_RSSI 0x22u
 #define HCI_EVENT_EXTENDED_INQUIRY_RESULT 0x2Fu
 #define HCI_EIR_NAME_SHORT 0x08u
 #define HCI_EIR_NAME_COMPLETE 0x09u
+/*
+ * 常驻泵门闩：仅 HostPumpStart 写 BLUETOOTH_HOST_PUMP_ON；Stop/Configure 写 0。
+ * 勿用「非 0 即真」——BSS 垃圾会让 ArmEvent 早退 → xfer-cc=0。
+ */
+#define BLUETOOTH_HOST_PUMP_ON 0x42544D31u /* 'BTM1' */
 
 extern UINT8 gBluetoothDeviceContext[2048];
 extern UINT8 gBluetoothConfigBuffer[BLUETOOTH_CONFIG_MAX];
@@ -67,10 +73,18 @@ extern UINT8 gBluetoothAddress[6];
 extern char gBluetoothLocalName[64];
 extern volatile UINT32 gBluetoothEventDone;
 extern volatile UINT32 gBluetoothEventCode;
+extern volatile UINT32 gBluetoothEventRemain;
 extern volatile UINT32 gBluetoothAclInDone;
 extern volatile UINT32 gBluetoothAclInCode;
+extern volatile UINT32 gBluetoothAclInRemain;
 extern volatile UINT32 gBluetoothAclOutDone;
 extern volatile UINT32 gBluetoothAclOutCode;
+extern UINT32 gBluetoothHostPumpActive;
+extern UINT32 gBluetoothAclPacketsCompleted;
+
+static inline int BluetoothHostPumpIsActive(void) {
+    return gBluetoothHostPumpActive == BLUETOOTH_HOST_PUMP_ON ? 1 : 0;
+}
 
 extern XHCI_TRB gBluetoothEndpoint0Ring[RING_SIZE];
 extern RING_STATE gBluetoothEndpoint0;
@@ -118,5 +132,15 @@ int BluetoothBringUpIdentity(void);
 int BluetoothSetDiscoverable(int On);
 int BluetoothMatchTransfer(UINT32 EventSlot, UINT32 Endpoint, UINT64 TransferRing,
                            UINT32 Code, UINT32 Remain);
+void BluetoothHostArmEventEndpoint(void);
+void BluetoothHostArmAclIn(void);
+void BluetoothHostPumpConsumeEvent(void);
+void BluetoothHostPumpConsumeAclIn(void);
+void BluetoothHostPumpAclInReset(void);
+int BluetoothHostEventTake(UINT8 *Out, UINT32 Capacity, UINT32 *OutLength);
+int BluetoothHostPumpWaitTakeEvent(void);
+void BluetoothHostPump(void);
+int BluetoothHostPumpStart(void);
+void BluetoothHostPumpStop(void);
 
 #endif

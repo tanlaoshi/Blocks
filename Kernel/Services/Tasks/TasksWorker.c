@@ -263,6 +263,10 @@ void WorkerTask(void) {
                 SchedulerIoBreath();
             }
         }
+        /* PR-BTM-1：HCI 常驻泵切片（有线鼠优先在泵内 ServiceHid） */
+        if (HalBluetoothReady()) {
+            HalBluetoothHostPump();
+        }
         HalCpuHalt();
         (void)SchedulerCondResched();
     }

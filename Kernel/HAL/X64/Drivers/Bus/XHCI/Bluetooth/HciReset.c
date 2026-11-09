@@ -38,6 +38,8 @@ int BluetoothHciReset(void) {
     UINT8 Status = 0xFF;
     int Attempt;
 
+    /* 灌固件/Reset 前停泵，避免与单缓冲 Arm 抢 EventDone */
+    BluetoothHostPumpStop();
     gBluetoothHciResetOk = 0;
     gBluetoothReady = 0;
     /*

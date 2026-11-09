@@ -77,3 +77,6 @@ int HalBluetoothSetDiscoverable(int On) {
     (void)On;
     return -1;
 }
+
+void HalBluetoothHostPump(void) {
+}

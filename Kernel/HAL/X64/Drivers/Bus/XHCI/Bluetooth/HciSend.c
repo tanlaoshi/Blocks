@@ -55,6 +55,10 @@ void BluetoothHciArmAclIn(void) {
     UINT32 Len = gBluetoothAclInMaxPacketSize ? gBluetoothAclInMaxPacketSize
                                               : 64u;
 
+    /* 泵常驻 ACL IN；bootloader FC09 仅在 Ready/泵前走本路径 */
+    if (BluetoothHostPumpIsActive()) {
+        return;
+    }
     if (!gBluetoothConfigured || gBluetoothAclInDci == 0) {
         return;
     }
@@ -65,6 +69,7 @@ void BluetoothHciArmAclIn(void) {
     FlushDma(gBluetoothEventBuffer, sizeof(gBluetoothEventBuffer));
     gBluetoothAclInDone = 0;
     gBluetoothAclInCode = 0;
+    gBluetoothAclInRemain = 0;
     gBluetoothEventDone = 0;
     gBluetoothEventCode = 0;
     Enqueue(gBluetoothAclInRing, &gBluetoothAclIn,

@@ -65,6 +65,37 @@ void UsbHostStallYieldPumpPower(UINTN Iterations) {
     }
 }
 
+void UsbHostStallMilliseconds(UINT32 Milliseconds) {
+    UINT64 Frequency;
+    UINT64 Start;
+    UINT64 Delta;
+    UINT64 LastPower;
+
+    if (Milliseconds == 0u) {
+        return;
+    }
+    __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(Frequency));
+    if (Frequency == 0u) {
+        UsbHostStallYieldPumpPower((UINTN)Milliseconds * 100000u);
+        return;
+    }
+    __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Start));
+    LastPower = Start;
+    Delta = (Frequency * (UINT64)Milliseconds) / 1000ull;
+    for (;;) {
+        UINT64 Now;
+        __asm__ volatile("mrs %0, cntpct_el0" : "=r"(Now));
+        if ((Now - Start) >= Delta) {
+            break;
+        }
+        /* ~20ms 泵一次电源键；勿在 SPMI WaitDone 路径调用本函数 */
+        if ((Now - LastPower) >= (Frequency / 50ull)) {
+            LastPower = Now;
+            (void)BoardPowerButtonPressed();
+        }
+    }
+}
+
 void UsbHostCacheCleanRange(void *Address, UINTN Size) {
     UINT64 Cursor = (UINT64)(UINTN)Address & ~63ULL;
     UINT64 End = (UINT64)(UINTN)Address + Size;
@@ -131,6 +162,10 @@ void UsbHostStallYield(UINTN Iterations) {
 
 void UsbHostStallYieldPumpPower(UINTN Iterations) {
     (void)Iterations;
+}
+
+void UsbHostStallMilliseconds(UINT32 Milliseconds) {
+    (void)Milliseconds;
 }
 
 void UsbHostCacheCleanRange(void *Address, UINTN Size) {

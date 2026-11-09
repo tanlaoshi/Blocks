@@ -1,5 +1,5 @@
 /*
- * UsbHost/XhciControl.c — EP0 Setup/Data/Status 控制传输
+ * UsbHost/XhciControl.c — EP0 Setup/Data/Status 控制传输（每槽环）
  */
 #include "UsbHost/Private.h"
 
@@ -8,6 +8,8 @@
 #endif
 
 #if BOARD_MIX2_USB_HOST_BRINGUP
+
+static UINT32 sControlLastCompletionCode;
 
 static void MemoryZero(void *Destination, UINTN Size) {
     UINT8 *Bytes = (UINT8 *)Destination;
@@ -18,13 +20,25 @@ static void MemoryZero(void *Destination, UINTN Size) {
     }
 }
 
+UINT32 UsbHostXhciControlLastCompletionCode(void) {
+    return sControlLastCompletionCode;
+}
+
 int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
                                UINT16 Value, UINT16 Index, void *Data, UINT16 Length) {
     TransferRequestBlock Block;
-    UINT32 CompletionCode;
+    UINT32 CompletionCode = 0;
     UINT8 *SetupPacket = UsbHostSetupPacketBuffer();
     UINT8 *ControlData = UsbHostControlDataBuffer();
     int HasData = Length != 0 && Data != 0;
+
+    sControlLastCompletionCode = 0;
+    if (SlotId == 0) {
+        return -1;
+    }
+    if (HasData && Length > USB_CONTROL_DATA_CAPACITY) {
+        return -1;
+    }
 
     SetupPacket[0] = RequestType;
     SetupPacket[1] = Request;
@@ -36,6 +50,10 @@ int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
     SetupPacket[7] = (UINT8)((Length >> 8) & 0xFFu);
     UsbHostCacheCleanRange(SetupPacket, 8u);
 
+    /*
+     * 勿给 Control TD 加 Chain：本机 DWC3 根口 hub 无 CH 已绿（ea1）；
+     * 加 CH 后真机 e40（Address 后 GetDesc 挂）——以真机为准撤 CH。
+     */
     MemoryZero(&Block, sizeof(Block));
     Block.Parameter = *(UINT64 *)(void *)SetupPacket;
     Block.Status = 8u;
@@ -44,13 +62,10 @@ int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
                     (HasData ? ((RequestType & 0x80u) ? TRANSFER_REQUEST_BLOCK_TRANSFER_TYPE_IN
                                                       : (2u << 16))
                              : 0);
-    UsbHostEndpointZeroEnqueue(&Block);
+    UsbHostEndpointZeroEnqueue(SlotId, &Block);
 
     if (HasData) {
         UINTN ByteIndex;
-        if (Length > 64u) {
-            return -1;
-        }
         if ((RequestType & 0x80u) == 0) {
             for (ByteIndex = 0; ByteIndex < Length; ByteIndex++) {
                 ControlData[ByteIndex] = ((UINT8 *)Data)[ByteIndex];
@@ -64,19 +79,21 @@ int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
         Block.Status = Length;
         Block.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_DATA) |
                         ((RequestType & 0x80u) ? TRANSFER_REQUEST_BLOCK_DIRECTION_IN : 0);
-        UsbHostEndpointZeroEnqueue(&Block);
+        UsbHostEndpointZeroEnqueue(SlotId, &Block);
     }
 
     MemoryZero(&Block, sizeof(Block));
     Block.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_STATUS) |
                     TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION |
                     ((RequestType & 0x80u) ? 0 : TRANSFER_REQUEST_BLOCK_DIRECTION_IN);
-    UsbHostEndpointZeroEnqueue(&Block);
+    UsbHostEndpointZeroEnqueue(SlotId, &Block);
 
     UsbHostRingEndpointZeroDoorbell(SlotId);
     if (UsbHostWaitTransferEvent(&CompletionCode) != 0) {
+        sControlLastCompletionCode = 0xFFu;
         return -1;
     }
+    sControlLastCompletionCode = CompletionCode;
     if (CompletionCode != COMPLETION_CODE_SUCCESS &&
         CompletionCode != COMPLETION_CODE_SHORT_PACKET) {
         return -1;
@@ -103,6 +120,10 @@ int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
     (void)Data;
     (void)Length;
     return -1;
+}
+
+UINT32 UsbHostXhciControlLastCompletionCode(void) {
+    return 0;
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
- * UsbHost/Private.h — MIX 2 DWC3/xHCI bringup 私有（PR-MIX2-USB-2）
+ * UsbHost/Private.h — MIX 2 DWC3/xHCI（USB-2 hub + USB-3 HID）
  *
- * 对表：xHCI 1.1 能力/操作寄存器；DWC3 Host 窗 = 控制器基址 +0。
+ * 对表 xHCI 1.1；键盘链对表 Pixel 绿树（每槽 EP0 / ConfigEP / Interrupt IN）。
  */
 #ifndef USB_HOST_PRIVATE_H
 #define USB_HOST_PRIVATE_H
@@ -37,7 +37,6 @@
 #define PORT_STATUS_ENABLE_CHANGE    (1u << 18)
 #define PORT_STATUS_RESET_CHANGE     (1u << 21)
 
-/* DWC3 GUSB2PHYCFG：对表 torvalds dwc3/core.h（UTMI 8-bit host） */
 #define DWC3_GUSB2PHYCFG_ULPI_UTMI           (1u << 4)
 #define DWC3_GUSB2PHYCFG_SUSPEND_USB20       (1u << 6)
 #define DWC3_GUSB2PHYCFG_ENABLE_SLEEP_MODE   (1u << 8)
@@ -46,7 +45,7 @@
 #define DWC3_GUSB2PHYCFG_USB_TURNAROUND_MASK (0xFu << DWC3_GUSB2PHYCFG_USB_TURNAROUND_SHIFT)
 #define DWC3_GUSB2PHYCFG_UTMI_TURNAROUND_8BIT 9u
 #define DWC3_GUSB2PHYCFG_U2_FREE_CLOCK_EXISTS (1u << 30)
-/* 对表 Linux XHCI_PORT_RO / XHCI_PORT_RWS：禁把 PED(RW1CS) 放进 RWS */
+
 #define PORT_STATUS_READ_ONLY \
     (PORT_STATUS_CONNECT | (1u << 3) | (0xFu << PORT_STATUS_SPEED_SHIFT) | (1u << 30))
 #define PORT_STATUS_READ_WRITE_SET \
@@ -56,6 +55,7 @@
      (1u << 19) | (1u << 20) | (1u << 22) | (1u << 23))
 
 #define TRANSFER_REQUEST_BLOCK_CYCLE (1u << 0)
+#define TRANSFER_REQUEST_BLOCK_CHAIN (1u << 4)
 #define TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION (1u << 5)
 #define TRANSFER_REQUEST_BLOCK_IMMEDIATE_DATA (1u << 6)
 #define TRANSFER_REQUEST_BLOCK_TYPE_SHIFT 10
@@ -67,22 +67,52 @@
 #define TRANSFER_REQUEST_BLOCK_STATUS 4u
 #define TRANSFER_REQUEST_BLOCK_LINK 6u
 #define TRANSFER_REQUEST_BLOCK_ENABLE_SLOT 9u
+#define TRANSFER_REQUEST_BLOCK_DISABLE_SLOT 10u
 #define TRANSFER_REQUEST_BLOCK_ADDRESS_DEVICE 11u
+#define TRANSFER_REQUEST_BLOCK_CONFIGURE_ENDPOINT 12u
+#define TRANSFER_REQUEST_BLOCK_EVALUATE_CONTEXT 13u
+#define TRANSFER_REQUEST_BLOCK_RESET_ENDPOINT 14u
+#define TRANSFER_REQUEST_BLOCK_STOP_ENDPOINT 15u
+#define TRANSFER_REQUEST_BLOCK_SET_TR_DEQUEUE 16u
+#define TRANSFER_REQUEST_BLOCK_BLOCK_SET_ADDRESS_REQUEST (1u << 9)
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT 32u
 #define TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION 33u
 #define TRANSFER_REQUEST_BLOCK_TRANSFER_TYPE_IN (3u << 16)
 #define TRANSFER_REQUEST_BLOCK_DIRECTION_IN (1u << 16)
+#define TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_SHORT_PACKET (1u << 2)
+#define TRANSFER_REQUEST_BLOCK_ENDPOINT_SHIFT 16
 #define COMPLETION_CODE_SUCCESS 1u
 #define COMPLETION_CODE_SHORT_PACKET 13u
 
 #define USB_DEVICE_CLASS_HUB 0x09u
+#define USB_DEVICE_CLASS_HID 0x03u
+#define USB_HID_BOOT_SUBCLASS 1u
+#define USB_INTERFACE_PROTOCOL_BOOT_KEYBOARD 1u
 #define USB_HUB_ADDRESS 1u
+#define USB_CONTROL_DATA_CAPACITY 256u
+
+#define HUB_PORT_CONNECTION (1u << 0)
+#define HUB_PORT_ENABLE (1u << 1)
+#define HUB_PORT_RESET (1u << 4)
+#define HUB_PORT_POWER (1u << 8)
+#define HUB_PORT_LOW_SPEED (1u << 9)
+#define HUB_PORT_HIGH_SPEED (1u << 10)
+#define HUB_FEATURE_PORT_RESET 4u
+#define HUB_FEATURE_PORT_POWER 8u
+#define HUB_FEATURE_CONNECTION_CHANGE 16u
+#define HUB_FEATURE_RESET_CHANGE 20u
 
 #define COMMAND_RING_TRANSFER_REQUEST_BLOCK_COUNT 32u
 #define EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT 32u
 #define TRANSFER_RING_TRANSFER_REQUEST_BLOCK_COUNT 16u
 #define DEVICE_SLOT_COUNT_MAX 8u
 #define SCRATCHPAD_BUFFER_COUNT_MAX 16u
+
+#define USB_HOST_SPLASH_LINE_STRIDE 64u
+#define USB_HOST_SPLASH_LINE_PORTS 160u
+#define USB_HOST_SPLASH_LINE_TYPE_C 280u
+#define USB_HOST_SPLASH_LINE_OTG 400u
+#define USB_HOST_SPLASH_LINE_KEYBOARD 520u
 
 typedef struct {
     UINT64 Parameter;
@@ -99,13 +129,11 @@ typedef struct {
 void UsbHostFormatHexadecimal32(char *Out, UINT32 Value);
 void UsbHostCopyText(char *Destination, const char *Source, UINTN Capacity);
 void UsbHostAppendText(char *Destination, const char *Source, UINTN Capacity);
-/* 纯 yield：SPMI WaitDone 等路径用；禁止在此泵电源键（会嵌套 SPMI） */
 void UsbHostStallYield(UINTN Iterations);
-/* 分段 yield 并泵 PON：HubWatch / 根口复位等长等路径用 */
 void UsbHostStallYieldPumpPower(UINTN Iterations);
+void UsbHostStallMilliseconds(UINT32 Milliseconds);
 void UsbHostCacheCleanRange(void *Address, UINTN Size);
 void UsbHostCacheCleanInvalidateRange(void *Address, UINTN Size);
-/* splash：最近一次 PON RT_STS；bit31=SPMI 失败 */
 UINT32 UsbHostPowerOnStatusDiagnostic(void);
 
 volatile UINT32 *UsbHostMmio32(UINT64 Address);
@@ -120,35 +148,45 @@ int UsbHostXhciTransferInitialize(UINT64 CapabilityBase, UINT64 OperationalBase,
                                   UINT32 ScratchpadCount);
 int UsbHostXhciSubmitCommand(TransferRequestBlock *Command, UINT32 *CompletionCode,
                              UINT32 *SlotIdOut);
-void UsbHostEndpointZeroEnqueue(const TransferRequestBlock *Block);
+void UsbHostEndpointZeroEnqueue(UINT32 SlotId, const TransferRequestBlock *Block);
 int UsbHostWaitTransferEvent(UINT32 *CompletionCode);
+int UsbHostWaitTransferEventLimited(UINT32 *CompletionCode, UINTN GuardLimit,
+                                    UINT32 EndpointIdOrZero);
 void UsbHostRingEndpointZeroDoorbell(UINT32 SlotId);
+void UsbHostRingDoorbell(UINT32 SlotId, UINT32 EndpointTarget);
 UINT8 *UsbHostSetupPacketBuffer(void);
 UINT8 *UsbHostControlDataBuffer(void);
 int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
                                UINT16 Value, UINT16 Index, void *Data, UINT16 Length);
+UINT32 UsbHostXhciControlLastCompletionCode(void);
 UINT8 *UsbHostDeviceContextSlot(UINT32 SlotId);
 UINT8 *UsbHostInputContextBuffer(void);
 UINT32 UsbHostContextSizeBytes(void);
 void UsbHostBindEndpointZeroRing(UINT32 SlotId);
 void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical);
-UINT64 UsbHostEndpointZeroRingPhysical(void);
+UINT64 UsbHostEndpointZeroRingPhysical(UINT32 SlotId);
+int UsbHostXhciDisableSlot(UINT32 SlotId);
+int UsbHostXhciConfigureEndpoint(UINT32 SlotId);
+UINT32 UsbHostXhciConfigureEndpointCompletionCode(void);
+void UsbHostRecoverEndpointZero(UINT32 SlotId);
+int UsbHostEndpointZeroSync(UINT32 SlotId, UINT32 *StopCompletionOut,
+                            UINT32 *ResetCompletionOut,
+                            UINT32 *DequeueCompletionOut);
+void UsbHostInterruptRingInitialize(UINT32 SlotId, UINT32 DeviceContextIndex,
+                                    UINT32 TransferLength);
+UINT64 UsbHostInterruptRingPhysical(void);
+UINT8 *UsbHostInterruptReportBuffer(void);
+int UsbHostInterruptSubmitOnceDetailed(UINT32 *CompletionCodeOut);
+void UsbHostDrainTransferEvents(void);
 
-/* 线刷 DT qusb@c012000 + phy-msm-qusb-v2 power-on（clamp_dig_n=1） */
 int UsbHostQusbPhyInitialize(void);
-/* CC attach 后重踢：解钳 + init-seq + 清 GUSB2 suspend */
 int UsbHostQusbPhyAttachKick(void);
-/* 厂商非 v2：PORT_UTMI_STATUS@0xF4；v2 仅对照 */
 UINT8 UsbHostQusbLineStateRead(void);
 UINT8 UsbHostQusbClampByte(void);
-
-/* ssusb reg[1] QSCRATCH@0xC016000：HS UTMI-as-PIPE（一次）+ Host VBUS override */
 int UsbHostQscratchConfigureForHost(void);
-/* Attach/复位：只刷 VBUS/SESSVLD，勿再 CLOCK_DISABLE */
 int UsbHostQscratchEnsureHostSessionOverride(void);
 UINT32 UsbHostQscratchGeneralConfiguration(void);
 
-/* SPMI PMIC arbiter v2 + PMI8998 Type-C DFP */
 int UsbHostSpmiArbiterProbe(void);
 UINT32 UsbHostSpmiArbiterVersion(void);
 int UsbHostSpmiReadByte(UINT8 SlaveIdentifier, UINT16 Address, UINT8 *ValueOut);
@@ -169,7 +207,6 @@ UINT8 UsbHostUsbinCommandByte(void);
 UINT8 UsbHostOtgEngineeringByte(void);
 UINT8 UsbHostOtgInterruptStatusByte(void);
 int UsbHostOtgVbusEnable(void);
-void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable);
 
 int UsbHostXhciStart(void);
 UINT32 UsbHostXhciMaxPorts(void);
@@ -177,15 +214,63 @@ UINT64 UsbHostXhciPortStatusAddress(UINT32 PortIndexOneBased);
 int UsbHostXhciProtocolPortsProbe(UINT64 CapabilityBase, UINT32 MaxPorts);
 UINT32 UsbHostXhciUsb2PortBitMask(void);
 UINT32 UsbHostXhciUsb3PortBitMask(void);
-/* Supported Protocol · USB2 Protocol Slot Type → Enable Slot bits16..20 */
 UINT32 UsbHostXhciUsb2ProtocolSlotType(void);
 
 int UsbHostRootPortPower(UINT32 PortIndexOneBased);
 int UsbHostRootPortReset(UINT32 PortIndexOneBased);
 UINT32 UsbHostRootPortStatus(UINT32 PortIndexOneBased);
 int UsbHostEnumerateHubOnPort(UINT32 PortIndexOneBased, UINT32 *HubAddressOut);
-/* 枚举粘性码：0=idle；A1=hub ok；10xx=rst|PORTSC；2xx=slot|cc；3xx=addr|cc；40=desc；5x=class */
 UINT32 UsbHostEnumerateStatusCode(void);
 void UsbHostEnumerateStatusCodeClear(void);
+void UsbHostEnumerateStatusCodeSet(UINT32 Code);
+UINT32 UsbHostHubSlotId(void);
+UINT32 UsbHostHubRootPortIndex(void);
+UINT32 UsbHostHubPortSpeed(void);
+
+UINT32 UsbHostKeyboardStatusCode(void);
+UINT32 UsbHostKeyboardStatusLogCount(void);
+UINT32 UsbHostKeyboardStatusLogAt(UINT32 Index);
+void UsbHostKeyboardStatusCodeClear(void);
+void UsbHostKeyboardLogFreeze(void);
+void UsbHostKeyboardStatusCodeSet(UINT32 Code);
+void UsbHostPaintKeyboardStatus(void);
+void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
+                           UINT32 HubAddress);
+
+int UsbHostFinishHubSetup(UINT32 HubSlotId, UINT32 RootPortIndex, UINT32 PortSpeed,
+                          UINT32 *PortCountOut);
+int UsbHostHubGetPortStatus(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT32 *StatusOut);
+int UsbHostHubSetPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
+int UsbHostHubClearPortFeature(UINT32 HubSlotId, UINT32 HubPortOneBased, UINT16 Feature);
+int UsbHostHubClearTransactionTranslatorBuffer(UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                               UINT32 DeviceAddress,
+                                               UINT32 EndpointNumber, UINT32 EndpointIn);
+int UsbHostFindBootKeyboardBehindHub(UINT32 HubSlotId, UINT32 RootPortIndex,
+                                     UINT32 HubPortSpeedValue, UINT32 HubPortCount,
+                                     UINT32 *KeyboardSlotOut);
+int UsbHostAddressKeyboardOnHubPort(UINT32 HubSlotId, UINT32 RootPort,
+                                    UINT32 ParentRouteString, UINT32 HubPortOneBased,
+                                    UINT32 DeviceSpeed, UINT32 IssueSetAddress,
+                                    UINT32 *KeyboardSlotOut);
+int UsbHostChildSetAddress(UINT32 SlotId, UINT32 DeviceSpeed,
+                           UINT32 EndpointZeroMaxPacket);
+int UsbHostProbeChildSlot(UINT32 SlotId, UINT32 RootPort, UINT32 HubSlotId,
+                          UINT32 HubPort, UINT32 DeviceSpeed);
+void UsbHostProbeTierSet(UINT32 Tier);
+UINT32 UsbHostChildSlotSpeed(UINT32 HubPortStatus);
+void UsbHostClearTransactionTranslator(UINT32 HubSlotId, UINT32 HubPort,
+                                       UINT32 DeviceAddress);
+int UsbHostHidBootKeyboardConfigure(UINT32 KeyboardSlotId, UINT32 RootPort,
+                                    UINT32 HubSlotId, UINT32 HubPortOneBased,
+                                    UINT32 DeviceSpeed);
+int UsbHostParseBootKeyboardEndpoint(const UINT8 *Configuration, UINT16 Total,
+                                     UINT8 *InterfaceOut, UINT8 *EndpointAddressOut,
+                                     UINT16 *MaxPacketSizeOut, UINT8 *IntervalOut);
+char UsbHostHidBootUsageToAscii(UINT8 Usage, UINT8 Modifier);
+UINT8 UsbHostHidBootKeyboardLedOutputByte(void);
+void UsbHostHidBootKeyboardLedsBind(UINT32 KeyboardSlotId, UINT8 Interface,
+                                    UINT32 HubSlotId, UINT32 HubPortOneBased);
+void UsbHostHidBootKeyboardLedsPush(void);
+int UsbHostHidBootKeyboardPoll(void);
 
 #endif /* USB_HOST_PRIVATE_H */

@@ -56,16 +56,22 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ## 手测 · `PR-MIX2-USB-2`（hub 热插 ✅）
 
-彩条相位已 ✅，**同一次 boot 直接测坞**（勿再为像素单刷）：
-
-1. `fastboot boot …\boot-chiron.img` → 彩条齐 + `id` / `host` / `ports` / **`wait dock`**  
-2. **拔电脑线** → 插 Type-C 坞；**充电口接墙充**；USB-A 可先不插键盘  
-3. 绿：splash **`hub 0x00000001`**（或 `hub 0x1` 形）  
-4. 红：`p1:200 p2:200` + `ls 0x… typec?` → **Type-C/PMI 未把 D+/D- 交给 Host**（已排除 QUSB/QSCRATCH）；`rst|slot|addr|desc fail` 才是枚举红
+1. `fastboot boot` → **`wait dock`**  
+2. 拔电脑 → 坞 + **墙充**  
+3. 绿：`e a1`
 
 ---
 
-## 手测 · `PR-PHONE-PWR-0`（短按 → fastboot · 本刀）
+## 手测 · `PR-MIX2-USB-3`（HID 键 · 本刀）
+
+1. 同上换线；USB-A 插键盘。  
+2. 绿：`e a1` + **`k a2`**；敲键 splash **`KEY>`** 出字。  
+3. 红：停在 `k 22`/`k 42`/`D…l0`；或无 `KEY>`。  
+4. 短按电源仍应进 fastboot。
+
+---
+
+## 手测 · `PR-PHONE-PWR-0`（短按 → fastboot ✅）
 
 电脑可仍占 Type-C（不要求插坞）：
 

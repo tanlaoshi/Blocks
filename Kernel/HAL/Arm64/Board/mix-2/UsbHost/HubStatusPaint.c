@@ -1,5 +1,5 @@
 /*
- * UsbHost/HubStatusPaint.c — splash 根口 / ls / tc / sp 状态行
+ * UsbHost/HubStatusPaint.c — splash 根口 / Type-C / PON 状态行
  */
 #include "UsbHost/Private.h"
 
@@ -21,12 +21,14 @@ static void AppendCompactHex(char *Line, UINT32 Capacity, UINT32 Value) {
     UsbHostAppendText(Line, Digits, Capacity);
 }
 
-void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
+void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
+                           UINT32 HubAddress) {
     char Line[56];
     UINT32 PortIndex;
     UINT8 LineState;
     int TypeCResult;
 
+    (void)HubAddress;
     Line[0] = '\0';
     for (PortIndex = 1; PortIndex <= PortCount; PortIndex++) {
         char Piece[4];
@@ -40,7 +42,6 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
         UsbHostAppendText(Line, Piece, sizeof(Line));
         AppendCompactHex(Line, sizeof(Line), LastStable[PortIndex]);
     }
-    /* e=枚举；q=QSCRATCH；u2/u3=协议口位图（bitN=口N） */
     UsbHostAppendText(Line, " e", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostEnumerateStatusCode());
     UsbHostAppendText(Line, " q", sizeof(Line));
@@ -49,16 +50,14 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb2PortBitMask());
     UsbHostAppendText(Line, "/", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostXhciUsb3PortBitMask());
-    /* pon=RT_STS；fail 时高位 → 屏上见大数 / 按键 bit0 应变 */
     UsbHostAppendText(Line, " pon", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostPowerOnStatusDiagnostic());
-    BoardBringUpSplashPaintLine(160, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_PORTS, Line);
 
     LineState = UsbHostQusbLineStateRead();
     TypeCResult = UsbHostTypeCLastResult();
     UsbHostCopyText(Line, "ls ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), LineState);
-    /* cl=tcsr_clamp_dig_n：期望 1（解钳） */
     UsbHostAppendText(Line, " cl", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostQusbClampByte());
     UsbHostAppendText(Line, " tc", sizeof(Line));
@@ -70,14 +69,12 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
     }
     UsbHostAppendText(Line, "/", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCControlByte());
-    /* cc=STATUS_4；c2=DFP Rd；挤在可视带内 */
     UsbHostAppendText(Line, " cc", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCStatus4Byte());
     UsbHostAppendText(Line, " c2 ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCStatus2Byte());
-    BoardBringUpSplashPaintLine(280, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_TYPE_C, Line);
 
-    /* os bit3=softstart；of bit0=fail；en=ENG halt 回读 */
     UsbHostCopyText(Line, "os ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostOtgStatusByte());
     UsbHostAppendText(Line, " oe ", sizeof(Line));
@@ -88,17 +85,18 @@ void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
     AppendCompactHex(Line, sizeof(Line), UsbHostOtgEngineeringByte());
     UsbHostAppendText(Line, " of ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostOtgInterruptStatusByte());
-    /* a=WCD USBC analog OUT：bit0=en1 bit1=en2n；USB idle 期望 a=2 */
     UsbHostAppendText(Line, " a ", sizeof(Line));
     AppendCompactHex(Line, sizeof(Line), UsbHostTypeCAnalogSwitchByte());
-    BoardBringUpSplashPaintLine(400, Line);
+    BoardBringUpSplashPaintLine(USB_HOST_SPLASH_LINE_OTG, Line);
 }
 
 #else
 
-void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable) {
+void UsbHostPaintHubStatus(UINT32 PortCount, const UINT32 *LastStable,
+                           UINT32 HubAddress) {
     (void)PortCount;
     (void)LastStable;
+    (void)HubAddress;
 }
 
 #endif

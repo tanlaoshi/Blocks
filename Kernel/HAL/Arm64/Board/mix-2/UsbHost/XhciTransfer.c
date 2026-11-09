@@ -1,5 +1,5 @@
 /*
- * UsbHost/XhciTransfer.c — 命令环 / 事件环 / EP0 控制传输（xHCI 1.1）
+ * UsbHost/XhciTransfer.c — 命令/事件环、每槽 EP0（xHCI 1.1）
  */
 #include "UsbHost/Private.h"
 
@@ -18,7 +18,9 @@ static TransferRequestBlock sCommandRing[COMMAND_RING_TRANSFER_REQUEST_BLOCK_COU
     __attribute__((aligned(64)));
 static TransferRequestBlock sEventRing[EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT]
     __attribute__((aligned(64)));
-static TransferRequestBlock sEndpointZeroRing[TRANSFER_RING_TRANSFER_REQUEST_BLOCK_COUNT]
+static TransferRequestBlock
+    sEndpointZeroRings[DEVICE_SLOT_COUNT_MAX + 1u]
+                      [TRANSFER_RING_TRANSFER_REQUEST_BLOCK_COUNT]
     __attribute__((aligned(64)));
 static UINT8 sEventRingSegmentTable[64] __attribute__((aligned(64)));
 static UINT64 sDeviceContextBaseAddressArray[DEVICE_SLOT_COUNT_MAX + 1u]
@@ -31,12 +33,12 @@ static UINT8 sScratchpadBuffers[SCRATCHPAD_BUFFER_COUNT_MAX][4096]
 static UINT64 sScratchpadPointerArray[SCRATCHPAD_BUFFER_COUNT_MAX]
     __attribute__((aligned(64)));
 static UINT8 sSetupPacket[8] __attribute__((aligned(64)));
-static UINT8 sControlData[64] __attribute__((aligned(64)));
+static UINT8 sControlData[USB_CONTROL_DATA_CAPACITY] __attribute__((aligned(64)));
 
 static RingState sCommandRingState;
 static UINT32 sEventDequeueIndex;
 static UINT32 sEventConsumerCycleState;
-static RingState sEndpointZeroRingState;
+static RingState sEndpointZeroRingStates[DEVICE_SLOT_COUNT_MAX + 1u];
 
 static UINT64 PointerPhysical(const void *Pointer) {
     return (UINT64)(UINTN)Pointer;
@@ -82,22 +84,30 @@ static void RingEnqueue(TransferRequestBlock *Ring, RingState *State,
 }
 
 static int WaitEvent(UINT32 WantedType, UINT32 *CompletionCode, UINT32 *SlotIdOut,
-                     UINTN GuardLimit) {
+                     UINT32 EndpointIdOrZero, UINTN GuardLimit) {
     UINTN Guard;
 
     for (Guard = 0; Guard < GuardLimit; Guard++) {
         TransferRequestBlock *Event = &sEventRing[sEventDequeueIndex];
         UINT32 Control;
         UINT32 Cycle;
+        UINT32 Type;
+        UINT32 EndpointId;
 
         UsbHostCacheCleanInvalidateRange(Event, sizeof(*Event));
         Control = Event->Control;
         Cycle = Control & 1u;
         if (Cycle != sEventConsumerCycleState) {
-            UsbHostStallYield(100u);
+            /* 命令/EP0 1ms；中断窥紧循环 */
+            if (EndpointIdOrZero == 0) {
+                UsbHostStallMilliseconds(1u);
+            }
             continue;
         }
-        if (((Control >> TRANSFER_REQUEST_BLOCK_TYPE_SHIFT) & 0x3Fu) == WantedType) {
+        Type = (Control >> TRANSFER_REQUEST_BLOCK_TYPE_SHIFT) & 0x3Fu;
+        EndpointId = (Control >> TRANSFER_REQUEST_BLOCK_ENDPOINT_SHIFT) & 0x1Fu;
+        if (Type == WantedType &&
+            (EndpointIdOrZero == 0 || EndpointId == EndpointIdOrZero)) {
             if (CompletionCode != 0) {
                 *CompletionCode = (Event->Status >> 24) & 0xFFu;
             }
@@ -184,21 +194,34 @@ int UsbHostXhciSubmitCommand(TransferRequestBlock *Command, UINT32 *CompletionCo
     RingEnqueue(sCommandRing, &sCommandRingState, Command);
     __asm__ volatile("dsb sy" ::: "memory");
     UsbHostWriteMmio32(sDoorbellBase, 0);
-    return WaitEvent(TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION, CompletionCode, SlotIdOut,
-                     2000000u);
+    return WaitEvent(TRANSFER_REQUEST_BLOCK_COMMAND_COMPLETION, CompletionCode, SlotIdOut, 0,
+                     5000u);
 }
 
-void UsbHostEndpointZeroEnqueue(const TransferRequestBlock *Block) {
-    RingEnqueue(sEndpointZeroRing, &sEndpointZeroRingState, Block);
+void UsbHostEndpointZeroEnqueue(UINT32 SlotId, const TransferRequestBlock *Block) {
+    if (SlotId == 0 || SlotId > DEVICE_SLOT_COUNT_MAX) {
+        return;
+    }
+    RingEnqueue(sEndpointZeroRings[SlotId], &sEndpointZeroRingStates[SlotId], Block);
 }
 
 int UsbHostWaitTransferEvent(UINT32 *CompletionCode) {
-    return WaitEvent(TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT, CompletionCode, 0, 2000000u);
+    return WaitEvent(TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT, CompletionCode, 0, 0, 5000u);
+}
+
+int UsbHostWaitTransferEventLimited(UINT32 *CompletionCode, UINTN GuardLimit,
+                                    UINT32 EndpointIdOrZero) {
+    return WaitEvent(TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT, CompletionCode, 0,
+                     EndpointIdOrZero, GuardLimit);
 }
 
 void UsbHostRingEndpointZeroDoorbell(UINT32 SlotId) {
+    UsbHostRingDoorbell(SlotId, 1u);
+}
+
+void UsbHostRingDoorbell(UINT32 SlotId, UINT32 EndpointTarget) {
     __asm__ volatile("dsb sy" ::: "memory");
-    UsbHostWriteMmio32(sDoorbellBase + (UINT64)SlotId * 4u, 1u);
+    UsbHostWriteMmio32(sDoorbellBase + (UINT64)SlotId * 4u, EndpointTarget);
 }
 
 UINT8 *UsbHostSetupPacketBuffer(void) {
@@ -222,20 +245,23 @@ UINT32 UsbHostContextSizeBytes(void) {
 }
 
 void UsbHostBindEndpointZeroRing(UINT32 SlotId) {
-    (void)SlotId;
-    RingInitialize(sEndpointZeroRing, &sEndpointZeroRingState,
+    if (SlotId == 0 || SlotId > DEVICE_SLOT_COUNT_MAX) {
+        return;
+    }
+    RingInitialize(sEndpointZeroRings[SlotId], &sEndpointZeroRingStates[SlotId],
                    TRANSFER_RING_TRANSFER_REQUEST_BLOCK_COUNT);
 }
 
-UINT64 UsbHostEndpointZeroRingPhysical(void) {
-    return PointerPhysical(sEndpointZeroRing);
+UINT64 UsbHostEndpointZeroRingPhysical(UINT32 SlotId) {
+    if (SlotId == 0 || SlotId > DEVICE_SLOT_COUNT_MAX) {
+        return 0;
+    }
+    return PointerPhysical(sEndpointZeroRings[SlotId]);
 }
 
 void UsbHostSetDeviceContextBase(UINT32 SlotId, UINT64 Physical) {
     sDeviceContextBaseAddressArray[SlotId] = Physical;
     UsbHostCacheCleanRange(&sDeviceContextBaseAddressArray[SlotId], sizeof(UINT64));
 }
-
 #else
-/* BRINGUP 关：BRINGUP 关时本编译单元为空 */
 #endif

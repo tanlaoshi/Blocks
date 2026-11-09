@@ -1,7 +1,8 @@
 /*
- * UsbHost/HubWatch.c — PR-MIX2-USB-2：热插循环（根口/枚举见 HubEnumerate）
+ * UsbHost/HubWatch.c — PR-MIX2-USB-3：hub → HID Boot → splash 回显
  *
- * 验收：§7.0 boot 后再插坞，splash 见 `e a1`。禁止只扫一次。
+ * 对表 Pixel HubWatch；保 Type-C Maintain + PON 短按。
+ * 验收：§7.0 换线后 `e a1` + `k a2`；敲键 `KEY>`。
  */
 #include "UsbHost/Private.h"
 
@@ -15,8 +16,14 @@ void BoardMix2UsbHubWatch(void) {
     UINT32 PortCount;
     UINT32 PortIndex;
     UINT32 HubAddress;
+    UINT32 HubSlotId;
+    UINT32 KeyboardSlotId;
+    UINT32 HubRootPort;
+    UINT32 HubSpeed;
+    UINT32 HubPortCount;
     UINT32 SawConnect;
     UINT32 LastStable[9];
+    UINT32 StatusPaintCount;
 
 #define PORT_STATUS_STABLE_MASK                                              \
     (PORT_STATUS_CONNECT | PORT_STATUS_ENABLE | PORT_STATUS_RESET |           \
@@ -24,12 +31,10 @@ void BoardMix2UsbHubWatch(void) {
 
     if (UsbHostXhciStart() != 0) {
         for (;;) {
-            /* MIX2 不进 Tasks：起环失败也须轮询电源键 */
             UsbHostStallYieldPumpPower(1000000u);
         }
     }
 
-    /* XhciStart 内已 ForceHost+OTG；此处勿再 ForceHost（会关 boost → os0） */
     (void)BoardBringUpSplashPaint("usb hub");
 
     PortCount = UsbHostXhciMaxPorts();
@@ -46,24 +51,38 @@ void BoardMix2UsbHubWatch(void) {
     }
 
     HubAddress = 0;
+    HubSlotId = 0;
+    KeyboardSlotId = 0;
+    HubRootPort = 0;
+    HubSpeed = 0;
+    HubPortCount = 0;
     SawConnect = 0;
-    UsbHostEnumerateStatusCodeClear();
+    StatusPaintCount = 0;
+    {
+        UINT32 EnumerateCooldown = 0;
+        UINT32 HidScanCooldown = 0;
+        UINT32 DisconnectStreak = 0;
+        UINT32 LastKeyboardPaintSerial = 0xFFFFFFFFu;
 
-    for (;;) {
-        UINT32 EnumerateAttempted = SawConnect; /* 同一次插着只枚举一回 */
+        UsbHostEnumerateStatusCodeClear();
+        UsbHostKeyboardStatusCodeClear();
+        for (PortIndex = 1; PortIndex <= PortCount; PortIndex++) {
+            LastStable[PortIndex] =
+                UsbHostRootPortStatus(PortIndex) & PORT_STATUS_STABLE_MASK;
+        }
+        UsbHostPaintHubStatus(PortCount, LastStable, HubAddress);
+        UsbHostPaintKeyboardStatus();
+        BoardBringUpSplashPaintLine(112, "wait dock");
 
-        /*
-         * PR-PHONE-PWR-0：Handoff 停在本循环；StallYieldPumpPower 已泵 PON。
-         * 此处再采一次，保证 paint 前 RT_STS 新鲜。
-         */
-        (void)BoardPowerButtonPressed();
-        UsbHostTypeCMaintainAfterAttach();
-
-        {
+        for (;;) {
             UINT32 Usb2Mask = UsbHostXhciUsb2PortBitMask();
             UINT32 PreferUsb2Port = 0;
             UINT32 AnyConnectPort = 0;
             UINT32 AnyConnect = 0;
+            UINT32 KeyboardPaintSerial;
+
+            (void)BoardPowerButtonPressed();
+            UsbHostTypeCMaintainAfterAttach();
 
             for (PortIndex = 1; PortIndex <= PortCount; PortIndex++) {
                 UINT32 State = UsbHostRootPortStatus(PortIndex);
@@ -82,21 +101,100 @@ void BoardMix2UsbHubWatch(void) {
                 }
             }
 
-            if (HubAddress == 0 && EnumerateAttempted == 0 &&
-                AnyConnectPort != 0) {
+            /*
+             * §7.0：Host 起来后再接坞/键须能扫到；禁「一趟 Freeze 锁死 4a08」。
+             * 成功 a2 才 Freeze；失败 ~2s 清 sticky 再扫（跳过坞内 MSC）。
+             */
+            if (HubSlotId == 0 && AnyConnectPort != 0 && EnumerateCooldown == 0) {
                 UINT32 Target =
                     (PreferUsb2Port != 0) ? PreferUsb2Port : AnyConnectPort;
                 SawConnect = 1;
-                (void)UsbHostEnumerateHubOnPort(Target, &HubAddress);
+                BoardBringUpSplashPaintLine(112, "usb enum");
+                if (UsbHostEnumerateHubOnPort(Target, &HubAddress) == 0) {
+                    HubSlotId = UsbHostHubSlotId();
+                    HubRootPort = UsbHostHubRootPortIndex();
+                    HubSpeed = UsbHostHubPortSpeed();
+                    if (HubSlotId != 0 &&
+                        UsbHostFinishHubSetup(HubSlotId, HubRootPort, HubSpeed,
+                                             &HubPortCount) == 0) {
+                        BoardBringUpSplashPaintLine(112, "usb hid");
+                        UsbHostKeyboardStatusCodeClear();
+                        (void)UsbHostFindBootKeyboardBehindHub(
+                            HubSlotId, HubRootPort, HubSpeed, HubPortCount,
+                            &KeyboardSlotId);
+                        if (KeyboardSlotId != 0) {
+                            UsbHostKeyboardLogFreeze();
+                        } else {
+                            HidScanCooldown = 10u;
+                            BoardBringUpSplashPaintLine(112, "hid retry");
+                        }
+                    } else if (HubSlotId != 0) {
+                        BoardBringUpSplashPaintLine(112, "hub setup");
+                    }
+                } else {
+                    HubAddress = 0;
+                    EnumerateCooldown = 4u;
+                }
+            } else if (HubSlotId != 0 && KeyboardSlotId == 0 && AnyConnect != 0 &&
+                       HidScanCooldown == 0) {
+                BoardBringUpSplashPaintLine(112, "usb hid");
+                UsbHostKeyboardStatusCodeClear();
+                (void)UsbHostFindBootKeyboardBehindHub(
+                    HubSlotId, HubRootPort, HubSpeed, HubPortCount, &KeyboardSlotId);
+                if (KeyboardSlotId != 0) {
+                    UsbHostKeyboardLogFreeze();
+                } else {
+                    HidScanCooldown = 10u;
+                    BoardBringUpSplashPaintLine(112, "hid retry");
+                }
             } else if (AnyConnect == 0 && SawConnect != 0) {
-                HubAddress = 0;
-                SawConnect = 0;
-                UsbHostEnumerateStatusCodeClear();
+                DisconnectStreak++;
+                if (DisconnectStreak >= 8u) {
+                    HubAddress = 0;
+                    HubSlotId = 0;
+                    KeyboardSlotId = 0;
+                    HubRootPort = 0;
+                    HubSpeed = 0;
+                    HubPortCount = 0;
+                    SawConnect = 0;
+                    EnumerateCooldown = 0;
+                    HidScanCooldown = 0;
+                    DisconnectStreak = 0;
+                    LastKeyboardPaintSerial = 0xFFFFFFFFu;
+                    UsbHostEnumerateStatusCodeClear();
+                    UsbHostKeyboardStatusCodeClear();
+                    BoardBringUpSplashPaintLine(112, "wait dock");
+                }
+            } else {
+                DisconnectStreak = 0;
             }
-        }
+            if (EnumerateCooldown > 0) {
+                EnumerateCooldown--;
+            }
+            if (HidScanCooldown > 0) {
+                HidScanCooldown--;
+            }
 
-        UsbHostPaintHubStatus(PortCount, LastStable);
-        UsbHostStallYieldPumpPower(200000u);
+            if (KeyboardSlotId != 0) {
+                (void)UsbHostHidBootKeyboardPoll();
+            }
+
+            StatusPaintCount++;
+            if (StatusPaintCount >= (KeyboardSlotId != 0 ? 64u : 1u)) {
+                StatusPaintCount = 0;
+                UsbHostPaintHubStatus(PortCount, LastStable, HubAddress);
+                KeyboardPaintSerial =
+                    (UsbHostKeyboardStatusLogCount() << 28) ^
+                    UsbHostKeyboardStatusCode() ^
+                    (UsbHostKeyboardStatusLogAt(0) << 1) ^
+                    (UsbHostKeyboardStatusLogAt(1) << 3);
+                if (KeyboardPaintSerial != LastKeyboardPaintSerial) {
+                    LastKeyboardPaintSerial = KeyboardPaintSerial;
+                    UsbHostPaintKeyboardStatus();
+                }
+            }
+            UsbHostStallMilliseconds(KeyboardSlotId != 0 ? 1u : 200u);
+        }
     }
 #undef PORT_STATUS_STABLE_MASK
 }

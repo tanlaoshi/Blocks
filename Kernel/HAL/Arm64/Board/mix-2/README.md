@@ -71,13 +71,12 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ---
 
-## 手测 · `PR-MIX2-USB-3c`（Caps/Num/Scroll 锁灯 · 本刀）
+## 手测 · `PR-MIX2-USB-3c`（Caps/Num/Scroll 锁灯 ✅）
 
 > **禁**：Configure / 首中断发 SET_REPORT（Pixel → `2711`）。只锁键翻转。
 
 1. USB-3 绿后按 **Caps / Num / Scroll**。  
-2. 绿：灯跟 + sticky **`4Dxx`**（xx=LED 字节）。  
-3. 红：`4Ecc`＝SET_REPORT 败（把码发回）；`2711`＝又踩早发。
+2. ✅ 灯跟；可有 sticky **`4Dxx`**。
 
 ---
 

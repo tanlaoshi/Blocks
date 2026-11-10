@@ -21,6 +21,10 @@
 /* 对表 chiron 线刷 boot.img：kernel_addr=0x8000 → phys 0x80008000；gzip 解压落点 */
 #define BOARD_LINUX_IMAGE_TEXT_OFFSET 0x8000
 #define BOARD_KERNEL_LOAD      0x80008000ULL
+/*
+ * ABL 经 x0 交 DTB；无固定落点。占位满足 KernelHandoff，TryDtb 失败则 BOARD_RAM。
+ */
+#define BOARD_DTB_LOAD         0x90000000ULL
 #define BOARD_RAM_BASE         0x80000000ULL
 #define BOARD_RAM_SIZE         (6ULL * 1024ULL * 1024ULL * 1024ULL)
 

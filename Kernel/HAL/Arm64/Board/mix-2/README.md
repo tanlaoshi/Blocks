@@ -67,7 +67,7 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 1. 同上换线；USB-A 插键盘。  
 2. 绿：`e a1` + **`k a2`**；敲键 splash **`KEY>`** 出字。  
 3. **热插**：拔坞 → `wait dock`；插回 → 再 `e a1`/`k a2`（须 DisableSlot 拆树）。  
-4. 短按电源 → fastboot；再刷机须 **电脑线直接插手机**（单口物理；坞口接不了 PC）。
+4. 短按电源 → fastboot（须先卸 Host，见 PWR-1）；再刷机须 **电脑线直接插手机**（单口物理；坞口接不了 PC）。
 
 ---
 
@@ -92,6 +92,17 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ---
 
+## 手测 · `PR-PHONE-PWR-1`（短按前卸 Host ✅）
+
+> **红线**：Hub/键绿后短按须能被 PC 认；勿再靠冷进。
+
+1. `fastboot boot` → 拔电脑 → 坞+墙充 → 绿 `e a1`/`k a2`（可敲键）。  
+2. **短按** → splash **`pwr fastboot`** → 进 ABL。  
+3. 拔坞，**电脑线直插手机** → **`fastboot devices` 有串号**。  
+4. ✅ 真机绿（2026-11-10）；冷进 Vol− 仍应能认（回归）。
+
+---
+
 ## 本包文件
 
 | 文件 | 作用 |
@@ -101,11 +112,12 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 | `IdentityMap.c` | GiB0 DWC3/SPMI/PS_HOLD Device + GiB2 内核/splash |
 | `SplashPaint.c` | 彩条 + 点阵；`PaintLine` |
 | `UsbHost/BringUp.c` | DWC3 GSNPSID / GCTL Host |
-| `UsbHost/PonPowerButton.c` | PM8998 PON：短按 → reboot cookie + PS_HOLD |
+| `UsbHost/PonPowerButton.c` | PM8998 PON：短按 → 卸 Host + reboot cookie + PS_HOLD |
 | `UsbHost/QusbPhy.c` | QUSB2 DT init-seq + PLL ready |
 | `UsbHost/Qscratch.c` | QSCRATCH UTMI-as-PIPE + Host VBUS override |
 | `UsbHost/SpmiPmicArbiter.c` | SPMI PMIC arbiter v2 读写 |
 | `UsbHost/TypeCForceHost.c` | PMI8998 Type-C DFP（`0x1368`） |
+| `UsbHost/TypeCReleaseHost.c` | PWR-1：温复位前 UFP + 关 OTG |
 | `UsbHost/Private.h` · `Utility.c` | USB 共用 |
 | `UsbHost/XhciStart.c` · `XhciTransfer.c` · `XhciControl.c` | xHCI 起环 / 命令 / EP0 |
 | `UsbHost/HubWatch.c` | 根口热插 + hub 编址 |

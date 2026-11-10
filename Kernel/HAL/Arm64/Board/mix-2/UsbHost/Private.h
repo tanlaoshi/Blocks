@@ -193,6 +193,7 @@ UINT32 UsbHostSpmiArbiterVersion(void);
 int UsbHostSpmiReadByte(UINT8 SlaveIdentifier, UINT16 Address, UINT8 *ValueOut);
 int UsbHostSpmiWriteByte(UINT8 SlaveIdentifier, UINT16 Address, UINT8 Value);
 int UsbHostTypeCForceHost(void);
+int UsbHostTypeCReleaseHostForBootloader(void);
 void UsbHostTypeCMaintainAfterAttach(void);
 int UsbHostTypeCAnalogSwitchForceUsb(void);
 UINT8 UsbHostTypeCAnalogSwitchByte(void);

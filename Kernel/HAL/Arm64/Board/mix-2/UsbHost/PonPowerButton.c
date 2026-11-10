@@ -1,10 +1,12 @@
 /*
- * UsbHost/PonPowerButton.c — PR-PHONE-PWR-0：短按 KPDPWR → fastboot
+ * UsbHost/PonPowerButton.c — PR-PHONE-PWR-0/1：短按 KPDPWR → fastboot
  *
  * 对表 Linux qcom-pon / qpnp-pon / pm8941-pwrkey（pm8998）：
  *   PON@0x800 SID0；RT_STS bit0=KPDPWR_N_SET（按下=1）；
  *   SOFT_RB_SPARE bootloader=0x2<<1（GEN2）；
  *   PS_HOLD_RST 温复位后拉低 msm PS_HOLD@0x10AC000。
+ * PR-PHONE-PWR-1：温复位前 UsbHostTypeCReleaseHostForBootloader（卸 DFP/OTG）；
+ *   否则 PMI8998 角色粘 Host，`fastboot devices` 空（冷进能认）。
  * 长按硬关仍由 PMIC Stage3/硬件路径，本文件不改。
  *
  * 真机约束：Handoff 停在 HubWatch，Tasks 不到；长 Stall 须走
@@ -141,6 +143,8 @@ static void Mix2RebootToBootloader(void) {
     }
     sRebootInProgress = 1;
     (void)BoardBringUpSplashPaintLine(112, "pwr fastboot");
+    /* PMI 跨温复位；先卸 Host 再 cookie，否则 ABL gadget 枚举失败 */
+    (void)UsbHostTypeCReleaseHostForBootloader();
     Mix2PowerOnWriteRestartReasonBootloader();
     Mix2PowerOnConfigureWarmReset();
     /* 纯 Stall：勿 PumpPower（会再进本函数） */

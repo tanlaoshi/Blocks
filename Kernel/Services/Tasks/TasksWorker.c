@@ -34,6 +34,7 @@ UINT32 WorkerLoopCount(void) {
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
  *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
+ *   0b DesktopBluetoothTrayWorkerPoll — 托盘 LE Scan/Connect 后台（勿堵 Gui）
  *   1 DesktopEnsureIconsLoaded + MenuRebuilt — gui-icons-defer；先于旁路扫盘
  *   2 EnsureSecondary + HDA（msc/3；仍无光标）
  *   3 StoreUiEnsureOpenLoad — story-s4 开窗 defer catalog
@@ -80,6 +81,8 @@ void WorkerTask(void) {
             }
         }
         DesktopWorkerTick();
+        /* 托盘 Scan：Gui 只置 Want；此处跑 LE Scan（Hal 分片泵 HID） */
+        DesktopBluetoothTrayWorkerPoll();
         /*
          * PR-BOOT-fast-1 / gui-icons-defer：图标/菜单在 Worker、先于 Secondary/iwl。
          * 勿放 Gui 路径读盘（与 iwl IoBreath 重入 FAT → #GP）。

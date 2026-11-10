@@ -105,6 +105,8 @@ int DesktopNetTrayIsOpen(void);
 /* PR-BT-TRAY-0 */
 int DesktopBluetoothTrayIsOpen(void);
 void DesktopDrawBluetoothTrayPopup(void);
+/* Worker：托盘 LE Scan/Connect 后台步进（Gui 点击只置 Want） */
+void DesktopBluetoothTrayWorkerPoll(void);
 void DesktopDismissStartMenu(void);
 /* 点在任务栏条带上时优先于窗（开始钮）；菜单开时由 Gui 先走 DesktopHandleClick */
 int DesktopClickOnTaskbar(UINT32 X, UINT32 Y);

@@ -1,7 +1,7 @@
 /*
  * AttHidSubscribe.c — 读 Report Map；Protocol Mode=Report；订 Input Notify
  *
- * CCCD 常开；试订/等首包见 AttHidSubscribeTry.c（重连须对上 ValueHandle）。
+ * CCCD 常开；试订见 AttHidSubscribeTry.c（PR-BT-HOGP-1：成即武装，勿等首包）。
  */
 #include "XHCI/Bluetooth/Private.h"
 #include "XHCI.h"

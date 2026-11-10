@@ -183,11 +183,39 @@ static void DrainNotifications(void) {
         }
         AttributeHandle = (UINT16)(AttributeProtocolDataUnit[1] |
                                    ((UINT16)AttributeProtocolDataUnit[2] << 8));
+        ValueLength = (UINT16)(Length - 3u);
         if (sArmedReportValueHandle != 0u &&
             AttributeHandle != sArmedReportValueHandle) {
+            UINT8 Buttons = 0;
+            int DeltaX = 0;
+            int DeltaY = 0;
+            INT8 Wheel = 0;
+            UINT8 LearnedId = 0;
+            int Ok = 0;
+
+            /*
+             * PR-BT-HOGP-1：多路 Input CCCD 都开；首武装可能非位移报告。
+             * 另句柄能解成鼠报告 → 改武装再跟手（勿再逼连时晃鼠验收）。
+             */
+            if (ValueLength >= 4u &&
+                BluetoothHidReportParsePayload(&AttributeProtocolDataUnit[4],
+                                               (UINT16)(ValueLength - 1u),
+                                               &Buttons, &DeltaX, &DeltaY,
+                                               &Wheel) == 0) {
+                LearnedId = AttributeProtocolDataUnit[3];
+                Ok = 1;
+            } else if (ValueLength >= 3u &&
+                       BluetoothHidReportParsePayload(
+                           &AttributeProtocolDataUnit[3], ValueLength, &Buttons,
+                           &DeltaX, &DeltaY, &Wheel) == 0) {
+                Ok = 1;
+            }
+            if (Ok) {
+                BluetoothHidInputNoteArmed(AttributeHandle, LearnedId);
+                ParseAndPush(&AttributeProtocolDataUnit[3], ValueLength);
+            }
             continue;
         }
-        ValueLength = (UINT16)(Length - 3u);
         ParseAndPush(&AttributeProtocolDataUnit[3], ValueLength);
     }
 }

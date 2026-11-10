@@ -241,6 +241,15 @@ int DesktopBluetoothTrayLabelChanged(void);
 void DesktopBluetoothTrayGeom(UINT32 ClockX, UINT32 *OutX, UINT32 *OutW);
 void DesktopBluetoothTraySetOpen(int Open);
 void DesktopMarkBluetoothTrayPopup(void);
+/* 后台 LE Scan/Connect：点击 Request；Worker Poll */
+void DesktopBluetoothTrayScanRequest(void);
+void DesktopBluetoothTrayConnectRequest(UINTN OneBased);
+void DesktopBluetoothTrayWorkerPoll(void);
+int DesktopBluetoothTrayScanIsBusy(void);
+void DesktopBluetoothTrayStatusSet(const char *Text);
+const char *DesktopBluetoothTrayStatusGet(void);
+UINTN DesktopBluetoothTrayScanCount(void);
+void DesktopBluetoothTrayFormatScanRow(UINTN OneBased, char *Out, int Max);
 
 int PathHasVolPrefix(const char *Path);
 int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax, const char *Tag);

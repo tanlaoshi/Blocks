@@ -8,26 +8,11 @@
 #include "Console.h"
 #include "HalBluetooth.h"
 
-static void WriteHexByte(UINT8 Value) {
-    static const char Digits[] = "0123456789ABCDEF";
-    char Hex[3];
+void WriteHexByte(UINT8 Value);
+void WriteAddress(const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH]);
 
-    Hex[0] = Digits[(Value >> 4) & 0x0Fu];
-    Hex[1] = Digits[Value & 0x0Fu];
-    Hex[2] = 0;
-    gConsole.Write(Hex);
-}
+/* WriteHexByte/WriteAddress → BluetoothFormat.c（PR-NORM-16）。 */
 
-static void WriteAddress(const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH]) {
-    int Index;
-
-    for (Index = 5; Index >= 0; Index--) {
-        WriteHexByte(Address[Index]);
-        if (Index > 0) {
-            gConsole.Write(":");
-        }
-    }
-}
 
 static int ArgEqualIgnoreCase(const char *Arg, const char *Word) {
     const char *A = Word;

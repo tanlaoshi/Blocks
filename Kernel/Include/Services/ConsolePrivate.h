@@ -65,6 +65,8 @@ extern int gUserAliasCount;
 
 int FindCommandIndex(const char *Name);
 int FindUserAliasIndex(const char *Name);
+void CopyWord(char *Dst, int DstMax, const char *Src); /* Alias.c · PR-NORM-16 */
+int UserAliasSet(const char *Alias, const char *Level1, const char *Level2);
 void CommandAlias(int Argc, char **Argv);
 void CommandUnalias(int Argc, char **Argv);
 
@@ -81,6 +83,9 @@ void ConsoleDrawChar(char C, UINT32 Color);
 void ConsoleCoopUserOutClear(void);
 void ConsoleCoopUserOutFlush(void);
 void ConsoleCoopUserOutArmRunUserDone(void);
+void ConsoleCoopUserOutAppend(const char *Text); /* WriteCore 共用 · PR-NORM-16 */
+void ConsoleWriteText(const char *Text);         /* WriteCore.c · PR-NORM-16 */
+void ConsoleWriteLength(const char *Data, UINTN Len);
 /* Shell 客户区+scrollback，不写串口（开窗欢迎语等） */
 void ConsoleWriteShellScreen(const char *Text);
 void ConsoleRunLine(void);
@@ -126,6 +131,19 @@ void ConsoleSbBindFocus(void);
 void ConsoleSbFeedLiveIfBound(const char *Text);
 
 /* 各文件把自己的 static 实现填进 gConsole。ConsoleInitialize 开头调用。 */
+/* ConsoleStdin.c / ConsoleJob.c · PR-NORM-16 */
+int StdinUserHold(void);
+void StdinFlush(void);
+void StdinPut(char C);
+char StdinGetChar(void);
+void AnnounceBootReady(void);
+void JobHoldPrompt(void);
+void JobReleasePrompt(void);
+int JobPromptPending(void);
+int JobConsumeSkipAfterCommand(void);
+void JobShiftRaise(int Idx, int Top);
+void WriteToJobShell(const char *Text);
+
 void ConsolePublishWrite(CONSOLE_OPS *Ops);
 void ConsolePublishInput(CONSOLE_OPS *Ops);
 void ConsolePublishHistory(CONSOLE_OPS *Ops);

@@ -89,7 +89,10 @@ int StoreUiActDispatch(int Btn, int Pressed, int Hit);
 /* ===== StoreUiInput.c ===== */
 void StoreUiDoButton(int Btn);
 
-/* ===== StoreUiPaint.c / Hover.c ===== */
+/* ===== StoreUiPaint.c / PaintList.c / PaintWiden.c / Hover.c ===== */
+void StoreColumns(UINT32 *Src, UINT32 *Id, UINT32 *Name, UINT32 *Need); /* PaintWiden.c · PR-NORM-16 */
+void StoreWidenList(UINT32 *Cw);
+void StorePaintDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H); /* Paint.c · PR-NORM-16 */
 void StorePaintList(void);
 void StorePaintHoverDelta(int OldSide, int NewSide, int OldRow, int NewRow,
                           int OldBtn, int NewBtn);

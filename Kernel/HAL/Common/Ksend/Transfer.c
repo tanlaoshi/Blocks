@@ -81,8 +81,12 @@ static int PrepareBackup(KSEND_RUN *Run) {
 
 static int TransferRun(KSEND_RUN *Run) {
     const KSEND_IMAGE *ReadyImage;
+    UINT32 TransferStart;
+    UINT32 PhaseStart;
     int Error;
 
+    TransferStart = KsendMilliseconds();
+    PhaseStart = TransferStart;
     Error = PrepareBackup(Run);
     if (Error == FAT_ERR_FILE_TOO_BIG) {
         Run->Failure = KSEND_FAIL_FILE_STATUS;
@@ -100,6 +104,8 @@ static int TransferRun(KSEND_RUN *Run) {
         Run->Error = Error;
         return -1;
     }
+    Run->PrepareMilliseconds = KsendMilliseconds() - PhaseStart;
+    KsendPhaseNote("prepare", Run->PrepareMilliseconds);
     if (KsendRunUsesStaging(Run)) {
         /* 空表 → 主机全量发；落盘路径是新建 .new（与 TEST2M 同形） */
         KsendImageClear(&gKsendNewImage);
@@ -108,6 +114,7 @@ static int TransferRun(KSEND_RUN *Run) {
         KsendImageCopy(&gKsendNewImage, &gKsendOldImage);
         ReadyImage = &gKsendOldImage;
     }
+    PhaseStart = KsendMilliseconds();
     KsendSerialDrainInput(KSEND_DRAIN_QUIET_MILLISECONDS, KSEND_DRAIN_LIMIT_MILLISECONDS);
     KsendReadyLine(ReadyImage);
     /* READY：SerialWrite 已 WaitPeerAcknowledge */
@@ -123,6 +130,8 @@ static int TransferRun(KSEND_RUN *Run) {
         Run->Failure = KSEND_FAIL_SEND;
         return -1;
     }
+    Run->ReadyTableMilliseconds = KsendMilliseconds() - PhaseStart;
+    KsendPhaseNote("ready_table", Run->ReadyTableMilliseconds);
     /* 表 ACK 后先泵 RX：PC 可能已发首块，Wi‑Fi 帧还在 SDPCM */
     if (LwIpActive()) {
         LwIpService();
@@ -132,14 +141,26 @@ static int TransferRun(KSEND_RUN *Run) {
         }
         LwIpService();
     }
+    PhaseStart = KsendMilliseconds();
     if (KsendReceiveBlocks(Run) != 0) {
+        Run->ReceiveMilliseconds = KsendMilliseconds() - PhaseStart;
         if (KsendTransportUserAborted()) {
             Run->Failure = KSEND_FAIL_ABORT;
             KsendNote("transport: aborted (Ctrl-C)");
         }
         return -1;
     }
-    return KsendFinishImage(Run);
+    Run->ReceiveMilliseconds = KsendMilliseconds() - PhaseStart;
+    KsendPhaseNoteReceive(Run->ReceiveMilliseconds, Run->Written);
+    PhaseStart = KsendMilliseconds();
+    Error = KsendFinishImage(Run);
+    Run->FinishMilliseconds = KsendMilliseconds() - PhaseStart;
+    if (Error == 0) {
+        KsendPhaseNote("finish", Run->FinishMilliseconds);
+        Run->TotalMilliseconds = KsendMilliseconds() - TransferStart;
+        KsendPhaseNote("total", Run->TotalMilliseconds);
+    }
+    return Error;
 }
 
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
@@ -166,7 +187,7 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     FatSetIoBreath(0);
     if (Rc == 0) {
         KsendVolumeRelease(&Run);
-        KsendSuccessLine(Run.TrailerCrc, Run.Written, Run.NewSize);
+        KsendSuccessLine(&Run);
         if (Run.Reboot == 0) {
             KsendFreezeEnd();
             return 0;

@@ -25,6 +25,11 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->Dirty = 0;
     Run->Failure = KSEND_FAIL_NONE;
     Run->Error = FAT_OK;
+    Run->PrepareMilliseconds = 0;
+    Run->ReadyTableMilliseconds = 0;
+    Run->ReceiveMilliseconds = 0;
+    Run->FinishMilliseconds = 0;
+    Run->TotalMilliseconds = 0;
 }
 
 static const char *PathNameStart(const char *Path) {

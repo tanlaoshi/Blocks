@@ -143,6 +143,12 @@ typedef struct {
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
     int Error;
+    /* 阶段墙钟（PR-KSEND-PHASE-METRICS）：毫秒，失败路径可部分为 0 */
+    UINT32 PrepareMilliseconds;
+    UINT32 ReadyTableMilliseconds;
+    UINT32 ReceiveMilliseconds;
+    UINT32 FinishMilliseconds;
+    UINT32 TotalMilliseconds;
 } KSEND_RUN;
 
 /* 自检结果（给 KsendSelfTest 打印用） */
@@ -218,7 +224,9 @@ void KsendPrintReason(const char *Tag, const char *Reason, int Error);
 void KsendReadyLine(const KSEND_IMAGE *Image);
 UINT32 KsendReadyWindowBlocks(void);
 void KsendBlockTable(const KSEND_IMAGE *Image);
-void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size);
+void KsendPhaseNote(const char *Name, UINT32 Milliseconds);
+void KsendPhaseNoteReceive(UINT32 Milliseconds, UINT32 Written);
+void KsendSuccessLine(const KSEND_RUN *Run);
 void KsendFailLine(int Failure, UINT32 Block, UINT32 Want, UINT32 Got, int Error);
 void KsendAbortLine(UINT32 Written);
 void KsendRestoredLine(const KSEND_IMAGE *Image);

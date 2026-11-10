@@ -128,15 +128,50 @@ void KsendBlockTable(const KSEND_IMAGE *Image) {
     KsendSerialWaitPeerAcknowledge();
 }
 
-void KsendSuccessLine(UINT32 Crc, UINT32 Written, UINT32 Size) {
+void KsendPhaseNote(const char *Name, UINT32 Milliseconds) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
     KsendTextReset(&Out, Line, (int)sizeof(Line));
-    KsendTextPut(&Out, "KSEND OK");
-    KsendTextPutHexField(&Out, "crc", Crc);
+    KsendTextPut(&Out, "phase ");
+    KsendTextPut(&Out, Name);
+    KsendTextPutField(&Out, "ms", Milliseconds);
+    KsendNote(Line);
+}
+
+void KsendPhaseNoteReceive(UINT32 Milliseconds, UINT32 Written) {
+    char Line[KSEND_TEXT_BYTES];
+    KSEND_TEXT Out;
+
+    KsendTextReset(&Out, Line, (int)sizeof(Line));
+    KsendTextPut(&Out, "phase receive");
+    KsendTextPutField(&Out, "ms", Milliseconds);
     KsendTextPutField(&Out, "written", Written);
-    KsendTextPutField(&Out, "size", Size);
+    if (Milliseconds > 0u) {
+        /* 每块 4 KiB → kib_per_second = written×4×1000/ms */
+        KsendTextPutField(&Out, "kib_per_second",
+                          (Written * 4u * 1000u) / Milliseconds);
+    }
+    KsendNote(Line);
+}
+
+void KsendSuccessLine(const KSEND_RUN *Run) {
+    char Line[KSEND_TEXT_BYTES];
+    KSEND_TEXT Out;
+
+    if (Run == 0) {
+        return;
+    }
+    KsendTextReset(&Out, Line, (int)sizeof(Line));
+    KsendTextPut(&Out, "KSEND OK");
+    KsendTextPutHexField(&Out, "crc", Run->TrailerCrc);
+    KsendTextPutField(&Out, "written", Run->Written);
+    KsendTextPutField(&Out, "size", Run->NewSize);
+    KsendTextPutField(&Out, "prepare", Run->PrepareMilliseconds);
+    KsendTextPutField(&Out, "ready", Run->ReadyTableMilliseconds);
+    KsendTextPutField(&Out, "receive", Run->ReceiveMilliseconds);
+    KsendTextPutField(&Out, "finish", Run->FinishMilliseconds);
+    KsendTextPutField(&Out, "total", Run->TotalMilliseconds);
     KsendTextFlush(&Out);
 }
 

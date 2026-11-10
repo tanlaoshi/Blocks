@@ -124,7 +124,7 @@ int HalAudioProbe(void);
 int HalAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits);
 void HalAudioStop(void);
-void HalAudioBeep(void); /* PlayPcm(NULL) 快捷 */
+void HalAudioBeep(void); /* PlayPcm(NULL)：开机/提示钟声 */
 /* PR-G-igpu-2：观察固件 GGTT/scanout；非 x86 空操作 */
 void HalIgpuGttInitialize(void);
 /* PR-G-igpu-3：forcewake + blit 骨架；非 x86 空操作 */

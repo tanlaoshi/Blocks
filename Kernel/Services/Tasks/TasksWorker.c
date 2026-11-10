@@ -184,7 +184,7 @@ void WorkerTask(void) {
             if (!sSecondaryOnce) {
                 FileSystemEnsureSecondaryVolumes();
                 FilesUiRefresh();
-                /* boot-hda-defer：旁路盘后认声卡（不挡进桌面） */
+                /* boot-hda-defer：旁路盘后认声卡（不挡进桌面）；钟声在 Stream 自测里响 */
                 HalHdaMmioInitialize();
                 HalHdaCodecInitialize();
                 HalHdaStreamInitialize();

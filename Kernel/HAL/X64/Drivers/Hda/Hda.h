@@ -47,7 +47,7 @@ int HdaHdmiEnableAllPins(UINT8 Cad, UINT8 Afg);
 int HdaHdmiPickPath(UINT8 Cad, UINT8 *PinOut, UINT8 *CvtOut);
 int HdaHdmiInfoframe(UINT8 Cad, UINT8 Pin);
 int HdaHdmiDisplayAudioEnable(void);
-/* PR-G-audio-4：HalAudio 底层；Samples=0 则内置方波蜂鸣 */
+/* PR-G-audio-4：HalAudio 底层；Samples=0 则内置上升钟声 */
 int HdaAudioProbe(void);
 int HdaAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits);

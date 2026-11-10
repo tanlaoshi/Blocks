@@ -235,7 +235,10 @@ void DesktopInitialize(void) {
     FreeWallScreen();
     gWallReady = 0;
     LogGui("Gui: Desktop Layout Ready\n");
-    HalAudioBeep();
+    /*
+     * boot-hda-defer：此处 HDA 多半未就绪，Beep 会空。
+     * 开机钟声改在 Worker HalHdaStreamInitialize 成功后 HalAudioBeep。
+     */
     LogGui("Gui: Desktop Solid Ready (Icons Deferred)\n");
 #if KERNEL_DEBUG
     UiActionSelfCheck();

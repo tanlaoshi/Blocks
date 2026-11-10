@@ -3,6 +3,7 @@
  * 48k/16/2；PCH Tag=SDCTL[23:20]。
  */
 #include "Hda.h"
+#include "StreamPrivate.h"
 #include "PhysicalMemory.h"
 #include "VirtualMemory.h"
 #include "SerialLog.h"
@@ -31,9 +32,9 @@
 #define HDA_SD_STS_FIFORDY         0x20u
 #define HDA_SD_TAG_SHIFT           20u
 #define HDA_PINCTL_OUT_EN          0x40u
+/* 与旧方波同窗（2 页）；钟声靠整窗连奏，勿擅自加长 DMA */
 #define HDA_PCM_PAGES              2u
 #define HDA_BDL_ENTRIES            2u
-#define HDA_BEEP_REPEATS           8u
 
 static int gHdaStreamOk;
 static UINT32 gSdBase;
@@ -115,15 +116,6 @@ static int StreamReset(void) {
     return 0;
 }
 
-static void FillSquare(INT16 *Pcm, UINTN Frames) {
-    UINTN I;
-    for (I = 0; I < Frames; I++) {
-        INT16 S = ((I / 32u) & 1u) ? (INT16)28000 : (INT16)-28000;
-        Pcm[I * 2u] = S;
-        Pcm[I * 2u + 1u] = S;
-    }
-}
-
 static int RunDma(UINT32 PcmBytes) {
     UINT32 *Bdl = (UINT32 *)(UINTN)gDma;
     UINT32 Half = PcmBytes / 2u;
@@ -189,10 +181,9 @@ void HdaAudioStop(void) {
 int HdaAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
                     UINT32 Channels, UINT32 Bits) {
     INT16 *Pcm;
-    UINTN Cap, Frames, N, I;
+    UINTN Cap, N, I;
     const UINT8 *Src;
     UINT8 *Dst;
-    UINT32 R, Times;
 
     if (!gHdaStreamOk || gDma == 0) {
         return 0;
@@ -203,26 +194,25 @@ int HdaAudioPlayPcm(const void *Samples, UINTN Bytes, UINT32 RateHz,
     Cap = HDA_PCM_PAGES * PAGE_SIZE;
     Pcm = (INT16 *)(UINTN)(gDma + PAGE_SIZE);
     Zero(Pcm, Cap);
-    if (Samples == 0 || Bytes == 0) {
-        Frames = Cap / 4u;
-        FillSquare(Pcm, Frames);
-        Times = HDA_BEEP_REPEATS;
-    } else {
-        N = Bytes > Cap ? Cap : Bytes;
-        Src = (const UINT8 *)Samples;
-        Dst = (UINT8 *)Pcm;
-        for (I = 0; I < N; I++) {
-            Dst[I] = Src[I];
-        }
-        Times = 1u;
-    }
     (void)Verb12(gCad, gCvt, AC_VERB_SET_CHANNEL_STREAMID,
                  (UINT8)((HDA_STREAM_TAG << 4) | 0));
-    for (R = 0; R < Times; R++) {
-        if (!RunDma((UINT32)Cap)) {
+    if (Samples == 0 || Bytes == 0) {
+        if (!HdaStreamPlayBuiltinTone(Pcm, Cap, RunDma)) {
             HdaAudioStop();
             return 0;
         }
+        HdaAudioStop();
+        return 1;
+    }
+    N = Bytes > Cap ? Cap : Bytes;
+    Src = (const UINT8 *)Samples;
+    Dst = (UINT8 *)Pcm;
+    for (I = 0; I < N; I++) {
+        Dst[I] = Src[I];
+    }
+    if (!RunDma((UINT32)N)) {
+        HdaAudioStop();
+        return 0;
     }
     HdaAudioStop();
     return 1;
@@ -281,10 +271,12 @@ int HdaStreamInitialize(void) {
         return 0;
     }
     gHdaStreamOk = 1;
-    /* 开机自测蜂鸣（与 HalAudioPlayPcm(NULL) 同路径） */
+    /*
+     * 自测钟声：失败只打日志，勿把整条 stream 打掉（旧方波失败亦会静默）。
+     * 桌面进场太早 Beep 会空响；Worker 在 Stream 成后再 HalAudioBeep。
+     */
     if (!HdaAudioPlayPcm(0, 0, 48000u, 2u, 16u)) {
-        gHdaStreamOk = 0;
-        return 0;
+        LogBoot("Boot: hda stream tone fail (stream kept)\n");
     }
     LogBoot("Boot: hda stream ok tag=");
     LogBootHex32(HDA_STREAM_TAG);

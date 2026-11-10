@@ -35,7 +35,9 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->FinishMilliseconds = 0;
     Run->VerifyMilliseconds = 0;
     Run->InstallMilliseconds = 0;
-    Run->InstallRenameMilliseconds = 0;
+    Run->InstallUnlinkMilliseconds = 0;
+    Run->InstallRenameBakMilliseconds = 0;
+    Run->InstallRenameNewMilliseconds = 0;
     Run->TotalMilliseconds = 0;
 }
 

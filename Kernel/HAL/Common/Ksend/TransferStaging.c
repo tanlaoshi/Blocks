@@ -1,7 +1,8 @@
 /*
  * TransferStaging.c — .new 安装 / 延后释链 / 丢弃
  *
- * install：目录改名 + 摘旧项；FatFreeChain 延到 OK 后（KsendDeferredFreeClusters）。
+ * install：目录改名 + 摘旧项；FatFreeChain 延到 OK 后。
+ * 默认 Reboot：不 Target→.bak（复位后用不上），少一次改名（手测 install≈6s）。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -40,21 +41,28 @@ static int StagingUnlinkDeferFree(const char *Path, UINT32 *OutCluster) {
 
 int KsendStagingInstall(KSEND_RUN *Run) {
     UINT32 DeferredCluster = 0;
+    UINT32 PhaseStart;
     int Error;
+    int KeepBackup;
 
     if (!KsendRunUsesStaging(Run)) {
         return FAT_OK;
     }
     /*
-     * SESSION-TAX：Backup 时 Target→.bak，再 .new→Target。
-     * 旧 .bak / --no-backup 的 Target：只摘项，释链见 DeferredFree。
+     * Reboot=1：复位进新核，.bak 不参与回滚；与 --no-backup 同形
+     *（摘 Target + .new→Target）。--no-reboot 且 Backup 仍 Target→.bak。
      */
-    if (Run->Backup != 0) {
+    KeepBackup = (Run->Backup != 0 && Run->Reboot == 0) ? 1 : 0;
+    PhaseStart = KsendMilliseconds();
+    if (KeepBackup) {
         Error = StagingUnlinkDeferFree(Run->BackupPath, &DeferredCluster);
         if (Error != FAT_OK) {
             return Error;
         }
+        Run->InstallUnlinkMilliseconds = KsendMilliseconds() - PhaseStart;
+        PhaseStart = KsendMilliseconds();
         Error = FileSystemRename(Run->TargetPath, Run->BackupPath);
+        Run->InstallRenameBakMilliseconds = KsendMilliseconds() - PhaseStart;
         if (Error != FAT_OK) {
             if (DeferredCluster >= 2u) {
                 (void)FatFreeChain(DeferredCluster);
@@ -64,12 +72,19 @@ int KsendStagingInstall(KSEND_RUN *Run) {
         KsendNote("staging: target renamed to .bak");
     } else {
         Error = StagingUnlinkDeferFree(Run->TargetPath, &DeferredCluster);
+        Run->InstallUnlinkMilliseconds = KsendMilliseconds() - PhaseStart;
         if (Error != FAT_OK) {
             return Error;
         }
-        KsendNote("staging: target unlinked (--no-backup)");
+        if (Run->Backup != 0 && Run->Reboot != 0) {
+            KsendNote("staging: skip .bak (reboot)");
+        } else {
+            KsendNote("staging: target unlinked (--no-backup)");
+        }
     }
+    PhaseStart = KsendMilliseconds();
     Error = FileSystemRename(Run->WritePath, Run->TargetPath);
+    Run->InstallRenameNewMilliseconds = KsendMilliseconds() - PhaseStart;
     if (Error != FAT_OK) {
         if (DeferredCluster >= 2u) {
             (void)FatFreeChain(DeferredCluster);

@@ -77,14 +77,12 @@ int KsendFinishImage(KSEND_RUN *Run) {
     }
     InstallStart = KsendMilliseconds();
     Error = KsendStagingInstall(Run);
-    Run->InstallRenameMilliseconds = KsendMilliseconds() - InstallStart;
-    Run->InstallMilliseconds = Run->InstallRenameMilliseconds;
+    Run->InstallMilliseconds = KsendMilliseconds() - InstallStart;
     if (Error != FAT_OK) {
         Run->Error = Error;
         Run->Failure = KSEND_FAIL_FILE_STATUS;
         return -1;
     }
-    KsendNote("install: rename-only (no .crc)");
     return 0;
 }
 

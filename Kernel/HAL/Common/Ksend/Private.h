@@ -154,7 +154,9 @@ typedef struct {
     UINT32 FinishMilliseconds;
     UINT32 VerifyMilliseconds; /* finish 内：sync + 盘回读校验 */
     UINT32 InstallMilliseconds; /* finish 内：staging 改名（释链在 OK 后；不再写 .crc） */
-    UINT32 InstallRenameMilliseconds;
+    UINT32 InstallUnlinkMilliseconds;
+    UINT32 InstallRenameBakMilliseconds;
+    UINT32 InstallRenameNewMilliseconds;
     UINT32 TotalMilliseconds;
 } KSEND_RUN;
 

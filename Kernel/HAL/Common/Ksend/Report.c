@@ -196,6 +196,9 @@ void KsendSuccessLine(const KSEND_RUN *Run) {
     KsendTextPutField(&Out, "finish", Run->FinishMilliseconds);
     KsendTextPutField(&Out, "verify", Run->VerifyMilliseconds);
     KsendTextPutField(&Out, "install", Run->InstallMilliseconds);
+    KsendTextPutField(&Out, "unlink", Run->InstallUnlinkMilliseconds);
+    KsendTextPutField(&Out, "renbak", Run->InstallRenameBakMilliseconds);
+    KsendTextPutField(&Out, "rennew", Run->InstallRenameNewMilliseconds);
     KsendTextPutField(&Out, "total", Run->TotalMilliseconds);
     KsendTextFlush(&Out);
 }

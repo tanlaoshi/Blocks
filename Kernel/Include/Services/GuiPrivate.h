@@ -263,10 +263,14 @@ int PixelCoveredByHigherWindow(int Idx, UINT32 Px, UINT32 Py);
 #define CURSOR_HW_DIM 64
 void CursorMetrics(int *Half, int *Thick);
 void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy, UINT32 *Sw, UINT32 *Sh);
+void CursorPhysicalRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
+                        UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp);
 void CursorPutPixel(int Px, int Py, UINT32 Color);
 /* 栅成 CURSOR_HW_DIM² ARGB8888；热点相对缓冲左上。失败 0 */
 int CursorGlyphToArgb(int Kind, UINT32 *Out, UINT32 *HotX, UINT32 *HotY);
 void DrawCursorGlyph(UINT32 X, UINT32 Y);
+void DrawCursorArrow(UINT32 X, UINT32 Y);
+void ArrowBBox(int *MinX, int *MaxX, int *MinY, int *MaxY);
 void DrawCursorAxis(UINT32 X, UINT32 Y, int Axis);
 void DrawCursorAt(UINT32 X, UINT32 Y);
 void CursorRestore(void);
@@ -274,6 +278,11 @@ void CursorPaint(void);
 void CursorMove(UINT32 X, UINT32 Y);
 /* 1=硬件光标已 Enable；Compose 勿 Restore FB（光标不在后缓冲） */
 int CursorHwActive(void);
+void CursorHwTryEnable(void);
+void CursorHwDisable(void);
+int CursorHwUploadKind(int Kind);
+int CursorHwRatioChanged(void);
+int CursorHwKind(void);
 /* 指针边沿基准。和窗口状态放在一起。 */
 
 /* Drag */

@@ -1,7 +1,8 @@
 /*
  * Cursor.c — 鼠标光标 save-under + 移动/显隐（gui-g7-cursor）
  *
- * 字形 Shape.c；改大小悬停换形 GuiResizeCursorKindAt。
+ * 字形 Shape.c；几何 CursorGeometry.c；硬件 CursorHardware.c；
+ * Reveal/显隐 CursorReveal.c。改大小悬停换形 GuiResizeCursorKindAt。
  *
  * ── 光标契约（对表拧，勿凭感觉改序）──
  *
@@ -11,34 +12,20 @@
  *   二者写后缓冲时必 CursorOverlayBegin/End → 脏进 gCurDirty（≠ 内容 gDirty）
  *
  * PR-23c：save-under 走物理像素（HalVideoReadRectPhys/WriteRectPhys）。
- *   200% 时后缓冲是物理分辨率、字形按物理像素落笔，逻辑像素读回只会取块左上
- *   角、写回再铺成 2×2 块 → 光标划过文字会糊。故 Under 按 CURSOR_BOX_PHYS²
- *   预留，读写时把 Save* 逻辑值 ×DrawScale；Save* 本身仍存逻辑值（布局单位，
- *   ClearIconFootprint 等调用方也按逻辑用）。S=1 时与旧路径逐字等价。
+ *   Under 按 CURSOR_BOX_PHYS² 预留；Save* 仍存逻辑值。
  *
  * 合成序（Compose / ThemeScene / FrameBuffer / Redraw）：
  *   1 ComposeBeginEraseCursor：先 Restore 再 ComposeBusy（见 Compose.c）
  *   2 开中断画桌面/窗（Busy 丢弃嵌套鼠标）
  *   3 Irq 内 CursorPaint
- *   4 PresentFlush 仍在 ComposeBusy 内（G6）— 出 Busy 再 Flush → AP 鼠
- *     用旧 Under Restore → 正方形镂空 / 十字印
+ *   4 PresentFlush 仍在 ComposeBusy 内（G6）
  *
  * 移动 CursorMove：
- *   常态：Irq 内 Restore+Paint → 开中断一次 PresentCursor（Poll 已并末坐标）
- *   勿 Restore/Paint 各 Present：igpu 双缓冲曾各同步 blit → <5s 拖影后只闪
+ *   常态：Irq 内 Restore+Paint → 开中断一次 PresentCursor
  *   拖窗/拖图标：只 Restore+PresentCursor，不 Paint
  *
- * 对外：GuiCursorHide/Show/Paint、GuiFrameBufferBegin/End — 同文件下部。
- * HAL 分脏 / XOR：Pixel.c；Flush vs Present：Present.c（G6）。
- *
- * 光标门闩（CursorUsbReady）：
- *   HID 开机早绑；桌面先出、不 Present / 不跟坐标。
- *   Worker 网/iwl 静默后、AnnounceBootReady 前 Reveal：居中 + Handoff + 画出。
- *   契约：一露就必须流畅；慢活未完勿 Reveal。
- *
- * 硬件光标（hw-cursor-*）：
- *   Enable 成功 → gHwCursorOn：Move 只 HalVideoHwCursorSetPos；Compose 勿 Restore FB。
- *   Supported=0 / Enable 失败 → 软件末波（本文件 Restore+Paint+PresentCursor）。
+ * 光标门闩：GuiCursorUsbReady / GuiCursorRevealAfterUsb（CursorReveal.c）。
+ * 硬件光标：CursorHardware.c。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
@@ -49,245 +36,6 @@
 #include "StoreUi.h"
 #include "EditUi.h"
 #include "Desktop.h"
-#include "Debug.h"
-#include "SerialLog.h"
-
-/* 0：Secondary 未完，不画/不 Present；Reveal 置 1 */
-static int gCursorUsbReady;
-/* 1：HalVideoHwCursorEnable 已成功；热路径只写位置 */
-static int gHwCursorOn;
-/* 已上载的 Kind；换形重 Enable */
-static int gHwKind = -1;
-/* 已上载位图所用的绘制比例；缩放档切换后必须重栅，不能只换位置 */
-static UINT32 gHwNum = 1;
-static UINT32 gHwDen = 1;
-static UINT32 gHwGlyph[CURSOR_HW_DIM * CURSOR_HW_DIM];
-
-int CursorHwActive(void) {
-    return gHwCursorOn ? 1 : 0;
-}
-
-static void CursorHwEraseSoftFb(void) {
-    /* 开 Hw 前擦净 FB 软像素；否则 CUR 叠在软影上 → 双光标 */
-    if (!gGuiWindowManager.CursorVisible) {
-        return;
-    }
-    GraphicsIrqEnter();
-    CursorRestore();
-    GraphicsIrqLeave();
-    HalVideoPresentCursor();
-}
-
-static void CursorHwLogGlyphBBox(const UINT32 *Pix) {
-    UINT32 X;
-    UINT32 Y;
-    int MinX = CURSOR_HW_DIM;
-    int MaxX = -1;
-    int MinY = CURSOR_HW_DIM;
-    int MaxY = -1;
-
-    for (Y = 0; Y < CURSOR_HW_DIM; Y++) {
-        for (X = 0; X < CURSOR_HW_DIM; X++) {
-            if ((Pix[Y * CURSOR_HW_DIM + X] & 0xFF000000u) == 0) {
-                continue;
-            }
-            if ((int)X < MinX) {
-                MinX = (int)X;
-            }
-            if ((int)X > MaxX) {
-                MaxX = (int)X;
-            }
-            if ((int)Y < MinY) {
-                MinY = (int)Y;
-            }
-            if ((int)Y > MaxY) {
-                MaxY = (int)Y;
-            }
-        }
-    }
-    if (MaxX < 0) {
-        LogDrv(" bbox=empty");
-        return;
-    }
-    LogDrv(" bbox=");
-    LogDrvHex32((UINT32)MinX);
-    LogDrv("-");
-    LogDrvHex32((UINT32)MaxX);
-    LogDrv(",");
-    LogDrvHex32((UINT32)MinY);
-    LogDrv("-");
-    LogDrvHex32((UINT32)MaxY);
-}
-
-static int CursorHwUploadKind(int Kind) {
-    UINT32 HotX;
-    UINT32 HotY;
-
-    if (!CursorGlyphToArgb(Kind, gHwGlyph, &HotX, &HotY)) {
-        return 0;
-    }
-    if (!HalVideoHwCursorEnable(gHwGlyph, CURSOR_HW_DIM, CURSOR_HW_DIM, HotX, HotY)) {
-        return 0;
-    }
-    gHwKind = Kind;
-    gHwNum = HalVideoGetDrawNum();
-    gHwDen = HalVideoGetDrawDen();
-    LogDrv("Cursor: hw upload kind=");
-    LogDrvHex32((UINT32)Kind);
-    LogDrv(" dim=");
-    LogDrvHex32(CURSOR_HW_DIM);
-    LogDrv(" hot=");
-    LogDrvHex32(HotX);
-    LogDrv(",");
-    LogDrvHex32(HotY);
-    LogDrv(" num=");
-    LogDrvHex32(gHwNum);
-    LogDrv(" den=");
-    LogDrvHex32(gHwDen);
-    CursorHwLogGlyphBBox(gHwGlyph);
-    LogDrv("\n");
-    return 1;
-}
-
-/* 缩放档变了：位图边长/内容都变了，必须按新比例重上载 */
-static int CursorHwRatioChanged(void) {
-    UINT32 Num = HalVideoGetDrawNum();
-    UINT32 Den = HalVideoGetDrawDen();
-
-    if (Num == 0) {
-        Num = 1;
-    }
-    if (Den == 0) {
-        Den = 1;
-    }
-    return (Num != gHwNum || Den != gHwDen) ? 1 : 0;
-}
-
-static void CursorHwTryEnable(void) {
-    if (gHwCursorOn) {
-        return;
-    }
-    if (!HalVideoHwCursorSupported()) {
-        return;
-    }
-    CursorHwEraseSoftFb();
-    if (!CursorHwUploadKind(gGuiWindowManager.CursorKind)) {
-        return;
-    }
-    gHwCursorOn = 1;
-    gGuiWindowManager.CursorVisible = 0;
-    HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
-    DebugWrite("Gui: hw cursor on\n");
-}
-
-static void CursorHwDisable(void) {
-    if (!gHwCursorOn) {
-        return;
-    }
-    HalVideoHwCursorDisable();
-    gHwCursorOn = 0;
-    gHwKind = -1;
-}
-
-void CursorBox(UINT32 Cx, UINT32 Cy, UINT32 *Sx, UINT32 *Sy,
-                      UINT32 *Sw, UINT32 *Sh) {
-    int Half;
-    int Thick;
-    int L;
-    int R;
-    int T;
-    int B;
-    UINT32 ExtPad;
-    INT32 X0;
-    INT32 Y0;
-    INT32 X1;
-    INT32 Y1;
-
-    CursorMetrics(&Half, &Thick);
-    ExtPad = 0;
-    if (HalVideoGetUiScale() != 100u) {
-        ExtPad = 2u;
-    }
-    if (gGuiWindowManager.CursorKind == CURSOR_KIND_ARROW) {
-        /*
-         * 尖在热点；头约 1.5H、尾再约 0.5H。多留边防拖尾。
-         */
-        L = Half / 2 + CURSOR_OUTLINE + (int)ExtPad + 4;
-        T = Half / 2 + CURSOR_OUTLINE + (int)ExtPad + 4;
-        R = Half * 3 + CURSOR_OUTLINE + (int)ExtPad + 6;
-        B = Half * 3 + CURSOR_OUTLINE + (int)ExtPad + 6;
-    } else {
-        /* resize：热点居中 */
-        L = R = T = B = Half + Thick + CURSOR_OUTLINE + (int)ExtPad;
-        if (gGuiWindowManager.CursorKind == CURSOR_KIND_RESIZE_SE) {
-            L = R = T = B = Half + Thick + CURSOR_OUTLINE + 2 + (int)ExtPad;
-        }
-    }
-    X0 = (INT32)Cx - L;
-    Y0 = (INT32)Cy - T;
-    X1 = (INT32)Cx + R + 1;
-    Y1 = (INT32)Cy + B + 1;
-    if (X0 < 0) {
-        X0 = 0;
-    }
-    if (Y0 < 0) {
-        Y0 = 0;
-    }
-    if (X1 > (INT32)gGuiWindowManager.ScreenWidth) {
-        X1 = (INT32)gGuiWindowManager.ScreenWidth;
-    }
-    if (Y1 > (INT32)gGuiWindowManager.ScreenHeight) {
-        Y1 = (INT32)gGuiWindowManager.ScreenHeight;
-    }
-    *Sx = (UINT32)X0;
-    *Sy = (UINT32)Y0;
-    *Sw = (UINT32)(X1 - X0);
-    *Sh = (UINT32)(Y1 - Y0);
-}
-
-void DrawCursorAt(UINT32 X, UINT32 Y) {
-    DrawCursorGlyph(X, Y);
-}
-
-/*
- * PR-23E：逻辑矩形 → 物理矩形。用有理数 Num/Den（50/100/150/200 →
- * 1/2、1/1、3/2、2/1），起点向下取整、末端向上取整，宽度用端点相减。
- *
- * 不能再用「X * HalVideoGetDrawScale()」：那个值现在的语义是「一个逻辑
- * 像素最多占几个物理像素」（150% 时为 2），拿它当坐标倍数会让 save-under
- * 偏半格 —— 光标画在 1.5X、存却在 2X，移开时把旁边区域盖回来，表现为
- * 150% 下残留一枚光标箭头。
- */
-static void CursorPhysicalRect(UINT32 X, UINT32 Y, UINT32 W, UINT32 H,
-                           UINT32 *Xp, UINT32 *Yp, UINT32 *Wp, UINT32 *Hp) {
-    UINT32 Num = HalVideoGetDrawNum();
-    UINT32 Den = HalVideoGetDrawDen();
-    UINT32 X0;
-    UINT32 Y0;
-    UINT32 X1;
-    UINT32 Y1;
-
-    if (Num == 0) {
-        Num = 1;
-    }
-    if (Den == 0) {
-        Den = 1;
-    }
-    X0 = (UINT32)((UINT64)X * Num / Den);
-    Y0 = (UINT32)((UINT64)Y * Num / Den);
-    X1 = (UINT32)(((UINT64)(X + W) * Num + Den - 1u) / Den);
-    Y1 = (UINT32)(((UINT64)(Y + H) * Num + Den - 1u) / Den);
-    if (X1 <= X0) {
-        X1 = X0 + 1u;
-    }
-    if (Y1 <= Y0) {
-        Y1 = Y0 + 1u;
-    }
-    *Xp = X0;
-    *Yp = Y0;
-    *Wp = X1 - X0;
-    *Hp = Y1 - Y0;
-}
 
 void CursorRestore(void) {
     UINT32 Xp;
@@ -295,7 +43,7 @@ void CursorRestore(void) {
     UINT32 Wp;
     UINT32 Hp;
 
-    if (gHwCursorOn) {
+    if (CursorHwActive()) {
         /* FB 无光标像素；仍清 Visible，免后续软路径误 Restore Under */
         gGuiWindowManager.CursorVisible = 0;
         return;
@@ -309,7 +57,8 @@ void CursorRestore(void) {
      * 下整段跳过写回，就成了光标残影。
      */
     if (gGuiWindowManager.SaveWidth > 0 && gGuiWindowManager.SaveHeight > 0 &&
-        gGuiWindowManager.SaveWidth <= (UINT32)CURSOR_BOX && gGuiWindowManager.SaveHeight <= (UINT32)CURSOR_BOX) {
+        gGuiWindowManager.SaveWidth <= (UINT32)CURSOR_BOX &&
+        gGuiWindowManager.SaveHeight <= (UINT32)CURSOR_BOX) {
         CursorPhysicalRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
                        gGuiWindowManager.SaveWidth, gGuiWindowManager.SaveHeight,
                        &Xp, &Yp, &Wp, &Hp);
@@ -326,25 +75,29 @@ void CursorPaint(void) {
     UINT32 Wp;
     UINT32 Hp;
 
-    if (!gCursorUsbReady) {
+    if (!GuiCursorUsbReady()) {
         return;
     }
-    if (gHwCursorOn) {
+    if (CursorHwActive()) {
         /* 缩放档或 Kind 变了都要补上载（同坐标 CursorMove 会早退） */
         if (CursorHwRatioChanged() ||
-            gGuiWindowManager.CursorKind != gHwKind) {
+            gGuiWindowManager.CursorKind != CursorHwKind()) {
             (void)CursorHwUploadKind(gGuiWindowManager.CursorKind);
         }
         HalVideoHwCursorSetPos(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
         return;
     }
-    gGuiWindowManager.CursorKind = GuiResizeCursorKindAt(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
+    gGuiWindowManager.CursorKind =
+        GuiResizeCursorKindAt(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY);
     if (gGuiWindowManager.CursorVisible) {
         CursorRestore();
     }
-    CursorBox(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY, &gGuiWindowManager.SaveX, &gGuiWindowManager.SaveY, &gGuiWindowManager.SaveWidth, &gGuiWindowManager.SaveHeight);
+    CursorBox(gGuiWindowManager.CursorX, gGuiWindowManager.CursorY,
+              &gGuiWindowManager.SaveX, &gGuiWindowManager.SaveY,
+              &gGuiWindowManager.SaveWidth, &gGuiWindowManager.SaveHeight);
     if (gGuiWindowManager.SaveWidth == 0 || gGuiWindowManager.SaveHeight == 0 ||
-        gGuiWindowManager.SaveWidth > (UINT32)CURSOR_BOX || gGuiWindowManager.SaveHeight > (UINT32)CURSOR_BOX) {
+        gGuiWindowManager.SaveWidth > (UINT32)CURSOR_BOX ||
+        gGuiWindowManager.SaveHeight > (UINT32)CURSOR_BOX) {
         return;
     }
     CursorPhysicalRect(gGuiWindowManager.SaveX, gGuiWindowManager.SaveY,
@@ -369,20 +122,21 @@ void CursorMove(UINT32 X, UINT32 Y) {
         Y = gGuiWindowManager.ScreenHeight > 0 ? gGuiWindowManager.ScreenHeight - 1 : 0;
     }
     /* USB 慢认中：不跟坐标、不 Present；Reveal 时再居中 */
-    if (!gCursorUsbReady) {
+    if (!GuiCursorUsbReady()) {
         return;
     }
     OldKind = gGuiWindowManager.CursorKind;
     NewKind = GuiResizeCursorKindAt(X, Y);
-    if (X == gGuiWindowManager.CursorX && Y == gGuiWindowManager.CursorY && OldKind == NewKind) {
+    if (X == gGuiWindowManager.CursorX && Y == gGuiWindowManager.CursorY &&
+        OldKind == NewKind) {
         return;
     }
 
-    if (gHwCursorOn) {
+    if (CursorHwActive()) {
         gGuiWindowManager.CursorX = X;
         gGuiWindowManager.CursorY = Y;
         gGuiWindowManager.CursorKind = NewKind;
-        if (CursorHwRatioChanged() || NewKind != gHwKind) {
+        if (CursorHwRatioChanged() || NewKind != CursorHwKind()) {
             /* 换形/换缩放失败保留旧字形，勿半截回软 */
             (void)CursorHwUploadKind(NewKind);
         }
@@ -459,111 +213,4 @@ void GuiFrameBufferEnd(void) {
         HalVideoPresentFlush();
     }
     ComposeEnd();
-}
-
-void GuiCursorPaint(void) {
-    GraphicsIrqEnter();
-    CursorRestore();
-    CursorPaint();
-    GraphicsIrqLeave();
-    GraphicsPresent();
-}
-
-void GuiCursorHide(void) {
-    if (gHwCursorOn) {
-        CursorHwDisable();
-        return;
-    }
-    GraphicsIrqEnter();
-    CursorRestore();
-    GraphicsIrqLeave();
-    GraphicsPresent();
-}
-
-void GuiCursorShow(void) {
-    if (!gCursorUsbReady) {
-        return;
-    }
-    CursorHwTryEnable();
-    if (gHwCursorOn) {
-        return;
-    }
-    GraphicsIrqEnter();
-    CursorPaint();
-    GraphicsIrqLeave();
-    GraphicsPresent();
-}
-
-/*
- * 最近一次指针位移（HalCpuTicks）；供钟栏/HotPoll 让路。
- * 勿改 HalMilliseconds：Arm64 软 tick≈100Hz 而 HalTicksPerSec=1000，
- * 绿基线闲置门限名义 400ms、实约数秒；真毫秒会过早放行 HotPoll/栏 Present，
- * Pi DWC2 闲置十余分钟鼠死（2026-11-08）。
- */
-static UINT64 gPointerActivityTick;
-
-void GuiPointerNoteActivity(void) {
-    gPointerActivityTick = HalCpuTicks(0);
-}
-
-int GuiPointerIdleForMilliseconds(UINT32 Ms) {
-    UINT64 Now;
-    UINT32 Tps;
-    UINT64 Need;
-
-    if (gPointerActivityTick == 0) {
-        return 1;
-    }
-    Now = HalCpuTicks(0);
-    Tps = HalTicksPerSec();
-    if (Tps == 0) {
-        Tps = 250;
-    }
-    Need = ((UINT64)Tps * (UINT64)Ms) / 1000ull;
-    if (Need == 0) {
-        Need = 1;
-    }
-    return (Now - gPointerActivityTick) >= Need ? 1 : 0;
-}
-
-int GuiCursorUsbReady(void) {
-    return gCursorUsbReady ? 1 : 0;
-}
-
-void GuiCursorRevealAfterUsb(void) {
-    UINT32 Cx;
-    UINT32 Cy;
-
-    if (gCursorUsbReady) {
-        return;
-    }
-    Cx = gGuiWindowManager.ScreenWidth / 2;
-    Cy = gGuiWindowManager.ScreenHeight / 2;
-    if (gGuiWindowManager.ScreenWidth == 0) {
-        Cx = 512;
-    }
-    if (gGuiWindowManager.ScreenHeight == 0) {
-        Cy = 384;
-    }
-    gGuiWindowManager.CursorX = Cx;
-    gGuiWindowManager.CursorY = Cy;
-    gGuiWindowManager.CursorBtn = 0;
-    gGuiWindowManager.MousePrevBtn = 0;
-    /* 先放 Hold 再投递 IN，再清空队列对齐 Abs */
-    HalInputMouseHoldUntilReveal(0);
-    HalInputMouseHandoffDesktop(Cx, Cy);
-    /*
-     * 先试 Hw 再置 ready：避免 ready=1 后、Show 前 Compose 软画，
-     * 随后 Enable 不擦 → 双光标（小=CUR，大=FB 残影）。
-     */
-    CursorHwTryEnable();
-    gCursorUsbReady = 1;
-    DebugWrite("Gui: cursor after usb secondary (center)\n");
-    if (!gHwCursorOn) {
-        GraphicsIrqEnter();
-        CursorPaint();
-        GraphicsIrqLeave();
-        /* PresentCursor（含 Pi FB dcache sync）；勿只用 GraphicsPresent */
-        HalVideoPresentCursor();
-    }
 }

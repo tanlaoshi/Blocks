@@ -3,6 +3,7 @@
  *
  * TasksPumpKeyboard：Count < HAL_INPUT_CPU_MIN → HalInputPoll（与 Yield 同门闩）；
  * ≥ MIN 只 dequeue（InputTask@CPU2 独占 poll）。清单 Tasks.c 头。
+ * 焦点投递：FeedHidFocus.c（PR-NORM-7）。
  */
 #include "Tasks.h"
 #include "TasksPrivate.h"
@@ -12,16 +13,8 @@
 #include "HIDKeyboard.h"
 #include "Console.h"
 #include "Gui.h"
-#include "SettingsUi.h"
-#include "FilesUi.h"
 #include "EditUi.h"
-#include "TtyUi.h"
-#include "StoreUi.h"
-#include "Udp.h"
-#include "Tcp.h"
-#include "LwIp.h"
 #include "Debug.h"
-#include "ShellCommands.h"
 #include "SerialLog.h"
 
 /*
@@ -55,7 +48,7 @@ static int HidKeyHeld(const HAL_KEYBOARD_REPORT *Report, UINT8 Key) {
     return 0;
 }
 
-static void HidRepeatArm(UINT8 Key) {
+void HidRepeatArm(UINT8 Key) {
     UINT32 Hz = HalTicksPerSec();
 
     gRepeatKey = Key;
@@ -148,18 +141,23 @@ void TasksHidRepeatTick(void) {
 }
 
 void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
+    int Index;
+    int PreviousIndex;
+    UINT8 Key;
+    int WasDown;
+
     if (Report != 0) {
         /* 最近一份报告 = 当前按键状态（按住时 USB 不重发，抬起报告会覆盖） */
         gLastReport = *Report;
     }
-    for (int i = 0; i < 6; i++) {
-        UINT8 Key = Report->KeyCode[i];
+    for (Index = 0; Index < 6; Index++) {
+        Key = Report->KeyCode[Index];
         if (Key == 0) {
             continue;
         }
-        int WasDown = 0;
-        for (int j = 0; j < 6; j++) {
-            if (Previous->KeyCode[j] == Key) {
+        WasDown = 0;
+        for (PreviousIndex = 0; PreviousIndex < 6; PreviousIndex++) {
+            if (Previous->KeyCode[PreviousIndex] == Key) {
                 WasDown = 1;
                 break;
             }
@@ -168,222 +166,27 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
             continue;
         }
 
-        /* Settings 文字菜单：数字选择 / Esc 返回 */
-        if (SettingsUiIsFocused()) {
-            if (Key == HID_KEY_ESCAPE) {
-                SettingsUiOnEscape();
-                continue;
-            }
-            if (Key == HID_KEY_LEFT || Key == HID_KEY_RIGHT ||
-                Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
-                GuiOnArrowKey(Key);
-                continue;
-            }
-            {
-                char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-                if (C >= '0' && C <= '9') {
-                    SettingsUiOnDigit(C);
-                }
-            }
+        if (FeedHidTrySettings(Key, Report)) {
             continue;
         }
-
-        /* Edit：文本编辑 / Ctrl+S 保存 */
-        if (EditUiIsFocused()) {
-            if (Key == HID_KEY_ESCAPE) {
-                EditUiOnEscape();
-                continue;
-            }
-            if (Key == HID_KEY_ENTER) {
-                EditUiOnEnter();
-                continue;
-            }
-            if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
-                EditUiOnArrow(Key == HID_KEY_DOWN);
-                HidRepeatArm(Key);
-                continue;
-            }
-            if (Key == HID_KEY_LEFT || Key == HID_KEY_RIGHT) {
-                EditUiOnArrowLeftRight(Key == HID_KEY_RIGHT);
-                HidRepeatArm(Key);
-                continue;
-            }
-            if (Key == HID_KEY_BACKSPACE) {
-                EditUiOnBackspace();
-                continue;
-            }
-            if (Key == HID_KEY_DELETE) {
-                EditUiOnDeleteKey();
-                continue;
-            }
-            if (Key == HID_KEY_S &&
-                (Report->ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL))) {
-                EditUiSave();
-                continue;
-            }
-            if (HIDKeyboardApplyLockKey(Key)) {
-                HalKeyboardSetLeds(HIDKeyboardGetLeds());
-                continue;
-            }
-            {
-                char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-                if (C != 0) {
-                    EditUiOnChar(C);
-                }
-            }
+        if (FeedHidTryEdit(Key, Report)) {
             continue;
         }
-
-        /* TTY：串口会话键入 */
-        if (TtyUiIsFocused()) {
-            if (Key == HID_KEY_ESCAPE) {
-                TtyUiOnEscape();
-                continue;
-            }
-            if (Key == HID_KEY_ENTER) {
-                TtyUiOnEnter();
-                continue;
-            }
-            if (Key == HID_KEY_BACKSPACE) {
-                TtyUiOnBackspace();
-                continue;
-            }
-            if (HIDKeyboardApplyLockKey(Key)) {
-                HalKeyboardSetLeds(HIDKeyboardGetLeds());
-                continue;
-            }
-            {
-                char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-                if (C != 0) {
-                    TtyUiOnChar(C);
-                }
-            }
+        if (FeedHidTryTty(Key, Report)) {
             continue;
         }
-
-        /* Store：Esc 取消 Busy 作业 */
-        if (StoreUiIsFocused()) {
-            if (Key == HID_KEY_ESCAPE) {
-                StoreUiOnEscape();
-            }
+        if (FeedHidTryStore(Key)) {
             continue;
         }
-
-        /* Files：导航 / 写操作快捷键 / 确认与输入 */
-        if (FilesUiIsFocused()) {
-            if (Key == HID_KEY_ESCAPE) {
-                FilesUiOnEscape();
-                continue;
-            }
-            if (Key == HID_KEY_ENTER) {
-                FilesUiOnEnter();
-                continue;
-            }
-            if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
-                FilesUiOnArrow(Key == HID_KEY_DOWN);
-                continue;
-            }
-            if (Key == HID_KEY_BACKSPACE) {
-                FilesUiOnBackspace();
-                continue;
-            }
-            if (Key == HID_KEY_DELETE) {
-                FilesUiOnDeleteKey();
-                continue;
-            }
-            if (HIDKeyboardApplyLockKey(Key)) {
-                HalKeyboardSetLeds(HIDKeyboardGetLeds());
-                continue;
-            }
-            {
-                char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-                if (C != 0) {
-                    FilesUiOnChar(C);
-                }
-            }
+        if (FeedHidTryFiles(Key, Report)) {
             continue;
         }
-
-        /* 用户态窗：焦点路由 HID → Poll（300+code）；勿进 Shell 行缓冲 */
-        if (GuiFocusKind() == GUI_WIN_USER) {
-            if (HIDKeyboardApplyLockKey(Key)) {
-                HalKeyboardSetLeds(HIDKeyboardGetLeds());
-                continue;
-            }
-            GuiUserEnqueueKey(Key);
+        if (FeedHidTryUserWindow(Key)) {
             continue;
         }
-
-        /*
-         * exec 占 stdin：默认可打印进 stdin 环（控制台 Guest）。
-         * Guest 已有 GUI 窗且焦点在 Shell：键还给壳（切回 Shell 可打字；
-         * Chat 焦点仍走上方 GUI_WIN_USER）。
-         */
-        if (gConsole.StdinUserHold() &&
-            !(GuiShellAcceptsInput() && GuiUserWindowAlive())) {
-            if (Key == HID_KEY_ENTER) {
-                gConsole.StdinPut('\n');
-                continue;
-            }
-            if (Key == HID_KEY_BACKSPACE) {
-                gConsole.StdinPut('\b');
-                continue;
-            }
-            if (HIDKeyboardApplyLockKey(Key)) {
-                HalKeyboardSetLeds(HIDKeyboardGetLeds());
-                continue;
-            }
-            if (Key == HID_KEY_C &&
-                (Report->ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL))) {
-                ShellOnInterrupt();
-                continue;
-            }
-            {
-                char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-                if (C != 0) {
-                    gConsole.StdinPut(C);
-                }
-            }
+        if (FeedHidTryStdinHold(Key, Report)) {
             continue;
         }
-
-        if (Key == HID_KEY_ENTER) {
-            /* gConsole.OnEnter → EnsureShell：空桌面时开 Shell */
-            gConsole.OnEnter();
-            continue;
-        }
-        if (Key == HID_KEY_UP || Key == HID_KEY_DOWN) {
-            /* Shell 焦点：↑↓ 历史；其它窗仍挪光标 */
-            if (GuiShellAcceptsInput()) {
-                gConsole.OnHistHid(Key, 0);
-            } else {
-                GuiOnArrowKey(Key);
-            }
-            continue;
-        }
-        if (Key == HID_KEY_LEFT || Key == HID_KEY_RIGHT) {
-            GuiOnArrowKey(Key);
-            continue;
-        }
-        if (Key == HID_KEY_BACKSPACE) {
-            if (GuiShellAcceptsInput()) {
-                gConsole.OnBackspace();
-            }
-            continue;
-        }
-        if (HIDKeyboardApplyLockKey(Key)) {
-            HalKeyboardSetLeds(HIDKeyboardGetLeds());
-            continue;
-        }
-        if (Key == HID_KEY_C &&
-            (Report->ModifierKeys & (HID_MOD_LCTRL | HID_MOD_RCTRL))) {
-            ShellOnInterrupt();
-            continue;
-        }
-
-        char C = HIDKeyCodeToASCII(Key, Report->ModifierKeys);
-        if (C != 0) {
-            gConsole.OnChar(C);
-        }
+        FeedHidShellDefault(Key, Report);
     }
 }

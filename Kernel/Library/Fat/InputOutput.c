@@ -154,22 +154,6 @@ UINT32 EocValue(void) {
     return gFatType == 32 ? FAT32_EOC : FAT16_EOC;
 }
 
-int FatFreeChain(UINT32 Cluster) {
-    /* 释放后顺序写/扩链游标不可再用 */
-    FatSequentialWriteInvalidate();
-    while (!ClusterEnd(Cluster) && Cluster >= 2 && Cluster <= gMaxCluster) {
-        UINT32 Next = FatNext(Cluster);
-        if (Next == FAT_CLUSTER_INVALID) {
-            return 0;
-        }
-        if (!FatSet(Cluster, 0)) {
-            return 0;
-        }
-        Cluster = Next;
-    }
-    return 1;
-}
-
 /*
  * 分配提示（hint / rover）：每卷记住「下次从这里开始找」。
  *

@@ -181,6 +181,22 @@ static int FatDeleteFileOnce(const char *Path) {
     return FAT_OK;
 }
 
+int FatUnlinkKeepClusters(const char *Path) {
+    FAT_DIR_CTX Parent;
+    char Leaf[FAT_NAME_MAX + 1];
+
+    if (!Path || !Path[0]) {
+        return FAT_ERR_INVAL;
+    }
+    if (!ResolvePathParentLeaf(Path, &Parent, Leaf)) {
+        return FAT_ERR_NOENT;
+    }
+    if (CompIsDotOrDotDot(Leaf)) {
+        return FAT_ERR_INVAL;
+    }
+    return DirUnlinkKeepClusters(Parent, Leaf);
+}
+
 /* 仅摘掉目录项，不释放簇（供 Rename） */
 int DirUnlinkKeepClusters(FAT_DIR_CTX Parent, const char *Leaf) {
     int Index = 0;

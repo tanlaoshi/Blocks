@@ -25,6 +25,7 @@ __attribute__((weak)) void BoardUsbHostControllerRescanHid(void) {
 #include "StoreJob.h"
 #include "StoreUi.h"
 #include "Hal/Ksend.h"
+#include "SettingsUi.h"
 
 static volatile UINT32 gWorkerCount;
 
@@ -87,6 +88,7 @@ void WorkerTask(void) {
         if (KsendServeState() != KSEND_SERVE_IDLE) {
             KsendServePoll();
         }
+        SettingsUiPollServeState();
         /* 托盘 Scan：Gui 只置 Want；此处跑 LE Scan（Hal 分片泵 HID） */
         DesktopBluetoothTrayWorkerPoll();
         /*

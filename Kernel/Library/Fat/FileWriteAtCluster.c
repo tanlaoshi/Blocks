@@ -39,9 +39,24 @@ int FatSeekWriteOffset(UINT32 FirstCluster, UINTN Offset, UINT32 *OutCluster,
                        UINT32 *OutOffInCluster) {
     if (sSequentialValid && sSequentialFirstCluster == FirstCluster &&
         (UINT32)Offset == sSequentialNextOffset) {
-        *OutCluster = sSequentialCluster;
-        *OutOffInCluster = sSequentialOffInCluster;
-        return 1;
+        /*
+         * 簇尾 EOF 哨兵（Off==ClusterBytes）：上一窗写满末簇时 FatNext 曾是
+         * EOC；本窗 Ensure 已续链后再 FatNext，命中则 O(1)，勿 Invalidate。
+         */
+        if (sSequentialOffInCluster >= ClusterBytes()) {
+            UINT32 NextCluster = FatNext(sSequentialCluster);
+
+            if (NextCluster != FAT_CLUSTER_INVALID && !ClusterEnd(NextCluster) &&
+                NextCluster >= 2u) {
+                *OutCluster = NextCluster;
+                *OutOffInCluster = 0;
+                return 1;
+            }
+        } else {
+            *OutCluster = sSequentialCluster;
+            *OutOffInCluster = sSequentialOffInCluster;
+            return 1;
+        }
     }
     return SeekFileOffset(FirstCluster, Offset, OutCluster, OutOffInCluster);
 }

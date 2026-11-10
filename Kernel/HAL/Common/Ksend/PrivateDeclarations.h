@@ -166,6 +166,7 @@ int KsendRunUsesStaging(const KSEND_RUN *Run);
 int KsendStagingPrepare(KSEND_RUN *Run);
 /* 校验通过后：删 Target，把 WritePath 改名为 Target */
 int KsendStagingInstall(KSEND_RUN *Run);
+void KsendDeferredFreeClusters(KSEND_RUN *Run);
 /* 失败时丢掉未安装的 .new（Target 未动则不必 restore） */
 void KsendStagingDiscard(const KSEND_RUN *Run);
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source);

@@ -65,6 +65,13 @@ void FatSetClusterAllocateZero(int On);
 void FatWriteDirectorySizeDefer(int On);
 int FatFlushDeferredDirectorySize(void);
 int FatDeleteFile(const char *Path);
+/*
+ * 只摘目录项，不 FatFreeChain（簇号由调用方稍后释）。
+ * 热传 install：先改名就位并发 OK，再释旧 .bak 链。
+ */
+int FatUnlinkKeepClusters(const char *Path);
+/* 释簇链：1=成功 0=失败（非 FAT_ERR_*） */
+int FatFreeChain(UINT32 Cluster);
 int FatMkdir(const char *Path);
 int FatRmdir(const char *Path);
 /* 同卷改名/移动目录项（不拷贝数据）；成功 FAT_OK */

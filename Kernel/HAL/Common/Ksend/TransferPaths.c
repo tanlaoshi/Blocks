@@ -23,6 +23,7 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->VolumeIndex = -1;
     Run->Reboot = 1;
     Run->Backup = 1;
+    Run->DeferredFreeCluster = 0;
     Run->Dirty = 0;
     Run->Failure = KSEND_FAIL_NONE;
     Run->Error = FAT_OK;
@@ -34,6 +35,7 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->FinishMilliseconds = 0;
     Run->VerifyMilliseconds = 0;
     Run->InstallMilliseconds = 0;
+    Run->InstallRenameMilliseconds = 0;
     Run->TotalMilliseconds = 0;
 }
 
@@ -185,52 +187,6 @@ int KsendStagingPrepare(KSEND_RUN *Run) {
     Run->WritePath = sKsendWritePath;
     KsendNote("staging: write via .new (full new-file replace)");
     return FAT_OK;
-}
-
-int KsendStagingInstall(KSEND_RUN *Run) {
-    int Error;
-
-    if (!KsendRunUsesStaging(Run)) {
-        return FAT_OK;
-    }
-    /*
-     * SESSION-TAX：默认 Backup 时 Target→.bak 改名（O(目录)），再 .new→Target。
-     * --no-backup 仍删 Target（失败不保留旧核）。
-     */
-    if (Run->Backup != 0) {
-        Error = KsendFileDelete(Run->BackupPath);
-        if (Error != FAT_OK) {
-            return Error;
-        }
-        Error = FileSystemRename(Run->TargetPath, Run->BackupPath);
-        if (Error != FAT_OK) {
-            return Error;
-        }
-        KsendNote("staging: target renamed to .bak");
-    } else {
-        Error = KsendFileDelete(Run->TargetPath);
-        if (Error != FAT_OK) {
-            return Error;
-        }
-    }
-    Error = FileSystemRename(Run->WritePath, Run->TargetPath);
-    if (Error != FAT_OK) {
-        return Error;
-    }
-    Run->WritePath = Run->TargetPath;
-    KsendNote("staging: installed .new over target");
-    return FAT_OK;
-}
-
-void KsendStagingDiscard(const KSEND_RUN *Run) {
-    if (!KsendRunUsesStaging(Run)) {
-        return;
-    }
-    if (KsendFileDelete(Run->WritePath) == FAT_OK) {
-        KsendNote("staging: discarded .new");
-    } else {
-        KsendNote("staging: discard .new failed");
-    }
 }
 
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source) {

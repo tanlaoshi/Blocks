@@ -2,40 +2,11 @@
  * TransferFinish.c — 校验 / 安装 .new / 失败回滚与 .crc 收尾
  *
  * PR-KSEND-PHASE-FLUSH：VerifyMilliseconds = sync+盘验；
- * InstallMilliseconds = staging 改名 + .crc。
+ * InstallMilliseconds = staging 改名（旧链 FatFreeChain 在 OK 后）。
+ * 不再写 .crc：staging 全量替换后 READY 本就不读旧图；手测写缓存曾占 install。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
-
-static void CacheStoreAfterVerify(KSEND_RUN *Run) {
-    UINT32 Size = 0;
-
-    if (KsendFileSize(Run->TargetPath, &Size) != FAT_OK) {
-        if (KsendCacheDrop(Run->TargetPath) == FAT_OK) {
-            KsendNote("cache: dropped (stat failed)");
-        } else {
-            KsendNote("cache: drop failed after stat error");
-        }
-        return;
-    }
-    if (Size != Run->NewSize) {
-        if (KsendCacheDrop(Run->TargetPath) == FAT_OK) {
-            KsendNote("cache: dropped (target keeps old size)");
-        } else {
-            KsendNote("cache: drop failed (target keeps old size)");
-        }
-        return;
-    }
-    gKsendNewImage.Size = Run->NewSize;
-    gKsendNewImage.BlockCount =
-        (Run->NewSize + KSEND_BLOCK_BYTES - 1u) / KSEND_BLOCK_BYTES;
-    gKsendNewImage.Crc = Run->TrailerCrc;
-    if (KsendCacheSave(Run->TargetPath, &gKsendNewImage) != FAT_OK) {
-        KsendNote("cache: write failed (next transfer scans)");
-        return;
-    }
-    KsendNote("cache: updated");
-}
 
 void KsendCacheDropAfterFailure(const KSEND_RUN *Run) {
     if (Run->Dirty == 0) {
@@ -106,14 +77,14 @@ int KsendFinishImage(KSEND_RUN *Run) {
     }
     InstallStart = KsendMilliseconds();
     Error = KsendStagingInstall(Run);
+    Run->InstallRenameMilliseconds = KsendMilliseconds() - InstallStart;
+    Run->InstallMilliseconds = Run->InstallRenameMilliseconds;
     if (Error != FAT_OK) {
-        Run->InstallMilliseconds = KsendMilliseconds() - InstallStart;
         Run->Error = Error;
         Run->Failure = KSEND_FAIL_FILE_STATUS;
         return -1;
     }
-    CacheStoreAfterVerify(Run);
-    Run->InstallMilliseconds = KsendMilliseconds() - InstallStart;
+    KsendNote("install: rename-only (no .crc)");
     return 0;
 }
 

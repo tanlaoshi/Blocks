@@ -5,6 +5,7 @@
  */
 #include "SettingsUiPrivate.h"
 #include "Desktop.h"
+#include "Hal/Ksend.h"
 
 void SettingsMenuRegister(void) {
     DesktopMenuRegister(DESKTOP_ACTION_SETTINGS, MESSAGE_ICON_SETTINGS, "Settings", 1, 1);
@@ -165,6 +166,31 @@ void SettingsUiOpen(void) {
     /* cjk-3：勿在 Gui 开窗路径 WantDrain(64) 栅格饿鼠；交 Worker 泵 */
     PaintMenu();
     DebugWrite("settings: three-pane open\n");
+}
+
+void SettingsUiPollServeState(void) {
+    static int sHaveLast;
+    static KSEND_SERVE_STATE sLastState;
+    KSEND_SERVE_STATE Now;
+
+    Now = KsendServeState();
+    if (!sHaveLast) {
+        sHaveLast = 1;
+        sLastState = Now;
+        return;
+    }
+    if (Now == sLastState) {
+        return;
+    }
+    sLastState = Now;
+    if (!SettingsUiIsFocused() || gCat != SETTINGS_CAT_HOTSEND) {
+        return;
+    }
+    /*
+     * 后台听结束 → Idle：条目仍显示「停止听」直到指针悬停才 PaintHoverDelta。
+     * Serve 状态变化时主动整栏重绘。
+     */
+    SettingsUiRepaint();
 }
 
 void SettingsUiRefresh(void) {

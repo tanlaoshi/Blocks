@@ -66,14 +66,13 @@ static int PrepareBackup(KSEND_RUN *Run) {
 }
 
 /*
- * PR-KSEND-FAT-WRITE-FAST：收窗期间目录 Size 延后；有 size= 时一次预扩且跳过清簇。
+ * PR-KSEND-FAT-WRITE-FAST：收窗期间目录 Size 延后，并跳过扩链清零
+ *（满簇直写覆盖；半簇 WriteAt 自清 gCluster）。不依赖 size= 预扩。
  * 失败/成功路径都须 Disarm，避免其它写路径长期不清零。
  */
 static void FatWriteFastArm(KSEND_RUN *Run) {
+    (void)Run;
     FatWriteDirectorySizeDefer(1);
-    if (Run->ExpectedSize == 0u) {
-        return;
-    }
     FatSetClusterAllocateZero(0);
 }
 
@@ -238,6 +237,8 @@ int KsendTransferSized(const char *TargetPath, int Reboot, int Backup,
     if (Rc == 0) {
         KsendVolumeRelease(&Run);
         KsendSuccessLine(&Run);
+        /* 旧 .bak/Target 释链放 OK 后，主机少等 install 里的 FreeChain */
+        KsendDeferredFreeClusters(&Run);
         if (Run.Reboot == 0) {
             KsendFreezeEnd();
             return 0;

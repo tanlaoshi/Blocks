@@ -14,6 +14,8 @@ void SettingsUiOpen(void);
 void SettingsUiRefresh(void);
 void SettingsUiRepaint(void);
 void SettingsUiPaintFocused(void);
+/* Worker：热传 Serve 状态变了且正看热传页 → 重绘（勿等悬停才换「开始听」） */
+void SettingsUiPollServeState(void);
 void SettingsUiOnDigit(char Digit);
 void SettingsUiOnEscape(void);
 /* PR-G12：客户区鼠标点选（与 OnDigit 等价） */

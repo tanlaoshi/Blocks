@@ -146,7 +146,14 @@ int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len
 
                 if (NextCluster == FAT_CLUSTER_INVALID || ClusterEnd(NextCluster) ||
                     NextCluster < 2) {
-                    FatSequentialWriteInvalidate();
+                    /*
+                     * 扩写窗末恰在 EOF：保留簇尾哨兵，下一窗 Ensure 后续链
+                     * 后 Seek 再 FatNext。Invalidate 会逼从头扫链 → O(n²)
+                     *（手测无预扩 flush=27s vs 有预扩 21s）。
+                     */
+                    FatSequentialWriteRemember(FirstCluster,
+                                               (UINT32)(Offset + Done), Cluster,
+                                               ClusterBytesCount);
                 } else {
                     FatSequentialWriteRemember(FirstCluster, (UINT32)(Offset + Done),
                                                NextCluster, 0);

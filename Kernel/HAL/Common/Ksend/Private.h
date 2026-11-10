@@ -141,6 +141,7 @@ typedef struct {
     int VolumeIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
     int Reboot;   /* 1=成功且校验通过后复位（默认）；0=--no-reboot 留 shell */
     int Backup;   /* 1=Install 时 Target→.bak 改名（默认）；0=--no-backup 删 Target */
+    UINT32 DeferredFreeCluster; /* install 摘目录后延后 FatFreeChain；0=无 */
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
     int Error;
@@ -152,7 +153,8 @@ typedef struct {
     UINT32 FlushMilliseconds;  /* receive 内：KsendFileWriteAt 累计 */
     UINT32 FinishMilliseconds;
     UINT32 VerifyMilliseconds; /* finish 内：sync + 盘回读校验 */
-    UINT32 InstallMilliseconds; /* finish 内：staging 改名 + .crc */
+    UINT32 InstallMilliseconds; /* finish 内：staging 改名（释链在 OK 后；不再写 .crc） */
+    UINT32 InstallRenameMilliseconds;
     UINT32 TotalMilliseconds;
 } KSEND_RUN;
 

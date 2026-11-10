@@ -60,9 +60,10 @@ UINT32 KsendReadyWindowBlocks(void) {
         return KSEND_WINDOW_WIFI;
     }
     /*
-     * 无 Input 专核（Pi VirtDesktop / Duo 单核）：有线 win=8 攒批落盘打挂
+     * 无 Input 专核（Pi VirtDesktop / Duo 单核）：有线大窗攒批落盘打挂
      *（Pi UMING block8；Duo 2026-11-08 block24 data / 1 块 header 超时）。
-     * 有 InputTask 的 NUC alx 仍用 8。门闩 TasksCallerDrainsInput。
+     * 有 InputTask 的 NUC alx 用 KSEND_WINDOW_WIRED_TCP（现 16）。
+     * 门闩 TasksCallerDrainsInput。
      */
     if (TasksCallerDrainsInput()) {
         return KSEND_WINDOW_SERIAL;

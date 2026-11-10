@@ -6,7 +6,7 @@
 
 #include "Ksend/Private.h"
 
-/* 收窗加大：有线 win=8 单窗 ~33KiB，512 会碎成过多 Recv */
+/* 收窗加大：有线 win=16 单窗 64KiB；应用缓冲 8KiB，勿回退 512 碎 Recv */
 #define TRANSPORT_RECEIVE_BYTES 8192u
 #define TRANSPORT_SEND_BYTES    512u
 #define TRANSPORT_SEND_RETRY_MILLISECONDS 15000u

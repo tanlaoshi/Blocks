@@ -41,10 +41,10 @@
  * IO 复用缓冲（扫描/备份/收块攒批）。有线吞吐：按 win 攒批；落盘后再齐发 'A'。
  */
 #define KSEND_IO_CHUNK_BYTES      (128u * 1024u)
-/* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1） */
+/* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1 → WIN16） */
 #define KSEND_WINDOW_SERIAL       1u
 #define KSEND_WINDOW_WIFI         1u
-#define KSEND_WINDOW_WIRED_TCP    8u
+#define KSEND_WINDOW_WIRED_TCP    16u
 #define KSEND_WINDOW_MAX          16u
 #define KSEND_TEXT_BYTES          192u
 

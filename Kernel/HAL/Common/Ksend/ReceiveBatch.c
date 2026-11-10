@@ -2,7 +2,7 @@
  * ReceiveBatch.c — 收块批写（有线按 win 攒批；落盘后再齐 ACK）
  *
  * 契约：Flush 成功后 Ack 表有效，调用方发等量 'A'。
- * 上限 = READY win=（有线 8；串口/Wi‑Fi 1）。
+ * 上限 = READY win=（有线至多 WINDOW_MAX；串口/Wi‑Fi 1）。
  * PR-KSEND-BATCH-WRITE：Flush 整窗一次 WriteAt（减 Seek/Ensure/改目录次数）。
  */
 #include "Ksend/Private.h"

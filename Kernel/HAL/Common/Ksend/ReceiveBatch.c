@@ -2,7 +2,8 @@
  * ReceiveBatch.c — 收块批写（有线按 win 攒批；落盘后再齐 ACK）
  *
  * 契约：Flush 成功后 Ack 表有效，调用方发等量 'A'。
- * 上限 = READY win=（有线 8；串口/Wi‑Fi 1）。整批一次 WriteAt。
+ * 上限 = READY win=（有线 8；串口/Wi‑Fi 1）。
+ * PR-KSEND-BATCH-WRITE：Flush 整窗一次 WriteAt（减 Seek/Ensure/改目录次数）。
  */
 #include "Ksend/Private.h"
 #include "Ksend/TransportPrivate.h"
@@ -129,39 +130,27 @@ int KsendReceiveBatchFlush(KSEND_RUN *Run) {
         return 0;
     }
     /*
-     * 整批一次 WriteAt 会长时间不泵 lwIP。按块写并夹 Breath（有线大文件）。
+     * 整窗一次 WriteAt：簇环内已有 FatIoBreath；前后再 Breath 防饿死 lwIP。
+     * 反例：按 4KiB 循环 WriteAt → 每块 FindDir+改目录项，有线墙钟几乎不动。
      */
-    {
-        UINT32 Done = 0;
-
-        while (Done < sBatchBytes) {
-            UINT32 Take = sBatchBytes - Done;
-
-            if (Take > KSEND_BLOCK_BYTES) {
-                Take = KSEND_BLOCK_BYTES;
-            }
-            BreathWhileWired();
-            if (KsendTransportUserAborted()) {
-                Run->Failure = KSEND_FAIL_ABORT;
-                Run->Error = FAT_ERR_IO;
-                Run->FailBlock = sBatchFirstIndex + (Done / KSEND_BLOCK_BYTES);
-                sBatchFirstIndex = 0;
-                sBatchBlocks = 0;
-                sBatchBytes = 0;
-                return 0;
-            }
-            Error = KsendFileWriteAt(Run->WritePath, Offset + Done,
-                                     KsendFileBuffer() + Done, Take);
-            if (Error != FAT_OK) {
-                Run->Error = Error;
-                Run->FailBlock = sBatchFirstIndex + (Done / KSEND_BLOCK_BYTES);
-                sBatchFirstIndex = 0;
-                sBatchBlocks = 0;
-                sBatchBytes = 0;
-                return 0;
-            }
-            Done += Take;
-        }
+    BreathWhileWired();
+    if (KsendTransportUserAborted()) {
+        Run->Failure = KSEND_FAIL_ABORT;
+        Run->Error = FAT_ERR_IO;
+        Run->FailBlock = sBatchFirstIndex;
+        sBatchFirstIndex = 0;
+        sBatchBlocks = 0;
+        sBatchBytes = 0;
+        return 0;
+    }
+    Error = KsendFileWriteAt(Run->WritePath, Offset, KsendFileBuffer(), sBatchBytes);
+    if (Error != FAT_OK) {
+        Run->Error = Error;
+        Run->FailBlock = sBatchFirstIndex;
+        sBatchFirstIndex = 0;
+        sBatchBlocks = 0;
+        sBatchBytes = 0;
+        return 0;
     }
     BreathWhileWired();
     PublishAcksFromBatch();

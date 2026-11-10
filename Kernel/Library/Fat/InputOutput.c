@@ -155,6 +155,8 @@ UINT32 EocValue(void) {
 }
 
 int FatFreeChain(UINT32 Cluster) {
+    /* 释放后顺序写/扩链游标不可再用 */
+    FatSequentialWriteInvalidate();
     while (!ClusterEnd(Cluster) && Cluster >= 2 && Cluster <= gMaxCluster) {
         UINT32 Next = FatNext(Cluster);
         if (Next == FAT_CLUSTER_INVALID) {

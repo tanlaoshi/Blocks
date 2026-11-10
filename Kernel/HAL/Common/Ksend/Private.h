@@ -35,13 +35,10 @@
 /* 单文件上限取 FAT 层的 FAT_WRITE_MAX（Fat.h：8 MB）；块 CRC 表按它开静态数组 */
 #define KSEND_MAX_BYTES           (8u * 1024u * 1024u)
 #define KSEND_MAX_BLOCKS          (KSEND_MAX_BYTES / KSEND_BLOCK_BYTES)
-/* 整文件读写分块：每次 FileSystem*FileAt 都要从首簇沿 FAT 链走到偏移
- *（FAT 链没有反向指针，Fat/FileWriteAt.c 的 SeekFileOffset 是 O(偏移/簇)），
- * 所以按 4 KB 一块读写 2.2 MB 是第二层 O(n²)。大 chunk 把调用次数压下去。
- * 接收路径与扫描/备份共用本缓冲（见 File.c / ReceiveBatch.c）。 */
+/* 整文件读写分块：大 chunk 压 FileAt 次数。Seek/扩链顺序游标见
+ * FileWriteAtCluster.c（PR-KSEND-FAT-CURSOR）。接收与扫描/备份共用本缓冲。 */
 /*
- * IO 复用缓冲（扫描/备份/收块攒批）。有线吞吐：按 win 攒批一次 WriteAt，
- * 落盘后再齐发 'A'（仍 ≤ win，避免假进度）。
+ * IO 复用缓冲（扫描/备份/收块攒批）。有线吞吐：按 win 攒批；落盘后再齐发 'A'。
  */
 #define KSEND_IO_CHUNK_BYTES      (128u * 1024u)
 /* TCP 滑窗：READY win=；串口/Wi‑Fi=1；有线 TCP 开窗（nuc-1） */

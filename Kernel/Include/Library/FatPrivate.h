@@ -176,6 +176,14 @@ int DirCreateEntry(FAT_DIR_CTX Parent, const char *Leaf, UINT8 Attr,
 /* —— File.c —— */
 void FatIoBreath(void);
 int SeekFileOffset(UINT32 First, UINTN Offset, UINT32 *OutCl, UINT32 *OutOff);
+
+/* —— FileWriteAtCluster.c（PR-KSEND-FAT-CURSOR）—— */
+void FatSequentialWriteInvalidate(void);
+int FatSeekWriteOffset(UINT32 FirstCluster, UINTN Offset, UINT32 *OutCluster,
+                       UINT32 *OutOffInCluster);
+void FatSequentialWriteRemember(UINT32 FirstCluster, UINT32 NextOffset,
+                                UINT32 Cluster, UINT32 OffInCluster);
+int FatEnsureClusterCount(UINT32 *InOutFirst, UINT32 NeedClusters);
 int ReadFileClusters(UINT32 Cluster, UINT32 Size, void *Buffer, UINTN MaxSize,
                      UINTN *OutSize);
 int DirUnlinkKeepClusters(FAT_DIR_CTX Parent, const char *Leaf);

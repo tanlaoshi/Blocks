@@ -1,7 +1,7 @@
 # X64 USB HCI · 蓝牙鼠（BLE HOGP）
 
 NUC 板载 HCI → LE → SMP Just Works → HOGP Notify → 第二 `INPUT_BACKEND`。  
-柱规格：`Archive/柱规格/蓝牙鼠-罗技MXMaster.md`。活 ★：`Archive/路线图1109.md`。
+柱规格：`Archive/柱规格/蓝牙鼠-罗技MXMaster.md`。柱史：`Archive/项目/进展/路线图1109.md`。活 ★：`Archive/路线图1110.md`。
 
 ## 壳（手测）
 

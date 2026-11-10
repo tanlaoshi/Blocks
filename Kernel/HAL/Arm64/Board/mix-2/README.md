@@ -1,6 +1,6 @@
 # Board：`mix-2`（小米 MIX 2 / chiron · MSM8998）
 
-> 手机柱活档：[`Archive/路线图1108.md`](../../../../../Archive/路线图1108.md)。  
+> 手机柱史：[`Archive/项目/进展/路线图1108.md`](../../../../../Archive/项目/进展/路线图1108.md)。活 ★：[`Archive/路线图1110.md`](../../../../../Archive/路线图1110.md)。  
 > 柱规格：[`Archive/柱规格/手机USB键盘.md`](../../../../../Archive/柱规格/手机USB键盘.md)。  
 > **红线**：`fastboot boot` 临时拉起，不 `fastboot flash`；不开 DSI / 触摸 / UFS。
 

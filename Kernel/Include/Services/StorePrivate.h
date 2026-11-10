@@ -31,6 +31,8 @@ int CheckDependsInstalled(const char *Depends);
 int MakeDbKey(char *Out, int Max, const char *Prefix, const char *Id);
 int StoreHasSi(const char *Id);
 int StoreAdoptInstalled(const char *Id);
+/* QueryInstalledFlags.c — ListInstalled 孤儿清理共用 */
+void ClearSiOrphan(const char *Id);
 int ResolveEntryDepends(const char *Id, char *OutDepends, int OutMax);
 int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max);
 int LookupPackageKind(const char *Id);

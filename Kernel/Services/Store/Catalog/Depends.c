@@ -7,6 +7,7 @@
 #include "FileSystem.h"
 #include "Fat.h"
 #include "HalConsole.h"
+#include "Db.h"
 
 #define STORE_PKG_MAX      1024u
 
@@ -214,4 +215,45 @@ int CollectDependents(const char *Id, char OutIds[][STORE_ID_MAX], int Max) {
         }
     }
     return OutN;
+}
+
+int StoreGetDepends(const char *Id, char *Out, int OutMax) {
+    char Key[DB_KEY_MAX];
+    char Val[DB_VAL_MAX];
+    int i;
+
+    if (!Out || OutMax <= 0) {
+        return FAT_ERR_INVAL;
+    }
+    Out[0] = '-';
+    if (OutMax > 1) {
+        Out[1] = 0;
+    } else {
+        Out[0] = 0;
+        return FAT_ERR_INVAL;
+    }
+    if (!Id || Id[0] == 0) {
+        return FAT_OK;
+    }
+    if (!MakeDbKey(Key, (int)sizeof(Key), "sd.", Id)) {
+        return FAT_OK;
+    }
+    if (DbGet(Key, Val, sizeof(Val)) == DB_OK && Val[0] != 0 &&
+        !(Val[0] == '-' && Val[1] == 0)) {
+        for (i = 0; Val[i] && i < OutMax - 1; i++) {
+            Out[i] = Val[i];
+        }
+        Out[i] = 0;
+        return FAT_OK;
+    }
+    /* sd 缺失/"-"：回退 catalog+PKG（list 与 CollectDependents 一致） */
+    if (ResolveEntryDepends(Id, Out, OutMax) == FAT_OK && Out[0] != 0 &&
+        !(Out[0] == '-' && Out[1] == 0)) {
+        return FAT_OK;
+    }
+    Out[0] = '-';
+    if (OutMax > 1) {
+        Out[1] = 0;
+    }
+    return FAT_OK;
 }

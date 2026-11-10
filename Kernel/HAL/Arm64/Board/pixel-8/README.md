@@ -1,6 +1,6 @@
 # Board：`pixel-8`（Google Pixel 8 / shiba · Tensor G3）
 
-> 手机柱活档：[`Archive/路线图1108.md`](../../../../../Archive/路线图1108.md)。  
+> 手机柱史：[`Archive/项目/进展/路线图1108.md`](../../../../../Archive/项目/进展/路线图1108.md)。活 ★：[`Archive/路线图1110.md`](../../../../../Archive/路线图1110.md)。  
 > **红线**：`fastboot boot` 临时拉起，不 `fastboot flash`；不 init DSI/触摸/UFS；**可写 ABL splash**。
 
 | 项 | 填写 |

@@ -115,9 +115,16 @@ void KsendRollBack(const KSEND_RUN *Run) {
     }
     KsendStagingDiscard(Run);
     if (Staging) {
-        /* 收块只动 .new；若 Install 已删 Target 失败，才要从 .bak 救 */
+        /* 收块只动 .new；Install 半截才可能弄丢 Target */
         if (KsendFileSize(Run->TargetPath, &TargetSize) == FAT_OK) {
             KsendNote("rollback: target untouched (staging)");
+            return;
+        }
+        /* SESSION-TAX：Install 已 Target→.bak 时优先改名拉回 */
+        if (Run->Backup != 0 && Run->OldSize != 0u &&
+            FileSystemRename(Run->BackupPath, Run->TargetPath) == FAT_OK) {
+            KsendNote("rollback: restored target from .bak rename");
+            KsendRestoredLine(&gKsendOldImage);
             return;
         }
     }

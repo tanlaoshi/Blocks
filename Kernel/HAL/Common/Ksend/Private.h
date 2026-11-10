@@ -139,7 +139,7 @@ typedef struct {
     UINT32 FailGot;
     int VolumeIndex; /* 本次 SelectVolume 选中的卷；-1 = 未选（不用归还） */
     int Reboot;   /* 1=成功且校验通过后复位（默认）；0=--no-reboot 留 shell */
-    int Backup;   /* 1=写前备份 .bak（默认）；0=--no-backup 跳过，失败不回滚 */
+    int Backup;   /* 1=Install 时 Target→.bak 改名（默认）；0=--no-backup 删 Target */
     int Dirty;   /* 只要尝试过写卡就置 1：失败的写也可能改了半块，回滚判据用它 */
     int Failure;
     int Error;

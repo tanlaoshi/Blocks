@@ -3,8 +3,9 @@
  *
  * 路径/选卷见 TransferPaths.c；校验/安装/回滚见 TransferFinish.c。
  * 顺序固定，不能换：
- *   备份 →（已有目标则）落到 .new 空表 READY → 收块 → flush → 校验 → 改名 → OK。
- * 校验不过绝不复位；--no-backup 失败不回滚。
+ *   旧图表（.crc/扫描）→（已有目标则）.new READY → 收块 → flush → 校验 →
+ *   Target→.bak 改名 + .new→Target → OK。
+ * 校验不过绝不复位；--no-backup 失败不回滚（Install 直接删 Target）。
  */
 #include "Ksend/Private.h"
 #include "Hal/KsendFreeze.h"
@@ -32,14 +33,29 @@ static void KsendFatIoBreath(void) {
     (void)TransportPollUserAbort();
 }
 
+/*
+ * 旧图只服务 READY 差量：优先 .crc，否则扫描目标。
+ * PR-KSEND-SESSION-TAX：不再为备份预拷整文件（安装阶段 Target→.bak 改名）。
+ */
+static int OldImageLoad(KSEND_RUN *Run) {
+    int Error;
+
+    Error = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
+    if (Error == FAT_OK) {
+        KsendNote("cache: hit (old block table from .crc)");
+        return FAT_OK;
+    }
+    KsendNote("cache: miss (scanning old file)");
+    return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
+}
+
 static int PrepareBackup(KSEND_RUN *Run) {
-    UINT32 Block = 0;
-    UINT32 Want = 0;
-    UINT32 Got = 0;
     int Error;
 
     if (Run->Backup == 0) {
         KsendNote("backup: skipped (--no-backup)");
+    } else {
+        KsendNote("backup: rename-at-install (no pre-copy)");
     }
     Error = KsendFileSize(Run->TargetPath, &Run->OldSize);
     if (Error == FAT_ERR_NOENT) {
@@ -57,26 +73,7 @@ static int PrepareBackup(KSEND_RUN *Run) {
     if (Run->OldSize > KSEND_MAX_BYTES) {
         return FAT_ERR_FILE_TOO_BIG;
     }
-    if (Run->Backup == 0) {
-        Error = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
-        if (Error == FAT_OK) {
-            KsendNote("cache: hit (old block table from .crc)");
-            return FAT_OK;
-        }
-        KsendNote("cache: miss (scanning old file)");
-        return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
-    }
-    Error = KsendFileCopy(Run->TargetPath, Run->BackupPath, Run->OldSize,
-                        &gKsendOldImage);
-    if (Error != FAT_OK) {
-        return Error;
-    }
-    if (KsendFileVerify(Run->BackupPath, Run->OldSize, &gKsendOldImage,
-                        gKsendOldImage.Crc, &Block, &Want, &Got) != 1) {
-        return FAT_ERR_IO;
-    }
-    KsendNote("backup: verified");
-    return FAT_OK;
+    return OldImageLoad(Run);
 }
 
 static int TransferRun(KSEND_RUN *Run) {

@@ -188,9 +188,25 @@ int KsendStagingInstall(KSEND_RUN *Run) {
     if (!KsendRunUsesStaging(Run)) {
         return FAT_OK;
     }
-    Error = KsendFileDelete(Run->TargetPath);
-    if (Error != FAT_OK) {
-        return Error;
+    /*
+     * SESSION-TAX：默认 Backup 时 Target→.bak 改名（O(目录)），再 .new→Target。
+     * --no-backup 仍删 Target（失败不保留旧核）。
+     */
+    if (Run->Backup != 0) {
+        Error = KsendFileDelete(Run->BackupPath);
+        if (Error != FAT_OK) {
+            return Error;
+        }
+        Error = FileSystemRename(Run->TargetPath, Run->BackupPath);
+        if (Error != FAT_OK) {
+            return Error;
+        }
+        KsendNote("staging: target renamed to .bak");
+    } else {
+        Error = KsendFileDelete(Run->TargetPath);
+        if (Error != FAT_OK) {
+            return Error;
+        }
     }
     Error = FileSystemRename(Run->WritePath, Run->TargetPath);
     if (Error != FAT_OK) {

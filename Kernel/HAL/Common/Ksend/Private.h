@@ -132,6 +132,7 @@ typedef struct {
     const char *WritePath;  /* 实际落盘路径；覆写时为 Target.new，否则同 Target */
     UINT32 OldSize;
     UINT32 NewSize;
+    UINT32 ExpectedSize; /* 主机 size=；0=不预扩 */
     UINT32 TrailerCrc;
     UINT32 Written;
     UINT32 FailBlock;

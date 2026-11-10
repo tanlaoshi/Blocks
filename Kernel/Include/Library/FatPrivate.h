@@ -184,6 +184,15 @@ int FatSeekWriteOffset(UINT32 FirstCluster, UINTN Offset, UINT32 *OutCluster,
 void FatSequentialWriteRemember(UINT32 FirstCluster, UINT32 NextOffset,
                                 UINT32 Cluster, UINT32 OffInCluster);
 int FatEnsureClusterCount(UINT32 *InOutFirst, UINT32 NeedClusters);
+
+/* —— FileWriteFast.c（PR-KSEND-FAT-WRITE-FAST）—— */
+void FatSetClusterAllocateZero(int On);
+int FatClusterAllocateZero(void);
+void FatWriteDirectorySizeDefer(int On);
+int FatDirectorySizeDeferActive(void);
+void FatDirectorySizeDeferRemember(FAT_DIR_CTX Parent, UINT32 Index,
+                                   UINT32 FirstCluster, UINT32 Size);
+int FatFlushDeferredDirectorySize(void);
 int ReadFileClusters(UINT32 Cluster, UINT32 Size, void *Buffer, UINTN MaxSize,
                      UINTN *OutSize);
 int DirUnlinkKeepClusters(FAT_DIR_CTX Parent, const char *Leaf);

@@ -14,6 +14,7 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->WritePath = 0;
     Run->OldSize = 0;
     Run->NewSize = 0;
+    Run->ExpectedSize = 0;
     Run->TrailerCrc = 0;
     Run->Written = 0;
     Run->FailBlock = 0;

@@ -115,6 +115,12 @@ int FatFileStat(const char *Path, FAT_FILE_STAT *Out) {
 }
 
 int FatFileSync(void) {
+    int Error;
+
+    Error = FatFlushDeferredDirectorySize();
+    if (Error != FAT_OK) {
+        return Error;
+    }
     if (!BlockFlush()) {
         return FAT_ERR_IO;
     }

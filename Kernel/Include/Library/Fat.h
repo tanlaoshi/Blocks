@@ -56,6 +56,14 @@ int FatWriteFile(const char *Path, const void *Buffer, UINTN Size);
 /* PR-U-stream-1：按字节偏移分块读写；*OutN 为实际字节；上限见 FAT_WRITE_MAX */
 int FatReadFileAt(const char *Path, UINTN Offset, void *Buffer, UINTN Len, UINTN *OutN);
 int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len, UINTN *OutN);
+/*
+ * PR-KSEND-FAT-WRITE-FAST：一次扩到 Size（可配合 FatSetClusterAllocateZero(0)
+ * 跳过清零；目录 Size 一次写好）。成功 FAT_OK。
+ */
+int FatEnsureFileByteSize(const char *Path, UINT32 Size);
+void FatSetClusterAllocateZero(int On);
+void FatWriteDirectorySizeDefer(int On);
+int FatFlushDeferredDirectorySize(void);
 int FatDeleteFile(const char *Path);
 int FatMkdir(const char *Path);
 int FatRmdir(const char *Path);

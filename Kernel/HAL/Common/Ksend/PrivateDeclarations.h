@@ -9,6 +9,8 @@ void KsendNote(const char *Text);
 int KsendInfo(void);
 int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
+int KsendTransferSized(const char *TargetPath, int Reboot, int Backup,
+                       UINT32 ExpectedSize);
 
 /* —— Serial.c / Transport.c —— */
 void KsendSerialWrite(const char *Text);

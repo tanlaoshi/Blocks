@@ -1,7 +1,8 @@
 /*
- * FileWriteAt.c — 偏移写（PR-S-fatfile-1 / PR-KSEND-FAT-CURSOR）
+ * FileWriteAt.c — 偏移写（PR-S-fatfile-1 / PR-KSEND-FAT-CURSOR / FAT-WRITE-FAST）
  *
  * 顺序 Seek + 扩链游标见 FileWriteAtCluster.c。
+ * FAST：满簇跳过 LoadCluster；顺序扩写可延后目录 Size。
  */
 #include "Fat.h"
 #include "FatPrivate.h"
@@ -106,16 +107,31 @@ int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len
         UINT32 ByteIndex;
         UINT32 StartOff = OffInCluster;
 
-        if (!LoadCluster(Cluster)) {
-            FatSequentialWriteInvalidate();
-            return FAT_ERR_IO;
-        }
         Chunk = ClusterBytesCount - OffInCluster;
         if (Chunk > Len - Done) {
             Chunk = (UINT32)(Len - Done);
         }
-        for (ByteIndex = 0; ByteIndex < Chunk; ByteIndex++) {
-            gCluster[OffInCluster + ByteIndex] = Source[Done + ByteIndex];
+        if (OffInCluster == 0u && Chunk == ClusterBytesCount) {
+            /* 满簇直写：跳过读改写 */
+            for (ByteIndex = 0; ByteIndex < Chunk; ByteIndex++) {
+                gCluster[ByteIndex] = Source[Done + ByteIndex];
+            }
+        } else if (OffInCluster == 0u && !FatClusterAllocateZero()) {
+            /* 未清零的新簇半写：先清缓冲再填 */
+            for (ByteIndex = 0; ByteIndex < ClusterBytesCount; ByteIndex++) {
+                gCluster[ByteIndex] = 0;
+            }
+            for (ByteIndex = 0; ByteIndex < Chunk; ByteIndex++) {
+                gCluster[ByteIndex] = Source[Done + ByteIndex];
+            }
+        } else {
+            if (!LoadCluster(Cluster)) {
+                FatSequentialWriteInvalidate();
+                return FAT_ERR_IO;
+            }
+            for (ByteIndex = 0; ByteIndex < Chunk; ByteIndex++) {
+                gCluster[OffInCluster + ByteIndex] = Source[Done + ByteIndex];
+            }
         }
         if (!StoreCluster(Cluster)) {
             FatSequentialWriteInvalidate();
@@ -150,18 +166,27 @@ int FatWriteFileAt(const char *Path, UINTN Offset, const void *Buffer, UINTN Len
     }
 
     if (Existing) {
-        if (!DirReadEntry(Parent, (UINT32)Index, Entry)) {
-            return FAT_ERR_IO;
+        if (FinalSize > OldSize) {
+            if (FatDirectorySizeDeferActive()) {
+                FatDirectorySizeDeferRemember(Parent, (UINT32)Index, FirstCluster,
+                                              FinalSize);
+            } else {
+                if (!DirReadEntry(Parent, (UINT32)Index, Entry)) {
+                    return FAT_ERR_IO;
+                }
+                Entry[11] = FAT_ATTR_ARCH;
+                if (gFatType == 32) {
+                    Write16(Entry + 20,
+                            (UINT16)((FirstCluster >> 16) & FAT_U16_MASK));
+                }
+                Write16(Entry + 26, (UINT16)(FirstCluster & FAT_U16_MASK));
+                Write32(Entry + 28, FinalSize);
+                if (!DirWriteEntry(Parent, (UINT32)Index, Entry)) {
+                    return FAT_ERR_IO;
+                }
+            }
         }
-        Entry[11] = FAT_ATTR_ARCH;
-        if (gFatType == 32) {
-            Write16(Entry + 20, (UINT16)((FirstCluster >> 16) & FAT_U16_MASK));
-        }
-        Write16(Entry + 26, (UINT16)(FirstCluster & FAT_U16_MASK));
-        Write32(Entry + 28, FinalSize);
-        if (!DirWriteEntry(Parent, (UINT32)Index, Entry)) {
-            return FAT_ERR_IO;
-        }
+        /* FinalSize<=OldSize：预扩后覆写，目录 Size 已够，免每窗改项 */
     } else {
         int Result =
             DirCreateEntry(Parent, Leaf, FAT_ATTR_ARCH, FirstCluster, FinalSize);

@@ -14,6 +14,8 @@ extern int KsendInfo(void) __attribute__((weak));
 extern int KsendSelfTest(void) __attribute__((weak));
 extern int KsendTransfer(const char *TargetPath, int Reboot, int Backup)
     __attribute__((weak));
+extern int KsendTransferSized(const char *TargetPath, int Reboot, int Backup,
+                              UINT32 ExpectedSize) __attribute__((weak));
 extern int KsendServe(UINT16 Port, UINT32 WaitMilliseconds) __attribute__((weak));
 extern UINT16 KsendServeDefaultPort(void) __attribute__((weak));
 
@@ -53,14 +55,42 @@ static UINT32 ParseDecimal(const char *Text) {
     return Value;
 }
 
+static int HotSendArgumentStartsWith(const char *Argument, const char *Prefix) {
+    if (Argument == 0 || Prefix == 0) {
+        return 0;
+    }
+    while (*Prefix != 0) {
+        char Left = *Argument;
+        char Right = *Prefix;
+
+        if (Left == 0) {
+            return 0;
+        }
+        if (Left >= 'A' && Left <= 'Z') {
+            Left = (char)(Left - 'A' + 'a');
+        }
+        if (Right >= 'A' && Right <= 'Z') {
+            Right = (char)(Right - 'A' + 'a');
+        }
+        if (Left != Right) {
+            return 0;
+        }
+        Argument++;
+        Prefix++;
+    }
+    return 1;
+}
+
 static void CommandHotSend(int Argc, char **Argv) {
     int Index = 1;
     int Reboot = 1;
     int Backup = 1;
+    UINT32 ExpectedSize = 0;
     UINT16 Port;
     UINT32 WaitMilliseconds;
 
-    if (KsendInfo == 0 || KsendSelfTest == 0 || KsendTransfer == 0) {
+    if (KsendInfo == 0 || KsendSelfTest == 0 ||
+        (KsendTransferSized == 0 && KsendTransfer == 0)) {
         gConsole.Write("HotSend: not built for this board\n");
         return;
     }
@@ -69,6 +99,8 @@ static void CommandHotSend(int Argc, char **Argv) {
             Reboot = 0;
         } else if (HotSendArgumentIs(Argv[Index], "--no-backup")) {
             Backup = 0;
+        } else if (HotSendArgumentStartsWith(Argv[Index], "size=")) {
+            ExpectedSize = ParseDecimal(Argv[Index] + 5);
         } else {
             break;
         }
@@ -100,6 +132,7 @@ static void CommandHotSend(int Argc, char **Argv) {
         GuiPresentDeferResume();
         (void)Reboot;
         (void)Backup;
+        (void)ExpectedSize;
         (void)KsendServe(Port, WaitMilliseconds);
         return;
     }
@@ -113,14 +146,23 @@ static void CommandHotSend(int Argc, char **Argv) {
             return;
         }
         if (Index + 1 == Argc) {
-            (void)KsendTransfer(Argv[Index], Reboot, Backup);
+            if (KsendTransferSized != 0) {
+                (void)KsendTransferSized(Argv[Index], Reboot, Backup,
+                                         ExpectedSize);
+            } else {
+                (void)KsendTransfer(Argv[Index], Reboot, Backup);
+            }
             return;
         }
-        gConsole.Write("usage: HotSend [--no-reboot] [--no-backup] "
+        gConsole.Write("usage: HotSend [--no-reboot] [--no-backup] [size=N] "
                        "[info|selftest|serve [port] [wait-ms]|<target path>]\n");
         return;
     }
-    (void)KsendTransfer(0, Reboot, Backup);
+    if (KsendTransferSized != 0) {
+        (void)KsendTransferSized(0, Reboot, Backup, ExpectedSize);
+    } else {
+        (void)KsendTransfer(0, Reboot, Backup);
+    }
 }
 
 void ShellCommandsKsendRegister(void) {

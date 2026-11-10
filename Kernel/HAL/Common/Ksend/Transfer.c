@@ -34,21 +34,10 @@ static void KsendFatIoBreath(void) {
 }
 
 /*
- * 旧图只服务 READY 差量：优先 .crc，否则扫描目标。
  * PR-KSEND-SESSION-TAX：不再为备份预拷整文件（安装阶段 Target→.bak 改名）。
+ * 有目标 → StagingPrepare 必写 .new，READY 表为空（n=0）；旧核 CRC 不参与差量。
+ * 反例：仍 FileScan/.crc 读 1.9MB 再丢掉 → 手测 prepare≈4s（U 盘 cache miss）。
  */
-static int OldImageLoad(KSEND_RUN *Run) {
-    int Error;
-
-    Error = KsendCacheLoad(Run->TargetPath, Run->OldSize, &gKsendOldImage);
-    if (Error == FAT_OK) {
-        KsendNote("cache: hit (old block table from .crc)");
-        return FAT_OK;
-    }
-    KsendNote("cache: miss (scanning old file)");
-    return KsendFileScan(Run->TargetPath, Run->OldSize, &gKsendOldImage);
-}
-
 static int PrepareBackup(KSEND_RUN *Run) {
     int Error;
 
@@ -66,14 +55,56 @@ static int PrepareBackup(KSEND_RUN *Run) {
     if (Error != FAT_OK) {
         return Error;
     }
-    if (Run->OldSize == 0u) {
-        KsendImageClear(&gKsendOldImage);
-        return FAT_OK;
-    }
     if (Run->OldSize > KSEND_MAX_BYTES) {
         return FAT_ERR_FILE_TOO_BIG;
     }
-    return OldImageLoad(Run);
+    KsendImageClear(&gKsendOldImage);
+    if (Run->OldSize != 0u) {
+        KsendNote("prepare: skip old image (staging full replace)");
+    }
+    return FAT_OK;
+}
+
+/*
+ * PR-KSEND-FAT-WRITE-FAST：收窗期间目录 Size 延后；有 size= 时一次预扩且跳过清簇。
+ * 失败/成功路径都须 Disarm，避免其它写路径长期不清零。
+ */
+static void FatWriteFastArm(KSEND_RUN *Run) {
+    FatWriteDirectorySizeDefer(1);
+    if (Run->ExpectedSize == 0u) {
+        return;
+    }
+    FatSetClusterAllocateZero(0);
+}
+
+static void FatWriteFastDisarm(void) {
+    FatWriteDirectorySizeDefer(0);
+    FatSetClusterAllocateZero(1);
+}
+
+static int StagingPreallocate(KSEND_RUN *Run) {
+    const char *Relative = 0;
+    int Volume = -1;
+    int Error;
+
+    if (Run->ExpectedSize == 0u) {
+        return FAT_OK;
+    }
+    if (Run->ExpectedSize > KSEND_MAX_BYTES) {
+        return FAT_ERR_FILE_TOO_BIG;
+    }
+    Error = FileSystemResolve(Run->WritePath, &Volume, &Relative);
+    if (Error != FAT_OK || Relative == 0 || Relative[0] == 0) {
+        return Error != FAT_OK ? Error : FAT_ERR_INVAL;
+    }
+    FatSetClusterAllocateZero(0);
+    Error = FatEnsureFileByteSize(Relative, Run->ExpectedSize);
+    if (Error != FAT_OK) {
+        FatSetClusterAllocateZero(1);
+        return Error;
+    }
+    KsendNote("fat: preallocate (size= once, zero-skip)");
+    return FAT_OK;
 }
 
 static int TransferRun(KSEND_RUN *Run) {
@@ -81,6 +112,7 @@ static int TransferRun(KSEND_RUN *Run) {
     UINT32 TransferStart;
     UINT32 PhaseStart;
     int Error;
+    int Armed = 0;
 
     TransferStart = KsendMilliseconds();
     PhaseStart = TransferStart;
@@ -101,6 +133,14 @@ static int TransferRun(KSEND_RUN *Run) {
         Run->Error = Error;
         return -1;
     }
+    Error = StagingPreallocate(Run);
+    if (Error != FAT_OK) {
+        Run->Failure = KSEND_FAIL_FILE_STATUS;
+        Run->Error = Error;
+        return -1;
+    }
+    FatWriteFastArm(Run);
+    Armed = 1;
     Run->PrepareMilliseconds = KsendMilliseconds() - PhaseStart;
     KsendPhaseNote("prepare", Run->PrepareMilliseconds);
     if (KsendRunUsesStaging(Run)) {
@@ -118,6 +158,7 @@ static int TransferRun(KSEND_RUN *Run) {
     if (!KsendTransportSendHealthy()) {
         KsendNote("transport: stalled sending READY");
         Run->Failure = KSEND_FAIL_SEND;
+        FatWriteFastDisarm();
         return -1;
     }
     KsendBlockTable(ReadyImage);
@@ -125,6 +166,7 @@ static int TransferRun(KSEND_RUN *Run) {
     if (!KsendTransportSendHealthy()) {
         KsendNote("transport: stalled sending block table");
         Run->Failure = KSEND_FAIL_SEND;
+        FatWriteFastDisarm();
         return -1;
     }
     Run->ReadyTableMilliseconds = KsendMilliseconds() - PhaseStart;
@@ -145,6 +187,7 @@ static int TransferRun(KSEND_RUN *Run) {
             Run->Failure = KSEND_FAIL_ABORT;
             KsendNote("transport: aborted (Ctrl-C)");
         }
+        FatWriteFastDisarm();
         return -1;
     }
     Run->ReceiveMilliseconds = KsendMilliseconds() - PhaseStart;
@@ -154,6 +197,8 @@ static int TransferRun(KSEND_RUN *Run) {
         Run->NetMilliseconds = Run->ReceiveMilliseconds - Run->FlushMilliseconds;
     }
     KsendPhaseNoteReceive(Run);
+    FatWriteFastDisarm();
+    Armed = 0;
     PhaseStart = KsendMilliseconds();
     Error = KsendFinishImage(Run);
     Run->FinishMilliseconds = KsendMilliseconds() - PhaseStart;
@@ -162,10 +207,12 @@ static int TransferRun(KSEND_RUN *Run) {
         Run->TotalMilliseconds = KsendMilliseconds() - TransferStart;
         KsendPhaseNote("total", Run->TotalMilliseconds);
     }
+    (void)Armed;
     return Error;
 }
 
-int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
+int KsendTransferSized(const char *TargetPath, int Reboot, int Backup,
+                       UINT32 ExpectedSize) {
     KSEND_RUN Run;
     int Rc;
     int Error;
@@ -173,6 +220,7 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     KsendRunReset(&Run);
     Run.Reboot = Reboot ? 1 : 0;
     Run.Backup = Backup ? 1 : 0;
+    Run.ExpectedSize = ExpectedSize;
     Error = KsendPathsPrepare(TargetPath, &Run);
     if (Error != FAT_OK) {
         Run.Failure = KSEND_FAIL_FILE_STATUS;
@@ -194,8 +242,12 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
             KsendFreezeEnd();
             return 0;
         }
-        /* 复位不关窗：新核冷启会重画 */
-        KsendSerialDrainTransmitter();
+        /*
+         * OK 行已走 SerialWrite→WaitPeer；再等一轮 + 短顿，避免主机仍停在
+         * 1s ReadLine 切片时板已 RST（HotSend 见 board: D OK、一直 waiting）。
+         */
+        KsendSerialWaitPeerAcknowledge();
+        KsendDelayMilliseconds(250u);
         KsendReboot();
         return 0;
     }
@@ -211,4 +263,8 @@ int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
     KsendSerialDrainInput(KSEND_FAIL_DRAIN_QUIET_MILLISECONDS, KSEND_FAIL_DRAIN_LIMIT_MILLISECONDS);
     KsendFreezeEnd();
     return 1;
+}
+
+int KsendTransfer(const char *TargetPath, int Reboot, int Backup) {
+    return KsendTransferSized(TargetPath, Reboot, Backup, 0u);
 }

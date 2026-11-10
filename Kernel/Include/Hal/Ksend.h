@@ -19,6 +19,9 @@ typedef enum {
 int KsendInfo(void);
 int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
+/* ExpectedSize：主机 size= 字节；0=不预扩链（仍可满簇直写） */
+int KsendTransferSized(const char *TargetPath, int Reboot, int Backup,
+                       UINT32 ExpectedSize);
 /* 阻塞封装：ListenStart 后泵 Poll 直到 Idle（壳用） */
 int KsendServe(UINT16 Port, UINT32 WaitMilliseconds);
 UINT16 KsendServeDefaultPort(void);

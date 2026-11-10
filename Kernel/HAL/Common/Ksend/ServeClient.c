@@ -3,7 +3,7 @@
  */
 #include "Ksend/Private.h"
 
-#define KSEND_SERVE_LINE_BYTES 128u
+#define KSEND_SERVE_LINE_BYTES 192u
 
 static int ArgumentIs(const char *Argument, const char *Word) {
     if (Argument == 0 || Word == 0) {
@@ -57,14 +57,54 @@ static int ReadCommandLine(char *Line, int Capacity) {
  * 0=transfer；1=info；2=selftest；-1=坏行。
  * Reboot/Backup 入参为板默认；仅主机 flag 覆盖。
  */
+static int ArgumentStartsWith(const char *Argument, const char *Prefix) {
+    if (Argument == 0 || Prefix == 0) {
+        return 0;
+    }
+    while (*Prefix != 0) {
+        char Left = *Argument;
+        char Right = *Prefix;
+
+        if (Left == 0) {
+            return 0;
+        }
+        if (Left >= 'A' && Left <= 'Z') {
+            Left = (char)(Left - 'A' + 'a');
+        }
+        if (Right >= 'A' && Right <= 'Z') {
+            Right = (char)(Right - 'A' + 'a');
+        }
+        if (Left != Right) {
+            return 0;
+        }
+        Argument++;
+        Prefix++;
+    }
+    return 1;
+}
+
+static UINT32 ParseDecimalToken(const char *Text) {
+    UINT32 Value = 0;
+
+    if (Text == 0) {
+        return 0;
+    }
+    while (*Text >= '0' && *Text <= '9') {
+        Value = Value * 10u + (UINT32)(*Text - '0');
+        Text++;
+    }
+    return Value;
+}
+
 static int ParseServeCommand(char *Line, const char **TargetPath, int *Reboot,
-                             int *Backup) {
+                             int *Backup, UINT32 *ExpectedSize) {
     char *Cursor;
     char *Token;
     int SawKsend = 0;
     int Mode = 0;
 
     *TargetPath = 0;
+    *ExpectedSize = 0;
     Cursor = Line;
     while (*Cursor != 0) {
         while (*Cursor == ' ' || *Cursor == '\t') {
@@ -92,6 +132,8 @@ static int ParseServeCommand(char *Line, const char **TargetPath, int *Reboot,
             *Reboot = 0;
         } else if (ArgumentIs(Token, "--no-backup")) {
             *Backup = 0;
+        } else if (ArgumentStartsWith(Token, "size=")) {
+            *ExpectedSize = ParseDecimalToken(Token + 5);
         } else if (ArgumentIs(Token, "info")) {
             Mode = 1;
         } else if (ArgumentIs(Token, "selftest")) {
@@ -113,6 +155,7 @@ int KsendServeRunClient(int ClientSocket) {
     const char *TargetPath;
     int Reboot;
     int Backup;
+    UINT32 ExpectedSize;
     int Result;
 
     KsendTransportUseSocket(ClientSocket);
@@ -123,7 +166,8 @@ int KsendServeRunClient(int ClientSocket) {
     }
     Reboot = KsendServePreferenceReboot() ? 1 : 0;
     Backup = KsendServePreferenceBackup() ? 1 : 0;
-    Result = ParseServeCommand(Line, &TargetPath, &Reboot, &Backup);
+    Result = ParseServeCommand(Line, &TargetPath, &Reboot, &Backup,
+                               &ExpectedSize);
     if (Result < 0) {
         KsendNote("serve: bad command line");
         return 1;
@@ -134,5 +178,5 @@ int KsendServeRunClient(int ClientSocket) {
     if (Result == 2) {
         return KsendSelfTest();
     }
-    return KsendTransfer(TargetPath, Reboot, Backup);
+    return KsendTransferSized(TargetPath, Reboot, Backup, ExpectedSize);
 }

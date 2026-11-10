@@ -21,6 +21,7 @@ static UINT32 sChainLastCluster;
 static int sChainValid;
 
 void FatSequentialWriteInvalidate(void) {
+    (void)FatFlushDeferredDirectorySize();
     sSequentialValid = 0;
     sChainValid = 0;
 }
@@ -62,6 +63,13 @@ static int ZeroAndStoreNewCluster(UINT32 Cluster) {
     UINT32 ZeroIndex;
     UINT32 Bytes = ClusterBytes();
 
+    /*
+     * PR-KSEND-FAT-WRITE-FAST：热传预扩链可不写零簇（随后满簇直写覆盖）。
+     * 半簇写路径须自行清 gCluster。
+     */
+    if (!FatClusterAllocateZero()) {
+        return 1;
+    }
     for (ZeroIndex = 0; ZeroIndex < Bytes; ZeroIndex++) {
         gCluster[ZeroIndex] = 0;
     }

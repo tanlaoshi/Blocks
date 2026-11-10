@@ -377,6 +377,8 @@ UINT32 TrbType(UINT32 Control);
 void ProcessEventsLocked(void); /* excl-2：无锁环逻辑 */
 /* PR-F-xhci-3 */
 void EventHandleTransfer(XHCI_TRB *Evt);
+int EventHandleTransferHid(UINT32 Code, UINT32 Endpoint, UINT32 EvtSlot,
+                           UINT64 TrbPtr, UINT32 Remain); /* EventTransferHid.c · PR-NORM-11 */
 void ProcessEvents(void);
 void ProcessEventsRealPc(void);
 /* PR-H-xhci-evt-excl：独占窗 + 消费锁 */
@@ -411,6 +413,7 @@ void HaltControllerQuiet(void);
 int ResetController(void);
 int HaltOnly(void);
 void BootMarkRs(char Kind, char Stage);
+int StartControllerWithFirmwareDcbaap(UINT32 MaxSlots); /* StartControllerFirmware.c · PR-NORM-11 */
 int StartController(UINT32 MaxSlots);
 int Command(UINT64 Param, UINT32 Control, UINT32 *SlotOut);
 void RecoverCommandRing(void);
@@ -456,6 +459,10 @@ int ConfigureInterrupt(UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInter
                   UINT8 MouseEndpointAddress, UINT16 MouseMaxPacketSize, UINT8 MouseBInterval);
 int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPacketSize, UINT8 BInterval,
                        UINT8 Speed);
+int ConfigureMouseInterruptFallback(UINT32 SlotId, UINT32 CtxEntries, UINT8 Speed,
+                                    UINT32 Route, UINT32 RootPort, UINT8 HubSlot,
+                                    UINT8 TtPort, UINT8 Interval,
+                                    UINT16 MaxPacketSize); /* HidInterruptMouseFallback.c · PR-NORM-11 */
 void QueueIntr(void);
 void QueueMouseIntr(void);
 UINT8 FsInterval(UINT8 BInterval);
@@ -487,6 +494,10 @@ int TryHubOnRootPort(UINT32 RootPort, UINT8 Speed);
 int EnumerateHubChildrenForKeyboard(void);
 int EnumerateHubChildrenForMouse(void);
 int EnumerateHubChildren(void);
+int HubResetChildForAddress(UINT8 Port, UINT32 *StOut, UINT8 *SpeedOut,
+                            int WarmOnly); /* HubEnumerateReset.c · PR-NORM-11 */
+int HubPowerCyclePort(UINT8 Port);
+void NoteMouseHubDropped(void);
 /*
  * 已有 HID hub 时：外接第二颗根口 hub（带 U 盘）勿 ClaimHubOnRootPort
  * （其会 DisableSlot 掉 ExistingSlot）。临时切 gHub* 扫子口 MSC，成功则
@@ -498,6 +509,9 @@ int ProbeRootStorageAfterHub(void);
 int BringUp(void);
 int BulkTransfer(int DirIn, void *Buf, UINT32 Len);
 int ClaimPorts(void);
+int ClaimPortsScanRootPorts(int *Ok, int *Sick); /* ClaimPortsScan.c · PR-NORM-11 */
+void ClaimPortsNoteMouseRootDropped(void);
+int ClaimPortsFinishAfterScan(int Ok, int Sick); /* ClaimPortsFinish.c · PR-NORM-11 */
 int FinishClaim(UINT32 RootPort, UINT8 Speed);
 int Capacity(void);
 int ReadSectors(UINT32 Lba, UINT32 Count, void *Buffer);
@@ -546,6 +560,7 @@ void MousePush(void);
 void KeyboardPush(void);
 /* MouseDeferredInitialize / Mouse* 对外见 XHCI.h */
 
+UINT8 InputIrqCpu(void); /* Irq.c；IrqEnable.c 共用 · PR-NORM-11 */
 void EnableHostInterrupts(void);
 void ImClearPending(void);
 

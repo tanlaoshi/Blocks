@@ -1,6 +1,7 @@
 /*
  * HidInterruptMouse.c — PR-S-xhcihid-1：鼠标中断端点配置 / 入队
  * 从 Hid.c 原样搬家；不改语义。HID 全局仍在 Xhci.c。
+ * 复合鼠 ConfigEP 失败回退 → HidInterruptMouseFallback.c（PR-NORM-11）。
  */
 #include "XHCI/Private.h"
 
@@ -15,6 +16,10 @@ int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPack
     UINT8 TtPort = 0;
     int Composite;
     int AddOnly;
+    UINT8 Interval;
+    UINT32 *Slot;
+    UINT32 *Endpoint;
+    UINT64 Deq;
 
     gMouseIntrDci = (UINT32)EndpointNum * 2 + In;
     gMouseEndpointAddress = EndpointAddress;
@@ -67,7 +72,7 @@ int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPack
         *(UINT32 *)(void *)(gInCtx + 4) = (1u << 0) | (1u << gMouseIntrDci);
     }
 
-    UINT32 *Slot = (UINT32 *)(void *)InSlot();
+    Slot = (UINT32 *)(void *)InSlot();
     Slot[0] = (CtxEntries << 27) | ((UINT32)Speed << 20) | Route;
     Slot[1] = (UINT32)RootPort << 16;
     if (HubSlot != 0 && Speed < 3) {
@@ -100,12 +105,12 @@ int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPack
     }
 
     RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-    UINT32 *Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
-    UINT8 Interval = (Speed >= 3) ? (UINT8)((BInterval > 0) ? (BInterval - 1) : 0)
-                                  : FsInterval(BInterval);
+    Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
+    Interval = (Speed >= 3) ? (UINT8)((BInterval > 0) ? (BInterval - 1) : 0)
+                            : FsInterval(BInterval);
     Endpoint[0] = (UINT32)Interval << 16;
     Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
-    UINT64 Deq = PointerToPhysical(gMouseIntrRing) | 1;
+    Deq = PointerToPhysical(gMouseIntrRing) | 1;
     Endpoint[2] = (UINT32)Deq;
     Endpoint[3] = (UINT32)(Deq >> 32);
     Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
@@ -115,87 +120,9 @@ int ConfigureMouseInterrupt(UINT32 SlotId, UINT8 EndpointAddress, UINT16 MaxPack
 
     if (Command(PointerToPhysical(gInCtx), TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) < 0) {
         if (Composite && AddOnly && gIntrDci != 0) {
-            UINT32 EndpointField = (gIntrDci & 0x1Fu) << 16;
-
-            /*
-             * Running 时 Add 失败：再试 Stop 后 Add-only（旧 NUC 经验）。
-             * 仍失败才 Drop+Add（保鼠标，键盘可能 k=0）。
-             */
-            BootLog("Boot: XHCI mouse add-run fail, try stop+add\n");
-            (void)Command(0, TRB_TYPE(TRB_STOP_EP) | TRB_SLOT(SlotId) | EndpointField, 0);
-            ProcessEvents();
-            if (!HalCpuIsHypervisor()) {
-                ProcessEventsRealPc();
-            }
-            ZeroMemory(gInCtx, sizeof(gInCtx));
-            *(UINT32 *)(void *)(gInCtx + 0) = 0;
-            *(UINT32 *)(void *)(gInCtx + 4) = (1u << 0) | (1u << gMouseIntrDci);
-            Slot = (UINT32 *)(void *)InSlot();
-            Slot[0] = (CtxEntries << 27) | ((UINT32)Speed << 20) | Route;
-            Slot[1] = (UINT32)RootPort << 16;
-            if (HubSlot != 0 && Speed < 3) {
-                Slot[2] = (UINT32)HubSlot | ((UINT32)TtPort << 8);
-            }
-            RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-            Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
-            Endpoint[0] = (UINT32)Interval << 16;
-            Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
-            Deq = PointerToPhysical(gMouseIntrRing) | 1;
-            Endpoint[2] = (UINT32)Deq;
-            Endpoint[3] = (UINT32)(Deq >> 32);
-            Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
-            FlushDma(gInCtx, sizeof(gInCtx));
-            FlushDma(gMouseIntrRing, sizeof(gMouseIntrRing));
-            if (Command(PointerToPhysical(gInCtx),
-                        TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) == 0) {
-                BootLog("Boot: XHCI mouse stop+add ok\n");
-                /* 键盘曾 Stop：调用方须 Sync+Queue */
-                return 2;
-            }
-            BootLog("Boot: XHCI mouse stop+add fail, drop-add\n");
-            AddOnly = 0;
-            ZeroMemory(gInCtx, sizeof(gInCtx));
-            *(UINT32 *)(void *)(gInCtx + 0) = (1u << gIntrDci) | (1u << gMouseIntrDci);
-            *(UINT32 *)(void *)(gInCtx + 4) =
-                (1u << 0) | (1u << gIntrDci) | (1u << gMouseIntrDci);
-            Slot = (UINT32 *)(void *)InSlot();
-            Slot[0] = (CtxEntries << 27) | ((UINT32)Speed << 20) | Route;
-            Slot[1] = (UINT32)RootPort << 16;
-            if (HubSlot != 0 && Speed < 3) {
-                Slot[2] = (UINT32)HubSlot | ((UINT32)TtPort << 8);
-            }
-            {
-                UINT32 *KeyboardEndpoint = (UINT32 *)(void *)InEndpoint(gIntrDci);
-                UINT8 KeyboardInterval = gKeyboardEndpointInterval ? gKeyboardEndpointInterval
-                                             : (UINT8)((Speed >= 3) ? 3 : FsInterval(10));
-                UINT16 KeyboardMaxPacketSize = (gKeyboardMaxPacketSize && gKeyboardMaxPacketSize <= 64) ? gKeyboardMaxPacketSize : 8;
-                UINT64 KeyboardDequeue;
-
-                RingInitialize(gIntrRing, &gIntr, RING_SIZE);
-                KeyboardEndpoint[0] = (UINT32)KeyboardInterval << 16;
-                KeyboardEndpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)KeyboardMaxPacketSize << 16);
-                KeyboardDequeue = PointerToPhysical(gIntrRing) | 1;
-                KeyboardEndpoint[2] = (UINT32)KeyboardDequeue;
-                KeyboardEndpoint[3] = (UINT32)(KeyboardDequeue >> 32);
-                KeyboardEndpoint[4] = (UINT32)KeyboardMaxPacketSize | ((UINT32)KeyboardMaxPacketSize << 16);
-                FlushDma(gIntrRing, sizeof(gIntrRing));
-            }
-            RingInitialize(gMouseIntrRing, &gMouseIntr, RING_SIZE);
-            Endpoint = (UINT32 *)(void *)InEndpoint(gMouseIntrDci);
-            Endpoint[0] = (UINT32)Interval << 16;
-            Endpoint[1] = (3u << 1) | (7u << 3) | ((UINT32)MaxPacketSize << 16);
-            Deq = PointerToPhysical(gMouseIntrRing) | 1;
-            Endpoint[2] = (UINT32)Deq;
-            Endpoint[3] = (UINT32)(Deq >> 32);
-            Endpoint[4] = (UINT32)MaxPacketSize | ((UINT32)MaxPacketSize << 16);
-            FlushDma(gInCtx, sizeof(gInCtx));
-            FlushDma(gMouseIntrRing, sizeof(gMouseIntrRing));
-            if (Command(PointerToPhysical(gInCtx),
-                        TRB_TYPE(TRB_CONFIG_EP) | TRB_SLOT(SlotId), 0) < 0) {
-                DebugWrite("XHCI: mouse endpoint failed\n");
-                return 0;
-            }
-            return 3; /* drop-add：调用方 Sync 键盘 */
+            return ConfigureMouseInterruptFallback(SlotId, CtxEntries, Speed, Route,
+                                                   RootPort, HubSlot, TtPort, Interval,
+                                                   MaxPacketSize);
         }
         DebugWrite("XHCI: mouse endpoint failed\n");
         return 0;

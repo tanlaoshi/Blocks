@@ -16,28 +16,9 @@
  * 无 sick 收口勿再 QueueIntr/QueueMouseIntr（secondary 扫空双投递会打死挂起的 IN）。
  * AddressDeviceOnPort/ForceUntilPed 见 freeze 则拒。Wifi/FTDI/CDC claim 入口亦早退。
  * Force/Address：ClaimPort.c；全局 BSS：Xhci.c。
+ * 根口扫描 / 收口：ClaimPortsScan.c / ClaimPortsFinish.c（PR-NORM-11）。
  */
 #include "XHCI/Private.h"
-
-/*
- * PR-H-msc-4：单口 claim — Address（可 Force PR）+ SetConfig + Bulk IN/OUT。
- * 优先扫已有 hub 子口（键鼠经 hub 时 U 盘常在同 hub）；再扫其它根口。
- * 不 SCSI、不挂 FAT、不碰键鼠口。成功则保留 slot；Ready=1。
- */
-/* 根口鼠标被扫盘复位后，槽号仍在会挡住补绑。 */
-static void NoteMouseRootDropped(void) {
-    UINT32 Ps;
-
-    if (gMouseSlotId == 0 || gMousePort == 0 || gMouseHubSlot != 0) {
-        return;
-    }
-    Ps = ReadMmio32(gOperationalBase + PortRegister(gMousePort));
-    if ((Ps & PORTSC_CCS) && (Ps & PORTSC_PED)) {
-        return;
-    }
-    BootLog("Boot: MSC root dropped mouse\n");
-    DisableSlot(gMouseSlotId);
-}
 
 void XhciPortEnumerateUnfreeze(void) {
     gXhciPortEnumerateFreeze = 0;
@@ -48,7 +29,6 @@ int XhciPortEnumerateIsFrozen(void) {
 }
 
 int ClaimPorts(void) {
-    UINT32 P;
     int Ok = 0;
     int Sick = 0;
 
@@ -122,7 +102,7 @@ int ClaimPorts(void) {
     /* 键盘/鼠已走 hub：先扫子口找 MSC（与 U 盘同 hub 时） */
     if (gHubSlotId != 0 && EnumerateHubChildren()) {
         Ok = 1;
-        goto done;
+        return ClaimPortsFinishAfterScan(Ok, Sick);
     }
 
     /*
@@ -130,109 +110,8 @@ int ClaimPorts(void) {
      * Pass1：仅扫 Pass0 记入 NeedForce 的口再 Force——U 盘启动后固件留下的
      * PED 口软 Address 常失败，旧逻辑本轮不回头 → claim none → Files 无 U 盘。
      */
-    {
-        int Pass;
-
-        for (Pass = 0; Pass < 2 && !Ok && !Sick; Pass++) {
-            if (Pass == 1) {
-                if (gPortNeedForcePr == 0) {
-                    break;
-                }
-                BootLog("Boot: MSC claim NeedForce pass\n");
-            }
-            for (P = 1; P <= gMaxPorts && P <= 32u && !Sick; P++) {
-                UINT32 Ps;
-                UINT8 Speed;
-                int Force;
-                int HubRc;
-                int Arc;
-
-                if (Pass == 1 && !(gPortNeedForcePr & (1u << P))) {
-                    continue;
-                }
-                Ps = ReadMmio32(gOperationalBase + PortRegister(P));
-                if (!(Ps & PORTSC_CCS)) {
-                    continue;
-                }
-                HalBootLogoBump(90);
-                if (gSlotId != 0 && P == gPort1) {
-                    continue;
-                }
-                if (gMouseSlotId != 0 && P == gMousePort) {
-                    continue;
-                }
-                if (gHubSlotId != 0 && P == gHubRootPort) {
-                    continue;
-                }
-                if (gFtdiClaimed && gFtdiPort == P) {
-                    continue;
-                }
-                if (gCdcClaimed && gCdcPort == P) {
-                    continue;
-                }
-                /* btx-1 已软探的 HCI 口：勿再 Force/Address（曾把 boot-watch 钉到 E0→假 Gone） */
-                if (XhciBluetoothSeen() && P == XhciBluetoothRootPort()) {
-                    continue;
-                }
-
-                /*
-                 * 已 PED：软 Address；未 PED / NeedForce：Force。
-                 * 真机根口 FS/LS 不碰（几乎不是 U 盘；Force PR 会弄掉邻口鼠 — NUC
-                 * RUNTIME：口8 dclass=0xE0 反复 NeedForce → root dropped mouse + cc=12）。
-                 */
-                Speed = PortSpeed(Ps);
-                if (!HalCpuIsHypervisor() && Speed > 0 && Speed < 3) {
-                    gPortNeedForcePr &= ~(1u << P);
-                    continue;
-                }
-                if (!ForceUntilPed(P, &Force)) {
-                    BootLogHexV("Boot: MSC claim force-fail port=", P, 2);
-                    continue;
-                }
-                /*
-                 * U 盘起但 claim 常失败（PED 软 Address cc=04）：记下口，
-                 * PollUnplug 盯 CCS——棒拔了仍能钉 Gone 出大窗。
-                 */
-                if (gMscBootWatchArm) {
-                    gMscBootWatchPort = P;
-                }
-
-                Arc = AddressPort(P, Force, &Speed);
-                if (Arc < 0) {
-                    Sick = 1;
-                    break;
-                }
-                if (Arc == 0) {
-                    continue;
-                }
-
-                gTransferSlot = gMscScanSlot;
-                if (GetDeviceDesc() < 0) {
-                    BootLogHex("Boot: MSC claim desc fail port=", P, 2);
-                    gPortNeedForcePr |= (1u << P);
-                    DisableSlot(gMscScanSlot);
-                    gMscScanSlot = 0;
-                    continue;
-                }
-
-                HubRc = TryHubOnRoot(P, Speed, &Ok);
-                if (HubRc == 1) {
-                    goto done;
-                }
-                if (HubRc == 0) {
-                    if (gXhciCmdSick) {
-                        Sick = 1;
-                        break;
-                    }
-                    continue;
-                }
-
-                if (FinishClaim(P, Speed)) {
-                    Ok = 1;
-                    goto done;
-                }
-            }
-        }
+    if (ClaimPortsScanRootPorts(&Ok, &Sick)) {
+        return ClaimPortsFinishAfterScan(Ok, Sick);
     }
 
     if (!Ok && !Sick) {
@@ -241,50 +120,5 @@ int ClaimPorts(void) {
     if (Sick) {
         BootLog("Boot: MSC claim abort (cmd sick)\n");
     }
-done:
-    /* watch 钉/清见 XhciMscBootWatchAfterClaim；EnsureSecondary 勿对 freeze Hot */
-    XhciMscBootWatchAfterClaim(Ok);
-    /*
-     * sick：Recover + 重武装 HID，保持 Dual MSI。
-     * 勿 FallbackToPoll——切 POLL 后鼠标轮询极卡（U 盘启 Claim 失败常见）。
-     * 返回 -1：AutoBeforeFs 勿再整轮重试。
-     */
-    if (gXhciCmdSick || Sick) {
-        BootLog("Boot: MSC claim recover after sick\n");
-        RecoverCommandRing();
-        gXhciCmdSick = 0;
-        gXhciCmdWaitMs = 0;
-        gXhciCmdAttempts = 0;
-        /* 冻结后续 UART/WiFi 等根口 Force，避免再超时把鼠打卡 */
-        gXhciPortEnumerateFreeze = 1;
-        BootLog("Boot: XHCI port enum freeze (keep mouse)\n");
-        if (!HalCpuIsHypervisor()) {
-            int i;
-
-            for (i = 0; i < 32; i++) {
-                ProcessEventsRealPc();
-            }
-            ServiceHidCompletions();
-        }
-        NoteMouseRootDropped();
-        /* 勿 RecoverEndpoint0：sick 后再发 Stop/ResetEP 会二次超时（见最新串口） */
-        if (gSlotId != 0 && gIntrDci != 0) {
-            QueueIntr();
-        }
-        if (gMouseSlotId != 0 && gMouseIntrDci != 0) {
-            QueueMouseIntr();
-        }
-        return -1;
-    }
-    NoteMouseRootDropped();
-    /*
-     * usb-hid-keep：无 sick 时键鼠 IN 仍挂着（桌面 secondary / 扫空常见）。
-     * 再 QueueIntr/QueueMouseIntr = 双投递 → HC 不完成 → 鼠死、键只能偶发。
-     * sick 路径上方已 Recover 后重武装；此处只 freeze，勿碰 HID 环。
-     */
-    if (!Ok) {
-        gXhciPortEnumerateFreeze = 1;
-        BootLog("Boot: XHCI port enum freeze (msc empty, keep mouse)\n");
-    }
-    return Ok;
+    return ClaimPortsFinishAfterScan(Ok, Sick);
 }

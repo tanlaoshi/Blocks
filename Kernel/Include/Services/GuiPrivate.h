@@ -6,6 +6,7 @@
 
 #include "Gui.h"
 #include "BootTypes.h"
+#include "HalDevices.h"
 
 #define DRAG_MIN_STEP 3
 #define DRAG_ROW_MAX  1920
@@ -307,6 +308,15 @@ void RedrawDragFrameSlide(int DragIdx, UINT32 OldX, UINT32 OldY);
 void GuiPollHoldDrain(UINT32 Sw, UINT32 Sh);
 void GuiPollHoldApply(UINT32 *LastX, UINT32 *LastY, UINT8 *LastBtn,
                       INT8 *WheelSum, int *Any, int *NeedMove);
+/* PollMouseApply.c · PR-NORM-8 */
+void PollMouseMapReport(UINT32 ScreenWidth, UINT32 ScreenHeight,
+                        const HAL_MOUSE_REPORT *Raw, UINT32 *OutX,
+                        UINT32 *OutY);
+void PollMouseHandleButtonEdges(UINT32 X, UINT32 Y, UINT8 Buttons,
+                                UINT8 *LastBtn);
+void PollMouseApplyMergedMove(UINT32 LastX, UINT32 LastY, UINT8 LastBtn);
+void PollMouseApplyWheel(UINT32 LastX, UINT32 LastY, UINT8 LastBtn,
+                         INT8 WheelSum);
 int GuiDragFrameTry(void);
 void GuiDragFrameLeave(void);
 void GuiDragFrameAccount(void);

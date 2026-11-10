@@ -12,20 +12,13 @@
  * 然后 DesktopTickClock（栏/图标/TTF 画）→ StoreUiPump。
  * MSC 热拔与钟采样在 Worker：DesktopWorkerTick（runtime-c-tick）。
  * 拖边界 / Slide vs Composite：见 Drag/ 下各 .c 头。长 IO 挪光标 Motion.c；点击 Click。
+ * 边沿/合并位移/滚轮：PollMouseApply.c（PR-NORM-8）。
  */
 #include "GuiPrivate.h"
 #include "HalVideo.h"
 #include "Hal.h"
-#include "Debug.h"
 #include "Desktop.h"
-#include "SettingsUi.h"
-#include "FilesUi.h"
 #include "StoreUi.h"
-#include "EditUi.h"
-#include "Console.h"
-#include "Process.h"
-#include "SerialLog.h"
-#include "Scheduler.h"
 
 void GuiInputLock(int Locked) {
     HAL_MOUSE_REPORT Raw;
@@ -53,9 +46,8 @@ int GuiInputLocked(void) {
 /* 从 XHCI 鼠标队列取报告并交给 GuiOnMouse（单一边沿/拖动逻辑） */
 void GuiPollMouse(void) {
     HAL_MOUSE_REPORT Raw;
-    UINT32 Sw;
-    UINT32 Sh;
-    GUI_MOUSE_STATE M;
+    UINT32 ScreenWidth;
+    UINT32 ScreenHeight;
     UINT32 LastX;
     UINT32 LastY;
     UINT8 LastBtn;
@@ -73,12 +65,16 @@ void GuiPollMouse(void) {
         return;
     }
 
-    HalVideoGetSize(&Sw, &Sh);
-    if (Sw == 0) {
-        Sw = gGuiWindowManager.ScreenWidth ? gGuiWindowManager.ScreenWidth : 1024;
+    HalVideoGetSize(&ScreenWidth, &ScreenHeight);
+    if (ScreenWidth == 0) {
+        ScreenWidth = gGuiWindowManager.ScreenWidth
+                          ? gGuiWindowManager.ScreenWidth
+                          : 1024;
     }
-    if (Sh == 0) {
-        Sh = gGuiWindowManager.ScreenHeight ? gGuiWindowManager.ScreenHeight : 768;
+    if (ScreenHeight == 0) {
+        ScreenHeight = gGuiWindowManager.ScreenHeight
+                           ? gGuiWindowManager.ScreenHeight
+                           : 768;
     }
 
     /* PR-S-input-drain：drain 由 YieldForPollInput（稳态）+ StoreIoBreath（长 IO）负责；此处只 dequeue */
@@ -101,7 +97,7 @@ void GuiPollMouse(void) {
 
     /* 另一核正在写后缓冲：只留最后一包，勿再合成、勿 Present */
     if (GuiPresentBlocked()) {
-        GuiPollHoldDrain(Sw, Sh);
+        GuiPollHoldDrain(ScreenWidth, ScreenHeight);
         return;
     }
 
@@ -121,20 +117,7 @@ void GuiPollMouse(void) {
         UINT32 X;
         UINT32 Y;
 
-        if (Raw.Absolute || Raw.X > 4096u || Raw.Y > 4096u) {
-            X = (UINT32)((UINT64)Raw.X * (UINT64)Sw / 32767ull);
-            Y = (UINT32)((UINT64)Raw.Y * (UINT64)Sh / 32767ull);
-        } else {
-            X = Raw.X;
-            Y = Raw.Y;
-        }
-        if (X >= Sw) {
-            X = Sw > 0 ? Sw - 1 : 0;
-        }
-        if (Y >= Sh) {
-            Y = Sh > 0 ? Sh - 1 : 0;
-        }
-
+        PollMouseMapReport(ScreenWidth, ScreenHeight, &Raw, &X, &Y);
         LastX = X;
         LastY = Y;
         NeedMove = 1;
@@ -143,129 +126,13 @@ void GuiPollMouse(void) {
         if (Raw.Wheel != 0) {
             WheelSum = (INT8)(WheelSum + Raw.Wheel);
         }
-
         /* 按下/抬起边沿：必须逐包看；拖动位移合并到队尾再 Update */
-        if ((Raw.Buttons & 1) && !(LastBtn & 1)) {
-            /*
-             * 本函数外层 DeferPush：关窗轻量路径须能真正 Present。
-             * 与图标拖一致 Pause，避免 Close 画完仍被 Defer 吞掉。
-             */
-            GuiPresentDeferPause();
-            GuiHandleClick(X, Y);
-            GuiPresentDeferResume();
-        }
-        if (!(Raw.Buttons & 1) && (LastBtn & 1)) {
-            int WasIconDrag = DesktopIconDragActive();
-            UINTN Wait = 0;
-
-            GuiResizeEnd();
-            GuiDragEnd();
-            if (WasIconDrag) {
-                /* 与窗拖一致：等帧锁再归位 Present，防 Shell 核半帧 Present 拖尾 */
-                while (!GuiDragFrameTry()) {
-                    HalCpuRelax();
-                    if ((++Wait & 0x3FFFu) == 0) {
-                        (void)SchedulerCondResched();
-                    }
-                }
-                GuiPresentDeferPause();
-                DesktopIconDragEnd();
-                /*
-                 * End 已擦落点并画在吸附格。若仍 Visible，CursorPaint→Restore
-                 * 会把拖动末帧 gGuiWindowManager.Under（旧落点图标）吐回 → 仅松手残影。
-                 */
-                if (gGuiWindowManager.CursorVisible) {
-                    UINT32 Sx = gGuiWindowManager.SaveX;
-                    UINT32 Sy = gGuiWindowManager.SaveY;
-                    UINT32 SbW = gGuiWindowManager.SaveWidth;
-                    UINT32 SbH = gGuiWindowManager.SaveHeight;
-
-                    gGuiWindowManager.CursorVisible = 0;
-                    if (SbW != 0 && SbH != 0) {
-                        ClearIconFootprint(Sx, Sy, SbW, SbH);
-                    }
-                }
-                GraphicsIrqEnter();
-                CursorPaint();
-                HalVideoPresentFlush();
-                GraphicsIrqLeave();
-                GuiPresentDeferResume();
-                GuiDragFrameLeave();
-            }
-        }
-        if ((Raw.Buttons & 2) && !(LastBtn & 2)) {
-            GuiRightClickPlaceholder(X, Y);
-        }
-        /* Settings/Store：仅按键边沿逐包；位移悬停合并到队尾 GuiPointerMove */
-        if (gGuiWindowManager.DragWin < 0 && gGuiWindowManager.ResizeWin < 0 && ((Raw.Buttons ^ LastBtn) & 1u)) {
-            if (GuiFocusKind() == GUI_WIN_SETTINGS) {
-                SettingsUiOnPointer(X, Y, Raw.Buttons);
-            } else if (GuiFocusKind() == GUI_WIN_STORE) {
-                StoreUiOnPointer(X, Y, Raw.Buttons);
-            } else if (GuiFocusKind() == GUI_WIN_EDIT) {
-                EditUiOnPointer(X, Y, Raw.Buttons);
-            }
-        }
-        LastBtn = Raw.Buttons;
+        PollMouseHandleButtonEdges(X, Y, Raw.Buttons, &LastBtn);
     }
     if (NeedMove) {
-        if ((LastBtn & 1) && gGuiWindowManager.ResizeWin >= 0) {
-            /*
-             * 须先 CursorMove：硬件光标只写 CUR_POS；若只改 CursorX 再
-             * Resize/Drag，窗跟上了、箭头仍停在旧位 →「追赶」。
-             * 软路径 CursorMove 在 Drag 时会藏光标（Visible=0）。
-             */
-            CursorMove(LastX, LastY);
-            GuiResizeUpdate(LastX, LastY);
-        } else if ((LastBtn & 1) && gGuiWindowManager.DragWin >= 0) {
-            CursorMove(LastX, LastY);
-            GuiDragUpdate(LastX, LastY);
-        } else if ((LastBtn & 1) && DesktopIconDragActive()) {
-            /*
-             * 占 gDragFrame：Shell 核勿半帧 Present。
-             * 禁止 CursorRestore：gGuiWindowManager.Under 常是「旧位置图标」，Overlay 写回后
-             * 只进光标脏区 → 松手前一路图标残影。改为丢弃 under，壁纸清光标盒。
-             */
-            if (GuiDragFrameTry()) {
-                UINT32 Sx = gGuiWindowManager.SaveX;
-                UINT32 Sy = gGuiWindowManager.SaveY;
-                UINT32 SbW = gGuiWindowManager.SaveWidth;
-                UINT32 SbH = gGuiWindowManager.SaveHeight;
-
-                GuiPresentDeferPause();
-                if (gGuiWindowManager.CursorVisible) {
-                    gGuiWindowManager.CursorVisible = 0;
-                    if (SbW != 0 && SbH != 0) {
-                        ClearIconFootprint(Sx, Sy, SbW, SbH);
-                    }
-                }
-                gGuiWindowManager.CursorX = LastX;
-                gGuiWindowManager.CursorY = LastY;
-                DesktopIconDragUpdate(LastX, LastY);
-                GraphicsIrqEnter();
-                CursorPaint();
-                HalVideoPresentFlush();
-                GraphicsIrqLeave();
-                GuiPresentDeferResume();
-                GuiDragFrameLeave();
-            }
-        } else {
-            GuiPointerMove(LastX, LastY);
-        }
+        PollMouseApplyMergedMove(LastX, LastY, LastBtn);
     }
-    if (WheelSum != 0) {
-        M.X = LastX;
-        M.Y = LastY;
-        M.Buttons = LastBtn;
-        M.Wheel = WheelSum;
-        if (GuiFocusKind() == GUI_WIN_FILES) {
-            FilesUiOnWheel(M.Wheel);
-        } else if (GuiFocusKind() == GUI_WIN_EDIT) {
-            EditUiOnWheel(M.Wheel);
-        } else if (GuiFocusKind() == GUI_WIN_SHELL) {
-            gConsole.OnWheel(M.Wheel);
-        }
-    }
+    PollMouseApplyWheel(LastX, LastY, LastBtn, WheelSum);
     if (Any) {
         gGuiWindowManager.MousePrevBtn = LastBtn;
         gGuiWindowManager.CursorBtn = LastBtn;
@@ -278,4 +145,3 @@ void GuiPollMouse(void) {
     /* 按钮抬起后排队的 Store 作业在此执行，OnPointer 内不再同步拷贝/删文件 */
     StoreUiPump();
 }
-

@@ -1,5 +1,7 @@
 /*
  * EventTransfer.c — Transfer Event 分发（PR-F-xhci-3）
+ *
+ * 键鼠中断完成 → EventTransferHid.c（PR-NORM-11）。
  */
 #include "XHCI/Private.h"
 
@@ -8,13 +10,8 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
     UINT32 Endpoint = (Evt->Control >> 16) & 0x1F;
     UINT32 EvtSlot = (Evt->Control >> 24) & 0xFF;
     UINT64 TrbPtr = Evt->Parameter & ~0xFULL;
-    UINT64 KeyboardLow = PointerToPhysical(gIntrRing);
-    UINT64 KeyboardHigh = KeyboardLow + sizeof(gIntrRing);
-    UINT64 MouseLo = PointerToPhysical(gMouseIntrRing);
-    UINT64 MouseHi = MouseLo + sizeof(gMouseIntrRing);
+    UINT32 Remain = Evt->Status & XHCI_TRB_REMAIN_MASK;
     int Matched = 0;
-    int KeyboardHit = 0;
-    int MouseHit = 0;
 
     gStatTransferAny++;
     gStatLastCc = Code;
@@ -24,7 +21,7 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
     /* EP0(DCI=1) 才唤醒 WaitTransfer，避免 HID IN 误完成 EP0 等待 */
     if (EvtSlot == gTransferSlot && Endpoint == 1) {
         gTransferCode = Code;
-        gTransferRemain = Evt->Status & XHCI_TRB_REMAIN_MASK;
+        gTransferRemain = Remain;
         gTransferDone = 1;
         Matched = 1; /* GET_REPORT/控制传输：勿记入 unmatched 刷屏 */
     }
@@ -33,23 +30,20 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
         ((gMscBulkInDci != 0 && Endpoint == gMscBulkInDci) ||
          (gMscBulkOutDci != 0 && Endpoint == gMscBulkOutDci))) {
         gBulkCode = Code;
-        gBulkRemain = Evt->Status & XHCI_TRB_REMAIN_MASK;
+        gBulkRemain = Remain;
         gBulkDone = 1;
         Matched = 1;
     }
     if (!Matched && gFtdi.MatchTransfer &&
-        gFtdi.MatchTransfer(EvtSlot, Endpoint, TrbPtr, Code,
-                            Evt->Status & 0xFFFFFFu)) {
+        gFtdi.MatchTransfer(EvtSlot, Endpoint, TrbPtr, Code, Remain)) {
         Matched = 1;
     }
     if (!Matched && gCdc.MatchTransfer &&
-        gCdc.MatchTransfer(EvtSlot, Endpoint, TrbPtr, Code,
-                           Evt->Status & 0xFFFFFFu)) {
+        gCdc.MatchTransfer(EvtSlot, Endpoint, TrbPtr, Code, Remain)) {
         Matched = 1;
     }
     if (!Matched &&
-        BluetoothMatchTransfer(EvtSlot, Endpoint, TrbPtr, Code,
-                               Evt->Status & 0xFFFFFFu)) {
+        BluetoothMatchTransfer(EvtSlot, Endpoint, TrbPtr, Code, Remain)) {
         Matched = 1;
     }
     if (!Matched) {
@@ -61,95 +55,13 @@ void EventHandleTransfer(XHCI_TRB *Evt) {
         if ((TrbPtr >= BulkInLo && TrbPtr < BulkInHi) ||
             (TrbPtr >= BulkOutLo && TrbPtr < BulkOutHi)) {
             gBulkCode = Code;
-            gBulkRemain = Evt->Status & XHCI_TRB_REMAIN_MASK;
+            gBulkRemain = Remain;
             gBulkDone = 1;
             Matched = 1;
         }
     }
-    /*
-     * 中断 EP：只认 slot+DCI，或完成 TRB 落在中断环内。
-     * 勿用 EndpointNum（易与 EP0 的 EndpointID=1 撞）或报告缓冲指针
-     * （GET_REPORT 数据 TRB 也指向报告区 → 假 i=、干扰推送）。
-     */
-    KeyboardHit = (gSlotId != 0 && gIntrDci != 0 && Endpoint != 1 &&
-              ((EvtSlot == gSlotId && Endpoint == gIntrDci) ||
-               (TrbPtr >= KeyboardLow && TrbPtr < KeyboardHigh)));
-    MouseHit = (gMouseSlotId != 0 && gMouseIntrDci != 0 && Endpoint != 1 &&
-                ((EvtSlot == gMouseSlotId && Endpoint == gMouseIntrDci) ||
-                 (TrbPtr >= MouseLo && TrbPtr < MouseHi)));
-    if (KeyboardHit) {
+    if (EventHandleTransferHid(Code, Endpoint, EvtSlot, TrbPtr, Remain)) {
         Matched = 1;
-        if (Code == CC_SUCCESS || Code == CC_SHORT_PACKET) {
-            gStatIntrEvt++;
-            gIntrReportReady = 1;
-            gIntrDone = 1;
-        } else if (Code == CC_STOPPED || Code == CC_STOPPED_LEN ||
-                   Code == CC_STOPPED_SHORT) {
-            /*
-             * Stop EP 的副作用：勿 gIntrDone/QueueIntr，否则 Arm 同步时
-             * 会在 SetTrDeq 前再敲门铃 → Context State Error (0x13)。
-             */
-        } else {
-            gStatIntrEvt++;
-            gIntrDone = 1; /* 其它错误：允许重投 */
-            if (gDiagIntrCcLogged < 4) {
-                char Line[64];
-                int N = 0;
-                const char *P = "Boot: XHCI kbd-intr cc=";
-                while (*P && N < 28) {
-                    Line[N++] = *P++;
-                }
-                Line[N++] = (char)('0' + ((Code / 10) % 10));
-                Line[N++] = (char)('0' + (Code % 10));
-                Line[N++] = '\n';
-                Line[N] = 0;
-                LogUsb(Line);
-                gDiagIntrCcLogged++;
-            }
-        }
-    }
-    if (MouseHit) {
-        Matched = 1;
-        if (Code == CC_SUCCESS || Code == CC_SHORT_PACKET) {
-            UINT32 Remain = Evt->Status & XHCI_TRB_REMAIN_MASK;
-            UINT32 Req = gMouseReportLen ? gMouseReportLen : 8;
-
-            gStatMouseEvt++;
-            gMouseReportReady = 1;
-            gMouseIntrDone = 1;
-            /* 短包：Remain=未传完；实际长度=请求-Remain */
-            if (Remain < Req) {
-                gMouseTransferLength = (UINT8)(Req - Remain);
-            } else {
-                gMouseTransferLength = (UINT8)Req;
-            }
-            if (gMouseTransferLength < 3) {
-                gMouseTransferLength = 3;
-            }
-            if (gMouseTransferLength > 8) {
-                gMouseTransferLength = 8;
-            }
-        } else if (Code == CC_STOPPED || Code == CC_STOPPED_LEN ||
-                   Code == CC_STOPPED_SHORT) {
-            /* 同上：Stop 取消，勿重投门铃 */
-        } else {
-            gStatMouseEvt++;
-            gMouseIntrDone = 1;
-            if (gDiagIntrCcLogged < 4) {
-                char Line[64];
-                int N = 0;
-                const char *P = "Boot: XHCI mouse-intr cc=";
-                while (*P && N < 30) {
-                    Line[N++] = *P++;
-                }
-                Line[N++] = (char)('0' + ((Code / 10) % 10));
-                Line[N++] = (char)('0' + (Code % 10));
-                Line[N++] = '\n';
-                Line[N] = 0;
-                LogUsb(Line);
-                gDiagIntrCcLogged++;
-            }
-        }
     }
     if (!Matched) {
         gStatUnmatched++;

@@ -1,9 +1,11 @@
 /*
- * UsbHost/HidBootKeyboardLeds.c — Boot 锁灯 SET_REPORT（对表 X64/Duo）
+ * UsbHost/HidBootKeyboardLeds.c — Boot 锁灯 SET_REPORT（对表 Pixel-3c / X64）
  *
  * HID 1.11 §8.3：bit0 Num / bit1 Caps / bit2 Scroll。
- * 真机：Configure 末或首中断立刻 SET_REPORT → 2711。只在锁键翻转时发。
- * 失败 ClearTT 再试一次；仍败 sticky 4Ecc，不拆 a2。
+ *
+ * Pixel 坑（禁重蹈）：Configure 末或首中断立刻 SET_REPORT → sticky 2711，
+ * 出字/枚举跟着坏。绿法＝此处只 Bind；仅 Caps/Num/Scroll 翻转时 Push。
+ * 失败 ClearTT 再试；仍败 sticky 4Ecc，不拆 a2。
  */
 #include "UsbHost/Private.h"
 
@@ -40,6 +42,11 @@ void UsbHostHidBootKeyboardLedsPush(void) {
         return;
     }
     LedByte = UsbHostHidBootKeyboardLedOutputByte();
+    /*
+     * 勿在 Configure/首中断发（Pixel→2711）。此处仅锁键翻转。
+     * 先 Drain 陈旧 TE，再 SET_REPORT；败则 ClearTT 再试（对表 Pixel-3c）。
+     */
+    UsbHostDrainTransferEvents();
     for (Try = 0; Try < 2u; Try++) {
         if (Try != 0 && sHubSlotId != 0) {
             Output = UsbHostDeviceContextSlot(sKeyboardSlotId);
@@ -53,6 +60,7 @@ void UsbHostHidBootKeyboardLedsPush(void) {
         if (UsbHostXhciControlTransfer(sKeyboardSlotId, 0x21u, 0x09u,
                                        HID_SET_REPORT_OUTPUT_VALUE, sKeyboardInterface,
                                        &LedByte, 1u) == 0) {
+            UsbHostKeyboardStatusCodeSet(0x4D00u | LedByte);
             return;
         }
     }

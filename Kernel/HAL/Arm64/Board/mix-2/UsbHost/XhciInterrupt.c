@@ -20,6 +20,8 @@ static UINT32 sInterruptSlotId;
 static UINT32 sInterruptDeviceContextIndex;
 static UINT32 sInterruptTransferLength;
 static UINT8 sInterruptArmed;
+static UINT8 sInterruptCompletionPending;
+static UINT32 sInterruptPendingCompletionCode;
 
 static UINT64 PointerPhysical(const void *Pointer) {
     return (UINT64)(UINTN)Pointer;
@@ -75,6 +77,16 @@ void UsbHostDrainTransferEvents(void) {
     }
 }
 
+void UsbHostInterruptNoteTransferEvent(UINT32 EndpointId, UINT32 CompletionCode) {
+    if (sInterruptArmed == 0 || EndpointId == 0 ||
+        EndpointId != sInterruptDeviceContextIndex) {
+        return;
+    }
+    sInterruptPendingCompletionCode = CompletionCode;
+    sInterruptCompletionPending = 1u;
+    sInterruptArmed = 0;
+}
+
 void UsbHostInterruptRingInitialize(UINT32 SlotId, UINT32 DeviceContextIndex,
                                     UINT32 TransferLength) {
     sInterruptSlotId = SlotId;
@@ -84,6 +96,8 @@ void UsbHostInterruptRingInitialize(UINT32 SlotId, UINT32 DeviceContextIndex,
         sInterruptTransferLength = sizeof(sInterruptReportBuffer);
     }
     sInterruptArmed = 0;
+    sInterruptCompletionPending = 0;
+    sInterruptPendingCompletionCode = 0;
     RingInitialize(sInterruptRing, &sInterruptRingState,
                    TRANSFER_RING_TRANSFER_REQUEST_BLOCK_COUNT);
     MemoryZero(sInterruptReportBuffer, sizeof(sInterruptReportBuffer));
@@ -107,26 +121,31 @@ int UsbHostInterruptSubmitOnceDetailed(UINT32 *CompletionCodeOut) {
     if (sInterruptSlotId == 0 || sInterruptDeviceContextIndex == 0) {
         return -1;
     }
-    if (sInterruptArmed == 0) {
-        UsbHostDrainTransferEvents();
-        MemoryZero(sInterruptReportBuffer, sizeof(sInterruptReportBuffer));
-        UsbHostCacheCleanRange(sInterruptReportBuffer, sizeof(sInterruptReportBuffer));
-        MemoryZero(&Block, sizeof(Block));
-        Block.Parameter = PointerPhysical(sInterruptReportBuffer);
-        Block.Status = sInterruptTransferLength;
-        Block.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_NORMAL) |
-                        TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION |
-                        TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_SHORT_PACKET;
-        RingEnqueue(sInterruptRing, &sInterruptRingState, &Block);
-        UsbHostRingDoorbell(sInterruptSlotId, sInterruptDeviceContextIndex);
-        sInterruptArmed = 1;
+    if (sInterruptCompletionPending != 0) {
+        sInterruptCompletionPending = 0;
+        CompletionCode = sInterruptPendingCompletionCode;
+    } else {
+        if (sInterruptArmed == 0) {
+            UsbHostDrainTransferEvents();
+            MemoryZero(sInterruptReportBuffer, sizeof(sInterruptReportBuffer));
+            UsbHostCacheCleanRange(sInterruptReportBuffer, sizeof(sInterruptReportBuffer));
+            MemoryZero(&Block, sizeof(Block));
+            Block.Parameter = PointerPhysical(sInterruptReportBuffer);
+            Block.Status = sInterruptTransferLength;
+            Block.Control = TRANSFER_REQUEST_BLOCK_TYPE(TRANSFER_REQUEST_BLOCK_NORMAL) |
+                            TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_COMPLETION |
+                            TRANSFER_REQUEST_BLOCK_INTERRUPT_ON_SHORT_PACKET;
+            RingEnqueue(sInterruptRing, &sInterruptRingState, &Block);
+            UsbHostRingDoorbell(sInterruptSlotId, sInterruptDeviceContextIndex);
+            sInterruptArmed = 1;
+        }
+        /* 短窥：超时保持武装；由 HubWatch 紧轮询，勿长堵再刷屏 */
+        if (UsbHostWaitTransferEventLimited(&CompletionCode, 2000u,
+                                            sInterruptDeviceContextIndex) != 0) {
+            return -1;
+        }
+        sInterruptArmed = 0;
     }
-    /* 短窥：超时保持武装；由 HubWatch 紧轮询，勿长堵再刷屏 */
-    if (UsbHostWaitTransferEventLimited(&CompletionCode, 2000u,
-                                        sInterruptDeviceContextIndex) != 0) {
-        return -1;
-    }
-    sInterruptArmed = 0;
     if (CompletionCodeOut != 0) {
         *CompletionCodeOut = CompletionCode;
     }
@@ -159,6 +178,11 @@ UINT8 *UsbHostInterruptReportBuffer(void) {
 int UsbHostInterruptSubmitOnceDetailed(UINT32 *CompletionCodeOut) {
     (void)CompletionCodeOut;
     return -1;
+}
+
+void UsbHostInterruptNoteTransferEvent(UINT32 EndpointId, UINT32 CompletionCode) {
+    (void)EndpointId;
+    (void)CompletionCode;
 }
 
 void UsbHostDrainTransferEvents(void) {

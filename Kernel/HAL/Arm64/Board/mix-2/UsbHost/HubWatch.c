@@ -2,7 +2,7 @@
  * UsbHost/HubWatch.c — PR-MIX2-USB-3：hub → HID Boot → splash 回显
  *
  * 对表 Pixel HubWatch；保 Type-C Maintain + PON 短按。
- * 验收：§7.0 换线后 `e a1` + `k a2`；敲键 `KEY>`。
+ * §7.0：拔坞须 DisableSlot 拆树，插回再枚举；禁只清软件态。
  */
 #include "UsbHost/Private.h"
 
@@ -11,6 +11,45 @@
 #endif
 
 #if BOARD_MIX2_USB_HOST_BRINGUP
+
+static void TearDownDockTree(UINT32 *KeyboardSlotId, UINT32 *HubSlotId,
+                             UINT32 *HubAddress, UINT32 *HubRootPort, UINT32 *HubSpeed,
+                             UINT32 *HubPortCount, UINT32 *SawConnect,
+                             UINT32 *EnumerateCooldown, UINT32 *HidScanCooldown) {
+    if (KeyboardSlotId != 0 && *KeyboardSlotId != 0) {
+        (void)UsbHostXhciDisableSlot(*KeyboardSlotId);
+        *KeyboardSlotId = 0;
+    }
+    if (HubSlotId != 0 && *HubSlotId != 0) {
+        (void)UsbHostXhciDisableSlot(*HubSlotId);
+        *HubSlotId = 0;
+    }
+    UsbHostHidBootKeyboardLedsBind(0, 0, 0, 0);
+    UsbHostInterruptRingInitialize(0, 0, 0);
+    if (HubAddress != 0) {
+        *HubAddress = 0;
+    }
+    if (HubRootPort != 0) {
+        *HubRootPort = 0;
+    }
+    if (HubSpeed != 0) {
+        *HubSpeed = 0;
+    }
+    if (HubPortCount != 0) {
+        *HubPortCount = 0;
+    }
+    if (SawConnect != 0) {
+        *SawConnect = 0;
+    }
+    if (EnumerateCooldown != 0) {
+        *EnumerateCooldown = 0;
+    }
+    if (HidScanCooldown != 0) {
+        *HidScanCooldown = 0;
+    }
+    UsbHostEnumerateStatusCodeClear();
+    UsbHostKeyboardStatusCodeClear();
+}
 
 void BoardMix2UsbHubWatch(void) {
     UINT32 PortCount;
@@ -102,9 +141,23 @@ void BoardMix2UsbHubWatch(void) {
             }
 
             /*
-             * §7.0：Host 起来后再接坞/键须能扫到；禁「一趟 Freeze 锁死 4a08」。
-             * 成功 a2 才 Freeze；失败 ~2s 清 sticky 再扫（跳过坞内 MSC）。
+             * §7.0 热插：拔坞 → DisableSlot 拆树 → wait dock；插回再 enum。
+             * 有键后偶发 CCS=0：连续多次才当真拔（对表 Pixel）。
              */
+            if (AnyConnect == 0 && SawConnect != 0) {
+                DisconnectStreak++;
+                if (DisconnectStreak >= (KeyboardSlotId != 0 ? 64u : 8u)) {
+                    TearDownDockTree(&KeyboardSlotId, &HubSlotId, &HubAddress,
+                                     &HubRootPort, &HubSpeed, &HubPortCount,
+                                     &SawConnect, &EnumerateCooldown, &HidScanCooldown);
+                    DisconnectStreak = 0;
+                    LastKeyboardPaintSerial = 0xFFFFFFFFu;
+                    BoardBringUpSplashPaintLine(112, "wait dock");
+                }
+            } else {
+                DisconnectStreak = 0;
+            }
+
             if (HubSlotId == 0 && AnyConnectPort != 0 && EnumerateCooldown == 0) {
                 UINT32 Target =
                     (PreferUsb2Port != 0) ? PreferUsb2Port : AnyConnectPort;
@@ -129,6 +182,10 @@ void BoardMix2UsbHubWatch(void) {
                             BoardBringUpSplashPaintLine(112, "hid retry");
                         }
                     } else if (HubSlotId != 0) {
+                        (void)UsbHostXhciDisableSlot(HubSlotId);
+                        HubSlotId = 0;
+                        HubAddress = 0;
+                        EnumerateCooldown = 4u;
                         BoardBringUpSplashPaintLine(112, "hub setup");
                     }
                 } else {
@@ -147,26 +204,6 @@ void BoardMix2UsbHubWatch(void) {
                     HidScanCooldown = 10u;
                     BoardBringUpSplashPaintLine(112, "hid retry");
                 }
-            } else if (AnyConnect == 0 && SawConnect != 0) {
-                DisconnectStreak++;
-                if (DisconnectStreak >= 8u) {
-                    HubAddress = 0;
-                    HubSlotId = 0;
-                    KeyboardSlotId = 0;
-                    HubRootPort = 0;
-                    HubSpeed = 0;
-                    HubPortCount = 0;
-                    SawConnect = 0;
-                    EnumerateCooldown = 0;
-                    HidScanCooldown = 0;
-                    DisconnectStreak = 0;
-                    LastKeyboardPaintSerial = 0xFFFFFFFFu;
-                    UsbHostEnumerateStatusCodeClear();
-                    UsbHostKeyboardStatusCodeClear();
-                    BoardBringUpSplashPaintLine(112, "wait dock");
-                }
-            } else {
-                DisconnectStreak = 0;
             }
             if (EnumerateCooldown > 0) {
                 EnumerateCooldown--;

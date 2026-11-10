@@ -177,6 +177,7 @@ void UsbHostInterruptRingInitialize(UINT32 SlotId, UINT32 DeviceContextIndex,
 UINT64 UsbHostInterruptRingPhysical(void);
 UINT8 *UsbHostInterruptReportBuffer(void);
 int UsbHostInterruptSubmitOnceDetailed(UINT32 *CompletionCodeOut);
+void UsbHostInterruptNoteTransferEvent(UINT32 EndpointId, UINT32 CompletionCode);
 void UsbHostDrainTransferEvents(void);
 
 int UsbHostQusbPhyInitialize(void);

@@ -98,32 +98,43 @@ static int WaitEvent(UINT32 WantedType, UINT32 *CompletionCode, UINT32 *SlotIdOu
         Control = Event->Control;
         Cycle = Control & 1u;
         if (Cycle != sEventConsumerCycleState) {
-            /* 命令/EP0 1ms；中断窥紧循环 */
-            if (EndpointIdOrZero == 0) {
+            /*
+             * 命令(0)与 EP0(1) 须 1ms 节拍；若 EP0 走「中断窥」无 sleep，
+             * Guard 瞬间耗尽 → hub GetStatus/Reset 假超时（真机 231/hid retry）。
+             * DCI≥2 才是中断短窥紧循环。
+             */
+            if (EndpointIdOrZero <= 1u) {
                 UsbHostStallMilliseconds(1u);
             }
             continue;
         }
         Type = (Control >> TRANSFER_REQUEST_BLOCK_TYPE_SHIFT) & 0x3Fu;
         EndpointId = (Control >> TRANSFER_REQUEST_BLOCK_ENDPOINT_SHIFT) & 0x1Fu;
-        if (Type == WantedType &&
-            (EndpointIdOrZero == 0 || EndpointId == EndpointIdOrZero)) {
-            if (CompletionCode != 0) {
-                *CompletionCode = (Event->Status >> 24) & 0xFFu;
+        if (Type == WantedType) {
+            UINT32 ThisCompletion = (Event->Status >> 24) & 0xFFu;
+
+            if (EndpointIdOrZero == 0 || EndpointId == EndpointIdOrZero) {
+                if (CompletionCode != 0) {
+                    *CompletionCode = ThisCompletion;
+                }
+                if (SlotIdOut != 0) {
+                    *SlotIdOut = (Control >> TRANSFER_REQUEST_BLOCK_SLOT_SHIFT) & 0xFFu;
+                }
+                sEventDequeueIndex++;
+                if (sEventDequeueIndex >= EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT) {
+                    sEventDequeueIndex = 0;
+                    sEventConsumerCycleState ^= 1u;
+                }
+                UsbHostWriteMmio64(sRuntimeBase + 0x38u,
+                                   PointerPhysical(&sEventRing[sEventDequeueIndex]) |
+                                       (1ULL << 3));
+                UsbHostWriteMmio32(sOperationalBase + 4u, USB_STATUS_EVENT_INTERRUPT);
+                return 0;
             }
-            if (SlotIdOut != 0) {
-                *SlotIdOut = (Control >> TRANSFER_REQUEST_BLOCK_SLOT_SHIFT) & 0xFFu;
+            /* 等 EP0 时中断 TE 须出队；暂存勿丢（锁灯 SET_REPORT 并发） */
+            if (WantedType == TRANSFER_REQUEST_BLOCK_TRANSFER_EVENT) {
+                UsbHostInterruptNoteTransferEvent(EndpointId, ThisCompletion);
             }
-            sEventDequeueIndex++;
-            if (sEventDequeueIndex >= EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT) {
-                sEventDequeueIndex = 0;
-                sEventConsumerCycleState ^= 1u;
-            }
-            UsbHostWriteMmio64(sRuntimeBase + 0x38u,
-                               PointerPhysical(&sEventRing[sEventDequeueIndex]) |
-                                   (1ULL << 3));
-            UsbHostWriteMmio32(sOperationalBase + 4u, USB_STATUS_EVENT_INTERRUPT);
-            return 0;
         }
         sEventDequeueIndex++;
         if (sEventDequeueIndex >= EVENT_RING_TRANSFER_REQUEST_BLOCK_COUNT) {

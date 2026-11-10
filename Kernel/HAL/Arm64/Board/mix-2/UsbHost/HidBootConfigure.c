@@ -64,9 +64,10 @@ void UsbHostKeyboardStatusCodeSet(UINT32 Code) {
 
     /*
      * 首趟扫完 Freeze 后不再追加（重扫曾让 k 数字一直滚）。
-     * 例外：0xA2 ConfigEP 成仍写入。
+     * 例外：0xA2；锁灯 4D=SET_REPORT 成 / 4E=败（Freeze 后须仍可见）。
      */
-    if (sKeyboardStatusLogFrozen != 0 && Code != 0xA2u) {
+    if (sKeyboardStatusLogFrozen != 0 && Code != 0xA2u &&
+        (Code & 0xFF00u) != 0x4D00u && (Code & 0xFF00u) != 0x4E00u) {
         return;
     }
     sKeyboardStatusCode = Code;

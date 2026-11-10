@@ -89,7 +89,8 @@ int UsbHostXhciControlTransfer(UINT32 SlotId, UINT8 RequestType, UINT8 Request,
     UsbHostEndpointZeroEnqueue(SlotId, &Block);
 
     UsbHostRingEndpointZeroDoorbell(SlotId);
-    if (UsbHostWaitTransferEvent(&CompletionCode) != 0) {
+    /* 只等 EP0 DCI=1（规格）；勿把中断 TE 误认成 SET_REPORT 完成 */
+    if (UsbHostWaitTransferEventLimited(&CompletionCode, 5000u, 1u) != 0) {
         sControlLastCompletionCode = 0xFFu;
         return -1;
     }

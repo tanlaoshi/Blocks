@@ -62,12 +62,22 @@ Windows 手测拷贝：`\\ASUS\Users\Tank\mix2\boot-chiron.img`。
 
 ---
 
-## 手测 · `PR-MIX2-USB-3`（HID 键 · 本刀）
+## 手测 · `PR-MIX2-USB-3`（HID 键 ✅）
 
 1. 同上换线；USB-A 插键盘。  
 2. 绿：`e a1` + **`k a2`**；敲键 splash **`KEY>`** 出字。  
-3. 红：停在 `k 22`/`k 42`/`D…l0`；或无 `KEY>`。  
-4. 短按电源仍应进 fastboot。
+3. **热插**：拔坞 → `wait dock`；插回 → 再 `e a1`/`k a2`（须 DisableSlot 拆树）。  
+4. 短按电源 → fastboot；再刷机须 **电脑线直接插手机**（单口物理；坞口接不了 PC）。
+
+---
+
+## 手测 · `PR-MIX2-USB-3c`（Caps/Num/Scroll 锁灯 · 本刀）
+
+> **禁**：Configure / 首中断发 SET_REPORT（Pixel → `2711`）。只锁键翻转。
+
+1. USB-3 绿后按 **Caps / Num / Scroll**。  
+2. 绿：灯跟 + sticky **`4Dxx`**（xx=LED 字节）。  
+3. 红：`4Ecc`＝SET_REPORT 败（把码发回）；`2711`＝又踩早发。
 
 ---
 

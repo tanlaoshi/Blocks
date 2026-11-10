@@ -16,7 +16,11 @@ static void FormatListRow(int Idx, char *Row, int RowMax) {
         return;
     }
     ItemLabel(Idx, Label, (int)sizeof(Label));
-    Mark = (Idx == CurrentItemIndex());
+    if (gCat == SETTINGS_CAT_HOTSEND) {
+        Mark = HotSendItemMarked(Idx);
+    } else {
+        Mark = (Idx == CurrentItemIndex());
+    }
     Row[0] = Mark ? '*' : ' ';
     Row[1] = ' ';
     for (j = 0; Label[j] && j < RowMax - 3; j++) {

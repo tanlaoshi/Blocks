@@ -2,6 +2,9 @@
  * PaintDetail.c — Settings 详情栏（自 Paint.c 纯搬 · PR-NORM-16）
  */
 #include "SettingsUiPrivate.h"
+#include "Hal/Ksend.h"
+#include "HalDevices.h"
+#include "NetConfig.h"
 
 /* 详情栏软换行；返回 1=画了字 */
 static int DrawDetailText(UINT32 X, UINT32 *Ty, UINT32 MaxY, UINT32 MaxW,
@@ -155,6 +158,38 @@ void DrawDetail(UINT32 X, UINT32 Y, UINT32 W, UINT32 H) {
                              ThemeTextMuted());
         (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(MESSAGE_SET_LIVE_DB),
                              ThemeTextMuted());
+        Ty += Gap;
+    } else if (gCat == SETTINGS_CAT_HOTSEND && Ty + Step * 2u <= MaxY) {
+        MESSAGE_ID StateMsg = MESSAGE_SET_HOTSEND_STATE_IDLE;
+        UINT32 Ip;
+        char IpLine[40];
+        int IpLength = 0;
+
+        if (KsendServeState() == KSEND_SERVE_LISTENING) {
+            StateMsg = MESSAGE_SET_HOTSEND_STATE_LISTEN;
+        } else if (KsendServeState() == KSEND_SERVE_TRANSFERRING) {
+            StateMsg = MESSAGE_SET_HOTSEND_STATE_TRANSFER;
+        }
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, LocaleString(StateMsg),
+                             ThemeText());
+        Ip = NetConfigGetIp();
+        if (Ip == 0u) {
+            Ip = HalNetGetIpAddress();
+        }
+        if (Ip != 0u) {
+            IpLine[IpLength++] = 'I';
+            IpLine[IpLength++] = 'P';
+            IpLine[IpLength++] = ' ';
+            HalNetFormatIp(Ip, IpLine + IpLength, (int)sizeof(IpLine) - IpLength);
+            (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step, IpLine,
+                                 ThemeTextMuted());
+        }
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step,
+                             LocaleString(MESSAGE_SET_HOTSEND_HINT_LISTEN),
+                             ThemeTextMuted());
+        (void)DrawDetailText(X + Pad, &Ty, MaxY, MaxTextW, Step,
+                             LocaleString(MESSAGE_SET_HOTSEND_HINT_OVERRIDE),
+                             ThemeTextAccent());
         Ty += Gap;
     }
 

@@ -30,6 +30,7 @@ typedef enum {
     SETTINGS_CAT_SCALE,
     SETTINGS_CAT_THEME,
     SETTINGS_CAT_EFFECTS,
+    SETTINGS_CAT_HOTSEND,
     SETTINGS_CAT_COUNT
 } SETTINGS_CAT;
 
@@ -66,6 +67,8 @@ typedef struct {
 #define SCALE_COUNT         4
 #define THEME_CHOICE_COUNT  3
 #define EFFECTS_CHOICE_COUNT 4
+#define HOTSEND_ITEM_COUNT   8
+#define HOTSEND_PORT_COUNT   3
 #define MODES_FALLBACK_COUNT 5
 
 /* ===== 全局（定义在 SettingsUi.c） ===== */
@@ -138,6 +141,9 @@ void ApplyScaleChoice(int Index);
 void ApplyDisplayChoice(int Index);
 void ApplyThemeChoice(int Index);
 void ApplyEffectsChoice(int Index);
+void ApplyHotSendChoice(int Index);
+int HotSendItemMarked(int Index);
+UINT16 HotSendPortAt(int Index);
 void ApplyItem(int Idx);
 
 /* SettingsUiPaint.c */

@@ -3,6 +3,7 @@
  * 核心：SettingsUi.c
  */
 #include "SettingsUiPrivate.h"
+#include "Hal/Ksend.h"
 
 const char *CatLabel(SETTINGS_CAT C) {
     /* 三分栏左侧短名（locale 已去掉「N.」与括号说明） */
@@ -15,6 +16,7 @@ const char *CatLabel(SETTINGS_CAT C) {
     case SETTINGS_CAT_SCALE:    return LocaleString(MESSAGE_SET_SCALE);
     case SETTINGS_CAT_THEME:    return LocaleString(MESSAGE_SET_THEME);
     case SETTINGS_CAT_EFFECTS:  return LocaleString(MESSAGE_SET_EFFECTS);
+    case SETTINGS_CAT_HOTSEND:  return LocaleString(MESSAGE_SET_HOTSEND);
     default:                    return "?";
     }
 }
@@ -73,6 +75,7 @@ int ItemCount(void) {
     case SETTINGS_CAT_SCALE:    return SCALE_COUNT;
     case SETTINGS_CAT_THEME:    return THEME_CHOICE_COUNT;
     case SETTINGS_CAT_EFFECTS:  return EFFECTS_CHOICE_COUNT;
+    case SETTINGS_CAT_HOTSEND:  return HOTSEND_ITEM_COUNT;
     default:                    return 0;
     }
 }
@@ -165,6 +168,52 @@ void ItemLabel(int Idx, char *Out, int OutMax) {
             StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_EFFECTS_HIGH));
         }
         break;
+    case SETTINGS_CAT_HOTSEND: {
+        char PortLabel[16];
+        UINT16 Port;
+        int Length;
+
+        if (Idx == 0) {
+            if (KsendServeState() == KSEND_SERVE_LISTENING ||
+                KsendServeState() == KSEND_SERVE_TRANSFERRING) {
+                StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_STOP));
+            } else {
+                StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_START));
+            }
+            break;
+        }
+        if (Idx >= 1 && Idx <= HOTSEND_PORT_COUNT) {
+            Port = HotSendPortAt(Idx - 1);
+            Length = 0;
+            PortLabel[Length++] = 'P';
+            PortLabel[Length++] = 'o';
+            PortLabel[Length++] = 'r';
+            PortLabel[Length++] = 't';
+            PortLabel[Length++] = ' ';
+            if (Port >= 10000u) {
+                PortLabel[Length++] = (char)('0' + (Port / 10000u) % 10u);
+            }
+            if (Port >= 1000u) {
+                PortLabel[Length++] = (char)('0' + (Port / 1000u) % 10u);
+            }
+            PortLabel[Length++] = (char)('0' + (Port / 100u) % 10u);
+            PortLabel[Length++] = (char)('0' + (Port / 10u) % 10u);
+            PortLabel[Length++] = (char)('0' + (Port % 10u));
+            PortLabel[Length] = 0;
+            StringCopy(Out, OutMax, PortLabel);
+            break;
+        }
+        if (Idx == 4) {
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_REBOOT_ON));
+        } else if (Idx == 5) {
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_REBOOT_OFF));
+        } else if (Idx == 6) {
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_BACKUP_ON));
+        } else if (Idx == 7) {
+            StringCopy(Out, OutMax, LocaleString(MESSAGE_SET_HOTSEND_BACKUP_OFF));
+        }
+        break;
+    }
     default:
         break;
     }
@@ -233,6 +282,17 @@ int CurrentItemIndex(void) {
         return 2;
     case SETTINGS_CAT_EFFECTS:
         return (int)ThemeGetEffectLevel();
+    case SETTINGS_CAT_HOTSEND: {
+        UINT16 Port = KsendServePreferencePort();
+        int PortIndex;
+
+        for (PortIndex = 0; PortIndex < HOTSEND_PORT_COUNT; PortIndex++) {
+            if (HotSendPortAt(PortIndex) == Port) {
+                return PortIndex + 1;
+            }
+        }
+        return 1;
+    }
     default:
         return 0;
     }

@@ -10,11 +10,33 @@
 
 #include "BootTypes.h"
 
+typedef enum {
+    KSEND_SERVE_IDLE = 0,
+    KSEND_SERVE_LISTENING = 1,
+    KSEND_SERVE_TRANSFERRING = 2
+} KSEND_SERVE_STATE;
+
 int KsendInfo(void);
 int KsendSelfTest(void);
 int KsendTransfer(const char *TargetPath, int Reboot, int Backup);
-/* Port=0 → 默认 26992；WaitMilliseconds=0 → 一直等连接 */
+/* 阻塞封装：ListenStart 后泵 Poll 直到 Idle（壳用） */
 int KsendServe(UINT16 Port, UINT32 WaitMilliseconds);
 UINT16 KsendServeDefaultPort(void);
+
+/* 后台听：Settings / Worker 泵 Poll；Stop 可取消听 */
+int KsendServeListenStart(UINT16 Port, UINT32 WaitMilliseconds);
+void KsendServeListenStop(void);
+void KsendServePoll(void);
+KSEND_SERVE_STATE KsendServeState(void);
+int KsendServeLastResult(void);
+UINT16 KsendServeListenPort(void);
+void KsendServeRequestAbort(void);
+
+UINT16 KsendServePreferencePort(void);
+void KsendServePreferenceSetPort(UINT16 Port);
+int KsendServePreferenceReboot(void);
+void KsendServePreferenceSetReboot(int On);
+int KsendServePreferenceBackup(void);
+void KsendServePreferenceSetBackup(int On);
 
 #endif /* HAL_KSEND_H */

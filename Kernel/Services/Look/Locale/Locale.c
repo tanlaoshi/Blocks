@@ -168,6 +168,7 @@ static void LocaleTtfPreheatCritical(void) {
         MESSAGE_SET_SCALE,
         MESSAGE_SET_THEME,
         MESSAGE_SET_EFFECTS,
+        MESSAGE_SET_HOTSEND,
         /* 失根大窗：盘没了禁再 Preheat；须开机灌格，否则只剩英文 ASCII */
         MESSAGE_BOOT_GONE_TITLE,
         MESSAGE_BOOT_GONE_BODY,

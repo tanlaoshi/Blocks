@@ -148,12 +148,17 @@ static int TransferRun(KSEND_RUN *Run) {
         return -1;
     }
     Run->ReceiveMilliseconds = KsendMilliseconds() - PhaseStart;
-    KsendPhaseNoteReceive(Run->ReceiveMilliseconds, Run->Written);
+    if (Run->FlushMilliseconds > Run->ReceiveMilliseconds) {
+        Run->NetMilliseconds = 0;
+    } else {
+        Run->NetMilliseconds = Run->ReceiveMilliseconds - Run->FlushMilliseconds;
+    }
+    KsendPhaseNoteReceive(Run);
     PhaseStart = KsendMilliseconds();
     Error = KsendFinishImage(Run);
     Run->FinishMilliseconds = KsendMilliseconds() - PhaseStart;
     if (Error == 0) {
-        KsendPhaseNote("finish", Run->FinishMilliseconds);
+        KsendPhaseNoteFinish(Run);
         Run->TotalMilliseconds = KsendMilliseconds() - TransferStart;
         KsendPhaseNote("total", Run->TotalMilliseconds);
     }

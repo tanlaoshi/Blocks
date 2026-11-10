@@ -28,7 +28,11 @@ void KsendRunReset(KSEND_RUN *Run) {
     Run->PrepareMilliseconds = 0;
     Run->ReadyTableMilliseconds = 0;
     Run->ReceiveMilliseconds = 0;
+    Run->NetMilliseconds = 0;
+    Run->FlushMilliseconds = 0;
     Run->FinishMilliseconds = 0;
+    Run->VerifyMilliseconds = 0;
+    Run->InstallMilliseconds = 0;
     Run->TotalMilliseconds = 0;
 }
 

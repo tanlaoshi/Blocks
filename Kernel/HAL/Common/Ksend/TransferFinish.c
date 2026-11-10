@@ -1,5 +1,8 @@
 /*
  * TransferFinish.c — 校验 / 安装 .new / 失败回滚与 .crc 收尾
+ *
+ * PR-KSEND-PHASE-FLUSH：VerifyMilliseconds = sync+盘验；
+ * InstallMilliseconds = staging 改名 + .crc。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -54,6 +57,8 @@ int KsendFinishImage(KSEND_RUN *Run) {
     UINT32 Block = 0;
     UINT32 Want = 0;
     UINT32 Got = 0;
+    UINT32 VerifyStart;
+    UINT32 InstallStart;
     int Error;
     int Rc;
 
@@ -69,12 +74,14 @@ int KsendFinishImage(KSEND_RUN *Run) {
         Run->Failure = KSEND_FAIL_FILE_STATUS;
         return -1;
     }
+    VerifyStart = KsendMilliseconds();
     /* .new 是空起的新建文件，无旧尾巴；只对直接覆写 Target 补零 */
     if (!KsendRunUsesStaging(Run) && Run->NewSize < Run->OldSize) {
         KsendNote("note: FAT has no truncate; tail zeroed, file keeps old size");
         Error = KsendFileZeroRange(Path, Run->NewSize,
                                  Run->OldSize - Run->NewSize);
         if (Error != FAT_OK) {
+            Run->VerifyMilliseconds = KsendMilliseconds() - VerifyStart;
             Run->Error = Error;
             Run->Failure = KSEND_FAIL_SHRINK;
             return -1;
@@ -82,12 +89,14 @@ int KsendFinishImage(KSEND_RUN *Run) {
     }
     Error = FileSystemFileSync(Path);
     if (Error != FAT_OK) {
+        Run->VerifyMilliseconds = KsendMilliseconds() - VerifyStart;
         Run->Error = Error;
         Run->Failure = KSEND_FAIL_FLUSH;
         return -1;
     }
     Rc = KsendFileVerify(Path, Run->NewSize, &gKsendNewImage,
                          Run->TrailerCrc, &Block, &Want, &Got);
+    Run->VerifyMilliseconds = KsendMilliseconds() - VerifyStart;
     if (Rc != 1) {
         Run->Failure = KSEND_FAIL_VERIFY;
         Run->FailBlock = Block;
@@ -95,13 +104,16 @@ int KsendFinishImage(KSEND_RUN *Run) {
         Run->FailGot = Got;
         return -1;
     }
+    InstallStart = KsendMilliseconds();
     Error = KsendStagingInstall(Run);
     if (Error != FAT_OK) {
+        Run->InstallMilliseconds = KsendMilliseconds() - InstallStart;
         Run->Error = Error;
         Run->Failure = KSEND_FAIL_FILE_STATUS;
         return -1;
     }
     CacheStoreAfterVerify(Run);
+    Run->InstallMilliseconds = KsendMilliseconds() - InstallStart;
     return 0;
 }
 

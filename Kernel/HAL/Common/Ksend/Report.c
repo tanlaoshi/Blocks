@@ -140,19 +140,39 @@ void KsendPhaseNote(const char *Name, UINT32 Milliseconds) {
     KsendNote(Line);
 }
 
-void KsendPhaseNoteReceive(UINT32 Milliseconds, UINT32 Written) {
+void KsendPhaseNoteReceive(const KSEND_RUN *Run) {
     char Line[KSEND_TEXT_BYTES];
     KSEND_TEXT Out;
 
+    if (Run == 0) {
+        return;
+    }
     KsendTextReset(&Out, Line, (int)sizeof(Line));
     KsendTextPut(&Out, "phase receive");
-    KsendTextPutField(&Out, "ms", Milliseconds);
-    KsendTextPutField(&Out, "written", Written);
-    if (Milliseconds > 0u) {
+    KsendTextPutField(&Out, "ms", Run->ReceiveMilliseconds);
+    KsendTextPutField(&Out, "net", Run->NetMilliseconds);
+    KsendTextPutField(&Out, "flush", Run->FlushMilliseconds);
+    KsendTextPutField(&Out, "written", Run->Written);
+    if (Run->ReceiveMilliseconds > 0u) {
         /* 每块 4 KiB → kib_per_second = written×4×1000/ms */
         KsendTextPutField(&Out, "kib_per_second",
-                          (Written * 4u * 1000u) / Milliseconds);
+                          (Run->Written * 4u * 1000u) / Run->ReceiveMilliseconds);
     }
+    KsendNote(Line);
+}
+
+void KsendPhaseNoteFinish(const KSEND_RUN *Run) {
+    char Line[KSEND_TEXT_BYTES];
+    KSEND_TEXT Out;
+
+    if (Run == 0) {
+        return;
+    }
+    KsendTextReset(&Out, Line, (int)sizeof(Line));
+    KsendTextPut(&Out, "phase finish");
+    KsendTextPutField(&Out, "ms", Run->FinishMilliseconds);
+    KsendTextPutField(&Out, "verify", Run->VerifyMilliseconds);
+    KsendTextPutField(&Out, "install", Run->InstallMilliseconds);
     KsendNote(Line);
 }
 
@@ -171,7 +191,11 @@ void KsendSuccessLine(const KSEND_RUN *Run) {
     KsendTextPutField(&Out, "prepare", Run->PrepareMilliseconds);
     KsendTextPutField(&Out, "ready", Run->ReadyTableMilliseconds);
     KsendTextPutField(&Out, "receive", Run->ReceiveMilliseconds);
+    KsendTextPutField(&Out, "net", Run->NetMilliseconds);
+    KsendTextPutField(&Out, "flush", Run->FlushMilliseconds);
     KsendTextPutField(&Out, "finish", Run->FinishMilliseconds);
+    KsendTextPutField(&Out, "verify", Run->VerifyMilliseconds);
+    KsendTextPutField(&Out, "install", Run->InstallMilliseconds);
     KsendTextPutField(&Out, "total", Run->TotalMilliseconds);
     KsendTextFlush(&Out);
 }

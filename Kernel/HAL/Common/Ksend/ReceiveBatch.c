@@ -4,6 +4,7 @@
  * 契约：Flush 成功后 Ack 表有效，调用方发等量 'A'。
  * 上限 = READY win=（有线至多 WINDOW_MAX；串口/Wi‑Fi 1）。
  * PR-KSEND-BATCH-WRITE：Flush 整窗一次 WriteAt（减 Seek/Ensure/改目录次数）。
+ * PR-KSEND-PHASE-FLUSH：累计 Run->FlushMilliseconds（仅 WriteAt 墙钟）。
  */
 #include "Ksend/Private.h"
 #include "Ksend/TransportPrivate.h"
@@ -143,7 +144,13 @@ int KsendReceiveBatchFlush(KSEND_RUN *Run) {
         sBatchBytes = 0;
         return 0;
     }
-    Error = KsendFileWriteAt(Run->WritePath, Offset, KsendFileBuffer(), sBatchBytes);
+    {
+        UINT32 WriteStart = KsendMilliseconds();
+
+        Error = KsendFileWriteAt(Run->WritePath, Offset, KsendFileBuffer(),
+                                 sBatchBytes);
+        Run->FlushMilliseconds += KsendMilliseconds() - WriteStart;
+    }
     if (Error != FAT_OK) {
         Run->Error = Error;
         Run->FailBlock = sBatchFirstIndex;

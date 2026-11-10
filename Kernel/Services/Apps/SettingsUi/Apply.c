@@ -147,6 +147,9 @@ void ApplyItem(int Idx) {
     case SETTINGS_CAT_EFFECTS:
         ApplyEffectsChoice(Idx);
         break;
+    case SETTINGS_CAT_HOTSEND:
+        ApplyHotSendChoice(Idx);
+        break;
     default:
         break;
     }

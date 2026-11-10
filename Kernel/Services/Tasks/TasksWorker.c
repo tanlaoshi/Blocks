@@ -24,6 +24,7 @@ __attribute__((weak)) void BoardUsbHostControllerRescanHid(void) {
 #include "Scheduler.h"
 #include "StoreJob.h"
 #include "StoreUi.h"
+#include "Hal/Ksend.h"
 
 static volatile UINT32 gWorkerCount;
 
@@ -34,6 +35,7 @@ UINT32 WorkerLoopCount(void) {
 /*
  * Worker 泵优先级（runtime-d-worker；对表用，改序另刀）：
  *   0 DesktopWorkerTick     — MSC 热插拔+钟采样（story-s3；圈首；continue 不饿死）
+ *   0a KsendServePoll       — 热传后台听（Accept 短切片；连上后同步 Transfer）
  *   0b DesktopBluetoothTrayWorkerPoll — 托盘 LE Scan/Connect 后台（勿堵 Gui）
  *   1 DesktopEnsureIconsLoaded + MenuRebuilt — gui-icons-defer；先于旁路扫盘
  *   2 EnsureSecondary + HDA（msc/3；仍无光标）
@@ -81,6 +83,10 @@ void WorkerTask(void) {
             }
         }
         DesktopWorkerTick();
+        /* 热传后台听：短 Accept；连上后本圈同步 Transfer（Freeze） */
+        if (KsendServeState() != KSEND_SERVE_IDLE) {
+            KsendServePoll();
+        }
         /* 托盘 Scan：Gui 只置 Want；此处跑 LE Scan（Hal 分片泵 HID） */
         DesktopBluetoothTrayWorkerPoll();
         /*

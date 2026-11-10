@@ -55,9 +55,18 @@ void ShellTask(void) {
          * PR-S-input-drain：drain 已移交 YieldForPollInput（稳态）+ StoreIoBreath（长 IO）；
          * 此处只 dequeue。
          */
-        while (HalKeyboardDequeue(&Report)) {
-            FeedHid(&Report, &Previous);
-            Previous = Report;
+        /*
+         * usb-boot-unplug / 热更冻窗：InputLocked 时只排空，勿 FeedHid
+         *（TasksPumpKeyboard 已有同门；Shell 环曾漏检 → 键搅大窗）。
+         */
+        if (GuiInputLocked()) {
+            while (HalKeyboardDequeue(&Report)) {
+            }
+        } else {
+            while (HalKeyboardDequeue(&Report)) {
+                FeedHid(&Report, &Previous);
+                Previous = Report;
+            }
         }
         /*
          * PR-19 修复：按住方向键的重复节拍。此处在 for(;;) 每圈都走——queue 空、
@@ -65,7 +74,9 @@ void ShellTask(void) {
          * 勿只放 TasksPumpKeyboard：那只在用户态 poll 时跑，Edit 内核窗按住
          * 期间没有事件 → 永远不 tick（真机「只动一行」）。
          */
-        TasksHidRepeatTick();
+        if (!GuiInputLocked()) {
+            TasksHidRepeatTick();
+        }
         /* 鼠标泵仅 GuiTask（runtime-a-poll）；此处勿 GuiPollMouse */
         /*
          * COM1 RX → Shell / 用户 stdin 环（CoolTerm 遥控）。
@@ -79,6 +90,10 @@ void ShellTask(void) {
             while (HalSerialDataReady() && n < MaxRx) {
                 char C = HalSerialReadChar();
                 n++;
+                /* 失根大窗：抽掉 RX 防 FIFO 满，勿喂壳/焦点窗 */
+                if (GuiInputLocked()) {
+                    continue;
+                }
                 /*
                  * exec 中：勿喂 shell，泄进 stdin 环供 read(0)；
                  * 若直接跳过不抽 RX，CoolTerm 粘贴同样会丢字。

@@ -60,6 +60,10 @@ static void HidRepeatTick(void) {
     UINT64 Now;
     UINT64 Step;
 
+    if (GuiInputLocked()) {
+        gRepeatKey = 0;
+        return;
+    }
     if (gRepeatKey == 0) {
         return;
     }
@@ -146,6 +150,10 @@ void FeedHid(HAL_KEYBOARD_REPORT *Report, HAL_KEYBOARD_REPORT *Previous) {
     UINT8 Key;
     int WasDown;
 
+    /* 失根大窗 / 热更冻窗：任何入口勿投递（Shell 环曾漏检 InputLocked） */
+    if (GuiInputLocked()) {
+        return;
+    }
     if (Report != 0) {
         /* 最近一份报告 = 当前按键状态（按住时 USB 不重发，抬起报告会覆盖） */
         gLastReport = *Report;

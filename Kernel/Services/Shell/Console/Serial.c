@@ -119,6 +119,10 @@ static void SerialRun(void) {
         }
         while (HalKeyboardDequeue(&Report)) {
             int i;
+            /* 失根大窗：只排空，勿进壳（对表 ShellTask InputLocked） */
+            if (GuiInputLocked()) {
+                continue;
+            }
             for (i = 0; i < 6; i++) {
                 UINT8 Key = Report.KeyCode[i];
                 int Was = 0;

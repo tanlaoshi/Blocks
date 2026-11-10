@@ -703,6 +703,7 @@ USER_LIB_GRAPHICS_OBJ = $(USER_VIRT_DIR)/lib_graphics.o
 USER_LIB_GRAPHICS_BATCH_OBJ = $(USER_VIRT_DIR)/lib_graphics_batch.o
 USER_LIB_UI_OBJ = $(USER_VIRT_DIR)/lib_ui.o
 USER_LIB_UI_WIDGETS_OBJ = $(USER_VIRT_DIR)/lib_ui_widgets.o
+USER_LIB_UI_WIDGETS_KEYBOARD_OBJ = $(USER_VIRT_DIR)/lib_ui_widgets_keyboard.o
 USER_LIB_UI_IM_OBJ = $(USER_VIRT_DIR)/lib_ui_im.o
 USER_LIB_UI_STYLE_OBJ = $(USER_VIRT_DIR)/lib_ui_style.o
 USER_LIB_GRAPHICS_A = $(USER_VIRT_DIR)/libGraphics.a

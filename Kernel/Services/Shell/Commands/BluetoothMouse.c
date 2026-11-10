@@ -1,5 +1,5 @@
 /*
- * BluetoothMouse.c — 壳 bt mouse <n|addr>（PR-BTM-8）
+ * BluetoothMouse.c — 壳 bt mouse / 重连（PR-BTM-8/10）
  */
 #include "ShellPrivate.h"
 #include "Console.h"
@@ -83,27 +83,43 @@ static int ResolveLescanIndex(const char *Arg, UINTN *IndexOut) {
     return HalBluetoothLeScanFindAddress(Want, IndexOut);
 }
 
-void ShellBluetoothMouseConnect(int Argc, char **Argv) {
-    UINTN Index = 0;
+static void WriteMouseFail(void) {
     UINT16 Stage = 0;
     UINT8 Status = 0;
+
+    HalBluetoothLeLastError(&Stage, &Status);
+    gConsole.Write("bt: mouse fail stage=");
+    gConsole.WriteHex32(Stage);
+    gConsole.Write(" status=");
+    gConsole.WriteHex32(Status);
+    gConsole.Write("\n");
+}
+
+void ShellBluetoothMouseConnect(int Argc, char **Argv) {
+    UINTN Index = 0;
 
     if (!HalBluetoothReady()) {
         gConsole.Write("bt: not ready\n");
         return;
     }
-    if (Argc < 3 || ResolveLescanIndex(Argv[2], &Index) != 0) {
-        gConsole.Write("bt: mouse <n|aa:bb:cc:dd:ee:ff>  (from lescan)\n");
+    /* 无参：同会话重连上次鼠（BTM-10）；有参：lescan 序号或地址 */
+    if (Argc < 3) {
+        gConsole.Write("bt: mouse reconnect — wake MX Master BT\n");
+        if (HalBluetoothMouseReconnect(0) != 0) {
+            WriteMouseFail();
+            return;
+        }
+        gConsole.Write("bt: mouse ok (reconnect; USB mouse still live)\n");
+        return;
+    }
+    if (ResolveLescanIndex(Argv[2], &Index) != 0) {
+        gConsole.Write(
+            "bt: mouse [<n|aa:bb:..>]  (omit = reconnect last)\n");
         return;
     }
     gConsole.Write("bt: mouse connect — keep moving MX Master\n");
     if (HalBluetoothMouseConnect(Index, 0) != 0) {
-        HalBluetoothLeLastError(&Stage, &Status);
-        gConsole.Write("bt: mouse fail stage=");
-        gConsole.WriteHex32(Stage);
-        gConsole.Write(" status=");
-        gConsole.WriteHex32(Status);
-        gConsole.Write("\n");
+        WriteMouseFail();
         return;
     }
     gConsole.Write("bt: mouse ok (drag / click; USB mouse still live)\n");

@@ -117,11 +117,12 @@ void ShellBluetoothLeDisconnect(void) {
         gConsole.Write("bt: not ready\n");
         return;
     }
-    if (HalBluetoothLeDisconnect() != 0) {
+    /* BTM-10：断 LE + 拆 HOGP/Notify 会话，便于同会话 bt mouse 重连 */
+    if (HalBluetoothMouseDisconnect() != 0) {
         gConsole.Write("bt: disconnect fail\n");
         return;
     }
-    gConsole.Write("bt: le disconnected\n");
+    gConsole.Write("bt: mouse disconnected\n");
 }
 
 void ShellBluetoothSmpJustWorks(void) {

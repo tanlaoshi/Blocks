@@ -34,6 +34,9 @@ void BluetoothHidInputNoteArmed(UINT16 ReportValueHandle, UINT8 ReportId) {
     sNotifyArmed = (ReportValueHandle != 0u) ? 1 : 0;
     sLoggedFirstReport = 0;
     if (!sNotifyArmed) {
+        SpinLockAcquire(&sBluetoothHidLock);
+        sMouseReadIndex = sMouseWriteIndex;
+        SpinLockRelease(&sBluetoothHidLock);
         return;
     }
     BootLogHex("bt: hid armed handle=", ReportValueHandle, 4);
@@ -145,6 +148,16 @@ static void ParseAndPush(const UINT8 *Value, UINT16 ValueLength) {
         return;
     }
     PushFromPayload(Value, ValueLength);
+}
+
+/* 订窗口首包：已从 Notify 队列取出，直接灌位移（避免 ok 后还要再晃才动） */
+void BluetoothHidInputPushReportValue(const UINT8 *Value, UINT16 ValueLength) {
+    if (Value == 0 || ValueLength < 3u || !sNotifyArmed) {
+        return;
+    }
+    SpinLockAcquire(&sBluetoothHidLock);
+    ParseAndPush(Value, ValueLength);
+    SpinLockRelease(&sBluetoothHidLock);
 }
 
 static void DrainNotifications(void) {

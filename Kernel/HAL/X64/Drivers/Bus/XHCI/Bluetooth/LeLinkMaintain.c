@@ -158,8 +158,7 @@ static void HandleDisconnectionComplete(const UINT8 *Event, UINT32 Length) {
     BootLogHex("bt: le lost reason=", Reason, 2);
     sMaintainPending.Kind = MAINTAIN_KIND_NONE;
     BluetoothLeConnectionStateClear();
-    BluetoothAttNotifyAcceptSet(0);
-    BluetoothHidInputNoteArmed(0, 0);
+    BluetoothMouseSessionTeardown();
 }
 
 static void HandleRemoteConnectionParameterRequest(const UINT8 *Event,

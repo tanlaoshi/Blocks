@@ -148,12 +148,16 @@ int XhciBluetoothAclOutTest(void);
 int XhciBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
                         UINT32 TimeoutMs); /* PR-BTM-3 */
 int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-4 */
+int XhciBluetoothLeConnectAddress(const UINT8 Address[6], UINT8 AddressType,
+                                  UINT32 TimeoutMs); /* PR-BTM-10 */
 int XhciBluetoothLeDisconnect(void);
 void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs); /* PR-BTM-5 */
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs); /* PR-BTM-6 */
 int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs); /* PR-BTM-7 */
 int XhciBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-8 */
+int XhciBluetoothMouseReconnect(UINT32 TimeoutMs); /* PR-BTM-10 */
+int XhciBluetoothMouseDisconnect(void); /* PR-BTM-10 */
 int XhciBluetoothLeScanFindAddress(const UINT8 Address[6],
                                    UINTN *OneBasedIndexOut);
 void XhciBluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY);

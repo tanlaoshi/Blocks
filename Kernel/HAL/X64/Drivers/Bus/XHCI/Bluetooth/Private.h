@@ -159,11 +159,15 @@ int BluetoothLeScanEntryGet(UINTN OneBasedIndex, UINT8 Address[6],
                             UINT8 *AddressTypeOut);
 int BluetoothLeConnectionHandleGet(UINT16 *Out);
 int BluetoothLePeerAddressGet(UINT8 Out[6], UINT8 *AddressTypeOut);
+int BluetoothLeLastPeerAddressGet(UINT8 Out[6], UINT8 *AddressTypeOut);
 int BluetoothLeIsConnected(void);
 void BluetoothLeConnectionStateClear(void);
 void BluetoothLeConnectionStateSet(UINT16 Handle, const UINT8 Address[6],
                                    UINT8 AddressType);
 void BluetoothLeAbortPending(void);
+void BluetoothLeConnectAddressAbortPending(void);
+int XhciBluetoothLeConnectAddress(const UINT8 Address[6], UINT8 AddressType,
+                                  UINT32 TimeoutMs);
 void BluetoothLeLastErrorSet(UINT16 Opcode, UINT8 Status);
 void BluetoothLeLastErrorGet(UINT16 *OpcodeOut, UINT8 *StatusOut);
 void BluetoothAclInboundFlush(void);
@@ -267,6 +271,7 @@ void BluetoothAttHidDisarmClientConfiguration(UINT16 ConnectionHandle,
                                               const UINT16 *ConfigurationHandles,
                                               UINT16 Count);
 void BluetoothHidInputNoteArmed(UINT16 ReportValueHandle, UINT8 ReportId);
+void BluetoothHidInputPushReportValue(const UINT8 *Value, UINT16 ValueLength);
 int BluetoothHidInputAttach(void);
 void BluetoothHidInputHandoffDesktop(UINT32 CursorX, UINT32 CursorY);
 void BluetoothHidInputServiceNotifications(void);
@@ -276,7 +281,15 @@ int BluetoothHidReportParsePayload(const UINT8 *Payload, UINT16 Length,
                                    int *DeltaYOut, INT8 *WheelOut);
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs);
 int XhciBluetoothAttHidSubscribe(UINT32 TimeoutMs);
+int BluetoothAttHidTryInputNotifications(UINT16 ConnectionHandle,
+                                         UINT32 TimeoutMs);
+void BluetoothAttHidDisarmEnabledNotifications(UINT16 ConnectionHandle);
 int XhciBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
+int XhciBluetoothMouseConnectAddress(const UINT8 Address[6], UINT8 AddressType,
+                                     UINT32 TimeoutMs);
+int XhciBluetoothMouseReconnect(UINT32 TimeoutMs);
+int XhciBluetoothMouseDisconnect(void);
+void BluetoothMouseSessionTeardown(void);
 void BluetoothLeLinkEventDemux(const UINT8 *Event, UINT32 Length);
 int BluetoothLeLinkL2capSignalPush(const UINT8 *AclPayload, UINT16 Length);
 void BluetoothLeLinkMaintainService(void);

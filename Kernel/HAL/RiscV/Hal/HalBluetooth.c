@@ -142,6 +142,10 @@ int HalBluetoothLeDisconnect(void) {
     return -1;
 }
 
+int HalBluetoothMouseDisconnect(void) {
+    return -1;
+}
+
 void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut) {
     if (OpcodeOut != 0) {
         *OpcodeOut = 0;
@@ -168,6 +172,11 @@ int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs) {
 
 int HalBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs) {
     (void)OneBasedIndex;
+    (void)TimeoutMs;
+    return -1;
+}
+
+int HalBluetoothMouseReconnect(UINT32 TimeoutMs) {
     (void)TimeoutMs;
     return -1;
 }

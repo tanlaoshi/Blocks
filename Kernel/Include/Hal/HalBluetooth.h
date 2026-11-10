@@ -84,6 +84,11 @@ int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
 int HalBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
 /* 断当前 LE；无连接 → 0 */
 int HalBluetoothLeDisconnect(void);
+/*
+ * PR-BTM-10：断 LE 鼠会话（HCI Disconnect + HOGP/Notify 拆除）。
+ * 无连接仍清会话 → 0；失败 → -1。
+ */
+int HalBluetoothMouseDisconnect(void);
 /* 最近一次 LE 命令失败：Opcode / HCI Status（0xFE=等 CC 失败） */
 void HalBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 
@@ -110,6 +115,11 @@ int HalBluetoothAttHidSubscribe(UINT32 TimeoutMs);
  * TimeoutMs=0 → 约 20s。成功 → 0（`bt: mouse ok`）；失败 → -1。
  */
 int HalBluetoothMouseConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
+/*
+ * PR-BTM-10：同会话重连上次鼠地址（勿需再 lescan）。
+ * 成功 → 0（`bt: mouse ok`）；无上次对端 / 失败 → -1。
+ */
+int HalBluetoothMouseReconnect(UINT32 TimeoutMs);
 /* 在最近一次 lescan 表里按地址找 1-based 序号；未找到 → -1 */
 int HalBluetoothLeScanFindAddress(const UINT8 Address[HAL_BLUETOOTH_ADDRESS_LENGTH],
                                   UINTN *OneBasedIndexOut);

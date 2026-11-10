@@ -1,7 +1,7 @@
 # 柱规格 · X64 蓝牙鼠（罗技 MX Master 初代 · BLE）
 
 > **状态**：**规格钉死**（`PR-BTM-0` ✅）；活 ★ 见 [`路线图1109.md`](../路线图1109.md)。  
-> **活排期**：[`路线图1109.md`](../路线图1109.md)（★=`PR-BTM-8`；`PR-BTM-1…7` ✅）。  
+> **活排期**：[`路线图1109.md`](../路线图1109.md)（蓝牙鼠 `PR-BTM-0…10` ✅；活 ★ 已推规范债）。  
 > **前置**：NUC 课轨 `btx-1…5` ✅（USB HCI / Reset / BD_ADDR / 经典 Inquiry / visible）。  
 > **靶机**：X64 NUC 板载 HCI（NOTES：`8087:0A2B`）；靶鼠：**罗技 MX Master 初代**（无 2S/3/3S 后缀）。  
 > **产品名**：Blocks。口令同全表。  
@@ -115,7 +115,8 @@ Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
 | `bt visible` / `bt hide` | 已有 | 本机可被发现 |
 | `bt lescan` | BTM-3 | LE 扫；列表序号+地址+名 |
 | `bt mouse <addr\|#>` | BTM-8 | 一键：连 → SMP → HOGP → 挂后端 |
-| `bt disconnect` | BTM-10 | 断当前 LE 鼠连接 |
+| `bt mouse`（无参） | BTM-10 | 同会话重连上次鼠地址（勿需再 lescan） |
+| `bt disconnect` | BTM-10 | 断当前 LE 鼠 + 拆 HOGP 会话 |
 
 ### 双指针策略（钉死）
 
@@ -204,6 +205,24 @@ Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
 4. `bt mouse <n>` → 串口 `smp ok` / `hogp ok`。  
 5. 拖动 / 左键；同时晃 USB 鼠确认未冻。
 
+**`PR-BTM-10` 验收（断线重连 + 文档）**
+
+- [x] `bt disconnect` → `bt: mouse disconnected` / `bt: mouse session down`；光标不再跟 BT 鼠  
+- [x] 鼠底蓝牙通道关再开（可发现）→ 无参 `bt mouse` → `bt: mouse ok`；拖动恢复  
+- [x] 亦可 `bt mouse <n>` 再连；全程 USB 鼠不冻  
+- [x] README：`Kernel/HAL/X64/Drivers/Bus/XHCI/Bluetooth/README.md` 鼠优先自查表齐全  
+
+
+**鼠优先自查表**（改泵前过；详 README）
+
+| 项 | 绿法 |
+|---|---|
+| 等事件循环 | 须 `ServiceHidCompletions` |
+| Consume 热路径 | 禁 `AclOutSend` / `ControlTransfer` |
+| Conn Param | 入队 + 泵尾发 |
+| HidInput Poll | 禁再 `HostPump` |
+| 断线 | `BluetoothMouseSessionTeardown` |
+
 **`PR-BTM-0` 验收（本文档刀 · 无代码）**
 
 - [x] 靶鼠 = 初代 MX Master；链路 = BLE + HOGP；配对 = Just Works 本会话  
@@ -241,6 +260,7 @@ Pi/Duo `Board/*/Bluetooth/`：**本柱不改**（另柱再接上层）。
 
 | 日期 | 说明 |
 | ---- | ---- |
+| 2026-11-10 | **`PR-BTM-10` 收**：无参重连跟手；断线拆会话+ACL 复位；首包对 ValueHandle；README 鼠优先自查 |
 | 2026-11-09 | **`PR-BTM-3` 收**：`bt lescan` 见 2× MX Master；★→`PR-BTM-4` |
 | 2026-11-09 | **`PR-BTM-4` 收**：`bt connect`/`disconnect`；WaitTake Done 叠 Arm 修；连后 RequeueHid |
 | 2026-11-09 | **`PR-BTM-2` 收**：`HostPumpAclOut` + `bt acltest`；★→`PR-BTM-3` |

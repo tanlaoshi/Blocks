@@ -78,6 +78,7 @@ void DesktopContextMenuOpen(UINT32 X, UINT32 Y) {
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
     DesktopNetTrayClose();
+    DesktopBluetoothTrayClose();
     ContextPlace(X, Y);
     gCtxOpen = 1;
     DesktopMarkTaskbar();

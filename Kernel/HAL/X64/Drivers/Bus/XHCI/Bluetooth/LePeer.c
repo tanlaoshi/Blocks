@@ -74,3 +74,7 @@ int BluetoothLeLastPeerAddressGet(UINT8 Out[6], UINT8 *AddressTypeOut) {
 int BluetoothLeIsConnected(void) {
     return sLeConnected ? 1 : 0;
 }
+
+int XhciBluetoothLeIsConnected(void) {
+    return BluetoothLeIsConnected();
+}

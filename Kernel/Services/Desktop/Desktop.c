@@ -40,6 +40,8 @@ BMP_IMAGE gRebootBmp;
 int gRebootBmpReady;
 BMP_IMAGE gGameBmp;
 int gGameBmpReady;
+BMP_IMAGE gBluetoothBmp;
+int gBluetoothBmpReady;
 BMP_IMAGE gMenuSysBmp[DESKTOP_SYS_ICON_COUNT];
 int gMenuSysBmpReady[DESKTOP_SYS_ICON_COUNT];
 int gMenuOpen;
@@ -161,6 +163,10 @@ void DesktopDrawNetTrayPopup(void) {
     DesktopNetTrayDrawPopup();
 }
 
+void DesktopDrawBluetoothTrayPopup(void) {
+    DesktopBluetoothTrayDrawPopup();
+}
+
 int DesktopStartMenuIsOpen(void) {
     return gMenuOpen ? 1 : 0;
 }
@@ -175,6 +181,7 @@ void DesktopDismissStartMenu(void) {
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
     DesktopNetTrayClose();
+    DesktopBluetoothTrayClose();
     RequestRefresh();
 }
 
@@ -218,6 +225,7 @@ void DesktopInitialize(void) {
     gMenuAppCount = 0;
     gMenuGameCount = 0;
     DesktopNetTrayClose();
+    DesktopBluetoothTrayClose();
     gIconDragIdx = -1;
     gIconDragMoved = 0;
     /*

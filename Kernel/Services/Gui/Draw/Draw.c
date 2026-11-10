@@ -143,6 +143,7 @@ void SyncWindowVisualsEx(int ClearDesktop) {
     DesktopDrawStartMenu();
     DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
+    DesktopDrawBluetoothTrayPopup();
     GraphicsIrqEnter();
     CursorPaint();
     GraphicsIrqLeave();

@@ -194,6 +194,7 @@ int DesktopNetTrayHandleClick(UINT32 X, UINT32 Y) {
     gMenuOpen = 0;
     gMenuAppsOpen = 0;
     gMenuGameOpen = 0;
+    DesktopBluetoothTrayClose();
     DesktopNetTraySetOpen(1);
     DesktopMarkNetTrayPopup();
     DesktopMarkTaskbar();

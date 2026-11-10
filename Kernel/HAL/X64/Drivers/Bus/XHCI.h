@@ -151,6 +151,7 @@ int XhciBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs); /* PR-BTM-4 *
 int XhciBluetoothLeConnectAddress(const UINT8 Address[6], UINT8 AddressType,
                                   UINT32 TimeoutMs); /* PR-BTM-10 */
 int XhciBluetoothLeDisconnect(void);
+int XhciBluetoothLeIsConnected(void);
 void XhciBluetoothLeLastError(UINT16 *OpcodeOut, UINT8 *StatusOut);
 int XhciBluetoothSmpJustWorks(UINT32 TimeoutMs); /* PR-BTM-5 */
 int XhciBluetoothAttHidDiscover(UINT32 TimeoutMs); /* PR-BTM-6 */

@@ -126,7 +126,7 @@ void DesktopWorkerTick(void) {
         }
     }
     /* 瞬时读失败：保留上次 HH:MM；网托变仍要刷栏 */
-    if (DesktopNetTrayLabelChanged()) {
+    if (DesktopNetTrayLabelChanged() || DesktopBluetoothTrayLabelChanged()) {
         NeedPaint = 1;
     }
     if (NeedPaint) {
@@ -260,6 +260,9 @@ void DesktopTickClock(void) {
         }
         if (DesktopNetTrayIsOpen()) {
             DesktopNetTrayDrawPopup();
+        }
+        if (DesktopBluetoothTrayIsOpen()) {
+            DesktopBluetoothTrayDrawPopup();
         }
         if (!CursorHwActive()) {
             GraphicsIrqEnter();

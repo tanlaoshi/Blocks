@@ -49,7 +49,14 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
     StartBtnGeom(&Bx, &By, &Bw, &Bh);
     OnStart = (Y >= By && Y < By + Bh && X >= Bx && X < Bx + Bw) ? 1 : 0;
 
-    /* 网络托盘弹层 / 短文案优先 */
+    /* 蓝牙托盘（网托左侧）优先于网托 */
+    if (DesktopBluetoothTrayHandleClick(X, Y)) {
+        if (OutAction) {
+            *OutAction = DESKTOP_ACTION_NONE;
+        }
+        return 1;
+    }
+    /* 网络托盘弹层 / 短文案 */
     if (DesktopNetTrayHandleClick(X, Y)) {
         if (OutAction) {
             *OutAction = DESKTOP_ACTION_NONE;
@@ -222,6 +229,7 @@ int HandleTaskbarClick(UINT32 X, UINT32 Y, DESKTOP_ACTION *OutAction,
             gMenuAppsOpen = 0;
             gMenuGameOpen = 0;
             DesktopNetTrayClose();
+            DesktopBluetoothTrayClose();
             DesktopContextMenuClose();
             /* 切语言脏标记 / 空表：此处才允许同步扫盘（点开始可接受一顿） */
             DesktopEnsureMenuRebuilt();

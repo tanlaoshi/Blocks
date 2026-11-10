@@ -246,6 +246,7 @@ void GuiComposeDamage(void) {
     DesktopDrawStartMenu();
     DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
+    DesktopDrawBluetoothTrayPopup();
     gGuiWindowManager.FocusWin = SavedFocus;
     if (SavedFocus >= 0 && SavedFocus < MAX_WINS &&
         gGuiWindowManager.Windows[SavedFocus].Active) {

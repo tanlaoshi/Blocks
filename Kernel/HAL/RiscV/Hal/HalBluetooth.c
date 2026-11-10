@@ -142,6 +142,10 @@ int HalBluetoothLeDisconnect(void) {
     return -1;
 }
 
+int HalBluetoothLeIsConnected(void) {
+    return 0;
+}
+
 int HalBluetoothMouseDisconnect(void) {
     return -1;
 }

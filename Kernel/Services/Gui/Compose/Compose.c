@@ -100,6 +100,7 @@ void GuiRedraw(void) {
     DesktopDrawStartMenu();
     DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
+    DesktopDrawBluetoothTrayPopup();
     GraphicsIrqEnter();
     CursorPaint();
     GraphicsIrqLeave();
@@ -211,11 +212,12 @@ void GuiComposeThemeScene(void) {
         }
     }
 
-    /* 开始菜单 / 网络托盘盖住所有窗；须清 Shell 客户区 clip（FillRect/文字受 clip，BMP 图标走 WriteRect 不受） */
+    /* 开始菜单 / 网托·蓝牙托盖住所有窗；须清 Shell 客户区 clip（FillRect/文字受 clip，BMP 图标走 WriteRect 不受） */
     HalVideoClearClip();
     DesktopDrawStartMenu();
     DesktopDrawContextMenu();
     DesktopDrawNetTrayPopup();
+    DesktopDrawBluetoothTrayPopup();
 
     gGuiWindowManager.FocusWin = SavedFocus;
     if (SavedFocus >= 0 && SavedFocus < MAX_WINS && gGuiWindowManager.Windows[SavedFocus].Active) {

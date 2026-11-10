@@ -78,12 +78,13 @@ int GuiClickTryDesktopBar(UINT32 X, UINT32 Y) {
 
     ExecPath[0] = 0;
     /*
-     * 开始菜单 / 网络托盘聚焦优先级：
+     * 开始菜单 / 网托·蓝牙托聚焦优先级：
      * 1) 点在菜单/flyout/开始钮/托盘 → DesktopHandleClick
      * 2) 点在菜单外且落在窗上 → HandleTaskbarClick 已收起，再 fall through 聚焦置顶
      * 3) 菜单未开时任务栏仍优先于窗（开始钮）
      */
-    if (DesktopStartMenuIsOpen() || DesktopNetTrayIsOpen()) {
+    if (DesktopStartMenuIsOpen() || DesktopNetTrayIsOpen() ||
+        DesktopBluetoothTrayIsOpen()) {
         if (DesktopHandleClick(X, Y, &Act, ExecPath, sizeof(ExecPath))) {
             DoDesktop = 1;
         }

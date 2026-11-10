@@ -131,6 +131,8 @@ extern BMP_IMAGE gRebootBmp;
 extern int gRebootBmpReady;
 extern BMP_IMAGE gGameBmp;
 extern int gGameBmpReady;
+extern BMP_IMAGE gBluetoothBmp;
+extern int gBluetoothBmpReady;
 /* 开始菜单行：系统项用 menu/ 原版，与桌面新风格脱钩 */
 extern BMP_IMAGE gMenuSysBmp[DESKTOP_SYS_ICON_COUNT];
 extern int gMenuSysBmpReady[DESKTOP_SYS_ICON_COUNT];
@@ -228,6 +230,17 @@ NET_TRAY_KIND DesktopNetTrayDetectKind(void);
 UINT32 DesktopNetTrayCurrentIp(void);
 void DesktopNetTrayMakePrefixed(char *Out, int Max, const char *Prefix, UINT32 Ip);
 void DesktopNetTraySetOpen(int Open);
+
+/* PR-BT-TRAY-0：网托左侧蓝牙 */
+void DesktopBluetoothTrayDraw(UINT32 ClockX, UINT32 TextY);
+void DesktopBluetoothTrayDrawPopup(void);
+int DesktopBluetoothTrayHandleClick(UINT32 X, UINT32 Y);
+void DesktopBluetoothTrayClose(void);
+int DesktopBluetoothTrayIsOpen(void);
+int DesktopBluetoothTrayLabelChanged(void);
+void DesktopBluetoothTrayGeom(UINT32 ClockX, UINT32 *OutX, UINT32 *OutW);
+void DesktopBluetoothTraySetOpen(int Open);
+void DesktopMarkBluetoothTrayPopup(void);
 
 int PathHasVolPrefix(const char *Path);
 int LoadBmpPath(const char *Path, BMP_IMAGE *Out, UINT32 FileMax, const char *Tag);

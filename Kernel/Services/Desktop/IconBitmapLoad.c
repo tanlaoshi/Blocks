@@ -255,6 +255,8 @@ void LoadDesktopIcons(void) {
                                   ICON_FILE_MAX, "desktop: reboot");
     gGameBmpReady = LoadBmpPath("Assets/Icons/GAME.BMP", &gGameBmp,
                                 ICON_FILE_MAX, "desktop: game");
+    gBluetoothBmpReady = LoadBmpPath("Assets/Icons/BLUETOOTH.BMP", &gBluetoothBmp,
+                                     ICON_FILE_MAX, "desktop: bluetooth");
     DesktopLoadMenuSysIcons();
     if (gStartBmpReady) {
         Ok++;

@@ -84,6 +84,8 @@ int HalBluetoothLeScan(HAL_BLUETOOTH_SCAN_ENTRY *Out, UINTN OutMax,
 int HalBluetoothLeConnect(UINTN OneBasedIndex, UINT32 TimeoutMs);
 /* 断当前 LE；无连接 → 0 */
 int HalBluetoothLeDisconnect(void);
+/* 1=当前有 LE 连接（鼠会话亦算）；未 Ready → 0 */
+int HalBluetoothLeIsConnected(void);
 /*
  * PR-BTM-10：断 LE 鼠会话（HCI Disconnect + HOGP/Notify 拆除）。
  * 无连接仍清会话 → 0；失败 → -1。

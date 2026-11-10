@@ -102,6 +102,9 @@ int DesktopMenuCoverGet(UINT32 *X, UINT32 *Y, UINT32 *W, UINT32 *H);
 void DesktopMenuCoverClear(void);
 /* PR-N-nic-tray */
 int DesktopNetTrayIsOpen(void);
+/* PR-BT-TRAY-0 */
+int DesktopBluetoothTrayIsOpen(void);
+void DesktopDrawBluetoothTrayPopup(void);
 void DesktopDismissStartMenu(void);
 /* 点在任务栏条带上时优先于窗（开始钮）；菜单开时由 Gui 先走 DesktopHandleClick */
 int DesktopClickOnTaskbar(UINT32 X, UINT32 Y);

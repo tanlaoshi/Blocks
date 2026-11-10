@@ -74,7 +74,10 @@ int FatUnlinkKeepClusters(const char *Path);
 int FatFreeChain(UINT32 Cluster);
 int FatMkdir(const char *Path);
 int FatRmdir(const char *Path);
-/* 同卷改名/移动目录项（不拷贝数据）；成功 FAT_OK */
+/*
+ * 同卷改名/移动目录项（不拷贝数据）；成功 FAT_OK。
+ * 同目录且新名槽数≤旧名：就地改写 LFN/SFN（不 DirGrow）；否则建新再摘旧。
+ */
 int FatRename(const char *OldPath, const char *NewPath);
 
 /* PR-F2：查询路径状态；空路径/"/" → 卷根目录 */

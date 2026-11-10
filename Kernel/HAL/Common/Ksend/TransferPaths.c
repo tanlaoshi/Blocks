@@ -73,6 +73,31 @@ static int PathCopy(const char *Source, char *Destination) {
     return FAT_OK;
 }
 
+/* 同目录换叶名：D:Kernel.elf + KSEND.NEW → D:KSEND.NEW */
+static int PathReplaceLeaf(const char *Target, const char *Leaf, char *Out) {
+    const char *NameStart;
+    UINT32 PrefixLength;
+    UINT32 Index;
+    UINT32 LeafIndex;
+
+    if (Target == 0 || Target[0] == 0 || Leaf == 0 || Leaf[0] == 0) {
+        return FAT_ERR_INVAL;
+    }
+    NameStart = PathNameStart(Target);
+    PrefixLength = (UINT32)(NameStart - Target);
+    for (Index = 0; Index < PrefixLength; Index++) {
+        Out[Index] = Target[Index];
+    }
+    for (LeafIndex = 0; Leaf[LeafIndex] != 0; LeafIndex++) {
+        if (Index + 1u >= KSEND_PATH_BYTES) {
+            return FAT_ERR_INVAL;
+        }
+        Out[Index++] = Leaf[LeafIndex];
+    }
+    Out[Index] = 0;
+    return FAT_OK;
+}
+
 static int PathAppendExtension(const char *Target, const char *Extension,
                                char *Out) {
     const char *Walk;
@@ -99,11 +124,21 @@ static int PathAppendExtension(const char *Target, const char *Extension,
 }
 
 static int BackupPathBuild(const char *Target, char *Backup) {
-    return PathAppendExtension(Target, KSEND_BACKUP_EXTENSION, Backup);
+    return PathReplaceLeaf(Target, KSEND_BACKUP_LEAF_NAME, Backup);
 }
 
 static int StagingPathBuild(const char *Target, char *Staging) {
-    return PathAppendExtension(Target, KSEND_STAGING_EXTENSION, Staging);
+    return PathReplaceLeaf(Target, KSEND_STAGING_LEAF_NAME, Staging);
+}
+
+/* 删遗留 <目标>.new / <目标>.bak，收目录槽；不存在则忽略 */
+static void LegacySiblingDelete(const char *Target, const char *Extension) {
+    char LegacyPath[KSEND_PATH_BYTES];
+
+    if (PathAppendExtension(Target, Extension, LegacyPath) != FAT_OK) {
+        return;
+    }
+    (void)KsendFileDelete(LegacyPath);
 }
 
 static int VolumePrepare(const char *Target, KSEND_RUN *Run) {
@@ -182,12 +217,14 @@ int KsendStagingPrepare(KSEND_RUN *Run) {
     if (StagingPathBuild(Run->TargetPath, sKsendWritePath) != FAT_OK) {
         return FAT_ERR_INVAL;
     }
+    LegacySiblingDelete(Run->TargetPath, KSEND_STAGING_EXTENSION);
+    LegacySiblingDelete(Run->TargetPath, KSEND_BACKUP_EXTENSION);
     Error = KsendFileDelete(sKsendWritePath);
     if (Error != FAT_OK) {
         return Error;
     }
     Run->WritePath = sKsendWritePath;
-    KsendNote("staging: write via .new (full new-file replace)");
+    KsendNote("staging: write via KSEND.NEW (full new-file replace)");
     return FAT_OK;
 }
 

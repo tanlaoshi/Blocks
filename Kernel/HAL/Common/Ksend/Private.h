@@ -69,14 +69,16 @@
 /* —— 卡上路径 ——
  * 默认目标仍是 BLOCKS:Kernel.elf（Install.c 写的那个）；`ksend <路径>` 可换，
  * 前缀支持 BLOCKS: / BOOT: / ESP: / 卷字母 / 卷下标。
- * 备份名 = 目标全名追加 .bak（boot.sd → boot.sd.bak），同目录、不换扩展名；
- * 保留原大小写，FAT 名字比较本来忽略大小写。 */
+ * 备份/暂存用同目录固定 8.3 叶名（KSEND.BAK / KSEND.NEW），改名可就地、少 DirGrow；
+ * 旧式 <目标>.bak / <目标>.new 仍在 Prepare 时尝试删除以收目录槽。 */
 #define KSEND_KERNEL_PATH         "BLOCKS:Kernel.elf"
 #define KSEND_PATH_BYTES          96u
-#define KSEND_BACKUP_EXTENSION    ".bak"
-/* 覆写已有目标时先落到同目录 <目标>.new（空文件全量收），校验后再改名替换；
+#define KSEND_BACKUP_LEAF_NAME    "KSEND.BAK"
+#define KSEND_STAGING_LEAF_NAME   "KSEND.NEW"
+#define KSEND_BACKUP_EXTENSION    ".bak"  /* 仅清遗留名 */
+#define KSEND_STAGING_EXTENSION   ".new"  /* 仅清遗留名 */
+/* 覆写已有目标时先落到同目录 KSEND.NEW（空文件全量收），校验后再改名替换；
  * 避免对正在跑的 Kernel.elf 做 WriteAt（有线大文件覆写会挂，新建同尺寸则通）。 */
-#define KSEND_STAGING_EXTENSION   ".new"
 #define KSEND_SELFTEST_PATH       "BLOCKS:KSELFT.BIN"
 #define KSEND_SELFTEST_BYTES      8192u
 /* 自检第二遍的盐：两遍内容必须不同，否则「覆写已有文件」这条路径测不出来 */
@@ -128,8 +130,8 @@ typedef struct {
 /* 一次传输的现场：收块状态机与收尾/回滚两边共用 */
 typedef struct {
     const char *TargetPath; /* 卡上目标（默认 BLOCKS:Kernel.elf） */
-    const char *BackupPath; /* 同目录 <目标全名>.bak */
-    const char *WritePath;  /* 实际落盘路径；覆写时为 Target.new，否则同 Target */
+    const char *BackupPath; /* 同目录 KSEND.BAK */
+    const char *WritePath;  /* 实际落盘路径；覆写时为 KSEND.NEW，否则同 Target */
     UINT32 OldSize;
     UINT32 NewSize;
     UINT32 ExpectedSize; /* 主机 size=；0=不预扩 */

@@ -160,14 +160,14 @@ void KsendRunReset(KSEND_RUN *Run);
 int KsendPathsPrepare(const char *Requested, KSEND_RUN *Run);
 void KsendVolumeRelease(KSEND_RUN *Run);
 void KsendPathsNote(const KSEND_RUN *Run);
-/* 1=本次写入走 Target.new（须 READY 空表全量收） */
+/* 1=本次写入走 KSEND.NEW（须 READY 空表全量收） */
 int KsendRunUsesStaging(const KSEND_RUN *Run);
-/* OldSize>0：删并指向 Target.new；否则 WritePath=Target */
+/* OldSize>0：删并指向 KSEND.NEW；否则 WritePath=Target */
 int KsendStagingPrepare(KSEND_RUN *Run);
-/* 校验通过后：删 Target，把 WritePath 改名为 Target */
+/* 校验通过后：摘 Target，把 WritePath 改名为 Target */
 int KsendStagingInstall(KSEND_RUN *Run);
 void KsendDeferredFreeClusters(KSEND_RUN *Run);
-/* 失败时丢掉未安装的 .new（Target 未动则不必 restore） */
+/* 失败时丢掉未安装的 KSEND.NEW（Target 未动则不必 restore） */
 void KsendStagingDiscard(const KSEND_RUN *Run);
 void KsendImageCopy(KSEND_IMAGE *Destination, const KSEND_IMAGE *Source);
 /* 目标不存在 / OldSize=0：须清空，勿沿用上次 READY 表（Duo 曾假 size=98304） */

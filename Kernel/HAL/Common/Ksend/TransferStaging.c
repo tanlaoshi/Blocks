@@ -2,7 +2,8 @@
  * TransferStaging.c — .new 安装 / 延后释链 / 丢弃
  *
  * install：目录改名 + 摘旧项；FatFreeChain 延到 OK 后。
- * 默认 Reboot：不 Target→.bak（复位后用不上），少一次改名（手测 install≈6s）。
+ * 默认 Reboot：不 Target→KSEND.BAK（复位后用不上），少一次改名。
+ * 暂存叶名 KSEND.NEW：与 Kernel.elf 同槽数，FatRename 可就地、避 DirGrow。
  */
 #include "Ksend/Private.h"
 #include "FileSystem.h"
@@ -49,8 +50,8 @@ int KsendStagingInstall(KSEND_RUN *Run) {
         return FAT_OK;
     }
     /*
-     * Reboot=1：复位进新核，.bak 不参与回滚；与 --no-backup 同形
-     *（摘 Target + .new→Target）。--no-reboot 且 Backup 仍 Target→.bak。
+     * Reboot=1：复位进新核，KSEND.BAK 不参与回滚；与 --no-backup 同形
+     *（摘 Target + KSEND.NEW→Target）。--no-reboot 且 Backup 仍 Target→BAK。
      */
     KeepBackup = (Run->Backup != 0 && Run->Reboot == 0) ? 1 : 0;
     PhaseStart = KsendMilliseconds();
@@ -69,7 +70,7 @@ int KsendStagingInstall(KSEND_RUN *Run) {
             }
             return Error;
         }
-        KsendNote("staging: target renamed to .bak");
+        KsendNote("staging: target renamed to KSEND.BAK");
     } else {
         Error = StagingUnlinkDeferFree(Run->TargetPath, &DeferredCluster);
         Run->InstallUnlinkMilliseconds = KsendMilliseconds() - PhaseStart;
@@ -77,7 +78,7 @@ int KsendStagingInstall(KSEND_RUN *Run) {
             return Error;
         }
         if (Run->Backup != 0 && Run->Reboot != 0) {
-            KsendNote("staging: skip .bak (reboot)");
+            KsendNote("staging: skip KSEND.BAK (reboot)");
         } else {
             KsendNote("staging: target unlinked (--no-backup)");
         }
@@ -93,7 +94,7 @@ int KsendStagingInstall(KSEND_RUN *Run) {
     }
     Run->WritePath = Run->TargetPath;
     Run->DeferredFreeCluster = DeferredCluster;
-    KsendNote("staging: installed .new over target");
+    KsendNote("staging: installed KSEND.NEW over target");
     return FAT_OK;
 }
 
@@ -117,8 +118,8 @@ void KsendStagingDiscard(const KSEND_RUN *Run) {
         return;
     }
     if (KsendFileDelete(Run->WritePath) == FAT_OK) {
-        KsendNote("staging: discarded .new");
+        KsendNote("staging: discarded KSEND.NEW");
     } else {
-        KsendNote("staging: discard .new failed");
+        KsendNote("staging: discard KSEND.NEW failed");
     }
 }

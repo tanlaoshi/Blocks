@@ -137,6 +137,9 @@ void StoreRepoGet(UINT32 *OutIp, UINT16 *OutPort);
 int StoreFetchPath(const char *UrlPath, const char *DestRel, const char *ExpectHash);
 int StoreSyncCatalog(void);
 
+/* 课堂：Connection: close 两次新连 vs keep-alive 同 socket 二次 GET（串口对照） */
+int HttpKeepAliveContrast(UINT32 Ip, UINT16 Port, const char *Path);
+
 /* 内核任务栈仅 8KiB；list 用 BSS scratch，勿在栈上开 STORE_ENTRY[N] */
 STORE_ENTRY *StoreScratchTab(void);
 

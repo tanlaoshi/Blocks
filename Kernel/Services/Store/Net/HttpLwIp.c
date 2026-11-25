@@ -10,6 +10,7 @@
 
 static int BuildGetReq(const char *Path, char *Out, int OutMax) {
     const char *A = "GET ";
+    /* 生产路径固定 close；课堂 keep-alive 对照见 HttpKeepAlive*.c */
     const char *B = " HTTP/1.0\r\nHost: blocks\r\nConnection: close\r\n\r\n";
     const char *P;
     int N = 0;

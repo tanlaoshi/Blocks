@@ -24,6 +24,7 @@ void ShellCommandsNetRegister(void);
 void ShellCommandsNetAddressRegister(void);
 void ShellCommandsNetUdpRegister(void);
 void ShellCommandsNetTcpRegister(void);
+void ShellCommandsNetHttpRegister(void);
 void ShellCommandsNetLwipRegister(void);
 void ShellCommandsSystemRegister(void);
 void ShellCommandsSystemRegisterVirtMin(void);

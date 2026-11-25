@@ -53,4 +53,15 @@ int HttpGetParseResponse(UINT8 *Resp, UINTN Got, UINT32 Pages, UINT8 **OutBody,
 int HttpGetLwIp(UINT32 Ip, UINT16 Port, const char *Path,
                 UINT8 *Resp, UINTN Cap, UINTN *OutGot);
 
+/* ===== HttpKeepAlive*.c（课堂对照；生产 HttpGet 仍 close） ===== */
+int HttpKeepAliveBuildGet(const char *Path, int KeepAlive, char *Out, int OutMax);
+int HttpKeepAliveNativeCloseGet(UINT32 Ip, UINT16 Port, const char *Path, UINT8 *Resp,
+                                UINTN Cap, int Which);
+int HttpKeepAliveNativeTwice(UINT32 Ip, UINT16 Port, const char *Path, UINT8 *Resp,
+                             UINTN Cap);
+int HttpKeepAliveLwIpCloseGet(UINT32 Ip, UINT16 Port, const char *Path, UINT8 *Resp,
+                              UINTN Cap, int Which);
+int HttpKeepAliveLwIpTwice(UINT32 Ip, UINT16 Port, const char *Path, UINT8 *Resp,
+                           UINTN Cap);
+
 #endif

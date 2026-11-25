@@ -258,5 +258,6 @@ void ShellCommandsNetRegister(void) {
 #endif
     ShellCommandsNetUdpRegister();
     ShellCommandsNetTcpRegister();
+    ShellCommandsNetHttpRegister();
     ShellCommandsNetLwipRegister();
 }

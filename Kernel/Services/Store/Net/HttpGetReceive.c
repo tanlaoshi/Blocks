@@ -46,6 +46,7 @@ static int BuildAndSendGet(const char *Path) {
     int RequestLength = 0;
     const char *P;
     const char *A = "GET ";
+    /* 生产路径固定 close；课堂 keep-alive 对照见 HttpKeepAlive*.c */
     const char *B = " HTTP/1.0\r\nHost: blocks\r\nConnection: close\r\n\r\n";
 
     while (*A && RequestLength < (int)sizeof(gHttpRequest) - 1) {

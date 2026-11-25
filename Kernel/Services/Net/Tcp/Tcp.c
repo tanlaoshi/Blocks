@@ -93,12 +93,60 @@ void TcpClose(void) {
         BufferFlush();
         SegmentSend(TCP_FLAG_FIN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
         gTcp.SndNxt++;
+        gTcp.State = TCP_FIN_WAIT_1;
+        gTcp.RetransCount = 0;
+        RetransmitArm();
+        Note("tcp: FIN_WAIT_1\n");
+        DebugWrite("tcp: FIN_WAIT_1\n");
+        return;
     }
-    gTcp.State = TCP_CLOSED;
+    if (gTcp.State == TCP_CLOSE_WAIT) {
+        SegmentSend(TCP_FLAG_FIN | TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
+        gTcp.SndNxt++;
+        gTcp.State = TCP_LAST_ACK;
+        gTcp.RetransCount = 0;
+        RetransmitArm();
+        Note("tcp: LAST_ACK\n");
+        DebugWrite("tcp: LAST_ACK\n");
+        return;
+    }
+    /* 其它态：教学单槽直接收口，避免卡死下次 connect */
+    if (gTcp.State != TCP_CLOSED && gTcp.State != TCP_LISTEN) {
+        gTcp.State = TCP_CLOSED;
+    }
 }
 
 TCP_STATE TcpStateGet(void) {
     return gTcp.State;
+}
+
+const char *TcpStateName(TCP_STATE State) {
+    switch (State) {
+    case TCP_CLOSED:
+        return "CLOSED";
+    case TCP_LISTEN:
+        return "LISTEN";
+    case TCP_SYN_SENT:
+        return "SYN_SENT";
+    case TCP_SYN_RECEIVED:
+        return "SYN_RECEIVED";
+    case TCP_ESTABLISHED:
+        return "ESTABLISHED";
+    case TCP_FIN_WAIT_1:
+        return "FIN_WAIT_1";
+    case TCP_FIN_WAIT_2:
+        return "FIN_WAIT_2";
+    case TCP_CLOSING:
+        return "CLOSING";
+    case TCP_TIME_WAIT:
+        return "TIME_WAIT";
+    case TCP_CLOSE_WAIT:
+        return "CLOSE_WAIT";
+    case TCP_LAST_ACK:
+        return "LAST_ACK";
+    default:
+        return "?";
+    }
 }
 
 UINT16 TcpLocalPort(void) {
@@ -171,10 +219,11 @@ int TcpPeerClosed(void) {
 }
 
 int TcpAckSend(void) {
-    if (gTcp.State != TCP_ESTABLISHED && !gTcp.PeerClosed) {
+    if (gTcp.State == TCP_CLOSED || gTcp.State == TCP_LISTEN) {
         return -1;
     }
-    if (gTcp.State == TCP_CLOSED) {
+    if (gTcp.State != TCP_ESTABLISHED && gTcp.State != TCP_CLOSE_WAIT &&
+        !gTcp.PeerClosed) {
         return -1;
     }
     return SegmentSend(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
@@ -193,6 +242,10 @@ void TcpPoll(void) {
                 RetransmitArm();
             }
         }
+        return;
+    }
+    if (CloseStateActive()) {
+        ClosePoll();
         return;
     }
     if (gTcp.State != TCP_ESTABLISHED) {

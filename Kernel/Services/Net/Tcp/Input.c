@@ -1,6 +1,6 @@
 /*
  * Input.c — 入站段编排（PR-F-tcp-1）
- * 握手：InputSynchronize.c；已建立：InputEstablished.c
+ * 握手：InputSynchronize.c；已建立：InputEstablished.c；关连：InputClose.c
  */
 #include "Tcp.h"
 #include "Private.h"
@@ -50,6 +50,9 @@ void TcpSegmentInput(UINT32 SrcIp, UINT32 DstIp, const UINT8 *Payload, UINTN Len
             return;
         }
         /* 可能与本包同段的 PSH 数据：落到下方 ESTABLISHED 处理 */
+    } else if (CloseStateActive()) {
+        CloseSegmentInput(DstPort, SrcIp, SrcPort, Flags, Seq, Ack, Window, DataLen);
+        return;
     } else if (gTcp.State != TCP_ESTABLISHED) {
         return;
     }

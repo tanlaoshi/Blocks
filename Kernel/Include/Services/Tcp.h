@@ -16,6 +16,13 @@ typedef enum {
     TCP_SYN_SENT,
     TCP_SYN_RECEIVED,
     TCP_ESTABLISHED,
+    /* 四次挥手（教学短态；无拥塞/多连接） */
+    TCP_FIN_WAIT_1,   /* 已发 FIN，等 ACK */
+    TCP_FIN_WAIT_2,   /* FIN 已 ACK，等对端 FIN */
+    TCP_CLOSING,      /* 同时关闭：已发 FIN 又收到 FIN */
+    TCP_TIME_WAIT,    /* 收到对端 FIN 并 ACK；短 2MSL 后 CLOSED */
+    TCP_CLOSE_WAIT,   /* 收到对端 FIN；等本端 TcpClose */
+    TCP_LAST_ACK,     /* CLOSE_WAIT 后已发 FIN，等最后 ACK */
 } TCP_STATE;
 
 void TcpInitialize(void);
@@ -25,6 +32,8 @@ int  TcpConnect(UINT32 DstIp, UINT16 DstPort);
 int  TcpSend(const void *Data, UINTN Len);
 void TcpClose(void);
 TCP_STATE TcpStateGet(void);
+/* 课堂投影：状态名短串（如 "FIN_WAIT_1"）；未知则 "?" */
+const char *TcpStateName(TCP_STATE State);
 UINT16 TcpLocalPort(void);
 UINT32 TcpPeerIp(void);
 UINT16 TcpPeerPort(void);

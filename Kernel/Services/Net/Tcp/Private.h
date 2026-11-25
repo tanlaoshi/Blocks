@@ -22,6 +22,8 @@
 #define TCP_CLIENT_ADV_MAX 2048 /* 限流：避免 QEMU 用户网突发打满 RX 环丢包 */
 #define TCP_RTO_POLLS     8000
 #define TCP_MAX_RETRANS   5
+/* 教学 2MSL：远短于真 2MSL，仅够投影看到 TIME_WAIT→CLOSED */
+#define TCP_TIME_WAIT_POLLS 4000
 
 typedef struct {
     UINT16 SrcPort;
@@ -105,5 +107,13 @@ int SynchronizeReceived(UINT32 SrcIp, UINT16 SrcPort, UINT8 Flags,
 void Established(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,
                          UINT8 Flags, UINT32 Seq, UINT32 Ack, UINT16 Window,
                          const UINT8 *Data, UINTN DataLen);
+
+/* —— InputClose.c：四次挥手 —— */
+void PeerFinFromEstablished(UINT32 Seq, UINTN DataLen);
+void CloseSegmentInput(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,
+                       UINT8 Flags, UINT32 Seq, UINT32 Ack, UINT16 Window,
+                       UINTN DataLen);
+void ClosePoll(void);
+int CloseStateActive(void);
 
 #endif

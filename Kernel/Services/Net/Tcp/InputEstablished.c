@@ -87,20 +87,9 @@ static void Finish(UINT8 Flags, UINT32 Seq, UINTN DataLen) {
     /*
      * FIN 序号必须紧接已收数据。过早 FIN（乱序）不得推进 gTcp.RcvNxt，
      * 否则后续段会被当成“对得上”而跳过 HTTP 头（S2：got=0 / head=.ELF）。
+     * 对端 FIN → CLOSE_WAIT（四次挥手）；见 InputClose.c。
      */
-    if (Seq + (UINT32)DataLen == gTcp.RcvNxt) {
-        gTcp.RcvNxt++;
-        gTcp.PeerClosed = 1;
-        SegmentSend(TCP_FLAG_ACK | (gTcp.ClientMode ? 0 : TCP_FLAG_FIN), 0, 0,
-                       gTcp.SndNxt, gTcp.RcvNxt);
-        if (!gTcp.ClientMode) {
-            gTcp.SndNxt++;
-            gTcp.State = TCP_CLOSED;
-            DebugWrite("tcp: closed\n");
-        }
-    } else {
-        SegmentSend(TCP_FLAG_ACK, 0, 0, gTcp.SndNxt, gTcp.RcvNxt);
-    }
+    PeerFinFromEstablished(Seq, DataLen);
 }
 
 void Established(UINT16 DstPort, UINT32 SrcIp, UINT16 SrcPort,

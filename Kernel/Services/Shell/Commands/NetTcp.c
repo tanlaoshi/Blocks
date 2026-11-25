@@ -122,8 +122,10 @@ static void CommandTcpStatus(int Argc, char **Argv) {
 #endif
     TcpWindowStatsGet(&Una, &Nxt, &BufLen, &PeerWnd, &Retrans);
     gConsole.Write("tcp state=");
+    gConsole.Write(TcpStateName(TcpStateGet()));
+    gConsole.Write(" (");
     gConsole.WriteHex32((UINT32)TcpStateGet());
-    gConsole.Write(" local=");
+    gConsole.Write(") local=");
     gConsole.WriteHex32(TcpLocalPort());
     gConsole.Write(" peer=");
     HalNetFormatIp(TcpPeerIp(), IpBuf, sizeof(IpBuf));
